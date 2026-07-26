@@ -67,6 +67,24 @@ create policy "own logs select" on public.game_logs
   for select using (auth.uid() = user_id);
 
 -- ─────────────────────────────────────────────────────────────
+-- 3-b) 개발자 피드백 테이블 (플레이어가 불편사항/제안 제출)
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.feedback (
+  id         bigint generated always as identity primary key,
+  user_id    uuid references auth.users(id) on delete set null,
+  category   text,                     -- 버그 / 제안 / 기타
+  message    text not null,
+  meta       jsonb,                    -- url, 진행도 등 컨텍스트
+  created_at timestamptz not null default now()
+);
+alter table public.feedback enable row level security;
+
+-- 로그인한 유저는 본인 이름으로 피드백 남길 수 있음(읽기는 막음 → 관리자는 SQL Editor로 조회)
+drop policy if exists "own feedback insert" on public.feedback;
+create policy "own feedback insert" on public.feedback
+  for insert with check (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────
 -- 4) 분석용 뷰(선택) — 대시보드/SQL에서 바로 쓰기 좋게 집계
 -- ─────────────────────────────────────────────────────────────
 

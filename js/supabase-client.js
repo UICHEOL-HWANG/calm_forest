@@ -132,6 +132,21 @@ export async function loadGame() {
   } catch (err) { console.warn('[Supabase 폴백] 불러오기 실패:', err?.message || err); return null; }
 }
 
+// ── 개발자 피드백 전송(feedback 테이블) — 오프라인이면 콘솔 폴백 ──
+export async function submitFeedback({ category, message, meta }) {
+  const row = { user_id: state.userId, category, message, meta: meta || {}, created_at: new Date().toISOString() };
+  if (!state.online || !supabase) { console.log('[Supabase 폴백] 피드백(오프라인):', row); return { ok: true, offline: true }; }
+  try {
+    const { error } = await supabase.from('feedback').insert(row);
+    if (error) throw error;
+    console.log('[Supabase] 피드백 전송 완료');
+    return { ok: true, offline: false };
+  } catch (err) {
+    console.warn('[Supabase 폴백] 피드백 전송 실패:', err?.message || err);
+    return { ok: false, offline: false, error: err };
+  }
+}
+
 export async function sendLogBatch(rows) {
   if (!rows || rows.length === 0) return;
   const enriched = rows.map(r => ({ user_id: state.userId, session_id: state.sessionId, ...r }));

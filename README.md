@@ -4,7 +4,7 @@
 
 🎮 **플레이**: https://uicheol-hwang.github.io/calm_forest/
 
-**주요 기능**: 걷기 · 벌목 · 농사(밭갈기/심기/물주기/수확) · 건축(단계 건설) · NPC 3명 & 퀘스트 체인 · 낮/밤 사이클 · 파티클 & 블룸 · 절차적 사운드 · 모바일 터치 · 구글 로그인 · 클라우드 저장 · 행동 데이터 분석(Supabase/GA4/BigQuery)
+**주요 기능**: 걷기 · 벌목 · 농사(밭갈기/심기/물주기/수확) · 건축(단계 건설) · NPC 3명 & 퀘스트 체인 · 낮/밤 사이클 · 파티클 & 블룸 · 절차적 사운드 · 모바일 터치 · 구글 로그인 · 클라우드 저장 · 개발자 피드백 · 행동 데이터 분석(Supabase/GA4/BigQuery)
 
 기술 스택: **Vanilla JS + Three.js** (프론트) · **Supabase**(Auth/Postgres) · **GA4 + BigQuery**(분석) · **GitHub Pages + Actions**(배포).
 

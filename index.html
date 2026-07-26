@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>calm forest 🌿</title>
+<meta name="theme-color" content="#bfe8c9" />
+<!-- 파비콘(인라인 SVG · 외부 파일 없음): 민트 배경 위 로우폴리 나무 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
 
 <!-- =========================================================
      [GA4 트래킹]  js/analytics.js 가 config.js 의 GA4_MEASUREMENT_ID 를
@@ -29,9 +33,25 @@
   #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
-  #save-btn, #logout-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
+  #save-btn, #logout-btn, #feedback-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
-  #save-btn:active, #logout-btn:active { transform: scale(0.94); }
+  #feedback-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
+  #save-btn:active, #logout-btn:active, #feedback-btn:active { transform: scale(0.94); }
+
+  /* 피드백 모달 */
+  #feedback-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
+  #feedback-modal.show { display: grid; }
+  .fb-card { width: min(400px, 90vw); background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
+  .fb-card h3 { margin: 0 0 4px; font-size: 18px; }
+  .fb-sub { margin: 0 0 16px; font-size: 13px; opacity: .7; }
+  #fb-category, #fb-text { width: 100%; border: 1px solid #e2e6e2; border-radius: 12px; padding: 10px 12px; font-size: 14px; font-family: inherit; color: var(--ink); background: #fafdfa; }
+  #fb-category { margin-bottom: 10px; }
+  #fb-text { resize: vertical; min-height: 84px; }
+  .fb-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  .fb-actions button { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: transform .1s; }
+  #fb-cancel { background: #eef2ee; color: var(--ink); }
+  #fb-send { background: var(--mint); color: var(--ink); }
+  .fb-actions button:active { transform: scale(0.95); }
 
   /* 로그인 화면 — 뒤로 실제 게임 씬이 흐름(투명 + 부드러운 비네팅) */
   #login-screen { position: fixed; inset: 0; z-index: 20; display: none; place-items: center;
@@ -116,6 +136,7 @@
     <span id="login-dot"></span>
     <span id="login-status">연결 중…</span>
     <button id="save-btn">💾 저장</button>
+    <button id="feedback-btn" title="개발자에게 피드백">💬</button>
     <button id="logout-btn" style="display:none;">로그아웃</button>
   </div>
 
@@ -169,6 +190,24 @@
     </div>
   </div>
 
+  <!-- 피드백 모달 -->
+  <div id="feedback-modal">
+    <div class="fb-card">
+      <h3>💬 개발자에게 한마디</h3>
+      <p class="fb-sub">불편했던 점이나 아이디어를 남겨주세요. 큰 힘이 돼요!</p>
+      <select id="fb-category">
+        <option value="버그">🐞 버그 신고</option>
+        <option value="제안">💡 제안 / 아이디어</option>
+        <option value="기타">✍️ 기타</option>
+      </select>
+      <textarea id="fb-text" rows="4" placeholder="예: 밤에 밭이 잘 안 보여요 / 낚시도 있으면 좋겠어요"></textarea>
+      <div class="fb-actions">
+        <button id="fb-cancel">취소</button>
+        <button id="fb-send">보내기</button>
+      </div>
+    </div>
+  </div>
+
   <div id="loading">calm forest 불러오는 중… 🌿</div>
 
   <script type="importmap">
@@ -181,9 +220,9 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, state as authState } from './js/supabase-client.js';
-    import { bootWorld, enterGame, requestSave, Input } from './js/game.js';
-    import { trackLogin } from './js/analytics.js';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js';
+    import { bootWorld, enterGame, requestSave, getGameState, Input } from './js/game.js';
+    import { trackLogin, trackEvent } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
     import { initControls } from './js/controls.js';
 
@@ -289,6 +328,29 @@
       const res = await requestSave();               // [Supabase] 저장
       btn.textContent = res.offline ? '💾 저장(오프라인)' : '✅ 저장됨';
       setTimeout(() => (btn.textContent = '💾 저장'), 1400);
+    });
+
+    // 피드백 모달 열기/닫기/전송
+    const fbModal = $('feedback-modal');
+    const openFb = () => { fbModal.classList.add('show'); $('fb-text').focus(); };
+    const closeFb = () => { fbModal.classList.remove('show'); };
+    $('feedback-btn').addEventListener('click', openFb);
+    $('fb-cancel').addEventListener('click', closeFb);
+    fbModal.addEventListener('click', (e) => { if (e.target === fbModal) closeFb(); }); // 바깥 클릭 닫기
+    $('fb-send').addEventListener('click', async () => {
+      const message = $('fb-text').value.trim();
+      if (!message) { $('fb-text').focus(); return; }
+      const btn = $('fb-send'); btn.textContent = '보내는 중…'; btn.disabled = true;
+      const category = $('fb-category').value;
+      // 컨텍스트(진행도/화면)를 meta에 함께 담아 개발자가 재현하기 쉽게
+      let meta = { url: location.href, ua: navigator.userAgent };
+      try { const gs = getGameState(); meta.houseStage = gs.houseStage; meta.inventory = gs.inventory; } catch (e) {}
+      const res = await submitFeedback({ category, message, meta }); // [Supabase] 피드백
+      trackEvent('feedback_submit', { category, offline: !!res.offline }); // [GA4]
+      btn.textContent = '보내기'; btn.disabled = false;
+      $('fb-text').value = '';
+      closeFb();
+      ui.toast(res.offline ? '💬 피드백 접수(오프라인 기록)' : '💬 피드백 고마워요!');
     });
 
     (async () => {
