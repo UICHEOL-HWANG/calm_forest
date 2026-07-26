@@ -42,6 +42,8 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true   # Pages가 아직 활성화 안 됐으면 자동 활성화
 
       # (선택) config 값을 커밋하지 않고 저장소 Variables에서 주입하고 싶다면
       # 아래 주석을 해제하고 Settings → Secrets and variables → Actions →

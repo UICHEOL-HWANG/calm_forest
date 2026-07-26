@@ -1,6 +1,12 @@
-# 🌿 calm forest — 2단계 (걷기 + 벌목 + 농사 + 건축 + 모바일)
+# 🌿 calm forest
 
-동물의 숲 톤의 포근한 로우폴리 3D 브라우저 게임. Vanilla JS + Three.js(WebGL), 외부 이미지·모델·사운드 파일 없이 모든 형상을 코드로 생성합니다.
+동물의 숲 톤의 포근한 로우폴리 3D 브라우저 게임. Vanilla JS + Three.js(WebGL)로 만들었고, **외부 이미지·모델·사운드 파일 없이** 모든 형상·효과음을 코드로 생성합니다.
+
+🎮 **플레이**: https://uicheol-hwang.github.io/calm_forest/
+
+**주요 기능**: 걷기 · 벌목 · 농사(밭갈기/심기/물주기/수확) · 건축(단계 건설) · NPC 3명 & 퀘스트 체인 · 낮/밤 사이클 · 파티클 & 블룸 · 절차적 사운드 · 모바일 터치 · 구글 로그인 · 클라우드 저장 · 행동 데이터 분석(Supabase/GA4/BigQuery)
+
+기술 스택: **Vanilla JS + Three.js** (프론트) · **Supabase**(Auth/Postgres) · **GA4 + BigQuery**(분석) · **GitHub Pages + Actions**(배포).
 
 ## 📁 파일 구조
 
@@ -32,16 +38,18 @@ calm_forest/
 
 > 실제 연동(Supabase 키·GA4)과 배포는 **`docs/DEPLOY.md`** 를, DB 초기화는 **`sql/supabase_setup.sql`** 을 참고하세요. 키를 안 넣어도 게임은 오프라인 폴백으로 동작합니다.
 
-## ▶ 실행
+## ▶ 로컬 실행
 
-정적 파일이라 서버 없이 바로 열립니다. ES 모듈이라 `file://` 대신 로컬 서버 권장:
+ES 모듈이라 `file://`로 열면 CORS로 막힙니다. 로컬 서버로 여세요:
 
 ```
 cd calm_forest
 python3 -m http.server 8000   # → http://localhost:8000
 ```
 
-GitHub Pages에 폴더째 올리면 그대로 배포됩니다.
+## 🚀 배포
+
+`main`에 push하면 **GitHub Actions**(`.github/workflows/deploy.yml`)가 GitHub Pages로 자동 배포합니다. 최초 1회 저장소 **Settings → Pages → Source → "GitHub Actions"** 설정 필요. 상세는 `docs/DEPLOY.md` 참고.
 
 ## 🎮 조작
 
