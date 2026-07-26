@@ -33,10 +33,24 @@
   #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
-  #save-btn, #logout-btn, #feedback-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
+  #save-btn, #logout-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
-  #feedback-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
-  #save-btn:active, #logout-btn:active, #feedback-btn:active { transform: scale(0.94); }
+  #save-btn:active, #logout-btn:active { transform: scale(0.94); }
+
+  /* 문의하기 탭 (우측, 인벤토리 아래) */
+  #feedback-tab { top: calc(92px + env(safe-area-inset-top)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
+  #feedback-tab:active { transform: scale(0.95); }
+
+  /* 로그인(로그아웃) 상태에선 게임 HUD 전부 숨김 → 로그인 화면만 깔끔하게 */
+  body:not(.playing) #topleft,
+  body:not(.playing) #topright,
+  body:not(.playing) #hotbar,
+  body:not(.playing) #hint,
+  body:not(.playing) #feedback-tab,
+  body:not(.playing) #quest-panel,
+  body:not(.playing) #npc-prompt,
+  body:not(.playing) #dialogue,
+  body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 피드백 모달 */
   #feedback-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
@@ -136,9 +150,11 @@
     <span id="login-dot"></span>
     <span id="login-status">연결 중…</span>
     <button id="save-btn">💾 저장</button>
-    <button id="feedback-btn" title="개발자에게 피드백">💬</button>
     <button id="logout-btn" style="display:none;">로그아웃</button>
   </div>
+
+  <!-- 문의하기 탭 -->
+  <div id="feedback-tab" class="panel"><span>💬</span><span>문의하기</span></div>
 
   <div id="topright" class="panel">
     <div id="inventory">
@@ -310,6 +326,7 @@
     async function enterPlay() {                     // 로그인 완료 → 실제 플레이
       if (started) return; started = true;
       $('login-screen').classList.remove('show');
+      document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
       trackLogin(authState.provider || 'offline');   // [GA4] 로그인 이벤트
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
@@ -334,7 +351,7 @@
     const fbModal = $('feedback-modal');
     const openFb = () => { fbModal.classList.add('show'); $('fb-text').focus(); };
     const closeFb = () => { fbModal.classList.remove('show'); };
-    $('feedback-btn').addEventListener('click', openFb);
+    $('feedback-tab').addEventListener('click', openFb);
     $('fb-cancel').addEventListener('click', closeFb);
     fbModal.addEventListener('click', (e) => { if (e.target === fbModal) closeFb(); }); // 바깥 클릭 닫기
     $('fb-send').addEventListener('click', async () => {

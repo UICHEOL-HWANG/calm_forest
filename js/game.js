@@ -27,6 +27,9 @@ import { saveGame, loadGame } from './supabase-client.js';       // [Supabase] �
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { Sound, initSound } from './sound.js';                   // 🔊 절차적 사운드
 
+// 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
+const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
+
 // ── 작물 종류(다양화) — 심을 때 랜덤 배정, 열매 색이 달라짐 ─────
 const CROP_TYPES = [
   { name: '당근',   fruit: 0xff9e5e },
@@ -192,11 +195,12 @@ export async function requestSave() { return await saveGame(getGameState()); }
 //  렌더러 / 씬 / 조명
 // =============================================================
 function initRenderer() {
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // 모바일은 안티앨리어싱 off + 픽셀비율 상한을 낮춰 GPU 부담 감소
+  renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = IS_MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   document.getElementById('app').appendChild(renderer.domElement);
@@ -221,7 +225,7 @@ function initLights() {
   sunLight = new THREE.DirectionalLight(0xffe9c4, 1.1);
   sunLight.position.set(10, 18, 8);
   sunLight.castShadow = true;
-  sunLight.shadow.mapSize.set(2048, 2048);
+  sunLight.shadow.mapSize.set(IS_MOBILE ? 1024 : 2048, IS_MOBILE ? 1024 : 2048); // 모바일 그림자 해상도 ↓
   sunLight.shadow.camera.near = 1; sunLight.shadow.camera.far = 60;
   sunLight.shadow.camera.left = -30; sunLight.shadow.camera.right = 30;
   sunLight.shadow.camera.top = 30; sunLight.shadow.camera.bottom = -30;
@@ -257,7 +261,7 @@ function buildWorld() {
     spawnTree(Math.cos(a) * r, Math.sin(a) * r);
   }
 
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
     const blade = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.7, 5), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
     blade.position.set(Math.cos(a) * r, 0.35, Math.sin(a) * r);
@@ -313,7 +317,7 @@ function buildPlayer() {
 }
 
 function buildFireflies() {
-  const N = 120;
+  const N = IS_MOBILE ? 60 : 120;   // 모바일 반딧불이 ↓
   const geo = new THREE.BufferGeometry();
   const pos = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
@@ -402,7 +406,9 @@ function buildHouseStage(stage, silent = false) {
 function initPostProcessing() {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.9, 0.85);
+  // 모바일은 블룸 해상도를 절반으로 낮춰 부담 감소
+  const bloomRes = IS_MOBILE ? new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2) : new THREE.Vector2(window.innerWidth, window.innerHeight);
+  const bloom = new UnrealBloomPass(bloomRes, 0.55, 0.9, 0.85);
   composer.addPass(bloom);
 
   // [셰이더] 비네팅 + 따뜻한 컬러 그레이딩
