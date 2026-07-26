@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>calm forest · 관리자 전체통계 📊</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{ --ink:#4a5a4f; --shadow:0 6px 18px rgba(90,120,100,.15); }
+  *{box-sizing:border-box;}
+  body{margin:0;background:linear-gradient(160deg,#eafaf0,#fff7ec);color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;padding:24px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{opacity:.7;font-size:13px;margin-bottom:18px;}
+  a.back{display:inline-block;margin-bottom:12px;color:#4a5a4f;font-size:13px;}
+  #msg{display:none;background:#fff;border-radius:16px;padding:24px;box-shadow:var(--shadow);max-width:420px;margin:40px auto;text-align:center;}
+  #msg button{margin-top:14px;border:1px solid #e2e2e2;background:#fff;border-radius:12px;padding:10px 18px;font-weight:600;cursor:pointer;}
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
+  .card{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:var(--shadow);}
+  .card h2{font-size:14px;margin:0 0 12px;opacity:.85;}
+  .stat .num{font-size:26px;font-weight:700;} .stat .lbl{font-size:12px;opacity:.65;}
+  .stat{display:flex;flex-direction:column;gap:2px;}
+  #heatmap{background:#f3faf5;border-radius:12px;width:100%;height:auto;image-rendering:pixelated;}
+  canvas{max-width:100%;}
+</style>
+</head>
+<body>
+  <a class="back" href="../index.html">← 게임으로</a>
+  <h1>🔐 calm forest · 관리자 전체통계</h1>
+  <div class="sub">전체 유저 합산 · security definer 함수(cf_admin_overview) 기반 · 관리자만 조회</div>
+
+  <div id="msg"></div>
+  <div id="dash" style="display:none;">
+    <div class="stats-row" id="stats"></div>
+    <div class="grid">
+      <div class="card" style="grid-column:span 2;min-width:280px;">
+        <h2>🗺️ 전체 이동 히트맵</h2>
+        <canvas id="heatmap" width="60" height="60"></canvas>
+      </div>
+      <div class="card"><h2>📅 일별 활성 유저(DAU)</h2><canvas id="dauChart" height="220"></canvas></div>
+      <div class="card"><h2>⏱️ 세션 길이 분포</h2><canvas id="bucketChart" height="220"></canvas></div>
+      <div class="card"><h2>🏠 집 건설 단계 분포</h2><canvas id="houseChart" height="220"></canvas></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { CONFIG, isSupabaseConfigured } from '../js/config.js';
+    const $ = (id) => document.getElementById(id);
+    const showMsg = (html) => { const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
+
+    (async () => {
+      if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. config.js를 먼저 채워주세요.'); return; }
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth:{ detectSessionInUrl:true, persistSession:true }});
+
+      // 같은 브라우저면 게임에서 로그인한 구글 세션 재사용
+      let { data:s } = await sb.auth.getSession();
+      if (!s?.session) {
+        showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">또는 게임에서 먼저 로그인 후 이 페이지를 여세요</small>');
+        $('lg').onclick = () => sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname }});
+        return;
+      }
+
+      // 관리자 전체통계 호출(비관리자면 예외 → 권한 없음)
+      const { data, error } = await sb.rpc('cf_admin_overview');
+      if (error) {
+        if (String(error.message).includes('권한')) showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">admin_analytics.sql 의 허용목록에 이메일을 추가하세요.</small>');
+        else showMsg('오류: ' + error.message + '<br><small style="opacity:.6">admin_analytics.sql 을 SQL Editor에서 실행했는지 확인하세요.</small>');
+        return;
+      }
+      render(data);
+    })();
+
+    function render(d) {
+      $('dash').style.display = 'block';
+      const k = d.kpis || {}, r = d.retention || {};
+      const cards = [
+        ['유저 수', k.users ?? 0], ['세션 수', k.sessions ?? 0],
+        ['총 샘플', (k.samples ?? 0).toLocaleString()], ['재방문율', (r.pct ?? 0) + '%'],
+      ];
+      $('stats').innerHTML = cards.map(([l,n]) => `<div class="card stat"><span class="num">${n}</span><span class="lbl">${l}</span></div>`).join('');
+
+      renderHeatmap(d.heatmap || []);
+      renderDau(d.daily || []);
+      renderBuckets(d.session_buckets || []);
+      renderHouse(d.house_stages || []);
+    }
+
+    function renderHeatmap(cells) {
+      const N = 60, R = 44, c = $('heatmap'), ctx = c.getContext('2d');
+      const grid = new Float32Array(N*N); let max = 0;
+      cells.forEach(({gx,gz,hits}) => {
+        const ix = Math.floor(((gx + R)/(2*R))*N), iz = Math.floor(((gz + R)/(2*R))*N);
+        if (ix<0||ix>=N||iz<0||iz>=N) return; grid[iz*N+ix] += hits; if (grid[iz*N+ix]>max) max = grid[iz*N+ix];
+      });
+      const img = ctx.createImageData(N,N);
+      for (let i=0;i<N*N;i++){ const v = max?Math.pow(grid[i]/max,0.5):0; const col=heat(v); img.data[i*4]=col[0];img.data[i*4+1]=col[1];img.data[i*4+2]=col[2];img.data[i*4+3]=255; }
+      ctx.putImageData(img,0,0);
+    }
+    function heat(v){ if(v<=0)return[235,250,240]; const s=[[168,220,182],[255,245,160],[255,158,94]]; const t=v*(s.length-1),i=Math.min(s.length-2,Math.floor(t)),f=t-i; return s[i].map((a,k)=>Math.round(a+(s[i+1][k]-a)*f)); }
+
+    const P = ['#8fd6a0','#ffd28a','#ff9e9e','#8ad2ff','#c08aff'];
+    function renderDau(rows){ new Chart($('dauChart'),{type:'line',data:{labels:rows.map(r=>r.day),datasets:[{data:rows.map(r=>r.dau),borderColor:'#8fd6a0',backgroundColor:'rgba(143,214,160,.2)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}}}}); }
+    function renderBuckets(rows){ new Chart($('bucketChart'),{type:'bar',data:{labels:rows.map(r=>r.bucket),datasets:[{data:rows.map(r=>r.sessions),backgroundColor:'#8ad2ff'}]},options:{plugins:{legend:{display:false}}}}); }
+    function renderHouse(rows){ const nm={0:'없음',1:'기초',2:'벽',3:'완성'}; new Chart($('houseChart'),{type:'bar',data:{labels:rows.map(r=>nm[r.stage]??r.stage),datasets:[{data:rows.map(r=>r.users),backgroundColor:rows.map((_,i)=>P[i%P.length])}]},options:{plugins:{legend:{display:false}}}}); }
+  </script>
+</body>
+</html>

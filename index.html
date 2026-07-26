@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>calm forest 🌿</title>
+
+<!-- =========================================================
+     [GA4 트래킹]  js/analytics.js 가 config.js 의 GA4_MEASUREMENT_ID 를
+     읽어 gtag.js 를 자동 로딩합니다. 여기서 따로 넣을 것 없음.
+========================================================= -->
+
+<style>
+  :root {
+    --cream: #fff7ec; --mint: #bfe8c9; --ink: #4a5a4f;
+    --panel: rgba(255,255,255,0.72); --shadow: 0 6px 18px rgba(90,120,100,0.18);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; overscroll-behavior: none; touch-action: none; }
+  #app { position: fixed; inset: 0; }
+
+  .panel {
+    position: fixed; background: var(--panel); backdrop-filter: blur(8px);
+    border-radius: 18px; box-shadow: var(--shadow); padding: 12px 16px;
+    color: var(--ink); user-select: none; -webkit-user-select: none;
+  }
+
+  /* 좌측 상단: 로그인 + 저장 */
+  #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
+  #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
+  #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
+  #save-btn, #logout-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
+  #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
+  #save-btn:active, #logout-btn:active { transform: scale(0.94); }
+
+  /* 로그인 화면 — 뒤로 실제 게임 씬이 흐름(투명 + 부드러운 비네팅) */
+  #login-screen { position: fixed; inset: 0; z-index: 20; display: none; place-items: center;
+    background: radial-gradient(120% 90% at 50% 40%, rgba(20,40,30,0) 40%, rgba(20,40,30,0.35) 100%);
+    animation: fadeIn .8s ease; }
+  #login-screen.show { display: grid; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes floatUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  #login-card { position: relative; text-align: center; padding: 40px 40px 34px; max-width: 380px;
+    background: rgba(255,255,255,0.16); backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid rgba(255,255,255,0.35); border-radius: 28px;
+    box-shadow: 0 20px 60px rgba(30,50,40,0.35); color: #fff; animation: floatUp .9s ease both; }
+  #login-card .leaf { font-size: 40px; filter: drop-shadow(0 2px 8px rgba(0,0,0,.25)); }
+  #login-card h1 { margin: 6px 0 2px; font-size: 40px; font-weight: 800; letter-spacing: -0.5px;
+    color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.3); }
+  #login-card .tagline { margin: 0 0 26px; font-size: 14px; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: lowercase; }
+  #google-btn { display: inline-flex; align-items: center; gap: 10px; border: none; background: #fff; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #3a4a40; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
+  #google-btn:hover { transform: translateY(-2px); } #google-btn:active { transform: scale(0.96); }
+  #google-btn .g { font-weight: 800; font-size: 19px; background: conic-gradient(from -45deg,#ea4335,#fbbc05,#34a853,#4285f4,#ea4335); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #guest-btn { display: block; margin: 18px auto 0; background: none; border: none; color: rgba(255,255,255,0.85); font-size: 13px; text-decoration: underline; cursor: pointer; }
+  #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
+
+  /* 우측 상단: 인벤토리 + 낮/밤 */
+  #topright { top: calc(16px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; gap: 10px; }
+  #inventory { display: flex; gap: 14px; font-weight: 600; }
+  .inv-item { display: flex; align-items: center; gap: 6px; }
+  .inv-ico { font-size: 18px; }
+  #time-indicator { display: flex; align-items: center; gap: 8px; justify-content: center; }
+  #time-bar { width: 90px; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#2a2c50,#ffd9a8,#dff3ff); position: relative; }
+  #time-knob { position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); transform: translateX(-7px); }
+
+  /* 하단 중앙: 도구 하트바 */
+  #hotbar { bottom: calc(16px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px; }
+  .slot { width: 52px; height: 52px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: rgba(255,255,255,0.55); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, background .2s; }
+  .slot .s-ico { font-size: 22px; }
+  .slot .s-key { font-size: 10px; opacity: .6; }
+  .slot.active { background: var(--mint); transform: translateY(-6px) scale(1.06); }
+  .slot:active { transform: scale(0.94); }
+
+  /* 토스트(피드백 메시지) */
+  #toast { top: 96px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
+  /* 상단 도움말(데스크톱만) */
+  #hint { top: calc(16px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .8; }
+  body.is-touch #hint { display: none; }
+
+  /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
+  #quest-panel { top: calc(64px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
+  #quest-panel.show { display: block; }
+  #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
+  #quest-bar { height: 7px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
+  #quest-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
+  #quest-panel .q-prog { font-size: 11px; opacity: .7; margin-top: 4px; }
+  #quest-panel.ready .q-title { color: #2fa564; }
+
+  /* NPC 대화 프롬프트(하단, 하트바 위) */
+  #npc-prompt { bottom: calc(84px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #npc-prompt.show { opacity: 1; }
+
+  /* NPC 대화창(하단 중앙) */
+  #dialogue { bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(10px); width: min(440px, 88vw); opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; }
+  #dialogue.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #dlg-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  #dlg-text { font-size: 14px; line-height: 1.45; opacity: .9; }
+
+  /* 모바일 컨트롤 */
+  #mobile-controls { display: none; }
+  #joy-base { position: fixed; left: 28px; bottom: calc(90px + env(safe-area-inset-bottom)); width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.35); box-shadow: var(--shadow); touch-action: none; }
+  #joy-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: var(--shadow); }
+  #action-btn { position: fixed; right: 28px; bottom: calc(96px + env(safe-area-inset-bottom)); width: 88px; height: 88px; border-radius: 50%; background: var(--mint); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; font-size: 30px; touch-action: none; }
+  #action-btn.press { transform: scale(0.9); }
+
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--cream); color: var(--ink); font-size: 20px; z-index: 10; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="topleft" class="panel">
+    <span id="login-dot"></span>
+    <span id="login-status">연결 중…</span>
+    <button id="save-btn">💾 저장</button>
+    <button id="logout-btn" style="display:none;">로그아웃</button>
+  </div>
+
+  <div id="topright" class="panel">
+    <div id="inventory">
+      <span class="inv-item"><span class="inv-ico">🪵</span><span id="inv-wood">0</span></span>
+      <span class="inv-item"><span class="inv-ico">🌰</span><span id="inv-seed">0</span></span>
+      <span class="inv-item"><span class="inv-ico">🥕</span><span id="inv-crop">0</span></span>
+    </div>
+    <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
+  </div>
+
+  <div id="hint" class="panel">이동 WASD/방향키 · 도구 1~5 · 상호작용 Space/클릭 · 파란 모자 주민에게 말 걸기</div>
+  <div id="toast" class="panel"></div>
+
+  <!-- 퀘스트 패널 -->
+  <div id="quest-panel" class="panel">
+    <div class="q-title"><span>📜</span><span id="quest-title"></span></div>
+    <div class="q-desc" id="quest-desc"></div>
+    <div id="quest-bar"><div id="quest-fill"></div></div>
+    <div class="q-prog" id="quest-prog"></div>
+  </div>
+
+  <!-- NPC 대화 프롬프트 -->
+  <div id="npc-prompt" class="panel"></div>
+
+  <!-- NPC 대화창 -->
+  <div id="dialogue" class="panel">
+    <div id="dlg-name"></div>
+    <div id="dlg-text"></div>
+  </div>
+
+  <!-- 도구 하트바 (JS 에서 슬롯 생성) -->
+  <div id="hotbar" class="panel"></div>
+
+  <!-- 모바일 컨트롤 -->
+  <div id="mobile-controls">
+    <div id="joy-base"><div id="joy-knob"></div></div>
+    <div id="action-btn">✋</div>
+  </div>
+
+  <!-- 로그인 화면 (뒤로 실제 게임 씬이 흐름) -->
+  <div id="login-screen">
+    <div id="login-card">
+      <div class="leaf">🌿</div>
+      <h1>calm forest</h1>
+      <div class="tagline">a cozy little forest</div>
+      <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
+      <button id="guest-btn">게스트로 둘러보기</button>
+      <div id="login-note"></div>
+    </div>
+  </div>
+
+  <div id="loading">calm forest 불러오는 중… 🌿</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, state as authState } from './js/supabase-client.js';
+    import { bootWorld, enterGame, requestSave, Input } from './js/game.js';
+    import { trackLogin } from './js/analytics.js';
+    import { CONFIG } from './js/config.js';
+    import { initControls } from './js/controls.js';
+
+    const $ = (id) => document.getElementById(id);
+
+    // 도구 하트바 슬롯 렌더 + 클릭/탭 선택
+    function buildHotbar(tools) {
+      const bar = $('hotbar'); bar.innerHTML = '';
+      tools.forEach((t, i) => {
+        const slot = document.createElement('div');
+        slot.className = 'slot'; slot.dataset.i = i;
+        slot.innerHTML = `<span class="s-ico">${t.ico}</span><span class="s-key">${i + 1} ${t.name}</span>`;
+        slot.addEventListener('pointerdown', (e) => { Input.selectTool(i); e.stopPropagation(); });
+        bar.appendChild(slot);
+      });
+    }
+
+    let toastTimer;
+    const ui = {
+      setInventory(inv) {
+        $('inv-wood').textContent = inv.wood;
+        $('inv-seed').textContent = inv.seed;
+        $('inv-crop').textContent = inv.crop;
+      },
+      setTime(mode, daylight) {
+        $('time-emoji').textContent = mode === 'day' ? '🌤️' : '🌙';
+        $('time-knob').style.left = (daylight * 90) + 'px';
+      },
+      setTool(idx, tools) {
+        if (!$('hotbar').children.length) buildHotbar(tools);
+        [...$('hotbar').children].forEach((s, i) => s.classList.toggle('active', i === idx));
+        $('action-btn').textContent = tools[idx].ico; // 모바일 액션 버튼도 현재 도구 표시
+      },
+      toast(msg) {
+        const el = $('toast'); el.textContent = msg; el.classList.add('show');
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+      },
+      // 퀘스트 패널 갱신(null이면 숨김)
+      setQuest(v) {
+        const p = $('quest-panel');
+        if (!v) { p.classList.remove('show', 'ready'); return; }
+        p.classList.add('show');
+        p.classList.toggle('ready', !!v.ready);
+        $('quest-title').textContent = v.name ? `${v.title}` : v.title;
+        $('quest-desc').textContent = (v.name ? `${v.name} · ` : '') + v.desc;
+        $('quest-fill').style.width = Math.round(100 * v.progress / v.target) + '%';
+        $('quest-prog').textContent = v.ready ? '✅ 완료! 주민에게 가세요' : `${v.progress} / ${v.target}`;
+      },
+      // NPC 근접 대화 프롬프트
+      setInteractPrompt(text) {
+        const el = $('npc-prompt');
+        if (!text) { el.classList.remove('show'); return; }
+        el.textContent = text; el.classList.add('show');
+      },
+      // NPC 대화창(이름 + 대사, 잠시 후 자동 숨김)
+      dialogue(def, text) {
+        const el = $('dialogue');
+        $('dlg-name').textContent = `${def.emoji || '🙂'} ${def.name}`;
+        $('dlg-text').textContent = text;
+        el.classList.add('show');
+        clearTimeout(dlgTimer); dlgTimer = setTimeout(() => el.classList.remove('show'), 4200);
+      },
+    };
+    let dlgTimer;
+
+    // 좌측 상단 로그인 상태 표시(로그인 후)
+    function showLoginStatus(s) {
+      const dot = $('login-dot');
+      dot.classList.remove('online', 'offline');
+      dot.classList.add(s.online ? 'online' : 'offline');
+      const label = s.provider === 'google' ? (s.email || '구글') : s.online ? '익명' : '게스트(오프라인)';
+      $('login-status').textContent = label;
+    }
+
+    // 로그인 화면 표시/숨김
+    function showLoginScreen(offline) {
+      $('login-screen').classList.add('show');
+      $('loading').style.display = 'none';
+      $('login-note').textContent = offline
+        ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
+        : '로그인하면 어느 기기에서든 저장이 이어집니다.';
+    }
+
+    let started = false;
+    async function enterPlay() {                     // 로그인 완료 → 실제 플레이
+      if (started) return; started = true;
+      $('login-screen').classList.remove('show');
+      trackLogin(authState.provider || 'offline');   // [GA4] 로그인 이벤트
+      showLoginStatus(authState);
+      await enterGame();                             // 저장 로드 + 조작/로깅 on
+      initControls();                                // 모바일 컨트롤(터치 감지 시)
+      if (authState.provider === 'google' || authState.online) $('logout-btn').style.display = '';
+    }
+
+    // 로그인 화면 버튼
+    $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    $('guest-btn').addEventListener('click', async () => { await signInAsGuest(); enterPlay(); });
+    $('logout-btn').addEventListener('click', () => signOut());
+
+    // 저장 버튼(부팅 후 한 번만 연결)
+    $('save-btn').addEventListener('click', async () => {
+      const btn = $('save-btn'); btn.textContent = '저장 중…';
+      const res = await requestSave();               // [Supabase] 저장
+      btn.textContent = res.offline ? '💾 저장(오프라인)' : '✅ 저장됨';
+      setTimeout(() => (btn.textContent = '💾 저장'), 1400);
+    });
+
+    (async () => {
+      await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
+      $('loading').style.display = 'none';
+
+      // ② 인증 — 세션 잡히면 즉시 플레이 진입(구글 리다이렉트 복귀 포함)
+      const res = await initAuth((s) => {
+        showLoginStatus(s);
+        if (s.online && !started) enterPlay();
+      });
+      if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작
+      else showLoginScreen(res.offline);             // 세션 없음 → 로그인 화면(씬 위에)
+    })();
+  </script>
+</body>
+</html>
