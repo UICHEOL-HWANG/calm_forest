@@ -13,7 +13,7 @@ export const CONFIG = {
   SUPABASE_ANON_KEY: 'sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t',  // publishable key(브라우저 안전, RLS로 보호)
 
   // ── GA4 / GTM 트래킹 값 ──────────────────────────────────────
-  GA4_MEASUREMENT_ID: 'YOUR_GA4_ID',            // 예: G-XXXXXXXXXX
+  GA4_MEASUREMENT_ID: 'G-ELBTR8BXBF',           // calm forest 웹 스트림
   GTM_CONTAINER_ID: 'YOUR_GTM_ID',              // 예: GTM-XXXXXXX (선택)
 
   // ── 센서/행동 데이터 로깅 설정 ───────────────────────────────
