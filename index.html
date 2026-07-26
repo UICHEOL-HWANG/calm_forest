@@ -109,8 +109,9 @@
   #toast { top: 96px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; }
   #toast.show { opacity: 1; }
 
-  /* 상단 도움말(데스크톱만) */
-  #hint { top: calc(16px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .8; }
+  /* 조작 도움말(데스크톱만) — 하단 중앙, 도구바 위. 잠시 뒤 자동으로 사라짐 */
+  #hint { bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .82; white-space: nowrap; animation: hintFade .8s ease 8s forwards; }
+  @keyframes hintFade { to { opacity: 0; visibility: hidden; } }
   body.is-touch #hint { display: none; }
 
   /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
@@ -144,16 +145,20 @@
 
   /* ── 모바일(좁은 화면) 전용: HUD를 촘촘하게 ── */
   @media (max-width: 640px) {
-    .panel { padding: 7px 11px; border-radius: 13px; }
-    #topleft { gap: 7px; font-size: 12px; }
-    #login-status { max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #save-btn, #logout-btn { padding: 6px 9px; font-size: 12px; }
-    #topright { gap: 6px; }
-    #inventory { gap: 9px; font-size: 13px; }
-    .inv-ico { font-size: 15px; }
-    #time-bar { width: 60px; }
-    #feedback-tab { top: calc(80px + env(safe-area-inset-top)); padding: 6px 10px; font-size: 12px; }
-    #quest-panel { top: calc(78px + env(safe-area-inset-top)); max-width: 66vw; }
+    .panel { padding: 6px 10px; border-radius: 12px; }
+    /* 좌측: 계정 이메일 숨기고(점으로 상태 표시) 버튼만 컴팩트하게 */
+    #topleft { gap: 6px; font-size: 11px; }
+    #login-status { display: none; }
+    #save-btn { padding: 6px 9px; font-size: 12px; }
+    #logout-btn { padding: 6px 8px; font-size: 11px; }
+    /* 우측: 인벤토리/시간 압축 */
+    #topright { gap: 5px; }
+    #inventory { gap: 8px; font-size: 12px; font-weight: 700; }
+    .inv-ico { font-size: 14px; }
+    #time-bar { width: 54px; }
+    #time-indicator { gap: 6px; }
+    #feedback-tab { top: calc(78px + env(safe-area-inset-top)); padding: 6px 10px; font-size: 12px; }
+    #quest-panel { top: calc(74px + env(safe-area-inset-top)); max-width: 60vw; }
     .slot { width: 44px; height: 44px; border-radius: 12px; }
     .slot .s-ico { font-size: 18px; }
     .slot .s-key { font-size: 8px; }
