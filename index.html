@@ -49,7 +49,7 @@
   body:not(.playing) #feedback-tab,
   body:not(.playing) #quest-panel,
   body:not(.playing) #npc-prompt,
-  body:not(.playing) #dialogue,
+  body:not(.playing) #talk-btn,
   body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 피드백 모달 */
@@ -125,14 +125,27 @@
   #quest-panel.ready .q-title { color: #2fa564; }
 
   /* NPC 대화 프롬프트(하단, 하트바 위) */
-  #npc-prompt { bottom: calc(84px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #npc-prompt { bottom: calc(118px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; }
   #npc-prompt.show { opacity: 1; }
 
-  /* NPC 대화창(하단 중앙) */
-  #dialogue { bottom: calc(120px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(10px); width: min(440px, 88vw); opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; }
-  #dialogue.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  #dlg-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
-  #dlg-text { font-size: 14px; line-height: 1.45; opacity: .9; }
+  /* NPC 대화/퀘스트 모달 */
+  #npc-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
+  #npc-modal.show { display: grid; }
+  .npc-card { width: min(400px, 90vw); background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
+  .npc-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
+  #npc-emoji { font-size: 22px; }
+  #npc-line { margin: 12px 0 14px; font-size: 15px; line-height: 1.5; }
+  #npc-quest { background: #f4faf5; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
+  #npc-quest.hidden { display: none; }
+  .nq-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+  #npc-qbar { height: 8px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
+  #npc-qfill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
+  .nq-meta { display: flex; justify-content: space-between; font-size: 12px; opacity: .72; margin-top: 6px; }
+  .npc-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .npc-actions button { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: transform .1s; }
+  .npc-actions .ghost { background: #eef2ee; color: var(--ink); }
+  .npc-actions .primary { background: var(--mint); color: var(--ink); }
+  .npc-actions button:active { transform: scale(0.95); }
 
   /* 모바일 전용 "대화하기" 버튼 — NPC 근처에서만 표시 */
   #talk-btn { position: fixed; left: 50%; bottom: calc(310px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -174,10 +187,7 @@
     #hotbar { gap: 6px; padding: 6px; }
     #login-card { padding: 32px 26px 28px; }
     #login-card h1 { font-size: 34px; }
-    /* NPC 대화창: 조이스틱/액션버튼 위로 올려 겹침 방지 + 중복 프롬프트 숨김 */
-    #dialogue { bottom: calc(228px + env(safe-area-inset-bottom)); width: 92vw; padding: 12px 16px; }
-    #dlg-name { font-size: 13px; }
-    #dlg-text { font-size: 13px; }
+    /* 모바일은 프롬프트 대신 "대화하기" 버튼 사용 → 프롬프트 숨김 */
     #npc-prompt { display: none; }
   }
 </style>
@@ -215,14 +225,8 @@
     <div class="q-prog" id="quest-prog"></div>
   </div>
 
-  <!-- NPC 대화 프롬프트 -->
+  <!-- NPC 대화 프롬프트(데스크톱: Space 안내) -->
   <div id="npc-prompt" class="panel"></div>
-
-  <!-- NPC 대화창 -->
-  <div id="dialogue" class="panel">
-    <div id="dlg-name"></div>
-    <div id="dlg-text"></div>
-  </div>
 
   <!-- 도구 하트바 (JS 에서 슬롯 생성) -->
   <div id="hotbar" class="panel"></div>
@@ -266,6 +270,20 @@
     </div>
   </div>
 
+  <!-- NPC 대화/퀘스트 모달 -->
+  <div id="npc-modal">
+    <div class="npc-card">
+      <div class="npc-head"><span id="npc-emoji">🙂</span><span id="npc-name"></span></div>
+      <p id="npc-line"></p>
+      <div id="npc-quest">
+        <div class="nq-title" id="npc-qtitle"></div>
+        <div id="npc-qbar"><div id="npc-qfill"></div></div>
+        <div class="nq-meta"><span id="npc-qprog"></span><span id="npc-qreward"></span></div>
+      </div>
+      <div class="npc-actions" id="npc-actions"></div>
+    </div>
+  </div>
+
   <div id="loading">calm forest 불러오는 중… 🌿</div>
 
   <script type="importmap">
@@ -279,7 +297,7 @@
 
   <script type="module">
     import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js';
-    import { bootWorld, enterGame, requestSave, getGameState, Input } from './js/game.js';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js';
     import { trackLogin, trackEvent } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
     import { initControls } from './js/controls.js';
@@ -336,16 +354,37 @@
         el.textContent = text; el.classList.add('show');
         document.body.classList.add('near-npc');
       },
-      // NPC 대화창(이름 + 대사, 잠시 후 자동 숨김)
-      dialogue(def, text) {
-        const el = $('dialogue');
-        $('dlg-name').textContent = `${def.emoji || '🙂'} ${def.name}`;
-        $('dlg-text').textContent = text;
-        el.classList.add('show');
-        clearTimeout(dlgTimer); dlgTimer = setTimeout(() => el.classList.remove('show'), 4200);
+      // NPC 대화/퀘스트 모달 열기 (수락/보상 버튼 포함)
+      openNPCModal(view) {
+        if (!view) return;
+        $('npc-emoji').textContent = view.npc.emoji || '🙂';
+        $('npc-name').textContent = view.npc.name;
+        $('npc-line').textContent = view.line;
+        const quest = $('npc-quest');
+        if (view.mode === 'done') {
+          quest.classList.add('hidden');
+        } else {
+          quest.classList.remove('hidden');
+          $('npc-qtitle').textContent = '📜 ' + view.title;
+          $('npc-qfill').style.width = Math.round(100 * view.progress / view.target) + '%';
+          $('npc-qprog').textContent = `${view.progress} / ${view.target}`;
+          $('npc-qreward').textContent = '보상 ' + view.reward;
+        }
+        const actions = $('npc-actions'); actions.innerHTML = '';
+        const addBtn = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b); };
+        if (view.mode === 'offer') {
+          addBtn('수락하기', 'primary', () => { npcAccept(); ui.toast('📜 퀘스트를 수락했어요!'); closeNpc(); });
+          addBtn('나중에', 'ghost', closeNpc);
+        } else if (view.mode === 'claim') {
+          addBtn('보상 받기', 'primary', () => { npcClaim(); ui.toast('🎁 보상 획득! ' + (view.reward || '')); closeNpc(); });
+          addBtn('닫기', 'ghost', closeNpc);
+        } else {
+          addBtn('닫기', 'ghost', closeNpc);
+        }
+        $('npc-modal').classList.add('show');
       },
     };
-    let dlgTimer;
+    const closeNpc = () => $('npc-modal').classList.remove('show');
 
     // 좌측 상단 로그인 상태 표시(로그인 후)
     function showLoginStatus(s) {
@@ -397,6 +436,8 @@
     $('feedback-tab').addEventListener('click', openFb);
     // 모바일 대화하기 버튼 → NPC 대화 실행(근처면 handleAction이 대화로 분기)
     $('talk-btn').addEventListener('click', () => Input.doAction());
+    // NPC 모달 바깥 클릭 시 닫기
+    $('npc-modal').addEventListener('click', (e) => { if (e.target === $('npc-modal')) closeNpc(); });
     $('fb-cancel').addEventListener('click', closeFb);
     fbModal.addEventListener('click', (e) => { if (e.target === fbModal) closeFb(); }); // 바깥 클릭 닫기
     $('fb-send').addEventListener('click', async () => {

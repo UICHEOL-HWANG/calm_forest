@@ -965,36 +965,57 @@ function updateNPCInteract() {
   for (const o of npcObjs) { const d = dist2D(o.group.position, player.position); if (d < nd) { nd = d; near = o; } }
   if (near !== nearNPC) {
     nearNPC = near;
-    ui.setInteractPrompt?.(near ? `💬 ${near.def.name} — Space/액션: 대화` : null);
+    ui.setInteractPrompt?.(near ? `💬 ${near.def.name} · Space 로 대화` : null);
     if (near) { const st = npcState(near.def.id); if (st.given && !st.allDone) { trackedNPC = near; refreshQuestPanel(); } }
   }
 }
 
-// 대화 = 퀘스트 상태머신 (근접 주민 대상)
+// 대화 시작 = 현재 주민 상태를 담은 모달을 연다(수락/보상은 버튼으로)
 function talkToNPC() {
-  const o = nearNPC; if (!o) return;
+  const view = npcDialogState();
+  if (view) { Sound.blip(); ui.openNPCModal?.(view); }
+}
+
+// 근접 주민의 현재 대화/퀘스트 상태를 뷰 객체로 반환
+//   mode: 'offer'(수락 전) | 'progress'(진행 중) | 'claim'(보상 대기) | 'done'(전부 완료)
+export function npcDialogState() {
+  const o = nearNPC; if (!o) return null;
   const st = npcState(o.def.id);
-  if (st.allDone) { ui.dialogue?.(o.def, '덕분에 마을이 살아났어요. 고마워요! 🌼'); return; }
+  if (st.allDone) return { npc: o.def, mode: 'done', line: '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
   const q = o.def.quests[st.idx];
-  if (!st.given) {                                  // 수락
-    st.given = true; st.progress = 0; Sound.blip();
-    ui.dialogue?.(o.def, q.line);
+  const base = { npc: o.def, title: q.title, desc: q.desc, target: q.target, reward: rewardText(q.reward) };
+  if (!st.given) return { ...base, mode: 'offer', line: q.line, progress: 0 };
+  if (st.progress < q.target) return { ...base, mode: 'progress', line: '조금만 더 부탁해요!', progress: st.progress };
+  return { ...base, mode: 'claim', line: '다 해냈네요! 보상을 받아요 🎁', progress: st.progress };
+}
+
+// 퀘스트 수락(모달 "수락하기" 버튼) → 갱신된 상태 반환
+export function npcAccept() {
+  const o = nearNPC; if (!o) return null;
+  const st = npcState(o.def.id);
+  if (!st.given && !st.allDone) {
+    st.given = true; st.progress = 0; st.readyToasted = false;
     trackedNPC = o; refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
-    trackEvent('quest_accept', { quest: q.title, npc: o.def.id }); // [GA4]
-    return;
+    trackEvent('quest_accept', { quest: o.def.quests[st.idx].title, npc: o.def.id }); // [GA4]
   }
-  if (st.progress < q.target) {                     // 진행중
-    ui.dialogue?.(o.def, `아직이에요 — ${q.desc} (${st.progress}/${q.target})`);
-    trackedNPC = o; refreshQuestPanel(); return;
+  return npcDialogState();
+}
+
+// 보상 수령(모달 "보상 받기" 버튼) → 갱신된 상태 반환
+export function npcClaim() {
+  const o = nearNPC; if (!o) return null;
+  const st = npcState(o.def.id);
+  if (st.allDone) return npcDialogState();
+  const q = o.def.quests[st.idx];
+  if (st.given && st.progress >= q.target) {
+    giveReward(q.reward); Sound.harvest();
+    trackEvent('quest_complete', { quest: q.title, npc: o.def.id }); // [GA4]
+    st.idx++; st.given = false; st.progress = 0; st.readyToasted = false;
+    if (st.idx >= o.def.quests.length) { st.allDone = true; ui.setQuest?.(null); }
+    if (trackedNPC === o) trackedNPC = null;
+    refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
   }
-  // 완료 → 보상 + 다음 퀘스트
-  giveReward(q.reward); Sound.harvest();
-  ui.dialogue?.(o.def, `고마워요! 선물을 받아요 🎁 (${rewardText(q.reward)})`);
-  trackEvent('quest_complete', { quest: q.title, npc: o.def.id }); // [GA4]
-  st.idx++; st.given = false; st.progress = 0;
-  if (st.idx >= o.def.quests.length) { st.allDone = true; ui.dialogue?.(o.def, '모든 부탁을 들어줬어요. 정말 고마워요! 💚'); }
-  if (trackedNPC === o) trackedNPC = null;
-  refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
+  return npcDialogState();
 }
 
 // 이벤트형 퀘스트 진행(벌목/수확/물주기/심기/건축) — 모든 주민 검사
