@@ -49,6 +49,8 @@ const TOOLS = [
 let currentTool = 0;
 const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
 const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
+const WET_TIME = 5;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(초) — 마르면 다시 물 필요
+const WILT_TIME = 22;  // 물 없이 목마른 채 방치되면 시드는 시간(초)
 
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
 //   퀘스트 type: chop(벌목) harvest(수확) water(물주기) plant(심기)
@@ -845,14 +847,26 @@ function tryHoe() {
     return;
   }
   if (plot.state === 'empty') plantSeed(plot);
-  else ui.toast?.('이미 작물이 자라는 중이에요');
+  else if (plot.state === 'wilted') {            // 시든 밭 → 갈아엎고 다시 재배
+    clearCrop(plot);
+    plot.state = 'empty'; plot.wilted = false; plot.growth = 0; plot.stage = -1; plot.needSince = 0;
+    spawnDust(plot.x, plot.z, 10); Sound.till();
+    if (gameState.inventory.seed > 0) plantSeed(plot);
+    else ui.toast?.('밭을 갈았어요 (씨앗 필요 🌰)');
+  } else ui.toast?.('이미 작물이 자라는 중이에요');
 }
 
-// 물조리개: 자라는 밭에 물 → 성장 촉진 + 물방울 파티클
+// 물조리개: 자라는 밭에 물 → 성장(물 없이는 안 자람) + 물방울 파티클
 function tryWater() {
   const plot = plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8);
-  if (!plot) { ui.toast?.('물 줄 작물이 없어요 💧'); return; }
-  plot.growth = Math.min(1, plot.growth + 0.4); plot.watered = true;
+  if (!plot) {
+    const wilted = plots.find(p => p.state === 'wilted' && dist2D(p.group.position, player.position) < 1.8);
+    ui.toast?.(wilted ? '🥀 시든 작물이에요. 괭이로 다시 심어요' : '물 줄 작물이 없어요 💧');
+    return;
+  }
+  if (clock.elapsedTime < (plot.wetUntil || 0)) { ui.toast?.('아직 흙이 촉촉해요 🌱'); return; } // 마른 뒤에만 성장
+  plot.growth = Math.min(1, plot.growth + 0.4);
+  plot.wetUntil = clock.elapsedTime + WET_TIME; plot.watered = true;
   Sound.water();
   spawnWater(plot.x, plot.z);   // [파티클] 물방울 + 무지개 반짝임
   refreshCropStage(plot);       // 단계 상승 시 새 메시 + 팝
@@ -878,14 +892,64 @@ function tryHarvest() {
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
 }
 
-// 시간 경과에 따른 완만한 성장(물주기가 주 동력)
-function updatePlots(dt) {
+// 성장은 오직 물주기로만! 여기선 마름·목마름 알림·시들기를 처리(리얼리티)
+function updatePlots() {
+  const now = clock.elapsedTime;
   for (const plot of plots) {
     if (plot.state === 'growing') {
-      plot.growth = Math.min(1, plot.growth + dt * 0.02);
-      refreshCropStage(plot);
+      const wet = now < (plot.wetUntil || 0);
+      if (wet !== plot.watered) { plot.watered = wet; updatePlotVisual(plot); }
+      if (wet) { plot.needSince = 0; }
+      else {
+        if (!plot.needSince) plot.needSince = now;              // 목마르기 시작
+        else if (now - plot.needSince > WILT_TIME) wiltPlot(plot); // 오래 방치 → 시듦
+      }
+      // '물을 줘야해요!' 알림: 목마른 성장 작물 위에
+      setPlotWarn(plot, plot.state === 'growing' && !wet);
+    } else {
+      setPlotWarn(plot, false);
     }
+    if (plot.warn && plot.warn.visible) plot.warn.position.y = 1.4 + Math.sin(now * 3) * 0.06; // 살짝 둥실
   }
+}
+
+// 시들기: 갈색으로 축 처지고 'wilted' 상태로(괭이로 다시 심어야 함)
+function wiltPlot(plot) {
+  plot.wilted = true; plot.state = 'wilted';
+  if (plot.crop) {
+    plot.crop.traverse(o => { if (o.material && o.material.color) { o.material = o.material.clone(); o.material.color.set(0x9a844f); } });
+    plot.crop.rotation.z = 0.5; plot.crop.scale.y *= 0.6;
+  }
+  setPlotWarn(plot, false);
+  ui.toast?.('🥀 작물이 시들었어요… 괭이로 다시 심어요');
+}
+
+function clearCrop(plot) {
+  if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
+  plot.crop = null;
+}
+
+// 밭 위 '물!' 경고 스프라이트 토글(공유 텍스처)
+let _warnMat = null;
+function warnMaterial() {
+  if (_warnMat) return _warnMat;
+  const cv = document.createElement('canvas'); cv.width = 176; cv.height = 104;
+  const c = cv.getContext('2d');
+  c.fillStyle = 'rgba(140,200,255,0.96)'; roundRect(c, 8, 8, 160, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(78, 72); c.lineTo(98, 72); c.lineTo(84, 94); c.closePath(); c.fill();
+  c.fillStyle = '#164a6a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('💧 물 줘요!', 88, 40);
+  const tex = new THREE.CanvasTexture(cv);
+  _warnMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  return _warnMat;
+}
+function setPlotWarn(plot, show) {
+  if (show && !plot.warn) {
+    plot.warn = new THREE.Sprite(warnMaterial());
+    plot.warn.scale.set(1.15, 0.68, 1); plot.warn.position.set(0, 1.4, 0);
+    plot.group.add(plot.warn);
+  }
+  if (plot.warn) plot.warn.visible = show;
 }
 
 function updatePlotVisual(plot) {
