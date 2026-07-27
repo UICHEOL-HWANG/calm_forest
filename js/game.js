@@ -47,7 +47,8 @@ const TOOLS = [
   { id: 'hammer', name: '망치',     ico: '🔨' }, // 건축
 ];
 let currentTool = 0;
-const BUILD_COST = 5;   // 건축 단계당 목재 소비량
+const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
+const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
 
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
 //   퀘스트 type: chop(벌목) harvest(수확) water(물주기) plant(심기)
@@ -84,17 +85,19 @@ const gameState = {
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
   npcs: {},                                 // id별 {idx,progress,given,allDone}
+  tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
 };
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
+let dayPaused = false;  // 낮/밤 자동 순환 정지 여부(수동 조절 시)
 const npcObjs = [];     // 런타임 NPC 객체들
 let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 
 // 씬 전역 참조
-let renderer, scene, camera, composer;
+let renderer, scene, camera, composer, bloomPass, gradePass;
 let player, playerAnchor;
 let sunLight, hemiLight, ambient;
-let fireflies;
+let fireflies, stars;
 const trees = [];
 const swayables = [];
 const particles = [];
@@ -131,6 +134,8 @@ export const Input = {
   doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space
   selectTool(i) { currentTool = (i + TOOLS.length) % TOOLS.length; ui.setTool?.(currentTool, TOOLS); Sound.blip(); },
   getTools() { return TOOLS; },
+  setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
+  toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
 };
 
 // =============================================================
@@ -167,10 +172,15 @@ export async function enterGame() {
   player.position.set(gameState.playerPos.x || 0, 0, gameState.playerPos.z || 0);
   mode = 'play';
   startLogging();                      // [센서] 배치 전송 시작
+
+  // 신규 유저면 조작법 튜토리얼 1회 표시
+  if (!gameState.tutorialSeen) { gameState.tutorialSeen = true; ui.showTutorial?.(); }
 }
 
 function applySave(saved) {
   if (saved.inventory) Object.assign(gameState.inventory, saved.inventory);
+  if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
+  if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (typeof saved.houseStage === 'number') {
     for (let s = 1; s <= saved.houseStage; s++) buildHouseStage(s, true); // 조용히 복원
@@ -191,6 +201,7 @@ function applySave(saved) {
 export function getGameState() {
   gameState.playerPos = { x: player.position.x, z: player.position.z };
   gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth }));
+  gameState.timeOfDay = timeOfDay;   // 시간대 저장
   return gameState;
 }
 export async function requestSave() { return await saveGame(getGameState()); }
@@ -213,7 +224,7 @@ function initRenderer() {
 function initScene() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(PAL.sky);
-  scene.fog = new THREE.Fog(PAL.sky, 22, 60); // 부드러운 안개
+  scene.fog = new THREE.Fog(PAL.sky, 18, 74); // 옅고 넓게 퍼지는 거리 안개(부드러운 거리감)
 
   camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
   camera.position.set(0, 14, 16);
@@ -276,6 +287,8 @@ function buildWorld() {
 
   buildPlayer();
   buildFireflies();
+  buildStars();
+  buildEnvironment();
 }
 
 function spawnTree(x, z) {
@@ -335,6 +348,83 @@ function buildFireflies() {
   scene.add(fireflies);
 }
 
+// 밤하늘 별 (상반구 돔 위 점들, 밤에 페이드인 + 반짝임)
+function buildStars() {
+  const N = IS_MOBILE ? 140 : 260;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(1 - Math.random() * 0.55);  // 위쪽 하늘 위주
+    const r = 85;
+    pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    pos[i * 3 + 1] = r * Math.cos(phi) + 8;
+    pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0, depthWrite: false, fog: false, blending: THREE.AdditiveBlending });
+  stars = new THREE.Points(geo, mat);
+  scene.add(stars);
+}
+
+// ── 주변 환경: 호수 · 벤치 · 가로등 · 꽃밭 ──────────────────────
+const LAKE = new THREE.Vector3(16, 0, 9);
+function buildEnvironment() {
+  // 호수(잔잔한 수면 + 물가 돌 + 수련잎)
+  const lake = new THREE.Mesh(
+    new THREE.CircleGeometry(6, 40),
+    new THREE.MeshStandardMaterial({ color: 0x8fd0ea, roughness: 0.25, metalness: 0.15, transparent: true, opacity: 0.92 })
+  );
+  lake.geometry.rotateX(-Math.PI / 2); lake.position.set(LAKE.x, 0.06, LAKE.z); lake.receiveShadow = true;
+  scene.add(lake);
+  for (let i = 0; i < 9; i++) {
+    const a = Math.random() * Math.PI * 2, r = 5.7 + Math.random() * 0.9;
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28 + Math.random() * 0.3, 0), clayMat(0xb9c0c4));
+    rock.position.set(LAKE.x + Math.cos(a) * r, 0.14, LAKE.z + Math.sin(a) * r); rock.castShadow = true; scene.add(rock);
+  }
+  for (let i = 0; i < 5; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.random() * 4;
+    const pad = new THREE.Mesh(new THREE.CircleGeometry(0.4, 7), clayMat(0x7fc98a, false));
+    pad.geometry.rotateX(-Math.PI / 2); pad.position.set(LAKE.x + Math.cos(a) * r, 0.12, LAKE.z + Math.sin(a) * r); scene.add(pad);
+  }
+
+  // 공원: 벤치 2개 + 가로등 2개(밤에 빛남) + 꽃밭
+  [[-3, 8, 0.3], [4, 10, -1.1]].forEach(([x, z, ry]) => makeBench(x, z, ry));
+  [[-1, 7], [15, 3]].forEach(([x, z]) => makeLamp(x, z));
+  const flowerCols = [0xff8fab, 0xffd36e, 0xa78bfa, 0xff9e5e, 0x8fd0ff];
+  for (let i = 0; i < 28; i++) {
+    const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 26;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (dist2D({ x, z }, LAKE) < 6.5) continue;       // 호수 위 제외
+    if (dist2D({ x, z }, HOUSE_POS) < 3) continue;    // 집 터 제외
+    makeFlower(x, z, flowerCols[i % flowerCols.length]);
+  }
+}
+function makeBench(x, z, ry) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.5), woodMat(2, 1)); seat.position.y = 0.45; seat.castShadow = true; g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 0.1), woodMat(2, 1)); back.position.set(0, 0.68, -0.2); g.add(back);
+  [[-0.6, 0.18], [0.6, 0.18], [-0.6, -0.18], [0.6, -0.18]].forEach(([lx, lz]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.45, 0.1), clayMat(0x6b4a34)); leg.position.set(lx, 0.22, lz); g.add(leg);
+  });
+  scene.add(g);
+}
+function makeLamp(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.4, 6), clayMat(0x5a5148)); pole.position.y = 1.2; pole.castShadow = true; g.add(pole);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffca70, emissiveIntensity: 0, roughness: 0.6 });
+  houseWindows.push(headMat);   // 밤에 창문과 함께 빛남
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 0), headMat); head.position.y = 2.5; g.add(head);
+  scene.add(g);
+}
+function makeFlower(x, z, col) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 4), clayMat(0x7fbf6a)); stem.position.y = 0.2; g.add(stem);
+  const bloom = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), clayMat(col, false)); bloom.position.y = 0.42; g.add(bloom);
+  g.userData.swayPhase = Math.random() * Math.PI * 2; swayables.push(g); // 바람에 흔들림
+  scene.add(g);
+}
+
 // =============================================================
 //  집(건축) — 정해진 터, 단계별 건설
 // =============================================================
@@ -355,51 +445,97 @@ function buildHouseGhost() {
   scene.add(houseGroup);
 }
 
-// stage: 1=기초 2=벽 3=지붕(완성). silent=true 면 파티클 없이 복원.
+// ── 따뜻한 우드 머티리얼(판자 결) — 절차 텍스처, 외부 파일 없음 ──
+let _woodTex = null;
+function woodTexture() {
+  if (_woodTex) return _woodTex;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#d9a066'; c.fillRect(0, 0, 128, 128);
+  c.strokeStyle = '#a9743f'; c.lineWidth = 3;                 // 판자 이음새(가로줄)
+  for (let y = 20; y < 128; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(128, y); c.stroke(); }
+  c.strokeStyle = 'rgba(150,95,55,0.28)'; c.lineWidth = 1.2;  // 나뭇결 물결
+  for (let i = 0; i < 46; i++) {
+    const y = Math.random() * 128; c.beginPath(); c.moveTo(0, y);
+    for (let x = 0; x <= 128; x += 12) c.lineTo(x, y + Math.sin(x * 0.12 + i) * 1.8);
+    c.stroke();
+  }
+  _woodTex = new THREE.CanvasTexture(cv);
+  _woodTex.wrapS = _woodTex.wrapT = THREE.RepeatWrapping;
+  return _woodTex;
+}
+function woodMat(rx = 1, ry = 1, tint = 0xffffff) {
+  const t = woodTexture().clone(); t.needsUpdate = true; t.repeat.set(rx, ry);
+  return new THREE.MeshStandardMaterial({ map: t, color: tint, roughness: 0.82, metalness: 0 });
+}
+
+// 아래→위로 톡 솟아오르는 등장 애니메이션 세팅
+function applyRise(part) {
+  const target = part.position.y;
+  part.userData.riseTarget = target;
+  part.userData.riseFrom = target - 1.5;
+  part.userData.rise = 1;
+  part.position.y = part.userData.riseFrom;
+}
+
+// stage: 1=나무바닥 2=통나무벽 3=지붕(완성). silent=true 면 애니메이션 없이 복원.
 function buildHouseStage(stage, silent = false) {
+  const parts = [];
+  const add = (mesh) => { mesh.name = 'stage' + stage; mesh.castShadow = true; houseGroup.add(mesh); parts.push(mesh); };
+
   if (stage === 1) {
-    const base = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 3), clayMat(0xcdb79e));
-    base.position.y = 0.15; base.castShadow = base.receiveShadow = true;
-    base.name = 'stage1'; houseGroup.add(base);
+    // 나무 바닥(데크): 판자 슬래브 + 코너 다리
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(3, 0.24, 3), woodMat(3, 3));
+    deck.position.y = 0.22; deck.receiveShadow = true; add(deck);
     [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.3], [1.3, 1.3]].forEach(([px, pz]) => {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.6, 6), clayMat(PAL.trunk));
-      post.position.set(px, 1.0, pz); post.castShadow = true; post.name = 'stage1'; houseGroup.add(post);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.22), woodMat(1, 1, 0xcaa06a));
+      leg.position.set(px, 0.0, pz); add(leg);
     });
   } else if (stage === 2) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.6, 2.9), clayMat(PAL.wall));
-    wall.position.y = 1.1; wall.castShadow = wall.receiveShadow = true; wall.name = 'stage2'; houseGroup.add(wall);
-    // 창문(밤에 빛남) — emissive 사용
+    // 통나무 벽: 4면에 가로 통나무 3단씩
+    const logMat = woodMat(2, 1, 0xd2a068);
+    const levels = [0.62, 1.0, 1.38];
+    const sides = [
+      { x: 0, z: 1.45, ry: 0 }, { x: 0, z: -1.45, ry: 0 },
+      { x: 1.45, z: 0, ry: Math.PI / 2 }, { x: -1.45, z: 0, ry: Math.PI / 2 },
+    ];
+    sides.forEach(s => levels.forEach(y => {
+      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 2.9, 8), logMat);
+      log.rotation.z = Math.PI / 2;    // 통나무 눕히기
+      log.rotation.y = s.ry;
+      log.position.set(s.x, y, s.z);
+      add(log);
+    }));
+    // 창문(밤에 따뜻한 불빛) — emissive
     const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
     houseWindows.push(winMat);
-    [[0, 1.45], [1.46, 0], [0, -1.46], [-1.46, 0]].forEach(([wx, wz], i) => {
-      const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.05), winMat);
-      win.position.set(wx, 1.2, wz);
-      if (i % 2 === 1) win.rotation.y = Math.PI / 2;
-      win.name = 'stage2'; houseGroup.add(win);
+    [[0, 1.0, 1.5, 0], [1.5, 1.0, 0, Math.PI / 2]].forEach(([wx, wy, wz, r]) => {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.66, 0.06), winMat);
+      win.position.set(wx, wy, wz); win.rotation.y = r; add(win);
     });
   } else if (stage === 3) {
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 4), clayMat(PAL.roof));
-    roof.position.y = 2.65; roof.rotation.y = Math.PI / 4; roof.castShadow = true; roof.name = 'stage3'; houseGroup.add(roof);
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), clayMat(0xd98b8b));
-    chimney.position.set(0.9, 3.1, 0.9); chimney.castShadow = true; chimney.name = 'stage3'; houseGroup.add(chimney);
+    // 지붕: 우드 피라미드 + 굴뚝
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 4), woodMat(2, 2, 0xb5734a));
+    roof.position.y = 2.35; roof.rotation.y = Math.PI / 4; add(roof);
+    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), woodMat(1, 1, 0xa9743f));
+    chimney.position.set(0.9, 2.7, 0.9); add(chimney);
   }
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
 
   if (!silent) {
-    // 각 단계 톡 튀는 팝 애니메이션
-    houseGroup.children.filter(c => c.name === 'stage' + stage).forEach(c => { c.userData.pop = 1; c.scale.set(0.01, 0.01, 0.01); });
-    spawnDust(HOUSE_POS.x, HOUSE_POS.z, 14);
+    parts.forEach(applyRise);                    // 아래→위로 톡 솟기
+    spawnDust(HOUSE_POS.x, HOUSE_POS.z, 10);     // 약한 먼지
     Sound.build();
     if (stage >= 3) {
       // [파티클] 집 완성 축하: 색종이 + 반짝이
-      spawnConfetti(HOUSE_POS.x, 3.5, HOUSE_POS.z);
-      spawnSparkle(HOUSE_POS.x, 3.2, HOUSE_POS.z, 30);
+      spawnConfetti(HOUSE_POS.x, 3.4, HOUSE_POS.z);
+      spawnSparkle(HOUSE_POS.x, 3.0, HOUSE_POS.z, 34);
       Sound.complete();
       ui.toast?.('🎉 집 완성! 축하해요');
-      questEvent('house');                     // 퀘스트 진행
-      trackEvent('house_complete');           // [GA4] 집 완성 이벤트
+      questEvent('house');                       // 퀘스트 진행
+      trackEvent('house_complete');              // [GA4] 집 완성 이벤트
     }
   }
 }
@@ -412,21 +548,28 @@ function initPostProcessing() {
   composer.addPass(new RenderPass(scene, camera));
   // 모바일은 블룸 해상도를 절반으로 낮춰 부담 감소
   const bloomRes = IS_MOBILE ? new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2) : new THREE.Vector2(window.innerWidth, window.innerHeight);
-  const bloom = new UnrealBloomPass(bloomRes, 0.55, 0.9, 0.85);
-  composer.addPass(bloom);
+  bloomPass = new UnrealBloomPass(bloomRes, 0.55, 0.9, 0.85); // 세기는 낮/밤에 따라 조절
+  composer.addPass(bloomPass);
 
-  // [셰이더] 비네팅 + 따뜻한 컬러 그레이딩
-  const gradePass = new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, uVignette: { value: 1.15 }, uWarm: { value: new THREE.Color(1.05, 1.0, 0.92) } },
+  // [셰이더] 비네팅 + 따뜻한 컬러 그레이딩 + 밤 푸른 톤(uNight)
+  gradePass = new ShaderPass({
+    uniforms: {
+      tDiffuse: { value: null }, uVignette: { value: 1.15 },
+      uWarm: { value: new THREE.Color(1.06, 1.005, 0.9) }, uNight: { value: 0 },
+    },
     vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `
-      uniform sampler2D tDiffuse; uniform float uVignette; uniform vec3 uWarm; varying vec2 vUv;
+      uniform sampler2D tDiffuse; uniform float uVignette; uniform vec3 uWarm; uniform float uNight; varying vec2 vUv;
       void main(){
         vec4 col = texture2D(tDiffuse, vUv);
         col.rgb *= uWarm;
+        // 밤: 푸른 틴트로 섞고 전체적으로 어둡게
+        vec3 night = col.rgb * vec3(0.62, 0.74, 1.08);
+        col.rgb = mix(col.rgb, night, uNight);
+        col.rgb *= (1.0 - uNight * 0.30);
         vec2 d = vUv - 0.5;
-        float vig = smoothstep(0.85, 0.35, length(d) * uVignette);
-        col.rgb *= mix(0.78, 1.0, vig);
+        float vig = smoothstep(0.9, 0.28, length(d) * uVignette); // 더 부드러운 감쇠
+        col.rgb *= mix(mix(0.84, 0.7, uNight), 1.0, vig);          // 낮엔 은은, 밤엔 약간 강하게
         gl_FragColor = col;
       }`,
   });
@@ -518,28 +661,68 @@ function updatePlayer(dt, t) {
 }
 
 const camOffset = new THREE.Vector3(0, 14, 16);
+const _camTarget = new THREE.Vector3();
+const _camLook = new THREE.Vector3(0, 1.2, 0);
 function updateCamera(dt) {
-  const target = new THREE.Vector3().copy(player.position).add(camOffset);
-  camera.position.lerp(target, 1 - Math.pow(0.001, dt));
-  camera.lookAt(player.position.x, 1.2, player.position.z);
+  // 위치·시선 모두 감쇠 보간 → 캐릭터를 한 박자 부드럽게 따라옴
+  _camTarget.copy(player.position).add(camOffset);
+  const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
+  camera.position.lerp(_camTarget, k);
+  _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z), k);
+  camera.lookAt(_camLook);
+}
+
+// 하늘색/햇빛 색 키프레임 (t: 0=자정 0.25=일출 0.5=정오 0.75=일몰)
+const SKY_STOPS = [
+  { t: 0.00, sky: 0x1b2145, sun: 0x3b4a86 }, // 깊은 밤
+  { t: 0.20, sky: 0x394073, sun: 0x8a7bb0 }, // 여명
+  { t: 0.28, sky: 0xffd9b3, sun: 0xffb072 }, // 아침(일출) 따뜻
+  { t: 0.50, sky: 0xdff3ff, sun: 0xffe9c4 }, // 정오 밝고 파랑
+  { t: 0.72, sky: 0xffc79c, sun: 0xffa65e }, // 노을(일몰) 주황
+  { t: 0.82, sky: 0x4a3f70, sun: 0x6a5e98 }, // 초저녁 보라
+  { t: 1.00, sky: 0x1b2145, sun: 0x3b4a86 }, // 밤
+];
+const _cA = new THREE.Color(), _cB = new THREE.Color();
+function skyAt(t) {
+  let i = 0; while (i < SKY_STOPS.length - 1 && t > SKY_STOPS[i + 1].t) i++;
+  const a = SKY_STOPS[i], b = SKY_STOPS[Math.min(i + 1, SKY_STOPS.length - 1)];
+  const span = (b.t - a.t) || 1, f = (t - a.t) / span;
+  const e = f * f * (3 - 2 * f); // smoothstep → 부드러운 전환
+  return {
+    sky: _cA.setHex(a.sky).lerp(_cB.setHex(b.sky), e).clone(),
+    sun: _cA.setHex(a.sun).lerp(_cB.setHex(b.sun), e).clone(),
+  };
 }
 
 function updateDayNight(dt) {
-  timeOfDay = (timeOfDay + DAY_SPEED * dt) % 1;
+  if (!dayPaused) timeOfDay = (timeOfDay + DAY_SPEED * dt) % 1; // 일시정지 아니면 자동 순환
+  gameState.timeOfDay = timeOfDay;
   const daylight = Math.max(0, Math.sin(timeOfDay * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5);
-  sunLight.intensity = 0.15 + daylight * 1.1;
-  hemiLight.intensity = 0.25 + daylight * 0.7;
-  const day = new THREE.Color(PAL.sky), night = new THREE.Color(0x2a2c50);
-  const sky = night.clone().lerp(day, daylight);
+  const nightAmt = 1 - daylight;
+  const t = clock.elapsedTime;
+
+  // 하늘·안개·햇빛 색을 키프레임 그라데이션으로 부드럽게
+  const { sky, sun } = skyAt(timeOfDay);
   scene.background = sky; scene.fog.color = sky;
-  sunLight.color = new THREE.Color(0xffb070).lerp(new THREE.Color(0xffe9c4), daylight);
+  sunLight.color = sun;
+  sunLight.intensity = 0.1 + daylight * 1.2;
+  hemiLight.intensity = 0.2 + daylight * 0.75;
+  ambient.color.setHex(0xfff0dd).lerp(new THREE.Color(0x33406e), nightAmt); // 밤엔 푸른 앰비언트
+  ambient.intensity = 0.2 + nightAmt * 0.12;
   const ang = timeOfDay * Math.PI * 2;
   sunLight.position.set(Math.cos(ang) * 18, Math.sin(ang) * 18 + 2, 8);
 
-  const nightAmt = 1 - daylight;
-  fireflies.material.opacity = Math.max(0, nightAmt - 0.35) * 1.4;
-  // 밤엔 집 창문에 따뜻한 불빛
-  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 1.6; });
+  // 반딧불이 점멸(트윙클)
+  const twinkle = 0.7 + Math.sin(t * 6) * 0.3;
+  fireflies.material.opacity = Math.max(0, nightAmt - 0.3) * 1.5 * twinkle;
+  // 별 하늘(밤에 페이드인 + 반짝임)
+  if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
+  // 집 창문 따뜻한 불빛
+  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1; });
+  // 블룸 밤에 살짝 더 강하게
+  if (bloomPass) bloomPass.strength = 0.5 + nightAmt * 0.5;
+  // 밤 푸른 톤 그레이딩
+  if (gradePass) gradePass.uniforms.uNight.value = nightAmt;
 
   ui.setTime?.(daylight > 0.4 ? 'day' : 'night', daylight);
 }
@@ -752,9 +935,11 @@ function buildCropStage(plot) {
 function tryBuild() {
   if (dist2D(HOUSE_POS, player.position) > 3.2) { ui.toast?.('집 터(반투명 자리)로 가세요 🏠'); return; }
   if (gameState.houseStage >= 3) { ui.toast?.('집이 이미 완성됐어요 🎉'); return; }
-  if (gameState.inventory.wood < BUILD_COST) { ui.toast?.(`목재가 부족해요 (필요 ${BUILD_COST} 🪵)`); return; }
+  const next = gameState.houseStage + 1;
+  if (gameState.inventory.wood < BUILD_COST) { ui.toast?.(`${STAGE_NAMES[next]}엔 목재 ${BUILD_COST}개가 필요해요 🪵`); return; }
   gameState.inventory.wood -= BUILD_COST;
-  buildHouseStage(gameState.houseStage + 1);
+  buildHouseStage(next);
+  if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성! (-${BUILD_COST} 목재)`);
   refreshInventoryUI();
 }
 
@@ -762,18 +947,26 @@ function tryBuild() {
 //  팝 애니메이션(밭/작물/집 부재 톡 튀어오름)
 // =============================================================
 function updatePops(dt) {
-  // group 을 순회하기 부담스러우니 scene 전체에서 pop 표시 객체만 처리
+  // scene 전체에서 pop(스케일) / rise(솟아오름) 표시 객체 처리
   scene.traverse(obj => {
-    if (obj.userData && obj.userData.pop > 0) {
-      obj.userData.pop = Math.max(0, obj.userData.pop - dt * 3);
-      const p = 1 - obj.userData.pop;
-      // 통통 튀는 오버슛(EaseOutBack 비슷)
-      const s = p < 1 ? p + Math.sin(p * Math.PI) * 0.25 : 1;
+    const u = obj.userData;
+    if (!u) return;
+    if (u.pop > 0) {
+      u.pop = Math.max(0, u.pop - dt * 3);
+      const p = 1 - u.pop;
+      const s = p < 1 ? p + Math.sin(p * Math.PI) * 0.25 : 1; // 통통 튀는 오버슛
       obj.scale.set(s, s, s);
-      if (obj.userData.pop === 0) obj.scale.set(1, 1, 1);
+      if (u.pop === 0) obj.scale.set(1, 1, 1);
+    }
+    if (u.rise > 0) {
+      u.rise = Math.max(0, u.rise - dt * 2.2);
+      const e = easeOutBack(1 - u.rise);                     // 아래→위 오버슛
+      obj.position.y = u.riseFrom + (u.riseTarget - u.riseFrom) * e;
+      if (u.rise === 0) obj.position.y = u.riseTarget;
     }
   });
 }
+function easeOutBack(t) { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
 
 // =============================================================
 //  [파티클] 공용 파티클 풀

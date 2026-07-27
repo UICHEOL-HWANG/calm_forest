@@ -33,9 +33,10 @@
   #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
-  #save-btn, #logout-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
+  #save-btn, #logout-btn, #help-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
-  #save-btn:active, #logout-btn:active { transform: scale(0.94); }
+  #help-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
+  #save-btn:active, #logout-btn:active, #help-btn:active { transform: scale(0.94); }
 
   /* 문의하기 탭 — 데스크톱은 우측 하단 코너로 분리(상단 HUD와 안 겹침) */
   #feedback-tab { bottom: calc(22px + env(safe-area-inset-bottom)); right: 22px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
@@ -51,6 +52,19 @@
   body:not(.playing) #npc-prompt,
   body:not(.playing) #talk-btn,
   body:not(.playing) #mobile-controls { display: none !important; }
+
+  /* 튜토리얼 모달 */
+  #tutorial-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
+  #tutorial-modal.show { display: grid; }
+  .tut-card { width: min(440px, 92vw); background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
+  .tut-emoji { font-size: 40px; }
+  .tut-card h2 { margin: 4px 0 16px; font-size: 20px; }
+  .tut-list { list-style: none; margin: 0 0 20px; padding: 0; text-align: left; }
+  .tut-list li { font-size: 13.5px; line-height: 1.5; padding: 7px 0; border-bottom: 1px solid #f0f4f0; }
+  .tut-list li:last-child { border-bottom: none; }
+  .tut-list .mo { opacity: .6; font-size: 12px; }
+  #tut-start { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); transition: transform .1s; }
+  #tut-start:active { transform: scale(0.96); }
 
   /* 피드백 모달 */
   #feedback-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
@@ -199,6 +213,7 @@
     <span id="login-dot"></span>
     <span id="login-status">연결 중…</span>
     <button id="save-btn">💾 저장</button>
+    <button id="help-btn" title="도움말">❓</button>
     <button id="logout-btn" style="display:none;">로그아웃</button>
   </div>
 
@@ -281,6 +296,24 @@
         <div class="nq-meta"><span id="npc-qprog"></span><span id="npc-qreward"></span></div>
       </div>
       <div class="npc-actions" id="npc-actions"></div>
+    </div>
+  </div>
+
+  <!-- 신규 유저 튜토리얼 -->
+  <div id="tutorial-modal">
+    <div class="tut-card">
+      <div class="tut-emoji">🌿</div>
+      <h2>calm forest에 오신 걸 환영해요!</h2>
+      <ul class="tut-list">
+        <li><b>🕹️ 이동</b> — WASD·방향키 <span class="mo">(모바일: 왼쪽 조이스틱)</span></li>
+        <li><b>🧰 도구</b> — 하단 1~5 선택 (🪓도끼 ⛏️괭이 💧물조리개 🌾낫 🔨망치)</li>
+        <li><b>✋ 상호작용</b> — Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span></li>
+        <li><b>🌱 농사</b> — 괭이로 갈기 → 심기 → 물주기 → 낫으로 수확</li>
+        <li><b>🏠 건축</b> — 반투명 집 터에서 망치로 목재 모아 짓기</li>
+        <li><b>🧑‍🌾 주민</b>에게 말 걸어 퀘스트 받고 보상 받기</li>
+        <li><b>💾 진행상황</b>은 자동 저장돼요 (창 닫아도 이어짐)</li>
+      </ul>
+      <button id="tut-start">시작하기 🌱</button>
     </div>
   </div>
 
@@ -383,6 +416,8 @@
         }
         $('npc-modal').classList.add('show');
       },
+      // 신규 유저 튜토리얼 표시
+      showTutorial() { $('tutorial-modal').classList.add('show'); },
     };
     const closeNpc = () => $('npc-modal').classList.remove('show');
 
@@ -414,6 +449,11 @@
       await enterGame();                             // 저장 로드 + 조작/로깅 on
       initControls();                                // 모바일 컨트롤(터치 감지 시)
       if (authState.provider === 'google' || authState.online) $('logout-btn').style.display = '';
+
+      // 진행상황 자동 저장 — 30초 주기 + 탭 숨김/종료 시 (창 닫았다 열어도 이어짐)
+      setInterval(() => requestSave(), 30000);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) requestSave(); });
+      window.addEventListener('beforeunload', () => { try { requestSave(); } catch (e) {} });
     }
 
     // 로그인 화면 버튼
@@ -438,6 +478,27 @@
     $('talk-btn').addEventListener('click', () => Input.doAction());
     // NPC 모달 바깥 클릭 시 닫기
     $('npc-modal').addEventListener('click', (e) => { if (e.target === $('npc-modal')) closeNpc(); });
+
+    // 튜토리얼: 시작하기 닫기 / 도움말(❓) 다시 열기
+    $('tut-start').addEventListener('click', () => $('tutorial-modal').classList.remove('show'));
+    $('help-btn').addEventListener('click', () => ui.showTutorial());
+
+    // 낮/밤 수동 조절: 시간 바 드래그로 시간 지정, 이모지 클릭으로 자동순환 토글
+    (function setupTimeControl() {
+      const bar = $('time-bar');
+      const scrub = (clientX) => {
+        const r = bar.getBoundingClientRect();
+        Input.setTimeOfDay(Math.min(1, Math.max(0, (clientX - r.left) / r.width)));
+      };
+      let dragging = false;
+      bar.style.cursor = 'pointer'; bar.title = '드래그해서 시간 조절';
+      bar.addEventListener('pointerdown', (e) => { dragging = true; scrub(e.clientX); try { bar.setPointerCapture(e.pointerId); } catch (x) {} });
+      bar.addEventListener('pointermove', (e) => { if (dragging) scrub(e.clientX); });
+      bar.addEventListener('pointerup', () => { dragging = false; });
+      const emoji = $('time-emoji');
+      emoji.style.cursor = 'pointer'; emoji.title = '시간 자동 순환 켜기/끄기';
+      emoji.addEventListener('click', () => { const paused = Input.toggleDayFlow(); ui.toast(paused ? '⏸ 시간 정지' : '▶ 시간 자동 순환'); });
+    })();
     $('fb-cancel').addEventListener('click', closeFb);
     fbModal.addEventListener('click', (e) => { if (e.target === fbModal) closeFb(); }); // 바깥 클릭 닫기
     $('fb-send').addEventListener('click', async () => {
