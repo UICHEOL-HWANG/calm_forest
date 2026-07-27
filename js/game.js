@@ -178,7 +178,11 @@ function applySave(saved) {
   if (Array.isArray(saved.plots)) {
     saved.plots.forEach(p => {
       const plot = createPlot(p.x, p.z, true);
-      plot.state = p.state; plot.growth = p.growth || 0;
+      plot.state = p.state; plot.growth = p.growth || 0; plot.stage = -1;
+      if (p.state === 'growing' || p.state === 'mature') {
+        plot.cropType = CROP_TYPES[Math.floor(Math.random() * CROP_TYPES.length)];
+        refreshCropStage(plot);   // growth에 맞는 단계 메시 복원
+      }
       updatePlotVisual(plot);
     });
   }
@@ -614,31 +618,32 @@ function tryChop() {
 
 // =============================================================
 //  농사: 밭 타일 상태머신
-//  state: 'empty'(갈아둔 흙) → 'planted'(성장 0~1) → 'mature'
+//  state: 'empty'(갈아둔 이랑) → 'growing'(3단계 성장) → 'mature'(수확가능)
+//  stage: 0 새싹 → 1 자람 → 2 수확가능
 // =============================================================
 function createPlot(x, z, silent = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
   const soil = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), clayMat(PAL.soil, false));
   soil.position.y = 0.1; soil.receiveShadow = true; g.add(soil);
+  // 이랑(줄무늬) — 갈아엎은 밭 느낌의 두둑 3줄
+  for (let k = -1; k <= 1; k++) {
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
+    ridge.position.set(0, 0.21, k * 0.5); ridge.receiveShadow = true; g.add(ridge);
+  }
   scene.add(g);
-  const plot = { group: g, soil, crop: null, state: 'empty', growth: 0, x, z, watered: false };
+  const plot = { group: g, soil, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false };
   plots.push(plot);
-  if (!silent) { soil.userData.pop = 1; soil.scale.set(0.01, 0.01, 0.01); spawnDust(x, z, 10); }
+  if (!silent) { g.userData.pop = 1; g.scale.setScalar(0.01); spawnDust(x, z, 14); } // 흙먼지 + 톡 등장
   return plot;
 }
 
 function plantSeed(plot) {
   if (gameState.inventory.seed <= 0) { ui.toast?.('씨앗이 없어요 🌰'); return; }
   gameState.inventory.seed -= 1;
-  plot.state = 'planted'; plot.growth = 0.05;
+  plot.state = 'growing'; plot.growth = 0.05; plot.stage = -1;
   plot.cropType = CROP_TYPES[Math.floor(Math.random() * CROP_TYPES.length)]; // 작물 종류 랜덤
   Sound.plant();
-  // 새싹 메쉬
-  const sprout = new THREE.Group();
-  const stem = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 5), clayMat(PAL.sprout));
-  stem.position.y = 0.35; sprout.add(stem);
-  sprout.position.y = 0.2;
-  plot.group.add(sprout); plot.crop = sprout;
+  refreshCropStage(plot);   // 0단계(새싹) 메시 생성 + 팝
   refreshInventoryUI(); updatePlotVisual(plot);
   questEvent('plant');      // 퀘스트 진행
   trackEvent('plant_seed'); // [GA4]
@@ -660,72 +665,85 @@ function tryHoe() {
   else ui.toast?.('이미 작물이 자라는 중이에요');
 }
 
-// 물조리개: 자라는 밭에 물 → 성장 촉진 + 물방울/무지개 파티클
+// 물조리개: 자라는 밭에 물 → 성장 촉진 + 물방울 파티클
 function tryWater() {
-  const plot = plots.find(p => p.state === 'planted' && dist2D(p.group.position, player.position) < 1.8);
+  const plot = plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8);
   if (!plot) { ui.toast?.('물 줄 작물이 없어요 💧'); return; }
-  plot.growth = Math.min(1, plot.growth + 0.34); plot.watered = true;
+  plot.growth = Math.min(1, plot.growth + 0.4); plot.watered = true;
   Sound.water();
-  spawnWater(plot.x, plot.z);         // [파티클] 물방울 + 무지개 반짝임
-  if (plot.growth >= 1) maturePlot(plot);
+  spawnWater(plot.x, plot.z);   // [파티클] 물방울 + 무지개 반짝임
+  refreshCropStage(plot);       // 단계 상승 시 새 메시 + 팝
   updatePlotVisual(plot);
-  questEvent('water');      // 퀘스트 진행
-  trackEvent('water_crop'); // [GA4]
+  questEvent('water');          // 퀘스트 진행
+  trackEvent('water_crop');     // [GA4]
 }
 
-// 낫: 다 자란 작물 수확 → 톡 튀는 팝 + 스파클
+// 낫: 다 자란 작물 수확 → 반짝이 스파클 + 작물 +1
 function tryHarvest() {
   const plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8);
   if (!plot) { ui.toast?.('수확할 작물이 없어요 🌾'); return; }
-  gameState.inventory.crop += 2;
-  gameState.inventory.seed += 1; // 수확 시 씨앗 하나 되돌려줌
+  gameState.inventory.crop += 1; // 작물 +1
+  gameState.inventory.seed += 1; // 씨앗 하나 되돌려줌
   Sound.harvest();
-  ui.toast?.(`${plot.cropType?.name || '작물'} 수확! 🌾`);
-  spawnSparkle(plot.x, 0.8, plot.z, 20); // [파티클] 별/스파클
-  // 작물 팝 후 제거 → 다시 빈 밭으로
+  ui.toast?.(`${plot.cropType?.name || '작물'} +1 수확! 🌾`);
+  spawnSparkle(plot.x, 0.7, plot.z, 24); // [파티클] 반짝이 폭발
   if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
-  plot.state = 'empty'; plot.growth = 0; plot.watered = false;
+  plot.state = 'empty'; plot.growth = 0; plot.stage = -1; plot.watered = false;
+  updatePlotVisual(plot);
   refreshInventoryUI();
   questEvent('harvest');                                          // 퀘스트 진행
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
 }
 
-// 시간 경과에 따른 완만한 성장(물주기가 주 성장 동력)
+// 시간 경과에 따른 완만한 성장(물주기가 주 동력)
 function updatePlots(dt) {
   for (const plot of plots) {
-    if (plot.state === 'planted') {
-      plot.growth = Math.min(1, plot.growth + dt * 0.015);
-      updatePlotVisual(plot);
-      if (plot.growth >= 1) maturePlot(plot);
+    if (plot.state === 'growing') {
+      plot.growth = Math.min(1, plot.growth + dt * 0.02);
+      refreshCropStage(plot);
     }
   }
 }
 
 function updatePlotVisual(plot) {
-  // 젖은 흙 색
-  plot.soil.material.color.set(plot.watered ? PAL.soilWet : PAL.soil);
-  if (plot.crop && plot.state === 'planted') {
-    const s = 0.4 + plot.growth * 1.1;
-    plot.crop.scale.set(s, s, s);
-  }
+  plot.soil.material.color.set(plot.watered ? PAL.soilWet : PAL.soil); // 젖은 흙 색
 }
 
-function maturePlot(plot) {
-  plot.state = 'mature';
-  // 새싹 위에 작물 열매 톡 얹기
-  if (plot.crop) {
-    const fruitColor = plot.cropType?.fruit ?? PAL.crop; // 작물 종류별 열매 색
-    const fruit = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), clayMat(fruitColor, false));
-    fruit.position.y = 0.75; fruit.userData.pop = 1; fruit.scale.set(0.01, 0.01, 0.01);
-    plot.crop.add(fruit);
-    // 잎 두 장
-    [[-0.2, 0.2], [0.2, -0.2]].forEach(([lx, lz]) => {
-      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 4), clayMat(PAL.cropLeaf));
-      leaf.position.set(lx, 0.55, lz); leaf.rotation.z = lx * 1.5; plot.crop.add(leaf);
+// 성장 단계(0 새싹 → 1 자람 → 2 수확가능)를 growth로 판정, 변할 때 메시 재생성 + 팝
+function refreshCropStage(plot) {
+  const desired = plot.growth >= 0.8 ? 2 : plot.growth >= 0.4 ? 1 : 0;
+  if (desired === plot.stage) return;
+  plot.stage = desired;
+  buildCropStage(plot);        // 새 단계 메시 생성 + 톡 튀는 팝
+  if (desired === 2) { plot.state = 'mature'; spawnSparkle(plot.x, 0.7, plot.z, 8); } // 수확 준비 반짝
+}
+
+// 단계별 작물 메시(그룹 scale=1, 크기는 지오메트리로 → updatePops 팝과 호환)
+function buildCropStage(plot) {
+  if (plot.crop) plot.group.remove(plot.crop);
+  const g = new THREE.Group(); g.position.y = 0.26;
+  const col = plot.cropType?.fruit ?? PAL.crop;
+  if (plot.stage === 0) {
+    // 새싹: 작고 연두
+    const sprout = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 5), clayMat(0x9be89b));
+    sprout.position.y = 0.15; g.add(sprout);
+  } else if (plot.stage === 1) {
+    // 자람: 중간 줄기 + 잎
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), clayMat(PAL.sprout));
+    stem.position.y = 0.25; g.add(stem);
+    [[-0.16, 0.3], [0.16, 0.42]].forEach(([lx, ly]) => {
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), clayMat(PAL.cropLeaf));
+      leaf.scale.set(1, 0.5, 0.7); leaf.position.set(lx, ly, 0); g.add(leaf);
     });
-    plot.crop.scale.set(1.3, 1.3, 1.3);
+  } else {
+    // 수확가능: 무성한 잎 + 열매 톡 보임
+    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), clayMat(PAL.cropLeaf));
+    bush.position.y = 0.32; bush.scale.set(1, 0.82, 1); g.add(bush);
+    const fruit = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), clayMat(col, false));
+    fruit.position.y = 0.56; g.add(fruit);
   }
-  spawnSparkle(plot.x, 0.8, plot.z, 10);
+  plot.group.add(g); plot.crop = g;
+  g.userData.pop = 1; g.scale.setScalar(0.01);   // 단계 전환 시 톡 튀는 팝 스케일
 }
 
 // =============================================================
