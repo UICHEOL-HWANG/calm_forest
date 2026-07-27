@@ -134,6 +134,14 @@
   #dlg-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
   #dlg-text { font-size: 14px; line-height: 1.45; opacity: .9; }
 
+  /* 모바일 전용 "대화하기" 버튼 — NPC 근처에서만 표시 */
+  #talk-btn { position: fixed; left: 50%; bottom: calc(310px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    display: none; align-items: center; gap: 7px; z-index: 6; border: none; cursor: pointer;
+    background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px;
+    padding: 13px 26px; border-radius: 18px; box-shadow: 0 8px 22px rgba(60,120,90,0.28); }
+  #talk-btn:active { transform: translateX(-50%) scale(0.95); }
+  body.is-touch.near-npc.playing #talk-btn { display: flex; }   /* 터치+근접+플레이 시에만 */
+
   /* 모바일 컨트롤 */
   #mobile-controls { display: none; }
   #joy-base { position: fixed; left: 28px; bottom: calc(90px + env(safe-area-inset-bottom)); width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.35); box-shadow: var(--shadow); touch-action: none; }
@@ -224,6 +232,9 @@
     <div id="joy-base"><div id="joy-knob"></div></div>
     <div id="action-btn">✋</div>
   </div>
+
+  <!-- 모바일 전용 대화하기 버튼 (NPC 근처에서 표시) -->
+  <button id="talk-btn"><span>💬</span><span>대화하기</span></button>
 
   <!-- 로그인 화면 (뒤로 실제 게임 씬이 흐름) -->
   <div id="login-screen">
@@ -318,11 +329,12 @@
         $('quest-fill').style.width = Math.round(100 * v.progress / v.target) + '%';
         $('quest-prog').textContent = v.ready ? '✅ 완료! 주민에게 가세요' : `${v.progress} / ${v.target}`;
       },
-      // NPC 근접 대화 프롬프트
+      // NPC 근접 표시: 데스크톱은 프롬프트 텍스트, 모바일은 "대화하기" 버튼(near-npc 클래스)
       setInteractPrompt(text) {
         const el = $('npc-prompt');
-        if (!text) { el.classList.remove('show'); return; }
+        if (!text) { el.classList.remove('show'); document.body.classList.remove('near-npc'); return; }
         el.textContent = text; el.classList.add('show');
+        document.body.classList.add('near-npc');
       },
       // NPC 대화창(이름 + 대사, 잠시 후 자동 숨김)
       dialogue(def, text) {
@@ -383,6 +395,8 @@
     const openFb = () => { fbModal.classList.add('show'); $('fb-text').focus(); };
     const closeFb = () => { fbModal.classList.remove('show'); };
     $('feedback-tab').addEventListener('click', openFb);
+    // 모바일 대화하기 버튼 → NPC 대화 실행(근처면 handleAction이 대화로 분기)
+    $('talk-btn').addEventListener('click', () => Input.doAction());
     $('fb-cancel').addEventListener('click', closeFb);
     fbModal.addEventListener('click', (e) => { if (e.target === fbModal) closeFb(); }); // 바깥 클릭 닫기
     $('fb-send').addEventListener('click', async () => {
