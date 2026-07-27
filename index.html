@@ -37,8 +37,8 @@
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
   #save-btn:active, #logout-btn:active { transform: scale(0.94); }
 
-  /* 문의하기 탭 (우측, 인벤토리 아래) */
-  #feedback-tab { top: calc(92px + env(safe-area-inset-top)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
+  /* 문의하기 탭 — 데스크톱은 우측 하단 코너로 분리(상단 HUD와 안 겹침) */
+  #feedback-tab { bottom: calc(22px + env(safe-area-inset-bottom)); right: 22px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
   #feedback-tab:active { transform: scale(0.95); }
 
   /* 로그인(로그아웃) 상태에선 게임 HUD 전부 숨김 → 로그인 화면만 깔끔하게 */
@@ -115,7 +115,7 @@
   body.is-touch #hint { display: none; }
 
   /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
-  #quest-panel { top: calc(64px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
+  #quest-panel { top: calc(84px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
@@ -157,8 +157,9 @@
     .inv-ico { font-size: 14px; }
     #time-bar { width: 54px; }
     #time-indicator { gap: 6px; }
-    #feedback-tab { top: calc(78px + env(safe-area-inset-top)); padding: 6px 10px; font-size: 12px; }
-    #quest-panel { top: calc(74px + env(safe-area-inset-top)); max-width: 60vw; }
+    /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
+    #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
+    #quest-panel { top: calc(80px + env(safe-area-inset-top)); max-width: 56vw; }
     .slot { width: 44px; height: 44px; border-radius: 12px; }
     .slot .s-ico { font-size: 18px; }
     .slot .s-key { font-size: 8px; }
