@@ -68,6 +68,7 @@
   .tut-list .mo { opacity: .6; font-size: 12px; }
   #tut-start { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); transition: transform .1s; }
   #tut-start:active { transform: scale(0.96); }
+  #tut-skip { display: block; margin: 12px auto 0; background: none; border: none; color: var(--ink); opacity: .55; font-size: 13px; text-decoration: underline; cursor: pointer; }
 
   /* 피드백 모달 */
   #feedback-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
@@ -343,6 +344,7 @@
       </ul>
       <p style="font-size:12.5px;opacity:.7;margin:0 0 4px;">아래 버튼을 누르면 화면 안내를 따라 <b>직접 해보는 튜토리얼</b>이 시작돼요</p>
       <button id="tut-start">튜토리얼 시작 🌱</button>
+      <button id="tut-skip">건너뛰고 바로 시작</button>
     </div>
   </div>
 
@@ -559,6 +561,8 @@
     // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
     $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
     $('help-btn').addEventListener('click', () => ui.showTutorial());
+    // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
+    $('tut-skip').addEventListener('click', () => $('tutorial-modal').classList.remove('show'));
     $('coach-skip').addEventListener('click', () => endCoach(false));
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
 
