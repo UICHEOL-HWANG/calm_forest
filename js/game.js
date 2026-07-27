@@ -175,6 +175,7 @@ export async function enterGame() {
   player.visible = true;
   player.position.set(gameState.playerPos.x || 0, 0, gameState.playerPos.z || 0);
   mode = 'play';
+  movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
 
   // 신규 유저면 조작법 튜토리얼 1회 표시
@@ -643,6 +644,7 @@ function updateAttractCamera(t) {
 }
 
 let walkPhase = 0;
+let movedOnce = false;   // 튜토리얼: 첫 이동 감지
 function updatePlayer(dt, t) {
   const speed = 6;
   let mx = 0, mz = 0;
@@ -654,6 +656,7 @@ function updatePlayer(dt, t) {
   mx += analog.x; mz += analog.z;
 
   const moving = Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05;
+  if (moving && !movedOnce) { movedOnce = true; ui.act?.('move'); } // 튜토리얼: 첫 이동
   if (moving) {
     const len = Math.hypot(mx, mz) || 1;
     mx /= len; mz /= len;
@@ -809,6 +812,7 @@ function tryChop() {
   } else gameState.inventory.wood += 1;
   refreshInventoryUI();
   questEvent('chop');                                          // 퀘스트 진행
+  ui.act?.('chop');                                            // 튜토리얼
   trackChop(trees.indexOf(nearest), gameState.inventory.wood); // [GA4]
 }
 
@@ -842,6 +846,7 @@ function plantSeed(plot) {
   refreshCropStage(plot);   // 0단계(새싹) 메시 생성 + 팝
   refreshInventoryUI(); updatePlotVisual(plot);
   questEvent('plant');      // 퀘스트 진행
+  ui.act?.('seed');         // 튜토리얼
   trackEvent('plant_seed'); // [GA4]
 }
 
@@ -854,6 +859,7 @@ function tryHoe() {
     if (isBlocked(gx, gz)) { ui.toast?.('여기엔 밭을 만들 수 없어요 🌳'); return; } // 나무·호수·벤치·가로등·집
     createPlot(gx, gz);                          // 밭만 갈기 (씨앗은 🌰 도구로 심기)
     Sound.till();
+    ui.act?.('till');                            // 튜토리얼
     ui.toast?.('밭을 갈았어요 — 🌰 씨앗 도구로 심어요');
     return;
   }
@@ -900,6 +906,7 @@ function tryWater() {
   refreshCropStage(plot);       // 단계 상승 시 새 메시 + 팝
   updatePlotVisual(plot);
   questEvent('water');          // 퀘스트 진행
+  ui.act?.('water');            // 튜토리얼
   trackEvent('water_crop');     // [GA4]
 }
 
@@ -1276,7 +1283,7 @@ function updateNPCInteract() {
 // 대화 시작 = 현재 주민 상태를 담은 모달을 연다(수락/보상은 버튼으로)
 function talkToNPC() {
   const view = npcDialogState();
-  if (view) { Sound.blip(); ui.openNPCModal?.(view); }
+  if (view) { Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); } // 튜토리얼
 }
 
 // 근접 주민의 현재 대화/퀘스트 상태를 뷰 객체로 반환

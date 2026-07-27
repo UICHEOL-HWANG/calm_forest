@@ -51,6 +51,7 @@
   body:not(.playing) #quest-panel,
   body:not(.playing) #npc-prompt,
   body:not(.playing) #talk-btn,
+  body:not(.playing) #coach,
   body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
@@ -148,6 +149,16 @@
   /* NPC 대화 프롬프트(하단, 하트바 위) */
   #npc-prompt { bottom: calc(118px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; }
   #npc-prompt.show { opacity: 1; }
+
+  /* 인터랙티브 튜토리얼 코치(상단 중앙) */
+  #coach { top: calc(92px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 7px; max-width: 90vw; text-align: center; border: 2px solid var(--mint); }
+  #coach.show { display: flex; }
+  #coach-text { font-size: 13.5px; font-weight: 700; }
+  #coach-dots { display: flex; gap: 5px; font-size: 10px; }
+  #coach-dots span { color: rgba(0,0,0,0.18); }
+  #coach-dots .done { color: #6fd08c; }
+  #coach-dots .cur { color: #ffab3d; }
+  #coach-skip { border: none; background: none; font-size: 11px; opacity: .55; text-decoration: underline; cursor: pointer; color: var(--ink); }
 
   /* NPC 대화/퀘스트 모달 */
   #npc-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
@@ -250,6 +261,13 @@
   <!-- NPC 대화 프롬프트(데스크톱: Space 안내) -->
   <div id="npc-prompt" class="panel"></div>
 
+  <!-- 인터랙티브 튜토리얼 코치(단계별 진행) -->
+  <div id="coach" class="panel">
+    <div id="coach-text"></div>
+    <div id="coach-dots"></div>
+    <button id="coach-skip">건너뛰기</button>
+  </div>
+
   <!-- 도구 하트바 (JS 에서 슬롯 생성) -->
   <div id="hotbar" class="panel"></div>
 
@@ -323,7 +341,8 @@
         <li><b>🧑‍🌾 주민</b>에게 말 걸어 퀘스트 받고 보상 받기</li>
         <li><b>💾 진행상황</b>은 자동 저장돼요 (창 닫아도 이어짐)</li>
       </ul>
-      <button id="tut-start">시작하기 🌱</button>
+      <p style="font-size:12.5px;opacity:.7;margin:0 0 4px;">아래 버튼을 누르면 화면 안내를 따라 <b>직접 해보는 튜토리얼</b>이 시작돼요</p>
+      <button id="tut-start">튜토리얼 시작 🌱</button>
     </div>
   </div>
 
@@ -445,8 +464,38 @@
       showTutorial() { $('tutorial-modal').classList.add('show'); },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
+      // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
+      act(type) {
+        if (tutIdx < 0) return;
+        if (TUT_STEPS[tutIdx].key === type) {
+          tutIdx++;
+          if (tutIdx >= TUT_STEPS.length) endCoach(true);
+          else renderCoach();
+        }
+      },
     };
     const closeNpc = () => $('npc-modal').classList.remove('show');
+
+    // ── 인터랙티브 튜토리얼(코치) 상태머신 ──
+    const TUT_STEPS = [
+      { key: 'move',  text: '① WASD·방향키로 움직여보세요 🕹️' },
+      { key: 'chop',  text: '② 🪓도끼(1) 선택 → 나무 근처에서 Space/클릭으로 벌목!' },
+      { key: 'till',  text: '③ ⛏️괭이(2)로 빈 땅을 갈아보세요' },
+      { key: 'seed',  text: '④ 🌰씨앗(3)을 갈아둔 밭에 심어요' },
+      { key: 'water', text: '⑤ 💧물조리개(4)로 물을 주세요' },
+      { key: 'talk',  text: '⑥ 🧑‍🌾주민에게 다가가 말을 걸어보세요' },
+    ];
+    let tutIdx = -1;
+    function renderCoach() {
+      $('coach-text').textContent = TUT_STEPS[tutIdx].text;
+      $('coach-dots').innerHTML = TUT_STEPS.map((_, i) =>
+        `<span class="${i < tutIdx ? 'done' : i === tutIdx ? 'cur' : ''}">●</span>`).join('');
+    }
+    function startCoach() { tutIdx = 0; renderCoach(); $('coach').classList.add('show'); }
+    function endCoach(done) {
+      tutIdx = -1; $('coach').classList.remove('show');
+      if (done) ui.toast('🎉 튜토리얼 완료! 이제 자유롭게 즐겨요 🌿');
+    }
 
     // 좌측 상단 로그인 상태 표시(로그인 후)
     function showLoginStatus(s) {
@@ -507,8 +556,10 @@
     $('npc-modal').addEventListener('click', (e) => { if (e.target === $('npc-modal')) closeNpc(); });
 
     // 튜토리얼: 시작하기 닫기 / 도움말(❓) 다시 열기
-    $('tut-start').addEventListener('click', () => $('tutorial-modal').classList.remove('show'));
+    // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
+    $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
     $('help-btn').addEventListener('click', () => ui.showTutorial());
+    $('coach-skip').addEventListener('click', () => endCoach(false));
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
 
     // 낮/밤 수동 조절: 시간 바 드래그로 시간 지정, 이모지 클릭으로 자동순환 토글
