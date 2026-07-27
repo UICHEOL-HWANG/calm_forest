@@ -867,7 +867,16 @@ function tryHoe() {
 function trySeed() {
   const plot = plots.find(p => p.state === 'empty' && dist2D(p.group.position, player.position) < 1.6);
   if (!plot) { ui.toast?.('갈아둔 밭이 없어요 — ⛏️ 괭이로 먼저 갈기'); return; }
-  if (gameState.inventory.seed <= 0) { ui.toast?.('씨앗이 없어요 🌰'); return; }
+  if (gameState.inventory.seed <= 0) {
+    // 밭에 자라는 작물도 없으면 완전히 막힌 상태 → 씨앗 지급(안전장치)
+    const hasGrowing = plots.some(p => p.state === 'growing' || p.state === 'mature');
+    if (!hasGrowing) {
+      gameState.inventory.seed += 3; refreshInventoryUI();
+      ui.toast?.('🌰 주머니에서 씨앗 3개를 찾았어요!');
+    } else {
+      ui.toast?.('씨앗이 없어요 — 작물을 수확하면 씨앗이 늘어요 🌾'); return;
+    }
+  }
   plantSeed(plot);
 }
 
@@ -895,7 +904,7 @@ function tryHarvest() {
   const plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8);
   if (!plot) { ui.toast?.('수확할 작물이 없어요 🌾'); return; }
   gameState.inventory.crop += 1; // 작물 +1
-  gameState.inventory.seed += 1; // 씨앗 하나 되돌려줌
+  gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
   Sound.harvest();
   ui.toast?.(`${plot.cropType?.name || '작물'} +1 수확! 🌾`);
   spawnSparkle(plot.x, 0.7, plot.z, 24); // [파티클] 반짝이 폭발
