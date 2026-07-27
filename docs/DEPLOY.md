@@ -14,7 +14,7 @@
 3. **구글 로그인 설정** (Authentication → Providers → **Google** 켜기):
    - Google Cloud Console → **API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹)** 생성
    - **승인된 리디렉션 URI** 에 아래를 추가:
-     `https://zuyxgjfihxtfdpolljzw.supabase.co/auth/v1/callback`
+     `https://<프로젝트-ref>.supabase.co/auth/v1/callback`
    - 발급된 **클라이언트 ID/보안 비밀** 을 Supabase Google provider 칸에 붙여넣고 저장
    - Supabase **Authentication → URL Configuration → Site URL / Redirect URLs** 에
      게임 주소(예: `http://localhost:8000`, 배포 후 `https://<아이디>.github.io/calm-forest/`)를 추가

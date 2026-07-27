@@ -1,0 +1,46 @@
+# =============================================================
+#  calm forest · Supabase → BigQuery 일일 적재 + Supabase 경량화
+#  ------------------------------------------------------------
+#  매일 1회: game_logs 증분 적재 → game_saves 스냅샷 → 7일 지난 로그 prune
+#  (game_saves 는 절대 삭제하지 않음)
+#
+#  ★ 사전 설정 (저장소 Settings → Secrets and variables → Actions)
+#   [Variables]  SUPABASE_URL, BQ_PROJECT(=calm-forest), BQ_DATASET(=calm_forest_raw), BQ_LOCATION
+#   [Secrets]    SUPABASE_SERVICE_ROLE (Supabase service_role 키),
+#                GCP_SA_KEY (GCP 서비스계정 JSON 키 전체)
+#  자세한 건 docs/DATA_PIPELINE.md 참고.
+# =============================================================
+name: Supabase → BigQuery (daily)
+
+on:
+  schedule:
+    - cron: '0 18 * * *'   # 매일 UTC 18:00 = KST 03:00 (저트래픽 시간)
+  workflow_dispatch:        # 수동 실행 버튼
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-to-bq
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install --quiet google-cloud-bigquery requests
+      - name: Export to BigQuery + prune Supabase
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          BQ_PROJECT: ${{ vars.BQ_PROJECT }}
+          BQ_DATASET: ${{ vars.BQ_DATASET }}
+          BQ_LOCATION: ${{ vars.BQ_LOCATION }}
+          RETENTION_DAYS: '7'
+        run: python scripts/export_to_bq.py

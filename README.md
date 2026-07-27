@@ -31,9 +31,13 @@ calm_forest/
 │  ├─ admin_analytics.sql#   관리자 집계 보안함수
 │  ├─ analytics_queries.sql # 전체 유저 집계 쿼리 팩
 │  └─ bigquery_queries.sql  # GA4 export(BigQuery) 쿼리 팩
+├─ scripts/              # 🔄 Supabase→BigQuery 일일 적재+경량화 스크립트
+│  └─ export_to_bq.py
+├─ .github/workflows/    # ⚙️ GitHub Actions (Pages 배포 + BQ 파이프라인)
 └─ docs/                 # 📚 문서
    ├─ DEPLOY.md          #   🚀 Supabase·GA4·GitHub Pages 배포 가이드
-   └─ GA4_GUIDE.md       #   📈 GA4 설정·탐색 가이드
+   ├─ GA4_GUIDE.md       #   📈 GA4 설정·탐색 가이드
+   └─ DATA_PIPELINE.md   #   🔄 Supabase→BigQuery 파이프라인 + 7일 경량화
 ```
 
 > 실제 연동(Supabase 키·GA4)과 배포는 **`docs/DEPLOY.md`** 를, DB 초기화는 **`sql/supabase_setup.sql`** 을 참고하세요. 키를 안 넣어도 게임은 오프라인 폴백으로 동작합니다.
