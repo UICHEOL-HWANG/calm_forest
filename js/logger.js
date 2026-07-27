@@ -15,6 +15,11 @@ import { sendLogBatch } from './supabase-client.js';
 let buffer = [];              // 전송 대기 샘플 버퍼
 let lastSampleAt = 0;         // throttle 기준 시각
 let flushTimer = null;
+let lastLogged = null;        // 직전 기록 샘플(변화 감지용)
+let lastHeartbeat = 0;        // 정지 상태에서도 가끔 남기는 하트비트 시각
+const MOVE_EPS = 0.2;         // 캐릭터가 이만큼 이상 움직여야 기록(월드 단위)
+const MOUSE_EPS = 10;         // 마우스가 이만큼(px) 이상 움직여야 기록
+const HEARTBEAT_MS = 8000;    // 가만히 있어도 8초에 한 번은 기록(체류 파악용)
 
 // 최신 마우스 좌표(정규화 -1~1). game.js 의 pointer 와 별개로 원시 좌표 저장용.
 const mouse = { x: 0, y: 0 };
@@ -31,7 +36,7 @@ export function sampleFrame(getSnapshot) {
   lastSampleAt = now;
 
   const snap = getSnapshot();
-  buffer.push({
+  const s = {
     mouse_x: mouse.x,
     mouse_y: mouse.y,
     char_x: round(snap.char.x),
@@ -39,7 +44,18 @@ export function sampleFrame(getSnapshot) {
     char_z: round(snap.char.z),
     cam_yaw: round(snap.cam.yaw),
     cam_pitch: round(snap.cam.pitch),
-  });
+  };
+
+  // 변화 감지: 캐릭터·마우스가 실제로 움직였을 때만 기록(정지 스팸 방지)
+  const moved = !lastLogged
+    || Math.hypot(s.char_x - lastLogged.char_x, s.char_z - lastLogged.char_z) > MOVE_EPS
+    || Math.hypot(s.mouse_x - lastLogged.mouse_x, s.mouse_y - lastLogged.mouse_y) > MOUSE_EPS;
+  const heartbeat = now - lastHeartbeat > HEARTBEAT_MS; // 가만히 있어도 8초마다 1행(체류 파악)
+
+  if (!moved && !heartbeat) return;
+  if (heartbeat) lastHeartbeat = now;
+  lastLogged = s;
+  buffer.push(s);
 }
 
 function round(n) { return Math.round(n * 1000) / 1000; }
