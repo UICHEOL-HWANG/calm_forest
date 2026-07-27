@@ -53,9 +53,11 @@
   body:not(.playing) #talk-btn,
   body:not(.playing) #mobile-controls { display: none !important; }
 
-  /* 튜토리얼 모달 */
-  #tutorial-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
-  #tutorial-modal.show { display: grid; }
+  /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
+  #tutorial-modal, #seed-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
+  #tutorial-modal.show, #seed-modal.show { display: grid; }
+  #seed-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
+  #seed-ok:active { transform: scale(0.96); }
   .tut-card { width: min(440px, 92vw); background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
   .tut-emoji { font-size: 40px; }
   .tut-card h2 { margin: 4px 0 16px; font-size: 20px; }
@@ -107,6 +109,10 @@
   #inventory { display: flex; gap: 14px; font-weight: 600; }
   .inv-item { display: flex; align-items: center; gap: 6px; }
   .inv-ico { font-size: 18px; }
+  /* 씨앗 0일 때 경고(빨강 + 깜빡임) */
+  .inv-item.inv-low { color: #e0574f; }
+  .inv-item.inv-low .inv-ico { animation: invBlink 1s ease-in-out infinite; }
+  @keyframes invBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   #time-indicator { display: flex; align-items: center; gap: 8px; justify-content: center; }
   #time-bar { width: 90px; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#2a2c50,#ffd9a8,#dff3ff); position: relative; }
   #time-knob { position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); transform: translateX(-7px); }
@@ -223,7 +229,7 @@
   <div id="topright" class="panel">
     <div id="inventory">
       <span class="inv-item"><span class="inv-ico">🪵</span><span id="inv-wood">0</span></span>
-      <span class="inv-item"><span class="inv-ico">🌰</span><span id="inv-seed">0</span></span>
+      <span class="inv-item" id="inv-seed-item"><span class="inv-ico">🌰</span><span id="inv-seed">0</span></span>
       <span class="inv-item"><span class="inv-ico">🥕</span><span id="inv-crop">0</span></span>
     </div>
     <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
@@ -311,11 +317,26 @@
         <li><b>🌱 농사</b> — ⛏️괭이로 밭 갈기 → 🌰씨앗 심기 → 💧물주기 → 🌾낫으로 수확
           <span class="mo">(물을 줘야만 자라요! 흙이 마르면 다시 주기, 총 2번이면 수확)</span></li>
         <li><b>🥀 시들기·재배</b> — 오래 물을 안 주면 시들어요. 밭 위 <b>“💧물 줘요!”</b> 알림을 확인하고, 시들었으면 괭이로 다시 심어요</li>
+        <li><b>🌰 씨앗</b> — 8개로 시작! 수확하면 씨앗 +2로 늘어나요. 다 떨어져도 자동으로 채워주니 걱정 마세요</li>
         <li><b>🏠 건축</b> — 반투명 집 터에서 망치로 목재 10개씩 3단계 짓기</li>
         <li><b>🧑‍🌾 주민</b>에게 말 걸어 퀘스트 받고 보상 받기</li>
         <li><b>💾 진행상황</b>은 자동 저장돼요 (창 닫아도 이어짐)</li>
       </ul>
       <button id="tut-start">시작하기 🌱</button>
+    </div>
+  </div>
+
+  <!-- 씨앗 안내 모달 (씨앗 소진 + 자동 지급 시) -->
+  <div id="seed-modal">
+    <div class="tut-card">
+      <div class="tut-emoji">🌰</div>
+      <h2>씨앗을 채웠어요!</h2>
+      <p style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px;">
+        씨앗이 다 떨어져서 <b>주머니에서 씨앗 3개</b>를 꺼냈어요.<br>
+        앞으로는 <b>🌾 작물을 수확할 때마다 씨앗 +2</b>가 생겨서 점점 늘어나요.<br>
+        <span style="opacity:.7;">🧑‍🌾 주민 퀘스트(나무 베기 등)로도 씨앗을 받을 수 있어요.</span>
+      </p>
+      <button id="seed-ok">알겠어요 🌱</button>
     </div>
   </div>
 
@@ -357,6 +378,7 @@
         $('inv-wood').textContent = inv.wood;
         $('inv-seed').textContent = inv.seed;
         $('inv-crop').textContent = inv.crop;
+        $('inv-seed-item').classList.toggle('inv-low', inv.seed <= 0); // 씨앗 0 경고
       },
       setTime(mode, daylight) {
         $('time-emoji').textContent = mode === 'day' ? '🌤️' : '🌙';
@@ -420,6 +442,8 @@
       },
       // 신규 유저 튜토리얼 표시
       showTutorial() { $('tutorial-modal').classList.add('show'); },
+      // 씨앗 소진 안내 모달
+      showSeedHelp() { $('seed-modal').classList.add('show'); },
     };
     const closeNpc = () => $('npc-modal').classList.remove('show');
 
@@ -484,6 +508,7 @@
     // 튜토리얼: 시작하기 닫기 / 도움말(❓) 다시 열기
     $('tut-start').addEventListener('click', () => $('tutorial-modal').classList.remove('show'));
     $('help-btn').addEventListener('click', () => ui.showTutorial());
+    $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
 
     // 낮/밤 수동 조절: 시간 바 드래그로 시간 지정, 이모지 클릭으로 자동순환 토글
     (function setupTimeControl() {

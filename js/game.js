@@ -83,7 +83,7 @@ const NPCS = [
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 5, crop: 0 }, // 목재 / 씨앗 / 작물
+  inventory: { wood: 0, seed: 8, crop: 0 }, // 목재 / 씨앗 / 작물 (넉넉한 시작 씨앗)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -872,7 +872,8 @@ function trySeed() {
     const hasGrowing = plots.some(p => p.state === 'growing' || p.state === 'mature');
     if (!hasGrowing) {
       gameState.inventory.seed += 3; refreshInventoryUI();
-      ui.toast?.('🌰 주머니에서 씨앗 3개를 찾았어요!');
+      ui.showSeedHelp?.();   // 안내 모달로 상황 설명 + 채워줌 (이번엔 안내만, 다시 눌러 심기)
+      return;
     } else {
       ui.toast?.('씨앗이 없어요 — 작물을 수확하면 씨앗이 늘어요 🌾'); return;
     }
