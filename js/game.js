@@ -41,7 +41,8 @@ const CROP_TYPES = [
 // ── 도구 하트바 (선택 도구에 따라 상호작용이 달라짐) ─────────────
 const TOOLS = [
   { id: 'axe',    name: '도끼',     ico: '🪓' }, // 벌목
-  { id: 'hoe',    name: '괭이',     ico: '⛏️' }, // 밭갈기 + 씨앗 심기
+  { id: 'hoe',    name: '괭이',     ico: '⛏️' }, // 밭 갈기
+  { id: 'seed',   name: '씨앗',     ico: '🌰' }, // 씨앗 심기
   { id: 'water',  name: '물조리개', ico: '💧' }, // 물주기
   { id: 'sickle', name: '낫',       ico: '🌾' }, // 수확
   { id: 'hammer', name: '망치',     ico: '🔨' }, // 건축
@@ -104,6 +105,7 @@ const trees = [];
 const swayables = [];
 const particles = [];
 const plots = [];                 // 밭 목록 (런타임 객체)
+const obstacles = [];             // 밭 만들기 금지 구역 {x,z,r} (나무·호수·벤치·가로등·집)
 const houseWindows = [];          // 밤에 빛나는 창문 머티리얼
 let houseGroup, houseGhost;       // 집 그룹 / 미완성 터 표시
 const HOUSE_POS = new THREE.Vector3(-8, 0, -8); // 정해진 집 터 위치
@@ -310,6 +312,7 @@ function spawnTree(x, z) {
 
   tree.userData = { hp: 3, canopy, trunk, squash: 0, fallen: false, respawnAt: 0, leafColor };
   scene.add(tree); trees.push(tree);
+  obstacles.push({ x, z, r: 1.3 }); // 나무 밑엔 밭 금지
 }
 
 function buildPlayer() {
@@ -379,6 +382,7 @@ function buildEnvironment() {
   );
   lake.geometry.rotateX(-Math.PI / 2); lake.position.set(LAKE.x, 0.06, LAKE.z); lake.receiveShadow = true;
   scene.add(lake);
+  obstacles.push({ x: LAKE.x, z: LAKE.z, r: 6.4 }); // 호수 위엔 밭 금지
   for (let i = 0; i < 9; i++) {
     const a = Math.random() * Math.PI * 2, r = 5.7 + Math.random() * 0.9;
     const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28 + Math.random() * 0.3, 0), clayMat(0xb9c0c4));
@@ -410,6 +414,7 @@ function makeBench(x, z, ry) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.45, 0.1), clayMat(0x6b4a34)); leg.position.set(lx, 0.22, lz); g.add(leg);
   });
   scene.add(g);
+  obstacles.push({ x, z, r: 1.2 }); // 벤치 위엔 밭 금지
 }
 function makeLamp(x, z) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -418,6 +423,7 @@ function makeLamp(x, z) {
   houseWindows.push(headMat);   // 밤에 창문과 함께 빛남
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 0), headMat); head.position.y = 2.5; g.add(head);
   scene.add(g);
+  obstacles.push({ x, z, r: 0.8 }); // 가로등 밑엔 밭 금지
 }
 function makeFlower(x, z, col) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -445,6 +451,7 @@ function buildHouseGhost() {
   houseGroup = new THREE.Group();
   houseGroup.position.copy(HOUSE_POS);
   scene.add(houseGroup);
+  obstacles.push({ x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }); // 집 터엔 밭 금지
 }
 
 // ── 따뜻한 우드 머티리얼(판자 결) — 절차 텍스처, 외부 파일 없음 ──
@@ -586,8 +593,8 @@ function initInput() {
   window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'Space') { wantAction = true; e.preventDefault(); }
-    // 숫자키 1~5 로 도구 선택
-    if (/^Digit[1-5]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
+    // 숫자키 1~6 으로 도구 선택
+    if (/^Digit[1-6]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   renderer.domElement.addEventListener('pointerdown', () => { wantAction = true; });
@@ -772,6 +779,7 @@ function handleAction() {
   switch (TOOLS[currentTool].id) {
     case 'axe': return tryChop();
     case 'hoe': return tryHoe();
+    case 'seed': return trySeed();
     case 'water': return tryWater();
     case 'sickle': return tryHarvest();
     case 'hammer': return tryBuild();
@@ -840,20 +848,27 @@ function tryHoe() {
   const gz = Math.round(player.position.z / 2) * 2;
   let plot = plots.find(p => dist2D(p.group.position, player.position) < 1.6);
   if (!plot) {
-    if (dist2D(HOUSE_POS, { x: gx, z: gz }) < 3) { ui.toast?.('집 터 근처엔 밭을 못 만들어요'); return; }
-    plot = createPlot(gx, gz);
+    if (isBlocked(gx, gz)) { ui.toast?.('여기엔 밭을 만들 수 없어요 🌳'); return; } // 나무·호수·벤치·가로등·집
+    createPlot(gx, gz);                          // 밭만 갈기 (씨앗은 🌰 도구로 심기)
     Sound.till();
-    if (gameState.inventory.seed > 0) plantSeed(plot);
+    ui.toast?.('밭을 갈았어요 — 🌰 씨앗 도구로 심어요');
     return;
   }
-  if (plot.state === 'empty') plantSeed(plot);
-  else if (plot.state === 'wilted') {            // 시든 밭 → 갈아엎고 다시 재배
+  if (plot.state === 'wilted') {                 // 시든 밭 → 다시 갈아엎기(빈 밭)
     clearCrop(plot);
     plot.state = 'empty'; plot.wilted = false; plot.growth = 0; plot.stage = -1; plot.needSince = 0;
     spawnDust(plot.x, plot.z, 10); Sound.till();
-    if (gameState.inventory.seed > 0) plantSeed(plot);
-    else ui.toast?.('밭을 갈았어요 (씨앗 필요 🌰)');
-  } else ui.toast?.('이미 작물이 자라는 중이에요');
+    ui.toast?.('밭을 다시 갈았어요 — 🌰 씨앗을 심어요');
+  } else if (plot.state === 'empty') ui.toast?.('이미 갈아둔 밭이에요 — 🌰 씨앗을 심어요');
+  else ui.toast?.('이미 작물이 자라는 중이에요');
+}
+
+// 씨앗: 갈아둔 빈 밭에 씨앗 심기
+function trySeed() {
+  const plot = plots.find(p => p.state === 'empty' && dist2D(p.group.position, player.position) < 1.6);
+  if (!plot) { ui.toast?.('갈아둔 밭이 없어요 — ⛏️ 괭이로 먼저 갈기'); return; }
+  if (gameState.inventory.seed <= 0) { ui.toast?.('씨앗이 없어요 🌰'); return; }
+  plantSeed(plot);
 }
 
 // 물조리개: 자라는 밭에 물 → 성장(물 없이는 안 자람) + 물방울 파티클
@@ -1344,6 +1359,8 @@ function refreshInventoryUI() {
   refreshCollectQuests();   // 보유량형 퀘스트 진행 갱신
 }
 function dist2D(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
+// 해당 위치가 장애물(나무·호수·벤치·가로등·집)과 겹치는지 — 밭 크기 여유(0.95) 포함
+function isBlocked(x, z) { return obstacles.some(o => Math.hypot(x - o.x, z - o.z) < o.r + 0.95); }
 function lerpAngle(a, b, t) {
   let d = b - a;
   while (d > Math.PI) d -= Math.PI * 2;
