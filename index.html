@@ -33,10 +33,10 @@
   #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
-  #save-btn, #logout-btn, #help-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
+  #save-btn, #logout-btn, #help-btn, #stats-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
-  #help-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
-  #save-btn:active, #logout-btn:active, #help-btn:active { transform: scale(0.94); }
+  #help-btn, #stats-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
+  #save-btn:active, #logout-btn:active, #help-btn:active, #stats-btn:active { transform: scale(0.94); }
 
   /* 문의하기 탭 — 데스크톱은 우측 하단 코너로 분리(상단 HUD와 안 겹침) */
   #feedback-tab { bottom: calc(22px + env(safe-area-inset-bottom)); right: 22px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
@@ -233,6 +233,7 @@
     <span id="login-status">연결 중…</span>
     <button id="save-btn">💾 저장</button>
     <button id="help-btn" title="도움말">❓</button>
+    <button id="stats-btn" title="내 활동 기록">📊</button>
     <button id="logout-btn" style="display:none;">로그아웃</button>
   </div>
 
@@ -564,6 +565,14 @@
     // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
     $('tut-skip').addEventListener('click', () => $('tutorial-modal').classList.remove('show'));
     $('coach-skip').addEventListener('click', () => endCoach(false));
+    // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
+    $('stats-btn').addEventListener('click', () => {
+      if (authState.provider !== 'google') {
+        ui.toast('📊 로그인하면 내 활동 기록을 볼 수 있어요 (게스트는 기록이 이어지지 않아요)');
+        return;
+      }
+      window.open('dashboards/analytics.html', '_blank');
+    });
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
 
     // 낮/밤 수동 조절: 시간 바 드래그로 시간 지정, 이모지 클릭으로 자동순환 토글

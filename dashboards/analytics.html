@@ -56,13 +56,16 @@
       try {
         const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
         const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        // 게임과 같은 브라우저면 익명 세션이 재사용됨(본인 로그 접근)
-        let { data: s } = await sb.auth.getSession();
-        if (!s?.session) await sb.auth.signInAnonymously();
+        // 게임에 로그인한 세션이 있어야 본인 로그가 RLS로 조회됨.
+        // 익명으로 새로 붙으면 다른 유저가 돼 0행이 나오므로, 세션 없으면 안내만.
+        const { data: s } = await sb.auth.getSession();
+        if (!s?.session) {
+          return { rows: demoData(), demo: '로그인이 필요해요 — 게임에 구글 로그인한 뒤 같은 브라우저에서 여세요. (전체 데이터는 admin_analytics.html)' };
+        }
         const { data, error } = await sb.from('game_logs')
           .select('*').order('created_at', { ascending: true }).limit(20000);
         if (error) throw error;
-        if (!data || data.length === 0) return { rows: demoData(), demo: '로그가 아직 없어요 (데모 표시)' };
+        if (!data || data.length === 0) return { rows: demoData(), demo: '이 계정의 로그가 아직 없어요 (게임을 플레이하면 쌓여요)' };
         return { rows: data, demo: null };
       } catch (e) {
         return { rows: demoData(), demo: '연동 실패 — 데모 데이터 (' + (e.message||e) + ')' };
