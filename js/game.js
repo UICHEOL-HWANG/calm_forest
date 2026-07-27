@@ -590,11 +590,14 @@ function initPostProcessing() {
 //  입력
 // =============================================================
 function initInput() {
+  const MOVE_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
   window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (e.code === 'Space') { wantAction = true; e.preventDefault(); }
+    if (e.code === 'Space') wantAction = true;
     // 숫자키 1~6 으로 도구 선택
     if (/^Digit[1-6]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
+    // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
+    if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   renderer.domElement.addEventListener('pointerdown', () => { wantAction = true; });
