@@ -126,6 +126,7 @@ const plots = [];                 // 밭 목록 (런타임 객체)
 const obstacles = [];             // 밭 만들기 금지 구역 {x,z,r} (나무·호수·벤치·가로등·집)
 const houseWindows = [];          // 밤에 빛나는 창문 머티리얼
 let houseGroup, houseGhost;       // 집 그룹 / 미완성 터 표시
+let houseSign, houseSignTex, houseSignCtx; // 집 터 안내판(멀리서도 보임)
 const HOUSE_POS = new THREE.Vector3(-8, 0, -8); // 정해진 집 터 위치
 const clock = new THREE.Clock();
 
@@ -466,21 +467,48 @@ function makeFlower(x, z, col) {
 //  집(건축) — 정해진 터, 단계별 건설
 // =============================================================
 function buildHouseGhost() {
-  // 미완성 터 표시(반투명 점선 느낌의 바닥 + 살랑이는 화살표 대신 링)
+  // 눈에 띄는 집 터: 민트 바닥 + 초록 링(테두리)
   houseGhost = new THREE.Group();
   houseGhost.position.copy(HOUSE_POS);
   const pad = new THREE.Mesh(
-    new THREE.CircleGeometry(2.4, 5),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, roughness: 1 })
+    new THREE.CircleGeometry(2.4, 32),
+    new THREE.MeshStandardMaterial({ color: 0xbfe8c9, transparent: true, opacity: 0.5, roughness: 1 })
   );
-  pad.geometry.rotateX(-Math.PI / 2); pad.position.y = 0.02;
-  houseGhost.add(pad);
+  pad.geometry.rotateX(-Math.PI / 2); pad.position.y = 0.03; houseGhost.add(pad);
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(2.35, 2.65, 40),
+    new THREE.MeshBasicMaterial({ color: 0x5fc07c, transparent: true, opacity: 0.75, side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; houseGhost.add(ring);
   scene.add(houseGhost);
+
+  // 멀리서도 보이는 안내판(스프라이트)
+  const cv = document.createElement('canvas'); cv.width = 320; cv.height = 128; houseSignCtx = cv.getContext('2d');
+  houseSignTex = new THREE.CanvasTexture(cv);
+  houseSign = new THREE.Sprite(new THREE.SpriteMaterial({ map: houseSignTex, transparent: true, depthWrite: false }));
+  houseSign.scale.set(3.4, 1.36, 1); houseSign.position.set(HOUSE_POS.x, 2.9, HOUSE_POS.z);
+  scene.add(houseSign);
+  updateHouseSign();
 
   houseGroup = new THREE.Group();
   houseGroup.position.copy(HOUSE_POS);
   scene.add(houseGroup);
   obstacles.push({ x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }); // 집 터엔 밭 금지
+}
+
+// 집 터 안내판 텍스트 갱신(완성되면 숨김)
+function updateHouseSign() {
+  if (!houseSignCtx) return;
+  const c = houseSignCtx; c.clearRect(0, 0, 320, 128);
+  if (gameState.houseStage >= 3) { houseSign.visible = false; houseSignTex.needsUpdate = true; return; }
+  houseSign.visible = true;
+  c.fillStyle = 'rgba(255,255,255,0.96)'; roundRect(c, 10, 8, 300, 84, 24); c.fill();
+  c.beginPath(); c.moveTo(146, 92); c.lineTo(174, 92); c.lineTo(160, 118); c.closePath(); c.fill();
+  c.fillStyle = '#3a5a44'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = 'bold 34px sans-serif'; c.fillText('🏠 여기에 집 짓기', 160, 36);
+  c.font = 'bold 26px sans-serif'; c.fillStyle = '#6a7a6a';
+  c.fillText(`🔨 망치 · 🪵 ${BUILD_COST}`, 160, 70);
+  houseSignTex.needsUpdate = true;
 }
 
 // ── 따뜻한 우드 머티리얼(판자 결) — 절차 텍스처, 외부 파일 없음 ──
@@ -561,6 +589,7 @@ function buildHouseStage(stage, silent = false) {
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
+  updateHouseSign();                          // 안내판 갱신(완성 시 숨김)
 
   if (!silent) {
     parts.forEach(applyRise);                    // 아래→위로 톡 솟기
@@ -773,6 +802,8 @@ function animate() {
   updateParticles(dt);
   updateFloatTexts(dt);
   updateNPC(dt, t);
+  if (houseSign && houseSign.visible) houseSign.position.y = 2.9 + Math.sin(t * 2) * 0.12;   // 안내판 둥실
+  if (houseGhost && houseGhost.visible) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); // 터 살짝 맥동
   composer.render();
 }
 
