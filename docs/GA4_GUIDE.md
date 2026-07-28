@@ -34,18 +34,49 @@
 | `water_crop` | 물주기 | — |
 | `harvest_crop` | 수확 | `crop` (누적 작물 수) |
 | `house_complete` | 집 완성 | — |
+| `quest_accept` / `quest_complete` | 퀘스트 수락/완료 | `quest`, `npc` |
+| `feedback_submit` | 문의 제출 | `category` |
+| `tutorial_start` | 튜토리얼 시작 | — |
+| `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~6), `key`(move/chop/…) |
+| `tutorial_complete` | 튜토리얼 완료 | — |
+| `tutorial_skip` | 튜토리얼 건너뜀 | `at`(welcome 또는 단계번호) |
 | `session_time` | 주기/이탈 시 | `seconds` |
+
+또한 **user_id** 를 GA4에 연결(`setGaUser`)해서, GA4↔Supabase를 유저 단위로 조인할 수 있습니다.
+
+### 튜토리얼 퍼널 분석 예 (탐색 → 유입경로 탐색)
+`tutorial_start` → `tutorial_step`(step=1) → … → `tutorial_step`(step=6) → `tutorial_complete`
+로 단계별 완료율을 보면 **어느 스텝에서 신규 유저가 이탈하는지** 바로 보입니다. `tutorial_skip`의 `at` 값으로 이탈 지점도 확인.
 
 ---
 
-## 3. 매개변수를 "맞춤 측정기준"으로 등록 (중요)
+## 3. ② 맞춤 측정기준/측정항목 등록 (GA4 UI, 코드 X)
 
-GA4는 커스텀 매개변수(`tree_id`, `wood`, `crop`, `seconds`, `method`)를 그냥은 탐색에서 못 씁니다.
-**관리 → 맞춤 정의 → 맞춤 측정기준 만들기** 에서 등록해야 보고서/탐색에서 쪼갤 수 있어요.
+GA4는 커스텀 매개변수를 등록해야 탐색에서 쪼갤 수 있어요.
+**관리 → 맞춤 정의 → 맞춤 측정기준(또는 측정항목) 만들기** 에서 아래를 등록:
 
-- 이벤트 매개변수 `method` → 측정기준 "로그인 방식"
-- `crop` / `wood` → 측정항목(숫자면 맞춤 측정항목)으로 등록
-- 등록 후 24시간 정도 지나야 과거 데이터에도 붙습니다(이후 데이터는 즉시).
+| 매개변수 | 유형 | 범위 | 용도 |
+|----------|------|------|------|
+| `method` | 측정기준(텍스트) | 이벤트 | 로그인 방식(google/anonymous) |
+| `quest` | 측정기준(텍스트) | 이벤트 | 퀘스트 이름 |
+| `npc` | 측정기준(텍스트) | 이벤트 | 주민 id |
+| `category` | 측정기준(텍스트) | 이벤트 | 문의 종류 |
+| `key` | 측정기준(텍스트) | 이벤트 | 튜토리얼 단계 |
+| `at` | 측정기준(텍스트) | 이벤트 | 튜토리얼 이탈 지점 |
+| `wood` / `crop` / `seconds` / `step` | 측정항목(숫자) | 이벤트 | 수치 집계 |
+
+> 등록 후 데이터는 즉시 반영, 과거 데이터는 최대 24~48h. (BigQuery는 등록 없이도 raw로 다 있음)
+
+## 3-b. ③ 주요 이벤트(전환) 지정 (GA4 UI, 코드 X)
+
+**관리 → 이벤트(또는 데이터 표시 → 주요 이벤트)** 에서 아래를 "주요 이벤트"로 토글하면 전환 리포트가 채워집니다:
+- `harvest_crop` (첫 수확) · `house_complete` (집 완성) · `quest_complete` (퀘스트 완료) · `tutorial_complete` (튜토리얼 완료)
+
+→ "방문자 중 몇 %가 집을 완성/튜토리얼을 끝냈나" 같은 전환율을 볼 수 있어요.
+
+## 3-c. ④ user_id 연결 (이미 코드 적용됨)
+
+로그인 시 Supabase `user_id`를 GA4에 심어(`setGaUser`) 보내므로, **GA4 유저 ↔ Supabase 유저**를 같은 키로 조인할 수 있습니다. GA4 **관리 → 보고 ID**에서 "관찰됨(user_id 우선)"으로 두면 크로스 기기 식별도 향상됩니다.
 
 ---
 

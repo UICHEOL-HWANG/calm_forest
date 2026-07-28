@@ -32,6 +32,16 @@ const sessionStart = Date.now();
   console.log('[GA4] 로드됨:', id);
 })();
 
+// [④ user_id 연결] 로그인한 Supabase user_id를 GA4에 심어 GA4↔Supabase 유저 조인 가능
+export function setGaUser(userId) {
+  if (!userId) return;
+  if (isGaConfigured() && typeof window.gtag === 'function') {
+    window.gtag('set', { user_id: String(userId) });
+  } else {
+    console.log('[GA4 폴백] user_id set:', userId);
+  }
+}
+
 // GA4 로 이벤트 전송(폴백: 콘솔) — 모든 트래킹은 이 함수를 거칩니다.
 export function trackEvent(name, params = {}) {
   const payload = { ...params, ts: Date.now() };

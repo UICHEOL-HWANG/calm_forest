@@ -373,7 +373,7 @@
   <script type="module">
     import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js';
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js';
-    import { trackLogin, trackEvent } from './js/analytics.js';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
     import { initControls } from './js/controls.js';
 
@@ -467,6 +467,7 @@
       act(type) {
         if (tutIdx < 0) return;
         if (TUT_STEPS[tutIdx].key === type) {
+          trackEvent('tutorial_step', { step: tutIdx + 1, key: TUT_STEPS[tutIdx].key }); // [①] 단계 완료
           tutIdx++;
           if (tutIdx >= TUT_STEPS.length) endCoach(true);
           else renderCoach();
@@ -490,10 +491,15 @@
       $('coach-dots').innerHTML = TUT_STEPS.map((_, i) =>
         `<span class="${i < tutIdx ? 'done' : i === tutIdx ? 'cur' : ''}">●</span>`).join('');
     }
-    function startCoach() { Input.armTutorialMove(); tutIdx = 0; renderCoach(); $('coach').classList.add('show'); }
+    function startCoach() {
+      Input.armTutorialMove(); tutIdx = 0; renderCoach(); $('coach').classList.add('show');
+      trackEvent('tutorial_start'); // [①] 튜토리얼 시작
+    }
     function endCoach(done) {
+      const at = tutIdx;
       tutIdx = -1; $('coach').classList.remove('show');
-      if (done) ui.toast('🎉 튜토리얼 완료! 이제 자유롭게 즐겨요 🌿');
+      if (done) { ui.toast('🎉 튜토리얼 완료! 이제 자유롭게 즐겨요 🌿'); trackEvent('tutorial_complete'); }
+      else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
     }
 
     // 좌측 상단 로그인 상태 표시(로그인 후)
@@ -559,7 +565,7 @@
     $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
     $('help-btn').addEventListener('click', () => ui.showTutorial());
     // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
-    $('tut-skip').addEventListener('click', () => $('tutorial-modal').classList.remove('show'));
+    $('tut-skip').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); trackEvent('tutorial_skip', { at: 'welcome' }); });
     $('coach-skip').addEventListener('click', () => endCoach(false));
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {
@@ -612,6 +618,7 @@
       // ② 인증 — 세션 잡히면 즉시 플레이 진입(구글 리다이렉트 복귀 포함)
       const res = await initAuth((s) => {
         showLoginStatus(s);
+        if (s.userId) setGaUser(s.userId);          // [④] GA4에 user_id 연결
         if (s.online && !started) enterPlay();
       });
       if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작
