@@ -483,10 +483,10 @@ function buildHouseGhost() {
   scene.add(houseGhost);
 
   // 멀리서도 보이는 안내판(스프라이트)
-  const cv = document.createElement('canvas'); cv.width = 320; cv.height = 128; houseSignCtx = cv.getContext('2d');
-  houseSignTex = new THREE.CanvasTexture(cv);
+  const cv = document.createElement('canvas'); cv.width = 480; cv.height = 180; houseSignCtx = cv.getContext('2d');
+  houseSignTex = new THREE.CanvasTexture(cv); houseSignTex.anisotropy = 4;
   houseSign = new THREE.Sprite(new THREE.SpriteMaterial({ map: houseSignTex, transparent: true, depthWrite: false }));
-  houseSign.scale.set(3.4, 1.36, 1); houseSign.position.set(HOUSE_POS.x, 2.9, HOUSE_POS.z);
+  houseSign.scale.set(2.7, 1.01, 1); houseSign.position.set(HOUSE_POS.x, 3.3, HOUSE_POS.z);
   scene.add(houseSign);
   updateHouseSign();
 
@@ -499,15 +499,19 @@ function buildHouseGhost() {
 // 집 터 안내판 텍스트 갱신(완성되면 숨김)
 function updateHouseSign() {
   if (!houseSignCtx) return;
-  const c = houseSignCtx; c.clearRect(0, 0, 320, 128);
+  const c = houseSignCtx; c.clearRect(0, 0, 480, 180);
   if (gameState.houseStage >= 3) { houseSign.visible = false; houseSignTex.needsUpdate = true; return; }
   houseSign.visible = true;
-  c.fillStyle = 'rgba(255,255,255,0.96)'; roundRect(c, 10, 8, 300, 84, 24); c.fill();
-  c.beginPath(); c.moveTo(146, 92); c.lineTo(174, 92); c.lineTo(160, 118); c.closePath(); c.fill();
-  c.fillStyle = '#3a5a44'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.font = 'bold 34px sans-serif'; c.fillText('🏠 여기에 집 짓기', 160, 36);
-  c.font = 'bold 26px sans-serif'; c.fillStyle = '#6a7a6a';
-  c.fillText(`🔨 망치 · 🪵 ${BUILD_COST}`, 160, 70);
+  // 크림 배경 + 민트 테두리(대비↑, 선명)
+  c.fillStyle = '#fff8ec';
+  roundRect(c, 14, 12, 452, 116, 30); c.fill();
+  c.beginPath(); c.moveTo(216, 128); c.lineTo(264, 128); c.lineTo(240, 166); c.closePath(); c.fill();
+  c.lineWidth = 5; c.strokeStyle = '#a9dcb8'; roundRect(c, 14, 12, 452, 116, 30); c.stroke();
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#2f5a3e'; c.font = 'bold 44px sans-serif';
+  c.fillText('🏠 여기에 집 짓기', 240, 50);
+  c.fillStyle = '#4a5a4f'; c.font = 'bold 32px sans-serif';
+  c.fillText(`🔨 망치 · 🪵 ${BUILD_COST}`, 240, 96);
   houseSignTex.needsUpdate = true;
 }
 
