@@ -168,9 +168,11 @@
   #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; }
   #door-prompt.show { opacity: 1; }
 
-  /* 집 꾸미기 버튼(실내에서만 표시) */
-  #decor-btn { display: none; top: calc(92px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); cursor: pointer; font-weight: 700; font-size: 14px; padding: 9px 16px; border: 2px solid var(--mint); }
+  /* 집 꾸미기 버튼(실내에서만, 하단 중앙 — 토스트와 안 겹침) */
+  #decor-btn { display: none; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); cursor: pointer; font-weight: 700; font-size: 15px; padding: 11px 22px; border: 2px solid var(--mint); }
   body.indoor #decor-btn { display: block; }
+  body.menu-open #decor-btn { display: none; }   /* 메뉴 열리면 버튼 숨김 */
+  body.indoor #hotbar { display: none !important; } /* 실내에선 도구바 숨김(안 씀) */
   #decor-btn:active { transform: translateX(-50%) scale(0.95); }
 
   /* 꾸미기 메뉴 */
@@ -514,7 +516,7 @@
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
         document.body.classList.toggle('indoor', on);
-        if (!on) { $('decor-menu').classList.remove('show'); Input.cancelDecor(); }
+        if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); }
       },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
@@ -582,7 +584,9 @@
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
       initControls();                                // 모바일 컨트롤(터치 감지 시)
-      if (authState.provider === 'google' || authState.online) $('logout-btn').style.display = '';
+      // 구글=로그아웃 / 게스트=나가기 (둘 다 메인 화면으로 복귀)
+      const exitBtn = $('logout-btn'); exitBtn.style.display = '';
+      exitBtn.textContent = (authState.provider === 'google') ? '로그아웃' : '나가기';
 
       // 진행상황 자동 저장 — 30초 주기 + 탭 숨김/종료 시 (창 닫았다 열어도 이어짐)
       setInterval(() => requestSave(), 30000);
@@ -632,20 +636,17 @@
         el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">🥕${d.cost}</span>`;
         el.addEventListener('click', () => {
           if (lastInv.crop < d.cost) { ui.toast('작물이 부족해요 🥕'); return; }
-          Input.selectDecor(d.id);
-          $('decor-menu').classList.remove('show');
+          Input.selectDecor(d.id); closeDecor();
           ui.toast(`${d.ico} 바닥을 탭해 ${d.name} 놓기`);
         });
         box.appendChild(el);
       });
     }
-    $('decor-btn').addEventListener('click', () => {
-      const m = $('decor-menu');
-      if (m.classList.contains('show')) { m.classList.remove('show'); return; }
-      renderDecorItems(); m.classList.add('show');
-    });
-    $('dm-close').addEventListener('click', () => $('decor-menu').classList.remove('show'));
-    $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); ui.toast('배치를 취소했어요'); });
+    function openDecor() { renderDecorItems(); $('decor-menu').classList.add('show'); document.body.classList.add('menu-open'); }
+    function closeDecor() { $('decor-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
+    $('decor-btn').addEventListener('click', openDecor);
+    $('dm-close').addEventListener('click', closeDecor);
+    $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); ui.toast('배치를 취소했어요'); closeDecor(); });
 
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {
