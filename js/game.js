@@ -484,10 +484,14 @@ function buildHouseGhost() {
   scene.add(houseGhost);
 
   // 멀리서도 보이는 안내판(스프라이트)
-  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; houseSignCtx = cv.getContext('2d');
-  houseSignTex = new THREE.CanvasTexture(cv); houseSignTex.anisotropy = 4;
-  houseSign = new THREE.Sprite(new THREE.SpriteMaterial({ map: houseSignTex, transparent: true, depthWrite: false }));
-  houseSign.scale.set(1.3, 1.3, 1); houseSign.position.set(HOUSE_POS.x, 3.0, HOUSE_POS.z);
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 384; houseSignCtx = cv.getContext('2d');
+  houseSignTex = new THREE.CanvasTexture(cv);
+  houseSignTex.minFilter = THREE.LinearFilter; houseSignTex.magFilter = THREE.LinearFilter; // 선명
+  houseSignTex.generateMipmaps = false; houseSignTex.anisotropy = 8;
+  const signMat = new THREE.SpriteMaterial({ map: houseSignTex, transparent: true, depthWrite: false });
+  signMat.fog = false; // 안개 영향 제거 → 거리와 무관하게 또렷
+  houseSign = new THREE.Sprite(signMat);
+  houseSign.scale.set(3.4, 1.28, 1); houseSign.position.set(HOUSE_POS.x, 3.3, HOUSE_POS.z);
   scene.add(houseSign);
   updateHouseSign();
 
@@ -500,12 +504,19 @@ function buildHouseGhost() {
 // 집 터 안내판 텍스트 갱신(완성되면 숨김)
 function updateHouseSign() {
   if (!houseSignCtx) return;
-  const c = houseSignCtx; c.clearRect(0, 0, 128, 128);
+  const c = houseSignCtx; c.clearRect(0, 0, 1024, 384);
   if (gameState.houseStage >= 3) { houseSign.visible = false; houseSignTex.needsUpdate = true; return; }
   houseSign.visible = true;
-  // 깔끔한 🏠 아이콘만(멀리서 위치 표시). 상세 안내는 근접 시 HTML 프롬프트로.
+  // 고해상도 크림 말풍선 + 민트 테두리(선명)
+  c.fillStyle = '#fff8ec';
+  roundRect(c, 30, 26, 964, 248, 60); c.fill();
+  c.beginPath(); c.moveTo(462, 274); c.lineTo(562, 274); c.lineTo(512, 356); c.closePath(); c.fill();
+  c.lineWidth = 10; c.strokeStyle = '#a9dcb8'; roundRect(c, 30, 26, 964, 248, 60); c.stroke();
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.font = '86px sans-serif'; c.fillText('🏠', 64, 66);
+  c.fillStyle = '#2f5a3e'; c.font = 'bold 92px sans-serif';
+  c.fillText('🏠 여기에 집 짓기', 512, 108);
+  c.fillStyle = '#4a5a4f'; c.font = 'bold 66px sans-serif';
+  c.fillText(`🔨 망치 · 🪵 ${BUILD_COST}`, 512, 210);
   houseSignTex.needsUpdate = true;
 }
 
@@ -703,9 +714,8 @@ function updateDoorInteract() {
   let nd = null, prompt = null;
   if (indoor) {
     if (dist2D({ x: INT.x, z: INT.z - 4 }, player.position) < 1.8) { nd = 'exit'; prompt = '🚪 나가기 (Space/액션)'; }
-  } else if (dist2D(HOUSE_POS, player.position) < 2.9) {
-    if (gameState.houseStage >= 3) { nd = 'enter'; prompt = '🚪 집에 들어가기 (Space/액션)'; }
-    else { prompt = `🏠 집 터예요! 🔨망치를 골라 클릭/Space로 짓기 · 필요 🪵 ${BUILD_COST}`; } // 빌드 힌트(도어액션 아님)
+  } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
+    nd = 'enter'; prompt = '🚪 집에 들어가기 (Space/액션)';
   }
   nearDoor = nd;
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
@@ -799,7 +809,7 @@ function animate() {
   updateParticles(dt);
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (houseSign && houseSign.visible) houseSign.position.y = 2.9 + Math.sin(t * 2) * 0.12;   // 안내판 둥실
+  if (houseSign && houseSign.visible) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12;   // 안내판 둥실
   if (houseGhost && houseGhost.visible) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); // 터 살짝 맥동
   composer.render();
 }
