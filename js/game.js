@@ -945,10 +945,15 @@ function updatePlots() {
       }
       // '물을 줘야해요!' 알림: 목마른 성장 작물 위에
       setPlotWarn(plot, plot.state === 'growing' && !wet);
-    } else {
+      setPlotHarvest(plot, false);
+    } else if (plot.state === 'mature') {
       setPlotWarn(plot, false);
+      setPlotHarvest(plot, true);   // 다 자람 → "수확!" 알림
+    } else {
+      setPlotWarn(plot, false); setPlotHarvest(plot, false);
     }
     if (plot.warn && plot.warn.visible) plot.warn.position.y = 1.4 + Math.sin(now * 3) * 0.06; // 살짝 둥실
+    if (plot.harvest && plot.harvest.visible) plot.harvest.position.y = 1.4 + Math.sin(now * 3 + 1) * 0.06;
   }
 }
 
@@ -991,6 +996,29 @@ function setPlotWarn(plot, show) {
   if (plot.warn) plot.warn.visible = show;
 }
 
+// 밭 위 '수확!' 알림 스프라이트(공유 텍스처)
+let _harvestMat = null;
+function harvestMaterial() {
+  if (_harvestMat) return _harvestMat;
+  const cv = document.createElement('canvas'); cv.width = 200; cv.height = 104;
+  const c = cv.getContext('2d');
+  c.fillStyle = 'rgba(150,220,150,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
+  c.fillStyle = '#245a2a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('🌾 수확!', 100, 40);
+  const tex = new THREE.CanvasTexture(cv);
+  _harvestMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  return _harvestMat;
+}
+function setPlotHarvest(plot, show) {
+  if (show && !plot.harvest) {
+    plot.harvest = new THREE.Sprite(harvestMaterial());
+    plot.harvest.scale.set(1.28, 0.7, 1); plot.harvest.position.set(0, 1.4, 0);
+    plot.group.add(plot.harvest);
+  }
+  if (plot.harvest) plot.harvest.visible = show;
+}
+
 function updatePlotVisual(plot) {
   plot.soil.material.color.set(plot.watered ? PAL.soilWet : PAL.soil); // 젖은 흙 색
 }
@@ -1001,7 +1029,11 @@ function refreshCropStage(plot) {
   if (desired === plot.stage) return;
   plot.stage = desired;
   buildCropStage(plot);        // 새 단계 메시 생성 + 톡 튀는 팝
-  if (desired === 2) { plot.state = 'mature'; spawnSparkle(plot.x, 0.7, plot.z, 8); } // 수확 준비 반짝
+  if (desired === 2) {         // 수확 준비 완료
+    plot.state = 'mature';
+    spawnSparkle(plot.x, 0.7, plot.z, 8);
+    ui.toast?.(`🌾 ${plot.cropType?.name || '작물'}가 다 자랐어요! 낫으로 수확하세요`);
+  }
 }
 
 // 단계별 작물 메시(그룹 scale=1, 크기는 지오메트리로 → updatePops 팝과 호환)
