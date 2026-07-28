@@ -507,15 +507,15 @@ function updateHouseSign() {
   const c = houseSignCtx; c.clearRect(0, 0, 1024, 384);
   if (gameState.houseStage >= 3) { houseSign.visible = false; houseSignTex.needsUpdate = true; return; }
   houseSign.visible = true;
-  // 고해상도 크림 말풍선 + 민트 테두리(선명)
-  c.fillStyle = '#fff8ec';
+  // 블룸(후광)에 안 걸리게 살짝 낮춘 세이지 톤 + 진한 테두리·글자
+  c.fillStyle = '#b8d2ba';   // 덜 밝은 세이지(블룸 임계값 아래)
   roundRect(c, 30, 26, 964, 248, 60); c.fill();
   c.beginPath(); c.moveTo(462, 274); c.lineTo(562, 274); c.lineTo(512, 356); c.closePath(); c.fill();
-  c.lineWidth = 10; c.strokeStyle = '#a9dcb8'; roundRect(c, 30, 26, 964, 248, 60); c.stroke();
+  c.lineWidth = 10; c.strokeStyle = '#6fae82'; roundRect(c, 30, 26, 964, 248, 60); c.stroke();
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillStyle = '#2f5a3e'; c.font = 'bold 92px sans-serif';
+  c.fillStyle = '#204a2c'; c.font = 'bold 92px sans-serif';
   c.fillText('🏠 여기에 집 짓기', 512, 108);
-  c.fillStyle = '#4a5a4f'; c.font = 'bold 66px sans-serif';
+  c.fillStyle = '#33503c'; c.font = 'bold 66px sans-serif';
   c.fillText(`🔨 망치 · 🪵 ${BUILD_COST}`, 512, 210);
   houseSignTex.needsUpdate = true;
 }
