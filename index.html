@@ -53,6 +53,7 @@
   body:not(.playing) #talk-btn,
   body:not(.playing) #coach,
   body:not(.playing) #door-prompt,
+  body:not(.playing) #fish-prompt,
   body:not(.playing) #decor-btn,
   body:not(.playing) #decor-menu,
   body:not(.playing) #mobile-controls { display: none !important; }
@@ -168,6 +169,12 @@
   #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; }
   #door-prompt.show { opacity: 1; }
 
+  /* 낚시 프롬프트(하단 중앙) */
+  #fish-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 15px; font-weight: 700; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  #fish-prompt.show { opacity: 1; }
+  #fish-prompt.bite { background: #ffe0a8; animation: biteFlash .4s ease-in-out infinite; }
+  @keyframes biteFlash { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
+
   /* 집 꾸미기 버튼(실내에서만, 하단 중앙 — 토스트와 안 겹침) */
   #decor-btn { display: none; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); cursor: pointer; font-weight: 700; font-size: 15px; padding: 11px 22px; border: 2px solid var(--mint); }
   body.indoor #decor-btn { display: block; }
@@ -243,10 +250,10 @@
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
     #quest-panel { top: calc(80px + env(safe-area-inset-top)); max-width: 56vw; }
-    .slot { width: 44px; height: 44px; border-radius: 12px; }
-    .slot .s-ico { font-size: 18px; }
-    .slot .s-key { font-size: 8px; }
-    #hotbar { gap: 6px; padding: 6px; }
+    .slot { width: 42px; height: 42px; border-radius: 11px; }
+    .slot .s-ico { font-size: 17px; }
+    .slot .s-key { font-size: 7.5px; }
+    #hotbar { gap: 4px; padding: 5px; }
     #login-card { padding: 32px 26px 28px; }
     #login-card h1 { font-size: 34px; }
     /* 모바일은 프롬프트 대신 "대화하기" 버튼 사용 → 프롬프트 숨김 */
@@ -274,6 +281,7 @@
       <span class="inv-item"><span class="inv-ico">🪵</span><span id="inv-wood">0</span></span>
       <span class="inv-item" id="inv-seed-item"><span class="inv-ico">🌰</span><span id="inv-seed">0</span></span>
       <span class="inv-item"><span class="inv-ico">🥕</span><span id="inv-crop">0</span></span>
+      <span class="inv-item"><span class="inv-ico">🐟</span><span id="inv-fish">0</span></span>
     </div>
     <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
   </div>
@@ -301,6 +309,9 @@
 
   <!-- 문 입장/퇴장 프롬프트 -->
   <div id="door-prompt" class="panel"></div>
+
+  <!-- 낚시 프롬프트 -->
+  <div id="fish-prompt" class="panel"></div>
 
   <!-- 집 꾸미기 버튼(실내에서만) + 메뉴 -->
   <button id="decor-btn" class="panel">🎨 꾸미기</button>
@@ -440,6 +451,7 @@
         $('inv-wood').textContent = inv.wood;
         $('inv-seed').textContent = inv.seed;
         $('inv-crop').textContent = inv.crop;
+        $('inv-fish').textContent = inv.fish || 0;
         $('inv-seed-item').classList.toggle('inv-low', inv.seed <= 0); // 씨앗 0 경고
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
       },
@@ -466,6 +478,13 @@
         $('quest-desc').textContent = (v.name ? `${v.name} · ` : '') + v.desc;
         $('quest-fill').style.width = Math.round(100 * v.progress / v.target) + '%';
         $('quest-prog').textContent = v.ready ? '✅ 완료! 주민에게 가세요' : `${v.progress} / ${v.target}`;
+      },
+      // 낚시 프롬프트(던지는 중 / 물었어요!)
+      setFishPrompt(text) {
+        const el = $('fish-prompt');
+        if (!text) { el.classList.remove('show', 'bite'); return; }
+        el.textContent = text; el.classList.add('show');
+        el.classList.toggle('bite', text.includes('물었'));
       },
       // NPC 근접 표시: 데스크톱은 프롬프트 텍스트, 모바일은 "대화하기" 버튼(near-npc 클래스)
       setInteractPrompt(text) {
@@ -627,15 +646,17 @@
 
     // ── 집 꾸미기 메뉴 ──
     function renderDecorItems() {
-      $('dm-crop').textContent = `🥕 ${lastInv.crop}`;
+      $('dm-crop').textContent = `🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}`;
       const box = $('dm-items'); box.innerHTML = '';
       Input.getDecor().forEach(d => {
+        const pay = d.pay || 'crop';
+        const payIco = pay === 'fish' ? '🐟' : '🥕';
+        const have = lastInv[pay] || 0;
         const el = document.createElement('div');
-        const afford = lastInv.crop >= d.cost;
-        el.className = 'dm-item' + (afford ? '' : ' off');
-        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">🥕${d.cost}</span>`;
+        el.className = 'dm-item' + (have >= d.cost ? '' : ' off');
+        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${payIco}${d.cost}</span>`;
         el.addEventListener('click', () => {
-          if (lastInv.crop < d.cost) { ui.toast('작물이 부족해요 🥕'); return; }
+          if (have < d.cost) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           ui.toast(`${d.ico} 바닥을 탭해 ${d.name} 놓기`);
         });

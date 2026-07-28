@@ -46,6 +46,7 @@ const TOOLS = [
   { id: 'water',  name: '물조리개', ico: '💧' }, // 물주기
   { id: 'sickle', name: '낫',       ico: '🌾' }, // 수확
   { id: 'hammer', name: '망치',     ico: '🔨' }, // 건축
+  { id: 'rod',    name: '낚싯대',   ico: '🎣' }, // 낚시(호수)
 ];
 let currentTool = 0;
 const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
@@ -55,14 +56,28 @@ const WILT_TIME = 22;  // 물 없이 목마른 채 방치되면 시드는 시간
 
 // ── 집 꾸미기 가구 카탈로그 (작물 💰 로 구매해 실내에 배치) ──────
 const DECOR = [
-  { id: 'rug',   name: '러그',   ico: '🎨', cost: 2 },
-  { id: 'plant', name: '화분',   ico: '🪴', cost: 2 },
-  { id: 'chair', name: '의자',   ico: '🪑', cost: 3 },
-  { id: 'table', name: '테이블', ico: '🟫', cost: 3 },
-  { id: 'lamp',  name: '램프',   ico: '🕯️', cost: 4 },
-  { id: 'sofa',  name: '소파',   ico: '🛋️', cost: 5 },
+  { id: 'rug',      name: '러그',   ico: '🎨', cost: 2, pay: 'crop' },
+  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop' },
+  { id: 'chair',    name: '의자',   ico: '🪑', cost: 3, pay: 'crop' },
+  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop' },
+  { id: 'lamp',     name: '램프',   ico: '🕯️', cost: 4, pay: 'crop' },
+  { id: 'sofa',     name: '소파',   ico: '🛋️', cost: 5, pay: 'crop' },
+  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish' }, // 물고기로 구매
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
+
+// ── 낚시 ─────────────────────────────────────────────────────
+const LAKE_R = 6;   // 호수 반경(환경 호수와 동일)
+const FISH_KINDS = [
+  { rarity: 'rare',     name: '무지개 물고기', p: 0.07 },
+  { rarity: 'uncommon', name: '붉은 물고기',   p: 0.28 },
+  { rarity: 'common',   name: '피라미',        p: 1.00 },
+];
+let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
+let biteAt = 0, biteEnd = 0;
+let bobber = null;        // 찌(3D)
+const castPos = new THREE.Vector3();
+const _v = new THREE.Vector3(); // 임시 벡터
 
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
 //   퀘스트 type: chop(벌목) harvest(수확) water(물주기) plant(심기)
@@ -90,11 +105,19 @@ const NPCS = [
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
     ],
   },
+  {
+    id: 'angler', name: '낚시꾼 할아버지', emoji: '🎣', color: 0x9fc0e0, hat: 0x5a7a9a, pos: [9, 0, 14],
+    quests: [
+      { type: 'fish',      target: 2, title: '첫 낚시',   desc: '물고기 2마리 낚기', reward: { crop: 3 }, line: '호수에서 🎣낚싯대로 물고기 두 마리만 낚아보게!' },
+      { type: 'fish',      target: 5, title: '월척 도전', desc: '물고기 5마리 낚기', reward: { seed: 5 }, line: '이번엔 다섯 마리! 물면 바로 낚아채야 하네.' },
+      { type: 'fish_rare', target: 1, title: '무지개를 낚아', desc: '희귀 물고기 1마리', reward: { crop: 6, seed: 4 }, line: '전설의 무지개 물고기를 낚아오면 큰 상을 주지!' },
+    ],
+  },
 ];
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0 }, // 목재 / 씨앗 / 작물 (넉넉한 시작 씨앗)
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0 }, // 목재 / 씨앗 / 작물 / 물고기
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -670,8 +693,12 @@ function decorMesh(id) {
 function placeDecor(id, wx, wz, silent = false) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
   if (!silent) {
-    if (gameState.inventory.crop < def.cost) { ui.toast?.(`작물이 부족해요 (필요 ${def.cost} 🥕)`); return false; }
-    gameState.inventory.crop -= def.cost; refreshInventoryUI();
+    const pay = def.pay || 'crop';                          // 화폐: 작물 or 물고기
+    if ((gameState.inventory[pay] || 0) < def.cost) {
+      ui.toast?.(pay === 'fish' ? `물고기가 부족해요 (필요 ${def.cost} 🐟)` : `작물이 부족해요 (필요 ${def.cost} 🥕)`);
+      return false;
+    }
+    gameState.inventory[pay] -= def.cost; refreshInventoryUI();
   }
   const m = decorMesh(id);
   const lx = Math.max(INT.x - 3.4, Math.min(INT.x + 3.4, wx));
@@ -766,8 +793,8 @@ function initInput() {
   window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'Space') wantAction = true;
-    // 숫자키 1~6 으로 도구 선택
-    if (/^Digit[1-6]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
+    // 숫자키 1~7 로 도구 선택
+    if (/^Digit[1-7]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
@@ -792,6 +819,7 @@ function animate() {
     handleAction();
     updateNPCInteract();
     updateDoorInteract();
+    updateFishing();
     // [센서] 매 프레임 스냅샷 → logger throttle 후 배치 전송
     sampleFrame(() => ({
       char: { x: player.position.x, y: 0, z: player.position.z },
@@ -809,8 +837,10 @@ function animate() {
   updateParticles(dt);
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (houseSign && houseSign.visible) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12;   // 안내판 둥실
-  if (houseGhost && houseGhost.visible) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); // 터 살짝 맥동
+  // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
+  const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
+  if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
+  if (houseGhost) { houseGhost.visible = showHouseCue; if (showHouseCue) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); }
   composer.render();
 }
 
@@ -977,6 +1007,69 @@ function handleAction() {
     case 'water': return tryWater();
     case 'sickle': return tryHarvest();
     case 'hammer': return tryBuild();
+    case 'rod': return tryFish();
+  }
+}
+
+// =============================================================
+//  낚시: 호수 물가에서 던지기 → 물면 낚아채기(반응 미니게임)
+// =============================================================
+function tryFish() {
+  if (fishState === 'bite') { catchFish(); return; }        // 지금! 낚아채기
+  if (fishState === 'wait') { resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
+  // idle → 캐스팅. 물가 근처여야 함
+  const distLake = dist2D(LAKE, player.position);
+  if (distLake > LAKE_R + 2.8) { ui.toast?.('🎣 호수 물가에서 낚시하세요'); return; }
+  const dir = _v.set(LAKE.x - player.position.x, 0, LAKE.z - player.position.z).normalize();
+  castPos.set(player.position.x + dir.x * 2.6, 0.35, player.position.z + dir.z * 2.6);
+  // 물 위로 클램프
+  const dc = Math.hypot(castPos.x - LAKE.x, castPos.z - LAKE.z);
+  if (dc > LAKE_R - 0.4) { const k = (LAKE_R - 0.6) / dc; castPos.set(LAKE.x + (castPos.x - LAKE.x) * k, 0.35, LAKE.z + (castPos.z - LAKE.z) * k); }
+  if (!bobber) buildBobber();
+  bobber.position.copy(castPos); bobber.visible = true;
+  fishState = 'wait'; biteAt = clock.elapsedTime + 1.5 + Math.random() * 2.8;
+  Sound.water(); spawnWater(castPos.x, castPos.z);
+  ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
+  trackEvent('fishing_cast'); // [GA4]
+}
+
+function catchFish() {
+  const roll = Math.random();
+  const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
+  gameState.inventory.fish += 1; refreshInventoryUI();
+  spawnFloatText(castPos.x, 1.0, castPos.z, `+1 🐟 ${kind.name}`, '#2f6a8a');
+  if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
+  Sound.harvest();
+  questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
+  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity }); // [GA4]
+  resetFishing();
+}
+
+function resetFishing() {
+  fishState = 'idle'; if (bobber) bobber.visible = false; ui.setFishPrompt?.(null);
+}
+
+function buildBobber() {
+  bobber = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), clayMat(0xff7b7b, false)); top.position.y = 0.08; bobber.add(top);
+  const bot = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), clayMat(0xffffff, false)); bot.position.y = -0.05; bobber.add(bot);
+  bobber.visible = false; scene.add(bobber);
+}
+
+function updateFishing() {
+  if (fishState === 'idle') return;
+  if (TOOLS[currentTool].id !== 'rod' || indoor) { resetFishing(); return; } // 도구 바꾸면 취소
+  const now = clock.elapsedTime;
+  if (fishState === 'wait') {
+    bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
+    if (now >= biteAt) {
+      fishState = 'bite'; biteEnd = now + 1.4;           // 낚아챌 시간 창
+      ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요! (Space/액션)');
+      Sound.blip(); spawnWater(castPos.x, castPos.z);
+    }
+  } else if (fishState === 'bite') {
+    bobber.position.y = 0.15 + Math.sin(now * 30) * 0.08; // 격하게 요동
+    if (now > biteEnd) { ui.toast?.('놓쳤어요 🐟💨'); trackEvent('fishing_miss'); resetFishing(); }
   }
 }
 

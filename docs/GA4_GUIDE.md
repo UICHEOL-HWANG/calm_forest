@@ -38,6 +38,9 @@
 | `feedback_submit` | 문의 제출 | `category` |
 | `enter_house` / `exit_house` | 집 실내 입장/퇴장 | — |
 | `place_decor` | 가구 배치(꾸미기) | `item`(rug/plant/…) |
+| `fishing_cast` | 낚시 캐스팅 | — |
+| `fishing_catch` | 물고기 낚음 | `fish`, `rarity`(common/uncommon/rare) |
+| `fishing_miss` | 낚아채기 실패 | — |
 | `tutorial_start` | 튜토리얼 시작 | — |
 | `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~6), `key`(move/chop/…) |
 | `tutorial_complete` | 튜토리얼 완료 | — |
