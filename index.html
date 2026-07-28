@@ -52,6 +52,9 @@
   body:not(.playing) #npc-prompt,
   body:not(.playing) #talk-btn,
   body:not(.playing) #coach,
+  body:not(.playing) #door-prompt,
+  body:not(.playing) #decor-btn,
+  body:not(.playing) #decor-menu,
   body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
@@ -160,6 +163,30 @@
   #coach-dots .done { color: #6fd08c; }
   #coach-dots .cur { color: #ffab3d; }
   #coach-skip { border: none; background: none; font-size: 11px; opacity: .55; text-decoration: underline; cursor: pointer; color: var(--ink); }
+
+  /* 문 입장/퇴장 프롬프트 */
+  #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #door-prompt.show { opacity: 1; }
+
+  /* 집 꾸미기 버튼(실내에서만 표시) */
+  #decor-btn { display: none; top: calc(92px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); cursor: pointer; font-weight: 700; font-size: 14px; padding: 9px 16px; border: 2px solid var(--mint); }
+  body.indoor #decor-btn { display: block; }
+  #decor-btn:active { transform: translateX(-50%) scale(0.95); }
+
+  /* 꾸미기 메뉴 */
+  #decor-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(440px, 92vw); flex-direction: column; gap: 10px; }
+  #decor-menu.show { display: flex; }
+  .dm-head { font-weight: 700; font-size: 14px; }
+  #dm-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .dm-item { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 62px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,0.6); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s; }
+  .dm-item:active { transform: scale(0.94); }
+  .dm-item.off { opacity: .4; }
+  .dm-item .di-ico { font-size: 22px; }
+  .dm-item .di-name { font-size: 11px; font-weight: 600; }
+  .dm-item .di-cost { font-size: 10px; opacity: .7; }
+  .dm-hint { font-size: 12px; opacity: .7; text-align: center; }
+  .dm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .dm-actions button { border: none; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
 
   /* NPC 대화/퀘스트 모달 */
   #npc-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
@@ -270,6 +297,18 @@
     <button id="coach-skip">건너뛰기</button>
   </div>
 
+  <!-- 문 입장/퇴장 프롬프트 -->
+  <div id="door-prompt" class="panel"></div>
+
+  <!-- 집 꾸미기 버튼(실내에서만) + 메뉴 -->
+  <button id="decor-btn" class="panel">🎨 꾸미기</button>
+  <div id="decor-menu" class="panel">
+    <div class="dm-head">🎨 집 꾸미기 <span id="dm-crop"></span></div>
+    <div id="dm-items"></div>
+    <div class="dm-hint">가구를 고르고 <b>바닥을 탭</b>해 배치해요 · 작물🥕로 구매</div>
+    <div class="dm-actions"><button id="dm-cancel">배치 취소</button><button id="dm-close">닫기</button></div>
+  </div>
+
   <!-- 도구 하트바 (JS 에서 슬롯 생성) -->
   <div id="hotbar" class="panel"></div>
 
@@ -378,6 +417,7 @@
     import { initControls } from './js/controls.js';
 
     const $ = (id) => document.getElementById(id);
+    let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
 
     // 도구 하트바 슬롯 렌더 + 클릭/탭 선택
     function buildHotbar(tools) {
@@ -394,10 +434,12 @@
     let toastTimer;
     const ui = {
       setInventory(inv) {
+        lastInv = inv;
         $('inv-wood').textContent = inv.wood;
         $('inv-seed').textContent = inv.seed;
         $('inv-crop').textContent = inv.crop;
         $('inv-seed-item').classList.toggle('inv-low', inv.seed <= 0); // 씨앗 0 경고
+        if ($('decor-menu').classList.contains('show')) renderDecorItems();
       },
       setTime(mode, daylight) {
         $('time-emoji').textContent = mode === 'day' ? '🌤️' : '🌙';
@@ -463,6 +505,17 @@
       showTutorial() { $('tutorial-modal').classList.add('show'); },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
+      // 문 프롬프트
+      setDoorPrompt(text) {
+        const el = $('door-prompt');
+        if (!text) { el.classList.remove('show'); return; }
+        el.textContent = text; el.classList.add('show');
+      },
+      // 실내 진입/퇴장 → 꾸미기 버튼 토글
+      setIndoor(on) {
+        document.body.classList.toggle('indoor', on);
+        if (!on) { $('decor-menu').classList.remove('show'); Input.cancelDecor(); }
+      },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
         if (tutIdx < 0) return;
@@ -567,6 +620,33 @@
     // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
     $('tut-skip').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); trackEvent('tutorial_skip', { at: 'welcome' }); });
     $('coach-skip').addEventListener('click', () => endCoach(false));
+
+    // ── 집 꾸미기 메뉴 ──
+    function renderDecorItems() {
+      $('dm-crop').textContent = `🥕 ${lastInv.crop}`;
+      const box = $('dm-items'); box.innerHTML = '';
+      Input.getDecor().forEach(d => {
+        const el = document.createElement('div');
+        const afford = lastInv.crop >= d.cost;
+        el.className = 'dm-item' + (afford ? '' : ' off');
+        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">🥕${d.cost}</span>`;
+        el.addEventListener('click', () => {
+          if (lastInv.crop < d.cost) { ui.toast('작물이 부족해요 🥕'); return; }
+          Input.selectDecor(d.id);
+          $('decor-menu').classList.remove('show');
+          ui.toast(`${d.ico} 바닥을 탭해 ${d.name} 놓기`);
+        });
+        box.appendChild(el);
+      });
+    }
+    $('decor-btn').addEventListener('click', () => {
+      const m = $('decor-menu');
+      if (m.classList.contains('show')) { m.classList.remove('show'); return; }
+      renderDecorItems(); m.classList.add('show');
+    });
+    $('dm-close').addEventListener('click', () => $('decor-menu').classList.remove('show'));
+    $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); ui.toast('배치를 취소했어요'); });
+
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {
       if (authState.provider !== 'google') {

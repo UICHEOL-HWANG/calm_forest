@@ -53,6 +53,17 @@ const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; //
 const WET_TIME = 5;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(초) — 마르면 다시 물 필요
 const WILT_TIME = 22;  // 물 없이 목마른 채 방치되면 시드는 시간(초)
 
+// ── 집 꾸미기 가구 카탈로그 (작물 💰 로 구매해 실내에 배치) ──────
+const DECOR = [
+  { id: 'rug',   name: '러그',   ico: '🎨', cost: 2 },
+  { id: 'plant', name: '화분',   ico: '🪴', cost: 2 },
+  { id: 'chair', name: '의자',   ico: '🪑', cost: 3 },
+  { id: 'table', name: '테이블', ico: '🟫', cost: 3 },
+  { id: 'lamp',  name: '램프',   ico: '🕯️', cost: 4 },
+  { id: 'sofa',  name: '소파',   ico: '🛋️', cost: 5 },
+];
+const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
+
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
 //   퀘스트 type: chop(벌목) harvest(수확) water(물주기) plant(심기)
 //               house(집완성) collect_wood/collect_crop(보유량 달성)
@@ -89,7 +100,14 @@ const gameState = {
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
+  house: { decor: [] },                     // 실내 배치 가구 [{id,x,z}]
 };
+
+let indoor = false;        // 실내(집 안) 여부
+let nearDoor = null;       // 'enter' | 'exit' | null
+let placingDecor = null;   // 배치 중인 가구 id
+let interiorGroup, interiorFloor, interiorLamp;
+const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let dayPaused = false;  // 낮/밤 자동 순환 정지 여부(수동 조절 시)
@@ -141,6 +159,10 @@ export const Input = {
   setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
+  getDecor() { return DECOR; },
+  selectDecor(id) { placingDecor = id; },    // 가구 선택 → 바닥 탭으로 배치
+  cancelDecor() { placingDecor = null; },
+  isIndoor() { return indoor; },
 };
 
 // =============================================================
@@ -154,6 +176,7 @@ export async function bootWorld(uiCallbacks) {
   initLights();
   buildWorld();
   buildHouseGhost();
+  buildInterior();          // 집 실내 방(꾸미기 공간)
   buildNPCs();              // 마을 주민들
   initPostProcessing();
   initInput();
@@ -187,6 +210,10 @@ function applySave(saved) {
   if (saved.inventory) Object.assign(gameState.inventory, saved.inventory);
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
+  if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
+    gameState.house.decor = [];
+    saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true));
+  }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (typeof saved.houseStage === 'number') {
     for (let s = 1; s <= saved.houseStage; s++) buildHouseStage(s, true); // 조용히 복원
@@ -552,6 +579,113 @@ function buildHouseStage(stage, silent = false) {
 }
 
 // =============================================================
+//  집 실내(입장) + 꾸미기
+// =============================================================
+function buildInterior() {
+  const g = new THREE.Group(); g.position.copy(INT);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 8), woodMat(4, 4));
+  floor.position.y = 0.1; floor.receiveShadow = true; g.add(floor);
+  interiorFloor = floor;
+  const wall = () => clayMat(PAL.wall, false);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 0.24), wall()); back.position.set(0, 1.5, 4); back.castShadow = true; g.add(back);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, 8), wall()); left.position.set(-4, 1.5, 0); g.add(left);
+  const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, 8), wall()); right.position.set(4, 1.5, 0); g.add(right);
+  const fL = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 0.24), wall()); fL.position.set(-2.5, 1.5, -4); g.add(fL); // 앞면 문 양옆
+  const fR = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 0.24), wall()); fR.position.set(2.5, 1.5, -4); g.add(fR);
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.24), wall()); lintel.position.set(0, 2.6, -4); g.add(lintel);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.14), woodMat(1, 2, 0xa9743f)); door.position.set(0, 1.05, -4); g.add(door); // 나가는 문
+  const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
+  houseWindows.push(winMat);
+  const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(0, 1.7, 3.9); g.add(win);
+  scene.add(g); interiorGroup = g;
+  interiorLamp = new THREE.PointLight(0xffd9a0, 0, 16); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3, 0));
+  scene.add(interiorLamp);
+}
+
+// 가구 메시(로우폴리)
+function decorMesh(id) {
+  const g = new THREE.Group();
+  if (id === 'rug') {
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 20), clayMat(0xff9e9e, false)); r.position.y = 0.02; g.add(r);
+  } else if (id === 'plant') {
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.3, 8), clayMat(0xd98b6a)); pot.position.y = 0.15; g.add(pot);
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), clayMat(0x86d18a)); leaf.position.y = 0.5; g.add(leaf);
+  } else if (id === 'chair') {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), woodMat(1, 1)); seat.position.y = 0.45; g.add(seat);
+    const bk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.1), woodMat(1, 1)); bk.position.set(0, 0.7, -0.2); g.add(bk);
+    [[-.2, -.2], [.2, -.2], [-.2, .2], [.2, .2]].forEach(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.45, 0.07), clayMat(0x6b4a34)); l.position.set(x, 0.22, z); g.add(l); });
+  } else if (id === 'table') {
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.7), woodMat(2, 1)); top.position.y = 0.6; g.add(top);
+    [[-.45, -.28], [.45, -.28], [-.45, .28], [.45, .28]].forEach(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.1), woodMat(1, 1)); l.position.set(x, 0.3, z); g.add(l); });
+  } else if (id === 'lamp') {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.3, 6), clayMat(0x5a5148)); pole.position.y = 0.65; g.add(pole);
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.35, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 1.35; g.add(shade);
+  } else if (id === 'sofa') {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.7), clayMat(0x9ec7ff, false)); base.position.y = 0.3; g.add(base);
+    const bk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.2), clayMat(0x9ec7ff, false)); bk.position.set(0, 0.6, -0.25); g.add(bk);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+// 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음)
+function placeDecor(id, wx, wz, silent = false) {
+  const def = DECOR.find(d => d.id === id); if (!def) return false;
+  if (!silent) {
+    if (gameState.inventory.crop < def.cost) { ui.toast?.(`작물이 부족해요 (필요 ${def.cost} 🥕)`); return false; }
+    gameState.inventory.crop -= def.cost; refreshInventoryUI();
+  }
+  const m = decorMesh(id);
+  const lx = Math.max(INT.x - 3.4, Math.min(INT.x + 3.4, wx));
+  const lz = Math.max(INT.z - 3.4, Math.min(INT.z + 3.2, wz));
+  m.position.set(lx, 0.2, lz);
+  scene.add(m); decorMeshes.push(m);
+  gameState.house.decor.push({ id, x: lx - INT.x, z: lz - INT.z });
+  if (!silent) {
+    m.userData.pop = 1; m.scale.setScalar(0.01);
+    Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
+    trackEvent('place_decor', { item: id }); // [GA4]
+  }
+  return true;
+}
+
+// 바닥 탭 → 선택한 가구 배치
+function tryPlaceDecor(e) {
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(interiorFloor, false)[0];
+  if (hit) placeDecor(placingDecor, hit.point.x, hit.point.z);
+}
+
+function enterHouse() {
+  indoor = true;
+  player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true);
+  Sound.blip(); trackEvent('enter_house'); // [GA4]
+}
+function exitHouse() {
+  indoor = false; placingDecor = null;
+  player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false);
+  Sound.blip(); trackEvent('exit_house'); // [GA4]
+}
+
+// 문 근접 감지(입장/퇴장 프롬프트)
+function updateDoorInteract() {
+  let nd = null;
+  if (indoor) {
+    if (dist2D({ x: INT.x, z: INT.z - 4 }, player.position) < 1.8) nd = 'exit';
+  } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
+    nd = 'enter';
+  }
+  if (nd !== nearDoor) {
+    nearDoor = nd;
+    ui.setDoorPrompt?.(nd === 'enter' ? '🚪 집에 들어가기 (Space/액션)' : nd === 'exit' ? '🚪 나가기 (Space/액션)' : null);
+  }
+}
+
+// =============================================================
 //  포스트 프로세싱
 // =============================================================
 function initPostProcessing() {
@@ -602,7 +736,10 @@ function initInput() {
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-  renderer.domElement.addEventListener('pointerdown', () => { wantAction = true; });
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (indoor && placingDecor) { tryPlaceDecor(e); return; } // 실내 가구 배치 중이면 바닥 탭 = 배치
+    wantAction = true;
+  });
 }
 
 // =============================================================
@@ -618,6 +755,7 @@ function animate() {
     updateCamera(dt);
     handleAction();
     updateNPCInteract();
+    updateDoorInteract();
     // [센서] 매 프레임 스냅샷 → logger throttle 후 배치 전송
     sampleFrame(() => ({
       char: { x: player.position.x, y: 0, z: player.position.z },
@@ -673,8 +811,13 @@ function updatePlayer(dt, t) {
     playerAnchor.rotation.z *= 0.9;
   }
 
-  const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
-  if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
+  if (indoor) { // 실내: 방 벽 안쪽으로 제한
+    player.position.x = Math.max(INT.x - 3.5, Math.min(INT.x + 3.5, player.position.x));
+    player.position.z = Math.max(INT.z - 3.7, Math.min(INT.z + 3.5, player.position.z));
+  } else {
+    const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
+    if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
+  }
 }
 
 const camOffset = new THREE.Vector3(0, 14, 16);
@@ -736,6 +879,7 @@ function updateDayNight(dt) {
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1; });
+  if (interiorLamp) interiorLamp.intensity = indoor ? 1.3 : 0; // 실내 조명은 안에 있을 때만
   // 블룸 밤에 살짝 더 강하게
   if (bloomPass) bloomPass.strength = 0.5 + nightAmt * 0.5;
   // 밤 푸른 톤 그레이딩
@@ -782,7 +926,9 @@ function updateTrees(dt) {
 function handleAction() {
   if (!wantAction) return;
   wantAction = false;
-  // NPC 근처면 도구 대신 "대화"가 우선
+  // 문(입장/퇴장) → NPC 대화 → 도구 순 우선
+  if (nearDoor === 'enter') return enterHouse();
+  if (nearDoor === 'exit') return exitHouse();
   if (nearNPC) return talkToNPC();
   switch (TOOLS[currentTool].id) {
     case 'axe': return tryChop();
@@ -944,16 +1090,18 @@ function updatePlots() {
         else if (now - plot.needSince > WILT_TIME) wiltPlot(plot); // 오래 방치 → 시듦
       }
       // '물을 줘야해요!' 알림: 목마른 성장 작물 위에
-      setPlotWarn(plot, plot.state === 'growing' && !wet);
-      setPlotHarvest(plot, false);
+      setPlotWarn(plot, !wet);
+      setPlotHarvest(plot, false); setPlotSeedHint(plot, false);
     } else if (plot.state === 'mature') {
-      setPlotWarn(plot, false);
-      setPlotHarvest(plot, true);   // 다 자람 → "수확!" 알림
+      setPlotWarn(plot, false); setPlotHarvest(plot, true); setPlotSeedHint(plot, false); // 다 자람 → "수확!"
+    } else if (plot.state === 'empty') {
+      setPlotWarn(plot, false); setPlotHarvest(plot, false); setPlotSeedHint(plot, true); // 빈 밭 → "씨앗!"
     } else {
-      setPlotWarn(plot, false); setPlotHarvest(plot, false);
+      setPlotWarn(plot, false); setPlotHarvest(plot, false); setPlotSeedHint(plot, false); // 시든 밭 등
     }
     if (plot.warn && plot.warn.visible) plot.warn.position.y = 1.4 + Math.sin(now * 3) * 0.06; // 살짝 둥실
     if (plot.harvest && plot.harvest.visible) plot.harvest.position.y = 1.4 + Math.sin(now * 3 + 1) * 0.06;
+    if (plot.seedHint && plot.seedHint.visible) plot.seedHint.position.y = 1.4 + Math.sin(now * 3 + 2) * 0.06;
   }
 }
 
@@ -1017,6 +1165,29 @@ function setPlotHarvest(plot, show) {
     plot.group.add(plot.harvest);
   }
   if (plot.harvest) plot.harvest.visible = show;
+}
+
+// 밭 위 '씨앗을 넣어요' 알림(빈 밭)
+let _seedHintMat = null;
+function seedHintMaterial() {
+  if (_seedHintMat) return _seedHintMat;
+  const cv = document.createElement('canvas'); cv.width = 248; cv.height = 104;
+  const c = cv.getContext('2d');
+  c.fillStyle = 'rgba(233,206,150,0.97)'; roundRect(c, 8, 8, 232, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(114, 72); c.lineTo(134, 72); c.lineTo(120, 94); c.closePath(); c.fill();
+  c.fillStyle = '#6b4a20'; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('🌰 씨앗을 넣어요', 124, 40);
+  const tex = new THREE.CanvasTexture(cv);
+  _seedHintMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  return _seedHintMat;
+}
+function setPlotSeedHint(plot, show) {
+  if (show && !plot.seedHint) {
+    plot.seedHint = new THREE.Sprite(seedHintMaterial());
+    plot.seedHint.scale.set(1.55, 0.65, 1); plot.seedHint.position.set(0, 1.4, 0);
+    plot.group.add(plot.seedHint);
+  }
+  if (plot.seedHint) plot.seedHint.visible = show;
 }
 
 function updatePlotVisual(plot) {
