@@ -75,7 +75,7 @@ const NPCS = [
   {
     id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [9, 0, -3],
     quests: [
-      { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4 }, line: '여기 좋은 씨앗들이 있소. 세 번만 심어보겠소?' },
+      { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
     ],
   },
@@ -140,6 +140,7 @@ export const Input = {
   getTools() { return TOOLS; },
   setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
+  armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
 };
 
 // =============================================================
@@ -632,6 +633,7 @@ function animate() {
   updatePlots(dt);
   updatePops(dt);
   updateParticles(dt);
+  updateFloatTexts(dt);
   updateNPC(dt, t);
   composer.render();
 }
@@ -809,7 +811,8 @@ function tryChop() {
   if (ud.hp <= 0) {
     gameState.inventory.wood += 3; ud.fallen = true; ud.respawnAt = clock.elapsedTime + 12;
     nearest.visible = false; spawnLeafBurst(nearest, 26);
-  } else gameState.inventory.wood += 1;
+    spawnFloatText(nearest.position.x, 2.4, nearest.position.z, '+3 🪵', '#7a5230'); // 획득 표시
+  } else { gameState.inventory.wood += 1; spawnFloatText(nearest.position.x, 2.2, nearest.position.z, '+1 🪵', '#7a5230'); }
   refreshInventoryUI();
   questEvent('chop');                                          // 퀘스트 진행
   ui.act?.('chop');                                            // 튜토리얼
@@ -918,6 +921,7 @@ function tryHarvest() {
   gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
   Sound.harvest();
   ui.toast?.(`${plot.cropType?.name || '작물'} +1 수확! 🌾`);
+  spawnFloatText(plot.x, 1.1, plot.z, '+1 🥕', '#c05a2a'); // 획득 표시
   spawnSparkle(plot.x, 0.7, plot.z, 24); // [파티클] 반짝이 폭발
   if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
   plot.state = 'empty'; plot.growth = 0; plot.stage = -1; plot.watered = false;
@@ -1045,6 +1049,29 @@ function tryBuild() {
 // =============================================================
 //  팝 애니메이션(밭/작물/집 부재 톡 튀어오름)
 // =============================================================
+// ── 획득 표시: "+3 🪵" 처럼 위로 떠오르며 사라지는 텍스트(스프라이트) ──
+const floatTexts = [];
+function spawnFloatText(x, y, z, text, color = '#3a4a40') {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96;
+  const c = cv.getContext('2d');
+  c.font = 'bold 52px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.lineWidth = 8; c.strokeStyle = 'rgba(255,255,255,0.92)'; c.strokeText(text, 128, 48);
+  c.fillStyle = color; c.fillText(text, 128, 48);
+  const tex = new THREE.CanvasTexture(cv);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+  sp.scale.set(1.9, 0.72, 1); sp.position.set(x, y, z);
+  sp.userData = { life: 1.4, vy: 1.5 };
+  scene.add(sp); floatTexts.push(sp);
+}
+function updateFloatTexts(dt) {
+  for (let i = floatTexts.length - 1; i >= 0; i--) {
+    const s = floatTexts[i], u = s.userData;
+    u.life -= dt; s.position.y += u.vy * dt; u.vy *= 0.95;
+    s.material.opacity = Math.min(1, u.life * 1.6);
+    if (u.life <= 0) { scene.remove(s); s.material.map.dispose(); s.material.dispose(); floatTexts.splice(i, 1); }
+  }
+}
+
 function updatePops(dt) {
   // scene 전체에서 pop(스케일) / rise(솟아오름) 표시 객체 처리
   scene.traverse(obj => {
@@ -1305,8 +1332,10 @@ export function npcAccept() {
   const st = npcState(o.def.id);
   if (!st.given && !st.allDone) {
     st.given = true; st.progress = 0; st.readyToasted = false;
+    const q = o.def.quests[st.idx];
+    if (q.grant) giveReward(q.grant);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
     trackedNPC = o; refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
-    trackEvent('quest_accept', { quest: o.def.quests[st.idx].title, npc: o.def.id }); // [GA4]
+    trackEvent('quest_accept', { quest: q.title, npc: o.def.id }); // [GA4]
   }
   return npcDialogState();
 }
@@ -1369,6 +1398,7 @@ function rewardText(r) { return Object.entries(r).map(([k, v]) => `${RES_LABEL[k
 function giveReward(r) {
   for (const k in r) gameState.inventory[k] = (gameState.inventory[k] || 0) + r[k];
   refreshInventoryUI();
+  if (player) spawnFloatText(player.position.x, 1.9, player.position.z, '+' + rewardText(r), '#2fa564'); // 보상 표시
 }
 
 // =============================================================

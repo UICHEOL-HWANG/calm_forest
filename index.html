@@ -59,7 +59,7 @@
   #tutorial-modal.show, #seed-modal.show { display: grid; }
   #seed-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
   #seed-ok:active { transform: scale(0.96); }
-  .tut-card { width: min(440px, 92vw); max-height: calc(100vh - 32px); overflow-y: auto; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
+  .tut-card { width: min(440px, 92vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
   .tut-emoji { font-size: 40px; }
   .tut-card h2 { margin: 4px 0 16px; font-size: 20px; }
   .tut-list { list-style: none; margin: 0 0 20px; padding: 0; text-align: left; }
@@ -73,7 +73,7 @@
   /* 피드백 모달 */
   #feedback-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
   #feedback-modal.show { display: grid; }
-  .fb-card { width: min(400px, 90vw); max-height: calc(100vh - 32px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
+  .fb-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
   .fb-card h3 { margin: 0 0 4px; font-size: 18px; }
   .fb-sub { margin: 0 0 16px; font-size: 13px; opacity: .7; }
   #fb-category, #fb-text { width: 100%; border: 1px solid #e2e6e2; border-radius: 12px; padding: 10px 12px; font-size: 14px; font-family: inherit; color: var(--ink); background: #fafdfa; }
@@ -93,7 +93,7 @@
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes floatUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
   #login-card { position: relative; text-align: center; padding: 40px 40px 34px; max-width: 380px;
-    max-height: calc(100vh - 32px); overflow-y: auto;
+    max-height: calc(100dvh - 24px); overflow-y: auto;
     background: rgba(255,255,255,0.16); backdrop-filter: blur(16px) saturate(1.2);
     border: 1px solid rgba(255,255,255,0.35); border-radius: 28px;
     box-shadow: 0 20px 60px rgba(30,50,40,0.35); color: #fff; animation: floatUp .9s ease both; }
@@ -164,7 +164,7 @@
   /* NPC 대화/퀘스트 모달 */
   #npc-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
   #npc-modal.show { display: grid; }
-  .npc-card { width: min(400px, 90vw); max-height: calc(100vh - 32px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
+  .npc-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
   .npc-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
   #npc-emoji { font-size: 22px; }
   #npc-line { margin: 12px 0 14px; font-size: 15px; line-height: 1.5; }
@@ -331,19 +331,15 @@
     <div class="tut-card">
       <div class="tut-emoji">🌿</div>
       <h2>calm forest에 오신 걸 환영해요!</h2>
+      <p style="font-size:14px;line-height:1.6;opacity:.85;margin:0 0 14px;">
+        이동·벌목·농사·건축·주민 퀘스트가 있는 포근한 숲이에요.<br>
+        <b>화면 안내를 따라 직접 해보는 튜토리얼</b>로 하나씩 익혀볼까요?
+      </p>
       <ul class="tut-list">
-        <li><b>🕹️ 이동</b> — WASD·방향키 <span class="mo">(모바일: 왼쪽 조이스틱)</span></li>
-        <li><b>🧰 도구</b> — 하단 1~6 선택 (🪓도끼 ⛏️괭이 🌰씨앗 💧물조리개 🌾낫 🔨망치)</li>
-        <li><b>✋ 상호작용</b> — Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span></li>
-        <li><b>🌱 농사</b> — ⛏️괭이로 밭 갈기 → 🌰씨앗 심기 → 💧물주기 → 🌾낫으로 수확
-          <span class="mo">(물을 줘야만 자라요! 흙이 마르면 다시 주기, 총 2번이면 수확)</span></li>
-        <li><b>🥀 시들기·재배</b> — 오래 물을 안 주면 시들어요. 밭 위 <b>“💧물 줘요!”</b> 알림을 확인하고, 시들었으면 괭이로 다시 심어요</li>
-        <li><b>🌰 씨앗</b> — 8개로 시작! 수확하면 씨앗 +2로 늘어나요. 다 떨어져도 자동으로 채워주니 걱정 마세요</li>
-        <li><b>🏠 건축</b> — 반투명 집 터에서 망치로 목재 10개씩 3단계 짓기</li>
-        <li><b>🧑‍🌾 주민</b>에게 말 걸어 퀘스트 받고 보상 받기</li>
-        <li><b>💾 진행상황</b>은 자동 저장돼요 (창 닫아도 이어짐)</li>
+        <li><b>🕹️ 이동</b> WASD·방향키 <span class="mo">(모바일: 왼쪽 조이스틱)</span></li>
+        <li><b>✋ 상호작용</b> Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span> · 도구는 하단 1~6</li>
+        <li><b>💾 진행상황</b>은 자동 저장돼요</li>
       </ul>
-      <p style="font-size:12.5px;opacity:.7;margin:0 0 4px;">아래 버튼을 누르면 화면 안내를 따라 <b>직접 해보는 튜토리얼</b>이 시작돼요</p>
       <button id="tut-start">튜토리얼 시작 🌱</button>
       <button id="tut-skip">건너뛰고 바로 시작</button>
     </div>
@@ -494,7 +490,7 @@
       $('coach-dots').innerHTML = TUT_STEPS.map((_, i) =>
         `<span class="${i < tutIdx ? 'done' : i === tutIdx ? 'cur' : ''}">●</span>`).join('');
     }
-    function startCoach() { tutIdx = 0; renderCoach(); $('coach').classList.add('show'); }
+    function startCoach() { Input.armTutorialMove(); tutIdx = 0; renderCoach(); $('coach').classList.add('show'); }
     function endCoach(done) {
       tutIdx = -1; $('coach').classList.remove('show');
       if (done) ui.toast('🎉 튜토리얼 완료! 이제 자유롭게 즐겨요 🌿');
