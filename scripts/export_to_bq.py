@@ -109,7 +109,8 @@ def load_json(client, table, rows, schema, mode):
 
 def prune_old_logs():
     """BQ 적재 후에만 호출 — 7일 지난 game_logs 만 Supabase에서 삭제(saves는 건드리지 않음)."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)).isoformat()
+    # ISO의 '+00:00'는 URL에서 '+'가 공백으로 해석돼 400 → 'Z'로 치환
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)).isoformat().replace('+00:00', 'Z')
     url = f"{SUPABASE_URL}/rest/v1/game_logs?created_at=lt.{cutoff}"
     r = requests.delete(url, headers={**HEADERS, "Prefer": "return=minimal"}, timeout=120)
     r.raise_for_status()
