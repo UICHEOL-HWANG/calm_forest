@@ -853,6 +853,13 @@ function updateAttractCamera(t) {
 
 let walkPhase = 0;
 let movedOnce = false;   // 튜토리얼: 첫 이동 감지
+let actAnim = 0;         // 액션 제스처 진행(1→0)
+
+// 액션 제스처 트리거: 대상(tx,tz) 방향으로 돌고 몸을 휙 숙였다 폄
+function doPlayerAction(tx, tz) {
+  if (typeof tx === 'number') player.rotation.y = Math.atan2(tx - player.position.x, tz - player.position.z);
+  actAnim = 1;
+}
 function updatePlayer(dt, t) {
   const speed = 6;
   let mx = 0, mz = 0;
@@ -885,6 +892,17 @@ function updatePlayer(dt, t) {
   } else {
     const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
+  }
+
+  // 액션 제스처: 몸을 앞으로 휙 숙였다 펴는 스쿼시(벌목·밭일·낚시 등)
+  if (actAnim > 0) {
+    actAnim = Math.max(0, actAnim - dt * 3.5);
+    const s = Math.sin((1 - actAnim) * Math.PI); // 0→1→0
+    playerAnchor.rotation.x = s * 0.6;
+    playerAnchor.position.y -= s * 0.12;
+    playerAnchor.scale.set(1 + s * 0.12, 1 - s * 0.14, 1 + s * 0.12);
+  } else if (playerAnchor.rotation.x !== 0) {
+    playerAnchor.rotation.x = 0; playerAnchor.scale.set(1, 1, 1);
   }
 }
 
@@ -1027,6 +1045,7 @@ function tryFish() {
   if (dc > LAKE_R - 0.4) { const k = (LAKE_R - 0.6) / dc; castPos.set(LAKE.x + (castPos.x - LAKE.x) * k, 0.35, LAKE.z + (castPos.z - LAKE.z) * k); }
   if (!bobber) buildBobber();
   bobber.position.copy(castPos); bobber.visible = true;
+  doPlayerAction(castPos.x, castPos.z); // 낚싯대 던지기 제스처
   fishState = 'wait'; biteAt = clock.elapsedTime + 1.5 + Math.random() * 2.8;
   Sound.water(); spawnWater(castPos.x, castPos.z);
   ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
@@ -1036,6 +1055,7 @@ function tryFish() {
 function catchFish() {
   const roll = Math.random();
   const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
+  doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
   spawnFloatText(castPos.x, 1.0, castPos.z, `+1 🐟 ${kind.name}`, '#2f6a8a');
   if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
@@ -1084,6 +1104,7 @@ function tryChop() {
   if (!nearest) { ui.toast?.('가까운 나무가 없어요'); return; }
   const ud = nearest.userData;
   ud.squash = 1;
+  doPlayerAction(nearest.position.x, nearest.position.z); // 벌목 제스처
   Sound.chop();
   spawnLeafBurst(nearest); spawnWoodChips(nearest);
   ud.hp -= 1;
@@ -1124,6 +1145,7 @@ function plantSeed(plot) {
   gameState.inventory.seed -= 1;
   plot.state = 'growing'; plot.growth = 0.05; plot.stage = -1;
   plot.cropType = CROP_TYPES[Math.floor(Math.random() * CROP_TYPES.length)]; // 작물 종류 랜덤
+  doPlayerAction(plot.x, plot.z); // 심기 제스처
   Sound.plant();
   refreshCropStage(plot);   // 0단계(새싹) 메시 생성 + 팝
   refreshInventoryUI(); updatePlotVisual(plot);
@@ -1140,6 +1162,7 @@ function tryHoe() {
   if (!plot) {
     if (isBlocked(gx, gz)) { ui.toast?.('여기엔 밭을 만들 수 없어요 🌳'); return; } // 나무·호수·벤치·가로등·집
     createPlot(gx, gz);                          // 밭만 갈기 (씨앗은 🌰 도구로 심기)
+    doPlayerAction(gx, gz);                      // 밭갈기 제스처
     Sound.till();
     ui.act?.('till');                            // 튜토리얼
     ui.toast?.('밭을 갈았어요 — 🌰 씨앗 도구로 심어요');
@@ -1183,6 +1206,7 @@ function tryWater() {
   if (clock.elapsedTime < (plot.wetUntil || 0)) { ui.toast?.('아직 흙이 촉촉해요 🌱'); return; } // 마른 뒤에만 성장
   plot.growth = Math.min(1, plot.growth + 0.4);
   plot.wetUntil = clock.elapsedTime + WET_TIME; plot.watered = true;
+  doPlayerAction(plot.x, plot.z); // 물주기 제스처
   Sound.water();
   spawnWater(plot.x, plot.z);   // [파티클] 물방울 + 무지개 반짝임
   refreshCropStage(plot);       // 단계 상승 시 새 메시 + 팝
@@ -1196,6 +1220,7 @@ function tryWater() {
 function tryHarvest() {
   const plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8);
   if (!plot) { ui.toast?.('수확할 작물이 없어요 🌾'); return; }
+  doPlayerAction(plot.x, plot.z); // 수확 제스처
   gameState.inventory.crop += 1; // 작물 +1
   gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
   Sound.harvest();
@@ -1377,6 +1402,7 @@ function tryBuild() {
   const next = gameState.houseStage + 1;
   if (gameState.inventory.wood < BUILD_COST) { ui.toast?.(`${STAGE_NAMES[next]}엔 목재 ${BUILD_COST}개가 필요해요 🪵`); return; }
   gameState.inventory.wood -= BUILD_COST;
+  doPlayerAction(HOUSE_POS.x, HOUSE_POS.z); // 건축 제스처
   buildHouseStage(next);
   if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성! (-${BUILD_COST} 목재)`);
   refreshInventoryUI();
