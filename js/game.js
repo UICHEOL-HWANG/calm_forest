@@ -141,6 +141,7 @@ let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 // 씬 전역 참조
 let renderer, scene, camera, composer, bloomPass, gradePass;
 let player, playerAnchor;
+let heldGroup, handAnchor, heldToolMesh; // 팔(어깨 피벗) / 손 / 든 도구
 let sunLight, hemiLight, ambient;
 let fireflies, stars;
 const trees = [];
@@ -179,7 +180,7 @@ const PAL = {
 export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
   doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space
-  selectTool(i) { currentTool = (i + TOOLS.length) % TOOLS.length; ui.setTool?.(currentTool, TOOLS); Sound.blip(); },
+  selectTool(i) { currentTool = (i + TOOLS.length) % TOOLS.length; ui.setTool?.(currentTool, TOOLS); setHeldTool(TOOLS[currentTool].id); Sound.blip(); },
   getTools() { return TOOLS; },
   setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
@@ -245,6 +246,7 @@ function applySave(saved) {
   }
   if (Array.isArray(saved.plots)) {
     saved.plots.forEach(p => {
+      if (dist2D({ x: p.x, z: p.z }, INT) < 6) return; // 실내에 잘못 생긴 밭 제거
       const plot = createPlot(p.x, p.z, true);
       plot.state = p.state; plot.growth = p.growth || 0; plot.stage = -1;
       if (p.state === 'growing' || p.state === 'mature') {
@@ -388,8 +390,52 @@ function buildPlayer() {
     eye.position.set(ex, 1.3, 0.34); playerAnchor.add(eye);
   });
 
+  // 오른팔(어깨에서 회전) + 손(도구가 붙는 지점)
+  heldGroup = new THREE.Group();
+  heldGroup.position.set(0.34, 0.82, 0.14);
+  heldGroup.rotation.x = -0.2;               // 살짝 든 기본 자세
+  playerAnchor.add(heldGroup);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 6), clayMat(PAL.body, false));
+  arm.position.set(0.04, -0.2, 0.04); arm.rotation.z = -0.25; heldGroup.add(arm);
+  handAnchor = new THREE.Group(); handAnchor.position.set(0.1, -0.42, 0.08); heldGroup.add(handAnchor);
+  setHeldTool(TOOLS[currentTool].id);
+
   player.position.set(gameState.playerPos.x, 0, gameState.playerPos.z);
   scene.add(player);
+}
+
+// 손에 든 도구 메시(도구 전환 시 교체)
+function toolMesh(id) {
+  const g = new THREE.Group();
+  const wood = (l) => new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, l, 6), clayMat(0x8a5a3a));
+  if (id === 'axe') {
+    const h = wood(0.5); h.position.y = 0.15; g.add(h);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.05), clayMat(0xb84a3e)); head.position.set(0.07, 0.36, 0); g.add(head);
+  } else if (id === 'hoe') {
+    const h = wood(0.5); h.position.y = 0.15; g.add(h);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.18), clayMat(0x9aa0a4)); blade.position.set(0, 0.4, 0.08); blade.rotation.x = 0.9; g.add(blade);
+  } else if (id === 'seed') {
+    const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), clayMat(0xcaa06a)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
+  } else if (id === 'water') {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clayMat(0x8fd0ea)); body.position.y = 0.18; g.add(body);
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clayMat(0x8fd0ea)); spout.position.set(0.15, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
+  } else if (id === 'sickle') {
+    const h = wood(0.34); h.position.y = 0.1; g.add(h);
+    const blade = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.02, 6, 10, Math.PI), clayMat(0xc9ced2)); blade.position.set(0.05, 0.3, 0); blade.rotation.set(Math.PI / 2, 0, 0.3); g.add(blade);
+  } else if (id === 'hammer') {
+    const h = wood(0.5); h.position.y = 0.15; g.add(h);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), clayMat(0x6a6f74)); head.position.y = 0.38; g.add(head);
+  } else if (id === 'rod') {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+function setHeldTool(id) {
+  if (!handAnchor) return;
+  if (heldToolMesh) handAnchor.remove(heldToolMesh);
+  heldToolMesh = toolMesh(id); handAnchor.add(heldToolMesh);
 }
 
 function buildFireflies() {
@@ -898,11 +944,13 @@ function updatePlayer(dt, t) {
   if (actAnim > 0) {
     actAnim = Math.max(0, actAnim - dt * 3.5);
     const s = Math.sin((1 - actAnim) * Math.PI); // 0→1→0
-    playerAnchor.rotation.x = s * 0.6;
-    playerAnchor.position.y -= s * 0.12;
-    playerAnchor.scale.set(1 + s * 0.12, 1 - s * 0.14, 1 + s * 0.12);
-  } else if (playerAnchor.rotation.x !== 0) {
+    playerAnchor.rotation.x = s * 0.4;
+    playerAnchor.position.y -= s * 0.1;
+    playerAnchor.scale.set(1 + s * 0.1, 1 - s * 0.12, 1 + s * 0.1);
+    if (heldGroup) heldGroup.rotation.x = -0.2 + s * 1.6;  // 팔로 도구 휘두름
+  } else if (playerAnchor.rotation.x !== 0 || (heldGroup && heldGroup.rotation.x !== -0.2)) {
     playerAnchor.rotation.x = 0; playerAnchor.scale.set(1, 1, 1);
+    if (heldGroup) heldGroup.rotation.x = -0.2;
   }
 }
 
@@ -1014,9 +1062,15 @@ function updateTrees(dt) {
 function handleAction() {
   if (!wantAction) return;
   wantAction = false;
-  // 문(입장/퇴장) → NPC 대화 → 도구 순 우선
+  // 문(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
+  // 실내에선 도구질(밭갈기·낚시 등) 금지 — 가구 배치만(선택 중이면 발 앞에 놓기)
+  if (indoor) {
+    if (placingDecor) placeDecor(placingDecor, player.position.x, player.position.z);
+    else ui.toast?.('🎨 꾸미기 버튼으로 가구를 골라 배치하세요');
+    return;
+  }
   if (nearNPC) return talkToNPC();
   switch (TOOLS[currentTool].id) {
     case 'axe': return tryChop();

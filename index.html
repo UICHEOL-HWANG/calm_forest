@@ -318,7 +318,7 @@
   <div id="decor-menu" class="panel">
     <div class="dm-head">🎨 집 꾸미기 <span id="dm-crop"></span></div>
     <div id="dm-items"></div>
-    <div class="dm-hint">가구를 고르고 <b>바닥을 탭</b>해 배치해요 · 작물🥕로 구매</div>
+    <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>(또는 <b>Space</b>)해 배치 · 🥕작물/🐟물고기로 구매</div>
     <div class="dm-actions"><button id="dm-cancel">배치 취소</button><button id="dm-close">닫기</button></div>
   </div>
 
@@ -658,7 +658,7 @@
         el.addEventListener('click', () => {
           if (have < d.cost) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
-          ui.toast(`${d.ico} 바닥을 탭해 ${d.name} 놓기`);
+          ui.toast(`${d.ico} ${d.name} — 바닥을 탭하거나 Space로 놓기`);
         });
         box.appendChild(el);
       });
