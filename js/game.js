@@ -1025,7 +1025,8 @@ function updateDayNight(dt) {
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1; });
-  if (interiorLamp) interiorLamp.intensity = indoor ? 1.3 : 0; // 실내 조명은 안에 있을 때만
+  // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
+  if (interiorLamp) interiorLamp.intensity = indoor ? (1.8 + nightAmt * 2.6) : 0;
   // 집 안내판: 낮엔 매트(후광X), 밤엔 은은하게 빛나 잘 보이게(동적 채광)
   if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 + nightAmt * 0.28);
   // 블룸 밤에 살짝 더 강하게
