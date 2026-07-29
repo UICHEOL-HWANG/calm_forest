@@ -738,6 +738,17 @@ function decorMesh(id) {
   } else if (id === 'sofa') {
     const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.7), clayMat(0x9ec7ff, false)); base.position.y = 0.3; g.add(base);
     const bk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.2), clayMat(0x9ec7ff, false)); bk.position.set(0, 0.6, -0.25); g.add(bk);
+  } else if (id === 'aquarium') {
+    // 받침대 + 유리 물통 + 물 + 헤엄치는 물고기
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.2, 0.42), woodMat(1, 1)); stand.position.y = 0.1; g.add(stand);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.44, 0.36),
+      new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.28, roughness: 0.1, metalness: 0 }));
+    glass.position.y = 0.42; g.add(glass);
+    const water = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.32, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x4aa6d0, transparent: true, opacity: 0.55, roughness: 0.25, emissive: 0x184a63, emissiveIntensity: 0.5 }));
+    water.position.y = 0.4; g.add(water);
+    const fish = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 6), clayMat(0xff8a5b, false));
+    fish.rotation.z = Math.PI / 2; fish.position.set(0, 0.4, 0); fish.userData.swim = true; g.add(fish);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -1520,6 +1531,12 @@ function updatePops(dt) {
       const e = easeOutBack(1 - u.rise);                     // 아래→위 오버슛
       obj.position.y = u.riseFrom + (u.riseTarget - u.riseFrom) * e;
       if (u.rise === 0) obj.position.y = u.riseTarget;
+    }
+    if (u.swim) {                                            // 어항 속 물고기: 좌우로 살랑살랑
+      const t = clock.elapsedTime;
+      obj.position.x = Math.sin(t * 1.6) * 0.16;
+      obj.rotation.y = Math.cos(t * 1.6) > 0 ? 0 : Math.PI;  // 방향 전환
+      obj.position.y = 0.4 + Math.sin(t * 2.3) * 0.03;
     }
   });
 }
