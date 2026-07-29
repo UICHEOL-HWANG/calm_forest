@@ -133,8 +133,10 @@
   .slot:active { transform: scale(0.94); }
 
   /* 토스트(피드백 메시지) */
-  #toast { top: 96px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #toast { top: 96px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
+  /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지 */
+  body.coaching #toast { top: calc(210px + env(safe-area-inset-top)); }
 
   /* 조작 도움말(데스크톱만) — 하단 중앙, 도구바 위. 잠시 뒤 자동으로 사라짐 */
   #hint { bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .82; white-space: nowrap; animation: hintFade .8s ease 8s forwards; }
@@ -272,6 +274,8 @@
     #npc-prompt { display: none; }
     /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
     #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; }
+    /* 모바일: 코치 말풍선(단계 점 줄바꿈으로 더 큼) 아래로 토스트 배치 */
+    body.coaching #toast { top: calc(238px + env(safe-area-inset-top)); }
   }
 </style>
 </head>
@@ -594,9 +598,9 @@
       { key: 'seed',    text: `④ 🌰씨앗(3)을 갈아둔 밭에 심어요 (${A})` },
       { key: 'water',   text: `⑤ 💧물조리개(4)로 물을 주면 자라요 (${A})` },
       { key: 'harvest', text: `⑥ 다 자란 작물을 🌾낫(5)으로 수확! (${A})` },
-      { key: 'talk',    text: TOUCH
-          ? '⑦ 🧑‍🌾주민에게 다가가면 오른쪽 버튼이 💬로 바뀌어요 — 눌러서 대화·퀘스트!'
-          : '⑦ 🧑‍🌾주민에게 다가가 Space로 말을 걸어 퀘스트를 받아요' },
+      { key: 'quest',   text: TOUCH
+          ? '⑦ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기!'
+          : '⑦ 🧑‍🌾주민에게 말 걸어 퀘스트를 수락하고, 목표를 채운 뒤 다시 말 걸어 보상까지 받으세요' },
       { key: 'fish',    text: `⑧ 🎣낚싯대(7) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
       { key: 'build',   text: `⑨ 🔨망치(6)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
       { key: 'enter',   text: TOUCH
@@ -612,11 +616,13 @@
     }
     function startCoach() {
       Input.armTutorialMove(); tutIdx = 0; renderCoach(); $('coach').classList.add('show');
+      document.body.classList.add('coaching');   // 코치 표시 중 → 토스트를 코치 아래로 내림
       trackEvent('tutorial_start'); // [①] 튜토리얼 시작
     }
     function endCoach(done) {
       const at = tutIdx;
       tutIdx = -1; $('coach').classList.remove('show');
+      document.body.classList.remove('coaching');   // 코치 종료 → 토스트 원위치
       if (done) { ui.toast('🎉 튜토리얼 졸업! 벌목·농사·낚시·집짓기·꾸미기 다 배웠어요. 이제 자유롭게 마을을 가꿔보세요 🌿'); trackEvent('tutorial_complete'); }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
     }

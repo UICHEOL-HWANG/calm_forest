@@ -1778,6 +1778,7 @@ export function npcClaim() {
   const q = o.def.quests[st.idx];
   if (st.given && st.progress >= q.target) {
     giveReward(q.reward); Sound.harvest();
+    ui.act?.('quest');                                               // 튜토리얼: 퀘스트 보상까지 완료
     trackEvent('quest_complete', { quest: q.title, npc: o.def.id }); // [GA4]
     st.idx++; st.given = false; st.progress = 0; st.readyToasted = false;
     if (st.idx >= o.def.quests.length) { st.allDone = true; ui.setQuest?.(null); }
