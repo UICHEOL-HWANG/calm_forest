@@ -25,12 +25,18 @@ function randId() { return 'sess-' + Math.random().toString(36).slice(2) + Date.
 let statusCb = null;
 function emit() { statusCb?.({ ...state }); }
 
+// 익명(게스트) 세션인지 판별
+function isAnon(session) {
+  return session?.user?.is_anonymous === true
+    || session?.user?.app_metadata?.provider === 'anonymous';
+}
+
 // 세션 객체 → state 반영
 function applySession(session) {
   state.online = true;
   state.userId = session.user.id;
-  state.email = session.user.email || session.user.user_metadata?.name || '익명';
-  state.provider = session.user.app_metadata?.provider || 'anonymous';
+  state.email = isAnon(session) ? '게스트' : (session.user.email || session.user.user_metadata?.name || '유저');
+  state.provider = isAnon(session) ? 'anonymous' : (session.user.app_metadata?.provider || 'google');
   emit();
 }
 
@@ -54,18 +60,23 @@ export async function initAuth(onStatusChange) {
       auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true },
     });
 
-    // 로그인 상태 변화 감지(구글 리다이렉트 복귀 포함)
+    // 로그인 상태 변화 감지(구글 리다이렉트 복귀 포함).
+    //   ※ 익명(게스트) 세션은 여기서 자동 적용하지 않음 → 게스트는 휘발성.
+    //     게스트 로그인은 signInAsGuest 가 직접 applySession 으로 처리.
     supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) applySession(session);
+      if (session && !isAnon(session)) applySession(session);
     });
 
-    // 기존 세션(리다이렉트 복귀 or 재방문) 확인
+    // 기존 세션 확인: 구글 계정만 자동 복원. 게스트(익명)는 복원하지 않고 정리.
     const { data } = await supabase.auth.getSession();
-    if (data?.session) {
-      applySession(data.session);
+    const s = data?.session;
+    if (s && !isAnon(s)) {
+      applySession(s);                       // 구글 재방문 → 예전 마을 이어서
       return { needLogin: false, offline: false };
     }
-    // 세션 없음 → 로그인 화면 필요
+    if (s && isAnon(s)) {
+      await supabase.auth.signOut();          // 게스트 재방문 → 이전 익명 세션 정리(매번 새로 시작)
+    }
     return { needLogin: true, offline: false };
   } catch (err) {
     console.warn('[Supabase 폴백] 초기화 실패 → 오프라인:', err?.message || err);
@@ -83,24 +94,36 @@ export async function signInWithGoogle() {
   if (error) { console.warn('[구글 로그인 실패]', error.message); alert('구글 로그인 실패: ' + error.message); }
 }
 
-// ── 게스트로 플레이 (설정됐으면 익명계정, 아니면 순수 오프라인) ──
+// ── 게스트로 플레이 (매번 새 익명계정 → 휘발성, 재방문 시 새 마을) ──
+//   익명 로그인이 성공해야 game_logs/game_saves 에 실제로 쌓임(RLS·FK 때문).
+//   실패하면 순수 오프라인(콘솔 폴백)으로만 동작.
 export async function signInAsGuest() {
   if (supabase) {
     try {
+      // 혹시 남아있는 익명 세션이 있으면 정리 → 항상 새 게스트로 시작(A안)
+      const { data: cur } = await supabase.auth.getSession();
+      if (cur?.session && isAnon(cur.session)) await supabase.auth.signOut();
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) throw error;
-      applySession(data.session);
-      return;
+      applySession(data.session);          // state.online = true → DB 저장 활성화
+      console.log('[게스트] 익명 로그인 성공 → DB 저장 활성화', state.userId);
+      return { online: true };
     } catch (err) {
-      console.warn('[익명 로그인 실패 → 오프라인]', err?.message || err);
+      // 조용히 넘기지 않고 원인을 명확히 노출(대부분 "Anonymous sign-ins 비활성화")
+      console.error(
+        '[게스트] 익명 로그인 실패 → 오프라인(콘솔 폴백)으로만 동작합니다.\n' +
+        '  DB에 저장하려면 Supabase 대시보드에서 Authentication > Sign In / Providers >\n' +
+        '  "Anonymous sign-ins" 를 켜주세요. (원인: ' + (err?.message || err) + ')'
+      );
     }
   }
-  // 순수 오프라인 게스트
+  // 순수 오프라인 게스트(익명 로그인 불가) — 진행은 되지만 DB 저장은 안 됨
   state.online = false;
   state.userId = 'local-' + state.sessionId;
   state.email = '게스트';
   state.provider = 'offline';
   emit();
+  return { online: false };
 }
 
 // ── 로그아웃 ──

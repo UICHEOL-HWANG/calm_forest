@@ -687,6 +687,7 @@ function buildHouseStage(stage, silent = false) {
       Sound.complete();
       ui.toast?.('🎉 집 완성! 축하해요');
       questEvent('house');                       // 퀘스트 진행
+      ui.act?.('build');                         // 튜토리얼: 집 완성
       trackEvent('house_complete');              // [GA4] 집 완성 이벤트
     }
   }
@@ -762,7 +763,11 @@ function placeDecor(id, wx, wz, silent = false) {
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
+    ui.act?.('decor');                       // 튜토리얼: 가구 배치
     trackEvent('place_decor', { item: id }); // [GA4]
+    placingDecor = null;                     // 한 번 놓으면 배치 모드 종료
+    setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구로
+    ui.onDecorPlaced?.();                    // 액션버튼 아이콘 복원(가구 제거)
   }
   return true;
 }
@@ -780,7 +785,7 @@ function enterHouse() {
   indoor = true;
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true);
-  Sound.blip(); trackEvent('enter_house'); // [GA4]
+  Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
   indoor = false; placingDecor = null;
@@ -1122,6 +1127,7 @@ function catchFish() {
   if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
+  ui.act?.('fish');                                                     // 튜토리얼: 낚시
   trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity }); // [GA4]
   resetFishing();
 }
@@ -1293,6 +1299,7 @@ function tryHarvest() {
   updatePlotVisual(plot);
   refreshInventoryUI();
   questEvent('harvest');                                          // 퀘스트 진행
+  ui.act?.('harvest');                                            // 튜토리얼: 수확
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
 }
 

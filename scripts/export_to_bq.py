@@ -23,6 +23,8 @@ BQ_PROJECT = os.environ["BQ_PROJECT"]
 BQ_DATASET = os.environ["BQ_DATASET"]
 BQ_LOCATION = os.environ.get("BQ_LOCATION", "US")
 RETENTION_DAYS = int(os.environ.get("RETENTION_DAYS", "7"))
+# 익명(게스트) 계정 삭제 유예일 — 이 기간 지난 익명 계정만 정리(로그는 이미 BQ에 있음)
+ANON_RETENTION_DAYS = int(os.environ.get("ANON_RETENTION_DAYS", str(RETENTION_DAYS)))
 
 HEADERS = {"apikey": SERVICE_ROLE, "Authorization": f"Bearer {SERVICE_ROLE}"}
 PAGE = 1000
@@ -117,6 +119,54 @@ def prune_old_logs():
     print(f"[prune] game_logs older than {cutoff} deleted from Supabase")
 
 
+def _parse_ts(s):
+    """ISO 타임스탬프 문자열 → aware datetime (Z/마이크로초 편차 대응)."""
+    if not s:
+        return None
+    s = s.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(s)
+    except ValueError:
+        return datetime.fromisoformat(s[:19] + "+00:00")  # 초 단위로 잘라 파싱
+
+
+def _list_all_auth_users():
+    """GoTrue Admin API로 전체 유저를 페이지 단위로 수집(삭제 전 목록 고정용)."""
+    users, page = [], 1
+    while True:
+        url = f"{SUPABASE_URL}/auth/v1/admin/users?page={page}&per_page=200"
+        r = requests.get(url, headers=HEADERS, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        batch = data.get("users", []) if isinstance(data, dict) else data
+        if not batch:
+            break
+        users.extend(batch)
+        if len(batch) < 200:
+            break
+        page += 1
+    return users
+
+
+def delete_old_anon_users():
+    """생성 N일 지난 '익명(게스트)' 계정 삭제.
+       ★ 반드시 export 이후 호출 — game_logs/game_saves 는 on delete cascade 라
+         계정을 지우면 Supabase 잔여행도 함께 삭제됨(단, BQ 사본은 그대로 유지)."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=ANON_RETENTION_DAYS)
+    targets = [
+        u for u in _list_all_auth_users()
+        if u.get("is_anonymous") and (_parse_ts(u.get("created_at")) or datetime.now(timezone.utc)) < cutoff
+    ]
+    deleted = 0
+    for u in targets:
+        dr = requests.delete(f"{SUPABASE_URL}/auth/v1/admin/users/{u['id']}", headers=HEADERS, timeout=60)
+        if dr.status_code in (200, 204):
+            deleted += 1
+        else:
+            print(f"[anon-clean] delete failed {u['id']}: {dr.status_code} {dr.text[:120]}")
+    print(f"[anon-clean] deleted {deleted}/{len(targets)} anonymous users older than {ANON_RETENTION_DAYS}d")
+
+
 def main():
     client = bq_client()
     ensure_tables(client)
@@ -132,7 +182,10 @@ def main():
 
     # 적재가 성공적으로 끝난 뒤에만 경량화
     prune_old_logs()
-    print("[done] export + prune complete")
+
+    # 로그가 BQ에 안전히 이관된 뒤에만 익명 계정 정리(7일 유예)
+    delete_old_anon_users()
+    print("[done] export + prune + anon-clean complete")
 
 
 if __name__ == "__main__":
