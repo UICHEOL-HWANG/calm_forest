@@ -166,7 +166,7 @@
   #coach-skip { border: none; background: none; font-size: 11px; opacity: .55; text-decoration: underline; cursor: pointer; color: var(--ink); }
 
   /* 문 입장/퇴장 프롬프트 */
-  #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
   #door-prompt.show { opacity: 1; }
 
   /* 낚시 프롬프트(하단 중앙) */
@@ -230,23 +230,32 @@
   #joy-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: var(--shadow); }
   #action-btn { position: fixed; right: 28px; bottom: calc(96px + env(safe-area-inset-bottom)); width: 88px; height: 88px; border-radius: 50%; background: var(--mint); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; font-size: 30px; touch-action: none; }
   #action-btn.press { transform: scale(0.9); }
+  #action-btn.placing { background: #ffe0a8; box-shadow: 0 0 0 4px rgba(255,180,74,0.45), var(--shadow); } /* 설치 버튼 강조 */
+  #action-btn.talk { background: #bfe3ff; box-shadow: 0 0 0 4px rgba(90,170,255,0.5), var(--shadow); animation: actpulse 1.1s ease-in-out infinite; } /* 대화 버튼 */
+  #action-btn.door { background: #d9c9ff; box-shadow: 0 0 0 4px rgba(150,120,255,0.45), var(--shadow); } /* 문 버튼 */
+  @keyframes actpulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  /* 꾸미기 메뉴 열려 있으면 조이스틱/액션버튼 숨김 + 이동 정지 */
+  body.menu-open #mobile-controls { display: none !important; }
 
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--cream); color: var(--ink); font-size: 20px; z-index: 10; }
 
-  /* ── 모바일(좁은 화면) 전용: HUD를 촘촘하게 ── */
+  /* ── 모바일(좁은 화면) 전용: HUD를 더 작고 촘촘하게 ── */
   @media (max-width: 640px) {
-    .panel { padding: 6px 10px; border-radius: 12px; }
-    /* 좌측: 계정 이메일 숨기고(점으로 상태 표시) 버튼만 컴팩트하게 */
-    #topleft { gap: 6px; font-size: 11px; }
+    .panel { padding: 5px 8px; border-radius: 11px; }
+    /* 좌측: 계정 이메일 숨기고, 버튼은 아이콘 위주로 컴팩트하게 */
+    #topleft { gap: 4px; font-size: 10px; }
     #login-status { display: none; }
-    #save-btn { padding: 6px 9px; font-size: 12px; }
-    #logout-btn { padding: 6px 8px; font-size: 11px; }
-    /* 우측: 인벤토리/시간 압축 */
-    #topright { gap: 5px; }
-    #inventory { gap: 8px; font-size: 12px; font-weight: 700; }
-    .inv-ico { font-size: 14px; }
-    #time-bar { width: 54px; }
-    #time-indicator { gap: 6px; }
+    #login-dot { width: 8px; height: 8px; }
+    #save-btn { padding: 5px 7px; font-size: 11px; }
+    #logout-btn, #help-btn, #stats-btn { padding: 5px 7px; font-size: 12px; }
+    /* 우측: 인벤토리/시간 더 압축 */
+    #topright { gap: 4px; }
+    #inventory { gap: 6px; font-size: 11px; font-weight: 700; }
+    .inv-item { gap: 3px; }
+    .inv-ico { font-size: 13px; }
+    #time-bar { width: 42px; }
+    #time-indicator { gap: 4px; }
+    #time-emoji { font-size: 13px; }
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
     #quest-panel { top: calc(80px + env(safe-area-inset-top)); max-width: 56vw; }
@@ -258,6 +267,8 @@
     #login-card h1 { font-size: 34px; }
     /* 모바일은 프롬프트 대신 "대화하기" 버튼 사용 → 프롬프트 숨김 */
     #npc-prompt { display: none; }
+    /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
+    #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; }
   }
 </style>
 </head>
@@ -431,6 +442,20 @@
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
+    let lastToolIco = '✋';                          // 현재 도구 아이콘(액션버튼 복원용)
+    let placingDecorItem = null;                    // 배치 중인 가구(액션버튼에 표시)
+    let nearNpcNow = false, nearDoorNow = false;    // 액션버튼 맥락 표시용(주민/문 근접)
+
+    // 액션 버튼(모바일) 아이콘을 "지금 뭘 하는 버튼인지"에 맞춰 갱신
+    //   우선순위: 가구 배치 > 주민 대화 > 문 > 현재 도구
+    function refreshActionIcon() {
+      const b = $('action-btn'); if (!b) return;
+      b.classList.remove('placing', 'talk', 'door');
+      if (placingDecorItem) { b.textContent = placingDecorItem.ico; b.classList.add('placing'); return; }
+      if (nearNpcNow) { b.textContent = '💬'; b.classList.add('talk'); return; }
+      if (nearDoorNow) { b.textContent = '🚪'; b.classList.add('door'); return; }
+      b.textContent = lastToolIco;
+    }
 
     // 도구 하트바 슬롯 렌더 + 클릭/탭 선택
     function buildHotbar(tools) {
@@ -462,7 +487,8 @@
       setTool(idx, tools) {
         if (!$('hotbar').children.length) buildHotbar(tools);
         [...$('hotbar').children].forEach((s, i) => s.classList.toggle('active', i === idx));
-        $('action-btn').textContent = tools[idx].ico; // 모바일 액션 버튼도 현재 도구 표시
+        lastToolIco = tools[idx].ico;
+        refreshActionIcon();  // 도구 바뀌면 액션버튼 갱신(배치/대화/문 아니면 도구 표시)
       },
       toast(msg) {
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
@@ -489,6 +515,7 @@
       // NPC 근접 표시: 데스크톱은 프롬프트 텍스트, 모바일은 "대화하기" 버튼(near-npc 클래스)
       setInteractPrompt(text) {
         const el = $('npc-prompt');
+        nearNpcNow = !!text; refreshActionIcon();   // 액션버튼을 💬로(모바일 대화 유도)
         if (!text) { el.classList.remove('show'); document.body.classList.remove('near-npc'); return; }
         el.textContent = text; el.classList.add('show');
         document.body.classList.add('near-npc');
@@ -529,13 +556,14 @@
       // 문 프롬프트
       setDoorPrompt(text) {
         const el = $('door-prompt');
+        nearDoorNow = !!text; refreshActionIcon();   // 액션버튼을 🚪로
         if (!text) { el.classList.remove('show'); return; }
         el.textContent = text; el.classList.add('show');
       },
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
         document.body.classList.toggle('indoor', on);
-        if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); }
+        if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); stopPlacing(); }
       },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
@@ -551,13 +579,19 @@
     const closeNpc = () => $('npc-modal').classList.remove('show');
 
     // ── 인터랙티브 튜토리얼(코치) 상태머신 ──
+    // 기기별 조작 안내(터치=조이스틱/액션버튼, 데스크톱=키보드/클릭)
+    const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    const A = TOUCH ? '오른쪽 동그란 버튼' : 'Space(또는 클릭)';
+    const MOVE = TOUCH ? '왼쪽 조이스틱' : 'WASD·방향키';
     const TUT_STEPS = [
-      { key: 'move',  text: '① WASD·방향키로 움직여보세요 🕹️' },
-      { key: 'chop',  text: '② 🪓도끼(1) 선택 → 나무 근처에서 Space/클릭으로 벌목!' },
-      { key: 'till',  text: '③ ⛏️괭이(2)로 빈 땅을 갈아보세요' },
-      { key: 'seed',  text: '④ 🌰씨앗(3)을 갈아둔 밭에 심어요' },
-      { key: 'water', text: '⑤ 💧물조리개(4)로 물을 주세요' },
-      { key: 'talk',  text: '⑥ 🧑‍🌾주민에게 다가가 말을 걸어보세요' },
+      { key: 'move',  text: `① ${MOVE}로 마을을 걸어보세요 🕹️` },
+      { key: 'chop',  text: `② 🪓도끼(1) 고르고 나무 앞에서 ${A}으로 벌목!` },
+      { key: 'till',  text: `③ ⛏️괭이(2)로 빈 땅을 갈아요 (${A})` },
+      { key: 'seed',  text: `④ 🌰씨앗(3)을 갈아둔 밭에 심어요 (${A})` },
+      { key: 'water', text: `⑤ 💧물조리개(4)로 물을 주면 자라요 (${A})` },
+      { key: 'talk',  text: TOUCH
+          ? '⑥ 🧑‍🌾주민에게 다가가면 오른쪽 버튼이 💬로 바뀌어요 — 눌러서 대화!'
+          : '⑥ 🧑‍🌾주민에게 다가가 Space로 말을 걸어보세요' },
     ];
     let tutIdx = -1;
     function renderCoach() {
@@ -572,7 +606,7 @@
     function endCoach(done) {
       const at = tutIdx;
       tutIdx = -1; $('coach').classList.remove('show');
-      if (done) { ui.toast('🎉 튜토리얼 완료! 이제 자유롭게 즐겨요 🌿'); trackEvent('tutorial_complete'); }
+      if (done) { ui.toast('🎉 튜토리얼 끝! 이제 🔨망치로 집을 짓거나 주민 퀘스트를 해보세요 🌿'); trackEvent('tutorial_complete'); }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
     }
 
@@ -658,16 +692,18 @@
         el.addEventListener('click', () => {
           if (have < d.cost) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
-          ui.toast(`${d.ico} ${d.name} — 바닥을 탭하거나 Space로 놓기`);
+          placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)
+          ui.toast(`${d.ico} ${d.name} — 바닥을 탭하거나 오른쪽 버튼으로 놓기`);
         });
         box.appendChild(el);
       });
     }
-    function openDecor() { renderDecorItems(); $('decor-menu').classList.add('show'); document.body.classList.add('menu-open'); }
+    function openDecor() { Input.setAnalog(0, 0); renderDecorItems(); $('decor-menu').classList.add('show'); document.body.classList.add('menu-open'); }
     function closeDecor() { $('decor-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
+    function stopPlacing() { placingDecorItem = null; refreshActionIcon(); }
     $('decor-btn').addEventListener('click', openDecor);
     $('dm-close').addEventListener('click', closeDecor);
-    $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); ui.toast('배치를 취소했어요'); closeDecor(); });
+    $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); stopPlacing(); ui.toast('배치를 취소했어요'); closeDecor(); });
 
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {

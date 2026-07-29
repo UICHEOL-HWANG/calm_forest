@@ -186,8 +186,8 @@ export const Input = {
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() { return DECOR; },
-  selectDecor(id) { placingDecor = id; },    // 가구 선택 → 바닥 탭으로 배치
-  cancelDecor() { placingDecor = null; },
+  selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
+  cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
   isIndoor() { return indoor; },
 };
 
@@ -436,6 +436,13 @@ function setHeldTool(id) {
   if (!handAnchor) return;
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   heldToolMesh = toolMesh(id); handAnchor.add(heldToolMesh);
+}
+// 꾸미기: 선택한 가구를 손에 작게 들기
+function setHeldDecor(id) {
+  if (!handAnchor) return;
+  if (heldToolMesh) handAnchor.remove(heldToolMesh);
+  const m = decorMesh(id); m.scale.setScalar(0.5); m.position.y = 0.05;
+  heldToolMesh = m; handAnchor.add(m);
 }
 
 function buildFireflies() {
@@ -786,9 +793,9 @@ function exitHouse() {
 function updateDoorInteract() {
   let nd = null, prompt = null;
   if (indoor) {
-    if (dist2D({ x: INT.x, z: INT.z - 4 }, player.position) < 1.8) { nd = 'exit'; prompt = '🚪 나가기 (Space/액션)'; }
+    if (dist2D({ x: INT.x, z: INT.z - 4 }, player.position) < 1.8) { nd = 'exit'; prompt = '🚪 나가기'; }
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
-    nd = 'enter'; prompt = '🚪 집에 들어가기 (Space/액션)';
+    nd = 'enter'; prompt = '🚪 집에 들어가기';
   }
   nearDoor = nd;
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
@@ -1138,7 +1145,7 @@ function updateFishing() {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
     if (now >= biteAt) {
       fishState = 'bite'; biteEnd = now + 1.4;           // 낚아챌 시간 창
-      ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요! (Space/액션)');
+      ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
       Sound.blip(); spawnWater(castPos.x, castPos.z);
     }
   } else if (fishState === 'bite') {
