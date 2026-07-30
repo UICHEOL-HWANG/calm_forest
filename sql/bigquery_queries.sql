@@ -171,3 +171,114 @@ select
   round(100.0 * countif(sessions >= 2) / nullif(count(*),0), 1) as retention_pct,
   round(avg(active_days), 2)                 as avg_active_days
 from u;
+
+
+-- =============================================================
+--  6. 행동 로그 세그먼트 · A/B · pre/post
+--     대상: `calm-forest.calm_forest_raw.game_logs` (GA4 아님, 우리 로그 export)
+--  ------------------------------------------------------------
+--  ※ 이 테이블엔 char_x/char_z(좌표) + client_id/is_guest/variant 가 있음.
+--  ※ 실험 off 동안은 variant 전부 'control'. 켜지면 A/B 로 나뉨.
+--  ※ 비율 차이의 유의성은 별도 비율검정(z-test/카이제곱)으로 확인.
+-- =============================================================
+
+-- 6-A. 세그먼트별 규모 (변형 × 게스트여부)
+select
+  coalesce(variant, 'control') as variant, is_guest,
+  count(distinct user_id)      as users,
+  count(distinct client_id)    as devices,
+  count(distinct session_id)   as sessions,
+  count(*)                     as samples
+from `calm-forest.calm_forest_raw.game_logs`
+group by 1, 2
+order by 1, 2;
+
+-- 6-B. 세션 길이 · 이탈(30초 미만) — 세그먼트별
+with s as (
+  select session_id, coalesce(variant, 'control') as variant, is_guest,
+         timestamp_diff(max(created_at), min(created_at), second) as dur
+  from `calm-forest.calm_forest_raw.game_logs`
+  group by session_id, variant, is_guest
+)
+select
+  variant, is_guest,
+  count(*)                                          as sessions,
+  approx_quantiles(dur, 100)[offset(50)]            as median_sec,
+  approx_quantiles(dur, 100)[offset(90)]            as p90_sec,
+  round(100.0 * countif(dur < 30) / count(*), 1)    as bounce_u30s_pct
+from s
+group by 1, 2
+order by 1, 2;
+
+-- 6-C. 리텐션 — client_id(기기) 기준 (게스트 재방문 포함)
+with per_client as (
+  select client_id, coalesce(variant, 'control') as variant,
+         count(distinct session_id)      as sessions,
+         count(distinct date(created_at)) as active_days
+  from `calm-forest.calm_forest_raw.game_logs`
+  where client_id is not null
+  group by client_id, variant
+)
+select
+  variant,
+  count(*)                                          as devices,
+  round(100.0 * countif(sessions >= 2) / count(*), 1)   as return_pct,
+  round(100.0 * countif(active_days >= 2) / count(*), 1) as multiday_pct
+from per_client
+group by 1
+order by 1;
+
+-- 6-D. pre/post 이동 히트맵 (맵 늘리기 전/후) — 정규화(pct_of_period)
+--      ⚠️ TIMESTAMP('2026-08-01') 를 맵 확장 배포 시각으로 바꾸세요.
+--      맵 크기가 달라 hits 절대비교는 부적절 → pct_of_period 로 분포 비교.
+with h as (
+  select
+    if(created_at < timestamp('2026-08-01'), 'before', 'after') as period,
+    round(char_x / 2) * 2 as gx,
+    round(char_z / 2) * 2 as gz,
+    count(*)              as hits
+  from `calm-forest.calm_forest_raw.game_logs`
+  group by 1, 2, 3
+)
+select
+  period, gx, gz, hits,
+  round(100.0 * hits / sum(hits) over (partition by period), 3) as pct_of_period
+from h
+order by period, hits desc;
+
+-- 6-E. pre/post 이탈률(세션 길이) 비교
+with s as (
+  select session_id,
+    if(min(created_at) < timestamp('2026-08-01'), 'before', 'after') as period,
+    timestamp_diff(max(created_at), min(created_at), second) as dur
+  from `calm-forest.calm_forest_raw.game_logs`
+  group by session_id
+)
+select
+  period,
+  count(*)                                       as sessions,
+  approx_quantiles(dur, 100)[offset(50)]         as median_sec,
+  round(100.0 * countif(dur < 30) / count(*), 1) as bounce_u30s_pct
+from s
+group by 1
+order by 1;
+
+-- 6-F. 진행 퍼널(집 완성률) — 세그먼트별
+--      game_saves.state 는 STRING(JSON) → JSON_VALUE 로 추출
+with uv as (
+  select user_id,
+         any_value(coalesce(variant, 'control')) as variant,
+         any_value(is_guest)                     as is_guest
+  from `calm-forest.calm_forest_raw.game_logs`
+  group by user_id
+)
+select
+  uv.variant, uv.is_guest,
+  count(*)                                                                       as users,
+  countif(cast(json_value(gs.state, '$.houseStage') as int64) >= 3)              as completed_house,
+  round(100.0 * countif(cast(json_value(gs.state, '$.houseStage') as int64) >= 3)
+        / count(*), 1)                                                           as house_complete_pct
+from `calm-forest.calm_forest_raw.game_saves` gs
+join uv on uv.user_id = gs.user_id
+group by 1, 2
+order by 1, 2;

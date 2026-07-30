@@ -167,3 +167,117 @@ select
   count(*) filter (where sessions >= 2)                         as returning_users,
   round(100.0 * count(*) filter (where sessions >= 2) / nullif(count(*),0), 1) as retention_pct
 from per_user;
+
+
+-- =============================================================
+--  E. 세그먼트 · A/B · pre/post  (variant / is_guest / 날짜 경계)
+--  ------------------------------------------------------------
+--  ※ 실험 off 동안은 variant 가 전부 'control' 이라 A/B 행이 안 갈림(정상).
+--    EXPERIMENT='map' 으로 켜면 그때부터 A/B 로 나뉘어 이 쿼리들이 작동.
+--  ※ 비율 차이가 "진짜"인지는 SQL 밖에서 비율검정(z-test/카이제곱)으로 확인.
+--    표본이 작으면 신뢰구간이 넓다는 점 유의(그룹당 수백 이상 권장).
+-- =============================================================
+
+-- E1. 세그먼트별 규모 (변형 × 게스트여부)
+select
+  coalesce(variant, 'control') as variant,
+  is_guest,
+  count(distinct user_id)      as users,
+  count(distinct client_id)    as devices,
+  count(distinct session_id)   as sessions,
+  count(*)                     as samples
+from game_logs
+group by 1, 2
+order by 1, 2;
+
+-- E2. 세션 길이 · 이탈(30초 미만 bounce) — 세그먼트별 (A/B 핵심 이탈지표)
+with s as (
+  select session_id,
+         coalesce(variant, 'control') as variant, is_guest,
+         extract(epoch from (max(created_at) - min(created_at))) as dur
+  from game_logs
+  group by session_id, variant, is_guest
+)
+select
+  variant, is_guest,
+  count(*)                                                          as sessions,
+  round(percentile_cont(0.5) within group (order by dur))          as median_sec,
+  round(percentile_cont(0.9) within group (order by dur))          as p90_sec,
+  round(100.0 * count(*) filter (where dur < 30) / nullif(count(*),0), 1) as bounce_u30s_pct
+from s
+group by 1, 2
+order by 1, 2;
+
+-- E3. 진행 퍼널(집 완성률) — 세그먼트별
+--     game_saves엔 variant가 없으므로 game_logs에서 유저별 변형을 끌어와 조인
+with uv as (
+  select distinct on (user_id)
+         user_id, coalesce(variant, 'control') as variant, is_guest
+  from game_logs
+  order by user_id, created_at desc
+)
+select
+  uv.variant, uv.is_guest,
+  count(*)                                                                          as users,
+  count(*) filter (where (gs.state->>'houseStage')::int >= 3)                       as completed_house,
+  round(100.0 * count(*) filter (where (gs.state->>'houseStage')::int >= 3)
+        / nullif(count(*),0), 1)                                                    as house_complete_pct
+from game_saves gs
+join uv on uv.user_id = gs.user_id
+group by 1, 2
+order by 1, 2;
+
+-- E4. 리텐션 — client_id(기기) 기준이라 게스트 재방문도 잡힘
+--     (user_id 기준이면 게스트는 매 방문 새 유저라 리텐션이 안 잡힘)
+with per_client as (
+  select client_id,
+         coalesce(variant, 'control') as variant,
+         count(distinct session_id)                       as sessions,
+         count(distinct date_trunc('day', created_at))    as active_days
+  from game_logs
+  where client_id is not null
+  group by client_id, variant
+)
+select
+  variant,
+  count(*)                                                                    as devices,
+  round(100.0 * count(*) filter (where sessions >= 2)   / nullif(count(*),0), 1) as return_pct,
+  round(100.0 * count(*) filter (where active_days >= 2) / nullif(count(*),0), 1) as multiday_pct
+from per_client
+group by 1
+order by 1;
+
+-- E5. pre/post 이동 히트맵 (맵 늘리기 전/후) — 정규화 포함
+--     ⚠️ 아래 timestamp 를 "맵 확장 배포 시각(KST면 at time zone 변환)" 으로 바꾸세요.
+--     맵 크기가 달라 hits 절대값 비교는 부적절 → pct_of_period(기간 내 비중)로 비교.
+with h as (
+  select
+    case when created_at < timestamp '2026-08-01 00:00' then 'before' else 'after' end as period,
+    round(char_x / 2.0) * 2 as gx,
+    round(char_z / 2.0) * 2 as gz,
+    count(*)                as hits
+  from game_logs
+  group by 1, 2, 3
+)
+select
+  period, gx, gz, hits,
+  round(100.0 * hits / sum(hits) over (partition by period), 3) as pct_of_period
+from h
+order by period, hits desc;
+
+-- E6. pre/post 이탈률(세션 길이) 비교
+with s as (
+  select session_id,
+    case when min(created_at) < timestamp '2026-08-01 00:00' then 'before' else 'after' end as period,
+    extract(epoch from (max(created_at) - min(created_at))) as dur
+  from game_logs
+  group by session_id
+)
+select
+  period,
+  count(*)                                                          as sessions,
+  round(percentile_cont(0.5) within group (order by dur))          as median_sec,
+  round(100.0 * count(*) filter (where dur < 30) / nullif(count(*),0), 1) as bounce_u30s_pct
+from s
+group by 1
+order by 1;
