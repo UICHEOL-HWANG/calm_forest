@@ -27,6 +27,9 @@ create table if not exists public.game_logs (
   id         bigint generated always as identity primary key,
   user_id    uuid references auth.users(id) on delete cascade,
   session_id text,
+  client_id  text,                          -- 분석용 영구 기기 식별자(게스트 재방문 추적)
+  is_guest   boolean,                        -- 게스트(익명) 여부 — 세그먼트 분석용
+  variant    text,                           -- A/B 변형(control/A/B)
   mouse_x    real, mouse_y  real,          -- 마우스 이동 좌표(px)
   char_x     real, char_y   real, char_z real, -- 캐릭터 월드 좌표
   cam_yaw    real, cam_pitch real,         -- 카메라 각도(rad)
@@ -37,6 +40,8 @@ create table if not exists public.game_logs (
 create index if not exists idx_game_logs_user    on public.game_logs (user_id);
 create index if not exists idx_game_logs_session on public.game_logs (session_id);
 create index if not exists idx_game_logs_created on public.game_logs (created_at);
+create index if not exists idx_game_logs_client  on public.game_logs (client_id);
+create index if not exists idx_game_logs_variant on public.game_logs (variant);
 
 -- ─────────────────────────────────────────────────────────────
 -- 3) RLS(행 수준 보안): 각 유저는 "자기 데이터"만 읽고 쓸 수 있음

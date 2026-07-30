@@ -18,9 +18,31 @@ export const state = {
   email: null,         // 구글 계정 이메일/이름
   provider: null,      // 'google' | 'anonymous' | 'offline'
   sessionId: randId(), // 이번 플레이 세션 식별자(로그 그룹핑)
+  clientId: clientId(),// 분석용 영구 기기 식별자(localStorage, 게스트 재방문 추적)
+  isGuest: null,       // 게스트(익명/오프라인) 여부 — 세그먼트 분석용
+  variant: 'control',  // A/B 변형(실험 off면 control)
 };
 
 function randId() { return 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+// ── 분석용 영구 client_id (게임 진행과 무관, 기기 단위 리텐션/중복제거용) ──
+//   ※ 인증이 아니라 순수 집계용 식별자. 권한 판단에 쓰면 안 됨.
+function clientId() {
+  try {
+    let id = localStorage.getItem('cf_client_id');
+    if (!id) { id = 'c-' + (crypto.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now().toString(36))); localStorage.setItem('cf_client_id', id); }
+    return id;
+  } catch (e) { return 'c-' + Math.random().toString(36).slice(2); } // localStorage 차단 시 세션 한정
+}
+
+// ── A/B 변형 배정 — client_id 해시로 안정적 50:50(기기 단위) ──
+//   실험 off면 무조건 'control'. 켜지면 해시 하위비트로 A/B.
+function assignVariant() {
+  if (!CONFIG.EXPERIMENT || CONFIG.EXPERIMENT === 'off') return 'control';
+  let h = 0; const s = state.clientId;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
+  return (h & 1) ? 'B' : 'A';
+}
 
 let statusCb = null;
 function emit() { statusCb?.({ ...state }); }
@@ -35,6 +57,7 @@ function isAnon(session) {
 function applySession(session) {
   state.online = true;
   state.userId = session.user.id;
+  state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
   state.email = isAnon(session) ? '게스트' : (session.user.email || session.user.user_metadata?.name || '유저');
   state.provider = isAnon(session) ? 'anonymous' : (session.user.app_metadata?.provider || 'google');
   emit();
@@ -46,6 +69,7 @@ function applySession(session) {
 // =============================================================
 export async function initAuth(onStatusChange) {
   statusCb = onStatusChange;
+  state.variant = assignVariant();   // 실험 off면 'control', 켜지면 client_id 해시로 A/B
 
   // 키 미설정 → 오프라인. 로그인 화면에서 "게스트로 플레이"만 가능
   if (!isSupabaseConfigured()) {
@@ -120,6 +144,7 @@ export async function signInAsGuest() {
   // 순수 오프라인 게스트(익명 로그인 불가) — 진행은 되지만 DB 저장은 안 됨
   state.online = false;
   state.userId = 'local-' + state.sessionId;
+  state.isGuest = true;
   state.email = '게스트';
   state.provider = 'offline';
   emit();
@@ -172,7 +197,11 @@ export async function submitFeedback({ category, message, meta }) {
 
 export async function sendLogBatch(rows) {
   if (!rows || rows.length === 0) return;
-  const enriched = rows.map(r => ({ user_id: state.userId, session_id: state.sessionId, ...r }));
+  const enriched = rows.map(r => ({
+    user_id: state.userId, session_id: state.sessionId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, // [분석] 기기/게스트/실험 세그먼트
+    ...r,
+  }));
   if (!state.online || !supabase) { console.log(`[Supabase 폴백] 로그 배치 ${enriched.length}건 (오프라인)`); return; }
   try {
     const { error } = await supabase.from(CONFIG.LOG_TABLE).insert(enriched);

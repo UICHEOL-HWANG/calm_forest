@@ -33,6 +33,9 @@ LOGS_SCHEMA = [
     bigquery.SchemaField("id", "INT64"),
     bigquery.SchemaField("user_id", "STRING"),
     bigquery.SchemaField("session_id", "STRING"),
+    bigquery.SchemaField("client_id", "STRING"),   # 분석용 영구 기기 식별자
+    bigquery.SchemaField("is_guest", "BOOL"),       # 게스트(익명) 여부
+    bigquery.SchemaField("variant", "STRING"),      # A/B 변형(control/A/B)
     bigquery.SchemaField("mouse_x", "FLOAT"),
     bigquery.SchemaField("mouse_y", "FLOAT"),
     bigquery.SchemaField("char_x", "FLOAT"),
@@ -104,7 +107,10 @@ def fetch_all_saves():
 def load_json(client, table, rows, schema, mode):
     if not rows:
         return 0
-    cfg = bigquery.LoadJobConfig(schema=schema, write_disposition=mode, ignore_unknown_values=True)
+    cfg = bigquery.LoadJobConfig(
+        schema=schema, write_disposition=mode, ignore_unknown_values=True,
+        schema_update_options=[bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION],  # 기존 테이블에 신규 컬럼 자동 추가
+    )
     client.load_table_from_json(rows, f"{BQ_PROJECT}.{BQ_DATASET}.{table}", job_config=cfg, location=BQ_LOCATION).result()
     return len(rows)
 
