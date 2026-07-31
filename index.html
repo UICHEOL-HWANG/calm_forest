@@ -277,6 +277,8 @@
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
     #quest-panel { top: calc(80px + env(safe-area-inset-top)); max-width: 56vw; }
+    /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널 숨김 */
+    body.coaching #quest-panel { display: none; }
     .slot { width: 42px; height: 42px; border-radius: 11px; }
     .slot .s-ico { font-size: 17px; }
     .slot .s-key { font-size: 7.5px; }
@@ -471,7 +473,7 @@
       const b = $('action-btn'); if (!b) return;
       b.classList.remove('placing', 'talk', 'door');
       if (placingDecorItem) { b.textContent = placingDecorItem.ico; b.classList.add('placing'); return; }
-      if (nearNpcNow) { b.textContent = '💬'; b.classList.add('talk'); return; }
+      // 주민 근처여도 메인 액션버튼은 도구 유지(대화는 전용 '대화하기' 버튼) → 수확 중 대화 하이재킹 방지
       if (nearDoorNow) { b.textContent = '🚪'; b.classList.add('door'); return; }
       b.textContent = lastToolIco;
     }
@@ -693,7 +695,7 @@
     const closeFb = () => { fbModal.classList.remove('show'); };
     $('feedback-tab').addEventListener('click', openFb);
     // 모바일 대화하기 버튼 → NPC 대화 실행(근처면 handleAction이 대화로 분기)
-    $('talk-btn').addEventListener('click', () => Input.doAction());
+    $('talk-btn').addEventListener('click', () => Input.doTalk());
     // NPC 모달 바깥 클릭 시 닫기
     $('npc-modal').addEventListener('click', (e) => { if (e.target === $('npc-modal')) closeNpc(); });
 

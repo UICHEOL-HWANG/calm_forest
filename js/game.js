@@ -179,7 +179,8 @@ const PAL = {
 // =============================================================
 export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
-  doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space
+  doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space (도구질)
+  doTalk() { if (!indoor && nearNPC) talkToNPC(); },    // 전용 "대화하기" 버튼(모바일) — 도구질과 분리
   selectTool(i) { currentTool = (i + TOOLS.length) % TOOLS.length; ui.setTool?.(currentTool, TOOLS); setHeldTool(TOOLS[currentTool].id); Sound.blip(); },
   getTools() { return TOOLS; },
   setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
@@ -332,8 +333,12 @@ function buildWorld() {
   }
 
   for (let i = 0; i < 14; i++) {
-    const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
-    spawnTree(Math.cos(a) * r, Math.sin(a) * r);
+    let x, z, tries = 0;
+    do {                                              // 호수·집터 위에 안 생기게 재시도
+      const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
+      x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
+    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5));
+    spawnTree(x, z);
   }
 
   for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
@@ -1095,7 +1100,9 @@ function handleAction() {
     else ui.toast?.('🎨 꾸미기 버튼으로 가구를 골라 배치하세요');
     return;
   }
-  if (nearNPC) return talkToNPC();
+  // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
+  // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
+  if (nearNPC && !IS_MOBILE) return talkToNPC();
   switch (TOOLS[currentTool].id) {
     case 'axe': return tryChop();
     case 'hoe': return tryHoe();
