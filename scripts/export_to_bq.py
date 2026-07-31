@@ -107,10 +107,11 @@ def fetch_all_saves():
 def load_json(client, table, rows, schema, mode):
     if not rows:
         return 0
-    cfg = bigquery.LoadJobConfig(
-        schema=schema, write_disposition=mode, ignore_unknown_values=True,
-        schema_update_options=[bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION],  # 기존 테이블에 신규 컬럼 자동 추가
-    )
+    cfg = bigquery.LoadJobConfig(schema=schema, write_disposition=mode, ignore_unknown_values=True)
+    # 신규 컬럼 자동 추가(ALLOW_FIELD_ADDITION)는 WRITE_APPEND 에서만 허용됨.
+    # WRITE_TRUNCATE(세이브 스냅샷)에 붙이면 400 → APPEND일 때만 설정.
+    if mode == "WRITE_APPEND":
+        cfg.schema_update_options = [bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION]
     client.load_table_from_json(rows, f"{BQ_PROJECT}.{BQ_DATASET}.{table}", job_config=cfg, location=BQ_LOCATION).result()
     return len(rows)
 
