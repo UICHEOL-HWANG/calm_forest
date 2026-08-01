@@ -34,6 +34,7 @@
 | `water_crop` | 물주기 | — |
 | `harvest_crop` | 수확 | `crop` (누적 작물 수) |
 | `house_complete` | 집 완성 | — |
+| `npc_talk` | 주민과 대화창 열기 | `npc`, `mode`(offer/progress/claim/done) |
 | `quest_accept` / `quest_complete` | 퀘스트 수락/완료 | `quest`, `npc` |
 | `feedback_submit` | 문의 제출 | `category` |
 | `enter_house` / `exit_house` | 집 실내 입장/퇴장 | — |
@@ -66,6 +67,7 @@ GA4는 커스텀 매개변수를 등록해야 탐색에서 쪼갤 수 있어요.
 | `method` | 측정기준(텍스트) | 이벤트 | 로그인 방식(google/anonymous) |
 | `quest` | 측정기준(텍스트) | 이벤트 | 퀘스트 이름 |
 | `npc` | 측정기준(텍스트) | 이벤트 | 주민 id |
+| `mode` | 측정기준(텍스트) | 이벤트 | 대화 상태(offer/progress/claim/done) |
 | `category` | 측정기준(텍스트) | 이벤트 | 문의 종류 |
 | `key` | 측정기준(텍스트) | 이벤트 | 튜토리얼 단계 |
 | `at` | 측정기준(텍스트) | 이벤트 | 튜토리얼 이탈 지점 |

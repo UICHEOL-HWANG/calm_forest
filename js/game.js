@@ -1765,7 +1765,12 @@ function updateNPCInteract() {
 // 대화 시작 = 현재 주민 상태를 담은 모달을 연다(수락/보상은 버튼으로)
 function talkToNPC() {
   const view = npcDialogState();
-  if (view) { Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); } // 튜토리얼
+  if (view) {
+    Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); // 튜토리얼
+    // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.
+    //   ※ GA4 전용(스키마 자유). Supabase game_logs(고정 스키마)엔 넣지 않아 연동 충돌 없음.
+    trackEvent('npc_talk', { npc: view.npc.id, mode: view.mode });
+  }
 }
 
 // 근접 주민의 현재 대화/퀘스트 상태를 뷰 객체로 반환
