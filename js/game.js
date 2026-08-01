@@ -73,6 +73,50 @@ const FISH_KINDS = [
   { rarity: 'uncommon', name: '붉은 물고기',   p: 0.28 },
   { rarity: 'common',   name: '피라미',        p: 1.00 },
 ];
+// ── 요리 레시피(작업대) — 작물/물고기 → 일시 버프 ───────────────
+const RECIPES = [
+  { id: 'veg_stew',     name: '든든한 채소죽', ico: '🥘', cost: { crop: 3 },          buff: 'speed', dur: 60, desc: '60초 이동속도 +40%' },
+  { id: 'grilled_fish', name: '생선 구이',     ico: '🐟', cost: { fish: 2 },          buff: 'luck',  dur: 90, desc: '90초 희귀 물고기 확률↑' },
+  { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱', cost: { crop: 2, fish: 1 }, buff: 'chop',  dur: 90, desc: '90초 벌목 시 목재 +1' },
+];
+const BUFF_META = { speed: { ico: '👟', name: '빠른 발' }, luck: { ico: '🍀', name: '낚시 행운' }, chop: { ico: '🪓', name: '벌목 보너스' } };
+const buffs = { speed: 0, luck: 0, chop: 0 };   // 각 버프 만료 시각(clock.elapsedTime 기준)
+function buffOn(k) { return clock.elapsedTime < buffs[k]; }
+const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(요리) 위치
+let nearBench = false;
+const SHOP = new THREE.Vector3(-4, 0, -5);      // 상점 좌판 위치
+let nearShop = false;
+const SELL_PRICE = { crop: 5, fish: 8, wood: 2 };   // 판매 단가(코인)
+const SHOP_BUY = [
+  { id: 'seed5',  name: '씨앗 5개',  ico: '🌰', coin: 15, give: { seed: 5 } },
+  { id: 'seed20', name: '씨앗 20개', ico: '🌰', coin: 50, give: { seed: 20 } },
+];
+
+// ── 도구 업그레이드(작업대) — 영구 강화, 재료 소비 ──
+const UPGRADES = [
+  { id: 'axe',   name: '강철 도끼',    ico: '🪓', cost: { wood: 20, crop: 3 }, desc: '나무를 2번에 벌목' },
+  { id: 'water', name: '큰 물조리개',  ico: '💧', cost: { wood: 10, crop: 5 }, desc: '물 한 번에 성장↑' },
+  { id: 'rod',   name: '튼튼한 낚싯대', ico: '🎣', cost: { wood: 10, fish: 3 }, desc: '입질 시간 여유↑' },
+];
+
+// ── 야외 장식(작업대) — 마당에 설치, 재료 소비 ──
+const OUTDOOR = [
+  { id: 'fence',     name: '울타리',  ico: '🪵', cost: { wood: 3 }, desc: '마당 울타리' },
+  { id: 'path',      name: '디딤돌',  ico: '🪨', cost: { wood: 1 }, desc: '돌 디딤돌' },
+  { id: 'flowerbed', name: '꽃밭',    ico: '🌷', cost: { crop: 2 }, desc: '알록달록 꽃밭' },
+  { id: 'postlamp',  name: '정원등',  ico: '🏮', cost: { wood: 4 }, desc: '밤에 빛나는 등' },
+];
+let placingOutdoor = null;      // 배치 중인 야외 장식 id
+const outdoorMeshes = [];
+
+// ── 주민 선물(작업대) — 제작해서 주민에게 주면 친밀도↑ ──
+const GIFTS = [
+  { id: 'bouquet', name: '꽃다발',      ico: '💐', cost: { crop: 2 } },
+  { id: 'fruit',   name: '과일 바구니', ico: '🧺', cost: { crop: 4 } },
+  { id: 'fishset', name: '생선 묶음',   ico: '🐟', cost: { fish: 3 } },
+  { id: 'woodtoy', name: '목각 인형',   ico: '🪆', cost: { wood: 6 } },
+];
+
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
 let biteAt = 0, biteEnd = 0;
 let bobber = null;        // 찌(3D)
@@ -117,13 +161,17 @@ const NPCS = [
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0, fish: 0 }, // 목재 / 씨앗 / 작물 / 물고기
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0 }, // 목재 / 씨앗 / 작물 / 물고기 / 코인
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   house: { decor: [] },                     // 실내 배치 가구 [{id,x,z}]
+  upgrades: { axe: false, water: false, rod: false }, // 도구 업그레이드(영구)
+  outdoor: [],                              // 야외 장식 [{id,x,z}]
+  gifts: {},                                // 보유 선물 { id: count }
+  affinity: {},                             // 주민 친밀도 { npcId: level }
 };
 
 let indoor = false;        // 실내(집 안) 여부
@@ -181,12 +229,29 @@ export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
   doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space (도구질)
   doTalk() { if (!indoor && nearNPC) talkToNPC(); },    // 전용 "대화하기" 버튼(모바일) — 도구질과 분리
-  selectTool(i) { currentTool = (i + TOOLS.length) % TOOLS.length; ui.setTool?.(currentTool, TOOLS); setHeldTool(TOOLS[currentTool].id); Sound.blip(); },
+  selectTool(i) { if (placingOutdoor) { placingOutdoor = null; ui.onDecorPlaced?.(); } currentTool = (i + TOOLS.length) % TOOLS.length; ui.setTool?.(currentTool, TOOLS); setHeldTool(TOOLS[currentTool].id); Sound.blip(); },
   getTools() { return TOOLS; },
   setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() { return DECOR; },
+  getRecipes() { return RECIPES; },                     // 요리 레시피 목록
+  craftCook(id) { return craftCook(id); },              // 요리 제작(작업대)
+  getUpgrades() { return UPGRADES; },                   // 도구 업그레이드 목록
+  ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
+  craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
+  getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록
+  selectOutdoor(id) { placingOutdoor = id; },           // 야외 장식 선택(설치 대기)
+  cancelOutdoor() { placingOutdoor = null; },           // 야외 배치 취소
+  getSellPrice() { return { ...SELL_PRICE }; },         // 판매 단가
+  getShopBuy() { return SHOP_BUY; },                    // 구매 목록
+  sellItem(k, all) { return sellItem(k, all); },        // 자원 판매
+  buyShop(id) { return buyShop(id); },                  // 아이템 구매
+  getGifts() { return GIFTS; },                         // 선물 종류
+  ownedGifts() { return { ...gameState.gifts }; },      // 보유 선물 수
+  craftGift(id) { return craftGift(id); },              // 선물 제작
+  giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
+  affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
   selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
   cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
   isIndoor() { return indoor; },
@@ -242,6 +307,10 @@ function applySave(saved) {
     saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true));
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
+  if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
+  if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id)); // 야외 장식 복원
+  if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
+  if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   if (typeof saved.houseStage === 'number') {
     for (let s = 1; s <= saved.houseStage; s++) buildHouseStage(s, true); // 조용히 복원
   }
@@ -334,12 +403,15 @@ function buildWorld() {
 
   for (let i = 0; i < 14; i++) {
     let x, z, tries = 0;
-    do {                                              // 호수·집터 위에 안 생기게 재시도
+    do {                                              // 호수·집터·작업대 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
-    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5));
+    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5));
     spawnTree(x, z);
   }
+
+  spawnWorkbench();   // 작업대(요리)
+  spawnShop();        // 상점 좌판
 
   for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
@@ -797,6 +869,192 @@ function tryPlaceDecor(e) {
   if (hit) placeDecor(placingDecor, hit.point.x, hit.point.z);
 }
 
+// ── 작업대(요리) ─────────────────────────────────────────────
+function spawnWorkbench() {
+  const g = new THREE.Group(); g.position.copy(BENCH);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.9), woodMat(2, 1)); top.position.y = 0.7; top.castShadow = true; g.add(top);
+  [[-0.6, -0.35], [0.6, -0.35], [-0.6, 0.35], [0.6, 0.35]].forEach(([x, z]) => {
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), clayMat(0x6b4a34)); l.position.set(x, 0.35, z); g.add(l);
+  });
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.3, 12), clayMat(0x5a5148)); pot.position.set(-0.3, 0.94, 0); pot.castShadow = true; g.add(pot);
+  const soup = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05, 12), clayMat(0xff9e5e, false)); soup.position.set(-0.3, 1.09, 0); g.add(soup);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.35), woodMat(1, 1)); board.position.set(0.45, 0.8, 0); g.add(board);
+  scene.add(g);
+  obstacles.push({ x: BENCH.x, z: BENCH.z, r: 1.4 }); // 작업대 위엔 밭 금지
+}
+
+// 상점 좌판(절차적)
+function spawnShop() {
+  const g = new THREE.Group(); g.position.copy(SHOP);
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.9, 0.7), woodMat(2, 1)); counter.position.y = 0.45; counter.castShadow = true; g.add(counter);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, 0.9), woodMat(1, 1)); top.position.y = 0.95; g.add(top);
+  // 차양(줄무늬 두 칸)
+  for (let i = 0; i < 4; i++) {
+    const c = i % 2 ? 0xff8f8f : 0xfff2e0;
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.7), clayMat(c, false));
+    s.position.set(-0.75 + i * 0.5, 1.9, 0.1); s.rotation.x = -0.35; g.add(s);
+  }
+  for (const x of [-0.9, 0.9]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 6), clayMat(0x6b4a34)); p.position.set(x, 1, -0.2); g.add(p); }
+  scene.add(g);
+  obstacles.push({ x: SHOP.x, z: SHOP.z, r: 1.6 });
+}
+
+// 판매: 보유 자원 → 코인
+function sellItem(k, all) {
+  const have = gameState.inventory[k] || 0;
+  if (have <= 0) return { ok: false, msg: '팔 게 없어요' };
+  const qty = all ? have : 1;
+  gameState.inventory[k] -= qty;
+  const gain = SELL_PRICE[k] * qty;
+  gameState.inventory.coins = (gameState.inventory.coins || 0) + gain;
+  refreshInventoryUI();
+  Sound.blip();
+  trackEvent('shop_sell', { item: k, qty });  // [GA4]
+  return { ok: true, gain, qty };
+}
+
+// 구매: 코인 → 아이템
+function buyShop(id) {
+  const it = SHOP_BUY.find(x => x.id === id); if (!it) return { ok: false };
+  if ((gameState.inventory.coins || 0) < it.coin) return { ok: false, msg: '코인이 부족해요' };
+  gameState.inventory.coins -= it.coin;
+  giveReward(it.give);
+  refreshInventoryUI();
+  Sound.harvest();
+  trackEvent('shop_buy', { item: id });  // [GA4]
+  return { ok: true, name: it.name };
+}
+
+// 요리: 레시피 재료 확인 → 소비 → 일시 버프 적용
+function craftCook(id) {
+  const r = RECIPES.find(x => x.id === id); if (!r) return { ok: false };
+  for (const k in r.cost) {
+    if ((gameState.inventory[k] || 0) < r.cost[k]) return { ok: false, msg: (k === 'fish' ? '물고기가' : '작물이') + ' 부족해요' };
+  }
+  for (const k in r.cost) gameState.inventory[k] -= r.cost[k];
+  refreshInventoryUI();
+  buffs[r.buff] = clock.elapsedTime + r.dur;                 // 버프 적용(만료 시각)
+  Sound.harvest();
+  spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${r.name}!`, '#c9682a');
+  spawnSparkle(player.position.x, 0.9, player.position.z, 16);
+  trackEvent('craft_item', { category: 'cook', item: id });  // [GA4] 제작 사용 트래킹(GA4 전용)
+  emitBuffs();
+  return { ok: true, name: r.name, buff: BUFF_META[r.buff].name };
+}
+
+// 도구 업그레이드 제작(영구) — 이미 보유면 거절
+function craftUpgrade(id) {
+  const u = UPGRADES.find(x => x.id === id); if (!u) return { ok: false };
+  if (gameState.upgrades[id]) return { ok: false, msg: '이미 보유한 업그레이드예요' };
+  for (const k in u.cost) {
+    if ((gameState.inventory[k] || 0) < u.cost[k]) {
+      const label = k === 'fish' ? '물고기' : k === 'crop' ? '작물' : '목재';
+      return { ok: false, msg: `${label}이(가) 부족해요` };
+    }
+  }
+  for (const k in u.cost) gameState.inventory[k] -= u.cost[k];
+  gameState.upgrades[id] = true;
+  refreshInventoryUI();
+  Sound.complete();
+  spawnFloatText(player.position.x, 1.5, player.position.z, `${u.ico} ${u.name}!`, '#2f7a44');
+  spawnSparkle(player.position.x, 1.0, player.position.z, 22);
+  trackEvent('craft_item', { category: 'tool', item: id });  // [GA4]
+  return { ok: true, name: u.name };
+}
+
+// 활성 버프 목록을 UI로 전달(정수 초 바뀔 때만)
+let lastBuffKey = '';
+function emitBuffs() {
+  const now = clock.elapsedTime;
+  const list = Object.keys(buffs).filter(k => now < buffs[k])
+    .map(k => ({ ico: BUFF_META[k].ico, name: BUFF_META[k].name, remain: Math.ceil(buffs[k] - now) }));
+  const key = list.map(b => b.ico + b.remain).join('|');
+  if (key !== lastBuffKey) { lastBuffKey = key; ui.setBuffs?.(list); }
+}
+
+// 야외 장식 메시(절차적)
+function outdoorMesh(id) {
+  const g = new THREE.Group();
+  if (id === 'fence') {
+    for (const x of [-0.5, 0.5]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1)); p.position.set(x, 0.3, 0); g.add(p); }
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), woodMat(2, 1)); rail.position.y = 0.42; g.add(rail);
+    const rail2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), woodMat(2, 1)); rail2.position.y = 0.22; g.add(rail2);
+  } else if (id === 'path') {
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.08, 8), clayMat(0xbfae95, false)); s.position.y = 0.04; s.scale.z = 0.8; g.add(s);
+  } else if (id === 'flowerbed') {
+    const soil = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.16, 0.7), clayMat(0x7a5230)); soil.position.y = 0.08; g.add(soil);
+    [0xff8fab, 0xffd36e, 0xa78bfa, 0xff9e5e].forEach((c, i) => {
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 4), clayMat(0x7fbf6a)); st.position.set(-0.3 + i * 0.2, 0.18, 0); g.add(st);
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), clayMat(c, false)); b.position.set(-0.3 + i * 0.2, 0.3, 0); g.add(b);
+    });
+  } else if (id === 'postlamp') {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.4, 6), clayMat(0x5a5148)); pole.position.y = 0.7; g.add(pole);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffca70, emissiveIntensity: 0, roughness: 0.6 });
+    houseWindows.push(headMat);   // 밤에 창문/가로등과 함께 점등
+    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), headMat); head.position.y = 1.5; g.add(head);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+// 야외 장식 설치 (플레이어 위치에). silent=true 면 저장 복원
+function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
+  const def = OUTDOOR.find(d => d.id === id); if (!def) return false;
+  if (!silent) {
+    for (const k in def.cost) {
+      if ((gameState.inventory[k] || 0) < def.cost[k]) { ui.toast?.((k === 'crop' ? '작물이' : '목재가') + ' 부족해요'); return false; }
+    }
+    for (const k in def.cost) gameState.inventory[k] -= def.cost[k];
+    refreshInventoryUI();
+  }
+  const m = outdoorMesh(id); m.position.set(wx, 0, wz); scene.add(m); outdoorMeshes.push(m);
+  gameState.outdoor.push({ id, x: wx, z: wz });
+  obstacles.push({ x: wx, z: wz, r: 0.8 });   // 그 위엔 밭 금지
+  if (!silent) {
+    m.userData.pop = 1; m.scale.setScalar(0.01);
+    Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
+    trackEvent('craft_item', { category: 'outdoor', item: id });  // [GA4]
+    placingOutdoor = null; ui.onDecorPlaced?.();                   // 배치 모드 종료(1회)
+  }
+  return true;
+}
+
+// 선물 제작(보유 수 +1)
+function craftGift(id) {
+  const g = GIFTS.find(x => x.id === id); if (!g) return { ok: false };
+  for (const k in g.cost) {
+    if ((gameState.inventory[k] || 0) < g.cost[k]) {
+      const label = k === 'fish' ? '물고기' : k === 'crop' ? '작물' : '목재';
+      return { ok: false, msg: `${label}이(가) 부족해요` };
+    }
+  }
+  for (const k in g.cost) gameState.inventory[k] -= g.cost[k];
+  gameState.gifts[id] = (gameState.gifts[id] || 0) + 1;
+  refreshInventoryUI();
+  Sound.blip();
+  spawnFloatText(player.position.x, 1.4, player.position.z, `${g.ico} ${g.name}!`, '#c9682a');
+  trackEvent('craft_item', { category: 'gift', item: id });  // [GA4]
+  return { ok: true, name: g.name };
+}
+
+// 근처 주민에게 선물 주기 → 친밀도↑ (3개마다 감사 보상)
+function giveGift(giftId) {
+  const o = nearNPC; if (!o) return { ok: false, msg: '가까운 주민이 없어요' };
+  if ((gameState.gifts[giftId] || 0) <= 0) return { ok: false, msg: '그 선물이 없어요' };
+  const g = GIFTS.find(x => x.id === giftId);
+  gameState.gifts[giftId] -= 1;
+  const id = o.def.id;
+  gameState.affinity[id] = (gameState.affinity[id] || 0) + 1;
+  refreshInventoryUI();
+  Sound.harvest();
+  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, '❤️', '#e6789a');
+  spawnSparkle(o.group.position.x, 1.4, o.group.position.z, 14);
+  let reward = null;
+  if (gameState.affinity[id] % 3 === 0) { reward = { seed: 3, crop: 1 }; giveReward(reward); } // 친밀 3단계마다 답례
+  trackEvent('gift_give', { npc: id, gift: giftId });  // [GA4]
+  return { ok: true, npc: o.def.name, ico: g.ico, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
+}
+
 function enterHouse() {
   indoor = true;
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
@@ -819,6 +1077,11 @@ function updateDoorInteract() {
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   }
   nearDoor = nd;
+  // 작업대(요리) / 상점 — 실외에서 문 프롬프트가 없을 때만
+  nearBench = !indoor && !nd && dist2D(BENCH, player.position) < 2.0;
+  nearShop = !indoor && !nd && !nearBench && dist2D(SHOP, player.position) < 2.0;
+  if (nearBench) prompt = '🍳 요리하기 (작업대)';
+  else if (nearShop) prompt = '🛒 상점';
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
 }
 
@@ -894,6 +1157,7 @@ function animate() {
     updateNPCInteract();
     updateDoorInteract();
     updateFishing();
+    emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     // [센서] 매 프레임 스냅샷 → logger throttle 후 배치 전송
     sampleFrame(() => ({
       char: { x: player.position.x, y: 0, z: player.position.z },
@@ -935,7 +1199,7 @@ function doPlayerAction(tx, tz) {
   actAnim = 1;
 }
 function updatePlayer(dt, t) {
-  const speed = 6;
+  const speed = 6 * (buffOn('speed') ? 1.4 : 1);   // 🥘 채소죽 버프: 이동속도 +40%
   let mx = 0, mz = 0;
   if (keys['KeyW'] || keys['ArrowUp']) mz -= 1;
   if (keys['KeyS'] || keys['ArrowDown']) mz += 1;
@@ -1100,6 +1364,9 @@ function handleAction() {
     else ui.toast?.('🎨 꾸미기 버튼으로 가구를 골라 배치하세요');
     return;
   }
+  if (placingOutdoor) return placeOutdoor(player.position.x, player.position.z); // 야외 장식 설치 중이면 발밑에 설치
+  if (nearBench) return ui.openCook?.();   // 작업대 근처 → 요리 메뉴
+  if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   if (nearNPC && !IS_MOBILE) return talkToNPC();
@@ -1138,7 +1405,9 @@ function tryFish() {
 }
 
 function catchFish() {
-  const roll = Math.random();
+  // 🐟 생선구이 버프(luck): 두 번 굴려 작은 값 채택 → 희귀/고급 확률↑
+  let roll = Math.random();
+  if (buffOn('luck')) roll = Math.min(roll, Math.random());
   const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
@@ -1169,7 +1438,7 @@ function updateFishing() {
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
     if (now >= biteAt) {
-      fishState = 'bite'; biteEnd = now + 1.4;           // 낚아챌 시간 창
+      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4); // 튼튼한 낚싯대: 입질 여유↑
       ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
       Sound.blip(); spawnWater(castPos.x, castPos.z);
     }
@@ -1193,12 +1462,13 @@ function tryChop() {
   doPlayerAction(nearest.position.x, nearest.position.z); // 벌목 제스처
   Sound.chop();
   spawnLeafBurst(nearest); spawnWoodChips(nearest);
-  ud.hp -= 1;
+  ud.hp -= gameState.upgrades.axe ? 2 : 1;                     // 강철 도끼: 2번에 벌목
+  const bonus = buffOn('chop') ? 1 : 0;                        // 🪓 도시락 버프: 벌목 목재 +1
   if (ud.hp <= 0) {
-    gameState.inventory.wood += 3; ud.fallen = true; ud.respawnAt = clock.elapsedTime + 12;
+    gameState.inventory.wood += 3 + bonus; ud.fallen = true; ud.respawnAt = clock.elapsedTime + 12;
     nearest.visible = false; spawnLeafBurst(nearest, 26);
-    spawnFloatText(nearest.position.x, 2.4, nearest.position.z, '+3 🪵', '#7a5230'); // 획득 표시
-  } else { gameState.inventory.wood += 1; spawnFloatText(nearest.position.x, 2.2, nearest.position.z, '+1 🪵', '#7a5230'); }
+    spawnFloatText(nearest.position.x, 2.4, nearest.position.z, `+${3 + bonus} 🪵`, '#7a5230'); // 획득 표시
+  } else { gameState.inventory.wood += 1 + bonus; spawnFloatText(nearest.position.x, 2.2, nearest.position.z, `+${1 + bonus} 🪵`, '#7a5230'); }
   refreshInventoryUI();
   questEvent('chop');                                          // 퀘스트 진행
   ui.act?.('chop');                                            // 튜토리얼
@@ -1290,7 +1560,7 @@ function tryWater() {
     return;
   }
   if (clock.elapsedTime < (plot.wetUntil || 0)) { ui.toast?.('아직 흙이 촉촉해요 🌱'); return; } // 마른 뒤에만 성장
-  plot.growth = Math.min(1, plot.growth + 0.4);
+  plot.growth = Math.min(1, plot.growth + (gameState.upgrades.water ? 0.7 : 0.4)); // 큰 물조리개: 성장 증가↑
   plot.wetUntil = clock.elapsedTime + WET_TIME; plot.watered = true;
   doPlayerAction(plot.x, plot.z); // 물주기 제스처
   Sound.water();

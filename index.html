@@ -69,6 +69,9 @@
   body:not(.playing) #fish-prompt,
   body:not(.playing) #decor-btn,
   body:not(.playing) #decor-menu,
+  body:not(.playing) #cook-menu,
+  body:not(.playing) #shop-menu,
+  body:not(.playing) #buffs,
   body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
@@ -211,12 +214,39 @@
   .dm-hint { font-size: 12px; opacity: .7; text-align: center; }
   .dm-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .dm-actions button { border: none; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
+  /* 요리(작업대) 메뉴 — 꾸미기 메뉴와 동일 톤 */
+  #cook-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; }
+  #cook-menu.show { display: flex; }
+  .ck-tabs { display: flex; gap: 6px; justify-content: center; }
+  .ck-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
+  .ck-tab.active { background: var(--mint); }
+  .ck-inv { font-size: 12px; opacity: .75; text-align: center; }
+  #cook-items, #tool-items, #out-items, #gift-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  /* 상점 메뉴 (cook-menu 톤 재사용) */
+  #shop-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; }
+  #shop-menu.show { display: flex; }
+  .sh-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
+  .sh-tab.active { background: var(--mint); }
+  #sell-items, #buy-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .ck-item.owned { opacity: .8; cursor: default; background: #dff0e2; }
+  .ck-item { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 92px; padding: 10px 6px; border-radius: 12px; background: rgba(255,255,255,0.62); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s; text-align: center; }
+  .ck-item:active { transform: scale(0.95); }
+  .ck-item.off { opacity: .4; }
+  .ck-item .ck-ico { font-size: 24px; }
+  .ck-item .ck-name { font-size: 12px; font-weight: 700; }
+  .ck-item .ck-buff { font-size: 10px; opacity: .8; line-height: 1.2; }
+  .ck-item .ck-cost { font-size: 10.5px; opacity: .75; }
+  /* 활성 버프 HUD — 우측 상단 인벤토리 아래 */
+  #buffs { position: fixed; top: calc(84px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
+  #buffs .buff { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.72); border-radius: 12px; padding: 5px 10px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow); }
+  #buffs .buff .b-t { opacity: .7; font-variant-numeric: tabular-nums; }
 
   /* NPC 대화/퀘스트 모달 */
   #npc-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
   #npc-modal.show { display: grid; }
   .npc-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
   .npc-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
+  #npc-hearts { font-size: 13px; margin-left: auto; letter-spacing: 1px; }
   #npc-emoji { font-size: 22px; }
   #npc-line { margin: 12px 0 14px; font-size: 15px; line-height: 1.5; }
   #npc-quest { background: #f4faf5; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
@@ -279,6 +309,19 @@
     #quest-panel { top: calc(80px + env(safe-area-inset-top)); max-width: 56vw; }
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널 숨김 */
     body.coaching #quest-panel { display: none; }
+    /* 버프 HUD: 문의하기 탭 아래로 */
+    #buffs { top: calc(122px + env(safe-area-inset-top)); }
+    #buffs .buff { font-size: 11px; padding: 4px 8px; }
+    /* 작업대/상점 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
+    #cook-menu, #shop-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
+    .ck-tabs { flex-wrap: wrap; }
+    .ck-tab, .sh-tab { padding: 6px 11px; font-size: 12px; }
+    .ck-item { width: 84px; }
+    /* NPC 모달 선물 버튼이 많아도 줄바꿈 */
+    .npc-actions { flex-wrap: wrap; }
+    /* 인벤토리 5칸(코인 추가) — 좁은 화면에서 더 조밀하게 */
+    #inventory { gap: 5px; }
+    .inv-ico { font-size: 12px; }
     .slot { width: 42px; height: 42px; border-radius: 11px; }
     .slot .s-ico { font-size: 17px; }
     .slot .s-key { font-size: 7.5px; }
@@ -314,6 +357,7 @@
       <span class="inv-item" id="inv-seed-item"><span class="inv-ico">🌰</span><span id="inv-seed">0</span></span>
       <span class="inv-item"><span class="inv-ico">🥕</span><span id="inv-crop">0</span></span>
       <span class="inv-item"><span class="inv-ico">🐟</span><span id="inv-fish">0</span></span>
+      <span class="inv-item"><span class="inv-ico">🪙</span><span id="inv-coin">0</span></span>
     </div>
     <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
   </div>
@@ -353,6 +397,39 @@
     <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>(또는 <b>Space</b>)해 배치 · 🥕작물/🐟물고기로 구매</div>
     <div class="dm-actions"><button id="dm-cancel">배치 취소</button><button id="dm-close">닫기</button></div>
   </div>
+
+  <!-- 작업대 메뉴 (요리 / 도구 탭) -->
+  <div id="cook-menu" class="panel">
+    <div class="dm-head">🛠️ 작업대</div>
+    <div class="ck-tabs">
+      <button class="ck-tab active" data-tab="cook">🍳 요리</button>
+      <button class="ck-tab" data-tab="tool">🔧 도구</button>
+      <button class="ck-tab" data-tab="out">🌷 야외</button>
+      <button class="ck-tab" data-tab="gift">🎁 선물</button>
+    </div>
+    <span id="cook-inv" class="ck-inv"></span>
+    <div id="cook-items"></div>
+    <div id="tool-items" style="display:none"></div>
+    <div id="out-items" style="display:none"></div>
+    <div id="gift-items" style="display:none"></div>
+    <div class="dm-hint" id="cook-hint">재료로 요리하면 <b>일정 시간 버프</b>가 붙어요 · 🥕작물/🐟물고기 소비</div>
+    <div class="dm-actions"><button id="cook-close">닫기</button></div>
+  </div>
+
+  <!-- 상점 메뉴 (팔기 / 사기 탭) — cook-menu 스타일 재사용 -->
+  <div id="shop-menu" class="panel">
+    <div class="dm-head">🛒 상점 <span id="shop-coin" class="ck-inv"></span></div>
+    <div class="ck-tabs">
+      <button class="sh-tab active" data-tab="sell">💰 팔기</button>
+      <button class="sh-tab" data-tab="buy">🛍️ 사기</button>
+    </div>
+    <div id="sell-items"></div>
+    <div id="buy-items" style="display:none"></div>
+    <div class="dm-actions"><button id="shop-close">닫기</button></div>
+  </div>
+
+  <!-- 활성 버프 표시 -->
+  <div id="buffs"></div>
 
   <!-- 도구 하트바 (JS 에서 슬롯 생성) -->
   <div id="hotbar" class="panel"></div>
@@ -399,7 +476,7 @@
   <!-- NPC 대화/퀘스트 모달 -->
   <div id="npc-modal">
     <div class="npc-card">
-      <div class="npc-head"><span id="npc-emoji">🙂</span><span id="npc-name"></span></div>
+      <div class="npc-head"><span id="npc-emoji">🙂</span><span id="npc-name"></span><span id="npc-hearts"></span></div>
       <p id="npc-line"></p>
       <div id="npc-quest">
         <div class="nq-title" id="npc-qtitle"></div>
@@ -466,15 +543,16 @@
     let lastToolIco = '✋';                          // 현재 도구 아이콘(액션버튼 복원용)
     let placingDecorItem = null;                    // 배치 중인 가구(액션버튼에 표시)
     let nearNpcNow = false, nearDoorNow = false;    // 액션버튼 맥락 표시용(주민/문 근접)
+    let doorIcon = '🚪';                             // 문/작업대 프롬프트 아이콘(🚪 또는 🍳)
 
     // 액션 버튼(모바일) 아이콘을 "지금 뭘 하는 버튼인지"에 맞춰 갱신
-    //   우선순위: 가구 배치 > 주민 대화 > 문 > 현재 도구
+    //   우선순위: 가구 배치 > 문/작업대 > 현재 도구  (주민 대화는 전용 버튼)
     function refreshActionIcon() {
       const b = $('action-btn'); if (!b) return;
       b.classList.remove('placing', 'talk', 'door');
       if (placingDecorItem) { b.textContent = placingDecorItem.ico; b.classList.add('placing'); return; }
       // 주민 근처여도 메인 액션버튼은 도구 유지(대화는 전용 '대화하기' 버튼) → 수확 중 대화 하이재킹 방지
-      if (nearDoorNow) { b.textContent = '🚪'; b.classList.add('door'); return; }
+      if (nearDoorNow) { b.textContent = doorIcon; b.classList.add('door'); return; }
       b.textContent = lastToolIco;
     }
 
@@ -498,8 +576,11 @@
         $('inv-seed').textContent = inv.seed;
         $('inv-crop').textContent = inv.crop;
         $('inv-fish').textContent = inv.fish || 0;
+        $('inv-coin').textContent = inv.coins || 0;
         $('inv-seed-item').classList.toggle('inv-low', inv.seed <= 0); // 씨앗 0 경고
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
+        if ($('cook-menu').classList.contains('show')) { cookTab === 'cook' ? renderCook() : cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
+        if ($('shop-menu').classList.contains('show')) renderShop();
       },
       setTime(mode, daylight) {
         $('time-emoji').textContent = mode === 'day' ? '🌤️' : '🌙';
@@ -546,6 +627,8 @@
         if (!view) return;
         $('npc-emoji').textContent = view.npc.emoji || '🙂';
         $('npc-name').textContent = view.npc.name;
+        const aff = Input.affinityOf(view.npc.id);
+        $('npc-hearts').textContent = aff > 0 ? ('❤️'.repeat(Math.min(aff, 5)) + (aff > 5 ? `×${aff}` : '')) : '';
         $('npc-line').textContent = view.line;
         const quest = $('npc-quest');
         if (view.mode === 'done') {
@@ -568,21 +651,35 @@
         } else {
           addBtn('닫기', 'ghost', closeNpc);
         }
+        // 🎁 선물 주기 — 보유 선물이 있을 때만
+        if (Object.values(Input.ownedGifts()).some(n => n > 0)) addBtn('🎁 선물 주기', 'ghost', () => showGiftPicker(view));
         $('npc-modal').classList.add('show');
       },
       // 신규 유저 튜토리얼 표시
       showTutorial() { $('tutorial-modal').classList.add('show'); },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
-      // 문 프롬프트
+      // 문/작업대 프롬프트 (텍스트에 '요리' 있으면 액션버튼 아이콘 🍳)
       setDoorPrompt(text) {
         const el = $('door-prompt');
-        nearDoorNow = !!text; refreshActionIcon();   // 액션버튼을 🚪로
+        nearDoorNow = !!text;
+        doorIcon = (text && text.includes('요리')) ? '🍳' : (text && text.includes('상점')) ? '🛒' : '🚪';
+        refreshActionIcon();
         if (!text) { el.classList.remove('show'); return; }
         el.textContent = text; el.classList.add('show');
       },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
       onDecorPlaced() { stopPlacing(); },
+      // 요리(작업대) 메뉴 열기
+      openCook() { showCookTab('cook'); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      // 상점 메뉴 열기
+      openShop() { showShopTab('sell'); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      // 활성 버프 HUD 갱신 (list: [{ico,name,remain}])
+      setBuffs(list) {
+        const box = $('buffs');
+        box.innerHTML = (list || []).map(b =>
+          `<div class="buff"><span>${b.ico}</span><span>${b.name}</span><span class="b-t">${b.remain}s</span></div>`).join('');
+      },
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
         document.body.classList.toggle('indoor', on);
@@ -600,6 +697,27 @@
       },
     };
     const closeNpc = () => $('npc-modal').classList.remove('show');
+
+    // 선물 주기 선택기 — 보유 선물 버튼으로 교체
+    function showGiftPicker(view) {
+      const actions = $('npc-actions'); actions.innerHTML = '';
+      const owned = Input.ownedGifts();
+      Input.getGifts().forEach(g => {
+        const n = owned[g.id] || 0; if (n <= 0) return;
+        const b = document.createElement('button'); b.className = 'ghost';
+        b.textContent = `${g.ico} ${g.name} ×${n}`;
+        b.addEventListener('click', () => {
+          const res = Input.giveGift(g.id);
+          if (!res.ok) { ui.toast(res.msg || '줄 수 없어요'); return; }
+          ui.toast(`${res.ico} 선물 전달! ${res.npc} ❤️${res.affinity}` + (res.reward ? ` · 답례 ${res.reward}` : ''));
+          closeNpc();
+        });
+        actions.appendChild(b);
+      });
+      const back = document.createElement('button'); back.className = 'ghost'; back.textContent = '뒤로';
+      back.addEventListener('click', () => ui.openNPCModal(view));
+      actions.appendChild(back);
+    }
 
     // ── 인터랙티브 튜토리얼(코치) 상태머신 ──
     // 기기별 조작 안내(터치=조이스틱/액션버튼, 데스크톱=키보드/클릭)
@@ -733,6 +851,152 @@
     $('decor-btn').addEventListener('click', openDecor);
     $('dm-close').addEventListener('click', closeDecor);
     $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); stopPlacing(); ui.toast('배치를 취소했어요'); closeDecor(); });
+
+    // ── 작업대 메뉴 (요리 / 도구 탭) ──
+    let cookTab = 'cook';
+    const ico = (k) => k === 'fish' ? '🐟' : k === 'crop' ? '🥕' : '🪵';
+    function updateCookInv() { $('cook-inv').textContent = `🪵 ${lastInv.wood}  🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}`; }
+    function renderCook() {
+      updateCookInv();
+      const box = $('cook-items'); box.innerHTML = '';
+      Input.getRecipes().forEach(r => {
+        const costStr = Object.entries(r.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const enough = Object.entries(r.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (enough ? '' : ' off');
+        el.innerHTML = `<span class="ck-ico">${r.ico}</span><span class="ck-name">${r.name}</span><span class="ck-buff">${r.desc}</span><span class="ck-cost">${costStr}</span>`;
+        el.addEventListener('click', () => {
+          const res = Input.craftCook(r.id);
+          if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
+          ui.toast(`${r.ico} ${res.name} 완성! ${res.buff} 버프 발동`);
+          renderCook();
+        });
+        box.appendChild(el);
+      });
+    }
+    function renderTools() {
+      updateCookInv();
+      const owned = Input.ownedUpgrades();
+      const box = $('tool-items'); box.innerHTML = '';
+      Input.getUpgrades().forEach(u => {
+        const isOwned = owned[u.id];
+        const enough = Object.entries(u.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
+        const costStr = Object.entries(u.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (isOwned ? ' owned' : (enough ? '' : ' off'));
+        el.innerHTML = `<span class="ck-ico">${u.ico}</span><span class="ck-name">${u.name}</span><span class="ck-buff">${u.desc}</span><span class="ck-cost">${isOwned ? '✅ 보유중' : costStr}</span>`;
+        if (!isOwned) el.addEventListener('click', () => {
+          const res = Input.craftUpgrade(u.id);
+          if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+          ui.toast(`${u.ico} ${res.name} 제작 완료!`);
+          renderTools();
+        });
+        box.appendChild(el);
+      });
+    }
+    function renderOutdoor() {
+      updateCookInv();
+      const box = $('out-items'); box.innerHTML = '';
+      Input.getOutdoor().forEach(o => {
+        const costStr = Object.entries(o.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const enough = Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (enough ? '' : ' off');
+        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span><span class="ck-buff">${o.desc}</span><span class="ck-cost">${costStr}</span>`;
+        el.addEventListener('click', () => {
+          if (!enough) { ui.toast('재료가 부족해요'); return; }
+          Input.selectOutdoor(o.id); closeCook();
+          placingDecorItem = o; refreshActionIcon();   // 액션버튼 = 설치 버튼
+          ui.toast(`${o.ico} ${o.name} — 원하는 곳에서 ${TOUCH ? '오른쪽 버튼' : 'Space'}으로 설치`);
+        });
+        box.appendChild(el);
+      });
+    }
+    function renderGifts() {
+      updateCookInv();
+      const owned = Input.ownedGifts();
+      const box = $('gift-items'); box.innerHTML = '';
+      Input.getGifts().forEach(g => {
+        const costStr = Object.entries(g.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const enough = Object.entries(g.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
+        const have = owned[g.id] || 0;
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (enough ? '' : ' off');
+        el.innerHTML = `<span class="ck-ico">${g.ico}</span><span class="ck-name">${g.name}${have ? ` ×${have}` : ''}</span><span class="ck-buff">주민 선물</span><span class="ck-cost">${costStr}</span>`;
+        el.addEventListener('click', () => {
+          const res = Input.craftGift(g.id);
+          if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
+          ui.toast(`${g.ico} ${res.name} 제작! 주민에게 대화 → 선물 주기`);
+          renderGifts();
+        });
+        box.appendChild(el);
+      });
+    }
+    function showCookTab(t) {
+      cookTab = t;
+      [...document.querySelectorAll('.ck-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+      $('cook-items').style.display = t === 'cook' ? 'flex' : 'none';
+      $('tool-items').style.display = t === 'tool' ? 'flex' : 'none';
+      $('out-items').style.display = t === 'out' ? 'flex' : 'none';
+      $('gift-items').style.display = t === 'gift' ? 'flex' : 'none';
+      $('cook-hint').innerHTML = t === 'cook'
+        ? '재료로 요리하면 <b>일정 시간 버프</b>가 붙어요 · 🥕작물/🐟물고기 소비'
+        : t === 'tool'
+          ? '<b>영구</b> 도구 강화 · 🪵목재/🥕작물/🐟물고기 소비'
+          : t === 'out'
+            ? '장식을 고르고 <b>원하는 곳</b>에서 설치 · 🪵목재/🥕작물 소비'
+            : '선물을 만들어 <b>주민과 대화 → 선물 주기</b>로 친밀도↑';
+      if (t === 'cook') renderCook(); else if (t === 'tool') renderTools(); else if (t === 'out') renderOutdoor(); else renderGifts();
+    }
+    document.querySelectorAll('.ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
+    function closeCook() { $('cook-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
+    $('cook-close').addEventListener('click', closeCook);
+
+    // ── 상점 메뉴 (팔기 / 사기) ──
+    let shopTab = 'sell';
+    const SELL_ICO = { crop: '🥕', fish: '🐟', wood: '🪵' };
+    // 판매 바인딩: 탭=1개, 꾹 누르면(450ms) 전부 — pointer 이벤트로 모바일/데스크톱 공통
+    function bindSell(el, k) {
+      let timer = null, longFired = false;
+      const doSell = (all) => { const r = Input.sellItem(k, all); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(all ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain}`); renderShop(); };
+      el.addEventListener('pointerdown', () => { longFired = false; timer = setTimeout(() => { longFired = true; doSell(true); }, 450); });
+      el.addEventListener('pointerup', () => { if (timer) { clearTimeout(timer); timer = null; } if (!longFired) doSell(false); });
+      el.addEventListener('pointerleave', () => { if (timer) { clearTimeout(timer); timer = null; } });
+      el.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    function renderShop() {
+      $('shop-coin').textContent = `🪙 ${lastInv.coins || 0}`;
+      if (shopTab === 'sell') {
+        const price = Input.getSellPrice(); const box = $('sell-items'); box.innerHTML = '';
+        Object.keys(price).forEach(k => {
+          const have = lastInv[k] || 0;
+          const el = document.createElement('div');
+          el.className = 'ck-item' + (have > 0 ? '' : ' off');
+          el.innerHTML = `<span class="ck-ico">${SELL_ICO[k]}</span><span class="ck-name">보유 ${have}</span><span class="ck-buff">개당 🪙${price[k]}</span><span class="ck-cost">탭 1개 · 꾹 전부</span>`;
+          bindSell(el, k);   // 탭=1개, 롱프레스=전부 (모바일·데스크톱 공통)
+          box.appendChild(el);
+        });
+      } else {
+        const box = $('buy-items'); box.innerHTML = '';
+        Input.getShopBuy().forEach(it => {
+          const can = (lastInv.coins || 0) >= it.coin;
+          const el = document.createElement('div');
+          el.className = 'ck-item' + (can ? '' : ' off');
+          el.innerHTML = `<span class="ck-ico">${it.ico}</span><span class="ck-name">${it.name}</span><span class="ck-buff">&nbsp;</span><span class="ck-cost">🪙${it.coin}</span>`;
+          el.addEventListener('click', () => { const r = Input.buyShop(it.id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`🛍️ ${r.name} 구매!`); renderShop(); });
+          box.appendChild(el);
+        });
+      }
+    }
+    function showShopTab(t) {
+      shopTab = t;
+      [...document.querySelectorAll('.sh-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+      $('sell-items').style.display = t === 'sell' ? 'flex' : 'none';
+      $('buy-items').style.display = t === 'buy' ? 'flex' : 'none';
+      renderShop();
+    }
+    document.querySelectorAll('.sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));
+    $('shop-close').addEventListener('click', () => { $('shop-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
 
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {
