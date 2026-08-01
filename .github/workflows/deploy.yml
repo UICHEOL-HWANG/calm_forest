@@ -1,23 +1,16 @@
 # =============================================================
-#  calm forest · GitHub Pages 자동 배포 (GitHub Actions)
+#  calm forest · GitHub Pages 배포 (⚠️ 사용 안 함 — Cloudflare로 이전)
 #  ------------------------------------------------------------
-#  main 브랜치에 push하면 정적 사이트를 그대로 Pages에 배포합니다.
-#  빌드 단계가 없는 순수 정적 사이트라 파일을 업로드만 하면 끝.
-#
-#  ★ 사전 설정(한 번): 저장소 Settings → Pages → Build and deployment
-#     → Source 를 "GitHub Actions" 로 변경.
-#
-#  ★ 비밀값 주의: .env(DB 비밀번호)는 .gitignore로 제외되어 커밋되지
-#     않으므로 배포물에 포함되지 않습니다. config.js의 Supabase URL /
-#     publishable key / GA4 ID는 공개돼도 되는 값이라 그대로 배포됩니다.
+#  호스팅을 Cloudflare Pages/Workers 로 옮겨서 이 워크플로우는 더 이상
+#  자동 실행하지 않습니다(수동 실행만). github.io 백업 미러가 필요할 때만
+#  Actions 탭에서 "Run workflow" 로 수동 배포하세요.
+#  완전히 안 쓸 거면 이 파일을 삭제해도 됩니다: git rm .github/workflows/deploy.yml
 # =============================================================
 
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages (deprecated)
 
 on:
-  push:
-    branches: [main]     # main에 push할 때마다 배포
-  workflow_dispatch:      # 수동 실행 버튼도 제공
+  workflow_dispatch:      # 수동 실행만 (자동 배포 중단 — Cloudflare가 담당)
 
 # Pages 배포에 필요한 권한
 permissions:
