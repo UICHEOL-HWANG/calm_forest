@@ -86,6 +86,10 @@ const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(요리) 위치
 let nearBench = false;
 const SHOP = new THREE.Vector3(-4, 0, -5);      // 상점 좌판 위치
 let nearShop = false;
+const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
+const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 변의 절반)
+const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
+let atFarm = false;                             // 텃밭 안에 있는지
 const SELL_PRICE = { crop: 5, fish: 8, wood: 2 };   // 판매 단가(코인)
 const SHOP_BUY = [
   { id: 'seed5',  name: '씨앗 5개',  ico: '🌰', coin: 15, give: { seed: 5 } },
@@ -406,12 +410,14 @@ function buildWorld() {
     do {                                              // 호수·집터·작업대 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
-    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5));
+    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5));
     spawnTree(x, z);
   }
 
   spawnWorkbench();   // 작업대(요리)
   spawnShop();        // 상점 좌판
+  spawnFarmGate();    // 텃밭 입구 게이트
+  buildFarm();        // 개인 텃밭 필드
 
   for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
@@ -1055,16 +1061,78 @@ function giveGift(giftId) {
   return { ok: true, npc: o.def.name, ico: g.ico, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
 }
 
+// 캔버스 글자 표지판(persistent)
+function makeSignBoard(text) {
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 200;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#e8d3a8'; c.fillRect(0, 0, 512, 200);
+  c.fillStyle = '#8a6a3a'; c.fillRect(0, 0, 512, 16); c.fillRect(0, 184, 512, 16);
+  c.font = 'bold 88px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#4a3a24'; c.fillText(text, 256, 104);
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.86, 0.1), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
+  return m;
+}
+
+// 마을 안 텃밭 입구 게이트(나무 아치 + 표지판)
+function spawnFarmGate() {
+  const g = new THREE.Group(); g.position.copy(FARM_GATE);
+  for (const x of [-1.1, 1.1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.4, 7), woodMat(1, 1)); p.position.set(x, 1.2, 0); p.castShadow = true; g.add(p); }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.24, 0.24), woodMat(2, 1)); top.position.y = 2.4; g.add(top);
+  const sign = makeSignBoard('🌾 내 텃밭'); sign.position.set(0, 1.7, 0.02); g.add(sign);
+  scene.add(g);
+  obstacles.push({ x: FARM_GATE.x, z: FARM_GATE.z, r: 1.2 });
+}
+
+// 텃밭 필드(잔디 바닥 + 울타리 + 나가는 문 + 허수아비)
+function buildFarm() {
+  const g = new THREE.Group(); g.position.copy(FARM);
+  const ground = new THREE.Mesh(new THREE.BoxGeometry(FARM_HALF * 2, 0.2, FARM_HALF * 2), clayMat(0x8fce7e, false));
+  ground.position.y = 0.05; ground.receiveShadow = true; g.add(ground);
+  // 울타리 둘레
+  const H = FARM_HALF;
+  for (let i = -H; i <= H; i += 1.5) {
+    for (const [x, z] of [[i, -H], [i, H], [-H, i], [H, i]]) {
+      if (Math.abs(x) < 1.2 && z === H) continue; // 남쪽 가운데는 출입구
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1)); post.position.set(x, 0.35, z); g.add(post);
+    }
+  }
+  // 나가는 문(남쪽 가운데)
+  const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.14, 0.4), woodMat(1, 2, 0xa9743f)); gate.position.set(0, 0.16, H); g.add(gate);
+  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, H); g.add(board);
+  // 허수아비(장식)
+  const sc = new THREE.Group(); sc.position.set(-H + 1.5, 0, -H + 1.5);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5), clayMat(0x8a6a3a)); pole.position.y = 0.8; sc.add(pole);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.08), clayMat(0x8a6a3a)); arm.position.y = 1.1; sc.add(arm);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), clayMat(0xf1e2b8, false)); head.position.y = 1.5; sc.add(head);
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.3, 10), clayMat(0xc98a4f)); hat.position.y = 1.72; sc.add(hat);
+  sc.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.add(sc);
+  scene.add(g);
+}
+
+function enterFarm() {
+  atFarm = true;
+  player.position.set(FARM.x, 0, FARM.z + FARM_HALF - 1.5); player.rotation.y = Math.PI;
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  Sound.blip(); trackEvent('enter_farm'); // [GA4]
+}
+function exitFarm() {
+  atFarm = false;
+  player.position.set(FARM_GATE.x, 0, FARM_GATE.z + 2);
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  Sound.blip(); trackEvent('exit_farm'); // [GA4]
+}
+
 function enterHouse() {
   indoor = true;
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
-  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true);
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true); snapCamera();
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
   indoor = false; placingDecor = null;
   player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
-  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false);
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
 }
 
@@ -1073,13 +1141,18 @@ function updateDoorInteract() {
   let nd = null, prompt = null;
   if (indoor) {
     if (dist2D({ x: INT.x, z: INT.z - 4 }, player.position) < 1.8) { nd = 'exit'; prompt = '🚪 나가기'; }
+  } else if (atFarm) {
+    if (dist2D({ x: FARM.x, z: FARM.z + FARM_HALF }, player.position) < 1.8) { nd = 'farmexit'; prompt = '🚪 나가기'; }
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
     nd = 'enter'; prompt = '🚪 집에 들어가기';
+  } else if (dist2D(FARM_GATE, player.position) < 2.0) {
+    nd = 'farm'; prompt = '🌾 내 텃밭';
   }
   nearDoor = nd;
-  // 작업대(요리) / 상점 — 실외에서 문 프롬프트가 없을 때만
-  nearBench = !indoor && !nd && dist2D(BENCH, player.position) < 2.0;
-  nearShop = !indoor && !nd && !nearBench && dist2D(SHOP, player.position) < 2.0;
+  // 작업대(요리) / 상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
+  const inVillage = !indoor && !atFarm && !nd;
+  nearBench = inVillage && dist2D(BENCH, player.position) < 2.0;
+  nearShop = inVillage && !nearBench && dist2D(SHOP, player.position) < 2.0;
   if (nearBench) prompt = '🍳 요리하기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
@@ -1227,6 +1300,9 @@ function updatePlayer(dt, t) {
   if (indoor) { // 실내: 방 벽 안쪽으로 제한
     player.position.x = Math.max(INT.x - 3.5, Math.min(INT.x + 3.5, player.position.x));
     player.position.z = Math.max(INT.z - 3.7, Math.min(INT.z + 3.5, player.position.z));
+  } else if (atFarm) { // 텃밭: 울타리 안쪽으로 제한
+    player.position.x = Math.max(FARM.x - FARM_HALF + 0.6, Math.min(FARM.x + FARM_HALF - 0.6, player.position.x));
+    player.position.z = Math.max(FARM.z - FARM_HALF + 0.6, Math.min(FARM.z + FARM_HALF - 0.6, player.position.z));
   } else {
     const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
@@ -1249,6 +1325,13 @@ function updatePlayer(dt, t) {
 const camOffset = new THREE.Vector3(0, 14, 16);
 const _camTarget = new THREE.Vector3();
 const _camLook = new THREE.Vector3(0, 1.2, 0);
+// 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
+function snapCamera() {
+  _camTarget.copy(player.position).add(camOffset);
+  camera.position.copy(_camTarget);
+  _camLook.set(player.position.x, 1.2, player.position.z);
+  camera.lookAt(_camLook);
+}
 function updateCamera(dt) {
   // 위치·시선 모두 감쇠 보간 → 캐릭터를 한 박자 부드럽게 따라옴
   _camTarget.copy(player.position).add(camOffset);
@@ -1355,9 +1438,11 @@ function updateTrees(dt) {
 function handleAction() {
   if (!wantAction) return;
   wantAction = false;
-  // 문(입장/퇴장) 우선
+  // 문/게이트(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
+  if (nearDoor === 'farm') return enterFarm();
+  if (nearDoor === 'farmexit') return exitFarm();
   // 실내에선 도구질(밭갈기·낚시 등) 금지 — 가구 배치만(선택 중이면 발 앞에 놓기)
   if (indoor) {
     if (placingDecor) placeDecor(placingDecor, player.position.x, player.position.z);

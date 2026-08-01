@@ -38,6 +38,7 @@
 | `quest_accept` / `quest_complete` | 퀘스트 수락/완료 | `quest`, `npc` |
 | `feedback_submit` | 문의 제출 | `category` |
 | `enter_house` / `exit_house` | 집 실내 입장/퇴장 | — |
+| `enter_farm` / `exit_farm` | 개인 텃밭 입장/퇴장 | — |
 | `place_decor` | 가구 배치(꾸미기) | `item`(rug/plant/…) |
 | `craft_item` | 제작(작업대) | `category`(cook/tool/outdoor/gift), `item`(요리·도구·야외장식·선물 id) |
 | `gift_give` | 주민에게 선물 전달 | `npc`, `gift`(bouquet/fruit/fishset/woodtoy) |

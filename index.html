@@ -663,7 +663,7 @@
       setDoorPrompt(text) {
         const el = $('door-prompt');
         nearDoorNow = !!text;
-        doorIcon = (text && text.includes('요리')) ? '🍳' : (text && text.includes('상점')) ? '🛒' : '🚪';
+        doorIcon = (text && text.includes('요리')) ? '🍳' : (text && text.includes('상점')) ? '🛒' : (text && text.includes('텃밭')) ? '🌾' : '🚪';
         refreshActionIcon();
         if (!text) { el.classList.remove('show'); return; }
         el.textContent = text; el.classList.add('show');
