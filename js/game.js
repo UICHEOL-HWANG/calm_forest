@@ -90,6 +90,7 @@ const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 �
 const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 변의 절반)
 const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
 let atFarm = false;                             // 텃밭 안에 있는지
+let lastMini = 0;                               // 미니맵 갱신 throttle
 const SELL_PRICE = { crop: 5, fish: 8, wood: 2 };   // 판매 단가(코인)
 const SHOP_BUY = [
   { id: 'seed5',  name: '씨앗 5개',  ico: '🌰', coin: 15, give: { seed: 5 } },
@@ -1231,6 +1232,10 @@ function animate() {
     updateDoorInteract();
     updateFishing();
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
+    if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
+      lastMini = t;
+      ui.setMinimap?.({ place: indoor ? 'house' : atFarm ? 'farm' : 'village', x: player.position.x, z: player.position.z, yaw: player.rotation.y });
+    }
     // [센서] 매 프레임 스냅샷 → logger throttle 후 배치 전송
     sampleFrame(() => ({
       char: { x: player.position.x, y: 0, z: player.position.z },

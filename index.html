@@ -61,6 +61,7 @@
   body:not(.playing) #hotbar,
   body:not(.playing) #hint,
   body:not(.playing) #feedback-tab,
+  body:not(.playing) #minimap,
   body:not(.playing) #quest-panel,
   body:not(.playing) #npc-prompt,
   body:not(.playing) #talk-btn,
@@ -160,7 +161,9 @@
   body.is-touch #hint { display: none; }
 
   /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
-  #quest-panel { top: calc(84px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
+  /* 미니맵 — 좌상단(버튼 아래), 캐릭터 위치 표시 */
+  #minimap { position: fixed; top: calc(70px + env(safe-area-inset-top)); left: 16px; width: 110px; height: 110px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
+  #quest-panel { top: calc(190px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
@@ -306,9 +309,11 @@
     #time-emoji { font-size: 13px; }
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
-    #quest-panel { top: calc(80px + env(safe-area-inset-top)); max-width: 56vw; }
-    /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널 숨김 */
-    body.coaching #quest-panel { display: none; }
+    /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 */
+    #minimap { top: calc(52px + env(safe-area-inset-top)); left: 10px; width: 84px; height: 84px; }
+    #quest-panel { top: calc(148px + env(safe-area-inset-top)); max-width: 52vw; }
+    /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널·미니맵 숨김 */
+    body.coaching #quest-panel, body.coaching #minimap { display: none; }
     /* 버프 HUD: 문의하기 탭 아래로 */
     #buffs { top: calc(122px + env(safe-area-inset-top)); }
     #buffs .buff { font-size: 11px; padding: 4px 8px; }
@@ -361,6 +366,9 @@
     </div>
     <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
   </div>
+
+  <!-- 미니맵 (캐릭터 대략 위치) -->
+  <canvas id="minimap" width="110" height="110"></canvas>
 
   <div id="hint" class="panel">이동 WASD/방향키 · 도구 1~6 · 상호작용 Space/클릭 · 주민에게 말 걸기</div>
   <div id="toast" class="panel"></div>
@@ -679,6 +687,40 @@
         const box = $('buffs');
         box.innerHTML = (list || []).map(b =>
           `<div class="buff"><span>${b.ico}</span><span>${b.name}</span><span class="b-t">${b.remain}s</span></div>`).join('');
+      },
+      // 미니맵 — 캐릭터 대략 위치 + 주요 지형
+      setMinimap(d) {
+        const cv = $('minimap'); if (!cv) return;
+        const ctx = cv.getContext('2d'); const S = cv.width;
+        ctx.clearRect(0, 0, S, S);
+        ctx.fillStyle = 'rgba(150,200,150,0.4)'; ctx.fillRect(0, 0, S, S);
+        if (d.place !== 'village') {   // 실내/텃밭은 라벨만
+          ctx.fillStyle = '#3f5a45'; ctx.font = 'bold 13px sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(d.place === 'house' ? '🏠 실내' : '🌾 내 텃밭', S / 2, S / 2);
+          return;
+        }
+        const R = 26;                  // 월드 반경 → 미니맵
+        const px = (wx, wz) => [(wx + R) / (R * 2) * S, (wz + R) / (R * 2) * S];
+        // 호수
+        const [lx, lz] = px(16, 9);
+        ctx.fillStyle = 'rgba(120,180,220,0.85)';
+        ctx.beginPath(); ctx.arc(lx, lz, 6 / (R * 2) * S, 0, 7); ctx.fill();
+        // 지형 점
+        const dot = (wx, wz, c, r = 3) => { const [a, b] = px(wx, wz); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a, b, r, 0, 7); ctx.fill(); };
+        dot(-8, -8, '#b58b5a', 4);   // 집
+        dot(4, -5, '#ff7b6b');       // 작업대
+        dot(-4, -5, '#ff9e5e');      // 상점
+        dot(0, 7, '#6fbf73');        // 텃밭 게이트
+        [[5, 4], [-5, 6], [9, -3], [9, 14]].forEach(([x, z]) => dot(x, z, '#b79cff', 2.5)); // 주민
+        // 플레이어(+방향)
+        let [pxx, pyy] = px(d.x, d.z);
+        pxx = Math.max(4, Math.min(S - 4, pxx)); pyy = Math.max(4, Math.min(S - 4, pyy));
+        const hx = Math.sin(d.yaw || 0), hz = Math.cos(d.yaw || 0);
+        ctx.strokeStyle = '#2f7a44'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pxx, pyy); ctx.lineTo(pxx + hx * 9, pyy + hz * 9); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2f7a44'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(pxx, pyy, 4, 0, 7); ctx.fill(); ctx.stroke();
       },
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
