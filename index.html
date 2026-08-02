@@ -46,10 +46,12 @@
   #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
-  #logout-btn, #help-btn, #stats-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
+  #logout-btn, #help-btn, #stats-btn, #photo-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
-  #help-btn, #stats-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
-  #logout-btn:active, #help-btn:active, #stats-btn:active { transform: scale(0.94); }
+  #help-btn, #stats-btn, #photo-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
+  #logout-btn:active, #help-btn:active, #stats-btn:active, #photo-btn:active { transform: scale(0.94); }
+  #photo-btn.pulse { animation: photopulse 0.7s ease-in-out infinite; background: #ffe8b0; }
+  @keyframes photopulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(255,190,74,0.5), var(--shadow); } }
 
   /* 문의하기 탭 — 데스크톱은 우측 하단 코너로 분리(상단 HUD와 안 겹침) */
   #feedback-tab { bottom: calc(22px + env(safe-area-inset-bottom)); right: 22px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
@@ -76,8 +78,12 @@
   body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show { display: grid; }
+  #photo-img { width: 100%; border-radius: 12px; display: block; box-shadow: var(--shadow); }
+  .photo-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .photo-actions button { border: none; border-radius: 12px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; background: #eef2ee; color: var(--ink); }
+  .photo-actions .primary { background: var(--mint); }
   #seed-ok, #hint-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
   #seed-ok:active { transform: scale(0.96); }
   .tut-card { width: min(440px, 92vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
@@ -296,7 +302,7 @@
     /* 좌측: 상태점·라벨 텍스트 숨겨서 버튼을 아이콘만으로(정사각) 컴팩트 */
     #login-status, #login-dot { display: none; }
     .lbl { display: none; }                       /* '나가기' 글자 접기 → 아이콘만 */
-    #logout-btn, #help-btn, #stats-btn {
+    #logout-btn, #help-btn, #stats-btn, #photo-btn {
       padding: 0; width: 34px; height: 34px; font-size: 16px;
       display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
     }
@@ -350,6 +356,7 @@
     <span id="login-status">연결 중…</span>
     <button id="help-btn" title="도움말">❓</button>
     <button id="stats-btn" title="내 활동 기록">📊</button>
+    <button id="photo-btn" title="사진 찍기">📷</button>
     <button id="logout-btn" style="display:none;">🚪<span class="lbl"> 나가기</span></button>
   </div>
 
@@ -538,6 +545,19 @@
     </div>
   </div>
 
+  <!-- 사진 미리보기 모달 -->
+  <div id="photo-modal">
+    <div class="tut-card" style="max-width:460px; width:min(460px,92vw);">
+      <h2 style="margin:0 0 12px;">📷 사진 찍기</h2>
+      <img id="photo-img" alt="calm forest 사진" />
+      <div class="photo-actions">
+        <button id="photo-save" class="primary">💾 저장</button>
+        <button id="photo-share">📤 공유</button>
+        <button id="photo-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <div id="loading">calm forest 불러오는 중… 🌿</div>
 
   <script type="importmap">
@@ -677,6 +697,12 @@
       showTutorial() { $('tutorial-modal').classList.add('show'); },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
+      // 좋은 순간 → 사진 버튼 잠깐 강조(찍으라고 넛지)
+      photoNudge() {
+        const b = $('photo-btn'); if (!b) return;
+        b.classList.add('pulse'); clearTimeout(photoPulseT);
+        photoPulseT = setTimeout(() => b.classList.remove('pulse'), 2200);
+      },
       // 시설 첫 접근 안내 카드 모달
       showHintModal({ ico, title, body }) {
         $('hint-emoji').textContent = ico || '🌿';
@@ -1073,6 +1099,35 @@
     });
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
+
+    // ── 사진 찍기 (캡처 → 저장/공유) ──
+    let lastPhoto = null, photoPulseT;
+    $('photo-btn').addEventListener('click', () => {
+      const data = Input.capturePhoto();
+      if (!data) { ui.toast('사진 캡처에 실패했어요'); return; }
+      lastPhoto = data; $('photo-img').src = data;
+      Input.setAnalog(0, 0); $('photo-btn').classList.remove('pulse');
+      $('photo-modal').classList.add('show');
+      trackEvent('photo_capture');   // [GA4]
+    });
+    $('photo-close').addEventListener('click', () => $('photo-modal').classList.remove('show'));
+    $('photo-save').addEventListener('click', () => {
+      if (!lastPhoto) return;
+      const a = document.createElement('a'); a.href = lastPhoto; a.download = 'calmforest-' + Date.now() + '.png'; a.click();
+    });
+    $('photo-share').addEventListener('click', async () => {
+      if (!lastPhoto) return;
+      try {
+        const blob = await (await fetch(lastPhoto)).blob();
+        const file = new File([blob], 'calmforest.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'calm forest 🌿', text: '내 마을 구경오세요 · https://calmforest.icuchoel.workers.dev' });
+          trackEvent('photo_share');   // [GA4] 공유 훅
+        } else {
+          ui.toast('이 기기는 바로 공유가 안 돼요 — 💾저장으로 받아 공유해요');
+        }
+      } catch (e) { /* 사용자 취소 등은 무시 */ }
+    });
 
     // 낮/밤 수동 조절: 시간 바 드래그로 시간 지정, 이모지 클릭으로 자동순환 토글
     (function setupTimeControl() {

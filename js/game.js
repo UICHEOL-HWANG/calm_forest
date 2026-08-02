@@ -265,6 +265,7 @@ export const Input = {
   craftGift(id) { return craftGift(id); },              // 선물 제작
   giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
+  capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(dataURL)
   selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
   cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
   isIndoor() { return indoor; },
@@ -355,7 +356,7 @@ export async function requestSave() { return await saveGame(getGameState()); }
 // =============================================================
 function initRenderer() {
   // 모바일은 안티앨리어싱 off + 픽셀비율 상한을 낮춰 GPU 부담 감소
-  renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance', preserveDrawingBuffer: true }); // preserveDrawingBuffer: 사진 캡처용
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
@@ -781,6 +782,7 @@ function buildHouseStage(stage, silent = false) {
       ui.toast?.('🎉 집 완성! 축하해요');
       questEvent('house');                       // 퀘스트 진행
       ui.act?.('build');                         // 튜토리얼: 집 완성
+      triggerMoment();                           // 📷 순간 줌인
       trackEvent('house_complete');              // [GA4] 집 완성 이벤트
     }
   }
@@ -954,6 +956,7 @@ function craftCook(id) {
   spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${r.name}!`, '#c9682a');
   spawnSparkle(player.position.x, 0.9, player.position.z, 16);
   trackEvent('craft_item', { category: 'cook', item: id });  // [GA4] 제작 사용 트래킹(GA4 전용)
+  triggerMoment();                                           // 📷 순간 줌인
   emitBuffs();
   return { ok: true, name: r.name, buff: BUFF_META[r.buff].name };
 }
@@ -1344,6 +1347,13 @@ function updatePlayer(dt, t) {
 const camOffset = new THREE.Vector3(0, 14, 16);
 const _camTarget = new THREE.Vector3();
 const _camLook = new THREE.Vector3(0, 1.2, 0);
+const _camOff = new THREE.Vector3();
+let momentUntil = 0;   // 이벤트 순간 줌인 종료 시각(clock.elapsedTime)
+// 특정 이벤트(수확·낚시·요리 등) 시 카메라 잠깐 줌인 + 사진 버튼 넛지
+function triggerMoment() {
+  momentUntil = clock.elapsedTime + 1.3;
+  ui.photoNudge?.();
+}
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
 function snapCamera() {
   _camTarget.copy(player.position).add(camOffset);
@@ -1352,8 +1362,10 @@ function snapCamera() {
   camera.lookAt(_camLook);
 }
 function updateCamera(dt) {
-  // 위치·시선 모두 감쇠 보간 → 캐릭터를 한 박자 부드럽게 따라옴
-  _camTarget.copy(player.position).add(camOffset);
+  // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
+  const zoom = clock.elapsedTime < momentUntil ? 0.58 : 1;
+  _camOff.copy(camOffset).multiplyScalar(zoom);
+  _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
   _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z), k);
@@ -1520,6 +1532,7 @@ function catchFish() {
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
+  triggerMoment();                                                      // 📷 순간 줌인
   trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity }); // [GA4]
   resetFishing();
 }
@@ -1693,6 +1706,7 @@ function tryHarvest() {
   refreshInventoryUI();
   questEvent('harvest');                                          // 퀘스트 진행
   ui.act?.('harvest');                                            // 튜토리얼: 수확
+  triggerMoment();                                                // 📷 순간 줌인
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
 }
 
