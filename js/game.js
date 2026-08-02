@@ -177,7 +177,15 @@ const gameState = {
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
+  hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
 };
+
+// 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
+function firstHint(key, ico, title, body) {
+  if (gameState.hintsSeen[key]) return;
+  gameState.hintsSeen[key] = true;
+  ui.showHintModal?.({ ico, title, body });
+}
 
 let indoor = false;        // 실내(집 안) 여부
 let nearDoor = null;       // 'enter' | 'exit' | null
@@ -316,6 +324,7 @@ function applySave(saved) {
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id)); // 야외 장식 복원
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
+  if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (typeof saved.houseStage === 'number') {
     for (let s = 1; s <= saved.houseStage; s++) buildHouseStage(s, true); // 조용히 복원
   }
@@ -1115,6 +1124,7 @@ function enterFarm() {
   atFarm = true;
   player.position.set(FARM.x, 0, FARM.z + FARM_HALF - 1.5); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 밭을 갈고 🌰씨앗을 심어 💧물을 주며 키워보세요. 심은 작물은 저장돼요. 나갈 땐 남쪽 문으로!');
   Sound.blip(); trackEvent('enter_farm'); // [GA4]
 }
 function exitFarm() {
@@ -1157,6 +1167,10 @@ function updateDoorInteract() {
   if (nearBench) prompt = '🍳 요리하기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+  // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
+  if (nearBench) firstHint('bench', '🍳', '작업대', '재료(작물·물고기·목재)로 요리(일시 버프)·도구 강화·야외 장식·주민 선물을 만들 수 있어요. 4개 탭에서 골라 만들어보세요!');
+  else if (nearShop) firstHint('shop', '🛒', '상점', '작물·물고기·목재를 팔아 🪙코인을 벌고, 씨앗 등을 살 수 있어요. (팔기: 탭하면 1개, 꾹 누르면 전부)');
+  else if (nd === 'farm') firstHint('farmGate', '🌾', '내 텃밭 입구', '들어가면 나만의 넓은 밭이 있어요. 마을과 별개로, 마음껏 농사지을 수 있는 나만의 공간이에요!');
 }
 
 // =============================================================

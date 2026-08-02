@@ -76,9 +76,9 @@
   body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
-  #tutorial-modal.show, #seed-modal.show { display: grid; }
-  #seed-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
+  #tutorial-modal, #seed-modal, #hint-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show { display: grid; }
+  #seed-ok, #hint-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
   #seed-ok:active { transform: scale(0.96); }
   .tut-card { width: min(440px, 92vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
   .tut-emoji { font-size: 40px; }
@@ -162,8 +162,8 @@
 
   /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
   /* 미니맵 — 좌상단(버튼 아래), 캐릭터 위치 표시 */
-  #minimap { position: fixed; top: calc(70px + env(safe-area-inset-top)); left: 16px; width: 110px; height: 110px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
-  #quest-panel { top: calc(190px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
+  #minimap { position: fixed; top: calc(78px + env(safe-area-inset-top)); left: 16px; width: 108px; height: 108px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
+  #quest-panel { top: calc(206px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
@@ -309,9 +309,9 @@
     #time-emoji { font-size: 13px; }
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
-    /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 */
-    #minimap { top: calc(52px + env(safe-area-inset-top)); left: 10px; width: 84px; height: 84px; }
-    #quest-panel { top: calc(148px + env(safe-area-inset-top)); max-width: 52vw; }
+    /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
+    #minimap { top: calc(60px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
+    #quest-panel { top: calc(156px + env(safe-area-inset-top)); max-width: 52vw; }
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널·미니맵 숨김 */
     body.coaching #quest-panel, body.coaching #minimap { display: none; }
     /* 버프 HUD: 문의하기 탭 아래로 */
@@ -528,6 +528,16 @@
     </div>
   </div>
 
+  <!-- 시설 첫 접근 안내 모달 (작업대·상점·텃밭) -->
+  <div id="hint-modal">
+    <div class="tut-card">
+      <div class="tut-emoji" id="hint-emoji">🌿</div>
+      <h2 id="hint-title"></h2>
+      <p id="hint-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px;"></p>
+      <button id="hint-ok">알겠어요 🌱</button>
+    </div>
+  </div>
+
   <div id="loading">calm forest 불러오는 중… 🌿</div>
 
   <script type="importmap">
@@ -600,9 +610,9 @@
         lastToolIco = tools[idx].ico;
         refreshActionIcon();  // 도구 바뀌면 액션버튼 갱신(배치/대화/문 아니면 도구 표시)
       },
-      toast(msg) {
+      toast(msg, ms = 1600) {
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
-        clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
       },
       // 퀘스트 패널 갱신(null이면 숨김)
       setQuest(v) {
@@ -667,6 +677,14 @@
       showTutorial() { $('tutorial-modal').classList.add('show'); },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
+      // 시설 첫 접근 안내 카드 모달
+      showHintModal({ ico, title, body }) {
+        $('hint-emoji').textContent = ico || '🌿';
+        $('hint-title').textContent = title || '';
+        $('hint-body').textContent = body || '';
+        Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지
+        $('hint-modal').classList.add('show');
+      },
       // 문/작업대 프롬프트 (텍스트에 '요리' 있으면 액션버튼 아이콘 🍳)
       setDoorPrompt(text) {
         const el = $('door-prompt');
@@ -688,10 +706,15 @@
         box.innerHTML = (list || []).map(b =>
           `<div class="buff"><span>${b.ico}</span><span>${b.name}</span><span class="b-t">${b.remain}s</span></div>`).join('');
       },
-      // 미니맵 — 캐릭터 대략 위치 + 주요 지형
+      // 미니맵 — 캐릭터 대략 위치 + 주요 지형 (레티나 대응)
       setMinimap(d) {
         const cv = $('minimap'); if (!cv) return;
-        const ctx = cv.getContext('2d'); const S = cv.width;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const S = cv.clientWidth || 108;             // CSS px(108/82) 기준으로 그림
+        const need = Math.round(S * dpr);
+        if (cv.width !== need) { cv.width = need; cv.height = need; }  // 실제 픽셀은 dpr 배
+        const ctx = cv.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);       // 논리좌표(S) → 물리픽셀 스케일
         ctx.clearRect(0, 0, S, S);
         ctx.fillStyle = 'rgba(150,200,150,0.4)'; ctx.fillRect(0, 0, S, S);
         if (d.place !== 'village') {   // 실내/텃밭은 라벨만
@@ -1049,6 +1072,7 @@
       window.open('dashboards/analytics.html', '_blank');
     });
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
+    $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
 
     // 낮/밤 수동 조절: 시간 바 드래그로 시간 지정, 이모지 클릭으로 자동순환 토글
     (function setupTimeControl() {
