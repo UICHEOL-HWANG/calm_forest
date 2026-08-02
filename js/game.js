@@ -266,6 +266,8 @@ export const Input = {
   giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
   capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(dataURL)
+  toggleSit() { sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글
+  emote(e) { spawnFloatText(player.position.x, 2.7, player.position.z, e, '#4a5a40'); Sound.blip(); }, // 머리 위 이모트
   selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
   cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
   isIndoor() { return indoor; },
@@ -1221,6 +1223,7 @@ function initInput() {
   window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'Space') wantAction = true;
+    if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 숫자키 1~7 로 도구 선택
     if (/^Digit[1-7]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
@@ -1287,6 +1290,7 @@ function updateAttractCamera(t) {
 let walkPhase = 0;
 let movedOnce = false;   // 튜토리얼: 첫 이동 감지
 let actAnim = 0;         // 액션 제스처 진행(1→0)
+let sitting = false;     // 앉기 상태
 
 // 액션 제스처 트리거: 대상(tx,tz) 방향으로 돌고 몸을 휙 숙였다 폄
 function doPlayerAction(tx, tz) {
@@ -1304,8 +1308,12 @@ function updatePlayer(dt, t) {
   mx += analog.x; mz += analog.z;
 
   const moving = Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05;
+  if (moving && sitting) sitting = false;   // 움직이면 일어남
   if (moving && !movedOnce) { movedOnce = true; ui.act?.('move'); } // 튜토리얼: 첫 이동
-  if (moving) {
+  if (sitting) {
+    playerAnchor.position.y = -0.3;         // 앉기: 몸을 낮춤
+    playerAnchor.rotation.z *= 0.9;
+  } else if (moving) {
     const len = Math.hypot(mx, mz) || 1;
     mx /= len; mz /= len;
     player.position.x += mx * speed * dt;

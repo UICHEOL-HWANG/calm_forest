@@ -46,10 +46,15 @@
   #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
-  #logout-btn, #help-btn, #stats-btn, #photo-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
+  #logout-btn, #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
-  #help-btn, #stats-btn, #photo-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
-  #logout-btn:active, #help-btn:active, #stats-btn:active, #photo-btn:active { transform: scale(0.94); }
+  #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
+  #music-btn.off { opacity: .5; }
+  #logout-btn:active, #help-btn:active, #stats-btn:active, #photo-btn:active, #music-btn:active, #emote-btn:active { transform: scale(0.94); }
+  /* 이모트 팝업 */
+  #emote-pop { position: fixed; top: calc(62px + env(safe-area-inset-top)); left: 16px; display: none; gap: 6px; z-index: 12; }
+  #emote-pop.show { display: flex; }
+  #emote-pop button { border: none; border-radius: 12px; width: 42px; height: 42px; font-size: 20px; cursor: pointer; background: rgba(255,255,255,0.85); box-shadow: var(--shadow); }
   #photo-btn.pulse { animation: photopulse 0.7s ease-in-out infinite; background: #ffe8b0; }
   @keyframes photopulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(255,190,74,0.5), var(--shadow); } }
 
@@ -64,6 +69,7 @@
   body:not(.playing) #hint,
   body:not(.playing) #feedback-tab,
   body:not(.playing) #minimap,
+  body:not(.playing) #emote-pop,
   body:not(.playing) #quest-panel,
   body:not(.playing) #npc-prompt,
   body:not(.playing) #talk-btn,
@@ -302,10 +308,11 @@
     /* 좌측: 상태점·라벨 텍스트 숨겨서 버튼을 아이콘만으로(정사각) 컴팩트 */
     #login-status, #login-dot { display: none; }
     .lbl { display: none; }                       /* '나가기' 글자 접기 → 아이콘만 */
-    #logout-btn, #help-btn, #stats-btn, #photo-btn {
+    #logout-btn, #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn {
       padding: 0; width: 34px; height: 34px; font-size: 16px;
       display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
     }
+    #emote-pop { top: calc(50px + env(safe-area-inset-top)); left: 12px; }
     /* 우측: 인벤토리/시간 더 압축 */
     #inventory { gap: 7px; font-size: 11px; font-weight: 700; }
     .inv-item { gap: 2px; }
@@ -357,6 +364,8 @@
     <button id="help-btn" title="도움말">❓</button>
     <button id="stats-btn" title="내 활동 기록">📊</button>
     <button id="photo-btn" title="사진 찍기">📷</button>
+    <button id="music-btn" title="배경음악">🎵</button>
+    <button id="emote-btn" title="이모트/앉기">🙂</button>
     <button id="logout-btn" style="display:none;">🚪<span class="lbl"> 나가기</span></button>
   </div>
 
@@ -372,6 +381,15 @@
       <span class="inv-item"><span class="inv-ico">🪙</span><span id="inv-coin">0</span></span>
     </div>
     <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
+  </div>
+
+  <!-- 이모트 팝업 (이모트 버튼 누르면) -->
+  <div id="emote-pop">
+    <button data-e="👋">👋</button>
+    <button data-e="❤️">❤️</button>
+    <button data-e="😄">😄</button>
+    <button data-e="🎵">🎵</button>
+    <button id="emote-sit" title="앉기">🪑</button>
   </div>
 
   <!-- 미니맵 (캐릭터 대략 위치) -->
@@ -575,6 +593,7 @@
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
     import { initControls } from './js/controls.js';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -878,6 +897,7 @@
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
       initControls();                                // 모바일 컨트롤(터치 감지 시)
+      try { if ((localStorage.getItem('cf_music') || 'on') !== 'off') startBGM(); } catch (e) { startBGM(); } // 배경음악
       // 구글=로그아웃 / 게스트=나가기 (둘 다 메인 화면으로 복귀)
       const exitBtn = $('logout-btn'); exitBtn.style.display = '';
       exitBtn.innerHTML = (authState.provider === 'google') ? '🚪<span class="lbl"> 로그아웃</span>' : '🚪<span class="lbl"> 나가기</span>';
@@ -1111,6 +1131,24 @@
       trackEvent('photo_capture');   // [GA4]
     });
     $('photo-close').addEventListener('click', () => $('photo-modal').classList.remove('show'));
+
+    // ── 배경음악 토글 ──
+    let musicPref = 'on';
+    try { musicPref = localStorage.getItem('cf_music') || 'on'; } catch (e) {}
+    $('music-btn').classList.toggle('off', musicPref === 'off');
+    $('music-btn').addEventListener('click', () => {
+      const on = toggleBGM();
+      $('music-btn').classList.toggle('off', !on);
+      $('music-btn').textContent = on ? '🎵' : '🔇';
+      try { localStorage.setItem('cf_music', on ? 'on' : 'off'); } catch (e) {}
+    });
+
+    // ── 이모트 / 앉기 ──
+    const emotePop = $('emote-pop');
+    $('emote-btn').addEventListener('click', () => emotePop.classList.toggle('show'));
+    emotePop.querySelectorAll('button[data-e]').forEach(b =>
+      b.addEventListener('click', () => { Input.emote(b.dataset.e); emotePop.classList.remove('show'); }));
+    $('emote-sit').addEventListener('click', () => { Input.toggleSit(); emotePop.classList.remove('show'); });
     $('photo-save').addEventListener('click', () => {
       if (!lastPhoto) return;
       const a = document.createElement('a'); a.href = lastPhoto; a.download = 'calmforest-' + Date.now() + '.png'; a.click();

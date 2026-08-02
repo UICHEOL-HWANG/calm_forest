@@ -68,3 +68,43 @@ export const Sound = {
   blip()   { tone(720, 0.06, 'square', 0.18); },                                // 도구 전환
   plant()  { tone(440, 0.1, 'sine', 0.3, 560); },                               // 씨앗 심기
 };
+
+// =============================================================
+//  절차적 배경음악(BGM) — 느긋한 패드 코드 + 가벼운 멜로디
+// =============================================================
+let musicOn = false, musicTimer = null, musicGain = null, chordIdx = 0;
+const CHORDS = [
+  [261.63, 329.63, 392.00], // C  E  G
+  [220.00, 261.63, 329.63], // A  C  E
+  [174.61, 220.00, 261.63], // F  A  C
+  [196.00, 246.94, 293.66], // G  B  D
+];
+const PENT = [392.00, 440.00, 523.25, 587.33, 659.25]; // G A C D E (멜로디용)
+
+function padNote(freq, dur, vol) {
+  const c = ensureCtx(); const t = c.currentTime;
+  const osc = c.createOscillator(); const g = c.createGain();
+  osc.type = 'triangle'; osc.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.9);        // 느린 어택
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);     // 느린 릴리즈
+  osc.connect(g).connect(musicGain); osc.start(t); osc.stop(t + dur + 0.1);
+}
+
+function playBar() {
+  if (!musicOn) return;
+  const chord = CHORDS[chordIdx % CHORDS.length]; chordIdx++;
+  chord.forEach(f => padNote(f, 4.4, 0.09));
+  setTimeout(() => { if (musicOn) padNote(PENT[(Math.random() * PENT.length) | 0], 1.8, 0.05); }, 1900); // 살짝 멜로디
+}
+
+export function startBGM() {
+  const c = ensureCtx();
+  if (!musicGain) { musicGain = c.createGain(); musicGain.gain.value = 0.5; musicGain.connect(master); }
+  if (musicOn) return;
+  musicOn = true; playBar();
+  musicTimer = setInterval(playBar, 3900);
+}
+export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+export function toggleBGM() { if (musicOn) { stopBGM(); return false; } startBGM(); return true; }
+export function isBGMOn() { return musicOn; }
