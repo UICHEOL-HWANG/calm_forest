@@ -1758,7 +1758,11 @@ function handleAction() {
   if (nearDoor === 'farmexit') return exitFarm();
   if (nearDoor === 'mine') return enterMine();
   if (nearDoor === 'mineexit') return exitMine();
-  if (atMine) return tryMine();   // 동굴 안에선 액션 = 채굴
+  if (atMine) {                   // 동굴: 괭이로만 채굴 가능
+    if (TOOLS[currentTool].id === 'hoe') return tryMine();
+    ui.toast?.('⛏️ 괭이(도구 2)로 캐야 해요');
+    return;
+  }
   // 실내에선 도구질(밭갈기·낚시 등) 금지 — 가구 배치만(선택 중이면 발 앞에 놓기)
   if (indoor) {
     if (placingDecor) placeDecor(placingDecor, player.position.x, player.position.z);
