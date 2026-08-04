@@ -92,10 +92,11 @@ const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게�
 let atFarm = false;                             // 텃밭 안에 있는지
 let lastMini = 0;                               // 미니맵 갱신 throttle
 const MINE = new THREE.Vector3(0, 0, 120);      // 채굴 동굴(별도 공간)
-const MINE_HALF = 8;
+const MINE_HALF = 12;                           // 넓은 동굴
 const MINE_GATE = new THREE.Vector3(-14, 0, 3); // 마을 서쪽 동굴 입구
 let atMine = false;
 const oreRocks = [];                            // 동굴 광석 바위들
+const mineTorches = [];                         // 동굴 벽 횃불(깜빡임)
 const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40 };   // 판매 단가(코인)
 const SHOP_BUY = [
   { id: 'seed5',  name: '씨앗 5개',  ico: '🌰', coin: 15, give: { seed: 5 } },
@@ -1287,11 +1288,22 @@ function buildMine() {
   // 나가는 문 표지판(남쪽 구멍)
   const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, -H - 0.1); g.add(board);
   scene.add(g);
-  // 동굴 은은한 필 라이트(사진처럼 어두우면서 살짝 밝은 푸른 빛) — 상시 켜짐(멀어서 마을엔 영향 X)
-  const glow = new THREE.PointLight(0x9ac4ff, 0.8, 34, 1.1); glow.position.set(MINE.x, 6, MINE.z); scene.add(glow);
-  const glow2 = new THREE.PointLight(0xbfe0ff, 0.5, 24, 1.2); glow2.position.set(MINE.x, 2.5, MINE.z + H - 2); scene.add(glow2); // 안쪽 깊은 곳 빛
-  // 광맥 배치
-  for (let i = 0; i < 9; i++) {
+  // 위쪽 은은한 푸른 필(깊이감)
+  const glow = new THREE.PointLight(0x9ac4ff, 0.5, 44, 1.2); glow.position.set(MINE.x, 7, MINE.z); scene.add(glow);
+  // 벽 횃불(사이드) — 넓은 동굴 곳곳을 밝힘
+  const torchPos = [
+    [-H + 0.6, -5], [-H + 0.6, 5], [H - 0.6, -5], [H - 0.6, 5],
+    [-5, H - 0.6], [5, H - 0.6], [-5, -H + 0.6], [5, -H + 0.6], [0, 0],
+  ];
+  torchPos.forEach(([lx, lz], i) => {
+    const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45, 5), clayMat(0x3a3834)); bracket.position.set(lx, 1.55, lz); g.add(bracket);
+    const fm = new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xff8a3a, emissiveIntensity: 1.7, roughness: 0.5 });
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.34, 6), fm); flame.position.set(lx, 1.95, lz); g.add(flame);
+    const light = new THREE.PointLight(0xffb866, 2.2, 15, 1.2); light.position.set(lx, 2.05, lz); g.add(light);
+    mineTorches.push({ light, fm, base: 2.2, phase: i * 1.6 });
+  });
+  // 광맥 배치(넓어진 동굴)
+  for (let i = 0; i < 15; i++) {
     const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * (H - 2.5);
     spawnOreRock(MINE.x + Math.cos(a) * r, MINE.z + Math.sin(a) * r, weightedOre());
   }
@@ -1671,11 +1683,16 @@ function updateDayNight(dt) {
   if (interiorLamp) interiorLamp.intensity = indoor ? (1.8 + nightAmt * 2.6) : 0;
   // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
   if (playerLight) playerLight.intensity = Math.max(0, nightAmt - 0.15) * 4.4;
-  // 채굴 동굴: 시간대 무관 어둡게 + 차가운 푸른 톤 + 캐릭터 횃불 상시 점등
+  scene.fog.near = 18; scene.fog.far = 74;   // 기본 안개(동굴에선 아래서 걷음)
+  // 채굴 동굴: 시간대 무관 밝게(잘 보이게) + 차가운 톤 + 벽 횃불
   if (atMine) {
-    hemiLight.intensity = 0.2; ambient.intensity = 0.5; sunLight.intensity = 0.05;  // 너무 깜깜하지 않게
-    ambient.color.setHex(0x3a4a72);   // 동굴 블루(ambient는 매 프레임 리셋되므로 안전)
-    if (playerLight) playerLight.intensity = 3.4;
+    hemiLight.intensity = 0.5; ambient.intensity = 0.72; sunLight.intensity = 0.12;  // 잘 보이게(무드는 블루톤+횃불로)
+    ambient.color.setHex(0x4a5878);   // 동굴 블루(ambient는 매 프레임 리셋되므로 안전)
+    if (playerLight) playerLight.intensity = 3.0;
+    scene.fog.color.setHex(0x141a26); scene.fog.near = 40; scene.fog.far = 300;   // 동굴은 안개 걷어 벽까지 보이게
+    // 벽 횃불 깜빡임
+    const tt = clock.elapsedTime;
+    for (const t of mineTorches) { const f = 0.85 + Math.sin(tt * 7 + t.phase) * 0.15; t.light.intensity = t.base * f; t.fm.emissiveIntensity = 1.4 * f + 0.4; }
   }
   // 집 안내판: 낮엔 매트(후광X), 밤엔 은은하게 빛나 잘 보이게(동적 채광)
   if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 + nightAmt * 0.28);
