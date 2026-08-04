@@ -91,12 +91,20 @@ const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 �
 const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
 let atFarm = false;                             // 텃밭 안에 있는지
 let lastMini = 0;                               // 미니맵 갱신 throttle
-const MINE = new THREE.Vector3(0, 0, 120);      // 채굴 동굴(별도 공간)
+const MINE = new THREE.Vector3(0, 0, 250);      // 채굴 동굴(다른 공간과 멀찍이)
 const MINE_HALF = 12;                           // 넓은 동굴
 const MINE_GATE = new THREE.Vector3(-14, 0, 3); // 마을 서쪽 동굴 입구
 let atMine = false;
 const oreRocks = [];                            // 동굴 광석 바위들
 const mineTorches = [];                         // 동굴 벽 횃불(깜빡임)
+let farmGroup, mineGroup;                        // 텃밭/동굴 그룹(가시성 토글용)
+
+// 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
+function setSpaceVisible() {
+  if (interiorGroup) interiorGroup.visible = indoor;
+  if (farmGroup) farmGroup.visible = atFarm;
+  if (mineGroup) mineGroup.visible = atMine;
+}
 const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40 };   // 판매 단가(코인)
 const SHOP_BUY = [
   { id: 'seed5',  name: '씨앗 5개',  ico: '🌰', coin: 15, give: { seed: 5 } },
@@ -881,7 +889,7 @@ function buildInterior() {
   houseWindows.push(winMat);
   // 뒷벽 창문 2개(넓어진 방)
   [-2.5, 2.5].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, INT_HALF - 0.1); g.add(win); });
-  scene.add(g); interiorGroup = g;
+  scene.add(g); interiorGroup = g; interiorGroup.visible = false;   // 들어갈 때만 표시
   interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
   scene.add(interiorLamp);
 }
@@ -1216,20 +1224,20 @@ function buildFarm() {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), clayMat(0xf1e2b8, false)); head.position.y = 1.5; sc.add(head);
   const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.3, 10), clayMat(0xc98a4f)); hat.position.y = 1.72; sc.add(hat);
   sc.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.add(sc);
-  scene.add(g);
+  scene.add(g); farmGroup = g; farmGroup.visible = false;   // 텃밭에 있을 때만 표시
 }
 
 function enterFarm() {
   atFarm = true;
   player.position.set(FARM.x, 0, FARM.z + FARM_HALF - 1.5); player.rotation.y = Math.PI;
-  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 밭을 갈고 🌰씨앗을 심어 💧물을 주며 키워보세요. 심은 작물은 저장돼요. 나갈 땐 남쪽 문으로!');
   Sound.blip(); trackEvent('enter_farm'); // [GA4]
 }
 function exitFarm() {
   atFarm = false;
   player.position.set(FARM_GATE.x, 0, FARM_GATE.z + 2);
-  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_farm'); // [GA4]
 }
 
@@ -1287,7 +1295,7 @@ function buildMine() {
   for (let i = 0; i < 14; i++) rock((Math.random() - 0.5) * (H * 2 - 2), 0.06, (Math.random() - 0.5) * (H * 2 - 2), 0.3 + Math.random() * 0.4, 0.14 + Math.random() * 0.2, 0.3 + Math.random() * 0.4, false);
   // 나가는 문 표지판(남쪽 구멍)
   const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, -H - 0.1); g.add(board);
-  scene.add(g);
+  scene.add(g); mineGroup = g; mineGroup.visible = false;   // 동굴에 있을 때만 표시
   // 위쪽 은은한 푸른 필(깊이감)
   const glow = new THREE.PointLight(0x9ac4ff, 0.5, 44, 1.2); glow.position.set(MINE.x, 7, MINE.z); scene.add(glow);
   // 벽 횃불(사이드) — 넓은 동굴 곳곳을 밝힘
@@ -1339,14 +1347,14 @@ function spawnMineGate() {
 function enterMine() {
   atMine = true;
   player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
-  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥을 캐면 돌·석탄·💎보석이 나와요. 작업대 재료·상점 판매에 쓰여요. 어두우니 캐릭터 횃불로 살펴봐요! 남쪽 문으로 나가요');
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
 }
 function exitMine() {
   atMine = false;
   player.position.set(MINE_GATE.x, 0, MINE_GATE.z + 2);
-  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_mine'); // [GA4]
 }
 
@@ -1377,21 +1385,22 @@ function updateOreRocks() {
   const now = clock.elapsedTime;
   for (const rock of oreRocks) {
     const ud = rock.userData;
-    if (ud.depleted && now > ud.respawnAt) { ud.depleted = false; ud.hp = 3; rock.visible = true; rock.scale.set(0.01, 0.01, 0.01); ud.growing = true; }
+    if (ud.depleted && now > ud.respawnAt) { ud.depleted = false; ud.hp = 3; rock.scale.set(0.01, 0.01, 0.01); ud.growing = true; }
     if (ud.growing) { const s = THREE.MathUtils.lerp(rock.scale.x, 1, 0.12); rock.scale.set(s, s, s); if (s > 0.98) { rock.scale.set(1, 1, 1); ud.growing = false; } }
+    rock.visible = atMine && !ud.depleted;   // 동굴 밖에선 안 보이게
   }
 }
 
 function enterHouse() {
   indoor = true;
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
-  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true); snapCamera();
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true); snapCamera(); setSpaceVisible();
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
   indoor = false; placingDecor = null;
   player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
-  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera();
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
 }
 
@@ -1689,7 +1698,7 @@ function updateDayNight(dt) {
     hemiLight.intensity = 0.5; ambient.intensity = 0.72; sunLight.intensity = 0.12;  // 잘 보이게(무드는 블루톤+횃불로)
     ambient.color.setHex(0x4a5878);   // 동굴 블루(ambient는 매 프레임 리셋되므로 안전)
     if (playerLight) playerLight.intensity = 3.0;
-    scene.fog.color.setHex(0x141a26); scene.fog.near = 40; scene.fog.far = 300;   // 동굴은 안개 걷어 벽까지 보이게
+    scene.fog.color.setHex(0x141a26); scene.fog.near = 26; scene.fog.far = 64;   // 동굴 벽은 보이되 먼 다른 공간은 어둠에 묻힘
     // 벽 횃불 깜빡임
     const tt = clock.elapsedTime;
     for (const t of mineTorches) { const f = 0.85 + Math.sin(tt * 7 + t.phase) * 0.15; t.light.intensity = t.base * f; t.fm.emissiveIntensity = 1.4 * f + 0.4; }
