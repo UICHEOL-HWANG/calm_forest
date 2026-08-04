@@ -84,14 +84,19 @@ const buffs = { speed: 0, luck: 0, chop: 0 };   // 각 버프 만료 시각(cloc
 function buffOn(k) { return clock.elapsedTime < buffs[k]; }
 const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(요리) 위치
 let nearBench = false;
-const SHOP = new THREE.Vector3(-4, 0, -5);      // 상점 좌판 위치
+const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 에서 멀리 동쪽)
 let nearShop = false;
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 변의 절반)
 const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
 let atFarm = false;                             // 텃밭 안에 있는지
 let lastMini = 0;                               // 미니맵 갱신 throttle
-const SELL_PRICE = { crop: 5, fish: 8, wood: 2 };   // 판매 단가(코인)
+const MINE = new THREE.Vector3(0, 0, 120);      // 채굴 동굴(별도 공간)
+const MINE_HALF = 8;
+const MINE_GATE = new THREE.Vector3(-14, 0, 3); // 마을 서쪽 동굴 입구
+let atMine = false;
+const oreRocks = [];                            // 동굴 광석 바위들
+const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40 };   // 판매 단가(코인)
 const SHOP_BUY = [
   { id: 'seed5',  name: '씨앗 5개',  ico: '🌰', coin: 15, give: { seed: 5 } },
   { id: 'seed20', name: '씨앗 20개', ico: '🌰', coin: 50, give: { seed: 20 } },
@@ -110,6 +115,8 @@ const OUTDOOR = [
   { id: 'path',      name: '디딤돌',  ico: '🪨', cost: { wood: 1 }, desc: '돌 디딤돌' },
   { id: 'flowerbed', name: '꽃밭',    ico: '🌷', cost: { crop: 2 }, desc: '알록달록 꽃밭' },
   { id: 'postlamp',  name: '정원등',  ico: '🏮', cost: { wood: 4 }, desc: '밤에 빛나는 등' },
+  { id: 'stonewall', name: '돌담',    ico: '🧱', cost: { stone: 3 }, desc: '튼튼한 돌담(채굴)' },
+  { id: 'brazier',   name: '화로',    ico: '🔥', cost: { stone: 2, coal: 2 }, desc: '밤에 빛나는 화로(채굴)' },
 ];
 let placingOutdoor = null;      // 배치 중인 야외 장식 id
 const outdoorMeshes = [];
@@ -166,7 +173,7 @@ const NPCS = [
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0 }, // 목재 / 씨앗 / 작물 / 물고기 / 코인
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0 }, // + 석탄/돌/보석(채굴)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -178,6 +185,8 @@ const gameState = {
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
+  houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
+  unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
 };
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
@@ -201,7 +210,7 @@ let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 
 // 씬 전역 참조
 let renderer, scene, camera, composer, bloomPass, gradePass;
-let player, playerAnchor;
+let player, playerAnchor, playerLight;
 let heldGroup, handAnchor, heldToolMesh; // 팔(어깨 피벗) / 손 / 든 도구
 let sunLight, hemiLight, ambient;
 let fireflies, stars;
@@ -213,6 +222,40 @@ const obstacles = [];             // 밭 만들기 금지 구역 {x,z,r} (나무
 const houseWindows = [];          // 밤에 빛나는 창문 머티리얼
 let houseGroup, houseGhost;       // 집 그룹 / 미완성 터 표시
 let houseSign, houseSignTex, houseSignCtx; // 집 터 안내판(멀리서도 보임)
+
+// ── 집 외관 커스터마이징 팔레트(지붕/벽/문 색) ──
+const ROOF_COLORS = [0xb5734a, 0xd05a5a, 0x5a86d0, 0x5aa86a, 0x9a6ad0];  // 갈색·빨강·파랑·초록·보라
+const WALL_COLORS = [0xd2a068, 0xe8c99a, 0xa9805a, 0xc9c0aa, 0xe0b0b0];  // 기본·밝은나무·진한나무·회벽·핑크
+const DOOR_COLORS = [0xa9743f, 0x8a5a3a, 0x5a6a8a, 0x5a8a6a, 0xd0a050];  // 갈색·진갈·파랑·초록·황금
+const PART_NAME = { roof: '지붕', wall: '벽', door: '문' };
+const PART_COLORS = () => ({ roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS });
+// 확률(chance)로 잠긴 외관 색 하나를 랜덤 언락 → "오늘 뭐 나올까" 리텐션 훅
+function tryUnlockDrop(chance) {
+  if (Math.random() > chance) return;
+  const cols = PART_COLORS(); const pool = [];
+  for (const p in cols) for (let i = 0; i < cols[p].length; i++) if (!gameState.unlocked[p].includes(i)) pool.push([p, i]);
+  if (!pool.length) return;                       // 이미 다 열림
+  const [part, idx] = pool[(Math.random() * pool.length) | 0];
+  gameState.unlocked[part].push(idx);
+  Sound.harvest();
+  spawnSparkle(player.position.x, 1.2, player.position.z, 20);
+  if (!gameState.hintsSeen.colorUnlock) {          // 첫 획득 → 시스템 안내 모달(온보딩)
+    firstHint('colorUnlock', '🎨', '새 집 색을 얻었어요!',
+      '낚시·수확·주민 퀘스트·집 완성으로 집 외관 색을 모을 수 있어요. 좌상단 🏠 버튼에서 지붕·벽·문에 적용해 나만의 집을 꾸며보세요!');
+  } else {
+    ui.toast?.(`🎨 새 ${PART_NAME[part]} 색을 얻었어요! 🏠에서 적용해보세요`, 4200);
+  }
+  trackEvent('color_unlock', { part, idx });      // [GA4]
+}
+function applyHouseStyle() {
+  if (!houseGroup) return;
+  houseGroup.traverse(o => {
+    if (!o.isMesh || !o.userData.role || !o.material) return;
+    if (o.userData.role === 'roof') o.material.color.setHex(ROOF_COLORS[gameState.houseStyle.roof % ROOF_COLORS.length]);
+    else if (o.userData.role === 'wall') o.material.color.setHex(WALL_COLORS[gameState.houseStyle.wall % WALL_COLORS.length]);
+    else if (o.userData.role === 'door') o.material.color.setHex(DOOR_COLORS[gameState.houseStyle.door % DOOR_COLORS.length]);
+  });
+}
 const HOUSE_POS = new THREE.Vector3(-8, 0, -8); // 정해진 집 터 위치
 const clock = new THREE.Clock();
 
@@ -221,7 +264,7 @@ const keys = {};
 const analog = { x: 0, z: 0 };    // 모바일 조이스틱 아날로그 이동(-1~1)
 let wantAction = false;
 let timeOfDay = 0.30;
-const DAY_SPEED = 0.008;
+const DAY_SPEED = 0.002;   // 전체 낮/밤 주기 ≈ 8분(기존 ~2분에서 완만하게)
 let ui = {};
 
 // 파스텔 팔레트
@@ -267,6 +310,14 @@ export const Input = {
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
   capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(dataURL)
   toggleSit() { sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글
+  // 집 외관 커스터마이징
+  getHouseStyle() { return { style: { ...gameState.houseStyle }, unlocked: { roof: [...gameState.unlocked.roof], wall: [...gameState.unlocked.wall], door: [...gameState.unlocked.door] }, roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS }; },
+  setHousePart(part, idx) {
+    if (!(part in gameState.houseStyle)) return { ok: false };
+    if (!gameState.unlocked[part].includes(idx)) return { ok: false, locked: true };
+    gameState.houseStyle[part] = idx; applyHouseStyle(); Sound.blip(); return { ok: true };
+  },
+  houseBuilt() { return gameState.houseStage >= 3; },
   emote(e) { spawnFloatText(player.position.x, 2.7, player.position.z, e, '#4a5a40'); Sound.blip(); }, // 머리 위 이모트
   selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
   cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
@@ -328,6 +379,8 @@ function applySave(saved) {
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
+  if (saved.houseStyle) { gameState.houseStyle = { ...gameState.houseStyle, ...saved.houseStyle }; applyHouseStyle(); } // 집 외관 복원
+  if (saved.unlocked) { for (const p of ['roof', 'wall', 'door']) if (Array.isArray(saved.unlocked[p])) gameState.unlocked[p] = [...new Set([0, ...saved.unlocked[p]])]; } // 획득 색 복원
   if (typeof saved.houseStage === 'number') {
     for (let s = 1; s <= saved.houseStage; s++) buildHouseStage(s, true); // 조용히 복원
   }
@@ -423,7 +476,7 @@ function buildWorld() {
     do {                                              // 호수·집터·작업대 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
-    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5));
+    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5));
     spawnTree(x, z);
   }
 
@@ -431,6 +484,8 @@ function buildWorld() {
   spawnShop();        // 상점 좌판
   spawnFarmGate();    // 텃밭 입구 게이트
   buildFarm();        // 개인 텃밭 필드
+  spawnMineGate();    // 채굴 동굴 입구
+  buildMine();        // 채굴 동굴
 
   for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
@@ -471,6 +526,11 @@ function buildPlayer() {
   playerAnchor = new THREE.Group();
   player = new THREE.Group();
   player.add(playerAnchor);
+
+  // 밤/새벽에 켜지는 캐릭터 주변 횃불 조명(따뜻한 원형 빛)
+  playerLight = new THREE.PointLight(0xffb95e, 0, 16, 1.3); // (색, 강도, 거리, 감쇠) — 넓은 반경
+  playerLight.position.set(0, 1.5, 0);
+  player.add(playerLight);
 
   const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), clayMat(PAL.body, false));
   body.position.y = 0.6; body.castShadow = true; body.scale.set(1, 1.05, 1); playerAnchor.add(body);
@@ -751,8 +811,12 @@ function buildHouseStage(stage, silent = false) {
       log.rotation.z = Math.PI / 2;    // 통나무 눕히기
       log.rotation.y = s.ry;
       log.position.set(s.x, y, s.z);
+      log.userData.role = 'wall';      // 외관 커스텀: 벽
       add(log);
     }));
+    // 외부 문(정면) — 외관 커스텀 대상
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 0.14), woodMat(1, 2, DOOR_COLORS[0]));
+    door.position.set(0, 0.85, -1.55); door.userData.role = 'door'; add(door);
     // 창문(밤에 따뜻한 불빛) — emissive
     const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
     houseWindows.push(winMat);
@@ -762,8 +826,8 @@ function buildHouseStage(stage, silent = false) {
     });
   } else if (stage === 3) {
     // 지붕: 우드 피라미드 + 굴뚝
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 4), woodMat(2, 2, 0xb5734a));
-    roof.position.y = 2.35; roof.rotation.y = Math.PI / 4; add(roof);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 4), woodMat(2, 2, ROOF_COLORS[0]));
+    roof.position.y = 2.35; roof.rotation.y = Math.PI / 4; roof.userData.role = 'roof'; add(roof);
     const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), woodMat(1, 1, 0xa9743f));
     chimney.position.set(0.9, 2.7, 0.9); add(chimney);
   }
@@ -771,6 +835,7 @@ function buildHouseStage(stage, silent = false) {
   gameState.houseStage = Math.max(gameState.houseStage, stage);
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
   updateHouseSign();                          // 안내판 갱신(완성 시 숨김)
+  applyHouseStyle();                          // 저장된 외관 색 반영
 
   if (!silent) {
     parts.forEach(applyRise);                    // 아래→위로 톡 솟기
@@ -785,6 +850,7 @@ function buildHouseStage(stage, silent = false) {
       questEvent('house');                       // 퀘스트 진행
       ui.act?.('build');                         // 튜토리얼: 집 완성
       triggerMoment();                           // 📷 순간 줌인
+      tryUnlockDrop(1);                          // 🎨 집 완성 보상: 랜덤 색 1개 확정
       trackEvent('house_complete');              // [GA4] 집 완성 이벤트
     }
   }
@@ -793,24 +859,29 @@ function buildHouseStage(stage, silent = false) {
 // =============================================================
 //  집 실내(입장) + 꾸미기
 // =============================================================
+const INT_HALF = 7;   // 실내 반경(넓은 방) — 문 앞 스폰/이동/배치 클램프 기준
 function buildInterior() {
   const g = new THREE.Group(); g.position.copy(INT);
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 8), woodMat(4, 4));
+  const W = INT_HALF * 2;
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), woodMat(7, 7));
   floor.position.y = 0.1; floor.receiveShadow = true; g.add(floor);
   interiorFloor = floor;
   const wall = () => clayMat(PAL.wall, false);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 0.24), wall()); back.position.set(0, 1.5, 4); back.castShadow = true; g.add(back);
-  const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, 8), wall()); left.position.set(-4, 1.5, 0); g.add(left);
-  const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, 8), wall()); right.position.set(4, 1.5, 0); g.add(right);
-  const fL = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 0.24), wall()); fL.position.set(-2.5, 1.5, -4); g.add(fL); // 앞면 문 양옆
-  const fR = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 0.24), wall()); fR.position.set(2.5, 1.5, -4); g.add(fR);
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.24), wall()); lintel.position.set(0, 2.6, -4); g.add(lintel);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.14), woodMat(1, 2, 0xa9743f)); door.position.set(0, 1.05, -4); g.add(door); // 나가는 문
+  const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, INT_HALF); back.castShadow = true; g.add(back);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); left.position.set(-INT_HALF, 1.5, 0); g.add(left);
+  const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); right.position.set(INT_HALF, 1.5, 0); g.add(right);
+  // 앞면 문(가운데 폭 2 구멍) 양옆 벽
+  const sideW = INT_HALF - 1;            // 문 반폭 1
+  const fL = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fL.position.set(-(1 + sideW / 2), 1.5, -INT_HALF); g.add(fL);
+  const fR = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fR.position.set((1 + sideW / 2), 1.5, -INT_HALF); g.add(fR);
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.24), wall()); lintel.position.set(0, 2.6, -INT_HALF); g.add(lintel);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.14), woodMat(1, 2, 0xa9743f)); door.position.set(0, 1.05, -INT_HALF); g.add(door); // 나가는 문
   const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
   houseWindows.push(winMat);
-  const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(0, 1.7, 3.9); g.add(win);
+  // 뒷벽 창문 2개(넓어진 방)
+  [-2.5, 2.5].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, INT_HALF - 0.1); g.add(win); });
   scene.add(g); interiorGroup = g;
-  interiorLamp = new THREE.PointLight(0xffd9a0, 0, 16); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3, 0));
+  interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
   scene.add(interiorLamp);
 }
 
@@ -863,8 +934,8 @@ function placeDecor(id, wx, wz, silent = false) {
     gameState.inventory[pay] -= def.cost; refreshInventoryUI();
   }
   const m = decorMesh(id);
-  const lx = Math.max(INT.x - 3.4, Math.min(INT.x + 3.4, wx));
-  const lz = Math.max(INT.z - 3.4, Math.min(INT.z + 3.2, wz));
+  const lx = Math.max(INT.x - INT_HALF + 0.5, Math.min(INT.x + INT_HALF - 0.5, wx));
+  const lz = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.5, wz));
   m.position.set(lx, 0.2, lz);
   scene.add(m); decorMeshes.push(m);
   gameState.house.decor.push({ id, x: lx - INT.x, z: lz - INT.z });
@@ -899,6 +970,7 @@ function spawnWorkbench() {
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.3, 12), clayMat(0x5a5148)); pot.position.set(-0.3, 0.94, 0); pot.castShadow = true; g.add(pot);
   const soup = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05, 12), clayMat(0xff9e5e, false)); soup.position.set(-0.3, 1.09, 0); g.add(soup);
   const board = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.35), woodMat(1, 1)); board.position.set(0.45, 0.8, 0); g.add(board);
+  g.add(makeSignpost('🍳 작업대', 1.2, 0.7));   // 팻말
   scene.add(g);
   obstacles.push({ x: BENCH.x, z: BENCH.z, r: 1.4 }); // 작업대 위엔 밭 금지
 }
@@ -915,6 +987,7 @@ function spawnShop() {
     s.position.set(-0.75 + i * 0.5, 1.9, 0.1); s.rotation.x = -0.35; g.add(s);
   }
   for (const x of [-0.9, 0.9]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 6), clayMat(0x6b4a34)); p.position.set(x, 1, -0.2); g.add(p); }
+  g.add(makeSignpost('🛒 상점', 1.4, 0.7));   // 팻말
   scene.add(g);
   obstacles.push({ x: SHOP.x, z: SHOP.z, r: 1.6 });
 }
@@ -1013,6 +1086,18 @@ function outdoorMesh(id) {
     const headMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffca70, emissiveIntensity: 0, roughness: 0.6 });
     houseWindows.push(headMat);   // 밤에 창문/가로등과 함께 점등
     const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), headMat); head.position.y = 1.5; g.add(head);
+  } else if (id === 'stonewall') {
+    const smat = clayMat(0x9a9a92, false);
+    [[-0.35, 0.18, 0], [0.35, 0.18, 0], [0, 0.5, 0]].forEach(([x, y, z]) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.34, 0.4), smat); b.position.set(x, y, z); g.add(b);
+    });
+  } else if (id === 'brazier') {
+    const legMat = clayMat(0x5a5148);
+    for (const a of [0, 2.1, 4.2]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 5), legMat); l.position.set(Math.cos(a) * 0.18, 0.25, Math.sin(a) * 0.18); g.add(l); }
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.2, 0.22, 10), clayMat(0x4a4844, false)); bowl.position.y = 0.55; g.add(bowl);
+    const fireMat = new THREE.MeshStandardMaterial({ color: 0xff8a3a, emissive: 0xff6a1a, emissiveIntensity: 0, roughness: 0.5 });
+    houseWindows.push(fireMat);   // 밤에 점등
+    const fire = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), fireMat); fire.position.y = 0.68; g.add(fire);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -1089,6 +1174,14 @@ function makeSignBoard(text) {
   return m;
 }
 
+// 서 있는 팻말(나무 기둥 + 판) — 로컬 (x,z)에 세움
+function makeSignpost(text, x = 0, z = 1.3) {
+  const grp = new THREE.Group();
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 6), woodMat(1, 1)); post.position.set(x, 0.75, z); post.castShadow = true; grp.add(post);
+  const sign = makeSignBoard(text); sign.scale.setScalar(0.55); sign.position.set(x, 1.45, z + 0.04); grp.add(sign);
+  return grp;
+}
+
 // 마을 안 텃밭 입구 게이트(나무 아치 + 표지판)
 function spawnFarmGate() {
   const g = new THREE.Group(); g.position.copy(FARM_GATE);
@@ -1139,6 +1232,144 @@ function exitFarm() {
   Sound.blip(); trackEvent('exit_farm'); // [GA4]
 }
 
+// ── 채굴 동굴 ─────────────────────────────────────────────────
+const ORES = [
+  { id: 'stone', name: '돌',   color: 0x9a9a92 },
+  { id: 'coal',  name: '석탄', color: 0x2a2a2a },
+  { id: 'gem',   name: '보석', color: 0x5ad0e0 },
+];
+function weightedOre() { const r = Math.random(); return r < 0.55 ? ORES[0] : r < 0.9 ? ORES[1] : ORES[2]; } // 돌55/석탄35/보석10
+
+function spawnOreRock(x, z, ore) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  const rockMat = clayMat(0x5a5854, false);
+  for (let i = 0; i < 3; i++) { const r = 0.34 + Math.random() * 0.24; const b = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), rockMat); b.position.set((Math.random() - 0.5) * 0.5, r * 0.7, (Math.random() - 0.5) * 0.5); b.castShadow = true; g.add(b); }
+  const oreMat = ore.id === 'gem'
+    ? new THREE.MeshStandardMaterial({ color: ore.color, emissive: ore.color, emissiveIntensity: 0.5, roughness: 0.3 })
+    : clayMat(ore.color, false);
+  for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), oreMat); b.position.set((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.4, (Math.random() - 0.5) * 0.6); g.add(b); }
+  g.userData = { ore, hp: 3, depleted: false, respawnAt: 0, growing: false };
+  scene.add(g); oreRocks.push(g);
+}
+
+function buildMine() {
+  const g = new THREE.Group(); g.position.copy(MINE);
+  const H = MINE_HALF;
+  // 어둡고 거친 바닥
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(H * 2 + 3, 0.2, H * 2 + 3), clayMat(0x3a3a40, false)); floor.position.y = 0.05; floor.receiveShadow = true; g.add(floor);
+  // 공용 바위 지오/머티리얼(플랫셰이딩 = 각진 로우폴리 바위)
+  const rockGeo = new THREE.IcosahedronGeometry(1, 0);
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x565b66, roughness: 1, metalness: 0, flatShading: true });
+  const rock = (x, y, z, sx, sy, sz, cast) => {
+    const b = new THREE.Mesh(rockGeo, rockMat); b.position.set(x, y, z); b.scale.set(sx, sy, sz);
+    b.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * 6, (Math.random() - 0.5) * 0.4);
+    if (cast) b.castShadow = true; g.add(b); return b;
+  };
+  // 울퉁불퉁 바위 벽(플랫 박스 대신) — 둘레를 따라 크고작은 바위 겹쳐 쌓기
+  const step = 1.05;
+  for (let t = -H; t <= H + 0.01; t += step) {
+    const s = () => 0.75 + Math.random() * 0.9, sy = () => 1.6 + Math.random() * 2.0;
+    rock(t, sy() * 0.5, H + 0.3, s(), sy(), s(), true);          // 북
+    rock(H + 0.3, sy() * 0.5, t, s(), sy(), s(), true);          // 동
+    rock(-H - 0.3, sy() * 0.5, t, s(), sy(), s(), true);         // 서
+    if (Math.abs(t) > 1.4) rock(t, sy() * 0.5, -H - 0.3, s(), sy(), s(), true); // 남(가운데 문 구멍 제외)
+    // 안쪽 낮은 바위 한 겹(깊이감)
+    if (Math.random() < 0.6) rock(t * 0.96, 0.4, (H - 0.6) * (Math.random() < 0.5 ? 1 : -1), s() * 0.7, 0.5 + Math.random() * 0.5, s() * 0.7, false);
+  }
+  // 종유석/석순 몇 개(위로 뾰족)
+  for (let i = 0; i < 9; i++) {
+    const a = Math.random() * 6, r = H - 1 - Math.random() * 2;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.28 + Math.random() * 0.3, 1 + Math.random() * 1.6, 6), rockMat);
+    c.position.set(Math.cos(a) * r, 0.6, Math.sin(a) * r); c.rotation.y = Math.random() * 6; c.castShadow = true; g.add(c);
+  }
+  // 바닥 돌기(자잘한 바위)
+  for (let i = 0; i < 14; i++) rock((Math.random() - 0.5) * (H * 2 - 2), 0.06, (Math.random() - 0.5) * (H * 2 - 2), 0.3 + Math.random() * 0.4, 0.14 + Math.random() * 0.2, 0.3 + Math.random() * 0.4, false);
+  // 나가는 문 표지판(남쪽 구멍)
+  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, -H - 0.1); g.add(board);
+  scene.add(g);
+  // 동굴 은은한 필 라이트(사진처럼 어두우면서 살짝 밝은 푸른 빛) — 상시 켜짐(멀어서 마을엔 영향 X)
+  const glow = new THREE.PointLight(0x9ac4ff, 0.8, 34, 1.1); glow.position.set(MINE.x, 6, MINE.z); scene.add(glow);
+  const glow2 = new THREE.PointLight(0xbfe0ff, 0.5, 24, 1.2); glow2.position.set(MINE.x, 2.5, MINE.z + H - 2); scene.add(glow2); // 안쪽 깊은 곳 빛
+  // 광맥 배치
+  for (let i = 0; i < 9; i++) {
+    const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * (H - 2.5);
+    spawnOreRock(MINE.x + Math.cos(a) * r, MINE.z + Math.sin(a) * r, weightedOre());
+  }
+}
+
+function spawnMineGate() {
+  const g = new THREE.Group(); g.position.copy(MINE_GATE);
+  // 입구는 정면(+z)을 향함
+  const rockGeo = new THREE.IcosahedronGeometry(1, 0);
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x565b66, roughness: 1, metalness: 0, flatShading: true });
+  // 어두운 입구 구멍
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(1.35, 20), new THREE.MeshBasicMaterial({ color: 0x080a0e }));
+  hole.position.set(0, 1.35, 0.06); g.add(hole);
+  // 구멍 둘레를 바위로 둘러싸 아가리 형태
+  const N = 14;
+  for (let i = 0; i <= N; i++) {
+    const ang = Math.PI * (i / N);                 // 윗 반원 아치
+    const rad = 1.8 + Math.random() * 0.35;
+    const b = new THREE.Mesh(rockGeo, rockMat);
+    b.position.set(Math.cos(ang) * rad, 1.25 + Math.sin(ang) * rad, (Math.random() - 0.5) * 0.4);
+    const s = 0.55 + Math.random() * 0.7; b.scale.set(s, s * (1 + Math.random() * 0.6), s);
+    b.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6); b.castShadow = true; g.add(b);
+  }
+  // 입구 양옆 바닥의 큰 바위 무더기
+  [-2.0, 2.0].forEach(x => { const b = new THREE.Mesh(rockGeo, rockMat); b.position.set(x, 0.7, 0.2); b.scale.set(1.2, 1.5, 1.2); b.rotation.y = Math.random() * 6; b.castShadow = true; g.add(b); });
+  // 서 있는 팻말(나무 기둥 + 판) — 입구 앞 오른쪽
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.7, 6), woodMat(1, 1)); post.position.set(2.7, 0.85, 1.4); post.castShadow = true; g.add(post);
+  const sign = makeSignBoard('⛏️ 채굴 동굴'); sign.scale.setScalar(0.62); sign.position.set(2.7, 1.62, 1.45); g.add(sign);
+  scene.add(g);
+  obstacles.push({ x: MINE_GATE.x, z: MINE_GATE.z, r: 1.8 });
+}
+
+function enterMine() {
+  atMine = true;
+  player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥을 캐면 돌·석탄·💎보석이 나와요. 작업대 재료·상점 판매에 쓰여요. 어두우니 캐릭터 횃불로 살펴봐요! 남쪽 문으로 나가요');
+  Sound.blip(); trackEvent('enter_mine'); // [GA4]
+}
+function exitMine() {
+  atMine = false;
+  player.position.set(MINE_GATE.x, 0, MINE_GATE.z + 2);
+  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera();
+  Sound.blip(); trackEvent('exit_mine'); // [GA4]
+}
+
+// 채굴: 가까운 광맥을 괭이로 캐기
+function tryMine() {
+  let nearest = null, nd = 2.4;
+  for (const rock of oreRocks) { if (rock.userData.depleted) continue; const d = dist2D(rock.position, player.position); if (d < nd) { nd = d; nearest = rock; } }
+  if (!nearest) { ui.toast?.('가까운 광맥이 없어요 ⛏️'); return; }
+  const ud = nearest.userData;
+  doPlayerAction(nearest.position.x, nearest.position.z);
+  Sound.chop(); spawnDust(nearest.position.x, nearest.position.z, 8);
+  ud.hp -= 1;
+  if (ud.hp <= 0) {
+    const ore = ud.ore;
+    const amt = ore.id === 'gem' ? 1 : (1 + (Math.random() < 0.5 ? 1 : 0));
+    gameState.inventory[ore.id] = (gameState.inventory[ore.id] || 0) + amt;
+    refreshInventoryUI();
+    spawnFloatText(nearest.position.x, 1.4, nearest.position.z, `+${amt} ${ore.name}`, ore.id === 'gem' ? '#5ad0e0' : '#cfc8b8');
+    spawnSparkle(nearest.position.x, 0.8, nearest.position.z, ore.id === 'gem' ? 26 : 12);
+    Sound.harvest();
+    ud.depleted = true; ud.respawnAt = clock.elapsedTime + 14; nearest.visible = false;
+    trackEvent('mine_ore', { ore: ore.id, amt });  // [GA4]
+  }
+}
+
+// 광맥 리젠(캔 뒤 잠시 후 다시 자람)
+function updateOreRocks() {
+  const now = clock.elapsedTime;
+  for (const rock of oreRocks) {
+    const ud = rock.userData;
+    if (ud.depleted && now > ud.respawnAt) { ud.depleted = false; ud.hp = 3; rock.visible = true; rock.scale.set(0.01, 0.01, 0.01); ud.growing = true; }
+    if (ud.growing) { const s = THREE.MathUtils.lerp(rock.scale.x, 1, 0.12); rock.scale.set(s, s, s); if (s > 0.98) { rock.scale.set(1, 1, 1); ud.growing = false; } }
+  }
+}
+
 function enterHouse() {
   indoor = true;
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
@@ -1156,17 +1387,22 @@ function exitHouse() {
 function updateDoorInteract() {
   let nd = null, prompt = null;
   if (indoor) {
-    if (dist2D({ x: INT.x, z: INT.z - 4 }, player.position) < 1.8) { nd = 'exit'; prompt = '🚪 나가기'; }
+    if (dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 문 바로 앞에서만
   } else if (atFarm) {
     if (dist2D({ x: FARM.x, z: FARM.z + FARM_HALF }, player.position) < 1.8) { nd = 'farmexit'; prompt = '🚪 나가기'; }
+  } else if (atMine) {
+    if (dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {
     nd = 'farm'; prompt = '🌾 내 텃밭';
+  } else if (dist2D(MINE_GATE, player.position) < 2.0) {
+    nd = 'mine'; prompt = '⛏️ 채굴 동굴';
   }
   nearDoor = nd;
+  if (nd === 'mine') firstHint('mineGate', '⛏️', '채굴 동굴 입구', '들어가면 어두운 동굴에서 ⛏️괭이로 돌·석탄·보석을 캘 수 있어요. 작업대 재료와 상점 판매에 쓰여요!');
   // 작업대(요리) / 상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
-  const inVillage = !indoor && !atFarm && !nd;
+  const inVillage = !indoor && !atFarm && !atMine && !nd;
   nearBench = inVillage && dist2D(BENCH, player.position) < 2.0;
   nearShop = inVillage && !nearBench && dist2D(SHOP, player.position) < 2.0;
   if (nearBench) prompt = '🍳 요리하기 (작업대)';
@@ -1254,7 +1490,7 @@ function animate() {
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      ui.setMinimap?.({ place: indoor ? 'house' : atFarm ? 'farm' : 'village', x: player.position.x, z: player.position.z, yaw: player.rotation.y });
+      ui.setMinimap?.({ place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : 'village', x: player.position.x, z: player.position.z, yaw: player.rotation.y });
     }
     // [센서] 매 프레임 스냅샷 → logger throttle 후 배치 전송
     sampleFrame(() => ({
@@ -1268,6 +1504,7 @@ function animate() {
   updateDayNight(dt);
   updateSway(t);
   updateTrees(dt);
+  updateOreRocks();
   updatePlots(dt);
   updatePops(dt);
   updateParticles(dt);
@@ -1327,12 +1564,15 @@ function updatePlayer(dt, t) {
     playerAnchor.rotation.z *= 0.9;
   }
 
-  if (indoor) { // 실내: 방 벽 안쪽으로 제한
-    player.position.x = Math.max(INT.x - 3.5, Math.min(INT.x + 3.5, player.position.x));
-    player.position.z = Math.max(INT.z - 3.7, Math.min(INT.z + 3.5, player.position.z));
+  if (indoor) { // 실내: 방 벽 안쪽으로 제한(넓어진 방)
+    player.position.x = Math.max(INT.x - INT_HALF + 0.6, Math.min(INT.x + INT_HALF - 0.6, player.position.x));
+    player.position.z = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.6, player.position.z));
   } else if (atFarm) { // 텃밭: 울타리 안쪽으로 제한
     player.position.x = Math.max(FARM.x - FARM_HALF + 0.6, Math.min(FARM.x + FARM_HALF - 0.6, player.position.x));
     player.position.z = Math.max(FARM.z - FARM_HALF + 0.6, Math.min(FARM.z + FARM_HALF - 0.6, player.position.z));
+  } else if (atMine) { // 동굴: 벽 안쪽으로 제한
+    player.position.x = Math.max(MINE.x - MINE_HALF + 0.7, Math.min(MINE.x + MINE_HALF - 0.7, player.position.x));
+    player.position.z = Math.max(MINE.z - MINE_HALF + 0.6, Math.min(MINE.z + MINE_HALF - 0.7, player.position.z));
   } else {
     const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
@@ -1429,6 +1669,14 @@ function updateDayNight(dt) {
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1; });
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
   if (interiorLamp) interiorLamp.intensity = indoor ? (1.8 + nightAmt * 2.6) : 0;
+  // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
+  if (playerLight) playerLight.intensity = Math.max(0, nightAmt - 0.15) * 4.4;
+  // 채굴 동굴: 시간대 무관 어둡게 + 차가운 푸른 톤 + 캐릭터 횃불 상시 점등
+  if (atMine) {
+    hemiLight.intensity = 0.2; ambient.intensity = 0.5; sunLight.intensity = 0.05;  // 너무 깜깜하지 않게
+    ambient.color.setHex(0x3a4a72);   // 동굴 블루(ambient는 매 프레임 리셋되므로 안전)
+    if (playerLight) playerLight.intensity = 3.4;
+  }
   // 집 안내판: 낮엔 매트(후광X), 밤엔 은은하게 빛나 잘 보이게(동적 채광)
   if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 + nightAmt * 0.28);
   // 블룸 밤에 살짝 더 강하게
@@ -1482,6 +1730,9 @@ function handleAction() {
   if (nearDoor === 'exit') return exitHouse();
   if (nearDoor === 'farm') return enterFarm();
   if (nearDoor === 'farmexit') return exitFarm();
+  if (nearDoor === 'mine') return enterMine();
+  if (nearDoor === 'mineexit') return exitMine();
+  if (atMine) return tryMine();   // 동굴 안에선 액션 = 채굴
   // 실내에선 도구질(밭갈기·낚시 등) 금지 — 가구 배치만(선택 중이면 발 앞에 놓기)
   if (indoor) {
     if (placingDecor) placeDecor(placingDecor, player.position.x, player.position.z);
@@ -1541,6 +1792,7 @@ function catchFish() {
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
   triggerMoment();                                                      // 📷 순간 줌인
+  tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : kind.rarity === 'uncommon' ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
   trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity }); // [GA4]
   resetFishing();
 }
@@ -1715,6 +1967,7 @@ function tryHarvest() {
   questEvent('harvest');                                          // 퀘스트 진행
   ui.act?.('harvest');                                            // 튜토리얼: 수확
   triggerMoment();                                                // 📷 순간 줌인
+  tryUnlockDrop(0.05);                                            // 🎨 랜덤 색(낮은 확률)
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
 }
 
@@ -2205,6 +2458,7 @@ export function npcClaim() {
   if (st.given && st.progress >= q.target) {
     giveReward(q.reward); Sound.harvest();
     ui.act?.('quest');                                               // 튜토리얼: 퀘스트 보상까지 완료
+    tryUnlockDrop(0.5);                                              // 🎨 랜덤 색(퀘스트 보상, 높은 확률)
     trackEvent('quest_complete', { quest: q.title, npc: o.def.id }); // [GA4]
     st.idx++; st.given = false; st.progress = 0; st.readyToasted = false;
     if (st.idx >= o.def.quests.length) { st.allDone = true; ui.setQuest?.(null); }

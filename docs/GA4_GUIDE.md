@@ -39,10 +39,14 @@
 | `feedback_submit` | 문의 제출 | `category` |
 | `enter_house` / `exit_house` | 집 실내 입장/퇴장 | — |
 | `enter_farm` / `exit_farm` | 개인 텃밭 입장/퇴장 | — |
+| `enter_mine` / `exit_mine` | 채굴 동굴 입장/퇴장 | — |
+| `mine_ore` | 광맥 채굴 | `ore`(stone/coal/gem), `amt` |
 | `place_decor` | 가구 배치(꾸미기) | `item`(rug/plant/…) |
 | `craft_item` | 제작(작업대) | `category`(cook/tool/outdoor/gift), `item`(요리·도구·야외장식·선물 id) |
 | `gift_give` | 주민에게 선물 전달 | `npc`, `gift`(bouquet/fruit/fishset/woodtoy) |
 | `shop_sell` / `shop_buy` | 상점 판매/구매 | 판매: `item`,`qty` · 구매: `item` |
+| `color_unlock` | 외관 색 랜덤 획득 | `part`(roof/wall/door), `idx` |
+| `photo_capture` / `photo_share` | 사진 촬영/공유 | — |
 | `fishing_cast` | 낚시 캐스팅 | — |
 | `fishing_catch` | 물고기 낚음 | `fish`, `rarity`(common/uncommon/rare) |
 | `fishing_miss` | 낚아채기 실패 | — |
