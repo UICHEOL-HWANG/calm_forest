@@ -22,10 +22,10 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
-import { Sound, initSound } from './sound.js';                   // 🔊 절차적 사운드
+import { sampleFrame, startLogging } from './logger.js?v=2';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=2';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=2';          // [GA4] 이벤트
+import { Sound, initSound } from './sound.js?v=2';                   // 🔊 절차적 사운드
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -1343,7 +1343,10 @@ function makeSignBoard(text) {
   c.fillStyle = '#4a3a24';
   c.fillText(text, W / 2, H / 2 + 2);
   const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2 * H / W, 0.1), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
+  const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });   // 글자 면(앞뒤)
+  const side = new THREE.MeshStandardMaterial({ color: 0xcdb083, roughness: 0.85 }); // 옆·위·아래(나무색)
+  // BoxGeometry 면 순서: [+X, -X, +Y(위), -Y(아래), +Z(앞), -Z(뒤)] → 글자는 앞뒤만
+  const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2 * H / W, 0.1), [side, side, side, side, face, face]);
   return m;
 }
 

@@ -1,0 +1,6 @@
+# Cloudflare Pages/Workers 정적 자산 헤더
+# JS/HTML/CSS 는 매 요청마다 재검증(no-cache) → 배포 후 새로고침만으로 최신 반영.
+# (ETag 로 변경 없으면 304, 변경되면 200 새 파일)
+
+/*
+  Cache-Control: no-cache

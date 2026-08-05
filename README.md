@@ -69,13 +69,8 @@ ES 모듈이라 `file://`로 열면 CORS로 막힙니다. 로컬 서버로 여�
 
 ```
 cd calm_forest
-python3 scripts/serve.py 8000   # → http://localhost:8000 (캐시 없이 항상 최신)
+python3 -m http.server 8000   # → http://localhost:8000
 ```
-
-> ⚠️ 폰(iOS Safari)에서 테스트할 때 `python3 -m http.server` 는 캐시 헤더가 없어서
-> 코드를 고쳐도 반영이 안 될 수 있습니다. 위 `scripts/serve.py` 는 `Cache-Control: no-store`
-> 를 붙여 항상 최신 파일을 내려주므로 새로고침만 하면 바로 반영됩니다.
-> 폰 접속 주소는 `http://<맥 IP>:8000` (맥 IP: 터미널에서 `ipconfig getifaddr en0`).
 
 ## 🚀 배포 (Cloudflare Pages/Workers)
 

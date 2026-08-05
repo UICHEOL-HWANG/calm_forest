@@ -717,12 +717,12 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
-    import { CONFIG } from './js/config.js';
-    import { initControls } from './js/controls.js';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=2';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=2';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=2';
+    import { CONFIG } from './js/config.js?v=2';
+    import { initControls } from './js/controls.js?v=2';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=2';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
