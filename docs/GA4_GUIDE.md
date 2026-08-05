@@ -28,6 +28,7 @@
 | 이벤트 이름 | 발생 시점 | 매개변수 |
 |-------------|-----------|----------|
 | `login` | 로그인 성공 | `method` (google/anonymous/offline) |
+| `character_select` | 첫 캐릭터(동물) 선택 | `animal`(fox/dog/rabbit/cat/bear/panda/chick) |
 | `first_chop` | 세션 첫 벌목 | `tree_id` |
 | `chop_tree` | 벌목할 때마다 | `tree_id`, `wood` |
 | `plant_seed` | 씨앗 심기 | — |

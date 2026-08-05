@@ -33,8 +33,13 @@
     --panel: rgba(255,255,255,0.72); --shadow: 0 6px 18px rgba(90,120,100,0.18);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; overscroll-behavior: none; touch-action: none; }
-  #app { position: fixed; inset: 0; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; overscroll-behavior: none; }
+  /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
+  #app { position: fixed; inset: 0; touch-action: none; }
+  /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 */
+  #bag-content, #shop-menu, #cook-menu, #decor-menu, #ext-menu, #char-modal .tut-card, #tutorial-modal .tut-card {
+    touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  }
 
   .panel {
     position: fixed; background: var(--panel); backdrop-filter: blur(8px);
@@ -49,6 +54,27 @@
   #logout-btn, #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn, #house-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
   #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
   #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn, #house-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
+  /* 데스크톱: ☰ 숨기고 버튼들은 인라인 그대로 */
+  #menu-btn { display: none; }
+  #util-btns { display: contents; }
+  .bag-cue { opacity: .8; }
+  /* 가방 창 */
+  #bag-backdrop { display: none; position: fixed; inset: 0; background: rgba(40,55,45,0.28); z-index: 40; }
+  #bag-backdrop.show { display: block; }
+  #bag-menu { display: none; z-index: 41; padding: 0; overflow: hidden; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(440px, 94vw); max-height: 66dvh; flex-direction: column; gap: 0; }
+  #bag-menu.show { display: flex; }
+  .bag-top { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 10px; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(90,120,100,0.12); }
+  .bag-x { border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 15px; font-weight: 700; cursor: pointer; background: #eef2ee; color: var(--ink); box-shadow: var(--shadow); line-height: 1; flex: 0 0 auto; }
+  .bag-x:active { transform: scale(0.92); }
+  #bag-content { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 14px 14px; }
+  .bag-sec { margin-top: 10px; }
+  .bag-h { font-weight: 700; font-size: 13px; margin: 2px 0 6px; opacity: .85; }
+  .bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+  .bag-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 12px; background: rgba(255,255,255,0.66); box-shadow: var(--shadow); }
+  .bag-item.zero { opacity: .34; }
+  .bag-item .bag-ico { font-size: 24px; }
+  .bag-item .bag-name { font-size: 11px; font-weight: 600; }
+  .bag-item .bag-cnt { font-size: 13px; font-weight: 700; opacity: .8; }
   /* 집 외관 꾸미기 메뉴 */
   #ext-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(400px, 92vw); flex-direction: column; gap: 10px; }
   #ext-menu.show { display: flex; }
@@ -90,13 +116,48 @@
   body:not(.playing) #decor-menu,
   body:not(.playing) #cook-menu,
   body:not(.playing) #shop-menu,
+  body:not(.playing) #bag-menu,
   body:not(.playing) #ext-menu,
   body:not(.playing) #buffs,
   body:not(.playing) #mobile-controls { display: none !important; }
 
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center; background: rgba(20,40,30,0.5); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show { display: grid; }
+  #char-layout { display: flex; gap: 16px; align-items: stretch; text-align: left; }
+  #char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1 1 auto; align-content: start; }
+  .char-card { padding: 10px 6px; border-radius: 14px; background: #f4faf5; box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, outline-color .12s; outline: 3px solid transparent; text-align: center; }
+  .char-card:active { transform: scale(0.94); }
+  .char-card.sel { outline-color: #7ec99a; background: #e8f6ec; }
+  .char-card .char-emoji { font-size: 34px; line-height: 1.1; }
+  .char-card .char-name { font-size: 13px; font-weight: 700; margin-top: 2px; }
+  #char-preview-box { flex: 0 0 220px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px; border-radius: 16px; background: linear-gradient(160deg, #eef7f0, #dcebe0); box-shadow: inset 0 2px 10px rgba(90,120,100,0.12); }
+  #char-preview { width: 196px; height: 210px; cursor: grab; touch-action: none; }
+  #char-preview:active { cursor: grabbing; }
+  #char-preview-fallback { display: none; width: 196px; height: 210px; align-items: center; justify-content: center; font-size: 104px; }
+  #char-preview-name { font-size: 17px; font-weight: 800; }
+  #char-preview-hint { font-size: 11px; opacity: .6; }
+  #char-confirm { margin-top: auto; width: 100%; border: none; border-radius: 12px; padding: 11px 16px; background: var(--mint); color: var(--ink); font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
+  #char-confirm:active { transform: scale(0.97); }
+  @media (max-width: 640px) {
+    #char-modal .tut-card { padding: 18px 14px 16px; border-radius: 20px; }
+    #char-modal h2 { font-size: 18px; margin: 2px 0 8px; }
+    #char-modal > .tut-card > p { margin-bottom: 10px !important; }
+    #char-layout { flex-direction: column-reverse; gap: 12px; }
+    #char-preview-box { flex: none; padding: 10px; gap: 4px; }
+    #char-preview { width: 168px; height: 156px; }
+    #char-grid { grid-template-columns: repeat(4, 1fr); gap: 7px; }
+    .char-card { padding: 8px 4px; }
+    .char-card .char-emoji { font-size: 27px; }
+    .char-card .char-name { font-size: 11px; }
+    #char-preview-name { font-size: 16px; }
+    #char-confirm { padding: 12px 16px; }
+  }
+  /* 가로가 매우 낮은(가로모드) 화면: 프리뷰 더 축소 */
+  @media (max-width: 640px) and (max-height: 560px) {
+    #char-preview { width: 130px; height: 120px; }
+    #char-modal .tut-card { padding: 12px 12px 12px; }
+  }
   #photo-img { width: 100%; border-radius: 12px; display: block; box-shadow: var(--shadow); }
   .photo-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
   .photo-actions button { border: none; border-radius: 12px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; background: #eef2ee; color: var(--ink); }
@@ -152,14 +213,13 @@
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
-  #topright { top: calc(16px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; gap: 10px; }
-  #inventory { display: flex; gap: 14px; font-weight: 600; }
-  .inv-item { display: flex; align-items: center; gap: 6px; }
-  .inv-ico { font-size: 18px; }
-  /* 씨앗 0일 때 경고(빨강 + 깜빡임) */
-  .inv-item.inv-low { color: #e0574f; }
-  .inv-item.inv-low .inv-ico { animation: invBlink 1s ease-in-out infinite; }
-  @keyframes invBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  #topright { top: calc(16px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  #inv-hud { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .inv-item { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
+  .inv-ico { font-size: 17px; }
+  #bag-btn { display: inline-flex; align-items: center; gap: 5px; border: none; border-radius: 13px; padding: 7px 12px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 14px; box-shadow: var(--shadow); transition: transform .1s; }
+  #bag-btn:active { transform: scale(0.94); }
+  #bag-btn .bag-emo { font-size: 18px; }
   #time-indicator { display: flex; align-items: center; gap: 8px; justify-content: center; }
   #time-bar { width: 90px; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#2a2c50,#ffd9a8,#dff3ff); position: relative; }
   #time-knob { position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); transform: translateX(-7px); }
@@ -227,7 +287,7 @@
   #decor-btn:active { transform: translateX(-50%) scale(0.95); }
 
   /* 꾸미기 메뉴 */
-  #decor-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(440px, 92vw); flex-direction: column; gap: 10px; }
+  #decor-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(440px, 92vw); max-height: 60dvh; overflow-y: auto; flex-direction: column; gap: 10px; }
   #decor-menu.show { display: flex; }
   .dm-head { font-weight: 700; font-size: 14px; }
   #dm-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -305,6 +365,10 @@
   #action-btn.talk { background: #bfe3ff; box-shadow: 0 0 0 4px rgba(90,170,255,0.5), var(--shadow); animation: actpulse 1.1s ease-in-out infinite; } /* 대화 버튼 */
   #action-btn.door { background: #d9c9ff; box-shadow: 0 0 0 4px rgba(150,120,255,0.45), var(--shadow); } /* 문 버튼 */
   @keyframes actpulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  /* 가구 배치 중에만 보이는 회전 버튼 */
+  #rotate-btn { display: none; position: fixed; right: 28px; bottom: calc(196px + env(safe-area-inset-bottom)); z-index: 7; border: none; border-radius: 16px; padding: 12px 18px; background: #ffe0a8; color: var(--ink); font-weight: 800; font-size: 15px; box-shadow: var(--shadow); cursor: pointer; touch-action: manipulation; }
+  #rotate-btn:active { transform: scale(0.94); }
+  body.placing-decor #rotate-btn { display: block; }
   /* 꾸미기 메뉴 열려 있으면 조이스틱/액션버튼 숨김 + 이동 정지 */
   body.menu-open #mobile-controls { display: none !important; }
 
@@ -319,15 +383,27 @@
     /* 좌측: 상태점·라벨 텍스트 숨겨서 버튼을 아이콘만으로(정사각) 컴팩트 */
     #login-status, #login-dot { display: none; }
     .lbl { display: none; }                       /* '나가기' 글자 접기 → 아이콘만 */
-    #logout-btn, #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn, #house-btn {
-      padding: 0; width: 34px; height: 34px; font-size: 16px;
+    #logout-btn, #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn, #house-btn, #menu-btn {
+      padding: 0; width: 36px; height: 36px; font-size: 17px;
       display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
     }
-    #emote-pop { top: calc(50px + env(safe-area-inset-top)); left: 12px; }
-    /* 우측: 인벤토리/시간 더 압축 */
-    #inventory { gap: 7px; font-size: 11px; font-weight: 700; }
-    .inv-item { gap: 2px; }
+    /* 모바일: 유틸 버튼들을 ☰ 뒤로 접어서 세로 드롭다운으로 */
+    #menu-btn { background: var(--mint); border: none; cursor: pointer; box-shadow: var(--shadow); }
+    #util-btns { display: none; }
+    #topleft.open #util-btns {
+      display: flex; flex-direction: column; gap: 6px;
+      position: absolute; top: calc(100% + 6px); left: 0;
+      background: var(--panel); backdrop-filter: blur(8px);
+      padding: 8px; border-radius: 14px; box-shadow: var(--shadow); z-index: 30;
+    }
+    #topleft.open #menu-btn { background: #ffe0a8; }
+    #emote-pop { top: calc(96px + env(safe-area-inset-top)); left: 12px; }
+    /* 우측: 자원칩 + 가방 버튼 압축 */
+    #inv-hud { gap: 7px; }
+    .inv-item { gap: 2px; font-size: 12px; }
     .inv-ico { font-size: 13px; }
+    #bag-btn { padding: 5px 9px; font-size: 12px; }
+    #bag-btn .bag-emo { font-size: 15px; }
     #time-bar { width: 56px; height: 10px; }
     #time-indicator { gap: 4px; }
     #time-emoji { font-size: 13px; }
@@ -336,6 +412,9 @@
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
     #minimap { top: calc(60px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
     #quest-panel { top: calc(156px + env(safe-area-inset-top)); max-width: 52vw; }
+    /* ☰ 메뉴 펼치면: 클러스터를 미니맵 위로 올리고, 겹치는 미니맵·퀘스트는 잠깐 숨김 */
+    #topleft.open { z-index: 50; }
+    #topleft.open ~ #minimap, #topleft.open ~ #quest-panel { display: none; }
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널·미니맵 숨김 */
     body.coaching #quest-panel, body.coaching #minimap { display: none; }
     /* 버프 HUD: 문의하기 탭 아래로 */
@@ -348,9 +427,6 @@
     .ck-item { width: 84px; }
     /* NPC 모달 선물 버튼이 많아도 줄바꿈 */
     .npc-actions { flex-wrap: wrap; }
-    /* 인벤토리(코인+광석까지 최대 8칸) — 좁은 화면에서 조밀하게 + 줄바꿈 */
-    #inventory { gap: 5px 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 62vw; }
-    .inv-ico { font-size: 12px; }
     .slot { width: 42px; height: 42px; border-radius: 11px; }
     .slot .s-ico { font-size: 17px; }
     .slot .s-key { font-size: 7.5px; }
@@ -372,12 +448,15 @@
   <div id="topleft" class="panel">
     <span id="login-dot"></span>
     <span id="login-status">연결 중…</span>
-    <button id="help-btn" title="도움말">❓</button>
-    <button id="stats-btn" title="내 활동 기록">📊</button>
-    <button id="photo-btn" title="사진 찍기">📷</button>
-    <button id="music-btn" title="배경음악">🎵</button>
-    <button id="emote-btn" title="이모트/앉기">🙂</button>
-    <button id="house-btn" title="집 외관 꾸미기">🏠</button>
+    <button id="menu-btn" title="메뉴">☰</button>
+    <div id="util-btns">
+      <button id="help-btn" title="도움말">❓</button>
+      <button id="stats-btn" title="내 활동 기록">📊</button>
+      <button id="photo-btn" title="사진 찍기">📷</button>
+      <button id="music-btn" title="배경음악">🎵</button>
+      <button id="emote-btn" title="이모트/앉기">🙂</button>
+      <button id="house-btn" title="집 외관 꾸미기">🏠</button>
+    </div>
     <button id="logout-btn" style="display:none;">🚪<span class="lbl"> 나가기</span></button>
   </div>
 
@@ -385,15 +464,12 @@
   <div id="feedback-tab" class="panel"><span>💬</span><span>문의하기</span></div>
 
   <div id="topright" class="panel">
-    <div id="inventory">
-      <span class="inv-item"><span class="inv-ico">🪵</span><span id="inv-wood">0</span></span>
-      <span class="inv-item" id="inv-seed-item"><span class="inv-ico">🌰</span><span id="inv-seed">0</span></span>
-      <span class="inv-item"><span class="inv-ico">🥕</span><span id="inv-crop">0</span></span>
-      <span class="inv-item"><span class="inv-ico">🐟</span><span id="inv-fish">0</span></span>
-      <span class="inv-item"><span class="inv-ico">🪙</span><span id="inv-coin">0</span></span>
-      <span class="inv-item ore-item" id="inv-stone-item" style="display:none"><span class="inv-ico">🪨</span><span id="inv-stone">0</span></span>
-      <span class="inv-item ore-item" id="inv-coal-item" style="display:none"><span class="inv-ico">⚫</span><span id="inv-coal">0</span></span>
-      <span class="inv-item ore-item" id="inv-gem-item" style="display:none"><span class="inv-ico">💎</span><span id="inv-gem">0</span></span>
+    <div id="inv-hud" title="가방 열기">
+      <span class="inv-item"><span class="inv-ico">🪵</span><b id="inv-wood">0</b></span>
+      <span class="inv-item"><span class="inv-ico">🌰</span><b id="inv-seed">0</b></span>
+      <span class="inv-item"><span class="inv-ico">🥕</span><b id="inv-crop">0</b></span>
+      <span class="inv-item"><span class="inv-ico">🪙</span><b id="inv-coin">0</b></span>
+      <button id="bag-btn" title="가방 열기"><span class="bag-emo">🎒</span><span class="bag-lbl">가방</span></button>
     </div>
     <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
   </div>
@@ -442,7 +518,7 @@
   <div id="decor-menu" class="panel">
     <div class="dm-head">🎨 집 꾸미기 <span id="dm-crop"></span></div>
     <div id="dm-items"></div>
-    <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>(또는 <b>Space</b>)해 배치 · 🥕작물/🐟물고기로 구매</div>
+    <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>(또는 <b>Space</b>)해 배치 · <b>↻ 회전</b> 버튼/<b>R</b>키로 가로·세로 전환 · 🥕작물/🐟물고기로 구매</div>
     <div class="dm-actions"><button id="dm-cancel">배치 취소</button><button id="dm-close">닫기</button></div>
   </div>
 
@@ -476,6 +552,13 @@
     <div class="dm-actions"><button id="shop-close">닫기</button></div>
   </div>
 
+  <!-- 가방 창 (분류별 아이템) -->
+  <div id="bag-backdrop"></div>
+  <div id="bag-menu" class="panel">
+    <div class="bag-top"><div class="dm-head">🎒 가방</div><button id="bag-close" class="bag-x" aria-label="닫기">✕</button></div>
+    <div id="bag-content"></div>
+  </div>
+
   <!-- 집 외관 꾸미기 메뉴 -->
   <div id="ext-menu" class="panel">
     <div class="dm-head">🏠 집 외관 꾸미기</div>
@@ -500,6 +583,9 @@
 
   <!-- 모바일 전용 대화하기 버튼 (NPC 근처에서 표시) -->
   <button id="talk-btn"><span>💬</span><span>대화하기</span></button>
+
+  <!-- 가구 배치 중 회전 버튼(실내 꾸미기) -->
+  <button id="rotate-btn">↻ 회전</button>
 
   <!-- 로그인 화면 (뒤로 실제 게임 씬이 흐름) -->
   <div id="login-screen">
@@ -588,6 +674,24 @@
     </div>
   </div>
 
+  <!-- 캐릭터(동물) 선택 모달 (첫 플레이) -->
+  <div id="char-modal">
+    <div class="tut-card" style="max-width:640px; width:min(640px,94vw); max-height:88dvh; overflow-y:auto;">
+      <h2 style="margin:0 0 6px;">🐾 캐릭터를 골라주세요</h2>
+      <p style="font-size:13px; opacity:.75; margin:0 0 14px;">함께 마을을 가꿀 동물 친구예요 (나중에 바꿀 수 없어요)</p>
+      <div id="char-layout">
+        <div id="char-grid"></div>
+        <div id="char-preview-box">
+          <canvas id="char-preview"></canvas>
+          <div id="char-preview-fallback">🦊</div>
+          <div id="char-preview-name">여우</div>
+          <div id="char-preview-hint">🖐️ 드래그해서 돌려보기</div>
+          <button id="char-confirm">이 친구로 시작하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 사진 미리보기 모달 -->
   <div id="photo-modal">
     <div class="tut-card" style="max-width:460px; width:min(460px,92vw);">
@@ -630,6 +734,7 @@
     // 액션 버튼(모바일) 아이콘을 "지금 뭘 하는 버튼인지"에 맞춰 갱신
     //   우선순위: 가구 배치 > 문/작업대 > 현재 도구  (주민 대화는 전용 버튼)
     function refreshActionIcon() {
+      document.body.classList.toggle('placing-decor', !!placingDecorItem);  // 배치 중이면 회전 버튼 노출
       const b = $('action-btn'); if (!b) return;
       b.classList.remove('placing', 'talk', 'door');
       if (placingDecorItem) { b.textContent = placingDecorItem.ico; b.classList.add('placing'); return; }
@@ -654,17 +759,12 @@
     const ui = {
       setInventory(inv) {
         lastInv = inv;
-        $('inv-wood').textContent = inv.wood;
-        $('inv-seed').textContent = inv.seed;
-        $('inv-crop').textContent = inv.crop;
-        $('inv-fish').textContent = inv.fish || 0;
-        $('inv-coin').textContent = inv.coins || 0;
-        // 채굴 자원: 보유 시에만 표시
-        [['stone', inv.stone], ['coal', inv.coal], ['gem', inv.gem]].forEach(([k, v]) => {
-          $('inv-' + k).textContent = v || 0;
-          $('inv-' + k + '-item').style.display = (v || 0) > 0 ? '' : 'none';
-        });
-        $('inv-seed-item').classList.toggle('inv-low', inv.seed <= 0); // 씨앗 0 경고
+        const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+        set('inv-wood', inv.wood || 0);
+        set('inv-seed', inv.seed || 0);
+        set('inv-crop', inv.crop || 0);
+        set('inv-coin', inv.coins || 0);
+        if ($('bag-menu').classList.contains('show')) renderBag();     // 가방 열려 있으면 갱신
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
         if ($('cook-menu').classList.contains('show')) { cookTab === 'cook' ? renderCook() : cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
         if ($('shop-menu').classList.contains('show')) renderShop();
@@ -741,6 +841,57 @@
         // 🎁 선물 주기 — 보유 선물이 있을 때만
         if (Object.values(Input.ownedGifts()).some(n => n > 0)) addBtn('🎁 선물 주기', 'ghost', () => showGiftPicker(view));
         $('npc-modal').classList.add('show');
+      },
+      // 캐릭터(동물) 선택 화면 — 첫 플레이. 고르면 튜토리얼로
+      showCharacterSelect() {
+        const grid = $('char-grid'); grid.innerHTML = '';
+        const animals = Input.getAnimals();
+        let selected = animals[0].id;
+        const pick = (a) => {
+          selected = a.id;
+          if (ui._charPreview) ui._charPreview.setAnimal(a.id);
+          $('char-preview-fallback').textContent = a.emoji;   // WebGL 실패 시 대체 이모지
+          $('char-preview-name').textContent = `${a.emoji} ${a.name}`;
+          grid.querySelectorAll('.char-card').forEach(el => el.classList.toggle('sel', el.dataset.id === a.id));
+        };
+        animals.forEach(a => {
+          const c = document.createElement('div'); c.className = 'char-card'; c.dataset.id = a.id;
+          c.innerHTML = `<div class="char-emoji">${a.emoji}</div><div class="char-name">${a.name}</div>`;
+          c.addEventListener('click', () => pick(a));
+          grid.appendChild(c);
+        });
+        Input.setAnalog(0, 0);
+        $('char-modal').classList.add('show');
+        // 모달이 보인 뒤에 프리뷰 생성/리사이즈(캔버스 크기 확보)
+        requestAnimationFrame(() => {
+          try {
+            if (!ui._charPreview && typeof Input.createCharacterPreview === 'function') {
+              ui._charPreview = Input.createCharacterPreview($('char-preview'));
+            }
+            if (ui._charPreview) {
+              ui._charPreview.resize();
+              $('char-preview').style.display = '';
+              $('char-preview-fallback').style.display = 'none';
+            } else {
+              throw new Error('createCharacterPreview 없음(게임 파일 캐시일 수 있음)');
+            }
+          } catch (err) {
+            // WebGL/프리뷰 실패 → 큰 이모지로 대체하고 원인 표시
+            $('char-preview').style.display = 'none';
+            $('char-preview-fallback').style.display = 'flex';
+            $('char-preview-hint').textContent = '미리보기 오류: ' + (err && err.message ? err.message : err);
+            console.error('[char-preview]', err);
+          }
+          pick(animals[0]);
+          if (!ui._charResizeBound) { ui._charResizeBound = true; window.addEventListener('resize', () => { if (ui._charPreview && $('char-modal').classList.contains('show')) ui._charPreview.resize(); }); }
+        });
+        $('char-confirm').onclick = () => {
+          const a = animals.find(x => x.id === selected) || animals[0];
+          Input.setCharacter(selected);
+          $('char-modal').classList.remove('show');
+          ui.toast(`${a.emoji} ${a.name}로 시작해요!`);
+          if (Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
+        };
       },
       // 신규 유저 튜토리얼 표시
       showTutorial() { $('tutorial-modal').classList.add('show'); },
@@ -963,6 +1114,9 @@
     // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
     $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
     $('help-btn').addEventListener('click', () => ui.showTutorial());
+    // ☰ 메뉴 토글(모바일에서 유틸 버튼 펼치기/접기) + 버튼 누르면 자동으로 접힘
+    $('menu-btn').addEventListener('click', () => $('topleft').classList.toggle('open'));
+    $('util-btns').addEventListener('click', (e) => { if (e.target.closest('button')) $('topleft').classList.remove('open'); });
     // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
     $('tut-skip').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); trackEvent('tutorial_skip', { at: 'welcome' }); });
     $('coach-skip').addEventListener('click', () => endCoach(false));
@@ -993,6 +1147,10 @@
     $('decor-btn').addEventListener('click', openDecor);
     $('dm-close').addEventListener('click', closeDecor);
     $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); stopPlacing(); ui.toast('배치를 취소했어요'); closeDecor(); });
+    // 가구 회전(가로/세로) — 버튼 + R 키
+    function rotatePlacing() { if (!placingDecorItem) return; const r = Input.rotateDecor(); ui.toast(`↻ 방향 ${r * 90}°`); }
+    $('rotate-btn').addEventListener('click', rotatePlacing);
+    window.addEventListener('keydown', (e) => { if ((e.key === 'r' || e.key === 'R') && placingDecorItem) { e.preventDefault(); rotatePlacing(); } });
 
     // ── 작업대 메뉴 (요리 / 도구 탭) ──
     let cookTab = 'cook';
@@ -1120,11 +1278,14 @@
         });
       } else {
         const box = $('buy-items'); box.innerHTML = '';
+        const owned = Input.ownedUpgrades();
         Input.getShopBuy().forEach(it => {
-          const can = (lastInv.coins || 0) >= it.coin;
+          const isOwned = it.upgrade && owned[it.upgrade];
+          const can = !isOwned && (lastInv.coins || 0) >= it.coin;
           const el = document.createElement('div');
           el.className = 'ck-item' + (can ? '' : ' off');
-          el.innerHTML = `<span class="ck-ico">${it.ico}</span><span class="ck-name">${it.name}</span><span class="ck-buff">&nbsp;</span><span class="ck-cost">🪙${it.coin}</span>`;
+          const costLabel = isOwned ? '보유중 ✅' : `🪙${it.coin}`;
+          el.innerHTML = `<span class="ck-ico">${it.ico}</span><span class="ck-name">${it.name}</span><span class="ck-buff">${it.desc || '&nbsp;'}</span><span class="ck-cost">${costLabel}</span>`;
           el.addEventListener('click', () => { const r = Input.buyShop(it.id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`🛍️ ${r.name} 구매!`); renderShop(); });
           box.appendChild(el);
         });
@@ -1180,6 +1341,40 @@
     emotePop.querySelectorAll('button[data-e]').forEach(b =>
       b.addEventListener('click', () => { Input.emote(b.dataset.e); emotePop.classList.remove('show'); }));
     $('emote-sit').addEventListener('click', () => { Input.toggleSit(); emotePop.classList.remove('show'); });
+
+    // ── 가방 창 (분류별 아이템 보기) ──
+    const ITEM_META = {
+      wood: { ico: '🪵', name: '목재' }, seed: { ico: '🌰', name: '씨앗' }, coins: { ico: '🪙', name: '코인' },
+      crop: { ico: '🥕', name: '작물' }, fish: { ico: '🐟', name: '물고기' },
+      stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' }, gem: { ico: '💎', name: '보석' },
+    };
+    const BAG_CATS = [
+      { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
+      { name: '🌱 농사·낚시', keys: ['crop', 'fish'] },
+      { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
+    ];
+    function bagSection(title, items) {
+      const sec = document.createElement('div'); sec.className = 'bag-sec';
+      const h = document.createElement('div'); h.className = 'bag-h'; h.textContent = title; sec.appendChild(h);
+      const grid = document.createElement('div'); grid.className = 'bag-grid';
+      items.forEach(it => {
+        const c = document.createElement('div'); c.className = 'bag-item' + (it.count > 0 ? '' : ' zero');
+        c.innerHTML = `<span class="bag-ico">${it.ico}</span><span class="bag-name">${it.name}</span><span class="bag-cnt">×${it.count}</span>`;
+        grid.appendChild(c);
+      });
+      sec.appendChild(grid); return sec;
+    }
+    function renderBag() {
+      const box = $('bag-content'); box.innerHTML = '';
+      BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
+      const owned = Input.ownedGifts();
+      box.appendChild(bagSection('🎁 선물', Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))));
+    }
+    function openBag() { renderBag(); Input.setAnalog(0, 0); $('bag-menu').classList.add('show'); $('bag-backdrop').classList.add('show'); document.body.classList.add('menu-open'); }
+    function closeBag() { $('bag-menu').classList.remove('show'); $('bag-backdrop').classList.remove('show'); document.body.classList.remove('menu-open'); }
+    $('inv-hud').addEventListener('click', openBag);   // 자원 숫자·가방 아무 데나 탭하면 열림
+    $('bag-close').addEventListener('click', closeBag);
+    $('bag-backdrop').addEventListener('click', closeBag);
 
     // ── 집 외관 꾸미기 ──
     const hex = (c) => '#' + c.toString(16).padStart(6, '0');

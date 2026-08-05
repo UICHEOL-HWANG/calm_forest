@@ -63,6 +63,12 @@ const DECOR = [
   { id: 'lamp',     name: '램프',   ico: '🕯️', cost: 4, pay: 'crop' },
   { id: 'sofa',     name: '소파',   ico: '🛋️', cost: 5, pay: 'crop' },
   { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish' }, // 물고기로 구매
+  // ── 큰 가구(사이즈 大) ──
+  { id: 'bed',       name: '침대',    ico: '🛏️', cost: 8,  pay: 'crop', big: true },
+  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true },
+  { id: 'bigsofa',   name: '큰 소파', ico: '🛋️', cost: 10, pay: 'crop', big: true },
+  { id: 'bookshelf', name: '책장',    ico: '📚', cost: 9,  pay: 'crop', big: true },
+  { id: 'bigrug',    name: '큰 러그', ico: '🟪', cost: 6,  pay: 'crop', big: true },
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
 
@@ -107,8 +113,16 @@ function setSpaceVisible() {
 }
 const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40 };   // 판매 단가(코인)
 const SHOP_BUY = [
-  { id: 'seed5',  name: '씨앗 5개',  ico: '🌰', coin: 15, give: { seed: 5 } },
-  { id: 'seed20', name: '씨앗 20개', ico: '🌰', coin: 50, give: { seed: 20 } },
+  // 소모품·재료 번들
+  { id: 'seed5',   name: '씨앗 5개',   ico: '🌰', coin: 15,  give: { seed: 5 } },
+  { id: 'seed20',  name: '씨앗 20개',  ico: '🌰', coin: 50,  give: { seed: 20 }, desc: '대량 할인' },
+  { id: 'wood10',  name: '목재 10개',  ico: '🪵', coin: 24,  give: { wood: 10 }, desc: '건축·제작용' },
+  { id: 'stone8',  name: '돌 8개',     ico: '🪨', coin: 30,  give: { stone: 8 }, desc: '돌담·화로용' },
+  { id: 'coal4',   name: '석탄 4개',   ico: '⚫', coin: 28,  give: { coal: 4 } },
+  // 도구 업그레이드(영구) — 코인으로 바로 구매
+  { id: 'buy_axe',   name: '강철 도끼',    ico: '🪓', coin: 120, upgrade: 'axe',   desc: '나무를 2번에 벌목' },
+  { id: 'buy_rod',   name: '튼튼한 낚싯대', ico: '🎣', coin: 100, upgrade: 'rod',   desc: '입질 시간 여유↑' },
+  { id: 'buy_water', name: '큰 물조리개',   ico: '💧', coin: 90,  upgrade: 'water', desc: '물 한 번에 성장↑' },
 ];
 
 // ── 도구 업그레이드(작업대) — 영구 강화, 재료 소비 ──
@@ -194,6 +208,7 @@ const gameState = {
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
+  character: null,                          // 선택한 동물 캐릭터 id
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
 };
@@ -209,6 +224,7 @@ let indoor = false;        // 실내(집 안) 여부
 let nearDoor = null;       // 'enter' | 'exit' | null
 let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
 let placingDecor = null;   // 배치 중인 가구 id
+let decorRot = 0;          // 배치 방향(0~3 → 90°씩) — 가로/세로 전환
 let interiorGroup, interiorFloor, interiorLamp;
 const decorMeshes = [];    // 배치된 가구 메시
 
@@ -220,6 +236,17 @@ let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 // 씬 전역 참조
 let renderer, scene, camera, composer, bloomPass, gradePass;
 let player, playerAnchor, playerLight;
+let playerBody, playerBelly, playerHead, playerArm, earGroup;   // 캐릭터(동물) 파츠
+// ── 선택 가능한 동물 캐릭터 7종 ──
+const ANIMALS = [
+  { id: 'fox',    name: '여우',   emoji: '🦊', body: 0xe07b3c, belly: 0xf5e9d8, ear: 0x8a4a24, ears: 'pointy' },
+  { id: 'dog',    name: '강아지', emoji: '🐶', body: 0xc9945a, belly: 0xf0e2cc, ear: 0x8a6038, ears: 'floppy' },
+  { id: 'rabbit', name: '토끼',   emoji: '🐰', body: 0xe6e0dc, belly: 0xffffff, ear: 0xf0c0c8, ears: 'long' },
+  { id: 'cat',    name: '고양이', emoji: '🐱', body: 0x9aa0a8, belly: 0xf0f0f0, ear: 0xf0b0b8, ears: 'pointy' },
+  { id: 'bear',   name: '곰',     emoji: '🐻', body: 0x8a6038, belly: 0xc9a878, ear: 0x6a4828, ears: 'round' },
+  { id: 'panda',  name: '판다',   emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a, ears: 'round' },
+  { id: 'chick',  name: '병아리', emoji: '🐤', body: 0xffe05a, belly: 0xfff0a0, ear: 0xffb020, ears: 'none' },
+];
 let heldGroup, handAnchor, heldToolMesh; // 팔(어깨 피벗) / 손 / 든 도구
 let sunLight, hemiLight, ambient;
 let fireflies, stars;
@@ -319,6 +346,13 @@ export const Input = {
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
   capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(dataURL)
   toggleSit() { sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글
+  // 캐릭터(동물) 선택
+  getAnimals() { return ANIMALS.map(a => ({ id: a.id, name: a.name, emoji: a.emoji })); },
+  createCharacterPreview(canvas) { return makeCharacterPreview(canvas); }, // 선택화면 3D 프리뷰
+  hasCharacter() { return !!gameState.character; },
+  setCharacter(id) { gameState.character = id; applyCharacter(id); Sound.blip(); trackEvent('character_select', { animal: id }); }, // [GA4]
+  needsTutorial() { return !gameState.tutorialSeen; },
+  markTutorialSeen() { gameState.tutorialSeen = true; },
   // 집 외관 커스터마이징
   getHouseStyle() { return { style: { ...gameState.houseStyle }, unlocked: { roof: [...gameState.unlocked.roof], wall: [...gameState.unlocked.wall], door: [...gameState.unlocked.door] }, roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS }; },
   setHousePart(part, idx) {
@@ -330,6 +364,8 @@ export const Input = {
   emote(e) { spawnFloatText(player.position.x, 2.7, player.position.z, e, '#4a5a40'); Sound.blip(); }, // 머리 위 이모트
   selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
   cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
+  rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); return decorRot; }, // 가로/세로 회전
+  getDecorRot() { return decorRot; },
   isIndoor() { return indoor; },
 };
 
@@ -370,8 +406,9 @@ export async function enterGame() {
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
 
-  // 신규 유저면 조작법 튜토리얼 1회 표시
-  if (!gameState.tutorialSeen) { gameState.tutorialSeen = true; ui.showTutorial?.(); }
+  // 신규: 캐릭터(동물) 미선택이면 선택 화면 → 그 뒤 튜토리얼. 이미 선택했으면 튜토리얼만.
+  if (!gameState.character) ui.showCharacterSelect?.();
+  else if (!gameState.tutorialSeen) { gameState.tutorialSeen = true; ui.showTutorial?.(); }
 }
 
 function applySave(saved) {
@@ -380,7 +417,7 @@ function applySave(saved) {
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
-    saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true));
+    saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
@@ -388,6 +425,7 @@ function applySave(saved) {
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
+  if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
   if (saved.houseStyle) { gameState.houseStyle = { ...gameState.houseStyle, ...saved.houseStyle }; applyHouseStyle(); } // 집 외관 복원
   if (saved.unlocked) { for (const p of ['roof', 'wall', 'door']) if (Array.isArray(saved.unlocked[p])) gameState.unlocked[p] = [...new Set([0, ...saved.unlocked[p]])]; } // 획득 색 복원
   if (typeof saved.houseStage === 'number') {
@@ -541,32 +579,113 @@ function buildPlayer() {
   playerLight.position.set(0, 1.5, 0);
   player.add(playerLight);
 
-  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), clayMat(PAL.body, false));
-  body.position.y = 0.6; body.castShadow = true; body.scale.set(1, 1.05, 1); playerAnchor.add(body);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12), clayMat(PAL.belly, false));
-  belly.position.set(0, 0.5, 0.32); belly.scale.set(1, 1.1, 0.6); playerAnchor.add(belly);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), clayMat(PAL.body, false));
-  head.position.y = 1.25; head.castShadow = true; playerAnchor.add(head);
-  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.6, 8), clayMat(PAL.hat));
-  hat.position.y = 1.7; hat.castShadow = true; playerAnchor.add(hat);
+  playerBody = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), clayMat(PAL.body, false));
+  playerBody.position.y = 0.6; playerBody.castShadow = true; playerBody.scale.set(1, 1.05, 1); playerAnchor.add(playerBody);
+  playerBelly = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12), clayMat(PAL.belly, false));
+  playerBelly.position.set(0, 0.5, 0.32); playerBelly.scale.set(1, 1.1, 0.6); playerAnchor.add(playerBelly);
+  playerHead = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), clayMat(PAL.body, false));
+  playerHead.position.y = 1.25; playerHead.castShadow = true; playerAnchor.add(playerHead);
+  earGroup = new THREE.Group(); playerAnchor.add(earGroup);   // 동물 귀(캐릭터별)
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
   [-0.14, 0.14].forEach(ex => {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeMat);
     eye.position.set(ex, 1.3, 0.34); playerAnchor.add(eye);
   });
 
-  // 오른팔(어깨에서 회전) + 손(도구가 붙는 지점)
+  // 오른팔 + 손 — 팔을 옆으로 벌려 도구가 몸 밖에 보이게(원래 보이던 자세 + 바깥으로 이동)
   heldGroup = new THREE.Group();
-  heldGroup.position.set(0.34, 0.82, 0.14);
-  heldGroup.rotation.x = -0.2;               // 살짝 든 기본 자세
+  heldGroup.position.set(0.78, 0.9, 0.06);   // 오른쪽으로 더 벌림
+  heldGroup.rotation.set(-0.1, 0, -0.55);
   playerAnchor.add(heldGroup);
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 6), clayMat(PAL.body, false));
-  arm.position.set(0.04, -0.2, 0.04); arm.rotation.z = -0.25; heldGroup.add(arm);
-  handAnchor = new THREE.Group(); handAnchor.position.set(0.1, -0.42, 0.08); heldGroup.add(handAnchor);
+  playerArm = null;  // 팔(막대) 제거 — 도구만 옆에 보이게
+  handAnchor = new THREE.Group(); handAnchor.position.set(0, -0.3, 0.08); heldGroup.add(handAnchor);
   setHeldTool(TOOLS[currentTool].id);
+  applyCharacter(gameState.character || 'fox');   // 기본 여우(선택 전)
 
   player.position.set(gameState.playerPos.x, 0, gameState.playerPos.z);
   scene.add(player);
+}
+
+// 동물 귀 만들기(캐릭터별)
+function buildEars(a) {
+  while (earGroup.children.length) earGroup.remove(earGroup.children[0]);
+  const mat = clayMat(a.ear, false);
+  if (a.ears === 'pointy') {
+    [-0.2, 0.2].forEach(x => { const e = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 5), mat); e.position.set(x, 1.6, -0.02); e.rotation.z = x > 0 ? -0.25 : 0.25; e.castShadow = true; earGroup.add(e); });
+  } else if (a.ears === 'long') {
+    [-0.16, 0.16].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), mat); e.scale.set(0.7, 2.6, 0.55); e.position.set(x, 1.8, 0); e.rotation.z = x > 0 ? -0.12 : 0.12; e.castShadow = true; earGroup.add(e); });
+  } else if (a.ears === 'floppy') {
+    [-0.3, 0.3].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), mat); e.scale.set(0.6, 1.5, 0.4); e.position.set(x, 1.35, 0); e.rotation.z = x > 0 ? -0.5 : 0.5; e.castShadow = true; earGroup.add(e); });
+  } else if (a.ears === 'round') {
+    [-0.26, 0.26].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), mat); e.position.set(x, 1.55, -0.02); e.castShadow = true; earGroup.add(e); });
+  } else if (a.ears === 'none') {   // 병아리: 부리
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), clayMat(0xff9a3a, false)); beak.position.set(0, 1.22, 0.42); beak.rotation.x = Math.PI / 2; earGroup.add(beak);
+  }
+}
+
+// 선택한 동물로 캐릭터 외형 적용
+function applyCharacter(id) {
+  const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
+  if (playerBody) playerBody.material.color.setHex(a.body);
+  if (playerHead) playerHead.material.color.setHex(a.body);
+  if (playerArm) playerArm.material.color.setHex(a.body);
+  if (playerBelly) playerBelly.material.color.setHex(a.belly);
+  buildEars(a);
+}
+
+// ── 캐릭터 선택 화면용: 독립적인 캐릭터 메시(도구/팔 없음) ──
+function buildCharacterMesh(id) {
+  const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), clayMat(a.body, false));
+  body.position.y = 0.6; body.scale.set(1, 1.05, 1); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12), clayMat(a.belly, false));
+  belly.position.set(0, 0.5, 0.32); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), clayMat(a.body, false));
+  head.position.y = 1.25; g.add(head);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
+  [-0.14, 0.14].forEach(ex => { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeMat); eye.position.set(ex, 1.3, 0.34); g.add(eye); });
+  const mat = clayMat(a.ear, false);
+  if (a.ears === 'pointy') {
+    [-0.2, 0.2].forEach(x => { const e = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 5), mat); e.position.set(x, 1.6, -0.02); e.rotation.z = x > 0 ? -0.25 : 0.25; g.add(e); });
+  } else if (a.ears === 'long') {
+    [-0.16, 0.16].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), mat); e.scale.set(0.7, 2.6, 0.55); e.position.set(x, 1.8, 0); e.rotation.z = x > 0 ? -0.12 : 0.12; g.add(e); });
+  } else if (a.ears === 'floppy') {
+    [-0.3, 0.3].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), mat); e.scale.set(0.6, 1.5, 0.4); e.position.set(x, 1.35, 0); e.rotation.z = x > 0 ? -0.5 : 0.5; g.add(e); });
+  } else if (a.ears === 'round') {
+    [-0.26, 0.26].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), mat); e.position.set(x, 1.55, -0.02); g.add(e); });
+  } else if (a.ears === 'none') {
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), clayMat(0xff9a3a, false)); beak.position.set(0, 1.22, 0.42); beak.rotation.x = Math.PI / 2; g.add(beak);
+  }
+  return g;
+}
+
+// ── 선택 화면 3D 프리뷰(드래그로 회전 + 살짝 자동 스핀) ──
+function makeCharacterPreview(canvas) {
+  const rend = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  rend.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const sc = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  cam.position.set(0, 1.05, 4.6); cam.lookAt(0, 0.95, 0);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.05));
+  const key = new THREE.DirectionalLight(0xfff2d8, 1.15); key.position.set(2.5, 4, 3); sc.add(key);
+  const rim = new THREE.DirectionalLight(0xbfe8ff, 0.45); rim.position.set(-3, 2, -2); sc.add(rim);
+  const pivot = new THREE.Group(); sc.add(pivot);
+  let mesh = null, rotY = 0.5, rotX = 0, dragging = false, lx = 0, ly = 0, autoSpin = true, raf = 0;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function setAnimal(id) { if (mesh) pivot.remove(mesh); mesh = buildCharacterMesh(id); pivot.add(mesh); autoSpin = true; }
+  function resize() {
+    const w = canvas.clientWidth || 220, h = canvas.clientHeight || 240;
+    rend.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  }
+  function loop() { raf = requestAnimationFrame(loop); if (autoSpin && !dragging) rotY += 0.006; pivot.rotation.y = rotY; pivot.rotation.x = rotX; rend.render(sc, cam); }
+  canvas.style.touchAction = 'none';
+  canvas.addEventListener('pointerdown', e => { dragging = true; autoSpin = false; lx = e.clientX; ly = e.clientY; try { canvas.setPointerCapture(e.pointerId); } catch (_) {} });
+  canvas.addEventListener('pointermove', e => { if (!dragging) return; rotY += (e.clientX - lx) * 0.011; rotX = clamp(rotX + (e.clientY - ly) * 0.008, -0.5, 0.5); lx = e.clientX; ly = e.clientY; });
+  const end = () => { dragging = false; };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+  resize(); loop();
+  return { setAnimal, resize };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
@@ -607,6 +726,7 @@ function setHeldDecor(id) {
   if (!handAnchor) return;
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   const m = decorMesh(id); m.scale.setScalar(0.5); m.position.y = 0.05;
+  m.rotation.y = decorRot * Math.PI / 2;   // 현재 회전 상태 미리보기
   heldToolMesh = m; handAnchor.add(m);
 }
 
@@ -926,14 +1046,40 @@ function decorMesh(id) {
     water.position.y = 0.4; g.add(water);
     const fish = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 6), clayMat(0xff8a5b, false));
     fish.rotation.z = Math.PI / 2; fish.position.set(0, 0.4, 0); fish.userData.swim = true; g.add(fish);
+  } else if (id === 'bed') {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 2.2), woodMat(1, 1)); frame.position.y = 0.2; g.add(frame);
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.22, 2.02), clayMat(0xfef1e6, false)); mattress.position.y = 0.42; g.add(mattress);
+    const blanket = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.16, 1.25), clayMat(0xf5a3a3, false)); blanket.position.set(0, 0.55, 0.4); g.add(blanket);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.18, 0.42), clayMat(0xbfe6ff, false)); pillow.position.set(0, 0.57, -0.75); g.add(pillow);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 0.18), woodMat(2, 1)); head.position.set(0, 0.55, -1.06); g.add(head);
+  } else if (id === 'bigtable') {
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.14, 1.0), woodMat(2, 1)); top.position.y = 0.62; g.add(top);
+    [[-.78, -.38], [.78, -.38], [-.78, .38], [.78, .38]].forEach(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.62, 0.12), woodMat(1, 1)); l.position.set(x, 0.31, z); g.add(l); });
+    [-.5, .5].forEach(x => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.04, 12), clayMat(0xffffff, false)); p.position.set(x, 0.71, 0); g.add(p); });
+  } else if (id === 'bigsofa') {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.4, 0.9), clayMat(0x8ab4e8, false)); base.position.y = 0.3; g.add(base);
+    const bk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 0.24), clayMat(0x8ab4e8, false)); bk.position.set(0, 0.65, -0.33); g.add(bk);
+    [-1.08, 1.08].forEach(x => { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.5, 0.9), clayMat(0x7aa6db, false)); arm.position.set(x, 0.42, 0); g.add(arm); });
+    [-.6, .6].forEach(x => { const cush = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.16, 0.7), clayMat(0xa8ccf2, false)); cush.position.set(x, 0.54, 0.05); g.add(cush); });
+  } else if (id === 'bookshelf') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.7, 0.4), woodMat(1, 1)); body.position.y = 0.85; g.add(body);
+    const cols = [0xd06b5b, 0x5b86d0, 0x64b06a, 0xe0b64a, 0x9a6ad0];
+    for (let i = 0; i < 3; i++) {
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.06, 0.36), woodMat(2, 1)); shelf.position.set(0, 0.5 + i * 0.5, 0.02); g.add(shelf);
+      for (let b = 0; b < 5; b++) { const bk = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.34, 0.24), clayMat(cols[(i + b) % cols.length], false)); bk.position.set(-0.5 + b * 0.22, 0.7 + i * 0.5, 0.05); g.add(bk); }
+    }
+  } else if (id === 'bigrug') {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.6), clayMat(0xc7a6e8, false)); r.position.y = 0.03; g.add(r);
+    const border = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.06, 1.2), clayMat(0xe8d3f5, false)); border.position.y = 0.04; g.add(border);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
 
 // 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음)
-function placeDecor(id, wx, wz, silent = false) {
+function placeDecor(id, wx, wz, silent = false, rot = null) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
+  const ry = (rot == null ? decorRot : rot) % 4;
   if (!silent) {
     const pay = def.pay || 'crop';                          // 화폐: 작물 or 물고기
     if ((gameState.inventory[pay] || 0) < def.cost) {
@@ -946,8 +1092,9 @@ function placeDecor(id, wx, wz, silent = false) {
   const lx = Math.max(INT.x - INT_HALF + 0.5, Math.min(INT.x + INT_HALF - 0.5, wx));
   const lz = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.5, wz));
   m.position.set(lx, 0.2, lz);
+  m.rotation.y = ry * Math.PI / 2;
   scene.add(m); decorMeshes.push(m);
-  gameState.house.decor.push({ id, x: lx - INT.x, z: lz - INT.z });
+  gameState.house.decor.push({ id, x: lx - INT.x, z: lz - INT.z, rot: ry });
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
@@ -1018,11 +1165,18 @@ function sellItem(k, all) {
 // 구매: 코인 → 아이템
 function buyShop(id) {
   const it = SHOP_BUY.find(x => x.id === id); if (!it) return { ok: false };
+  if (it.upgrade && gameState.upgrades[it.upgrade]) return { ok: false, msg: '이미 보유한 도구예요' };
   if ((gameState.inventory.coins || 0) < it.coin) return { ok: false, msg: '코인이 부족해요' };
   gameState.inventory.coins -= it.coin;
-  giveReward(it.give);
+  if (it.give) giveReward(it.give);
+  if (it.upgrade) {                                   // 도구 업그레이드 코인 구매
+    gameState.upgrades[it.upgrade] = true;
+    spawnFloatText(player.position.x, 1.6, player.position.z, `${it.ico} ${it.name}!`, '#2f7a44');
+    Sound.complete();
+  } else {
+    Sound.harvest();
+  }
   refreshInventoryUI();
-  Sound.harvest();
   trackEvent('shop_buy', { item: id });  // [GA4]
   return { ok: true, name: it.name };
 }
@@ -1172,14 +1326,24 @@ function giveGift(giftId) {
 
 // 캔버스 글자 표지판(persistent)
 function makeSignBoard(text) {
-  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 200;
+  const W = 640, H = 260;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const c = cv.getContext('2d');
-  c.fillStyle = '#e8d3a8'; c.fillRect(0, 0, 512, 200);
-  c.fillStyle = '#8a6a3a'; c.fillRect(0, 0, 512, 16); c.fillRect(0, 184, 512, 16);
-  c.font = 'bold 88px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillStyle = '#4a3a24'; c.fillText(text, 256, 104);
-  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.86, 0.1), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
+  // 나무판 + 위/아래 테두리
+  c.fillStyle = '#e8d3a8'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#c9a86e'; c.fillRect(0, 0, W, 22); c.fillRect(0, H - 22, W, 22);
+  c.fillStyle = '#8a6a3a'; c.fillRect(0, 0, W, 9); c.fillRect(0, H - 9, W, 9);
+  // 글자 폭을 재서 판 안에 딱 맞게 폰트 자동 축소(양옆 여백 확보 → 잘림 방지)
+  const maxW = W - 96;
+  const fontFor = (s) => `bold ${s}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
+  let fs = 128;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = fontFor(fs);
+  while (fs > 44 && c.measureText(text).width > maxW) { fs -= 4; c.font = fontFor(fs); }
+  c.fillStyle = '#4a3a24';
+  c.fillText(text, W / 2, H / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2 * H / W, 0.1), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
   return m;
 }
 
