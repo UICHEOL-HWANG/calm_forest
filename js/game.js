@@ -1333,15 +1333,17 @@ function makeSignBoard(text) {
   c.fillStyle = '#e8d3a8'; c.fillRect(0, 0, W, H);
   c.fillStyle = '#c9a86e'; c.fillRect(0, 0, W, 22); c.fillRect(0, H - 22, W, 22);
   c.fillStyle = '#8a6a3a'; c.fillRect(0, 0, W, 9); c.fillRect(0, H - 9, W, 9);
-  // 글자 폭을 재서 판 안에 딱 맞게 폰트 자동 축소(양옆 여백 확보 → 잘림 방지)
-  const maxW = W - 96;
+  // 이모지는 캔버스에서 기기(iOS 등)마다 폭 측정/렌더가 달라 글자가 삐져나감 → 판엔 한글만
+  const label = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+  // 글자 폭을 재서 판 안에 딱 맞게 폰트 자동 축소(넉넉한 양옆 여백 → 잘림 방지)
+  const maxW = W - 130;
   const fontFor = (s) => `bold ${s}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
   let fs = 128;
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = fontFor(fs);
-  while (fs > 44 && c.measureText(text).width > maxW) { fs -= 4; c.font = fontFor(fs); }
+  while (fs > 40 && c.measureText(label).width > maxW) { fs -= 4; c.font = fontFor(fs); }
   c.fillStyle = '#4a3a24';
-  c.fillText(text, W / 2, H / 2 + 2);
+  c.fillText(label, W / 2, H / 2 + 2);
   const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
   const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });   // 글자 면(앞뒤)
   const side = new THREE.MeshStandardMaterial({ color: 0xcdb083, roughness: 0.85 }); // 옆·위·아래(나무색)
@@ -1506,7 +1508,7 @@ function spawnMineGate() {
   [-2.0, 2.0].forEach(x => { const b = new THREE.Mesh(rockGeo, rockMat); b.position.set(x, 0.7, 0.2); b.scale.set(1.2, 1.5, 1.2); b.rotation.y = Math.random() * 6; b.castShadow = true; g.add(b); });
   // 서 있는 팻말(나무 기둥 + 판) — 입구 앞 오른쪽
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.7, 6), woodMat(1, 1)); post.position.set(2.7, 0.85, 1.4); post.castShadow = true; g.add(post);
-  const sign = makeSignBoard('⛏️ 채굴 동굴'); sign.scale.setScalar(0.62); sign.position.set(2.7, 1.62, 1.45); g.add(sign);
+  const sign = makeSignBoard('⛏️ 채굴장'); sign.scale.setScalar(0.62); sign.position.set(2.7, 1.62, 1.45); g.add(sign);
   scene.add(g);
   obstacles.push({ x: MINE_GATE.x, z: MINE_GATE.z, r: 1.8 });
 }
