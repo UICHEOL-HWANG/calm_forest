@@ -316,6 +316,22 @@
   .sh-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .sh-tab.active { background: var(--mint); }
   #sell-items, #buy-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  /* 📊 오늘의 시세 배너 + 등락 표시 */
+  .market-banner { width: 100%; text-align: center; font-size: 12px; background: rgba(255,232,176,0.55); border-radius: 10px; padding: 7px 10px; color: var(--ink); }
+  .ck-buff .up { color: #2fa564; font-weight: 700; }
+  .ck-buff .down { color: #d05a4a; font-weight: 700; }
+  /* 📊 시세판 모달(전광판) */
+  #market-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #market-modal.show { display: grid; }
+  .market-hint { font-size: 12.5px; opacity: 0.8; margin: 2px 0 12px; }
+  #market-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .market-row { display: flex; align-items: center; gap: 10px; background: #f2f6f0; border-radius: 12px; padding: 9px 14px; font-size: 14px; }
+  .market-row .m-ico { font-size: 20px; }
+  .market-row .m-name { flex: 1; text-align: left; font-weight: 600; }
+  .market-row .m-price { font-weight: 800; }
+  .market-row .m-rate.up { color: #2fa564; font-weight: 700; font-size: 12.5px; }
+  .market-row .m-rate.down { color: #d05a4a; font-weight: 700; font-size: 12.5px; }
+  .market-row .m-rate.flat { opacity: 0.5; font-size: 12.5px; }
   .ck-item.owned { opacity: .8; cursor: default; background: #dff0e2; }
   .ck-item { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 92px; padding: 10px 6px; border-radius: 12px; background: rgba(255,255,255,0.62); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s; text-align: center; }
   .ck-item:active { transform: scale(0.95); }
@@ -555,6 +571,17 @@
     <div class="dm-actions"><button id="shop-close">닫기</button></div>
   </div>
 
+  <!-- 📊 시세판 모달 (전광판 상호작용) -->
+  <div id="market-modal">
+    <div class="tut-card">
+      <h2>📊 오늘의 시세판</h2>
+      <div class="market-hint">가격은 <b>매일 자정에 바뀌어요</b> — 비쌀 때 파는 게 이득!</div>
+      <div id="market-rows"></div>
+      <div id="market-forecast" class="market-hint"></div>
+      <div class="dm-actions"><button id="market-close">닫기</button></div>
+    </div>
+  </div>
+
   <!-- 가방 창 (분류별 아이템) -->
   <div id="bag-backdrop"></div>
   <div id="bag-menu" class="panel">
@@ -720,12 +747,12 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=3';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=3';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=3';
-    import { CONFIG } from './js/config.js?v=3';
-    import { initControls } from './js/controls.js?v=3';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=3';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=6';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=6';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=6';
+    import { CONFIG } from './js/config.js?v=6';
+    import { initControls } from './js/controls.js?v=6';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=6';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -915,6 +942,21 @@
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지
         $('hint-modal').classList.add('show');
       },
+      // 📊 시세판(전광판 상호작용) — 품목별 오늘 가격·등락 + 내일 예보
+      openMarket(d) {
+        const rows = $('market-rows'); rows.innerHTML = '';
+        d.items.forEach(it => {
+          const cls = it.rate > 0 ? 'up' : it.rate < 0 ? 'down' : 'flat';
+          const txt = it.rate > 0 ? `📈 +${it.rate}%` : it.rate < 0 ? `📉 ${it.rate}%` : '— 보통';
+          const row = document.createElement('div');
+          row.className = 'market-row';
+          row.innerHTML = `<span class="m-ico">${it.ico}</span><span class="m-name">${it.label}</span><span class="m-rate ${cls}">${txt}</span><span class="m-price">🪙${it.price}</span>`;
+          rows.appendChild(row);
+        });
+        $('market-forecast').innerHTML = `🔮 ${d.forecast}`;
+        Input.setAnalog(0, 0);
+        $('market-modal').classList.add('show');
+      },
       // 문/작업대 프롬프트 (텍스트에 '요리' 있으면 액션버튼 아이콘 🍳)
       setDoorPrompt(text) {
         const el = $('door-prompt');
@@ -1053,15 +1095,18 @@
       { key: 'seed',    text: `④ 🌰씨앗(3)을 갈아둔 밭에 심어요 (${A})` },
       { key: 'water',   text: `⑤ 💧물조리개(4)로 물을 주면 자라요 (${A})` },
       { key: 'harvest', text: `⑥ 다 자란 작물을 🌾낫(5)으로 수확! (${A})` },
+      { key: 'sell',    text: `⑦ 🛒 동쪽 상점 좌판에서 수확물을 팔아 코인을 벌어요 (${A})` },
+      { key: 'market',  text: `⑧ 📊 상점 옆 전광판에서 오늘의 시세를 확인! 비쌀 때 팔면 이득 (${A})` },
       { key: 'quest',   text: TOUCH
-          ? '⑦ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기!'
-          : '⑦ 🧑‍🌾주민에게 말 걸어 퀘스트를 수락하고, 목표를 채운 뒤 다시 말 걸어 보상까지 받으세요' },
-      { key: 'fish',    text: `⑧ 🎣낚싯대(7) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
-      { key: 'build',   text: `⑨ 🔨망치(6)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
+          ? '⑨ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기! (🦉올빼미는 매일 새 의뢰)'
+          : '⑨ 🧑‍🌾주민에게 말 걸어 퀘스트를 수락하고, 목표를 채운 뒤 다시 말 걸어 보상까지 받으세요 (🦉올빼미는 매일 새 의뢰)' },
+      { key: 'mine',    text: `⑩ ⛏️ 서쪽 동굴에 들어가 괭이(2)로 광석을 캐요 — 돌·석탄·💎보석! (${A})` },
+      { key: 'fish',    text: `⑪ 🎣낚싯대(7) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
+      { key: 'build',   text: `⑫ 🔨망치(6)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
       { key: 'enter',   text: TOUCH
-          ? '⑩ 완성된 집 문 앞에서 오른쪽 🚪버튼을 눌러 들어가요'
-          : '⑩ 완성된 집 문 앞에서 Space로 들어가요' },
-      { key: 'decor',   text: `⑪ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
+          ? '⑬ 완성된 집 문 앞에서 오른쪽 🚪버튼을 눌러 들어가요'
+          : '⑬ 완성된 집 문 앞에서 Space로 들어가요' },
+      { key: 'decor',   text: `⑭ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
     ];
     let tutIdx = -1;
     function renderCoach() {
@@ -1297,12 +1342,22 @@
     function renderShop() {
       $('shop-coin').textContent = `🪙 ${lastInv.coins || 0}`;
       if (shopTab === 'sell') {
-        const price = Input.getSellPrice(); const box = $('sell-items'); box.innerHTML = '';
-        Object.keys(price).forEach(k => {
+        const price = Input.getSellPrice(); const rates = Input.getPriceRates(); const box = $('sell-items'); box.innerHTML = '';
+        // 📊 오늘의 시세 배너 — 가장 비싼/싼 품목 하이라이트(매일 바뀜 → 팔 타이밍 전략)
+        const ks = Object.keys(price);
+        const hi = ks.reduce((a, b) => (rates[a] >= rates[b] ? a : b));
+        const lo = ks.reduce((a, b) => (rates[a] <= rates[b] ? a : b));
+        const banner = document.createElement('div');
+        banner.className = 'market-banner';
+        banner.innerHTML = `📊 <b>오늘의 시세</b> · ${SELL_ICO[hi]} 비싸요 <b>+${rates[hi] - 100}%</b> · ${SELL_ICO[lo]} 싸요 <b>${rates[lo] - 100}%</b> — 내일 또 바뀌어요`;
+        box.appendChild(banner);
+        ks.forEach(k => {
           const have = lastInv[k] || 0;
+          const d = rates[k] - 100;   // 등락 %(0=기본가)
+          const trend = d > 0 ? ` <span class="up">📈+${d}%</span>` : d < 0 ? ` <span class="down">📉${d}%</span>` : '';
           const el = document.createElement('div');
           el.className = 'ck-item' + (have > 0 ? '' : ' off');
-          el.innerHTML = `<span class="ck-ico">${SELL_ICO[k]}</span><span class="ck-name">보유 ${have}</span><span class="ck-buff">개당 🪙${price[k]}</span><span class="ck-cost">탭 1개 · 꾹 전부</span>`;
+          el.innerHTML = `<span class="ck-ico">${SELL_ICO[k]}</span><span class="ck-name">보유 ${have}</span><span class="ck-buff">개당 🪙${price[k]}${trend}</span><span class="ck-cost">탭 1개 · 꾹 전부</span>`;
           bindSell(el, k);   // 탭=1개, 롱프레스=전부 (모바일·데스크톱 공통)
           box.appendChild(el);
         });
@@ -1341,6 +1396,8 @@
     });
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
+    $('market-close').addEventListener('click', () => $('market-modal').classList.remove('show'));
+    $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
     // ── 사진 찍기 (캡처 → 저장/공유) ──
     let lastPhoto = null, photoPulseT;

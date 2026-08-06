@@ -47,14 +47,14 @@
 | `place_decor` | 가구 배치(꾸미기) | `item`(rug/plant/…) |
 | `craft_item` | 제작(작업대) | `category`(cook/tool/outdoor/gift), `item`(요리·도구·야외장식·선물 id) |
 | `gift_give` | 주민에게 선물 전달 | `npc`, `gift`(bouquet/fruit/fishset/woodtoy) |
-| `shop_sell` / `shop_buy` | 상점 판매/구매 | 판매: `item`,`qty` · 구매: `item` |
+| `shop_sell` / `shop_buy` | 상점 판매/구매 | 판매: `item`,`qty`,`gain`,`rate`(오늘 시세%, 100=기본가 — 시세 반응 분석) · 구매: `item`,`cost` |
 | `color_unlock` | 외관 색 랜덤 획득 | `part`(roof/wall/door), `idx` |
 | `photo_capture` / `photo_share` | 사진 촬영/공유 | — |
 | `fishing_cast` | 낚시 캐스팅 | — |
 | `fishing_catch` | 물고기 낚음 | `fish`, `rarity`(common/uncommon/rare) |
 | `fishing_miss` | 낚아채기 실패 | — |
 | `tutorial_start` | 튜토리얼 시작 | — |
-| `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~11), `key`(move/chop/till/seed/water/harvest/talk/fish/build/enter/decor) |
+| `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~14), `key`(move/chop/till/seed/water/harvest/sell/market/quest/mine/fish/build/enter/decor) |
 | `tutorial_complete` | 튜토리얼 완료 | — |
 | `tutorial_skip` | 튜토리얼 건너뜀 | `at`(welcome 또는 단계번호) |
 | `session_time` | 주기/이탈 시 | `seconds` |

@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=3';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=3';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=3';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=3';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound } from './sound.js?v=3'; // 🔊 절차적 사운드 + 🌧️ 빗소리
+import { sampleFrame, startLogging } from './logger.js?v=6';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=6';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=6';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=6';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound } from './sound.js?v=6'; // 🔊 절차적 사운드 + 🌧️ 빗소리
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -60,17 +60,29 @@ function todayStr(offsetDays = 0) {
   const d = new Date(Date.now() + offsetDays * 86400000);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-function dateHash(salt) {
-  const s = todayStr() + ':' + salt;
+function dateHash(salt, offsetDays = 0) {   // offsetDays: 0=오늘, 1=내일(예보용)
+  const s = todayStr(offsetDays) + ':' + salt;
   let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
   return h;
 }
 // 🌦️ 오늘의 날씨 — 날짜 시드라 모든 유저에게 동일. 맑음 55% / 비 20% / 눈 12% / 안개 13%
 //    테스트: ?weather=rain|snow|fog (?rain=1 도 호환)
+function weatherOf(offsetDays = 0) {
+  const r = dateHash('weather', offsetDays) % 100;
+  return r < 20 ? 'rain' : r < 32 ? 'snow' : r < 45 ? 'fog' : 'clear';
+}
 const _wq = new URLSearchParams(location.search);
 const WEATHER = ['rain', 'snow', 'fog'].includes(_wq.get('weather')) ? _wq.get('weather')
   : _wq.has('rain') ? 'rain'
-  : (() => { const r = dateHash('weather') % 100; return r < 20 ? 'rain' : r < 32 ? 'snow' : r < 45 ? 'fog' : 'clear'; })();
+  : weatherOf(0);
+// 🔮 내일 예보 — 재방문 유도(출석 모달·데일리 올빼미 대사에 노출)
+const FORECAST = weatherOf(1);
+const FORECAST_MSG = {
+  clear: '내일은 ☀️ 맑을 예정이에요!',
+  rain:  '내일은 🌧️ 비 소식 — 밭이 저절로 자라는 날!',
+  snow:  '내일은 ❄️ 눈 소식 — 목재가 잘 나오는 날!',
+  fog:   '내일은 🌫️ 안개 예보 — 보석 캐기 좋은 날!',
+};
 const RAIN_DAY = WEATHER === 'rain';   // 비 전용 효과(밭 자동 성장·낚시 행운·빗소리)에 사용
 const WEATHER_MSG = {
   rain: '🌧️ 오늘은 비 오는 날! 밭이 저절로 자라고 물고기가 잘 물어요',
@@ -117,6 +129,9 @@ const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(요리) 위치
 let nearBench = false;
 const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 에서 멀리 동쪽)
 let nearShop = false;
+const MARKET = new THREE.Vector3(11.5, 0, 2.4); // 📊 시세판(상점 동쪽, 플레이어 동선 위) — 초보자도 시세를 발견하게
+let nearMarket = false;
+const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 변의 절반)
 const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
@@ -139,7 +154,11 @@ function setSpaceVisible() {
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine) startRainSound();
   else stopRainSound();
 }
-const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40 };   // 판매 단가(코인)
+const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40 };   // 기본 판매 단가(코인)
+// ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
+//    팔 타이밍 전략이 생기고, econ_logs 에 시세 반응 데이터가 쌓임(분석용)
+function priceRate(k) { return 0.7 + (dateHash('price:' + k) % 61) / 100; }     // 0.70 ~ 1.30
+function priceOf(k) { return Math.max(1, Math.round(SELL_PRICE[k] * priceRate(k))); }
 const SHOP_BUY = [
   // 소모품·재료 번들
   { id: 'seed5',   name: '씨앗 5개',   ico: '🌰', coin: 15,  give: { seed: 5 } },
@@ -247,6 +266,7 @@ function refreshDailyQuests() {
   if (st.date !== today) {   // 새 날 → 진행 상태 리셋(어제 의뢰는 소멸)
     st.date = today; st.idx = 0; st.progress = 0; st.given = false; st.allDone = false; st.acceptedAt = null;
   }
+  def.doneLine = `오늘 의뢰는 전부 끝! ${FORECAST_MSG[FORECAST]} 내일 새 의뢰 들고 올게요 🦉`; // 예보로 재방문 유도
   const pool = [...DAILY_POOL];
   let h = dateHash('daily');
   def.quests = Array.from({ length: 3 }, (_, i) => {
@@ -305,6 +325,7 @@ function checkDailyBonus() {
   let body = `연속 ${d.streak}일째 방문! ${rewardText(reward)} 받았어요.` +
     (reward.gem ? ' 7일 연속 보너스 💎!' : ' 내일 또 오면 보상이 더 커져요!');
   if (WEATHER !== 'clear') body += ' ' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
+  body += ' 🔮 ' + FORECAST_MSG[FORECAST];                     // 내일 예보 — 재방문 유도
   if (gameState.character && gameState.tutorialSeen) { ui.showHintModal?.({ ico: '🎁', title: `출석 ${d.streak}일차`, body }); return true; }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`);                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
   return false;
@@ -432,7 +453,8 @@ export const Input = {
   getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록
   selectOutdoor(id) { placingOutdoor = id; },           // 야외 장식 선택(설치 대기)
   cancelOutdoor() { placingOutdoor = null; },           // 야외 배치 취소
-  getSellPrice() { return { ...SELL_PRICE }; },         // 판매 단가
+  getSellPrice() { const p = {}; for (const k in SELL_PRICE) p[k] = priceOf(k); return p; }, // 오늘의 시세 반영가
+  getPriceRates() { const r = {}; for (const k in SELL_PRICE) r[k] = Math.round(priceRate(k) * 100); return r; }, // 시세 %(100=기본가)
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellItem(k, all) { return sellItem(k, all); },        // 자원 판매
   buyShop(id) { return buyShop(id); },                  // 아이템 구매
@@ -645,6 +667,7 @@ function buildWorld() {
 
   spawnWorkbench();   // 작업대(요리)
   spawnShop();        // 상점 좌판
+  spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   buildFarm();        // 개인 텃밭 필드
   spawnMineGate();    // 채굴 동굴 입구
@@ -1308,18 +1331,70 @@ function spawnShop() {
   obstacles.push({ x: SHOP.x, z: SHOP.z, r: 1.6 });
 }
 
+// ── 📊 시세 전광판 — 상점 옆. 보드에 오늘의 최고/최저 품목이 직접 표시되고,
+//    가까이 가서 상호작용하면 전체 시세판 모달이 열림(초보자 발견용) ──
+function spawnMarketBoard() {
+  const g = new THREE.Group(); g.position.copy(MARKET);
+  for (const x of [-0.8, 0.8]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 2.1, 6), woodMat(1, 1));
+    p.position.set(x, 1.05, 0); p.castShadow = true; g.add(p);
+  }
+  // 보드 캔버스 — 한글 "시세판" 크게 + 오늘의 최고/최저 등락(멀리서도 읽히게)
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 320;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#6a4c32'; c.fillRect(0, 0, 512, 320);                    // 나무 프레임
+  c.fillStyle = '#f7f0dc'; c.fillRect(18, 18, 476, 284);                  // 종이판
+  c.fillStyle = '#8a6a48';                                                 // 코너 못 장식
+  [[34, 34], [478, 34], [34, 286], [478, 286]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); });
+  c.textAlign = 'center';
+  c.fillStyle = '#4a3b28'; c.font = 'bold 74px sans-serif';
+  c.fillText('📊 시세판', 256, 96);                                        // 한글 제목 큼직하게
+  c.strokeStyle = '#d9cdb0'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(50, 122); c.lineTo(462, 122); c.stroke();       // 구분선
+  const ks = Object.keys(SELL_PRICE);
+  const hi = ks.reduce((a, b) => (priceRate(a) >= priceRate(b) ? a : b));
+  const lo = ks.reduce((a, b) => (priceRate(a) <= priceRate(b) ? a : b));
+  const pct = (k) => Math.round(priceRate(k) * 100) - 100;
+  c.font = 'bold 48px sans-serif';
+  c.fillStyle = '#2fa564'; c.fillText(`${SELL_ICO_G[hi]} 비싸요  +${pct(hi)}%`, 256, 186);
+  c.fillStyle = '#d05a4a'; c.fillText(`${SELL_ICO_G[lo]} 싸요  ${pct(lo)}%`, 256, 248);
+  c.fillStyle = '#8a7a5f'; c.font = '26px sans-serif';
+  c.fillText('가격은 매일 자정에 바뀌어요', 256, 292);
+  const tex = new THREE.CanvasTexture(cv);
+  // 재질 배열: +z 앞면만 시세판 텍스처, 나머지는 나무 톤(옆면 스트레치 방지)
+  const woodSide = new THREE.MeshStandardMaterial({ color: 0x9a7248, roughness: 0.9 });
+  const front = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.15, 0.08),
+    [woodSide, woodSide, woodSide, woodSide, front, woodSide]);
+  board.position.y = 1.45; board.castShadow = true; g.add(board);
+  scene.add(g);   // 회전 없음 — 게임 카메라(남쪽에서 북쪽을 봄)를 향해 앞면(+z) 표시
+  obstacles.push({ x: MARKET.x, z: MARKET.z, r: 0.9 });
+}
+
+// 시세판 모달 데이터 — index.html(ui.openMarket)이 렌더
+function marketData() {
+  return {
+    items: Object.keys(SELL_PRICE).map(k => ({
+      k, ico: SELL_ICO_G[k], label: RES_LABEL[k] || k,
+      price: priceOf(k), base: SELL_PRICE[k], rate: Math.round(priceRate(k) * 100) - 100, // 등락 %(0=기본가)
+    })).sort((a, b) => b.rate - a.rate),       // 비싼 순 정렬(오늘 뭘 팔지 바로 보이게)
+    forecast: FORECAST_MSG[FORECAST],
+  };
+}
+
 // 판매: 보유 자원 → 코인
 function sellItem(k, all) {
   const have = gameState.inventory[k] || 0;
   if (have <= 0) return { ok: false, msg: '팔 게 없어요' };
   const qty = all ? have : 1;
   gameState.inventory[k] -= qty;
-  const gain = SELL_PRICE[k] * qty;
+  const gain = priceOf(k) * qty;   // 🪙 오늘의 시세 반영
   gameState.inventory.coins = (gameState.inventory.coins || 0) + gain;
   refreshInventoryUI();
   Sound.blip();
   questEvent('sell', qty);                          // 데일리 의뢰(장사) 진행
-  trackEvent('shop_sell', { item: k, qty, gain });  // [GA4] 판매 금액 포함
+  ui.act?.('sell');                                 // 튜토리얼: 첫 판매
+  trackEvent('shop_sell', { item: k, qty, gain, rate: Math.round(priceRate(k) * 100) });  // [GA4] 금액+시세%(시세 반응 분석용)
   logEcon('shop_sell', k, gain, gameState.inventory.coins);  // [원장] 코인 유입
   return { ok: true, gain, qty };
 }
@@ -1709,6 +1784,7 @@ function tryMine() {
     Sound.harvest();
     ud.depleted = true; ud.respawnAt = clock.elapsedTime + 14; nearest.visible = false;
     questEvent('mine', amt);                       // 데일리 의뢰(광석 캐기) 진행
+    ui.act?.('mine');                              // 튜토리얼: 첫 채굴
     trackEvent('mine_ore', { ore: ore.id, amt });  // [GA4]
   }
 }
@@ -1759,8 +1835,10 @@ function updateDoorInteract() {
   const inVillage = !indoor && !atFarm && !atMine && !nd;
   nearBench = inVillage && dist2D(BENCH, player.position) < 2.0;
   nearShop = inVillage && !nearBench && dist2D(SHOP, player.position) < 2.0;
+  nearMarket = inVillage && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
   if (nearBench) prompt = '🍳 요리하기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
+  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHint('market', '📊', '시세 전광판', '판매 가격이 매일 바뀌어요! 전광판에서 오늘 비싼 품목을 확인하고 비쌀 때 파세요 🪙'); }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearBench) firstHint('bench', '🍳', '작업대', '재료(작물·물고기·목재)로 요리(일시 버프)·도구 강화·야외 장식·주민 선물을 만들 수 있어요. 4개 탭에서 골라 만들어보세요!');
@@ -1896,6 +1974,7 @@ function animate() {
   updatePlots(dt);
   updatePops(dt);
   updateParticles(dt);
+  updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
@@ -2014,17 +2093,35 @@ function updatePlayer(dt, t) {
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
   }
 
-  // 액션 제스처: 몸을 앞으로 휙 숙였다 펴는 스쿼시(벌목·밭일·낚시 등)
+  // 액션 제스처: 백스윙 → 휙 내려침 → 팔로스루 — 도구가 어깨 피벗으로 크게 호를 그림
   if (actAnim > 0) {
-    actAnim = Math.max(0, actAnim - dt * 3.5);
-    const s = Math.sin((1 - actAnim) * Math.PI); // 0→1→0
-    playerAnchor.rotation.x = s * 0.4;
+    actAnim = Math.max(0, actAnim - dt * 2.4);   // 전체 ~0.42초(읽히는 속도)
+    const p = 1 - actAnim;                       // 진행도 0→1
+    const s = Math.sin(p * Math.PI);             // 몸 스쿼시용 0→1→0
+    // ── 도구 스윙 각도(어깨 피벗 X축) — 3단계 비대칭 곡선 ──
+    const REST = -0.1;                           // 평상시 각도(buildPlayer 와 일치)
+    let swing;
+    if (p < 0.32) {        // ① 백스윙: 뒤로 크게 들어올림(ease-out — 천천히 멈춤)
+      const q = p / 0.32; swing = REST - 1.3 * (1 - (1 - q) * (1 - q));
+    } else if (p < 0.58) { // ② 내려침: 휙! (ease-in — 가속하며 190° 호)
+      const q = (p - 0.32) / 0.26; swing = (REST - 1.3) + 3.3 * q * q;
+    } else {               // ③ 팔로스루: 관성 지나쳤다가 부드럽게 복귀
+      const q = (p - 0.58) / 0.42; swing = (REST + 2.0) - 2.0 * (1 - (1 - q) * (1 - q));
+    }
+    const toolId = TOOLS[currentTool].id;
+    if (heldGroup) {
+      // 물조리개·씨앗주머니는 내려치는 게 아니라 앞으로 기울여 붓기/뿌리기
+      heldGroup.rotation.x = (toolId === 'water' || toolId === 'seed') ? REST + s * 1.0 : swing;
+      heldGroup.rotation.z = -0.55 + s * 0.4;    // 스윙 중 도구를 정면으로 살짝 세워 호가 또렷하게
+    }
+    // ── 몸: 백스윙 때 살짝 젖혔다가, 내려칠 때 상체 비틀며 앞으로 숙임(파워 느낌) ──
+    playerAnchor.rotation.x = p < 0.32 ? -0.12 * (p / 0.32) : 0.5 * s;
+    playerAnchor.rotation.y = p < 0.32 ? -0.22 * (p / 0.32) : 0.3 * s * (1 - p);
     playerAnchor.position.y -= s * 0.1;
     playerAnchor.scale.set(1 + s * 0.1, 1 - s * 0.12, 1 + s * 0.1);
-    if (heldGroup) heldGroup.rotation.x = -0.2 + s * 1.6;  // 팔로 도구 휘두름
-  } else if (playerAnchor.rotation.x !== 0 || (heldGroup && heldGroup.rotation.x !== -0.2)) {
-    playerAnchor.rotation.x = 0; playerAnchor.scale.set(1, 1, 1);
-    if (heldGroup) heldGroup.rotation.x = -0.2;
+  } else if (playerAnchor.rotation.x !== 0 || playerAnchor.rotation.y !== 0 || (heldGroup && heldGroup.rotation.x !== -0.1)) {
+    playerAnchor.rotation.x = 0; playerAnchor.rotation.y = 0; playerAnchor.scale.set(1, 1, 1);
+    if (heldGroup) { heldGroup.rotation.x = -0.1; heldGroup.rotation.z = -0.55; }
   }
 }
 
@@ -2056,10 +2153,84 @@ function startActionShot() {
     Sound.blip();
   });
 }
-// 특정 이벤트(수확·낚시·요리 등) 시 카메라 잠깐 줌인 + 사진 버튼 넛지
-function triggerMoment() {
-  momentUntil = clock.elapsedTime + 1.3;
+// ── 🎉 캐치 세리머니 — 수확·낚시 성공 순간: 액션샷처럼 정면 밀착 + 폴짝 모션 ──
+//    (프레임 누적 진행이라 탭 전환 점프에 안전 — photoT 와 동일 메커니즘)
+let momentT = -1;                 // 세리머니 경과(초). 0 미만 = 비활성
+const MOMENT_HOLD = 1.15;         // 밀착 유지 시간(액션샷보다 짧게 — 게임 흐름 안 끊게)
+const _momentPos = new THREE.Vector3();
+
+// 이벤트 순간 연출 + 사진 버튼 넛지
+//   close=true  : 수확·낚시 — 캐릭터 정면 밀착 + 캐치 세리머니(폴짝)
+//   close=false : 집 완성·요리 — 기존 가벼운 줌(집/UI가 주인공이므로)
+function triggerMoment(close = false) {
   ui.photoNudge?.();
+  if (!close) { momentUntil = clock.elapsedTime + 1.3; return; }
+  // doPlayerAction 이 방금 대상(밭/호수) 방향으로 몸을 돌려둔 상태 → 그 정면에서 밀착 촬영
+  const fy = player.rotation.y;
+  _momentPos.set(player.position.x + Math.sin(fy) * 3.4, 1.65, player.position.z + Math.cos(fy) * 3.4);
+  momentT = 0;
+  startEmote('jump', 1.0);        // 수확물 캐치 세리머니 — 신나서 폴짝
+}
+
+// ── 🎁 캐치 아이템 — 수확물/물고기가 튀어올라 캐릭터 머리 위에 들리는 연출 ──
+let catchItem = null;             // { mesh, t, from }
+const CATCH_ARC = 0.4;            // 포물선 비행 시간(초)
+
+// 로우폴리 물고기(등급별 색, 무지개는 은은한 발광) — 머리 위에서 파닥파닥
+function fishMesh(rarity) {
+  const g = new THREE.Group();
+  const col = rarity === 'rare' ? 0x7ae0ff : rarity === 'uncommon' ? 0xe06a5a : 0x9fb4c8;
+  const mat = rarity === 'rare'
+    ? new THREE.MeshStandardMaterial({ color: col, emissive: 0x3ac0e0, emissiveIntensity: 0.4, roughness: 0.4 })
+    : clayMat(col, false);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), mat);
+  body.scale.set(1.6, 0.9, 0.7); body.castShadow = true; g.add(body);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 6), mat);
+  tail.rotation.z = Math.PI / 2; tail.position.x = -0.52; g.add(tail);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x2a2624, roughness: 0.5 });
+  [0.14, -0.14].forEach(ez => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eyeMat); e.position.set(0.3, 0.07, ez); g.add(e); });
+  g.userData.flap = true;         // 살아있는 물고기 — 파닥임
+  return g;
+}
+
+// 수확 열매 미니(작물 색 + 잎 꼭지) — 머리 위로 번쩍
+function cropMini(type) {
+  const g = new THREE.Group();
+  const fruit = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), clayMat(type?.fruit ?? 0xff9e5e, false));
+  fruit.castShadow = true; g.add(fruit);
+  const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 5), clayMat(0x7fc57f));
+  leaf.position.y = 0.28; g.add(leaf);
+  return g;
+}
+
+function showCatchItem(mesh, fx, fy, fz) {
+  if (catchItem) scene.remove(catchItem.mesh);   // 연타 시 이전 것 정리
+  mesh.position.set(fx, fy, fz);
+  scene.add(mesh);
+  catchItem = { mesh, t: 0, from: new THREE.Vector3(fx, fy, fz) };
+}
+
+// animate 에서 매 프레임 — 포물선 비행 → 머리 위 들림(파닥) → 팟 하고 가방으로
+function updateCatchItem(dt) {
+  if (!catchItem) return;
+  catchItem.t += dt;
+  const m = catchItem.mesh, T = catchItem.t;
+  const headY = 2.3 + playerAnchor.position.y;   // 캐릭터가 폴짝 뛰면 같이 들썩
+  if (T < CATCH_ARC) {                            // ① 물/밭에서 머리 위로 포물선 점프
+    const p = T / CATCH_ARC;
+    m.position.x = THREE.MathUtils.lerp(catchItem.from.x, player.position.x, p);
+    m.position.z = THREE.MathUtils.lerp(catchItem.from.z, player.position.z, p);
+    m.position.y = THREE.MathUtils.lerp(catchItem.from.y, headY, p) + Math.sin(p * Math.PI) * 1.2; // 아크 궤적
+    m.rotation.y += dt * 10;                      // 빙글 돌며 날아옴
+  } else if (T < MOMENT_HOLD + 0.2) {             // ② 머리 위에 들림 — 세리머니 동안 유지
+    m.position.set(player.position.x, headY + Math.sin(T * 9) * 0.04, player.position.z);
+    if (m.userData.flap) { m.rotation.z = Math.sin(T * 22) * 0.35; m.rotation.x = Math.sin(T * 17) * 0.15; } // 🐟 파닥파닥
+    else m.rotation.y += dt * 2.5;                // 🥕 천천히 돌며 자랑
+  } else {                                        // ③ 팟! 줄어들며 가방으로
+    const s = Math.max(0.01, m.scale.x - dt * 6);
+    m.scale.setScalar(s);
+    if (s <= 0.02) { scene.remove(m); catchItem = null; }
+  }
 }
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
 function snapCamera() {
@@ -2076,6 +2247,18 @@ function updateCamera(dt) {
     else {
       const k = 1 - Math.pow(0.0004, dt);  // 밀착은 빠르게
       camera.position.lerp(_photoPos, k);
+      _camLook.lerp(_camTarget.set(player.position.x, 1.05, player.position.z), k);
+      camera.lookAt(_camLook);
+      return;
+    }
+  }
+  // 🎉 캐치 세리머니 중: 수확물을 낚아채는 정면을 밀착으로(끝나면 기본 추적이 부드럽게 복귀)
+  if (momentT >= 0) {
+    momentT += dt;                         // 프레임 누적 진행(탭 전환 점프에 안전)
+    if (momentT >= MOMENT_HOLD) { momentT = -1; }
+    else {
+      const k = 1 - Math.pow(0.0008, dt);  // 빠르게 밀착(액션샷보다 아주 살짝 느긋)
+      camera.position.lerp(_momentPos, k);
       _camLook.lerp(_camTarget.set(player.position.x, 1.05, player.position.z), k);
       camera.lookAt(_camLook);
       return;
@@ -2235,6 +2418,7 @@ function handleAction() {
   if (placingOutdoor) return placeOutdoor(player.position.x, player.position.z); // 야외 장식 설치 중이면 발밑에 설치
   if (nearBench) return ui.openCook?.();   // 작업대 근처 → 요리 메뉴
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
+  if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   if (nearNPC && !IS_MOBILE) return talkToNPC();
@@ -2284,7 +2468,8 @@ function catchFish() {
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
-  triggerMoment();                                                      // 📷 순간 줌인
+  triggerMoment(true);                                                  // 🎉 캐치 세리머니(밀착 + 폴짝)
+  showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
   tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : kind.rarity === 'uncommon' ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
   trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity }); // [GA4]
   resetFishing();
@@ -2460,7 +2645,8 @@ function tryHarvest() {
   refreshInventoryUI();
   questEvent('harvest');                                          // 퀘스트 진행
   ui.act?.('harvest');                                            // 튜토리얼: 수확
-  triggerMoment();                                                // 📷 순간 줌인
+  triggerMoment(true);                                            // 🎉 캐치 세리머니(밀착 + 폴짝)
+  showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);    // 🥕 열매를 머리 위로 번쩍!
   tryUnlockDrop(0.05);                                            // 🎨 랜덤 색(낮은 확률)
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
 }
