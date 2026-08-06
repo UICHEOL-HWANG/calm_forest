@@ -9,7 +9,7 @@
 //    (game_saves / game_logs + RLS + 분석 뷰)
 // =============================================================
 
-import { CONFIG, isSupabaseConfigured } from './config.js?v=2';
+import { CONFIG, isSupabaseConfigured } from './config.js?v=3';
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -207,4 +207,34 @@ export async function sendLogBatch(rows) {
     const { error } = await supabase.from(CONFIG.LOG_TABLE).insert(enriched);
     if (error) throw error;
   } catch (err) { console.warn('[Supabase 폴백] 로그 전송 실패:', err?.message || err); }
+}
+
+// ── [계측] 경제 원장 배치 전송(econ_logs) — 코인 증감 {source,item,amount,balance} ──
+//    metrics.js 가 버퍼링해 호출. 오프라인이면 콘솔 폴백(게임 진행 영향 없음).
+export async function sendEconBatch(rows) {
+  if (!rows || rows.length === 0) return;
+  const enriched = rows.map(r => ({
+    user_id: state.userId, session_id: state.sessionId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, // [분석] 세그먼트 동일 적용
+    ...r,
+  }));
+  if (!state.online || !supabase) { console.log(`[Supabase 폴백] 경제 원장 ${enriched.length}건 (오프라인)`, enriched); return; }
+  try {
+    const { error } = await supabase.from(CONFIG.ECON_TABLE).insert(enriched);
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 경제 원장 전송 실패:', err?.message || err); }
+}
+
+// ── [계측] 세션 요약 upsert(session_logs) — 세션당 1행, 주기/이탈 시 갱신 ──
+export async function upsertSessionRow(row) {
+  const full = {
+    session_id: state.sessionId, user_id: state.userId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant,
+    ...row, updated_at: new Date().toISOString(),
+  };
+  if (!state.online || !supabase) { console.log('[Supabase 폴백] 세션 요약(오프라인):', full); return; }
+  try {
+    const { error } = await supabase.from(CONFIG.SESSION_TABLE).upsert(full);
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 세션 요약 전송 실패:', err?.message || err); }
 }

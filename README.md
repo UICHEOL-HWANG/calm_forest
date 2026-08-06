@@ -4,7 +4,7 @@
 
 🎮 **플레이**: https://calmforest.icuchoel.workers.dev/
 
-**주요 기능**: 걷기 · 벌목 · 농사(밭갈기/심기/물주기/수확/시들기) · 건축(단계 건설) · 집 실내 입장 & 꾸미기 · 낚시 · NPC 4명 & 퀘스트 체인 · 주민 선물 & 친밀도 · **작업대 제작(요리·도구·야외장식·선물)** · **상점 & 코인 경제** · **개인 텃밭 필드** · 낮·밤 그라데이션(+수동 조절) · 별·반딧불이·창문 불빛 · 파티클 & 블룸 · 절차적 사운드 · 모바일 터치 · 인터랙티브 튜토리얼(11단계) · 구글 로그인 & 게스트 · 자동 클라우드 저장 · 행동 데이터 분석(Supabase/GA4/BigQuery, A/B 세그먼트)
+**주요 기능**: 걷기 · 벌목 · 농사(밭갈기/심기/물주기/수확/시들기) · 건축(단계 건설) · 집 실내 입장 & 꾸미기 · 낚시 · NPC 5명 & 퀘스트 체인 · **출석 보상(연속 스트릭) & 데일리 의뢰(럭키박스)** · **비 오는 날씨(자동 성장·낚시 행운)** · 주민 선물 & 친밀도 · **작업대 제작(요리·도구·야외장식·선물)** · **상점 & 코인 경제** · **개인 텃밭 필드** · 낮·밤 그라데이션(+수동 조절) · 별·반딧불이·창문 불빛 · 파티클 & 블룸 · 절차적 사운드 · 모바일 터치 · 인터랙티브 튜토리얼(11단계) · 구글 로그인 & 게스트 · 자동 클라우드 저장 · 행동 데이터 분석(Supabase/GA4/BigQuery, A/B 세그먼트)
 
 기술 스택: **Vanilla JS + Three.js**(프론트) · **Supabase**(Auth/Postgres) · **GA4 + BigQuery**(분석) · **Cloudflare Pages/Workers**(호스팅) · **GitHub Actions**(데이터 파이프라인).
 
@@ -21,6 +21,7 @@ calm_forest/
 │  ├─ analytics.js       #   📈 GA4 이벤트 + gtag 자동 로딩
 │  ├─ logger.js          #   🛰️ 센서 데이터 throttle 수집 + 배치 전송
 │  ├─ game.js            #   🌳 3D 씬·걷기·농사·건축·낚시·NPC·제작·상점·텃밭·파티클·블룸
+│  ├─ metrics.js         #   📐 계측: 경제 원장(econ_logs) + 세션 요약(session_logs)
 │  ├─ controls.js        #   📱 모바일 가상 조이스틱 + 액션 버튼
 │  └─ sound.js           #   🔊 절차적 효과음(WebAudio)
 ├─ dashboards/           # 📊 분석 대시보드 (브라우저에서 열기)
@@ -33,7 +34,8 @@ calm_forest/
 │  ├─ bigquery_queries.sql  # BigQuery 쿼리 팩 (GA4 + 행동로그 세그먼트/AB)
 │  ├─ quality_checks.sql #   🩺 계측 품질 체크(체험단 전 검증용)
 │  ├─ migrate_ab_fields.sql    # (기존 DB) client_id·is_guest·variant 추가+백필
-│  └─ migrate_ab_fields_bq.sql # (BigQuery) 동 컬럼 추가+variant 백필
+│  ├─ migrate_ab_fields_bq.sql # (BigQuery) 동 컬럼 추가+variant 백필
+│  └─ migrate_metrics_tables.sql # 📐 계측 테이블(econ_logs·session_logs) 생성+RLS
 ├─ scripts/              # 🔄 Supabase→BigQuery 일일 적재+경량화+익명계정 정리
 │  └─ export_to_bq.py
 ├─ .github/workflows/    # ⚙️ GitHub Actions
@@ -52,6 +54,7 @@ calm_forest/
 ```
 [게임 클라이언트]
    ├─ logger.js  ── game_logs 배치(좌표·마우스·카메라 + client_id·is_guest·variant)
+   ├─ metrics.js ── econ_logs(코인 원장) + session_logs(세션 요약: 행동 카운트·플레이 시간)
    │        ▼
    │   Supabase(Postgres, RLS "본인만")  ──일일 파이프라인(GitHub Actions)──▶  BigQuery
    │        · 7일치만 보관(hot) · 익명계정 7일 뒤 정리        scripts/export_to_bq.py   (전체 이력, cold)
@@ -117,7 +120,13 @@ python3 -m http.server 8000   # → http://localhost:8000
 
 ## 🧑‍🌾 NPC · 퀘스트 · 선물
 
-마을 주민 4명(농부·목수·상인·낚시꾼)이 각자 퀘스트 체인을 줍니다. 근처에서 대화(모바일은 **대화하기** 버튼) → 수락 → 목표 달성 → 보상. **작업대에서 만든 선물**을 주민에게 주면 **친밀도 ❤️** 가 오르고, 일정 단계마다 답례를 받아요.
+마을 주민 4명(농부·목수·상인·낚시꾼)이 각자 퀘스트 체인을 줍니다. 근처에서 대화(모바일은 **대화하기** 버튼) → 수락 → 목표 달성 → 보상(자원+🪙코인). **작업대에서 만든 선물**을 주민에게 주면 **친밀도 ❤️** 가 오르고, 일정 단계마다 답례를 받아요.
+
+## 🎁 출석 보상 · 📋 데일리 의뢰 · 🌧️ 날씨
+
+- **출석 보상** — 매일 첫 접속 시 코인 지급. **연속 출석(스트릭)** 일수록 커지고(5→30🪙), 7일 연속마다 💎보석 보너스.
+- **데일리 의뢰** — 스폰 근처 **의뢰 올빼미 🦉** 가 매일 3개 의뢰(벌목·수확·낚시·채굴 등, 날짜 시드라 전원 동일)를 줍니다. 완료하면 코인 + **🎁럭키박스**(확률: 코인 60%/씨앗 25%/💎보석 10%/대박 5%).
+- **날씨** — 날짜 시드로 매일 결정(전원 동일): 맑음 55% · 🌧️비 20% · ❄️눈 12% · 🌫️안개 13%. **비**: 빗줄기+빗소리, 밭이 물 없이 저절로 자라고 낚시 입질↑. **눈**: 흩날리는 눈송이, 벌목 목재 +1 확률. **안개**: 짙은 안개+낮에도 반딧불이, 동굴 보석 확률 2배. 실내·동굴엔 날씨 연출 없음. 테스트: `?weather=rain|snow|fog`.
 
 ## 🛠️ 작업대 (제작)
 
@@ -135,6 +144,11 @@ python3 -m http.server 8000   # → http://localhost:8000
 ## 🌾 개인 텃밭
 
 스폰 앞 게이트로 들어가는 **나만의 텃밭 필드**(집처럼 별도 공간). 울타리 두른 넓은 밭에서 자유롭게 농사짓고, 심은 작물은 저장돼 재접속해도 유지됩니다.
+
+## 🙂 이모트 · 📷 액션샷
+
+- **이모트** — 🙂 버튼에서 기분을 고르면 캐릭터가 **실제 모션**을 합니다: 👋 까딱 인사 · 😄 두 번 폴짝 · ❤️ 한 바퀴 돌며 반짝 · 🎵 빙글빙글 스텝 댄스. 🪑 앉기는 그대로.
+- **사진(액션샷)** — 📷 버튼을 누르면 카메라가 **캐릭터 정면에 확 밀착**하고 랜덤 포즈가 발동, **포즈의 정점 프레임**에서 자동 캡처됩니다. 촬영 후 카메라는 부드럽게 복귀. 저장/공유는 기존과 동일.
 
 ## 🌅 분위기 · 🔊 사운드 · 📱 모바일
 
@@ -157,7 +171,7 @@ EXPERIMENT: 'off',                          // 'map' 으로 켜면 A/B 배정 �
 
 ## 🗄️ Supabase
 
-`sql/supabase_setup.sql`을 SQL Editor에 한 번 실행하면 테이블·RLS·분석 뷰가 생성됩니다. **RLS(본인 데이터만)** 로 보호되며, **게스트 수집을 쓰려면 Authentication → Anonymous sign-ins 활성화** 필요. game_saves(진행도 jsonb) + game_logs(행동 로그) + feedback 테이블로 구성.
+`sql/supabase_setup.sql` + `sql/migrate_metrics_tables.sql`을 SQL Editor에 한 번씩 실행하면 테이블·RLS·분석 뷰가 생성됩니다. **RLS(본인 데이터만)** 로 보호되며, **게스트 수집을 쓰려면 Authentication → Anonymous sign-ins 활성화** 필요. game_saves(진행도 jsonb) + game_logs(행동 로그) + econ_logs(코인 원장) + session_logs(세션 요약) + feedback 테이블로 구성.
 
 ## 💾 저장 데이터
 

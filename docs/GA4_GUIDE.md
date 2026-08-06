@@ -36,7 +36,9 @@
 | `harvest_crop` | 수확 | `crop` (누적 작물 수) |
 | `house_complete` | 집 완성 | — |
 | `npc_talk` | 주민과 대화창 열기 | `npc`, `mode`(offer/progress/claim/done) |
-| `quest_accept` / `quest_complete` | 퀘스트 수락/완료 | `quest`, `npc` |
+| `quest_offered` | 퀘스트 제안 화면 노출(퍼널①) | `quest_id`(npc:idx), `npc`, `quest` |
+| `quest_accept` | 퀘스트 수락(퍼널②) | `quest`, `npc`, `quest_id` |
+| `quest_complete` | 퀘스트 완료(퍼널③) | `quest`, `npc`, `quest_id`, `elapsed_sec`(수락→완료 초), `reward_coins` |
 | `feedback_submit` | 문의 제출 | `category` |
 | `enter_house` / `exit_house` | 집 실내 입장/퇴장 | — |
 | `enter_farm` / `exit_farm` | 개인 텃밭 입장/퇴장 | — |
@@ -56,6 +58,11 @@
 | `tutorial_complete` | 튜토리얼 완료 | — |
 | `tutorial_skip` | 튜토리얼 건너뜀 | `at`(welcome 또는 단계번호) |
 | `session_time` | 주기/이탈 시 | `seconds` |
+| `econ_tx` | 코인 증감(원장 미러) | `source`(shop_sell/shop_buy/quest_reward/daily_bonus/lucky_box/…), `item`, `amount`(±), `balance` |
+| `session_summary` | 탭 숨김/종료 시 1회 | `play_sec`, `total_actions`, `coins`, `last_place` |
+| `daily_bonus` | 출석 보상 수령(하루 1회) | `streak`(연속 일수), `coins` |
+| `lucky_box` | 데일리 의뢰 럭키박스 개봉 | `tier`(coin/seed/gem/jackpot), `quest_id` |
+| `weather_day` | 궂은 날씨 세션 시작 시 1회 | `type`(rain/snow/fog) — 세션 요약 counts 로 날씨별 행동 비교 |
 
 또한 **user_id** 를 GA4에 연결(`setGaUser`)해서, GA4↔Supabase를 유저 단위로 조인할 수 있습니다.
 

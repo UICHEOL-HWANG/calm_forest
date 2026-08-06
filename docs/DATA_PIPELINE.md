@@ -1,13 +1,16 @@
 # 🔄 데이터 파이프라인 — Supabase → BigQuery (일일 적재 + 경량화)
 
 Supabase는 **최근 7일**만 유지(핫 스토리지), BigQuery에 **전체 이력**을 쌓습니다(콜드 스토리지).
-GitHub Actions가 매일 자동으로: ①`game_logs` 증분 적재 → ②`game_saves` 스냅샷 → ③7일 지난 로그 prune.
+GitHub Actions가 매일 자동으로: ①`game_logs`·`econ_logs` 증분 적재(id 기준) → ②`session_logs` 증분 적재(updated_at 기준) → ③`game_saves` 스냅샷 → ④7일 지난 로그 prune.
 
 ```
 GA4  ──(자동 export)──▶ BigQuery(analytics_547127440)   # 행동 이벤트
-Supabase ─(이 파이프라인)▶ BigQuery(calm_forest_raw)      # 좌표·진행도
-                          └ 7일 지난 game_logs는 Supabase에서 삭제
+Supabase ─(이 파이프라인)▶ BigQuery(calm_forest_raw)      # 좌표·경제원장·세션요약·진행도
+                          └ 7일 지난 game_logs/econ_logs/session_logs는 Supabase에서 삭제
 ```
+
+> `session_logs`는 세션당 1행을 계속 upsert하므로 BQ에는 같은 세션이 여러 번 실릴 수 있음 →
+> 분석 시 `ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY updated_at DESC) = 1` 로 최신행만 사용.
 
 ## 파일
 - `.github/workflows/supabase-to-bq.yml` — 매일 03:00 KST 실행(수동 실행도 가능)

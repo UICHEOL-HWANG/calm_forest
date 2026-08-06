@@ -9,7 +9,7 @@
 //  ▶ GA4 미설정(오프라인) 시 window.gtag 가 없으므로 콘솔로 폴백
 // =============================================================
 
-import { CONFIG, isGaConfigured } from './config.js?v=2';
+import { CONFIG, isGaConfigured } from './config.js?v=3';
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -42,9 +42,15 @@ export function setGaUser(userId) {
   }
 }
 
+// ── 이벤트 훅 — 세션 요약(metrics.js)이 이벤트 발생 횟수를 집계하는 용도 ──
+//    analytics → metrics 역방향 import 없이(순환 방지) 콜백 등록으로 연결.
+const trackHooks = [];
+export function onTrack(cb) { trackHooks.push(cb); }
+
 // GA4 로 이벤트 전송(폴백: 콘솔) — 모든 트래킹은 이 함수를 거칩니다.
 export function trackEvent(name, params = {}) {
   const payload = { ...params, ts: Date.now() };
+  trackHooks.forEach(cb => { try { cb(name, payload); } catch (e) {} }); // 카운터 훅(실패해도 트래킹 계속)
 
   // [GA4 전송 지점] gtag 가 로드되어 있고 설정이 유효할 때만 실제 전송
   if (isGaConfigured() && typeof window.gtag === 'function') {

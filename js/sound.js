@@ -27,7 +27,29 @@ export function initSound() {
   window.addEventListener('touchstart', resume, { once: false });
 }
 
-export function toggleSound(on) { enabled = on; }
+export function toggleSound(on) {
+  enabled = on;
+  if (!on) stopRainSound();   // 사운드 끄면 빗소리 루프도 정지
+}
+
+// ── 🌧️ 빗소리 앰비언트(루프) — 로우패스 필터드 노이즈, 은은하게 ──
+let rainSrc = null;
+export function startRainSound() {
+  if (!enabled || rainSrc) return;
+  const c = ensureCtx();
+  const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;   // 화이트 노이즈 2초 루프
+  rainSrc = c.createBufferSource(); rainSrc.buffer = buf; rainSrc.loop = true;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 850;  // 빗소리 톤
+  const g = c.createGain(); g.gain.value = 0.14;
+  rainSrc.connect(lp); lp.connect(g); g.connect(master);
+  rainSrc.start();
+}
+export function stopRainSound() {
+  try { rainSrc?.stop(); } catch (e) {}
+  rainSrc = null;
+}
 
 // ── 합성 헬퍼 ────────────────────────────────────────────────
 // 엔벨로프가 있는 단일 톤

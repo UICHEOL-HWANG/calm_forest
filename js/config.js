@@ -25,6 +25,11 @@ export const CONFIG = {
   // ── 게임 저장 테이블 ─────────────────────────────────────────
   SAVE_TABLE: 'game_saves',
 
+  // ── 계측 테이블(경제 원장 / 세션 요약) ───────────────────────
+  //    sql/migrate_metrics_tables.sql 실행으로 생성 (ML 피처의 원천)
+  ECON_TABLE: 'econ_logs',       // 코인 증감 원장 {source,item,amount,balance}
+  SESSION_TABLE: 'session_logs', // 세션 요약(세션당 1행 upsert)
+
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
   AUTH_MODE: 'google',
 

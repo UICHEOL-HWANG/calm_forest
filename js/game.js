@@ -22,10 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=2';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=2';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=2';          // [GA4] 이벤트
-import { Sound, initSound } from './sound.js?v=2';                   // 🔊 절차적 사운드
+import { sampleFrame, startLogging } from './logger.js?v=3';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=3';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=3';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=3';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound } from './sound.js?v=3'; // 🔊 절차적 사운드 + 🌧️ 빗소리
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -53,6 +54,30 @@ const BUILD_COST = 10;                                  // 건축 단계당 목�
 const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
 const WET_TIME = 5;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(초) — 마르면 다시 물 필요
 const WILT_TIME = 22;  // 물 없이 목마른 채 방치되면 시드는 시간(초)
+
+// ── 날짜 유틸(출석·데일리 퀘스트·날씨 — 로컬 날짜 기준) ─────────
+function todayStr(offsetDays = 0) {
+  const d = new Date(Date.now() + offsetDays * 86400000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function dateHash(salt) {
+  const s = todayStr() + ':' + salt;
+  let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
+  return h;
+}
+// 🌦️ 오늘의 날씨 — 날짜 시드라 모든 유저에게 동일. 맑음 55% / 비 20% / 눈 12% / 안개 13%
+//    테스트: ?weather=rain|snow|fog (?rain=1 도 호환)
+const _wq = new URLSearchParams(location.search);
+const WEATHER = ['rain', 'snow', 'fog'].includes(_wq.get('weather')) ? _wq.get('weather')
+  : _wq.has('rain') ? 'rain'
+  : (() => { const r = dateHash('weather') % 100; return r < 20 ? 'rain' : r < 32 ? 'snow' : r < 45 ? 'fog' : 'clear'; })();
+const RAIN_DAY = WEATHER === 'rain';   // 비 전용 효과(밭 자동 성장·낚시 행운·빗소리)에 사용
+const WEATHER_MSG = {
+  rain: '🌧️ 오늘은 비 오는 날! 밭이 저절로 자라고 물고기가 잘 물어요',
+  snow: '❄️ 오늘은 눈 오는 날! 나뭇가지가 잘 부러져 목재가 더 나와요',
+  fog:  '🌫️ 오늘은 안개 낀 날… 동굴에서 보석이 더 자주 반짝여요',
+};
+let rainLines = null;  // 날씨 파티클(빗줄기/눈송이 LineSegments)
 
 // ── 집 꾸미기 가구 카탈로그 (작물 💰 로 구매해 실내에 배치) ──────
 const DECOR = [
@@ -110,6 +135,9 @@ function setSpaceVisible() {
   if (interiorGroup) interiorGroup.visible = indoor;
   if (farmGroup) farmGroup.visible = atFarm;
   if (mineGroup) mineGroup.visible = atMine;
+  // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭)에서만 — 실내·동굴에선 정지
+  if (RAIN_DAY && mode === 'play' && !indoor && !atMine) startRainSound();
+  else stopRainSound();
 }
 const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40 };   // 판매 단가(코인)
 const SHOP_BUY = [
@@ -165,34 +193,81 @@ const NPCS = [
   {
     id: 'farmer', name: '농부 삼촌', emoji: '🧑‍🌾', color: 0x9fe0a0, hat: 0xe9c47a, pos: [5, 0, 4],
     quests: [
-      { type: 'chop',    target: 3, title: '장작 모으기', desc: '나무 3번 베기',   reward: { seed: 3 },  line: '겨울 대비 장작이 필요해. 나무 3번만 베어줄래?' },
-      { type: 'harvest', target: 2, title: '수확의 기쁨', desc: '작물 2개 수확',   reward: { wood: 6 },  line: '밭에서 작물 두 개만 거둬다 주면 목재로 보답하지!' },
-      { type: 'water',   target: 4, title: '촉촉하게',   desc: '물 4번 주기',     reward: { seed: 5 },  line: '모종이 목말라 해. 물 네 번만 부탁할게.' },
+      { type: 'chop',    target: 3, title: '장작 모으기', desc: '나무 3번 베기',   reward: { seed: 3, coins: 5 },  line: '겨울 대비 장작이 필요해. 나무 3번만 베어줄래?' },
+      { type: 'harvest', target: 2, title: '수확의 기쁨', desc: '작물 2개 수확',   reward: { wood: 6, coins: 8 },  line: '밭에서 작물 두 개만 거둬다 주면 목재로 보답하지!' },
+      { type: 'water',   target: 4, title: '촉촉하게',   desc: '물 4번 주기',     reward: { seed: 5, coins: 8 },  line: '모종이 목말라 해. 물 네 번만 부탁할게.' },
     ],
   },
   {
     id: 'builder', name: '목수 아저씨', emoji: '👷', color: 0xd6b48a, hat: 0xc0894f, pos: [-5, 0, 6],
     quests: [
-      { type: 'collect_wood', target: 10, title: '목재 납품', desc: '목재 10개 모으기', reward: { crop: 3 },          line: '집 지으려면 목재 10개가 필요해. 모아올 수 있겠어?' },
-      { type: 'house',        target: 1,  title: '보금자리',  desc: '집 완성하기',      reward: { seed: 6, crop: 3 }, line: '이제 근사한 집을 완성해보자고!' },
+      { type: 'collect_wood', target: 10, title: '목재 납품', desc: '목재 10개 모으기', reward: { crop: 3, coins: 10 },          line: '집 지으려면 목재 10개가 필요해. 모아올 수 있겠어?' },
+      { type: 'house',        target: 1,  title: '보금자리',  desc: '집 완성하기',      reward: { seed: 6, crop: 3, coins: 30 }, line: '이제 근사한 집을 완성해보자고!' },
     ],
   },
   {
     id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [9, 0, -3],
     quests: [
-      { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
-      { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
+      { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
+      { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
     ],
   },
   {
     id: 'angler', name: '낚시꾼 할아버지', emoji: '🎣', color: 0x9fc0e0, hat: 0x5a7a9a, pos: [9, 0, 14],
     quests: [
-      { type: 'fish',      target: 2, title: '첫 낚시',   desc: '물고기 2마리 낚기', reward: { crop: 3 }, line: '호수에서 🎣낚싯대로 물고기 두 마리만 낚아보게!' },
-      { type: 'fish',      target: 5, title: '월척 도전', desc: '물고기 5마리 낚기', reward: { seed: 5 }, line: '이번엔 다섯 마리! 물면 바로 낚아채야 하네.' },
-      { type: 'fish_rare', target: 1, title: '무지개를 낚아', desc: '희귀 물고기 1마리', reward: { crop: 6, seed: 4 }, line: '전설의 무지개 물고기를 낚아오면 큰 상을 주지!' },
+      { type: 'fish',      target: 2, title: '첫 낚시',   desc: '물고기 2마리 낚기', reward: { crop: 3, coins: 8 }, line: '호수에서 🎣낚싯대로 물고기 두 마리만 낚아보게!' },
+      { type: 'fish',      target: 5, title: '월척 도전', desc: '물고기 5마리 낚기', reward: { seed: 5, coins: 12 }, line: '이번엔 다섯 마리! 물면 바로 낚아채야 하네.' },
+      { type: 'fish_rare', target: 1, title: '무지개를 낚아', desc: '희귀 물고기 1마리', reward: { crop: 6, seed: 4, coins: 40 }, line: '전설의 무지개 물고기를 낚아오면 큰 상을 주지!' },
     ],
   },
+  {
+    // 📋 데일리 의뢰 담당 — quests 는 매일 refreshDailyQuests() 가 날짜 시드로 채움(전원 동일)
+    id: 'courier', name: '의뢰 올빼미', emoji: '🦉', color: 0xb8a98e, hat: 0x7a5c36, pos: [-3, 0, -3],
+    daily: true, doneLine: '오늘 의뢰는 전부 끝! 내일 새 의뢰를 가져올게요 🦉',
+    quests: [],
+  },
 ];
+
+// ── 데일리 퀘스트 풀 — 매일 3개 뽑기(완료 시 코인 + 🎁럭키박스 확률 보상) ──
+const DAILY_POOL = [
+  { type: 'chop',    target: 5, title: '오늘의 벌목',  desc: '나무 5번 베기' },
+  { type: 'harvest', target: 3, title: '오늘의 수확',  desc: '작물 3개 수확하기' },
+  { type: 'water',   target: 5, title: '촉촉한 하루',  desc: '물 5번 주기' },
+  { type: 'plant',   target: 3, title: '씨앗 심는 날', desc: '씨앗 3번 심기' },
+  { type: 'fish',    target: 3, title: '오늘의 조황',  desc: '물고기 3마리 낚기' },
+  { type: 'mine',    target: 4, title: '광산 의뢰',    desc: '광석 4개 캐기' },
+  { type: 'sell',    target: 5, title: '장사의 날',    desc: '상점에서 아무거나 5개 팔기' },
+];
+
+// 매일 접속 시 호출 — 날짜가 바뀌면 의뢰 리셋 + 날짜 시드로 오늘의 의뢰 3개 생성
+function refreshDailyQuests() {
+  const def = NPCS.find(n => n.daily); if (!def) return;
+  const st = npcState(def.id);
+  const today = todayStr();
+  if (st.date !== today) {   // 새 날 → 진행 상태 리셋(어제 의뢰는 소멸)
+    st.date = today; st.idx = 0; st.progress = 0; st.given = false; st.allDone = false; st.acceptedAt = null;
+  }
+  const pool = [...DAILY_POOL];
+  let h = dateHash('daily');
+  def.quests = Array.from({ length: 3 }, (_, i) => {
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    const q = pool.splice(h % pool.length, 1)[0];
+    return { ...q, reward: { coins: 10 + i * 5 }, lucky: true, line: `[오늘의 의뢰 ${i + 1}/3] ${q.desc}! 완료하면 🎁럭키박스도 준다구.` };
+  });
+}
+
+// 🎁 럭키박스 — 데일리 의뢰 완료 확률 보상(60% 코인 / 25% 씨앗 / 10% 보석 / 5% 대박)
+function rollLuckyBox(qid) {
+  const r = Math.random();
+  const box = r < 0.60 ? { tier: 'coin',    ico: '🪙', reward: { coins: 5 + Math.floor(Math.random() * 11) } }
+            : r < 0.85 ? { tier: 'seed',    ico: '🌰', reward: { seed: 4 } }
+            : r < 0.95 ? { tier: 'gem',     ico: '💎', reward: { gem: 1 } }
+            :            { tier: 'jackpot', ico: '🎉', reward: { coins: 50 } };
+  giveReward(box.reward, 'lucky_box', qid);   // [원장] 확률 보상도 출처 기록
+  ui.toast?.(`🎁 럭키박스! ${box.ico} ${rewardText(box.reward)}`, 2400);
+  if (box.tier !== 'coin') spawnConfetti(player.position.x, 1.4, player.position.z);
+  trackEvent('lucky_box', { tier: box.tier, quest_id: qid }); // [GA4] 확률 분포 검증용
+}
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
@@ -211,7 +286,29 @@ const gameState = {
   character: null,                          // 선택한 동물 캐릭터 id
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
+  daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
 };
+
+// ── 출석 보상 — 하루 1회, 연속 출석(streak)일수록 커짐. 7일마다 보석 보너스 ──
+const DAILY_COINS = [5, 8, 12, 16, 20, 25, 30];   // 1~7일차(이후 30 고정)
+function checkDailyBonus() {
+  const d = gameState.daily;
+  const today = todayStr();
+  if (d.lastDate === today) return;                              // 오늘 이미 받음
+  d.streak = (d.lastDate === todayStr(-1)) ? d.streak + 1 : 1;   // 어제 접속했으면 연속, 아니면 1일차
+  d.lastDate = today;
+  const coins = DAILY_COINS[Math.min(d.streak, 7) - 1];
+  const reward = { coins };
+  if (d.streak > 0 && d.streak % 7 === 0) reward.gem = 1;        // 7일 연속마다 💎
+  giveReward(reward, 'daily_bonus', 'day' + d.streak);           // [원장] 출석 코인
+  trackEvent('daily_bonus', { streak: d.streak, coins });         // [GA4] 리텐션 KPI
+  let body = `연속 ${d.streak}일째 방문! ${rewardText(reward)} 받았어요.` +
+    (reward.gem ? ' 7일 연속 보너스 💎!' : ' 내일 또 오면 보상이 더 커져요!');
+  if (WEATHER !== 'clear') body += ' ' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
+  if (gameState.character && gameState.tutorialSeen) { ui.showHintModal?.({ ico: '🎁', title: `출석 ${d.streak}일차`, body }); return true; }
+  ui.toast?.(`🎁 출석 보상 +${coins}🪙`);                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
+  return false;
+}
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
 function firstHint(key, ico, title, body) {
@@ -344,7 +441,8 @@ export const Input = {
   craftGift(id) { return craftGift(id); },              // 선물 제작
   giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
-  capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(dataURL)
+  capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(현재 화면 그대로)
+  captureActionShot() { return startActionShot(); },  // 📷 밀착 액션샷(포즈 정점 캡처, Promise<dataURL>)
   toggleSit() { sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글
   // 캐릭터(동물) 선택
   getAnimals() { return ANIMALS.map(a => ({ id: a.id, name: a.name, emoji: a.emoji })); },
@@ -361,7 +459,12 @@ export const Input = {
     gameState.houseStyle[part] = idx; applyHouseStyle(); Sound.blip(); return { ok: true };
   },
   houseBuilt() { return gameState.houseStage >= 3; },
-  emote(e) { spawnFloatText(player.position.x, 2.7, player.position.z, e, '#4a5a40'); Sound.blip(); }, // 머리 위 이모트
+  emote(e) {   // 머리 위 이모지 + 기분에 맞는 캐릭터 모션(춤·점프·하트·인사)
+    spawnFloatText(player.position.x, 2.7, player.position.z, e, '#4a5a40');
+    const m = EMOTE_MOTION[e];
+    if (m) startEmote(m[0], m[1]);
+    if (e === '❤️' || e === '🎵') Sound.harvest(); else Sound.blip();
+  },
   selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
   cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
   rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); return decorRot; }, // 가로/세로 회전
@@ -396,6 +499,7 @@ export async function bootWorld(uiCallbacks) {
 export async function enterGame() {
   const saved = await loadGame();      // [Supabase] 저장 불러오기(오프라인이면 null)
   if (saved) applySave(saved);
+  refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
   refreshInventoryUI();
   ui.setTool?.(currentTool, TOOLS);
   ui.setQuest?.(null);                  // 퀘스트 패널은 주민 근처에서 표시
@@ -405,6 +509,17 @@ export async function enterGame() {
   mode = 'play';
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
+  startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
+    coins: gameState.inventory.coins || 0,
+    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : 'village',
+    x: player.position.x, z: player.position.z,
+  }));
+  const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
+  if (WEATHER !== 'clear') {            // [날씨] 궂은 날 안내 + 세션 태깅
+    if (!bonusModal) ui.toast?.(WEATHER_MSG[WEATHER], 2800);   // 출석 모달에 이미 합쳐 안내했으면 생략
+    if (RAIN_DAY) startRainSound();
+    trackEvent('weather_day', { type: WEATHER }); // [GA4] 세션 요약 counts 에 자동 집계 → 날씨별 행동 비교
+  }
 
   // 신규: 캐릭터(동물) 미선택이면 선택 화면 → 그 뒤 튜토리얼. 이미 선택했으면 튜토리얼만.
   if (!gameState.character) ui.showCharacterSelect?.();
@@ -420,6 +535,7 @@ function applySave(saved) {
     saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
+  if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
   if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id)); // 야외 장식 복원
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
@@ -546,6 +662,7 @@ function buildWorld() {
   buildPlayer();
   buildFireflies();
   buildStars();
+  buildRain();              // 🌧️ 빗줄기(비 오는 날에만 표시)
   buildEnvironment();
 }
 
@@ -728,6 +845,49 @@ function setHeldDecor(id) {
   const m = decorMesh(id); m.scale.setScalar(0.5); m.position.y = 0.05;
   m.rotation.y = decorRot * Math.PI / 2;   // 현재 회전 상태 미리보기
   heldToolMesh = m; handAnchor.add(m);
+}
+
+// ── 🌦️ 날씨 파티클 — 비: 빠른 빗줄기 / 눈: 천천히 흩날리는 눈송이 ──
+function buildRain() {
+  if (WEATHER !== 'rain' && WEATHER !== 'snow') return;   // 맑음·안개는 파티클 없음
+  const snow = WEATHER === 'snow';
+  const N = snow ? 220 : 260, LEN = snow ? 0.13 : 0.5;    // 눈은 짧은 점 느낌
+  const pos = new Float32Array(N * 6), vel = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const o = i * 6, x = (Math.random() - 0.5) * 36, z = (Math.random() - 0.5) * 36, y = Math.random() * 14;
+    pos[o] = x; pos[o + 1] = y + LEN; pos[o + 2] = z;      // 윗점
+    pos[o + 3] = x; pos[o + 4] = y; pos[o + 5] = z;        // 아랫점
+    vel[i] = snow ? 1.3 + Math.random() * 1.4 : 14 + Math.random() * 6;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  rainLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+    color: snow ? 0xffffff : 0xaac4dc, transparent: true, opacity: snow ? 0.85 : 0.4,
+  }));
+  rainLines.userData = { vel, snow, len: LEN };
+  rainLines.visible = false; rainLines.frustumCulled = false;
+  scene.add(rainLines);
+}
+
+function updateRain(dt) {
+  if (!rainLines) return;
+  const show = mode === 'play' && !indoor && !atMine;   // 실내·동굴에선 숨김(텃밭은 야외)
+  rainLines.visible = show;
+  if (!show) return;
+  const { vel, snow, len } = rainLines.userData;
+  const pos = rainLines.geometry.attributes.position.array;
+  const px = player.position.x, pz = player.position.z, t = clock.elapsedTime;
+  for (let i = 0; i < vel.length; i++) {
+    const o = i * 6;
+    pos[o + 1] -= vel[i] * dt; pos[o + 4] -= vel[i] * dt;
+    if (snow) { const sway = Math.sin(t * 1.3 + i * 1.7) * dt * 0.7; pos[o] += sway; pos[o + 3] += sway; } // ❄️ 좌우로 흩날림
+    if (pos[o + 4] < 0) {   // 바닥 도달 → 플레이어 주변 상공에서 재시작
+      const x = px + (Math.random() - 0.5) * 36, z = pz + (Math.random() - 0.5) * 36, y = 9 + Math.random() * 6;
+      pos[o] = x; pos[o + 1] = y + len; pos[o + 2] = z;
+      pos[o + 3] = x; pos[o + 4] = y; pos[o + 5] = z;
+    }
+  }
+  rainLines.geometry.attributes.position.needsUpdate = true;
 }
 
 function buildFireflies() {
@@ -1158,7 +1318,9 @@ function sellItem(k, all) {
   gameState.inventory.coins = (gameState.inventory.coins || 0) + gain;
   refreshInventoryUI();
   Sound.blip();
-  trackEvent('shop_sell', { item: k, qty });  // [GA4]
+  questEvent('sell', qty);                          // 데일리 의뢰(장사) 진행
+  trackEvent('shop_sell', { item: k, qty, gain });  // [GA4] 판매 금액 포함
+  logEcon('shop_sell', k, gain, gameState.inventory.coins);  // [원장] 코인 유입
   return { ok: true, gain, qty };
 }
 
@@ -1168,7 +1330,7 @@ function buyShop(id) {
   if (it.upgrade && gameState.upgrades[it.upgrade]) return { ok: false, msg: '이미 보유한 도구예요' };
   if ((gameState.inventory.coins || 0) < it.coin) return { ok: false, msg: '코인이 부족해요' };
   gameState.inventory.coins -= it.coin;
-  if (it.give) giveReward(it.give);
+  if (it.give) giveReward(it.give, 'shop_buy_bundle', id);
   if (it.upgrade) {                                   // 도구 업그레이드 코인 구매
     gameState.upgrades[it.upgrade] = true;
     spawnFloatText(player.position.x, 1.6, player.position.z, `${it.ico} ${it.name}!`, '#2f7a44');
@@ -1177,7 +1339,8 @@ function buyShop(id) {
     Sound.harvest();
   }
   refreshInventoryUI();
-  trackEvent('shop_buy', { item: id });  // [GA4]
+  trackEvent('shop_buy', { item: id, cost: it.coin });  // [GA4] 구매 금액 포함
+  logEcon('shop_buy', id, -it.coin, gameState.inventory.coins);  // [원장] 코인 소비
   return { ok: true, name: it.name };
 }
 
@@ -1319,7 +1482,7 @@ function giveGift(giftId) {
   spawnFloatText(o.group.position.x, 2.2, o.group.position.z, '❤️', '#e6789a');
   spawnSparkle(o.group.position.x, 1.4, o.group.position.z, 14);
   let reward = null;
-  if (gameState.affinity[id] % 3 === 0) { reward = { seed: 3, crop: 1 }; giveReward(reward); } // 친밀 3단계마다 답례
+  if (gameState.affinity[id] % 3 === 0) { reward = { seed: 3, crop: 1 }; giveReward(reward, 'affinity_gift', id); } // 친밀 3단계마다 답례
   trackEvent('gift_give', { npc: id, gift: giftId });  // [GA4]
   return { ok: true, npc: o.def.name, ico: g.ico, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
 }
@@ -1416,7 +1579,7 @@ const ORES = [
   { id: 'coal',  name: '석탄', color: 0x2a2a2a },
   { id: 'gem',   name: '보석', color: 0x5ad0e0 },
 ];
-function weightedOre() { const r = Math.random(); return r < 0.55 ? ORES[0] : r < 0.9 ? ORES[1] : ORES[2]; } // 돌55/석탄35/보석10
+function weightedOre() { const gemP = WEATHER === 'fog' ? 0.2 : 0.1; const r = Math.random(); return r < 0.55 ? ORES[0] : r < 1 - gemP ? ORES[1] : ORES[2]; } // 돌55/석탄~35/보석10(🌫️ 안개 낀 날 20)
 
 function spawnOreRock(x, z, ore) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -1545,6 +1708,7 @@ function tryMine() {
     spawnSparkle(nearest.position.x, 0.8, nearest.position.z, ore.id === 'gem' ? 26 : 12);
     Sound.harvest();
     ud.depleted = true; ud.respawnAt = clock.elapsedTime + 14; nearest.visible = false;
+    questEvent('mine', amt);                       // 데일리 의뢰(광석 캐기) 진행
     trackEvent('mine_ore', { ore: ore.id, amt });  // [GA4]
   }
 }
@@ -1665,6 +1829,31 @@ function initInput() {
 // =============================================================
 //  메인 루프
 // =============================================================
+// 서브 공간(실내/텃밭/동굴) 미니맵에 찍을 랜드마크(월드좌표) 목록
+const PLOT_MINI = { empty: '#7a5230', growing: '#8fd18a', mature: '#ff8a5c', wilted: '#8a8378' };
+const ORE_MINI = { stone: '#c3c3b8', coal: '#5f5f5f', gem: '#5ad0e0' };
+function minimapMarks(place) {
+  const marks = [];
+  if (place === 'farm') {
+    marks.push({ x: FARM.x, z: FARM.z + FARM_HALF, c: '#c8905a', kind: 'exit' });            // 나가는 문(남쪽)
+    marks.push({ x: FARM.x - FARM_HALF + 1.5, z: FARM.z - FARM_HALF + 1.5, c: '#d9b25f', r: 2.4 }); // 허수아비
+    for (const p of plots) {   // 텃밭 안 밭만(경계로 필터)
+      if (Math.abs(p.x - FARM.x) > FARM_HALF + 1 || Math.abs(p.z - FARM.z) > FARM_HALF + 1) continue;
+      marks.push({ x: p.x, z: p.z, c: PLOT_MINI[p.state] || '#7a5230', r: 2.4 });
+    }
+  } else if (place === 'mine') {
+    marks.push({ x: MINE.x, z: MINE.z - MINE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
+    for (const rock of oreRocks) {
+      if (rock.userData.depleted) continue;
+      marks.push({ x: rock.position.x, z: rock.position.z, c: ORE_MINI[rock.userData.ore.id] || '#c3c3b8', r: 2.2 });
+    }
+  } else if (place === 'house') {
+    marks.push({ x: INT.x, z: INT.z - INT_HALF, c: '#c8905a', kind: 'exit' });                // 나가는 문(앞쪽)
+    for (const d of gameState.house.decor) marks.push({ x: INT.x + d.x, z: INT.z + d.z, c: '#e0b483', r: 2.2 }); // 배치한 가구
+  }
+  return marks;
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -1680,7 +1869,15 @@ function animate() {
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      ui.setMinimap?.({ place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : 'village', x: player.position.x, z: player.position.z, yaw: player.rotation.y });
+      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : 'village';
+      const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
+      if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
+        const C = place === 'house' ? INT : place === 'farm' ? FARM : MINE;
+        md.cx = C.x; md.cz = C.z;
+        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : MINE_HALF;
+        md.marks = minimapMarks(place);
+      }
+      ui.setMinimap?.(md);
     }
     // [센서] 매 프레임 스냅샷 → logger throttle 후 배치 전송
     sampleFrame(() => ({
@@ -1692,6 +1889,7 @@ function animate() {
   }
 
   updateDayNight(dt);
+  updateRain(dt);       // 🌧️ 빗줄기(비 오는 날 + 야외에서만)
   updateSway(t);
   updateTrees(dt);
   updateOreRocks();
@@ -1705,6 +1903,14 @@ function animate() {
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
   if (houseGhost) { houseGhost.visible = showHouseCue; if (showHouseCue) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); }
   composer.render();
+
+  // 📷 액션샷 정점 캡처 — 렌더 직후 캡처해 항상 온전한 프레임을 얻음
+  if (photoResolve && photoT >= photoPeakT) {
+    const cb = photoResolve; photoResolve = null;
+    let data = null;
+    try { data = renderer.domElement.toDataURL('image/png'); } catch (e) {}
+    cb(data);
+  }
 }
 
 // 로그인 배경용 부드러운 오빗 카메라
@@ -1718,6 +1924,45 @@ let walkPhase = 0;
 let movedOnce = false;   // 튜토리얼: 첫 이동 감지
 let actAnim = 0;         // 액션 제스처 진행(1→0)
 let sitting = false;     // 앉기 상태
+
+// ── 이모트 모션 — 기분에 따라 캐릭터가 실제로 움직임(춤·점프·하트·인사) ──
+let emoteAnim = null;    // { type, t0, dur, fx, baseRot }
+const EMOTE_MOTION = { '👋': ['wave', 1.4], '❤️': ['heart', 1.6], '😄': ['jump', 1.2], '🎵': ['dance', 2.4] };
+function startEmote(type, dur) {
+  sitting = false;
+  emoteAnim = { type, el: 0, dur, fx: false, baseRot: player.rotation.y }; // el: 프레임 누적 경과(탭 전환 점프에 안전)
+}
+// updatePlayer 의 idle 분기에서 호출 — 활성 중이면 true(기본 idle 애니 스킵)
+function updateEmote(dt) {
+  if (!emoteAnim) return false;
+  emoteAnim.el += dt;
+  const p = emoteAnim.el / emoteAnim.dur;
+  const A = playerAnchor;
+  if (p >= 1) {   // 종료 → 원래 자세/방향 복원
+    A.position.y = 0; A.rotation.z = 0; A.scale.set(1, 1, 1);
+    player.rotation.y = emoteAnim.baseRot;
+    emoteAnim = null; return false;
+  }
+  if (emoteAnim.type === 'wave') {          // 👋 좌우로 까딱까딱 인사
+    A.rotation.z = Math.sin(p * Math.PI * 5) * 0.28;
+    A.position.y = Math.abs(Math.sin(p * Math.PI * 2)) * 0.08;
+  } else if (emoteAnim.type === 'jump') {   // 😄 신나서 두 번 폴짝(착지 스쿼시)
+    const b = Math.abs(Math.sin(p * Math.PI * 2));
+    A.position.y = b * 0.55;
+    A.scale.set(1 + (1 - b) * 0.09, 1 - (1 - b) * 0.11, 1 + (1 - b) * 0.09);
+  } else if (emoteAnim.type === 'heart') {  // ❤️ 폴짝 뛰며 한 바퀴 + 반짝
+    player.rotation.y = emoteAnim.baseRot + p * Math.PI * 2;
+    A.position.y = Math.sin(p * Math.PI) * 0.4;
+    if (!emoteAnim.fx && p > 0.4) { emoteAnim.fx = true; spawnSparkle(player.position.x, 1.7, player.position.z, 18); }
+  } else if (emoteAnim.type === 'dance') {  // 🎵 빙글빙글 스텝 댄스(두 바퀴)
+    player.rotation.y = emoteAnim.baseRot + p * Math.PI * 4;
+    A.position.y = Math.abs(Math.sin(p * Math.PI * 6)) * 0.22;
+    A.rotation.z = Math.sin(p * Math.PI * 8) * 0.18;
+    A.scale.setScalar(1 + Math.sin(p * Math.PI * 6) * 0.04);
+    if (!emoteAnim.fx && p > 0.5) { emoteAnim.fx = true; spawnFloatText(player.position.x, 2.5, player.position.z, '🎵♪', '#4a5a40'); }
+  }
+  return true;
+}
 
 // 액션 제스처 트리거: 대상(tx,tz) 방향으로 돌고 몸을 휙 숙였다 폄
 function doPlayerAction(tx, tz) {
@@ -1736,6 +1981,7 @@ function updatePlayer(dt, t) {
 
   const moving = Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05;
   if (moving && sitting) sitting = false;   // 움직이면 일어남
+  if (moving && emoteAnim) { playerAnchor.scale.set(1, 1, 1); emoteAnim = null; } // 움직이면 이모트 취소
   if (moving && !movedOnce) { movedOnce = true; ui.act?.('move'); } // 튜토리얼: 첫 이동
   if (sitting) {
     playerAnchor.position.y = -0.3;         // 앉기: 몸을 낮춤
@@ -1749,7 +1995,7 @@ function updatePlayer(dt, t) {
     walkPhase += dt * 12;
     playerAnchor.position.y = Math.abs(Math.sin(walkPhase)) * 0.18;
     playerAnchor.rotation.z = Math.sin(walkPhase) * 0.05;
-  } else {
+  } else if (!updateEmote(dt)) {  // 이모트 모션 중이면 기본 idle 숨쉬기 대신 모션 재생
     playerAnchor.position.y = Math.sin(t * 2) * 0.03;
     playerAnchor.rotation.z *= 0.9;
   }
@@ -1787,6 +2033,29 @@ const _camTarget = new THREE.Vector3();
 const _camLook = new THREE.Vector3(0, 1.2, 0);
 const _camOff = new THREE.Vector3();
 let momentUntil = 0;   // 이벤트 순간 줌인 종료 시각(clock.elapsedTime)
+
+// ── 📷 액션샷 — 카메라를 캐릭터 정면에 밀착시키고, 포즈의 정점 프레임에서 캡처 ──
+//    ※ clock.elapsedTime 은 탭이 백그라운드였다 돌아오면 한 번에 점프하므로
+//      프레임 누적 시간(photoT += clamped dt)으로 진행 — 탭 전환에도 안전.
+let photoT = -1;             // 액션샷 경과(초). 0 미만 = 비활성
+let photoPeakT = 0;          // 포즈 정점(캡처) 시점
+let photoResolve = null;     // 정점 캡처 콜백(animate 렌더 직후 실행 → 빈 프레임 방지)
+const PHOTO_HOLD = 1.4;      // 밀착 카메라 유지 시간(초)
+const _photoPos = new THREE.Vector3();
+function startActionShot() {
+  return new Promise((resolve) => {
+    const poses = [['jump', 1.2, 0.30], ['dance', 2.4, 0.62], ['heart', 1.6, 0.55], ['wave', 1.4, 0.42]];
+    const [pose, dur, peak] = poses[Math.floor(Math.random() * poses.length)];
+    startEmote(pose, dur);                       // 역동적 포즈 발동
+    // 밀착 위치는 시작 시점에 고정(스핀 포즈여도 카메라가 흔들리지 않게) — 정면 어깨높이
+    const fy = player.rotation.y;
+    _photoPos.set(player.position.x + Math.sin(fy) * 3.2, 1.55, player.position.z + Math.cos(fy) * 3.2);
+    photoT = 0;
+    photoPeakT = dur * peak;                     // 포즈 정점 프레임
+    photoResolve = resolve;
+    Sound.blip();
+  });
+}
 // 특정 이벤트(수확·낚시·요리 등) 시 카메라 잠깐 줌인 + 사진 버튼 넛지
 function triggerMoment() {
   momentUntil = clock.elapsedTime + 1.3;
@@ -1800,6 +2069,18 @@ function snapCamera() {
   camera.lookAt(_camLook);
 }
 function updateCamera(dt) {
+  // 📷 액션샷 중: 캐릭터 정면 어깨높이로 빠르게 밀착(끝나면 아래 기본 추적이 부드럽게 복귀)
+  if (photoT >= 0) {
+    photoT += dt;                          // 프레임 누적 진행(탭 전환 점프에 안전)
+    if (photoT >= PHOTO_HOLD) { photoT = -1; }
+    else {
+      const k = 1 - Math.pow(0.0004, dt);  // 밀착은 빠르게
+      camera.position.lerp(_photoPos, k);
+      _camLook.lerp(_camTarget.set(player.position.x, 1.05, player.position.z), k);
+      camera.lookAt(_camLook);
+      return;
+    }
+  }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
   const zoom = clock.elapsedTime < momentUntil ? 0.58 : 1;
   _camOff.copy(camOffset).multiplyScalar(zoom);
@@ -1821,6 +2102,8 @@ const SKY_STOPS = [
   { t: 1.00, sky: 0x1b2145, sun: 0x3b4a86 }, // 밤
 ];
 const _cA = new THREE.Color(), _cB = new THREE.Color();
+const _rainGray = new THREE.Color(0x8a94a0);   // 🌧️ 비/안개 낀 날 하늘 잿빛
+const _snowWhite = new THREE.Color(0xe3e9f0);  // ❄️ 눈 오는 날 밝은 회백
 function skyAt(t) {
   let i = 0; while (i < SKY_STOPS.length - 1 && t > SKY_STOPS[i + 1].t) i++;
   const a = SKY_STOPS[i], b = SKY_STOPS[Math.min(i + 1, SKY_STOPS.length - 1)];
@@ -1841,18 +2124,23 @@ function updateDayNight(dt) {
 
   // 하늘·안개·햇빛 색을 키프레임 그라데이션으로 부드럽게
   const { sky, sun } = skyAt(timeOfDay);
+  if (WEATHER === 'rain') { sky.lerp(_rainGray, 0.45); sun.lerp(_rainGray, 0.5); }        // 🌧️ 잿빛 톤 다운
+  else if (WEATHER === 'snow') { sky.lerp(_snowWhite, 0.42); sun.lerp(_snowWhite, 0.35); } // ❄️ 밝은 회백 톤
+  else if (WEATHER === 'fog') { sky.lerp(_rainGray, 0.55); sun.lerp(_rainGray, 0.5); }     // 🌫️ 뿌연 잿빛
   scene.background = sky; scene.fog.color = sky;
   sunLight.color = sun;
-  sunLight.intensity = 0.1 + daylight * 1.2;
+  const wDim = WEATHER === 'rain' ? 0.55 : WEATHER === 'fog' ? 0.6 : WEATHER === 'snow' ? 0.8 : 1;
+  sunLight.intensity = (0.1 + daylight * 1.2) * wDim;   // 궂은 날 햇빛 약하게
   hemiLight.intensity = 0.2 + daylight * 0.75;
   ambient.color.setHex(0xfff0dd).lerp(new THREE.Color(0x33406e), nightAmt); // 밤엔 푸른 앰비언트
   ambient.intensity = 0.2 + nightAmt * 0.12;
   const ang = timeOfDay * Math.PI * 2;
   sunLight.position.set(Math.cos(ang) * 18, Math.sin(ang) * 18 + 2, 8);
 
-  // 반딧불이 점멸(트윙클)
+  // 반딧불이 점멸(트윙클) — 🌫️ 안개 낀 날엔 낮에도 은은하게 떠다님(신비로운 분위기)
   const twinkle = 0.7 + Math.sin(t * 6) * 0.3;
-  fireflies.material.opacity = Math.max(0, nightAmt - 0.3) * 1.5 * twinkle;
+  const ffAmt = WEATHER === 'fog' ? Math.max(nightAmt, 0.6) : nightAmt;
+  fireflies.material.opacity = Math.max(0, ffAmt - 0.3) * 1.5 * twinkle;
   // 별 하늘(밤에 페이드인 + 반짝임)
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
@@ -1862,6 +2150,11 @@ function updateDayNight(dt) {
   // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
   if (playerLight) playerLight.intensity = Math.max(0, nightAmt - 0.15) * 4.4;
   scene.fog.near = 18; scene.fog.far = 74;   // 기본 안개(동굴에선 아래서 걷음)
+  if (!atMine) {                             // 날씨별 대기 농도(동굴은 자체 설정 유지)
+    if (WEATHER === 'rain') { scene.fog.near = 14; scene.fog.far = 58; }
+    else if (WEATHER === 'fog') { scene.fog.near = 8; scene.fog.far = 36; }   // 🌫️ 시야가 뿌옇게
+    else if (WEATHER === 'snow') { scene.fog.near = 16; scene.fog.far = 62; }
+  }
   // 채굴 동굴: 시간대 무관 밝게(잘 보이게) + 차가운 톤 + 벽 횃불
   if (atMine) {
     hemiLight.intensity = 0.5; ambient.intensity = 0.72; sunLight.intensity = 0.12;  // 잘 보이게(무드는 블루톤+횃불로)
@@ -1879,7 +2172,8 @@ function updateDayNight(dt) {
   // 밤 푸른 톤 그레이딩
   if (gradePass) gradePass.uniforms.uNight.value = nightAmt;
 
-  ui.setTime?.(daylight > 0.4 ? 'day' : 'night', daylight);
+  // 노브 위치는 timeOfDay(하루 사이클 0~1) 기준 — 슬라이더 클릭 위치와 1:1 대응
+  ui.setTime?.(daylight > 0.4 ? 'day' : 'night', timeOfDay, WEATHER === 'clear' ? null : WEATHER);
 }
 
 function updateSway(t) {
@@ -1972,16 +2266,16 @@ function tryFish() {
   if (!bobber) buildBobber();
   bobber.position.copy(castPos); bobber.visible = true;
   doPlayerAction(castPos.x, castPos.z); // 낚싯대 던지기 제스처
-  fishState = 'wait'; biteAt = clock.elapsedTime + 1.5 + Math.random() * 2.8;
+  fishState = 'wait'; biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
   Sound.water(); spawnWater(castPos.x, castPos.z);
   ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
   trackEvent('fishing_cast'); // [GA4]
 }
 
 function catchFish() {
-  // 🐟 생선구이 버프(luck): 두 번 굴려 작은 값 채택 → 희귀/고급 확률↑
+  // 🐟 생선구이 버프(luck)·🌧️ 비 오는 날: 두 번 굴려 작은 값 채택 → 희귀/고급 확률↑
   let roll = Math.random();
-  if (buffOn('luck')) roll = Math.min(roll, Math.random());
+  if (buffOn('luck') || RAIN_DAY) roll = Math.min(roll, Math.random());
   const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
@@ -2039,7 +2333,8 @@ function tryChop() {
   Sound.chop();
   spawnLeafBurst(nearest); spawnWoodChips(nearest);
   ud.hp -= gameState.upgrades.axe ? 2 : 1;                     // 강철 도끼: 2번에 벌목
-  const bonus = buffOn('chop') ? 1 : 0;                        // 🪓 도시락 버프: 벌목 목재 +1
+  const bonus = (buffOn('chop') ? 1 : 0)
+    + (WEATHER === 'snow' && Math.random() < 0.5 ? 1 : 0);     // 🪓 도시락 버프 / ❄️ 눈: 가지가 잘 부러져 +1 확률
   if (ud.hp <= 0) {
     gameState.inventory.wood += 3 + bonus; ud.fallen = true; ud.respawnAt = clock.elapsedTime + 12;
     nearest.visible = false; spawnLeafBurst(nearest, 26);
@@ -2171,10 +2466,16 @@ function tryHarvest() {
 }
 
 // 성장은 오직 물주기로만! 여기선 마름·목마름 알림·시들기를 처리(리얼리티)
-function updatePlots() {
+function updatePlots(dt) {
   const now = clock.elapsedTime;
   for (const plot of plots) {
     if (plot.state === 'growing') {
+      if (RAIN_DAY) {   // 🌧️ 비 오는 날: 흙이 계속 촉촉 + 천천히 저절로 자람(물주기 불필요)
+        plot.wetUntil = Math.max(plot.wetUntil || 0, now + 1.5);
+        plot.growth = Math.min(1, plot.growth + (dt || 0) * 0.012);
+        refreshCropStage(plot);
+        if (plot.state !== 'growing') continue;   // 방금 다 자랐으면(mature) 아래 로직 스킵
+      }
       const wet = now < (plot.wetUntil || 0);
       if (wet !== plot.watered) { plot.watered = wet; updatePlotVisual(plot); }
       if (wet) { plot.needSince = 0; }
@@ -2498,7 +2799,7 @@ function updateParticles(dt) {
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
 let trackedNPC = null;                 // 퀘스트 패널에 표시할 NPC
-const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물' };
+const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석' };
 
 // id별 퀘스트 진행 상태(없으면 생성)
 function npcState(id) {
@@ -2508,6 +2809,7 @@ function npcState(id) {
 
 // 모든 주민 생성 (데이터 기반)
 function buildNPCs() {
+  refreshDailyQuests();   // 부팅 시점에도 데일리 의뢰 채움(빈 quests 로 글리프 접근 방지)
   for (const def of NPCS) {
     const g = new THREE.Group();
     g.position.set(def.pos[0], 0, def.pos[2]);
@@ -2618,6 +2920,8 @@ function talkToNPC() {
     // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.
     //   ※ GA4 전용(스키마 자유). Supabase game_logs(고정 스키마)엔 넣지 않아 연동 충돌 없음.
     trackEvent('npc_talk', { npc: view.npc.id, mode: view.mode });
+    // [퍼널①] 퀘스트 노출 — offer 화면을 봤다 = 퍼널의 시작점(노출→수락 전환율 측정)
+    if (view.mode === 'offer') trackEvent('quest_offered', { quest_id: view.qid, npc: view.npc.id, quest: view.title });
   }
 }
 
@@ -2626,9 +2930,9 @@ function talkToNPC() {
 export function npcDialogState() {
   const o = nearNPC; if (!o) return null;
   const st = npcState(o.def.id);
-  if (st.allDone) return { npc: o.def, mode: 'done', line: '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
+  if (st.allDone) return { npc: o.def, mode: 'done', line: o.def.doneLine || '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
   const q = o.def.quests[st.idx];
-  const base = { npc: o.def, title: q.title, desc: q.desc, target: q.target, reward: rewardText(q.reward) };
+  const base = { npc: o.def, title: q.title, desc: q.desc, target: q.target, reward: rewardText(q.reward), qid: o.def.id + ':' + st.idx }; // qid: 퍼널 분석용 표준 퀘스트 ID
   if (!st.given) return { ...base, mode: 'offer', line: q.line, progress: 0 };
   if (st.progress < q.target) return { ...base, mode: 'progress', line: '조금만 더 부탁해요!', progress: st.progress };
   return { ...base, mode: 'claim', line: '다 해냈네요! 보상을 받아요 🎁', progress: st.progress };
@@ -2640,10 +2944,12 @@ export function npcAccept() {
   const st = npcState(o.def.id);
   if (!st.given && !st.allDone) {
     st.given = true; st.progress = 0; st.readyToasted = false;
+    st.acceptedAt = Date.now();         // [퍼널②] 수락 시각(epoch ms) — 저장돼 세션 넘어도 유지
     const q = o.def.quests[st.idx];
-    if (q.grant) giveReward(q.grant);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
+    const qid = o.def.id + ':' + st.idx;
+    if (q.grant) giveReward(q.grant, 'quest_grant', qid);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
     trackedNPC = o; refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
-    trackEvent('quest_accept', { quest: q.title, npc: o.def.id }); // [GA4]
+    trackEvent('quest_accept', { quest: q.title, npc: o.def.id, quest_id: qid }); // [GA4]
   }
   return npcDialogState();
 }
@@ -2655,11 +2961,15 @@ export function npcClaim() {
   if (st.allDone) return npcDialogState();
   const q = o.def.quests[st.idx];
   if (st.given && st.progress >= q.target) {
-    giveReward(q.reward); Sound.harvest();
+    const qid = o.def.id + ':' + st.idx;
+    giveReward(q.reward, 'quest_reward', qid); Sound.harvest();      // [원장] 퀘스트 코인 보상 출처 기록
+    if (o.def.daily && q.lucky) rollLuckyBox(qid);                   // 🎁 데일리 의뢰: 럭키박스 확률 보상
     ui.act?.('quest');                                               // 튜토리얼: 퀘스트 보상까지 완료
     tryUnlockDrop(0.5);                                              // 🎨 랜덤 색(퀘스트 보상, 높은 확률)
-    trackEvent('quest_complete', { quest: q.title, npc: o.def.id }); // [GA4]
-    st.idx++; st.given = false; st.progress = 0; st.readyToasted = false;
+    // [퍼널③] 완료 — 수락→완료 소요시간(초). acceptedAt 없는 옛 세이브는 null.
+    const elapsed = st.acceptedAt ? Math.round((Date.now() - st.acceptedAt) / 1000) : null;
+    trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0 }); // [GA4]
+    st.idx++; st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     if (st.idx >= o.def.quests.length) { st.allDone = true; ui.setQuest?.(null); }
     if (trackedNPC === o) trackedNPC = null;
     refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
@@ -2705,8 +3015,9 @@ function questView(o) {
 function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${RES_LABEL[k] || k}+${v}`).join(', '); }
 
-function giveReward(r) {
+function giveReward(r, source = 'reward', item = null) {
   for (const k in r) gameState.inventory[k] = (gameState.inventory[k] || 0) + r[k];
+  if (r.coins) logEcon(source, item, r.coins, gameState.inventory.coins); // [원장] 코인 보상 유입(출처 명시)
   refreshInventoryUI();
   if (player) spawnFloatText(player.position.x, 1.9, player.position.z, '+' + rewardText(r), '#2fa564'); // 보상 표시
 }

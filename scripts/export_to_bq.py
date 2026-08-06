@@ -50,6 +50,38 @@ SAVES_SCHEMA = [
     bigquery.SchemaField("state", "STRING"),        # jsonb → 문자열로 보관
     bigquery.SchemaField("updated_at", "TIMESTAMP"),
 ]
+# [계측] 경제 원장 — 코인 증감 {source,item,amount,balance} (id 증분 append)
+ECON_SCHEMA = [
+    bigquery.SchemaField("id", "INT64"),
+    bigquery.SchemaField("user_id", "STRING"),
+    bigquery.SchemaField("session_id", "STRING"),
+    bigquery.SchemaField("client_id", "STRING"),
+    bigquery.SchemaField("is_guest", "BOOL"),
+    bigquery.SchemaField("variant", "STRING"),
+    bigquery.SchemaField("source", "STRING"),       # shop_sell/shop_buy/quest_reward/...
+    bigquery.SchemaField("item", "STRING"),
+    bigquery.SchemaField("currency", "STRING"),
+    bigquery.SchemaField("amount", "INT64"),        # +획득 / -소비
+    bigquery.SchemaField("balance", "INT64"),       # 거래 후 잔액
+    bigquery.SchemaField("created_at", "TIMESTAMP"),
+]
+# [계측] 세션 요약 — updated_at 증분 append(같은 세션이 여러 번 적재될 수 있음 →
+#   분석 시 ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY updated_at DESC) 로 최신행만 사용)
+SESSIONS_SCHEMA = [
+    bigquery.SchemaField("session_id", "STRING"),
+    bigquery.SchemaField("user_id", "STRING"),
+    bigquery.SchemaField("client_id", "STRING"),
+    bigquery.SchemaField("is_guest", "BOOL"),
+    bigquery.SchemaField("variant", "STRING"),
+    bigquery.SchemaField("play_sec", "INT64"),
+    bigquery.SchemaField("counts", "STRING"),       # jsonb → 문자열로 보관
+    bigquery.SchemaField("coins", "INT64"),
+    bigquery.SchemaField("last_place", "STRING"),
+    bigquery.SchemaField("last_x", "FLOAT"),
+    bigquery.SchemaField("last_z", "FLOAT"),
+    bigquery.SchemaField("started_at", "TIMESTAMP"),
+    bigquery.SchemaField("updated_at", "TIMESTAMP"),
+]
 
 
 def bq_client():
@@ -67,6 +99,8 @@ def ensure_tables(client):
     client.create_dataset(ds, exists_ok=True)
     client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.game_logs", schema=LOGS_SCHEMA), exists_ok=True)
     client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.game_saves", schema=SAVES_SCHEMA), exists_ok=True)
+    client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.econ_logs", schema=ECON_SCHEMA), exists_ok=True)      # [계측] 경제 원장
+    client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.session_logs", schema=SESSIONS_SCHEMA), exists_ok=True)  # [계측] 세션 요약
 
 
 def bq_max_log_id(client):
@@ -93,6 +127,53 @@ def fetch_logs_after(after_id):
     return rows
 
 
+def bq_max_econ_id(client):
+    q = f"SELECT MAX(id) AS m FROM `{BQ_PROJECT}.{BQ_DATASET}.econ_logs`"
+    for row in client.query(q, location=BQ_LOCATION).result():
+        return row.m or 0
+    return 0
+
+
+def fetch_econ_after(after_id):
+    """id > after_id 인 econ_logs 를 페이지 단위로 모두 읽음(game_logs 와 동일 패턴)."""
+    rows, last = [], after_id
+    while True:
+        url = f"{SUPABASE_URL}/rest/v1/econ_logs?select=*&id=gt.{last}&order=id.asc&limit={PAGE}"
+        r = requests.get(url, headers=HEADERS, timeout=60)
+        r.raise_for_status()
+        batch = r.json()
+        if not batch:
+            break
+        rows.extend(batch)
+        last = batch[-1]["id"]
+        if len(batch) < PAGE:
+            break
+    return rows
+
+
+def bq_max_session_updated(client):
+    q = f"SELECT MAX(updated_at) AS m FROM `{BQ_PROJECT}.{BQ_DATASET}.session_logs`"
+    for row in client.query(q, location=BQ_LOCATION).result():
+        return row.m  # None 이면 전체 적재
+    return None
+
+
+def fetch_sessions_after(after_ts):
+    """updated_at > after_ts 인 session_logs 를 읽음(upsert 갱신분 append).
+       같은 세션이 여러 번 실릴 수 있음 → BQ 쿼리에서 최신행만 dedup."""
+    filt = ""
+    if after_ts is not None:
+        iso = after_ts.isoformat().replace("+00:00", "Z")
+        filt = f"&updated_at=gt.{iso}"
+    url = f"{SUPABASE_URL}/rest/v1/session_logs?select=*{filt}&order=updated_at.asc"
+    r = requests.get(url, headers=HEADERS, timeout=60)
+    r.raise_for_status()
+    return [
+        {**s, "counts": json.dumps(s.get("counts"), ensure_ascii=False)}  # jsonb → 문자열
+        for s in r.json()
+    ]
+
+
 def fetch_all_saves():
     url = f"{SUPABASE_URL}/rest/v1/game_saves?select=*"
     r = requests.get(url, headers=HEADERS, timeout=60)
@@ -117,13 +198,15 @@ def load_json(client, table, rows, schema, mode):
 
 
 def prune_old_logs():
-    """BQ 적재 후에만 호출 — 7일 지난 game_logs 만 Supabase에서 삭제(saves는 건드리지 않음)."""
+    """BQ 적재 후에만 호출 — 7일 지난 로그성 테이블만 Supabase에서 삭제(saves는 건드리지 않음)."""
     # ISO의 '+00:00'는 URL에서 '+'가 공백으로 해석돼 400 → 'Z'로 치환
     cutoff = (datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)).isoformat().replace('+00:00', 'Z')
-    url = f"{SUPABASE_URL}/rest/v1/game_logs?created_at=lt.{cutoff}"
-    r = requests.delete(url, headers={**HEADERS, "Prefer": "return=minimal"}, timeout=120)
-    r.raise_for_status()
-    print(f"[prune] game_logs older than {cutoff} deleted from Supabase")
+    # (테이블, 기준 컬럼) — session_logs 는 마지막 갱신(updated_at) 기준으로 보존
+    for table, col in [("game_logs", "created_at"), ("econ_logs", "created_at"), ("session_logs", "updated_at")]:
+        url = f"{SUPABASE_URL}/rest/v1/{table}?{col}=lt.{cutoff}"
+        r = requests.delete(url, headers={**HEADERS, "Prefer": "return=minimal"}, timeout=120)
+        r.raise_for_status()
+        print(f"[prune] {table} older than {cutoff} deleted from Supabase")
 
 
 def _parse_ts(s):
@@ -182,10 +265,20 @@ def main():
     logs = fetch_logs_after(after)
     n_logs = load_json(client, "game_logs", logs, LOGS_SCHEMA, "WRITE_APPEND")
 
+    # [계측] 경제 원장 — id 증분 append
+    econ_after = bq_max_econ_id(client)
+    econ = fetch_econ_after(econ_after)
+    n_econ = load_json(client, "econ_logs", econ, ECON_SCHEMA, "WRITE_APPEND")
+
+    # [계측] 세션 요약 — updated_at 증분 append(최신행 dedup 은 분석 쿼리에서)
+    sess_after = bq_max_session_updated(client)
+    sessions = fetch_sessions_after(sess_after)
+    n_sess = load_json(client, "session_logs", sessions, SESSIONS_SCHEMA, "WRITE_APPEND")
+
     saves = fetch_all_saves()
     n_saves = load_json(client, "game_saves", saves, SAVES_SCHEMA, "WRITE_TRUNCATE")
 
-    print(f"[export] logs +{n_logs} (after id {after}) · saves snapshot {n_saves}")
+    print(f"[export] logs +{n_logs} (after id {after}) · econ +{n_econ} · sessions +{n_sess} · saves snapshot {n_saves}")
 
     # 적재가 성공적으로 끝난 뒤에만 경량화
     prune_old_logs()

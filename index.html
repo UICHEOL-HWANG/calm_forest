@@ -221,7 +221,9 @@
   #bag-btn:active { transform: scale(0.94); }
   #bag-btn .bag-emo { font-size: 18px; }
   #time-indicator { display: flex; align-items: center; gap: 8px; justify-content: center; }
-  #time-bar { width: 90px; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#2a2c50,#ffd9a8,#dff3ff); position: relative; }
+  /* 시간 바 — 하루 사이클(자정→아침→정오→노을→자정)과 1:1 대응하는 그라데이션 */
+  #time-bar { width: 90px; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#2a2c50 0%,#394073 18%,#ffd9b3 28%,#dff3ff 50%,#ffc79c 72%,#4a3f70 84%,#2a2c50 100%); position: relative; touch-action: none; }
+  #time-bar::after { content: ''; position: absolute; inset: -12px -8px; }  /* 보이지 않는 터치 히트존 확장(모바일에서 잡기 쉽게) */
   #time-knob { position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); transform: translateX(-7px); }
 
   /* 하단 중앙: 도구 하트바 */
@@ -245,8 +247,8 @@
 
   /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
   /* 미니맵 — 좌상단(버튼 아래), 캐릭터 위치 표시 */
-  #minimap { position: fixed; top: calc(78px + env(safe-area-inset-top)); left: 16px; width: 108px; height: 108px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
-  #quest-panel { top: calc(206px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
+  #minimap { position: fixed; top: calc(94px + env(safe-area-inset-top)); left: 16px; width: 108px; height: 108px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
+  #quest-panel { top: calc(222px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
@@ -410,13 +412,14 @@
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
-    #minimap { top: calc(60px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
-    #quest-panel { top: calc(156px + env(safe-area-inset-top)); max-width: 52vw; }
+    #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
+    #quest-panel { top: calc(168px + env(safe-area-inset-top)); max-width: 52vw; }
     /* ☰ 메뉴 펼치면: 클러스터를 미니맵 위로 올리고, 겹치는 미니맵·퀘스트는 잠깐 숨김 */
     #topleft.open { z-index: 50; }
     #topleft.open ~ #minimap, #topleft.open ~ #quest-panel { display: none; }
-    /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널·미니맵 숨김 */
-    body.coaching #quest-panel, body.coaching #minimap { display: none; }
+    /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널만 숨김
+       (미니맵은 좌측이라 중앙 코치 카드와 안 겹침 → 튜토리얼 중에도 표시) */
+    body.coaching #quest-panel { display: none; }
     /* 버프 HUD: 문의하기 탭 아래로 */
     #buffs { top: calc(122px + env(safe-area-inset-top)); }
     #buffs .buff { font-size: 11px; padding: 4px 8px; }
@@ -717,12 +720,12 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=2';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=2';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=2';
-    import { CONFIG } from './js/config.js?v=2';
-    import { initControls } from './js/controls.js?v=2';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=2';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=3';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=3';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=3';
+    import { CONFIG } from './js/config.js?v=3';
+    import { initControls } from './js/controls.js?v=3';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=3';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -769,9 +772,10 @@
         if ($('cook-menu').classList.contains('show')) { cookTab === 'cook' ? renderCook() : cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
         if ($('shop-menu').classList.contains('show')) renderShop();
       },
-      setTime(mode, daylight) {
-        $('time-emoji').textContent = mode === 'day' ? '🌤️' : '🌙';
-        $('time-knob').style.left = (Math.max(0, Math.min(1, daylight)) * 100) + '%';  // 바 폭 무관(퍼센트) — 모바일서 튀어나감 방지
+      setTime(mode, frac, weather) {
+        $('time-emoji').textContent = ({ rain: '🌧️', snow: '❄️', fog: '🌫️' })[weather] || (mode === 'day' ? '🌤️' : '🌙');
+        // frac = timeOfDay(하루 사이클 0~1) — 클릭/드래그 위치와 1:1 로 일치
+        $('time-knob').style.left = (Math.max(0, Math.min(1, frac)) * 100) + '%';  // 바 폭 무관(퍼센트) — 모바일서 튀어나감 방지
       },
       setTool(idx, tools) {
         if (!$('hotbar').children.length) buildHotbar(tools);
@@ -943,10 +947,40 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);       // 논리좌표(S) → 물리픽셀 스케일
         ctx.clearRect(0, 0, S, S);
         ctx.fillStyle = 'rgba(150,200,150,0.4)'; ctx.fillRect(0, 0, S, S);
-        if (d.place !== 'village') {   // 실내/텃밭/동굴은 라벨만
-          ctx.fillStyle = '#3f5a45'; ctx.font = 'bold 13px sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : '🌾 내 텃밭', S / 2, S / 2);
+        // 플레이어 마커(+방향) — 공통. 스크린 좌표 pxx,pyy에 그림
+        const drawPlayer = (pxx, pyy) => {
+          const hx = Math.sin(d.yaw || 0), hz = Math.cos(d.yaw || 0);
+          ctx.strokeStyle = '#2f7a44'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(pxx, pyy); ctx.lineTo(pxx + hx * 9, pyy + hz * 9); ctx.stroke();
+          ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2f7a44'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(pxx, pyy, 4, 0, 7); ctx.fill(); ctx.stroke();
+        };
+        if (d.place !== 'village') {   // 실내/텃밭/동굴 — 공간 경계 + 랜드마크 미니맵
+          const half = d.half || 8, cx = d.cx || 0, cz = d.cz || 0;
+          const pad = 9, inner = S - pad * 2, span = half * 2;
+          const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
+          // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : 'rgba(120,180,110,0.7)';
+          ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
+          ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
+          // 랜드마크(밭/광맥/가구/출구)
+          (d.marks || []).forEach(m => {
+            const [a, b] = px(m.x, m.z);
+            if (m.kind === 'exit') {   // 출구는 문 느낌의 작은 사각형
+              ctx.fillStyle = m.c; ctx.fillRect(a - 3, b - 3, 6, 6);
+              ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1; ctx.strokeRect(a - 3, b - 3, 6, 6);
+            } else {
+              ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(a, b, m.r || 2.4, 0, 7); ctx.fill();
+            }
+          });
+          // 공간 이름 라벨(상단 작게)
+          ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : '🌾 텃밭', S / 2, pad + 1.5);
+          // 플레이어
+          let [pxx, pyy] = px(d.x, d.z);
+          pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
+          drawPlayer(pxx, pyy);
           return;
         }
         const R = 26;                  // 월드 반경 → 미니맵
@@ -966,11 +1000,7 @@
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
         pxx = Math.max(4, Math.min(S - 4, pxx)); pyy = Math.max(4, Math.min(S - 4, pyy));
-        const hx = Math.sin(d.yaw || 0), hz = Math.cos(d.yaw || 0);
-        ctx.strokeStyle = '#2f7a44'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(pxx, pyy); ctx.lineTo(pxx + hx * 9, pyy + hz * 9); ctx.stroke();
-        ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2f7a44'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(pxx, pyy, 4, 0, 7); ctx.fill(); ctx.stroke();
+        drawPlayer(pxx, pyy);
       },
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
@@ -1314,11 +1344,17 @@
 
     // ── 사진 찍기 (캡처 → 저장/공유) ──
     let lastPhoto = null, photoPulseT;
-    $('photo-btn').addEventListener('click', () => {
-      const data = Input.capturePhoto();
+    let photoBusy = false;   // 액션샷 진행 중 중복 클릭 방지
+    $('photo-btn').addEventListener('click', async () => {
+      if (photoBusy) return;
+      photoBusy = true;
+      Input.setAnalog(0, 0); $('photo-btn').classList.remove('pulse');
+      ui.toast('📸 찰칵…!');
+      // 카메라가 캐릭터에 밀착 + 랜덤 포즈 → 포즈 정점 프레임에서 캡처(역동샷)
+      const data = await Input.captureActionShot();
+      photoBusy = false;
       if (!data) { ui.toast('사진 캡처에 실패했어요'); return; }
       lastPhoto = data; $('photo-img').src = data;
-      Input.setAnalog(0, 0); $('photo-btn').classList.remove('pulse');
       $('photo-modal').classList.add('show');
       trackEvent('photo_capture');   // [GA4]
     });
@@ -1430,9 +1466,11 @@
       };
       let dragging = false;
       bar.style.cursor = 'pointer'; bar.title = '드래그해서 시간 조절';
-      bar.addEventListener('pointerdown', (e) => { dragging = true; scrub(e.clientX); try { bar.setPointerCapture(e.pointerId); } catch (x) {} });
+      bar.addEventListener('pointerdown', (e) => { dragging = true; scrub(e.clientX); try { bar.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
       bar.addEventListener('pointermove', (e) => { if (dragging) scrub(e.clientX); });
       bar.addEventListener('pointerup', () => { dragging = false; });
+      bar.addEventListener('pointercancel', () => { dragging = false; });      // 터치 취소(스크롤 등) 시 드래그 해제
+      bar.addEventListener('lostpointercapture', () => { dragging = false; }); // 캡처 유실 대비
       const emoji = $('time-emoji');
       emoji.style.cursor = 'pointer'; emoji.title = '시간 자동 순환 켜기/끄기';
       emoji.addEventListener('click', () => { const paused = Input.toggleDayFlow(); ui.toast(paused ? '⏸ 시간 정지' : '▶ 시간 자동 순환'); });
