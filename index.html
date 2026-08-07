@@ -97,6 +97,9 @@
   /* 문의하기 탭 — 데스크톱은 우측 하단 코너로 분리(상단 HUD와 안 겹침) */
   #feedback-tab { bottom: calc(22px + env(safe-area-inset-bottom)); right: 22px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
   #feedback-tab:active { transform: scale(0.95); }
+  /* 📖 도감 탭 — 인벤토리 HUD(장비칸) 바로 아래 공백에 배치 */
+  #dex-tab { top: calc(134px + env(safe-area-inset-top)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
+  #dex-tab:active { transform: scale(0.95); }
 
   /* 로그인(로그아웃) 상태에선 게임 HUD 전부 숨김 → 로그인 화면만 깔끔하게 */
   body:not(.playing) #topleft,
@@ -104,6 +107,7 @@
   body:not(.playing) #hotbar,
   body:not(.playing) #hint,
   body:not(.playing) #feedback-tab,
+  body:not(.playing) #dex-tab,
   body:not(.playing) #minimap,
   body:not(.playing) #emote-pop,
   body:not(.playing) #quest-panel,
@@ -323,6 +327,24 @@
   /* 📊 시세판 모달(전광판) */
   #market-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #market-modal.show { display: grid; }
+  /* 📖 도감 모달 + 로그인 넛지 */
+  #dex-modal, #nudge-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #dex-modal.show, #nudge-modal.show { display: grid; }
+  .dex-cat { font-size: 13px; font-weight: 700; text-align: left; margin: 10px 2px 6px; opacity: .75; }
+  .dex-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .dex-item { width: 88px; background: #f2f6f0; border-radius: 14px; padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .dex-item .d-ico { font-size: 26px; }
+  .dex-item .d-name { font-size: 11.5px; font-weight: 600; }
+  .dex-item.locked { opacity: .55; }
+  .dex-item.locked .d-ico { filter: grayscale(1) brightness(0.55); }
+  .dex-guest { margin-top: 14px; background: #fff4dc; border-radius: 14px; padding: 12px; font-size: 12.5px; line-height: 1.55; display: none; }
+  .dex-guest.show { display: block; }
+  .dex-google-btn { display: block; margin: 10px auto 0; border: none; border-radius: 12px; padding: 11px 18px; font-weight: 800; font-size: 14px; cursor: pointer; background: var(--mint); color: var(--ink); box-shadow: var(--shadow); }
+  .dex-google-btn:active { transform: scale(0.96); }
+  /* 도감 닫기 버튼 — 가운데에 여백 두고 자연스럽게 */
+  #dex-modal .dm-actions { justify-content: center; margin-top: 16px; padding-bottom: 6px; }
+  #dex-close { border: none; border-radius: 14px; padding: 11px 34px; font-weight: 700; font-size: 14px; cursor: pointer; background: #eef2ee; color: var(--ink); box-shadow: var(--shadow); }
+  #dex-close:active { transform: scale(0.96); }
   .market-hint { font-size: 12.5px; opacity: 0.8; margin: 2px 0 12px; }
   #market-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
   .market-row { display: flex; align-items: center; gap: 10px; background: #f2f6f0; border-radius: 12px; padding: 9px 14px; font-size: 14px; }
@@ -427,6 +449,9 @@
     #time-emoji { font-size: 13px; }
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
+    /* 도감 탭: 모바일에서도 인벤토리 HUD 바로 아래 */
+    #dex-tab { top: calc(126px + env(safe-area-inset-top)); right: 10px; padding: 6px 10px; font-size: 12px; }
+    .dex-item { width: 74px; }   /* 좁은 화면에서 도감 카드 축소 */
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
     #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
     #quest-panel { top: calc(168px + env(safe-area-inset-top)); max-width: 52vw; }
@@ -481,6 +506,9 @@
 
   <!-- 문의하기 탭 -->
   <div id="feedback-tab" class="panel"><span>💬</span><span>문의하기</span></div>
+
+  <!-- 📖 도감 탭 (독립 버튼 — 모바일에서도 항상 보임) -->
+  <div id="dex-tab" class="panel"><span>📖</span><span>도감</span></div>
 
   <div id="topright" class="panel">
     <div id="inv-hud" title="가방 열기">
@@ -569,6 +597,31 @@
     <div id="sell-items"></div>
     <div id="buy-items" style="display:none"></div>
     <div class="dm-actions"><button id="shop-close">닫기</button></div>
+  </div>
+
+  <!-- 📖 도감 모달 -->
+  <div id="dex-modal">
+    <div class="tut-card">
+      <h2 id="dex-title">📖 도감</h2>
+      <div class="market-hint">물고기·작물·광물·요리·이웃을 처음 만나면 기록돼요 — 전부 모으면 🪙150!</div>
+      <div id="dex-sections"></div>
+      <div id="dex-guest" class="dex-guest">
+        🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>구글로 로그인하면 <b>영구 보존 + 기기 간 연동</b>!
+        <button id="dex-google" class="dex-google-btn">🔐 구글로 도감 지키기</button>
+      </div>
+      <div class="dm-actions"><button id="dex-close">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- 🔔 로그인 넛지 모달 (도감 마일스톤 — 게스트 전용) -->
+  <div id="nudge-modal">
+    <div class="tut-card">
+      <div style="font-size:44px">📖✨</div>
+      <h2 id="nudge-title">도감이 늘고 있어요!</h2>
+      <p id="nudge-body" style="font-size:14px; opacity:.85; margin-bottom:16px"></p>
+      <button id="nudge-google" class="dex-google-btn" style="width:100%">🔐 구글로 로그인하고 영구 보존</button>
+      <button id="nudge-later" class="ghost" style="margin-top:8px; border:none; background:none; cursor:pointer; opacity:.6; font-size:13px">나중에 할게요</button>
+    </div>
   </div>
 
   <!-- 📊 시세판 모달 (전광판 상호작용) -->
@@ -747,12 +800,12 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=6';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=6';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=6';
-    import { CONFIG } from './js/config.js?v=6';
-    import { initControls } from './js/controls.js?v=6';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=6';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=10';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=10';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=10';
+    import { CONFIG } from './js/config.js?v=10';
+    import { initControls } from './js/controls.js?v=10';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=10';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -1038,7 +1091,7 @@
         dot(9, 0, '#ff9e5e');        // 상점(이동)
         dot(0, 7, '#6fbf73');        // 텃밭 게이트
         dot(-14, 3, '#6a6a6a', 3.5); // 채굴 동굴 입구
-        [[5, 4], [-5, 6], [9, -3], [9, 14]].forEach(([x, z]) => dot(x, z, '#b79cff', 2.5)); // 주민
+        [[5, 4], [-5, 6], [9, -3], [9, 14], [-3, -3], [0, -8]].forEach(([x, z]) => dot(x, z, '#b79cff', 2.5)); // 주민(올빼미·요리사 포함)
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
         pxx = Math.max(4, Math.min(S - 4, pxx)); pyy = Math.max(4, Math.min(S - 4, pyy));
@@ -1101,12 +1154,13 @@
           ? '⑨ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기! (🦉올빼미는 매일 새 의뢰)'
           : '⑨ 🧑‍🌾주민에게 말 걸어 퀘스트를 수락하고, 목표를 채운 뒤 다시 말 걸어 보상까지 받으세요 (🦉올빼미는 매일 새 의뢰)' },
       { key: 'mine',    text: `⑩ ⛏️ 서쪽 동굴에 들어가 괭이(2)로 광석을 캐요 — 돌·석탄·💎보석! (${A})` },
-      { key: 'fish',    text: `⑪ 🎣낚싯대(7) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
-      { key: 'build',   text: `⑫ 🔨망치(6)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
+      { key: 'dex',     text: `⑪ 📖 우측 하단 도감 버튼을 눌러 지금까지 발견한 것들을 확인해요! 10종을 다 모으면 🪙100` },
+      { key: 'fish',    text: `⑫ 🎣낚싯대(7) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
+      { key: 'build',   text: `⑬ 🔨망치(6)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
       { key: 'enter',   text: TOUCH
-          ? '⑬ 완성된 집 문 앞에서 오른쪽 🚪버튼을 눌러 들어가요'
-          : '⑬ 완성된 집 문 앞에서 Space로 들어가요' },
-      { key: 'decor',   text: `⑭ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
+          ? '⑭ 완성된 집 문 앞에서 오른쪽 🚪버튼을 눌러 들어가요'
+          : '⑭ 완성된 집 문 앞에서 Space로 들어가요' },
+      { key: 'decor',   text: `⑮ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
     ];
     let tutIdx = -1;
     function renderCoach() {
@@ -1398,6 +1452,57 @@
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
     $('market-close').addEventListener('click', () => $('market-modal').classList.remove('show'));
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
+
+    // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
+    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃' };
+    const isGuestNow = () => authState.provider !== 'google';   // 구글 로그인만 영구 계정
+    function openDex() {
+      const d = Input.getDex();
+      $('dex-title').textContent = `📖 도감 (${d.count}/${d.total})`;
+      const box = $('dex-sections'); box.innerHTML = '';
+      for (const cat in d.cats) {
+        const h = document.createElement('div'); h.className = 'dex-cat'; h.textContent = DEX_CAT_LABEL[cat] || cat; box.appendChild(h);
+        const grid = document.createElement('div'); grid.className = 'dex-grid';
+        d.cats[cat].forEach(e => {
+          const el = document.createElement('div');
+          el.className = 'dex-item' + (e.found ? '' : ' locked');
+          el.innerHTML = `<span class="d-ico">${e.ico}</span><span class="d-name">${e.found ? e.name : '???'}</span>`;
+          grid.appendChild(el);
+        });
+        box.appendChild(grid);
+      }
+      $('dex-guest').classList.toggle('show', isGuestNow());   // 게스트만: 보존 배너 + 구글 버튼
+      Input.setAnalog(0, 0);
+      $('dex-modal').classList.add('show');
+      ui.act?.('dex');                                          // 튜토리얼: 도감 확인 단계
+      trackEvent('dex_open', { found: d.count, total: d.total, guest: isGuestNow() }); // [GA4] 도감 관심 퍼널
+    }
+    $('dex-tab').addEventListener('click', openDex);
+    $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
+    $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
+    $('dex-google').addEventListener('click', () => {
+      trackEvent('login_nudge_click', { from: 'dex' });        // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
+      signInWithGoogle();
+    });
+
+    // ── 🔔 로그인 넛지(게스트 전용) — 도감 마일스톤(3·7종)에 게임에서 호출 ──
+    let nudgeFrom = 'dex';
+    ui.loginNudge = (trigger) => {
+      if (!isGuestNow()) return;                               // 로그인 유저에겐 표시 안 함
+      nudgeFrom = trigger;
+      const d = Input.getDex();
+      $('nudge-title').textContent = `도감 ${d.count}종 수집 중!`;
+      $('nudge-body').textContent = '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
+      $('nudge-modal').classList.add('show');
+      Input.setAnalog(0, 0);
+      trackEvent('login_nudge', { trigger });                  // [GA4] 넛지 노출
+    };
+    $('nudge-google').addEventListener('click', () => {
+      trackEvent('login_nudge_click', { from: nudgeFrom });    // [GA4] 넛지 클릭
+      signInWithGoogle();
+    });
+    $('nudge-later').addEventListener('click', () => $('nudge-modal').classList.remove('show'));
+    $('nudge-modal').addEventListener('click', (e) => { if (e.target === $('nudge-modal')) $('nudge-modal').classList.remove('show'); });
 
     // ── 사진 찍기 (캡처 → 저장/공유) ──
     let lastPhoto = null, photoPulseT;

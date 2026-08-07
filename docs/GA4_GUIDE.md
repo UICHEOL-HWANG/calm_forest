@@ -54,12 +54,17 @@
 | `fishing_catch` | 물고기 낚음 | `fish`, `rarity`(common/uncommon/rare) |
 | `fishing_miss` | 낚아채기 실패 | — |
 | `tutorial_start` | 튜토리얼 시작 | — |
-| `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~14), `key`(move/chop/till/seed/water/harvest/sell/market/quest/mine/fish/build/enter/decor) |
+| `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~15), `key`(move/chop/till/seed/water/harvest/sell/market/quest/mine/dex/fish/build/enter/decor) |
 | `tutorial_complete` | 튜토리얼 완료 | — |
 | `tutorial_skip` | 튜토리얼 건너뜀 | `at`(welcome 또는 단계번호) |
 | `session_time` | 주기/이탈 시 | `seconds` |
 | `econ_tx` | 코인 증감(원장 미러) | `source`(shop_sell/shop_buy/quest_reward/daily_bonus/lucky_box/…), `item`, `amount`(±), `balance` |
 | `session_summary` | 탭 숨김/종료 시 1회 | `play_sec`, `total_actions`, `coins`, `last_place` |
+| `dex_discover` | 도감 신규 등록(첫 발견) | `category`(fish/crop/ore), `entry`, `total`(누적 수집 수) |
+| `dex_open` | 도감 모달 열기 | `found`, `total`, `guest`(게스트 여부) |
+| `dex_complete` | 도감 19종 완성 | — |
+| `login_nudge` | 로그인 넛지 노출(게스트, 도감 3·7종) | `trigger`(dex5/dex12) |
+| `login_nudge_click` | 넛지에서 구글 버튼 클릭 | `from`(dex/dex5/dex12) — 이후 `login{method:google}` 로 전환 완성 |
 | `daily_bonus` | 출석 보상 수령(하루 1회) | `streak`(연속 일수), `coins` |
 | `lucky_box` | 데일리 의뢰 럭키박스 개봉 | `tier`(coin/seed/gem/jackpot), `quest_id` |
 | `weather_day` | 궂은 날씨 세션 시작 시 1회 | `type`(rain/snow/fog) — 세션 요약 counts 로 날씨별 행동 비교 |
@@ -67,9 +72,9 @@
 또한 **user_id** 를 GA4에 연결(`setGaUser`)해서, GA4↔Supabase를 유저 단위로 조인할 수 있습니다.
 
 ### 튜토리얼 퍼널 분석 예 (탐색 → 유입경로 탐색)
-`tutorial_start` → `tutorial_step`(step=1) → … → `tutorial_step`(step=11) → `tutorial_complete`
+`tutorial_start` → `tutorial_step`(step=1) → … → `tutorial_step`(step=15) → `tutorial_complete`
 로 단계별 완료율을 보면 **어느 스텝에서 신규 유저가 이탈하는지** 바로 보입니다. `tutorial_skip`의 `at` 값으로 이탈 지점도 확인.
-전체 11단계: move·chop·till·seed·water·harvest·talk·fish·build·enter·decor.
+전체 15단계: move·chop·till·seed·water·harvest·sell·market·quest·mine·dex·fish·build·enter·decor.
 
 ---
 

@@ -22,21 +22,21 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=6';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=6';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=6';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=6';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound } from './sound.js?v=6'; // 🔊 절차적 사운드 + 🌧️ 빗소리
+import { sampleFrame, startLogging } from './logger.js?v=10';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=10';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=10';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=10';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound } from './sound.js?v=10'; // 🔊 절차적 사운드 + 🌧️ 빗소리
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
 
 // ── 작물 종류(다양화) — 심을 때 랜덤 배정, 열매 색이 달라짐 ─────
 const CROP_TYPES = [
-  { name: '당근',   fruit: 0xff9e5e },
-  { name: '토마토', fruit: 0xff7b7b },
-  { name: '블루베리', fruit: 0x8aa8ff },
-  { name: '호박',   fruit: 0xffc36e },
+  { id: 'carrot',    name: '당근',   fruit: 0xff9e5e },
+  { id: 'tomato',    name: '토마토', fruit: 0xff7b7b },
+  { id: 'blueberry', name: '블루베리', fruit: 0x8aa8ff },
+  { id: 'pumpkin',   name: '호박',   fruit: 0xffc36e },
 ];
 
 // ── 도구 하트바 (선택 도구에 따라 상호작용이 달라짐) ─────────────
@@ -215,6 +215,7 @@ const NPCS = [
       { type: 'chop',    target: 3, title: '장작 모으기', desc: '나무 3번 베기',   reward: { seed: 3, coins: 5 },  line: '겨울 대비 장작이 필요해. 나무 3번만 베어줄래?' },
       { type: 'harvest', target: 2, title: '수확의 기쁨', desc: '작물 2개 수확',   reward: { wood: 6, coins: 8 },  line: '밭에서 작물 두 개만 거둬다 주면 목재로 보답하지!' },
       { type: 'water',   target: 4, title: '촉촉하게',   desc: '물 4번 주기',     reward: { seed: 5, coins: 8 },  line: '모종이 목말라 해. 물 네 번만 부탁할게.' },
+      { type: 'harvest', target: 6, title: '대풍년',     desc: '작물 6개 수확',   reward: { seed: 6, coins: 15 }, line: '올해는 대풍년을 만들어보자! 여섯 개만 더 거둬줘.' },
     ],
   },
   {
@@ -222,6 +223,7 @@ const NPCS = [
     quests: [
       { type: 'collect_wood', target: 10, title: '목재 납품', desc: '목재 10개 모으기', reward: { crop: 3, coins: 10 },          line: '집 지으려면 목재 10개가 필요해. 모아올 수 있겠어?' },
       { type: 'house',        target: 1,  title: '보금자리',  desc: '집 완성하기',      reward: { seed: 6, crop: 3, coins: 30 }, line: '이제 근사한 집을 완성해보자고!' },
+      { type: 'collect_wood', target: 20, title: '큰 창고 짓기', desc: '목재 20개 모으기', reward: { coins: 25 }, line: '마을 창고를 지으려면 목재가 많이 필요해. 스무 개 부탁해!' },
     ],
   },
   {
@@ -229,6 +231,7 @@ const NPCS = [
     quests: [
       { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
+      { type: 'sell',         target: 10, title: '장사의 신',  desc: '상점에서 10개 팔기', reward: { coins: 30 }, line: '장사꾼의 자질이 보이는군! 상점에서 열 개를 팔아보시오.' },
     ],
   },
   {
@@ -237,6 +240,15 @@ const NPCS = [
       { type: 'fish',      target: 2, title: '첫 낚시',   desc: '물고기 2마리 낚기', reward: { crop: 3, coins: 8 }, line: '호수에서 🎣낚싯대로 물고기 두 마리만 낚아보게!' },
       { type: 'fish',      target: 5, title: '월척 도전', desc: '물고기 5마리 낚기', reward: { seed: 5, coins: 12 }, line: '이번엔 다섯 마리! 물면 바로 낚아채야 하네.' },
       { type: 'fish_rare', target: 1, title: '무지개를 낚아', desc: '희귀 물고기 1마리', reward: { crop: 6, seed: 4, coins: 40 }, line: '전설의 무지개 물고기를 낚아오면 큰 상을 주지!' },
+      { type: 'fish',      target: 8, title: '만선의 꿈',   desc: '물고기 8마리 낚기', reward: { crop: 5, coins: 20 }, line: '마지막 도전일세 — 만선의 꿈을 이뤄보게나!' },
+    ],
+  },
+  {
+    id: 'chef', name: '요리사 판다', emoji: '🐼', color: 0xe8e4dc, hat: 0xf5f5f5, pos: [0, 0, -8],
+    quests: [
+      { type: 'collect_crop', target: 3, title: '신선한 재료', desc: '작물 3개 보유',  reward: { coins: 8 },            line: '요리는 재료가 절반! 신선한 작물 세 개를 모아와 줘.' },
+      { type: 'cook',         target: 2, title: '오늘의 요리', desc: '요리 2번 하기',  reward: { coins: 12 },           line: '작업대에서 요리 두 번! 버프도 붙으니 일석이조야.' },
+      { type: 'cook',         target: 3, title: '풀코스 도전', desc: '요리 3번 하기',  reward: { coins: 20, gem: 1 },   line: '마지막 시험이야 — 풀코스 세 접시를 완성해 봐! 💎 특별 보상이 있어.' },
     ],
   },
   {
@@ -307,7 +319,64 @@ const gameState = {
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
+  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
 };
+
+// ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
+//    게스트에겐 마일스톤마다 "로그인하면 영구 보존" 넛지(회원 유치 훅)
+const DEX = {
+  fish: [
+    { id: 'common',   name: '피라미',        ico: '🐟' },
+    { id: 'uncommon', name: '붉은 물고기',   ico: '🐠' },
+    { id: 'rare',     name: '무지개 물고기', ico: '🌈' },
+  ],
+  crop: [
+    { id: 'carrot',    name: '당근',     ico: '🥕' },
+    { id: 'tomato',    name: '토마토',   ico: '🍅' },
+    { id: 'blueberry', name: '블루베리', ico: '🫐' },
+    { id: 'pumpkin',   name: '호박',     ico: '🎃' },
+  ],
+  ore: [
+    { id: 'stone', name: '돌',   ico: '🪨' },
+    { id: 'coal',  name: '석탄', ico: '⚫' },
+    { id: 'gem',   name: '보석', ico: '💎' },
+  ],
+  cook: [
+    { id: 'veg_stew',     name: '든든한 채소죽', ico: '🥘' },
+    { id: 'grilled_fish', name: '생선 구이',     ico: '🐟' },
+    { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱' },
+  ],
+  npc: [
+    { id: 'farmer',   name: '농부 삼촌',       ico: '🧑‍🌾' },
+    { id: 'builder',  name: '목수 아저씨',     ico: '👷' },
+    { id: 'merchant', name: '방랑 상인',       ico: '🧙' },
+    { id: 'angler',   name: '낚시꾼 할아버지', ico: '🎣' },
+    { id: 'courier',  name: '의뢰 올빼미',     ico: '🦉' },
+    { id: 'chef',     name: '요리사 판다',     ico: '🐼' },
+  ],
+};
+const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);   // 전 카테고리 합(19종)
+function dexCount() { return Object.keys(DEX).reduce((n, cat) => n + Object.keys(gameState.dex[cat] || {}).length, 0); }
+
+// 첫 발견 시 도감 등록 — 낚시/수확/채굴 성공 지점에서 호출
+function dexDiscover(cat, id) {
+  if (!gameState.dex[cat] || gameState.dex[cat][id]) return;   // 이미 등록됨
+  gameState.dex[cat][id] = Date.now();
+  const entry = DEX[cat].find(e => e.id === id);
+  const total = dexCount();
+  ui.toast?.(`📖 도감 등록! ${entry?.ico || ''} ${entry?.name || id} (${total}/${DEX_TOTAL})`, 2400);
+  spawnSparkle(player.position.x, 1.6, player.position.z, 14);
+  trackEvent('dex_discover', { category: cat, entry: id, total });   // [GA4] 수집 퍼널
+  if (total === DEX_TOTAL) {                                         // 🎉 도감 완성
+    giveReward({ coins: 150 }, 'dex_complete', 'all');               // [원장] 완성 보상
+    spawnConfetti(player.position.x, 1.6, player.position.z);
+    Sound.complete();
+    ui.showHintModal?.({ ico: '📖', title: '도감 완성!', body: `마을의 모든 것 ${DEX_TOTAL}종을 발견했어요! 축하 보상 🪙150 을 받았어요.` });
+    trackEvent('dex_complete');                                      // [GA4]
+  } else if (total === 5 || total === 12) {
+    ui.loginNudge?.('dex' + total);   // 게스트면 "로그인하면 영구 보존" 넛지(index.html 이 판단)
+  }
+}
 
 // ── 출석 보상 — 하루 1회, 연속 출석(streak)일수록 커짐. 7일마다 보석 보너스 ──
 const DAILY_COINS = [5, 8, 12, 16, 20, 25, 30];   // 1~7일차(이후 30 고정)
@@ -455,6 +524,12 @@ export const Input = {
   cancelOutdoor() { placingOutdoor = null; },           // 야외 배치 취소
   getSellPrice() { const p = {}; for (const k in SELL_PRICE) p[k] = priceOf(k); return p; }, // 오늘의 시세 반영가
   getPriceRates() { const r = {}; for (const k in SELL_PRICE) r[k] = Math.round(priceRate(k) * 100); return r; }, // 시세 %(100=기본가)
+  // 📖 도감 — 카탈로그 + 발견 여부(도감 모달 렌더용)
+  getDex() {
+    const cats = {};
+    for (const cat in DEX) cats[cat] = DEX[cat].map(e => ({ ...e, found: !!gameState.dex[cat]?.[e.id] }));
+    return { cats, count: dexCount(), total: DEX_TOTAL };
+  },
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellItem(k, all) { return sellItem(k, all); },        // 자원 판매
   buyShop(id) { return buyShop(id); },                  // 아이템 구매
@@ -558,6 +633,7 @@ function applySave(saved) {
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
+  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, ...saved.dex }; // 📖 도감 복원
   if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id)); // 야외 장식 복원
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
@@ -1432,6 +1508,8 @@ function craftCook(id) {
   spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${r.name}!`, '#c9682a');
   spawnSparkle(player.position.x, 0.9, player.position.z, 16);
   trackEvent('craft_item', { category: 'cook', item: id });  // [GA4] 제작 사용 트래킹(GA4 전용)
+  dexDiscover('cook', id);                                   // 📖 도감(첫 요리)
+  questEvent('cook');                                        // 요리사 퀘스트 진행
   triggerMoment();                                           // 📷 순간 줌인
   emitBuffs();
   return { ok: true, name: r.name, buff: BUFF_META[r.buff].name };
@@ -1784,6 +1862,7 @@ function tryMine() {
     Sound.harvest();
     ud.depleted = true; ud.respawnAt = clock.elapsedTime + 14; nearest.visible = false;
     questEvent('mine', amt);                       // 데일리 의뢰(광석 캐기) 진행
+    dexDiscover('ore', ore.id);                    // 📖 도감(광물 첫 채굴)
     ui.act?.('mine');                              // 튜토리얼: 첫 채굴
     trackEvent('mine_ore', { ore: ore.id, amt });  // [GA4]
   }
@@ -2467,6 +2546,7 @@ function catchFish() {
   if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
+  dexDiscover('fish', kind.rarity);                                     // 📖 도감(어종 첫 발견)
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
   triggerMoment(true);                                                  // 🎉 캐치 세리머니(밀착 + 폴짝)
   showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
@@ -2644,6 +2724,7 @@ function tryHarvest() {
   updatePlotVisual(plot);
   refreshInventoryUI();
   questEvent('harvest');                                          // 퀘스트 진행
+  if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
   triggerMoment(true);                                            // 🎉 캐치 세리머니(밀착 + 폴짝)
   showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);    // 🥕 열매를 머리 위로 번쩍!
@@ -3103,6 +3184,7 @@ function talkToNPC() {
   const view = npcDialogState();
   if (view) {
     Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); // 튜토리얼
+    dexDiscover('npc', view.npc.id);                         // 📖 도감(이웃 첫 대화)
     // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.
     //   ※ GA4 전용(스키마 자유). Supabase game_logs(고정 스키마)엔 넣지 않아 연동 충돌 없음.
     trackEvent('npc_talk', { npc: view.npc.id, mode: view.mode });
