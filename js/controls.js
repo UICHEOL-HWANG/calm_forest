@@ -6,7 +6,7 @@
 //    game.js 의 Input API 로 아날로그 벡터/액션을 전달합니다.
 // =============================================================
 
-import { Input } from './game.js?v=11';
+import { Input } from './game.js?v=14';
 
 // 터치 지원 여부 감지 → 모바일 컨트롤 노출
 export function initControls() {

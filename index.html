@@ -51,12 +51,23 @@
   #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
-  #logout-btn, #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn, #house-btn { border: none; border-radius: 12px; padding: 8px 14px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); transition: transform .1s; }
-  #logout-btn { background: rgba(255,255,255,0.6); font-weight: 500; font-size: 13px; }
-  #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn, #house-btn { background: rgba(255,255,255,0.6); padding: 8px 10px; }
-  /* 데스크톱: ☰ 숨기고 버튼들은 인라인 그대로 */
-  #menu-btn { display: none; }
-  #util-btns { display: contents; }
+  /* 상단 바: 자주 쓰는 📷·🙂만 노출, 나머지는 ☰ 메뉴로 접기(초보자 혼란 방지) */
+  #photo-btn, #emote-btn, #menu-btn { border: none; border-radius: 12px; padding: 8px 10px; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--ink); font-weight: 600; font-size: 13px; box-shadow: var(--shadow); transition: transform .1s; }
+  #menu-btn { font-size: 15px; padding: 8px 12px; }
+  #topleft.open #menu-btn { background: #ffe0a8; }
+  /* ☰ 펼침 메뉴: 아이콘+글자 라벨 세로 리스트 */
+  #util-btns { display: none; }
+  #topleft.open #util-btns {
+    display: flex; flex-direction: column; gap: 6px;
+    position: absolute; top: calc(100% + 8px); left: 0; min-width: 138px;
+    background: var(--panel); backdrop-filter: blur(8px);
+    padding: 8px; border-radius: 14px; box-shadow: var(--shadow); z-index: 30;
+  }
+  #util-btns button { display: flex; align-items: center; gap: 9px; border: none; border-radius: 10px; padding: 9px 12px; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--ink); font-weight: 600; font-size: 13px; text-align: left; }
+  #util-btns .uico { font-size: 16px; }
+  /* ☰ 펼치면 겹치는 미니맵·퀘스트는 잠깐 숨김(데스크톱·모바일 공통) */
+  #topleft.open { z-index: 50; }
+  #topleft.open ~ #minimap, #topleft.open ~ #quest-panel { display: none; }
   .bag-cue { opacity: .8; }
   /* 가방 창 */
   #bag-backdrop { display: none; position: fixed; inset: 0; background: rgba(40,55,45,0.28); z-index: 40; }
@@ -78,6 +89,14 @@
   /* 집 외관 꾸미기 메뉴 */
   #ext-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(400px, 92vw); flex-direction: column; gap: 10px; }
   #ext-menu.show { display: flex; }
+  /* 🏗️ 증축 섹션(외관 메뉴 상단) */
+  #ext-expand { background: #f2f6f0; border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.6; }
+  #ext-expand:empty { display: none; }
+  #ext-expand .xp-cost { opacity: .85; }
+  #ext-expand .xp-lack { color: #c0554a; font-weight: 700; }
+  .xp-btn { display: block; margin-top: 8px; border: none; border-radius: 12px; padding: 10px 16px; font-weight: 800; font-size: 13.5px; cursor: pointer; background: var(--mint); color: var(--ink); box-shadow: var(--shadow); }
+  .xp-btn:disabled { background: #dde3dd; color: #8a948a; cursor: default; }
+  .xp-btn:not(:disabled):active { transform: scale(0.96); }
   .ext-row { display: flex; align-items: center; gap: 12px; }
   .ext-label { width: 38px; font-size: 13px; font-weight: 700; }
   .ext-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -86,7 +105,7 @@
   .ext-sw:active { transform: scale(0.9); }
   .ext-sw.locked { display: flex; align-items: center; justify-content: center; font-size: 13px; opacity: .8; cursor: help; }
   #music-btn.off { opacity: .5; }
-  #logout-btn:active, #help-btn:active, #stats-btn:active, #photo-btn:active, #music-btn:active, #emote-btn:active { transform: scale(0.94); }
+  #photo-btn:active, #emote-btn:active, #menu-btn:active, #util-btns button:active { transform: scale(0.94); }
   /* 이모트 팝업 */
   #emote-pop { position: fixed; top: calc(62px + env(safe-area-inset-top)); left: 16px; display: none; gap: 6px; z-index: 12; }
   #emote-pop.show { display: flex; }
@@ -117,6 +136,7 @@
   body:not(.playing) #door-prompt,
   body:not(.playing) #fish-prompt,
   body:not(.playing) #decor-btn,
+  body:not(.playing) #ext-btn,
   body:not(.playing) #decor-menu,
   body:not(.playing) #cook-menu,
   body:not(.playing) #shop-menu,
@@ -162,7 +182,7 @@
     #char-preview { width: 130px; height: 120px; }
     #char-modal .tut-card { padding: 12px 12px 12px; }
   }
-  #photo-img { width: 100%; border-radius: 12px; display: block; box-shadow: var(--shadow); }
+  #photo-img { display: block; max-width: 100%; max-height: 56vh; margin: 0 auto; border-radius: 12px; box-shadow: var(--shadow); }   /* 세로(모바일) 캡처도 화면 안에 들어오게 */
   .photo-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
   .photo-actions button { border: none; border-radius: 12px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .photo-actions .primary { background: var(--mint); }
@@ -289,6 +309,11 @@
   #decor-btn { display: none; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); cursor: pointer; font-weight: 700; font-size: 15px; padding: 11px 22px; border: 2px solid var(--mint); }
   body.indoor #decor-btn { display: block; }
   body.menu-open #decor-btn { display: none; }   /* 메뉴 열리면 버튼 숨김 */
+  /* 집 외관 꾸미기 버튼(완성된 집 근처, 문 프롬프트 위에 표시) */
+  #ext-btn { display: none; bottom: calc(196px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); cursor: pointer; font-weight: 700; font-size: 15px; padding: 11px 22px; border: 2px solid var(--mint); z-index: 7; }
+  body.near-house #ext-btn { display: block; }
+  body.menu-open #ext-btn { display: none; }
+  #ext-btn:active { transform: translateX(-50%) scale(0.95); }
   body.indoor #hotbar { display: none !important; } /* 실내에선 도구바 숨김(안 씀) */
   #decor-btn:active { transform: translateX(-50%) scale(0.95); }
 
@@ -337,6 +362,9 @@
   .dex-item .d-name { font-size: 11.5px; font-weight: 600; }
   .dex-item.locked { opacity: .55; }
   .dex-item.locked .d-ico { filter: grayscale(1) brightness(0.55); }
+  .dex-item.badge { width: 100px; }
+  .dex-item .d-desc { font-size: 10px; opacity: .65; text-align: center; line-height: 1.3; }
+  .dex-item.badge.locked .d-ico { filter: grayscale(1) brightness(0.75); }  /* 배지는 조건이 보이게 덜 어둡게 */
   .dex-guest { margin-top: 14px; background: #fff4dc; border-radius: 14px; padding: 12px; font-size: 12.5px; line-height: 1.55; display: none; }
   .dex-guest.show { display: block; }
   .dex-google-btn { display: block; margin: 10px auto 0; border: none; border-radius: 12px; padding: 11px 18px; font-weight: 800; font-size: 14px; cursor: pointer; background: var(--mint); color: var(--ink); box-shadow: var(--shadow); }
@@ -423,20 +451,12 @@
     /* 좌측: 상태점·라벨 텍스트 숨겨서 버튼을 아이콘만으로(정사각) 컴팩트 */
     #login-status, #login-dot { display: none; }
     .lbl { display: none; }                       /* '나가기' 글자 접기 → 아이콘만 */
-    #logout-btn, #help-btn, #stats-btn, #photo-btn, #music-btn, #emote-btn, #house-btn, #menu-btn {
+    /* 노출 버튼(📷🙂☰)만 아이콘 정사각으로 압축 — ☰ 메뉴 항목은 라벨 리스트 그대로 */
+    #photo-btn, #emote-btn, #menu-btn {
       padding: 0; width: 36px; height: 36px; font-size: 17px;
       display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
     }
-    /* 모바일: 유틸 버튼들을 ☰ 뒤로 접어서 세로 드롭다운으로 */
-    #menu-btn { background: var(--mint); border: none; cursor: pointer; box-shadow: var(--shadow); }
-    #util-btns { display: none; }
-    #topleft.open #util-btns {
-      display: flex; flex-direction: column; gap: 6px;
-      position: absolute; top: calc(100% + 6px); left: 0;
-      background: var(--panel); backdrop-filter: blur(8px);
-      padding: 8px; border-radius: 14px; box-shadow: var(--shadow); z-index: 30;
-    }
-    #topleft.open #menu-btn { background: #ffe0a8; }
+    #menu-btn { background: var(--mint); }
     #emote-pop { top: calc(96px + env(safe-area-inset-top)); left: 12px; }
     /* 우측: 자원칩 + 가방 버튼 압축 */
     #inv-hud { gap: 7px; }
@@ -452,12 +472,10 @@
     /* 도감 탭: 모바일에서도 인벤토리 HUD 바로 아래 */
     #dex-tab { top: calc(126px + env(safe-area-inset-top)); right: 10px; padding: 6px 10px; font-size: 12px; }
     .dex-item { width: 74px; }   /* 좁은 화면에서 도감 카드 축소 */
+    .dex-item.badge { width: 88px; }
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
     #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
     #quest-panel { top: calc(168px + env(safe-area-inset-top)); max-width: 52vw; }
-    /* ☰ 메뉴 펼치면: 클러스터를 미니맵 위로 올리고, 겹치는 미니맵·퀘스트는 잠깐 숨김 */
-    #topleft.open { z-index: 50; }
-    #topleft.open ~ #minimap, #topleft.open ~ #quest-panel { display: none; }
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널만 숨김
        (미니맵은 좌측이라 중앙 코치 카드와 안 겹침 → 튜토리얼 중에도 표시) */
     body.coaching #quest-panel { display: none; }
@@ -481,6 +499,7 @@
     #npc-prompt { display: none; }
     /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
     #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; }
+    #ext-btn { bottom: calc(282px + env(safe-area-inset-bottom)); font-size: 13px; padding: 9px 16px; }
     /* 모바일: 코치 말풍선(단계 점 줄바꿈으로 더 큼) 아래로 토스트 배치 */
     body.coaching #toast { top: calc(238px + env(safe-area-inset-top)); }
   }
@@ -492,16 +511,15 @@
   <div id="topleft" class="panel">
     <span id="login-dot"></span>
     <span id="login-status">연결 중…</span>
+    <button id="photo-btn" title="사진 찍기">📷<span class="lbl"> 사진</span></button>
+    <button id="emote-btn" title="이모트/앉기">🙂<span class="lbl"> 이모트</span></button>
     <button id="menu-btn" title="메뉴">☰</button>
     <div id="util-btns">
-      <button id="help-btn" title="도움말">❓</button>
-      <button id="stats-btn" title="내 활동 기록">📊</button>
-      <button id="photo-btn" title="사진 찍기">📷</button>
-      <button id="music-btn" title="배경음악">🎵</button>
-      <button id="emote-btn" title="이모트/앉기">🙂</button>
-      <button id="house-btn" title="집 외관 꾸미기">🏠</button>
+      <button id="help-btn"><span class="uico">❓</span><span class="ulbl">도움말</span></button>
+      <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
+      <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
+      <button id="logout-btn" style="display:none;"><span class="uico">🚪</span><span class="ulbl">나가기</span></button>
     </div>
-    <button id="logout-btn" style="display:none;">🚪<span class="lbl"> 나가기</span></button>
   </div>
 
   <!-- 문의하기 탭 -->
@@ -562,6 +580,9 @@
 
   <!-- 집 꾸미기 버튼(실내에서만) + 메뉴 -->
   <button id="decor-btn" class="panel">🎨 꾸미기</button>
+
+  <!-- 집 외관 꾸미기 버튼(완성된 집 근처 실외에서만) -->
+  <button id="ext-btn" class="panel">🎨 집 외관 꾸미기</button>
   <div id="decor-menu" class="panel">
     <div class="dm-head">🎨 집 꾸미기 <span id="dm-crop"></span></div>
     <div id="dm-items"></div>
@@ -645,10 +666,11 @@
   <!-- 집 외관 꾸미기 메뉴 -->
   <div id="ext-menu" class="panel">
     <div class="dm-head">🏠 집 외관 꾸미기</div>
+    <div id="ext-expand"></div>
     <div class="ext-row"><span class="ext-label">지붕</span><div id="ext-roof" class="ext-swatches"></div></div>
     <div class="ext-row"><span class="ext-label">벽</span><div id="ext-wall" class="ext-swatches"></div></div>
     <div class="ext-row"><span class="ext-label">문</span><div id="ext-door" class="ext-swatches"></div></div>
-    <div class="dm-hint">색을 고르면 밖의 집에 <b>바로 반영</b>돼요 (집 근처에서 열면 보여요)</div>
+    <div class="dm-hint">색을 고르면 집에 <b>바로 반영</b>돼요 — 눈앞에서 바뀌는 걸 확인해보세요!</div>
     <div class="dm-actions"><button id="ext-close">닫기</button></div>
   </div>
 
@@ -800,12 +822,12 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=11';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=11';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=11';
-    import { CONFIG } from './js/config.js?v=11';
-    import { initControls } from './js/controls.js?v=11';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=11';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=14';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=14';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=14';
+    import { CONFIG } from './js/config.js?v=14';
+    import { initControls } from './js/controls.js?v=14';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=14';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -1021,6 +1043,8 @@
       },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
       onDecorPlaced() { stopPlacing(); },
+      // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
+      setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 요리(작업대) 메뉴 열기
       openCook() { showCookTab('cook'); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 상점 메뉴 열기
@@ -1154,7 +1178,7 @@
           ? '⑨ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기! (🦉올빼미는 매일 새 의뢰)'
           : '⑨ 🧑‍🌾주민에게 말 걸어 퀘스트를 수락하고, 목표를 채운 뒤 다시 말 걸어 보상까지 받으세요 (🦉올빼미는 매일 새 의뢰)' },
       { key: 'mine',    text: `⑩ ⛏️ 서쪽 동굴에 들어가 괭이(2)로 광석을 캐요 — 돌·석탄·💎보석! (${A})` },
-      { key: 'dex',     text: `⑪ 📖 우측 하단 도감 버튼을 눌러 지금까지 발견한 것들을 확인해요! 10종을 다 모으면 🪙100` },
+      { key: 'dex',     text: `⑪ 📖 우측 하단 도감 버튼을 눌러 발견한 것들과 🏅배지를 확인해요! 도감을 다 채우면 🪙150` },
       { key: 'fish',    text: `⑫ 🎣낚싯대(7) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
       { key: 'build',   text: `⑬ 🔨망치(6)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
       { key: 'enter',   text: TOUCH
@@ -1211,7 +1235,7 @@
       try { if ((localStorage.getItem('cf_music') || 'on') !== 'off') startBGM(); } catch (e) { startBGM(); } // 배경음악
       // 구글=로그아웃 / 게스트=나가기 (둘 다 메인 화면으로 복귀)
       const exitBtn = $('logout-btn'); exitBtn.style.display = '';
-      exitBtn.innerHTML = (authState.provider === 'google') ? '🚪<span class="lbl"> 로그아웃</span>' : '🚪<span class="lbl"> 나가기</span>';
+      exitBtn.innerHTML = '<span class="uico">🚪</span><span class="ulbl">' + ((authState.provider === 'google') ? '로그아웃' : '나가기') + '</span>';
 
       // 진행상황 자동 저장 — 30초 주기 + 탭 숨김/종료 시 (창 닫았다 열어도 이어짐)
       setInterval(() => requestSave(), 30000);
@@ -1383,7 +1407,7 @@
 
     // ── 상점 메뉴 (팔기 / 사기) ──
     let shopTab = 'sell';
-    const SELL_ICO = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎' };
+    const SELL_ICO = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚' };
     // 판매 바인딩: 탭=1개, 꾹 누르면(450ms) 전부 — pointer 이벤트로 모바일/데스크톱 공통
     function bindSell(el, k) {
       let timer = null, longFired = false;
@@ -1454,7 +1478,7 @@
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
-    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃' };
+    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨' };
     const isGuestNow = () => authState.provider !== 'google';   // 구글 로그인만 영구 계정
     function openDex() {
       const d = Input.getDex();
@@ -1471,11 +1495,22 @@
         });
         box.appendChild(grid);
       }
+      // 🏅 배지 — 미획득도 이름·조건을 보여줘 목표 제시(도감과 달리 ??? 없음)
+      const bh = document.createElement('div'); bh.className = 'dex-cat';
+      bh.textContent = `🏅 배지 (${d.badgeCount}/${d.badgeTotal})`; box.appendChild(bh);
+      const bgrid = document.createElement('div'); bgrid.className = 'dex-grid';
+      d.badges.forEach(b => {
+        const el = document.createElement('div');
+        el.className = 'dex-item badge' + (b.earned ? '' : ' locked');
+        el.innerHTML = `<span class="d-ico">${b.ico}</span><span class="d-name">${b.name}</span><span class="d-desc">${b.desc}</span>`;
+        bgrid.appendChild(el);
+      });
+      box.appendChild(bgrid);
       $('dex-guest').classList.toggle('show', isGuestNow());   // 게스트만: 보존 배너 + 구글 버튼
       Input.setAnalog(0, 0);
       $('dex-modal').classList.add('show');
       ui.act?.('dex');                                          // 튜토리얼: 도감 확인 단계
-      trackEvent('dex_open', { found: d.count, total: d.total, guest: isGuestNow() }); // [GA4] 도감 관심 퍼널
+      trackEvent('dex_open', { found: d.count, total: d.total, badges: d.badgeCount, guest: isGuestNow() }); // [GA4] 도감 관심 퍼널
     }
     $('dex-tab').addEventListener('click', openDex);
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
@@ -1506,6 +1541,50 @@
 
     // ── 사진 찍기 (캡처 → 저장/공유) ──
     let lastPhoto = null, photoPulseT;
+
+    // ── 📸 액션샷 공유 카드 — 촬영본에 프레임·타이틀·도감 진행도를 합성(공유 시 홍보 카드가 됨) ──
+    function frameActionShot(dataURL) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const W = img.width, H = img.height;
+            const S = Math.min(W, H);   // 세로 캡처(모바일)에서도 글자·바가 사진 폭에 맞게
+            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+            const c = cv.getContext('2d');
+            c.drawImage(img, 0, 0);
+            // 크림 프레임 테두리
+            const bw = Math.max(6, Math.round(W * 0.012));
+            c.strokeStyle = 'rgba(255,252,240,0.9)'; c.lineWidth = bw;
+            c.strokeRect(bw / 2, bw / 2, W - bw, H - bw);
+            // 하단 정보 바(그라데이션 — 사진을 가리지 않게 은은히)
+            const barH = Math.round(S * 0.11);
+            const grad = c.createLinearGradient(0, H - barH * 1.7, 0, H);
+            grad.addColorStop(0, 'rgba(28,42,34,0)');
+            grad.addColorStop(1, 'rgba(28,42,34,0.74)');
+            c.fillStyle = grad; c.fillRect(0, H - barH * 1.7, W, barH * 1.7);
+            const pad = Math.round(W * 0.032), fs = Math.round(S * 0.045);
+            // 좌: 게임 타이틀 + 주소(유입 링크)
+            c.textAlign = 'left'; c.fillStyle = '#fffdf4';
+            c.font = `800 ${fs}px sans-serif`;
+            c.fillText('🌿 calm forest', pad, H - Math.round(barH * 0.55));
+            c.font = `500 ${Math.round(fs * 0.58)}px sans-serif`; c.fillStyle = 'rgba(255,253,244,0.85)';
+            c.fillText('calmforest.icuchoel.workers.dev', pad, H - Math.round(barH * 0.18));
+            // 우: 오늘 날씨 + 도감 진행도 + 날짜
+            const dex = Input.getDex();
+            const wIco = $('time-emoji')?.textContent || '🌿';
+            const t = new Date();
+            const ds = `${t.getFullYear()}.${String(t.getMonth() + 1).padStart(2, '0')}.${String(t.getDate()).padStart(2, '0')}`;
+            c.textAlign = 'right'; c.fillStyle = '#fffdf4';
+            c.font = `700 ${Math.round(fs * 0.75)}px sans-serif`;
+            c.fillText(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`, W - pad, H - Math.round(barH * 0.38));
+            resolve(cv.toDataURL('image/png'));
+          } catch (e) { resolve(dataURL); }   // 합성 실패 시 원본 그대로
+        };
+        img.onerror = () => resolve(dataURL);
+        img.src = dataURL;
+      });
+    }
     let photoBusy = false;   // 액션샷 진행 중 중복 클릭 방지
     $('photo-btn').addEventListener('click', async () => {
       if (photoBusy) return;
@@ -1513,9 +1592,10 @@
       Input.setAnalog(0, 0); $('photo-btn').classList.remove('pulse');
       ui.toast('📸 찰칵…!');
       // 카메라가 캐릭터에 밀착 + 랜덤 포즈 → 포즈 정점 프레임에서 캡처(역동샷)
-      const data = await Input.captureActionShot();
+      let data = await Input.captureActionShot();
       photoBusy = false;
       if (!data) { ui.toast('사진 캡처에 실패했어요'); return; }
+      data = await frameActionShot(data);   // 📸 공유 카드 합성(프레임+타이틀+도감 진행도)
       lastPhoto = data; $('photo-img').src = data;
       $('photo-modal').classList.add('show');
       trackEvent('photo_capture');   // [GA4]
@@ -1529,7 +1609,8 @@
     $('music-btn').addEventListener('click', () => {
       const on = toggleBGM();
       $('music-btn').classList.toggle('off', !on);
-      $('music-btn').textContent = on ? '🎵' : '🔇';
+      $('music-btn').querySelector('.uico').textContent = on ? '🎵' : '🔇';   // 라벨 span 보존
+
       try { localStorage.setItem('cf_music', on ? 'on' : 'off'); } catch (e) {}
     });
 
@@ -1543,12 +1624,12 @@
     // ── 가방 창 (분류별 아이템 보기) ──
     const ITEM_META = {
       wood: { ico: '🪵', name: '목재' }, seed: { ico: '🌰', name: '씨앗' }, coins: { ico: '🪙', name: '코인' },
-      crop: { ico: '🥕', name: '작물' }, fish: { ico: '🐟', name: '물고기' },
+      crop: { ico: '🥕', name: '작물' }, fish: { ico: '🐟', name: '물고기' }, egg: { ico: '🥚', name: '달걀' },
       stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' }, gem: { ico: '💎', name: '보석' },
     };
     const BAG_CATS = [
       { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
-      { name: '🌱 농사·낚시', keys: ['crop', 'fish'] },
+      { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg'] },
       { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
     ];
     function bagSection(title, items) {
@@ -1594,9 +1675,25 @@
           el.appendChild(s);
         });
       });
+      renderExpand();
     }
-    $('house-btn').addEventListener('click', () => {
-      if (!Input.houseBuilt()) { ui.toast('먼저 🔨망치로 집을 완성해요'); return; }
+    // 🏗️ 증축 섹션 — 다음 단계 비용·보유량 표시, 충족 시 버튼 활성화
+    function renderExpand() {
+      const box = $('ext-expand'); const info = Input.getExpansion();
+      if (info.maxed) { box.innerHTML = '🏙️ <b>모던 하우스 완성!</b> 마을에서 가장 세련된 집이에요.'; return; }
+      if (!info.next) { box.innerHTML = ''; return; }
+      const rows = info.items.map(i => `<span class="${i.have < i.need ? 'xp-lack' : ''}">${i.label} ${i.have}/${i.need}</span>`).join(' · ');
+      box.innerHTML = `🏗️ 다음 증축: <b>${info.next.ico} ${info.next.name}</b> — 집이 커지고 모양이 바뀌어요!<br>` +
+        `<span class="xp-cost">${rows}</span>` +
+        `<button id="xp-btn" class="xp-btn" ${info.affordable ? '' : 'disabled'}>${info.affordable ? '🔨 증축하기' : '재료를 더 모아요'}</button>`;
+      $('xp-btn').addEventListener('click', () => {
+        const r = Input.expandHouse();
+        ui.toast(r.msg, 3200);
+        if (r.ok) renderExt();   // 증축 후 정보 갱신(다음 단계 표시)
+      });
+    }
+    // 🎨 집 외관 꾸미기 — 완성된 집 근처에서만 뜨는 버튼(공간 기반 동선)
+    $('ext-btn').addEventListener('click', () => {
       renderExt(); Input.setAnalog(0, 0);
       $('ext-menu').classList.add('show'); document.body.classList.add('menu-open');
     });

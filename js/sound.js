@@ -92,40 +92,136 @@ export const Sound = {
 };
 
 // =============================================================
-//  절차적 배경음악(BGM) — 느긋한 패드 코드 + 가벼운 멜로디
+//  절차적 배경음악(BGM) — 장소별 2개 테마(외부 파일 없음 = 저작권 free)
+//  · main: 활기찬 마을 — 통통 튀는 베이스 + 오프비트 코드 스탭 + 플럭 멜로디
+//  · cave: 음산한 동굴 — 저음 드론 + 드문드문 으스스한 음 + 물방울 에코
 // =============================================================
 let musicOn = false, musicTimer = null, musicGain = null, chordIdx = 0;
-const CHORDS = [
+let bgmTheme = 'main';   // 'main' | 'cave'
+
+// 밝은 진행: C → G → Am → F (팝 진행, 경쾌)
+const MAIN_CHORDS = [
   [261.63, 329.63, 392.00], // C  E  G
+  [196.00, 246.94, 293.66], // G  B  D
   [220.00, 261.63, 329.63], // A  C  E
   [174.61, 220.00, 261.63], // F  A  C
-  [196.00, 246.94, 293.66], // G  B  D
 ];
-const PENT = [392.00, 440.00, 523.25, 587.33, 659.25]; // G A C D E (멜로디용)
+const MAIN_PENT = [523.25, 587.33, 659.25, 783.99, 880.00]; // C D E G A(한 옥타브 위, 멜로디용)
+const MAIN_BAR = 1840;    // 바 길이(ms) — 4비트 × 460ms(≈130BPM 체감)
 
-function padNote(freq, dur, vol) {
+// 어두운 재료: A 단조 계열 + 반음(A#) 섞어 불안한 색
+const CAVE_NOTES = [440.00, 466.16, 523.25, 587.33, 349.23]; // A A# C D F
+const CAVE_BAR = 5000;
+
+// 빠른 어택·짧은 감쇠(뜯는 소리) — 활기찬 테마의 기본 음색
+function pluck(freq, dur, vol, type = 'triangle') {
   const c = ensureCtx(); const t = c.currentTime;
   const osc = c.createOscillator(); const g = c.createGain();
-  osc.type = 'triangle'; osc.frequency.value = freq;
+  osc.type = type; osc.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(musicGain); osc.start(t); osc.stop(t + dur + 0.05);
+}
+
+// 아주 작은 하이햇(리듬 질감) — 하이패스 노이즈 틱
+function tick(vol = 0.03) {
+  const c = ensureCtx(); const t = c.currentTime;
+  const buf = c.createBuffer(1, c.sampleRate * 0.04, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource(); src.buffer = buf;
+  const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000;
+  const g = c.createGain();
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+  src.connect(hp).connect(g).connect(musicGain); src.start(t); src.stop(t + 0.05);
+}
+
+// 느린 어택 패드(드론·서스테인) — 동굴 테마의 기본 음색
+function padNote(freq, dur, vol, type = 'triangle') {
+  const c = ensureCtx(); const t = c.currentTime;
+  const osc = c.createOscillator(); const g = c.createGain();
+  osc.type = type; osc.frequency.value = freq;
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(vol, t + 0.9);        // 느린 어택
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);     // 느린 릴리즈
   osc.connect(g).connect(musicGain); osc.start(t); osc.stop(t + dur + 0.1);
 }
 
-function playBar() {
+// 음정이 스르륵 떨어지는 으스스한 음(동굴)
+function eerie(freq, dur = 2.4, vol = 0.05) {
+  const c = ensureCtx(); const t = c.currentTime;
+  const osc = c.createOscillator(); const g = c.createGain();
+  osc.type = 'sine'; osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.93, t + dur);   // 반음 못 미치게 흘러내림
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.5);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(musicGain); osc.start(t); osc.stop(t + dur + 0.1);
+}
+
+// 동굴 물방울 — 높은 블립 + 잦아드는 에코
+function drip() {
+  pluck(1900, 0.09, 0.05, 'sine');
+  setTimeout(() => { if (musicOn) pluck(1520, 0.12, 0.03, 'sine'); }, 170);
+  setTimeout(() => { if (musicOn) pluck(1216, 0.16, 0.018, 'sine'); }, 380);
+}
+
+// ── 🎵 활기찬 마을 바: 베이스(루트↔5도) + 오프비트 코드 스탭 + 펜타 멜로디 + 햇 ──
+function playMainBar() {
   if (!musicOn) return;
-  const chord = CHORDS[chordIdx % CHORDS.length]; chordIdx++;
-  chord.forEach(f => padNote(f, 4.4, 0.09));
-  setTimeout(() => { if (musicOn) padNote(PENT[(Math.random() * PENT.length) | 0], 1.8, 0.05); }, 1900); // 살짝 멜로디
+  const chord = MAIN_CHORDS[chordIdx % MAIN_CHORDS.length]; chordIdx++;
+  const root = chord[0] / 2, beat = MAIN_BAR / 4;
+  for (let b = 0; b < 4; b++) {
+    setTimeout(() => {
+      if (!musicOn) return;
+      pluck(b % 2 === 0 ? root : root * 1.5, 0.22, 0.2, 'sine');        // 통통 베이스(루트↔5도)
+      if (b === 1 || b === 3) chord.forEach(f => pluck(f, 0.16, 0.05)); // 오프비트 코드 스탭
+      tick(b % 2 === 0 ? 0.028 : 0.018);                                // 리듬 질감
+    }, b * beat);
+  }
+  const n = 2 + ((Math.random() * 2) | 0);   // 바당 멜로디 2~3음
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => { if (musicOn) pluck(MAIN_PENT[(Math.random() * MAIN_PENT.length) | 0], 0.3, 0.08); },
+      (0.25 + Math.random() * 0.65) * MAIN_BAR);
+  }
+}
+
+// ── ⛏️ 음산한 동굴 바: 저음 드론(디튠 맥놀이) + 흘러내리는 음 + 물방울 에코 ──
+function playCaveBar() {
+  if (!musicOn) return;
+  padNote(55, 5.4, 0.15, 'sine');          // A1 드론
+  padNote(55.6, 5.4, 0.11, 'sine');        // 살짝 어긋난 디튠(웅웅 맥놀이)
+  padNote(110, 5.4, 0.045, 'triangle');    // 한 옥타브 위 배음
+  if (Math.random() < 0.55) {              // 드문드문 으스스한 음
+    setTimeout(() => { if (musicOn) eerie(CAVE_NOTES[(Math.random() * CAVE_NOTES.length) | 0]); },
+      (0.2 + Math.random() * 0.5) * CAVE_BAR);
+  }
+  if (Math.random() < 0.7) {               // 물방울 에코
+    setTimeout(() => { if (musicOn) drip(); }, Math.random() * CAVE_BAR * 0.7);
+  }
+}
+
+function barFn() { return bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+function scheduleBars() {
+  if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  barFn()();
+  musicTimer = setInterval(() => barFn()(), barLen());
+}
+
+// 장소 이동 시 테마 전환(game.js: 동굴 입장 'cave' / 퇴장 'main') — 음악 꺼져 있으면 기억만
+export function setBGMTheme(theme) {
+  if (theme === bgmTheme) return;
+  bgmTheme = theme;
+  if (musicOn) scheduleBars();
 }
 
 export function startBGM() {
   const c = ensureCtx();
   if (!musicGain) { musicGain = c.createGain(); musicGain.gain.value = 0.5; musicGain.connect(master); }
   if (musicOn) return;
-  musicOn = true; playBar();
-  musicTimer = setInterval(playBar, 3900);
+  musicOn = true; scheduleBars();
 }
 export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
 export function toggleBGM() { if (musicOn) { stopBGM(); return false; } startBGM(); return true; }
