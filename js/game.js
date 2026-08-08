@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=10';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=10';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=10';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=10';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound } from './sound.js?v=10'; // 🔊 절차적 사운드 + 🌧️ 빗소리
+import { sampleFrame, startLogging } from './logger.js?v=11';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=11';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=11';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=11';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound } from './sound.js?v=11'; // 🔊 절차적 사운드 + 🌧️ 빗소리
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -177,6 +177,7 @@ const UPGRADES = [
   { id: 'axe',   name: '강철 도끼',    ico: '🪓', cost: { wood: 20, crop: 3 }, desc: '나무를 2번에 벌목' },
   { id: 'water', name: '큰 물조리개',  ico: '💧', cost: { wood: 10, crop: 5 }, desc: '물 한 번에 성장↑' },
   { id: 'rod',   name: '튼튼한 낚싯대', ico: '🎣', cost: { wood: 10, fish: 3 }, desc: '입질 시간 여유↑' },
+  { id: 'pot',   name: '큰 냄비',      ico: '🍲', cost: { stone: 5, coal: 3 }, desc: '요리 버프 시간 1.5배(채굴)' },
 ];
 
 // ── 야외 장식(작업대) — 마당에 설치, 재료 소비 ──
@@ -197,6 +198,7 @@ const GIFTS = [
   { id: 'fruit',   name: '과일 바구니', ico: '🧺', cost: { crop: 4 } },
   { id: 'fishset', name: '생선 묶음',   ico: '🐟', cost: { fish: 3 } },
   { id: 'woodtoy', name: '목각 인형',   ico: '🪆', cost: { wood: 6 } },
+  { id: 'necklace', name: '보석 목걸이', ico: '📿', cost: { gem: 1 }, love: 2 },   // 💎 최상급 선물 — 친밀도 +2(채굴)
 ];
 
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
@@ -310,7 +312,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   house: { decor: [] },                     // 실내 배치 가구 [{id,x,z}]
-  upgrades: { axe: false, water: false, rod: false }, // 도구 업그레이드(영구)
+  upgrades: { axe: false, water: false, rod: false, pot: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
@@ -1503,7 +1505,7 @@ function craftCook(id) {
   }
   for (const k in r.cost) gameState.inventory[k] -= r.cost[k];
   refreshInventoryUI();
-  buffs[r.buff] = clock.elapsedTime + r.dur;                 // 버프 적용(만료 시각)
+  buffs[r.buff] = clock.elapsedTime + r.dur * (gameState.upgrades.pot ? 1.5 : 1); // 버프 적용(🍲 큰 냄비: 지속 1.5배)
   Sound.harvest();
   spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${r.name}!`, '#c9682a');
   spawnSparkle(player.position.x, 0.9, player.position.z, 16);
@@ -1521,8 +1523,7 @@ function craftUpgrade(id) {
   if (gameState.upgrades[id]) return { ok: false, msg: '이미 보유한 업그레이드예요' };
   for (const k in u.cost) {
     if ((gameState.inventory[k] || 0) < u.cost[k]) {
-      const label = k === 'fish' ? '물고기' : k === 'crop' ? '작물' : '목재';
-      return { ok: false, msg: `${label}이(가) 부족해요` };
+      return { ok: false, msg: `${RES_LABEL[k] || k}이(가) 부족해요` };   // 돌·석탄 등 광물 재료도 안내
     }
   }
   for (const k in u.cost) gameState.inventory[k] -= u.cost[k];
@@ -1629,13 +1630,15 @@ function giveGift(giftId) {
   const g = GIFTS.find(x => x.id === giftId);
   gameState.gifts[giftId] -= 1;
   const id = o.def.id;
-  gameState.affinity[id] = (gameState.affinity[id] || 0) + 1;
+  const before = gameState.affinity[id] || 0;
+  gameState.affinity[id] = before + (g.love || 1);           // 📿 보석 목걸이 등은 친밀도 +2
   refreshInventoryUI();
   Sound.harvest();
-  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, '❤️', '#e6789a');
+  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, g.love > 1 ? '❤️❤️' : '❤️', '#e6789a');
   spawnSparkle(o.group.position.x, 1.4, o.group.position.z, 14);
   let reward = null;
-  if (gameState.affinity[id] % 3 === 0) { reward = { seed: 3, crop: 1 }; giveReward(reward, 'affinity_gift', id); } // 친밀 3단계마다 답례
+  // 친밀 3단계마다 답례 — +2 증가로 배수를 "건너뛴" 경우도 통과 판정
+  if (Math.floor(gameState.affinity[id] / 3) > Math.floor(before / 3)) { reward = { seed: 3, crop: 1 }; giveReward(reward, 'affinity_gift', id); }
   trackEvent('gift_give', { npc: id, gift: giftId });  // [GA4]
   return { ok: true, npc: o.def.name, ico: g.ico, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
 }
