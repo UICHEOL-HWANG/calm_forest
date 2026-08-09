@@ -36,8 +36,8 @@
   html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; overscroll-behavior: none; }
   /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
   #app { position: fixed; inset: 0; touch-action: none; }
-  /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 */
-  #bag-content, #shop-menu, #cook-menu, #decor-menu, #ext-menu, #char-modal .tut-card, #tutorial-modal .tut-card {
+  /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 (도감·NPC·피드백·로그인 카드 포함) */
+  #bag-content, #shop-menu, #cook-menu, #decor-menu, #ext-menu, .tut-card, .fb-card, .npc-card, #login-card {
     touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   }
 
@@ -822,12 +822,12 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=14';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=14';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=14';
-    import { CONFIG } from './js/config.js?v=14';
-    import { initControls } from './js/controls.js?v=14';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=14';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=15';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=15';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=15';
+    import { CONFIG } from './js/config.js?v=15';
+    import { initControls } from './js/controls.js?v=15';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=15';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)

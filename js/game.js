@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=14';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=14';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=14';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=14';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=14'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { sampleFrame, startLogging } from './logger.js?v=15';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=15';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=15';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=15';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=15'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
