@@ -9,7 +9,8 @@
 //    (game_saves / game_logs + RLS + 분석 뷰)
 // =============================================================
 
-import { CONFIG, isSupabaseConfigured } from './config.js?v=17';
+import { CONFIG, isSupabaseConfigured } from './config.js?v=19';
+import { PLATFORM } from './platform.js?v=19';   // 'web' | 'toss' — 로그 세그먼트
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -118,6 +119,38 @@ export async function signInWithGoogle() {
   if (error) { console.warn('[구글 로그인 실패]', error.message); alert('구글 로그인 실패: ' + error.message); }
 }
 
+// ── 🔵 토스 로그인 (앱인토스 웹뷰 전용) ──────────────────────────
+//   SDK appLogin() → 인가코드 → Edge Function(TOSS_AUTH_ENDPOINT)이 토스 파트너 API 로
+//   교환·검증 후 Supabase 세션(access/refresh 토큰)을 발급해 돌려주는 설계.
+//   엔드포인트 미구현(빈 값) 동안은 안내만 하고 게스트 플레이를 권함.
+export async function signInWithToss() {
+  try {
+    const { loadTossSDK } = await import('./platform.js?v=19');
+    const sdk = await loadTossSDK();
+    const { authorizationCode, referrer } = await sdk.appLogin();   // 인가코드(10분·일회성)
+    console.log('[토스 로그인] 인가코드 수신, referrer:', referrer);
+    if (!CONFIG.TOSS_AUTH_ENDPOINT) {
+      alert('토스 로그인 서버 준비 중이에요 — 우선 게스트로 플레이해주세요!');
+      return { ok: false, reason: 'endpoint_not_configured' };
+    }
+    const res = await fetch(CONFIG.TOSS_AUTH_ENDPOINT, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authorizationCode, referrer }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token || !data.refresh_token) throw new Error(data.error || 'HTTP ' + res.status);
+    const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (error) throw error;
+    applySession(s.session);
+    console.log('[토스 로그인] Supabase 세션 연결 완료', state.userId);
+    return { ok: true };
+  } catch (err) {
+    console.warn('[토스 로그인 실패]', err?.message || err);
+    alert('토스 로그인에 실패했어요: ' + (err?.message || err));
+    return { ok: false, error: err };
+  }
+}
+
 // ── 게스트로 플레이 (매번 새 익명계정 → 휘발성, 재방문 시 새 마을) ──
 //   익명 로그인이 성공해야 game_logs/game_saves 에 실제로 쌓임(RLS·FK 때문).
 //   실패하면 순수 오프라인(콘솔 폴백)으로만 동작.
@@ -199,7 +232,7 @@ export async function sendLogBatch(rows) {
   if (!rows || rows.length === 0) return;
   const enriched = rows.map(r => ({
     user_id: state.userId, session_id: state.sessionId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, // [분석] 기기/게스트/실험 세그먼트
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, // [분석] 기기/게스트/실험/플랫폼 세그먼트
     ...r,
   }));
   if (!state.online || !supabase) { console.log(`[Supabase 폴백] 로그 배치 ${enriched.length}건 (오프라인)`); return; }
@@ -215,7 +248,7 @@ export async function sendEconBatch(rows) {
   if (!rows || rows.length === 0) return;
   const enriched = rows.map(r => ({
     user_id: state.userId, session_id: state.sessionId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, // [분석] 세그먼트 동일 적용
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, // [분석] 세그먼트 동일 적용
     ...r,
   }));
   if (!state.online || !supabase) { console.log(`[Supabase 폴백] 경제 원장 ${enriched.length}건 (오프라인)`, enriched); return; }
@@ -229,7 +262,7 @@ export async function sendEconBatch(rows) {
 export async function upsertSessionRow(row) {
   const full = {
     session_id: state.sessionId, user_id: state.userId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
     ...row, updated_at: new Date().toISOString(),
   };
   if (!state.online || !supabase) { console.log('[Supabase 폴백] 세션 요약(오프라인):', full); return; }

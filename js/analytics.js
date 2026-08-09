@@ -9,7 +9,8 @@
 //  ▶ GA4 미설정(오프라인) 시 window.gtag 가 없으므로 콘솔로 폴백
 // =============================================================
 
-import { CONFIG, isGaConfigured } from './config.js?v=17';
+import { CONFIG, isGaConfigured } from './config.js?v=19';
+import { PLATFORM } from './platform.js?v=19';   // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -29,6 +30,7 @@ const sessionStart = Date.now();
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
   document.head.appendChild(s);
   gtag('config', id);
+  gtag('set', 'user_properties', { platform: PLATFORM });   // [앱인토스 대비] 유저 단위 platform 차원
   console.log('[GA4] 로드됨:', id);
 })();
 
@@ -49,7 +51,7 @@ export function onTrack(cb) { trackHooks.push(cb); }
 
 // GA4 로 이벤트 전송(폴백: 콘솔) — 모든 트래킹은 이 함수를 거칩니다.
 export function trackEvent(name, params = {}) {
-  const payload = { ...params, ts: Date.now() };
+  const payload = { ...params, ts: Date.now(), platform: PLATFORM };   // 이벤트 단위 platform 차원(웹/토스 퍼널 비교)
   trackHooks.forEach(cb => { try { cb(name, payload); } catch (e) {} }); // 카운터 훅(실패해도 트래킹 계속)
 
   // [GA4 전송 지점] gtag 가 로드되어 있고 설정이 유효할 때만 실제 전송

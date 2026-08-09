@@ -234,6 +234,11 @@
   #google-btn:hover { transform: translateY(-2px); } #google-btn:active { transform: scale(0.96); }
   #google-btn .g { font-weight: 800; font-size: 19px; background: conic-gradient(from -45deg,#ea4335,#fbbc05,#34a853,#4285f4,#ea4335); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #guest-btn { display: block; margin: 18px auto 0; background: none; border: none; color: rgba(255,255,255,0.85); font-size: 13px; text-decoration: underline; cursor: pointer; }
+  /* 🔵 토스 로그인(앱인토스 웹뷰에서만 표시 — 웹뷰에선 구글 OAuth 불가라 이 버튼이 구글을 대체) */
+  #toss-btn { display: none; align-items: center; gap: 8px; margin: 0 auto; border: none; background: #3182f6; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
+  #toss-btn:active { transform: scale(0.96); }
+  body.platform-toss #google-btn { display: none; }
+  body.platform-toss #toss-btn { display: inline-flex; }
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
@@ -699,6 +704,7 @@
       <h1>calm forest</h1>
       <div class="tagline">a cozy little forest</div>
       <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
+      <button id="toss-btn">토스로 시작하기</button>
       <button id="guest-btn">게스트로 둘러보기</button>
       <div id="login-note"></div>
     </div>
@@ -822,12 +828,13 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=17';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=17';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=17';
-    import { CONFIG } from './js/config.js?v=17';
-    import { initControls } from './js/controls.js?v=17';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=17';
+    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=19';
+    import { IS_TOSS } from './js/platform.js?v=19';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=19';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=19';
+    import { CONFIG } from './js/config.js?v=19';
+    import { initControls } from './js/controls.js?v=19';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=19';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -1244,7 +1251,13 @@
     }
 
     // 로그인 화면 버튼
+    // 🔵 앱인토스 웹뷰: 구글 OAuth 불가(disallowed_useragent) → 토스 로그인 버튼으로 교체
+    if (IS_TOSS) document.body.classList.add('platform-toss');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    $('toss-btn').addEventListener('click', async () => {
+      const r = await signInWithToss();
+      if (r.ok) { trackLogin('toss'); }   // 성공 시 세션 반영은 authState 콜백이 처리
+    });
     $('guest-btn').addEventListener('click', async () => {
       const r = await signInAsGuest(); await enterPlay();
       if (r && r.online === false) ui.toast('게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요');

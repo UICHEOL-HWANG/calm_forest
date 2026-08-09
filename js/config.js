@@ -33,6 +33,11 @@ export const CONFIG = {
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
   AUTH_MODE: 'google',
 
+  // ── 앱인토스 토스 로그인 서버 교환 엔드포인트 ─────────────────
+  //    appLogin() 인가코드를 Supabase 세션으로 바꿔주는 Edge Function URL.
+  //    (시크릿이 필요해 서버에서만 교환 가능 — 3단계에서 구현. 비어있으면 안내 폴백)
+  TOSS_AUTH_ENDPOINT: '',
+
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)
   //    'map'  = 맵 크기 A/B (client_id 해시로 A/B 50:50 배정)
