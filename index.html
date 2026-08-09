@@ -828,13 +828,13 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=19';
-    import { IS_TOSS } from './js/platform.js?v=19';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=19';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=19';
-    import { CONFIG } from './js/config.js?v=19';
-    import { initControls } from './js/controls.js?v=19';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=19';
+    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=20';
+    import { IS_TOSS } from './js/platform.js?v=20';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=20';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=20';
+    import { CONFIG } from './js/config.js?v=20';
+    import { initControls } from './js/controls.js?v=20';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=20';
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -1492,7 +1492,7 @@
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
     const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨' };
-    const isGuestNow = () => authState.provider !== 'google';   // 구글 로그인만 영구 계정
+    const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글·토스 로그인 = 영구 계정
     function openDex() {
       const d = Input.getDex();
       $('dex-title').textContent = `📖 도감 (${d.count}/${d.total})`;

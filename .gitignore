@@ -8,3 +8,11 @@
 node_modules/
 *.log
 __pycache__/
+
+# 앱인토스 빌드 산출물
+dist-toss/
+*.ait
+
+*.ait
+
+*.ait

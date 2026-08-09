@@ -9,8 +9,8 @@
 //    (game_saves / game_logs + RLS + 분석 뷰)
 // =============================================================
 
-import { CONFIG, isSupabaseConfigured } from './config.js?v=19';
-import { PLATFORM } from './platform.js?v=19';   // 'web' | 'toss' — 로그 세그먼트
+import { CONFIG, isSupabaseConfigured } from './config.js?v=20';
+import { PLATFORM } from './platform.js?v=20';   // 'web' | 'toss' — 로그 세그먼트
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -54,13 +54,14 @@ function isAnon(session) {
     || session?.user?.app_metadata?.provider === 'anonymous';
 }
 
-// 세션 객체 → state 반영
+// 세션 객체 → state 반영 (🔵 토스 유저는 user_metadata.toss 로 식별 — 영구 계정 취급)
 function applySession(session) {
+  const isToss = session?.user?.user_metadata?.toss === true;
   state.online = true;
   state.userId = session.user.id;
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
-  state.email = isAnon(session) ? '게스트' : (session.user.email || session.user.user_metadata?.name || '유저');
-  state.provider = isAnon(session) ? 'anonymous' : (session.user.app_metadata?.provider || 'google');
+  state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : (session.user.email || session.user.user_metadata?.name || '유저');
+  state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : (session.user.app_metadata?.provider || 'google');
   emit();
 }
 
@@ -125,7 +126,7 @@ export async function signInWithGoogle() {
 //   엔드포인트 미구현(빈 값) 동안은 안내만 하고 게스트 플레이를 권함.
 export async function signInWithToss() {
   try {
-    const { loadTossSDK } = await import('./platform.js?v=19');
+    const { loadTossSDK } = await import('./platform.js?v=20');
     const sdk = await loadTossSDK();
     const { authorizationCode, referrer } = await sdk.appLogin();   // 인가코드(10분·일회성)
     console.log('[토스 로그인] 인가코드 수신, referrer:', referrer);
