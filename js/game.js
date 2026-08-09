@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=15';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=15';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=15';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=15';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=15'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { sampleFrame, startLogging } from './logger.js?v=16';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=16';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=16';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=16';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=16'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -2647,6 +2647,11 @@ let photoPeakT = 0;          // 포즈 정점(캡처) 시점
 let photoResolve = null;     // 정점 캡처 콜백(animate 렌더 직후 실행 → 빈 프레임 방지)
 const PHOTO_HOLD = 1.7;      // 밀착 카메라 유지 시간(초) — 가장 늦은 포즈 정점(댄스 1.49s)보다 길게
 const _photoPos = new THREE.Vector3();
+// 세로 화면(모바일)은 가로 시야가 좁아 같은 거리면 과하게 확대돼 보임 → 종횡비로 밀착 거리 보정
+//   데스크톱(가로)=1배, 폰 세로(≈0.46)=최대 2배까지 뒤로 — "뭘 잡았는지" 보이는 미디엄 샷
+function closeUpDist(base) {
+  return base * Math.min(2.0, Math.max(1, 1.35 / camera.aspect));
+}
 function startActionShot() {
   return new Promise((resolve) => {
     const poses = [['jump', 1.2, 0.30], ['dance', 2.4, 0.62], ['heart', 1.6, 0.55], ['wave', 1.4, 0.42]];
@@ -2654,7 +2659,8 @@ function startActionShot() {
     startEmote(pose, dur);                       // 역동적 포즈 발동
     // 밀착 위치는 시작 시점에 고정(스핀 포즈여도 카메라가 흔들리지 않게) — 정면 어깨높이
     const fy = player.rotation.y;
-    _photoPos.set(player.position.x + Math.sin(fy) * 3.2, 1.55, player.position.z + Math.cos(fy) * 3.2);
+    const pd = closeUpDist(3.2);
+    _photoPos.set(player.position.x + Math.sin(fy) * pd, 1.55 + (pd - 3.2) * 0.12, player.position.z + Math.cos(fy) * pd);
     photoT = 0;
     photoPeakT = dur * peak;                     // 포즈 정점 프레임
     photoResolve = resolve;
@@ -2674,8 +2680,10 @@ function triggerMoment(close = false) {
   ui.photoNudge?.();
   if (!close) { momentUntil = clock.elapsedTime + 1.3; return; }
   // doPlayerAction 이 방금 대상(밭/호수) 방향으로 몸을 돌려둔 상태 → 그 정면에서 밀착 촬영
+  // 세로 화면에선 closeUpDist 가 거리를 늘려 캐릭터+수확물+주변이 함께 보이는 미디엄 샷이 됨
   const fy = player.rotation.y;
-  _momentPos.set(player.position.x + Math.sin(fy) * 3.4, 1.65, player.position.z + Math.cos(fy) * 3.4);
+  const md = closeUpDist(3.4);
+  _momentPos.set(player.position.x + Math.sin(fy) * md, 1.65 + (md - 3.4) * 0.12, player.position.z + Math.cos(fy) * md);
   momentT = 0;
   startEmote('jump', 1.0);        // 수확물 캐치 세리머니 — 신나서 폴짝
 }

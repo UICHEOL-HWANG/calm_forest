@@ -9,8 +9,8 @@
 //    (game_logs). 오프라인이면 supabase-client 가 콘솔로 폴백.
 // =============================================================
 
-import { CONFIG } from './config.js?v=15';
-import { sendLogBatch } from './supabase-client.js?v=15';
+import { CONFIG } from './config.js?v=16';
+import { sendLogBatch } from './supabase-client.js?v=16';
 
 let buffer = [];              // 전송 대기 샘플 버퍼
 let lastSampleAt = 0;         // throttle 기준 시각
