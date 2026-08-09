@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=16';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=16';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=16';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=16';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=16'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { sampleFrame, startLogging } from './logger.js?v=17';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=17';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=17';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=17';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=17'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -152,7 +152,8 @@ let atMine = false;
 // 🌉 낚시 부두 — 호수 서쪽 물가에서 안쪽으로 뻗음. 물은 못 들어가고 부두 위만 걸을 수 있음
 const PIER = { x1: 9.6, x2: 13.4, z1: 8.25, z2: 9.75 };
 function onPier(p) { return p.x > PIER.x1 - 0.5 && p.x < PIER.x2 && p.z > PIER.z1 && p.z < PIER.z2; }
-// 🐔 닭장(남쪽 필드) — 🔥 일주일 개근 배지로 해금. 매일 모이(씨앗 2) → 다음날 🥚 달걀 2개
+// 🐔 닭장(남쪽 필드) — 🔥 2일 연속 출석으로 해금(신규 유저도 이틀째에 도달, 초반 리텐션 훅). 매일 모이(씨앗 2) → 다음날 🥚 달걀 2개
+const COOP_STREAK = 2;                          // 해금에 필요한 연속 출석 일수
 const COOP = new THREE.Vector3(-6, 0, 13);
 const COOP_COST = { wood: 25, stone: 10, coins: 60 };
 const COOP_FEED = 2;                            // 모이(씨앗) 소비량
@@ -1177,7 +1178,7 @@ function buildCoopSite() {
   c.fillStyle = '#b8d2ba'; roundRect(c, 10, 10, 492, 172, 28); c.fill();
   c.fillStyle = '#3a4a40'; c.textAlign = 'center';
   c.font = 'bold 46px sans-serif'; c.fillText('🐔 닭장 터', 256, 74);
-  c.font = 'bold 30px sans-serif'; c.fillText('🔥 개근 배지 + 🪵25 🪨10 🪙60', 256, 134);
+  c.font = 'bold 30px sans-serif'; c.fillText('🔥 2일 연속 출석 + 🪵25 🪨10 🪙60', 256, 134);
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
@@ -1264,8 +1265,8 @@ function updateChickens(dt) {
 function coopInteract() {
   const c = gameState.coop;
   if (!c.built) {
-    if (!gameState.badges.streak7) {
-      ui.showHintModal?.({ ico: '🐔', title: '닭장 터', body: '🔥 일주일 개근 배지(7일 연속 출석)를 얻으면 여기에 닭장을 지을 수 있어요. 매일 만나요!' });
+    if ((gameState.daily.streak || 0) < COOP_STREAK) {
+      ui.showHintModal?.({ ico: '🐔', title: '닭장 터', body: `🔥 ${COOP_STREAK}일 연속 출석하면 여기에 닭장을 지을 수 있어요. 내일 또 만나요!` });
       return;
     }
     const lack = Object.entries(COOP_COST).filter(([k, v]) => (gameState.inventory[k] || 0) < v);
@@ -2327,7 +2328,7 @@ function updateDoorInteract() {
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHint('market', '📊', '시세 전광판', '판매 가격이 매일 바뀌어요! 전광판에서 오늘 비싼 품목을 확인하고 비쌀 때 파세요 🪙'); }
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
-    firstHint('coop', '🐔', '닭장 터', '남쪽 빈터에 닭장을 지을 수 있어요! 🔥 일주일 개근 배지를 얻고 재료(🪵25 🪨10 🪙60)를 모아 오세요. 지으면 매일 모이를 주고 다음날 🥚 달걀을 얻어요.');
+    firstHint('coop', '🐔', '닭장 터', '남쪽 빈터에 닭장을 지을 수 있어요! 🔥 2일 연속 출석하고 재료(🪵25 🪨10 🪙60)를 모아 오세요. 지으면 매일 모이를 주고 다음날 🥚 달걀을 얻어요.');
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
