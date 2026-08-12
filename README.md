@@ -29,7 +29,7 @@ calm_forest/
 │  └─ admin_analytics.html #  관리자: 전체 유저 합산 통계
 ├─ sql/                  # 🗄️ Supabase / BigQuery SQL
 │  ├─ supabase_setup.sql #   테이블·RLS·분석 뷰 생성 (한 번 실행)
-│  ├─ admin_analytics.sql#   관리자 집계 보안함수
+│  ├─ admin_analytics.sql#   관리자 집계 보안함수 (+ 임시 공개 링크 검사)
 │  ├─ analytics_queries.sql # 전체 유저 집계 쿼리 팩 (E: 세그먼트·A/B·pre/post)
 │  ├─ bigquery_queries.sql  # BigQuery 쿼리 팩 (GA4 + 행동로그 세그먼트/AB)
 │  ├─ quality_checks.sql #   🩺 계측 품질 체크(체험단 전 검증용)

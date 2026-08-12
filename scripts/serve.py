@@ -12,7 +12,8 @@ import http.server
 import os
 import sys
 
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+# 포트 우선순위: 실행 인자 > 환경변수 PORT > 8000
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get('PORT') or 8000)
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))  # 항상 프로젝트 루트 서빙
 
 

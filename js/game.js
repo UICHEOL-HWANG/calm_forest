@@ -48,6 +48,7 @@ const TOOLS = [
   { id: 'sickle', name: '낫',       ico: '🌾' }, // 수확
   { id: 'hammer', name: '망치',     ico: '🔨' }, // 건축
   { id: 'rod',    name: '낚싯대',   ico: '🎣' }, // 낚시(호수)
+  { id: 'net',    name: '포충망',   ico: '🦋' }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
 ];
 let currentTool = 0;
 const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
@@ -129,7 +130,10 @@ const RECIPES = [
   { id: 'grilled_fish', name: '생선 구이',     ico: '🐟', cost: { fish: 2 },          buff: 'luck',  dur: 90, desc: '90초 희귀 물고기 확률↑' },
   { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱', cost: { crop: 2, fish: 1 }, buff: 'chop',  dur: 90, desc: '90초 벌목 시 목재 +1' },
   { id: 'omelette',     name: '푸짐한 오믈렛', ico: '🍳', cost: { egg: 2, crop: 1 },  buff: 'mine',  dur: 90, desc: '90초 채굴 시 광석 추가 확률↑' }, // 🥚 닭장 달걀 요리
+  { id: 'mushroom_soup', name: '숲의 버섯 스프', ico: '🍄', cost: { forage: 3 },      buff: 'speed', dur: 150, desc: '150초 이동속도 +40%' }, // 🍄 채집 숲 재료
 ];
+// ☕ 카페 서빙 단가 — 재료 원가(시세 기준)보다 넉넉해 "요리해서 파는" 동선이 이득이 되게
+const CAFE_PAY = { veg_stew: 30, grilled_fish: 34, lunchbox: 42, omelette: 40, mushroom_soup: 46 };
 const BUFF_META = { speed: { ico: '👟', name: '빠른 발' }, luck: { ico: '🍀', name: '낚시 행운' }, chop: { ico: '🪓', name: '벌목 보너스' }, mine: { ico: '⛏️', name: '광부의 힘' } };
 const buffs = { speed: 0, luck: 0, chop: 0, mine: 0 };   // 각 버프 만료 시각(clock.elapsedTime 기준)
 function buffOn(k) { return clock.elapsedTime < buffs[k]; }
@@ -139,7 +143,7 @@ const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 �
 let nearShop = false;
 const MARKET = new THREE.Vector3(11.5, 0, 2.4); // 📊 시세판(상점 동쪽, 플레이어 동선 위) — 초보자도 시세를 발견하게
 let nearMarket = false;
-const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚' };
+const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 변의 절반)
 const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
@@ -163,16 +167,67 @@ const oreRocks = [];                            // 동굴 광석 바위들
 const mineTorches = [];                         // 동굴 벽 횃불(깜빡임)
 let farmGroup, mineGroup;                        // 텃밭/동굴 그룹(가시성 토글용)
 
+// ── 🌟 반딧불이 계곡(남쪽 숲) — 🌙 밤에만 나타나고 🦋포충망으로 잡는 "새 동사" ──
+//    마을 불빛에서 떨어뜨려 배치(어두울수록 잘 보임). 낮에만 하던 플레이에 "밤에 다시 올 이유"를 만듦.
+const GLADE = new THREE.Vector3(2, 0, 25);      // 계곡 중심(남쪽 숲) — ☕카페 구역과 안 겹치게 더 남쪽으로
+const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
+const GLADE_MAX = IS_MOBILE ? 5 : 7;            // 동시 개체 수
+const NIGHT_MIN = 0.45;                         // 이 이상 어두워야 출현(밤 판정)
+// 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
+const BUG_KINDS = [
+  { id: 'rainbow', name: '무지개반디', ico: '🌈', color: 0xffc0f0, p: 0.06 },
+  { id: 'green',   name: '초록반디',   ico: '🟢', color: 0xa8ffb0, p: 0.22 },
+  { id: 'blue',    name: '푸른반디',   ico: '🔵', color: 0x9ad8ff, p: 0.48 },
+  { id: 'yellow',  name: '노랑반디',   ico: '🟡', color: 0xfff2a8, p: 1.00 },
+];
+const gladeBugs = [];                           // 살아있는 반딧불이 개체
+let gladeGroup = null, nearGlade = false;
+let bugRespawnAt = 0;                           // 다음 개체 보충 시각(clock.elapsedTime)
+let nightLevel = 0;                             // updateDayNight 이 매 프레임 갱신(0=한낮 1=한밤)
+function isNight() { return nightLevel >= NIGHT_MIN; }
+
+// ── ☕ 카페 — 채굴장처럼 처음부터 마을에 있는 장소. 새 동사: 접객/서빙 ──
+//    마을 남쪽 건물로 들어가면 별도의 넓은 홀이 열리고, 그 안에 손님 NPC가 앉아 있다.
+//    손님에게 직접 걸어가 요리를 가져다주는 "공간 기반" 의뢰.
+//    농사(작물)·낚시(물고기)·닭장(달걀)·채집(버섯)이 전부 "쓸 곳"을 얻어 하나로 엮임.
+const CAFE_GATE = new THREE.Vector3(4, 0, 14);  // 마을 안 카페 건물(입구) — 주민 자리·호수·계곡과 안 겹치는 빈터
+const CAFE = new THREE.Vector3(0, 0, 320);      // 카페 홀(다른 인스턴스 공간과 멀찍이)
+const CAFE_HALF = 11;                           // 넓은 홀 반경
+const CAFE_ORDERS = 4;                          // 하루 손님 수
+const CAFE_BONUS = 60;                          // 손님 전원 서빙 시 보너스 코인
+const CAFE_SEATS = [[-6, -3.5], [6, -3.5], [-6, 4.5], [6, 4.5]];   // 홀 안 테이블 좌석(홀 로컬 좌표)
+const CAFE_BOARD = [6.6, -7.9];                 // 📋 주문판(칠판) — 카운터 옆(동선상 눈에 띄게)
+let atCafe = false, nearCafeBoard = false;
+let cafeInGroup = null, cafeGuestObjs = [];     // 홀 그룹 / 앉은 손님 런타임 { order, group, sprite, phase }
+let nearCafeGuest = null;
+
+// ── 🍄 채집 숲(남서쪽) — 새 동사: 채집(심지 않고 줍기). 시간이 지나면 다시 돋아남 ──
+//    씨앗·물주기 없이 "돌아다니며 발견"하는 재미. 🌧️ 비 온 날엔 버섯이 유독 잘 나옴(날씨 연동)
+const FOREST = new THREE.Vector3(-13, 0, 24);
+const FOREST_R = 9;
+const FORAGE_NODES = IS_MOBILE ? 8 : 11;        // 동시에 돋아 있는 채집물 수
+const FORAGE_RESPAWN = [55, 110];               // 채집 후 다시 돋기까지(초) 최소~최대
+// p는 누적 확률(FISH_KINDS 규칙과 동일). give 는 획득 자원
+const FORAGE_KINDS = [
+  { id: 'herb',     name: '숲 약초',   ico: '🌿', p: 0.12, give: { forage: 2 },          color: 0x7fd6a0 },
+  { id: 'acorn',    name: '도토리',    ico: '🌰', p: 0.38, give: { forage: 1, seed: 2 }, color: 0xc99a5a },
+  { id: 'berry',    name: '산딸기',    ico: '🫐', p: 0.66, give: { forage: 1, crop: 1 }, color: 0x8a7ad0 },
+  { id: 'mushroom', name: '숲 버섯',   ico: '🍄', p: 1.00, give: { forage: 1 },          color: 0xe0705a },
+];
+const forageNodes = [];                          // { mesh, kind, x, z, ready, respawnAt, phase }
+let forestGroup = null, nearForest = false;
+
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
   if (interiorGroup) interiorGroup.visible = indoor;
   if (farmGroup) farmGroup.visible = atFarm;
   if (mineGroup) mineGroup.visible = atMine;
-  // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭)에서만 — 실내·동굴에선 정지
-  if (RAIN_DAY && mode === 'play' && !indoor && !atMine) startRainSound();
+  if (cafeInGroup) cafeInGroup.visible = atCafe;
+  // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭)에서만 — 실내·동굴·카페에선 정지
+  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe) startRainSound();
   else stopRainSound();
 }
-const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6 };   // 기본 판매 단가(코인)
+const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7 };   // 기본 판매 단가(코인)
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
 //    팔 타이밍 전략이 생기고, econ_logs 에 시세 반응 데이터가 쌓임(분석용)
 function priceRate(k) { return 0.7 + (dateHash('price:' + k) % 61) / 100; }     // 0.70 ~ 1.30
@@ -196,6 +251,7 @@ const UPGRADES = [
   { id: 'water', name: '큰 물조리개',  ico: '💧', cost: { wood: 10, crop: 5 }, desc: '물 한 번에 성장↑' },
   { id: 'rod',   name: '튼튼한 낚싯대', ico: '🎣', cost: { wood: 10, fish: 3 }, desc: '입질 시간 여유↑' },
   { id: 'pot',   name: '큰 냄비',      ico: '🍲', cost: { stone: 5, coal: 3 }, desc: '요리 버프 시간 1.5배(채굴)' },
+  { id: 'net',   name: '촘촘한 포충망', ico: '🦋', cost: { wood: 12, bug: 2 }, desc: '반딧불이 포획 성공률↑' },   // 🌟 밤 콘텐츠 강화
 ];
 
 // ── 야외 장식(작업대) — 마당에 설치, 재료 소비 ──
@@ -288,6 +344,9 @@ const DAILY_POOL = [
   { type: 'fish',    target: 3, title: '오늘의 조황',  desc: '물고기 3마리 낚기' },
   { type: 'mine',    target: 4, title: '광산 의뢰',    desc: '광석 4개 캐기' },
   { type: 'sell',    target: 5, title: '장사의 날',    desc: '상점에서 아무거나 5개 팔기' },
+  { type: 'catch',   target: 3, title: '밤의 산책',    desc: '🌟 반딧불이 3마리 잡기(밤)' },
+  { type: 'serve',   target: 2, title: '오늘의 접객',  desc: '☕ 카페 손님 2명 서빙하기' },
+  { type: 'forage',  target: 5, title: '숲의 아침',    desc: '🍄 채집물 5개 줍기' },
 ];
 
 // 매일 접속 시 호출 — 날짜가 바뀌면 의뢰 리셋 + 날짜 시드로 오늘의 의뢰 3개 생성
@@ -323,14 +382,14 @@ function rollLuckyBox(qid) {
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장)
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   house: { decor: [] },                     // 실내 배치 가구 [{id,x,z}]
-  upgrades: { axe: false, water: false, rod: false, pot: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비
+  upgrades: { axe: false, water: false, rod: false, pot: false, net: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
@@ -339,9 +398,10 @@ const gameState = {
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
-  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
+  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
+  cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
 };
 
 // ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
@@ -368,6 +428,7 @@ const DEX = {
     { id: 'grilled_fish', name: '생선 구이',     ico: '🐟' },
     { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱' },
     { id: 'omelette',     name: '푸짐한 오믈렛', ico: '🍳' },   // 🥚 닭장 해금 후 제작 가능
+    { id: 'mushroom_soup', name: '숲의 버섯 스프', ico: '🍄' },  // 🍄 채집 숲 재료
   ],
   npc: [
     { id: 'farmer',   name: '농부 삼촌',       ico: '🧑‍🌾' },
@@ -377,6 +438,20 @@ const DEX = {
     { id: 'courier',  name: '의뢰 올빼미',     ico: '🦉' },
     { id: 'chef',     name: '요리사 판다',     ico: '🐼' },
   ],
+  // 🍄 채집물 — 남서쪽 채집 숲을 돌아다니며 주워야 채워짐
+  forage: [
+    { id: 'mushroom', name: '숲 버섯',  ico: '🍄' },   // 🌧️ 비 온 날 잘 나옴
+    { id: 'berry',    name: '산딸기',   ico: '🫐' },
+    { id: 'acorn',    name: '도토리',   ico: '🌰' },
+    { id: 'herb',     name: '숲 약초',  ico: '🌿' },
+  ],
+  // 🌟 반딧불이 — 밤에 남쪽 계곡에서 🦋포충망으로 잡아야 채워짐(밤 재방문 훅)
+  bug: [
+    { id: 'yellow',  name: '노랑반디',   ico: '🟡' },
+    { id: 'blue',    name: '푸른반디',   ico: '🔵' },
+    { id: 'green',   name: '초록반디',   ico: '🟢' },   // 🌧️ 비 온 날 잘 나옴
+    { id: 'rainbow', name: '무지개반디', ico: '🌈' },   // 🌫️ 안개 낀 날 잘 나옴
+  ],
   // 🌦️ 날씨 — 그 날씨인 날 접속해야 채워짐(예보와 묶어 재방문 유도)
   weather: [
     { id: 'clear', name: '맑은 날',     ico: '☀️' },
@@ -385,7 +460,7 @@ const DEX = {
     { id: 'fog',   name: '안개 낀 날',  ico: '🌫️' },
   ],
 };
-const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);   // 전 카테고리 합(24종)
+const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);   // 전 카테고리 합(현재 33종)
 function dexCount() { return Object.keys(DEX).reduce((n, cat) => n + Object.keys(gameState.dex[cat] || {}).length, 0); }
 
 // 첫 발견 시 도감 등록 — 낚시/수확/채굴 성공 지점에서 호출
@@ -418,6 +493,9 @@ const BADGES = [
   { id: 'all_chains',  name: '마을의 영웅',    ico: '👑', desc: '모든 주민 의뢰 완료',     reward: { coins: 50 } },
   { id: 'streak7',     name: '일주일 개근',    ico: '🔥', desc: '7일 연속 출석',          reward: { coins: 30 } },
   { id: 'weather_all', name: '전천후 탐험가',  ico: '🌈', desc: '날씨 4종 모두 경험',      reward: { coins: 30 } },
+  { id: 'night_owl',   name: '밤의 수집가',    ico: '🌟', desc: '반딧불이 4종 모두 잡기',   reward: { coins: 40 } },
+  { id: 'barista',     name: '마을 바리스타',  ico: '☕', desc: '카페에서 15잔 서빙',       reward: { coins: 60 } },
+  { id: 'forager',     name: '숲의 안내인',    ico: '🍄', desc: '채집물 4종 모두 줍기',     reward: { coins: 40 } },
   { id: 'dex_master',  name: '도감 마스터',    ico: '📖', desc: '도감 전부 채우기',        reward: { coins: 50 } },
 ];
 function badgeCount() { return Object.keys(gameState.badges).length; }
@@ -443,6 +521,9 @@ function syncBadges() {
   if (done === chains.length) awardBadge('all_chains');
   if (gameState.daily.streak >= 7) awardBadge('streak7');
   if (DEX.weather.every(w => gameState.dex.weather?.[w.id])) awardBadge('weather_all');
+  if (DEX.bug.every(b => gameState.dex.bug?.[b.id])) awardBadge('night_owl');   // 🌟 반딧불이 4종
+  if ((gameState.cafe.served || 0) >= 15) awardBadge('barista');                // ☕ 누적 15잔 서빙
+  if (DEX.forage.every(f => gameState.dex.forage?.[f.id])) awardBadge('forager'); // 🍄 채집 4종
   if (dexCount() === DEX_TOTAL) awardBadge('dex_master');
 }
 
@@ -651,6 +732,7 @@ export const Input = {
     const badges = BADGES.map(b => ({ id: b.id, name: b.name, ico: b.ico, desc: b.desc, earned: !!gameState.badges[b.id] }));
     return { cats, count: dexCount(), total: DEX_TOTAL, badges, badgeCount: badgeCount(), badgeTotal: BADGES.length };
   },
+  getCafe() { return cafeView(); },                     // ☕ 주문판(현황 확인용 — 서빙은 손님에게 직접)
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellItem(k, all) { return sellItem(k, all); },        // 자원 판매
   buyShop(id) { return buyShop(id); },                  // 아이템 구매
@@ -733,12 +815,22 @@ export async function enterGame() {
   // 테스트: ?spawn=x,z — 시작 위치 지정(?weather=/?house= 와 같은 개발용)
   const _sp = (_wq.get('spawn') || '').split(',').map(Number);
   if (_sp.length === 2 && _sp.every(Number.isFinite)) player.position.set(_sp[0], 0, _sp[1]);
+  // 테스트: ?time=0~1 — 시간대 고정(0.75≈한밤). 🌟 반딧불이 등 밤 콘텐츠 확인용
+  const _tq = parseFloat(_wq.get('time') || '');
+  if (Number.isFinite(_tq)) { timeOfDay = ((_tq % 1) + 1) % 1; dayPaused = true; }
+  // 테스트: ?give=crop:5,fish:2 — 재료 지급. 로컬 개발 서버에서만 동작(실서비스 경제·지표 오염 방지)
+  if (_wq.has('give') && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+    for (const pair of _wq.get('give').split(',')) {
+      const [k, v] = pair.split(':');
+      if (k in gameState.inventory) gameState.inventory[k] += parseInt(v, 10) || 0;
+    }
+  }
   mode = 'play';
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
-    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : 'village',
+    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : 'village',
     x: player.position.x, z: player.position.z,
   }));
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
@@ -765,9 +857,10 @@ function applySave(saved) {
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
-  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, ...saved.dex }; // 📖 도감 복원
+  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, ...saved.dex }; // 📖 도감 복원
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
+  if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
   if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id)); // 야외 장식 복원
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
@@ -871,7 +964,8 @@ function buildWorld() {
     do {                                              // 호수·집터·작업대 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
-    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 3.5));
+    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 3.5 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
+      || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6)));   // 주민 자리에 나무가 박혀 갇히지 않게
     spawnTree(x, z);
   }
 
@@ -1184,6 +1278,14 @@ function toolMesh(id) {
   } else if (id === 'rod') {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
+  } else if (id === 'net') {
+    // 🦋 포충망 — 긴 손잡이 + 테 + 반투명 망(밤에 실루엣이 또렷하게 보이도록 밝은 색)
+    const h = wood(0.62); h.position.y = 0.2; g.add(h);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 6, 14), clayMat(0xdfe6ea));
+    ring.position.y = 0.6; ring.rotation.x = Math.PI / 2; g.add(ring);
+    const bag = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 10, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0xfaffff, transparent: true, opacity: 0.45, roughness: 1, side: THREE.DoubleSide }));
+    bag.position.y = 0.74; g.add(bag);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -1317,6 +1419,10 @@ function buildEnvironment() {
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
+  buildGlade();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
+  spawnCafeGate();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  buildCafeHall();   // ☕ 카페 홀(별도 공간)
+  buildForest();     // 🍄 채집 숲(남서쪽) — 줍기
 }
 
 // 🌉 낚시 부두 — 데크 + 지지 기둥 + 볼라드 + 양동이 소품. PIER 사각 영역만 걷기 허용
@@ -1474,6 +1580,676 @@ function coopInteract() {
   }
   ui.toast?.('🐔 오늘 할 일은 끝! 내일 달걀 걷으러 오세요');
 }
+// =============================================================
+//  🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
+//  낮엔 텅 빈 공터, 해가 지면 반딧불이가 피어오름 → "밤에 다시 올 이유"
+// =============================================================
+function buildGlade() {
+  gladeGroup = new THREE.Group(); gladeGroup.position.copy(GLADE);
+  // 짙은 이끼 바닥 — 주변 잔디보다 어두워 "숲 속 그늘" 느낌(반딧불이 대비도 ↑)
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(GLADE_R + 0.6, 36), clayMat(0x8ac9a2, false));
+  floor.geometry.rotateX(-Math.PI / 2); floor.position.y = 0.02; floor.receiveShadow = true; gladeGroup.add(floor);
+  // 이끼 바위 + 그루터기(공터가 허전하지 않게)
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + 0.4, r = 2.4 + Math.random() * 3.4;
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.32, 0), clayMat(0x9aab9a));
+    rock.position.set(Math.cos(a) * r, 0.16, Math.sin(a) * r); rock.castShadow = true; gladeGroup.add(rock);
+  }
+  const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.58, 0.5, 9), clayMat(PAL.trunk));
+  stump.position.set(-1.6, 0.25, 1.2); stump.castShadow = true; gladeGroup.add(stump);
+  gladeGroup.add(makeSignpost('🌟 반딧불이 계곡', 0, -GLADE_R + 1.2));
+  scene.add(gladeGroup);
+  // 계곡을 둘러싼 나무 링 — 마을 불빛을 막아 "어두운 숲" 을 만듦
+  for (let i = 0; i < 11; i++) {
+    const a = (i / 11) * Math.PI * 2 + 0.25, r = GLADE_R + 1.4 + Math.random() * 1.2;
+    const tx = GLADE.x + Math.cos(a) * r, tz = GLADE.z + Math.sin(a) * r;
+    if (dist2D({ x: tx, z: tz }, CAFE_GATE) < 5.5) continue;   // ☕ 카페 시야를 가리지 않게 비움
+    spawnTree(tx, tz);
+  }
+  obstacles.push({ x: GLADE.x, z: GLADE.z, r: GLADE_R });   // 계곡 안엔 밭 금지(빈터 유지)
+}
+
+// 종류 추첨 — 🌧️ 비 온 날엔 초록반디가, 🌫️ 안개 낀 날엔 무지개반디가 잘 나옴(날씨 훅 재사용)
+function rollBugKind() {
+  let roll = Math.random();
+  if (WEATHER === 'rain' || WEATHER === 'fog') roll = Math.min(roll, Math.random());   // 두 번 굴려 작은 값 → 희귀↑
+  return BUG_KINDS.find(k => roll <= k.p) || BUG_KINDS[BUG_KINDS.length - 1];
+}
+
+// 반딧불이 한 마리 — 발광 코어 + 넓은 헤일로(Additive). 블룸과 겹쳐 밤에 또렷하게 빛남
+function makeFirefly(kind) {
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8),
+    new THREE.MeshBasicMaterial({ color: kind.color, transparent: true, opacity: 1 }));
+  g.add(core);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8),
+    new THREE.MeshBasicMaterial({ color: kind.color, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
+  g.add(halo);
+  g.userData = {
+    kind, core, halo,
+    phase: Math.random() * Math.PI * 2,          // 점멸 위상 — 밝을 때 휘둘러야 잘 잡힘
+    tx: 0, tz: 0, ty: 1.4,                       // 배회 목적지(계곡 로컬)
+    flee: 0,                                     // 남은 도망 시간(초)
+  };
+  retargetFirefly(g);
+  return g;
+}
+
+function retargetFirefly(bug) {
+  const u = bug.userData;
+  const a = Math.random() * Math.PI * 2, r = Math.random() * (GLADE_R - 0.8);
+  u.tx = Math.cos(a) * r; u.tz = Math.sin(a) * r; u.ty = 0.9 + Math.random() * 1.9;
+}
+
+// 계곡 안 랜덤 위치에 한 마리 추가(최대 GLADE_MAX)
+function spawnFirefly() {
+  if (gladeBugs.length >= GLADE_MAX || !gladeGroup) return;
+  const bug = makeFirefly(rollBugKind());
+  const a = Math.random() * Math.PI * 2, r = Math.random() * (GLADE_R - 1);
+  bug.position.set(Math.cos(a) * r, 0.9 + Math.random() * 1.6, Math.sin(a) * r);
+  gladeGroup.add(bug); gladeBugs.push(bug);
+}
+
+function removeFirefly(bug) {
+  const i = gladeBugs.indexOf(bug);
+  if (i >= 0) gladeBugs.splice(i, 1);
+  gladeGroup.remove(bug);
+}
+
+// 매 프레임 — 밤에만 나타나 떠다니고, 플레이어가 다가오면 슬쩍 도망
+function updateFireflyBugs(dt, t) {
+  if (!gladeGroup) return;
+  const night = isNight();
+  gladeGroup.visible = !indoor && !atFarm && !atMine;
+  if (!night) {                                   // ☀️ 낮 → 전부 사라짐(밤에 다시 피어오름)
+    while (gladeBugs.length) removeFirefly(gladeBugs[gladeBugs.length - 1]);
+    return;
+  }
+  if (t >= bugRespawnAt && gladeBugs.length < GLADE_MAX) {
+    spawnFirefly();
+    bugRespawnAt = t + 1.2 + Math.random() * 2.4;  // 천천히 하나씩 피어오름
+  }
+  // 플레이어의 계곡 로컬 좌표(도망 판정용)
+  const plx = player.position.x - GLADE.x, plz = player.position.z - GLADE.z;
+  for (const bug of gladeBugs) {
+    const u = bug.userData;
+    u.phase += dt * 3.4;
+    // 점멸 — 밝을 때가 "잡을 타이밍"(사인 곡선 그대로 UI/성공률에 연동)
+    const bright = 0.5 + 0.5 * Math.sin(u.phase);
+    const fade = Math.min(1, (nightLevel - NIGHT_MIN) / 0.2);   // 해질녘엔 서서히 나타남
+    u.core.material.opacity = (0.3 + bright * 0.7) * fade;
+    u.halo.material.opacity = (0.05 + bright * 0.3) * fade;
+    u.halo.scale.setScalar(0.8 + bright * 0.55);
+    // 이동 — 목적지로 부드럽게. 가까이 오면 반대 방향으로 튐
+    const dx = bug.position.x - plx, dz = bug.position.z - plz;
+    const pd = Math.hypot(dx, dz);
+    if (pd < 1.5 && u.flee <= 0) { u.flee = 0.9; }
+    let sp = 0.55;
+    if (u.flee > 0) {
+      u.flee -= dt; sp = 2.3;
+      const k = pd || 0.001;
+      u.tx = Math.max(-GLADE_R + 0.8, Math.min(GLADE_R - 0.8, plx + (dx / k) * 3.4));
+      u.tz = Math.max(-GLADE_R + 0.8, Math.min(GLADE_R - 0.8, plz + (dz / k) * 3.4));
+    }
+    const tdx = u.tx - bug.position.x, tdz = u.tz - bug.position.z, tdy = u.ty - bug.position.y;
+    const td = Math.hypot(tdx, tdz);
+    if (td < 0.25 && u.flee <= 0) retargetFirefly(bug);
+    else {
+      bug.position.x += (tdx / (td || 1)) * sp * dt;
+      bug.position.z += (tdz / (td || 1)) * sp * dt;
+    }
+    bug.position.y += tdy * dt * 0.8 + Math.sin(t * 2.2 + u.phase) * dt * 0.35;   // 위아래로 하늘하늘
+  }
+}
+
+// 🦋 포충망 휘두르기 — 밤 + 계곡 + 반딧불이 근처에서만. 반짝일 때 휘둘러야 잘 잡힘
+function tryNet() {
+  if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🦋 남쪽 🌟반딧불이 계곡에서 쓰는 도구예요'); return; }
+  if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요 — 해가 지면 다시 오세요', 2600); return; }
+  let target = null, nd = 2.2;
+  for (const bug of gladeBugs) {
+    const d = Math.hypot(bug.position.x + GLADE.x - player.position.x, bug.position.z + GLADE.z - player.position.z);
+    if (d < nd) { nd = d; target = bug; }
+  }
+  const wx = target ? target.position.x + GLADE.x : player.position.x;
+  const wz = target ? target.position.z + GLADE.z : player.position.z;
+  doPlayerAction(wx, wz);   // 휘두르는 제스처는 헛스윙이어도 나감
+  if (!target) { Sound.blip(); ui.toast?.('🦋 반딧불이 가까이에서 휘둘러 보세요'); trackEvent('firefly_swing_empty'); return; }
+  const u = target.userData, kind = u.kind;
+  const bright = 0.5 + 0.5 * Math.sin(u.phase);
+  // 성공률: 반짝일 때 크게 유리 + 촘촘한 포충망(영구 업그레이드) 보정
+  const base = bright > 0.6 ? 0.9 : 0.35;
+  const chance = Math.min(0.98, base + (gameState.upgrades.net ? 0.18 : 0));
+  const ok = Math.random() < chance;
+  trackEvent('firefly_swing', { kind: kind.id, bright: Math.round(bright * 100), lit: bright > 0.6, upgraded: !!gameState.upgrades.net, caught: ok }); // [GA4] 타이밍 성공률 분석
+  if (!ok) {                                   // 실패 — 반딧불이가 휙 도망
+    u.flee = 1.4; retargetFirefly(target);
+    Sound.blip();
+    spawnFloatText(wx, target.position.y + 0.5, wz, '휙— 놓쳤다!', '#8a8f7a');
+    ui.toast?.('🌟 놓쳤어요! 반딧불이가 밝게 반짝일 때 휘둘러보세요', 2400);
+    return;
+  }
+  gameState.inventory.bug = (gameState.inventory.bug || 0) + 1;
+  refreshInventoryUI();
+  removeFirefly(target);
+  bugRespawnAt = Math.min(bugRespawnAt, clock.elapsedTime + 2.5);   // 곧 새 개체가 피어남
+  Sound.harvest();
+  spawnFloatText(wx, 1.4, wz, `+1 ${kind.ico} ${kind.name}`, '#c98a2a');
+  spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
+  questEvent('catch');                                    // 🦉 데일리 의뢰(반딧불이 잡기)
+  dexDiscover('bug', kind.id);                            // 📖 도감(반딧불이 첫 발견)
+  triggerMoment(true);                                    // 🎉 캐치 세리머니
+  showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
+  if (kind.id === 'rainbow') tryUnlockDrop(0.5);          // 🎨 최희귀 → 집 색 해금 확률
+  trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100) }); // [GA4] 밤 콘텐츠 KPI
+}
+
+// =============================================================
+//  🍄 채집 숲 — 새 동사: 줍기 (도구 없이, 시간이 지나면 다시 돋음)
+// =============================================================
+function buildForest() {
+  forestGroup = new THREE.Group(); forestGroup.position.copy(FOREST);
+  // 낙엽 깔린 숲 바닥 — 마을 잔디보다 누렇고 어두워 "다른 곳에 왔다" 는 신호
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(FOREST_R + 0.8, 40), clayMat(0xb0cc93, false));
+  floor.geometry.rotateX(-Math.PI / 2); floor.position.y = 0.02; floor.receiveShadow = true; forestGroup.add(floor);
+  for (let i = 0; i < 14; i++) {   // 낙엽 무더기
+    const a = Math.random() * Math.PI * 2, r = Math.random() * FOREST_R;
+    const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.1, 8), clayMat(0xc9b878, false));
+    leaf.geometry.rotateX(-Math.PI / 2);
+    leaf.position.set(Math.cos(a) * r, 0.03, Math.sin(a) * r); forestGroup.add(leaf);
+  }
+  // 쓰러진 통나무 몇 개(숲 느낌 + 시선 유도)
+  [[-3.2, -1.4, 0.6], [2.8, 2.2, -0.9], [0.4, -4.2, 1.9]].forEach(([lx, lz, ry]) => {
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 2.6, 8), clayMat(PAL.trunk));
+    log.rotation.set(0, ry, Math.PI / 2); log.position.set(lx, 0.34, lz); log.castShadow = true; forestGroup.add(log);
+  });
+  forestGroup.add(makeSignpost('🍄 채집 숲', 0, -FOREST_R + 1.4));
+  scene.add(forestGroup);
+  // 숲을 감싸는 나무들 — 안쪽에도 듬성듬성 심어 "숲 속을 헤집는" 느낌
+  for (let i = 0; i < 13; i++) {
+    const a = (i / 13) * Math.PI * 2 + 0.4, r = FOREST_R + 1.2 + Math.random() * 1.4;
+    spawnTree(FOREST.x + Math.cos(a) * r, FOREST.z + Math.sin(a) * r);
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = Math.random() * Math.PI * 2, r = 3.5 + Math.random() * 4;
+    spawnTree(FOREST.x + Math.cos(a) * r, FOREST.z + Math.sin(a) * r);
+  }
+  obstacles.push({ x: FOREST.x, z: FOREST.z, r: FOREST_R });   // 숲 안엔 밭 금지
+  for (let i = 0; i < FORAGE_NODES; i++) spawnForageNode(i, true);
+}
+
+// 종류 추첨 — 🌧️ 비 온 날엔 버섯이 확 늘고(두 번 굴려 큰 값), 평소엔 골고루
+function rollForageKind() {
+  let roll = Math.random();
+  if (WEATHER === 'rain') roll = Math.max(roll, Math.random());   // 큰 값 = 목록 뒤쪽(버섯) 쪽으로
+  return FORAGE_KINDS.find(k => roll <= k.p) || FORAGE_KINDS[FORAGE_KINDS.length - 1];
+}
+
+function forageMesh(kind) {
+  const g = new THREE.Group();
+  if (kind.id === 'mushroom') {
+    [[0, 0, 1], [0.26, 0.12, 0.7], [-0.2, -0.18, 0.55]].forEach(([mx, mz, s]) => {
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * s, 0.07 * s, 0.26 * s, 7), clayMat(0xf3ead8));
+      stem.position.set(mx, 0.13 * s, mz); g.add(stem);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.16 * s, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2), clayMat(kind.color, false));
+      cap.position.set(mx, 0.26 * s, mz); cap.scale.set(1, 0.8, 1); cap.castShadow = true; g.add(cap);
+    });
+  } else if (kind.id === 'berry') {
+    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), clayMat(0x7fbf7a));
+    bush.position.y = 0.26; bush.scale.set(1.1, 0.85, 1.1); bush.castShadow = true; g.add(bush);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.075, 7, 6), clayMat(kind.color, false));
+      b.position.set(Math.cos(a) * 0.28, 0.3 + Math.sin(i) * 0.08, Math.sin(a) * 0.28); g.add(b);
+    }
+  } else if (kind.id === 'acorn') {
+    [[0, 0], [0.2, 0.16], [-0.17, 0.2]].forEach(([mx, mz]) => {
+      const nut = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 7), clayMat(kind.color, false));
+      nut.position.set(mx, 0.12, mz); nut.scale.set(1, 1.25, 1); nut.castShadow = true; g.add(nut);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.115, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), clayMat(0x8a5f3a, false));
+      cap.position.set(mx, 0.2, mz); g.add(cap);
+    });
+  } else {   // herb — 길쭉한 잎 다발
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.5, 5), clayMat(kind.color));
+      leaf.position.set(Math.cos(a) * 0.1, 0.26, Math.sin(a) * 0.1);
+      leaf.rotation.set(Math.cos(a) * 0.35, 0, -Math.sin(a) * 0.35); leaf.castShadow = true; g.add(leaf);
+    }
+  }
+  return g;
+}
+
+// 채집물 하나를 숲 속 빈자리에 돋움. first=true 면 최초 배치(위치도 새로 뽑음)
+function spawnForageNode(i, first = false) {
+  const kind = rollForageKind();
+  const mesh = forageMesh(kind);
+  let node = forageNodes[i];
+  if (first) {
+    let x, z, tries = 0;
+    do {   // 통나무·나무와 안 겹치게 재시도
+      const a = Math.random() * Math.PI * 2, r = 1.6 + Math.random() * (FOREST_R - 2.4);
+      x = FOREST.x + Math.cos(a) * r; z = FOREST.z + Math.sin(a) * r; tries++;
+    } while (tries < 20 && trees.some(t => dist2D(t.position, { x, z }) < 1.6));
+    node = { mesh: null, kind, x, z, ready: true, respawnAt: 0, phase: Math.random() * 6 };
+    forageNodes[i] = node;
+  }
+  if (node.mesh) forestGroup.remove(node.mesh);
+  node.kind = kind; node.mesh = mesh; node.ready = true;
+  mesh.position.set(node.x - FOREST.x, 0, node.z - FOREST.z);
+  mesh.rotation.y = Math.random() * Math.PI * 2;
+  mesh.scale.setScalar(0.01);                      // 뽕! 하고 돋아나는 연출
+  mesh.userData.pop = 1;
+  forestGroup.add(mesh);
+}
+
+// 매 프레임 — 돋아나는 팝 애니메이션 + 살랑임 + 재생성 타이머
+function updateForage(dt, t) {
+  if (!forestGroup) return;
+  forestGroup.visible = !indoor && !atFarm && !atMine;
+  for (let i = 0; i < forageNodes.length; i++) {
+    const n = forageNodes[i];
+    if (!n.ready) { if (t >= n.respawnAt) spawnForageNode(i); continue; }
+    const m = n.mesh;
+    if (m.userData.pop > 0) {                      // 돋아나기(살짝 튀는 이징)
+      m.userData.pop = Math.max(0, m.userData.pop - dt * 2.6);
+      m.scale.setScalar(Math.max(0.01, easeOutBack(1 - m.userData.pop)));
+    }
+    m.rotation.z = Math.sin(t * 1.1 + n.phase) * 0.06;   // 바람에 살랑
+  }
+}
+
+// 가장 가까운(주울 수 있는) 채집물 — 없으면 null
+function forageTarget() {
+  if (!forestGroup || indoor || atFarm || atMine) return null;
+  let best = null, bd = 1.9;
+  for (const n of forageNodes) {
+    if (!n || !n.ready) continue;
+    const d = dist2D(n, player.position);
+    if (d < bd) { bd = d; best = n; }
+  }
+  return best ? { node: best, d: bd } : null;
+}
+
+// 🍄 줍기 — 도구가 필요 없는 "채집". 주운 자리는 잠시 뒤 다른 종류로 다시 돋아남
+function tryForage(node) {
+  const i = forageNodes.indexOf(node);
+  if (i < 0 || !node.ready) return;
+  const kind = node.kind;
+  doPlayerAction(node.x, node.z);
+  node.ready = false;
+  node.respawnAt = clock.elapsedTime + FORAGE_RESPAWN[0] + Math.random() * (FORAGE_RESPAWN[1] - FORAGE_RESPAWN[0]);
+  forestGroup.remove(node.mesh); node.mesh = null;
+  giveReward(kind.give, 'forage', kind.id);
+  Sound.harvest();
+  spawnFloatText(node.x, 1.0, node.z, `+${kind.ico} ${kind.name}`, '#5a7a3a');
+  spawnSparkle(node.x, 0.55, node.z, kind.id === 'herb' ? 18 : 10);   // 발밑에서 반짝(잎 파티클은 나무 높이라 안 맞음)
+  questEvent('forage');                                       // 🦉 데일리 의뢰(채집)
+  dexDiscover('forage', kind.id);                             // 📖 채집 도감
+  trackEvent('forage_pick', { kind: kind.id, weather: WEATHER });   // [GA4] 채집 루프 KPI
+}
+
+// =============================================================
+//  ☕ 카페 — 채굴장처럼 처음부터 있는 장소. 홀에 앉은 손님에게 서빙
+// =============================================================
+
+// ── 손님 "공급자" — 오늘의 손님·주문·대사를 만드는 곳 ─────────────
+//   기본은 날짜 시드 로컬 생성. setCafeGuestSource() 로 외부 생성기
+//   (예: Gemini API)를 끼우면 매일 다른 손님과 대사를 그대로 쓸 수 있다.
+//   외부 생성기는 async 라서 결과가 올 때까지 로컬 손님으로 플레이가 이어지고,
+//   도착하면 캐시에 담고 홀을 다시 그린다.
+//   형식: [{ id, name, emoji, color, hat, recipeId, line, thanks }]
+const CAFE_LINES = [
+  (d) => `${d} 한 그릇 부탁드려요!`,
+  (d) => `오늘은 ${d}가 당기네요 😋`,
+  (d) => `${d}, 여기 향이 제일 좋더라고요.`,
+  (d) => `기다렸어요! ${d} 주세요.`,
+];
+const CAFE_THANKS = ['잘 먹을게요, 고마워요 ☕', '역시 이 맛이야! 또 올게요', '오늘 하루가 좋아졌어요 😊', '마을 최고의 카페예요!'];
+
+let cafeGuestCache = null;     // { date, guests: [...] } — 외부 생성기 결과
+let cafeGuestFetcher = null;   // async (ctx) => guests[]
+
+// [확장 지점] 외부 손님 생성기 등록. fn 은 async (ctx) => [{...}] 를 반환.
+//   ctx = { date, count, recipes:[{id,name,ico,cost}], npcs:[{id,name,emoji}] }
+export function setCafeGuestSource(fn) { cafeGuestFetcher = fn || null; cafeGuestCache = null; }
+
+async function ensureCafeGuests() {
+  const today = todayStr();
+  if (!cafeGuestFetcher || cafeGuestCache?.date === today) return;
+  try {
+    const guests = await cafeGuestFetcher({
+      date: today, count: CAFE_ORDERS,
+      recipes: cafeMenu().map(r => ({ id: r.id, name: r.name, ico: r.ico, cost: { ...r.cost } })),
+      npcs: NPCS.filter(n => !n.daily).map(n => ({ id: n.id, name: n.name, emoji: n.emoji })),
+    });
+    if (Array.isArray(guests) && guests.length) {
+      cafeGuestCache = { date: today, guests };
+      refreshCafeGuests();
+      trackEvent('cafe_guests_generated', { count: guests.length });   // [GA4] 외부 생성 성공률
+    }
+  } catch (e) {
+    console.warn('[cafe] 손님 생성기 실패 — 기본 손님으로 진행', e);   // 실패해도 플레이는 계속
+  }
+}
+
+// 🥚 달걀 요리는 닭장을 지어야 만들 수 있으므로, 미보유 시 메뉴에서 제외(막히는 주문 방지)
+function cafeMenu() { return RECIPES.filter(r => !r.cost.egg || gameState.coop.built); }
+
+// 로컬 기본 손님 — 날짜 시드라 하루 종일 고정, 자정에 새 손님
+function localCafeGuests() {
+  const pool = NPCS.filter(n => !n.daily);
+  const menu = cafeMenu();
+  const avail = [...pool];
+  return Array.from({ length: CAFE_ORDERS }, (_, i) => {
+    // 주문마다 독립된 날짜 해시 — LCG를 이어 돌리면 하위 비트 주기가 짧아 전부 같은 요리가 뽑혔었음
+    const n = avail.length ? avail.splice(dateHash('cafe:npc:' + i) % avail.length, 1)[0] : pool[i % pool.length];
+    const r = menu[dateHash('cafe:menu:' + i) % menu.length];
+    return {
+      id: n.id, name: n.name, emoji: n.emoji, color: n.color, hat: n.hat, recipeId: r.id,
+      line: CAFE_LINES[dateHash('cafe:line:' + i) % CAFE_LINES.length](r.name),
+      thanks: CAFE_THANKS[dateHash('cafe:thx:' + i) % CAFE_THANKS.length],
+    };
+  });
+}
+
+// 오늘의 주문 — 외부 생성 손님이 있으면 그걸, 없으면 로컬 손님을 정규화해 반환
+function cafeOrders() {
+  const st = gameState.cafe;
+  const today = todayStr();
+  if (st.date !== today) { st.date = today; st.done = []; st.bonus = false; }   // 새 날 → 주문 리셋
+  const menu = cafeMenu();
+  const raw = (cafeGuestCache?.date === today ? cafeGuestCache.guests : localCafeGuests()).slice(0, CAFE_ORDERS);
+  return raw.map((g, i) => {
+    const recipe = menu.find(r => r.id === g.recipeId) || menu[i % menu.length];
+    return {
+      i, id: g.id || ('guest' + i), name: g.name || '손님', emoji: g.emoji || '🙂',
+      color: g.color ?? 0xc9c0aa, hat: g.hat ?? 0xe9c47a, recipe,
+      line: g.line || CAFE_LINES[0](recipe.name), thanks: g.thanks || CAFE_THANKS[0],
+      done: st.done.includes(i),
+    };
+  });
+}
+
+// ── 마을 안 카페 건물(입구) — 채굴장 입구처럼 처음부터 서 있음 ────
+function spawnCafeGate() {
+  const g = new THREE.Group(); g.position.copy(CAFE_GATE);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.6, 4.0), woodMat(4, 2, 0xf0d9b8));
+  wall.position.set(0, 1.3, -1.2); wall.castShadow = true; wall.receiveShadow = true; g.add(wall);
+  const roofGeo = new THREE.ConeGeometry(3.6, 1.7, 4); roofGeo.rotateY(Math.PI / 4);
+  const roof = new THREE.Mesh(roofGeo, clayMat(0xa9564a));
+  roof.position.set(0, 3.35, -1.2); roof.scale.set(1.12, 1, 0.86); roof.castShadow = true; g.add(roof);
+  // 문(어두운 사각 + 문틀) — 남쪽(+z)을 향해 열림
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.14), woodMat(1, 1, 0x9a6a42));
+  frame.position.set(0, 1.1, 0.82); g.add(frame);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.9, 0.08), new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.9 }));
+  door.position.set(0, 0.98, 0.9); g.add(door);
+  // 밤에 따뜻하게 빛나는 창(집 창문 시스템 재사용)
+  [-1.7, 1.7].forEach(wx => {
+    const wm = new THREE.MeshStandardMaterial({ color: 0xfff2c8, emissive: 0xffcf7a, emissiveIntensity: 0, roughness: 0.6 });
+    const win = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.0, 0.1), wm);
+    win.position.set(wx, 1.5, 0.82); g.add(win); houseWindows.push(wm);
+  });
+  // 줄무늬 차양
+  for (let i = 0; i < 8; i++) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.09, 0.9), clayMat(i % 2 ? 0xe07a6a : 0xfff2e0, false));
+    s.position.set(-2.2 + i * 0.62, 2.5, 1.15); s.rotation.x = -0.4; g.add(s);
+  }
+  // 문 옆 화분
+  [-2.1, 2.1].forEach(px => {
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, 0.36, 10), clayMat(0xc98a6a, false));
+    pot.position.set(px, 0.18, 1.0); pot.castShadow = true; g.add(pot);
+    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), clayMat(0x8fd6a0));
+    bush.position.set(px, 0.55, 1.0); bush.castShadow = true; g.add(bush);
+  });
+  // 간판은 팻말로 세워 문 옆에 — 지붕에 가리지 않고 멀리서도 보이게
+  g.add(makeSignpost('☕ 카페', -3.1, 1.3));
+  scene.add(g);
+  obstacles.push({ x: CAFE_GATE.x, z: CAFE_GATE.z, r: 3.0 });
+}
+
+// ── 카페 홀(별도 공간) — 넓은 실내. 카운터 + 테이블 4세트 + 주문판 ──
+function buildCafeHall() {
+  const g = new THREE.Group(); g.position.copy(CAFE);
+  const H = CAFE_HALF;
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(H * 2, 0.2, H * 2), woodMat(6, 6, 0xd9b98a));
+  floor.position.y = 0.05; floor.receiveShadow = true; g.add(floor);
+  const rug = new THREE.Mesh(new THREE.CircleGeometry(3.4, 28), clayMat(0xd08a7a, false));
+  rug.geometry.rotateX(-Math.PI / 2); rug.position.set(0, 0.16, 1.5); g.add(rug);
+  // 문 밖 현관 데크 — 카메라가 홀 남쪽에 있어, 바닥이 없으면 화면 아래가 허공으로 크게 비어 보임
+  const porch = new THREE.Mesh(new THREE.BoxGeometry(H * 2 + 5, 0.16, 10), woodMat(5, 3, 0xc9a878));
+  porch.position.set(0, 0.04, H + 4.6); porch.receiveShadow = true; g.add(porch);
+  [-4.5, 4.5].forEach(px => {   // 현관 화분
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.26, 0.5, 10), clayMat(0xc98a6a, false));
+    p.position.set(px, 0.37, H + 1.2); p.castShadow = true; g.add(p);
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), clayMat(0x8fd6a0));
+    b.position.set(px, 0.95, H + 1.2); b.castShadow = true; g.add(b);
+  });
+  // 벽 4면. 카메라가 있는 남쪽만 낮은 반벽 — 안쪽이 가려지지 않게(가운데는 출입구)
+  const wallMat = clayMat(0xf3e2c8, false);
+  const wall = (w, d, x, z, h = 3.4) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat); m.position.set(x, h / 2, z); m.receiveShadow = true; g.add(m); };
+  wall(H * 2, 0.4, 0, -H);
+  wall(0.4, H * 2, -H, 0); wall(0.4, H * 2, H, 0);
+  wall(H - 1.4, 0.4, -(H + 1.4) / 2, H, 1.0); wall(H - 1.4, 0.4, (H + 1.4) / 2, H, 1.0);
+  // 카운터(북쪽) + 뒷선반 + 커피 머신
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(9, 1.05, 1.0), woodMat(4, 1, 0xb5834f));
+  counter.position.set(0, 0.55, -H + 2.2); counter.castShadow = true; g.add(counter);
+  const ctop = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.12, 1.3), woodMat(4, 1, 0xe0c398));
+  ctop.position.set(0, 1.14, -H + 2.2); g.add(ctop);
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(8, 0.14, 0.5), woodMat(3, 1, 0xb5834f));
+  shelf.position.set(0, 1.9, -H + 0.7); g.add(shelf);
+  for (let i = 0; i < 7; i++) {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.11, 0.26, 9), clayMat([0xfff2e0, 0xe8a07a, 0x9ad0c0][i % 3], false));
+    cup.position.set(-3 + i, 2.1, -H + 0.7); g.add(cup);
+  }
+  const machine = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 0.6), clayMat(0x7a6a60, false));
+  machine.position.set(3.2, 1.55, -H + 2.2); machine.castShadow = true; g.add(machine);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.3, 10), clayMat(0x3a2a24, false));
+  pot.position.set(-3.2, 1.35, -H + 2.2); g.add(pot);
+  // 테이블 4세트(좌석 좌표와 짝) + 의자 두 개씩
+  CAFE_SEATS.forEach(([sx, sz]) => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.15, 0.68, 9), clayMat(0x8a6a4a));
+    leg.position.set(sx, 0.44, sz); g.add(leg);
+    const tt = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.12, 18), woodMat(1, 1, 0xe4c79c));
+    tt.position.set(sx, 0.83, sz); tt.castShadow = true; g.add(tt);
+    [1.5, -1.5].forEach(cz => {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.1, 0.62), woodMat(1, 1, 0xc9a06a));
+      seat.position.set(sx, 0.5, sz + cz); seat.castShadow = true; g.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.6, 0.09), woodMat(1, 1, 0xc9a06a));
+      back.position.set(sx, 0.8, sz + cz + (cz > 0 ? 0.28 : -0.28)); g.add(back);
+      [-0.24, 0.24].forEach(ox => [-0.24, 0.24].forEach(oz => {
+        const l = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), clayMat(0x8a6a4a));
+        l.position.set(sx + ox, 0.25, sz + cz + oz); g.add(l);
+      }));
+    });
+  });
+  // 창문 + 화분
+  [[-H + 0.3, -4], [-H + 0.3, 4], [H - 0.3, -4], [H - 0.3, 4]].forEach(([wx, wz]) => {
+    const wm = new THREE.MeshStandardMaterial({ color: 0xdff0ff, emissive: 0xffd9a0, emissiveIntensity: 0.25, roughness: 0.4 });
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.5, 2.2), wm);
+    win.position.set(wx, 1.9, wz); g.add(win);
+  });
+  [[-H + 1.4, H - 1.6], [H - 1.4, H - 1.6], [-H + 1.4, -H + 1.4]].forEach(([px, pz]) => {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.26, 0.5, 10), clayMat(0xc98a6a, false));
+    p.position.set(px, 0.3, pz); p.castShadow = true; g.add(p);
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0), clayMat(0x8fd6a0));
+    b.position.set(px, 0.95, pz); b.castShadow = true; g.add(b);
+  });
+  // 📋 주문판(칠판) — 오늘의 주문 현황을 한눈에
+  const bpost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.6, 6), woodMat(1, 1));
+  bpost.position.set(CAFE_BOARD[0], 0.8, CAFE_BOARD[1]); g.add(bpost);
+  const board = makeSignBoard('📋 주문판'); board.scale.setScalar(0.6);
+  board.position.set(CAFE_BOARD[0], 1.75, CAFE_BOARD[1] + 0.05); g.add(board);
+  const exitSign = makeSignBoard('🚪 나가기'); exitSign.scale.setScalar(0.62);
+  exitSign.position.set(0, 1.1, H - 0.6); g.add(exitSign);
+  // 따뜻한 펜던트 등 3개(그룹 안이라 홀에 있을 때만 씬 조명에 잡힘)
+  [[-5.5, 0], [0, -3], [5.5, 0]].forEach(([lx, lz]) => {
+    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), clayMat(0x6a5a4a));
+    cord.position.set(lx, 3.0, lz); g.add(cord);
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.4, 12), clayMat(0xe8a07a, false));
+    shade.position.set(lx, 2.45, lz); g.add(shade);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfff0c8 }));
+    bulb.position.set(lx, 2.25, lz); g.add(bulb);
+    const light = new THREE.PointLight(0xffd9a0, 2.6, 20, 1.3); light.position.set(lx, 2.2, lz); g.add(light);
+  });
+  scene.add(g); cafeInGroup = g; cafeInGroup.visible = false;   // 홀에 있을 때만 표시
+  refreshCafeGuests();
+}
+
+// 자리에 앉은 손님 — 머리 위에 "주문한 요리" 말풍선을 띄움
+function makeCafeGuest(o) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.44, 1), clayMat(o.color, false));
+  body.position.y = 0.72; body.castShadow = true; g.add(body);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.33, 1), clayMat(0xffe0c0, false));
+  head.position.y = 1.24; head.castShadow = true; g.add(head);
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.055, 12), clayMat(o.hat));
+  brim.position.y = 1.46; g.add(brim);
+  const top = new THREE.Mesh(new THREE.SphereGeometry(0.23, 10, 8), clayMat(o.hat));
+  top.position.y = 1.56; g.add(top);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
+  [-0.11, 0.11].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeMat); e.position.set(ex, 1.27, 0.28); g.add(e); });
+  return g;
+}
+
+// 주문 말풍선(캔버스 스프라이트) — 주문한 요리 아이콘을 크게
+function cafeGuestSprite(o) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const c = cv.getContext('2d');
+  c.fillStyle = 'rgba(255,255,255,0.94)'; roundRect(c, 10, 8, 108, 92, 22); c.fill();
+  c.beginPath(); c.moveTo(54, 98); c.lineTo(74, 98); c.lineTo(62, 120); c.closePath(); c.fill();
+  c.font = '58px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(o.recipe.ico, 64, 56);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(1.0, 1.0, 1.0); sp.position.y = 2.3;
+  return sp;
+}
+
+// 오늘의 주문에 맞춰 홀의 손님을 다시 배치(입장·서빙·날짜 변경 후 호출)
+function refreshCafeGuests() {
+  if (!cafeInGroup) return;
+  while (cafeGuestObjs.length) cafeInGroup.remove(cafeGuestObjs.pop().group);
+  cafeOrders().forEach((o, n) => {
+    if (o.done) return;                                   // 서빙 끝난 손님은 이미 떠남
+    const [sx, sz] = CAFE_SEATS[n % CAFE_SEATS.length];
+    const group = makeCafeGuest(o);
+    group.position.set(sx, 0.16, sz + 1.5);               // 테이블 남쪽 의자에 앉음(의자 높이만큼 올림)
+    group.rotation.y = Math.PI;                           // 테이블(북쪽)을 바라봄
+    const sprite = cafeGuestSprite(o);
+    group.add(sprite);
+    cafeInGroup.add(group);
+    cafeGuestObjs.push({ order: o, group, sprite, phase: Math.random() * 6 });
+  });
+}
+
+// 매 프레임 — 숨쉬기 + 말풍선 살랑임(홀에 있을 때만)
+function updateCafeGuests(dt, t) {
+  if (!atCafe) return;
+  for (const g of cafeGuestObjs) {
+    g.group.position.y = 0.16 + Math.sin(t * 2 + g.phase) * 0.03;
+    g.sprite.position.y = 2.3 + Math.sin(t * 2.6 + g.phase) * 0.08;
+  }
+}
+
+// index.html(ui.openCafe)이 렌더할 주문판 데이터
+function cafeView() {
+  const st = gameState.cafe;
+  const inv = gameState.inventory;
+  const orders = cafeOrders().map(o => ({
+    i: o.i,
+    npc: { id: o.id, name: o.name, emoji: o.emoji },
+    recipe: { id: o.recipe.id, name: o.recipe.name, ico: o.recipe.ico },
+    line: o.line,
+    cost: Object.entries(o.recipe.cost).map(([k, v]) => ({ key: k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, need: v, have: inv[k] || 0 })),
+    pay: CAFE_PAY[o.recipe.id] || 30,
+    done: o.done,
+    ready: !o.done && Object.entries(o.recipe.cost).every(([k, v]) => (inv[k] || 0) >= v),
+  }));
+  return { orders, served: st.served || 0, allDone: orders.every(o => o.done), bonus: CAFE_BONUS };
+}
+
+function enterCafe() {
+  atCafe = true;
+  refreshCafeGuests();                                   // 자정을 넘겼다면 새 손님으로
+  ensureCafeGuests();                                    // 외부 생성기(등록됐다면) 비동기 갱신
+  player.position.set(CAFE.x, 0, CAFE.z + CAFE_HALF - 3.2); player.rotation.y = Math.PI;
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
+  snapCamera(); setSpaceVisible();
+  firstHint('cafeHall', '☕', '카페',
+    '손님이 테이블에 앉아 머리 위에 주문한 요리를 띄우고 있어요. 재료를 들고 손님에게 다가가 액션(Space)을 누르면 그 자리에서 만들어 서빙해요! 📋 주문판에서 오늘 주문 전체를 볼 수 있어요. 남쪽 문으로 나가요.');
+  Sound.blip(); trackEvent('enter_cafe');                // [GA4]
+}
+function exitCafe() {
+  atCafe = false;
+  player.position.set(CAFE_GATE.x, 0, CAFE_GATE.z + 2.8);
+  nearDoor = null; ui.setDoorPrompt?.(null);
+  snapCamera(); setSpaceVisible();
+  Sound.blip(); trackEvent('exit_cafe');                 // [GA4]
+}
+
+// ☕ 서빙 — 손님 앞에서 재료를 소비해 그 자리에서 만들어 냄
+function serveCafeGuest(guest) {
+  const o = guest?.order; if (!o) return;
+  const st = gameState.cafe;
+  if (st.done.includes(o.i)) { ui.toast?.('이미 서빙한 손님이에요'); return; }
+  const lack = Object.entries(o.recipe.cost).filter(([k, v]) => (gameState.inventory[k] || 0) < v);
+  if (lack.length) {
+    const need = Object.entries(o.recipe.cost).map(([k, v]) => `${SELL_ICO_G[k] || ''}${RES_LABEL[k] || k} ${gameState.inventory[k] || 0}/${v}`).join(' · ');
+    ui.toast?.(`${o.recipe.ico} ${o.recipe.name} 재료가 부족해요 — ${need}`, 3200);
+    return;
+  }
+  const wx = guest.group.position.x + CAFE.x, wz = guest.group.position.z + CAFE.z;
+  for (const k in o.recipe.cost) gameState.inventory[k] -= o.recipe.cost[k];
+  doPlayerAction(wx, wz);
+  const pay = CAFE_PAY[o.recipe.id] || 30;
+  giveReward({ coins: pay }, 'cafe_serve', o.recipe.id);          // [원장] 서빙 수입
+  st.done.push(o.i);
+  st.served = (st.served || 0) + 1;
+  const aff = gameState.affinity[o.id] = (gameState.affinity[o.id] || 0) + 1;   // ❤️ 접객으로도 친해짐
+  refreshInventoryUI();
+  dexDiscover('cook', o.recipe.id);                               // 📖 요리 도감(만들어 낸 셈)
+  questEvent('serve');                                            // 🦉 데일리 의뢰(서빙)
+  Sound.harvest();
+  spawnFloatText(wx, 2.6, wz, `${o.recipe.ico} ${o.thanks}`, '#c9682a');
+  spawnSparkle(wx, 1.6, wz, 16);
+  triggerMoment();
+  nearCafeGuest = null;
+  refreshCafeGuests();                                            // 만족한 손님은 자리를 뜸
+  trackEvent('cafe_serve', { recipe: o.recipe.id, npc: o.id, pay, served_total: st.served, affinity: aff }); // [GA4] 접객 루프 KPI
+  if (st.done.length >= CAFE_ORDERS && !st.bonus) {               // 🎉 오늘 영업 완주
+    st.bonus = true;
+    giveReward({ coins: CAFE_BONUS }, 'cafe_bonus', st.date);
+    spawnConfetti(player.position.x, 2.4, player.position.z); Sound.complete();
+    ui.toast?.(`🎉 오늘 손님을 모두 대접했어요! 보너스 🪙+${CAFE_BONUS} — 내일 새 손님이 와요`, 3400);
+    trackEvent('cafe_complete', { served_total: st.served });     // [GA4] 데일리 완주율
+  } else {
+    ui.toast?.(`${o.recipe.ico} ${o.name}에게 ${o.recipe.name} 서빙! 🪙+${pay} ❤️${aff}`, 2600);
+  }
+  syncBadges();                                                   // 🏅 바리스타 배지 판정
+}
+
+// 홀 안 손님/주문판 근접 판정 — updateDoorInteract 에서 호출. 프롬프트 문구를 돌려줌
+function updateCafeInteract() {
+  nearCafeGuest = null; nearCafeBoard = false;
+  if (!atCafe) return null;
+  let nd = 2.4;
+  for (const g of cafeGuestObjs) {
+    const d = Math.hypot(g.group.position.x + CAFE.x - player.position.x, g.group.position.z + CAFE.z - player.position.z);
+    if (d < nd) { nd = d; nearCafeGuest = g; }
+  }
+  if (nearCafeGuest) {
+    const o = nearCafeGuest.order;
+    const ready = Object.entries(o.recipe.cost).every(([k, v]) => (gameState.inventory[k] || 0) >= v);
+    return `${o.emoji} ${o.name} — ${o.recipe.ico} ${o.recipe.name} ${ready ? '서빙하기' : '(재료 부족)'}`;
+  }
+  if (Math.hypot(CAFE_BOARD[0] + CAFE.x - player.position.x, CAFE_BOARD[1] + CAFE.z - player.position.z) < 2.2) {
+    nearCafeBoard = true; return '📋 오늘의 주문판';
+  }
+  return null;
+}
+
 function makeBench(x, z, ry) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.5), woodMat(2, 1)); seat.position.y = 0.45; seat.castShadow = true; g.add(seat);
@@ -2478,12 +3254,18 @@ function updateDoorInteract() {
     if (dist2D({ x: FARM.x, z: FARM.z + FARM_HALF }, player.position) < 1.8) { nd = 'farmexit'; prompt = '🚪 나가기'; }
   } else if (atMine) {
     if (dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
+  } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
+    if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
+    else prompt = updateCafeInteract();
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {
     nd = 'farm'; prompt = '🌾 내 텃밭';
   } else if (dist2D(MINE_GATE, player.position) < 2.0) {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
+  } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
+    nd = 'cafe'; prompt = '☕ 카페에 들어가기';
+    firstHint('cafeGate', '☕', '카페', '들어가면 손님들이 테이블에 앉아 요리를 주문하고 있어요. 재료를 들고 손님에게 다가가면 그 자리에서 만들어 서빙 — 🪙코인과 ❤️친밀도를 받아요. 농사·낚시·닭장·채집으로 모은 재료를 쓸 곳이에요!');
   }
   nearDoor = nd;
   if (nd === 'mine') firstHint('mineGate', '⛏️', '채굴 동굴 입구', '들어가면 어두운 동굴에서 ⛏️괭이로 돌·석탄·보석을 캘 수 있어요. 작업대 재료와 상점 판매에 쓰여요!');
@@ -2509,8 +3291,33 @@ function updateDoorInteract() {
   const nearHouse = inVillage2() && gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 4.2;
   if (nearHouse !== lastNearHouse) { lastNearHouse = nearHouse; ui.setNearHouse?.(nearHouse); }
   if (nearHouse) firstHint('extDecor', '🎨', '집 외관 꾸미기', '집 근처에 오면 🎨 집 외관 꾸미기 버튼이 떠요. 지붕·벽·문 색을 바꿔 나만의 집을 만들어보세요!');
+  updateZoneHint();
 }
-function inVillage2() { return !indoor && !atFarm && !atMine; }   // 마을 실외 여부(집 근처 버튼용)
+
+// 🌟🍄 존(구역) 안내 — 도구로 상호작용하는 넓은 구역용.
+//   setDoorPrompt 와 달리 액션 버튼 아이콘을 뺏지 않아, 구역 안에서도 도구질이 그대로 됨.
+let lastZoneHint = null;
+function updateZoneHint() {
+  let hint = null;
+  const wasGlade = nearGlade;
+  nearGlade = inVillage2() && dist2D(GLADE, player.position) < GLADE_R + 0.5;
+  if (nearGlade) {
+    hint = isNight() ? '🌟 반딧불이 — 🦋포충망(도구 8)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
+    if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
+    firstHint('glade', '🌟', '반딧불이 계곡',
+      '밤이 되면 이 숲에 반딧불이가 피어올라요. 🦋 포충망을 들고 반딧불이가 밝게 반짝이는 순간 휘두르면 잡을 수 있어요! 종류는 4가지 — 📖 도감에 모아보세요.');
+  }
+  const wasForest = nearForest;
+  nearForest = inVillage2() && dist2D(FOREST, player.position) < FOREST_R + 0.5;
+  if (nearForest && !hint) {
+    hint = forageTarget() ? '🍄 채집물 발견! 액션(Space)으로 줍기 — 도구 필요 없어요' : '🍄 채집 숲 — 버섯·산딸기·도토리를 찾아보세요';
+    if (!wasForest) trackEvent('zone_enter', { zone: 'forest', weather: WEATHER });   // [GA4] 채집 유입
+    firstHint('forest', '🍄', '채집 숲',
+      '씨앗도 물주기도 필요 없어요 — 숲을 돌아다니다 버섯·산딸기·도토리·약초를 발견하면 그냥 주우면 돼요! 주운 자리엔 잠시 뒤 다른 게 돋아나고, 🌧️ 비 온 날엔 버섯이 특히 많이 나요.');
+  }
+  if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
+}
+function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe; }   // 마을 실외 여부(집 근처 버튼용)
 
 // =============================================================
 //  포스트 프로세싱
@@ -2558,8 +3365,8 @@ function initInput() {
     keys[e.code] = true;
     if (e.code === 'Space') wantAction = true;
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
-    // 숫자키 1~7 로 도구 선택
-    if (/^Digit[1-7]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
+    // 숫자키 1~8 로 도구 선택(8=🦋포충망)
+    if (/^Digit[1-8]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
@@ -2594,6 +3401,10 @@ function minimapMarks(place) {
   } else if (place === 'house') {
     marks.push({ x: INT.x, z: INT.z - INT_HALF, c: '#c8905a', kind: 'exit' });                // 나가는 문(앞쪽)
     for (const d of gameState.house.decor) marks.push({ x: INT.x + d.x, z: INT.z + d.z, c: '#e0b483', r: 2.2 }); // 배치한 가구
+  } else if (place === 'cafe') {
+    marks.push({ x: CAFE.x, z: CAFE.z + CAFE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
+    marks.push({ x: CAFE.x + CAFE_BOARD[0], z: CAFE.z + CAFE_BOARD[1], c: '#8a7a5f', r: 2.4 }); // 📋 주문판
+    for (const g of cafeGuestObjs) marks.push({ x: CAFE.x + g.group.position.x, z: CAFE.z + g.group.position.z, c: '#e8907a', r: 3 }); // 대기 중인 손님
   }
   return marks;
 }
@@ -2613,12 +3424,12 @@ function animate() {
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : 'village';
+      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? FARM : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : MINE_HALF;
+        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : place === 'cafe' ? CAFE_HALF : MINE_HALF;
         md.marks = minimapMarks(place);
       }
       ui.setMinimap?.(md);
@@ -2638,6 +3449,9 @@ function animate() {
   updateTrees(dt);
   updateOreRocks();
   updateChickens(dt);   // 🐔 닭 배회(닭장 건설 후)
+  updateFireflyBugs(dt, t); // 🌟 반딧불이(밤에만 계곡에 출현)
+  updateCafeGuests(dt, t);  // ☕ 카페 손님(숨쉬기·주문 말풍선)
+  updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
   updatePops(dt);
   updateParticles(dt);
@@ -2764,6 +3578,9 @@ function updatePlayer(dt, t) {
   } else if (atMine) { // 동굴: 벽 안쪽으로 제한
     player.position.x = Math.max(MINE.x - MINE_HALF + 0.7, Math.min(MINE.x + MINE_HALF - 0.7, player.position.x));
     player.position.z = Math.max(MINE.z - MINE_HALF + 0.6, Math.min(MINE.z + MINE_HALF - 0.7, player.position.z));
+  } else if (atCafe) { // ☕ 카페 홀: 벽 안쪽으로 제한
+    player.position.x = Math.max(CAFE.x - CAFE_HALF + 0.8, Math.min(CAFE.x + CAFE_HALF - 0.8, player.position.x));
+    player.position.z = Math.max(CAFE.z - CAFE_HALF + 0.8, Math.min(CAFE.z + CAFE_HALF - 0.7, player.position.z));
   } else {
     const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
@@ -2891,6 +3708,21 @@ function fishMesh(rarity) {
   return g;
 }
 
+// 🫙 반딧불이 유리병 — 잡은 순간 머리 위로 들어올리는 전리품.
+//   개체 메시를 그대로 쓰면 밀착 카메라 + 블룸에 하얗게 번지므로, 작고 또렷한 병으로 표현
+function bugJarMesh(kind) {
+  const g = new THREE.Group();
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.19, 0.34, 12),
+    new THREE.MeshStandardMaterial({ color: 0xdff2f5, transparent: true, opacity: 0.32, roughness: 0.15, metalness: 0.1 }));
+  glass.position.y = 0.17; g.add(glass);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.07, 12), clayMat(0xc9a06a, false));
+  lid.position.y = 0.37; g.add(lid);
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8),
+    new THREE.MeshBasicMaterial({ color: kind.color }));
+  glow.position.y = 0.16; g.add(glow);
+  return g;
+}
+
 // 수확 열매 미니(작물 색 + 잎 꼭지) — 머리 위로 번쩍
 function cropMini(type) {
   const g = new THREE.Group();
@@ -3001,6 +3833,7 @@ function updateDayNight(dt) {
   gameState.timeOfDay = timeOfDay;
   const daylight = Math.max(0, Math.sin(timeOfDay * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5);
   const nightAmt = 1 - daylight;
+  nightLevel = nightAmt;   // 🌟 반딧불이 등 "밤 전용" 콘텐츠가 참조
   const t = clock.elapsedTime;
 
   // 하늘·안개·햇빛 색을 키프레임 그라데이션으로 부드럽게
@@ -3035,6 +3868,13 @@ function updateDayNight(dt) {
     if (WEATHER === 'rain') { scene.fog.near = 14; scene.fog.far = 58; }
     else if (WEATHER === 'fog') { scene.fog.near = 8; scene.fog.far = 36; }   // 🌫️ 시야가 뿌옇게
     else if (WEATHER === 'snow') { scene.fog.near = 16; scene.fog.far = 62; }
+  }
+  // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
+  if (atCafe) {
+    hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
+    ambient.color.setHex(0xffe6c8);   // 전구색(ambient 는 매 프레임 리셋되므로 안전)
+    if (playerLight) playerLight.intensity = 0.5;
+    scene.fog.color.setHex(0xe8d6b8); scene.fog.near = 26; scene.fog.far = 70;
   }
   // 채굴 동굴: 시간대 무관 밝게(잘 보이게) + 차가운 톤 + 벽 횃불
   if (atMine) {
@@ -3102,9 +3942,17 @@ function handleAction() {
   if (nearDoor === 'farmexit') return exitFarm();
   if (nearDoor === 'mine') return enterMine();
   if (nearDoor === 'mineexit') return exitMine();
+  if (nearDoor === 'cafe') return enterCafe();
+  if (nearDoor === 'cafeexit') return exitCafe();
   if (atMine) {                   // 동굴: 괭이로만 채굴 가능
     if (TOOLS[currentTool].id === 'hoe') return tryMine();
     ui.toast?.('⛏️ 괭이(도구 2)로 캐야 해요');
+    return;
+  }
+  if (atCafe) {                   // ☕ 홀: 손님에게 서빙 / 주문판 열기
+    if (nearCafeGuest) return serveCafeGuest(nearCafeGuest);
+    if (nearCafeBoard) { trackEvent('cafe_open'); return ui.openCafe?.(cafeView()); }
+    ui.toast?.('☕ 손님에게 다가가 액션을 누르면 서빙해요');
     return;
   }
   // 실내에선 도구질(밭갈기·낚시 등) 금지 — 가구 배치만(선택 중이면 발 앞에 놓기)
@@ -3118,6 +3966,15 @@ function handleAction() {
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
+  // 🍄 채집 — 도구가 필요 없는 "줍기". 단, 도끼를 들고 더 가까운 나무가 있으면 벌목에 양보
+  const fg = forageTarget();
+  if (fg) {
+    let treeD = Infinity;
+    if (TOOLS[currentTool].id === 'axe') {
+      for (const tr of trees) if (!tr.userData.fallen) treeD = Math.min(treeD, dist2D(tr.position, player.position));
+    }
+    if (treeD >= fg.d) return tryForage(fg.node);
+  }
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   if (nearNPC && !IS_MOBILE) return talkToNPC();
@@ -3129,6 +3986,7 @@ function handleAction() {
     case 'sickle': return tryHarvest();
     case 'hammer': return tryBuild();
     case 'rod': return tryFish();
+    case 'net': return tryNet();
   }
 }
 
@@ -3686,7 +4544,7 @@ function updateParticles(dt) {
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
 let trackedNPC = null;                 // 퀘스트 패널에 표시할 NPC
-const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀' };
+const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물' };
 
 // id별 퀘스트 진행 상태(없으면 생성)
 function npcState(id) {
@@ -3772,18 +4630,29 @@ function updateNPC(dt, t) {
     updateNPCGlyph(o);
   }
 }
+// 주민이 들어가면 안 되는 자리(건물·호수·나무 등) — 밭 금지 구역보다 여유를 적게 둬 벽에 바짝 설 수 있게
+function npcBlocked(x, z) { return obstacles.some(ob => Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.35); }
+
 function wanderNPC(o, dt) {
   o.wanderTimer -= dt;
   if (o.wanderTimer <= 0) {
     o.wanderTimer = 3 + Math.random() * 4;
-    const a = Math.random() * Math.PI * 2, r = Math.random() * 1.6;
-    o.target.set(o.home.x + Math.cos(a) * r, 0, o.home.z + Math.sin(a) * r);
+    // 건물·호수 안쪽은 목적지로 고르지 않음(카페·닭장·집을 뚫고 지나가던 문제)
+    for (let i = 0; i < 6; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 1.6;
+      const nx = o.home.x + Math.cos(a) * r, nz = o.home.z + Math.sin(a) * r;
+      if (!npcBlocked(nx, nz)) { o.target.set(nx, 0, nz); break; }
+      if (i === 5) o.target.copy(o.home);   // 전부 막혔으면 제자리
+    }
   }
   const dx = o.target.x - o.group.position.x, dz = o.target.z - o.group.position.z;
   const d = Math.hypot(dx, dz);
   if (d > 0.06) {
-    o.group.position.x += (dx / d) * 0.5 * dt;
-    o.group.position.z += (dz / d) * 0.5 * dt;
+    const nx = o.group.position.x + (dx / d) * 0.5 * dt;
+    const nz = o.group.position.z + (dz / d) * 0.5 * dt;
+    // 이미 막힌 자리에 서 있다면(나무가 나중에 생긴 경우 등) 빠져나올 수 있게 이동을 허용
+    if (npcBlocked(nx, nz) && !npcBlocked(o.group.position.x, o.group.position.z)) { o.wanderTimer = 0; return; }
+    o.group.position.x = nx; o.group.position.z = nz;
     o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.1);
   }
 }

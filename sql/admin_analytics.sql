@@ -22,10 +22,11 @@
 --    (예: D7 은 첫 접속 후 7일이 지난 유저만).
 -- =============================================================
 
--- 시그니처가 바뀌었으므로(무인자 → days 파라미터) 구버전 제거
+-- 시그니처가 바뀌었으므로(무인자 → days → days+token) 구버전 제거
 drop function if exists public.cf_admin_overview();
+drop function if exists public.cf_admin_overview(int);
 
-create or replace function public.cf_admin_overview(days int default 30)
+create or replace function public.cf_admin_overview(days int default 30, token text default null)
 returns jsonb
 language plpgsql
 security definer
@@ -35,13 +36,26 @@ declare
   caller_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   admins text[] := array['icuchoel@gmail.com'];  -- ★ 관리자 이메일(소문자)
   tz constant text := 'Asia/Seoul';
+  allowed boolean := false;
   today date;
   since date;
   result jsonb;
 begin
-  -- 관리자 아니면 차단
-  if not (caller_email = any (admins)) then
-    raise exception '권한 없음: 관리자만 조회할 수 있습니다.';
+  -- ── 접근 권한: 관리자 계정 OR 유효한 임시 공유 토큰 ──────────
+  --  공유 토큰은 cf_share_links 표에서 발급합니다(생성/발급 SQL 은 docs/DEPLOY.md).
+  --  만료(expires_at)가 지나면 자동으로 막히고, 행을 지우면 즉시 회수됩니다.
+  if caller_email = any (admins) then
+    allowed := true;
+  elsif coalesce(token, '') <> '' then
+    update public.cf_share_links s
+       set hits = s.hits + 1, last_used_at = now()
+     where s.token = cf_admin_overview.token
+       and s.expires_at > now();
+    allowed := found;
+  end if;
+
+  if not allowed then
+    raise exception '권한 없음: 관리자 또는 유효한 공유 링크만 조회할 수 있습니다.';
   end if;
 
   days  := greatest(1, least(coalesce(days, 30), 365));
@@ -305,6 +319,8 @@ begin
 end;
 $$;
 
--- 로그인 유저만 실행 가능(내부에서 관리자 재검사). 익명/공개는 차단.
-revoke all on function public.cf_admin_overview(int) from public, anon;
-grant execute on function public.cf_admin_overview(int) to authenticated;
+-- 실행 자체는 익명도 가능하지만, 함수 안에서 관리자 이메일 또는 유효한
+-- 공유 토큰을 재검사합니다(토큰 없이 부르면 그대로 '권한 없음').
+-- ※ 임시 공개를 끝내고 완전히 잠그려면 아래 anon grant 만 revoke 하면 됩니다.
+revoke all on function public.cf_admin_overview(int, text) from public;
+grant execute on function public.cf_admin_overview(int, text) to authenticated, anon;
