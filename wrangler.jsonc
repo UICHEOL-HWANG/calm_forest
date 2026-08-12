@@ -1,0 +1,18 @@
+{
+  // ⚠️ name 은 기존 배포 주소와 같아야 합니다.
+  //    calmforest.icuchoel.workers.dev 로 서비스 중이므로 "calmforest".
+  //    wrangler 가 처음 만들어준 "calm-forest"(하이픈) 로 두면 새 워커가 따로 생기고,
+  //    기존 주소는 옛 내용 그대로 남습니다.
+  "name": "calmforest",
+  "compatibility_date": "2026-08-12",
+
+  // 서버 코드 진입점 — /api/cafe-guests 를 처리(Gemini 호출)하고 나머지는 자산으로 넘김
+  "main": "worker/index.js",
+
+  // 정적 자산은 dist/ 만. 저장소 루트를 그대로 올리면 .git · sql · scripts 까지 공개됨.
+  //   배포 전에 반드시: node scripts/build-web.mjs
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  }
+}
