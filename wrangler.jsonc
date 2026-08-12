@@ -18,8 +18,14 @@
   // 서버 코드 진입점 — /api/cafe-guests 를 처리(Gemini 호출)하고 나머지는 자산으로 넘김
   "main": "worker/index.js",
 
+  // dist/ 를 배포 직전에 만든다. dist/ 는 빌드 산출물이라 git 에 없으므로
+  // CI(Workers Builds)가 clone 직후 바로 deploy 하면 "directory does not exist" 로 실패한다.
+  // 여기 적어두면 대시보드 빌드 명령 설정 없이 `wrangler deploy` 한 줄로 끝난다(로컬도 동일).
+  "build": {
+    "command": "node scripts/build-web.mjs"
+  },
+
   // 정적 자산은 dist/ 만. 저장소 루트를 그대로 올리면 .git · sql · scripts 까지 공개됨.
-  //   배포 전에 반드시: node scripts/build-web.mjs
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
