@@ -873,13 +873,13 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=27';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=27';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=27';
-    import { CONFIG } from './js/config.js?v=27';
-    import { initControls } from './js/controls.js?v=27';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=27';
-    import { initCafeGuests } from './js/cafe-guests.js?v=27';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=28';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=28';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=28';
+    import { CONFIG } from './js/config.js?v=28';
+    import { initControls } from './js/controls.js?v=28';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=28';
+    import { initCafeGuests } from './js/cafe-guests.js?v=28';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)

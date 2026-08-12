@@ -10,9 +10,9 @@
 //    → 오프라인이거나 무료 티어 한도를 넘겨도 카페는 그대로 돌아갑니다.
 // =============================================================
 
-import { CONFIG } from './config.js?v=27';
-import { setCafeGuestSource } from './game.js?v=27';
-import { sendCafeGuests } from './supabase-client.js?v=27';
+import { CONFIG } from './config.js?v=28';
+import { setCafeGuestSource } from './game.js?v=28';
+import { sendCafeGuests } from './supabase-client.js?v=28';
 
 const TIMEOUT_MS = 6000;   // 이 안에 안 오면 포기하고 기본 손님으로(입장 흐름을 막지 않음)
 
@@ -47,7 +47,11 @@ export function initCafeGuests() {
   setCafeGuestSource(async (ctx) => {
     const url = `${endpoint}?date=${encodeURIComponent(ctx.date)}`
       + `&weather=${encodeURIComponent(ctx.weather || 'clear')}&count=${ctx.count}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    // cache: 'no-store' — 브라우저 캐시를 타지 않는다.
+    //   서버가 성공 응답에 max-age=43200 을 붙이는데, 키 설정 전에 받은 빈 응답([])이
+    //   그대로 12시간 박혀 계속 재사용되는 일이 실제로 있었다.
+    //   엣지 캐시가 이미 "Gemini 호출은 하루 한 번"을 보장하므로 브라우저 캐시는 불필요.
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (!res.ok) throw new Error(`cafe-guests ${res.status}`);
     const guests = normalize(await res.json(), ctx);
     if (guests.length) {
