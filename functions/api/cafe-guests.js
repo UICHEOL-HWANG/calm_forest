@@ -165,6 +165,14 @@ export async function onRequestGet({ request, env, waitUntil }) {
     console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, count, error: e.message }));
     // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 기본 손님을 쓴다.
     // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
-    return new Response('[]', { headers: { ...headers, 'Cache-Control': 'no-store' } });
+    // 실패 사유를 헤더로도 노출 — 대시보드 로그를 열지 않고 curl -sI 로 바로 원인 확인.
+    //   (비밀값은 담기지 않는다. Gemini 가 돌려준 오류 문구 앞부분만)
+    return new Response('[]', {
+      headers: {
+        ...headers,
+        'Cache-Control': 'no-store',
+        'X-Cafe-Guests-Error': String(e.message || 'unknown').replace(/[^\x20-\x7E]/g, ' ').slice(0, 160),
+      },
+    });
   }
 }
