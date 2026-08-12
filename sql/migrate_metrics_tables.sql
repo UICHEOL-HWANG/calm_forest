@@ -80,9 +80,17 @@ create policy "own session select" on public.session_logs
 
 -- ─────────────────────────────────────────────────────────────
 -- 3) 분석용 뷰(선택) — 경제 흐름 일별 sink/source 요약
---    ★ RLS 걸린 원본을 참조하므로 본인 데이터만 보임(전체 집계는 service_role)
+--
+--    ⚠️ `with (security_invoker = on)` 필수 — 빼면 RLS 가 우회됩니다.
+--    Postgres 뷰는 기본이 정의자(definer) 권한 실행이라, RLS 걸린 econ_logs 를
+--    감싸도 소유자(postgres) 권한으로 돌아 전체 유저 데이터가 노출됩니다.
+--    자세한 배경은 sql/supabase_setup.sql 의 "4) 분석용 뷰" 주석 참고.
+--
+--    security_invoker = on → 조회자 권한 실행 → 본인 데이터만(전체는 service_role)
+--    이미 만든 뷰: alter view public.v_econ_daily set (security_invoker = on);
 -- ─────────────────────────────────────────────────────────────
-create or replace view public.v_econ_daily as
+create or replace view public.v_econ_daily
+with (security_invoker = on) as
 select
   date_trunc('day', created_at) as day,
   source,
