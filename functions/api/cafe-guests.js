@@ -159,7 +159,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
     waitUntil(cache.put(cacheKey, out.clone()));
     return out;
   } catch (e) {
-    console.error('[cafe-guests]', e.message);
+    // 구조화 로그 — Cloudflare 대시보드에서 필터링·집계가 되게(유저에겐 조용히 폴백되므로 여기서만 보임)
+    console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, count, error: e.message }));
     // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 기본 손님을 쓴다.
     // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
     return new Response('[]', { headers: { ...headers, 'Cache-Control': 'no-store' } });

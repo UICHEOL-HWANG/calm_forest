@@ -13,14 +13,25 @@ import { onRequestGet as cafeGuests } from '../functions/api/cafe-guests.js';
 
 export default {
   async fetch(request, env, ctx) {
-    const { pathname } = new URL(request.url);
+    try {
+      const { pathname } = new URL(request.url);
 
-    if (pathname === '/api/cafe-guests') {
-      if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
-      return cafeGuests({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+      if (pathname === '/api/cafe-guests') {
+        if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+        // ctx 를 구조분해하면 this 바인딩이 끊겨 "Illegal invocation" 이 납니다 → bind 로 넘김
+        return await cafeGuests({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+      }
+
+      // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.
+      return await env.ASSETS.fetch(request);
+    } catch (err) {
+      // 여기까지 온 예외는 게임을 하얗게 만들 수 있으므로 구조화 로그로 남기고 500 을 명시 반환
+      console.error(JSON.stringify({
+        message: 'worker unhandled error',
+        url: request.url,
+        error: err instanceof Error ? err.message : String(err),
+      }));
+      return Response.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.
-    return env.ASSETS.fetch(request);
   },
 };
