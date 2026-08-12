@@ -9,10 +9,21 @@
 //
 //  사용: node scripts/build-web.mjs   (npx wrangler deploy 전에 실행)
 // =============================================================
-import { cp, rm, mkdir, readdir, stat } from 'node:fs/promises';
+import { copyFile, rm, mkdir, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// fs.cp 는 Node 버전에 따라 experimental 경고/미지원이라 CI 에서 불안정 → 직접 복사
+async function copyInto(src, dest) {
+  if ((await stat(src)).isDirectory()) {
+    await mkdir(dest, { recursive: true });
+    for (const name of await readdir(src)) await copyInto(path.join(src, name), path.join(dest, name));
+  } else {
+    await mkdir(path.dirname(dest), { recursive: true });
+    await copyFile(src, dest);
+  }
+}
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -48,7 +59,7 @@ const missing = [];
 for (const item of INCLUDE) {
   const src = path.join(ROOT, item);
   if (!existsSync(src)) { missing.push(item); continue; }
-  await cp(src, path.join(DIST, item), { recursive: true });
+  await copyInto(src, path.join(DIST, item));
 }
 
 // 결과 검증 — 금지 패턴이 하나라도 들어갔으면 배포 전에 멈춘다

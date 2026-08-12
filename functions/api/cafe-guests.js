@@ -143,7 +143,9 @@ export async function onRequestGet({ request, env, waitUntil }) {
     'Cache-Control': `public, max-age=${CACHE_TTL}`,
   };
   if (!env.GEMINI_API_KEY) {
-    return new Response('[]', { headers });    // 미설정 = 기능 끔. 게임은 기본 손님으로 진행
+    // 미설정 = 기능 끔(게임은 기본 손님으로 진행). 캐시하면 안 된다 —
+    // 키를 나중에 넣어도 12시간 동안 빈 응답이 계속 나가기 때문.
+    return new Response('[]', { headers: { ...headers, 'Cache-Control': 'no-store' } });
   }
 
   // 날짜·날씨·인원이 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번
