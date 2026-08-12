@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=17';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=17';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=17';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=17';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=17'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { sampleFrame, startLogging } from './logger.js?v=19';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=19';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=19';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=19';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=19'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -495,16 +495,64 @@ let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 // 씬 전역 참조
 let renderer, scene, camera, composer, bloomPass, gradePass;
 let player, playerAnchor, playerLight;
-let playerBody, playerBelly, playerHead, playerArm, earGroup;   // 캐릭터(동물) 파츠
-// ── 선택 가능한 동물 캐릭터 7종 ──
+let playerArm = null;                                    // (미사용 — 팔 막대 없이 도구만 표시)
+let charGroup = null, tailPivot = null, tailPhase = 0;   // 캐릭터 메시 그룹 / 꼬리 피벗(흔들기)
+// ── 선택 가능한 동물 캐릭터 7종 ────────────────────────────────
+//   ⚠️ "색만 다르고 다 똑같이 생겼다"는 피드백 반영 —
+//   색뿐 아니라 체형(몸/머리 크기·비율)·귀·꼬리·얼굴까지 동물마다 다르게 정의합니다.
+//
+//   bodyR/bodyScale/headR/headY : 실루엣의 8할. 곰·판다는 크고 육중, 토끼·병아리는
+//        작고 동글, 여우·고양이는 날씬 — 멀리서 봐도 구분되도록 비율을 벌림.
+//   snout  : 주둥이(길이·굵기·색·코). 여우는 뾰족·길게, 곰은 뭉툭·크게.
+//   tail   : 종류별 실루엣 + 흔들기 속도/진폭(강아지는 신나게, 고양이는 느긋하게).
+//   extras : 그 동물에서만 보이는 포인트(판다 눈패치, 고양이 수염, 병아리 볏·날개…).
+//   armX   : 도구 든 손의 좌우 위치 — 몸집에 맞춰야 도구가 붕 뜨지 않음.
 const ANIMALS = [
-  { id: 'fox',    name: '여우',   emoji: '🦊', body: 0xe07b3c, belly: 0xf5e9d8, ear: 0x8a4a24, ears: 'pointy' },
-  { id: 'dog',    name: '강아지', emoji: '🐶', body: 0xc9945a, belly: 0xf0e2cc, ear: 0x8a6038, ears: 'floppy' },
-  { id: 'rabbit', name: '토끼',   emoji: '🐰', body: 0xe6e0dc, belly: 0xffffff, ear: 0xf0c0c8, ears: 'long' },
-  { id: 'cat',    name: '고양이', emoji: '🐱', body: 0x9aa0a8, belly: 0xf0f0f0, ear: 0xf0b0b8, ears: 'pointy' },
-  { id: 'bear',   name: '곰',     emoji: '🐻', body: 0x8a6038, belly: 0xc9a878, ear: 0x6a4828, ears: 'round' },
-  { id: 'panda',  name: '판다',   emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a, ears: 'round' },
-  { id: 'chick',  name: '병아리', emoji: '🐤', body: 0xffe05a, belly: 0xfff0a0, ear: 0xffb020, ears: 'none' },
+  { id: 'fox', name: '여우', emoji: '🦊', body: 0xe07b3c, belly: 0xf5e9d8, ear: 0x8a4a24,
+    bodyR: 0.52, bodyScale: [0.90, 1.08, 0.90], headR: 0.37, headY: 1.26, armX: 0.74,
+    ears: 'pointy', earScale: 1.15,
+    snout: { len: 0.34, r: 0.13, color: 0xf7efe2, nose: 0x2a2320 },
+    tail: { type: 'bushy', color: 0xe07b3c, tip: 0xf7efe2, wagSpeed: 2.2, wagAmp: 0.16 } },
+
+  { id: 'dog', name: '강아지', emoji: '🐶', body: 0xc9945a, belly: 0xf0e2cc, ear: 0x8a6038,
+    bodyR: 0.56, bodyScale: [1.03, 0.99, 1.00], headR: 0.40, headY: 1.24, armX: 0.80,
+    ears: 'floppy',
+    snout: { len: 0.24, r: 0.17, color: 0xf0e2cc, nose: 0x2a2320 },
+    tail: { type: 'curl', color: 0xc9945a, wagSpeed: 6.5, wagAmp: 0.55 },   // 신나게 살랑살랑
+    extras: ['collar'] },
+
+  { id: 'rabbit', name: '토끼', emoji: '🐰', body: 0xe6e0dc, belly: 0xffffff, ear: 0xf0c0c8,
+    bodyR: 0.46, bodyScale: [1.00, 0.96, 1.00], headR: 0.39, headY: 1.12, armX: 0.66,
+    ears: 'long',
+    snout: { len: 0.16, r: 0.14, color: 0xffffff, nose: 0xe89aa8 },
+    tail: { type: 'puff', color: 0xffffff, wagSpeed: 1.6, wagAmp: 0.10 },
+    extras: ['teeth'] },
+
+  { id: 'cat', name: '고양이', emoji: '🐱', body: 0x9aa0a8, belly: 0xf0f0f0, ear: 0xf0b0b8,
+    bodyR: 0.50, bodyScale: [0.88, 1.10, 0.88], headR: 0.36, headY: 1.25, armX: 0.72,
+    ears: 'pointy', earScale: 0.85,
+    snout: { len: 0.14, r: 0.13, color: 0xf0f0f0, nose: 0xf08a9a },
+    tail: { type: 'long', color: 0x9aa0a8, wagSpeed: 1.5, wagAmp: 0.30 },   // 느긋하게 살랑
+    extras: ['whiskers'] },
+
+  { id: 'bear', name: '곰', emoji: '🐻', body: 0x8a6038, belly: 0xc9a878, ear: 0x6a4828,
+    bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.44, headY: 1.34, armX: 0.88,
+    ears: 'round', earScale: 1.1,
+    snout: { len: 0.22, r: 0.20, color: 0xc9a878, nose: 0x2a2320, noseR: 0.075 },
+    tail: { type: 'stub', color: 0x8a6038, wagSpeed: 1.2, wagAmp: 0.08 } },
+
+  { id: 'panda', name: '판다', emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a,
+    bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.45, headY: 1.34, armX: 0.88,
+    ears: 'round', earScale: 1.15,
+    snout: { len: 0.18, r: 0.19, color: 0xffffff, nose: 0x2a2a2a, noseR: 0.07 },
+    tail: { type: 'stub', color: 0xffffff, wagSpeed: 1.2, wagAmp: 0.08 },
+    extras: ['patches', 'band'] },   // 검은 눈 패치 + 어깨 띠 = 판다의 정체성
+
+  { id: 'chick', name: '병아리', emoji: '🐤', body: 0xffe05a, belly: 0xfff0a0, ear: 0xffb020,
+    bodyR: 0.50, bodyScale: [1.02, 0.94, 1.02], headR: 0.35, headY: 1.06, armX: 0.62,
+    ears: 'none',
+    tail: { type: 'feather', color: 0xffd23a, wagSpeed: 2.6, wagAmp: 0.14 },
+    extras: ['beak', 'comb', 'wings'] },
 ];
 let heldGroup, handAnchor, heldToolMesh; // 팔(어깨 피벗) / 손 / 든 도구
 let sunLight, hemiLight, ambient;
@@ -881,18 +929,8 @@ function buildPlayer() {
   playerLight.position.set(0, 1.5, 0);
   player.add(playerLight);
 
-  playerBody = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), clayMat(PAL.body, false));
-  playerBody.position.y = 0.6; playerBody.castShadow = true; playerBody.scale.set(1, 1.05, 1); playerAnchor.add(playerBody);
-  playerBelly = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12), clayMat(PAL.belly, false));
-  playerBelly.position.set(0, 0.5, 0.32); playerBelly.scale.set(1, 1.1, 0.6); playerAnchor.add(playerBelly);
-  playerHead = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), clayMat(PAL.body, false));
-  playerHead.position.y = 1.25; playerHead.castShadow = true; playerAnchor.add(playerHead);
-  earGroup = new THREE.Group(); playerAnchor.add(earGroup);   // 동물 귀(캐릭터별)
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
-  [-0.14, 0.14].forEach(ex => {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeMat);
-    eye.position.set(ex, 1.3, 0.34); playerAnchor.add(eye);
-  });
+  // 캐릭터 몸체는 applyCharacter() 가 buildAnimalMesh() 로 통째로 만들어 붙입니다
+  // (동물마다 체형·꼬리·얼굴이 달라 색만 갈아끼우는 방식으론 표현이 안 됨)
 
   // 오른팔 + 손 — 팔을 옆으로 벌려 도구가 몸 밖에 보이게(원래 보이던 자세 + 바깥으로 이동)
   heldGroup = new THREE.Group();
@@ -908,59 +946,191 @@ function buildPlayer() {
   scene.add(player);
 }
 
-// 동물 귀 만들기(캐릭터별)
-function buildEars(a) {
-  while (earGroup.children.length) earGroup.remove(earGroup.children[0]);
-  const mat = clayMat(a.ear, false);
-  if (a.ears === 'pointy') {
-    [-0.2, 0.2].forEach(x => { const e = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 5), mat); e.position.set(x, 1.6, -0.02); e.rotation.z = x > 0 ? -0.25 : 0.25; e.castShadow = true; earGroup.add(e); });
-  } else if (a.ears === 'long') {
-    [-0.16, 0.16].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), mat); e.scale.set(0.7, 2.6, 0.55); e.position.set(x, 1.8, 0); e.rotation.z = x > 0 ? -0.12 : 0.12; e.castShadow = true; earGroup.add(e); });
-  } else if (a.ears === 'floppy') {
-    [-0.3, 0.3].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), mat); e.scale.set(0.6, 1.5, 0.4); e.position.set(x, 1.35, 0); e.rotation.z = x > 0 ? -0.5 : 0.5; e.castShadow = true; earGroup.add(e); });
-  } else if (a.ears === 'round') {
-    [-0.26, 0.26].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), mat); e.position.set(x, 1.55, -0.02); e.castShadow = true; earGroup.add(e); });
-  } else if (a.ears === 'none') {   // 병아리: 부리
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), clayMat(0xff9a3a, false)); beak.position.set(0, 1.22, 0.42); beak.rotation.x = Math.PI / 2; earGroup.add(beak);
-  }
-}
-
-// 선택한 동물로 캐릭터 외형 적용
-function applyCharacter(id) {
-  const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
-  if (playerBody) playerBody.material.color.setHex(a.body);
-  if (playerHead) playerHead.material.color.setHex(a.body);
-  if (playerArm) playerArm.material.color.setHex(a.body);
-  if (playerBelly) playerBelly.material.color.setHex(a.belly);
-  buildEars(a);
-}
-
-// ── 캐릭터 선택 화면용: 독립적인 캐릭터 메시(도구/팔 없음) ──
-function buildCharacterMesh(id) {
+// ── 동물 파츠 조립기 ────────────────────────────────────────────
+//   플레이어와 선택화면 프리뷰가 이 함수 하나를 공유합니다.
+//   (예전엔 buildPlayer/buildEars 와 buildCharacterMesh 에 같은 코드가 중복돼 있어
+//    한쪽만 고치면 인게임과 프리뷰 생김새가 어긋날 위험이 있었음 → 단일 소스로 통합)
+//   모든 좌표는 머리 크기(HR)·몸 반지름(R) 기준 상대값 — 체형을 바꿔도 비율이 유지됨.
+//   반환: { group, tail } · tail 은 흔들 피벗(꼬리 없으면 null)
+function buildAnimalMesh(id) {
   const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), clayMat(a.body, false));
-  body.position.y = 0.6; body.scale.set(1, 1.05, 1); g.add(body);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12), clayMat(a.belly, false));
-  belly.position.set(0, 0.5, 0.32); belly.scale.set(1, 1.1, 0.6); g.add(belly);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), clayMat(a.body, false));
-  head.position.y = 1.25; g.add(head);
+  const R = a.bodyR ?? 0.55, HR = a.headR ?? 0.40, HY = a.headY ?? 1.25;
+  const bs = a.bodyScale || [1, 1.05, 1];
+  const ex = a.extras || [];
+  const skin = () => clayMat(a.body, false);
+
+  // ── 몸통 — 바닥에 딱 닿게 배치(동물마다 키가 달라짐) ──
+  const bodyY = R * bs[1] + 0.02;
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(R, 1), skin());
+  body.position.y = bodyY; body.scale.set(bs[0], bs[1], bs[2]); body.castShadow = true; g.add(body);
+
+  // 배(밝은 색)
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 16, 12), clayMat(a.belly, false));
+  belly.position.set(0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+
+  // ── 머리 ──
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(HR, 1), skin());
+  head.position.y = HY; head.castShadow = true; g.add(head);
+
+  // 눈 — 머리 크기에 맞춰 자동 배치
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
-  [-0.14, 0.14].forEach(ex => { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeMat); eye.position.set(ex, 1.3, 0.34); g.add(eye); });
-  const mat = clayMat(a.ear, false);
-  if (a.ears === 'pointy') {
-    [-0.2, 0.2].forEach(x => { const e = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 5), mat); e.position.set(x, 1.6, -0.02); e.rotation.z = x > 0 ? -0.25 : 0.25; g.add(e); });
-  } else if (a.ears === 'long') {
-    [-0.16, 0.16].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), mat); e.scale.set(0.7, 2.6, 0.55); e.position.set(x, 1.8, 0); e.rotation.z = x > 0 ? -0.12 : 0.12; g.add(e); });
-  } else if (a.ears === 'floppy') {
-    [-0.3, 0.3].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), mat); e.scale.set(0.6, 1.5, 0.4); e.position.set(x, 1.35, 0); e.rotation.z = x > 0 ? -0.5 : 0.5; g.add(e); });
-  } else if (a.ears === 'round') {
-    [-0.26, 0.26].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), mat); e.position.set(x, 1.55, -0.02); g.add(e); });
-  } else if (a.ears === 'none') {
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), clayMat(0xff9a3a, false)); beak.position.set(0, 1.22, 0.42); beak.rotation.x = Math.PI / 2; g.add(beak);
+  const eyeX = HR * 0.36, eyeY = HY + HR * 0.10, eyeZ = HR * 0.86;
+  if (ex.includes('patches')) {   // 🐼 검은 눈 패치 — 눈보다 먼저(뒤에) 깔기
+    [-1, 1].forEach(s => {
+      const p = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.30, 12, 10), clayMat(0x2a2a2a, false));
+      p.position.set(s * eyeX * 1.05, eyeY - HR * 0.02, eyeZ * 0.86);
+      p.scale.set(1, 1.25, 0.45); p.rotation.z = s * 0.35; g.add(p);
+    });
   }
-  return g;
+  [-1, 1].forEach(s => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.145, 8, 8), eyeMat);
+    e.position.set(s * eyeX, eyeY, eyeZ); g.add(e);
+  });
+
+  // ── 주둥이 + 코 ──
+  if (a.snout) {
+    const sn = a.snout;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(sn.r, 12, 10), clayMat(sn.color, false));
+    m.position.set(0, HY - HR * 0.16, HR * 0.60 + sn.len * 0.35);
+    m.scale.set(1, 0.82, sn.len / sn.r); g.add(m);
+    const nr = sn.noseR ?? sn.r * 0.44;
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(nr, 10, 8), clayMat(sn.nose, false));
+    nose.position.set(0, HY - HR * 0.13, HR * 0.60 + sn.len * 0.92);
+    nose.scale.set(1.25, 0.85, 0.9); g.add(nose);
+
+    if (ex.includes('whiskers')) {   // 🐱 수염 — 코 옆에서 좌우로
+      const wm = new THREE.MeshStandardMaterial({ color: 0xf2ece4, roughness: 0.8 });
+      [-1, 1].forEach(s => [0.06, 0, -0.06].forEach((dy, i) => {
+        const w = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, HR * 0.95, 4), wm);
+        w.position.set(s * (HR * 0.30), HY - HR * 0.10 + dy, HR * 0.62 + a.snout.len * 0.6);
+        w.rotation.z = s * (Math.PI / 2 - 0.25 + i * 0.16); g.add(w);
+      }));
+    }
+    if (ex.includes('teeth')) {      // 🐰 앞니
+      const t = new THREE.Mesh(new THREE.BoxGeometry(HR * 0.17, HR * 0.20, 0.03), clayMat(0xffffff, false));
+      t.position.set(0, HY - HR * 0.36, HR * 0.60 + sn.len * 0.85); g.add(t);
+    }
+  }
+
+  // ── 귀 ──
+  const earMat = clayMat(a.ear, false);
+  const es = a.earScale ?? 1;
+  if (a.ears === 'pointy') {                     // 🦊🐱 쫑긋
+    [-1, 1].forEach(s => {
+      const e = new THREE.Mesh(new THREE.ConeGeometry(HR * 0.33 * es, HR * 0.78 * es, 5), earMat);
+      e.position.set(s * HR * 0.55, HY + HR * 0.85 * es, -HR * 0.05);
+      e.rotation.z = -s * 0.25; e.castShadow = true; g.add(e);
+    });
+  } else if (a.ears === 'long') {                // 🐰 길쭉
+    [-1, 1].forEach(s => {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.26, 8, 8), earMat);
+      e.scale.set(0.7, 2.6, 0.55);
+      e.position.set(s * HR * 0.42, HY + HR * 1.40, 0);
+      e.rotation.z = -s * 0.12; e.castShadow = true; g.add(e);
+    });
+  } else if (a.ears === 'floppy') {              // 🐶 축 늘어진
+    [-1, 1].forEach(s => {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.30, 8, 8), earMat);
+      e.scale.set(0.6, 1.5, 0.4);
+      e.position.set(s * HR * 0.78, HY + HR * 0.28, 0);
+      e.rotation.z = -s * 0.5; e.castShadow = true; g.add(e);
+    });
+  } else if (a.ears === 'round') {               // 🐻🐼 동그란
+    [-1, 1].forEach(s => {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.36 * es, 10, 8), earMat);
+      e.position.set(s * HR * 0.66, HY + HR * 0.70, -HR * 0.05);
+      e.castShadow = true; g.add(e);
+    });
+  }
+
+  // ── 동물별 포인트 ──
+  if (ex.includes('beak')) {        // 🐤 부리
+    const b = new THREE.Mesh(new THREE.ConeGeometry(HR * 0.26, HR * 0.50, 4), clayMat(0xff9a3a, false));
+    b.position.set(0, HY - HR * 0.12, HR * 0.92); b.rotation.x = Math.PI / 2; g.add(b);
+  }
+  if (ex.includes('comb')) {        // 🐤 머리 위 볏
+    [0, 1, 2].forEach(i => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(HR * (0.16 - i * 0.03), 8, 6), clayMat(0xf2564a, false));
+      c.position.set(0, HY + HR * (0.92 - i * 0.10), -HR * (0.02 + i * 0.22)); g.add(c);
+    });
+  }
+  if (ex.includes('wings')) {       // 🐤 양옆 짧은 날개
+    [-1, 1].forEach(s => {
+      const w = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0xffd23a, false));
+      w.scale.set(0.30, 0.85, 0.75);
+      w.position.set(s * R * 0.92, bodyY + R * 0.02, R * 0.05);
+      w.rotation.z = -s * 0.20; w.castShadow = true; g.add(w);
+    });
+  }
+  if (ex.includes('band')) {        // 🐼 검은 어깨(팔) 블록
+    [-1, 1].forEach(s => {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(R * 0.40, 10, 8), clayMat(0x2a2a2a, false));
+      b.scale.set(0.52, 0.95, 0.86);
+      b.position.set(s * R * 0.88, bodyY + R * 0.10, 0);
+      b.castShadow = true; g.add(b);
+    });
+  }
+  if (ex.includes('collar')) {      // 🐶 빨간 목줄
+    // ※ 머리가 몸통에 깊이 박히는 체형이라 목 위치를 낮게 잡으면 몸 안에 파묻힘.
+    //   머리·몸통 실루엣이 만나는 지점(HY - HR*0.55)에 걸치고, 반지름을 그 단면보다
+    //   살짝 크게(HR*0.92) 잡아야 밖으로 드러납니다.
+    const c = new THREE.Mesh(new THREE.TorusGeometry(HR * 0.92, HR * 0.11, 6, 18), clayMat(0xd9534f, false));
+    c.position.set(0, HY - HR * 0.55, 0); c.rotation.x = Math.PI / 2; c.castShadow = true; g.add(c);
+    const tag = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.13, 8, 8), clayMat(0xf0c040, false));
+    tag.position.set(0, HY - HR * 0.72, HR * 0.86); tag.scale.set(1, 1, 0.55); g.add(tag);
+  }
+
+  // ── 꼬리 ── (피벗을 반환해 애니메이션에서 흔듦)
+  let tail = null;
+  if (a.tail) {
+    const t = a.tail;
+    tail = new THREE.Group();
+    tail.position.set(0, bodyY + R * 0.10, -R * bs[2] * 0.86);
+    const tm = clayMat(t.color, false);
+    const put = (mesh, x, y, z) => { mesh.position.set(x, y, z); mesh.castShadow = true; tail.add(mesh); };
+
+    if (t.type === 'bushy') {            // 🦊 크고 풍성 + 흰 꼬리끝
+      const seg = [[0, 0.02, -0.10, 0.26], [0, 0.14, -0.26, 0.29], [0, 0.30, -0.40, 0.27], [0, 0.48, -0.48, 0.22]];
+      seg.forEach(([x, y, z, r]) => put(new THREE.Mesh(new THREE.SphereGeometry(R * r, 10, 8), tm), R * x, R * y, R * z));
+      put(new THREE.Mesh(new THREE.SphereGeometry(R * 0.19, 10, 8), clayMat(t.tip, false)), 0, R * 0.64, -R * 0.50);
+    } else if (t.type === 'curl') {      // 🐶 짧고 위로 말린
+      const seg = [[0.02, -0.08, 0.16], [0.20, -0.16, 0.14], [0.36, -0.10, 0.12], [0.46, 0.02, 0.10]];
+      seg.forEach(([y, z, r]) => put(new THREE.Mesh(new THREE.SphereGeometry(R * r, 10, 8), tm), 0, R * y, R * z));
+    } else if (t.type === 'puff') {      // 🐰 동그란 솜뭉치
+      put(new THREE.Mesh(new THREE.SphereGeometry(R * 0.30, 12, 10), tm), 0, R * 0.04, -R * 0.06);
+    } else if (t.type === 'long') {      // 🐱 길고 가늘게 S자
+      const seg = [[0.00, -0.10, 0.12], [0.16, -0.22, 0.11], [0.34, -0.26, 0.10], [0.52, -0.20, 0.09], [0.66, -0.06, 0.08]];
+      seg.forEach(([y, z, r]) => put(new THREE.Mesh(new THREE.SphereGeometry(R * r, 8, 8), tm), 0, R * y, R * z));
+    } else if (t.type === 'stub') {      // 🐻🐼 뭉툭한 짧은 꼬리
+      put(new THREE.Mesh(new THREE.SphereGeometry(R * 0.17, 10, 8), tm), 0, R * 0.06, -R * 0.02);
+    } else if (t.type === 'feather') {   // 🐤 뾰족한 꽁지깃
+      [-1, 0, 1].forEach(s => {
+        const f = new THREE.Mesh(new THREE.ConeGeometry(R * 0.13, R * 0.46, 4), tm);
+        f.position.set(s * R * 0.14, R * (0.16 + Math.abs(s) * -0.04), -R * 0.14);
+        f.rotation.set(-0.9, 0, s * 0.35); f.castShadow = true; tail.add(f);
+      });
+    }
+    tail.userData = { wagSpeed: t.wagSpeed ?? 2, wagAmp: t.wagAmp ?? 0.15 };
+    g.add(tail);
+  }
+
+  return { group: g, tail };
 }
+
+// 선택한 동물로 캐릭터 외형 적용 — 체형이 다르므로 몸체를 통째로 교체
+function applyCharacter(id) {
+  const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
+  if (!playerAnchor) return;
+  if (charGroup) { playerAnchor.remove(charGroup); charGroup = null; tailPivot = null; }
+  const built = buildAnimalMesh(a.id);
+  charGroup = built.group; tailPivot = built.tail;
+  playerAnchor.add(charGroup);
+  if (heldGroup) heldGroup.position.x = a.armX ?? 0.78;   // 몸집에 맞춰 도구 위치 보정
+}
+
+// ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
+function buildCharacterMesh(id) { return buildAnimalMesh(id).group; }
 
 // ── 선택 화면 3D 프리뷰(드래그로 회전 + 살짝 자동 스핀) ──
 function makeCharacterPreview(canvas) {
@@ -2574,6 +2744,15 @@ function updatePlayer(dt, t) {
   } else if (!updateEmote(dt)) {  // 이모트 모션 중이면 기본 idle 숨쉬기 대신 모션 재생
     playerAnchor.position.y = Math.sin(t * 2) * 0.03;
     playerAnchor.rotation.z *= 0.9;
+  }
+
+  // 🐾 꼬리 흔들기 — 동물별 속도·진폭(강아지는 신나게, 고양이는 느긋하게).
+  //    움직일 때 더 크고 빠르게 흔들려 "살아있는" 느낌을 줌.
+  if (tailPivot) {
+    const u = tailPivot.userData;
+    tailPhase += dt * u.wagSpeed * (moving ? 1.8 : 1);
+    tailPivot.rotation.y = Math.sin(tailPhase) * u.wagAmp * (moving ? 1.6 : 1);
+    tailPivot.rotation.x = Math.sin(tailPhase * 0.5) * u.wagAmp * 0.3;
   }
 
   if (indoor) { // 실내: 방 벽 안쪽으로 제한(넓어진 방)
