@@ -310,7 +310,9 @@
 
   /* 구역 안내(반딧불이 계곡·채집 숲) — 도구로 노는 넓은 구역용.
      문/작업대 프롬프트보다 한 칸 위에 떠서 겹치지 않고, 액션 버튼도 뺏지 않음 */
-  #zone-prompt { bottom: calc(184px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 88vw; text-align: center; }
+  /* 기본 위치는 문 프롬프트와 같은 높이. 문 프롬프트가 함께 떠 있으면
+     layoutPrompts() 가 실제 높이를 재서 그 위로 올린다(폰트·줄바꿈에 안 깨지게). */
+  #zone-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .25s, bottom .15s; pointer-events: none; max-width: 88vw; text-align: center; }
   #zone-prompt.show { opacity: 1; }
   @keyframes biteFlash { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
 
@@ -358,6 +360,7 @@
   .cf-body { flex: 1 1 auto; min-width: 0; }
   .cf-name { font-size: 12px; opacity: .75; }
   .cf-order { font-size: 13.5px; font-weight: 700; }
+  .cf-line { font-size: 11.5px; opacity: .72; font-style: italic; margin-top: 2px; line-height: 1.35; }
   .cf-cost { font-size: 11px; opacity: .8; margin-top: 2px; }
   .cf-cost .lack { color: #d05a4a; font-weight: 700; }
   .cf-pay { font-size: 11px; opacity: .8; text-align: right; white-space: nowrap; }
@@ -533,9 +536,10 @@
     /* 모바일은 프롬프트 대신 "대화하기" 버튼 사용 → 프롬프트 숨김 */
     #npc-prompt { display: none; }
     /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
-    #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; }
-    /* 구역 안내는 조이스틱·액션버튼보다 확실히 위로(두 줄이 되어도 안 겹치게) */
-    #zone-prompt { bottom: calc(292px + env(safe-area-inset-bottom)); font-size: 12px; max-width: 78vw; }
+    /* 손님 이름+요리가 길어지면 화면 밖으로 나가므로 모바일에선 줄바꿈 허용 */
+    #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; white-space: normal; max-width: 88vw; text-align: center; }
+    /* 기본 위치는 문 프롬프트와 동일 — 둘 다 뜨면 JS가 실제 높이만큼 올림 */
+    #zone-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 12px; max-width: 86vw; }
     #ext-btn { bottom: calc(282px + env(safe-area-inset-bottom)); font-size: 13px; padding: 9px 16px; }
     /* 모바일: 코치 말풍선(단계 점 줄바꿈으로 더 큼) 아래로 토스트 배치 */
     body.coaching #toast { top: calc(238px + env(safe-area-inset-top)); }
@@ -869,12 +873,13 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=20';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=20';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=20';
-    import { CONFIG } from './js/config.js?v=20';
-    import { initControls } from './js/controls.js?v=20';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=20';
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=26';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=26';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=26';
+    import { CONFIG } from './js/config.js?v=26';
+    import { initControls } from './js/controls.js?v=26';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=26';
+    import { initCafeGuests } from './js/cafe-guests.js?v=26';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -906,6 +911,20 @@
         bar.appendChild(slot);
       });
     }
+
+    // 하단 프롬프트 겹침 방지 — 문/낚시 프롬프트가 떠 있으면 대사(zone-prompt)를 그 위로 올린다.
+    //   고정 px 로 띄우면 폰트 크기·줄바꿈(손님 대사가 길어질 때)에 따라 겹치므로 실제 높이를 잰다.
+    //   CSS 기본값은 문 프롬프트와 같은 높이라, 혼자 뜰 땐 그 자리에 그대로 표시된다.
+    const PROMPT_GAP = 10;
+    function layoutPrompts() {
+      const zone = $('zone-prompt');
+      if (!zone.classList.contains('show')) { zone.style.bottom = ''; return; }
+      const below = ['door-prompt', 'fish-prompt'].map($).filter(e => e && e.classList.contains('show'));
+      if (!below.length) { zone.style.bottom = ''; return; }   // 혼자면 CSS 기본 위치
+      const top = Math.min(...below.map(e => e.getBoundingClientRect().top));
+      zone.style.bottom = Math.round(window.innerHeight - top + PROMPT_GAP) + 'px';
+    }
+    window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
     let toastTimer;
     const ui = {
@@ -951,9 +970,10 @@
       // 낚시 프롬프트(던지는 중 / 물었어요!)
       setFishPrompt(text) {
         const el = $('fish-prompt');
-        if (!text) { el.classList.remove('show', 'bite'); return; }
+        if (!text) { el.classList.remove('show', 'bite'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
         el.classList.toggle('bite', text.includes('물었'));
+        layoutPrompts();
       },
       // NPC 근접 표시: 데스크톱은 프롬프트 텍스트, 모바일은 "대화하기" 버튼(near-npc 클래스)
       setInteractPrompt(text) {
@@ -1080,11 +1100,12 @@
         Input.setAnalog(0, 0);
         $('market-modal').classList.add('show');
       },
-      // 🌟🍄 구역 안내(반딧불이 계곡·채집 숲) — 프롬프트만 띄우고 액션 버튼은 도구 그대로 유지
+      // 🌟🍄 구역 안내·손님 대사 — 프롬프트만 띄우고 액션 버튼은 도구 그대로 유지
       setZoneHint(text) {
         const el = $('zone-prompt');
-        if (!text) { el.classList.remove('show'); return; }
+        if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
+        layoutPrompts();
       },
       // 문/작업대 프롬프트 (텍스트에 '요리' 있으면 액션버튼 아이콘 🍳)
       setDoorPrompt(text) {
@@ -1096,8 +1117,9 @@
           : t.includes('요리') ? '🍳' : t.includes('상점') ? '🛒' : t.includes('닭장') ? '🐔'
           : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : '🚪';
         refreshActionIcon();
-        if (!text) { el.classList.remove('show'); return; }
+        if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
+        layoutPrompts();
       },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
       onDecorPlaced() { stopPlacing(); },
@@ -1541,6 +1563,7 @@
           `<span class="cf-guest">${o.npc.emoji}</span>` +
           `<span class="cf-body"><span class="cf-name">${o.npc.name}</span>` +
           `<div class="cf-order">${o.recipe.ico} ${o.recipe.name}</div>` +
+          (o.line ? `<div class="cf-line">“${o.line}”</div>` : '') +
           `<div class="cf-cost">${cost}</div></span>` +
           `<span class="cf-pay">🪙${o.pay}<br>❤️+1</span>` +
           `<span class="cf-state ${o.done ? 'ok' : o.ready ? 'ready' : 'lack'}">${o.done ? '완료 ✅' : o.ready ? '준비됨' : '재료 부족'}</span>`;
@@ -1843,6 +1866,7 @@
     });
 
     (async () => {
+      initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
       await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
       $('loading').style.display = 'none';
 

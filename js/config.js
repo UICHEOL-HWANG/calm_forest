@@ -33,6 +33,13 @@ export const CONFIG = {
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
   AUTH_MODE: 'google',
 
+  // ── ☕ 카페 손님 동적 생성 엔드포인트 ─────────────────────────
+  //    같은 오리진의 서버 함수(functions/api/cafe-guests.js)가 Gemini 를 대신 호출합니다.
+  //    ⚠️ Gemini API 키는 절대 여기 두지 마세요 — 브라우저에 그대로 노출됩니다.
+  //       키는 .env(로컬) / Cloudflare Pages 환경변수(운영)의 GEMINI_API_KEY 에만 둡니다.
+  //    빈 문자열로 두면 기능이 꺼지고 게임 내장(날짜 시드) 손님이 나옵니다.
+  CAFE_GUEST_API: '/api/cafe-guests',
+
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)
   //    'map'  = 맵 크기 A/B (client_id 해시로 A/B 50:50 배정)

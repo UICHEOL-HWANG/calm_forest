@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=20';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=20';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=20';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=20';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=20'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { sampleFrame, startLogging } from './logger.js?v=26';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=26';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=26';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=26';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=26'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -643,6 +643,43 @@ const swayables = [];
 const particles = [];
 const plots = [];                 // 밭 목록 (런타임 객체)
 const obstacles = [];             // 밭 만들기 금지 구역 {x,z,r} (나무·호수·벤치·가로등·집)
+// ── 🚧 플레이어가 통과할 수 없는 것들 ──────────────────────────
+//   obstacles 와 분리한 이유: obstacles 엔 "밭만 금지"인 넓은 구역(반딧불이 계곡 r7,
+//   채집 숲 r9)이 들어 있어서, 그대로 막으면 그 구역에 들어갈 수가 없다.
+//   형태 두 가지 — 원기둥 {x,z,r} / 축정렬 사각 {x1,z1,x2,z2}(월드 XZ).
+//   문이 있는 건물은 원으로 막으면 문 앞에 설 수 없어 사각을 쓴다.
+const colliders = [];
+const PLAYER_R = 0.42;            // 캐릭터 몸통 반경(대략)
+//   off=true 면 잠시 통과 가능(베어진 나무·캔 광맥처럼 안 보이는 동안)
+function solidCircle(x, z, r) { const c = { x, z, r, off: false }; colliders.push(c); return c; }
+function solidBox(x1, z1, x2, z2) { const c = { x1, z1, x2, z2, off: false }; colliders.push(c); return c; }
+//   손님처럼 사라지는 대상은 콜라이더도 같이 치운다(안 그러면 안 보이는 벽이 남음)
+function removeSolid(c) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
+const NPC_R = 0.45;               // 주민·손님 몸통 반경(대화 2.6 / 서빙 2.4 사거리엔 영향 없음)
+
+// 이동 후 밀어내기 — "가장 얕게 빠져나가는 방향"으로만 밀어 벽을 따라 미끄러지게 한다
+function resolveColliders(p) {
+  for (const c of colliders) {
+    if (c.off) continue;
+    if (c.r !== undefined) {
+      const dx = p.x - c.x, dz = p.z - c.z;
+      const min = c.r + PLAYER_R;
+      const d = Math.hypot(dx, dz);
+      if (d >= min) continue;
+      if (d < 1e-4) { p.x = c.x + min; continue; }   // 정중앙에 겹치면 임의 방향으로 탈출
+      const k = min / d;
+      p.x = c.x + dx * k; p.z = c.z + dz * k;
+    } else {
+      const x1 = c.x1 - PLAYER_R, x2 = c.x2 + PLAYER_R;
+      const z1 = c.z1 - PLAYER_R, z2 = c.z2 + PLAYER_R;
+      if (p.x <= x1 || p.x >= x2 || p.z <= z1 || p.z >= z2) continue;
+      const dl = p.x - x1, dr = x2 - p.x, dn = p.z - z1, df = z2 - p.z;
+      const m = Math.min(dl, dr, dn, df);
+      if (m === dl) p.x = x1; else if (m === dr) p.x = x2;
+      else if (m === dn) p.z = z1; else p.z = z2;
+    }
+  }
+}
 const houseWindows = [];          // 밤에 빛나는 창문 머티리얼
 let houseGroup, houseGhost;       // 집 그룹 / 미완성 터 표시
 let houseSign, houseSignTex, houseSignCtx; // 집 터 안내판(멀리서도 보임)
@@ -1008,7 +1045,8 @@ function spawnTree(x, z) {
   tree.add(canopy);
   canopy.userData.swayPhase = Math.random() * Math.PI * 2; swayables.push(canopy);
 
-  tree.userData = { hp: 3, canopy, trunk, squash: 0, fallen: false, respawnAt: 0, leafColor };
+  // 🚧 줄기는 통과 못 함(벌목 사거리 2.6 은 그대로 확보). 베어져 사라진 동안엔 꺼둔다.
+  tree.userData = { hp: 3, canopy, trunk, squash: 0, fallen: false, respawnAt: 0, leafColor, collider: solidCircle(x, z, 0.8) };
   scene.add(tree); trees.push(tree);
   obstacles.push({ x, z, r: 1.3 }); // 나무 밑엔 밭 금지
 }
@@ -1499,6 +1537,7 @@ function buildCoop(silent = false) {
   }
   scene.add(coopGroup);
   obstacles.push({ x: COOP.x, z: COOP.z, r: 2.0 });   // 밭 금지
+  solidCircle(COOP.x, COOP.z, 1.75);                  // 🚧 오두막·펜 (모이 상호작용 2.4 확보)
   if (!silent) { spawnConfetti(COOP.x, 2.2, COOP.z); spawnSparkle(COOP.x, 1.4, COOP.z, 24); Sound.complete(); }
 }
 
@@ -1919,7 +1958,7 @@ async function ensureCafeGuests() {
   if (!cafeGuestFetcher || cafeGuestCache?.date === today) return;
   try {
     const guests = await cafeGuestFetcher({
-      date: today, count: CAFE_ORDERS,
+      date: today, count: CAFE_ORDERS, weather: WEATHER,
       recipes: cafeMenu().map(r => ({ id: r.id, name: r.name, ico: r.ico, cost: { ...r.cost } })),
       npcs: NPCS.filter(n => !n.daily).map(n => ({ id: n.id, name: n.name, emoji: n.emoji })),
     });
@@ -1961,10 +2000,14 @@ function cafeOrders() {
   const menu = cafeMenu();
   const raw = (cafeGuestCache?.date === today ? cafeGuestCache.guests : localCafeGuests()).slice(0, CAFE_ORDERS);
   return raw.map((g, i) => {
+    // 🥚 오믈렛처럼 아직 못 만드는 메뉴를 주문했으면 만들 수 있는 메뉴로 대체
     const recipe = menu.find(r => r.id === g.recipeId) || menu[i % menu.length];
+    // 외형(이름·이모지·색·모자)은 항상 게임의 주민 정보가 기준.
+    // 외부 생성기(Gemini)는 id·주문·대사만 주면 되고, 나머지는 여기서 채운다.
+    const base = NPCS.find(n => n.id === g.id) || {};
     return {
-      i, id: g.id || ('guest' + i), name: g.name || '손님', emoji: g.emoji || '🙂',
-      color: g.color ?? 0xc9c0aa, hat: g.hat ?? 0xe9c47a, recipe,
+      i, id: g.id || ('guest' + i), name: g.name || base.name || '손님', emoji: g.emoji || base.emoji || '🙂',
+      color: g.color ?? base.color ?? 0xc9c0aa, hat: g.hat ?? base.hat ?? 0xe9c47a, recipe,
       line: g.line || CAFE_LINES[0](recipe.name), thanks: g.thanks || CAFE_THANKS[0],
       done: st.done.includes(i),
     };
@@ -2006,6 +2049,10 @@ function spawnCafeGate() {
   g.add(makeSignpost('☕ 카페', -3.1, 1.3));
   scene.add(g);
   obstacles.push({ x: CAFE_GATE.x, z: CAFE_GATE.z, r: 3.0 });
+  // 🚧 건물 벽은 사각으로 — 원으로 막으면 남쪽 문 앞(z+1.3)에 설 수가 없다.
+  //    벽 footprint: 가로 5.2, 세로 4.0, 중심 z-1.2 → 문이 있는 z+0.8 면까지만 막는다.
+  solidBox(CAFE_GATE.x - 2.6, CAFE_GATE.z - 3.2, CAFE_GATE.x + 2.6, CAFE_GATE.z + 0.8);
+  [-2.1, 2.1].forEach(px => solidCircle(CAFE_GATE.x + px, CAFE_GATE.z + 1.0, 0.3));   // 문 옆 화분
 }
 
 // ── 카페 홀(별도 공간) — 넓은 실내. 카운터 + 테이블 4세트 + 주문판 ──
@@ -2017,13 +2064,29 @@ function buildCafeHall() {
   const rug = new THREE.Mesh(new THREE.CircleGeometry(3.4, 28), clayMat(0xd08a7a, false));
   rug.geometry.rotateX(-Math.PI / 2); rug.position.set(0, 0.16, 1.5); g.add(rug);
   // 문 밖 현관 데크 — 카메라가 홀 남쪽에 있어, 바닥이 없으면 화면 아래가 허공으로 크게 비어 보임
-  const porch = new THREE.Mesh(new THREE.BoxGeometry(H * 2 + 5, 0.16, 10), woodMat(5, 3, 0xc9a878));
-  porch.position.set(0, 0.04, H + 4.6); porch.receiveShadow = true; g.add(porch);
-  [-4.5, 4.5].forEach(px => {   // 현관 화분
+  // ── 문 밖(카페 앞마당) ────────────────────────────────────
+  //  장식이 아니라 카메라 때문에 반드시 있어야 하는 바닥이다. 카메라는 플레이어보다
+  //  16 뒤·높이 14(세로 화각 42°)에 있어서, 남쪽 문 앞에 섰을 때 화면 맨 아래가
+  //  벽 너머 7.1 유닛까지 비춘다. 바닥이 없으면 그만큼 안개색 허공이 뜬다.
+  //  나무 데크로 깔았더니 "왜 있는지 모를 빈 마루"로 보여서, 마을과 같은 잔디 +
+  //  현관 디딤돌 길로 바꿔 "문 밖 앞마당"으로 자연스럽게 읽히게 했다.
+  const YARD_D = 9;
+  const yard = new THREE.Mesh(new THREE.BoxGeometry(H * 2 + 8, 0.14, YARD_D), clayMat(PAL.ground, false));
+  yard.position.set(0, 0.03, H + YARD_D / 2); yard.receiveShadow = true; g.add(yard);
+  for (let i = 0; i < 5; i++) {   // 문 → 남쪽으로 이어지는 디딤돌
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 8), clayMat(0xcfc7b0, false));
+    st.position.set(i % 2 ? 0.4 : -0.4, 0.12, H + 1.2 + i * 1.6); g.add(st);
+  }
+  [[-4.2, 2.0, 0.6], [4.4, 2.4, 0.5], [-7.0, 5.2, 0.65], [6.6, 5.6, 0.55], [-2.0, 7.4, 0.45]]
+    .forEach(([bx, bz, s]) => {   // 앞마당 덤불
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), clayMat(0x8fd6a0));
+      b.position.set(bx, s * 0.85, H + bz); b.castShadow = true; g.add(b);
+    });
+  [-2.4, 2.4].forEach(px => {   // 문 옆 화분
     const p = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.26, 0.5, 10), clayMat(0xc98a6a, false));
-    p.position.set(px, 0.37, H + 1.2); p.castShadow = true; g.add(p);
+    p.position.set(px, 0.37, H + 1.0); p.castShadow = true; g.add(p);
     const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), clayMat(0x8fd6a0));
-    b.position.set(px, 0.95, H + 1.2); b.castShadow = true; g.add(b);
+    b.position.set(px, 0.95, H + 1.0); b.castShadow = true; g.add(b);
   });
   // 벽 4면. 카메라가 있는 남쪽만 낮은 반벽 — 안쪽이 가려지지 않게(가운데는 출입구)
   const wallMat = clayMat(0xf3e2c8, false);
@@ -2092,6 +2155,11 @@ function buildCafeHall() {
     bulb.position.set(lx, 2.25, lz); g.add(bulb);
     const light = new THREE.PointLight(0xffd9a0, 2.6, 20, 1.3); light.position.set(lx, 2.2, lz); g.add(light);
   });
+  // 🚧 홀 안 가구 충돌 — 카운터를 뚫고 들어가 서 있던 문제
+  solidBox(CAFE.x - 4.75, CAFE.z - H + 1.5, CAFE.x + 4.75, CAFE.z - H + 2.9);   // 카운터
+  CAFE_SEATS.forEach(([sx, sz]) => solidCircle(CAFE.x + sx, CAFE.z + sz, 0.9)); // 테이블
+  [[-H + 1.4, H - 1.6], [H - 1.4, H - 1.6], [-H + 1.4, -H + 1.4]]
+    .forEach(([px, pz]) => solidCircle(CAFE.x + px, CAFE.z + pz, 0.4));         // 화분
   scene.add(g); cafeInGroup = g; cafeInGroup.visible = false;   // 홀에 있을 때만 표시
   refreshCafeGuests();
 }
@@ -2130,7 +2198,11 @@ function cafeGuestSprite(o) {
 // 오늘의 주문에 맞춰 홀의 손님을 다시 배치(입장·서빙·날짜 변경 후 호출)
 function refreshCafeGuests() {
   if (!cafeInGroup) return;
-  while (cafeGuestObjs.length) cafeInGroup.remove(cafeGuestObjs.pop().group);
+  while (cafeGuestObjs.length) {
+    const g = cafeGuestObjs.pop();
+    cafeInGroup.remove(g.group);
+    removeSolid(g.collider);        // 🚧 떠난 손님 자리에 안 보이는 벽이 남지 않게
+  }
   cafeOrders().forEach((o, n) => {
     if (o.done) return;                                   // 서빙 끝난 손님은 이미 떠남
     const [sx, sz] = CAFE_SEATS[n % CAFE_SEATS.length];
@@ -2140,7 +2212,9 @@ function refreshCafeGuests() {
     const sprite = cafeGuestSprite(o);
     group.add(sprite);
     cafeInGroup.add(group);
-    cafeGuestObjs.push({ order: o, group, sprite, phase: Math.random() * 6 });
+    // 🚧 손님도 통과 못 함(홀 좌표 → 월드 좌표). 서빙 사거리 2.4 엔 영향 없음
+    const collider = solidCircle(CAFE.x + sx, CAFE.z + sz + 1.5, NPC_R);
+    cafeGuestObjs.push({ order: o, group, sprite, collider, phase: Math.random() * 6 });
   });
 }
 
@@ -2259,6 +2333,7 @@ function makeBench(x, z, ry) {
   });
   scene.add(g);
   obstacles.push({ x, z, r: 1.2 }); // 벤치 위엔 밭 금지
+  solidCircle(x, z, 0.62);          // 🚧 벤치
 }
 function makeLamp(x, z) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -2268,6 +2343,7 @@ function makeLamp(x, z) {
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 0), headMat); head.position.y = 2.5; g.add(head);
   scene.add(g);
   obstacles.push({ x, z, r: 0.8 }); // 가로등 밑엔 밭 금지
+  solidCircle(x, z, 0.22);          // 🚧 기둥만(불빛 아래는 지나갈 수 있게)
 }
 function makeFlower(x, z, col) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -2312,6 +2388,7 @@ function buildHouseGhost() {
   houseGroup.position.copy(HOUSE_POS);
   scene.add(houseGroup);
   obstacles.push({ x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }); // 집 터엔 밭 금지
+  solidCircle(HOUSE_POS.x, HOUSE_POS.z, 2.2);                 // 🚧 집 벽 (문 상호작용 2.8 확보)
 }
 
 // 집 터 안내판 텍스트 갱신(완성되면 숨김)
@@ -2738,6 +2815,7 @@ function spawnWorkbench() {
   g.add(makeSignpost('🍳 작업대', 1.2, 0.7));   // 팻말
   scene.add(g);
   obstacles.push({ x: BENCH.x, z: BENCH.z, r: 1.4 }); // 작업대 위엔 밭 금지
+  solidCircle(BENCH.x, BENCH.z, 1.0);                 // 🚧 (요리 상호작용 2.0 확보)
 }
 
 // 상점 좌판(절차적)
@@ -2755,6 +2833,7 @@ function spawnShop() {
   g.add(makeSignpost('🛒 상점', 1.4, 0.7));   // 팻말
   scene.add(g);
   obstacles.push({ x: SHOP.x, z: SHOP.z, r: 1.6 });
+  solidCircle(SHOP.x, SHOP.z, 1.15);   // 🚧 좌판 (상점 상호작용 2.0 확보)
 }
 
 // ── 📊 시세 전광판 — 상점 옆. 보드에 오늘의 최고/최저 품목이 직접 표시되고,
@@ -2795,6 +2874,7 @@ function spawnMarketBoard() {
   board.position.y = 1.45; board.castShadow = true; g.add(board);
   scene.add(g);   // 회전 없음 — 게임 카메라(남쪽에서 북쪽을 봄)를 향해 앞면(+z) 표시
   obstacles.push({ x: MARKET.x, z: MARKET.z, r: 0.9 });
+  solidCircle(MARKET.x, MARKET.z, 0.8);   // 🚧 전광판 (시세 상호작용 2.0 확보)
 }
 
 // 시세판 모달 데이터 — index.html(ui.openMarket)이 렌더
@@ -2944,6 +3024,8 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
   const m = outdoorMesh(id); m.position.set(wx, 0, wz); scene.add(m); outdoorMeshes.push(m);
   gameState.outdoor.push({ id, x: wx, z: wz });
   obstacles.push({ x: wx, z: wz, r: 0.8 });   // 그 위엔 밭 금지
+  // 🚧 울타리·돌담·정원등·화로는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
+  if (['fence', 'stonewall', 'postlamp', 'brazier'].includes(id)) solidCircle(wx, wz, id === 'postlamp' ? 0.22 : 0.5);
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
@@ -3035,6 +3117,8 @@ function spawnFarmGate() {
   const sign = makeSignBoard('🌾 내 텃밭'); sign.position.set(0, 1.7, 0.02); g.add(sign);
   scene.add(g);
   obstacles.push({ x: FARM_GATE.x, z: FARM_GATE.z, r: 1.2 });
+  // 🚧 기둥 두 개만 — 아치 가운데는 걸어서 지나갈 수 있어야 한다
+  [-1.1, 1.1].forEach(px => solidCircle(FARM_GATE.x + px, FARM_GATE.z, 0.28));
 }
 
 // 텃밭 필드(잔디 바닥 + 울타리 + 나가는 문 + 허수아비)
@@ -3093,7 +3177,8 @@ function spawnOreRock(x, z, ore) {
     ? new THREE.MeshStandardMaterial({ color: ore.color, emissive: ore.color, emissiveIntensity: 0.5, roughness: 0.3 })
     : clayMat(ore.color, false);
   for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), oreMat); b.position.set((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.4, (Math.random() - 0.5) * 0.6); g.add(b); }
-  g.userData = { ore, hp: 3, depleted: false, respawnAt: 0, growing: false };
+  // 🚧 광맥 바위(채굴 사거리 2.4 는 그대로). 캐서 사라진 동안엔 통과 가능.
+  g.userData = { ore, hp: 3, depleted: false, respawnAt: 0, growing: false, collider: solidCircle(x, z, 0.7) };
   scene.add(g); oreRocks.push(g);
 }
 
@@ -3178,6 +3263,9 @@ function spawnMineGate() {
   const sign = makeSignBoard('⛏️ 채굴장'); sign.scale.setScalar(0.62); sign.position.set(2.7, 1.62, 1.45); g.add(sign);
   scene.add(g);
   obstacles.push({ x: MINE_GATE.x, z: MINE_GATE.z, r: 1.8 });
+  // 🚧 바위 더미는 사각으로 — 입구(+z)만 열어 두고 나머지를 막는다.
+  //    (원으로 막으면 아치 안으로 못 들어가 입장 판정 2.0 을 못 채움)
+  solidBox(MINE_GATE.x - 2.4, MINE_GATE.z - 1.7, MINE_GATE.x + 2.4, MINE_GATE.z + 0.15);
 }
 
 function enterMine() {
@@ -3229,6 +3317,7 @@ function updateOreRocks() {
     if (ud.depleted && now > ud.respawnAt) { ud.depleted = false; ud.hp = 3; rock.scale.set(0.01, 0.01, 0.01); ud.growing = true; }
     if (ud.growing) { const s = THREE.MathUtils.lerp(rock.scale.x, 1, 0.12); rock.scale.set(s, s, s); if (s > 0.98) { rock.scale.set(1, 1, 1); ud.growing = false; } }
     rock.visible = atMine && !ud.depleted;   // 동굴 밖에선 안 보이게
+    if (ud.collider) ud.collider.off = ud.depleted;   // 🚧 캔 자리엔 막히지 않게
   }
 }
 
@@ -3299,6 +3388,11 @@ function updateDoorInteract() {
 let lastZoneHint = null;
 function updateZoneHint() {
   let hint = null;
+  if (atCafe) {   // ☕ 손님 옆에 서면 주문 대사를 띄움(액션 프롬프트와 별도 줄)
+    if (nearCafeGuest) hint = `💬 ${nearCafeGuest.order.line}`;
+    if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
+    return;
+  }
   const wasGlade = nearGlade;
   nearGlade = inVillage2() && dist2D(GLADE, player.position) < GLADE_R + 0.5;
   if (nearGlade) {
@@ -3597,6 +3691,12 @@ function updatePlayer(dt, t) {
       }
     }
   }
+
+  // 🚧 건물·바위·가구 밀어내기 — 공간 클램프 뒤에 마지막으로(벽 모서리에 끼지 않게)
+  //    실내(집)는 가구를 직접 배치하는 공간이라 제외 — 잘못 놓으면 갇힐 수 있음
+  if (!indoor) resolveColliders(player.position);
+  // 테스트: ?dbg=1 — 현재 좌표·카메라·콜라이더 수를 <body data-dbg> 에 기록(충돌 디버깅용)
+  if (_wq.has('dbg')) document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
 
   // 액션 제스처: 백스윙 → 휙 내려침 → 팔로스루 — 도구가 어깨 피벗으로 크게 호를 그림
   if (actAnim > 0) {
@@ -3921,6 +4021,7 @@ function updateTrees(dt) {
       tree.rotation.z = Math.sin(sq * 22) * 0.06 * sq;
     }
     if (ud.fallen && now > ud.respawnAt) { ud.fallen = false; ud.hp = 3; tree.visible = true; tree.scale.set(0.01, 0.01, 0.01); ud.growing = true; }
+    if (ud.collider) ud.collider.off = ud.fallen;   // 🚧 안 보이는 그루터기에 막히지 않게
     if (ud.growing) {
       const s = THREE.MathUtils.lerp(tree.scale.x, 1, dt * 5);
       tree.scale.set(s, s, s);
@@ -4582,6 +4683,8 @@ function buildNPCs() {
       home: new THREE.Vector3(def.pos[0], 0, def.pos[2]),
       target: new THREE.Vector3(def.pos[0], 0, def.pos[2]),
       wanderTimer: Math.random() * 3, phase: Math.random() * 6,
+      // 🚧 주민도 통과 못 함. 배회하니 콜라이더 좌표를 매 프레임 따라가게 한다(updateNPC)
+      collider: solidCircle(def.pos[0], def.pos[2], NPC_R),
     };
     npcObjs.push(o);
     updateNPCGlyph(o);
@@ -4627,11 +4730,16 @@ function updateNPC(dt, t) {
     } else {
       wanderNPC(o, dt);                                                            // 홈 주변 배회
     }
+    o.collider.x = o.group.position.x; o.collider.z = o.group.position.z;          // 🚧 콜라이더 동기화
     updateNPCGlyph(o);
   }
 }
 // 주민이 들어가면 안 되는 자리(건물·호수·나무 등) — 밭 금지 구역보다 여유를 적게 둬 벽에 바짝 설 수 있게
-function npcBlocked(x, z) { return obstacles.some(ob => Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.35); }
+function npcBlocked(x, z) {
+  // 플레이어 자리도 피한다 — 안 그러면 배회하다 플레이어를 밀고 지나간다
+  if (player && Math.hypot(x - player.position.x, z - player.position.z) < NPC_R + PLAYER_R + 0.2) return true;
+  return obstacles.some(ob => Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.35);
+}
 
 function wanderNPC(o, dt) {
   o.wanderTimer -= dt;

@@ -87,6 +87,21 @@ python3 -m http.server 8000   # → http://localhost:8000
 
 > 데이터 파이프라인(`supabase-to-bq.yml`)과 CI(`ci.yml`)는 호스팅과 무관하게 GitHub Actions에서 계속 돌아갑니다. 옛 `deploy.yml`(GitHub Pages)은 비활성 상태입니다.
 
+### ☕ 카페 손님 동적 생성 (Gemini) — 서버 환경변수 필요
+
+`functions/api/cafe-guests.js` 는 Cloudflare **Pages Functions** 규약으로 자동 배포되어 `GET /api/cafe-guests` 로 열립니다.
+
+1. Cloudflare Pages → 프로젝트 → **Settings → Environment variables** 에 등록
+   - `GEMINI_API_KEY` = AI Studio 키 (**Secret** 으로, Production/Preview 각각)
+   - `GEMINI_MODEL` = `gemini-flash-lite-latest` (선택)
+2. 재배포하면 매일 첫 접속 때 그날의 손님 4명(주민·주문·대사)이 생성됩니다.
+
+- **키는 절대 `js/config.js` 에 넣지 마세요.** 브라우저로 그대로 내려가 누구나 볼 수 있습니다. 클라이언트는 같은 오리진의 `/api/cafe-guests` 만 호출합니다.
+- **호출량**: 응답을 날짜별로 엣지 캐시에 담아 **하루 한 번**(PoP당)만 Gemini를 부릅니다. 무료 티어로 충분합니다.
+- **미설정·실패·오프라인**: 조용히 게임 내장(날짜 시드) 손님으로 폴백합니다. 카페는 항상 동작합니다.
+- **로컬 테스트**: `.env` 에 `GEMINI_API_KEY` 를 넣으면 `scripts/serve.py` 가 같은 경로를 흉내 냅니다 (Pages Function은 정적 서버에서 실행되지 않음). 두 구현의 프롬프트·화이트리스트는 같이 맞춰야 합니다.
+- **앱인토스 번들**(`dist-toss`)처럼 Pages가 아닌 오리진에서 열면 상대경로가 404가 되어 기본 손님이 나옵니다. 필요하면 `CONFIG.CAFE_GUEST_API` 를 절대 URL로 지정하세요.
+
 ## 🎮 조작
 
 **하단 도구 하트바에서 도구를 고르고 상호작용합니다.** 도구 선택은 숫자키 `1~7`(🪓도끼·⛏️괭이·🌰씨앗·💧물조리개·🌾낫·🔨망치·🎣낚싯대) 또는 슬롯 탭, 상호작용은 `Space`/클릭(모바일은 액션 버튼).
