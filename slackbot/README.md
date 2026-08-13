@@ -35,18 +35,11 @@ uv sync
 uv run python bot.py     # Slack에서 @calm-claude 멘션 → 답장 확인
 ```
 
-## VM 배포 (oracle-calmforest)
+## 상시 실행
 
-```bash
-# VM에서 1회
-curl -LsSf https://astral.sh/uv/install.sh | sh
-git clone <레포 URL> ~/calm_forest
-scp .env oracle-calmforest:~/calm_forest/.env       # 로컬에서 토큰 전달
-cd ~/calm_forest/slackbot && uv sync
-sudo cp deploy/calm-claude-bot.service /etc/systemd/system/
-sudo systemctl enable --now calm-claude-bot
-journalctl -u calm-claude-bot -f                     # 로그 확인
-```
+Socket Mode라 인터넷에서 접근 가능한 서버가 필요 없습니다 — 봇 프로세스가
+살아있는 곳 어디서든(로컬 머신 포함) 동작합니다. 항상 켜두려면 서버·NAS 등
+상시 구동 머신에서 `uv run python bot.py`를 프로세스 매니저로 감싸면 됩니다.
 
 ## 보안 주의
 

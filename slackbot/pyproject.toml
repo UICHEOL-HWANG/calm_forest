@@ -2,7 +2,7 @@
 #  calm forest · slackbot — Claude Agent SDK 슬랙봇 (uv 관리)
 #  ------------------------------------------------------------
 #  Slack 멘션/DM → Claude Agent SDK(Claude Code 하네스) → 답장.
-#  오라클 VM에 systemd 로 상주. 실행: uv run python bot.py
+#  실행: uv run python bot.py (Socket Mode — 어디서든 상주 가능)
 # =============================================================
 [project]
 name = "calm-slackbot"
