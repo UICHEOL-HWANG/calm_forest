@@ -10,6 +10,8 @@
 //  ▶ GEMINI_API_KEY 는 Cloudflare 환경변수로만 전달됩니다(코드에 없음).
 // =============================================================
 import { onRequestGet as cafeGuests } from '../functions/api/cafe-guests.js';
+import { onRequestPost as nightVisit } from '../functions/api/night-visit.js';
+import { onRequestGet as nightNote } from '../functions/api/night-note.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -20,6 +22,16 @@ export default {
         if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
         // ctx 를 구조분해하면 this 바인딩이 끊겨 "Illegal invocation" 이 납니다 → bind 로 넘김
         return await cafeGuests({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+      }
+
+      if (pathname === '/api/night-visit') {
+        if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+        return await nightVisit({ request, env });
+      }
+
+      if (pathname === '/api/night-note') {
+        if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+        return await nightNote({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
       }
 
       // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.

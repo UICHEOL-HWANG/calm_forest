@@ -10,9 +10,9 @@
 //    → 오프라인이거나 무료 티어 한도를 넘겨도 카페는 그대로 돌아갑니다.
 // =============================================================
 
-import { CONFIG } from './config.js?v=28';
-import { setCafeGuestSource } from './game.js?v=28';
-import { sendCafeGuests } from './supabase-client.js?v=28';
+import { CONFIG } from './config.js?v=30';
+import { setCafeGuestSource } from './game.js?v=30';
+import { sendCafeGuests } from './supabase-client.js?v=30';
 
 const TIMEOUT_MS = 6000;   // 이 안에 안 오면 포기하고 기본 손님으로(입장 흐름을 막지 않음)
 

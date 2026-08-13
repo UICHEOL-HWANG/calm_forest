@@ -873,13 +873,14 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=28';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=28';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=28';
-    import { CONFIG } from './js/config.js?v=28';
-    import { initControls } from './js/controls.js?v=28';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=28';
-    import { initCafeGuests } from './js/cafe-guests.js?v=28';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=30';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=30';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=30';
+    import { CONFIG } from './js/config.js?v=30';
+    import { initControls } from './js/controls.js?v=30';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=30';
+    import { initCafeGuests } from './js/cafe-guests.js?v=30';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
+    import { initNightVisit } from './js/night-visit.js?v=30';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -1398,6 +1399,21 @@
     function renderCook() {
       updateCookInv();
       const box = $('cook-items'); box.innerHTML = '';
+      // 🌡️ 내일 서리·태풍 예보가 있으면 맨 위에 덮개 설치 항목(예고일 한정)
+      const wp = Input.getWeatherPrep();
+      if (wp.severe) {
+        const s = wp.info;
+        const costStr = Object.entries(wp.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (wp.covered ? ' owned' : '');
+        el.innerHTML = `<span class="ck-ico">🛡️</span><span class="ck-name">밭 덮개</span><span class="ck-buff">내일 ${s.ico} ${s.name} 예보 — 심어둔 밭 ${wp.planted}곳을 지켜요</span><span class="ck-cost">${wp.covered ? '✅ 설치됨' : costStr}</span>`;
+        if (!wp.covered) el.addEventListener('click', () => {
+          const res = Input.craftCover();
+          ui.toast(res.ok ? '🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!' : (res.msg || '만들 수 없어요'));
+          if (res.ok) renderCook();
+        });
+        box.appendChild(el);
+      }
       Input.getRecipes().forEach(r => {
         const costStr = Object.entries(r.cost).map(([k, n]) => ico(k) + n).join(' ');
         const enough = Object.entries(r.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
@@ -1589,7 +1605,7 @@
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
-    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물' };
+    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적' };
     const isGuestNow = () => authState.provider !== 'google';   // 구글 로그인만 영구 계정
     function openDex() {
       const d = Input.getDex();
@@ -1867,6 +1883,7 @@
 
     (async () => {
       initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
+      initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
       await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
       $('loading').style.display = 'none';
 

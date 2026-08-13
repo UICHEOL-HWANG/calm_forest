@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=28';         // [센서] 로깅
-import { saveGame, loadGame } from './supabase-client.js?v=28';       // [Supabase] 저장
-import { trackChop, trackEvent } from './analytics.js?v=28';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=28';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=28'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { sampleFrame, startLogging } from './logger.js?v=30';         // [센서] 로깅
+import { saveGame, loadGame } from './supabase-client.js?v=30';       // [Supabase] 저장
+import { trackChop, trackEvent } from './analytics.js?v=30';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js?v=30';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=30'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -91,6 +91,28 @@ const FORECAST_MSG = {
   snow:  '내일은 ❄️ 눈 소식 — 목재가 잘 나오는 날!',
   fog:   '내일은 🌫️ 안개 예보 — 보석 캐기 좋은 날!',
 };
+// 🌡️ 궂은 날씨 이벤트(서리·태풍) — 날짜 시드라 전 유저 동일. 약 14%의 날에 발생.
+//    예보(내일)를 보고 "오늘 수확하거나 덮개를 설치"하게 만드는 재방문 훅.
+//    ※ 밤손님과 달리 서버 판정이 없다: 예보가 공개 결정값이라 리롤할 유인이 없기 때문.
+//    테스트: ?severe=frost|storm (오늘을 그 이벤트 날로 간주)
+function severeOf(offsetDays = 0) {
+  const r = dateHash('severe', offsetDays) % 100;
+  return r < 7 ? 'frost' : r < 14 ? 'storm' : null;
+}
+const SEVERE_INFO = {
+  frost: { ico: '❄️', name: '서리',  hit: '서리가 내려' },
+  storm: { ico: '🌀', name: '태풍',  hit: '거센 바람이 지나가' },
+};
+const SEVERE_TODAY = ['frost', 'storm'].includes(_wq?.get?.('severe')) ? _wq.get('severe') : severeOf(0);
+const SEVERE_TOMORROW = ['frost', 'storm'].includes(_wq?.get?.('severe2')) ? _wq.get('severe2') : severeOf(1); // ?severe2= 내일 예보 강제(테스트)
+// 내일 예보 한 줄 — 궂은 이벤트가 있으면 일반 날씨 예보를 덮어쓴다(우선 안내)
+function forecastLine() {
+  if (SEVERE_TOMORROW) {
+    const s = SEVERE_INFO[SEVERE_TOMORROW];
+    return `내일은 ${s.ico} ${s.name} 예보! 오늘 수확하거나 작업대에서 덮개를 준비하세요!`;
+  }
+  return FORECAST_MSG[FORECAST];
+}
 const RAIN_DAY = WEATHER === 'rain';   // 비 전용 효과(밭 자동 성장·낚시 행운·빗소리)에 사용
 const WEATHER_MSG = {
   rain: '🌧️ 오늘은 비 오는 날! 밭이 저절로 자라고 물고기가 잘 물어요',
@@ -256,7 +278,8 @@ const UPGRADES = [
 
 // ── 야외 장식(작업대) — 마당에 설치, 재료 소비 ──
 const OUTDOOR = [
-  { id: 'fence',     name: '울타리',  ico: '🪵', cost: { wood: 3 }, desc: '마당 울타리' },
+  { id: 'fence',     name: '울타리',  ico: '🪵', cost: { wood: 3 }, desc: '마당 울타리 · 밭 근처 4개면 밤손님 방어' },
+  { id: 'scarecrow', name: '허수아비', ico: '🎃', cost: { wood: 5 }, desc: '밭 근처에 세우면 밤손님을 쫓아요' },
   { id: 'path',      name: '디딤돌',  ico: '🪨', cost: { wood: 1 }, desc: '돌 디딤돌' },
   { id: 'flowerbed', name: '꽃밭',    ico: '🌷', cost: { crop: 2 }, desc: '알록달록 꽃밭' },
   { id: 'postlamp',  name: '정원등',  ico: '🏮', cost: { wood: 4 }, desc: '밤에 빛나는 등' },
@@ -357,7 +380,7 @@ function refreshDailyQuests() {
   if (st.date !== today) {   // 새 날 → 진행 상태 리셋(어제 의뢰는 소멸)
     st.date = today; st.idx = 0; st.progress = 0; st.given = false; st.allDone = false; st.acceptedAt = null;
   }
-  def.doneLine = `오늘 의뢰는 전부 끝! ${FORECAST_MSG[FORECAST]}${forecastDexNudge()} 내일 새 의뢰 들고 올게요 🦉`; // 예보로 재방문 유도(+날씨 도감 훅)
+  def.doneLine = `오늘 의뢰는 전부 끝! ${forecastLine()}${forecastDexNudge()} 내일 새 의뢰 들고 올게요 🦉`; // 예보로 재방문 유도(+날씨 도감 훅)
   const pool = [...DAILY_POOL];
   let h = dateHash('daily');
   def.quests = Array.from({ length: 3 }, (_, i) => {
@@ -398,10 +421,12 @@ const gameState = {
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
-  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
+  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
+  night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
+  frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
 };
 
 // ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
@@ -451,6 +476,11 @@ const DEX = {
     { id: 'blue',    name: '푸른반디',   ico: '🔵' },
     { id: 'green',   name: '초록반디',   ico: '🟢' },   // 🌧️ 비 온 날 잘 나옴
     { id: 'rainbow', name: '무지개반디', ico: '🌈' },   // 🌫️ 안개 낀 날 잘 나옴
+  ],
+  // 🐾 밤손님 흔적 — 밤사이 다녀간 흔적을 조사해야 채워짐(다음날 재방문 훅)
+  track: [
+    { id: 'fur_tuft',   name: '털뭉치',     ico: '🧶' },   // 🦝 너구리가 흘리고 감
+    { id: 'acorn_drop', name: '주운 도토리', ico: '🌰' },   // 🐗 멧돼지가 물고 가다 떨어뜨림
   ],
   // 🌦️ 날씨 — 그 날씨인 날 접속해야 채워짐(예보와 묶어 재방문 유도)
   weather: [
@@ -546,7 +576,7 @@ function checkDailyBonus() {
   let body = `연속 ${d.streak}일째 방문! ${rewardText(reward)} 받았어요.` +
     (reward.gem ? ' 7일 연속 보너스 💎!' : ' 내일 또 오면 보상이 더 커져요!');
   if (WEATHER !== 'clear') body += ' ' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
-  body += ' 🔮 ' + FORECAST_MSG[FORECAST] + forecastDexNudge(); // 내일 예보 — 재방문 유도(+날씨 도감 훅)
+  body += ' 🔮 ' + forecastLine() + forecastDexNudge(); // 내일 예보 — 재방문 유도(+날씨 도감 훅)
   if (gameState.character && gameState.tutorialSeen) { ui.showHintModal?.({ ico: '🎁', title: `출석 ${d.streak}일차`, body }); return true; }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`);                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
   return false;
@@ -759,6 +789,8 @@ export const Input = {
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록
   selectOutdoor(id) { placingOutdoor = id; },           // 야외 장식 선택(설치 대기)
+  getWeatherPrep() { return weatherPrepView(); },       // 🌡️ 내일 궂은 날씨·덮개 상태
+  craftCover() { return craftCover(); },                // 🛡️ 덮개 설치(예고일 한정)
   cancelOutdoor() { placingOutdoor = null; },           // 야외 배치 취소
   getSellPrice() { const p = {}; for (const k in SELL_PRICE) p[k] = priceOf(k); return p; }, // 오늘의 시세 반영가
   getPriceRates() { const r = {}; for (const k in SELL_PRICE) r[k] = Math.round(priceRate(k) * 100); return r; }, // 시세 %(100=기본가)
@@ -862,6 +894,13 @@ export async function enterGame() {
       if (k in gameState.inventory) gameState.inventory[k] += parseInt(v, 10) || 0;
     }
   }
+  // 테스트: 콘솔에서 __nightTest() — 어젯밤이 지난 셈 치고 밤손님 판정을 다시 받는다.
+  // ?give 와 같은 로컬 전용(실서비스에서 임의 습격 유발·경제 오염 방지)
+  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+    window.__nightTest = () => { gameState.night.lastDate = todayStr(-1); return resolveNightVisit(); };
+    // ?severe=frost 와 조합: 어제 정산한 셈 치고 오늘의 궂은 날씨를 다시 정산
+    window.__frostTest = () => { gameState.frost.lastDate = todayStr(-1); return resolveWeatherEvent(); };
+  }
   mode = 'play';
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
@@ -878,6 +917,12 @@ export async function enterGame() {
   }
   dexDiscover('weather', WEATHER);      // 🌦️ 날씨 도감 — 오늘 날씨를 겪어야 등록(재방문 훅)
   syncBadges();                         // 🏅 옛 세이브 소급 지급(집·체인·스트릭 등)
+  resolveWeatherEvent();                // 🌡️ 날씨 이벤트 정산(동기) — 시든 작물은 밤손님 후보에서 빠짐
+  resolveNightVisit();                  // 🦝 밤손님 — 밤이 지났으면 서버 판정(await 안 함, 실패해도 입장 안 막음)
+  if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
+    const s = SEVERE_INFO[SEVERE_TOMORROW];
+    setTimeout(() => ui.toast?.(`${s.ico} 내일 ${s.name} 예보! 오늘 수확하거나 작업대에서 🛡️ 덮개를 준비하세요`, 3600), 3000);
+  }
 
   // 신규: 캐릭터(동물) 미선택이면 선택 화면 → 그 뒤 튜토리얼. 이미 선택했으면 튜토리얼만.
   if (!gameState.character) ui.showCharacterSelect?.();
@@ -894,7 +939,9 @@ function applySave(saved) {
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
-  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, ...saved.dex }; // 📖 도감 복원
+  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, ...saved.dex }; // 📖 도감 복원
+  if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
+  if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
@@ -915,7 +962,8 @@ function applySave(saved) {
       const plot = createPlot(p.x, p.z, true);
       plot.state = p.state; plot.growth = p.growth || 0; plot.stage = -1;
       if (p.state === 'growing' || p.state === 'mature') {
-        plot.cropType = CROP_TYPES[Math.floor(Math.random() * CROP_TYPES.length)];
+        // 저장된 작물 종류 복원 — 없으면(옛 세이브) 랜덤. 밤손님이 "뭘 훔쳐갔는지" 말하려면 종류가 보존돼야 한다
+        plot.cropType = CROP_TYPES.find(c => c.id === p.crop) || CROP_TYPES[Math.floor(Math.random() * CROP_TYPES.length)];
         refreshCropStage(plot);   // growth에 맞는 단계 메시 복원
       }
       updatePlotVisual(plot);
@@ -925,7 +973,7 @@ function applySave(saved) {
 
 export function getGameState() {
   gameState.playerPos = { x: player.position.x, z: player.position.z };
-  gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth }));
+  gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id })); // crop: 밤손님 판정·복원용 작물 종류
   gameState.timeOfDay = timeOfDay;   // 시간대 저장
   return gameState;
 }
@@ -2884,7 +2932,7 @@ function marketData() {
       k, ico: SELL_ICO_G[k], label: RES_LABEL[k] || k,
       price: priceOf(k), base: SELL_PRICE[k], rate: Math.round(priceRate(k) * 100) - 100, // 등락 %(0=기본가)
     })).sort((a, b) => b.rate - a.rate),       // 비싼 순 정렬(오늘 뭘 팔지 바로 보이게)
-    forecast: FORECAST_MSG[FORECAST],
+    forecast: forecastLine(),
   };
 }
 
@@ -2981,6 +3029,12 @@ function outdoorMesh(id) {
     for (const x of [-0.5, 0.5]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1)); p.position.set(x, 0.3, 0); g.add(p); }
     const rail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), woodMat(2, 1)); rail.position.y = 0.42; g.add(rail);
     const rail2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), woodMat(2, 1)); rail2.position.y = 0.22; g.add(rail2);
+  } else if (id === 'scarecrow') {
+    // 예전 텃밭 장식과 같은 실루엣 — 이제는 사서 밭 근처에 "배치"해야 밤손님을 막는다
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5), clayMat(0x8a6a3a)); pole.position.y = 0.8; g.add(pole);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.08), clayMat(0x8a6a3a)); arm.position.y = 1.1; g.add(arm);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), clayMat(0xf1a444, false)); head.position.y = 1.5; g.add(head); // 🎃 호박 머리
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.3, 10), clayMat(0xc98a4f)); hat.position.y = 1.72; g.add(hat);
   } else if (id === 'path') {
     const s = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.08, 8), clayMat(0xbfae95, false)); s.position.y = 0.04; s.scale.z = 0.8; g.add(s);
   } else if (id === 'flowerbed') {
@@ -3024,8 +3078,8 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
   const m = outdoorMesh(id); m.position.set(wx, 0, wz); scene.add(m); outdoorMeshes.push(m);
   gameState.outdoor.push({ id, x: wx, z: wz });
   obstacles.push({ x: wx, z: wz, r: 0.8 });   // 그 위엔 밭 금지
-  // 🚧 울타리·돌담·정원등·화로는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
-  if (['fence', 'stonewall', 'postlamp', 'brazier'].includes(id)) solidCircle(wx, wz, id === 'postlamp' ? 0.22 : 0.5);
+  // 🚧 울타리·돌담·정원등·화로·허수아비는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
+  if (['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow'].includes(id)) solidCircle(wx, wz, ['postlamp', 'scarecrow'].includes(id) ? 0.22 : 0.5);
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
@@ -3137,13 +3191,7 @@ function buildFarm() {
   // 나가는 문(남쪽 가운데)
   const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.14, 0.4), woodMat(1, 2, 0xa9743f)); gate.position.set(0, 0.16, H); g.add(gate);
   const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, H); g.add(board);
-  // 허수아비(장식)
-  const sc = new THREE.Group(); sc.position.set(-H + 1.5, 0, -H + 1.5);
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5), clayMat(0x8a6a3a)); pole.position.y = 0.8; sc.add(pole);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.08), clayMat(0x8a6a3a)); arm.position.y = 1.1; sc.add(arm);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), clayMat(0xf1e2b8, false)); head.position.y = 1.5; sc.add(head);
-  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.3, 10), clayMat(0xc98a4f)); hat.position.y = 1.72; sc.add(hat);
-  sc.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.add(sc);
+  // (허수아비 장식은 제거 — 이제 작업대에서 만들어 직접 배치해야 밤손님을 막는다)
   scene.add(g); farmGroup = g; farmGroup.visible = false;   // 텃밭에 있을 때만 표시
 }
 
@@ -4031,6 +4079,252 @@ function updateTrees(dt) {
 }
 
 // =============================================================
+//  🦝 밤손님 — 자리를 비운 밤사이 너구리·멧돼지가 작물을 훔쳐간다
+//  ------------------------------------------------------------
+//  ▶ 판정은 서버(/api/night-visit)가 한다: HMAC(uid:날짜) 시드의 결정적
+//    난수라 새로고침으로 결과를 다시 굴릴 수 없다. 서버 실패 시엔
+//    lastDate 를 넘기지 않아 다음 접속에서 다시 판정한다(결정적이라 리롤 아님).
+//  ▶ 방어: 밭 근처(9칸)의 허수아비 1개·울타리 4개가 확률과 도난 개수를 깎는다.
+//  ▶ 손실만 주면 접속이 벌이 된다 — 흔적(파헤쳐진 흙+발자국)을 조사하면
+//    수집품(도감 신규 카테고리 '흔적')과 씨앗을 돌려받는다.
+// =============================================================
+let nightFetcher = null;      // async (ctx) => verdict — js/night-visit.js 가 등록
+let nightNoteFetcher = null;  // async ({date,animal,crop}) => {author,text}
+export function setNightVisitSource(fn) { nightFetcher = fn || null; }
+export function setNightNoteSource(fn) { nightNoteFetcher = fn || null; }
+
+const NIGHT_ANIMAL = {
+  raccoon: { ico: '🦝', name: '너구리' },
+  boar:    { ico: '🐗', name: '멧돼지' },
+};
+const traceObjs = [];   // 씬에 떠 있는 흔적 [{ mesh, data }]
+
+// 흔적 위 '🐾 조사' 말풍선(공유 텍스처) — 밭의 '물 줘요!' 와 같은 문법
+let _traceMat = null;
+function traceMaterial() {
+  if (_traceMat) return _traceMat;
+  const cv = document.createElement('canvas'); cv.width = 200; cv.height = 104;
+  const c = cv.getContext('2d');
+  c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
+  c.fillStyle = '#5a4126'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('🐾 조사!', 100, 40);
+  const tex = new THREE.CanvasTexture(cv);
+  _traceMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  return _traceMat;
+}
+
+// 파헤쳐진 흙 + 도망간 방향 발자국 — "눈으로 봐야 사건으로 느껴진다"
+function traceMesh(animal) {
+  const g = new THREE.Group();
+  const dug = clayMat(0x5e4026, false);
+  const mound = new THREE.Mesh(new THREE.SphereGeometry(0.34, 7, 5), dug);
+  mound.position.set(0.1, 0.1, -0.1); mound.scale.y = 0.4; g.add(mound);
+  const mound2 = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), dug);
+  mound2.position.set(-0.35, 0.07, 0.25); mound2.scale.y = 0.4; g.add(mound2);
+  // 발자국: 너구리는 작고 총총, 멧돼지는 크고 성큼 — 밭에서 멀어지는 한 줄
+  const paw = clayMat(0x4a3520, false);
+  const r = animal === 'boar' ? 0.11 : 0.07;
+  const step = animal === 'boar' ? 0.55 : 0.38;
+  for (let i = 0; i < 6; i++) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.03, 7), paw);
+    p.position.set((i % 2 ? 0.16 : -0.16) + 0.5 + i * step * 0.5, 0.03, 0.6 + i * step);
+    p.scale.z = 1.35; g.add(p);
+  }
+  const bubble = new THREE.Sprite(traceMaterial());
+  bubble.scale.set(1.28, 0.7, 1); bubble.position.set(0, 1.35, 0);
+  g.add(bubble);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+function spawnTrace(t, silent = false) {
+  const m = traceMesh(t.animal); m.position.set(t.x, 0, t.z);
+  scene.add(m); traceObjs.push({ mesh: m, data: t });
+  if (!silent) { m.userData.pop = 1; m.scale.setScalar(0.01); spawnDust(t.x, t.z, 10); }
+}
+
+// 조사(도구 불필요·모바일 액션 버튼 동일): 흔적 제거 + 수집품 도감 + 씨앗 위로
+function investigateTrace(tr) {
+  const t = tr.data;
+  scene.remove(tr.mesh);
+  traceObjs.splice(traceObjs.indexOf(tr), 1);
+  gameState.night.traces = gameState.night.traces.filter(x => !(x.x === t.x && x.z === t.z));
+  const entry = DEX.track.find(e => e.id === t.loot);
+  Sound.blip();
+  spawnDust(t.x, t.z, 12);
+  spawnSparkle(t.x, 0.7, t.z, 18);
+  giveReward({ seed: 2 }, 'night_trace', t.loot);        // [원장] 위로 보상 — 손실이 벌이 되지 않게
+  ui.toast?.(`🔍 ${NIGHT_ANIMAL[t.animal]?.ico || '🐾'} 흔적에서 ${entry?.ico || ''} ${entry?.name || '수집품'}을 찾았어요!`, 2600);
+  dexDiscover('track', t.loot);                          // 📖 도감 신규 카테고리 '흔적'
+  trackEvent('night_trace', { animal: t.animal });       // [GA4] 조사 전환율
+  requestSave();
+}
+
+// 방어 판정 입력 — 심어둔 밭 9칸 안의 허수아비·울타리(4개 이상)만 인정
+function computeNightDefense(cands) {
+  const near = (o, r) => cands.some(c => Math.hypot(o.x - c.p.x, o.z - c.p.z) < r);
+  return {
+    scarecrow: gameState.outdoor.some(o => o.id === 'scarecrow' && near(o, 9)),
+    fence: gameState.outdoor.filter(o => o.id === 'fence' && near(o, 9)).length >= 4,
+  };
+}
+
+// 접속 시 1회 — 밤이 지났으면 서버 판정을 받아 손실·흔적을 적용
+async function resolveNightVisit() {
+  const st = gameState.night;
+  const today = todayStr();
+  st.traces.forEach(t => spawnTrace(t, true));            // 지난 세션에 조사 안 한 흔적 복원
+  if (!st.lastDate) { st.lastDate = today; return; }      // 첫 기록 — 오늘 밤부터 감시 시작
+  if (st.lastDate === today) return;                      // 오늘 이미 판정함
+  const cands = plots.map((p, i) => ({ p, i })).filter(c => c.p.state === 'growing' || c.p.state === 'mature');
+  if (!cands.length || !nightFetcher) { st.lastDate = today; return; }   // 심은 게 없으면 훔칠 것도 없다
+
+  const nights = Math.max(1, Math.round((new Date(today) - new Date(st.lastDate)) / 86400000));
+  let v = null;
+  try {
+    v = await nightFetcher({
+      date: today, nights,
+      plots: cands.map(c => ({ crop: c.p.cropType?.id || '' })),
+      defense: computeNightDefense(cands),
+    });
+  } catch (e) { console.warn('[밤손님] 판정 실패 — 다음 접속에 재시도', e?.message || e); }
+  if (!v) return;                                         // 서버 실패 → lastDate 유지(재시도)
+  st.lastDate = today;
+
+  if (!v.visited) {
+    // 방어 성공은 조용히 넘기지 않는다 — "세워두길 잘했다"는 피드백이 다음 방어를 만든다
+    if (v.defended) setTimeout(() => ui.toast?.('🎃 허수아비와 울타리가 밤새 밭을 지켰어요!', 2800), 900);
+    requestSave();
+    return;
+  }
+
+  const stolen = [];   // 훔쳐간 작물 이름들(안내용)
+  for (const i of (v.stolenIdx || [])) {
+    const c = cands[i]; if (!c) continue;
+    stolen.push(c.p.cropType?.name || '작물');
+    clearCrop(c.p);
+    c.p.state = 'empty'; c.p.growth = 0; c.p.stage = -1; c.p.watered = false;
+    updatePlotVisual(c.p);
+    const t = { x: c.p.x, z: c.p.z, animal: v.animal, loot: v.loot };
+    st.traces.push(t); spawnTrace(t);
+  }
+  if (!stolen.length) return;
+
+  const a = NIGHT_ANIMAL[v.animal] || NIGHT_ANIMAL.raccoon;
+  trackEvent('night_visit', { animal: v.animal, stolen: stolen.length });   // [GA4] 밤손님 발생률
+  setTimeout(() => {   // 출석 모달·날씨 토스트와 겹치지 않게 한 박자 늦게
+    ui.toast?.(`${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`, 3800);
+    firstHint('night', a.ico, '밤손님이 다녀갔어요',
+      '밤사이 배고픈 숲 친구가 밭에 다녀갔어요. 🐾 파헤쳐진 흙을 조사하면 수집품을 얻을 수 있어요. 작업대에서 🎃 허수아비·🪵 울타리를 만들어 밭 근처에 두면 피해가 줄어요!');
+  }, 1200);
+  // 📜 주민 쪽지(Gemini·자정 캐시) — 도착하면 카드로. 실패하면 조용히 생략
+  if (nightNoteFetcher) {
+    const firstCrop = cands[(v.stolenIdx || [])[0]]?.p?.cropType?.id || '';
+    nightNoteFetcher({ date: today, animal: v.animal, crop: firstCrop })
+      .then(n => { if (n?.text) setTimeout(() => ui.showHintModal?.({ ico: '📜', title: n.author || '주민 쪽지', body: n.text }), 4600); })
+      .catch(() => {});
+  }
+  requestSave();
+}
+
+// =============================================================
+//  🌡️ 날씨 이벤트 — 서리·태풍 예고를 보고 하루 안에 대비하는 재방문 훅
+//  ------------------------------------------------------------
+//  ▶ 예고: severeOf()는 날짜 시드 공개 결정값(전 유저 동일). 서버 판정이
+//    필요 없다 — 결과가 이미 공개라 리롤할 유인이 없기 때문(밤손님과 대비).
+//  ▶ 대비: 오늘 수확하거나, 작업대에서 🛡️ 덮개(목재 3)를 설치.
+//  ▶ 정산: 밤손님과 같은 "접속 시 정산" 패턴 — 미보호 작물은 시들 뿐(wilted),
+//    괭이로 다시 갈면 복구되는 부드러운 손실.
+// =============================================================
+const COVER_COST = { wood: 3 };
+
+// 밭 위 덮개(나무 틀 + 천) — 밭 단위 표시, 보호는 밭 전체(coveredFor 날짜) 단위
+function setPlotCover(plot, show) {
+  if (show && !plot.cover) {
+    const g = new THREE.Group();
+    for (const [x, z] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 5), clayMat(0x8a6a3a));
+      leg.position.set(x, 0.35, z); g.add(leg);
+    }
+    const cloth = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 0.06, 1.8),
+      new THREE.MeshStandardMaterial({ color: 0xf3ead4, roughness: 0.9, transparent: true, opacity: 0.92 }),
+    );
+    cloth.position.y = 0.74; g.add(cloth);
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    plot.cover = g; plot.group.add(g);
+  }
+  if (plot.cover) plot.cover.visible = show;
+}
+function refreshCovers() {
+  const active = gameState.frost.coveredFor
+    && (gameState.frost.coveredFor === todayStr() || gameState.frost.coveredFor === todayStr(1));
+  for (const p of plots) setPlotCover(p, !!active && (p.state === 'growing' || p.state === 'mature'));
+}
+
+// 작업대 덮개 뷰/제작 — 예고일(내일 궂음)에만 의미가 있다
+function weatherPrepView() {
+  return {
+    severe: SEVERE_TOMORROW,
+    info: SEVERE_TOMORROW ? SEVERE_INFO[SEVERE_TOMORROW] : null,
+    planted: plots.filter(p => p.state === 'growing' || p.state === 'mature').length,
+    cost: { ...COVER_COST },
+    covered: gameState.frost.coveredFor === todayStr(1),
+  };
+}
+function craftCover() {
+  if (!SEVERE_TOMORROW) return { ok: false, msg: '내일은 날씨가 온화해요' };
+  if (gameState.frost.coveredFor === todayStr(1)) return { ok: false, msg: '이미 덮개를 설치했어요' };
+  for (const k in COVER_COST) {
+    if ((gameState.inventory[k] || 0) < COVER_COST[k]) return { ok: false, msg: '목재가 부족해요' };
+  }
+  for (const k in COVER_COST) gameState.inventory[k] -= COVER_COST[k];
+  gameState.frost.coveredFor = todayStr(1);
+  refreshInventoryUI(); refreshCovers();
+  Sound.blip();
+  trackEvent('craft_item', { category: 'weather', item: 'cover' });   // [GA4] 대비 전환율
+  requestSave();
+  return { ok: true };
+}
+
+// 접속 시 1회 — 지난 궂은 날을 정산(밤손님과 같은 패턴, 동기라 서버 불필요)
+function resolveWeatherEvent() {
+  const st = gameState.frost;
+  const today = todayStr();
+  if (!st.lastDate) { st.lastDate = today; refreshCovers(); return; }
+  if (st.lastDate === today) { refreshCovers(); return; }
+  // 마지막 정산 다음날~오늘 중 가장 최근의 궂은 날 하나만 정산(밤손님과 동일한 단순화)
+  const gap = Math.round((new Date(today) - new Date(st.lastDate)) / 86400000);
+  let hitDate = null, kind = null;
+  for (let off = 0; off < gap; off++) {              // off=0 → 오늘, 1 → 어제 …
+    const k = off === 0 ? SEVERE_TODAY : severeOf(-off);
+    if (k) { hitDate = todayStr(-off); kind = k; break; }
+  }
+  st.lastDate = today;
+  const exposed = plots.filter(p => p.state === 'growing' || p.state === 'mature');
+  if (!kind || !exposed.length) { st.coveredFor = null; refreshCovers(); requestSave(); return; }
+
+  const s = SEVERE_INFO[kind];
+  if (st.coveredFor === hitDate) {
+    // 대비가 통했다는 피드백 — "준비하길 잘했다"가 다음 대비를 만든다
+    setTimeout(() => ui.toast?.(`${s.ico} ${s.name}가 지나갔지만 🛡️ 덮개 덕분에 밭이 무사해요!`, 3200), 900);
+    trackEvent('weather_event', { kind, protected: true, plots: exposed.length });   // [GA4]
+  } else {
+    exposed.forEach(wiltPlot);
+    setTimeout(() => {
+      ui.toast?.(`${s.ico} ${s.hit} 작물 ${exposed.length}개가 시들었어요… ⛏️ 괭이로 갈면 다시 심을 수 있어요`, 3800);
+      firstHint('severe', s.ico, `${s.name}가 지나갔어요`,
+        `예보가 뜬 날엔 작물을 미리 수확하거나, 작업대에서 🛡️ 덮개를 설치하면 밭을 지킬 수 있어요. 시든 밭은 ⛏️ 괭이로 갈면 다시 심을 수 있어요.`);
+    }, 900);
+    trackEvent('weather_event', { kind, protected: false, plots: exposed.length });  // [GA4]
+  }
+  st.coveredFor = null;
+  refreshCovers();
+  requestSave();
+}
+
+// =============================================================
 //  상호작용: 선택 도구에 따라 분기
 // =============================================================
 function handleAction() {
@@ -4076,6 +4370,9 @@ function handleAction() {
     }
     if (treeD >= fg.d) return tryForage(fg.node);
   }
+  // 🐾 밤손님 흔적 조사 — 도구가 필요 없는 "줍기"류. 모바일 액션 버튼으로도 동일 동작
+  const tr = traceObjs.find(t => dist2D(t.mesh.position, player.position) < 1.7);
+  if (tr) return investigateTrace(tr);
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   if (nearNPC && !IS_MOBILE) return talkToNPC();
@@ -4219,6 +4516,7 @@ function plantSeed(plot) {
   doPlayerAction(plot.x, plot.z); // 심기 제스처
   Sound.plant();
   refreshCropStage(plot);   // 0단계(새싹) 메시 생성 + 팝
+  refreshCovers();          // 🛡️ 덮개 설치 중이면 새로 심은 밭에도 표시
   refreshInventoryUI(); updatePlotVisual(plot);
   questEvent('plant');      // 퀘스트 진행
   ui.act?.('seed');         // 튜토리얼
@@ -4301,6 +4599,7 @@ function tryHarvest() {
   if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
   plot.state = 'empty'; plot.growth = 0; plot.stage = -1; plot.watered = false;
   updatePlotVisual(plot);
+  refreshCovers();          // 🛡️ 수확한 빈 밭에선 덮개 표시 제거
   refreshInventoryUI();
   questEvent('harvest');                                          // 퀘스트 진행
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)

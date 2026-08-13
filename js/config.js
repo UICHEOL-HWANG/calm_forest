@@ -40,6 +40,12 @@ export const CONFIG = {
   //    빈 문자열로 두면 기능이 꺼지고 게임 내장(날짜 시드) 손님이 나옵니다.
   CAFE_GUEST_API: '/api/cafe-guests',
 
+  // ── 🦝 밤손님(부재중 습격) 판정/쪽지 엔드포인트 ───────────────
+  //    판정은 서버가 결정적 시드(HMAC)로 계산 — 새로고침 리롤 불가.
+  //    빈 문자열로 두면 밤손님 기능이 꺼집니다(아무 일도 일어나지 않음).
+  NIGHT_VISIT_API: '/api/night-visit',
+  NIGHT_NOTE_API: '/api/night-note',   // 사건 다음날 주민 쪽지(Gemini, 날짜 캐시)
+
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)
   //    'map'  = 맵 크기 A/B (client_id 해시로 A/B 50:50 배정)
