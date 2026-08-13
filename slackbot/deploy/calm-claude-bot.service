@@ -1,0 +1,22 @@
+# =============================================================
+#  calm-claude 슬랙봇 systemd 유닛 (오라클 VM용)
+#  설치: sudo cp deploy/calm-claude-bot.service /etc/systemd/system/
+#        sudo systemctl enable --now calm-claude-bot
+#  로그: journalctl -u calm-claude-bot -f
+# =============================================================
+[Unit]
+Description=calm-claude Slack bot (Claude Agent SDK)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/calm_forest/slackbot
+# uv 가 .venv 준비/의존성 동기화까지 처리
+ExecStart=/home/ubuntu/.local/bin/uv run python bot.py
+Restart=always
+RestartSec=5
+# 토큰은 레포 루트 .env — bot.py 의 dotenv 가 읽는다(EnvironmentFile 불필요)
+
+[Install]
+WantedBy=multi-user.target
