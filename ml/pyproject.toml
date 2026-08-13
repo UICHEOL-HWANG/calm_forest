@@ -1,0 +1,36 @@
+# =============================================================
+#  calm forest · ml — EDA/실험/모델 서빙 파이썬 프로젝트 (uv 관리)
+#  ------------------------------------------------------------
+#  uv sync 로 .venv 생성 → uv run jupyter lab / uv run uvicorn …
+#  게임(웹) 코드와 완전히 분리 — 이 디렉터리 밖을 건드리지 않는다.
+# =============================================================
+[project]
+name = "calm-ml"
+version = "0.1.0"
+description = "calm forest 지표 EDA · 실험 트래킹(WandB) · 모델 서빙(FastAPI)"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=2.0",
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "scikit-learn>=1.5",
+    "pg8000>=1.31",          # Supabase 풀러 접속(순수 파이썬 — 빌드 의존성 없음)
+    "python-dotenv>=1.0",
+    "wandb>=0.19",           # 실험 트래킹
+    "fastapi>=0.115",        # 모델 서빙 API(오라클 클라우드 배포 예정)
+    "uvicorn[standard]>=0.32",
+]
+
+[dependency-groups]
+dev = [
+    "jupyterlab>=4.2",
+    "ipykernel>=6.29",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["calm_ml"]

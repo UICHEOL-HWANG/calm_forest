@@ -1,0 +1,12 @@
+# 파이썬 가상환경·캐시 (ml 전용 — 루트 .gitignore 와 별개)
+.venv/
+__pycache__/
+*.egg-info/
+.ipynb_checkpoints/
+
+# WandB 로컬 런 기록(클라우드에 올라가므로 로컬은 잡파일)
+wandb/
+
+# 모델 아티팩트(대용량 — 필요하면 릴리스/스토리지로)
+*.pkl
+*.joblib
