@@ -181,6 +181,15 @@ python3 -m http.server 8000   # → http://localhost:8000
 
 스폰 앞 게이트로 들어가는 **나만의 텃밭 필드**(집처럼 별도 공간). 울타리 두른 넓은 밭에서 자유롭게 농사짓고, 심은 작물은 저장돼 재접속해도 유지됩니다.
 
+## 📸 사진첩 (OCI Object Storage — 구글 로그인 전용)
+
+액션샷 미리보기의 **☁️ 사진첩** 버튼으로 공유 카드를 클라우드에 저장하고, ☰ 메뉴 → **📸 사진첩**에서 어느 기기서든 다시 봅니다(크게 보기·공유·삭제, **최대 100장**). 게스트에겐 버튼이 로그인 넛지로 동작(회원 전환 훅).
+
+- **구조**: 브라우저 → 같은 오리진 `/api/photo`(서버 프록시) → OCI 버킷(S3 호환 API, SigV4). **OCI는 버킷 CORS를 지원하지 않아** 브라우저 직접 업로드가 불가능하고, PAR를 클라이언트에 심으면 스팸 통로가 되므로 프록시가 유일한 안전한 경로입니다. 표시용은 1시간짜리 presigned URL(`/api/photo-urls`) — `<img>` 렌더링은 CORS 무관.
+- **메타데이터**: `photos` 테이블(Supabase, RLS — `sql/migrate_photos.sql`) — 목록·정렬·개수는 DB로, 바이너리는 버킷으로.
+- **설정**: `.env`(로컬) / Cloudflare Workers 환경변수(운영)에 `OCI_NAMESPACE`(기본 id8g5usnkx1c)·`OCI_REGION`·`OCI_BUCKET`·`OCI_ACCESS_KEY`·`OCI_SECRET_KEY`·`SUPABASE_ANON_KEY`. 미설정이면 기능만 꺼지고 게임은 정상.
+- **트래킹**: `photo_upload` / `album_open` / `photo_delete` — 사진첩 사용률이 세션 요약 counts 에 자동 집계.
+
 ## 🙂 이모트 · 📷 액션샷
 
 - **캐릭터 바꾸기** — ☰ 메뉴 → 🐾 **캐릭터 바꾸기**로 언제든 동물을 교체할 수 있습니다(진행 상황·도감·집은 그대로). 최초 선택은 `character_select`, 이후 교체는 `character_change`(이전 동물 포함)로 따로 기록됩니다.
