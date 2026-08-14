@@ -18,6 +18,18 @@
   // 서버 코드 진입점 — /api/cafe-guests 를 처리(Gemini 호출)하고 나머지는 자산으로 넘김
   "main": "worker/index.js",
 
+  // 📸 사진첩 서버(/api/photo*)의 비밀 아닌 설정 — 여기 선언해야 배포마다 보장됩니다.
+  // ⚠️ wrangler deploy 는 대시보드에서 손으로 넣은 "일반(텍스트) 변수"를 지웁니다(Secret 은 보존).
+  //    그래서 공개값은 코드로 선언하고, 비밀키 2개(OCI_ACCESS_KEY·OCI_SECRET_KEY)는
+  //    `npx wrangler secret put <이름>` 으로 Secret 등록합니다(GEMINI_API_KEY 와 같은 방식).
+  "vars": {
+    "OCI_NAMESPACE": "id8g5usnkx1c",
+    "OCI_REGION": "us-ashburn-1",
+    "OCI_BUCKET": "calm-forest",
+    "SUPABASE_URL": "https://zuyxgjfihxtfdpolljzw.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t"
+  },
+
   // Gemini 무료 티어는 국가 제한이 있어, 홍콩(HKG) 엣지에서 호출하면 거부되는 것으로 보인다.
   //   (같은 키로 한국에서 직접 호출하면 200, 워커에서는 실패)
   // Workers 는 도시·국가 지정이 불가하고 클라우드 리전 지정만 된다 → 지원 확실한 미국으로.
