@@ -9,8 +9,8 @@
 //  ▶ GA4 미설정(오프라인) 시 window.gtag 가 없으므로 콘솔로 폴백
 // =============================================================
 
-import { CONFIG, isGaConfigured } from './config.js?v=32';
-import { PLATFORM } from './platform.js?v=32';   // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
+import { CONFIG, isGaConfigured } from './config.js?v=33';
+import { PLATFORM } from './platform.js?v=33';   // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
 
 let firstChopFired = false;
 const sessionStart = Date.now();

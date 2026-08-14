@@ -9,8 +9,8 @@
 //    (game_saves / game_logs + RLS + 분석 뷰)
 // =============================================================
 
-import { CONFIG, isSupabaseConfigured } from './config.js?v=32';
-import { PLATFORM } from './platform.js?v=32';   // 'web' | 'toss' — 로그 세그먼트
+import { CONFIG, isSupabaseConfigured } from './config.js?v=33';
+import { PLATFORM } from './platform.js?v=33';   // 'web' | 'toss' — 로그 세그먼트
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -126,7 +126,7 @@ export async function signInWithGoogle() {
 //   엔드포인트 미구현(빈 값) 동안은 안내만 하고 게스트 플레이를 권함.
 export async function signInWithToss() {
   try {
-    const { loadTossSDK } = await import('./platform.js?v=32');
+    const { loadTossSDK } = await import('./platform.js?v=33');
     const sdk = await loadTossSDK();
     const { authorizationCode, referrer } = await sdk.appLogin();   // 인가코드(10분·일회성)
     console.log('[토스 로그인] 인가코드 수신, referrer:', referrer);
