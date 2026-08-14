@@ -22,11 +22,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { sampleFrame, startLogging } from './logger.js?v=33';         // [센서] 로깅
-import { saveGame, loadGame, sendBoatRun } from './supabase-client.js?v=33';  // [Supabase] 저장 + 🛶 런 기록
-import { trackChop, trackEvent } from './analytics.js?v=33';          // [GA4] 이벤트
-import { logEcon, startMetrics } from './metrics.js?v=33';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js?v=33'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
+import { saveGame, loadGame, sendBoatRun } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록
+import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
+import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -2801,6 +2801,9 @@ function startBoatRun() {
   boat.group.userData.lantern.visible = lit;
   boat.group.userData.light.intensity = lit ? 1.6 : 0;
   playerAnchor.visible = (boatView === 'third');     // 1인칭이면 캐릭터를 숨김(시야 방해 방지)
+  if (heldGroup) heldGroup.visible = false;          // 🛶 배 위에선 도구를 내려놓는다(두 손으로 노를 잡는 느낌)
+  playerAnchor.position.y = 0; playerAnchor.rotation.set(0, 0, 0);   // 노 젓기 자세 초기화
+  boat.group.rotation.set(0, 0, 0); boat.group.position.y = 0;       // 지난 런의 침몰 자세 초기화
   player.position.set(RIVER.x, 0, RIVER.z - RIVER_DOCK_HALF - 2); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   ui.setBoatRun?.(true);
@@ -2855,6 +2858,8 @@ function endBoatRun(result) {
   clearRiverObjects();
   if (boat.group) boat.group.visible = false;
   playerAnchor.visible = true;
+  if (heldGroup) heldGroup.visible = true;                            // 도구를 다시 손에
+  playerAnchor.position.y = 0; playerAnchor.rotation.set(0, 0, 0);    // 노 젓기·침몰 자세 해제
   player.position.set(RIVER.x, 0, RIVER.z + 1.2); player.rotation.y = Math.PI;   // 데크로 복귀
   snapCamera();
   ui.setBoatRun?.(false); ui.setBoatHud?.(null);
@@ -2890,8 +2895,23 @@ function endBoatRun(result) {
 // ── 런 물리 — updatePlayer 대신 매 프레임 호출 ───────────────
 function updateBoatRun(dt, t) {
   boat.t += dt;
-  // 💥 난파 대기: 마지막 충돌의 출렁임을 다 보여준 뒤에 결과 화면으로
-  if (boat.wreckAt && boat.t >= boat.wreckAt) { endBoatRun('wreck'); return; }
+  // 🌊 침몰 연출: 마지막 충돌 지점에서 배가 기울며 천천히 가라앉는다 — 다 잠기면 결과 화면
+  if (boat.wreckAt) {
+    if (boat.t >= boat.wreckAt) { endBoatRun('wreck'); return; }
+    const k = 1 - Math.max(0, (boat.wreckAt - boat.t) / 1.9);        // 침몰 진행도 0→1
+    boat.speed = 0; boat.vx = 0;                                     // 그 자리에서
+    if (boat.group) {
+      boat.group.position.set(player.position.x, -k * k * 0.9, player.position.z);
+      boat.group.rotation.x = k * 0.55;                              // 뱃머리부터 물속으로
+      boat.group.rotation.z = Math.sin(boat.t * 7) * 0.12 * (1 - k); // 잦아드는 흔들림
+      boat.group.children.forEach(c => { if (c.userData.side) c.rotation.x = 0.85; }); // 노를 놓침
+    }
+    playerAnchor.position.y = -k * k * 0.75;                         // 캐릭터도 배와 함께 잠긴다(3인칭)
+    playerAnchor.rotation.x = k * 0.4;
+    if (Math.random() < (IS_MOBILE ? 0.2 : 0.4))                     // 보글보글 물거품
+      spawnSparkle(player.position.x + (Math.random() - 0.5) * 1.4, 0.15, player.position.z - 1 + Math.random() * 2, 4);
+    return;                                                          // 침몰 중엔 조향·충돌·HUD 갱신 없음
+  }
   const p = Math.min(1, boat.dist / RIVER_LEN);
   const seg = p < 0.34 ? 1 : p < 0.67 ? 2 : 3;
   // 💥 충돌 직후: 배가 그 자리에 멈춰 출렁이는 중 / 🚣 출렁임이 끝나면 노를 빠르게 저으며 재출발
@@ -2952,12 +2972,20 @@ function updateBoatRun(dt, t) {
       boat.group.rotation.x = Math.sin(boat.t * 12) * 0.1 * k;
       boat.group.position.y += Math.sin(boat.t * 9) * 0.06 * k;
       boat.group.children.forEach(c => { if (c.userData.side) c.rotation.x = 0.7 * k; });
+      // 캐릭터도 배와 함께 휘청(3인칭)
+      playerAnchor.position.y = boat.group.position.y;
+      playerAnchor.rotation.x = 0.1;
+      playerAnchor.rotation.z = Math.sin(boat.t * 16) * 0.18 * k;
     } else {
       boat.group.rotation.x = 0;
       // 🚣 재출발·스퍼트 중엔 노를 빠르고 깊게 젓는다 — "다시 출발!" 이 눈에 보이게
       const fast = boosting || restarting;
       const stroke = Math.sin(boat.t * (fast ? 11 : 5.5));
       boat.group.children.forEach(c => { if (c.userData.side) c.rotation.x = stroke * (fast ? 0.55 : 0.32); });
+      // 🚣 캐릭터도 노와 같은 위상으로 상체를 앞뒤로 — 젓는 사람이 보이게(3인칭)
+      playerAnchor.position.y = boat.group.position.y + Math.abs(stroke) * 0.05;   // 배 출렁임 + 젓는 들썩임
+      playerAnchor.rotation.x = 0.12 + stroke * (fast ? 0.24 : 0.14);              // 앞으로 숙였다 젖혔다
+      playerAnchor.rotation.z = (boat.vx / maxVx) * 0.13;                          // 배 롤을 따라 기울기
     }
   }
   if (boat.shake > 0) boat.shake = Math.max(0, boat.shake - dt * 2.4);
@@ -3040,9 +3068,13 @@ function updateRiverObjects(dt, t, seg) {
       Sound.build();
       spawnDust(player.position.x, player.position.z, 10);
       spawnSparkle(player.position.x, 0.5, player.position.z - 1.5, 14);       // 물보라 팍!
-      spawnFloatText(player.position.x, 1.7, player.position.z, boat.lamps > 0 ? `💥 -1 (💡${boat.lamps})` : '💥 배가 멈췄어요', '#d9534f');
+      spawnFloatText(player.position.x, 1.7, player.position.z, boat.lamps > 0 ? `💥 -1 (💡${boat.lamps})` : '💥 배가 가라앉아요…', '#d9534f');
       trackEvent('boat_hit', { obstacle: it.kind, dist_m: Math.round(boat.dist), seg, lamps_left: boat.lamps }); // [GA4] 난이도 튜닝
-      if (boat.lamps <= 0) { boat.wreckAt = boat.stunUntil + 0.15; return; }   // 마지막 충돌도 연출을 보여준 뒤 종료
+      if (boat.lamps <= 0) {                       // 🌊 마지막 충돌: 충돌 지점에서 배가 기울며 가라앉는 연출 → 결과 화면
+        boat.wreckAt = boat.t + 1.9;
+        Sound.water();
+        return;
+      }
     }
   }
 }
@@ -4488,7 +4520,10 @@ function updatePlayer(dt, t) {
   //    실내(집)는 가구를 직접 배치하는 공간이라 제외 — 잘못 놓으면 갇힐 수 있음
   if (!indoor) resolveColliders(player.position);
   // 테스트: ?dbg=1 — 현재 좌표·카메라·콜라이더 수를 <body data-dbg> 에 기록(충돌 디버깅용)
-  if (_wq.has('dbg')) document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
+  if (_wq.has('dbg')) {
+    document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
+    window.__scene = scene;   // 씬 그래프 콘솔 조사용(로컬 ?dbg=1 전용)
+  }
 
   // 액션 제스처: 백스윙 → 휙 내려침 → 팔로스루 — 도구가 어깨 피벗으로 크게 호를 그림
   if (actAnim > 0) {
