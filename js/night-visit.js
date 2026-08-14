@@ -10,9 +10,9 @@
 //  ▶ 실패·지연·미설정 시엔 "밤손님이 안 온 밤"일 뿐 — 게임은 그대로 진행.
 // =============================================================
 
-import { CONFIG } from './config.js?v=30';
-import { setNightVisitSource, setNightNoteSource } from './game.js?v=30';
-import { state as auth } from './supabase-client.js?v=30';
+import { CONFIG } from './config.js?v=32';
+import { setNightVisitSource, setNightNoteSource } from './game.js?v=32';
+import { state as auth } from './supabase-client.js?v=32';
 
 const TIMEOUT_MS = 6000;   // 이 안에 안 오면 포기(다음 접속에 재판정 — 결정적이라 결과는 같다)
 

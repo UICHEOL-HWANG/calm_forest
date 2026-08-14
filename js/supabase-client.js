@@ -9,7 +9,7 @@
 //    (game_saves / game_logs + RLS + 분석 뷰)
 // =============================================================
 
-import { CONFIG, isSupabaseConfigured } from './config.js?v=30';
+import { CONFIG, isSupabaseConfigured } from './config.js?v=32';
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -239,6 +239,25 @@ export async function sendCafeGuests({ date, weather, count, model, guests }) {
     });
     if (error && error.code !== '23505') throw error;   // 23505 = 오늘 이미 기록됨(정상)
   } catch (err) { console.warn('[Supabase 폴백] 카페 손님 기록 실패:', err?.message || err); }
+}
+
+// ── [계측] 🛶 나룻배 런 기록(boat_runs) — 런 1회 = 1행 ──
+//    좌표 로그(game_logs)만으론 "어디서 부딪혀 그만뒀는지"를 복원하기 어렵습니다.
+//    코스 시드·구간별 충돌 지점·수집물까지 한 행에 남겨야 난이도 튜닝과 이탈 분석이 됩니다.
+//    ※ 코스는 날짜+회차 시드라 seed 가 같으면 같은 코스 — 유저 간 실력 비교의 기준이 됩니다.
+//    실패해도 게임엔 영향이 없어야 하므로 전부 삼킵니다.
+export async function sendBoatRun(row) {
+  const full = {
+    user_id: state.userId, session_id: state.sessionId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant,
+    run_date: new Date().toISOString().slice(0, 10),   // YYYY-MM-DD
+    ...row,
+  };
+  if (!state.online || !supabase) { console.log('[Supabase 폴백] 🛶 런 기록(오프라인):', full); return; }
+  try {
+    const { error } = await supabase.from(CONFIG.BOAT_TABLE).insert(full);
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 런 기록 전송 실패:', err?.message || err); }
 }
 
 // ── [계측] 세션 요약 upsert(session_logs) — 세션당 1행, 주기/이탈 시 갱신 ──
