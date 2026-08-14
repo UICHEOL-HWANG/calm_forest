@@ -9,7 +9,7 @@
 //    (game_saves / game_logs + RLS + 분석 뷰)
 // =============================================================
 
-import { CONFIG, isSupabaseConfigured } from './config.js?v=33';
+import { CONFIG, isSupabaseConfigured } from './config.js';
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
