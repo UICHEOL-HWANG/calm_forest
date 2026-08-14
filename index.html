@@ -970,15 +970,15 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=33';
-    import { IS_TOSS } from './js/platform.js?v=33';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=33';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=33';
-    import { CONFIG } from './js/config.js?v=33';
-    import { initControls } from './js/controls.js?v=33';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=33';
-    import { initCafeGuests } from './js/cafe-guests.js?v=33';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
-    import { initNightVisit } from './js/night-visit.js?v=33';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
+    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js';
+    import { IS_TOSS } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
+    import { CONFIG } from './js/config.js';
+    import { initControls } from './js/controls.js';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js';
+    import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
+    import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -1264,11 +1264,13 @@
       // 🛶 런 결과 모달 — 여기서 바로 "한 번 더"가 되게(남은 횟수 표시)
       showBoatResult(d) {
         const clear = d.result === 'clear', wreck = d.result === 'wreck';
-        $('br-emoji').textContent = clear ? '🎉' : wreck ? '💥' : '🛶';
-        $('br-title').textContent = clear ? '무사히 도착!' : wreck ? '배가 멈췄어요' : '뱃길을 멈췄어요';
+        $('br-emoji').textContent = clear ? '🎉' : wreck ? '🌊' : '🛶';
+        $('br-title').textContent = clear ? '무사히 도착!' : wreck ? '배가 가라앉았어요' : '뱃길을 멈췄어요';
         $('br-sub').textContent = clear
           ? (d.hits === 0 ? '한 번도 부딪히지 않았어요 — 완벽한 뱃길! 🌊' : `${d.dist_m}m 를 내려왔어요`)
-          : `${d.dist_m}m 지점에서 멈췄어요 — 여기까지 모은 건 그대로 가져가요`;
+          : wreck
+            ? `${d.dist_m}m 지점에서 가라앉았어요 — 주운 건 그대로 가져가요, 배는 내일 멀쩡해요!`
+            : `${d.dist_m}m 지점에서 멈췄어요 — 여기까지 모은 건 그대로 가져가요`;
         const rows = [
           ['거리', `${d.dist_m}m`], ['시간', `${d.time_sec}초`], ['점수', `${d.score}${d.best ? ' 🏆 최고 기록!' : ''}`],
           ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
