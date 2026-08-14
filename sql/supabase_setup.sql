@@ -91,10 +91,23 @@ create policy "own feedback insert" on public.feedback
 
 -- ─────────────────────────────────────────────────────────────
 -- 4) 분석용 뷰(선택) — 대시보드/SQL에서 바로 쓰기 좋게 집계
+--
+--    ⚠️ 뷰에는 반드시 `with (security_invoker = on)` 을 붙이세요.
+--    Postgres 뷰는 기본이 "정의자(definer) 권한" 실행입니다. SQL Editor 에서
+--    만들면 소유자가 postgres 가 되는데, 테이블 소유자는 자기 RLS 를 우회하므로
+--    (FORCE ROW LEVEL SECURITY 미설정 시) RLS 걸린 테이블을 감싼 뷰가 오히려
+--    RLS 를 뚫는 통로가 됩니다. 게다가 Supabase 는 public 스키마 객체에
+--    anon/authenticated SELECT 를 기본 부여하므로, 클라이언트에 박힌 공개 키만
+--    있으면 전체 유저 데이터가 읽힙니다.
+--    (2026-08-10 실제로 이 상태였음 — 익명 요청으로 178명분 세션이 조회됨)
+--
+--    security_invoker = on 이면 "조회자 권한"으로 실행되어 RLS 가 정상 적용됩니다.
+--    → 로그인 유저는 본인 데이터만, service_role 은 전체를 봅니다.
 -- ─────────────────────────────────────────────────────────────
 
 -- (a) 세션 요약: 세션별 지속시간·샘플수·이동거리
-create or replace view public.v_session_summary as
+create or replace view public.v_session_summary
+with (security_invoker = on) as
 select
   session_id,
   user_id,
@@ -106,7 +119,8 @@ from public.game_logs
 group by session_id, user_id;
 
 -- (b) 이동 히트맵 격자: 2 단위 셀로 캐릭터 체류 빈도 집계
-create or replace view public.v_move_heatmap as
+create or replace view public.v_move_heatmap
+with (security_invoker = on) as
 select
   round(char_x / 2.0) * 2 as gx,
   round(char_z / 2.0) * 2 as gz,
@@ -114,9 +128,18 @@ select
 from public.game_logs
 group by gx, gz;
 
--- ★ 뷰도 RLS가 걸린 game_logs를 참조하므로, 대시보드에서
---   로그인한 유저 본인 데이터만 보입니다. (전체 집계가 필요하면
---   Supabase Edge Function이나 service_role 로 별도 처리하세요.)
+-- ★ 위 두 뷰는 security_invoker = on 덕분에 조회자 권한으로 실행되므로,
+--   game_logs 의 RLS 가 그대로 적용되어 로그인한 유저 본인 데이터만 보입니다.
+--   (security_invoker 없이 만들면 RLS 가 우회되니 절대 빼지 마세요 — 위 ⚠️ 참고)
+--   전체 집계가 필요하면 service_role 이나 Supabase Edge Function 으로 처리하세요.
+--
+--   이미 만들어진 뷰에 적용하려면:
+--     alter view public.v_session_summary set (security_invoker = on);
+--     alter view public.v_move_heatmap   set (security_invoker = on);
+--   확인:
+--     select relname, reloptions from pg_class c
+--     join pg_namespace n on n.oid = c.relnamespace
+--     where n.nspname = 'public' and c.relkind = 'v';
 
 -- ─────────────────────────────────────────────────────────────
 -- 5) 계측 테이블 (경제 원장 econ_logs + 세션 요약 session_logs)

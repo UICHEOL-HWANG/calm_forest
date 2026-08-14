@@ -29,6 +29,8 @@ export const CONFIG = {
   //    sql/migrate_metrics_tables.sql 실행으로 생성 (ML 피처의 원천)
   ECON_TABLE: 'econ_logs',       // 코인 증감 원장 {source,item,amount,balance}
   SESSION_TABLE: 'session_logs', // 세션 요약(세션당 1행 upsert)
+  //    🛶 나룻배 런 기록 — sql/migrate_boat_runs.sql 실행으로 생성
+  BOAT_TABLE: 'boat_runs',       // 런당 1행(코스 시드·충돌 지점·수집물·결과)
 
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
   AUTH_MODE: 'google',
@@ -37,6 +39,19 @@ export const CONFIG = {
   //    appLogin() 인가코드를 Supabase 세션으로 바꿔주는 Edge Function URL.
   //    (시크릿이 필요해 서버에서만 교환 가능 — 3단계에서 구현. 비어있으면 안내 폴백)
   TOSS_AUTH_ENDPOINT: '',
+
+  // ── ☕ 카페 손님 동적 생성 엔드포인트 ─────────────────────────
+  //    같은 오리진의 서버 함수(functions/api/cafe-guests.js)가 Gemini 를 대신 호출합니다.
+  //    ⚠️ Gemini API 키는 절대 여기 두지 마세요 — 브라우저에 그대로 노출됩니다.
+  //       키는 .env(로컬) / Cloudflare Pages 환경변수(운영)의 GEMINI_API_KEY 에만 둡니다.
+  //    빈 문자열로 두면 기능이 꺼지고 게임 내장(날짜 시드) 손님이 나옵니다.
+  CAFE_GUEST_API: '/api/cafe-guests',
+
+  // ── 🦝 밤손님(부재중 습격) 판정/쪽지 엔드포인트 ───────────────
+  //    판정은 서버가 결정적 시드(HMAC)로 계산 — 새로고침 리롤 불가.
+  //    빈 문자열로 두면 밤손님 기능이 꺼집니다(아무 일도 일어나지 않음).
+  NIGHT_VISIT_API: '/api/night-visit',
+  NIGHT_NOTE_API: '/api/night-note',   // 사건 다음날 주민 쪽지(Gemini, 날짜 캐시)
 
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)

@@ -84,3 +84,35 @@
 
 배포 주소 뒤에 `/dashboards/analytics.html` 로 접속하면 본인 `game_logs` 로 이동 히트맵·세션 지표를,
 `/dashboards/admin_analytics.html` 로는 관리자 전체통계를 볼 수 있습니다. (Supabase 로그인 필요)
+
+### 관리자 대시보드를 잠깐 공유하기
+
+로그인 없이 잠깐 보여줘야 할 때는 **만료되는 공유 링크**를 씁니다. SQL Editor 에서 한 번만:
+
+```sql
+-- 토큰 보관표. RLS 켜고 정책을 두지 않아 클라이언트에서는 직접 못 읽고,
+-- security definer 함수(cf_admin_overview)만 소유자 권한으로 조회합니다.
+create table if not exists public.cf_share_links (
+  token        text primary key,
+  label        text,
+  expires_at   timestamptz not null,
+  created_at   timestamptz not null default now(),
+  hits         int         not null default 0,
+  last_used_at timestamptz
+);
+alter table public.cf_share_links enable row level security;
+revoke all on table public.cf_share_links from anon, authenticated;
+```
+
+그다음 `sql/admin_analytics.sql` 을 **다시** 실행해 함수를 `(days, token)` 시그니처로 교체하고, 링크를 발급합니다:
+
+```sql
+insert into public.cf_share_links (token, label, expires_at)
+values (replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-',''),
+        '데모 공유', now() + interval '2 hours')
+returning token, expires_at;
+```
+
+나온 토큰을 `/dashboards/admin_analytics.html?k=<token>` 로 붙여 공유하면 됩니다.
+만료되면 자동으로 닫히고, `delete from public.cf_share_links;` 로 즉시 회수할 수 있습니다.
+사용 현황은 `select label, expires_at, hits, last_used_at from public.cf_share_links;` 로 봅니다.

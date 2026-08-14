@@ -68,6 +68,28 @@
 | `daily_bonus` | 출석 보상 수령(하루 1회) | `streak`(연속 일수), `coins` |
 | `lucky_box` | 데일리 의뢰 럭키박스 개봉 | `tier`(coin/seed/gem/jackpot), `quest_id` |
 | `weather_day` | 궂은 날씨 세션 시작 시 1회 | `type`(rain/snow/fog) — 세션 요약 counts 로 날씨별 행동 비교 |
+| `coop_build` / `coop_feed` / `coop_collect` | 🐔 닭장 건설·모이·달걀 | 수령: `eggs` |
+| `badge_earn` | 🏅 배지 획득 | `badge`, `total` |
+
+### 남쪽 필드 확장 (🌟 반딧불이 · ☕ 카페 · 🍄 채집)
+
+| 이벤트 이름 | 발생 시점 | 매개변수 |
+|-------------|-----------|----------|
+| `zone_enter` | 새 구역 진입 | `zone`(glade/forest), `night`(계곡), `weather`(숲) — **구역별 유입 비교** |
+| `firefly_swing` | 🦋 포충망 휘두름(성공·실패 모두) | `kind`, `bright`(0~100 밝기), `lit`(밝을 때 휘둘렀는지), `upgraded`, `caught` — **타이밍 난이도 튜닝용** |
+| `firefly_catch` | 🌟 반딧불이 포획 성공 | `kind`(yellow/blue/green/rainbow), `weather`, `night`(0~100 어둠) |
+| `firefly_swing_empty` | 근처에 반딧불이 없이 헛스윙 | — (조작 이해도 지표) |
+| `enter_cafe` / `exit_cafe` | ☕ 카페 홀 입장/퇴장 | — (채굴장과 같은 별도 공간) |
+| `cafe_open` | 홀 안 📋 주문판 열기 | — |
+| `cafe_serve` | 손님에게 서빙 성공 | `recipe`, `npc`, `pay`, `served_total`, `affinity` — **접객 데일리 루프 KPI** |
+| `cafe_complete` | 하루 손님 전원 서빙(완주) | `served_total` — 데일리 완주율 |
+| `cafe_guests_generated` | 외부 손님 생성기(예: Gemini) 응답 성공 | `count` — 생성 성공률 모니터링 |
+| `forage_pick` | 🍄 채집물 줍기 | `kind`(mushroom/berry/acorn/herb), `weather` — 날씨별 산출 검증 |
+
+> 세션 요약(`metrics.js`)은 이벤트 이름별 횟수를 **자동 집계**하므로, 위 이벤트는 별도 등록 없이
+> `session_logs.counts` jsonb 에 `{"firefly_catch": 4, "cafe_serve": 3, "forage_pick": 7}` 형태로 그대로 쌓입니다.
+> 코인이 오가는 `cafe_serve`/`cafe_bonus` 는 `econ_logs` 원장에도 `source` 로 남습니다.
+> 공간 체류 분석은 `session_logs.last_place` 에 `cafe` 가 추가되어 village/house/farm/mine/cafe 로 구분됩니다.
 
 또한 **user_id** 를 GA4에 연결(`setGaUser`)해서, GA4↔Supabase를 유저 단위로 조인할 수 있습니다.
 

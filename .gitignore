@@ -9,10 +9,10 @@ node_modules/
 *.log
 __pycache__/
 
-# 앱인토스 빌드 산출물
+# 배포 번들(빌드 산출물)
+dist/
 dist-toss/
 *.ait
 
-*.ait
-
-*.ait
+# wrangler 로컬 캐시
+.wrangler/

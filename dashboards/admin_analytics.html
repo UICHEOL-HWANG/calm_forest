@@ -3,13 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>calm forest · 관리자 전체통계 📊</title>
-<meta name="description" content="calm forest — 전체 유저 합산 통계(관리자) 대시보드" />
+<title>calm forest · 관리자 애널리틱스 📊</title>
+<meta name="description" content="calm forest — DAU/WAU/MAU · 리텐션 · 퍼널 · 경제 지표 관리자 대시보드" />
+<!-- 임시 공유 링크(?k=)가 검색에 노출되면 "임시"가 아니게 되므로 색인 차단 -->
+<meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="calm forest · 관리자 전체통계 📊" />
-<meta property="og:description" content="전체 유저 합산 통계 대시보드" />
+<meta property="og:title" content="calm forest · 관리자 애널리틱스 📊" />
+<meta property="og:description" content="DAU/WAU/MAU · 리텐션 · 퍼널 · 경제 지표" />
 <meta property="og:url" content="https://calmforest.icuchoel.workers.dev/dashboards/admin_analytics.html" />
 <meta property="og:image" content="https://calmforest.icuchoel.workers.dev/preview.png" />
 <meta property="og:image:width" content="1200" />
@@ -18,86 +20,383 @@
 <meta name="twitter:image" content="https://calmforest.icuchoel.workers.dev/preview.png" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root{ --ink:#4a5a4f; --shadow:0 6px 18px rgba(90,120,100,.15); }
+  :root{ --ink:#3f4f45; --mut:#7b8a80; --line:#e6efe8; --shadow:0 4px 16px rgba(90,120,100,.10); --up:#2f9e5e; --down:#d9634f; }
   *{box-sizing:border-box;}
-  body{margin:0;background:linear-gradient(160deg,#eafaf0,#fff7ec);color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;padding:24px;}
-  h1{font-size:22px;margin:0 0 4px;}
-  .sub{opacity:.7;font-size:13px;margin-bottom:18px;}
-  a.back{display:inline-block;margin-bottom:12px;color:#4a5a4f;font-size:13px;}
-  #msg{display:none;background:#fff;border-radius:16px;padding:24px;box-shadow:var(--shadow);max-width:420px;margin:40px auto;text-align:center;}
-  #msg button{margin-top:14px;border:1px solid #e2e2e2;background:#fff;border-radius:12px;padding:10px 18px;font-weight:600;cursor:pointer;}
-  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
-  .card{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:var(--shadow);}
-  .card h2{font-size:14px;margin:0 0 12px;opacity:.85;}
-  .stat .num{font-size:26px;font-weight:700;} .stat .lbl{font-size:12px;opacity:.65;}
-  .stat{display:flex;flex-direction:column;gap:2px;}
-  #heatmap{background:#f3faf5;border-radius:12px;width:100%;height:auto;image-rendering:pixelated;}
+  body{margin:0;background:#f4f9f5;color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;padding:20px 20px 60px;}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:6px;}
+  h1{font-size:21px;margin:0;font-weight:800;letter-spacing:-.3px;}
+  .sub{opacity:.7;font-size:12.5px;margin:2px 0 16px;}
+  a.back{color:var(--mut);font-size:13px;text-decoration:none;}
+  a.back:hover{text-decoration:underline;}
+  #range{margin-left:auto;display:flex;gap:6px;}
+  #range button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--mut);cursor:pointer;}
+  #range button.on{background:#8fd6a0;border-color:#8fd6a0;color:#1f3b28;}
+  #msg{display:none;background:#fff;border-radius:16px;padding:24px;box-shadow:var(--shadow);max-width:440px;margin:40px auto;text-align:center;line-height:1.6;}
+  #msg button{margin-top:14px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 18px;font-weight:600;cursor:pointer;}
+  #load{display:none;text-align:center;padding:50px;color:var(--mut);font-size:14px;}
+
+  h2.sec{font-size:13px;font-weight:800;margin:26px 0 10px;color:var(--mut);letter-spacing:.4px;text-transform:uppercase;}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;}
+  .grid.wide{grid-template-columns:repeat(auto-fit,minmax(440px,1fr));}
+  .card{background:#fff;border-radius:14px;padding:15px 17px;box-shadow:var(--shadow);border:1px solid rgba(230,239,232,.8);}
+  .card h3{font-size:13px;margin:0 0 3px;font-weight:700;}
+  .card .hint{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.45;}
+  .kpi .num{font-size:27px;font-weight:800;line-height:1.15;letter-spacing:-.5px;}
+  .kpi .lbl{font-size:11.5px;color:var(--mut);font-weight:600;}
+  .kpi .dlt{font-size:11.5px;font-weight:700;margin-left:6px;}
+  .kpi .dlt.up{color:var(--up);} .kpi .dlt.down{color:var(--down);} .kpi .dlt.flat{color:var(--mut);}
+  .kpi .foot{font-size:10.5px;color:var(--mut);margin-top:3px;}
   canvas{max-width:100%;}
+  table.mini{width:100%;border-collapse:collapse;font-size:12px;}
+  table.mini th{text-align:left;color:var(--mut);font-weight:600;padding:5px 6px;border-bottom:1px solid var(--line);font-size:11px;}
+  table.mini td{padding:5px 6px;border-bottom:1px solid #f4f8f5;}
+  table.mini td.n{text-align:right;font-variant-numeric:tabular-nums;}
+  .cohort td{text-align:center;font-variant-numeric:tabular-nums;border-radius:4px;}
+  .cohort td.lbl{text-align:left;color:var(--mut);white-space:nowrap;}
+  .hourgrid{display:grid;grid-template-columns:26px repeat(24,1fr);gap:2px;font-size:9px;color:var(--mut);}
+  .hourgrid .cell{aspect-ratio:1;border-radius:2px;background:#eef5f0;}
+  .hourgrid .rowlbl{display:flex;align-items:center;}
+  .funnel-row{display:flex;align-items:center;gap:9px;margin-bottom:7px;font-size:12px;}
+  .funnel-row .fl{width:96px;color:var(--mut);flex:none;}
+  .funnel-row .fbar{flex:1;background:#eef5f0;border-radius:5px;height:19px;overflow:hidden;}
+  .funnel-row .fbar i{display:block;height:100%;background:linear-gradient(90deg,#8fd6a0,#a9e2b6);}
+  .funnel-row .fv{width:104px;text-align:right;font-variant-numeric:tabular-nums;flex:none;}
+  .funnel-row .fv small{color:var(--mut);}
+  /* 60×60 캔버스라 width:100% 면 정사각으로 커져 같은 행 카드까지 늘어남 → 상한 지정 */
+  #heatmap{background:#f3faf5;border-radius:10px;width:100%;max-width:360px;height:auto;display:block;margin:0 auto;image-rendering:pixelated;}
+  .empty{color:var(--mut);font-size:12px;padding:14px 0;text-align:center;}
 </style>
 </head>
 <body>
-  <a class="back" href="../index.html">← 게임으로</a>
-  <h1>🔐 calm forest · 관리자 전체통계</h1>
-  <div class="sub">전체 유저 합산 · security definer 함수(cf_admin_overview) 기반 · 관리자만 조회</div>
+  <header>
+    <div>
+      <a class="back" href="../index.html">← 게임으로</a>
+      <h1>📊 calm forest · 관리자 애널리틱스</h1>
+    </div>
+    <div id="range">
+      <button data-d="7">7일</button>
+      <button data-d="30" class="on">30일</button>
+      <button data-d="90">90일</button>
+    </div>
+  </header>
+  <div class="sub" id="meta">전체 유저 합산 · <code>cf_admin_overview</code> (security definer) · 관리자만 조회</div>
 
   <div id="msg"></div>
+  <div id="load">불러오는 중…</div>
+
   <div id="dash" style="display:none;">
-    <div class="stats-row" id="stats"></div>
+    <h2 class="sec">핵심 지표</h2>
+    <div class="kpis" id="kpis"></div>
+
+    <h2 class="sec">트래픽</h2>
+    <div class="grid wide">
+      <div class="card">
+        <h3>일별 활성 유저 (DAU)</h3>
+        <p class="hint">막대 = 신규/복귀 분해, 선 = 전체 DAU. 기기(client_id) 기준이라 게스트 재방문이 신규로 중복 집계되지 않습니다.</p>
+        <canvas id="cDaily" height="150"></canvas>
+      </div>
+      <div class="card">
+        <h3>세션 수 · 플레이타임</h3>
+        <p class="hint">막대 = 일별 세션 수, 선 = 세션당 중앙값 플레이타임(분). 평균 대신 중앙값이라 이상치에 덜 흔들립니다.</p>
+        <canvas id="cSess" height="150"></canvas>
+      </div>
+    </div>
+
+    <h2 class="sec">리텐션</h2>
     <div class="grid">
-      <div class="card" style="grid-column:span 2;min-width:280px;">
-        <h2>🗺️ 전체 이동 히트맵</h2>
+      <div class="card">
+        <h3>N일차 복귀율</h3>
+        <p class="hint">첫 접속일로부터 N일 뒤에 다시 온 비율. 분모는 관측 기간이 지난 유저만 포함합니다.</p>
+        <div class="kpis" id="ret"></div>
+      </div>
+      <div class="card" style="grid-column:span 2;min-width:320px;">
+        <h3>주간 코호트</h3>
+        <p class="hint">가입 주차별로 이후 몇 주까지 남아있는지. 진한 칸일수록 잔존율이 높습니다.</p>
+        <div id="cohort"></div>
+      </div>
+    </div>
+
+    <h2 class="sec">플레이 패턴</h2>
+    <div class="grid">
+      <div class="card" style="grid-column:span 2;min-width:340px;">
+        <h3>요일 × 시간대 접속 (KST)</h3>
+        <p class="hint">언제 사람이 몰리는지 — 이벤트·푸시 타이밍 잡을 때 씁니다.</p>
+        <div id="hourmap"></div>
+      </div>
+      <div class="card"><h3>세션 길이 분포</h3><p class="hint">짧은 세션이 많으면 초반 이탈 신호입니다.</p><canvas id="cBucket" height="200"></canvas></div>
+      <div class="card"><h3>행동 이벤트 Top</h3><p class="hint">세션 요약에 집계된 이벤트 총 발생 횟수.</p><canvas id="cEvents" height="260"></canvas></div>
+      <div class="card"><h3>마지막 체류 장소</h3><p class="hint">세션이 끝난 위치 — 어디서 이탈하는지.</p><canvas id="cPlaces" height="200"></canvas></div>
+      <div class="card" style="grid-column:span 2;min-width:300px;">
+        <h3>이동 히트맵</h3>
+        <p class="hint">전체 유저 좌표 밀도. 밝을수록 오래 머문 구역입니다.</p>
         <canvas id="heatmap" width="60" height="60"></canvas>
       </div>
-      <div class="card"><h2>📅 일별 활성 유저(DAU)</h2><canvas id="dauChart" height="220"></canvas></div>
-      <div class="card"><h2>⏱️ 세션 길이 분포</h2><canvas id="bucketChart" height="220"></canvas></div>
-      <div class="card"><h2>🏠 집 건설 단계 분포</h2><canvas id="houseChart" height="220"></canvas></div>
+    </div>
+
+    <h2 class="sec">진행 퍼널</h2>
+    <div class="grid">
+      <div class="card" style="grid-column:span 2;min-width:340px;">
+        <h3>온보딩 → 성장 퍼널</h3>
+        <p class="hint">세이브가 있는 유저 기준. 괄호는 전체 대비 / 직전 단계 대비 통과율입니다.</p>
+        <div id="funnel"></div>
+      </div>
+      <div class="card"><h3>집 건설 단계</h3><p class="hint">0=없음 · 3=완성 · 4~6=증축</p><canvas id="cHouse" height="200"></canvas></div>
+      <div class="card"><h3>도감 수집량</h3><p class="hint">수집 콘텐츠가 실제로 소비되는지.</p><canvas id="cDex" height="200"></canvas></div>
+      <div class="card"><h3>배지 보유 수</h3><p class="hint">업적 달성 분포.</p><canvas id="cBadge" height="200"></canvas></div>
+      <div class="card"><h3>캐릭터 선택</h3><p class="hint">첫 화면 선호도.</p><canvas id="cChar" height="200"></canvas></div>
+      <div class="card"><h3>연속 출석(스트릭)</h3><p class="hint">8일 이상은 8로 묶음. 2일차가 닭장 해금 지점입니다.</p><canvas id="cStreak" height="200"></canvas></div>
+    </div>
+
+    <h2 class="sec">인게임 경제</h2>
+    <div class="grid wide">
+      <div class="card">
+        <h3>일별 코인 유입 · 유출</h3>
+        <p class="hint">유입이 계속 크면 인플레이션 — 소비처(싱크)가 부족하다는 뜻입니다.</p>
+        <canvas id="cEcon" height="150"></canvas>
+      </div>
+      <div class="card">
+        <h3>출처별 코인 흐름</h3>
+        <p class="hint">어떤 활동이 코인을 만들고 어디서 쓰이는지.</p>
+        <div id="econSrc"></div>
+      </div>
+    </div>
+
+    <h2 class="sec">세그먼트</h2>
+    <div class="grid">
+      <div class="card"><h3>게스트 vs 로그인</h3><p class="hint">회원 전환 여지를 봅니다.</p><canvas id="cGuest" height="200"></canvas></div>
+      <div class="card"><h3>A/B 변형</h3><p class="hint">실험이 off면 전원 control 입니다.</p><canvas id="cVariant" height="200"></canvas></div>
     </div>
   </div>
 
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
     const $ = (id) => document.getElementById(id);
-    const showMsg = (html) => { const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
+    const showMsg = (html) => { $('load').style.display='none'; const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
+    const P = ['#8fd6a0','#ffd28a','#8ad2ff','#ff9e9e','#c08aff','#f5a3c7','#a0e0d0','#ffc48a'];
+    const charts = {};                       // 재조회 시 파괴용(캔버스 중복 렌더 방지)
+    let sb = null, days = 30;
 
+    const nf   = (n) => (n ?? 0).toLocaleString();
+    const secs = (s) => !s ? '—' : s >= 60 ? `${Math.floor(s/60)}분 ${Math.round(s%60)}초` : `${Math.round(s)}초`;
+    const mmdd = (d) => String(d).slice(5);
+
+    // Chart.js 공통 옵션 — 격자 최소화, 범례는 필요할 때만
+    //  ※ maintainAspectRatio:false 를 쓰면 부모 높이가 auto 인 카드 안에서
+    //    캔버스 높이가 무한히 커집니다(측정값 840~1238px). 종횡비로 높이를 고정.
+    const base = (extra = {}) => ({
+      responsive: true, maintainAspectRatio: true, aspectRatio: 2.2,
+      plugins: { legend: { display: false }, ...(extra.plugins || {}) },
+      scales: { y: { beginAtZero: true, grid: { color: '#eef5f0' }, ticks: { font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } }, ...(extra.scales || {}) },
+      ...extra,
+    });
+    function draw(id, cfg) { charts[id]?.destroy(); charts[id] = new Chart($(id), cfg); }
+
+    // 임시 공개 링크: ?k=<토큰> — cf_share_links 표에서 발급 (docs/DEPLOY.md 참고)
+    const shareKey = new URLSearchParams(location.search).get('k') || '';
+
+    // ── 부팅 ──
     (async () => {
-      if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. config.js를 먼저 채워주세요.'); return; }
+      if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
       const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-      const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth:{ detectSessionInUrl:true, persistSession:true }});
+      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth:{ detectSessionInUrl:true, persistSession:true }});
 
-      // 같은 브라우저면 게임에서 로그인한 구글 세션 재사용
-      let { data:s } = await sb.auth.getSession();
-      if (!s?.session) {
-        showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">또는 게임에서 먼저 로그인 후 이 페이지를 여세요</small>');
-        $('lg').onclick = () => sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname }});
-        return;
+      // 공유 링크(?k=토큰)면 로그인 게이트를 건너뜁니다.
+      // 토큰의 유효성/만료는 서버(cf_admin_overview)가 판정하므로 여기선 통과만 시킵니다.
+      if (!shareKey) {
+        const { data:s } = await sb.auth.getSession();
+        if (!s?.session) {
+          showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">또는 게임에서 먼저 로그인 후 이 페이지를 여세요</small>');
+          $('lg').onclick = () => sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname }});
+          return;
+        }
       }
-
-      // 관리자 전체통계 호출(비관리자면 예외 → 권한 없음)
-      const { data, error } = await sb.rpc('cf_admin_overview');
-      if (error) {
-        if (String(error.message).includes('권한')) showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">admin_analytics.sql 의 허용목록에 이메일을 추가하세요.</small>');
-        else showMsg('오류: ' + error.message + '<br><small style="opacity:.6">admin_analytics.sql 을 SQL Editor에서 실행했는지 확인하세요.</small>');
-        return;
-      }
-      render(data);
+      $('range').addEventListener('click', (e) => {
+        const b = e.target.closest('button'); if (!b) return;
+        [...$('range').children].forEach(x => x.classList.toggle('on', x === b));
+        days = +b.dataset.d; load();
+      });
+      load();
     })();
+
+    async function load() {
+      $('load').style.display = 'block'; $('msg').style.display = 'none';
+      const { data, error } = await sb.rpc('cf_admin_overview', shareKey ? { days, token: shareKey } : { days });
+      if (error) {
+        if (String(error.message).includes('권한')) {
+          if (shareKey) showMsg('🔒 공유 링크가 만료됐거나 올바르지 않습니다.<br><small style="opacity:.6">관리자에게 새 링크를 요청해 주세요.</small>');
+          else showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/admin_analytics.sql 의 허용목록에 이메일을 추가하세요.</small>');
+        }
+        else if (/function|does not exist/i.test(String(error.message))) showMsg('함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/admin_analytics.sql 을 SQL Editor 에서 <b>다시</b> 실행하세요 (days 파라미터가 추가됐습니다).</small>');
+        else showMsg('오류: ' + error.message);
+        return;
+      }
+      $('load').style.display = 'none';
+      render(data);
+    }
 
     function render(d) {
       $('dash').style.display = 'block';
-      const k = d.kpis || {}, r = d.retention || {};
-      const cards = [
-        ['유저 수', k.users ?? 0], ['세션 수', k.sessions ?? 0],
-        ['총 샘플', (k.samples ?? 0).toLocaleString()], ['재방문율', (r.pct ?? 0) + '%'],
-      ];
-      $('stats').innerHTML = cards.map(([l,n]) => `<div class="card stat"><span class="num">${n}</span><span class="lbl">${l}</span></div>`).join('');
+      const m = d.meta || {};
+      $('meta').innerHTML = `전체 유저 합산 · 기기(client_id) 기준 · KST · <b>${m.since} ~ ${m.today}</b> (${m.days}일) · <code>cf_admin_overview</code>`
+        + (shareKey ? ' · 🔗 <b>임시 공유 보기</b> (읽기 전용 · 기간 만료 시 자동 종료)' : '');
 
+      renderKpis(d.kpis || {});
+      renderDaily(d.daily || []);
+      renderSessions(d.daily || []);
+      renderRetention(d.retention || {});
+      renderCohort(d.cohorts || []);
+      renderHourmap(d.hourly || []);
       renderHeatmap(d.heatmap || []);
-      renderDau(d.daily || []);
-      renderBuckets(d.session_buckets || []);
-      renderHouse(d.house_stages || []);
+      renderFunnel(d.funnel || {});
+      renderEcon(d.econ_daily || []);
+      renderEconSrc(d.econ_sources || []);
+
+      bar('cBucket', d.session_buckets, r=>r.bucket, r=>r.sessions, '#8ad2ff');
+      hbar('cEvents', d.events, r=>r.event, r=>r.n, '#8fd6a0');
+      pie('cPlaces', d.places, r=>r.place, r=>r.sessions);
+      bar('cHouse', d.house_stages, r=>({0:'없음',1:'기초',2:'벽',3:'완성',4:'넓은집',5:'저택',6:'모던'}[r.stage] ?? r.stage), r=>r.users, null);
+      bar('cDex', d.dex_dist, r=>r.bucket, r=>r.users, '#ffd28a');
+      bar('cBadge', d.badge_dist, r=>r.badges + '개', r=>r.users, '#c08aff');
+      pie('cChar', d.characters, r=>r.character, r=>r.users);
+      bar('cStreak', d.streaks, r=>r.streak + '일', r=>r.users, '#a0e0d0');
+      pie('cGuest', d.segments?.guest, r=>r.seg, r=>r.users);
+      pie('cVariant', d.segments?.variant, r=>r.seg, r=>r.users);
     }
 
+    // ── 헤드라인 KPI ──
+    function renderKpis(k) {
+      const delta = (cur, prev) => {
+        if (prev == null || prev === 0) return '';
+        const p = Math.round((cur - prev) / prev * 100);
+        const cls = p > 0 ? 'up' : p < 0 ? 'down' : 'flat';
+        return `<span class="dlt ${cls}">${p > 0 ? '▲' : p < 0 ? '▼' : '–'}${Math.abs(p)}%</span>`;
+      };
+      const cards = [
+        { n: nf(k.dau), l: 'DAU (오늘)', x: delta(k.dau, k.dau_prev), f: `어제 ${nf(k.dau_prev)}` },
+        { n: nf(k.wau), l: 'WAU (7일)',  f: '최근 7일 순 유저' },
+        { n: nf(k.mau), l: 'MAU (30일)', f: '최근 30일 순 유저' },
+        { n: (k.stickiness ?? 0) + '%', l: 'Stickiness', f: 'DAU/MAU — 20%↑면 습관화' },
+        { n: nf(k.new_today), l: '신규 (오늘)', f: `누적 ${nf(k.users)}명` },
+        { n: nf(k.sessions), l: '총 세션', f: `샘플 ${nf(k.samples)}건` },
+        { n: secs(k.med_session_sec), l: '세션 길이(중앙값)', f: `평균 ${secs(k.avg_session_sec)}` },
+        { n: (k.returning_pct ?? 0) + '%', l: '재방문율', f: '2일 이상 접속한 비율' },
+      ];
+      $('kpis').innerHTML = cards.map(c =>
+        `<div class="card kpi"><div><span class="num">${c.n}</span>${c.x || ''}</div>
+         <div class="lbl">${c.l}</div><div class="foot">${c.f || ''}</div></div>`).join('');
+    }
+
+    // ── 일별 DAU (신규/복귀 stacked + DAU 선) ──
+    function renderDaily(rows) {
+      if (!rows.length) return;
+      draw('cDaily', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
+        { type:'bar', label:'신규', data: rows.map(r=>r.new_users), backgroundColor:'#8fd6a0', stack:'u' },
+        { type:'bar', label:'복귀', data: rows.map(r=>r.returning), backgroundColor:'#ffd28a', stack:'u' },
+        { type:'line', label:'DAU', data: rows.map(r=>r.dau), borderColor:'#4a90d9', backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
+      ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
+        scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#eef5f0'}, ticks:{font:{size:10}} } } }) });
+    }
+
+    // ── 세션 수 + 중앙값 플레이타임(분) ──
+    function renderSessions(rows) {
+      if (!rows.length) return;
+      draw('cSess', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
+        { type:'bar', label:'세션', data: rows.map(r=>r.sessions), backgroundColor:'#a0e0d0', yAxisID:'y' },
+        { type:'line', label:'플레이(분,중앙값)', data: rows.map(r=>+((r.med_play_sec||0)/60).toFixed(1)), borderColor:'#ff9e9e', backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y1' },
+      ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
+        scales:{ y:{ beginAtZero:true, grid:{color:'#eef5f0'}, ticks:{font:{size:10}} },
+                 y1:{ position:'right', beginAtZero:true, grid:{display:false}, ticks:{font:{size:10}} },
+                 x:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
+    }
+
+    // ── D1/D3/D7 ──
+    function renderRetention(r) {
+      const items = [['D1', r.d1, r.d1_base], ['D3', r.d3, r.d3_base], ['D7', r.d7, r.d7_base]];
+      $('ret').innerHTML = items.map(([l, v, b]) =>
+        `<div class="card kpi" style="box-shadow:none;border:1px solid var(--line);">
+           <span class="num">${v == null ? '—' : v + '%'}</span>
+           <div class="lbl">${l} 복귀</div><div class="foot">대상 ${nf(b)}명</div></div>`).join('');
+    }
+
+    // ── 주간 코호트 테이블 ──
+    function renderCohort(rows) {
+      if (!rows.length) { $('cohort').innerHTML = '<div class="empty">코호트를 만들 데이터가 아직 없습니다.</div>'; return; }
+      const weeks = [...new Set(rows.map(r => r.cohort))].sort();
+      const maxW  = Math.max(...rows.map(r => r.week));
+      const cell  = (w, n) => rows.find(r => r.cohort === w && r.week === n);
+      const tint  = (p) => p == null ? 'transparent'
+        : `rgba(143,214,160,${Math.max(.08, Math.min(1, p / 100)).toFixed(2)})`;
+      let h = '<table class="mini cohort"><tr><th>코호트</th><th>인원</th>';
+      for (let n = 0; n <= maxW; n++) h += `<th style="text-align:center">W${n}</th>`;
+      h += '</tr>';
+      for (const w of weeks) {
+        const size = cell(w, 0)?.size ?? 0;
+        h += `<tr><td class="lbl">${mmdd(w)} 주</td><td class="n">${nf(size)}</td>`;
+        for (let n = 0; n <= maxW; n++) {
+          const c = cell(w, n);
+          h += `<td style="background:${tint(c?.pct)}">${c ? c.pct + '%' : ''}</td>`;
+        }
+        h += '</tr>';
+      }
+      $('cohort').innerHTML = h + '</table>';
+    }
+
+    // ── 요일×시간 히트맵 ──
+    function renderHourmap(rows) {
+      const DOW = ['일','월','화','수','목','금','토'];
+      const max = Math.max(1, ...rows.map(r => r.sessions));
+      const get = (d, h) => rows.find(r => r.dow === d && r.hour === h)?.sessions || 0;
+      let h = '<div class="hourgrid"><div></div>';
+      for (let i = 0; i < 24; i++) h += `<div style="text-align:center">${i % 3 === 0 ? i : ''}</div>`;
+      h += '</div><div class="hourgrid">';
+      for (let d = 0; d < 7; d++) {
+        h += `<div class="rowlbl">${DOW[d]}</div>`;
+        for (let i = 0; i < 24; i++) {
+          const v = get(d, i), a = v ? Math.max(.12, v / max) : 0;
+          h += `<div class="cell" title="${DOW[d]} ${i}시 · ${v}세션"${v ? ` style="background:rgba(143,214,160,${a.toFixed(2)})"` : ''}></div>`;
+        }
+      }
+      $('hourmap').innerHTML = h + '</div>';
+    }
+
+    // ── 온보딩 퍼널 ──
+    function renderFunnel(f) {
+      const steps = [
+        ['세이브 보유', f.saves], ['캐릭터 선택', f.character], ['튜토리얼 완료', f.tutorial],
+        ['집 착공', f.house1], ['집 완성', f.house3], ['도감 5종+', f.dex5], ['배지 1개+', f.badge1],
+      ];
+      const top = steps[0][1] || 1;
+      $('funnel').innerHTML = steps.map(([l, v], i) => {
+        const prev = i ? (steps[i-1][1] || 0) : null;
+        const step = prev ? Math.round(((v || 0) / prev) * 100) : null;
+        return `<div class="funnel-row"><span class="fl">${l}</span>
+          <span class="fbar"><i style="width:${Math.max(0, ((v||0) / top) * 100)}%"></i></span>
+          <span class="fv">${nf(v)} <small>(${Math.round(((v||0)/top)*100)}%${step != null ? ` · 단계 ${step}%` : ''})</small></span></div>`;
+      }).join('');
+    }
+
+    // ── 경제 ──
+    function renderEcon(rows) {
+      if (!rows.length) return;
+      draw('cEcon', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
+        { type:'bar', label:'유입', data: rows.map(r=>r.inflow),  backgroundColor:'#8fd6a0' },
+        { type:'bar', label:'유출', data: rows.map(r=>-r.outflow), backgroundColor:'#ff9e9e' },
+        { type:'line', label:'순증', data: rows.map(r=>r.net), borderColor:'#4a90d9', backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
+      ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
+        scales:{ y:{ grid:{color:'#eef5f0'}, ticks:{font:{size:10}} }, x:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
+    }
+    function renderEconSrc(rows) {
+      if (!rows.length) { $('econSrc').innerHTML = '<div class="empty">경제 로그가 아직 없습니다.</div>'; return; }
+      $('econSrc').innerHTML = '<table class="mini"><tr><th>출처</th><th style="text-align:right">건수</th><th style="text-align:right">유입</th><th style="text-align:right">유출</th><th style="text-align:right">순증</th></tr>'
+        + rows.map(r => `<tr><td>${r.source}</td><td class="n">${nf(r.tx)}</td>
+            <td class="n" style="color:var(--up)">${r.inflow ? '+' + nf(r.inflow) : '—'}</td>
+            <td class="n" style="color:var(--down)">${r.outflow ? '-' + nf(r.outflow) : '—'}</td>
+            <td class="n"><b>${r.net > 0 ? '+' : ''}${nf(r.net)}</b></td></tr>`).join('') + '</table>';
+    }
+
+    // ── 이동 히트맵(캔버스) ──
     function renderHeatmap(cells) {
       const N = 60, R = 44, c = $('heatmap'), ctx = c.getContext('2d');
       const grid = new Float32Array(N*N); let max = 0;
@@ -106,15 +405,34 @@
         if (ix<0||ix>=N||iz<0||iz>=N) return; grid[iz*N+ix] += hits; if (grid[iz*N+ix]>max) max = grid[iz*N+ix];
       });
       const img = ctx.createImageData(N,N);
-      for (let i=0;i<N*N;i++){ const v = max?Math.pow(grid[i]/max,0.5):0; const col=heat(v); img.data[i*4]=col[0];img.data[i*4+1]=col[1];img.data[i*4+2]=col[2];img.data[i*4+3]=255; }
+      for (let i=0;i<N*N;i++){ const v = max?Math.pow(grid[i]/max,0.5):0; const col=heat(v);
+        img.data[i*4]=col[0];img.data[i*4+1]=col[1];img.data[i*4+2]=col[2];img.data[i*4+3]=255; }
       ctx.putImageData(img,0,0);
     }
-    function heat(v){ if(v<=0)return[235,250,240]; const s=[[168,220,182],[255,245,160],[255,158,94]]; const t=v*(s.length-1),i=Math.min(s.length-2,Math.floor(t)),f=t-i; return s[i].map((a,k)=>Math.round(a+(s[i+1][k]-a)*f)); }
+    function heat(v){ if(v<=0)return[235,250,240]; const s=[[168,220,182],[255,245,160],[255,158,94]];
+      const t=v*(s.length-1),i=Math.min(s.length-2,Math.floor(t)),f=t-i; return s[i].map((a,k)=>Math.round(a+(s[i+1][k]-a)*f)); }
 
-    const P = ['#8fd6a0','#ffd28a','#ff9e9e','#8ad2ff','#c08aff'];
-    function renderDau(rows){ new Chart($('dauChart'),{type:'line',data:{labels:rows.map(r=>r.day),datasets:[{data:rows.map(r=>r.dau),borderColor:'#8fd6a0',backgroundColor:'rgba(143,214,160,.2)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}}}}); }
-    function renderBuckets(rows){ new Chart($('bucketChart'),{type:'bar',data:{labels:rows.map(r=>r.bucket),datasets:[{data:rows.map(r=>r.sessions),backgroundColor:'#8ad2ff'}]},options:{plugins:{legend:{display:false}}}}); }
-    function renderHouse(rows){ const nm={0:'없음',1:'기초',2:'벽',3:'완성'}; new Chart($('houseChart'),{type:'bar',data:{labels:rows.map(r=>nm[r.stage]??r.stage),datasets:[{data:rows.map(r=>r.users),backgroundColor:rows.map((_,i)=>P[i%P.length])}]},options:{plugins:{legend:{display:false}}}}); }
+    // ── 차트 헬퍼 ──
+    function bar(id, rows, lab, val, color) {
+      if (!rows?.length) return;
+      draw(id, { type:'bar', data:{ labels: rows.map(lab),
+        datasets:[{ data: rows.map(val), backgroundColor: color || rows.map((_,i)=>P[i%P.length]), borderRadius:4 }] },
+        options: base() });
+    }
+    function hbar(id, rows, lab, val, color) {
+      if (!rows?.length) return;
+      draw(id, { type:'bar', data:{ labels: rows.map(lab),
+        datasets:[{ data: rows.map(val), backgroundColor: color, borderRadius:4 }] },
+        options: base({ indexAxis:'y', aspectRatio: 0.95,   // 항목이 많아 세로로 길게
+          scales:{ x:{ beginAtZero:true, grid:{color:'#eef5f0'}, ticks:{font:{size:10}} }, y:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
+    }
+    function pie(id, rows, lab, val) {
+      if (!rows?.length) return;
+      draw(id, { type:'doughnut', data:{ labels: rows.map(lab),
+        datasets:[{ data: rows.map(val), backgroundColor: rows.map((_,i)=>P[i%P.length]), borderWidth:0 }] },
+        options: { responsive:true, maintainAspectRatio:true, aspectRatio:1.35, cutout:'58%',
+          plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{size:10}, padding:8 } } } } });
+    }
   </script>
 </body>
 </html>

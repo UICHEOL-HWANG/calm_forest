@@ -37,7 +37,7 @@
   /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
   #app { position: fixed; inset: 0; touch-action: none; }
   /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 (도감·NPC·피드백·로그인 카드 포함) */
-  #bag-content, #shop-menu, #cook-menu, #decor-menu, #ext-menu, .tut-card, .fb-card, .npc-card, #login-card {
+  #bag-content, #shop-menu, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, .tut-card, .fb-card, .npc-card, #login-card {
     touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   }
 
@@ -113,8 +113,8 @@
   #photo-btn.pulse { animation: photopulse 0.7s ease-in-out infinite; background: #ffe8b0; }
   @keyframes photopulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(255,190,74,0.5), var(--shadow); } }
 
-  /* 문의하기 탭 — 데스크톱은 우측 하단 코너로 분리(상단 HUD와 안 겹침) */
-  #feedback-tab { bottom: calc(22px + env(safe-area-inset-bottom)); right: 22px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
+  /* 문의하기 탭 — 도구가 8칸으로 늘어 하단이 좁아졌으므로 도구바 위쪽 라인으로 올림(겹침 방지) */
+  #feedback-tab { bottom: calc(74px + env(safe-area-inset-bottom)); right: 18px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 8px 13px; transition: transform .1s; }
   #feedback-tab:active { transform: scale(0.95); }
   /* 📖 도감 탭 — 인벤토리 HUD(장비칸) 바로 아래 공백에 배치 */
   #dex-tab { top: calc(134px + env(safe-area-inset-top)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
@@ -135,16 +135,56 @@
   body:not(.playing) #coach,
   body:not(.playing) #door-prompt,
   body:not(.playing) #fish-prompt,
+  body:not(.playing) #zone-prompt,
   body:not(.playing) #decor-btn,
   body:not(.playing) #ext-btn,
   body:not(.playing) #decor-menu,
   body:not(.playing) #cook-menu,
+  body:not(.playing) #cafe-menu,
   body:not(.playing) #shop-menu,
   body:not(.playing) #bag-menu,
   body:not(.playing) #ext-menu,
   body:not(.playing) #buffs,
   body:not(.playing) #mobile-controls { display: none !important; }
 
+  /* 🛶 나룻배 런 — 진행 중엔 마을 UI를 걷어내고 배 HUD만 남긴다(1인칭 몰입 + 화면 확보) */
+  body.boat-run #hotbar,
+  body.boat-run #quest-panel,
+  body.boat-run #buffs,
+  body.boat-run #hint,
+  body.boat-run #feedback-tab,
+  body.boat-run #dex-tab,
+  body.boat-run #topleft,
+  body.boat-run #topright,
+  body.boat-run #talk-btn,
+  body.boat-run #door-prompt,
+  body.boat-run #zone-prompt { display: none !important; }
+  #boat-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 7px; pointer-events: none; }
+  body.boat-run #boat-hud { display: flex; }
+  #boat-bar { width: min(420px, 76vw); height: 10px; border-radius: 6px; background: rgba(255,255,255,0.55); box-shadow: var(--shadow); overflow: hidden; }
+  #boat-fill { height: 100%; width: 0%; border-radius: 6px; background: linear-gradient(90deg, #7ec4e8, #5aa9d6); transition: width .12s linear; }
+  #boat-stats { display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,0.78); border-radius: 14px; padding: 6px 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow); font-variant-numeric: tabular-nums; }
+  #boat-stats .bs-dim { opacity: .55; font-weight: 600; }
+  #boat-boost { width: min(220px, 52vw); height: 6px; border-radius: 4px; background: rgba(255,255,255,0.5); overflow: hidden; }
+  #boat-boost i { display: block; height: 100%; width: 0%; background: #ffd05e; }
+  #boat-boost.ready i { background: #7ed957; }
+  #boat-quit { position: fixed; right: 14px; top: calc(14px + env(safe-area-inset-top)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
+  body.boat-run #boat-quit { display: block; }
+  #boat-view { position: fixed; right: 14px; top: calc(54px + env(safe-area-inset-top)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
+  body.boat-run #boat-view { display: block; }
+  /* 🛶 결과 / 창고 모달 */
+  #boat-result, #boat-shop { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #boat-result.show, #boat-shop.show { display: grid; }
+  .boat-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; border-radius: 12px; background: #f4faf5; font-size: 13px; margin-bottom: 6px; }
+  .boat-row b { font-variant-numeric: tabular-nums; }
+  .boat-up { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #f4faf5; margin-bottom: 8px; text-align: left; }
+  .boat-up .bu-ico { font-size: 24px; }
+  .boat-up .bu-body { flex: 1 1 auto; }
+  .boat-up .bu-name { display: block; font-weight: 700; font-size: 14px; }
+  .boat-up .bu-desc { display: block; font-size: 12px; opacity: .7; line-height: 1.35; }
+  .boat-up button { border: none; border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 12px; cursor: pointer; background: #cdeccd; color: var(--ink); white-space: nowrap; }
+  .boat-up button:disabled { opacity: .45; cursor: default; }
+  .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
   #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show { display: grid; }
@@ -163,6 +203,9 @@
   #char-preview-hint { font-size: 11px; opacity: .6; }
   #char-confirm { margin-top: auto; width: 100%; border: none; border-radius: 12px; padding: 11px 16px; background: var(--mint); color: var(--ink); font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
   #char-confirm:active { transform: scale(0.97); }
+  /* 캐릭터 "바꾸기"로 열었을 때만 보이는 취소 버튼(첫 선택 땐 되돌아갈 곳이 없음) */
+  #char-cancel { display: none; margin-top: 8px; width: 100%; border: none; border-radius: 12px; padding: 9px 16px; background: #eef2ee; color: var(--ink); font-weight: 700; font-size: 13px; cursor: pointer; }
+  #char-modal.change #char-cancel { display: block; }
   @media (max-width: 640px) {
     #char-modal .tut-card { padding: 18px 14px 16px; border-radius: 20px; }
     #char-modal h2 { font-size: 18px; margin: 2px 0 8px; }
@@ -256,9 +299,11 @@
   #time-knob { position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); transform: translateX(-7px); }
 
   /* 하단 중앙: 도구 하트바 */
-  #hotbar { bottom: calc(16px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px; }
-  .slot { width: 52px; height: 52px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: rgba(255,255,255,0.55); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, background .2s; }
-  .slot .s-ico { font-size: 22px; }
+  /* 도구가 8칸으로 늘어 폭이 커졌다 — 화면을 넘치면 가로 스크롤(슬롯 위치는 고정 유지) */
+  #hotbar { bottom: calc(16px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px; max-width: calc(100vw - 12px); box-sizing: border-box; overflow-x: auto; scrollbar-width: none; }
+  #hotbar::-webkit-scrollbar { display: none; }
+  .slot { width: 46px; height: 46px; border-radius: 13px; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: rgba(255,255,255,0.55); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, background .2s; }
+  .slot .s-ico { font-size: 20px; }
   .slot .s-key { font-size: 10px; opacity: .6; }
   .slot.active { background: var(--mint); transform: translateY(-6px) scale(1.06); }
   .slot:active { transform: scale(0.94); }
@@ -308,6 +353,13 @@
   #fish-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 15px; font-weight: 700; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   #fish-prompt.show { opacity: 1; }
   #fish-prompt.bite { background: #ffe0a8; animation: biteFlash .4s ease-in-out infinite; }
+
+  /* 구역 안내(반딧불이 계곡·채집 숲) — 도구로 노는 넓은 구역용.
+     문/작업대 프롬프트보다 한 칸 위에 떠서 겹치지 않고, 액션 버튼도 뺏지 않음 */
+  /* 기본 위치는 문 프롬프트와 같은 높이. 문 프롬프트가 함께 떠 있으면
+     layoutPrompts() 가 실제 높이를 재서 그 위로 올린다(폰트·줄바꿈에 안 깨지게). */
+  #zone-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .25s, bottom .15s; pointer-events: none; max-width: 88vw; text-align: center; }
+  #zone-prompt.show { opacity: 1; }
   @keyframes biteFlash { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
 
   /* 집 꾸미기 버튼(실내에서만, 하단 중앙 — 토스트와 안 겹침) */
@@ -344,6 +396,24 @@
   .ck-tab.active { background: var(--mint); }
   .ck-inv { font-size: 12px; opacity: .75; text-align: center; }
   #cook-items, #tool-items, #out-items, #gift-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  /* ☕ 카페 주문판 — 손님 카드가 세로로 쌓이는 목록형(요리 격자와 달리 "주문서" 느낌) */
+  #cafe-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; max-height: 70dvh; overflow-y: auto; }
+  #cafe-menu.show { display: flex; }
+  #cafe-orders { display: flex; flex-direction: column; gap: 8px; }
+  .cf-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 12px; background: rgba(255,255,255,0.62); box-shadow: var(--shadow); }
+  .cf-row.done { opacity: .5; }
+  .cf-guest { font-size: 26px; flex: 0 0 auto; }
+  .cf-body { flex: 1 1 auto; min-width: 0; }
+  .cf-name { font-size: 12px; opacity: .75; }
+  .cf-order { font-size: 13.5px; font-weight: 700; }
+  .cf-line { font-size: 11.5px; opacity: .72; font-style: italic; margin-top: 2px; line-height: 1.35; }
+  .cf-cost { font-size: 11px; opacity: .8; margin-top: 2px; }
+  .cf-cost .lack { color: #d05a4a; font-weight: 700; }
+  .cf-pay { font-size: 11px; opacity: .8; text-align: right; white-space: nowrap; }
+  .cf-state { font-size: 11.5px; font-weight: 700; border-radius: 9px; padding: 5px 8px; white-space: nowrap; flex: 0 0 auto; }
+  .cf-state.ok { background: #dff0e2; }
+  .cf-state.ready { background: var(--mint); }
+  .cf-state.lack { background: #f5e0dc; color: #a2503f; }
   /* 상점 메뉴 (cook-menu 톤 재사용) */
   #shop-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; }
   #shop-menu.show { display: flex; }
@@ -487,6 +557,15 @@
     /* 버프 HUD: 문의하기 탭 아래로 */
     #buffs { top: calc(122px + env(safe-area-inset-top)); }
     #buffs .buff { font-size: 11px; padding: 4px 8px; }
+    /* 🛶 나룻배 HUD — 좁은 화면: 진행바를 줄이고 그만두기/시점 버튼은 세로로 쌓지 않고 축소.
+       미니맵(좌상단)과 겹치지 않게 HUD는 중앙 상단을 유지하고 폭만 줄인다 */
+    #boat-hud { top: calc(10px + env(safe-area-inset-top)); gap: 5px; }
+    #boat-bar { width: 52vw; height: 8px; }              /* 우상단 그만두기 버튼과 안 겹치게 */
+    #boat-stats { font-size: 11px; gap: 7px; padding: 5px 9px; max-width: 56vw; flex-wrap: wrap; justify-content: center; }
+    #boat-boost { width: 40vw; }
+    #boat-quit, #boat-view { padding: 7px 9px; font-size: 11px; }
+    #boat-view { top: calc(50px + env(safe-area-inset-top)); }
+    /* 런 중에는 도구 하트바가 없으므로 조이스틱·액션버튼이 그대로 노출된다(조향+노 젓기) */
     /* 작업대/상점 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
     #cook-menu, #shop-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
     .ck-tabs { flex-wrap: wrap; }
@@ -494,16 +573,28 @@
     .ck-item { width: 84px; }
     /* NPC 모달 선물 버튼이 많아도 줄바꿈 */
     .npc-actions { flex-wrap: wrap; }
-    .slot { width: 42px; height: 42px; border-radius: 11px; }
-    .slot .s-ico { font-size: 17px; }
-    .slot .s-key { font-size: 7.5px; }
-    #hotbar { gap: 4px; padding: 5px; }
+    /* 도구 8칸(🦋포충망 추가) — 좁은 화면에서도 한 줄에 들어가게 축소.
+       8×40 + 7×3 + 좌우 10 = 351px → iPhone SE(375) 까지 안전 */
+    .slot { width: 40px; height: 40px; border-radius: 11px; flex: 0 0 auto; }
+    .slot .s-ico { font-size: 16px; }
+    .slot .s-key { font-size: 7px; }
+    #hotbar { gap: 3px; padding: 5px; }
+    /* 아주 좁은 화면(320~360px, iPhone SE 1세대 등) — 도구 8칸 한 줄 유지 */
+    @media (max-width: 380px) {
+      .slot { width: 35px; height: 35px; border-radius: 10px; }
+      .slot .s-ico { font-size: 14px; }
+      .slot .s-key { font-size: 6px; }
+      #hotbar { gap: 2px; padding: 4px; }
+    }
     #login-card { padding: 32px 26px 28px; }
     #login-card h1 { font-size: 34px; }
     /* 모바일은 프롬프트 대신 "대화하기" 버튼 사용 → 프롬프트 숨김 */
     #npc-prompt { display: none; }
     /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
-    #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; }
+    /* 손님 이름+요리가 길어지면 화면 밖으로 나가므로 모바일에선 줄바꿈 허용 */
+    #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; white-space: normal; max-width: 88vw; text-align: center; }
+    /* 기본 위치는 문 프롬프트와 동일 — 둘 다 뜨면 JS가 실제 높이만큼 올림 */
+    #zone-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 12px; max-width: 86vw; }
     #ext-btn { bottom: calc(282px + env(safe-area-inset-bottom)); font-size: 13px; padding: 9px 16px; }
     /* 모바일: 코치 말풍선(단계 점 줄바꿈으로 더 큼) 아래로 토스트 배치 */
     body.coaching #toast { top: calc(238px + env(safe-area-inset-top)); }
@@ -520,12 +611,14 @@
     <button id="emote-btn" title="이모트/앉기">🙂<span class="lbl"> 이모트</span></button>
     <button id="menu-btn" title="메뉴">☰</button>
     <div id="util-btns">
+      <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터 바꾸기</span></button>
       <button id="help-btn"><span class="uico">❓</span><span class="ulbl">도움말</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
       <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
       <button id="logout-btn" style="display:none;"><span class="uico">🚪</span><span class="ulbl">나가기</span></button>
     </div>
   </div>
+
 
   <!-- 문의하기 탭 -->
   <div id="feedback-tab" class="panel"><span>💬</span><span>문의하기</span></div>
@@ -556,7 +649,7 @@
   <!-- 미니맵 (캐릭터 대략 위치) -->
   <canvas id="minimap" width="110" height="110"></canvas>
 
-  <div id="hint" class="panel">이동 WASD/방향키 · 도구 1~6 · 상호작용 Space/클릭 · 주민에게 말 걸기</div>
+  <div id="hint" class="panel">이동 WASD/방향키 · 도구 1~8 · 상호작용 Space/클릭 · 주민에게 말 걸기</div>
   <div id="toast" class="panel"></div>
 
   <!-- 퀘스트 패널 -->
@@ -582,6 +675,7 @@
 
   <!-- 낚시 프롬프트 -->
   <div id="fish-prompt" class="panel"></div>
+  <div id="zone-prompt" class="panel"></div>
 
   <!-- 집 꾸미기 버튼(실내에서만) + 메뉴 -->
   <button id="decor-btn" class="panel">🎨 꾸미기</button>
@@ -611,6 +705,14 @@
     <div id="gift-items" style="display:none"></div>
     <div class="dm-hint" id="cook-hint">재료로 요리하면 <b>일정 시간 버프</b>가 붙어요 · 🥕작물/🐟물고기 소비</div>
     <div class="dm-actions"><button id="cook-close">닫기</button></div>
+  </div>
+
+  <!-- ☕ 카페 주문판 (홀 안 칠판 — 오늘의 주문 현황) -->
+  <div id="cafe-menu" class="panel">
+    <div class="dm-head">📋 오늘의 주문 <span id="cafe-sub" class="ck-inv"></span></div>
+    <div id="cafe-orders"></div>
+    <div class="dm-hint" id="cafe-hint"></div>
+    <div class="dm-actions"><button id="cafe-close">닫기</button></div>
   </div>
 
   <!-- 상점 메뉴 (팔기 / 사기 탭) — cook-menu 스타일 재사용 -->
@@ -680,6 +782,45 @@
   </div>
 
   <!-- 활성 버프 표시 -->
+  <!-- 🛶 나룻배 런 HUD (진행바 · 램프 · ⭐ · 노 젓기 게이지) -->
+  <div id="boat-hud">
+    <div id="boat-bar"><div id="boat-fill"></div></div>
+    <div id="boat-stats">
+      <span id="boat-lamps">💡💡💡</span>
+      <span>⭐<b id="boat-star">0</b></span>
+      <span class="bs-dim"><b id="boat-dist">0</b>/620m</span>
+      <span class="bs-dim" id="boat-seg">1구간</span>
+    </div>
+    <div id="boat-boost"><i></i></div>
+  </div>
+  <button id="boat-quit">✕ 그만두기</button>
+  <button id="boat-view">👁️ 시점</button>
+
+  <!-- 🛶 런 결과 -->
+  <div id="boat-result">
+    <div class="tut-card">
+      <div class="tut-emoji" id="br-emoji">🛶</div>
+      <h2 id="br-title">도착!</h2>
+      <p id="br-sub" style="font-size:13px; opacity:.75; margin:-8px 0 14px;"></p>
+      <div id="br-rows" style="text-align:left"></div>
+      <div class="dm-actions" style="justify-content:center; margin-top:14px">
+        <button id="br-again" class="primary">🛶 한 번 더</button>
+        <button id="br-close">그만하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🧰 뱃사공의 창고(배 강화) -->
+  <div id="boat-shop">
+    <div class="tut-card">
+      <div class="tut-emoji">🧰</div>
+      <h2>뱃사공의 창고</h2>
+      <p id="bs-sub" style="font-size:13px; opacity:.75; margin:-8px 0 14px;"></p>
+      <div id="bs-items"></div>
+      <div class="dm-actions" style="justify-content:center; margin-top:12px"><button id="bs-close">닫기</button></div>
+    </div>
+  </div>
+
   <div id="buffs"></div>
 
   <!-- 도구 하트바 (JS 에서 슬롯 생성) -->
@@ -753,7 +894,7 @@
       </p>
       <ul class="tut-list">
         <li><b>🕹️ 이동</b> WASD·방향키 <span class="mo">(모바일: 왼쪽 조이스틱)</span></li>
-        <li><b>✋ 상호작용</b> Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span> · 도구는 하단 1~6</li>
+        <li><b>✋ 상호작용</b> Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span> · 도구는 하단 1~8</li>
         <li><b>💾 진행상황</b>은 자동 저장돼요</li>
       </ul>
       <button id="tut-start">튜토리얼 시작 🌱</button>
@@ -788,8 +929,8 @@
   <!-- 캐릭터(동물) 선택 모달 (첫 플레이) -->
   <div id="char-modal">
     <div class="tut-card" style="max-width:640px; width:min(640px,94vw); max-height:88dvh; overflow-y:auto;">
-      <h2 style="margin:0 0 6px;">🐾 캐릭터를 골라주세요</h2>
-      <p style="font-size:13px; opacity:.75; margin:0 0 14px;">함께 마을을 가꿀 동물 친구예요 (나중에 바꿀 수 없어요)</p>
+      <h2 id="char-title" style="margin:0 0 6px;">🐾 캐릭터를 골라주세요</h2>
+      <p id="char-sub" style="font-size:13px; opacity:.75; margin:0 0 14px;">함께 마을을 가꿀 동물 친구예요 (메뉴에서 언제든 바꿀 수 있어요)</p>
       <div id="char-layout">
         <div id="char-grid"></div>
         <div id="char-preview-box">
@@ -798,6 +939,7 @@
           <div id="char-preview-name">여우</div>
           <div id="char-preview-hint">🖐️ 드래그해서 돌려보기</div>
           <button id="char-confirm">이 친구로 시작하기</button>
+          <button id="char-cancel">취소</button>
         </div>
       </div>
     </div>
@@ -828,13 +970,15 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=20';
-    import { IS_TOSS } from './js/platform.js?v=20';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=20';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=20';
-    import { CONFIG } from './js/config.js?v=20';
-    import { initControls } from './js/controls.js?v=20';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=20';
+    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=32';
+    import { IS_TOSS } from './js/platform.js?v=32';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=32';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=32';
+    import { CONFIG } from './js/config.js?v=32';
+    import { initControls } from './js/controls.js?v=32';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=32';
+    import { initCafeGuests } from './js/cafe-guests.js?v=32';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
+    import { initNightVisit } from './js/night-visit.js?v=32';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
@@ -842,13 +986,15 @@
     let placingDecorItem = null;                    // 배치 중인 가구(액션버튼에 표시)
     let nearNpcNow = false, nearDoorNow = false;    // 액션버튼 맥락 표시용(주민/문 근접)
     let doorIcon = '🚪';                             // 문/작업대 프롬프트 아이콘(🚪 또는 🍳)
+    let boatRunning = false;                        // 🛶 나룻배 런 진행 중(액션버튼 = 노 젓기)
 
     // 액션 버튼(모바일) 아이콘을 "지금 뭘 하는 버튼인지"에 맞춰 갱신
-    //   우선순위: 가구 배치 > 문/작업대 > 현재 도구  (주민 대화는 전용 버튼)
+    //   우선순위: 🛶 노 젓기 > 가구 배치 > 문/작업대 > 현재 도구  (주민 대화는 전용 버튼)
     function refreshActionIcon() {
       document.body.classList.toggle('placing-decor', !!placingDecorItem);  // 배치 중이면 회전 버튼 노출
       const b = $('action-btn'); if (!b) return;
       b.classList.remove('placing', 'talk', 'door');
+      if (boatRunning) { b.textContent = '🚣'; return; }   // 런 중엔 무조건 노 젓기(스퍼트)
       if (placingDecorItem) { b.textContent = placingDecorItem.ico; b.classList.add('placing'); return; }
       // 주민 근처여도 메인 액션버튼은 도구 유지(대화는 전용 '대화하기' 버튼) → 수확 중 대화 하이재킹 방지
       if (nearDoorNow) { b.textContent = doorIcon; b.classList.add('door'); return; }
@@ -867,6 +1013,20 @@
       });
     }
 
+    // 하단 프롬프트 겹침 방지 — 문/낚시 프롬프트가 떠 있으면 대사(zone-prompt)를 그 위로 올린다.
+    //   고정 px 로 띄우면 폰트 크기·줄바꿈(손님 대사가 길어질 때)에 따라 겹치므로 실제 높이를 잰다.
+    //   CSS 기본값은 문 프롬프트와 같은 높이라, 혼자 뜰 땐 그 자리에 그대로 표시된다.
+    const PROMPT_GAP = 10;
+    function layoutPrompts() {
+      const zone = $('zone-prompt');
+      if (!zone.classList.contains('show')) { zone.style.bottom = ''; return; }
+      const below = ['door-prompt', 'fish-prompt'].map($).filter(e => e && e.classList.contains('show'));
+      if (!below.length) { zone.style.bottom = ''; return; }   // 혼자면 CSS 기본 위치
+      const top = Math.min(...below.map(e => e.getBoundingClientRect().top));
+      zone.style.bottom = Math.round(window.innerHeight - top + PROMPT_GAP) + 'px';
+    }
+    window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
+
     let toastTimer;
     const ui = {
       setInventory(inv) {
@@ -880,6 +1040,7 @@
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
         if ($('cook-menu').classList.contains('show')) { cookTab === 'cook' ? renderCook() : cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
         if ($('shop-menu').classList.contains('show')) renderShop();
+        if ($('cafe-menu').classList.contains('show')) renderCafe(Input.getCafe());   // ☕ 재료 보유량 실시간 반영
       },
       setTime(mode, frac, weather) {
         $('time-emoji').textContent = ({ rain: '🌧️', snow: '❄️', fog: '🌫️' })[weather] || (mode === 'day' ? '🌤️' : '🌙');
@@ -910,9 +1071,10 @@
       // 낚시 프롬프트(던지는 중 / 물었어요!)
       setFishPrompt(text) {
         const el = $('fish-prompt');
-        if (!text) { el.classList.remove('show', 'bite'); return; }
+        if (!text) { el.classList.remove('show', 'bite'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
         el.classList.toggle('bite', text.includes('물었'));
+        layoutPrompts();
       },
       // NPC 근접 표시: 데스크톱은 프롬프트 텍스트, 모바일은 "대화하기" 버튼(near-npc 클래스)
       setInteractPrompt(text) {
@@ -956,10 +1118,19 @@
         $('npc-modal').classList.add('show');
       },
       // 캐릭터(동물) 선택 화면 — 첫 플레이. 고르면 튜토리얼로
-      showCharacterSelect() {
+      // opts.change=true 면 "바꾸기" 모드 — 현재 캐릭터를 미리 선택하고 취소 버튼을 띄운다
+      showCharacterSelect(opts = {}) {
+        const change = !!opts.change;
         const grid = $('char-grid'); grid.innerHTML = '';
         const animals = Input.getAnimals();
-        let selected = animals[0].id;
+        const current = Input.getCharacter?.();
+        let selected = (change && current) ? current : animals[0].id;
+        $('char-modal').classList.toggle('change', change);
+        $('char-title').textContent = change ? '🐾 캐릭터 바꾸기' : '🐾 캐릭터를 골라주세요';
+        $('char-sub').textContent = change
+          ? '언제든 다시 바꿀 수 있어요 — 진행 상황(집·밭·도감)은 그대로예요'
+          : '함께 마을을 가꿀 동물 친구예요 (메뉴에서 언제든 바꿀 수 있어요)';
+        $('char-confirm').textContent = change ? '이 친구로 바꾸기' : '이 친구로 시작하기';
         const pick = (a) => {
           selected = a.id;
           if (ui._charPreview) ui._charPreview.setAnimal(a.id);
@@ -995,16 +1166,17 @@
             $('char-preview-hint').textContent = '미리보기 오류: ' + (err && err.message ? err.message : err);
             console.error('[char-preview]', err);
           }
-          pick(animals[0]);
+          pick(animals.find(a => a.id === selected) || animals[0]);
           if (!ui._charResizeBound) { ui._charResizeBound = true; window.addEventListener('resize', () => { if (ui._charPreview && $('char-modal').classList.contains('show')) ui._charPreview.resize(); }); }
         });
         $('char-confirm').onclick = () => {
           const a = animals.find(x => x.id === selected) || animals[0];
-          Input.setCharacter(selected);
+          Input.setCharacter(selected, change);
           $('char-modal').classList.remove('show');
-          ui.toast(`${a.emoji} ${a.name}로 시작해요!`);
-          if (Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
+          ui.toast(change ? `${a.emoji} ${a.name}로 바꿨어요!` : `${a.emoji} ${a.name}로 시작해요!`);
+          if (!change && Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
         };
+        $('char-cancel').onclick = () => $('char-modal').classList.remove('show');
       },
       // 신규 유저 튜토리얼 표시
       showTutorial() { $('tutorial-modal').classList.add('show'); },
@@ -1039,14 +1211,26 @@
         Input.setAnalog(0, 0);
         $('market-modal').classList.add('show');
       },
+      // 🌟🍄 구역 안내·손님 대사 — 프롬프트만 띄우고 액션 버튼은 도구 그대로 유지
+      setZoneHint(text) {
+        const el = $('zone-prompt');
+        if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
+        el.textContent = text; el.classList.add('show');
+        layoutPrompts();
+      },
       // 문/작업대 프롬프트 (텍스트에 '요리' 있으면 액션버튼 아이콘 🍳)
       setDoorPrompt(text) {
         const el = $('door-prompt');
         nearDoorNow = !!text;
-        doorIcon = (text && text.includes('요리')) ? '🍳' : (text && text.includes('상점')) ? '🛒' : (text && text.includes('텃밭')) ? '🌾' : (text && text.includes('동굴')) ? '⛏️' : '🚪';
+        const t = text || '';
+        doorIcon = t.includes('주문판') ? '📋'
+          : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
+          : t.includes('요리') ? '🍳' : t.includes('상점') ? '🛒' : t.includes('닭장') ? '🐔'
+          : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : '🚪';
         refreshActionIcon();
-        if (!text) { el.classList.remove('show'); return; }
+        if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
+        layoutPrompts();
       },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
       onDecorPlaced() { stopPlacing(); },
@@ -1056,6 +1240,50 @@
       openCook() { showCookTab('cook'); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 상점 메뉴 열기
       openShop() { showShopTab('sell'); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      // ☕ 카페 주문판 열기
+      openCafe(d) { renderCafe(d); Input.setAnalog(0, 0); $('cafe-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      // 🛶 나룻배 런 시작/종료 — 마을 UI를 걷어내고 배 HUD로 전환
+      setBoatRun(on) {
+        boatRunning = !!on;
+        document.body.classList.toggle('boat-run', boatRunning);
+        $('boat-view').textContent = Input.boatViewMode() === 'first' ? '👁️ 1인칭' : '👁️ 3인칭';
+        refreshActionIcon();
+      },
+      // 🛶 런 HUD 갱신 (null 이면 숨김)
+      setBoatHud(d) {
+        if (!d) return;
+        $('boat-fill').style.width = (d.p * 100).toFixed(1) + '%';
+        $('boat-lamps').textContent = '💡'.repeat(Math.max(0, d.lamps)) + '🖤'.repeat(Math.max(0, d.lampMax - d.lamps));
+        $('boat-star').textContent = d.stars;
+        $('boat-dist').textContent = d.dist;
+        $('boat-seg').textContent = d.seg + '구간';
+        const bb = $('boat-boost');
+        bb.firstElementChild.style.width = Math.round(d.boost * 100) + '%';
+        bb.classList.toggle('ready', d.boost >= 1 && !d.boosting);
+      },
+      // 🛶 런 결과 모달 — 여기서 바로 "한 번 더"가 되게(남은 횟수 표시)
+      showBoatResult(d) {
+        const clear = d.result === 'clear', wreck = d.result === 'wreck';
+        $('br-emoji').textContent = clear ? '🎉' : wreck ? '💥' : '🛶';
+        $('br-title').textContent = clear ? '무사히 도착!' : wreck ? '배가 멈췄어요' : '뱃길을 멈췄어요';
+        $('br-sub').textContent = clear
+          ? (d.hits === 0 ? '한 번도 부딪히지 않았어요 — 완벽한 뱃길! 🌊' : `${d.dist_m}m 를 내려왔어요`)
+          : `${d.dist_m}m 지점에서 멈췄어요 — 여기까지 모은 건 그대로 가져가요`;
+        const rows = [
+          ['거리', `${d.dist_m}m`], ['시간', `${d.time_sec}초`], ['점수', `${d.score}${d.best ? ' 🏆 최고 기록!' : ''}`],
+          ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
+        ];
+        if (d.picksView.length) rows.push(['수집물', d.picksView.map(p => `${p.ico}${p.name}×${p.n}`).join(' · ')]);
+        rows.push(['오늘 남은 횟수', `${d.runsLeft}/${d.runsMax}회`]);
+        $('br-rows').innerHTML = rows.map(([k, v]) => `<div class="boat-row"><span>${k}</span><b>${v}</b></div>`).join('');
+        const again = $('br-again');
+        again.disabled = d.runsLeft <= 0;
+        again.textContent = d.runsLeft > 0 ? `🛶 한 번 더 (${d.runsLeft}회 남음)` : '🛶 내일 또 만나요';
+        Input.setAnalog(0, 0);
+        $('boat-result').classList.add('show');
+      },
+      // 🧰 뱃사공의 창고(배 강화)
+      openBoatShop(d) { renderBoatShop(d); Input.setAnalog(0, 0); $('boat-shop').classList.add('show'); },
       // 활성 버프 HUD 갱신 (list: [{ico,name,remain}])
       setBuffs(list) {
         const box = $('buffs');
@@ -1086,7 +1314,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -1102,14 +1330,14 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : '🌾 텃밭', S / 2, pad + 1.5);
+          ctx.fillText(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : '🌾 텃밭', S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
           drawPlayer(pxx, pyy);
           return;
         }
-        const R = 26;                  // 월드 반경 → 미니맵
+        const R = 30;                  // 월드 반경 → 미니맵 (남쪽 🌟계곡·🍄숲까지 담기게 확장)
         const px = (wx, wz) => [(wx + R) / (R * 2) * S, (wz + R) / (R * 2) * S];
         // 호수
         const [lx, lz] = px(16, 9);
@@ -1122,6 +1350,10 @@
         dot(9, 0, '#ff9e5e');        // 상점(이동)
         dot(0, 7, '#6fbf73');        // 텃밭 게이트
         dot(-14, 3, '#6a6a6a', 3.5); // 채굴 동굴 입구
+        dot(-6, 13, '#e8c08a', 3);   // 🐔 닭장
+        dot(2, 25, '#ffe98a', 4);    // 🌟 반딧불이 계곡(남쪽 숲)
+        dot(-13, 24, '#c08a5a', 4);  // 🍄 채집 숲(남서쪽)
+        dot(4, 14, '#e8907a', 3.5);  // ☕ 카페(마을 남쪽)
         [[5, 4], [-5, 6], [9, -3], [9, 14], [-3, -3], [0, -8]].forEach(([x, z]) => dot(x, z, '#b79cff', 2.5)); // 주민(올빼미·요리사 포함)
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
@@ -1280,6 +1512,11 @@
     // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
     $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
     $('help-btn').addEventListener('click', () => ui.showTutorial());
+    // 🐾 캐릭터 바꾸기 — 진행 상황은 그대로, 겉모습만 교체(유저 피드백)
+    $('char-btn').addEventListener('click', () => {
+      $('topleft').classList.remove('open');
+      ui.showCharacterSelect({ change: true });
+    });
     // ☰ 메뉴 토글(모바일에서 유틸 버튼 펼치기/접기) + 버튼 누르면 자동으로 접힘
     $('menu-btn').addEventListener('click', () => $('topleft').classList.toggle('open'));
     $('util-btns').addEventListener('click', (e) => { if (e.target.closest('button')) $('topleft').classList.remove('open'); });
@@ -1325,6 +1562,21 @@
     function renderCook() {
       updateCookInv();
       const box = $('cook-items'); box.innerHTML = '';
+      // 🌡️ 내일 서리·태풍 예보가 있으면 맨 위에 덮개 설치 항목(예고일 한정)
+      const wp = Input.getWeatherPrep();
+      if (wp.severe) {
+        const s = wp.info;
+        const costStr = Object.entries(wp.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (wp.covered ? ' owned' : '');
+        el.innerHTML = `<span class="ck-ico">🛡️</span><span class="ck-name">밭 덮개</span><span class="ck-buff">내일 ${s.ico} ${s.name} 예보 — 심어둔 밭 ${wp.planted}곳을 지켜요</span><span class="ck-cost">${wp.covered ? '✅ 설치됨' : costStr}</span>`;
+        if (!wp.covered) el.addEventListener('click', () => {
+          const res = Input.craftCover();
+          ui.toast(res.ok ? '🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!' : (res.msg || '만들 수 없어요'));
+          if (res.ok) renderCook();
+        });
+        box.appendChild(el);
+      }
       Input.getRecipes().forEach(r => {
         const costStr = Object.entries(r.cost).map(([k, n]) => ico(k) + n).join(' ');
         const enough = Object.entries(r.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
@@ -1420,7 +1672,7 @@
 
     // ── 상점 메뉴 (팔기 / 사기) ──
     let shopTab = 'sell';
-    const SELL_ICO = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚' };
+    const SELL_ICO = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
     // 판매 바인딩: 탭=1개, 꾹 누르면(450ms) 전부 — pointer 이벤트로 모바일/데스크톱 공통
     function bindSell(el, k) {
       let timer = null, longFired = false;
@@ -1477,6 +1729,66 @@
     document.querySelectorAll('.sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));
     $('shop-close').addEventListener('click', () => { $('shop-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
 
+    // ── ☕ 주문판 — 오늘 손님들의 주문 현황(서빙은 홀에서 손님에게 직접) ──
+    function renderCafe(d) {
+      const orders = $('cafe-orders'), hint = $('cafe-hint');
+      $('cafe-sub').textContent = `누적 ${d.served}잔 서빙`;
+      orders.innerHTML = '';
+      d.orders.forEach(o => {
+        const row = document.createElement('div');
+        row.className = 'cf-row' + (o.done ? ' done' : '');
+        const cost = o.cost.map(c => `${c.ico}${c.label} <span class="${c.have >= c.need ? '' : 'lack'}">${c.have}/${c.need}</span>`).join(' · ');
+        row.innerHTML =
+          `<span class="cf-guest">${o.npc.emoji}</span>` +
+          `<span class="cf-body"><span class="cf-name">${o.npc.name}</span>` +
+          `<div class="cf-order">${o.recipe.ico} ${o.recipe.name}</div>` +
+          (o.line ? `<div class="cf-line">“${o.line}”</div>` : '') +
+          `<div class="cf-cost">${cost}</div></span>` +
+          `<span class="cf-pay">🪙${o.pay}<br>❤️+1</span>` +
+          `<span class="cf-state ${o.done ? 'ok' : o.ready ? 'ready' : 'lack'}">${o.done ? '완료 ✅' : o.ready ? '준비됨' : '재료 부족'}</span>`;
+        orders.appendChild(row);
+      });
+      hint.innerHTML = d.allDone
+        ? '🎉 오늘 주문은 모두 완료! <b>내일 새 손님</b>이 와요 — 내일 또 만나요'
+        : `재료를 들고 <b>손님에게 다가가 액션</b>을 누르면 서빙돼요 · 모두 서빙하면 🎉 보너스 🪙${d.bonus}`;
+    }
+    $('cafe-close').addEventListener('click', () => { $('cafe-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
+
+    // ── 🛶 나룻배: 결과 모달 · 🧰 창고(배 강화) · 런 조작 버튼 ──
+    function renderBoatShop(d) {
+      $('bs-sub').innerHTML = `⭐별조각 <b>${d.star}</b> · 🪙<b>${d.coins}</b> · 🏆최고 <b>${d.best}</b>점 · 오늘 <b>${d.runsLeft}/${d.runsMax}</b>회 남음`;
+      const box = $('bs-items'); box.innerHTML = '';
+      d.items.forEach(it => {
+        const row = document.createElement('div');
+        row.className = 'boat-up' + (it.cost ? '' : ' maxed');
+        const lvTxt = '●'.repeat(it.lv) + '○'.repeat(it.max - it.lv);
+        row.innerHTML =
+          `<span class="bu-ico">${it.ico}</span>` +
+          `<span class="bu-body"><span class="bu-name">${it.name} <span style="opacity:.5;font-size:12px">${lvTxt}</span></span>` +
+          `<span class="bu-desc">${it.desc}</span></span>`;
+        const btn = document.createElement('button');
+        if (!it.cost) { btn.textContent = '완료'; btn.disabled = true; }
+        else { btn.textContent = `⭐${it.cost.star} 🪙${it.cost.coins}`; btn.disabled = !it.affordable; }
+        btn.addEventListener('click', () => {
+          const r = Input.buyBoatUpgrade(it.id);
+          if (!r.ok) { ui.toast(r.msg || '강화할 수 없어요'); return; }
+          ui.toast(`${r.ico} ${r.name} 강화! (${r.lv}단계)`, 2400);
+          renderBoatShop(Input.getBoatShop());
+        });
+        row.appendChild(btn); box.appendChild(row);
+      });
+    }
+    $('bs-close').addEventListener('click', () => $('boat-shop').classList.remove('show'));
+    $('boat-shop').addEventListener('click', (e) => { if (e.target === $('boat-shop')) $('boat-shop').classList.remove('show'); });
+    $('br-close').addEventListener('click', () => $('boat-result').classList.remove('show'));
+    $('br-again').addEventListener('click', () => { $('boat-result').classList.remove('show'); Input.startBoatRun(); });
+    $('boat-quit').addEventListener('click', () => Input.quitBoatRun());
+    $('boat-view').addEventListener('click', () => {
+      const m = Input.toggleBoatView();
+      $('boat-view').textContent = m === 'first' ? '👁️ 1인칭' : '👁️ 3인칭';
+      ui.toast(m === 'first' ? '👁️ 1인칭 시점 (뱃머리)' : '👁️ 3인칭 시점 (멀미가 나면 이쪽으로)');
+    });
+
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {
       if (authState.provider !== 'google') {
@@ -1491,7 +1803,7 @@
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
-    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨' };
+    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서' };
     const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글·토스 로그인 = 영구 계정
     function openDex() {
       const d = Input.getDex();
@@ -1639,11 +1951,15 @@
       wood: { ico: '🪵', name: '목재' }, seed: { ico: '🌰', name: '씨앗' }, coins: { ico: '🪙', name: '코인' },
       crop: { ico: '🥕', name: '작물' }, fish: { ico: '🐟', name: '물고기' }, egg: { ico: '🥚', name: '달걀' },
       stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' }, gem: { ico: '💎', name: '보석' },
+      bug: { ico: '🌟', name: '반딧불이' }, forage: { ico: '🍄', name: '채집물' },
+      star: { ico: '⭐', name: '별조각' },
     };
     const BAG_CATS = [
       { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
       { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg'] },
       { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
+      { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
+      { name: '🛶 강', keys: ['star'] },
     ];
     function bagSection(title, items) {
       const sec = document.createElement('div'); sec.className = 'bag-sec';
@@ -1766,6 +2082,8 @@
     });
 
     (async () => {
+      initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
+      initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
       await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
       $('loading').style.display = 'none';
 
