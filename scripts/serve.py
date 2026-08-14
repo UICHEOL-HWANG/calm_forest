@@ -268,6 +268,103 @@ def gen_night_note(date, animal, crop):
     return note
 
 
+# =============================================================
+#  📸 사진첩 — OCI Object Storage S3 호환 API (functions/api/photo*.js 로컬 미러)
+#  Pages Function 과 인증·한도·키 규칙을 동일하게 유지해야 합니다.
+# =============================================================
+import hmac as _hmac
+import hashlib as _hashlib
+import base64 as _base64
+import datetime as _dt
+from urllib.parse import quote as _q
+
+PHOTO_MAX = 100          # 유저당 보관 한도(photo.js 의 MAX_PHOTOS 와 동일해야 함)
+PHOTO_MAX_BYTES = 1_500_000
+
+def _oci_env():
+    return {
+        'ns': os.environ.get('OCI_NAMESPACE') or 'id8g5usnkx1c',
+        'region': os.environ.get('OCI_REGION'),
+        'bucket': os.environ.get('OCI_BUCKET'),
+        'ak': os.environ.get('OCI_ACCESS_KEY'),
+        'sk': os.environ.get('OCI_SECRET_KEY'),
+    }
+
+def _oci_ready(e):
+    return all([e['region'], e['bucket'], e['ak'], e['sk']])
+
+def _sig_key(secret, date, region):
+    k = _hmac.new(('AWS4' + secret).encode(), date.encode(), _hashlib.sha256).digest()
+    k = _hmac.new(k, region.encode(), _hashlib.sha256).digest()
+    k = _hmac.new(k, b's3', _hashlib.sha256).digest()
+    return _hmac.new(k, b'aws4_request', _hashlib.sha256).digest()
+
+def _s3_request(method, path, query='', body=b'', content_type=None):
+    """헤더 서명(SigV4)으로 OCI S3 호환 API 호출 → (status, body bytes)."""
+    e = _oci_env()
+    host = "{}.compat.objectstorage.{}.oraclecloud.com".format(e['ns'], e['region'])
+    ts = _dt.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    date = ts[:8]
+    payload = _hashlib.sha256(body or b'').hexdigest()
+    headers = {'host': host, 'x-amz-content-sha256': payload, 'x-amz-date': ts}
+    if content_type:
+        headers['content-type'] = content_type
+    names = sorted(headers)
+    canon = '\n'.join([method, path, query,
+                       ''.join('{}:{}\n'.format(h, headers[h]) for h in names),
+                       ';'.join(names), payload])
+    scope = '{}/{}/s3/aws4_request'.format(date, e['region'])
+    sts = '\n'.join(['AWS4-HMAC-SHA256', ts, scope, _hashlib.sha256(canon.encode()).hexdigest()])
+    sig = _hmac.new(_sig_key(e['sk'], date, e['region']), sts.encode(), _hashlib.sha256).hexdigest()
+    headers['authorization'] = ('AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}'
+                                .format(e['ak'], scope, ';'.join(names), sig))
+    del headers['host']
+    url = 'https://{}{}'.format(host, path) + ('?' + query if query else '')
+    req = urllib.request.Request(url, data=(body or None), method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=20, context=ssl_context()) as res:
+            return res.status, res.read()
+    except urllib.error.HTTPError as err:
+        return err.code, err.read()
+
+def _presign_get(path, expires=3600):
+    """쿼리 서명 presigned GET — <img src> 용 1시간 URL."""
+    e = _oci_env()
+    host = "{}.compat.objectstorage.{}.oraclecloud.com".format(e['ns'], e['region'])
+    ts = _dt.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    date = ts[:8]
+    scope = '{}/{}/s3/aws4_request'.format(date, e['region'])
+    q = [('X-Amz-Algorithm', 'AWS4-HMAC-SHA256'),
+         ('X-Amz-Credential', '{}/{}'.format(e['ak'], scope)),
+         ('X-Amz-Date', ts),
+         ('X-Amz-Expires', str(expires)),
+         ('X-Amz-SignedHeaders', 'host')]
+    qs = '&'.join(sorted('{}={}'.format(k, _q(v, safe='')) for k, v in q))
+    canon = '\n'.join(['GET', path, qs, 'host:{}\n'.format(host), 'host', 'UNSIGNED-PAYLOAD'])
+    sts = '\n'.join(['AWS4-HMAC-SHA256', ts, scope, _hashlib.sha256(canon.encode()).hexdigest()])
+    sig = _hmac.new(_sig_key(e['sk'], date, e['region']), sts.encode(), _hashlib.sha256).hexdigest()
+    return 'https://{}{}?{}&X-Amz-Signature={}'.format(host, path, qs, sig)
+
+def _verify_user(handler):
+    """Supabase JWT 검증 → 유저 dict 또는 None. 익명(게스트)은 None(영구 계정 전용)."""
+    token = (handler.headers.get('Authorization') or '')
+    token = token[7:] if token.lower().startswith('bearer ') else ''
+    url = os.environ.get('SUPABASE_URL')
+    anon = os.environ.get('SUPABASE_ANON_KEY')
+    if not (token and url and anon):
+        return None
+    req = urllib.request.Request(url + '/auth/v1/user',
+                                 headers={'apikey': anon, 'Authorization': 'Bearer ' + token})
+    try:
+        with urllib.request.urlopen(req, timeout=10, context=ssl_context()) as res:
+            u = json.loads(res.read())
+        if not u.get('id') or u.get('is_anonymous'):
+            return None
+        return u
+    except Exception:
+        return None
+
+
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store, must-revalidate')
@@ -284,19 +381,126 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        if self.path.split('?')[0] == '/api/night-visit':
+        route = self.path.split('?')[0]
+        if route == '/api/night-visit':
             self.serve_night_visit()
+            return
+        if route == '/api/photo':
+            self.serve_photo_upload()
+            return
+        if route == '/api/photo-urls':
+            self.serve_photo_urls()
             return
         self.send_error(404)
 
-    def send_json(self, obj):
+    def do_DELETE(self):
+        if self.path.split('?')[0] == '/api/photo':
+            self.serve_photo_delete()
+            return
+        self.send_error(404)
+
+    def send_json(self, obj, status=200):
         payload = json.dumps(obj, ensure_ascii=False).encode('utf-8')
-        self.send_response(200)
+        self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Content-Length', str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+
+    # ── 📸 POST /api/photo — 공유 카드 JPEG 업로드 (photo.js 미러) ──
+    def serve_photo_upload(self):
+        if not _oci_ready(_oci_env()):
+            self.send_json({'error': 'not_configured'}, 503)
+            return
+        user = _verify_user(self)
+        if not user:
+            self.send_json({'error': 'login_required'}, 403)
+            return
+        try:
+            length = int(self.headers.get('Content-Length') or 0)
+            image = json.loads(self.rfile.read(length) or b'{}').get('image', '')
+        except (ValueError, json.JSONDecodeError):
+            self.send_json({'error': 'bad_json'}, 400)
+            return
+        m = re.match(r'^data:image/jpeg;base64,(.+)$', image or '')
+        if not m:
+            self.send_json({'error': 'jpeg_only'}, 400)
+            return
+        try:
+            bin_data = _base64.b64decode(m.group(1))
+        except Exception:
+            self.send_json({'error': 'bad_base64'}, 400)
+            return
+        if len(bin_data) > PHOTO_MAX_BYTES:
+            self.send_json({'error': 'too_large'}, 413)
+            return
+        e = _oci_env()
+        prefix = 'photos/{}/'.format(user['id'])
+        status, body = _s3_request('GET', '/' + e['bucket'],
+                                   query='list-type=2&max-keys={}&prefix={}'.format(PHOTO_MAX, _q(prefix, safe='')))
+        if status != 200:
+            self.send_json({'error': 'storage_list_failed', 'status': status}, 502)
+            return
+        mm = re.search(rb'<KeyCount>(\d+)</KeyCount>', body)
+        count = int(mm.group(1)) if mm else 0
+        if count >= PHOTO_MAX:
+            self.send_json({'error': 'album_full', 'count': count}, 409)
+            return
+        key = '{}{}.jpg'.format(prefix, int(_dt.datetime.now().timestamp() * 1000))
+        status, _body = _s3_request('PUT', '/{}/{}'.format(e['bucket'], key),
+                                    body=bin_data, content_type='image/jpeg')
+        if status not in (200, 201):
+            self.send_json({'error': 'storage_put_failed', 'status': status}, 502)
+            return
+        self.send_json({'ok': True, 'key': key, 'count': count + 1, 'max': PHOTO_MAX})
+
+    # ── 📸 POST /api/photo-urls — presigned GET 일괄 발급 (photo-urls.js 미러) ──
+    def serve_photo_urls(self):
+        if not _oci_ready(_oci_env()):
+            self.send_json({'error': 'not_configured'}, 503)
+            return
+        user = _verify_user(self)
+        if not user:
+            self.send_json({'error': 'login_required'}, 403)
+            return
+        try:
+            length = int(self.headers.get('Content-Length') or 0)
+            keys = json.loads(self.rfile.read(length) or b'{}').get('keys')
+        except (ValueError, json.JSONDecodeError):
+            self.send_json({'error': 'bad_json'}, 400)
+            return
+        if not isinstance(keys, list):
+            self.send_json({'error': 'keys_required'}, 400)
+            return
+        e = _oci_env()
+        prefix = 'photos/{}/'.format(user['id'])
+        urls = {}
+        for key in keys[:120]:
+            if isinstance(key, str) and key.startswith(prefix):
+                urls[key] = _presign_get('/{}/{}'.format(e['bucket'], key))
+        self.send_json({'urls': urls})
+
+    # ── 📸 DELETE /api/photo?key=... — 본인 소유만 (photo.js 미러) ──
+    def serve_photo_delete(self):
+        from urllib.parse import parse_qs, urlparse
+        if not _oci_ready(_oci_env()):
+            self.send_json({'error': 'not_configured'}, 503)
+            return
+        user = _verify_user(self)
+        if not user:
+            self.send_json({'error': 'login_required'}, 403)
+            return
+        key = (parse_qs(urlparse(self.path).query).get('key') or [''])[0]
+        if not key.startswith('photos/{}/'.format(user['id'])):
+            self.send_json({'error': 'forbidden'}, 403)
+            return
+        e = _oci_env()
+        status, _body = _s3_request('DELETE', '/{}/{}'.format(e['bucket'], key))
+        if status not in (200, 204, 404):
+            self.send_json({'error': 'storage_delete_failed', 'status': status}, 502)
+            return
+        self.send_json({'ok': True})
 
     def serve_night_visit(self):
         try:

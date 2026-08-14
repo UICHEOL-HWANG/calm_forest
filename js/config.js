@@ -53,6 +53,13 @@ export const CONFIG = {
   NIGHT_VISIT_API: '/api/night-visit',
   NIGHT_NOTE_API: '/api/night-note',   // 사건 다음날 주민 쪽지(Gemini, 날짜 캐시)
 
+  // ── 📸 사진첩(OCI Object Storage) 엔드포인트 ─────────────────
+  //    사진 원본은 오라클 버킷에 — 서버 프록시(functions/api/photo*.js) 경유.
+  //    OCI 는 버킷 CORS 를 지원하지 않아 브라우저 직접 업로드가 불가하고,
+  //    ⚠️ OCI 키는 절대 여기 두지 마세요 — .env / Cloudflare 환경변수에만.
+  PHOTO_API: '/api/photo',             // POST 업로드 · DELETE ?key= 삭제
+  PHOTO_URLS_API: '/api/photo-urls',   // POST { keys } → presigned <img> URL 일괄 발급
+
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)
   //    'map'  = 맵 크기 A/B (client_id 해시로 A/B 50:50 배정)

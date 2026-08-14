@@ -275,6 +275,41 @@ export async function sendCafeGuests({ date, weather, count, model, guests }) {
   } catch (err) { console.warn('[Supabase 폴백] 카페 손님 기록 실패:', err?.message || err); }
 }
 
+// ── 📸 사진첩 — 업로드 인증 토큰 + 메타데이터 행(photos 테이블, RLS) ──
+//    사진 원본은 OCI 버킷(서버 프록시 /api/photo 경유), 목록·정렬은 이 테이블로.
+export async function getAccessToken() {
+  if (!supabase) return null;
+  try { const { data } = await supabase.auth.getSession(); return data?.session?.access_token || null; }
+  catch (e) { return null; }
+}
+
+export async function listPhotos() {
+  if (!state.online || !supabase) return [];
+  try {
+    const { data, error } = await supabase.from('photos')
+      .select('object_key, weather, taken_at')
+      .order('taken_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    return data || [];
+  } catch (err) { console.warn('[Supabase 폴백] 사진 목록 실패:', err?.message || err); return []; }
+}
+
+export async function insertPhotoRow(objectKey, weather) {
+  if (!state.online || !supabase) return;
+  try {
+    const { error } = await supabase.from('photos').insert({ user_id: state.userId, object_key: objectKey, weather });
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 사진 메타 기록 실패:', err?.message || err); }
+}
+
+export async function deletePhotoRow(objectKey) {
+  if (!state.online || !supabase) return;
+  try {
+    const { error } = await supabase.from('photos').delete().eq('object_key', objectKey);
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 사진 메타 삭제 실패:', err?.message || err); }
+}
+
 // ── [계측] 🛶 나룻배 런 기록(boat_runs) — 런 1회 = 1행 ──
 //    좌표 로그(game_logs)만으론 "어디서 부딪혀 그만뒀는지"를 복원하기 어렵습니다.
 //    코스 시드·구간별 충돌 지점·수집물까지 한 행에 남겨야 난이도 튜닝과 이탈 분석이 됩니다.
