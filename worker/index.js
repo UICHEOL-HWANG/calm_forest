@@ -12,6 +12,8 @@
 import { onRequestGet as cafeGuests } from '../functions/api/cafe-guests.js';
 import { onRequestPost as nightVisit } from '../functions/api/night-visit.js';
 import { onRequestGet as nightNote } from '../functions/api/night-note.js';
+import { onRequestPost as photoUpload, onRequestDelete as photoDelete } from '../functions/api/photo.js';
+import { onRequestPost as photoUrls } from '../functions/api/photo-urls.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -32,6 +34,17 @@ export default {
       if (pathname === '/api/night-note') {
         if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
         return await nightNote({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+      }
+
+      // 📸 사진첩 — OCI Object Storage 프록시(업로드/삭제/표시 URL 발급)
+      if (pathname === '/api/photo') {
+        if (request.method === 'POST') return await photoUpload({ request, env });
+        if (request.method === 'DELETE') return await photoDelete({ request, env });
+        return new Response('Method Not Allowed', { status: 405 });
+      }
+      if (pathname === '/api/photo-urls') {
+        if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+        return await photoUrls({ request, env });
       }
 
       // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.
