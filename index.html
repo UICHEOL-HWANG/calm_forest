@@ -964,14 +964,14 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=32';
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=32';
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=32';
-    import { CONFIG } from './js/config.js?v=32';
-    import { initControls } from './js/controls.js?v=32';
-    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=32';
-    import { initCafeGuests } from './js/cafe-guests.js?v=32';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
-    import { initNightVisit } from './js/night-visit.js?v=32';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
+    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState } from './js/supabase-client.js?v=33';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js?v=33';
+    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js?v=33';
+    import { CONFIG } from './js/config.js?v=33';
+    import { initControls } from './js/controls.js?v=33';
+    import { startBGM, toggleBGM, isBGMOn } from './js/sound.js?v=33';
+    import { initCafeGuests } from './js/cafe-guests.js?v=33';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
+    import { initNightVisit } from './js/night-visit.js?v=33';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
 
     const $ = (id) => document.getElementById(id);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
