@@ -10,8 +10,8 @@
 //  ▶ 오프라인이면 supabase-client 가 콘솔 폴백 — 게임 진행 영향 없음
 // =============================================================
 
-import { sendEconBatch, upsertSessionRow } from './supabase-client.js?v=33';
-import { trackEvent, onTrack } from './analytics.js?v=33';
+import { sendEconBatch, upsertSessionRow } from './supabase-client.js';
+import { trackEvent, onTrack } from './analytics.js';
 
 // ── 경제 원장 ────────────────────────────────────────────────
 let econBuffer = [];               // 전송 대기 원장 행

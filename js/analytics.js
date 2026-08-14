@@ -9,7 +9,7 @@
 //  ▶ GA4 미설정(오프라인) 시 window.gtag 가 없으므로 콘솔로 폴백
 // =============================================================
 
-import { CONFIG, isGaConfigured } from './config.js?v=33';
+import { CONFIG, isGaConfigured } from './config.js';
 
 let firstChopFired = false;
 const sessionStart = Date.now();
