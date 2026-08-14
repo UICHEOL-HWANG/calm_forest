@@ -2612,6 +2612,7 @@ function buildRiverSpace() {
   }
   // 🛶 타는 배(정박) — 데크 앞쪽 끝
   const moored = makeBoatHull(1, true); moored.position.set(0, 0.2, -H - 1.4); g.add(moored);
+  g.userData.moored = moored;   // 🛶 런 중엔 숨김 — 출발 지점과 겹쳐 배가 이중으로 보이는 것 방지
   // 🧰 뱃사공의 창고(업그레이드) — 데크 서쪽
   const shed = new THREE.Group(); shed.position.set(-H + 2, 0, 1.6);
   const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.9, 2), clayMat(0xe2c79a)); body.position.y = 1.25; body.castShadow = true; shed.add(body);
@@ -2804,6 +2805,7 @@ function startBoatRun() {
   if (heldGroup) heldGroup.visible = false;          // 🛶 배 위에선 도구를 내려놓는다(두 손으로 노를 잡는 느낌)
   playerAnchor.position.y = 0; playerAnchor.rotation.set(0, 0, 0);   // 노 젓기 자세 초기화
   boat.group.rotation.set(0, 0, 0); boat.group.position.y = 0;       // 지난 런의 침몰 자세 초기화
+  if (riverGroup?.userData.moored) riverGroup.userData.moored.visible = false;   // 정박 배 숨김(출발 지점 겹침 방지)
   player.position.set(RIVER.x, 0, RIVER.z - RIVER_DOCK_HALF - 2); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   ui.setBoatRun?.(true);
@@ -2860,6 +2862,7 @@ function endBoatRun(result) {
   playerAnchor.visible = true;
   if (heldGroup) heldGroup.visible = true;                            // 도구를 다시 손에
   playerAnchor.position.y = 0; playerAnchor.rotation.set(0, 0, 0);    // 노 젓기·침몰 자세 해제
+  if (riverGroup?.userData.moored) riverGroup.userData.moored.visible = true;    // 정박 배 복원
   player.position.set(RIVER.x, 0, RIVER.z + 1.2); player.rotation.y = Math.PI;   // 데크로 복귀
   snapCamera();
   ui.setBoatRun?.(false); ui.setBoatHud?.(null);
