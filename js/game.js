@@ -3178,24 +3178,76 @@ function updateRiverInteract() {
 // =============================================================
 
 // ── 마을 북서 게이트 — 고목 두 그루가 만드는 어두운 입구 ──
+// 부드러운 방사형 안개 텍스처(캔버스 그라데이션) — 딱딱한 판 대신 가장자리가 스르르 사라지는 퍼프
+let _mistPuffTex = null;
+function mistPuffTexture() {
+  if (_mistPuffTex) return _mistPuffTex;
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+  const c = cv.getContext('2d');
+  const grad = c.createRadialGradient(64, 64, 8, 64, 64, 62);
+  grad.addColorStop(0, 'rgba(255,255,255,0.85)');
+  grad.addColorStop(0.55, 'rgba(235,240,250,0.4)');
+  grad.addColorStop(1, 'rgba(230,236,248,0)');
+  c.fillStyle = grad; c.fillRect(0, 0, 128, 128);
+  _mistPuffTex = new THREE.CanvasTexture(cv);
+  return _mistPuffTex;
+}
+function mistPuffSprite(scale, opacity) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: mistPuffTexture(), transparent: true, opacity, depthWrite: false, color: 0xdfe7f4,
+  }));
+  sp.scale.set(scale, scale * 0.62, 1);
+  return sp;
+}
+
 function buildMistGate() {
   const g = new THREE.Group(); g.position.copy(MIST_GATE);
-  const dark = clayMat(0x4a4456);
-  for (const side of [-1, 1]) {                       // 뒤틀린 고목 아치
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 3.4, 6), dark);
-    trunk.position.set(side * 1.6, 1.7, 0); trunk.rotation.z = -side * 0.28; trunk.castShadow = true; g.add(trunk);
-    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05, 0), clayMat(0x5a5470, false));
-    crown.position.set(side * 0.9, 3.4, 0); g.add(crown);
+  const bark = clayMat(0x6b6178);                      // 라벤더빛 고목(검정 덩어리 대신 낮에도 읽히는 톤)
+  // 안쪽으로 기울어 맞닿는 고목 두 그루 + 늘어진 상인방 가지
+  for (const side of [-1, 1]) {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.3, 3.8, 6), bark);
+    trunk.position.set(side * 1.55, 1.8, 0); trunk.rotation.z = -side * 0.3; trunk.castShadow = true; g.add(trunk);
+    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 1.1, 5), bark);   // 옆가지
+    branch.position.set(side * 1.1, 2.6, 0.1); branch.rotation.z = -side * 1.15; g.add(branch);
+    // 잎 뭉치 — 라벤더·청회·물빛 섞어 몽환적으로(작게 여러 개, 큰 검은 덩어리 금지)
+    [[side * 0.75, 3.6, 0, 0.62, 0x9b93b8], [side * 1.35, 3.15, 0.25, 0.46, 0x847fa3], [side * 0.35, 3.95, -0.15, 0.4, 0x7fa3a8]]
+      .forEach(([x, y, z, r, col]) => {
+        const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), clayMat(col, false));
+        leaf.position.set(x, y, z); g.add(leaf);
+      });
   }
-  // 입구 안쪽으로 스미는 안개(반투명 판) — 낮에도 여기만 뿌옇게
-  const haze = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.6),
-    new THREE.MeshBasicMaterial({ color: 0xbac4d8, transparent: true, opacity: 0.34, depthWrite: false }));
-  haze.position.set(0, 1.3, -0.4); g.add(haze);
-  g.add(makeSignpost('🌫️ 안개 낀 숲', 0, 1.8));
+  const lintel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.6, 6), bark);       // 살짝 처진 상인방
+  lintel.position.set(0, 3.32, 0); lintel.rotation.z = Math.PI / 2; lintel.rotation.x = 0.06; g.add(lintel);
+  // 늘어진 덩굴 + 🏮 청록 등불 두 개(항상 은은히 — 신비로운 입구의 시그니처)
+  for (const [vx, vlen] of [[-0.85, 0.75], [0.85, 0.55], [0.2, 0.4]]) {
+    const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, vlen, 4), clayMat(0x76889b));
+    vine.position.set(vx, 3.3 - vlen / 2, 0.05); g.add(vine);
+  }
+  for (const lx of [-0.85, 0.85]) {
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 0),
+      new THREE.MeshStandardMaterial({ color: 0xbef3ea, emissive: 0x5fe8d0, emissiveIntensity: 0.55, roughness: 0.5 }));
+    orb.position.set(lx, 3.3 - (lx < 0 ? 0.82 : 0.62), 0.05); g.add(orb);
+  }
+  // 발치: 디딤돌 길 + 발광 버섯 — "들어가 보고 싶은" 입구의 디테일
+  [[0.15, 1.1], [-0.2, 2.0], [0.1, 2.9]].forEach(([sx, sz]) => {
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.09, 7), clayMat(0x9aa1ad, false));
+    st.position.set(sx, 0.05, sz); st.receiveShadow = true; g.add(st);
+  });
+  for (const [mx, mz, mr] of [[-1.15, 0.7, 0.09], [1.25, 0.45, 0.07], [1.05, 0.75, 0.055]]) {
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(mr * 0.45, mr * 0.6, mr * 2.4, 5), clayMat(0xdde2e8, false));
+    stem.position.set(mx, mr * 1.2, mz); g.add(stem);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(mr, 7, 5, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x8fd8cc, emissive: 0x4fc8b4, emissiveIntensity: 0.45, roughness: 0.6 }));
+    cap.position.set(mx, mr * 2.3, mz); g.add(cap);
+  }
+  // 안개 — 딱딱한 판 대신 소프트 퍼프 여러 겹(아치 안쪽으로 깊어질수록 짙게)
+  [[0, 1.5, -0.4, 3.6, 0.30], [0.7, 0.9, -1.3, 2.8, 0.34], [-0.6, 1.1, -2.2, 3.2, 0.4], [0, 0.45, 0.6, 2.6, 0.22]]
+    .forEach(([px, py, pz, sc, op]) => { const p = mistPuffSprite(sc, op); p.position.set(px, py, pz); g.add(p); });
+  g.add(makeSignpost('🌫️ 안개 낀 숲', 1.9, 1.6));      // 표지판은 아치 옆으로(입구 시야 확보)
   g.rotation.y = Math.PI / 4;                          // 마을 중심(남동)을 바라보게
   scene.add(g);
   obstacles.push({ x: MIST_GATE.x, z: MIST_GATE.z, r: 2.6 });
-  [-1, 1].forEach(side => solidCircle(MIST_GATE.x + side * 1.2, MIST_GATE.z - side * 1.2, 0.4));   // 고목 기둥(아치 회전 반영)
+  [-1, 1].forEach(side => solidCircle(MIST_GATE.x + side * 1.1, MIST_GATE.z - side * 1.1, 0.35));   // 고목 기둥(아치 회전 반영)
 }
 
 // ── 숲 인스턴스 — 어두운 빈터 + 중앙 수호목 + 둘레 등불 6개 ──
