@@ -292,6 +292,34 @@ const boat = {
   invUntil: 0, stunUntil: 0, wreckAt: 0, shake: 0, next: 0, runNo: 0, seed: 0, startedAt: 0, night: false, t: 0,
 };
 
+// ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
+//    처음부터 있는 장소(카페·채굴장 문법). 게이트 → 별도 인스턴스, 숲 안은 항상 어둑+짙은 안개.
+//    그림자 정령이 수호목의 빛을 갉아먹으러 다가오고, 플레이어는 등불을 켜(감속) ♪리듬 탭으로
+//    달랜다(성불). 웨이브 3회를 버티면 그날 하루 정화 — 매일 리셋되는 데일리 루프.
+const MIST_GATE = new THREE.Vector3(-13, 0, -13);   // 마을 북서(집 뒤편 어두운 숲)
+const MIST = new THREE.Vector3(0, 0, -250);         // 숲 인스턴스(다른 공간과 멀찍이)
+const MIST_HALF = 13;
+const MIST_WAVES = [3, 4, 5];                       // 웨이브별 정령 수(🌫️안개 날 +1)
+const TREE_LIGHT_MAX = 100;                         // 수호목 빛 — 0이 되면 부드러운 실패
+const MIST_DRAIN = 4;                               // 수호목에 붙은 정령 1마리당 빛 감소량(/초)
+const SOOTHE_GLOW = 2;                              // 달래기 성공 보상 ✨(황금 정령은 2배)
+const PURIFY_GLOW = 6;                              // 정화 완료 보너스 ✨
+// 그림자 정령 종류 — 📖 도감 spirit 카테고리와 1:1. golden 은 🌫️안개 날에만
+const SPIRITS = [
+  { id: 'shy',      name: '수줍은 정령',   ico: '🟣', color: 0x8a6cc9, speed: 0.5,  size: 0.3 },
+  { id: 'sleepy',   name: '졸린 정령',     ico: '🔵', color: 0x5a6cc0, speed: 0.38, size: 0.36 },
+  { id: 'mischief', name: '장난꾸러기 정령', ico: '🟠', color: 0xc06a9a, speed: 0.72, size: 0.26 },
+  { id: 'golden',   name: '황금 정령',     ico: '🌟', color: 0xe0b34a, speed: 0.62, size: 0.32, fog: true },
+];
+// 둘레 등불 6개(숲 로컬 좌표) — 수호목(중앙)으로 오는 길목마다 하나씩
+const MIST_LANTERN_POS = [[-7, -7], [7, -7], [-9.5, 1], [9.5, 1], [-5.5, 8], [5.5, 8]];
+const LANTERN_CALM_R = 4.5;                         // 켜진 등불 주변: 정령 감속 반경
+let mistGroup = null, atMist = false;
+let mistTree = null;                                 // 수호목 { group, foliage[], light }
+const mistLanterns = [];                             // { group, headMat, light, lit }
+// 진행 중인 정화 상태 — active=false 면 웨이브 전(수호목에서 시작)
+const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false };
+
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
   if (interiorGroup) interiorGroup.visible = indoor;
@@ -299,6 +327,7 @@ function setSpaceVisible() {
   if (mineGroup) mineGroup.visible = atMine;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (riverGroup) riverGroup.visible = atRiver;
+  if (mistGroup) mistGroup.visible = atMist;
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe) startRainSound();
   else stopRainSound();
@@ -339,6 +368,7 @@ const OUTDOOR = [
   { id: 'postlamp',  name: '정원등',  ico: '🏮', cost: { wood: 4 }, desc: '밤에 빛나는 등' },
   { id: 'stonewall', name: '돌담',    ico: '🧱', cost: { stone: 3 }, desc: '튼튼한 돌담(채굴)' },
   { id: 'brazier',   name: '화로',    ico: '🔥', cost: { stone: 2, coal: 2 }, desc: '밤에 빛나는 화로(채굴)' },
+  { id: 'spiritlamp', name: '정령 등불', ico: '✨', cost: { glow: 8, coins: 60 }, desc: '정령빛이 깃든 등불 — 밤에 청록빛(안개 숲)' },
 ];
 let placingOutdoor = null;      // 배치 중인 야외 장식 id
 const outdoorMeshes = [];
@@ -459,7 +489,7 @@ function rollLuckyBox(qid) {
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강, 배 강화 전용 화폐)
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -475,13 +505,14 @@ const gameState = {
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
-  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
+  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
   night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
+  mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
 };
 
 // ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
@@ -544,6 +575,13 @@ const DEX = {
     { id: 'shell',     name: '강 조개',       ico: '🐚' },
     { id: 'moon_fish', name: '달빛 물고기',   ico: '🌕' },   // 🌙 밤에 탄 날에만 나옴
   ],
+  // 🌫️ 정령 — 안개 낀 숲에서 ♪로 달래야 채워짐. golden 은 🌫️안개 날에만(날씨 재방문 훅)
+  spirit: [
+    { id: 'shy',      name: '수줍은 정령',     ico: '🟣' },
+    { id: 'sleepy',   name: '졸린 정령',       ico: '🔵' },
+    { id: 'mischief', name: '장난꾸러기 정령', ico: '🟠' },
+    { id: 'golden',   name: '황금 정령',       ico: '🌟' },
+  ],
   // 🌦️ 날씨 — 그 날씨인 날 접속해야 채워짐(예보와 묶어 재방문 유도)
   weather: [
     { id: 'clear', name: '맑은 날',     ico: '☀️' },
@@ -590,6 +628,8 @@ const BADGES = [
   { id: 'forager',     name: '숲의 안내인',    ico: '🍄', desc: '채집물 4종 모두 줍기',     reward: { coins: 40 } },
   { id: 'ferryman',    name: '첫 뱃길',        ico: '🛶', desc: '강을 끝까지 내려가기',     reward: { coins: 30 } },
   { id: 'river_master', name: '잔잔한 물살',   ico: '🌊', desc: '한 번도 부딪히지 않고 완주', reward: { coins: 80 } },
+  { id: 'purifier',    name: '숲의 정화자',    ico: '🌫️', desc: '안개 낀 숲을 정화하기',      reward: { coins: 30 } },
+  { id: 'spirit_friend', name: '정령의 친구',  ico: '✨', desc: '정령 20마리 달래기',         reward: { coins: 60 } },
   { id: 'dex_master',  name: '도감 마스터',    ico: '📖', desc: '도감 전부 채우기',        reward: { coins: 50 } },
 ];
 function badgeCount() { return Object.keys(gameState.badges).length; }
@@ -620,6 +660,8 @@ function syncBadges() {
   if (DEX.forage.every(f => gameState.dex.forage?.[f.id])) awardBadge('forager'); // 🍄 채집 4종
   if ((gameState.boat?.clears || 0) >= 1) awardBadge('ferryman');                 // 🛶 강 완주
   if ((gameState.boat?.perfect || 0) >= 1) awardBadge('river_master');            // 🌊 무피해 완주
+  if ((gameState.mist?.purifyTotal || 0) >= 1) awardBadge('purifier');             // 🌫️ 첫 정화
+  if ((gameState.mist?.soothedTotal || 0) >= 20) awardBadge('spirit_friend');      // ✨ 정령 20마리
   if (dexCount() === DEX_TOTAL) awardBadge('dex_master');
 }
 
@@ -988,15 +1030,19 @@ export async function enterGame() {
     window.__frostTest = () => { gameState.frost.lastDate = todayStr(-1); return resolveWeatherEvent(); };
     // 🛶 __boatTest() — 오늘 탄 횟수를 초기화(코스 반복 테스트용). 코스 시드는 그대로라 같은 물길이 나온다
     window.__boatTest = () => { gameState.boat.date = null; return boatRunsLeft(); };
+    // 🌫️ __mistTest() — 오늘 정화를 무른 셈 치고 다시(코스 아님이라 리롤 유인 없음)
+    window.__mistTest = () => { gameState.mist.date = null; gameState.mist.purified = false; return mistDaily(); };
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
+  // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인
+  if (_wq.get('mist') === '1') setTimeout(() => enterMist(), 60);
   mode = 'play';
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
-    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : 'village',
+    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : 'village',
     x: player.position.x, z: player.position.z,
   }));
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
@@ -1029,10 +1075,11 @@ function applySave(saved) {
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
-  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, ...saved.dex }; // 📖 도감 복원
+  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, ...saved.dex }; // 📖 도감 복원
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
+  if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
@@ -1142,6 +1189,7 @@ function buildWorld() {
       x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
     } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 3.5 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
+      || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6)));   // 주민 자리에 나무가 박혀 갇히지 않게
     spawnTree(x, z);
   }
@@ -1595,6 +1643,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, HOUSE_POS) < 3) continue;    // 집 터 제외
     if (dist2D({ x, z }, COOP) < 2.8) continue;       // 🐔 닭장 터 제외
     if (dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 0.5) continue;   // 🛶 나루터 연못 위 제외
+    if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
@@ -1604,6 +1653,8 @@ function buildEnvironment() {
   buildForest();     // 🍄 채집 숲(남서쪽) — 줍기
   buildDockGate();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
   buildRiverSpace(); // 🛶 강(별도 공간) — 나룻배 러너
+  buildMistGate();   // 🌫️ 안개 낀 숲 입구(북서) — 처음부터 있음
+  buildMistSpace();  // 🌫️ 숲(별도 공간) — 정령 달래기 웨이브
 }
 
 // 🌉 낚시 부두 — 데크 + 지지 기둥 + 볼라드 + 양동이 소품. PIER 사각 영역만 걷기 허용
@@ -3117,6 +3168,369 @@ function updateRiverInteract() {
   return null;
 }
 
+// =============================================================
+//  🌫️ 안개 낀 숲 — 그림자 정령을 등불·♪음악으로 달래는 무폭력 웨이브
+//  ------------------------------------------------------------
+//  ▶ 마을 북서 게이트(처음부터 있음) → 별도 인스턴스. 숲 안은 항상 어둑+짙은 안개.
+//  ▶ 하루 1회 정화(데일리): 웨이브 3회를 버티면 그날은 안개가 걷힌 밝은 숲.
+//  ▶ 실패는 부드럽게 — 수호목 빛이 다 꺼지면 정령이 흩어질 뿐, 주운 ✨는 유지되고
+//    켜둔 등불도 그날 내내 남아 재도전이 점점 쉬워진다(뱃놀이 문법).
+// =============================================================
+
+// ── 마을 북서 게이트 — 고목 두 그루가 만드는 어두운 입구 ──
+function buildMistGate() {
+  const g = new THREE.Group(); g.position.copy(MIST_GATE);
+  const dark = clayMat(0x4a4456);
+  for (const side of [-1, 1]) {                       // 뒤틀린 고목 아치
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 3.4, 6), dark);
+    trunk.position.set(side * 1.6, 1.7, 0); trunk.rotation.z = -side * 0.28; trunk.castShadow = true; g.add(trunk);
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05, 0), clayMat(0x5a5470, false));
+    crown.position.set(side * 0.9, 3.4, 0); g.add(crown);
+  }
+  // 입구 안쪽으로 스미는 안개(반투명 판) — 낮에도 여기만 뿌옇게
+  const haze = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.6),
+    new THREE.MeshBasicMaterial({ color: 0xbac4d8, transparent: true, opacity: 0.34, depthWrite: false }));
+  haze.position.set(0, 1.3, -0.4); g.add(haze);
+  g.add(makeSignpost('🌫️ 안개 낀 숲', 0, 1.8));
+  g.rotation.y = Math.PI / 4;                          // 마을 중심(남동)을 바라보게
+  scene.add(g);
+  obstacles.push({ x: MIST_GATE.x, z: MIST_GATE.z, r: 2.6 });
+  [-1, 1].forEach(side => solidCircle(MIST_GATE.x + side * 1.2, MIST_GATE.z - side * 1.2, 0.4));   // 고목 기둥(아치 회전 반영)
+}
+
+// ── 숲 인스턴스 — 어두운 빈터 + 중앙 수호목 + 둘레 등불 6개 ──
+function buildMistSpace() {
+  const g = new THREE.Group(); g.position.copy(MIST);
+  const H = MIST_HALF;
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(H + 1.5, 40), clayMat(0x3e4452, false));
+  floor.geometry.rotateX(-Math.PI / 2); floor.position.y = 0.02; floor.receiveShadow = true; g.add(floor);
+  // 둘레의 뒤틀린 고목 울타리(경계 연출)
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2 + 0.15;
+    if (Math.abs(a - Math.PI / 2) < 0.35) continue;    // 남쪽 출구는 비움
+    const r = H + 1.6 + ((i * 7) % 3) * 0.5;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3 + (i % 3), 5), clayMat(0x443f52));
+    trunk.position.set(Math.cos(a) * r, 1.6, Math.sin(a) * r); trunk.rotation.z = Math.sin(i * 3) * 0.2; g.add(trunk);
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0 + (i % 2) * 0.4, 0), clayMat(0x4e4a66, false));
+    crown.position.set(Math.cos(a) * r, 3.4 + (i % 3) * 0.5, Math.sin(a) * r); g.add(crown);
+  }
+  // 🌳 수호목 — 중앙 북쪽. 빛 게이지에 따라 잎이 밝아지고 어두워진다
+  const tg = new THREE.Group(); tg.position.set(0, 0, -3);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 3.6, 7), woodMat(1, 2, 0x8a7a5f));
+  trunk.position.y = 1.8; trunk.castShadow = true; tg.add(trunk);
+  const mats = [];
+  [[0, 4.4, 0, 1.7], [-1.2, 3.6, 0.4, 1.1], [1.1, 3.7, -0.4, 1.2]].forEach(([x, y, z, r]) => {
+    const m = new THREE.MeshStandardMaterial({ color: 0x8fe8d8, emissive: 0x4fd8b8, emissiveIntensity: 0.9, roughness: 0.6 });
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m);
+    leaf.position.set(x, y, z); tg.add(leaf); mats.push(m);
+  });
+  const tlight = new THREE.PointLight(0x7fe8cf, 2.2, 26, 1.1); tlight.position.set(0, 4.2, 0); tg.add(tlight);
+  g.add(tg);
+  mistTree = { group: tg, mats, light: tlight };
+  // 🏮 둘레 등불 — 꺼진 채 시작, 액션으로 점화(그날 내내 유지)
+  mistLanterns.length = 0;
+  for (const [lx, lz] of MIST_LANTERN_POS) {
+    const lg = new THREE.Group(); lg.position.set(lx, 0, lz);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 1.6, 6), clayMat(0x4a4a54));
+    pole.position.y = 0.8; lg.add(pole);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0x777f8c, emissive: 0x9fe8ff, emissiveIntensity: 0, roughness: 0.55 });
+    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), headMat); head.position.y = 1.78; lg.add(head);
+    const ll = new THREE.PointLight(0x9fe8ff, 0, 9, 1.3); ll.position.y = 1.9; lg.add(ll);
+    g.add(lg);
+    mistLanterns.push({ x: lx, z: lz, headMat, light: ll, lit: false });
+  }
+  g.add(makeSignpost('🚪 마을로', 0, H - 0.8));
+  scene.add(g); mistGroup = g; g.visible = false;
+  solidCircle(MIST.x, MIST.z - 3, 1.0);                // 🚧 수호목 줄기(잎 상호작용 반경 확보)
+  mistLanterns.forEach(l => solidCircle(MIST.x + l.x, MIST.z + l.z, 0.24));
+}
+
+// ── 하루 판정 + 상태 반영 ───────────────────────────────────
+function mistDaily() {
+  const st = gameState.mist;
+  if (st.date !== todayStr()) {                        // 자정 지나면 새 안개
+    st.date = todayStr(); st.purified = false;
+    mistLanterns.forEach(l => { l.lit = false; });
+    mist.treeLight = TREE_LIGHT_MAX;
+  }
+  return st;
+}
+// 수호목·등불 시각 상태를 게이지에 맞춤(입장·매 프레임 양쪽에서 호출해도 안전)
+function applyMistVisuals() {
+  const ratio = gameState.mist.purified ? 1 : Math.max(0, mist.treeLight / TREE_LIGHT_MAX);
+  if (mistTree) {
+    mistTree.mats.forEach(m => { m.emissiveIntensity = 0.15 + ratio * 1.0; });
+    mistTree.light.intensity = 0.4 + ratio * 2.4;
+  }
+  mistLanterns.forEach(l => {
+    l.headMat.emissiveIntensity = l.lit ? 1.3 : 0;
+    l.light.intensity = l.lit ? 1.5 : 0;
+  });
+}
+
+// ── 입장 / 퇴장 ────────────────────────────────────────────
+function enterMist() {
+  atMist = true;
+  const st = mistDaily();
+  player.position.set(MIST.x, 0, MIST.z + MIST_HALF - 1.6); player.rotation.y = Math.PI;
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
+  snapCamera(); setSpaceVisible(); applyMistVisuals();
+  if (st.purified) {
+    ui.toast?.('🌤️ 오늘의 숲은 맑아요 — 정령들이 고마워하고 있어요. 내일 다시 안개가 차요');
+  } else {
+    firstHint('mistWood', '🌫️', '안개 낀 숲',
+      '빛을 잃어가는 🌳수호목에 그림자 정령들이 모여들어요. 수호목 앞에서 정화를 시작하면 정령이 다가와요 — 🏮등불을 켜면 근처 정령이 느려지고, 정령 곁에서 액션을 누르면 ♪리듬에 맞춰 달랠 수 있어요(♪가 가장 작아질 때 탭!). 웨이브 3번을 버티면 오늘의 숲이 맑아져요.');
+  }
+  Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
+  trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
+}
+function exitMist() {
+  if (mist.active) mistEnd('quit');                    // 나가면 이번 시도는 종료(등불·✨는 유지)
+  atMist = false;
+  player.position.set(MIST_GATE.x + 1.6, 0, MIST_GATE.z + 1.6);
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
+  snapCamera(); setSpaceVisible();
+  Sound.blip(); setBGMTheme?.('main');
+  trackEvent('mist_exit');                             // [GA4]
+}
+
+// ── 정화 시작 / 웨이브 ──────────────────────────────────────
+function startPurify() {
+  const st = mistDaily();
+  if (st.purified) { ui.toast?.('오늘은 이미 숲이 맑아요 — 내일 새 안개가 차면 다시 와요'); return; }
+  Object.assign(mist, { active: true, wave: 0, treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false });
+  clearMistSpirits();
+  spawnMistWave();
+  Sound.water(); spawnSparkle(MIST.x, 3.5, MIST.z - 3, 20);
+  trackEvent('mist_purify_start', { weather: WEATHER, lit: mistLanterns.filter(l => l.lit).length });   // [GA4]
+}
+function spawnMistWave() {
+  mist.wave += 1;
+  let count = MIST_WAVES[mist.wave - 1] + (WEATHER === 'fog' ? 1 : 0);
+  const kinds = SPIRITS.filter(s => !s.fog);
+  for (let i = 0; i < count; i++) {
+    // 🌟 황금 정령: 안개 낀 날 마지막 웨이브에 1마리(도감 재방문 훅)
+    const def = (WEATHER === 'fog' && mist.wave === MIST_WAVES.length && i === 0)
+      ? SPIRITS.find(s => s.id === 'golden')
+      : kinds[Math.floor(Math.random() * kinds.length)];
+    const a = Math.PI * 2 * (i / count) + Math.random() * 0.8;
+    const r = MIST_HALF - 0.8;
+    mist.spirits.push(makeSpirit(def, Math.cos(a) * r, Math.sin(a) * r));
+  }
+  ui.toast?.(`🌫️ 웨이브 ${mist.wave}/${MIST_WAVES.length} — 정령 ${count}마리가 다가와요`, 2400);
+  trackEvent('mist_wave', { n: mist.wave, count });     // [GA4] 웨이브 진행
+}
+function makeSpirit(def, lx, lz) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(def.size, 10, 10),
+    new THREE.MeshStandardMaterial({ color: 0x241f33, transparent: true, opacity: 0.9, emissive: def.color, emissiveIntensity: 0.4, roughness: 0.7 }));
+  body.position.y = 0.9; g.add(body);
+  for (const ex of [-0.1, 0.1]) {                       // 무섭지 않게 — 동그란 눈
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xfff6e8 }));
+    eye.position.set(ex, 0.98, def.size * 0.82); g.add(eye);
+  }
+  g.position.set(lx, 0, lz);
+  mistGroup.add(g);
+  return { group: g, body, def, phase: Math.random() * 6, gone: 0, atTree: false };
+}
+function clearMistSpirits() {
+  if (mist.soothe) mistGroup.remove(mist.soothe.note);   // ♪ 진행 중이던 리듬 표식도 정리
+  mist.spirits.forEach(s => mistGroup.remove(s.group));
+  mist.spirits.length = 0;
+  mist.soothe = null;
+}
+
+// ── 정화 종료 — purified(성공) / faded(빛 소진) / quit(중도 퇴장) ──
+function mistEnd(result) {
+  mist.active = false;
+  const st = gameState.mist;
+  if (result === 'purified') {
+    st.purified = true; st.purifyTotal = (st.purifyTotal || 0) + 1;
+    giveReward({ glow: PURIFY_GLOW }, 'mist_purify', 'day');
+    Sound.complete();
+    spawnConfetti(MIST.x, 4, MIST.z - 3); spawnSparkle(MIST.x, 3, MIST.z - 3, 40);
+    ui.showHintModal?.({ ico: '🌤️', title: '숲이 맑아졌어요!', body: `정령들이 하늘로 돌아가고 안개가 걷혔어요. 보너스 ✨${PURIFY_GLOW} — 모은 정령빛은 상점 야외 장식 ‘✨정령 등불’에 쓸 수 있어요. 내일 다시 안개가 차면 정령들이 돌아와요.` });
+    awardBadge('purifier'); syncBadges();
+  } else if (result === 'faded') {
+    ui.toast?.('🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600);
+    Sound.build();
+  }
+  clearMistSpirits();
+  mist.treeLight = TREE_LIGHT_MAX;                     // 다음 시도를 위해 회복(등불은 유지 — 재도전이 쉬워짐)
+  applyMistVisuals();
+  ui.setZoneHint?.(null); lastZoneHint = null;
+  trackEvent('mist_end', {                              // [GA4] 정화 퍼널
+    result, wave: mist.wave, soothed_total: st.soothedTotal, lit: mistLanterns.filter(l => l.lit).length, weather: WEATHER,
+  });
+}
+
+// ── 매 프레임 갱신 — animate(play) 에서 호출 ─────────────────
+let mistHintT = 0;
+function updateMist(dt, t) {
+  if (!atMist) return;
+  // 정령 이동·수호목 빛 — 정화 진행 중에만
+  if (mist.active) {
+    mist.t += dt;
+    let drain = 0;
+    for (let i = mist.spirits.length - 1; i >= 0; i--) {
+      const s = mist.spirits[i];
+      const g = s.group;
+      if (s.gone > 0) {                                 // ✨ 성불 연출: 밝아지며 떠올라 사라짐
+        s.gone += dt;
+        g.position.y += dt * 2.2;
+        s.body.material.emissiveIntensity = 0.4 + s.gone * 3;
+        s.body.material.opacity = Math.max(0, 0.9 - s.gone * 1.1);
+        if (s.gone > 0.9) { mistGroup.remove(g); mist.spirits.splice(i, 1); }
+        continue;
+      }
+      s.phase += dt;
+      s.body.position.y = 0.9 + Math.sin(t * 2.2 + s.phase) * 0.08;   // 두둥실
+      if (mist.soothe?.sp === s) continue;              // 달래는 중엔 멈춰서 귀 기울임
+      const tx = 0 - g.position.x, tz = -3 - g.position.z;   // 목표 = 수호목(로컬 0,-3)
+      const d = Math.hypot(tx, tz);
+      if (d < 2.0) {                                    // 🌳 도착 — 빛을 갉아먹음
+        s.atTree = true; drain += MIST_DRAIN;
+        g.position.x += Math.sin(t * 3 + s.phase) * dt * 0.3;   // 나무 곁에서 서성임
+        continue;
+      }
+      // 켜진 등불 근처에선 순해져서 느려짐
+      let spd = s.def.speed;
+      for (const l of mistLanterns) {
+        if (l.lit && Math.hypot(l.x - g.position.x, l.z - g.position.z) < LANTERN_CALM_R) { spd *= 0.4; break; }
+      }
+      g.position.x += (tx / d) * spd * dt;
+      g.position.z += (tz / d) * spd * dt;
+    }
+    if (drain > 0) {
+      mist.treeLight = Math.max(0, mist.treeLight - drain * dt);
+      if (!mist.warned && mist.treeLight < TREE_LIGHT_MAX * 0.3) {
+        mist.warned = true;
+        ui.toast?.('🌳 수호목의 빛이 흐려져요! 정령들을 서둘러 달래주세요', 2600);
+      }
+      if (mist.treeLight <= 0) { mistEnd('faded'); return; }
+    }
+    // ♪ 리듬 진행 — 링(♪)이 줄어들 때 탭. 놓쳐도 벌점 없음(루프), 엇박 탭만 실패
+    const so = mist.soothe;
+    if (so) {
+      so.phase += dt / 0.95;
+      if (so.phase >= 1) so.phase -= 1;
+      const k = 1.7 - so.phase * 1.25;                  // 크게 시작해 작아지는 ♪
+      so.note.scale.set(k * 0.62, k * 0.62, 1);
+      so.note.material.opacity = 0.55 + so.phase * 0.45;
+      so.note.position.set(so.sp.group.position.x, so.sp.body.position.y + 1.05, so.sp.group.position.z);
+      // 자리를 뜨면 취소(정령이 다시 움직임)
+      if (dist2D(player.position, { x: MIST.x + so.sp.group.position.x, z: MIST.z + so.sp.group.position.z }) > 3.2) cancelSoothe();
+    }
+    // 웨이브 클리어 → 다음 웨이브 / 정화 완료
+    if (!mist.spirits.length) {
+      if (mist.wave >= MIST_WAVES.length) { mistEnd('purified'); return; }
+      spawnMistWave();
+    }
+    // 상태 안내(존 힌트) — 0.3초마다
+    if (t - mistHintT > 0.3) {
+      mistHintT = t;
+      ui.setZoneHint?.(`🌳 ${Math.ceil(mist.treeLight)}% · 웨이브 ${mist.wave}/${MIST_WAVES.length} · 정령 ${mist.spirits.filter(s => !s.gone).length}`);
+      lastZoneHint = 'mist';
+    }
+  }
+  applyMistVisuals();
+}
+
+// ── ♪ 달래기 세션 ───────────────────────────────────────────
+function startSoothe(sp) {
+  const cv = document.createElement('canvas'); cv.width = 96; cv.height = 96;
+  const c = cv.getContext('2d');
+  c.font = 'bold 64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.lineWidth = 7; c.strokeStyle = 'rgba(20,28,24,0.8)'; c.strokeText('♪', 48, 50);
+  c.fillStyle = '#aef3e2'; c.fillText('♪', 48, 50);
+  const note = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
+  mistGroup.add(note);
+  mist.soothe = { sp, step: 0, phase: 0, note };
+  Sound.blip();
+}
+function cancelSoothe(scared = false) {
+  const so = mist.soothe; if (!so) return;
+  mistGroup.remove(so.note);
+  if (scared) {                                         // 엇박: 정령이 놀라 가장자리 쪽으로 물러남
+    const g = so.sp.group;
+    const d = Math.hypot(g.position.x, g.position.z) || 1;
+    g.position.x = clampMist(g.position.x + (g.position.x / d) * 3);
+    g.position.z = clampMist(g.position.z + (g.position.z / d) * 3);
+    so.sp.atTree = false;
+    spawnFloatText(MIST.x + g.position.x, 1.8, MIST.z + g.position.z, '💨 놀랐어요!', '#8a94a8', 0.9);
+  }
+  mist.soothe = null;
+}
+function clampMist(v) { return Math.max(-MIST_HALF + 1, Math.min(MIST_HALF - 1, v)); }
+function sootheTap() {
+  const so = mist.soothe; if (!so) return;
+  if (so.phase >= 0.62 && so.phase <= 0.99) {           // 🎯 ♪가 작아진 순간
+    so.step += 1; so.phase = 0;
+    Sound.blip();
+    spawnSparkle(MIST.x + so.sp.group.position.x, 1.6, MIST.z + so.sp.group.position.z, 6);
+    if (so.step >= 3) {                                 // ✨ 성불!
+      const sp = so.sp;
+      mistGroup.remove(so.note); mist.soothe = null;
+      sp.gone = 0.01;
+      const gold = sp.def.id === 'golden';
+      giveReward({ glow: gold ? SOOTHE_GLOW * 2 : SOOTHE_GLOW }, 'mist_soothe', sp.def.id);
+      gameState.mist.soothedTotal = (gameState.mist.soothedTotal || 0) + 1;
+      dexDiscover('spirit', sp.def.id);
+      Sound.harvest(); triggerMoment();
+      trackEvent('mist_soothe', { kind: sp.def.id, wave: mist.wave });   // [GA4] 달래기 성공 분포
+      syncBadges();
+    }
+  } else {
+    cancelSoothe(true);                                 // 엇박 — 부드러운 실패
+    trackEvent('mist_soothe_miss', { wave: mist.wave });                 // [GA4] 리듬 난이도 튜닝
+  }
+}
+
+// ── 숲 안 근접 프롬프트/액션 — updateDoorInteract / handleAction 에서 호출 ──
+function updateMistInteract() {
+  const lx = player.position.x - MIST.x, lz = player.position.z - MIST.z;
+  if (mist.soothe) return '♪ 리듬에 맞춰 탭!';
+  // 정령(달래기) — 도착해 나무를 갉는 정령을 우선
+  let best = null, bd = 2.4;
+  for (const s of mist.spirits) {
+    if (s.gone) continue;
+    const d = Math.hypot(s.group.position.x - lx, s.group.position.z - lz);
+    if (d < bd - (s.atTree ? 0.6 : 0)) { bd = d; best = s; }
+  }
+  if (best) return `♪ ${best.def.name} 달래기`;
+  for (const l of mistLanterns) {                       // 꺼진 등불
+    if (!l.lit && Math.hypot(l.x - lx, l.z - lz) < 1.6) return '🏮 등불 켜기';
+  }
+  if (Math.hypot(lx, lz + 3) < 2.8) {                   // 수호목
+    if (gameState.mist.purified) return '🌳 오늘은 숲이 맑아요';
+    if (!mist.active) return '🌳 숲 정화 시작하기';
+  }
+  return null;
+}
+function mistAction() {
+  const lx = player.position.x - MIST.x, lz = player.position.z - MIST.z;
+  if (mist.soothe) { sootheTap(); return; }
+  let best = null, bd = 2.4;
+  for (const s of mist.spirits) {
+    if (s.gone) continue;
+    const d = Math.hypot(s.group.position.x - lx, s.group.position.z - lz);
+    if (d < bd - (s.atTree ? 0.6 : 0)) { bd = d; best = s; }
+  }
+  if (best) { startSoothe(best); return; }
+  for (const l of mistLanterns) {
+    if (!l.lit && Math.hypot(l.x - lx, l.z - lz) < 1.6) {
+      l.lit = true;
+      doPlayerAction(MIST.x + l.x, MIST.z + l.z);
+      Sound.harvest(); spawnSparkle(MIST.x + l.x, 1.9, MIST.z + l.z, 14);
+      applyMistVisuals();
+      trackEvent('mist_lantern', { lit: mistLanterns.filter(x => x.lit).length });   // [GA4]
+      return;
+    }
+  }
+  if (Math.hypot(lx, lz + 3) < 2.8 && !mist.active && !gameState.mist.purified) { startPurify(); return; }
+}
+
 function makeBench(x, z, ry) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
   const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.5), woodMat(2, 1)); seat.position.y = 0.45; seat.castShadow = true; g.add(seat);
@@ -3805,6 +4219,13 @@ function outdoorMesh(id) {
     const fireMat = new THREE.MeshStandardMaterial({ color: 0xff8a3a, emissive: 0xff6a1a, emissiveIntensity: 0, roughness: 0.5 });
     houseWindows.push(fireMat);   // 밤에 점등
     const fire = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), fireMat); fire.position.y = 0.68; g.add(fire);
+  } else if (id === 'spiritlamp') {
+    // ✨ 정령 등불 — 굽은 가지 모양 기둥 + 정령빛(청록) 구슬. 밤에 houseWindows 와 함께 점등
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 1.3, 6), clayMat(0x4a5a58)); pole.position.y = 0.65; pole.rotation.z = 0.12; g.add(pole);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xbef3ea, emissive: 0x5fe8d0, emissiveIntensity: 0, roughness: 0.5 });
+    houseWindows.push(headMat);
+    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), headMat); head.position.set(0.16, 1.36, 0); g.add(head);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 5, 12), clayMat(0x4a5a58)); ring.position.set(0.16, 1.36, 0); g.add(ring);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -3815,7 +4236,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
   const def = OUTDOOR.find(d => d.id === id); if (!def) return false;
   if (!silent) {
     for (const k in def.cost) {
-      if ((gameState.inventory[k] || 0) < def.cost[k]) { ui.toast?.((k === 'crop' ? '작물이' : '목재가') + ' 부족해요'); return false; }
+      if ((gameState.inventory[k] || 0) < def.cost[k]) { ui.toast?.((RES_LABEL[k] || k) + '이(가) 부족해요'); return false; }
     }
     for (const k in def.cost) gameState.inventory[k] -= def.cost[k];
     refreshInventoryUI();
@@ -3824,7 +4245,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
   gameState.outdoor.push({ id, x: wx, z: wz });
   obstacles.push({ x: wx, z: wz, r: 0.8 });   // 그 위엔 밭 금지
   // 🚧 울타리·돌담·정원등·화로·허수아비는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
-  if (['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow'].includes(id)) solidCircle(wx, wz, ['postlamp', 'scarecrow'].includes(id) ? 0.22 : 0.5);
+  if (['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id)) solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5);
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
@@ -4136,6 +4557,14 @@ function updateDoorInteract() {
     if (lastZoneHint !== null) { lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }
+  if (atMist) {        // 🌫️ 안개 숲: 남쪽으로 나가기 / 수호목·등불·정령 근접
+    let prompt = null;
+    if (dist2D({ x: MIST.x, z: MIST.z + MIST_HALF }, player.position) < 1.9) { nd = 'mistexit'; prompt = '🚪 마을로 나가기'; }
+    else prompt = updateMistInteract();
+    nearDoor = nd;
+    if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+    return;   // 존 힌트는 updateMist 가 상태표시로 사용
+  }
   if (atRiver) {       // 🛶 나루터 데크: 남쪽으로 나가기 / 배·창고 근접
     if (dist2D({ x: RIVER.x, z: RIVER.z + RIVER_DOCK_HALF }, player.position) < 1.9) { nd = 'riverexit'; prompt = '🚪 마을로 나가기'; }
     else prompt = updateRiverInteract();
@@ -4159,6 +4588,9 @@ function updateDoorInteract() {
     nd = 'farm'; prompt = '🌾 내 텃밭';
   } else if (dist2D(MINE_GATE, player.position) < 2.0) {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
+  } else if (dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {
+    nd = 'mist'; prompt = '🌫️ 안개 낀 숲에 들어가기';
+    firstHint('mistGate', '🌫️', '안개 낀 숲', '마을 북서쪽, 안개가 걷히지 않는 숲이에요. 그림자 정령들이 수호목의 빛을 탐내고 있어요 — 등불과 ♪음악으로 달래서 하루의 안개를 정화해보세요. 정령빛(✨)으로 특별한 등불 장식도 만들 수 있어요!');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
     firstHint('dockGate', '🛶', '나루터', '마을 북쪽 강가예요. 들어가면 나룻배를 타고 강을 내려가는 물길이 열려요 — 장애물을 피하고 ⭐별조각을 모아 배를 강화하세요. 하루 3번 탈 수 있고, 물길은 매일 새로 바뀌어요!');
@@ -4221,7 +4653,7 @@ function updateZoneHint() {
   }
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
-function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver; }   // 마을 실외 여부(집 근처 버튼용)
+function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist; }   // 마을 실외 여부(집 근처 버튼용)
 
 // =============================================================
 //  포스트 프로세싱
@@ -4318,6 +4750,11 @@ function minimapMarks(place) {
       marks.push({ x: RIVER.x, z: RIVER.z - RIVER_DOCK_HALF - 1.4, c: '#c08d5a', r: 3.4 });     // 🛶 정박한 배
       marks.push({ x: RIVER.x - RIVER_DOCK_HALF + 2, z: RIVER.z + 1.6, c: '#e2c79a', r: 3 });   // 🧰 창고
     }
+  } else if (place === 'mist') {
+    marks.push({ x: MIST.x, z: MIST.z + MIST_HALF, c: '#c8905a', kind: 'exit' });             // 마을로(남쪽)
+    marks.push({ x: MIST.x, z: MIST.z - 3, c: '#7fe8cf', r: 3.4 });                            // 🌳 수호목
+    mistLanterns.forEach(l => marks.push({ x: MIST.x + l.x, z: MIST.z + l.z, c: l.lit ? '#9fe8ff' : '#5a626e', r: 2.2 })); // 🏮 등불(켜짐/꺼짐)
+    mist.spirits.forEach(s => { if (!s.gone) marks.push({ x: MIST.x + s.group.position.x, z: MIST.z + s.group.position.z, c: '#b08ae0', r: 2 }); }); // 정령
   } else if (place === 'cafe') {
     marks.push({ x: CAFE.x, z: CAFE.z + CAFE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
     marks.push({ x: CAFE.x + CAFE_BOARD[0], z: CAFE.z + CAFE_BOARD[1], c: '#8a7a5f', r: 2.4 }); // 📋 주문판
@@ -4330,6 +4767,8 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
+  // ?dbg=1 — 루프 상태 스냅샷(로컬 조사용): 모드·위치·눌린 키·현재 공간
+  if (_wq.has('dbg')) window.__dbg = { mode, atMist, atRiver, px: +player.position.x.toFixed(2), pz: +player.position.z.toFixed(2), keys: Object.keys(keys).filter(k => keys[k]) };
 
   if (mode === 'play') {
     updatePlayer(dt, t);
@@ -4341,12 +4780,12 @@ function animate() {
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : 'village';
+      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : place === 'river' ? RIVER : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : MINE_HALF;
+        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -4369,6 +4808,7 @@ function animate() {
   updateOreRocks();
   updateChickens(dt);   // 🐔 닭 배회(닭장 건설 후)
   updateFireflyBugs(dt, t); // 🌟 반딧불이(밤에만 계곡에 출현)
+  updateMist(dt, t);        // 🌫️ 안개 숲(정령 웨이브·수호목 빛)
   updateCafeGuests(dt, t);  // ☕ 카페 손님(숨쉬기·주문 말풍선)
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
@@ -4504,6 +4944,9 @@ function updatePlayer(dt, t) {
   } else if (atRiver) { // 🛶 나루터 데크: 물에 빠지지 않게 데크 안쪽으로 제한
     player.position.x = Math.max(RIVER.x - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.x + RIVER_DOCK_HALF - 0.7, player.position.x));
     player.position.z = Math.max(RIVER.z - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.z + RIVER_DOCK_HALF - 0.5, player.position.z));
+  } else if (atMist) {  // 🌫️ 안개 숲: 빈터 안쪽으로 제한
+    player.position.x = Math.max(MIST.x - MIST_HALF + 0.7, Math.min(MIST.x + MIST_HALF - 0.7, player.position.x));
+    player.position.z = Math.max(MIST.z - MIST_HALF + 0.7, Math.min(MIST.z + MIST_HALF - 0.5, player.position.z));
   } else {
     const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
@@ -4808,6 +5251,17 @@ function updateDayNight(dt) {
     ambient.color.setHex(0xffe6c8);   // 전구색(ambient 는 매 프레임 리셋되므로 안전)
     if (playerLight) playerLight.intensity = 0.5;
     scene.fog.color.setHex(0xe8d6b8); scene.fog.near = 26; scene.fog.far = 70;
+  }
+  // 🌫️ 안개 숲: 시간대 무관 어둑 + 짙은 안개(정화한 날은 맑고 환하게)
+  if (atMist) {
+    const clear2 = gameState.mist.purified;
+    hemiLight.intensity = clear2 ? 0.8 : 0.3; ambient.intensity = clear2 ? 0.5 : 0.42; sunLight.intensity = clear2 ? 0.8 : 0.1;
+    ambient.color.setHex(clear2 ? 0xd8f0e4 : 0x46508a);   // 정화 전: 푸른 어스름
+    if (playerLight) playerLight.intensity = clear2 ? 0.4 : 2.6;
+    scene.fog.color.setHex(clear2 ? 0xcfe8dc : 0x8a92aa);
+    // ⚠️ 카메라가 캐릭터 뒤 ~21유닛에 있어 near 는 그보다 길어야 함(짧으면 화면 전체가 화이트아웃)
+    scene.fog.near = clear2 ? 24 : 21; scene.fog.far = clear2 ? 70 : 40;   // 정화 전: 캐릭터 너머는 금세 뿌옇게
+    scene.background = scene.fog.color;   // 숲은 사방이 트여 배경이 보임 — 하늘도 안개색으로
   }
   // 채굴 동굴: 시간대 무관 밝게(잘 보이게) + 차가운 톤 + 벽 횃불
   if (atMine) {
@@ -5126,6 +5580,9 @@ function handleAction() {
   if (nearDoor === 'cafeexit') return exitCafe();
   if (nearDoor === 'river') return enterRiver();
   if (nearDoor === 'riverexit') return exitRiver();
+  if (nearDoor === 'mist') return enterMist();
+  if (nearDoor === 'mistexit') return exitMist();
+  if (atMist) { mistAction(); return; }
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기
     if (nearBoat) return startBoatRun();
     if (nearBoatShop) { trackEvent('boat_shop_open'); return ui.openBoatShop?.(boatShopView()); }
@@ -5744,7 +6201,7 @@ function updateParticles(dt) {
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
 let trackedNPC = null;                 // 퀘스트 패널에 표시할 NPC
-const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각' };
+const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛' };
 
 // id별 퀘스트 진행 상태(없으면 생성)
 function npcState(id) {
