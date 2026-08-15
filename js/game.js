@@ -146,21 +146,30 @@ const FISH_KINDS = [
   { rarity: 'uncommon', name: '붉은 물고기',   p: 0.28 },
   { rarity: 'common',   name: '피라미',        p: 1.00 },
 ];
-// ── 요리 레시피(작업대) — 작물/물고기 → 일시 버프 ───────────────
+// ── 요리 레시피(자유주방) — 작물/물고기 → 일시 버프. mg: 미니게임 종류(pot=끓이기 타이밍, chop=썰기 리듬) ──
 const RECIPES = [
-  { id: 'veg_stew',     name: '든든한 채소죽', ico: '🥘', cost: { crop: 3 },          buff: 'speed', dur: 60, desc: '60초 이동속도 +40%' },
-  { id: 'grilled_fish', name: '생선 구이',     ico: '🐟', cost: { fish: 2 },          buff: 'luck',  dur: 90, desc: '90초 희귀 물고기 확률↑' },
-  { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱', cost: { crop: 2, fish: 1 }, buff: 'chop',  dur: 90, desc: '90초 벌목 시 목재 +1' },
-  { id: 'omelette',     name: '푸짐한 오믈렛', ico: '🍳', cost: { egg: 2, crop: 1 },  buff: 'mine',  dur: 90, desc: '90초 채굴 시 광석 추가 확률↑' }, // 🥚 닭장 달걀 요리
-  { id: 'mushroom_soup', name: '숲의 버섯 스프', ico: '🍄', cost: { forage: 3 },      buff: 'speed', dur: 150, desc: '150초 이동속도 +40%' }, // 🍄 채집 숲 재료
+  { id: 'veg_stew',     name: '든든한 채소죽', ico: '🥘', cost: { crop: 3 },          buff: 'speed', dur: 60, desc: '60초 이동속도 +40%', mg: 'pot' },
+  { id: 'grilled_fish', name: '생선 구이',     ico: '🐟', cost: { fish: 2 },          buff: 'luck',  dur: 90, desc: '90초 희귀 물고기 확률↑', mg: 'chop' },
+  { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱', cost: { crop: 2, fish: 1 }, buff: 'chop',  dur: 90, desc: '90초 벌목 시 목재 +1', mg: 'chop' },
+  { id: 'omelette',     name: '푸짐한 오믈렛', ico: '🍳', cost: { egg: 2, crop: 1 },  buff: 'mine',  dur: 90, desc: '90초 채굴 시 광석 추가 확률↑', mg: 'pot' }, // 🥚 닭장 달걀 요리
+  { id: 'mushroom_soup', name: '숲의 버섯 스프', ico: '🍄', cost: { forage: 3 },      buff: 'speed', dur: 150, desc: '150초 이동속도 +40%', mg: 'pot' }, // 🍄 채집 숲 재료
 ];
 // ☕ 카페 서빙 단가 — 재료 원가(시세 기준)보다 넉넉해 "요리해서 파는" 동선이 이득이 되게
 const CAFE_PAY = { veg_stew: 30, grilled_fish: 34, lunchbox: 42, omelette: 40, mushroom_soup: 46 };
-const BUFF_META = { speed: { ico: '👟', name: '빠른 발' }, luck: { ico: '🍀', name: '낚시 행운' }, chop: { ico: '🪓', name: '벌목 보너스' }, mine: { ico: '⛏️', name: '광부의 힘' } };
+// 버프 메타 — desc는 초보자용 설명(첫 획득 모달·칩 클릭 모달에 표시)
+const BUFF_META = {
+  speed: { ico: '👟', name: '빠른 발',     desc: '이동 속도가 40% 빨라져요. 넓은 마을과 텃밭·동굴을 오갈 때 시간을 아껴줘요.' },
+  luck:  { ico: '🍀', name: '낚시 행운',   desc: '낚시할 때 희귀 물고기(🐠 붉은 물고기·🌈 무지개 물고기)가 잡힐 확률이 올라가요. 호수 부두에서 낚싯대(7번)로 낚아보세요!' },
+  chop:  { ico: '🪓', name: '벌목 보너스', desc: '나무를 벨 때마다 목재를 1개 더 받아요. 건축·작업대 재료를 모을 때 딱이에요.' },
+  mine:  { ico: '⛏️', name: '광부의 힘',   desc: '동굴에서 채굴할 때 광석(돌·석탄·💎보석)을 추가로 얻을 확률이 올라가요. 마을 서쪽 동굴 입구로!' },
+};
 const buffs = { speed: 0, luck: 0, chop: 0, mine: 0 };   // 각 버프 만료 시각(clock.elapsedTime 기준)
 function buffOn(k) { return clock.elapsedTime < buffs[k]; }
-const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(요리) 위치
+const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(도구·장식·선물 제작) 위치
 let nearBench = false;
+// 🍳 자유주방 — 작업대에서 요리를 분리한 새 작업장. 요리는 이제 미니게임(타이밍·리듬)으로 만든다
+const KITCHEN = new THREE.Vector3(7.4, 0, -6.4);  // 작업대 동쪽 옆(상점·시세판과 안 겹치는 빈터)
+let nearKitchen = false;
 const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 에서 멀리 동쪽)
 let nearShop = false;
 const MARKET = new THREE.Vector3(11.5, 0, 2.4); // 📊 시세판(상점 동쪽, 플레이어 동선 위) — 초보자도 시세를 발견하게
@@ -180,7 +189,9 @@ const PIER = { x1: 9.6, x2: 13.4, z1: 8.25, z2: 9.75 };
 function onPier(p) { return p.x > PIER.x1 - 0.5 && p.x < PIER.x2 && p.z > PIER.z1 && p.z < PIER.z2; }
 // 🐔 닭장(남쪽 필드) — 🔥 2일 연속 출석으로 해금(신규 유저도 이틀째에 도달, 초반 리텐션 훅). 매일 모이(씨앗 2) → 다음날 🥚 달걀 2개
 const COOP_STREAK = 2;                          // 해금에 필요한 연속 출석 일수
-const COOP = new THREE.Vector3(-6, 0, 13);
+const COOP = new THREE.Vector3(-4.5, 0, 11.5); // 텃밭 입구 남서쪽 트인 목 — 나무에 안 가리는 자리(초보 발견성)
+// 공원 벤치 [x, z, 회전] — 마을 중심부 트인 자리(랜덤 나무 밴드 r8~30을 피하거나 나무 회피 목록으로 보호)
+const PARK_BENCHES = [[-2.2, 4.6, 0.3], [6.5, 6.5, -1.1]];
 const COOP_COST = { wood: 25, stone: 10, coins: 60 };
 const COOP_FEED = 2;                            // 모이(씨앗) 소비량
 let nearCoop = false, coopGroup = null, coopSign = null;
@@ -430,7 +441,7 @@ const NPCS = [
     id: 'chef', name: '요리사 판다', emoji: '🐼', color: 0xe8e4dc, hat: 0xf5f5f5, pos: [0, 0, -8],
     quests: [
       { type: 'collect_crop', target: 3, title: '신선한 재료', desc: '작물 3개 보유',  reward: { coins: 8 },            line: '요리는 재료가 절반! 신선한 작물 세 개를 모아와 줘.' },
-      { type: 'cook',         target: 2, title: '오늘의 요리', desc: '요리 2번 하기',  reward: { coins: 12 },           line: '작업대에서 요리 두 번! 버프도 붙으니 일석이조야.' },
+      { type: 'cook',         target: 2, title: '오늘의 요리', desc: '요리 2번 하기',  reward: { coins: 12 },           line: '자유주방에서 요리 두 번! 타이밍을 잘 맞추면 버프도 오래가.' },
       { type: 'cook',         target: 3, title: '풀코스 도전', desc: '요리 3번 하기',  reward: { coins: 20, gem: 1 },   line: '마지막 시험이야 — 풀코스 세 접시를 완성해 봐! 💎 특별 보상이 있어.' },
     ],
   },
@@ -513,6 +524,7 @@ const gameState = {
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
+  kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
 };
 
 // ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
@@ -820,6 +832,7 @@ function resolveColliders(p) {
 }
 const houseWindows = [];          // 밤에 빛나는 창문 머티리얼
 let houseGroup, houseGhost;       // 집 그룹 / 미완성 터 표시
+let houseCollider = null;         // 🚧 집 충돌(짓는 동안 off, 완성되면 단계별 크기로 on)
 let houseSign, houseSignTex, houseSignCtx; // 집 터 안내판(멀리서도 보임)
 
 // ── 집 외관 커스터마이징 팔레트(지붕/벽/문 색) ──
@@ -890,8 +903,14 @@ export const Input = {
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() { return DECOR; },
-  getRecipes() { return RECIPES; },                     // 요리 레시피 목록
-  craftCook(id) { return craftCook(id); },              // 요리 제작(작업대)
+  getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+최고점수)
+  kitchenStart(id) { return kitchenStart(id); },        // 🍳 요리 시작(재료 소비, 미니게임 개시)
+  kitchenFinish(id, res) { return kitchenFinish(id, res); }, // 🍳 미니게임 결과 → 등급·버프·트래킹
+  mgSceneStart(type, icos, n) { mgSceneStart(type, icos, n); }, // 🍳 클로즈업 조리 무대 입장(카메라 전환)
+  mgSceneEnd() { mgSceneEnd(); },                       // 🍳 무대 종료(마을 카메라 복귀)
+  mgChopFrame(ps) { mgChopFrame(ps); },                 // 🔪 리듬 노트 위치 동기화(매 프레임)
+  mgChopHit(i, judge) { mgChopHit(i, judge); },         // 🔪 칼질 명중 연출
+  mgPotHit(step, judge, ico) { mgPotHit(step, judge, ico); }, // 🍲 끓이기 탭 연출
   getUpgrades() { return UPGRADES; },                   // 도구 업그레이드 목록
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
@@ -1080,6 +1099,7 @@ function applySave(saved) {
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
+  if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
@@ -1183,18 +1203,21 @@ function buildWorld() {
   }
 
   for (let i = 0; i < 14; i++) {
-    let x, z, tries = 0;
-    do {                                              // 호수·집터·작업대 위에 안 생기게 재시도
+    let x, z, ok = false;
+    for (let tries = 0; tries < 60 && !ok; tries++) { // 호수·집터·시설 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
-      x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
-    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 3.5 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
+      x = Math.cos(a) * r; z = Math.sin(a) * r;
+      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
-      || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6)));   // 주민 자리에 나무가 박혀 갇히지 않게
-    spawnTree(x, z);
+      || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
+      || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
+    }
+    if (ok) spawnTree(x, z);   // 빈 자리를 못 찾으면 그 나무는 생략 — 시설을 가리며 억지로 심지 않는다
   }
 
-  spawnWorkbench();   // 작업대(요리)
+  spawnWorkbench();   // 작업대(도구·장식·선물)
+  spawnKitchen();     // 🍳 자유주방(요리 미니게임)
   spawnShop();        // 상점 좌판
   spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
@@ -1633,7 +1656,7 @@ function buildEnvironment() {
   }
 
   // 공원: 벤치 2개 + 가로등 2개(밤에 빛남) + 꽃밭
-  [[-3, 8, 0.3], [4, 10, -1.1]].forEach(([x, z, ry]) => makeBench(x, z, ry));
+  PARK_BENCHES.forEach(([x, z, ry]) => makeBench(x, z, ry));
   [[-1, 7], [15, 3]].forEach(([x, z]) => makeLamp(x, z));
   const flowerCols = [0xff8fab, 0xffd36e, 0xa78bfa, 0xff9e5e, 0x8fd0ff];
   for (let i = 0; i < 28; i++) {
@@ -3592,7 +3615,7 @@ function makeBench(x, z, ry) {
   });
   scene.add(g);
   obstacles.push({ x, z, r: 1.2 }); // 벤치 위엔 밭 금지
-  solidCircle(x, z, 0.62);          // 🚧 벤치
+  solidCircle(x, z, 0.8);           // 🚧 벤치 — 폭 1.4라 끝부분까지 막히게(통과 방지)
 }
 function makeLamp(x, z) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -3647,7 +3670,21 @@ function buildHouseGhost() {
   houseGroup.position.copy(HOUSE_POS);
   scene.add(houseGroup);
   obstacles.push({ x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }); // 집 터엔 밭 금지
-  solidCircle(HOUSE_POS.x, HOUSE_POS.z, 2.2);                 // 🚧 집 벽 (문 상호작용 2.8 확보)
+  houseCollider = solidCircle(HOUSE_POS.x, HOUSE_POS.z, 2.2); // 🚧 집 벽 — 짓는 동안엔 꺼 두고 완성되면 켠다
+  syncHouseCollider();
+}
+
+// 집 충돌 반경 — 단계별 실제 풋프린트(3×3 → 4.2 → 4.6 → 5.0)에 맞춰 커진다.
+// 문 프롬프트 사거리는 이 값 +0.6 이라 어느 단계든 문 앞에 설 수 있다(PLAYER_R 0.42 감안).
+function houseSolidR() {
+  const s = gameState.houseStage;
+  return s >= 6 ? 2.7 : s >= 5 ? 2.55 : s >= 4 ? 2.4 : 2.2;
+}
+// 짓는 동안(터·기초·벽)은 터를 자유롭게 오가고, 완성(지붕, 3단계+)되면 실제 크기만큼 막는다
+function syncHouseCollider() {
+  if (!houseCollider) return;
+  houseCollider.off = gameState.houseStage < 3;
+  houseCollider.r = houseSolidR();
 }
 
 // 집 터 안내판 텍스트 갱신(완성되면 숨김)
@@ -3754,6 +3791,7 @@ function buildHouseStage(stage, silent = false) {
   }
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
+  syncHouseCollider();                        // 🚧 완성되면 충돌 on + 증축 크기 반영(짓는 동안엔 통행 자유)
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
   updateHouseSign();                          // 안내판 갱신(완성 시 숨김)
   applyHouseStyle();                          // 저장된 외관 색 반영
@@ -4068,13 +4106,246 @@ function spawnWorkbench() {
   [[-0.6, -0.35], [0.6, -0.35], [-0.6, 0.35], [0.6, 0.35]].forEach(([x, z]) => {
     const l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), clayMat(0x6b4a34)); l.position.set(x, 0.35, z); g.add(l);
   });
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.3, 12), clayMat(0x5a5148)); pot.position.set(-0.3, 0.94, 0); pot.castShadow = true; g.add(pot);
-  const soup = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05, 12), clayMat(0xff9e5e, false)); soup.position.set(-0.3, 1.09, 0); g.add(soup);
-  const board = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.35), woodMat(1, 1)); board.position.set(0.45, 0.8, 0); g.add(board);
-  g.add(makeSignpost('🍳 작업대', 1.2, 0.7));   // 팻말
+  const vise = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.2, 0.22), clayMat(0x8b8b93)); vise.position.set(-0.35, 0.88, 0); vise.castShadow = true; g.add(vise); // 바이스(공구 느낌)
+  const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.1), woodMat(1, 1)); hammer.position.set(0.4, 0.81, 0.12); hammer.rotation.y = 0.5; g.add(hammer); // 놓인 망치 자루
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.16), clayMat(0x6e6e76)); head.position.set(0.52, 0.83, 0.05); head.rotation.y = 0.5; g.add(head);
+  g.add(makeSignpost('🔧 작업대', 1.2, 0.7));   // 팻말 — 요리는 옆 🍳 자유주방으로 분리됨
   scene.add(g);
   obstacles.push({ x: BENCH.x, z: BENCH.z, r: 1.4 }); // 작업대 위엔 밭 금지
-  solidCircle(BENCH.x, BENCH.z, 1.0);                 // 🚧 (요리 상호작용 2.0 확보)
+  solidCircle(BENCH.x, BENCH.z, 1.0);                 // 🚧 (제작 상호작용 2.0 확보)
+}
+
+// ── 🍳 자유주방 — 요리 미니게임 작업장(작업대 동쪽 옆 노점형 주방) ──
+function spawnKitchen() {
+  const g = new THREE.Group(); g.position.copy(KITCHEN);
+  // 조리대(카운터)
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.8, 0.85), clayMat(0xf3e6d0)); counter.position.y = 0.4; counter.castShadow = true; g.add(counter);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.09, 1.0), woodMat(2, 1)); top.position.y = 0.85; top.castShadow = true; g.add(top);
+  // 화덕 + 냄비(김이 나는 요리 느낌)
+  const stove = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.16, 10), clayMat(0x7a5a44)); stove.position.set(-0.45, 0.97, 0); g.add(stove);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.23, 0.3, 12), clayMat(0x5a5148)); pot.position.set(-0.45, 1.18, 0); pot.castShadow = true; g.add(pot);
+  const soup = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.05, 12), clayMat(0xffb35e, false)); soup.position.set(-0.45, 1.33, 0); g.add(soup);
+  // 도마 + 칼(썰기 리듬 게임의 상징)
+  const board = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.38), woodMat(1, 1)); board.position.set(0.42, 0.92, 0.05); g.add(board);
+  const knife = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.07), clayMat(0xc9ccd4, false)); knife.position.set(0.42, 0.96, -0.06); knife.rotation.y = 0.35; g.add(knife);
+  // 차양(상점과 톤이 다른 민트 줄무늬 — 멀리서도 "주방"으로 구분)
+  for (let i = 0; i < 4; i++) {
+    const c = i % 2 ? 0x9fd8c0 : 0xfff6e6;
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.8), clayMat(c, false));
+    s.position.set(-0.75 + i * 0.5, 1.95, 0.15); s.rotation.x = -0.35; g.add(s);
+  }
+  for (const x of [-0.85, 0.85]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.05, 6), clayMat(0x6b4a34)); p.position.set(x, 1.02, -0.25); g.add(p); }
+  g.add(makeSignpost('🍳 자유주방', 1.45, 0.75));  // 팻말
+  scene.add(g);
+  obstacles.push({ x: KITCHEN.x, z: KITCHEN.z, r: 1.5 });
+  solidCircle(KITCHEN.x, KITCHEN.z, 1.1);           // 🚧 (요리 상호작용 2.2 확보)
+}
+
+// ── 🍳 자유주방 클로즈업 조리 무대 — 요리 미니게임 동안 카메라가 이 세트로 넘어간다 ──
+//    (카페 홀처럼 마을과 떨어진 별도 공간. 도마·칼·냄비를 크게 보여주는 "요리 게임 화면")
+const KSET = new THREE.Vector3(0, 0, 420);
+let kset = null;      // 세트 소품 핸들
+let mgView = null;    // { type: 'pot'|'chop' } — 활성이면 카메라가 조리대 클로즈업 고정
+
+function emojiSprite(emoji, size = 0.5) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const c = cv.getContext('2d');
+  c.font = '100px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(emoji, 64, 72);
+  const tex = new THREE.CanvasTexture(cv);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(size, size, 1);
+  return sp;
+}
+
+function buildKitchenSet() {
+  if (kset) return;
+  const g = new THREE.Group(); g.position.copy(KSET);
+  // 배경 벽 + 선반(양념병) — 아늑한 주방 느낌
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(9, 4), clayMat(0xf3e2c8, false)); wall.position.set(0, 2.2, -1.7); g.add(wall);
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.08, 0.5), woodMat(2, 1)); shelf.position.set(-0.4, 2.55, -1.45); g.add(shelf);
+  [0xd98f6a, 0x9fd8c0, 0xe8c46a, 0xc9a8ff].forEach((col, i) => {
+    const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.26, 8), clayMat(col, false));
+    jar.position.set(-1.45 + i * 0.7, 2.72, -1.45); g.add(jar);
+  });
+  // 조리대(넓은 카운터가 화면 하단을 가득 채움)
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(9, 1.0, 3.4), woodMat(3, 1)); counter.position.set(0, 0.5, 0); counter.receiveShadow = true; g.add(counter);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(9, 0.07, 3.5), clayMat(0xf7ecd8, false)); top.position.set(0, 1.03, 0); g.add(top);
+  // 🔪 도마 + 칼 (썰기 무대)
+  const boardGroup = new THREE.Group();
+  const board = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.08, 1.15), woodMat(1, 1)); board.position.set(0, 1.10, 0.15); board.castShadow = true; boardGroup.add(board);
+  const knife = new THREE.Group();
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.025), new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: 0.3, metalness: 0.6 }));
+  blade.position.set(-0.27, -0.03, 0); knife.add(blade);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.028), new THREE.MeshStandardMaterial({ color: 0xf4f6f9, roughness: 0.2, metalness: 0.7 }));
+  edge.position.set(-0.27, -0.105, 0); knife.add(edge);   // 반짝이는 칼날 라인
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 0.055), clayMat(0x5a4632)); handle.position.set(0.1, 0.02, 0); knife.add(handle);
+  knife.position.set(-0.28, 1.5, 0.55); knife.rotation.z = 0.42;   // 손잡이를 축으로 들려 있음
+  boardGroup.add(knife);
+  // ✂️ 썰기 지점 표시 — 노트가 이 흰 선에 올 때 탭
+  const cutLine = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+  cutLine.rotation.x = -Math.PI / 2; cutLine.position.set(-0.35, 1.155, 0.45); boardGroup.add(cutLine);
+  g.add(boardGroup);
+  // 🍲 화덕 + 냄비 (끓이기 무대)
+  const potGroup = new THREE.Group();
+  const stove = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.68, 0.16, 12), clayMat(0x6b5140)); stove.position.set(0, 1.12, 0.05); potGroup.add(stove);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.44, 0.46, 14), clayMat(0x54493f)); pot.position.set(0, 1.43, 0.05); pot.castShadow = true; potGroup.add(pot);
+  for (const s of [-1, 1]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.16), clayMat(0x3f362e)); h.position.set(s * 0.56, 1.52, 0.05); potGroup.add(h); }
+  const soup = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.04, 14), clayMat(0xf09a4b, false)); soup.position.set(0, 1.66, 0.05); potGroup.add(soup);
+  const flames = [];
+  for (let i = 0; i < 3; i++) { const f = emojiSprite('🔥', 0.3); f.position.set(-0.28 + i * 0.28, 1.16, 0.5); potGroup.add(f); flames.push(f); }
+  const bubbles = [];
+  for (let i = 0; i < 5; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 6), clayMat(0xffe8c8, false));
+    b.position.set((Math.random() - 0.5) * 0.6, 1.66, 0.05 + (Math.random() - 0.5) * 0.5);
+    b.userData.ph = Math.random() * 2; potGroup.add(b); bubbles.push(b);
+  }
+  const steam = [];
+  for (let i = 0; i < 2; i++) { const s = emojiSprite('♨️', 0.34); s.material.opacity = 0; s.position.set(-0.15 + i * 0.3, 1.9, 0.05); s.userData.ph = i * 1.3; potGroup.add(s); steam.push(s); }
+  const ladle = new THREE.Group();
+  const lHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 8), woodMat(1, 1)); lHandle.rotation.z = -0.5; lHandle.position.set(0.14, 0.3, 0); ladle.add(lHandle);
+  const lBowl = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), clayMat(0x8a7a68)); ladle.add(lBowl);
+  ladle.position.set(0.42, 1.7, 0.05); potGroup.add(ladle);
+  const foods = new THREE.Group(); foods.position.set(0, 1.7, 0.05); potGroup.add(foods);   // 국에 둥둥 뜨는 재료 스프라이트
+  g.add(potGroup);
+  // 조명 — 세트 전용 따뜻한 불빛(밤에도 아늑하게 보이게)
+  const light = new THREE.PointLight(0xffe0b0, 1.15, 14); light.position.set(0.4, 3.4, 2.2); g.add(light);
+  g.visible = false;
+  scene.add(g);
+  kset = { group: g, boardGroup, knife, potGroup, soup, flames, bubbles, steam, ladle, foods, light,
+    notes: [], fx: [], knifeT: -1, ladleT: -1, flareT: -1, drop: null, dropT: -1 };
+}
+
+// 미니게임 무대 입장 — 종류별 소품 토글 + 카메라 클로즈업 고정
+function mgSceneStart(type, icos = [], noteN = 0) {
+  buildKitchenSet();
+  kset.group.visible = true;
+  kset.boardGroup.visible = type === 'chop';
+  kset.potGroup.visible = type === 'pot';
+  // 이전 판 소품 정리
+  kset.notes.forEach(n => n.parent?.remove(n)); kset.notes = [];
+  kset.fx.forEach(f => f.sp.parent?.remove(f.sp)); kset.fx = [];
+  kset.foods.clear();
+  kset.knifeT = -1; kset.ladleT = -1; kset.flareT = -1; kset.dropT = -1;
+  if (kset.drop) { kset.drop.parent?.remove(kset.drop); kset.drop = null; }
+  if (type === 'pot') {                                     // 국물 위 재료
+    icos.slice(0, 3).forEach((ico, i) => {
+      const sp = emojiSprite(ico, 0.3); sp.position.set(-0.18 + i * 0.18, 0.02, 0); sp.userData.ph = i * 1.7;
+      kset.foods.add(sp);
+    });
+  } else {                                                  // 리듬 노트(도마 앞을 흘러감)
+    for (let i = 0; i < noteN; i++) {
+      const sp = emojiSprite(icos[i % Math.max(1, icos.length)] || '🥕', 0.44);
+      sp.position.set(3.4, 1.24, 0.75); sp.visible = false;
+      kset.group.add(sp); kset.notes.push(sp);
+    }
+  }
+  mgView = { type };
+  applyMgCamera();
+}
+function applyMgCamera() {
+  camera.position.set(KSET.x + 0.15, KSET.y + 2.55, KSET.z + 3.55);
+  camera.lookAt(KSET.x, KSET.y + 1.15, KSET.z - 0.3);
+}
+function mgSceneEnd() {
+  if (kset) kset.group.visible = false;
+  mgView = null;
+  snapCamera();                                             // 마을 카메라 복귀
+}
+
+// 리듬 노트 위치 동기화 — ps[i] = { p: 진행도(0=출발 1=칼 아래), s: 0진행 1처리됨 2미스 }
+const CHOP_X0 = 3.4, CHOP_X1 = -0.35;                       // 출발/타격 지점(로컬 x)
+function mgChopFrame(ps) {
+  if (!kset || !mgView) return;
+  ps.forEach((st, i) => {
+    const sp = kset.notes[i]; if (!sp) return;
+    if (st.s === 1) { sp.visible = false; return; }         // 썰린 노트는 조각 연출로 대체
+    sp.visible = st.p > 0;
+    sp.position.x = CHOP_X0 + (CHOP_X1 - CHOP_X0) * st.p;
+    if (st.s === 2) { sp.material.opacity = 0.28; sp.material.color?.set?.(0x777777); }
+  });
+}
+// 칼질 명중 — 칼 내려찍기 + 재료 반쪽 두 개가 튀어오름 + 반짝이
+function mgChopHit(i, judge) {
+  if (!kset) return;
+  kset.knifeT = 0;
+  const sp = kset.notes[i];
+  const px = sp ? sp.position.x : CHOP_X1;
+  for (const dir of [-1, 1]) {
+    const half = emojiSprite(sp?.material.map ? '' : '🥕', 0.34);
+    if (sp) { half.material.map = sp.material.map; half.material.needsUpdate = true; }
+    half.position.set(px, 1.24, 0.75);
+    kset.group.add(half);
+    kset.fx.push({ sp: half, vx: dir * (0.9 + Math.random() * 0.4), vy: 1.6 + Math.random() * 0.6, life: 0.55 });
+  }
+  spawnSparkle(KSET.x + px, KSET.y + 1.3, KSET.z + 0.75, judge === 'perfect' ? 14 : 7);
+}
+// 끓이기 탭 연출 — 단계별(재료 퐁당 / 국자 젓기 / 불길 활활)
+function mgPotHit(step, judge, ico) {
+  if (!kset) return;
+  if (step === 0) {
+    if (kset.drop) kset.drop.parent?.remove(kset.drop);
+    kset.drop = emojiSprite(ico || '🥕', 0.34);
+    kset.drop.position.set(0, 2.6, 0.05);
+    kset.potGroup.add(kset.drop); kset.dropT = 0;
+  } else if (step === 1) kset.ladleT = 0;
+  else kset.flareT = 0.55;
+  if (judge !== 'miss') spawnSparkle(KSET.x, KSET.y + 1.9, KSET.z + 0.4, judge === 'perfect' ? 14 : 7);
+}
+
+// 매 프레임 — 무대 연출(카메라 고정·거품·김·불·칼/국자 트윈·조각 물리)
+function updateMgScene(dt, t) {
+  if (!kset || !mgView) return;
+  applyMgCamera();                                          // 다른 카메라 로직이 못 뺏게 매 프레임 고정
+  // 김/거품/불/재료 — 냄비가 계속 "요리 중"으로 보이게
+  for (const b of kset.bubbles) {
+    b.position.y += dt * 0.35;
+    if (b.position.y > 1.78) { b.position.y = 1.66; b.position.x = (Math.random() - 0.5) * 0.6; }
+  }
+  for (const s of kset.steam) {
+    const ph = ((t * 0.55 + s.userData.ph) % 1.4) / 1.4;
+    s.position.y = 1.85 + ph * 0.75;
+    s.material.opacity = ph < 0.25 ? ph * 2.4 : (1 - ph) * 0.8;
+  }
+  kset.flames.forEach((f, i) => {
+    const boost = kset.flareT > 0 ? 1.5 : 1;
+    f.scale.y = 0.3 * boost * (1 + 0.18 * Math.sin(t * 13 + i * 2.1));
+    f.scale.x = 0.3 * boost;
+  });
+  if (kset.flareT > 0) kset.flareT -= dt;
+  kset.light.intensity = 1.15 + (kset.flareT > 0 ? 0.6 : 0) + 0.05 * Math.sin(t * 11);
+  kset.foods.children.forEach((f, i) => { f.position.y = 0.02 + 0.02 * Math.sin(t * 2.4 + f.userData.ph); });
+  // 🔪 칼 내려찍기 트윈(0~0.1 내려감 → 0.35 복귀)
+  if (kset.knifeT >= 0) {
+    kset.knifeT += dt;
+    const k = kset.knifeT;
+    kset.knife.rotation.z = k < 0.1 ? 0.42 - (k / 0.1) * 0.47 : k < 0.35 ? -0.05 + ((k - 0.1) / 0.25) * 0.47 : 0.42;
+    if (k >= 0.35) kset.knifeT = -1;
+  }
+  // 🥄 국자 젓기(원 궤적)
+  if (kset.ladleT >= 0) {
+    kset.ladleT += dt;
+    const a = (kset.ladleT / 0.7) * Math.PI * 2;
+    kset.ladle.position.set(Math.cos(a) * 0.26, 1.7, 0.05 + Math.sin(a) * 0.26);
+    if (kset.ladleT >= 0.7) { kset.ladleT = -1; kset.ladle.position.set(0.42, 1.7, 0.05); }
+  }
+  // 🧺 재료 퐁당(냄비 속으로 낙하 → 반짝)
+  if (kset.dropT >= 0 && kset.drop) {
+    kset.dropT += dt;
+    kset.drop.position.y = 2.6 - (kset.dropT / 0.45) * 0.95;
+    if (kset.dropT >= 0.45) {
+      kset.drop.parent?.remove(kset.drop); kset.drop = null; kset.dropT = -1;
+      spawnSparkle(KSET.x, KSET.y + 1.72, KSET.z + 0.3, 8);
+    }
+  }
+  // 반쪽 조각 물리(포물선 + 페이드)
+  for (let i = kset.fx.length - 1; i >= 0; i--) {
+    const f = kset.fx[i];
+    f.sp.position.x += f.vx * dt; f.sp.position.y += f.vy * dt;
+    f.vy -= 6 * dt; f.life -= dt;
+    f.sp.material.opacity = Math.max(0, f.life / 0.55);
+    if (f.life <= 0) { f.sp.parent?.remove(f.sp); kset.fx.splice(i, 1); }
+  }
 }
 
 // 상점 좌판(절차적)
@@ -4184,24 +4455,84 @@ function buyShop(id) {
   return { ok: true, name: it.name };
 }
 
-// 요리: 레시피 재료 확인 → 소비 → 일시 버프 적용
-function craftCook(id) {
+// ── 🍳 자유주방 — 요리 미니게임(타이밍·리듬). 결과 점수(0~100)가 요리 등급 → 버프 지속 배율을 정한다 ──
+//    게임업계식 등급 컷: 점수 구간 → 등급/배율. 잘할수록 같은 재료로 더 오래 가는 버프.
+const COOK_TIERS = [
+  { id: 'perfect', min: 88, ico: '💫', name: '최고의 맛', mult: 1.5 },
+  { id: 'great',   min: 65, ico: '😋', name: '훌륭한 맛', mult: 1.25 },
+  { id: 'good',    min: 35, ico: '🙂', name: '무난한 맛', mult: 1.0 },
+  { id: 'plain',   min: 0,  ico: '😅', name: '아쉬운 맛', mult: 0.7 },
+];
+
+// 주방 메뉴판 데이터 — index.html(ui.openKitchen)이 렌더
+function kitchenView() {
+  const inv = gameState.inventory;
+  return {
+    recipes: RECIPES.map(r => ({
+      id: r.id, name: r.name, ico: r.ico, desc: r.desc, mg: r.mg,
+      cost: Object.entries(r.cost).map(([k, v]) => ({ k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, need: v, have: inv[k] || 0 })),
+      ready: Object.entries(r.cost).every(([k, v]) => (inv[k] || 0) >= v),
+      best: gameState.kitchen.best[r.id] || 0,           // 레시피별 최고 점수(진행도 표시)
+    })),
+    cooked: gameState.kitchen.cooked || 0,
+  };
+}
+
+// 요리 시작 — 재료를 먼저 소비(중도 포기해도 요리는 낮은 등급으로 완성 → 재시도 악용 방지)
+function kitchenStart(id) {
   const r = RECIPES.find(x => x.id === id); if (!r) return { ok: false };
   for (const k in r.cost) {
-    if ((gameState.inventory[k] || 0) < r.cost[k]) return { ok: false, msg: `${RES_LABEL[k] || k}이(가) 부족해요` };   // 🥚 달걀 등 신규 재료도 안내
+    if ((gameState.inventory[k] || 0) < r.cost[k]) return { ok: false, msg: `${RES_LABEL[k] || k}이(가) 부족해요` };
   }
   for (const k in r.cost) gameState.inventory[k] -= r.cost[k];
   refreshInventoryUI();
-  buffs[r.buff] = clock.elapsedTime + r.dur * (gameState.upgrades.pot ? 1.5 : 1); // 버프 적용(🍲 큰 냄비: 지속 1.5배)
+  trackEvent('cooking_start', { recipe: id, mg_type: r.mg });   // [GA4] 미니게임 퍼널: 시작
+  return { ok: true, id, mg: r.mg, name: r.name, ico: r.ico, icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') }; // icos: 조리 장면 연출용 재료 아이콘
+}
+
+// 요리 완성 — 미니게임 결과를 받아 등급 판정 + 버프 적용 + 기록/트래킹
+// res: { score(0~100), offsets[탭별 타이밍 오차 ms, 부호 포함], maxCombo, judges:{perfect,good,miss}, durationMs, abandoned, step }
+function kitchenFinish(id, res = {}) {
+  const r = RECIPES.find(x => x.id === id); if (!r) return { ok: false };
+  const score = Math.max(0, Math.min(100, Math.round(res.score || 0)));
+  const tier = COOK_TIERS.find(t => score >= t.min) || COOK_TIERS[COOK_TIERS.length - 1];
+  const st = gameState.kitchen;
+  st.cooked = (st.cooked || 0) + 1;
+  st.tiers[tier.id] = (st.tiers[tier.id] || 0) + 1;
+  const isBest = score > (st.best[id] || 0);
+  if (isBest) st.best[id] = score;
+  const dur = Math.round(r.dur * tier.mult * (gameState.upgrades.pot ? 1.5 : 1)); // 등급 배율 × 🍲 큰 냄비 1.5배
+  buffs[r.buff] = clock.elapsedTime + dur;
   Sound.harvest();
-  spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${r.name}!`, '#c9682a');
-  spawnSparkle(player.position.x, 0.9, player.position.z, 16);
-  trackEvent('craft_item', { category: 'cook', item: id });  // [GA4] 제작 사용 트래킹(GA4 전용)
+  if (tier.id === 'perfect') { Sound.complete(); spawnConfetti(player.position.x, 2.2, player.position.z); }
+  spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${tier.ico} ${tier.name}!`, '#c9682a');
+  spawnSparkle(player.position.x, 0.9, player.position.z, tier.id === 'perfect' ? 26 : 14);
   dexDiscover('cook', id);                                   // 📖 도감(첫 요리)
-  questEvent('cook');                                        // 요리사 퀘스트 진행
+  questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
   triggerMoment();                                           // 📷 순간 줌인
   emitBuffs();
-  return { ok: true, name: r.name, buff: BUFF_META[r.buff].name };
+  // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
+  const bm = BUFF_META[r.buff];
+  setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
+    `${bm.desc} 남은 시간은 화면 오른쪽 위 칩에 표시되고, 칩을 누르면 이 설명을 다시 볼 수 있어요.`), 800);
+  // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
+  const offsets = (res.offsets || []).map(v => Math.round(v));
+  const j = res.judges || {};
+  trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
+    recipe: id, mg_type: r.mg, quality: tier.id, score,
+    avg_offset_ms: offsets.length ? Math.round(offsets.reduce((a, b) => a + Math.abs(b), 0) / offsets.length) : null, // 평균 절대 오차(정밀도)
+    offsets: offsets.join(','),                              // 탭별 원본 타이밍(부호=빠름/늦음)
+    max_combo: res.maxCombo || 0,
+    n_perfect: j.perfect || 0, n_good: j.good || 0, n_miss: j.miss || 0,
+    duration_ms: Math.round(res.durationMs || 0),
+    step: res.step ?? null,                                  // 포기 시 어느 단계까지 갔는지(퍼널 이탈 지점)
+    is_best: isBest ? 1 : 0, total_cooked: st.cooked,        // 유저 진행도(누적 요리 수)
+  });
+  return {
+    ok: true, name: r.name, ico: r.ico, score, isBest, cooked: st.cooked,
+    tier: { id: tier.id, ico: tier.ico, name: tier.name, mult: tier.mult },
+    buff: { ...BUFF_META[r.buff], dur },
+  };
 }
 
 // 도구 업그레이드 제작(영구) — 이미 보유면 거절
@@ -4228,7 +4559,7 @@ let lastBuffKey = '';
 function emitBuffs() {
   const now = clock.elapsedTime;
   const list = Object.keys(buffs).filter(k => now < buffs[k])
-    .map(k => ({ ico: BUFF_META[k].ico, name: BUFF_META[k].name, remain: Math.ceil(buffs[k] - now) }));
+    .map(k => ({ k, ico: BUFF_META[k].ico, name: BUFF_META[k].name, desc: BUFF_META[k].desc, remain: Math.ceil(buffs[k] - now) })); // desc: 칩 클릭 설명 모달용
   const key = list.map(b => b.ico + b.remain).join('|');
   if (key !== lastBuffKey) { lastBuffKey = key; ui.setBuffs?.(list); }
 }
@@ -4634,7 +4965,7 @@ function updateDoorInteract() {
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
-  } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
+  } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < houseSolidR() + 0.6) { // 증축 크기에 맞춰 문 사거리도 확장
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {
     nd = 'farm'; prompt = '🌾 내 텃밭';
@@ -4652,13 +4983,15 @@ function updateDoorInteract() {
   }
   nearDoor = nd;
   if (nd === 'mine') firstHint('mineGate', '⛏️', '채굴 동굴 입구', '들어가면 어두운 동굴에서 ⛏️괭이로 돌·석탄·보석을 캘 수 있어요. 작업대 재료와 상점 판매에 쓰여요!');
-  // 작업대(요리) / 상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
+  // 자유주방/작업대/상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
   const inVillage = !indoor && !atFarm && !atMine && !atRiver && !nd;
-  nearBench = inVillage && dist2D(BENCH, player.position) < 2.0;
-  nearShop = inVillage && !nearBench && dist2D(SHOP, player.position) < 2.0;
-  nearMarket = inVillage && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
-  nearCoop = inVillage && !nearBench && !nearShop && !nearMarket && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
-  if (nearBench) prompt = '🍳 요리하기 (작업대)';
+  nearKitchen = inVillage && dist2D(KITCHEN, player.position) < 2.2;               // 🍳 자유주방(요리 미니게임)
+  nearBench = inVillage && !nearKitchen && dist2D(BENCH, player.position) < 2.0;
+  nearShop = inVillage && !nearKitchen && !nearBench && dist2D(SHOP, player.position) < 2.0;
+  nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
+  nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
+  if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
+  else if (nearBench) prompt = '🔧 만들기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHint('market', '📊', '시세 전광판', '판매 가격이 매일 바뀌어요! 전광판에서 오늘 비싼 품목을 확인하고 비쌀 때 파세요 🪙'); }
   else if (nearCoop) {
@@ -4667,7 +5000,8 @@ function updateDoorInteract() {
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
-  if (nearBench) firstHint('bench', '🍳', '작업대', '재료(작물·물고기·목재)로 요리(일시 버프)·도구 강화·야외 장식·주민 선물을 만들 수 있어요. 4개 탭에서 골라 만들어보세요!');
+  if (nearKitchen) firstHint('kitchen', '🍳', '자유주방', '재료로 요리하는 미니게임 작업장이에요! 🍲끓이기는 바늘이 초록 구간에 올 때 탭, 🔪썰기는 리듬에 맞춰 탭 — 타이밍이 좋을수록 요리 등급이 올라 버프가 오래가요.');
+  else if (nearBench) firstHint('bench', '🔧', '작업대', '재료(목재·돌·작물)로 도구 강화·야외 장식·주민 선물을 만들 수 있어요. 요리는 옆의 🍳 자유주방에서!');
   else if (nearShop) firstHint('shop', '🛒', '상점', '작물·물고기·목재를 팔아 🪙코인을 벌고, 씨앗 등을 살 수 있어요. (팔기: 탭하면 1개, 꾹 누르면 전부)');
   else if (nd === 'farm') firstHint('farmGate', '🌾', '내 텃밭 입구', '들어가면 나만의 넓은 밭이 있어요. 마을과 별개로, 마음껏 농사지을 수 있는 나만의 공간이에요!');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)
@@ -4820,14 +5154,16 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   // ?dbg=1 — 루프 상태 스냅샷(로컬 조사용): 모드·위치·눌린 키·현재 공간
-  if (_wq.has('dbg')) window.__dbg = { mode, atMist, atRiver, px: +player.position.x.toFixed(2), pz: +player.position.z.toFixed(2), keys: Object.keys(keys).filter(k => keys[k]) };
+  if (_wq.has('dbg')) window.__dbg = { mode, atMist, atRiver, px: +player.position.x.toFixed(2), pz: +player.position.z.toFixed(2), keys: Object.keys(keys).filter(k => keys[k]), nearKitchen, nearBench, nearNPC: !!nearNPC, nearDoor, wantAction };
 
   if (mode === 'play') {
-    updatePlayer(dt, t);
-    updateCamera(dt);
-    handleAction();
-    updateNPCInteract();
-    updateDoorInteract();
+    if (!mgView) { updatePlayer(dt, t); updateCamera(dt); }
+    else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
+    if (!mgView) {
+      handleAction();
+      updateNPCInteract();
+      updateDoorInteract();
+    }
     updateFishing();
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
@@ -5659,7 +5995,8 @@ function handleAction() {
     return;
   }
   if (placingOutdoor) return placeOutdoor(player.position.x, player.position.z); // 야외 장식 설치 중이면 발밑에 설치
-  if (nearBench) return ui.openCook?.();   // 작업대 근처 → 요리 메뉴
+  if (nearKitchen) { trackEvent('kitchen_open'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
+  if (nearBench) return ui.openCook?.();   // 작업대 근처 → 제작 메뉴(도구·야외·선물)
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
