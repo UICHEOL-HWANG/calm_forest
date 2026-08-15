@@ -3043,7 +3043,8 @@ function updateRiverObjects(dt, t, seg) {
         else {
           boat.picks[it.pick] = (boat.picks[it.pick] || 0) + 1;
           const k = RIVER_PICKS.find(x => x.id === it.pick);
-          Sound.harvest(); spawnFloatText(player.position.x, 1.6, player.position.z, `${k?.ico || ''} ${k?.name || ''}`, '#2fa564');
+          // 배 앞쪽에 작게 — 배 위치(=1인칭 카메라 앞)에 띄우면 세로 화면에서 시야각을 넘쳐 잘림
+          Sound.harvest(); spawnFloatText(player.position.x, 1.9, player.position.z - 10, `${k?.ico || ''} ${k?.name || ''}`, '#2fa564', 0.8);
           trackEvent('boat_pickup', { item: it.pick, dist_m: Math.round(boat.dist), seg });   // [GA4] 희귀 획득 분포
         }
         spawnSparkle(player.position.x, 1, player.position.z, 8);
@@ -3071,7 +3072,8 @@ function updateRiverObjects(dt, t, seg) {
       Sound.build();
       spawnDust(player.position.x, player.position.z, 10);
       spawnSparkle(player.position.x, 0.5, player.position.z - 1.5, 14);       // 물보라 팍!
-      spawnFloatText(player.position.x, 1.7, player.position.z, boat.lamps > 0 ? `💥 -1 (💡${boat.lamps})` : '💥 배가 가라앉아요…', '#d9534f');
+      // 배 앞쪽에 작게 — 세로 화면(모바일)의 좁은 가로 시야각 안에 들어오게
+      spawnFloatText(player.position.x, 1.9, player.position.z - 10, boat.lamps > 0 ? `💥 -1 (💡${boat.lamps})` : '💥 배가 가라앉아요…', '#d9534f', 0.8);
       trackEvent('boat_hit', { obstacle: it.kind, dist_m: Math.round(boat.dist), seg, lamps_left: boat.lamps }); // [GA4] 난이도 튜닝
       if (boat.lamps <= 0) {                       // 🌊 마지막 충돌: 충돌 지점에서 배가 기울며 가라앉는 연출 → 결과 화면
         boat.wreckAt = boat.t + 1.9;
@@ -5585,15 +5587,22 @@ function tryBuild() {
 // =============================================================
 // ── 획득 표시: "+3 🪵" 처럼 위로 떠오르며 사라지는 텍스트(스프라이트) ──
 const floatTexts = [];
-function spawnFloatText(x, y, z, text, color = '#3a4a40') {
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96;
-  const c = cv.getContext('2d');
+// scale: 좁은 화면·가까운 카메라(🛶 뱃놀이 등)에서 줄여 그리기 위한 배율(기본 1)
+function spawnFloatText(x, y, z, text, color = '#3a4a40', scale = 1) {
+  const cv = document.createElement('canvas');
+  let c = cv.getContext('2d');
+  c.font = 'bold 52px sans-serif';
+  // 캔버스 폭을 텍스트 길이에 맞춤 — 고정 256px 이던 시절 긴 한글("배가 가라앉아요…")이 잘렸음
+  const w = Math.ceil(Math.min(1024, Math.max(256, c.measureText(text).width + 48)));
+  cv.width = w; cv.height = 96;                       // width 대입 → 컨텍스트 상태 리셋됨
+  c = cv.getContext('2d');
   c.font = 'bold 52px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.lineWidth = 8; c.strokeStyle = 'rgba(255,255,255,0.92)'; c.strokeText(text, 128, 48);
-  c.fillStyle = color; c.fillText(text, 128, 48);
+  c.lineWidth = 8; c.strokeStyle = 'rgba(255,255,255,0.92)'; c.strokeText(text, w / 2, 48);
+  c.fillStyle = color; c.fillText(text, w / 2, 48);
   const tex = new THREE.CanvasTexture(cv);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
-  sp.scale.set(1.9, 0.72, 1); sp.position.set(x, y, z);
+  sp.scale.set(0.72 * (w / 96) * scale, 0.72 * scale, 1);   // 캔버스 비율 유지(w=256, scale=1 → 기존 1.9와 동일)
+  sp.position.set(x, y, z);
   sp.userData = { life: 1.4, vy: 1.5 };
   scene.add(sp); floatTexts.push(sp);
 }
