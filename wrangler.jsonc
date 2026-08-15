@@ -54,6 +54,9 @@
   // 정적 자산은 dist/ 만. 저장소 루트를 그대로 올리면 .git · sql · scripts 까지 공개됨.
   "assets": {
     "directory": "./dist",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // 자산 요청도 워커를 먼저 태움 — www→apex 리다이렉트가 페이지 요청에도 적용되게.
+    // (기본값은 자산 직접 서빙이라 워커의 호스트 분기가 /api/* 에만 먹혔음)
+    "run_worker_first": true
   }
 }
