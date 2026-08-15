@@ -189,7 +189,9 @@ const PIER = { x1: 9.6, x2: 13.4, z1: 8.25, z2: 9.75 };
 function onPier(p) { return p.x > PIER.x1 - 0.5 && p.x < PIER.x2 && p.z > PIER.z1 && p.z < PIER.z2; }
 // 🐔 닭장(남쪽 필드) — 🔥 2일 연속 출석으로 해금(신규 유저도 이틀째에 도달, 초반 리텐션 훅). 매일 모이(씨앗 2) → 다음날 🥚 달걀 2개
 const COOP_STREAK = 2;                          // 해금에 필요한 연속 출석 일수
-const COOP = new THREE.Vector3(-6, 0, 13);
+const COOP = new THREE.Vector3(-4.5, 0, 11.5); // 텃밭 입구 남서쪽 트인 목 — 나무에 안 가리는 자리(초보 발견성)
+// 공원 벤치 [x, z, 회전] — 마을 중심부 트인 자리(랜덤 나무 밴드 r8~30을 피하거나 나무 회피 목록으로 보호)
+const PARK_BENCHES = [[-2.2, 4.6, 0.3], [6.5, 6.5, -1.1]];
 const COOP_COST = { wood: 25, stone: 10, coins: 60 };
 const COOP_FEED = 2;                            // 모이(씨앗) 소비량
 let nearCoop = false, coopGroup = null, coopSign = null;
@@ -830,6 +832,7 @@ function resolveColliders(p) {
 }
 const houseWindows = [];          // 밤에 빛나는 창문 머티리얼
 let houseGroup, houseGhost;       // 집 그룹 / 미완성 터 표시
+let houseCollider = null;         // 🚧 집 충돌(짓는 동안 off, 완성되면 단계별 크기로 on)
 let houseSign, houseSignTex, houseSignCtx; // 집 터 안내판(멀리서도 보임)
 
 // ── 집 외관 커스터마이징 팔레트(지붕/벽/문 색) ──
@@ -1200,18 +1203,21 @@ function buildWorld() {
   }
 
   for (let i = 0; i < 14; i++) {
-    let x, z, tries = 0;
-    do {                                              // 호수·집터·작업대 위에 안 생기게 재시도
+    let x, z, ok = false;
+    for (let tries = 0; tries < 60 && !ok; tries++) { // 호수·집터·시설 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
-      x = Math.cos(a) * r; z = Math.sin(a) * r; tries++;
-    } while (tries < 24 && (dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 3.5 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
+      x = Math.cos(a) * r; z = Math.sin(a) * r;
+      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
-      || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6)));   // 주민 자리에 나무가 박혀 갇히지 않게
-    spawnTree(x, z);
+      || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
+      || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
+    }
+    if (ok) spawnTree(x, z);   // 빈 자리를 못 찾으면 그 나무는 생략 — 시설을 가리며 억지로 심지 않는다
   }
 
-  spawnWorkbench();   // 작업대(요리)
+  spawnWorkbench();   // 작업대(도구·장식·선물)
+  spawnKitchen();     // 🍳 자유주방(요리 미니게임)
   spawnShop();        // 상점 좌판
   spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
@@ -1650,7 +1656,7 @@ function buildEnvironment() {
   }
 
   // 공원: 벤치 2개 + 가로등 2개(밤에 빛남) + 꽃밭
-  [[-3, 8, 0.3], [4, 10, -1.1]].forEach(([x, z, ry]) => makeBench(x, z, ry));
+  PARK_BENCHES.forEach(([x, z, ry]) => makeBench(x, z, ry));
   [[-1, 7], [15, 3]].forEach(([x, z]) => makeLamp(x, z));
   const flowerCols = [0xff8fab, 0xffd36e, 0xa78bfa, 0xff9e5e, 0x8fd0ff];
   for (let i = 0; i < 28; i++) {
@@ -3609,7 +3615,7 @@ function makeBench(x, z, ry) {
   });
   scene.add(g);
   obstacles.push({ x, z, r: 1.2 }); // 벤치 위엔 밭 금지
-  solidCircle(x, z, 0.62);          // 🚧 벤치
+  solidCircle(x, z, 0.8);           // 🚧 벤치 — 폭 1.4라 끝부분까지 막히게(통과 방지)
 }
 function makeLamp(x, z) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -3664,7 +3670,21 @@ function buildHouseGhost() {
   houseGroup.position.copy(HOUSE_POS);
   scene.add(houseGroup);
   obstacles.push({ x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }); // 집 터엔 밭 금지
-  solidCircle(HOUSE_POS.x, HOUSE_POS.z, 2.2);                 // 🚧 집 벽 (문 상호작용 2.8 확보)
+  houseCollider = solidCircle(HOUSE_POS.x, HOUSE_POS.z, 2.2); // 🚧 집 벽 — 짓는 동안엔 꺼 두고 완성되면 켠다
+  syncHouseCollider();
+}
+
+// 집 충돌 반경 — 단계별 실제 풋프린트(3×3 → 4.2 → 4.6 → 5.0)에 맞춰 커진다.
+// 문 프롬프트 사거리는 이 값 +0.6 이라 어느 단계든 문 앞에 설 수 있다(PLAYER_R 0.42 감안).
+function houseSolidR() {
+  const s = gameState.houseStage;
+  return s >= 6 ? 2.7 : s >= 5 ? 2.55 : s >= 4 ? 2.4 : 2.2;
+}
+// 짓는 동안(터·기초·벽)은 터를 자유롭게 오가고, 완성(지붕, 3단계+)되면 실제 크기만큼 막는다
+function syncHouseCollider() {
+  if (!houseCollider) return;
+  houseCollider.off = gameState.houseStage < 3;
+  houseCollider.r = houseSolidR();
 }
 
 // 집 터 안내판 텍스트 갱신(완성되면 숨김)
@@ -3771,6 +3791,7 @@ function buildHouseStage(stage, silent = false) {
   }
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
+  syncHouseCollider();                        // 🚧 완성되면 충돌 on + 증축 크기 반영(짓는 동안엔 통행 자유)
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
   updateHouseSign();                          // 안내판 갱신(완성 시 숨김)
   applyHouseStyle();                          // 저장된 외관 색 반영
@@ -4944,7 +4965,7 @@ function updateDoorInteract() {
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
-  } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 2.8) {
+  } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < houseSolidR() + 0.6) { // 증축 크기에 맞춰 문 사거리도 확장
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {
     nd = 'farm'; prompt = '🌾 내 텃밭';
