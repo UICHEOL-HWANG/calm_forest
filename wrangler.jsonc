@@ -5,6 +5,13 @@
   //    기존 주소는 옛 내용 그대로 남습니다.
   "name": "calmforest",
   "compatibility_date": "2026-08-12",
+
+  // 🌐 커스텀 도메인 — 대시보드 클릭 대신 코드로 선언(배포마다 보장, 환경변수 때와 같은 원칙).
+  //    zone(calmforest.cloud)이 이 Cloudflare 계정에 있어야 하며, 배포 시 DNS·인증서가 자동 생성됩니다.
+  "routes": [
+    { "pattern": "calmforest.cloud", "custom_domain": true },
+    { "pattern": "www.calmforest.cloud", "custom_domain": true }
+  ],
   "compatibility_flags": ["nodejs_compat"],
 
   // 로그·트레이스 — 손님 생성 실패(키 만료·무료 한도 초과)는 게임이 조용히
