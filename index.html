@@ -533,7 +533,10 @@
   .ck-item .ck-cost { font-size: 10.5px; opacity: .75; }
   /* 활성 버프 HUD — 우측 상단 인벤토리 아래 */
   #buffs { position: fixed; top: calc(84px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
-  #buffs .buff { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.72); border-radius: 12px; padding: 5px 10px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow); }
+  #buffs .buff { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.72); border-radius: 12px; padding: 5px 10px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow);
+    pointer-events: auto; cursor: pointer; transition: transform .1s; }   /* 칩을 누르면 설명 모달 */
+  #buffs .buff:active { transform: scale(0.95); }
+  #hint-modal { z-index: 45; }   /* 버프 설명 등 안내 모달은 미니게임 오버레이(40)·가방(41) 위에도 뜨게 */
   #buffs .buff .b-t { opacity: .7; font-variant-numeric: tabular-nums; }
 
   /* NPC 대화/퀘스트 모달 */
@@ -1045,7 +1048,7 @@
     <div class="tut-card">
       <div class="tut-emoji" id="hint-emoji">🌿</div>
       <h2 id="hint-title"></h2>
-      <p id="hint-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px;"></p>
+      <p id="hint-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
       <button id="hint-ok">알겠어요 🌱</button>
     </div>
   </div>
@@ -1414,11 +1417,13 @@
       },
       // 🧰 뱃사공의 창고(배 강화)
       openBoatShop(d) { renderBoatShop(d); Input.setAnalog(0, 0); $('boat-shop').classList.add('show'); },
-      // 활성 버프 HUD 갱신 (list: [{ico,name,remain}])
+      // 활성 버프 HUD 갱신 (list: [{k,ico,name,desc,remain}]) — 칩을 누르면 설명 모달(초보 안내)
       setBuffs(list) {
+        lastBuffs = list || [];
         const box = $('buffs');
-        box.innerHTML = (list || []).map(b =>
-          `<div class="buff"><span>${b.ico}</span><span>${b.name}</span><span class="b-t">${b.remain}s</span></div>`).join('');
+        box.innerHTML = lastBuffs.map(b =>
+          `<div class="buff" data-k="${b.k}" title="눌러서 설명 보기"><span>${b.ico}</span><span>${b.name}</span><span class="b-t">${b.remain}s</span></div>`).join('');
+        if (lastBuffs.length) layoutBuffs();
       },
       // 미니맵 — 캐릭터 대략 위치 + 주요 지형 (레티나 대응)
       setMinimap(d) {

@@ -4559,7 +4559,7 @@ let lastBuffKey = '';
 function emitBuffs() {
   const now = clock.elapsedTime;
   const list = Object.keys(buffs).filter(k => now < buffs[k])
-    .map(k => ({ ico: BUFF_META[k].ico, name: BUFF_META[k].name, remain: Math.ceil(buffs[k] - now) }));
+    .map(k => ({ k, ico: BUFF_META[k].ico, name: BUFF_META[k].name, desc: BUFF_META[k].desc, remain: Math.ceil(buffs[k] - now) })); // desc: 칩 클릭 설명 모달용
   const key = list.map(b => b.ico + b.remain).join('|');
   if (key !== lastBuffKey) { lastBuffKey = key; ui.setBuffs?.(list); }
 }
