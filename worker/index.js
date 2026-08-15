@@ -18,7 +18,14 @@ import { onRequestPost as photoUrls } from '../functions/api/photo-urls.js';
 export default {
   async fetch(request, env, ctx) {
     try {
-      const { pathname } = new URL(request.url);
+      const url = new URL(request.url);
+      const { pathname } = url;
+
+      // 🌐 www → apex 301 — 오리진을 하나로(OAuth 리다이렉트·OG·분석이 이원화되지 않게)
+      if (url.hostname === 'www.calmforest.cloud') {
+        url.hostname = 'calmforest.cloud';
+        return Response.redirect(url.toString(), 301);
+      }
 
       if (pathname === '/api/cafe-guests') {
         if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
