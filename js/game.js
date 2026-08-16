@@ -421,7 +421,8 @@ const NPCS = [
     ],
   },
   {
-    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [9, 0, -3],
+    // 상점 동쪽 트인 벌판 — 작업대(4,-5)·자유주방(7.4,-6.4)·상점(9,0) 동선을 막지 않게(배회 반경 1.6 감안)
+    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [13.5, 0, -1.5],
     quests: [
       { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
