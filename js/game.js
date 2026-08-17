@@ -526,6 +526,7 @@ const gameState = {
   boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
+  story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
 };
 
 // ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
@@ -676,6 +677,100 @@ function syncBadges() {
   if ((gameState.mist?.purifyTotal || 0) >= 1) awardBadge('purifier');             // 🌫️ 첫 정화
   if ((gameState.mist?.soothedTotal || 0) >= 20) awardBadge('spirit_friend');      // ✨ 정령 20마리
   if (dexCount() === DEX_TOTAL) awardBadge('dex_master');
+}
+
+// ═══════════════ 📖 메인 퀘스트(이야기) — 기존 콘텐츠를 챕터로 묶는 서사 축 ═══════════════
+//  프롤로그 컷신에서 이어지는 4개의 장. 새 시스템이 아니라 "이미 하게 될 일"에 서사와 순서를 얹는다.
+//  강제 없음(코지 문법): HUD 칩이 "다음에 하면 좋은 것"을 알려주고, 조건이 차면 어디서든 완료된다.
+//  안내자는 🦉 의뢰 올빼미 — 완료 모달의 기록자 화자.
+const STORY = [
+  {
+    id: 'home', ico: '🏠', title: '보금자리', goal: '빈 터에 집 완성하기 (3단계)',
+    start: '떠돌이 생활은 여기까지. 반투명한 터에 나만의 집을 지어보자. 나무를 베면 목재를 얻어요!',
+    done: '지붕 아래서 맞는 첫 밤이에요. 이제 이 숲이 진짜 집이 됐어요.',
+    reward: { coins: 40 },
+  },
+  {
+    id: 'friends', ico: '💬', title: '이웃들', goal: '주민 의뢰 3개 완료하기',
+    start: '이 숲엔 먼저 온 이웃들이 있어요. ❕말풍선이 뜬 주민에게 다가가 의뢰를 도우며 인사를 나눠보자.',
+    done: '이제 길에서 마주치면 반갑게 인사하는 사이. 이웃이 생겼어요.',
+    reward: { seed: 5, coins: 30 },
+  },
+  {
+    id: 'taste', ico: '🍳', title: '마을의 맛', goal: '자유주방 요리 1번 + 카페 서빙 1번',
+    start: '숲에서 거둔 재료로 요리를 해보자. 그리고 나누면 두 배로 맛있대요 — 카페 손님이 기다려요.',
+    done: '당신의 요리가 누군가의 하루를 데웠어요. 마을에 맛있는 소문이 돌기 시작해요.',
+    reward: { coins: 50 },
+  },
+  {
+    id: 'secret', ico: '🌫️', title: '숲의 비밀', goal: '안개 낀 숲 정화하기 (1회)',
+    start: '북서쪽 숲의 안개가 걷히질 않는대요. 그러고 보니… 그날의 잎사귀, 우연이 아니었을지도.',
+    done: '수호목이 속삭였어요 — "바람에 잎사귀를 실어 보낸 건 나였단다. 지친 여행자야, 잘 왔다." 당신의 이야기는 이제 이 숲과 함께 계속됩니다.',
+    reward: { coins: 80 },
+  },
+];
+
+let storyBooted = false;   // 첫 syncStory(세이브 소급)는 조용히, 이후엔 축하 연출
+
+// 챕터 달성 여부 — 전부 기존 상태에서 파생(새 카운터는 의뢰 수 q 하나뿐)
+function storyDone(i) {
+  const s = gameState;
+  if (i === 0) return s.houseStage >= 3;
+  if (i === 1) return (s.story.q || 0) >= 3;
+  if (i === 2) return (s.kitchen.cooked || 0) >= 1 && (s.cafe.served || 0) >= 1;
+  if (i === 3) return (s.mist?.purifyTotal || 0) >= 1;
+  return false;
+}
+function storyProgressText(i) {
+  const s = gameState;
+  if (i === 0) return `${Math.min(s.houseStage, 3)}/3 단계`;
+  if (i === 1) return `${Math.min(s.story.q || 0, 3)}/3 의뢰`;
+  if (i === 2) return `요리 ${Math.min(s.kitchen.cooked || 0, 1)}/1 · 서빙 ${Math.min(s.cafe.served || 0, 1)}/1`;
+  if (i === 3) return `정화 ${Math.min(s.mist?.purifyTotal || 0, 1)}/1`;
+  return '';
+}
+// index.html(스토리 칩·모달)이 렌더할 뷰
+function storyView() {
+  const ch = gameState.story.ch;
+  return {
+    ch,
+    allDone: ch >= STORY.length,
+    chapters: STORY.map((c, i) => ({
+      n: i + 1, ico: c.ico, title: c.title, goal: c.goal,
+      line: i < ch ? c.done : c.start,
+      state: i < ch ? 'done' : i === ch ? 'now' : 'lock',
+      progress: i === ch ? storyProgressText(i) : null,
+    })),
+  };
+}
+
+// 진행 판정(멱등) — 접속 소급 + 각 마일스톤 훅에서 호출
+function syncStory() {
+  const st = gameState.story;
+  let retro = 0;
+  while (st.ch < STORY.length && storyDone(st.ch)) {
+    const c = STORY[st.ch];
+    giveReward(c.reward, 'story', c.id);                       // [원장] 챕터 보상 출처 기록
+    trackEvent('story_chapter_complete', { chapter: c.id, n: st.ch + 1, retro: storyBooted ? 0 : 1 }); // [GA4] 온보딩→후반 진행 퍼널
+    st.ch++;
+    if (storyBooted) {
+      const next = STORY[st.ch];
+      Sound.complete(); spawnConfetti(player.position.x, 2.6, player.position.z);
+      ui.showHintModal?.({
+        ico: c.ico, title: `${st.ch}장 완료 — ${c.title}`,
+        body: `${c.done}\n\n🦉 의뢰 올빼미가 당신의 이야기를 기록했어요. 보상 🪙${c.reward.coins}${c.reward.seed ? ` · 🌰${c.reward.seed}` : ''}`
+          + (next ? `\n\n다음 이야기 — ${next.ico} ${st.ch + 1}장 「${next.title}」: ${next.goal}` : ''),
+      });
+    } else retro++;
+  }
+  // 현재 장의 시작을 1회만 기록(퍼널 시작점)
+  const cur = STORY[gameState.story.ch];
+  if (cur && !st.started[cur.id]) {
+    st.started[cur.id] = 1;
+    trackEvent('story_chapter_start', { chapter: cur.id, n: st.ch + 1 });
+  }
+  if (retro) ui.toast?.(`📖 지난 이야기 ${st.ch}장까지의 기록이 정리됐어요 (+보상)`, 3000);
+  ui.setStory?.(storyView());
 }
 
 // 예보 날씨가 아직 도감에 없으면 재방문 훅 문구 — 출석 모달·올빼미 대사에 붙임
@@ -909,6 +1004,7 @@ export const Input = {
   kitchenFinish(id, res) { return kitchenFinish(id, res); }, // 🍳 미니게임 결과 → 등급·버프·트래킹
   mgSceneStart(type, icos, n) { mgSceneStart(type, icos, n); }, // 🍳 클로즈업 조리 무대 입장(카메라 전환)
   mgSceneEnd() { mgSceneEnd(); },                       // 🍳 무대 종료(마을 카메라 복귀)
+  getStory() { return storyView(); },                   // 📖 메인 퀘스트 현황(칩·모달 렌더용)
   introStart() { return introStart(); },                // 🎬 프롤로그 시작(이미 봤으면 false 반환)
   introSkip() { if (intro) introEnd(true); },           // 🎬 건너뛰기
   introActive() { return !!intro; },
@@ -1079,6 +1175,7 @@ export async function enterGame() {
   }
   dexDiscover('weather', WEATHER);      // 🌦️ 날씨 도감 — 오늘 날씨를 겪어야 등록(재방문 훅)
   syncBadges();                         // 🏅 옛 세이브 소급 지급(집·체인·스트릭 등)
+  syncStory(); storyBooted = true;      // 📖 메인 퀘스트 소급(조용히) — 이후부터는 축하 연출
   resolveWeatherEvent();                // 🌡️ 날씨 이벤트 정산(동기) — 시든 작물은 밤손님 후보에서 빠짐
   resolveNightVisit();                  // 🦝 밤손님 — 밤이 지났으면 서버 판정(await 안 함, 실패해도 입장 안 막음)
   if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
@@ -1107,6 +1204,8 @@ function applySave(saved) {
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
+  if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
+  else if (saved.npcs) gameState.story.q = Object.values(gameState.npcs).reduce((a, n) => a + (n.idx || 0), 0); // 옛 세이브: 의뢰 수 소급 추정
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
@@ -2516,6 +2615,7 @@ function serveCafeGuest(guest) {
   nearCafeGuest = null;
   refreshCafeGuests();                                            // 만족한 손님은 자리를 뜸
   trackEvent('cafe_serve', { recipe: o.recipe.id, npc: o.id, pay, served_total: st.served, affinity: aff }); // [GA4] 접객 루프 KPI
+  syncStory();                                                    // 📖 3장(마을의 맛) 진행
   if (st.done.length >= CAFE_ORDERS && !st.bonus) {               // 🎉 오늘 영업 완주
     st.bonus = true;
     giveReward({ coins: CAFE_BONUS }, 'cafe_bonus', st.date);
@@ -3429,6 +3529,7 @@ function mistEnd(result) {
   const st = gameState.mist;
   if (result === 'purified') {
     st.purified = true; st.purifyTotal = (st.purifyTotal || 0) + 1;
+    setTimeout(() => syncStory(), 2200);   // 📖 4장(숲의 비밀) — 정화 축하 연출이 먼저 지나가고 나서
     giveReward({ glow: PURIFY_GLOW }, 'mist_purify', 'day');
     Sound.complete();
     spawnConfetti(MIST.x, 4, MIST.z - 3); spawnSparkle(MIST.x, 3, MIST.z - 3, 40);
@@ -3799,6 +3900,7 @@ function buildHouseStage(stage, silent = false) {
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
   syncHouseCollider();                        // 🚧 완성되면 충돌 on + 증축 크기 반영(짓는 동안엔 통행 자유)
+  if (!silent) syncStory();                   // 📖 1장(보금자리) 진행
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
   updateHouseSign();                          // 안내판 갱신(완성 시 숨김)
   applyHouseStyle();                          // 저장된 외관 색 반영
@@ -4711,6 +4813,7 @@ function kitchenFinish(id, res = {}) {
   questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
   triggerMoment();                                           // 📷 순간 줌인
   emitBuffs();
+  syncStory();                                               // 📖 3장(마을의 맛) 진행
   // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
   const bm = BUFF_META[r.buff];
   setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
@@ -6982,6 +7085,7 @@ export function npcClaim() {
     const elapsed = st.acceptedAt ? Math.round((Date.now() - st.acceptedAt) / 1000) : null;
     trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0 }); // [GA4]
     st.idx++; st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
+    gameState.story.q = (gameState.story.q || 0) + 1; syncStory();   // 📖 2장(이웃들) 진행
     if (st.idx >= o.def.quests.length) { st.allDone = true; ui.setQuest?.(null); syncBadges(); } // 🏅 체인 완료 배지
     if (trackedNPC === o) trackedNPC = null;
     refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);

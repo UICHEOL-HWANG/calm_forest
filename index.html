@@ -424,6 +424,31 @@
   .kt-mg.pot { background: #ffe9d2; }
   .kt-mg.chop { background: #dcecfa; }
   .kt-best { font-size: 10.5px; opacity: .7; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  /* 📖 메인 퀘스트 칩 — 미니맵 아래, 현재 장 목표(코지 톤: 안내지 강요 아님) */
+  #story-chip { position: fixed; top: calc(212px + env(safe-area-inset-top)); left: 16px; display: none; align-items: center; gap: 8px;
+    padding: 8px 12px; cursor: pointer; max-width: 210px; transition: transform .1s; }
+  #story-chip.show { display: flex; }
+  #story-chip:active { transform: scale(0.96); }
+  #sc-ico { font-size: 20px; flex: 0 0 auto; }
+  #sc-title { font-size: 11px; font-weight: 700; opacity: .65; }
+  #sc-goal { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
+  body:not(.playing) #story-chip, body.boat-run #story-chip, body.mg-open #story-chip, body.intro-open #story-chip { display: none !important; }
+  #story-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #story-modal.show { display: grid; }
+  .st-row { display: flex; gap: 10px; padding: 9px 10px; border-radius: 12px; margin-bottom: 6px; background: #f2f6f0; }
+  .st-row.now { background: #e3f4e6; box-shadow: inset 0 0 0 2px var(--mint); }
+  .st-row.lock { opacity: .45; }
+  .st-ico { font-size: 22px; flex: 0 0 auto; }
+  .st-t { font-size: 13px; font-weight: 700; }
+  .st-t .st-n { opacity: .6; font-weight: 600; margin-right: 4px; }
+  .st-line { font-size: 11.5px; opacity: .75; line-height: 1.45; margin-top: 2px; }
+  .st-prog { font-size: 11px; font-weight: 700; color: #2fa564; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .st-done { flex: 0 0 auto; align-self: center; font-size: 15px; }
+  @media (max-width: 760px) {
+    #story-chip { top: calc(162px + env(safe-area-inset-top)); left: 12px; max-width: 174px; padding: 7px 10px; }
+    #sc-goal { font-size: 11.5px; }
+  }
+
   /* 🎬 프롤로그 컷신 — 시네마틱 오버레이(자막·레터박스·페이드·타이틀·스킵) */
   #intro-layer { position: fixed; inset: 0; z-index: 55; display: none; pointer-events: none; }
   body.intro-open #intro-layer { display: block; }
@@ -814,6 +839,21 @@
     <div id="kt-items"></div>
     <div class="dm-hint">요리를 고르면 <b>미니게임</b>이 시작돼요 — 🍲끓이기는 <b>타이밍 탭</b>, 🔪썰기는 <b>리듬 탭</b>! 잘할수록 버프가 오래가요</div>
     <div class="dm-actions"><button id="kt-close">닫기</button></div>
+  </div>
+
+  <!-- 📖 메인 퀘스트 칩(미니맵 아래) — 현재 장의 목표. 누르면 이야기 모달 -->
+  <div id="story-chip" class="panel">
+    <span id="sc-ico">📖</span>
+    <div id="sc-body"><div id="sc-title"></div><div id="sc-goal"></div></div>
+  </div>
+  <!-- 📖 이야기 모달 — 장 목록/진행 -->
+  <div id="story-modal">
+    <div class="tut-card" style="max-width: 420px; text-align: left;">
+      <h2 style="text-align:center; margin: 2px 0 4px;">📖 나의 이야기</h2>
+      <p style="text-align:center; font-size:12.5px; opacity:.7; margin: 0 0 12px;">숲에 정착하는 여정 — 서두르지 않아도 괜찮아요</p>
+      <div id="story-rows"></div>
+      <div class="dm-actions" style="margin-top: 12px;"><button id="story-close">닫기</button></div>
+    </div>
   </div>
 
   <!-- 🎬 프롤로그 컷신 오버레이 — 3D 연출 위 자막/레터박스/페이드/타이틀/스킵(DOM) -->
@@ -1368,6 +1408,18 @@
       },
       introFade(a) { $('intro-fade').style.opacity = a; },
       introTitle(on) { $('intro-title').classList.toggle('show', !!on); },
+      // 📖 메인 퀘스트 칩 갱신 — game.js(syncStory)가 진행 변화 때마다 호출
+      setStory(v) {
+        lastStoryView = v;
+        const chip = $('story-chip');
+        if (!v || v.allDone) { chip.classList.remove('show'); return; }   // 완결 후엔 조용히 물러남
+        const cur = v.chapters[v.ch];
+        $('sc-ico').textContent = cur.ico;
+        $('sc-title').textContent = `${cur.n}장 · ${cur.title}`;
+        $('sc-goal').textContent = cur.goal;
+        chip.classList.add('show');
+        if ($('story-modal').classList.contains('show')) renderStory();
+      },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
       // 좋은 순간 → 사진 버튼 잠깐 강조(찍으라고 넛지)
@@ -2218,6 +2270,26 @@
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
     $('intro-skip').addEventListener('click', () => Input.introSkip());   // 🎬 프롤로그 건너뛰기
+
+    // 📖 이야기 모달 — 칩 클릭으로 열람(완결 장은 완료 문구, 현재 장은 진행도)
+    let lastStoryView = null;
+    function renderStory() {
+      const v = lastStoryView || Input.getStory();
+      const box = $('story-rows'); box.innerHTML = '';
+      v.chapters.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'st-row ' + c.state;
+        row.innerHTML = `<span class="st-ico">${c.state === 'lock' ? '🔒' : c.ico}</span>
+          <div style="flex:1 1 auto; min-width:0;">
+            <div class="st-t"><span class="st-n">${c.n}장</span>${c.title}</div>
+            <div class="st-line">${c.state === 'lock' ? '이전 이야기를 먼저 완성해보세요' : c.line}</div>
+            ${c.progress ? `<div class="st-prog">▸ ${c.goal} — ${c.progress}</div>` : ''}
+          </div>${c.state === 'done' ? '<span class="st-done">✅</span>' : ''}`;
+        box.appendChild(row);
+      });
+    }
+    $('story-chip').addEventListener('click', () => { renderStory(); Input.setAnalog(0, 0); $('story-modal').classList.add('show'); });
+    $('story-close').addEventListener('click', () => $('story-modal').classList.remove('show'));
     $('market-close').addEventListener('click', () => $('market-modal').classList.remove('show'));
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
