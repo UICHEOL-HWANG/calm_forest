@@ -451,6 +451,24 @@
     #sc-goal { font-size: 11.5px; }
   }
 
+  /* 🏆 리더보드 모달 */
+  #lb-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #lb-modal.show { display: grid; }
+  #lb-tabs { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  #lb-tabs::-webkit-scrollbar { display: none; }
+  .lb-tab { flex: 0 0 auto; border: none; border-radius: 10px; padding: 7px 11px; font-weight: 700; font-size: 12px; cursor: pointer; background: #eef2ee; color: var(--ink); white-space: nowrap; }
+  .lb-tab.active { background: var(--mint); }
+  #lb-list { margin-top: 8px; max-height: min(46dvh, 380px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .lb-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: #f2f6f0; font-size: 13px; }
+  .lb-row.top3 { background: #fdf6e3; }
+  .lb-row.me-row { background: #e3f4e6; box-shadow: inset 0 0 0 2px var(--mint); }
+  .lb-rank { flex: 0 0 34px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+  .lb-nick { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-score { flex: 0 0 auto; font-weight: 800; font-variant-numeric: tabular-nums; color: #2f6b45; }
+  .lb-empty { text-align: center; padding: 26px 8px; font-size: 13px; opacity: .65; line-height: 1.6; }
+  #lb-me { margin-top: 8px; }
+  #lb-me .lb-row { background: #e3f4e6; box-shadow: inset 0 0 0 2px var(--mint); }
+
   /* 🎬 프롤로그 컷신 — 시네마틱 오버레이(자막·레터박스·페이드·타이틀·스킵) */
   #intro-layer { position: fixed; inset: 0; z-index: 55; display: none; pointer-events: none; }
   body.intro-open #intro-layer { display: block; }
@@ -743,6 +761,7 @@
     <button id="menu-btn" title="메뉴">☰</button>
     <div id="util-btns">
       <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터·이름 바꾸기</span></button>
+      <button id="lb-btn"><span class="uico">🏆</span><span class="ulbl">리더보드</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
       <button id="help-btn"><span class="uico">❓</span><span class="ulbl">도움말</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
@@ -857,6 +876,18 @@
       <p style="text-align:center; font-size:12.5px; opacity:.7; margin: 0 0 12px;">숲에 정착하는 여정 — 서두르지 않아도 괜찮아요</p>
       <div id="story-rows"></div>
       <div class="dm-actions" style="margin-top: 12px;"><button id="story-close">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- 🏆 리더보드 모달 — 이번 주 숲의 기록(매주 월요일 KST 리셋) -->
+  <div id="lb-modal">
+    <div class="tut-card" style="max-width: 440px; text-align: left;">
+      <h2 style="text-align:center; margin: 2px 0 4px;">🏆 리더보드</h2>
+      <p id="lb-sub" style="text-align:center; font-size:12.5px; opacity:.7; margin: 0 0 10px;">이번 주 숲의 기록 — 매주 월요일 새로 시작해요</p>
+      <div id="lb-tabs"></div>
+      <div id="lb-list"></div>
+      <div id="lb-me"></div>
+      <div class="dm-actions" style="margin-top: 10px;"><button id="lb-close">닫기</button></div>
     </div>
   </div>
 
@@ -2300,6 +2331,73 @@
     }
     $('story-chip').addEventListener('click', () => { renderStory(); Input.setAnalog(0, 0); $('story-modal').classList.add('show'); });
     $('story-close').addEventListener('click', () => $('story-modal').classList.remove('show'));
+
+    // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
+    const LB_BOARDS = [
+      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요' },
+      { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
+      { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
+      { id: 'cook',  label: '🍳 요리왕',      unit: '회',  desc: '이번 주 요리 횟수' },
+      { id: 'quest', label: '📜 퀘스트',      unit: '건',  desc: '이번 주 완료한 의뢰' },
+    ];
+    let lbBoard = 'boat';
+    const lbCache = {};   // 모달 열려있는 동안 보드별 응답 캐시(탭 왕복 시 재요청 방지)
+    function lbMedal(r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; }
+    async function renderLb(board) {
+      lbBoard = board;
+      const meta = LB_BOARDS.find(b => b.id === board);
+      $('lb-sub').textContent = meta.desc + (board === 'boat' ? '' : ' — 매주 월요일 새로 시작해요');
+      [...document.querySelectorAll('.lb-tab')].forEach(b => b.classList.toggle('active', b.dataset.id === board));
+      const list = $('lb-list'), meBox = $('lb-me');
+      list.innerHTML = '<div class="lb-empty">불러오는 중… 🌿</div>'; meBox.innerHTML = '';
+      try {
+        if (!lbCache[board]) {
+          const uid = (authState.userId || '');
+          const res = await fetch(`/api/leaderboard?board=${board}&uid=${uid}`);
+          if (!res.ok) throw new Error('http ' + res.status);
+          lbCache[board] = await res.json();
+        }
+        const d = lbCache[board];
+        const top = d.top || [];
+        const myNick = Input.getNickname() || '';
+        if (!top.length) {
+          list.innerHTML = `<div class="lb-empty">아직 기록이 없어요.<br>${meta.label}의 첫 주인공이 되어보세요!</div>`;
+          return;
+        }
+        list.innerHTML = top.map(r =>
+          `<div class="lb-row${r.rank <= 3 ? ' top3' : ''}${d.me && r.rank === d.me.rank && r.nick === myNick ? ' me-row' : ''}">
+            <span class="lb-rank">${lbMedal(r.rank)}</span>
+            <span class="lb-nick">${String(r.nick).replace(/</g, '&lt;')}</span>
+            <span class="lb-score">${Number(r.score).toLocaleString()}${meta.unit}</span>
+          </div>`).join('');
+        // 내 순위 — 상위 목록에 안 보이면 하단에 고정 표시
+        if (d.me && !(top.some(r => r.rank === d.me.rank && r.nick === myNick))) {
+          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${String(myNick || '나').replace(/</g, '&lt;')} (나)</span><span class="lb-score">${Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
+        } else if (!d.me && authState.userId) {
+          meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요 — 지금 만들어봐요!</div>`;
+        }
+      } catch (e) {
+        list.innerHTML = '<div class="lb-empty">순위를 불러오지 못했어요.<br>잠시 후 다시 열어주세요 🌧️</div>';
+      }
+    }
+    function openLb() {
+      const tabs = $('lb-tabs');
+      if (!tabs.children.length) {
+        LB_BOARDS.forEach(b => {
+          const t = document.createElement('button');
+          t.className = 'lb-tab'; t.dataset.id = b.id; t.textContent = b.label;
+          t.addEventListener('click', () => renderLb(b.id));
+          tabs.appendChild(t);
+        });
+        $('lb-close').addEventListener('click', () => $('lb-modal').classList.remove('show'));
+      }
+      Object.keys(lbCache).forEach(k => delete lbCache[k]);   // 열 때마다 신선하게(서버가 5분 캐시)
+      Input.setAnalog(0, 0);
+      $('lb-modal').classList.add('show');
+      trackEvent('leaderboard_open', { board: lbBoard });   // [GA4] 소셜 기능 사용률
+      renderLb(lbBoard);
+    }
+    $('lb-btn').addEventListener('click', openLb);   // ☰메뉴 접힘은 util-btns 위임 핸들러가 처리
     $('market-close').addEventListener('click', () => $('market-modal').classList.remove('show'));
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 

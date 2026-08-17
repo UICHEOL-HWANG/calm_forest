@@ -378,7 +378,39 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.split('?')[0] == '/api/night-note':
             self.serve_night_note()
             return
+        if self.path.split('?')[0] == '/api/leaderboard':
+            self.serve_leaderboard()
+            return
         super().do_GET()
+
+    # ── 🏆 리더보드 (functions/api/leaderboard.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+    #    Supabase RPC(public.leaderboard) 프록시. 로컬은 캐시 없이 매번 조회(개발 편의).
+    def serve_leaderboard(self):
+        import urllib.parse as _up
+        q = _up.parse_qs(_up.urlparse(self.path).query)
+        board = (q.get('board') or ['rich'])[0]
+        uid = (q.get('uid') or [''])[0]
+        if board not in ('boat', 'rich', 'quest', 'mine', 'cook'):
+            payload = json.dumps({'error': 'unknown board'}).encode(); code = 400
+        elif uid and not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', uid, re.I):
+            payload = json.dumps({'error': 'bad uid'}).encode(); code = 400
+        else:
+            url = os.environ.get('SUPABASE_URL'); anon = os.environ.get('SUPABASE_ANON_KEY')
+            body = json.dumps({'p_board': board, 'p_uid': uid or None}).encode()
+            req = urllib.request.Request(url + '/rest/v1/rpc/leaderboard', data=body, method='POST',
+                                         headers={'Content-Type': 'application/json', 'apikey': anon,
+                                                  'Authorization': 'Bearer ' + anon})
+            try:
+                with urllib.request.urlopen(req, timeout=15, context=ssl_context()) as res:
+                    payload = res.read(); code = 200
+            except Exception as e:
+                print(f'[leaderboard] RPC 실패: {type(e).__name__}: {e}')
+                payload = json.dumps({'error': 'upstream'}).encode(); code = 502
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     def do_POST(self):
         route = self.path.split('?')[0]
