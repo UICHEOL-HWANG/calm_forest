@@ -216,6 +216,13 @@
   /* 캐릭터 "바꾸기"로 열었을 때만 보이는 취소 버튼(첫 선택 땐 되돌아갈 곳이 없음) */
   #char-cancel { display: none; margin-top: 8px; width: 100%; border: none; border-radius: 12px; padding: 9px 16px; background: #eef2ee; color: var(--ink); font-weight: 700; font-size: 13px; cursor: pointer; }
   #char-modal.change #char-cancel { display: block; }
+  /* 🏷️ 닉네임 입력(캐릭터 선택 모달) */
+  #nick-row { display: flex; gap: 6px; width: 100%; margin-top: 10px; }
+  #nick-input { flex: 1 1 auto; min-width: 0; border: 2px solid #dfe8df; border-radius: 12px; padding: 9px 12px; font-size: 14px; font-weight: 600; color: var(--ink); background: #fbfdfa; outline: none; }
+  #nick-input:focus { border-color: var(--mint); }
+  #nick-roll { flex: 0 0 auto; border: none; border-radius: 12px; padding: 0 13px; font-size: 17px; cursor: pointer; background: #eef2ee; transition: transform .1s; }
+  #nick-roll:active { transform: rotate(20deg) scale(0.94); }
+  #nick-hint { font-size: 11px; opacity: .6; margin-top: 4px; }
   @media (max-width: 640px) {
     #char-modal .tut-card { padding: 18px 14px 16px; border-radius: 20px; }
     #char-modal h2 { font-size: 18px; margin: 2px 0 8px; }
@@ -740,7 +747,7 @@
     <button id="emote-btn" title="이모트/앉기">🙂<span class="lbl"> 이모트</span></button>
     <button id="menu-btn" title="메뉴">☰</button>
     <div id="util-btns">
-      <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터 바꾸기</span></button>
+      <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터·이름 바꾸기</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
       <button id="help-btn"><span class="uico">❓</span><span class="ulbl">도움말</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
@@ -1146,6 +1153,11 @@
           <div id="char-preview-fallback">🦊</div>
           <div id="char-preview-name">여우</div>
           <div id="char-preview-hint">🖐️ 드래그해서 돌려보기</div>
+          <div id="nick-row">
+            <input id="nick-input" maxlength="16" placeholder="닉네임 (2~16자)" autocomplete="off" />
+            <button id="nick-roll" title="랜덤 이름 뽑기">🎲</button>
+          </div>
+          <div id="nick-hint">리더보드에 표시될 이름이에요</div>
           <button id="char-confirm">이 친구로 시작하기</button>
           <button id="char-cancel">취소</button>
         </div>
@@ -1341,12 +1353,19 @@
           ? '언제든 다시 바꿀 수 있어요 — 진행 상황(집·밭·도감)은 그대로예요'
           : '함께 마을을 가꿀 동물 친구예요 (메뉴에서 언제든 바꿀 수 있어요)';
         $('char-confirm').textContent = change ? '이 친구로 바꾸기' : '이 친구로 시작하기';
+        // 🏷️ 닉네임 — 랜덤 제안으로 미리 채우고, 유저가 직접 고치면(dirty) 동물을 바꿔도 덮어쓰지 않음
+        const nick = $('nick-input');
+        let nickDirty = change && !!Input.getNickname();       // 변경 모드에선 기존 이름 보존
+        nick.value = nickDirty ? Input.getNickname() : Input.genNickname(selected);
+        nick.oninput = () => { nickDirty = true; };
+        $('nick-roll').onclick = () => { nick.value = Input.genNickname(selected); nickDirty = false; };
         const pick = (a) => {
           selected = a.id;
           if (ui._charPreview) ui._charPreview.setAnimal(a.id);
           $('char-preview-fallback').textContent = a.emoji;   // WebGL 실패 시 대체 이모지
           $('char-preview-name').textContent = `${a.emoji} ${a.name}`;
           grid.querySelectorAll('.char-card').forEach(el => el.classList.toggle('sel', el.dataset.id === a.id));
+          if (!nickDirty) nick.value = Input.genNickname(a.id);   // 제안 상태면 동물에 맞춰 이름도 갱신
         };
         animals.forEach(a => {
           const c = document.createElement('div'); c.className = 'char-card'; c.dataset.id = a.id;
@@ -1381,9 +1400,11 @@
         });
         $('char-confirm').onclick = () => {
           const a = animals.find(x => x.id === selected) || animals[0];
+          const nr = Input.setNickname(nick.value, change ? 'change' : 'new');   // 🏷️ 닉네임 저장(검증 포함)
+          if (!nr.ok) { ui.toast(nr.msg); nick.focus(); return; }
           Input.setCharacter(selected, change);
           $('char-modal').classList.remove('show');
-          ui.toast(change ? `${a.emoji} ${a.name}로 바꿨어요!` : `${a.emoji} ${a.name}로 시작해요!`);
+          ui.toast(change ? `${a.emoji} ${nr.nick}(으)로 바꿨어요!` : `${a.emoji} ${nr.nick}(으)로 시작해요!`);
           // 🎬 첫 시작이면 프롤로그 컷신부터(끝나면 introShow(false)가 튜토리얼로 이어줌)
           if (!change && Input.introStart()) return;
           if (!change && Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
