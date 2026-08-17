@@ -4151,8 +4151,9 @@ let mgView = null;    // { type: 'pot'|'chop' } — 활성이면 카메라가 �
 function emojiSprite(emoji, size = 0.5) {
   const cv = document.createElement('canvas'); cv.width = cv.height = 128;
   const c = cv.getContext('2d');
-  c.font = '100px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(emoji, 64, 72);
+  // ♨️처럼 위로 긴 글리프도 안 잘리게 폰트를 캔버스보다 넉넉히 작게(시각 크기는 sp.scale이 결정)
+  c.font = '84px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(emoji, 64, 66);
   const tex = new THREE.CanvasTexture(cv);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   sp.scale.set(size, size, 1);
@@ -6501,7 +6502,7 @@ const _confGeo = new THREE.PlaneGeometry(0.16, 0.24);
 function makeParticle(geo, color, additive = false) {
   const mat = new THREE.MeshStandardMaterial({
     color, roughness: 0.9, side: THREE.DoubleSide, transparent: true,
-    emissive: additive ? color : 0x000000, emissiveIntensity: additive ? 1.2 : 0,
+    emissive: additive ? color : 0x000000, emissiveIntensity: additive ? 0.55 : 0, // 가산 합성이 겹치면 하얗게 타서 광도를 낮춤
     blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: !additive,
   });
   const m = new THREE.Mesh(geo, mat); scene.add(m); return m;
@@ -6556,7 +6557,8 @@ function spawnSparkle(x, y, z, count = 16) {
   for (let i = 0; i < count; i++) {
     const p = makeParticle(_chipGeo, new THREE.Color(0xfff2a0), true);
     p.position.set(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6);
-    p.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * 2, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2), spin: rndSpin(8), life: 1.0, gravity: -3, flutter: false };
+    // maxO: 반짝이 농도 캡 — 클로즈업(요리 무대 등)에서 화면을 하얗게 덮지 않게 은은하게
+    p.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * 2, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2), spin: rndSpin(8), life: 1.0, gravity: -3, flutter: false, maxO: 0.55 };
     particles.push(p);
   }
 }
@@ -6582,7 +6584,7 @@ function updateParticles(dt) {
     p.rotation.x += u.spin.x * dt; p.rotation.y += u.spin.y * dt; p.rotation.z += u.spin.z * dt;
     if (u.grow) p.scale.multiplyScalar(1 + u.grow * dt); // 먼지 퍼짐
     if (p.position.y < 0.05) { p.position.y = 0.05; u.vel.set(0, 0, 0); }
-    p.material.opacity = Math.min(1, u.life);
+    p.material.opacity = Math.min(u.maxO || 1, u.life);   // maxO: 파티클별 농도 상한(반짝이 완화용)
     if (u.life <= 0) { scene.remove(p); p.material.dispose(); particles.splice(i, 1); }
   }
 }
