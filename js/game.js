@@ -527,6 +527,7 @@ const gameState = {
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
+  nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
 };
 
 // ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
@@ -771,6 +772,23 @@ function syncStory() {
   }
   if (retro) ui.toast?.(`📖 지난 이야기 ${st.ch}장까지의 기록이 정리됐어요 (+보상)`, 3000);
   ui.setStory?.(storyView());
+}
+
+// ── 🏷️ 닉네임 — 리더보드 표시명. 게임 톤의 "형용사+동물 #태그" 자동 생성 ──
+//    유일성은 #태그(4자리)로 충돌을 낮추고, 진짜 유니크 보장은 리더보드 profiles 테이블에서(다음 단계).
+const NICK_ADJS = ['조용한', '포근한', '느긋한', '반짝이는', '부지런한', '졸린', '씩씩한', '다정한', '호기심 많은', '바람 같은', '노래하는', '새벽의', '별 헤는', '숲속의'];
+function genNickname(animal) {
+  const adj = NICK_ADJS[Math.floor(Math.random() * NICK_ADJS.length)];
+  const a = ANIMALS.find(x => x.id === (animal || gameState.character));
+  return `${adj} ${a ? a.name : '여행자'} #${1000 + Math.floor(Math.random() * 9000)}`;
+}
+// source: 'new'(첫 캐릭터 선택) | 'auto'(기존 유저 소급 부여) | 'change'(직접 변경)
+function setNickname(name, source = 'change') {
+  const nick = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
+  if (nick.length < 2) return { ok: false, msg: '닉네임은 2~16자로 지어주세요' };
+  gameState.nickname = nick;
+  trackEvent('nickname_set', { source, len: nick.length });   // [GA4] 값 자체는 보내지 않음
+  return { ok: true, nick };
 }
 
 // 예보 날씨가 아직 도감에 없으면 재방문 훅 문구 — 출석 모달·올빼미 대사에 붙임
@@ -1050,6 +1068,10 @@ export const Input = {
   toggleSit() { if (intro) return; sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글(컷신 중엔 포즈 보호)
   // 캐릭터(동물) 선택
   getAnimals() { return ANIMALS.map(a => ({ id: a.id, name: a.name, emoji: a.emoji })); },
+  // 🏷️ 닉네임(리더보드 표시명) — 생성/조회/변경
+  getNickname() { return gameState.nickname; },
+  genNickname(animal) { return genNickname(animal); },
+  setNickname(name, source) { return setNickname(name, source); },
   createCharacterPreview(canvas) { return makeCharacterPreview(canvas); }, // 선택화면 3D 프리뷰
   hasCharacter() { return !!gameState.character; },
   getCharacter() { return gameState.character; },        // 🐾 바꾸기 모달에서 현재 캐릭터 미리 선택용
@@ -1176,6 +1198,11 @@ export async function enterGame() {
   dexDiscover('weather', WEATHER);      // 🌦️ 날씨 도감 — 오늘 날씨를 겪어야 등록(재방문 훅)
   syncBadges();                         // 🏅 옛 세이브 소급 지급(집·체인·스트릭 등)
   syncStory(); storyBooted = true;      // 📖 메인 퀘스트 소급(조용히) — 이후부터는 축하 연출
+  // 🏷️ 기존 유저 닉네임 소급 부여 — 리더보드에 오를 이름. 신규는 캐릭터 선택에서 직접 짓는다
+  if (gameState.character && !gameState.nickname) {
+    setNickname(genNickname(), 'auto');
+    setTimeout(() => ui.toast?.(`🏷️ 당신의 이름: ${gameState.nickname} — ☰메뉴 > 캐릭터·이름에서 바꿀 수 있어요`, 4200), 5200);
+  }
   resolveWeatherEvent();                // 🌡️ 날씨 이벤트 정산(동기) — 시든 작물은 밤손님 후보에서 빠짐
   resolveNightVisit();                  // 🦝 밤손님 — 밤이 지났으면 서버 판정(await 안 함, 실패해도 입장 안 막음)
   if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
@@ -1205,6 +1232,7 @@ function applySave(saved) {
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
+  if (saved.nickname) gameState.nickname = saved.nickname;                          // 🏷️ 닉네임 복원
   else if (saved.npcs) gameState.story.q = Object.values(gameState.npcs).reduce((a, n) => a + (n.idx || 0), 0); // 옛 세이브: 의뢰 수 소급 추정
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
