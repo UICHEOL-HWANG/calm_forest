@@ -4504,15 +4504,18 @@ function buildCitySet() {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), flat(0xcfd6e6)); head.position.set(-2.6, 3.42, 2.2); g.add(head);
   const lamp = new THREE.PointLight(0xbfd0ff, 0.9, 10); lamp.position.set(-2.6, 3.3, 2.2); g.add(lamp);
   // 버스 정류장 — 주인공이 축 처져 앉아 있을 벤치(연출용 소품, 콜라이더 없음)
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.09, 0.52), flat(0x565863)); seat.position.set(1.5, 0.44, 2.6); g.add(seat);
-  const backrest = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.38, 0.07), flat(0x565863)); backrest.position.set(1.5, 0.7, 2.86); g.add(backrest);
-  for (const lx of [0.85, 2.15]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.44, 0.4), flat(0x43444d)); leg.position.set(lx, 0.22, 2.6); g.add(leg); }
+  // ⚠️ 캐릭터마다 몸집이 다르다(곰·판다는 여우보다 훨씬 두툼) — 가장 큰 몸 기준으로
+  //    좌면을 깊게, 등받이를 뒤로 빼서 어떤 캐릭터도 관통하지 않게 여유를 둔다.
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.09, 0.75), flat(0x565863)); seat.position.set(1.5, 0.44, 2.7); g.add(seat);
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.4, 0.07), flat(0x565863)); backrest.position.set(1.5, 0.76, 3.06); g.add(backrest);
+  for (const lx of [0.72, 2.28]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.44, 0.6), flat(0x43444d)); leg.position.set(lx, 0.22, 2.7); g.add(leg); }
   const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6), flat(0x50525c)); signPole.position.set(2.9, 1.3, 2.3); g.add(signPole);
   const signPlate = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.5, 0.06), flat(0x3f6ea8)); signPlate.position.set(2.9, 2.28, 2.3); g.add(signPlate);
   const bus = emojiSprite('🚌', 0.4); bus.position.set(2.9, 2.28, 2.36); g.add(bus);
   // 바쁘게 오가는 행인 동물들(회색 톤 — 도시에선 모두가 지쳐 있다)
+  // 앞줄은 벤치 뒤편(z≥3.5)으로 보내 벤치·주인공을 관통하지 않게, 같은 줄끼리도 차선을 띄운다
   const walkers = [];
-  [[0x5a5c66, 3.1, 1, 1.15], [0x4e505a, -3.4, -1, 0.85], [0x62646e, 3.3, -1, 1.4], [0x545660, -3.2, 1, 1.0]].forEach(([col, z, dir, spd], i) => {
+  [[0x5a5c66, 3.45, 1, 1.15], [0x4e505a, -3.6, -1, 0.85], [0x62646e, 3.95, -1, 1.4], [0x545660, -3.1, 1, 1.0]].forEach(([col, z, dir, spd], i) => {
     const w = new THREE.Group();
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.23, 0.56, 8), flat(col)); body.position.y = 0.32; w.add(body);
     const wh = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6), flat(col)); wh.position.y = 0.72; w.add(wh);
@@ -4543,7 +4546,7 @@ function introStart(force = false) {
   };
   // 주인공: 도시 벤치에 축 처져 앉아 있음(앉기 포즈 + 고개 숙임)
   sitting = false; placingOutdoor = null;
-  player.position.set(CITY.x + 1.5, 0.42, CITY.z + 2.58);   // 벤치 좌면(0.48) 높이에 맞춰 앉힘
+  player.position.set(CITY.x + 1.5, 0.42, CITY.z + 2.46);   // 좌면(0.48) 위, 등받이(3.06)에서 넉넉히 앞 — 곰·판다 몸집도 관통 안 함
   player.rotation.y = 0.35;                                 // 카메라 쪽으로 살짝 비껴 앉음
   if (handAnchor) handAnchor.visible = false;               // 등의 도구(도끼 등)는 컷신 분위기상 숨김
   playerAnchor.position.y = -0.3;
@@ -4586,7 +4589,7 @@ function updateIntro(dt, t) {
   if (!intro) return;
   const T = (intro.t += dt);
   const F = intro.flags;
-  const px = CITY.x + 1.5, pz = CITY.z + 2.55;              // 벤치의 주인공 위치
+  const px = CITY.x + 1.5, pz = CITY.z + 2.46;              // 벤치의 주인공 위치
   // 자막
   const cap = INTRO_CAPTIONS.find(c => T >= c.at && T < c.until);
   ui.introCaption?.(cap ? cap.text : null);
