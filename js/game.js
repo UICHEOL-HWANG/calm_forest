@@ -4495,9 +4495,10 @@ function buildCitySet() {
     const s = new THREE.Mesh(new THREE.BoxGeometry(4, h, 2), flat(0x2c2d36)); s.position.set(x, h / 2, -11); g.add(s);
   });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(70, 26), flat(0x1f2029)); back.position.set(0, 12, -14); g.add(back);
-  // 네온 간판(이모지 스프라이트 — 항상 카메라를 봄)
-  [['🍜', 0.95, -4.2, 3.2], ['🏪', 0.8, 5.2, 2.5], ['📶', 0.6, 10.2, 4.2]].forEach(([e, s, x, y]) => {
-    const sp = emojiSprite(e, s); sp.position.set(x, y, -4.85); g.add(sp);
+  // 간판은 이모지 없이 단순 네온 판만 — 이모지 빌보드는 각도에 따라 잘려 보여서 뺐다(사용자 결정)
+  [[0xd98f6a, -4.2, 3.2, 1.1, 0.5], [0x9fd8c0, 5.2, 2.5, 0.9, 0.42], [0xc9a8ff, 10.2, 4.2, 0.7, 0.36]].forEach(([col, x, y, w, h]) => {
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: col }));
+    sign.position.set(x, y, -4.96); g.add(sign);
   });
   // 가로등(차가운 빛) — 라이트는 1개만(모바일)
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.4, 6), flat(0x50525c)); pole.position.set(-2.6, 1.7, 2.2); g.add(pole);
@@ -4510,10 +4511,10 @@ function buildCitySet() {
   const seat = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.09, 1.0), flat(0x565863)); seat.position.set(1.5, 0.44, 2.7); g.add(seat);
   const backrest = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.42, 0.07), flat(0x565863)); backrest.position.set(1.5, 0.78, 3.24); g.add(backrest);
   for (const lx of [0.5, 2.5]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.44, 0.85), flat(0x43444d)); leg.position.set(lx, 0.22, 2.7); g.add(leg); }
-  // 버스 표지판은 벤치에서 확실히 떨어뜨림(측면 카메라에서 몸과 겹쳐 보이던 문제)
+  // 버스 표지판 — 이모지 없이 파란 판만(이모지 빌보드가 각도 따라 판을 벗어나던 문제, 사용자 결정으로 제거)
   const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6), flat(0x50525c)); signPole.position.set(3.5, 1.3, 2.05); g.add(signPole);
-  const signPlate = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.5, 0.06), flat(0x3f6ea8)); signPlate.position.set(3.5, 2.28, 2.05); g.add(signPlate);
-  const bus = emojiSprite('🚌', 0.4); bus.position.set(3.5, 2.28, 2.11); g.add(bus);
+  const signPlate = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.5, 0.06), flat(0x2f5fa8)); signPlate.position.set(3.5, 2.28, 2.05); g.add(signPlate);
+  const signStripe = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.02), flat(0xdde6f5)); signStripe.position.set(3.5, 2.28, 2.09); g.add(signStripe);
   // 바쁘게 오가는 행인 동물들(회색 톤 — 도시에선 모두가 지쳐 있다)
   // 앞줄은 벤치 뒤편(z≥3.5)으로 보내 벤치·주인공을 관통하지 않게, 같은 줄끼리도 차선을 띄운다
   const walkers = [];
@@ -4548,11 +4549,17 @@ function introStart(force = false) {
   };
   // 주인공: 도시 벤치에 축 처져 앉아 있음(앉기 포즈 + 고개 숙임)
   sitting = false; placingOutdoor = null;
-  player.position.set(CITY.x + 1.5, 0.42, CITY.z + 2.62);   // 좌면(z 2.2~3.2) 중앙 — 곰 몸통(±0.55)도 앞뒤 모두 좌면 안, 등받이(3.24)와 무관통
   player.rotation.y = 0.15;                                 // 거의 정면(측면 카메라에서 좌석 이탈처럼 보이는 착시 방지)
   if (handAnchor) handAnchor.visible = false;               // 등의 도구(도끼 등)는 컷신 분위기상 숨김
-  playerAnchor.position.y = -0.3;
+  playerAnchor.position.y = -0.3;                           // 앉기 포즈
   playerAnchor.rotation.x = 0.24;                           // 지친 어깨
+  // 🪑 몸 실측 착석 — 캐릭터마다 몸집이 제각각(곰·판다는 큼)이라 고정 좌표는 반드시 뚫린다.
+  //    포즈를 잡은 몸의 바운딩박스를 재서 "몸 최저점 = 좌면 윗면(0.485)", "몸 중심 = 좌면 중심(z 2.7)"으로 정렬.
+  player.position.set(CITY.x + 1.5, 0, CITY.z + 2.7);
+  player.updateMatrixWorld(true);
+  const bb = new THREE.Box3().setFromObject(player);
+  player.position.y = 0.485 - bb.min.y;                     // 어떤 몸집이든 좌면을 뚫고 내려갈 수 없음
+  player.position.z += (CITY.z + 2.7) - (bb.min.z + bb.max.z) / 2;  // 앞뒤로도 좌면 중앙 정렬
   // 🌿 잎사귀(초대장) — 컷2에서 바람에 실려 내려온다
   intro.flyer = emojiSprite('🌿', 0.42);
   intro.flyer.visible = false;
