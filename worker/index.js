@@ -14,6 +14,7 @@ import { onRequestPost as nightVisit } from '../functions/api/night-visit.js';
 import { onRequestGet as nightNote } from '../functions/api/night-note.js';
 import { onRequestPost as photoUpload, onRequestDelete as photoDelete } from '../functions/api/photo.js';
 import { onRequestPost as photoUrls } from '../functions/api/photo-urls.js';
+import { onRequestGet as leaderboard } from '../functions/api/leaderboard.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -52,6 +53,12 @@ export default {
       if (pathname === '/api/photo-urls') {
         if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
         return await photoUrls({ request, env });
+      }
+
+      // 🏆 리더보드 — Supabase RPC 프록시(엣지 캐시 5분)
+      if (pathname === '/api/leaderboard') {
+        if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+        return await leaderboard({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
       }
 
       // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.
