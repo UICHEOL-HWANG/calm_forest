@@ -456,7 +456,9 @@
   body.intro-open #topleft, body.intro-open #topright, body.intro-open #minimap, body.intro-open #hotbar,
   body.intro-open #mobile-controls, body.intro-open #talk-btn, body.intro-open #dex-tab, body.intro-open #feedback-tab,
   body.intro-open #door-prompt, body.intro-open #npc-prompt, body.intro-open #zone-prompt, body.intro-open #quest-panel,
-  body.intro-open #buffs, body.intro-open #decor-btn, body.intro-open #ext-btn { display: none !important; }
+  body.intro-open #buffs, body.intro-open #decor-btn, body.intro-open #ext-btn,
+  body.intro-open #hint, body.intro-open #story-chip { display: none !important; }
+  body.mg-open #hint { display: none !important; }   /* 조작 안내 바는 요리 미니게임 중에도 숨김 */
   #intro-bars .ib { position: absolute; left: 0; right: 0; height: max(7dvh, env(safe-area-inset-top)); background: #10120f; }
   #intro-bars .top { top: 0; } #intro-bars .bot { bottom: 0; height: max(9dvh, env(safe-area-inset-bottom)); }
   #intro-skip { position: absolute; right: max(14px, env(safe-area-inset-right)); top: calc(max(7dvh, env(safe-area-inset-top)) + 10px);
