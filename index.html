@@ -335,6 +335,7 @@
   /* 미니맵 — 좌상단(버튼 아래), 캐릭터 위치 표시 */
   #minimap { position: fixed; top: calc(94px + env(safe-area-inset-top)); left: 16px; width: 108px; height: 108px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
   #quest-panel { top: calc(222px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
+  body.story-on #quest-panel { top: calc(272px + env(safe-area-inset-top)); }   /* 📖 스토리 칩이 떠 있으면 그 아래로 스택(겹침 방지) */
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
@@ -696,6 +697,7 @@
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
     #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
     #quest-panel { top: calc(168px + env(safe-area-inset-top)); max-width: 52vw; }
+    body.story-on #quest-panel { top: calc(218px + env(safe-area-inset-top)); }   /* 모바일도 스토리 칩 아래로 */
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널만 숨김
        (미니맵은 좌측이라 중앙 코치 카드와 안 겹침 → 튜토리얼 중에도 표시) */
     body.coaching #quest-panel { display: none; }
@@ -1459,7 +1461,9 @@
       setStory(v) {
         lastStoryView = v;
         const chip = $('story-chip');
-        if (!v || v.allDone) { chip.classList.remove('show'); return; }   // 완결 후엔 조용히 물러남
+        if (!v || v.allDone) { chip.classList.remove('show'); document.body.classList.remove('story-on'); $('quest-panel').style.top = ''; return; }   // 완결 후엔 조용히 물러남
+        document.body.classList.add('story-on');
+        requestAnimationFrame(layoutQuestPanel);   // 칩 높이는 목표 문구 길이에 따라 변함 — 실측으로 겹침 방지
         const cur = v.chapters[v.ch];
         $('sc-ico').textContent = cur.ico;
         $('sc-title').textContent = `${cur.n}장 · ${cur.title}`;
@@ -1989,6 +1993,14 @@
       if (y) box.style.top = Math.round(y + 8) + 'px';
     }
     window.addEventListener('resize', layoutBuffs);
+
+    // 퀘스트 패널을 스토리 칩 바로 아래로(칩이 없으면 CSS 기본 위치) — 칩 높이 실측
+    function layoutQuestPanel() {
+      const chip = $('story-chip'), qp = $('quest-panel');
+      if (!chip.classList.contains('show')) { qp.style.top = ''; return; }
+      qp.style.top = Math.round(chip.getBoundingClientRect().bottom + 8) + 'px';
+    }
+    window.addEventListener('resize', layoutQuestPanel);
 
     // ── 미니게임 상태/상수 ──
     const POT_STEPS = [
