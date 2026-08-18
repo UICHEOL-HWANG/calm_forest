@@ -4602,6 +4602,34 @@ function buildCitySet() {
   citySet = { group: g, walkers, flickers, lamp };
 }
 
+// 🌿 프롤로그 잎사귀 — 이모지 대신 직접 모델링한 로우폴리 잎(회색 도시의 유일한 초록).
+//    잎몸(곡선 셰이프) + 중앙 잎맥 + 곁맥 4개 + 줄기. 무조명 재질로 어디서든 선명한 초록.
+function makeIntroLeaf() {
+  const g = new THREE.Group();
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  shape.quadraticCurveTo(0.16, 0.06, 0.2, 0.24);    // 오른쪽 볼록
+  shape.quadraticCurveTo(0.12, 0.4, 0, 0.52);       // 끝(뾰족)
+  shape.quadraticCurveTo(-0.12, 0.4, -0.2, 0.24);   // 왼쪽 볼록
+  shape.quadraticCurveTo(-0.16, 0.06, 0, 0);
+  const blade = new THREE.Mesh(new THREE.ShapeGeometry(shape, 6),
+    new THREE.MeshBasicMaterial({ color: 0x86d492, side: THREE.DoubleSide }));
+  g.add(blade);
+  const veinMat = new THREE.MeshBasicMaterial({ color: 0x55a468, side: THREE.DoubleSide });
+  const rib = new THREE.Mesh(new THREE.PlaneGeometry(0.022, 0.44), veinMat);
+  rib.position.set(0, 0.25, 0.003); g.add(rib);
+  [[-1, 0.14], [1, 0.2], [-1, 0.28], [1, 0.34]].forEach(([s, y]) => {   // 곁맥
+    const v = new THREE.Mesh(new THREE.PlaneGeometry(0.014, 0.13), veinMat);
+    v.position.set(s * 0.055, y, 0.003); v.rotation.z = s * 0.85; g.add(v);
+  });
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.017, 0.16, 5),
+    new THREE.MeshBasicMaterial({ color: 0x55a468 }));
+  stem.position.set(0, -0.07, 0); g.add(stem);
+  g.rotation.x = -0.35;      // 살짝 눕혀 입체감
+  g.scale.setScalar(0.72);   // 손바닥만 한 크기(캐릭터를 가리지 않게)
+  return g;
+}
+
 // 자막·컷 타이밍(초) — 총 ~19초, 언제든 스킵 가능
 const INTRO_CAPTIONS = [
   { at: 0.6, until: 5.2, text: '매일이 시끄럽고, 매일이 똑같았다.' },
@@ -4630,8 +4658,8 @@ function introStart(force = false) {
   player.updateMatrixWorld(true);
   const bb = new THREE.Box3().setFromObject(player);
   player.position.y = 0.145 - bb.min.y;
-  // 🌿 잎사귀(초대장) — 컷2에서 바람에 실려 내려온다
-  intro.flyer = emojiSprite('🌿', 0.42);
+  // 🌿 잎사귀(초대장) — 컷2에서 바람에 실려 내려온다(직접 모델링한 잎)
+  intro.flyer = makeIntroLeaf();
   intro.flyer.visible = false;
   citySet.group.add(intro.flyer);
   ui.introShow?.(true);
@@ -4648,7 +4676,10 @@ function introEnd(skipped) {
   playerAnchor.position.y = 0; playerAnchor.rotation.x = 0;
   if (handAnchor) handAnchor.visible = true;                // 도구 복원
   citySet.group.visible = false;
-  if (intro.flyer) { citySet.group.remove(intro.flyer); intro.flyer.material.map?.dispose?.(); intro.flyer.material.dispose(); }
+  if (intro.flyer) {
+    citySet.group.remove(intro.flyer);
+    intro.flyer.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  }
   intro = null;
   gameState.hintsSeen.intro = true;                         // 다시 안 봄(저장에 포함)
   snapCamera();
@@ -4698,11 +4729,17 @@ function updateIntro(dt, t) {
       if (!F.flyer) { F.flyer = true; intro.flyer.visible = true; }
       const fp = Math.min(1, (T - 6.0) / 2.6);               // 2.6초에 걸쳐 하늘하늘 하강
       intro.flyer.position.set(
-        1.5 - 2.4 + fp * 2.9 + Math.sin(T * 3) * 0.12 * (1 - fp),
-        2.9 - fp * 2.35,
-        3.95 - fp * 0.4);   // 착지 z 3.55 — 등받이(3.24)보다 카메라 쪽이라 가려지지 않음
-      intro.flyer.material.rotation = Math.sin(T * 2.4) * 0.5 * (1 - fp * 0.6);
-      if (fp >= 1) intro.flyer.position.y = 0.55 + Math.sin(T * 2) * 0.03;   // 발치에서 살랑
+        1.5 - 2.4 + fp * 3.25 + Math.sin(T * 3) * 0.12 * (1 - fp),   // 착지 x 2.35 — 캐릭터 옆 바닥
+        2.9 - fp * 2.42,
+        3.95 - fp * 0.4);   // 착지 z 3.55 — 캐릭터보다 카메라 쪽 앞바닥
+      if (fp < 1) {
+        intro.flyer.rotation.z = Math.sin(T * 2.4) * 0.6 * (1 - fp * 0.5);   // 좌우 나부낌
+        intro.flyer.rotation.y = T * 2.0 * (1 - fp * 0.7);                   // 빙글 — 착지 가까워질수록 잦아듦
+      } else {
+        intro.flyer.rotation.y = Math.sin(T * 1.3) * 0.22;                   // 착지: 잎면이 카메라를 보며 살랑
+        intro.flyer.rotation.z = Math.sin(T * 1.7) * 0.12;
+        intro.flyer.position.y = 0.48 + Math.sin(T * 2) * 0.03;
+      }
       if (fp > 0.75) playerAnchor.rotation.x = Math.max(0.06, playerAnchor.rotation.x - dt * 0.35); // 고개를 든다
     }
   }
