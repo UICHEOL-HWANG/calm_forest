@@ -4756,7 +4756,7 @@ function spawnMarketBoard() {
   const g = new THREE.Group(); g.position.copy(MARKET);
   for (const x of [-0.8, 0.8]) {
     const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 2.1, 6), woodMat(1, 1));
-    p.position.set(x, 1.05, 0); p.castShadow = true; g.add(p);
+    p.position.set(x, 1.05, -0.12); p.castShadow = true; g.add(p);   // 판 뒤에서 받침(정면에서 판을 안 가로지르게 — 랭킹 게시판과 동일)
   }
   // 보드 캔버스 — 한글 "시세판" 크게 + 오늘의 최고/최저 등락(멀리서도 읽히게)
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 320;
