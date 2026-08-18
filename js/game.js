@@ -174,9 +174,10 @@ const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 �
 let nearShop = false;
 const MARKET = new THREE.Vector3(11.5, 0, 2.4); // 📊 시세판(상점 동쪽, 플레이어 동선 위) — 초보자도 시세를 발견하게
 let nearMarket = false;
-// 🏆 랭킹 게시판 — 시세판 남쪽 트인 목. 주변 여백 검증: 농부(5,4) 6.1 · 시세판 2.8 · 호수(16,9) 6.3 ·
-//    가로등(15,3) 4.5 · 벤치(6.5,6.5) 4.7 · 상인(13.5,-1.5) 7.1 — NPC 배회(1.6)·시설 상호작용 반경과 무겹침
-const RANK = new THREE.Vector3(11, 0, 5.2);
+// 🏆 랭킹 게시판 — 마을 한복판 공터(스폰 북쪽, 사용자 지정 "이 중간"). 호수 옆은 비좁아 이전.
+//    여백 검증: 스폰(0,0) 3.0(프롬프트 2.2 밖·시작 화면 정면에 보임) · 작업대(4,-5) 3.7 ·
+//    올빼미(-3,-3) 4.0 · 요리사(0,-8) 5.3 · 랜덤 나무 밴드(r≥8) 안쪽이라 나무 없음
+const RANK = new THREE.Vector3(1, 0, -2.8);
 let nearRank = false;
 const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
