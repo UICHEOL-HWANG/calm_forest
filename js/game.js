@@ -4291,10 +4291,10 @@ function spawnRankBoard() {
   const g = new THREE.Group(); g.position.copy(RANK);
   // 받침: 크림 자갈 단(살짝 올라온 무대)
   const base = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.4, 0.14, 14), clayMat(0xefe6d2)); base.position.y = 0.07; base.receiveShadow = true; g.add(base);
-  // 기둥: 흰 크림 원기둥 2개 + 금색 링 장식
+  // 기둥: 판 "뒤"에서 받치는 지지대(정면에서 판을 가로지르지 않게 프레임 뒤로 숨김)
   for (const s of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.15, 10), clayMat(0xf7f0e0)); post.position.set(s * 1.05, 1.08, 0); post.castShadow = true; g.add(post);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.03, 8, 14), clayMat(0xe8c46a, false)); ring.rotation.x = Math.PI / 2; ring.position.set(s * 1.05, 0.55, 0); g.add(ring);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.3, 10), clayMat(0xf7f0e0)); post.position.set(s * 0.95, 1.15, -0.14); post.castShadow = true; g.add(post);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.03, 8, 14), clayMat(0xe8c46a, false)); ring.rotation.x = Math.PI / 2; ring.position.set(s * 0.95, 0.55, -0.14); g.add(ring);
   }
   // 패널: 민트 프레임 + 크림 면(캔버스 텍스처로 랭킹 미리보기 장식)
   const frame = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.62, 0.12), clayMat(0x9fd8c0)); frame.position.y = 1.62; frame.castShadow = true; g.add(frame);
@@ -4316,12 +4316,12 @@ function spawnRankBoard() {
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 8;
   const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.44), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
   face.position.set(0, 1.62, 0.065); g.add(face);
-  // 지붕: 꿀색 박공(축제 부스 느낌) + 꼭대기 금 구슬
+  // 지붕: 꿀색 박공 — 판 상단(2.43)에 밀착(붕 떠 보이지 않게) + 꼭대기 금 구슬
   for (const s of [-1, 1]) {
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 0.7), clayMat(0xf0b46a));
-    slab.position.set(s * 0.62, 2.62, 0); slab.rotation.z = -s * 0.42; slab.castShadow = true; g.add(slab);
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.07, 0.55), clayMat(0xf0b46a));
+    slab.position.set(s * 0.6, 2.56, 0); slab.rotation.z = -s * 0.4; slab.castShadow = true; g.add(slab);
   }
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), clayMat(0xe8c46a, false)); orb.position.set(0, 2.94, 0); g.add(orb);
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), clayMat(0xe8c46a, false)); orb.position.set(0, 2.85, 0); g.add(orb);
   scene.add(g);
   obstacles.push({ x: RANK.x, z: RANK.z, r: 1.7 });   // 밭 금지
   solidCircle(RANK.x, RANK.z, 1.15);                  // 🚧 (상호작용 2.2 확보)
