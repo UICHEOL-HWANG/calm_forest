@@ -174,6 +174,10 @@ const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 �
 let nearShop = false;
 const MARKET = new THREE.Vector3(11.5, 0, 2.4); // 📊 시세판(상점 동쪽, 플레이어 동선 위) — 초보자도 시세를 발견하게
 let nearMarket = false;
+// 🏆 랭킹 게시판 — 시세판 남쪽 트인 목. 주변 여백 검증: 농부(5,4) 6.1 · 시세판 2.8 · 호수(16,9) 6.3 ·
+//    가로등(15,3) 4.5 · 벤치(6.5,6.5) 4.7 · 상인(13.5,-1.5) 7.1 — NPC 배회(1.6)·시설 상호작용 반경과 무겹침
+const RANK = new THREE.Vector3(11, 0, 5.2);
+let nearRank = false;
 const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 변의 절반)
@@ -1344,6 +1348,7 @@ function buildWorld() {
       ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
+      || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
     }
@@ -1353,6 +1358,7 @@ function buildWorld() {
   spawnWorkbench();   // 작업대(도구·장식·선물)
   spawnKitchen();     // 🍳 자유주방(요리 미니게임)
   spawnShop();        // 상점 좌판
+  spawnRankBoard();   // 🏆 랭킹 게시판(리더보드)
   spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   buildFarm();        // 개인 텃밭 필드
@@ -4278,6 +4284,47 @@ function spawnKitchen() {
   solidCircle(KITCHEN.x, KITCHEN.z, 1.1);           // 🚧 (요리 상호작용 2.2 확보)
 }
 
+// ── 🏆 랭킹 게시판 — 축제 안내판 스타일(민트 프레임 + 크림 면 + 꿀색 지붕). 나무판자 아님 ──
+function spawnRankBoard() {
+  const g = new THREE.Group(); g.position.copy(RANK);
+  // 받침: 크림 자갈 단(살짝 올라온 무대)
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.4, 0.14, 14), clayMat(0xefe6d2)); base.position.y = 0.07; base.receiveShadow = true; g.add(base);
+  // 기둥: 흰 크림 원기둥 2개 + 금색 링 장식
+  for (const s of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.15, 10), clayMat(0xf7f0e0)); post.position.set(s * 1.05, 1.08, 0); post.castShadow = true; g.add(post);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.03, 8, 14), clayMat(0xe8c46a, false)); ring.rotation.x = Math.PI / 2; ring.position.set(s * 1.05, 0.55, 0); g.add(ring);
+  }
+  // 패널: 민트 프레임 + 크림 면(캔버스 텍스처로 랭킹 미리보기 장식)
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.62, 0.12), clayMat(0x9fd8c0)); frame.position.y = 1.62; frame.castShadow = true; g.add(frame);
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 336;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#fff8ea'; roundRect(c, 0, 0, 512, 336, 26); c.fill();
+  c.fillStyle = '#7fce8b'; roundRect(c, 18, 16, 476, 74, 18); c.fill();
+  c.fillStyle = '#2f4a3a'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '700 46px sans-serif'; c.fillText('🏆 이번 주 랭킹', 256, 54);
+  const rows = [['🥇', '#f5d76e'], ['🥈', '#cfd6de'], ['🥉', '#e0a878']];
+  rows.forEach(([medal, col], i) => {
+    const y = 116 + i * 62;
+    c.font = '34px sans-serif'; c.textAlign = 'left'; c.fillStyle = '#3a4a40';
+    c.fillText(medal, 34, y + 18);
+    c.fillStyle = col; roundRect(c, 84, y, 340 - i * 60, 34, 12); c.fill();   // 장식용 점수 바(길이 차등)
+  });
+  c.fillStyle = '#8a9a8e'; c.font = '600 24px sans-serif'; c.textAlign = 'center';
+  c.fillText('매주 월요일 새로 시작 · 가까이서 확인!', 256, 312);
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 8;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.44), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
+  face.position.set(0, 1.62, 0.065); g.add(face);
+  // 지붕: 꿀색 박공(축제 부스 느낌) + 꼭대기 금 구슬
+  for (const s of [-1, 1]) {
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 0.7), clayMat(0xf0b46a));
+    slab.position.set(s * 0.62, 2.62, 0); slab.rotation.z = -s * 0.42; slab.castShadow = true; g.add(slab);
+  }
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), clayMat(0xe8c46a, false)); orb.position.set(0, 2.94, 0); g.add(orb);
+  scene.add(g);
+  obstacles.push({ x: RANK.x, z: RANK.z, r: 1.7 });   // 밭 금지
+  solidCircle(RANK.x, RANK.z, 1.15);                  // 🚧 (상호작용 2.2 확보)
+}
+
 // ── 🍳 자유주방 클로즈업 조리 무대 — 요리 미니게임 동안 카메라가 이 세트로 넘어간다 ──
 //    (카페 홀처럼 마을과 떨어진 별도 공간. 도마·칼·냄비를 크게 보여주는 "요리 게임 화면")
 const KSET = new THREE.Vector3(0, 0, 420);
@@ -5325,10 +5372,12 @@ function updateDoorInteract() {
   nearBench = inVillage && !nearKitchen && dist2D(BENCH, player.position) < 2.0;
   nearShop = inVillage && !nearKitchen && !nearBench && dist2D(SHOP, player.position) < 2.0;
   nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
-  nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
+  nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 2.2; // 🏆 랭킹 게시판
+  nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
+  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHint('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록이 모이는 곳이에요 — 뱃길·코인·채굴·요리·의뢰 다섯 부문! 매주 월요일 새로 시작하니 부담 없이 도전해봐요.'); }
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHint('market', '📊', '시세 전광판', '판매 가격이 매일 바뀌어요! 전광판에서 오늘 비싼 품목을 확인하고 비쌀 때 파세요 🪙'); }
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
@@ -6336,6 +6385,7 @@ function handleAction() {
   if (nearBench) return ui.openCook?.();   // 작업대 근처 → 제작 메뉴(도구·야외·선물)
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
+  if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
   // 🍄 채집 — 도구가 필요 없는 "줍기". 단, 도끼를 들고 더 가까운 나무가 있으면 벌목에 양보
   const fg = forageTarget();

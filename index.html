@@ -1512,7 +1512,7 @@
         const t = text || '';
         doorIcon = t.includes('주문판') ? '📋'
           : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
-          : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('닭장') ? '🐔'
+          : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
           : t.includes('리듬') || t.includes('달래기') ? '♪' : t.includes('등불 켜기') ? '🏮' : t.includes('정화') ? '🌳'
           : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : '🚪';
         refreshActionIcon();
@@ -1528,6 +1528,8 @@
       openCook() { showCookTab('tool'); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🍳 자유주방 메뉴판 열기 (요리를 고르면 미니게임 시작)
       openKitchen(d) { renderKitchen(d); Input.setAnalog(0, 0); $('kitchen-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
+      openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
       openShop() { showShopTab('sell'); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // ☕ 카페 주문판 열기
