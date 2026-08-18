@@ -692,27 +692,27 @@ function syncBadges() {
 //  안내자는 🦉 의뢰 올빼미 — 완료 모달의 기록자 화자.
 const STORY = [
   {
-    id: 'home', ico: '🏠', title: '보금자리', goal: '빈 터에 집 완성하기 (3단계)',
-    start: '떠돌이 생활은 여기까지. 반투명한 터에 나만의 집을 지어보자. 나무를 베면 목재를 얻어요!',
-    done: '지붕 아래서 맞는 첫 밤이에요. 이제 이 숲이 진짜 집이 됐어요.',
+    id: 'home', ico: '🏠', title: '나의 첫 집', goal: '빈터에 내 집 완성하기',
+    start: '떠돌이 생활은 오늘로 끝. 마을 한켠의 빈터에 내 집을 지어보자. 나무를 베면 목재를 얻을 수 있어요.',
+    done: '지붕 아래에서 맞는 첫 밤. 이제 이 숲이 진짜 집이 되었어요.',
     reward: { coins: 40 },
   },
   {
-    id: 'friends', ico: '💬', title: '이웃들', goal: '주민 의뢰 3개 완료하기',
-    start: '이 숲엔 먼저 온 이웃들이 있어요. ❕말풍선이 뜬 주민에게 다가가 의뢰를 도우며 인사를 나눠보자.',
-    done: '이제 길에서 마주치면 반갑게 인사하는 사이. 이웃이 생겼어요.',
+    id: 'friends', ico: '💬', title: '숲의 이웃들', goal: '주민 의뢰 3번 도와주기',
+    start: '이 숲엔 먼저 자리 잡은 이웃들이 있어요. ❕ 말풍선이 뜬 주민을 도와주며 얼굴을 익혀보자.',
+    done: '이제 길에서 마주치면 반갑게 인사를 건네는 사이가 되었어요.',
     reward: { seed: 5, coins: 30 },
   },
   {
-    id: 'taste', ico: '🍳', title: '마을의 맛', goal: '자유주방 요리 1번 + 카페 서빙 1번',
-    start: '숲에서 거둔 재료로 요리를 해보자. 그리고 나누면 두 배로 맛있대요 — 카페 손님이 기다려요.',
-    done: '당신의 요리가 누군가의 하루를 데웠어요. 마을에 맛있는 소문이 돌기 시작해요.',
+    id: 'taste', ico: '🍳', title: '따뜻한 한 끼', goal: '자유주방에서 요리하고, 카페에서 서빙하기',
+    start: '숲에서 거둔 재료로 요리를 해보자. 정성껏 만든 음식은 나눌 때 더 맛있는 법이에요.',
+    done: '내가 만든 요리가 누군가의 하루를 데웠어요. 마을에 맛있는 소문이 돌기 시작해요.',
     reward: { coins: 50 },
   },
   {
-    id: 'secret', ico: '🌫️', title: '숲의 비밀', goal: '안개 낀 숲 정화하기 (1회)',
-    start: '북서쪽 숲의 안개가 걷히질 않는대요. 그러고 보니… 그날의 잎사귀, 우연이 아니었을지도.',
-    done: '수호목이 속삭였어요 — "바람에 잎사귀를 실어 보낸 건 나였단다. 지친 여행자야, 잘 왔다." 당신의 이야기는 이제 이 숲과 함께 계속됩니다.',
+    id: 'secret', ico: '🌿', title: '잎사귀의 주인', goal: '안개 낀 숲의 안개 걷어내기',
+    start: '북서쪽 숲엔 걷히지 않는 안개가 있대요. 문득, 그날 바람에 실려 온 잎사귀가 떠올라요.',
+    done: '수호목이 나직이 속삭였어요. "그 잎사귀, 내가 보낸 거란다. 먼 길 오느라 고생했어." 당신의 이야기는 이제 이 숲과 함께 흘러갑니다.',
     reward: { coins: 80 },
   },
 ];
@@ -730,8 +730,8 @@ function storyDone(i) {
 }
 function storyProgressText(i) {
   const s = gameState;
-  if (i === 0) return `${Math.min(s.houseStage, 3)}/3 단계`;
-  if (i === 1) return `${Math.min(s.story.q || 0, 3)}/3 의뢰`;
+  if (i === 0) return `공사 ${Math.min(s.houseStage, 3)}/3`;
+  if (i === 1) return `의뢰 ${Math.min(s.story.q || 0, 3)}/3`;
   if (i === 2) return `요리 ${Math.min(s.kitchen.cooked || 0, 1)}/1 · 서빙 ${Math.min(s.cafe.served || 0, 1)}/1`;
   if (i === 3) return `정화 ${Math.min(s.mist?.purifyTotal || 0, 1)}/1`;
   return '';
