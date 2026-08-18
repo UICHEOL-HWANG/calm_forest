@@ -174,10 +174,11 @@ const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 �
 let nearShop = false;
 const MARKET = new THREE.Vector3(11.5, 0, 2.4); // 📊 시세판(상점 동쪽, 플레이어 동선 위) — 초보자도 시세를 발견하게
 let nearMarket = false;
-// 🏆 랭킹 게시판 — 마을 한복판 공터(스폰 북쪽, 사용자 지정 "이 중간"). 호수 옆은 비좁아 이전.
-//    여백 검증: 스폰(0,0) 3.0(프롬프트 2.2 밖·시작 화면 정면에 보임) · 작업대(4,-5) 3.7 ·
-//    올빼미(-3,-3) 4.0 · 요리사(0,-8) 5.3 · 랜덤 나무 밴드(r≥8) 안쪽이라 나무 없음
-const RANK = new THREE.Vector3(1, 0, -2.8);
+// 🏆 랭킹 게시판 — 마을 완전 중앙(사용자 지정). 스폰(0,0) 1.9 거리라 시작 시 밀리지 않고
+//    (콜라이더 1.57 밖) 프롬프트도 안 뜨게 상호작용 반경은 1.8로 타이트하게.
+//    여백: 농부(5,4) 4.4 · 공원벤치(-2.2,4.6) 4.6 · 텃밭 게이트(0,7) 5.6 · 랜덤 나무 밴드(r≥8) 밖
+//    ⚠️ 스폰보다 남쪽(z+)에 두면 카메라(남→북)와 캐릭터 사이에 끼어 캐릭터를 가림 — 같은 z선상 동쪽으로.
+const RANK = new THREE.Vector3(2.4, 0, 0.2);
 let nearRank = false;
 const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
@@ -5373,7 +5374,7 @@ function updateDoorInteract() {
   nearBench = inVillage && !nearKitchen && dist2D(BENCH, player.position) < 2.0;
   nearShop = inVillage && !nearKitchen && !nearBench && dist2D(SHOP, player.position) < 2.0;
   nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
-  nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 2.2; // 🏆 랭킹 게시판
+  nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
