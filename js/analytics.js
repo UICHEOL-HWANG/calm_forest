@@ -10,6 +10,7 @@
 // =============================================================
 
 import { CONFIG, isGaConfigured } from './config.js';
+import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -29,6 +30,8 @@ const sessionStart = Date.now();
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
   document.head.appendChild(s);
   gtag('config', id);
+  // [i18n·A/B] 표시 언어와 변형을 유저 속성으로 — 리텐션/체류를 lang×variant 로 자를 수 있게
+  gtag('set', 'user_properties', { lang: LANG, ab_variant: assignVariant() });
   console.log('[GA4] 로드됨:', id);
 })();
 

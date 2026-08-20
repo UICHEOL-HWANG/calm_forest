@@ -768,6 +768,7 @@
       <button id="help-btn"><span class="uico">❓</span><span class="ulbl">도움말</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
       <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
+      <button id="lang-btn"><span class="uico">🌐</span><span class="ulbl">언어</span></button>
       <button id="logout-btn" style="display:none;"><span class="uico">🚪</span><span class="ulbl">나가기</span></button>
     </div>
   </div>
@@ -1090,6 +1091,8 @@
       <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
       <button id="guest-btn">게스트로 둘러보기</button>
       <div id="login-note"></div>
+      <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
+      <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
     </div>
   </div>
 
@@ -1226,8 +1229,26 @@
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
+    import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
 
     const $ = (id) => document.getElementById(id);
+
+    // ── 🌐 i18n 부팅 — 영어 모드면 정적 마크업을 즉시 번역하고,
+    //    이후 동적으로 나타나는 텍스트는 옵저버가 사전으로 치환한다(ko 모드 오버헤드 0).
+    document.documentElement.lang = LANG;
+    translateDom(document.body);
+    watchDom(document.body);
+    // 토글 라벨은 "전환될 언어"를 보여준다(🌐 English ↔ 🌐 한국어)
+    const langLabel = LANG === 'en' ? '🌐 한국어' : '🌐 English';
+    $('login-lang').textContent = langLabel;
+    $('lang-btn').querySelector('.ulbl').textContent = langLabel.replace('🌐 ', '');
+    const toggleLang = () => {
+      const to = LANG === 'en' ? 'ko' : 'en';
+      trackEvent('lang_toggle', { from: LANG, to });
+      setLang(to);   // localStorage 저장 후 reload(캔버스 간판까지 새로 그림)
+    };
+    $('login-lang').addEventListener('click', toggleLang);
+    $('lang-btn').addEventListener('click', toggleLang);
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
     let lastToolIco = '✋';                          // 현재 도구 아이콘(액션버튼 복원용)
     let placingDecorItem = null;                    // 배치 중인 가구(액션버튼에 표시)
@@ -1251,10 +1272,10 @@
     // 도구 하트바 슬롯 렌더 + 클릭/탭 선택
     function buildHotbar(tools) {
       const bar = $('hotbar'); bar.innerHTML = '';
-      tools.forEach((t, i) => {
+      tools.forEach((tool, i) => {   // (파라미터명 tool — i18n 의 t() 와 겹치지 않게)
         const slot = document.createElement('div');
         slot.className = 'slot'; slot.dataset.i = i;
-        slot.innerHTML = `<span class="s-ico">${t.ico}</span><span class="s-key">${i + 1} ${t.name}</span>`;
+        slot.innerHTML = `<span class="s-ico">${tool.ico}</span><span class="s-key">${i + 1} ${t(tool.name)}</span>`;
         slot.addEventListener('pointerdown', (e) => { Input.selectTool(i); e.stopPropagation(); });
         bar.appendChild(slot);
       });
@@ -1389,7 +1410,7 @@
           selected = a.id;
           if (ui._charPreview) ui._charPreview.setAnimal(a.id);
           $('char-preview-fallback').textContent = a.emoji;   // WebGL 실패 시 대체 이모지
-          $('char-preview-name').textContent = `${a.emoji} ${a.name}`;
+          $('char-preview-name').textContent = `${a.emoji} ${t(a.name)}`;   // [i18n] 이모지+이름 조합 노드라 직접 번역
           grid.querySelectorAll('.char-card').forEach(el => el.classList.toggle('sel', el.dataset.id === a.id));
           if (!nickDirty) nick.value = Input.genNickname(a.id);   // 제안 상태면 동물에 맞춰 이름도 갱신
         };
@@ -1630,7 +1651,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : '🌾 텃밭', S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
@@ -2515,7 +2536,7 @@
             const ds = `${t.getFullYear()}.${String(t.getMonth() + 1).padStart(2, '0')}.${String(t.getDate()).padStart(2, '0')}`;
             c.textAlign = 'right'; c.fillStyle = '#fffdf4';
             c.font = `700 ${Math.round(fs * 0.75)}px sans-serif`;
-            c.fillText(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`, W - pad, H - Math.round(barH * 0.38));
+            c.fillText(t(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`), W - pad, H - Math.round(barH * 0.38));
             resolve(cv.toDataURL('image/png'));
           } catch (e) { resolve(dataURL); }   // 합성 실패 시 원본 그대로
         };
@@ -2778,7 +2799,7 @@
         const blob = await (await fetch(lastPhoto)).blob();
         const file = new File([blob], 'calmforest.png', { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'calm forest 🌿', text: '내 마을 구경오세요 · https://calmforest.cloud' });
+          await navigator.share({ files: [file], title: 'calm forest 🌿', text: t('내 마을 구경오세요 · https://calmforest.cloud') });
           trackEvent('photo_share');   // [GA4] 공유 훅
         } else {
           ui.toast('이 기기는 바로 공유가 안 돼요 — 💾저장으로 받아 공유해요');

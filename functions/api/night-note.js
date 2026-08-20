@@ -16,7 +16,10 @@
 
 const ANIMAL_KO = { raccoon: '너구리', boar: '멧돼지' };
 const CROP_KO = { carrot: '당근', tomato: '토마토', blueberry: '블루베리', pumpkin: '호박', '': '작물' };
+const ANIMAL_EN = { raccoon: 'a raccoon', boar: 'a wild boar' };
+const CROP_EN = { carrot: 'carrots', tomato: 'tomatoes', blueberry: 'blueberries', pumpkin: 'pumpkins', '': 'crops' };
 const AUTHOR = '농부 삼촌';
+const AUTHOR_EN = 'Farmer';
 const TEXT_MAX = 140;
 const CACHE_TTL = 60 * 60 * 12;   // 12시간(날짜가 바뀌면 캐시 키가 달라짐)
 
@@ -33,16 +36,25 @@ const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 농부 삼촌이야
 - 핵심은 "가져간 뒤 어떻게 됐는지" 한 장면: 숲에서 나눠 먹더라, 새끼들이 기다리더라, 겨울 준비더라 같은 따뜻한 뒷이야기.
 - 마지막에 허수아비나 울타리를 살짝 권해도 좋다(강요 말고 한마디).`;
 
-async function generate(env, date, animal, crop) {
+const SYSTEM_EN = `You are the Farmer in "calm forest", a cozy healing game. Overnight a forest animal took a few crops from the player's field; you write the short note the player finds on their field the next morning.
+Rules:
+- English, in a gentle countryside voice. No emoji, no quotation marks.
+- 2–3 sentences, at most ${TEXT_MAX} characters. Never blame or threaten the animal.
+- The heart of the note is one warm scene of "what happened after": sharing the food in the woods, little ones waiting, stocking up for winter.
+- You may gently suggest a scarecrow or fence at the end (one soft remark, never pushy).`;
+
+async function generate(env, date, animal, crop, lang) {
   const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
-  const prompt = `날짜: ${date}\n다녀간 동물: ${ANIMAL_KO[animal]}\n가져간 작물: ${CROP_KO[crop]}\n\n오늘 아침의 쪽지를 써줘.`;
+  const prompt = lang === 'en'
+    ? `Date: ${date}\nAnimal that visited: ${ANIMAL_EN[animal]}\nCrops taken: ${CROP_EN[crop]}\n\nWrite this morning's note.`
+    : `날짜: ${date}\n다녀간 동물: ${ANIMAL_KO[animal]}\n가져간 작물: ${CROP_KO[crop]}\n\n오늘 아침의 쪽지를 써줘.`;
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
+        systemInstruction: { parts: [{ text: lang === 'en' ? SYSTEM_EN : SYSTEM }] },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 1.0,
@@ -57,7 +69,7 @@ async function generate(env, date, animal, crop) {
   const raw = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
   const text = String(JSON.parse(raw)?.text || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, TEXT_MAX);
   if (!text) throw new Error('빈 쪽지');
-  return { author: AUTHOR, text };
+  return { author: lang === 'en' ? AUTHOR_EN : AUTHOR, text };
 }
 
 export async function onRequestGet({ request, env, waitUntil }) {
@@ -67,6 +79,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : new Date().toISOString().slice(0, 10);
   const animal = url.searchParams.get('animal') === 'boar' ? 'boar' : 'raccoon';
   const crop = (url.searchParams.get('crop') || '') in CROP_KO ? (url.searchParams.get('crop') || '') : '';
+  const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
 
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -80,17 +93,17 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   // (날짜·동물·작물)이 같으면 엣지 캐시 재사용 — 같은 사건을 겪은 유저는 같은 쪽지
   const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}/api/night-note?date=${date}&animal=${animal}&crop=${crop}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.origin}/api/night-note?date=${date}&animal=${animal}&crop=${crop}&lang=${lang}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
   try {
-    const note = await generate(env, date, animal, crop);
+    const note = await generate(env, date, animal, crop, lang);
     const out = new Response(JSON.stringify(note), { headers });
     waitUntil(cache.put(cacheKey, out.clone()));
     return out;
   } catch (e) {
-    console.error(JSON.stringify({ message: 'night-note failed', date, animal, crop, error: e.message }));
+    console.error(JSON.stringify({ message: 'night-note failed', date, animal, crop, lang, error: e.message }));
     // 실패는 캐시하지 않는다 — 다음 요청에서 재시도. 클라이언트는 쪽지를 생략할 뿐.
     return new Response('{}', {
       headers: {

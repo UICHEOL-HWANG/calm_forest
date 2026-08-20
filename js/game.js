@@ -27,6 +27,7 @@ import { saveGame, loadGame, sendBoatRun } from './supabase-client.js';  // [Sup
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { t } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -786,7 +787,8 @@ const NICK_ADJS = ['조용한', '포근한', '느긋한', '반짝이는', '부�
 function genNickname(animal) {
   const adj = NICK_ADJS[Math.floor(Math.random() * NICK_ADJS.length)];
   const a = ANIMALS.find(x => x.id === (animal || gameState.character));
-  return `${adj} ${a ? a.name : '여행자'} #${1000 + Math.floor(Math.random() * 9000)}`;
+  // [i18n] 영어 모드면 형용사·동물명을 번역해 생성(닉네임은 유저 데이터라 사후 번역 없음)
+  return `${t(adj)} ${t(a ? a.name : '여행자')} #${1000 + Math.floor(Math.random() * 9000)}`;
 }
 // source: 'new'(첫 캐릭터 선택) | 'auto'(기존 유저 소급 부여) | 'change'(직접 변경)
 function setNickname(name, source = 'change') {
@@ -1850,8 +1852,8 @@ function buildCoopSite() {
   const c = cv.getContext('2d');
   c.fillStyle = '#b8d2ba'; roundRect(c, 10, 10, 492, 172, 28); c.fill();
   c.fillStyle = '#3a4a40'; c.textAlign = 'center';
-  c.font = 'bold 46px sans-serif'; c.fillText('🐔 닭장 터', 256, 74);
-  c.font = 'bold 30px sans-serif'; c.fillText('🔥 2일 연속 출석 + 🪵25 🪨10 🪙60', 256, 134);
+  c.font = 'bold 46px sans-serif'; c.fillText(t('🐔 닭장 터'), 256, 74);
+  c.font = 'bold 30px sans-serif'; c.fillText(t('🔥 2일 연속 출석 + 🪵25 🪨10 🪙60'), 256, 134);
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
@@ -3844,9 +3846,9 @@ function updateHouseSign() {
   c.lineWidth = 10; c.strokeStyle = '#6fae82'; roundRect(c, 30, 26, 964, 248, 60); c.stroke();
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillStyle = '#204a2c'; c.font = 'bold 92px sans-serif';
-  c.fillText('🏠 여기에 집 짓기', 512, 108);
+  c.fillText(t('🏠 여기에 집 짓기'), 512, 108);
   c.fillStyle = '#33503c'; c.font = 'bold 66px sans-serif';
-  c.fillText(`🔨 망치 · 🪵 ${BUILD_COST}`, 512, 210);
+  c.fillText(t(`🔨 망치 · 🪵 ${BUILD_COST}`), 512, 210);
   houseSignTex.needsUpdate = true;
 }
 
@@ -4303,7 +4305,7 @@ function spawnRankBoard() {
   c.fillStyle = '#fff8ea'; roundRect(c, 0, 0, 512, 336, 26); c.fill();
   c.fillStyle = '#7fce8b'; roundRect(c, 18, 16, 476, 74, 18); c.fill();
   c.fillStyle = '#2f4a3a'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.font = '700 46px sans-serif'; c.fillText('🏆 이번 주 랭킹', 256, 54);
+  c.font = '700 46px sans-serif'; c.fillText(t('🏆 이번 주 랭킹'), 256, 54);
   const rows = [['🥇', '#f5d76e'], ['🥈', '#cfd6de'], ['🥉', '#e0a878']];
   rows.forEach(([medal, col], i) => {
     const y = 116 + i * 62;
@@ -4312,7 +4314,7 @@ function spawnRankBoard() {
     c.fillStyle = col; roundRect(c, 84, y, 340 - i * 60, 34, 12); c.fill();   // 장식용 점수 바(길이 차등)
   });
   c.fillStyle = '#8a9a8e'; c.font = '600 24px sans-serif'; c.textAlign = 'center';
-  c.fillText('매주 월요일 새로 시작 · 가까이서 확인!', 256, 312);
+  c.fillText(t('매주 월요일 새로 시작 · 가까이서 확인!'), 256, 312);
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 8;
   const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.44), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
   face.position.set(0, 1.62, 0.065); g.add(face);
@@ -4804,7 +4806,7 @@ function spawnMarketBoard() {
   [[34, 34], [478, 34], [34, 286], [478, 286]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); });
   c.textAlign = 'center';
   c.fillStyle = '#4a3b28'; c.font = 'bold 74px sans-serif';
-  c.fillText('📊 시세판', 256, 96);                                        // 한글 제목 큼직하게
+  c.fillText(t('📊 시세판'), 256, 96);                                     // 한글 제목 큼직하게
   c.strokeStyle = '#d9cdb0'; c.lineWidth = 4;
   c.beginPath(); c.moveTo(50, 122); c.lineTo(462, 122); c.stroke();       // 구분선
   const ks = Object.keys(SELL_PRICE);
@@ -4812,10 +4814,10 @@ function spawnMarketBoard() {
   const lo = ks.reduce((a, b) => (priceRate(a) <= priceRate(b) ? a : b));
   const pct = (k) => Math.round(priceRate(k) * 100) - 100;
   c.font = 'bold 48px sans-serif';
-  c.fillStyle = '#2fa564'; c.fillText(`${SELL_ICO_G[hi]} 비싸요  +${pct(hi)}%`, 256, 186);
-  c.fillStyle = '#d05a4a'; c.fillText(`${SELL_ICO_G[lo]} 싸요  ${pct(lo)}%`, 256, 248);
+  c.fillStyle = '#2fa564'; c.fillText(t(`${SELL_ICO_G[hi]} 비싸요  +${pct(hi)}%`), 256, 186);
+  c.fillStyle = '#d05a4a'; c.fillText(t(`${SELL_ICO_G[lo]} 싸요  ${pct(lo)}%`), 256, 248);
   c.fillStyle = '#8a7a5f'; c.font = '26px sans-serif';
-  c.fillText('가격은 매일 자정에 바뀌어요', 256, 292);
+  c.fillText(t('가격은 매일 자정에 바뀌어요'), 256, 292);
   const tex = new THREE.CanvasTexture(cv);
   // 재질 배열: +z 앞면만 시세판 텍스처, 나머지는 나무 톤(옆면 스트레치 방지)
   const woodSide = new THREE.MeshStandardMaterial({ color: 0x9a7248, roughness: 0.9 });
@@ -5108,7 +5110,7 @@ function makeSignBoard(text) {
   c.fillStyle = '#c9a86e'; c.fillRect(0, 0, W, 22); c.fillRect(0, H - 22, W, 22);
   c.fillStyle = '#8a6a3a'; c.fillRect(0, 0, W, 9); c.fillRect(0, H - 9, W, 9);
   // 이모지는 캔버스에서 기기(iOS 등)마다 폭 측정/렌더가 달라 글자가 삐져나감 → 판엔 한글만
-  const label = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+  const label = t(text).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
   // 글자 폭을 재서 판 안에 딱 맞게 폰트 자동 축소(넉넉한 양옆 여백 → 잘림 방지)
   const maxW = W - 130;
   const fontFor = (s) => `bold ${s}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
@@ -6160,7 +6162,7 @@ function traceMaterial() {
   c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
   c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
   c.fillStyle = '#5a4126'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🐾 조사!', 100, 40);
+  c.fillText(t('🐾 조사!'), 100, 40);
   const tex = new THREE.CanvasTexture(cv);
   _traceMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _traceMat;
@@ -6734,7 +6736,7 @@ function warnMaterial() {
   c.fillStyle = 'rgba(140,200,255,0.96)'; roundRect(c, 8, 8, 160, 64, 18); c.fill();
   c.beginPath(); c.moveTo(78, 72); c.lineTo(98, 72); c.lineTo(84, 94); c.closePath(); c.fill();
   c.fillStyle = '#164a6a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('💧 물 줘요!', 88, 40);
+  c.fillText(t('💧 물 줘요!'), 88, 40);
   const tex = new THREE.CanvasTexture(cv);
   _warnMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _warnMat;
@@ -6757,7 +6759,7 @@ function harvestMaterial() {
   c.fillStyle = 'rgba(150,220,150,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
   c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
   c.fillStyle = '#245a2a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🌾 수확!', 100, 40);
+  c.fillText(t('🌾 수확!'), 100, 40);
   const tex = new THREE.CanvasTexture(cv);
   _harvestMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _harvestMat;
@@ -6780,7 +6782,7 @@ function seedHintMaterial() {
   c.fillStyle = 'rgba(233,206,150,0.97)'; roundRect(c, 8, 8, 232, 64, 18); c.fill();
   c.beginPath(); c.moveTo(114, 72); c.lineTo(134, 72); c.lineTo(120, 94); c.closePath(); c.fill();
   c.fillStyle = '#6b4a20'; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🌰 씨앗을 넣어요', 124, 40);
+  c.fillText(t('🌰 씨앗을 넣어요'), 124, 40);
   const tex = new THREE.CanvasTexture(cv);
   _seedHintMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _seedHintMat;
@@ -6862,6 +6864,7 @@ const floatTexts = [];
 // scale: 좁은 화면·가까운 카메라(🛶 뱃놀이 등)에서 줄여 그리기 위한 배율(기본 1)
 function spawnFloatText(x, y, z, text, color = '#3a4a40', scale = 1) {
   const cv = document.createElement('canvas');
+  text = t(text);   // [i18n] 캔버스 스프라이트는 옵저버 밖 — 폭 측정 전에 번역
   let c = cv.getContext('2d');
   c.font = 'bold 52px sans-serif';
   // 캔버스 폭을 텍스트 길이에 맞춤 — 고정 256px 이던 시절 긴 한글("배가 가라앉아요…")이 잘렸음
@@ -7251,7 +7254,7 @@ function questView(o) {
   return { name: o.def.name, title: q.title, desc: q.desc, progress: st.progress, target: q.target, ready: st.progress >= q.target };
 }
 function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
-function rewardText(r) { return Object.entries(r).map(([k, v]) => `${RES_LABEL[k] || k}+${v}`).join(', '); }
+function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
 function giveReward(r, source = 'reward', item = null) {
   for (const k in r) gameState.inventory[k] = (gameState.inventory[k] || 0) + r[k];
