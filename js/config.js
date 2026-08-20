@@ -63,7 +63,7 @@ export const CONFIG = {
   //             한국어 브라우저는 실험 밖(전원 한국어). off면 비한국어=영어 자동(전면 롤아웃).
   //             배정·언어 결정 로직은 js/i18n.js (detectLang/assignVariant).
   //    실험을 켜기 전까지는 그냥 'control'만 쌓이고, 켜는 순간부터 배정됨.
-  EXPERIMENT: 'off',
+  EXPERIMENT: 'i18n',   // 🌐 번역 A/B 가동(2026-08-20~) — 비한국어 브라우저 대상
 };
 
 // 플레이스홀더가 그대로면 "오프라인 모드" 로 간주하기 위한 헬퍼
