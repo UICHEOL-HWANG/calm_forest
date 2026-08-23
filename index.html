@@ -482,11 +482,19 @@
   /* 🏆 리더보드 모달 */
   #lb-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #lb-modal.show { display: grid; }
-  #lb-tabs { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  #lb-tabs::-webkit-scrollbar { display: none; }
+  /* 탭 5개 — 가로 스크롤로 두면 좁은 화면에서 뒤쪽 탭(🍳요리왕·📜퀘스트)에 손이 닿지 않는다.
+     감싸는 .tut-card 가 touch-action: pan-y 라 브라우저가 가로 팬을 거부하기 때문.
+     스크롤 대신 줄바꿈으로 전부 보이게 한다(작업대 .ck-tabs 와 같은 방식). */
+  #lb-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; padding-bottom: 4px; }
   .lb-tab { flex: 0 0 auto; border: none; border-radius: 10px; padding: 7px 11px; font-weight: 700; font-size: 12px; cursor: pointer; background: #eef2ee; color: var(--ink); white-space: nowrap; }
   .lb-tab.active { background: var(--mint); }
-  #lb-list { margin-top: 8px; max-height: min(46dvh, 380px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  /* 탭이 1줄↔2줄로 오가면 그만큼 리스트가 밀린다. 카드를 세로 플렉스로 잡고
+     남는 높이를 리스트가 흡수하게 해야 세로 짧은 화면에서도 닫기 버튼이 안 밀린다.
+     (.tut-card 기본값대로 카드째 스크롤되면 리스트 스크롤과 중첩돼
+      손가락이 어느 쪽을 잡을지 모르게 된다 — 스크롤 주체는 리스트 하나여야 한다) */
+  #lb-modal .tut-card { display: flex; flex-direction: column; }
+  #lb-modal .tut-card > *:not(#lb-list) { flex: 0 0 auto; }
+  #lb-list { margin-top: 8px; flex: 1 1 auto; min-height: 88px; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
   .lb-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: #f2f6f0; font-size: 13px; }
   .lb-row.top3 { background: #fdf6e3; }
   .lb-row.me-row { background: #e3f4e6; box-shadow: inset 0 0 0 2px var(--mint); }
