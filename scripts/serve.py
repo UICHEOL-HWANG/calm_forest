@@ -59,7 +59,16 @@ MENU = [
     ('mushroom_soup', '숲의 버섯 스프', '채집 숲 버섯으로 끓인 스프'),
 ]
 WEATHER_KO = {'clear': '맑음', 'rain': '비', 'snow': '눈', 'fog': '안개'}
-LINE_MAX, THANKS_MAX = 48, 28
+# 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
+#    사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로 3칸으로만 받는다.
+PHASES = {
+    'settling': '아직 빈터에 집을 짓는 중이다 — 마을에 갓 자리 잡는 참',
+    'settled': '집을 완성하고 마을에 자리를 잡았다',
+    'thriving': '집을 저택까지 넓힌, 마을의 오랜 이웃이다',
+}
+PHASE_RULE = '- 플레이어의 처지를 알고 있지만 매번 들먹이지 않는다. 어울릴 때 한 조각만 스치듯 담는다.'
+LINE_MAX, THANKS_MAX = 48, 28          # 하드 캡(넘으면 …로 잘림)
+LINE_ASK, THANKS_ASK = 42, 24          # 모델에겐 조금 낮게 — 살짝 넘겨도 안 잘리게
 
 
 def trim(s, max_len):
@@ -74,10 +83,11 @@ def trim(s, max_len):
 SYSTEM = f"""너는 코지 힐링 게임 "calm forest"의 마을 카페 손님을 쓰는 작가야.
 규칙:
 - 한국어. 주민의 말투를 살리되 따뜻하고 담백하게. 과장·이모지·따옴표 금지.
-- line 은 {LINE_MAX}자 이내 한 문장. "오늘 무슨 일이 있었는지" 를 한 조각 곁들여 그 메뉴가 당기는 이유를 만든다.
-- thanks 는 {THANKS_MAX}자 이내 한마디.
+- line 은 {LINE_ASK}자 이내 한 문장. "오늘 무슨 일이 있었는지" 를 한 조각 곁들여 그 메뉴가 당기는 이유를 만든다.
+- thanks 는 {THANKS_ASK}자 이내 한마디.
 - id 와 recipeId 는 반드시 주어진 목록의 값만 쓴다.
-- 같은 주민이 두 번 오지 않는다. 메뉴는 되도록 겹치지 않게 고른다."""
+- 같은 주민이 두 번 오지 않는다. 메뉴는 되도록 겹치지 않게 고른다.
+{PHASE_RULE}"""
 
 SCHEMA = {
     'type': 'ARRAY',
@@ -107,8 +117,9 @@ def ssl_context():
     return ctx   # 못 찾으면 기본값 — 실패 시 gen_guests 가 빈 배열로 폴백
 
 
-def build_prompt(date, weather, count):
-    lines = [f'날짜: {date} (날씨: {WEATHER_KO.get(weather, "맑음")})', '', '주민 목록:']
+def build_prompt(date, weather, count, phase):
+    lines = [f'날짜: {date} (날씨: {WEATHER_KO.get(weather, "맑음")})',
+             f'플레이어는 {PHASES[phase]}.', '', '주민 목록:']
     lines += [f'- {i}: {n}' for i, n in RESIDENTS]
     lines += ['', '메뉴 목록:']
     lines += [f'- {i}: {n} ({h})' for i, n, h in MENU]
@@ -136,8 +147,8 @@ def sanitize(raw, count):
     return out
 
 
-def gen_guests(date, weather, count):
-    key = (date, weather, count)
+def gen_guests(date, weather, count, phase):
+    key = (date, weather, count, phase)
     if key in _cache:
         return _cache[key]
     api_key = os.environ.get('GEMINI_API_KEY')
@@ -146,7 +157,7 @@ def gen_guests(date, weather, count):
     model = os.environ.get('GEMINI_MODEL') or 'gemini-flash-lite-latest'
     body = json.dumps({
         'systemInstruction': {'parts': [{'text': SYSTEM}]},
-        'contents': [{'role': 'user', 'parts': [{'text': build_prompt(date, weather, count)}]}],
+        'contents': [{'role': 'user', 'parts': [{'text': build_prompt(date, weather, count, phase)}]}],
         'generationConfig': {
             'temperature': 1.1,
             'responseMimeType': 'application/json',
@@ -298,6 +309,7 @@ QUEST_SYSTEM = f"""너는 코지 힐링 게임 "calm forest"의 의뢰 담당 �
 - line 은 {QLINE_MAX}자 이내 한 문장. 마을에 오늘 무슨 일이 있어서 이 일이 필요한지 이유를 담는다.
 - type 은 반드시 주어진 목록의 값만 쓴다. target 은 주어진 범위 안의 정수.
 - 같은 type 을 두 번 쓰지 않는다.
+{PHASE_RULE}
 - 날씨를 자연스럽게 반영해도 좋다(비 오는 날엔 숲에 버섯이 잘 돋는다).
 - 마을에 있는 것만 언급한다: 밭 · 집 · 카페 · 상점 · 작업대 · 자유주방 · 동굴 · 호수 · 채집 숲 · 닭장 · 나루터 · 안개 숲.
   게임에 없는 시설이나 물건(비닐하우스·시장 좌판 같은 것)을 지어내지 않는다."""
@@ -326,8 +338,9 @@ def opener_for(date):
     return list(QUEST_SPEC)[h % len(QUEST_SPEC)]
 
 
-def build_quest_prompt(date, weather):
-    lines = [f'날짜: {date} (날씨: {WEATHER_KO.get(weather, "맑음")})', '', '목표 종류 (id: 무슨 일인지 @ 어디서 … 허용 범위):']
+def build_quest_prompt(date, weather, phase):
+    lines = [f'날짜: {date} (날씨: {WEATHER_KO.get(weather, "맑음")})',
+             f'플레이어는 {PHASES[phase]}.', '', '목표 종류 (id: 무슨 일인지 @ 어디서 … 허용 범위):']
     lines += [f'- {t}: {fn(lo)} @ {where} … ({lo}~{hi})' for t, (lo, hi, fn, where) in QUEST_SPEC.items()]
     lines += ['', f"오늘은 '{opener_for(date)}' 로 문을 여는 하루야. 이어지는 나머지 둘은 네가 골라서 하루가 이어지게 해.",
               f'오늘의 의뢰 {QUEST_NEED}개를 만들어줘.']
@@ -358,8 +371,8 @@ def sanitize_quests(raw):
     return out
 
 
-def gen_quests(date, weather):
-    key = (date, weather)
+def gen_quests(date, weather, phase):
+    key = (date, weather, phase)
     if key in _quest_cache:
         return _quest_cache[key]
     api_key = os.environ.get('GEMINI_API_KEY')
@@ -368,7 +381,7 @@ def gen_quests(date, weather):
     model = os.environ.get('GEMINI_MODEL') or 'gemini-flash-lite-latest'
     body = json.dumps({
         'systemInstruction': {'parts': [{'text': QUEST_SYSTEM}]},
-        'contents': [{'role': 'user', 'parts': [{'text': build_quest_prompt(date, weather)}]}],
+        'contents': [{'role': 'user', 'parts': [{'text': build_quest_prompt(date, weather, phase)}]}],
         'generationConfig': {
             'temperature': 1.1,
             'responseMimeType': 'application/json',
@@ -809,7 +822,10 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         except ValueError:
             count = 4
         try:
-            guests = gen_guests(date, weather, count)
+            phase = (q.get('phase') or ['settled'])[0]
+            if phase not in PHASES:
+                phase = 'settled'
+            guests = gen_guests(date, weather, count, phase)
         except Exception as e:                       # 실패해도 게임은 기본 손님으로 진행
             print(f'[cafe-guests] 생성 실패: {type(e).__name__}: {e}')
             guests = []
@@ -851,7 +867,10 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if weather not in WEATHER_KO:
             weather = 'clear'
         try:
-            quests = gen_quests(date, weather)
+            phase = (q.get('phase') or ['settled'])[0]
+            if phase not in PHASES:
+                phase = 'settled'
+            quests = gen_quests(date, weather, phase)
         except Exception as e:                       # 실패해도 게임은 로컬 의뢰로 진행
             print(f'[daily-quests] 생성 실패: {type(e).__name__}: {e}')
             quests = []
