@@ -17,7 +17,10 @@ dist-toss/
 # wrangler 로컬 캐시
 .wrangler/
 
-# 🧪 실험실 로컬 작업본 — 파이썬 venv(504MB) · wandb 실행 기록 · __pycache__ 뿐이라 통째로 제외.
-#   실제 ML 소스는 여기 없다(.py 가 하나도 없고 .pyc 만 남아 있음 — 원본은 Oracle VM 쪽).
-#   나중에 ml 소스를 이 저장소에서 버전 관리하려면 이 줄을 지우고 .venv/wandb 만 따로 막을 것.
-ml/
+# 🧪 실험실(ml/) 로컬 잡파일 — venv 504MB · wandb 실행 기록.
+#   ml/ 을 통째로 막으면 안 된다: ml 소스(calm_ml·api·notebooks)는 experiment 브랜치에서
+#   실제로 추적 중이고, ml/.gitignore 가 하위 규칙을 따로 갖고 있다.
+#   여기서 막는 이유는 ml/ 이 없는 브랜치(dev·main·toss)로 옮겨 오면 추적 파일만 사라지고
+#   이 잡파일들만 미추적으로 남아 git status 를 어지럽히기 때문이다.
+ml/.venv/
+ml/wandb/
