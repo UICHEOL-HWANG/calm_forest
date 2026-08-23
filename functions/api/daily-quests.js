@@ -33,6 +33,19 @@ const QUEST_SPEC = {
 const TYPES = Object.keys(QUEST_SPEC);
 const NEED = 3;
 
+// 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
+//   사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로, 3칸으로만 받는다.
+const PHASES = {
+  settling: { ko: '아직 빈터에 집을 짓는 중이다 — 마을에 갓 자리 잡는 참',
+              en: 'still building a house on the empty lot — just settling into the village' },
+  settled:  { ko: '집을 완성하고 마을에 자리를 잡았다',
+              en: 'has finished their house and settled into the village' },
+  thriving: { ko: '집을 저택까지 넓힌, 마을의 오랜 이웃이다',
+              en: 'has grown their house into a manor and is a long-time neighbour' },
+};
+const PHASE_RULE_KO = '- 플레이어의 처지를 알고 있지만 매번 들먹이지 않는다. 어울릴 때 한 조각만 스치듯 담는다.';
+const PHASE_RULE_EN = '- You know where the player stands, but do not bring it up every time. Let it show in one passing detail when it fits.';
+
 const WEATHER_KO = { clear: '맑음', rain: '비', snow: '눈', fog: '안개' };
 const WEATHER_EN = { clear: 'sunny', rain: 'rainy', snow: 'snowy', fog: 'foggy' };
 
@@ -79,6 +92,7 @@ const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올�
 - line 은 ${LINE_MAX}자 이내 한 문장. 마을에 오늘 무슨 일이 있어서 이 일이 필요한지 이유를 담는다.
 - type 은 반드시 주어진 목록의 값만 쓴다. target 은 주어진 범위 안의 정수.
 - 같은 type 을 두 번 쓰지 않는다.
+${PHASE_RULE_KO}
 - 날씨를 자연스럽게 반영해도 좋다(비 오는 날엔 숲에 버섯이 잘 돋는다).
 - 마을에 있는 것만 언급한다: 밭 · 집 · 카페 · 상점 · 작업대 · 자유주방 · 동굴 · 호수 · 채집 숲 · 닭장 · 나루터 · 안개 숲.
   게임에 없는 시설이나 물건(비닐하우스·시장 좌판 같은 것)을 지어내지 않는다.`;
@@ -96,6 +110,7 @@ Rules:
 - "line" is one sentence, at most ${LINE_MAX_EN} characters, giving the reason today's village needs this done.
 - Use only "type" values from the given list. "target" must be an integer inside the given range.
 - Never use the same type twice.
+${PHASE_RULE_EN}
 - You may weave in the weather (mushrooms come up in the woods after rain).
 - Mention only what exists in the village: the field, the house, the café, the shop, the workbench,
   the open kitchen, the cave, the lake, the foraging woods, the coop, the river dock, the misty grove.
@@ -110,7 +125,7 @@ function openerFor(date) {
   return TYPES[h % TYPES.length];
 }
 
-function buildPrompt(date, weather, lang) {
+function buildPrompt(date, weather, lang, phase) {
   const opener = openerFor(date);
   const list = TYPES.map(t => {
     const s = QUEST_SPEC[t];
@@ -119,6 +134,7 @@ function buildPrompt(date, weather, lang) {
   if (lang === 'en') {
     return [
       `Date: ${date} (weather: ${WEATHER_EN[weather] || 'sunny'})`,
+      `The player ${PHASES[phase].en}.`,
       '', 'Goal types (id: what it means @ where it happens … allowed target range):', ...list,
       '', `Open today with "${opener}"; the other two are yours to choose so the day connects.`,
       `Write today's ${NEED} requests.`,
@@ -126,6 +142,7 @@ function buildPrompt(date, weather, lang) {
   }
   return [
     `날짜: ${date} (날씨: ${WEATHER_KO[weather] || '맑음'})`,
+    `플레이어는 ${PHASES[phase].ko}.`,
     '', '목표 종류 (id: 무슨 일인지 @ 어디서 … 허용 범위):', ...list,
     '', `오늘은 '${opener}' 로 문을 여는 하루야. 이어지는 나머지 둘은 네가 골라서 하루가 이어지게 해.`,
     `오늘의 의뢰 ${NEED}개를 만들어줘.`,
@@ -156,7 +173,7 @@ function sanitize(raw, lang) {
   return out;
 }
 
-async function generate(env, date, weather, lang) {
+async function generate(env, date, weather, lang, phase) {
   const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -165,7 +182,7 @@ async function generate(env, date, weather, lang) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: lang === 'en' ? SYSTEM_EN : SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, lang) }] }],
+        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, lang, phase) }] }],
         generationConfig: {
           temperature: 1.1,                    // 매일 다른 조합이 나오게
           responseMimeType: 'application/json',
@@ -188,6 +205,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const rawWeather = url.searchParams.get('weather') || '';
   const weather = ['clear', 'rain', 'snow', 'fog'].includes(rawWeather) ? rawWeather : 'clear';
   const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
+  const rawPhase = url.searchParams.get('phase') || '';
+  const phase = PHASES[rawPhase] ? rawPhase : 'settled';             // 화이트리스트(그 외 값은 settled)
 
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -202,21 +221,21 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   // 날짜·날씨·언어가 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번(엣지 PoP당)
   const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}/api/daily-quests?date=${date}&weather=${weather}&lang=${lang}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.origin}/api/daily-quests?date=${date}&weather=${weather}&lang=${lang}&phase=${phase}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
   try {
     // 중복 type·목록 밖 값이 걸러지면 3개가 안 될 수 있다 → 한 번만 다시 물어본다.
-    let quests = await generate(env, date, weather, lang);
-    if (quests.length < NEED) quests = await generate(env, date, weather, lang);
+    let quests = await generate(env, date, weather, lang, phase);
+    if (quests.length < NEED) quests = await generate(env, date, weather, lang, phase);
     if (quests.length < NEED) throw new Error(`sanitize 후 ${quests.length}개만 남음`);
     const out = new Response(JSON.stringify(quests), { headers });
     waitUntil(cache.put(cacheKey, out.clone()));
     return out;
   } catch (e) {
     // 구조화 로그 — Cloudflare 대시보드에서 필터링·집계가 되게(유저에겐 조용히 폴백되므로 여기서만 보임)
-    console.error(JSON.stringify({ message: 'daily-quests failed', date, weather, lang, error: e.message }));
+    console.error(JSON.stringify({ message: 'daily-quests failed', date, weather, lang, phase, error: e.message }));
     // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 DAILY_POOL 을 쓴다.
     // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
     return new Response('[]', {

@@ -553,7 +553,7 @@ async function upgradeDailyQuestsAI() {
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), AI_QUEST_TIMEOUT);
-    const res = await fetch(`/api/daily-quests?date=${st.date}&weather=${WEATHER}&lang=${LANG}`, { signal: ctl.signal });
+    const res = await fetch(`/api/daily-quests?date=${st.date}&weather=${WEATHER}&lang=${LANG}&phase=${playerPhase()}`, { signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) return;
     raw = await res.json();
@@ -2496,10 +2496,23 @@ const CAFE_LINES = [
 const CAFE_THANKS = ['잘 먹을게요, 고마워요 ☕', '역시 이 맛이야! 또 올게요', '오늘 하루가 좋아졌어요 😊', '마을 최고의 카페예요!'];
 
 let cafeGuestCache = null;     // { date, guests: [...] } — 외부 생성기 결과
+// 🪣 플레이어 상태 버킷 — 대사를 사람에 맞추되 캐시가 터지지 않게 '유한한 칸' 으로 압축한다.
+//   코인·도감 수 같은 값을 그대로 넘기면 사람마다 캐시 키가 달라져 Gemini 호출이 폭증한다.
+//   집 단계를 고른 이유: 마을에서 가장 눈에 띄게 변하는 것이라 이웃이 말 붙이기 자연스럽다.
+//   3칸뿐이라 (날짜×날씨×언어) 조합이 3배로 늘 뿐이다.
+//   ⚠️ 값을 늘리거나 이름을 바꾸면 서버 화이트리스트도 같이 고쳐야 한다
+//      (functions/api/cafe-guests.js · daily-quests.js · scripts/serve.py).
+function playerPhase() {
+  const st = gameState.houseStage || 0;
+  return st < 3 ? 'settling'                       // 아직 빈터에 집을 짓는 중
+       : st < MAX_HOUSE_STAGE ? 'settled'          // 집을 완성하고 자리 잡음(증축 중 포함)
+       : 'thriving';                               // 증축까지 마친 후반
+}
+
 let cafeGuestFetcher = null;   // async (ctx) => guests[]
 
 // [확장 지점] 외부 손님 생성기 등록. fn 은 async (ctx) => [{...}] 를 반환.
-//   ctx = { date, count, recipes:[{id,name,ico,cost}], npcs:[{id,name,emoji}] }
+//   ctx = { date, count, weather, phase, recipes:[{id,name,ico,cost}], npcs:[{id,name,emoji}] }
 export function setCafeGuestSource(fn) { cafeGuestFetcher = fn || null; cafeGuestCache = null; }
 
 async function ensureCafeGuests() {
@@ -2507,7 +2520,7 @@ async function ensureCafeGuests() {
   if (!cafeGuestFetcher || cafeGuestCache?.date === today) return;
   try {
     const guests = await cafeGuestFetcher({
-      date: today, count: CAFE_ORDERS, weather: WEATHER,
+      date: today, count: CAFE_ORDERS, weather: WEATHER, phase: playerPhase(),
       recipes: cafeMenu().map(r => ({ id: r.id, name: r.name, ico: r.ico, cost: { ...r.cost } })),
       npcs: NPCS.filter(n => !n.daily).map(n => ({ id: n.id, name: n.name, emoji: n.emoji })),
     });
