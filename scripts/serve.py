@@ -167,6 +167,136 @@ def gen_guests(date, weather, count):
     return guests
 
 
+# ── 🦉 오늘의 의뢰 (functions/api/daily-quests.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+#    type 은 게임이 실제로 쏘는 이벤트여야 한다. 목록 밖 값이 통과하면 영원히 완료 못 하는 의뢰가 된다.
+#    desc 는 모델이 아니라 여기서 target 으로 만든다(표시와 실제 목표가 어긋나지 않게).
+#    (하한, 상한, desc 만들기, 어디서) — 장소는 프롬프트에만 쓴다.
+#    없으면 "안개 숲에서 반딧불이" 처럼 엉뚱한 곳으로 안내하는 대사가 나온다.
+QUEST_SPEC = {
+    'chop':    (3, 8, lambda n: f'나무 {n}번 베기', '마을 숲'),
+    'plant':   (2, 6, lambda n: f'씨앗 {n}번 심기', '밭·텃밭'),
+    'water':   (3, 8, lambda n: f'물 {n}번 주기', '밭·텃밭'),
+    'harvest': (2, 6, lambda n: f'작물 {n}개 수확하기', '밭·텃밭'),
+    'fish':    (2, 5, lambda n: f'물고기 {n}마리 낚기', '호수 부두'),
+    'mine':    (3, 7, lambda n: f'광석 {n}개 캐기', '서쪽 동굴'),
+    'sell':    (3, 8, lambda n: f'상점에서 {n}개 팔기', '상점'),
+    'cook':    (1, 3, lambda n: f'요리 {n}번 하기', '자유주방'),
+    'serve':   (2, 4, lambda n: f'☕ 카페 손님 {n}명 서빙하기', '카페'),
+    'catch':   (2, 5, lambda n: f'🌟 반딧불이 {n}마리 잡기(밤)', '반딧불이 계곡(밤)'),
+    'forage':  (3, 8, lambda n: f'🍄 채집물 {n}개 줍기', '채집 숲'),
+}
+QUEST_NEED = 3
+QTITLE_MAX, QLINE_MAX = 12, 48
+
+QUEST_SYSTEM = f"""너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 세 가지 의뢰로 전한다.
+규칙:
+- 한국어. 다정하고 담백한 말투. 과장·이모지·따옴표 금지.
+- 세 의뢰가 하나의 하루로 이어지게 짠다. 아래는 '결'의 예시일 뿐이니, 매일 다른 결을 고른다:
+  · 숲에서 재료를 모으고 → 요리하고 → 카페 손님에게 낸다
+  · 밭을 갈아 심고 → 물을 주고 → 거둔다
+  · 나무를 베고 → 광석을 캐고 → 상점에 내다 판다
+  · 낚시를 하고 → 저녁을 차리고 → 밤에 반딧불이를 보러 간다
+- 예시를 그대로 베끼지 말고 오늘 날씨와 어울리는 결을 새로 고른다. 요리·서빙에만 치우치지 않는다.
+- title 은 {QTITLE_MAX}자 이내 짧은 이름.
+- line 은 {QLINE_MAX}자 이내 한 문장. 마을에 오늘 무슨 일이 있어서 이 일이 필요한지 이유를 담는다.
+- type 은 반드시 주어진 목록의 값만 쓴다. target 은 주어진 범위 안의 정수.
+- 같은 type 을 두 번 쓰지 않는다.
+- 날씨를 자연스럽게 반영해도 좋다(비 오는 날엔 숲에 버섯이 잘 돋는다).
+- 마을에 있는 것만 언급한다: 밭 · 집 · 카페 · 상점 · 작업대 · 자유주방 · 동굴 · 호수 · 채집 숲 · 닭장 · 나루터 · 안개 숲.
+  게임에 없는 시설이나 물건(비닐하우스·시장 좌판 같은 것)을 지어내지 않는다."""
+
+QUEST_SCHEMA = {
+    'type': 'ARRAY',
+    'items': {
+        'type': 'OBJECT',
+        'properties': {
+            'type': {'type': 'STRING'}, 'target': {'type': 'INTEGER'},
+            'title': {'type': 'STRING'}, 'line': {'type': 'STRING'},
+        },
+        'required': ['type', 'target', 'title', 'line'],
+    },
+}
+
+_quest_cache = {}   # (date, weather) -> quests
+
+
+def opener_for(date):
+    """날짜로 '오늘 문을 여는 일감' 을 하나 정한다.
+    예시만 주면 모델이 한 결에 고착된다 — 며칠을 뽑아 보니 전부 chop 으로 시작했다."""
+    h = 0
+    for ch in date:
+        h = (h * 31 + ord(ch)) & 0x7fffffff
+    return list(QUEST_SPEC)[h % len(QUEST_SPEC)]
+
+
+def build_quest_prompt(date, weather):
+    lines = [f'날짜: {date} (날씨: {WEATHER_KO.get(weather, "맑음")})', '', '목표 종류 (id: 무슨 일인지 @ 어디서 … 허용 범위):']
+    lines += [f'- {t}: {fn(lo)} @ {where} … ({lo}~{hi})' for t, (lo, hi, fn, where) in QUEST_SPEC.items()]
+    lines += ['', f"오늘은 '{opener_for(date)}' 로 문을 여는 하루야. 이어지는 나머지 둘은 네가 골라서 하루가 이어지게 해.",
+              f'오늘의 의뢰 {QUEST_NEED}개를 만들어줘.']
+    return '\n'.join(lines)
+
+
+def sanitize_quests(raw):
+    seen, out = set(), []
+    for q in raw if isinstance(raw, list) else []:
+        if not isinstance(q, dict):
+            continue
+        t = str(q.get('type', '')).strip()
+        if t not in QUEST_SPEC or t in seen:
+            continue
+        lo, hi, fn, _where = QUEST_SPEC[t]
+        try:
+            n = int(round(float(q.get('target'))))
+        except (TypeError, ValueError):
+            continue
+        target = max(lo, min(hi, n))
+        title, line = trim(q.get('title'), QTITLE_MAX), trim(q.get('line'), QLINE_MAX)
+        if not title or not line:
+            continue
+        seen.add(t)
+        out.append({'type': t, 'target': target, 'title': title, 'desc': fn(target), 'line': line})
+        if len(out) >= QUEST_NEED:
+            break
+    return out
+
+
+def gen_quests(date, weather):
+    key = (date, weather)
+    if key in _quest_cache:
+        return _quest_cache[key]
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return []                                    # 미설정 = 기능 끔(게임은 로컬 의뢰 사용)
+    model = os.environ.get('GEMINI_MODEL') or 'gemini-flash-lite-latest'
+    body = json.dumps({
+        'systemInstruction': {'parts': [{'text': QUEST_SYSTEM}]},
+        'contents': [{'role': 'user', 'parts': [{'text': build_quest_prompt(date, weather)}]}],
+        'generationConfig': {
+            'temperature': 1.1,
+            'responseMimeType': 'application/json',
+            'responseSchema': QUEST_SCHEMA,
+        },
+    }).encode('utf-8')
+    # 중복 type·목록 밖 값이 걸러지면 3개가 안 될 수 있다 → 한 번만 다시 물어본다.
+    # 그래도 모자라면 빈 배열(JS 쪽과 같은 규칙) — 게임은 로컬 의뢰로 조용히 진행한다.
+    for _ in range(2):
+        req = urllib.request.Request(
+            f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
+            data=body,
+            headers={'Content-Type': 'application/json', 'x-goog-api-key': api_key},
+        )
+        with urllib.request.urlopen(req, timeout=20, context=ssl_context()) as res:
+            data = json.load(res)
+        text = ''.join(p.get('text', '') for p in data['candidates'][0]['content']['parts'])
+        quests = sanitize_quests(json.loads(text))
+        if len(quests) >= QUEST_NEED:
+            _quest_cache[key] = quests
+            return quests
+        print(f'[daily-quests] {date}/{weather}: sanitize 후 {len(quests)}개 — 재시도')
+    return []
+
+
 # ── 🦝 밤손님 판정 (functions/api/night-visit.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
 NIGHT_BASE_CHANCE = 0.6
 NIGHT_SCARECROW_CUT = 0.25
@@ -378,6 +508,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.split('?')[0] == '/api/night-note':
             self.serve_night_note()
             return
+        if self.path.split('?')[0] == '/api/daily-quests':
+            self.serve_daily_quests()
+            return
         if self.path.split('?')[0] == '/api/leaderboard':
             self.serve_leaderboard()
             return
@@ -581,6 +714,30 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             print(f'[cafe-guests] 생성 실패: {type(e).__name__}: {e}')
             guests = []
         payload = json.dumps(guests, ensure_ascii=False).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    # ── 🦉 오늘의 의뢰 (functions/api/daily-quests.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+    def serve_daily_quests(self):
+        from urllib.parse import parse_qs, urlparse
+        q = parse_qs(urlparse(self.path).query)
+        date = (q.get('date') or [''])[0]
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
+            import datetime
+            date = datetime.date.today().isoformat()
+        weather = (q.get('weather') or ['clear'])[0]
+        if weather not in WEATHER_KO:
+            weather = 'clear'
+        try:
+            quests = gen_quests(date, weather)
+        except Exception as e:                       # 실패해도 게임은 로컬 의뢰로 진행
+            print(f'[daily-quests] 생성 실패: {type(e).__name__}: {e}')
+            quests = []
+        payload = json.dumps(quests, ensure_ascii=False).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')
