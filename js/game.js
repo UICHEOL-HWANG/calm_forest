@@ -27,7 +27,7 @@ import { saveGame, loadGame, sendBoatRun } from './supabase-client.js';  // [Sup
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
-import { t } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -480,6 +480,14 @@ const NPCS = [
   },
 ];
 
+// 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 보유량형(refreshCollectQuests).
+//   이 목록에 없는 type 을 가진 의뢰는 아무리 플레이해도 영원히 완료되지 않는다.
+const QUEST_TYPES = new Set([
+  'chop', 'plant', 'water', 'harvest', 'fish', 'fish_rare', 'mine',
+  'sell', 'cook', 'serve', 'catch', 'forage', 'house',
+  'collect_wood', 'collect_crop',
+]);
+
 // ── 데일리 퀘스트 풀 — 매일 3개 뽑기(완료 시 코인 + 🎁럭키박스 확률 보상) ──
 const DAILY_POOL = [
   { type: 'chop',    target: 5, title: '오늘의 벌목',  desc: '나무 5번 베기' },
@@ -494,15 +502,32 @@ const DAILY_POOL = [
   { type: 'forage',  target: 5, title: '숲의 아침',    desc: '🍄 채집물 5개 줍기' },
 ];
 
-// 매일 접속 시 호출 — 날짜가 바뀌면 의뢰 리셋 + 날짜 시드로 오늘의 의뢰 3개 생성
+// 세이브에 박아둔 오늘 의뢰가 그대로 쓸 만한지 — 형태와 목표 종류까지 확인한다.
+//   type 이 목록 밖이면(옛 세이브·삭제된 목표) 완료가 불가능하므로 통째로 새로 뽑는다.
+function validDailyQuests(qs) {
+  return Array.isArray(qs) && qs.length === 3 && qs.every(q =>
+    q && QUEST_TYPES.has(q.type) && Number.isFinite(q.target) && q.target > 0 && q.desc);
+}
+
+// 매일 접속 시 호출 — 날짜가 바뀌면 의뢰 리셋, 아니면 그날 확정된 의뢰를 그대로 쓴다.
+//   ⚠️ 진행도는 "몇 번째(st.idx) 를 몇 개(st.progress)" 라는 순번 포인터로만 저장된다.
+//      의뢰 목록을 하루 중에 다시 뽑으면 그 포인터가 엉뚱한 의뢰를 가리켜,
+//      손도 안 댄 의뢰가 절반 차 있고 하던 진행도는 증발한다.
+//      그래서 뽑은 3개를 st.quests 에 통째로 저장해 두고 날짜가 바뀔 때까지 재생성하지 않는다.
+//      (지금은 날짜 시드라 결과가 같아 드러나지 않지만, DAILY_POOL 을 낮에 배포로 바꾸면
+//       풀 길이가 달라져 곧바로 어긋난다. 나중에 의뢰를 동적 생성하면 상시 문제가 된다.)
 function refreshDailyQuests() {
   const def = NPCS.find(n => n.daily); if (!def) return;
   const st = npcState(def.id);
   const today = todayStr();
   if (st.date !== today) {   // 새 날 → 진행 상태 리셋(어제 의뢰는 소멸)
     st.date = today; st.idx = 0; st.progress = 0; st.given = false; st.allDone = false; st.acceptedAt = null;
+    st.quests = null; st.qsrc = null;   // 어제 의뢰도 함께 버린다(AI 표시도 리셋)
   }
   def.doneLine = `오늘 의뢰는 전부 끝! ${forecastLine()}${forecastDexNudge()} 내일 새 의뢰 들고 올게요 🦉`; // 예보로 재방문 유도(+날씨 도감 훅)
+
+  if (validDailyQuests(st.quests)) { def.quests = st.quests; return; }   // 오늘 의뢰는 이미 확정됨
+
   const pool = [...DAILY_POOL];
   let h = dateHash('daily');
   def.quests = Array.from({ length: 3 }, (_, i) => {
@@ -510,6 +535,46 @@ function refreshDailyQuests() {
     const q = pool.splice(h % pool.length, 1)[0];
     return { ...q, reward: { coins: 10 + i * 5 }, lucky: true, line: `[오늘의 의뢰 ${i + 1}/3] ${q.desc}! 완료하면 🎁럭키박스도 준다구.` };
   });
+  st.quests = def.quests;    // 세이브에 고정 — 오늘은 이 3개로 간다
+}
+
+// ── 🦉 AI 의뢰 — 서버(/api/daily-quests)가 만든 오늘의 의뢰로 조용히 갈아끼운다 ──
+//   로컬 DAILY_POOL 로 이미 채워 둔 뒤 백그라운드로 받아오므로, 느리거나 실패해도
+//   플레이가 멈추지 않는다(카페 손님과 같은 방식).
+//   ⚠️ 아직 의뢰를 받지 않았을 때만 교체한다 — 진행 중에 목록이 바뀌면 st.idx 포인터가
+//      엉뚱한 의뢰를 가리켜, 손도 안 댄 의뢰가 절반 차 있고 하던 진행도는 증발한다.
+const AI_QUEST_TIMEOUT = 6000;
+async function upgradeDailyQuestsAI() {
+  const def = NPCS.find(n => n.daily); if (!def) return;
+  const st = npcState(def.id);
+  if (st.qsrc === 'ai') return;                                   // 오늘은 이미 AI 의뢰
+  if (st.given || st.idx > 0 || st.progress > 0) return;          // 진행이 시작됨 → 건드리지 않는다
+  let raw;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), AI_QUEST_TIMEOUT);
+    const res = await fetch(`/api/daily-quests?date=${st.date}&weather=${WEATHER}&lang=${LANG}`, { signal: ctl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return;
+    raw = await res.json();
+  } catch (e) { return; }                                          // 오프라인·타임아웃 → 로컬 의뢰 유지
+  if (!Array.isArray(raw) || raw.length < 3) return;
+  // 서버가 이미 걸렀지만 한 번 더 — 게임이 아는 목표만 통과시킨다(방어적 이중 검증)
+  const built = raw.slice(0, 3).map((q, i) => ({
+    type: String(q.type || ''), target: Math.round(Number(q.target)),
+    title: String(q.title || '').trim(), desc: String(q.desc || '').trim(),
+    reward: { coins: 10 + i * 5 }, lucky: true,
+    // 접두사는 사전을 타지 않는다 — 뒤에 붙는 AI 문장이 매번 달라 키가 성립하지 않는다.
+    // 서버가 lang 에 맞춰 생성하므로 접두사도 같은 언어로 직접 만든다.
+    line: `[${LANG === 'en' ? `Request ${i + 1}/3` : `오늘의 의뢰 ${i + 1}/3`}] ${String(q.line || '').trim()}`,
+  }));
+  if (!validDailyQuests(built) || built.some(q => !q.title || !q.line)) return;
+  if (st.given || st.idx > 0 || st.progress > 0) return;           // 받아오는 사이에 시작했을 수 있다
+  st.quests = built; def.quests = built; st.qsrc = 'ai';           // 세이브에 고정
+  const owl = npcObjs.find(o => o.def.id === def.id);
+  if (owl) updateNPCGlyph(owl);
+  refreshQuestPanel();
+  requestSave();
 }
 
 // 🎁 럭키박스 — 데일리 의뢰 완료 확률 보상(60% 코인 / 25% 씨앗 / 10% 보석 / 5% 대박)
@@ -1257,6 +1322,7 @@ export async function enterGame() {
   if (_hq >= 1 && _hq <= MAX_HOUSE_STAGE) for (let s = gameState.houseStage + 1; s <= _hq; s++) buildHouseStage(s, true);
   if (_wq.get('coop') === '1' && !gameState.coop.built) buildCoop(true);   // 테스트: ?coop=1 — 닭장 미리보기
   refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
+  upgradeDailyQuestsAI();              // 🦉 AI 의뢰는 백그라운드로 — 도착하면 조용히 교체(await 하지 않는다)
   refreshInventoryUI();
   ui.setTool?.(currentTool, TOOLS, toolPage);
   ui.setQuest?.(null);                  // 퀘스트 패널은 주민 근처에서 표시
