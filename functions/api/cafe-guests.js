@@ -99,6 +99,18 @@ Rules:
 - No villager appears twice. Avoid repeating menus when possible.
 ${PHASE_RULE_EN}`;
 
+// 🔒 날짜 범위 제한 — 임의의 날짜를 받으면 (날짜 × 나머지 조합)이 무한해져
+//   캐시 미스마다 Gemini 가 실제로 호출된다. 인증도 레이트리밋도 없는 엔드포인트라
+//   날짜만 바꿔가며 부르면 그대로 할당량 고갈·요금 통로가 된다.
+//   게임 날짜는 KST 기준이고 엣지는 UTC 라 최대 9시간 어긋나므로 어제·오늘·내일만 허용한다.
+function clampDate(raw) {
+  const now = Date.now();
+  for (let d = -1; d <= 1; d++) {
+    if (raw === new Date(now + d * 86400000).toISOString().slice(0, 10)) return raw;
+  }
+  return new Date(now).toISOString().slice(0, 10);
+}
+
 function buildPrompt(date, weather, count, lang, phase) {
   if (lang === 'en') {
     return [
@@ -177,8 +189,7 @@ async function generate(env, date, weather, count, lang, phase) {
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
   // 입력 정규화 — 프롬프트에 들어가므로 형식을 엄격히 제한(클라이언트발 인젝션 차단)
-  const rawDate = url.searchParams.get('date') || '';
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : new Date().toISOString().slice(0, 10);
+  const date = clampDate(url.searchParams.get('date') || '');   // 🔒 어제·오늘·내일만
   const rawWeather = url.searchParams.get('weather') || '';
   const weather = ['clear', 'rain', 'snow', 'fog'].includes(rawWeather) ? rawWeather : 'clear';
   const count = Math.min(MAX_COUNT, Math.max(1, parseInt(url.searchParams.get('count') || '4', 10) || 4));
