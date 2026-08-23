@@ -11,6 +11,7 @@
 // =============================================================
 
 import { CONFIG } from './config.js';
+import { LANG } from './i18n.js';
 import { setNightVisitSource, setNightNoteSource } from './game.js';
 import { state as auth } from './supabase-client.js';
 
@@ -51,7 +52,8 @@ export function initNightVisit() {
   if (CONFIG.NIGHT_NOTE_API) {
     setNightNoteSource(async ({ date, animal, crop }) => {
       const url = `${CONFIG.NIGHT_NOTE_API}?date=${encodeURIComponent(date)}`
-        + `&animal=${encodeURIComponent(animal)}&crop=${encodeURIComponent(crop || '')}`;
+        + `&animal=${encodeURIComponent(animal)}&crop=${encodeURIComponent(crop || '')}`
+        + `&lang=${LANG}`;   // [i18n] 표시 언어로 쪽지 생성(서버가 ko/en 화이트리스트)
       const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!res.ok) return null;
       const n = await res.json();

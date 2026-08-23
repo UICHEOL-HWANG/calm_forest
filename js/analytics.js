@@ -10,7 +10,8 @@
 // =============================================================
 
 import { CONFIG, isGaConfigured } from './config.js';
-import { PLATFORM } from './platform.js';   // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
+import { PLATFORM } from './platform.js';         // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
+import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -30,7 +31,9 @@ const sessionStart = Date.now();
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
   document.head.appendChild(s);
   gtag('config', id);
-  gtag('set', 'user_properties', { platform: PLATFORM });   // [앱인토스 대비] 유저 단위 platform 차원
+  // 유저 단위 차원 — platform(앱인토스), 그리고 표시 언어·A/B 변형.
+  //   한 번에 set 해야 뒤 호출이 앞 호출을 덮어쓰지 않는다(gtag user_properties 는 병합이 아니라 치환).
+  gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: assignVariant() });
   console.log('[GA4] 로드됨:', id);
 })();
 

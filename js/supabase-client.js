@@ -10,7 +10,8 @@
 // =============================================================
 
 import { CONFIG, isSupabaseConfigured } from './config.js';
-import { PLATFORM } from './platform.js';   // 'web' | 'toss' — 로그 세그먼트
+import { PLATFORM } from './platform.js';                  // 'web' | 'toss' — 로그 세그먼트
+import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -26,24 +27,8 @@ export const state = {
 
 function randId() { return 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
-// ── 분석용 영구 client_id (게임 진행과 무관, 기기 단위 리텐션/중복제거용) ──
-//   ※ 인증이 아니라 순수 집계용 식별자. 권한 판단에 쓰면 안 됨.
-function clientId() {
-  try {
-    let id = localStorage.getItem('cf_client_id');
-    if (!id) { id = 'c-' + (crypto.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now().toString(36))); localStorage.setItem('cf_client_id', id); }
-    return id;
-  } catch (e) { return 'c-' + Math.random().toString(36).slice(2); } // localStorage 차단 시 세션 한정
-}
-
-// ── A/B 변형 배정 — client_id 해시로 안정적 50:50(기기 단위) ──
-//   실험 off면 무조건 'control'. 켜지면 해시 하위비트로 A/B.
-function assignVariant() {
-  if (!CONFIG.EXPERIMENT || CONFIG.EXPERIMENT === 'off') return 'control';
-  let h = 0; const s = state.clientId;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
-  return (h & 1) ? 'B' : 'A';
-}
+// clientId()/assignVariant() 는 js/i18n.js 로 이동 —
+// 언어 자동 결정(treatment 배정)과 로그의 variant 가 같은 해시를 쓰도록 단일화.
 
 let statusCb = null;
 function emit() { statusCb?.({ ...state }); }
@@ -113,11 +98,11 @@ export async function initAuth(onStatusChange) {
 
 // ── 구글 로그인 (전체 페이지가 구글로 리다이렉트 → 복귀 시 세션 획득) ──
 export async function signInWithGoogle() {
-  if (!supabase) { alert('Supabase 키가 설정되지 않았습니다. 게스트로 플레이하세요.'); return; }
+  if (!supabase) { alert(t('Supabase 키가 설정되지 않았습니다. 게스트로 플레이하세요.')); return; }
   // 쿼리(?error=...)·해시 제거한 깨끗한 주소로 복귀 (누적 방지)
   const redirectTo = window.location.origin + window.location.pathname;
   const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
-  if (error) { console.warn('[구글 로그인 실패]', error.message); alert('구글 로그인 실패: ' + error.message); }
+  if (error) { console.warn('[구글 로그인 실패]', error.message); alert(t('구글 로그인 실패: {0}').replace('{0}', error.message)); }
 }
 
 // ── 🔵 토스 로그인 (앱인토스 웹뷰 전용) ──────────────────────────
