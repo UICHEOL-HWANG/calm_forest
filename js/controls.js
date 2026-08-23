@@ -20,10 +20,13 @@ export function initControls() {
   setupActionButton();
   // 터치 중 화면 스크롤/줌 방지 — 단, 스크롤 가능한 UI(가방·도감 등 메뉴) 안에서 시작한
   // 제스처는 살려서 손가락으로 내릴 수 있게 한다(전역 preventDefault가 메뉴 스크롤까지 죽이는 문제 방지)
+  //   세로뿐 아니라 '가로' 스크롤러도 살려야 한다 — 세로만 보면 가로로 미는 탭 줄 같은 UI 가
+  //   예외에 안 걸려 전역 preventDefault 에 제스처를 통째로 뺏긴다.
   const inScrollable = (el) => {
     for (let n = el instanceof Element ? el : null; n && n !== document.body; n = n.parentElement) {
       const s = getComputedStyle(n);
       if ((s.overflowY === 'auto' || s.overflowY === 'scroll') && n.scrollHeight > n.clientHeight + 1) return true;
+      if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && n.scrollWidth > n.clientWidth + 1) return true;
     }
     return false;
   };
