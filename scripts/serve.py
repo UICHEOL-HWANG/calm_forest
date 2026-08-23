@@ -71,6 +71,19 @@ LINE_MAX, THANKS_MAX = 48, 28          # 하드 캡(넘으면 …로 잘림)
 LINE_ASK, THANKS_ASK = 42, 24          # 모델에겐 조금 낮게 — 살짝 넘겨도 안 잘리게
 
 
+def clamp_date(raw):
+    """🔒 어제·오늘·내일만 허용.
+
+    임의의 날짜를 받으면 (날짜 × 나머지 조합)이 무한해져 캐시 미스마다 Gemini 가
+    실제로 호출된다. 인증도 레이트리밋도 없는 엔드포인트라 그대로 할당량 고갈 통로가 된다.
+    게임 날짜는 KST, 서버는 UTC 라 최대 9시간 어긋나므로 ±1일을 허용한다.
+    """
+    import datetime
+    today = datetime.date.today()
+    ok = {(today + datetime.timedelta(days=d)).isoformat() for d in (-1, 0, 1)}
+    return raw if raw in ok else today.isoformat()
+
+
 def trim(s, max_len):
     """길이 초과 시 글자 중간을 뚝 자르면 어색하므로 마지막 공백까지만 남기고 말줄임표."""
     t = re.sub(r'\s+', ' ', str(s or '').replace('<', '').replace('>', '')).strip()
@@ -792,10 +805,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     def serve_night_note(self):
         from urllib.parse import parse_qs, urlparse
         q = parse_qs(urlparse(self.path).query)
-        date = (q.get('date') or [''])[0]
-        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
-            import datetime
-            date = datetime.date.today().isoformat()
+        date = clamp_date((q.get('date') or [''])[0])   # 🔒 어제·오늘·내일만
         animal = 'boar' if (q.get('animal') or [''])[0] == 'boar' else 'raccoon'
         crop = (q.get('crop') or [''])[0]
         if crop not in NOTE_CROP_KO:
@@ -810,10 +820,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     def serve_cafe_guests(self):
         from urllib.parse import parse_qs, urlparse
         q = parse_qs(urlparse(self.path).query)
-        date = (q.get('date') or [''])[0]
-        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
-            import datetime
-            date = datetime.date.today().isoformat()
+        date = clamp_date((q.get('date') or [''])[0])   # 🔒 어제·오늘·내일만
         weather = (q.get('weather') or ['clear'])[0]
         if weather not in WEATHER_KO:
             weather = 'clear'
@@ -859,10 +866,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     def serve_daily_quests(self):
         from urllib.parse import parse_qs, urlparse
         q = parse_qs(urlparse(self.path).query)
-        date = (q.get('date') or [''])[0]
-        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
-            import datetime
-            date = datetime.date.today().isoformat()
+        date = clamp_date((q.get('date') or [''])[0])   # 🔒 어제·오늘·내일만
         weather = (q.get('weather') or ['clear'])[0]
         if weather not in WEATHER_KO:
             weather = 'clear'
@@ -886,4 +890,6 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
 if __name__ == '__main__':
     has_key = '있음' if os.environ.get('GEMINI_API_KEY') else '없음(기본 손님 사용)'
     print(f'[serve] http://localhost:{PORT} (no-cache 개발 서버) · ☕ Gemini 키: {has_key}')
-    http.server.ThreadingHTTPServer(('', PORT), NoCacheHandler).serve_forever()
+    # 🔒 '' (=0.0.0.0) 로 열면 같은 망의 누구나 이 서버를 부를 수 있다.
+    #    실제 GEMINI_API_KEY 를 들고 있으므로 공용 와이파이에선 키를 그대로 태울 수 있다.
+    http.server.ThreadingHTTPServer(('127.0.0.1', PORT), NoCacheHandler).serve_forever()
