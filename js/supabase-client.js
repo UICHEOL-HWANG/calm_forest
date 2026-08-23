@@ -215,14 +215,17 @@ export async function sendEconBatch(rows) {
 //    (날짜, 날씨, 인원)당 1행만 남깁니다 — 먼저 들어온 한 명이 기록하고 나머지는
 //    unique 제약(23505)에 걸려 조용히 무시됩니다. 그래서 user_id 도 붙이지 않습니다.
 //    실패해도 게임엔 아무 영향이 없어야 하므로 전부 삼킵니다.
-export async function sendCafeGuests({ date, weather, count, model, guests }) {
+export async function sendCafeGuests({ date, weather, count, phase, model, guests }) {
   if (!guests || !guests.length) return;
   if (!state.online || !supabase) { console.log('[Supabase 폴백] 카페 손님 기록 생략 (오프라인)'); return; }
   try {
     const { error } = await supabase.from('cafe_guests').insert({
-      gen_date: date, weather, guest_count: count, model, guests,
+      // phase = 집 단계 버킷. unique 키에 들어가므로 버킷마다 한 벌씩 남는다.
+      //   (없으면 같은 날·날씨에서 먼저 온 한 벌만 남고 나머지 두 벌이 버려진다 —
+      //    sql/migrate_cafe_guests_phase.sql 참고)
+      gen_date: date, weather, guest_count: count, phase: phase || 'settled', model, guests,
     });
-    if (error && error.code !== '23505') throw error;   // 23505 = 오늘 이미 기록됨(정상)
+    if (error && error.code !== '23505') throw error;   // 23505 = 그 조합은 이미 기록됨(정상)
   } catch (err) { console.warn('[Supabase 폴백] 카페 손님 기록 실패:', err?.message || err); }
 }
 
