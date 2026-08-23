@@ -167,6 +167,103 @@ def gen_guests(date, weather, count):
     return guests
 
 
+# ── 📖 도감 설명문 (functions/api/dex-notes.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+#    종 목록은 배포마다 고정이라 응답이 사람·날짜에 따라 달라지지 않는다 → 카테고리당 한 번만 만들면 끝.
+DEX_CATS = {
+    'fish':    ('호수 부두에서 낚싯대로 잡는 물고기',
+                [('common', '피라미'), ('uncommon', '붉은 물고기'), ('rare', '무지개 물고기')]),
+    'crop':    ('밭에 씨앗을 심고 물을 줘 거두는 작물',
+                [('carrot', '당근'), ('tomato', '토마토'), ('blueberry', '블루베리'), ('pumpkin', '호박')]),
+    'ore':     ('서쪽 동굴에서 괭이로 캐는 광물',
+                [('stone', '돌'), ('coal', '석탄'), ('gem', '보석')]),
+    'cook':    ('자유주방에서 재료로 만드는 요리',
+                [('veg_stew', '든든한 채소죽'), ('grilled_fish', '생선 구이'), ('lunchbox', '모둠 도시락'),
+                 ('omelette', '푸짐한 오믈렛'), ('mushroom_soup', '숲의 버섯 스프')]),
+    'npc':     ('마을에 사는 이웃들',
+                [('farmer', '농부 삼촌'), ('builder', '목수 아저씨'), ('merchant', '방랑 상인'),
+                 ('angler', '낚시꾼 할아버지'), ('courier', '의뢰 올빼미'), ('chef', '요리사 판다')]),
+    'forage':  ('채집 숲을 걷다 도구 없이 줍는 것들',
+                [('mushroom', '숲 버섯'), ('berry', '산딸기'), ('acorn', '도토리'), ('herb', '숲 약초')]),
+    'bug':     ('밤에 반딧불이 계곡에서 포충망으로 잡는 반딧불이',
+                [('yellow', '노랑반디'), ('blue', '푸른반디'), ('green', '초록반디'), ('rainbow', '무지개반디')]),
+    'track':   ('밤사이 밭에 다녀간 동물이 남긴 흔적',
+                [('fur_tuft', '털뭉치'), ('acorn_drop', '주운 도토리')]),
+    'river':   ('나룻배를 타고 강을 내려가며 줍는 것들',
+                [('lotus', '물 위 연꽃'), ('driftwood', '떠내려온 나무'), ('shell', '강 조개'), ('moon_fish', '달빛 물고기')]),
+    'spirit':  ('안개 낀 숲에서 노래로 달래면 나타나는 정령',
+                [('shy', '수줍은 정령'), ('sleepy', '졸린 정령'), ('mischief', '장난꾸러기 정령'), ('golden', '황금 정령')]),
+    'weather': ('그 날씨인 날 마을에 접속하면 채워지는 하루의 날씨',
+                [('clear', '맑은 날'), ('rain', '비 오는 날'), ('snow', '눈 오는 날'), ('fog', '안개 낀 날')]),
+}
+NOTE_MAX = 44
+NOTE_ASK = 38
+
+DEX_SYSTEM = f"""너는 코지 힐링 게임 "calm forest"의 도감을 쓰는 사람이야. 플레이어가 처음 발견한 것에 붙는 짧은 소개글을 쓴다.
+규칙:
+- 한국어. 따뜻하고 담백하게. 과장·이모지·따옴표 금지.
+- note 는 {NOTE_ASK}자 이내 한 문장. 도감 카드에 들어가는 짧은 글이라 길면 잘려 나간다.
+- 모든 항목을 '~다' 로 끝맺는 평서형으로 통일하고 마침표를 찍는다(존댓말·물음표 섞지 않기).
+- 게임 안내문이 아니라 "이 숲에 사는 것"에 대한 관찰처럼 쓴다.
+  잡는 방법·조작법을 설명하지 말고, 생김새·성질·언제 보이는지 같은 한 조각을 담는다.
+- 종마다 서로 다른 결로 쓴다. 같은 문장 틀을 반복하지 않는다.
+- 주어진 id 전부에 대해 하나씩 쓴다."""
+
+DEX_SCHEMA = {
+    'type': 'ARRAY',
+    'items': {
+        'type': 'OBJECT',
+        'properties': {'id': {'type': 'STRING'}, 'note': {'type': 'STRING'}},
+        'required': ['id', 'note'],
+    },
+}
+
+_dex_cache = {}   # cat -> {id: note}
+
+
+def gen_dex_notes(cat):
+    if cat in _dex_cache:
+        return _dex_cache[cat]
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key or cat not in DEX_CATS:
+        return {}
+    about, items = DEX_CATS[cat]
+    prompt = '\n'.join([f'분류: {cat} — {about}', '', '항목:']
+                        + [f'- {i}: {n}' for i, n in items]
+                        + ['', '각 항목에 설명을 하나씩 써줘.'])
+    model = os.environ.get('GEMINI_MODEL') or 'gemini-flash-lite-latest'
+    body = json.dumps({
+        'systemInstruction': {'parts': [{'text': DEX_SYSTEM}]},
+        'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
+        'generationConfig': {
+            'temperature': 1.0,
+            'responseMimeType': 'application/json',
+            'responseSchema': DEX_SCHEMA,
+        },
+    }).encode('utf-8')
+    ok = {i for i, _ in items}
+    for _ in range(2):                                   # 빠진 게 있으면 1회 재시도(JS 쪽과 같은 규칙)
+        req = urllib.request.Request(
+            f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
+            data=body,
+            headers={'Content-Type': 'application/json', 'x-goog-api-key': api_key},
+        )
+        with urllib.request.urlopen(req, timeout=25, context=ssl_context()) as res:
+            data = json.load(res)
+        text = ''.join(p.get('text', '') for p in data['candidates'][0]['content']['parts'])
+        out = {}
+        for r in json.loads(text):
+            rid = str(r.get('id', '')).strip()
+            if rid in ok and rid not in out:
+                note = trim(r.get('note'), NOTE_MAX)
+                if note:
+                    out[rid] = note
+        if len(out) >= len(items):
+            _dex_cache[cat] = out
+            return out
+        print(f'[dex-notes] {cat}: {len(out)}/{len(items)} — 재시도')
+    return {}
+
+
 # ── 🦉 오늘의 의뢰 (functions/api/daily-quests.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
 #    type 은 게임이 실제로 쏘는 이벤트여야 한다. 목록 밖 값이 통과하면 영원히 완료 못 하는 의뢰가 된다.
 #    desc 는 모델이 아니라 여기서 target 으로 만든다(표시와 실제 목표가 어긋나지 않게).
@@ -511,6 +608,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.split('?')[0] == '/api/daily-quests':
             self.serve_daily_quests()
             return
+        if self.path.split('?')[0] == '/api/dex-notes':
+            self.serve_dex_notes()
+            return
         if self.path.split('?')[0] == '/api/leaderboard':
             self.serve_leaderboard()
             return
@@ -714,6 +814,24 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             print(f'[cafe-guests] 생성 실패: {type(e).__name__}: {e}')
             guests = []
         payload = json.dumps(guests, ensure_ascii=False).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    # ── 📖 도감 설명문 (functions/api/dex-notes.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+    def serve_dex_notes(self):
+        from urllib.parse import parse_qs, urlparse
+        q = parse_qs(urlparse(self.path).query)
+        cat = (q.get('cat') or [''])[0]
+        try:
+            notes = gen_dex_notes(cat)
+        except Exception as e:                       # 실패해도 도감은 아이콘·이름으로 진행
+            print(f'[dex-notes] 생성 실패: {type(e).__name__}: {e}')
+            notes = {}
+        payload = json.dumps(notes, ensure_ascii=False).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')

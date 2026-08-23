@@ -613,9 +613,27 @@
   /* 📖 도감 모달 + 로그인 넛지 */
   #dex-modal, #nudge-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #dex-modal.show, #nudge-modal.show { display: grid; }
+  /* 목록만 스크롤시킨다 — 종마다 설명이 붙으면 내용이 2800px 을 넘어서,
+     카드째 스크롤하면 제목과 닫기 버튼이 저 아래로 밀려 손이 닿지 않는다.
+     (모바일에선 모달이 화면을 거의 채워 바깥을 눌러 닫을 여백도 없다) */
+  #dex-modal .tut-card { display: flex; flex-direction: column; }
+  #dex-modal .tut-card > *:not(#dex-sections) { flex: 0 0 auto; }
+  #dex-sections { flex: 1 1 auto; overflow-y: auto; min-height: 120px; text-align: left; }
+  /* 세로가 짧은 화면(SE 계열)에선 제목·안내문·게스트 배너가 자리를 다 먹어
+     정작 도감 목록이 한 줄 반밖에 안 보인다 → 머리말을 줄여 목록에 높이를 넘긴다 */
+  @media (max-height: 640px) {
+    #dex-modal .tut-card { padding: 16px 14px 14px; }
+    #dex-modal .tut-card h2 { margin: 2px 0 8px; font-size: 17px; }
+    #dex-modal .market-hint { display: none; }
+    #dex-guest { padding: 9px; font-size: 11.5px; line-height: 1.45; margin-top: 8px; }
+    #dex-guest .dex-google-btn { padding: 8px 14px; font-size: 12px; }
+  }
   .dex-cat { font-size: 13px; font-weight: 700; text-align: left; margin: 10px 2px 6px; opacity: .75; }
-  .dex-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-  .dex-item { width: 88px; background: #f2f6f0; border-radius: 14px; padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  /* align-items: flex-start — 안 그러면 한 줄의 모든 칸이 제일 높은 칸에 맞춰 늘어나,
+     설명이 없는 ??? 칸이 텅 빈 채로 길쭉해진다 */
+  .dex-grid { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+  /* 설명 한 줄이 들어가므로 칸을 넓힌다 — 88px 에선 28자가 네 줄로 쪼개져 읽기 어렵다 */
+  .dex-item { width: calc(33.333% - 6px); min-width: 88px; background: #f2f6f0; border-radius: 14px; padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .dex-item .d-ico { font-size: 26px; }
   .dex-item .d-name { font-size: 11.5px; font-weight: 600; }
   .dex-item.locked { opacity: .55; }
@@ -732,7 +750,8 @@
     #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
     /* 도감 탭: 모바일에서도 인벤토리 HUD 바로 아래 */
     #dex-tab { top: calc(126px + env(safe-area-inset-top)); right: 10px; padding: 6px 10px; font-size: 12px; }
-    .dex-item { width: 74px; }   /* 좁은 화면에서 도감 카드 축소 */
+    /* 좁은 화면은 두 칸씩 — 세 칸이면 폭이 74px 라 설명이 일고여덟 자마다 줄바꿈된다 */
+    .dex-item { width: calc(50% - 4px); min-width: 0; }
     .dex-item.badge { width: 88px; }
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
     #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
@@ -2538,7 +2557,32 @@
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
     const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령' };
     const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글·토스 로그인 = 영구 계정
-    function openDex() {
+    // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
+    //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
+    //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.
+    const DEX_NOTE_KEY = `cf_dexnote_${LANG}_v1`;
+    let dexNotes = {};
+    try { dexNotes = JSON.parse(localStorage.getItem(DEX_NOTE_KEY) || '{}') || {}; } catch (e) { dexNotes = {}; }
+    const dexNoteBusy = new Set();
+    async function fetchDexNotes(cats) {
+      const todo = cats.filter(c => !dexNotes[c] && !dexNoteBusy.has(c));
+      if (!todo.length) return;
+      todo.forEach(c => dexNoteBusy.add(c));
+      await Promise.all(todo.map(async (c) => {
+        try {
+          const res = await fetch(`/api/dex-notes?cat=${c}&lang=${LANG}`);
+          if (res.ok) {
+            const d = await res.json();
+            if (d && Object.keys(d).length) dexNotes[c] = d;
+          }
+        } catch (e) { /* 오프라인 — 설명 줄 없이 진행 */ }
+        finally { dexNoteBusy.delete(c); }
+      }));
+      try { localStorage.setItem(DEX_NOTE_KEY, JSON.stringify(dexNotes)); } catch (e) {}
+      if ($('dex-modal').classList.contains('show')) renderDex();   // 도착했으면 다시 그린다
+    }
+
+    function renderDex() {
       const d = Input.getDex();
       $('dex-title').textContent = `📖 도감 (${d.count}/${d.total})`;
       const box = $('dex-sections'); box.innerHTML = '';
@@ -2548,7 +2592,10 @@
         d.cats[cat].forEach(e => {
           const el = document.createElement('div');
           el.className = 'dex-item' + (e.found ? '' : ' locked');
-          el.innerHTML = `<span class="d-ico">${e.ico}</span><span class="d-name">${e.found ? e.name : '???'}</span>`;
+          // 발견한 것에만 설명을 붙인다 — 미발견 카드에 붙으면 그 자체가 스포일러가 된다
+          const note = e.found ? (dexNotes[cat] || {})[e.id] : '';
+          el.innerHTML = `<span class="d-ico">${e.ico}</span><span class="d-name">${e.found ? e.name : '???'}</span>`
+            + (note ? `<span class="d-desc">${note}</span>` : '');
           grid.appendChild(el);
         });
         box.appendChild(grid);
@@ -2565,10 +2612,17 @@
       });
       box.appendChild(bgrid);
       $('dex-guest').classList.toggle('show', isGuestNow());   // 게스트만: 보존 배너 + 구글 버튼
+      return d;
+    }
+
+    function openDex() {
       Input.setAnalog(0, 0);
+      const d = renderDex();
       $('dex-modal').classList.add('show');
       ui.act?.('dex');                                          // 튜토리얼: 도감 확인 단계
       trackEvent('dex_open', { found: d.count, total: d.total, badges: d.badgeCount, guest: isGuestNow() }); // [GA4] 도감 관심 퍼널
+      // 하나라도 발견한 분류만 받아온다 — 안 본 것까지 미리 받을 이유가 없다
+      fetchDexNotes(Object.keys(d.cats).filter(c => d.cats[c].some(e => e.found)));
     }
     $('dex-tab').addEventListener('click', openDex);
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
