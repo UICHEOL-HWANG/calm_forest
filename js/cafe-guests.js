@@ -62,7 +62,8 @@ export function initCafeGuests() {
       // 📊 그날의 생성 콘텐츠 아카이브 — (날짜, 날씨, 인원)당 1행이라 먼저 온 사람만 실제로 기록되고
       //    나머지는 unique 제약에 걸려 무시된다. await 하지 않는다: 저장이 늦거나 실패해도
       //    카페 입장이 밀리면 안 되기 때문(함수 안에서 예외를 전부 삼킨다).
-      sendCafeGuests({ date: ctx.date, weather: ctx.weather || 'clear', count: guests.length, guests });
+      sendCafeGuests({ date: ctx.date, weather: ctx.weather || 'clear', count: guests.length,
+        phase: ctx.phase || 'settled', guests });
     }
     return guests;                            // 빈 배열이면 game.js 가 기본 손님 유지
   });
