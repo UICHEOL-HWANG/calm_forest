@@ -16,3 +16,8 @@ dist-toss/
 
 # wrangler 로컬 캐시
 .wrangler/
+
+# 🧪 실험실 로컬 작업본 — 파이썬 venv(504MB) · wandb 실행 기록 · __pycache__ 뿐이라 통째로 제외.
+#   실제 ML 소스는 여기 없다(.py 가 하나도 없고 .pyc 만 남아 있음 — 원본은 Oracle VM 쪽).
+#   나중에 ml 소스를 이 저장소에서 버전 관리하려면 이 줄을 지우고 .venv/wandb 만 따로 막을 것.
+ml/
