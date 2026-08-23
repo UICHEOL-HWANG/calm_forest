@@ -29,12 +29,27 @@ const MENU = [
   { id: 'omelette',      name: '푸짐한 오믈렛',  name_en: 'Fluffy Omelette',        hint: '닭장 달걀로 만든 오믈렛',      hint_en: 'omelette from coop-fresh eggs' },
   { id: 'mushroom_soup', name: '숲의 버섯 스프', name_en: 'Forest Mushroom Soup',   hint: '채집 숲 버섯으로 끓인 스프',   hint_en: 'soup of foraged forest mushrooms' },
 ];
+// 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
+//   사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로, 3칸으로만 받는다.
+const PHASES = {
+  settling: { ko: '아직 빈터에 집을 짓는 중이다 — 마을에 갓 자리 잡는 참',
+              en: 'still building a house on the empty lot — just settling into the village' },
+  settled:  { ko: '집을 완성하고 마을에 자리를 잡았다',
+              en: 'has finished their house and settled into the village' },
+  thriving: { ko: '집을 저택까지 넓힌, 마을의 오랜 이웃이다',
+              en: 'has grown their house into a manor and is a long-time neighbour' },
+};
+const PHASE_RULE_KO = '- 플레이어의 처지를 알고 있지만 매번 들먹이지 않는다. 어울릴 때 한 조각만 스치듯 담는다.';
+const PHASE_RULE_EN = '- You know where the player stands, but do not bring it up every time. Let it show in one passing detail when it fits.';
+
 const WEATHER_KO = { clear: '맑음', rain: '비', snow: '눈', fog: '안개' };
 const WEATHER_EN = { clear: 'sunny', rain: 'rainy', snow: 'snowy', fog: 'foggy' };
 
 const MAX_COUNT = 6;
-const LINE_MAX = 48;      // 주문판·근접 프롬프트 한 줄에 들어가는 길이
+const LINE_MAX = 48;      // 주문판·근접 프롬프트 한 줄에 들어가는 길이(하드 캡 — 넘으면 …로 잘림)
 const THANKS_MAX = 28;
+const LINE_ASK = 42;      // 모델에겐 조금 낮게 일러 둔다 — 살짝 넘겨도 …로 잘리지 않게
+const THANKS_ASK = 24;
 
 // 길이 초과 시 글자 중간을 뚝 자르면 "…버섯 스프 한 그릇을 비우고" 처럼 어색해진다.
 // 마지막 공백까지만 남기고 말줄임표를 붙인다.
@@ -64,26 +79,31 @@ const RESPONSE_SCHEMA = {
 const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 마을 카페 손님을 쓰는 작가야.
 규칙:
 - 한국어. 주민의 말투를 살리되 따뜻하고 담백하게. 과장·이모지·따옴표 금지.
-- line 은 ${LINE_MAX}자 이내 한 문장. "오늘 무슨 일이 있었는지" 를 한 조각 곁들여 그 메뉴가 당기는 이유를 만든다.
-- thanks 는 ${THANKS_MAX}자 이내 한마디.
+- line 은 ${LINE_ASK}자 이내 한 문장. "오늘 무슨 일이 있었는지" 를 한 조각 곁들여 그 메뉴가 당기는 이유를 만든다.
+- thanks 는 ${THANKS_ASK}자 이내 한마디.
 - id 와 recipeId 는 반드시 주어진 목록의 값만 쓴다.
-- 같은 주민이 두 번 오지 않는다. 메뉴는 되도록 겹치지 않게 고른다.`;
+- 같은 주민이 두 번 오지 않는다. 메뉴는 되도록 겹치지 않게 고른다.
+${PHASE_RULE_KO}`;
 
 // 영어 손님 — 한글 대비 라틴 글자폭이 좁아 글자수 상한을 넉넉히 잡는다(주문판 폭 기준)
 const LINE_MAX_EN = 88;
 const THANKS_MAX_EN = 52;
+const LINE_ASK_EN = 78;
+const THANKS_ASK_EN = 46;
 const SYSTEM_EN = `You write the village café guests for "calm forest", a cozy healing game.
 Rules:
 - English. Warm and understated, in each villager's voice. No exaggeration, no emoji, no quotation marks.
-- "line" is one sentence, at most ${LINE_MAX_EN} characters, weaving in a small moment from their day that makes them crave that dish.
-- "thanks" is a short remark, at most ${THANKS_MAX_EN} characters.
+- "line" is one sentence, at most ${LINE_ASK_EN} characters, weaving in a small moment from their day that makes them crave that dish.
+- "thanks" is a short remark, at most ${THANKS_ASK_EN} characters.
 - Use only ids from the given lists for id and recipeId.
-- No villager appears twice. Avoid repeating menus when possible.`;
+- No villager appears twice. Avoid repeating menus when possible.
+${PHASE_RULE_EN}`;
 
-function buildPrompt(date, weather, count, lang) {
+function buildPrompt(date, weather, count, lang, phase) {
   if (lang === 'en') {
     return [
       `Date: ${date} (weather: ${WEATHER_EN[weather] || 'sunny'})`,
+      `The player ${PHASES[phase].en}.`,
       '',
       'Villagers:',
       ...RESIDENTS.map(r => `- ${r.id}: ${r.name_en}`),
@@ -96,6 +116,7 @@ function buildPrompt(date, weather, count, lang) {
   }
   return [
     `날짜: ${date} (날씨: ${WEATHER_KO[weather] || '맑음'})`,
+    `플레이어는 ${PHASES[phase].ko}.`,
     '',
     '주민 목록:',
     ...RESIDENTS.map(r => `- ${r.id}: ${r.name}`),
@@ -129,7 +150,7 @@ function sanitize(raw, count, lang) {
   return out;
 }
 
-async function generate(env, date, weather, count, lang) {
+async function generate(env, date, weather, count, lang, phase) {
   const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -138,7 +159,7 @@ async function generate(env, date, weather, count, lang) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: lang === 'en' ? SYSTEM_EN : SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, count, lang) }] }],
+        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, count, lang, phase) }] }],
         generationConfig: {
           temperature: 1.1,                    // 매일 다른 조합이 나오게
           responseMimeType: 'application/json',
@@ -162,6 +183,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const weather = ['clear', 'rain', 'snow', 'fog'].includes(rawWeather) ? rawWeather : 'clear';
   const count = Math.min(MAX_COUNT, Math.max(1, parseInt(url.searchParams.get('count') || '4', 10) || 4));
   const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
+  const rawPhase = url.searchParams.get('phase') || '';
+  const phase = PHASES[rawPhase] ? rawPhase : 'settled';             // 화이트리스트(그 외 값은 settled)
 
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -176,19 +199,19 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   // 날짜·날씨·인원이 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번
   const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&weather=${weather}&count=${count}&lang=${lang}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&weather=${weather}&count=${count}&lang=${lang}&phase=${phase}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
   try {
-    const guests = await generate(env, date, weather, count, lang);
+    const guests = await generate(env, date, weather, count, lang, phase);
     if (!guests.length) throw new Error('sanitize 후 남은 손님이 없음');
     const out = new Response(JSON.stringify(guests), { headers });
     waitUntil(cache.put(cacheKey, out.clone()));
     return out;
   } catch (e) {
     // 구조화 로그 — Cloudflare 대시보드에서 필터링·집계가 되게(유저에겐 조용히 폴백되므로 여기서만 보임)
-    console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, count, lang, error: e.message }));
+    console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, count, lang, phase, error: e.message }));
     // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 기본 손님을 쓴다.
     // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
     // 실패 사유를 헤더로도 노출 — 대시보드 로그를 열지 않고 curl -sI 로 바로 원인 확인.
