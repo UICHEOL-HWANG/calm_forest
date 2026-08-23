@@ -16,20 +16,21 @@
 // 게임의 NPCS / RECIPES 와 id 가 일치해야 합니다(js/game.js).
 // 이름·색·모자 같은 외형은 게임이 id 로 채우므로 여기선 id 와 표시용 이름만 둡니다.
 const RESIDENTS = [
-  { id: 'farmer',   name: '농부 삼촌' },
-  { id: 'builder',  name: '목수 아저씨' },
-  { id: 'merchant', name: '방랑 상인' },
-  { id: 'angler',   name: '낚시꾼 할아버지' },
-  { id: 'chef',     name: '요리사 판다' },
+  { id: 'farmer',   name: '농부 삼촌',       name_en: 'Farmer' },
+  { id: 'builder',  name: '목수 아저씨',     name_en: 'Carpenter' },
+  { id: 'merchant', name: '방랑 상인',       name_en: 'Wandering Merchant' },
+  { id: 'angler',   name: '낚시꾼 할아버지', name_en: 'Old Fisherman' },
+  { id: 'chef',     name: '요리사 판다',     name_en: 'Chef Panda' },
 ];
 const MENU = [
-  { id: 'veg_stew',      name: '든든한 채소죽',  hint: '작물로 끓인 따뜻한 죽' },
-  { id: 'grilled_fish',  name: '생선 구이',      hint: '호수에서 잡은 물고기 구이' },
-  { id: 'lunchbox',      name: '모둠 도시락',    hint: '작물과 물고기를 담은 도시락' },
-  { id: 'omelette',      name: '푸짐한 오믈렛',  hint: '닭장 달걀로 만든 오믈렛' },
-  { id: 'mushroom_soup', name: '숲의 버섯 스프', hint: '채집 숲 버섯으로 끓인 스프' },
+  { id: 'veg_stew',      name: '든든한 채소죽',  name_en: 'Hearty Veggie Porridge', hint: '작물로 끓인 따뜻한 죽',        hint_en: 'warm porridge made from crops' },
+  { id: 'grilled_fish',  name: '생선 구이',      name_en: 'Grilled Fish',           hint: '호수에서 잡은 물고기 구이',    hint_en: 'fish grilled fresh from the lake' },
+  { id: 'lunchbox',      name: '모둠 도시락',    name_en: 'Picnic Lunchbox',        hint: '작물과 물고기를 담은 도시락',  hint_en: 'lunchbox of crops and fish' },
+  { id: 'omelette',      name: '푸짐한 오믈렛',  name_en: 'Fluffy Omelette',        hint: '닭장 달걀로 만든 오믈렛',      hint_en: 'omelette from coop-fresh eggs' },
+  { id: 'mushroom_soup', name: '숲의 버섯 스프', name_en: 'Forest Mushroom Soup',   hint: '채집 숲 버섯으로 끓인 스프',   hint_en: 'soup of foraged forest mushrooms' },
 ];
 const WEATHER_KO = { clear: '맑음', rain: '비', snow: '눈', fog: '안개' };
+const WEATHER_EN = { clear: 'sunny', rain: 'rainy', snow: 'snowy', fog: 'foggy' };
 
 const MAX_COUNT = 6;
 const LINE_MAX = 48;      // 주문판·근접 프롬프트 한 줄에 들어가는 길이
@@ -68,7 +69,31 @@ const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 마을 카페 손�
 - id 와 recipeId 는 반드시 주어진 목록의 값만 쓴다.
 - 같은 주민이 두 번 오지 않는다. 메뉴는 되도록 겹치지 않게 고른다.`;
 
-function buildPrompt(date, weather, count) {
+// 영어 손님 — 한글 대비 라틴 글자폭이 좁아 글자수 상한을 넉넉히 잡는다(주문판 폭 기준)
+const LINE_MAX_EN = 88;
+const THANKS_MAX_EN = 52;
+const SYSTEM_EN = `You write the village café guests for "calm forest", a cozy healing game.
+Rules:
+- English. Warm and understated, in each villager's voice. No exaggeration, no emoji, no quotation marks.
+- "line" is one sentence, at most ${LINE_MAX_EN} characters, weaving in a small moment from their day that makes them crave that dish.
+- "thanks" is a short remark, at most ${THANKS_MAX_EN} characters.
+- Use only ids from the given lists for id and recipeId.
+- No villager appears twice. Avoid repeating menus when possible.`;
+
+function buildPrompt(date, weather, count, lang) {
+  if (lang === 'en') {
+    return [
+      `Date: ${date} (weather: ${WEATHER_EN[weather] || 'sunny'})`,
+      '',
+      'Villagers:',
+      ...RESIDENTS.map(r => `- ${r.id}: ${r.name_en}`),
+      '',
+      'Menu:',
+      ...MENU.map(m => `- ${m.id}: ${m.name_en} (${m.hint_en})`),
+      '',
+      `Write today's ${count} café guests.`,
+    ].join('\n');
+  }
   return [
     `날짜: ${date} (날씨: ${WEATHER_KO[weather] || '맑음'})`,
     '',
@@ -83,7 +108,7 @@ function buildPrompt(date, weather, count) {
 }
 
 // 모델 응답을 그대로 믿지 않고 화이트리스트로 정규화
-function sanitize(raw, count) {
+function sanitize(raw, count, lang) {
   if (!Array.isArray(raw)) return [];
   const okId = new Set(RESIDENTS.map(r => r.id));
   const okRecipe = new Set(MENU.map(m => m.id));
@@ -94,8 +119,8 @@ function sanitize(raw, count) {
     const id = String(g.id || '').trim();
     const recipeId = String(g.recipeId || '').trim();
     if (!okId.has(id) || !okRecipe.has(recipeId) || seen.has(id)) continue;   // 목록 밖 값·중복 손님 제거
-    const line = trim(g.line, LINE_MAX);
-    const thanks = trim(g.thanks, THANKS_MAX);
+    const line = trim(g.line, lang === 'en' ? LINE_MAX_EN : LINE_MAX);
+    const thanks = trim(g.thanks, lang === 'en' ? THANKS_MAX_EN : THANKS_MAX);
     if (!line || !thanks) continue;
     seen.add(id);
     out.push({ id, recipeId, line, thanks });
@@ -104,7 +129,7 @@ function sanitize(raw, count) {
   return out;
 }
 
-async function generate(env, date, weather, count) {
+async function generate(env, date, weather, count, lang) {
   const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -112,8 +137,8 @@ async function generate(env, date, weather, count) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, count) }] }],
+        systemInstruction: { parts: [{ text: lang === 'en' ? SYSTEM_EN : SYSTEM }] },
+        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, count, lang) }] }],
         generationConfig: {
           temperature: 1.1,                    // 매일 다른 조합이 나오게
           responseMimeType: 'application/json',
@@ -125,7 +150,7 @@ async function generate(env, date, weather, count) {
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-  return sanitize(JSON.parse(text), count);
+  return sanitize(JSON.parse(text), count, lang);
 }
 
 export async function onRequestGet({ request, env, waitUntil }) {
@@ -136,6 +161,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const rawWeather = url.searchParams.get('weather') || '';
   const weather = ['clear', 'rain', 'snow', 'fog'].includes(rawWeather) ? rawWeather : 'clear';
   const count = Math.min(MAX_COUNT, Math.max(1, parseInt(url.searchParams.get('count') || '4', 10) || 4));
+  const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
 
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -150,19 +176,19 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   // 날짜·날씨·인원이 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번
   const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&weather=${weather}&count=${count}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&weather=${weather}&count=${count}&lang=${lang}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
   try {
-    const guests = await generate(env, date, weather, count);
+    const guests = await generate(env, date, weather, count, lang);
     if (!guests.length) throw new Error('sanitize 후 남은 손님이 없음');
     const out = new Response(JSON.stringify(guests), { headers });
     waitUntil(cache.put(cacheKey, out.clone()));
     return out;
   } catch (e) {
     // 구조화 로그 — Cloudflare 대시보드에서 필터링·집계가 되게(유저에겐 조용히 폴백되므로 여기서만 보임)
-    console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, count, error: e.message }));
+    console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, count, lang, error: e.message }));
     // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 기본 손님을 쓴다.
     // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
     // 실패 사유를 헤더로도 노출 — 대시보드 로그를 열지 않고 curl -sI 로 바로 원인 확인.

@@ -11,6 +11,7 @@
 // =============================================================
 
 import { CONFIG } from './config.js';
+import { LANG } from './i18n.js';
 import { setCafeGuestSource } from './game.js';
 import { sendCafeGuests } from './supabase-client.js';
 
@@ -46,7 +47,8 @@ export function initCafeGuests() {
 
   setCafeGuestSource(async (ctx) => {
     const url = `${endpoint}?date=${encodeURIComponent(ctx.date)}`
-      + `&weather=${encodeURIComponent(ctx.weather || 'clear')}&count=${ctx.count}`;
+      + `&weather=${encodeURIComponent(ctx.weather || 'clear')}&count=${ctx.count}`
+      + `&lang=${LANG}`;   // [i18n] 표시 언어로 손님 대사 생성(서버가 ko/en 화이트리스트)
     // cache: 'no-store' — 브라우저 캐시를 타지 않는다.
     //   서버가 성공 응답에 max-age=43200 을 붙이는데, 키 설정 전에 받은 빈 응답([])이
     //   그대로 12시간 박혀 계속 재사용되는 일이 실제로 있었다.

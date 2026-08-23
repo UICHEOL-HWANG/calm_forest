@@ -27,6 +27,7 @@ import { saveGame, loadGame, sendBoatRun } from './supabase-client.js';  // [Sup
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { t } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -40,17 +41,36 @@ const CROP_TYPES = [
 ];
 
 // ── 도구 하트바 (선택 도구에 따라 상호작용이 달라짐) ─────────────
+//   grp = 하단바 페이지. 🌾농사(밭에서 연달아 쓰는 4종) / 🏕️야외도구(장소마다 단독으로 쓰는 4종).
+//   ⛏️괭이는 밭갈기 겸 채굴이라 농사 쪽 — 동굴에서도 농사 페이지가 뜬다.
 const TOOLS = [
-  { id: 'axe',    name: '도끼',     ico: '🪓' }, // 벌목
-  { id: 'hoe',    name: '괭이',     ico: '⛏️' }, // 밭 갈기
-  { id: 'seed',   name: '씨앗',     ico: '🌰' }, // 씨앗 심기
-  { id: 'water',  name: '물조리개', ico: '💧' }, // 물주기
-  { id: 'sickle', name: '낫',       ico: '🌾' }, // 수확
-  { id: 'hammer', name: '망치',     ico: '🔨' }, // 건축
-  { id: 'rod',    name: '낚싯대',   ico: '🎣' }, // 낚시(호수)
-  { id: 'net',    name: '포충망',   ico: '🦋' }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
+  { id: 'axe',    name: '도끼',     ico: '🪓', grp: 'out'  }, // 벌목
+  { id: 'hoe',    name: '괭이',     ico: '⛏️', grp: 'farm' }, // 밭 갈기 · 채굴
+  { id: 'seed',   name: '씨앗',     ico: '🌰', grp: 'farm' }, // 씨앗 심기
+  { id: 'water',  name: '물조리개', ico: '💧', grp: 'farm' }, // 물주기
+  { id: 'sickle', name: '낫',       ico: '🌾', grp: 'farm' }, // 수확
+  { id: 'hammer', name: '망치',     ico: '🔨', grp: 'out'  }, // 건축
+  { id: 'rod',    name: '낚싯대',   ico: '🎣', grp: 'out'  }, // 낚시(호수)
+  { id: 'net',    name: '포충망',   ico: '🦋', grp: 'out'  }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
 ];
-let currentTool = 0;
+let currentTool = 1;   // ⛏️괭이 — 시작 페이지(🌾농사)에 있는 도구여야 한다(아래 toolPage 와 짝)
+
+// ── 🎒 도구 페이지 ────────────────────────────────────────────
+//   8칸을 늘 펼쳐두니 하단이 답답해서, 4칸씩 두 벌로 나누고 ✋맨손(접기)을 하나 더 뒀다.
+//   · 자동   — 구역에 들어가면 알아서 넘어간다(숲·실내는 맨손). 마을은 자동 없음.
+//   · 수동   — 하단바 왼쪽 칩을 눌러 순환. 자동을 덮어쓴다.
+//   · 숫자키 — 1 = 세트 전환, 2~5 = 지금 펼친 세트의 도구 4개.
+//     화면 슬롯에 적힌 번호와 정확히 같다(예전엔 절대 번호라 🏕️세트가 1·6·7·8 로 튀었다).
+const TOOL_PAGES = [
+  { id: 'farm', name: '농사',     ico: '🌾' },
+  { id: 'out',  name: '야외도구', ico: '🏕️' },
+  { id: 'none', name: '맨손',     ico: '✋' },
+];
+let toolPage = 'farm';                    // 현재 페이지(첫 시작 = 농사)
+let lastPageTool = { farm: 1, out: 0 };   // 페이지별 마지막으로 들었던 도구(돌아올 때 복원)
+let lastAutoZone = null;                  // 자동 전환을 이미 적용한 구역(같은 구역에선 수동 선택 유지)
+let pageBeforeAuto = null;                // 자동으로 맨손이 되기 직전 페이지(구역을 벗어나면 되돌린다)
+let lastOpenPage = 'farm';                // 마지막으로 펼쳐 둔 세트(맨손에서 숫자키를 누르면 여기로 돌아온다)
 const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
 const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
 // ── 🏗️ 증축(집 완성 후) — 단계마다 집이 커지고 지붕·문 모양이 바뀜. 후반 자원·코인 싱크 ──
@@ -786,7 +806,8 @@ const NICK_ADJS = ['조용한', '포근한', '느긋한', '반짝이는', '부�
 function genNickname(animal) {
   const adj = NICK_ADJS[Math.floor(Math.random() * NICK_ADJS.length)];
   const a = ANIMALS.find(x => x.id === (animal || gameState.character));
-  return `${adj} ${a ? a.name : '여행자'} #${1000 + Math.floor(Math.random() * 9000)}`;
+  // [i18n] 영어 모드면 형용사·동물명을 번역해 생성(닉네임은 유저 데이터라 사후 번역 없음)
+  return `${t(adj)} ${t(a ? a.name : '여행자')} #${1000 + Math.floor(Math.random() * 9000)}`;
 }
 // source: 'new'(첫 캐릭터 선택) | 'auto'(기존 유저 소급 부여) | 'change'(직접 변경)
 function setNickname(name, source = 'change') {
@@ -906,6 +927,8 @@ const ANIMALS = [
     extras: ['beak', 'comb', 'wings'] },
 ];
 let heldGroup, handAnchor, heldToolMesh; // 팔(어깨 피벗) / 손 / 든 도구
+let restArmX = 0.78;      // 손에 들었을 때의 좌우 위치(캐릭터 몸집마다 다름 — applyCharacter 가 갱신)
+let toolStow = 0;         // 🎒 도구 수납 진행 0(손 옆)~1(등 뒤). ✋맨손이면 1로 보간된다
 let sunLight, hemiLight, ambient;
 let fireflies, stars;
 const trees = [];
@@ -1010,6 +1033,61 @@ const PAL = {
   wall: 0xffe3c4, roof: 0xff9e9e, window: 0xfff2a8,
 };
 
+// 🎒 도구 페이지 전환. auto=true 면 구역 이동이 부른 것(효과음 없이 조용히 바뀜)
+//   'none'(✋맨손)으로 갈 땐 currentTool 을 그대로 둔다 → 들고 있던 그 도구를 등에 멘다.
+function setToolPage(id, auto = false) {
+  if (toolPage === id) return;
+  if (toolPage !== 'none') lastPageTool[toolPage] = currentTool;   // 떠나는 페이지의 도구를 기억
+  toolPage = id;
+  if (id !== 'none') lastOpenPage = id;
+  if (id !== 'none') {
+    const back = lastPageTool[id];
+    currentTool = (TOOLS[back] && TOOLS[back].grp === id) ? back : TOOLS.findIndex(x => x.grp === id);
+    setHeldTool(TOOLS[currentTool].id);
+  }
+  ui.setTool?.(currentTool, TOOLS, toolPage);
+  if (!auto) Sound.blip();
+}
+
+// 구역별 기본 페이지. 마을은 일부러 비워 뒀다 —
+// 밭일·벌목·건축이 한곳에 뒤섞이는 곳이라, 자동으로 넘기면 방금 고른 도구를 뺏는 꼴이 된다.
+const ZONE_PAGE = {
+  indoor: 'none', cafe: 'none', forest: 'none', river: 'none', mist: 'none',  // 도구를 쓰지 않는 곳
+  farm: 'farm', mine: 'farm',        // ⛏️괭이 — 밭갈기·채굴 둘 다 농사 페이지에 있다
+  glade: 'out',                      // 🦋포충망(밤 반딧불이)
+};
+function toolZoneKey() {
+  if (indoor) return 'indoor';
+  if (atCafe) return 'cafe';
+  if (atMist) return 'mist';
+  if (atRiver) return 'river';
+  if (atFarm) return 'farm';
+  if (atMine) return 'mine';
+  if (nearForest) return 'forest';
+  if (nearGlade && isNight()) return 'glade';
+  return null;                       // 마을 — 자동 전환 없음
+}
+// 구역이 바뀐 그 순간에만 한 번 적용 → 같은 구역 안에서 직접 바꾼 선택은 그대로 지켜진다
+function updateToolPageAuto() {
+  const key = toolZoneKey();
+  if (key === lastAutoZone) return;
+  lastAutoZone = key;
+  const want = key ? ZONE_PAGE[key] : null;
+  if (want) {
+    if (want === 'none' && toolPage !== 'none') {
+      pageBeforeAuto = toolPage;                                           // 돌아올 자리를 기억해 두고
+      // 바가 저절로 접히는 첫 순간 — 왜 접혔고 어떻게 되돌리는지 한 번만 알려 준다
+      if (!gameState.hintsSeen.toolStow) {
+        gameState.hintsSeen.toolStow = true;
+        ui.toast?.('🎒 도구를 등에 멨어요 — 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요', 3200);
+      }
+    }
+    setToolPage(want, true);
+  } else if (toolPage === 'none' && pageBeforeAuto) {
+    setToolPage(pageBeforeAuto, true); pageBeforeAuto = null;               // 구역을 벗어나면 도로 꺼내 든다
+  }
+}
+
 // =============================================================
 //  입력 API (키보드 + 모바일 터치 컨트롤이 함께 사용)
 // =============================================================
@@ -1017,8 +1095,37 @@ export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
   doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space (도구질)
   doTalk() { if (!indoor && nearNPC) talkToNPC(); },    // 전용 "대화하기" 버튼(모바일) — 도구질과 분리
-  selectTool(i) { if (placingOutdoor) { placingOutdoor = null; ui.onDecorPlaced?.(); } currentTool = (i + TOOLS.length) % TOOLS.length; ui.setTool?.(currentTool, TOOLS); setHeldTool(TOOLS[currentTool].id); Sound.blip(); },
+  // 슬롯 탭 / 숫자키 1~8 — 페이지와 무관한 절대 선택. 다른 페이지 도구를 고르면 페이지가 따라오고, ✋맨손도 풀린다
+  selectTool(i) {
+    if (placingOutdoor) { placingOutdoor = null; ui.onDecorPlaced?.(); }
+    currentTool = (i + TOOLS.length) % TOOLS.length;
+    toolPage = TOOLS[currentTool].grp; lastPageTool[toolPage] = currentTool; pageBeforeAuto = null;
+    ui.setTool?.(currentTool, TOOLS, toolPage);
+    setHeldTool(TOOLS[currentTool].id); Sound.blip();
+  },
+  // 숫자키 2~5 — 지금 펼친 세트의 n번째(0~3) 도구. 1번이 전환이라 도구는 2번부터 시작한다.
+  selectPageSlot(n) {
+    if (toolPage === 'none') { pageBeforeAuto = null; setToolPage(lastOpenPage, true); }  // 맨손이면 세트부터 편다
+    const pick = TOOLS.map((tool, i) => ({ tool, i })).filter(x => x.tool.grp === toolPage)[n];
+    if (pick) Input.selectTool(pick.i);
+  },
+  // 🎒 하단바 칩 / 숫자키 1 — 🌾농사 → 🏕️야외도구 → ✋맨손 순환(자동 전환을 덮어쓴다)
+  cycleToolPage() {
+    const order = TOOL_PAGES.map(x => x.id);
+    pageBeforeAuto = null;
+    setToolPage(order[(order.indexOf(toolPage) + 1) % order.length]);
+    ui.act?.('toolpage');   // 🎓 튜토리얼: "세트 바꿔 보기" 단계 통과
+    return toolPage;
+  },
+  // 🎓 튜토리얼이 "🪓도끼(1)" 처럼 특정 도구를 지시할 때, 그 도구가 있는 페이지를 펴 준다.
+  //   고르지는 않는다 — 고르는 건 플레이어가 배워야 할 동작이라 칸만 보이게 한다.
+  revealTool(id) {
+    const t = TOOLS.find(x => x.id === id);
+    if (t && toolPage !== t.grp) { pageBeforeAuto = null; setToolPage(t.grp, true); }
+  },
   getTools() { return TOOLS; },
+  getToolPage() { return toolPage; },
+  getToolPages() { return TOOL_PAGES; },
   setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
@@ -1112,7 +1219,7 @@ export const Input = {
     if (e === '❤️' || e === '🎵') Sound.harvest(); else Sound.blip();
   },
   selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
-  cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },
+  cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },   // (맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
   rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); return decorRot; }, // 가로/세로 회전
   getDecorRot() { return decorRot; },
   isIndoor() { return indoor; },
@@ -1134,7 +1241,7 @@ export async function bootWorld(uiCallbacks) {
   initPostProcessing();
   initInput();
   initSound();
-  ui.setTool?.(currentTool, TOOLS);
+  ui.setTool?.(currentTool, TOOLS, toolPage);
   window.addEventListener('resize', onResize);
   player.visible = false;   // 로그인 중엔 캐릭터 숨김(카메라 자동 오빗)
   mode = 'attract';
@@ -1151,7 +1258,7 @@ export async function enterGame() {
   if (_wq.get('coop') === '1' && !gameState.coop.built) buildCoop(true);   // 테스트: ?coop=1 — 닭장 미리보기
   refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
   refreshInventoryUI();
-  ui.setTool?.(currentTool, TOOLS);
+  ui.setTool?.(currentTool, TOOLS, toolPage);
   ui.setQuest?.(null);                  // 퀘스트 패널은 주민 근처에서 표시
   npcObjs.forEach(updateNPCGlyph);     // 저장 복원 후 말풍선 상태 반영
   player.visible = true;
@@ -1611,7 +1718,8 @@ function applyCharacter(id) {
   const built = buildAnimalMesh(a.id);
   charGroup = built.group; tailPivot = built.tail;
   playerAnchor.add(charGroup);
-  if (heldGroup) heldGroup.position.x = a.armX ?? 0.78;   // 몸집에 맞춰 도구 위치 보정
+  restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
+  poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
 }
 
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
@@ -1681,6 +1789,22 @@ function toolMesh(id) {
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
+// 🎒 손에 든 도구 자세 — 손 옆(rest) ↔ 등 뒤(stow) 보간.
+//   ✋맨손은 도구를 지우는 게 아니라 "등에 메는" 상태다. 이 캐릭터는 팔 메시가 없어서
+//   (buildPlayer 의 playerArm = null) 도구 그룹 위치만 옮기면 그대로 등에 걸린 그림이 된다.
+const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
+const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선
+function poseHeldTool(stow, swingX, swingZ) {
+  if (!heldGroup) return;
+  const k = stow, j = 1 - k;
+  const rx = (swingX === undefined ? HELD_REST.rx : swingX);
+  const rz = (swingZ === undefined ? HELD_REST.rz : swingZ);
+  heldGroup.position.set(restArmX * j + HELD_STOW.px * k,
+                         HELD_REST.py * j + HELD_STOW.py * k,
+                         HELD_REST.pz * j + HELD_STOW.pz * k);
+  heldGroup.rotation.set(rx * j + HELD_STOW.rx * k, 0, rz * j + HELD_STOW.rz * k);
+}
+
 function setHeldTool(id) {
   if (!handAnchor) return;
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
@@ -1850,8 +1974,8 @@ function buildCoopSite() {
   const c = cv.getContext('2d');
   c.fillStyle = '#b8d2ba'; roundRect(c, 10, 10, 492, 172, 28); c.fill();
   c.fillStyle = '#3a4a40'; c.textAlign = 'center';
-  c.font = 'bold 46px sans-serif'; c.fillText('🐔 닭장 터', 256, 74);
-  c.font = 'bold 30px sans-serif'; c.fillText('🔥 2일 연속 출석 + 🪵25 🪨10 🪙60', 256, 134);
+  c.font = 'bold 46px sans-serif'; c.fillText(t('🐔 닭장 터'), 256, 74);
+  c.font = 'bold 30px sans-serif'; c.fillText(t('🔥 2일 연속 출석 + 🪵25 🪨10 🪙60'), 256, 134);
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
@@ -2274,7 +2398,7 @@ function tryForage(node) {
   const i = forageNodes.indexOf(node);
   if (i < 0 || !node.ready) return;
   const kind = node.kind;
-  doPlayerAction(node.x, node.z);
+  doPlayerAction(node.x, node.z, 'pick');   // 🍄 도구를 휘두르지 않고 허리를 접는 동작
   node.ready = false;
   node.respawnAt = clock.elapsedTime + FORAGE_RESPAWN[0] + Math.random() * (FORAGE_RESPAWN[1] - FORAGE_RESPAWN[0]);
   forestGroup.remove(node.mesh); node.mesh = null;
@@ -3844,9 +3968,9 @@ function updateHouseSign() {
   c.lineWidth = 10; c.strokeStyle = '#6fae82'; roundRect(c, 30, 26, 964, 248, 60); c.stroke();
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillStyle = '#204a2c'; c.font = 'bold 92px sans-serif';
-  c.fillText('🏠 여기에 집 짓기', 512, 108);
+  c.fillText(t('🏠 여기에 집 짓기'), 512, 108);
   c.fillStyle = '#33503c'; c.font = 'bold 66px sans-serif';
-  c.fillText(`🔨 망치 · 🪵 ${BUILD_COST}`, 512, 210);
+  c.fillText(t(`🔨 망치 · 🪵 ${BUILD_COST}`), 512, 210);
   houseSignTex.needsUpdate = true;
 }
 
@@ -4303,7 +4427,7 @@ function spawnRankBoard() {
   c.fillStyle = '#fff8ea'; roundRect(c, 0, 0, 512, 336, 26); c.fill();
   c.fillStyle = '#7fce8b'; roundRect(c, 18, 16, 476, 74, 18); c.fill();
   c.fillStyle = '#2f4a3a'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.font = '700 46px sans-serif'; c.fillText('🏆 이번 주 랭킹', 256, 54);
+  c.font = '700 46px sans-serif'; c.fillText(t('🏆 이번 주 랭킹'), 256, 54);
   const rows = [['🥇', '#f5d76e'], ['🥈', '#cfd6de'], ['🥉', '#e0a878']];
   rows.forEach(([medal, col], i) => {
     const y = 116 + i * 62;
@@ -4312,7 +4436,7 @@ function spawnRankBoard() {
     c.fillStyle = col; roundRect(c, 84, y, 340 - i * 60, 34, 12); c.fill();   // 장식용 점수 바(길이 차등)
   });
   c.fillStyle = '#8a9a8e'; c.font = '600 24px sans-serif'; c.textAlign = 'center';
-  c.fillText('매주 월요일 새로 시작 · 가까이서 확인!', 256, 312);
+  c.fillText(t('매주 월요일 새로 시작 · 가까이서 확인!'), 256, 312);
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 8;
   const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.44), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
   face.position.set(0, 1.62, 0.065); g.add(face);
@@ -4804,7 +4928,7 @@ function spawnMarketBoard() {
   [[34, 34], [478, 34], [34, 286], [478, 286]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); });
   c.textAlign = 'center';
   c.fillStyle = '#4a3b28'; c.font = 'bold 74px sans-serif';
-  c.fillText('📊 시세판', 256, 96);                                        // 한글 제목 큼직하게
+  c.fillText(t('📊 시세판'), 256, 96);                                     // 한글 제목 큼직하게
   c.strokeStyle = '#d9cdb0'; c.lineWidth = 4;
   c.beginPath(); c.moveTo(50, 122); c.lineTo(462, 122); c.stroke();       // 구분선
   const ks = Object.keys(SELL_PRICE);
@@ -4812,10 +4936,10 @@ function spawnMarketBoard() {
   const lo = ks.reduce((a, b) => (priceRate(a) <= priceRate(b) ? a : b));
   const pct = (k) => Math.round(priceRate(k) * 100) - 100;
   c.font = 'bold 48px sans-serif';
-  c.fillStyle = '#2fa564'; c.fillText(`${SELL_ICO_G[hi]} 비싸요  +${pct(hi)}%`, 256, 186);
-  c.fillStyle = '#d05a4a'; c.fillText(`${SELL_ICO_G[lo]} 싸요  ${pct(lo)}%`, 256, 248);
+  c.fillStyle = '#2fa564'; c.fillText(t(`${SELL_ICO_G[hi]} 비싸요  +${pct(hi)}%`), 256, 186);
+  c.fillStyle = '#d05a4a'; c.fillText(t(`${SELL_ICO_G[lo]} 싸요  ${pct(lo)}%`), 256, 248);
   c.fillStyle = '#8a7a5f'; c.font = '26px sans-serif';
-  c.fillText('가격은 매일 자정에 바뀌어요', 256, 292);
+  c.fillText(t('가격은 매일 자정에 바뀌어요'), 256, 292);
   const tex = new THREE.CanvasTexture(cv);
   // 재질 배열: +z 앞면만 시세판 텍스처, 나머지는 나무 톤(옆면 스트레치 방지)
   const woodSide = new THREE.MeshStandardMaterial({ color: 0x9a7248, roughness: 0.9 });
@@ -5108,7 +5232,7 @@ function makeSignBoard(text) {
   c.fillStyle = '#c9a86e'; c.fillRect(0, 0, W, 22); c.fillRect(0, H - 22, W, 22);
   c.fillStyle = '#8a6a3a'; c.fillRect(0, 0, W, 9); c.fillRect(0, H - 9, W, 9);
   // 이모지는 캔버스에서 기기(iOS 등)마다 폭 측정/렌더가 달라 글자가 삐져나감 → 판엔 한글만
-  const label = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+  const label = t(text).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
   // 글자 폭을 재서 판 안에 딱 맞게 폰트 자동 축소(넉넉한 양옆 여백 → 잘림 방지)
   const maxW = W - 130;
   const fontFor = (s) => `bold ${s}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
@@ -5433,6 +5557,7 @@ function updateDoorInteract() {
   if (nearHouse !== lastNearHouse) { lastNearHouse = nearHouse; ui.setNearHouse?.(nearHouse); }
   if (nearHouse) firstHint('extDecor', '🎨', '집 외관 꾸미기', '집 근처에 오면 🎨 집 외관 꾸미기 버튼이 떠요. 지붕·벽·문 색을 바꿔 나만의 집을 만들어보세요!');
   updateZoneHint();
+  updateToolPageAuto();   // 🎒 구역이 바뀌었으면 도구 페이지도 넘긴다
 }
 
 // 🌟🍄 존(구역) 안내 — 도구로 상호작용하는 넓은 구역용.
@@ -5511,8 +5636,9 @@ function initInput() {
     keys[e.code] = true;
     if (e.code === 'Space') wantAction = true;
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
-    // 숫자키 1~8 로 도구 선택(8=🦋포충망)
-    if (/^Digit[1-8]$/.test(e.code)) Input.selectTool(parseInt(e.code.slice(5)) - 1);
+    // 1 = 도구 세트 전환, 2~5 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1)
+    if (e.code === 'Digit1') Input.cycleToolPage();
+    else if (/^Digit[2-5]$/.test(e.code)) Input.selectPageSlot(parseInt(e.code.slice(5)) - 2);
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
@@ -5655,6 +5781,7 @@ function updateAttractCamera(t) {
 let walkPhase = 0;
 let movedOnce = false;   // 튜토리얼: 첫 이동 감지
 let actAnim = 0;         // 액션 제스처 진행(1→0)
+let actKind = 'swing';   // 액션 제스처 종류 — 'swing'(도구질) | 'pick'(맨손 줍기)
 let sitting = false;     // 앉기 상태
 
 // ── 이모트 모션 — 기분에 따라 캐릭터가 실제로 움직임(춤·점프·하트·인사) ──
@@ -5697,9 +5824,10 @@ function updateEmote(dt) {
 }
 
 // 액션 제스처 트리거: 대상(tx,tz) 방향으로 돌고 몸을 휙 숙였다 폄
-function doPlayerAction(tx, tz) {
+//   kind='pick' 이면 도구를 휘두르지 않고 허리만 접는다(🍄채집·🐾흔적처럼 도구가 필요 없는 동작)
+function doPlayerAction(tx, tz, kind) {
   if (typeof tx === 'number') player.rotation.y = Math.atan2(tx - player.position.x, tz - player.position.z);
-  actAnim = 1;
+  actAnim = 1; actKind = kind || 'swing';
 }
 function updatePlayer(dt, t) {
   if (boat.active) return updateBoatRun(dt, t);    // 🛶 런 중엔 걷기 대신 배 물리
@@ -5786,35 +5914,50 @@ function updatePlayer(dt, t) {
     window.__scene = scene;   // 씬 그래프 콘솔 조사용(로컬 ?dbg=1 전용)
   }
 
-  // 액션 제스처: 백스윙 → 휙 내려침 → 팔로스루 — 도구가 어깨 피벗으로 크게 호를 그림
+  // 🎒 도구 수납 — ✋맨손이면 등으로, 아니면 손으로. 툭 사라지지 않게 0.25초쯤 걸려 옮긴다
+  const stowWant = (toolPage === 'none') ? 1 : 0;
+  if (toolStow !== stowWant) toolStow = Math.max(0, Math.min(1, toolStow + (stowWant ? dt * 4 : -dt * 4)));
+
+  // 액션 제스처: 도구질 = 백스윙 → 휙 내려침 → 팔로스루 / 맨손 줍기 = 허리를 접었다 편다
   if (actAnim > 0) {
-    actAnim = Math.max(0, actAnim - dt * 2.4);   // 전체 ~0.42초(읽히는 속도)
+    actAnim = Math.max(0, actAnim - dt * (actKind === 'pick' ? 3.0 : 2.4));  // 도구질 ~0.42초 / 줍기 ~0.33초
     const p = 1 - actAnim;                       // 진행도 0→1
     const s = Math.sin(p * Math.PI);             // 몸 스쿼시용 0→1→0
-    // ── 도구 스윙 각도(어깨 피벗 X축) — 3단계 비대칭 곡선 ──
-    const REST = -0.1;                           // 평상시 각도(buildPlayer 와 일치)
-    let swing;
-    if (p < 0.32) {        // ① 백스윙: 뒤로 크게 들어올림(ease-out — 천천히 멈춤)
-      const q = p / 0.32; swing = REST - 1.3 * (1 - (1 - q) * (1 - q));
-    } else if (p < 0.58) { // ② 내려침: 휙! (ease-in — 가속하며 190° 호)
-      const q = (p - 0.32) / 0.26; swing = (REST - 1.3) + 3.3 * q * q;
-    } else {               // ③ 팔로스루: 관성 지나쳤다가 부드럽게 복귀
-      const q = (p - 0.58) / 0.42; swing = (REST + 2.0) - 2.0 * (1 - (1 - q) * (1 - q));
-    }
-    const toolId = TOOLS[currentTool].id;
-    if (heldGroup) {
+    // 등에 멘 상태(맨손)면 무엇을 하든 휘두를 게 없다 → 안개숲 등불처럼 kind 를 안 준 곳도 자연스럽게
+    if (actKind === 'pick' || toolStow > 0.5) {
+      // 🍄 줍기: 휘두를 도구가 없다 — 허리를 깊게 접어 손을 땅으로 가져가는 동작만
+      playerAnchor.rotation.x = s * 0.85;
+      playerAnchor.rotation.y = 0;
+      playerAnchor.position.y -= s * 0.12;
+      playerAnchor.scale.set(1 + s * 0.04, 1 - s * 0.05, 1 + s * 0.04);
+      poseHeldTool(toolStow);                    // 도구는 등에 멘 채 몸을 따라 기울 뿐
+    } else {
+      // ── 도구 스윙 각도(어깨 피벗 X축) — 3단계 비대칭 곡선 ──
+      const REST = HELD_REST.rx;                 // 평상시 각도
+      let swing;
+      if (p < 0.32) {        // ① 백스윙: 뒤로 크게 들어올림(ease-out — 천천히 멈춤)
+        const q = p / 0.32; swing = REST - 1.3 * (1 - (1 - q) * (1 - q));
+      } else if (p < 0.58) { // ② 내려침: 휙! (ease-in — 가속하며 190° 호)
+        const q = (p - 0.32) / 0.26; swing = (REST - 1.3) + 3.3 * q * q;
+      } else {               // ③ 팔로스루: 관성 지나쳤다가 부드럽게 복귀
+        const q = (p - 0.58) / 0.42; swing = (REST + 2.0) - 2.0 * (1 - (1 - q) * (1 - q));
+      }
+      const toolId = TOOLS[currentTool].id;
       // 물조리개·씨앗주머니는 내려치는 게 아니라 앞으로 기울여 붓기/뿌리기
-      heldGroup.rotation.x = (toolId === 'water' || toolId === 'seed') ? REST + s * 1.0 : swing;
-      heldGroup.rotation.z = -0.55 + s * 0.4;    // 스윙 중 도구를 정면으로 살짝 세워 호가 또렷하게
+      poseHeldTool(toolStow,
+        (toolId === 'water' || toolId === 'seed') ? REST + s * 1.0 : swing,
+        HELD_REST.rz + s * 0.4);                 // 스윙 중 도구를 정면으로 살짝 세워 호가 또렷하게
+      // ── 몸: 백스윙 때 살짝 젖혔다가, 내려칠 때 상체 비틀며 앞으로 숙임(파워 느낌) ──
+      playerAnchor.rotation.x = p < 0.32 ? -0.12 * (p / 0.32) : 0.5 * s;
+      playerAnchor.rotation.y = p < 0.32 ? -0.22 * (p / 0.32) : 0.3 * s * (1 - p);
+      playerAnchor.position.y -= s * 0.1;
+      playerAnchor.scale.set(1 + s * 0.1, 1 - s * 0.12, 1 + s * 0.1);
     }
-    // ── 몸: 백스윙 때 살짝 젖혔다가, 내려칠 때 상체 비틀며 앞으로 숙임(파워 느낌) ──
-    playerAnchor.rotation.x = p < 0.32 ? -0.12 * (p / 0.32) : 0.5 * s;
-    playerAnchor.rotation.y = p < 0.32 ? -0.22 * (p / 0.32) : 0.3 * s * (1 - p);
-    playerAnchor.position.y -= s * 0.1;
-    playerAnchor.scale.set(1 + s * 0.1, 1 - s * 0.12, 1 + s * 0.1);
-  } else if (playerAnchor.rotation.x !== 0 || playerAnchor.rotation.y !== 0 || (heldGroup && heldGroup.rotation.x !== -0.1)) {
-    playerAnchor.rotation.x = 0; playerAnchor.rotation.y = 0; playerAnchor.scale.set(1, 1, 1);
-    if (heldGroup) { heldGroup.rotation.x = -0.1; heldGroup.rotation.z = -0.55; }
+  } else {
+    if (playerAnchor.rotation.x !== 0 || playerAnchor.rotation.y !== 0) {
+      playerAnchor.rotation.x = 0; playerAnchor.rotation.y = 0; playerAnchor.scale.set(1, 1, 1);
+    }
+    poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신
   }
 }
 
@@ -6160,7 +6303,7 @@ function traceMaterial() {
   c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
   c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
   c.fillStyle = '#5a4126'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🐾 조사!', 100, 40);
+  c.fillText(t('🐾 조사!'), 100, 40);
   const tex = new THREE.CanvasTexture(cv);
   _traceMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _traceMat;
@@ -6203,6 +6346,7 @@ function investigateTrace(tr) {
   traceObjs.splice(traceObjs.indexOf(tr), 1);
   gameState.night.traces = gameState.night.traces.filter(x => !(x.x === t.x && x.z === t.z));
   const entry = DEX.track.find(e => e.id === t.loot);
+  doPlayerAction(t.x, t.z, 'pick');   // 🐾 흔적도 도구 없이 살피는 동작
   Sound.blip();
   spawnDust(t.x, t.z, 12);
   spawnSparkle(t.x, 0.7, t.z, 18);
@@ -6403,8 +6547,8 @@ function handleAction() {
     return;
   }
   if (atMine) {                   // 동굴: 괭이로만 채굴 가능
-    if (TOOLS[currentTool].id === 'hoe') return tryMine();
-    ui.toast?.('⛏️ 괭이(도구 2)로 캐야 해요');
+    if (toolPage !== 'none' && TOOLS[currentTool].id === 'hoe') return tryMine();
+    ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
     return;
   }
   if (atCafe) {                   // ☕ 홀: 손님에게 서빙 / 주문판 열기
@@ -6441,6 +6585,8 @@ function handleAction() {
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   if (nearNPC && !IS_MOBILE) return talkToNPC();
+  // ✋ 맨손 — 도구를 등에 메고 있으니 도구질은 안 된다(줍기·대화·문은 위에서 이미 처리됨)
+  if (toolPage === 'none') { ui.toast?.('✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
   switch (TOOLS[currentTool].id) {
     case 'axe': return tryChop();
     case 'hoe': return tryHoe();
@@ -6734,7 +6880,7 @@ function warnMaterial() {
   c.fillStyle = 'rgba(140,200,255,0.96)'; roundRect(c, 8, 8, 160, 64, 18); c.fill();
   c.beginPath(); c.moveTo(78, 72); c.lineTo(98, 72); c.lineTo(84, 94); c.closePath(); c.fill();
   c.fillStyle = '#164a6a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('💧 물 줘요!', 88, 40);
+  c.fillText(t('💧 물 줘요!'), 88, 40);
   const tex = new THREE.CanvasTexture(cv);
   _warnMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _warnMat;
@@ -6757,7 +6903,7 @@ function harvestMaterial() {
   c.fillStyle = 'rgba(150,220,150,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
   c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
   c.fillStyle = '#245a2a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🌾 수확!', 100, 40);
+  c.fillText(t('🌾 수확!'), 100, 40);
   const tex = new THREE.CanvasTexture(cv);
   _harvestMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _harvestMat;
@@ -6780,7 +6926,7 @@ function seedHintMaterial() {
   c.fillStyle = 'rgba(233,206,150,0.97)'; roundRect(c, 8, 8, 232, 64, 18); c.fill();
   c.beginPath(); c.moveTo(114, 72); c.lineTo(134, 72); c.lineTo(120, 94); c.closePath(); c.fill();
   c.fillStyle = '#6b4a20'; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🌰 씨앗을 넣어요', 124, 40);
+  c.fillText(t('🌰 씨앗을 넣어요'), 124, 40);
   const tex = new THREE.CanvasTexture(cv);
   _seedHintMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   return _seedHintMat;
@@ -6862,6 +7008,7 @@ const floatTexts = [];
 // scale: 좁은 화면·가까운 카메라(🛶 뱃놀이 등)에서 줄여 그리기 위한 배율(기본 1)
 function spawnFloatText(x, y, z, text, color = '#3a4a40', scale = 1) {
   const cv = document.createElement('canvas');
+  text = t(text);   // [i18n] 캔버스 스프라이트는 옵저버 밖 — 폭 측정 전에 번역
   let c = cv.getContext('2d');
   c.font = 'bold 52px sans-serif';
   // 캔버스 폭을 텍스트 길이에 맞춤 — 고정 256px 이던 시절 긴 한글("배가 가라앉아요…")이 잘렸음
@@ -7251,7 +7398,7 @@ function questView(o) {
   return { name: o.def.name, title: q.title, desc: q.desc, progress: st.progress, target: q.target, ready: st.progress >= q.target };
 }
 function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
-function rewardText(r) { return Object.entries(r).map(([k, v]) => `${RES_LABEL[k] || k}+${v}`).join(', '); }
+function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
 function giveReward(r, source = 'reward', item = null) {
   for (const k in r) gameState.inventory[k] = (gameState.inventory[k] || 0) + r[k];
