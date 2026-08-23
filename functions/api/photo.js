@@ -139,7 +139,12 @@ export async function onRequestDelete({ request, env }) {
   const user = await verifyUser(env, request);
   if (!user) return json({ error: 'login_required' }, 403);
   const key = new URL(request.url).searchParams.get('key') || '';
-  if (!key.startsWith(`photos/${user.id}/`)) return json({ error: 'forbidden' }, 403);   // 남의 키 차단
+  // 남의 키 차단. prefix 검사만으로는 부족하다 —
+  //   photos/<내uid>/../<남uid>/x.jpg 는 startsWith 를 통과하는데, 서명은 원본 경로로 만들고
+  //   fetch 는 '..' 를 정규화해 보내므로 지금은 서명 불일치로 우연히 막히는 상태다.
+  //   서명 방식이나 중간 프록시가 바뀌면 그대로 뚫리므로 여기서 형태를 못 박는다.
+  const okKey = /^photos\/[0-9a-f-]{36}\/\d+\.jpg$/.test(key);
+  if (!okKey || !key.startsWith(`photos/${user.id}/`)) return json({ error: 'forbidden' }, 403);
   const del = await s3Fetch(env, 'DELETE', `/${env.OCI_BUCKET}/${key}`);
   if (!del.ok && del.status !== 404) return json({ error: 'storage_delete_failed', status: del.status }, 502);
   return json({ ok: true });

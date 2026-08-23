@@ -119,6 +119,18 @@ ${PHASE_RULE_EN}
 // 날짜로 '오늘 문을 여는 일감' 을 하나 정해 프롬프트에 넣는다.
 //   예시만 주면 모델이 그중 한 결에 고착된다 — 실제로 며칠을 뽑아 보니 전부 chop 으로 시작했다.
 //   시작점을 날짜로 돌려 주면 결이 매일 확실히 갈리고, 나머지 둘은 모델이 이어 붙인다.
+// 🔒 날짜 범위 제한 — 임의의 날짜를 받으면 (날짜 × 나머지 조합)이 무한해져
+//   캐시 미스마다 Gemini 가 실제로 호출된다. 인증도 레이트리밋도 없는 엔드포인트라
+//   날짜만 바꿔가며 부르면 그대로 할당량 고갈·요금 통로가 된다.
+//   게임 날짜는 KST 기준이고 엣지는 UTC 라 최대 9시간 어긋나므로 어제·오늘·내일만 허용한다.
+function clampDate(raw) {
+  const now = Date.now();
+  for (let d = -1; d <= 1; d++) {
+    if (raw === new Date(now + d * 86400000).toISOString().slice(0, 10)) return raw;
+  }
+  return new Date(now).toISOString().slice(0, 10);
+}
+
 function openerFor(date) {
   let h = 0;
   for (let i = 0; i < date.length; i++) h = (h * 31 + date.charCodeAt(i)) & 0x7fffffff;
@@ -200,8 +212,7 @@ async function generate(env, date, weather, lang, phase) {
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
   // 입력 정규화 — 프롬프트에 들어가므로 형식을 엄격히 제한(클라이언트발 인젝션 차단)
-  const rawDate = url.searchParams.get('date') || '';
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : new Date().toISOString().slice(0, 10);
+  const date = clampDate(url.searchParams.get('date') || '');   // 🔒 어제·오늘·내일만
   const rawWeather = url.searchParams.get('weather') || '';
   const weather = ['clear', 'rain', 'snow', 'fog'].includes(rawWeather) ? rawWeather : 'clear';
   const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
