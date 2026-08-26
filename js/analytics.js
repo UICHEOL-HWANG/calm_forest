@@ -11,6 +11,7 @@
 
 import { CONFIG, isGaConfigured } from './config.js';
 import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
+import { utmUserProperties, getTrafficSource } from './utm.js'; // 유입 경로(UTM) → GA4 유저 속성
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -30,8 +31,14 @@ const sessionStart = Date.now();
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
   document.head.appendChild(s);
   gtag('config', id);
-  // [i18n·A/B] 표시 언어와 변형을 유저 속성으로 — 리텐션/체류를 lang×variant 로 자를 수 있게
-  gtag('set', 'user_properties', { lang: LANG, ab_variant: assignVariant() });
+  // [i18n·A/B·유입] 유저 속성 — 리텐션/체류를 lang×variant×utm_source 로 자를 수 있게
+  //   ※ GA4 자동 수집(session_source)은 page_view 에만 붙어서 커스텀 이벤트를
+  //     소스별로 못 자릅니다. 그래서 유저 속성으로 한 번 더 심습니다.
+  gtag('set', 'user_properties', {
+    lang: LANG,
+    ab_variant: assignVariant(),
+    ...utmUserProperties(),
+  });
   console.log('[GA4] 로드됨:', id);
 })();
 
@@ -83,6 +90,10 @@ export function trackSessionTime() {
   const seconds = Math.round((Date.now() - sessionStart) / 1000);
   trackEvent('session_time', { seconds });
 }
+
+// [이벤트] 유입 경로 — 세션당 1회. 유저 속성과 별개로 이벤트로도 남겨
+//   "오늘 어느 소스에서 몇 명 들어왔나" 를 실시간 보고서에서 바로 볼 수 있게 합니다.
+trackEvent('traffic_source', getTrafficSource().session);
 
 // 페이지 이탈 시 마지막 체류 시간 기록
 window.addEventListener('beforeunload', trackSessionTime);
