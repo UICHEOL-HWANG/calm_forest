@@ -4829,9 +4829,11 @@ function updateSea(dt, t) {
       const wy = Math.atan2(SEA.x + seaBuoy.position.x - player.position.x, SEA.z + seaBuoy.position.z - player.position.z) - 0.45;
       player.rotation.y += seaAngDiff(wy, player.rotation.y) * Math.min(1, dt * 5);
       if (seaMG.t > seaMG.phaseLen) {
-        // 입질! — 부표 자리에서 싸움 시작
+        // 입질! — 부표 자리에서 싸움 시작.
+        //   ⚠️ 부두 끝에서 던졌으면 활주로가 0이라 첫 버둥침에 바로 놓친다 —
+        //   자세를 잡으며 뒤로 물러나(pz 를 최소 중간 지점으로) 버틸 거리를 확보한다.
         seaMG.st = 'fight'; seaMG.t = 0; seaMG.phase = 'struggle'; seaMG.phaseLen = seaRnd(1.3, 2);
-        seaMG.pz = player.position.z;
+        seaMG.pz = Math.max(player.position.z, SEA.z - 2);
         seaMG.fmesh = buildSeaFishMesh(seaMG.sp);
         seaMG.fmesh.position.set(_seaCastTo.x, -0.42, _seaCastTo.z);
         seaGroup.add(seaMG.fmesh);
