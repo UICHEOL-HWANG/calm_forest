@@ -991,7 +991,32 @@ const ANIMALS = [
     tail: { type: 'feather', color: 0xffd23a, wagSpeed: 2.6, wagAmp: 0.14 },
     extras: ['beak', 'comb', 'wings'] },
 ];
-let heldGroup, handAnchor, heldToolMesh; // 팔(어깨 피벗) / 손 / 든 도구
+let heldGroup, handAnchor, heldToolMesh; // 도구 캐리어(손 따라가기/등 수납) / 손 / 든 도구
+let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아리(날개)는 null → 구식 스윙
+let armWristK = 0;        // 손목 펴짐 0(자루 세움)~1(팔의 연장) — 스윙 중에만 커짐
+let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(rad)
+
+// ── 팔 상수 — arm-sim.html 시뮬레이션으로 검증한 값 ──
+//   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
+const _axX = new THREE.Vector3(1, 0, 0), _axZ = new THREE.Vector3(0, 0, 1);
+const ARM_AIM_R = new THREE.Quaternion().setFromUnitVectors(
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.44, -.85, .28).normalize());
+const ARM_AIM_L = new THREE.Quaternion().setFromUnitVectors(
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.42, -.87, .20).normalize());
+// 옆베기: 몸을 감았다 풀며 팔이 가로로 쓸고 감 — 와인드업 63° → 반대편 86°
+const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
+const WRIST_MAX = 0.55;   // 1.0이면 팔+도구가 한 줄 막대가 돼 어색(시뮬에서 확인)
+// 도구 쥐는 자세: 팔 조준 회전을 상쇄해 자루를 세움 / 스윙 땐 팔의 연장(180°)
+const TOOL_QREST = ARM_AIM_R.clone().invert()
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
+const TOOL_QSWING = new THREE.Quaternion().setFromAxisAngle(_axX, Math.PI);
+// 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
+function slashPhase(p, B, S) {
+  if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
+  if (p < .58) { const q = (p - .32)/.26;  return B + (S - B) * q * q; }
+  const q = (p - .58) / .42;               return S + (0 - S) * (1 - (1-q)*(1-q));
+}
 let restArmX = 0.78;      // 손에 들었을 때의 좌우 위치(캐릭터 몸집마다 다름 — applyCharacter 가 갱신)
 let toolStow = 0;         // 🎒 도구 수납 진행 0(손 옆)~1(등 뒤). ✋맨손이면 1로 보간된다
 let sunLight, hemiLight, ambient;
@@ -1773,7 +1798,30 @@ function buildAnimalMesh(id) {
     g.add(tail);
   }
 
-  return { group: g, tail };
+  // ── 팔 — 어깨 피벗(스윙축 YXZ) → 조준(고정) → 팔뚝·발바닥·손 ──
+  //   🐤병아리는 날개가 이미 있어 팔을 달지 않는다(구식 도구 스윙으로 폴백)
+  let armR = null, armL = null;
+  if (!ex.includes('wings')) {
+    const mkArm = (side) => {
+      const pivot = new THREE.Group();
+      pivot.rotation.order = 'YXZ';         // 옆베기: 팔을 든(X) 채 수직축(Y) 스윕
+      pivot.position.set(side * R * 0.87, bodyY + R * 0.54, R * 0.19);
+      const aim = new THREE.Group();
+      aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L);
+      pivot.add(aim);
+      const ar = R * 0.23, al = R * 0.22;
+      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), skin());
+      upper.position.y = -(al / 2 + ar * 0.4); upper.castShadow = true; aim.add(upper);
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), clayMat(a.ear, false));
+      paw.position.y = -(al + ar * 0.9); paw.castShadow = true; aim.add(paw);
+      const hand = new THREE.Group(); hand.position.y = -(al + ar * 0.9); aim.add(hand);
+      return { pivot, hand };
+    };
+    armR = mkArm(1); armL = mkArm(-1);
+    g.add(armR.pivot, armL.pivot);
+  }
+
+  return { group: g, tail, armR, armL };
 }
 
 // 선택한 동물로 캐릭터 외형 적용 — 체형이 다르므로 몸체를 통째로 교체
@@ -1783,6 +1831,8 @@ function applyCharacter(id) {
   if (charGroup) { playerAnchor.remove(charGroup); charGroup = null; tailPivot = null; }
   const built = buildAnimalMesh(a.id);
   charGroup = built.group; tailPivot = built.tail;
+  playerArms = (built.armR && built.armL) ? { R: built.armR, L: built.armL } : null;
+  armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
@@ -1823,23 +1873,93 @@ function makeCharacterPreview(canvas) {
 function toolMesh(id) {
   const g = new THREE.Group();
   const wood = (l) => new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, l, 6), clayMat(0x8a5a3a));
+  // ── 새 4종(도끼·곡괭이·망치·낫) 공용 — arm-sim.html 에서 검수받은 조형 ──
+  const GRIP = 0x5f3d26, STEEL = 0x6d757c, EDGE = 0xd9dfe4;
+  const handle = (l, r = 0.030) => {   // 테이퍼 자루 + 그립 밴드 + 끝 혹. 반환: 자루 꼭대기 y
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clayMat(0x8a5a3a));
+    h.position.y = l / 2 - 0.08;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.18, r * 1.18, 0.07, 7), clayMat(GRIP));
+    band.position.y = -0.02;
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(r * 1.35, 7, 6), clayMat(GRIP));
+    knob.position.y = -0.08;
+    g.add(h, band, knob);
+    return l - 0.08;
+  };
   if (id === 'axe') {
-    const h = wood(0.5); h.position.y = 0.15; g.add(h);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.05), clayMat(0xb84a3e)); head.position.set(0.07, 0.36, 0); g.add(head);
+    const top = handle(0.52);
+    // 쐐기형 머리: 강철 몸체 + 밝은 날 + 뒤통수 망치면
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.13, 0.06), clayMat(STEEL));
+    head.position.set(0.075, top - 0.05, 0); g.add(head);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.155, 0.028), clayMat(EDGE));
+    blade.position.set(0.175, top - 0.05, 0); blade.rotation.z = 0.06; g.add(blade);
+    const poll = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.07), clayMat(STEEL));
+    poll.position.set(-0.035, top - 0.05, 0); g.add(poll);
+    g.scale.setScalar(1.18);
   } else if (id === 'hoe') {
-    const h = wood(0.5); h.position.y = 0.15; g.add(h);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.18), clayMat(0x9aa0a4)); blade.position.set(0, 0.4, 0.08); blade.rotation.x = 0.9; g.add(blade);
+    const top = handle(0.52);
+    // 곡괭이 — 소켓에서 양팔이 대칭으로 뻗고 끝으로 갈수록 처지며 뾰족해진다. 검은 무쇠 톤
+    const IRON = 0x4d5156;
+    const hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    const boss = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.095, 0.075), clayMat(IRON));
+    hd.add(boss);
+    [-1, 1].forEach(sx => {
+      const TH = [0.14, 0.32], LEN = [0.13, 0.12];
+      let px = sx * 0.042, py = 0.012;
+      for (let i = 0; i < 2; i++) {
+        const dx = Math.cos(TH[i]) * sx, dy = -Math.sin(TH[i]);
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(LEN[i], 0.048 - i * 0.012, 0.05 - i * 0.012), clayMat(IRON));
+        seg.position.set(px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
+        seg.rotation.z = -sx * TH[i];
+        hd.add(seg);
+        px += dx * LEN[i]; py += dy * LEN[i];
+      }
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.020, 0.085, 6), clayMat(IRON));
+      const t3 = 0.48, dx = Math.cos(t3) * sx, dy = -Math.sin(t3);
+      tip.position.set(px + dx * 0.042, py + dy * 0.042, 0);
+      tip.rotation.z = -sx * (Math.PI / 2 + t3);
+      hd.add(tip);
+    });
+    g.scale.setScalar(1.18);
   } else if (id === 'seed') {
     const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), clayMat(0xcaa06a)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
   } else if (id === 'water') {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clayMat(0x8fd0ea)); body.position.y = 0.18; g.add(body);
     const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clayMat(0x8fd0ea)); spout.position.set(0.15, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
   } else if (id === 'sickle') {
-    const h = wood(0.34); h.position.y = 0.1; g.add(h);
-    const blade = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.02, 6, 10, Math.PI), clayMat(0xc9ced2)); blade.position.set(0.05, 0.3, 0); blade.rotation.set(Math.PI / 2, 0, 0.3); g.add(blade);
+    const top = handle(0.30, 0.034);
+    // 전투낫 — 날이 자루의 연장선으로 길게 서고, 끝으로 갈수록 뒤로 완만하게 휜다.
+    //   완만한 곡선은 각도가 조금씩 커지는 3개 세그먼트로 — 급하게 꺾으면 갈고리가 된다.
+    const bl = new THREE.Group();
+    bl.position.y = top + 0.01; bl.rotation.y = 0.10; g.add(bl);
+    const TH = [0.06, 0.28, 0.60], LEN = [0.15, 0.12, 0.10], W = [0.055, 0.045, 0.030];
+    let px = 0, py = 0;
+    for (let i = 0; i < 3; i++) {
+      const dx = Math.sin(TH[i]), dy = Math.cos(TH[i]);
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(W[i], LEN[i], 0.016), clayMat(0x6d757c));
+      seg.position.set(px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
+      seg.rotation.z = -TH[i];
+      bl.add(seg);
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.013, LEN[i] * 0.94, 0.012), clayMat(0xd9dfe4));
+      edge.position.set(px + dx * LEN[i] / 2 + dy * (W[i] / 2), py + dy * LEN[i] / 2 - dx * (W[i] / 2), 0);
+      edge.rotation.z = -TH[i];
+      bl.add(edge);
+      px += dx * LEN[i]; py += dy * LEN[i];
+    }
+    const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clayMat(0x6d757c));
+    ferrule.position.y = top - 0.01; g.add(ferrule);
+    g.scale.setScalar(1.18);
   } else if (id === 'hammer') {
-    const h = wood(0.5); h.position.y = 0.15; g.add(h);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), clayMat(0x6a6f74)); head.position.y = 0.38; g.add(head);
+    const top = handle(0.50);
+    // 원통형 머리(가로) + 양끝 밝은 캡 + 자루 고정핀
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.20, 8), clayMat(STEEL));
+    head.position.y = top - 0.04; head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.058, 0.03, 8), clayMat(EDGE));
+      cap.position.set(sx * 0.105, top - 0.04, 0); cap.rotation.z = Math.PI / 2; g.add(cap);
+    });
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), clayMat(GRIP));
+    pin.position.y = top + 0.022; g.add(pin);
+    g.scale.setScalar(1.18);
   } else if (id === 'rod') {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
@@ -1860,9 +1980,30 @@ function toolMesh(id) {
 //   (buildPlayer 의 playerArm = null) 도구 그룹 위치만 옮기면 그대로 등에 걸린 그림이 된다.
 const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
 const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선
+const _hfM = new THREE.Matrix4(), _hfP = new THREE.Vector3(), _hfQ = new THREE.Quaternion(), _hfS = new THREE.Vector3();
+const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion();
+const _stowP = new THREE.Vector3(HELD_STOW.px, HELD_STOW.py, HELD_STOW.pz);
+const _stowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(HELD_STOW.rx, 0, HELD_STOW.rz));
+const _idQ = new THREE.Quaternion();
 function poseHeldTool(stow, swingX, swingZ) {
   if (!heldGroup) return;
   const k = stow, j = 1 - k;
+  if (playerArms) {
+    // 팔이 있으면 도구는 오른손을 따라간다(스윙의 주체는 팔). 등 수납 자세는 그대로 보간.
+    const hand = playerArms.R.hand;
+    hand.updateWorldMatrix(true, false);
+    _hfM.copy(playerAnchor.matrixWorld).invert().multiply(hand.matrixWorld);
+    _hfM.decompose(_hfP, _hfQ, _hfS);
+    _hfOff.copy(handAnchor.position).applyQuaternion(_hfQ);   // 기존 handAnchor 오프셋 상쇄
+    _hfP.sub(_hfOff);
+    heldGroup.position.lerpVectors(_hfP, _stowP, k);
+    heldGroup.quaternion.slerpQuaternions(_hfQ, _stowQ, k);
+    // 손목: 자루 세워 쥠 ↔ 스윙 중 팔의 연장 · 등에 멜 땐 예전 그대로(identity)
+    _hfTQ.slerpQuaternions(TOOL_QREST, TOOL_QSWING, armWristK);
+    if (toolPourTilt) _hfTQ.multiply(_hfTilt.setFromAxisAngle(_axX, toolPourTilt));
+    if (heldToolMesh) heldToolMesh.quaternion.slerpQuaternions(_hfTQ, _idQ, k);
+    return;
+  }
   const rx = (swingX === undefined ? HELD_REST.rx : swingX);
   const rz = (swingZ === undefined ? HELD_REST.rz : swingZ);
   heldGroup.position.set(restArmX * j + HELD_STOW.px * k,
@@ -5991,6 +6132,7 @@ function updatePlayer(dt, t) {
   if (_wq.has('dbg')) {
     document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
     window.__scene = scene;   // 씬 그래프 콘솔 조사용(로컬 ?dbg=1 전용)
+    window.__act = doPlayerAction;   // 제스처 강제 발동(스윙 육안 검증용)
   }
 
   // 🎒 도구 수납 — ✋맨손이면 등으로, 아니면 손으로. 툭 사라지지 않게 0.25초쯤 걸려 옮긴다
@@ -6010,8 +6152,32 @@ function updatePlayer(dt, t) {
       playerAnchor.position.y -= s * 0.12;
       playerAnchor.scale.set(1 + s * 0.04, 1 - s * 0.05, 1 + s * 0.04);
       poseHeldTool(toolStow);                    // 도구는 등에 멘 채 몸을 따라 기울 뿐
+    } else if (playerArms) {
+      // ── 옆베기(arm-sim.html 검증) — 몸을 감았다 풀며 팔이 가로로 쓸고 지나감 ──
+      const toolId = TOOLS[currentTool].id;
+      const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
+      let k;
+      if (toolId === 'water' || toolId === 'seed') {
+        // 💧🌰 붓기/뿌리기: 휘두르지 않고 팔을 앞으로 들어 자루만 기울인다
+        Rp.rotation.set(-0.9 * s, 0, 0);
+        k = 0; armWristK = 0; toolPourTilt = s * 1.1;
+      } else {
+        const yaw = slashPhase(p, SLASH.back, SLASH.strike);
+        Rp.rotation.set(SLASH.lift * s, yaw, 0);
+        k = yaw / SLASH.back;
+        armWristK = Math.min(1, Math.abs(k) * 1.25) * WRIST_MAX;
+        toolPourTilt = 0;
+      }
+      // 왼팔 카운터 — 오른팔 정규화 각에서 유도(타이밍이 저절로 맞음)
+      Lp.rotation.set(-Math.abs(k) * 0.35, -k * 0.50, Math.max(0, -k) * 0.40);
+      // ── 몸: 와인드업 때 오른쪽으로 감았다가 왼쪽으로 풀며 벰 — 비틀림이 파워 ──
+      playerAnchor.rotation.x = 0.18 * s;
+      playerAnchor.rotation.y = p < 0.32 ? 0.42 * (p / 0.32) : -0.55 * s;
+      playerAnchor.position.y -= s * 0.1;
+      playerAnchor.scale.set(1 + s * 0.06, 1 - s * 0.07, 1 + s * 0.06);
+      poseHeldTool(toolStow);                    // 도구가 손을 따라 스윕
     } else {
-      // ── 도구 스윙 각도(어깨 피벗 X축) — 3단계 비대칭 곡선 ──
+      // ── 🐤 팔 없는 캐릭터 폴백: 구식 도구 스윙(어깨 피벗 X축 3단 곡선) ──
       const REST = HELD_REST.rx;                 // 평상시 각도
       let swing;
       if (p < 0.32) {        // ① 백스윙: 뒤로 크게 들어올림(ease-out — 천천히 멈춤)
@@ -6035,6 +6201,11 @@ function updatePlayer(dt, t) {
   } else {
     if (playerAnchor.rotation.x !== 0 || playerAnchor.rotation.y !== 0) {
       playerAnchor.rotation.x = 0; playerAnchor.rotation.y = 0; playerAnchor.scale.set(1, 1, 1);
+    }
+    if (playerArms) {
+      playerArms.R.pivot.rotation.set(0, 0, 0);
+      playerArms.L.pivot.rotation.set(0, 0, 0);
+      armWristK = 0; toolPourTilt = 0;
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신
   }
