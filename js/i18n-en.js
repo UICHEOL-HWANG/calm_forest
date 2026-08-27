@@ -344,6 +344,8 @@ export const EN = {
   '🐟 지금은 물고기가 안 보여요 — 시간대가 바뀌면 다른 어종이 와요': '🐟 No fish in sight — different species come as the time of day changes',
   '마을 북동쪽 포구예요. 먼 바다로 나가면 수면에 대형 물고기들이 헤엄쳐요 — 노리고 던져서 줄다리기로 낚아 올리세요! ⚔️참치는 하루 한 번 "오늘의 대어", 무게가 🏆랭킹에 올라가요.':
     'The pier northeast of the village. Out on the open sea, big fish swim near the surface — aim, cast, and win the tug-of-war! The ⚔️tuna is the once-a-day "Catch of the Day" — its weight goes on the 🏆 leaderboard.',
+  '수면에 헤엄치는 물고기를 보고 오른쪽 아래 🎣버튼으로 던져보세요! 입질이 오면 줄다리기 — 🔴버둥칠 땐 꾹 참고, 🟢"당기세요!!"가 뜨면 연타로 감아요. 부두 끝(빨간 널판)까지 끌려가면 놓쳐요. ⚔️참치는 하루 한 번 "오늘의 대어" — 무게가 🏆랭킹에 올라가요!':
+    'Watch the fish at the surface and cast with the 🎣 button (bottom right)! When one bites it\'s a tug-of-war — 🔴 hold steady while it thrashes, and mash when 🟢 "Reel it in!!" appears. Get dragged past the red planks at the pier\'s end and it escapes. The ⚔️tuna is the once-a-day "Catch of the Day" — its weight goes on the 🏆 leaderboard!',
   '수면에 헤엄치는 물고기를 보고 액션(Space)으로 던져보세요! 입질이 오면 줄다리기 — 🔴버둥칠 땐 꾹 참고, 🟢"당기세요!!"가 뜨면 연타로 감아요. 부두 끝(빨간 널판)까지 끌려가면 놓쳐요. ⚔️참치는 하루 한 번 "오늘의 대어" — 무게가 🏆랭킹에 올라가요!':
     'Watch the fish at the surface and press Action (Space) to cast! When one bites it\'s a tug-of-war — 🔴 hold steady while it thrashes, and mash when 🟢 "Reel it in!!" appears. Get dragged past the red planks at the pier\'s end and it escapes. The ⚔️tuna is the once-a-day "Catch of the Day" — its weight goes on the 🏆 leaderboard!',
   '🪙 주간 부자': '🪙 Weekly Riches',

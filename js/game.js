@@ -4660,7 +4660,7 @@ function enterSea() {
   snapCamera(); setSpaceVisible();
   Sound.blip();
   firstHint('sea', '🌊', '바다터',
-    '수면에 헤엄치는 물고기를 보고 액션(Space)으로 던져보세요! 입질이 오면 줄다리기 — 🔴버둥칠 땐 꾹 참고, 🟢"당기세요!!"가 뜨면 연타로 감아요. 부두 끝(빨간 널판)까지 끌려가면 놓쳐요. ⚔️참치는 하루 한 번 "오늘의 대어" — 무게가 🏆랭킹에 올라가요!');
+    `수면에 헤엄치는 물고기를 보고 ${IS_MOBILE ? '오른쪽 아래 🎣버튼으로' : '액션(Space)으로'} 던져보세요! 입질이 오면 줄다리기 — 🔴버둥칠 땐 꾹 참고, 🟢"당기세요!!"가 뜨면 연타로 감아요. 부두 끝(빨간 널판)까지 끌려가면 놓쳐요. ⚔️참치는 하루 한 번 "오늘의 대어" — 무게가 🏆랭킹에 올라가요!`);
   trackEvent('sea_enter', { night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
 function exitSea() {
