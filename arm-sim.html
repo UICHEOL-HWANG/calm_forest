@@ -1,0 +1,574 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>팔 무브먼트 시뮬레이션 v2 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.86);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  button{font:inherit;padding:5px 11px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  input[type=range]{width:130px}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:600;
+       background:rgba(255,255,255,.82);padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.35}
+  .tag small{display:block;font-weight:400;opacity:.65;font-size:10.5px}
+  #hud{position:fixed;top:10px;right:12px;background:rgba(255,255,255,.85);padding:7px 11px;border-radius:9px;font-size:12px;line-height:1.6}
+  b{color:#2f5e2f}
+</style>
+<div id="labels"></div>
+<div id="hud"></div>
+<div id="ui">
+  <div class="row">
+    <b>도구</b> <span id="tools"></span>
+    <b style="margin-left:6px">액션</b> <span id="styles"></span>
+    <b style="margin-left:6px">시점</b> <span id="views"></span>
+  </div>
+  <div class="row">
+    <label>팔 길이 <input id="armlen" type="range" min="0.10" max="0.45" step="0.01" value="0.14"><span id="armlenV">0.14</span></label>
+    <label>팔 굵기 <input id="armr" type="range" min="0.09" max="0.20" step="0.005" value="0.145"><span id="armrV">0.145</span></label>
+    <label>스윙 크기 <input id="damp" type="range" min="0.35" max="1.15" step="0.05" value="1"><span id="dampV">1.00</span></label>
+    <label>손목 꺾임 <input id="wrist" type="range" min="0" max="1" step="0.05" value="0.55"><span id="wristV">0.55</span></label>
+  </div>
+  <div class="row">
+    <button id="play" class="on">⏸ 일시정지</button>
+    <label>스윙 진행도 <input id="scrub" type="range" min="0" max="1" step="0.005" value="0"><span id="scrubV">0.00</span></label>
+    <label>속도 <input id="speed" type="range" min="0.15" max="1.6" step="0.05" value="0.7"><span id="speedV">0.70x</span></label>
+    <label>카메라 각도 <input id="ang" type="range" min="-180" max="180" step="5" value="0"><span id="angV">0°</span></label>
+    <label><input id="walk" type="checkbox"> 걷기(bob)</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ══════════════════════════════════════════════════════════════
+//  게임 원본에서 그대로 가져온 것들 (js/game.js)
+// ══════════════════════════════════════════════════════════════
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: .95, metalness: 0, flatShading: flat });
+
+// ANIMALS 의 🐻곰 항목 (game.js:975)
+const A = { body:0x8a6038, belly:0xc9a878, ear:0x6a4828,
+  bodyR:.63, bodyScale:[1.08,1.00,1.06], headR:.44, headY:1.34,
+  snout:{ len:.22, r:.20, color:0xc9a878, nose:0x2a2320, noseR:.075 } };
+
+const HELD_REST = { py:.9, pz:.06, rx:-.1, rz:-.55 };            // game.js:1861
+
+// 원본 3단 스윙 곡선 (game.js:6016-6023) — ①현재 모드가 그대로 사용
+function swingAngle(p) {
+  const REST = HELD_REST.rx;
+  if (p < .32) { const q = p/.32;       return REST - 1.3 * (1 - (1-q)*(1-q)); }
+  if (p < .58) { const q = (p-.32)/.26; return (REST - 1.3) + 3.3*q*q; }
+  const q = (p-.58)/.42;                return (REST + 2.0) - 2.0 * (1 - (1-q)*(1-q));
+}
+
+// 도구 — 원본(game.js:1806~)보다 한 단계 다듬은 제안 버전.
+//   손잡이: 테이퍼 + 그립 밴드 · 날: 강철 몸체 위에 밝은 엣지를 겹쳐 "갈린 날" 표현
+function toolMesh(id) {
+  const g = new THREE.Group();
+  const WOOD = 0x8a5a3a, GRIP = 0x5f3d26, STEEL = 0x6d757c, EDGE = 0xd9dfe4;
+  const handle = (l, r=.030) => {
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(r*.8, r, l, 7), clayMat(WOOD));
+    h.position.y = l/2 - .08;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(r*1.18, r*1.18, .07, 7), clayMat(GRIP));
+    band.position.y = -.02;
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(r*1.35, 7, 6), clayMat(GRIP));
+    knob.position.y = -.08;
+    g.add(h, band, knob);
+    return l - .08;             // 손잡이 꼭대기 y
+  };
+
+  if (id === 'axe') {
+    const top = handle(.52);
+    // 쐐기형 머리: 강철 몸체 + 앞쪽으로 갈수록 얇아지는 밝은 날
+    const head = new THREE.Mesh(new THREE.BoxGeometry(.17,.13,.06), clayMat(STEEL));
+    head.position.set(.075, top - .05, 0); g.add(head);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(.07,.155,.028), clayMat(EDGE));
+    blade.position.set(.175, top - .05, 0); blade.rotation.z = .06; g.add(blade);
+    const poll = new THREE.Mesh(new THREE.BoxGeometry(.05,.09,.07), clayMat(STEEL));
+    poll.position.set(-.035, top - .05, 0); g.add(poll);   // 뒤통수(망치면)
+
+  } else if (id === 'hoe') {
+    const top = handle(.52);
+    // 곡괭이 — 자루 꼭대기의 소켓에서 양팔이 대칭으로 뻗고,
+    //   끝으로 갈수록 아래로 처지며 가늘어져 뾰족하게 끝난다. 검은 무쇠 톤.
+    const IRON = 0x4d5156;
+    const head = new THREE.Group();
+    head.position.y = top + .01;
+    g.add(head);
+    const boss = new THREE.Mesh(new THREE.BoxGeometry(.085, .095, .075), clayMat(IRON));
+    head.add(boss);                                    // 자루가 박히는 소켓(눈)
+    [-1, 1].forEach(sx => {
+      const TH = [.14, .32], LEN = [.13, .12], W = [.048, .036];
+      let px = sx * .042, py = .012;
+      for (let i = 0; i < 2; i++) {
+        const dx = Math.cos(TH[i]) * sx, dy = -Math.sin(TH[i]);
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(LEN[i], W[i], .05 - i*.012), clayMat(IRON));
+        seg.position.set(px + dx*LEN[i]/2, py + dy*LEN[i]/2, 0);
+        seg.rotation.z = -sx * TH[i];
+        head.add(seg);
+        px += dx*LEN[i]; py += dy*LEN[i];
+      }
+      // 뾰족한 끝 — 원뿔
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(.020, .085, 6), clayMat(IRON));
+      const t3 = .48, dx = Math.cos(t3) * sx, dy = -Math.sin(t3);
+      tip.position.set(px + dx*.042, py + dy*.042, 0);
+      tip.rotation.z = -sx * (Math.PI/2 + t3);
+      head.add(tip);
+    });
+  } else if (id === 'hammer') {
+    const top = handle(.50);
+    // 원통형 머리(가로) + 양끝 캡 + 쐐기 고정핀
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.20,8), clayMat(STEEL));
+    head.position.y = top - .04; head.rotation.z = Math.PI/2; g.add(head);
+    [-1,1].forEach(sx => {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(.062,.058,.03,8), clayMat(EDGE));
+      cap.position.set(sx*.105, top - .04, 0); cap.rotation.z = Math.PI/2; g.add(cap);
+    });
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(.022, 6, 5), clayMat(GRIP));
+    pin.position.y = top + .022; g.add(pin);
+
+  } else if (id === 'reel') {
+    // 🎣 대물 릴대 v2 — v1(가는 릴대)은 41° 카메라에서 민대와 실루엣이 같아 탈락.
+    //   차이는 디테일이 아니라 실루엣으로: 짧고 굵은 보트 로드 + 몸통만 한 윈치급 릴
+    //   + 밧줄 굵기 라인 + 대형 부표. 멀리서도 "다른 장비"로 읽히는 게 목표.
+    const NAVY = 0x2e4a66, KNOB = 0xd94f4f, ROPE = 0xe8d9a8, FLOAT = 0xef8a4a;
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(.050, 7, 6), clayMat(GRIP));
+    knob.position.y = -.08; g.add(knob);
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(.040, .046, .22, 7), clayMat(GRIP));
+    rear.position.y = .04; g.add(rear);
+    // 윈치급 오버사이즈 릴 — 이 도구의 정체성. 손 위에 얹힌 드럼통 느낌
+    const reel = new THREE.Group(); reel.position.set(.10, .24, 0); g.add(reel);
+    const spool = new THREE.Mesh(new THREE.CylinderGeometry(.105, .105, .075, 12), clayMat(STEEL));
+    spool.rotation.z = Math.PI / 2; reel.add(spool);
+    [-1, 1].forEach(sx => {
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(.120, .120, .020, 12), clayMat(EDGE));
+      rim.rotation.z = Math.PI / 2; rim.position.x = sx * .040; reel.add(rim);
+    });
+    // 감긴 밧줄 티 — 스풀 위 굵은 링
+    const wound = new THREE.Mesh(new THREE.TorusGeometry(.085, .022, 6, 12), clayMat(ROPE));
+    wound.rotation.y = Math.PI / 2; reel.add(wound);
+    const crank = new THREE.Group(); crank.position.x = .065; reel.add(crank);
+    const armC = new THREE.Mesh(new THREE.BoxGeometry(.018, .11, .018), clayMat(EDGE));
+    armC.position.y = .048; crank.add(armC);
+    const kn = new THREE.Mesh(new THREE.SphereGeometry(.030, 7, 6), clayMat(KNOB));
+    kn.position.y = .105; crank.add(kn);
+    g.userData.crank = crank;
+    // 짧고 굵은 블랭크 — 낫 자루보다 굵게. 대물의 무게를 버티는 "장대" 느낌
+    const blank = new THREE.Mesh(new THREE.CylinderGeometry(.026, .048, .52, 7), clayMat(NAVY));
+    blank.position.y = .56; g.add(blank);
+    // 굵은 가이드 링 2개
+    [[.52, .040], [.70, .032]].forEach(([y, r]) => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, .013, 5, 10), clayMat(EDGE));
+      ring.rotation.x = Math.PI / 2; ring.position.set(.030 + r, y, 0); g.add(ring);
+    });
+    // 팁 — 굵고 밝게, 앞으로 휨. 감기 중엔 더 꺾인다(userData.tip)
+    const tip = new THREE.Group(); tip.position.y = .80; g.add(tip);
+    const tipRod = new THREE.Mesh(new THREE.CylinderGeometry(.014, .026, .20, 6), clayMat(EDGE));
+    tipRod.position.y = .09; tip.add(tipRod);
+    tip.rotation.z = .34; g.userData.tip = tip;
+    // 밧줄 라인 + 대형 부표(주황·흰 줄무늬) — 바늘 없는 순한 톤
+    const lineG = new THREE.Group(); lineG.position.y = .19; lineG.rotation.z = -.34; tip.add(lineG);
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(.009, .009, .30, 5), clayMat(ROPE));
+    line.position.y = -.15; lineG.add(line);
+    const buoy = new THREE.Mesh(new THREE.SphereGeometry(.052, 9, 7), clayMat(FLOAT));
+    buoy.position.y = -.34; buoy.scale.set(1, 1.25, 1); lineG.add(buoy);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(.050, .050, .026, 9), clayMat(0xf4efe6));
+    stripe.position.y = -.34; lineG.add(stripe);
+
+  } else if (id === 'sickle') {
+    const top = handle(.30, .034);
+    // 전투낫 스타일 — 날이 자루의 연장선으로 길게 서고, 끝으로 갈수록 뒤로 완만하게 휜다.
+    //   완만한 곡선은 각도가 조금씩 커지는 3개 세그먼트로 — 급하게 꺾으면 갈고리가 된다.
+    const bl = new THREE.Group();
+    bl.position.y = top + .01;
+    bl.rotation.y = .10;
+    g.add(bl);
+    const TH = [.06, .28, .60], LEN = [.15, .12, .10], W = [.055, .045, .030];
+    let px = 0, py = 0;
+    for (let i = 0; i < 3; i++) {
+      const dx = Math.sin(TH[i]), dy = Math.cos(TH[i]);
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(W[i], LEN[i], .016), clayMat(STEEL));
+      seg.position.set(px + dx*LEN[i]/2, py + dy*LEN[i]/2, 0);
+      seg.rotation.z = -TH[i];
+      bl.add(seg);
+      // 휘는 안쪽(베는 쪽)의 밝은 날
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(.013, LEN[i]*.94, .012), clayMat(EDGE));
+      edge.position.set(px + dx*LEN[i]/2 + dy*(W[i]/2), py + dy*LEN[i]/2 - dx*(W[i]/2), 0);
+      edge.rotation.z = -TH[i];
+      bl.add(edge);
+      px += dx*LEN[i]; py += dy*LEN[i];
+    }
+    const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(.030, .036, .06, 7), clayMat(STEEL));
+    ferrule.position.y = top - .01; g.add(ferrule);     // 날-자루 연결 쇠고리
+  }
+  g.scale.setScalar(1.18);   // 41° 게임 카메라에선 실물보다 작게 읽혀 한 치수 키움
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+// 곰 몸통 — buildAnimalMesh(game.js:1613)의 곰 가지 발췌
+function buildBearBody() {
+  const g = new THREE.Group();
+  const R = A.bodyR, HR = A.headR, HY = A.headY, bs = A.bodyScale;
+  const skin = () => clayMat(A.body, false);
+  const bodyY = R * bs[1] + .02;
+
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(R,1), skin());
+  body.position.y = bodyY; body.scale.set(...bs); body.castShadow = true; g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R*.62,16,12), clayMat(A.belly,false));
+  belly.position.set(0, bodyY - R*.16, R*.55); belly.scale.set(1,1.1,.6); g.add(belly);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(HR,1), skin());
+  head.position.y = HY; head.castShadow = true; g.add(head);
+
+  const eyeMat = new THREE.MeshStandardMaterial({ color:0x3a2f2a, roughness:.6 });
+  [-1,1].forEach(s => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(HR*.145,8,8), eyeMat);
+    e.position.set(s*HR*.36, HY + HR*.10, HR*.86); g.add(e);
+  });
+  const sn = A.snout;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(sn.r,12,10), clayMat(sn.color,false));
+  m.position.set(0, HY - HR*.16, HR*.60 + sn.len*.35); m.scale.set(1,.82,sn.len/sn.r); g.add(m);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(sn.noseR,10,8), clayMat(sn.nose,false));
+  nose.position.set(0, HY - HR*.13, HR*.60 + sn.len*.92); nose.scale.set(1.25,.85,.9); g.add(nose);
+
+  const earMat = clayMat(A.ear,false);
+  [-1,1].forEach(s => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(HR*.396,10,8), earMat);
+    e.position.set(s*HR*.66, HY + HR*.70, -HR*.05); e.castShadow = true; g.add(e);
+  });
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(R*.17,10,8), clayMat(A.body,false));
+  tail.position.set(0, bodyY + R*.06, -R*1.02); g.add(tail);
+  return g;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  제안: 팔 (신규) — 곰답게 짧고 통통하게
+// ══════════════════════════════════════════════════════════════
+const SHOULDER = { x:.55, y:.99, z:.12 };
+const ARM = { r:.145, len:.14 };                  // ← 사용자가 고른 값이 기본
+const reach = () => ARM.len + ARM.r * .9;
+
+// 평상시 팔 방향(단위벡터) — 좌표가 아니라 방향만 고정해야 길이를 바꿔도 안 늘어난다
+const DIR_R = new THREE.Vector3( .44,-.85,.28).normalize();
+const DIR_L = new THREE.Vector3(-.42,-.87,.20).normalize();
+const restHand = dir => dir.clone().multiplyScalar(reach())
+  .add(new THREE.Vector3(Math.sign(dir.x)*SHOULDER.x, SHOULDER.y, SHOULDER.z));
+
+// 팔 전용 스윙 곡선 — 원본 곡선은 '자루 각'이라 팔에 그대로 못 쓴다(부호·진폭 모두).
+// 3단 완급만 물려받고 진폭은 팔 기준: 뒤로 117° 들었다 앞으로 26° 지나침.
+const WRIST = { k: .55 };     // 손목 펴짐 상한 — 1.0이면 팔+도구가 한 줄 막대가 돼 어색
+const ARM_SWING = { back: 2.05, strike: -0.45 };
+// 옆베기 — 같은 3단 완급, 축만 다르다: 팔을 앞으로 들고(X) 어깨 수직축(Y)으로 좌우 스윕.
+//   와인드업 오른쪽 바깥 63° → 왼쪽으로 86° 가로질러 벰. 낫·포충망용.
+const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
+let STYLE = 'slash';          // 'chop' 내려치기 | 'slash' 옆베기
+function phase3(p, B, S) {
+  if (p < .32) { const q = p/.32;       return B * (1 - (1-q)*(1-q)); }   // ① 와인드업(ease-out)
+  if (p < .58) { const q = (p-.32)/.26; return B + (S - B) * q*q; }       // ② 스윙(ease-in)
+  const q = (p-.58)/.42;                return S + (0 - S) * (1 - (1-q)*(1-q)); // ③ 복귀
+}
+function armAngle(p, k) {
+  const B = ARM_SWING.back * k, S = ARM_SWING.strike * k;
+  if (p < .32) { const q = p/.32;       return B * (1 - (1-q)*(1-q)); }   // ① 들어올림(ease-out)
+  if (p < .58) { const q = (p-.32)/.26; return B + (S - B) * q*q; }       // ② 내려침(ease-in)
+  const q = (p-.58)/.42;                return S + (0 - S) * (1 - (1-q)*(1-q)); // ③ 복귀
+}
+
+// 어깨(스윙 피벗) → aim(조준) → stretch(길이보정) → 팔메시 · hand는 aim 직속(도구 왜곡 방지)
+function makeArm(side) {
+  const pivot = new THREE.Group();
+  pivot.rotation.order = 'YXZ';   // 옆베기: 팔을 앞으로 든(X) 채 수직축(Y)으로 스윕해야 함
+  pivot.position.set(side * SHOULDER.x, SHOULDER.y, SHOULDER.z);
+  const aim = new THREE.Group(); pivot.add(aim);
+  const stretch = new THREE.Group(); aim.add(stretch);
+
+  const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ARM.r, ARM.len, 4, 8), clayMat(A.body, false));
+  upper.position.y = -(ARM.len/2 + ARM.r*.4); upper.castShadow = true; stretch.add(upper);
+  const paw = new THREE.Mesh(new THREE.SphereGeometry(ARM.r*1.06, 10, 8), clayMat(A.ear, false));
+  paw.position.y = -reach(); paw.castShadow = true; stretch.add(paw);
+
+  const hand = new THREE.Group(); hand.position.y = -reach(); aim.add(hand);
+  return { pivot, aim, stretch, hand };
+}
+
+const _dir = new THREE.Vector3(), _down = new THREE.Vector3(0,-1,0), _axX = new THREE.Vector3(1,0,0);
+function aimArmAt(arm, target) {
+  _dir.copy(target).sub(arm.pivot.position);
+  const d = _dir.length(); _dir.normalize();
+  arm.aim.quaternion.setFromUnitVectors(_down, _dir);
+  const k = Math.max(.85, Math.min(1.45, d / reach()));
+  arm.stretch.scale.y = k;
+  arm.hand.position.y = -reach() * k;
+  return d / reach();
+}
+// 도구 쥐기 — 평상시(자루 세움) / 스윙시(자루=팔 연장) 두 자세를 저장해 두고 slerp
+function holdTool(arm, tool, tiltX, tiltZ) {
+  tool.quaternion.copy(arm.aim.quaternion).invert();
+  tool.rotateX(tiltX); tool.rotateZ(tiltZ);
+  tool.userData.qRest = tool.quaternion.clone();
+  tool.userData.qSwing = new THREE.Quaternion().setFromAxisAngle(_axX, Math.PI);
+  arm.hand.add(tool);
+  return tool;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  3가지 안 — 양손 그립은 배에 묻혀 탈락(v1에서 확인) → 제외
+// ══════════════════════════════════════════════════════════════
+const MODES = [
+  { key:'now',   title:'① 현재',      sub:'팔 없음 · 도구만 회전' },
+  { key:'right', title:'② 오른팔만',  sub:'왼쪽이 빈다' },
+  { key:'both',  title:'③ 양팔·한손', sub:'추천 · 왼팔은 관성만' },
+];
+
+let TOOL = 'sickle';
+function buildRig(mode) {
+  const root = new THREE.Group();
+  const anchor = new THREE.Group(); root.add(anchor);
+  anchor.add(buildBearBody());
+  const rig = { root, anchor, mode };
+
+  if (mode === 'now') {
+    const held = new THREE.Group();
+    held.position.set(.88, HELD_REST.py, HELD_REST.pz);   // 곰 armX=0.88
+    anchor.add(held);
+    const h = new THREE.Group(); h.position.set(0,-.3,.08); held.add(h);
+    h.add(toolMesh(TOOL));
+    rig.swingPivot = held;
+  } else {
+    const R = makeArm(1); anchor.add(R.pivot);
+    aimArmAt(R, restHand(DIR_R));
+    const t = toolMesh(TOOL); t.position.set(0,-.04,.04);
+    rig.tool = holdTool(R, t, -.12, -.16);
+    rig.swingPivot = R.pivot; rig.rightArm = R;
+    if (mode === 'both') {
+      const L = makeArm(-1); anchor.add(L.pivot);
+      aimArmAt(L, restHand(DIR_L));
+      rig.leftArm = L;
+    }
+  }
+  return rig;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  씬 · 게임과 같은 카메라각(camOffset 0,14,16 → 위 41°)
+// ══════════════════════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.0));
+const key = new THREE.DirectionalLight(0xfff2d8, 1.25);
+key.position.set(4, 8, 6); key.castShadow = true;
+key.shadow.mapSize.set(1024,1024);
+Object.assign(key.shadow.camera, { left:-8, right:8, top:6, bottom:-6 });
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xbfe8ff, .4); rim.position.set(-4,3,-4); scene.add(rim);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40,40), clayMat(0x9ec98a,false));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+
+let rigs = [];
+const SPACING = 2.5;
+function rebuild() {
+  rigs.forEach(r => scene.remove(r.root));
+  rigs = MODES.map((m,i) => {
+    const r = buildRig(m.key);
+    r.root.position.x = (i - (MODES.length-1)/2) * SPACING;
+    scene.add(r.root); return r;
+  });
+}
+
+function applyPose(rig, p, damp, bob) {
+  const s = Math.sin(p * Math.PI);
+  const A_ = rig.anchor;
+
+  if (rig.mode === 'now') {
+    // ①현재 모드는 언제나 원본 그대로(비교 기준) — 옆베기 없음
+    A_.rotation.x = p < .32 ? -.12 * (p/.32) : .5 * s;
+    A_.rotation.y = p < .32 ? -.22 * (p/.32) : .3 * s * (1-p);
+    A_.position.y = -s * .1 + bob.y;
+    A_.rotation.z = bob.z;
+    A_.scale.set(1 + s*.1, 1 - s*.12, 1 + s*.1);
+    rig.swingPivot.rotation.x = swingAngle(p);
+    rig.swingPivot.rotation.z = HELD_REST.rz + s*.4;
+    return;
+  }
+
+  const P = rig.swingPivot;
+  let k;   // 정규화 진행(왼팔 카운터용): 1=와인드업 정점, 음수=오버슛
+
+  if (STYLE === 'chop') {
+    // 몸통 — game.js 원본(백스윙 젖힘 → 숙이며 내려침)
+    A_.rotation.x = p < .32 ? -.12 * (p/.32) : .5 * s;
+    A_.rotation.y = p < .32 ? -.22 * (p/.32) : .3 * s * (1-p);
+    A_.scale.set(1 + s*.1, 1 - s*.12, 1 + s*.1);
+    const a = armAngle(p, damp);
+    P.rotation.set(a, 0, s * .18);
+    k = a / ARM_SWING.back;
+  } else if (STYLE === 'reel') {
+    // ── 릴 감기: 스윙이 아니라 "버티기" — 뒤로 젖힌 채 입질 리듬으로 당겼다 풀었다 ──
+    const tug = Math.max(0, Math.sin(p * Math.PI * 2));   // 주기 당김(0~1)
+    A_.rotation.x = -.10 - .10 * tug;                     // 몸을 뒤로 젖혀 버팀
+    A_.rotation.y = .14;
+    A_.scale.set(1, 1, 1);
+    P.rotation.set(-.85 - .30 * tug, .12, .06);           // 팔 앞으로 들어 로드 세움
+    k = 0;
+    rig._tug = tug;                                       // 크랭크·팁 연출용
+  } else {
+    // ── 옆베기: 몸통이 반대로 감았다 풀리는 비틀림이 파워의 근원 ──
+    A_.rotation.x = .18 * s;                                  // 살짝만 숙임
+    A_.rotation.y = p < .32 ? .42 * (p/.32) : -.55 * s;       // 와인드업 우로 감기 → 좌로 풀기
+    A_.scale.set(1 + s*.06, 1 - s*.07, 1 + s*.06);
+    const yaw = phase3(p, SLASH.back * damp, SLASH.strike * damp);
+    P.rotation.set(SLASH.lift * s, yaw, 0);                   // 팔을 앞으로 든 채 가로 스윕
+    k = yaw / SLASH.back;
+  }
+  A_.position.y = -s * .1 + bob.y;
+  A_.rotation.z = bob.z;
+
+  // 손목 — 휘두르는 동안 자루가 팔의 연장선으로 펴진다(두 스타일 공용)
+  if (rig.tool) {
+    const w = Math.min(1, Math.abs(k) * 1.25) * WRIST.k;
+    rig.tool.quaternion.slerpQuaternions(rig.tool.userData.qRest, rig.tool.userData.qSwing, w);
+  }
+  // 왼팔 카운터 모션 — 오른팔 정규화 각에서 유도(타이밍이 저절로 맞음)
+  if (rig.leftArm) {
+    const L = rig.leftArm.pivot;
+    if (STYLE === 'chop') {
+      L.rotation.set(-k * .55 + bob.lag * .5, -k * .18, Math.max(0, -k) * .85);
+    } else if (STYLE === 'reel') {
+      // 왼팔도 앞으로 내밀어 같이 버티는 그림(릴을 잡은 셈 치는 카툰 연출)
+      const tug = rig._tug || 0;
+      L.rotation.set(-.55 - .18 * tug + bob.lag * .5, -.30, .25);
+    } else {
+      L.rotation.set(-Math.abs(k) * .35 + bob.lag * .5, -k * .50, Math.max(0, -k) * .40);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const DUR = .417;
+let playing = true, p = 0, focus = -1, walkPhase = 0, prevBobY = 0, bobLag = 0;
+
+$('tools').innerHTML = ['axe','hoe','hammer','sickle','reel']
+  .map(t => `<button data-t="${t}" class="${t==='sickle'?'on':''}">${({axe:'🪓 도끼',hoe:'⛏️ 괭이',hammer:'🔨 망치',sickle:'🌾 낫',reel:'🎣 릴대'})[t]}</button>`).join(' ');
+$('tools').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  TOOL = b.dataset.t;
+  [...$('tools').children].forEach(c => c.classList.toggle('on', c === b));
+  rebuild();
+};
+$('styles').innerHTML = '<button data-s="chop">🪓 내려치기</button> <button data-s="slash" class="on">🌾 옆베기</button> <button data-s="reel">🎣 릴 감기</button>';
+$('styles').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STYLE = b.dataset.s;
+  [...$('styles').children].forEach(c => c.classList.toggle('on', c === b));
+};
+$('views').innerHTML = '<button data-v="-1">3개 비교</button> ' +
+  MODES.map((m,i) => `<button data-v="${i}" class="${i===2?'on':''}">${m.title}</button>`).join(' ');
+focus = 2;   // 기본: 추천안 단독 클로즈업
+$('views').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  focus = +b.dataset.v;
+  [...$('views').children].forEach(c => c.classList.toggle('on', c === b));
+  resize();
+};
+$('play').onclick = () => { playing = !playing; $('play').textContent = playing ? '⏸ 일시정지' : '▶ 재생'; $('play').classList.toggle('on', playing); };
+$('scrub').oninput = e => { p = +e.target.value; playing = false; $('play').textContent = '▶ 재생'; $('play').classList.remove('on'); };
+$('armlen').oninput = e => { ARM.len = +e.target.value; $('armlenV').textContent = ARM.len.toFixed(2); rebuild(); };
+$('armr').oninput   = e => { ARM.r = +e.target.value; $('armrV').textContent = ARM.r.toFixed(3); rebuild(); };
+$('wrist').oninput  = e => { WRIST.k = +e.target.value; $('wristV').textContent = WRIST.k.toFixed(2); };
+$('ang').oninput    = () => resize();
+
+const labels = $('labels');
+MODES.forEach(m => {
+  const d = document.createElement('div');
+  d.className = 'tag'; d.innerHTML = `${m.title}<small>${m.sub}</small>`;
+  labels.appendChild(d);
+});
+
+function resize() {
+  const h = innerHeight - $('ui').offsetHeight;
+  renderer.setSize(innerWidth, h, false);
+  renderer.domElement.style.height = h + 'px';
+  camera.aspect = innerWidth / h; camera.updateProjectionMatrix();
+  const el = Math.atan2(14, 16);                     // 게임과 동일한 고도각 41°
+  const az = (+$('ang').value) * Math.PI/180;
+  $('angV').textContent = $('ang').value + '°';
+  let cx = 0, d;
+  if (focus < 0) {
+    d = Math.max(6.6, SPACING*MODES.length*.55 / Math.tan(camera.fov*Math.PI/360) / Math.min(camera.aspect, 2.2));
+  } else {
+    cx = (focus - (MODES.length-1)/2) * SPACING;
+    d = Math.max(4.6, 2.4 / Math.tan(camera.fov*Math.PI/360) / Math.min(camera.aspect, 1.6));
+  }
+  camera.position.set(cx + Math.sin(az)*d*Math.cos(el), 1.0 + d*Math.sin(el), Math.cos(az)*d*Math.cos(el));
+  camera.lookAt(cx, 1.0, 0);
+}
+addEventListener('resize', resize);
+
+const _v = new THREE.Vector3();
+function placeLabels() {
+  const rect = renderer.domElement.getBoundingClientRect();
+  rigs.forEach((r,i) => {
+    const el = labels.children[i];
+    el.style.display = r.root.visible ? '' : 'none';
+    if (!r.root.visible) return;
+    _v.set(r.root.position.x, 2.35, 0).project(camera);
+    el.style.left = (rect.left + (_v.x*.5+.5)*rect.width) + 'px';
+    el.style.top  = (rect.top  + (-_v.y*.5+.5)*rect.height) + 'px';
+  });
+}
+
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now - last)/1000); last = now;
+  const damp = +$('damp').value, spd = +$('speed').value;
+  $('dampV').textContent = damp.toFixed(2);
+  $('speedV').textContent = spd.toFixed(2) + 'x';
+  if (playing) { p += dt * spd / DUR; if (p >= 1) p -= 1; $('scrub').value = p; }
+  $('scrubV').textContent = p.toFixed(2);
+
+  let bob = { y:0, z:0, lag:0 };
+  if ($('walk').checked) {                            // game.js:5935-5937
+    walkPhase += dt * 12;
+    bob.y = Math.abs(Math.sin(walkPhase)) * .18;
+    bob.z = Math.sin(walkPhase) * .05;
+  }
+  bobLag += ((bob.y - prevBobY)/Math.max(dt,.001) * .02 - bobLag) * Math.min(1, dt*10);
+  prevBobY = bob.y; bob.lag = -bobLag;
+
+  rigs.forEach((r,i) => {
+    r.root.visible = (focus < 0 || focus === i);
+    applyPose(r, p, damp, bob);
+    // 🎣 릴대 전용 연출 — 감기 스타일이면 크랭크가 돌고 입질 리듬에 팁이 더 휜다
+    const ud = r.tool && r.tool.userData;
+    if (ud && ud.crank) {
+      if (STYLE === 'reel') {
+        ud.crank.rotation.x -= dt * 11 * spd;
+        ud.tip.rotation.z = .30 + (r._tug || 0) * .45;
+      } else ud.tip.rotation.z = .30;
+    }
+  });
+
+  const armArc = Math.round((ARM_SWING.back - ARM_SWING.strike) * damp * 180/Math.PI);
+  $('hud').innerHTML = `팔 스윙 호 <b>${armArc}°</b> · 팔 길이 <b>${ARM.len.toFixed(2)}</b><br>
+    <span style="opacity:.6">카메라 41° — 게임 실제 시점</span>`;
+
+  renderer.render(scene, camera);
+  placeLabels();
+}
+window.__sim = () => ({ camera, rigs, ARM, ARM_SWING, WRIST, applyPose, MODES });
+rebuild(); resize(); requestAnimationFrame(loop);
+</script>
