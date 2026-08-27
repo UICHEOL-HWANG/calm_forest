@@ -170,6 +170,16 @@
   #boat-boost.ready i { background: #7ed957; }
   #boat-quit { position: fixed; right: 14px; top: calc(14px + env(safe-area-inset-top)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-quit { display: block; }
+  /* 🌊 바다터 줄다리기 HUD — 배너 + 진행 게이지 + 부두 끝 경고 */
+  #sea-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(54px + env(safe-area-inset-top)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  #sea-hud.show { display: flex; }
+  #sea-banner { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(20,60,90,0.5); }
+  #sea-banner.pull { color: #b6ff9e; animation: seaPulse .35s infinite alternate; }
+  @keyframes seaPulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+  #sea-sp { font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 4px rgba(20,60,90,0.5); }
+  #sea-gauge { width: min(320px, 64vw); height: 12px; border-radius: 8px; background: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.7); overflow: hidden; }
+  #sea-gauge i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #ffd25e, #ff9d4d); transition: width .12s; }
+  #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
   #boat-view { position: fixed; right: 14px; top: calc(54px + env(safe-area-inset-top)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-view { display: block; }
   /* 🛶 결과 / 창고 모달 */
@@ -1080,6 +1090,12 @@
     <div id="boat-boost"><i></i></div>
   </div>
   <button id="boat-quit">✕ 그만두기</button>
+  <div id="sea-hud">
+    <div id="sea-banner"></div>
+    <div id="sea-sp"></div>
+    <div id="sea-gauge"><i id="sea-fill"></i></div>
+    <div id="sea-edge">⚠️ 부두 끝까지 <b id="sea-edge-m">?</b>m</div>
+  </div>
   <button id="boat-view">👁️ 시점</button>
 
   <!-- 🛶 런 결과 -->
@@ -1673,6 +1689,18 @@
         const bb = $('boat-boost');
         bb.firstElementChild.style.width = Math.round(d.boost * 100) + '%';
         bb.classList.toggle('ready', d.boost >= 1 && !d.boosting);
+      },
+      // 🌊 바다터 줄다리기 HUD (null 이면 숨김)
+      setSeaHud(d) {
+        const el = $('sea-hud');
+        if (!d) { el.classList.remove('show'); return; }
+        el.classList.add('show');
+        const b = $('sea-banner');
+        if (b.textContent !== d.banner) b.textContent = d.banner;
+        b.className = d.cls || '';
+        $('sea-fill').style.width = (d.p * 100).toFixed(0) + '%';
+        $('sea-sp').textContent = d.sp || '';
+        $('sea-edge-m').textContent = d.edge;
       },
       // 🛶 런 결과 모달 — 여기서 바로 "한 번 더"가 되게(남은 횟수 표시)
       showBoatResult(d) {
@@ -2475,6 +2503,7 @@
     // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
     const LB_BOARDS = [
       { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요' },
+      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 ⚔️참치 최고 무게 — 대어의 급은 모두에게 같은 날 같아요', fmt: s => (s / 10).toFixed(1) },
       { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
       { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
       { id: 'cook',  label: '🍳 요리왕',      unit: '회',  desc: '이번 주 요리 횟수' },
@@ -2486,7 +2515,7 @@
     async function renderLb(board) {
       lbBoard = board;
       const meta = LB_BOARDS.find(b => b.id === board);
-      $('lb-sub').textContent = meta.desc + (board === 'boat' ? '' : ' — 매주 월요일 새로 시작해요');
+      $('lb-sub').textContent = meta.desc + (board === 'boat' || board === 'sea' ? '' : ' — 매주 월요일 새로 시작해요');
       [...document.querySelectorAll('.lb-tab')].forEach(b => b.classList.toggle('active', b.dataset.id === board));
       const list = $('lb-list'), meBox = $('lb-me');
       list.innerHTML = '<div class="lb-empty">불러오는 중… 🌿</div>'; meBox.innerHTML = '';
@@ -2508,11 +2537,11 @@
           `<div class="lb-row${r.rank <= 3 ? ' top3' : ''}${d.me && r.rank === d.me.rank && r.nick === myNick ? ' me-row' : ''}">
             <span class="lb-rank">${lbMedal(r.rank)}</span>
             <span class="lb-nick">${String(r.nick).replace(/</g, '&lt;')}</span>
-            <span class="lb-score">${Number(r.score).toLocaleString()}${meta.unit}</span>
+            <span class="lb-score">${meta.fmt ? meta.fmt(r.score) : Number(r.score).toLocaleString()}${meta.unit}</span>
           </div>`).join('');
         // 내 순위 — 상위 목록에 안 보이면 하단에 고정 표시
         if (d.me && !(top.some(r => r.rank === d.me.rank && r.nick === myNick))) {
-          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${String(myNick || '나').replace(/</g, '&lt;')} (나)</span><span class="lb-score">${Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
+          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${String(myNick || '나').replace(/</g, '&lt;')} (나)</span><span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
         } else if (!d.me && authState.userId) {
           meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요 — 지금 만들어봐요!</div>`;
         }
