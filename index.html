@@ -170,6 +170,8 @@
   #boat-boost.ready i { background: #7ed957; }
   #boat-quit { position: fixed; right: 14px; top: calc(14px + env(safe-area-inset-top)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-quit { display: block; }
+  /* 🌊 바다터 — 도구 팔레트 숨김(릴대 하나로 노는 공간) */
+  body.sea-mode #hotbar { display: none !important; }
   /* 🌊 바다터 줄다리기 HUD — 배너 + 진행 게이지 + 부두 끝 경고 */
   #sea-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(54px + env(safe-area-inset-top)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
   #sea-hud.show { display: flex; }
@@ -1690,6 +1692,8 @@
         bb.firstElementChild.style.width = Math.round(d.boost * 100) + '%';
         bb.classList.toggle('ready', d.boost >= 1 && !d.boosting);
       },
+      // 🌊 바다터 입장/퇴장 — 도구 팔레트를 걷어냄(액션 버튼 하나로 노는 공간)
+      setSeaMode(on) { document.body.classList.toggle('sea-mode', !!on); },
       // 🌊 바다터 줄다리기 HUD (null 이면 숨김)
       setSeaHud(d) {
         const el = $('sea-hud');
@@ -1759,7 +1763,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -1775,7 +1779,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));

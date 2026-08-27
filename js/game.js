@@ -1000,7 +1000,7 @@ const ANIMALS = [
     snout: { len: 0.22, r: 0.20, color: 0xc9a878, nose: 0x2a2320, noseR: 0.075 },
     tail: { type: 'stub', color: 0x8a6038, wagSpeed: 1.2, wagAmp: 0.08 } },
 
-  { id: 'panda', name: '판다', emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a,
+  { id: 'panda', name: '판다', emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a, armColor: 0x2a2a2a,   // 실제 판다처럼 팔은 검게(흰 몸에 묻히지 않게)
     bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.45, headY: 1.34, armX: 0.88,
     ears: 'round', earScale: 1.15,
     snout: { len: 0.18, r: 0.19, color: 0xffffff, nose: 0x2a2a2a, noseR: 0.07 },
@@ -1773,11 +1773,11 @@ function buildAnimalMesh(id) {
       w.rotation.z = -s * 0.20; w.castShadow = true; g.add(w);
     });
   }
-  if (ex.includes('band')) {        // 🐼 검은 어깨(팔) 블록
+  if (ex.includes('band')) {        // 🐼 검은 어깨 무늬 — 팔처럼 안 보이게 몸에 밀착(진짜 팔은 armColor 로 검게)
     [-1, 1].forEach(s => {
-      const b = new THREE.Mesh(new THREE.SphereGeometry(R * 0.40, 10, 8), clayMat(0x2a2a2a, false));
-      b.scale.set(0.52, 0.95, 0.86);
-      b.position.set(s * R * 0.88, bodyY + R * 0.10, 0);
+      const b = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0x2a2a2a, false));
+      b.scale.set(0.5, 0.8, 0.78);
+      b.position.set(s * R * 0.78, bodyY + R * 0.22, 0);
       b.castShadow = true; g.add(b);
     });
   }
@@ -1837,7 +1837,7 @@ function buildAnimalMesh(id) {
       aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L);
       pivot.add(aim);
       const ar = R * 0.23, al = R * 0.22;
-      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), skin());
+      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), a.armColor ? clayMat(a.armColor, false) : skin());
       upper.position.y = -(al / 2 + ar * 0.4); upper.castShadow = true; aim.add(upper);
       const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), clayMat(a.ear, false));
       paw.position.y = -(al + ar * 0.9); paw.castShadow = true; aim.add(paw);
@@ -2018,6 +2018,7 @@ function toolMesh(id) {
     tipRod.position.y = 0.09; rtip.add(tipRod);
     rtip.rotation.z = 0.34;
     const tipEnd = new THREE.Group(); tipEnd.position.y = 0.19; rtip.add(tipEnd);   // 낚싯줄 시작점
+    g.scale.setScalar(1.25);   // 대물 장비 — 카메라 클로즈업(0.45)에서도 또렷하게
     g.userData.sea = { crank, tip: rtip, tipEnd };
   } else if (id === 'net') {
     // 🦋 포충망 — 긴 손잡이 + 테 + 반투명 망(밤에 실루엣이 또렷하게 보이도록 밝은 색)
@@ -2070,6 +2071,7 @@ function poseHeldTool(stow, swingX, swingZ) {
 
 function setHeldTool(id) {
   if (!handAnchor) return;
+  if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   heldToolMesh = toolMesh(id); handAnchor.add(heldToolMesh);
 }
@@ -4653,6 +4655,8 @@ function enterSea() {
   player.position.set(SEA.x, 0, SEA.z + SEA_DECK_Z0 - 2.9); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   seaReset(); populateSeaFishes();
+  seaHoldRod(true);            // 🎣 바다터에선 릴대를 들고 다닌다(괭이 든 채 낚시터에 서 있지 않게)
+  ui.setSeaMode?.(true);       // 농사 도구 팔레트 숨김 — 여기선 액션 버튼 하나로 논다
   snapCamera(); setSpaceVisible();
   Sound.blip();
   firstHint('sea', '🌊', '바다터',
@@ -4661,6 +4665,8 @@ function enterSea() {
 }
 function exitSea() {
   seaReset();
+  seaHoldRod(false);           // 릴대 반납 — 마을 도구로 복귀
+  ui.setSeaMode?.(false);
   atSea = false;
   player.position.set(SEA_GATE.x - 1.4, 0, SEA_GATE.z + 1.6);
   nearDoor = null; ui.setDoorPrompt?.(null);
@@ -4689,11 +4695,13 @@ function seaReset() {
   if (seaMG.fmesh) { seaGroup?.remove(seaMG.fmesh); seaMG.fmesh = null; }
   if (seaBuoy) seaBuoy.visible = false;
   if (seaLine) seaLine.visible = false;
-  seaHoldRod(false);
   ui.setSeaHud?.(null);
+  // 릴대는 여기서 내려놓지 않는다 — 바다터에 있는 동안엔 계속 들고 다님(enter/exit 에서 관리)
 }
 
 const _seaCastFrom = new THREE.Vector3(), _seaCastTo = new THREE.Vector3(), _seaTip = new THREE.Vector3();
+const _seaQ1 = new THREE.Quaternion(), _seaQ2 = new THREE.Quaternion(), _seaEuler = new THREE.Euler();
+const _seaV = new THREE.Vector3(), _seaUp = new THREE.Vector3(0, 1, 0);
 function seaAction() {
   if (seaMG.st === 'idle') {
     if (!seaFishes.length) { ui.toast?.('🐟 지금은 물고기가 안 보여요 — 시간대가 바뀌면 다른 어종이 와요'); return; }
@@ -4817,6 +4825,9 @@ function updateSea(dt, t) {
         lastDoorPrompt = null;   // 프롬프트를 '기다리는 중'으로 갱신
       }
       seaBuoy.position.y = 0.06 + Math.sin(t * 2.5) * 0.05;
+      // 로드 쥔 어깨가 부표를 향하게 살짝 돌아서 — 줄이 몸을 안 가로지르고 어깨 밖에서 곧게 나간다(sea-sim 검수 구도)
+      const wy = Math.atan2(SEA.x + seaBuoy.position.x - player.position.x, SEA.z + seaBuoy.position.z - player.position.z) - 0.45;
+      player.rotation.y += seaAngDiff(wy, player.rotation.y) * Math.min(1, dt * 5);
       if (seaMG.t > seaMG.phaseLen) {
         // 입질! — 부표 자리에서 싸움 시작
         seaMG.st = 'fight'; seaMG.t = 0; seaMG.phase = 'struggle'; seaMG.phaseLen = seaRnd(1.3, 2);
@@ -4829,8 +4840,7 @@ function updateSea(dt, t) {
       }
     }
   } else if (seaMG.st === 'fight') {
-    const sp = seaMG.sp, f = seaMG.fmesh;
-    momentUntil = clock.elapsedTime + 0.25;   // 싸우는 동안 카메라 줌인 유지
+    const sp = seaMG.sp, f = seaMG.fmesh;   // 카메라 줌은 updateCamera 가 상태 보고 처리
     if (seaMG.t > seaMG.phaseLen) {
       seaMG.t = 0;
       if (seaMG.phase === 'struggle') { seaMG.phase = 'window'; seaMG.phaseLen = seaRnd(0.85, 1.15) * sp.win; }
@@ -4839,6 +4849,7 @@ function updateSea(dt, t) {
     }
     if (seaMG.phase === 'struggle') {
       seaMG.pz -= dt * 0.82 * sp.drag * (1 - seaMG.progress * 0.35);   // 부두 끝으로 끌려간다
+      player.position.x += Math.sin(t * 7) * dt * 0.5;                 // 버티며 좌우로 뒤뚱거림
       f.position.x += seaMG.fishDir * dt * 2.2;
       if (Math.abs(f.position.x) > 5) seaMG.fishDir *= -1;
       f.rotation.y = Math.PI + Math.sin(t * 5) * 0.55;   // 머리는 먼바다(도망 방향)
@@ -4852,6 +4863,7 @@ function updateSea(dt, t) {
     // 플레이어 — 논리 z(pz)로 보간(연타 덜컥임 방지) + 물고기 쪽으로 몸 틀기(로드 어깨 바이어스)
     player.position.z += (seaMG.pz - player.position.z) * Math.min(1, dt * 9);
     player.position.x += (SEA.x - player.position.x) * Math.min(1, dt * 2);
+    // 로드 쥔 어깨가 물고기를 향하게 살짝 더 돌아서 — 줄이 몸을 안 가로지른다(sea-sim 검수 구도)
     const wantYaw = Math.atan2(SEA.x + f.position.x - player.position.x, SEA.z + f.position.z - player.position.z) - 0.45;
     player.rotation.y += seaAngDiff(wantYaw, player.rotation.y) * Math.min(1, dt * 6);
     // 물고기 — 진행도만큼 다가오되, 부두 끝 사각지대에선 옆 물길로 비켜난다
@@ -4884,7 +4896,52 @@ function updateSea(dt, t) {
     if (seaMG.t > 1.6) { seaReset(); lastDoorPrompt = null; }
   }
 
-  // 낚싯줄 — 로드 팁 → 부표. 팽팽할 땐 곧게, 기다릴 땐 처지게
+  // 캐릭터 연기 — sea-sim 검수 포즈. updatePlayer 가 매 프레임 팔을 리셋하므로 그 뒤에서 덮어쓴다.
+  //   ⚠️ 낚싯줄보다 반드시 먼저 — 포즈 확정 후에 줄을 그려야 줄이 로드 끝에 붙는다.
+  if (playerArms && seaMG.st !== 'idle' && seaMG.st !== 'miss') {
+    const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
+    let rodUp = false;   // true 면 로드를 월드 기준으로 하늘을 향해 세운다(손목 각에 안 맡김)
+    if (seaMG.st === 'cast' && seaMG.t < SEA_CAST_DUR) {
+      // 🎣 던지는 스윙 — 양손으로 머리 위로 젖혔다가 앞으로 뿌린다
+      const k = seaMG.t / SEA_CAST_DUR;
+      playerAnchor.rotation.x = -0.12 + k * 0.22;
+      Rp.rotation.set(-2.35 + k * 1.7, 0.1, 0.06);
+      Lp.rotation.set(-2.25 + k * 1.65, -0.4, 0.28);   // 왼손도 그립을 잡고 함께 스윙
+      armWristK = 0;
+    } else if (seaMG.st === 'fight') {
+      // 버티기 — 몸을 뒤로 젖히고 로드를 높이 든 채 입질 리듬으로 당겼다 풀었다
+      const tug = seaMG.phase === 'struggle' ? (Math.sin(t * 9) * 0.5 + 0.5) : 0.15;
+      playerAnchor.rotation.x = 0.10 + 0.10 * tug;
+      Rp.rotation.set(-0.8 - 0.28 * tug, 0.12, 0.06);   // 그립을 가슴께로 — 당길 때 함께 들썩
+      Lp.rotation.set(-0.75 - 0.28 * tug, -0.45, 0.28); // 왼팔은 그립 쪽으로 뻗어 같이 당기는 그림
+      armWristK = 0; rodUp = true;
+      if (seaMG.phase === 'window' && seaRodMesh) seaRodMesh.userData.sea.crank.rotation.x -= dt * 7;   // 크랭크 회전
+    } else {
+      // 입질 대기·포획 연출 — 허리께에 그립을 쥐고 로드를 물 쪽으로 비스듬히 든 대기 자세
+      Rp.rotation.set(-0.55, 0.1, 0.1);
+      Lp.rotation.set(-0.5, -0.45, 0.3);
+      rodUp = true;
+    }
+    poseHeldTool(0);
+    // 로드 세우기 — 손목 보간에 맡기면 로드가 옆으로 눕는다. 월드 기준으로
+    //   "위로 세우고 바라보는 쪽(물고기/바다)으로 살짝 기울인" 자세를 강제한다.
+    // 로드는 손(어깨 옆)에 그대로 — 몸 중앙에 두면 곰 같은 뚱뚱한 체형에선 몸속에 파묻힌다.
+    //   기울기는 고정값이 아니라 "줄이 나가는 방향"으로: 로드 축과 낚싯줄이 한 방향으로
+    //   이어져 카툰 낚시꾼처럼 물을 향해 비스듬히 든 그림이 된다.
+    if (rodUp && seaRodMesh) {
+      const tgt = seaMG.st === 'fight' && seaMG.fmesh ? seaMG.fmesh.position : seaBuoy.position;
+      _seaV.set(SEA.x + tgt.x - player.position.x, 0, SEA.z + tgt.z - player.position.z);
+      if (_seaV.lengthSq() < 0.01) _seaV.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+      _seaV.normalize(); _seaV.y = 1.15; _seaV.normalize();   // 팁이 ~49° 위-앞(물고기 쪽)으로
+      _seaQ2.setFromUnitVectors(_seaUp, _seaV);
+      handAnchor.getWorldQuaternion(_seaQ1);
+      seaRodMesh.quaternion.copy(_seaQ1.invert()).multiply(_seaQ2);
+    }
+  }
+  // 릴대 팁 휨 — 버둥칠수록 크게
+  if (seaRodMesh) seaRodMesh.userData.sea.tip.rotation.z =
+    0.34 + (seaMG.st === 'fight' && seaMG.phase === 'struggle' ? (Math.sin(t * 9) * 0.5 + 0.5) * 0.45 : 0);
+  // 낚싯줄 — 로드 팁 → 부표. 팽팽할 땐 곧게, 기다릴 땐 처지게 (포즈 확정 후에 그린다)
   if (seaLine.visible && seaRodMesh) {
     seaRodMesh.userData.sea.tipEnd.getWorldPosition(_seaTip); _seaTip.sub(SEA);
     const pts = seaLine.geometry.attributes.position.array;
@@ -4897,9 +4954,6 @@ function updateSea(dt, t) {
     }
     seaLine.geometry.attributes.position.needsUpdate = true;
   }
-  // 릴대 팁 휨 — 버둥칠수록 크게
-  if (seaRodMesh) seaRodMesh.userData.sea.tip.rotation.z =
-    0.34 + (seaMG.st === 'fight' && seaMG.phase === 'struggle' ? (Math.sin(t * 9) * 0.5 + 0.5) * 0.45 : 0);
 
   // HUD — 게이지 + 부두 끝까지 남은 거리(0.1초 스로틀)
   _seaHudT += dt;
@@ -6854,7 +6908,11 @@ function updateCamera(dt) {
     }
   }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
-  const zoom = clock.elapsedTime < momentUntil ? 0.58 : 1;
+  // 🌊 바다터: 평상시 0.86(트인 수평선 보정) → 던지면 0.55 → 줄다리기·포획 0.45 로
+  //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다
+  const zoom = atSea ? (seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
+                        : seaMG.st === 'cast' ? 0.55 : 0.86)
+             : clock.elapsedTime < momentUntil ? 0.58 : 1;
   _camOff.copy(camOffset).multiplyScalar(zoom);
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
