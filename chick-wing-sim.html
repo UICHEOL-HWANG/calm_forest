@@ -1,0 +1,415 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🐤 병아리 날개-팔 시뮬레이션 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.86);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  button{font:inherit;padding:5px 11px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  input[type=range]{width:120px}
+  #hud{position:fixed;top:10px;right:12px;background:rgba(255,255,255,.85);padding:7px 11px;border-radius:9px;font-size:12px;line-height:1.6;white-space:pre}
+  b{color:#2f5e2f}
+</style>
+<div id="hud"></div>
+<div id="ui">
+  <div class="row">
+    <b>연출</b> <span id="acts"></span>
+    <b style="margin-left:8px">시점</b> <span id="views"></span>
+    <label style="margin-left:8px"><input id="legacy" type="checkbox"> 기존 방식(고정 날개) 비교</label>
+  </div>
+  <div class="row">
+    <label>어깨 높이 <input id="shy" type="range" min="0.45" max="0.80" step="0.01" value="0.63"><span id="shyV">0.63</span></label>
+    <label>어깨 벌림 <input id="shx" type="range" min="0.30" max="0.60" step="0.01" value="0.45"><span id="shxV">0.45</span></label>
+    <label>날개 길이 <input id="wlen" type="range" min="0.8" max="1.8" step="0.05" value="1.15"><span id="wlenV">1.15</span></label>
+    <label>날개 기울임 <input id="wtilt" type="range" min="0" max="0.6" step="0.02" value="0.20"><span id="wtiltV">0.20</span></label>
+  </div>
+  <div class="row">
+    <button id="play" class="on">⏸ 일시정지</button>
+    <label>속도 <input id="speed" type="range" min="0.15" max="1.6" step="0.05" value="0.7"><span id="speedV">0.70x</span></label>
+    <label>카메라 <input id="ang" type="range" min="-180" max="180" step="5" value="0"><span id="angV">0°</span></label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ══════════════════════════════════════════════════════════════
+//  게임 원본에서 그대로 가져온 것 (js/game.js)
+// ══════════════════════════════════════════════════════════════
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: .95, metalness: 0, flatShading: flat });
+
+// ANIMALS 의 🐤병아리 항목 (game.js:1011)
+const A = { body:0xffe05a, belly:0xfff0a0, ear:0xffb020,
+  bodyR:.50, bodyScale:[1.02,.94,1.02], headR:.35, headY:1.06,
+  tail:{ color:0xffd23a, wagSpeed:2.6, wagAmp:.14 } };
+
+// 옆베기 상수 (game.js:1030)
+const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
+function slashPhase(p, B, S) {
+  if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
+  if (p < .58) { const q = (p - .32)/.26;  return B + (S - B) * q * q; }
+  const q = (p - .58) / .42;               return S + (0 - S) * (1 - (1-q)*(1-q));
+}
+const SEA_CAST_DUR = 0.62;   // game.js:4531
+
+// ══════════════════════════════════════════════════════════════
+//  장면
+// ══════════════════════════════════════════════════════════════
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8fb2c4);
+scene.fog = new THREE.Fog(0x8fb2c4, 14, 40);
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, .1, 100);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+scene.add(new THREE.HemisphereLight(0xdfeeff, 0xb8c8a8, .9));
+const sun = new THREE.DirectionalLight(0xfff2dd, 1.35);
+sun.position.set(4, 8, 5); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024); scene.add(sun);
+
+// 부두(널빤지) + 바다 — 스크린샷 구도 재현용 최소 배경
+const dock = new THREE.Mesh(new THREE.BoxGeometry(4.5, .22, 6), clayMat(0xa9663f));
+dock.position.set(0, -.11, 1.6); dock.receiveShadow = true; scene.add(dock);
+for (let i = 0; i < 4; i++) {
+  const gap = new THREE.Mesh(new THREE.BoxGeometry(4.5, .02, .05), clayMat(0x8a4f30));
+  gap.position.set(0, .01, -.6 + i * 1.4); scene.add(gap);
+}
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color:0x3f6f86, roughness:.9 }));
+sea.rotation.x = -Math.PI/2; sea.position.y = -.9; scene.add(sea);
+
+// ══════════════════════════════════════════════════════════════
+//  🐤 병아리 — buildAnimalMesh(game.js:1668) 병아리 경로 재현
+//     ★변경점: 날개를 g 직속 고정 메시 대신 어깨 피벗(pivot→aim→wing)에 매닮
+// ══════════════════════════════════════════════════════════════
+const playerRoot = new THREE.Group(); playerRoot.rotation.y = Math.PI; scene.add(playerRoot);  // 바다(-z)를 향해
+const playerAnchor = new THREE.Group(); playerRoot.add(playerAnchor);
+const R = A.bodyR, HR = A.headR, HY = A.headY, bs = A.bodyScale;
+const bodyY = R * bs[1] + .02;
+const skin = () => clayMat(A.body, false);
+
+const g = new THREE.Group(); playerAnchor.add(g);
+const body = new THREE.Mesh(new THREE.IcosahedronGeometry(R, 1), skin());
+body.position.y = bodyY; body.scale.set(bs[0], bs[1], bs[2]); body.castShadow = true; g.add(body);
+const belly = new THREE.Mesh(new THREE.SphereGeometry(R*.62, 16, 12), clayMat(A.belly, false));
+belly.position.set(0, bodyY - R*.16, R*.55); belly.scale.set(1, 1.1, .6); g.add(belly);
+const head = new THREE.Mesh(new THREE.IcosahedronGeometry(HR, 1), skin());
+head.position.y = HY; head.castShadow = true; g.add(head);
+const eyeMat = new THREE.MeshStandardMaterial({ color:0x3a2f2a, roughness:.6 });
+[-1,1].forEach(s => {
+  const e = new THREE.Mesh(new THREE.SphereGeometry(HR*.145, 8, 8), eyeMat);
+  e.position.set(s*HR*.36, HY + HR*.10, HR*.86); g.add(e);
+});
+const beak = new THREE.Mesh(new THREE.ConeGeometry(HR*.26, HR*.50, 4), clayMat(0xff9a3a, false));
+beak.position.set(0, HY - HR*.12, HR*.92); beak.rotation.x = Math.PI/2; g.add(beak);
+[0,1,2].forEach(i => {
+  const c = new THREE.Mesh(new THREE.SphereGeometry(HR*(.16 - i*.03), 8, 6), clayMat(0xf2564a, false));
+  c.position.set(0, HY + HR*(.92 - i*.10), -HR*(.02 + i*.22)); g.add(c);
+});
+const tail = new THREE.Group();
+tail.position.set(0, bodyY + R*.10, -R*bs[2]*.86);
+[-1,0,1].forEach(s => {
+  const f = new THREE.Mesh(new THREE.ConeGeometry(R*.13, R*.46, 4), clayMat(A.tail.color, false));
+  f.position.set(s*R*.14, R*(.16 + Math.abs(s)*-.04), -R*.14);
+  f.rotation.set(-.9, 0, s*.35); f.castShadow = true; tail.add(f);
+});
+g.add(tail);
+
+// ── ★ 날개-팔 — 조형은 기존 날개 그대로, 어깨 피벗에 매달아 스윙 ──
+//    pivot(YXZ·회전 담당) → aim(원래 날개의 바깥 기울임 −s·tilt 를 여기 흡수) → 날개 메시
+//    포즈 코드(sea/slash)는 게임의 playerArms 각도값을 숫자 그대로 사용한다.
+const wingMat = clayMat(0xffd23a, false);
+function mkWing(side) {
+  const pivot = new THREE.Group();
+  pivot.rotation.order = 'YXZ';
+  const aim = new THREE.Group();
+  pivot.add(aim);
+  const w = new THREE.Mesh(new THREE.SphereGeometry(R*.34, 10, 8), wingMat);  // 원본 조형(game.js:1772)
+  w.castShadow = true; aim.add(w);
+  const hand = new THREE.Group(); aim.add(hand);
+  return { pivot, aim, wing: w, hand, side };
+}
+const W = { R: mkWing(1), L: mkWing(-1) };
+g.add(W.R.pivot, W.L.pivot);
+
+// 슬라이더 값 → 날개 배치 재계산(피벗 위치·길이·기울임)
+const P = { shy:.63, shx:.45, wlen:1.15, wtilt:.20 };
+function layoutWings() {
+  const halfH = R*.34*.85;                       // 날개 세로 반높이(스케일 .85)
+  for (const k of ['R','L']) {
+    const a = W[k], s = a.side;
+    a.pivot.position.set(s*P.shx, P.shy, R*.05);
+    a.aim.rotation.z = -s*P.wtilt;               // 원본 날개의 바깥 기울임을 aim 에 흡수
+    a.wing.scale.set(.30, .85*P.wlen, .75);      // 길이만 살짝 늘려 리치 확보
+    a.wing.position.set(s*.01, -(halfH*P.wlen) + .04, 0);   // 어깨에 윗단 살짝 파묻기
+    a.hand.position.set(0, -(halfH*2*P.wlen) + .06, .02);   // 날개 끝 = 손
+  }
+}
+layoutWings();
+
+// ══════════════════════════════════════════════════════════════
+//  🎣 대물 릴대 — toolMesh 'reel' (game.js:1998) 재현
+// ══════════════════════════════════════════════════════════════
+const GRIP = 0x6a4a30, STEEL = 0xc7ccd4, EDGE = 0x4a4f58;
+function mkReelRod() {
+  const NAVY = 0x2e4a66, KNOB = 0xd94f4f, ROPE = 0xe8d9a8;
+  const g = new THREE.Group();
+  const rknob = new THREE.Mesh(new THREE.SphereGeometry(.05,7,6), clayMat(GRIP)); rknob.position.y=-.08; g.add(rknob);
+  const rear = new THREE.Mesh(new THREE.CylinderGeometry(.04,.046,.22,7), clayMat(GRIP)); rear.position.y=.04; g.add(rear);
+  const reel = new THREE.Group(); reel.position.set(.1,.24,0); g.add(reel);
+  const spool = new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.075,12), clayMat(STEEL));
+  spool.rotation.z = Math.PI/2; reel.add(spool);
+  [-1,1].forEach(sx => {
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.02,12), clayMat(EDGE));
+    rim.rotation.z = Math.PI/2; rim.position.x = sx*.04; reel.add(rim);
+  });
+  const wound = new THREE.Mesh(new THREE.TorusGeometry(.085,.022,6,12), clayMat(ROPE));
+  wound.rotation.y = Math.PI/2; reel.add(wound);
+  const crank = new THREE.Group(); crank.position.x = .065; reel.add(crank);
+  const armC = new THREE.Mesh(new THREE.BoxGeometry(.018,.11,.018), clayMat(EDGE)); armC.position.y=.048; crank.add(armC);
+  const kn = new THREE.Mesh(new THREE.SphereGeometry(.03,7,6), clayMat(KNOB)); kn.position.y=.105; crank.add(kn);
+  const blank = new THREE.Mesh(new THREE.CylinderGeometry(.026,.048,.52,7), clayMat(NAVY)); blank.position.y=.56; g.add(blank);
+  [[.52,.04],[.7,.032]].forEach(([y,r]) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r,.013,5,10), clayMat(EDGE));
+    ring.rotation.x = Math.PI/2; ring.position.set(.03+r, y, 0); g.add(ring);
+  });
+  const rtip = new THREE.Group(); rtip.position.y=.8; g.add(rtip);
+  const tipRod = new THREE.Mesh(new THREE.CylinderGeometry(.014,.026,.2,6), clayMat(EDGE));
+  tipRod.position.y=.09; rtip.add(tipRod);
+  rtip.rotation.z = .34;
+  const tipEnd = new THREE.Group(); tipEnd.position.y=.19; rtip.add(tipEnd);
+  g.scale.setScalar(1.25);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData.sea = { crank, tip: rtip, tipEnd };
+  return g;
+}
+const rod = mkReelRod();
+W.R.hand.add(rod);
+
+// 도구 쥐는 자세(game.js TOOL_QREST 방식) — aim 회전을 상쇄해 자루를 몸 기준으로 세움
+const _axX = new THREE.Vector3(1,0,0), _axZ = new THREE.Vector3(0,0,1);
+function restToolQ() {
+  return new THREE.Quaternion().setFromAxisAngle(_axZ, P.wtilt)     // aim(-tilt) 상쇄
+    .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
+    .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
+}
+
+// 부표 + 낚싯줄
+const buoy = new THREE.Group();
+const bTop = new THREE.Mesh(new THREE.SphereGeometry(.09,8,8), clayMat(0xe84d4d)); bTop.position.y=.05; buoy.add(bTop);
+const bBot = new THREE.Mesh(new THREE.SphereGeometry(.09,8,8), clayMat(0xf2f2f2)); bBot.position.y=-.04; buoy.add(bBot);
+scene.add(buoy);
+const BUOY_HOME = new THREE.Vector3(0, -.82, -5.2);
+buoy.position.copy(BUOY_HOME);
+const lineGeo = new THREE.BufferGeometry();
+lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(30), 3));
+const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:.85 }));
+line.frustumCulled = false; scene.add(line);
+
+// 옆베기 프리뷰용 간단 도끼
+const axe = new THREE.Group();
+const ahandle = new THREE.Mesh(new THREE.CylinderGeometry(.035,.045,.72,7), clayMat(0x8a5a34)); ahandle.position.y=.3; axe.add(ahandle);
+const ahead = new THREE.Mesh(new THREE.BoxGeometry(.3,.17,.07), clayMat(0xc7ccd4)); ahead.position.set(.12,.62,0); axe.add(ahead);
+axe.traverse(o => { if (o.isMesh) o.castShadow = true; });
+axe.visible = false; W.R.hand.add(axe);
+
+// ══════════════════════════════════════════════════════════════
+//  연출 상태기계 — game.js updateSea(5019~)의 각도값 그대로
+// ══════════════════════════════════════════════════════════════
+let act = 'wait';          // wait | cast | fight | slash
+let t = 0, playing = true, speed = .7, legacy = false;
+const _up = new THREE.Vector3(0,1,0), _v = new THREE.Vector3();
+const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+const hud = document.getElementById('hud');
+
+function setAct(a) {
+  act = a; t = 0;
+  axe.visible = a === 'slash';
+  rod.visible = a !== 'slash';
+  line.visible = buoy.visible = a !== 'slash';
+  document.querySelectorAll('#acts button').forEach(b => b.classList.toggle('on', b.dataset.a === a));
+}
+
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt = Math.min(.05, (now - (animate.pt || now)) / 1000) * speed;
+  animate.pt = now;
+  if (playing) t += dt;
+  const tt = t;
+
+  // 리셋
+  playerAnchor.rotation.set(0,0,0);
+  playerAnchor.position.y = 0;
+  W.R.pivot.rotation.set(0,0,0);
+  W.L.pivot.rotation.set(0,0,0);
+  rod.quaternion.copy(restToolQ());
+  tail.rotation.y = Math.sin(tt * A.tail.wagSpeed) * A.tail.wagAmp;
+
+  let rodUp = false;
+  if (legacy) {
+    // ── 기존 방식: 날개 고정 + 로드는 몸 옆 heldGroup 위치(restArmX=0.62) ──
+    //    (지금 게임에서 병아리가 보이는 그대로 — 팔 연출 블록이 통째로 스킵됨)
+    if (rod.parent !== playerAnchor) { W.R.hand.remove(rod); playerAnchor.add(rod); }
+    rod.position.set(.62, .6, .06);
+    rod.quaternion.setFromEuler(new THREE.Euler(-.1, 0, -.55));
+    rod.visible = act !== 'slash';
+  } else {
+    if (rod.parent !== W.R.hand) { playerAnchor.remove(rod); W.R.hand.add(rod); rod.position.set(0,0,0); }
+    const Rp = W.R.pivot, Lp = W.L.pivot;
+
+    if (act === 'wait') {
+      // 입질 대기(game.js:5039) + 숨쉬기 살랑임
+      const br = Math.sin(tt * 2.2) * .04;
+      Rp.rotation.set(-.55 + br, .1, .1);
+      Lp.rotation.set(-.5 - br, -.45, .3);
+      rodUp = true;
+    } else if (act === 'cast') {
+      // 던지기(game.js:5022) — 0.62초 스윙 후 대기로 전환
+      const k = Math.min(1, tt / SEA_CAST_DUR);
+      playerAnchor.rotation.x = -.12 + k * .22;
+      Rp.rotation.set(-2.35 + k * 1.7, .1, .06);
+      Lp.rotation.set(-2.25 + k * 1.65, -.4, .28);
+      if (tt > SEA_CAST_DUR + .25) setAct('wait');
+    } else if (act === 'fight') {
+      // 버티기(game.js:5030) — struggle/window 1.4초 교대
+      const win = Math.floor(tt / 1.4) % 2 === 1;
+      const tug = win ? .15 : Math.sin(tt * 9) * .5 + .5;
+      playerAnchor.rotation.x = .10 + .10 * tug;
+      Rp.rotation.set(-.8 - .28 * tug, .12, .06);
+      Lp.rotation.set(-.75 - .28 * tug, -.45, .28);
+      rodUp = true;
+      if (win) rod.userData.sea.crank.rotation.x -= dt * 7;
+      rod.userData.sea.tip.rotation.z = .34 + (win ? 0 : (Math.sin(tt*9)*.5+.5) * .45);
+    } else if (act === 'slash') {
+      // 옆베기(game.js:6809) — 1.2초 주기 반복
+      const cyc = (tt % 1.2) / 1.2;
+      const p = cyc > .75 ? 1 : cyc / .75;
+      const s = Math.sin(Math.min(1, p) * Math.PI);
+      const yaw = slashPhase(p, SLASH.back, SLASH.strike);
+      const k = yaw / SLASH.back;
+      Rp.rotation.set(SLASH.lift * s, yaw, 0);
+      Lp.rotation.set(-Math.abs(k) * .35, -k * .50, Math.max(0, -k) * .40);
+      playerAnchor.rotation.x = .18 * s;
+      playerAnchor.rotation.y = p < .32 ? .42 * (p / .32) : -.55 * s;
+      playerAnchor.position.y = -s * .1;
+      // 스윙 중 자루가 팔의 연장 쪽으로(WRIST_MAX 0.55 근사)
+      _q1.setFromAxisAngle(_axX, Math.PI * Math.min(1, Math.abs(k) * 1.25) * .55 * .5);
+      axe.quaternion.copy(restToolQ()).multiply(_q1);
+    }
+
+    // 로드 세우기(game.js:5046) — 월드 기준으로 부표 쪽 49° 위-앞
+    if (rodUp) {
+      _v.copy(buoy.position).sub(playerAnchor.position); _v.y = 0;
+      if (_v.lengthSq() < .01) _v.set(0, 0, -1);
+      _v.normalize(); _v.y = 1.15; _v.normalize();
+      _q2.setFromUnitVectors(_up, _v);
+      W.R.hand.getWorldQuaternion(_q1);
+      rod.quaternion.copy(_q1.invert()).multiply(_q2);
+    }
+  }
+
+  // 부표 — 캐스팅 중엔 포물선, 그 외엔 제자리 둥실
+  if (act === 'cast' && tt < SEA_CAST_DUR) {
+    const k = tt / SEA_CAST_DUR;
+    buoy.position.set(0, .8 + Math.sin(k * Math.PI) * 1.6 - k * 1.6, .3 - k * 5.5);
+  } else {
+    buoy.position.copy(BUOY_HOME);
+    buoy.position.y += Math.sin(t * 2.4) * .05;
+  }
+  // 낚싯줄 — 팁 → 부표(game.js:5066)
+  if (line.visible && rod.visible) {
+    const tip = new THREE.Vector3();
+    rod.userData.sea.tipEnd.getWorldPosition(tip);
+    const sag = act === 'fight' ? .12 : act === 'cast' && tt < SEA_CAST_DUR ? .04 : .5;
+    const pts = lineGeo.attributes.position.array;
+    for (let i = 0; i < 10; i++) {
+      const u = i / 9;
+      pts[i*3]   = tip.x + (buoy.position.x - tip.x) * u;
+      pts[i*3+1] = tip.y + (buoy.position.y + .1 - tip.y) * u - Math.sin(u * Math.PI) * sag;
+      pts[i*3+2] = tip.z + (buoy.position.z - tip.z) * u;
+    }
+    lineGeo.attributes.position.needsUpdate = true;
+  }
+
+  camera.lookAt(0, .9, -.6);
+  renderer.render(scene, camera);
+
+  hud.textContent =
+`어깨 (±${P.shx.toFixed(2)}, ${P.shy.toFixed(2)}, ${(R*.05).toFixed(3)})
+날개 길이 x${P.wlen.toFixed(2)} · 기울임 ${P.wtilt.toFixed(2)}
+모드 ${legacy ? '기존(고정)' : '날개-팔'} · ${act}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════════════════════════
+const ACTS = [['wait','🕐 입질 대기'],['cast','🎣 캐스팅'],['fight','💪 파이팅'],['slash','🪓 도구 스윙']];
+const actsEl = document.getElementById('acts');
+ACTS.forEach(([a, name]) => {
+  const b = document.createElement('button');
+  b.textContent = name; b.dataset.a = a;
+  b.onclick = () => setAct(a);
+  actsEl.appendChild(b);
+});
+
+const VIEWS = [['게임 시점', 0, 5.2, 6.2], ['측면', 90, 1.6, 5.4], ['정면 로우', 180, 1.1, 5.0]];
+const viewsEl = document.getElementById('views');
+let camAng = 0, camY = 5.2, camD = 6.2;
+VIEWS.forEach(([name, a, y, d], i) => {
+  const b = document.createElement('button');
+  b.textContent = name; if (i === 0) b.classList.add('on');
+  b.onclick = () => {
+    camAng = a; camY = y; camD = d;
+    document.getElementById('ang').value = a; document.getElementById('angV').textContent = a + '°';
+    viewsEl.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+    placeCam();
+  };
+  viewsEl.appendChild(b);
+});
+function placeCam() {
+  const r = camAng * Math.PI / 180;
+  camera.position.set(Math.sin(r) * camD, camY, Math.cos(r) * camD);
+}
+placeCam();
+
+const bind = (id, fn) => {
+  const el = document.getElementById(id), vEl = document.getElementById(id + 'V');
+  el.oninput = () => { const v = parseFloat(el.value); if (vEl) vEl.textContent = id === 'speed' ? v.toFixed(2)+'x' : id === 'ang' ? v+'°' : v.toFixed(2); fn(v); };
+};
+bind('shy', v => { P.shy = v; layoutWings(); });
+bind('shx', v => { P.shx = v; layoutWings(); });
+bind('wlen', v => { P.wlen = v; layoutWings(); });
+bind('wtilt', v => { P.wtilt = v; layoutWings(); });
+bind('speed', v => speed = v);
+bind('ang', v => { camAng = v; placeCam(); });
+document.getElementById('legacy').onchange = e => legacy = e.target.checked;
+document.getElementById('play').onclick = e => {
+  playing = !playing;
+  e.target.textContent = playing ? '⏸ 일시정지' : '▶ 재생';
+  e.target.classList.toggle('on', playing);
+};
+
+setAct('wait');
+requestAnimationFrame(animate);
+
+// 검증 드라이버(브라우저 콘솔·자동화용) — UI 와 동일한 상태를 코드로 조작
+window.SIM = {
+  setAct, W, P, layoutWings, rod,
+  pauseAt(a, at) { setAct(a); t = at; playing = false; document.getElementById('play').textContent = '▶ 재생'; },
+  resume() { playing = true; },
+  setLegacy(v) { legacy = v; document.getElementById('legacy').checked = v; },
+};
+</script>

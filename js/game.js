@@ -1015,7 +1015,7 @@ const ANIMALS = [
     extras: ['beak', 'comb', 'wings'] },
 ];
 let heldGroup, handAnchor, heldToolMesh; // 도구 캐리어(손 따라가기/등 수납) / 손 / 든 도구
-let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아리(날개)는 null → 구식 스윙
+let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아리는 날개가 팔 역할(같은 구조)
 let armWristK = 0;        // 손목 펴짐 0(자루 세움)~1(팔의 연장) — 스윙 중에만 커짐
 let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(rad)
 
@@ -1034,6 +1034,11 @@ const TOOL_QREST = ARM_AIM_R.clone().invert()
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
 const TOOL_QSWING = new THREE.Quaternion().setFromAxisAngle(_axX, Math.PI);
+// 🐤 날개-팔은 조준 회전이 팔(ARM_AIM)과 달라 쥐는 자세 상쇄값도 다르다(chick-wing-sim.html 검증)
+const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
+let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
 // 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
 function slashPhase(p, B, S) {
   if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
@@ -1409,6 +1414,7 @@ export async function enterGame() {
   // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인
   if (_wq.get('mist') === '1') setTimeout(() => enterMist(), 60);
   if (_wq.get('sea') === '1') setTimeout(() => enterSea(), 60);   // 테스트: ?sea=1 — 바다터 바로 입장
+  if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
@@ -1769,14 +1775,7 @@ function buildAnimalMesh(id) {
       c.position.set(0, HY + HR * (0.92 - i * 0.10), -HR * (0.02 + i * 0.22)); g.add(c);
     });
   }
-  if (ex.includes('wings')) {       // 🐤 양옆 짧은 날개
-    [-1, 1].forEach(s => {
-      const w = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0xffd23a, false));
-      w.scale.set(0.30, 0.85, 0.75);
-      w.position.set(s * R * 0.92, bodyY + R * 0.02, R * 0.05);
-      w.rotation.z = -s * 0.20; w.castShadow = true; g.add(w);
-    });
-  }
+  // 🐤 날개는 아래 팔 조립부에서 어깨 피벗에 매달아 만든다(팔처럼 스윙 — chick-wing-sim.html 검증)
   if (ex.includes('band')) {        // 🐼 검은 어깨 무늬 — 팔처럼 안 보이게 몸에 밀착(진짜 팔은 armColor 로 검게)
     [-1, 1].forEach(s => {
       const b = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0x2a2a2a, false));
@@ -1830,9 +1829,30 @@ function buildAnimalMesh(id) {
   }
 
   // ── 팔 — 어깨 피벗(스윙축 YXZ) → 조준(고정) → 팔뚝·발바닥·손 ──
-  //   🐤병아리는 날개가 이미 있어 팔을 달지 않는다(구식 도구 스윙으로 폴백)
+  //   🐤병아리는 별도 팔 대신 날개 자체를 어깨 피벗에 매달아 팔처럼 쓴다(chick-wing-sim.html 검수값)
   let armR = null, armL = null;
-  if (!ex.includes('wings')) {
+  if (ex.includes('wings')) {
+    const WLEN = 1.15;                       // 원본 날개보다 15% 길게 — 그립까지 리치 확보
+    const halfH = R * 0.34 * 0.85;           // 날개 세로 반높이
+    const mkWing = (side) => {
+      const pivot = new THREE.Group();
+      pivot.rotation.order = 'YXZ';
+      pivot.position.set(side * R * 0.90, bodyY + R * 0.28, R * 0.05);
+      const aim = new THREE.Group();
+      aim.rotation.z = -side * 0.20;         // 원본 날개의 바깥 기울임을 조준 그룹에 흡수
+      pivot.add(aim);
+      const w = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0xffd23a, false));
+      w.scale.set(0.30, 0.85 * WLEN, 0.75);
+      w.position.set(side * R * 0.02, -(halfH * WLEN) + R * 0.08, 0);  // 윗단을 어깨에 살짝 파묻기
+      w.castShadow = true; aim.add(w);
+      const hand = new THREE.Group();
+      hand.position.set(0, -(halfH * 2 * WLEN) + R * 0.12, R * 0.04);  // 날개 끝 = 손
+      aim.add(hand);
+      return { pivot, hand };
+    };
+    armR = mkWing(1); armL = mkWing(-1);
+    g.add(armR.pivot, armL.pivot);
+  } else {
     const mkArm = (side) => {
       const pivot = new THREE.Group();
       pivot.rotation.order = 'YXZ';         // 옆베기: 팔을 든(X) 채 수직축(Y) 스윕
@@ -1863,6 +1883,7 @@ function applyCharacter(id) {
   const built = buildAnimalMesh(a.id);
   charGroup = built.group; tailPivot = built.tail;
   playerArms = (built.armR && built.armL) ? { R: built.armR, L: built.armL } : null;
+  toolQRest = (a.extras || []).includes('wings') ? TOOL_QREST_WING : TOOL_QREST;
   armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
@@ -2060,7 +2081,7 @@ function poseHeldTool(stow, swingX, swingZ) {
     heldGroup.position.lerpVectors(_hfP, _stowP, k);
     heldGroup.quaternion.slerpQuaternions(_hfQ, _stowQ, k);
     // 손목: 자루 세워 쥠 ↔ 스윙 중 팔의 연장 · 등에 멜 땐 예전 그대로(identity)
-    _hfTQ.slerpQuaternions(TOOL_QREST, TOOL_QSWING, armWristK);
+    _hfTQ.slerpQuaternions(toolQRest, TOOL_QSWING, armWristK);
     if (toolPourTilt) _hfTQ.multiply(_hfTilt.setFromAxisAngle(_axX, toolPourTilt));
     if (heldToolMesh) heldToolMesh.quaternion.slerpQuaternions(_hfTQ, _idQ, k);
     return;
@@ -4535,7 +4556,7 @@ const seaAngDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 // ── 🌊 일렁이는 수면 — 정점 웨이브(사인 3겹 합성) + 깊이 그라데이션 ──
 //   dampFn(x,z)→0..1 : 물가·부두 근처에서 파도를 잠재워 지오메트리 뚫림 방지
 let coveWater = null, seaWater = null;           // {mesh, base, damp}
-let seaBeacon = null, seaLampMat = null;         // 등대 야간 빔 + 램프(깜빡임)
+let seaBeacon = null, seaLampMat = null, seaBeamMats = [];   // 등대 빔(밤·악천후) + 램프(깜빡임)
 function makeWavyWater(radius, thetaSeg, rings, colCenter, colEdge, opacity, dampFn, gradR) {
   const geo = new THREE.RingGeometry(0.02, radius, thetaSeg, rings);
   geo.rotateX(-Math.PI / 2);
@@ -4581,11 +4602,15 @@ function updateSeaVisuals(t) {
   else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe)
     updateWavyWater(coveWater, t, 0.085, 1.6);
   if (seaBeacon) {
-    const on = isNight();
+    // 밤뿐 아니라 악천후(비·눈·안개) 낮에도 점등 — 흐린 날 등대가 물을 쓸어 비추는 이벤트
+    const gloomy = WEATHER === 'rain' || WEATHER === 'snow' || WEATHER === 'fog';
+    const on = isNight() || gloomy;
     seaBeacon.visible = on;
     if (on) {
       seaBeacon.rotation.y = t * 0.55;                               // 천천히 도는 서치라이트
-      if (seaLampMat) seaLampMat.emissiveIntensity = 1.3 + Math.sin(t * 2.4) * 0.45;
+      const k = isNight() ? 1 : 0.55;                                // 낮 악천후엔 은은하게
+      for (const m of seaBeamMats) m.opacity = m.userData.base * k;
+      if (seaLampMat) seaLampMat.emissiveIntensity = (isNight() ? 1.3 : 1.05) + Math.sin(t * 2.4) * 0.45;
     } else if (seaLampMat) seaLampMat.emissiveIntensity = 0.8;
   }
 }
@@ -4628,15 +4653,25 @@ function spawnSeaGate() {
   lamp.position.set(LX, 2.56, LZ); g.add(lamp);
   const cap = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.45, 8), clayMat(0x5f6f7c));
   cap.position.set(LX, 2.82, LZ); g.add(cap);
-  // 🔦 야간 서치라이트 빔 — 램프에서 수평으로 뻗어 천천히 회전(updateSeaVisuals)
+  // 🔦 서치라이트 빔 — 밤·악천후(비/눈/안개)에 켜져 천천히 회전(updateSeaVisuals)
+  //   실제 등대처럼 양방향 빔 + 겹원뿔(안쪽 좁고 밝게, 바깥 넓고 은은하게)로 부드러운 광선
   seaBeacon = new THREE.Group(); seaBeacon.position.set(LX, 2.56, LZ); seaBeacon.visible = false;
-  const beamGeo = new THREE.ConeGeometry(0.85, 7.5, 12, 1, true);
-  beamGeo.translate(0, -3.75, 0);                 // 꼭짓점을 램프에 붙이고 바깥으로 퍼지게
-  const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({
-    color: 0xffe9a8, transparent: true, opacity: 0.20, depthWrite: false,
-    blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
-  beam.rotation.z = Math.PI / 2;                  // 아래(-y)로 뻗던 원뿔을 수평(+x)으로
-  seaBeacon.add(beam);
+  seaBeamMats = [];
+  [0, Math.PI].forEach(dir => {
+    const arm = new THREE.Group(); arm.rotation.y = dir; seaBeacon.add(arm);
+    [[0.85, 7.5, 0.13], [0.38, 6.2, 0.22]].forEach(([r, len, op]) => {
+      const geo = new THREE.ConeGeometry(r, len, 12, 1, true);
+      geo.translate(0, -len / 2, 0);              // 꼭짓점을 램프에 붙이고 바깥으로 퍼지게
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffe9a8, transparent: true, opacity: op, depthWrite: false,
+        blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      mat.userData.base = op;                     // 밤/낮 밝기 보간 기준(updateSeaVisuals)
+      seaBeamMats.push(mat);
+      const b = new THREE.Mesh(geo, mat);
+      b.rotation.z = Math.PI / 2 - 0.07;          // 수평보다 살짝 아래 — 수면을 쓸어 비추는 그림
+      arm.add(b);
+    });
+  });
   g.add(seaBeacon);
   // ── 방파제 — 물가에서 등대 바위섬 쪽으로 뻗는 바위줄
   for (let i = 0; i < 6; i++) {
