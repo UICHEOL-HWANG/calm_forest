@@ -359,6 +359,7 @@ const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, s
 
 // ── 🌊 바다터(대형 낚시) — 기획: docs/SEA_FISHING_PLAN.md ──────────────
 const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
+const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
 const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
 const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
@@ -1557,6 +1558,7 @@ function buildWorld() {
 
   for (let i = 0; i < 40; i++) {
     const r = 6 + Math.random() * 26, a = Math.random() * Math.PI * 2;
+    if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 1) continue;  // 🌊 후미 물 위 제외
     const patch = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2.5, 12), clayMat(PAL.groundDark, false));
     patch.geometry.rotateX(-Math.PI / 2);
     patch.position.set(Math.cos(a) * r, 0.01, Math.sin(a) * r);
@@ -1573,6 +1575,7 @@ function buildWorld() {
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
+      || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
@@ -1594,6 +1597,7 @@ function buildWorld() {
 
   for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
+    if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
     const blade = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.7, 5), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
     blade.position.set(Math.cos(a) * r, 0.35, Math.sin(a) * r);
     blade.castShadow = true;
@@ -4528,31 +4532,142 @@ const SEA_CAST_DUR = 0.62;                       // 던지기: 부표 포물선 
 const seaRnd = (a, b) => a + Math.random() * (b - a);
 const seaAngDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
+// ── 🌊 일렁이는 수면 — 정점 웨이브(사인 3겹 합성) + 깊이 그라데이션 ──
+//   dampFn(x,z)→0..1 : 물가·부두 근처에서 파도를 잠재워 지오메트리 뚫림 방지
+let coveWater = null, seaWater = null;           // {mesh, base, damp}
+let seaBeacon = null, seaLampMat = null;         // 등대 야간 빔 + 램프(깜빡임)
+function makeWavyWater(radius, thetaSeg, rings, colCenter, colEdge, opacity, dampFn, gradR) {
+  const geo = new THREE.RingGeometry(0.02, radius, thetaSeg, rings);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, n = pos.count;
+  const cols = new Float32Array(n * 3), damp = new Float32Array(n);
+  const cA = new THREE.Color(colCenter), cB = new THREE.Color(colEdge), c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), d = Math.hypot(x, z);
+    c.lerpColors(cA, cB, Math.min(1, (d / (gradR ?? radius)) ** 1.4));
+    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+    damp[i] = dampFn ? dampFn(x, z, d) : 1;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.18, metalness: 0.25,
+    transparent: true, opacity, flatShading: false,
+  }));
+  mesh.receiveShadow = true;
+  return { mesh, base: pos.array.slice(), damp, baseCols: cols.slice() };
+}
+function updateWavyWater(w, t, amp, speed) {
+  const arr = w.mesh.geometry.attributes.position.array, base = w.base, damp = w.damp;
+  const cols = w.mesh.geometry.attributes.color.array, bc = w.baseCols;
+  for (let i = 0; i < damp.length; i++) {
+    const x = base[i * 3], z = base[i * 3 + 2];
+    const y = amp * damp[i] * (
+      Math.sin(x * 0.55 + t * speed) * 0.55 +
+      Math.sin(z * 0.48 - t * speed * 0.8 + 1.7) * 0.45 +
+      Math.sin((x + z) * 0.30 + t * speed * 0.55) * 0.50);
+    arr[i * 3 + 1] = y;
+    const k = Math.max(0, y) / amp * 0.5;          // 파도 마루를 하얗게(참고 이미지의 반짝임)
+    cols[i * 3]     = bc[i * 3]     + (1 - bc[i * 3])     * k;
+    cols[i * 3 + 1] = bc[i * 3 + 1] + (1 - bc[i * 3 + 1]) * k;
+    cols[i * 3 + 2] = bc[i * 3 + 2] + (1 - bc[i * 3 + 2]) * k;
+  }
+  w.mesh.geometry.attributes.position.needsUpdate = true;
+  w.mesh.geometry.attributes.color.needsUpdate = true;
+  w.mesh.geometry.computeVertexNormals();
+}
+// 매 프레임: 보이는 수면만 일렁임 + 등대 야간 빔 회전(마을 후미)
+function updateSeaVisuals(t) {
+  if (atSea) { if (seaWater) updateWavyWater(seaWater, t, 0.13, 1.4); }
+  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe)
+    updateWavyWater(coveWater, t, 0.085, 1.6);
+  if (seaBeacon) {
+    const on = isNight();
+    seaBeacon.visible = on;
+    if (on) {
+      seaBeacon.rotation.y = t * 0.55;                               // 천천히 도는 서치라이트
+      if (seaLampMat) seaLampMat.emissiveIntensity = 1.3 + Math.sin(t * 2.4) * 0.45;
+    } else if (seaLampMat) seaLampMat.emissiveIntensity = 0.8;
+  }
+}
+
 function spawnSeaGate() {
   const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
-  // 방파제(낮은 바위줄) + 등대 — "여긴 바다로 이어진다"는 신호
-  for (let i = 0; i < 5; i++) {
-    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32 + (i % 2) * 0.12, 0), clayMat(0xb9c0c4));
-    rock.position.set(-1.8 + i * 0.85, 0.18, 0.9); rock.castShadow = true; g.add(rock);
+  const CX = SEA_COVE.x - SEA_GATE.x, CZ = SEA_COVE.z - SEA_GATE.z;   // 후미 중심(로컬)
+  // ── 후미(만) — 모래톱 → 바닷물 → 먼바다 톤. 게이트에 서면 바다가 보인다
+  const sand = new THREE.Mesh(new THREE.CircleGeometry(SEA_COVE.r + 1.1, 48), clayMat(0xe8d9a8, false));
+  sand.geometry.rotateX(-Math.PI / 2); sand.position.set(CX, 0.03, CZ); sand.receiveShadow = true; g.add(sand);
+  coveWater = makeWavyWater(SEA_COVE.r, IS_MOBILE ? 36 : 48, IS_MOBILE ? 7 : 10,
+    0x3b8fbe, 0x6fd0e2, 0.92,
+    (x, z, d) => Math.min(1, Math.max(0, (SEA_COVE.r - d) / (SEA_COVE.r * 0.35))));  // 물가에선 잔잔하게
+  coveWater.mesh.position.set(CX, 0.08, CZ); g.add(coveWater.mesh);
+  // 물가 거품 — 마을 쪽 물가를 따라 하얀 방울
+  const shoreAng = Math.atan2(-CZ, -CX);          // 후미 중심 → 게이트(마을) 방향
+  for (let i = 0; i < 7; i++) {
+    const a = shoreAng + (i - 3) * 0.34;
+    const foam = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.05, 7, 5), clayMat(0xf6f2e4, false));
+    foam.scale.y = 0.3;
+    foam.position.set(CX + Math.cos(a) * (SEA_COVE.r - 0.5), 0.13, CZ + Math.sin(a) * (SEA_COVE.r - 0.5));
+    g.add(foam);
   }
-  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.44, 1.9, 8), clayMat(0xf2ede2));
-  tower.position.set(0.9, 0.95, -0.4); tower.castShadow = true; g.add(tower);
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.4, 0.4, 8), clayMat(0xd94f4f));
-  band.position.set(0.9, 1.0, -0.4); g.add(band);
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.4, 8), clayMat(0x5f6f7c));
-  cap.position.set(0.9, 2.1, -0.4); g.add(cap);
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6),
-    new THREE.MeshStandardMaterial({ color: 0xffd77a, emissive: 0xffb347, emissiveIntensity: 0.8 }));
-  lamp.position.set(0.9, 1.86, -0.4); g.add(lamp);
-  obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });      // 밭 금지
-  solidCircle(SEA_GATE.x + 0.9, SEA_GATE.z - 0.4, 0.6);          // 🚧 등대 기둥만 단단하게
+  // ── 등대 — 물속 바위섬 위(빨간 줄무늬 2단, 마을에서 잘 보이는 랜드마크)
+  const LX = CX - 4.9, LZ = CZ + 4.6;
+  const islet = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05, 0), clayMat(0x9aa4ab));
+  islet.scale.y = 0.5; islet.position.set(LX, 0.16, LZ); islet.castShadow = true; g.add(islet);
+  [[-0.9, 0.5, 0.4], [0.8, -0.6, 0.34]].forEach(([dx, dz, s]) => {
+    const r2 = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), clayMat(0xb9c0c4));
+    r2.position.set(LX + dx, 0.14, LZ + dz); g.add(r2);
+  });
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.52, 2.3, 8), clayMat(0xf2ede2));
+  tower.position.set(LX, 1.45, LZ); tower.castShadow = true; g.add(tower);
+  [[1.05, 0.5], [1.85, 0.46]].forEach(([y, r]) => {
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(r, r + 0.02, 0.34, 8), clayMat(0xd94f4f));
+    band.position.set(LX, y, LZ); g.add(band);
+  });
+  seaLampMat = new THREE.MeshStandardMaterial({ color: 0xffd77a, emissive: 0xffb347, emissiveIntensity: 0.8 });
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), seaLampMat);
+  lamp.position.set(LX, 2.56, LZ); g.add(lamp);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.45, 8), clayMat(0x5f6f7c));
+  cap.position.set(LX, 2.82, LZ); g.add(cap);
+  // 🔦 야간 서치라이트 빔 — 램프에서 수평으로 뻗어 천천히 회전(updateSeaVisuals)
+  seaBeacon = new THREE.Group(); seaBeacon.position.set(LX, 2.56, LZ); seaBeacon.visible = false;
+  const beamGeo = new THREE.ConeGeometry(0.85, 7.5, 12, 1, true);
+  beamGeo.translate(0, -3.75, 0);                 // 꼭짓점을 램프에 붙이고 바깥으로 퍼지게
+  const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({
+    color: 0xffe9a8, transparent: true, opacity: 0.20, depthWrite: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  beam.rotation.z = Math.PI / 2;                  // 아래(-y)로 뻗던 원뿔을 수평(+x)으로
+  seaBeacon.add(beam);
+  g.add(seaBeacon);
+  // ── 방파제 — 물가에서 등대 바위섬 쪽으로 뻗는 바위줄
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42 - t * 0.14 + (i % 2) * 0.06, 0), clayMat(0xb9c0c4));
+    rock.position.set(0.8 + (LX - 1.6) * t, 0.16, -0.8 + (LZ + 0.8) * t);
+    rock.castShadow = true; g.add(rock);
+  }
+  // 부표 — 물 위 주황 부표(바다터 부표와 같은 문법)
+  [[CX - 1, CZ + 6.5], [CX + 4.5, CZ + 2]].forEach(([bx, bz]) => {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
+    b.scale.y = 1.25; b.position.set(bx, 0.2, bz); g.add(b);
+  });
+  g.add(makeSignpost('🌊 바다터', -1.6, 1.2));    // 다른 게이트와 같은 문법의 표지판
+  obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
+  obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });          // 밭 금지(후미)
+  solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);                       // 🚧 물엔 못 들어감
 }
 
 function buildSea() {
   const g = new THREE.Group(); g.position.copy(SEA);
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(160, 160),
-    new THREE.MeshStandardMaterial({ color: 0x4fa8cc, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.88 }));
-  water.geometry.rotateX(-Math.PI / 2); water.position.y = 0.02; water.receiveShadow = true; g.add(water);
+  // 일렁이는 먼바다 — 부두·뭍 근처에선 파도를 잠재워 데크를 안 뚫게
+  seaWater = makeWavyWater(90, IS_MOBILE ? 40 : 56, IS_MOBILE ? 9 : 13,
+    0x54b6d2, 0x2c6ba6, 0.88, (x, z) => {
+      const dx = Math.max(0, Math.abs(x) - (SEA_DECK_W / 2 + 1.2));
+      const dz = Math.max(0, Math.max(SEA_DECK_Z1 - 1.2 - z, z - (SEA_DECK_Z0 + 1.2)));
+      const deck = Math.min(1, Math.hypot(dx, dz) / 4);            // 부두 주변 잔잔
+      const shore = Math.min(1, Math.max(0, (4.5 - z) / 4));       // 남쪽 모래톱 잔잔
+      return Math.min(deck, shore);
+    }, 45);                                                        // 색 그라데이션: 부두 근처 밝음 → 45 밖 깊은 색
+  seaWater.mesh.position.y = 0.02; g.add(seaWater.mesh);
   const seabed = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), clayMat(0x2e7fa3, false));
   seabed.geometry.rotateX(-Math.PI / 2); seabed.position.y = -1.2; g.add(seabed);
   // 뭍(남쪽 입구) — 모래톱
@@ -4900,7 +5015,8 @@ function updateSea(dt, t) {
 
   // 캐릭터 연기 — sea-sim 검수 포즈. updatePlayer 가 매 프레임 팔을 리셋하므로 그 뒤에서 덮어쓴다.
   //   ⚠️ 낚싯줄보다 반드시 먼저 — 포즈 확정 후에 줄을 그려야 줄이 로드 끝에 붙는다.
-  if (playerArms && seaMG.st !== 'idle' && seaMG.st !== 'miss') {
+  //   idle(부두 산책)·miss 에서도 대기 자세 유지 — 릴대를 몸에 가로지른 채 걷다가 찌만 날아가는 그림 방지
+  if (playerArms && seaRodMesh) {
     const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
     let rodUp = false;   // true 면 로드를 월드 기준으로 하늘을 향해 세운다(손목 각에 안 맡김)
     if (seaMG.st === 'cast' && seaMG.t < SEA_CAST_DUR) {
@@ -4931,8 +5047,11 @@ function updateSea(dt, t) {
     //   기울기는 고정값이 아니라 "줄이 나가는 방향"으로: 로드 축과 낚싯줄이 한 방향으로
     //   이어져 카툰 낚시꾼처럼 물을 향해 비스듬히 든 그림이 된다.
     if (rodUp && seaRodMesh) {
-      const tgt = seaMG.st === 'fight' && seaMG.fmesh ? seaMG.fmesh.position : seaBuoy.position;
-      _seaV.set(SEA.x + tgt.x - player.position.x, 0, SEA.z + tgt.z - player.position.z);
+      // 조준 대상: 싸움 중엔 물고기 → 찌가 떠 있으면 찌 → 아니면(부두 산책) 바라보는 방향
+      const tgt = seaMG.st === 'fight' && seaMG.fmesh ? seaMG.fmesh.position
+                : seaBuoy.visible ? seaBuoy.position : null;
+      if (tgt) _seaV.set(SEA.x + tgt.x - player.position.x, 0, SEA.z + tgt.z - player.position.z);
+      else _seaV.set(0, 0, 0);
       if (_seaV.lengthSq() < 0.01) _seaV.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
       _seaV.normalize(); _seaV.y = 1.15; _seaV.normalize();   // 팁이 ~49° 위-앞(물고기 쪽)으로
       _seaQ2.setFromUnitVectors(_seaUp, _seaV);
@@ -6492,6 +6611,7 @@ function animate() {
   updateDayNight(dt);
   updateRain(dt);       // 🌧️ 빗줄기(비 오는 날 + 야외에서만)
   updateSway(t);
+  updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
   updateTrees(dt);
   updateOreRocks();
   updateChickens(dt);   // 🐔 닭 배회(닭장 건설 후)

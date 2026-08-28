@@ -18,9 +18,12 @@
 <meta name="twitter:title" content="calm forest 🌿" />
 <meta name="twitter:description" content="포근한 로우폴리 3D 마을 — 브라우저에서 바로 플레이." />
 <meta name="twitter:image" content="https://calmforest.cloud/preview.png" />
-<!-- 파비콘(인라인 SVG · 외부 파일 없음): 민트 배경 위 로우폴리 나무 -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
+<!-- 파비콘 — 실제 파일로 서빙해야 구글 검색결과에도 아이콘이 뜬다.
+     (data:image/svg+xml 인라인은 브라우저 탭에만 보이고, 구글 크롤러는 무시함) -->
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
 <!-- =========================================================
      [GA4 트래킹]  js/analytics.js 가 config.js 의 GA4_MEASUREMENT_ID 를

@@ -35,6 +35,10 @@ const INCLUDE = [
   'assets',          // 아이콘
   'dashboards',      // 관리자·분석 페이지(index.html 에서 링크)
   'preview.png',     // og:image
+  'favicon.ico',     // 파비콘 — 구글 검색결과 아이콘의 기본 fallback
+  'favicon.svg',     // 파비콘 — 모던 브라우저용 벡터
+  'favicon-96.png',  // 파비콘 — SVG 를 못 읽는 크롤러용 래스터
+  'apple-touch-icon.png', // iOS 홈화면 아이콘
   '_headers',        // 캐시 헤더
 ];
 
