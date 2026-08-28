@@ -23,7 +23,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
-import { saveGame, loadGame, sendBoatRun } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록
+import { saveGame, loadGame, sendBoatRun, sendSeaRecord } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -357,6 +357,27 @@ const mistLanterns = [];                             // { group, headMat, light,
 // 진행 중인 정화 상태 — active=false 면 웨이브 전(수호목에서 시작)
 const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false };
 
+// ── 🌊 바다터(대형 낚시) — 기획: docs/SEA_FISHING_PLAN.md ──────────────
+const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
+const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
+const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
+const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
+const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
+// 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
+//   drag(끌려가는 속도)·win(당길 기회 배율)·tap(연타 1회 진행)·w(무게 kg)·give(보상)
+const SEA_SPECIES = [
+  { id: 'aji',  name: '전갱이', ico: '🐟', scale: 0.62, color: 0x6f8fa8, drag: 0.45, win: 1.35, tap: 0.060, w: [1, 3],    give: { fish: 1, coins: 4 },  daylight: true },
+  { id: 'buri', name: '방어',   ico: '🐠', scale: 0.92, color: 0x4a6f8f, drag: 0.72, win: 1.05, tap: 0.042, w: [6, 14],   give: { fish: 2, coins: 8 } },
+  { id: 'mola', name: '개복치', ico: '🐡', scale: 1.35, color: 0x7a8896, drag: 0.50, win: 1.10, tap: 0.020, w: [40, 90],  give: { fish: 2, coins: 14 }, night: true, sunfish: true },
+  { id: 'tuna', name: '참치',   ico: '⚔️', scale: 1.15, color: 0x33628f, drag: 0.95, win: 0.90, tap: 0.032, w: [60, 120], give: { fish: 3, coins: 24 }, daily: true },
+];
+let seaGroup = null, atSea = false;
+let seaFishes = [];                                   // 배회 물고기 { g, sp, ang, des, spd, tTurn } (seaGroup 로컬 좌표)
+let seaBuoy = null, seaLine = null, seaRodMesh = null, _seaPrevTool = null;
+// 진행 상태 머신 — idle(배회 관찰) → cast(비행·입질 대기) → fight(버둥/당기기) → catch/miss
+const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, sp: null,
+  pz: 0, fishDir: 1, landed: false, good: 0, bad: 0, t0: 0, fmesh: null, doneT: 0 };
+
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
   if (interiorGroup) interiorGroup.visible = indoor;
@@ -365,6 +386,7 @@ function setSpaceVisible() {
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (riverGroup) riverGroup.visible = atRiver;
   if (mistGroup) mistGroup.visible = atMist;
+  if (seaGroup) seaGroup.visible = atSea;
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe) startRainSound();
   else stopRainSound();
@@ -616,6 +638,7 @@ const gameState = {
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
+  sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
@@ -978,7 +1001,7 @@ const ANIMALS = [
     snout: { len: 0.22, r: 0.20, color: 0xc9a878, nose: 0x2a2320, noseR: 0.075 },
     tail: { type: 'stub', color: 0x8a6038, wagSpeed: 1.2, wagAmp: 0.08 } },
 
-  { id: 'panda', name: '판다', emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a,
+  { id: 'panda', name: '판다', emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a, armColor: 0x2a2a2a,   // 실제 판다처럼 팔은 검게(흰 몸에 묻히지 않게)
     bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.45, headY: 1.34, armX: 0.88,
     ears: 'round', earScale: 1.15,
     snout: { len: 0.18, r: 0.19, color: 0xffffff, nose: 0x2a2a2a, noseR: 0.07 },
@@ -991,7 +1014,37 @@ const ANIMALS = [
     tail: { type: 'feather', color: 0xffd23a, wagSpeed: 2.6, wagAmp: 0.14 },
     extras: ['beak', 'comb', 'wings'] },
 ];
-let heldGroup, handAnchor, heldToolMesh; // 팔(어깨 피벗) / 손 / 든 도구
+let heldGroup, handAnchor, heldToolMesh; // 도구 캐리어(손 따라가기/등 수납) / 손 / 든 도구
+let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아리는 날개가 팔 역할(같은 구조)
+let armWristK = 0;        // 손목 펴짐 0(자루 세움)~1(팔의 연장) — 스윙 중에만 커짐
+let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(rad)
+
+// ── 팔 상수 — arm-sim.html 시뮬레이션으로 검증한 값 ──
+//   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
+const _axX = new THREE.Vector3(1, 0, 0), _axZ = new THREE.Vector3(0, 0, 1);
+const ARM_AIM_R = new THREE.Quaternion().setFromUnitVectors(
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.44, -.85, .28).normalize());
+const ARM_AIM_L = new THREE.Quaternion().setFromUnitVectors(
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.42, -.87, .20).normalize());
+// 옆베기: 몸을 감았다 풀며 팔이 가로로 쓸고 감 — 와인드업 63° → 반대편 86°
+const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
+const WRIST_MAX = 0.55;   // 1.0이면 팔+도구가 한 줄 막대가 돼 어색(시뮬에서 확인)
+// 도구 쥐는 자세: 팔 조준 회전을 상쇄해 자루를 세움 / 스윙 땐 팔의 연장(180°)
+const TOOL_QREST = ARM_AIM_R.clone().invert()
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
+const TOOL_QSWING = new THREE.Quaternion().setFromAxisAngle(_axX, Math.PI);
+// 🐤 날개-팔은 조준 회전이 팔(ARM_AIM)과 달라 쥐는 자세 상쇄값도 다르다(chick-wing-sim.html 검증)
+const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
+let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
+// 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
+function slashPhase(p, B, S) {
+  if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
+  if (p < .58) { const q = (p - .32)/.26;  return B + (S - B) * q * q; }
+  const q = (p - .58) / .42;               return S + (0 - S) * (1 - (1-q)*(1-q));
+}
 let restArmX = 0.78;      // 손에 들었을 때의 좌우 위치(캐릭터 몸집마다 다름 — applyCharacter 가 갱신)
 let toolStow = 0;         // 🎒 도구 수납 진행 0(손 옆)~1(등 뒤). ✋맨손이면 1로 보간된다
 let sunLight, hemiLight, ambient;
@@ -1360,12 +1413,14 @@ export async function enterGame() {
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
   // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인
   if (_wq.get('mist') === '1') setTimeout(() => enterMist(), 60);
+  if (_wq.get('sea') === '1') setTimeout(() => enterSea(), 60);   // 테스트: ?sea=1 — 바다터 바로 입장
+  if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
-    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : 'village',
+    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
     x: player.position.x, z: player.position.z,
   }));
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
@@ -1409,6 +1464,7 @@ function applySave(saved) {
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
+  if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
   if (saved.nickname) gameState.nickname = saved.nickname;                          // 🏷️ 닉네임 복원
@@ -1508,6 +1564,7 @@ function buildWorld() {
 
   for (let i = 0; i < 40; i++) {
     const r = 6 + Math.random() * 26, a = Math.random() * Math.PI * 2;
+    if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 1) continue;  // 🌊 후미 물 위 제외
     const patch = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2.5, 12), clayMat(PAL.groundDark, false));
     patch.geometry.rotateX(-Math.PI / 2);
     patch.position.set(Math.cos(a) * r, 0.01, Math.sin(a) * r);
@@ -1523,6 +1580,8 @@ function buildWorld() {
       ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
+      || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
+      || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
@@ -1539,9 +1598,12 @@ function buildWorld() {
   buildFarm();        // 개인 텃밭 필드
   spawnMineGate();    // 채굴 동굴 입구
   buildMine();        // 채굴 동굴
+  spawnSeaGate();     // 🌊 바다터 포구(마을 북동)
+  buildSea();         // 🌊 바다 인스턴스(부두+대형 낚시)
 
   for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
+    if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
     const blade = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.7, 5), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
     blade.position.set(Math.cos(a) * r, 0.35, Math.sin(a) * r);
     blade.castShadow = true;
@@ -1713,19 +1775,12 @@ function buildAnimalMesh(id) {
       c.position.set(0, HY + HR * (0.92 - i * 0.10), -HR * (0.02 + i * 0.22)); g.add(c);
     });
   }
-  if (ex.includes('wings')) {       // 🐤 양옆 짧은 날개
+  // 🐤 날개는 아래 팔 조립부에서 어깨 피벗에 매달아 만든다(팔처럼 스윙 — chick-wing-sim.html 검증)
+  if (ex.includes('band')) {        // 🐼 검은 어깨 무늬 — 팔처럼 안 보이게 몸에 밀착(진짜 팔은 armColor 로 검게)
     [-1, 1].forEach(s => {
-      const w = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0xffd23a, false));
-      w.scale.set(0.30, 0.85, 0.75);
-      w.position.set(s * R * 0.92, bodyY + R * 0.02, R * 0.05);
-      w.rotation.z = -s * 0.20; w.castShadow = true; g.add(w);
-    });
-  }
-  if (ex.includes('band')) {        // 🐼 검은 어깨(팔) 블록
-    [-1, 1].forEach(s => {
-      const b = new THREE.Mesh(new THREE.SphereGeometry(R * 0.40, 10, 8), clayMat(0x2a2a2a, false));
-      b.scale.set(0.52, 0.95, 0.86);
-      b.position.set(s * R * 0.88, bodyY + R * 0.10, 0);
+      const b = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0x2a2a2a, false));
+      b.scale.set(0.5, 0.8, 0.78);
+      b.position.set(s * R * 0.78, bodyY + R * 0.22, 0);
       b.castShadow = true; g.add(b);
     });
   }
@@ -1773,7 +1828,51 @@ function buildAnimalMesh(id) {
     g.add(tail);
   }
 
-  return { group: g, tail };
+  // ── 팔 — 어깨 피벗(스윙축 YXZ) → 조준(고정) → 팔뚝·발바닥·손 ──
+  //   🐤병아리는 별도 팔 대신 날개 자체를 어깨 피벗에 매달아 팔처럼 쓴다(chick-wing-sim.html 검수값)
+  let armR = null, armL = null;
+  if (ex.includes('wings')) {
+    const WLEN = 1.15;                       // 원본 날개보다 15% 길게 — 그립까지 리치 확보
+    const halfH = R * 0.34 * 0.85;           // 날개 세로 반높이
+    const mkWing = (side) => {
+      const pivot = new THREE.Group();
+      pivot.rotation.order = 'YXZ';
+      pivot.position.set(side * R * 0.90, bodyY + R * 0.28, R * 0.05);
+      const aim = new THREE.Group();
+      aim.rotation.z = -side * 0.20;         // 원본 날개의 바깥 기울임을 조준 그룹에 흡수
+      pivot.add(aim);
+      const w = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0xffd23a, false));
+      w.scale.set(0.30, 0.85 * WLEN, 0.75);
+      w.position.set(side * R * 0.02, -(halfH * WLEN) + R * 0.08, 0);  // 윗단을 어깨에 살짝 파묻기
+      w.castShadow = true; aim.add(w);
+      const hand = new THREE.Group();
+      hand.position.set(0, -(halfH * 2 * WLEN) + R * 0.12, R * 0.04);  // 날개 끝 = 손
+      aim.add(hand);
+      return { pivot, hand };
+    };
+    armR = mkWing(1); armL = mkWing(-1);
+    g.add(armR.pivot, armL.pivot);
+  } else {
+    const mkArm = (side) => {
+      const pivot = new THREE.Group();
+      pivot.rotation.order = 'YXZ';         // 옆베기: 팔을 든(X) 채 수직축(Y) 스윕
+      pivot.position.set(side * R * 0.87, bodyY + R * 0.54, R * 0.19);
+      const aim = new THREE.Group();
+      aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L);
+      pivot.add(aim);
+      const ar = R * 0.23, al = R * 0.22;
+      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), a.armColor ? clayMat(a.armColor, false) : skin());
+      upper.position.y = -(al / 2 + ar * 0.4); upper.castShadow = true; aim.add(upper);
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), clayMat(a.ear, false));
+      paw.position.y = -(al + ar * 0.9); paw.castShadow = true; aim.add(paw);
+      const hand = new THREE.Group(); hand.position.y = -(al + ar * 0.9); aim.add(hand);
+      return { pivot, hand };
+    };
+    armR = mkArm(1); armL = mkArm(-1);
+    g.add(armR.pivot, armL.pivot);
+  }
+
+  return { group: g, tail, armR, armL };
 }
 
 // 선택한 동물로 캐릭터 외형 적용 — 체형이 다르므로 몸체를 통째로 교체
@@ -1783,6 +1882,9 @@ function applyCharacter(id) {
   if (charGroup) { playerAnchor.remove(charGroup); charGroup = null; tailPivot = null; }
   const built = buildAnimalMesh(a.id);
   charGroup = built.group; tailPivot = built.tail;
+  playerArms = (built.armR && built.armL) ? { R: built.armR, L: built.armL } : null;
+  toolQRest = (a.extras || []).includes('wings') ? TOOL_QREST_WING : TOOL_QREST;
+  armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
@@ -1823,26 +1925,126 @@ function makeCharacterPreview(canvas) {
 function toolMesh(id) {
   const g = new THREE.Group();
   const wood = (l) => new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, l, 6), clayMat(0x8a5a3a));
+  // ── 새 4종(도끼·곡괭이·망치·낫) 공용 — arm-sim.html 에서 검수받은 조형 ──
+  const GRIP = 0x5f3d26, STEEL = 0x6d757c, EDGE = 0xd9dfe4;
+  const handle = (l, r = 0.030) => {   // 테이퍼 자루 + 그립 밴드 + 끝 혹. 반환: 자루 꼭대기 y
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clayMat(0x8a5a3a));
+    h.position.y = l / 2 - 0.08;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.18, r * 1.18, 0.07, 7), clayMat(GRIP));
+    band.position.y = -0.02;
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(r * 1.35, 7, 6), clayMat(GRIP));
+    knob.position.y = -0.08;
+    g.add(h, band, knob);
+    return l - 0.08;
+  };
   if (id === 'axe') {
-    const h = wood(0.5); h.position.y = 0.15; g.add(h);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.05), clayMat(0xb84a3e)); head.position.set(0.07, 0.36, 0); g.add(head);
+    const top = handle(0.52);
+    // 쐐기형 머리: 강철 몸체 + 밝은 날 + 뒤통수 망치면
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.13, 0.06), clayMat(STEEL));
+    head.position.set(0.075, top - 0.05, 0); g.add(head);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.155, 0.028), clayMat(EDGE));
+    blade.position.set(0.175, top - 0.05, 0); blade.rotation.z = 0.06; g.add(blade);
+    const poll = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.07), clayMat(STEEL));
+    poll.position.set(-0.035, top - 0.05, 0); g.add(poll);
+    g.scale.setScalar(1.18);
   } else if (id === 'hoe') {
-    const h = wood(0.5); h.position.y = 0.15; g.add(h);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.18), clayMat(0x9aa0a4)); blade.position.set(0, 0.4, 0.08); blade.rotation.x = 0.9; g.add(blade);
+    const top = handle(0.52);
+    // 곡괭이 — 소켓에서 양팔이 대칭으로 뻗고 끝으로 갈수록 처지며 뾰족해진다. 검은 무쇠 톤
+    const IRON = 0x4d5156;
+    const hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    const boss = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.095, 0.075), clayMat(IRON));
+    hd.add(boss);
+    [-1, 1].forEach(sx => {
+      const TH = [0.14, 0.32], LEN = [0.13, 0.12];
+      let px = sx * 0.042, py = 0.012;
+      for (let i = 0; i < 2; i++) {
+        const dx = Math.cos(TH[i]) * sx, dy = -Math.sin(TH[i]);
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(LEN[i], 0.048 - i * 0.012, 0.05 - i * 0.012), clayMat(IRON));
+        seg.position.set(px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
+        seg.rotation.z = -sx * TH[i];
+        hd.add(seg);
+        px += dx * LEN[i]; py += dy * LEN[i];
+      }
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.020, 0.085, 6), clayMat(IRON));
+      const t3 = 0.48, dx = Math.cos(t3) * sx, dy = -Math.sin(t3);
+      tip.position.set(px + dx * 0.042, py + dy * 0.042, 0);
+      tip.rotation.z = -sx * (Math.PI / 2 + t3);
+      hd.add(tip);
+    });
+    g.scale.setScalar(1.18);
   } else if (id === 'seed') {
     const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), clayMat(0xcaa06a)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
   } else if (id === 'water') {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clayMat(0x8fd0ea)); body.position.y = 0.18; g.add(body);
     const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clayMat(0x8fd0ea)); spout.position.set(0.15, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
   } else if (id === 'sickle') {
-    const h = wood(0.34); h.position.y = 0.1; g.add(h);
-    const blade = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.02, 6, 10, Math.PI), clayMat(0xc9ced2)); blade.position.set(0.05, 0.3, 0); blade.rotation.set(Math.PI / 2, 0, 0.3); g.add(blade);
+    const top = handle(0.30, 0.034);
+    // 전투낫 — 날이 자루의 연장선으로 길게 서고, 끝으로 갈수록 뒤로 완만하게 휜다.
+    //   완만한 곡선은 각도가 조금씩 커지는 3개 세그먼트로 — 급하게 꺾으면 갈고리가 된다.
+    const bl = new THREE.Group();
+    bl.position.y = top + 0.01; bl.rotation.y = 0.10; g.add(bl);
+    const TH = [0.06, 0.28, 0.60], LEN = [0.15, 0.12, 0.10], W = [0.055, 0.045, 0.030];
+    let px = 0, py = 0;
+    for (let i = 0; i < 3; i++) {
+      const dx = Math.sin(TH[i]), dy = Math.cos(TH[i]);
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(W[i], LEN[i], 0.016), clayMat(0x6d757c));
+      seg.position.set(px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
+      seg.rotation.z = -TH[i];
+      bl.add(seg);
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.013, LEN[i] * 0.94, 0.012), clayMat(0xd9dfe4));
+      edge.position.set(px + dx * LEN[i] / 2 + dy * (W[i] / 2), py + dy * LEN[i] / 2 - dx * (W[i] / 2), 0);
+      edge.rotation.z = -TH[i];
+      bl.add(edge);
+      px += dx * LEN[i]; py += dy * LEN[i];
+    }
+    const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clayMat(0x6d757c));
+    ferrule.position.y = top - 0.01; g.add(ferrule);
+    g.scale.setScalar(1.18);
   } else if (id === 'hammer') {
-    const h = wood(0.5); h.position.y = 0.15; g.add(h);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), clayMat(0x6a6f74)); head.position.y = 0.38; g.add(head);
+    const top = handle(0.50);
+    // 원통형 머리(가로) + 양끝 밝은 캡 + 자루 고정핀
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.20, 8), clayMat(STEEL));
+    head.position.y = top - 0.04; head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.058, 0.03, 8), clayMat(EDGE));
+      cap.position.set(sx * 0.105, top - 0.04, 0); cap.rotation.z = Math.PI / 2; g.add(cap);
+    });
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), clayMat(GRIP));
+    pin.position.y = top + 0.022; g.add(pin);
+    g.scale.setScalar(1.18);
   } else if (id === 'rod') {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
+  } else if (id === 'reel') {
+    // 🌊 대물 릴대 — arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
+    //   짧고 굵은 보트 로드 + 윈치급 오버사이즈 드럼 릴 + 굵은 가이드 링 + 밝은 팁.
+    const NAVY = 0x2e4a66, KNOB = 0xd94f4f, ROPE = 0xe8d9a8;
+    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 7, 6), clayMat(GRIP)); rknob.position.y = -0.08; g.add(rknob);
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.046, 0.22, 7), clayMat(GRIP)); rear.position.y = 0.04; g.add(rear);
+    const reel = new THREE.Group(); reel.position.set(0.1, 0.24, 0); g.add(reel);
+    const spool = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.075, 12), clayMat(STEEL));
+    spool.rotation.z = Math.PI / 2; reel.add(spool);
+    [-1, 1].forEach(sx => {
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12), clayMat(EDGE));
+      rim.rotation.z = Math.PI / 2; rim.position.x = sx * 0.04; reel.add(rim);
+    });
+    const wound = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.022, 6, 12), clayMat(ROPE));
+    wound.rotation.y = Math.PI / 2; reel.add(wound);
+    const crank = new THREE.Group(); crank.position.x = 0.065; reel.add(crank);
+    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.11, 0.018), clayMat(EDGE)); armC.position.y = 0.048; crank.add(armC);
+    const kn = new THREE.Mesh(new THREE.SphereGeometry(0.03, 7, 6), clayMat(KNOB)); kn.position.y = 0.105; crank.add(kn);
+    const blank = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.048, 0.52, 7), clayMat(NAVY)); blank.position.y = 0.56; g.add(blank);
+    [[0.52, 0.04], [0.7, 0.032]].forEach(([y, r]) => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.013, 5, 10), clayMat(EDGE));
+      ring.rotation.x = Math.PI / 2; ring.position.set(0.03 + r, y, 0); g.add(ring);
+    });
+    const rtip = new THREE.Group(); rtip.position.y = 0.8; g.add(rtip);
+    const tipRod = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.026, 0.2, 6), clayMat(EDGE));
+    tipRod.position.y = 0.09; rtip.add(tipRod);
+    rtip.rotation.z = 0.34;
+    const tipEnd = new THREE.Group(); tipEnd.position.y = 0.19; rtip.add(tipEnd);   // 낚싯줄 시작점
+    g.scale.setScalar(1.25);   // 대물 장비 — 카메라 클로즈업(0.45)에서도 또렷하게
+    g.userData.sea = { crank, tip: rtip, tipEnd };
   } else if (id === 'net') {
     // 🦋 포충망 — 긴 손잡이 + 테 + 반투명 망(밤에 실루엣이 또렷하게 보이도록 밝은 색)
     const h = wood(0.62); h.position.y = 0.2; g.add(h);
@@ -1860,9 +2062,30 @@ function toolMesh(id) {
 //   (buildPlayer 의 playerArm = null) 도구 그룹 위치만 옮기면 그대로 등에 걸린 그림이 된다.
 const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
 const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선
+const _hfM = new THREE.Matrix4(), _hfP = new THREE.Vector3(), _hfQ = new THREE.Quaternion(), _hfS = new THREE.Vector3();
+const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion();
+const _stowP = new THREE.Vector3(HELD_STOW.px, HELD_STOW.py, HELD_STOW.pz);
+const _stowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(HELD_STOW.rx, 0, HELD_STOW.rz));
+const _idQ = new THREE.Quaternion();
 function poseHeldTool(stow, swingX, swingZ) {
   if (!heldGroup) return;
   const k = stow, j = 1 - k;
+  if (playerArms) {
+    // 팔이 있으면 도구는 오른손을 따라간다(스윙의 주체는 팔). 등 수납 자세는 그대로 보간.
+    const hand = playerArms.R.hand;
+    hand.updateWorldMatrix(true, false);
+    _hfM.copy(playerAnchor.matrixWorld).invert().multiply(hand.matrixWorld);
+    _hfM.decompose(_hfP, _hfQ, _hfS);
+    _hfOff.copy(handAnchor.position).applyQuaternion(_hfQ);   // 기존 handAnchor 오프셋 상쇄
+    _hfP.sub(_hfOff);
+    heldGroup.position.lerpVectors(_hfP, _stowP, k);
+    heldGroup.quaternion.slerpQuaternions(_hfQ, _stowQ, k);
+    // 손목: 자루 세워 쥠 ↔ 스윙 중 팔의 연장 · 등에 멜 땐 예전 그대로(identity)
+    _hfTQ.slerpQuaternions(toolQRest, TOOL_QSWING, armWristK);
+    if (toolPourTilt) _hfTQ.multiply(_hfTilt.setFromAxisAngle(_axX, toolPourTilt));
+    if (heldToolMesh) heldToolMesh.quaternion.slerpQuaternions(_hfTQ, _idQ, k);
+    return;
+  }
   const rx = (swingX === undefined ? HELD_REST.rx : swingX);
   const rz = (swingZ === undefined ? HELD_REST.rz : swingZ);
   heldGroup.position.set(restArmX * j + HELD_STOW.px * k,
@@ -1873,6 +2096,7 @@ function poseHeldTool(stow, swingX, swingZ) {
 
 function setHeldTool(id) {
   if (!handAnchor) return;
+  if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   heldToolMesh = toolMesh(id); handAnchor.add(heldToolMesh);
 }
@@ -4319,6 +4543,590 @@ function doExpand() {
 // =============================================================
 //  집 실내(입장) + 꾸미기
 // =============================================================
+// =============================================================
+//  🌊 바다터 — 대형 낚시 (docs/SEA_FISHING_PLAN.md · 프로토타입 sea-sim.html)
+//  포구 게이트(마을 북동) → 부두 인스턴스. 수면의 물고기를 노려 던지고,
+//  버둥칠 땐 버티고(부두 끝까지 끌려가면 놓침) "당기세요!!"에 연타로 감는다.
+//  참치 = "오늘의 대어"(날짜 시드 급수) → sea_records → 🏆 'sea' 리더보드.
+// =============================================================
+const SEA_CAST_DUR = 0.62;                       // 던지기: 부표 포물선 비행 시간
+const seaRnd = (a, b) => a + Math.random() * (b - a);
+const seaAngDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+// ── 🌊 일렁이는 수면 — 정점 웨이브(사인 3겹 합성) + 깊이 그라데이션 ──
+//   dampFn(x,z)→0..1 : 물가·부두 근처에서 파도를 잠재워 지오메트리 뚫림 방지
+let coveWater = null, seaWater = null;           // {mesh, base, damp}
+let seaBeacon = null, seaLampMat = null, seaBeamMats = [];   // 등대 빔(밤·악천후) + 램프(깜빡임)
+function makeWavyWater(radius, thetaSeg, rings, colCenter, colEdge, opacity, dampFn, gradR) {
+  const geo = new THREE.RingGeometry(0.02, radius, thetaSeg, rings);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, n = pos.count;
+  const cols = new Float32Array(n * 3), damp = new Float32Array(n);
+  const cA = new THREE.Color(colCenter), cB = new THREE.Color(colEdge), c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), d = Math.hypot(x, z);
+    c.lerpColors(cA, cB, Math.min(1, (d / (gradR ?? radius)) ** 1.4));
+    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+    damp[i] = dampFn ? dampFn(x, z, d) : 1;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.18, metalness: 0.25,
+    transparent: true, opacity, flatShading: false,
+  }));
+  mesh.receiveShadow = true;
+  return { mesh, base: pos.array.slice(), damp, baseCols: cols.slice() };
+}
+function updateWavyWater(w, t, amp, speed) {
+  const arr = w.mesh.geometry.attributes.position.array, base = w.base, damp = w.damp;
+  const cols = w.mesh.geometry.attributes.color.array, bc = w.baseCols;
+  for (let i = 0; i < damp.length; i++) {
+    const x = base[i * 3], z = base[i * 3 + 2];
+    const y = amp * damp[i] * (
+      Math.sin(x * 0.55 + t * speed) * 0.55 +
+      Math.sin(z * 0.48 - t * speed * 0.8 + 1.7) * 0.45 +
+      Math.sin((x + z) * 0.30 + t * speed * 0.55) * 0.50);
+    arr[i * 3 + 1] = y;
+    const k = Math.max(0, y) / amp * 0.5;          // 파도 마루를 하얗게(참고 이미지의 반짝임)
+    cols[i * 3]     = bc[i * 3]     + (1 - bc[i * 3])     * k;
+    cols[i * 3 + 1] = bc[i * 3 + 1] + (1 - bc[i * 3 + 1]) * k;
+    cols[i * 3 + 2] = bc[i * 3 + 2] + (1 - bc[i * 3 + 2]) * k;
+  }
+  w.mesh.geometry.attributes.position.needsUpdate = true;
+  w.mesh.geometry.attributes.color.needsUpdate = true;
+  w.mesh.geometry.computeVertexNormals();
+}
+// 매 프레임: 보이는 수면만 일렁임 + 등대 야간 빔 회전(마을 후미)
+function updateSeaVisuals(t) {
+  if (atSea) { if (seaWater) updateWavyWater(seaWater, t, 0.13, 1.4); }
+  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe)
+    updateWavyWater(coveWater, t, 0.085, 1.6);
+  if (seaBeacon) {
+    // 밤뿐 아니라 악천후(비·눈·안개) 낮에도 점등 — 흐린 날 등대가 물을 쓸어 비추는 이벤트
+    const gloomy = WEATHER === 'rain' || WEATHER === 'snow' || WEATHER === 'fog';
+    const on = isNight() || gloomy;
+    seaBeacon.visible = on;
+    if (on) {
+      seaBeacon.rotation.y = t * 0.55;                               // 천천히 도는 서치라이트
+      const k = isNight() ? 1 : 0.55;                                // 낮 악천후엔 은은하게
+      for (const m of seaBeamMats) m.opacity = m.userData.base * k;
+      if (seaLampMat) seaLampMat.emissiveIntensity = (isNight() ? 1.3 : 1.05) + Math.sin(t * 2.4) * 0.45;
+    } else if (seaLampMat) seaLampMat.emissiveIntensity = 0.8;
+  }
+}
+
+function spawnSeaGate() {
+  const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
+  const CX = SEA_COVE.x - SEA_GATE.x, CZ = SEA_COVE.z - SEA_GATE.z;   // 후미 중심(로컬)
+  // ── 후미(만) — 모래톱 → 바닷물 → 먼바다 톤. 게이트에 서면 바다가 보인다
+  const sand = new THREE.Mesh(new THREE.CircleGeometry(SEA_COVE.r + 1.1, 48), clayMat(0xe8d9a8, false));
+  sand.geometry.rotateX(-Math.PI / 2); sand.position.set(CX, 0.03, CZ); sand.receiveShadow = true; g.add(sand);
+  coveWater = makeWavyWater(SEA_COVE.r, IS_MOBILE ? 36 : 48, IS_MOBILE ? 7 : 10,
+    0x3b8fbe, 0x6fd0e2, 0.92,
+    (x, z, d) => Math.min(1, Math.max(0, (SEA_COVE.r - d) / (SEA_COVE.r * 0.35))));  // 물가에선 잔잔하게
+  coveWater.mesh.position.set(CX, 0.08, CZ); g.add(coveWater.mesh);
+  // 물가 거품 — 마을 쪽 물가를 따라 하얀 방울
+  const shoreAng = Math.atan2(-CZ, -CX);          // 후미 중심 → 게이트(마을) 방향
+  for (let i = 0; i < 7; i++) {
+    const a = shoreAng + (i - 3) * 0.34;
+    const foam = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.05, 7, 5), clayMat(0xf6f2e4, false));
+    foam.scale.y = 0.3;
+    foam.position.set(CX + Math.cos(a) * (SEA_COVE.r - 0.5), 0.13, CZ + Math.sin(a) * (SEA_COVE.r - 0.5));
+    g.add(foam);
+  }
+  // ── 등대 — 물속 바위섬 위(빨간 줄무늬 2단, 마을에서 잘 보이는 랜드마크)
+  const LX = CX - 4.9, LZ = CZ + 4.6;
+  const islet = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05, 0), clayMat(0x9aa4ab));
+  islet.scale.y = 0.5; islet.position.set(LX, 0.16, LZ); islet.castShadow = true; g.add(islet);
+  [[-0.9, 0.5, 0.4], [0.8, -0.6, 0.34]].forEach(([dx, dz, s]) => {
+    const r2 = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), clayMat(0xb9c0c4));
+    r2.position.set(LX + dx, 0.14, LZ + dz); g.add(r2);
+  });
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.52, 2.3, 8), clayMat(0xf2ede2));
+  tower.position.set(LX, 1.45, LZ); tower.castShadow = true; g.add(tower);
+  [[1.05, 0.5], [1.85, 0.46]].forEach(([y, r]) => {
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(r, r + 0.02, 0.34, 8), clayMat(0xd94f4f));
+    band.position.set(LX, y, LZ); g.add(band);
+  });
+  seaLampMat = new THREE.MeshStandardMaterial({ color: 0xffd77a, emissive: 0xffb347, emissiveIntensity: 0.8 });
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), seaLampMat);
+  lamp.position.set(LX, 2.56, LZ); g.add(lamp);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.45, 8), clayMat(0x5f6f7c));
+  cap.position.set(LX, 2.82, LZ); g.add(cap);
+  // 🔦 서치라이트 빔 — 밤·악천후(비/눈/안개)에 켜져 천천히 회전(updateSeaVisuals)
+  //   실제 등대처럼 양방향 빔 + 겹원뿔(안쪽 좁고 밝게, 바깥 넓고 은은하게)로 부드러운 광선
+  seaBeacon = new THREE.Group(); seaBeacon.position.set(LX, 2.56, LZ); seaBeacon.visible = false;
+  seaBeamMats = [];
+  [0, Math.PI].forEach(dir => {
+    const arm = new THREE.Group(); arm.rotation.y = dir; seaBeacon.add(arm);
+    [[0.85, 7.5, 0.13], [0.38, 6.2, 0.22]].forEach(([r, len, op]) => {
+      const geo = new THREE.ConeGeometry(r, len, 12, 1, true);
+      geo.translate(0, -len / 2, 0);              // 꼭짓점을 램프에 붙이고 바깥으로 퍼지게
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffe9a8, transparent: true, opacity: op, depthWrite: false,
+        blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      mat.userData.base = op;                     // 밤/낮 밝기 보간 기준(updateSeaVisuals)
+      seaBeamMats.push(mat);
+      const b = new THREE.Mesh(geo, mat);
+      b.rotation.z = Math.PI / 2 - 0.07;          // 수평보다 살짝 아래 — 수면을 쓸어 비추는 그림
+      arm.add(b);
+    });
+  });
+  g.add(seaBeacon);
+  // ── 방파제 — 물가에서 등대 바위섬 쪽으로 뻗는 바위줄
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42 - t * 0.14 + (i % 2) * 0.06, 0), clayMat(0xb9c0c4));
+    rock.position.set(0.8 + (LX - 1.6) * t, 0.16, -0.8 + (LZ + 0.8) * t);
+    rock.castShadow = true; g.add(rock);
+  }
+  // 부표 — 물 위 주황 부표(바다터 부표와 같은 문법)
+  [[CX - 1, CZ + 6.5], [CX + 4.5, CZ + 2]].forEach(([bx, bz]) => {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
+    b.scale.y = 1.25; b.position.set(bx, 0.2, bz); g.add(b);
+  });
+  g.add(makeSignpost('🌊 바다터', -1.6, 1.2));    // 다른 게이트와 같은 문법의 표지판
+  obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
+  obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });          // 밭 금지(후미)
+  solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);                       // 🚧 물엔 못 들어감
+}
+
+function buildSea() {
+  const g = new THREE.Group(); g.position.copy(SEA);
+  // 일렁이는 먼바다 — 부두·뭍 근처에선 파도를 잠재워 데크를 안 뚫게
+  seaWater = makeWavyWater(90, IS_MOBILE ? 40 : 56, IS_MOBILE ? 9 : 13,
+    0x54b6d2, 0x2c6ba6, 0.88, (x, z) => {
+      const dx = Math.max(0, Math.abs(x) - (SEA_DECK_W / 2 + 1.2));
+      const dz = Math.max(0, Math.max(SEA_DECK_Z1 - 1.2 - z, z - (SEA_DECK_Z0 + 1.2)));
+      const deck = Math.min(1, Math.hypot(dx, dz) / 4);            // 부두 주변 잔잔
+      const shore = Math.min(1, Math.max(0, (4.5 - z) / 4));       // 남쪽 모래톱 잔잔
+      return Math.min(deck, shore);
+    }, 45);                                                        // 색 그라데이션: 부두 근처 밝음 → 45 밖 깊은 색
+  seaWater.mesh.position.y = 0.02; g.add(seaWater.mesh);
+  const seabed = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), clayMat(0x2e7fa3, false));
+  seabed.geometry.rotateX(-Math.PI / 2); seabed.position.y = -1.2; g.add(seabed);
+  // 뭍(남쪽 입구) — 모래톱
+  const shore = new THREE.Mesh(new THREE.BoxGeometry(70, 1.2, 12), clayMat(0xe8d9a8, false));
+  shore.position.set(0, -0.32, SEA_DECK_Z0 + 6.5); shore.receiveShadow = true; g.add(shore);
+  // 부두 널판 — 끝 2칸은 붉게(위험 표시). 플레이어 발높이(y=0)에 맞춰 얇게 깐다
+  for (let z = SEA_DECK_Z0; z > SEA_DECK_Z1 - 0.4; z -= 0.82) {
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(SEA_DECK_W, 0.12, 0.72),
+      clayMat(z < SEA_DECK_Z1 + 1.8 ? 0xc46a4a : 0xb98a5a));
+    plank.position.set(0, -0.02, z - 0.4); plank.castShadow = plank.receiveShadow = true; g.add(plank);
+  }
+  for (let z = SEA_DECK_Z0 - 0.6; z > SEA_DECK_Z1; z -= 2.6) [-1, 1].forEach(sx => {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 1.1, 7), clayMat(0x8a5a3a));
+    post.position.set(sx * (SEA_DECK_W / 2 - 0.1), 0.2, z); post.castShadow = true; g.add(post);
+  });
+  // 부두 끝 깃발 — 놓침 라인의 시각 신호
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), clayMat(0x8a5a3a));
+  pole.position.set(SEA_DECK_W / 2 - 0.15, 0.8, SEA_DECK_Z1); g.add(pole);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.03), clayMat(0xd94f4f));
+  flag.position.set(SEA_DECK_W / 2 - 0.5, 1.3, SEA_DECK_Z1); g.add(flag);
+  // 부표 + 낚싯줄(10분할 — 팽팽/처짐 곡선)
+  seaBuoy = new THREE.Group();
+  const bb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a)); bb.scale.y = 1.25; seaBuoy.add(bb);
+  const bs = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.08, 9), clayMat(0xf4efe6)); seaBuoy.add(bs);
+  seaBuoy.visible = false; g.add(seaBuoy);
+  const lineGeo = new THREE.BufferGeometry().setFromPoints(Array.from({ length: 10 }, () => new THREE.Vector3()));
+  seaLine = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xf6f2e4 }));
+  seaLine.frustumCulled = false; seaLine.visible = false; g.add(seaLine);
+  scene.add(g); seaGroup = g; g.visible = false;
+}
+
+// 어종별 물고기 조형 — 참치형(방추형+초승달 꼬리) / 개복치형(넓적한 몸+뭉툭한 꼬리판)
+function buildSeaFishMesh(sp) {
+  const g = new THREE.Group(); const navy = sp.color;
+  if (sp.sunfish) {
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.72, 12, 10), clayMat(navy, false));
+    body.scale.set(0.5, 1.15, 1.05); g.add(body);
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), clayMat(0xc9d8e4, false));
+    cheek.scale.set(0.44, 0.95, 0.95); cheek.position.set(0, -0.1, 0.18); g.add(cheek);
+    [[1, 0.78], [-1, -0.78]].forEach(([s, y]) => {
+      const fin = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.75, 5), clayMat(navy, false));
+      fin.scale.set(0.3, 1, 1); fin.rotation.x = s > 0 ? -0.25 : Math.PI + 0.25; fin.position.set(0, y, -0.15); g.add(fin);
+    });
+    const clavus = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.16, 10), clayMat(navy, false));
+    clavus.rotation.z = Math.PI / 2; clavus.scale.set(1, 1, 0.5); clavus.position.z = -0.72; g.add(clavus);
+    [-1, 1].forEach(s => {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(0.09, 7, 6), clayMat(0x22303a, false));
+      e.position.set(s * 0.28, 0.3, 0.6); g.add(e);
+    });
+  } else {
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 9), clayMat(navy, false));
+    body.scale.set(0.82, 0.95, 1.75); g.add(body);
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 9), clayMat(0xc9d8e4, false));
+    belly.scale.set(0.78, 0.74, 1.42); belly.position.set(0, -0.16, 0.1); g.add(belly);
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.6, 8), clayMat(navy, false));
+    snout.rotation.x = Math.PI / 2; snout.scale.set(1, 1, 0.82); snout.position.set(0, 0.04, 1.05); g.add(snout);
+    // 꼬리자루 + 초승달 꼬리(굵은 갈래 2 + 가운데 쐐기 — 한 덩어리로 읽히게)
+    const ped = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.2, 0.45), clayMat(navy, false));
+    ped.position.set(0, 0, -1.08); g.add(ped);
+    const wedge = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.34, 5), clayMat(navy, false));
+    wedge.scale.set(0.5, 1, 1); wedge.rotation.x = -Math.PI / 2; wedge.position.set(0, 0, -1.38); g.add(wedge);
+    [[-0.72, 0.26], [-2.42, -0.26]].forEach(([rx, y]) => {
+      const lobe = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.9, 5), clayMat(navy, false));
+      lobe.scale.set(0.5, 1, 1); lobe.rotation.x = rx; lobe.position.set(0, y, -1.45); g.add(lobe);
+    });
+    const d1 = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.62, 5), clayMat(navy, false));
+    d1.scale.set(0.22, 1, 1); d1.rotation.x = -0.55; d1.position.set(0, 0.58, 0.12); g.add(d1);
+    [-1, 1].forEach(s => {
+      const pec = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.62, 5), clayMat(navy, false));
+      pec.scale.set(0.25, 1, 1); pec.rotation.set(-1.9, 0, s * 0.55); pec.position.set(s * 0.38, 0.05, 0.25); g.add(pec);
+    });
+    [-1, 1].forEach(s => {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(0.07, 7, 6), clayMat(0x22303a, false));
+      e.position.set(s * 0.3, 0.12, 0.78); g.add(e);
+    });
+  }
+  g.scale.setScalar(sp.scale);
+  return g;
+}
+
+// 오늘 출현 어종 — 시간대·오늘의 대어 여부로 결정(난이도 선택 UI 없음)
+function seaAvailable() {
+  return SEA_SPECIES.filter(sp =>
+    (!sp.daylight || !isNight()) && (!sp.night || isNight()) &&
+    (!sp.daily || gameState.sea.tunaDay !== todayStr()));
+}
+function populateSeaFishes() {
+  seaFishes.forEach(f => seaGroup.remove(f.g)); seaFishes = [];
+  seaAvailable().forEach((sp, i) => {
+    const g = buildSeaFishMesh(sp); seaGroup.add(g);
+    const home = { x: (i - 1) * 6.5, z: SEA_DECK_Z1 - 6 - i * 2.5 };
+    g.position.set(home.x, -0.42, home.z);
+    seaFishes.push({ g, sp, home, ang: Math.random() * Math.PI * 2, des: 0, spd: 1.0 + i * 0.3, tTurn: 0 });
+  });
+}
+
+function enterSea() {
+  atSea = true;
+  // 출구 존(뭍 끝, 반경 1.9)과 안 겹치게 데크 안쪽으로 스폰 — 첫 프롬프트가 '던지기'가 되도록
+  player.position.set(SEA.x, 0, SEA.z + SEA_DECK_Z0 - 2.9); player.rotation.y = Math.PI;
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
+  seaReset(); populateSeaFishes();
+  seaHoldRod(true);            // 🎣 바다터에선 릴대를 들고 다닌다(괭이 든 채 낚시터에 서 있지 않게)
+  ui.setSeaMode?.(true);       // 농사 도구 팔레트 숨김 — 여기선 액션 버튼 하나로 논다
+  snapCamera(); setSpaceVisible();
+  Sound.blip();
+  firstHint('sea', '🌊', '바다터',
+    `수면에 헤엄치는 물고기를 보고 ${IS_MOBILE ? '오른쪽 아래 🎣버튼으로' : '액션(Space)으로'} 던져보세요! 입질이 오면 줄다리기 — 🔴버둥칠 땐 꾹 참고, 🟢"당기세요!!"가 뜨면 연타로 감아요. 부두 끝(빨간 널판)까지 끌려가면 놓쳐요. ⚔️참치는 하루 한 번 "오늘의 대어" — 무게가 🏆랭킹에 올라가요!`);
+  trackEvent('sea_enter', { night: isNight(), weather: WEATHER });   // [GA4] 유입
+}
+function exitSea() {
+  seaReset();
+  seaHoldRod(false);           // 릴대 반납 — 마을 도구로 복귀
+  ui.setSeaMode?.(false);
+  atSea = false;
+  player.position.set(SEA_GATE.x - 1.4, 0, SEA_GATE.z + 1.6);
+  nearDoor = null; ui.setDoorPrompt?.(null);
+  snapCamera(); setSpaceVisible();
+  Sound.blip();
+  trackEvent('sea_exit');   // [GA4]
+}
+
+// 릴대 잡기/내리기 — 미니게임 동안만 손의 도구를 릴대로 교체(도구 시스템 비침습)
+function seaHoldRod(on) {
+  if (!handAnchor) return;
+  if (on) {
+    if (seaRodMesh) return;
+    _seaPrevTool = heldToolMesh;
+    if (heldToolMesh) handAnchor.remove(heldToolMesh);
+    seaRodMesh = toolMesh('reel'); heldToolMesh = seaRodMesh; handAnchor.add(seaRodMesh);
+  } else {
+    if (!seaRodMesh) return;
+    handAnchor.remove(seaRodMesh); seaRodMesh = null;
+    heldToolMesh = _seaPrevTool; _seaPrevTool = null;
+    if (heldToolMesh) handAnchor.add(heldToolMesh);
+  }
+}
+function seaReset() {
+  Object.assign(seaMG, { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, sp: null, fishDir: 1, landed: false, good: 0, bad: 0, doneT: 0 });
+  if (seaMG.fmesh) { seaGroup?.remove(seaMG.fmesh); seaMG.fmesh = null; }
+  if (seaBuoy) seaBuoy.visible = false;
+  if (seaLine) seaLine.visible = false;
+  ui.setSeaHud?.(null);
+  // 릴대는 여기서 내려놓지 않는다 — 바다터에 있는 동안엔 계속 들고 다님(enter/exit 에서 관리)
+}
+
+const _seaCastFrom = new THREE.Vector3(), _seaCastTo = new THREE.Vector3(), _seaTip = new THREE.Vector3();
+const _seaQ1 = new THREE.Quaternion(), _seaQ2 = new THREE.Quaternion(), _seaEuler = new THREE.Euler();
+const _seaV = new THREE.Vector3(), _seaUp = new THREE.Vector3(0, 1, 0);
+function seaAction() {
+  if (seaMG.st === 'idle') {
+    if (!seaFishes.length) { ui.toast?.('🐟 지금은 물고기가 안 보여요 — 시간대가 바뀌면 다른 어종이 와요'); return; }
+    // 조준 — 가장 가까운 배회 물고기의 어종이 걸린다("뭘 노리느냐"가 난이도)
+    let best = null, bd = Infinity;
+    for (const f of seaFishes) {
+      const d = dist2D({ x: SEA.x + f.g.position.x, z: SEA.z + f.g.position.z }, player.position);
+      if (d < bd) { bd = d; best = f; }
+    }
+    seaMG.sp = best.sp; seaMG.st = 'cast'; seaMG.t = 0; seaMG.landed = false;
+    seaMG.good = 0; seaMG.bad = 0; seaMG.progress = 0; seaMG.t0 = clock.elapsedTime;
+    seaMG.phaseLen = SEA_CAST_DUR + seaRnd(1.1, 2.2);
+    seaHoldRod(true);
+    seaRodMesh.userData.sea.tipEnd.getWorldPosition(_seaCastFrom); _seaCastFrom.sub(SEA);
+    _seaCastTo.set(Math.max(-8, Math.min(8, best.g.position.x * 0.7)), 0.06,
+                   Math.min(best.g.position.z - 1, SEA_DECK_Z1 - 2.5));
+    seaBuoy.visible = true; seaLine.visible = true;
+    Sound.blip();
+    trackEvent('sea_cast', { species: best.sp.id, night: isNight() });   // [GA4] 시도
+  } else if (seaMG.st === 'fight') {
+    const sp = seaMG.sp;
+    if (seaMG.phase === 'window') {
+      // 🟢 당길 기회 — 연타로 되감기
+      seaMG.progress = Math.min(1, seaMG.progress + sp.tap);
+      seaMG.good++; seaMG.pz += 0.13;
+      if (seaRodMesh) seaRodMesh.userData.sea.crank.rotation.x -= 0.5;
+      Sound.blip();
+      if (seaMG.progress >= 1) seaCatch();
+    } else {
+      // 🔴 버둥칠 때 당기면 역효과 — 확 끌려간다
+      seaMG.bad++; seaMG.pz -= 0.5 * sp.drag;
+      Sound.water();
+    }
+  } else if (seaMG.st === 'cast' && seaMG.landed) {
+    ui.toast?.('…조용히, 입질을 기다려요 🎣');
+  }
+}
+function seaPrompt() {
+  if (seaMG.st === 'idle') return '🎣 던지기 — 물고기를 보고!';
+  if (seaMG.st === 'cast') return seaMG.landed ? '…기다리는 중…' : null;
+  if (seaMG.st === 'fight') return seaMG.phase === 'window' ? '🟢 당기세요!!' : '🔴 버텨요…!';
+  return null;
+}
+
+// 무게 — 참치는 날짜 시드(전원 동일 급) × 타이밍 정확도 보정(리더보드 실력 변별)
+function seaWeight(sp) {
+  const base = sp.daily ? 60 + (dateHash('sea:tuna') % 46)
+                        : sp.w[0] + Math.random() * (sp.w[1] - sp.w[0]);
+  const acc = seaMG.good / Math.max(1, seaMG.good + seaMG.bad * 3);
+  return Math.round(base * (0.92 + acc * 0.16) * 10) / 10;
+}
+function seaCatch() {
+  const sp = seaMG.sp, w = seaWeight(sp);
+  const dur = Math.round((clock.elapsedTime - seaMG.t0) * 10) / 10;
+  seaMG.st = 'catch'; seaMG.t = 0; seaMG.doneT = 0;
+  seaBuoy.visible = false; seaLine.visible = false;
+  giveReward({ ...sp.give }, 'sea_catch', sp.id);   // [원장] 어종별 보상 유입
+  gameState.sea.caught = (gameState.sea.caught || 0) + 1;
+  if (sp.daily) gameState.sea.tunaDay = todayStr();
+  Sound.harvest(); spawnConfetti(player.position.x, 2.2, player.position.z - 1.5);
+  spawnFloatText(player.position.x, 2.0, player.position.z - 1, `${sp.ico} ${sp.name} ${w}kg!`, '#2e6a9d', 1.25);
+  ui.toast?.(`${sp.ico} ${sp.name} ${w}kg — 무게를 기록하고 바다로 돌려보냈어요! (+🐟${sp.give.fish} +🪙${sp.give.coins})`
+    + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : ''), 4200);
+  trackEvent('sea_catch', { species: sp.id, weight: w, duration: dur, good: seaMG.good, bad: seaMG.bad });   // [GA4] 코어 KPI
+  sendSeaRecord({ species: sp.id, weight: w });   // [Supabase] 무게 기록 → 리더보드('sea'는 참치만 집계)
+  requestSave();
+}
+function seaMiss() {
+  seaMG.st = 'miss'; seaMG.t = 0; seaMG.doneT = 0;
+  seaBuoy.visible = false; seaLine.visible = false;
+  Sound.water(); spawnSparkle(seaMG.fmesh ? SEA.x + seaMG.fmesh.position.x : player.position.x, 0.4, player.position.z - 3, 16);
+  spawnFloatText(player.position.x, 1.8, player.position.z - 1, '놓쳤다…!', '#c86a5a', 1.1);
+  trackEvent('sea_miss', { species: seaMG.sp?.id, progress: Math.round(seaMG.progress * 100) });   // [GA4] 난이도 튜닝 데이터
+}
+
+// 매 프레임 — 배회 AI + 상태 머신 + 연출(animate 에서 호출)
+let _seaHudT = 0;
+function updateSea(dt, t) {
+  if (!atSea || !seaGroup) return;
+  // 배회 물고기 — 방향을 천천히 트는 유영 + 분리 + 부두 회피 + 소란 회피
+  seaFishes.forEach((p, pi) => {
+    p.tTurn -= dt;
+    const hx = p.home.x - p.g.position.x, hz = p.home.z - p.g.position.z;
+    if (hx * hx + hz * hz > 64) { p.des = Math.atan2(hz, hx); p.tTurn = seaRnd(1.5, 3); }
+    else if (p.tTurn <= 0) { p.des = p.ang + seaRnd(-1.3, 1.3); p.tTurn = seaRnd(2, 4.5); }
+    p.ang += Math.max(-dt * 1.1, Math.min(dt * 1.1, seaAngDiff(p.des, p.ang)));
+    p.g.position.x += Math.cos(p.ang) * p.spd * dt;
+    p.g.position.z += Math.sin(p.ang) * p.spd * dt;
+    p.g.position.y = -0.42 + Math.sin(t * 1.3 + pi * 2.1) * 0.07;
+    p.g.rotation.y = Math.PI / 2 - p.ang;
+    p.g.rotation.z = Math.sin(t * (4 + pi)) * 0.1;
+    if (p.g.position.z > SEA_DECK_Z1 - 1 && Math.abs(p.g.position.x) < SEA_DECK_W / 2 + 2) {
+      p.des = Math.atan2(-1, Math.sign(p.g.position.x || 1)); p.tTurn = seaRnd(1, 2);
+    }
+    if (seaMG.st === 'fight' && seaMG.fmesh) {
+      const fx = p.g.position.x - seaMG.fmesh.position.x, fz = p.g.position.z - seaMG.fmesh.position.z;
+      if (fx * fx + fz * fz < 42) { p.des = Math.atan2(fz, fx); p.tTurn = Math.max(p.tTurn, 1.3); }
+    }
+  });
+  for (let i = 0; i < seaFishes.length; i++) for (let j = i + 1; j < seaFishes.length; j++) {
+    const a = seaFishes[i].g.position, b = seaFishes[j].g.position;
+    const dx = b.x - a.x, dz = b.z - a.z, d2 = dx * dx + dz * dz, MIN = 3.4;
+    if (d2 < MIN * MIN && d2 > 1e-4) {
+      const d = Math.sqrt(d2), k = (MIN - d) * Math.min(1, dt * 5) * 0.5, ux = dx / d, uz = dz / d;
+      a.x -= ux * k; a.z -= uz * k; b.x += ux * k; b.z += uz * k;
+      seaFishes[i].des = Math.atan2(-uz, -ux); seaFishes[j].des = Math.atan2(uz, ux);
+    }
+  }
+
+  seaMG.t += dt;
+  if (seaMG.st === 'cast') {
+    if (seaMG.t < SEA_CAST_DUR) {
+      const k = seaMG.t / SEA_CAST_DUR, e = k * (2 - k);
+      seaBuoy.position.lerpVectors(_seaCastFrom, _seaCastTo, e);
+      seaBuoy.position.y = _seaCastFrom.y * (1 - e) + 0.06 * e + Math.sin(k * Math.PI) * 1.6;
+      seaBuoy.rotation.z = k * 6;
+    } else {
+      if (!seaMG.landed) {
+        seaMG.landed = true; seaBuoy.rotation.z = 0; seaBuoy.position.copy(_seaCastTo);
+        spawnSparkle(SEA.x + _seaCastTo.x, 0.3, SEA.z + _seaCastTo.z, 8);
+        lastDoorPrompt = null;   // 프롬프트를 '기다리는 중'으로 갱신
+      }
+      seaBuoy.position.y = 0.06 + Math.sin(t * 2.5) * 0.05;
+      // 로드 쥔 어깨가 부표를 향하게 살짝 돌아서 — 줄이 몸을 안 가로지르고 어깨 밖에서 곧게 나간다(sea-sim 검수 구도)
+      const wy = Math.atan2(SEA.x + seaBuoy.position.x - player.position.x, SEA.z + seaBuoy.position.z - player.position.z) - 0.45;
+      player.rotation.y += seaAngDiff(wy, player.rotation.y) * Math.min(1, dt * 5);
+      if (seaMG.t > seaMG.phaseLen) {
+        // 입질! — 부표 자리에서 싸움 시작.
+        //   ⚠️ 부두 끝에서 던졌으면 활주로가 0이라 첫 버둥침에 바로 놓친다 —
+        //   자세를 잡으며 뒤로 물러나(pz 를 최소 중간 지점으로) 버틸 거리를 확보한다.
+        seaMG.st = 'fight'; seaMG.t = 0; seaMG.phase = 'struggle'; seaMG.phaseLen = seaRnd(1.3, 2);
+        seaMG.pz = Math.max(player.position.z, SEA.z - 2);
+        seaMG.fmesh = buildSeaFishMesh(seaMG.sp);
+        seaMG.fmesh.position.set(_seaCastTo.x, -0.42, _seaCastTo.z);
+        seaGroup.add(seaMG.fmesh);
+        Sound.water(); spawnSparkle(SEA.x + _seaCastTo.x, 0.4, SEA.z + _seaCastTo.z, 18);
+        spawnFloatText(player.position.x, 2.0, player.position.z - 1.5, '입질!! 🐟', '#e8905a', 1.2);
+      }
+    }
+  } else if (seaMG.st === 'fight') {
+    const sp = seaMG.sp, f = seaMG.fmesh;   // 카메라 줌은 updateCamera 가 상태 보고 처리
+    if (seaMG.t > seaMG.phaseLen) {
+      seaMG.t = 0;
+      if (seaMG.phase === 'struggle') { seaMG.phase = 'window'; seaMG.phaseLen = seaRnd(0.85, 1.15) * sp.win; }
+      else { seaMG.phase = 'struggle'; seaMG.phaseLen = seaRnd(1.2, 2); seaMG.fishDir = Math.random() < 0.5 ? -1 : 1; }
+      lastDoorPrompt = null;   // 🔴/🟢 프롬프트 갱신
+    }
+    if (seaMG.phase === 'struggle') {
+      seaMG.pz -= dt * 0.82 * sp.drag * (1 - seaMG.progress * 0.35);   // 부두 끝으로 끌려간다
+      player.position.x += Math.sin(t * 7) * dt * 0.5;                 // 버티며 좌우로 뒤뚱거림
+      f.position.x += seaMG.fishDir * dt * 2.2;
+      if (Math.abs(f.position.x) > 5) seaMG.fishDir *= -1;
+      f.rotation.y = Math.PI + Math.sin(t * 5) * 0.55;   // 머리는 먼바다(도망 방향)
+      f.rotation.z = Math.sin(t * 12) * 0.28;
+      if (Math.random() < dt * 3) spawnSparkle(SEA.x + f.position.x, 0.25, SEA.z + f.position.z - 1, 2);
+      if (seaMG.pz < SEA.z + SEA_EDGE) return seaMiss();
+    } else {
+      f.rotation.y += (Math.PI - f.rotation.y) * Math.min(1, dt * 3);
+      f.rotation.z += (0.35 - f.rotation.z) * Math.min(1, dt * 3);
+    }
+    // 플레이어 — 논리 z(pz)로 보간(연타 덜컥임 방지) + 물고기 쪽으로 몸 틀기(로드 어깨 바이어스)
+    player.position.z += (seaMG.pz - player.position.z) * Math.min(1, dt * 9);
+    player.position.x += (SEA.x - player.position.x) * Math.min(1, dt * 2);
+    // 로드 쥔 어깨가 물고기를 향하게 살짝 더 돌아서 — 줄이 몸을 안 가로지른다(sea-sim 검수 구도)
+    const wantYaw = Math.atan2(SEA.x + f.position.x - player.position.x, SEA.z + f.position.z - player.position.z) - 0.45;
+    player.rotation.y += seaAngDiff(wantYaw, player.rotation.y) * Math.min(1, dt * 6);
+    // 물고기 — 진행도만큼 다가오되, 부두 끝 사각지대에선 옆 물길로 비켜난다
+    const fishTZ = (player.position.z - SEA.z) - 6.5 + seaMG.progress * 3.3;
+    f.position.z += (fishTZ - f.position.z) * Math.min(1, dt * 5);
+    if (f.position.z > SEA_DECK_Z1 - 3.5) {
+      const side = f.position.x >= 0 ? 1 : -1;
+      const wantX = side * Math.max(Math.abs(f.position.x), SEA_DECK_W / 2 + 2.4);
+      f.position.x += (wantX - f.position.x) * Math.min(1, dt * 4);
+    }
+    f.position.y = -0.55 + seaMG.progress * 0.08;
+    // 부표 — 물고기→플레이어 줄 방향 선상의 수면
+    const bdx = (player.position.x - SEA.x) - f.position.x, bdz = (player.position.z - SEA.z) - f.position.z;
+    const bd = Math.hypot(bdx, bdz) || 1;
+    seaBuoy.position.set(f.position.x + bdx / bd * 1.6, 0.05, f.position.z + bdz / bd * 1.6);
+  } else if (seaMG.st === 'catch') {
+    const f = seaMG.fmesh;
+    if (f) {
+      seaMG.doneT = Math.min(1, seaMG.doneT + dt * 1.1);
+      const k = seaMG.doneT;
+      f.position.x *= 0.96;
+      f.position.z += ((player.position.z - SEA.z) - 1.8 - f.position.z) * k * 0.12;
+      f.position.y = Math.min(0.65, -0.3 + Math.sin(k * Math.PI) * 2.6 + k * 0.95);
+      if (k < 1) f.rotation.z += dt * 8 * (1 - k);
+      else f.rotation.set(0, Math.PI * 0.5, Math.sin(t * 6) * 0.12);
+    }
+    if (seaMG.t > 2.2) { seaReset(); populateSeaFishes(); lastDoorPrompt = null; }
+  } else if (seaMG.st === 'miss') {
+    if (seaMG.fmesh) seaMG.fmesh.position.y -= dt * 1.2;   // 먼바다로 잠수
+    if (seaMG.t > 1.6) { seaReset(); lastDoorPrompt = null; }
+  }
+
+  // 캐릭터 연기 — sea-sim 검수 포즈. updatePlayer 가 매 프레임 팔을 리셋하므로 그 뒤에서 덮어쓴다.
+  //   ⚠️ 낚싯줄보다 반드시 먼저 — 포즈 확정 후에 줄을 그려야 줄이 로드 끝에 붙는다.
+  //   idle(부두 산책)·miss 에서도 대기 자세 유지 — 릴대를 몸에 가로지른 채 걷다가 찌만 날아가는 그림 방지
+  if (playerArms && seaRodMesh) {
+    const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
+    let rodUp = false;   // true 면 로드를 월드 기준으로 하늘을 향해 세운다(손목 각에 안 맡김)
+    if (seaMG.st === 'cast' && seaMG.t < SEA_CAST_DUR) {
+      // 🎣 던지는 스윙 — 양손으로 머리 위로 젖혔다가 앞으로 뿌린다
+      const k = seaMG.t / SEA_CAST_DUR;
+      playerAnchor.rotation.x = -0.12 + k * 0.22;
+      Rp.rotation.set(-2.35 + k * 1.7, 0.1, 0.06);
+      Lp.rotation.set(-2.25 + k * 1.65, -0.4, 0.28);   // 왼손도 그립을 잡고 함께 스윙
+      armWristK = 0;
+    } else if (seaMG.st === 'fight') {
+      // 버티기 — 몸을 뒤로 젖히고 로드를 높이 든 채 입질 리듬으로 당겼다 풀었다
+      const tug = seaMG.phase === 'struggle' ? (Math.sin(t * 9) * 0.5 + 0.5) : 0.15;
+      playerAnchor.rotation.x = 0.10 + 0.10 * tug;
+      Rp.rotation.set(-0.8 - 0.28 * tug, 0.12, 0.06);   // 그립을 가슴께로 — 당길 때 함께 들썩
+      Lp.rotation.set(-0.75 - 0.28 * tug, -0.45, 0.28); // 왼팔은 그립 쪽으로 뻗어 같이 당기는 그림
+      armWristK = 0; rodUp = true;
+      if (seaMG.phase === 'window' && seaRodMesh) seaRodMesh.userData.sea.crank.rotation.x -= dt * 7;   // 크랭크 회전
+    } else {
+      // 입질 대기·포획 연출 — 허리께에 그립을 쥐고 로드를 물 쪽으로 비스듬히 든 대기 자세
+      Rp.rotation.set(-0.55, 0.1, 0.1);
+      Lp.rotation.set(-0.5, -0.45, 0.3);
+      rodUp = true;
+    }
+    poseHeldTool(0);
+    // 로드 세우기 — 손목 보간에 맡기면 로드가 옆으로 눕는다. 월드 기준으로
+    //   "위로 세우고 바라보는 쪽(물고기/바다)으로 살짝 기울인" 자세를 강제한다.
+    // 로드는 손(어깨 옆)에 그대로 — 몸 중앙에 두면 곰 같은 뚱뚱한 체형에선 몸속에 파묻힌다.
+    //   기울기는 고정값이 아니라 "줄이 나가는 방향"으로: 로드 축과 낚싯줄이 한 방향으로
+    //   이어져 카툰 낚시꾼처럼 물을 향해 비스듬히 든 그림이 된다.
+    if (rodUp && seaRodMesh) {
+      // 조준 대상: 싸움 중엔 물고기 → 찌가 떠 있으면 찌 → 아니면(부두 산책) 바라보는 방향
+      const tgt = seaMG.st === 'fight' && seaMG.fmesh ? seaMG.fmesh.position
+                : seaBuoy.visible ? seaBuoy.position : null;
+      if (tgt) _seaV.set(SEA.x + tgt.x - player.position.x, 0, SEA.z + tgt.z - player.position.z);
+      else _seaV.set(0, 0, 0);
+      if (_seaV.lengthSq() < 0.01) _seaV.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+      _seaV.normalize(); _seaV.y = 1.15; _seaV.normalize();   // 팁이 ~49° 위-앞(물고기 쪽)으로
+      _seaQ2.setFromUnitVectors(_seaUp, _seaV);
+      handAnchor.getWorldQuaternion(_seaQ1);
+      seaRodMesh.quaternion.copy(_seaQ1.invert()).multiply(_seaQ2);
+    }
+  }
+  // 릴대 팁 휨 — 버둥칠수록 크게
+  if (seaRodMesh) seaRodMesh.userData.sea.tip.rotation.z =
+    0.34 + (seaMG.st === 'fight' && seaMG.phase === 'struggle' ? (Math.sin(t * 9) * 0.5 + 0.5) * 0.45 : 0);
+  // 낚싯줄 — 로드 팁 → 부표. 팽팽할 땐 곧게, 기다릴 땐 처지게 (포즈 확정 후에 그린다)
+  if (seaLine.visible && seaRodMesh) {
+    seaRodMesh.userData.sea.tipEnd.getWorldPosition(_seaTip); _seaTip.sub(SEA);
+    const pts = seaLine.geometry.attributes.position.array;
+    const sag = seaMG.st === 'fight' ? 0.12 : (seaMG.st === 'cast' && seaMG.t < SEA_CAST_DUR ? 0.04 : 0.5);
+    for (let i = 0; i < 10; i++) {
+      const u = i / 9;
+      pts[i * 3] = _seaTip.x + (seaBuoy.position.x - _seaTip.x) * u;
+      pts[i * 3 + 1] = _seaTip.y + (seaBuoy.position.y + 0.1 - _seaTip.y) * u - Math.sin(u * Math.PI) * sag;
+      pts[i * 3 + 2] = _seaTip.z + (seaBuoy.position.z - _seaTip.z) * u;
+    }
+    seaLine.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // HUD — 게이지 + 부두 끝까지 남은 거리(0.1초 스로틀)
+  _seaHudT += dt;
+  if (_seaHudT > 0.1) {
+    _seaHudT = 0;
+    if (seaMG.st === 'fight') {
+      ui.setSeaHud?.({
+        banner: seaMG.phase === 'window' ? '당기세요!!' : '버텨요…!',
+        cls: seaMG.phase === 'window' ? 'pull' : '',
+        p: seaMG.progress,
+        sp: `${seaMG.sp.ico} ${seaMG.sp.name}`,
+        edge: Math.max(0, player.position.z - (SEA.z + SEA_EDGE)).toFixed(1),
+      });
+    } else ui.setSeaHud?.(null);
+  }
+}
+
 const INT_HALF = 7;   // 실내 반경(넓은 방) — 문 앞 스폰/이동/배치 클램프 기준
 function buildInterior() {
   const g = new THREE.Group(); g.position.copy(INT);
@@ -5573,6 +6381,14 @@ function updateDoorInteract() {
     if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
     return;   // 존 힌트는 updateMist 가 상태표시로 사용
   }
+  if (atSea) {         // 🌊 바다터: 뭍(남쪽)으로 나가기 / 미니게임 상태 안내
+    if (seaMG.st === 'idle' && dist2D({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6 }, player.position) < 1.9) { nd = 'seaexit'; prompt = '🚪 마을로 나가기'; }
+    else prompt = seaPrompt();
+    nearDoor = nd;
+    if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+    if (lastZoneHint !== null) { lastZoneHint = null; ui.setZoneHint?.(null); }
+    return;
+  }
   if (atRiver) {       // 🛶 나루터 데크: 남쪽으로 나가기 / 배·창고 근접
     if (dist2D({ x: RIVER.x, z: RIVER.z + RIVER_DOCK_HALF }, player.position) < 1.9) { nd = 'riverexit'; prompt = '🚪 마을로 나가기'; }
     else prompt = updateRiverInteract();
@@ -5602,6 +6418,9 @@ function updateDoorInteract() {
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
     firstHint('dockGate', '🛶', '나루터', '마을 북쪽 강가예요. 들어가면 나룻배를 타고 강을 내려가는 물길이 열려요 — 장애물을 피하고 ⭐별조각을 모아 배를 강화하세요. 하루 3번 탈 수 있고, 물길은 매일 새로 바뀌어요!');
+  } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
+    nd = 'sea'; prompt = '🌊 바다터 (먼 바다로 나가볼까요?)';
+    firstHint('seaGate', '🌊', '바다터', '마을 북동쪽 포구예요. 먼 바다로 나가면 수면에 대형 물고기들이 헤엄쳐요 — 노리고 던져서 줄다리기로 낚아 올리세요! ⚔️참치는 하루 한 번 "오늘의 대어", 무게가 🏆랭킹에 올라가요.');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHint('cafeGate', '☕', '카페', '들어가면 손님들이 테이블에 앉아 요리를 주문하고 있어요. 재료를 들고 손님에게 다가가면 그 자리에서 만들어 서빙 — 🪙코인과 ❤️친밀도를 받아요. 농사·낚시·닭장·채집으로 모은 재료를 쓸 곳이에요!');
@@ -5667,7 +6486,7 @@ function updateZoneHint() {
   }
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
-function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist; }   // 마을 실외 여부(집 근처 버튼용)
+function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea; }   // 마을 실외 여부(집 근처 버튼용)
 
 // =============================================================
 //  포스트 프로세싱
@@ -5770,6 +6589,10 @@ function minimapMarks(place) {
     marks.push({ x: MIST.x, z: MIST.z - 3, c: '#7fe8cf', r: 3.4 });                            // 🌳 수호목
     mistLanterns.forEach(l => marks.push({ x: MIST.x + l.x, z: MIST.z + l.z, c: l.lit ? '#9fe8ff' : '#5a626e', r: 2.2 })); // 🏮 등불(켜짐/꺼짐)
     mist.spirits.forEach(s => { if (!s.gone) marks.push({ x: MIST.x + s.group.position.x, z: MIST.z + s.group.position.z, c: '#b08ae0', r: 2 }); }); // 정령
+  } else if (place === 'sea') {
+    marks.push({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6, c: '#c8905a', kind: 'exit' });       // 뭍으로(남쪽)
+    seaFishes.forEach(f => marks.push({ x: SEA.x + f.g.position.x, z: SEA.z + f.g.position.z, c: '#5a86b8', r: 2.6 }));   // 배회 물고기
+    if (seaMG.st === 'fight' && seaMG.fmesh) marks.push({ x: SEA.x + seaMG.fmesh.position.x, z: SEA.z + seaMG.fmesh.position.z, c: '#ffb04d', r: 3 });   // 낚인 대어
   } else if (place === 'cafe') {
     marks.push({ x: CAFE.x, z: CAFE.z + CAFE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
     marks.push({ x: CAFE.x + CAFE_BOARD[0], z: CAFE.z + CAFE_BOARD[1], c: '#8a7a5f', r: 2.4 }); // 📋 주문판
@@ -5795,15 +6618,16 @@ function animate() {
       updateDoorInteract();
     }
     updateFishing();
+    updateSea(dt, t);     // 🌊 바다터(배회 물고기 + 줄다리기 미니게임)
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : 'village';
+      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : MINE_HALF;
+        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -5822,6 +6646,7 @@ function animate() {
   updateDayNight(dt);
   updateRain(dt);       // 🌧️ 빗줄기(비 오는 날 + 야외에서만)
   updateSway(t);
+  updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
   updateTrees(dt);
   updateOreRocks();
   updateChickens(dt);   // 🐔 닭 배회(닭장 건설 후)
@@ -5967,6 +6792,10 @@ function updatePlayer(dt, t) {
   } else if (atMist) {  // 🌫️ 안개 숲: 빈터 안쪽으로 제한
     player.position.x = Math.max(MIST.x - MIST_HALF + 0.7, Math.min(MIST.x + MIST_HALF - 0.7, player.position.x));
     player.position.z = Math.max(MIST.z - MIST_HALF + 0.7, Math.min(MIST.z + MIST_HALF - 0.5, player.position.z));
+  } else if (atSea) {
+    // 🌊 부두 위만 걷기 — 좌우는 널판 안, 앞뒤는 뭍끝~부두끝(싸움 중 끌려가는 건 updateSea 의 pz 가 제어)
+    player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
+    player.position.z = Math.max(SEA.z + SEA_EDGE - 0.1, Math.min(SEA.z + SEA_DECK_Z0 - 0.2, player.position.z));
   } else {
     const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
@@ -5991,6 +6820,7 @@ function updatePlayer(dt, t) {
   if (_wq.has('dbg')) {
     document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
     window.__scene = scene;   // 씬 그래프 콘솔 조사용(로컬 ?dbg=1 전용)
+    window.__act = doPlayerAction;   // 제스처 강제 발동(스윙 육안 검증용)
   }
 
   // 🎒 도구 수납 — ✋맨손이면 등으로, 아니면 손으로. 툭 사라지지 않게 0.25초쯤 걸려 옮긴다
@@ -6010,8 +6840,32 @@ function updatePlayer(dt, t) {
       playerAnchor.position.y -= s * 0.12;
       playerAnchor.scale.set(1 + s * 0.04, 1 - s * 0.05, 1 + s * 0.04);
       poseHeldTool(toolStow);                    // 도구는 등에 멘 채 몸을 따라 기울 뿐
+    } else if (playerArms) {
+      // ── 옆베기(arm-sim.html 검증) — 몸을 감았다 풀며 팔이 가로로 쓸고 지나감 ──
+      const toolId = TOOLS[currentTool].id;
+      const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
+      let k;
+      if (toolId === 'water' || toolId === 'seed') {
+        // 💧🌰 붓기/뿌리기: 휘두르지 않고 팔을 앞으로 들어 자루만 기울인다
+        Rp.rotation.set(-0.9 * s, 0, 0);
+        k = 0; armWristK = 0; toolPourTilt = s * 1.1;
+      } else {
+        const yaw = slashPhase(p, SLASH.back, SLASH.strike);
+        Rp.rotation.set(SLASH.lift * s, yaw, 0);
+        k = yaw / SLASH.back;
+        armWristK = Math.min(1, Math.abs(k) * 1.25) * WRIST_MAX;
+        toolPourTilt = 0;
+      }
+      // 왼팔 카운터 — 오른팔 정규화 각에서 유도(타이밍이 저절로 맞음)
+      Lp.rotation.set(-Math.abs(k) * 0.35, -k * 0.50, Math.max(0, -k) * 0.40);
+      // ── 몸: 와인드업 때 오른쪽으로 감았다가 왼쪽으로 풀며 벰 — 비틀림이 파워 ──
+      playerAnchor.rotation.x = 0.18 * s;
+      playerAnchor.rotation.y = p < 0.32 ? 0.42 * (p / 0.32) : -0.55 * s;
+      playerAnchor.position.y -= s * 0.1;
+      playerAnchor.scale.set(1 + s * 0.06, 1 - s * 0.07, 1 + s * 0.06);
+      poseHeldTool(toolStow);                    // 도구가 손을 따라 스윕
     } else {
-      // ── 도구 스윙 각도(어깨 피벗 X축) — 3단계 비대칭 곡선 ──
+      // ── 🐤 팔 없는 캐릭터 폴백: 구식 도구 스윙(어깨 피벗 X축 3단 곡선) ──
       const REST = HELD_REST.rx;                 // 평상시 각도
       let swing;
       if (p < 0.32) {        // ① 백스윙: 뒤로 크게 들어올림(ease-out — 천천히 멈춤)
@@ -6035,6 +6889,11 @@ function updatePlayer(dt, t) {
   } else {
     if (playerAnchor.rotation.x !== 0 || playerAnchor.rotation.y !== 0) {
       playerAnchor.rotation.x = 0; playerAnchor.rotation.y = 0; playerAnchor.scale.set(1, 1, 1);
+    }
+    if (playerArms) {
+      playerArms.R.pivot.rotation.set(0, 0, 0);
+      playerArms.L.pivot.rotation.set(0, 0, 0);
+      armWristK = 0; toolPourTilt = 0;
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신
   }
@@ -6206,7 +7065,11 @@ function updateCamera(dt) {
     }
   }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
-  const zoom = clock.elapsedTime < momentUntil ? 0.58 : 1;
+  // 🌊 바다터: 평상시 0.86(트인 수평선 보정) → 던지면 0.55 → 줄다리기·포획 0.45 로
+  //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다
+  const zoom = atSea ? (seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
+                        : seaMG.st === 'cast' ? 0.55 : 0.86)
+             : clock.elapsedTime < momentUntil ? 0.58 : 1;
   _camOff.copy(camOffset).multiplyScalar(zoom);
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
@@ -6280,6 +7143,8 @@ function updateDayNight(dt) {
     else if (WEATHER === 'fog') { scene.fog.near = 8; scene.fog.far = 36; }   // 🌫️ 시야가 뿌옇게
     else if (WEATHER === 'snow') { scene.fog.near = 16; scene.fog.far = 62; }
   }
+  // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
+  if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
   if (atCafe) {
     hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
@@ -6618,6 +7483,9 @@ function handleAction() {
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
   if (nearDoor === 'mistexit') return exitMist();
+  if (nearDoor === 'sea') return enterSea();
+  if (nearDoor === 'seaexit') return exitSea();
+  if (atSea) { seaAction(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
   if (atMist) { mistAction(); return; }
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기
     if (nearBoat) return startBoatRun();

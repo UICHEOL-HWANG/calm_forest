@@ -649,7 +649,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         q = _up.parse_qs(_up.urlparse(self.path).query)
         board = (q.get('board') or ['rich'])[0]
         uid = (q.get('uid') or [''])[0]
-        if board not in ('boat', 'rich', 'quest', 'mine', 'cook'):
+        if board not in ('boat', 'sea', 'rich', 'quest', 'mine', 'cook'):
             payload = json.dumps({'error': 'unknown board'}).encode(); code = 400
         elif uid and not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', uid, re.I):
             payload = json.dumps({'error': 'bad uid'}).encode(); code = 400

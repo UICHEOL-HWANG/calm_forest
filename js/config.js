@@ -31,6 +31,7 @@ export const CONFIG = {
   SESSION_TABLE: 'session_logs', // 세션 요약(세션당 1행 upsert)
   //    🛶 나룻배 런 기록 — sql/migrate_boat_runs.sql 실행으로 생성
   BOAT_TABLE: 'boat_runs',       // 런당 1행(코스 시드·충돌 지점·수집물·결과)
+  SEA_TABLE: 'sea_records',      // 🌊 바다터 어획 1행(어종·무게) — '오늘의 대어' 리더보드 원천
 
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
   AUTH_MODE: 'google',

@@ -15,6 +15,22 @@ import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형
 let firstChopFired = false;
 const sessionStart = Date.now();
 
+// ── 공유 링크 별칭(ref=/from=) → GA4 캠페인 주입 ──────────────
+//   유입 경로(utm_*)는 GA4 가 URL 에서 자동으로 읽어 '세션 소스/매체/캠페인'
+//   으로 잡아줍니다. 코드로 할 일이 없습니다 — 링크에 utm_* 만 붙이면 끝.
+//   딱 하나 GA4 가 못 하는 게 있는데, utm_ 접두사가 아닌 별칭입니다.
+//   공유 링크가 ?ref=kakao_share 처럼 오면 GA4 는 무시하고 (direct) 로 잡으므로
+//   그때만 GA4 캠페인에 직접 넣어 기본 '세션 소스' 로 흘려보냅니다.
+//   ※ utm_source 가 이미 있으면 손대지 않습니다 — GA4 자동 수집이 진실.
+function applyAliasCampaign() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('utm_source')) return;
+  const alias = q.get('ref') || q.get('from');
+  if (!alias) return;
+  gtag('set', 'campaign', { source: String(alias).slice(0, 100), medium: 'referral' });
+  console.log('[GA4] 유입 별칭 → 캠페인 주입:', alias);
+}
+
 // ── GA4 자동 로딩 ────────────────────────────────────────────
 //   config.js 의 GA4_MEASUREMENT_ID 만 채우면 gtag.js 를 동적으로
 //   삽입하고 초기화합니다. (index.html 을 손댈 필요 없음)
@@ -29,6 +45,7 @@ const sessionStart = Date.now();
   s.async = true;
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
   document.head.appendChild(s);
+  applyAliasCampaign();   // ※ config 보다 먼저 — 첫 page_view 부터 소스가 붙게
   gtag('config', id);
   // [i18n·A/B] 표시 언어와 변형을 유저 속성으로 — 리텐션/체류를 lang×variant 로 자를 수 있게
   gtag('set', 'user_properties', { lang: LANG, ab_variant: assignVariant() });
