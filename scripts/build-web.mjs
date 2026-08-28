@@ -29,18 +29,22 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
 
 // 배포에 포함할 것만 나열 — 여기 없는 건 절대 올라가지 않는다.
+//  'a'          → dist/a           (저장소 경로 그대로)
+//  ['a/b','b']  → dist/b           (저장소는 정리된 경로, 공개 URL 은 기존 그대로)
+//  ⚠️ 파비콘·og:image 의 공개 URL 은 절대 바뀌면 안 된다(구글 검색결과 아이콘·SNS 카드
+//     캐시가 루트 경로로 잡혀 있음). 저장소에서만 assets/ 아래로 묶고, 여기서 루트로 편다.
 const INCLUDE = [
   'index.html',      // 게임 본체
   'js',              // 게임 모듈
-  'assets',          // 아이콘
   'dashboards',      // 관리자·분석 페이지(index.html 에서 링크)
-  'preview.png',     // og:image
-  'favicon.ico',     // 파비콘 — 구글 검색결과 아이콘의 기본 fallback
-  'favicon.svg',     // 파비콘 — 모던 브라우저용 벡터
-  'favicon-96.png',  // 파비콘 — SVG 를 못 읽는 크롤러용 래스터
-  'apple-touch-icon.png', // iOS 홈화면 아이콘
+  ['assets/social/preview.png', 'preview.png'],                 // og:image
+  ['assets/favicon/favicon.ico', 'favicon.ico'],                // 파비콘 — 구글 검색결과 아이콘의 기본 fallback
+  ['assets/favicon/favicon.svg', 'favicon.svg'],                // 파비콘 — 모던 브라우저용 벡터
+  ['assets/favicon/favicon-96.png', 'favicon-96.png'],          // 파비콘 — SVG 를 못 읽는 크롤러용 래스터
+  ['assets/favicon/apple-touch-icon.png', 'apple-touch-icon.png'], // iOS 홈화면 아이콘
   '_headers',        // 캐시 헤더
 ];
+// assets/brand 는 아이콘 "원본"(빌드 입력)이라 배포에 넣지 않는다 — 런타임 참조 없음.
 
 // 실수로 섞여 들어가면 안 되는 것(방어용 2차 점검)
 const FORBIDDEN = [/^\.env/, /^\.git$/, /^node_modules$/, /\.sql$/, /^functions$/, /^scripts$/, /^docs$/, /\.md$/];
@@ -61,9 +65,10 @@ await mkdir(DIST, { recursive: true });
 
 const missing = [];
 for (const item of INCLUDE) {
-  const src = path.join(ROOT, item);
-  if (!existsSync(src)) { missing.push(item); continue; }
-  await copyInto(src, path.join(DIST, item));
+  const [from, to] = Array.isArray(item) ? item : [item, item];
+  const src = path.join(ROOT, from);
+  if (!existsSync(src)) { missing.push(from); continue; }
+  await copyInto(src, path.join(DIST, to));
 }
 
 // 결과 검증 — 금지 패턴이 하나라도 들어갔으면 배포 전에 멈춘다
