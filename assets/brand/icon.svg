@@ -2,7 +2,7 @@
   calm forest · 앱 아이콘 원본 (앱인토스 콘솔 규격: 600×600, 정사각, 배경 필수)
   index.html 파비콘의 "민트 배경 + 나무" 아이덴티티를 확대하고,
   preview.png 의 언덕을 더해 마을 느낌을 살림. 라운딩은 넣지 않음(콘솔 규정).
-  PNG 변환: node scripts/make-icon.mjs  →  assets/icon-600.png
+  PNG 변환: node scripts/make-icon.mjs  →  assets/brand/icon-600.png (toss 브랜치)
 ============================================================= -->
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
   <defs>
