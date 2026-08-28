@@ -7,7 +7,7 @@
 //  - 시크릿 불필요: RPC 가 anon 실행 허용(security definer, 식별자 미반환)
 // =============================================================
 
-const BOARDS = new Set(['boat', 'rich', 'quest', 'mine', 'cook']);
+const BOARDS = new Set(['boat', 'sea', 'rich', 'quest', 'mine', 'cook']);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TTL = 300;   // 5분 — 주간 랭킹에 충분한 신선도
 

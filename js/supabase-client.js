@@ -317,6 +317,23 @@ export async function sendBoatRun(row) {
   } catch (err) { console.warn('[Supabase 폴백] 런 기록 전송 실패:', err?.message || err); }
 }
 
+// ── [계측] 🌊 바다터 대어 기록(sea_records) — 어획 1회 = 1행 ──
+//    참치 무게가 '오늘의 대어' 리더보드(sea 보드)의 원천. 다른 어종도 함께 남겨
+//    어종별 도전/성공률 분석에 쓴다. 실패해도 게임엔 영향 없게 전부 삼킨다.
+export async function sendSeaRecord(row) {
+  const full = {
+    user_id: state.userId, session_id: state.sessionId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant,
+    run_date: new Date().toISOString().slice(0, 10),   // YYYY-MM-DD (boat_runs 와 동일 규약)
+    ...row,   // { species, weight }
+  };
+  if (!state.online || !supabase) { console.log('[Supabase 폴백] 🌊 대어 기록(오프라인):', full); return; }
+  try {
+    const { error } = await supabase.from(CONFIG.SEA_TABLE).insert(full);
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 대어 기록 전송 실패:', err?.message || err); }
+}
+
 // ── [계측] 세션 요약 upsert(session_logs) — 세션당 1행, 주기/이탈 시 갱신 ──
 export async function upsertSessionRow(row) {
   const full = {

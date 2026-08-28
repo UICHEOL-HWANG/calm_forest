@@ -1,0 +1,601 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>바다터 줄다리기 시뮬레이션 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#79c4de;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+    color:#2c3e4a;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  canvas{display:block}
+  /* ── 상단 배너(상태 안내) ── */
+  #banner{position:fixed;top:12%;left:50%;transform:translateX(-50%);font-size:clamp(20px,6vw,34px);font-weight:800;
+    color:#fff;text-shadow:0 2px 8px rgba(20,60,90,.45);white-space:nowrap;pointer-events:none;transition:opacity .15s}
+  #banner.pull{color:#b6ff9e;animation:pulse .35s infinite alternate}
+  #banner.warn{color:#ffb0a0}
+  @keyframes pulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.12)}}
+  /* ── 줄다리기 게이지 ── */
+  #gaugeWrap{position:fixed;top:6%;left:50%;transform:translateX(-50%);width:min(74vw,420px);display:none;pointer-events:none}
+  #gauge{height:14px;border-radius:9px;background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.7);overflow:hidden}
+  #gaugeFill{height:100%;width:0%;border-radius:7px;background:linear-gradient(90deg,#ffd25e,#ff9d4d);transition:width .12s}
+  #gaugeLbl{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(20,60,90,.5);margin-top:3px}
+  /* ── 부두 끝 경고 ── */
+  #edge{position:fixed;top:calc(6% + 44px);left:50%;transform:translateX(-50%);font-size:13px;font-weight:700;color:#fff;
+    background:rgba(200,60,40,.75);padding:4px 12px;border-radius:999px;display:none;pointer-events:none}
+  /* ── 하단 액션 버튼(엄지 존) ── */
+  #btn{position:fixed;bottom:6%;left:50%;transform:translateX(-50%);width:clamp(88px,24vw,120px);height:clamp(88px,24vw,120px);
+    border-radius:50%;border:5px solid rgba(255,255,255,.85);background:rgba(60,130,180,.82);color:#fff;
+    font-size:clamp(15px,4vw,19px);font-weight:800;font-family:inherit;box-shadow:0 6px 18px rgba(20,60,90,.35);cursor:pointer}
+  #btn:active{transform:translateX(-50%) scale(.93)}
+  #btn.go{background:rgba(90,180,80,.92);border-color:#d6ffc4;animation:btnpulse .35s infinite alternate}
+  @keyframes btnpulse{from{box-shadow:0 0 0 0 rgba(150,255,120,.6)}to{box-shadow:0 0 0 16px rgba(150,255,120,0)}}
+  /* ── 결과 카드 ── */
+  #card{position:fixed;inset:0;display:none;place-items:center;background:rgba(20,50,70,.35);backdrop-filter:blur(2px)}
+  #card>div{background:#fffdf6;border-radius:18px;padding:26px 30px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25);max-width:78vw}
+  #card h2{margin:0 0 6px;font-size:24px}
+  #card p{margin:4px 0 16px;font-size:14px;opacity:.75}
+  #card button{font:inherit;font-weight:700;padding:10px 18px;border-radius:12px;border:0;cursor:pointer;margin:0 5px}
+  #card .rel{background:#4a9dd0;color:#fff} #card .again{background:#eee}
+  /* ── 좌상단 미니 설정 ── */
+  #cfg{position:fixed;top:8px;left:10px;background:rgba(255,255,255,.82);border-radius:10px;padding:7px 10px;font-size:12px;line-height:1.7}
+  #cfg input{width:90px;vertical-align:middle}
+  #species button{font:inherit;font-size:12px;padding:3px 8px;margin:0 3px 4px 0;border-radius:8px;border:1px solid #b8c8d8;background:#fff;cursor:pointer}
+  #species button.on{background:#4a7a9d;color:#fff;border-color:#3a6a8d}
+</style>
+<div id="gaugeWrap">
+  <div id="gauge"><div id="gaugeFill"></div></div>
+  <div id="gaugeLbl"><span>🐻 나</span><span id="fishLbl">🐟 참치</span></div>
+</div>
+<div id="edge">⚠️ 부두 끝까지 <b id="edgeM">?</b>m</div>
+<div id="banner"></div>
+<button id="btn">🎣 던지기</button>
+<div id="card"><div>
+  <h2 id="cardT">🐟 참치 87.4kg</h2>
+  <p id="cardP">월척!! 오늘의 대어 기록에 올랐어요</p>
+  <button class="rel" id="release">🌊 놓아주기</button><button class="again" id="again">한 번 더</button>
+</div></div>
+<div id="cfg">
+  <div id="species"></div>
+  <label>미세 조정 <input id="pow" type="range" min="0.5" max="1.6" step="0.05" value="1"></label> <span id="powV">1.00</span>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: .95, metalness: 0, flatShading: flat });
+
+// ══════════ 씬 · 조명 ══════════
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fd4e8);
+scene.fog = new THREE.Fog(0x9fd4e8, 26, 60);
+const camera = new THREE.PerspectiveCamera(42, 1, .1, 200);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7fb4c8, 1.05));
+const key = new THREE.DirectionalLight(0xfff2d8, 1.2);
+key.position.set(6, 10, 4); key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+Object.assign(key.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14 });
+scene.add(key);
+
+// ══════════ 바다 · 해변 · 부두 ══════════
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(120, 120),
+  new THREE.MeshStandardMaterial({ color: 0x4fa8cc, roughness: .3, metalness: .1, transparent: true, opacity: .88 }));
+sea.rotation.x = -Math.PI / 2; sea.position.y = 0; sea.receiveShadow = true; scene.add(sea);
+const seaFloor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), clayMat(0x2e7fa3, false));
+seaFloor.rotation.x = -Math.PI / 2; seaFloor.position.y = -1.2; scene.add(seaFloor);
+// 해변(뒤쪽 육지)
+const shore = new THREE.Mesh(new THREE.BoxGeometry(60, 1.2, 14), clayMat(0xe8d9a8, false));
+shore.position.set(0, -.3, 11); shore.receiveShadow = true; scene.add(shore);
+const grass = new THREE.Mesh(new THREE.BoxGeometry(60, 1.2, 6), clayMat(0x9ec98a, false));
+grass.position.set(0, -.25, 19); scene.add(grass);
+// 부두 데크 — z +4(뭍) → -10(끝). 널판 여러 장, 끝 2칸은 붉게(위험 표시)
+const DECK_END = -10, DECK_W = 3.4;
+const pier = new THREE.Group(); scene.add(pier);
+for (let z = 4; z > DECK_END - .4; z -= .82) {
+  const plank = new THREE.Mesh(new THREE.BoxGeometry(DECK_W, .18, .72), clayMat(z < DECK_END + 1.8 ? 0xc46a4a : 0xb98a5a));
+  plank.position.set(0, .34, z - .4); plank.castShadow = plank.receiveShadow = true; pier.add(plank);
+}
+for (let z = 3.4; z > DECK_END; z -= 2.6) [-1, 1].forEach(sx => {
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(.13, .15, 1.5, 7), clayMat(0x8a5a3a));
+  post.position.set(sx * (DECK_W / 2 - .1), .1, z); post.castShadow = true; pier.add(post);
+});
+// 부두 끝 깃발
+const pole = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.6, 6), clayMat(0x8a5a3a));
+pole.position.set(DECK_W / 2 - .15, 1.1, DECK_END); pier.add(pole);
+const flag = new THREE.Mesh(new THREE.BoxGeometry(.55, .32, .03), clayMat(0xd94f4f));
+flag.position.set(DECK_W / 2 - .5, 1.6, DECK_END); pier.add(flag);
+
+// ══════════ 곰 + 릴대 v2 (arm-sim 검수 조형) ══════════
+const A = { body: 0x8a6038, belly: 0xc9a878, ear: 0x6a4828, bodyR: .63, bodyScale: [1.08, 1, 1.06], headR: .44, headY: 1.34,
+  snout: { len: .22, r: .2, color: 0xc9a878, nose: 0x2a2320, noseR: .075 } };
+function buildBear() {
+  const g = new THREE.Group();
+  const R = A.bodyR, HR = A.headR, HY = A.headY, bs = A.bodyScale, bodyY = R * bs[1] + .02;
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(R, 1), clayMat(A.body, false));
+  body.position.y = bodyY; body.scale.set(...bs); body.castShadow = true; g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R * .62, 16, 12), clayMat(A.belly, false));
+  belly.position.set(0, bodyY - R * .16, R * .55); belly.scale.set(1, 1.1, .6); g.add(belly);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(HR, 1), clayMat(A.body, false));
+  head.position.y = HY; head.castShadow = true; g.add(head);
+  [-1, 1].forEach(s => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(HR * .145, 8, 8), new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: .6 }));
+    e.position.set(s * HR * .36, HY + HR * .1, HR * .86); g.add(e);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(HR * .3, 8, 8), clayMat(A.ear, false));
+    ear.position.set(s * HR * .62, HY + HR * .72, 0); g.add(ear);
+  });
+  const sn = A.snout;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(sn.r, 12, 10), clayMat(sn.color, false));
+  m.position.set(0, HY - HR * .16, HR * .6 + sn.len * .35); m.scale.set(1, .82, sn.len / sn.r); g.add(m);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(sn.noseR, 10, 8), clayMat(sn.nose, false));
+  nose.position.set(0, HY - HR * .08, HR * .62 + sn.len * .8); g.add(nose);
+  // 팔 두 개(캡슐) — 릴대 버티기 포즈용 피벗
+  const arms = {};
+  [['R', .55], ['L', -.55]].forEach(([k, sx]) => {
+    const pivot = new THREE.Group(); pivot.position.set(sx, .99, .12); g.add(pivot);
+    const up = new THREE.Mesh(new THREE.CapsuleGeometry(.145, .14, 4, 8), clayMat(A.body, false));
+    up.position.y = -.16; up.castShadow = true; pivot.add(up);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 8), clayMat(A.ear, false));
+    paw.position.y = -.27; pivot.add(paw);
+    const hand = new THREE.Group(); hand.position.y = -.27; pivot.add(hand);
+    arms[k] = { pivot, hand };
+  });
+  return { g, arms };
+}
+function buildReelRod() {   // arm-sim v2 그대로
+  const g = new THREE.Group();
+  const GRIP = 0x5f3d26, STEEL = 0x6d757c, EDGE = 0xd9dfe4, NAVY = 0x2e4a66, KNOB = 0xd94f4f, ROPE = 0xe8d9a8;
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(.05, 7, 6), clayMat(GRIP)); knob.position.y = -.08; g.add(knob);
+  const rear = new THREE.Mesh(new THREE.CylinderGeometry(.04, .046, .22, 7), clayMat(GRIP)); rear.position.y = .04; g.add(rear);
+  const reel = new THREE.Group(); reel.position.set(.1, .24, 0); g.add(reel);
+  const spool = new THREE.Mesh(new THREE.CylinderGeometry(.105, .105, .075, 12), clayMat(STEEL));
+  spool.rotation.z = Math.PI / 2; reel.add(spool);
+  [-1, 1].forEach(sx => {
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, .02, 12), clayMat(EDGE));
+    rim.rotation.z = Math.PI / 2; rim.position.x = sx * .04; reel.add(rim);
+  });
+  const wound = new THREE.Mesh(new THREE.TorusGeometry(.085, .022, 6, 12), clayMat(ROPE));
+  wound.rotation.y = Math.PI / 2; reel.add(wound);
+  const crank = new THREE.Group(); crank.position.x = .065; reel.add(crank);
+  const armC = new THREE.Mesh(new THREE.BoxGeometry(.018, .11, .018), clayMat(EDGE)); armC.position.y = .048; crank.add(armC);
+  const kn = new THREE.Mesh(new THREE.SphereGeometry(.03, 7, 6), clayMat(KNOB)); kn.position.y = .105; crank.add(kn);
+  const blank = new THREE.Mesh(new THREE.CylinderGeometry(.026, .048, .52, 7), clayMat(NAVY)); blank.position.y = .56; g.add(blank);
+  [[.52, .04], [.7, .032]].forEach(([y, r]) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, .013, 5, 10), clayMat(EDGE));
+    ring.rotation.x = Math.PI / 2; ring.position.set(.03 + r, y, 0); g.add(ring);
+  });
+  const tip = new THREE.Group(); tip.position.y = .8; g.add(tip);
+  const tipRod = new THREE.Mesh(new THREE.CylinderGeometry(.014, .026, .2, 6), clayMat(EDGE));
+  tipRod.position.y = .09; tip.add(tipRod);
+  tip.rotation.z = .34;
+  const tipEnd = new THREE.Group(); tipEnd.position.y = .19; tip.add(tipEnd);   // 낚싯줄 시작점
+  g.userData = { crank, tip, tipEnd };
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+const player = new THREE.Group(); scene.add(player);
+const bear = buildBear(); player.add(bear.g);
+player.rotation.y = Math.PI;               // 바다(-z)를 보고 섬
+player.position.set(0, .43, -2.5);
+const rod = buildReelRod();
+bear.arms.R.hand.add(rod); rod.position.y = -.02;
+bear.g.scale.setScalar(.92);
+
+// ══════════ 물고기(참치) + 배회 물고기 ══════════
+function buildFish(scale = 1, navy = 0x33628f, sunfish = false) {
+  // 🐟 참치 실루엣: 뾰족한 주둥이 → 통통한 방추형 몸 → 가는 꼬리자루 → 초승달 두 갈래 꼬리
+  //   + 뒤로 휜 뾰족 지느러미(등1·등2·배·가슴). 머리는 +z.
+  // 🐡 sunfish(개복치): 몸이 곧 전부 — 크고 세로로 넓적한 타원 + 위아래 긴 지느러미 + 뭉툭한 꼬리판
+  const g = new THREE.Group();
+  if (sunfish) {
+    const body = new THREE.Mesh(new THREE.SphereGeometry(.72, 12, 10), clayMat(navy, false));
+    body.scale.set(.5, 1.15, 1.05); g.add(body);
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(.6, 12, 10), clayMat(0xc9d8e4, false));
+    cheek.scale.set(.44, .95, .95); cheek.position.set(0, -.1, .18); g.add(cheek);
+    [[1, .78], [-1, -.78]].forEach(([s, y]) => {          // 위아래로 긴 지느러미
+      const fin = new THREE.Mesh(new THREE.ConeGeometry(.22, .75, 5), clayMat(navy, false));
+      fin.scale.set(.3, 1, 1); fin.rotation.x = s > 0 ? -.25 : Math.PI + .25; fin.position.set(0, y, -.15); g.add(fin);
+    });
+    const clavus = new THREE.Mesh(new THREE.CylinderGeometry(.62, .62, .16, 10), clayMat(navy, false));
+    clavus.rotation.z = Math.PI / 2; clavus.scale.set(1, 1, .5); clavus.position.z = -.72; g.add(clavus);
+    const mouth = new THREE.Mesh(new THREE.SphereGeometry(.14, 8, 6), clayMat(0x22303a, false));
+    mouth.position.set(0, .05, .78); mouth.scale.set(.8, 1.1, .6); g.add(mouth);
+    [-1, 1].forEach(s => {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(.09, 7, 6), clayMat(0x22303a, false));
+      e.position.set(s * .28, .3, .6); g.add(e);
+    });
+    g.scale.setScalar(scale);
+    return g;
+  }
+  const body = new THREE.Mesh(new THREE.SphereGeometry(.55, 12, 9), clayMat(navy, false));
+  body.scale.set(.82, .95, 1.75); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(.5, 12, 9), clayMat(0xc9d8e4, false));
+  belly.scale.set(.78, .74, 1.42); belly.position.set(0, -.16, .1); g.add(belly);   // 배는 꼬리까지 안 감
+  // 주둥이 — 앞으로 뾰족
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(.34, .6, 8), clayMat(navy, false));
+  snout.rotation.x = Math.PI / 2; snout.scale.set(1, 1, .82); snout.position.set(0, .04, 1.05); g.add(snout);
+  const chin = new THREE.Mesh(new THREE.ConeGeometry(.28, .5, 8), clayMat(0xc9d8e4, false));
+  chin.rotation.x = Math.PI / 2; chin.scale.set(1, 1, .7); chin.position.set(0, -.14, 1.02); g.add(chin);
+  // 꼬리자루(가늘게) + 초승달 꼬리 — 가는 콘 2개는 각도에 따라 뼈처럼 보여서,
+  //   굵은 갈래 2개 + 가운데 쐐기로 "한 덩어리" 초승달을 만든다
+  const ped = new THREE.Mesh(new THREE.BoxGeometry(.13, .2, .45), clayMat(navy, false));
+  ped.position.set(0, 0, -1.08); g.add(ped);
+  const wedge = new THREE.Mesh(new THREE.ConeGeometry(.17, .34, 5), clayMat(navy, false));
+  wedge.scale.set(.5, 1, 1); wedge.rotation.x = -Math.PI / 2; wedge.position.set(0, 0, -1.38); g.add(wedge);
+  [[-.72, .10], [-2.42, -.10]].forEach(([rx, y]) => {
+    const lobe = new THREE.Mesh(new THREE.ConeGeometry(.17, .9, 5), clayMat(navy, false));
+    lobe.scale.set(.5, 1, 1); lobe.rotation.x = rx; lobe.position.set(0, y * 2.6, -1.45); g.add(lobe);
+  });
+  // 등지느러미 1(크고 뒤로 휨) · 2(작게) · 배지느러미
+  const d1 = new THREE.Mesh(new THREE.ConeGeometry(.30, .62, 5), clayMat(navy, false));
+  d1.scale.set(.22, 1, 1); d1.rotation.x = -.55; d1.position.set(0, .58, .12); g.add(d1);
+  const d2 = new THREE.Mesh(new THREE.ConeGeometry(.16, .38, 5), clayMat(navy, false));
+  d2.scale.set(.22, 1, 1); d2.rotation.x = -.85; d2.position.set(0, .40, -.72); g.add(d2);
+  const an = new THREE.Mesh(new THREE.ConeGeometry(.16, .36, 5), clayMat(0xc9d8e4, false));
+  an.scale.set(.22, 1, 1); an.rotation.x = -2.4; an.position.set(0, -.40, -.72); g.add(an);
+  // 가슴지느러미 — 옆구리에서 뒤로 길게(참치답게)
+  [-1, 1].forEach(s => {
+    const pec = new THREE.Mesh(new THREE.ConeGeometry(.14, .62, 5), clayMat(navy, false));
+    pec.scale.set(.25, 1, 1); pec.rotation.set(-1.9, 0, s * .55); pec.position.set(s * .38, .05, .25); g.add(pec);
+  });
+  [-1, 1].forEach(s => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(.07, 7, 6), clayMat(0x22303a, false));
+    e.position.set(s * .30, .12, .78); g.add(e);
+  });
+  g.scale.setScalar(scale);
+  return g;
+}
+// 어종 티어 = 난이도: drag(끌려가는 속도)·win(당길 기회 길이 배율)·tap(연타 1회 진행도)·w(무게 범위 kg)
+const SPECIES = [
+  { id: 'aji',  name: '전갱이', ico: '🐟', scale: .62,  color: 0x6f8fa8, drag: .45, win: 1.35, tap: .060, w: [1, 3],    line: '가볍게 낚았어요! 릴 감기 연습 완료' },
+  { id: 'buri', name: '방어',   ico: '🐠', scale: .92,  color: 0x4a6f8f, drag: .72, win: 1.05, tap: .042, w: [6, 14],   line: '제법 힘이 셌죠? 중급 낚시꾼 인정' },
+  { id: 'mola', name: '개복치', ico: '🐡', scale: 1.35, color: 0x7a8896, drag: .50, win: 1.10, tap: .020, w: [40, 90],  line: '오래 버텼네요 — 도감에 기록!', sunfish: true },
+  { id: 'tuna', name: '참치',   ico: '⚔️', scale: 1.15, color: 0x33628f, drag: .95, win: .90,  tap: .032, w: [60, 120], line: '월척!! 오늘의 대어 기록에 올랐어요' },
+];
+let SP = SPECIES[3];
+let fish = buildFish(SP.scale, SP.color, SP.sunfish); scene.add(fish);   // 싸울 대어(어종 선택에 따라 교체)
+fish.position.set(0, -3, -11);
+function setFightFish(sp) {
+  SP = sp;
+  const old = fish.position.clone(); scene.remove(fish);
+  fish = buildFish(sp.scale, sp.color, sp.sunfish); fish.position.copy(old); scene.add(fish);
+}
+const patrol = [];                                       // 배회하는 물고기(티저) — 방향을 천천히 트는 배회 AI
+for (let i = 0; i < 3; i++) {
+  const f = buildFish(.7 + i * .25); scene.add(f);
+  const home = { x: (i - 1) * 6, z: -14 - i * 2.5 };
+  f.position.set(home.x, -.4, home.z);
+  patrol.push({ f, home, ang: Math.random() * Math.PI * 2, des: 0, spd: 1.1 + i * .35, tTurn: 0 });
+}
+const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+// 부표 + 낚싯줄
+const buoy = new THREE.Group(); scene.add(buoy);
+const bb = new THREE.Mesh(new THREE.SphereGeometry(.16, 9, 7), clayMat(0xef8a4a)); bb.scale.y = 1.25; buoy.add(bb);
+const bstripe = new THREE.Mesh(new THREE.CylinderGeometry(.155, .155, .08, 9), clayMat(0xf4efe6)); buoy.add(bstripe);
+buoy.visible = false;
+const LINE_N = 10;   // 낚싯줄 분할 수 — 가운데가 살짝 처지는 곡선용
+const lineGeo = new THREE.BufferGeometry().setFromPoints(Array.from({ length: LINE_N }, () => new THREE.Vector3()));
+const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xf6f2e4 }));
+line.frustumCulled = false; scene.add(line); line.visible = false;
+// 물보라(간단 파티클)
+const splashes = [];
+function splash(x, z, n = 10, big = false) {
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(big ? .12 : .07, 6, 5),
+      new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: .95 }));
+    s.position.set(x, .05, z);
+    const a = Math.random() * Math.PI * 2, v = (big ? 1.8 : 1.2) * (.5 + Math.random() * .8);
+    s.userData = { vx: Math.cos(a) * v * .5, vy: v * (0.7 + Math.random() * .5), vz: Math.sin(a) * v * .5, life: .65 };
+    scene.add(s); splashes.push(s);
+  }
+}
+
+// ══════════ 게임 상태 머신 ══════════
+// 문구는 전부 후보(선검수 대상): 던지기/입질!!/당기세요!!/지금은 버텨요!/놓쳤다…/월척!!/놓아주기
+const $ = id => document.getElementById(id);
+const banner = $('banner'), btn = $('btn'), gaugeWrap = $('gaugeWrap'), gaugeFill = $('gaugeFill'),
+      edgeEl = $('edge'), edgeM = $('edgeM'), card = $('card');
+let state = 'idle';        // idle | cast | fight | catch | miss
+let phase = 'struggle';    // fight 중: struggle(버둥) | window(당길 기회)
+let t = 0, progress = 0, fishDir = 1, shake = 0, crankSpin = 0, catchAnim = 0;
+let pz = -2.5;             // 플레이어 논리 z(목표) — 렌더는 보간해서 연타가 덜컥거리지 않게
+const CAST_DUR = .62;      // 🎣 던지기: 팔 스윙 + 부표 포물선 비행 시간
+const castFrom = new THREE.Vector3(), castTo = new THREE.Vector3();
+let castLanded = false;
+let POW = 1;               // 물고기 힘 배율(슬라이더)
+$('pow').oninput = e => { POW = +e.target.value; $('powV').textContent = POW.toFixed(2); };
+// 어종 선택 = 난이도 선택
+$('species').innerHTML = SPECIES.map(s =>
+  `<button data-s="${s.id}" class="${s === SP ? 'on' : ''}">${s.ico} ${s.name}</button>`).join('');
+$('fishLbl').textContent = `${SP.ico} ${SP.name}`;
+$('species').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const sp = SPECIES.find(s => s.id === b.dataset.s);
+  setFightFish(sp);
+  $('fishLbl').textContent = `${sp.ico} ${sp.name}`;
+  [...$('species').children].forEach(c => c.classList.toggle('on', c === b));
+};
+const EDGE_Z = DECK_END + .55;                 // 여길 넘으면 놓침
+const rnd = (a, b) => a + Math.random() * (b - a);
+let phaseLen = 0;
+
+function setState(s) {
+  state = s; t = 0;
+  btn.classList.remove('go');
+  banner.className = ''; card.style.display = 'none';
+  if (s === 'idle') {
+    banner.textContent = '물고기를 보고 던져보세요';
+    btn.style.display = ''; btn.textContent = '🎣 던지기';
+    gaugeWrap.style.display = 'none'; edgeEl.style.display = 'none';
+    line.visible = false; buoy.visible = false; fish.position.set(0, -3, -11);
+    player.position.set(0, .43, -2.5); pz = -2.5;
+    progress = 0;
+  } else if (s === 'cast') {
+    banner.textContent = ''; btn.textContent = '🎣';
+    buoy.visible = true; line.visible = true; castLanded = false;
+    rod.userData.tipEnd.getWorldPosition(castFrom);           // 로드 팁에서 날아간다
+    phaseLen = CAST_DUR + rnd(1.1, 2.2);                      // 비행 후 입질 대기
+  } else if (s === 'fight') {
+    fish.position.set(buoy.position.x, -.35, buoy.position.z);
+    banner.textContent = '입질!! 🐟'; banner.className = 'warn';
+    gaugeWrap.style.display = ''; edgeEl.style.display = '';
+    btn.textContent = '릴 감기';
+    phase = 'struggle'; phaseLen = rnd(1.3, 2);
+    shake = .5; splash(fish.position.x, fish.position.z, 14, true);
+  } else if (s === 'catch') {
+    banner.textContent = ''; gaugeWrap.style.display = 'none'; edgeEl.style.display = 'none';
+    btn.style.display = 'none'; catchAnim = 0;
+    const w = rnd(SP.w[0], SP.w[1]).toFixed(1);
+    $('cardT').textContent = `${SP.ico} ${SP.name} ${w}kg`;
+    $('cardP').textContent = SP.line;
+    setTimeout(() => card.style.display = 'grid', 1200);
+  } else if (s === 'miss') {
+    banner.textContent = '놓쳤다…! 다음엔 꼭!'; banner.className = 'warn';
+    gaugeWrap.style.display = 'none'; edgeEl.style.display = 'none';
+    line.visible = false; buoy.visible = false;
+    splash(fish.position.x, fish.position.z, 16, true);
+    fish.position.y = -3;
+    setTimeout(() => setState('idle'), 1900);
+  }
+}
+function press() {
+  if (state === 'idle') {
+    // 던지기 — 제일 앞바다 쪽 물고기를 겨냥하되, 착수는 반드시 부두 끝 너머 트인 물
+    const tgt = patrol.reduce((a, b) => a.f.position.z < b.f.position.z ? a : b);
+    castTo.set(Math.max(-8, Math.min(8, tgt.f.position.x * .7)), .06,
+               Math.min(tgt.f.position.z - 1, DECK_END - 2.5));
+    setState('cast');
+  } else if (state === 'fight') {
+    if (phase === 'window') {
+      progress = Math.min(1, progress + SP.tap);
+      pz += .13;                                       // 되감으며 물러남(렌더는 보간)
+      crankSpin = 1; shake = Math.max(shake, .12);
+      if (progress >= 1) setState('catch');
+    } else {
+      // 버둥칠 때 당기면 역효과 — 확 끌려감(힘센 어종일수록 크게)
+      pz -= .5 * SP.drag * POW;
+      shake = .45; banner.textContent = '지금은 버텨요!!'; banner.className = 'warn';
+    }
+  }
+}
+btn.addEventListener('pointerdown', e => { e.preventDefault(); press(); });
+addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat) press(); });
+$('release').onclick = () => { splash(0, -6, 14, true); setState('idle'); };
+$('again').onclick = () => setState('idle');
+
+// ══════════ 카메라 — 상태별 거리/흔들림(모바일 세로 보정) ══════════
+const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+function updateCamera(dt) {
+  const portrait = camera.aspect < 1 ? 1.35 : 1;       // 세로 화면은 뒤로 빠져 전체 확보
+  // 게임과 같은 방식: 카메라 = 기준점 + 뒤위 오프셋, 시선 = 기준점 앞바다 → 화면 대부분이 바다
+  const px = player.position.x, pz = player.position.z;
+  let ax = px, az = pz, oy = 6.2, oz = 7.0, ahead = 7, ay = .5;
+  if (state === 'fight') {
+    oy = phase === 'window' ? 4.0 : 4.6; oz = phase === 'window' ? 4.6 : 5.2;   // 싸움 중 줌인, 당길 기회엔 한 발 더
+    ax = px * .7 + fish.position.x * .3; ahead = 5;
+  } else if (state === 'catch') { oy = 3.2; oz = 3.8; ahead = 2; ay = .8; }
+  else if (state === 'cast') { ax = px * .6 + buoy.position.x * .4; ahead = 8; }
+  camPos.set(ax, oy * portrait, az + oz * portrait);
+  camera.position.lerp(camPos, 1 - Math.pow(.005, dt));
+  if (shake > 0) {
+    camera.position.x += (Math.random() - .5) * shake * .3;
+    camera.position.y += (Math.random() - .5) * shake * .2;
+    shake = Math.max(0, shake - dt * 1.8);
+  }
+  camLook.set(ax, ay, az - ahead);
+  camTarget.lerp(camLook, 1 - Math.pow(.005, dt));
+  camera.lookAt(camTarget);
+}
+
+// ══════════ 포즈 — 릴대 버티기(arm-sim 검수 모션) ══════════
+function updatePose(time) {
+  const R = bear.arms.R.pivot, L = bear.arms.L.pivot;
+  if (state === 'fight') {
+    const tug = phase === 'struggle' ? (Math.sin(time * 9) * .5 + .5) : .15;
+    bear.g.rotation.x = .10 + .10 * tug;               // 뒤로 젖혀 버팀(-z를 보므로 부호 반전)
+    R.rotation.set(-1.05 - .3 * tug, .12, .06);        // 팔을 높이 들어 줄이 머리 위를 지나게
+    L.rotation.set(-.55 - .18 * tug, -.3, .25);
+    rod.userData.tip.rotation.z = .34 + tug * .5;
+  } else if (state === 'cast' && t < CAST_DUR) {
+    // 🎣 던지는 스윙 — 머리 위로 젖혔다가 앞으로 뿌린다
+    const k = t / CAST_DUR;
+    bear.g.rotation.x = -.12 + k * .22;
+    R.rotation.set(-2.35 + k * 1.7, .1, .06);
+    L.rotation.set(-.25 - k * .2, -.1, .2);
+    rod.userData.tip.rotation.z = .34 + Math.sin(k * Math.PI) * .3;
+  } else {
+    bear.g.rotation.x = 0;
+    R.rotation.set(state === 'idle' ? -.35 : -.75, .1, .1);
+    L.rotation.set(.15, 0, -.15);
+    rod.userData.tip.rotation.z = .34;
+  }
+  if (crankSpin > 0) { rod.userData.crank.rotation.x -= crankSpin * .5; crankSpin = Math.max(0, crankSpin - .08); }
+}
+
+// ══════════ 메인 루프 ══════════
+const _tip = new THREE.Vector3();
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const raw = (now - last) / 1000; last = now;
+  const dt = Math.min(.05, raw);          // 물리는 클램프
+  const time = now / 1000;
+  t += Math.min(raw, .3);                 // 상태 타이머는 실시간 — 백그라운드 스로틀에도 진행
+
+  // 배회 물고기 — 몇 초마다 목표 방향을 새로 정하고 천천히 틀며 유영(멀어지면 집으로 귀환)
+  patrol.forEach((p, pi) => {
+    p.tTurn -= dt;
+    const hx = p.home.x - p.f.position.x, hz = p.home.z - p.f.position.z;
+    if (hx * hx + hz * hz > 49) { p.des = Math.atan2(hz, hx); p.tTurn = rnd(1.5, 3); }
+    else if (p.tTurn <= 0) { p.des = p.ang + rnd(-1.3, 1.3); p.tTurn = rnd(2, 4.5); }
+    p.ang += Math.max(-dt * 1.1, Math.min(dt * 1.1, angDiff(p.des, p.ang)));
+    const sway = Math.sin(time * 2.2 + pi * 2) * .25;         // 좌우로 살랑이는 궤적
+    p.f.position.x += Math.cos(p.ang) * p.spd * dt;
+    p.f.position.z += Math.sin(p.ang) * p.spd * dt + sway * dt * .3;
+    p.f.position.y = -.42 + Math.sin(time * 1.3 + pi * 2.1) * .07;
+    p.f.rotation.y = Math.PI / 2 - p.ang;                     // 진행 방향으로 머리
+    p.f.rotation.z = Math.sin(time * (4 + pi)) * .10;         // 꼬리 흔들림
+    p.f.rotation.x = sway * .15;
+    // 부두 위로 못 올라오게 — 데크 근처면 먼바다 쪽으로 방향 전환
+    if (p.f.position.z > DECK_END - 1 && Math.abs(p.f.position.x) < DECK_W / 2 + 2) {
+      p.des = Math.atan2(-1, Math.sign(p.f.position.x || 1)); p.tTurn = rnd(1, 2);
+    }
+    // 낚인 참치의 소란을 피해 도망 — 자연스럽고, 대어 옆에 유령처럼 겹치는 것도 방지
+    if (state === 'fight') {
+      const fx = p.f.position.x - fish.position.x, fz = p.f.position.z - fish.position.z;
+      if (fx * fx + fz * fz < 42) { p.des = Math.atan2(fz, fx); p.tTurn = Math.max(p.tTurn, 1.3); }
+    }
+  });
+  // 물고기끼리 분리 — 겹치면 서로 밀어내고 진로도 벌린다(싸움 중인 참치 포함)
+  const school = patrol.map(p => p.f.position);
+  if (state === 'fight' || state === 'cast') school.push(fish.position);
+  for (let i = 0; i < school.length; i++) for (let j = i + 1; j < school.length; j++) {
+    const a = school[i], b = school[j];
+    const dx = b.x - a.x, dz = b.z - a.z, d2 = dx * dx + dz * dz,
+          MIN = j >= patrol.length ? 5.2 : 3.4;   // 대어(싸움 중)와는 더 멀리
+
+    if (d2 < MIN * MIN && d2 > 1e-4) {
+      const d = Math.sqrt(d2), k = (MIN - d) * Math.min(1, dt * 5) * .5, ux = dx / d, uz = dz / d;
+      if (i < patrol.length) { a.x -= ux * k; a.z -= uz * k; patrol[i].des = Math.atan2(-uz, -ux); patrol[i].tTurn = Math.max(patrol[i].tTurn, .8); }
+      if (j < patrol.length) { b.x += ux * k; b.z += uz * k; patrol[j].des = Math.atan2(uz, ux); patrol[j].tTurn = Math.max(patrol[j].tTurn, .8); }
+    }
+  }
+
+  if (state === 'cast') {
+    if (t < CAST_DUR) {
+      // 포물선 비행 — 로드 팁 → 착수 지점
+      const k = t / CAST_DUR, e = k * (2 - k);              // ease-out
+      buoy.position.lerpVectors(castFrom, castTo, e);
+      buoy.position.y = castFrom.y * (1 - e) + castTo.y * e + Math.sin(k * Math.PI) * 1.6;
+      buoy.rotation.z = k * 6;                              // 날아가며 팽그르르
+    } else {
+      if (!castLanded) { castLanded = true; buoy.rotation.z = 0; buoy.position.copy(castTo); splash(castTo.x, castTo.z, 8); banner.textContent = '…기다리는 중…'; }
+      buoy.position.y = .06 + Math.sin(time * 2.5) * .05;
+      if (t > phaseLen) setState('fight');
+    }
+  } else if (state === 'fight') {
+    // 페이즈 전환
+    if (t > phaseLen) {
+      t = 0;
+      if (phase === 'struggle') {
+        phase = 'window'; phaseLen = rnd(.85, 1.15) * SP.win / Math.sqrt(POW);
+        banner.textContent = '당기세요!!'; banner.className = 'pull'; btn.classList.add('go');
+      } else {
+        phase = 'struggle'; phaseLen = rnd(1.2, 2) * Math.sqrt(POW);
+        banner.textContent = '버텨요…!'; banner.className = ''; btn.classList.remove('go');
+        fishDir = Math.random() < .5 ? -1 : 1;
+      }
+    }
+    if (phase === 'struggle') {
+      // 🔴 버둥침 — 부두 끝으로 끌려간다!
+      pz -= dt * .82 * SP.drag * POW * (1 - progress * .35);
+      player.position.x += Math.sin(time * 7) * dt * .5;
+      fish.position.x += fishDir * dt * 2.2;
+      if (Math.abs(fish.position.x) > 4.5) fishDir *= -1;
+      // 머리는 먼바다(도망 방향), 꼬리가 낚싯줄 쪽에서 퍼덕인다
+      fish.rotation.y = Math.PI + Math.sin(time * 5) * .55;
+      fish.rotation.z = Math.sin(time * 12) * .28;
+      if (Math.random() < dt * 4) splash(fish.position.x, fish.position.z - 1.2, 2);
+      if (pz < EDGE_Z) setState('miss');
+    } else {
+      // 지친 순간 — 도망 자세 그대로 힘이 빠져 옆으로 살짝 기운다
+      fish.rotation.y += (Math.PI - fish.rotation.y) * Math.min(1, dt * 3);
+      fish.rotation.z += (.35 - fish.rotation.z) * Math.min(1, dt * 3);
+    }
+    // 플레이어·물고기 렌더는 목표값으로 보간 — 연타해도 부드럽게
+    player.position.z += (pz - player.position.z) * Math.min(1, dt * 9);
+    const fishTZ = player.position.z - 6.5 + progress * 3.3;   // 최소 3.2 거리 유지(데크에 안 겹침)
+    fish.position.z += (fishTZ - fish.position.z) * Math.min(1, dt * 5);
+    // 부두 정면 연장선은 낮은 카메라에 데크 끝 널판이 부표·물고기를 가리는 사각지대 —
+    //   끝에서 3.5 이내로 들어오면 항상 옆 물길로 비켜나 훤히 보이는 곳에서 싸운다
+    if (fish.position.z > DECK_END - 3.5) {
+      const side = fish.position.x >= 0 ? 1 : -1;
+      const wantX = side * Math.max(Math.abs(fish.position.x), DECK_W / 2 + 2.4);
+      fish.position.x += (wantX - fish.position.x) * Math.min(1, dt * 4);
+    }
+    fish.position.y = -.55 + progress * .08;   // 몸은 물속에 — 수면 위론 지느러미·물보라만
+    // 몸을 물고기 쪽으로 틀되 로드 쥔 어깨(오른쪽)가 물고기를 향하게 살짝 더 돈다
+    //   — 줄이 머리를 가로지르지 않고 어깨 바깥에서 곧장 뻗는다
+    const wantYaw = Math.atan2(fish.position.x - player.position.x, fish.position.z - player.position.z) - .45;
+    player.rotation.y += angDiff(wantYaw, player.rotation.y) * Math.min(1, dt * 6);
+    // 부표는 물고기→플레이어 줄 방향 선상의 수면에
+    const bdx = player.position.x - fish.position.x, bdz = player.position.z - fish.position.z,
+          bd = Math.hypot(bdx, bdz) || 1;
+    buoy.position.set(fish.position.x + bdx / bd * 1.6, .05, fish.position.z + bdz / bd * 1.6);
+    gaugeFill.style.width = (progress * 100).toFixed(0) + '%';
+    edgeM.textContent = Math.max(0, player.position.z - EDGE_Z).toFixed(1);
+    edgeEl.style.background = player.position.z - EDGE_Z < 2 ? 'rgba(220,40,20,.9)' : 'rgba(200,60,40,.75)';
+  } else if (state === 'catch') {
+    // 낚아 올림 — 참치가 포물선으로 폴짝, 데크 위에 안착(잔인함 없이)
+    catchAnim = Math.min(1, catchAnim + dt * 1.1);
+    const k = catchAnim;
+    fish.position.x *= .96;
+    fish.position.z = THREE.MathUtils.lerp(fish.position.z, player.position.z - 1.8, k * .12);
+    fish.position.y = Math.min(.95, -.3 + Math.sin(k * Math.PI) * 2.8 + k * 1.25);
+    if (k < 1) fish.rotation.z += dt * 8 * (1 - k);
+    else { fish.rotation.set(0, Math.PI * .5, Math.sin(time * 6) * .12); fish.position.y = .95; }
+    line.visible = false; buoy.visible = false;
+  }
+
+  // 낚싯줄 — 로드 팁 → 부표. 팽팽할 땐 곧게, 기다릴 땐 가운데가 처진다
+  if (line.visible) {
+    rod.userData.tipEnd.getWorldPosition(_tip);
+    const pts = line.geometry.attributes.position.array;
+    const sag = state === 'fight' ? .12 : (state === 'cast' && t < CAST_DUR ? .04 : .5);
+    for (let i = 0; i < LINE_N; i++) {
+      const u = i / (LINE_N - 1);
+      pts[i * 3]     = _tip.x + (buoy.position.x - _tip.x) * u;
+      pts[i * 3 + 1] = _tip.y + (buoy.position.y + .1 - _tip.y) * u - Math.sin(u * Math.PI) * sag;
+      pts[i * 3 + 2] = _tip.z + (buoy.position.z - _tip.z) * u;
+    }
+    line.geometry.attributes.position.needsUpdate = true;
+  }
+  // 싸움이 아니면 몸을 다시 정면(먼바다)으로
+  if (state !== 'fight') player.rotation.y += angDiff(Math.PI, player.rotation.y) * Math.min(1, dt * 5);
+  // 물보라
+  for (let i = splashes.length - 1; i >= 0; i--) {
+    const s = splashes[i], u = s.userData;
+    u.life -= dt; u.vy -= dt * 7;
+    s.position.x += u.vx * dt; s.position.y += u.vy * dt; s.position.z += u.vz * dt;
+    s.material.opacity = Math.max(0, u.life);
+    if (u.life <= 0 || s.position.y < -.2) { scene.remove(s); splashes.splice(i, 1); }
+  }
+
+  updatePose(time);
+  updateCamera(dt);
+  renderer.render(scene, camera);
+}
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);   // CSS 크기까지 갱신(픽셀비 2에서 캔버스가 2배로 커지는 것 방지)
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+window.__sea = () => ({ camera, player, fish, state: () => state, set: setState, press,
+  dbg: () => ({ state, t: +t.toFixed(2), phaseLen: +phaseLen.toFixed(2), castLanded, phase, progress: +progress.toFixed(2), pz: +pz.toFixed(2) }) });
+resize(); setState('idle'); requestAnimationFrame(loop);
+// 워치독 — 패널이 가려져 rAF가 멈춰도 상태는 계속 진행(저프레임 수동 틱)
+setInterval(() => { if (performance.now() - last > 250) loop(performance.now()); }, 250);
+</script>
