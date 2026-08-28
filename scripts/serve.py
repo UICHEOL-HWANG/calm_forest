@@ -618,7 +618,24 @@ def _verify_user(handler):
         return None
 
 
+# 저장소는 assets/ 아래로 정리돼 있지만 공개 URL 은 루트다(scripts/build-web.mjs 가 dist 루트로
+# 펴 준다). 로컬에서도 운영과 같은 경로로 열리도록 여기서 같은 매핑을 해 준다.
+ROOT_ASSET_ALIASES = {
+    '/favicon.ico': 'assets/favicon/favicon.ico',
+    '/favicon.svg': 'assets/favicon/favicon.svg',
+    '/favicon-96.png': 'assets/favicon/favicon-96.png',
+    '/apple-touch-icon.png': 'assets/favicon/apple-touch-icon.png',
+    '/preview.png': 'assets/social/preview.png',
+}
+
+
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+        alias = ROOT_ASSET_ALIASES.get(path.split('?')[0])
+        if alias:
+            return os.path.join(ROOT, alias)
+        return super().translate_path(path)
+
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store, must-revalidate')
         self.send_header('Expires', '0')

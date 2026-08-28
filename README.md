@@ -13,8 +13,17 @@
 ```
 calm_forest/
 ├─ index.html            # 게임 진입점 · UI · importmap · 오케스트레이션 · OG 메타
-├─ preview.png           # 링크 미리보기(OG) 커버 이미지 (1200×630)
+├─ _headers              # Cloudflare 캐시 헤더
+├─ wrangler.jsonc        # Cloudflare 배포 설정
 ├─ README.md
+├─ assets/               # 🎨 이미지 소스 (런타임 참조 없음 — 빌드가 골라 넣는다)
+│  ├─ favicon/           #   favicon.ico · favicon.svg · favicon-96.png · apple-touch-icon.png
+│  ├─ social/preview.png #   링크 미리보기(OG) 커버 이미지 (1200×630)
+│  └─ brand/icon.svg     #   앱 아이콘 원본(토스 아이콘 생성 입력)
+├─ sims/                 # 🧪 검수용 프로토타입 (배포 제외)
+│  ├─ sea-sim.html       #   바다 낚시 미니게임·연출
+│  ├─ arm-sim.html       #   릴대 조형·모션
+│  └─ chick-wing-sim.html#   병아리 날개-팔 조형 (2026-08-28 폐기)
 ├─ js/                   # 🎮 게임 소스 (ES 모듈)
 │  ├─ config.js          #   ⚙️ 설정(키/ID, 로깅 간격, A/B EXPERIMENT 스위치)
 │  ├─ supabase-client.js #   🔐 로그인·저장/불러오기·로그 전송·세그먼트(client_id/is_guest/variant)
@@ -36,8 +45,12 @@ calm_forest/
 │  ├─ migrate_ab_fields.sql    # (기존 DB) client_id·is_guest·variant 추가+백필
 │  ├─ migrate_ab_fields_bq.sql # (BigQuery) 동 컬럼 추가+variant 백필
 │  └─ migrate_metrics_tables.sql # 📐 계측 테이블(econ_logs·session_logs) 생성+RLS
-├─ scripts/              # 🔄 Supabase→BigQuery 일일 적재+경량화+익명계정 정리
-│  └─ export_to_bq.py
+├─ scripts/              # 🛠️ 빌드·데이터 스크립트
+│  ├─ build-web.mjs      #   dist/ 화이트리스트 번들(파비콘·OG 를 루트 URL 로 펴 준다)
+│  ├─ make-favicon.mjs   #   파비콘 생성 → assets/favicon/
+│  ├─ i18n_check.mjs     #   번역 키 누락 검사
+│  ├─ serve.py           #   로컬 개발 서버(no-store + API 미러 + 루트 에셋 별칭)
+│  └─ export_to_bq.py    #   Supabase→BigQuery 일일 적재+경량화+익명계정 정리
 ├─ .github/workflows/    # ⚙️ GitHub Actions
 │  ├─ ci.yml             #   dev/PR 구문 검사(배포 아님)
 │  ├─ supabase-to-bq.yml #   매일 cron 데이터 파이프라인
