@@ -8,15 +8,17 @@
 //  → 여기서 같은 그림을 실제 파일(.svg/.ico/.png)로 굽습니다.
 //
 //  사용: node scripts/make-favicon.mjs
-//  산출: favicon.svg · favicon.ico(16/32/48) · apple-touch-icon.png(180)
+//  산출: assets/favicon/ 아래 favicon.svg · favicon.ico(16/32/48) · favicon-96.png · apple-touch-icon.png(180)
+//        (배포 시 scripts/build-web.mjs 가 dist 루트로 펴 준다 — 공개 URL 은 /favicon.ico 그대로)
 //  (셋 다 build-web.mjs 의 INCLUDE 에 있어야 배포됩니다)
 // =============================================================
-import { writeFile } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ICONS = path.join(ROOT, 'assets', 'favicon');
 
 // ── 그림 정의 (64x64 좌표계 · 기존 인라인 SVG 와 동일) ──────────
 const BG = '#bfe8c9', TRUNK = '#d8a679';
@@ -154,15 +156,16 @@ function ico(entries) {
 }
 
 // ── 굽기 ────────────────────────────────────────────────────────
-await writeFile(path.join(ROOT, 'favicon.svg'), SVG);
+await mkdir(ICONS, { recursive: true });
+await writeFile(path.join(ICONS, 'favicon.svg'), SVG);
 
 // 구글 권장은 48px 의 배수 → 16/32/48 을 한 ico 에 담는다(탭·검색 모두 커버)
 const sizes = [16, 32, 48];
-await writeFile(path.join(ROOT, 'favicon.ico'),
+await writeFile(path.join(ICONS, 'favicon.ico'),
   ico(sizes.map(size => ({ size, buf: png(render(size), size) }))));
 
 // 검색결과가 SVG 를 못 읽는 경우를 대비한 PNG 원본 + iOS 홈화면 아이콘
-await writeFile(path.join(ROOT, 'favicon-96.png'), png(render(96), 96));
-await writeFile(path.join(ROOT, 'apple-touch-icon.png'), png(render(180, { round: false }), 180));
+await writeFile(path.join(ICONS, 'favicon-96.png'), png(render(96), 96));
+await writeFile(path.join(ICONS, 'apple-touch-icon.png'), png(render(180, { round: false }), 180));
 
-console.log('✅ favicon.svg · favicon.ico(16/32/48) · favicon-96.png · apple-touch-icon.png 생성');
+console.log('✅ assets/favicon/ — favicon.svg · favicon.ico(16/32/48) · favicon-96.png · apple-touch-icon.png 생성');
