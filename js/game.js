@@ -1019,7 +1019,7 @@ let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아�
 let armWristK = 0;        // 손목 펴짐 0(자루 세움)~1(팔의 연장) — 스윙 중에만 커짐
 let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(rad)
 
-// ── 팔 상수 — arm-sim.html 시뮬레이션으로 검증한 값 ──
+// ── 팔 상수 — sims/arm-sim.html 시뮬레이션으로 검증한 값 ──
 //   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
 const _axX = new THREE.Vector3(1, 0, 0), _axZ = new THREE.Vector3(0, 0, 1);
 const ARM_AIM_R = new THREE.Quaternion().setFromUnitVectors(
@@ -1034,7 +1034,7 @@ const TOOL_QREST = ARM_AIM_R.clone().invert()
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
 const TOOL_QSWING = new THREE.Quaternion().setFromAxisAngle(_axX, Math.PI);
-// 🐤 날개-팔은 조준 회전이 팔(ARM_AIM)과 달라 쥐는 자세 상쇄값도 다르다(chick-wing-sim.html 검증)
+// 🐤 날개-팔은 조준 회전이 팔(ARM_AIM)과 달라 쥐는 자세 상쇄값도 다르다(sims/chick-wing-sim.html 검증)
 const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
@@ -1775,7 +1775,7 @@ function buildAnimalMesh(id) {
       c.position.set(0, HY + HR * (0.92 - i * 0.10), -HR * (0.02 + i * 0.22)); g.add(c);
     });
   }
-  // 🐤 날개는 아래 팔 조립부에서 어깨 피벗에 매달아 만든다(팔처럼 스윙 — chick-wing-sim.html 검증)
+  // 🐤 날개는 아래 팔 조립부에서 어깨 피벗에 매달아 만든다(팔처럼 스윙 — sims/chick-wing-sim.html 검증)
   if (ex.includes('band')) {        // 🐼 검은 어깨 무늬 — 팔처럼 안 보이게 몸에 밀착(진짜 팔은 armColor 로 검게)
     [-1, 1].forEach(s => {
       const b = new THREE.Mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), clayMat(0x2a2a2a, false));
@@ -1829,7 +1829,7 @@ function buildAnimalMesh(id) {
   }
 
   // ── 팔 — 어깨 피벗(스윙축 YXZ) → 조준(고정) → 팔뚝·발바닥·손 ──
-  //   🐤병아리는 별도 팔 대신 날개 자체를 어깨 피벗에 매달아 팔처럼 쓴다(chick-wing-sim.html 검수값)
+  //   🐤병아리는 별도 팔 대신 날개 자체를 어깨 피벗에 매달아 팔처럼 쓴다(sims/chick-wing-sim.html 검수값)
   let armR = null, armL = null;
   if (ex.includes('wings')) {
     const WLEN = 1.15;                       // 원본 날개보다 15% 길게 — 그립까지 리치 확보
@@ -1925,7 +1925,7 @@ function makeCharacterPreview(canvas) {
 function toolMesh(id) {
   const g = new THREE.Group();
   const wood = (l) => new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, l, 6), clayMat(0x8a5a3a));
-  // ── 새 4종(도끼·곡괭이·망치·낫) 공용 — arm-sim.html 에서 검수받은 조형 ──
+  // ── 새 4종(도끼·곡괭이·망치·낫) 공용 — sims/arm-sim.html 에서 검수받은 조형 ──
   const GRIP = 0x5f3d26, STEEL = 0x6d757c, EDGE = 0xd9dfe4;
   const handle = (l, r = 0.030) => {   // 테이퍼 자루 + 그립 밴드 + 끝 혹. 반환: 자루 꼭대기 y
     const h = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clayMat(0x8a5a3a));
@@ -2016,7 +2016,7 @@ function toolMesh(id) {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
   } else if (id === 'reel') {
-    // 🌊 대물 릴대 — arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
+    // 🌊 대물 릴대 — sims/arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
     //   짧고 굵은 보트 로드 + 윈치급 오버사이즈 드럼 릴 + 굵은 가이드 링 + 밝은 팁.
     const NAVY = 0x2e4a66, KNOB = 0xd94f4f, ROPE = 0xe8d9a8;
     const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 7, 6), clayMat(GRIP)); rknob.position.y = -0.08; g.add(rknob);
@@ -4544,7 +4544,7 @@ function doExpand() {
 //  집 실내(입장) + 꾸미기
 // =============================================================
 // =============================================================
-//  🌊 바다터 — 대형 낚시 (docs/SEA_FISHING_PLAN.md · 프로토타입 sea-sim.html)
+//  🌊 바다터 — 대형 낚시 (docs/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 //  포구 게이트(마을 북동) → 부두 인스턴스. 수면의 물고기를 노려 던지고,
 //  버둥칠 땐 버티고(부두 끝까지 끌려가면 놓침) "당기세요!!"에 연타로 감는다.
 //  참치 = "오늘의 대어"(날짜 시드 급수) → sea_records → 🏆 'sea' 리더보드.
@@ -6841,7 +6841,7 @@ function updatePlayer(dt, t) {
       playerAnchor.scale.set(1 + s * 0.04, 1 - s * 0.05, 1 + s * 0.04);
       poseHeldTool(toolStow);                    // 도구는 등에 멘 채 몸을 따라 기울 뿐
     } else if (playerArms) {
-      // ── 옆베기(arm-sim.html 검증) — 몸을 감았다 풀며 팔이 가로로 쓸고 지나감 ──
+      // ── 옆베기(sims/arm-sim.html 검증) — 몸을 감았다 풀며 팔이 가로로 쓸고 지나감 ──
       const toolId = TOOLS[currentTool].id;
       const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
       let k;
