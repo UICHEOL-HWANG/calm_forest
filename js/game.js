@@ -1022,10 +1022,12 @@ let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(r
 // ── 팔 상수 — sims/arm-sim.html 시뮬레이션으로 검증한 값 ──
 //   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
 const _axX = new THREE.Vector3(1, 0, 0), _axZ = new THREE.Vector3(0, 0, 1);
+//   방향은 sims/tool-visibility-sim.html 검수값 — 이전 (.44,-.85,.28)은 벌림이 좁아
+//   몸 큰 곰·판다에서 도구가 몸에 파묻혔다. 좌우 대칭.
 const ARM_AIM_R = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.44, -.85, .28).normalize());
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.29, -.90, .32).normalize());
 const ARM_AIM_L = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.42, -.87, .20).normalize());
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.29, -.90, .32).normalize());
 // 옆베기: 몸을 감았다 풀며 팔이 가로로 쓸고 감 — 와인드업 63° → 반대편 86°
 const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
 const WRIST_MAX = 0.55;   // 1.0이면 팔+도구가 한 줄 막대가 돼 어색(시뮬에서 확인)
@@ -1039,6 +1041,7 @@ const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
 let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
+let curAnimal = ANIMALS[0];   // 현재 캐릭터 정의 — 등 수납 위치 계산(updateStowPose)에 사용
 // 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
 function slashPhase(p, B, S) {
   if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
@@ -1856,11 +1859,13 @@ function buildAnimalMesh(id) {
     const mkArm = (side) => {
       const pivot = new THREE.Group();
       pivot.rotation.order = 'YXZ';         // 옆베기: 팔을 든(X) 채 수직축(Y) 스윕
-      pivot.position.set(side * R * 0.87, bodyY + R * 0.54, R * 0.19);
+      // 어깨는 몸 가로폭(bs[0]) 비례 — 고정 0.87론 곰·판다(bs[0]=1.08)에서 팔·도구가
+      // 몸에 파묻혔다. 팔도 0.22→0.32로 길게. (sims/tool-visibility-sim.html 검수)
+      pivot.position.set(side * R * 0.85 * bs[0], bodyY + R * 0.54, R * 0.20);
       const aim = new THREE.Group();
       aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L);
       pivot.add(aim);
-      const ar = R * 0.23, al = R * 0.22;
+      const ar = R * 0.23, al = R * 0.32;
       const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), a.armColor ? clayMat(a.armColor, false) : skin());
       upper.position.y = -(al / 2 + ar * 0.4); upper.castShadow = true; aim.add(upper);
       const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), clayMat(a.ear, false));
@@ -1887,6 +1892,7 @@ function applyCharacter(id) {
   armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
+  curAnimal = a; updateStowPose();        // 등 수납 위치도 몸 크기에 맞춰 갱신
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
 }
 
@@ -1974,9 +1980,11 @@ function toolMesh(id) {
     g.scale.setScalar(1.18);
   } else if (id === 'seed') {
     const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), clayMat(0xcaa06a)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
+    g.scale.setScalar(1.25);   // 소형 도구 확대 — 원 크기론 41° 카메라에서 몸에 묻혀 안 보임(도구 가시성 시뮬)
   } else if (id === 'water') {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clayMat(0x8fd0ea)); body.position.y = 0.18; g.add(body);
     const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clayMat(0x8fd0ea)); spout.position.set(0.15, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
+    g.scale.setScalar(1.25);
   } else if (id === 'sickle') {
     const top = handle(0.30, 0.034);
     // 전투낫 — 날이 자루의 연장선으로 길게 서고, 끝으로 갈수록 뒤로 완만하게 휜다.
@@ -2013,8 +2021,24 @@ function toolMesh(id) {
     pin.position.y = top + 0.022; g.add(pin);
     g.scale.setScalar(1.18);
   } else if (id === 'rod') {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
+    // 🎣 민낚싯대 — 도구 가시성 시뮬 검수판. 이전 버전은 찌(흰 공)가 장대 끝 옆에
+    //   낚싯줄 없이 떠 있어 가까이서 보면 부러진 막대처럼 읽혔다.
+    //   주먹 아래 그립(혹+밴드) + 장대 끝에서 줄로 내려오는 빨간 찌.
+    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(GRIP));
+    rknob.position.y = -0.09; g.add(rknob);
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.030, 0.20, 7), clayMat(GRIP));
+    rear.position.y = -0.01; g.add(rear);
+    const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.026, 0.92, 6), clayMat(0x7a4a2a));
+    pole.position.y = 0.46; poleG.add(pole);
+    const lineG = new THREE.Group(); lineG.position.y = 0.92; lineG.rotation.z = 0.12; poleG.add(lineG);  // 줄은 수직으로
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 5), clayMat(0xe8e4d8));
+    line.position.y = -0.17; lineG.add(line);
+    const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 7), clayMat(0xd94f4f));   // 빨간 찌
+    bob.position.y = -0.38; bob.scale.set(1, 1.25, 1); lineG.add(bob);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.040, 0.040, 0.022, 9), clayMat(0xf4efe6));
+    stripe.position.y = -0.38; lineG.add(stripe);
+    g.scale.setScalar(1.25);
   } else if (id === 'reel') {
     // 🌊 대물 릴대 — sims/arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
     //   짧고 굵은 보트 로드 + 윈치급 오버사이즈 드럼 릴 + 굵은 가이드 링 + 밝은 팁.
@@ -2053,6 +2077,7 @@ function toolMesh(id) {
     const bag = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 10, 1, true),
       new THREE.MeshStandardMaterial({ color: 0xfaffff, transparent: true, opacity: 0.45, roughness: 1, side: THREE.DoubleSide }));
     bag.position.y = 0.74; g.add(bag);
+    g.scale.setScalar(1.25);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -2061,11 +2086,26 @@ function toolMesh(id) {
 //   ✋맨손은 도구를 지우는 게 아니라 "등에 메는" 상태다. 이 캐릭터는 팔 메시가 없어서
 //   (buildPlayer 의 playerArm = null) 도구 그룹 위치만 옮기면 그대로 등에 걸린 그림이 된다.
 const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
-const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선
+const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선(회전·레거시 무팔 경로용)
 const _hfM = new THREE.Matrix4(), _hfP = new THREE.Vector3(), _hfQ = new THREE.Quaternion(), _hfS = new THREE.Vector3();
 const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion();
 const _stowP = new THREE.Vector3(HELD_STOW.px, HELD_STOW.py, HELD_STOW.pz);
 const _stowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(HELD_STOW.rx, 0, HELD_STOW.rz));
+// 등 수납 위치 — 고정 상수(z=-.46)는 몸 큰 곰(등 표면 ≈ -.67)에서 도구가 파묻혔다.
+//   등 표면을 몸 크기(bodyR·bodyScale)로 계산하고, 낚싯대처럼 긴 도구는 중점을
+//   등 중앙에 맞춰 대각선으로 둘러멘 그림이 되게 한다. (도구 가시성 시뮬 검수)
+//   캐릭터 교체(applyCharacter)·도구 교체(setHeldTool 류)마다 갱신.
+function updateStowPose() {
+  const a = curAnimal, R = a.bodyR ?? 0.55, bs = a.bodyScale || [1, 1.05, 1];
+  const bodyY = R * bs[1] + 0.02;
+  const hl = Math.max(0, (heldToolMesh?.userData.stowLen ?? 0) / 2 - 0.12);
+  _stowP.set(0.06 + Math.sin(HELD_STOW.rz) * hl,          // 도구 +y축은 rz 회전 뒤 (-sin,cos) 방향
+             bodyY + R * 0.60 - Math.cos(HELD_STOW.rz) * hl,
+             -(0.8 * R * bs[2] + 0.05));                  // y=bodyY+.6R 높이의 몸 뒷면 + 여유
+}
+// 도구 길이 측정 — 생성 직후(부모·회전 없음)에 재야 정확하다
+const _stowBox = new THREE.Box3(), _stowSize = new THREE.Vector3();
+function measureStowLen(m) { m.userData.stowLen = _stowBox.setFromObject(m).getSize(_stowSize).y; }
 const _idQ = new THREE.Quaternion();
 function poseHeldTool(stow, swingX, swingZ) {
   if (!heldGroup) return;
@@ -2098,7 +2138,8 @@ function setHeldTool(id) {
   if (!handAnchor) return;
   if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
-  heldToolMesh = toolMesh(id); handAnchor.add(heldToolMesh);
+  heldToolMesh = toolMesh(id); measureStowLen(heldToolMesh); updateStowPose();
+  handAnchor.add(heldToolMesh);
 }
 // 꾸미기: 선택한 가구를 손에 작게 들기
 function setHeldDecor(id) {
@@ -2106,7 +2147,7 @@ function setHeldDecor(id) {
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   const m = decorMesh(id); m.scale.setScalar(0.5); m.position.y = 0.05;
   m.rotation.y = decorRot * Math.PI / 2;   // 현재 회전 상태 미리보기
-  heldToolMesh = m; handAnchor.add(m);
+  heldToolMesh = m; measureStowLen(m); updateStowPose(); handAnchor.add(m);
 }
 
 // ── 🌦️ 날씨 파티클 — 비: 빠른 빗줄기 / 눈: 천천히 흩날리는 눈송이 ──
@@ -4832,12 +4873,14 @@ function seaHoldRod(on) {
     if (seaRodMesh) return;
     _seaPrevTool = heldToolMesh;
     if (heldToolMesh) handAnchor.remove(heldToolMesh);
-    seaRodMesh = toolMesh('reel'); heldToolMesh = seaRodMesh; handAnchor.add(seaRodMesh);
+    seaRodMesh = toolMesh('reel'); measureStowLen(seaRodMesh); updateStowPose();
+    heldToolMesh = seaRodMesh; handAnchor.add(seaRodMesh);
   } else {
     if (!seaRodMesh) return;
     handAnchor.remove(seaRodMesh); seaRodMesh = null;
     heldToolMesh = _seaPrevTool; _seaPrevTool = null;
     if (heldToolMesh) handAnchor.add(heldToolMesh);
+    updateStowPose();   // 돌려받은 도구 길이 기준으로 수납 위치 복원
   }
 }
 function seaReset() {
