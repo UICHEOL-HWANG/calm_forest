@@ -368,6 +368,17 @@
   /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지 */
   body.coaching #toast { top: calc(210px + env(safe-area-inset-top)); }
 
+  /* 🪧 시설 첫 접근 배너 — 이동을 안 끊는 비차단 안내(토스트보다 한 단계 큰 카드) */
+  #hint-banner { top: 96px; left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
+    display: flex; gap: 10px; align-items: center; text-align: left;
+    opacity: 0; transition: opacity .35s; pointer-events: none; }
+  #hint-banner.show { opacity: 1; }
+  #hint-banner .hb-ico { font-size: 22px; flex: 0 0 auto; }
+  #hint-banner .hb-title { font-size: 14px; font-weight: 700; }
+  #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
+  /* 배너가 떠 있는 동안 토스트는 그 아래로 내려 겹침 방지 */
+  body.hintbanner #toast { top: 158px; }
+
   /* 조작 도움말(데스크톱만) — 하단 중앙, 도구바 위. 잠시 뒤 자동으로 사라짐 */
   #hint { bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .82; white-space: nowrap; animation: hintFade .8s ease 8s forwards; }
   @keyframes hintFade { to { opacity: 0; visibility: hidden; } }
@@ -884,6 +895,15 @@
   <div id="hint" class="panel">이동 WASD/방향키 · 1 도구 세트 바꾸기 · 2~5 도구 고르기 · 상호작용 Space/클릭</div>
   <div id="toast" class="panel"></div>
 
+  <!-- 🪧 시설 첫 접근 배너 (비차단 — 입력을 받지 않고 자동으로 사라짐) -->
+  <div id="hint-banner" class="panel">
+    <span class="hb-ico" id="hb-ico">🌿</span>
+    <div style="min-width:0;">
+      <div class="hb-title" id="hb-title"></div>
+      <div class="hb-line" id="hb-line"></div>
+    </div>
+  </div>
+
   <!-- 퀘스트 패널 -->
   <div id="quest-panel" class="panel">
     <div class="q-title"><span>📜</span><span id="quest-title"></span></div>
@@ -1398,7 +1418,23 @@
     window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
     let toastTimer;
+    // 🪧 시설 배너 큐 — 연속으로 여러 시설을 지나쳐도 하나씩 차례로(5.5초 표시 + 0.4초 간격)
+    const hintBQ = []; let hintBShowing = false;
+    function nextHintBanner() {
+      const item = hintBQ.shift();
+      if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
+      hintBShowing = true; document.body.classList.add('hintbanner');
+      $('hb-ico').textContent = item.ico || '🌿';
+      $('hb-title').textContent = item.title || '';
+      $('hb-line').textContent = item.line || '';
+      const el = $('hint-banner'); el.classList.add('show');
+      setTimeout(() => { el.classList.remove('show'); setTimeout(nextHintBanner, 400); }, 5500);
+    }
     const ui = {
+      // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
+      showHintBanner({ ico, title, line }) { hintBQ.push({ ico, title, line }); if (!hintBShowing) nextHintBanner(); },
+      // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
+      coachActive() { return tutIdx >= 0; },
       setInventory(inv) {
         lastInv = inv;
         const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -1902,7 +1938,11 @@
       const at = tutIdx;
       tutIdx = -1; $('coach').classList.remove('show');
       document.body.classList.remove('coaching');   // 코치 종료 → 토스트 원위치
-      if (done) { ui.toast('🎉 튜토리얼 졸업! 벌목·농사·낚시·집짓기·꾸미기 다 배웠어요. 이제 자유롭게 마을을 가꿔보세요 🌿'); trackEvent('tutorial_complete'); }
+      if (done) {
+        ui.toast('🎉 튜토리얼 졸업! 벌목·농사·낚시·집짓기·꾸미기 다 배웠어요. 이제 자유롭게 마을을 가꿔보세요 🌿');
+        Input.markHintsSeen?.(['shop', 'market', 'mineGate']);   // 코치 ⑧⑨⑪이 이미 설명한 시설 — 졸업 후 배너 중복 방지
+        trackEvent('tutorial_complete');
+      }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
     }
 
@@ -2486,6 +2526,13 @@
     });
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
+    window.addEventListener('keydown', e => {                // 데스크톱: 안내 모달이 떠 있으면 Space = 알겠어요 — 게임 조작으로 안 새게 capture
+      if (e.code !== 'Space' || e.repeat) return;
+      const open = ['hint-modal', 'seed-modal'].find(id => $(id).classList.contains('show'));
+      if (!open) return;
+      e.preventDefault(); e.stopPropagation();
+      $(open === 'hint-modal' ? 'hint-ok' : 'seed-ok').click();
+    }, true);
     $('intro-skip').addEventListener('click', () => Input.introSkip());   // 🎬 프롤로그 건너뛰기
 
     // 📖 이야기 모달 — 칩 클릭으로 열람(완결 장은 완료 문구, 현재 장은 진행도)

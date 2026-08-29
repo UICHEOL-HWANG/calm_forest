@@ -938,6 +938,15 @@ function firstHint(key, ico, title, body) {
   ui.showHintModal?.({ ico, title, body });
 }
 
+// 근접(지나가기) 안내 — 이동을 끊지 않는 비차단 배너(1회). 상세 규칙은 입장 후 모달/존 힌트 담당.
+// 튜토리얼(코치) 진행 중엔 억제하고 '본 것' 처리도 안 함 — 코치 지시와 겹치지 않게, 졸업 후 첫 접근 때 보여준다.
+function firstHintBanner(key, ico, title, line) {
+  if (gameState.hintsSeen[key]) return;
+  if (ui.coachActive?.()) return;
+  gameState.hintsSeen[key] = true;
+  ui.showHintBanner?.({ ico, title, line });
+}
+
 let indoor = false;        // 실내(집 안) 여부
 let nearDoor = null;       // 'enter' | 'exit' | null
 let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
@@ -1323,6 +1332,8 @@ export const Input = {
   },
   needsTutorial() { return !gameState.tutorialSeen; },
   markTutorialSeen() { gameState.tutorialSeen = true; },
+  // 코치가 이미 설명한 시설은 졸업 후 배너를 또 띄우지 않게 '본 것' 처리(튜토리얼 완주 시 호출)
+  markHintsSeen(keys) { for (const k of keys) gameState.hintsSeen[k] = true; },
   // 집 외관 커스터마이징
   getHouseStyle() { return { style: { ...gameState.houseStyle }, unlocked: { roof: [...gameState.unlocked.roof], wall: [...gameState.unlocked.wall], door: [...gameState.unlocked.door] }, roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS }; },
   setHousePart(part, idx) {
@@ -2174,7 +2185,7 @@ function buildRain() {
 
 function updateRain(dt) {
   if (!rainLines) return;
-  const show = mode === 'play' && !indoor && !atMine;   // 실내·동굴에선 숨김(텃밭은 야외)
+  const show = mode === 'play' && !indoor && !atMine && !atCafe;   // 실내·동굴·카페 홀에선 숨김(텃밭은 야외)
   rainLines.visible = show;
   if (!show) return;
   const { vel, snow, len } = rainLines.userData;
@@ -6457,19 +6468,19 @@ function updateDoorInteract() {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
   } else if (dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {
     nd = 'mist'; prompt = '🌫️ 안개 낀 숲에 들어가기';
-    firstHint('mistGate', '🌫️', '안개 낀 숲', '마을 북서쪽, 안개가 걷히지 않는 숲이에요. 그림자 정령들이 수호목의 빛을 탐내고 있어요 — 등불과 ♪음악으로 달래서 하루의 안개를 정화해보세요. 정령빛(✨)으로 특별한 등불 장식도 만들 수 있어요!');
+    firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
-    firstHint('dockGate', '🛶', '나루터', '마을 북쪽 강가예요. 들어가면 나룻배를 타고 강을 내려가는 물길이 열려요 — 장애물을 피하고 ⭐별조각을 모아 배를 강화하세요. 하루 3번 탈 수 있고, 물길은 매일 새로 바뀌어요!');
+    firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 강을 내려가요 — 하루 3번');
   } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
     nd = 'sea'; prompt = '🌊 바다터 (먼 바다로 나가볼까요?)';
-    firstHint('seaGate', '🌊', '바다터', '마을 북동쪽 포구예요. 먼 바다로 나가면 수면에 대형 물고기들이 헤엄쳐요 — 노리고 던져서 줄다리기로 낚아 올리세요! ⚔️참치는 하루 한 번 "오늘의 대어", 무게가 🏆랭킹에 올라가요.');
+    firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
-    firstHint('cafeGate', '☕', '카페', '들어가면 손님들이 테이블에 앉아 요리를 주문하고 있어요. 재료를 들고 손님에게 다가가면 그 자리에서 만들어 서빙 — 🪙코인과 ❤️친밀도를 받아요. 농사·낚시·닭장·채집으로 모은 재료를 쓸 곳이에요!');
+    firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
   }
   nearDoor = nd;
-  if (nd === 'mine') firstHint('mineGate', '⛏️', '채굴 동굴 입구', '들어가면 어두운 동굴에서 ⛏️괭이로 돌·석탄·보석을 캘 수 있어요. 작업대 재료와 상점 판매에 쓰여요!');
+  if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
   // 자유주방/작업대/상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
   const inVillage = !indoor && !atFarm && !atMine && !atRiver && !nd;
   nearKitchen = inVillage && dist2D(KITCHEN, player.position) < 2.2;               // 🍳 자유주방(요리 미니게임)
@@ -6481,22 +6492,22 @@ function updateDoorInteract() {
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
-  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHint('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록이 모이는 곳이에요 — 뱃길·코인·채굴·요리·의뢰 다섯 부문! 매주 월요일 새로 시작하니 부담 없이 도전해봐요.'); }
-  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHint('market', '📊', '시세 전광판', '판매 가격이 매일 바뀌어요! 전광판에서 오늘 비싼 품목을 확인하고 비쌀 때 파세요 🪙'); }
+  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문 — 매주 리셋'); }
+  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌어요 — 비쌀 때 파세요'); }
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
-    firstHint('coop', '🐔', '닭장 터', '남쪽 빈터에 닭장을 지을 수 있어요! 🔥 2일 연속 출석하고 재료(🪵25 🪨10 🪙60)를 모아 오세요. 지으면 매일 모이를 주고 다음날 🥚 달걀을 얻어요.');
+    firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
-  if (nearKitchen) firstHint('kitchen', '🍳', '자유주방', '재료로 요리하는 미니게임 작업장이에요! 🍲끓이기는 바늘이 초록 구간에 올 때 탭, 🔪썰기는 리듬에 맞춰 탭 — 타이밍이 좋을수록 요리 등급이 올라 버프가 오래가요.');
-  else if (nearBench) firstHint('bench', '🔧', '작업대', '재료(목재·돌·작물)로 도구 강화·야외 장식·주민 선물을 만들 수 있어요. 요리는 옆의 🍳 자유주방에서!');
-  else if (nearShop) firstHint('shop', '🛒', '상점', '작물·물고기·목재를 팔아 🪙코인을 벌고, 씨앗 등을 살 수 있어요. (팔기: 탭하면 1개, 꾹 누르면 전부)');
-  else if (nd === 'farm') firstHint('farmGate', '🌾', '내 텃밭 입구', '들어가면 나만의 넓은 밭이 있어요. 마을과 별개로, 마음껏 농사지을 수 있는 나만의 공간이에요!');
+  if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
+  else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물 만들기');
+  else if (nearShop) firstHintBanner('shop', '🛒', '상점', '수확물을 팔고 씨앗을 사는 곳');
+  else if (nd === 'farm') firstHintBanner('farmGate', '🌾', '내 텃밭 입구', '마음껏 농사짓는 나만의 넓은 밭');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)
   const nearHouse = inVillage2() && gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 4.2;
   if (nearHouse !== lastNearHouse) { lastNearHouse = nearHouse; ui.setNearHouse?.(nearHouse); }
-  if (nearHouse) firstHint('extDecor', '🎨', '집 외관 꾸미기', '집 근처에 오면 🎨 집 외관 꾸미기 버튼이 떠요. 지붕·벽·문 색을 바꿔 나만의 집을 만들어보세요!');
+  if (nearHouse) firstHintBanner('extDecor', '🎨', '집 외관 꾸미기', '지붕·벽·문 색을 바꿔 나만의 집으로');
   updateZoneHint();
   updateToolPageAuto();   // 🎒 구역이 바뀌었으면 도구 페이지도 넘긴다
 }
@@ -6516,16 +6527,14 @@ function updateZoneHint() {
   if (nearGlade) {
     hint = isNight() ? '🌟 반딧불이 — 🦋포충망(도구 8)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
     if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
-    firstHint('glade', '🌟', '반딧불이 계곡',
-      '밤이 되면 이 숲에 반딧불이가 피어올라요. 🦋 포충망을 들고 반딧불이가 밝게 반짝이는 순간 휘두르면 잡을 수 있어요! 종류는 4가지 — 📖 도감에 모아보세요.');
+    firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 🦋포충망으로 반딧불이 잡는 곳');
   }
   const wasForest = nearForest;
   nearForest = inVillage2() && dist2D(FOREST, player.position) < FOREST_R + 0.5;
   if (nearForest && !hint) {
     hint = forageTarget() ? '🍄 채집물 발견! 액션(Space)으로 줍기 — 도구 필요 없어요' : '🍄 채집 숲 — 버섯·산딸기·도토리를 찾아보세요';
     if (!wasForest) trackEvent('zone_enter', { zone: 'forest', weather: WEATHER });   // [GA4] 채집 유입
-    firstHint('forest', '🍄', '채집 숲',
-      '씨앗도 물주기도 필요 없어요 — 숲을 돌아다니다 버섯·산딸기·도토리·약초를 발견하면 그냥 주우면 돼요! 주운 자리엔 잠시 뒤 다른 게 돋아나고, 🌧️ 비 온 날엔 버섯이 특히 많이 나요.');
+    firstHintBanner('forest', '🍄', '채집 숲', '도구 없이 버섯·산딸기를 줍는 숲');
   }
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
