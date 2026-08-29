@@ -938,6 +938,15 @@ function firstHint(key, ico, title, body) {
   ui.showHintModal?.({ ico, title, body });
 }
 
+// 근접(지나가기) 안내 — 이동을 끊지 않는 비차단 배너(1회). 상세 규칙은 입장 후 모달/존 힌트 담당.
+// 튜토리얼(코치) 진행 중엔 억제하고 '본 것' 처리도 안 함 — 코치 지시와 겹치지 않게, 졸업 후 첫 접근 때 보여준다.
+function firstHintBanner(key, ico, title, line) {
+  if (gameState.hintsSeen[key]) return;
+  if (ui.coachActive?.()) return;
+  gameState.hintsSeen[key] = true;
+  ui.showHintBanner?.({ ico, title, line });
+}
+
 let indoor = false;        // 실내(집 안) 여부
 let nearDoor = null;       // 'enter' | 'exit' | null
 let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
@@ -1022,10 +1031,12 @@ let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(r
 // ── 팔 상수 — sims/arm-sim.html 시뮬레이션으로 검증한 값 ──
 //   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
 const _axX = new THREE.Vector3(1, 0, 0), _axZ = new THREE.Vector3(0, 0, 1);
+//   방향은 sims/tool-visibility-sim.html 검수값 — 이전 (.44,-.85,.28)은 벌림이 좁아
+//   몸 큰 곰·판다에서 도구가 몸에 파묻혔다. 좌우 대칭.
 const ARM_AIM_R = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.44, -.85, .28).normalize());
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.29, -.90, .32).normalize());
 const ARM_AIM_L = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.42, -.87, .20).normalize());
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.29, -.90, .32).normalize());
 // 옆베기: 몸을 감았다 풀며 팔이 가로로 쓸고 감 — 와인드업 63° → 반대편 86°
 const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
 const WRIST_MAX = 0.55;   // 1.0이면 팔+도구가 한 줄 막대가 돼 어색(시뮬에서 확인)
@@ -1039,6 +1050,7 @@ const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
 let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
+let curAnimal = ANIMALS[0];   // 현재 캐릭터 정의 — 등 수납 위치 계산(updateStowPose)에 사용
 // 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
 function slashPhase(p, B, S) {
   if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
@@ -1320,6 +1332,8 @@ export const Input = {
   },
   needsTutorial() { return !gameState.tutorialSeen; },
   markTutorialSeen() { gameState.tutorialSeen = true; },
+  // 코치가 이미 설명한 시설은 졸업 후 배너를 또 띄우지 않게 '본 것' 처리(튜토리얼 완주 시 호출)
+  markHintsSeen(keys) { for (const k of keys) gameState.hintsSeen[k] = true; },
   // 집 외관 커스터마이징
   getHouseStyle() { return { style: { ...gameState.houseStyle }, unlocked: { roof: [...gameState.unlocked.roof], wall: [...gameState.unlocked.wall], door: [...gameState.unlocked.door] }, roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS }; },
   setHousePart(part, idx) {
@@ -1856,11 +1870,13 @@ function buildAnimalMesh(id) {
     const mkArm = (side) => {
       const pivot = new THREE.Group();
       pivot.rotation.order = 'YXZ';         // 옆베기: 팔을 든(X) 채 수직축(Y) 스윕
-      pivot.position.set(side * R * 0.87, bodyY + R * 0.54, R * 0.19);
+      // 어깨는 몸 가로폭(bs[0]) 비례 — 고정 0.87론 곰·판다(bs[0]=1.08)에서 팔·도구가
+      // 몸에 파묻혔다. 팔도 0.22→0.32로 길게. (sims/tool-visibility-sim.html 검수)
+      pivot.position.set(side * R * 0.85 * bs[0], bodyY + R * 0.54, R * 0.20);
       const aim = new THREE.Group();
       aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L);
       pivot.add(aim);
-      const ar = R * 0.23, al = R * 0.22;
+      const ar = R * 0.23, al = R * 0.32;
       const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), a.armColor ? clayMat(a.armColor, false) : skin());
       upper.position.y = -(al / 2 + ar * 0.4); upper.castShadow = true; aim.add(upper);
       const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), clayMat(a.ear, false));
@@ -1887,6 +1903,7 @@ function applyCharacter(id) {
   armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
+  curAnimal = a; updateStowPose();        // 등 수납 위치도 몸 크기에 맞춰 갱신
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
 }
 
@@ -1974,9 +1991,11 @@ function toolMesh(id) {
     g.scale.setScalar(1.18);
   } else if (id === 'seed') {
     const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), clayMat(0xcaa06a)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
+    g.scale.setScalar(1.25);   // 소형 도구 확대 — 원 크기론 41° 카메라에서 몸에 묻혀 안 보임(도구 가시성 시뮬)
   } else if (id === 'water') {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clayMat(0x8fd0ea)); body.position.y = 0.18; g.add(body);
     const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clayMat(0x8fd0ea)); spout.position.set(0.15, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
+    g.scale.setScalar(1.25);
   } else if (id === 'sickle') {
     const top = handle(0.30, 0.034);
     // 전투낫 — 날이 자루의 연장선으로 길게 서고, 끝으로 갈수록 뒤로 완만하게 휜다.
@@ -2013,8 +2032,24 @@ function toolMesh(id) {
     pin.position.y = top + 0.022; g.add(pin);
     g.scale.setScalar(1.18);
   } else if (id === 'rod') {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
+    // 🎣 민낚싯대 — 도구 가시성 시뮬 검수판. 이전 버전은 찌(흰 공)가 장대 끝 옆에
+    //   낚싯줄 없이 떠 있어 가까이서 보면 부러진 막대처럼 읽혔다.
+    //   주먹 아래 그립(혹+밴드) + 장대 끝에서 줄로 내려오는 빨간 찌.
+    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(GRIP));
+    rknob.position.y = -0.09; g.add(rknob);
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.030, 0.20, 7), clayMat(GRIP));
+    rear.position.y = -0.01; g.add(rear);
+    const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.026, 0.92, 6), clayMat(0x7a4a2a));
+    pole.position.y = 0.46; poleG.add(pole);
+    const lineG = new THREE.Group(); lineG.position.y = 0.92; lineG.rotation.z = 0.12; poleG.add(lineG);  // 줄은 수직으로
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 5), clayMat(0xe8e4d8));
+    line.position.y = -0.17; lineG.add(line);
+    const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 7), clayMat(0xd94f4f));   // 빨간 찌
+    bob.position.y = -0.38; bob.scale.set(1, 1.25, 1); lineG.add(bob);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.040, 0.040, 0.022, 9), clayMat(0xf4efe6));
+    stripe.position.y = -0.38; lineG.add(stripe);
+    g.scale.setScalar(1.25);
   } else if (id === 'reel') {
     // 🌊 대물 릴대 — sims/arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
     //   짧고 굵은 보트 로드 + 윈치급 오버사이즈 드럼 릴 + 굵은 가이드 링 + 밝은 팁.
@@ -2053,6 +2088,7 @@ function toolMesh(id) {
     const bag = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 10, 1, true),
       new THREE.MeshStandardMaterial({ color: 0xfaffff, transparent: true, opacity: 0.45, roughness: 1, side: THREE.DoubleSide }));
     bag.position.y = 0.74; g.add(bag);
+    g.scale.setScalar(1.25);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -2061,11 +2097,26 @@ function toolMesh(id) {
 //   ✋맨손은 도구를 지우는 게 아니라 "등에 메는" 상태다. 이 캐릭터는 팔 메시가 없어서
 //   (buildPlayer 의 playerArm = null) 도구 그룹 위치만 옮기면 그대로 등에 걸린 그림이 된다.
 const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
-const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선
+const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선(회전·레거시 무팔 경로용)
 const _hfM = new THREE.Matrix4(), _hfP = new THREE.Vector3(), _hfQ = new THREE.Quaternion(), _hfS = new THREE.Vector3();
 const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion();
 const _stowP = new THREE.Vector3(HELD_STOW.px, HELD_STOW.py, HELD_STOW.pz);
 const _stowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(HELD_STOW.rx, 0, HELD_STOW.rz));
+// 등 수납 위치 — 고정 상수(z=-.46)는 몸 큰 곰(등 표면 ≈ -.67)에서 도구가 파묻혔다.
+//   등 표면을 몸 크기(bodyR·bodyScale)로 계산하고, 낚싯대처럼 긴 도구는 중점을
+//   등 중앙에 맞춰 대각선으로 둘러멘 그림이 되게 한다. (도구 가시성 시뮬 검수)
+//   캐릭터 교체(applyCharacter)·도구 교체(setHeldTool 류)마다 갱신.
+function updateStowPose() {
+  const a = curAnimal, R = a.bodyR ?? 0.55, bs = a.bodyScale || [1, 1.05, 1];
+  const bodyY = R * bs[1] + 0.02;
+  const hl = Math.max(0, (heldToolMesh?.userData.stowLen ?? 0) / 2 - 0.12);
+  _stowP.set(0.06 + Math.sin(HELD_STOW.rz) * hl,          // 도구 +y축은 rz 회전 뒤 (-sin,cos) 방향
+             bodyY + R * 0.60 - Math.cos(HELD_STOW.rz) * hl,
+             -(0.8 * R * bs[2] + 0.05));                  // y=bodyY+.6R 높이의 몸 뒷면 + 여유
+}
+// 도구 길이 측정 — 생성 직후(부모·회전 없음)에 재야 정확하다
+const _stowBox = new THREE.Box3(), _stowSize = new THREE.Vector3();
+function measureStowLen(m) { m.userData.stowLen = _stowBox.setFromObject(m).getSize(_stowSize).y; }
 const _idQ = new THREE.Quaternion();
 function poseHeldTool(stow, swingX, swingZ) {
   if (!heldGroup) return;
@@ -2098,7 +2149,8 @@ function setHeldTool(id) {
   if (!handAnchor) return;
   if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
-  heldToolMesh = toolMesh(id); handAnchor.add(heldToolMesh);
+  heldToolMesh = toolMesh(id); measureStowLen(heldToolMesh); updateStowPose();
+  handAnchor.add(heldToolMesh);
 }
 // 꾸미기: 선택한 가구를 손에 작게 들기
 function setHeldDecor(id) {
@@ -2106,7 +2158,7 @@ function setHeldDecor(id) {
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   const m = decorMesh(id); m.scale.setScalar(0.5); m.position.y = 0.05;
   m.rotation.y = decorRot * Math.PI / 2;   // 현재 회전 상태 미리보기
-  heldToolMesh = m; handAnchor.add(m);
+  heldToolMesh = m; measureStowLen(m); updateStowPose(); handAnchor.add(m);
 }
 
 // ── 🌦️ 날씨 파티클 — 비: 빠른 빗줄기 / 눈: 천천히 흩날리는 눈송이 ──
@@ -2133,7 +2185,7 @@ function buildRain() {
 
 function updateRain(dt) {
   if (!rainLines) return;
-  const show = mode === 'play' && !indoor && !atMine;   // 실내·동굴에선 숨김(텃밭은 야외)
+  const show = mode === 'play' && !indoor && !atMine && !atCafe;   // 실내·동굴·카페 홀에선 숨김(텃밭은 야외)
   rainLines.visible = show;
   if (!show) return;
   const { vel, snow, len } = rainLines.userData;
@@ -4832,12 +4884,14 @@ function seaHoldRod(on) {
     if (seaRodMesh) return;
     _seaPrevTool = heldToolMesh;
     if (heldToolMesh) handAnchor.remove(heldToolMesh);
-    seaRodMesh = toolMesh('reel'); heldToolMesh = seaRodMesh; handAnchor.add(seaRodMesh);
+    seaRodMesh = toolMesh('reel'); measureStowLen(seaRodMesh); updateStowPose();
+    heldToolMesh = seaRodMesh; handAnchor.add(seaRodMesh);
   } else {
     if (!seaRodMesh) return;
     handAnchor.remove(seaRodMesh); seaRodMesh = null;
     heldToolMesh = _seaPrevTool; _seaPrevTool = null;
     if (heldToolMesh) handAnchor.add(heldToolMesh);
+    updateStowPose();   // 돌려받은 도구 길이 기준으로 수납 위치 복원
   }
 }
 function seaReset() {
@@ -6414,19 +6468,19 @@ function updateDoorInteract() {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
   } else if (dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {
     nd = 'mist'; prompt = '🌫️ 안개 낀 숲에 들어가기';
-    firstHint('mistGate', '🌫️', '안개 낀 숲', '마을 북서쪽, 안개가 걷히지 않는 숲이에요. 그림자 정령들이 수호목의 빛을 탐내고 있어요 — 등불과 ♪음악으로 달래서 하루의 안개를 정화해보세요. 정령빛(✨)으로 특별한 등불 장식도 만들 수 있어요!');
+    firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
-    firstHint('dockGate', '🛶', '나루터', '마을 북쪽 강가예요. 들어가면 나룻배를 타고 강을 내려가는 물길이 열려요 — 장애물을 피하고 ⭐별조각을 모아 배를 강화하세요. 하루 3번 탈 수 있고, 물길은 매일 새로 바뀌어요!');
+    firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 강을 내려가요 — 하루 3번');
   } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
     nd = 'sea'; prompt = '🌊 바다터 (먼 바다로 나가볼까요?)';
-    firstHint('seaGate', '🌊', '바다터', '마을 북동쪽 포구예요. 먼 바다로 나가면 수면에 대형 물고기들이 헤엄쳐요 — 노리고 던져서 줄다리기로 낚아 올리세요! ⚔️참치는 하루 한 번 "오늘의 대어", 무게가 🏆랭킹에 올라가요.');
+    firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
-    firstHint('cafeGate', '☕', '카페', '들어가면 손님들이 테이블에 앉아 요리를 주문하고 있어요. 재료를 들고 손님에게 다가가면 그 자리에서 만들어 서빙 — 🪙코인과 ❤️친밀도를 받아요. 농사·낚시·닭장·채집으로 모은 재료를 쓸 곳이에요!');
+    firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
   }
   nearDoor = nd;
-  if (nd === 'mine') firstHint('mineGate', '⛏️', '채굴 동굴 입구', '들어가면 어두운 동굴에서 ⛏️괭이로 돌·석탄·보석을 캘 수 있어요. 작업대 재료와 상점 판매에 쓰여요!');
+  if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
   // 자유주방/작업대/상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
   const inVillage = !indoor && !atFarm && !atMine && !atRiver && !nd;
   nearKitchen = inVillage && dist2D(KITCHEN, player.position) < 2.2;               // 🍳 자유주방(요리 미니게임)
@@ -6438,22 +6492,22 @@ function updateDoorInteract() {
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
-  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHint('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록이 모이는 곳이에요 — 뱃길·코인·채굴·요리·의뢰 다섯 부문! 매주 월요일 새로 시작하니 부담 없이 도전해봐요.'); }
-  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHint('market', '📊', '시세 전광판', '판매 가격이 매일 바뀌어요! 전광판에서 오늘 비싼 품목을 확인하고 비쌀 때 파세요 🪙'); }
+  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문 — 매주 리셋'); }
+  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌어요 — 비쌀 때 파세요'); }
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
-    firstHint('coop', '🐔', '닭장 터', '남쪽 빈터에 닭장을 지을 수 있어요! 🔥 2일 연속 출석하고 재료(🪵25 🪨10 🪙60)를 모아 오세요. 지으면 매일 모이를 주고 다음날 🥚 달걀을 얻어요.');
+    firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
-  if (nearKitchen) firstHint('kitchen', '🍳', '자유주방', '재료로 요리하는 미니게임 작업장이에요! 🍲끓이기는 바늘이 초록 구간에 올 때 탭, 🔪썰기는 리듬에 맞춰 탭 — 타이밍이 좋을수록 요리 등급이 올라 버프가 오래가요.');
-  else if (nearBench) firstHint('bench', '🔧', '작업대', '재료(목재·돌·작물)로 도구 강화·야외 장식·주민 선물을 만들 수 있어요. 요리는 옆의 🍳 자유주방에서!');
-  else if (nearShop) firstHint('shop', '🛒', '상점', '작물·물고기·목재를 팔아 🪙코인을 벌고, 씨앗 등을 살 수 있어요. (팔기: 탭하면 1개, 꾹 누르면 전부)');
-  else if (nd === 'farm') firstHint('farmGate', '🌾', '내 텃밭 입구', '들어가면 나만의 넓은 밭이 있어요. 마을과 별개로, 마음껏 농사지을 수 있는 나만의 공간이에요!');
+  if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
+  else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물 만들기');
+  else if (nearShop) firstHintBanner('shop', '🛒', '상점', '수확물을 팔고 씨앗을 사는 곳');
+  else if (nd === 'farm') firstHintBanner('farmGate', '🌾', '내 텃밭 입구', '마음껏 농사짓는 나만의 넓은 밭');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)
   const nearHouse = inVillage2() && gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 4.2;
   if (nearHouse !== lastNearHouse) { lastNearHouse = nearHouse; ui.setNearHouse?.(nearHouse); }
-  if (nearHouse) firstHint('extDecor', '🎨', '집 외관 꾸미기', '집 근처에 오면 🎨 집 외관 꾸미기 버튼이 떠요. 지붕·벽·문 색을 바꿔 나만의 집을 만들어보세요!');
+  if (nearHouse) firstHintBanner('extDecor', '🎨', '집 외관 꾸미기', '지붕·벽·문 색을 바꿔 나만의 집으로');
   updateZoneHint();
   updateToolPageAuto();   // 🎒 구역이 바뀌었으면 도구 페이지도 넘긴다
 }
@@ -6473,16 +6527,14 @@ function updateZoneHint() {
   if (nearGlade) {
     hint = isNight() ? '🌟 반딧불이 — 🦋포충망(도구 8)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
     if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
-    firstHint('glade', '🌟', '반딧불이 계곡',
-      '밤이 되면 이 숲에 반딧불이가 피어올라요. 🦋 포충망을 들고 반딧불이가 밝게 반짝이는 순간 휘두르면 잡을 수 있어요! 종류는 4가지 — 📖 도감에 모아보세요.');
+    firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 🦋포충망으로 반딧불이 잡는 곳');
   }
   const wasForest = nearForest;
   nearForest = inVillage2() && dist2D(FOREST, player.position) < FOREST_R + 0.5;
   if (nearForest && !hint) {
     hint = forageTarget() ? '🍄 채집물 발견! 액션(Space)으로 줍기 — 도구 필요 없어요' : '🍄 채집 숲 — 버섯·산딸기·도토리를 찾아보세요';
     if (!wasForest) trackEvent('zone_enter', { zone: 'forest', weather: WEATHER });   // [GA4] 채집 유입
-    firstHint('forest', '🍄', '채집 숲',
-      '씨앗도 물주기도 필요 없어요 — 숲을 돌아다니다 버섯·산딸기·도토리·약초를 발견하면 그냥 주우면 돼요! 주운 자리엔 잠시 뒤 다른 게 돋아나고, 🌧️ 비 온 날엔 버섯이 특히 많이 나요.');
+    firstHintBanner('forest', '🍄', '채집 숲', '도구 없이 버섯·산딸기를 줍는 숲');
   }
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
