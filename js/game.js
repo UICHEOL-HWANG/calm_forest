@@ -5421,6 +5421,7 @@ function emojiSprite(emoji, size = 0.5) {
   return sp;
 }
 
+const LADLE_R = 0.22;   // 국자 젓기 반경 = 대기 위치(냄비 안쪽 유지)
 function buildKitchenSet() {
   if (kset) return;
   const g = new THREE.Group(); g.position.copy(KSET);
@@ -5465,10 +5466,13 @@ function buildKitchenSet() {
   }
   const steam = [];
   for (let i = 0; i < 2; i++) { const s = emojiSprite('♨️', 0.34); s.material.opacity = 0; s.position.set(-0.15 + i * 0.3, 1.9, 0.05); s.userData.ph = i * 1.3; potGroup.add(s); steam.push(s); }
+  // 🥄 국자 — 냄비 안쪽에 담가 두고 손잡이만 위로(테두리 밖으로 튀지 않게)
   const ladle = new THREE.Group();
-  const lHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 8), woodMat(1, 1)); lHandle.rotation.z = -0.5; lHandle.position.set(0.14, 0.3, 0); ladle.add(lHandle);
-  const lBowl = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), clayMat(0x8a7a68)); ladle.add(lBowl);
-  ladle.position.set(0.42, 1.7, 0.05); potGroup.add(ladle);
+  const lHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.52, 8), woodMat(1, 1));
+  lHandle.rotation.z = -0.62; lHandle.position.set(0.151, 0.212, 0); ladle.add(lHandle);   // 아래 끝이 국자 컵에 붙도록
+  const lBowl = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), clayMat(0x8a7a68));
+  lBowl.scale.set(1, 0.72, 1); ladle.add(lBowl);                                           // 살짝 납작한 국자 컵
+  ladle.position.set(LADLE_R, 1.70, 0.05); potGroup.add(ladle);                            // 국물에 반쯤 잠긴 높이
   const foods = new THREE.Group(); foods.position.set(0, 1.7, 0.05); potGroup.add(foods);   // 국에 둥둥 뜨는 재료 스프라이트
   g.add(potGroup);
   // 조명 — 세트 전용 따뜻한 불빛(밤에도 아늑하게 보이게)
@@ -5589,8 +5593,9 @@ function updateMgScene(dt, t) {
   if (kset.ladleT >= 0) {
     kset.ladleT += dt;
     const a = (kset.ladleT / 0.7) * Math.PI * 2;
-    kset.ladle.position.set(Math.cos(a) * 0.26, 1.7, 0.05 + Math.sin(a) * 0.26);
-    if (kset.ladleT >= 0.7) { kset.ladleT = -1; kset.ladle.position.set(0.42, 1.7, 0.05); }
+    kset.ladle.position.set(Math.cos(a) * LADLE_R, 1.65, 0.05 + Math.sin(a) * LADLE_R);
+    kset.ladle.rotation.y = -a;                                                   // 손잡이가 궤적 바깥을 향하게 같이 회전
+    if (kset.ladleT >= 0.7) { kset.ladleT = -1; kset.ladle.rotation.y = 0; kset.ladle.position.set(LADLE_R, 1.65, 0.05); }
   }
   // 🧺 재료 퐁당(냄비 속으로 낙하 → 반짝)
   if (kset.dropT >= 0 && kset.drop) {
