@@ -1425,8 +1425,10 @@
     window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
     let toastTimer;
-    // 🪧 시설 배너 큐 — 연속으로 여러 시설을 지나쳐도 하나씩 차례로(5.5초 표시 + 0.4초 간격)
+    // 🪧 시설 배너 큐 — 그 앞에 있으면 5초(읽을 시간), 이미 지나쳤으면 2.2초로 빠르게 흘림.
+    //    읽는 중 자리를 뜨면 최소 2.2초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
     const hintBQ = []; let hintBShowing = false;
+    const HINT_B_MIN = 2200, HINT_B_FULL = 5000;
     function nextHintBanner() {
       const item = hintBQ.shift();
       if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
@@ -1435,11 +1437,19 @@
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
       const el = $('hint-banner'); el.classList.add('show');
-      setTimeout(() => { el.classList.remove('show'); setTimeout(nextHintBanner, 400); }, 5500);
+      const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 5초
+      const t0 = Date.now();
+      let timer, watch;
+      const done = () => { clearTimeout(timer); clearInterval(watch); el.classList.remove('show'); setTimeout(nextHintBanner, 250); };
+      const hold = near() ? HINT_B_FULL : HINT_B_MIN;
+      timer = setTimeout(done, hold);
+      if (hold > HINT_B_MIN) watch = setInterval(() => {   // 조기 페이드아웃 감시
+        if (Date.now() - t0 >= HINT_B_MIN && !near()) done();
+      }, 400);
     }
     const ui = {
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
-      showHintBanner({ ico, title, line }) { hintBQ.push({ ico, title, line }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, title, line, near }) { hintBQ.push({ ico, title, line, near }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0; },
       setInventory(inv) {

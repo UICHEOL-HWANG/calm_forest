@@ -944,7 +944,10 @@ function firstHintBanner(key, ico, title, line) {
   if (gameState.hintsSeen[key]) return;
   if (ui.coachActive?.()) return;
   gameState.hintsSeen[key] = true;
-  ui.showHintBanner?.({ ico, title, line });
+  // 발동 지점을 기억해 "표시 차례가 왔을 때 아직 그 앞에 있는지"를 UI 가 판정할 수 있게 —
+  // 여러 시설을 연달아 지나치면 이미 떠난 곳의 배너는 짧게 흘려보낸다(큐 적체 방지)
+  const at = { x: player.position.x, z: player.position.z };
+  ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5 });
 }
 
 let indoor = false;        // 실내(집 안) 여부
@@ -1422,6 +1425,9 @@ export async function enterGame() {
     // 🎬 __introTest() — 프롤로그 강제 재생(이미 본 세이브에서도) / __introJump(s) — 타임라인 점프(검증용)
     window.__introTest = () => introStart(true);
     window.__introJump = (s) => { if (intro) intro.t = s; return !!intro; };
+    // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
+    window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
+    window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
@@ -2310,8 +2316,11 @@ function buildPier() {
 // 🐔 닭장 터 표지(미건설 시) — 배지·재료 조건 안내판
 function buildCoopSite() {
   coopSign = new THREE.Group(); coopSign.position.copy(COOP);
-  const pad = new THREE.Mesh(new THREE.CircleGeometry(1.7, 24), new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.3 }));
+  // 집 터와 같은 문법(민트 패드 + 초록 링) — 베이지 원판이 "땅에 얼룩진 자국"처럼 보였음
+  const pad = new THREE.Mesh(new THREE.CircleGeometry(1.7, 28), new THREE.MeshStandardMaterial({ color: 0xbfe8c9, transparent: true, opacity: 0.5, roughness: 1 }));
   pad.geometry.rotateX(-Math.PI / 2); pad.position.y = 0.03; coopSign.add(pad);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.65, 1.9, 36), new THREE.MeshBasicMaterial({ color: 0x5fc07c, transparent: true, opacity: 0.75, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; coopSign.add(ring);
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 192;
   const c = cv.getContext('2d');
   c.fillStyle = '#b8d2ba'; roundRect(c, 10, 10, 492, 172, 28); c.fill();
@@ -2321,8 +2330,9 @@ function buildCoopSite() {
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(2.7, 1.0, 1); sp.position.y = 1.7; coopSign.add(sp);
+  sp.scale.set(2.7, 1.0, 1); sp.position.y = 2.1; coopSign.add(sp);   // 머리 위로 — 캐릭터가 밑에 서도 배너가 얼굴을 안 가림
   scene.add(coopSign);
+  solidCircle(COOP.x, COOP.z, 0.55);   // 🚧 배너 바로 밑까지 파고들지 않게(건설 상호작용 2.4 는 그대로 닿음)
   if (gameState.coop.built) coopSign.visible = false;   // 복원 순서 대비
 }
 
@@ -2981,8 +2991,8 @@ function buildCafeHall() {
   bpost.position.set(CAFE_BOARD[0], 0.8, CAFE_BOARD[1]); g.add(bpost);
   const board = makeSignBoard('📋 주문판'); board.scale.setScalar(0.6);
   board.position.set(CAFE_BOARD[0], 1.75, CAFE_BOARD[1] + 0.05); g.add(board);
-  const exitSign = makeSignBoard('🚪 나가기'); exitSign.scale.setScalar(0.62);
-  exitSign.position.set(0, 1.1, H - 0.6); g.add(exitSign);
+  // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
+  g.add(makeSignpost('🚪 나가기', 1.7, H - 0.55));
   // 따뜻한 펜던트 등 3개(그룹 안이라 홀에 있을 때만 씬 조명에 잡힘)
   [[-5.5, 0], [0, -3], [5.5, 0]].forEach(([lx, lz]) => {
     const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), clayMat(0x6a5a4a));
@@ -2998,6 +3008,7 @@ function buildCafeHall() {
   CAFE_SEATS.forEach(([sx, sz]) => solidCircle(CAFE.x + sx, CAFE.z + sz, 0.9)); // 테이블
   [[-H + 1.4, H - 1.6], [H - 1.4, H - 1.6], [-H + 1.4, -H + 1.4]]
     .forEach(([px, pz]) => solidCircle(CAFE.x + px, CAFE.z + pz, 0.4));         // 화분
+  solidCircle(CAFE.x + CAFE_BOARD[0], CAFE.z + CAFE_BOARD[1], 0.3);             // 주문판 기둥(읽기 판정 2.2 는 그대로 닿음)
   scene.add(g); cafeInGroup = g; cafeInGroup.visible = false;   // 홀에 있을 때만 표시
   refreshCafeGuests();
 }
@@ -6196,6 +6207,10 @@ function makeSignpost(text, x = 0, z = 1.3) {
   const grp = new THREE.Group();
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 6), woodMat(1, 1)); post.position.set(x, 0.75, z); post.castShadow = true; grp.add(post);
   const sign = makeSignBoard(text); sign.scale.setScalar(0.55); sign.position.set(x, 1.45, z + 0.04); grp.add(sign);
+  // 🚧 기둥 충돌 — 캐릭터가 팻말을 뚫고 들어가 판이 머리를 가리던 문제.
+  //    월드 좌표는 부모 그룹 배치 뒤에야 확정되므로 다음 프레임에 등록한다.
+  //    (출입 판정은 반경 1.9 근접이라 r0.3 기둥이 문을 막지 않음)
+  requestAnimationFrame(() => { const wp = new THREE.Vector3(); post.getWorldPosition(wp); solidCircle(wp.x, wp.z, 0.3); });
   return grp;
 }
 
@@ -6204,7 +6219,23 @@ function spawnFarmGate() {
   const g = new THREE.Group(); g.position.copy(FARM_GATE);
   for (const x of [-1.1, 1.1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.4, 7), woodMat(1, 1)); p.position.set(x, 1.2, 0); p.castShadow = true; g.add(p); }
   const top = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.24, 0.24), woodMat(2, 1)); top.position.y = 2.4; g.add(top);
-  const sign = makeSignBoard('🌾 내 텃밭'); sign.position.set(0, 1.7, 0.02); g.add(sign);
+  // 🌿 덩굴 퍼걸러 입구 — 간판을 아치에 올리는 안은 두 번 실패(1.7=머리 관통, 2.95=캐릭터 가림/붕 뜸).
+  //    입구는 꿀색 박공지붕(랭킹판과 같은 문법)+덩굴로 꾸미고, 이름은 옆 팻말이 맡는다.
+  for (const s of [-1, 1]) {
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.07, 0.66), clayMat(0xf0b46a));
+    slab.position.set(s * 0.68, 2.72, 0); slab.rotation.z = -s * 0.38; slab.castShadow = true; g.add(slab);
+  }
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), clayMat(0xe8c46a, false)); orb.position.y = 3.0; g.add(orb);
+  // 기둥 타고 오르는 덩굴 잎 + 들보 위 잎 뭉치
+  for (const x of [-1.1, 1.1]) {
+    [[0.7, 0.16], [1.4, 0.2], [2.1, 0.17]].forEach(([y, r], i) => {
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i]));
+      leaf.position.set(x + (i % 2 ? 0.12 : -0.1), y, 0.1); g.add(leaf);
+    });
+    const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), clayMat(PAL.leaf2));
+    tuft.position.set(x * 0.85, 2.5, 0); g.add(tuft);
+  }
+  g.add(makeSignpost('🌾 내 텃밭', 2.1, 0.5));
   scene.add(g);
   obstacles.push({ x: FARM_GATE.x, z: FARM_GATE.z, r: 1.2 });
   // 🚧 기둥 두 개만 — 아치 가운데는 걸어서 지나갈 수 있어야 한다
@@ -6214,6 +6245,22 @@ function spawnFarmGate() {
 // 텃밭 필드(잔디 바닥 + 울타리 + 나가는 문 + 허수아비)
 function buildFarm() {
   const g = new THREE.Group(); g.position.copy(FARM);
+  // 주변 배경 — 필드가 마을 지면(r60) 밖 허공에 떠 있어, 밤엔 필드 너머가 하늘색 허공으로
+  // 그대로 노출됐다(밤 그레이딩까지 얹혀 보랏빛 허공). 동굴·안개 숲처럼 자체 배경을 깐다.
+  const skirtGeo = new THREE.CircleGeometry(48, 48); skirtGeo.rotateX(-Math.PI / 2);
+  const skirt = new THREE.Mesh(skirtGeo, clayMat(PAL.groundDark, false));
+  skirt.position.y = -0.02; skirt.receiveShadow = true; g.add(skirt);
+  // 둘레 나무들(장식) — 강둑 나무와 같은 간단 조형. 남쪽 출입구 방향은 비워 시야 확보
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    if (Math.abs(a - Math.PI / 2) < 0.45) continue;              // 남쪽(+z) 출입구
+    const r = FARM_HALF + 5 + ((i * 7) % 6) * 2.4;
+    const h = 2.0 + ((i * 13) % 7) * 0.3;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, h, 5), clayMat(PAL.trunk));
+    trunk.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r); g.add(trunk);
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.6, 6), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
+    leaf.position.set(trunk.position.x, h + 1.0, trunk.position.z); g.add(leaf);
+  }
   const ground = new THREE.Mesh(new THREE.BoxGeometry(FARM_HALF * 2, 0.2, FARM_HALF * 2), clayMat(0x8fce7e, false));
   ground.position.y = 0.05; ground.receiveShadow = true; g.add(ground);
   // 울타리 둘레
@@ -6226,7 +6273,8 @@ function buildFarm() {
   }
   // 나가는 문(남쪽 가운데)
   const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.14, 0.4), woodMat(1, 2, 0xa9743f)); gate.position.set(0, 0.16, H); g.add(gate);
-  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, H); g.add(board);
+  // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
+  g.add(makeSignpost('🚪 나가기', 1.9, H - 0.2));
   // (허수아비 장식은 제거 — 이제 작업대에서 만들어 직접 배치해야 밤손님을 막는다)
   scene.add(g); farmGroup = g; farmGroup.visible = false;   // 텃밭에 있을 때만 표시
 }
@@ -6299,7 +6347,7 @@ function buildMine() {
   // 바닥 돌기(자잘한 바위)
   for (let i = 0; i < 14; i++) rock((Math.random() - 0.5) * (H * 2 - 2), 0.06, (Math.random() - 0.5) * (H * 2 - 2), 0.3 + Math.random() * 0.4, 0.14 + Math.random() * 0.2, 0.3 + Math.random() * 0.4, false);
   // 나가는 문 표지판(남쪽 구멍)
-  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, -H - 0.1); g.add(board);
+  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 2.0, -H - 0.1); g.add(board);   // 문을 지나는 머리 위로
   scene.add(g); mineGroup = g; mineGroup.visible = false;   // 동굴에 있을 때만 표시
   // 위쪽 은은한 푸른 필(깊이감)
   const glow = new THREE.PointLight(0x9ac4ff, 0.5, 44, 1.2); glow.position.set(MINE.x, 7, MINE.z); scene.add(glow);
@@ -6350,6 +6398,9 @@ function spawnMineGate() {
   // 🚧 바위 더미는 사각으로 — 입구(+z)만 열어 두고 나머지를 막는다.
   //    (원으로 막으면 아치 안으로 못 들어가 입장 판정 2.0 을 못 채움)
   solidBox(MINE_GATE.x - 2.4, MINE_GATE.z - 1.7, MINE_GATE.x + 2.4, MINE_GATE.z + 0.15);
+  // 🚧 양옆 바닥 바위 무더기 — 사각 밖(|x|>2.4)으로 파고들면 바위 속에 끼던 문제
+  [-2.0, 2.0].forEach(x => solidCircle(MINE_GATE.x + x, MINE_GATE.z + 0.2, 1.1));
+  solidCircle(MINE_GATE.x + 2.7, MINE_GATE.z + 1.4, 0.3);   // 🚧 팻말 기둥
 }
 
 function enterMine() {
@@ -7225,8 +7276,9 @@ function updateDayNight(dt) {
     const tt = clock.elapsedTime;
     for (const t of mineTorches) { const f = 0.85 + Math.sin(tt * 7 + t.phase) * 0.15; t.light.intensity = t.base * f; t.fm.emissiveIntensity = 1.4 * f + 0.4; }
   }
-  // 집 안내판: 낮엔 매트(후광X), 밤엔 은은하게 빛나 잘 보이게(동적 채광)
-  if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 + nightAmt * 0.28);
+  // 집 안내판: 낮엔 매트(후광X), 밤엔 주변에 맞춰 감광 — 밝기를 키우면 밤 블룸(0.85 임계)에
+  // 걸려 판 전체가 형광등처럼 번지므로, 닭장 터 배너처럼 어둡게 가라앉힌다
+  if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 - nightAmt * 0.35);
   // 블룸 밤에 살짝 더 강하게
   if (bloomPass) bloomPass.strength = 0.5 + nightAmt * 0.5;
   // 밤 푸른 톤 그레이딩
