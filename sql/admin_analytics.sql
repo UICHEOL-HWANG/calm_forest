@@ -66,6 +66,7 @@ begin
   -- ── 활동 원장: 기기 단위(uid) 로 정규화 ──────────────────────
   act as (
     select coalesce(nullif(client_id, ''), user_id::text) as uid,
+           user_id,                                       -- 이탈 퍼널의 세이브(튜토리얼) 조인용
            session_id,
            ((created_at at time zone tz))::date          as day,
            (created_at at time zone tz)                  as ts_local,
@@ -193,6 +194,70 @@ begin
            sum(case when amount > 0 then  amount else 0 end)::bigint as inflow,
            sum(case when amount < 0 then -amount else 0 end)::bigint as outflow
     from econ_logs group by source order by sum(abs(amount)) desc limit 14
+  ),
+  -- ── 유저 흐름: 활동 퍼널 · 이탈 퍼널 · 유저별 위치 ─────────────
+  --  활동 퍼널은 session_logs.counts(GA4 이벤트 카운트)를 uid 로 합산해
+  --  "이번 기간에 어느 깊이까지 놀았는지"를 단계화합니다.
+  --  단계는 누적 AND 로만 올라가므로(2단계 없이 3단계 불가) 퍼널이 항상 단조 감소합니다.
+  sl_period as (
+    select coalesce(nullif(client_id, ''), user_id::text) as uid,
+           coalesce(counts, '{}'::jsonb)                  as counts
+    from session_logs
+    where ((coalesce(started_at, updated_at) at time zone tz))::date >= since
+      and coalesce(nullif(client_id, ''), user_id::text) is not null
+  ),
+  ev_user as (
+    select uid,
+           bool_or(e.key in ('zone_enter','enter_farm','enter_house','enter_mine','enter_cafe','npc_talk'))  as s_field,
+           bool_or(e.key in ('chop_tree','forage_pick','harvest_crop','plant_seed','water_crop','mine_ore',
+                             'craft_item','coop_feed','coop_collect','first_chop'))                          as s_work,
+           bool_or(e.key in ('carve_start','cooking_start','cafe_serve','fishing_cast','sea_cast',
+                             'boat_start','mist_enter','firefly_swing'))                                     as s_mini,
+           bool_or(e.key in ('shop_buy','shop_sell'))                                                        as s_trade
+    from sl_period s, jsonb_each_text(s.counts) e
+    where e.value ~ '^[0-9]+$' and e.value::numeric > 0
+    group by uid
+  ),
+  -- 기간 내 접속 유저 전원의 단계(세션 요약이 없으면 1단계=접속으로만 집계)
+  user_stage as (
+    select p.uid,
+           case when coalesce(v.s_field, false) and coalesce(v.s_work, false)
+                     and coalesce(v.s_mini, false) and coalesce(v.s_trade, false) then 5
+                when coalesce(v.s_field, false) and coalesce(v.s_work, false)
+                     and coalesce(v.s_mini, false)                                then 4
+                when coalesce(v.s_field, false) and coalesce(v.s_work, false)     then 3
+                when coalesce(v.s_field, false)                                   then 2
+                else 1 end as stage
+    from (select distinct uid from ud where day >= since) p
+    left join ev_user v using (uid)
+  ),
+  -- 유저별 관제 표용 최근 활동(최근 활성 40명)
+  user_recent as (
+    select uid,
+           max(ts_local)              as last_seen,
+           count(distinct session_id) as sessions,
+           bool_and(is_guest)         as is_guest
+    from act where day >= since group by uid
+  ),
+  -- 이탈 퍼널 코호트: 14일 관측이 "끝난" 신규만 분모에 넣습니다
+  --  (덜 관측된 유저를 이탈로 오판하지 않기 위해 — 리텐션 분모와 같은 원칙).
+  --  게스트는 재방문 시 새 익명 ID 가 되는 한계를 다른 지표와 공유합니다.
+  uid_user as (
+    select uid, (array_agg(user_id order by ts_local desc))[1] as user_id
+    from act where user_id is not null group by uid
+  ),
+  churn_flags as (
+    select f.uid,
+           exists (select 1 from saves s join uid_user uu on uu.uid = f.uid
+                    where s.user_id = uu.user_id and s.tutorial)                        as f_tut,
+           exists (select 1 from ud u where u.uid = f.uid and u.day = f.first_day + 1)  as f_d2,
+           (select count(distinct u.day) from ud u
+             where u.uid = f.uid and u.day between f.first_day and f.first_day + 7) >= 3 as f_w7,
+           exists (select 1 from ud u where u.uid = f.uid
+                    and u.day between f.first_day + 8 and f.first_day + 14)             as f_d14
+    from first_seen f
+    where f.first_day <= today - 14
+      and f.first_day >  today - 14 - days
   )
   select jsonb_build_object(
     'meta', jsonb_build_object('days', days, 'today', today, 'since', since, 'tz', tz),
@@ -301,6 +366,33 @@ begin
     -- ── 경제 ──
     'econ_daily',   (select coalesce(jsonb_agg(jsonb_build_object('day', day, 'inflow', inflow, 'outflow', outflow, 'net', inflow - outflow) order by day), '[]'::jsonb) from econ_daily),
     'econ_sources', (select coalesce(jsonb_agg(jsonb_build_object('source', source, 'tx', tx, 'inflow', inflow, 'outflow', outflow, 'net', inflow - outflow) order by (inflow + outflow) desc), '[]'::jsonb) from econ_src),
+
+    -- ── 유저 흐름(활동/이탈 퍼널 · 유저별 위치) ──
+    'activity_funnel', (
+      select jsonb_build_object(
+        'active',   count(*),
+        'field',    count(*) filter (where stage >= 2),
+        'work',     count(*) filter (where stage >= 3),
+        'minigame', count(*) filter (where stage >= 4),
+        'trade',    count(*) filter (where stage >= 5)
+      ) from user_stage
+    ),
+    'churn_funnel', (
+      select jsonb_build_object(
+        'entered',  count(*),
+        'tutorial', count(*) filter (where f_tut),
+        'd2',       count(*) filter (where f_tut and f_d2),
+        'w7',       count(*) filter (where f_tut and f_d2 and f_w7),
+        'd14',      count(*) filter (where f_tut and f_d2 and f_w7 and f_d14)
+      ) from churn_flags
+    ),
+    'user_stages', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'uid', left(r.uid, 6) || '…', 'stage', s.stage, 'sessions', r.sessions,
+        'last_seen', r.last_seen, 'is_guest', r.is_guest) order by r.last_seen desc), '[]'::jsonb)
+      from (select * from user_recent order by last_seen desc limit 40) r
+      join user_stage s using (uid)
+    ),
 
     -- ── 세그먼트 ──
     'segments', jsonb_build_object(
