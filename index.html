@@ -1380,6 +1380,10 @@
 
     const $ = (id) => document.getElementById(id);
 
+    // 🔒 DB·서버에서 온 문자열을 innerHTML 에 끼울 때는 반드시 이걸 거친다(닉네임·날씨 등).
+    const escapeHtml = (s) => String(s).replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
     // ── 🌐 i18n 부팅 — 영어 모드면 정적 마크업을 즉시 번역하고,
     //    이후 동적으로 나타나는 텍스트는 옵저버가 사전으로 치환한다(ko 모드 오버헤드 0).
     document.documentElement.lang = LANG;
@@ -2708,12 +2712,12 @@
         list.innerHTML = top.map(r =>
           `<div class="lb-row${r.rank <= 3 ? ' top3' : ''}${d.me && r.rank === d.me.rank && r.nick === myNick ? ' me-row' : ''}">
             <span class="lb-rank">${lbMedal(r.rank)}</span>
-            <span class="lb-nick">${String(r.nick).replace(/</g, '&lt;')}</span>
+            <span class="lb-nick">${escapeHtml(r.nick)}</span>
             <span class="lb-score">${meta.fmt ? meta.fmt(r.score) : Number(r.score).toLocaleString()}${meta.unit}</span>
           </div>`).join('');
         // 내 순위 — 상위 목록에 안 보이면 하단에 고정 표시
         if (d.me && !(top.some(r => r.rank === d.me.rank && r.nick === myNick))) {
-          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${String(myNick || '나').replace(/</g, '&lt;')} (나)</span><span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
+          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${escapeHtml(myNick || '나')} (나)</span><span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
         } else if (!d.me && authState.userId) {
           meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요 — 지금 만들어봐요!</div>`;
         }
@@ -2993,7 +2997,7 @@
         shown++;
         const d = new Date(r.taken_at);
         const cell = document.createElement('div'); cell.className = 'album-cell';
-        cell.innerHTML = `<img loading="lazy" src="${url}" alt=""><span class="album-date">${r.weather || ''} ${d.getMonth() + 1}/${d.getDate()}</span>`;
+        cell.innerHTML = `<img loading="lazy" src="${url}" alt=""><span class="album-date">${escapeHtml(r.weather || '')} ${d.getMonth() + 1}/${d.getDate()}</span>`;
         cell.addEventListener('click', () => {
           albumCur = { key: r.object_key, url };
           $('album-img').src = url;

@@ -15,6 +15,8 @@ import { onRequestGet as nightNote } from '../functions/api/night-note.js';
 import { onRequestPost as photoUpload, onRequestDelete as photoDelete } from '../functions/api/photo.js';
 import { onRequestPost as photoUrls } from '../functions/api/photo-urls.js';
 import { onRequestGet as leaderboard } from '../functions/api/leaderboard.js';
+import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
+import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -53,6 +55,18 @@ export default {
       if (pathname === '/api/photo-urls') {
         if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
         return await photoUrls({ request, env });
+      }
+
+      // 📖 도감 설명문 — 카테고리·언어 조합당 1회 생성 후 엣지 캐시(실패 시 {} 폴백)
+      if (pathname === '/api/dex-notes') {
+        if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+        return await dexNotes({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+      }
+
+      // 🦉 오늘의 의뢰 — (날짜·날씨·언어·단계) 조합당 1회 생성 후 엣지 캐시(실패 시 [] 폴백)
+      if (pathname === '/api/daily-quests') {
+        if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+        return await dailyQuests({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
       }
 
       // 🏆 리더보드 — Supabase RPC 프록시(엣지 캐시 5분)
