@@ -250,11 +250,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
     // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 DAILY_POOL 을 쓴다.
     // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
     return new Response('[]', {
-      headers: {
-        ...headers,
-        'Cache-Control': 'no-store',
-        'X-Daily-Quests-Error': String(e.message || 'unknown').replace(/[^\x20-\x7E]/g, ' ').slice(0, 160),
-      },
+      headers: { ...headers, 'Cache-Control': 'no-store' },
     });
   }
 }

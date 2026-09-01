@@ -117,11 +117,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
     console.error(JSON.stringify({ message: 'night-note failed', date, animal, crop, lang, error: e.message }));
     // 실패는 캐시하지 않는다 — 다음 요청에서 재시도. 클라이언트는 쪽지를 생략할 뿐.
     return new Response('{}', {
-      headers: {
-        ...headers,
-        'Cache-Control': 'no-store',
-        'X-Night-Note-Error': String(e.message || 'unknown').replace(/[^\x20-\x7E]/g, ' ').slice(0, 160),
-      },
+      headers: { ...headers, 'Cache-Control': 'no-store' },
     });
   }
 }
