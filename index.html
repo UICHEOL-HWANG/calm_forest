@@ -541,6 +541,7 @@
   body.intro-open #buffs, body.intro-open #decor-btn, body.intro-open #ext-btn,
   body.intro-open #hint, body.intro-open #story-chip { display: none !important; }
   body.mg-open #hint { display: none !important; }   /* 조작 안내 바는 요리 미니게임 중에도 숨김 */
+  body.mg-open #coach { display: none !important; }  /* 튜토리얼 코치도 미니게임 무대 위엔 안 띄움(끝나면 복귀) */
   #intro-bars .ib { position: absolute; left: 0; right: 0; height: max(7dvh, env(safe-area-inset-top)); background: #10120f; }
   #intro-bars .top { top: 0; } #intro-bars .bot { bottom: 0; height: max(9dvh, env(safe-area-inset-bottom)); }
   #intro-skip { position: absolute; right: max(14px, env(safe-area-inset-right)); top: calc(max(7dvh, env(safe-area-inset-top)) + 10px);
@@ -600,6 +601,29 @@
   #mgr-again, #mgr-close { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer; }
   #mgr-again { background: var(--mint); color: var(--ink); }
   #mgr-close { background: #eef2ee; color: var(--ink); }
+  /* 🗿 조각 공방 HUD — 캔버스가 곧 조작면이라 레이어는 통과(pointer-events:none), 상단바·하단바·결과 카드만 이벤트를 받는다 */
+  body.cv-open #topleft, body.cv-open #topright { display: none !important; }   /* 좁은 화면에서 타이틀바와 겹치는 상단 마을 UI 숨김 */
+  #cv-layer { position: fixed; inset: 0; z-index: 40; display: none; pointer-events: none; -webkit-user-select: none; user-select: none; }
+  #cv-layer.show { display: block; }
+  #cv-top { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; background: rgba(255,252,244,0.93); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 8px 10px 8px 14px; pointer-events: auto; }
+  #cv-title { font-weight: 800; font-size: 15px; }
+  #cv-quit { border: none; border-radius: 10px; padding: 7px 12px; font-weight: 600; font-size: 12px; cursor: pointer; background: #f5e0dc; color: #a2503f; }
+  #cv-bottom { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom));
+    width: min(440px, 92vw); background: rgba(255,252,244,0.93); border-radius: 16px; box-shadow: var(--shadow);
+    padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; text-align: center; }
+  #cv-stats { display: flex; justify-content: center; gap: 18px; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #cv-dmg { color: #a2503f; }
+  #cv-hint { font-size: 12px; opacity: .72; }
+  #cv-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(340px, 88vw);
+    background: rgba(255,252,244,0.96); border-radius: 20px; box-shadow: var(--shadow); padding: 18px 16px;
+    display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: auto; }
+  #cv-result.show { display: flex; }
+  #cvr-ico { font-size: 52px; }
+  #cvr-title { font-size: 20px; font-weight: 800; }
+  #cvr-sub { font-size: 13px; opacity: .8; text-align: center; }
+  #cvr-stats { display: flex; gap: 14px; font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; flex-wrap: wrap; justify-content: center; }
   /* ☕ 카페 주문판 — 손님 카드가 세로로 쌓이는 목록형(요리 격자와 달리 "주문서" 느낌) */
   #cafe-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; max-height: 70dvh; overflow-y: auto; }
   #cafe-menu.show { display: flex; }
@@ -948,11 +972,13 @@
       <button class="ck-tab active" data-tab="tool">🔧 도구</button>
       <button class="ck-tab" data-tab="out">🌷 야외</button>
       <button class="ck-tab" data-tab="gift">🎁 선물</button>
+      <button class="ck-tab" data-tab="carve">🗿 조각</button>
     </div>
     <span id="cook-inv" class="ck-inv"></span>
     <div id="tool-items"></div>
     <div id="out-items" style="display:none"></div>
     <div id="gift-items" style="display:none"></div>
+    <div id="carve-items" style="display:none"></div>
     <div class="dm-hint" id="cook-hint"></div>
     <div class="dm-actions"><button id="cook-close">닫기</button></div>
   </div>
@@ -1025,6 +1051,22 @@
         <div id="mgr-stats"></div>
         <div class="dm-actions" style="justify-content:center"><button id="mgr-again">🍳 한 번 더</button><button id="mgr-close">닫기</button></div>
       </div>
+    </div>
+  </div>
+
+  <!-- 🗿 조각 공방 HUD — 3D 무대 위 최소 오버레이(캔버스 탭이 곧 조작이라 판은 안 가림) -->
+  <div id="cv-layer">
+    <div id="cv-top"><span id="cv-title">🗿 조각</span><button id="cv-quit">그만두기</button></div>
+    <div id="cv-bottom">
+      <div id="cv-stats"><span id="cv-prog">다듬기 0%</span><span id="cv-dmg">흠집 ○○○</span></div>
+      <div id="cv-hint">밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!</div>
+    </div>
+    <div id="cv-result">
+      <div id="cvr-ico">💎</div>
+      <div id="cvr-title">걸작!</div>
+      <div id="cvr-sub"></div>
+      <div id="cvr-stats"></div>
+      <div class="dm-actions" style="justify-content:center"><button id="cvr-close">닫기</button></div>
     </div>
   </div>
 
@@ -1717,6 +1759,8 @@
       openCook() { showCookTab('tool'); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🍳 자유주방 메뉴판 열기 (요리를 고르면 미니게임 시작)
       openKitchen(d) { renderKitchen(d); Input.setAnalog(0, 0); $('kitchen-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      carveProgress(p) { cvProgress(p); },                 // 🗿 조각 진행(game.js 레이캐스트 판정 → HUD)
+      carveDone(res) { cvDone(res); },                     // 🗿 조각 정산(등급·보상 → 결과 카드)
       // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
@@ -1919,13 +1963,14 @@
           ? '⑩ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기! (🦉올빼미는 매일 새 의뢰)'
           : '⑩ 🧑‍🌾주민에게 말 걸어 퀘스트를 수락하고, 목표를 채운 뒤 다시 말 걸어 보상까지 받으세요 (🦉올빼미는 매일 새 의뢰)' },
       { key: 'mine',    text: `⑪ ⛏️ 서쪽 동굴에 들어가 🌾농사 세트의 괭이(2)로 광석을 캐요 — 돌·석탄·💎보석! (${A})` },
-      { key: 'dex',     text: `⑫ 📖 우측 하단 도감 버튼을 눌러 발견한 것들과 🏅배지를 확인해요! 도감을 다 채우면 🪙150` },
-      { key: 'fish',    text: `⑬ 🎣낚싯대(4) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
-      { key: 'build',   text: `⑭ 🔨망치(3)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
+      { key: 'carve',   text: `⑫ 🔧작업대의 🗿조각 탭에서 오늘의 주문을 시작해보세요 — 모은 목재·캔 돌이 재료! (${A})` },
+      { key: 'dex',     text: `⑬ 📖 우측 하단 도감 버튼을 눌러 발견한 것들과 🏅배지를 확인해요! 도감을 다 채우면 🪙150` },
+      { key: 'fish',    text: `⑭ 🎣낚싯대(4) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
+      { key: 'build',   text: `⑮ 🔨망치(3)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
       { key: 'enter',   text: TOUCH
-          ? '⑮ 완성된 집 문 앞에서 오른쪽 🚪버튼을 눌러 들어가요'
-          : '⑮ 완성된 집 문 앞에서 Space로 들어가요' },
-      { key: 'decor',   text: `⑯ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
+          ? '⑯ 완성된 집 문 앞에서 오른쪽 🚪버튼을 눌러 들어가요'
+          : '⑯ 완성된 집 문 앞에서 Space로 들어가요' },
+      { key: 'decor',   text: `⑰ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
     ];
     let tutIdx = -1;
     // 단계가 지시하는 도구 — 그 도구가 있는 🎒 페이지를 미리 펴 준다.
@@ -1949,8 +1994,8 @@
       tutIdx = -1; $('coach').classList.remove('show');
       document.body.classList.remove('coaching');   // 코치 종료 → 토스트 원위치
       if (done) {
-        ui.toast('🎉 튜토리얼 졸업! 벌목·농사·낚시·집짓기·꾸미기 다 배웠어요. 이제 자유롭게 마을을 가꿔보세요 🌿');
-        Input.markHintsSeen?.(['shop', 'market', 'mineGate']);   // 코치 ⑧⑨⑪이 이미 설명한 시설 — 졸업 후 배너 중복 방지
+        ui.toast('🎉 튜토리얼 졸업! 벌목·농사·조각·낚시·집짓기·꾸미기 다 배웠어요. 이제 자유롭게 마을을 가꿔보세요 🌿');
+        Input.markHintsSeen?.(['shop', 'market', 'mineGate', 'bench']);   // 코치 ⑧⑨⑪⑫가 이미 설명한 시설 — 졸업 후 배너 중복 방지
         trackEvent('tutorial_complete');
       }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
@@ -2138,18 +2183,42 @@
         box.appendChild(el);
       });
     }
+    // ── 🗿 조각 주문 탭 — 오늘의 주문 3건(자정 갱신). 클릭 → 재료 소비 + 공방 미니게임 ──
+    function renderCarve() {
+      updateCookInv();
+      const d = Input.getWorkshop();
+      const box = $('carve-items'); box.innerHTML = '';
+      d.orders.forEach(o => {
+        const costStr = o.cost.map(c => ico(c.k) + c.need).join(' ');
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (o.done ? ' owned' : (o.ready ? '' : ' off'));
+        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span>
+          <span class="ck-buff">오늘의 주문 · 보상 🪙${o.pay}${o.best ? ` · ⭐최고 ${o.best}점` : ''}</span>
+          <span class="ck-cost">${o.done ? '✅ 오늘 완성' : costStr}</span>`;
+        if (!o.done) el.addEventListener('click', () => {
+          const st = Input.carveStart(o.id);
+          if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); return; }
+          closeCook();
+          openCarveHud(st);
+        });
+        box.appendChild(el);
+      });
+    }
     function showCookTab(t) {
       cookTab = t;
       [...document.querySelectorAll('.ck-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));
       $('tool-items').style.display = t === 'tool' ? 'flex' : 'none';
       $('out-items').style.display = t === 'out' ? 'flex' : 'none';
       $('gift-items').style.display = t === 'gift' ? 'flex' : 'none';
+      $('carve-items').style.display = t === 'carve' ? 'flex' : 'none';
       $('cook-hint').innerHTML = t === 'tool'
         ? '<b>영구</b> 도구 강화 · 🪵목재/🥕작물/🐟물고기 소비 — 요리는 옆의 🍳 자유주방에서!'
         : t === 'out'
           ? '장식을 고르고 <b>원하는 곳</b>에서 설치 · 🪵목재/🥕작물 소비'
-          : '선물을 만들어 <b>주민과 대화 → 선물 주기</b>로 친밀도↑';
-      if (t === 'tool') renderTools(); else if (t === 'out') renderOutdoor(); else renderGifts();
+          : t === 'gift'
+            ? '선물을 만들어 <b>주민과 대화 → 선물 주기</b>로 친밀도↑'
+            : '매일 바뀌는 <b>조각 주문 3건</b> — 밑그림만 남기고 깎으면 완성! 흠집 없이 깎을수록 보상↑';
+      if (t === 'tool') renderTools(); else if (t === 'out') renderOutdoor(); else if (t === 'gift') renderGifts(); else renderCarve();
     }
     document.querySelectorAll('.ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
     function closeCook() { $('cook-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
@@ -2399,12 +2468,50 @@
       if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); closeMg(); return; }
       startMinigame(st);
     });
+    // ── 🗿 조각 공방 HUD — 판정·연출은 game.js(캔버스 소유), 여기는 진행 표시 + 결과 카드만 ──
+    let CV = { active: false };
+    function openCarveHud(st) {
+      CV.active = true;
+      $('cv-title').textContent = `${st.ico} ${st.name}`;
+      $('cv-result').classList.remove('show');
+      cvProgress({ removed: 0, waste: st.waste, dmg: 0 });
+      $('cv-layer').classList.add('show');
+      document.body.classList.add('menu-open'); document.body.classList.add('mg-open'); document.body.classList.add('cv-open');   // 마을 UI 걷고 무대에 몰입
+      Input.setAnalog(0, 0);
+    }
+    function cvProgress(p) {
+      $('cv-prog').textContent = `다듬기 ${Math.round(p.removed / p.waste * 100)}%`;
+      $('cv-dmg').textContent = `흠집 ${'●'.repeat(p.dmg)}${'○'.repeat(Math.max(0, 3 - p.dmg))}`;
+    }
+    function cvDone(res) {
+      if (!CV.active) return;
+      $('cvr-ico').textContent = res.tier.ico;
+      $('cvr-title').textContent = `${res.tier.name}!`;
+      $('cvr-sub').innerHTML = `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
+      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
+      $('cv-result').classList.add('show');
+    }
+    function closeCarve() {
+      CV.active = false;
+      $('cv-layer').classList.remove('show');
+      document.body.classList.remove('menu-open'); document.body.classList.remove('mg-open'); document.body.classList.remove('cv-open');
+      Input.carveSceneEnd();                              // 마을 카메라 복귀
+      layoutBuffs();
+    }
+    $('cv-quit').addEventListener('click', () => Input.carveAbandon());   // 포기해도 낮은 등급으로 정산됨
+    $('cvr-close').addEventListener('click', closeCarve);
+
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
       window.__kitchenOpen = () => { const d = Input.getKitchen(); ui.openKitchen(d); return d; };
       window.__mgStart = (id) => { const st = Input.kitchenStart(id); if (st.ok) { closeKitchen(); startMinigame(st); } return st; };
       window.__mgTap = () => mgTap();
       window.__mgState = () => ({ active: MG.active, type: MG.type, step: MG.step, pts: MG.pts, combo: MG.combo, offsets: MG.offsets });
+      window.__carveOpen = () => { ui.openCook(); showCookTab('carve'); return Input.getWorkshop(); };
+      window.__carveStart = (id) => { const st = Input.carveStart(id); if (st.ok) { closeCook(); openCarveHud(st); } return st; };
+      window.__carveChip = (n = 1) => Input.carveDebug('chip', n);
+      window.__carveScratch = () => Input.carveDebug('scratch');
+      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent });
     }
 
     // ── 상점 메뉴 (팔기 / 사기) ──
