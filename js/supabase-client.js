@@ -56,7 +56,9 @@ function applySession(session) {
 async function resolveBetaGroup(session) {
   state.createdAt = session.user.created_at || null;   // 보상 부스트(가입 3일) 기준
   try {
-    const forced = new URLSearchParams(location.search).get('forceVariant');
+    // 로컬 검증 전용 — 운영에선 무시(치트·표본 오염 방지). 배정은 명단(beta_testers)이 유일.
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const forced = isLocal ? new URLSearchParams(location.search).get('forceVariant') : null;
     if (forced === 'beta_A' || forced === 'beta_B') state.variant = forced;
     if (supabase && !isAnon(session)) {
       const email = (session.user.email || '').toLowerCase();

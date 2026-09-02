@@ -214,7 +214,7 @@
           else showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/admin_analytics.sql 의 허용목록에 이메일을 추가하세요.</small>');
         }
         else if (/function|does not exist/i.test(String(error.message))) showMsg('함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/admin_analytics.sql 을 SQL Editor 에서 <b>다시</b> 실행하세요 (cf_beta_overview 가 정의돼 있는지 확인).</small>');
-        else showMsg('오류: ' + error.message);
+        else showMsg('오류: ' + escapeHtml(error.message));
         return;
       }
       $('load').style.display = 'none';
