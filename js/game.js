@@ -23,7 +23,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
-import { saveGame, loadGame, sendBoatRun, sendSeaRecord } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
+import { saveGame, loadGame, sendBoatRun, sendSeaRecord, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
+import { TUNING, rewardBoostMult, easeMult } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용)
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -6264,14 +6265,16 @@ function sellItem(k, all) {
   if (have <= 0) return { ok: false, msg: '팔 게 없어요' };
   const qty = all ? have : 1;
   gameState.inventory[k] -= qty;
-  const gain = priceOf(k) * qty;   // 🪙 오늘의 시세 반영
+  const bm = rewardBoostMult(authState.variant, authState.createdAt);   // 🧪 [베타 A군] 판매 부스트
+  const gain = Math.round(priceOf(k) * qty * bm);
+  const ledgerItem = bm > 1 ? k + '|boost' : k;
   gameState.inventory.coins = (gameState.inventory.coins || 0) + gain;
   refreshInventoryUI();
   Sound.blip();
   questEvent('sell', qty);                          // 데일리 의뢰(장사) 진행
   ui.act?.('sell');                                 // 튜토리얼: 첫 판매
   trackEvent('shop_sell', { item: k, qty, gain, rate: Math.round(priceRate(k) * 100) });  // [GA4] 금액+시세%(시세 반응 분석용)
-  logEcon('shop_sell', k, gain, gameState.inventory.coins);  // [원장] 코인 유입
+  logEcon('shop_sell', ledgerItem, gain, gameState.inventory.coins);  // [원장] 코인 유입
   return { ok: true, gain, qty };
 }
 
@@ -8796,6 +8799,11 @@ function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) 
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
 function giveReward(r, source = 'reward', item = null) {
+  // 🧪 [베타 A군] 가입 3일 부스트 — 출석·퀘스트·럭키박스 코인 ×1.5, 원장 item에 |boost 마커(원값=÷1.5 복원 가능)
+  if (r.coins && TUNING.rewardBoost.sources.includes(source)) {
+    const bm = rewardBoostMult(authState.variant, authState.createdAt);
+    if (bm > 1) { r = { ...r, coins: Math.round(r.coins * bm) }; item = (item ?? source) + '|boost'; }
+  }
   for (const k in r) gameState.inventory[k] = (gameState.inventory[k] || 0) + r[k];
   if (r.coins) logEcon(source, item, r.coins, gameState.inventory.coins); // [원장] 코인 보상 유입(출처 명시)
   refreshInventoryUI();
