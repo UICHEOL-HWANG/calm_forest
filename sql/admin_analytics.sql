@@ -416,3 +416,22 @@ $$;
 -- ※ 임시 공개를 끝내고 완전히 잠그려면 아래 anon grant 만 revoke 하면 됩니다.
 revoke all on function public.cf_admin_overview(int, text) from public;
 grant execute on function public.cf_admin_overview(int, text) to authenticated, anon;
+
+-- =============================================================
+--  🧪 베타 A/B (2026-09-02) — docs/BETA_AB_TEST_PLAN.md
+--  베타테스터 명단: email → A/B 군 직접 배정(5:5)
+-- =============================================================
+create table if not exists public.beta_testers (
+  email text primary key,           -- 소문자로 저장할 것
+  grp   text not null check (grp in ('A','B')),
+  note  text
+);
+alter table public.beta_testers enable row level security;
+drop policy if exists beta_testers_self_read on public.beta_testers;
+create policy beta_testers_self_read on public.beta_testers
+  for select to authenticated
+  using (email = lower(coalesce(auth.jwt() ->> 'email', '')));
+-- 쓰기 정책 없음 → service role(SQL 편집기)로만 등록/변경
+-- 명단 등록 예시(운영자가 SQL 편집기에서 실행):
+-- insert into public.beta_testers (email, grp, note) values
+--   ('tester1@gmail.com','A','1기'), ('tester2@gmail.com','B','1기');

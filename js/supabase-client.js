@@ -11,6 +11,7 @@
 
 import { CONFIG, isSupabaseConfigured } from './config.js';
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
+import { setAbVariant } from './analytics.js';
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -22,6 +23,7 @@ export const state = {
   clientId: clientId(),// 분석용 영구 기기 식별자(localStorage, 게스트 재방문 추적)
   isGuest: null,       // 게스트(익명/오프라인) 여부 — 세그먼트 분석용
   variant: 'control',  // A/B 변형(실험 off면 control)
+  createdAt: null,     // 계정 생성 시각(ISO) — 보상 부스트(가입 3일) 기준
 };
 
 function randId() { return 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
@@ -45,6 +47,24 @@ function applySession(session) {
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
   state.email = isAnon(session) ? '게스트' : (session.user.email || session.user.user_metadata?.name || '유저');
   state.provider = isAnon(session) ? 'anonymous' : (session.user.app_metadata?.provider || 'google');
+  resolveBetaGroup(session);
+  emit();
+}
+
+// ── 🧪 베타 배정 — 로그인 계정이 beta_testers 명단에 있으면 variant 고정 ──
+//    명단 > ?forceVariant=(로컬 검증용) > 기존 assignVariant() 순.
+async function resolveBetaGroup(session) {
+  state.createdAt = session.user.created_at || null;   // 보상 부스트(가입 3일) 기준
+  try {
+    const forced = new URLSearchParams(location.search).get('forceVariant');
+    if (forced === 'beta_A' || forced === 'beta_B') state.variant = forced;
+    if (supabase && !isAnon(session)) {
+      const email = (session.user.email || '').toLowerCase();
+      const { data } = await supabase.from('beta_testers').select('grp').eq('email', email).maybeSingle();
+      if (data?.grp) state.variant = 'beta_' + data.grp;   // 명단이 최우선
+    }
+  } catch (e) { console.warn('[베타] 배정 조회 실패(variant 유지):', e?.message || e); }
+  setAbVariant(state.variant);
   emit();
 }
 
