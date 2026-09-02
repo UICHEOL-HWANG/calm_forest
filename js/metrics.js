@@ -34,7 +34,11 @@ function flushEcon() {
 //    새 이벤트를 추가해도 카운터에 자동 포함됨. econ_tx 는 원장이 원본이므로 제외.
 const counts = {};
 const startedAt = Date.now();
-onTrack((name) => { if (name !== 'econ_tx' && name !== 'session_summary') counts[name] = (counts[name] || 0) + 1; });
+onTrack((name, p) => {
+  if (name === 'econ_tx' || name === 'session_summary') return;
+  counts[name] = (counts[name] || 0) + 1;
+  if (name === 'tutorial_step' && p?.key) counts['tut_' + p.key] = (counts['tut_' + p.key] || 0) + 1; // 🧪 군별 스텝 퍼널용
+});
 
 // ── 세션 요약 upsert ─────────────────────────────────────────
 let snapshotFn = null;     // game.js 가 넘겨주는 현재 상태 콜백 { coins, place, x, z }
