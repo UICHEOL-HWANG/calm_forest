@@ -444,6 +444,7 @@ const GIFTS = [
 
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
 let biteAt = 0, biteEnd = 0;
+let fishEase = 1;   // 🧪 첫 3회 관대 판정용 입질 여유 배율
 let bobber = null;        // 찌(3D)
 const castPos = new THREE.Vector3();
 const _v = new THREE.Vector3(); // 임시 벡터
@@ -639,6 +640,7 @@ const gameState = {
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
+  beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   workshop: { carved: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
@@ -1488,6 +1490,7 @@ function applySave(saved) {
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
   if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, ...saved.dex }; // 📖 도감 복원
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
+  if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
@@ -4163,7 +4166,7 @@ function startSoothe(sp) {
   c.fillStyle = '#aef3e2'; c.fillText('♪', 48, 50);
   const note = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
   mistGroup.add(note);
-  mist.soothe = { sp, step: 0, phase: 0, note };
+  mist.soothe = { sp, step: 0, phase: 0, note, ease: betaEase('mist') };   // 🧪 첫 3회 관대 판정
   Sound.blip();
 }
 function cancelSoothe(scared = false) {
@@ -4182,7 +4185,8 @@ function cancelSoothe(scared = false) {
 function clampMist(v) { return Math.max(-MIST_HALF + 1, Math.min(MIST_HALF - 1, v)); }
 function sootheTap() {
   const so = mist.soothe; if (!so) return;
-  if (so.phase >= 0.62 && so.phase <= 0.99) {           // 🎯 ♪가 작아진 순간
+  const lo = 1 - 0.38 * (so.ease || 1);                 // 기본 0.62 — 🧪첫 3회 0.506(창 ×1.3)
+  if (so.phase >= lo && so.phase <= 0.99) {             // 🎯 ♪가 작아진 순간
     so.step += 1; so.phase = 0;
     Sound.blip();
     spawnSparkle(MIST.x + so.sp.group.position.x, 1.6, MIST.z + so.sp.group.position.z, 6);
@@ -4935,6 +4939,7 @@ function seaAction() {
       if (d < bd) { bd = d; best = f; }
     }
     seaMG.sp = best.sp; seaMG.st = 'cast'; seaMG.t = 0; seaMG.landed = false;
+    seaMG.ease = betaEase('sea');   // 🧪 첫 3회 관대 판정
     seaMG.good = 0; seaMG.bad = 0; seaMG.progress = 0; seaMG.t0 = clock.elapsedTime;
     seaMG.phaseLen = SEA_CAST_DUR + seaRnd(1.1, 2.2);
     seaHoldRod(true);
@@ -4948,14 +4953,14 @@ function seaAction() {
     const sp = seaMG.sp;
     if (seaMG.phase === 'window') {
       // 🟢 당길 기회 — 연타로 되감기
-      seaMG.progress = Math.min(1, seaMG.progress + sp.tap);
+      seaMG.progress = Math.min(1, seaMG.progress + sp.tap * (seaMG.ease || 1));   // 🧪첫 3회: 연타 효율↑
       seaMG.good++; seaMG.pz += 0.13;
       if (seaRodMesh) seaRodMesh.userData.sea.crank.rotation.x -= 0.5;
       Sound.blip();
       if (seaMG.progress >= 1) seaCatch();
     } else {
       // 🔴 버둥칠 때 당기면 역효과 — 확 끌려간다
-      seaMG.bad++; seaMG.pz -= 0.5 * sp.drag;
+      seaMG.bad++; seaMG.pz -= 0.5 * sp.drag / (seaMG.ease || 1);                  // 🧪첫 3회: 끌림 완화
       Sound.water();
     }
   } else if (seaMG.st === 'cast' && seaMG.landed) {
@@ -8014,6 +8019,7 @@ function tryFish() {
   if (!bobber) buildBobber();
   bobber.position.copy(castPos); bobber.visible = true;
   doPlayerAction(castPos.x, castPos.z); // 낚싯대 던지기 제스처
+  fishEase = betaEase('fish');   // 🧪 첫 3회 관대 판정
   fishState = 'wait'; biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
   Sound.water(); spawnWater(castPos.x, castPos.z);
   ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
@@ -8058,7 +8064,7 @@ function updateFishing() {
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
     if (now >= biteAt) {
-      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4); // 튼튼한 낚싯대: 입질 여유↑
+      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4) * fishEase; // 튼튼한 낚싯대: 입질 여유↑ · 🧪첫 3회 관대
       ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
       Sound.blip(); spawnWater(castPos.x, castPos.z);
     }
@@ -8797,6 +8803,14 @@ function questView(o) {
 }
 function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
+
+// 🧪 [베타 A군] 미니게임 첫 3회 관대 판정 — 시도 카운트를 올리고 현재 ease 배율을 돌려준다
+function betaEase(game) {
+  const t = gameState.beta.tries;
+  const m = easeMult(authState.variant, t[game]);
+  t[game] = (t[game] || 0) + 1;
+  return m;
+}
 
 function giveReward(r, source = 'reward', item = null) {
   // 🧪 [베타 A군] 가입 3일 부스트 — 출석·퀘스트·럭키박스 코인 ×1.5, 원장 item에 |boost 마커(원값=÷1.5 복원 가능)
