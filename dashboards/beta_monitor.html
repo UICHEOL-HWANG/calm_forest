@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>calm forest · 베타 관제 🧪</title>
+<meta name="description" content="calm forest — 베타테스터 A/B 개별 현황·군별 비교·튜토리얼 퍼널·미니게임 성공률 관제 대시보드" />
+<!-- 관리자 전용 + 임시 공유 링크(?k=)가 검색에 노출되면 "임시"가 아니게 되므로 색인 차단 -->
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23bfe8c9'/%3E%3Crect x='29' y='34' width='6' height='20' rx='3' fill='%23d8a679'/%3E%3Ccircle cx='32' cy='24' r='15' fill='%238fd6a0'/%3E%3Ccircle cx='22' cy='30' r='9' fill='%23a0e0d0'/%3E%3Ccircle cx='42' cy='30' r='9' fill='%23b7e6a8'/%3E%3C/svg%3E" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="calm forest · 베타 관제 🧪" />
+<meta property="og:description" content="베타테스터 A/B 개별 현황 · 군별 비교 · 튜토리얼 퍼널 · 미니게임 성공률" />
+<meta property="og:url" content="https://calmforest.cloud/dashboards/beta_monitor.html" />
+<meta name="twitter:card" content="summary" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="_dash.css" />
+<style>
+  /* 페이지 전용 잔여 스타일 — 공통 토큰/컴포넌트는 _dash.css.
+     상태 배지(완료/미완료/연락 필요) 전용 색만 여기서 정의한다 — _dash.css에는 없는 토큰. */
+  :root {
+    --ok-bg: #e2f2ea; --ok-ink: #0d6b4c; --ok-line: #a9d9c4;
+    --wt-bg: #fdefdc; --wt-ink: #8a5a05; --wt-line: #f0d3a0;
+    --cr-bg: #fbe6e2; --cr-ink: #9c3620; --cr-line: #f0c0b4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ok-bg: #102b21; --ok-ink: #6cc3a3; --ok-line: #1d4636;
+      --wt-bg: #2c2211; --wt-ink: #e0aa4e; --wt-line: #4a3a1a;
+      --cr-bg: #2e1a15; --cr-ink: #e89179; --cr-line: #4d2b22;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ok-bg: #102b21; --ok-ink: #6cc3a3; --ok-line: #1d4636;
+    --wt-bg: #2c2211; --wt-ink: #e0aa4e; --wt-line: #4a3a1a;
+    --cr-bg: #2e1a15; --cr-ink: #e89179; --cr-line: #4d2b22;
+  }
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  .pill {
+    display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+  }
+  .pill.ok { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok-line); }
+  .pill.wt { background: var(--wt-bg); color: var(--wt-ink); border-color: var(--wt-line); }
+  .pill.cr { background: var(--cr-bg); color: var(--cr-ink); border-color: var(--cr-line); }
+  .grp { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+    border-radius: 6px; font-weight: 800; font-size: 11px; color: #fff; }
+  .grp.a { background: var(--s1); }
+  .grp.b { background: var(--s3); }
+  .bar-mini { display: inline-block; height: 7px; border-radius: 3px 4px 4px 3px; background: var(--s1); vertical-align: middle; margin-right: 6px; }
+  .abnote {
+    font-size: 12px; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 9px; padding: 8px 12px; margin: 2px 0 16px; display: inline-block;
+  }
+  .stat2 { display: flex; gap: 18px; margin-top: 4px; }
+  .stat2 .s { flex: 1; text-align: center; padding: 12px; background: var(--surface-2); border-radius: 10px; }
+  .stat2 .s b { display: block; font-family: var(--mono); font-size: 22px; font-weight: 800; }
+  .stat2 .s span { font-size: 11px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <a class="back" href="../index.html">← 게임으로</a>
+      <h1>🧪 calm forest · 베타 관제</h1>
+    </div>
+    <div id="range">
+      <!-- 로그인 게이트 통과 전에는 기간 전환이 의미 없으므로 비활성 -->
+      <button data-d="7" class="on" disabled>7일</button>
+      <button data-d="14" disabled>14일</button>
+      <button data-d="30" disabled>30일</button>
+    </div>
+  </header>
+  <div class="sub" id="meta">베타테스터 A/B 5:5 · 운영자 전용</div>
+  <p class="abnote" id="abnote">군당 5명 — 수치는 방향성 참고용(유의성 없음)</p>
+
+  <div id="msg"></div>
+  <div id="load">불러오는 중…</div>
+
+  <div id="dash" style="display:none;">
+    <h2 class="sec">테스터 현황</h2>
+    <div class="grid wide">
+      <div class="card" style="grid-column:1/-1;">
+        <h3>개별 현황</h3>
+        <p class="hint">유급 테스터는 이탈 신호가 아니라 <b>연락할 일</b>이다 — 마지막 접속이 이틀 넘게 없으면 붉게 표시한다.</p>
+        <div style="overflow-x:auto"><table class="mini" id="testerTbl"></table></div>
+      </div>
+    </div>
+
+    <h2 class="sec">A/B 그룹 비교 — 일별 추이</h2>
+    <p class="hint" style="margin:-4px 0 12px;max-width:76ch;">
+      variant(beta_A/beta_B) 기준 일별 활성·체류시간. 아래 튜토리얼 퍼널·미니게임 성공률도 같은 표본 기준이며,
+      군당 5명 — 수치는 방향성 참고용(유의성 없음).
+    </p>
+    <div class="grid wide">
+      <div class="card">
+        <h3>일별 DAU (군별)</h3>
+        <p class="hint">device/유저 기준 순 활성 — game_logs.variant 집계.</p>
+        <canvas id="cAbDau" height="150"></canvas>
+      </div>
+      <div class="card">
+        <h3>일별 평균 플레이시간 (군별)</h3>
+        <p class="hint">session_logs.play_sec 평균(분) — variant별.</p>
+        <canvas id="cAbPlay" height="150"></canvas>
+      </div>
+    </div>
+
+    <h2 class="sec">튜토리얼 스텝 퍼널</h2>
+    <div class="grid wide">
+      <div class="card" style="grid-column:1/-1;">
+        <h3>스텝 도달 유저 수 (군별 순서)</h3>
+        <p class="hint">
+          x축은 각 군 자체의 스텝 순서상 위치(1~17)다 — B군은 현행 순서, A군은 재배치 순서(낚시·집짓기·꾸미기 전진)라
+          같은 위치라도 실제 스텝 key가 다를 수 있다. 점에 커서를 올리면 실제 key가 보인다.
+        </p>
+        <canvas id="cTutFunnel" height="130"></canvas>
+      </div>
+    </div>
+
+    <h2 class="sec">미니게임 성공률</h2>
+    <div class="grid wide">
+      <div class="card">
+        <h3>성공률 (catch / (catch+miss))</h3>
+        <p class="hint">호수 낚시·바다 낚시·안개 리듬 — A군은 첫 3회 관대 판정(×1.3)이 걸린 이벤트다.</p>
+        <canvas id="cMinigame" height="170"></canvas>
+      </div>
+      <div class="card">
+        <h3>배 운행 장애물 충돌 (boat_hit)</h3>
+        <p class="hint">쌍이 없는 카운트 이벤트라 성공률 대신 건수만 표시한다.</p>
+        <div class="stat2" id="boatHit">
+          <div class="s"><b>—</b><span>beta_A</span></div>
+          <div class="s"><b>—</b><span>beta_B</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub" style="margin-top:30px;border-top:1px solid var(--line);padding-top:14px;">
+      <code>cf_beta_overview()</code> RPC(<code>sql/admin_analytics.sql</code>) 사용 · 팔레트는 <code>_dash.css</code> 토큰(dataviz validator 통과)에서만 가져온다.
+    </div>
+  </div>
+
+  <script type="module">
+    import { CONFIG, isSupabaseConfigured } from '../js/config.js';
+    const $ = (id) => document.getElementById(id);
+    const showMsg = (html) => { $('load').style.display='none'; const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
+    // 차트 색은 _dash.css 토큰에서 읽습니다(라이트/다크 자동 대응).
+    const V = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    Chart.defaults.color = V('--ink-3');
+    Chart.defaults.borderColor = V('--line-soft');
+    Chart.defaults.font.family = V('--font');
+    // OS 테마가 바뀌면 토큰 값이 바뀌므로 새 색으로 전부 다시 그립니다
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => location.reload());
+    const charts = {};
+    let sb = null, days = 7;
+
+    const nf   = (n) => (n ?? 0).toLocaleString();
+    const secs = (s) => !s ? '—' : s >= 60 ? `${Math.floor(s/60)}분 ${Math.round(s%60)}초` : `${Math.round(s)}초`;
+    const mmdd = (d) => String(d).slice(5);
+    const ago  = (t) => { if (!t) return '—'; const m = Math.round((Date.now() - new Date(t)) / 60000);
+      return m < 60 ? `${Math.max(m,0)}분 전` : m < 1440 ? `${Math.round(m/60)}시간 전` : `${Math.round(m/1440)}일 전`; };
+    const stale = (t) => !t || (Date.now() - new Date(t)) > 2 * 864e5;   // 이틀 넘게 미접속(또는 미접속 기록 없음) = 연락 필요
+    const HOUSE = { 0:'없음', 1:'기초', 2:'벽', 3:'완성', 4:'넓은집', 5:'저택', 6:'모던' };
+
+    // 튜토리얼 스텝 순서 — index.html TUT_STEPS(B군 현행) · js/tuning.js TUT_ORDER_A(A군 재배치)
+    const TUT_STEPS   = ['move','toolpage','chop','till','seed','water','harvest','sell','market','quest','mine','carve','dex','fish','build','enter','decor'];
+    const TUT_ORDER_A = ['move','toolpage','chop','fish','build','enter','decor','till','seed','water','harvest','sell','market','quest','mine','carve','dex'];
+
+    const base = (extra = {}) => ({
+      responsive: true, maintainAspectRatio: true, aspectRatio: 2.2,
+      plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } }, ...(extra.plugins || {}) },
+      scales: { y: { beginAtZero: true, grid: { color: V('--line-soft') }, ticks: { font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } }, ...(extra.scales || {}) },
+      ...extra,
+    });
+    function draw(id, cfg) { charts[id]?.destroy(); charts[id] = new Chart($(id), cfg); }
+
+    // 임시 공개 링크: ?k=<토큰> — cf_share_links 표에서 발급 (docs/DEPLOY.md 참고)
+    const shareKey = new URLSearchParams(location.search).get('k') || '';
+
+    // ── 부팅 (admin_analytics.html의 인증·RPC 부트 블록 그대로 복제, rpc명만 교체) ──
+    (async () => {
+      if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth:{ detectSessionInUrl:true, persistSession:true }});
+
+      // 공유 링크(?k=토큰)면 로그인 게이트를 건너뜁니다.
+      // 토큰의 유효성/만료는 서버(cf_beta_overview)가 판정하므로 여기선 통과만 시킵니다.
+      if (!shareKey) {
+        const { data:s } = await sb.auth.getSession();
+        if (!s?.session) {
+          showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">또는 게임에서 먼저 로그인 후 이 페이지를 여세요</small>');
+          $('lg').onclick = () => sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname }});
+          return;
+        }
+      }
+      $('range').addEventListener('click', (e) => {
+        const b = e.target.closest('button'); if (!b) return;
+        [...$('range').children].forEach(x => x.classList.toggle('on', x === b));
+        days = +b.dataset.d; load();
+      });
+      load();
+    })();
+
+    async function load() {
+      $('load').style.display = 'block'; $('msg').style.display = 'none';
+      const { data, error } = await sb.rpc('cf_beta_overview', shareKey ? { days, token: shareKey } : { days });
+      if (error) {
+        if (String(error.message).includes('권한')) {
+          if (shareKey) showMsg('🔒 공유 링크가 만료됐거나 올바르지 않습니다.<br><small style="opacity:.6">관리자에게 새 링크를 요청해 주세요.</small>');
+          else showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/admin_analytics.sql 의 허용목록에 이메일을 추가하세요.</small>');
+        }
+        else if (/function|does not exist/i.test(String(error.message))) showMsg('함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/admin_analytics.sql 을 SQL Editor 에서 <b>다시</b> 실행하세요 (cf_beta_overview 가 정의돼 있는지 확인).</small>');
+        else showMsg('오류: ' + error.message);
+        return;
+      }
+      $('load').style.display = 'none';
+      render(data);
+    }
+
+    function render(d) {
+      $('dash').style.display = 'block';
+      const testers = d.testers || [];
+      const aCount = testers.filter(t => t.grp === 'A').length;
+      const bCount = testers.filter(t => t.grp === 'B').length;
+      const today = new Date().toISOString().slice(0, 10);
+      $('meta').innerHTML = `테스터 <b>${nf(testers.length)}</b>명 · A군 <b>${nf(aCount)}</b> · B군 <b>${nf(bCount)}</b> · KST · 최근 <b>${days}</b>일(${today} 기준)`
+        + (shareKey ? ' · 🔗 <b>임시 공유 보기</b> (읽기 전용 · 기간 만료 시 자동 종료)' : '');
+      [...$('range').children].forEach(b => b.disabled = false);   // 게이트 통과 후에만 기간 전환 허용
+
+      renderTesters(testers);
+      renderAbDaily(d.ab_daily || []);
+      renderTutFunnel(d.tut_funnel || []);
+      renderMinigame(d.minigame || []);
+    }
+
+    // ── 개별 현황 ──
+    function renderTesters(rows) {
+      if (!rows.length) { $('testerTbl').innerHTML = '<tr><td class="empty">명단이 아직 없습니다 (beta_testers 테이블).</td></tr>'; return; }
+      const maxPlay = Math.max(1, ...rows.map(r => r.play_sec || 0));
+      $('testerTbl').innerHTML =
+        '<tr><th>테스터</th><th>군</th><th style="text-align:right">세션</th><th style="text-align:right">플레이</th>'
+        + '<th style="text-align:right">코인</th><th>집 단계</th><th>튜토리얼</th><th style="text-align:right">스트릭</th><th style="text-align:right">마지막 접속</th></tr>'
+        + rows.map(r => {
+            const grpCls = r.grp === 'A' ? 'a' : 'b';
+            const w = Math.round((r.play_sec || 0) / maxPlay * 62) + 4;
+            const tutPill = r.tutorial ? '<span class="pill ok">완료</span>' : '<span class="pill wt">미완료</span>';
+            const stale_ = stale(r.last_seen);
+            return `<tr>
+              <td>${r.email ?? '—'}${r.user_id ? '' : ' <span class="pill cr" style="margin-left:4px">가입 전</span>'}</td>
+              <td><span class="grp ${grpCls}">${r.grp ?? '?'}</span></td>
+              <td class="n">${nf(r.sessions)}</td>
+              <td class="n"><span class="bar-mini" style="width:${w}px"></span>${secs(r.play_sec)}</td>
+              <td class="n">${nf(r.coins)}</td>
+              <td>${HOUSE[r.house_stage ?? 0] ?? r.house_stage}</td>
+              <td>${tutPill}</td>
+              <td class="n">${nf(r.streak)}일</td>
+              <td class="n" style="color:${stale_ ? 'var(--down);font-weight:700' : 'var(--ink-3)'}">${ago(r.last_seen)}${stale_ ? ' <span class="pill cr">연락 필요</span>' : ''}</td>
+            </tr>`;
+          }).join('');
+    }
+
+    // ── A/B 군별 일별 DAU · 평균 플레이시간 ──
+    function renderAbDaily(rows) {
+      if (!rows.length) { return; }
+      const days_ = [...new Set(rows.map(r => r.day))].sort();
+      const seriesFor = (variant, field, scale = 1) => days_.map(d => {
+        const row = rows.find(r => r.day === d && r.variant === variant);
+        const v = row?.[field];
+        return v == null ? null : +(v * scale).toFixed(1);
+      });
+      draw('cAbDau', { data: { labels: days_.map(mmdd), datasets: [
+        { label: 'beta_A', data: seriesFor('beta_A', 'dau'), borderColor: V('--s1'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
+        { label: 'beta_B', data: seriesFor('beta_B', 'dau'), borderColor: V('--s3'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
+      ]}, options: base() });
+      draw('cAbPlay', { data: { labels: days_.map(mmdd), datasets: [
+        { label: 'beta_A', data: seriesFor('beta_A', 'avg_play_sec', 1/60), borderColor: V('--s1'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
+        { label: 'beta_B', data: seriesFor('beta_B', 'avg_play_sec', 1/60), borderColor: V('--s3'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
+      ]}, options: base() });
+    }
+
+    // ── 튜토리얼 스텝 퍼널 (군별 자기 순서 기준 위치) ──
+    function renderTutFunnel(rows) {
+      const byVariant = { beta_A: {}, beta_B: {} };
+      rows.forEach(r => { if (byVariant[r.variant]) byVariant[r.variant][r.key] = r.users; });
+      const order = { beta_A: TUT_ORDER_A, beta_B: TUT_STEPS };
+      const posLabels = Array.from({ length: 17 }, (_, i) => String(i + 1));
+      const seriesFor = (variant) => order[variant].map(k => byVariant[variant][k] ?? 0);
+      const keysFor = (variant) => order[variant];
+      if (!rows.length) { draw('cTutFunnel', { data: { labels: posLabels, datasets: [] }, options: base() }); return; }
+      draw('cTutFunnel', { data: { labels: posLabels, datasets: [
+        { label: 'beta_A', data: seriesFor('beta_A'), borderColor: V('--s1'), backgroundColor: 'transparent', tension: .15, pointRadius: 3, borderWidth: 2,
+          _keys: keysFor('beta_A') },
+        { label: 'beta_B', data: seriesFor('beta_B'), borderColor: V('--s3'), backgroundColor: 'transparent', tension: .15, pointRadius: 3, borderWidth: 2,
+          _keys: keysFor('beta_B') },
+      ]}, options: base({ plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } },
+        tooltip: { callbacks: { label: (ctx) => {
+          const key = ctx.dataset._keys?.[ctx.dataIndex] ?? '?';
+          return `${ctx.dataset.label} · ${key} · ${nf(ctx.parsed.y)}명`;
+        } } } },
+        scales: { x: { title: { display: true, text: '스텝 순서(군별)', font: { size: 10 } }, grid: { display: false }, ticks: { font: { size: 10 } } },
+                  y: { beginAtZero: true, grid: { color: V('--line-soft') }, ticks: { font: { size: 10 } } } } }) });
+    }
+
+    // ── 미니게임 성공률 ──
+    function renderMinigame(rows) {
+      const byVariant = { beta_A: {}, beta_B: {} };
+      rows.forEach(r => { if (byVariant[r.variant]) byVariant[r.variant][r.event] = Number(r.n) || 0; });
+      const pairs = [
+        { label: '호수 낚시', c: 'fishing_catch', m: 'fishing_miss' },
+        { label: '바다 낚시', c: 'sea_catch', m: 'sea_miss' },
+        { label: '안개 리듬', c: 'mist_soothe', m: 'mist_soothe_miss' },
+      ];
+      const rateFor = (variant) => pairs.map(p => {
+        const c = byVariant[variant][p.c] || 0, m = byVariant[variant][p.m] || 0;
+        return (c + m) > 0 ? Math.round(c / (c + m) * 100) : null;
+      });
+      draw('cMinigame', { data: { labels: pairs.map(p => p.label), datasets: [
+        { label: 'beta_A', data: rateFor('beta_A'), backgroundColor: V('--s1'), borderRadius: 4 },
+        { label: 'beta_B', data: rateFor('beta_B'), backgroundColor: V('--s3'), borderRadius: 4 },
+      ]}, options: base({ plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } },
+        tooltip: { callbacks: { label: (ctx) => ctx.parsed.y == null ? `${ctx.dataset.label} · 표본 없음` : `${ctx.dataset.label} · ${ctx.parsed.y}%` } } },
+        scales: { y: { beginAtZero: true, max: 100, grid: { color: V('--line-soft') }, ticks: { font: { size: 10 } } },
+                  x: { grid: { display: false }, ticks: { font: { size: 10 } } } } }) });
+
+      const boatA = byVariant.beta_A.boat_hit || 0, boatB = byVariant.beta_B.boat_hit || 0;
+      $('boatHit').innerHTML =
+        `<div class="s"><b>${nf(boatA)}</b><span>beta_A</span></div><div class="s"><b>${nf(boatB)}</b><span>beta_B</span></div>`;
+    }
+  </script>
+</body>
+</html>
