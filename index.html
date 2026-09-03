@@ -1671,8 +1671,13 @@
         };
         $('char-cancel').onclick = () => $('char-modal').classList.remove('show');
       },
-      // 신규 유저 튜토리얼 표시
-      showTutorial() { $('tutorial-modal').classList.add('show'); },
+      // 신규 유저 튜토리얼 표시 · ❓도움말로도 같은 모달을 연다
+      //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
+      showTutorial(src = 'welcome') {
+        const m = $('tutorial-modal');
+        m.dataset.src = src;
+        m.classList.add('show');
+      },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
       introShow(on) {
         document.body.classList.toggle('intro-open', !!on);
@@ -2077,7 +2082,7 @@
     // 튜토리얼: 시작하기 닫기 / 도움말(❓) 다시 열기
     // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
     $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
-    $('help-btn').addEventListener('click', () => ui.showTutorial());
+    $('help-btn').addEventListener('click', () => ui.showTutorial('help'));
     // 🐾 캐릭터 바꾸기 — 진행 상황은 그대로, 겉모습만 교체(유저 피드백)
     $('char-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
@@ -2087,7 +2092,11 @@
     $('menu-btn').addEventListener('click', () => $('topleft').classList.toggle('open'));
     $('util-btns').addEventListener('click', (e) => { if (e.target.closest('button')) $('topleft').classList.remove('open'); });
     // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
-    $('tut-skip').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); trackEvent('tutorial_skip', { at: 'welcome' }); });
+    $('tut-skip').addEventListener('click', () => {
+      const m = $('tutorial-modal');
+      m.classList.remove('show');
+      trackEvent('tutorial_skip', { at: m.dataset.src || 'welcome' });   // [①] 온보딩 거부 / 도움말 닫기 구분
+    });
     $('coach-skip').addEventListener('click', () => endCoach(false));
 
     // ── 집 꾸미기 메뉴 ──
