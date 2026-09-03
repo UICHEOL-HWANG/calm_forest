@@ -983,7 +983,7 @@ let charGroup = null, tailPivot = null, tailPhase = 0;   // 캐릭터 메시 그
 //   tail   : 종류별 실루엣 + 흔들기 속도/진폭(강아지는 신나게, 고양이는 느긋하게).
 //   extras : 그 동물에서만 보이는 포인트(판다 눈패치, 고양이 수염, 병아리 볏·날개…).
 //   armX   : 도구 든 손의 좌우 위치 — 몸집에 맞춰야 도구가 붕 뜨지 않음.
-const ANIMALS = [
+export const ANIMALS = [
   { id: 'fox', name: '여우', emoji: '🦊', body: 0xe07b3c, belly: 0xf5e9d8, ear: 0x8a4a24,
     bodyR: 0.52, bodyScale: [0.90, 1.08, 0.90], headR: 0.37, headY: 1.26, armX: 0.74,
     ears: 'pointy', earScale: 1.15,
@@ -1703,7 +1703,7 @@ function buildPlayer() {
 //    한쪽만 고치면 인게임과 프리뷰 생김새가 어긋날 위험이 있었음 → 단일 소스로 통합)
 //   모든 좌표는 머리 크기(HR)·몸 반지름(R) 기준 상대값 — 체형을 바꿔도 비율이 유지됨.
 //   반환: { group, tail } · tail 은 흔들 피벗(꼬리 없으면 null)
-function buildAnimalMesh(id) {
+export function buildAnimalMesh(id) {
   const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
   const g = new THREE.Group();
   const R = a.bodyR ?? 0.55, HR = a.headR ?? 0.40, HY = a.headY ?? 1.25;

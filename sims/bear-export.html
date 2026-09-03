@@ -1,0 +1,205 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>캐릭터 PNG 추출 — calm forest</title>
+<!--
+  ─────────────────────────────────────────────────────────────
+   왜 이 파일이 있나: 캐릭터는 외부 모델 파일 없이 코드로만 만들어집니다
+   (js/game.js buildAnimalMesh). 그래서 대시보드·소셜·문서에 쓸 "그림 파일"이
+   에셋에 존재하지 않습니다. 여기서 인게임과 **같은 빌더**를 import 해
+   투명 배경 PNG 로 구워냅니다.
+
+   ★ 다른 sims/*.html 과 달리 파츠 코드를 복사하지 않습니다.
+     복사하면 인게임과 그림이 어긋나므로(=브랜드 에셋이 거짓말이 됨)
+     game.js 의 ANIMALS·buildAnimalMesh 를 그대로 씁니다.
+
+   사용:
+     1) python3 scripts/serve.py        (프로젝트 루트 서빙)
+     2) http://localhost:8000/sims/bear-export.html
+     3) 버튼으로 미리보기 → "PNG 저장"
+        · 저장 서버가 떠 있으면 지정 경로로 바로 기록
+        · 아니면 브라우저 다운로드로 폴백
+  ─────────────────────────────────────────────────────────────
+-->
+<style>
+  html, body { margin: 0; min-height: 100%; background: #2b2b2f; color: #e8e4dc;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; }
+  /* 투명 PNG 검수는 배경이 중요 — 체커보드 위에서 봐야 가장자리 흰 테두리가 보인다 */
+  #stage { display: flex; gap: 18px; flex-wrap: wrap; padding: 18px; }
+  .cell { background-color: #cfcfcf;
+    background-image: linear-gradient(45deg, #a9a9a9 25%, transparent 25%, transparent 75%, #a9a9a9 75%),
+                      linear-gradient(45deg, #a9a9a9 25%, transparent 25%, transparent 75%, #a9a9a9 75%);
+    background-size: 20px 20px; background-position: 0 0, 10px 10px; border-radius: 10px; padding: 6px; }
+  .cell figcaption { color: #333; font-size: 11.5px; text-align: center; padding-top: 4px; }
+  .cell img { display: block; max-width: 260px; height: auto; }
+  #ui { position: sticky; top: 0; z-index: 2; background: #1f1f23; border-bottom: 1px solid #3a3a40;
+    padding: 10px 16px; font-size: 13px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; padding: 5px 12px; border-radius: 8px; border: 1px solid #55555e;
+    background: #33333a; color: #e8e4dc; cursor: pointer; }
+  button.go { background: #5b8f5b; border-color: #6fa96f; color: #fff; }
+  label { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  select, input[type=number] { font: inherit; background: #33333a; color: #e8e4dc;
+    border: 1px solid #55555e; border-radius: 6px; padding: 3px 6px; }
+  #log { padding: 0 16px 18px; font-size: 12px; line-height: 1.7; color: #a9a49a; white-space: pre-wrap; }
+</style>
+
+<div id="ui">
+  <label>동물 <select id="animal"></select></label>
+  <label>출력 긴변 <input id="size" type="number" value="1024" min="64" max="4096" step="64"></label>
+  <button id="sheet" class="go">각도 시트 굽기</button>
+  <button id="save">선택 각도 PNG 저장</button>
+  <label>각도° <input id="deg" type="number" value="25" step="5"></label>
+  <label>기울기° <input id="tilt" type="number" value="0" step="2"></label>
+</div>
+<div id="stage"></div>
+<div id="log"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { ANIMALS, buildAnimalMesh } from '../js/game.js';
+
+const SAVE_URL = 'http://127.0.0.1:8777/save';   // scratchpad save_server.py (없으면 다운로드 폴백)
+const SS = 3;                                     // 슈퍼샘플 배수 — 알파 가장자리 계단 제거용
+const log = (m) => { document.getElementById('log').textContent += m + '\n'; };
+
+// ── 오프스크린 렌더러 — alpha:true 로 배경을 비우고, 픽셀을 다시 읽어야 하므로
+//    preserveDrawingBuffer:true. (인게임 렌더러와 별개 인스턴스)
+const canvas = document.createElement('canvas');
+const rend = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+rend.setPixelRatio(1);
+rend.setClearAlpha(0);
+
+// 조명·카메라는 캐릭터 선택 프리뷰(game.js makeCharacterPreview)와 동일값 —
+// 플레이어가 캐릭터를 고를 때 본 그 그림 그대로 나와야 브랜드 에셋으로 일관됨.
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.05));
+const key = new THREE.DirectionalLight(0xfff2d8, 1.15); key.position.set(2.5, 4, 3); scene.add(key);
+const rim = new THREE.DirectionalLight(0xbfe8ff, 0.45); rim.position.set(-3, 2, -2); scene.add(rim);
+const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+cam.position.set(0, 1.05, 4.6); cam.lookAt(0, 0.95, 0);
+const pivot = new THREE.Group(); scene.add(pivot);
+
+let mesh = null, curId = null;
+function setAnimal(id) {
+  if (mesh) { pivot.remove(mesh); mesh = null; }
+  mesh = buildAnimalMesh(id).group;   // ★ 인게임과 같은 빌더
+  pivot.add(mesh); curId = id;
+}
+
+// ── 알파 여백을 잘라내고 긴 변을 out 픽셀로 맞춘 PNG dataURL 을 만든다.
+//    투명 여백이 남으면 대시보드·문서에서 로고를 배치할 때 정렬이 어긋난다.
+function renderPNG({ deg = 25, tilt = 0, out = 1024, pad = 0.03 } = {}) {
+  const S = out * SS;
+  rend.setSize(S, S, false);
+  pivot.rotation.set(tilt * Math.PI / 180, deg * Math.PI / 180, 0);
+  rend.render(scene, cam);
+
+  const src = document.createElement('canvas');
+  src.width = S; src.height = S;
+  const sc = src.getContext('2d');
+  sc.drawImage(canvas, 0, 0);
+  const px = sc.getImageData(0, 0, S, S).data;
+
+  let x0 = S, y0 = S, x1 = -1, y1 = -1;
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      if (px[(y * S + x) * 4 + 3] > 8) {          // 알파 8 미만은 잔여 프린지로 보고 버림
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) throw new Error('빈 렌더 — 메시가 화면 밖입니다');
+
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  const p = Math.round(Math.max(w, h) * pad);
+  const side = Math.max(w, h) + p * 2;            // 정사각 캔버스 = 어디에 놓아도 중심이 맞음
+  const big = document.createElement('canvas');
+  big.width = side; big.height = side;
+  big.getContext('2d').drawImage(src, x0, y0, w, h, (side - w) / 2, (side - h) / 2, w, h);
+
+  const dst = document.createElement('canvas');
+  dst.width = out; dst.height = out;
+  const dc = dst.getContext('2d');
+  dc.imageSmoothingEnabled = true; dc.imageSmoothingQuality = 'high';
+  dc.drawImage(big, 0, 0, out, out);
+  return { url: dst.toDataURL('image/png'), src: [w, h] };
+}
+
+async function save(path, dataUrl) {
+  try {
+    const r = await fetch(SAVE_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, data: dataUrl }),
+    });
+    return await r.json();
+  } catch (e) {
+    const a = document.createElement('a');       // 저장 서버가 없을 때의 폴백
+    a.href = dataUrl; a.download = path.split('/').pop(); a.click();
+    return { ok: false, error: '저장 서버 없음 → 다운로드 폴백: ' + e.message };
+  }
+}
+
+function show(url, caption) {
+  const fig = document.createElement('figure');
+  fig.className = 'cell'; fig.style.margin = '0';
+  const img = new Image(); img.src = url;
+  const cap = document.createElement('figcaption'); cap.textContent = caption;
+  fig.append(img, cap);
+  document.getElementById('stage').append(fig);
+}
+
+// ── UI ────────────────────────────────────────────────────────
+const sel = document.getElementById('animal');
+for (const a of ANIMALS) {
+  const o = document.createElement('option');
+  o.value = a.id; o.textContent = `${a.emoji} ${a.name} (${a.id})`;
+  sel.append(o);
+}
+sel.value = 'bear';
+setAnimal('bear');
+sel.onchange = () => setAnimal(sel.value);
+
+const num = (id) => +document.getElementById(id).value;
+
+document.getElementById('sheet').onclick = () => {
+  document.getElementById('stage').textContent = '';
+  for (const deg of [0, 20, 25, 35, 45, 90, 180]) {
+    const { url, src } = renderPNG({ deg, tilt: num('tilt'), out: 512 });
+    show(url, `${deg}° (원본 ${src[0]}×${src[1]}px)`);
+  }
+  log(`시트 완료 — ${curId} / tilt ${num('tilt')}°`);
+};
+
+document.getElementById('save').onclick = async () => {
+  const deg = num('deg'), tilt = num('tilt'), out = num('size');
+  const { url, src } = renderPNG({ deg, tilt, out });
+  show(url, `${deg}° · ${out}px`);
+  const name = `${curId}-${deg}deg-${out}.png`;
+  const r = await save(`/Users/uicheol_hwang/calm_forest/assets/brand/${name}`, url);
+  log(`${name} — ${r.ok ? r.bytes + ' bytes 저장' : r.error} (원본 ${src[0]}×${src[1]}px)`);
+};
+
+// 에이전트/스크립트 구동용 — 콘솔에서 각도·크기·경로를 지정해 한 장씩 굽는다.
+window.__shot = async (opts = {}) => {
+  const { id = curId, deg = 25, tilt = 0, out = 1024, path } = opts;
+  if (id !== curId) setAnimal(id);
+  const { url, src } = renderPNG({ deg, tilt, out });
+  show(url, `${id} ${deg}° · ${out}px`);
+  const p = path || `/Users/uicheol_hwang/calm_forest/assets/brand/${id}-${deg}deg-${out}.png`;
+  const r = await save(p, url);
+  return { ...r, srcW: src[0], srcH: src[1] };
+};
+
+log('준비 완료 — buildAnimalMesh 를 game.js 에서 직접 가져왔습니다.');
+</script>

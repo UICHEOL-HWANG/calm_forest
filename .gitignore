@@ -24,3 +24,6 @@ dist-toss/
 #   이 잡파일들만 미추적으로 남아 git status 를 어지럽히기 때문이다.
 ml/.venv/
 ml/wandb/
+
+# Airflow 서비스계정 키(구글 시트·BigQuery) — VM /opt/airflow/secrets 에만 둔다
+infra/airflow/secrets/
