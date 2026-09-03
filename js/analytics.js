@@ -62,6 +62,13 @@ export function setGaUser(userId) {
   }
 }
 
+// [속성] A/B 변형이 로그인 후(명단 조회) 확정될 때 GA4 유저 속성 갱신
+export function setAbVariant(v) {
+  if (isGaConfigured() && typeof window.gtag === 'function') {
+    window.gtag('set', 'user_properties', { ab_variant: v });
+  }
+}
+
 // ── 이벤트 훅 — 세션 요약(metrics.js)이 이벤트 발생 횟수를 집계하는 용도 ──
 //    analytics → metrics 역방향 import 없이(순환 방지) 콜백 등록으로 연결.
 const trackHooks = [];

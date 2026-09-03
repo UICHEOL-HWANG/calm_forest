@@ -1,7 +1,9 @@
 # calm forest 실험실 — Airflow 2.10 (LocalExecutor) + Postgres. 단일 VM용 경량 구성.
 # 웹은 127.0.0.1:8080 로만 바인딩 — 외부 노출은 nginx(80)가 담당.
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.10.5
+  # 순정 이미지가 아니라 Dockerfile 로 빌드한다 — BigQuery/gspread 가 필요(tableau_sheets DAG).
+  build: .
+  image: calm-forest/airflow:2.10.5
   environment: &airflow-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/airflow
@@ -10,12 +12,19 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Seoul
     AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: 'true'   # nginx/Cloudflare 뒤에서 실제 IP·스킴 인식
+    # 📊 태블로 퍼블릭 파이프라인(tableau_sheets DAG)
+    TABLEAU_SQL_PATH: /opt/airflow/dags/sql/tableau_export.sql
+    GCP_SA_KEY_PATH: /opt/airflow/secrets/gcp_sa.json
+    BQ_PROJECT: calm-forest
+    BQ_LOCATION: asia-northeast3   # analytics_547127440·calm_forest_raw 둘 다 서울
   user: "${AIRFLOW_UID}:0"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./config:/opt/airflow/config
+    # 서비스계정 키(600). 리포에 없고 VM 에만 둔다 — .gitignore 대상.
+    - ./secrets:/opt/airflow/secrets:ro
   depends_on:
     postgres:
       condition: service_healthy

@@ -19,53 +19,10 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://calmforest.cloud/preview.png" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="_dash.css" />
 <style>
-  :root{ --ink:#3f4f45; --mut:#7b8a80; --line:#e6efe8; --shadow:0 4px 16px rgba(90,120,100,.10); --up:#2f9e5e; --down:#d9634f; }
-  *{box-sizing:border-box;}
-  body{margin:0;background:#f4f9f5;color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;padding:20px 20px 60px;}
-  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:6px;}
-  h1{font-size:21px;margin:0;font-weight:800;letter-spacing:-.3px;}
-  .sub{opacity:.7;font-size:12.5px;margin:2px 0 16px;}
-  a.back{color:var(--mut);font-size:13px;text-decoration:none;}
-  a.back:hover{text-decoration:underline;}
-  #range{margin-left:auto;display:flex;gap:6px;}
-  #range button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--mut);cursor:pointer;}
-  #range button.on{background:#8fd6a0;border-color:#8fd6a0;color:#1f3b28;}
-  #msg{display:none;background:#fff;border-radius:16px;padding:24px;box-shadow:var(--shadow);max-width:440px;margin:40px auto;text-align:center;line-height:1.6;}
-  #msg button{margin-top:14px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 18px;font-weight:600;cursor:pointer;}
-  #load{display:none;text-align:center;padding:50px;color:var(--mut);font-size:14px;}
-
-  h2.sec{font-size:13px;font-weight:800;margin:26px 0 10px;color:var(--mut);letter-spacing:.4px;text-transform:uppercase;}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;}
-  .grid.wide{grid-template-columns:repeat(auto-fit,minmax(440px,1fr));}
-  .card{background:#fff;border-radius:14px;padding:15px 17px;box-shadow:var(--shadow);border:1px solid rgba(230,239,232,.8);}
-  .card h3{font-size:13px;margin:0 0 3px;font-weight:700;}
-  .card .hint{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.45;}
-  .kpi .num{font-size:27px;font-weight:800;line-height:1.15;letter-spacing:-.5px;}
-  .kpi .lbl{font-size:11.5px;color:var(--mut);font-weight:600;}
-  .kpi .dlt{font-size:11.5px;font-weight:700;margin-left:6px;}
-  .kpi .dlt.up{color:var(--up);} .kpi .dlt.down{color:var(--down);} .kpi .dlt.flat{color:var(--mut);}
-  .kpi .foot{font-size:10.5px;color:var(--mut);margin-top:3px;}
-  canvas{max-width:100%;}
-  table.mini{width:100%;border-collapse:collapse;font-size:12px;}
-  table.mini th{text-align:left;color:var(--mut);font-weight:600;padding:5px 6px;border-bottom:1px solid var(--line);font-size:11px;}
-  table.mini td{padding:5px 6px;border-bottom:1px solid #f4f8f5;}
-  table.mini td.n{text-align:right;font-variant-numeric:tabular-nums;}
-  .cohort td{text-align:center;font-variant-numeric:tabular-nums;border-radius:4px;}
-  .cohort td.lbl{text-align:left;color:var(--mut);white-space:nowrap;}
-  .hourgrid{display:grid;grid-template-columns:26px repeat(24,1fr);gap:2px;font-size:9px;color:var(--mut);}
-  .hourgrid .cell{aspect-ratio:1;border-radius:2px;background:#eef5f0;}
-  .hourgrid .rowlbl{display:flex;align-items:center;}
-  .funnel-row{display:flex;align-items:center;gap:9px;margin-bottom:7px;font-size:12px;}
-  .funnel-row .fl{width:96px;color:var(--mut);flex:none;}
-  .funnel-row .fbar{flex:1;background:#eef5f0;border-radius:5px;height:19px;overflow:hidden;}
-  .funnel-row .fbar i{display:block;height:100%;background:linear-gradient(90deg,#8fd6a0,#a9e2b6);}
-  .funnel-row .fv{width:104px;text-align:right;font-variant-numeric:tabular-nums;flex:none;}
-  .funnel-row .fv small{color:var(--mut);}
-  /* 60×60 캔버스라 width:100% 면 정사각으로 커져 같은 행 카드까지 늘어남 → 상한 지정 */
-  #heatmap{background:#f3faf5;border-radius:10px;width:100%;max-width:360px;height:auto;display:block;margin:0 auto;image-rendering:pixelated;}
-  .empty{color:var(--mut);font-size:12px;padding:14px 0;text-align:center;}
+  /* 페이지 전용 잔여 스타일 — 공통 토큰/컴포넌트는 _dash.css */
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -75,12 +32,13 @@
       <h1>📊 calm forest · 관리자 애널리틱스</h1>
     </div>
     <div id="range">
-      <button data-d="7">7일</button>
-      <button data-d="30" class="on">30일</button>
-      <button data-d="90">90일</button>
+      <!-- 로그인 게이트 통과 전에는 기간 전환이 의미 없으므로 비활성 -->
+      <button data-d="7" disabled>7일</button>
+      <button data-d="30" class="on" disabled>30일</button>
+      <button data-d="90" disabled>90일</button>
     </div>
   </header>
-  <div class="sub" id="meta">전체 유저 합산 · <code>cf_admin_overview</code> (security definer) · 관리자만 조회</div>
+  <div class="sub" id="meta">전체 유저 합산 · 관리자 전용</div>
 
   <div id="msg"></div>
   <div id="load">불러오는 중…</div>
@@ -148,6 +106,30 @@
       <div class="card"><h3>연속 출석(스트릭)</h3><p class="hint">8일 이상은 8로 묶음. 2일차가 닭장 해금 지점입니다.</p><canvas id="cStreak" height="200"></canvas></div>
     </div>
 
+    <h2 class="sec">유저 흐름</h2>
+    <div class="grid wide">
+      <div class="card">
+        <h3>활동 퍼널 (기간 내 유저 기준)</h3>
+        <p class="hint">세션 이벤트 카운트 기준 — 접속한 유저가 이번 기간에 어떤 깊이까지 놀았는지.
+          진행 퍼널(세이브 상태 누적)과 달리 선택한 기간의 행동만 봅니다.</p>
+        <div id="actFunnel"></div>
+      </div>
+      <div class="card">
+        <h3>이탈 퍼널 (라이프사이클)</h3>
+        <p class="hint">신규 유저가 어느 관문에서 사라지는지. 덜 관측된 유저를 이탈로 오판하지 않도록
+          14일 관측이 끝난 코호트만 집계합니다. 단계 사이 붉은 수치 = 이탈률, 가장 큰 누수는 강조.</p>
+        <div id="churnFunnel"></div>
+      </div>
+    </div>
+    <div class="grid wide" style="margin-top:14px;">
+      <div class="card" style="grid-column:1/-1;">
+        <h3>유저별 퍼널 위치</h3>
+        <p class="hint">최근 활성 유저(최대 40명)가 지금 어느 단계에 서 있는지 — 개별 이탈 징후를 훑는 표.
+          식별자는 서버에서 마스킹되어 내려옵니다. 이틀 넘게 안 온 유저는 붉게 표시.</p>
+        <div style="overflow-x:auto"><table class="mini" id="userTbl"></table></div>
+      </div>
+    </div>
+
     <h2 class="sec">인게임 경제</h2>
     <div class="grid wide">
       <div class="card">
@@ -173,7 +155,15 @@
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
     const $ = (id) => document.getElementById(id);
     const showMsg = (html) => { $('load').style.display='none'; const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
-    const P = ['#8fd6a0','#ffd28a','#8ad2ff','#ff9e9e','#c08aff','#f5a3c7','#a0e0d0','#ffc48a'];
+    // 차트 색은 _dash.css 토큰에서 읽습니다(라이트/다크 자동 대응).
+    // 카테고리 팔레트는 s1→s5 순서 고정 — 순서가 색맹 안전장치라 섞으면 안 됩니다.
+    const V = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const P = [V('--s1'), V('--s2'), V('--s3'), V('--s4'), V('--s5')];
+    Chart.defaults.color = V('--ink-3');
+    Chart.defaults.borderColor = V('--line-soft');
+    Chart.defaults.font.family = V('--font');
+    // OS 테마가 바뀌면 토큰 값이 바뀌므로 새 색으로 전부 다시 그립니다
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => location.reload());
     const charts = {};                       // 재조회 시 파괴용(캔버스 중복 렌더 방지)
     let sb = null, days = 30;
 
@@ -187,7 +177,7 @@
     const base = (extra = {}) => ({
       responsive: true, maintainAspectRatio: true, aspectRatio: 2.2,
       plugins: { legend: { display: false }, ...(extra.plugins || {}) },
-      scales: { y: { beginAtZero: true, grid: { color: '#eef5f0' }, ticks: { font: { size: 10 } } },
+      scales: { y: { beginAtZero: true, grid: { color: V('--line-soft') }, ticks: { font: { size: 10 } } },
                 x: { grid: { display: false }, ticks: { font: { size: 10 } } }, ...(extra.scales || {}) },
       ...extra,
     });
@@ -239,8 +229,9 @@
     function render(d) {
       $('dash').style.display = 'block';
       const m = d.meta || {};
-      $('meta').innerHTML = `전체 유저 합산 · 기기(client_id) 기준 · KST · <b>${m.since} ~ ${m.today}</b> (${m.days}일) · <code>cf_admin_overview</code>`
+      $('meta').innerHTML = `전체 유저 합산 · 기기(client_id) 기준 · KST · <b>${m.since} ~ ${m.today}</b> (${m.days}일)`
         + (shareKey ? ' · 🔗 <b>임시 공유 보기</b> (읽기 전용 · 기간 만료 시 자동 종료)' : '');
+      [...$('range').children].forEach(b => b.disabled = false);   // 게이트 통과 후에만 기간 전환 허용
 
       renderKpis(d.kpis || {});
       renderDaily(d.daily || []);
@@ -253,14 +244,19 @@
       renderEcon(d.econ_daily || []);
       renderEconSrc(d.econ_sources || []);
 
-      bar('cBucket', d.session_buckets, r=>r.bucket, r=>r.sessions, '#8ad2ff');
-      hbar('cEvents', d.events, r=>r.event, r=>r.n, '#8fd6a0');
+      renderActivity(d.activity_funnel || {});
+      renderChurn(d.churn_funnel || {});
+      renderUserStages(d.user_stages || []);
+
+      // 단일 시리즈 차트는 전부 s1 단색 — 카드마다 색을 바꾸면 색이 정보처럼 읽힙니다.
+      bar('cBucket', d.session_buckets, r=>r.bucket, r=>r.sessions, V('--s1'));
+      hbar('cEvents', d.events, r=>r.event, r=>r.n, V('--s1'));
       pie('cPlaces', d.places, r=>r.place, r=>r.sessions);
-      bar('cHouse', d.house_stages, r=>({0:'없음',1:'기초',2:'벽',3:'완성',4:'넓은집',5:'저택',6:'모던'}[r.stage] ?? r.stage), r=>r.users, null);
-      bar('cDex', d.dex_dist, r=>r.bucket, r=>r.users, '#ffd28a');
-      bar('cBadge', d.badge_dist, r=>r.badges + '개', r=>r.users, '#c08aff');
+      bar('cHouse', d.house_stages, r=>({0:'없음',1:'기초',2:'벽',3:'완성',4:'넓은집',5:'저택',6:'모던'}[r.stage] ?? r.stage), r=>r.users, V('--s1'));
+      bar('cDex', d.dex_dist, r=>r.bucket, r=>r.users, V('--s1'));
+      bar('cBadge', d.badge_dist, r=>r.badges + '개', r=>r.users, V('--s1'));
       pie('cChar', d.characters, r=>r.character, r=>r.users);
-      bar('cStreak', d.streaks, r=>r.streak + '일', r=>r.users, '#a0e0d0');
+      bar('cStreak', d.streaks, r=>r.streak + '일', r=>r.users, V('--s1'));
       pie('cGuest', d.segments?.guest, r=>r.seg, r=>r.users);
       pie('cVariant', d.segments?.variant, r=>r.seg, r=>r.users);
     }
@@ -292,21 +288,21 @@
     function renderDaily(rows) {
       if (!rows.length) return;
       draw('cDaily', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
-        { type:'bar', label:'신규', data: rows.map(r=>r.new_users), backgroundColor:'#8fd6a0', stack:'u' },
-        { type:'bar', label:'복귀', data: rows.map(r=>r.returning), backgroundColor:'#ffd28a', stack:'u' },
-        { type:'line', label:'DAU', data: rows.map(r=>r.dau), borderColor:'#4a90d9', backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
+        { type:'bar', label:'신규', data: rows.map(r=>r.new_users), backgroundColor:V('--s1'), stack:'u' },
+        { type:'bar', label:'복귀', data: rows.map(r=>r.returning), backgroundColor:V('--s3'), stack:'u' },
+        { type:'line', label:'DAU', data: rows.map(r=>r.dau), borderColor:V('--s2'), backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
       ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
-        scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#eef5f0'}, ticks:{font:{size:10}} } } }) });
+        scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}} }, y:{ stacked:true, beginAtZero:true, grid:{color:V('--line-soft')}, ticks:{font:{size:10}} } } }) });
     }
 
     // ── 세션 수 + 중앙값 플레이타임(분) ──
     function renderSessions(rows) {
       if (!rows.length) return;
       draw('cSess', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
-        { type:'bar', label:'세션', data: rows.map(r=>r.sessions), backgroundColor:'#a0e0d0', yAxisID:'y' },
-        { type:'line', label:'플레이(분,중앙값)', data: rows.map(r=>+((r.med_play_sec||0)/60).toFixed(1)), borderColor:'#ff9e9e', backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y1' },
+        { type:'bar', label:'세션', data: rows.map(r=>r.sessions), backgroundColor:V('--s3'), yAxisID:'y' },
+        { type:'line', label:'플레이(분,중앙값)', data: rows.map(r=>+((r.med_play_sec||0)/60).toFixed(1)), borderColor:V('--s2'), backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y1' },
       ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
-        scales:{ y:{ beginAtZero:true, grid:{color:'#eef5f0'}, ticks:{font:{size:10}} },
+        scales:{ y:{ beginAtZero:true, grid:{color:V('--line-soft')}, ticks:{font:{size:10}} },
                  y1:{ position:'right', beginAtZero:true, grid:{display:false}, ticks:{font:{size:10}} },
                  x:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
     }
@@ -326,8 +322,9 @@
       const weeks = [...new Set(rows.map(r => r.cohort))].sort();
       const maxW  = Math.max(...rows.map(r => r.week));
       const cell  = (w, n) => rows.find(r => r.cohort === w && r.week === n);
+      // 농도 = s1 그린 단일색(_dash.css --tint-rgb) — 다크에서도 토큰이 알아서 바뀝니다.
       const tint  = (p) => p == null ? 'transparent'
-        : `rgba(143,214,160,${Math.max(.08, Math.min(1, p / 100)).toFixed(2)})`;
+        : `rgba(var(--tint-rgb),${Math.max(.08, Math.min(1, p / 100)).toFixed(2)})`;
       let h = '<table class="mini cohort"><tr><th>코호트</th><th>인원</th>';
       for (let n = 0; n <= maxW; n++) h += `<th style="text-align:center">W${n}</th>`;
       h += '</tr>';
@@ -355,7 +352,7 @@
         h += `<div class="rowlbl">${DOW[d]}</div>`;
         for (let i = 0; i < 24; i++) {
           const v = get(d, i), a = v ? Math.max(.12, v / max) : 0;
-          h += `<div class="cell" title="${DOW[d]} ${i}시 · ${v}세션"${v ? ` style="background:rgba(143,214,160,${a.toFixed(2)})"` : ''}></div>`;
+          h += `<div class="cell" title="${DOW[d]} ${i}시 · ${v}세션"${v ? ` style="background:rgba(var(--tint-rgb),${a.toFixed(2)})"` : ''}></div>`;
         }
       }
       $('hourmap').innerHTML = h + '</div>';
@@ -377,15 +374,59 @@
       }).join('');
     }
 
+    // ── 유저 흐름: 활동/이탈 퍼널 · 유저별 위치 ──
+    const ACT_STAGES = ['접속', '필드 활동', '채집·작업', '미니게임', '상점 거래'];
+    function funnelRows(steps, { drop = false } = {}) {
+      const top = steps[0][1] || 1;
+      const drops = steps.map(([, v], i) => i ? Math.round((1 - (v || 0) / (steps[i-1][1] || 1)) * 100) : 0);
+      const worst = Math.max(...drops.slice(1));
+      return steps.map(([l, v], i) => {
+        const stepPct = i ? Math.round((v || 0) / (steps[i-1][1] || 1) * 100) : null;
+        const dropTag = drop && i ? `<span class="drop${drops[i] === worst ? ' worst' : ''}">−${drops[i]}%</span>` : '';
+        return `<div class="funnel-row"><span class="fl">${l}</span>
+          <span class="fbar"><i style="width:${Math.max(0, (v || 0) / top * 100)}%"></i></span>
+          <span class="fv">${nf(v)} <small>(${Math.round((v || 0) / top * 100)}%${stepPct != null && !drop ? ` · 단계 ${stepPct}%` : ''})</small> ${dropTag}</span></div>`;
+      }).join('');
+    }
+    function renderActivity(a) {
+      $('actFunnel').innerHTML = a.active ? funnelRows([
+        ['접속', a.active], ['필드 활동', a.field], ['채집·작업', a.work],
+        ['미니게임', a.minigame], ['상점 거래', a.trade],
+      ]) : '<div class="empty">기간 내 세션 요약이 아직 없습니다.</div>';
+    }
+    function renderChurn(c) {
+      $('churnFunnel').innerHTML = c.entered ? funnelRows([
+        ['신규 진입', c.entered], ['튜토리얼 완료', c.tutorial], ['2일차 복귀', c.d2],
+        ['7일 내 재방문', c.w7], ['14일 잔존', c.d14],
+      ], { drop: true }) : '<div class="empty">14일 관측이 끝난 신규 코호트가 아직 없습니다.</div>';
+    }
+    function renderUserStages(rows) {
+      if (!rows.length) { $('userTbl').innerHTML = ''; return; }
+      const ago = (t) => { const m = Math.round((Date.now() - new Date(t)) / 60000);
+        return m < 60 ? `${Math.max(m, 0)}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
+      const stale = (t) => (Date.now() - new Date(t)) > 2 * 864e5;   // 이틀 넘게 미접속 = 이탈 징후
+      $('userTbl').innerHTML =
+        '<tr><th>유저</th><th>현재 단계</th><th>진행</th><th style="text-align:right">세션</th><th style="text-align:right">마지막 접속</th></tr>'
+        + rows.map(r => {
+          let chips = '<span class="stagechips">';
+          for (let i = 0; i < 5; i++) chips += `<i${i < r.stage ? ' class="f"' : ''}></i>`;
+          chips += '</span>';
+          return `<tr><td style="font-family:var(--mono);font-size:11px">${r.is_guest ? 'g_' : 'u_'}${r.uid}</td>
+            <td>${ACT_STAGES[r.stage - 1] || '—'}</td><td>${chips}</td>
+            <td class="n">${nf(r.sessions)}</td>
+            <td class="n" style="color:${stale(r.last_seen) ? 'var(--down);font-weight:700' : 'var(--ink-3)'}">${ago(r.last_seen)}</td></tr>`;
+        }).join('');
+    }
+
     // ── 경제 ──
     function renderEcon(rows) {
       if (!rows.length) return;
       draw('cEcon', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
-        { type:'bar', label:'유입', data: rows.map(r=>r.inflow),  backgroundColor:'#8fd6a0' },
-        { type:'bar', label:'유출', data: rows.map(r=>-r.outflow), backgroundColor:'#ff9e9e' },
-        { type:'line', label:'순증', data: rows.map(r=>r.net), borderColor:'#4a90d9', backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
+        { type:'bar', label:'유입', data: rows.map(r=>r.inflow),  backgroundColor:V('--s1') },
+        { type:'bar', label:'유출', data: rows.map(r=>-r.outflow), backgroundColor:V('--s2') },
+        { type:'line', label:'순증', data: rows.map(r=>r.net), borderColor:V('--s3'), backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
       ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
-        scales:{ y:{ grid:{color:'#eef5f0'}, ticks:{font:{size:10}} }, x:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
+        scales:{ y:{ grid:{color:V('--line-soft')}, ticks:{font:{size:10}} }, x:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
     }
     function renderEconSrc(rows) {
       if (!rows.length) { $('econSrc').innerHTML = '<div class="empty">경제 로그가 아직 없습니다.</div>'; return; }
@@ -409,8 +450,10 @@
         img.data[i*4]=col[0];img.data[i*4+1]=col[1];img.data[i*4+2]=col[2];img.data[i*4+3]=255; }
       ctx.putImageData(img,0,0);
     }
-    function heat(v){ if(v<=0)return[235,250,240]; const s=[[168,220,182],[255,245,160],[255,158,94]];
-      const t=v*(s.length-1),i=Math.min(s.length-2,Math.floor(t)),f=t-i; return s[i].map((a,k)=>Math.round(a+(s[i+1][k]-a)*f)); }
+    // 그린 단일색 램프(_dash.css --heat-lo/--heat-hi) — 다색 램프는 색맹에서 순서가 뒤집혀 보입니다.
+    const heatLo = V('--heat-lo').split(',').map(Number);
+    const heatHi = V('--heat-hi').split(',').map(Number);
+    function heat(v){ return heatLo.map((a,k)=>Math.round(a+(heatHi[k]-a)*Math.max(0,Math.min(1,v)))); }
 
     // ── 차트 헬퍼 ──
     function bar(id, rows, lab, val, color) {

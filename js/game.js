@@ -23,7 +23,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
-import { saveGame, loadGame, sendBoatRun, sendSeaRecord } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
+import { saveGame, loadGame, sendBoatRun, sendSeaRecord, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
+import { TUNING, rewardBoostMult, easeMult } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용)
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -443,6 +444,7 @@ const GIFTS = [
 
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
 let biteAt = 0, biteEnd = 0;
+let fishEase = 1;   // 🧪 첫 3회 관대 판정용 입질 여유 배율
 let bobber = null;        // 찌(3D)
 const castPos = new THREE.Vector3();
 const _v = new THREE.Vector3(); // 임시 벡터
@@ -638,8 +640,10 @@ const gameState = {
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
+  beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
+  workshop: { carved: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
   story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
 };
@@ -938,6 +942,18 @@ function firstHint(key, ico, title, body) {
   ui.showHintModal?.({ ico, title, body });
 }
 
+// 근접(지나가기) 안내 — 이동을 끊지 않는 비차단 배너(1회). 상세 규칙은 입장 후 모달/존 힌트 담당.
+// 튜토리얼(코치) 진행 중엔 억제하고 '본 것' 처리도 안 함 — 코치 지시와 겹치지 않게, 졸업 후 첫 접근 때 보여준다.
+function firstHintBanner(key, ico, title, line) {
+  if (gameState.hintsSeen[key]) return;
+  if (ui.coachActive?.()) return;
+  gameState.hintsSeen[key] = true;
+  // 발동 지점을 기억해 "표시 차례가 왔을 때 아직 그 앞에 있는지"를 UI 가 판정할 수 있게 —
+  // 여러 시설을 연달아 지나치면 이미 떠난 곳의 배너는 짧게 흘려보낸다(큐 적체 방지)
+  const at = { x: player.position.x, z: player.position.z };
+  ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5 });
+}
+
 let indoor = false;        // 실내(집 안) 여부
 let nearDoor = null;       // 'enter' | 'exit' | null
 let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
@@ -967,7 +983,7 @@ let charGroup = null, tailPivot = null, tailPhase = 0;   // 캐릭터 메시 그
 //   tail   : 종류별 실루엣 + 흔들기 속도/진폭(강아지는 신나게, 고양이는 느긋하게).
 //   extras : 그 동물에서만 보이는 포인트(판다 눈패치, 고양이 수염, 병아리 볏·날개…).
 //   armX   : 도구 든 손의 좌우 위치 — 몸집에 맞춰야 도구가 붕 뜨지 않음.
-const ANIMALS = [
+export const ANIMALS = [
   { id: 'fox', name: '여우', emoji: '🦊', body: 0xe07b3c, belly: 0xf5e9d8, ear: 0x8a4a24,
     bodyR: 0.52, bodyScale: [0.90, 1.08, 0.90], headR: 0.37, headY: 1.26, armX: 0.74,
     ears: 'pointy', earScale: 1.15,
@@ -1022,10 +1038,12 @@ let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(r
 // ── 팔 상수 — sims/arm-sim.html 시뮬레이션으로 검증한 값 ──
 //   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
 const _axX = new THREE.Vector3(1, 0, 0), _axZ = new THREE.Vector3(0, 0, 1);
+//   방향은 sims/tool-visibility-sim.html 검수값 — 이전 (.44,-.85,.28)은 벌림이 좁아
+//   몸 큰 곰·판다에서 도구가 몸에 파묻혔다. 좌우 대칭.
 const ARM_AIM_R = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.44, -.85, .28).normalize());
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.29, -.90, .32).normalize());
 const ARM_AIM_L = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.42, -.87, .20).normalize());
+  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.29, -.90, .32).normalize());
 // 옆베기: 몸을 감았다 풀며 팔이 가로로 쓸고 감 — 와인드업 63° → 반대편 86°
 const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
 const WRIST_MAX = 0.55;   // 1.0이면 팔+도구가 한 줄 막대가 돼 어색(시뮬에서 확인)
@@ -1039,6 +1057,7 @@ const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
 let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
+let curAnimal = ANIMALS[0];   // 현재 캐릭터 정의 — 등 수납 위치 계산(updateStowPose)에 사용
 // 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
 function slashPhase(p, B, S) {
   if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
@@ -1251,6 +1270,11 @@ export const Input = {
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+최고점수)
   kitchenStart(id) { return kitchenStart(id); },        // 🍳 요리 시작(재료 소비, 미니게임 개시)
   kitchenFinish(id, res) { return kitchenFinish(id, res); }, // 🍳 미니게임 결과 → 등급·버프·트래킹
+  getWorkshop() { return workshopView(); },             // 🗿 조각 공방 주문판(오늘의 주문 + 기록)
+  carveStart(id) { return carveStart(id); },            // 🗿 조각 시작(재료 소비, 클로즈업 무대 입장)
+  carveAbandon() { carveAbandon(); },                   // 🗿 그만두기(낮은 등급으로 강제 완성)
+  carveSceneEnd() { carveSceneEnd(); },                 // 🗿 무대 종료(결과 닫기 → 마을 카메라 복귀)
+  carveDebug(a, n) { return carveDebug(a, n); },        // 🗿 로컬 검증 훅(localhost 전용, 실서비스 no-op)
   mgSceneStart(type, icos, n) { mgSceneStart(type, icos, n); }, // 🍳 클로즈업 조리 무대 입장(카메라 전환)
   mgSceneEnd() { mgSceneEnd(); },                       // 🍳 무대 종료(마을 카메라 복귀)
   getStory() { return storyView(); },                   // 📖 메인 퀘스트 현황(칩·모달 렌더용)
@@ -1320,6 +1344,8 @@ export const Input = {
   },
   needsTutorial() { return !gameState.tutorialSeen; },
   markTutorialSeen() { gameState.tutorialSeen = true; },
+  // 코치가 이미 설명한 시설은 졸업 후 배너를 또 띄우지 않게 '본 것' 처리(튜토리얼 완주 시 호출)
+  markHintsSeen(keys) { for (const k of keys) gameState.hintsSeen[k] = true; },
   // 집 외관 커스터마이징
   getHouseStyle() { return { style: { ...gameState.houseStyle }, unlocked: { roof: [...gameState.unlocked.roof], wall: [...gameState.unlocked.wall], door: [...gameState.unlocked.door] }, roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS }; },
   setHousePart(part, idx) {
@@ -1408,6 +1434,9 @@ export async function enterGame() {
     // 🎬 __introTest() — 프롤로그 강제 재생(이미 본 세이브에서도) / __introJump(s) — 타임라인 점프(검증용)
     window.__introTest = () => introStart(true);
     window.__introJump = (s) => { if (intro) intro.t = s; return !!intro; };
+    // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
+    window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
+    window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
@@ -1461,11 +1490,13 @@ function applySave(saved) {
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
   if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, ...saved.dex }; // 📖 도감 복원
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
+  if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
   if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
+  if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
   if (saved.nickname) gameState.nickname = saved.nickname;                          // 🏷️ 닉네임 복원
   else if (saved.npcs) gameState.story.q = Object.values(gameState.npcs).reduce((a, n) => a + (n.idx || 0), 0); // 옛 세이브: 의뢰 수 소급 추정
@@ -1672,7 +1703,7 @@ function buildPlayer() {
 //    한쪽만 고치면 인게임과 프리뷰 생김새가 어긋날 위험이 있었음 → 단일 소스로 통합)
 //   모든 좌표는 머리 크기(HR)·몸 반지름(R) 기준 상대값 — 체형을 바꿔도 비율이 유지됨.
 //   반환: { group, tail } · tail 은 흔들 피벗(꼬리 없으면 null)
-function buildAnimalMesh(id) {
+export function buildAnimalMesh(id) {
   const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
   const g = new THREE.Group();
   const R = a.bodyR ?? 0.55, HR = a.headR ?? 0.40, HY = a.headY ?? 1.25;
@@ -1856,11 +1887,13 @@ function buildAnimalMesh(id) {
     const mkArm = (side) => {
       const pivot = new THREE.Group();
       pivot.rotation.order = 'YXZ';         // 옆베기: 팔을 든(X) 채 수직축(Y) 스윕
-      pivot.position.set(side * R * 0.87, bodyY + R * 0.54, R * 0.19);
+      // 어깨는 몸 가로폭(bs[0]) 비례 — 고정 0.87론 곰·판다(bs[0]=1.08)에서 팔·도구가
+      // 몸에 파묻혔다. 팔도 0.22→0.32로 길게. (sims/tool-visibility-sim.html 검수)
+      pivot.position.set(side * R * 0.85 * bs[0], bodyY + R * 0.54, R * 0.20);
       const aim = new THREE.Group();
       aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L);
       pivot.add(aim);
-      const ar = R * 0.23, al = R * 0.22;
+      const ar = R * 0.23, al = R * 0.32;
       const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), a.armColor ? clayMat(a.armColor, false) : skin());
       upper.position.y = -(al / 2 + ar * 0.4); upper.castShadow = true; aim.add(upper);
       const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), clayMat(a.ear, false));
@@ -1887,6 +1920,7 @@ function applyCharacter(id) {
   armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
+  curAnimal = a; updateStowPose();        // 등 수납 위치도 몸 크기에 맞춰 갱신
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
 }
 
@@ -1974,9 +2008,11 @@ function toolMesh(id) {
     g.scale.setScalar(1.18);
   } else if (id === 'seed') {
     const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), clayMat(0xcaa06a)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
+    g.scale.setScalar(1.25);   // 소형 도구 확대 — 원 크기론 41° 카메라에서 몸에 묻혀 안 보임(도구 가시성 시뮬)
   } else if (id === 'water') {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clayMat(0x8fd0ea)); body.position.y = 0.18; g.add(body);
     const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clayMat(0x8fd0ea)); spout.position.set(0.15, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
+    g.scale.setScalar(1.25);
   } else if (id === 'sickle') {
     const top = handle(0.30, 0.034);
     // 전투낫 — 날이 자루의 연장선으로 길게 서고, 끝으로 갈수록 뒤로 완만하게 휜다.
@@ -2013,8 +2049,24 @@ function toolMesh(id) {
     pin.position.y = top + 0.022; g.add(pin);
     g.scale.setScalar(1.18);
   } else if (id === 'rod') {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.95, 6), clayMat(0x7a4a2a)); pole.position.y = 0.4; pole.rotation.z = -0.15; g.add(pole);
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), clayMat(0xffffff)); tip.position.set(-0.13, 0.86, 0); g.add(tip);
+    // 🎣 민낚싯대 — 도구 가시성 시뮬 검수판. 이전 버전은 찌(흰 공)가 장대 끝 옆에
+    //   낚싯줄 없이 떠 있어 가까이서 보면 부러진 막대처럼 읽혔다.
+    //   주먹 아래 그립(혹+밴드) + 장대 끝에서 줄로 내려오는 빨간 찌.
+    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(GRIP));
+    rknob.position.y = -0.09; g.add(rknob);
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.030, 0.20, 7), clayMat(GRIP));
+    rear.position.y = -0.01; g.add(rear);
+    const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.026, 0.92, 6), clayMat(0x7a4a2a));
+    pole.position.y = 0.46; poleG.add(pole);
+    const lineG = new THREE.Group(); lineG.position.y = 0.92; lineG.rotation.z = 0.12; poleG.add(lineG);  // 줄은 수직으로
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 5), clayMat(0xe8e4d8));
+    line.position.y = -0.17; lineG.add(line);
+    const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 7), clayMat(0xd94f4f));   // 빨간 찌
+    bob.position.y = -0.38; bob.scale.set(1, 1.25, 1); lineG.add(bob);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.040, 0.040, 0.022, 9), clayMat(0xf4efe6));
+    stripe.position.y = -0.38; lineG.add(stripe);
+    g.scale.setScalar(1.25);
   } else if (id === 'reel') {
     // 🌊 대물 릴대 — sims/arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
     //   짧고 굵은 보트 로드 + 윈치급 오버사이즈 드럼 릴 + 굵은 가이드 링 + 밝은 팁.
@@ -2053,6 +2105,7 @@ function toolMesh(id) {
     const bag = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 10, 1, true),
       new THREE.MeshStandardMaterial({ color: 0xfaffff, transparent: true, opacity: 0.45, roughness: 1, side: THREE.DoubleSide }));
     bag.position.y = 0.74; g.add(bag);
+    g.scale.setScalar(1.25);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -2061,11 +2114,26 @@ function toolMesh(id) {
 //   ✋맨손은 도구를 지우는 게 아니라 "등에 메는" 상태다. 이 캐릭터는 팔 메시가 없어서
 //   (buildPlayer 의 playerArm = null) 도구 그룹 위치만 옮기면 그대로 등에 걸린 그림이 된다.
 const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
-const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선
+const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선(회전·레거시 무팔 경로용)
 const _hfM = new THREE.Matrix4(), _hfP = new THREE.Vector3(), _hfQ = new THREE.Quaternion(), _hfS = new THREE.Vector3();
 const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion();
 const _stowP = new THREE.Vector3(HELD_STOW.px, HELD_STOW.py, HELD_STOW.pz);
 const _stowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(HELD_STOW.rx, 0, HELD_STOW.rz));
+// 등 수납 위치 — 고정 상수(z=-.46)는 몸 큰 곰(등 표면 ≈ -.67)에서 도구가 파묻혔다.
+//   등 표면을 몸 크기(bodyR·bodyScale)로 계산하고, 낚싯대처럼 긴 도구는 중점을
+//   등 중앙에 맞춰 대각선으로 둘러멘 그림이 되게 한다. (도구 가시성 시뮬 검수)
+//   캐릭터 교체(applyCharacter)·도구 교체(setHeldTool 류)마다 갱신.
+function updateStowPose() {
+  const a = curAnimal, R = a.bodyR ?? 0.55, bs = a.bodyScale || [1, 1.05, 1];
+  const bodyY = R * bs[1] + 0.02;
+  const hl = Math.max(0, (heldToolMesh?.userData.stowLen ?? 0) / 2 - 0.12);
+  _stowP.set(0.06 + Math.sin(HELD_STOW.rz) * hl,          // 도구 +y축은 rz 회전 뒤 (-sin,cos) 방향
+             bodyY + R * 0.60 - Math.cos(HELD_STOW.rz) * hl,
+             -(0.8 * R * bs[2] + 0.05));                  // y=bodyY+.6R 높이의 몸 뒷면 + 여유
+}
+// 도구 길이 측정 — 생성 직후(부모·회전 없음)에 재야 정확하다
+const _stowBox = new THREE.Box3(), _stowSize = new THREE.Vector3();
+function measureStowLen(m) { m.userData.stowLen = _stowBox.setFromObject(m).getSize(_stowSize).y; }
 const _idQ = new THREE.Quaternion();
 function poseHeldTool(stow, swingX, swingZ) {
   if (!heldGroup) return;
@@ -2098,7 +2166,8 @@ function setHeldTool(id) {
   if (!handAnchor) return;
   if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
-  heldToolMesh = toolMesh(id); handAnchor.add(heldToolMesh);
+  heldToolMesh = toolMesh(id); measureStowLen(heldToolMesh); updateStowPose();
+  handAnchor.add(heldToolMesh);
 }
 // 꾸미기: 선택한 가구를 손에 작게 들기
 function setHeldDecor(id) {
@@ -2106,7 +2175,7 @@ function setHeldDecor(id) {
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   const m = decorMesh(id); m.scale.setScalar(0.5); m.position.y = 0.05;
   m.rotation.y = decorRot * Math.PI / 2;   // 현재 회전 상태 미리보기
-  heldToolMesh = m; handAnchor.add(m);
+  heldToolMesh = m; measureStowLen(m); updateStowPose(); handAnchor.add(m);
 }
 
 // ── 🌦️ 날씨 파티클 — 비: 빠른 빗줄기 / 눈: 천천히 흩날리는 눈송이 ──
@@ -2133,7 +2202,7 @@ function buildRain() {
 
 function updateRain(dt) {
   if (!rainLines) return;
-  const show = mode === 'play' && !indoor && !atMine;   // 실내·동굴에선 숨김(텃밭은 야외)
+  const show = mode === 'play' && !indoor && !atMine && !atCafe;   // 실내·동굴·카페 홀에선 숨김(텃밭은 야외)
   rainLines.visible = show;
   if (!show) return;
   const { vel, snow, len } = rainLines.userData;
@@ -2258,8 +2327,11 @@ function buildPier() {
 // 🐔 닭장 터 표지(미건설 시) — 배지·재료 조건 안내판
 function buildCoopSite() {
   coopSign = new THREE.Group(); coopSign.position.copy(COOP);
-  const pad = new THREE.Mesh(new THREE.CircleGeometry(1.7, 24), new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.3 }));
+  // 집 터와 같은 문법(민트 패드 + 초록 링) — 베이지 원판이 "땅에 얼룩진 자국"처럼 보였음
+  const pad = new THREE.Mesh(new THREE.CircleGeometry(1.7, 28), new THREE.MeshStandardMaterial({ color: 0xbfe8c9, transparent: true, opacity: 0.5, roughness: 1 }));
   pad.geometry.rotateX(-Math.PI / 2); pad.position.y = 0.03; coopSign.add(pad);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.65, 1.9, 36), new THREE.MeshBasicMaterial({ color: 0x5fc07c, transparent: true, opacity: 0.75, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; coopSign.add(ring);
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 192;
   const c = cv.getContext('2d');
   c.fillStyle = '#b8d2ba'; roundRect(c, 10, 10, 492, 172, 28); c.fill();
@@ -2269,8 +2341,9 @@ function buildCoopSite() {
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(2.7, 1.0, 1); sp.position.y = 1.7; coopSign.add(sp);
+  sp.scale.set(2.7, 1.0, 1); sp.position.y = 2.1; coopSign.add(sp);   // 머리 위로 — 캐릭터가 밑에 서도 배너가 얼굴을 안 가림
   scene.add(coopSign);
+  solidCircle(COOP.x, COOP.z, 0.55);   // 🚧 배너 바로 밑까지 파고들지 않게(건설 상호작용 2.4 는 그대로 닿음)
   if (gameState.coop.built) coopSign.visible = false;   // 복원 순서 대비
 }
 
@@ -2929,8 +3002,8 @@ function buildCafeHall() {
   bpost.position.set(CAFE_BOARD[0], 0.8, CAFE_BOARD[1]); g.add(bpost);
   const board = makeSignBoard('📋 주문판'); board.scale.setScalar(0.6);
   board.position.set(CAFE_BOARD[0], 1.75, CAFE_BOARD[1] + 0.05); g.add(board);
-  const exitSign = makeSignBoard('🚪 나가기'); exitSign.scale.setScalar(0.62);
-  exitSign.position.set(0, 1.1, H - 0.6); g.add(exitSign);
+  // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
+  g.add(makeSignpost('🚪 나가기', 1.7, H - 0.55));
   // 따뜻한 펜던트 등 3개(그룹 안이라 홀에 있을 때만 씬 조명에 잡힘)
   [[-5.5, 0], [0, -3], [5.5, 0]].forEach(([lx, lz]) => {
     const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), clayMat(0x6a5a4a));
@@ -2946,6 +3019,7 @@ function buildCafeHall() {
   CAFE_SEATS.forEach(([sx, sz]) => solidCircle(CAFE.x + sx, CAFE.z + sz, 0.9)); // 테이블
   [[-H + 1.4, H - 1.6], [H - 1.4, H - 1.6], [-H + 1.4, -H + 1.4]]
     .forEach(([px, pz]) => solidCircle(CAFE.x + px, CAFE.z + pz, 0.4));         // 화분
+  solidCircle(CAFE.x + CAFE_BOARD[0], CAFE.z + CAFE_BOARD[1], 0.3);             // 주문판 기둥(읽기 판정 2.2 는 그대로 닿음)
   scene.add(g); cafeInGroup = g; cafeInGroup.visible = false;   // 홀에 있을 때만 표시
   refreshCafeGuests();
 }
@@ -4092,7 +4166,7 @@ function startSoothe(sp) {
   c.fillStyle = '#aef3e2'; c.fillText('♪', 48, 50);
   const note = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
   mistGroup.add(note);
-  mist.soothe = { sp, step: 0, phase: 0, note };
+  mist.soothe = { sp, step: 0, phase: 0, note, ease: betaEase('mist') };   // 🧪 첫 3회 관대 판정
   Sound.blip();
 }
 function cancelSoothe(scared = false) {
@@ -4111,7 +4185,8 @@ function cancelSoothe(scared = false) {
 function clampMist(v) { return Math.max(-MIST_HALF + 1, Math.min(MIST_HALF - 1, v)); }
 function sootheTap() {
   const so = mist.soothe; if (!so) return;
-  if (so.phase >= 0.62 && so.phase <= 0.99) {           // 🎯 ♪가 작아진 순간
+  const lo = 1 - 0.38 * (so.ease || 1);                 // 기본 0.62 — 🧪첫 3회 0.506(창 ×1.3)
+  if (so.phase >= lo && so.phase <= 0.99) {             // 🎯 ♪가 작아진 순간
     so.step += 1; so.phase = 0;
     Sound.blip();
     spawnSparkle(MIST.x + so.sp.group.position.x, 1.6, MIST.z + so.sp.group.position.z, 6);
@@ -4832,12 +4907,14 @@ function seaHoldRod(on) {
     if (seaRodMesh) return;
     _seaPrevTool = heldToolMesh;
     if (heldToolMesh) handAnchor.remove(heldToolMesh);
-    seaRodMesh = toolMesh('reel'); heldToolMesh = seaRodMesh; handAnchor.add(seaRodMesh);
+    seaRodMesh = toolMesh('reel'); measureStowLen(seaRodMesh); updateStowPose();
+    heldToolMesh = seaRodMesh; handAnchor.add(seaRodMesh);
   } else {
     if (!seaRodMesh) return;
     handAnchor.remove(seaRodMesh); seaRodMesh = null;
     heldToolMesh = _seaPrevTool; _seaPrevTool = null;
     if (heldToolMesh) handAnchor.add(heldToolMesh);
+    updateStowPose();   // 돌려받은 도구 길이 기준으로 수납 위치 복원
   }
 }
 function seaReset() {
@@ -4862,6 +4939,7 @@ function seaAction() {
       if (d < bd) { bd = d; best = f; }
     }
     seaMG.sp = best.sp; seaMG.st = 'cast'; seaMG.t = 0; seaMG.landed = false;
+    seaMG.ease = betaEase('sea');   // 🧪 첫 3회 관대 판정
     seaMG.good = 0; seaMG.bad = 0; seaMG.progress = 0; seaMG.t0 = clock.elapsedTime;
     seaMG.phaseLen = SEA_CAST_DUR + seaRnd(1.1, 2.2);
     seaHoldRod(true);
@@ -4875,14 +4953,14 @@ function seaAction() {
     const sp = seaMG.sp;
     if (seaMG.phase === 'window') {
       // 🟢 당길 기회 — 연타로 되감기
-      seaMG.progress = Math.min(1, seaMG.progress + sp.tap);
+      seaMG.progress = Math.min(1, seaMG.progress + sp.tap * (seaMG.ease || 1));   // 🧪첫 3회: 연타 효율↑
       seaMG.good++; seaMG.pz += 0.13;
       if (seaRodMesh) seaRodMesh.userData.sea.crank.rotation.x -= 0.5;
       Sound.blip();
       if (seaMG.progress >= 1) seaCatch();
     } else {
       // 🔴 버둥칠 때 당기면 역효과 — 확 끌려간다
-      seaMG.bad++; seaMG.pz -= 0.5 * sp.drag;
+      seaMG.bad++; seaMG.pz -= 0.5 * sp.drag / (seaMG.ease || 1);                  // 🧪첫 3회: 끌림 완화
       Sound.water();
     }
   } else if (seaMG.st === 'cast' && seaMG.landed) {
@@ -5356,6 +5434,7 @@ function emojiSprite(emoji, size = 0.5) {
   return sp;
 }
 
+const LADLE_R = 0.22;   // 국자 젓기 반경 = 대기 위치(냄비 안쪽 유지)
 function buildKitchenSet() {
   if (kset) return;
   const g = new THREE.Group(); g.position.copy(KSET);
@@ -5400,10 +5479,13 @@ function buildKitchenSet() {
   }
   const steam = [];
   for (let i = 0; i < 2; i++) { const s = emojiSprite('♨️', 0.34); s.material.opacity = 0; s.position.set(-0.15 + i * 0.3, 1.9, 0.05); s.userData.ph = i * 1.3; potGroup.add(s); steam.push(s); }
+  // 🥄 국자 — 냄비 안쪽에 담가 두고 손잡이만 위로(테두리 밖으로 튀지 않게)
   const ladle = new THREE.Group();
-  const lHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 8), woodMat(1, 1)); lHandle.rotation.z = -0.5; lHandle.position.set(0.14, 0.3, 0); ladle.add(lHandle);
-  const lBowl = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), clayMat(0x8a7a68)); ladle.add(lBowl);
-  ladle.position.set(0.42, 1.7, 0.05); potGroup.add(ladle);
+  const lHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.52, 8), woodMat(1, 1));
+  lHandle.rotation.z = -0.62; lHandle.position.set(0.151, 0.212, 0); ladle.add(lHandle);   // 아래 끝이 국자 컵에 붙도록
+  const lBowl = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), clayMat(0x8a7a68));
+  lBowl.scale.set(1, 0.72, 1); ladle.add(lBowl);                                           // 살짝 납작한 국자 컵
+  ladle.position.set(LADLE_R, 1.70, 0.05); potGroup.add(ladle);                            // 국물에 반쯤 잠긴 높이
   const foods = new THREE.Group(); foods.position.set(0, 1.7, 0.05); potGroup.add(foods);   // 국에 둥둥 뜨는 재료 스프라이트
   g.add(potGroup);
   // 조명 — 세트 전용 따뜻한 불빛(밤에도 아늑하게 보이게)
@@ -5493,7 +5575,9 @@ function mgPotHit(step, judge, ico) {
 
 // 매 프레임 — 무대 연출(카메라 고정·거품·김·불·칼/국자 트윈·조각 물리)
 function updateMgScene(dt, t) {
-  if (!kset || !mgView) return;
+  if (!mgView) return;
+  if (mgView.type === 'carve') { updateCarveScene(dt, t); return; }  // 🗿 조각 공방 무대는 전용 루프
+  if (!kset) return;
   applyMgCamera();                                          // 다른 카메라 로직이 못 뺏게 매 프레임 고정
   // 김/거품/불/재료 — 냄비가 계속 "요리 중"으로 보이게
   for (const b of kset.bubbles) {
@@ -5524,8 +5608,9 @@ function updateMgScene(dt, t) {
   if (kset.ladleT >= 0) {
     kset.ladleT += dt;
     const a = (kset.ladleT / 0.7) * Math.PI * 2;
-    kset.ladle.position.set(Math.cos(a) * 0.26, 1.7, 0.05 + Math.sin(a) * 0.26);
-    if (kset.ladleT >= 0.7) { kset.ladleT = -1; kset.ladle.position.set(0.42, 1.7, 0.05); }
+    kset.ladle.position.set(Math.cos(a) * LADLE_R, 1.65, 0.05 + Math.sin(a) * LADLE_R);
+    kset.ladle.rotation.y = -a;                                                   // 손잡이가 궤적 바깥을 향하게 같이 회전
+    if (kset.ladleT >= 0.7) { kset.ladleT = -1; kset.ladle.rotation.y = 0; kset.ladle.position.set(LADLE_R, 1.65, 0.05); }
   }
   // 🧺 재료 퐁당(냄비 속으로 낙하 → 반짝)
   if (kset.dropT >= 0 && kset.drop) {
@@ -5544,6 +5629,335 @@ function updateMgScene(dt, t) {
     f.sp.material.opacity = Math.max(0, f.life / 0.55);
     if (f.life <= 0) { f.sp.parent?.remove(f.sp); kset.fx.splice(i, 1); }
   }
+}
+
+// ── 🗿 조각 공방 — 작업대 미니게임(깎기) ─────────────────────────
+//    12×9 칩 그리드(InstancedMesh 1드로우콜)를 탭/드래그로 깎아 밑그림 속 형상을 드러낸다.
+//    · 밝은 칩(버릴 부분) 제거 = 진행, 어두운 칩(밑그림) 탭 = 흠집(-20점, 3개면 강제 완성)
+//    · 드래그로 밑그림을 스치는 건 무판정(모바일 배려) — 흠집은 직접 탭했을 때만
+//    · 판정·연출 모두 여기(3D가 레이캐스트를 소유), index.html 은 주문판/HUD/결과만
+const WSET = new THREE.Vector3(0, 0, 460);            // 클로즈업 무대(주방 KSET 과 별도 좌표)
+const raycaster = new THREE.Raycaster();              // (기존 tryPlaceDecor 미선언 참조도 이 선언으로 해결)
+const pointer = new THREE.Vector2();
+const CARVE_COLS = 12, CARVE_ROWS = 9, CARVE_S = 0.34;
+const CARVE_CY = 2.75;                                // 블록 중심 높이(턴테이블 위)
+const CARVE_TIERS = [
+  { id: 'master', min: 88, ico: '💎', name: '걸작',  mult: 1.5 },
+  { id: 'fine',   min: 65, ico: '✨', name: '명품',  mult: 1.25 },
+  { id: 'decent', min: 35, ico: '🙂', name: '양품',  mult: 1.0 },
+  { id: 'rough',  min: 0,  ico: '😅', name: '투박',  mult: 0.7 },
+];
+const CARVE_MATS = {
+  wood:  { ico: '🪵', waste: 0xd9a066, keep: 0xb0763f, crack: 0x5f3a1e, done: 0xf09a4e, dust: 0xcaa06a },
+  stone: { ico: '🪨', waste: 0xbcb7ab, keep: 0x8b8779, crack: 0x4e4b43, done: 0x9fd8c0, dust: 0xa8a49a },
+};
+// 도안 — mask: '#'=밑그림(남길 부분) '.'=깎을 부분. 12×9 고정
+const CARVE_DESIGNS = [
+  { id: 'fish', name: '목각 물고기', ico: '🐟', mat: 'wood', cost: { wood: 8 }, pay: 26, mask: [
+    '............', '....####....', '...######...', '##.########.', '############',
+    '##.########.', '...######...', '....####....', '............'] },
+  { id: 'heart', name: '하트 장식', ico: '💗', mat: 'wood', cost: { wood: 6 }, pay: 22, mask: [
+    '............', '..###..###..', '.##########.', '.##########.', '..########..',
+    '...######...', '....####....', '.....##.....', '............'] },
+  { id: 'mush', name: '버섯 조각', ico: '🍄', mat: 'wood', cost: { wood: 6 }, pay: 22, mask: [
+    '....####....', '..########..', '.##########.', '.##########.', '....####....',
+    '....####....', '...######...', '............', '............'] },
+  { id: 'tree', name: '아기 나무', ico: '🌲', mat: 'wood', cost: { wood: 8 }, pay: 24, mask: [
+    '.....##.....', '....####....', '...######...', '..########..', '.##########.',
+    '....####....', '....####....', '...######...', '............'] },
+  { id: 'star', name: '돌 별 장식', ico: '⭐', mat: 'stone', cost: { stone: 5 }, pay: 28, mask: [
+    '.....##.....', '.....##.....', '....####....', '.##########.', '..########..',
+    '...######...', '..###..###..', '..#......#..', '............'] },
+  { id: 'cup', name: '돌 찻잔', ico: '☕', mat: 'stone', cost: { stone: 6 }, pay: 30, mask: [
+    '............', '.#######....', '.#######.##.', '.#######..#.', '.#######.##.',
+    '..#####.....', '...###......', '..#######...', '............'] },
+  { id: 'cat', name: '고양이 석상', ico: '🐱', mat: 'stone', cost: { stone: 5 }, pay: 26, mask: [
+    '............', '.##.....##..', '.###...###..', '.##########.', '.##########.',
+    '.##########.', '.##########.', '..########..', '............'] },
+];
+let wset = null;      // 공방 무대 { group, chips, backing, blockGroup, chisel, light, debris[], trauma, popT, spinT, strikeT }
+let carve = null;     // 진행 판 { d, cells[], waste, removed, dmg, startAt, over, finished, drag, lastMove }
+let carveBound = false;
+
+// 오늘의 주문 3건 — 날짜 시드(모든 유저 동일), 자정 리셋(카페 주문판과 같은 규칙)
+function workshopOrders() {
+  const st = gameState.workshop;
+  const today = todayStr();
+  if (st.date !== today) { st.date = today; st.done = []; }
+  const start = dateHash('carve') % CARVE_DESIGNS.length;
+  return [0, 2, 5].map(off => {                     // +0/+2/+5 (mod 7) — 항상 서로 다른 도안
+    const d = CARVE_DESIGNS[(start + off) % CARVE_DESIGNS.length];
+    return { id: d.id, d, done: st.done.includes(d.id) };
+  });
+}
+// index.html(주문판 탭)이 렌더할 데이터
+function workshopView() {
+  const inv = gameState.inventory;
+  const st = gameState.workshop;
+  return {
+    orders: workshopOrders().map(o => ({
+      id: o.id, name: o.d.name, ico: o.d.ico, matIco: CARVE_MATS[o.d.mat].ico, pay: o.d.pay,
+      cost: Object.entries(o.d.cost).map(([k, v]) => ({ k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, need: v, have: inv[k] || 0 })),
+      ready: !o.done && Object.entries(o.d.cost).every(([k, v]) => (inv[k] || 0) >= v),
+      done: o.done, best: st.best[o.id] || 0,
+    })),
+    carved: st.carved || 0,
+  };
+}
+
+// 공방 무대 조형 — 주방 세트와 같은 문법(clay/wood 로우폴리 + 이모지 소품 + 따뜻한 조명)
+function buildWorkshopSet() {
+  if (wset) return;
+  const g = new THREE.Group(); g.position.copy(WSET);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(20, 13), clayMat(0xe3d3b4, false)); wall.position.set(0, 4.2, -2.0); g.add(wall);   // 모바일 세로 프레이밍(원거리 카메라)에서도 배경이 끊기지 않게 넉넉히
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.08, 0.5), woodMat(2, 1)); shelf.position.set(-2.6, 4.5, -1.75); g.add(shelf);
+  ['🔨', '🪚', '🧰'].forEach((e, i) => { const s = emojiSprite(e, 0.42); s.position.set(-3.5 + i * 0.9, 4.75, -1.7); g.add(s); });
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(10, 1.0, 3.4), woodMat(3, 1)); counter.position.set(0, 0.5, 0); counter.receiveShadow = true; g.add(counter);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(10, 0.07, 3.5), clayMat(0xd9c6a4, false)); top.position.set(0, 1.03, 0); g.add(top);
+  const table = new THREE.Mesh(new THREE.CylinderGeometry(2.35, 2.5, 0.14, 18), clayMat(0x8a6a4a)); table.position.set(0, 1.12, 0); g.add(table);
+  // 조각 블록(회전 그룹) — 배킹 판 + 칩 InstancedMesh(108개 = 1드로우콜, threejs-geometry)
+  const blockGroup = new THREE.Group(); g.add(blockGroup);
+  const backing = new THREE.Mesh(new THREE.BoxGeometry(CARVE_COLS * CARVE_S + 0.1, CARVE_ROWS * CARVE_S + 0.1, 0.2), clayMat(0x6b5a45, false));
+  backing.position.set(0, CARVE_CY, -0.27); blockGroup.add(backing);
+  const chipGeo = new THREE.BoxGeometry(CARVE_S * 0.94, CARVE_S * 0.94, CARVE_S);
+  const chips = new THREE.InstancedMesh(chipGeo, clayMat(0xffffff, false), CARVE_COLS * CARVE_ROWS);
+  chips.setColorAt(0, new THREE.Color(0xffffff));   // instanceColor 버퍼 생성
+  blockGroup.add(chips);
+  // 끌(치즐) — 탭 지점에 나타나 콕 내리찍는 손맛 연출
+  const chisel = new THREE.Group();
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.5), new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: 0.3, metalness: 0.6 }));
+  blade.position.z = 0.25; chisel.add(blade);
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.3, 8), clayMat(0x8a5a3a));
+  grip.rotation.x = Math.PI / 2; grip.position.z = 0.62; chisel.add(grip);
+  chisel.visible = false; g.add(chisel);
+  const light = new THREE.PointLight(0xffe0b0, 1.35, 16); light.position.set(0.6, 4.2, 2.6); g.add(light);
+  const fill = new THREE.PointLight(0xfff2d8, 0.6, 14); fill.position.set(-1.2, 3.2, -3.2); g.add(fill);   // 뒷면 필 라이트 — 완성 회전 때 측·후면이 시커멓지 않게
+  g.visible = false;
+  scene.add(g);
+  wset = { group: g, blockGroup, backing, chips, chisel, light, debris: [], trauma: 0, popT: -1, spinT: -1, strikeT: -1,
+    debrisMat: clayMat(0xcaa06a, false), _c: new THREE.Color(), _m: new THREE.Matrix4(), _d: new THREE.Object3D() };
+}
+const carveCell = (i) => ({ c: i % CARVE_COLS, r: (i / CARVE_COLS) | 0 });
+const carvePos = (i) => { const { c, r } = carveCell(i); return { x: (c - (CARVE_COLS - 1) / 2) * CARVE_S, y: CARVE_CY + ((CARVE_ROWS - 1) / 2 - r) * CARVE_S }; };
+
+// 도안 세팅 — 칩 배치·색(밑그림은 살짝 어둡게 = 스케치 힌트)
+function setupCarveBlock(d) {
+  const m = CARVE_MATS[d.mat];
+  const cells = []; let waste = 0;
+  for (let i = 0; i < CARVE_COLS * CARVE_ROWS; i++) {
+    const { c, r } = carveCell(i);
+    const keep = d.mask[r][c] === '#';
+    cells.push(keep ? 'k' : 'w'); if (!keep) waste++;
+    const p = carvePos(i);
+    wset._d.position.set(p.x, p.y, 0); wset._d.rotation.set(0, 0, 0); wset._d.scale.setScalar(1); wset._d.updateMatrix();
+    wset.chips.setMatrixAt(i, wset._d.matrix);
+    wset.chips.setColorAt(i, wset._c.set(keep ? m.keep : m.waste));
+  }
+  wset.chips.instanceMatrix.needsUpdate = true;
+  wset.chips.instanceColor.needsUpdate = true;
+  wset.chips.computeBoundingSphere();
+  wset.blockGroup.rotation.y = 0; wset.blockGroup.scale.setScalar(1);
+  wset.backing.material.color.set(d.mat === 'wood' ? 0x6b5a45 : 0x5c584f);
+  wset.debrisMat.color.set(m.dust);
+  wset.debris.forEach(f => f.m.parent?.remove(f.m)); wset.debris = [];
+  wset.trauma = 0; wset.popT = -1; wset.spinT = -1; wset.strikeT = -1; wset.chisel.visible = false;
+  carve = { d, cells, waste, removed: 0, dmg: 0, startAt: performance.now(), over: false, finished: false, drag: false, lastMove: 0 };
+}
+
+// 조각 시작 — 재료 선소비(주방과 같은 악용 방지: 포기해도 낮은 등급으로 완성)
+function carveStart(id) {
+  const o = workshopOrders().find(x => x.id === id);
+  if (!o) return { ok: false };
+  if (o.done) return { ok: false, msg: '오늘 이 주문은 이미 완성했어요' };
+  const d = o.d;
+  for (const k in d.cost) if ((gameState.inventory[k] || 0) < d.cost[k]) return { ok: false, msg: `${RES_LABEL[k] || k}이(가) 부족해요` };
+  for (const k in d.cost) gameState.inventory[k] -= d.cost[k];
+  refreshInventoryUI();
+  buildWorkshopSet();
+  setupCarveBlock(d);
+  wset.group.visible = true;
+  mgView = { type: 'carve' };
+  bindCarvePointer();
+  ui.act?.('carve');                                      // 🎓 튜토리얼: "조각 시작해보기" 단계 통과
+  trackEvent('carve_start', { order: id, mat: d.mat });   // [GA4] 미니게임 퍼널: 시작
+  return { ok: true, id, name: d.name, ico: d.ico, waste: carve.waste, dmgMax: 3 };
+}
+
+// 포인터 입력(캔버스 소유는 game.js) — 탭=깎기/흠집, 드래그=슥슥 연속 깎기(threejs-interaction)
+function carveActive() { return mgView?.type === 'carve' && carve && !carve.over; }
+function bindCarvePointer() {
+  if (carveBound) return; carveBound = true;
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', (e) => { if (carveActive()) { carve.drag = true; carveHit(e, true); } });
+  el.addEventListener('pointermove', (e) => {
+    if (!carveActive() || !carve.drag) return;
+    const now = performance.now();
+    if (now - carve.lastMove < 40) return;               // 레이캐스트 스로틀
+    carve.lastMove = now;
+    carveHit(e, false);
+  });
+  window.addEventListener('pointerup', () => { if (carve) carve.drag = false; });
+}
+function carveHit(e, isTap) {
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(wset.chips, false)[0];
+  if (!hit || hit.instanceId == null) return;
+  const i = hit.instanceId;
+  if (carve.cells[i] === 'w') removeChip(i);
+  else if (carve.cells[i] === 'k' && isTap) scratchChip(i);   // 드래그로 스친 밑그림은 무판정
+}
+// 칩 제거 — 소형 피드백(소리+파편). game-feel: 반복 동작은 과하지 않게
+function removeChip(i) {
+  carve.cells[i] = 'x';
+  const p = carvePos(i);
+  wset._d.position.set(p.x, p.y, 0); wset._d.scale.setScalar(0.0001); wset._d.updateMatrix();
+  wset.chips.setMatrixAt(i, wset._d.matrix);
+  wset.chips.instanceMatrix.needsUpdate = true;
+  for (let n = 0; n < 4; n++) {                          // 파편 포물선(재료별 가루 색)
+    const f = new THREE.Mesh(new THREE.BoxGeometry(CARVE_S * (0.2 + Math.random() * 0.25), CARVE_S * 0.22, CARVE_S * 0.22), wset.debrisMat);
+    f.position.set(p.x, p.y, 0.3);
+    wset.group.add(f);
+    wset.debris.push({ m: f, vx: (Math.random() - 0.5) * 2.2, vy: 1.2 + Math.random() * 1.4, vz: 1.0 + Math.random() * 1.2, rx: (Math.random() - 0.5) * 9, life: 0.55 });
+  }
+  strikeChisel(p);
+  Sound.chop();
+  carve.removed++;
+  ui.carveProgress?.({ removed: carve.removed, waste: carve.waste, dmg: carve.dmg });
+  if (carve.removed >= carve.waste) { carve.over = true; setTimeout(() => carveFinish('done'), 380); }
+}
+// 밑그림 흠집 — 중형 피드백(균열색+셰이크+둔탁음). trauma 는 카메라 오프셋만 흔든다(시뮬레이션 불가침)
+function scratchChip(i) {
+  carve.cells[i] = 's';
+  wset.chips.setColorAt(i, wset._c.set(CARVE_MATS[carve.d.mat].crack));
+  wset.chips.instanceColor.needsUpdate = true;
+  const p = carvePos(i);
+  strikeChisel(p);
+  Sound.till();
+  wset.trauma = Math.min(1, wset.trauma + 0.45);
+  spawnFloatText(WSET.x + p.x, p.y + 0.3, WSET.z + 0.6, '💢 흠집!', '#c0392b', 0.9);
+  carve.dmg++;
+  ui.carveProgress?.({ removed: carve.removed, waste: carve.waste, dmg: carve.dmg });
+  if (carve.dmg >= 3) { carve.over = true; setTimeout(() => carveFinish('ruin'), 550); }
+}
+function strikeChisel(p) {
+  wset.chisel.position.set(p.x + 0.12, p.y + 0.1, 0.62);
+  wset.chisel.visible = true; wset.strikeT = 0;
+}
+function carveAbandon() {
+  if (!carve) { carveSceneEnd(); return; }
+  if (carve.over) return;                                 // 정산 중엔 무시
+  carve.over = true;
+  carveFinish('abandon');
+}
+
+// 정산 — 등급은 흠집 수가 결정(0=100 / 1=80 / 2=60), 망치거나 포기하면 투박
+function carveFinish(kind) {
+  if (!carve || carve.finished) return;
+  carve.finished = true;
+  const d = carve.d;
+  const score = kind === 'done' ? Math.max(0, 100 - carve.dmg * 20) : kind === 'ruin' ? 30 : 25;
+  const tier = CARVE_TIERS.find(t => score >= t.min) || CARVE_TIERS[CARVE_TIERS.length - 1];
+  const st = gameState.workshop;
+  st.carved = (st.carved || 0) + 1;
+  st.tiers[tier.id] = (st.tiers[tier.id] || 0) + 1;
+  const isBest = score > (st.best[d.id] || 0);
+  if (isBest) st.best[d.id] = score;
+  if (!st.done.includes(d.id)) st.done.push(d.id);        // 시도 자체가 오늘 주문 소진(재도전 파밍 방지)
+  const coins = Math.round(d.pay * tier.mult);
+  gameState.inventory.coins += coins;
+  refreshInventoryUI();
+  revealCarve(tier, kind === 'done');
+  logEcon('carve_reward', d.id, coins, gameState.inventory.coins);   // [원장] 코인 유입
+  trackEvent(kind === 'abandon' ? 'carve_abandon' : 'carve_result', {   // [GA4] 결과 지표 — 주방 스키마와 같은 결
+    order: d.id, quality: tier.id, score, dmg: carve.dmg,
+    chips_left: carve.waste - carve.removed,
+    duration_ms: Math.round(performance.now() - carve.startAt),
+    is_best: isBest ? 1 : 0, total_carved: st.carved,
+  });
+  const res = { ok: true, name: d.name, ico: d.ico, score, isBest, coins, carved: st.carved, dmg: carve.dmg,
+    tier: { id: tier.id, ico: tier.ico, name: tier.name } };
+  setTimeout(() => ui.carveDone?.(res), kind === 'done' ? 1500 : 700);  // 회전 연출을 본 뒤 결과 카드
+}
+// 완성 연출 — 대형 피드백(색 반전+오버슈트 팝+턴테이블 한 바퀴+팡파레). 연출은 잠깐, 곧 원상 복귀
+function revealCarve(tier, won) {
+  const m = CARVE_MATS[carve.d.mat];
+  for (let i = 0; i < carve.cells.length; i++) {
+    if (carve.cells[i] === 'k') wset.chips.setColorAt(i, wset._c.set(m.done));
+  }
+  wset.chips.instanceColor.needsUpdate = true;
+  wset.popT = 0;
+  if (won) wset.spinT = 0;
+  spawnSparkle(WSET.x, CARVE_CY, WSET.z + 0.5, tier.id === 'master' ? 26 : 14);
+  if (tier.id === 'master' || tier.id === 'fine') { Sound.complete(); spawnConfetti(WSET.x, CARVE_CY + 0.8, WSET.z + 0.5); }
+  else Sound.harvest();
+}
+function carveSceneEnd() {
+  if (wset) {
+    wset.group.visible = false;
+    wset.debris.forEach(f => f.m.parent?.remove(f.m)); wset.debris = [];
+    wset.chisel.visible = false;
+  }
+  carve = null;
+  mgView = null;
+  snapCamera();                                           // 마을 카메라 복귀
+}
+
+// 매 프레임 — 카메라 고정(+trauma 셰이크) · 끌 트윈 · 팝/회전 · 파편 물리
+function applyCarveCamera() {
+  const tanH = Math.tan(camera.fov * Math.PI / 360);
+  const need = Math.max((CARVE_COLS * CARVE_S * 0.62) / (tanH * camera.aspect),   // 가로 여백 확보(모바일 세로)
+                        (CARVE_ROWS * CARVE_S * 0.80) / tanH);                     // 세로 여백 확보(HUD 공간)
+  const dist = Math.min(12.5, Math.max(4.2, need));
+  const sh = wset.trauma * wset.trauma;                   // trauma² — 약한 흠집은 살짝, 연속 흠집은 크게
+  const tt = performance.now() / 1000;
+  camera.position.set(WSET.x + sh * 0.14 * Math.sin(tt * 37), CARVE_CY + 0.5 + sh * 0.10 * Math.sin(tt * 47), WSET.z + dist);
+  camera.lookAt(WSET.x, CARVE_CY - 0.05, WSET.z);
+}
+function updateCarveScene(dt, t) {
+  if (!wset) return;
+  applyCarveCamera();
+  if (wset.trauma > 0) wset.trauma = Math.max(0, wset.trauma - 2.4 * dt);   // 셰이크는 스스로 잦아든다
+  if (wset.strikeT >= 0) {                                // 끌 콕(0~0.07 파고듦 → 0.2 복귀)
+    wset.strikeT += dt;
+    const k = wset.strikeT;
+    wset.chisel.position.z = 0.62 - (k < 0.07 ? (k / 0.07) * 0.2 : k < 0.2 ? 0.2 - ((k - 0.07) / 0.13) * 0.2 : 0);
+    if (k >= 0.2) { wset.strikeT = -1; wset.chisel.visible = false; }
+  }
+  if (wset.popT >= 0) {                                   // 오버슈트 팝(1→1.14→1, back-ease 근사)
+    wset.popT += dt;
+    const k = Math.min(1, wset.popT / 0.5);
+    wset.blockGroup.scale.setScalar(1 + 0.14 * Math.sin(k * Math.PI) * (1 - k * 0.4));
+    if (k >= 1) { wset.popT = -1; wset.blockGroup.scale.setScalar(1); }
+  }
+  if (wset.spinT >= 0) {                                  // 턴테이블 한 바퀴(ease-out settle)
+    wset.spinT += dt;
+    const k = Math.min(1, wset.spinT / 1.3);
+    wset.blockGroup.rotation.y = Math.PI * 2 * (1 - Math.pow(1 - k, 3));
+    if (k >= 1) { wset.spinT = -1; wset.blockGroup.rotation.y = 0; }
+  }
+  for (let i = wset.debris.length - 1; i >= 0; i--) {     // 파편 포물선 + 축소 소멸
+    const f = wset.debris[i];
+    f.m.position.x += f.vx * dt; f.m.position.y += f.vy * dt; f.m.position.z += f.vz * dt;
+    f.vy -= 8 * dt; f.m.rotation.x += f.rx * dt; f.life -= dt;
+    f.m.scale.setScalar(Math.max(0.001, f.life / 0.55));
+    if (f.life <= 0) { f.m.parent?.remove(f.m); f.m.geometry.dispose(); wset.debris.splice(i, 1); }
+  }
+  wset.light.intensity = 1.15 + 0.05 * Math.sin(t * 9);
+}
+// 로컬 개발 훅 — 브라우저 검증용(waste n개 자동 깎기 / 흠집 1회). 실서비스 호스트에선 no-op
+function carveDebug(action, n = 1) {
+  if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return null;
+  if (!carveActive()) return { active: false };
+  if (action === 'chip') {
+    let left = n;
+    for (let i = 0; i < carve.cells.length && left > 0; i++) if (carve.cells[i] === 'w') { removeChip(i); left--; if (carve.over) break; }
+  } else if (action === 'scratch') {
+    const i = carve.cells.indexOf('k');
+    if (i >= 0) scratchChip(i);
+  }
+  return carve ? { active: !carve.over, removed: carve.removed, waste: carve.waste, dmg: carve.dmg } : { active: false };
 }
 
 // ── 🎬 프롤로그 컷신 — 회색 도시의 지친 밤 → calm forest 도착 ──
@@ -5856,14 +6270,16 @@ function sellItem(k, all) {
   if (have <= 0) return { ok: false, msg: '팔 게 없어요' };
   const qty = all ? have : 1;
   gameState.inventory[k] -= qty;
-  const gain = priceOf(k) * qty;   // 🪙 오늘의 시세 반영
+  const bm = rewardBoostMult(authState.variant, authState.createdAt);   // 🧪 [베타 A군] 판매 부스트
+  const gain = Math.round(priceOf(k) * qty * bm);
+  const ledgerItem = bm > 1 ? k + '|boost' : k;
   gameState.inventory.coins = (gameState.inventory.coins || 0) + gain;
   refreshInventoryUI();
   Sound.blip();
   questEvent('sell', qty);                          // 데일리 의뢰(장사) 진행
   ui.act?.('sell');                                 // 튜토리얼: 첫 판매
   trackEvent('shop_sell', { item: k, qty, gain, rate: Math.round(priceRate(k) * 100) });  // [GA4] 금액+시세%(시세 반응 분석용)
-  logEcon('shop_sell', k, gain, gameState.inventory.coins);  // [원장] 코인 유입
+  logEcon('shop_sell', ledgerItem, gain, gameState.inventory.coins);  // [원장] 코인 유입
   return { ok: true, gain, qty };
 }
 
@@ -6142,6 +6558,10 @@ function makeSignpost(text, x = 0, z = 1.3) {
   const grp = new THREE.Group();
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 6), woodMat(1, 1)); post.position.set(x, 0.75, z); post.castShadow = true; grp.add(post);
   const sign = makeSignBoard(text); sign.scale.setScalar(0.55); sign.position.set(x, 1.45, z + 0.04); grp.add(sign);
+  // 🚧 기둥 충돌 — 캐릭터가 팻말을 뚫고 들어가 판이 머리를 가리던 문제.
+  //    월드 좌표는 부모 그룹 배치 뒤에야 확정되므로 다음 프레임에 등록한다.
+  //    (출입 판정은 반경 1.9 근접이라 r0.3 기둥이 문을 막지 않음)
+  requestAnimationFrame(() => { const wp = new THREE.Vector3(); post.getWorldPosition(wp); solidCircle(wp.x, wp.z, 0.3); });
   return grp;
 }
 
@@ -6150,7 +6570,23 @@ function spawnFarmGate() {
   const g = new THREE.Group(); g.position.copy(FARM_GATE);
   for (const x of [-1.1, 1.1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.4, 7), woodMat(1, 1)); p.position.set(x, 1.2, 0); p.castShadow = true; g.add(p); }
   const top = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.24, 0.24), woodMat(2, 1)); top.position.y = 2.4; g.add(top);
-  const sign = makeSignBoard('🌾 내 텃밭'); sign.position.set(0, 1.7, 0.02); g.add(sign);
+  // 🌿 덩굴 퍼걸러 입구 — 간판을 아치에 올리는 안은 두 번 실패(1.7=머리 관통, 2.95=캐릭터 가림/붕 뜸).
+  //    입구는 꿀색 박공지붕(랭킹판과 같은 문법)+덩굴로 꾸미고, 이름은 옆 팻말이 맡는다.
+  for (const s of [-1, 1]) {
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.07, 0.66), clayMat(0xf0b46a));
+    slab.position.set(s * 0.68, 2.72, 0); slab.rotation.z = -s * 0.38; slab.castShadow = true; g.add(slab);
+  }
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), clayMat(0xe8c46a, false)); orb.position.y = 3.0; g.add(orb);
+  // 기둥 타고 오르는 덩굴 잎 + 들보 위 잎 뭉치
+  for (const x of [-1.1, 1.1]) {
+    [[0.7, 0.16], [1.4, 0.2], [2.1, 0.17]].forEach(([y, r], i) => {
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i]));
+      leaf.position.set(x + (i % 2 ? 0.12 : -0.1), y, 0.1); g.add(leaf);
+    });
+    const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), clayMat(PAL.leaf2));
+    tuft.position.set(x * 0.85, 2.5, 0); g.add(tuft);
+  }
+  g.add(makeSignpost('🌾 내 텃밭', 2.1, 0.5));
   scene.add(g);
   obstacles.push({ x: FARM_GATE.x, z: FARM_GATE.z, r: 1.2 });
   // 🚧 기둥 두 개만 — 아치 가운데는 걸어서 지나갈 수 있어야 한다
@@ -6160,6 +6596,22 @@ function spawnFarmGate() {
 // 텃밭 필드(잔디 바닥 + 울타리 + 나가는 문 + 허수아비)
 function buildFarm() {
   const g = new THREE.Group(); g.position.copy(FARM);
+  // 주변 배경 — 필드가 마을 지면(r60) 밖 허공에 떠 있어, 밤엔 필드 너머가 하늘색 허공으로
+  // 그대로 노출됐다(밤 그레이딩까지 얹혀 보랏빛 허공). 동굴·안개 숲처럼 자체 배경을 깐다.
+  const skirtGeo = new THREE.CircleGeometry(48, 48); skirtGeo.rotateX(-Math.PI / 2);
+  const skirt = new THREE.Mesh(skirtGeo, clayMat(PAL.groundDark, false));
+  skirt.position.y = -0.02; skirt.receiveShadow = true; g.add(skirt);
+  // 둘레 나무들(장식) — 강둑 나무와 같은 간단 조형. 남쪽 출입구 방향은 비워 시야 확보
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    if (Math.abs(a - Math.PI / 2) < 0.45) continue;              // 남쪽(+z) 출입구
+    const r = FARM_HALF + 5 + ((i * 7) % 6) * 2.4;
+    const h = 2.0 + ((i * 13) % 7) * 0.3;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, h, 5), clayMat(PAL.trunk));
+    trunk.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r); g.add(trunk);
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.6, 6), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
+    leaf.position.set(trunk.position.x, h + 1.0, trunk.position.z); g.add(leaf);
+  }
   const ground = new THREE.Mesh(new THREE.BoxGeometry(FARM_HALF * 2, 0.2, FARM_HALF * 2), clayMat(0x8fce7e, false));
   ground.position.y = 0.05; ground.receiveShadow = true; g.add(ground);
   // 울타리 둘레
@@ -6172,7 +6624,8 @@ function buildFarm() {
   }
   // 나가는 문(남쪽 가운데)
   const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.14, 0.4), woodMat(1, 2, 0xa9743f)); gate.position.set(0, 0.16, H); g.add(gate);
-  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, H); g.add(board);
+  // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
+  g.add(makeSignpost('🚪 나가기', 1.9, H - 0.2));
   // (허수아비 장식은 제거 — 이제 작업대에서 만들어 직접 배치해야 밤손님을 막는다)
   scene.add(g); farmGroup = g; farmGroup.visible = false;   // 텃밭에 있을 때만 표시
 }
@@ -6245,7 +6698,7 @@ function buildMine() {
   // 바닥 돌기(자잘한 바위)
   for (let i = 0; i < 14; i++) rock((Math.random() - 0.5) * (H * 2 - 2), 0.06, (Math.random() - 0.5) * (H * 2 - 2), 0.3 + Math.random() * 0.4, 0.14 + Math.random() * 0.2, 0.3 + Math.random() * 0.4, false);
   // 나가는 문 표지판(남쪽 구멍)
-  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 1.4, -H - 0.1); g.add(board);
+  const board = makeSignBoard('🚪 나가기'); board.scale.setScalar(0.7); board.position.set(0, 2.0, -H - 0.1); g.add(board);   // 문을 지나는 머리 위로
   scene.add(g); mineGroup = g; mineGroup.visible = false;   // 동굴에 있을 때만 표시
   // 위쪽 은은한 푸른 필(깊이감)
   const glow = new THREE.PointLight(0x9ac4ff, 0.5, 44, 1.2); glow.position.set(MINE.x, 7, MINE.z); scene.add(glow);
@@ -6296,6 +6749,9 @@ function spawnMineGate() {
   // 🚧 바위 더미는 사각으로 — 입구(+z)만 열어 두고 나머지를 막는다.
   //    (원으로 막으면 아치 안으로 못 들어가 입장 판정 2.0 을 못 채움)
   solidBox(MINE_GATE.x - 2.4, MINE_GATE.z - 1.7, MINE_GATE.x + 2.4, MINE_GATE.z + 0.15);
+  // 🚧 양옆 바닥 바위 무더기 — 사각 밖(|x|>2.4)으로 파고들면 바위 속에 끼던 문제
+  [-2.0, 2.0].forEach(x => solidCircle(MINE_GATE.x + x, MINE_GATE.z + 0.2, 1.1));
+  solidCircle(MINE_GATE.x + 2.7, MINE_GATE.z + 1.4, 0.3);   // 🚧 팻말 기둥
 }
 
 function enterMine() {
@@ -6414,19 +6870,19 @@ function updateDoorInteract() {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
   } else if (dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {
     nd = 'mist'; prompt = '🌫️ 안개 낀 숲에 들어가기';
-    firstHint('mistGate', '🌫️', '안개 낀 숲', '마을 북서쪽, 안개가 걷히지 않는 숲이에요. 그림자 정령들이 수호목의 빛을 탐내고 있어요 — 등불과 ♪음악으로 달래서 하루의 안개를 정화해보세요. 정령빛(✨)으로 특별한 등불 장식도 만들 수 있어요!');
+    firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
-    firstHint('dockGate', '🛶', '나루터', '마을 북쪽 강가예요. 들어가면 나룻배를 타고 강을 내려가는 물길이 열려요 — 장애물을 피하고 ⭐별조각을 모아 배를 강화하세요. 하루 3번 탈 수 있고, 물길은 매일 새로 바뀌어요!');
+    firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 강을 내려가요 — 하루 3번');
   } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
     nd = 'sea'; prompt = '🌊 바다터 (먼 바다로 나가볼까요?)';
-    firstHint('seaGate', '🌊', '바다터', '마을 북동쪽 포구예요. 먼 바다로 나가면 수면에 대형 물고기들이 헤엄쳐요 — 노리고 던져서 줄다리기로 낚아 올리세요! ⚔️참치는 하루 한 번 "오늘의 대어", 무게가 🏆랭킹에 올라가요.');
+    firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
-    firstHint('cafeGate', '☕', '카페', '들어가면 손님들이 테이블에 앉아 요리를 주문하고 있어요. 재료를 들고 손님에게 다가가면 그 자리에서 만들어 서빙 — 🪙코인과 ❤️친밀도를 받아요. 농사·낚시·닭장·채집으로 모은 재료를 쓸 곳이에요!');
+    firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
   }
   nearDoor = nd;
-  if (nd === 'mine') firstHint('mineGate', '⛏️', '채굴 동굴 입구', '들어가면 어두운 동굴에서 ⛏️괭이로 돌·석탄·보석을 캘 수 있어요. 작업대 재료와 상점 판매에 쓰여요!');
+  if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
   // 자유주방/작업대/상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
   const inVillage = !indoor && !atFarm && !atMine && !atRiver && !nd;
   nearKitchen = inVillage && dist2D(KITCHEN, player.position) < 2.2;               // 🍳 자유주방(요리 미니게임)
@@ -6438,22 +6894,22 @@ function updateDoorInteract() {
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
-  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHint('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록이 모이는 곳이에요 — 뱃길·코인·채굴·요리·의뢰 다섯 부문! 매주 월요일 새로 시작하니 부담 없이 도전해봐요.'); }
-  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHint('market', '📊', '시세 전광판', '판매 가격이 매일 바뀌어요! 전광판에서 오늘 비싼 품목을 확인하고 비쌀 때 파세요 🪙'); }
+  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문 — 매주 리셋'); }
+  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌어요 — 비쌀 때 파세요'); }
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
-    firstHint('coop', '🐔', '닭장 터', '남쪽 빈터에 닭장을 지을 수 있어요! 🔥 2일 연속 출석하고 재료(🪵25 🪨10 🪙60)를 모아 오세요. 지으면 매일 모이를 주고 다음날 🥚 달걀을 얻어요.');
+    firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
-  if (nearKitchen) firstHint('kitchen', '🍳', '자유주방', '재료로 요리하는 미니게임 작업장이에요! 🍲끓이기는 바늘이 초록 구간에 올 때 탭, 🔪썰기는 리듬에 맞춰 탭 — 타이밍이 좋을수록 요리 등급이 올라 버프가 오래가요.');
-  else if (nearBench) firstHint('bench', '🔧', '작업대', '재료(목재·돌·작물)로 도구 강화·야외 장식·주민 선물을 만들 수 있어요. 요리는 옆의 🍳 자유주방에서!');
-  else if (nearShop) firstHint('shop', '🛒', '상점', '작물·물고기·목재를 팔아 🪙코인을 벌고, 씨앗 등을 살 수 있어요. (팔기: 탭하면 1개, 꾹 누르면 전부)');
-  else if (nd === 'farm') firstHint('farmGate', '🌾', '내 텃밭 입구', '들어가면 나만의 넓은 밭이 있어요. 마을과 별개로, 마음껏 농사지을 수 있는 나만의 공간이에요!');
+  if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
+  else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물·🗿조각 만들기');
+  else if (nearShop) firstHintBanner('shop', '🛒', '상점', '수확물을 팔고 씨앗을 사는 곳');
+  else if (nd === 'farm') firstHintBanner('farmGate', '🌾', '내 텃밭 입구', '마음껏 농사짓는 나만의 넓은 밭');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)
   const nearHouse = inVillage2() && gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 4.2;
   if (nearHouse !== lastNearHouse) { lastNearHouse = nearHouse; ui.setNearHouse?.(nearHouse); }
-  if (nearHouse) firstHint('extDecor', '🎨', '집 외관 꾸미기', '집 근처에 오면 🎨 집 외관 꾸미기 버튼이 떠요. 지붕·벽·문 색을 바꿔 나만의 집을 만들어보세요!');
+  if (nearHouse) firstHintBanner('extDecor', '🎨', '집 외관 꾸미기', '지붕·벽·문 색을 바꿔 나만의 집으로');
   updateZoneHint();
   updateToolPageAuto();   // 🎒 구역이 바뀌었으면 도구 페이지도 넘긴다
 }
@@ -6473,16 +6929,14 @@ function updateZoneHint() {
   if (nearGlade) {
     hint = isNight() ? '🌟 반딧불이 — 🦋포충망(도구 8)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
     if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
-    firstHint('glade', '🌟', '반딧불이 계곡',
-      '밤이 되면 이 숲에 반딧불이가 피어올라요. 🦋 포충망을 들고 반딧불이가 밝게 반짝이는 순간 휘두르면 잡을 수 있어요! 종류는 4가지 — 📖 도감에 모아보세요.');
+    firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 🦋포충망으로 반딧불이 잡는 곳');
   }
   const wasForest = nearForest;
   nearForest = inVillage2() && dist2D(FOREST, player.position) < FOREST_R + 0.5;
   if (nearForest && !hint) {
     hint = forageTarget() ? '🍄 채집물 발견! 액션(Space)으로 줍기 — 도구 필요 없어요' : '🍄 채집 숲 — 버섯·산딸기·도토리를 찾아보세요';
     if (!wasForest) trackEvent('zone_enter', { zone: 'forest', weather: WEATHER });   // [GA4] 채집 유입
-    firstHint('forest', '🍄', '채집 숲',
-      '씨앗도 물주기도 필요 없어요 — 숲을 돌아다니다 버섯·산딸기·도토리·약초를 발견하면 그냥 주우면 돼요! 주운 자리엔 잠시 뒤 다른 게 돋아나고, 🌧️ 비 온 날엔 버섯이 특히 많이 나요.');
+    firstHintBanner('forest', '🍄', '채집 숲', '도구 없이 버섯·산딸기를 줍는 숲');
   }
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
@@ -7145,6 +7599,7 @@ function updateDayNight(dt) {
   }
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
   if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
+  if (mgView?.type === 'carve') { scene.fog.near = 40; scene.fog.far = 140; }   // 🗿 공방 무대는 원거리 카메라(모바일 ~12.5) — 날씨 안개에 잠기지 않게
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
   if (atCafe) {
     hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
@@ -7173,8 +7628,9 @@ function updateDayNight(dt) {
     const tt = clock.elapsedTime;
     for (const t of mineTorches) { const f = 0.85 + Math.sin(tt * 7 + t.phase) * 0.15; t.light.intensity = t.base * f; t.fm.emissiveIntensity = 1.4 * f + 0.4; }
   }
-  // 집 안내판: 낮엔 매트(후광X), 밤엔 은은하게 빛나 잘 보이게(동적 채광)
-  if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 + nightAmt * 0.28);
+  // 집 안내판: 낮엔 매트(후광X), 밤엔 주변에 맞춰 감광 — 밝기를 키우면 밤 블룸(0.85 임계)에
+  // 걸려 판 전체가 형광등처럼 번지므로, 닭장 터 배너처럼 어둡게 가라앉힌다
+  if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 - nightAmt * 0.35);
   // 블룸 밤에 살짝 더 강하게
   if (bloomPass) bloomPass.strength = 0.5 + nightAmt * 0.5;
   // 밤 푸른 톤 그레이딩
@@ -7563,6 +8019,7 @@ function tryFish() {
   if (!bobber) buildBobber();
   bobber.position.copy(castPos); bobber.visible = true;
   doPlayerAction(castPos.x, castPos.z); // 낚싯대 던지기 제스처
+  fishEase = betaEase('fish');   // 🧪 첫 3회 관대 판정
   fishState = 'wait'; biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
   Sound.water(); spawnWater(castPos.x, castPos.z);
   ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
@@ -7607,7 +8064,7 @@ function updateFishing() {
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
     if (now >= biteAt) {
-      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4); // 튼튼한 낚싯대: 입질 여유↑
+      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4) * fishEase; // 튼튼한 낚싯대: 입질 여유↑ · 🧪첫 3회 관대
       ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
       Sound.blip(); spawnWater(castPos.x, castPos.z);
     }
@@ -8347,7 +8804,20 @@ function questView(o) {
 function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
+// 🧪 [베타 A군] 미니게임 첫 3회 관대 판정 — 시도 카운트를 올리고 현재 ease 배율을 돌려준다
+function betaEase(game) {
+  const t = gameState.beta.tries;
+  const m = easeMult(authState.variant, t[game]);
+  t[game] = (t[game] || 0) + 1;
+  return m;
+}
+
 function giveReward(r, source = 'reward', item = null) {
+  // 🧪 [베타 A군] 가입 3일 부스트 — 출석·퀘스트·럭키박스 코인 ×1.5, 원장 item에 |boost 마커(원값=÷1.5 복원 가능)
+  if (r.coins && TUNING.rewardBoost.sources.includes(source)) {
+    const bm = rewardBoostMult(authState.variant, authState.createdAt);
+    if (bm > 1) { r = { ...r, coins: Math.round(r.coins * bm) }; item = (item ?? source) + '|boost'; }
+  }
   for (const k in r) gameState.inventory[k] = (gameState.inventory[k] || 0) + r[k];
   if (r.coins) logEcon(source, item, r.coins, gameState.inventory.coins); // [원장] 코인 보상 유입(출처 명시)
   refreshInventoryUI();
