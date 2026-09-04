@@ -124,8 +124,6 @@ win AS (
 steps AS (
   SELECT
     session_id, trigger_kind, trigger_rn, rn, char_x, char_z,
-    MIN(rn) OVER w AS first_rn,
-    MAX(rn) OVER w AS last_rn,
     SQRT(POW(char_x  - LAG(char_x)  OVER w, 2) + POW(char_z  - LAG(char_z)  OVER w, 2)) AS d_move,
     SQRT(POW(mouse_x - LAG(mouse_x) OVER w, 2) + POW(mouse_y - LAG(mouse_y) OVER w, 2)) AS d_mouse,
     ABS(cam_yaw - LAG(cam_yaw) OVER w) AS d_yaw,
@@ -143,10 +141,15 @@ feat AS (
     SUM(d_yaw)   AS yaw_total,     -- #4
     -- #6 유휴 비율. 분모는 변화량이 정의된 행(=첫 행 제외) 수.
     SAFE_DIVIDE(SUM(is_idle), COUNTIF(d_move IS NOT NULL)) AS idle_ratio,
-    -- #2 윈도 첫 행 → 마지막 행 직선 거리
+    -- #2 윈도 첫 행 → 마지막 행 직선 거리.
+    -- ⚠️ MIN/MAX(rn) OVER w 를 쓰면 안 된다 — w 에 ORDER BY 가 있어 기본 프레임이
+    --    "처음~현재 행"이라 MAX 가 러닝맥스가 되고, '마지막 행의 좌표' 대신
+    --    '윈도 안 최대 좌표'를 집는다. 윈도 범위는 이미 알고 있으므로 직접 쓴다.
     SQRT(
-      POW(MAX(IF(rn = last_rn, char_x, NULL)) - MAX(IF(rn = first_rn, char_x, NULL)), 2) +
-      POW(MAX(IF(rn = last_rn, char_z, NULL)) - MAX(IF(rn = first_rn, char_z, NULL)), 2)
+      POW(MAX(IF(rn = trigger_rn,     char_x, NULL))
+        - MAX(IF(rn = trigger_rn - 9, char_x, NULL)), 2) +
+      POW(MAX(IF(rn = trigger_rn,     char_z, NULL))
+        - MAX(IF(rn = trigger_rn - 9, char_z, NULL)), 2)
     ) AS net_disp
   FROM steps
   GROUP BY session_id, trigger_kind, trigger_rn
