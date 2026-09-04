@@ -86,26 +86,30 @@ order by events desc;
 -- A3. t3_tutorial_funnel — 튜토리얼 스텝별 도달
 --     쓰임: 퍼널(스텝 오름차순). 이 대시보드에서 가장 이야기가 분명한 차트.
 --     ※ step 하나에 key 가 둘 이상 붙는 경우가 있어(개편 전후 혼재)
---        step 기준으로 합치고 대표 key 를 붙입니다.
+--        key 기준(2026-09-05 sell 단계 이동으로 번호가 바뀌어 key 로 전환)으로 합칩니다.
 -- ─────────────────────────────────────────────────────────────
 -- @tab: t3_tutorial_funnel
 with s as (
   select
-    (select value.int_value    from unnest(event_params) where key = 'step') as step,
     (select value.string_value from unnest(event_params) where key = 'key')  as step_key,
     user_pseudo_id
   from `calm-forest.analytics_547127440.events_*`
   where event_name = 'tutorial_step'
 )
 select
-  step,
-  array_agg(step_key order by step_key limit 1)[offset(0)] as step_key,
-  count(distinct user_pseudo_id)                           as devices,
-  count(*)                                                 as events
+  case step_key
+    when 'move' then 1 when 'toolpage' then 2 when 'chop' then 3 when 'sell' then 4
+    when 'till' then 5 when 'seed' then 6 when 'water' then 7 when 'harvest' then 8
+    when 'market' then 9 when 'quest' then 10 when 'talk' then 10 when 'mine' then 11
+    when 'carve' then 12 when 'dex' then 13 when 'fish' then 14 when 'build' then 15
+    when 'enter' then 16 when 'decor' then 17 else 99 end as ord,   -- 2026-09-05 순서(개편 전후 혼재해도 key 로 합침)
+  step_key,
+  count(distinct user_pseudo_id) as devices,
+  count(*)                       as events
 from s
-where step is not null
-group by step
-order by step;
+where step_key is not null
+group by ord, step_key
+order by ord, step_key;
 
 
 -- ─────────────────────────────────────────────────────────────

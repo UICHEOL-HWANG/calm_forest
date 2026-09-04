@@ -47,7 +47,7 @@
 | `place_decor` | 가구 배치(꾸미기) | `item`(rug/plant/…) |
 | `craft_item` | 제작(작업대) | `category`(cook/tool/outdoor/gift), `item`(요리·도구·야외장식·선물 id) |
 | `gift_give` | 주민에게 선물 전달 | `npc`, `gift`(bouquet/fruit/fishset/woodtoy) |
-| `shop_sell` / `shop_buy` | 상점 판매/구매 | 판매: `item`,`qty`,`gain`,`rate`(오늘 시세%, 100=기본가 — 시세 반응 분석) · 구매: `item`,`cost` |
+| `shop_sell` / `shop_buy` | 상점 판매/구매 | 판매: `item`,`qty`,`gain`,`rate`(오늘 시세%, 100=기본가 — 시세 반응 분석), `via`(`merchant`=상인 환영 거래, 그 외 없음) · 구매: `item`,`cost` |
 | `color_unlock` | 외관 색 랜덤 획득 | `part`(roof/wall/door), `idx` |
 | `photo_capture` / `photo_share` | 사진 촬영/공유 | — |
 | `fishing_cast` | 낚시 캐스팅 | — |
@@ -70,6 +70,9 @@
 | `weather_day` | 궂은 날씨 세션 시작 시 1회 | `type`(rain/snow/fog) — 세션 요약 counts 로 날씨별 행동 비교 |
 | `coop_build` / `coop_feed` / `coop_collect` | 🐔 닭장 건설·모이·달걀 | 수령: `eggs` |
 | `badge_earn` | 🏅 배지 획득 | `badge`, `total` |
+| `merchant_visit` | 🧙 상인 방문 환영 거래 성사(1회) | `item`(wood/fish), `gain` |
+| `use_fert` | 🌱 비료 사용 | `left`(남은 개수) |
+| `use_bait` | 🪱 미끼 소모(캐스팅) | `left`(남은 횟수) |
 
 ### 남쪽 필드 확장 (🌟 반딧불이 · ☕ 카페 · 🍄 채집)
 
@@ -167,3 +170,6 @@ GA4는 커스텀 매개변수를 등록해야 탐색에서 쪼갤 수 있어요.
 | 전체 유저 합산 커스텀 통계 | **Supabase SQL** (`sql/analytics_queries.sql`) / 관리자 대시보드 |
 
 GA4는 이벤트 카운트·퍼널·유입에 강하고, 좌표처럼 촘촘한 원자료는 Supabase가 강합니다. 둘을 같이 보면 "무엇을(GA4) 어디서(Supabase)"가 완성돼요.
+
+## 6. 변경 이력
+- 2026-09-05 — 🪙 코인 첫 루프(상인 방문·비료/미끼) 계측 추가. 원장 출처는 `shop_sell` + 품목 `|welcome`. dev 파라미터(`?house=` 등) 세션은 모든 기록 제외. 배포일은 배포 후 여기에 기입 — 초반 세션 이동 분포가 바뀌므로 이탈 모델 전후 세그먼트 구분에 사용.
