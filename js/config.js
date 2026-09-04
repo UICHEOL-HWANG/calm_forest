@@ -42,6 +42,11 @@ export const CONFIG = {
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
   AUTH_MODE: 'google',
 
+  // ── 앱인토스 사용자 식별키 검증 엔드포인트 ────────────────────
+  //    getUserKeyForGame() 의 hash 를 Supabase 세션으로 바꿔주는 toss-auth Worker URL.
+  //    (mTLS 인증서가 필요해 서버에서만 검증 가능. 비어있으면 안내 폴백 후 게스트 권유)
+  TOSS_AUTH_ENDPOINT: 'https://calmforest-toss-auth.icuchoel.workers.dev',
+
   // ── ☕ 카페 손님 동적 생성 엔드포인트 ─────────────────────────
   //    같은 오리진의 서버 함수(functions/api/cafe-guests.js)가 Gemini 를 대신 호출합니다.
   //    ⚠️ Gemini API 키는 절대 여기 두지 마세요 — 브라우저에 그대로 노출됩니다.

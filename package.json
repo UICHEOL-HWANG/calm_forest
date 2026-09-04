@@ -1,0 +1,29 @@
+{
+  "name": "calm_forest",
+  "version": "1.0.0",
+  "description": "동물의 숲 톤의 포근한 로우폴리 3D 브라우저 게임. **Vanilla JS + Three.js(WebGL)** 로 만들었고, **외부 이미지·모델·사운드 파일 없이** 모든 형상·효과음을 코드로 생성합니다.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "deploy": "ait deploy",
+    "build": "node scripts/build-ait.mjs && ait build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UICHEOL-HWANG/calm_forest.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/UICHEOL-HWANG/calm_forest/issues"
+  },
+  "homepage": "https://github.com/UICHEOL-HWANG/calm_forest#readme",
+  "devDependencies": {
+    "@apps-in-toss/devtools": "^3.0.2",
+    "@apps-in-toss/web-framework": "^3.0.2"
+  },
+  "private": true
+}
