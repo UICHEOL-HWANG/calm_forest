@@ -28,6 +28,8 @@ dependencies = [
 dev = [
     "jupyterlab>=4.2",
     "ipykernel>=6.29",
+    "pytest>=8.3",
+    "httpx>=0.28",           # FastAPI TestClient 가 요구
 ]
 
 [build-system]
@@ -36,3 +38,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["calm_ml"]
+
+[tool.pytest.ini_options]
+# tests/ 에서 train_churn·api 를 import 할 수 있게 ml/ 을 경로에 넣는다
+pythonpath = ["."]
+testpaths = ["tests"]
