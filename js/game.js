@@ -492,8 +492,8 @@ const NPCS = [
     ],
   },
   {
-    // 상점 동쪽 트인 벌판 — 작업대(4,-5)·자유주방(7.4,-6.4)·상점(9,0) 동선을 막지 않게(배회 반경 1.6 감안)
-    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [13.5, 0, -1.5],
+    // 좌판 바로 뒤(북쪽) 상주 — 좌판 장애물 반경 1.6 + NPC 여유 0.35 = 1.95 밖이어야 npcBlocked 에 안 걸린다
+    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [9, 0, -2.1], roam: 0.6,
     quests: [
       { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
@@ -6228,6 +6228,18 @@ function spawnShop() {
   }
   for (const x of [-0.9, 0.9]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 6), clayMat(0x6b4a34)); p.position.set(x, 1, -0.2); g.add(p); }
   g.add(makeSignpost('🛒 상점', 1.4, 0.7));   // 팻말
+  // 💬 오늘 시세 최고 품목 말풍선 — 멀리서도 "여기서 판다"가 읽히게(자정 시세 갱신은 새로고침 시 반영)
+  const rates = {}; for (const k in SELL_PRICE) rates[k] = Math.round(priceRate(k) * 100);
+  const topLine = topPriceLine(rates, SELL_ICO_G);
+  const bcv = document.createElement('canvas'); bcv.width = 512; bcv.height = 160;
+  const bc = bcv.getContext('2d');
+  bc.fillStyle = '#f5efe0'; roundRect(bc, 12, 12, 488, 116, 30); bc.fill();
+  bc.beginPath(); bc.moveTo(236, 126); bc.lineTo(276, 126); bc.lineTo(256, 152); bc.closePath(); bc.fill();   // 꼬리
+  bc.fillStyle = '#2fa564'; bc.textAlign = 'center'; bc.font = 'bold 52px sans-serif';
+  bc.fillText(t(topLine.text), 256, 88);
+  const btex = new THREE.CanvasTexture(bcv); btex.minFilter = THREE.LinearFilter; btex.magFilter = THREE.LinearFilter; btex.generateMipmaps = false;
+  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: btex, transparent: true, depthWrite: false }));
+  bubble.scale.set(2.4, 0.75, 1); bubble.position.set(0, 2.55, 0.2); g.add(bubble);
   scene.add(g);
   obstacles.push({ x: SHOP.x, z: SHOP.z, r: 1.6 });
   solidCircle(SHOP.x, SHOP.z, 1.15);   // 🚧 좌판 (상점 상호작용 2.0 확보)
@@ -8731,7 +8743,7 @@ function wanderNPC(o, dt) {
     o.wanderTimer = 3 + Math.random() * 4;
     // 건물·호수 안쪽은 목적지로 고르지 않음(카페·닭장·집을 뚫고 지나가던 문제)
     for (let i = 0; i < 6; i++) {
-      const a = Math.random() * Math.PI * 2, r = Math.random() * 1.6;
+      const a = Math.random() * Math.PI * 2, r = Math.random() * (o.def.roam ?? 1.6);
       const nx = o.home.x + Math.cos(a) * r, nz = o.home.z + Math.sin(a) * r;
       if (!npcBlocked(nx, nz)) { o.target.set(nx, 0, nz); break; }
       if (i === 5) o.target.copy(o.home);   // 전부 막혔으면 제자리

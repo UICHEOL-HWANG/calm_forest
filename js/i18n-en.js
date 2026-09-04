@@ -1036,4 +1036,5 @@ export const EN = {
   '다음에': 'Later',
   '상점 좌판': 'Market stall',
   '동쪽 좌판에서 언제든 팔 수 있어요': 'You can sell anytime at the stall in the east',
+  '{0} 오늘 비싸요 +{1}%': '{0} Best price today +{1}%',
 };
