@@ -11,6 +11,7 @@
 
 import { CONFIG } from './config.js';
 import { sendLogBatch } from './supabase-client.js';
+import { pushSample } from './window-buffer.js';   // [🎯 이탈 예측] 트리거용 롤링 윈도
 
 let buffer = [];              // 전송 대기 샘플 버퍼
 let lastSampleAt = 0;         // throttle 기준 시각
@@ -56,6 +57,7 @@ export function sampleFrame(getSnapshot) {
   if (heartbeat) lastHeartbeat = now;
   lastLogged = s;
   buffer.push(s);
+  pushSample(s);        // [🎯 이탈 예측] 전송 버퍼와 달리 비워지지 않는 최근 10행
 }
 
 function round(n) { return Math.round(n * 1000) / 1000; }
