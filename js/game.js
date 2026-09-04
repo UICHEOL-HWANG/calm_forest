@@ -29,6 +29,7 @@ import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { CONFIG } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
@@ -6919,6 +6920,7 @@ function updateDoorInteract() {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
   }
+  if (!prompt && fertTarget()) prompt = '🌱 비료 주기';   // 다른 시설 프롬프트가 없을 때만
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
@@ -8000,6 +8002,9 @@ function handleAction() {
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
+  // 🌱 비료 — 자라는 밭 앞 + 비료 보유. 💧물조리개를 들고 흙이 말라 있으면 평소대로 물주기가 우선
+  const fp = fertTarget();
+  if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // 🍄 채집 — 도구가 필요 없는 "줍기". 단, 도끼를 들고 더 가까운 나무가 있으면 벌목에 양보
   const fg = forageTarget();
   if (fg) {
@@ -8204,6 +8209,24 @@ function trySeed() {
     }
   }
   plantSeed(plot);
+}
+
+// ── 🌱 비료 — 자라는 밭 한 칸을 즉시 수확 가능 상태로(코인 전용 소모품, 상점 20🪙) ──
+function fertTarget() {
+  if (indoor || atMine || atCafe || (gameState.inventory.fert || 0) <= 0) return null;
+  return plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8) || null;
+}
+function applyFert(plot) {
+  gameState.inventory.fert -= 1;
+  plot.growth = 1; plot.wetUntil = clock.elapsedTime + WET_TIME; plot.watered = true;
+  doPlayerAction(plot.x, plot.z);
+  refreshCropStage(plot);       // growth 1 → 단계 2 = mature(수확 토스트는 refreshCropStage 가 띄움)
+  updatePlotVisual(plot);
+  spawnSparkle(plot.x, 0.6, plot.z, 18); Sound.harvest();
+  ui.toast?.('🌱 비료를 줬어요! 바로 수확할 수 있어요');
+  trackEvent('use_fert', { left: gameState.inventory.fert });   // [GA4] 소모품 사용
+  refreshInventoryUI();
+  lastDoorPrompt = null;        // 비료가 떨어졌으면 프롬프트를 바로 내린다
 }
 
 // 물조리개: 자라는 밭에 물 → 성장(물 없이는 안 자람) + 물방울 파티클

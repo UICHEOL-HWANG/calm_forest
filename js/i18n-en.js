@@ -1023,5 +1023,7 @@ export const EN = {
   '미끼': 'Bait',
   '🌱비료': '🌱Fertilizer',
   '🪱미끼': '🪱Bait',
+  '🌱 비료 주기': '🌱 Use fertilizer',
+  '🌱 비료를 줬어요! 바로 수확할 수 있어요': '🌱 Fertilized! You can harvest right away',
   '다음 목표: 🐔 닭장 60 · 🏡 넓은 집 80 · ✨ 정령 등불 60': 'Next goals: 🐔 Coop 60 · 🏡 Bigger house 80 · ✨ Spirit lamp 60',
 };
