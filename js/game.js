@@ -463,6 +463,7 @@ const GIFTS = [
 ];
 
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
+let baitActive = false;   // 🪱 이번 캐스트에 미끼 사용 중(회당 소모, 희귀 확률 이중 굴림)
 let biteAt = 0, biteEnd = 0;
 let fishEase = 1;   // 🧪 첫 3회 관대 판정용 입질 여유 배율
 let bobber = null;        // 찌(3D)
@@ -8054,14 +8055,20 @@ function tryFish() {
   fishEase = betaEase('fish');   // 🧪 첫 3회 관대 판정
   fishState = 'wait'; biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
   Sound.water(); spawnWater(castPos.x, castPos.z);
-  ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
+  if ((gameState.inventory.bait || 0) > 0) {                     // 🪱 미끼 — 캐스트마다 1개 자동 소모
+    gameState.inventory.bait -= 1; baitActive = true; refreshInventoryUI();
+    trackEvent('use_bait', { left: gameState.inventory.bait });   // [GA4] 소모품 사용
+    ui.setFishPrompt?.(`🎣 던졌어요… 물 때까지 기다려요 · 🪱 미끼 (남은 ${gameState.inventory.bait}회)`);
+  } else {
+    ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
+  }
   trackEvent('fishing_cast'); // [GA4]
 }
 
 function catchFish() {
   // 🐟 생선구이 버프(luck)·🌧️ 비 오는 날: 두 번 굴려 작은 값 채택 → 희귀/고급 확률↑
   let roll = Math.random();
-  if (buffOn('luck') || RAIN_DAY) roll = Math.min(roll, Math.random());
+  if (buffOn('luck') || RAIN_DAY || baitActive) roll = Math.min(roll, Math.random());
   const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
@@ -8079,7 +8086,7 @@ function catchFish() {
 }
 
 function resetFishing() {
-  fishState = 'idle'; if (bobber) bobber.visible = false; ui.setFishPrompt?.(null);
+  fishState = 'idle'; baitActive = false; if (bobber) bobber.visible = false; ui.setFishPrompt?.(null);
 }
 
 function buildBobber() {
