@@ -9,12 +9,13 @@
 //   ② 앱인토스 SDK 전역 — @apps-in-toss/web-framework 통합 후 자동 감지
 //   ③ 기본 'web'
 //
-//  ▶ 토스 로그인 연동(다음 단계) 메모 — 공식 문서 확인됨:
-//    · 웹뷰 SDK: @apps-in-toss/web-framework 의 appLogin()
-//      → Promise<{ authorizationCode, referrer: 'DEFAULT'|'SANDBOX' }>
-//    · 서버 교환: POST /api-partner/v1/apps-in-toss/user/oauth2/generate-token
-//      → accessToken → GET .../login-me 로 userKey 등 조회(인가코드 10분·일회성)
-//    · 교환은 시크릿이 필요하므로 서버(Cloudflare Worker/Supabase Edge Function)에서 수행
+//  ▶ 토스 계정 연동 메모 — 공식 문서 확인됨:
+//    · 토스 로그인(appLogin)은 사업자 등록을 거친 '토스로그인 약관 동의'가 필요해 쓰지 않는다.
+//    · 대신 게임 카테고리 전용 사용자 식별키를 쓴다(동의 화면 없음, 토스앱 5.232.0↑):
+//      @apps-in-toss/web-framework 의 getUserKeyForGame()
+//      → Promise<{ type:'HASH', hash } | 'INVALID_CATEGORY' | 'ERROR' | undefined>
+//    · 검증은 mTLS 가 필요하므로 서버(toss-auth Worker)에서 수행:
+//      POST /api-partner/v1/apps-in-toss/users/anon-key/verify (헤더 x-anon-key)
 // =============================================================
 
 const _pq = new URLSearchParams(location.search);
@@ -34,7 +35,7 @@ console.log('[platform]', PLATFORM);
 
 // ── 앱인토스 웹뷰 SDK 지연 로더 — esm.sh CDN(ESM·CORS 허용, 무번들 검증 완료) ──
 //    버전 고정(@3.0.2): 심사본 재현성. 토스 웹뷰 밖에서도 import 는 되지만
-//    appLogin/Environment 등 브리지 API 는 웹뷰 안에서만 동작함.
+//    getUserKeyForGame/Environment 등 브리지 API 는 웹뷰 안에서만 동작함.
 let _sdkPromise = null;
 export function loadTossSDK() {
   if (!_sdkPromise) _sdkPromise = import('https://esm.sh/@apps-in-toss/web-framework@3.0.2');

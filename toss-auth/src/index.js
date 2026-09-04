@@ -1,23 +1,31 @@
 // =============================================================
 //  calm forest · toss-auth Worker
 //  ------------------------------------------------------------
-//  앱인토스 웹뷰의 appLogin() 인가코드를 받아:
-//   ① 토스 파트너 API(mTLS)로 액세스 토큰 교환(generate-token)
-//   ② login-me 로 userKey 조회
-//   ③ userKey 기반 Supabase 유저를 찾거나 생성(파생 비밀번호 방식)
+//  앱인토스 웹뷰의 "게임 사용자 식별키"를 Supabase 세션으로 바꿔준다.
+//
+//  ▶ 왜 토스 로그인(appLogin)이 아니라 식별키인가
+//    토스 로그인은 사업자 등록을 거친 '토스로그인 약관 동의'가 있어야 쓸 수 있다.
+//    게임 카테고리 미니앱은 getUserKeyForGame() 으로 약관 동의·유저 동의 화면
+//    없이 안정적인 식별자(hash)를 받고, 파트너 서버가 mTLS 로 anon-key/verify 를
+//    호출해 그 hash 가 진짜인지 검증한다.
+//    (문서: /documentation/common/authentication/hash-key)
+//
+//  흐름:
+//   ① 클라이언트 getUserKeyForGame() → { type:'HASH', hash }
+//   ② 이 Worker 가 mTLS 로 anon-key/verify 호출해 hash 진위 확인
+//   ③ hash 기반 Supabase 유저를 찾거나 생성(파생 비밀번호 방식)
 //   ④ Supabase 세션(access/refresh 토큰)을 발급해 클라이언트로 반환
 //
 //  클라이언트(js/supabase-client.js signInWithToss)와 계약:
-//   요청  POST { authorizationCode, referrer }
+//   요청  POST { anonKey }
 //   응답  200 { access_token, refresh_token } | 4xx/5xx { error }
 //
-//  ▶ 파생 비밀번호 방식: password = HMAC-SHA256(TOSS_USER_SECRET, userKey)
+//  ▶ 파생 비밀번호 방식: password = HMAC-SHA256(TOSS_USER_SECRET, anonKey)
 //    비밀번호는 이 Worker 밖으로 절대 나가지 않음. 시크릿이 바뀌면
 //    기존 토스 유저 로그인이 전부 깨지므로 TOSS_USER_SECRET 은 불변으로 관리.
 // =============================================================
 
-const TOKEN_PATH = '/api-partner/v1/apps-in-toss/user/oauth2/generate-token';
-const ME_PATH = '/api-partner/v1/apps-in-toss/user/oauth2/login-me';
+const VERIFY_PATH = '/api-partner/v1/apps-in-toss/users/anon-key/verify';
 
 export default {
   async fetch(req, env) {
@@ -26,53 +34,63 @@ export default {
     if (req.method !== 'POST') return json({ error: 'POST only' }, 405, cors);
 
     try {
-      const { authorizationCode, referrer } = await req.json();
-      if (!authorizationCode) return json({ error: 'authorizationCode 누락' }, 400, cors);
-
-      // ① 인가코드 → 토스 액세스 토큰 (mTLS 바인딩 필수)
+      const { anonKey } = await req.json();
+      if (!anonKey) return json({ error: 'anonKey 가 필요합니다' }, 400, cors);
+      // 토스 파트너 API 는 시크릿 헤더가 아니라 mTLS 로 파트너를 식별한다
       if (!env.TOSS_MTLS) return json({ error: 'mTLS 인증서 바인딩 미설정 — wrangler.toml 참고' }, 500, cors);
-      const tokenRes = await env.TOSS_MTLS.fetch(env.TOSS_API_BASE + TOKEN_PATH, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ authorizationCode, referrer: referrer || 'DEFAULT' }),
-      });
-      if (!tokenRes.ok) return json({ error: '토스 토큰 교환 실패 HTTP ' + tokenRes.status }, 502, cors);
-      const tokenData = await tokenRes.json();
-      const accessToken = tokenData.accessToken || tokenData.success?.accessToken;
-      if (!accessToken) return json({ error: '토스 응답에 accessToken 없음' }, 502, cors);
 
-      // ② 토스 유저 식별자(userKey) 조회
-      const meRes = await env.TOSS_MTLS.fetch(env.TOSS_API_BASE + ME_PATH, {
-        headers: { Authorization: 'Bearer ' + accessToken },
-      });
-      if (!meRes.ok) return json({ error: 'login-me 실패 HTTP ' + meRes.status }, 502, cors);
-      const me = await meRes.json();
-      const userKey = me.userKey || me.success?.userKey;
-      if (!userKey) return json({ error: '토스 응답에 userKey 없음' }, 502, cors);
+      // ①② 식별키 진위 검증 — 통과하지 못하면 여기서 끝
+      await verifyGameKey(env, anonKey);
 
       // ③④ Supabase 유저 확보 + 세션 발급
-      const email = `toss-${userKey}@toss.calmforest.local`;   // 합성 이메일(외부 발송 없음)
-      const password = await derivePassword(env.TOSS_USER_SECRET, String(userKey));
+      //    합성 이메일의 local part 는 64자 제한이라 식별자를 32자로 줄여 쓴다.
+      //    원본 hash 는 Supabase 에 저장하지 않는다(파생값만 남김).
+      const uid = (await sha256hex(anonKey)).slice(0, 32);
+      const email = `toss-${uid}@toss.calmforest.local`;   // 합성 이메일(외부 발송 없음)
+      const password = await derivePassword(env.TOSS_USER_SECRET, anonKey);
       let session = await passwordSignIn(env, email, password);
       if (!session) {
-        await adminCreateUser(env, email, password, userKey);   // 첫 로그인 → 유저 생성
+        await adminCreateUser(env, email, password, uid);   // 첫 진입 → 유저 생성
         session = await passwordSignIn(env, email, password);
       }
       if (!session) return json({ error: 'Supabase 세션 발급 실패' }, 500, cors);
 
       return json({ access_token: session.access_token, refresh_token: session.refresh_token }, 200, cors);
     } catch (err) {
+      if (err instanceof HttpError) return json({ error: err.message }, err.status, cors);
       return json({ error: String(err?.message || err) }, 500, cors);
     }
   },
 };
 
-// userKey → 결정적 비밀번호(HMAC-SHA256, hex) — Worker 밖으로 나가지 않음
-async function derivePassword(secret, userKey) {
+// ── ② 게임 사용자 식별키 검증 (getUserKeyForGame 의 hash) ─────────
+//   검증 API 는 진위만 알려주고(resultType: SUCCESS) 식별자를 되돌려주지 않는다.
+//   → 검증에 통과한 hash 자체가 그 유저의 식별자다.
+async function verifyGameKey(env, anonKey) {
+  const res = await env.TOSS_MTLS.fetch(env.TOSS_API_BASE + VERIFY_PATH, {
+    method: 'POST',
+    headers: { 'x-anon-key': anonKey },
+  });
+  if (!res.ok) throw new HttpError('식별키 검증 실패 HTTP ' + res.status + ' ' + await peek(res), 502);
+  const data = await res.json();
+  const ok = data.resultType === 'SUCCESS' || data.success === 'true' || data.success === true;
+  if (!ok) throw new HttpError('식별키가 거절되었습니다: ' + JSON.stringify(data).slice(0, 200), 401);
+}
+
+// anonKey → 결정적 비밀번호(HMAC-SHA256, hex) — Worker 밖으로 나가지 않음
+async function derivePassword(secret, anonKey) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode('cf-toss:' + userKey));
-  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode('cf-toss:' + anonKey));
+  return hex(sig);
+}
+
+async function sha256hex(s) {
+  return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
+}
+
+function hex(buf) {
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // GoTrue 비밀번호 로그인 → 세션(access/refresh) 획득. 유저 없으면 null
@@ -87,7 +105,7 @@ async function passwordSignIn(env, email, password) {
 }
 
 // 관리자 API 로 토스 유저 생성(이메일 확인 완료 상태) — user_metadata.toss 로 클라이언트가 식별
-async function adminCreateUser(env, email, password, userKey) {
+async function adminCreateUser(env, email, password, uid) {
   const res = await fetch(env.SUPABASE_URL + '/auth/v1/admin/users', {
     method: 'POST',
     headers: {
@@ -97,22 +115,41 @@ async function adminCreateUser(env, email, password, userKey) {
     },
     body: JSON.stringify({
       email, password, email_confirm: true,
-      user_metadata: { toss: true, toss_user_key: String(userKey), name: '토스 유저' },
+      user_metadata: { toss: true, toss_user_key: uid, name: '토스 유저' },
     }),
   });
-  if (!res.ok) throw new Error('유저 생성 실패 HTTP ' + res.status + ' ' + (await res.text()).slice(0, 200));
+  if (!res.ok) throw new HttpError('유저 생성 실패 HTTP ' + res.status + ' ' + (await res.text()).slice(0, 200), 500);
 }
 
 // ── 헬퍼 ──
+// 상태코드를 달고 던지는 에러 — fetch 핸들러가 그대로 JSON 응답으로 변환한다
+class HttpError extends Error {
+  constructor(message, status) { super(message); this.status = status; }
+}
+
+// 실패 응답의 본문 앞부분만 진단용으로 뽑는다(성공 응답에는 쓰지 않음 — 토큰 노출 방지)
+async function peek(res) {
+  try { return (await res.text()).slice(0, 200); } catch (e) { return '(본문 없음)'; }
+}
+
 function corsHeaders(req, env) {
+  // 앱인토스 웹뷰는 로컬 번들에서 열려 Origin 이 없거나 "null" 로 오는 경우가 있어
+  // (목록 매칭만으로는 웹뷰에서 CORS 에 막힌다) 그 두 경우를 함께 허용한다.
+  // 식별키는 토스 서버 검증을 거치고 파트너 식별은 mTLS 가 하므로 CORS 는 보안 경계가 아니다.
   const origin = req.headers.get('Origin') || '';
-  const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim());
+  const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const ok = !origin || origin === 'null' || allowed.some(a => {
+    if (!a.startsWith('*.')) return a === origin;
+    try { return new URL(origin).hostname.endsWith(a.slice(1)); } catch (e) { return false; }
+  });
   return {
-    'Access-Control-Allow-Origin': allowed.includes(origin) ? origin : allowed[0] || '*',
+    'Access-Control-Allow-Origin': ok ? (origin || '*') : (allowed[0] || '*'),
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
   };
 }
+
 function json(obj, status, cors) {
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...cors } });
 }

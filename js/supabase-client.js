@@ -105,34 +105,50 @@ export async function signInWithGoogle() {
   if (error) { console.warn('[구글 로그인 실패]', error.message); alert(t('구글 로그인 실패: {0}').replace('{0}', error.message)); }
 }
 
-// ── 🔵 토스 로그인 (앱인토스 웹뷰 전용) ──────────────────────────
-//   SDK appLogin() → 인가코드 → Edge Function(TOSS_AUTH_ENDPOINT)이 토스 파트너 API 로
-//   교환·검증 후 Supabase 세션(access/refresh 토큰)을 발급해 돌려주는 설계.
-//   엔드포인트 미구현(빈 값) 동안은 안내만 하고 게스트 플레이를 권함.
+// ── 🔵 토스로 시작하기 (앱인토스 웹뷰 전용) ─────────────────────
+//   토스 로그인(appLogin)은 사업자 등록을 거친 '토스로그인 약관 동의'가 있어야 쓸 수 있어
+//   게임 카테고리 미니앱용 사용자 식별키를 쓴다 — 동의 화면 없이 바로 계정이 잡힌다.
+//   SDK getUserKeyForGame() → hash → toss-auth Worker(TOSS_AUTH_ENDPOINT)가
+//   mTLS 로 토스에 진위를 검증한 뒤 Supabase 세션(access/refresh)을 발급해 돌려준다.
+//   엔드포인트 미설정(빈 값)이면 안내만 하고 게스트 플레이를 권함.
 export async function signInWithToss() {
   try {
     const { loadTossSDK } = await import('./platform.js');
     const sdk = await loadTossSDK();
-    const { authorizationCode, referrer } = await sdk.appLogin();   // 인가코드(10분·일회성)
-    console.log('[토스 로그인] 인가코드 수신, referrer:', referrer);
+    // 웹뷰 밖(일반 브라우저)에서는 브리지가 없어 SDK 내부에서 TypeError 가 난다 →
+    // 원문 대신 사람이 읽을 안내로 바꿔준다.
+    let result;
+    try {
+      result = await sdk.getUserKeyForGame();
+    } catch (bridgeErr) {
+      console.warn('[토스] 브리지 호출 실패', bridgeErr);
+      throw new Error('토스 앱 안에서만 이용할 수 있어요. 웹에서는 게스트로 플레이해주세요.');
+    }
+    // SDK 가 실패를 예외가 아니라 반환값으로도 알려주므로 분기해서 안내를 붙인다
+    if (!result) throw new Error('토스 앱 버전이 낮아요. 최신 버전으로 업데이트해주세요.');
+    if (result === 'INVALID_CATEGORY') throw new Error('게임 카테고리 미니앱이 아니에요.');
+    if (result === 'ERROR') throw new Error('사용자 키를 가져오지 못했어요. 잠시 후 다시 시도해주세요.');
+    const anonKey = result.hash;
+    if (!anonKey) throw new Error('사용자 키가 비어 있어요.');
+
     if (!CONFIG.TOSS_AUTH_ENDPOINT) {
-      alert('토스 로그인 서버 준비 중이에요 — 우선 게스트로 플레이해주세요!');
+      alert('토스 계정 연결 서버 준비 중이에요 — 우선 게스트로 플레이해주세요!');
       return { ok: false, reason: 'endpoint_not_configured' };
     }
     const res = await fetch(CONFIG.TOSS_AUTH_ENDPOINT, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authorizationCode, referrer }),
+      body: JSON.stringify({ anonKey }),
     });
     const data = await res.json();
     if (!res.ok || !data.access_token || !data.refresh_token) throw new Error(data.error || 'HTTP ' + res.status);
     const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (error) throw error;
     applySession(s.session);
-    console.log('[토스 로그인] Supabase 세션 연결 완료', state.userId);
+    console.log('[토스] Supabase 세션 연결 완료', state.userId);
     return { ok: true };
   } catch (err) {
-    console.warn('[토스 로그인 실패]', err?.message || err);
-    alert('토스 로그인에 실패했어요: ' + (err?.message || err));
+    console.warn('[토스 시작 실패]', err?.message || err);
+    alert('토스로 시작하지 못했어요: ' + (err?.message || err));
     return { ok: false, error: err };
   }
 }

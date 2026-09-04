@@ -309,7 +309,7 @@
   #google-btn:hover { transform: translateY(-2px); } #google-btn:active { transform: scale(0.96); }
   #google-btn .g { font-weight: 800; font-size: 19px; background: conic-gradient(from -45deg,#ea4335,#fbbc05,#34a853,#4285f4,#ea4335); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #guest-btn { display: block; margin: 18px auto 0; background: none; border: none; color: rgba(255,255,255,0.85); font-size: 13px; text-decoration: underline; cursor: pointer; }
-  /* 🔵 토스 로그인(앱인토스 웹뷰에서만 표시 — 웹뷰에선 구글 OAuth 불가라 이 버튼이 구글을 대체) */
+  /* 🔵 토스로 시작하기(앱인토스 웹뷰에서만 표시 — 웹뷰에선 구글 OAuth 불가라 이 버튼이 구글을 대체) */
   #toss-btn { display: none; align-items: center; gap: 8px; margin: 0 auto; border: none; background: #3182f6; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
   #toss-btn:active { transform: scale(0.96); }
   body.platform-toss #google-btn { display: none; }
@@ -2002,7 +2002,7 @@
     }
 
     // 로그인 화면 버튼
-    // 🔵 앱인토스 웹뷰: 구글 OAuth 불가(disallowed_useragent) → 토스 로그인 버튼으로 교체
+    // 🔵 앱인토스 웹뷰: 구글 OAuth 불가(disallowed_useragent) → 토스 시작 버튼으로 교체
     if (IS_TOSS) document.body.classList.add('platform-toss');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
     $('toss-btn').addEventListener('click', async () => {
@@ -2650,7 +2650,7 @@
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
     const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령' };
-    const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글·토스 로그인 = 영구 계정
+    const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글 로그인·토스 계정 = 영구 계정
     // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
     //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
     //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.
