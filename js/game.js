@@ -45,15 +45,36 @@ const CROP_TYPES = [
 // ── 도구 하트바 (선택 도구에 따라 상호작용이 달라짐) ─────────────
 //   grp = 하단바 페이지. 🌾농사(밭에서 연달아 쓰는 4종) / 🏕️야외도구(장소마다 단독으로 쓰는 4종).
 //   ⛏️괭이는 밭갈기 겸 채굴이라 농사 쪽 — 동굴에서도 농사 페이지가 뜬다.
+// ── ✍️ 코드로 그린 도구 아이콘(인라인 SVG) ────────────────────
+//   낫·포충망은 유니코드 이모지가 없어서 예전엔 🌾(벼이삭)·🦋(나비)로 대신했는데,
+//   도구가 아니라 "수확물/잡을 대상"으로 읽혀서 진짜 도구 모양을 SVG 로 직접 그렸다.
+//   · width/height 가 1.15em 이라 하단바(20/16/14px)·모바일 액션버튼(30px) 글자 크기를 그대로 따라간다.
+//     (1em 이면 옆 이모지보다 작아 보인다 — 이모지는 em 박스를 더 꽉 채우기 때문)
+//   · 흰 슬롯과 민트색 선택 슬롯 양쪽에서 보이도록 날/테에 진한 외곽선을 넣었다.
+//   ⚠️ innerHTML 로 꽂히는 값이다 — ico 를 textContent 로 넣는 곳이 생기면 마크업이 그대로 노출된다.
+const ICO_SICKLE = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:1.15em;height:1.15em;display:block">'
+  + '<path d="M10.8 16 5.5 21.2" stroke="#82521f" stroke-width="4.6" stroke-linecap="round"/>'      // 자루(어두운 테두리)
+  + '<path d="M10.8 16 5.5 21.2" stroke="#c9924f" stroke-width="2.8" stroke-linecap="round"/>'      // 자루(나무색)
+  + '<path d="M9.4 16.4C8.4 9.4 13.2 4 21.6 3.4c-4.4 2.6-7 6.2-7.6 11.4Z" fill="#e6edf2" stroke="#54626e" stroke-width="1.35" stroke-linejoin="round"/>'  // 초승달 날
+  + '<path d="M9.8 16.5 13 15.4" stroke="#7b6b52" stroke-width="1.5" stroke-linecap="round"/>'      // 날↔자루 이음쇠
+  + '</svg>';
+const ICO_NET = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:1.15em;height:1.15em;display:block">'
+  + '<path d="M8.6 15.4 3.4 20.8" stroke="#82521f" stroke-width="4.6" stroke-linecap="round"/>'      // 자루(어두운 테두리)
+  + '<path d="M8.6 15.4 3.4 20.8" stroke="#c9924f" stroke-width="2.8" stroke-linecap="round"/>'      // 자루(나무색)
+  + '<path d="M10 7.6C13.2 3 21 2 21.6 6.2c.6 4.4-2.6 7.6-5.4 8.8Z" fill="#fff" fill-opacity=".92" stroke="#8c99a5" stroke-width="1.1" stroke-linejoin="round"/>'  // 망 주머니(테 밖으로 뻗어야 돋보기로 안 읽힌다)
+  + '<path d="M12.4 5.2c3-.6 5.6.4 7 2.4M11 8.6c3.4-.2 6 1.2 7.4 3.4" stroke="#9dacb8" stroke-width=".95" stroke-linecap="round"/>'  // 망 결
+  + '<path d="M9.1 4.9a3 6.6 45 1 0 6.4 6.4a3 6.6 45 1 0-6.4-6.4" stroke="#3f4c57" stroke-width="1.9" fill="none"/>'  // 비스듬히 본 테
+  + '</svg>';
+
 const TOOLS = [
   { id: 'axe',    name: '도끼',     ico: '🪓', grp: 'out'  }, // 벌목
   { id: 'hoe',    name: '괭이',     ico: '⛏️', grp: 'farm' }, // 밭 갈기 · 채굴
   { id: 'seed',   name: '씨앗',     ico: '🌰', grp: 'farm' }, // 씨앗 심기
   { id: 'water',  name: '물조리개', ico: '💧', grp: 'farm' }, // 물주기
-  { id: 'sickle', name: '낫',       ico: '🌾', grp: 'farm' }, // 수확
+  { id: 'sickle', name: '낫',       ico: ICO_SICKLE, grp: 'farm' }, // 수확
   { id: 'hammer', name: '망치',     ico: '🔨', grp: 'out'  }, // 건축
   { id: 'rod',    name: '낚싯대',   ico: '🎣', grp: 'out'  }, // 낚시(호수)
-  { id: 'net',    name: '포충망',   ico: '🦋', grp: 'out'  }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
+  { id: 'net',    name: '포충망',   ico: ICO_NET, grp: 'out'  }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
 ];
 let currentTool = 1;   // ⛏️괭이 — 시작 페이지(🌾농사)에 있는 도구여야 한다(아래 toolPage 와 짝)
 

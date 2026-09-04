@@ -1442,11 +1442,11 @@
       document.body.classList.toggle('placing-decor', !!placingDecorItem);  // 배치 중이면 회전 버튼 노출
       const b = $('action-btn'); if (!b) return;
       b.classList.remove('placing', 'talk', 'door');
-      if (boatRunning) { b.textContent = '🚣'; return; }   // 런 중엔 무조건 노 젓기(스퍼트)
-      if (placingDecorItem) { b.textContent = placingDecorItem.ico; b.classList.add('placing'); return; }
+      if (boatRunning) { b.innerHTML = '🚣'; return; }   // 런 중엔 무조건 노 젓기(스퍼트)
+      if (placingDecorItem) { b.innerHTML = placingDecorItem.ico; b.classList.add('placing'); return; }
       // 주민 근처여도 메인 액션버튼은 도구 유지(대화는 전용 '대화하기' 버튼) → 수확 중 대화 하이재킹 방지
-      if (nearDoorNow) { b.textContent = doorIcon; b.classList.add('door'); return; }
-      b.textContent = lastToolIco;
+      if (nearDoorNow) { b.innerHTML = doorIcon; b.classList.add('door'); return; }
+      b.innerHTML = lastToolIco;   // 낫·포충망은 인라인 SVG 문자열이라 textContent 로 넣으면 마크업이 그대로 보인다
     }
 
     // 🎒 페이지 칩 첫 안내 — 한 번이라도 눌러 봤으면 다시 반짝이지 않는다
