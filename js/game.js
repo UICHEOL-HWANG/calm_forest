@@ -2611,7 +2611,7 @@ function updateFireflyBugs(dt, t) {
 
 // 🦋 포충망 휘두르기 — 밤 + 계곡 + 반딧불이 근처에서만. 반짝일 때 휘둘러야 잘 잡힘
 function tryNet() {
-  if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🦋 남쪽 🌟반딧불이 계곡에서 쓰는 도구예요'); return; }
+  if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🌟 남쪽 반딧불이 계곡에서 쓰는 도구예요'); return; }
   if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요 — 해가 지면 다시 오세요', 2600); return; }
   let target = null, nd = 2.2;
   for (const bug of gladeBugs) {
@@ -2621,7 +2621,7 @@ function tryNet() {
   const wx = target ? target.position.x + GLADE.x : player.position.x;
   const wz = target ? target.position.z + GLADE.z : player.position.z;
   doPlayerAction(wx, wz);   // 휘두르는 제스처는 헛스윙이어도 나감
-  if (!target) { Sound.blip(); ui.toast?.('🦋 반딧불이 가까이에서 휘둘러 보세요'); trackEvent('firefly_swing_empty'); return; }
+  if (!target) { Sound.blip(); ui.toast?.('🌟 반딧불이 가까이에서 휘둘러 보세요'); trackEvent('firefly_swing_empty'); return; }
   const u = target.userData, kind = u.kind;
   const bright = 0.5 + 0.5 * Math.sin(u.phase);
   // 성공률: 반짝일 때 크게 유리 + 촘촘한 포충망(영구 업그레이드) 보정
@@ -6949,9 +6949,9 @@ function updateZoneHint() {
   const wasGlade = nearGlade;
   nearGlade = inVillage2() && dist2D(GLADE, player.position) < GLADE_R + 0.5;
   if (nearGlade) {
-    hint = isNight() ? '🌟 반딧불이 — 🦋포충망(도구 8)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
+    hint = isNight() ? '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
     if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
-    firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 🦋포충망으로 반딧불이 잡는 곳');
+    firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 포충망으로 반딧불이 잡는 곳');
   }
   const wasForest = nearForest;
   nearForest = inVillage2() && dist2D(FOREST, player.position) < FOREST_R + 0.5;
