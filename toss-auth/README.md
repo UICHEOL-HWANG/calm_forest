@@ -55,6 +55,13 @@ npx wrangler <명령> -c wrangler.toml
    # 출력된 URL 을 js/config.js 의 TOSS_AUTH_ENDPOINT 에 기입
    ```
 
+## 실측(2026-09-04, 토스앱 5.275.0)
+
+- 웹뷰 번들 오리진: **`https://calmforest.private-web.tossmini.com`** (테스트 번들. 라이브는 접두어가 다를 수 있음)
+- UA: `AppsInToss TossApp/5.275.0 TossColorPreference/light TossFontAccessibility/Large`
+- 허용 목록 CORS 로는 프리플라이트만 오고 POST 가 막혔음 → 모든 오리진 허용으로 전환 후 통과.
+  (`*.toss.im` 이 아니라 `*.tossmini.com` 이었다)
+
 ## 참고
 
 - 토스 파트너 API 는 시크릿 헤더가 아니라 **mTLS 로 파트너를 식별**한다(공식 문서).

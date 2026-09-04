@@ -133,20 +133,16 @@ async function peek(res) {
 }
 
 function corsHeaders(req, env) {
-  // 앱인토스 웹뷰는 로컬 번들에서 열려 Origin 이 없거나 "null" 로 오는 경우가 있어
-  // (목록 매칭만으로는 웹뷰에서 CORS 에 막힌다) 그 두 경우를 함께 허용한다.
-  // 식별키는 토스 서버 검증을 거치고 파트너 식별은 mTLS 가 하므로 CORS 는 보안 경계가 아니다.
-  const origin = req.headers.get('Origin') || '';
-  const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-  const ok = !origin || origin === 'null' || allowed.some(a => {
-    if (!a.startsWith('*.')) return a === origin;
-    try { return new URL(origin).hostname.endsWith(a.slice(1)); } catch (e) { return false; }
-  });
+  // 앱인토스 웹뷰의 번들 오리진은 토스가 정하고 예고 없이 바뀔 수 있다(실측: 허용 목록 매칭으로
+  // 프리플라이트만 오고 본 요청이 막혔음). 식별키는 토스 서버 검증 + mTLS 가 지키므로
+  // CORS 는 보안 경계가 아니다 → 오리진을 가리지 않고, 대신 어떤 오리진이 오는지 로그로 남긴다.
+  const origin = req.headers.get('Origin') || '(없음)';
+  console.log(JSON.stringify({ method: req.method, origin, ua: (req.headers.get('User-Agent') || '').slice(0, 80) }));
   return {
-    'Access-Control-Allow-Origin': ok ? (origin || '*') : (allowed[0] || '*'),
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Vary': 'Origin',
+    'Access-Control-Max-Age': '86400',
   };
 }
 

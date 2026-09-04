@@ -28,8 +28,8 @@ mtls_certificates = [
 SUPABASE_URL = "https://zuyxgjfihxtfdpolljzw.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t"
 
-# 허용 오리진(쉼표 구분) — 게임이 열리는 곳만.
-#   · "*.toss.im" 처럼 앞에 * 를 붙이면 서브도메인 접미사 매칭
-#   · 앱인토스 웹뷰는 Origin 을 안 보내거나 "null" 로 보낼 수 있어 코드에서 따로 허용
-ALLOWED_ORIGINS = "https://calmforest.cloud,https://calmforest.icuchoel.workers.dev,*.toss.im,http://localhost:8000"
+# CORS 는 모든 오리진 허용(src/index.js corsHeaders 주석 참고) — 허용 목록 없음
 TOSS_API_BASE = "https://apps-in-toss-api.toss.im"
+
+[observability]
+enabled = true   # 실기기 실패 사유 추적용 — Cloudflare 대시보드 Logs 에 요청/console 보존
