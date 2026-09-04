@@ -1013,4 +1013,15 @@ export const EN = {
 
   // ── 콜사이트 패턴(문자열 연결부를 {0} 패턴으로 정리) ──
   '구글 로그인 실패: {0}': 'Google sign-in failed: {0}',
+
+  // ── 🪙 코인 첫 루프(2026-09-05) ──
+  '비료 1개': 'Fertilizer ×1',
+  '미끼 5회분': 'Bait ×5',
+  '자라는 작물을 바로 수확 가능하게': 'Ripens a growing crop instantly',
+  '5번 동안 희귀 물고기 확률↑': 'Rare fish odds up for 5 casts',
+  '비료': 'Fertilizer',
+  '미끼': 'Bait',
+  '🌱비료': '🌱Fertilizer',
+  '🪱미끼': '🪱Bait',
+  '다음 목표: 🐔 닭장 60 · 🏡 넓은 집 80 · ✨ 정령 등불 60': 'Next goals: 🐔 Coop 60 · 🏡 Bigger house 80 · ✨ Spirit lamp 60',
 };

@@ -2620,6 +2620,10 @@
           el.addEventListener('click', () => { const r = Input.buyShop(it.id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`🛍️ ${r.name} 구매!`); renderShop(); });
           box.appendChild(el);
         });
+        const next = document.createElement('div');
+        next.className = 'market-hint';
+        next.textContent = '다음 목표: 🐔 닭장 60 · 🏡 넓은 집 80 · ✨ 정령 등불 60';
+        box.appendChild(next);
       }
     }
     function showShopTab(t) {
@@ -3128,10 +3132,11 @@
       stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' }, gem: { ico: '💎', name: '보석' },
       bug: { ico: '🌟', name: '반딧불이' }, forage: { ico: '🍄', name: '채집물' },
       star: { ico: '⭐', name: '별조각' }, glow: { ico: '✨', name: '정령빛' },
+      fert: { ico: '🌱', name: '비료' }, bait: { ico: '🪱', name: '미끼' },
     };
     const BAG_CATS = [
       { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
-      { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg'] },
+      { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg', 'fert', 'bait'] },
       { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
       { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
       { name: '🛶 강 · 🌫️ 숲', keys: ['star', 'glow'] },
