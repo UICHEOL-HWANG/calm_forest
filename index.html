@@ -312,11 +312,13 @@
   #google-btn:hover { transform: translateY(-2px); } #google-btn:active { transform: scale(0.96); }
   #google-btn .g { font-weight: 800; font-size: 19px; background: conic-gradient(from -45deg,#ea4335,#fbbc05,#34a853,#4285f4,#ea4335); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #guest-btn { display: block; margin: 18px auto 0; background: none; border: none; color: rgba(255,255,255,0.85); font-size: 13px; text-decoration: underline; cursor: pointer; }
-  /* 🔵 토스로 시작하기(앱인토스 웹뷰에서만 표시 — 웹뷰에선 구글 OAuth 불가라 이 버튼이 구글을 대체) */
+  /* 🔵 바로 플레이하기(앱인토스 웹뷰에서만 표시 — 웹뷰에선 구글 OAuth 불가라 이 버튼이 구글을 대체) */
   #toss-btn { display: none; align-items: center; gap: 8px; margin: 0 auto; border: none; background: #3182f6; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
   #toss-btn:active { transform: scale(0.96); }
   body.platform-toss #google-btn { display: none; }
   body.platform-toss #toss-btn { display: inline-flex; }
+  body.platform-toss #guest-btn { display: none; }   /* 게스트는 선택지가 아니라 폴백 — 버튼 하나만 */
+  body.platform-toss #stats-btn { display: none; }   /* 활동 기록은 구글 계정 전용 — 토스에선 열 수 없는 버튼을 노출하지 않음 */
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
@@ -1243,7 +1245,7 @@
       <h1>calm forest</h1>
       <div class="tagline">a cozy little forest</div>
       <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
-      <button id="toss-btn">토스로 시작하기</button>
+      <button id="toss-btn">바로 플레이하기</button>
       <button id="guest-btn">게스트로 둘러보기</button>
       <div id="login-note"></div>
       <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
@@ -2033,12 +2035,16 @@
     }
 
     // 로그인 화면 표시/숨김
-    function showLoginScreen(offline) {
+    // why: 'no_session' | 'toss_fail'(토스 자동 연결 실패) | 'offline' — [GA4] 입구 이탈 분해용
+    function showLoginScreen(offline, why = offline ? 'offline' : 'no_session') {
       $('login-screen').classList.add('show');
       $('loading').style.display = 'none';
       $('login-note').textContent = offline
         ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
-        : '로그인하면 어느 기기에서든 저장이 이어집니다.';
+        : why === 'toss_fail'
+          ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 시작할 수 있어요.'
+          : '로그인하면 어느 기기에서든 저장이 이어집니다.';
+      trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
     }
 
     let started = false;
@@ -2065,9 +2071,17 @@
     // 🔵 앱인토스 웹뷰: 구글 OAuth 불가(disallowed_useragent) → 토스 시작 버튼으로 교체
     if (IS_TOSS) document.body.classList.add('platform-toss');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
+    //    또 실패하면 유저에게 결정을 떠넘기지 않고 게스트로 바로 시작한다(토스트로만 알림).
     $('toss-btn').addEventListener('click', async () => {
-      const r = await signInWithToss();
-      if (r.ok) { trackLogin('toss'); }   // 성공 시 세션 반영은 authState 콜백이 처리
+      const r = await signInWithToss({ silent: true });
+      // login{method:'toss'} 는 enterPlay 가 쏘므로 여기선 시도 결과만 기록(이중 집계 방지)
+      trackEvent('toss_connect', { mode: 'button', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+      if (r.ok) return;                                  // 세션 반영 → authState 콜백이 enterPlay
+      const g = await signInAsGuest(); await enterPlay();
+      // 토스트는 한 칸짜리(덮어쓰기)라 진입 직후 도감 토스트에 묻힌다 → 한 박자 뒤에 길게 띄운다
+      setTimeout(() => ui.toast(g && g.online === false ? '게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요'
+                                                        : '이번엔 게스트로 시작해요. 진행은 이 기기에만 임시 저장돼요.', 4000), 2200);
     });
     $('guest-btn').addEventListener('click', async () => {
       const r = await signInAsGuest(); await enterPlay();
@@ -2843,9 +2857,20 @@
     $('dex-tab').addEventListener('click', openDex);
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
     $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
+    // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다
+    //    (안 바꾸면 게스트가 "구글로 로그인하세요"라는 실행 불가능한 안내에 갇힌다)
+    const NUDGE_TARGET = IS_TOSS ? 'toss' : 'google';
+    const nudgeConnect = IS_TOSS ? () => signInWithToss() : () => signInWithGoogle();
+    if (IS_TOSS) {
+      const banner = $('dex-guest'), bannerBtn = $('dex-google');
+      banner.innerHTML = '🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>토스 계정을 연결하면 <b>영구 보존</b>!';
+      banner.appendChild(bannerBtn);                 // 같은 버튼 노드를 되돌려 붙임(아래 리스너 그대로 유효)
+      bannerBtn.textContent = '🔵 토스로 도감 지키기';
+      $('nudge-google').textContent = '🔵 토스 계정 연결하고 영구 보존';
+    }
     $('dex-google').addEventListener('click', () => {
-      trackEvent('login_nudge_click', { from: 'dex' });        // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
-      signInWithGoogle();
+      trackEvent('login_nudge_click', { from: 'dex', target: NUDGE_TARGET });   // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
+      nudgeConnect();
     });
 
     // ── 🔔 로그인 넛지(게스트 전용) — 도감 마일스톤(3·7종)에 게임에서 호출 ──
@@ -2855,14 +2880,16 @@
       nudgeFrom = trigger;
       const d = Input.getDex();
       $('nudge-title').textContent = `도감 ${d.count}종 수집 중!`;
-      $('nudge-body').textContent = '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
+      $('nudge-body').textContent = IS_TOSS
+        ? '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 토스 계정 연결 한 번이면 영구 보존돼요.'
+        : '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
       $('nudge-modal').classList.add('show');
       Input.setAnalog(0, 0);
-      trackEvent('login_nudge', { trigger });                  // [GA4] 넛지 노출
+      trackEvent('login_nudge', { trigger, target: NUDGE_TARGET });   // [GA4] 넛지 노출
     };
     $('nudge-google').addEventListener('click', () => {
-      trackEvent('login_nudge_click', { from: nudgeFrom });    // [GA4] 넛지 클릭
-      signInWithGoogle();
+      trackEvent('login_nudge_click', { from: nudgeFrom, target: NUDGE_TARGET });   // [GA4] 넛지 클릭
+      nudgeConnect();
     });
     $('nudge-later').addEventListener('click', () => $('nudge-modal').classList.remove('show'));
     $('nudge-modal').addEventListener('click', (e) => { if (e.target === $('nudge-modal')) $('nudge-modal').classList.remove('show'); });
@@ -3224,7 +3251,14 @@
         if (s.userId) setGaUser(s.userId);          // [④] GA4에 user_id 연결
         if (s.online && !started) enterPlay();
       });
-      if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작
+      if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작(토스 재방문도 여기 — SDK 호출 없음)
+      else if (IS_TOSS && !res.offline) {
+        // 🔵 토스: 식별키는 동의 화면이 없어 게스트와 마찰이 같으므로 로그인 화면을 건너뛰고
+        //    바로 연결한다. 실패(구버전 토스앱·검증 장애 등)했을 때만 화면을 보여 재시도/게스트로 안내.
+        const r = await signInWithToss({ silent: true });
+        trackEvent('toss_connect', { mode: 'auto', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+        if (!r.ok) showLoginScreen(false, 'toss_fail');   // 성공 시 enterPlay 는 authState 콜백이 처리
+      }
       else showLoginScreen(res.offline);             // 세션 없음 → 로그인 화면(씬 위에)
     })();
   </script>
