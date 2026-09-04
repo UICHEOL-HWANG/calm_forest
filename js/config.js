@@ -6,6 +6,8 @@
 //    게임은 "오프라인 폴백" 으로 콘솔 로그만 남기고 정상 동작합니다.
 // =============================================================
 
+import { isDevSession } from './first-loop.js';
+
 // 🔵 API 오리진 — 웹은 같은 오리진이라 빈 값, 앱인토스 번들은 토스가 서빙해
 //    상대경로가 전부 404 가 된다. scripts/build-ait.mjs 가 빌드 때 이 한 줄을
 //    절대 오리진으로 치환한다(앵커가 바뀌면 빌드가 실패하도록 되어 있음).
@@ -92,3 +94,8 @@ export function isSupabaseConfigured() {
 export function isGaConfigured() {
   return CONFIG.GA4_MEASUREMENT_ID && !CONFIG.GA4_MEASUREMENT_ID.startsWith('YOUR_');
 }
+
+// 🧪 개발용 URL 파라미터(?house= ?coop= ?weather= ?spawn=)로 들어온 세션 —
+//    원장·세션 요약·센서 로그·GA4 를 모두 끈다(2026-08-31 자동 테스트가 원장 수입의 85%를 오염시킨 사고 재발 방지)
+export const IS_DEV_SESSION = isDevSession(typeof location !== 'undefined' ? location.search : '');
+if (IS_DEV_SESSION) console.log('[dev] 개발 파라미터 세션 — 원장/세션/센서/GA4 기록을 남기지 않습니다');

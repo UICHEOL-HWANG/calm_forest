@@ -9,7 +9,7 @@
 //  ▶ GA4 미설정(오프라인) 시 window.gtag 가 없으므로 콘솔로 폴백
 // =============================================================
 
-import { CONFIG, isGaConfigured } from './config.js';
+import { CONFIG, isGaConfigured, IS_DEV_SESSION } from './config.js';
 import { PLATFORM } from './platform.js';         // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
 import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
 
@@ -78,6 +78,7 @@ export function onTrack(cb) { trackHooks.push(cb); }
 
 // GA4 로 이벤트 전송(폴백: 콘솔) — 모든 트래킹은 이 함수를 거칩니다.
 export function trackEvent(name, params = {}) {
+  if (IS_DEV_SESSION) return;                                 // 🧪 dev 세션 — GA4·세션 카운터 없음
   const payload = { ...params, ts: Date.now(), platform: PLATFORM };   // 이벤트 단위 platform 차원(웹/토스 퍼널 비교)
   trackHooks.forEach(cb => { try { cb(name, payload); } catch (e) {} }); // 카운터 훅(실패해도 트래킹 계속)
 

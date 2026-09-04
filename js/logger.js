@@ -9,7 +9,7 @@
 //    (game_logs). 오프라인이면 supabase-client 가 콘솔로 폴백.
 // =============================================================
 
-import { CONFIG } from './config.js';
+import { CONFIG, IS_DEV_SESSION } from './config.js';
 import { sendLogBatch } from './supabase-client.js';
 
 let buffer = [];              // 전송 대기 샘플 버퍼
@@ -31,6 +31,7 @@ window.addEventListener('pointermove', (e) => {
 // [수집 API] game.js 렌더 루프에서 매 프레임 호출 → throttle 로 샘플링
 //   getSnapshot(): { char:{x,y,z}, cam:{yaw,pitch} } 를 돌려주는 콜백
 export function sampleFrame(getSnapshot) {
+  if (IS_DEV_SESSION) return;                                 // 🧪 dev 세션 — 센서 로그 없음
   const now = performance.now();
   if (now - lastSampleAt < CONFIG.LOG_SAMPLE_THROTTLE_MS) return; // throttle
   lastSampleAt = now;
