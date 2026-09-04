@@ -57,7 +57,9 @@ npx wrangler <명령> -c wrangler.toml
 
 ## 실측(2026-09-04, 토스앱 5.275.0)
 
-- 웹뷰 번들 오리진: **`https://calmforest.private-web.tossmini.com`** (테스트 번들. 라이브는 접두어가 다를 수 있음)
+- 웹뷰 번들 오리진: **`https://calmforest.private-web.tossmini.com`** (테스트 번들, 2026-09-04 실측)
+  토스 공지(2026-08-25~): `https://calmforest.apps.tossmini.com`(라이브) · `https://calmforest.private-apps.tossmini.com`(테스트)
+  → 이 Worker 와 게임 API(worker/index.js) 모두 오리진 무관(`*`)이라 **추가 설정 불필요**. Cloudflare 쪽 요청도 없음.
 - UA: `AppsInToss TossApp/5.275.0 TossColorPreference/light TossFontAccessibility/Large`
 - 허용 목록 CORS 로는 프리플라이트만 오고 POST 가 막혔음 → 모든 오리진 허용으로 전환 후 통과.
   (`*.toss.im` 이 아니라 `*.tossmini.com` 이었다)
