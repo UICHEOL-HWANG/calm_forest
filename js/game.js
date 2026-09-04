@@ -7536,15 +7536,23 @@ function updateCamera(dt) {
   }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
   // 🌊 바다터: 평상시 0.86(트인 수평선 보정) → 던지면 0.55 → 줄다리기·포획 0.45 로
-  //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다
-  const zoom = atSea ? (seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
-                        : seaMG.st === 'cast' ? 0.55 : 0.86)
+  //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다(가로 화면 기준).
+  //    세로 화면(폰)은 가로 시야가 좁아 같은 줌이면 캐릭터 등짝만 꽉 차서 부두·수면·물고기가
+  //    하나도 안 보인다는 피드백 → 액션샷 closeUpDist 와 같은 종횡비 보정(가로 1배 → 폰 세로
+  //    최대 2.3배)을 줌에 60% 만 반영하고, 시선도 앞(바다 쪽)으로 끌어 캐릭터를 프레임 아래로.
+  //    폰 세로 결과: 싸움 0.45→0.80, 던지기 0.55→0.86(평상시와 같음). 가로 화면은 그대로.
+  const seaAct = atSea && seaMG.st !== 'idle';
+  const pk = Math.min(2.3, Math.max(1, 1.35 / camera.aspect));     // 1(가로) ~ 2.3(폰 세로)
+  const seaBase = seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
+                : seaMG.st === 'cast' ? 0.55 : 0.86;
+  const zoom = atSea ? (seaAct ? Math.min(0.86, seaBase * (1 + (pk - 1) * 0.6)) : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
+  const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
   _camOff.copy(camOffset).multiplyScalar(zoom);
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
-  _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z), k);
+  _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z - lookAhead), k);
   camera.lookAt(_camLook);
 }
 
