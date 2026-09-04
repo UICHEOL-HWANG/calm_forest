@@ -816,12 +816,13 @@
     #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
     #quest-panel { top: calc(168px + env(safe-area-inset-top)); max-width: 52vw; }
     body.story-on #quest-panel { top: calc(218px + env(safe-area-inset-top)); }   /* 모바일도 스토리 칩 아래로 */
-    /* 🪧 시설 안내 배너: 좁은 화면에선 상단 HUD(자원칩·날씨·문의하기·도감)와 같은 높이라 겹침 →
-       좌측(미니맵·퀘스트)·우측(탭) 컬럼이 끝나는 지점 아래로. 스토리 칩이 있으면 그만큼 더. */
-    #hint-banner { top: calc(240px + env(safe-area-inset-top) + var(--toss-top)); }
-    body.story-on #hint-banner { top: calc(290px + env(safe-area-inset-top) + var(--toss-top)); }
-    body.hintbanner #toast { top: calc(300px + env(safe-area-inset-top) + var(--toss-top)); }
-    body.story-on.hintbanner #toast { top: calc(350px + env(safe-area-inset-top) + var(--toss-top)); }
+    /* 🪧 시설 안내 배너: 좁은 화면에선 상단 HUD 와 같은 높이라 겹치고, 화면 중앙에 두면 캐릭터·대화 버튼을
+       가린다(실기기 피드백) → 우측 컬럼(문의하기·도감) 바로 아래에 우측 정렬로 붙인다. 좌측 컬럼과는 폭으로 분리. */
+    #hint-banner { top: calc(162px + env(safe-area-inset-top) + var(--toss-top)); left: auto; right: 10px;
+      transform: none; max-width: min(300px, 58vw); }
+    #hint-banner .hb-title { font-size: 13px; }
+    #hint-banner .hb-line { font-size: 12px; }
+    body.hintbanner #toast { top: calc(236px + env(safe-area-inset-top) + var(--toss-top)); }
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널만 숨김
        (미니맵은 좌측이라 중앙 코치 카드와 안 겹침 → 튜토리얼 중에도 표시) */
     body.coaching #quest-panel { display: none; }
@@ -1487,10 +1488,11 @@
     window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
     let toastTimer;
-    // 🪧 시설 배너 큐 — 그 앞에 있으면 5초(읽을 시간), 이미 지나쳤으면 2.2초로 빠르게 흘림.
-    //    읽는 중 자리를 뜨면 최소 2.2초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
+    // 🪧 시설 배너 큐 — 그 앞에 있으면 3초(읽을 시간), 이미 지나쳤으면 1.4초로 빠르게 흘림.
+    //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
+    //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
     const hintBQ = []; let hintBShowing = false;
-    const HINT_B_MIN = 2200, HINT_B_FULL = 5000;
+    const HINT_B_MIN = 1400, HINT_B_FULL = 3000;
     function nextHintBanner() {
       const item = hintBQ.shift();
       if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
@@ -1499,7 +1501,7 @@
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
       const el = $('hint-banner'); el.classList.add('show');
-      const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 5초
+      const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
       let timer, watch;
       const done = () => { clearTimeout(timer); clearInterval(watch); el.classList.remove('show'); setTimeout(nextHintBanner, 250); };
