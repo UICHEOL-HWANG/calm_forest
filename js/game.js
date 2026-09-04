@@ -6933,7 +6933,10 @@ function updateDoorInteract() {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
   }
-  if (!prompt && fertTarget()) prompt = '🌱 비료 주기';   // 다른 시설 프롬프트가 없을 때만
+  if (!prompt) {   // 다른 시설 프롬프트가 없을 때만 — 물조리개+마른 흙이면 물주기가 실행되므로 프롬프트도 숨긴다
+    const fp = fertTarget();
+    if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) prompt = '🌱 비료 주기';
+  }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
@@ -8247,7 +8250,7 @@ function applyFert(plot) {
   ui.toast?.('🌱 비료를 줬어요! 바로 수확할 수 있어요');
   trackEvent('use_fert', { left: gameState.inventory.fert });   // [GA4] 소모품 사용
   refreshInventoryUI();
-  lastDoorPrompt = null;        // 비료가 떨어졌으면 프롬프트를 바로 내린다
+  lastDoorPrompt = null; ui.setDoorPrompt?.(null);   // 프롬프트를 즉시 내린다 — 다음 프레임에 필요하면 다시 뜬다
 }
 
 // 물조리개: 자라는 밭에 물 → 성장(물 없이는 안 자람) + 물방울 파티클
