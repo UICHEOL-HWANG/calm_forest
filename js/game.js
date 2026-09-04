@@ -5011,6 +5011,7 @@ function seaCatch() {
   gameState.sea.caught = (gameState.sea.caught || 0) + 1;
   if (sp.daily) gameState.sea.tunaDay = todayStr();
   Sound.harvest(); spawnConfetti(player.position.x, 2.2, player.position.z - 1.5);
+  triggerMoment(true);                              // 🎉 캐치 세리머니(밀착 + 폴짝) — 호수 낚시·수확과 같은 연출(세리머니 카메라는 바다 줌 분기보다 먼저 적용됨)
   spawnFloatText(player.position.x, 2.0, player.position.z - 1, `${sp.ico} ${sp.name} ${w}kg!`, '#2e6a9d', 1.25);
   ui.toast?.(`${sp.ico} ${sp.name} ${w}kg — 무게를 기록하고 바다로 돌려보냈어요! (+🐟${sp.give.fish} +🪙${sp.give.coins})`
     + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : ''), 4200);
