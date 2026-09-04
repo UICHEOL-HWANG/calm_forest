@@ -7562,13 +7562,16 @@ function updateCamera(dt) {
   //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다(가로 화면 기준).
   //    세로 화면(폰)은 가로 시야가 좁아 같은 줌이면 캐릭터 등짝만 꽉 차서 부두·수면·물고기가
   //    하나도 안 보인다는 피드백 → 액션샷 closeUpDist 와 같은 종횡비 보정(가로 1배 → 폰 세로
-  //    최대 2.3배)을 줌에 60% 만 반영하고, 시선도 앞(바다 쪽)으로 끌어 캐릭터를 프레임 아래로.
-  //    폰 세로 결과: 싸움 0.45→0.80, 던지기 0.55→0.86(평상시와 같음). 가로 화면은 그대로.
+  //    최대 2.3배)으로 폰 세로에선 줌을 풀어 준다(2026-09-05 사용자 피드백 "여전히 너무 가깝다").
+  //    폰 세로 결과: 던지기·싸움은 줌인 없음(1.0 — 긴장감은 게이지·경고·버튼 색이 전달), 낚았을 때만
+  //    절반(0.90)으로 살짝 당긴다. 가로 화면은 원래 값 그대로, 태블릿은 그 사이를 보간.
   const seaAct = atSea && seaMG.st !== 'idle';
   const pk = Math.min(2.3, Math.max(1, 1.35 / camera.aspect));     // 1(가로) ~ 2.3(폰 세로)
+  const phoneT = (pk - 1) / 1.3;                                   // 0(가로) ~ 1(폰 세로)
   const seaBase = seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
                 : seaMG.st === 'cast' ? 0.55 : 0.86;
-  const zoom = atSea ? (seaAct ? Math.min(0.86, seaBase * (1 + (pk - 1) * 0.6)) : 0.86)
+  const seaPhone = seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.90 : 1.0;   // 폰 세로 목표 줌
+  const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
   _camOff.copy(camOffset).multiplyScalar(zoom);

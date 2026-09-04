@@ -522,9 +522,21 @@
   @media (max-width: 760px) {
     #story-chip { top: calc(162px + var(--top-inset)); left: 12px; max-width: 174px; padding: 7px 10px; }
     #sc-goal { font-size: 11.5px; }
-    #coach { top: calc(212px + var(--top-inset)); }   /* 미니맵(94+108) 아래 10px — 코치가 미니맵을 가리지 않게 */
-    /* 코치가 아래로 내려간 만큼 토스트도 함께 내려 겹침 방지(코치 카드 높이 ≈150px + 여백 8px) */
-    body.coaching #toast { top: calc(370px + var(--top-inset)); }
+    /* 📱 컨텍스트 슬롯(12px, 162px) — 코치 > 시설 배너 > 메인 퀘스트 칩 순으로 한 자리를 나눠 쓴다.
+       가운데 띠(캐릭터)는 비우고, 오른쪽 버튼 열(문의하기·도감 ≈150px)은 침범하지 않는다. */
+    #coach { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px);
+             text-align: left; align-items: flex-start; padding: 9px 11px; }
+    #coach-text { font-size: 12.5px; }
+    #coach-dots { justify-content: flex-start; }
+    body.coaching #toast { top: calc(290px + var(--top-inset)); }   /* 코치 카드(≈110px) 아래 */
+    #hint-banner { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
+    body:has(#hint-banner.show) #story-chip { display: none !important; }   /* 배너가 떠 있는 1.4~3초만 칩을 비켜준다 */
+    body.coaching #hint-banner { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); }   /* 코치가 슬롯을 쓰면 배너는 프롬프트 줄 위로 */
+    /* 🌊 바다터: 큰 글자 HUD 를 위 띠(인벤토리 바)에서 프롬프트 줄로 내리고, 같은 말을 하는 문 프롬프트는 숨긴다 */
+    body.is-touch #sea-hud { top: auto; bottom: calc(234px + env(safe-area-inset-bottom)); gap: 5px; }
+    body.is-touch #sea-banner { font-size: 18px; }
+    body.is-touch:has(#sea-hud.show) #door-prompt { opacity: 0 !important; }
+    body.sea-mode #story-chip, body.sea-mode #hint-banner, body.sea-mode #dex-tab, body.sea-mode #feedback-tab { display: none !important; }
   }
 
   /* 🏆 리더보드 모달 */
@@ -895,8 +907,8 @@
     /* 기본 위치는 문 프롬프트와 동일 — 둘 다 뜨면 JS가 실제 높이만큼 올림 */
     #zone-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 12px; max-width: 86vw; }
     #ext-btn { bottom: calc(282px + env(safe-area-inset-bottom)); font-size: 13px; padding: 9px 16px; }
-    /* 모바일: 코치가 미니맵 아래(212px)로 내려간 만큼 토스트도 그 아래로(코치 카드 높이 ≈150px + 여백 8px) */
-    body.coaching #toast { top: calc(370px + var(--top-inset)); }
+    /* 모바일: 코치는 컨텍스트 슬롯(162px, 카드 ≈110px) — 토스트는 그 아래 */
+    body.coaching #toast { top: calc(290px + var(--top-inset)); }
   }
 </style>
 </head>
