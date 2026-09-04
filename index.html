@@ -2717,7 +2717,7 @@
       try {
         if (!lbCache[board]) {
           const uid = (authState.userId || '');
-          const res = await fetch(`/api/leaderboard?board=${board}&uid=${uid}`);
+          const res = await fetch(`${CONFIG.API_BASE}/api/leaderboard?board=${board}&uid=${uid}`);
           if (!res.ok) throw new Error('http ' + res.status);
           lbCache[board] = await res.json();
         }
@@ -2781,7 +2781,7 @@
       todo.forEach(c => dexNoteBusy.add(c));
       await Promise.all(todo.map(async (c) => {
         try {
-          const res = await fetch(`/api/dex-notes?cat=${c}&lang=${LANG}`);
+          const res = await fetch(`${CONFIG.API_BASE}/api/dex-notes?cat=${c}&lang=${LANG}`);
           if (res.ok) {
             const d = await res.json();
             if (d && Object.keys(d).length) dexNotes[c] = d;

@@ -29,6 +29,7 @@ import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { CONFIG } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -577,7 +578,7 @@ async function upgradeDailyQuestsAI() {
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), AI_QUEST_TIMEOUT);
-    const res = await fetch(`/api/daily-quests?date=${st.date}&weather=${WEATHER}&lang=${LANG}&phase=${playerPhase()}`, { signal: ctl.signal });
+    const res = await fetch(`${CONFIG.API_BASE}/api/daily-quests?date=${st.date}&weather=${WEATHER}&lang=${LANG}&phase=${playerPhase()}`, { signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) return;
     raw = await res.json();
