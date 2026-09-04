@@ -12,7 +12,7 @@
 --      Supabase      → client_id        (localStorage 영구 기기 식별자)
 --    둘 다 "기기(브라우저) 기준"이며 사람 수의 상한입니다. 대시보드 라벨에 명시.
 --
---  ★ 산출물: 아래 `-- @tab:` 마커가 붙은 쿼리 9개 = 구글 시트 탭 9장.
+--  ★ 산출물: 아래 `-- @tab:` 마커가 붙은 쿼리 11개 = 구글 시트 탭 11장.
 --    Airflow DAG(infra/airflow/dags/tableau_sheets.py)가 이 파일을 그대로 읽어
 --    마커별로 쪼갠 뒤 BigQuery 에서 돌려 시트에 덮어씁니다.
 --    ⇒ 이 파일이 유일한 원본입니다. DAG 안에 SQL 을 복사해 두지 않았습니다.
@@ -394,6 +394,66 @@ order by 3 desc;
 --    낚시 성공 2 · 씨앗 심기 2 · 카페 2 · 수확 1 · 집 완성 1.
 --    → 22대는 캐릭터만 고르고, 29대는 도감만 넘겨보고 떠났습니다.
 --      둘을 합치면 51대 — 활동을 한 97대의 절반이 "구경만" 하고 나간 셈입니다.
+
+
+-- ─────────────────────────────────────────────────────────────
+-- A10. t10_idle_who — 무행동 기기는 누구인가 (국내/해외 · 국내 유입경로 · 국내 기기)
+--     쓰임: 대시보드 Q3. "입구에서 빠진 142대"의 정체. 행동 전에 이미 아는 속성만 씀.
+--     관측(9/1까지, 239대): 해외 119대는 활동 0 — 한 대도 없음. 입구 이탈 142 중 119가 해외.
+--     국내는 120대 중 무행동 23대(19%)뿐. 국내 안에선 모바일 무행동 28% vs 데스크톱 12%.
+--     유입경로별(인스타 인앱 등)은 n=7 이라 뺐다. 활동 매핑은 A6·A7·A9 와 동일 유지.
+-- ─────────────────────────────────────────────────────────────
+-- @tab: t10_idle_who
+with ev as (
+  select user_pseudo_id, event_name, geo.country as country,
+         traffic_source.source as src, device.category as dev_cat
+  from `calm-forest.analytics_547127440.events_*`
+),
+acted as (
+  select distinct user_pseudo_id from ev
+  where event_name in unnest(['character_select','chop_tree','first_chop','plant_seed','water_crop',
+    'harvest_crop','fishing_cast','fishing_catch','mine_ore','enter_cafe','boat_start','house_complete',
+    'dex_discover','quest_complete','badge_earn','photo_capture'])
+),
+dev as (
+  select user_pseudo_id, any_value(country) as country, any_value(src) as src, any_value(dev_cat) as dev_cat
+  from ev group by 1
+),
+lab as (
+  select d.*, if(d.country = 'South Korea', '국내', '해외') as region,
+         if(a.user_pseudo_id is null, '무행동', '활동') as status
+  from dev d left join acted a using (user_pseudo_id)
+  -- TODO: QA 트래픽(traffic_source.source='qa_smoke') 제외는 t1~t9 와 함께 한 번에 적용할 것.
+  --       지금 한 탭만 빼면 대시보드 합계(239/142)가 어긋난다.
+)
+select '1 지역별' as part, region as category, status, count(*) as devices from lab group by 1, 2, 3
+union all
+select '2 국내 기기별', coalesce(dev_cat, 'unknown'), status, count(*) from lab where region = '국내' group by 1, 2, 3
+order by 1, 2, 3;
+
+
+-- ─────────────────────────────────────────────────────────────
+-- A11. t8b_dau_wau_region — A8 을 국내/해외로 나눈 판
+--     쓰임: 대시보드 「국내/해외」 필터. 해외를 빼면 8/15 급등이 얼마나 남는지 보여준다.
+-- ─────────────────────────────────────────────────────────────
+-- @tab: t8b_dau_wau_region
+with ev as (
+  select user_pseudo_id, parse_date('%Y%m%d', event_date) as d,
+         if(geo.country = 'South Korea', '국내', '해외') as region
+  from `calm-forest.analytics_547127440.events_*`
+),
+days as (select distinct d from ev),
+devreg as (select user_pseudo_id, any_value(region) as region from ev group by 1)
+select
+  format_date('%Y-%m-%d', dd.d)                                as date,
+  r.region,
+  count(distinct if(e.d = dd.d, e.user_pseudo_id, null))       as dau,
+  count(distinct e.user_pseudo_id)                             as wau_7d
+from days dd
+join ev e on e.d between date_sub(dd.d, interval 6 day) and dd.d
+join devreg r using (user_pseudo_id)
+group by 1, 2
+order by 1, 2;
 
 
 -- #############################################################
