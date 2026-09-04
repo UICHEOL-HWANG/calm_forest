@@ -1154,7 +1154,7 @@ function tryUnlockDrop(chance) {
   spawnSparkle(player.position.x, 1.2, player.position.z, 20);
   if (!gameState.hintsSeen.colorUnlock) {          // 첫 획득 → 시스템 안내 모달(온보딩)
     firstHint('colorUnlock', '🎨', '새 집 색을 얻었어요!',
-      '낚시·수확·주민 퀘스트·집 완성으로 집 외관 색을 모을 수 있어요. 집 근처에서 🎨 꾸미기 버튼으로 지붕·벽·문에 적용해보세요!');
+      '낚시·수확·퀘스트·집 완성으로 집 색을 모아요\n집 앞 🎨 꾸미기에서 지붕·벽·문에 적용!');
   } else {
     ui.toast?.(`🎨 새 ${PART_NAME[part]} 색을 얻었어요! 집 앞 🎨 버튼에서 적용해보세요`, 4200);
   }
@@ -3133,7 +3133,7 @@ function enterCafe() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('cafeHall', '☕', '카페',
-    '손님이 테이블에 앉아 머리 위에 주문한 요리를 띄우고 있어요. 재료를 들고 손님에게 다가가 액션(Space)을 누르면 그 자리에서 만들어 서빙해요! 📋 주문판에서 오늘 주문 전체를 볼 수 있어요. 남쪽 문으로 나가요.');
+    '손님 머리 위 요리를 보고, 재료 들고 다가가 액션 → 서빙!\n📋 주문판에서 오늘 주문 전체 확인\n나갈 땐 남쪽 문');
   Sound.blip(); trackEvent('enter_cafe');                // [GA4]
 }
 function exitCafe() {
@@ -4019,7 +4019,7 @@ function enterMist() {
     ui.toast?.('🌤️ 오늘의 숲은 맑아요 — 정령들이 고마워하고 있어요. 내일 다시 안개가 차요');
   } else {
     firstHint('mistWood', '🌫️', '안개 낀 숲',
-      '빛을 잃어가는 🌳수호목에 그림자 정령들이 모여들어요. 수호목 앞에서 정화를 시작하면 정령이 다가와요 — 🏮등불을 켜면 근처 정령이 느려지고, 정령 곁에서 액션을 누르면 ♪리듬에 맞춰 달랠 수 있어요(♪가 가장 작아질 때 탭!). 웨이브 3번을 버티면 오늘의 숲이 맑아져요.');
+      '🌳수호목 앞에서 정화 시작 → 그림자 정령이 다가와요\n🏮등불로 늦추고, 정령 곁에서 ♪가 가장 작을 때 탭!\n웨이브 3번을 버티면 숲이 맑아져요');
   }
   Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
   trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
@@ -4906,7 +4906,7 @@ function enterSea() {
   snapCamera(); setSpaceVisible();
   Sound.blip();
   firstHint('sea', '🌊', '바다터',
-    `수면에 헤엄치는 물고기를 보고 ${IS_MOBILE ? '오른쪽 아래 🎣버튼으로' : '액션(Space)으로'} 던져보세요! 입질이 오면 줄다리기 — 🔴버둥칠 땐 꾹 참고, 🟢"당기세요!!"가 뜨면 연타로 감아요. 부두 끝(빨간 널판)까지 끌려가면 놓쳐요. ⚔️참치는 하루 한 번 "오늘의 대어" — 무게가 🏆랭킹에 올라가요!`);
+    '물고기 보고 🎣 던지기 → 입질 오면 줄다리기\n🔴 버둥칠 땐 참고, 🟢 당기세요!! 땐 연타\n부두 끝(빨간 널판)까지 끌려가면 놓쳐요 · ⚔️참치는 하루 1번 대어');
   trackEvent('sea_enter', { night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
 function exitSea() {
@@ -6396,7 +6396,7 @@ function kitchenFinish(id, res = {}) {
   // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
   const bm = BUFF_META[r.buff];
   setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
-    `${bm.desc} 남은 시간은 화면 오른쪽 위 칩에 표시되고, 칩을 누르면 이 설명을 다시 볼 수 있어요.`), 800);
+    `${bm.desc}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요`), 800);
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
@@ -6667,7 +6667,7 @@ function enterFarm() {
   atFarm = true;
   player.position.set(FARM.x, 0, FARM.z + FARM_HALF - 1.5); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 밭을 갈고 🌰씨앗을 심어 💧물을 주며 키워보세요. 심은 작물은 저장돼요. 나갈 땐 남쪽 문으로!');
+  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요 · 나갈 땐 남쪽 문');
   Sound.blip(); trackEvent('enter_farm'); // [GA4]
 }
 function exitFarm() {
@@ -6791,7 +6791,7 @@ function enterMine() {
   atMine = true;
   player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥을 캐면 돌·석탄·💎보석이 나와요. 작업대 재료·상점 판매에 쓰여요. 어두우니 캐릭터 횃불로 살펴봐요! 남쪽 문으로 나가요');
+  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥 캐기 → 돌·석탄·💎보석\n작업대 재료·상점 판매에 써요 · 남쪽 문으로 나가요');
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
 }
@@ -7862,7 +7862,7 @@ async function resolveNightVisit() {
   setTimeout(() => {   // 출석 모달·날씨 토스트와 겹치지 않게 한 박자 늦게
     ui.toast?.(`${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`, 3800);
     firstHint('night', a.ico, '밤손님이 다녀갔어요',
-      '밤사이 배고픈 숲 친구가 밭에 다녀갔어요. 🐾 파헤쳐진 흙을 조사하면 수집품을 얻을 수 있어요. 작업대에서 🎃 허수아비·🪵 울타리를 만들어 밭 근처에 두면 피해가 줄어요!');
+      '밤사이 숲 친구가 밭에 다녀갔어요\n🐾 파헤쳐진 흙을 조사하면 수집품!\n🎃허수아비·🪵울타리를 밭 근처에 두면 피해가 줄어요');
   }, 1200);
   // 📜 주민 쪽지(Gemini·자정 캐시) — 도착하면 카드로. 실패하면 조용히 생략
   if (nightNoteFetcher) {
@@ -7961,7 +7961,7 @@ function resolveWeatherEvent() {
     setTimeout(() => {
       ui.toast?.(`${s.ico} ${s.hit} 작물 ${exposed.length}개가 시들었어요… ⛏️ 괭이로 갈면 다시 심을 수 있어요`, 3800);
       firstHint('severe', s.ico, `${s.name}가 지나갔어요`,
-        `예보가 뜬 날엔 작물을 미리 수확하거나, 작업대에서 🛡️ 덮개를 설치하면 밭을 지킬 수 있어요. 시든 밭은 ⛏️ 괭이로 갈면 다시 심을 수 있어요.`);
+        '예보가 뜬 날엔 미리 수확하거나 🛡️덮개를 설치해요\n시든 밭은 ⛏️괭이로 갈면 다시 심을 수 있어요');
     }, 900);
     trackEvent('weather_event', { kind, protected: false, plots: exposed.length });  // [GA4]
   }

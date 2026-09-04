@@ -73,7 +73,9 @@ function jsStrings(src) {
       let idx = 0;
       s = s.replace(/\$\{[^}]*\}/g, () => `{${idx++}}`);
     }
-    // 여러 줄 템플릿은 줄 단위 텍스트로 갈라 검사(도움말 본문 등)
+    // 여러 줄 문자열: 힌트 모달 본문처럼 전체가 한 키로 등록된 경우가 있어 통째로 먼저 검사하고,
+    //   전체 키가 없을 때만 줄 단위 텍스트로 갈라 검사(도움말 본문 등)
+    if (s.includes('\n') && HAS_KO.test(s) && covered(s.trim())) { out.push(s.trim()); continue; }
     for (const line of s.split('\n')) {
       const core = line.trim();
       if (core && HAS_KO.test(core)) out.push(core);
