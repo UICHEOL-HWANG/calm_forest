@@ -168,11 +168,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
     console.error(JSON.stringify({ message: 'dex-notes failed', cat, lang, error: e.message }));
     // 실패는 도감을 막지 않는다 — 빈 객체면 클라이언트가 설명 줄을 생략한다.
     return new Response('{}', {
-      headers: {
-        ...headers,
-        'Cache-Control': 'no-store',
-        'X-Dex-Notes-Error': String(e.message || 'unknown').replace(/[^\x20-\x7E]/g, ' ').slice(0, 160),
-      },
+      headers: { ...headers, 'Cache-Control': 'no-store' },
     });
   }
 }

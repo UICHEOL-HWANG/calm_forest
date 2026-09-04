@@ -66,6 +66,7 @@ begin
   -- ── 활동 원장: 기기 단위(uid) 로 정규화 ──────────────────────
   act as (
     select coalesce(nullif(client_id, ''), user_id::text) as uid,
+           user_id,                                       -- 이탈 퍼널의 세이브(튜토리얼) 조인용
            session_id,
            ((created_at at time zone tz))::date          as day,
            (created_at at time zone tz)                  as ts_local,
@@ -193,6 +194,70 @@ begin
            sum(case when amount > 0 then  amount else 0 end)::bigint as inflow,
            sum(case when amount < 0 then -amount else 0 end)::bigint as outflow
     from econ_logs group by source order by sum(abs(amount)) desc limit 14
+  ),
+  -- ── 유저 흐름: 활동 퍼널 · 이탈 퍼널 · 유저별 위치 ─────────────
+  --  활동 퍼널은 session_logs.counts(GA4 이벤트 카운트)를 uid 로 합산해
+  --  "이번 기간에 어느 깊이까지 놀았는지"를 단계화합니다.
+  --  단계는 누적 AND 로만 올라가므로(2단계 없이 3단계 불가) 퍼널이 항상 단조 감소합니다.
+  sl_period as (
+    select coalesce(nullif(client_id, ''), user_id::text) as uid,
+           coalesce(counts, '{}'::jsonb)                  as counts
+    from session_logs
+    where ((coalesce(started_at, updated_at) at time zone tz))::date >= since
+      and coalesce(nullif(client_id, ''), user_id::text) is not null
+  ),
+  ev_user as (
+    select uid,
+           bool_or(e.key in ('zone_enter','enter_farm','enter_house','enter_mine','enter_cafe','npc_talk'))  as s_field,
+           bool_or(e.key in ('chop_tree','forage_pick','harvest_crop','plant_seed','water_crop','mine_ore',
+                             'craft_item','coop_feed','coop_collect','first_chop'))                          as s_work,
+           bool_or(e.key in ('carve_start','cooking_start','cafe_serve','fishing_cast','sea_cast',
+                             'boat_start','mist_enter','firefly_swing'))                                     as s_mini,
+           bool_or(e.key in ('shop_buy','shop_sell'))                                                        as s_trade
+    from sl_period s, jsonb_each_text(s.counts) e
+    where e.value ~ '^[0-9]+$' and e.value::numeric > 0
+    group by uid
+  ),
+  -- 기간 내 접속 유저 전원의 단계(세션 요약이 없으면 1단계=접속으로만 집계)
+  user_stage as (
+    select p.uid,
+           case when coalesce(v.s_field, false) and coalesce(v.s_work, false)
+                     and coalesce(v.s_mini, false) and coalesce(v.s_trade, false) then 5
+                when coalesce(v.s_field, false) and coalesce(v.s_work, false)
+                     and coalesce(v.s_mini, false)                                then 4
+                when coalesce(v.s_field, false) and coalesce(v.s_work, false)     then 3
+                when coalesce(v.s_field, false)                                   then 2
+                else 1 end as stage
+    from (select distinct uid from ud where day >= since) p
+    left join ev_user v using (uid)
+  ),
+  -- 유저별 관제 표용 최근 활동(최근 활성 40명)
+  user_recent as (
+    select uid,
+           max(ts_local)              as last_seen,
+           count(distinct session_id) as sessions,
+           bool_and(is_guest)         as is_guest
+    from act where day >= since group by uid
+  ),
+  -- 이탈 퍼널 코호트: 14일 관측이 "끝난" 신규만 분모에 넣습니다
+  --  (덜 관측된 유저를 이탈로 오판하지 않기 위해 — 리텐션 분모와 같은 원칙).
+  --  게스트는 재방문 시 새 익명 ID 가 되는 한계를 다른 지표와 공유합니다.
+  uid_user as (
+    select uid, (array_agg(user_id order by ts_local desc))[1] as user_id
+    from act where user_id is not null group by uid
+  ),
+  churn_flags as (
+    select f.uid,
+           exists (select 1 from saves s join uid_user uu on uu.uid = f.uid
+                    where s.user_id = uu.user_id and s.tutorial)                        as f_tut,
+           exists (select 1 from ud u where u.uid = f.uid and u.day = f.first_day + 1)  as f_d2,
+           (select count(distinct u.day) from ud u
+             where u.uid = f.uid and u.day between f.first_day and f.first_day + 7) >= 3 as f_w7,
+           exists (select 1 from ud u where u.uid = f.uid
+                    and u.day between f.first_day + 8 and f.first_day + 14)             as f_d14
+    from first_seen f
+    where f.first_day <= today - 14
+      and f.first_day >  today - 14 - days
   )
   select jsonb_build_object(
     'meta', jsonb_build_object('days', days, 'today', today, 'since', since, 'tz', tz),
@@ -302,6 +367,33 @@ begin
     'econ_daily',   (select coalesce(jsonb_agg(jsonb_build_object('day', day, 'inflow', inflow, 'outflow', outflow, 'net', inflow - outflow) order by day), '[]'::jsonb) from econ_daily),
     'econ_sources', (select coalesce(jsonb_agg(jsonb_build_object('source', source, 'tx', tx, 'inflow', inflow, 'outflow', outflow, 'net', inflow - outflow) order by (inflow + outflow) desc), '[]'::jsonb) from econ_src),
 
+    -- ── 유저 흐름(활동/이탈 퍼널 · 유저별 위치) ──
+    'activity_funnel', (
+      select jsonb_build_object(
+        'active',   count(*),
+        'field',    count(*) filter (where stage >= 2),
+        'work',     count(*) filter (where stage >= 3),
+        'minigame', count(*) filter (where stage >= 4),
+        'trade',    count(*) filter (where stage >= 5)
+      ) from user_stage
+    ),
+    'churn_funnel', (
+      select jsonb_build_object(
+        'entered',  count(*),
+        'tutorial', count(*) filter (where f_tut),
+        'd2',       count(*) filter (where f_tut and f_d2),
+        'w7',       count(*) filter (where f_tut and f_d2 and f_w7),
+        'd14',      count(*) filter (where f_tut and f_d2 and f_w7 and f_d14)
+      ) from churn_flags
+    ),
+    'user_stages', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'uid', left(r.uid, 6) || '…', 'stage', s.stage, 'sessions', r.sessions,
+        'last_seen', r.last_seen, 'is_guest', r.is_guest) order by r.last_seen desc), '[]'::jsonb)
+      from (select * from user_recent order by last_seen desc limit 40) r
+      join user_stage s using (uid)
+    ),
+
     -- ── 세그먼트 ──
     'segments', jsonb_build_object(
       'guest', (
@@ -324,3 +416,128 @@ $$;
 -- ※ 임시 공개를 끝내고 완전히 잠그려면 아래 anon grant 만 revoke 하면 됩니다.
 revoke all on function public.cf_admin_overview(int, text) from public;
 grant execute on function public.cf_admin_overview(int, text) to authenticated, anon;
+
+-- =============================================================
+--  🧪 베타 A/B (2026-09-02) — docs/BETA_AB_TEST_PLAN.md
+--  베타테스터 명단: email → A/B 군 직접 배정(5:5)
+-- =============================================================
+create table if not exists public.beta_testers (
+  email text primary key,           -- 소문자로 저장할 것
+  grp   text not null check (grp in ('A','B')),
+  note  text
+);
+alter table public.beta_testers enable row level security;
+drop policy if exists beta_testers_self_read on public.beta_testers;
+create policy beta_testers_self_read on public.beta_testers
+  for select to authenticated
+  using (email = lower(coalesce(auth.jwt() ->> 'email', '')));
+-- 쓰기 정책 없음 → service role(SQL 편집기)로만 등록/변경
+-- 명단 등록 예시(운영자가 SQL 편집기에서 실행):
+-- insert into public.beta_testers (email, grp, note) values
+--   ('tester1@gmail.com','A','1기'), ('tester2@gmail.com','B','1기');
+
+drop function if exists public.cf_beta_overview(int, text);
+create or replace function public.cf_beta_overview(days int default 7, token text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  caller_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
+  admins text[] := array['icuchoel@gmail.com'];  -- ★ 관리자 이메일(소문자) — cf_admin_overview와 동일하게 유지
+  tz constant text := 'Asia/Seoul';
+  allowed boolean := false;
+  since timestamptz;
+  result jsonb;
+begin
+  if caller_email = any (admins) then
+    allowed := true;
+  elsif coalesce(token, '') <> '' then
+    update public.cf_share_links s
+       set hits = s.hits + 1, last_used_at = now()
+     where s.token = cf_beta_overview.token and s.expires_at > now();
+    allowed := found;
+  end if;
+  if not allowed then
+    raise exception '권한 없음: 관리자 또는 유효한 공유 링크만 조회할 수 있습니다.';
+  end if;
+
+  days := greatest(1, least(coalesce(days, 7), 90));
+  since := now() - make_interval(days => days);
+
+  with
+  roster as (  -- 명단 ⨝ 계정(가입 전 테스터는 user_id null로 표시)
+    select bt.email, bt.grp, u.id as user_id
+    from beta_testers bt
+    left join auth.users u on lower(u.email) = bt.email
+  ),
+  tester_sessions as (
+    select r.email, r.grp, r.user_id,
+           max(sl.updated_at)                          as last_seen,
+           count(sl.session_id)                        as sessions,
+           coalesce(sum(nullif(sl.play_sec, 0)), 0)    as play_sec
+    from roster r
+    left join session_logs sl on sl.user_id = r.user_id and sl.updated_at >= since
+    group by r.email, r.grp, r.user_id
+  ),
+  tester_saves as (
+    select gs.user_id,
+           coalesce((gs.state -> 'inventory' ->> 'coins')::int, 0)        as coins,
+           coalesce((gs.state ->> 'houseStage')::int, 0)                  as house_stage,
+           coalesce((gs.state ->> 'tutorialSeen')::boolean, false)        as tutorial,
+           coalesce((gs.state -> 'daily' ->> 'streak')::int, 0)           as streak
+    from game_saves gs
+    where gs.user_id in (select user_id from roster where user_id is not null)
+  ),
+  ab_daily as (  -- 군별 일별 활동(베타 variant만)
+    select ((gl.created_at at time zone tz))::date as day,
+           gl.variant,
+           count(distinct coalesce(nullif(gl.client_id,''), gl.user_id::text)) as dau
+    from game_logs gl
+    where gl.variant in ('beta_A','beta_B') and gl.created_at >= since
+    group by 1, 2
+  ),
+  ab_play as (
+    select ((coalesce(sl.started_at, sl.updated_at) at time zone tz))::date as day,
+           sl.variant, round(avg(nullif(sl.play_sec,0)))::int as avg_play_sec
+    from session_logs sl
+    where sl.variant in ('beta_A','beta_B') and sl.updated_at >= since
+    group by 1, 2
+  ),
+  tut_funnel as (  -- 군별 스텝 도달 유저 수 (session_logs.counts의 tut_<key>)
+    select sl.variant, replace(e.key, 'tut_', '') as key,
+           count(distinct sl.user_id) as users
+    from session_logs sl, jsonb_each_text(coalesce(sl.counts, '{}'::jsonb)) e
+    where sl.variant in ('beta_A','beta_B') and e.key like 'tut\_%' and sl.updated_at >= since
+    group by 1, 2
+  ),
+  minigame as (  -- 군별 미니게임 성공/실패 이벤트 합
+    select sl.variant, e.key as event, sum(e.value::numeric)::bigint as n
+    from session_logs sl, jsonb_each_text(coalesce(sl.counts, '{}'::jsonb)) e
+    where sl.variant in ('beta_A','beta_B') and sl.updated_at >= since
+      and e.key in ('fishing_catch','fishing_miss','sea_catch','sea_miss','mist_soothe','mist_soothe_miss','boat_hit')
+      and e.value ~ '^[0-9]+$'
+    group by 1, 2
+  )
+  select jsonb_build_object(
+    'testers', (select coalesce(jsonb_agg(jsonb_build_object(
+                  'email', ts.email, 'grp', ts.grp, 'user_id', ts.user_id,
+                  'last_seen', ts.last_seen, 'sessions', ts.sessions, 'play_sec', ts.play_sec,
+                  'coins', sv.coins, 'house_stage', sv.house_stage, 'tutorial', sv.tutorial, 'streak', sv.streak
+                ) order by ts.grp, ts.email), '[]'::jsonb)
+                from tester_sessions ts left join tester_saves sv using (user_id)),
+    'ab_daily', (select coalesce(jsonb_agg(jsonb_build_object(
+                  'day', d.day, 'variant', d.variant, 'dau', d.dau, 'avg_play_sec', p.avg_play_sec
+                ) order by d.day), '[]'::jsonb)
+                from ab_daily d left join ab_play p using (day, variant)),
+    'tut_funnel', (select coalesce(jsonb_agg(jsonb_build_object(
+                  'variant', variant, 'key', key, 'users', users)), '[]'::jsonb) from tut_funnel),
+    'minigame', (select coalesce(jsonb_agg(jsonb_build_object(
+                  'variant', variant, 'event', event, 'n', n)), '[]'::jsonb) from minigame)
+  ) into result;
+  return result;
+end $$;
+
+revoke all on function public.cf_beta_overview(int, text) from public;
+grant execute on function public.cf_beta_overview(int, text) to authenticated, anon;

@@ -1,0 +1,224 @@
+/* =============================================================
+   calm forest · 대시보드 공유 스타일 (_dash.css)
+   ------------------------------------------------------------
+   analytics.html · admin_analytics.html 공용 토큰/컴포넌트.
+   - 색은 전부 여기 토큰으로만 정의한다(페이지에 hex 직접 쓰지 않기).
+   - 차트(Chart.js·캔버스)는 CSS 변수를 못 읽으므로 각 페이지 JS 의
+     V('--s1') 헬퍼가 getComputedStyle 로 이 값을 가져다 쓴다.
+   - --s1~--s5 와 히트맵 램프는 dataviz validator(색맹 ΔE·명도대역·
+     대비) 라이트/다크 모두 통과한 값 — 눈대중으로 바꾸지 말 것.
+   ============================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* 바탕/잉크 — 순회색 대신 게임 그린 쪽으로 기운 뉴트럴 */
+  --surface-0: #f3f6f4;   /* 페이지 배경 */
+  --surface-1: #fbfcfb;   /* 카드 */
+  --surface-2: #eef2ef;   /* 인셋(빈 바·빈 셀) */
+  --line:      #dde5e0;
+  --line-soft: #e9efeb;   /* 차트 그리드 */
+  --ink:       #16241d;
+  --ink-2:     #4e5f56;
+  --ink-3:     #7d8d84;
+
+  /* 카테고리 시리즈(순서 고정 — 순서 자체가 색맹 안전장치) */
+  --s1: #1baf7a;  /* 그린 */
+  --s2: #eb6834;  /* 오렌지 */
+  --s3: #2a78d6;  /* 블루 */
+  --s4: #eda100;  /* 옐로 */
+  --s5: #4a3aa7;  /* 바이올렛 */
+
+  /* 단일색(그린) 농도 램프 — rgb 성분(캔버스 히트맵·rgba tint 용) */
+  --heat-lo: 228, 237, 232;   /* 0 근처(바탕에 붙음) */
+  --heat-hi: 10, 95, 67;      /* 최대 빈도 */
+  --tint-rgb: 27, 175, 122;   /* 코호트·시간대 농도 = s1 */
+
+  /* 상태색(지표 증감 전용 — 시리즈 색으로 재사용 금지) */
+  --up:   #217a4e;
+  --down: #c14f3a;
+
+  /* 브랜드 크롬(버튼 활성 등 UI 전용 — 차트에는 쓰지 않는다) */
+  --brand:     #8fd6a0;
+  --brand-ink: #1f3b28;
+
+  --shadow: 0 1px 2px rgba(22, 36, 29, .05), 0 4px 14px rgba(22, 36, 29, .06);
+  --radius: 14px;
+  --font: "Apple SD Gothic Neo", Pretendard, "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+/* 다크 — 같은 hue 를 다크 표면용으로 다시 밟은 스텝(단순 반전 아님).
+   OS 설정(prefers-color-scheme)과 data-theme 스탬프 양쪽을 커버한다. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121714;
+    --surface-1: #1a201d;
+    --surface-2: #222a26;
+    --line:      #313b35;
+    --line-soft: #272f2b;
+    --ink:       #eef3f0;
+    --ink-2:     #b0bdb6;
+    --ink-3:     #839589;
+
+    --s1: #199e70;
+    --s2: #d95926;
+    --s3: #3987e5;
+    --s4: #c98500;
+    --s5: #9085e9;
+
+    --heat-lo: 34, 42, 38;
+    --heat-hi: 108, 195, 163;
+    --tint-rgb: 25, 158, 112;
+
+    --up:   #57c28d;
+    --down: #e58a74;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121714;
+  --surface-1: #1a201d;
+  --surface-2: #222a26;
+  --line:      #313b35;
+  --line-soft: #272f2b;
+  --ink:       #eef3f0;
+  --ink-2:     #b0bdb6;
+  --ink-3:     #839589;
+
+  --s1: #199e70;
+  --s2: #d95926;
+  --s3: #3987e5;
+  --s4: #c98500;
+  --s5: #9085e9;
+
+  --heat-lo: 34, 42, 38;
+  --heat-hi: 108, 195, 163;
+  --tint-rgb: 25, 158, 112;
+
+  --up:   #57c28d;
+  --down: #e58a74;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
+}
+
+/* ── 뼈대 ── */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--ink);
+  font-family: var(--font);
+  padding: 20px 20px 60px;
+  -webkit-font-smoothing: antialiased;
+}
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 6px; }
+h1 { font-size: 21px; margin: 0; font-weight: 800; letter-spacing: -.3px; }
+.sub { color: var(--ink-2); font-size: 12.5px; margin: 2px 0 16px; }
+a.back { color: var(--ink-3); font-size: 13px; text-decoration: none; }
+a.back:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--s3); outline-offset: 2px; border-radius: 3px; }
+
+/* 기간 선택 */
+#range { margin-left: auto; display: flex; gap: 6px; }
+#range button {
+  border: 1px solid var(--line); background: var(--surface-1); border-radius: 10px;
+  padding: 7px 13px; font-size: 12.5px; font-weight: 600; color: var(--ink-3);
+  cursor: pointer; font-family: inherit;
+}
+#range button.on { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+#range button:disabled { opacity: .45; cursor: default; }
+
+/* 섹션/그리드 */
+h2.sec {
+  font-size: 13px; font-weight: 800; margin: 26px 0 10px; color: var(--ink-3);
+  letter-spacing: .4px; text-transform: uppercase;
+}
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 11px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.grid.wide { grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); }
+
+/* 카드 */
+.card {
+  background: var(--surface-1); border-radius: var(--radius); padding: 15px 17px;
+  box-shadow: var(--shadow); border: 1px solid var(--line);
+}
+.card h2, .card h3 { font-size: 13px; margin: 0 0 3px; font-weight: 700; }
+.card .hint { font-size: 11px; color: var(--ink-3); margin: 0 0 12px; line-height: 1.45; }
+
+/* KPI 타일 */
+.kpi .num { font-size: 27px; font-weight: 800; line-height: 1.15; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.kpi .lbl { font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+.kpi .dlt { font-size: 11.5px; font-weight: 700; margin-left: 6px; }
+.kpi .dlt.up { color: var(--up); }
+.kpi .dlt.down { color: var(--down); }
+.kpi .dlt.flat { color: var(--ink-3); }
+.kpi .foot { font-size: 10.5px; color: var(--ink-3); margin-top: 3px; }
+
+canvas { max-width: 100%; }
+
+/* 미니 테이블 */
+table.mini { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.mini th {
+  text-align: left; color: var(--ink-3); font-weight: 600; padding: 5px 6px;
+  border-bottom: 1px solid var(--line); font-size: 11px;
+}
+table.mini td { padding: 5px 6px; border-bottom: 1px solid var(--line-soft); }
+table.mini td.n { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 코호트 표 */
+.cohort td { text-align: center; font-variant-numeric: tabular-nums; border-radius: 4px; }
+.cohort td.lbl { text-align: left; color: var(--ink-3); white-space: nowrap; }
+
+/* 요일×시간 그리드 — 전폭이면 셀이 비대해져 상한 고정 */
+.hourgrid { display: grid; grid-template-columns: 26px repeat(24, 1fr); gap: 2px; font-size: 9px; color: var(--ink-3); max-width: 640px; }
+.hourgrid .cell { aspect-ratio: 1; border-radius: 2px; background: var(--surface-2); }
+.hourgrid .rowlbl { display: flex; align-items: center; }
+
+/* 퍼널 행 */
+.funnel-row { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; font-size: 12px; }
+.funnel-row .fl { width: 96px; color: var(--ink-3); flex: none; }
+.funnel-row .fbar { flex: 1; background: var(--surface-2); border-radius: 5px; height: 19px; overflow: hidden; }
+.funnel-row .fbar i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--s1); }
+.funnel-row .fv { width: 128px; text-align: right; font-variant-numeric: tabular-nums; flex: none; }
+.funnel-row .fv small { color: var(--ink-3); }
+
+/* 이탈 퍼널 강조 · 유저별 단계 칩 */
+.drop { color: var(--down); font-weight: 700; font-size: 11px; white-space: nowrap; }
+.drop.worst { background: rgba(193, 79, 58, .12); border-radius: 4px; padding: 1px 5px; }
+.stagechips { display: inline-flex; gap: 3px; vertical-align: middle; }
+.stagechips i { width: 14px; height: 8px; border-radius: 3px; background: var(--surface-2); display: inline-block; }
+.stagechips i.f { background: var(--s1); }
+
+/* 안내/빈 상태 */
+.empty { color: var(--ink-3); font-size: 12px; padding: 14px 0; text-align: center; }
+#banner {
+  display: none; background: var(--surface-1); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+  box-shadow: var(--shadow); color: var(--ink-2);
+}
+#msg {
+  display: none; background: var(--surface-1); border: 1px solid var(--line);
+  border-radius: 16px; padding: 24px; box-shadow: var(--shadow);
+  max-width: 440px; margin: 40px auto; text-align: center; line-height: 1.6;
+}
+#msg button {
+  margin-top: 14px; border: 1px solid var(--line); background: var(--surface-1);
+  border-radius: 12px; padding: 10px 18px; font-weight: 600; cursor: pointer;
+  color: var(--ink); font-family: inherit;
+}
+#load { display: none; text-align: center; padding: 50px; color: var(--ink-3); font-size: 14px; }
+
+/* 이동 히트맵 캔버스 — width:100% 만 주면 정사각으로 커져
+   같은 행 카드까지 세로로 늘어난다(analytics 실측 658px). 상한 고정. */
+#heatmap {
+  background: var(--surface-2); border-radius: 10px;
+  width: 100%; max-width: 360px; height: auto;
+  display: block; margin: 0 auto; image-rendering: pixelated;
+}
+.legend-note { font-size: 11px; color: var(--ink-3); margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

@@ -36,6 +36,7 @@ export function clientId() {
 //   실험 off면 무조건 'control'. 켜지면 해시 하위비트로 A/B.
 export function assignVariant() {
   if (!CONFIG.EXPERIMENT || CONFIG.EXPERIMENT === 'off') return 'control';
+  if (CONFIG.EXPERIMENT === 'beta') return 'control';  // 베타 배정은 명단(supabase-client) 전담 — 해시 배정 안 함
   let h = 0; const s = clientId();
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
   return (h & 1) ? 'B' : 'A';
