@@ -1780,7 +1780,7 @@
       closeMerchantModal() { $('merchant-modal').classList.remove('show'); },
       // 어떤 모달/메뉴든 열려 있으면 true — 상인 방문 같은 강제 이벤트가 겹쳐 뜨지 않게
       anyModalOpen() {
-        return !!document.querySelector('#tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #npc-modal.show, #merchant-modal.show')
+        return !!document.querySelector('[id$="-modal"].show, #boat-shop.show')
           || document.body.classList.contains('menu-open') || document.body.classList.contains('mg-open');
       },
       // 📊 시세판(전광판 상호작용) — 품목별 오늘 가격·등락 + 내일 예보

@@ -2,7 +2,7 @@
 //  calm forest · 코인 첫 루프 규칙 (순수 함수 — DOM/Three 의존 없음)
 //  ------------------------------------------------------------
 //  ▶ 상인 환영 거래 제안 · dev 세션 판정 · 좌판 시세 말풍선 · 비료/물주기 우선순위
-//  ▶ 테스트: node --test tests/   (docs/superpowers/specs/2026-09-05-coin-first-loop-design.md)
+//  ▶ 테스트: npm test   (docs/superpowers/specs/2026-09-05-coin-first-loop-design.md)
 // =============================================================
 
 // 환영 거래(1회 한정, 정가 약 3배) — 목재 5개=30🪙 우선, 없으면 물고기 1마리=25🪙
@@ -15,7 +15,7 @@ export function welcomeOffer(inv = {}) {
 }
 
 // 개발용 URL 파라미터가 하나라도 있으면 "dev 세션" — 원장·세션·센서·GA4 기록을 남기지 않는다
-export const DEV_PARAMS = ['house', 'coop', 'weather', 'spawn'];
+export const DEV_PARAMS = ['house', 'coop', 'weather', 'spawn', 'sea', 'river', 'mist', 'time', 'severe', 'severe2', 'rain', 'dbg', 'seadebug', 'give'];
 export function isDevSession(search = '') {
   const q = new URLSearchParams(search);
   return DEV_PARAMS.some(k => q.has(k));

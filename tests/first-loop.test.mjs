@@ -21,6 +21,8 @@ test('isDevSession: dev 파라미터가 있으면 true', () => {
   assert.equal(isDevSession('?platform=toss&coop=1'), true);
   assert.equal(isDevSession('?weather=rain'), true);
   assert.equal(isDevSession('?spawn=3,4'), true);
+  assert.equal(isDevSession('?sea=1'), true);
+  assert.equal(isDevSession('?give=wood'), true);
 });
 test('isDevSession: 일반 진입은 false', () => {
   assert.equal(isDevSession(''), false);

@@ -37,6 +37,7 @@ function applyAliasCampaign() {
 //   삽입하고 초기화합니다. (index.html 을 손댈 필요 없음)
 //   미설정 시엔 아무것도 로드하지 않고 trackEvent 가 콘솔 폴백.
 (function loadGA() {
+  if (IS_DEV_SESSION) return;   // 🧪 dev 세션 — gtag.js 자체를 로드하지 않음
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
   gtag('js', new Date());

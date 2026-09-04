@@ -54,7 +54,7 @@
 | `fishing_catch` | 물고기 낚음 | `fish`, `rarity`(common/uncommon/rare) |
 | `fishing_miss` | 낚아채기 실패 | — |
 | `tutorial_start` | 튜토리얼 시작 | — |
-| `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~15), `key`(move/chop/till/seed/water/harvest/sell/market/quest/mine/dex/fish/build/enter/decor) |
+| `tutorial_step` | 튜토리얼 단계 완료 | `step`(1~17), `key`(move/toolpage/chop/sell/till/seed/water/harvest/market/quest/mine/carve/dex/fish/build/enter/decor) |
 | `tutorial_complete` | 튜토리얼 완료 | — |
 | `tutorial_skip` | 튜토리얼 건너뜀 | `at`(welcome 또는 단계번호) |
 | `session_time` | 주기/이탈 시 | `seconds` |
@@ -97,9 +97,9 @@
 또한 **user_id** 를 GA4에 연결(`setGaUser`)해서, GA4↔Supabase를 유저 단위로 조인할 수 있습니다.
 
 ### 튜토리얼 퍼널 분석 예 (탐색 → 유입경로 탐색)
-`tutorial_start` → `tutorial_step`(step=1) → … → `tutorial_step`(step=15) → `tutorial_complete`
+`tutorial_start` → `tutorial_step`(step=1) → … → `tutorial_step`(step=17) → `tutorial_complete`
 로 단계별 완료율을 보면 **어느 스텝에서 신규 유저가 이탈하는지** 바로 보입니다. `tutorial_skip`의 `at` 값으로 이탈 지점도 확인.
-전체 15단계: move·chop·till·seed·water·harvest·sell·market·quest·mine·dex·fish·build·enter·decor.
+전체 17단계: move·toolpage·chop·sell·till·seed·water·harvest·market·quest·mine·carve·dex·fish·build·enter·decor.
 
 ---
 

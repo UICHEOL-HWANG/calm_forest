@@ -8020,9 +8020,6 @@ function handleAction() {
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
-  // 🌱 비료 — 자라는 밭 앞 + 비료 보유. 💧물조리개를 들고 흙이 말라 있으면 평소대로 물주기가 우선
-  const fp = fertTarget();
-  if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // 🍄 채집 — 도구가 필요 없는 "줍기". 단, 도끼를 들고 더 가까운 나무가 있으면 벌목에 양보
   const fg = forageTarget();
   if (fg) {
@@ -8038,6 +8035,9 @@ function handleAction() {
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   if (nearNPC && !IS_MOBILE) return talkToNPC();
+  // 🌱 비료 — 자라는 밭 앞 + 비료 보유. 💧물조리개를 들고 흙이 말라 있으면 평소대로 물주기가 우선
+  const fp = fertTarget();
+  if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // ✋ 맨손 — 도구를 등에 메고 있으니 도구질은 안 된다(줍기·대화·문은 위에서 이미 처리됨)
   if (toolPage === 'none') { ui.toast?.('✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
   switch (TOOLS[currentTool].id) {
@@ -8792,7 +8792,7 @@ function updateMerchantVisit(dt) {
   const m = merchantObj(); if (!m) return;
   if (!merchantVisit) {
     if (gameState.hintsSeen.merchantVisit) return;
-    if (indoor || atFarm || atMine || atCafe || atRiver) return;
+    if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
     if (ui.anyModalOpen?.()) return;
     const offer = welcomeOffer(gameState.inventory);
     if (!offer) return;
@@ -8846,7 +8846,10 @@ function merchantDismiss() {
   ui.closeMerchantModal?.();
   if (merchantVisit) { merchantVisit.state = 'return'; merchantVisit.t = 0; }
   showShopCue(60);
-  firstHintBanner('merchantShop', '🛒', '상점 좌판', '동쪽 좌판에서 언제든 팔 수 있어요');
+  if (!gameState.hintsSeen.merchantShop) {   // 코치 진행 중에도 1회 표시(firstHintBanner 는 코치 중 억제라 새 유저에겐 영영 안 뜸)
+    gameState.hintsSeen.merchantShop = true;
+    ui.showHintBanner?.({ ico: '🛒', title: '상점 좌판', line: '동쪽 좌판에서 언제든 팔 수 있어요', near: () => true });
+  }
 }
 
 // 좌판 위 🛒 안내 스프라이트 — sec 초 동안 둥실거리며 위치를 알려준다
