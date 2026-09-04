@@ -12,7 +12,7 @@
 --      Supabase      → client_id        (localStorage 영구 기기 식별자)
 --    둘 다 "기기(브라우저) 기준"이며 사람 수의 상한입니다. 대시보드 라벨에 명시.
 --
---  ★ 산출물: 아래 `-- @tab:` 마커가 붙은 쿼리 11개 = 구글 시트 탭 11장.
+--  ★ 산출물: 아래 `-- @tab:` 마커가 붙은 쿼리 12개 = 구글 시트 탭 12장.
 --    Airflow DAG(infra/airflow/dags/tableau_sheets.py)가 이 파일을 그대로 읽어
 --    마커별로 쪼갠 뒤 BigQuery 에서 돌려 시트에 덮어씁니다.
 --    ⇒ 이 파일이 유일한 원본입니다. DAG 안에 SQL 을 복사해 두지 않았습니다.
@@ -502,3 +502,61 @@ from public.sea_records
 group by 1, 2, 3
 
 order by game, runs desc;
+
+
+-- =====================================================================
+-- A12) x_scatter_engage — 기기 한 대 = 한 점. 참여 시간 × 활동 가짓수 산포도
+--   S1b(분포 막대)를 대체한다. 막대는 1~15종 칸마다 1~5대뿐이라 뾰족하고
+--   잡음처럼 보였다. 측정값을 하나 더 붙여야 산포가 의미를 갖는다.
+--   ⚠️ 개인 식별자(user_pseudo_id)는 시트에 내보내지 않는다 — 공개 대시보드의
+--      원본이 되므로 일련번호로만 식별한다.
+--   ⚠️ 활동 정의는 t7 과 반드시 같아야 한다(벌목 = chop_tree + first_chop 을
+--      한 활동으로 묶음). 다르게 세면 산키·도넛과 숫자가 어긋난다.
+--   ⚠️ sec 0 은 "0초 머물렀다"가 아니라 "참여 시간이 기록되기 전에 나갔다".
+--      engagement_time_msec 이 아예 안 붙은 기기가 있다. 축 이름을 그렇게 쓸 것.
+--   날짜는 t10·t8b 와 같이 9/1 로 고정 — 배포본의 239/142 와 맞춘다.
+-- =====================================================================
+-- @tab: x_scatter_engage
+with ev as (
+  select user_pseudo_id, event_name, geo.country as country, device.category as dev_cat,
+         (select value.int_value from unnest(event_params) where key = 'engagement_time_msec') as eng
+  from `calm-forest.analytics_547127440.events_*`
+  where _table_suffix <= '20260901'
+),
+m as (
+  select * from unnest([
+    struct('캐릭터 선택' as activity, ['character_select'] as names),
+    ('벌목', ['chop_tree', 'first_chop']), ('씨앗 심기', ['plant_seed']),
+    ('물주기', ['water_crop']), ('수확', ['harvest_crop']),
+    ('낚시 던지기', ['fishing_cast']), ('낚시 성공', ['fishing_catch']),
+    ('채굴', ['mine_ore']), ('카페', ['enter_cafe']), ('뱃놀이', ['boat_start']),
+    ('집 완성', ['house_complete']), ('도감 발견', ['dex_discover']),
+    ('퀘스트 완료', ['quest_complete']), ('배지 획득', ['badge_earn']),
+    ('사진 촬영', ['photo_capture'])
+  ])
+),
+per as (
+  select ev.user_pseudo_id, count(distinct m.activity) as kinds
+  from ev join m on ev.event_name in unnest(m.names)
+  group by 1
+),
+dev as (
+  select user_pseudo_id,
+         if(any_value(country) = 'South Korea', '국내', '해외') as region,
+         coalesce(any_value(dev_cat), 'unknown') as device,
+         cast(round(sum(coalesce(eng, 0)) / 1000.0) as int64) as sec
+  from ev group by 1
+),
+j as (
+  select d.region, d.device, d.sec, coalesce(p.kinds, 0) as kinds,
+         row_number() over (order by coalesce(p.kinds, 0) desc, d.sec desc) as id,
+         -- 원점에 150대가 겹쳐 한 점으로 보인다. 세로로 흩뜨릴 값을 미리 넣어 둔다
+         -- (태블로 퍼블릭 웹 편집기에는 지터 기능이 없다).
+         round(coalesce(p.kinds, 0) + (rand() - 0.5) * 0.7, 3) as kinds_jitter
+  from dev d left join per p using (user_pseudo_id)
+)
+select id, region, device, sec,
+       sec + 1 as sec_p1,   -- 로그 축용: 0 은 로그를 못 취한다
+       kinds, kinds_jitter
+from j
+order by id;
