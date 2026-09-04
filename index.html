@@ -123,7 +123,7 @@
   #feedback-tab { bottom: calc(74px + env(safe-area-inset-bottom)); right: 18px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 8px 13px; transition: transform .1s; }
   #feedback-tab:active { transform: scale(0.95); }
   /* 📖 도감 탭 — 인벤토리 HUD(장비칸) 바로 아래 공백에 배치 */
-  #dex-tab { top: calc(134px + env(safe-area-inset-top)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
+  #dex-tab { top: calc(134px + env(safe-area-inset-top) + var(--toss-top)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
   #dex-tab:active { transform: scale(0.95); }
 
   /* 로그인(로그아웃) 상태에선 게임 HUD 전부 숨김 → 로그인 화면만 깔끔하게 */
@@ -315,6 +315,10 @@
   /* 🔵 바로 플레이하기(앱인토스 웹뷰에서만 표시 — 웹뷰에선 구글 OAuth 불가라 이 버튼이 구글을 대체) */
   #toss-btn { display: none; align-items: center; gap: 8px; margin: 0 auto; border: none; background: #3182f6; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
   #toss-btn:active { transform: scale(0.96); }
+  /* 🔵 토스 웹뷰는 우상단에 네이티브 ··· ✕ 버튼이 항상 떠 있다(실측 약 70pt 높이까지) →
+     우측 HUD·탭·중앙 토스트를 그 아래로 내리는 오프셋. 웹에선 0. */
+  :root { --toss-top: 0px; }
+  body.platform-toss { --toss-top: 56px; }
   body.platform-toss #google-btn { display: none; }
   body.platform-toss #toss-btn { display: inline-flex; }
   body.platform-toss #guest-btn { display: none; }   /* 게스트는 선택지가 아니라 폴백 — 버튼 하나만 */
@@ -322,7 +326,7 @@
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
-  #topright { top: calc(16px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  #topright { top: calc(16px + env(safe-area-inset-top) + var(--toss-top)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   #inv-hud { display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .inv-item { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
   .inv-ico { font-size: 17px; }
@@ -373,13 +377,13 @@
   }
 
   /* 토스트(피드백 메시지) */
-  #toast { top: 96px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
+  #toast { top: calc(96px + var(--toss-top)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
   /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지 */
   body.coaching #toast { top: calc(210px + env(safe-area-inset-top)); }
 
   /* 🪧 시설 첫 접근 배너 — 이동을 안 끊는 비차단 안내(토스트보다 한 단계 큰 카드) */
-  #hint-banner { top: 96px; left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
+  #hint-banner { top: calc(96px + var(--toss-top)); left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
     display: flex; gap: 10px; align-items: center; text-align: left;
     opacity: 0; transition: opacity .35s; pointer-events: none; }
   #hint-banner.show { opacity: 1; }
@@ -387,7 +391,7 @@
   #hint-banner .hb-title { font-size: 14px; font-weight: 700; }
   #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
   /* 배너가 떠 있는 동안 토스트는 그 아래로 내려 겹침 방지 */
-  body.hintbanner #toast { top: 158px; }
+  body.hintbanner #toast { top: calc(158px + var(--toss-top)); }
 
   /* 조작 도움말(데스크톱만) — 하단 중앙, 도구바 위. 잠시 뒤 자동으로 사라짐 */
   #hint { bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .82; white-space: nowrap; animation: hintFade .8s ease 8s forwards; }
@@ -781,7 +785,7 @@
     .panel { padding: 5px 8px; border-radius: 11px; }
     /* 상단바: 노치 아래로 살짝 내리고 좌우 여백 축소 */
     #topleft { top: calc(10px + env(safe-area-inset-top)); left: 10px; gap: 3px; font-size: 10px; padding: 4px 6px; }
-    #topright { top: calc(10px + env(safe-area-inset-top)); right: 10px; gap: 4px; padding: 4px 8px; }
+    #topright { top: calc(10px + env(safe-area-inset-top) + var(--toss-top)); right: 10px; gap: 4px; padding: 4px 8px; }
     /* 좌측: 상태점·라벨 텍스트 숨겨서 버튼을 아이콘만으로(정사각) 컴팩트 */
     #login-status, #login-dot { display: none; }
     .lbl { display: none; }                       /* '나가기' 글자 접기 → 아이콘만 */
@@ -802,9 +806,9 @@
     #time-indicator { gap: 4px; }
     #time-emoji { font-size: 13px; }
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
-    #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
+    #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top) + var(--toss-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
     /* 도감 탭: 모바일에서도 인벤토리 HUD 바로 아래 */
-    #dex-tab { top: calc(126px + env(safe-area-inset-top)); right: 10px; padding: 6px 10px; font-size: 12px; }
+    #dex-tab { top: calc(126px + env(safe-area-inset-top) + var(--toss-top)); right: 10px; padding: 6px 10px; font-size: 12px; }
     /* 좁은 화면은 두 칸씩 — 세 칸이면 폭이 74px 라 설명이 일고여덟 자마다 줄바꿈된다 */
     .dex-item { width: calc(50% - 4px); min-width: 0; }
     .dex-item.badge { width: 88px; }
@@ -812,6 +816,12 @@
     #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
     #quest-panel { top: calc(168px + env(safe-area-inset-top)); max-width: 52vw; }
     body.story-on #quest-panel { top: calc(218px + env(safe-area-inset-top)); }   /* 모바일도 스토리 칩 아래로 */
+    /* 🪧 시설 안내 배너: 좁은 화면에선 상단 HUD(자원칩·날씨·문의하기·도감)와 같은 높이라 겹침 →
+       좌측(미니맵·퀘스트)·우측(탭) 컬럼이 끝나는 지점 아래로. 스토리 칩이 있으면 그만큼 더. */
+    #hint-banner { top: calc(240px + env(safe-area-inset-top) + var(--toss-top)); }
+    body.story-on #hint-banner { top: calc(290px + env(safe-area-inset-top) + var(--toss-top)); }
+    body.hintbanner #toast { top: calc(300px + env(safe-area-inset-top) + var(--toss-top)); }
+    body.story-on.hintbanner #toast { top: calc(350px + env(safe-area-inset-top) + var(--toss-top)); }
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널만 숨김
        (미니맵은 좌측이라 중앙 코치 카드와 안 겹침 → 튜토리얼 중에도 표시) */
     body.coaching #quest-panel { display: none; }
