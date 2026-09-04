@@ -7136,6 +7136,8 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
+  updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
+  updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
@@ -8704,7 +8706,9 @@ function updateNPC(dt, t) {
   for (const o of npcObjs) {
     o.body.position.y = 0.55 + Math.sin(t * 2 + o.phase) * 0.04;
     if (o.sprite) o.sprite.position.y = 2.15 + Math.sin(t * 2.5 + o.phase) * 0.08;
-    if (mode === 'play' && nearNPC === o) {
+    if (merchantVisit && o.def.id === 'merchant') {
+      // 방문 이벤트 중엔 updateMerchantVisit 가 이동·시선을 담당
+    } else if (mode === 'play' && nearNPC === o) {
       const dx = player.position.x - o.group.position.x, dz = player.position.z - o.group.position.z;
       o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.2); // 플레이어 바라보기
     } else {
@@ -8743,6 +8747,111 @@ function wanderNPC(o, dt) {
     o.group.position.x = nx; o.group.position.z = nz;
     o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.1);
   }
+}
+
+// ── 🧙 상인 방문 이벤트(1회, 강제) — 첫 판매 경험을 상인이 직접 가져다준다 ──
+//    발동: 마을 안 + 목재5 또는 물고기1 + 모달 없음 + hintsSeen.merchantVisit 없음
+//    walk(플레이어에게 걸어옴, 12초 상한) → talk(모달) → return(좌판 홈으로)
+let merchantVisit = null;   // null | { state:'walk'|'talk'|'return', t, offer }
+function merchantObj() { return npcObjs.find(o => o.def.id === 'merchant') || null; }
+
+// NPC 를 target 쪽으로 speed 만큼 전진(막히면 좌우 45° 우회). 남은 거리 반환
+function stepNpcToward(o, target, speed, dt) {
+  const dx = target.x - o.group.position.x, dz = target.z - o.group.position.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 0.05) return d;
+  const ang = Math.atan2(dx, dz);
+  for (const off of [0, Math.PI / 4, -Math.PI / 4]) {
+    const a = ang + off;
+    const nx = o.group.position.x + Math.sin(a) * speed * dt, nz = o.group.position.z + Math.cos(a) * speed * dt;
+    if (npcBlocked(nx, nz)) continue;
+    o.group.position.x = nx; o.group.position.z = nz;
+    break;
+  }
+  o.group.rotation.y = lerpAngle(o.group.rotation.y, ang, 0.2);
+  return Math.hypot(target.x - o.group.position.x, target.z - o.group.position.z);
+}
+
+function updateMerchantVisit(dt) {
+  if (mode !== 'play') return;
+  const m = merchantObj(); if (!m) return;
+  if (!merchantVisit) {
+    if (gameState.hintsSeen.merchantVisit) return;
+    if (indoor || atFarm || atMine || atCafe || atRiver) return;
+    if (ui.anyModalOpen?.()) return;
+    const offer = welcomeOffer(gameState.inventory);
+    if (!offer) return;
+    gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
+    merchantVisit = { state: 'walk', t: 0, offer };
+    return;
+  }
+  const v = merchantVisit; v.t += dt;
+  if (v.state === 'walk') {
+    const d = stepNpcToward(m, player.position, 2.0, dt);
+    if (d <= 1.6 || v.t > 12) { v.state = 'talk'; openMerchantOffer(v.offer); }
+  } else if (v.state === 'talk') {
+    const dx = player.position.x - m.group.position.x, dz = player.position.z - m.group.position.z;
+    m.group.rotation.y = lerpAngle(m.group.rotation.y, Math.atan2(dx, dz), 0.2);   // 플레이어 바라보기
+  } else if (v.state === 'return') {
+    const d = stepNpcToward(m, m.home, 2.0, dt);
+    if (d < 0.3 || v.t > 20) merchantVisit = null;      // 홈 도착 → 평소 배회로 복귀
+  }
+}
+
+function openMerchantOffer(offer) {
+  const wood = offer.item === 'wood';
+  ui.openMerchantModal?.({
+    title: '방랑 상인',
+    body: wood ? '오, 그 🪵 목재 좋구먼! 처음 보는 얼굴이니 후하게 쳐주지.' : '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.',
+    primary: { label: wood ? '🪵 목재 5개 팔기 (+30🪙)' : '🐟 물고기 팔기 (+25🪙)', onClick: () => merchantWelcomeSell(offer) },
+    secondary: { label: '다음에', onClick: () => merchantDismiss() },
+  });
+}
+
+function merchantWelcomeSell(offer) {
+  if ((gameState.inventory[offer.item] || 0) < offer.qty) { merchantDismiss(); return; }   // 그새 써버렸으면 조용히 종료
+  gameState.inventory[offer.item] -= offer.qty;
+  gameState.inventory.coins = (gameState.inventory.coins || 0) + offer.gain;
+  refreshInventoryUI(); Sound.complete();
+  spawnFloatText(player.position.x, 1.9, player.position.z, `+${offer.gain}🪙`, '#2fa564');
+  questEvent('sell', offer.qty);                          // 상인 퀘스트 '장사의 신' 진행
+  ui.act?.('sell');                                       // 튜토리얼 ④ 팔기
+  trackEvent('shop_sell', { item: offer.item, qty: offer.qty, gain: offer.gain, rate: 300, via: 'merchant' }); // [GA4] 기존 판매 이벤트 + via
+  trackEvent('merchant_visit', { item: offer.item, gain: offer.gain });                                        // [GA4] 방문 퍼널
+  logEcon('shop_sell', offer.item + '|welcome', offer.gain, gameState.inventory.coins);                        // [원장] 출처는 shop_sell, 품목 접미사로 구분
+  ui.openMerchantModal?.({
+    title: '방랑 상인',
+    body: '더 팔 거면 동쪽 좌판으로 오게. 새로 들어온 🌱비료랑 🪱미끼도 보고 가고.',
+    primary: { label: '🛒 좌판 구경', onClick: () => { merchantDismiss(); ui.openShop?.('buy'); } },
+    secondary: { label: '다음에', onClick: () => merchantDismiss() },
+  });
+}
+
+function merchantDismiss() {
+  ui.closeMerchantModal?.();
+  if (merchantVisit) { merchantVisit.state = 'return'; merchantVisit.t = 0; }
+  showShopCue(60);
+  firstHintBanner('merchantShop', '🛒', '상점 좌판', '동쪽 좌판에서 언제든 팔 수 있어요');
+}
+
+// 좌판 위 🛒 안내 스프라이트 — sec 초 동안 둥실거리며 위치를 알려준다
+let shopCue = null, shopCueUntil = 0;
+function showShopCue(sec) {
+  if (!shopCue) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const c = cv.getContext('2d'); c.font = '96px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('🛒', 64, 70);
+    const tex = new THREE.CanvasTexture(cv);
+    shopCue = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    shopCue.scale.set(1.1, 1.1, 1); shopCue.position.set(SHOP.x, 3.2, SHOP.z);
+    scene.add(shopCue);
+  }
+  shopCue.visible = true; shopCueUntil = clock.elapsedTime + sec;
+}
+function updateShopCue(t) {
+  if (!shopCue || !shopCue.visible) return;
+  if (clock.elapsedTime > shopCueUntil) { shopCue.visible = false; return; }
+  shopCue.position.y = 3.2 + Math.sin(t * 2.4) * 0.15;
 }
 
 // 근접 시 가장 가까운 주민 선택 → 프롬프트 + 퀘스트 패널

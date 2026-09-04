@@ -1027,4 +1027,13 @@ export const EN = {
   '🌱 비료를 줬어요! 바로 수확할 수 있어요': '🌱 Fertilized! You can harvest right away',
   '🎣 던졌어요… 물 때까지 기다려요 · 🪱 미끼 (남은 {0}회)': '🎣 Cast… wait for a bite · 🪱 Bait ({0} left)',
   '다음 목표: 🐔 닭장 60 · 🏡 넓은 집 80 · ✨ 정령 등불 60': 'Next goals: 🐔 Coop 60 · 🏡 Bigger house 80 · ✨ Spirit lamp 60',
+  '오, 그 🪵 목재 좋구먼! 처음 보는 얼굴이니 후하게 쳐주지.': "Oh, fine 🪵 lumber! New face, eh? I'll pay you well.",
+  '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.': "Oh, fresh 🐟 fish! New face, eh? I'll pay you well.",
+  '🪵 목재 5개 팔기 (+30🪙)': '🪵 Sell 5 wood (+30🪙)',
+  '🐟 물고기 팔기 (+25🪙)': '🐟 Sell a fish (+25🪙)',
+  '더 팔 거면 동쪽 좌판으로 오게. 새로 들어온 🌱비료랑 🪱미끼도 보고 가고.': 'Come to my stall in the east to sell more. Have a look at the new 🌱fertilizer and 🪱bait too.',
+  '🛒 좌판 구경': '🛒 Browse the stall',
+  '다음에': 'Later',
+  '상점 좌판': 'Market stall',
+  '동쪽 좌판에서 언제든 팔 수 있어요': 'You can sell anytime at the stall in the east',
 };
