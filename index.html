@@ -223,8 +223,8 @@
   .boat-up button:disabled { opacity: .45; cursor: default; }
   .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show { display: grid; }
   #char-layout { display: flex; gap: 16px; align-items: stretch; text-align: left; }
   #char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1 1 auto; align-content: start; }
   .char-card { padding: 10px 6px; border-radius: 14px; background: #f4faf5; box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, outline-color .12s; outline: 3px solid transparent; text-align: center; }
@@ -736,6 +736,12 @@
     pointer-events: auto; cursor: pointer; transition: transform .1s; }   /* 칩을 누르면 설명 모달 */
   #buffs .buff:active { transform: scale(0.95); }
   #hint-modal { z-index: 45; }   /* 버프 설명 등 안내 모달은 미니게임 오버레이(40)·가방(41) 위에도 뜨게 */
+  #merchant-modal { z-index: 45; }
+  #merchant-modal .tut-card { width: min(400px, 92vw); }
+  .merchant-actions { display: flex; flex-direction: column; gap: 10px; }
+  .merchant-actions button { border: none; border-radius: 14px; min-height: 48px; padding: 12px 18px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
+  #merchant-primary { background: var(--mint); color: var(--ink); }
+  #merchant-secondary { background: #eef2ee; color: var(--ink); }
   #buffs .buff .b-t { opacity: .7; font-variant-numeric: tabular-nums; }
 
   /* NPC 대화/퀘스트 모달 */
@@ -1345,6 +1351,19 @@
     </div>
   </div>
 
+  <!-- 🧙 상인 방문 모달 — 환영 거래(1회) → 좌판 안내 -->
+  <div id="merchant-modal">
+    <div class="tut-card">
+      <div class="tut-emoji">🧙</div>
+      <h2 id="merchant-title">방랑 상인</h2>
+      <p id="merchant-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
+      <div class="merchant-actions">
+        <button id="merchant-primary"></button>
+        <button id="merchant-secondary"></button>
+      </div>
+    </div>
+  </div>
+
   <!-- 캐릭터(동물) 선택 모달 (첫 플레이) -->
   <div id="char-modal">
     <div class="tut-card" style="max-width:640px; width:min(640px,94vw); max-height:88dvh; overflow-y:auto;">
@@ -1747,6 +1766,23 @@
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지
         $('hint-modal').classList.add('show');
       },
+      // 🧙 상인 모달 — primary/secondary 버튼 콜백을 매번 갈아끼운다(중복 리스너 방지: onclick 프로퍼티)
+      openMerchantModal({ title, body, primary, secondary }) {
+        $('merchant-title').textContent = title || '방랑 상인';
+        $('merchant-body').textContent = body || '';
+        const p = $('merchant-primary'), s = $('merchant-secondary');
+        p.textContent = primary.label; p.onclick = () => primary.onClick();
+        s.hidden = !secondary;
+        if (secondary) { s.textContent = secondary.label; s.onclick = () => secondary.onClick(); }
+        Input.setAnalog(0, 0);
+        $('merchant-modal').classList.add('show');
+      },
+      closeMerchantModal() { $('merchant-modal').classList.remove('show'); },
+      // 어떤 모달/메뉴든 열려 있으면 true — 상인 방문 같은 강제 이벤트가 겹쳐 뜨지 않게
+      anyModalOpen() {
+        return !!document.querySelector('#tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #npc-modal.show, #merchant-modal.show')
+          || document.body.classList.contains('menu-open') || document.body.classList.contains('mg-open');
+      },
       // 📊 시세판(전광판 상호작용) — 품목별 오늘 가격·등락 + 내일 예보
       openMarket(d) {
         const rows = $('market-rows'); rows.innerHTML = '';
@@ -1798,7 +1834,7 @@
       // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
-      openShop() { showShopTab('sell'); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      openShop(tab = 'sell') { showShopTab(tab); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // ☕ 카페 주문판 열기
       openCafe(d) { renderCafe(d); Input.setAnalog(0, 0); $('cafe-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🛶 나룻배 런 시작/종료 — 마을 UI를 걷어내고 배 HUD로 전환
