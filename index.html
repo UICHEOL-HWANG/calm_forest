@@ -507,7 +507,7 @@
   #sc-ico { font-size: 20px; flex: 0 0 auto; }
   #sc-title { font-size: 11px; font-weight: 700; opacity: .65; }
   #sc-goal { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
-  body:not(.playing) #story-chip, body.boat-run #story-chip, body.mg-open #story-chip, body.intro-open #story-chip { display: none !important; }
+  body:not(.playing) #story-chip, body.boat-run #story-chip, body.mg-open #story-chip, body.intro-open #story-chip, body.coaching #story-chip { display: none !important; }
   #story-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #story-modal.show { display: grid; }
   .st-row { display: flex; gap: 10px; padding: 9px 10px; border-radius: 12px; margin-bottom: 6px; background: #f2f6f0; }
@@ -522,6 +522,9 @@
   @media (max-width: 760px) {
     #story-chip { top: calc(162px + var(--top-inset)); left: 12px; max-width: 174px; padding: 7px 10px; }
     #sc-goal { font-size: 11.5px; }
+    #coach { top: calc(212px + var(--top-inset)); }   /* 미니맵(94+108) 아래 10px — 코치가 미니맵을 가리지 않게 */
+    /* 코치가 아래로 내려간 만큼 토스트도 함께 내려 겹침 방지(코치 카드 높이 ≈150px + 여백 8px) */
+    body.coaching #toast { top: calc(370px + var(--top-inset)); }
   }
 
   /* 🏆 리더보드 모달 */
@@ -892,8 +895,8 @@
     /* 기본 위치는 문 프롬프트와 동일 — 둘 다 뜨면 JS가 실제 높이만큼 올림 */
     #zone-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 12px; max-width: 86vw; }
     #ext-btn { bottom: calc(282px + env(safe-area-inset-bottom)); font-size: 13px; padding: 9px 16px; }
-    /* 모바일: 코치 말풍선(단계 점 줄바꿈으로 더 큼) 아래로 토스트 배치 */
-    body.coaching #toast { top: calc(238px + var(--top-inset)); }
+    /* 모바일: 코치가 미니맵 아래(212px)로 내려간 만큼 토스트도 그 아래로(코치 카드 높이 ≈150px + 여백 8px) */
+    body.coaching #toast { top: calc(370px + var(--top-inset)); }
   }
 </style>
 </head>

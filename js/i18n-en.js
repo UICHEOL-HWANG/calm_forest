@@ -837,7 +837,12 @@ export const EN = {
   '🧰 뱃사공의 창고': '🧰 Boatman\'s Shed',
   '🚪 마을로': '🚪 To the Village',
   '나루터': 'Boat Dock',
-  '정박한 나룻배에 다가가 액션(Space)을 누르면 강을 내려가요! 배는 알아서 흘러가니 ⬅️➡️ 좌우로 피하기만 하면 돼요. 액션을 누르면 노를 힘껏 저어 잠깐 빨라져요. ⭐별조각을 모아 🧰창고에서 배를 강화하세요. 하루 3번 탈 수 있어요.': 'Walk up to the moored rowboat and press Action (Space) to ride down the river! The boat drifts on its own — just dodge ⬅️➡️ left and right. Press Action to row hard for a quick burst of speed. Collect ⭐Star Shards to upgrade your boat at the 🧰Shed. You can ride 3 times a day.',
+  '나룻배 앞에서 액션 → 강 내려가기 (하루 3번)\n⬅️➡️ 좌우로 피하고, 액션으로 노 저어 스퍼트!\n⭐별조각을 모아 🧰창고에서 배를 강화해요': 'Press action at the ferry to ride downriver (3 times a day)\n⬅️➡️ Dodge left and right, and press action to row for a burst!\nCollect ⭐star shards to upgrade the boat at the 🧰 shed',
+  // ↑ 힌트 모달은 위 3줄 전체를 한 키로 조회하지만, i18n_check.mjs 는 JS 문자열을 줄 단위로 쪼개 검사하므로
+  //   같은 문구를 줄 단위로도 등록해 "빠짐 후보" 오탐을 없앤다(런타임 매칭에는 영향 없음).
+  '나룻배 앞에서 액션 → 강 내려가기 (하루 3번)': 'Press action at the ferry to ride downriver (3 times a day)',
+  '⬅️➡️ 좌우로 피하고, 액션으로 노 저어 스퍼트!': '⬅️➡️ Dodge left and right, and press action to row for a burst!',
+  '⭐별조각을 모아 🧰창고에서 배를 강화해요': 'Collect ⭐star shards to upgrade the boat at the 🧰 shed',
   '이미 최고 단계예요': 'Already at max level',
   '⭐별조각이 부족해요 — {0}/{1}': '⭐Not enough Star Shards — {0}/{1}',
   '🪙코인이 부족해요 — {0}/{1}': '🪙Not enough Coins — {0}/{1}',

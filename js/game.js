@@ -3411,7 +3411,7 @@ function enterRiver() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('riverDock', '🛶', '나루터',
-    '정박한 나룻배에 다가가 액션(Space)을 누르면 강을 내려가요! 배는 알아서 흘러가니 ⬅️➡️ 좌우로 피하기만 하면 돼요. 액션을 누르면 노를 힘껏 저어 잠깐 빨라져요. ⭐별조각을 모아 🧰창고에서 배를 강화하세요. 하루 3번 탈 수 있어요.');
+    '나룻배 앞에서 액션 → 강 내려가기 (하루 3번)\n⬅️➡️ 좌우로 피하고, 액션으로 노 저어 스퍼트!\n⭐별조각을 모아 🧰창고에서 배를 강화해요');
   Sound.blip();
   trackEvent('boat_enter', { runs_left: boatRunsLeft(), night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
