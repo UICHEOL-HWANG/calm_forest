@@ -981,6 +981,10 @@ let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
 let lastNearHouse = false; // 🎨 집 근처 여부(외관 꾸미기 버튼 표시) 변화 감지
 let placingDecor = null;   // 배치 중인 가구 id
 let decorRot = 0;          // 배치 방향(0~3 → 90°씩) — 가로/세로 전환
+let decorGhost = null;     // 🫥 바닥 미리보기(반투명 가구 + 초록 링) — 놓일 자리·방향을 미리 보여준다
+let decorTarget = { x: 0, z: 0, pinned: false }; // 놓일 자리. pinned=false 면 캐릭터 발 앞을 따라다닌다
+let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot} — 취소·퇴장 시 제자리로
+let decorTapHintShown = false; // "여기 놓을까요?" 안내는 배치 1회당 한 번만
 let interiorGroup, interiorFloor, interiorLamp;
 const decorMeshes = [];    // 배치된 가구 메시
 
@@ -1383,11 +1387,12 @@ export const Input = {
     if (m) startEmote(m[0], m[1]);
     if (e === '❤️' || e === '🎵') Sound.harvest(); else Sound.blip();
   },
-  selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
-  cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },   // (맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
-  rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); return decorRot; }, // 가로/세로 회전
+  selectDecor(id) { startDecorPlacing(id); },     // 가구 선택 → 손에 들고 + 바닥 고스트 미리보기
+  cancelDecor() { stopDecorPlacing(true); },      // 들어 올린 가구였다면 제자리로
+  rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); updateDecorGhost(); return decorRot; }, // 가로/세로 회전(고스트도 같이)
   getDecorRot() { return decorRot; },
   isIndoor() { return indoor; },
+  hintSeen(key) { return !!gameState.hintsSeen[key]; },   // 첫 안내 1회 판정(🎨 가구 배치 단계 안내 등)
 };
 
 // =============================================================
@@ -5315,11 +5320,11 @@ function decorMesh(id) {
   return g;
 }
 
-// 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음)
-function placeDecor(id, wx, wz, silent = false, rot = null) {
+// 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음) · free=true 면 옮겨 놓기(비용 없음)
+function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
   const ry = (rot == null ? decorRot : rot) % 4;
-  if (!silent) {
+  if (!silent && !free) {
     const pay = def.pay || 'crop';                          // 화폐: 작물 or 물고기
     if ((gameState.inventory[pay] || 0) < def.cost) {
       ui.toast?.(pay === 'fish' ? `물고기가 부족해요 (필요 ${def.cost} 🐟)` : `작물이 부족해요 (필요 ${def.cost} 🥕)`);
@@ -5328,31 +5333,112 @@ function placeDecor(id, wx, wz, silent = false, rot = null) {
     gameState.inventory[pay] -= def.cost; refreshInventoryUI();
   }
   const m = decorMesh(id);
-  const lx = Math.max(INT.x - INT_HALF + 0.5, Math.min(INT.x + INT_HALF - 0.5, wx));
-  const lz = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.5, wz));
+  const lx = decorClampX(wx), lz = decorClampZ(wz);
   m.position.set(lx, 0.2, lz);
   m.rotation.y = ry * Math.PI / 2;
+  const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry };
+  m.userData.rec = rec;                                     // 탭해서 들어 올릴 때 저장 레코드를 같이 뺀다
   scene.add(m); decorMeshes.push(m);
-  gameState.house.decor.push({ id, x: lx - INT.x, z: lz - INT.z, rot: ry });
+  gameState.house.decor.push(rec);
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
-    ui.act?.('decor');                       // 튜토리얼: 가구 배치
-    trackEvent('place_decor', { item: id }); // [GA4]
-    placingDecor = null;                     // 한 번 놓으면 배치 모드 종료
-    setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구로
+    if (free) trackEvent('move_decor', { item: id });    // [GA4] 옮겨 놓기
+    else { ui.act?.('decor'); trackEvent('place_decor', { item: id }); } // 튜토리얼: 가구 배치
+    pickedDecor = null;                      // 들었던 가구는 새 자리에 놓였다(제자리 복귀 불필요)
+    stopDecorPlacing(false);                 // 한 번 놓으면 배치 모드 종료(고스트 제거·손에 든 가구 → 원래 도구)
     ui.onDecorPlaced?.();                    // 액션버튼 아이콘 복원(가구 제거)
+    requestSave();
   }
   return true;
 }
+function decorClampX(x) { return Math.max(INT.x - INT_HALF + 0.5, Math.min(INT.x + INT_HALF - 0.5, x)); }
+function decorClampZ(z) { return Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.5, z)); }
 
-// 바닥 탭 → 선택한 가구 배치
-function tryPlaceDecor(e) {
+// ── 🫥 가구 배치 미리보기(고스트) + 놓은 가구 옮기기 ──────────────
+//   손에 든 축소 메시는 실내에 들어오면 맨손(등 수납)이라 화면에서 안 보였다(베타 피드백 "미리보기가 안 보여요").
+//   → 바닥에 반투명 가구 + 초록 링을 띄워 "어디에·어느 방향으로" 놓일지 보여준다.
+//   모바일: 바닥 탭 = 자리 잡기(고스트 이동) → 같은 자리 다시 탭 / 액션 버튼 = 놓기. 탭하기 전엔 발 앞을 따라다닌다.
+//   마우스: 호버로 고스트가 따라오고 클릭 = 놓기(호버가 곧 미리보기).
+//   놓아 둔 가구는 탭하면 다시 들어 올려(비용 없음) 같은 방식으로 옮긴다("소파 위치 변경 어떻게 해요").
+function startDecorPlacing(id, picked = null) {
+  placingDecor = id; pickedDecor = picked; decorTapHintShown = false;
+  setHeldDecor(id);
+  if (picked) decorTarget = { x: picked.wx, z: picked.wz, pinned: true };   // 들어 올린 자리에서 시작
+  else decorTarget.pinned = false;
+  buildDecorGhost(id);
+}
+function stopDecorPlacing(putBack) {
+  if (pickedDecor && putBack) placeDecor(pickedDecor.id, pickedDecor.wx, pickedDecor.wz, true, pickedDecor.rot); // 들었던 가구는 제자리로
+  pickedDecor = null; placingDecor = null; decorTarget.pinned = false;
+  removeDecorGhost();
+  setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구(맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
+}
+function buildDecorGhost(id) {
+  removeDecorGhost();
+  const g = decorMesh(id);
+  g.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = false; o.receiveShadow = false;
+    o.material = o.material.clone();
+    o.material.transparent = true; o.material.opacity = 0.45; o.material.depthWrite = false;
+  });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.72, 28),
+    new THREE.MeshBasicMaterial({ color: 0x7fce8b, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
+  g.rotation.y = decorRot * Math.PI / 2;
+  scene.add(g); decorGhost = g; updateDecorGhost();
+}
+function removeDecorGhost() {
+  if (!decorGhost) return;
+  scene.remove(decorGhost);
+  decorGhost.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  decorGhost = null;
+}
+// 매 프레임: 핀 고정이 아니면 캐릭터 발 앞 1.3 을 따라다닌다(걸어가서 버튼으로 놓기)
+function updateDecorGhost() {
+  if (!decorGhost) return;
+  if (!decorTarget.pinned) {
+    decorTarget.x = decorClampX(player.position.x + Math.sin(player.rotation.y) * 1.3);
+    decorTarget.z = decorClampZ(player.position.z + Math.cos(player.rotation.y) * 1.3);
+  }
+  decorGhost.position.set(decorTarget.x, 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);
+  decorGhost.rotation.y = decorRot * Math.PI / 2;
+}
+function floorHitFromEvent(e) {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObject(interiorFloor, false)[0];
-  if (hit) placeDecor(placingDecor, hit.point.x, hit.point.z);
+  return hit ? hit.point : null;
+}
+// 배치 중 바닥 탭/클릭
+function onDecorFloorTap(e) {
+  const p = floorHitFromEvent(e); if (!p) return;
+  const x = decorClampX(p.x), z = decorClampZ(p.z);
+  if (e.pointerType === 'mouse') return commitDecor(x, z);   // 마우스: 호버로 이미 봤으니 클릭 = 놓기
+  if (decorTarget.pinned && Math.hypot(x - decorTarget.x, z - decorTarget.z) < 0.8) return commitDecor(decorTarget.x, decorTarget.z); // 고스트 자리 다시 탭 = 놓기
+  decorTarget = { x, z, pinned: true }; Sound.blip(); ui.onDecorAimed?.();
+  if (!decorTapHintShown) { decorTapHintShown = true; ui.toast?.('여기 놓을까요? 한 번 더 탭하거나 오른쪽 버튼으로 놓기'); }
+}
+// 배치 확정(바닥 탭·액션 버튼·Space 공통). 재료가 부족하면 배치 모드를 유지한다
+function commitDecor(x, z) { placeDecor(placingDecor, x, z, false, null, !!pickedDecor); }
+// 놓아 둔 가구 탭 → 들어 올리기(저장 레코드도 같이 뺀다)
+function tryPickDecor(e) {
+  if (!decorMeshes.length) return false;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(decorMeshes, true)[0]; if (!hit) return false;
+  let root = hit.object; while (root.parent && !decorMeshes.includes(root)) root = root.parent;
+  const rec = root.userData.rec; if (!rec) return false;
+  scene.remove(root); decorMeshes.splice(decorMeshes.indexOf(root), 1);
+  const i = gameState.house.decor.indexOf(rec); if (i >= 0) gameState.house.decor.splice(i, 1);
+  decorRot = rec.rot || 0;
+  startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot });
+  Sound.blip(); trackEvent('pick_decor', { item: rec.id }); // [GA4] 옮기기 시작
+  ui.onDecorPicked?.(DECOR.find(d => d.id === rec.id));
+  return true;
 }
 
 // ── 작업대(요리) ─────────────────────────────────────────────
@@ -6848,7 +6934,7 @@ function enterHouse() {
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
-  indoor = false; placingDecor = null;
+  indoor = false; stopDecorPlacing(true);   // 들고 있던 가구는 제자리로
   player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
@@ -7034,8 +7120,16 @@ function initInput() {
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   renderer.domElement.addEventListener('pointerdown', (e) => {
-    if (indoor && placingDecor) { tryPlaceDecor(e); return; } // 실내 가구 배치 중이면 바닥 탭 = 배치
+    if (indoor && placingDecor) { onDecorFloorTap(e); return; } // 실내 가구 배치 중: 탭 = 자리 잡기 / 클릭 = 놓기
+    if (indoor && tryPickDecor(e)) return;                      // 놓아 둔 가구 탭 → 들어 올려 옮기기
     wantAction = true;
+  });
+  // 마우스 호버 → 고스트가 커서를 따라간다(호버가 곧 미리보기). 터치는 탭으로 자리 잡기
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!indoor || !placingDecor || e.pointerType !== 'mouse') return;
+    const p = floorHitFromEvent(e); if (!p) return;
+    decorTarget = { x: decorClampX(p.x), z: decorClampZ(p.z), pinned: true };
+    ui.onDecorAimed?.();
   });
 }
 
@@ -7148,6 +7242,7 @@ function animate() {
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
   updatePops(dt);
+  updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
@@ -7318,7 +7413,7 @@ function updatePlayer(dt, t) {
   }
 
   // 🎒 도구 수납 — ✋맨손이면 등으로, 아니면 손으로. 툭 사라지지 않게 0.25초쯤 걸려 옮긴다
-  const stowWant = (toolPage === 'none') ? 1 : 0;
+  const stowWant = (toolPage === 'none' && !placingDecor) ? 1 : 0;   // 가구를 고른 동안은 손에 들어 보이게
   if (toolStow !== stowWant) toolStow = Math.max(0, Math.min(1, toolStow + (stowWant ? dt * 4 : -dt * 4)));
 
   // 액션 제스처: 도구질 = 백스윙 → 휙 내려침 → 팔로스루 / 맨손 줍기 = 허리를 접었다 편다
@@ -8013,7 +8108,7 @@ function handleAction() {
   }
   // 실내에선 도구질(밭갈기·낚시 등) 금지 — 가구 배치만(선택 중이면 발 앞에 놓기)
   if (indoor) {
-    if (placingDecor) placeDecor(placingDecor, player.position.x, player.position.z);
+    if (placingDecor) commitDecor(decorTarget.x, decorTarget.z);   // 고스트 자리(탭한 곳 또는 발 앞)에 놓기
     else ui.toast?.('🎨 꾸미기 버튼으로 가구를 골라 배치하세요');
     return;
   }

@@ -148,6 +148,7 @@
   body:not(.playing) #npc-prompt,
   body:not(.playing) #talk-btn,
   body:not(.playing) #coach,
+  body:not(.playing) #decor-guide,
   body:not(.playing) #door-prompt,
   body:not(.playing) #fish-prompt,
   body:not(.playing) #zone-prompt,
@@ -397,6 +398,18 @@
   #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
   /* 배너가 떠 있는 동안 토스트는 그 아래로 내려 겹침 방지 */
   body.hintbanner #toast { top: calc(158px + var(--toss-reserve)); }
+  /* 🎨 첫 가구 배치 단계 안내(1회) — 시설 배너 자리에 코치 모양으로. 코치가 떠 있으면 코치 문구를 대신 바꿔 쓴다 */
+  #decor-guide { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
+    display: none; flex-direction: column; gap: 5px; text-align: left; pointer-events: none; border: 2px solid var(--mint); }
+  #decor-guide.show { display: flex; }
+  #dg-text { font-size: 13px; font-weight: 700; }
+  #dg-dots { display: flex; gap: 5px; font-size: 10px; }
+  #dg-dots span { color: rgba(0,0,0,0.18); }
+  #dg-dots .done { color: #6fd08c; }
+  #dg-dots .cur { color: #ffab3d; }
+  body.decor-guide #toast { top: calc(158px + var(--toss-reserve)); }
+  body.decor-guide #hint-banner { display: none !important; }   /* 단계 안내가 슬롯을 쓰는 동안 시설 배너는 뒤로 */
+  body.menu-open #decor-guide { display: none !important; }      /* 꾸미기 메뉴가 열려 있으면 메뉴가 곧 안내 */
 
   /* 조작 도움말(데스크톱만) — 하단 중앙, 도구바 위. 잠시 뒤 자동으로 사라짐 */
   #hint { bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .82; white-space: nowrap; animation: hintFade .8s ease 8s forwards; }
@@ -524,6 +537,10 @@
     #sc-goal { font-size: 11.5px; }
     /* 📱 컨텍스트 슬롯(12px, 162px) — 코치 > 시설 배너 > 메인 퀘스트 칩 순으로 한 자리를 나눠 쓴다.
        가운데 띠(캐릭터)는 비우고, 오른쪽 버튼 열(문의하기·도감 ≈150px)은 침범하지 않는다. */
+    #decor-guide { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
+    #dg-text { font-size: 12.5px; }
+    body.decor-guide #story-chip { display: none !important; }   /* 슬롯 우선순위: 코치 > 단계 안내 > 시설 배너 > 퀘스트 칩 */
+    body.decor-guide #toast { top: calc(270px + var(--top-inset)); }   /* 안내 카드(≈95px) 아래 */
     #coach { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px);
              text-align: left; align-items: flex-start; padding: 9px 11px; }
     #coach-text { font-size: 12.5px; }
@@ -967,6 +984,8 @@
   <div id="toast" class="panel"></div>
 
   <!-- 🪧 시설 첫 접근 배너 (비차단 — 입력을 받지 않고 자동으로 사라짐) -->
+  <!-- 🎨 첫 가구 배치 단계 안내(1회) -->
+  <div id="decor-guide" class="panel"><div id="dg-text"></div><div id="dg-dots"></div></div>
   <div id="hint-banner" class="panel">
     <span class="hb-ico" id="hb-ico">🌿</span>
     <div style="min-width:0;">
@@ -1008,7 +1027,7 @@
   <div id="decor-menu" class="panel">
     <div class="dm-head">🎨 집 꾸미기 <span id="dm-crop"></span></div>
     <div id="dm-items"></div>
-    <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>(또는 <b>Space</b>)해 배치 · <b>↻ 회전</b> 버튼/<b>R</b>키로 가로·세로 전환 · 🥕작물/🐟물고기로 구매</div>
+    <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>해 자리를 잡고, 오른쪽 버튼(또는 Space)으로 놓기 · 놓은 가구는 <b>탭하면 다시 들어</b> 옮길 수 있어요 · <b>↻ 회전</b>/R키로 가로·세로 전환 · 🥕작물/🐟물고기로 구매</div>
     <div class="dm-actions"><button id="dm-cancel">배치 취소</button><button id="dm-close">닫기</button></div>
   </div>
 
@@ -1837,7 +1856,13 @@
         layoutPrompts();
       },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
-      onDecorPlaced() { stopPlacing(); },
+      onDecorPlaced() {
+        stopPlacing();
+        if (decorGuideStep >= 0) { setDecorGuide(3); decorGuideTimer = setTimeout(endDecorGuide, 6000); }   // ④ 옮기는 법 6초 뒤 졸업
+      },
+      onDecorAimed() { if (decorGuideStep === 1) setDecorGuide(2); },   // ③ 놓기
+      // 놓아 둔 가구를 탭해 들어 올림 → 액션버튼 = 그 가구(다시 놓기)
+      onDecorPicked(d) { if (decorGuideStep >= 0) endDecorGuide(); placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요 — 바닥을 탭해 옮긴 뒤 버튼으로 놓기`); },
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
@@ -1991,7 +2016,8 @@
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
         document.body.classList.toggle('indoor', on);
-        if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); stopPlacing(); }
+        if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); stopPlacing(); setDecorGuide(-1); }
+        else startDecorGuideIfNew();   // 🎨 첫 방문이면 단계 안내 ①
       },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
@@ -2058,6 +2084,35 @@
       { key: 'decor',   text: `⑰ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
     ];
     let tutIdx = -1;
+    // ── 🎨 첫 가구 배치 단계 안내(1회) — "소파 어떻게 옮겨요?"·"미리보기가 안 보여요" 베타 피드백
+    //   집에 처음 들어오면 ①부터, 행동할 때마다 다음 단계로. 놓고 나면 ④(옮기는 법)를 잠깐 보여주고 졸업.
+    //   튜토리얼 코치가 ⑰꾸미기 단계로 떠 있으면 새 카드를 띄우지 않고 코치 문구를 단계별로 바꿔 쓴다(슬롯 충돌 방지).
+    const DECOR_GUIDE = TOUCH ? [
+      '① 아래 🎨 꾸미기 버튼을 눌러 가구를 골라요',
+      '② 바닥을 탭해 놓을 자리를 잡아요 — 초록 링이 놓일 자리예요',
+      '③ 오른쪽 가구 버튼(또는 자리를 한 번 더 탭)으로 놓기 · ↻ 회전',
+      '④ 놓은 가구는 탭하면 다시 들어 옮길 수 있어요',
+    ] : [
+      '① 아래 🎨 꾸미기 버튼을 눌러 가구를 골라요',
+      '② 마우스를 움직여 놓을 자리를 잡아요 — 초록 링이 놓일 자리예요',
+      '③ 클릭(또는 Space)으로 놓기 · R 회전',
+      '④ 놓은 가구는 클릭하면 다시 들어 옮길 수 있어요',
+    ];
+    let decorGuideStep = -1, decorGuideTimer = null;   // -1 = 꺼짐
+    function renderDecorGuide() {
+      const el = $('decor-guide');
+      const off = () => { el.classList.remove('show'); document.body.classList.remove('decor-guide'); };
+      if (decorGuideStep < 0) { off(); return; }
+      const text = DECOR_GUIDE[decorGuideStep];
+      if (tutIdx >= 0 && TUT_STEPS[tutIdx].key === 'decor') { $('coach-text').textContent = text; off(); return; }   // 코치 슬롯 재사용
+      $('dg-text').textContent = text;
+      $('dg-dots').innerHTML = DECOR_GUIDE.map((_, i) =>
+        `<span class="${i < decorGuideStep ? 'done' : i === decorGuideStep ? 'cur' : ''}">●</span>`).join('');
+      el.classList.add('show'); document.body.classList.add('decor-guide');
+    }
+    function setDecorGuide(step) { clearTimeout(decorGuideTimer); decorGuideStep = step; renderDecorGuide(); }
+    function endDecorGuide() { Input.markHintsSeen?.(['decorGuide']); setDecorGuide(-1); }
+    function startDecorGuideIfNew() { if (Input.hintSeen?.('decorGuide') || decorGuideStep >= 0) return; setDecorGuide(0); }
     // 단계가 지시하는 도구 — 그 도구가 있는 🎒 페이지를 미리 펴 준다.
     //   안내문은 "🪓도끼(1)" 처럼 번호로 말하는데, 모바일엔 숫자키가 없어 다른 페이지 도구는 손이 닿지 않는다.
     const TUT_TOOL = { chop: 'axe', till: 'hoe', seed: 'seed', water: 'water', harvest: 'sickle',
@@ -2069,6 +2124,7 @@
       // A군 영어 표시는 번호 차이로 번역 키 미스가 날 수 있으나 베타 대상자는 전원 한국어 사용자라 허용.
       const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰';
       $('coach-text').textContent = TUT_STEPS[tutIdx].text.replace(/^[①-⑰]/, CIRC[tutIdx]);
+      if (decorGuideStep >= 0) renderDecorGuide();   // 🎨 단계 안내가 켜져 있으면 코치 문구를 단계별로
       $('coach-dots').innerHTML = TUT_STEPS.map((_, i) =>
         `<span class="${i < tutIdx ? 'done' : i === tutIdx ? 'cur' : ''}">●</span>`).join('');
     }
@@ -2200,7 +2256,10 @@
           if (have < d.cost) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)
-          ui.toast(`${d.ico} ${d.name} — 바닥을 탭하거나 오른쪽 버튼으로 놓기`);
+          if (decorGuideStep >= 0) setDecorGuide(1);              // 단계 안내 ② 자리 잡기
+          ui.toast(document.body.classList.contains('is-touch')
+            ? `${d.ico} ${d.name} — 바닥을 탭해 자리 잡고, 버튼으로 놓기`
+            : `${d.ico} ${d.name} — 바닥에 놓을 자리를 클릭 · R 회전`);
         });
         box.appendChild(el);
       });
@@ -2210,7 +2269,7 @@
     function stopPlacing() { placingDecorItem = null; refreshActionIcon(); }
     $('decor-btn').addEventListener('click', openDecor);
     $('dm-close').addEventListener('click', closeDecor);
-    $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); stopPlacing(); ui.toast('배치를 취소했어요'); closeDecor(); });
+    $('dm-cancel').addEventListener('click', () => { const was = !!placingDecorItem; Input.cancelDecor(); stopPlacing(); if (was) ui.toast('배치를 취소했어요'); closeDecor(); if (decorGuideStep > 0 && decorGuideStep < 3) setDecorGuide(0); });
     // 가구 회전(가로/세로) — 버튼 + R 키
     function rotatePlacing() { if (!placingDecorItem) return; const r = Input.rotateDecor(); ui.toast(`↻ 방향 ${r * 90}°`); }
     $('rotate-btn').addEventListener('click', rotatePlacing);
