@@ -58,11 +58,20 @@ def test_sample_size_near_measured():
        'cap 이 안 먹어 폭발' 같은 자릿수 사고다.
     """
     df = bq.read_sql_file(SQL, cap=CAP)
+    # 2026-09-06 자동 테스트 제외 후 656건(제외 전 724). 400 미만이면 조인이 망가진 것, 1200 초과면 제외가 풀린 것.
     assert 400 <= len(df) <= 1200, (
         f"표본이 400~1200건 범위를 벗어났다: {len(df)}건 "
         f"(실측 2026-09-04 507건 · 2026-09-06 724건)")
     n = df.groupby("trigger_kind").size()
     assert n["time15"] > 150 and n["quest"] > 150, f"트리거별 표본이 무너졌다: {dict(n)}"
+
+
+def test_time15_base_rate_is_not_inflated_by_test_sessions():
+    """2026-09-06 G2 실측: 자동 테스트 68행이 섞이면 time15 기저율이 0.553, 빼면 0.440.
+    이 값이 다시 0.50 을 넘으면 자동 테스트 세션이 표본에 되돌아온 것이다."""
+    df = bq.read_sql_file(SQL, cap=CAP)
+    r = df.loc[df.trigger_kind == "time15", "y"].mean()
+    assert 0.30 <= r <= 0.50, f"time15 기저율 {r:.3f} — 자동 테스트 세션 재유입 의심"
 
 
 def test_trigger_base_rates_differ():

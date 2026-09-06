@@ -50,6 +50,16 @@ session_meta AS (
   GROUP BY session_id
 ),
 
+-- 🔴 2026-09-06 세그먼트 분석 G1~G3 — 자동 테스트 세션 제외
+--    8/31·9/1 `?house=6` 자동 테스트 게스트가 좌표만 남기고 GA4 에는 아무 이벤트도 없다(61세션 + 기타 7).
+--    이들이 학습 양성 라벨의 28%를 차지해 AUC 를 0.77 로 부풀리고 time15 임계값을 0.553 으로 올려놓았다.
+--    실제 사람 세션은 GA4 에 user_id 가 반드시 있으므로(로그인 이벤트) 그것으로 가른다.
+ga_uids AS (
+  SELECT DISTINCT user_id
+  FROM `calm-forest.analytics_547127440.events_*`
+  WHERE user_id IS NOT NULL
+),
+
 sampled AS (
   -- 클라이언트당 상한. FARM_FINGERPRINT 시드 고정이라 재실행해도 같은 표본.
   SELECT * EXCEPT(rn2) FROM (
@@ -57,6 +67,7 @@ sampled AS (
            ROW_NUMBER() OVER (PARTITION BY client_id ORDER BY FARM_FINGERPRINT(session_id)) AS rn2
     FROM session_meta m
     WHERE m.pts >= 10                   -- 롤링 10행 윈도를 채울 수 있는 세션만
+      AND m.user_id IN (SELECT user_id FROM ga_uids)   -- GA4 에 흔적이 있는 사람 세션만(자동 테스트 제외)
   )
   WHERE rn2 <= @cap
 ),
