@@ -30,4 +30,5 @@ infra/airflow/secrets/
 
 # superpowers SDD 작업 공간(원장·브리프·리뷰 패키지) — 커밋 금지
 .superpowers/
-ml/artifacts/   # W&B 아티팩트 다운로드 캐시(fetch_coef.py)
+# W&B 아티팩트 다운로드 캐시(fetch_coef.py)
+ml/artifacts/
