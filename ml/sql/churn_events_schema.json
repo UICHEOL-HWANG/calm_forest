@@ -1,0 +1,28 @@
+[
+  {"name": "at", "type": "TIMESTAMP", "mode": "NULLABLE"},
+  {"name": "session_id", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "client_id", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "variant", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "arm", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "trigger", "type": "STRING", "mode": "NULLABLE"},
+  {
+    "name": "features",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {"name": "path_len", "type": "FLOAT", "mode": "NULLABLE"},
+      {"name": "net_disp", "type": "FLOAT", "mode": "NULLABLE"},
+      {"name": "wander_ratio", "type": "FLOAT", "mode": "NULLABLE"},
+      {"name": "yaw_total", "type": "FLOAT", "mode": "NULLABLE"},
+      {"name": "mouse_travel", "type": "FLOAT", "mode": "NULLABLE"},
+      {"name": "idle_ratio", "type": "FLOAT", "mode": "NULLABLE"},
+      {"name": "is_first_session", "type": "INTEGER", "mode": "NULLABLE"},
+      {"name": "trigger_kind", "type": "INTEGER", "mode": "NULLABLE"}
+    ]
+  },
+  {"name": "p", "type": "FLOAT", "mode": "NULLABLE"},
+  {"name": "intervene", "type": "BOOLEAN", "mode": "NULLABLE"},
+  {"name": "model_version", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "origin", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "ua", "type": "STRING", "mode": "NULLABLE"}
+]
