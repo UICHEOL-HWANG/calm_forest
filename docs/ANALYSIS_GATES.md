@@ -11,6 +11,17 @@
 
 📄 **[설계서](superpowers/specs/2026-09-04-churn-intervention-design.md)** · 📊 **판정 노트북** `ml/notebooks/04_churn_model.ipynb`
 
+### 🧭 세그먼트 분석 — G1 데이터 신뢰성 (2026-09-06) · 통과, H1 기각, 🔴 표본 오염 발견
+
+**시작 전 기준**: 표본 724건에 기기 종류(GA4 `device.category`, `user_id` 조인)가 붙는 비율 ≥ 90% · 모바일/데스크톱 각 ≥ 50건 · 함정 처리 문서화 → **통과** (90.6% · 모바일 395 · 데스크톱 261 · 기록 없음 68).
+
+- **H1 "`mouse_travel` 은 기기 종류의 대리변수" → 기각(반증 조건 ①).** 폰에서도 터치 좌표가 `mouse_x/y` 로 찍힌다.
+  모바일 표준편차 318 vs 데스크톱 522(비 0.61 ≥ 0.5), 중앙값은 모바일 510 > 데스크톱 237. 기기 안에서 이탈률도 데스크톱 25% · 모바일 23% 로 차이 없음(윌슨 구간 겹침).
+- 🔴 **GA4 기록이 없는 68세션의 정체 — 자동 테스트 게스트.** 68세션 중 61세션이 8/31·9/1, 96% 게스트, 65 클라이언트, 중앙값 21행·19초, 전부 `time15` 트리거. 이탈률 **91%(62/68)**.
+  **양성 라벨 174건 중 62건(36%)이 이 무리다.** 지금 모델이 "자동 테스트 = 이탈"을 일부 학습했을 가능성이 있다. `train_churn.py`·API 는 그대로 두고, 표본 정의(`ml/sql/churn_trigger_sample.sql`)에서 뺄지는 사용자 결정.
+- 기록: W&B `g1-device-coverage` · 차트 `ml/reports/figs/g1_mouse_travel_by_device.png`, `g1_churn_by_device.png` · 스크립트는 세션 스크래치(노트북 정리는 G2 이후).
+- **다음 결정(G2 전 확정)**: 자동 테스트 세션 제외 규칙 — 후보 A "세션 `user_id` 에 GA4 이벤트가 0건", 후보 B "8/31~9/1 게스트". 제외하면 `time15` 기저율·임계값이 바뀌므로 재학습·`coef.json` 교체가 따라온다.
+
 ### 배포된 것
 
 - **추론 API** — `lab.calmforest.cloud/predict` · `/health`. `coef.json` 핫리로드 · fail-open 800ms
@@ -18,8 +29,8 @@
   아파지면 그리로 옮긴다 — 설계서 §6)
 - **트리거별 임계값** — `time15` 0.5528 · `quest` 0.1386 (각 트리거의 기저율. 설계서 §4)
 - **학습 표본 적립** — API 가 판정에 **실제로 쓴** 피처를 JSONL 로 append(학습/서빙 스큐 차단, 설계서 §9)
-- **Airflow DAG 2개 파싱 확인** — 주 1회 재학습 + 야간 적립분 BQ 업로드. **아직 paused**
-- **클라이언트 배선** — `js/predict.js`(롤링 윈도·트리거 2종·개입 배너). 브랜치 `experiment` 에만 있다
+- **Airflow DAG 2개 가동 중**(2026-09-06 unpause) — 주 1회 재학습 + 야간 적립분 BQ 업로드. 수동 학습 성공: W&B `4a24hwra`, `coef.json` 교체 → API `model_version` 2026-09-06T06:31:34Z 핫리로드 확인
+- **클라이언트 배선** — `js/predict.js`(롤링 윈도·트리거 2종·개입 배너). `dev` 에 병합됨(2026-09-06, 991295b). `main` 병합·`wrangler deploy` 전까지 실서비스에선 안 돈다
 
 ### 실측 (2026-09-06 · 노트북이 그 자리에서 계산한 값)
 
@@ -47,16 +58,15 @@ GA4·JSONL 필드 `arm`(`treat`/`control`). 베타 번들 A/B(`variant`)와 **�
 테스터 10명으로는 사람 단위 분할을 두 개 버틸 수 없다.
 설계서 §8 의 "배정은 기존 `state.variant` 재사용" 문장은 이 결정으로 대체됐다.
 
-### 인수인계 — 사용자가 해야 할 것 4건
+### 인수인계 — 사용자가 해야 할 것 (2026-09-06 갱신)
 
-1. **Airflow 이미지 재빌드.** 돌고 있는 이미지에 `scikit-learn`·`bigquery` 가 없다.
-   `cd /opt/airflow && sudo docker compose up -d --build`
-2. **비밀값 배치 후 DAG 해제.** `/opt/airflow/secrets/gcp_sa.json` 을 두고
-   `/opt/airflow/.env` 에 `WANDB_API_KEY` 를 넣은 뒤 `churn_*` DAG 2개를 unpause 한다.
+1. ~~Airflow 이미지 재빌드~~ ✅ 완료(2026-09-06).
+2. ~~비밀값 배치 후 DAG 해제~~ ✅ 완료(2026-09-06). 키 `65be125f…` 그대로 사용 — 재발급 시 GH Actions `GCP_SA_KEY` 도 교체.
 3. **로컬 테스트 세션 제외.** `churn_events` 에서 2026-09-06 에 들어간 아래 행을 뺀다 —
    `session_id` = `sess-sbj9ynmqkkjmtpbku2z`, 게스트 `user_id` = `f91e904d-9004-4bd8-bc91-ced6eba10851`
    · `4135ff5c-23bb-4653-96b7-df564ff5a7ab`, 그리고 `client_id`/`session_id` 가 `smoke` 인 행 전부.
-4. **`experiment` → `dev`/`main` 병합.** 클라이언트 배선이 아직 이 브랜치에만 있다.
+4. **`dev` → `main` 병합 + `npx wrangler deploy` + push.** `experiment` → `dev` 는 병합됨(991295b). 배포 전엔 게임에서 예측 요청이 안 나간다.
+5. **GA4 커스텀 차원 등록** — `arm` `p` `trigger` `shown` `model_version`(안 하면 `churn_score` 파라미터가 보고서에 안 뜬다).
 
 ### 확정된 것
 
