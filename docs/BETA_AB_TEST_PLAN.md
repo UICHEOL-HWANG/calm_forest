@@ -185,7 +185,7 @@ export const TUNING = {
 - `dev` → `main` 병합 · `npx wrangler deploy`
 
 **실행 명령 (사용자)**
-1. 배정 SQL 만들기: `node scripts/beta-roster.mjs a@x.com b@x.com … (10개)` → 출력을 복사
+1. 배정 SQL 만들기: `node scripts/beta-roster.mjs a@x.com b@x.com …` (4명 이상이면 수는 자유 — 번들 반반, 맵 순서 교차) → 출력을 복사. 예비 인원은 나중에 같은 명령으로 다시 돌려 붙이면 덮어쓰기됨
 2. Supabase SQL 편집기에서 순서대로 실행: `sql/admin_analytics.sql` §베타 전체(컬럼·일지 테이블·RPC) → 1번 출력
 2-1. Supabase 대시보드 → Authentication → URL Configuration → Redirect URLs 에 `https://calmforest.cloud/beta/diary.html` 추가(안 하면 일지 페이지의 구글 로그인 복귀가 막힌다)
 3. 로컬 확인: `?forceVariant=beta_A&forceMapOrder=sea_first&betaDay=2` (localhost 전용)

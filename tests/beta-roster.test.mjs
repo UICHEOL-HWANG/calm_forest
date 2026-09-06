@@ -30,8 +30,23 @@ test('이메일은 소문자·중복 없음, 같은 시드면 같은 결과', ()
   assert.equal(new Set(a.map(r => r.email)).size, 10);
 });
 
-test('10명이 아니면 던진다', () => {
-  assert.throws(() => assignRoster(EMAILS.slice(0, 9)), /10/);
+test('4명 미만이면 던진다 (맵 순서를 엇갈리게 할 수 없다)', () => {
+  assert.throws(() => assignRoster(EMAILS.slice(0, 3)), /4/);
+});
+
+test('인원이 10명이 아니어도 최대한 고르게 나눈다 — 7명: A4/B3, sea_first A2/B1', () => {
+  const rows = assignRoster(EMAILS.slice(0, 7), seeded());
+  assert.equal(rows.filter(r => r.grp === 'A').length, 4);
+  assert.equal(rows.filter(r => r.grp === 'B').length, 3);
+  assert.equal(rows.filter(r => r.grp === 'A' && r.map_order === 'sea_first').length, 2);
+  assert.equal(rows.filter(r => r.grp === 'B' && r.map_order === 'sea_first').length, 1);
+});
+
+test('12명: A6/B6, sea_first A3/B3 — 짝수면 번들 안에서도 반반', () => {
+  const rows = assignRoster([...EMAILS, 'k@x.com', 'l@x.com'], seeded());
+  assert.equal(rows.filter(r => r.grp === 'A').length, 6);
+  assert.equal(rows.filter(r => r.grp === 'A' && r.map_order === 'sea_first').length, 3);
+  assert.equal(rows.filter(r => r.grp === 'B' && r.map_order === 'sea_first').length, 3);
 });
 
 test('SQL 은 insert 한 문장 + on conflict 갱신', () => {
