@@ -26,6 +26,7 @@ export const state = {
   variant: 'control',  // A/B 변형(실험 off면 control)
   createdAt: null,     // 계정 생성 시각(ISO) — 보상 부스트(가입 3일) 기준
   mapOrder: null,      // 🧪 베타 2차 — 맵 여는 순서('sea_first'|'mist_first'), 명단 테이블에서
+  betaReady: Promise.resolve(),  // 명단 조회가 끝나면 resolve — variant/mapOrder 가 확정된 뒤 할 일은 이걸 기다린다
 };
 
 function randId() { return 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
@@ -50,7 +51,7 @@ function applySession(session) {
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
   state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : (session.user.email || session.user.user_metadata?.name || '유저');
   state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : (session.user.app_metadata?.provider || 'google');
-  resolveBetaGroup(session);
+  state.betaReady = resolveBetaGroup(session);
   emit();
 }
 

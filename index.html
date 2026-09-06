@@ -2134,11 +2134,14 @@
       $('coach-dots').innerHTML = TUT_STEPS.map((_, i) =>
         `<span class="${i < tutIdx ? 'done' : i === tutIdx ? 'cur' : ''}">●</span>`).join('');
     }
+    // 🧪 [베타 A군] 재미 단계(낚시·집짓기·꾸미기) 전진 — 스텝 내용은 그대로, 순서만.
+    //   고정 키(TUT_ORDER_A) 기준 정렬이라 여러 번 불러도 결과가 같다(멱등).
+    function applyBetaTutorialOrder() {
+      if (!isBetaA(authState.variant)) return;
+      TUT_STEPS.sort((a, b) => TUNING.TUT_ORDER_A.indexOf(a.key) - TUNING.TUT_ORDER_A.indexOf(b.key));
+    }
     function startCoach() {
-      // 🧪 [베타 A군] 재미 단계(낚시·집짓기·꾸미기) 전진 — 스텝 내용은 그대로, 순서만
-      if (isBetaA(authState.variant)) {
-        TUT_STEPS.sort((a, b) => TUNING.TUT_ORDER_A.indexOf(a.key) - TUNING.TUT_ORDER_A.indexOf(b.key));
-      }
+      applyBetaTutorialOrder();   // 명단 조회가 늦게 끝났을 때를 대비해 여기서도 한 번 더
       Input.armTutorialMove(); tutIdx = 0; renderCoach(); $('coach').classList.add('show');
       document.body.classList.add('coaching');   // 코치 표시 중 → 토스트를 코치 아래로 내림
       trackEvent('tutorial_start'); // [①] 튜토리얼 시작
@@ -2185,10 +2188,17 @@
       trackLogin(authState.provider || 'offline');   // [GA4] 로그인 이벤트
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
-      if (/^beta_/.test(authState.variant || '')) {
+      // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
+      authState.betaReady?.then(() => {
+        if (!/^beta_/.test(authState.variant || '')) return;
         $('diary-btn').style.display = '';
-        $('diary-btn').onclick = () => { trackEvent('diary_open', { day: betaDay(authState.createdAt) }); window.open('/beta/diary.html', '_blank', 'noopener'); };
-      }
+        $('diary-btn').onclick = () => {
+          trackEvent('diary_open', { day: betaDay(authState.createdAt) });
+          const w = window.open('/beta/diary.html', '_blank', 'noopener');
+          if (!w) location.href = '/beta/diary.html';   // 팝업 차단·웹뷰 폴백 — 같은 탭으로
+        };
+        applyBetaTutorialOrder();   // A군 튜토리얼 순서도 같은 시점에 확정
+      });
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
