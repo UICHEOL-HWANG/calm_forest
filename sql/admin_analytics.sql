@@ -34,7 +34,7 @@ set search_path = public
 as $$
 declare
   caller_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
-  admins text[] := array['icuchoel@gmail.com'];  -- ★ 관리자 이메일(소문자)
+  admins text[] := array['icuchoel@gmail.com', 'cheorish.hw@gmail.com'];  -- ★ 관리자 이메일(소문자)
   tz constant text := 'Asia/Seoul';
   allowed boolean := false;
   today date;
@@ -473,7 +473,7 @@ set search_path = public
 as $$
 declare
   caller_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
-  admins text[] := array['icuchoel@gmail.com'];  -- ★ 관리자 이메일(소문자) — cf_admin_overview와 동일하게 유지
+  admins text[] := array['icuchoel@gmail.com', 'cheorish.hw@gmail.com'];  -- ★ 관리자 이메일(소문자) — cf_admin_overview와 동일하게 유지
   tz constant text := 'Asia/Seoul';
   allowed boolean := false;
   since timestamptz;
