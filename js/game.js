@@ -24,7 +24,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
-import { TUNING, rewardBoostMult, easeMult } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용)
+import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -1397,6 +1397,49 @@ export const Input = {
   hintSeen(key) { return !!gameState.hintsSeen[key]; },   // 첫 안내 1회 판정(🎨 가구 배치 단계 안내 등)
 };
 
+// ── 🧪 [베타 2차] 맵 계단식 열기 — 판정은 tuning.js, 여기선 상태만 넘긴다 ──────────
+//    로컬 검증: ?betaDay=3 (localhost 전용, DEV_PARAMS 라 로깅 꺼짐)
+const BETA_DAY_FORCED = (() => {          // 매 프레임 파싱하지 않게 한 번만(프롬프트가 mapLocked 를 프레임마다 부른다)
+  if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return null;
+  const n = Number(_wq.get('betaDay'));
+  return (Number.isFinite(n) && n >= 1) ? n : null;
+})();
+function betaNowMs() {
+  const now = Date.now();
+  // 지금이 forced 일차가 되도록 시계를 통째로 옮긴다 — D1(=max(시작일, 가입일)) 판정은 tuning.js 그대로
+  if (BETA_DAY_FORCED && authState.createdAt) return now + (BETA_DAY_FORCED - betaDay(authState.createdAt, now)) * 86400000;
+  return now;
+}
+function mapLocked(map) {
+  return isMapLocked({ variant: authState.variant, mapOrder: authState.mapOrder,
+                       createdAtIso: authState.createdAt, nowMs: betaNowMs() }, map);
+}
+/** 잠긴 입구에서 액션했을 때 — 토스트 + GA4. true 면 입장을 막는다. */
+function blockIfLocked(map) {
+  if (!mapLocked(map)) return false;
+  const openDay = mapOpenDay(authState.mapOrder, map);
+  ui.toast?.(lockLine(map, openDay));
+  trackEvent('map_locked', { map, day: betaDay(authState.createdAt, betaNowMs()), open_day: openDay });
+  return true;
+}
+/** 열린 날 첫 접속 배너 — 세이브 hintsSeen 으로 1회. 베타가 아니면 아무것도 안 한다. */
+function announceMapOpens() {
+  gameState.hintsSeen ||= {};          // 오래된 세이브 방어
+  if (!/^beta_/.test(authState.variant || '') || !authState.mapOrder) return;
+  for (const map of ['sea', 'mist']) {
+    const key = 'mapOpen_' + map;
+    if (gameState.hintsSeen[key] || mapLocked(map)) continue;
+    const openDay = mapOpenDay(authState.mapOrder, map);
+    const day = betaDay(authState.createdAt, betaNowMs());
+    if (day < openDay) continue;       // 방어
+    gameState.hintsSeen[key] = true;
+    const [ico, ...rest] = openLine(map).split(' ');
+    const [title, line] = rest.join(' ').split(' — ');
+    ui.showHintBanner?.({ ico, title, line: line || '', near: () => true });
+    trackEvent('map_opened', { map, day });
+  }
+}
+
 // =============================================================
 //  [🎯 이탈 예측] 트리거 시점에 점수를 받아 treat 군에만 배너를 띄운다
 //  설계서 §6~§8. 실패는 전부 조용히 넘어간다(fail-open) — 배너 하나 못 띄우는 게 손해의 전부다.
@@ -1535,6 +1578,7 @@ export async function enterGame() {
   startLogging();                      // [센서] 배치 전송 시작
   // [🎯 이탈 예측] dev 세션은 만들지 않는다 — 센서 샘플이 없어 윈도가 안 차고, API 로그도 더럽힌다
   if (!IS_DEV_SESSION) { try { initChurnPredictor(); } catch (e) { console.warn('[churn] init skipped', e); } }
+  setTimeout(announceMapOpens, 4000);   // 🧪 [베타 2차] 열린 맵 안내 — 시작 직후 코치·환영 배너와 겹치지 않게 4초 뒤
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
     place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
@@ -4077,6 +4121,7 @@ function applyMistVisuals() {
 
 // ── 입장 / 퇴장 ────────────────────────────────────────────
 function enterMist() {
+  if (blockIfLocked('mist')) return;   // 🧪 [베타 2차] 계단식 열기
   atMist = true;
   const st = mistDaily();
   player.position.set(MIST.x, 0, MIST.z + MIST_HALF - 1.6); player.rotation.y = Math.PI;
@@ -4963,6 +5008,7 @@ function populateSeaFishes() {
 }
 
 function enterSea() {
+  if (blockIfLocked('sea')) return;    // 🧪 [베타 2차] 계단식 열기
   atSea = true;
   // 출구 존(뭍 끝, 반경 1.9)과 안 겹치게 데크 안쪽으로 스폰 — 첫 프롬프트가 '던지기'가 되도록
   player.position.set(SEA.x, 0, SEA.z + SEA_DECK_Z0 - 2.9); player.rotation.y = Math.PI;
@@ -7051,14 +7097,16 @@ function updateDoorInteract() {
   } else if (dist2D(MINE_GATE, player.position) < 2.0) {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
   } else if (dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {
-    nd = 'mist'; prompt = '🌫️ 안개 낀 숲에 들어가기';
-    firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
+    nd = 'mist';
+    prompt = mapLocked('mist') ? lockLine('mist', mapOpenDay(authState.mapOrder, 'mist')) : '🌫️ 안개 낀 숲에 들어가기';   // 🧪 [베타 2차]
+    if (!mapLocked('mist')) firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 강을 내려가요 — 하루 3번');
   } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
-    nd = 'sea'; prompt = '🌊 바다터 (먼 바다로 나가볼까요?)';
-    firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
+    nd = 'sea';
+    prompt = mapLocked('sea') ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';   // 🧪 [베타 2차]
+    if (!mapLocked('sea')) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
