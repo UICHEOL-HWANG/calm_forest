@@ -1,0 +1,21 @@
+# calm forest · 추론 API 스택 — Airflow 와 분리해 서로의 재시작에 영향을 주지 않는다.
+# 배포 위치: /opt/calm-api  ·  코드: app/  ·  계수: model/  ·  적립: data/
+services:
+  api:
+    build: .
+    image: calm-forest/churn-api:1.0.0
+    restart: unless-stopped
+    environment:
+      CHURN_MODEL_PATH: /opt/calm-api/model/coef.json
+      CHURN_LOG_DIR: /opt/calm-api/data
+    volumes:
+      - ./app:/app:ro                    # ml/api · ml/calm_ml 을 올린 것
+      - ./model:/opt/calm-api/model:ro   # Airflow 가 coef.json 을 쓰는 곳
+      - ./data:/opt/calm-api/data        # 적립 JSONL — Airflow 가 읽어 BQ 로 올린다
+    ports:
+      - "127.0.0.1:8100:8100"            # 외부 노출은 nginx 가 한다. 직접 열지 않는다
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

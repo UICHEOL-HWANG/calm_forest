@@ -9,6 +9,11 @@
 #   scripts/export_to_bq.py 가 이미 같은 방식(google-cloud-bigquery)이라 일관됩니다.
 FROM apache/airflow:2.10.5
 
+# 🎯 이탈 예측 — churn_train DAG 가 GroupKFold 학습·부트스트랩 CI·W&B 로깅에 쓴다.
 RUN pip install --no-cache-dir \
       "google-cloud-bigquery>=3.25,<4" \
-      "gspread>=6.1,<7"
+      "gspread>=6.1,<7" \
+      "db-dtypes>=1.3" \
+      "scikit-learn>=1.5" \
+      "pandas>=2.2" \
+      "wandb>=0.19"

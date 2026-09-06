@@ -17,6 +17,10 @@ x-airflow-common: &airflow-common
     GCP_SA_KEY_PATH: /opt/airflow/secrets/gcp_sa.json
     BQ_PROJECT: calm-forest
     BQ_LOCATION: asia-northeast3   # analytics_547127440·calm_forest_raw 둘 다 서울
+    # calm_ml/bq.py 는 ADC 를 쓴다. VM 엔 ADC 가 없으므로 SA 키를 ADC 로 승격시킨다.
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/gcp_sa.json
+    # 🎯 이탈 예측 — 학습 DAG 가 W&B 에 로깅할 때만 쓴다(선택). VM .env 엔 아직 없음.
+    WANDB_API_KEY: ${WANDB_API_KEY:-}
   user: "${AIRFLOW_UID}:0"
   volumes:
     - ./dags:/opt/airflow/dags
@@ -25,6 +29,10 @@ x-airflow-common: &airflow-common
     - ./config:/opt/airflow/config
     # 서비스계정 키(600). 리포에 없고 VM 에만 둔다 — .gitignore 대상.
     - ./secrets:/opt/airflow/secrets:ro
+    # 🎯 이탈 예측 — 학습 산출물(coef.json)을 API 가 읽는 위치에 쓴다
+    - /opt/calm-api/model:/opt/calm-api/model
+    # 🎯 이탈 예측 — API 가 적립한 JSONL 을 읽어 BQ 로 올린다
+    - /opt/calm-api/data:/opt/calm-api/data
   depends_on:
     postgres:
       condition: service_healthy
