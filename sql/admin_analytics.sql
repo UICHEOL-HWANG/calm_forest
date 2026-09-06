@@ -496,18 +496,21 @@ begin
 
   with
   roster as (  -- 명단 ⨝ 계정(가입 전 테스터는 user_id null로 표시)
-    select bt.email, bt.grp, u.id as user_id
+    select bt.email, bt.grp, bt.map_order, u.id as user_id
     from beta_testers bt
     left join auth.users u on lower(u.email) = bt.email
   ),
+  diary_cnt as (
+    select email, count(*) as diary_days from beta_diary group by email
+  ),
   tester_sessions as (
-    select r.email, r.grp, r.user_id,
+    select r.email, r.grp, r.map_order, r.user_id,
            max(sl.updated_at)                          as last_seen,
            count(sl.session_id)                        as sessions,
            coalesce(sum(nullif(sl.play_sec, 0)), 0)    as play_sec
     from roster r
     left join session_logs sl on sl.user_id = r.user_id and sl.updated_at >= since
-    group by r.email, r.grp, r.user_id
+    group by r.email, r.grp, r.map_order, r.user_id
   ),
   tester_saves as (
     select gs.user_id,
@@ -552,9 +555,12 @@ begin
     'testers', (select coalesce(jsonb_agg(jsonb_build_object(
                   'email', ts.email, 'grp', ts.grp, 'user_id', ts.user_id,
                   'last_seen', ts.last_seen, 'sessions', ts.sessions, 'play_sec', ts.play_sec,
-                  'coins', sv.coins, 'house_stage', sv.house_stage, 'tutorial', sv.tutorial, 'streak', sv.streak
+                  'coins', sv.coins, 'house_stage', sv.house_stage, 'tutorial', sv.tutorial, 'streak', sv.streak,
+                  'map_order', ts.map_order, 'diary_days', coalesce(dc.diary_days, 0)
                 ) order by ts.grp, ts.email), '[]'::jsonb)
-                from tester_sessions ts left join tester_saves sv using (user_id)),
+                from tester_sessions ts
+                left join tester_saves sv using (user_id)
+                left join diary_cnt dc on dc.email = ts.email),
     'ab_daily', (select coalesce(jsonb_agg(jsonb_build_object(
                   'day', d.day, 'variant', d.variant, 'dau', d.dau, 'avg_play_sec', p.avg_play_sec
                 ) order by d.day), '[]'::jsonb)
@@ -562,7 +568,13 @@ begin
     'tut_funnel', (select coalesce(jsonb_agg(jsonb_build_object(
                   'variant', variant, 'key', key, 'users', users)), '[]'::jsonb) from tut_funnel),
     'minigame', (select coalesce(jsonb_agg(jsonb_build_object(
-                  'variant', variant, 'event', event, 'n', n)), '[]'::jsonb) from minigame)
+                  'variant', variant, 'event', event, 'n', n)), '[]'::jsonb) from minigame),
+    'diary', (select coalesce(jsonb_agg(jsonb_build_object(
+                  'email', d.email, 'grp', bt.grp, 'day', d.day, 'q1', d.q1, 'q2', d.q2, 'q3', d.q3,
+                  'q4', d.q4, 'q5', d.q5, 'q6', d.q6, 'updated_at', d.updated_at
+                ) order by d.updated_at desc), '[]'::jsonb)
+                from (select * from beta_diary order by updated_at desc limit 70) d
+                join beta_testers bt on bt.email = d.email)
   ) into result;
   return result;
 end $$;

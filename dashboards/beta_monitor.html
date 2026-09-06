@@ -86,6 +86,11 @@
         <p class="hint">유급 테스터는 이탈 신호가 아니라 <b>연락할 일</b>이다 — 마지막 접속이 이틀 넘게 없으면 붉게 표시한다.</p>
         <div style="overflow-x:auto"><table class="mini" id="testerTbl"></table></div>
       </div>
+      <div class="card" style="grid-column:1/-1;">
+        <h2>📝 일지</h2>
+        <p class="hint">테스터가 /beta/diary 에 쓴 것 · 최신순 · 3번은 "돈 안 받아도 내일 또?"(1~5)</p>
+        <div style="overflow-x:auto"><table class="mini" id="diaryTbl"></table></div>
+      </div>
     </div>
 
     <h2 class="sec">A/B 그룹 비교 — 일별 추이</h2>
@@ -235,6 +240,7 @@
       renderAbDaily(d.ab_daily || []);
       renderTutFunnel(d.tut_funnel || []);
       renderMinigame(d.minigame || []);
+      renderDiary(d.diary || []);
     }
 
     // ── 개별 현황 ──
@@ -242,7 +248,7 @@
       if (!rows.length) { $('testerTbl').innerHTML = '<tr><td class="empty">명단이 아직 없습니다 (beta_testers 테이블).</td></tr>'; return; }
       const maxPlay = Math.max(1, ...rows.map(r => r.play_sec || 0));
       $('testerTbl').innerHTML =
-        '<tr><th>테스터</th><th>군</th><th style="text-align:right">세션</th><th style="text-align:right">플레이</th>'
+        '<tr><th>테스터</th><th>군</th><th>맵 순서</th><th style="text-align:right">일지</th><th style="text-align:right">세션</th><th style="text-align:right">플레이</th>'
         + '<th style="text-align:right">코인</th><th>집 단계</th><th>튜토리얼</th><th style="text-align:right">스트릭</th><th style="text-align:right">마지막 접속</th></tr>'
         + rows.map(r => {
             const grpCls = r.grp === 'A' ? 'a' : 'b';
@@ -252,6 +258,8 @@
             return `<tr>
               <td>${r.email ? escapeHtml(r.email) : '—'}${r.user_id ? '' : ' <span class="pill cr" style="margin-left:4px">가입 전</span>'}</td>
               <td><span class="grp ${grpCls}">${r.grp ? escapeHtml(r.grp) : '?'}</span></td>
+              <td>${r.map_order === 'sea_first' ? '🌊→🌫️' : r.map_order === 'mist_first' ? '🌫️→🌊' : '—'}</td>
+              <td class="n">${nf(r.diary_days ?? 0)}/7</td>
               <td class="n">${nf(r.sessions)}</td>
               <td class="n"><span class="bar-mini" style="width:${w}px"></span>${secs(r.play_sec)}</td>
               <td class="n">${nf(r.coins)}</td>
@@ -261,6 +269,25 @@
               <td class="n" style="color:${stale_ ? 'var(--down);font-weight:700' : 'var(--ink-3)'}">${ago(r.last_seen)}${stale_ ? ' <span class="pill cr">연락 필요</span>' : ''}</td>
             </tr>`;
           }).join('');
+    }
+
+    // ── 일지 ──
+    function renderDiary(rows) {
+      if (!rows.length) { $('diaryTbl').innerHTML = '<tr><td class="empty">아직 쓴 일지가 없습니다.</td></tr>'; return; }
+      const cut = (s, n = 90) => { s = String(s ?? ''); return escapeHtml(s.length > n ? s.slice(0, n) + '…' : s); };
+      $('diaryTbl').innerHTML =
+        '<tr><th>테스터</th><th>군</th><th style="text-align:right">일차</th><th>1 오늘 한 것</th><th>2 막힌 곳</th><th style="text-align:right">3</th><th>4 안내 봤나</th><th>5·6</th><th style="text-align:right">쓴 시각</th></tr>'
+        + rows.map(r => `<tr>
+              <td>${escapeHtml(r.email)}</td>
+              <td><span class="grp ${r.grp === 'A' ? 'a' : 'b'}">${escapeHtml(r.grp || '?')}</span></td>
+              <td class="n">${nf(r.day)}</td>
+              <td title="${escapeHtml(r.q1 || '')}">${cut(r.q1)}</td>
+              <td title="${escapeHtml(r.q2 || '')}">${cut(r.q2)}</td>
+              <td class="n">${r.q3 ?? '—'}</td>
+              <td title="${escapeHtml(r.q4 || '')}">${cut(r.q4, 60)}</td>
+              <td>${escapeHtml([r.q5, r.q6].filter(Boolean).join(' · ') || '—')}</td>
+              <td class="n" style="color:var(--ink-3)">${ago(r.updated_at)}</td>
+            </tr>`).join('');
     }
 
     // ── A/B 군별 일별 DAU · 평균 플레이시간 ──
