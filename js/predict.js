@@ -117,3 +117,30 @@ export function createPredictor(deps) {
 
   return { onTrigger, reset() { shownCount = 0; } };
 }
+
+/**
+ * 게임 런타임 값 → pickIntervention 이 읽는 모양.
+ * game.js 의 내부 구조를 predict.js 가 알지 않도록 여기서 한 번 번역한다.
+ * @param {{plots?:Array, questStates?:Array, houseStage?:number, maxHouseStage?:number,
+ *          houseReady?:boolean, dex?:Object}} src
+ */
+export function buildGameStateSnapshot(src = {}) {
+  const plots = src.plots || [];
+  const questStates = src.questStates || [];
+  const dex = src.dex || {};
+
+  // 도감 카테고리 → 개입 후보의 kind. 비어있지 않으면 '해봤다'로 친다.
+  const DEX_TO_KIND = { fish: 'fish_success', crop: 'harvest', ore: 'mine', cook: 'cook' };
+  const doneKinds = [];
+  for (const [cat, kind] of Object.entries(DEX_TO_KIND)) {
+    if (dex[cat] && Object.keys(dex[cat]).length > 0) doneKinds.push(kind);
+  }
+  if ((src.houseStage || 0) > 0) doneKinds.push('chop_tree');   // 집을 지었으면 벌목은 했다
+
+  return {
+    plantedUnwatered: plots.filter(p => p && p.state === 'growing' && !p.watered).length,
+    openQuests: questStates.filter(st => st && st.acceptedAt != null).length,
+    buildableHouse: !!src.houseReady && (src.houseStage || 0) < (src.maxHouseStage || 0),
+    doneKinds,
+  };
+}
