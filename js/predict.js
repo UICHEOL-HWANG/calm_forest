@@ -42,9 +42,13 @@ export function pickIntervention(gs) {
 /** 예측기. 의존성을 전부 주입받는다(테스트에서 네트워크·게임 없이 돌리기 위해). */
 export function createPredictor(deps) {
   const {
-    getWindow, fetchImpl, session, gameState, showBanner, track, endpoint,
+    getWindow, fetchImpl, session, showBanner, track, endpoint,
     maxPerSession = 2, timeoutMs = 800,
   } = deps;
+  // ⚠️ gameState 는 여기서 destructure 하지 않는다 — Task 9 는 deps.gameState 를
+  // getter(`get gameState() {...}`)로 넘긴다. 지금 구조분해하면 getter 가 생성 시점에
+  // 딱 한 번 평가되어 그 이후 트리거마다 페이지 로드 시점 상태로 굳어버린다.
+  // 반드시 매 onTrigger 호출마다 deps.gameState 를 다시 읽는다.
 
   let shownCount = 0;
 
@@ -101,7 +105,7 @@ export function createPredictor(deps) {
     // 전원 점수화, 세션 단위로 배정된 treat 군만 개입
     let shown = false;
     if (res.intervene && session.arm === 'treat' && shownCount < maxPerSession) {
-      const banner = pickIntervention(gameState);
+      const banner = pickIntervention(deps.gameState);
       if (banner) { showBanner(banner); shownCount++; shown = true; }
     }
 

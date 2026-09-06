@@ -18,11 +18,26 @@ function harness(over = {}) {
     endpoint: 'https://x/predict',
     maxPerSession: 2,
     timeoutMs: 800,
-    ...over,
   };
-  const deps = { ...base, fetchImpl: async (...a) => { calls.fetch.push(a); return base.fetchImpl(...a); } };
+
+  // `over` 의 각 키를 프로퍼티 디스크립터 그대로 복사한다 — 스프레드(`...over`)는
+  // getter 를 이 시점에 한 번 평가해 값으로 굳혀버리므로, gameState 를
+  // `get gameState() {...}` 로 넘기는 케이스(트리거 시점 재평가 검증)에 쓸 수 없다.
+  const deps = {};
+  for (const key of Object.keys(base)) {
+    Object.defineProperty(deps, key, Object.getOwnPropertyDescriptor(base, key));
+  }
+  for (const key of Object.getOwnPropertyNames(over)) {
+    Object.defineProperty(deps, key, Object.getOwnPropertyDescriptor(over, key));
+  }
+
+  const realFetch = deps.fetchImpl;
+  deps.fetchImpl = async (...a) => { calls.fetch.push(a); return realFetch(...a); };
+
   return { p: createPredictor(deps), calls };
 }
+
+const lastScoreEvent = (calls) => calls.track.filter(([n]) => n === 'churn_score').at(-1)[1];
 
 const scoreEvent = (calls) => calls.track.find(([n]) => n === 'churn_score')[1];
 
@@ -102,6 +117,48 @@ test('규칙 판정을 모델과 함께 기록한다 (베이스라인 비교용)
   const { p, calls } = harness();
   await p.onTrigger('quest');
   assert.equal(scoreEvent(calls).rule, true);
+});
+
+test('gameState 는 트리거 시점에 다시 읽는다 (생성 시점에 굳지 않는다)', async () => {
+  let state = { plantedUnwatered: 1, openQuests: 0, buildableHouse: false, doneKinds: [] };
+  const { p, calls } = harness({
+    get gameState() { return state; },
+  });
+
+  await p.onTrigger('time15');
+  assert.equal(calls.banner.length, 1, '첫 트리거 — 물 안 준 작물이 있으니 배너가 떠야 한다');
+  assert.match(calls.banner[0].line, /물/);
+
+  // 트리거 사이에 gameState 가 "다 끝난 상태"로 바뀐다 — getter 를 생성 시점에
+  // 굳혀버리면 이 트리거도 첫 번째와 같은(페이지 로드 시점) 상태로 배너를 띄운다.
+  state = {
+    plantedUnwatered: 0, openQuests: 0, buildableHouse: false,
+    doneKinds: ['chop_tree', 'fish_success', 'harvest', 'cook', 'carve', 'mine'],
+  };
+  await p.onTrigger('quest');
+  assert.equal(calls.banner.length, 1, '두 번째 트리거는 배너가 없어야 한다 — getter 로 갱신된 상태를 반영해야');
+  assert.equal(lastScoreEvent(calls).shown, false);
+});
+
+test('배너가 null 이면 세션 노출 상한을 소모하지 않는다', async () => {
+  let state = {
+    plantedUnwatered: 0, openQuests: 0, buildableHouse: false,
+    doneKinds: ['chop_tree', 'fish_success', 'harvest', 'cook', 'carve', 'mine'],
+  };
+  const { p, calls } = harness({
+    maxPerSession: 1,
+    get gameState() { return state; },
+  });
+
+  await p.onTrigger('time15');
+  assert.equal(calls.banner.length, 0, '할 일이 다 끝나서 배너가 없다');
+  assert.equal(lastScoreEvent(calls).shown, false);
+
+  // gameState 를 다시 "미완이 있는" 상태로 바꾼다. 첫 트리거에서 null 배너가
+  // shownCount 를 잘못 소모했다면 maxPerSession:1 인 이번 트리거는 막혀야 한다.
+  state = { plantedUnwatered: 1, openQuests: 0, buildableHouse: false, doneKinds: [] };
+  await p.onTrigger('quest');
+  assert.equal(calls.banner.length, 1, 'null 배너는 상한을 소모하지 않았어야 한다');
 });
 
 // ── 개입 문구 규칙 ──────────────────────────────────────────
