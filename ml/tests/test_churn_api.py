@@ -160,6 +160,17 @@ def test_appends_jsonl_row(client, tmp_path):
     assert "p" in row and "at" in row and "origin" in row
 
 
+def test_long_origin_header_is_truncated(client, tmp_path):
+    """인증 없는 공개 엔드포인트라 Origin 헤더 길이를 신뢰할 수 없다 — ua 처럼 200자로 자른다."""
+    (tmp_path / "coef.json").write_text(json.dumps(make_model()))
+    client.post("/predict", json={"features": FEATS, "trigger": "quest",
+                                  "session_id": "sess-9", "client_id": "cl-9", "variant": "beta_A"},
+                headers={"origin": "x" * 5000})
+    files = list((tmp_path / "log").glob("*.jsonl"))
+    row = json.loads(files[0].read_text().strip())
+    assert len(row["origin"]) == 200
+
+
 def test_appends_jsonl_row_with_arm(client, tmp_path):
     """arm(A/B 개입군)은 클라이언트가 세션별로 랜덤 배정하며, 적립 행에 그대로 남아야 학습에서 구분할 수 있다."""
     (tmp_path / "coef.json").write_text(json.dumps(make_model()))

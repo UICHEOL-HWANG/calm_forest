@@ -14,5 +14,6 @@ Airflow 와 **별도 스택**이다. 서로의 재시작에 영향받지 않는�
 ## 확인
     curl -s https://lab.calmforest.cloud/health   # {"ok":true}
 
-계수(`model/coef.json`)는 Airflow DAG 가 쓴다. 손으로 두지 않는다.
-최초 1회는 학습 산출물 `coef.json` 을 손으로 `model/` 에 두고, 이후 갱신은 DAG 가 한다.
+계수(`model/coef.json`)는 Airflow DAG 가 쓴다. 단, **최초 1회**는 학습 산출물을
+손으로 `model/` 에 두고(VM 에 GCP 자격증명이 없는 동안), 그 뒤 갱신은 DAG 가
+한다 — 평소에는 손으로 두지 않는다.

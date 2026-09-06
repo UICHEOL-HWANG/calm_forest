@@ -194,7 +194,9 @@ def predict(body: PredictIn, request: Request) -> PredictOut:
         "model_version": version,
         # CORS 는 보안 경계가 아니다 — 오리진을 가리지 않고 어떤 오리진이 오는지 남긴다
         # (선례: toss-auth/src/index.js). 토스 웹뷰의 실제 오리진도 이걸로 알게 된다.
-        "origin": request.headers.get("origin", ""),
+        # 인증 없는 공개 엔드포인트라 헤더 길이를 신뢰할 수 없다 — ua 처럼 상한을 둔다
+        # (긴 Origin 을 대량으로 보내 디스크를 채우는 것을 막는다).
+        "origin": (request.headers.get("origin") or "")[:200],
         "ua": (request.headers.get("user-agent") or "")[:120],
     })
 
