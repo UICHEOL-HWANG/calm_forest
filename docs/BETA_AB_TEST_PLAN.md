@@ -183,3 +183,12 @@ export const TUNING = {
 - 버튼·문항·안내 문구 검수
 - 9/8 폰에서 일지 한 번 써보기
 - `dev` → `main` 병합 · `npx wrangler deploy`
+
+**실행 명령 (사용자)**
+1. 배정 SQL 만들기: `node scripts/beta-roster.mjs a@x.com b@x.com … (10개)` → 출력을 복사
+2. Supabase SQL 편집기에서 순서대로 실행: `sql/admin_analytics.sql` §베타 전체(컬럼·일지 테이블·RPC) → 1번 출력
+2-1. Supabase 대시보드 → Authentication → URL Configuration → Redirect URLs 에 `https://calmforest.cloud/beta/diary.html` 추가(안 하면 일지 페이지의 구글 로그인 복귀가 막힌다)
+3. 로컬 확인: `?forceVariant=beta_A&forceMapOrder=sea_first&betaDay=2` (localhost 전용)
+4. 배포: `git checkout main && git merge dev && node scripts/build-web.mjs && npx wrangler deploy && git push`
+5. 9/8 폰에서 `/beta/diary.html` 한 번 써 보고 그 행 삭제
+6. 실서비스에서 명단에 든 계정으로 로그인해 ☰ 메뉴에 📝 오늘 일지 가 로그인 몇백 ms 뒤 나타나는지 확인(명단 조회가 비동기라 즉시가 아님)
