@@ -1421,7 +1421,9 @@ function initChurnPredictor() {
     session: {
       id: authState.sessionId,
       clientId: authState.clientId,
-      variant: authState.variant,       // 🧪 베타 번들 A/B — arm 과 독립
+      // ⚠️ getter — resolveBetaGroup() 이 loadGame() 과 경주하며 authState.variant 를
+      //    나중에(첫 await 뒤) 다시 대입할 수 있다. 값으로 굳히면 베타 테스터가 control 로 잘못 기록된다.
+      get variant() { return authState.variant; },   // 🧪 베타 번들 A/B — arm 과 독립
       // 개입 배정은 세션 단위로 여기서 한 번만 정한다. treatRate 가 0 이면 개입 전면 off.
       arm: Math.random() < TUNING.churn.treatRate ? 'treat' : 'control',
       // 첫 세션 판정 — 세이브에 흔적이 없으면 첫 세션으로 본다
@@ -1432,7 +1434,7 @@ function initChurnPredictor() {
     get gameState() {
       return buildGameStateSnapshot({
         plots,
-        questStates: NPCS.map(n => npcState(n.id)),   // acceptedAt != null = 수락했고 미완
+        questStates: NPCS.map(n => gameState.npcs[n.id]),   // 읽기 전용 — npcState() 는 없으면 세이브에 항목을 만든다
         houseStage: gameState.houseStage,
         maxHouseStage: MAX_HOUSE_STAGE,
         houseReady: churnHouseReady(),
@@ -1444,7 +1446,13 @@ function initChurnPredictor() {
   });
 
   // 트리거 ① 접속 후 15초 — 한 번만. 설계서 §3-1(커버리지 84%)
-  setTimeout(() => churnPredictor?.onTrigger('time15'), TUNING.churn.timeTriggerSec * 1000);
+  setTimeout(() => churnTrigger('time15'), TUNING.churn.timeTriggerSec * 1000);
+}
+
+// onTrigger 는 async 이지만 await 하지 않는다 — 이 헬퍼 한 곳에서 뜬 프라미스를 처리해
+// 호출부마다 .catch() 를 반복하지 않는다.
+function churnTrigger(kind) {
+  churnPredictor?.onTrigger(kind).catch(() => {});
 }
 
 // =============================================================
@@ -1526,7 +1534,7 @@ export async function enterGame() {
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
   // [🎯 이탈 예측] dev 세션은 만들지 않는다 — 센서 샘플이 없어 윈도가 안 차고, API 로그도 더럽힌다
-  if (!IS_DEV_SESSION) initChurnPredictor();
+  if (!IS_DEV_SESSION) { try { initChurnPredictor(); } catch (e) { console.warn('[churn] init skipped', e); } }
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
     place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
@@ -9045,7 +9053,7 @@ function talkToNPC() {
     // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.
     //   ※ GA4 전용(스키마 자유). Supabase game_logs(고정 스키마)엔 넣지 않아 연동 충돌 없음.
     trackEvent('npc_talk', { npc: view.npc.id, mode: view.mode });
-    churnPredictor?.onTrigger('quest');   // [🎯 이탈 예측] await 안 함 — 게임 흐름을 막지 않는다
+    churnTrigger('quest');   // [🎯 이탈 예측] await 안 함 — 게임 흐름을 막지 않는다
     // [퍼널①] 퀘스트 노출 — offer 화면을 봤다 = 퍼널의 시작점(노출→수락 전환율 측정)
     if (view.mode === 'offer') trackEvent('quest_offered', { quest_id: view.qid, npc: view.npc.id, quest: view.title });
   }
@@ -9076,7 +9084,7 @@ export function npcAccept() {
     if (q.grant) giveReward(q.grant, 'quest_grant', qid);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
     trackedNPC = o; refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
     trackEvent('quest_accept', { quest: q.title, npc: o.def.id, quest_id: qid }); // [GA4]
-    churnPredictor?.onTrigger('quest');   // [🎯 이탈 예측] 대화·수락·완료는 신뢰구간이 겹쳐 한 트리거로 묶었다
+    churnTrigger('quest');   // [🎯 이탈 예측] 대화·수락·완료는 신뢰구간이 겹쳐 한 트리거로 묶었다
   }
   return npcDialogState();
 }
@@ -9096,7 +9104,7 @@ export function npcClaim() {
     // [퍼널③] 완료 — 수락→완료 소요시간(초). acceptedAt 없는 옛 세이브는 null.
     const elapsed = st.acceptedAt ? Math.round((Date.now() - st.acceptedAt) / 1000) : null;
     trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0 }); // [GA4]
-    churnPredictor?.onTrigger('quest');   // [🎯 이탈 예측]
+    churnTrigger('quest');   // [🎯 이탈 예측]
     st.idx++; st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     gameState.story.q = (gameState.story.q || 0) + 1; syncStory();   // 📖 2장(이웃들) 진행
     if (st.idx >= o.def.quests.length) { st.allDone = true; ui.setQuest?.(null); syncBadges(); } // 🏅 체인 완료 배지
