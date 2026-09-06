@@ -14,6 +14,14 @@ export const TUNING = {
   TUT_ORDER_A: ['move', 'toolpage', 'chop', 'fish', 'build', 'enter', 'decor',
                 'till', 'seed', 'water', 'harvest', 'sell', 'market', 'quest',
                 'mine', 'carve', 'dex'],
+  // 🎯 이탈 예측 개입 — 임계값·on/off 는 서버(coef.json)에 있다. 여기는 클라이언트 값만.
+  churn: {
+    endpoint: 'https://lab.calmforest.cloud/predict',
+    timeoutMs: 800,        // 넘으면 개입 없이 진행(fail-open)
+    maxPerSession: 2,      // 세션당 배너 노출 상한
+    treatRate: 0.5,        // 세션 단위 개입 배정 확률 — 0 이면 개입 전면 off
+    timeTriggerSec: 15,    // 시간 트리거 — 설계서 §3-1(커버리지 84%)
+  },
 };
 
 export function isBetaA(variant) { return variant === 'beta_A'; }
