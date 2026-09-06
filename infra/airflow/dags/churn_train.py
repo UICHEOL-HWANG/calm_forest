@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from airflow import DAG
@@ -33,24 +33,44 @@ EVENTS_TABLE = f"{BQ_PROJECT}.calm_forest_raw.churn_events"
 default_args = {"retries": 1, "retry_delay": timedelta(minutes=10)}
 
 
+def _eligible_files():
+    """오늘(UTC) 이전 날짜의 churn-*.jsonl 파일만, 파일명에서 날짜를 파싱해 고른다.
+
+    API(`ml/api/churn.py`)는 오늘 날짜 파일에 하루 종일 append 한다. DAG 가 03:00 에
+    그 파일을 처리하고 .done 을 찍어버리면 그날 남은 21시간치가 영영 안 올라간다 —
+    그래서 '어제까지'만 대상으로 삼는다. 파일명이 날짜로 안 읽히면 건너뛰고 로그만
+    남긴다(적재 대상에서 조용히 빠뜨리지 않기 위해서다).
+    """
+    today = datetime.now(timezone.utc).date()
+    files = []
+    for p in sorted(DATA_DIR.glob("churn-*.jsonl")):
+        date_part = p.stem[len("churn-"):]  # "churn-YYYY-MM-DD" → "YYYY-MM-DD"
+        try:
+            file_date = datetime.strptime(date_part, "%Y-%m-%d").date()
+        except ValueError as e:
+            print(f"{p}: 파일명에서 날짜 파싱 실패, 건너뜀: {e}")
+            continue
+        if file_date >= today:
+            continue
+        if p.with_suffix(".done").exists():
+            continue
+        files.append(p)
+    return files
+
+
 def _upload_events(**_):
-    """어제치 JSONL 을 BQ 로 올리고, 올린 파일은 .done 으로 표시한다."""
+    """어제까지의 JSONL 을 파일 단위로 BQ 에 올리고, 올린 파일만 .done 으로 표시한다.
+
+    파일마다 따로 적재한다 — 한 줄이 깨졌다고(부분 쓰기·포맷 드리프트) backlog
+    전체가 죽으면 안 되고, 한 파일의 적재가 실패해도 나머지 파일은 계속 올라가야
+    한다. 실패한 파일이 있으면 나머지를 모두 처리한 뒤 마지막에 다시 던져서
+    태스크가 실패로 보이게 한다.
+    """
     from google.cloud import bigquery
 
-    files = sorted(p for p in DATA_DIR.glob("churn-*.jsonl") if not p.with_suffix(".done").exists())
+    files = _eligible_files()
     if not files:
         print("올릴 파일 없음")
-        return
-
-    rows = []
-    for p in files:
-        for line in p.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                rows.append(json.loads(line))
-    if not rows:
-        print("빈 파일만 있음")
-        for p in files:
-            p.with_suffix(".done").touch()
         return
 
     # autodetect 대신 고정 스키마를 쓴다 — p 가 null 인 행(모델 미적용 구간)도
@@ -58,20 +78,50 @@ def _upload_events(**_):
     # 야간 적재가 죽으면 안 된다.
     schema_path = ML_DIR / "sql" / "churn_events_schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    bq_schema = [bigquery.SchemaField.from_api_repr(f) for f in schema]
 
     client = bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
-    job = client.load_table_from_json(
-        rows, EVENTS_TABLE,
-        job_config=bigquery.LoadJobConfig(
-            schema=[bigquery.SchemaField.from_api_repr(f) for f in schema],
-            ignore_unknown_values=True,
-            write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
-        ),
-    )
-    job.result()
+
+    failures = []
+    total_rows = 0
     for p in files:
+        rows = []
+        for lineno, line in enumerate(p.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                print(f"{p}:{lineno} 건너뜀: {e}")
+
+        if not rows:
+            print(f"{p}: 빈 파일(또는 전부 깨짐) — .done 처리")
+            p.with_suffix(".done").touch()
+            continue
+
+        try:
+            job = client.load_table_from_json(
+                rows, EVENTS_TABLE,
+                job_config=bigquery.LoadJobConfig(
+                    schema=bq_schema,
+                    ignore_unknown_values=True,
+                    write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+                ),
+            )
+            job.result()
+        except Exception as e:
+            print(f"{p}: 적재 실패, .done 표시 안 함 — {e}")
+            failures.append(p)
+            continue
+
         p.with_suffix(".done").touch()
-    print(f"{len(rows)}행 적재 → {EVENTS_TABLE}")
+        total_rows += len(rows)
+        print(f"{p}: {len(rows)}행 적재 → {EVENTS_TABLE}")
+
+    if failures:
+        raise RuntimeError(f"{len(failures)}개 파일 적재 실패: {[str(p) for p in failures]}")
+
+    print(f"총 {total_rows}행 적재 완료")
 
 
 def _train(**_):
