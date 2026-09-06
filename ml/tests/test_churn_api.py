@@ -192,3 +192,20 @@ def test_corrupt_model_file_falls_back_to_null(client, tmp_path):
                                       "session_id": "s", "client_id": "c", "variant": "x"})
     assert r.status_code == 200
     assert r.json()["p"] is None
+
+
+def test_feature_order_mismatch_is_treated_as_no_model(client, tmp_path):
+    """coef.json 의 feature_order 가 API 의 FEATURE_ORDER 와 다르면 모델을 무시한다 —
+    계수와 피처가 잘못 짝지어져 조용히 틀린 점수를 내는 것보다 모델 없음으로 처리하는 편이 안전하다."""
+    model = make_model()
+    order = list(churn.FEATURE_ORDER)
+    order[-1], order[-2] = order[-2], order[-1]  # 마지막 두 이름을 바꿔치기
+    model["feature_order"] = order
+    (tmp_path / "coef.json").write_text(json.dumps(model))
+    r = client.post("/predict", json={"features": FEATS, "trigger": "time15",
+                                      "session_id": "s", "client_id": "c", "variant": "x"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["p"] is None
+    assert body["intervene"] is False
+    assert body["model_version"] == "none"
