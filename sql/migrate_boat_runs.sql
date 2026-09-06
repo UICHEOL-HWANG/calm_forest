@@ -62,7 +62,10 @@ create policy "own boat select" on public.boat_runs
 --    같은 seed(=같은 코스) 안에서 구간별 충돌 분포를 봅니다.
 --    특정 지점(dist_bucket)에 충돌이 몰리면 그 자리 배치가 불공정하다는 뜻.
 -- ─────────────────────────────────────────────────────────────
-create or replace view public.boat_hit_points as
+--    ⚠️ 뷰는 반드시 with (security_invoker = on) — 빼면 SECURITY DEFINER 로 RLS 가 우회됩니다(Supabase 보안 경고 2026-09-06).
+--    이미 만든 뷰는: alter view public.boat_hit_points set (security_invoker = on);
+create or replace view public.boat_hit_points
+with (security_invoker = on) as
 select
   r.run_date,
   r.seed,
@@ -79,7 +82,9 @@ group by 1, 2, 3, 4, 5;
 --  분석 뷰 ② 일자별 런 요약 — 완주율·중도 이탈률·평균 도달 거리
 --    "하루 3회"를 다 쓰는지(avg_run_no)가 리텐션 훅의 핵심 지표.
 -- ─────────────────────────────────────────────────────────────
-create or replace view public.boat_daily as
+--    이미 만든 뷰는: alter view public.boat_daily set (security_invoker = on);
+create or replace view public.boat_daily
+with (security_invoker = on) as
 select
   run_date,
   count(*)                                                               as runs,

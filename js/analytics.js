@@ -9,7 +9,8 @@
 //  ▶ GA4 미설정(오프라인) 시 window.gtag 가 없으므로 콘솔로 폴백
 // =============================================================
 
-import { CONFIG, isGaConfigured } from './config.js';
+import { CONFIG, isGaConfigured, IS_DEV_SESSION } from './config.js';
+import { PLATFORM } from './platform.js';         // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
 import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
 
 let firstChopFired = false;
@@ -36,6 +37,7 @@ function applyAliasCampaign() {
 //   삽입하고 초기화합니다. (index.html 을 손댈 필요 없음)
 //   미설정 시엔 아무것도 로드하지 않고 trackEvent 가 콘솔 폴백.
 (function loadGA() {
+  if (IS_DEV_SESSION) return;   // 🧪 dev 세션 — gtag.js 자체를 로드하지 않음
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
   gtag('js', new Date());
@@ -47,8 +49,9 @@ function applyAliasCampaign() {
   document.head.appendChild(s);
   applyAliasCampaign();   // ※ config 보다 먼저 — 첫 page_view 부터 소스가 붙게
   gtag('config', id);
-  // [i18n·A/B] 표시 언어와 변형을 유저 속성으로 — 리텐션/체류를 lang×variant 로 자를 수 있게
-  gtag('set', 'user_properties', { lang: LANG, ab_variant: assignVariant() });
+  // 유저 단위 차원 — platform(앱인토스), 그리고 표시 언어·A/B 변형.
+  //   한 번에 set 해야 뒤 호출이 앞 호출을 덮어쓰지 않는다(gtag user_properties 는 병합이 아니라 치환).
+  gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: assignVariant() });
   console.log('[GA4] 로드됨:', id);
 })();
 
@@ -76,7 +79,8 @@ export function onTrack(cb) { trackHooks.push(cb); }
 
 // GA4 로 이벤트 전송(폴백: 콘솔) — 모든 트래킹은 이 함수를 거칩니다.
 export function trackEvent(name, params = {}) {
-  const payload = { ...params, ts: Date.now() };
+  if (IS_DEV_SESSION) return;                                 // 🧪 dev 세션 — GA4·세션 카운터 없음
+  const payload = { ...params, ts: Date.now(), platform: PLATFORM };   // 이벤트 단위 platform 차원(웹/토스 퍼널 비교)
   trackHooks.forEach(cb => { try { cb(name, payload); } catch (e) {} }); // 카운터 훅(실패해도 트래킹 계속)
 
   // [GA4 전송 지점] gtag 가 로드되어 있고 설정이 유효할 때만 실제 전송

@@ -27,3 +27,6 @@ ml/wandb/
 
 # Airflow 서비스계정 키(구글 시트·BigQuery) — VM /opt/airflow/secrets 에만 둔다
 infra/airflow/secrets/
+
+# superpowers SDD 작업 공간(원장·브리프·리뷰 패키지) — 커밋 금지
+.superpowers/

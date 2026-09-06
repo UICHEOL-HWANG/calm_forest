@@ -29,6 +29,8 @@ import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
+import { CONFIG } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -44,15 +46,30 @@ const CROP_TYPES = [
 // ── 도구 하트바 (선택 도구에 따라 상호작용이 달라짐) ─────────────
 //   grp = 하단바 페이지. 🌾농사(밭에서 연달아 쓰는 4종) / 🏕️야외도구(장소마다 단독으로 쓰는 4종).
 //   ⛏️괭이는 밭갈기 겸 채굴이라 농사 쪽 — 동굴에서도 농사 페이지가 뜬다.
+// ── ✍️ 도구 아이콘(인라인 SVG) — 낫·포충망 ─────────────────────
+//   낫·포충망은 유니코드 이모지가 없어서 예전엔 🌾(벼이삭)·🦋(나비)로 대신했는데
+//   도구가 아니라 "수확물/잡을 대상"으로 읽혀서 진짜 도구 실루엣으로 바꿨다.
+//   · 원본은 트레이스(potrace) 실루엣. 잡티 path 를 걷어내고(낫 43→2, 포충망 34→1)
+//     내용에 딱 맞는 정사각 viewBox 로 재단한 것 — 원본 캔버스는 여백이 30~40퍼센트였다.
+//   · fill=currentColor — 슬롯 글자색(--ink)을 그대로 따라가서 흰/민트 슬롯 어디서나 같은 잉크색.
+//   · stroke + vector-effect=non-scaling-stroke — 어떤 크기로 그려도 같은 px 만큼 도톰해진다.
+//     14~20px 슬롯에서 얇은 테·자루가 끊기지 않게 하는 장치(큰 크기에선 티 안 남).
+//   · width/height 1.15em — 하단바(20/16/14px)·모바일 액션버튼(30px) 글자 크기를 따라간다.
+//     1em 이면 옆 이모지(🪓·🎣)보다 작아 보인다.
+//   · 포충망 망(그물): 원본 실루엣은 테만 있어서 테 안쪽 구멍 윤곽을 그대로 떠서 반투명 채움 + 대각 격자선(구멍으로 clip).
+//   ⚠️ innerHTML 로 꽂히는 값이다 — ico 를 textContent 로 넣는 곳이 생기면 마크업이 그대로 노출된다.
+const ICO_SICKLE = '<svg viewBox="233 182 784 784" aria-hidden="true" style="width:1.15em;height:1.15em;display:block"><g transform="translate(0 1182) scale(.1 -.1)" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6584 6860 c-9 -22 -24 -46 -33 -53 -9 -6 -22 -24 -30 -39 -28 -55 -208 -274 -237 -287 -54 -27 -85 -19 -187 47 -52 34 -101 62 -107 62 -13 0 -132 51 -140 60 -3 3 -12 7 -20 9 -8 2 -37 10 -63 17 -64 17 -134 8 -164 -22 -19 -19 -23 -34 -23 -81 l0 -57 40 39 c38 37 44 40 98 39 38 -1 81 -11 127 -29 67 -27 246 -136 292 -178 l22 -20 -25 -20 -25 -20 37 -38 37 -38 -34 -53 c-38 -59 -41 -65 -481 -694 -493 -704 -722 -1056 -1003 -1539 -302 -520 -472 -789 -547 -866 -62 -65 -147 -104 -219 -102 -68 1 -81 8 -196 96 -92 70 -259 162 -352 192 -29 10 -81 18 -115 18 -108 -1 -156 -42 -156 -136 0 -124 79 -264 232 -413 138 -134 270 -221 423 -280 102 -39 215 -39 305 0 107 46 242 155 303 246 96 141 194 307 652 1100 113 195 430 729 585 985 114 189 501 791 668 1043 74 111 75 112 114 112 86 0 102 16 421 449 110 148 126 216 79 336 -15 40 -78 125 -91 125 -4 0 -14 -14 -22 -32 l-15 -31 -25 25 c-23 24 -90 68 -103 68 -3 0 -13 -18 -22 -40z" vector-effect="non-scaling-stroke"/><path d="M8465 9694 c-600 -59 -1099 -259 -1492 -596 -384 -330 -648 -864 -793 -1608 -23 -118 -43 -251 -38 -254 1 -1 26 -7 53 -14 53 -14 71 -22 201 -94 158 -87 315 -204 297 -221 -3 -4 -1 -7 5 -7 15 0 15 5 1 28 -9 15 -5 41 20 128 229 778 585 1302 1039 1528 291 146 736 197 1212 141 63 -8 140 -17 171 -21 l56 -6 35 53 c35 53 200 361 195 365 -1 1 -38 15 -82 30 -101 35 -272 122 -325 164 -22 18 -48 46 -56 62 -14 27 -14 32 1 55 9 13 14 27 11 31 -12 12 -510 7 -596 -6 -216 -32 -397 -79 -572 -148 -60 -23 -108 -41 -108 -39 0 8 261 138 338 169 79 31 180 66 189 66 2 0 1 -6 -2 -12 -4 -7 -1 -6 7 2 17 20 47 32 193 74 185 53 237 65 389 92 228 39 221 37 156 45 -89 11 -354 8 -505 -7z" vector-effect="non-scaling-stroke"/></g></svg>';
+const ICO_NET = '<svg viewBox="199 105 915 915" aria-hidden="true" style="width:1.15em;height:1.15em;display:block"><g transform="translate(0 1180) scale(.1 -.1)" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><clipPath id="cfNetMesh"><path d="M9963 9995c121 -32 212 -99 239 -177c21 -60 41 -200 34 -236c-3 -15 -8 -52 -11 -83c-8 -84 -47 -231 -95 -352c-23 -59 -38 -112 -34 -118c4 -7 3 -9 -2 -6c-5 3 -29 -34 -54 -81c-51 -102 -114 -206 -187 -314c-55 -81 -62 -94 -40 -82c7 4 9 3 4 -2c-5 -5 -12 -9 -15 -9c-13 0 -32 -16 -32 -27c0 -6 7 -5 18 3c15 13 16 12 3 -3c-7 -10 -17 -16 -21 -13c-4 2 -40 -37 -80 -88c-170 -211 -380 -418 -615 -602c-300 -236 -649 -432 -920 -518c-97 -30 -258 -66 -328 -72c-29 -3 -68 -7 -87 -10c-81 -13 -307 31 -376 74c-46 28 -99 98 -124 166c-55 146 -30 408 62 640c235 599 819 1231 1493 1617c279 159 601 279 828 308c96 12 268 4 340 -15z"/></clipPath><path d="M9963 9995c121 -32 212 -99 239 -177c21 -60 41 -200 34 -236c-3 -15 -8 -52 -11 -83c-8 -84 -47 -231 -95 -352c-23 -59 -38 -112 -34 -118c4 -7 3 -9 -2 -6c-5 3 -29 -34 -54 -81c-51 -102 -114 -206 -187 -314c-55 -81 -62 -94 -40 -82c7 4 9 3 4 -2c-5 -5 -12 -9 -15 -9c-13 0 -32 -16 -32 -27c0 -6 7 -5 18 3c15 13 16 12 3 -3c-7 -10 -17 -16 -21 -13c-4 2 -40 -37 -80 -88c-170 -211 -380 -418 -615 -602c-300 -236 -649 -432 -920 -518c-97 -30 -258 -66 -328 -72c-29 -3 -68 -7 -87 -10c-81 -13 -307 31 -376 74c-46 28 -99 98 -124 166c-55 146 -30 408 62 640c235 599 819 1231 1493 1617c279 159 601 279 828 308c96 12 268 4 340 -15z" fill="currentColor" fill-opacity=".28" stroke="none"/><path d="M5564 6210L10364 11010M5564 11010L10364 6210M6324 6210L11124 11010M6324 11010L11124 6210M7084 6210L11884 11010M7084 11010L11884 6210" fill="none" stroke="currentColor" stroke-width=".8" stroke-opacity=".8" vector-effect="non-scaling-stroke" clip-path="url(#cfNetMesh)"/><path d="M9655 10403 c-305 -36 -564 -117 -875 -274 -173 -87 -366 -203 -362 -219 1 -6 -2 -9 -8 -5 -25 15 -464 -325 -455 -352 2 -7 0 -12 -4 -10 -15 4 -72 -44 -65 -55 4 -7 2 -8 -5 -4 -14 9 -143 -115 -289 -277 -94 -105 -120 -139 -91 -121 12 7 12 5 0 -9 -16 -20 -25 -22 -16 -4 4 6 -5 -1 -19 -16 -15 -16 -23 -34 -20 -40 4 -7 4 -9 -1 -5 -9 9 -35 -9 -35 -24 0 -5 6 -6 13 -2 7 4 9 3 4 -2 -5 -5 -14 -9 -20 -9 -16 0 -97 -108 -92 -123 3 -7 1 -11 -4 -8 -10 6 -112 -143 -184 -270 -110 -191 -209 -430 -251 -605 -55 -228 -44 -490 28 -670 14 -36 26 -68 26 -71 0 -2 -30 -36 -67 -74 -480 -493 -488 -503 -464 -584 l12 -42 28 26 c23 22 32 25 66 19 53 -8 121 -44 168 -87 36 -34 37 -37 23 -63 -8 -16 -79 -98 -158 -184 -78 -85 -181 -198 -228 -250 -46 -51 -120 -132 -165 -179 -44 -47 -175 -188 -290 -315 -116 -126 -293 -320 -395 -430 -262 -283 -482 -524 -655 -715 -82 -91 -203 -223 -270 -295 -66 -71 -167 -182 -225 -245 -58 -63 -161 -176 -231 -250 -131 -141 -576 -631 -954 -1051 -305 -338 -273 -309 -336 -309 -42 0 -62 6 -101 31 -67 44 -113 58 -155 49 -31 -8 -33 -7 -27 13 4 12 13 34 21 50 7 15 11 27 8 27 -13 0 -45 -87 -45 -121 -1 -143 173 -313 320 -313 30 0 67 6 81 14 14 8 140 141 279 295 452 500 824 908 886 975 34 36 106 115 160 176 54 60 189 209 299 330 110 120 340 372 510 559 489 538 611 671 740 810 66 72 318 347 560 613 l440 483 51 -7 c68 -8 106 11 164 83 25 31 101 120 170 197 68 78 157 178 197 223 58 65 73 89 73 114 0 29 2 31 28 25 15 -3 77 -11 139 -18 787 -82 1983 643 2607 1582 125 188 188 299 256 448 137 306 182 484 183 737 2 171 -19 260 -92 410 -73 148 -177 252 -326 328 -141 71 -389 111 -560 90z m280 -41 c131 -29 343 -141 332 -175 -2 -7 -17 -13 -33 -15 -16 -2 -34 -10 -41 -18 -15 -20 -69 -21 -91 -1 -20 18 -72 12 -72 -8 0 -16 27 -27 35 -15 4 6 10 10 15 10 8 0 -4 -40 -16 -59 -2 -2 -17 7 -34 19 -18 13 -27 25 -22 29 6 3 12 15 14 26 1 11 9 25 17 31 11 8 6 15 -25 30 -35 17 -46 18 -97 8 -31 -7 -63 -16 -70 -22 -9 -8 -45 -7 -122 0 -70 7 -102 14 -90 19 14 5 8 8 -23 8 -24 1 -41 -3 -38 -8 9 -13 -65 -24 -116 -16 -23 3 -56 1 -73 -4 -22 -7 -25 -10 -10 -11 11 -1 0 -8 -25 -15 -27 -9 -46 -11 -48 -5 -2 6 -8 10 -13 10 -6 0 -7 -4 -4 -10 3 -5 1 -10 -6 -10 -6 0 -9 8 -6 20 4 17 2 19 -21 14 -40 -10 -79 -31 -85 -47 -4 -11 1 -14 16 -11 12 3 2 -4 -23 -15 -50 -22 -80 -26 -80 -11 0 5 6 8 13 6 6 -1 8 -1 3 2 -4 2 -2 9 5 14 48 33 -302 -121 -358 -158 -28 -18 -30 -38 -3 -31 28 7 25 0 -9 -17 -32 -17 -47 -11 -28 12 12 16 -91 -36 -127 -63 -16 -12 -17 -17 -6 -30 11 -13 7 -15 -28 -13 -32 1 -50 -6 -91 -37 -46 -33 -50 -39 -35 -50 17 -12 16 -13 -2 -22 -23 -12 -47 -6 -37 10 4 7 -15 -4 -42 -24 -35 -25 -50 -42 -49 -58 0 -14 -13 -33 -37 -52 l-37 -29 2 24 c3 22 1 24 -16 15 -31 -17 -98 -80 -98 -93 0 -8 2 -8 8 0 4 6 15 11 25 11 16 0 16 -2 1 -18 -9 -10 -21 -16 -27 -12 -5 3 -7 2 -4 -4 4 -6 -13 -25 -36 -43 l-42 -33 29 31 c29 31 42 62 27 62 -14 0 -109 -89 -262 -245 -157 -161 -193 -200 -263 -288 -42 -51 -45 -73 -5 -34 13 13 38 32 54 43 l30 19 -29 -40 c-39 -53 -136 -176 -154 -195 -8 -8 2 9 22 39 20 29 36 63 36 74 0 20 -1 20 -26 -4 -23 -21 -97 -119 -118 -157 -11 -19 29 -9 55 14 l22 19 -19 -33 c-10 -19 -30 -46 -44 -61 -14 -15 -22 -22 -17 -17 10 14 9 56 -3 56 -10 0 -52 -59 -122 -170 -22 -36 -48 -76 -58 -90 -9 -14 -21 -37 -25 -50 -11 -40 -57 -130 -65 -130 -4 0 -7 -17 -8 -37 -1 -20 -13 -60 -28 -89 -15 -31 -24 -62 -21 -73 3 -12 1 -21 -4 -21 -5 0 -9 -11 -9 -25 0 -14 -4 -25 -10 -25 -5 0 -10 -13 -10 -30 0 -40 37 -62 57 -34 13 17 14 11 9 -46 -3 -36 -5 -78 -5 -93 -1 -16 -5 -26 -10 -23 -19 12 -29 -21 -24 -85 5 -60 8 -66 32 -76 19 -7 33 -25 48 -61 14 -33 17 -51 10 -49 -13 2 -14 -4 -2 -51 5 -22 12 -31 21 -28 18 7 30 -14 14 -24 -9 -6 -8 -12 5 -28 17 -20 43 -19 56 1 9 13 46 -12 58 -40 6 -13 15 -24 21 -24 19 -3 25 -5 85 -36 33 -18 56 -32 52 -33 -5 0 -1 -10 7 -22 13 -19 26 -22 86 -24 38 -1 70 2 70 7 0 5 7 9 15 9 8 0 15 -4 15 -8 0 -5 34 -7 76 -4 56 3 75 2 70 -7 -4 -6 -2 -11 3 -11 13 0 15 -27 2 -32 -5 -1 -11 -10 -13 -18 -5 -24 -25 -40 -50 -39 -23 1 -23 1 2 9 19 6 10 8 -36 9 -42 1 -65 -4 -73 -13 -7 -8 -28 -17 -48 -21 -20 -4 -46 -13 -57 -21 -23 -16 -50 -19 -41 -5 3 5 1 12 -5 16 -6 4 -8 11 -5 16 4 5 1 9 -4 9 -6 0 -19 8 -29 18 -18 18 -50 33 -115 52 -24 8 -28 7 -23 -6 3 -9 -17 5 -46 31 -28 25 -68 55 -87 65 -20 11 -31 19 -24 20 8 0 8 7 0 30 -11 29 -37 42 -37 19 0 -7 -15 -10 -40 -7 -22 2 -41 -1 -43 -7 -7 -19 -65 86 -90 163 -14 42 -30 115 -36 161 -21 163 -11 217 37 204 19 -4 21 -1 20 36 0 26 -5 41 -13 41 -17 0 -23 80 -10 121 6 16 14 27 17 23 9 -9 22 42 13 55 -3 6 -2 11 4 11 6 0 7 7 4 17 -4 10 -2 14 4 10 5 -4 15 5 21 18 7 14 16 25 22 25 5 0 17 11 26 25 12 19 14 28 5 39 -9 10 -8 15 4 20 9 3 15 18 15 41 0 40 25 85 46 85 8 0 14 8 15 18 2 55 8 71 41 114 20 26 40 58 44 70 3 13 21 43 39 68 53 73 83 142 54 124 -8 -5 -8 -1 0 14 6 12 17 24 24 28 8 5 7 2 -2 -9 -24 -29 -6 -29 23 0 30 30 140 171 168 215 16 24 90 108 158 179 93 96 147 167 110 144 -18 -11 -11 1 12 21 19 15 20 16 9 2 -10 -14 -10 -18 -1 -18 18 0 151 132 146 146 -6 16 13 34 30 27 17 -6 139 95 139 116 0 20 37 51 62 51 24 0 89 45 103 70 6 11 40 34 75 51 49 23 69 38 81 64 18 39 38 51 89 54 25 1 68 38 59 52 -6 11 67 48 84 42 32 -12 130 46 117 68 -4 5 1 6 10 3 10 -4 15 -2 13 6 -2 7 21 23 50 36 29 13 51 20 47 14 -4 -6 6 -7 27 -3 36 7 101 46 92 55 -8 8 83 41 94 34 9 -5 106 25 177 54 17 7 38 12 49 11 10 -2 15 2 12 8 -8 12 69 35 90 27 17 -6 136 12 147 23 12 12 303 6 362 -7z m-982 -321 c-12 -10 -63 -31 -63 -26 0 13 44 43 57 38 8 -3 11 -9 6 -12z m1437 -25 c0 -12 -5 -7 -19 24 -11 24 -11 24 3 6 9 -11 16 -24 16 -30z m-427 -21 c121 -32 212 -99 239 -177 21 -60 41 -200 34 -236 -3 -15 -8 -52 -11 -83 -8 -84 -47 -231 -95 -352 -23 -59 -38 -112 -34 -118 4 -7 3 -9 -2 -6 -5 3 -29 -34 -54 -81 -51 -102 -114 -206 -187 -314 -55 -81 -62 -94 -40 -82 7 4 9 3 4 -2 -5 -5 -12 -9 -15 -9 -13 0 -32 -16 -32 -27 0 -6 7 -5 18 3 15 13 16 12 3 -3 -7 -10 -17 -16 -21 -13 -4 2 -40 -37 -80 -88 -170 -211 -380 -418 -615 -602 -300 -236 -649 -432 -920 -518 -97 -30 -258 -66 -328 -72 -29 -3 -68 -7 -87 -10 -81 -13 -307 31 -376 74 -46 28 -99 98 -124 166 -55 146 -30 408 62 640 235 599 819 1231 1493 1617 279 159 601 279 828 308 96 12 268 4 340 -15z m345 -10 c0 -20 -4 -25 -17 -20 -12 5 -13 4 -4 -6 10 -10 15 -9 28 1 10 8 15 9 15 1 0 -6 -11 -13 -25 -17 -13 -3 -29 -12 -36 -20 -14 -17 2 -19 19 -2 20 20 25 1 5 -20 -10 -11 -26 -32 -36 -46 -17 -25 -19 -25 -36 -8 -24 22 -36 76 -22 99 6 10 11 14 11 10 0 -5 12 1 26 12 15 12 33 21 40 21 8 0 13 3 13 8 -3 15 1 23 10 18 5 -3 9 -17 9 -31z m-38 -202 c0 -20 -24 -11 -28 10 -2 12 1 15 12 11 9 -3 16 -13 16 -21z m103 -125 c2 -7 -5 -18 -17 -25 -18 -10 -18 -12 -3 -13 9 0 17 -5 17 -11 0 -6 -9 -9 -20 -6 -10 3 -19 2 -18 -2 5 -17 -23 -49 -40 -44 -32 8 -45 40 -30 79 11 32 15 34 59 34 29 0 49 -5 52 -12z m-2173 -91 c0 -2 -10 -12 -22 -23 l-23 -19 19 23 c18 21 26 27 26 19z m2149 -88 c10 -29 -20 -187 -59 -308 -56 -174 -227 -491 -370 -686 -29 -40 -230 -302 -262 -342 -8 -10 -4 -10 21 -2 31 11 104 86 96 98 -2 4 0 13 6 21 7 12 9 12 9 1 0 -7 18 6 41 30 57 61 16 1 -53 -77 -175 -200 -305 -326 -503 -490 -72 -60 -191 -146 -152 -110 57 53 20 64 -42 12 -31 -26 -37 -35 -25 -40 9 -3 21 -3 27 1 7 3 4 -2 -5 -13 -9 -10 -31 -28 -49 -38 l-32 -19 5 26 5 26 -56 -36 c-123 -79 -190 -118 -320 -185 -153 -79 -157 -81 -117 -74 24 4 26 3 14 -11 -11 -14 -9 -14 20 1 19 10 36 16 38 13 2 -2 -33 -21 -78 -41 -142 -65 -155 -69 -155 -50 0 7 4 11 9 8 11 -7 68 15 68 27 0 19 -22 17 -81 -5 -56 -21 -64 -27 -63 -50 1 -33 -49 -54 -73 -31 -8 8 -24 13 -36 11 -12 -2 -42 -7 -67 -11 -25 -4 -54 -13 -66 -20 -21 -14 -178 -24 -190 -13 -3 4 -4 18 0 31 6 25 66 57 107 57 11 0 30 6 42 14 12 8 56 22 97 32 41 9 81 21 88 26 8 7 12 7 12 0 0 -15 35 -3 59 19 12 11 21 17 21 14 0 -3 14 2 30 10 17 9 28 20 26 24 -9 14 71 43 121 44 54 0 116 25 109 43 -7 17 39 45 80 48 55 5 88 34 83 72 -2 13 27 24 61 24 47 0 96 32 114 73 17 41 31 52 68 49 18 -2 39 8 62 29 20 17 35 34 35 37 -4 27 4 42 21 42 25 0 90 31 90 43 0 6 40 48 90 95 49 46 88 87 86 91 -3 4 4 8 16 8 11 1 30 13 43 27 12 14 26 22 29 19 3 -4 6 0 6 8 0 8 32 45 70 84 39 38 69 74 66 81 -3 7 5 20 17 31 l22 18 -20 -25 c-11 -14 -2 -8 20 12 22 21 54 51 72 67 17 16 29 31 27 34 -3 2 3 10 13 18 15 12 16 12 8 -1 -5 -10 -5 -12 2 -5 6 6 18 30 27 55 22 56 34 70 51 64 15 -6 35 25 35 53 0 10 11 35 25 55 28 41 31 53 13 42 -10 -5 -10 -3 0 7 13 14 17 15 46 18 23 2 58 71 54 107 -2 18 0 30 5 27 4 -3 7 3 5 13 -2 15 2 18 23 16 32 -4 48 27 44 89 -3 58 1 67 31 61 21 -4 27 2 50 52 27 58 28 69 21 128 -4 33 -3 36 10 23 8 -8 17 -15 20 -15 4 0 3 3 0 6 -3 4 0 16 8 27 10 14 11 25 5 33 -12 14 5 108 26 141 8 12 15 30 15 40 1 10 5 2 9 -17 7 -34 7 -34 9 12 1 38 4 46 16 42 9 -4 15 0 15 10 0 24 29 20 39 -5z m-2389 -122 c0 -2 -14 -16 -32 -33 -17 -16 -28 -23 -24 -16 4 6 2 12 -5 12 -8 0 -8 4 1 15 7 9 19 14 26 11 7 -3 16 -1 19 4 6 10 15 14 15 7z m-260 -60 c0 -1 -24 -25 -52 -52 l-53 -50 50 53 c46 48 55 57 55 49z m150 -50 c0 -2 -17 -19 -37 -38 l-38 -34 34 38 c33 34 41 42 41 34z m2144 -757 c-10 -16 -20 -28 -22 -26 -4 5 28 56 35 56 2 0 -4 -13 -13 -30z m-2872 -337 c-6 -3 -10 -9 -6 -14 3 -5 -2 -9 -10 -9 -9 0 -16 4 -16 10 0 11 33 31 40 23 3 -3 -1 -8 -8 -10z m1763 -709 c-26 -20 -55 -36 -55 -30 0 5 63 46 70 46 3 -1 -4 -8 -15 -16z m-798 -200 c-3 -3 -12 -4 -19 -1 -8 3 -5 6 6 6 11 1 17 -2 13 -5z m-40 -10 c-3 -3 -12 -4 -19 -1 -8 3 -5 6 6 6 11 1 17 -2 13 -5z m-972 -58 c57 -24 47 -45 -87 -190 -68 -72 -168 -182 -223 -244 -55 -61 -106 -112 -113 -112 -7 0 -35 13 -62 28 l-49 28 19 30 c28 43 453 475 468 474 7 0 28 -7 47 -14z m863 -93 c-10 -2 -26 -2 -35 0 -10 3 -2 5 17 5 19 0 27 -2 18 -5z m-558 -23 c0 -5 -7 -10 -16 -10 -8 0 -12 5 -9 10 3 6 10 10 16 10 5 0 9 -4 9 -10z" vector-effect="non-scaling-stroke"/></g></svg>';
+
 const TOOLS = [
   { id: 'axe',    name: '도끼',     ico: '🪓', grp: 'out'  }, // 벌목
   { id: 'hoe',    name: '괭이',     ico: '⛏️', grp: 'farm' }, // 밭 갈기 · 채굴
   { id: 'seed',   name: '씨앗',     ico: '🌰', grp: 'farm' }, // 씨앗 심기
   { id: 'water',  name: '물조리개', ico: '💧', grp: 'farm' }, // 물주기
-  { id: 'sickle', name: '낫',       ico: '🌾', grp: 'farm' }, // 수확
+  { id: 'sickle', name: '낫',       ico: ICO_SICKLE, grp: 'farm' }, // 수확
   { id: 'hammer', name: '망치',     ico: '🔨', grp: 'out'  }, // 건축
   { id: 'rod',    name: '낚싯대',   ico: '🎣', grp: 'out'  }, // 낚시(호수)
-  { id: 'net',    name: '포충망',   ico: '🦋', grp: 'out'  }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
+  { id: 'net',    name: '포충망',   ico: ICO_NET, grp: 'out'  }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
 ];
 let currentTool = 1;   // ⛏️괭이 — 시작 페이지(🌾농사)에 있는 도구여야 한다(아래 toolPage 와 짝)
 
@@ -398,6 +415,9 @@ const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg:
 function priceRate(k) { return 0.7 + (dateHash('price:' + k) % 61) / 100; }     // 0.70 ~ 1.30
 function priceOf(k) { return Math.max(1, Math.round(SELL_PRICE[k] * priceRate(k))); }
 const SHOP_BUY = [
+  // 🪙 코인 전용 소모품 — 재료로는 못 얻는 "시간·운"을 판다(첫 구매처, 20~25🪙)
+  { id: 'fert1', name: '비료 1개',    ico: '🌱', coin: 20, give: { fert: 1 }, desc: '자라는 작물을 바로 수확 가능하게' },
+  { id: 'bait5', name: '미끼 5회분',  ico: '🪱', coin: 25, give: { bait: 5 }, desc: '5번 동안 희귀 물고기 확률↑' },
   // 소모품·재료 번들
   { id: 'seed5',   name: '씨앗 5개',   ico: '🌰', coin: 15,  give: { seed: 5 } },
   { id: 'seed20',  name: '씨앗 20개',  ico: '🌰', coin: 50,  give: { seed: 20 }, desc: '대량 할인' },
@@ -443,6 +463,7 @@ const GIFTS = [
 ];
 
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
+let baitActive = false;   // 🪱 이번 캐스트에 미끼 사용 중(회당 소모, 희귀 확률 이중 굴림)
 let biteAt = 0, biteEnd = 0;
 let fishEase = 1;   // 🧪 첫 3회 관대 판정용 입질 여유 배율
 let bobber = null;        // 찌(3D)
@@ -471,8 +492,8 @@ const NPCS = [
     ],
   },
   {
-    // 상점 동쪽 트인 벌판 — 작업대(4,-5)·자유주방(7.4,-6.4)·상점(9,0) 동선을 막지 않게(배회 반경 1.6 감안)
-    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [13.5, 0, -1.5],
+    // 좌판 바로 뒤(북쪽) 상주 — 좌판 장애물 반경 1.6 + NPC 여유 0.35 = 1.95 밖이어야 npcBlocked 에 안 걸린다
+    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [9, 0, -2.1], roam: 0.6,
     quests: [
       { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
@@ -577,7 +598,7 @@ async function upgradeDailyQuestsAI() {
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), AI_QUEST_TIMEOUT);
-    const res = await fetch(`/api/daily-quests?date=${st.date}&weather=${WEATHER}&lang=${LANG}&phase=${playerPhase()}`, { signal: ctl.signal });
+    const res = await fetch(`${CONFIG.API_BASE}/api/daily-quests?date=${st.date}&weather=${WEATHER}&lang=${LANG}&phase=${playerPhase()}`, { signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) return;
     raw = await res.json();
@@ -616,7 +637,7 @@ function rollLuckyBox(qid) {
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐)
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0, fert: 0, bait: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -960,6 +981,10 @@ let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
 let lastNearHouse = false; // 🎨 집 근처 여부(외관 꾸미기 버튼 표시) 변화 감지
 let placingDecor = null;   // 배치 중인 가구 id
 let decorRot = 0;          // 배치 방향(0~3 → 90°씩) — 가로/세로 전환
+let decorGhost = null;     // 🫥 바닥 미리보기(반투명 가구 + 초록 링) — 놓일 자리·방향을 미리 보여준다
+let decorTarget = { x: 0, z: 0, pinned: false }; // 놓일 자리. pinned=false 면 캐릭터 발 앞을 따라다닌다
+let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot} — 취소·퇴장 시 제자리로
+let decorTapHintShown = false; // "여기 놓을까요?" 안내는 배치 1회당 한 번만
 let interiorGroup, interiorFloor, interiorLamp;
 const decorMeshes = [];    // 배치된 가구 메시
 
@@ -1133,7 +1158,7 @@ function tryUnlockDrop(chance) {
   spawnSparkle(player.position.x, 1.2, player.position.z, 20);
   if (!gameState.hintsSeen.colorUnlock) {          // 첫 획득 → 시스템 안내 모달(온보딩)
     firstHint('colorUnlock', '🎨', '새 집 색을 얻었어요!',
-      '낚시·수확·주민 퀘스트·집 완성으로 집 외관 색을 모을 수 있어요. 집 근처에서 🎨 꾸미기 버튼으로 지붕·벽·문에 적용해보세요!');
+      '낚시·수확·퀘스트·집 완성으로 집 색을 모아요\n집 앞 🎨 꾸미기에서 지붕·벽·문에 적용!');
   } else {
     ui.toast?.(`🎨 새 ${PART_NAME[part]} 색을 얻었어요! 집 앞 🎨 버튼에서 적용해보세요`, 4200);
   }
@@ -1362,11 +1387,12 @@ export const Input = {
     if (m) startEmote(m[0], m[1]);
     if (e === '❤️' || e === '🎵') Sound.harvest(); else Sound.blip();
   },
-  selectDecor(id) { placingDecor = id; setHeldDecor(id); },    // 가구 선택 → 손에 들고 바닥 탭/Space로 배치
-  cancelDecor() { placingDecor = null; setHeldTool(TOOLS[currentTool].id); },   // (맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
-  rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); return decorRot; }, // 가로/세로 회전
+  selectDecor(id) { startDecorPlacing(id); },     // 가구 선택 → 손에 들고 + 바닥 고스트 미리보기
+  cancelDecor() { stopDecorPlacing(true); },      // 들어 올린 가구였다면 제자리로
+  rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); updateDecorGhost(); return decorRot; }, // 가로/세로 회전(고스트도 같이)
   getDecorRot() { return decorRot; },
   isIndoor() { return indoor; },
+  hintSeen(key) { return !!gameState.hintsSeen[key]; },   // 첫 안내 1회 판정(🎨 가구 배치 단계 안내 등)
 };
 
 // =============================================================
@@ -2589,7 +2615,7 @@ function updateFireflyBugs(dt, t) {
 
 // 🦋 포충망 휘두르기 — 밤 + 계곡 + 반딧불이 근처에서만. 반짝일 때 휘둘러야 잘 잡힘
 function tryNet() {
-  if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🦋 남쪽 🌟반딧불이 계곡에서 쓰는 도구예요'); return; }
+  if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🌟 남쪽 반딧불이 계곡에서 쓰는 도구예요'); return; }
   if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요 — 해가 지면 다시 오세요', 2600); return; }
   let target = null, nd = 2.2;
   for (const bug of gladeBugs) {
@@ -2599,7 +2625,7 @@ function tryNet() {
   const wx = target ? target.position.x + GLADE.x : player.position.x;
   const wz = target ? target.position.z + GLADE.z : player.position.z;
   doPlayerAction(wx, wz);   // 휘두르는 제스처는 헛스윙이어도 나감
-  if (!target) { Sound.blip(); ui.toast?.('🦋 반딧불이 가까이에서 휘둘러 보세요'); trackEvent('firefly_swing_empty'); return; }
+  if (!target) { Sound.blip(); ui.toast?.('🌟 반딧불이 가까이에서 휘둘러 보세요'); trackEvent('firefly_swing_empty'); return; }
   const u = target.userData, kind = u.kind;
   const bright = 0.5 + 0.5 * Math.sin(u.phase);
   // 성공률: 반짝일 때 크게 유리 + 촘촘한 포충망(영구 업그레이드) 보정
@@ -3112,7 +3138,7 @@ function enterCafe() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('cafeHall', '☕', '카페',
-    '손님이 테이블에 앉아 머리 위에 주문한 요리를 띄우고 있어요. 재료를 들고 손님에게 다가가 액션(Space)을 누르면 그 자리에서 만들어 서빙해요! 📋 주문판에서 오늘 주문 전체를 볼 수 있어요. 남쪽 문으로 나가요.');
+    '손님 머리 위 요리를 보고, 재료 들고 다가가 액션 → 서빙!\n📋 주문판에서 오늘 주문 전체 확인\n나갈 땐 남쪽 문');
   Sound.blip(); trackEvent('enter_cafe');                // [GA4]
 }
 function exitCafe() {
@@ -3390,7 +3416,7 @@ function enterRiver() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('riverDock', '🛶', '나루터',
-    '정박한 나룻배에 다가가 액션(Space)을 누르면 강을 내려가요! 배는 알아서 흘러가니 ⬅️➡️ 좌우로 피하기만 하면 돼요. 액션을 누르면 노를 힘껏 저어 잠깐 빨라져요. ⭐별조각을 모아 🧰창고에서 배를 강화하세요. 하루 3번 탈 수 있어요.');
+    '나룻배 앞에서 액션 → 강 내려가기 (하루 3번)\n⬅️➡️ 좌우로 피하고, 액션으로 노 저어 스퍼트!\n⭐별조각을 모아 🧰창고에서 배를 강화해요');
   Sound.blip();
   trackEvent('boat_enter', { runs_left: boatRunsLeft(), night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
@@ -3998,7 +4024,7 @@ function enterMist() {
     ui.toast?.('🌤️ 오늘의 숲은 맑아요 — 정령들이 고마워하고 있어요. 내일 다시 안개가 차요');
   } else {
     firstHint('mistWood', '🌫️', '안개 낀 숲',
-      '빛을 잃어가는 🌳수호목에 그림자 정령들이 모여들어요. 수호목 앞에서 정화를 시작하면 정령이 다가와요 — 🏮등불을 켜면 근처 정령이 느려지고, 정령 곁에서 액션을 누르면 ♪리듬에 맞춰 달랠 수 있어요(♪가 가장 작아질 때 탭!). 웨이브 3번을 버티면 오늘의 숲이 맑아져요.');
+      '🌳수호목 앞에서 정화 시작 → 그림자 정령이 다가와요\n🏮등불로 늦추고, 정령 곁에서 ♪가 가장 작을 때 탭!\n웨이브 3번을 버티면 숲이 맑아져요');
   }
   Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
   trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
@@ -4885,7 +4911,7 @@ function enterSea() {
   snapCamera(); setSpaceVisible();
   Sound.blip();
   firstHint('sea', '🌊', '바다터',
-    `수면에 헤엄치는 물고기를 보고 ${IS_MOBILE ? '오른쪽 아래 🎣버튼으로' : '액션(Space)으로'} 던져보세요! 입질이 오면 줄다리기 — 🔴버둥칠 땐 꾹 참고, 🟢"당기세요!!"가 뜨면 연타로 감아요. 부두 끝(빨간 널판)까지 끌려가면 놓쳐요. ⚔️참치는 하루 한 번 "오늘의 대어" — 무게가 🏆랭킹에 올라가요!`);
+    '물고기 보고 🎣 던지기 → 입질 오면 줄다리기\n🔴 버둥칠 땐 참고, 🟢 당기세요!! 땐 연타\n부두 끝(빨간 널판)까지 끌려가면 놓쳐요 · ⚔️참치는 하루 1번 대어');
   trackEvent('sea_enter', { night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
 function exitSea() {
@@ -4990,6 +5016,7 @@ function seaCatch() {
   gameState.sea.caught = (gameState.sea.caught || 0) + 1;
   if (sp.daily) gameState.sea.tunaDay = todayStr();
   Sound.harvest(); spawnConfetti(player.position.x, 2.2, player.position.z - 1.5);
+  triggerMoment(true);                              // 🎉 캐치 세리머니(밀착 + 폴짝) — 호수 낚시·수확과 같은 연출(세리머니 카메라는 바다 줌 분기보다 먼저 적용됨)
   spawnFloatText(player.position.x, 2.0, player.position.z - 1, `${sp.ico} ${sp.name} ${w}kg!`, '#2e6a9d', 1.25);
   ui.toast?.(`${sp.ico} ${sp.name} ${w}kg — 무게를 기록하고 바다로 돌려보냈어요! (+🐟${sp.give.fish} +🪙${sp.give.coins})`
     + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : ''), 4200);
@@ -5293,11 +5320,11 @@ function decorMesh(id) {
   return g;
 }
 
-// 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음)
-function placeDecor(id, wx, wz, silent = false, rot = null) {
+// 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음) · free=true 면 옮겨 놓기(비용 없음)
+function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
   const ry = (rot == null ? decorRot : rot) % 4;
-  if (!silent) {
+  if (!silent && !free) {
     const pay = def.pay || 'crop';                          // 화폐: 작물 or 물고기
     if ((gameState.inventory[pay] || 0) < def.cost) {
       ui.toast?.(pay === 'fish' ? `물고기가 부족해요 (필요 ${def.cost} 🐟)` : `작물이 부족해요 (필요 ${def.cost} 🥕)`);
@@ -5306,31 +5333,112 @@ function placeDecor(id, wx, wz, silent = false, rot = null) {
     gameState.inventory[pay] -= def.cost; refreshInventoryUI();
   }
   const m = decorMesh(id);
-  const lx = Math.max(INT.x - INT_HALF + 0.5, Math.min(INT.x + INT_HALF - 0.5, wx));
-  const lz = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.5, wz));
+  const lx = decorClampX(wx), lz = decorClampZ(wz);
   m.position.set(lx, 0.2, lz);
   m.rotation.y = ry * Math.PI / 2;
+  const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry };
+  m.userData.rec = rec;                                     // 탭해서 들어 올릴 때 저장 레코드를 같이 뺀다
   scene.add(m); decorMeshes.push(m);
-  gameState.house.decor.push({ id, x: lx - INT.x, z: lz - INT.z, rot: ry });
+  gameState.house.decor.push(rec);
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
-    ui.act?.('decor');                       // 튜토리얼: 가구 배치
-    trackEvent('place_decor', { item: id }); // [GA4]
-    placingDecor = null;                     // 한 번 놓으면 배치 모드 종료
-    setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구로
+    if (free) trackEvent('move_decor', { item: id });    // [GA4] 옮겨 놓기
+    else { ui.act?.('decor'); trackEvent('place_decor', { item: id }); } // 튜토리얼: 가구 배치
+    pickedDecor = null;                      // 들었던 가구는 새 자리에 놓였다(제자리 복귀 불필요)
+    stopDecorPlacing(false);                 // 한 번 놓으면 배치 모드 종료(고스트 제거·손에 든 가구 → 원래 도구)
     ui.onDecorPlaced?.();                    // 액션버튼 아이콘 복원(가구 제거)
+    requestSave();
   }
   return true;
 }
+function decorClampX(x) { return Math.max(INT.x - INT_HALF + 0.5, Math.min(INT.x + INT_HALF - 0.5, x)); }
+function decorClampZ(z) { return Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.5, z)); }
 
-// 바닥 탭 → 선택한 가구 배치
-function tryPlaceDecor(e) {
+// ── 🫥 가구 배치 미리보기(고스트) + 놓은 가구 옮기기 ──────────────
+//   손에 든 축소 메시는 실내에 들어오면 맨손(등 수납)이라 화면에서 안 보였다(베타 피드백 "미리보기가 안 보여요").
+//   → 바닥에 반투명 가구 + 초록 링을 띄워 "어디에·어느 방향으로" 놓일지 보여준다.
+//   모바일: 바닥 탭 = 자리 잡기(고스트 이동) → 같은 자리 다시 탭 / 액션 버튼 = 놓기. 탭하기 전엔 발 앞을 따라다닌다.
+//   마우스: 호버로 고스트가 따라오고 클릭 = 놓기(호버가 곧 미리보기).
+//   놓아 둔 가구는 탭하면 다시 들어 올려(비용 없음) 같은 방식으로 옮긴다("소파 위치 변경 어떻게 해요").
+function startDecorPlacing(id, picked = null) {
+  placingDecor = id; pickedDecor = picked; decorTapHintShown = false;
+  setHeldDecor(id);
+  if (picked) decorTarget = { x: picked.wx, z: picked.wz, pinned: true };   // 들어 올린 자리에서 시작
+  else decorTarget.pinned = false;
+  buildDecorGhost(id);
+}
+function stopDecorPlacing(putBack) {
+  if (pickedDecor && putBack) placeDecor(pickedDecor.id, pickedDecor.wx, pickedDecor.wz, true, pickedDecor.rot); // 들었던 가구는 제자리로
+  pickedDecor = null; placingDecor = null; decorTarget.pinned = false;
+  removeDecorGhost();
+  setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구(맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
+}
+function buildDecorGhost(id) {
+  removeDecorGhost();
+  const g = decorMesh(id);
+  g.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = false; o.receiveShadow = false;
+    o.material = o.material.clone();
+    o.material.transparent = true; o.material.opacity = 0.45; o.material.depthWrite = false;
+  });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.72, 28),
+    new THREE.MeshBasicMaterial({ color: 0x7fce8b, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
+  g.rotation.y = decorRot * Math.PI / 2;
+  scene.add(g); decorGhost = g; updateDecorGhost();
+}
+function removeDecorGhost() {
+  if (!decorGhost) return;
+  scene.remove(decorGhost);
+  decorGhost.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  decorGhost = null;
+}
+// 매 프레임: 핀 고정이 아니면 캐릭터 발 앞 1.3 을 따라다닌다(걸어가서 버튼으로 놓기)
+function updateDecorGhost() {
+  if (!decorGhost) return;
+  if (!decorTarget.pinned) {
+    decorTarget.x = decorClampX(player.position.x + Math.sin(player.rotation.y) * 1.3);
+    decorTarget.z = decorClampZ(player.position.z + Math.cos(player.rotation.y) * 1.3);
+  }
+  decorGhost.position.set(decorTarget.x, 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);
+  decorGhost.rotation.y = decorRot * Math.PI / 2;
+}
+function floorHitFromEvent(e) {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObject(interiorFloor, false)[0];
-  if (hit) placeDecor(placingDecor, hit.point.x, hit.point.z);
+  return hit ? hit.point : null;
+}
+// 배치 중 바닥 탭/클릭
+function onDecorFloorTap(e) {
+  const p = floorHitFromEvent(e); if (!p) return;
+  const x = decorClampX(p.x), z = decorClampZ(p.z);
+  if (e.pointerType === 'mouse') return commitDecor(x, z);   // 마우스: 호버로 이미 봤으니 클릭 = 놓기
+  if (decorTarget.pinned && Math.hypot(x - decorTarget.x, z - decorTarget.z) < 0.8) return commitDecor(decorTarget.x, decorTarget.z); // 고스트 자리 다시 탭 = 놓기
+  decorTarget = { x, z, pinned: true }; Sound.blip(); ui.onDecorAimed?.();
+  if (!decorTapHintShown) { decorTapHintShown = true; ui.toast?.('여기 놓을까요? 한 번 더 탭하거나 오른쪽 버튼으로 놓기'); }
+}
+// 배치 확정(바닥 탭·액션 버튼·Space 공통). 재료가 부족하면 배치 모드를 유지한다
+function commitDecor(x, z) { placeDecor(placingDecor, x, z, false, null, !!pickedDecor); }
+// 놓아 둔 가구 탭 → 들어 올리기(저장 레코드도 같이 뺀다)
+function tryPickDecor(e) {
+  if (!decorMeshes.length) return false;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(decorMeshes, true)[0]; if (!hit) return false;
+  let root = hit.object; while (root.parent && !decorMeshes.includes(root)) root = root.parent;
+  const rec = root.userData.rec; if (!rec) return false;
+  scene.remove(root); decorMeshes.splice(decorMeshes.indexOf(root), 1);
+  const i = gameState.house.decor.indexOf(rec); if (i >= 0) gameState.house.decor.splice(i, 1);
+  decorRot = rec.rot || 0;
+  startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot });
+  Sound.blip(); trackEvent('pick_decor', { item: rec.id }); // [GA4] 옮기기 시작
+  ui.onDecorPicked?.(DECOR.find(d => d.id === rec.id));
+  return true;
 }
 
 // ── 작업대(요리) ─────────────────────────────────────────────
@@ -6207,6 +6315,18 @@ function spawnShop() {
   }
   for (const x of [-0.9, 0.9]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 6), clayMat(0x6b4a34)); p.position.set(x, 1, -0.2); g.add(p); }
   g.add(makeSignpost('🛒 상점', 1.4, 0.7));   // 팻말
+  // 💬 오늘 시세 최고 품목 말풍선 — 멀리서도 "여기서 판다"가 읽히게(자정 시세 갱신은 새로고침 시 반영)
+  const rates = {}; for (const k in SELL_PRICE) rates[k] = Math.round(priceRate(k) * 100);
+  const topLine = topPriceLine(rates, SELL_ICO_G);
+  const bcv = document.createElement('canvas'); bcv.width = 512; bcv.height = 160;
+  const bc = bcv.getContext('2d');
+  bc.fillStyle = '#f5efe0'; roundRect(bc, 12, 12, 488, 116, 30); bc.fill();
+  bc.beginPath(); bc.moveTo(236, 126); bc.lineTo(276, 126); bc.lineTo(256, 152); bc.closePath(); bc.fill();   // 꼬리
+  bc.fillStyle = '#2fa564'; bc.textAlign = 'center'; bc.font = 'bold 52px sans-serif';
+  bc.fillText(t(topLine.text), 256, 88);
+  const btex = new THREE.CanvasTexture(bcv); btex.minFilter = THREE.LinearFilter; btex.magFilter = THREE.LinearFilter; btex.generateMipmaps = false;
+  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: btex, transparent: true, depthWrite: false }));
+  bubble.scale.set(2.4, 0.75, 1); bubble.position.set(0, 2.55, 0.2); g.add(bubble);
   scene.add(g);
   obstacles.push({ x: SHOP.x, z: SHOP.z, r: 1.6 });
   solidCircle(SHOP.x, SHOP.z, 1.15);   // 🚧 좌판 (상점 상호작용 2.0 확보)
@@ -6363,7 +6483,7 @@ function kitchenFinish(id, res = {}) {
   // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
   const bm = BUFF_META[r.buff];
   setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
-    `${bm.desc} 남은 시간은 화면 오른쪽 위 칩에 표시되고, 칩을 누르면 이 설명을 다시 볼 수 있어요.`), 800);
+    `${bm.desc}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요`), 800);
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
@@ -6634,7 +6754,7 @@ function enterFarm() {
   atFarm = true;
   player.position.set(FARM.x, 0, FARM.z + FARM_HALF - 1.5); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 밭을 갈고 🌰씨앗을 심어 💧물을 주며 키워보세요. 심은 작물은 저장돼요. 나갈 땐 남쪽 문으로!');
+  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요 · 나갈 땐 남쪽 문');
   Sound.blip(); trackEvent('enter_farm'); // [GA4]
 }
 function exitFarm() {
@@ -6758,7 +6878,7 @@ function enterMine() {
   atMine = true;
   player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥을 캐면 돌·석탄·💎보석이 나와요. 작업대 재료·상점 판매에 쓰여요. 어두우니 캐릭터 횃불로 살펴봐요! 남쪽 문으로 나가요');
+  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥 캐기 → 돌·석탄·💎보석\n작업대 재료·상점 판매에 써요 · 남쪽 문으로 나가요');
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
 }
@@ -6814,7 +6934,7 @@ function enterHouse() {
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
-  indoor = false; placingDecor = null;
+  indoor = false; stopDecorPlacing(true);   // 들고 있던 가구는 제자리로
   player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
@@ -6900,6 +7020,10 @@ function updateDoorInteract() {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
   }
+  if (!prompt) {   // 다른 시설 프롬프트가 없을 때만 — 물조리개+마른 흙이면 물주기가 실행되므로 프롬프트도 숨긴다
+    const fp = fertTarget();
+    if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) prompt = '🌱 비료 주기';
+  }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
@@ -6927,9 +7051,9 @@ function updateZoneHint() {
   const wasGlade = nearGlade;
   nearGlade = inVillage2() && dist2D(GLADE, player.position) < GLADE_R + 0.5;
   if (nearGlade) {
-    hint = isNight() ? '🌟 반딧불이 — 🦋포충망(도구 8)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
+    hint = isNight() ? '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
     if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
-    firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 🦋포충망으로 반딧불이 잡는 곳');
+    firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 포충망으로 반딧불이 잡는 곳');
   }
   const wasForest = nearForest;
   nearForest = inVillage2() && dist2D(FOREST, player.position) < FOREST_R + 0.5;
@@ -6996,8 +7120,16 @@ function initInput() {
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   renderer.domElement.addEventListener('pointerdown', (e) => {
-    if (indoor && placingDecor) { tryPlaceDecor(e); return; } // 실내 가구 배치 중이면 바닥 탭 = 배치
+    if (indoor && placingDecor) { onDecorFloorTap(e); return; } // 실내 가구 배치 중: 탭 = 자리 잡기 / 클릭 = 놓기
+    if (indoor && tryPickDecor(e)) return;                      // 놓아 둔 가구 탭 → 들어 올려 옮기기
     wantAction = true;
+  });
+  // 마우스 호버 → 고스트가 커서를 따라간다(호버가 곧 미리보기). 터치는 탭으로 자리 잡기
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!indoor || !placingDecor || e.pointerType !== 'mouse') return;
+    const p = floorHitFromEvent(e); if (!p) return;
+    decorTarget = { x: decorClampX(p.x), z: decorClampZ(p.z), pinned: true };
+    ui.onDecorAimed?.();
   });
 }
 
@@ -7110,10 +7242,13 @@ function animate() {
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
   updatePops(dt);
+  updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
+  updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
+  updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
@@ -7278,7 +7413,7 @@ function updatePlayer(dt, t) {
   }
 
   // 🎒 도구 수납 — ✋맨손이면 등으로, 아니면 손으로. 툭 사라지지 않게 0.25초쯤 걸려 옮긴다
-  const stowWant = (toolPage === 'none') ? 1 : 0;
+  const stowWant = (toolPage === 'none' && !placingDecor) ? 1 : 0;   // 가구를 고른 동안은 손에 들어 보이게
   if (toolStow !== stowWant) toolStow = Math.max(0, Math.min(1, toolStow + (stowWant ? dt * 4 : -dt * 4)));
 
   // 액션 제스처: 도구질 = 백스윙 → 휙 내려침 → 팔로스루 / 맨손 줍기 = 허리를 접었다 편다
@@ -7520,15 +7655,26 @@ function updateCamera(dt) {
   }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
   // 🌊 바다터: 평상시 0.86(트인 수평선 보정) → 던지면 0.55 → 줄다리기·포획 0.45 로
-  //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다
-  const zoom = atSea ? (seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
-                        : seaMG.st === 'cast' ? 0.55 : 0.86)
+  //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다(가로 화면 기준).
+  //    세로 화면(폰)은 가로 시야가 좁아 같은 줌이면 캐릭터 등짝만 꽉 차서 부두·수면·물고기가
+  //    하나도 안 보인다는 피드백 → 액션샷 closeUpDist 와 같은 종횡비 보정(가로 1배 → 폰 세로
+  //    최대 2.3배)으로 폰 세로에선 줌을 풀어 준다(2026-09-05 사용자 피드백 "여전히 너무 가깝다").
+  //    폰 세로 결과: 던지기·싸움은 줌인 없음(1.0 — 긴장감은 게이지·경고·버튼 색이 전달), 낚았을 때만
+  //    절반(0.90)으로 살짝 당긴다. 가로 화면은 원래 값 그대로, 태블릿은 그 사이를 보간.
+  const seaAct = atSea && seaMG.st !== 'idle';
+  const pk = Math.min(2.3, Math.max(1, 1.35 / camera.aspect));     // 1(가로) ~ 2.3(폰 세로)
+  const phoneT = (pk - 1) / 1.3;                                   // 0(가로) ~ 1(폰 세로)
+  const seaBase = seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
+                : seaMG.st === 'cast' ? 0.55 : 0.86;
+  const seaPhone = seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.90 : 1.0;   // 폰 세로 목표 줌
+  const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
+  const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
   _camOff.copy(camOffset).multiplyScalar(zoom);
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
-  _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z), k);
+  _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z - lookAhead), k);
   camera.lookAt(_camLook);
 }
 
@@ -7812,7 +7958,7 @@ async function resolveNightVisit() {
   setTimeout(() => {   // 출석 모달·날씨 토스트와 겹치지 않게 한 박자 늦게
     ui.toast?.(`${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`, 3800);
     firstHint('night', a.ico, '밤손님이 다녀갔어요',
-      '밤사이 배고픈 숲 친구가 밭에 다녀갔어요. 🐾 파헤쳐진 흙을 조사하면 수집품을 얻을 수 있어요. 작업대에서 🎃 허수아비·🪵 울타리를 만들어 밭 근처에 두면 피해가 줄어요!');
+      '밤사이 숲 친구가 밭에 다녀갔어요\n🐾 파헤쳐진 흙을 조사하면 수집품!\n🎃허수아비·🪵울타리를 밭 근처에 두면 피해가 줄어요');
   }, 1200);
   // 📜 주민 쪽지(Gemini·자정 캐시) — 도착하면 카드로. 실패하면 조용히 생략
   if (nightNoteFetcher) {
@@ -7911,7 +8057,7 @@ function resolveWeatherEvent() {
     setTimeout(() => {
       ui.toast?.(`${s.ico} ${s.hit} 작물 ${exposed.length}개가 시들었어요… ⛏️ 괭이로 갈면 다시 심을 수 있어요`, 3800);
       firstHint('severe', s.ico, `${s.name}가 지나갔어요`,
-        `예보가 뜬 날엔 작물을 미리 수확하거나, 작업대에서 🛡️ 덮개를 설치하면 밭을 지킬 수 있어요. 시든 밭은 ⛏️ 괭이로 갈면 다시 심을 수 있어요.`);
+        '예보가 뜬 날엔 미리 수확하거나 🛡️덮개를 설치해요\n시든 밭은 ⛏️괭이로 갈면 다시 심을 수 있어요');
     }, 900);
     trackEvent('weather_event', { kind, protected: false, plots: exposed.length });  // [GA4]
   }
@@ -7962,7 +8108,7 @@ function handleAction() {
   }
   // 실내에선 도구질(밭갈기·낚시 등) 금지 — 가구 배치만(선택 중이면 발 앞에 놓기)
   if (indoor) {
-    if (placingDecor) placeDecor(placingDecor, player.position.x, player.position.z);
+    if (placingDecor) commitDecor(decorTarget.x, decorTarget.z);   // 고스트 자리(탭한 곳 또는 발 앞)에 놓기
     else ui.toast?.('🎨 꾸미기 버튼으로 가구를 골라 배치하세요');
     return;
   }
@@ -7988,6 +8134,9 @@ function handleAction() {
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   if (nearNPC && !IS_MOBILE) return talkToNPC();
+  // 🌱 비료 — 자라는 밭 앞 + 비료 보유. 💧물조리개를 들고 흙이 말라 있으면 평소대로 물주기가 우선
+  const fp = fertTarget();
+  if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // ✋ 맨손 — 도구를 등에 메고 있으니 도구질은 안 된다(줍기·대화·문은 위에서 이미 처리됨)
   if (toolPage === 'none') { ui.toast?.('✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
   switch (TOOLS[currentTool].id) {
@@ -8022,14 +8171,20 @@ function tryFish() {
   fishEase = betaEase('fish');   // 🧪 첫 3회 관대 판정
   fishState = 'wait'; biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
   Sound.water(); spawnWater(castPos.x, castPos.z);
-  ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
+  if ((gameState.inventory.bait || 0) > 0) {                     // 🪱 미끼 — 캐스트마다 1개 자동 소모
+    gameState.inventory.bait -= 1; baitActive = true; refreshInventoryUI();
+    trackEvent('use_bait', { left: gameState.inventory.bait });   // [GA4] 소모품 사용
+    ui.setFishPrompt?.(`🎣 던졌어요… 물 때까지 기다려요 · 🪱 미끼 (남은 ${gameState.inventory.bait}회)`);
+  } else {
+    ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
+  }
   trackEvent('fishing_cast'); // [GA4]
 }
 
 function catchFish() {
   // 🐟 생선구이 버프(luck)·🌧️ 비 오는 날: 두 번 굴려 작은 값 채택 → 희귀/고급 확률↑
   let roll = Math.random();
-  if (buffOn('luck') || RAIN_DAY) roll = Math.min(roll, Math.random());
+  if (buffOn('luck') || RAIN_DAY || baitActive) roll = Math.min(roll, Math.random());
   const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
@@ -8047,7 +8202,7 @@ function catchFish() {
 }
 
 function resetFishing() {
-  fishState = 'idle'; if (bobber) bobber.visible = false; ui.setFishPrompt?.(null);
+  fishState = 'idle'; baitActive = false; if (bobber) bobber.visible = false; ui.setFishPrompt?.(null);
 }
 
 function buildBobber() {
@@ -8177,6 +8332,24 @@ function trySeed() {
     }
   }
   plantSeed(plot);
+}
+
+// ── 🌱 비료 — 자라는 밭 한 칸을 즉시 수확 가능 상태로(코인 전용 소모품, 상점 20🪙) ──
+function fertTarget() {
+  if (indoor || atMine || atCafe || (gameState.inventory.fert || 0) <= 0) return null;
+  return plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8) || null;
+}
+function applyFert(plot) {
+  gameState.inventory.fert -= 1;
+  plot.growth = 1; plot.wetUntil = clock.elapsedTime + WET_TIME; plot.watered = true;
+  doPlayerAction(plot.x, plot.z);
+  refreshCropStage(plot);       // growth 1 → 단계 2 = mature(수확 토스트는 refreshCropStage 가 띄움)
+  updatePlotVisual(plot);
+  spawnSparkle(plot.x, 0.6, plot.z, 18); Sound.harvest();
+  ui.toast?.('🌱 비료를 줬어요! 바로 수확할 수 있어요');
+  trackEvent('use_fert', { left: gameState.inventory.fert });   // [GA4] 소모품 사용
+  refreshInventoryUI();
+  lastDoorPrompt = null; ui.setDoorPrompt?.(null);   // 프롬프트를 즉시 내린다 — 다음 프레임에 필요하면 다시 뜬다
 }
 
 // 물조리개: 자라는 밭에 물 → 성장(물 없이는 안 자람) + 물방울 파티클
@@ -8568,7 +8741,7 @@ function updateParticles(dt) {
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
 let trackedNPC = null;                 // 퀘스트 패널에 표시할 NPC
-const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛' };
+const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼' };
 
 // id별 퀘스트 진행 상태(없으면 생성)
 function npcState(id) {
@@ -8647,7 +8820,9 @@ function updateNPC(dt, t) {
   for (const o of npcObjs) {
     o.body.position.y = 0.55 + Math.sin(t * 2 + o.phase) * 0.04;
     if (o.sprite) o.sprite.position.y = 2.15 + Math.sin(t * 2.5 + o.phase) * 0.08;
-    if (mode === 'play' && nearNPC === o) {
+    if (merchantVisit && o.def.id === 'merchant') {
+      // 방문 이벤트 중엔 updateMerchantVisit 가 이동·시선을 담당
+    } else if (mode === 'play' && nearNPC === o) {
       const dx = player.position.x - o.group.position.x, dz = player.position.z - o.group.position.z;
       o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.2); // 플레이어 바라보기
     } else {
@@ -8670,7 +8845,7 @@ function wanderNPC(o, dt) {
     o.wanderTimer = 3 + Math.random() * 4;
     // 건물·호수 안쪽은 목적지로 고르지 않음(카페·닭장·집을 뚫고 지나가던 문제)
     for (let i = 0; i < 6; i++) {
-      const a = Math.random() * Math.PI * 2, r = Math.random() * 1.6;
+      const a = Math.random() * Math.PI * 2, r = Math.random() * (o.def.roam ?? 1.6);
       const nx = o.home.x + Math.cos(a) * r, nz = o.home.z + Math.sin(a) * r;
       if (!npcBlocked(nx, nz)) { o.target.set(nx, 0, nz); break; }
       if (i === 5) o.target.copy(o.home);   // 전부 막혔으면 제자리
@@ -8686,6 +8861,114 @@ function wanderNPC(o, dt) {
     o.group.position.x = nx; o.group.position.z = nz;
     o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.1);
   }
+}
+
+// ── 🧙 상인 방문 이벤트(1회, 강제) — 첫 판매 경험을 상인이 직접 가져다준다 ──
+//    발동: 마을 안 + 목재5 또는 물고기1 + 모달 없음 + hintsSeen.merchantVisit 없음
+//    walk(플레이어에게 걸어옴, 12초 상한) → talk(모달) → return(좌판 홈으로)
+let merchantVisit = null;   // null | { state:'walk'|'talk'|'return', t, offer }
+function merchantObj() { return npcObjs.find(o => o.def.id === 'merchant') || null; }
+
+// NPC 를 target 쪽으로 speed 만큼 전진(막히면 좌우 45° 우회). 남은 거리 반환
+function stepNpcToward(o, target, speed, dt) {
+  const dx = target.x - o.group.position.x, dz = target.z - o.group.position.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 0.05) return d;
+  const ang = Math.atan2(dx, dz);
+  for (const off of [0, Math.PI / 4, -Math.PI / 4]) {
+    const a = ang + off;
+    const nx = o.group.position.x + Math.sin(a) * speed * dt, nz = o.group.position.z + Math.cos(a) * speed * dt;
+    if (npcBlocked(nx, nz)) continue;
+    o.group.position.x = nx; o.group.position.z = nz;
+    break;
+  }
+  o.group.rotation.y = lerpAngle(o.group.rotation.y, ang, 0.2);
+  return Math.hypot(target.x - o.group.position.x, target.z - o.group.position.z);
+}
+
+function updateMerchantVisit(dt) {
+  if (mode !== 'play') return;
+  const m = merchantObj(); if (!m) return;
+  if (!merchantVisit) {
+    if (gameState.hintsSeen.merchantVisit) return;
+    if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
+    if (ui.anyModalOpen?.()) return;
+    const offer = welcomeOffer(gameState.inventory);
+    if (!offer) return;
+    gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
+    merchantVisit = { state: 'walk', t: 0, offer };
+    return;
+  }
+  const v = merchantVisit; v.t += dt;
+  if (v.state === 'walk') {
+    const d = stepNpcToward(m, player.position, 2.0, dt);
+    if (d <= 1.6 || v.t > 12) { v.state = 'talk'; openMerchantOffer(v.offer); }
+  } else if (v.state === 'talk') {
+    const dx = player.position.x - m.group.position.x, dz = player.position.z - m.group.position.z;
+    m.group.rotation.y = lerpAngle(m.group.rotation.y, Math.atan2(dx, dz), 0.2);   // 플레이어 바라보기
+  } else if (v.state === 'return') {
+    const d = stepNpcToward(m, m.home, 2.0, dt);
+    if (d < 0.3 || v.t > 20) merchantVisit = null;      // 홈 도착 → 평소 배회로 복귀
+  }
+}
+
+function openMerchantOffer(offer) {
+  const wood = offer.item === 'wood';
+  ui.openMerchantModal?.({
+    title: '방랑 상인',
+    body: wood ? '오, 그 🪵 목재 좋구먼! 처음 보는 얼굴이니 후하게 쳐주지.' : '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.',
+    primary: { label: wood ? '🪵 목재 5개 팔기 (+30🪙)' : '🐟 물고기 팔기 (+25🪙)', onClick: () => merchantWelcomeSell(offer) },
+    secondary: { label: '다음에', onClick: () => merchantDismiss() },
+  });
+}
+
+function merchantWelcomeSell(offer) {
+  if ((gameState.inventory[offer.item] || 0) < offer.qty) { merchantDismiss(); return; }   // 그새 써버렸으면 조용히 종료
+  gameState.inventory[offer.item] -= offer.qty;
+  gameState.inventory.coins = (gameState.inventory.coins || 0) + offer.gain;
+  refreshInventoryUI(); Sound.complete();
+  spawnFloatText(player.position.x, 1.9, player.position.z, `+${offer.gain}🪙`, '#2fa564');
+  questEvent('sell', offer.qty);                          // 상인 퀘스트 '장사의 신' 진행
+  ui.act?.('sell');                                       // 튜토리얼 ④ 팔기
+  trackEvent('shop_sell', { item: offer.item, qty: offer.qty, gain: offer.gain, rate: 300, via: 'merchant' }); // [GA4] 기존 판매 이벤트 + via
+  trackEvent('merchant_visit', { item: offer.item, gain: offer.gain });                                        // [GA4] 방문 퍼널
+  logEcon('shop_sell', offer.item + '|welcome', offer.gain, gameState.inventory.coins);                        // [원장] 출처는 shop_sell, 품목 접미사로 구분
+  ui.openMerchantModal?.({
+    title: '방랑 상인',
+    body: '더 팔 거면 동쪽 좌판으로 오게. 새로 들어온 🌱비료랑 🪱미끼도 보고 가고.',
+    primary: { label: '🛒 좌판 구경', onClick: () => { merchantDismiss(); ui.openShop?.('buy'); } },
+    secondary: { label: '다음에', onClick: () => merchantDismiss() },
+  });
+}
+
+function merchantDismiss() {
+  ui.closeMerchantModal?.();
+  if (merchantVisit) { merchantVisit.state = 'return'; merchantVisit.t = 0; }
+  showShopCue(60);
+  if (!gameState.hintsSeen.merchantShop) {   // 코치 진행 중에도 1회 표시(firstHintBanner 는 코치 중 억제라 새 유저에겐 영영 안 뜸)
+    gameState.hintsSeen.merchantShop = true;
+    ui.showHintBanner?.({ ico: '🛒', title: '상점 좌판', line: '동쪽 좌판에서 언제든 팔 수 있어요', near: () => true });
+  }
+}
+
+// 좌판 위 🛒 안내 스프라이트 — sec 초 동안 둥실거리며 위치를 알려준다
+let shopCue = null, shopCueUntil = 0;
+function showShopCue(sec) {
+  if (!shopCue) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const c = cv.getContext('2d'); c.font = '96px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('🛒', 64, 70);
+    const tex = new THREE.CanvasTexture(cv);
+    shopCue = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    shopCue.scale.set(1.1, 1.1, 1); shopCue.position.set(SHOP.x, 3.2, SHOP.z);
+    scene.add(shopCue);
+  }
+  shopCue.visible = true; shopCueUntil = clock.elapsedTime + sec;
+}
+function updateShopCue(t) {
+  if (!shopCue || !shopCue.visible) return;
+  if (clock.elapsedTime > shopCueUntil) { shopCue.visible = false; return; }
+  shopCue.position.y = 3.2 + Math.sin(t * 2.4) * 0.15;
 }
 
 // 근접 시 가장 가까운 주민 선택 → 프롬프트 + 퀘스트 패널

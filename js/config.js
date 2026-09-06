@@ -6,7 +6,15 @@
 //    게임은 "오프라인 폴백" 으로 콘솔 로그만 남기고 정상 동작합니다.
 // =============================================================
 
+import { isDevSession } from './first-loop.js';
+
+// 🔵 API 오리진 — 웹은 같은 오리진이라 빈 값, 앱인토스 번들은 토스가 서빙해
+//    상대경로가 전부 404 가 된다. scripts/build-ait.mjs 가 빌드 때 이 한 줄을
+//    절대 오리진으로 치환한다(앵커가 바뀌면 빌드가 실패하도록 되어 있음).
+const API_BASE = '';
+
 export const CONFIG = {
+  API_BASE,                     // 하드코딩된 fetch 호출부(도감·의뢰·리더보드)가 참조
   // ── Supabase 연동 값 (BaaS: Auth + Postgres) ─────────────────
   //    Supabase 프로젝트 > Settings > API 에서 확인
   SUPABASE_URL: 'https://zuyxgjfihxtfdpolljzw.supabase.co', // 프로젝트 URL(공개, 안전)
@@ -36,25 +44,30 @@ export const CONFIG = {
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
   AUTH_MODE: 'google',
 
+  // ── 앱인토스 사용자 식별키 검증 엔드포인트 ────────────────────
+  //    getUserKeyForGame() 의 hash 를 Supabase 세션으로 바꿔주는 toss-auth Worker URL.
+  //    (mTLS 인증서가 필요해 서버에서만 검증 가능. 비어있으면 안내 폴백 후 게스트 권유)
+  TOSS_AUTH_ENDPOINT: 'https://calmforest-toss-auth.icuchoel.workers.dev',
+
   // ── ☕ 카페 손님 동적 생성 엔드포인트 ─────────────────────────
   //    같은 오리진의 서버 함수(functions/api/cafe-guests.js)가 Gemini 를 대신 호출합니다.
   //    ⚠️ Gemini API 키는 절대 여기 두지 마세요 — 브라우저에 그대로 노출됩니다.
   //       키는 .env(로컬) / Cloudflare Pages 환경변수(운영)의 GEMINI_API_KEY 에만 둡니다.
   //    빈 문자열로 두면 기능이 꺼지고 게임 내장(날짜 시드) 손님이 나옵니다.
-  CAFE_GUEST_API: '/api/cafe-guests',
+  CAFE_GUEST_API: `${API_BASE}/api/cafe-guests`,
 
   // ── 🦝 밤손님(부재중 습격) 판정/쪽지 엔드포인트 ───────────────
   //    판정은 서버가 결정적 시드(HMAC)로 계산 — 새로고침 리롤 불가.
   //    빈 문자열로 두면 밤손님 기능이 꺼집니다(아무 일도 일어나지 않음).
-  NIGHT_VISIT_API: '/api/night-visit',
-  NIGHT_NOTE_API: '/api/night-note',   // 사건 다음날 주민 쪽지(Gemini, 날짜 캐시)
+  NIGHT_VISIT_API: `${API_BASE}/api/night-visit`,
+  NIGHT_NOTE_API: `${API_BASE}/api/night-note`,   // 사건 다음날 주민 쪽지(Gemini, 날짜 캐시)
 
   // ── 📸 사진첩(OCI Object Storage) 엔드포인트 ─────────────────
   //    사진 원본은 오라클 버킷에 — 서버 프록시(functions/api/photo*.js) 경유.
   //    OCI 는 버킷 CORS 를 지원하지 않아 브라우저 직접 업로드가 불가하고,
   //    ⚠️ OCI 키는 절대 여기 두지 마세요 — .env / Cloudflare 환경변수에만.
-  PHOTO_API: '/api/photo',             // POST 업로드 · DELETE ?key= 삭제
-  PHOTO_URLS_API: '/api/photo-urls',   // POST { keys } → presigned <img> URL 일괄 발급
+  PHOTO_API: `${API_BASE}/api/photo`,             // POST 업로드 · DELETE ?key= 삭제
+  PHOTO_URLS_API: `${API_BASE}/api/photo-urls`,   // POST { keys } → presigned <img> URL 일괄 발급
 
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)
@@ -81,3 +94,8 @@ export function isSupabaseConfigured() {
 export function isGaConfigured() {
   return CONFIG.GA4_MEASUREMENT_ID && !CONFIG.GA4_MEASUREMENT_ID.startsWith('YOUR_');
 }
+
+// 🧪 개발용 URL 파라미터(?house= ?coop= ?weather= ?spawn=)로 들어온 세션 —
+//    원장·세션 요약·센서 로그·GA4 를 모두 끈다(2026-08-31 자동 테스트가 원장 수입의 85%를 오염시킨 사고 재발 방지)
+export const IS_DEV_SESSION = isDevSession(typeof location !== 'undefined' ? location.search : '');
+if (IS_DEV_SESSION) console.log('[dev] 개발 파라미터 세션 — 원장/세션/센서/GA4 기록을 남기지 않습니다');

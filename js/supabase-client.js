@@ -10,6 +10,7 @@
 // =============================================================
 
 import { CONFIG, isSupabaseConfigured } from './config.js';
+import { PLATFORM } from './platform.js';                  // 'web' | 'toss' — 로그 세그먼트
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant } from './analytics.js';
 
@@ -40,13 +41,14 @@ function isAnon(session) {
     || session?.user?.app_metadata?.provider === 'anonymous';
 }
 
-// 세션 객체 → state 반영
+// 세션 객체 → state 반영 (🔵 토스 유저는 user_metadata.toss 로 식별 — 영구 계정 취급)
 function applySession(session) {
+  const isToss = session?.user?.user_metadata?.toss === true;
   state.online = true;
   state.userId = session.user.id;
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
-  state.email = isAnon(session) ? '게스트' : (session.user.email || session.user.user_metadata?.name || '유저');
-  state.provider = isAnon(session) ? 'anonymous' : (session.user.app_metadata?.provider || 'google');
+  state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : (session.user.email || session.user.user_metadata?.name || '유저');
+  state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : (session.user.app_metadata?.provider || 'google');
   resolveBetaGroup(session);
   emit();
 }
@@ -123,6 +125,65 @@ export async function signInWithGoogle() {
   const redirectTo = window.location.origin + window.location.pathname;
   const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
   if (error) { console.warn('[구글 로그인 실패]', error.message); alert(t('구글 로그인 실패: {0}').replace('{0}', error.message)); }
+}
+
+// ── 🔵 바로 플레이하기 (앱인토스 웹뷰 전용) ─────────────────────
+//   토스 로그인(appLogin)은 사업자 등록을 거친 '토스로그인 약관 동의'가 있어야 쓸 수 있어
+//   게임 카테고리 미니앱용 사용자 식별키를 쓴다 — 동의 화면 없이 바로 계정이 잡힌다.
+//   SDK getUserKeyForGame() → hash → toss-auth Worker(TOSS_AUTH_ENDPOINT)가
+//   mTLS 로 토스에 진위를 검증한 뒤 Supabase 세션(access/refresh)을 발급해 돌려준다.
+//
+//   반환 { ok, reason } — reason 은 GA4 toss_connect 이벤트의 실패 분류 키:
+//     bridge(웹뷰 밖) · old_app(토스앱 구버전) · invalid_category · sdk_error · empty_hash
+//     · endpoint_not_configured · server(Worker/토스 검증 실패) · session(Supabase 세션 실패)
+//   opts.silent: 자동 연결 시도 때 alert 를 띄우지 않는다(실패는 호출부가 화면으로 안내).
+export async function signInWithToss({ silent = false } = {}) {
+  const fail = (reason, message) => Object.assign(new Error(message), { reason });
+  try {
+    const { loadTossSDK } = await import('./platform.js');
+    const sdk = await loadTossSDK();
+    // 웹뷰 밖(일반 브라우저)에서는 브리지가 없어 SDK 내부에서 TypeError 가 난다 →
+    // 원문 대신 사람이 읽을 안내로 바꿔준다.
+    let result;
+    try {
+      result = await sdk.getUserKeyForGame();
+    } catch (bridgeErr) {
+      console.warn('[토스] 브리지 호출 실패', bridgeErr);
+      throw fail('bridge', '토스 앱 안에서만 이용할 수 있어요. 웹에서는 게스트로 플레이해주세요.');
+    }
+    // SDK 가 실패를 예외가 아니라 반환값으로도 알려주므로 분기해서 안내를 붙인다
+    if (!result) throw fail('old_app', '토스 앱 버전이 낮아요. 최신 버전으로 업데이트해주세요.');
+    if (result === 'INVALID_CATEGORY') throw fail('invalid_category', '게임 카테고리 미니앱이 아니에요.');
+    if (result === 'ERROR') throw fail('sdk_error', '사용자 키를 가져오지 못했어요. 잠시 후 다시 시도해주세요.');
+    const anonKey = result.hash;
+    if (!anonKey) throw fail('empty_hash', '사용자 키가 비어 있어요.');
+
+    if (!CONFIG.TOSS_AUTH_ENDPOINT) {
+      if (!silent) alert(t('토스 계정 연결 서버 준비 중이에요 — 우선 게스트로 플레이해주세요!'));
+      return { ok: false, reason: 'endpoint_not_configured' };
+    }
+    let data;
+    try {
+      const res = await fetch(CONFIG.TOSS_AUTH_ENDPOINT, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anonKey }),
+      });
+      data = await res.json();
+      if (!res.ok || !data.access_token || !data.refresh_token) throw new Error(data.error || 'HTTP ' + res.status);
+    } catch (netErr) {
+      throw fail('server', netErr?.message || String(netErr));
+    }
+    const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (error) throw fail('session', error.message);
+    applySession(s.session);
+    console.log('[토스] Supabase 세션 연결 완료', state.userId);
+    return { ok: true };
+  } catch (err) {
+    const reason = err?.reason || 'unknown';
+    console.warn('[토스 시작 실패]', reason, err?.message || err);
+    if (!silent) alert(t('토스로 시작하지 못했어요: {0}').replace('{0}', t(String(err?.message || err))));
+    return { ok: false, reason, error: err };
+  }
 }
 
 // ── 게스트로 플레이 (매번 새 익명계정 → 휘발성, 재방문 시 새 마을) ──
@@ -206,7 +267,7 @@ export async function sendLogBatch(rows) {
   if (!rows || rows.length === 0) return;
   const enriched = rows.map(r => ({
     user_id: state.userId, session_id: state.sessionId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, // [분석] 기기/게스트/실험 세그먼트
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, // [분석] 기기/게스트/실험/플랫폼 세그먼트
     ...r,
   }));
   if (!state.online || !supabase) { console.log(`[Supabase 폴백] 로그 배치 ${enriched.length}건 (오프라인)`); return; }
@@ -222,7 +283,7 @@ export async function sendEconBatch(rows) {
   if (!rows || rows.length === 0) return;
   const enriched = rows.map(r => ({
     user_id: state.userId, session_id: state.sessionId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, // [분석] 세그먼트 동일 적용
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, // [분석] 세그먼트 동일 적용
     ...r,
   }));
   if (!state.online || !supabase) { console.log(`[Supabase 폴백] 경제 원장 ${enriched.length}건 (오프라인)`, enriched); return; }
@@ -326,7 +387,7 @@ export async function sendSeaRecord(row) {
 export async function upsertSessionRow(row) {
   const full = {
     session_id: state.sessionId, user_id: state.userId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
     ...row, updated_at: new Date().toISOString(),
   };
   if (!state.online || !supabase) { console.log('[Supabase 폴백] 세션 요약(오프라인):', full); return; }

@@ -54,7 +54,16 @@
   }
 
   /* 좌측 상단: 로그인 + 저장 */
-  #topleft { top: calc(16px + env(safe-area-inset-top)); left: 16px; display: flex; align-items: center; gap: 12px; }
+  /* ── 상단 인셋(한 곳에서 정의, 상단에 붙는 모든 UI 가 물려받음) ──
+     웹: 노치/상태바(safe-area)만. 🔵 토스 웹뷰: 우상단에 네이티브 ··· ✕ 버튼이 항상 떠 있어
+     (공식 문서: Y = safe-area-top + 5(iOS)/10(Android), 높이 ~40px) 그 아래까지 52px 를 더 비운다.
+     화면별로 밀어내던 방식은 미니게임마다 다시 겹쳤음(나룻배 런에서 재발) → 인셋 하나로 통일. */
+  :root { --toss-reserve: 0px; }
+  body.platform-toss { --toss-reserve: 52px; }
+  /* --top-inset 은 body 에서 계산해야 platform-toss 의 --toss-reserve 덮어쓰기가 반영된다
+     (:root 에서 계산하면 root 의 0px 로 굳어 자식에게 그대로 상속됨 — 실측으로 확인) */
+  body { --top-inset: calc(env(safe-area-inset-top) + var(--toss-reserve)); }
+  #topleft { top: calc(16px + var(--top-inset)); left: 16px; display: flex; align-items: center; gap: 12px; }
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
   /* 상단 바: 자주 쓰는 📷·🙂만 노출, 나머지는 ☰ 메뉴로 접기(초보자 혼란 방지) */
@@ -113,7 +122,7 @@
   #music-btn.off { opacity: .5; }
   #photo-btn:active, #emote-btn:active, #menu-btn:active, #util-btns button:active { transform: scale(0.94); }
   /* 이모트 팝업 */
-  #emote-pop { position: fixed; top: calc(62px + env(safe-area-inset-top)); left: 16px; display: none; gap: 6px; z-index: 12; }
+  #emote-pop { position: fixed; top: calc(62px + var(--top-inset)); left: 16px; display: none; gap: 6px; z-index: 12; }
   #emote-pop.show { display: flex; }
   #emote-pop button { border: none; border-radius: 12px; width: 42px; height: 42px; font-size: 20px; cursor: pointer; background: rgba(255,255,255,0.85); box-shadow: var(--shadow); }
   #photo-btn.pulse { animation: photopulse 0.7s ease-in-out infinite; background: #ffe8b0; }
@@ -123,7 +132,7 @@
   #feedback-tab { bottom: calc(74px + env(safe-area-inset-bottom)); right: 18px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 8px 13px; transition: transform .1s; }
   #feedback-tab:active { transform: scale(0.95); }
   /* 📖 도감 탭 — 인벤토리 HUD(장비칸) 바로 아래 공백에 배치 */
-  #dex-tab { top: calc(134px + env(safe-area-inset-top)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
+  #dex-tab { top: calc(134px + var(--top-inset)); right: 16px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 9px 14px; transition: transform .1s; }
   #dex-tab:active { transform: scale(0.95); }
 
   /* 로그인(로그아웃) 상태에선 게임 HUD 전부 숨김 → 로그인 화면만 깔끔하게 */
@@ -139,6 +148,7 @@
   body:not(.playing) #npc-prompt,
   body:not(.playing) #talk-btn,
   body:not(.playing) #coach,
+  body:not(.playing) #decor-guide,
   body:not(.playing) #door-prompt,
   body:not(.playing) #fish-prompt,
   body:not(.playing) #zone-prompt,
@@ -165,7 +175,7 @@
   body.boat-run #talk-btn,
   body.boat-run #door-prompt,
   body.boat-run #zone-prompt { display: none !important; }
-  #boat-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 7px; pointer-events: none; }
+  #boat-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + var(--top-inset)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 7px; pointer-events: none; }
   body.boat-run #boat-hud { display: flex; }
   #boat-bar { width: min(420px, 76vw); height: 10px; border-radius: 6px; background: rgba(255,255,255,0.55); box-shadow: var(--shadow); overflow: hidden; }
   #boat-fill { height: 100%; width: 0%; border-radius: 6px; background: linear-gradient(90deg, #7ec4e8, #5aa9d6); transition: width .12s linear; }
@@ -174,12 +184,12 @@
   #boat-boost { width: min(220px, 52vw); height: 6px; border-radius: 4px; background: rgba(255,255,255,0.5); overflow: hidden; }
   #boat-boost i { display: block; height: 100%; width: 0%; background: #ffd05e; }
   #boat-boost.ready i { background: #7ed957; }
-  #boat-quit { position: fixed; right: 14px; top: calc(14px + env(safe-area-inset-top)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
+  #boat-quit { position: fixed; right: 14px; top: calc(14px + var(--top-inset)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-quit { display: block; }
   /* 🌊 바다터 — 도구 팔레트 숨김(릴대 하나로 노는 공간) */
   body.sea-mode #hotbar { display: none !important; }
   /* 🌊 바다터 줄다리기 HUD — 배너 + 진행 게이지 + 부두 끝 경고 */
-  #sea-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(54px + env(safe-area-inset-top)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  #sea-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(54px + var(--top-inset)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
   #sea-hud.show { display: flex; }
   #sea-banner { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(20,60,90,0.5); }
   #sea-banner.pull { color: #b6ff9e; animation: seaPulse .35s infinite alternate; }
@@ -188,7 +198,7 @@
   #sea-gauge { width: min(320px, 64vw); height: 12px; border-radius: 8px; background: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.7); overflow: hidden; }
   #sea-gauge i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #ffd25e, #ff9d4d); transition: width .12s; }
   #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
-  #boat-view { position: fixed; right: 14px; top: calc(54px + env(safe-area-inset-top)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
+  #boat-view { position: fixed; right: 14px; top: calc(54px + var(--top-inset)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-view { display: block; }
   /* 🛶 결과 / 창고 모달 */
   #boat-result, #boat-shop { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
@@ -214,8 +224,8 @@
   .boat-up button:disabled { opacity: .45; cursor: default; }
   .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show { display: grid; }
   #char-layout { display: flex; gap: 16px; align-items: stretch; text-align: left; }
   #char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1 1 auto; align-content: start; }
   .char-card { padding: 10px 6px; border-radius: 14px; background: #f4faf5; box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, outline-color .12s; outline: 3px solid transparent; text-align: center; }
@@ -312,10 +322,17 @@
   #google-btn:hover { transform: translateY(-2px); } #google-btn:active { transform: scale(0.96); }
   #google-btn .g { font-weight: 800; font-size: 19px; background: conic-gradient(from -45deg,#ea4335,#fbbc05,#34a853,#4285f4,#ea4335); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #guest-btn { display: block; margin: 18px auto 0; background: none; border: none; color: rgba(255,255,255,0.85); font-size: 13px; text-decoration: underline; cursor: pointer; }
+  /* 🔵 바로 플레이하기(앱인토스 웹뷰에서만 표시 — 웹뷰에선 구글 OAuth 불가라 이 버튼이 구글을 대체) */
+  #toss-btn { display: none; align-items: center; gap: 8px; margin: 0 auto; border: none; background: #3182f6; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
+  #toss-btn:active { transform: scale(0.96); }
+  body.platform-toss #google-btn { display: none; }
+  body.platform-toss #toss-btn { display: inline-flex; }
+  body.platform-toss #guest-btn { display: none; }   /* 게스트는 선택지가 아니라 폴백 — 버튼 하나만 */
+  body.platform-toss #stats-btn { display: none; }   /* 활동 기록은 구글 계정 전용 — 토스에선 열 수 없는 버튼을 노출하지 않음 */
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
-  #topright { top: calc(16px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  #topright { top: calc(16px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   #inv-hud { display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .inv-item { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
   .inv-ico { font-size: 17px; }
@@ -366,13 +383,13 @@
   }
 
   /* 토스트(피드백 메시지) */
-  #toast { top: 96px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
+  #toast { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
   /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지 */
-  body.coaching #toast { top: calc(210px + env(safe-area-inset-top)); }
+  body.coaching #toast { top: calc(210px + var(--top-inset)); }
 
   /* 🪧 시설 첫 접근 배너 — 이동을 안 끊는 비차단 안내(토스트보다 한 단계 큰 카드) */
-  #hint-banner { top: 96px; left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
+  #hint-banner { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
     display: flex; gap: 10px; align-items: center; text-align: left;
     opacity: 0; transition: opacity .35s; pointer-events: none; }
   #hint-banner.show { opacity: 1; }
@@ -380,7 +397,19 @@
   #hint-banner .hb-title { font-size: 14px; font-weight: 700; }
   #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
   /* 배너가 떠 있는 동안 토스트는 그 아래로 내려 겹침 방지 */
-  body.hintbanner #toast { top: 158px; }
+  body.hintbanner #toast { top: calc(158px + var(--toss-reserve)); }
+  /* 🎨 첫 가구 배치 단계 안내(1회) — 시설 배너 자리에 코치 모양으로. 코치가 떠 있으면 코치 문구를 대신 바꿔 쓴다 */
+  #decor-guide { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
+    display: none; flex-direction: column; gap: 5px; text-align: left; pointer-events: none; border: 2px solid var(--mint); }
+  #decor-guide.show { display: flex; }
+  #dg-text { font-size: 13px; font-weight: 700; }
+  #dg-dots { display: flex; gap: 5px; font-size: 10px; }
+  #dg-dots span { color: rgba(0,0,0,0.18); }
+  #dg-dots .done { color: #6fd08c; }
+  #dg-dots .cur { color: #ffab3d; }
+  body.decor-guide #toast { top: calc(158px + var(--toss-reserve)); }
+  body.decor-guide #hint-banner { display: none !important; }   /* 단계 안내가 슬롯을 쓰는 동안 시설 배너는 뒤로 */
+  body.menu-open #decor-guide { display: none !important; }      /* 꾸미기 메뉴가 열려 있으면 메뉴가 곧 안내 */
 
   /* 조작 도움말(데스크톱만) — 하단 중앙, 도구바 위. 잠시 뒤 자동으로 사라짐 */
   #hint { bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .82; white-space: nowrap; animation: hintFade .8s ease 8s forwards; }
@@ -389,9 +418,9 @@
 
   /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
   /* 미니맵 — 좌상단(버튼 아래), 캐릭터 위치 표시 */
-  #minimap { position: fixed; top: calc(94px + env(safe-area-inset-top)); left: 16px; width: 108px; height: 108px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
-  #quest-panel { top: calc(222px + env(safe-area-inset-top)); left: 16px; display: none; max-width: 230px; }
-  body.story-on #quest-panel { top: calc(272px + env(safe-area-inset-top)); }   /* 📖 스토리 칩이 떠 있으면 그 아래로 스택(겹침 방지) */
+  #minimap { position: fixed; top: calc(94px + var(--top-inset)); left: 16px; width: 108px; height: 108px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
+  #quest-panel { top: calc(222px + var(--top-inset)); left: 16px; display: none; max-width: 230px; }
+  body.story-on #quest-panel { top: calc(272px + var(--top-inset)); }   /* 📖 스토리 칩이 떠 있으면 그 아래로 스택(겹침 방지) */
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
@@ -405,7 +434,7 @@
   #npc-prompt.show { opacity: 1; }
 
   /* 인터랙티브 튜토리얼 코치(상단 중앙) */
-  #coach { top: calc(92px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 7px; max-width: 90vw; text-align: center; border: 2px solid var(--mint); }
+  #coach { top: calc(92px + var(--top-inset)); left: 50%; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 7px; max-width: 90vw; text-align: center; border: 2px solid var(--mint); }
   #coach.show { display: flex; }
   #coach-text { font-size: 13.5px; font-weight: 700; }
   #coach-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; font-size: 10px; }
@@ -484,14 +513,14 @@
   .kt-mg.chop { background: #dcecfa; }
   .kt-best { font-size: 10.5px; opacity: .7; margin-top: 3px; font-variant-numeric: tabular-nums; }
   /* 📖 메인 퀘스트 칩 — 미니맵 아래, 현재 장 목표(코지 톤: 안내지 강요 아님) */
-  #story-chip { position: fixed; top: calc(212px + env(safe-area-inset-top)); left: 16px; display: none; align-items: center; gap: 8px;
+  #story-chip { position: fixed; top: calc(212px + var(--top-inset)); left: 16px; display: none; align-items: center; gap: 8px;
     padding: 8px 12px; cursor: pointer; max-width: 210px; transition: transform .1s; }
   #story-chip.show { display: flex; }
   #story-chip:active { transform: scale(0.96); }
   #sc-ico { font-size: 20px; flex: 0 0 auto; }
   #sc-title { font-size: 11px; font-weight: 700; opacity: .65; }
   #sc-goal { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
-  body:not(.playing) #story-chip, body.boat-run #story-chip, body.mg-open #story-chip, body.intro-open #story-chip { display: none !important; }
+  body:not(.playing) #story-chip, body.boat-run #story-chip, body.mg-open #story-chip, body.intro-open #story-chip, body.coaching #story-chip { display: none !important; }
   #story-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #story-modal.show { display: grid; }
   .st-row { display: flex; gap: 10px; padding: 9px 10px; border-radius: 12px; margin-bottom: 6px; background: #f2f6f0; }
@@ -504,8 +533,27 @@
   .st-prog { font-size: 11px; font-weight: 700; color: #2fa564; margin-top: 3px; font-variant-numeric: tabular-nums; }
   .st-done { flex: 0 0 auto; align-self: center; font-size: 15px; }
   @media (max-width: 760px) {
-    #story-chip { top: calc(162px + env(safe-area-inset-top)); left: 12px; max-width: 174px; padding: 7px 10px; }
+    #story-chip { top: calc(162px + var(--top-inset)); left: 12px; max-width: 174px; padding: 7px 10px; }
     #sc-goal { font-size: 11.5px; }
+    /* 📱 컨텍스트 슬롯(12px, 162px) — 코치 > 시설 배너 > 메인 퀘스트 칩 순으로 한 자리를 나눠 쓴다.
+       가운데 띠(캐릭터)는 비우고, 오른쪽 버튼 열(문의하기·도감 ≈150px)은 침범하지 않는다. */
+    #decor-guide { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
+    #dg-text { font-size: 12.5px; }
+    body.decor-guide #story-chip { display: none !important; }   /* 슬롯 우선순위: 코치 > 단계 안내 > 시설 배너 > 퀘스트 칩 */
+    body.decor-guide #toast { top: calc(270px + var(--top-inset)); }   /* 안내 카드(≈95px) 아래 */
+    #coach { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px);
+             text-align: left; align-items: flex-start; padding: 9px 11px; }
+    #coach-text { font-size: 12.5px; }
+    #coach-dots { justify-content: flex-start; }
+    body.coaching #toast { top: calc(290px + var(--top-inset)); }   /* 코치 카드(≈110px) 아래 */
+    #hint-banner { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
+    body:has(#hint-banner.show) #story-chip { display: none !important; }   /* 배너가 떠 있는 1.4~3초만 칩을 비켜준다 */
+    body.coaching #hint-banner { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); }   /* 코치가 슬롯을 쓰면 배너는 프롬프트 줄 위로 */
+    /* 🌊 바다터: 큰 글자 HUD 를 위 띠(인벤토리 바)에서 프롬프트 줄로 내리고, 같은 말을 하는 문 프롬프트는 숨긴다 */
+    body.is-touch #sea-hud { top: auto; bottom: calc(234px + env(safe-area-inset-bottom)); gap: 5px; }
+    body.is-touch #sea-banner { font-size: 18px; }
+    body.is-touch:has(#sea-hud.show) #door-prompt { opacity: 0 !important; }
+    body.sea-mode #story-chip, body.sea-mode #hint-banner, body.sea-mode #dex-tab, body.sea-mode #feedback-tab { display: none !important; }
   }
 
   /* 🏆 리더보드 모달 */
@@ -545,9 +593,9 @@
   body.intro-open #hint, body.intro-open #story-chip { display: none !important; }
   body.mg-open #hint { display: none !important; }   /* 조작 안내 바는 요리 미니게임 중에도 숨김 */
   body.mg-open #coach { display: none !important; }  /* 튜토리얼 코치도 미니게임 무대 위엔 안 띄움(끝나면 복귀) */
-  #intro-bars .ib { position: absolute; left: 0; right: 0; height: max(7dvh, env(safe-area-inset-top)); background: #10120f; }
+  #intro-bars .ib { position: absolute; left: 0; right: 0; height: max(7dvh, var(--top-inset)); background: #10120f; }
   #intro-bars .top { top: 0; } #intro-bars .bot { bottom: 0; height: max(9dvh, env(safe-area-inset-bottom)); }
-  #intro-skip { position: absolute; right: max(14px, env(safe-area-inset-right)); top: calc(max(7dvh, env(safe-area-inset-top)) + 10px);
+  #intro-skip { position: absolute; right: max(14px, env(safe-area-inset-right)); top: calc(max(7dvh, var(--top-inset)) + 10px);
     pointer-events: auto; border: none; border-radius: 12px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
     background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.85); backdrop-filter: blur(4px); }
   #intro-skip:active { transform: scale(0.95); }
@@ -608,7 +656,7 @@
   body.cv-open #topleft, body.cv-open #topright { display: none !important; }   /* 좁은 화면에서 타이틀바와 겹치는 상단 마을 UI 숨김 */
   #cv-layer { position: fixed; inset: 0; z-index: 40; display: none; pointer-events: none; -webkit-user-select: none; user-select: none; }
   #cv-layer.show { display: block; }
-  #cv-top { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  #cv-top { position: absolute; top: calc(10px + var(--top-inset)); left: 50%; transform: translateX(-50%);
     display: flex; align-items: center; gap: 12px; background: rgba(255,252,244,0.93); border-radius: 14px; box-shadow: var(--shadow);
     padding: 8px 10px 8px 14px; pointer-events: auto; }
   #cv-title { font-weight: 800; font-size: 15px; }
@@ -715,11 +763,17 @@
   .ck-item .ck-buff { font-size: 10px; opacity: .8; line-height: 1.2; }
   .ck-item .ck-cost { font-size: 10.5px; opacity: .75; }
   /* 활성 버프 HUD — 우측 상단 인벤토리 아래 */
-  #buffs { position: fixed; top: calc(84px + env(safe-area-inset-top)); right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
+  #buffs { position: fixed; top: calc(84px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
   #buffs .buff { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.72); border-radius: 12px; padding: 5px 10px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow);
     pointer-events: auto; cursor: pointer; transition: transform .1s; }   /* 칩을 누르면 설명 모달 */
   #buffs .buff:active { transform: scale(0.95); }
   #hint-modal { z-index: 45; }   /* 버프 설명 등 안내 모달은 미니게임 오버레이(40)·가방(41) 위에도 뜨게 */
+  #merchant-modal { z-index: 45; }
+  #merchant-modal .tut-card { width: min(400px, 92vw); }
+  .merchant-actions { display: flex; flex-direction: column; gap: 10px; }
+  .merchant-actions button { border: none; border-radius: 14px; min-height: 48px; padding: 12px 18px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
+  #merchant-primary { background: var(--mint); color: var(--ink); }
+  #merchant-secondary { background: #eef2ee; color: var(--ink); }
   #buffs .buff .b-t { opacity: .7; font-variant-numeric: tabular-nums; }
 
   /* NPC 대화/퀘스트 모달 */
@@ -773,8 +827,8 @@
   @media (max-width: 640px) {
     .panel { padding: 5px 8px; border-radius: 11px; }
     /* 상단바: 노치 아래로 살짝 내리고 좌우 여백 축소 */
-    #topleft { top: calc(10px + env(safe-area-inset-top)); left: 10px; gap: 3px; font-size: 10px; padding: 4px 6px; }
-    #topright { top: calc(10px + env(safe-area-inset-top)); right: 10px; gap: 4px; padding: 4px 8px; }
+    #topleft { top: calc(10px + var(--top-inset)); left: 10px; gap: 3px; font-size: 10px; padding: 4px 6px; }
+    #topright { top: calc(10px + var(--top-inset)); right: 10px; gap: 4px; padding: 4px 8px; }
     /* 좌측: 상태점·라벨 텍스트 숨겨서 버튼을 아이콘만으로(정사각) 컴팩트 */
     #login-status, #login-dot { display: none; }
     .lbl { display: none; }                       /* '나가기' 글자 접기 → 아이콘만 */
@@ -784,7 +838,7 @@
       display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
     }
     #menu-btn { background: var(--mint); }
-    #emote-pop { top: calc(96px + env(safe-area-inset-top)); left: 12px; }
+    #emote-pop { top: calc(96px + var(--top-inset)); left: 12px; }
     /* 우측: 자원칩 + 가방 버튼 압축 */
     #inv-hud { gap: 7px; }
     .inv-item { gap: 2px; font-size: 12px; }
@@ -795,30 +849,37 @@
     #time-indicator { gap: 4px; }
     #time-emoji { font-size: 13px; }
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
-    #feedback-tab { bottom: auto; top: calc(82px + env(safe-area-inset-top)); right: 12px; padding: 6px 10px; font-size: 12px; }
+    #feedback-tab { bottom: auto; top: calc(82px + var(--top-inset)); right: 12px; padding: 6px 10px; font-size: 12px; }
     /* 도감 탭: 모바일에서도 인벤토리 HUD 바로 아래 */
-    #dex-tab { top: calc(126px + env(safe-area-inset-top)); right: 10px; padding: 6px 10px; font-size: 12px; }
+    #dex-tab { top: calc(126px + var(--top-inset)); right: 10px; padding: 6px 10px; font-size: 12px; }
     /* 좁은 화면은 두 칸씩 — 세 칸이면 폭이 74px 라 설명이 일고여덟 자마다 줄바꿈된다 */
     .dex-item { width: calc(50% - 4px); min-width: 0; }
     .dex-item.badge { width: 88px; }
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
-    #minimap { top: calc(72px + env(safe-area-inset-top)); left: 12px; width: 82px; height: 82px; }
-    #quest-panel { top: calc(168px + env(safe-area-inset-top)); max-width: 52vw; }
-    body.story-on #quest-panel { top: calc(218px + env(safe-area-inset-top)); }   /* 모바일도 스토리 칩 아래로 */
+    #minimap { top: calc(72px + var(--top-inset)); left: 12px; width: 82px; height: 82px; }
+    #quest-panel { top: calc(168px + var(--top-inset)); max-width: 52vw; }
+    body.story-on #quest-panel { top: calc(218px + var(--top-inset)); }   /* 모바일도 스토리 칩 아래로 */
+    /* 🪧 시설 안내 배너: 좁은 화면에선 상단 HUD 와 같은 높이라 겹치고, 화면 중앙에 두면 캐릭터·대화 버튼을
+       가린다(실기기 피드백) → 우측 컬럼(문의하기·도감) 바로 아래에 우측 정렬로 붙인다. 좌측 컬럼과는 폭으로 분리. */
+    #hint-banner { top: calc(162px + var(--top-inset)); left: auto; right: 10px;
+      transform: none; max-width: min(300px, 58vw); }
+    #hint-banner .hb-title { font-size: 13px; }
+    #hint-banner .hb-line { font-size: 12px; }
+    body.hintbanner #toast { top: calc(236px + var(--top-inset)); }
     /* 튜토리얼 코치와 겹치지 않게: 코치 떠 있는 동안 퀘스트 패널만 숨김
        (미니맵은 좌측이라 중앙 코치 카드와 안 겹침 → 튜토리얼 중에도 표시) */
     body.coaching #quest-panel { display: none; }
     /* 버프 HUD: 문의하기 탭 아래로 */
-    #buffs { top: calc(122px + env(safe-area-inset-top)); }
+    #buffs { top: calc(122px + var(--top-inset)); }
     #buffs .buff { font-size: 11px; padding: 4px 8px; }
     /* 🛶 나룻배 HUD — 좁은 화면: 진행바를 줄이고 그만두기/시점 버튼은 세로로 쌓지 않고 축소.
        미니맵(좌상단)과 겹치지 않게 HUD는 중앙 상단을 유지하고 폭만 줄인다 */
-    #boat-hud { top: calc(10px + env(safe-area-inset-top)); gap: 5px; }
+    #boat-hud { top: calc(10px + var(--top-inset)); gap: 5px; }
     #boat-bar { width: 52vw; height: 8px; }              /* 우상단 그만두기 버튼과 안 겹치게 */
     #boat-stats { font-size: 11px; gap: 7px; padding: 5px 9px; max-width: 56vw; flex-wrap: wrap; justify-content: center; }
     #boat-boost { width: 40vw; }
     #boat-quit, #boat-view { padding: 7px 9px; font-size: 11px; }
-    #boat-view { top: calc(50px + env(safe-area-inset-top)); }
+    #boat-view { top: calc(50px + var(--top-inset)); }
     /* 런 중에는 도구 하트바가 없으므로 조이스틱·액션버튼이 그대로 노출된다(조향+노 젓기) */
     /* 작업대/상점/자유주방 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
     #cook-menu, #shop-menu, #kitchen-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
@@ -863,8 +924,8 @@
     /* 기본 위치는 문 프롬프트와 동일 — 둘 다 뜨면 JS가 실제 높이만큼 올림 */
     #zone-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 12px; max-width: 86vw; }
     #ext-btn { bottom: calc(282px + env(safe-area-inset-bottom)); font-size: 13px; padding: 9px 16px; }
-    /* 모바일: 코치 말풍선(단계 점 줄바꿈으로 더 큼) 아래로 토스트 배치 */
-    body.coaching #toast { top: calc(238px + env(safe-area-inset-top)); }
+    /* 모바일: 코치는 컨텍스트 슬롯(162px, 카드 ≈110px) — 토스트는 그 아래 */
+    body.coaching #toast { top: calc(290px + var(--top-inset)); }
   }
 </style>
 </head>
@@ -923,6 +984,8 @@
   <div id="toast" class="panel"></div>
 
   <!-- 🪧 시설 첫 접근 배너 (비차단 — 입력을 받지 않고 자동으로 사라짐) -->
+  <!-- 🎨 첫 가구 배치 단계 안내(1회) -->
+  <div id="decor-guide" class="panel"><div id="dg-text"></div><div id="dg-dots"></div></div>
   <div id="hint-banner" class="panel">
     <span class="hb-ico" id="hb-ico">🌿</span>
     <div style="min-width:0;">
@@ -964,7 +1027,7 @@
   <div id="decor-menu" class="panel">
     <div class="dm-head">🎨 집 꾸미기 <span id="dm-crop"></span></div>
     <div id="dm-items"></div>
-    <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>(또는 <b>Space</b>)해 배치 · <b>↻ 회전</b> 버튼/<b>R</b>키로 가로·세로 전환 · 🥕작물/🐟물고기로 구매</div>
+    <div class="dm-hint">가구를 고른 뒤 <b>바닥을 탭</b>해 자리를 잡고, 오른쪽 버튼(또는 Space)으로 놓기 · 놓은 가구는 <b>탭하면 다시 들어</b> 옮길 수 있어요 · <b>↻ 회전</b>/R키로 가로·세로 전환 · 🥕작물/🐟물고기로 구매</div>
     <div class="dm-actions"><button id="dm-cancel">배치 취소</button><button id="dm-close">닫기</button></div>
   </div>
 
@@ -1238,6 +1301,7 @@
       <h1>calm forest</h1>
       <div class="tagline">a cozy little forest</div>
       <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
+      <button id="toss-btn">바로 플레이하기</button>
       <button id="guest-btn">게스트로 둘러보기</button>
       <div id="login-note"></div>
       <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
@@ -1321,6 +1385,19 @@
     </div>
   </div>
 
+  <!-- 🧙 상인 방문 모달 — 환영 거래(1회) → 좌판 안내 -->
+  <div id="merchant-modal">
+    <div class="tut-card">
+      <div class="tut-emoji">🧙</div>
+      <h2 id="merchant-title">방랑 상인</h2>
+      <p id="merchant-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
+      <div class="merchant-actions">
+        <button id="merchant-primary"></button>
+        <button id="merchant-secondary"></button>
+      </div>
+    </div>
+  </div>
+
   <!-- 캐릭터(동물) 선택 모달 (첫 플레이) -->
   <div id="char-modal">
     <div class="tut-card" style="max-width:640px; width:min(640px,94vw); max-height:88dvh; overflow-y:auto;">
@@ -1371,7 +1448,8 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow } from './js/supabase-client.js';
+    import { IS_TOSS } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js';
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
@@ -1417,11 +1495,11 @@
       document.body.classList.toggle('placing-decor', !!placingDecorItem);  // 배치 중이면 회전 버튼 노출
       const b = $('action-btn'); if (!b) return;
       b.classList.remove('placing', 'talk', 'door');
-      if (boatRunning) { b.textContent = '🚣'; return; }   // 런 중엔 무조건 노 젓기(스퍼트)
-      if (placingDecorItem) { b.textContent = placingDecorItem.ico; b.classList.add('placing'); return; }
+      if (boatRunning) { b.innerHTML = '🚣'; return; }   // 런 중엔 무조건 노 젓기(스퍼트)
+      if (placingDecorItem) { b.innerHTML = placingDecorItem.ico; b.classList.add('placing'); return; }
       // 주민 근처여도 메인 액션버튼은 도구 유지(대화는 전용 '대화하기' 버튼) → 수확 중 대화 하이재킹 방지
-      if (nearDoorNow) { b.textContent = doorIcon; b.classList.add('door'); return; }
-      b.textContent = lastToolIco;
+      if (nearDoorNow) { b.innerHTML = doorIcon; b.classList.add('door'); return; }
+      b.innerHTML = lastToolIco;   // 낫·포충망은 인라인 SVG 문자열이라 textContent 로 넣으면 마크업이 그대로 보인다
     }
 
     // 🎒 페이지 칩 첫 안내 — 한 번이라도 눌러 봤으면 다시 반짝이지 않는다
@@ -1468,10 +1546,11 @@
     window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
     let toastTimer;
-    // 🪧 시설 배너 큐 — 그 앞에 있으면 5초(읽을 시간), 이미 지나쳤으면 2.2초로 빠르게 흘림.
-    //    읽는 중 자리를 뜨면 최소 2.2초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
+    // 🪧 시설 배너 큐 — 그 앞에 있으면 3초(읽을 시간), 이미 지나쳤으면 1.4초로 빠르게 흘림.
+    //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
+    //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
     const hintBQ = []; let hintBShowing = false;
-    const HINT_B_MIN = 2200, HINT_B_FULL = 5000;
+    const HINT_B_MIN = 1400, HINT_B_FULL = 3000;
     function nextHintBanner() {
       const item = hintBQ.shift();
       if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
@@ -1480,7 +1559,7 @@
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
       const el = $('hint-banner'); el.classList.add('show');
-      const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 5초
+      const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
       let timer, watch;
       const done = () => { clearTimeout(timer); clearInterval(watch); el.classList.remove('show'); setTimeout(nextHintBanner, 250); };
@@ -1726,6 +1805,23 @@
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지
         $('hint-modal').classList.add('show');
       },
+      // 🧙 상인 모달 — primary/secondary 버튼 콜백을 매번 갈아끼운다(중복 리스너 방지: onclick 프로퍼티)
+      openMerchantModal({ title, body, primary, secondary }) {
+        $('merchant-title').textContent = title || '방랑 상인';
+        $('merchant-body').textContent = body || '';
+        const p = $('merchant-primary'), s = $('merchant-secondary');
+        p.textContent = primary.label; p.onclick = () => primary.onClick();
+        s.hidden = !secondary;
+        if (secondary) { s.textContent = secondary.label; s.onclick = () => secondary.onClick(); }
+        Input.setAnalog(0, 0);
+        $('merchant-modal').classList.add('show');
+      },
+      closeMerchantModal() { $('merchant-modal').classList.remove('show'); },
+      // 어떤 모달/메뉴든 열려 있으면 true — 상인 방문 같은 강제 이벤트가 겹쳐 뜨지 않게
+      anyModalOpen() {
+        return !!document.querySelector('[id$="-modal"].show, #boat-shop.show')
+          || document.body.classList.contains('menu-open') || document.body.classList.contains('mg-open');
+      },
       // 📊 시세판(전광판 상호작용) — 품목별 오늘 가격·등락 + 내일 예보
       openMarket(d) {
         const rows = $('market-rows'); rows.innerHTML = '';
@@ -1753,7 +1849,7 @@
         const el = $('door-prompt');
         nearDoorNow = !!text;
         const t = text || '';
-        doorIcon = t.includes('주문판') ? '📋'
+        doorIcon = t.includes('비료') ? '🌱' : t.includes('주문판') ? '📋'
           : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
           : t.includes('리듬') || t.includes('달래기') ? '♪' : t.includes('등불 켜기') ? '🏮' : t.includes('정화') ? '🌳'
@@ -1765,7 +1861,13 @@
         layoutPrompts();
       },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
-      onDecorPlaced() { stopPlacing(); },
+      onDecorPlaced() {
+        stopPlacing();
+        if (decorGuideStep >= 0) { setDecorGuide(3); decorGuideTimer = setTimeout(endDecorGuide, 6000); }   // ④ 옮기는 법 6초 뒤 졸업
+      },
+      onDecorAimed() { if (decorGuideStep === 1) setDecorGuide(2); },   // ③ 놓기
+      // 놓아 둔 가구를 탭해 들어 올림 → 액션버튼 = 그 가구(다시 놓기)
+      onDecorPicked(d) { if (decorGuideStep >= 0) endDecorGuide(); placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요 — 바닥을 탭해 옮긴 뒤 버튼으로 놓기`); },
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
@@ -1777,7 +1879,7 @@
       // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
-      openShop() { showShopTab('sell'); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      openShop(tab = 'sell') { showShopTab(tab); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // ☕ 카페 주문판 열기
       openCafe(d) { renderCafe(d); Input.setAnalog(0, 0); $('cafe-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🛶 나룻배 런 시작/종료 — 마을 UI를 걷어내고 배 HUD로 전환
@@ -1919,7 +2021,8 @@
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
         document.body.classList.toggle('indoor', on);
-        if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); stopPlacing(); }
+        if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); stopPlacing(); setDecorGuide(-1); }
+        else startDecorGuideIfNew();   // 🎨 첫 방문이면 단계 안내 ①
       },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
@@ -1966,11 +2069,11 @@
           ? '② 하단 왼쪽 🎒 버튼을 눌러 보세요 — 🌾농사 · 🏕️야외도구 · ✋맨손 세트가 번갈아 나와요'
           : '② 숫자 1 을 눌러 보세요 — 🌾농사 · 🏕️야외도구 · ✋맨손 세트가 번갈아 바뀌어요 (도구는 2~5)' },
       { key: 'chop',    text: `③ 🏕️야외도구 세트에서 🪓도끼(2) 고르고 나무 앞에서 ${A}으로 벌목! 🪵` },
-      { key: 'till',    text: `④ 🌾농사 세트의 ⛏️괭이(2)로 빈 땅을 갈아요 (${A})` },
-      { key: 'seed',    text: `⑤ 🌰씨앗(3)을 갈아둔 밭에 심어요 (${A})` },
-      { key: 'water',   text: `⑥ 💧물조리개(4)로 물을 주면 자라요 (${A})` },
-      { key: 'harvest', text: `⑦ 다 자란 작물을 🌾낫(5)으로 수확! (${A})` },
-      { key: 'sell',    text: `⑧ 🛒 동쪽 상점 좌판에서 수확물을 팔아 코인을 벌어요 (${A})` },
+      { key: 'sell',    text: `④ 🛒 찾아온 상인이나 동쪽 좌판에 목재를 팔아 첫 코인을 벌어요 (${A})` },
+      { key: 'till',    text: `⑤ 🌾농사 세트의 ⛏️괭이(2)로 빈 땅을 갈아요 (${A})` },
+      { key: 'seed',    text: `⑥ 🌰씨앗(3)을 갈아둔 밭에 심어요 (${A})` },
+      { key: 'water',   text: `⑦ 💧물조리개(4)로 물을 주면 자라요 (${A})` },
+      { key: 'harvest', text: `⑧ 다 자란 작물을 낫(5)으로 수확! (${A})` },
       { key: 'market',  text: `⑨ 📊 상점 옆 전광판에서 오늘의 시세를 확인! 비쌀 때 팔면 이득 (${A})` },
       { key: 'quest',   text: TOUCH
           ? '⑩ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기! (🦉올빼미는 매일 새 의뢰)'
@@ -1986,6 +2089,35 @@
       { key: 'decor',   text: `⑰ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
     ];
     let tutIdx = -1;
+    // ── 🎨 첫 가구 배치 단계 안내(1회) — "소파 어떻게 옮겨요?"·"미리보기가 안 보여요" 베타 피드백
+    //   집에 처음 들어오면 ①부터, 행동할 때마다 다음 단계로. 놓고 나면 ④(옮기는 법)를 잠깐 보여주고 졸업.
+    //   튜토리얼 코치가 ⑰꾸미기 단계로 떠 있으면 새 카드를 띄우지 않고 코치 문구를 단계별로 바꿔 쓴다(슬롯 충돌 방지).
+    const DECOR_GUIDE = TOUCH ? [
+      '① 아래 🎨 꾸미기 버튼을 눌러 가구를 골라요',
+      '② 바닥을 탭해 놓을 자리를 잡아요 — 초록 링이 놓일 자리예요',
+      '③ 오른쪽 가구 버튼(또는 자리를 한 번 더 탭)으로 놓기 · ↻ 회전',
+      '④ 놓은 가구는 탭하면 다시 들어 옮길 수 있어요',
+    ] : [
+      '① 아래 🎨 꾸미기 버튼을 눌러 가구를 골라요',
+      '② 마우스를 움직여 놓을 자리를 잡아요 — 초록 링이 놓일 자리예요',
+      '③ 클릭(또는 Space)으로 놓기 · R 회전',
+      '④ 놓은 가구는 클릭하면 다시 들어 옮길 수 있어요',
+    ];
+    let decorGuideStep = -1, decorGuideTimer = null;   // -1 = 꺼짐
+    function renderDecorGuide() {
+      const el = $('decor-guide');
+      const off = () => { el.classList.remove('show'); document.body.classList.remove('decor-guide'); };
+      if (decorGuideStep < 0) { off(); return; }
+      const text = DECOR_GUIDE[decorGuideStep];
+      if (tutIdx >= 0 && TUT_STEPS[tutIdx].key === 'decor') { $('coach-text').textContent = text; off(); return; }   // 코치 슬롯 재사용
+      $('dg-text').textContent = text;
+      $('dg-dots').innerHTML = DECOR_GUIDE.map((_, i) =>
+        `<span class="${i < decorGuideStep ? 'done' : i === decorGuideStep ? 'cur' : ''}">●</span>`).join('');
+      el.classList.add('show'); document.body.classList.add('decor-guide');
+    }
+    function setDecorGuide(step) { clearTimeout(decorGuideTimer); decorGuideStep = step; renderDecorGuide(); }
+    function endDecorGuide() { Input.markHintsSeen?.(['decorGuide']); setDecorGuide(-1); }
+    function startDecorGuideIfNew() { if (Input.hintSeen?.('decorGuide') || decorGuideStep >= 0) return; setDecorGuide(0); }
     // 단계가 지시하는 도구 — 그 도구가 있는 🎒 페이지를 미리 펴 준다.
     //   안내문은 "🪓도끼(1)" 처럼 번호로 말하는데, 모바일엔 숫자키가 없어 다른 페이지 도구는 손이 닿지 않는다.
     const TUT_TOOL = { chop: 'axe', till: 'hoe', seed: 'seed', water: 'water', harvest: 'sickle',
@@ -1997,6 +2129,7 @@
       // A군 영어 표시는 번호 차이로 번역 키 미스가 날 수 있으나 베타 대상자는 전원 한국어 사용자라 허용.
       const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰';
       $('coach-text').textContent = TUT_STEPS[tutIdx].text.replace(/^[①-⑰]/, CIRC[tutIdx]);
+      if (decorGuideStep >= 0) renderDecorGuide();   // 🎨 단계 안내가 켜져 있으면 코치 문구를 단계별로
       $('coach-dots').innerHTML = TUT_STEPS.map((_, i) =>
         `<span class="${i < tutIdx ? 'done' : i === tutIdx ? 'cur' : ''}">●</span>`).join('');
     }
@@ -2031,12 +2164,16 @@
     }
 
     // 로그인 화면 표시/숨김
-    function showLoginScreen(offline) {
+    // why: 'no_session' | 'toss_fail'(토스 자동 연결 실패) | 'offline' — [GA4] 입구 이탈 분해용
+    function showLoginScreen(offline, why = offline ? 'offline' : 'no_session') {
       $('login-screen').classList.add('show');
       $('loading').style.display = 'none';
       $('login-note').textContent = offline
         ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
-        : '로그인하면 어느 기기에서든 저장이 이어집니다.';
+        : why === 'toss_fail'
+          ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 시작할 수 있어요.'
+          : '로그인하면 어느 기기에서든 저장이 이어집니다.';
+      trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
     }
 
     let started = false;
@@ -2060,7 +2197,21 @@
     }
 
     // 로그인 화면 버튼
+    // 🔵 앱인토스 웹뷰: 구글 OAuth 불가(disallowed_useragent) → 토스 시작 버튼으로 교체
+    if (IS_TOSS) document.body.classList.add('platform-toss');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
+    //    또 실패하면 유저에게 결정을 떠넘기지 않고 게스트로 바로 시작한다(토스트로만 알림).
+    $('toss-btn').addEventListener('click', async () => {
+      const r = await signInWithToss({ silent: true });
+      // login{method:'toss'} 는 enterPlay 가 쏘므로 여기선 시도 결과만 기록(이중 집계 방지)
+      trackEvent('toss_connect', { mode: 'button', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+      if (r.ok) return;                                  // 세션 반영 → authState 콜백이 enterPlay
+      const g = await signInAsGuest(); await enterPlay();
+      // 토스트는 한 칸짜리(덮어쓰기)라 진입 직후 도감 토스트에 묻힌다 → 한 박자 뒤에 길게 띄운다
+      setTimeout(() => ui.toast(g && g.online === false ? '게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요'
+                                                        : '이번엔 게스트로 시작해요. 진행은 이 기기에만 임시 저장돼요.', 4000), 2200);
+    });
     $('guest-btn').addEventListener('click', async () => {
       const r = await signInAsGuest(); await enterPlay();
       if (r && r.online === false) ui.toast('게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요');
@@ -2114,7 +2265,10 @@
           if (have < d.cost) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)
-          ui.toast(`${d.ico} ${d.name} — 바닥을 탭하거나 오른쪽 버튼으로 놓기`);
+          if (decorGuideStep >= 0) setDecorGuide(1);              // 단계 안내 ② 자리 잡기
+          ui.toast(document.body.classList.contains('is-touch')
+            ? `${d.ico} ${d.name} — 바닥을 탭해 자리 잡고, 버튼으로 놓기`
+            : `${d.ico} ${d.name} — 바닥에 놓을 자리를 클릭 · R 회전`);
         });
         box.appendChild(el);
       });
@@ -2124,7 +2278,7 @@
     function stopPlacing() { placingDecorItem = null; refreshActionIcon(); }
     $('decor-btn').addEventListener('click', openDecor);
     $('dm-close').addEventListener('click', closeDecor);
-    $('dm-cancel').addEventListener('click', () => { Input.cancelDecor(); stopPlacing(); ui.toast('배치를 취소했어요'); closeDecor(); });
+    $('dm-cancel').addEventListener('click', () => { const was = !!placingDecorItem; Input.cancelDecor(); stopPlacing(); if (was) ui.toast('배치를 취소했어요'); closeDecor(); if (decorGuideStep > 0 && decorGuideStep < 3) setDecorGuide(0); });
     // 가구 회전(가로/세로) — 버튼 + R 키
     function rotatePlacing() { if (!placingDecorItem) return; const r = Input.rotateDecor(); ui.toast(`↻ 방향 ${r * 90}°`); }
     $('rotate-btn').addEventListener('click', rotatePlacing);
@@ -2585,6 +2739,10 @@
           el.addEventListener('click', () => { const r = Input.buyShop(it.id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`🛍️ ${r.name} 구매!`); renderShop(); });
           box.appendChild(el);
         });
+        const next = document.createElement('div');
+        next.className = 'market-hint';
+        next.textContent = '다음 목표: 🐔 닭장 60 · 🏡 넓은 집 80 · ✨ 정령 등불 60';
+        box.appendChild(next);
       }
     }
     function showShopTab(t) {
@@ -2718,7 +2876,7 @@
       try {
         if (!lbCache[board]) {
           const uid = (authState.userId || '');
-          const res = await fetch(`/api/leaderboard?board=${board}&uid=${uid}`);
+          const res = await fetch(`${CONFIG.API_BASE}/api/leaderboard?board=${board}&uid=${uid}`);
           if (!res.ok) throw new Error('http ' + res.status);
           lbCache[board] = await res.json();
         }
@@ -2768,7 +2926,7 @@
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
     const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령' };
-    const isGuestNow = () => authState.provider !== 'google';   // 구글 로그인만 영구 계정
+    const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글 로그인·토스 계정 = 영구 계정
     // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
     //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
     //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.
@@ -2782,7 +2940,7 @@
       todo.forEach(c => dexNoteBusy.add(c));
       await Promise.all(todo.map(async (c) => {
         try {
-          const res = await fetch(`/api/dex-notes?cat=${c}&lang=${LANG}`);
+          const res = await fetch(`${CONFIG.API_BASE}/api/dex-notes?cat=${c}&lang=${LANG}`);
           if (res.ok) {
             const d = await res.json();
             if (d && Object.keys(d).length) dexNotes[c] = d;
@@ -2839,9 +2997,20 @@
     $('dex-tab').addEventListener('click', openDex);
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
     $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
+    // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다
+    //    (안 바꾸면 게스트가 "구글로 로그인하세요"라는 실행 불가능한 안내에 갇힌다)
+    const NUDGE_TARGET = IS_TOSS ? 'toss' : 'google';
+    const nudgeConnect = IS_TOSS ? () => signInWithToss() : () => signInWithGoogle();
+    if (IS_TOSS) {
+      const banner = $('dex-guest'), bannerBtn = $('dex-google');
+      banner.innerHTML = '🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>토스 계정을 연결하면 <b>영구 보존</b>!';
+      banner.appendChild(bannerBtn);                 // 같은 버튼 노드를 되돌려 붙임(아래 리스너 그대로 유효)
+      bannerBtn.textContent = '🔵 토스로 도감 지키기';
+      $('nudge-google').textContent = '🔵 토스 계정 연결하고 영구 보존';
+    }
     $('dex-google').addEventListener('click', () => {
-      trackEvent('login_nudge_click', { from: 'dex' });        // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
-      signInWithGoogle();
+      trackEvent('login_nudge_click', { from: 'dex', target: NUDGE_TARGET });   // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
+      nudgeConnect();
     });
 
     // ── 🔔 로그인 넛지(게스트 전용) — 도감 마일스톤(3·7종)에 게임에서 호출 ──
@@ -2851,14 +3020,16 @@
       nudgeFrom = trigger;
       const d = Input.getDex();
       $('nudge-title').textContent = `도감 ${d.count}종 수집 중!`;
-      $('nudge-body').textContent = '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
+      $('nudge-body').textContent = IS_TOSS
+        ? '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 토스 계정 연결 한 번이면 영구 보존돼요.'
+        : '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
       $('nudge-modal').classList.add('show');
       Input.setAnalog(0, 0);
-      trackEvent('login_nudge', { trigger });                  // [GA4] 넛지 노출
+      trackEvent('login_nudge', { trigger, target: NUDGE_TARGET });   // [GA4] 넛지 노출
     };
     $('nudge-google').addEventListener('click', () => {
-      trackEvent('login_nudge_click', { from: nudgeFrom });    // [GA4] 넛지 클릭
-      signInWithGoogle();
+      trackEvent('login_nudge_click', { from: nudgeFrom, target: NUDGE_TARGET });   // [GA4] 넛지 클릭
+      nudgeConnect();
     });
     $('nudge-later').addEventListener('click', () => $('nudge-modal').classList.remove('show'));
     $('nudge-modal').addEventListener('click', (e) => { if (e.target === $('nudge-modal')) $('nudge-modal').classList.remove('show'); });
@@ -3080,10 +3251,11 @@
       stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' }, gem: { ico: '💎', name: '보석' },
       bug: { ico: '🌟', name: '반딧불이' }, forage: { ico: '🍄', name: '채집물' },
       star: { ico: '⭐', name: '별조각' }, glow: { ico: '✨', name: '정령빛' },
+      fert: { ico: '🌱', name: '비료' }, bait: { ico: '🪱', name: '미끼' },
     };
     const BAG_CATS = [
       { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
-      { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg'] },
+      { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg', 'fert', 'bait'] },
       { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
       { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
       { name: '🛶 강 · 🌫️ 숲', keys: ['star', 'glow'] },
@@ -3220,7 +3392,14 @@
         if (s.userId) setGaUser(s.userId);          // [④] GA4에 user_id 연결
         if (s.online && !started) enterPlay();
       });
-      if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작
+      if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작(토스 재방문도 여기 — SDK 호출 없음)
+      else if (IS_TOSS && !res.offline) {
+        // 🔵 토스: 식별키는 동의 화면이 없어 게스트와 마찰이 같으므로 로그인 화면을 건너뛰고
+        //    바로 연결한다. 실패(구버전 토스앱·검증 장애 등)했을 때만 화면을 보여 재시도/게스트로 안내.
+        const r = await signInWithToss({ silent: true });
+        trackEvent('toss_connect', { mode: 'auto', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+        if (!r.ok) showLoginScreen(false, 'toss_fail');   // 성공 시 enterPlay 는 authState 콜백이 처리
+      }
       else showLoginScreen(res.offline);             // 세션 없음 → 로그인 화면(씬 위에)
     })();
   </script>

@@ -12,6 +12,7 @@
 
 import { sendEconBatch, upsertSessionRow } from './supabase-client.js';
 import { trackEvent, onTrack } from './analytics.js';
+import { IS_DEV_SESSION } from './config.js';
 
 // ── 경제 원장 ────────────────────────────────────────────────
 let econBuffer = [];               // 전송 대기 원장 행
@@ -19,6 +20,7 @@ let econTimer = null;
 
 // [기록 API] 코인 증감 시 호출 — amount: +획득/-소비, balance: 거래 후 잔액
 export function logEcon(source, item, amount, balance) {
+  if (IS_DEV_SESSION) return;                                 // 🧪 dev 세션 — 원장 기록 없음
   econBuffer.push({ source, item, currency: 'coins', amount, balance });
   trackEvent('econ_tx', { source, item, amount, balance }); // [GA4] 경제 흐름(퍼널·A/B 비교용)
   if (!econTimer) econTimer = setInterval(flushEcon, 5000);  // 첫 거래 때 배치 시작
@@ -59,6 +61,7 @@ function summaryRow() {
 
 // final=true(탭 숨김/종료): 원장 잔여분까지 밀어내고 GA4 요약 이벤트 1회 발사
 function flushSummary(final = false) {
+  if (IS_DEV_SESSION) return;                                 // 🧪 dev 세션 — 세션 요약 없음
   if (!snapshotFn) return;                    // startMetrics 전이면 무시
   flushEcon();                                // 원장 먼저(요약의 coins 와 정합)
   const row = summaryRow();

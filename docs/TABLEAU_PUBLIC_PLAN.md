@@ -142,7 +142,7 @@
 - 라벨: 완료율 % 직접 표기.
 
 ### 섹션 4 — 튜토리얼 순차 퍼널 (t3_tutorial_funnel)
-- 마크: 가로 막대, `step` 오름차순(**여기는 진짜 퍼널이라 순서 유지**).
+- 마크: 가로 막대, `ord`(key 기준 고정 순서) 오름차순(**여기는 진짜 퍼널이라 순서 유지**).
 - 축 라벨: `step` + `step_key` 병기(`2 chop`, `3 chop`처럼 중복 키가 있으므로 step 필수).
 - 색: 곰 갈색 램프 `Calm Forest Bear Brown`, `devices` 기준.
 - 별도 텍스트 카드: `tutorial_skip` 76대 / `tutorial_step` 1단계 26대 대비 — 이게 진짜 이야기.
