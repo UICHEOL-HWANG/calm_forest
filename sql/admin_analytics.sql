@@ -426,6 +426,9 @@ create table if not exists public.beta_testers (
   grp   text not null check (grp in ('A','B')),
   note  text
 );
+-- 🧪 2차(2026-09-06) — 맵 여는 순서. 번들(grp)과 교차 배정(scripts/beta-roster.mjs 가 만든다)
+alter table public.beta_testers add column if not exists map_order text
+  check (map_order in ('sea_first','mist_first'));
 alter table public.beta_testers enable row level security;
 drop policy if exists beta_testers_self_read on public.beta_testers;
 create policy beta_testers_self_read on public.beta_testers
@@ -435,6 +438,31 @@ create policy beta_testers_self_read on public.beta_testers
 -- 명단 등록 예시(운영자가 SQL 편집기에서 실행):
 -- insert into public.beta_testers (email, grp, note) values
 --   ('tester1@gmail.com','A','1기'), ('tester2@gmail.com','B','1기');
+
+-- =============================================================
+--  📝 베타 일지 (2026-09-06) — /beta/diary 가 로그인 세션으로 직접 upsert
+--  본인 이메일 행만 읽고 쓴다. 운영자는 cf_beta_overview 로 본다.
+-- =============================================================
+create table if not exists public.beta_diary (
+  email      text not null references public.beta_testers(email),
+  day        int  not null check (day between 1 and 14),   -- D1=시작일. 늦게 쓴 일지도 day 로 구분
+  q1 text, q2 text,
+  q3 int check (q3 between 1 and 5),
+  q4 text,
+  q5 text, q6 text,                                        -- D7 전용(제일 재밌던 곳 · 처음 10분 선호)
+  variant    text,                                         -- 쓴 시점의 beta_A/B (분석 조인용 스냅샷)
+  map_order  text,
+  client_id  text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (email, day)
+);
+alter table public.beta_diary enable row level security;
+drop policy if exists beta_diary_self_rw on public.beta_diary;
+create policy beta_diary_self_rw on public.beta_diary
+  for all to authenticated
+  using (email = lower(coalesce(auth.jwt() ->> 'email', '')))
+  with check (email = lower(coalesce(auth.jwt() ->> 'email', '')));
 
 drop function if exists public.cf_beta_overview(int, text);
 create or replace function public.cf_beta_overview(days int default 7, token text default null)
