@@ -15,7 +15,7 @@ export function welcomeOffer(inv = {}) {
 }
 
 // 개발용 URL 파라미터가 하나라도 있으면 "dev 세션" — 원장·세션·센서·GA4 기록을 남기지 않는다
-export const DEV_PARAMS = ['house', 'coop', 'weather', 'spawn', 'sea', 'river', 'mist', 'time', 'severe', 'severe2', 'rain', 'dbg', 'seadebug', 'give'];
+export const DEV_PARAMS = ['house', 'coop', 'weather', 'spawn', 'sea', 'river', 'mist', 'time', 'severe', 'severe2', 'rain', 'dbg', 'seadebug', 'give', 'betaDay', 'forceMapOrder'];
 export function isDevSession(search = '') {
   const q = new URLSearchParams(search);
   return DEV_PARAMS.some(k => q.has(k));

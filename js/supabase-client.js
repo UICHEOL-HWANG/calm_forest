@@ -25,6 +25,7 @@ export const state = {
   isGuest: null,       // 게스트(익명/오프라인) 여부 — 세그먼트 분석용
   variant: 'control',  // A/B 변형(실험 off면 control)
   createdAt: null,     // 계정 생성 시각(ISO) — 보상 부스트(가입 3일) 기준
+  mapOrder: null,      // 🧪 베타 2차 — 맵 여는 순서('sea_first'|'mist_first'), 명단 테이블에서
 };
 
 function randId() { return 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
@@ -62,10 +63,13 @@ async function resolveBetaGroup(session) {
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const forced = isLocal ? new URLSearchParams(location.search).get('forceVariant') : null;
     if (forced === 'beta_A' || forced === 'beta_B') state.variant = forced;
+    const forcedOrder = isLocal ? new URLSearchParams(location.search).get('forceMapOrder') : null;
+    if (forcedOrder === 'sea_first' || forcedOrder === 'mist_first') state.mapOrder = forcedOrder;
     if (supabase && !isAnon(session)) {
       const email = (session.user.email || '').toLowerCase();
-      const { data } = await supabase.from('beta_testers').select('grp').eq('email', email).maybeSingle();
+      const { data } = await supabase.from('beta_testers').select('grp, map_order').eq('email', email).maybeSingle();
       if (data?.grp) state.variant = 'beta_' + data.grp;   // 명단이 최우선
+      if (data?.map_order) state.mapOrder = data.map_order;
     }
   } catch (e) { console.warn('[베타] 배정 조회 실패(variant 유지):', e?.message || e); }
   setAbVariant(state.variant);

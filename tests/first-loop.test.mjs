@@ -23,6 +23,7 @@ test('isDevSession: dev 파라미터가 있으면 true', () => {
   assert.equal(isDevSession('?spawn=3,4'), true);
   assert.equal(isDevSession('?sea=1'), true);
   assert.equal(isDevSession('?give=wood'), true);
+  assert.equal(isDevSession('?forceVariant=beta_A&forceMapOrder=sea_first&betaDay=3'), true);
 });
 test('isDevSession: 일반 진입은 false', () => {
   assert.equal(isDevSession(''), false);

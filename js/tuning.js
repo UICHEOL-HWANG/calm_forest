@@ -38,3 +38,56 @@ export function easeMult(variant, tries) {
   return (isBetaA(variant) && (tries || 0) < TUNING.firstTryEase.tries)
     ? TUNING.firstTryEase.mult : 1;
 }
+
+// =============================================================
+//  🧪 베타 2차 (2026-09-06) — 맵 계단식 열기 · 문구 (docs/BETA_AB_TEST_PLAN.md 2차 설계 §5)
+//  잠금 대상은 beta_A/beta_B 뿐. 판정은 여기 순수 함수로, game.js 는 부르기만 한다.
+// =============================================================
+export const BETA = {
+  startDate: '2026-09-09',                       // D1 = max(시작일, 가입일 KST)
+  mapGate: {
+    sea_first:  { sea: 3, mist: 5 },
+    mist_first: { sea: 5, mist: 3 },
+  },
+};
+
+export const BETA_COPY = {
+  diaryBtn: '📝 오늘 일지',
+  diaryTitle: '고요한 숲 베타 일지',
+  lock: { sea: '🌊 바다터는 {N}일차에 열려요', mist: '🌫️ 안개 낀 숲은 {N}일차에 열려요' },
+  open: {
+    sea:  '🌊 바다터가 열렸어요 — 먼 바다 대형 물고기와 줄다리기',
+    mist: '🌫️ 안개 낀 숲이 열렸어요 — 등불과 ♪음악으로 안개를 정화하는 숲',
+  },
+};
+
+/** ms → KST 날짜 'YYYY-MM-DD'. 서버·브라우저 시간대와 무관하게 한국 날짜로 센다. */
+export function kstDate(ms) {
+  return new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+const DAY_MS = 86400000;
+function dateToMs(ymd) { return Date.parse(ymd + 'T00:00:00Z'); }
+
+/** 며칠째인가. D1 = max(시작일, 가입일). 시작 전날은 0, created_at 이 없으면 1. */
+export function betaDay(createdAtIso, nowMs = Date.now()) {
+  if (!createdAtIso) return 1;
+  const d1 = Math.max(dateToMs(BETA.startDate), dateToMs(kstDate(Date.parse(createdAtIso))));
+  return Math.floor((dateToMs(kstDate(nowMs)) - d1) / DAY_MS) + 1;
+}
+
+/** 이 순서에서 이 맵이 열리는 날. 배정이 없으면 null(= 잠그지 않는다). */
+export function mapOpenDay(mapOrder, map) {
+  return BETA.mapGate[mapOrder]?.[map] ?? null;
+}
+
+/** 잠겼나. 베타 테스터(beta_*)이고 배정이 있으며 아직 여는 날 전이면 true. */
+export function isMapLocked({ variant, mapOrder, createdAtIso, nowMs = Date.now() }, map) {
+  if (!/^beta_/.test(variant || '')) return false;
+  const openDay = mapOpenDay(mapOrder, map);
+  if (openDay == null) return false;
+  return betaDay(createdAtIso, nowMs) < openDay;
+}
+
+export function lockLine(map, openDay) { return BETA_COPY.lock[map].replace('{N}', String(openDay)); }
+export function openLine(map) { return BETA_COPY.open[map]; }
