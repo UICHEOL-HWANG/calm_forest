@@ -941,6 +941,7 @@
     <div id="util-btns">
       <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터·이름 바꾸기</span></button>
       <button id="lb-btn"><span class="uico">🏆</span><span class="ulbl">리더보드</span></button>
+      <button id="diary-btn" style="display:none;"><span class="uico">📝</span><span class="ulbl">오늘 일지</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
       <button id="help-btn"><span class="uico">❓</span><span class="ulbl">도움말</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
@@ -1458,7 +1459,7 @@
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
-    import { TUNING, isBetaA } from './js/tuning.js';
+    import { TUNING, isBetaA, betaDay } from './js/tuning.js';
 
     const $ = (id) => document.getElementById(id);
 
@@ -2182,6 +2183,13 @@
       $('login-screen').classList.remove('show');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
       trackLogin(authState.provider || 'offline');   // [GA4] 로그인 이벤트
+
+      // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
+      if (/^beta_/.test(authState.variant || '')) {
+        $('diary-btn').style.display = '';
+        $('diary-btn').onclick = () => { trackEvent('diary_open', { day: betaDay(authState.createdAt) }); window.open('/beta/diary.html', '_blank', 'noopener'); };
+      }
+
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
       initControls();                                // 모바일 컨트롤(터치 감지 시)

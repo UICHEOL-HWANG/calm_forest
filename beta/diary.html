@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<title>고요한 숲 베타 일지</title>
+<style>
+  :root { --bg:#f3f6f4; --card:#fbfcfb; --line:#dde5e0; --ink:#16241d; --ink2:#4e5f56; --ink3:#7d8d84; --mint:#8fd6a0; --ok:#217a4e; --warn:#c14f3a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111917; --card:#182320; --line:#26332e; --ink:#e8efeb; --ink2:#b7c4bd; --ink3:#7f8d86; --mint:#5fae78; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font: 15px/1.55 -apple-system, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", system-ui, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 20px; margin: 6px 0 2px; }
+  .sub { color: var(--ink3); font-size: 13px; margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  label { display:block; font-weight:700; margin-bottom:6px; }
+  textarea, select { width:100%; border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; background:transparent; color:inherit; }
+  textarea { min-height: 84px; resize: vertical; }
+  .scale { display:flex; gap:8px; }
+  .scale label { flex:1; text-align:center; border:1px solid var(--line); border-radius:10px; padding:10px 0; font-weight:700; cursor:pointer; margin:0; }
+  .scale input { display:none; }
+  .scale input:checked + span { color: var(--ok); }
+  .scale label:has(input:checked) { border-color: var(--ok); background: color-mix(in srgb, var(--mint) 25%, transparent); }
+  button.primary { width:100%; border:none; border-radius:12px; padding:14px; font: 700 16px/1 inherit; background: var(--mint); color:#0e2a1a; cursor:pointer; }
+  button.primary[disabled] { opacity:.5; cursor:default; }
+  .msg { padding: 14px; border-radius: 12px; background: var(--card); border:1px solid var(--line); }
+  .msg.ok { border-color: var(--ok); }
+  .msg.warn { border-color: var(--warn); }
+  .hint { font-size: 12.5px; color: var(--ink3); margin-top: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">고요한 숲 베타 일지</h1>
+  <p class="sub" id="sub">불러오는 중…</p>
+  <div id="gate" class="msg" style="display:none"></div>
+  <form id="form" style="display:none" autocomplete="off">
+    <div class="card"><label for="q1">1. 오늘 뭐 했어요?</label><textarea id="q1" required></textarea></div>
+    <div class="card"><label for="q2">2. 어디서 막히거나 지루했어요?</label><textarea id="q2" required></textarea></div>
+    <div class="card"><label>3. 돈 안 받아도 내일 또 할 것 같아요?</label>
+      <div class="scale" id="q3">
+        <label><input type="radio" name="q3" value="1" required /><span>1</span></label>
+        <label><input type="radio" name="q3" value="2" /><span>2</span></label>
+        <label><input type="radio" name="q3" value="3" /><span>3</span></label>
+        <label><input type="radio" name="q3" value="4" /><span>4</span></label>
+        <label><input type="radio" name="q3" value="5" /><span>5</span></label>
+      </div><div class="hint">1 = 전혀 아니다 · 5 = 꼭 한다</div></div>
+    <div class="card"><label for="q4">4. 화면 아래 작은 안내가 뜬 적 있어요? 뭐라고 떴고 따라 했어요?</label><textarea id="q4"></textarea></div>
+    <div id="final" style="display:none">
+      <div class="card"><label for="q5">5. 일주일 중 제일 재밌었던 곳은?</label>
+        <select id="q5"><option value="">고르세요</option><option>바다터</option><option>안개 낀 숲</option><option>마을</option><option>텃밭</option><option>기타</option></select></div>
+      <div class="card"><label for="q6">6. 처음 10분 순서 두 가지 영상 중 어느 쪽이 좋아요?</label>
+        <select id="q6"><option value="">고르세요</option><option value="A">A</option><option value="B">B</option></select>
+        <div class="hint">영상 링크는 안내 메시지로 따로 보내드려요</div></div>
+    </div>
+    <button class="primary" id="save" type="submit">저장</button>
+    <div class="hint">저장하면 "저장됐어요"가 뜹니다. 같은 날 다시 열면 고쳐 쓸 수 있어요.</div>
+  </form>
+</main>
+<script type="module">
+  import { CONFIG, isSupabaseConfigured } from '../js/config.js';
+  import { betaDay, BETA_COPY } from '../js/tuning.js';
+  import { clientId } from '../js/i18n.js';
+  const $ = (id) => document.getElementById(id);
+  const gate = (html, cls = '') => { $('gate').className = 'msg ' + cls; $('gate').innerHTML = html; $('gate').style.display = 'block'; $('form').style.display = 'none'; };
+
+  (async () => {
+    $('title').textContent = BETA_COPY.diaryTitle;
+    if (!isSupabaseConfigured()) return gate('설정이 비어 있어요. 운영자에게 알려 주세요.', 'warn');
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: true, persistSession: true } });
+    const { data: s } = await sb.auth.getSession();
+    const user = s?.session?.user;
+    if (!user || user.is_anonymous) {
+      gate('게임에 쓰던 구글 계정으로 로그인해 주세요.<br><br><button class="primary" id="lg">구글로 로그인</button>');
+      $('lg').onclick = () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+      return;
+    }
+    const email = (user.email || '').toLowerCase();
+    const { data: me } = await sb.from('beta_testers').select('grp, map_order').eq('email', email).maybeSingle();
+    if (!me) return gate('베타 테스터 명단에 없는 계정이에요. 안내받은 구글 계정이 맞는지 확인해 주세요.', 'warn');
+
+    const day = Math.max(1, betaDay(user.created_at, Date.now()));
+    $('sub').textContent = `${email} · ${day}일차`;
+    if (day >= 7) $('final').style.display = 'block';
+
+    // 오늘 이미 썼으면 불러와서 고쳐 쓸 수 있게
+    const { data: prev } = await sb.from('beta_diary').select('*').eq('email', email).eq('day', day).maybeSingle();
+    if (prev) {
+      $('q1').value = prev.q1 || ''; $('q2').value = prev.q2 || ''; $('q4').value = prev.q4 || '';
+      if (prev.q3) document.querySelector(`input[name=q3][value="${prev.q3}"]`).checked = true;
+      if (prev.q5) $('q5').value = prev.q5; if (prev.q6) $('q6').value = prev.q6;
+      $('sub').textContent += ' · 오늘 일지를 이미 썼어요(고쳐 쓰기 가능)';
+    }
+    $('form').style.display = 'block';
+
+    $('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('save').disabled = true; $('save').textContent = '저장 중…';
+      const row = {
+        email, day,
+        q1: $('q1').value.trim(), q2: $('q2').value.trim(),
+        q3: Number(document.querySelector('input[name=q3]:checked')?.value || 0) || null,
+        q4: $('q4').value.trim() || null,
+        q5: $('q5').value || null, q6: $('q6').value || null,
+        variant: 'beta_' + me.grp, map_order: me.map_order, client_id: clientId(),
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await sb.from('beta_diary').upsert(row, { onConflict: 'email,day' });
+      if (error) { $('save').disabled = false; $('save').textContent = '저장'; alert('저장이 안 됐어요. 잠시 뒤 다시 눌러 주세요.\n' + error.message); return; }
+      gate(`✅ 저장됐어요. ${day}일차 일지 고마워요!<br><span class="hint">이 창은 닫아도 돼요.</span>`, 'ok');
+    });
+  })();
+</script>
+</body>
+</html>
