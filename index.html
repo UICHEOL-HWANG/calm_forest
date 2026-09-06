@@ -1852,7 +1852,7 @@
         const t = text || '';
         doorIcon = t.includes('비료') ? '🌱' : t.includes('주문판') ? '📋'
           : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
-          : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
+          : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
           : t.includes('리듬') || t.includes('달래기') ? '♪' : t.includes('등불 켜기') ? '🏮' : t.includes('정화') ? '🌳'
           : t.includes('던지기') || t.includes('기다리는') ? '🎣' : t.includes('당기세요') ? '🎣' : t.includes('버텨') ? '💪'
           : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : '🚪';
@@ -2137,6 +2137,7 @@
     // 🧪 [베타 A군] 재미 단계(낚시·집짓기·꾸미기) 전진 — 스텝 내용은 그대로, 순서만.
     //   고정 키(TUT_ORDER_A) 기준 정렬이라 여러 번 불러도 결과가 같다(멱등).
     function applyBetaTutorialOrder() {
+      if (typeof tutIdx === 'number' && tutIdx >= 0) return;   // 코치 진행 중엔 순서를 건드리지 않는다
       if (!isBetaA(authState.variant)) return;
       TUT_STEPS.sort((a, b) => TUNING.TUT_ORDER_A.indexOf(a.key) - TUNING.TUT_ORDER_A.indexOf(b.key));
     }

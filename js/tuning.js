@@ -45,6 +45,7 @@ export function easeMult(variant, tries) {
 // =============================================================
 export const BETA = {
   startDate: '2026-09-09',                       // D1 = max(시작일, 가입일 KST)
+  endDate: '2026-09-15',                         // 마지막 날 — 늦게 시작한 테스터도 이 날엔 최종 문항을 본다
   mapGate: {
     sea_first:  { sea: 3, mist: 5 },
     mist_first: { sea: 5, mist: 3 },
@@ -91,3 +92,8 @@ export function isMapLocked({ variant, mapOrder, createdAtIso, nowMs = Date.now(
 
 export function lockLine(map, openDay) { return BETA_COPY.lock[map].replace('{N}', String(openDay)); }
 export function openLine(map) { return BETA_COPY.open[map]; }
+
+/** 최종 문항(D7)을 보여줄 날인가 — 7일차이거나, 늦게 시작해 7일차가 안 와도 종료일이면 true. */
+export function isFinalDay(createdAtIso, nowMs = Date.now()) {
+  return betaDay(createdAtIso, nowMs) >= 7 || kstDate(nowMs) >= BETA.endDate;
+}

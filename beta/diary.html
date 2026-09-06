@@ -60,7 +60,7 @@
 </main>
 <script type="module">
   import { CONFIG, isSupabaseConfigured } from '../js/config.js';
-  import { betaDay, BETA_COPY } from '../js/tuning.js';
+  import { betaDay, isFinalDay, BETA_COPY } from '../js/tuning.js';
   import { clientId } from '../js/i18n.js';
   const $ = (id) => document.getElementById(id);
   const gate = (html, cls = '') => { $('gate').className = 'msg ' + cls; $('gate').innerHTML = html; $('gate').style.display = 'block'; $('form').style.display = 'none'; };
@@ -83,7 +83,7 @@
 
     const day = Math.max(1, betaDay(user.created_at, Date.now()));
     $('sub').textContent = `${email} · ${day}일차`;
-    if (day >= 7) $('final').style.display = 'block';
+    if (isFinalDay(user.created_at, Date.now())) $('final').style.display = 'block';
 
     // 오늘 이미 썼으면 불러와서 고쳐 쓸 수 있게
     const { data: prev } = await sb.from('beta_diary').select('*').eq('email', email).eq('day', day).maybeSingle();

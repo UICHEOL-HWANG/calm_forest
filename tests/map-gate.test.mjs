@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BETA, BETA_COPY, kstDate, betaDay, mapOpenDay, isMapLocked, lockLine, openLine } from '../js/tuning.js';
+import { BETA, BETA_COPY, kstDate, betaDay, mapOpenDay, isMapLocked, lockLine, openLine, isFinalDay } from '../js/tuning.js';
 
 const T = (iso) => Date.parse(iso);
 
@@ -44,6 +44,13 @@ test('isMapLocked: 일반 유저·게스트·배정 없음은 절대 안 잠김'
   assert.equal(isMapLocked({ variant: 'control', mapOrder: 'sea_first', createdAtIso: '2026-09-09T01:00:00Z', nowMs: now }, 'sea'), false);
   assert.equal(isMapLocked({ variant: 'beta_B', mapOrder: null, createdAtIso: '2026-09-09T01:00:00Z', nowMs: now }, 'sea'), false);
   assert.equal(isMapLocked({ variant: 'beta_B', mapOrder: 'mist_first', createdAtIso: null, nowMs: now }, 'sea'), true); // created_at 없으면 D1 취급 → 잠김
+});
+
+test('isFinalDay: 7일차거나 종료일이면 true', () => {
+  assert.equal(isFinalDay('2026-09-09T01:00:00Z', T('2026-09-15T02:00:00Z')), true);   // 7일차
+  assert.equal(isFinalDay('2026-09-10T01:00:00Z', T('2026-09-14T02:00:00Z')), false);  // 5일차, 종료일 전
+  assert.equal(isFinalDay('2026-09-10T01:00:00Z', T('2026-09-15T02:00:00Z')), true);   // 종료일 도달
+  assert.equal(isFinalDay('2026-09-09T01:00:00Z', T('2026-09-13T02:00:00Z')), false);
 });
 
 test('문구: N 이 채워지고 열림 문구는 맵별', () => {
