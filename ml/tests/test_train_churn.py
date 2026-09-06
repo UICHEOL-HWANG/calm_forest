@@ -99,3 +99,44 @@ def test_trigger_kind_string_becomes_numeric(tmp_path):
     m = json.loads(out.read_text())
     i = FEATURE_ORDER.index("trigger_kind")
     assert np.isfinite(m["scaler"]["mean"][i]) and m["scaler"]["scale"][i] > 0
+
+
+# ── W&B 아티팩트 — 계수 파일의 버전·롤백 저장소 ────────────────────────
+class _FakeArtifact:
+    def __init__(self, name, type, metadata=None):
+        self.name, self.type, self.metadata, self.files = name, type, metadata or {}, []
+    def add_file(self, path, name=None):
+        self.files.append((str(path), name))
+
+
+class _FakeRun:
+    def __init__(self):
+        self.logged, self.artifacts, self.finished = [], [], False
+    def log(self, d): self.logged.append(d)
+    def log_artifact(self, art, aliases=None): self.artifacts.append((art, aliases))
+    def finish(self): self.finished = True
+
+
+def test_wandb_logs_metrics_and_coef_artifact(tmp_path):
+    from train_churn import fit_and_export, log_to_wandb
+    out = tmp_path / "coef.json"
+    model = fit_and_export(synthetic(), out, log_wandb=False)
+    run = _FakeRun()
+    log_to_wandb(model, out, start_run=lambda *a, **k: run, artifact_cls=_FakeArtifact)
+    assert run.logged and run.logged[0]["auc"] == model["metrics"]["auc"]
+    (art, aliases), = run.artifacts
+    assert art.name == "churn-coef" and art.type == "model"
+    assert art.files == [(str(out), "coef.json")], "계수 파일이 coef.json 이름으로 들어가야 한다"
+    assert art.metadata["model_version"] == model["model_version"]
+    assert art.metadata["auc"] == model["metrics"]["auc"]
+    assert "latest" in aliases, "latest 별칭이 있어야 한다"
+    assert model["model_version"].replace(":", "-") in aliases, "버전 문자열(콜론→'-')로도 집을 수 있어야 한다"
+    assert all(":" not in a and "/" not in a for a in aliases), "W&B 별칭 금지 문자"
+    assert run.finished
+
+
+def test_artifact_ref_resolves_versions():
+    from fetch_coef import artifact_ref
+    assert artifact_ref("v3") == "icucheol/calm-forest/churn-coef:v3"
+    assert artifact_ref("latest") == "icucheol/calm-forest/churn-coef:latest"
+    assert artifact_ref("2026-09-06T06:31:34Z") == "icucheol/calm-forest/churn-coef:2026-09-06T06-31-34Z"

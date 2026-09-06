@@ -154,13 +154,38 @@ def fit_and_export(df: pd.DataFrame, out: Path | str, *, log_wandb: bool = True)
     tmp.replace(out)
 
     if log_wandb:
-        from calm_ml.tracking import start_run
-        run = start_run("churn-trigger", config={"cap": 20, "features": FEATURE_ORDER},
-                        tags=["churn", "trigger"])
-        run.log(model["metrics"])
-        run.finish()
+        log_to_wandb(model, out)
 
     return model
+
+
+def version_alias(model_version: str) -> str:
+    """W&B 별칭에는 ':' 와 '/' 가 못 들어간다 — '2026-09-06T06:31:34Z' → '2026-09-06T06-31-34Z'."""
+    return model_version.replace(":", "-").replace("/", "-")
+
+
+def log_to_wandb(model: dict, out: Path | str, *, start_run=None, artifact_cls=None) -> None:
+    """지표를 런에 남기고, 계수 파일을 아티팩트 `churn-coef` 로 올린다.
+
+    VM 의 coef.json 은 매주 덮어써서 이력이 없다. 아티팩트가 버전(v1, v2 …)·롤백·백업을 맡는다.
+    별칭은 `latest` 와 model_version(콜론→'-') 둘 다 — `fetch_coef.py --version 2026-09-06T06:31:34Z` 로 집는다.
+    start_run / artifact_cls 는 테스트에서 가짜를 꽂기 위한 주입점이다.
+    """
+    if start_run is None:
+        from calm_ml.tracking import start_run as _start_run
+        start_run = _start_run
+    if artifact_cls is None:
+        import wandb
+        artifact_cls = wandb.Artifact
+
+    run = start_run("churn-trigger", config={"cap": 20, "features": FEATURE_ORDER},
+                    tags=["churn", "trigger"])
+    run.log(model["metrics"])
+    art = artifact_cls("churn-coef", type="model",
+                       metadata={"model_version": model["model_version"], **model["metrics"]})
+    art.add_file(str(out), name="coef.json")
+    run.log_artifact(art, aliases=["latest", version_alias(model["model_version"])])
+    run.finish()
 
 
 def main() -> None:
