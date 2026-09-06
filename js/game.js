@@ -1422,20 +1422,30 @@ function blockIfLocked(map) {
   trackEvent('map_locked', { map, day: betaDay(authState.createdAt, betaNowMs()), open_day: openDay });
   return true;
 }
+let announceMapOpensRetries = 0;   // 🧪 [베타 2차] 코치/모달 위에서는 미루고 8초 간격 최대 15번까지만 재시도(다음 세션이 이어받음)
 /** 열린 날 첫 접속 배너 — 세이브 hintsSeen 으로 1회. 베타가 아니면 아무것도 안 한다. */
 function announceMapOpens() {
   gameState.hintsSeen ||= {};          // 오래된 세이브 방어
   if (!/^beta_/.test(authState.variant || '') || !authState.mapOrder) return;
+  if (ui.coachActive?.() || ui.anyModalOpen?.()) {   // 튜토리얼 코치·모달 위에서는 아무것도 소진하지 않고 미룬다
+    if (announceMapOpensRetries++ < 15) setTimeout(announceMapOpens, 8000);
+    return;                            // 15번 넘으면 이번 세션은 조용히 포기 — hintsSeen 미기록이라 다음 세션이 다시 시도
+  }
   for (const map of ['sea', 'mist']) {
     const key = 'mapOpen_' + map;
     if (gameState.hintsSeen[key] || mapLocked(map)) continue;
     const openDay = mapOpenDay(authState.mapOrder, map);
     const day = betaDay(authState.createdAt, betaNowMs());
     if (day < openDay) continue;       // 방어
-    gameState.hintsSeen[key] = true;
-    const [ico, ...rest] = openLine(map).split(' ');
-    const [title, line] = rest.join(' ').split(' — ');
-    ui.showHintBanner?.({ ico, title, line: line || '', near: () => true });
+    const s = openLine(map);
+    const i = s.indexOf(' — ');        // split(' — ') 는 문구에 ' — ' 가 두 번 나오면 뒷부분을 버렸다 — indexOf 로 첫 등장만 기준삼는다
+    const head = i < 0 ? s : s.slice(0, i);
+    const line = i < 0 ? '' : s.slice(i + 3);
+    const sp = head.indexOf(' ');
+    const ico = sp < 0 ? '' : head.slice(0, sp);
+    const title = sp < 0 ? head : head.slice(sp + 1);
+    gameState.hintsSeen[key] = true;   // 실제로 배너를 띄우는 순간에만 소진
+    ui.showHintBanner?.({ ico, title, line, near: () => true });
     trackEvent('map_opened', { map, day });
   }
 }
@@ -7098,15 +7108,17 @@ function updateDoorInteract() {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
   } else if (dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {
     nd = 'mist';
-    prompt = mapLocked('mist') ? lockLine('mist', mapOpenDay(authState.mapOrder, 'mist')) : '🌫️ 안개 낀 숲에 들어가기';   // 🧪 [베타 2차]
-    if (!mapLocked('mist')) firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
+    const locked = mapLocked('mist');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
+    prompt = locked ? lockLine('mist', mapOpenDay(authState.mapOrder, 'mist')) : '🌫️ 안개 낀 숲에 들어가기';
+    if (!locked) firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 강을 내려가요 — 하루 3번');
   } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
     nd = 'sea';
-    prompt = mapLocked('sea') ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';   // 🧪 [베타 2차]
-    if (!mapLocked('sea')) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
+    const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
+    prompt = locked ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';
+    if (!locked) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
