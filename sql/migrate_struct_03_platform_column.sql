@@ -50,7 +50,16 @@ update public.sea_records r
  where s.session_id = r.session_id
    and r.platform is null;
 
--- 신규 행부터 기본값 적용 (복원 실패한 기존 행은 NULL 유지 = 미상)
+-- ⚠️ default 는 "클라이언트 배포 이후에" 걸어야 한다 — 순서가 중요하다.
+--    sendBoatRun/sendSeaRecord 가 platform 을 보내기 전에 default 를 걸어두면,
+--    값을 안 보내는 구버전 클라이언트의 행이 전부 'web' 으로 박힌다.
+--    실제로 2026-09-07 16:16 에 이걸로 boat_runs id 51 · sea_records id 23 이
+--    'web' 으로 오염됐다(배포 커밋 5100f2a 는 16:42). 둘 다 NULL 로 되돌렸다.
+--    NULL(=미상) 이 거짓 'web' 보다 낫다.
+--
+--    ✅ 현재: 클라이언트 배포 완료(5100f2a, origin/dev) → default 를 걸어 둔 상태.
+--       배포본이 항상 'web'|'toss' 를 보내므로 default 가 발동할 일이 거의 없고,
+--       발동한다면 아주 오래된 캐시 번들이라는 뜻이다.
 alter table public.boat_runs   alter column platform set default 'web';
 alter table public.sea_records alter column platform set default 'web';
 
