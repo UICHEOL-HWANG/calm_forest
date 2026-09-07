@@ -6518,9 +6518,12 @@ function spawnShop() {
   const topLine = topPriceLine(rates, SELL_ICO_G);
   const bcv = document.createElement('canvas'); bcv.width = 512; bcv.height = 160;
   const bc = bcv.getContext('2d');
-  bc.fillStyle = '#f5efe0'; roundRect(bc, 12, 12, 488, 116, 30); bc.fill();
+  // 블룸(후광)에 안 걸리게 낮춘 크림 톤 — updateHouseSign 의 #b8d2ba 와 같은 규칙.
+  // UnrealBloomPass 임계값 0.85 를 넘으면 말풍선 전체가 빛나 글자가 날아간다(#f5efe0 은 휘도 0.94였음).
+  bc.fillStyle = '#d8ccae'; roundRect(bc, 12, 12, 488, 116, 30); bc.fill();
   bc.beginPath(); bc.moveTo(236, 126); bc.lineTo(276, 126); bc.lineTo(256, 152); bc.closePath(); bc.fill();   // 꼬리
-  bc.fillStyle = '#2fa564'; bc.textAlign = 'center'; bc.font = 'bold 52px sans-serif';
+  bc.lineWidth = 5; bc.strokeStyle = '#a89a6e'; roundRect(bc, 12, 12, 488, 116, 30); bc.stroke();   // 진한 테두리
+  bc.fillStyle = '#1f7a48'; bc.textAlign = 'center'; bc.font = 'bold 52px sans-serif';   // 낮춘 바탕에 맞춰 글자도 진하게
   bc.fillText(t(topLine.text), 256, 88);
   const btex = new THREE.CanvasTexture(bcv); btex.minFilter = THREE.LinearFilter; btex.magFilter = THREE.LinearFilter; btex.generateMipmaps = false;
   const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: btex, transparent: true, depthWrite: false }));
