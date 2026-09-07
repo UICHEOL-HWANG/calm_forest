@@ -255,7 +255,13 @@ export async function loadGame() {
 
 // ── 개발자 피드백 전송(feedback 테이블) — 오프라인이면 콘솔 폴백 ──
 export async function submitFeedback({ category, message, meta }) {
-  const row = { user_id: state.userId, category, message, meta: meta || {}, created_at: new Date().toISOString() };
+  //  meta.platform 은 meta.ua 와 별개다. ua 는 브라우저 문자열이고,
+  //  platform 은 platform.js 의 판정값(?platform=toss · SDK 전역)이라 서로 어긋날 수 있다.
+  //  다른 로그 테이블이 전부 PLATFORM 기준이므로 피드백도 같은 자로 재야 모수가 맞는다.
+  //  (호출자가 meta.platform 을 직접 넘기면 그쪽을 존중)
+  const row = { user_id: state.userId, category, message,
+                meta: { platform: PLATFORM, ...(meta || {}) },
+                created_at: new Date().toISOString() };
   if (!state.online || !supabase) { console.log('[Supabase 폴백] 피드백(오프라인):', row); return { ok: true, offline: true }; }
   try {
     const { error } = await supabase.from('feedback').insert(row);
@@ -360,7 +366,7 @@ export async function deletePhotoRow(objectKey) {
 export async function sendBoatRun(row) {
   const full = {
     user_id: state.userId, session_id: state.sessionId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
     run_date: new Date().toISOString().slice(0, 10),   // YYYY-MM-DD
     ...row,
   };
@@ -377,7 +383,7 @@ export async function sendBoatRun(row) {
 export async function sendSeaRecord(row) {
   const full = {
     user_id: state.userId, session_id: state.sessionId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
     run_date: new Date().toISOString().slice(0, 10),   // YYYY-MM-DD (boat_runs 와 동일 규약)
     ...row,   // { species, weight }
   };
