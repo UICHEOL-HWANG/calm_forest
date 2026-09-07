@@ -1,0 +1,383 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>안개 숲 연습 모드 시뮬레이션 — calm forest</title>
+<style>
+  :root { --cream:#fff7ec; --mint:#bfe8c9; --ink:#4a5a4f; --panel:rgba(255,255,255,.82); --shadow:0 6px 18px rgba(20,40,30,.28); }
+  html,body{margin:0;height:100%;background:#1c2620;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:var(--ink);
+    -webkit-user-select:none;user-select:none}
+  #wrap{display:flex;gap:18px;justify-content:center;align-items:flex-start;padding:16px;flex-wrap:wrap}
+  /* ── 폰 프레임(390×780) ── */
+  #phone{position:relative;width:390px;height:780px;border-radius:34px;overflow:hidden;background:#0f1a14;box-shadow:0 20px 60px rgba(0,0,0,.6);touch-action:none;flex:0 0 auto}
+  canvas{display:block;position:absolute;inset:0}
+  .panel{background:var(--panel);border-radius:14px;box-shadow:var(--shadow);padding:8px 12px;font-size:12.5px;line-height:1.45}
+  /* 존 힌트(상단 중앙 칩) */
+  #zone{position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:5px 12px;border-radius:999px;font-weight:700;font-size:12px;white-space:nowrap;display:none}
+  #zone.show{display:block}
+  /* 토스트 */
+  #toast{position:absolute;top:52px;left:50%;transform:translateX(-50%);max-width:88%;padding:8px 14px;border-radius:12px;font-weight:700;font-size:13px;text-align:center;
+    opacity:0;transition:opacity .3s;pointer-events:none}
+  #toast.show{opacity:1}
+  /* 컨텍스트 슬롯(12,162) — 모바일 3단 레이아웃 규칙: 안내는 여기 또는 프롬프트 줄에만 */
+  #ctx{position:absolute;top:162px;left:12px;max-width:calc(100% - 12px - 150px);display:none;border:2px solid var(--mint)}
+  #ctx.show{display:block}
+  #ctx .dots{font-size:10px;margin-top:4px;letter-spacing:2px}
+  #ctx .dots .done{color:#6fd08c} #ctx .dots .cur{color:#ffab3d} #ctx .dots .todo{color:rgba(0,0,0,.18)}
+  #ctx button{margin-top:6px;font:inherit;font-weight:700;font-size:12px;padding:6px 10px;border-radius:9px;border:0;background:#4a9dd0;color:#fff;cursor:pointer}
+  /* 프롬프트 줄 + 액션 버튼(엄지 존) */
+  #prompt{position:absolute;bottom:126px;left:50%;transform:translateX(-50%);padding:5px 12px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap;display:none}
+  #prompt.show{display:block}
+  #btn{position:absolute;bottom:26px;right:22px;width:84px;height:84px;border-radius:50%;border:4px solid rgba(255,255,255,.85);background:rgba(90,150,120,.9);color:#fff;
+    font-size:26px;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer}
+  #btn:active{transform:scale(.93)}
+  #btn.go{background:rgba(90,180,80,.95);border-color:#d6ffc4;animation:btnpulse .4s infinite alternate}
+  @keyframes btnpulse{from{box-shadow:0 0 0 0 rgba(150,255,120,.6)}to{box-shadow:0 0 0 14px rgba(150,255,120,0)}}
+  #btn:disabled{opacity:.35;animation:none}
+  /* 선택 카드(수호목 탭) — 비차단, 밖을 탭하면 닫힘 */
+  #choice{position:absolute;bottom:130px;left:50%;transform:translateX(-50%);display:none;text-align:center;min-width:250px;border:2px solid var(--mint)}
+  #choice.show{display:block}
+  #phone:has(#choice.show) #prompt{display:none}   /* 카드가 프롬프트 줄을 쓰는 동안 칩은 숨김 */
+  #choice .t{font-weight:700;font-size:13px;margin-bottom:6px}
+  #choice .row{display:flex;gap:8px;justify-content:center}
+  #choice button{font:inherit;font-weight:700;font-size:13px;padding:9px 12px;border-radius:11px;border:0;cursor:pointer;flex:1}
+  #choice .go{background:#5aa66f;color:#fff} #choice .learn{background:#fff;border:2px solid #4a9dd0!important;color:#2c6d9c}
+  /* 결과 카드(차단 모달) */
+  #card{position:absolute;inset:0;display:none;place-items:center;background:rgba(20,40,30,.55)}
+  #card.show{display:grid}
+  #card>div{background:var(--cream);border-radius:18px;padding:22px 24px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35);max-width:78%}
+  #card h2{margin:0 0 6px;font-size:20px}
+  #card p{margin:4px 0 14px;font-size:13px;opacity:.8}
+  #card button{font:inherit;font-weight:700;font-size:13px;padding:9px 14px;border-radius:11px;border:0;cursor:pointer;margin:3px}
+  #card .pri{background:#5aa66f;color:#fff} #card .sec{background:#fff;border:2px solid #4a9dd0;color:#2c6d9c}
+  /* ── 사이드 패널: 설정 + 이벤트 로그 ── */
+  #side{width:300px;color:#dfe8e2;font-size:12.5px;line-height:1.7}
+  #side h3{margin:6px 0 4px;font-size:13px;color:#bfe8c9}
+  #side label{display:block}
+  #side input[type=range]{width:110px;vertical-align:middle}
+  #log{background:rgba(0,0,0,.35);border-radius:10px;padding:8px 10px;height:300px;overflow:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.5;white-space:pre-wrap}
+  #log .ev{color:#ffd27a}
+  .note{opacity:.75;font-size:11.5px}
+</style>
+
+<div id="wrap">
+  <div id="phone">
+    <canvas id="cv" width="390" height="780"></canvas>
+    <div id="zone" class="panel"></div>
+    <div id="toast" class="panel"></div>
+    <div id="ctx" class="panel"><div id="ctx-text"></div><div class="dots" id="ctx-dots"></div><button id="ctx-btn" style="display:none"></button></div>
+    <div id="choice" class="panel">
+      <div class="t">🌳 수호목 앞이에요</div>
+      <div class="row"><button class="go" id="ch-go">🌳 바로 시작</button><button class="learn" id="ch-learn">🎓 연습해 보기</button></div>
+    </div>
+    <div id="prompt" class="panel"></div>
+    <button id="btn">✋</button>
+    <div id="card"><div><h2 id="card-h"></h2><p id="card-p"></p><div id="card-btns"></div></div></div>
+  </div>
+
+  <div id="side">
+    <h3>조작</h3>
+    <div class="note">땅을 탭하면 그곳으로 걸어가요. 오른쪽 아래 둥근 버튼이 게임의 액션 버튼(프롬프트에 따라 등불 켜기·달래기·정화 시작). 키보드 Space도 동일.</div>
+    <h3>설정</h3>
+    <label><input type="checkbox" id="cfg-always"> 선택 카드 항상 표시 (기본: 연습 1회 또는 정화 1회 전까지만)</label>
+    <label><input type="checkbox" id="cfg-fog"> 🌫️ 안개 날 (무리마다 +1, 마지막에 황금 정령)</label>
+    <label><input type="checkbox" id="cfg-ease" checked> 🧪 첫 3회 관대 판정 (탭 창 ×1.3)</label>
+    <label>정령 속도 ×<input type="range" id="cfg-spd" min="0.5" max="1.6" step="0.1" value="1"> <span id="cfg-spd-v">1.0</span></label>
+    <label>플레이어 속도 <input type="range" id="cfg-pspd" min="2" max="5" step="0.2" value="3.2"> <span id="cfg-pspd-v">3.2</span></label>
+    <label><input type="checkbox" id="cfg-snd" checked> 효과음</label>
+    <button id="reset" style="margin-top:6px;font:inherit;font-size:12px;padding:5px 10px;border-radius:8px;border:0;cursor:pointer">🔄 처음부터 (등불·기록 초기화)</button>
+    <h3>이벤트 로그 <span class="note">(GA4로 나갈 것 미리보기)</span></h3>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════ 게임 상수 — js/game.js 와 동일 ═══════════
+const HALF = 13, WAVES = [3, 4, 5], LIGHT_MAX = 100, DRAIN = 4, CALM_R = 4.5;
+const SPIRITS = [
+  { id: 'shy',      name: '수줍은 정령',     color: '#8a6cc9', speed: 0.5,  size: 0.3 },
+  { id: 'sleepy',   name: '졸린 정령',       color: '#5a6cc0', speed: 0.38, size: 0.36 },
+  { id: 'mischief', name: '장난꾸러기 정령', color: '#c06a9a', speed: 0.72, size: 0.26 },
+  { id: 'golden',   name: '황금 정령',       color: '#e0b34a', speed: 0.62, size: 0.32, fog: true },
+];
+const LANTERN_POS = [[-7, -7], [7, -7], [-9.5, 1], [9.5, 1], [-5.5, 8], [5.5, 8]];
+const TREE = { x: 0, z: -3 };
+// 연습 모드 4단계(컨텍스트 슬롯) — DECOR_GUIDE 패턴
+const PRACTICE_STEPS = [
+  '① 🏮 꺼진 등불 앞에서 버튼 — 켜진 등불 근처에선 정령이 느려져요',
+  '② 🟣 정령 곁으로 걸어가 버튼 — ♪가 나타나요',
+  '③ ♪가 가장 작아지는 순간 탭 ×3 — 놓쳐도 괜찮아요, 엇박만 조심',
+  '④ 잘했어요! 이제 정령 세 무리에 도전해요',
+];
+
+// ═══════════ 상태 ═══════════
+const $ = id => document.getElementById(id);
+const cv = $('cv'), c = cv.getContext('2d');
+const W = cv.width, H = cv.height, S = 14, CX = W / 2, CY = H / 2 + 20;   // 1유닛 = 14px, 맵 중심
+const wx = x => CX + x * S, wz = z => CY + z * S;
+
+const cfg = { always: false, fog: false, ease: true, spd: 1, pspd: 3.2, snd: true };
+const save = { practiced: false, purified: false, soothedTotal: 0, easeLeft: 3 };   // 세이브(hintsSeen 상당)
+const lanterns = LANTERN_POS.map(([x, z]) => ({ x, z, lit: false }));
+const player = { x: 0, z: HALF - 1.6, tx: null, tz: null };
+const mist = { active: false, practice: false, wave: 0, spirits: [], light: LIGHT_MAX, soothe: null, warned: false, step: -1 };
+let t = 0, last = performance.now(), failCount = 0;
+
+// ═══════════ 소리(간단 톤) ═══════════
+let AC = null;
+function tone(f, d, type = 'sine', g = 0.25) {
+  if (!cfg.snd) return;
+  try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); const o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type; o.frequency.value = f; gn.gain.setValueAtTime(g, AC.currentTime); gn.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + d);
+    o.connect(gn).connect(AC.destination); o.start(); o.stop(AC.currentTime + d); } catch {}
+}
+const Sound = { blip: () => tone(660, 0.08), harvest: () => tone(880, 0.18), miss: () => tone(220, 0.25, 'triangle'), complete: () => { tone(660, .15); setTimeout(() => tone(880, .15), 130); setTimeout(() => tone(1175, .3), 260); } };
+
+// ═══════════ HUD 헬퍼 ═══════════
+function log(ev, p) { const l = $('log'); l.innerHTML += `<span class="ev">${ev}</span> ${p ? JSON.stringify(p) : ''}\n`; l.scrollTop = l.scrollHeight; }
+let toastT = null;
+function toast(msg, ms = 2400) { const e = $('toast'); e.textContent = msg; e.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('show'), ms); }
+function zone(msg) { const e = $('zone'); if (!msg) { e.classList.remove('show'); return; } e.textContent = msg; e.classList.add('show'); }
+function ctx(text, step, btn) {
+  const e = $('ctx'); if (text == null) { e.classList.remove('show'); return; }
+  $('ctx-text').textContent = text; e.classList.add('show');
+  $('ctx-dots').innerHTML = PRACTICE_STEPS.map((_, i) => `<span class="${i < step ? 'done' : i === step ? 'cur' : 'todo'}">●</span>`).join('');
+  const b = $('ctx-btn'); b.style.display = btn ? 'inline-block' : 'none'; if (btn) { b.textContent = btn.label; b.onclick = btn.fn; }
+}
+function card(h, p, btns) {
+  $('card-h').textContent = h; $('card-p').textContent = p;
+  $('card-btns').innerHTML = ''; btns.forEach(b => { const el = document.createElement('button'); el.className = b.pri ? 'pri' : 'sec'; el.textContent = b.label; el.onclick = () => { $('card').classList.remove('show'); b.fn?.(); }; $('card-btns').appendChild(el); });
+  $('card').classList.add('show');
+}
+function showChoice(on) { $('choice').classList.toggle('show', on); }
+
+// ═══════════ 정화 / 연습 ═══════════
+function dist(ax, az, bx, bz) { return Math.hypot(ax - bx, az - bz); }
+const nearTree = () => dist(player.x, player.z, TREE.x, TREE.z) < 2.8;
+function litCount() { return lanterns.filter(l => l.lit).length; }
+function clearSpirits() { mist.spirits.length = 0; mist.soothe = null; }
+function makeSpirit(def, x, z) { return { def, x, z, phase: Math.random() * 6, gone: 0, atTree: false }; }
+
+function startPurify() {
+  Object.assign(mist, { active: true, practice: false, wave: 0, light: LIGHT_MAX, soothe: null, warned: false, step: -1 });
+  clearSpirits(); ctx(null); spawnWave();
+  log('mist_purify_start', { weather: cfg.fog ? 'fog' : 'clear', lit: litCount() });
+}
+function spawnWave() {
+  mist.wave += 1;
+  const count = WAVES[mist.wave - 1] + (cfg.fog ? 1 : 0);
+  const kinds = SPIRITS.filter(s => !s.fog);
+  for (let i = 0; i < count; i++) {
+    const def = (cfg.fog && mist.wave === WAVES.length && i === 0) ? SPIRITS[3] : kinds[Math.floor(Math.random() * kinds.length)];
+    const a = Math.PI * 2 * (i / count) + Math.random() * 0.8, r = HALF - 0.8;
+    mist.spirits.push(makeSpirit(def, Math.cos(a) * r, Math.sin(a) * r));
+  }
+  toast(`🌫️ 정령 무리 ${mist.wave}/${WAVES.length} — ${count}마리가 다가와요`, 2400);
+  log('mist_wave', { n: mist.wave, count });
+}
+function startPractice() {
+  Object.assign(mist, { active: true, practice: true, wave: 0, light: LIGHT_MAX, soothe: null, warned: false, step: 0 });
+  clearSpirits();
+  const a = Math.PI * 2 * Math.random(), r = HALF - 0.8;
+  mist.spirits.push(makeSpirit(SPIRITS[0], Math.cos(a) * r, Math.sin(a) * r));   // 수줍은 정령 1마리, 느림
+  if (litCount() > 0) mist.step = 1;                                            // 이미 켜둔 등불이 있으면 ①은 건너뜀
+  renderPractice(); log('mist_practice_start', { lit: litCount() });
+}
+function renderPractice() {
+  const s = mist.step;
+  if (s < 0) { ctx(null); return; }
+  ctx(PRACTICE_STEPS[s], s, s === 3 ? { label: '🌳 바로 시작하기', fn: () => { ctx(null); startPurify(); } } : null);
+}
+function practiceAdvance(to) { if (mist.practice && mist.step < to) { mist.step = to; renderPractice(); log('mist_practice_step', { step: to + 1 }); } }
+function endPractice() {
+  mist.active = false; clearSpirits(); save.practiced = true;
+  practiceAdvance(3); log('mist_practice_done', { lit: litCount() });
+}
+function mistEnd(result) {
+  mist.active = false;
+  if (result === 'purified') {
+    save.purified = true; Sound.complete();
+    card('🌤️ 숲이 맑아졌어요!', '정령들이 하늘로 돌아가고 안개가 걷혔어요. 보너스 ✨6', [{ label: '확인', pri: true }]);
+  } else if (result === 'faded') {
+    failCount += 1;
+    toast('🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600);
+    // 첫 실패 후: 연습 안 해봤으면 결과 카드에 '연습해 보기' 한 번 제안
+    if (!save.practiced) setTimeout(() => card('🌫️ 조금 어려웠나요?', '정령 1마리로 천천히 연습해 볼 수 있어요. 켜둔 등불은 그대로 남아요.',
+      [{ label: '🎓 연습해 보기', pri: true, fn: startPractice }, { label: '다음에요' }]), 1200);
+  }
+  clearSpirits(); mist.light = LIGHT_MAX; zone(null);
+  log('mist_end', { result, wave: mist.wave, soothed_total: save.soothedTotal, lit: litCount() });
+}
+
+// ═══════════ ♪ 달래기 ═══════════
+function startSoothe(sp) { const ease = (cfg.ease && save.easeLeft > 0) ? 1.3 : 1; mist.soothe = { sp, step: 0, phase: 0, ease }; Sound.blip(); }
+function cancelSoothe(scared) {
+  const so = mist.soothe; if (!so) return;
+  if (scared) { const g = so.sp, d = Math.hypot(g.x, g.z) || 1; g.x = clamp(g.x + g.x / d * 3); g.z = clamp(g.z + g.z / d * 3); g.atTree = false; floatText(g.x, g.z, '💨 놀랐어요!'); Sound.miss(); }
+  mist.soothe = null;
+}
+const clamp = v => Math.max(-HALF + 1, Math.min(HALF - 1, v));
+function sootheTap() {
+  const so = mist.soothe; if (!so) return;
+  const lo = 1 - 0.38 * so.ease;
+  if (so.phase >= lo && so.phase <= 0.99) {
+    so.step += 1; so.phase = 0; Sound.blip(); sparkle(so.sp.x, so.sp.z);
+    if (so.step >= 3) {
+      const sp = so.sp; mist.soothe = null; sp.gone = 0.01; save.soothedTotal++; Sound.harvest();
+      if (save.easeLeft > 0) save.easeLeft--;
+      log('mist_soothe', { kind: sp.def.id, wave: mist.wave, practice: mist.practice });
+      if (mist.practice) setTimeout(endPractice, 900);
+    }
+  } else { cancelSoothe(true); log('mist_soothe_miss', { wave: mist.wave, practice: mist.practice }); }
+}
+
+// ═══════════ 프롬프트 / 액션 (updateMistInteract · mistAction) ═══════════
+function nearestSpirit() {
+  let best = null, bd = 2.4;
+  for (const s of mist.spirits) { if (s.gone) continue; const d = dist(s.x, s.z, player.x, player.z); if (d < bd - (s.atTree ? 0.6 : 0)) { bd = d; best = s; } }
+  return best;
+}
+function nearLantern() { return lanterns.find(l => !l.lit && dist(l.x, l.z, player.x, player.z) < 1.6); }
+function promptText() {
+  if (mist.soothe) return '♪ 리듬에 맞춰 탭!';
+  const sp = nearestSpirit(); if (sp) return `♪ ${sp.def.name} 달래기`;
+  if (nearLantern()) return '🏮 등불 켜기';
+  if (nearTree()) { if (save.purified) return '🌳 오늘은 숲이 맑아요'; if (!mist.active) return mist.practice && mist.step === 3 ? '🌳 바로 시작' : '🌳 숲 정화 시작하기'; }
+  return null;
+}
+function action() {
+  if (mist.soothe) { sootheTap(); return; }
+  const sp = nearestSpirit(); if (sp) { startSoothe(sp); return; }
+  const l = nearLantern();
+  if (l) { l.lit = true; Sound.harvest(); sparkle(l.x, l.z); log('mist_lantern', { lit: litCount() }); practiceAdvance(1); return; }
+  if (nearTree() && !mist.active && !save.purified) {
+    // 🎓 갈림길: 연습·정화 경험이 없으면 선택 카드, 있으면 바로 시작
+    const showCard = cfg.always || (!save.practiced && !save.purified);
+    if (showCard && !(mist.practice && mist.step === 3)) { showChoice(true); log('mist_choice_shown'); }
+    else startPurify();
+  }
+}
+$('ch-go').onclick = () => { showChoice(false); log('mist_choice', { pick: 'start' }); startPurify(); };
+$('ch-learn').onclick = () => { showChoice(false); log('mist_choice', { pick: 'practice' }); startPractice(); };
+
+// ═══════════ 연출(반짝·글자) ═══════════
+const fx = [];
+function sparkle(x, z) { for (let i = 0; i < 8; i++) fx.push({ x, z, vx: (Math.random() - .5) * 3, vz: (Math.random() - .5) * 3 - 1, life: .6, kind: 'sp' }); }
+function floatText(x, z, txt) { fx.push({ x, z, vx: 0, vz: -1.2, life: .9, kind: 'tx', txt }); }
+
+// ═══════════ 프레임 ═══════════
+function update(dt) {
+  t += dt;
+  // 이동(탭 목표)
+  if (player.tx != null) {
+    const dx = player.tx - player.x, dz = player.tz - player.z, d = Math.hypot(dx, dz);
+    if (d < 0.1) player.tx = null; else { const m = Math.min(d, cfg.pspd * dt); player.x += dx / d * m; player.z += dz / d * m; }
+  }
+  if (mist.active) {
+    let drain = 0;
+    for (let i = mist.spirits.length - 1; i >= 0; i--) {
+      const s = mist.spirits[i];
+      if (s.gone > 0) { s.gone += dt; if (s.gone > 0.9) mist.spirits.splice(i, 1); continue; }
+      s.phase += dt;
+      if (mist.soothe?.sp === s) continue;
+      const tx = TREE.x - s.x, tz = TREE.z - s.z, d = Math.hypot(tx, tz);
+      if (d < 2.0) { s.atTree = true; drain += DRAIN; s.x += Math.sin(t * 3 + s.phase) * dt * 0.3; continue; }
+      let spd = s.def.speed * cfg.spd;
+      for (const l of lanterns) if (l.lit && dist(l.x, l.z, s.x, s.z) < CALM_R) { spd *= 0.4; break; }
+      s.x += tx / d * spd * dt; s.z += tz / d * spd * dt;
+    }
+    if (drain > 0 && !mist.practice) {
+      mist.light = Math.max(0, mist.light - drain * dt);
+      if (!mist.warned && mist.light < LIGHT_MAX * 0.3) { mist.warned = true; toast('🌳 수호목의 빛이 흐려져요! 정령들을 서둘러 달래주세요', 2600); }
+      if (mist.light <= 0) { mistEnd('faded'); return; }
+    }
+    const so = mist.soothe;
+    if (so) {
+      so.phase += dt / 0.95; if (so.phase >= 1) so.phase -= 1;
+      if (dist(player.x, player.z, so.sp.x, so.sp.z) > 3.2) cancelSoothe(false);
+    }
+    if (mist.practice) { if (mist.step === 1 && nearestSpirit()) practiceAdvance(2); }
+    else {
+      if (!mist.spirits.length) { if (mist.wave >= WAVES.length) { mistEnd('purified'); return; } spawnWave(); }
+      zone(`🌳 ${Math.ceil(mist.light)}% · 무리 ${mist.wave}/${WAVES.length} · 정령 ${mist.spirits.filter(s => !s.gone).length}`);
+    }
+  }
+  for (let i = fx.length - 1; i >= 0; i--) { const f = fx[i]; f.life -= dt; f.x += f.vx * dt; f.z += f.vz * dt; if (f.life <= 0) fx.splice(i, 1); }
+  // 프롬프트/버튼
+  const p = promptText(); const pe = $('prompt'); if (p) { pe.textContent = p; pe.classList.add('show'); } else pe.classList.remove('show');
+  const b = $('btn'); b.disabled = !p; b.textContent = mist.soothe ? '♪' : p?.startsWith('🏮') ? '🏮' : p?.startsWith('🌳') ? '🌳' : '✋';
+  b.classList.toggle('go', !!mist.soothe && mist.soothe.phase >= 1 - 0.38 * mist.soothe.ease);
+}
+
+function draw() {
+  // 숲 바닥 + 안개
+  c.fillStyle = '#0f1a14'; c.fillRect(0, 0, W, H);
+  const lit = mist.practice ? 0.35 : mist.light / LIGHT_MAX;
+  const g = c.createRadialGradient(wx(TREE.x), wz(TREE.z), 10, wx(TREE.x), wz(TREE.z), HALF * S * 1.2);
+  g.addColorStop(0, `rgba(120,200,150,${0.22 * lit + 0.08})`); g.addColorStop(1, 'rgba(25,40,32,0)');
+  c.fillStyle = '#18261f'; c.fillRect(wx(-HALF), wz(-HALF), HALF * 2 * S, HALF * 2 * S);
+  c.fillStyle = g; c.fillRect(wx(-HALF), wz(-HALF), HALF * 2 * S, HALF * 2 * S);
+  c.strokeStyle = 'rgba(191,232,201,.25)'; c.lineWidth = 2; c.strokeRect(wx(-HALF), wz(-HALF), HALF * 2 * S, HALF * 2 * S);
+  // 등불 + 감속 반경
+  for (const l of lanterns) {
+    if (l.lit) { c.fillStyle = 'rgba(255,200,110,.10)'; c.beginPath(); c.arc(wx(l.x), wz(l.z), CALM_R * S, 0, 7); c.fill(); }
+    c.font = '20px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = l.lit ? 1 : 0.45; c.fillText('🏮', wx(l.x), wz(l.z)); c.globalAlpha = 1;
+  }
+  // 수호목
+  c.fillStyle = '#5a3b22'; c.fillRect(wx(TREE.x) - 5, wz(TREE.z), 10, 22);
+  c.fillStyle = `rgba(${70 + 60 * lit | 0},${120 + 90 * lit | 0},${70 + 40 * lit | 0},1)`; c.beginPath(); c.arc(wx(TREE.x), wz(TREE.z) - 6, 28, 0, 7); c.fill();
+  c.fillStyle = `rgba(200,255,210,${0.15 + 0.5 * lit})`; c.beginPath(); c.arc(wx(TREE.x), wz(TREE.z) - 6, 12, 0, 7); c.fill();
+  // 이동 목표
+  if (player.tx != null) { c.strokeStyle = 'rgba(191,232,201,.6)'; c.lineWidth = 1.5; c.beginPath(); c.arc(wx(player.tx), wz(player.tz), 6, 0, 7); c.stroke(); }
+  // 정령
+  for (const s of mist.spirits) {
+    const a = s.gone ? Math.max(0, 1 - s.gone * 1.1) : 0.92, y = wz(s.z) - (s.gone ? s.gone * 30 : 0) + Math.sin(t * 2.2 + s.phase) * 2;
+    c.globalAlpha = a; c.fillStyle = '#241f33'; c.beginPath(); c.arc(wx(s.x), y, s.def.size * S * 1.6, 0, 7); c.fill();
+    c.strokeStyle = s.def.color; c.lineWidth = 3; c.globalAlpha = a * (0.6 + (s.gone ? s.gone * 2 : 0)); c.stroke(); c.globalAlpha = a;
+    c.fillStyle = '#fff6e8'; c.beginPath(); c.arc(wx(s.x) - 3, y - 1, 1.6, 0, 7); c.arc(wx(s.x) + 3, y - 1, 1.6, 0, 7); c.fill();
+    c.globalAlpha = 1;
+    if (mist.practice && mist.step === 1 && !s.gone) { c.strokeStyle = '#ffab3d'; c.setLineDash([4, 4]); c.beginPath(); c.arc(wx(s.x), y, 2.4 * S, 0, 7); c.stroke(); c.setLineDash([]); }
+  }
+  // 플레이어
+  c.font = '26px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('🐻', wx(player.x), wz(player.z));
+  // ♪ 리듬 표식
+  const so = mist.soothe;
+  if (so) {
+    const k = 1.7 - so.phase * 1.25, inWin = so.phase >= 1 - 0.38 * so.ease;
+    const x = wx(so.sp.x), y = wz(so.sp.z) - 26;
+    c.globalAlpha = 0.55 + so.phase * 0.45; c.font = `bold ${k * 26 | 0}px sans-serif`; c.lineWidth = 5; c.strokeStyle = 'rgba(20,28,24,.8)'; c.strokeText('♪', x, y);
+    c.fillStyle = inWin ? '#b6ff9e' : '#aef3e2'; c.fillText('♪', x, y); c.globalAlpha = 1;
+    // 진행 점 3개
+    for (let i = 0; i < 3; i++) { c.fillStyle = i < so.step ? '#6fd08c' : 'rgba(255,255,255,.35)'; c.beginPath(); c.arc(x - 12 + i * 12, y + 28, 4, 0, 7); c.fill(); }
+  }
+  // 연출
+  for (const f of fx) {
+    if (f.kind === 'sp') { c.fillStyle = `rgba(255,240,180,${f.life / .6})`; c.beginPath(); c.arc(wx(f.x), wz(f.z), 2.5, 0, 7); c.fill(); }
+    else { c.globalAlpha = f.life; c.font = 'bold 13px sans-serif'; c.fillStyle = '#c8d0e0'; c.fillText(f.txt, wx(f.x), wz(f.z) - 20); c.globalAlpha = 1; }
+  }
+}
+function frame(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; update(dt); draw(); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+// ═══════════ 입력 ═══════════
+$('phone').addEventListener('pointerdown', e => {
+  if (e.target.closest('.panel, #btn, #card')) return;
+  if ($('choice').classList.contains('show')) { showChoice(false); return; }   // 카드 밖 탭 = 닫기
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left - CX) / S, z = (e.clientY - r.top - CY) / S;
+  player.tx = clamp(x); player.tz = clamp(z);
+});
+$('btn').addEventListener('pointerdown', e => { e.preventDefault(); action(); });
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); action(); } });
+
+// ═══════════ 설정 ═══════════
+$('cfg-always').onchange = e => cfg.always = e.target.checked;
+$('cfg-fog').onchange = e => cfg.fog = e.target.checked;
+$('cfg-ease').onchange = e => cfg.ease = e.target.checked;
+$('cfg-snd').onchange = e => cfg.snd = e.target.checked;
+$('cfg-spd').oninput = e => { cfg.spd = +e.target.value; $('cfg-spd-v').textContent = cfg.spd.toFixed(1); };
+$('cfg-pspd').oninput = e => { cfg.pspd = +e.target.value; $('cfg-pspd-v').textContent = cfg.pspd.toFixed(1); };
+$('reset').onclick = () => { mist.active = false; mist.practice = false; mist.step = -1; clearSpirits(); lanterns.forEach(l => l.lit = false);
+  Object.assign(save, { practiced: false, purified: false, soothedTotal: 0, easeLeft: 3 }); failCount = 0; player.x = 0; player.z = HALF - 1.6; player.tx = null;
+  ctx(null); zone(null); showChoice(false); $('card').classList.remove('show'); $('log').innerHTML = ''; log('reset'); };
+log('mist_enter', { purified: false });
+toast('🌳 수호목 앞에서 정화 시작 → 정령 세 무리를 모두 달래면 숲이 맑아져요', 3200);
+</script>

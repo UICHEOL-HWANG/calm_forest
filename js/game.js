@@ -371,11 +371,19 @@ const SPIRITS = [
 // 둘레 등불 6개(숲 로컬 좌표) — 수호목(중앙)으로 오는 길목마다 하나씩
 const MIST_LANTERN_POS = [[-7, -7], [7, -7], [-9.5, 1], [9.5, 1], [-5.5, 8], [5.5, 8]];
 const LANTERN_CALM_R = 4.5;                         // 켜진 등불 주변: 정령 감속 반경
+// 🎓 연습 모드 4단계(컨텍스트 슬롯) — "웨이브가 뭐예요?"(2026-09-07) 후속. 정령 1마리·빛 안 줄어듦·보상/도감/일일 기록 없음
+const MIST_PRACTICE_STEPS = [
+  '① 🏮 꺼진 등불 앞에서 버튼 — 켜진 등불 근처에선 정령이 느려져요',
+  '② 🟣 정령 곁으로 걸어가 버튼 — ♪가 나타나요',
+  '③ ♪가 가장 작아지는 순간 탭 ×3 — 놓쳐도 괜찮아요, 엇박만 조심',
+  '④ 잘했어요! 이제 정령 세 무리에 도전해요',
+];
 let mistGroup = null, atMist = false;
 let mistTree = null;                                 // 수호목 { group, foliage[], light }
 const mistLanterns = [];                             // { group, headMat, light, lit }
 // 진행 중인 정화 상태 — active=false 면 웨이브 전(수호목에서 시작)
-const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false };
+const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false,
+               practice: false, step: -1, choiceOpen: false };   // practice=연습 중 · step=연습 단계(3=완료 카드 표시 중) · choiceOpen=갈림길 카드
 
 // ── 🌊 바다터(대형 낚시) — 기획: docs/SEA_FISHING_PLAN.md ──────────────
 const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
@@ -662,7 +670,7 @@ const gameState = {
   night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
-  mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0 }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화 }
+  mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
@@ -1574,6 +1582,7 @@ export async function enterGame() {
     window.__boatTest = () => { gameState.boat.date = null; return boatRunsLeft(); };
     // 🌫️ __mistTest() — 오늘 정화를 무른 셈 치고 다시(코스 아님이라 리롤 유인 없음)
     window.__mistTest = () => { gameState.mist.date = null; gameState.mist.purified = false; return mistDaily(); };
+    window.__mist = mist;   // 🎓 연습 모드·갈림길 검수용(로컬 전용) — 정령 좌표·♪ phase 를 콘솔에서 본다
     // 🎬 __introTest() — 프롤로그 강제 재생(이미 본 세이브에서도) / __introJump(s) — 타임라인 점프(검증용)
     window.__introTest = () => introStart(true);
     window.__introJump = (s) => { if (intro) intro.t = s; return !!intro; };
@@ -4152,6 +4161,7 @@ function enterMist() {
 }
 function exitMist() {
   if (mist.active) mistEnd('quit');                    // 나가면 이번 시도는 종료(등불·✨는 유지)
+  closeMistChoice(); setMistStep(-1);                  // 갈림길 카드·연습 안내도 접는다
   atMist = false;
   player.position.set(MIST_GATE.x + 1.6, 0, MIST_GATE.z + 1.6);
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
@@ -4164,12 +4174,46 @@ function exitMist() {
 function startPurify() {
   const st = mistDaily();
   if (st.purified) { ui.toast?.('오늘은 이미 숲이 맑아요 — 내일 새 안개가 차면 다시 와요'); return; }
-  Object.assign(mist, { active: true, wave: 0, treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false });
+  closeMistChoice(); setMistStep(-1);
+  Object.assign(mist, { active: true, practice: false, wave: 0, treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false });
   clearMistSpirits();
   spawnMistWave();
   Sound.water(); spawnSparkle(MIST.x, 3.5, MIST.z - 3, 20);
   trackEvent('mist_purify_start', { weather: WEATHER, lit: mistLanterns.filter(l => l.lit).length });   // [GA4]
 }
+// ── 🎓 연습 모드 — 수줍은 정령 1마리, 빛 안 줄어듦, 컨텍스트 슬롯 4단계 안내 ──
+function setMistStep(step) { mist.step = step; ui.setMistGuide?.(step, MIST_PRACTICE_STEPS, () => startPurify()); }
+function practiceAdvance(to) {
+  if (!mist.practice || mist.step >= to) return;
+  setMistStep(to); trackEvent('mist_practice_step', { step: to + 1 });   // [GA4] 연습 퍼널
+}
+function startPractice() {
+  closeMistChoice();
+  Object.assign(mist, { active: true, practice: true, wave: 0, treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false });
+  clearMistSpirits();
+  const a = Math.random() * Math.PI * 2, r = MIST_HALF - 0.8;
+  mist.spirits.push(makeSpirit(SPIRITS[0], Math.cos(a) * r, Math.sin(a) * r));
+  setMistStep(mistLanterns.some(l => l.lit) ? 1 : 0);   // 이미 켜둔 등불이 있으면 ①은 건너뜀
+  Sound.blip();
+  trackEvent('mist_practice_start', { lit: mistLanterns.filter(l => l.lit).length });   // [GA4]
+}
+function endPractice(result) {   // done(달램) / quit(퇴장)
+  mist.active = false; mist.practice = false;
+  clearMistSpirits(); applyMistVisuals();
+  if (result === 'done') { gameState.mist.practiced = true; setMistStep(3); }   // ④ 카드 + [🌳 바로 시작하기]
+  else setMistStep(-1);
+  trackEvent('mist_practice_end', { result });   // [GA4]
+}
+function closeMistChoice() { if (!mist.choiceOpen) return; mist.choiceOpen = false; ui.hideMistChoice?.(); }
+function openMistChoice() {
+  mist.choiceOpen = true;
+  ui.showMistChoice?.({
+    onStart:    () => { trackEvent('mist_choice', { pick: 'start' });    startPurify(); },
+    onPractice: () => { trackEvent('mist_choice', { pick: 'practice' }); startPractice(); },
+  });
+  trackEvent('mist_choice_shown');   // [GA4] 갈림길 노출(선택 비율 = mist_choice / 여기)
+}
+
 function spawnMistWave() {
   mist.wave += 1;
   let count = MIST_WAVES[mist.wave - 1] + (WEATHER === 'fog' ? 1 : 0);
@@ -4209,6 +4253,7 @@ function clearMistSpirits() {
 
 // ── 정화 종료 — purified(성공) / faded(빛 소진) / quit(중도 퇴장) ──
 function mistEnd(result) {
+  if (mist.practice) { endPractice(result === 'quit' ? 'quit' : 'done'); return; }   // 🎓 연습은 보상·기록 없이 정리
   mist.active = false;
   const st = gameState.mist;
   if (result === 'purified') {
@@ -4222,6 +4267,13 @@ function mistEnd(result) {
   } else if (result === 'faded') {
     ui.toast?.('🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600);
     Sound.build();
+    // 🎓 첫 실패 후 연습 미경험이면 한 번 제안(토스트가 읽힌 뒤). 숲을 떠났거나 다시 시작했으면 안 띄운다
+    if (!st.practiced) setTimeout(() => {
+      if (!atMist || mist.active || ui.anyModalOpen?.()) return;
+      trackEvent('mist_practice_offer');   // [GA4]
+      ui.showHintModal?.({ ico: '🌫️', title: '조금 어려웠나요?', body: '정령 1마리로 천천히 연습해 볼 수 있어요. 켜둔 등불은 그대로 남아요.',
+        ok: { label: '🎓 연습해 보기', onClick: startPractice }, alt: { label: '다음에요' } });
+    }, 1200);
   }
   clearMistSpirits();
   mist.treeLight = TREE_LIGHT_MAX;                     // 다음 시도를 위해 회복(등불은 유지 — 재도전이 쉬워짐)
@@ -4269,7 +4321,7 @@ function updateMist(dt, t) {
       g.position.x += (tx / d) * spd * dt;
       g.position.z += (tz / d) * spd * dt;
     }
-    if (drain > 0) {
+    if (drain > 0 && !mist.practice) {                 // 🎓 연습 중엔 수호목 빛이 줄지 않는다
       mist.treeLight = Math.max(0, mist.treeLight - drain * dt);
       if (!mist.warned && mist.treeLight < TREE_LIGHT_MAX * 0.3) {
         mist.warned = true;
@@ -4289,7 +4341,16 @@ function updateMist(dt, t) {
       // 자리를 뜨면 취소(정령이 다시 움직임)
       if (dist2D(player.position, { x: MIST.x + so.sp.group.position.x, z: MIST.z + so.sp.group.position.z }) > 3.2) cancelSoothe();
     }
-    // 웨이브 클리어 → 다음 웨이브 / 정화 완료
+    // 🎓 연습: 정령 곁에 오면 ② → ③, 달래서 사라지면 완료
+    if (mist.practice) {
+      if (mist.step === 1) {
+        const lx = player.position.x - MIST.x, lz = player.position.z - MIST.z;
+        if (mist.spirits.some(s => !s.gone && Math.hypot(s.group.position.x - lx, s.group.position.z - lz) < 2.4)) practiceAdvance(2);
+      }
+      if (!mist.spirits.length) { endPractice('done'); return; }
+      applyMistVisuals(); return;                       // 존 힌트(무리 n/3)는 연습에선 안 띄움 — 슬롯은 단계 안내가 쓴다
+    }
+    // 무리 클리어 → 다음 무리 / 정화 완료
     if (!mist.spirits.length) {
       if (mist.wave >= MIST_WAVES.length) { mistEnd('purified'); return; }
       spawnMistWave();
@@ -4315,6 +4376,7 @@ function startSoothe(sp) {
   mistGroup.add(note);
   mist.soothe = { sp, step: 0, phase: 0, note, ease: betaEase('mist') };   // 🧪 첫 3회 관대 판정
   Sound.blip();
+  practiceAdvance(2);                                   // 🎓 연습: 등불을 건너뛰고 바로 정령을 찾아도 ③으로
 }
 function cancelSoothe(scared = false) {
   const so = mist.soothe; if (!so) return;
@@ -4341,6 +4403,7 @@ function sootheTap() {
       const sp = so.sp;
       mistGroup.remove(so.note); mist.soothe = null;
       sp.gone = 0.01;
+      if (mist.practice) { Sound.harvest(); trackEvent('mist_practice_soothe'); return; }   // 🎓 연습: 연출만, 보상·도감·기록·배지 없음
       const gold = sp.def.id === 'golden';
       giveReward({ glow: gold ? SOOTHE_GLOW * 2 : SOOTHE_GLOW }, 'mist_soothe', sp.def.id);
       gameState.mist.soothedTotal = (gameState.mist.soothedTotal || 0) + 1;
@@ -4351,13 +4414,14 @@ function sootheTap() {
     }
   } else {
     cancelSoothe(true);                                 // 엇박 — 부드러운 실패
-    trackEvent('mist_soothe_miss', { wave: mist.wave });                 // [GA4] 리듬 난이도 튜닝
+    trackEvent(mist.practice ? 'mist_practice_miss' : 'mist_soothe_miss', { wave: mist.wave });   // [GA4] 리듬 난이도 튜닝(연습은 분리)
   }
 }
 
 // ── 숲 안 근접 프롬프트/액션 — updateDoorInteract / handleAction 에서 호출 ──
 function updateMistInteract() {
   const lx = player.position.x - MIST.x, lz = player.position.z - MIST.z;
+  if (mist.choiceOpen && Math.hypot(lx, lz + 3) >= 2.8) closeMistChoice();   // 🌳 카드는 나무 곁에서만 — 걸어 나가면 닫힘
   if (mist.soothe) return '♪ 리듬에 맞춰 탭!';
   // 정령(달래기) — 도착해 나무를 갉는 정령을 우선
   let best = null, bd = 2.4;
@@ -4372,7 +4436,7 @@ function updateMistInteract() {
   }
   if (Math.hypot(lx, lz + 3) < 2.8) {                   // 수호목
     if (gameState.mist.purified) return '🌳 오늘은 숲이 맑아요';
-    if (!mist.active) return '🌳 숲 정화 시작하기';
+    if (!mist.active) return mist.step === 3 ? '🌳 바로 시작' : '🌳 숲 정화 시작하기';
   }
   return null;
 }
@@ -4393,10 +4457,17 @@ function mistAction() {
       Sound.harvest(); spawnSparkle(MIST.x + l.x, 1.9, MIST.z + l.z, 14);
       applyMistVisuals();
       trackEvent('mist_lantern', { lit: mistLanterns.filter(x => x.lit).length });   // [GA4]
+      practiceAdvance(1);                                // 🎓 연습 ① 통과
       return;
     }
   }
-  if (Math.hypot(lx, lz + 3) < 2.8 && !mist.active && !gameState.mist.purified) { startPurify(); return; }
+  if (Math.hypot(lx, lz + 3) < 2.8 && !mist.active && !gameState.mist.purified) {
+    // 🎓 갈림길: 연습도 정화도 해본 적 없으면 [바로 시작 / 연습해 보기] 카드, 아니면 바로 시작(연습 완료 카드가 떠 있을 때도 바로)
+    const st = gameState.mist;
+    if (mist.step === 3 || st.practiced || (st.purifyTotal || 0) > 0) { startPurify(); return; }
+    if (!mist.choiceOpen) openMistChoice();
+    return;
+  }
 }
 
 function makeBench(x, z, ry) {
