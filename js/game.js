@@ -4145,7 +4145,7 @@ function enterMist() {
     ui.toast?.('🌤️ 오늘의 숲은 맑아요 — 정령들이 고마워하고 있어요. 내일 다시 안개가 차요');
   } else {
     firstHint('mistWood', '🌫️', '안개 낀 숲',
-      '🌳수호목 앞에서 정화 시작 → 그림자 정령이 다가와요\n🏮등불로 늦추고, 정령 곁에서 ♪가 가장 작을 때 탭!\n웨이브 3번을 버티면 숲이 맑아져요');
+      '🌳수호목 앞에서 정화 시작 → 그림자 정령이 다가와요\n🏮등불로 늦추고, 정령 곁에서 ♪가 가장 작을 때 탭!\n정령 세 무리를 모두 달래면 숲이 맑아져요');
   }
   Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
   trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
@@ -4183,7 +4183,7 @@ function spawnMistWave() {
     const r = MIST_HALF - 0.8;
     mist.spirits.push(makeSpirit(def, Math.cos(a) * r, Math.sin(a) * r));
   }
-  ui.toast?.(`🌫️ 웨이브 ${mist.wave}/${MIST_WAVES.length} — 정령 ${count}마리가 다가와요`, 2400);
+  ui.toast?.(`🌫️ 정령 무리 ${mist.wave}/${MIST_WAVES.length} — ${count}마리가 다가와요`, 2400);   // '웨이브'는 유저 질문(2026-09-07)으로 '무리'로 교체
   trackEvent('mist_wave', { n: mist.wave, count });     // [GA4] 웨이브 진행
 }
 function makeSpirit(def, lx, lz) {
@@ -4297,7 +4297,7 @@ function updateMist(dt, t) {
     // 상태 안내(존 힌트) — 0.3초마다
     if (t - mistHintT > 0.3) {
       mistHintT = t;
-      ui.setZoneHint?.(`🌳 ${Math.ceil(mist.treeLight)}% · 웨이브 ${mist.wave}/${MIST_WAVES.length} · 정령 ${mist.spirits.filter(s => !s.gone).length}`);
+      ui.setZoneHint?.(`🌳 ${Math.ceil(mist.treeLight)}% · 무리 ${mist.wave}/${MIST_WAVES.length} · 정령 ${mist.spirits.filter(s => !s.gone).length}`);
       lastZoneHint = 'mist';
     }
   }
