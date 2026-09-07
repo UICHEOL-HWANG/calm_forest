@@ -393,6 +393,11 @@
     display: flex; gap: 10px; align-items: center; text-align: left;
     opacity: 0; transition: opacity .35s; pointer-events: none; }
   #hint-banner.show { opacity: 1; }
+  /* 🎯 이탈 예측 배너(attention) — 한 번 톡 튀어오르고 민트 빛이 번졌다 사라진다. 흔들기·깜빡임 없음 */
+  #hint-banner.attn.show { animation: hbPop .5s ease-out, hbGlow 1.2s ease-out; }
+  @keyframes hbPop { 0% { transform: translateX(-50%) scale(.85); } 60% { transform: translateX(-50%) scale(1.06); } 100% { transform: translateX(-50%) scale(1); } }
+  @keyframes hbGlow { 0% { box-shadow: 0 0 0 0 rgba(143,214,160,.9); } 100% { box-shadow: 0 0 0 14px rgba(143,214,160,0); } }
+  @media (prefers-reduced-motion: reduce) { #hint-banner.attn.show { animation: none; } }
   #hint-banner .hb-ico { font-size: 22px; flex: 0 0 auto; }
   #hint-banner .hb-title { font-size: 14px; font-weight: 700; }
   #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
@@ -1551,7 +1556,7 @@
     //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
     //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
     const hintBQ = []; let hintBShowing = false;
-    const HINT_B_MIN = 1400, HINT_B_FULL = 3000;
+    const HINT_B_MIN = 1400, HINT_B_FULL = 3000, HINT_B_ATTN = 8000;   // attention 배너는 시선이 늦게 가도 읽게 8초
     function nextHintBanner() {
       const item = hintBQ.shift();
       if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
@@ -1559,20 +1564,20 @@
       $('hb-ico').textContent = item.ico || '🌿';
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
-      const el = $('hint-banner'); el.classList.add('show');
+      const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention); el.classList.add('show');
       const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
       let timer, watch;
       const done = () => { clearTimeout(timer); clearInterval(watch); el.classList.remove('show'); setTimeout(nextHintBanner, 250); };
-      const hold = near() ? HINT_B_FULL : HINT_B_MIN;
+      const hold = item.attention ? HINT_B_ATTN : (near() ? HINT_B_FULL : HINT_B_MIN);
       timer = setTimeout(done, hold);
-      if (hold > HINT_B_MIN) watch = setInterval(() => {   // 조기 페이드아웃 감시
+      if (hold > HINT_B_MIN && !item.attention) watch = setInterval(() => {   // attention 은 조기 종료 없이 8초   // 조기 페이드아웃 감시
         if (Date.now() - t0 >= HINT_B_MIN && !near()) done();
       }, 400);
     }
     const ui = {
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
-      showHintBanner({ ico, title, line, near }) { hintBQ.push({ ico, title, line, near }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, title, line, near, attention }) { hintBQ.push({ ico, title, line, near, attention }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0; },
       setInventory(inv) {

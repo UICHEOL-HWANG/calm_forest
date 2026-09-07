@@ -176,3 +176,19 @@ test('할 게 하나도 없으면 null (배너를 띄우지 않는다)', () => {
   const all = ['chop_tree', 'fish_success', 'harvest', 'cook', 'carve', 'mine'];
   assert.equal(pickIntervention({ plantedUnwatered: 0, openQuests: 0, buildableHouse: false, doneKinds: all }), null);
 });
+
+test('이탈 배너는 주목 옵션(attention)으로 띄우고 이벤트에 cue 를 남긴다', async () => {
+  const { p, calls } = harness();
+  await p.onTrigger('time15');
+  assert.equal(calls.banner.length, 1);
+  assert.equal(calls.banner[0].attention, true, '입구 힌트와 달리 소리·튀어오름이 붙는 배너');
+  const e = scoreEvent(calls);
+  assert.equal(e.shown, true);
+  assert.equal(e.cue, 'sound_pulse');
+});
+
+test('배너를 안 띄운 세션은 cue 가 없다', async () => {
+  const { p, calls } = harness({ session: { id: 's', clientId: 'c', variant: 'control', arm: 'control', isFirstSession: false } });
+  await p.onTrigger('time15');
+  assert.equal(scoreEvent(calls).cue, undefined);
+});

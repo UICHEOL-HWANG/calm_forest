@@ -1494,7 +1494,11 @@ function initChurnPredictor() {
         dex: gameState.dex,
       });
     },
-    showBanner: (b) => ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true }),
+    showBanner: (b) => {
+      // 🎯 주목 신호 — 짧은 "띠링"(효과음 토글 존중) + 안드로이드 진동 30ms. 실패해도 배너는 뜬다.
+      if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
+      ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention });
+    },
     track: (n, p) => trackEvent(n, p),
   });
 

@@ -88,6 +88,7 @@ export const Sound = {
   build()  { tone(90, 0.18, 'sine', 0.6, 55); noise(0.1, 300, 0.3); },          // 건축 "쿵"
   complete(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'triangle', 0.5), i * 120)); }, // 완성 팡파레
   blip()   { tone(720, 0.06, 'square', 0.18); },                                // 도구 전환
+  nudge()  { tone(880, 0.12, 'sine', 0.35); setTimeout(() => tone(1175, 0.22, 'sine', 0.3), 110); }, // 🎯 이탈 배너 "띠링" — 수확음보다 한 톤 낮고 짧게
   plant()  { tone(440, 0.1, 'sine', 0.3, 560); },                               // 씨앗 심기
 };
 

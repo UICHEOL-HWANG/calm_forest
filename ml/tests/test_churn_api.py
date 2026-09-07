@@ -158,6 +158,7 @@ def test_appends_jsonl_row(client, tmp_path):
     assert row["trigger"] == "quest"
     assert row["features"]["path_len"] == 12.0
     assert "p" in row and "at" in row and "origin" in row
+    assert "threshold" in row, "판정에 쓴 임계값이 적립돼야 개입 비율을 재현할 수 있다"
 
 
 def test_long_origin_header_is_truncated(client, tmp_path):

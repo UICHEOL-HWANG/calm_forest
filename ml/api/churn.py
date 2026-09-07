@@ -190,6 +190,7 @@ def predict(body: PredictIn, request: Request) -> PredictOut:
         "trigger": body.trigger,
         "features": feats,
         "p": p,
+        "threshold": threshold,        # 판정에 쓴 임계값 — 나중에 개입 비율을 재현하려면 필요
         "intervene": intervene,
         "model_version": version,
         # CORS 는 보안 경계가 아니다 — 오리진을 가리지 않고 어떤 오리진이 오는지 남긴다

@@ -106,12 +106,14 @@ export function createPredictor(deps) {
     let shown = false;
     if (res.intervene && session.arm === 'treat' && shownCount < maxPerSession) {
       const banner = pickIntervention(deps.gameState);
-      if (banner) { showBanner(banner); shownCount++; shown = true; }
+      // 주목 옵션 — 입구 힌트와 달리 소리·튀어오름이 붙는다(index.html attention 처리). 처치 내용의 일부라 cue 로 기록.
+      if (banner) { showBanner({ ...banner, attention: true }); shownCount++; shown = true; }
     }
 
     track('churn_score', {
       p: res.p, trigger: kind, rule, variant: session.variant, arm: session.arm,
       shown, threshold: res.threshold, model_version: res.model_version,
+      ...(shown ? { cue: 'sound_pulse' } : {}),   // 배너 처치 = 소리 + 튀어오름(2026-09-07 부터)
     });
   }
 
