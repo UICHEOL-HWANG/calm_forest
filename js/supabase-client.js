@@ -9,7 +9,7 @@
 //    (game_saves / game_logs + RLS + 분석 뷰)
 // =============================================================
 
-import { CONFIG, isSupabaseConfigured } from './config.js';
+import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 🧪 dev 세션 — 리더보드 원천 기록 차단용
 import { PLATFORM } from './platform.js';                  // 'web' | 'toss' — 로그 세그먼트
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant } from './analytics.js';
@@ -364,6 +364,11 @@ export async function deletePhotoRow(objectKey) {
 //    ※ 코스는 날짜+회차 시드라 seed 가 같으면 같은 코스 — 유저 간 실력 비교의 기준이 됩니다.
 //    실패해도 게임엔 영향이 없어야 하므로 전부 삼킵니다.
 export async function sendBoatRun(row) {
+  //  🧪 dev 세션(?sea=1 · ?weather= 등)에서는 기록하지 않는다.
+  //  boat_runs 는 🛶 리더보드의 원천이라 테스트 런이 실제 유저와 같은 순위표에 오른다.
+  //  게다가 dev 세션은 game_logs·session_logs 가 차단돼 있어, 남은 이 행이
+  //  테스트인지 실제 플레이인지 나중에 판별할 근거조차 없다.
+  if (IS_DEV_SESSION) return;
   const full = {
     user_id: state.userId, session_id: state.sessionId,
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
@@ -381,6 +386,7 @@ export async function sendBoatRun(row) {
 //    참치 무게가 '오늘의 대어' 리더보드(sea 보드)의 원천. 다른 어종도 함께 남겨
 //    어종별 도전/성공률 분석에 쓴다. 실패해도 게임엔 영향 없게 전부 삼킨다.
 export async function sendSeaRecord(row) {
+  if (IS_DEV_SESSION) return;   // 🧪 dev 세션 — 🌊 '오늘의 대어' 원천이므로 sendBoatRun 과 동일
   const full = {
     user_id: state.userId, session_id: state.sessionId,
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
