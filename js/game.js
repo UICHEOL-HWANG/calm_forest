@@ -4384,14 +4384,19 @@ function cancelSoothe(scared = false) {
   if (scared) {                                         // 엇박: 정령이 놀라 가장자리 쪽으로 물러남
     const g = so.sp.group;
     const d = Math.hypot(g.position.x, g.position.z) || 1;
-    g.position.x = clampMist(g.position.x + (g.position.x / d) * 3);
-    g.position.z = clampMist(g.position.z + (g.position.z / d) * 3);
+    const [nx, nz] = clampMist(g.position.x + (g.position.x / d) * 3, g.position.z + (g.position.z / d) * 3);
+    g.position.x = nx; g.position.z = nz;
     so.sp.atTree = false;
     spawnFloatText(MIST.x + g.position.x, 1.8, MIST.z + g.position.z, '💨 놀랐어요!', '#8a94a8', 0.9);
   }
   mist.soothe = null;
 }
-function clampMist(v) { return Math.max(-MIST_HALF + 1, Math.min(MIST_HALF - 1, v)); }
+// 숲 바닥은 반지름 MIST_HALF+1.5 의 원 — 정사각형으로 자르면 네 모서리가 바닥 밖 허공이라(토스 실기기 2026-09-07) 원형으로 가둔다
+const MIST_SPIRIT_R = MIST_HALF - 1;                    // 정령 활동 반경(놀라 물러나도 여기까지)
+function clampMist(x, z) {
+  const d = Math.hypot(x, z);
+  return d > MIST_SPIRIT_R ? [x / d * MIST_SPIRIT_R, z / d * MIST_SPIRIT_R] : [x, z];
+}
 function sootheTap() {
   const so = mist.soothe; if (!so) return;
   const lo = 1 - 0.38 * (so.ease || 1);                 // 기본 0.62 — 🧪첫 3회 0.506(창 ×1.3)
@@ -7575,9 +7580,9 @@ function updatePlayer(dt, t) {
   } else if (atRiver) { // 🛶 나루터 데크: 물에 빠지지 않게 데크 안쪽으로 제한
     player.position.x = Math.max(RIVER.x - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.x + RIVER_DOCK_HALF - 0.7, player.position.x));
     player.position.z = Math.max(RIVER.z - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.z + RIVER_DOCK_HALF - 0.5, player.position.z));
-  } else if (atMist) {  // 🌫️ 안개 숲: 빈터 안쪽으로 제한
-    player.position.x = Math.max(MIST.x - MIST_HALF + 0.7, Math.min(MIST.x + MIST_HALF - 0.7, player.position.x));
-    player.position.z = Math.max(MIST.z - MIST_HALF + 0.7, Math.min(MIST.z + MIST_HALF - 0.5, player.position.z));
+  } else if (atMist) {  // 🌫️ 안개 숲: 바닥이 원(반지름 MIST_HALF+1.5)이라 원형으로 제한 — 모서리 허공 방지. 남쪽 출구(반지름 13)는 닿는다
+    const R = MIST_HALF + 0.6, dx = player.position.x - MIST.x, dz = player.position.z - MIST.z, dd = Math.hypot(dx, dz);
+    if (dd > R) { player.position.x = MIST.x + dx / dd * R; player.position.z = MIST.z + dz / dd * R; }
   } else if (atSea) {
     // 🌊 부두 위만 걷기 — 좌우는 널판 안, 앞뒤는 뭍끝~부두끝(싸움 중 끌려가는 건 updateSea 의 pz 가 제어)
     player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
