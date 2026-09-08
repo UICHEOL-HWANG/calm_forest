@@ -10,7 +10,7 @@ export const GUIDE_IMAGES = [
   '00_title.jpg', '01_charselect.jpg', '02_intro_b.jpg', '14_help.jpg',
   '03_village_start.jpg', '30_mobile_coach.jpg', '12_bag.jpg', '10_bench.jpg', '04_coach.jpg',
   '05_chop.jpg', '05_chop_fall.jpg', '05b_merchant.jpg',
-  '06_farm_till.jpg', '06_farm_water.jpg', '06_farm_mature.jpg', '06_farm_harvest.jpg',
+  '06_farm_till.jpg', '06_farm_water.jpg', '06_farm_mature.jpg', '06_farm_harvest.jpg', '06_farm_dig1.jpg', '06_farm_dig2.jpg',
   '20_farmfield_plot.jpg', '09_shop_buy.jpg', '09_market.jpg',
   '07_build2.jpg', '07_house_done.jpg', '07_decor.jpg', '29_house6.jpg',
   '08_fish_bite.jpg', '08_fish_catch2.jpg', '11_npc.jpg', '11_owl.jpg',
