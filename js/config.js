@@ -15,6 +15,7 @@ const API_BASE = '';
 
 export const CONFIG = {
   API_BASE,                     // 하드코딩된 fetch 호출부(도감·의뢰·리더보드)가 참조
+  GUIDE_BASE: `${API_BASE}/guide/`,   // 📖 초보자 안내서 정적 파일 — 토스 번들은 API_BASE 치환으로 웹 오리진에서 받아온다
   // ── Supabase 연동 값 (BaaS: Auth + Postgres) ─────────────────
   //    Supabase 프로젝트 > Settings > API 에서 확인
   SUPABASE_URL: 'https://zuyxgjfihxtfdpolljzw.supabase.co', // 프로젝트 URL(공개, 안전)

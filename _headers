@@ -8,3 +8,8 @@
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+# 📖 안내서 — 토스 번들(다른 오리진)이 fetch 로 받아가므로 CORS 허용. 내용이 자주 안 바뀌어 1시간 캐시.
+/guide/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
