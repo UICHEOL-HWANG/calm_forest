@@ -1,0 +1,389 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🪏 삽 파기 모션 시뮬 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  button{font:inherit;padding:5px 11px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  button.big{font-weight:700;padding:8px 18px;background:#f4d7a0;border-color:#c9a25b}
+  input[type=range]{width:120px}
+  #hud{position:fixed;top:10px;right:12px;background:rgba(255,255,255,.9);padding:9px 12px;border-radius:9px;font-size:12px;line-height:1.7;max-width:330px}
+  #toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:rgba(40,60,40,.85);color:#fff;padding:7px 14px;border-radius:9px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+  #toast.show{opacity:1}
+  b{color:#2f5e2f}
+  .desc{font-size:12px;opacity:.75}
+</style>
+<div id="hud"></div>
+<div id="toast"></div>
+<div id="ui">
+  <div class="row">
+    <b>모션</b> <span id="motions"></span>
+    <span class="desc" id="mdesc"></span>
+  </div>
+  <div class="row">
+    <b>동물</b> <span id="animals"></span>
+    <b style="margin-left:8px">밭</b>
+    <button id="dig" class="big">🪏 파기 (Space)</button>
+    <button id="reset">밭 되돌리기</button>
+    <label><input id="loop" type="checkbox"> 자동 반복(파기→파기→복구)</label>
+  </div>
+  <div class="row">
+    <label>진행도 <input id="scrub" type="range" min="0" max="1" step="0.005" value="0"><span id="scrubV">0.00</span></label>
+    <label>길이(초) <input id="dur" type="range" min="0.3" max="1.2" step="0.05" value="0.6"><span id="durV"></span></label>
+    <label>카메라 좌우° <input id="ang" type="range" min="-180" max="180" step="5" value="90"><span id="angV"></span></label>
+    <label>카메라 높이° <input id="ele" type="range" min="10" max="80" step="1" value="28"><span id="eleV"></span></label>
+    <label>줌 <input id="zoom" type="range" min="3.5" max="9" step="0.1" value="3.9"><span id="zoomV"></span></label>
+    <span class="desc">(게임 시점 = 높이 41°)</span>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ══════════════════════════════════════════════════════════════
+//  게임 원본 발췌 — 캐릭터 리그·팔 상수·도구 자루(sims/tool-visibility-sim.html ② 조정안 = 현재 게임값)
+// ══════════════════════════════════════════════════════════════
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: .95, metalness: 0, flatShading: flat });
+const PAL = { soil: 0x9c6b4a, soilWet: 0x7c5236, ground: 0xbfe8c9, sprout: 0x7fce7f };
+
+const ANIMALS = [
+  { id:'bear', name:'🐻 곰', body:0x8a6038, belly:0xc9a878, ear:0x6a4828,
+    bodyR:.63, bodyScale:[1.08,1.00,1.06], headR:.44, headY:1.34,
+    ears:'round', earScale:1.1, snout:{ len:.22, r:.20, color:0xc9a878, nose:0x2a2320, noseR:.075 } },
+  { id:'fox', name:'🦊 여우', body:0xe07b3c, belly:0xf5e9d8, ear:0x8a4a24,
+    bodyR:.52, bodyScale:[0.90,1.08,0.90], headR:.37, headY:1.26,
+    ears:'pointy', earScale:1.15, snout:{ len:.34, r:.13, color:0xf7efe2, nose:0x2a2320 } },
+  { id:'dog', name:'🐶 강아지', body:0xc9945a, belly:0xf0e2cc, ear:0x9a6a3a,
+    bodyR:.56, bodyScale:[1.03,0.99,1.00], headR:.40, headY:1.24,
+    ears:'round', earScale:1.0, snout:{ len:.26, r:.16, color:0xf0e2cc, nose:0x2a2320, noseR:.06 } },
+  { id:'rabbit', name:'🐰 토끼', body:0xe6e0dc, belly:0xffffff, ear:0xf0c0c8,
+    bodyR:.46, bodyScale:[1.00,0.96,1.00], headR:.39, headY:1.12,
+    ears:'long', snout:{ len:.16, r:.14, color:0xffffff, nose:0xe89aa8 } },
+];
+let ANIMAL = ANIMALS[0];
+
+const _axX = new THREE.Vector3(1,0,0), _axZ = new THREE.Vector3(0,0,1), _down = new THREE.Vector3(0,-1,0);
+const ARM_DIR = side => new THREE.Vector3(side*.29, -.90, .32).normalize();   // ARM_AIM_R/L (game.js:1079)
+const P = { shx:.97, shz:.30, alen:.32 };                                       // 현재 게임 팔 값
+
+// ── 🪏 삽 — 도끼와 같은 클레이 톤. 자루(그립 혹+밴드) 위에 목 이음쇠 + 넓적한 날 + 발판(밟는 턱)
+function shovelMesh() {
+  const g = new THREE.Group();
+  const GRIP = 0x5f3d26, STEEL = 0x6d757c, EDGE = 0xd9dfe4;
+  const l = .58, r = .030;
+  const h = new THREE.Mesh(new THREE.CylinderGeometry(r*.8, r, l, 7), clayMat(0x8a5a3a));
+  h.position.y = l/2 - .08; g.add(h);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(r*1.18, r*1.18, .07, 7), clayMat(GRIP)); band.position.y = -.02; g.add(band);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(r*1.35, 7, 6), clayMat(GRIP)); knob.position.y = -.08; g.add(knob);
+  const top = l - .08;
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(.034,.042,.07,7), clayMat(STEEL)); collar.position.y = top + .01; g.add(collar);
+  // 날: 위가 넓고 끝이 살짝 좁아지는 판 + 밝은 테두리 + 양쪽 발판 턱
+  const blade = new THREE.Mesh(new THREE.CylinderGeometry(.095, .115, .30, 4, 1), clayMat(STEEL));
+  blade.rotation.y = Math.PI/4; blade.scale.set(1, 1, .26); blade.position.y = top + .19; g.add(blade);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(.16, .024, .026), clayMat(EDGE)); edge.position.y = top + .345; g.add(edge);
+  [-1,1].forEach(s => { const step = new THREE.Mesh(new THREE.BoxGeometry(.05,.022,.034), clayMat(STEEL)); step.position.set(s*.105, top+.05, 0); g.add(step); });
+  g.scale.setScalar(1.18);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+function buildBody(a) {
+  const g = new THREE.Group();
+  const R = a.bodyR, HR = a.headR, HY = a.headY, bs = a.bodyScale;
+  const bodyY = R*bs[1] + .02;
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(R,1), clayMat(a.body,false));
+  body.position.y = bodyY; body.scale.set(...bs); body.castShadow = true; g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R*.62,16,12), clayMat(a.belly,false));
+  belly.position.set(0, bodyY - R*.16, R*.55); belly.scale.set(1,1.1,.6); g.add(belly);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(HR,1), clayMat(a.body,false));
+  head.position.y = HY; head.castShadow = true; g.add(head);
+  const eyeMat = new THREE.MeshStandardMaterial({ color:0x3a2f2a, roughness:.6 });
+  [-1,1].forEach(s => { const e = new THREE.Mesh(new THREE.SphereGeometry(HR*.145,8,8), eyeMat); e.position.set(s*HR*.36, HY + HR*.10, HR*.86); g.add(e); });
+  if (a.snout) {
+    const sn = a.snout;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(sn.r,12,10), clayMat(sn.color,false));
+    m.position.set(0, HY - HR*.16, HR*.60 + sn.len*.35); m.scale.set(1,.82,sn.len/sn.r); g.add(m);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(sn.noseR ?? .05,10,8), clayMat(sn.nose,false));
+    nose.position.set(0, HY - HR*.13, HR*.60 + sn.len*.92); nose.scale.set(1.25,.85,.9); g.add(nose);
+  }
+  const earMat = clayMat(a.ear,false), es = a.earScale ?? 1;
+  [-1,1].forEach(s => {
+    let e;
+    if (a.ears === 'round') e = new THREE.Mesh(new THREE.SphereGeometry(HR*.36*es,10,8), earMat);
+    else if (a.ears === 'pointy') { e = new THREE.Mesh(new THREE.ConeGeometry(HR*.30*es, HR*.62*es, 6), earMat); e.rotation.z = -s*.22; }
+    else { e = new THREE.Mesh(new THREE.CapsuleGeometry(HR*.16, HR*.72, 4, 8), earMat); e.rotation.z = -s*.14; }
+    e.position.set(s*HR*.62, HY + HR*.72, -HR*.05); e.castShadow = true; g.add(e);
+  });
+  return { group: g, bodyY };
+}
+function makeArm(a, side, bodyY) {
+  const R = a.bodyR;
+  const pivot = new THREE.Group(); pivot.rotation.order = 'YXZ';
+  pivot.position.set(side*R*P.shx*a.bodyScale[0], bodyY + R*.54, R*P.shz);
+  const aim = new THREE.Group(); aim.quaternion.setFromUnitVectors(_down, ARM_DIR(side)); pivot.add(aim);
+  const ar = R*.23, al = R*P.alen;
+  const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), clayMat(a.body,false));
+  upper.position.y = -(al/2 + ar*.4); upper.castShadow = true; aim.add(upper);
+  const paw = new THREE.Mesh(new THREE.SphereGeometry(ar*1.06,10,8), clayMat(a.ear,false));
+  paw.position.y = -(al + ar*.9); paw.castShadow = true; aim.add(paw);
+  const hand = new THREE.Group(); hand.position.y = -(al + ar*.9); aim.add(hand);
+  return { pivot, aim, hand };
+}
+function buildRig() {
+  const root = new THREE.Group();
+  const anchor = new THREE.Group(); root.add(anchor);
+  const { group, bodyY } = buildBody(ANIMAL); anchor.add(group);
+  const Rarm = makeArm(ANIMAL, 1, bodyY), Larm = makeArm(ANIMAL, -1, bodyY);
+  anchor.add(Rarm.pivot, Larm.pivot);
+  const tool = shovelMesh();
+  tool.quaternion.copy(Rarm.aim.quaternion).invert(); tool.rotateX(-.12); tool.rotateZ(-.16);
+  tool.userData.qRest = tool.quaternion.clone();
+  Rarm.hand.add(tool);
+  return { root, anchor, R: Rarm, L: Larm, tool, bodyY };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  모션 후보 3종 — pose(rig, p) · p 0→1
+//  공통 어휘: R/L pivot.rotation.x  (+)뒤로 들기 / (−)앞으로 내리기 · anchor.rotation.x (+)앞으로 숙임
+//  tool 은 rest 자세에서 X축으로 θ 만큼 돌린다 — θ=π 면 날이 팔 연장선 아래(찍기), 그 사이면 비스듬히
+// ══════════════════════════════════════════════════════════════
+const eo = q => 1 - (1-q)*(1-q);        // ease-out
+const ei = q => q*q;                    // ease-in
+const seg = (p, a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+const _q = new THREE.Quaternion(), _wq = new THREE.Quaternion(), _up = new THREE.Vector3(0,1,0), _d = new THREE.Vector3(), _qa = new THREE.Quaternion();
+function toolTilt(rig, theta, sideY = 0) {
+  _q.setFromAxisAngle(_axX, theta);
+  rig.tool.quaternion.copy(rig.tool.userData.qRest).multiply(_q);
+  if (sideY) { _q.setFromAxisAngle(_axZ, sideY); rig.tool.quaternion.multiply(_q); }
+}
+// 삽 자루를 월드 방향(dir: 손→날)으로 세운다. 팔 각도와 무관하게 "날이 어디를 향하는지"를 직접 지정.
+//   blend 0 = 평상시 쥔 자세, 1 = dir 그대로. 팔 회전을 먼저 넣고 불러야 한다(손 월드 회전을 읽으므로)
+function aimTool(rig, dir, blend = 1) {
+  rig.anchor.updateMatrixWorld(true);
+  rig.R.hand.getWorldQuaternion(_wq);
+  _d.set(dir[0], dir[1], dir[2]).normalize();
+  _qa.setFromUnitVectors(_up, _d);
+  _qa.premultiply(_wq.invert());                       // 월드 목표 → 손 로컬
+  rig.tool.quaternion.copy(rig.tool.userData.qRest).slerp(_qa, blend);
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+const lerp3 = (a, b, t) => [lerp(a[0],b[0],t), lerp(a[1],b[1],t), lerp(a[2],b[2],t)];
+
+const MOTIONS = [
+  { key:'stomp', name:'① 밟아 꽂고 퍼 던지기', desc:'농부식 — 삽을 앞에 세워 밟아 꽂고, 젖혀 퍼 올려 옆으로 던진다. 제일 길다.',
+    dur:.75, hit:.30,
+    pose(rig, p) {
+      const R = rig.R.pivot, L = rig.L.pivot, A = rig.anchor;
+      // ① 0~.22 삽을 앞에 세움(양팔 앞으로, 날이 땅을 향해)  ② .22~.32 밟아 꽂기(몸이 툭 내려앉음)
+      // ③ .32~.62 젖혀 퍼 올리기(몸 뒤로, 팔 들림)  ④ .62~.82 옆으로 휙 던지기  ⑤ 복귀
+      const a = eo(seg(p, 0, .22)), st = seg(p, .22, .32), lv = eo(seg(p, .32, .62)), th = eo(seg(p, .62, .82)), rt = eo(seg(p, .82, 1));
+      const stomp = Math.sin(st * Math.PI), k = 1 - rt;
+      // 팔: 앞으로 뻗어 자루를 잡고(−1.25) → 젖히며 몸 쪽으로 끌어올림(−.55) → 던질 땐 왼쪽으로 휙
+      const armX = lerp(lerp(-1.25*a, -.55, lv), -.35, th);
+      R.rotation.set(armX*k, -.9*th*k, .12*a*k);
+      L.rotation.set(armX*.92*k, -.6*th*k, -.32*a*k);
+      A.rotation.x = lerp(lerp(.30*a, -.26, lv), -.10, th)*k + stomp*.12;
+      A.rotation.y = -.60*th*k;
+      A.position.y = -stomp*.16 - .05*a*k;
+      A.scale.set(1 + stomp*.08, 1 - stomp*.10, 1 + stomp*.08);
+      // 자루 방향(손→날): 세워 꽂기(아래·살짝 앞) → 젖혀 퍼 올리기(앞으로 눕힘) → 왼쪽 앞으로 던지기
+      let dir = lerp3([0,-.92,.40], [0,-.30,.95], lv);
+      dir = lerp3(dir, [-.75,.05,.66], th);
+      aimTool(rig, dir, a*k);
+    } },
+  { key:'chop', name:'② 위에서 내리찍기', desc:'괭이·도끼 리듬 그대로 — 뒤로 크게 들었다가 휙 내려찍고 팔로스루. 제일 짧다.',
+    dur:.42, hit:.55,
+    pose(rig, p) {
+      const R = rig.R.pivot, L = rig.L.pivot, A = rig.anchor;
+      const B = 2.05, S = -.45; let a;
+      if (p < .32) a = B * eo(p/.32);
+      else if (p < .58) a = B + (S-B) * ei((p-.32)/.26);
+      else a = S * (1 - eo((p-.58)/.42));
+      const s = Math.sin(p*Math.PI), k = a/B;
+      R.rotation.set(a, 0, s*.18);
+      L.rotation.set(-k*.55, -k*.18, Math.max(0,-k)*.85);
+      A.rotation.x = p < .32 ? -.12*(p/.32) : .5*s; A.rotation.y = p < .32 ? -.22*(p/.32) : .3*s*(1-p);
+      A.position.y = -s*.1; A.scale.set(1+s*.1, 1-s*.12, 1+s*.1);
+      toolTilt(rig, Math.PI * Math.min(1, Math.abs(k)*1.25) * .55);
+    } },
+  { key:'lever', name:'③ 꽂고 젖혀 뒤집기', desc:'짧고 가벼움 — 앞에 푹 꽂은 뒤 자루를 몸 쪽으로 젖혀 흙을 뒤집는다. 던지기 없음.',
+    dur:.55, hit:.28,
+    pose(rig, p) {
+      const R = rig.R.pivot, L = rig.L.pivot, A = rig.anchor;
+      // ① 0~.28 앞으로 푹 찌르기(가속)  ② .28~.66 젖히기(몸 뒤로 기울고 팔이 위로)  ③ 복귀
+      const th = ei(seg(p, 0, .28)), lv = eo(seg(p, .28, .66)), rt = eo(seg(p, .66, 1));
+      const bump = Math.sin(seg(p, .22, .36) * Math.PI), k = 1 - rt;
+      // 팔: 앞으로 푹 찌르기(−1.15) → 젖히며 위로(−.45)
+      const armX = lerp(-1.15*th, -.45, lv);
+      R.rotation.set(armX*k, 0, .10*th*k);
+      L.rotation.set(armX*.95*k, 0, -.28*th*k);
+      A.rotation.x = lerp(.32*th, -.38, lv)*k + bump*.08; A.rotation.y = 0;
+      A.position.y = (-.08*th - bump*.10)*k;
+      A.scale.set(1+bump*.06, 1-bump*.08, 1+bump*.06);
+      // 자루 방향: 45° 앞아래로 찌르기 → 날이 앞으로 들리며 흙을 뒤집음
+      aimTool(rig, lerp3([0,-.72,.69], [0,.22,.97], lv), th*k);
+    } },
+];
+let MOTION = MOTIONS[0];
+
+// ══════════════════════════════════════════════════════════════
+//  밭 — createPlot(game.js:8519) 그대로 + 2단계 파기 상태
+//  state 0 온전 → 1 한 번 팜(이랑 흐트러짐·흙더미) → 2 사라짐(풀 돋기)
+// ══════════════════════════════════════════════════════════════
+const PLOT_POS = new THREE.Vector3(0, 0, 1.55);   // 게임에선 밭 중심 1.6 안이면 상호작용 — 밭 가장자리에 붙어 선 상태
+let plot = null, plotState = 0, sprouts = [], grassPatch = null;
+function buildPlot() {
+  if (plot) scene.remove(plot);
+  const g = new THREE.Group(); g.position.copy(PLOT_POS);
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), clayMat(PAL.soil, false));
+  soil.position.y = 0.1; soil.receiveShadow = true; g.add(soil);
+  const ridges = [];
+  for (let k = -1; k <= 1; k++) {
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
+    ridge.position.set(0, 0.21, k * 0.5); ridge.receiveShadow = true; g.add(ridge); ridges.push(ridge);
+  }
+  // 흙더미(1타 후 등장) + 파인 자리(어두운 판)
+  const mound = new THREE.Mesh(new THREE.SphereGeometry(.32, 9, 7), clayMat(PAL.soilWet, false));
+  mound.position.set(.55, .2, -.45); mound.scale.set(1.3, .55, 1.1); mound.visible = false; mound.castShadow = true; g.add(mound);
+  const hole = new THREE.Mesh(new THREE.CylinderGeometry(.38, .30, .12, 9), clayMat(0x5e3d28, false));
+  hole.position.set(-.25, .18, .15); hole.visible = false; g.add(hole);
+  g.userData = { soil, ridges, mound, hole };
+  scene.add(g); plot = g; plotState = 0;
+  sprouts.forEach(s => scene.remove(s)); sprouts = [];
+  if (grassPatch) { scene.remove(grassPatch); grassPatch = null; }
+}
+function digPlot() {
+  const u = plot.userData;
+  if (plotState === 0) {
+    plotState = 1;
+    // 이랑 흐트러짐 — 각각 다른 각도로 기울고 살짝 어긋남
+    u.ridges.forEach((r, i) => { r.rotation.set((i-1)*.35, (i-1)*.28, .18*(i%2?1:-1)); r.position.x += (i-1)*.12; r.position.y += .02; });
+    u.mound.visible = true; u.hole.visible = true;
+    spawnDust(PLOT_POS.x, PLOT_POS.z, 10);
+    toast('한 번 더 파면 밭이 사라져요 🪏');
+  } else if (plotState === 1) {
+    plotState = 2;
+    plot.visible = false;
+    spawnDust(PLOT_POS.x, PLOT_POS.z, 22);
+    // 파낸 자리: 연한 흙 자국이 풀색으로 돌아가고, 새싹이 톡톡 돋는다
+    grassPatch = new THREE.Mesh(new THREE.CircleGeometry(.95, 14), new THREE.MeshStandardMaterial({ color: 0xc9a988, roughness: 1, transparent: true, opacity: .9 }));
+    grassPatch.rotation.x = -Math.PI/2; grassPatch.position.set(PLOT_POS.x, .012, PLOT_POS.z); scene.add(grassPatch);
+    grassPatch.userData.t = 0;
+    for (let i = 0; i < 7; i++) {
+      const s = new THREE.Mesh(new THREE.ConeGeometry(.06, .2, 5), clayMat(PAL.sprout, false));
+      s.position.set(PLOT_POS.x + (Math.random()-.5)*1.3, .1, PLOT_POS.z + (Math.random()-.5)*1.3);
+      s.scale.setScalar(.01); s.userData.delay = .15 + i*.08; s.userData.t = 0; scene.add(s); sprouts.push(s);
+    }
+    toast('밭을 메웠어요 — 다시 풀밭이 됐어요 🌱');
+  }
+}
+
+// ── 파티클 — spawnDust(game.js:8932) 근사 ──
+const particles = [];
+const _chipGeo = new THREE.BoxGeometry(.09, .05, .05);
+function spawnDust(x, z, count = 12) {
+  for (let i = 0; i < count; i++) {
+    const p = new THREE.Mesh(_chipGeo, clayMat(0xc9a988, false));
+    p.position.set(x + (Math.random()-.5)*1.4, .2, z + (Math.random()-.5)*1.4);
+    p.userData = { vel: new THREE.Vector3((Math.random()-.5)*1.2, .6 + Math.random(), (Math.random()-.5)*1.2), spin: (Math.random()-.5)*4, life: .9, grow: 2 };
+    p.scale.setScalar(.3); scene.add(p); particles.push(p);
+  }
+}
+function updateParticles(dt) {
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i], u = p.userData;
+    u.life -= dt; if (u.life <= 0) { scene.remove(p); particles.splice(i,1); continue; }
+    u.vel.y += -1.2*dt; p.position.addScaledVector(u.vel, dt);
+    p.rotation.x += u.spin*dt; p.rotation.z += u.spin*dt;
+    p.scale.setScalar(Math.min(1, p.scale.x + u.grow*dt) * (u.life < .3 ? u.life/.3 : 1));
+  }
+  sprouts.forEach(s => { s.userData.t += dt; const q = Math.max(0, s.userData.t - s.userData.delay); const k = Math.min(1, q*4); s.scale.setScalar(.01 + k*(1 + .35*Math.sin(Math.min(1,q*3)*Math.PI))); });
+  if (grassPatch) { grassPatch.userData.t += dt; grassPatch.material.opacity = Math.max(0, .9 - grassPatch.userData.t*.45); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  씬
+// ══════════════════════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.0));
+const key = new THREE.DirectionalLight(0xfff2d8, 1.25); key.position.set(4,8,6); key.castShadow = true;
+key.shadow.mapSize.set(1024,1024); Object.assign(key.shadow.camera, { left:-8, right:8, top:6, bottom:-6 }); scene.add(key);
+const rim = new THREE.DirectionalLight(0xbfe8ff, .4); rim.position.set(-4,3,-4); scene.add(rim);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40,40), clayMat(PAL.ground,false));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+
+let rig = null;
+function rebuild() { if (rig) scene.remove(rig.root); rig = buildRig(); scene.add(rig.root); rig.pose = p => MOTION.pose(rig, p); }
+
+// ══════════════════════════════════════════════════════════════
+//  UI · 재생
+// ══════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+let anim = 0, hitDone = false, scrubbing = false, loopT = 0;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1600); }
+function dig() { if (plotState === 2) { toast('여긴 밭이 없어요'); return; } if (anim > 0) return; anim = 1; hitDone = false; scrubbing = false; }
+
+$('motions').innerHTML = MOTIONS.map(m => `<button data-m="${m.key}" class="${m===MOTION?'on':''}">${m.name}</button>`).join(' ');
+$('motions').onclick = e => { const b = e.target.closest('button'); if (!b) return; MOTION = MOTIONS.find(m => m.key === b.dataset.m); [...$('motions').children].forEach(c => c.classList.toggle('on', c===b)); $('dur').value = MOTION.dur; showDur(); $('mdesc').textContent = MOTION.desc; anim = 0; rig.pose(0); };
+$('mdesc').textContent = MOTION.desc;
+$('animals').innerHTML = ANIMALS.map(a => `<button data-a="${a.id}" class="${a===ANIMAL?'on':''}">${a.name}</button>`).join(' ');
+$('animals').onclick = e => { const b = e.target.closest('button'); if (!b) return; ANIMAL = ANIMALS.find(a => a.id === b.dataset.a); [...$('animals').children].forEach(c => c.classList.toggle('on', c===b)); rebuild(); };
+$('dig').onclick = dig;
+$('reset').onclick = () => { buildPlot(); };
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); dig(); } });
+$('scrub').oninput = e => { scrubbing = true; anim = 0; rig.pose(+e.target.value); $('scrubV').textContent = (+e.target.value).toFixed(2); };
+const showDur = () => $('durV').textContent = (+$('dur').value).toFixed(2) + 's';
+$('dur').oninput = showDur; $('dur').value = MOTION.dur; showDur();
+['ang','ele','zoom'].forEach(id => $(id).oninput = resize);
+
+function resize() {
+  const h = innerHeight - $('ui').offsetHeight;
+  renderer.setSize(innerWidth, h, false); renderer.domElement.style.height = h + 'px';
+  camera.aspect = innerWidth / h; camera.updateProjectionMatrix();
+  const el = (+$('ele').value)*Math.PI/180, az = (+$('ang').value)*Math.PI/180, d = +$('zoom').value;
+  $('angV').textContent = $('ang').value + '°'; $('eleV').textContent = $('ele').value + '°'; $('zoomV').textContent = d.toFixed(1);
+  const cx = 0, cz = .8;
+  camera.position.set(cx + Math.sin(az)*d*Math.cos(el), .9 + d*Math.sin(el), cz + Math.cos(az)*d*Math.cos(el));
+  camera.lookAt(cx, .7, cz);
+}
+addEventListener('resize', resize);
+
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now - last)/1000); last = now;
+  const dur = +$('dur').value;
+  if (anim > 0) {
+    anim = Math.max(0, anim - dt/dur);
+    const p = 1 - anim;
+    rig.pose(p);
+    if (!hitDone && p >= MOTION.hit) { hitDone = true; digPlot(); }
+    $('scrub').value = p; $('scrubV').textContent = p.toFixed(2);
+  } else if (!scrubbing) rig.pose(0);
+  if ($('loop').checked) {
+    loopT += dt;
+    if (anim === 0 && loopT > .9) { loopT = 0; if (plotState === 2) buildPlot(); else dig(); }
+  }
+  updateParticles(dt);
+  $('hud').innerHTML =
+    `<b>${MOTION.name}</b> · ${(+$('dur').value).toFixed(2)}s · 타격 시점 ${MOTION.hit}<br>` +
+    `밭 상태: <b>${['온전(빈 밭)','한 번 팜 — 이랑 흐트러짐·흙더미','사라짐 — 풀밭 복구'][plotState]}</b><br>` +
+    `<span style="opacity:.65">Space 또는 🪏 파기 버튼 · 2번 파면 밭 철거 · 카메라 41° = 게임 시점</span>`;
+  renderer.render(scene, camera);
+}
+window.__sim = () => ({ camera, rig, MOTION, ANIMAL, plotState, dig, buildPlot, MOTIONS, setMotion: k => { MOTION = MOTIONS.find(m => m.key === k); rig.pose = p => MOTION.pose(rig, p); }, pose: p => { scrubbing = true; anim = 0; rig.pose(p); } });
+rebuild(); buildPlot(); resize(); requestAnimationFrame(loop);
+</script>
