@@ -86,10 +86,11 @@ function shovelMesh() {
   const top = l - .08;
   const collar = new THREE.Mesh(new THREE.CylinderGeometry(.034,.042,.07,7), clayMat(STEEL)); collar.position.y = top + .01; g.add(collar);
   // 날: 위가 넓고 끝이 살짝 좁아지는 판 + 밝은 테두리 + 양쪽 발판 턱
-  const blade = new THREE.Mesh(new THREE.CylinderGeometry(.095, .115, .30, 4, 1), clayMat(STEEL));
-  blade.rotation.y = Math.PI/4; blade.scale.set(1, 1, .26); blade.position.y = top + .19; g.add(blade);
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(.16, .024, .026), clayMat(EDGE)); edge.position.y = top + .345; g.add(edge);
-  [-1,1].forEach(s => { const step = new THREE.Mesh(new THREE.BoxGeometry(.05,.022,.034), clayMat(STEEL)); step.position.set(s*.105, top+.05, 0); g.add(step); });
+  const bw = .105, bh = .13, sh = new THREE.Shape();
+  sh.moveTo(-bw, 0); sh.lineTo(-bw, bh); sh.absarc(0, bh, bw, Math.PI, 0, true); sh.lineTo(bw, 0); sh.closePath();
+  const bladeGeo = new THREE.ExtrudeGeometry(sh, { depth: .03, bevelEnabled: true, bevelThickness: .012, bevelSize: .012, bevelSegments: 3, curveSegments: 14 });
+  bladeGeo.translate(0, 0, -.015);
+  const blade = new THREE.Mesh(bladeGeo, clayMat(STEEL, false)); blade.position.y = top + .03; g.add(blade);
   g.scale.setScalar(1.18);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;

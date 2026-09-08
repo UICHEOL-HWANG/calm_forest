@@ -2253,18 +2253,19 @@ function toolMesh(id) {
     ferrule.position.y = top - 0.01; g.add(ferrule);
     g.scale.setScalar(1.18);
   } else if (id === 'shovel') {
-    // 🪏 삽 — sims/shovel-sim.html 검수판. 긴 자루 위에 목 이음쇠 + 넓적한 날(위가 넓고 끝이 좁아짐) + 밝은 테두리 + 양쪽 발판 턱
+    // 🪏 삽 — sims/shovel-sim.html 검수판. 긴 자루 위에 목 이음쇠 + 넓적한 날(위가 넓고 끝이 좁아짐)
     const top = handle(0.58);
     const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.042, 0.07, 7), clayMat(STEEL));
     collar.position.y = top + 0.01; g.add(collar);
-    const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.115, 0.30, 4, 1), clayMat(STEEL));
-    blade.rotation.y = Math.PI / 4; blade.scale.set(1, 1, 0.26); blade.position.y = top + 0.19; g.add(blade);
-    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.024, 0.026), clayMat(EDGE));
-    edge.position.y = top + 0.345; g.add(edge);
-    [-1, 1].forEach(sx => {
-      const step = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.022, 0.034), clayMat(STEEL));
-      step.position.set(sx * 0.105, top + 0.05, 0); g.add(step);
-    });
+    // 날: 둥근 삽날 윤곽(어깨 직선 + 반원 끝)을 얇게 뽑고 모서리를 둥글게 깎아 매끈한 한 덩어리로(참고 이미지 피드백 2026-09-08).
+    //   날끝 밝은 막대·발판 턱은 게임 시점에서 점처럼 따로 떠 보여 없앴다.
+    const bw = 0.105, bh = 0.13;
+    const sh = new THREE.Shape();
+    sh.moveTo(-bw, 0); sh.lineTo(-bw, bh); sh.absarc(0, bh, bw, Math.PI, 0, true); sh.lineTo(bw, 0); sh.closePath();
+    const bladeGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 3, curveSegments: 14 });
+    bladeGeo.translate(0, 0, -0.015);
+    const blade = new THREE.Mesh(bladeGeo, clayMat(STEEL, false));
+    blade.position.y = top + 0.03; g.add(blade);
     g.scale.setScalar(1.18);
   } else if (id === 'hammer') {
     const top = handle(0.50);
