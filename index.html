@@ -957,8 +957,8 @@
     .ck-item { width: 84px; }
     /* NPC 모달 선물 버튼이 많아도 줄바꿈 */
     .npc-actions { flex-wrap: wrap; }
-    /* 🎒 페이지당 도구 4칸 + 칩 1개.
-       칩(≈54) + 4×40 + 4×3 + 좌우 10 = 236px → iPhone SE(375) 에 여유 있게 들어간다 */
+    /* 🎒 페이지당 도구 최대 5칸(🌾농사 5 · 🏕️야외도구 4) + 칩 1개.
+       칩(≈54) + 5×40 + 5×3 + 좌우 10 = 279px → iPhone SE(375) 에 들어간다. 바(bottom 16 + 50)는 조이스틱(bottom 90) 아래라 안 겹친다 */
     .slot { width: 40px; height: 40px; border-radius: 11px; flex: 0 0 auto; }
     .slot .s-ico { font-size: 16px; }
     .slot .s-key { font-size: 7px; }
@@ -971,7 +971,7 @@
       border-left-color: transparent; border-top-color: rgba(255,255,255,0.92); }
     #tool-page { min-width: 40px; padding: 0 7px; }
     #hotbar { gap: 3px; padding: 5px; }
-    /* 아주 좁은 화면(320~360px, iPhone SE 1세대 등) — 칩(≈48) + 4×35 + 8 + 8 = 204px */
+    /* 아주 좁은 화면(320~360px, iPhone SE 1세대 등) — 칩(≈48) + 5×35 + 10 + 8 = 241px */
     @media (max-width: 380px) {
       .slot { width: 35px; height: 35px; border-radius: 10px; }
       .slot .s-ico { font-size: 14px; }
@@ -1049,7 +1049,7 @@
   <!-- 미니맵 (캐릭터 대략 위치) -->
   <canvas id="minimap" width="110" height="110"></canvas>
 
-  <div id="hint" class="panel">이동 WASD/방향키 · 1 도구 세트 바꾸기 · 2~5 도구 고르기 · 상호작용 Space/클릭</div>
+  <div id="hint" class="panel">이동 WASD/방향키 · 1 도구 세트 바꾸기 · 2~6 도구 고르기 · 상호작용 Space/클릭</div>
   <div id="toast" class="panel"></div>
 
   <!-- 🪧 시설 첫 접근 배너 (비차단 — 입력을 받지 않고 자동으로 사라짐) -->
@@ -1434,7 +1434,7 @@
       <ul class="tut-list">
         <li><b>🕹️ 이동</b> WASD·방향키 <span class="mo">(모바일: 왼쪽 조이스틱)</span></li>
         <li><b>✋ 상호작용</b> Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span></li>
-        <li><b>🎒 도구 세트</b> 1번으로 🌾농사 · 🏕️야외도구 · ✋맨손을 바꾸고, 2~5번으로 도구를 골라요</li>
+        <li><b>🎒 도구 세트</b> 1번으로 🌾농사 · 🏕️야외도구 · ✋맨손을 바꾸고, 2~6번으로 도구를 골라요</li>
         <li><b>💾 진행상황</b>은 자동 저장돼요</li>
       </ul>
       <button id="tut-start">튜토리얼 시작 🌱</button>
@@ -2167,7 +2167,7 @@
       { key: 'move',     text: `① ${MOVE}로 마을을 걸어보세요 🕹️` },
       { key: 'toolpage', text: TOUCH
           ? '② 하단 왼쪽 🎒 버튼을 눌러 보세요 — 🌾농사 · 🏕️야외도구 · ✋맨손 세트가 번갈아 나와요'
-          : '② 숫자 1 을 눌러 보세요 — 🌾농사 · 🏕️야외도구 · ✋맨손 세트가 번갈아 바뀌어요 (도구는 2~5)' },
+          : '② 숫자 1 을 눌러 보세요 — 🌾농사 · 🏕️야외도구 · ✋맨손 세트가 번갈아 바뀌어요 (도구는 2~6)' },
       { key: 'chop',    text: `③ 🏕️야외도구 세트에서 🪓도끼(2) 고르고 나무 앞에서 ${A}으로 벌목! 🪵` },
       { key: 'sell',    text: `④ 🛒 찾아온 상인이나 동쪽 좌판에 목재를 팔아 첫 코인을 벌어요 (${A})` },
       { key: 'till',    text: `⑤ 🌾농사 세트의 ⛏️괭이(2)로 빈 땅을 갈아요 (${A})` },
@@ -3133,7 +3133,7 @@
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
-    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령' };
+    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서' };
     const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글 로그인·토스 계정 = 영구 계정
     // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
     //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.

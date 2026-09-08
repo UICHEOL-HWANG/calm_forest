@@ -63,12 +63,17 @@ const CROP_TYPES = [
 const ICO_SICKLE = '<svg viewBox="233 182 784 784" aria-hidden="true" style="width:1.15em;height:1.15em;display:block"><g transform="translate(0 1182) scale(.1 -.1)" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6584 6860 c-9 -22 -24 -46 -33 -53 -9 -6 -22 -24 -30 -39 -28 -55 -208 -274 -237 -287 -54 -27 -85 -19 -187 47 -52 34 -101 62 -107 62 -13 0 -132 51 -140 60 -3 3 -12 7 -20 9 -8 2 -37 10 -63 17 -64 17 -134 8 -164 -22 -19 -19 -23 -34 -23 -81 l0 -57 40 39 c38 37 44 40 98 39 38 -1 81 -11 127 -29 67 -27 246 -136 292 -178 l22 -20 -25 -20 -25 -20 37 -38 37 -38 -34 -53 c-38 -59 -41 -65 -481 -694 -493 -704 -722 -1056 -1003 -1539 -302 -520 -472 -789 -547 -866 -62 -65 -147 -104 -219 -102 -68 1 -81 8 -196 96 -92 70 -259 162 -352 192 -29 10 -81 18 -115 18 -108 -1 -156 -42 -156 -136 0 -124 79 -264 232 -413 138 -134 270 -221 423 -280 102 -39 215 -39 305 0 107 46 242 155 303 246 96 141 194 307 652 1100 113 195 430 729 585 985 114 189 501 791 668 1043 74 111 75 112 114 112 86 0 102 16 421 449 110 148 126 216 79 336 -15 40 -78 125 -91 125 -4 0 -14 -14 -22 -32 l-15 -31 -25 25 c-23 24 -90 68 -103 68 -3 0 -13 -18 -22 -40z" vector-effect="non-scaling-stroke"/><path d="M8465 9694 c-600 -59 -1099 -259 -1492 -596 -384 -330 -648 -864 -793 -1608 -23 -118 -43 -251 -38 -254 1 -1 26 -7 53 -14 53 -14 71 -22 201 -94 158 -87 315 -204 297 -221 -3 -4 -1 -7 5 -7 15 0 15 5 1 28 -9 15 -5 41 20 128 229 778 585 1302 1039 1528 291 146 736 197 1212 141 63 -8 140 -17 171 -21 l56 -6 35 53 c35 53 200 361 195 365 -1 1 -38 15 -82 30 -101 35 -272 122 -325 164 -22 18 -48 46 -56 62 -14 27 -14 32 1 55 9 13 14 27 11 31 -12 12 -510 7 -596 -6 -216 -32 -397 -79 -572 -148 -60 -23 -108 -41 -108 -39 0 8 261 138 338 169 79 31 180 66 189 66 2 0 1 -6 -2 -12 -4 -7 -1 -6 7 2 17 20 47 32 193 74 185 53 237 65 389 92 228 39 221 37 156 45 -89 11 -354 8 -505 -7z" vector-effect="non-scaling-stroke"/></g></svg>';
 const ICO_NET = '<svg viewBox="199 105 915 915" aria-hidden="true" style="width:1.15em;height:1.15em;display:block"><g transform="translate(0 1180) scale(.1 -.1)" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><clipPath id="cfNetMesh"><path d="M9963 9995c121 -32 212 -99 239 -177c21 -60 41 -200 34 -236c-3 -15 -8 -52 -11 -83c-8 -84 -47 -231 -95 -352c-23 -59 -38 -112 -34 -118c4 -7 3 -9 -2 -6c-5 3 -29 -34 -54 -81c-51 -102 -114 -206 -187 -314c-55 -81 -62 -94 -40 -82c7 4 9 3 4 -2c-5 -5 -12 -9 -15 -9c-13 0 -32 -16 -32 -27c0 -6 7 -5 18 3c15 13 16 12 3 -3c-7 -10 -17 -16 -21 -13c-4 2 -40 -37 -80 -88c-170 -211 -380 -418 -615 -602c-300 -236 -649 -432 -920 -518c-97 -30 -258 -66 -328 -72c-29 -3 -68 -7 -87 -10c-81 -13 -307 31 -376 74c-46 28 -99 98 -124 166c-55 146 -30 408 62 640c235 599 819 1231 1493 1617c279 159 601 279 828 308c96 12 268 4 340 -15z"/></clipPath><path d="M9963 9995c121 -32 212 -99 239 -177c21 -60 41 -200 34 -236c-3 -15 -8 -52 -11 -83c-8 -84 -47 -231 -95 -352c-23 -59 -38 -112 -34 -118c4 -7 3 -9 -2 -6c-5 3 -29 -34 -54 -81c-51 -102 -114 -206 -187 -314c-55 -81 -62 -94 -40 -82c7 4 9 3 4 -2c-5 -5 -12 -9 -15 -9c-13 0 -32 -16 -32 -27c0 -6 7 -5 18 3c15 13 16 12 3 -3c-7 -10 -17 -16 -21 -13c-4 2 -40 -37 -80 -88c-170 -211 -380 -418 -615 -602c-300 -236 -649 -432 -920 -518c-97 -30 -258 -66 -328 -72c-29 -3 -68 -7 -87 -10c-81 -13 -307 31 -376 74c-46 28 -99 98 -124 166c-55 146 -30 408 62 640c235 599 819 1231 1493 1617c279 159 601 279 828 308c96 12 268 4 340 -15z" fill="currentColor" fill-opacity=".28" stroke="none"/><path d="M5564 6210L10364 11010M5564 11010L10364 6210M6324 6210L11124 11010M6324 11010L11124 6210M7084 6210L11884 11010M7084 11010L11884 6210" fill="none" stroke="currentColor" stroke-width=".8" stroke-opacity=".8" vector-effect="non-scaling-stroke" clip-path="url(#cfNetMesh)"/><path d="M9655 10403 c-305 -36 -564 -117 -875 -274 -173 -87 -366 -203 -362 -219 1 -6 -2 -9 -8 -5 -25 15 -464 -325 -455 -352 2 -7 0 -12 -4 -10 -15 4 -72 -44 -65 -55 4 -7 2 -8 -5 -4 -14 9 -143 -115 -289 -277 -94 -105 -120 -139 -91 -121 12 7 12 5 0 -9 -16 -20 -25 -22 -16 -4 4 6 -5 -1 -19 -16 -15 -16 -23 -34 -20 -40 4 -7 4 -9 -1 -5 -9 9 -35 -9 -35 -24 0 -5 6 -6 13 -2 7 4 9 3 4 -2 -5 -5 -14 -9 -20 -9 -16 0 -97 -108 -92 -123 3 -7 1 -11 -4 -8 -10 6 -112 -143 -184 -270 -110 -191 -209 -430 -251 -605 -55 -228 -44 -490 28 -670 14 -36 26 -68 26 -71 0 -2 -30 -36 -67 -74 -480 -493 -488 -503 -464 -584 l12 -42 28 26 c23 22 32 25 66 19 53 -8 121 -44 168 -87 36 -34 37 -37 23 -63 -8 -16 -79 -98 -158 -184 -78 -85 -181 -198 -228 -250 -46 -51 -120 -132 -165 -179 -44 -47 -175 -188 -290 -315 -116 -126 -293 -320 -395 -430 -262 -283 -482 -524 -655 -715 -82 -91 -203 -223 -270 -295 -66 -71 -167 -182 -225 -245 -58 -63 -161 -176 -231 -250 -131 -141 -576 -631 -954 -1051 -305 -338 -273 -309 -336 -309 -42 0 -62 6 -101 31 -67 44 -113 58 -155 49 -31 -8 -33 -7 -27 13 4 12 13 34 21 50 7 15 11 27 8 27 -13 0 -45 -87 -45 -121 -1 -143 173 -313 320 -313 30 0 67 6 81 14 14 8 140 141 279 295 452 500 824 908 886 975 34 36 106 115 160 176 54 60 189 209 299 330 110 120 340 372 510 559 489 538 611 671 740 810 66 72 318 347 560 613 l440 483 51 -7 c68 -8 106 11 164 83 25 31 101 120 170 197 68 78 157 178 197 223 58 65 73 89 73 114 0 29 2 31 28 25 15 -3 77 -11 139 -18 787 -82 1983 643 2607 1582 125 188 188 299 256 448 137 306 182 484 183 737 2 171 -19 260 -92 410 -73 148 -177 252 -326 328 -141 71 -389 111 -560 90z m280 -41 c131 -29 343 -141 332 -175 -2 -7 -17 -13 -33 -15 -16 -2 -34 -10 -41 -18 -15 -20 -69 -21 -91 -1 -20 18 -72 12 -72 -8 0 -16 27 -27 35 -15 4 6 10 10 15 10 8 0 -4 -40 -16 -59 -2 -2 -17 7 -34 19 -18 13 -27 25 -22 29 6 3 12 15 14 26 1 11 9 25 17 31 11 8 6 15 -25 30 -35 17 -46 18 -97 8 -31 -7 -63 -16 -70 -22 -9 -8 -45 -7 -122 0 -70 7 -102 14 -90 19 14 5 8 8 -23 8 -24 1 -41 -3 -38 -8 9 -13 -65 -24 -116 -16 -23 3 -56 1 -73 -4 -22 -7 -25 -10 -10 -11 11 -1 0 -8 -25 -15 -27 -9 -46 -11 -48 -5 -2 6 -8 10 -13 10 -6 0 -7 -4 -4 -10 3 -5 1 -10 -6 -10 -6 0 -9 8 -6 20 4 17 2 19 -21 14 -40 -10 -79 -31 -85 -47 -4 -11 1 -14 16 -11 12 3 2 -4 -23 -15 -50 -22 -80 -26 -80 -11 0 5 6 8 13 6 6 -1 8 -1 3 2 -4 2 -2 9 5 14 48 33 -302 -121 -358 -158 -28 -18 -30 -38 -3 -31 28 7 25 0 -9 -17 -32 -17 -47 -11 -28 12 12 16 -91 -36 -127 -63 -16 -12 -17 -17 -6 -30 11 -13 7 -15 -28 -13 -32 1 -50 -6 -91 -37 -46 -33 -50 -39 -35 -50 17 -12 16 -13 -2 -22 -23 -12 -47 -6 -37 10 4 7 -15 -4 -42 -24 -35 -25 -50 -42 -49 -58 0 -14 -13 -33 -37 -52 l-37 -29 2 24 c3 22 1 24 -16 15 -31 -17 -98 -80 -98 -93 0 -8 2 -8 8 0 4 6 15 11 25 11 16 0 16 -2 1 -18 -9 -10 -21 -16 -27 -12 -5 3 -7 2 -4 -4 4 -6 -13 -25 -36 -43 l-42 -33 29 31 c29 31 42 62 27 62 -14 0 -109 -89 -262 -245 -157 -161 -193 -200 -263 -288 -42 -51 -45 -73 -5 -34 13 13 38 32 54 43 l30 19 -29 -40 c-39 -53 -136 -176 -154 -195 -8 -8 2 9 22 39 20 29 36 63 36 74 0 20 -1 20 -26 -4 -23 -21 -97 -119 -118 -157 -11 -19 29 -9 55 14 l22 19 -19 -33 c-10 -19 -30 -46 -44 -61 -14 -15 -22 -22 -17 -17 10 14 9 56 -3 56 -10 0 -52 -59 -122 -170 -22 -36 -48 -76 -58 -90 -9 -14 -21 -37 -25 -50 -11 -40 -57 -130 -65 -130 -4 0 -7 -17 -8 -37 -1 -20 -13 -60 -28 -89 -15 -31 -24 -62 -21 -73 3 -12 1 -21 -4 -21 -5 0 -9 -11 -9 -25 0 -14 -4 -25 -10 -25 -5 0 -10 -13 -10 -30 0 -40 37 -62 57 -34 13 17 14 11 9 -46 -3 -36 -5 -78 -5 -93 -1 -16 -5 -26 -10 -23 -19 12 -29 -21 -24 -85 5 -60 8 -66 32 -76 19 -7 33 -25 48 -61 14 -33 17 -51 10 -49 -13 2 -14 -4 -2 -51 5 -22 12 -31 21 -28 18 7 30 -14 14 -24 -9 -6 -8 -12 5 -28 17 -20 43 -19 56 1 9 13 46 -12 58 -40 6 -13 15 -24 21 -24 19 -3 25 -5 85 -36 33 -18 56 -32 52 -33 -5 0 -1 -10 7 -22 13 -19 26 -22 86 -24 38 -1 70 2 70 7 0 5 7 9 15 9 8 0 15 -4 15 -8 0 -5 34 -7 76 -4 56 3 75 2 70 -7 -4 -6 -2 -11 3 -11 13 0 15 -27 2 -32 -5 -1 -11 -10 -13 -18 -5 -24 -25 -40 -50 -39 -23 1 -23 1 2 9 19 6 10 8 -36 9 -42 1 -65 -4 -73 -13 -7 -8 -28 -17 -48 -21 -20 -4 -46 -13 -57 -21 -23 -16 -50 -19 -41 -5 3 5 1 12 -5 16 -6 4 -8 11 -5 16 4 5 1 9 -4 9 -6 0 -19 8 -29 18 -18 18 -50 33 -115 52 -24 8 -28 7 -23 -6 3 -9 -17 5 -46 31 -28 25 -68 55 -87 65 -20 11 -31 19 -24 20 8 0 8 7 0 30 -11 29 -37 42 -37 19 0 -7 -15 -10 -40 -7 -22 2 -41 -1 -43 -7 -7 -19 -65 86 -90 163 -14 42 -30 115 -36 161 -21 163 -11 217 37 204 19 -4 21 -1 20 36 0 26 -5 41 -13 41 -17 0 -23 80 -10 121 6 16 14 27 17 23 9 -9 22 42 13 55 -3 6 -2 11 4 11 6 0 7 7 4 17 -4 10 -2 14 4 10 5 -4 15 5 21 18 7 14 16 25 22 25 5 0 17 11 26 25 12 19 14 28 5 39 -9 10 -8 15 4 20 9 3 15 18 15 41 0 40 25 85 46 85 8 0 14 8 15 18 2 55 8 71 41 114 20 26 40 58 44 70 3 13 21 43 39 68 53 73 83 142 54 124 -8 -5 -8 -1 0 14 6 12 17 24 24 28 8 5 7 2 -2 -9 -24 -29 -6 -29 23 0 30 30 140 171 168 215 16 24 90 108 158 179 93 96 147 167 110 144 -18 -11 -11 1 12 21 19 15 20 16 9 2 -10 -14 -10 -18 -1 -18 18 0 151 132 146 146 -6 16 13 34 30 27 17 -6 139 95 139 116 0 20 37 51 62 51 24 0 89 45 103 70 6 11 40 34 75 51 49 23 69 38 81 64 18 39 38 51 89 54 25 1 68 38 59 52 -6 11 67 48 84 42 32 -12 130 46 117 68 -4 5 1 6 10 3 10 -4 15 -2 13 6 -2 7 21 23 50 36 29 13 51 20 47 14 -4 -6 6 -7 27 -3 36 7 101 46 92 55 -8 8 83 41 94 34 9 -5 106 25 177 54 17 7 38 12 49 11 10 -2 15 2 12 8 -8 12 69 35 90 27 17 -6 136 12 147 23 12 12 303 6 362 -7z m-982 -321 c-12 -10 -63 -31 -63 -26 0 13 44 43 57 38 8 -3 11 -9 6 -12z m1437 -25 c0 -12 -5 -7 -19 24 -11 24 -11 24 3 6 9 -11 16 -24 16 -30z m-427 -21 c121 -32 212 -99 239 -177 21 -60 41 -200 34 -236 -3 -15 -8 -52 -11 -83 -8 -84 -47 -231 -95 -352 -23 -59 -38 -112 -34 -118 4 -7 3 -9 -2 -6 -5 3 -29 -34 -54 -81 -51 -102 -114 -206 -187 -314 -55 -81 -62 -94 -40 -82 7 4 9 3 4 -2 -5 -5 -12 -9 -15 -9 -13 0 -32 -16 -32 -27 0 -6 7 -5 18 3 15 13 16 12 3 -3 -7 -10 -17 -16 -21 -13 -4 2 -40 -37 -80 -88 -170 -211 -380 -418 -615 -602 -300 -236 -649 -432 -920 -518 -97 -30 -258 -66 -328 -72 -29 -3 -68 -7 -87 -10 -81 -13 -307 31 -376 74 -46 28 -99 98 -124 166 -55 146 -30 408 62 640 235 599 819 1231 1493 1617 279 159 601 279 828 308 96 12 268 4 340 -15z m345 -10 c0 -20 -4 -25 -17 -20 -12 5 -13 4 -4 -6 10 -10 15 -9 28 1 10 8 15 9 15 1 0 -6 -11 -13 -25 -17 -13 -3 -29 -12 -36 -20 -14 -17 2 -19 19 -2 20 20 25 1 5 -20 -10 -11 -26 -32 -36 -46 -17 -25 -19 -25 -36 -8 -24 22 -36 76 -22 99 6 10 11 14 11 10 0 -5 12 1 26 12 15 12 33 21 40 21 8 0 13 3 13 8 -3 15 1 23 10 18 5 -3 9 -17 9 -31z m-38 -202 c0 -20 -24 -11 -28 10 -2 12 1 15 12 11 9 -3 16 -13 16 -21z m103 -125 c2 -7 -5 -18 -17 -25 -18 -10 -18 -12 -3 -13 9 0 17 -5 17 -11 0 -6 -9 -9 -20 -6 -10 3 -19 2 -18 -2 5 -17 -23 -49 -40 -44 -32 8 -45 40 -30 79 11 32 15 34 59 34 29 0 49 -5 52 -12z m-2173 -91 c0 -2 -10 -12 -22 -23 l-23 -19 19 23 c18 21 26 27 26 19z m2149 -88 c10 -29 -20 -187 -59 -308 -56 -174 -227 -491 -370 -686 -29 -40 -230 -302 -262 -342 -8 -10 -4 -10 21 -2 31 11 104 86 96 98 -2 4 0 13 6 21 7 12 9 12 9 1 0 -7 18 6 41 30 57 61 16 1 -53 -77 -175 -200 -305 -326 -503 -490 -72 -60 -191 -146 -152 -110 57 53 20 64 -42 12 -31 -26 -37 -35 -25 -40 9 -3 21 -3 27 1 7 3 4 -2 -5 -13 -9 -10 -31 -28 -49 -38 l-32 -19 5 26 5 26 -56 -36 c-123 -79 -190 -118 -320 -185 -153 -79 -157 -81 -117 -74 24 4 26 3 14 -11 -11 -14 -9 -14 20 1 19 10 36 16 38 13 2 -2 -33 -21 -78 -41 -142 -65 -155 -69 -155 -50 0 7 4 11 9 8 11 -7 68 15 68 27 0 19 -22 17 -81 -5 -56 -21 -64 -27 -63 -50 1 -33 -49 -54 -73 -31 -8 8 -24 13 -36 11 -12 -2 -42 -7 -67 -11 -25 -4 -54 -13 -66 -20 -21 -14 -178 -24 -190 -13 -3 4 -4 18 0 31 6 25 66 57 107 57 11 0 30 6 42 14 12 8 56 22 97 32 41 9 81 21 88 26 8 7 12 7 12 0 0 -15 35 -3 59 19 12 11 21 17 21 14 0 -3 14 2 30 10 17 9 28 20 26 24 -9 14 71 43 121 44 54 0 116 25 109 43 -7 17 39 45 80 48 55 5 88 34 83 72 -2 13 27 24 61 24 47 0 96 32 114 73 17 41 31 52 68 49 18 -2 39 8 62 29 20 17 35 34 35 37 -4 27 4 42 21 42 25 0 90 31 90 43 0 6 40 48 90 95 49 46 88 87 86 91 -3 4 4 8 16 8 11 1 30 13 43 27 12 14 26 22 29 19 3 -4 6 0 6 8 0 8 32 45 70 84 39 38 69 74 66 81 -3 7 5 20 17 31 l22 18 -20 -25 c-11 -14 -2 -8 20 12 22 21 54 51 72 67 17 16 29 31 27 34 -3 2 3 10 13 18 15 12 16 12 8 -1 -5 -10 -5 -12 2 -5 6 6 18 30 27 55 22 56 34 70 51 64 15 -6 35 25 35 53 0 10 11 35 25 55 28 41 31 53 13 42 -10 -5 -10 -3 0 7 13 14 17 15 46 18 23 2 58 71 54 107 -2 18 0 30 5 27 4 -3 7 3 5 13 -2 15 2 18 23 16 32 -4 48 27 44 89 -3 58 1 67 31 61 21 -4 27 2 50 52 27 58 28 69 21 128 -4 33 -3 36 10 23 8 -8 17 -15 20 -15 4 0 3 3 0 6 -3 4 0 16 8 27 10 14 11 25 5 33 -12 14 5 108 26 141 8 12 15 30 15 40 1 10 5 2 9 -17 7 -34 7 -34 9 12 1 38 4 46 16 42 9 -4 15 0 15 10 0 24 29 20 39 -5z m-2389 -122 c0 -2 -14 -16 -32 -33 -17 -16 -28 -23 -24 -16 4 6 2 12 -5 12 -8 0 -8 4 1 15 7 9 19 14 26 11 7 -3 16 -1 19 4 6 10 15 14 15 7z m-260 -60 c0 -1 -24 -25 -52 -52 l-53 -50 50 53 c46 48 55 57 55 49z m150 -50 c0 -2 -17 -19 -37 -38 l-38 -34 34 38 c33 34 41 42 41 34z m2144 -757 c-10 -16 -20 -28 -22 -26 -4 5 28 56 35 56 2 0 -4 -13 -13 -30z m-2872 -337 c-6 -3 -10 -9 -6 -14 3 -5 -2 -9 -10 -9 -9 0 -16 4 -16 10 0 11 33 31 40 23 3 -3 -1 -8 -8 -10z m1763 -709 c-26 -20 -55 -36 -55 -30 0 5 63 46 70 46 3 -1 -4 -8 -15 -16z m-798 -200 c-3 -3 -12 -4 -19 -1 -8 3 -5 6 6 6 11 1 17 -2 13 -5z m-40 -10 c-3 -3 -12 -4 -19 -1 -8 3 -5 6 6 6 11 1 17 -2 13 -5z m-972 -58 c57 -24 47 -45 -87 -190 -68 -72 -168 -182 -223 -244 -55 -61 -106 -112 -113 -112 -7 0 -35 13 -62 28 l-49 28 19 30 c28 43 453 475 468 474 7 0 28 -7 47 -14z m863 -93 c-10 -2 -26 -2 -35 0 -10 3 -2 5 17 5 19 0 27 -2 18 -5z m-558 -23 c0 -5 -7 -10 -16 -10 -8 0 -12 5 -9 10 3 6 10 10 16 10 5 0 9 -4 9 -10z" vector-effect="non-scaling-stroke"/></g></svg>';
 
+// 🪏 삽 — 이모지 U+1FA8F 는 iOS 15.4+/Android 12+ 에만 있어 구형 기기에선 □ 로 깨진다 → 낫처럼 인라인 SVG.
+//   자루(대각) + 위가 넓고 끝이 둥근 날. 100×100 좌표계, currentColor 로 하단바 색을 따른다.
+const ICO_SHOVEL = '<svg viewBox="0 0 100 100" aria-hidden="true" style="width:1.15em;height:1.15em;display:block" fill="currentColor"><path d="M14 8 h9 v6 h-2.5 v10 h-4 v-10 H14z"/><path d="M17.3 22 l6 0 l30 30 l-6 6 z"/><path d="M52 47 q3 -3 6 0 l14 14 q10 10 6 24 q-2 8 -8 14 q-14 4 -24 -6 l-14 -14 q-3 -3 0 -6z"/></svg>';
+
 const TOOLS = [
   { id: 'axe',    name: '도끼',     ico: '🪓', grp: 'out'  }, // 벌목
   { id: 'hoe',    name: '괭이',     ico: '⛏️', grp: 'farm' }, // 밭 갈기 · 채굴
   { id: 'seed',   name: '씨앗',     ico: '🌰', grp: 'farm' }, // 씨앗 심기
   { id: 'water',  name: '물조리개', ico: '💧', grp: 'farm' }, // 물주기
   { id: 'sickle', name: '낫',       ico: ICO_SICKLE, grp: 'farm' }, // 수확
+  { id: 'shovel', name: '삽',       ico: ICO_SHOVEL, grp: 'farm' }, // 🪏 빈 밭 메우기(두 번 파기) — 농사 세트 5번째 칸
   { id: 'hammer', name: '망치',     ico: '🔨', grp: 'out'  }, // 건축
   { id: 'rod',    name: '낚싯대',   ico: '🎣', grp: 'out'  }, // 낚시(호수)
   { id: 'net',    name: '포충망',   ico: ICO_NET, grp: 'out'  }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
@@ -664,7 +669,7 @@ const gameState = {
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
-  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
+  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
@@ -732,6 +737,12 @@ const DEX = {
   track: [
     { id: 'fur_tuft',   name: '털뭉치',     ico: '🧶' },   // 🦝 너구리가 흘리고 감
     { id: 'acorn_drop', name: '주운 도토리', ico: '🌰' },   // 🐗 멧돼지가 물고 가다 떨어뜨림
+  ],
+  // 🪏 땅속에서 — 삽으로 빈 밭을 완전히 메운 순간(2타) 낮은 확률로 나옴(DIG_DEX). 재료·코인은 없고 도감만
+  dig: [
+    { id: 'worm',     name: '지렁이',   ico: '🪱' },   // 10%
+    { id: 'shard',    name: '사금파리', ico: '🏺' },   // 5%
+    { id: 'old_coin', name: '옛 동전',  ico: '🪙' },   // 2% — 이름만 동전, 코인 지급 없음
   ],
   // 🛶 강 — 나룻배를 타고 내려가며 주워야 채워짐(하루 3번 제한 → 여러 날에 걸쳐 완성)
   river: [
@@ -1070,6 +1081,11 @@ let heldGroup, handAnchor, heldToolMesh; // 도구 캐리어(손 따라가기/�
 let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아리는 날개가 팔 역할(같은 구조)
 let armWristK = 0;        // 손목 펴짐 0(자루 세움)~1(팔의 연장) — 스윙 중에만 커짐
 let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(rad)
+// 🪏 삽질 전용 — 자루를 팔 각도에 종속시키지 않고 "캐릭터 기준 월드 방향"(손→날)으로 직접 세운다(sims/shovel-sim.html aimTool).
+//   toolDigK 0 이면 평소 쥔 자세, 1 이면 toolDigDir 그대로. updatePlayer 의 'dig' 제스처가 매 프레임 갱신한다.
+let toolDigK = 0;
+const toolDigDir = new THREE.Vector3(0, -0.92, 0.40);
+const _dgUp = new THREE.Vector3(0, 1, 0), _dgQ = new THREE.Quaternion(), _dgW = new THREE.Quaternion(), _dgPQ = new THREE.Quaternion(), _dgP = new THREE.Vector3(), _dgS = new THREE.Vector3();
 
 // ── 팔 상수 — sims/arm-sim.html 시뮬레이션으로 검증한 값 ──
 //   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
@@ -1276,7 +1292,7 @@ export const Input = {
     ui.setTool?.(currentTool, TOOLS, toolPage);
     setHeldTool(TOOLS[currentTool].id); Sound.blip();
   },
-  // 숫자키 2~5 — 지금 펼친 세트의 n번째(0~3) 도구. 1번이 전환이라 도구는 2번부터 시작한다.
+  // 숫자키 2~6 — 지금 펼친 세트의 n번째(0~4) 도구. 1번이 전환이라 도구는 2번부터 시작한다.
   selectPageSlot(n) {
     if (toolPage === 'none') { pageBeforeAuto = null; setToolPage(lastOpenPage, true); }  // 맨손이면 세트부터 편다
     const pick = TOOLS.map((tool, i) => ({ tool, i })).filter(x => x.tool.grp === toolPage)[n];
@@ -1647,7 +1663,7 @@ function applySave(saved) {
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
-  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, ...saved.dex }; // 📖 도감 복원
+  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, ...saved.dex }; // 📖 도감 복원
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
@@ -2240,6 +2256,20 @@ function toolMesh(id) {
     const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clayMat(0x6d757c));
     ferrule.position.y = top - 0.01; g.add(ferrule);
     g.scale.setScalar(1.18);
+  } else if (id === 'shovel') {
+    // 🪏 삽 — sims/shovel-sim.html 검수판. 긴 자루 위에 목 이음쇠 + 넓적한 날(위가 넓고 끝이 좁아짐) + 밝은 테두리 + 양쪽 발판 턱
+    const top = handle(0.58);
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.042, 0.07, 7), clayMat(STEEL));
+    collar.position.y = top + 0.01; g.add(collar);
+    const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.115, 0.30, 4, 1), clayMat(STEEL));
+    blade.rotation.y = Math.PI / 4; blade.scale.set(1, 1, 0.26); blade.position.y = top + 0.19; g.add(blade);
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.024, 0.026), clayMat(EDGE));
+    edge.position.y = top + 0.345; g.add(edge);
+    [-1, 1].forEach(sx => {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.022, 0.034), clayMat(STEEL));
+      step.position.set(sx * 0.105, top + 0.05, 0); g.add(step);
+    });
+    g.scale.setScalar(1.18);
   } else if (id === 'hammer') {
     const top = handle(0.50);
     // 원통형 머리(가로) + 양끝 밝은 캡 + 자루 고정핀
@@ -2355,6 +2385,13 @@ function poseHeldTool(stow, swingX, swingZ) {
     // 손목: 자루 세워 쥠 ↔ 스윙 중 팔의 연장 · 등에 멜 땐 예전 그대로(identity)
     _hfTQ.slerpQuaternions(toolQRest, TOOL_QSWING, armWristK);
     if (toolPourTilt) _hfTQ.multiply(_hfTilt.setFromAxisAngle(_axX, toolPourTilt));
+    if (toolDigK > 0) {
+      // 🪏 목표 = player(yaw) 기준 toolDigDir 로 자루(+y)를 세운 월드 회전. 손 월드 회전을 상쇄해 도구 로컬로 옮긴다
+      hand.matrixWorld.decompose(_dgP, _dgW, _dgS);
+      player.getWorldQuaternion(_dgPQ);
+      _dgQ.setFromUnitVectors(_dgUp, toolDigDir).premultiply(_dgPQ).premultiply(_dgW.invert());
+      _hfTQ.slerp(_dgQ, toolDigK);
+    }
     if (heldToolMesh) heldToolMesh.quaternion.slerpQuaternions(_hfTQ, _idQ, k);
     return;
   }
@@ -2372,6 +2409,12 @@ function setHeldTool(id) {
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   heldToolMesh = toolMesh(id); measureStowLen(heldToolMesh); updateStowPose();
   handAnchor.add(heldToolMesh);
+  // 🪏 처음 삽을 들면 쓰는 법 1회 안내(모달) — 밭을 지우고 싶은 사람이 정확히 이 순간 답을 얻는다
+  if (id === 'shovel' && gameState.character) {
+    const A = IS_MOBILE ? '오른쪽 동그란 버튼' : 'Space';
+    firstHint('shovel', '🪏', '삽 — 빈 밭을 풀밭으로 되돌려요',
+      `① 삽을 들고 빈 밭 앞에서 ${A}\n② ${DIG_WINDOW}초 안에 한 번 더 ${A} → 밭이 사라져요\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`);
+  }
 }
 // 꾸미기: 선택한 가구를 손에 작게 들기
 function setHeldDecor(id) {
@@ -7274,6 +7317,10 @@ function updateDoorInteract() {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
   }
+  if (!prompt) {   // 🪏 반쯤 판 밭 앞: 남은 유예를 프롬프트 줄로(모바일 규칙 — 안내는 컨텍스트 슬롯에만)
+    const dp = plots.find(p => p.digAt && dist2D(p.group.position, player.position) < 1.6);
+    if (dp) prompt = `🪏 한 번 더 파면 밭이 사라져요 (${Math.max(1, Math.ceil(DIG_WINDOW - (clock.elapsedTime - dp.digAt)))})`;
+  }
   if (!prompt) {   // 다른 시설 프롬프트가 없을 때만 — 물조리개+마른 흙이면 물주기가 실행되므로 프롬프트도 숨긴다
     const fp = fertTarget();
     if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) prompt = '🌱 비료 주기';
@@ -7366,9 +7413,9 @@ function initInput() {
     keys[e.code] = true;
     if (e.code === 'Space') wantAction = true;
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
-    // 1 = 도구 세트 전환, 2~5 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1)
+    // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
     if (e.code === 'Digit1') Input.cycleToolPage();
-    else if (/^Digit[2-5]$/.test(e.code)) Input.selectPageSlot(parseInt(e.code.slice(5)) - 2);
+    else if (/^Digit[2-6]$/.test(e.code)) Input.selectPageSlot(parseInt(e.code.slice(5)) - 2);
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
@@ -7672,7 +7719,7 @@ function updatePlayer(dt, t) {
 
   // 액션 제스처: 도구질 = 백스윙 → 휙 내려침 → 팔로스루 / 맨손 줍기 = 허리를 접었다 편다
   if (actAnim > 0) {
-    actAnim = Math.max(0, actAnim - dt * (actKind === 'pick' ? 3.0 : 2.4));  // 도구질 ~0.42초 / 줍기 ~0.33초
+    actAnim = Math.max(0, actAnim - dt * (actKind === 'pick' ? 3.0 : actKind === 'dig' ? 1 / DIG_ANIM_DUR : 2.4));  // 도구질 ~0.42초 / 줍기 ~0.33초 / 🪏삽질 0.6초
     const p = 1 - actAnim;                       // 진행도 0→1
     const s = Math.sin(p * Math.PI);             // 몸 스쿼시용 0→1→0
     // 등에 멘 상태(맨손)면 무엇을 하든 휘두를 게 없다 → 안개숲 등불처럼 kind 를 안 준 곳도 자연스럽게
@@ -7683,6 +7730,27 @@ function updatePlayer(dt, t) {
       playerAnchor.position.y -= s * 0.12;
       playerAnchor.scale.set(1 + s * 0.04, 1 - s * 0.05, 1 + s * 0.04);
       poseHeldTool(toolStow);                    // 도구는 등에 멘 채 몸을 따라 기울 뿐
+    } else if (playerArms && actKind === 'dig') {
+      // ── 🪏 삽질(sims/shovel-sim.html ① "밟아 꽂고 퍼 던지기" 검수) ──
+      //   0~.22 양팔 앞으로 뻗어 자루를 세움 → .22~.32 밟아 꽂기(몸이 툭 내려앉음) → .32~.62 젖혀 퍼 올리기(몸 뒤로)
+      //   → .62~.82 왼쪽 앞으로 휙 던지기(몸 회전) → 복귀. 자루 방향은 toolDigDir(캐릭터 기준)로 직접 지정
+      const eo = q => 1 - (1 - q) * (1 - q);
+      const seg = (a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+      const lp = (a, b, q) => a + (b - a) * q;
+      const a = eo(seg(0, .22)), lv = eo(seg(.32, .62)), th = eo(seg(.62, .82)), k = 1 - eo(seg(.82, 1));
+      const stomp = Math.sin(seg(.22, .32) * Math.PI);
+      const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
+      const armX = lp(lp(-1.25 * a, -.55, lv), -.35, th);
+      Rp.rotation.set(armX * k, -.9 * th * k, .12 * a * k);
+      Lp.rotation.set(armX * .92 * k, -.6 * th * k, -.32 * a * k);
+      playerAnchor.rotation.x = lp(lp(.30 * a, -.26, lv), -.10, th) * k + stomp * .12;
+      playerAnchor.rotation.y = -.60 * th * k;
+      playerAnchor.position.y -= stomp * .16 + .05 * a * k;
+      playerAnchor.scale.set(1 + stomp * .08, 1 - stomp * .10, 1 + stomp * .08);
+      // 자루(손→날): 세워 꽂기(아래·살짝 앞) → 젖혀 퍼 올리기(앞으로 눕힘) → 왼쪽 앞으로 던지기
+      toolDigDir.set(lp(lp(0, 0, lv), -.75, th), lp(lp(-.92, -.30, lv), .05, th), lp(lp(.40, .95, lv), .66, th)).normalize();
+      toolDigK = a * k; armWristK = 0; toolPourTilt = 0;
+      poseHeldTool(toolStow);
     } else if (playerArms) {
       // ── 옆베기(sims/arm-sim.html 검증) — 몸을 감았다 풀며 팔이 가로로 쓸고 지나감 ──
       const toolId = TOOLS[currentTool].id;
@@ -7736,7 +7804,7 @@ function updatePlayer(dt, t) {
     if (playerArms) {
       playerArms.R.pivot.rotation.set(0, 0, 0);
       playerArms.L.pivot.rotation.set(0, 0, 0);
-      armWristK = 0; toolPourTilt = 0;
+      armWristK = 0; toolPourTilt = 0; toolDigK = 0;
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신
   }
@@ -8399,6 +8467,7 @@ function handleAction() {
     case 'seed': return trySeed();
     case 'water': return tryWater();
     case 'sickle': return tryHarvest();
+    case 'shovel': return tryDig();
     case 'hammer': return tryBuild();
     case 'rod': return tryFish();
     case 'net': return tryNet();
@@ -8520,13 +8589,14 @@ function createPlot(x, z, silent = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
   const soil = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), clayMat(PAL.soil, false));
   soil.position.y = 0.1; soil.receiveShadow = true; g.add(soil);
-  // 이랑(줄무늬) — 갈아엎은 밭 느낌의 두둑 3줄
+  // 이랑(줄무늬) — 갈아엎은 밭 느낌의 두둑 3줄 (🪏 1타 때 흐트러뜨리므로 참조를 남긴다)
+  const ridges = [];
   for (let k = -1; k <= 1; k++) {
     const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
-    ridge.position.set(0, 0.21, k * 0.5); ridge.receiveShadow = true; g.add(ridge);
+    ridge.position.set(0, 0.21, k * 0.5); ridge.receiveShadow = true; g.add(ridge); ridges.push(ridge);
   }
   scene.add(g);
-  const plot = { group: g, soil, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false };
+  const plot = { group: g, soil, ridges, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0 };
   plots.push(plot);
   if (!silent) { g.userData.pop = 1; g.scale.setScalar(0.01); spawnDust(x, z, 14); } // 흙먼지 + 톡 등장
   return plot;
@@ -8566,13 +8636,115 @@ function tryHoe() {
     plot.state = 'empty'; plot.wilted = false; plot.growth = 0; plot.stage = -1; plot.needSince = 0;
     spawnDust(plot.x, plot.z, 10); Sound.till();
     ui.toast?.('밭을 다시 갈았어요 — 🌰 씨앗을 심어요');
-  } else if (plot.state === 'empty') ui.toast?.('이미 갈아둔 밭이에요 — 🌰 씨앗을 심어요');
+  } else if (plot.state === 'empty') ui.toast?.('이미 갈아둔 밭이에요 — 🌰 씨앗을 심어요 · 없애려면 🪏삽');
   else ui.toast?.('이미 작물이 자라는 중이에요');
+}
+
+// =============================================================
+//  🪏 삽: 빈 밭 메우기(두 번 파기) — 설계 docs/superpowers/specs/2026-09-08-shovel-untill-design.md
+//  1타: plot.digAt 기록 + 이랑 흐트러짐·흙더미. DIG_WINDOW 안에 2타면 밭 제거, 아니면 원상 복구.
+//  반쯤 판 상태(digAt)는 런타임 전용 — 저장하지 않는다(getGameState 가 직렬화하는 필드에 없음).
+// =============================================================
+const DIG_WINDOW = 6;          // 1타 후 2타 유예(초)
+const DIG_ANIM_DUR = 0.6;      // 삽질 제스처 길이(초)
+const DIG_HIT_AT = 0.30;       // 제스처 진행도 — 밟아 꽂는 순간에 상태 전이
+const DIG_RESTORE = 0.4;       // 만료 시 이랑 원위치 보간(초)
+const DIG_DEX = [['worm', 0.10], ['shard', 0.05], ['old_coin', 0.02]];   // 📖 「땅속에서」 확률(누적 검사, 등록된 건 건너뜀)
+let pendingDig = null;         // { plot, second } — 제스처가 타격 시점에 닿으면 digHit
+const digFx = [];              // 2타 후 새싹·흙 자국(임시 메시)
+
+function digTarget() { return plots.find(p => dist2D(p.group.position, player.position) < 1.6) || null; }
+function tryDig() {
+  if (pendingDig) return;                                  // 제스처 중 연타 무시
+  const plot = digTarget();
+  if (!plot) { ui.toast?.('여긴 밭이 없어요 — 빈 밭 위에서 파요'); return; }
+  if (plot.state !== 'empty') { ui.toast?.('작물이 있어요 — 수확하거나 괭이로 정리한 뒤 메울 수 있어요'); return; }
+  const second = !!plot.digAt && clock.elapsedTime - plot.digAt <= DIG_WINDOW;   // 누른 순간 기준으로 판정
+  doPlayerAction(plot.x, plot.z, 'dig');
+  Sound.till();
+  pendingDig = { plot, second };
+}
+function digHit(plot, second) {
+  if (!plots.includes(plot) || plot.state !== 'empty') return;
+  if (second) { removePlot(plot); return; }
+  plot.digAt = clock.elapsedTime; plot.digBackT = 0;
+  setPlotDug(plot, 1);
+  spawnDust(plot.x, plot.z, 10);
+  ui.toast?.('한 번 더 파면 밭이 사라져요 🪏');
+  trackEvent('dig_plot', { step: 1 });   // [GA4]
+}
+function removePlot(plot) {
+  const i = plots.indexOf(plot); if (i >= 0) plots.splice(i, 1);
+  scene.remove(plot.group);
+  spawnDust(plot.x, plot.z, 22);
+  spawnDigRegrow(plot.x, plot.z);
+  Sound.harvest();
+  ui.toast?.('밭을 메웠어요 — 다시 풀밭이 됐어요 🌱');
+  trackEvent('dig_plot', { step: 2, plots: plots.length });   // [GA4]
+  rollDigDex();
+  lastDoorPrompt = null; ui.setDoorPrompt?.(null);
+}
+// 1타 연출: 이랑 3줄이 제각각 기울고 어긋남 + 흙더미·파인 자리. k 0~1(만료 복구 땐 1→0 보간)
+function setPlotDug(plot, k) {
+  if (!plot.mound) {
+    plot.mound = new THREE.Mesh(new THREE.SphereGeometry(0.32, 9, 7), clayMat(PAL.soilWet, false));
+    plot.mound.position.set(0.55, 0.2, -0.45); plot.mound.scale.set(1.3, 0.55, 1.1); plot.mound.castShadow = true;
+    plot.hole = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.30, 0.12, 9), clayMat(0x5e3d28, false));
+    plot.hole.position.set(-0.25, 0.18, 0.15);
+    plot.group.add(plot.mound, plot.hole);
+  }
+  plot.mound.visible = plot.hole.visible = k > 0.5;
+  plot.ridges.forEach((r, i) => {
+    const s = i - 1;
+    r.rotation.set(s * 0.35 * k, s * 0.28 * k, 0.18 * (i % 2 ? 1 : -1) * k);
+    r.position.set(s * 0.12 * k, 0.21 + 0.02 * k, s * 0.5);
+  });
+}
+function expireDig(plot) {
+  plot.digAt = 0; plot.digBackT = DIG_RESTORE;
+  ui.toast?.('밭을 그대로 두었어요');
+  trackEvent('dig_expire');   // [GA4]
+  if (lastDoorPrompt && lastDoorPrompt.startsWith('🪏')) { lastDoorPrompt = null; ui.setDoorPrompt?.(null); }
+}
+// 2타 연출: 연한 흙 자국이 풀색으로 돌아가고(페이드) 새싹 7개가 톡톡 돋았다가 사라진다
+function spawnDigRegrow(x, z) {
+  const patch = new THREE.Mesh(new THREE.CircleGeometry(0.95, 14), new THREE.MeshStandardMaterial({ color: 0xc9a988, roughness: 1, transparent: true, opacity: 0.9 }));
+  patch.rotation.x = -Math.PI / 2; patch.position.set(x, 0.012, z); scene.add(patch);
+  digFx.push({ mesh: patch, t: 0, kind: 'patch' });
+  for (let i = 0; i < 7; i++) {
+    const s = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 5), clayMat(PAL.sprout, false));
+    s.position.set(x + (Math.random() - 0.5) * 1.3, 0.1, z + (Math.random() - 0.5) * 1.3);
+    s.scale.setScalar(0.01); scene.add(s);
+    digFx.push({ mesh: s, t: 0, kind: 'sprout', delay: 0.15 + i * 0.08 });
+  }
+}
+function updateDigFx(dt) {
+  for (let i = digFx.length - 1; i >= 0; i--) {
+    const f = digFx[i]; f.t += dt;
+    if (f.kind === 'patch') {
+      f.mesh.material.opacity = Math.max(0, 0.9 - f.t * 0.6);   // 1.5초에 사라짐
+      if (f.t > 1.6) { scene.remove(f.mesh); digFx.splice(i, 1); }
+    } else {
+      const q = Math.max(0, f.t - f.delay), k = Math.min(1, q * 4);
+      const pop = 1 + 0.35 * Math.sin(Math.min(1, q * 3) * Math.PI);
+      const fade = q > 1.6 ? Math.max(0, 1 - (q - 1.6) / 0.4) : 1;   // 2초쯤 뒤 사라짐
+      f.mesh.scale.setScalar(Math.max(0.01, k * pop * fade));
+      if (q > 2.0) { scene.remove(f.mesh); digFx.splice(i, 1); }
+    }
+  }
+}
+function rollDigDex() {
+  const r = Math.random(); let acc = 0;
+  for (const [id, p] of DIG_DEX) {
+    if (gameState.dex.dig?.[id]) continue;
+    acc += p;
+    if (r < acc) { dexDiscover('dig', id); return; }
+  }
 }
 
 // 씨앗: 갈아둔 빈 밭에 씨앗 심기
 function trySeed() {
-  const plot = plots.find(p => p.state === 'empty' && dist2D(p.group.position, player.position) < 1.6);
+  const plot = plots.find(p => p.state === 'empty' && !p.digAt && dist2D(p.group.position, player.position) < 1.6);   // 🪏 반쯤 판 밭엔 안 심어짐
   if (!plot) { ui.toast?.('갈아둔 밭이 없어요 — ⛏️ 괭이로 먼저 갈기'); return; }
   if (gameState.inventory.seed <= 0) {
     // 밭에 자라는 작물도 없으면 완전히 막힌 상태 → 씨앗 지급(안전장치)
@@ -8655,6 +8827,13 @@ function tryHarvest() {
 // 성장은 오직 물주기로만! 여기선 마름·목마름 알림·시들기를 처리(리얼리티)
 function updatePlots(dt) {
   const now = clock.elapsedTime;
+  // 🪏 삽질 타격 시점(밟아 꽂는 순간)에 상태 전이 · 유예 만료 복구 · 2타 연출
+  if (pendingDig && (actAnim <= 0 || 1 - actAnim >= DIG_HIT_AT)) { const d = pendingDig; pendingDig = null; digHit(d.plot, d.second); }
+  for (const plot of plots) {
+    if (plot.digAt && now - plot.digAt > DIG_WINDOW && !(pendingDig && pendingDig.plot === plot)) expireDig(plot);
+    if (plot.digBackT > 0) { plot.digBackT = Math.max(0, plot.digBackT - dt); setPlotDug(plot, plot.digBackT / DIG_RESTORE); }
+  }
+  updateDigFx(dt);
   for (const plot of plots) {
     if (plot.state === 'growing') {
       if (RAIN_DAY) {   // 🌧️ 비 오는 날: 흙이 계속 촉촉 + 천천히 저절로 자람(물주기 불필요)

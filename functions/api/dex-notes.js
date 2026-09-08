@@ -31,6 +31,8 @@ const DEX_CATS = {
     items: [['yellow', '노랑반디', 'Yellow Firefly'], ['blue', '푸른반디', 'Blue Firefly'], ['green', '초록반디', 'Green Firefly'], ['rainbow', '무지개반디', 'Rainbow Firefly']] },
   track:   { about: '밤사이 밭에 다녀간 동물이 남긴 흔적', aboutEn: 'traces left in the field by animals that came overnight',
     items: [['fur_tuft', '털뭉치', 'Tuft of Fur'], ['acorn_drop', '주운 도토리', 'Dropped Acorn']] },
+  dig:     { about: '삽으로 빈 밭을 메우다 땅속에서 가끔 나오는 것들', aboutEn: 'things that sometimes turn up underground when filling in an empty plot with a shovel',
+    items: [['worm', '지렁이', 'Earthworm'], ['shard', '사금파리', 'Pottery Shard'], ['old_coin', '옛 동전', 'Old Coin']] },
   river:   { about: '나룻배를 타고 강을 내려가며 줍는 것들', aboutEn: 'things scooped up while drifting down the river by boat',
     items: [['lotus', '물 위 연꽃', 'Floating Lotus'], ['driftwood', '떠내려온 나무', 'Driftwood'], ['shell', '강 조개', 'River Shell'], ['moon_fish', '달빛 물고기', 'Moonlight Fish']] },
   spirit:  { about: '안개 낀 숲에서 노래로 달래면 나타나는 정령', aboutEn: 'spirits that appear when soothed with song in the misty grove',
@@ -43,7 +45,7 @@ const NOTE_MAX = 44;      // 도감 카드(88px)에 세 줄쯤. 프롬프트엔 
 const NOTE_ASK = 38;      //   (모델이 살짝 넘겨도 …로 잘리지 않게)
 const NOTE_MAX_EN = 88;
 const NOTE_ASK_EN = 76;
-const CACHE_VER = 1;      // 종 목록을 바꾸면 올린다(옛 캐시 버리기)
+const CACHE_VER = 2;      // 종 목록을 바꾸면 올린다(옛 캐시 버리기) — v2: 🪏 dig 카테고리 추가(2026-09-08)
 const CACHE_TTL = 60 * 60 * 24 * 7;   // 7일 — 내용이 고정이라 길게 잡는다
 
 function trim(s, max) {

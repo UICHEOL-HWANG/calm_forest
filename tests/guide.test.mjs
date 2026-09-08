@@ -70,3 +70,14 @@ test('첫 섹션에 튜토리얼 다시 보기 버튼', () => {
   const first = HTML().split('<section class="gd-sec" id="sec-02">')[0];
   assert.match(first, /<button class="gd-tut" data-act="tutorial">/);
 });
+
+// 🪏 삽(빈 밭 메우기) — docs/superpowers/specs/2026-09-08-shovel-untill-design.md §5 안내서 갱신
+test('삽 안내 — 도구 표·밭 없애기 단락·FAQ·도감 종수', () => {
+  const h = HTML();
+  assert.match(h, /🪏 삽 <span class="kbd">6<\/span>/, '도구 표에 삽(6) 이 없다');
+  assert.match(h, /<b>🪏 밭 없애기<\/b>/, '농사 섹션에 "밭 없애기" 단락이 없다');
+  assert.match(h, /6초 안에/, '6초 유예 안내가 없다');
+  assert.match(h, /<td>밭을 없애고 싶어요<\/td>/, 'FAQ 에 "밭을 없애고 싶어요" 가 없다');
+  assert.match(h, /📖 도감 - 46종/, '도감 종수가 46 이 아니다');
+  assert.match(h, /땅속에서 3/, '도감 카드에 「땅속에서」 3종이 없다');
+});
