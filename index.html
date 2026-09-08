@@ -422,6 +422,7 @@
     display: flex; gap: 10px; align-items: center; text-align: left;
     opacity: 0; transition: opacity .35s; pointer-events: none; }
   #hint-banner.show { opacity: 1; }
+  #hint-banner.tap { pointer-events: auto; cursor: pointer; }   /* onTap 배너만 입력을 받는다 */
   /* 🎯 이탈 예측 배너(attention) — 한 번 톡 튀어오르고 민트 빛이 번졌다 사라진다. 흔들기·깜빡임 없음 */
   #hint-banner.attn.show { animation: hbPop .5s ease-out, hbGlow 1.2s ease-out; }
   @keyframes hbPop { 0% { transform: translateX(-50%) scale(.85); } 60% { transform: translateX(-50%) scale(1.06); } 100% { transform: translateX(-50%) scale(1); } }
@@ -1640,10 +1641,12 @@
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
       const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention); el.classList.add('show');
+      el.classList.toggle('tap', !!item.onTap);
       const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
       let timer, watch;
-      const done = () => { clearTimeout(timer); clearInterval(watch); el.classList.remove('show'); setTimeout(nextHintBanner, 250); };
+      const done = () => { clearTimeout(timer); clearInterval(watch); el.onclick = null; el.classList.remove('show', 'tap'); setTimeout(nextHintBanner, 250); };
+      el.onclick = item.onTap ? () => { const f = item.onTap; done(); f(); } : null;   // 한 번 탭하면 배너를 걷고 실행
       const hold = item.attention ? HINT_B_ATTN : (near() ? HINT_B_FULL : HINT_B_MIN);
       timer = setTimeout(done, hold);
       if (hold > HINT_B_MIN && !item.attention) watch = setInterval(() => {   // attention 은 조기 종료 없이 8초   // 조기 페이드아웃 감시
@@ -1652,7 +1655,7 @@
     }
     const ui = {
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
-      showHintBanner({ ico, title, line, near, attention }) { hintBQ.push({ ico, title, line, near, attention }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, title, line, near, attention, onTap }) { hintBQ.push({ ico, title, line, near, attention, onTap }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0; },
       setInventory(inv) {
@@ -2253,6 +2256,7 @@
         trackEvent('tutorial_complete');
       }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
+      nudgeGuideOnce();   // 📖 졸업·중간 건너뛰기 직후 안내서 배너(1회)
     }
 
     // 좌측 상단 로그인 상태 표시(로그인 후)
@@ -2408,6 +2412,16 @@
       document.body.classList.remove('guide-open');
       trackEvent('guide_close', { sec: guideCurSec, dur: Date.now() - guideOpenedAt });
     }
+    // 📖 튜토리얼을 마치거나 건너뛴 직후 한 번만: 안내서가 있다는 걸 상단 컨텍스트 슬롯(hint-banner)으로 알린다.
+    //    졸업 토스트와 안 겹치게 3초 뒤. 저장 플래그(guideNudgeSeen)로 두 번 다시 안 뜬다.
+    function nudgeGuideOnce() {
+      if (Input.guideNudgeSeen()) return;
+      Input.markGuideNudgeSeen();
+      setTimeout(() => ui.showHintBanner({
+        ico: '📖', title: '초보자 안내서가 있어요', line: '눌러서 열기 · ☰ 메뉴 → 📖 에서 언제든',
+        near: () => true, attention: true, onTap: () => openGuide('nudge'),
+      }), 3000);
+    }
     $('guide-close').addEventListener('click', closeGuide);
     guideBody.addEventListener('click', (e) => {   // 안내서 첫 장 "튜토리얼 다시 보기" — 패널 닫고 환영 모달
       if (!e.target.closest('[data-act="tutorial"]')) return;
@@ -2440,6 +2454,7 @@
       const m = $('tutorial-modal');
       m.classList.remove('show');
       trackEvent('tutorial_skip', { at: m.dataset.src || 'welcome' });   // [①] 온보딩 거부 / 도움말 닫기 구분
+      if ((m.dataset.src || 'welcome') === 'welcome') nudgeGuideOnce();   // 📖 환영 모달에서 바로 건너뛴 사람(대다수)에게도 1회
     });
     $('coach-skip').addEventListener('click', () => endCoach(false));
 

@@ -653,6 +653,7 @@ const gameState = {
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
+  guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
   house: { decor: [] },                     // 실내 배치 가구 [{id,x,z}]
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
   outdoor: [],                              // 야외 장식 [{id,x,z}]
@@ -1378,6 +1379,8 @@ export const Input = {
     }
   },
   needsTutorial() { return !gameState.tutorialSeen; },
+  guideNudgeSeen() { return !!gameState.guideNudgeSeen; },
+  markGuideNudgeSeen() { gameState.guideNudgeSeen = true; },
   markTutorialSeen() { gameState.tutorialSeen = true; },
   // 코치가 이미 설명한 시설은 졸업 후 배너를 또 띄우지 않게 '본 것' 처리(튜토리얼 완주 시 호출)
   markHintsSeen(keys) { for (const k of keys) gameState.hintsSeen[k] = true; },
@@ -1637,6 +1640,7 @@ function applySave(saved) {
   if (saved.inventory) Object.assign(gameState.inventory, saved.inventory);
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
+  if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
     saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));

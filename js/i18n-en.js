@@ -31,6 +31,8 @@ export const EN = {
   '닫기': 'Close',
   '안내서를 불러오지 못했어요.': "Couldn't load the guide.",
   '다시 시도': 'Retry',
+  '초보자 안내서가 있어요': "There's a beginner's guide",
+  '눌러서 열기 · ☰ 메뉴 → 📖 에서 언제든': 'Tap to open · anytime via ☰ → 📖',
   '활동 기록': 'Activity Log',
   '배경음악': 'Music',
   '나가기': 'Log out',
