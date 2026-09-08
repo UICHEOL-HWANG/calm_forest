@@ -1742,6 +1742,37 @@ function clayMat(color, flat = true) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0, flatShading: flat });
 }
 
+// 테이퍼 튜브 — 곡선(pts)을 따라 관을 뽑되 굵기를 radiusFn(t∈0..1)로 바꿈(끝으로 갈수록 가늘게).
+// 구를 이어 붙이던 꼬리가 💩처럼 보인다는 피드백 → 마디 없는 한 덩어리로. colorFn 이 있으면 정점색(🦊 흰 꼬리끝).
+// 반환: { geo, end } · end 는 곡선 끝점(둥근 캡을 얹는 자리)
+function taperedTube(pts, radiusFn, colorFn = null, segs = 32, radial = 10) {
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5);
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], nor = [], col = [], idx = [];
+  const c = new THREE.Color();
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs, P = curve.getPointAt(t), r = radiusFn(t);
+    const N = frames.normals[i], B = frames.binormals[i];
+    if (colorFn) c.copy(colorFn(t));
+    for (let j = 0; j <= radial; j++) {
+      const a = j / radial * Math.PI * 2, cx = Math.cos(a), sy = Math.sin(a);
+      const nx = cx * N.x + sy * B.x, ny = cx * N.y + sy * B.y, nz = cx * N.z + sy * B.z;
+      pos.push(P.x + r * nx, P.y + r * ny, P.z + r * nz); nor.push(nx, ny, nz);
+      if (colorFn) col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i * (radial + 1) + j, b = a + radial + 1;
+    idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setIndex(idx);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  if (colorFn) geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return { geo, end: curve.getPointAt(1) };
+}
+
 // =============================================================
 //  월드 구성
 // =============================================================
@@ -1993,18 +2024,32 @@ export function buildAnimalMesh(id) {
     const tm = clayMat(t.color, false);
     const put = (mesh, x, y, z) => { mesh.position.set(x, y, z); mesh.castShadow = true; tail.add(mesh); };
 
-    if (t.type === 'bushy') {            // 🦊 크고 풍성 + 흰 꼬리끝
-      const seg = [[0, 0.02, -0.10, 0.26], [0, 0.14, -0.26, 0.29], [0, 0.30, -0.40, 0.27], [0, 0.48, -0.48, 0.22]];
-      seg.forEach(([x, y, z, r]) => put(new THREE.Mesh(new THREE.SphereGeometry(R * r, 10, 8), tm), R * x, R * y, R * z));
-      put(new THREE.Mesh(new THREE.SphereGeometry(R * 0.19, 10, 8), clayMat(t.tip, false)), 0, R * 0.64, -R * 0.50);
-    } else if (t.type === 'curl') {      // 🐶 짧고 위로 말린
-      const seg = [[0.02, -0.08, 0.16], [0.20, -0.16, 0.14], [0.36, -0.10, 0.12], [0.46, 0.02, 0.10]];
-      seg.forEach(([y, z, r]) => put(new THREE.Mesh(new THREE.SphereGeometry(R * r, 10, 8), tm), 0, R * y, R * z));
+    // 🦊🐶🐱 는 테이퍼 튜브 한 덩어리(sims/tail-sim.html 에서 모양 검수). 곡선 좌표는 몸 반지름 R 비례.
+    const V = (x, y, z) => new THREE.Vector3(R * x, R * y, R * z);
+    const tube = (pts, radiusFn, mat, colorFn = null, segs = 32) => {
+      const { geo, end } = taperedTube(pts, radiusFn, colorFn, segs);
+      const m = new THREE.Mesh(geo, mat); m.castShadow = true; tail.add(m);
+      return end;
+    };
+    if (t.type === 'bushy') {            // 🦊 짧고 통통하게 위로 솟음 + 끝 1/3 흰색(정점색)
+      const pts = [V(0, -0.05, 0.10), V(0, 0.06, -0.30), V(0, 0.30, -0.50), V(0, 0.60, -0.58), V(0, 0.88, -0.54)];
+      const rad = u => R * (0.29 + 0.05 * Math.sin(Math.PI * u)) * (1 - 0.38 * Math.max(0, u - 0.70) / 0.30);
+      const base = new THREE.Color(t.color), tip = new THREE.Color(t.tip);
+      const colF = u => u < 0.60 ? base : u < 0.68 ? base.clone().lerp(tip, (u - 0.60) / 0.08) : tip;
+      const end = tube(pts, rad, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), colF, 40);
+      put(new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), clayMat(t.tip, false)), end.x, end.y, end.z);
+    } else if (t.type === 'curl') {      // 🐶 짧게 위로 말린 곡선
+      const pts = [V(0, -0.05, 0.10), V(0, 0.05, -0.22), V(0, 0.30, -0.40), V(0, 0.58, -0.36), V(0, 0.72, -0.14)];
+      const rad = u => R * (0.15 * (1 - u) + 0.05);
+      const end = tube(pts, rad, tm);
+      put(new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), end.x, end.y, end.z);
     } else if (t.type === 'puff') {      // 🐰 동그란 솜뭉치
       put(new THREE.Mesh(new THREE.SphereGeometry(R * 0.30, 12, 10), tm), 0, R * 0.04, -R * 0.06);
-    } else if (t.type === 'long') {      // 🐱 길고 가늘게 S자
-      const seg = [[0.00, -0.10, 0.12], [0.16, -0.22, 0.11], [0.34, -0.26, 0.10], [0.52, -0.20, 0.09], [0.66, -0.06, 0.08]];
-      seg.forEach(([y, z, r]) => put(new THREE.Mesh(new THREE.SphereGeometry(R * r, 8, 8), tm), 0, R * y, R * z));
+    } else if (t.type === 'long') {      // 🐱 밑동 굵게 위로 쭉 뻗고 끝이 살짝 뒤로 휘며 둥글게
+      const pts = [V(0, -0.05, 0.10), V(0, 0.08, -0.36), V(0, 0.45, -0.60), V(0, 0.90, -0.58), V(0, 1.22, -0.36)];
+      const rad = u => R * (0.17 * (1 - u * 0.62) + 0.02) * (1 - 0.30 * Math.max(0, u - 0.85) / 0.15);
+      const end = tube(pts, rad, tm, null, 40);
+      put(new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), end.x, end.y, end.z);
     } else if (t.type === 'stub') {      // 🐻🐼 뭉툭한 짧은 꼬리
       put(new THREE.Mesh(new THREE.SphereGeometry(R * 0.17, 10, 8), tm), 0, R * 0.06, -R * 0.02);
     } else if (t.type === 'feather') {   // 🐤 뾰족한 꽁지깃
