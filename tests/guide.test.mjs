@@ -34,3 +34,39 @@ test('이미지 장당 160KB 이하 · 총량 3MB 이하', () => {
   }
   assert.ok(total <= 3 * 1024 * 1024, `총량 ${Math.round(total / 1024)}KB — 3MB 초과`);
 });
+
+const HTML = () => readFileSync(new URL('guide/guide.html', ROOT), 'utf8');
+
+test('fragment 에 문서 껍데기·스크립트가 없다', () => {
+  const h = HTML();
+  assert.doesNotMatch(h, /<(!doctype|html|head|body|script|style|link)\b/i);
+});
+
+test('섹션 20개 · id sec-01..sec-20 · 각각 eyebrow + h2[data-chip]', () => {
+  const h = HTML();
+  const secs = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">/g)].map(m => m[1]);
+  assert.equal(secs.length, 20);
+  secs.forEach((id, i) => assert.equal(id, `sec-${String(i + 1).padStart(2, '0')}`));
+  const chips = [...h.matchAll(/<h2 data-chip="([^"]+)">/g)];
+  assert.equal(chips.length, 20, 'h2[data-chip] 가 20개여야 한다');
+  assert.equal((h.match(/class="gd-eyebrow"/g) || []).length, 20);
+});
+
+test('img 는 상대경로 · 존재 · lazy · width/height', () => {
+  const h = HTML();
+  const imgs = [...h.matchAll(/<img\b[^>]*>/g)].map(m => m[0]);
+  assert.ok(imgs.length >= 40, `img 가 ${imgs.length}개 — 40개 이상이어야`);
+  for (const tag of imgs) {
+    const src = /src="([^"]+)"/.exec(tag)?.[1];
+    assert.ok(src && src.startsWith('img/'), `상대경로가 아님: ${tag}`);
+    assert.ok(existsSync(new URL(src, new URL('guide/', ROOT))), `${src} 파일 없음`);
+    assert.match(tag, /loading="lazy"/, `lazy 아님: ${tag}`);
+    assert.match(tag, /width="\d+"/, `width 없음: ${tag}`);
+    assert.match(tag, /height="\d+"/, `height 없음: ${tag}`);
+  }
+});
+
+test('첫 섹션에 튜토리얼 다시 보기 버튼', () => {
+  const first = HTML().split('<section class="gd-sec" id="sec-02">')[0];
+  assert.match(first, /<button class="gd-tut" data-act="tutorial">/);
+});

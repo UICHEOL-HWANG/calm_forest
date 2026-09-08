@@ -1,0 +1,45 @@
+/* 📖 초보자 안내서 본문 — 전부 .gd 접두. index.html 의 #guide-panel 안에서만 쓰인다 */
+.gd { font: 15px/1.6 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; color: #1e2a24;
+  max-width: 920px; margin: 0 auto; padding: 4px 16px 56px; -webkit-text-size-adjust: 100%; }
+.gd * { box-sizing: border-box; }
+.gd-sec { padding: 22px 0 26px; border-bottom: 1px solid #d9ded3; scroll-margin-top: 8px; }
+.gd-sec:last-child { border-bottom: none; }
+.gd-eyebrow { font-size: 12px; letter-spacing: .1em; font-weight: 700; color: #2f6b4a; margin-bottom: 4px; }
+.gd h2 { font-size: 22px; line-height: 1.25; margin: 0 0 8px; font-weight: 800; color: #1f4a33; letter-spacing: -.01em; }
+.gd h3 { font-size: 16px; margin: 14px 0 6px; font-weight: 800; color: #1f4a33; }
+.gd h3 small { font-weight: 400; color: #4a5a50; font-size: 13px; margin-left: 4px; }
+.gd p { margin: 0 0 10px; }
+.gd .lead { color: #4a5a50; margin-bottom: 12px; }
+.gd .cols { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 720px) { .gd .cols { grid-template-columns: 1fr 1fr; align-items: start; } }
+.gd .shot { width: 100%; height: auto; border-radius: 10px; border: 1px solid #d9ded3; display: block; background: #000; }
+.gd .shot.tall { max-width: 260px; margin: 0 auto; }
+.gd .cap { font-size: 12.5px; color: #4a5a50; margin: 6px 0 12px; line-height: 1.4; }
+.gd .steps { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.gd .steps li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
+.gd .steps .n { width: 24px; height: 24px; border-radius: 50%; background: #2f6b4a; color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.gd .list { margin: 0 0 12px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.gd .list li::marker { color: #2f6b4a; }
+.gd .tip { background: #e6f4ea; border-left: 4px solid #2f6b4a; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14.5px; }
+.gd .tip b { color: #1f4a33; }
+.gd .warn { background: #fbebdd; border-left: 4px solid #b5541c; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14.5px; }
+.gd .warn b { color: #b5541c; }
+.gd .kbd { display: inline-block; border: 1px solid #b9c2b8; border-bottom-width: 2px; border-radius: 6px; padding: 0 7px; font-size: 13px; font-weight: 700; background: #fff; color: #1f4a33; line-height: 1.5; }
+.gd .cards { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 0 0 12px; }
+@media (min-width: 720px) { .gd .cards { grid-template-columns: repeat(3, 1fr); } .gd .cards.two { grid-template-columns: 1fr 1fr; } .gd .cards.four { grid-template-columns: repeat(2, 1fr); } }
+.gd .card { background: #fff; border: 1px solid #d9ded3; border-radius: 12px; padding: 12px 14px; }
+.gd .card h3 { margin: 0 0 4px; font-size: 15px; }
+.gd .card p { margin: 0; font-size: 14px; color: #4a5a50; }
+.gd .card .shot { margin-bottom: 8px; }
+.gd .tbl { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 0 12px; }
+.gd table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: 14px; }
+.gd th, .gd td { padding: 7px 9px; text-align: left; border-bottom: 1px solid #d9ded3; vertical-align: top; line-height: 1.4; }
+.gd th { font-size: 12.5px; color: #1f4a33; letter-spacing: .04em; font-weight: 800; background: #e6f4ea; }
+.gd table.faq { min-width: 0; }
+.gd table.faq td:first-child { font-weight: 700; color: #1f4a33; white-space: nowrap; }
+.gd .check { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: 1fr; gap: 6px; }
+@media (min-width: 720px) { .gd .check { grid-template-columns: 1fr 1fr; } }
+.gd .check li::before { content: "☐ "; color: #2f6b4a; }
+.gd-tut { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 9px 16px; border: none; border-radius: 12px;
+  background: #2f6b4a; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
+.gd-tut:active { transform: scale(.97); }
