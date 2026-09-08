@@ -12,6 +12,9 @@
 .gd .lead { color: #4a5a50; margin-bottom: 12px; }
 .gd .cols { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 720px) { .gd .cols { grid-template-columns: 1fr 1fr; align-items: start; } }
+/* 그리드 자식의 min-width:auto 가 표·긴 문장을 열 밖으로 밀어내는 걸 막는다 — 표는 .tbl 안에서만 가로 스크롤 */
+.gd .cols > *, .gd .cards > *, .gd .check > * { min-width: 0; }
+.gd .tbl { max-width: 100%; }
 .gd .shot { width: 100%; height: auto; border-radius: 10px; border: 1px solid #d9ded3; display: block; background: #000; }
 .gd .shot.tall { max-width: 260px; margin: 0 auto; }
 .gd .cap { font-size: 12.5px; color: #4a5a50; margin: 6px 0 12px; line-height: 1.4; }

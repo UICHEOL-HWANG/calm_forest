@@ -293,6 +293,32 @@
   /* 피드백 모달 */
   #feedback-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
   #feedback-modal.show { display: grid; }
+
+  /* 📖 초보자 안내서 — 전체 화면 시트. 문의 모달(30) 위, 미니게임(40) 아래. 상단은 토스 예약 포함 인셋을 그대로 둔다 */
+  #guide-panel { position: fixed; inset: 0; z-index: 35; display: none; flex-direction: column; background: #fbf8ef; color: #1e2a24;
+    padding-top: var(--top-inset); }
+  #guide-panel.show { display: flex; }
+  #guide-panel .gp-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #dff2e3; border-bottom: 1px solid #c4dfcb;
+    font-weight: 700; font-size: 15px; flex: none; }
+  #guide-close { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; border: none; background: #fff; color: #1f4a33; font-size: 16px; cursor: pointer; box-shadow: var(--shadow); }
+  #guide-close:active { transform: scale(.94); }
+  #guide-chips { display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; white-space: nowrap; background: #f1ebdc; flex: none;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  #guide-chips::-webkit-scrollbar { display: none; }
+  #guide-chips button { flex: none; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid #d9d0bb; color: #5a6b5d; cursor: pointer; }
+  #guide-chips button.on { background: #2f5b3f; color: #fff; border-color: #2f5b3f; }
+  #guide-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom); }
+  .gp-skel { max-width: 920px; margin: 24px auto; padding: 0 16px; }
+  .gp-skel i { display: block; height: 14px; border-radius: 7px; background: #e6e1d3; margin-bottom: 12px; animation: gpPulse 1.2s ease-in-out infinite; }
+  .gp-skel i:nth-child(2) { width: 70%; } .gp-skel i:nth-child(3) { width: 85%; }
+  @keyframes gpPulse { 50% { opacity: .45; } }
+  .gp-err { text-align: center; padding: 48px 16px; color: #4a5a50; }
+  .gp-err button { margin-top: 10px; padding: 8px 18px; border: none; border-radius: 10px; background: #2f6b4a; color: #fff; font-weight: 700; cursor: pointer; }
+  /* 패널이 떠 있는 동안 게임 HUD 전부 숨김 — 미니게임(mg-open)과 같은 방식, 터치가 조이스틱에 닿을 수 없다 */
+  body.guide-open #mobile-controls, body.guide-open #talk-btn, body.guide-open #hotbar, body.guide-open #minimap,
+  body.guide-open #dex-tab, body.guide-open #feedback-tab, body.guide-open #quest-panel, body.guide-open #hint,
+  body.guide-open #hint-banner, body.guide-open #coach, body.guide-open #door-prompt, body.guide-open #npc-prompt,
+  body.guide-open #zone-prompt, body.guide-open #buffs, body.guide-open #topleft, body.guide-open #topright { display: none !important; }
   .fb-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
   .fb-card h3 { margin: 0 0 4px; font-size: 18px; }
   .fb-sub { margin: 0 0 16px; font-size: 13px; opacity: .7; }
@@ -984,7 +1010,7 @@
       <button id="lb-btn"><span class="uico">🏆</span><span class="ulbl">리더보드</span></button>
       <button id="diary-btn" style="display:none;"><span class="uico">📝</span><span class="ulbl">오늘 일지</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
-      <button id="help-btn"><span class="uico">❓</span><span class="ulbl">도움말</span></button>
+      <button id="help-btn"><span class="uico">📖</span><span class="ulbl">초보자 안내서</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
       <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
       <button id="lang-btn"><span class="uico">🌐</span><span class="ulbl">언어</span></button>
@@ -1372,6 +1398,13 @@
         <button id="fb-send">보내기</button>
       </div>
     </div>
+  </div>
+
+  <!-- 📖 초보자 안내서 패널 — 본문은 /guide/guide.html 을 fetch 해 #guide-body 에 주입 -->
+  <div id="guide-panel" aria-hidden="true">
+    <div class="gp-head"><span>📖 초보자 안내서</span><button id="guide-close" aria-label="닫기">✕</button></div>
+    <nav id="guide-chips"></nav>
+    <div id="guide-body"></div>
   </div>
 
   <!-- NPC 대화/퀘스트 모달 -->
@@ -2307,6 +2340,84 @@
     const openFb = () => { fbModal.classList.add('show'); $('fb-text').focus(); };
     const closeFb = () => { fbModal.classList.remove('show'); };
     $('feedback-tab').addEventListener('click', openFb);
+
+    // ── 📖 초보자 안내서 패널 ──────────────────────────────────────
+    //  · fragment(guide/guide.html)를 fetch 해 DOM 에 직접 주입(iframe 금지: iOS 웹뷰 스크롤·X-Frame-Options)
+    //  · 열리면 body.guide-open 으로 HUD 숨김 + keydown capture 로 게임 입력 차단(Esc 만 닫기)
+    //  · 토스 번들은 CONFIG.GUIDE_BASE 가 웹 오리진 절대 URL 이라 같은 코드로 동작
+    const guidePanel = $('guide-panel'), guideBody = $('guide-body'), guideChips = $('guide-chips');
+    let guideLoaded = false, guideOpenedAt = 0, guideCurSec = '', guideScrollY = 0, guideSecTimer = null, guideCssLinked = false;
+    const guideAbs = (rel) => new URL(rel, new URL(CONFIG.GUIDE_BASE, location.href)).href;
+    function buildGuideChips(root) {
+      guideChips.innerHTML = '';
+      const secs = [...root.querySelectorAll('section.gd-sec')];
+      for (const sec of secs) {
+        const h2 = sec.querySelector('h2');
+        const b = document.createElement('button');
+        b.textContent = h2?.dataset.chip || h2?.textContent || sec.id;
+        b.dataset.sec = sec.id;
+        b.addEventListener('click', () => { sec.scrollIntoView({ block: 'start' }); });   // 즉시 이동 — 웹뷰·reduced-motion 에서도 확실히
+        guideChips.appendChild(b);
+      }
+      const io = new IntersectionObserver((entries) => {
+        const hit = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (!hit) return;
+        const id = hit.target.id;
+        if (id === guideCurSec) return;
+        guideCurSec = id;
+        for (const b of guideChips.children) b.classList.toggle('on', b.dataset.sec === id);
+        guideChips.querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+        clearTimeout(guideSecTimer);
+        guideSecTimer = setTimeout(() => trackEvent('guide_section', { id }), 800);   // 스크롤 훑기 중엔 안 쏨
+      }, { root: guideBody, rootMargin: '-8% 0px -80% 0px', threshold: 0 });
+      secs.forEach(s => io.observe(s));
+    }
+    async function loadGuide() {
+      guideBody.innerHTML = '<div class="gp-skel"><i></i><i></i><i></i></div>';
+      try {
+        if (!guideCssLinked) {   // 본문 스타일은 fragment 와 같은 곳에서 — 토스에서도 웹 오리진
+          const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = guideAbs('guide.css');
+          document.head.appendChild(l); guideCssLinked = true;
+        }
+        const res = await fetch(guideAbs('guide.html'));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const wrap = document.createElement('div'); wrap.className = 'gd'; wrap.innerHTML = await res.text();
+        wrap.querySelectorAll('img[src]').forEach(img => { img.src = guideAbs(img.getAttribute('src')); });
+        guideBody.replaceChildren(wrap);
+        buildGuideChips(wrap);
+        guideLoaded = true;
+      } catch (err) {
+        console.warn('[guide] 안내서 불러오기 실패:', err?.message || err);
+        guideBody.innerHTML = '<div class="gp-err"><p>안내서를 불러오지 못했어요.</p><button id="guide-retry">다시 시도</button></div>';
+        $('guide-retry').addEventListener('click', loadGuide);
+      }
+    }
+    function openGuide(src) {
+      if (guidePanel.classList.contains('show')) return;
+      $('topleft').classList.remove('open');
+      guidePanel.classList.add('show'); guidePanel.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('guide-open');
+      guideOpenedAt = Date.now();
+      if (!guideLoaded) loadGuide(); else guideBody.scrollTop = guideScrollY;   // 세션 안에서는 읽던 자리로
+      trackEvent('guide_open', { src });
+    }
+    function closeGuide() {
+      if (!guidePanel.classList.contains('show')) return;
+      guideScrollY = guideBody.scrollTop;
+      guidePanel.classList.remove('show'); guidePanel.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('guide-open');
+      trackEvent('guide_close', { sec: guideCurSec, dur: Date.now() - guideOpenedAt });
+    }
+    $('guide-close').addEventListener('click', closeGuide);
+    guideBody.addEventListener('click', (e) => {   // 안내서 첫 장 "튜토리얼 다시 보기" — 패널 닫고 환영 모달
+      if (!e.target.closest('[data-act="tutorial"]')) return;
+      closeGuide(); ui.showTutorial('help');
+    });
+    window.addEventListener('keydown', (e) => {   // 패널이 떠 있으면 어떤 키도 게임으로 안 간다(스크롤 등 브라우저 기본은 허용)
+      if (!guidePanel.classList.contains('show')) return;
+      if (e.key === 'Escape') { e.preventDefault(); closeGuide(); }
+      e.stopPropagation();
+    }, true);
     // 모바일 대화하기 버튼 → NPC 대화 실행(근처면 handleAction이 대화로 분기)
     $('talk-btn').addEventListener('click', () => Input.doTalk());
     // NPC 모달 바깥 클릭 시 닫기
@@ -2315,7 +2426,7 @@
     // 튜토리얼: 시작하기 닫기 / 도움말(❓) 다시 열기
     // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
     $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
-    $('help-btn').addEventListener('click', () => ui.showTutorial('help'));
+    $('help-btn').addEventListener('click', () => openGuide('menu'));   // 📖 초보자 안내서(튜토리얼 다시 보기는 안내서 첫 장 버튼)
     // 🐾 캐릭터 바꾸기 — 진행 상황은 그대로, 겉모습만 교체(유저 피드백)
     $('char-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
