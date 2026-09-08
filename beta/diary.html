@@ -47,10 +47,16 @@
         <label><input type="radio" name="q3" value="4" /><span>4</span></label>
         <label><input type="radio" name="q3" value="5" /><span>5</span></label>
       </div><div class="hint">1 = 전혀 아니다 · 5 = 꼭 한다</div></div>
-    <div class="card"><label for="q4">4. 화면 아래 작은 안내가 뜬 적 있어요? 뭐라고 떴고 따라 했어요?</label><textarea id="q4"></textarea></div>
+    <div class="card"><label>4. 화면 아래 작은 안내가 뜬 적 있어요?</label>
+      <div class="scale" id="q4seen">
+        <label><input type="radio" name="q4seen" value="봤어요" /><span>봤어요</span></label>
+        <label><input type="radio" name="q4seen" value="못 봤어요" /><span>못 봤어요</span></label>
+        <label><input type="radio" name="q4seen" value="모르겠어요" /><span>모르겠어요</span></label>
+      </div></div>
+    <div class="card"><label for="q4">4-1. 봤다면, 뭐라고 떴고 그대로 해봤어요?</label><textarea id="q4"></textarea></div>
     <div id="final" style="display:none">
       <div class="card"><label for="q5">5. 일주일 중 제일 재밌었던 곳은?</label>
-        <select id="q5"><option value="">고르세요</option><option>바다터</option><option>안개 낀 숲</option><option>마을</option><option>텃밭</option><option>기타</option></select></div>
+        <select id="q5"><option value="">고르세요</option><option>바다터</option><option>안개 낀 숲</option><option>동굴</option><option>조각</option><option>요리</option><option>마을</option><option>텃밭</option><option>기타</option></select></div>
       <div class="card"><label for="q6">6. 처음 10분 순서 두 가지 중 어느 쪽이 더 재밌어 보여요?</label>
         <select id="q6"><option value="">고르세요</option><option value="A">A</option><option value="B">B</option></select>
         <div class="hint"><a href="./order.html" target="_blank" rel="noopener">두 순서 나란히 보기 ›</a></div></div>
@@ -97,7 +103,13 @@
     // 오늘 이미 썼으면 불러와서 고쳐 쓸 수 있게
     const { data: prev } = await sb.from('beta_diary').select('*').eq('email', email).eq('day', day).maybeSingle();
     if (prev) {
-      $('q1').value = prev.q1 || ''; $('q2').value = prev.q2 || ''; $('q4').value = prev.q4 || '';
+      $('q1').value = prev.q1 || ''; $('q2').value = prev.q2 || '';
+      {   // q4 는 "봤어요 · 내용" 꼴 — 앞머리가 라디오 값이면 갈라서 채운다
+        const raw = prev.q4 || '';
+        const m = raw.match(/^(봤어요|못 봤어요|모르겠어요)(?: · (.*))?$/s);
+        if (m) { document.querySelector(`input[name=q4seen][value="${m[1]}"]`).checked = true; $('q4').value = m[2] || ''; }
+        else $('q4').value = raw;
+      }
       if (prev.q3) document.querySelector(`input[name=q3][value="${prev.q3}"]`).checked = true;
       if (prev.q5) $('q5').value = prev.q5; if (prev.q6) $('q6').value = prev.q6;
       $('sub').textContent += ' · 오늘 일지를 이미 썼어요(고쳐 쓰기 가능)';
@@ -111,7 +123,11 @@
         email, day,
         q1: $('q1').value.trim(), q2: $('q2').value.trim(),
         q3: Number(document.querySelector('input[name=q3]:checked')?.value || 0) || null,
-        q4: $('q4').value.trim() || null,
+        q4: (() => {   // 라디오 + 텍스트를 한 칸에 — 컬럼 안 늘리고 "봤어요 · 내용" 꼴로
+          const seen = document.querySelector('input[name=q4seen]:checked')?.value || '';
+          const txt = $('q4').value.trim();
+          return seen ? (txt ? `${seen} · ${txt}` : seen) : (txt || null);
+        })(),
         q5: $('q5').value || null, q6: $('q6').value || null,
         variant: 'beta_' + me.grp, map_order: me.map_order, client_id: clientId(),
         updated_at: new Date().toISOString(),
