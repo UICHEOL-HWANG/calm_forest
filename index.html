@@ -883,8 +883,11 @@
   @keyframes actpulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
   /* 가구 배치 중에만 보이는 회전 버튼 */
   #rotate-btn { display: none; position: fixed; right: 28px; bottom: calc(196px + env(safe-area-inset-bottom)); z-index: 7; border: none; border-radius: 16px; padding: 12px 18px; background: #ffe0a8; color: var(--ink); font-weight: 800; font-size: 15px; box-shadow: var(--shadow); cursor: pointer; touch-action: manipulation; }
+  #store-btn { display: none; position: fixed; right: 28px; bottom: calc(248px + env(safe-area-inset-bottom)); z-index: 7; border: none; border-radius: 16px; padding: 12px 18px; background: #ffe0a8; color: var(--ink); font-weight: 800; font-size: 15px; box-shadow: var(--shadow); cursor: pointer; touch-action: manipulation; }
   #rotate-btn:active { transform: scale(0.94); }
+  #store-btn:active { transform: scale(0.94); }
   body.placing-decor #rotate-btn { display: block; }
+  body.placing-decor.picked-decor #store-btn { display: block; }
   /* 꾸미기 메뉴 열려 있으면 조이스틱/액션버튼 숨김 + 이동 정지 */
   body.menu-open #mobile-controls { display: none !important; }
 
@@ -1369,6 +1372,7 @@
 
   <!-- 가구 배치 중 회전 버튼(실내 꾸미기) -->
   <button id="rotate-btn">↻ 회전</button>
+  <button id="store-btn">🧺 보관</button>   <!-- 바닥에서 든 가구일 때만(body.picked-decor) — 회전 버튼 위에 쌓임 -->
 
   <!-- 로그인 화면 (뒤로 실제 게임 씬이 흐름) -->
   <div id="login-screen">
@@ -1577,6 +1581,7 @@
     //   우선순위: 🛶 노 젓기 > 가구 배치 > 문/작업대 > 현재 도구  (주민 대화는 전용 버튼)
     function refreshActionIcon() {
       document.body.classList.toggle('placing-decor', !!placingDecorItem);  // 배치 중이면 회전 버튼 노출
+      document.body.classList.toggle('picked-decor', !!placingDecorItem && !!Input.isPickedDecor?.());   // 🧺 바닥에서 든 가구면 보관 버튼도
       const b = $('action-btn'); if (!b) return;
       b.classList.remove('placing', 'talk', 'door');
       if (boatRunning) { b.innerHTML = '🚣'; return; }   // 런 중엔 무조건 노 젓기(스퍼트)
@@ -2502,6 +2507,7 @@
     // 가구 회전(가로/세로) — 버튼 + R 키
     function rotatePlacing() { if (!placingDecorItem) return; const r = Input.rotateDecor(); ui.toast(`↻ 방향 ${r * 90}°`); }
     $('rotate-btn').addEventListener('click', rotatePlacing);
+    $('store-btn').addEventListener('click', () => { if (Input.storeDecor?.()) stopPlacing(); });   // 🧺 든 가구를 창고로(메뉴 안 버튼과 같은 동작)
     window.addEventListener('keydown', (e) => { if ((e.key === 'r' || e.key === 'R') && placingDecorItem) { e.preventDefault(); rotatePlacing(); } });
 
     // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
