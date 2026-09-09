@@ -122,7 +122,7 @@ function weatherOf(offsetDays = 0) {
   return r < 20 ? 'rain' : r < 32 ? 'snow' : r < 45 ? 'fog' : 'clear';
 }
 const _wq = new URLSearchParams(location.search);
-const WEATHER = ['rain', 'snow', 'fog'].includes(_wq.get('weather')) ? _wq.get('weather')
+const WEATHER = ['rain', 'snow', 'fog', 'clear'].includes(_wq.get('weather')) ? _wq.get('weather')
   : _wq.has('rain') ? 'rain'
   : weatherOf(0);
 // 🔮 내일 예보 — 재방문 유도(출석 모달·데일리 올빼미 대사에 노출)
@@ -520,7 +520,7 @@ const NPCS = [
   },
   {
     // 좌판 바로 뒤(북쪽) 상주 — 좌판 장애물 반경 1.6 + NPC 여유 0.35 = 1.95 밖이어야 npcBlocked 에 안 걸린다
-    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0xc9a8ff, hat: 0x8a5cd0, pos: [9, 0, -2.1], roam: 0.6,
+    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0x9c7b58, hat: 0x8a5cd0, pos: [9, 0, -2.1], roam: 0.6, look: 'peddler',   // 보따리 장수 외형(hat 색은 허리띠)
     quests: [
       { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
@@ -9362,10 +9362,27 @@ function buildNPCs() {
     body.position.y = 0.55; body.castShadow = true; body.scale.set(1, 1.05, 1); g.add(body);
     const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), clayMat(0xffe0c0, false));
     head.position.y = 1.15; head.castShadow = true; g.add(head);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12), clayMat(def.hat));
-    brim.position.y = 1.4; g.add(brim);
-    const top = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), clayMat(def.hat));
-    top.position.y = 1.5; g.add(top);
+    if (def.look === 'peddler') {
+      // 🧙 방랑 상인 = 보따리 장수 — 주민 공용 몸을 색만 바꿔 쓰던 것(베타: "기존 NPC 재탕")을 실루엣부터 다르게.
+      //    삿갓(원뿔) · 등의 큰 봇짐 · 지팡이 · 수염. 몸/머리 좌표는 공용과 같아 bob·말풍선·충돌이 그대로 맞는다.
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.66, 0.34, 14), clayMat(0xd9b46a));
+      hat.position.y = 1.52; hat.castShadow = true; g.add(hat);
+      const hatKnob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), clayMat(0xb8923f)); hatKnob.position.y = 1.7; g.add(hatKnob);
+      const sash = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.06, 8, 18), clayMat(def.hat, false));   // 허리띠(기존 보라 포인트 유지)
+      sash.rotation.x = Math.PI / 2; sash.position.y = 0.48; g.add(sash);
+      const pack = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 10), clayMat(0xe8d8a8, false));   // 봇짐
+      pack.scale.set(1, 0.85, 0.8); pack.position.set(0, 0.95, -0.46); pack.castShadow = true; g.add(pack);
+      const knot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.14), clayMat(0xc9b070, false)); knot.position.set(0, 1.28, -0.34); g.add(knot);
+      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.55, 6), clayMat(0x6b4a34));  // 지팡이
+      staff.position.set(0.5, 0.78, 0.12); staff.rotation.z = -0.12; g.add(staff);
+      const beard = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), clayMat(0xdcd3c8, false));      // 수염
+      beard.scale.set(1, 0.7, 0.6); beard.position.set(0, 0.98, 0.26); g.add(beard);
+    } else {
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12), clayMat(def.hat));
+      brim.position.y = 1.4; g.add(brim);
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), clayMat(def.hat));
+      top.position.y = 1.5; g.add(top);
+    }
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
     [-0.13, 0.13].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat); e.position.set(ex, 1.18, 0.32); g.add(e); });
     scene.add(g);
@@ -9504,6 +9521,9 @@ function updateMerchantVisit(dt) {
   }
   const v = merchantVisit; v.t += dt;
   if (v.state === 'walk') {
+    if (!inVillage2()) {   // 걸어오는 사이 집·텃밭 등으로 들어갔다 → 방문 무효, 1회권은 돌려줘 다음에 다시 온다(전엔 12초 뒤 실내에서 모달이 떴다)
+      merchantVisit = { state: 'return', t: 0, offer: v.offer }; gameState.hintsSeen.merchantVisit = false; return;
+    }
     const d = stepNpcToward(m, player.position, 2.0, dt);
     if (d <= 1.6 || v.t > 12) { v.state = 'talk'; openMerchantOffer(v.offer); }
   } else if (v.state === 'talk') {
