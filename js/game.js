@@ -26,6 +26,7 @@ import { sampleFrame, startLogging } from './logger.js';         // [센서] 로
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
+import { createKeyState } from './keys.js';                        // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋)
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -1200,7 +1201,7 @@ const HOUSE_POS = new THREE.Vector3(-8, 0, -8); // 정해진 집 터 위치
 const clock = new THREE.Clock();
 
 // 입력 상태
-const keys = {};
+const keys = createKeyState();   // ⌨️ js/keys.js — 입력칸에서 친 키 무시·blur 리셋·모달 중 이동 0
 const analog = { x: 0, z: 0 };    // 모바일 조이스틱 아날로그 이동(-1~1)
 let wantAction = false;
 let timeOfDay = 0.30;
@@ -3895,8 +3896,8 @@ function updateBoatRun(dt, t) {
   const oar = gameState.boat.up.oar || 0;
   let steer = 0;
   if (!stunned) {
-    if (keys['ArrowLeft'] || keys['KeyA']) steer -= 1;
-    if (keys['ArrowRight'] || keys['KeyD']) steer += 1;
+    if (keys.isDown('ArrowLeft') || keys.isDown('KeyA')) steer -= 1;
+    if (keys.isDown('ArrowRight') || keys.isDown('KeyD')) steer += 1;
     if (Math.abs(analog.x) > 0.12) steer += analog.x;
     steer = Math.max(-1, Math.min(1, steer));
   }
@@ -7407,7 +7408,8 @@ function initPostProcessing() {
 function initInput() {
   const MOVE_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
   window.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
+    // 닉네임 칸 등 글자 입력 중이면 게임 조작으로 안 잡는다(W/A/S/D 로 걷기·C 앉기·숫자 도구 전환·방향키 preventDefault 전부 스킵)
+    if (!keys.down(e)) return;
     if (e.code === 'Space') wantAction = true;
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
@@ -7416,7 +7418,12 @@ function initInput() {
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
-  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+  window.addEventListener('keyup', (e) => { keys.up(e); });
+  // 창 포커스가 빠지면(Cmd+Tab·다른 탭·새 창·앱 전환) keyup 이 안 온다 → 전부 뗀 것으로 — 키 하나가 계속 눌려 걷던 버그
+  const releaseAll = () => { keys.reset(); analog.x = 0; analog.z = 0; };
+  window.addEventListener('blur', releaseAll);
+  window.addEventListener('pagehide', releaseAll);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
   renderer.domElement.addEventListener('pointerdown', (e) => {
     if (indoor && placingDecor) { onDecorFloorTap(e); return; } // 실내 가구 배치 중: 탭 = 자리 잡기 / 클릭 = 놓기
     if (indoor && tryPickDecor(e)) return;                      // 놓아 둔 가구 탭 → 들어 올려 옮기기
@@ -7490,7 +7497,7 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   // ?dbg=1 — 루프 상태 스냅샷(로컬 조사용): 모드·위치·눌린 키·현재 공간
-  if (_wq.has('dbg')) window.__dbg = { mode, atMist, atRiver, px: +player.position.x.toFixed(2), pz: +player.position.z.toFixed(2), keys: Object.keys(keys).filter(k => keys[k]), nearKitchen, nearBench, nearNPC: !!nearNPC, nearDoor, wantAction };
+  if (_wq.has('dbg')) window.__dbg = { mode, atMist, atRiver, px: +player.position.x.toFixed(2), pz: +player.position.z.toFixed(2), keys: keys.list(), nearKitchen, nearBench, nearNPC: !!nearNPC, nearDoor, wantAction };
 
   if (mode === 'play') {
     if (intro) { updateIntro(dt, t); wantAction = false; }   // 🎬 프롤로그 컷신이 카메라·연출을 가짐
@@ -7623,11 +7630,8 @@ function doPlayerAction(tx, tz, kind) {
 function updatePlayer(dt, t) {
   if (boat.active) return updateBoatRun(dt, t);    // 🛶 런 중엔 걷기 대신 배 물리
   const speed = 6 * (buffOn('speed') ? 1.4 : 1);   // 🥘 채소죽 버프: 이동속도 +40%
-  let mx = 0, mz = 0;
-  if (keys['KeyW'] || keys['ArrowUp']) mz -= 1;
-  if (keys['KeyS'] || keys['ArrowDown']) mz += 1;
-  if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
-  if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
+  // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
+  let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.());
   // 모바일 조이스틱 아날로그 합산
   mx += analog.x; mz += analog.z;
 
