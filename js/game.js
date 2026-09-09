@@ -183,6 +183,16 @@ const DECOR = [
   { id: 'bigsofa',   name: '큰 소파', ico: '🛋️', cost: 10, pay: 'crop', big: true, foot: [2.4, 0.95] },
   { id: 'bookshelf', name: '책장',    ico: '📚', cost: 9,  pay: 'crop', big: true, foot: [1.3, 0.45] },
   { id: 'bigrug',    name: '큰 러그', ico: '🟪', cost: 6,  pay: 'crop', big: true },
+  // ── 2026-09-09 추가 9종(베타: "가구 종류가 적다") ──
+  { id: 'stool',       name: '스툴',     ico: '🟤', cost: 2,  pay: 'crop', foot: [0.45, 0.45] },
+  { id: 'vase',        name: '꽃병',     ico: '🌷', cost: 2,  pay: 'crop', foot: [0.3, 0.3] },
+  { id: 'nightstand',  name: '협탁',     ico: '🗄️', cost: 3,  pay: 'crop', foot: [0.5, 0.45] },
+  { id: 'cushion',     name: '바닥 쿠션', ico: '🟠', cost: 3,  pay: 'crop' },                       // 밟고 지나감
+  { id: 'radio',       name: '라디오',   ico: '📻', cost: 4,  pay: 'crop', foot: [0.5, 0.25] },
+  { id: 'wardrobe',    name: '옷장',     ico: '🧥', cost: 9,  pay: 'crop', big: true, foot: [1.2, 0.5] },
+  { id: 'fireplace',   name: '벽난로',   ico: '🔥', cost: 12, pay: 'crop', big: true, foot: [1.4, 0.6] },
+  { id: 'piano',       name: '피아노',   ico: '🎹', cost: 12, pay: 'crop', big: true, foot: [1.4, 1.1] },
+  { id: 'bigaquarium', name: '큰 어항',  ico: '🐠', cost: 5,  pay: 'fish', big: true, foot: [1.3, 0.6] },
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
 
@@ -663,7 +673,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
-  house: { decor: [] },                     // 실내 배치 가구 [{id,x,z}]
+  house: { decor: [], stored: {} },         // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 }
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   gifts: {},                                // 보유 선물 { id: count }
@@ -1006,6 +1016,7 @@ let nearDoor = null;       // 'enter' | 'exit' | null
 let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
 let lastNearHouse = false; // 🎨 집 근처 여부(외관 꾸미기 버튼 표시) 변화 감지
 let placingDecor = null;   // 배치 중인 가구 id
+let nearDecorMesh = null, decorNearRing = null;   // 🛋️ 근접 프롬프트 대상 가구 / 그 밑 호박색 링
 let decorRot = 0;          // 배치 방향(0~3 → 90°씩) — 가로/세로 전환
 let decorGhost = null;     // 🫥 바닥 미리보기(반투명 가구 + 초록 링) — 놓일 자리·방향을 미리 보여준다
 let decorTarget = { x: 0, z: 0, pinned: false }; // 놓일 자리. pinned=false 면 캐릭터 발 앞을 따라다닌다
@@ -1424,6 +1435,9 @@ export const Input = {
   cancelDecor() { stopDecorPlacing(true); },      // 들어 올린 가구였다면 제자리로
   rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); updateDecorGhost(); return decorRot; }, // 가로/세로 회전(고스트도 같이)
   getDecorRot() { return decorRot; },
+  storeDecor() { return storeDecor(); },          // 🧺 들고 있는(바닥에서 든) 가구를 창고로
+  isPickedDecor() { return !!pickedDecor; },      // 지금 든 게 바닥에서 든 것인지(보관 버튼 노출 조건)
+  getStored() { return gameState.house.stored || {}; },
   isIndoor() { return indoor; },
   hintSeen(key) { return !!gameState.hintsSeen[key]; },   // 첫 안내 1회 판정(🎨 가구 배치 단계 안내 등)
 };
@@ -1661,6 +1675,10 @@ function applySave(saved) {
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
+  if (saved.house && saved.house.stored && typeof saved.house.stored === 'object') {   // 🧺 창고 복원(개수만, 음수·비숫자 버림)
+    gameState.house.stored = {};
+    for (const [k, v] of Object.entries(saved.house.stored)) if (DECOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.house.stored[k] = Math.floor(v);
+  }
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
     saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
@@ -5631,6 +5649,65 @@ function decorMesh(id) {
     const r = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.6), clayMat(0xc7a6e8, false)); r.position.y = 0.03; g.add(r);
     const border = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.06, 1.2), clayMat(0xe8d3f5, false)); border.position.y = 0.04; g.add(border);
   }
+  // ── 2026-09-09 추가 9종 ──
+  if (id === 'stool') {
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 12), woodMat(1, 1)); seat.position.y = 0.38; g.add(seat);
+    [0, 2.1, 4.2].forEach(a => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.36, 6), clayMat(0x6b4a34)); l.position.set(Math.cos(a) * 0.15, 0.18, Math.sin(a) * 0.15); g.add(l); });
+  } else if (id === 'vase') {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.3, 10), clayMat(0x7fb2c9, false)); body.position.y = 0.15; g.add(body);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.1, 10), clayMat(0x7fb2c9, false)); neck.position.y = 0.35; g.add(neck);
+    [[0xff9eb5, -0.06, 0.02], [0xffe07a, 0.06, -0.02], [0xffffff, 0, 0.06]].forEach(([c, dx, dz], i) => {
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 5), clayMat(0x6da35a)); stem.position.set(dx, 0.5, dz); stem.rotation.z = dx * 1.2; g.add(stem);
+      const bloom = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), clayMat(c, false)); bloom.position.set(dx * 1.6, 0.62 + i * 0.02, dz * 1.6); g.add(bloom);
+    });
+  } else if (id === 'nightstand') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.45), woodMat(1, 1)); body.position.y = 0.275; g.add(body);
+    const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.18, 0.03), woodMat(1, 1, 0xd9b585)); drawer.position.set(0, 0.36, 0.235); g.add(drawer);
+    const knob = new THREE.Mesh(new THREE.IcosahedronGeometry(0.03, 0), clayMat(0x5a5148)); knob.position.set(0, 0.36, 0.26); g.add(knob);
+  } else if (id === 'cushion') {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.38, 0.16, 16), clayMat(0xf3a561, false)); c.position.y = 0.08; g.add(c);
+    const tuft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 8), clayMat(0xd9823f, false)); tuft.position.y = 0.17; g.add(tuft);
+  } else if (id === 'radio') {
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.2), woodMat(1, 1, 0xb8895a)); box.position.y = 0.15; g.add(box);
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.02), clayMat(0x4a3f36)); grille.position.set(-0.1, 0.15, 0.11); g.add(grille);
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 10), clayMat(0xf2e8d8, false)); dial.rotation.x = Math.PI / 2; dial.position.set(0.14, 0.17, 0.11); g.add(dial);
+    const led = new THREE.Mesh(new THREE.IcosahedronGeometry(0.015, 0), new THREE.MeshStandardMaterial({ color: 0x9dffb0, emissive: 0x4dff6a, emissiveIntensity: 1.2 })); led.position.set(0.14, 0.08, 0.11); g.add(led);
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.36, 5), clayMat(0x5a5148)); ant.position.set(0.2, 0.42, -0.04); ant.rotation.z = -0.5; g.add(ant);
+  } else if (id === 'wardrobe') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.9, 0.5), woodMat(1, 2)); body.position.y = 0.95; g.add(body);
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.6, 0.02), clayMat(0x6b4a34)); seam.position.set(0, 0.95, 0.26); g.add(seam);
+    [-0.12, 0.12].forEach(x => { const k = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), clayMat(0x5a5148)); k.position.set(x, 0.95, 0.27); g.add(k); });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.08, 0.56), woodMat(1, 1, 0xa9743f)); top.position.y = 1.92; g.add(top);
+  } else if (id === 'fireplace') {
+    const stone = new THREE.MeshStandardMaterial({ color: 0x9a958c, roughness: 1, flatShading: true });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.3, 0.6), stone); body.position.y = 0.65; g.add(body);
+    const mantle = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.7), woodMat(2, 1, 0xa9743f)); mantle.position.y = 1.35; g.add(mantle);
+    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.5), stone); chimney.position.y = 1.65; g.add(chimney);
+    const hearth = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.1), clayMat(0x2a2320)); hearth.position.set(0, 0.42, 0.26); g.add(hearth);   // 아궁이(어둠)
+    [-0.14, 0.14].forEach(x => { const log = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 6), clayMat(0x5a3d2a)); log.rotation.z = Math.PI / 2; log.position.set(x, 0.2, 0.28); log.rotation.y = x * 2; g.add(log); });
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.4, 7), new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0xff7a2a, emissiveIntensity: 1.4, roughness: 0.6 })); fire.position.set(0, 0.42, 0.28); fire.userData.flicker = true; g.add(fire);
+    const core = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.24, 6), new THREE.MeshStandardMaterial({ color: 0xfff1a8, emissive: 0xffe07a, emissiveIntensity: 1.6, roughness: 0.6 })); core.position.set(0, 0.36, 0.3); g.add(core);
+  } else if (id === 'piano') {
+    const dark = clayMat(0x2b2622, false);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.55), dark); body.position.set(0, 0.6, -0.15); g.add(body);
+    const keybed = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 0.32), dark); keybed.position.set(0, 0.72, 0.22); g.add(keybed);
+    const keys = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.26), clayMat(0xf7f3ea, false)); keys.position.set(0, 0.79, 0.24); g.add(keys);
+    for (let i = 0; i < 10; i++) { if (i % 7 === 2 || i % 7 === 6) continue; const bk = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.14), dark); bk.position.set(-0.52 + i * 0.115, 0.815, 0.18); g.add(bk); }
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.06, 0.6), dark); lid.position.set(0, 1.23, -0.12); g.add(lid);
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.28, 0.02), clayMat(0x3a332e, false)); stand.position.set(0, 1.0, 0.12); stand.rotation.x = -0.35; g.add(stand);
+    [-0.6, 0.6].forEach(x => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 0.1), dark); l.position.set(x, 0.36, 0.3); g.add(l); });
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.3), dark); bench.position.set(0, 0.42, 0.72); g.add(bench);
+    [[-0.28, 0.6], [0.28, 0.6], [-0.28, 0.84], [0.28, 0.84]].forEach(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 0.06), dark); l.position.set(x, 0.2, z); g.add(l); });
+  } else if (id === 'bigaquarium') {
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 0.6), woodMat(2, 1)); stand.position.y = 0.25; g.add(stand);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.5), new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.28, roughness: 0.1, metalness: 0 })); glass.position.y = 0.9; g.add(glass);
+    const water = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.62, 0.44), new THREE.MeshStandardMaterial({ color: 0x4aa6d0, transparent: true, opacity: 0.55, roughness: 0.25, emissive: 0x184a63, emissiveIntensity: 0.5 })); water.position.y = 0.85; g.add(water);
+    const weed = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), clayMat(0x5fbf7a, false)); weed.position.set(-0.4, 0.68, 0); g.add(weed);
+    [[0xff8a5b, 0.0, 0.85, 0], [0x5b9bff, 0.3, 0.98, 2.1]].forEach(([c, x, y, ph]) => {
+      const fish = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 6), clayMat(c, false));
+      fish.rotation.z = Math.PI / 2; fish.position.set(x, y, 0); fish.userData.swim = true; fish.userData.swimW = 0.42; fish.userData.swimY = y; fish.userData.swimP = ph; g.add(fish);
+    });
+  }
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   setFogExempt(root, true);   // 실내 가구는 안개 밖(고스트는 재질을 clone 하므로 플래그가 따라간다)
   return root;
@@ -5640,7 +5717,10 @@ function decorMesh(id) {
 function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
   const ry = (rot == null ? decorRot : rot) % 4;
-  if (!silent && !free) {
+  const stored = gameState.house.stored || (gameState.house.stored = {});
+  const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
+  if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
+  if (!silent && !free && !fromStore) {
     const pay = def.pay || 'crop';                          // 화폐: 작물 or 물고기
     if ((gameState.inventory[pay] || 0) < def.cost) {
       ui.toast?.(pay === 'fish' ? `물고기가 부족해요 (필요 ${def.cost} 🐟)` : `작물이 부족해요 (필요 ${def.cost} 🥕)`);
@@ -5664,7 +5744,7 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
     if (free) trackEvent('move_decor', { item: id });    // [GA4] 옮겨 놓기
-    else { ui.act?.('decor'); trackEvent('place_decor', { item: id }); } // 튜토리얼: 가구 배치
+    else { ui.act?.('decor'); trackEvent('place_decor', { item: id, from: fromStore ? 'store' : 'buy' }); } // 튜토리얼: 가구 배치
     pickedDecor = null;                      // 들었던 가구는 새 자리에 놓였다(제자리 복귀 불필요)
     stopDecorPlacing(false);                 // 한 번 놓으면 배치 모드 종료(고스트 제거·손에 든 가구 → 원래 도구)
     ui.onDecorPlaced?.();                    // 액션버튼 아이콘 복원(가구 제거)
@@ -5720,8 +5800,12 @@ function removeDecorGhost() {
 function updateDecorGhost() {
   if (!decorGhost) return;
   if (!decorTarget.pinned) {
-    decorTarget.x = decorClampX(player.position.x + Math.sin(player.rotation.y) * 1.3);
-    decorTarget.z = decorClampZ(player.position.z + Math.cos(player.rotation.y) * 1.3);
+    // 발 앞 거리 — 긴 가구(침대·큰 식탁)를 돌려 놓을 때 상자가 캐릭터를 덮어 놓는 순간 튕기지 않게 발자국만큼 띄운다
+    const fdef = DECOR.find(d => d.id === placingDecor);
+    const hd = fdef?.foot ? fdef.foot[decorRot % 2 ? 0 : 1] / 2 * DECOR_SCALE : 0;
+    const reach = Math.max(1.3, hd + PLAYER_R + 0.15);
+    decorTarget.x = decorClampX(player.position.x + Math.sin(player.rotation.y) * reach);
+    decorTarget.z = decorClampZ(player.position.z + Math.cos(player.rotation.y) * reach);
   }
   decorGhost.position.set(decorTarget.x, 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);
   decorGhost.rotation.y = decorRot * Math.PI / 2;
@@ -5752,6 +5836,26 @@ function tryPickDecor(e) {
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObjects(decorMeshes, true)[0]; if (!hit) return false;
   let root = hit.object; while (root.parent && !decorMeshes.includes(root)) root = root.parent;
+  return pickDecor(root);
+}
+// 캐릭터에서 가장 가까운 가구 — 발자국 상자 가장자리까지의 거리(러그처럼 foot 없는 건 중심 거리)
+function nearestDecor(reach) {
+  let best = null;
+  for (const root of decorMeshes) {
+    const rec = root.userData.rec; if (!rec) continue;
+    const def = DECOR.find(d => d.id === rec.id);
+    const dx = player.position.x - root.position.x, dz = player.position.z - root.position.z;
+    let d;
+    if (def?.foot) {
+      const hw = def.foot[rec.rot % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[rec.rot % 2 ? 0 : 1] / 2 * DECOR_SCALE;
+      d = Math.hypot(Math.max(0, Math.abs(dx) - hw), Math.max(0, Math.abs(dz) - hd));
+    } else d = Math.hypot(dx, dz);
+    if (d < reach && (!best || d < best.d)) best = { root, d };
+  }
+  return best;
+}
+// 놓아둔 가구를 들어 올리는 공통 경로 — 탭(레이캐스트)과 근접 프롬프트+액션이 같이 쓴다
+function pickDecor(root) {
   const rec = root.userData.rec; if (!rec) return false;
   scene.remove(root); decorMeshes.splice(decorMeshes.indexOf(root), 1);
   if (root.userData.collider) removeSolid(root.userData.collider);   // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
@@ -5760,6 +5864,20 @@ function tryPickDecor(e) {
   startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot });
   Sound.blip(); trackEvent('pick_decor', { item: rec.id }); // [GA4] 옮기기 시작
   ui.onDecorPicked?.(DECOR.find(d => d.id === rec.id));
+  return true;
+}
+// 🧺 들고 있는 가구를 창고로 — 바닥에서 들어 올린 것만(방금 산 건 아직 값을 안 치렀으니 취소가 맞다)
+function storeDecor() {
+  if (!placingDecor || !pickedDecor) return false;
+  const id = placingDecor, def = DECOR.find(d => d.id === id);
+  const stored = gameState.house.stored || (gameState.house.stored = {});
+  stored[id] = (stored[id] || 0) + 1;
+  pickedDecor = null;                       // 제자리 복귀 없이 정리
+  stopDecorPlacing(false);
+  Sound.blip(); ui.toast?.(`${def.ico} ${def.name}을(를) 창고에 넣었어요`);
+  trackEvent('store_decor', { item: id }); // [GA4]
+  ui.onDecorPlaced?.();                     // 액션버튼 아이콘 복원
+  requestSave();
   return true;
 }
 
@@ -7298,8 +7416,23 @@ function updateDoorInteract() {
     if (lastZoneHint !== null) { lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }
+  nearDecorMesh = null; if (decorNearRing) decorNearRing.visible = false;
   if (indoor) {
     if (dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 문 바로 앞에서만
+    else if (!placingDecor) {
+      // 🛋️ 놓아둔 가구 옆에 서면 "옮기기" — NPC·문과 같은 근접 프롬프트+액션 문법(탭으로 드는 경로는 그대로)
+      const near = nearestDecor(0.9);
+      if (near) {
+        nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
+        nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
+        if (!decorNearRing) {
+          decorNearRing = new THREE.Mesh(new THREE.RingGeometry(0.55 * DECOR_SCALE, 0.72 * DECOR_SCALE, 28),
+            new THREE.MeshBasicMaterial({ color: 0xf2b45a, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+          decorNearRing.rotation.x = -Math.PI / 2; scene.add(decorNearRing);
+        }
+        decorNearRing.position.set(near.root.position.x, 0.22, near.root.position.z); decorNearRing.visible = true;
+      }
+    }
   } else if (atFarm) {
     if (dist2D({ x: FARM.x, z: FARM.z + FARM_HALF }, player.position) < 1.8) { nd = 'farmexit'; prompt = '🚪 나가기'; }
   } else if (atMine) {
@@ -8432,6 +8565,7 @@ function handleAction() {
   // 문/게이트(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
+  if (nearDoor === 'decor') { if (nearDecorMesh) pickDecor(nearDecorMesh); return; }   // 🛋️ 가구 옆에서 액션 = 들기
   if (nearDoor === 'farm') return enterFarm();
   if (nearDoor === 'farmexit') return exitFarm();
   if (nearDoor === 'mine') return enterMine();
@@ -9097,12 +9231,13 @@ function updatePops(dt) {
       obj.position.y = u.riseFrom + (u.riseTarget - u.riseFrom) * e;
       if (u.rise === 0) obj.position.y = u.riseTarget;
     }
-    if (u.swim) {                                            // 어항 속 물고기: 좌우로 살랑살랑
-      const t = clock.elapsedTime;
-      obj.position.x = Math.sin(t * 1.6) * 0.16;
+    if (u.swim) {                                            // 어항 속 물고기: 좌우로 살랑살랑(큰 어항은 폭·높이·위상을 따로 준다)
+      const t = clock.elapsedTime + (u.swimP || 0);
+      obj.position.x = Math.sin(t * 1.6) * (u.swimW ?? 0.16);
       obj.rotation.y = Math.cos(t * 1.6) > 0 ? 0 : Math.PI;  // 방향 전환
-      obj.position.y = 0.4 + Math.sin(t * 2.3) * 0.03;
+      obj.position.y = (u.swimY ?? 0.4) + Math.sin(t * 2.3) * 0.03;
     }
+    if (u.flicker) { obj.scale.y = 0.85 + Math.sin(clock.elapsedTime * 11 + obj.position.x) * 0.15; }   // 🔥 벽난로 불꽃
   });
 }
 function easeOutBack(t) { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
