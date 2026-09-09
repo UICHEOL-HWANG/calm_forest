@@ -774,6 +774,16 @@
   #market-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #market-modal.show { display: grid; }
   /* 📖 도감 모달 + 로그인 넛지 */
+  #worldmap { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #worldmap.show { display: grid; }
+  #worldmap .wm-card { width: min(520px, 94vw); }
+  #wm-canvas { display: block; width: min(100%, calc(100dvh - 260px)); aspect-ratio: 1 / 1; border-radius: 18px; margin: 10px auto 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
+  #worldmap .dm-actions { justify-content: center; margin-top: 18px; padding-bottom: 4px; }
+  @media (max-width: 560px) {
+    #worldmap .wm-card { padding: 14px 12px 12px; }
+    #worldmap .wm-card h2 { margin: 2px 0 6px; font-size: 17px; }
+  }
+  #minimap { cursor: pointer; }
   #dex-modal, #nudge-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #dex-modal.show, #nudge-modal.show { display: grid; }
   /* 목록만 스크롤시킨다 — 종마다 설명이 붙으면 내용이 2800px 을 넘어서,
@@ -1013,6 +1023,7 @@
     <button id="menu-btn" title="메뉴">☰</button>
     <div id="util-btns">
       <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터·이름 바꾸기</span></button>
+      <button id="map-btn"><span class="uico">🗺️</span><span class="ulbl">마을 지도</span></button>
       <button id="lb-btn"><span class="uico">🏆</span><span class="ulbl">리더보드</span></button>
       <button id="diary-btn" style="display:none;"><span class="uico">📝</span><span class="ulbl">오늘 일지</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
@@ -1268,6 +1279,17 @@
       <div id="market-rows"></div>
       <div id="market-forecast" class="market-hint"></div>
       <div class="dm-actions"><button id="market-close">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- 🗺️ 마을 지도 (미니맵 탭 · ☰ 메뉴) — 미니맵은 108px 라 지명을 다 넣을 수 없어서
+       "어디가 어딘지 모르겠다"(베타) 는 여기서 한글 지명으로 푼다 -->
+  <div id="worldmap">
+    <div class="tut-card wm-card">
+      <h2>🗺️ 마을 지도</h2>
+      <div class="market-hint">가고 싶은 곳을 찾아보세요 — <b>흐린 곳은 아직 잠겨 있어요</b></div>
+      <canvas id="wm-canvas"></canvas>
+      <div class="dm-actions"><button id="wm-close">닫기</button></div>
     </div>
   </div>
 
@@ -1660,6 +1682,105 @@
         if (Date.now() - t0 >= HINT_B_MIN && !near()) done();
       }, 400);
     }
+    // 🗺️ 마지막으로 받은 마을 지명(미니맵 아이콘 + 전체 지도가 공유).
+    //    지도는 마을 밖(실내·동굴 등)에서도 열 수 있어야 해서 게임에서 받은 값을 들고 있는다.
+    let lastPlaces = null;
+    let lastMapPos = null;   // 전체 지도의 "현재 위치" 마커 — 마을에 있을 때만 갱신
+
+    // ── 🗺️ 마을 지도 ────────────────────────────────────────────
+    //   미니맵과 같은 월드 좌표계를 쓰되, 큰 캔버스라 한글 지명을 붙일 수 있다.
+    //   섬 실루엣은 겹친 원들의 합집합 — 손으로 그린 듯한 동물의숲 톤을 코드로만 낸다.
+    // 지도가 담는 월드 범위(정사각). 미니맵의 R=30 을 그대로 쓰면 바다만 넓고 마을이 좁아져
+    //   중앙 시설(작업대·상점·시세판…)의 라벨이 서로 겹친다 — 지명이 있는 범위까지만 잘라 크게 본다.
+    const WM_BOX = { x0: -26, z0: -20, span: 52 };
+    const WM_LAND = [   // 섬 실루엣을 이루는 원들 [월드x, 월드z, 반경]
+      [0, 0, 17], [-10, 10, 12], [8, 16, 12], [-8, 20, 12], [5, 24, 11],
+      [-14, 0, 9], [14, -6, 10], [0, -14, 11], [16, 8, 10], [-13, -11, 9], [0, -21, 8],
+    ];
+    const WM_WATER = [[16, 9, 6], [0, -21.5, 7]];        // 🏞️ 마을 호수 · 🛶 나루터 물가
+    const WM_GROVE = [[-13, 24, 9], [2, 25, 7]];         // 🍄 채집 숲 · 🌟 반딧불이 계곡(짙은 수풀)
+
+    function drawWorldMap() {
+      const cv = $('wm-canvas'); if (!cv) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const S = cv.clientWidth || 400;
+      cv.width = Math.round(S * dpr); cv.height = Math.round(S * dpr);
+      const c = cv.getContext('2d');
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const px = (wx, wz) => [(wx - WM_BOX.x0) / WM_BOX.span * S, (wz - WM_BOX.z0) / WM_BOX.span * S];
+      const pr = (r) => r / WM_BOX.span * S;
+      const blob = (list, grow = 0) => { c.beginPath(); list.forEach(([x, z, r]) => { const [a, b] = px(x, z); c.moveTo(a + pr(r + grow), b); c.arc(a, b, pr(r + grow), 0, 7); }); c.fill(); };
+
+      c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, S, S);                   // 바다
+      c.fillStyle = '#f0e0b8'; blob(WM_LAND, 2.2);                       // 모래 해변
+      c.fillStyle = '#a8d88a'; blob(WM_LAND, 0);                         // 섬(잔디)
+      c.fillStyle = '#7cc06e'; blob(WM_GROVE, 0);                        // 짙은 수풀
+      c.fillStyle = '#7fc4e6'; blob(WM_WATER, 0);                        // 호수·물가
+
+      // 지명 — 아이콘 + 한글 라벨. 라벨끼리·아이콘과 겹치면 아래·위·좌우로 밀어 자리를 찾는다
+      //   (지명이 16곳이라 고정 오프셋으로는 어느 화면 크기에서든 겹치는 곳이 생긴다)
+      const placed = [];
+      // 아이콘 바로 아래가 기본. 겹치면 위 → 옆 → 대각 → 더 멀리 순으로 자리를 찾는다.
+      //   후보가 모자라면 결국 겹친 채로 놓이므로(마을 한복판은 시설이 촘촘하다) 넉넉히 둔다.
+      const OFFS = [
+        [0, 19], [0, -20], [0, 32], [0, -33], [42, 2], [-42, 2], [42, 18], [-42, 18],
+        [42, -16], [-42, -16], [34, 34], [-34, 34], [34, -34], [-34, -34],
+        [62, 2], [-62, 2], [0, 45], [0, -46],
+      ];
+      const hit = (r) => placed.some(q => Math.abs(q.x - r.x) * 2 < q.w + r.w && Math.abs(q.y - r.y) * 2 < q.h + r.h);
+      const list = (lastPlaces || []).slice().sort((a, b) => a.z - b.z);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+
+      // 현재 위치 — 마을에 있을 때만(실내·동굴에선 lastMapPos 가 null 이라 마커를 안 그린다).
+      //   지명보다 먼저 그려 자리를 잡아 둔다 — 안 그러면 옆 지명 라벨이 "지금 여기" 를 덮는다.
+      if (lastMapPos) {
+        const [a, b] = px(lastMapPos.x, lastMapPos.z);
+        c.beginPath(); c.arc(a, b, 9, 0, 7); c.fillStyle = 'rgba(47,122,68,0.22)'; c.fill();
+        c.beginPath(); c.arc(a, b, 4.5, 0, 7); c.fillStyle = '#fff'; c.fill();
+        c.lineWidth = 2.5; c.strokeStyle = '#2f7a44'; c.stroke();
+        c.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        const here = t('지금 여기');
+        c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.95)'; c.strokeText(here, a, b - 14);
+        c.fillStyle = '#2f7a44'; c.fillText(here, a, b - 14);
+        placed.push({ x: a, y: b, w: 22, h: 22 }, { x: a, y: b - 14, w: c.measureText(here).width + 8, h: 13 });
+      }
+
+      // 아이콘 자리를 먼저 잡아 둔다 — 안 그러면 옆 지명의 라벨이 아이콘 위에 얹힌다
+      list.forEach(p => { const [a, b] = px(p.x, p.z); placed.push({ x: a, y: b, w: 20, h: 20 }); });
+      list.forEach(p => {
+        const [a, b] = px(p.x, p.z);
+        c.globalAlpha = p.locked ? 0.4 : 1;
+        c.font = '17px sans-serif';
+        c.fillText(p.locked ? '🔒' : p.ico, a, b);
+        const label = t(p.name);
+        c.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        const w = c.measureText(label).width + 8, h = 14;
+        let box = null;
+        for (const [ox, oy] of OFFS) { const r = { x: a + ox, y: b + oy, w, h }; if (!hit(r)) { box = r; break; } }
+        if (!box) box = { x: a, y: b + 19, w, h };
+        // 가장자리 지명(🌟계곡·🍄숲·🛶나루터)이 캔버스 밖으로 잘리지 않게 안쪽으로 당긴다
+        box.x = Math.max(w / 2 + 2, Math.min(S - w / 2 - 2, box.x));
+        box.y = Math.max(h / 2 + 2, Math.min(S - h / 2 - 2, box.y));
+        placed.push(box);
+        c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.92)'; c.strokeText(label, box.x, box.y);   // 흰 테두리로 잔디 위에서도 읽히게
+        c.fillStyle = '#33513c'; c.fillText(label, box.x, box.y);
+      });
+      c.globalAlpha = 1;
+    }
+
+    function openWorldMap() {
+      if (!lastPlaces) return;                       // 아직 마을 데이터를 못 받음(부팅 직후)
+      $('worldmap').classList.add('show');
+      document.body.classList.remove('menu-open');
+      drawWorldMap();
+    }
+    function closeWorldMap() { $('worldmap').classList.remove('show'); }
+    $('wm-close').addEventListener('click', closeWorldMap);
+    $('worldmap').addEventListener('click', (e) => { if (e.target === $('worldmap')) closeWorldMap(); });
+    $('minimap').addEventListener('click', openWorldMap);
+    $('map-btn').addEventListener('click', openWorldMap);
+    window.addEventListener('resize', () => { if ($('worldmap').classList.contains('show')) drawWorldMap(); });
+
     const ui = {
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       showHintBanner({ ico, title, line, near, attention, onTap }) { hintBQ.push({ ico, title, line, near, attention, onTap }); if (!hintBShowing) nextHintBanner(); },
@@ -2066,6 +2187,17 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);       // 논리좌표(S) → 물리픽셀 스케일
         ctx.clearRect(0, 0, S, S);
         ctx.fillStyle = 'rgba(150,200,150,0.4)'; ctx.fillRect(0, 0, S, S);
+        // 🗺️ "눌러서 크게 보기" 표식 — 미니맵이 탭 가능하다는 걸 알리는 유일한 신호
+        //    (모바일 HUD 는 3단 레이아웃이라 바깥에 안내 줄을 더 붙일 자리가 없다)
+        const drawExpandBadge = () => {
+          const r = S >= 100 ? 8 : 7, cx2 = S - r - 3, cy2 = S - r - 3;
+          ctx.fillStyle = 'rgba(255,255,255,0.88)';
+          ctx.beginPath(); ctx.arc(cx2, cy2, r, 0, 7); ctx.fill();
+          ctx.strokeStyle = 'rgba(80,110,90,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+          ctx.fillStyle = '#3a5a44'; ctx.font = 'bold ' + (r + 3) + 'px sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('⤢', cx2, cy2 + 0.5);
+        };
         // 플레이어 마커(+방향) — 공통. 스크린 좌표 pxx,pyy에 그림
         const drawPlayer = (pxx, pyy) => {
           const hx = Math.sin(d.yaw || 0), hz = Math.cos(d.yaw || 0);
@@ -2075,6 +2207,7 @@
           ctx.beginPath(); ctx.arc(pxx, pyy, 4, 0, 7); ctx.fill(); ctx.stroke();
         };
         if (d.place !== 'village') {   // 실내/텃밭/동굴 — 공간 경계 + 랜드마크 미니맵
+          lastMapPos = null;            // 🗺️ 마을 지도의 "지금 여기" 는 마을에 있을 때만
           const half = d.half || 8, cx = d.cx || 0, cz = d.cz || 0;
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
@@ -2100,6 +2233,7 @@
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
           drawPlayer(pxx, pyy);
+          drawExpandBadge();
           return;
         }
         const R = 30;                  // 월드 반경 → 미니맵 (남쪽 🌟계곡·🍄숲까지 담기게 확장)
@@ -2108,22 +2242,25 @@
         const [lx, lz] = px(16, 9);
         ctx.fillStyle = 'rgba(120,180,220,0.85)';
         ctx.beginPath(); ctx.arc(lx, lz, 6 / (R * 2) * S, 0, 7); ctx.fill();
-        // 지형 점
-        const dot = (wx, wz, c, r = 3) => { const [a, b] = px(wx, wz); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a, b, r, 0, 7); ctx.fill(); };
-        dot(-8, -8, '#b58b5a', 4);   // 집
-        dot(4, -5, '#ff7b6b');       // 작업대
-        dot(9, 0, '#ff9e5e');        // 상점(이동)
-        dot(0, 7, '#6fbf73');        // 텃밭 게이트
-        dot(-14, 3, '#6a6a6a', 3.5); // 채굴 동굴 입구
-        dot(-6, 13, '#e8c08a', 3);   // 🐔 닭장
-        dot(2, 25, '#ffe98a', 4);    // 🌟 반딧불이 계곡(남쪽 숲)
-        dot(-13, 24, '#c08a5a', 4);  // 🍄 채집 숲(남서쪽)
-        dot(4, 14, '#e8907a', 3.5);  // ☕ 카페(마을 남쪽)
-        [[5, 4], [-5, 6], [9, -3], [9, 14], [-3, -3], [0, -8]].forEach(([x, z]) => dot(x, z, '#b79cff', 2.5)); // 주민(올빼미·요리사 포함)
+        // 🗺️ 지명 아이콘 — 색점은 "무슨 색이 뭐였지?"가 되어 못 읽혔다(베타). 이모지로 바꿔 바로 알아보게.
+        //    작은 캔버스(모바일 82px)엔 다 넣으면 겹치므로 pri 1(갈 수 있는 곳)만 그리고,
+        //    나머지 지명은 탭해서 여는 전체 지도(#worldmap)가 맡는다.
+        lastPlaces = d.places || lastPlaces;
+        lastMapPos = { x: d.x, z: d.z };
+        const size = S >= 100 ? 11 : 9;
+        ctx.font = size + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        (lastPlaces || []).forEach(p => {
+          if (p.pri !== 1) return;
+          const [a, b] = px(p.x, p.z);
+          ctx.globalAlpha = p.locked ? 0.32 : 1;
+          ctx.fillText(p.ico, a, b);
+        });
+        ctx.globalAlpha = 1;
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
         pxx = Math.max(4, Math.min(S - 4, pxx)); pyy = Math.max(4, Math.min(S - 4, pyy));
         drawPlayer(pxx, pyy);
+        drawExpandBadge();
       },
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
       setIndoor(on) {
