@@ -502,7 +502,7 @@ const _v = new THREE.Vector3(); // 임시 벡터
 //               house(집완성) collect_wood/collect_crop(보유량 달성)
 const NPCS = [
   {
-    id: 'farmer', name: '농부 삼촌', emoji: '🧑‍🌾', color: 0x9fe0a0, hat: 0xe9c47a, pos: [5, 0, 4],
+    id: 'farmer', name: '농부 삼촌', emoji: '🧑‍🌾', color: 0x5fbf62, hat: 0xf0cd6a, pos: [5, 0, 4], look: 'farmer',   // 🟢 초록 + 넓은 밀짚모자
     quests: [
       { type: 'chop',    target: 3, title: '장작 모으기', desc: '나무 3번 베기',   reward: { seed: 3, coins: 5 },  line: '겨울 대비 장작이 필요해. 나무 3번만 베어줄래?' },
       { type: 'harvest', target: 2, title: '수확의 기쁨', desc: '작물 2개 수확',   reward: { wood: 6, coins: 8 },  line: '밭에서 작물 두 개만 거둬다 주면 목재로 보답하지!' },
@@ -511,7 +511,7 @@ const NPCS = [
     ],
   },
   {
-    id: 'builder', name: '목수 아저씨', emoji: '👷', color: 0xd6b48a, hat: 0xc0894f, pos: [-5, 0, 6],
+    id: 'builder', name: '목수 아저씨', emoji: '👷', color: 0xe0663c, hat: 0xffd23f, pos: [-5, 0, 6], look: 'builder',  // 🟠 테라코타 + 노란 안전모·각목
     quests: [
       { type: 'collect_wood', target: 10, title: '목재 납품', desc: '목재 10개 모으기', reward: { crop: 3, coins: 10 },          line: '집 지으려면 목재 10개가 필요해. 모아올 수 있겠어?' },
       { type: 'house',        target: 1,  title: '보금자리',  desc: '집 완성하기',      reward: { seed: 6, crop: 3, coins: 30 }, line: '이제 근사한 집을 완성해보자고!' },
@@ -520,7 +520,7 @@ const NPCS = [
   },
   {
     // 좌판 바로 뒤(북쪽) 상주 — 좌판 장애물 반경 1.6 + NPC 여유 0.35 = 1.95 밖이어야 npcBlocked 에 안 걸린다
-    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0x9c7b58, hat: 0x8a5cd0, pos: [10.5, 0, -3.5], roam: 0.6, look: 'peddler',   // 보따리 장수 외형(hat 색은 허리띠)
+    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0x8a5cd0, hat: 0xf0c04a, pos: [10.5, 0, -3.5], roam: 0.6, look: 'peddler',   // 🟣 보라 보따리 장수(hat 색은 허리띠)
     quests: [
       { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
@@ -528,7 +528,7 @@ const NPCS = [
     ],
   },
   {
-    id: 'angler', name: '낚시꾼 할아버지', emoji: '🎣', color: 0x9fc0e0, hat: 0x5a7a9a, pos: [9, 0, 14],
+    id: 'angler', name: '낚시꾼 할아버지', emoji: '🎣', color: 0x3f8fd6, hat: 0x27506f, pos: [9, 0, 14], look: 'angler',   // 🔵 파랑 + 버킷햇·낚싯대·흰 수염
     quests: [
       { type: 'fish',      target: 2, title: '첫 낚시',   desc: '물고기 2마리 낚기', reward: { crop: 3, coins: 8 }, line: '호수에서 🎣낚싯대로 물고기 두 마리만 낚아보게!' },
       { type: 'fish',      target: 5, title: '월척 도전', desc: '물고기 5마리 낚기', reward: { seed: 5, coins: 12 }, line: '이번엔 다섯 마리! 물면 바로 낚아채야 하네.' },
@@ -537,7 +537,7 @@ const NPCS = [
     ],
   },
   {
-    id: 'chef', name: '요리사 판다', emoji: '🐼', color: 0xe8e4dc, hat: 0xf5f5f5, pos: [0, 0, -8],
+    id: 'chef', name: '요리사 판다', emoji: '🐼', color: 0xf7f4ee, hat: 0xffffff, pos: [0, 0, -8], look: 'chef',   // ⚫⚪ 판다(검은 귀·눈 패치) + 요리사 토크
     quests: [
       { type: 'collect_crop', target: 3, title: '신선한 재료', desc: '작물 3개 보유',  reward: { coins: 8 },            line: '요리는 재료가 절반! 신선한 작물 세 개를 모아와 줘.' },
       { type: 'cook',         target: 2, title: '오늘의 요리', desc: '요리 2번 하기',  reward: { coins: 12 },           line: '자유주방에서 요리 두 번! 타이밍을 잘 맞추면 버프도 오래가.' },
@@ -546,7 +546,7 @@ const NPCS = [
   },
   {
     // 📋 데일리 의뢰 담당 — quests 는 매일 refreshDailyQuests() 가 날짜 시드로 채움(전원 동일)
-    id: 'courier', name: '의뢰 올빼미', emoji: '🦉', color: 0xb8a98e, hat: 0x7a5c36, pos: [-3, 0, -3],
+    id: 'courier', name: '의뢰 올빼미', emoji: '🦉', color: 0xe0a52e, hat: 0x8a5c28, skin: 0xfdfaf3, pos: [-3, 0, -3], look: 'owl',   // 🦉 원숭이올빼미(크림 얼굴 + 황금 등·날개)
     daily: true, doneLine: '오늘 의뢰는 전부 끝! 내일 새 의뢰를 가져올게요 🦉',
     quests: [],
   },
@@ -597,10 +597,14 @@ function refreshDailyQuests() {
   if (st.date !== today) {   // 새 날 → 진행 상태 리셋(어제 의뢰는 소멸)
     st.date = today; st.idx = 0; st.progress = 0; st.given = false; st.allDone = false; st.acceptedAt = null;
     st.quests = null; st.qsrc = null;   // 어제 의뢰도 함께 버린다(AI 표시도 리셋)
+    st.special = null;                  // ✨어제 특별 의뢰도 소멸(하루 1건)
   }
   def.doneLine = `오늘 의뢰는 전부 끝! ${forecastLine()}${forecastDexNudge()} 내일 새 의뢰 들고 올게요 🦉`; // 예보로 재방문 유도(+날씨 도감 훅)
 
-  if (validDailyQuests(st.quests)) { def.quests = st.quests; return; }   // 오늘 의뢰는 이미 확정됨
+  //   ✨특별 의뢰는 st.special 에 따로 보관한다 — 일일 3개 배열에 섞어 저장하면
+  //   validDailyQuests 의 "3개" 검증에 걸려 다음 접속 때 의뢰가 통째로 다시 뽑히고 진행도가 어긋난다.
+  const withSpecial = (three) => (st.special ? [...three, st.special] : three);
+  if (validDailyQuests(st.quests)) { def.quests = withSpecial(st.quests); return; }   // 오늘 의뢰는 이미 확정됨
 
   const pool = [...DAILY_POOL];
   let h = dateHash('daily');
@@ -610,6 +614,7 @@ function refreshDailyQuests() {
     return { ...q, reward: { coins: 10 + i * 5 }, lucky: true, line: `[오늘의 의뢰 ${i + 1}/3] ${q.desc}! 완료하면 🎁럭키박스도 준다구.` };
   });
   st.quests = def.quests;    // 세이브에 고정 — 오늘은 이 3개로 간다
+  def.quests = withSpecial(def.quests);
 }
 
 // ── 🦉 AI 의뢰 — 서버(/api/daily-quests)가 만든 오늘의 의뢰로 조용히 갈아끼운다 ──
@@ -644,7 +649,8 @@ async function upgradeDailyQuestsAI() {
   }));
   if (!validDailyQuests(built) || built.some(q => !q.title || !q.line)) return;
   if (st.given || st.idx > 0 || st.progress > 0) return;           // 받아오는 사이에 시작했을 수 있다
-  st.quests = built; def.quests = built; st.qsrc = 'ai';           // 세이브에 고정
+  st.quests = built; st.qsrc = 'ai';                               // 세이브에 고정
+  def.quests = st.special ? [...built, st.special] : built;        // ✨특별 의뢰가 붙어 있으면 유지(지금은 idx>0 에서 빠져나가 도달 못 하지만, 조건이 바뀌어도 안 사라지게)
   const owl = npcObjs.find(o => o.def.id === def.id);
   if (owl) updateNPCGlyph(owl);
   refreshQuestPanel();
@@ -1588,7 +1594,14 @@ export async function enterGame() {
   const _hq = parseInt(_wq.get('house') || '', 10);
   if (_hq >= 1 && _hq <= MAX_HOUSE_STAGE) for (let s = gameState.houseStage + 1; s <= _hq; s++) buildHouseStage(s, true);
   if (_wq.get('coop') === '1' && !gameState.coop.built) buildCoop(true);   // 테스트: ?coop=1 — 닭장 미리보기
+  if (_wq.get('farm') === '1') setTimeout(() => enterFarm(), 60); // 테스트: ?farm=1 — 개인 텃밭 바로 입장(?give=seed:9 와 조합)
   refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
+  // 테스트: ?owl=1 — 오늘 일일 의뢰 3건을 끝낸 상태로 만들어 ✨특별 의뢰 배달을 바로 본다
+  //   (3건을 실제로 깨려면 한참 걸려 검수 때마다 막힌다 — ?coop=1·?sea=1 과 같은 개발용 파라미터)
+  if (_wq.get('owl') === '1') {
+    const _od = NPCS.find(n => n.daily);
+    if (_od) { const _os = npcState(_od.id); _os.idx = 3; _os.given = false; _os.progress = 0; _os.allDone = true; }
+  }
   upgradeDailyQuestsAI();              // 🦉 AI 의뢰는 백그라운드로 — 도착하면 조용히 교체(await 하지 않는다)
   refreshInventoryUI();
   ui.setTool?.(currentTool, TOOLS, toolPage);
@@ -3305,10 +3318,25 @@ function makeCafeGuest(o) {
   body.position.y = 0.72; body.castShadow = true; g.add(body);
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.33, 1), clayMat(0xffe0c0, false));
   head.position.y = 1.24; head.castShadow = true; g.add(head);
-  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.055, 12), clayMat(o.hat));
-  brim.position.y = 1.46; g.add(brim);
-  const top = new THREE.Mesh(new THREE.SphereGeometry(0.23, 10, 8), clayMat(o.hat));
-  top.position.y = 1.56; g.add(top);
+  // 손님은 마을 주민 그 사람이다 — 마을에선 판다·올빼미인데 카페에선 공용 챙모자 블롭으로 나오면
+  //   "같은 사람" 이라는 게 끊긴다. 주민 실루엣을 그대로 얹되 손님 몸 비율(0.868배·+0.242)로 맞춘다.
+  const def = NPCS.find(n => n.id === o.id);
+  if (def) {
+    const look = new THREE.Group();
+    buildNPCLook(look, def);
+    look.scale.setScalar(0.868); look.position.y = 0.242;
+    g.add(look);
+    const tag = makeNameTag(def);                       // 🏷️ 주문판의 이름 ↔ 자리 매칭(서빙은 사람을 맞혀야 한다)
+    tag.position.y = new THREE.Box3().setFromObject(g).max.y + 0.28;   // 모자 위 — 주민과 같은 규칙
+    tag.visible = true; tag.material.opacity = 1;
+    g.add(tag);
+    g.userData.tagY = tag.position.y;
+  } else {
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.055, 12), clayMat(o.hat));
+    brim.position.y = 1.46; g.add(brim);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.23, 10, 8), clayMat(o.hat));
+    top.position.y = 1.56; g.add(top);
+  }
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
   [-0.11, 0.11].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeMat); e.position.set(ex, 1.27, 0.28); g.add(e); });
   return g;
@@ -3325,7 +3353,7 @@ function cafeGuestSprite(o) {
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(1.0, 1.0, 1.0); sp.position.y = 2.3;
+  sp.scale.set(1.0, 1.0, 1.0); sp.position.y = 2.62;   // 🏷️ 이름표(1.60~2.12) 위 — 주문 말풍선이 이름을 덮지 않게
   return sp;
 }
 
@@ -3344,7 +3372,9 @@ function refreshCafeGuests() {
     group.position.set(sx, 0.16, sz + 1.5);               // 테이블 남쪽 의자에 앉음(의자 높이만큼 올림)
     group.rotation.y = Math.PI;                           // 테이블(북쪽)을 바라봄
     const sprite = cafeGuestSprite(o);
+    sprite.position.y = (group.userData.tagY ?? 1.86) + 0.76;   // 이름표 바로 위(손님마다 키가 다르다)
     group.add(sprite);
+    group.userData.spriteY0 = sprite.position.y;
     cafeInGroup.add(group); setFogExempt(group, true);   // 손님도 홀과 같이 안개 밖
     // 🚧 손님도 통과 못 함(홀 좌표 → 월드 좌표). 서빙 사거리 2.4 엔 영향 없음
     const collider = solidCircle(CAFE.x + sx, CAFE.z + sz + 1.5, NPC_R);
@@ -3357,7 +3387,7 @@ function updateCafeGuests(dt, t) {
   if (!atCafe) return;
   for (const g of cafeGuestObjs) {
     g.group.position.y = 0.16 + Math.sin(t * 2 + g.phase) * 0.03;
-    g.sprite.position.y = 2.3 + Math.sin(t * 2.6 + g.phase) * 0.08;
+    g.sprite.position.y = (g.group.userData.spriteY0 ?? 2.62) + Math.sin(t * 2.6 + g.phase) * 0.08;
   }
 }
 
@@ -7613,6 +7643,36 @@ function initInput() {
 // 서브 공간(실내/텃밭/동굴) 미니맵에 찍을 랜드마크(월드좌표) 목록
 const PLOT_MINI = { empty: '#7a5230', growing: '#8fd18a', mature: '#ff8a5c', wilted: '#8a8378' };
 const ORE_MINI = { stone: '#c3c3b8', coal: '#5f5f5f', gem: '#5ad0e0' };
+// 🗺️ 마을 지명 — 미니맵 아이콘과 전체 지도 라벨이 함께 쓰는 단일 출처.
+//   "지도를 봐도 어디가 어딘지 모르겠다"(베타) → 색점 대신 이모지 + 한글 지명을 붙인다.
+//   pri 1 = 미니맵에도 그림(작은 캔버스에 다 넣으면 겹쳐서 못 읽는다) · pri 2 = 전체 지도에만.
+const VILLAGE_PLACES = [
+  { ico: '🏠', name: '나의 집',       x: HOUSE_POS.x,   z: HOUSE_POS.z,   pri: 1 },
+  { ico: '🔧', name: '작업대',        x: BENCH.x,       z: BENCH.z,       pri: 1 },
+  { ico: '🍳', name: '자유주방',      x: KITCHEN.x,     z: KITCHEN.z,     pri: 2 },
+  { ico: '🏪', name: '상점',          x: SHOP.x,        z: SHOP.z,        pri: 1 },
+  { ico: '📊', name: '시세판',        x: MARKET.x,      z: MARKET.z,      pri: 2 },
+  { ico: '🏆', name: '리더보드',      x: RANK.x,        z: RANK.z,        pri: 2 },
+  { ico: '🏞️', name: '호수',          x: LAKE.x,        z: LAKE.z,        pri: 2 },
+  { ico: '🌾', name: '텃밭',          x: FARM_GATE.x,   z: FARM_GATE.z,   pri: 1 },
+  { ico: '⛏️', name: '채굴 동굴',     x: MINE_GATE.x,   z: MINE_GATE.z,   pri: 1 },
+  { ico: '🐔', name: '닭장',          x: COOP.x,        z: COOP.z,        pri: 2, need: 'coop' },
+  { ico: '☕', name: '카페',          x: CAFE_GATE.x,   z: CAFE_GATE.z,   pri: 1 },
+  { ico: '🌟', name: '반딧불이 계곡', x: GLADE.x,       z: GLADE.z,       pri: 1 },
+  { ico: '🍄', name: '채집 숲',       x: FOREST.x,      z: FOREST.z,      pri: 1 },
+  { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
+  { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
+  { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
+];
+
+// 지금 이 세이브 기준의 지명 목록 — 아직 못 가는 곳은 locked 로 내려보내 지도에서 흐리게 그린다.
+function villagePlaces() {
+  return VILLAGE_PLACES.map(p => ({
+    ico: p.ico, name: p.name, x: p.x, z: p.z, pri: p.pri,
+    locked: p.need === 'coop' ? !gameState.coop.built : p.map ? mapLocked(p.map) : false,
+  }));
+}
+
 function minimapMarks(place) {
   const marks = [];
   if (place === 'farm') {
@@ -7666,6 +7726,12 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   // ?dbg=1 — 루프 상태 스냅샷(로컬 조사용): 모드·위치·눌린 키·현재 공간
+  // ?dbg=1 — 주민별 키·이름표 높이(이름표가 모자에 가리는지 눈금으로 확인)
+  if (_wq.has('dbg')) window.__npcDbg = npcObjs.map(o => ({
+    id: o.def.id, top: +o.topY.toFixed(3), tag: +o.tag.position.y.toFixed(3),
+    gap: +(o.tag.position.y - 0.26 - o.topY).toFixed(3),   // 0 보다 커야 이름표 아래가 모자 위에 뜬다
+    x: +o.group.position.x.toFixed(2), z: +o.group.position.z.toFixed(2), y: +o.group.position.y.toFixed(2),
+  }));
   if (_wq.has('dbg')) window.__dbg = { mode, atMist, atRiver, px: +player.position.x.toFixed(2), pz: +player.position.z.toFixed(2), keys: keys.list(), nearKitchen, nearBench, nearNPC: !!nearNPC, nearDoor, wantAction };
 
   if (mode === 'play') {
@@ -7684,6 +7750,7 @@ function animate() {
       lastMini = t;
       const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
+      if (place === 'village') md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
         md.cx = C.x; md.cz = C.z;
@@ -7722,6 +7789,7 @@ function animate() {
   updateFloatTexts(dt);
   updateNPC(dt, t);
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
+  updateOwlVisit();          // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
@@ -9354,6 +9422,141 @@ function npcState(id) {
   return gameState.npcs[id];
 }
 
+// 🏷️ 주민 이름표 — 몸 색과 같은 배지라 "이 색 = 이 사람" 이 한 번에 붙는다.
+const NAMETAG_NEAR = 11;   // 이 거리 안이면 완전히 보임
+const NAMETAG_FAR = 18;    // 이 거리 밖이면 감춤(그 사이는 페이드)
+// 이름표 색 — 이 게임의 캔버스 UI 규칙을 그대로 따른다(상점 말풍선·집 간판과 같은 규칙):
+//   UnrealBloomPass 임계값 0.85 를 넘는 색은 후광이 번져 글자를 삼킨다.
+//   그래서 **밝은 바탕(휘도 0.62~0.78) + 같은 색의 진한 글자·테두리** 로 간다.
+//   흰 글자·흰 테두리(휘도 1.0)는 바탕이 어두워도 그 자체가 블룸에 걸려 번진다 — 쓰지 말 것.
+const BADGE_LUM_MIN = 0.62, BADGE_LUM_MAX = 0.78;
+function shadeToLum(hex, want) {
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+  const k = lum > 1e-3 ? want / lum : 1;
+  const cl = (v) => Math.round(Math.min(255, Math.max(0, v * k)));
+  return `rgb(${cl(r)},${cl(g)},${cl(b)})`;
+}
+function badgeColor(hex) {
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+  return shadeToLum(hex, Math.min(BADGE_LUM_MAX, Math.max(BADGE_LUM_MIN, lum)));
+}
+
+function makeNameTag(def) {
+  const W = 320, H = 88;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  const label = `${def.emoji} ${t(def.name)}`;
+  c.font = 'bold 34px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+  const w = Math.min(W - 12, c.measureText(label).width + 46);
+  const x = (W - w) / 2;
+  c.fillStyle = badgeColor(def.color);
+  roundRect(c, x, 14, w, 56, 28); c.fill();
+  c.strokeStyle = shadeToLum(def.color, 0.34); c.lineWidth = 4; c.stroke();   // 같은 색의 진한 테두리
+  c.fillStyle = shadeToLum(def.color, 0.14);                                  // 낮춘 바탕에 맞춰 글자도 진하게
+  c.font = 'bold 34px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(label, W / 2, 43);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
+  sp.scale.set(1.9, 0.52, 1); sp.visible = false;
+  return sp;
+}
+
+// 주민 실루엣 — 색만 다른 같은 블롭이라 "누가 누군지 모르겠다"(베타)는 피드백을 받아,
+//   def.look 별로 모자·소품을 다르게 얹는다. 몸/머리 좌표는 공용과 같아
+//   bob·말풍선·이름표·충돌 반경이 그대로 맞는다(여기서 바꾸는 건 장식뿐).
+function buildNPCLook(g, def) {
+  const add = (m, x, y, z) => { m.position.set(x, y, z); g.add(m); return m; };
+  // 몸통(body)은 숨쉬느라 y 가 ±0.04 흔들린다. 몸통 표면에 얹히는 장식을 고정해 두면
+  //   몸통이 장식을 뚫었다 말았다 하며 깜빡인다(보고: "올빼미 앞 털이 튀어나왔다 보였다 함").
+  //   여기 담아 반환하면 buildNPCs 가 o.bobParts 로 들고, updateNPC 가 같은 폭으로 함께 움직인다.
+  const bob = [];
+  const bobbing = (m) => { m.userData.y0 = m.position.y; bob.push(m); return m; };
+  if (def.look === 'peddler') {
+    // 🧙 방랑 상인 = 보따리 장수 — 삿갓 · 등의 큰 봇짐 · 지팡이 · 수염
+    add(new THREE.Mesh(new THREE.ConeGeometry(0.66, 0.34, 14), clayMat(0xd9b46a)), 0, 1.52, 0).castShadow = true;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), clayMat(0xb8923f)), 0, 1.7, 0);
+    const sash = bobbing(add(new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.06, 8, 18), clayMat(def.hat, false)), 0, 0.48, 0));  // 허리띠
+    sash.rotation.x = Math.PI / 2;
+    const band = add(new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 18), clayMat(def.color, false)), 0, 1.5, 0);   // 삿갓 띠 — 위에서도 고유색이 보이게
+    band.rotation.x = Math.PI / 2;
+    const pack = bobbing(add(new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 10), clayMat(def.color, false)), 0, 0.95, -0.46)); // 보라 봇짐
+    pack.scale.set(1, 0.85, 0.8); pack.castShadow = true;
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.14), clayMat(0xc9b070, false)), 0, 1.28, -0.34);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.55, 6), clayMat(0x6b4a34)), 0.5, 0.78, 0.12).rotation.z = -0.12; // 지팡이
+    const beard = add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), clayMat(0xdcd3c8, false)), 0, 0.98, 0.26);
+    beard.scale.set(1, 0.7, 0.6);
+    return { bob };
+  } else if (def.look === 'farmer') {
+    // 🧑‍🌾 넓은 밀짚모자(공용 챙보다 크고 얇다) + 정수리 매듭 + 입에 문 풀잎
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.74, 0.74, 0.05, 16), clayMat(def.hat)), 0, 1.42, 0).castShadow = true;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), clayMat(def.hat)), 0, 1.45, 0).scale.set(1, 0.62, 1);
+    add(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.035, 6, 14), clayMat(0x8e6b3a, false)), 0, 1.46, 0).rotation.x = Math.PI / 2; // 밀짚 끈
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.34, 5), clayMat(0x86c05f)), 0.09, 1.03, 0.3).rotation.set(0.5, 0, -0.45); // 물고 있는 풀잎
+  } else if (def.look === 'builder') {
+    // 👷 노란 안전모(반구 + 앞챙) + 어깨에 멘 각목
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), clayMat(def.hat, false)), 0, 1.32, 0).castShadow = true;
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.05, 0.22), clayMat(def.hat, false)), 0, 1.34, 0.34);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.5), clayMat(0xd9a520, false)), 0, 1.55, 0);   // 안전모 능선
+    const plank = add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 1.5), clayMat(0xc79a63, false)), -0.34, 1.02, -0.05); // 각목
+    plank.rotation.set(0, 0.35, 0.22); plank.castShadow = true;
+  } else if (def.look === 'angler') {
+    // 🎣 버킷햇(챙이 아래로) + 등 뒤로 넘긴 낚싯대 + 흰 수염
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.62, 0.1, 14), clayMat(def.hat, false)), 0, 1.38, 0).castShadow = true;
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.26, 14), clayMat(def.hat, false)), 0, 1.53, 0);
+    const rod = add(new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.035, 1.8, 6), clayMat(0x7a5334)), 0.46, 1.0, -0.2); // 낚싯대
+    rod.rotation.set(0.42, 0, -0.3);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), clayMat(0xff8f6b, false)), 0.92, 1.72, -0.55);   // 찌
+    const beard = add(new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), clayMat(0xf2f0ea, false)), 0, 0.99, 0.24);
+    beard.scale.set(1, 0.75, 0.6);
+  } else if (def.look === 'chef') {
+    // 🐼 판다 — 검은 귀 · 검은 눈 패치 · 흰 요리사 토크
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.34, 14), clayMat(def.hat, false)), 0, 1.5, 0).castShadow = true;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.33, 12, 10), clayMat(def.hat, false)), 0, 1.72, 0).scale.set(1.05, 0.8, 1.05); // 부푼 윗부분
+    [-0.3, 0.3].forEach(ex => add(new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), clayMat(0x2f2b28, false)), ex, 1.36, -0.02));  // 귀
+    [-0.13, 0.13].forEach(ex => {
+      const patch = add(new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), clayMat(0x2f2b28, false)), ex, 1.18, 0.26);   // 눈 패치
+      patch.scale.set(1, 1.15, 0.55);
+    });
+  } else if (def.look === 'owl') {
+    // 🦉 원숭이올빼미(barn owl) — 귀깃 없는 종. 머리는 def.skin 으로 이미 크림색이라
+    //    얼굴판은 그 위에 "확실히 내민" 하트만 얹으면 된다(전엔 머리 구 안에 파묻혀 조각만 보였다).
+    const CREAM = 0xfdfaf3, RIM = 0xc9973f, SPECK = 0x8a6a34;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.37, 14, 10), clayMat(def.color, false)), 0, 1.3, -0.08).scale.set(1.02, 0.8, 1);  // 황금 정수리(머리를 확실히 덮게 크게)
+    const breast = bobbing(add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10), clayMat(CREAM, false)), 0, 0.62, 0.19));       // 흰 가슴
+    breast.scale.set(0.9, 1.0, 0.66); breast.castShadow = true;
+    // 하트형 얼굴판 — 위쪽 두 볼록 + 아래로 뾰족한 턱. 황금 테를 뒤에 한 겹 깔아 윤곽을 낸다.
+    const heart = (r, ch, col, z, y2) => {
+      [-0.145, 0.145].forEach(ex => add(new THREE.Mesh(new THREE.SphereGeometry(r, 12, 9), clayMat(col, false)), ex, 1.25, z).scale.set(1, 1.04, 0.66));
+      const chin = add(new THREE.Mesh(new THREE.ConeGeometry(ch, 0.38, 14), clayMat(col, false)), 0, y2, z);
+      chin.rotation.x = Math.PI; chin.scale.set(1, 1, 0.66);   // 원뿔을 뒤집어 아래로 뾰족하게
+    };
+    heart(0.215, 0.275, RIM, 0.30, 0.985);    // 황금 테(살짝 크게, 뒤)
+    heart(0.185, 0.24, CREAM, 0.35, 1.0);     // 크림 얼굴판(앞)
+    [-0.115, 0.115].forEach(ex => add(new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), clayMat(0x241f1c, false)), ex, 1.26, 0.47).scale.set(1, 1, 0.7)); // 큰 검은 눈
+    add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.17, 7), clayMat(0xf0d9a8, false)), 0, 1.12, 0.5).rotation.x = 2.55;   // 아래로 향한 작은 부리
+    const wings = [-1, 1].map(sx => {
+      const pivot = new THREE.Group(); pivot.position.set(sx * 0.3, 0.88, -0.03); g.add(pivot);   // 어깨 축 — 여기서 회전해야 퍼덕여 보인다
+      bobbing(pivot);
+      const wing = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 9), clayMat(def.color, false));
+      wing.scale.set(0.26, 1.05, 0.66); wing.position.set(sx * 0.16, -0.2, 0); wing.castShadow = true;
+      pivot.add(wing);
+      [0.1, -0.1, -0.3].forEach((wy, i) => {   // 등의 얼룩(원숭이올빼미 특징)
+        const sp = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), clayMat(SPECK, false));
+        sp.position.set(sx * 0.24, wy, 0.02 - i * 0.02); pivot.add(sp);
+      });
+      return pivot;
+    });
+    return { eyes: true, wings, bob };
+  } else {
+    const brim = add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12), clayMat(def.hat)), 0, 1.4, 0);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), clayMat(def.hat)), 0, 1.5, 0);
+  }
+}
+
 // 모든 주민 생성 (데이터 기반)
 function buildNPCs() {
   refreshDailyQuests();   // 부팅 시점에도 데일리 의뢰 채움(빈 quests 로 글리프 접근 방지)
@@ -9362,42 +9565,41 @@ function buildNPCs() {
     g.position.set(def.pos[0], 0, def.pos[2]);
     const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), clayMat(def.color, false));
     body.position.y = 0.55; body.castShadow = true; body.scale.set(1, 1.05, 1); g.add(body);
-    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), clayMat(0xffe0c0, false));
+    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), clayMat(def.skin || 0xffe0c0, false));
     head.position.y = 1.15; head.castShadow = true; g.add(head);
-    if (def.look === 'peddler') {
-      // 🧙 방랑 상인 = 보따리 장수 — 주민 공용 몸을 색만 바꿔 쓰던 것(베타: "기존 NPC 재탕")을 실루엣부터 다르게.
-      //    삿갓(원뿔) · 등의 큰 봇짐 · 지팡이 · 수염. 몸/머리 좌표는 공용과 같아 bob·말풍선·충돌이 그대로 맞는다.
-      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.66, 0.34, 14), clayMat(0xd9b46a));
-      hat.position.y = 1.52; hat.castShadow = true; g.add(hat);
-      const hatKnob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), clayMat(0xb8923f)); hatKnob.position.y = 1.7; g.add(hatKnob);
-      const sash = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.06, 8, 18), clayMat(def.hat, false));   // 허리띠(기존 보라 포인트 유지)
-      sash.rotation.x = Math.PI / 2; sash.position.y = 0.48; g.add(sash);
-      const pack = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 10), clayMat(0xe8d8a8, false));   // 봇짐
-      pack.scale.set(1, 0.85, 0.8); pack.position.set(0, 0.95, -0.46); pack.castShadow = true; g.add(pack);
-      const knot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.14), clayMat(0xc9b070, false)); knot.position.set(0, 1.28, -0.34); g.add(knot);
-      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.55, 6), clayMat(0x6b4a34));  // 지팡이
-      staff.position.set(0.5, 0.78, 0.12); staff.rotation.z = -0.12; g.add(staff);
-      const beard = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), clayMat(0xdcd3c8, false));      // 수염
-      beard.scale.set(1, 0.7, 0.6); beard.position.set(0, 0.98, 0.26); g.add(beard);
-    } else {
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12), clayMat(def.hat));
-      brim.position.y = 1.4; g.add(brim);
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), clayMat(def.hat));
-      top.position.y = 1.5; g.add(top);
+    const look = buildNPCLook(g, def) || {};
+    if (!look.eyes) {   // 🦉 올빼미처럼 제 눈을 직접 그린 외형은 공용 눈을 얹지 않는다
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
+      [-0.13, 0.13].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat); e.position.set(ex, 1.18, 0.32); g.add(e); });
     }
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
-    [-0.13, 0.13].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat); e.position.set(ex, 1.18, 0.32); g.add(e); });
     scene.add(g);
 
     // 머리 위 상태 말풍선(캔버스 텍스처 — 외부 파일 없음)
     const cv = document.createElement('canvas'); cv.width = cv.height = 128;
     const ctx = cv.getContext('2d');
     const tex = new THREE.CanvasTexture(cv);
+    // 이름표·말풍선 높이는 "그 주민의 실제 키" 에서 잡는다.
+    //   고정값(1.74)을 쓰면 모자가 큰 주민(🐼 요리사 토크 ~2.0 · 👷 안전모 ~1.74)의 머리가
+    //   이름표를 앞에서 뚫고 나와 글자를 가린다(보고: "판다·목수 이름표가 아직 그대로").
+    const topY = new THREE.Box3().setFromObject(g).max.y;
+    const tagY = topY + 0.30;
+
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-    sprite.scale.set(0.9, 0.9, 0.9); sprite.position.y = 2.15; g.add(sprite);
+    sprite.scale.set(0.9, 0.9, 0.9); sprite.position.y = tagY + 0.76; g.add(sprite);   // 이름표 바로 위
+
+    // 🏷️ 이름표 — "누가 누군지 모르겠다"(베타)의 직접 해법. 항상 띄우면 시끄러워서
+    //    NAMETAG_FAR 밖에선 감추고 가까워질수록 서서히 나타난다(updateNPC 가 opacity 갱신).
+    const tag = makeNameTag(def);
+    tag.position.y = tagY; g.add(tag);
 
     const o = {
-      def, group: g, body, sprite, ctx, tex, lastGlyph: null,
+      def, group: g, body, sprite, ctx, tex, tag, lastGlyph: null,
+      spriteY0: tagY + 0.76,          // 말풍선 살랑임의 기준 높이(주민마다 키가 다르다)
+      topY,                           // 모자까지 포함한 실제 키 — ?dbg=1 로 이름표 여유를 눈금으로 확인한다
+      wings: look.wings || null,
+      bobParts: look.bob && look.bob.length ? look.bob : null,   // 몸통 숨쉬기를 따라가야 하는 장식(안 그러면 몸통이 뚫고 나온다)
+      // 🦉 비행 상태 — 'perch'(앉음, 대화 가능) 외에는 하늘에 있다
+      fly: def.look === 'owl' ? { st: 'perch', t: 0, next: 12 + Math.random() * 10, tx: 0, tz: 0, deliver: false, legs: 0 } : null,
       home: new THREE.Vector3(def.pos[0], 0, def.pos[2]),
       target: new THREE.Vector3(def.pos[0], 0, def.pos[2]),
       wanderTimer: Math.random() * 3, phase: Math.random() * 6,
@@ -9438,11 +9640,150 @@ function updateNPCGlyph(o) {
 }
 
 // 주민 애니메이션: 숨쉬기 + 말풍선 부유 + 근접 시 바라보기 / 아니면 배회
+// ── 🦉 올빼미 비행 ──────────────────────────────────────────────
+//   "날아다니는 올빼미" 요청. 다만 의뢰를 주는 주민이라 계속 날면 말을 걸 수가 없다 →
+//   평소엔 앉아 있다가 가끔 짧게 한 바퀴 돌고 다시 내려앉고, 특별 의뢰가 있을 때만
+//   플레이어 앞으로 날아와 착지한다. 대화·충돌은 'perch' 일 때만 산다.
+const OWL_CRUISE = 2.7;     // 순회 고도
+const OWL_SPEED = 3.6;      // 공중 이동 속도(유닛/초)
+const OWL_CLIMB = 0.9;      // 이·착륙에 쓰는 시간(초)
+
+function setOwlWings(o, spread, t) {
+  if (!o.wings) return;
+  const flap = spread ? Math.sin(t * 7.5) * 0.42 : 0;
+  o.wings.forEach((pivot, i) => {
+    const sx = i === 0 ? -1 : 1;
+    pivot.rotation.z = sx * (0.1 + spread * (1.05 + flap));
+  });
+}
+
+// 내려앉을 만한 빈자리 — 주민·플레이어·나무·건물과 안 겹치는 곳. 못 찾으면 null.
+//   (안 고르고 내려앉으면 다른 주민 위나 건물 안에 착지한다)
+function owlLandingSpot(o, cx, cz, minR, maxR) {
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * Math.PI * 2, r = minR + Math.random() * (maxR - minR);
+    const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+    if (!npcBlocked(x, z, o)) return { x, z };
+  }
+  return null;
+}
+
+// tx,tz 로 날아가 내려앉는다. deliver 면 착지할 때 특별 의뢰를 건넨다.
+function startOwlFlight(o, tx, tz, deliver = false) {
+  o.fly.st = 'up'; o.fly.t = 0; o.fly.tx = tx; o.fly.tz = tz; o.fly.deliver = deliver;
+  o.fly.legs = deliver ? 0 : 1 + (Math.random() < 0.5 ? 1 : 0);   // 순찰은 1~2 다리를 돌고 내려앉는다
+}
+
+// true 를 반환하면 "지금 하늘에 있다" — 호출자는 배회·시선 처리를 건너뛴다
+function updateOwlFly(o, dt, t) {
+  const f = o.fly; if (!f) return false;
+  const g = o.group;
+  f.t += dt;
+  if (f.st === 'perch') {
+    g.position.y = 0; o.collider.off = false;
+    setOwlWings(o, 0, t);
+    if (f.t > f.next && !ui.anyModalOpen?.()) {   // 이따금 홈 주변을 한 바퀴
+      const spot = owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5);
+      if (spot) startOwlFlight(o, spot.x, spot.z);
+      else f.t = 0;                              // 내려앉을 자리가 없으면 이번엔 쉰다
+    }
+    return false;
+  }
+  o.collider.off = true;                          // 하늘엔 벽이 없다
+  setOwlWings(o, 1, t);
+  if (f.st === 'up') {
+    g.position.y = OWL_CRUISE * Math.min(1, f.t / OWL_CLIMB);
+    if (f.t >= OWL_CLIMB) { f.st = 'cruise'; f.t = 0; }
+  } else if (f.st === 'cruise') {
+    g.position.y = OWL_CRUISE + Math.sin(t * 2.2) * 0.14;
+    const dx = f.tx - g.position.x, dz = f.tz - g.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 0.2) {
+      const k = Math.min(1, OWL_SPEED * dt / d);
+      g.position.x += dx * k; g.position.z += dz * k;
+      g.rotation.y = lerpAngle(g.rotation.y, Math.atan2(dx, dz), 0.12);
+    }
+    if (d <= 0.4 || f.t > 14) {
+      // 순찰 비행은 한 다리 더 돌 때가 있다 — 한 번에 내려앉으면 "잠깐 뛴" 느낌이라 나는 것처럼 안 보인다
+      const nextLeg = (!f.deliver && f.legs > 0 && f.t <= 14) ? owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5) : null;
+      if (nextLeg) { f.legs--; f.t = 0; f.tx = nextLeg.x; f.tz = nextLeg.z; }
+      else { f.st = 'down'; f.t = 0; }
+    }   // 14초 안전핀 — 목적지가 막혀도 반드시 내려온다
+  } else if (f.st === 'down') {
+    g.position.y = OWL_CRUISE * Math.max(0, 1 - f.t / OWL_CLIMB);
+    if (f.t >= OWL_CLIMB && npcBlocked(g.position.x, g.position.z, o)) {
+      const spot = owlLandingSpot(o, g.position.x, g.position.z, 1.2, 3);   // 내려오는 사이 누가 그 자리에 왔다
+      if (spot) { f.st = 'cruise'; f.t = 0; f.tx = spot.x; f.tz = spot.z; return true; }
+    }
+    if (f.t >= OWL_CLIMB) {
+      g.position.y = 0; f.st = 'perch'; f.t = 0; f.next = 12 + Math.random() * 10;
+      o.collider.x = g.position.x; o.collider.z = g.position.z; o.collider.off = false;
+      if (f.deliver) { f.deliver = false; deliverOwlSpecial(o); }
+    }
+  }
+  return true;
+}
+
+// ── ✨ 올빼미 특별 의뢰 ─────────────────────────────────────────
+//   오늘 일일 의뢰 3건을 다 끝내면 올빼미가 특별 의뢰를 물고 날아온다.
+//   기존 일일 루프는 그대로 두고 오늘의 의뢰 목록에 4번째를 얹는 방식이라,
+//   수락·진행·보상 코드는 손대지 않아도 그대로 굴러간다.
+const OWL_SPECIAL_POOL = [
+  { type: 'chop',    target: 12, title: '달빛 장작',   desc: '나무 12번 베기' },
+  { type: 'fish',    target: 8,  title: '은빛 물결',   desc: '물고기 8마리 낚기' },
+  { type: 'mine',    target: 10, title: '깊은 광맥',   desc: '광석 10개 캐기' },
+  { type: 'harvest', target: 8,  title: '풍요의 밤',   desc: '작물 8개 수확하기' },
+  { type: 'forage',  target: 10, title: '숲의 선물',   desc: '🍄 채집물 10개 줍기' },
+  { type: 'sell',    target: 12, title: '별빛 장터',   desc: '상점에서 12개 팔기' },
+];
+
+// 오늘 일일 3건을 끝냈고 아직 특별 의뢰를 못 받았으면 true
+function owlSpecialPending() {
+  const def = NPCS.find(n => n.daily); if (!def) return false;
+  const st = npcState(def.id);
+  return st.date === todayStr() && st.idx >= 3 && Array.isArray(st.quests) && !st.special;
+}
+
+function deliverOwlSpecial(o) {
+  const def = o.def, st = npcState(def.id);
+  if (!Array.isArray(st.quests) || st.quests.length !== 3 || st.special) return;   // 그새 날짜가 바뀌었거나 이미 받았다
+  const pick = OWL_SPECIAL_POOL[dateHash('owl:special') % OWL_SPECIAL_POOL.length];
+  const sp = { ...pick, title: `✨ ${pick.title}`, reward: { coins: 80, gem: 1 },
+               line: `오늘 의뢰를 전부 해냈구나! 그럼 이건 자네 몫이지 — ✨특별 의뢰야. ${pick.desc}!` };
+  st.special = sp;                     // 세이브엔 일일 3개와 따로 보관
+  def.quests = [...st.quests, sp];     // 불변 — 새 배열로 갈아끼운다
+  st.allDone = false; st.given = false; st.progress = 0;
+  updateNPCGlyph(o); refreshQuestPanel(); syncBadges();
+  Sound.complete?.();
+  ui.toast?.('✨ 의뢰 올빼미가 특별 의뢰를 물고 날아왔어요!', 3200);
+  trackEvent('owl_special_deliver', { quest: sp.title, target: sp.target });   // [GA4]
+}
+
+// 매 프레임 — 조건이 맞으면 올빼미를 플레이어 앞으로 날려 보낸다
+function updateOwlVisit() {
+  if (mode !== 'play' || !inVillage2() || ui.anyModalOpen?.()) return;
+  if (!owlSpecialPending()) return;
+  const o = npcObjs.find(n => n.def.daily); if (!o || !o.fly) return;
+  if (o.fly.st !== 'perch' || o.fly.deliver) return;
+  if (dist2D(o.group.position, player.position) < 2.2) { deliverOwlSpecial(o); return; }   // 이미 옆에 있으면 바로
+  const spot = owlLandingSpot(o, player.position.x, player.position.z, 1.6, 2.4);
+  if (spot) startOwlFlight(o, spot.x, spot.z, true);   // 자리가 없으면 다음 프레임에 다시 본다
+}
+
 function updateNPC(dt, t) {
   for (const o of npcObjs) {
-    o.body.position.y = 0.55 + Math.sin(t * 2 + o.phase) * 0.04;
-    if (o.sprite) o.sprite.position.y = 2.15 + Math.sin(t * 2.5 + o.phase) * 0.08;
-    if (merchantVisit && o.def.id === 'merchant') {
+    const bodyY = 0.55 + Math.sin(t * 2 + o.phase) * 0.04;
+    o.body.position.y = bodyY;
+    if (o.bobParts) for (const m of o.bobParts) m.position.y = m.userData.y0 + (bodyY - 0.55);   // 가슴털·허리띠는 몸통과 같이 움직여야 안 깜빡인다
+    if (o.sprite) o.sprite.position.y = o.spriteY0 + Math.sin(t * 2.5 + o.phase) * 0.08;
+    if (o.tag) {   // 🏷️ 이름표 — 가까워질수록 서서히 나타남(멀리선 감춰 화면을 비워 둔다)
+      const d = dist2D(o.group.position, player.position);
+      const a = d <= NAMETAG_NEAR ? 1 : d >= NAMETAG_FAR ? 0 : (NAMETAG_FAR - d) / (NAMETAG_FAR - NAMETAG_NEAR);
+      o.tag.visible = a > 0.02; o.tag.material.opacity = a;
+    }
+    if (o.fly && updateOwlFly(o, dt, t)) {
+      // 🦉 하늘에 있는 동안엔 updateOwlFly 가 이동·고도·날개를 담당
+    } else if (merchantVisit && o.def.id === 'merchant') {
       // 방문 이벤트 중엔 updateMerchantVisit 가 이동·시선을 담당
     } else if (mode === 'play' && nearNPC === o) {
       const dx = player.position.x - o.group.position.x, dz = player.position.z - o.group.position.z;
@@ -9450,14 +9791,21 @@ function updateNPC(dt, t) {
     } else {
       wanderNPC(o, dt);                                                            // 홈 주변 배회
     }
-    o.collider.x = o.group.position.x; o.collider.z = o.group.position.z;          // 🚧 콜라이더 동기화
+    if (!o.fly || o.fly.st === 'perch') { o.collider.x = o.group.position.x; o.collider.z = o.group.position.z; }  // 🚧 콜라이더 동기화(땅에 있을 때만)
     updateNPCGlyph(o);
   }
 }
 // 주민이 들어가면 안 되는 자리(건물·호수·나무 등) — 밭 금지 구역보다 여유를 적게 둬 벽에 바짝 설 수 있게
-function npcBlocked(x, z) {
+function npcBlocked(x, z, self = null) {
   // 플레이어 자리도 피한다 — 안 그러면 배회하다 플레이어를 밀고 지나간다
   if (player && Math.hypot(x - player.position.x, z - player.position.z) < NPC_R + PLAYER_R + 0.2) return true;
+  // 다른 주민 자리도 피한다 — 콜라이더는 "플레이어를" 막을 뿐 주민끼리는 안 막아서,
+  //   배회하다 서로 몸이 겹쳐 한 덩어리로 보였다(보고: "캐릭터들끼리 겹친다").
+  //   하늘에 있는 올빼미는 셈에서 뺀다.
+  for (const o of npcObjs) {
+    if (o === self || (o.fly && o.fly.st !== 'perch')) continue;
+    if (Math.hypot(x - o.group.position.x, z - o.group.position.z) < NPC_R * 2 + 0.15) return true;
+  }
   return obstacles.some(ob => Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.35);
 }
 
@@ -9469,7 +9817,7 @@ function wanderNPC(o, dt) {
     for (let i = 0; i < 6; i++) {
       const a = Math.random() * Math.PI * 2, r = Math.random() * (o.def.roam ?? 1.6);
       const nx = o.home.x + Math.cos(a) * r, nz = o.home.z + Math.sin(a) * r;
-      if (!npcBlocked(nx, nz)) { o.target.set(nx, 0, nz); break; }
+      if (!npcBlocked(nx, nz, o)) { o.target.set(nx, 0, nz); break; }
       if (i === 5) o.target.copy(o.home);   // 전부 막혔으면 제자리
     }
   }
@@ -9479,7 +9827,7 @@ function wanderNPC(o, dt) {
     const nx = o.group.position.x + (dx / d) * 0.5 * dt;
     const nz = o.group.position.z + (dz / d) * 0.5 * dt;
     // 이미 막힌 자리에 서 있다면(나무가 나중에 생긴 경우 등) 빠져나올 수 있게 이동을 허용
-    if (npcBlocked(nx, nz) && !npcBlocked(o.group.position.x, o.group.position.z)) { o.wanderTimer = 0; return; }
+    if (npcBlocked(nx, nz, o) && !npcBlocked(o.group.position.x, o.group.position.z, o)) { o.wanderTimer = 0; return; }
     o.group.position.x = nx; o.group.position.z = nz;
     o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.1);
   }
@@ -9500,7 +9848,7 @@ function stepNpcToward(o, target, speed, dt) {
   for (const off of [0, Math.PI / 4, -Math.PI / 4]) {
     const a = ang + off;
     const nx = o.group.position.x + Math.sin(a) * speed * dt, nz = o.group.position.z + Math.cos(a) * speed * dt;
-    if (npcBlocked(nx, nz)) continue;
+    if (npcBlocked(nx, nz, o)) continue;
     o.group.position.x = nx; o.group.position.z = nz;
     break;
   }
@@ -9604,7 +9952,10 @@ function updateShopCue(t) {
 // 근접 시 가장 가까운 주민 선택 → 프롬프트 + 퀘스트 패널
 function updateNPCInteract() {
   let near = null, nd = 2.6;
-  for (const o of npcObjs) { const d = dist2D(o.group.position, player.position); if (d < nd) { nd = d; near = o; } }
+  for (const o of npcObjs) {
+    if (o.fly && o.fly.st !== 'perch') continue;    // 🦉 날고 있는 동안엔 말을 걸 수 없다
+    const d = dist2D(o.group.position, player.position); if (d < nd) { nd = d; near = o; }
+  }
   if (near !== nearNPC) {
     nearNPC = near;
     ui.setInteractPrompt?.(near ? `💬 ${near.def.name} · Space 로 대화` : null);

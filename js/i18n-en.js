@@ -16,6 +16,35 @@ export const EN = {
   '✅ 완료! 주민에게 가세요': '✅ Done! Return to the villager',
   '언어: 한국어': 'Language: English',
 
+  // ── ✨ 올빼미 특별 의뢰 ──
+  '✨ 의뢰 올빼미가 특별 의뢰를 물고 날아왔어요!': '✨ The Errand Owl flew in with a special request!',
+  '✨ 달빛 장작': '✨ Moonlit Firewood',
+  '✨ 은빛 물결': '✨ Silver Ripples',
+  '✨ 깊은 광맥': '✨ The Deep Vein',
+  '✨ 풍요의 밤': '✨ Night of Plenty',
+  '✨ 숲의 선물': '✨ Gift of the Forest',
+  '✨ 별빛 장터': '✨ Starlight Market',
+  '나무 12번 베기': 'Chop 12 trees',
+  '물고기 8마리 낚기': 'Catch 8 fish',
+  '광석 10개 캐기': 'Mine 10 ore',
+  '작물 8개 수확하기': 'Harvest 8 crops',
+  '🍄 채집물 10개 줍기': '🍄 Gather 10 forageables',
+  '상점에서 12개 팔기': 'Sell 12 items at the Shop',
+  '오늘 의뢰를 전부 해냈구나! 그럼 이건 자네 몫이지 — ✨특별 의뢰야. {0}!': "You finished every request today! Then this one's yours — a ✨special request. {0}!",
+
+  // ── 🗺️ 마을 지도(미니맵 탭 · ☰ 메뉴) ──
+  '🗺️ 마을 지도': '🗺️ Village Map',
+  '마을 지도': 'Village Map',
+  '가고 싶은 곳을 찾아보세요 —': 'Find where you want to go —',
+  '흐린 곳은 아직 잠겨 있어요': 'faded spots are still locked',
+  '지금 여기': 'You are here',
+  '나의 집': 'My House',
+  '시세판': 'Price Board',
+  '호수': 'Lake',
+  '텃밭': 'Farm',
+  '닭장': 'Chicken Coop',
+  '안개 숲': 'Misty Forest',
+
   // ── HTML 정적 마크업 ──
   '연결 중…': 'Connecting…',
   '사진 찍기': 'Take a photo',
