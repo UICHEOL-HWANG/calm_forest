@@ -4629,6 +4629,10 @@ function buildHouseGhost() {
 
   houseGroup = new THREE.Group();
   houseGroup.position.copy(HOUSE_POS);
+  // 🚪 정면(문·전면 창)을 카메라 쪽으로 — 카메라는 camOffset(0,14,16) 고정이라 시선이 늘 −Z 다.
+  //    집 모델은 문·아치·통유리·발코니를 전부 −Z 면에 두고 있어서, 돌리지 않으면
+  //    제일 공들인 정면이 영원히 뒷면이 되고 플레이어에겐 창문 없는 뒷벽만 보인다.
+  houseGroup.rotation.y = Math.PI;
   scene.add(houseGroup);
   obstacles.push({ x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }); // 집 터엔 밭 금지
   houseCollider = solidCircle(HOUSE_POS.x, HOUSE_POS.z, 2.2); // 🚧 집 벽 — 짓는 동안엔 꺼 두고 완성되면 켠다
