@@ -12,6 +12,8 @@ __pycache__/
 # 배포 번들(빌드 산출물)
 dist/
 dist-toss/
+dist-itch/
+dist-itch.zip
 *.ait
 
 # wrangler 로컬 캐시

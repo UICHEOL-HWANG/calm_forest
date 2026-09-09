@@ -10,7 +10,7 @@
 // =============================================================
 
 import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 🧪 dev 세션 — 리더보드 원천 기록 차단용
-import { PLATFORM } from './platform.js';                  // 'web' | 'toss' — 로그 세그먼트
+import { PLATFORM, IS_ITCH } from './platform.js';         // 'web' | 'toss' | 'itch' — 로그 세그먼트 · itch 는 구글 팝업 로그인
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant } from './analytics.js';
 
@@ -124,12 +124,55 @@ export async function initAuth(onStatusChange) {
 }
 
 // ── 구글 로그인 (전체 페이지가 구글로 리다이렉트 → 복귀 시 세션 획득) ──
+//   🎮 itch(iframe) 에서는 팝업 방식으로 갈아탄다 — signInWithGooglePopup 참고.
 export async function signInWithGoogle() {
   if (!supabase) { alert(t('Supabase 키가 설정되지 않았습니다. 게스트로 플레이하세요.')); return; }
+  if (IS_ITCH) return signInWithGooglePopup();
   // 쿼리(?error=...)·해시 제거한 깨끗한 주소로 복귀 (누적 방지)
   const redirectTo = window.location.origin + window.location.pathname;
   const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
   if (error) { console.warn('[구글 로그인 실패]', error.message); alert(t('구글 로그인 실패: {0}').replace('{0}', error.message)); }
+}
+
+// ── 🎮 구글 팝업 로그인 (itch.io 등 iframe 호스트 전용) ────────────────
+//   iframe 안에서는 ① 구글이 OAuth 화면을 막고 ② 복귀 주소(itch.zone)가 Supabase 허용 목록에 없다.
+//   그래서 최상위 팝업 창을 열어 구글 → Supabase → 웹 오리진의 auth-popup.html 로 돌아오게 하고,
+//   그 페이지가 URL 해시의 토큰을 postMessage 로 이 창(opener)에 넘기면 setSession 으로 세션을 잡는다.
+//   ⚠️ 팝업은 클릭 핸들러 안에서 동기적으로 먼저 열어야 차단당하지 않는다(URL 은 나중에 채움).
+//   ⚠️ Supabase 대시보드 Authentication > URL Configuration > Redirect URLs 에
+//      GOOGLE_POPUP_RETURN 이 등록돼 있어야 한다. 없으면 Site URL 로 튕겨 토큰이 안 돌아온다.
+const GOOGLE_POPUP_RETURN = `${CONFIG.API_BASE}/auth-popup.html`;   // 빌드가 API_BASE 를 웹 오리진으로 치환
+const GOOGLE_POPUP_ORIGIN = (() => { try { return new URL(GOOGLE_POPUP_RETURN, location.href).origin; } catch { return null; } })();
+async function signInWithGooglePopup() {
+  const popup = window.open('about:blank', 'calmforest-google-auth', 'popup=yes,width=480,height=640');
+  if (!popup) { alert(t('팝업이 차단됐어요. 이 사이트의 팝업을 허용한 뒤 다시 눌러주세요.')); return; }
+  const fail = (msg) => { try { popup.close(); } catch {} console.warn('[구글 팝업 로그인 실패]', msg); alert(t('구글 로그인 실패: {0}').replace('{0}', msg)); };
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google', options: { redirectTo: GOOGLE_POPUP_RETURN, skipBrowserRedirect: true },
+  });
+  if (error || !data?.url) return fail(error?.message || 'no url');
+  popup.location.href = data.url;
+
+  // 팝업 → opener 로 토큰이 오길 기다린다. 사용자가 팝업을 닫으면 조용히 끝낸다(오류 아님).
+  const result = await new Promise((resolve) => {
+    const onMsg = (ev) => {
+      if (ev.origin !== GOOGLE_POPUP_ORIGIN || ev.source !== popup) return;   // 출처·창 모두 확인
+      const m = ev.data;
+      if (!m || m.type !== 'calmforest-auth') return;
+      cleanup(); resolve(m);
+    };
+    const timer = setInterval(() => { if (popup.closed) { cleanup(); resolve(null); } }, 500);
+    const cleanup = () => { window.removeEventListener('message', onMsg); clearInterval(timer); };
+    window.addEventListener('message', onMsg);
+  });
+  try { popup.close(); } catch {}
+  if (!result) return;                                     // 사용자가 닫음
+  if (result.error) return fail(result.error);
+  const { data: s, error: sErr } = await supabase.auth.setSession({ access_token: result.access_token, refresh_token: result.refresh_token });
+  if (sErr) return fail(sErr.message);
+  applySession(s.session);
+  console.log('[구글 팝업] 세션 연결 완료', state.userId);
 }
 
 // ── 🔵 바로 플레이하기 (앱인토스 웹뷰 전용) ─────────────────────

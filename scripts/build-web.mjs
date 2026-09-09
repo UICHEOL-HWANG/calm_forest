@@ -39,6 +39,7 @@ const INCLUDE = [
   'dashboards',      // 관리자·분석 페이지(index.html 에서 링크)
   'beta',            // 🧪 베타 일지 페이지(/beta/diary.html) — 대시보드와 분리
   'guide',           // 📖 초보자 안내서(fragment+이미지) — index.html 의 #guide-panel 이 fetch 로 주입
+  'auth-popup.html', // 🎮 itch(iframe) 구글 팝업 로그인 복귀 페이지 — 토큰을 게임 창에 postMessage
   ['assets/social/preview.png', 'preview.png'],                 // og:image
   ['assets/favicon/favicon.ico', 'favicon.ico'],                // 파비콘 — 구글 검색결과 아이콘의 기본 fallback
   ['assets/favicon/favicon.svg', 'favicon.svg'],                // 파비콘 — 모던 브라우저용 벡터

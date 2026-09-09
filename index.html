@@ -358,6 +358,8 @@
   body.platform-toss #toss-btn { display: inline-flex; }
   body.platform-toss #guest-btn { display: none; }   /* 게스트는 선택지가 아니라 폴백 — 버튼 하나만 */
   body.platform-toss #stats-btn { display: none; }   /* 활동 기록은 구글 계정 전용 — 토스에선 열 수 없는 버튼을 노출하지 않음 */
+  /* 🎮 itch(iframe): 구글은 팝업 로그인으로 되지만 활동 기록 대시보드는 다른 오리진(웹) 새 탭이라 세션이 안 넘어감 → 숨김 */
+  body.platform-itch #stats-btn { display: none; }
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
@@ -1531,7 +1533,7 @@
 
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow } from './js/supabase-client.js';
-    import { IS_TOSS } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환)
+    import { IS_TOSS, IS_ITCH } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js';
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
@@ -2295,8 +2297,10 @@
         $('diary-btn').style.display = '';
         $('diary-btn').onclick = () => {
           trackEvent('diary_open', { day: betaDay(authState.createdAt) });
-          const w = window.open('/beta/diary.html', '_blank', 'noopener');
-          if (!w) location.href = '/beta/diary.html';   // 팝업 차단·웹뷰 폴백 — 같은 탭으로
+          // 🎮 itch 같은 다른 오리진 번들에서도 웹의 일지로 가도록 API_BASE 를 앞에 붙인다(웹은 빈 값 → 기존과 동일)
+          const diaryUrl = `${CONFIG.API_BASE}/beta/diary.html`;
+          const w = window.open(diaryUrl, '_blank', 'noopener');
+          if (!w) location.href = diaryUrl;   // 팝업 차단·웹뷰 폴백 — 같은 탭으로
         };
         applyBetaTutorialOrder();   // A군 튜토리얼 순서도 같은 시점에 확정
       });
@@ -2318,6 +2322,7 @@
     // 로그인 화면 버튼
     // 🔵 앱인토스 웹뷰: 구글 OAuth 불가(disallowed_useragent) → 토스 시작 버튼으로 교체
     if (IS_TOSS) document.body.classList.add('platform-toss');
+    if (IS_ITCH) document.body.classList.add('platform-itch');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
     // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
     //    또 실패하면 유저에게 결정을 떠넘기지 않고 게스트로 바로 시작한다(토스트로만 알림).
