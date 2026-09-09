@@ -2409,6 +2409,7 @@ function setHeldTool(id) {
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
   heldToolMesh = toolMesh(id); measureStowLen(heldToolMesh); updateStowPose();
   handAnchor.add(heldToolMesh);
+  if (indoor || atCafe) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
   // 🪏 처음 삽을 들면 쓰는 법 1회 안내(모달) — 밭을 지우고 싶은 사람이 정확히 이 순간 답을 얻는다
   if (id === 'shovel' && gameState.character) {
     const A = IS_MOBILE ? '오른쪽 동그란 버튼' : 'Space';
@@ -3268,6 +3269,7 @@ function buildCafeHall() {
     .forEach(([px, pz]) => solidCircle(CAFE.x + px, CAFE.z + pz, 0.4));         // 화분
   solidCircle(CAFE.x + CAFE_BOARD[0], CAFE.z + CAFE_BOARD[1], 0.3);             // 주문판 기둥(읽기 판정 2.2 는 그대로 닿음)
   scene.add(g); cafeInGroup = g; cafeInGroup.visible = false;   // 홀에 있을 때만 표시
+  setFogExempt(g, true);                                         // 홀은 안개 밖(바깥 풍경만 안개)
   refreshCafeGuests();
 }
 
@@ -3318,7 +3320,7 @@ function refreshCafeGuests() {
     group.rotation.y = Math.PI;                           // 테이블(북쪽)을 바라봄
     const sprite = cafeGuestSprite(o);
     group.add(sprite);
-    cafeInGroup.add(group);
+    cafeInGroup.add(group); setFogExempt(group, true);   // 손님도 홀과 같이 안개 밖
     // 🚧 손님도 통과 못 함(홀 좌표 → 월드 좌표). 서빙 사거리 2.4 엔 영향 없음
     const collider = solidCircle(CAFE.x + sx, CAFE.z + sz + 1.5, NPC_R);
     cafeGuestObjs.push({ order: o, group, sprite, collider, phase: Math.random() * 6 });
@@ -3352,7 +3354,7 @@ function cafeView() {
 }
 
 function enterCafe() {
-  atCafe = true;
+  atCafe = true; setFogExempt(player, true);   // 홀 안에선 캐릭터도 안개 밖
   refreshCafeGuests();                                   // 자정을 넘겼다면 새 손님으로
   ensureCafeGuests();                                    // 외부 생성기(등록됐다면) 비동기 갱신
   player.position.set(CAFE.x, 0, CAFE.z + CAFE_HALF - 3.2); player.rotation.y = Math.PI;
@@ -3363,7 +3365,7 @@ function enterCafe() {
   Sound.blip(); trackEvent('enter_cafe');                // [GA4]
 }
 function exitCafe() {
-  atCafe = false;
+  atCafe = false; setFogExempt(player, false);
   player.position.set(CAFE_GATE.x, 0, CAFE_GATE.z + 2.8);
   nearDoor = null; ui.setDoorPrompt?.(null);
   snapCamera(); setSpaceVisible();
@@ -5526,6 +5528,17 @@ function updateSea(dt, t) {
   }
 }
 
+// 🌫️ 실내 메시를 날씨 안개에서 뺀다 — scene.fog 는 전역이라 안개 낀 날(near 8) 방 안까지 뿌옇게 잠겼다.
+//    fog.near 를 전역으로 미는 방법은 벽 너머로 보이는 바깥 풍경까지 맑게 만들어 버린다(바깥은 안개여야 한다).
+//    그래서 방·가구·손님·(들어와 있는 동안의)캐릭터 재질만 material.fog=false 로 두고 바깥은 그대로 안개에 둔다.
+//    fog 는 셰이더 define 이라 바꾸면 needsUpdate 가 필요하다 — 출입 순간 한 번뿐이라 부담 없다.
+function setFogExempt(obj, on) {
+  obj.traverse(o => {
+    const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    for (const m of mats) if (m.fog !== !on) { m.fog = !on; m.needsUpdate = true; }
+  });
+}
+
 const INT_HALF = 7;   // 실내 반경(넓은 방) — 문 앞 스폰/이동/배치 클램프 기준
 function buildInterior() {
   const g = new THREE.Group(); g.position.copy(INT);
@@ -7225,13 +7238,13 @@ function updateOreRocks() {
 }
 
 function enterHouse() {
-  indoor = true;
+  indoor = true; setFogExempt(player, true);   // 방 안에선 캐릭터도 안개 밖
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true); snapCamera(); setSpaceVisible();
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
-  indoor = false; stopDecorPlacing(true);   // 들고 있던 가구는 제자리로
+  indoor = false; setFogExempt(player, false); stopDecorPlacing(true);   // 들고 있던 가구는 제자리로
   player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
