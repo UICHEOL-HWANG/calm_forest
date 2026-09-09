@@ -61,6 +61,7 @@
         <select id="q6"><option value="">고르세요</option><option value="A">A</option><option value="B">B</option></select>
         <div class="hint"><a href="./order.html" target="_blank" rel="noopener">두 순서 나란히 보기 ›</a></div></div>
     </div>
+    <div class="card"><label for="q7">7. 기타 건의사항 (선택)</label><textarea id="q7" placeholder="불편했던 점, 있었으면 하는 것, 아무거나 편하게"></textarea></div>
     <button class="primary" id="save" type="submit">저장</button>
     <div class="hint">저장하면 "저장됐어요"가 뜹니다. 같은 날 다시 열면 고쳐 쓸 수 있어요.</div>
   </form>
@@ -112,6 +113,7 @@
       }
       if (prev.q3) document.querySelector(`input[name=q3][value="${prev.q3}"]`).checked = true;
       if (prev.q5) $('q5').value = prev.q5; if (prev.q6) $('q6').value = prev.q6;
+      $('q7').value = prev.q7 || '';
       $('sub').textContent += ' · 오늘 일지를 이미 썼어요(고쳐 쓰기 가능)';
     }
     $('form').style.display = 'block';
@@ -129,6 +131,7 @@
           return seen ? (txt ? `${seen} · ${txt}` : seen) : (txt || null);
         })(),
         q5: $('q5').value || null, q6: $('q6').value || null,
+        q7: $('q7').value.trim() || null,   // 기타 건의사항(선택)
         variant: 'beta_' + me.grp, map_order: me.map_order, client_id: clientId(),
         updated_at: new Date().toISOString(),
       };

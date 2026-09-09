@@ -276,7 +276,7 @@
       if (!rows.length) { $('diaryTbl').innerHTML = '<tr><td class="empty">아직 쓴 일지가 없습니다.</td></tr>'; return; }
       const cut = (s, n = 90) => { s = String(s ?? ''); return escapeHtml(s.length > n ? s.slice(0, n) + '…' : s); };
       $('diaryTbl').innerHTML =
-        '<tr><th>테스터</th><th>군</th><th style="text-align:right">일차</th><th>1 오늘 한 것</th><th>2 막힌 곳</th><th style="text-align:right">3</th><th>4 안내 봤나</th><th>5·6</th><th style="text-align:right">쓴 시각</th></tr>'
+        '<tr><th>테스터</th><th>군</th><th style="text-align:right">일차</th><th>1 오늘 한 것</th><th>2 막힌 곳</th><th style="text-align:right">3</th><th>4 안내 봤나</th><th>5·6</th><th>7 건의</th><th style="text-align:right">쓴 시각</th></tr>'
         + rows.map(r => `<tr>
               <td>${escapeHtml(r.email)}</td>
               <td><span class="grp ${r.grp === 'A' ? 'a' : 'b'}">${escapeHtml(r.grp || '?')}</span></td>
@@ -286,6 +286,7 @@
               <td class="n">${r.q3 ?? '—'}</td>
               <td title="${escapeHtml(r.q4 || '')}">${cut(r.q4, 60)}</td>
               <td>${escapeHtml([r.q5, r.q6].filter(Boolean).join(' · ') || '—')}</td>
+              <td title="${escapeHtml(r.q7 || '')}">${r.q7 ? cut(r.q7, 60) : '—'}</td>
               <td class="n" style="color:var(--ink-3)">${ago(r.updated_at)}</td>
             </tr>`).join('');
     }

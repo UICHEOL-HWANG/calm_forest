@@ -450,6 +450,7 @@ create table if not exists public.beta_diary (
   q3 int check (q3 between 1 and 5),
   q4 text,
   q5 text, q6 text,                                        -- D7 전용(제일 재밌던 곳 · 처음 10분 선호)
+  q7 text,                                                 -- 기타 건의사항(선택, 매일) — 2026-09-09 테스터 요청
   variant    text,                                         -- 쓴 시점의 beta_A/B (분석 조인용 스냅샷)
   map_order  text,
   client_id  text,
@@ -457,6 +458,7 @@ create table if not exists public.beta_diary (
   updated_at timestamptz not null default now(),
   primary key (email, day)
 );
+alter table public.beta_diary add column if not exists q7 text;   -- 기존 테이블에 추가(2026-09-09)
 alter table public.beta_diary enable row level security;
 drop policy if exists beta_diary_self_rw on public.beta_diary;
 create policy beta_diary_self_rw on public.beta_diary
@@ -571,7 +573,7 @@ begin
                   'variant', variant, 'event', event, 'n', n)), '[]'::jsonb) from minigame),
     'diary', (select coalesce(jsonb_agg(jsonb_build_object(
                   'email', d.email, 'grp', bt.grp, 'day', d.day, 'q1', d.q1, 'q2', d.q2, 'q3', d.q3,
-                  'q4', d.q4, 'q5', d.q5, 'q6', d.q6, 'updated_at', d.updated_at
+                  'q4', d.q4, 'q5', d.q5, 'q6', d.q6, 'q7', d.q7, 'updated_at', d.updated_at
                 ) order by d.updated_at desc), '[]'::jsonb)
                 from (select * from beta_diary order by updated_at desc limit 70) d
                 join beta_testers bt on bt.email = d.email)
