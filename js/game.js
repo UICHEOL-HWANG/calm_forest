@@ -552,6 +552,8 @@ const NPCS = [
   },
 ];
 
+const DAILY_COUNT = 3;   // 하루 일일 의뢰 개수 — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
+
 // 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 상태형(refreshCollectQuests).
 //   이 목록에 없는 type 을 가진 의뢰는 아무리 플레이해도 영원히 완료되지 않는다.
 //   되돌릴 수 없는 1회성 목표(house 등)는 이벤트가 아니라 상태형으로 넣는다 —
@@ -579,8 +581,14 @@ const DAILY_POOL = [
 // 세이브에 박아둔 오늘 의뢰가 그대로 쓸 만한지 — 형태와 목표 종류까지 확인한다.
 //   type 이 목록 밖이면(옛 세이브·삭제된 목표) 완료가 불가능하므로 통째로 새로 뽑는다.
 function validDailyQuests(qs) {
-  return Array.isArray(qs) && qs.length === 3 && qs.every(q =>
-    q && QUEST_TYPES.has(q.type) && Number.isFinite(q.target) && q.target > 0 && q.desc);
+  return Array.isArray(qs) && qs.length === DAILY_COUNT && qs.every(validQuest);
+}
+
+// 의뢰 하나가 "실제로 완료 가능한" 형태인지 — 목록 검증(validDailyQuests)과 같은 기준.
+//   ✨특별 의뢰(st.special)도 반드시 이걸 통과해야 한다. 안 그러면 type 이 목록 밖일 때
+//   진행도가 영원히 0 이라 st.idx 가 못 올라가고 그날 올빼미 의뢰 전체가 잠긴다.
+function validQuest(q) {
+  return !!q && QUEST_TYPES.has(q.type) && Number.isFinite(q.target) && q.target > 0 && !!q.desc;
 }
 
 // 매일 접속 시 호출 — 날짜가 바뀌면 의뢰 리셋, 아니면 그날 확정된 의뢰를 그대로 쓴다.
@@ -603,12 +611,13 @@ function refreshDailyQuests() {
 
   //   ✨특별 의뢰는 st.special 에 따로 보관한다 — 일일 3개 배열에 섞어 저장하면
   //   validDailyQuests 의 "3개" 검증에 걸려 다음 접속 때 의뢰가 통째로 다시 뽑히고 진행도가 어긋난다.
+  if (st.special && !validQuest(st.special)) st.special = null;   // 옛 세이브·바뀐 풀에서 온 못 깨는 의뢰는 버린다
   const withSpecial = (three) => (st.special ? [...three, st.special] : three);
   if (validDailyQuests(st.quests)) { def.quests = withSpecial(st.quests); return; }   // 오늘 의뢰는 이미 확정됨
 
   const pool = [...DAILY_POOL];
   let h = dateHash('daily');
-  def.quests = Array.from({ length: 3 }, (_, i) => {
+  def.quests = Array.from({ length: DAILY_COUNT }, (_, i) => {
     h = (h * 1103515245 + 12345) & 0x7fffffff;
     const q = pool.splice(h % pool.length, 1)[0];
     return { ...q, reward: { coins: 10 + i * 5 }, lucky: true, line: `[오늘의 의뢰 ${i + 1}/3] ${q.desc}! 완료하면 🎁럭키박스도 준다구.` };
@@ -1607,6 +1616,7 @@ export async function enterGame() {
   ui.setTool?.(currentTool, TOOLS, toolPage);
   ui.setQuest?.(null);                  // 퀘스트 패널은 주민 근처에서 표시
   npcObjs.forEach(updateNPCGlyph);     // 저장 복원 후 말풍선 상태 반영
+  ui.setPlaces?.(villagePlaces());     // 🗺️ 실내·서브공간에서 시작해도 지도가 열리게(미니맵 틱은 마을에서만 돈다)
   player.visible = true;
   player.position.set(gameState.playerPos.x || 0, 0, gameState.playerPos.z || 0);
   // 테스트: ?spawn=x,z — 시작 위치 지정(?weather=/?house= 와 같은 개발용)
@@ -3357,12 +3367,24 @@ function cafeGuestSprite(o) {
   return sp;
 }
 
+// 지운 그룹의 geometry·material·texture 를 되돌려준다.
+//   손님은 서빙 1회마다 통째로 다시 만들어지는데(refreshCafeGuests), 손님 하나가
+//   메시 십수 개 + 이름표 캔버스 텍스처를 들고 있어 안 버리면 세션 내내 쌓인다.
+function disposeTree(root) {
+  root.traverse(o => {
+    o.geometry?.dispose?.();
+    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+    for (const m of mats) { m.map?.dispose?.(); m.dispose?.(); }
+  });
+}
+
 // 오늘의 주문에 맞춰 홀의 손님을 다시 배치(입장·서빙·날짜 변경 후 호출)
 function refreshCafeGuests() {
   if (!cafeInGroup) return;
   while (cafeGuestObjs.length) {
     const g = cafeGuestObjs.pop();
     cafeInGroup.remove(g.group);
+    disposeTree(g.group);           // GPU 자원 회수 — 서빙 1회마다 다시 그려서 안 버리면 계속 쌓인다
     removeSolid(g.collider);        // 🚧 떠난 손님 자리에 안 보이는 벽이 남지 않게
   }
   cafeOrders().forEach((o, n) => {
@@ -7666,11 +7688,18 @@ const VILLAGE_PLACES = [
 ];
 
 // 지금 이 세이브 기준의 지명 목록 — 아직 못 가는 곳은 locked 로 내려보내 지도에서 흐리게 그린다.
+//   잠금은 날짜·닭장 건설에서만 바뀌므로 매 틱(8Hz) 다시 만들지 않고 캐시한다
+//   (mapLocked 가 틱마다 날짜 산술을 세 번 돌던 것을 줄인다).
+let _placesCache = null, _placesAt = -1e9;
 function villagePlaces() {
-  return VILLAGE_PLACES.map(p => ({
+  const now = performance.now();
+  if (_placesCache && now - _placesAt < 5000) return _placesCache;
+  _placesAt = now;
+  _placesCache = VILLAGE_PLACES.map(p => ({
     ico: p.ico, name: p.name, x: p.x, z: p.z, pri: p.pri,
     locked: p.need === 'coop' ? !gameState.coop.built : p.map ? mapLocked(p.map) : false,
   }));
+  return _placesCache;
 }
 
 function minimapMarks(place) {
@@ -7750,7 +7779,16 @@ function animate() {
       lastMini = t;
       const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
-      if (place === 'village') md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
+      if (place === 'village') {
+        md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
+        // 주민 위치 — 배회·비행하니 실시간이어야 한다. 색은 이름표 배지와 같은 고유색이라
+        //   지도의 점만 보고도 누구인지 알 수 있다(예전 보라 점 6개를 대신한다).
+        md.npcs = npcObjs.map(o => ({
+          x: o.group.position.x, z: o.group.position.z, ico: o.def.emoji,
+          c: '#' + o.def.color.toString(16).padStart(6, '0'),
+          air: !!(o.fly && o.fly.st !== 'perch'),
+        }));
+      }
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
         md.cx = C.x; md.cz = C.z;
@@ -7789,7 +7827,7 @@ function animate() {
   updateFloatTexts(dt);
   updateNPC(dt, t);
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
-  updateOwlVisit();          // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
+  updateOwlVisit(dt);        // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
@@ -9444,24 +9482,47 @@ function badgeColor(hex) {
 }
 
 function makeNameTag(def) {
-  const W = 320, H = 88;
+  // 캔버스는 가장 긴 이름(낚시꾼 할아버지)까지 여유 있게. 스프라이트 배율은 이 비율에 맞춘다.
+  const W = 384, H = 96;
+  const FONT = (px) => `bold ${px}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const c = cv.getContext('2d');
   const label = `${def.emoji} ${t(def.name)}`;
-  c.font = 'bold 34px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-  const w = Math.min(W - 12, c.measureText(label).width + 46);
-  const x = (W - w) / 2;
+
+  // ⚠️ textAlign='center' 에 기대지 않는다 — 토스 웹뷰에서 가운데 정렬이 안 먹어 글자가
+  //    배지 밖으로 밀려 나갔다(2026-09-09 실기기 보고). 왼쪽 기준으로 x 를 직접 계산한다.
+  //    폭도 advance 와 실제 잉크 범위 중 큰 쪽을 쓴다(ZWJ 결합 이모지가 더 넓게 그려지는 환경 대비).
+  c.textAlign = 'left'; c.textBaseline = 'middle';
+  // 🧑‍🌾 처럼 ZWJ 로 결합된 이모지는 iOS 웹뷰에서 🧑 + 🌾 두 글자로 그려지는데
+  //   measureText 는 합쳐진 한 글자 폭을 돌려준다 → 배지보다 글자가 넓어져 밖으로 밀려 나갔다
+  //   (2026-09-09 토스 실기기 보고, 농부 삼촌만 해당). 결합 조각 수만큼 여유를 미리 준다.
+  const zwjParts = (def.emoji.match(/\u200D/g) || []).length;
+  const PAD = 28, MAX_TEXT = W - 12 - PAD * 2;
+  let px = 34, textW = 0;
+  for (;;) {
+    c.font = FONT(px);
+    const m = c.measureText(label);
+    textW = Math.max(m.width, (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || 0)) + zwjParts * px * 1.2;
+    if (textW <= MAX_TEXT || px <= 22) break;
+    px -= 2;                                   // 그래도 넘치면 글자를 줄여 배지 안에 넣는다
+  }
+  const w = Math.min(W - 12, textW + PAD * 2);
+  const x = (W - w) / 2, y = (H - 56) / 2;
+
   c.fillStyle = badgeColor(def.color);
-  roundRect(c, x, 14, w, 56, 28); c.fill();
-  c.strokeStyle = shadeToLum(def.color, 0.34); c.lineWidth = 4; c.stroke();   // 같은 색의 진한 테두리
-  c.fillStyle = shadeToLum(def.color, 0.14);                                  // 낮춘 바탕에 맞춰 글자도 진하게
-  c.font = 'bold 34px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(label, W / 2, 43);
+  roundRect(c, x, y, w, 56, 28); c.fill();
+  c.strokeStyle = shadeToLum(def.color, 0.34); c.lineWidth = 4; c.stroke();
+
+  c.save();                                     // 측정이 어긋나도 글자가 배지를 벗어나지 못하게
+  roundRect(c, x, y, w, 56, 28); c.clip();
+  c.fillStyle = shadeToLum(def.color, 0.14);    // 낮춘 바탕에 맞춰 글자도 진하게
+  c.fillText(label, x + (w - textW) / 2, y + 29);
+  c.restore();
+
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
-  sp.scale.set(1.9, 0.52, 1); sp.visible = false;
+  sp.scale.set(2.27, 2.27 * H / W, 1); sp.visible = false;   // 캔버스 비율 그대로 — 배지가 찌그러지지 않게
   return sp;
 }
 
@@ -9682,7 +9743,9 @@ function updateOwlFly(o, dt, t) {
   if (f.st === 'perch') {
     g.position.y = 0; o.collider.off = false;
     setOwlWings(o, 0, t);
-    if (f.t > f.next && !ui.anyModalOpen?.()) {   // 이따금 홈 주변을 한 바퀴
+    // 튜토리얼이 "🦉올빼미는 매일 새 의뢰" 라며 올빼미를 가리키는 단계가 있다 —
+    //   그때 날아가 버리면 신규 유저가 목적지를 잃는다. 코치 중엔 앉아 있는다.
+    if (f.t > f.next && mode === 'play' && !ui.anyModalOpen?.() && !ui.coachActive?.()) {   // 이따금 홈 주변을 한 바퀴
       const spot = owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5);
       if (spot) startOwlFlight(o, spot.x, spot.z);
       else f.t = 0;                              // 내려앉을 자리가 없으면 이번엔 쉰다
@@ -9718,7 +9781,11 @@ function updateOwlFly(o, dt, t) {
     if (f.t >= OWL_CLIMB) {
       g.position.y = 0; f.st = 'perch'; f.t = 0; f.next = 12 + Math.random() * 10;
       o.collider.x = g.position.x; o.collider.z = g.position.z; o.collider.off = false;
-      if (f.deliver) { f.deliver = false; deliverOwlSpecial(o); }
+      if (f.deliver) {
+        f.deliver = false;
+        o.home.set(g.position.x, 0, g.position.z);   // 내려앉은 곳이 새 홈 — 맵 반대편에서 0.5u/s 로 걸어 돌아오지 않게
+        deliverOwlSpecial(o);
+      }
     }
   }
   return true;
@@ -9741,16 +9808,18 @@ const OWL_SPECIAL_POOL = [
 function owlSpecialPending() {
   const def = NPCS.find(n => n.daily); if (!def) return false;
   const st = npcState(def.id);
-  return st.date === todayStr() && st.idx >= 3 && Array.isArray(st.quests) && !st.special;
+  return st.date === todayStr() && st.idx >= DAILY_COUNT
+    && Array.isArray(st.quests) && st.quests.length === DAILY_COUNT && !st.special;
 }
 
 function deliverOwlSpecial(o) {
   const def = o.def, st = npcState(def.id);
-  if (!Array.isArray(st.quests) || st.quests.length !== 3 || st.special) return;   // 그새 날짜가 바뀌었거나 이미 받았다
+  if (!owlSpecialPending()) return;   // 나는 사이에 자정이 지났거나 이미 받았다 — 판정은 한 곳에서만
   const pick = OWL_SPECIAL_POOL[dateHash('owl:special') % OWL_SPECIAL_POOL.length];
   const sp = { ...pick, title: `✨ ${pick.title}`, reward: { coins: 80, gem: 1 },
                line: `오늘 의뢰를 전부 해냈구나! 그럼 이건 자네 몫이지 — ✨특별 의뢰야. ${pick.desc}!` };
-  st.special = sp;                     // 세이브엔 일일 3개와 따로 보관
+  st.special = sp;                     // 세이브엔 일일 3개와 따로 보관(배열에 섞으면 다음 접속에 재추첨된다)
+  st.readyToasted = false;             // 상태형 목표를 풀에 넣어도 달성 토스트가 뜨게
   def.quests = [...st.quests, sp];     // 불변 — 새 배열로 갈아끼운다
   st.allDone = false; st.given = false; st.progress = 0;
   updateNPCGlyph(o); refreshQuestPanel(); syncBadges();
@@ -9759,8 +9828,14 @@ function deliverOwlSpecial(o) {
   trackEvent('owl_special_deliver', { quest: sp.title, target: sp.target });   // [GA4]
 }
 
-// 매 프레임 — 조건이 맞으면 올빼미를 플레이어 앞으로 날려 보낸다
-function updateOwlVisit() {
+// 조건이 맞으면 올빼미를 플레이어 앞으로 날려 보낸다.
+//   ⚠️ 매 프레임 돌리면 안 된다 — owlLandingSpot 이 최대 12회 × npcBlocked(나무 수백 개)라
+//   플레이어가 나무·건물에 붙어 서서 빈자리가 안 나오는 동안 프레임이 눈에 띄게 떨어진다.
+let owlVisitCooldown = 0;
+function updateOwlVisit(dt) {
+  owlVisitCooldown -= dt;
+  if (owlVisitCooldown > 0) return;
+  owlVisitCooldown = 0.5;
   if (mode !== 'play' || !inVillage2() || ui.anyModalOpen?.()) return;
   if (!owlSpecialPending()) return;
   const o = npcObjs.find(n => n.def.daily); if (!o || !o.fly) return;

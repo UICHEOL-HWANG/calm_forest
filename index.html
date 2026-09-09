@@ -777,7 +777,8 @@
   #worldmap { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #worldmap.show { display: grid; }
   #worldmap .wm-card { width: min(520px, 94vw); }
-  #wm-canvas { display: block; width: min(100%, calc(100dvh - 260px)); aspect-ratio: 1 / 1; border-radius: 18px; margin: 10px auto 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
+  /* 하한을 주지 않으면 폰 가로·분할 화면(dvh 작음)에서 calc 가 음수가 되어 지도가 통째로 사라진다 */
+  #wm-canvas { display: block; width: max(240px, min(100%, calc(100dvh - 260px))); aspect-ratio: 1 / 1; border-radius: 18px; margin: 10px auto 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
   #worldmap .dm-actions { justify-content: center; margin-top: 18px; padding-bottom: 4px; }
   @media (max-width: 560px) {
     #worldmap .wm-card { padding: 14px 12px 12px; }
@@ -1685,6 +1686,7 @@
     // 🗺️ 마지막으로 받은 마을 지명(미니맵 아이콘 + 전체 지도가 공유).
     //    지도는 마을 밖(실내·동굴 등)에서도 열 수 있어야 해서 게임에서 받은 값을 들고 있는다.
     let lastPlaces = null;
+    let lastNpcs = null;     // 주민 실시간 위치(미니맵·전체 지도 공용)
     let lastMapPos = null;   // 전체 지도의 "현재 위치" 마커 — 마을에 있을 때만 갱신
 
     // ── 🗺️ 마을 지도 ────────────────────────────────────────────
@@ -1731,19 +1733,22 @@
       const list = (lastPlaces || []).slice().sort((a, b) => a.z - b.z);
       c.textAlign = 'center'; c.textBaseline = 'middle';
 
+      // 주민 — 지금 어디 있는지. 색 테두리가 이름표 배지와 같은 고유색이라 점만 봐도 누구인지 안다.
+      //   지명 라벨보다 먼저 그리고 자리도 예약한다 — 라벨이 주민을 덮으면 둘 다 못 읽는다.
+      (lastNpcs || []).forEach(n => {
+        const [a, b] = px(n.x, n.z);
+        c.beginPath(); c.arc(a, b, 9, 0, 7); c.fillStyle = 'rgba(255,255,255,0.88)'; c.fill();
+        c.lineWidth = 2; c.strokeStyle = n.c; c.stroke();
+        c.font = '11px sans-serif';
+        c.fillText(n.ico, a, b + 0.5);
+        placed.push({ x: a, y: b, w: 20, h: 20 });
+      });
+
       // 현재 위치 — 마을에 있을 때만(실내·동굴에선 lastMapPos 가 null 이라 마커를 안 그린다).
-      //   지명보다 먼저 그려 자리를 잡아 둔다 — 안 그러면 옆 지명 라벨이 "지금 여기" 를 덮는다.
-      if (lastMapPos) {
-        const [a, b] = px(lastMapPos.x, lastMapPos.z);
-        c.beginPath(); c.arc(a, b, 9, 0, 7); c.fillStyle = 'rgba(47,122,68,0.22)'; c.fill();
-        c.beginPath(); c.arc(a, b, 4.5, 0, 7); c.fillStyle = '#fff'; c.fill();
-        c.lineWidth = 2.5; c.strokeStyle = '#2f7a44'; c.stroke();
-        c.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-        const here = t('지금 여기');
-        c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.95)'; c.strokeText(here, a, b - 14);
-        c.fillStyle = '#2f7a44'; c.fillText(here, a, b - 14);
-        placed.push({ x: a, y: b, w: 22, h: 22 }, { x: a, y: b - 14, w: c.measureText(here).width + 8, h: 13 });
-      }
+      //   점 자리만 먼저 예약하고, 마커와 "지금 여기" 글자는 지명 라벨을 다 놓은 뒤 맨 위에 그린다
+      //   — 고정 위치로 찍으면 옆 지명 라벨과 글자가 겹쳐 둘 다 못 읽는다.
+      const hereXY = lastMapPos ? px(lastMapPos.x, lastMapPos.z) : null;
+      if (hereXY) placed.push({ x: hereXY[0], y: hereXY[1], w: 24, h: 24 });
 
       // 아이콘 자리를 먼저 잡아 둔다 — 안 그러면 옆 지명의 라벨이 아이콘 위에 얹힌다
       list.forEach(p => { const [a, b] = px(p.x, p.z); placed.push({ x: a, y: b, w: 20, h: 20 }); });
@@ -1754,7 +1759,7 @@
         c.fillText(p.locked ? '🔒' : p.ico, a, b);
         const label = t(p.name);
         c.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-        const w = c.measureText(label).width + 8, h = 14;
+        const w = c.measureText(label).width + 8, h = 19;   // 실제 글자 높이(어센더·디센더)만큼 — 작으면 라벨끼리 스친다
         let box = null;
         for (const [ox, oy] of OFFS) { const r = { x: a + ox, y: b + oy, w, h }; if (!hit(r)) { box = r; break; } }
         if (!box) box = { x: a, y: b + 19, w, h };
@@ -1766,12 +1771,29 @@
         c.fillStyle = '#33513c'; c.fillText(label, box.x, box.y);
       });
       c.globalAlpha = 1;
+
+      if (hereXY) {
+        const [a, b] = hereXY;
+        c.beginPath(); c.arc(a, b, 9, 0, 7); c.fillStyle = 'rgba(47,122,68,0.22)'; c.fill();
+        c.beginPath(); c.arc(a, b, 4.5, 0, 7); c.fillStyle = '#fff'; c.fill();
+        c.lineWidth = 2.5; c.strokeStyle = '#2f7a44'; c.stroke();
+        const here = t('지금 여기');
+        c.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        const hw = c.measureText(here).width + 8, hh = 18;
+        let box = null;                                  // 지명 라벨과 같은 배치기를 탄다
+        for (const [ox, oy] of OFFS) { const r = { x: a + ox, y: b + oy, w: hw, h: hh }; if (!hit(r)) { box = r; break; } }
+        if (!box) box = { x: a, y: b - 20, w: hw, h: hh };
+        box.x = Math.max(hw / 2 + 2, Math.min(S - hw / 2 - 2, box.x));
+        box.y = Math.max(hh / 2 + 2, Math.min(S - hh / 2 - 2, box.y));
+        c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.95)'; c.strokeText(here, box.x, box.y);
+        c.fillStyle = '#2f7a44'; c.fillText(here, box.x, box.y);
+      }
     }
 
     function openWorldMap() {
-      if (!lastPlaces) return;                       // 아직 마을 데이터를 못 받음(부팅 직후)
+      if (!lastPlaces) { ui.toast?.('🗺️ 마을에 있을 때 볼 수 있어요'); return; }   // 실내·서브공간에선 마을 지도가 없다
       $('worldmap').classList.add('show');
-      document.body.classList.remove('menu-open');
+      Input.setAnalog(0, 0);   // 다른 모달과 같은 규칙 — 열 때 조이스틱을 놓는다(안 그러면 뒤에서 계속 걷는다)
       drawWorldMap();
     }
     function closeWorldMap() { $('worldmap').classList.remove('show'); }
@@ -2047,7 +2069,10 @@
       closeMerchantModal() { $('merchant-modal').classList.remove('show'); },
       // 어떤 모달/메뉴든 열려 있으면 true — 상인 방문 같은 강제 이벤트가 겹쳐 뜨지 않게
       anyModalOpen() {
-        return !!document.querySelector('[id$="-modal"].show, #boat-shop.show')
+        // ⚠️ 여기 안 걸리면 그 화면 뒤에서 게임이 계속 돈다 — 조이스틱이 살아 걷고,
+        //    상인 방문·맵 해금 배너가 뒤에 묻힌 채 1회권만 소진된다.
+        //    id 가 '-modal' 로 안 끝나는 화면은 반드시 아래 셀렉터에 직접 적을 것.
+        return !!document.querySelector('[id$="-modal"].show, #boat-shop.show, #worldmap.show')
           || document.body.classList.contains('menu-open') || document.body.classList.contains('mg-open');
       },
       // 📊 시세판(전광판 상호작용) — 품목별 오늘 가격·등락 + 내일 예보
@@ -2176,6 +2201,8 @@
           `<div class="buff" data-k="${b.k}" title="눌러서 설명 보기"><span>${b.ico}</span><span>${b.name}</span><span class="b-t">${b.remain}s</span></div>`).join('');
         if (lastBuffs.length) layoutBuffs();
       },
+      // 🗺️ 부팅 때 한 번 받는 지명 목록 — 미니맵 틱은 마을에서만 도니, 실내에서 시작해도 지도가 열리게
+      setPlaces(list) { if (list && list.length) lastPlaces = list; },
       // 미니맵 — 캐릭터 대략 위치 + 주요 지형 (레티나 대응)
       setMinimap(d) {
         const cv = $('minimap'); if (!cv) return;
@@ -2256,6 +2283,13 @@
           ctx.fillText(p.ico, a, b);
         });
         ctx.globalAlpha = 1;
+        // 주민 — 이름표 배지와 같은 고유색 점. 하늘에 있는 🦉 는 흰 테로 구분한다
+        lastNpcs = d.npcs || lastNpcs;
+        (lastNpcs || []).forEach(n => {
+          const [a, b] = px(n.x, n.z);
+          ctx.beginPath(); ctx.arc(a, b, 2.8, 0, 7); ctx.fillStyle = n.c; ctx.fill();
+          ctx.lineWidth = 1.2; ctx.strokeStyle = n.air ? 'rgba(255,255,255,0.95)' : 'rgba(60,80,65,0.55)'; ctx.stroke();
+        });
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
         pxx = Math.max(4, Math.min(S - 4, pxx)); pyy = Math.max(4, Math.min(S - 4, pyy));
