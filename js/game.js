@@ -3391,7 +3391,7 @@ function serveCafeGuest(guest) {
   const aff = gameState.affinity[o.id] = (gameState.affinity[o.id] || 0) + 1;   // ❤️ 접객으로도 친해짐
   refreshInventoryUI();
   dexDiscover('cook', o.recipe.id);                               // 📖 요리 도감(만들어 낸 셈)
-  questEvent('serve');                                            // 🦉 데일리 의뢰(서빙)
+  refreshCollectQuests();                                         // 🦉 데일리 의뢰(진행도는 오늘 서빙한 손님 수에서 읽는다)
   Sound.harvest();
   spawnFloatText(wx, 2.6, wz, `${o.recipe.ico} ${o.thanks}`, '#c9682a');
   spawnSparkle(wx, 1.6, wz, 16);
@@ -9502,7 +9502,7 @@ function questEvent(type, amount = 1) {
   refreshQuestPanel();
 }
 
-// 상태형 퀘스트(collect_wood/collect_crop/house) — 인벤토리·집 단계가 변할 때 재계산
+// 상태형 퀘스트(collect_wood/collect_crop/house/serve) — 인벤토리·집 단계·서빙 기록에서 재계산
 //   ⚠️ house 는 "집 완성"이라는 되돌릴 수 없는 1회성 상태다. 이벤트로만 진행시키면
 //      집을 먼저 짓고 나중에 의뢰를 수락한 사람은 다시 완성할 방법이 없어 영원히 0/1 에 갇힌다.
 //      그래서 매번 houseStage 를 읽어 진행도를 맞춘다(이미 갇힌 세이브도 접속하면 저절로 풀린다).
@@ -9514,6 +9514,10 @@ function refreshCollectQuests() {
     if (q.type === 'collect_wood') st.progress = Math.min(q.target, gameState.inventory.wood);
     else if (q.type === 'collect_crop') st.progress = Math.min(q.target, gameState.inventory.crop);
     else if (q.type === 'house') st.progress = gameState.houseStage >= 3 ? q.target : 0;
+    // ☕ 서빙도 같은 함정 — 손님은 하루 CAFE_ORDERS 명뿐이고 다시 서빙할 수 없다.
+    //   먼저 서빙하고 나중에 의뢰를 받으면 남은 손님이 모자라 그날은 완료가 불가능해진다.
+    //   그래서 "오늘 서빙한 손님 수"를 읽는다. 날짜가 지난 기록(cafeOrders() 가 아직 안 비운 어제치)은 0.
+    else if (q.type === 'serve') st.progress = Math.min(q.target, gameState.cafe.date === todayStr() ? gameState.cafe.done.length : 0);
     else continue;
     if (st.progress >= q.target && !st.readyToasted) { st.readyToasted = true; ui.toast?.(`✅ ${o.def.name}의 목표 달성!`); }
     updateNPCGlyph(o);
