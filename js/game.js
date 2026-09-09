@@ -229,13 +229,13 @@ const KITCHEN = new THREE.Vector3(7.4, 0, -6.4);  // 작업대 동쪽 옆(상점
 let nearKitchen = false;
 const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 에서 멀리 동쪽)
 let nearShop = false;
-const MARKET = new THREE.Vector3(11.5, 0, 2.4); // 📊 시세판(상점 동쪽, 플레이어 동선 위) — 초보자도 시세를 발견하게
+const MARKET = new THREE.Vector3(10, 0, 5.5);  // 📊 시세판 — 호수 서쪽 가로등 잔디. 상점 옆에 붙어 있던 걸 떼어 냄(베타: 상점·시세판·상인이 3유닛 안에 몰려 NPC 를 가림)
 let nearMarket = false;
 // 🏆 랭킹 게시판 — 마을 완전 중앙(사용자 지정). 스폰(0,0) 1.9 거리라 시작 시 밀리지 않고
 //    (콜라이더 1.57 밖) 프롬프트도 안 뜨게 상호작용 반경은 1.8로 타이트하게.
 //    여백: 농부(5,4) 4.4 · 공원벤치(-2.2,4.6) 4.6 · 텃밭 게이트(0,7) 5.6 · 랜덤 나무 밴드(r≥8) 밖
 //    ⚠️ 스폰보다 남쪽(z+)에 두면 카메라(남→북)와 캐릭터 사이에 끼어 캐릭터를 가림 — 같은 z선상 동쪽으로.
-const RANK = new THREE.Vector3(2.4, 0, 0.2);
+const RANK = new THREE.Vector3(13.5, 0, 1.5);  // 🏆 랭킹 게시판 — 호수 북쪽 가로등(15,3) 잔디. 한복판(2.4,0.2)에서 옮김(NPC 안 가림·활동 구역 밖·호수 가는 길에 보임). 부두 옆(8.5,9.5)·텃밭 입구 앞(-0.5,10.5)은 비좁아 제외
 let nearRank = false;
 const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
@@ -520,7 +520,7 @@ const NPCS = [
   },
   {
     // 좌판 바로 뒤(북쪽) 상주 — 좌판 장애물 반경 1.6 + NPC 여유 0.35 = 1.95 밖이어야 npcBlocked 에 안 걸린다
-    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0x9c7b58, hat: 0x8a5cd0, pos: [9, 0, -2.1], roam: 0.6, look: 'peddler',   // 보따리 장수 외형(hat 색은 허리띠)
+    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0x9c7b58, hat: 0x8a5cd0, pos: [10.5, 0, -3.5], roam: 0.6, look: 'peddler',   // 보따리 장수 외형(hat 색은 허리띠)
     quests: [
       { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
       { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
@@ -1842,6 +1842,7 @@ function buildWorld() {
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
+      || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
     }
