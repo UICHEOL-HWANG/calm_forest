@@ -164,19 +164,24 @@ const WEATHER_MSG = {
 let rainLines = null;  // 날씨 파티클(빗줄기/눈송이 LineSegments)
 
 // ── 집 꾸미기 가구 카탈로그 (작물 💰 로 구매해 실내에 배치) ──────
+// 🛋️ 가구 배율 — 14×14 방에 비해 가구가 너무 작아 꾸미기가 허전하다는 베타 피드백(2026-09-09).
+//    decorMesh() 안쪽 그룹에만 곱하고 바깥 그룹은 1 로 둔다(등장 팝 애니메이션이 바깥 scale 을 0.01→1 로 쓴다).
+const DECOR_SCALE = 1.5;
+//   foot: [가로, 세로] — 밟고 못 지나가는 발자국(배율 전, decorMesh 치수 기준). 러그류는 밟고 지나가므로 없음.
+//   "가구를 그냥 통과한다"는 베타 피드백 → 배치 시 solidBox 로 막는다(놓은 방향에 따라 가로·세로를 바꿈).
 const DECOR = [
   { id: 'rug',      name: '러그',   ico: '🎨', cost: 2, pay: 'crop' },
-  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop' },
-  { id: 'chair',    name: '의자',   ico: '🪑', cost: 3, pay: 'crop' },
-  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop' },
-  { id: 'lamp',     name: '램프',   ico: '🕯️', cost: 4, pay: 'crop' },
-  { id: 'sofa',     name: '소파',   ico: '🛋️', cost: 5, pay: 'crop' },
-  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish' }, // 물고기로 구매
+  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop', foot: [0.45, 0.45] },
+  { id: 'chair',    name: '의자',   ico: '🪑', cost: 3, pay: 'crop', foot: [0.55, 0.55] },
+  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop', foot: [1.1, 0.7] },
+  { id: 'lamp',     name: '램프',   ico: '🕯️', cost: 4, pay: 'crop', foot: [0.4, 0.4] },
+  { id: 'sofa',     name: '소파',   ico: '🛋️', cost: 5, pay: 'crop', foot: [1.6, 0.75] },
+  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish', foot: [0.66, 0.42] }, // 물고기로 구매
   // ── 큰 가구(사이즈 大) ──
-  { id: 'bed',       name: '침대',    ico: '🛏️', cost: 8,  pay: 'crop', big: true },
-  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true },
-  { id: 'bigsofa',   name: '큰 소파', ico: '🛋️', cost: 10, pay: 'crop', big: true },
-  { id: 'bookshelf', name: '책장',    ico: '📚', cost: 9,  pay: 'crop', big: true },
+  { id: 'bed',       name: '침대',    ico: '🛏️', cost: 8,  pay: 'crop', big: true, foot: [1.5, 2.2] },
+  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true, foot: [1.8, 1.0] },
+  { id: 'bigsofa',   name: '큰 소파', ico: '🛋️', cost: 10, pay: 'crop', big: true, foot: [2.4, 0.95] },
+  { id: 'bookshelf', name: '책장',    ico: '📚', cost: 9,  pay: 'crop', big: true, foot: [1.3, 0.45] },
   { id: 'bigrug',    name: '큰 러그', ico: '🟪', cost: 6,  pay: 'crop', big: true },
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
@@ -2421,9 +2426,10 @@ function setHeldTool(id) {
 function setHeldDecor(id) {
   if (!handAnchor) return;
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
-  const m = decorMesh(id); m.scale.setScalar(0.5); m.position.y = 0.05;
+  const m = decorMesh(id); m.scale.setScalar(0.5 / DECOR_SCALE); m.position.y = 0.05;   // 손에 든 미니어처는 배율 상쇄(전과 같은 크기)
   m.rotation.y = decorRot * Math.PI / 2;   // 현재 회전 상태 미리보기
   heldToolMesh = m; measureStowLen(m); updateStowPose(); handAnchor.add(m);
+  if (indoor || atCafe) setFogExempt(m, true);
 }
 
 // ── 🌦️ 날씨 파티클 — 비: 빠른 빗줄기 / 눈: 천천히 흩날리는 눈송이 ──
@@ -5561,13 +5567,15 @@ function buildInterior() {
   // 뒷벽 창문 2개(넓어진 방)
   [-2.5, 2.5].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, INT_HALF - 0.1); g.add(win); });
   scene.add(g); interiorGroup = g; interiorGroup.visible = false;   // 들어갈 때만 표시
+  setFogExempt(g, true);                                              // 방은 안개 밖
   interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
   scene.add(interiorLamp);
 }
 
 // 가구 메시(로우폴리)
 function decorMesh(id) {
-  const g = new THREE.Group();
+  const root = new THREE.Group();
+  const g = new THREE.Group(); g.scale.setScalar(DECOR_SCALE); root.add(g);   // 부품은 여기에 — 배율은 안쪽만
   if (id === 'rug') {
     const r = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 20), clayMat(0xff9e9e, false)); r.position.y = 0.02; g.add(r);
   } else if (id === 'plant') {
@@ -5623,8 +5631,9 @@ function decorMesh(id) {
     const r = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.6), clayMat(0xc7a6e8, false)); r.position.y = 0.03; g.add(r);
     const border = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.06, 1.2), clayMat(0xe8d3f5, false)); border.position.y = 0.04; g.add(border);
   }
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  return g;
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  setFogExempt(root, true);   // 실내 가구는 안개 밖(고스트는 재질을 clone 하므로 플래그가 따라간다)
+  return root;
 }
 
 // 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음) · free=true 면 옮겨 놓기(비용 없음)
@@ -5645,6 +5654,10 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   m.rotation.y = ry * Math.PI / 2;
   const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry };
   m.userData.rec = rec;                                     // 탭해서 들어 올릴 때 저장 레코드를 같이 뺀다
+  if (def.foot) {                                           // 🚧 발자국만큼 통행 차단 — 90°·270° 로 놓으면 가로·세로 교환
+    const hw = def.foot[ry % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[ry % 2 ? 0 : 1] / 2 * DECOR_SCALE;
+    m.userData.collider = solidBox(lx - hw, lz - hd, lx + hw, lz + hd);
+  }
   scene.add(m); decorMeshes.push(m);
   gameState.house.decor.push(rec);
   if (!silent) {
@@ -5659,8 +5672,9 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   }
   return true;
 }
-function decorClampX(x) { return Math.max(INT.x - INT_HALF + 0.5, Math.min(INT.x + INT_HALF - 0.5, x)); }
-function decorClampZ(z) { return Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.5, z)); }
+const DECOR_WALL_PAD = 0.5 * DECOR_SCALE;   // 벽 여유 — 가구 배율만큼
+function decorClampX(x) { return Math.max(INT.x - INT_HALF + DECOR_WALL_PAD, Math.min(INT.x + INT_HALF - DECOR_WALL_PAD, x)); }
+function decorClampZ(z) { return Math.max(INT.z - INT_HALF + DECOR_WALL_PAD, Math.min(INT.z + INT_HALF - DECOR_WALL_PAD, z)); }
 
 // ── 🫥 가구 배치 미리보기(고스트) + 놓은 가구 옮기기 ──────────────
 //   손에 든 축소 메시는 실내에 들어오면 맨손(등 수납)이라 화면에서 안 보였다(베타 피드백 "미리보기가 안 보여요").
@@ -5690,7 +5704,7 @@ function buildDecorGhost(id) {
     o.material = o.material.clone();
     o.material.transparent = true; o.material.opacity = 0.45; o.material.depthWrite = false;
   });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.72, 28),
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55 * DECOR_SCALE, 0.72 * DECOR_SCALE, 28),
     new THREE.MeshBasicMaterial({ color: 0x7fce8b, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
   g.rotation.y = decorRot * Math.PI / 2;
@@ -5740,6 +5754,7 @@ function tryPickDecor(e) {
   let root = hit.object; while (root.parent && !decorMeshes.includes(root)) root = root.parent;
   const rec = root.userData.rec; if (!rec) return false;
   scene.remove(root); decorMeshes.splice(decorMeshes.indexOf(root), 1);
+  if (root.userData.collider) removeSolid(root.userData.collider);   // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   const i = gameState.house.decor.indexOf(rec); if (i >= 0) gameState.house.decor.splice(i, 1);
   decorRot = rec.rot || 0;
   startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot });
@@ -7725,7 +7740,7 @@ function updatePlayer(dt, t) {
 
   // 🚧 건물·바위·가구 밀어내기 — 공간 클램프 뒤에 마지막으로(벽 모서리에 끼지 않게)
   //    실내(집)는 가구를 직접 배치하는 공간이라 제외 — 잘못 놓으면 갇힐 수 있음
-  if (!indoor) resolveColliders(player.position);
+  resolveColliders(player.position);   // 실내에서도 — 놓은 가구(solidBox)가 막아야 한다(전엔 실내를 통째로 건너뛰어 가구를 그냥 통과했다)
   // 테스트: ?dbg=1 — 현재 좌표·카메라·콜라이더 수를 <body data-dbg> 에 기록(충돌 디버깅용)
   if (_wq.has('dbg')) {
     document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
