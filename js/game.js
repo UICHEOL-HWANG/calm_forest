@@ -5684,10 +5684,11 @@ function decorMesh(id) {
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.3, 0.6), stone); body.position.y = 0.65; g.add(body);
     const mantle = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.7), woodMat(2, 1, 0xa9743f)); mantle.position.y = 1.35; g.add(mantle);
     const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.5), stone); chimney.position.y = 1.65; g.add(chimney);
-    const hearth = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.1), clayMat(0x2a2320)); hearth.position.set(0, 0.42, 0.26); g.add(hearth);   // 아궁이(어둠)
-    [-0.14, 0.14].forEach(x => { const log = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 6), clayMat(0x5a3d2a)); log.rotation.z = Math.PI / 2; log.position.set(x, 0.2, 0.28); log.rotation.y = x * 2; g.add(log); });
-    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.4, 7), new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0xff7a2a, emissiveIntensity: 1.4, roughness: 0.6 })); fire.position.set(0, 0.42, 0.28); fire.userData.flicker = true; g.add(fire);
-    const core = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.24, 6), new THREE.MeshStandardMaterial({ color: 0xfff1a8, emissive: 0xffe07a, emissiveIntensity: 1.6, roughness: 0.6 })); core.position.set(0, 0.36, 0.3); g.add(core);
+    // 아궁이·장작·불꽃은 몸통 앞면(z=0.3) 바깥에 — 안쪽에 두면 앞면에 가려 위에서 안 보인다
+    const hearth = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.06), clayMat(0x2a2320)); hearth.position.set(0, 0.42, 0.32); g.add(hearth);   // 아궁이(어둠)
+    [-0.14, 0.14].forEach(x => { const log = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 6), clayMat(0x5a3d2a)); log.rotation.z = Math.PI / 2; log.position.set(x, 0.2, 0.4); log.rotation.y = x * 2; g.add(log); });
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 7), new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0xff7a2a, emissiveIntensity: 1.4, roughness: 0.6 })); fire.position.set(0, 0.46, 0.42); fire.userData.flicker = true; g.add(fire);
+    const core = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.3, 6), new THREE.MeshStandardMaterial({ color: 0xfff1a8, emissive: 0xffe07a, emissiveIntensity: 1.6, roughness: 0.6 })); core.position.set(0, 0.4, 0.46); g.add(core);
   } else if (id === 'piano') {
     const dark = clayMat(0x2b2622, false);
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.55), dark); body.position.set(0, 0.6, -0.15); g.add(body);
@@ -9526,7 +9527,12 @@ function updateMerchantVisit(dt) {
       merchantVisit = { state: 'return', t: 0, offer: v.offer }; gameState.hintsSeen.merchantVisit = false; return;
     }
     const d = stepNpcToward(m, player.position, 2.0, dt);
-    if (d <= 1.6 || v.t > 12) { v.state = 'talk'; openMerchantOffer(v.offer); }
+    if (d <= 1.6) {
+      if (ui.anyModalOpen?.()) { v.t = 0; return; }   // 튜토리얼 카드 등이 떠 있으면 옆에서 기다린다(뒤에 묻혀 1회권만 소진되던 것)
+      v.state = 'talk'; openMerchantOffer(v.offer);
+    } else if (v.t > 12) {                             // 못 왔다(벤치 등에 걸림) → 멀리서 모달 띄우지 말고 돌아가고, 다음 기회에 다시
+      merchantVisit = { state: 'return', t: 0, offer: v.offer }; gameState.hintsSeen.merchantVisit = false;
+    }
   } else if (v.state === 'talk') {
     const dx = player.position.x - m.group.position.x, dz = player.position.z - m.group.position.z;
     m.group.rotation.y = lerpAngle(m.group.rotation.y, Math.atan2(dx, dz), 0.2);   // 플레이어 바라보기
