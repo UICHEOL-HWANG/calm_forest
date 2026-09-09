@@ -6,8 +6,9 @@
 //  ▶ 언어 결정 우선순위:
 //    ① ?lang=  URL 파라미터(테스트·공유용)
 //    ② localStorage cf_lang(유저가 🌐 토글로 고른 값)
-//    ③ 브라우저 언어가 한국어면 ko
-//    ④ 비한국어 브라우저: EXPERIMENT==='i18n' 이면 A/B 배정에 따름
+//    ③ 🎮 itch 번들이면 en (해외 이용자가 대부분 — 한국어는 토글로)
+//    ④ 브라우저 언어가 한국어면 ko
+//    ⑤ 비한국어 브라우저: EXPERIMENT==='i18n' 이면 A/B 배정에 따름
 //       (A=control: ko 기본 + 토글 노출 / B=treatment: en 자동 적용)
 //       실험 off 면 en 자동(전면 롤아웃 동작)
 //  ▶ 적용 방식:
@@ -20,6 +21,7 @@
 // =============================================================
 
 import { CONFIG } from './config.js';
+import { IS_ITCH } from './platform.js';   // 🎮 itch 번들은 영어 기본(2026-09-09)
 import { EN } from './i18n-en.js';
 
 // ── 분석용 영구 client_id — supabase-client.js 도 이걸 import ─
@@ -50,6 +52,7 @@ function detectLang() {
     const saved = localStorage.getItem('cf_lang');
     if (saved === 'en' || saved === 'ko') return saved;
   } catch (e) { /* localStorage 차단 → 아래 자동 감지로 */ }
+  if (IS_ITCH) return 'en';                   // 🎮 itch: 브라우저 언어와 무관하게 영어 시작
   const isKo = (navigator.language || 'ko').toLowerCase().startsWith('ko');
   if (isKo) return 'ko';                       // 한국 유저는 실험 밖 — 전원 한국어
   if (CONFIG.EXPERIMENT === 'i18n') return assignVariant() === 'B' ? 'en' : 'ko';

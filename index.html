@@ -2391,7 +2391,8 @@
           const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = guideAbs('guide.css');
           document.head.appendChild(l); guideCssLinked = true;
         }
-        const res = await fetch(guideAbs('guide.html'));
+        // 🌐 영어 모드는 영어판 fragment(guide/guide-en.html) — 본문 문장은 사전(i18n)으로 못 바꾸므로 파일을 따로 둔다
+        const res = await fetch(guideAbs(LANG === 'en' ? 'guide-en.html' : 'guide.html'));
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const wrap = document.createElement('div'); wrap.className = 'gd'; wrap.innerHTML = await res.text();
         wrap.querySelectorAll('img[src]').forEach(img => { img.src = guideAbs(img.getAttribute('src')); });

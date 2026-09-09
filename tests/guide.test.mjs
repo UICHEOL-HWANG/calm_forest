@@ -36,14 +36,17 @@ test('이미지 장당 160KB 이하 · 총량 3MB 이하', () => {
 });
 
 const HTML = () => readFileSync(new URL('guide/guide.html', ROOT), 'utf8');
+const HTML_EN = () => readFileSync(new URL('guide/guide-en.html', ROOT), 'utf8');
+// 🌐 영어판(guide-en.html)은 한국어판과 구조가 같아야 한다 — 아래 구조 테스트는 두 파일 모두에 돈다
+const BOTH = [['ko', HTML], ['en', HTML_EN]];
 
-test('fragment 에 문서 껍데기·스크립트가 없다', () => {
-  const h = HTML();
+for (const [lang, read] of BOTH) test(`[${lang}] fragment 에 문서 껍데기·스크립트가 없다`, () => {
+  const h = read();
   assert.doesNotMatch(h, /<(!doctype|html|head|body|script|style|link)\b/i);
 });
 
-test('섹션 20개 · id sec-01..sec-20 · 각각 eyebrow + h2[data-chip]', () => {
-  const h = HTML();
+for (const [lang, read] of BOTH) test(`[${lang}] 섹션 20개 · id sec-01..sec-20 · 각각 eyebrow + h2[data-chip]`, () => {
+  const h = read();
   const secs = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">/g)].map(m => m[1]);
   assert.equal(secs.length, 20);
   secs.forEach((id, i) => assert.equal(id, `sec-${String(i + 1).padStart(2, '0')}`));
@@ -52,8 +55,8 @@ test('섹션 20개 · id sec-01..sec-20 · 각각 eyebrow + h2[data-chip]', () =
   assert.equal((h.match(/class="gd-eyebrow"/g) || []).length, 20);
 });
 
-test('img 는 상대경로 · 존재 · lazy · width/height', () => {
-  const h = HTML();
+for (const [lang, read] of BOTH) test(`[${lang}] img 는 상대경로 · 존재 · lazy · width/height`, () => {
+  const h = read();
   const imgs = [...h.matchAll(/<img\b[^>]*>/g)].map(m => m[0]);
   assert.ok(imgs.length >= 40, `img 가 ${imgs.length}개 — 40개 이상이어야`);
   for (const tag of imgs) {
@@ -66,9 +69,17 @@ test('img 는 상대경로 · 존재 · lazy · width/height', () => {
   }
 });
 
-test('첫 섹션에 튜토리얼 다시 보기 버튼', () => {
-  const first = HTML().split('<section class="gd-sec" id="sec-02">')[0];
+for (const [lang, read] of BOTH) test(`[${lang}] 첫 섹션에 튜토리얼 다시 보기 버튼`, () => {
+  const first = read().split('<section class="gd-sec" id="sec-02">')[0];
   assert.match(first, /<button class="gd-tut" data-act="tutorial">/);
+});
+
+// 🌐 영어판은 한국어판과 이미지 순서까지 같아야 한다(사진 설명이 서로 대응) · 본문에 한글이 남아 있으면 안 된다
+test('[en] 이미지 목록이 한국어판과 순서까지 같다 · 한글 없음', () => {
+  const imgs = (h) => [...h.matchAll(/<img\b[^>]*src="([^"]+)"/g)].map(m => m[1]);
+  assert.deepEqual(imgs(HTML_EN()), imgs(HTML()));
+  const body = HTML_EN().replace(/<!--[\s\S]*?-->/g, '');
+  assert.doesNotMatch(body, /[가-힣]/, '영어판 본문에 한글이 남아 있다');
 });
 
 // 🪏 삽(빈 밭 메우기) — docs/superpowers/specs/2026-09-08-shovel-untill-design.md §5 안내서 갱신
