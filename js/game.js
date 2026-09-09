@@ -1594,6 +1594,7 @@ export async function enterGame() {
   const _hq = parseInt(_wq.get('house') || '', 10);
   if (_hq >= 1 && _hq <= MAX_HOUSE_STAGE) for (let s = gameState.houseStage + 1; s <= _hq; s++) buildHouseStage(s, true);
   if (_wq.get('coop') === '1' && !gameState.coop.built) buildCoop(true);   // 테스트: ?coop=1 — 닭장 미리보기
+  if (_wq.get('farm') === '1') setTimeout(() => enterFarm(), 60); // 테스트: ?farm=1 — 개인 텃밭 바로 입장(?give=seed:9 와 조합)
   refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
   // 테스트: ?owl=1 — 오늘 일일 의뢰 3건을 끝낸 상태로 만들어 ✨특별 의뢰 배달을 바로 본다
   //   (3건을 실제로 깨려면 한참 걸려 검수 때마다 막힌다 — ?coop=1·?sea=1 과 같은 개발용 파라미터)
