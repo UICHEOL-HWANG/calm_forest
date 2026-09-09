@@ -4,9 +4,23 @@
     {
       "name": "calm-forest",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["scripts/serve.py"],
+      "runtimeArgs": [
+        "scripts/serve.py"
+      ],
       "port": 8000,
       "autoPort": true
+    },
+    {
+      "name": "calm-forest-itch",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8010",
+        "--directory",
+        "dist-itch"
+      ],
+      "port": 8010
     }
   ]
 }

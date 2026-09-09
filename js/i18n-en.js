@@ -1056,6 +1056,7 @@ export const EN = {
 
   // ── 콜사이트 패턴(문자열 연결부를 {0} 패턴으로 정리) ──
   '구글 로그인 실패: {0}': 'Google sign-in failed: {0}',
+  '팝업이 차단됐어요. 이 사이트의 팝업을 허용한 뒤 다시 눌러주세요.': 'The pop-up was blocked. Allow pop-ups for this site and try again.',
 
   // ── 🪙 코인 첫 루프(2026-09-05) ──
   '비료 1개': 'Fertilizer ×1',

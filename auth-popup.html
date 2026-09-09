@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>calm forest · 로그인 연결 중</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, -apple-system, sans-serif; background: #2f4f3a; color: #fff; text-align: center; }
+  p { font-size: 15px; line-height: 1.6; padding: 0 24px; }
+  small { opacity: .7; }
+</style>
+</head>
+<body>
+<p id="msg">로그인 연결 중… 🌿<br><small>이 창은 자동으로 닫혀요.</small></p>
+<script>
+// =============================================================
+//  🎮 구글 팝업 로그인 복귀 페이지 (itch.io 등 iframe 호스트용)
+//  ------------------------------------------------------------
+//  js/supabase-client.js 의 signInWithGooglePopup 이 여는 팝업이 구글 → Supabase 를 거쳐
+//  이 페이지로 돌아온다. Supabase(implicit flow)가 URL 해시에 실어 준 토큰을 꺼내
+//  opener(게임 iframe)에 postMessage 로 넘기고 창을 닫는다.
+//  ▶ 토큰은 iframe 오리진 화이트리스트로만 보낸다(targetOrigin 이 다르면 브라우저가 버림).
+//  ▶ 이 페이지는 Supabase 대시보드 Redirect URLs 에 등록돼 있어야 한다.
+// =============================================================
+(function () {
+  var hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  var query = new URLSearchParams(location.search);
+  var msg;
+  var err = hash.get('error_description') || hash.get('error') || query.get('error_description') || query.get('error');
+  if (err) msg = { type: 'calmforest-auth', error: err };
+  else if (hash.get('access_token') && hash.get('refresh_token')) {
+    msg = { type: 'calmforest-auth', access_token: hash.get('access_token'), refresh_token: hash.get('refresh_token') };
+  } else msg = { type: 'calmforest-auth', error: 'no token in callback' };
+
+  // 게임이 서빙되는 오리진들 — itch(현행·구형 CDN) + 웹 자체 + 로컬 검증
+  var TARGETS = [
+    'https://html-classic.itch.zone', 'https://html.itch.zone', 'https://v6p9d9t4.ssl.hwcdn.net',
+    location.origin, 'http://localhost:8000', 'http://127.0.0.1:8000',
+  ];
+  if (window.opener) {
+    for (var i = 0; i < TARGETS.length; i++) { try { window.opener.postMessage(msg, TARGETS[i]); } catch (e) {} }
+    document.getElementById('msg').innerHTML = msg.error ? '로그인에 실패했어요 😢<br><small>' + msg.error.replace(/</g, '&lt;') + '</small>' : '연결 완료 🌿<br><small>창을 닫아도 돼요.</small>';
+    history.replaceState(null, '', location.pathname);   // 주소창의 토큰 흔적 제거
+    setTimeout(function () { window.close(); }, 800);
+  } else {
+    document.getElementById('msg').innerHTML = '게임 창에서 열린 팝업이 아니에요.<br><small>게임으로 돌아가 다시 로그인해주세요.</small>';
+  }
+})();
+</script>
+</body>
+</html>

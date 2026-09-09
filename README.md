@@ -47,6 +47,7 @@ calm_forest/
 │  └─ migrate_metrics_tables.sql # 📐 계측 테이블(econ_logs·session_logs) 생성+RLS
 ├─ scripts/              # 🛠️ 빌드·데이터 스크립트
 │  ├─ build-web.mjs      #   dist/ 화이트리스트 번들(파비콘·OG 를 루트 URL 로 펴 준다)
+│  ├─ build-itch.mjs     #   🎮 itch.io 번들 dist-itch/ + zip(플래그 주입·API_BASE 치환) — docs/ITCH_DEPLOY.md
 │  ├─ make-favicon.mjs   #   파비콘 생성 → assets/favicon/
 │  ├─ i18n_check.mjs     #   번역 키 누락 검사
 │  ├─ serve.py           #   로컬 개발 서버(no-store + API 미러 + 루트 에셋 별칭)
