@@ -9816,7 +9816,10 @@ function deliverOwlSpecial(o) {
   const def = o.def, st = npcState(def.id);
   if (!owlSpecialPending()) return;   // 나는 사이에 자정이 지났거나 이미 받았다 — 판정은 한 곳에서만
   const pick = OWL_SPECIAL_POOL[dateHash('owl:special') % OWL_SPECIAL_POOL.length];
-  const sp = { ...pick, title: `✨ ${pick.title}`, reward: { coins: 80, gem: 1 },
+  // 보상 조정: 코인 80 + 💎1(판매가 40) = 120 코인어치는 일일 3건 전부(45 + 럭키박스 기대값 ~37)
+  //   보다 컸다 — 하루 발행량이 두 배가 되어 베타 경제 지표가 흔들린다.
+  //   30 + 💎1 = 70 코인어치로 낮춘다(가장 큰 일일 의뢰 20 의 1.5배 + 특별함은 💎 가 맡는다).
+  const sp = { ...pick, title: `✨ ${pick.title}`, reward: { coins: 30, gem: 1 },
                line: `오늘 의뢰를 전부 해냈구나! 그럼 이건 자네 몫이지 — ✨특별 의뢰야. ${pick.desc}!` };
   st.special = sp;                     // 세이브엔 일일 3개와 따로 보관(배열에 섞으면 다음 접속에 재추첨된다)
   st.readyToasted = false;             // 상태형 목표를 풀에 넣어도 달성 토스트가 뜨게
