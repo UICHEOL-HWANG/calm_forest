@@ -537,8 +537,10 @@ const NPCS = [
   },
 ];
 
-// 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 보유량형(refreshCollectQuests).
+// 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 상태형(refreshCollectQuests).
 //   이 목록에 없는 type 을 가진 의뢰는 아무리 플레이해도 영원히 완료되지 않는다.
+//   되돌릴 수 없는 1회성 목표(house 등)는 이벤트가 아니라 상태형으로 넣는다 —
+//   이벤트는 수락 전에 이미 끝내버린 사람에게 두 번 다시 쏘이지 않는다.
 const QUEST_TYPES = new Set([
   'chop', 'plant', 'water', 'harvest', 'fish', 'fish_rare', 'mine',
   'sell', 'cook', 'serve', 'catch', 'forage', 'house',
@@ -4766,7 +4768,7 @@ function buildHouseStage(stage, silent = false) {
       spawnSparkle(HOUSE_POS.x, 3.0, HOUSE_POS.z, 34);
       Sound.complete();
       ui.toast?.('🎉 집 완성! 축하해요');
-      questEvent('house');                       // 퀘스트 진행
+      refreshCollectQuests();                    // 퀘스트 진행(진행도는 houseStage 에서 읽는다)
       ui.act?.('build');                         // 튜토리얼: 집 완성
       triggerMoment();                           // 📷 순간 줌인
       tryUnlockDrop(1);                          // 🎨 집 완성 보상: 랜덤 색 1개 확정
@@ -9500,7 +9502,10 @@ function questEvent(type, amount = 1) {
   refreshQuestPanel();
 }
 
-// 보유량형 퀘스트(collect_wood/collect_crop) — 인벤토리 변할 때 재계산
+// 상태형 퀘스트(collect_wood/collect_crop/house) — 인벤토리·집 단계가 변할 때 재계산
+//   ⚠️ house 는 "집 완성"이라는 되돌릴 수 없는 1회성 상태다. 이벤트로만 진행시키면
+//      집을 먼저 짓고 나중에 의뢰를 수락한 사람은 다시 완성할 방법이 없어 영원히 0/1 에 갇힌다.
+//      그래서 매번 houseStage 를 읽어 진행도를 맞춘다(이미 갇힌 세이브도 접속하면 저절로 풀린다).
 function refreshCollectQuests() {
   for (const o of npcObjs) {
     const st = npcState(o.def.id);
@@ -9508,6 +9513,7 @@ function refreshCollectQuests() {
     const q = o.def.quests[st.idx];
     if (q.type === 'collect_wood') st.progress = Math.min(q.target, gameState.inventory.wood);
     else if (q.type === 'collect_crop') st.progress = Math.min(q.target, gameState.inventory.crop);
+    else if (q.type === 'house') st.progress = gameState.houseStage >= 3 ? q.target : 0;
     else continue;
     if (st.progress >= q.target && !st.readyToasted) { st.readyToasted = true; ui.toast?.(`✅ ${o.def.name}의 목표 달성!`); }
     updateNPCGlyph(o);
