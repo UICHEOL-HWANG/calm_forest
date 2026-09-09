@@ -2299,8 +2299,11 @@
           trackEvent('diary_open', { day: betaDay(authState.createdAt) });
           // 🎮 itch 같은 다른 오리진 번들에서도 웹의 일지로 가도록 API_BASE 를 앞에 붙인다(웹은 빈 값 → 기존과 동일)
           const diaryUrl = `${CONFIG.API_BASE}/beta/diary.html`;
-          const w = window.open(diaryUrl, '_blank', 'noopener');
-          if (!w) location.href = diaryUrl;   // 팝업 차단·웹뷰 폴백 — 같은 탭으로
+          // ⚠️ features 에 'noopener' 를 주면 표준상 window.open 이 항상 null 을 돌려줘 아래 폴백까지 타서
+          //    새 탭 + 게임 탭 둘 다 일지로 바뀌었다(2026-09-09 테스터 제보). 열고 나서 opener 만 끊는다.
+          const w = window.open(diaryUrl, '_blank');
+          if (w) { try { w.opener = null; } catch {} }
+          else location.href = diaryUrl;   // 진짜 팝업 차단·웹뷰 폴백 — 같은 탭으로
         };
         applyBetaTutorialOrder();   // A군 튜토리얼 순서도 같은 시점에 확정
       });
