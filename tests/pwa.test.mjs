@@ -3,9 +3,9 @@
 //  구글 플레이 TWA(PWABuilder/Bubblewrap)는 manifest 를 읽어 앱을 만들므로
 //  여기서 깨지면 스토어 빌드가 조용히 실패한다.
 // =============================================================
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const ROOT = new URL('../', import.meta.url);
@@ -25,7 +25,7 @@ test('manifest 필수 필드 — TWA 생성기가 요구하는 것', () => {
   const m = manifest();
   assert.equal(m.name, 'calm forest');
   assert.ok(m.short_name && m.short_name.length <= 12, 'short_name 12자 이하');
-  assert.equal(m.start_url, '/');
+  assert.equal(m.start_url, '/?ref=pwa');   // js/analytics.js 가 ref= 를 GA4 세션 소스로 주입 → 설치 앱 유입 구분
   assert.equal(m.scope, '/');
   assert.equal(m.id, '/');
   assert.equal(m.display, 'standalone');
@@ -102,4 +102,9 @@ test('toss·itch 번들은 manifest 링크(와 설명 주석)를 제거한다 �
   }
   // 웹 배포본은 링크를 유지한다
   assert.match(read('index.html'), /rel="manifest"/);
+});
+
+// 위 테스트가 만든 빌드 산출물 정리(.gitignore 대상이지만 테스트가 잡파일을 남기지 않게)
+after(() => {
+  for (const p of ['dist-toss', 'dist-itch', 'dist-itch.zip']) rmSync(new URL(p, ROOT), { recursive: true, force: true });
 });
