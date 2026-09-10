@@ -3748,7 +3748,7 @@
           `<span class="ad-price${!i.owned && !i.locked && !i.affordable ? ' lack' : ''}">${i.coins}🪙</span>${btn(i)}</div>`).join('') + '</div>';
       box.querySelectorAll('.ad-btn[data-id]').forEach(b => b.addEventListener('click', () => {
         const r = Input.buyHouseAddon(b.dataset.id);
-        ui.toast(r.msg, 2600);
+        if (r.msg) ui.toast(r.msg, 2600);
         if (r.ok) renderAddons();   // 코인·설치 상태 갱신
       }));
     }

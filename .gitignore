@@ -34,3 +34,4 @@ infra/airflow/secrets/
 .superpowers/
 # W&B 아티팩트 다운로드 캐시(fetch_coef.py)
 ml/artifacts/
+.scratch/

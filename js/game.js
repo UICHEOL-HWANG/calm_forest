@@ -1674,6 +1674,7 @@ export async function enterGame() {
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
+    window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
     window.__decor = (id, x, z, rot = 0) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true);   // 가구 무료 배치(검수용)
@@ -4858,6 +4859,7 @@ function buildHouseStage(stage, silent = false) {
     });
   } else if (stage >= 3) {
     // 🏠 완성(3)·증축(4~6): 짓던 부품(데크·통나무)을 지우고 단계 모델로 통째로 교체 — js/house/
+    unregisterWindows(houseGroup);
     [...houseGroup.children].forEach(c => houseGroup.remove(c));
     add(mountHouseModel(stage));
   }
@@ -4931,10 +4933,14 @@ function prepHouseMeshes(root) {
 let houseAddonAnims = [];   // 🧩 움직이는 구성품(굴뚝 연기) — updateDayNight 에서 프레임마다 호출
 const registerAddonAnims = (addons) => { houseAddonAnims = addons.children.map(c => c.userData.anim).filter(Boolean); };
 // 🧩 구성품만 다시 얹는다(집 건축 연출 없이): 옛 'addons' 그룹 제거 + 그 점등 재질 등록 해제 → 새로 빌드
+// 그룹 안 재질을 밤 점등 목록에서 뺀다 — 단계 재건축·구성품 재마운트 때 안 빼면 옛 재질이 남아 매 프레임 갱신 대상이 늘어난다(누수)
+function unregisterWindows(root) {
+  const mats = new Set(); root.traverse(o => { if (o.isMesh) mats.add(o.material); });
+  for (let i = houseWindows.length - 1; i >= 0; i--) if (mats.has(houseWindows[i])) houseWindows.splice(i, 1);
+}
 function refreshHouseAddons() {
   const old = houseGroup?.getObjectByName('addons'); if (!old) return;
-  const mats = new Set(); old.traverse(o => { if (o.isMesh) mats.add(o.material); });
-  for (let i = houseWindows.length - 1; i >= 0; i--) if (mats.has(houseWindows[i])) houseWindows.splice(i, 1);
+  unregisterWindows(old);
   const parent = old.parent; parent.remove(old);
   const fresh = mountHouseAddons(THREE, gameState.houseStage, gameState.house.addons);
   parent.add(fresh); prepHouseMeshes(fresh); registerAddonAnims(fresh);
@@ -4946,7 +4952,7 @@ function houseAddonInfo() {
 }
 // 🧩 구성품 구매 — 검증 → 코인 차감(원장) → 저장 목록 → 집에 바로 설치. 결과 msg 는 호출부가 토스트
 function buyHouseAddon(id) {
-  const def = HOUSE_ADDONS.find(a => a.id === id); if (!def) return { ok: false, msg: '' };
+  const def = HOUSE_ADDONS.find(a => a.id === id); if (!def) return { ok: false };
   const st = houseAddonInfo().items.find(i => i.id === id);
   if (st.owned) return { ok: false, msg: '✓ 이미 설치된 구성품이에요' };
   if (st.locked) return { ok: false, msg: `🔒 ${def.stage}단계부터 살 수 있어요` };
@@ -4959,6 +4965,7 @@ function buyHouseAddon(id) {
   spawnSparkle(HOUSE_POS.x, 2.4, HOUSE_POS.z, 18);
   Sound.harvest();
   trackEvent('house_addon_buy', { id, stage: gameState.houseStage, coins: def.coins });   // [GA4] 코인 싱크 퍼널
+  requestSave();                                                          // 코인을 쓴 자리는 바로 저장(새로고침으로 잃지 않게)
   return { ok: true, msg: `🧩 ${def.name} 설치! (-${def.coins}🪙)` };
 }
 
