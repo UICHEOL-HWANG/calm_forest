@@ -826,7 +826,7 @@ function dexDiscover(cat, id) {
 //    조건은 syncBadges()가 판정(옛 세이브도 접속 시 소급 지급)
 const BADGES = [
   { id: 'house',       name: '내 집 마련',     ico: '🏠', desc: '집 완성하기',            reward: { coins: 20 } },
-  { id: 'modern',      name: '드림 하우스',    ico: '🏙️', desc: '모던 하우스까지 증축',    reward: { coins: 100 } },
+  { id: 'modern',      name: '드림 하우스',    ico: '🏙️', desc: '루프탑 빌라까지 증축',    reward: { coins: 100 } },
   { id: 'first_chain', name: '첫 의뢰 완수',   ico: '🎖️', desc: '주민 의뢰 체인 1개 완료', reward: { coins: 20 } },
   { id: 'all_chains',  name: '마을의 영웅',    ico: '👑', desc: '모든 주민 의뢰 완료',     reward: { coins: 50 } },
   { id: 'streak7',     name: '일주일 개근',    ico: '🔥', desc: '7일 연속 출석',          reward: { coins: 30 } },
@@ -4919,7 +4919,7 @@ function expandInfo() {
 function doExpand() {
   if (gameState.houseStage < 3) return { ok: false, msg: '먼저 🔨망치로 집을 완성해요' };
   const info = expandInfo();
-  if (info.maxed) return { ok: false, msg: '🏙️ 이미 모던 하우스까지 완성했어요!' };
+  if (info.maxed) return { ok: false, msg: '🏝️ 이미 루프탑 빌라까지 완성했어요!' };
   if (!info.affordable) {
     const lack = info.items.filter(i => i.have < i.need).map(i => `${i.label} ${i.have}/${i.need}`).join(' · ');
     return { ok: false, msg: `${info.next.ico} ${info.next.name} 증축 재료 부족 — ${lack}` };
