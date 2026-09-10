@@ -18,6 +18,8 @@ mkdirSync('dist-toss', { recursive: true });
 let html = readFileSync('index.html', 'utf8');
 if (!html.includes('<head>')) throw new Error('[build-ait] index.html 에서 <head> 를 못 찾음');
 html = html.replace('<head>', '<head>\n  <script>window.__APPS_IN_TOSS__ = true;</script>');
+// 📱 PWA manifest 링크 제거 — 번들은 토스 오리진에서 서빙되어 /manifest.webmanifest 가 404 (SW 등록은 플래그로 이미 제외)
+html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n\s*<link rel="manifest"[^>]*>\s*\n/m, '');
 writeFileSync('dist-toss/index.html', html);
 
 // 게임 모듈(전부 절차 생성이라 정적 자산은 js/ 뿐)

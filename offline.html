@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>calm forest 🌿 — 오프라인</title>
+<meta name="theme-color" content="#bfe8c9" />
+<style>
+  html, body { margin: 0; height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { display: grid; place-items: center; background: linear-gradient(#d9f0df, #bfe8c9); color: #4a5a4f; }
+  .card { background: rgba(255,255,255,0.72); backdrop-filter: blur(8px); border-radius: 18px;
+          box-shadow: 0 6px 18px rgba(90,120,100,0.18); padding: 28px 32px; text-align: center; max-width: 320px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { margin: 0 0 18px; line-height: 1.5; font-size: 14px; }
+  p.en { font-size: 12px; opacity: 0.75; }
+  button { font: inherit; padding: 10px 22px; border: 0; border-radius: 999px; background: #8fd6a0; color: #2f4a38; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🌿 숲으로 가는 길이 끊겼어요</h1>
+    <p>인터넷에 연결된 뒤 다시 시도해 주세요.<br>마을은 그대로 기다리고 있어요.</p>
+    <p class="en">You're offline. Reconnect and try again — the village is waiting.</p>
+    <button onclick="location.reload()">다시 시도 · Retry</button>
+  </div>
+</body>
+</html>
