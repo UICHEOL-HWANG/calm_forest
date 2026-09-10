@@ -2125,6 +2125,8 @@
       onDecorAimed() { if (decorGuideStep === 1) setDecorGuide(2); },   // ③ 놓기
       // 놓아 둔 가구를 탭해 들어 올림 → 액션버튼 = 그 가구(다시 놓기)
       onDecorPicked(d) { if (decorGuideStep >= 0) endDecorGuide(); placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요 — 바닥을 탭해 옮긴 뒤 버튼으로 놓기 · 🎨 메뉴에서 🧺 보관`); },
+      // 🪵 놓아 둔 야외 장식을 들어 올림 → 액션버튼 = 그 장식(다시 놓기) · 🧺 보관 버튼 노출(body.picked-decor)
+      onOutdoorPicked(d) { placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요 — 원하는 곳에서 ${TOUCH ? '오른쪽 버튼' : 'Space'}으로 놓기 · 🧺 보관 버튼으로 보관`); },
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
@@ -2734,10 +2736,11 @@
       const box = $('out-items'); box.innerHTML = '';
       Input.getOutdoor().forEach(o => {
         const costStr = Object.entries(o.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const enough = Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
+        const stored = (Input.getOutdoorStored?.() || {})[o.id] || 0;   // 🧺 보관분 — 값 없이 꺼내 놓는다
+        const enough = stored > 0 || Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
         const el = document.createElement('div');
         el.className = 'ck-item' + (enough ? '' : ' off');
-        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span><span class="ck-buff">${o.desc}</span><span class="ck-cost">${costStr}</span>`;
+        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span><span class="ck-buff">${o.desc}</span><span class="ck-cost">${stored > 0 ? `보유 ${stored}` : costStr}</span>`;
         el.addEventListener('click', () => {
           if (!enough) { ui.toast('재료가 부족해요'); return; }
           Input.selectOutdoor(o.id); closeCook();

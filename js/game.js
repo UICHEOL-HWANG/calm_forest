@@ -32,6 +32,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
+import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -482,6 +483,8 @@ const OUTDOOR = [
 ];
 let placingOutdoor = null;      // 배치 중인 야외 장식 id
 const outdoorMeshes = [];
+let pickedOutdoor = null;       // 🪵 들어 올린 기존 야외 장식 {id, x, z, farm} — 취소·구역 이탈 시 제자리로(값 없이 다시 놓기)
+let nearOutdoorMesh = null;     // 🪵 근접 프롬프트 대상 야외 장식(옮기기)
 
 // ── 주민 선물(작업대) — 제작해서 주민에게 주면 친밀도↑ ──
 const GIFTS = [
@@ -694,6 +697,7 @@ const gameState = {
   house: { decor: [], stored: {} },         // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 }
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
   outdoor: [],                              // 야외 장식 [{id,x,z}]
+  outdoorStored: {},                        // 🧺 보관한 야외 장식 { id: 개수 } — 작업대에서 값 없이 다시 꺼냄
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
@@ -1331,7 +1335,7 @@ export const Input = {
   doTalk() { if (!indoor && nearNPC) talkToNPC(); },    // 전용 "대화하기" 버튼(모바일) — 도구질과 분리
   // 슬롯 탭 / 숫자키 1~8 — 페이지와 무관한 절대 선택. 다른 페이지 도구를 고르면 페이지가 따라오고, ✋맨손도 풀린다
   selectTool(i) {
-    if (placingOutdoor) { placingOutdoor = null; ui.onDecorPlaced?.(); }
+    if (placingOutdoor) { stopOutdoorPlacing(true); ui.onDecorPlaced?.(); }   // 🪵 들었던 장식은 제자리로
     currentTool = (i + TOOLS.length) % TOOLS.length;
     toolPage = TOOLS[currentTool].grp; lastPageTool[toolPage] = currentTool; pageBeforeAuto = null;
     ui.setTool?.(currentTool, TOOLS, toolPage);
@@ -1388,7 +1392,8 @@ export const Input = {
   selectOutdoor(id) { placingOutdoor = id; },           // 야외 장식 선택(설치 대기)
   getWeatherPrep() { return weatherPrepView(); },       // 🌡️ 내일 궂은 날씨·덮개 상태
   craftCover() { return craftCover(); },                // 🛡️ 덮개 설치(예고일 한정)
-  cancelOutdoor() { placingOutdoor = null; },           // 야외 배치 취소
+  cancelOutdoor() { stopOutdoorPlacing(true); },        // 야외 배치 취소(들었던 장식은 제자리로)
+  getOutdoorStored() { return gameState.outdoorStored || {}; },   // 🧺 보관한 야외 장식 { id: 개수 }
   getSellPrice() { const p = {}; for (const k in SELL_PRICE) p[k] = priceOf(k); return p; }, // 오늘의 시세 반영가
   getPriceRates() { const r = {}; for (const k in SELL_PRICE) r[k] = Math.round(priceRate(k) * 100); return r; }, // 시세 %(100=기본가)
   // 📖 도감 — 카탈로그 + 발견 여부 + 🏅 배지(도감 모달 렌더용)
@@ -1466,8 +1471,8 @@ export const Input = {
   cancelDecor() { stopDecorPlacing(true); },      // 들어 올린 가구였다면 제자리로
   rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); updateDecorGhost(); return decorRot; }, // 가로/세로 회전(고스트도 같이)
   getDecorRot() { return decorRot; },
-  storeDecor() { return storeDecor(); },          // 🧺 들고 있는(바닥에서 든) 가구를 창고로
-  isPickedDecor() { return !!pickedDecor; },      // 지금 든 게 바닥에서 든 것인지(보관 버튼 노출 조건)
+  storeDecor() { return pickedOutdoor ? storeOutdoor() : storeDecor(); },   // 🧺 들고 있는(바닥에서 든) 가구·야외 장식을 창고로
+  isPickedDecor() { return !!pickedDecor || !!pickedOutdoor; },   // 지금 든 게 바닥에서 든 것인지(보관 버튼 노출 조건) — 🪵 야외 장식 포함
   getStored() { return gameState.house.stored || {}; },
   isIndoor() { return indoor; },
   hintSeen(key) { return !!gameState.hintsSeen[key]; },   // 첫 안내 1회 판정(🎨 가구 배치 단계 안내 등)
@@ -1745,6 +1750,10 @@ function applySave(saved) {
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
   if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id)); // 야외 장식 복원
+  if (saved.outdoorStored && typeof saved.outdoorStored === 'object') {   // 🧺 보관한 야외 장식 복원(개수만, 음수·비숫자 버림)
+    gameState.outdoorStored = {};
+    for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
+  }
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
@@ -6598,7 +6607,7 @@ function introStart(force = false) {
     savedRotY: player.rotation.y,
   };
   // 주인공: 도시 벤치에 축 처져 앉아 있음(앉기 포즈 + 고개 숙임)
-  sitting = false; placingOutdoor = null;
+  sitting = false; stopOutdoorPlacing(true);
   player.rotation.y = 0.15;                                 // 거의 정면(측면 카메라에서 좌석 이탈처럼 보이는 착시 방지)
   if (handAnchor) handAnchor.visible = false;               // 등의 도구(도끼 등)는 컷신 분위기상 숨김
   playerAnchor.position.y = -0.3;                           // 앉기 포즈
@@ -7003,10 +7012,13 @@ function outdoorMesh(id) {
   return g;
 }
 
-// 야외 장식 설치 (플레이어 위치에). silent=true 면 저장 복원
+// 야외 장식 설치 (플레이어 위치에). silent=true 면 저장 복원 · 들어 올린 걸 다시 놓으면(pickedOutdoor) 값 없음 · 🧺 보관분이 있으면 값 없이 꺼내 놓는다
 function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
   const def = OUTDOOR.find(d => d.id === id); if (!def) return false;
-  if (!silent) {
+  const moved = !silent && !!pickedOutdoor;                                   // 🪵 옮겨 놓기(비용 없음)
+  const taken = (!silent && !moved) ? takeStored(gameState.outdoorStored, id) : null;   // 🧺 보관분 우선
+  if (taken) gameState.outdoorStored = taken;
+  if (!silent && !moved && !taken) {
     for (const k in def.cost) {
       if ((gameState.inventory[k] || 0) < def.cost[k]) { ui.toast?.((RES_LABEL[k] || k) + '이(가) 부족해요'); return false; }
     }
@@ -7014,16 +7026,58 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
     refreshInventoryUI();
   }
   const m = outdoorMesh(id); m.position.set(wx, 0, wz); scene.add(m); outdoorMeshes.push(m);
-  gameState.outdoor.push({ id, x: wx, z: wz });
-  obstacles.push({ x: wx, z: wz, r: 0.8 });   // 그 위엔 밭 금지
+  const rec = { id, x: wx, z: wz };
+  gameState.outdoor.push(rec);
+  const ob = { x: wx, z: wz, r: 0.8 }; obstacles.push(ob);   // 그 위엔 밭 금지
   // 🚧 울타리·돌담·정원등·화로·허수아비는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
-  if (['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id)) solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5);
+  const solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
+  m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
-    trackEvent('craft_item', { category: 'outdoor', item: id });  // [GA4]
-    placingOutdoor = null; ui.onDecorPlaced?.();                   // 배치 모드 종료(1회)
+    if (moved) trackEvent('move_outdoor', { item: id });                                   // [GA4] 옮겨 놓기
+    else trackEvent('craft_item', { category: 'outdoor', item: id, from: taken ? 'store' : 'craft' });  // [GA4]
+    pickedOutdoor = null; placingOutdoor = null; ui.onDecorPlaced?.();   // 배치 모드 종료(1회) — 들었던 장식은 새 자리에 놓였다
+    requestSave();
   }
+  return true;
+}
+// 🪵 배치 모드 종료 — 들어 올린 장식이면(putBack) 원래 자리에 값 없이 되돌린다(실내 stopDecorPlacing 과 같은 규칙)
+function stopOutdoorPlacing(putBack) {
+  if (pickedOutdoor && putBack) placeOutdoor(pickedOutdoor.x, pickedOutdoor.z, true, pickedOutdoor.id);
+  pickedOutdoor = null; placingOutdoor = null;
+}
+// 🪵 야외 장식을 놓을 수 있는 구역(마을 실외·텃밭) — 옮기기 프롬프트도 여기서만
+function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea; }
+// 캐릭터에서 가장 가까운 야외 장식(2D 중심 거리) — 규칙은 js/outdoor-move.js
+function nearestOutdoor(reach) {
+  const near = nearestOutdoorAt(outdoorMeshes.map(m => m.position), player.position.x, player.position.z, reach);
+  return near ? { mesh: outdoorMeshes[near.index], d: near.d } : null;
+}
+// 🪵 놓아둔 야외 장식 들어 올리기 — 메시·충돌체·밭 금지 구역·저장 레코드를 같이 빼고 배치 모드로(값 없음)
+function pickOutdoor(m) {
+  const rec = m.userData.rec; if (!rec) return false;
+  scene.remove(m); outdoorMeshes.splice(outdoorMeshes.indexOf(m), 1);
+  if (m.userData.solid) removeSolid(m.userData.solid);                       // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
+  const oi = obstacles.indexOf(m.userData.obstacle); if (oi >= 0) obstacles.splice(oi, 1);
+  const i = gameState.outdoor.indexOf(rec); if (i >= 0) gameState.outdoor.splice(i, 1);
+  m.traverse(o => { if (o.isMesh) { const hi = houseWindows.indexOf(o.material); if (hi >= 0) houseWindows.splice(hi, 1); } });   // 🏮 밤 점등 목록에서도 제거(다시 놓으면 새로 등록)
+  placingOutdoor = rec.id; pickedOutdoor = { id: rec.id, x: rec.x, z: rec.z, farm: atFarm };
+  Sound.blip(); trackEvent('pick_outdoor', { item: rec.id }); // [GA4] 옮기기 시작
+  ui.onOutdoorPicked?.(OUTDOOR.find(d => d.id === rec.id));
+  return true;
+}
+// 🧺 들고 있는 야외 장식을 보관 — 바닥에서 들어 올린 것만(작업대에서 방금 고른 건 아직 값을 안 치렀으니 취소가 맞다)
+function storeOutdoor() {
+  if (!placingOutdoor || !pickedOutdoor) return false;
+  const id = placingOutdoor, def = OUTDOOR.find(d => d.id === id);
+  const stored = gameState.outdoorStored || (gameState.outdoorStored = {});
+  stored[id] = (stored[id] || 0) + 1;
+  pickedOutdoor = null; placingOutdoor = null;   // 제자리 복귀 없이 정리
+  Sound.blip(); ui.toast?.(`🧺 ${def.name}을(를) 보관했어요 — 작업대에서 다시 꺼낼 수 있어요`);
+  trackEvent('store_outdoor', { item: id }); // [GA4]
+  ui.onDecorPlaced?.();                      // 액션버튼 아이콘 복원
+  requestSave();
   return true;
 }
 
@@ -7363,6 +7417,8 @@ function exitHouse() {
 // 문 근접 감지(입장/퇴장 프롬프트)
 function updateDoorInteract() {
   let nd = null, prompt = null;
+  nearDecorMesh = null; nearOutdoorMesh = null; if (decorNearRing) decorNearRing.visible = false;   // 🛋️🪵 옮기기 링은 대상이 있을 때만
+  if (pickedOutdoor && (!outdoorZone() || pickedOutdoor.farm !== atFarm)) { stopOutdoorPlacing(true); ui.onDecorPlaced?.(); }   // 🪵 들고 다른 구역으로 가면 제자리로(분실 방지)
   if (boat.active) {   // 🛶 런 중엔 프롬프트를 전부 끔(액션 = 노 젓기)
     nearDoor = null; nearBoat = nearBoatShop = false;
     if (lastDoorPrompt !== null) { lastDoorPrompt = null; ui.setDoorPrompt?.(null); }
@@ -7393,7 +7449,6 @@ function updateDoorInteract() {
     if (lastZoneHint !== null) { lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }
-  nearDecorMesh = null; if (decorNearRing) decorNearRing.visible = false;
   if (indoor) {
     if (dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 문 바로 앞에서만
     else if (!placingDecor) {
@@ -7402,12 +7457,7 @@ function updateDoorInteract() {
       if (near) {
         nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
         nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
-        if (!decorNearRing) {
-          decorNearRing = new THREE.Mesh(new THREE.RingGeometry(0.55 * DECOR_SCALE, 0.72 * DECOR_SCALE, 28),
-            new THREE.MeshBasicMaterial({ color: 0xf2b45a, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, fog: false }));
-          decorNearRing.rotation.x = -Math.PI / 2; scene.add(decorNearRing);
-        }
-        decorNearRing.position.set(near.root.position.x, 0.22, near.root.position.z); decorNearRing.visible = true;
+        const ring = ensureNearRing(); ring.position.set(near.root.position.x, 0.22, near.root.position.z); ring.visible = true;
       }
     }
   } else if (atFarm) {
@@ -7467,6 +7517,14 @@ function updateDoorInteract() {
     const fp = fertTarget();
     if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) prompt = '🌱 비료 주기';
   }
+  if (!prompt && !placingOutdoor && !nearNPC && outdoorZone()) {   // 🪵 놓아둔 야외 장식 옆 → "옮기기" — 문·시설·주민보다 낮은 우선순위(실내 가구와 같은 문법)
+    const near = nearestOutdoor(1.0);
+    if (near) {
+      nearOutdoorMesh = near.mesh; const def = OUTDOOR.find(d => d.id === near.mesh.userData.rec.id);
+      nearDoor = 'outdoor'; prompt = `${def.ico} ${def.name} · 옮기기`;
+      const ring = ensureNearRing(); ring.position.set(near.mesh.position.x, 0.04, near.mesh.position.z); ring.visible = true;
+    }
+  }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
@@ -7508,6 +7566,15 @@ function updateZoneHint() {
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea; }   // 마을 실외 여부(집 근처 버튼용)
+// 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
+function ensureNearRing() {
+  if (!decorNearRing) {
+    decorNearRing = new THREE.Mesh(new THREE.RingGeometry(0.55 * DECOR_SCALE, 0.72 * DECOR_SCALE, 28),
+      new THREE.MeshBasicMaterial({ color: 0xf2b45a, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    decorNearRing.rotation.x = -Math.PI / 2; scene.add(decorNearRing);
+  }
+  return decorNearRing;
+}
 
 // =============================================================
 //  포스트 프로세싱
@@ -8624,6 +8691,7 @@ function handleAction() {
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
   if (nearDoor === 'decor') { if (nearDecorMesh) pickDecor(nearDecorMesh); return; }   // 🛋️ 가구 옆에서 액션 = 들기
+  if (nearDoor === 'outdoor') { if (nearOutdoorMesh) pickOutdoor(nearOutdoorMesh); return; }   // 🪵 야외 장식 옆에서 액션 = 들기
   if (nearDoor === 'farm') return enterFarm();
   if (nearDoor === 'farmexit') return exitFarm();
   if (nearDoor === 'mine') return enterMine();

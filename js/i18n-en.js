@@ -92,6 +92,9 @@ export const EN = {
   '보유 {0}': 'Owned {0}',
   '{0} {1} · 옮기기': '{0} {1} · Move',
   '{0} {1}을(를) 창고에 넣었어요': 'Put {0} {1} in storage',
+  // ── 🪵 야외 장식 옮기기·🧺 보관(작업대 제작품, 실내 가구와 같은 문법) ──
+  '🧺 {0}을(를) 보관했어요 — 작업대에서 다시 꺼낼 수 있어요': '🧺 Stored {0} — take it out again at the Workbench',
+  '{0} {1} 들었어요 — 원하는 곳에서 {2}으로 놓기 · 🧺 보관 버튼으로 보관': 'Picked up {0} {1} — press {2} to set it down anywhere · 🧺 Store keeps it for later',
   '닫기': 'Close',
   '🔧 작업대': '🔧 Workbench',
   '🔧 도구': '🔧 Tools',
