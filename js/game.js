@@ -2926,7 +2926,7 @@ function tryNet() {
   spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
   questEvent('catch');                                    // 🦉 데일리 의뢰(반딧불이 잡기)
   dexDiscover('bug', kind.id);                            // 📖 도감(반딧불이 첫 발견)
-  triggerMoment(true);                                    // 🎉 캐치 세리머니
+  catchCeremony('bugZoom');                               // 🎉 첫 반딧불이만 밀착, 이후 폴짝 + 병 팝
   showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
   if (kind.id === 'rainbow') tryUnlockDrop(0.5);          // 🎨 최희귀 → 집 색 해금 확률
   trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100) }); // [GA4] 밤 콘텐츠 KPI
@@ -8148,6 +8148,12 @@ const EXT_CAM_OFF = new THREE.Vector3(0, 16, 27);   // 집 기준 카메라 오�
 const EXT_LOOK_Y = -7;                               // 시선 목표 높이(집 중심보다 훨씬 아래 → 집이 위쪽에, 720px 창에서도 패널(상단 39%) 위)
 const _extPos = new THREE.Vector3();
 
+// 🎉 반복 획득(수확·낚시·반딧불이)의 캐치 세리머니 — 밀착 줌은 종류별 첫 1회만(베타: 매번 확대되면 답답하고 멀미)
+//   이후엔 폴짝 + 사진 넛지만. 바다터 대어처럼 드문 큰 이벤트는 이 함수를 안 쓰고 triggerMoment(true) 그대로.
+function catchCeremony(key) {
+  if (!gameState.hintsSeen[key]) { gameState.hintsSeen[key] = true; triggerMoment(true); return; }
+  ui.photoNudge?.(); startEmote('jump', 1.0);
+}
 // 이벤트 순간 연출 + 사진 버튼 넛지
 //   close=true  : 수확·낚시 — 캐릭터 정면 밀착 + 캐치 세리머니(폴짝)
 //   close=false : 집 완성·요리 — 기존 가벼운 줌(집/UI가 주인공이므로)
@@ -8828,7 +8834,7 @@ function catchFish() {
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   dexDiscover('fish', kind.rarity);                                     // 📖 도감(어종 첫 발견)
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
-  triggerMoment(true);                                                  // 🎉 캐치 세리머니(밀착 + 폴짝)
+  catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
   showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
   tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : kind.rarity === 'uncommon' ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
   trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity }); // [GA4]
@@ -9167,9 +9173,7 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   questEvent('harvest');                                          // 퀘스트 진행
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
-  // 🎉 밀착 세리머니는 첫 수확 한 번만 — 반복 동작이라 매번 확대되면 답답하고 멀미가 난다(베타). 이후엔 폴짝 + 열매 팝만.
-  if (!gameState.hintsSeen.harvestZoom) { gameState.hintsSeen.harvestZoom = true; triggerMoment(true); }
-  else { ui.photoNudge?.(); startEmote('jump', 1.0); }
+  catchCeremony('harvestZoom');                                   // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
   showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);    // 🥕 열매를 머리 위로 번쩍!
   tryUnlockDrop(0.05);                                            // 🎨 랜덤 색(낮은 확률)
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
