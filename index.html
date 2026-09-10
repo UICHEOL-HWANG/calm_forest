@@ -3723,11 +3723,12 @@
       });
     }
     // 🎨 집 외관 꾸미기 — 완성된 집 근처에서만 뜨는 버튼(공간 기반 동선)
+    //    열린 동안엔 카메라가 집을 화면 위쪽(패널 위)에 두어 색이 바뀌는 게 가려지지 않게 한다
     $('ext-btn').addEventListener('click', () => {
-      renderExt(); Input.setAnalog(0, 0);
+      renderExt(); Input.setAnalog(0, 0); Input.setExtView(true);
       $('ext-menu').classList.add('show'); document.body.classList.add('menu-open');
     });
-    $('ext-close').addEventListener('click', () => { $('ext-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
+    $('ext-close').addEventListener('click', () => { $('ext-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.setExtView(false); });
     $('photo-save').addEventListener('click', () => {
       if (!lastPhoto) return;
       const a = document.createElement('a'); a.href = lastPhoto; a.download = 'calmforest-' + Date.now() + '.png'; a.click();

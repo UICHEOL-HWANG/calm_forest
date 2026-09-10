@@ -1440,6 +1440,7 @@ export const Input = {
     gameState.houseStyle[part] = idx; applyHouseStyle(); Sound.blip(); return { ok: true };
   },
   houseBuilt() { return gameState.houseStage >= 3; },
+  setExtView(on) { extView = !!on; },            // 🏠 외관 메뉴 열림/닫힘 — 열린 동안 카메라가 집을 화면 위쪽에 둔다
   getExpansion() { return expandInfo(); },       // 🏗️ 증축 정보(외관 메뉴 렌더용)
   expandHouse() { return doExpand(); },          // 🏗️ 증축 실행(외관 메뉴 버튼)
   emote(e) {   // 머리 위 이모지 + 기분에 맞는 캐릭터 모션(춤·점프·하트·인사)
@@ -8138,6 +8139,14 @@ function startActionShot() {
 let momentT = -1;                 // 세리머니 경과(초). 0 미만 = 비활성
 const MOMENT_HOLD = 1.15;         // 밀착 유지 시간(액션샷보다 짧게 — 게임 흐름 안 끊게)
 const _momentPos = new THREE.Vector3();
+// ── 🏠 외관 꾸미기 뷰 — 패널이 화면 아래 절반을 덮는 동안 집을 화면 위쪽에 두고 바라본다 ──
+//    (베타 피드백: "외관 꾸미기 창이 집을 가려서 어떻게 변하는지 안 보인다")
+//    시선 목표를 집 중심보다 아래(땅 밑)로 두면 집이 화면 위쪽으로 밀려 올라간다.
+//    세로 화면(폰)은 가로 시야가 좁아 집이 잘리므로 종횡비만큼 뒤로 물린다(closeUpDist 와 같은 보정, 완만하게).
+let extView = false;
+const EXT_CAM_OFF = new THREE.Vector3(0, 16, 27);   // 집 기준 카메라 오프셋(가로 화면) — 저택(높이 ≈5.2)도 화면 위쪽 1/3(6~33%) 안에
+const EXT_LOOK_Y = -7;                               // 시선 목표 높이(집 중심보다 훨씬 아래 → 집이 위쪽에, 720px 창에서도 패널(상단 39%) 위)
+const _extPos = new THREE.Vector3();
 
 // 이벤트 순간 연출 + 사진 버튼 넛지
 //   close=true  : 수확·낚시 — 캐릭터 정면 밀착 + 캐치 세리머니(폴짝)
@@ -8262,6 +8271,16 @@ function updateCamera(dt) {
       return;
     }
   }
+  // 🏠 외관 꾸미기 중: 집을 화면 위쪽에 두고 바라본다(닫으면 아래 기본 추적이 부드럽게 복귀)
+  if (extView && !mgView) {
+    const s = 1 + (Math.min(2.3, Math.max(1, 1.35 / camera.aspect)) - 1) * 0.25;   // 가로 1 ~ 폰 세로 1.33
+    _extPos.copy(EXT_CAM_OFF).multiplyScalar(s).add(HOUSE_POS);
+    const k = 1 - Math.pow(0.002, dt);   // 액션샷보다 살짝 느긋하게
+    camera.position.lerp(_extPos, k);
+    _camLook.lerp(_camTarget.set(HOUSE_POS.x, EXT_LOOK_Y - (s - 1) * 2, HOUSE_POS.z), k);
+    camera.lookAt(_camLook);
+    return;
+  }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
   // 🌊 바다터: 평상시 0.86(트인 수평선 보정) → 던지면 0.55 → 줄다리기·포획 0.45 로
   //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다(가로 화면 기준).
@@ -8355,6 +8374,7 @@ function updateDayNight(dt) {
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
   if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
   if (mgView?.type === 'carve') { scene.fog.near = 40; scene.fog.far = 140; }   // 🗿 공방 무대는 원거리 카메라(모바일 ~12.5) — 날씨 안개에 잠기지 않게
+  if (extView && !mgView) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
   if (atCafe) {
     hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
