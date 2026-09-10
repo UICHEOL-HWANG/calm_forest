@@ -104,7 +104,7 @@
   .bag-item .bag-name { font-size: 11px; font-weight: 600; }
   .bag-item .bag-cnt { font-size: 13px; font-weight: 700; opacity: .8; }
   /* 집 외관 꾸미기 메뉴 */
-  #ext-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(400px, 92vw); flex-direction: column; gap: 10px; }
+  #ext-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(400px, 92vw); flex-direction: column; gap: 10px; max-height: calc(100vh - 100px - env(safe-area-inset-bottom)); overflow-y: auto; }
   #ext-menu.show { display: flex; }
   /* 🏗️ 증축 섹션(외관 메뉴 상단) */
   #ext-expand { background: #f2f6f0; border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.6; }
@@ -114,6 +114,24 @@
   .xp-btn { display: block; margin-top: 8px; border: none; border-radius: 12px; padding: 10px 16px; font-weight: 800; font-size: 13.5px; cursor: pointer; background: var(--mint); color: var(--ink); box-shadow: var(--shadow); }
   .xp-btn:disabled { background: #dde3dd; color: #8a948a; cursor: default; }
   .xp-btn:not(:disabled):active { transform: scale(0.96); }
+  /* 🧩 구성품 상점(스와치 아래) — 한 줄 행, 목록은 4행쯤 보이고 스크롤 */
+  #ext-addons:empty { display: none; }
+  .ad-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .ad-coins { font-size: 12px; font-weight: 600; opacity: .75; }
+  .ad-list { max-height: 152px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 2px; }
+  .ad-row { display: flex; align-items: center; gap: 8px; background: #f2f6f0; border-radius: 10px; padding: 6px 8px; font-size: 12.5px; line-height: 1.3; }
+  .ad-row.owned { opacity: .72; }
+  .ad-row.locked { opacity: .6; }
+  .ad-ico { font-size: 17px; width: 22px; text-align: center; flex: none; }
+  .ad-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .ad-txt b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ad-txt small { font-size: 11px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ad-price { flex: none; font-weight: 700; font-size: 12px; }
+  .ad-price.lack { color: #c0554a; }
+  .ad-btn { flex: none; border: none; border-radius: 9px; padding: 6px 10px; font-weight: 800; font-size: 12px; cursor: pointer; background: var(--mint); color: var(--ink); min-width: 52px; }
+  .ad-btn:disabled { background: #dde3dd; color: #8a948a; cursor: default; }
+  .ad-btn.done { background: transparent; color: #4f7d5a; }
+  .ad-btn:not(:disabled):active { transform: scale(0.95); }
   .ext-row { display: flex; align-items: center; gap: 12px; }
   .ext-label { width: 38px; font-size: 13px; font-weight: 700; }
   .ext-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1310,6 +1328,7 @@
     <div class="ext-row"><span class="ext-label">지붕</span><div id="ext-roof" class="ext-swatches"></div></div>
     <div class="ext-row"><span class="ext-label">벽</span><div id="ext-wall" class="ext-swatches"></div></div>
     <div class="ext-row"><span class="ext-label">문</span><div id="ext-door" class="ext-swatches"></div></div>
+    <div id="ext-addons"></div>
     <div class="dm-hint">색을 고르면 집에 <b>바로 반영</b>돼요 — 눈앞에서 바뀌는 걸 확인해보세요!</div>
     <div class="dm-actions"><button id="ext-close">닫기</button></div>
   </div>
@@ -3713,6 +3732,25 @@
         });
       });
       renderExpand();
+      renderAddons();
+    }
+    // 🧩 구성품 상점 — 지금 단계(+다음 단계는 🔒 예고)까지의 장식. 사면 코인이 빠지고 집에 바로 붙는다
+    function renderAddons() {
+      const box = $('ext-addons'); const info = Input.getHouseAddons();
+      const items = info.items.filter(i => i.stage <= info.stage + 1);
+      if (!items.length) { box.innerHTML = ''; return; }
+      const btn = (i) => i.owned ? '<button class="ad-btn done" disabled>✓ 설치됨</button>'
+        : i.locked ? `<button class="ad-btn" disabled>🔒 ${i.stage}단계부터</button>`
+        : `<button class="ad-btn" data-id="${i.id}" ${i.affordable ? '' : 'disabled'}>사기</button>`;
+      box.innerHTML = `<div class="ad-head"><span>🧩 구성품</span><span class="ad-coins">🪙 ${info.coins}</span></div><div class="ad-list">` +
+        items.map(i => `<div class="ad-row${i.owned ? ' owned' : ''}${i.locked ? ' locked' : ''}"><span class="ad-ico">${i.ico}</span>` +
+          `<span class="ad-txt"><b>${i.name}</b><small>${i.desc}</small></span>` +
+          `<span class="ad-price${!i.owned && !i.locked && !i.affordable ? ' lack' : ''}">${i.coins}🪙</span>${btn(i)}</div>`).join('') + '</div>';
+      box.querySelectorAll('.ad-btn[data-id]').forEach(b => b.addEventListener('click', () => {
+        const r = Input.buyHouseAddon(b.dataset.id);
+        ui.toast(r.msg, 2600);
+        if (r.ok) renderAddons();   // 코인·설치 상태 갱신
+      }));
     }
     // 🏗️ 증축 섹션 — 다음 단계 비용·보유량 표시, 충족 시 버튼 활성화
     function renderExpand() {
