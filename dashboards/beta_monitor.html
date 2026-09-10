@@ -236,11 +236,13 @@
         + (shareKey ? ' · 🔗 <b>임시 공유 보기</b> (읽기 전용 · 기간 만료 시 자동 종료)' : '');
       [...$('range').children].forEach(b => b.disabled = false);   // 게이트 통과 후에만 기간 전환 허용
 
-      renderTesters(testers);
-      renderAbDaily(d.ab_daily || []);
-      renderTutFunnel(d.tut_funnel || []);
-      renderMinigame(d.minigame || []);
-      renderDiary(d.diary || []);
+      // 한 섹션이 깨져도 나머지는 그린다 — 차트 오류로 일지 표까지 사라진 사고(2026-09-10) 방지
+      const section = (name, fn, arg) => { try { fn(arg); } catch (e) { console.error(`[${name}] 렌더 실패`, e); } };
+      section('testers',    renderTesters,   testers);
+      section('ab_daily',   renderAbDaily,   d.ab_daily || []);
+      section('tut_funnel', renderTutFunnel, d.tut_funnel || []);
+      section('minigame',   renderMinigame,  d.minigame || []);
+      section('diary',      renderDiary,     d.diary || []);
     }
 
     // ── 개별 현황 ──
@@ -300,11 +302,11 @@
         const v = row?.[field];
         return v == null ? null : +(v * scale).toFixed(1);
       });
-      draw('cAbDau', { data: { labels: days_.map(mmdd), datasets: [
+      draw('cAbDau', { type: 'line', data: { labels: days_.map(mmdd), datasets: [
         { label: 'beta_A', data: seriesFor('beta_A', 'dau'), borderColor: V('--s1'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
         { label: 'beta_B', data: seriesFor('beta_B', 'dau'), borderColor: V('--s3'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
       ]}, options: base() });
-      draw('cAbPlay', { data: { labels: days_.map(mmdd), datasets: [
+      draw('cAbPlay', { type: 'line', data: { labels: days_.map(mmdd), datasets: [
         { label: 'beta_A', data: seriesFor('beta_A', 'avg_play_sec', 1/60), borderColor: V('--s1'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
         { label: 'beta_B', data: seriesFor('beta_B', 'avg_play_sec', 1/60), borderColor: V('--s3'), backgroundColor: 'transparent', tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
       ]}, options: base() });
@@ -318,8 +320,8 @@
       const posLabels = Array.from({ length: 17 }, (_, i) => String(i + 1));
       const seriesFor = (variant) => order[variant].map(k => byVariant[variant][k] ?? 0);
       const keysFor = (variant) => order[variant];
-      if (!rows.length) { draw('cTutFunnel', { data: { labels: posLabels, datasets: [] }, options: base() }); return; }
-      draw('cTutFunnel', { data: { labels: posLabels, datasets: [
+      if (!rows.length) { draw('cTutFunnel', { type: 'line', data: { labels: posLabels, datasets: [] }, options: base() }); return; }
+      draw('cTutFunnel', { type: 'line', data: { labels: posLabels, datasets: [
         { label: 'beta_A', data: seriesFor('beta_A'), borderColor: V('--s1'), backgroundColor: 'transparent', tension: .15, pointRadius: 3, borderWidth: 2,
           _keys: keysFor('beta_A') },
         { label: 'beta_B', data: seriesFor('beta_B'), borderColor: V('--s3'), backgroundColor: 'transparent', tension: .15, pointRadius: 3, borderWidth: 2,
@@ -346,7 +348,7 @@
         const c = byVariant[variant][p.c] || 0, m = byVariant[variant][p.m] || 0;
         return (c + m) > 0 ? Math.round(c / (c + m) * 100) : null;
       });
-      draw('cMinigame', { data: { labels: pairs.map(p => p.label), datasets: [
+      draw('cMinigame', { type: 'bar', data: { labels: pairs.map(p => p.label), datasets: [
         { label: 'beta_A', data: rateFor('beta_A'), backgroundColor: V('--s1'), borderRadius: 4 },
         { label: 'beta_B', data: rateFor('beta_B'), backgroundColor: V('--s3'), borderRadius: 4 },
       ]}, options: base({ plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } },
