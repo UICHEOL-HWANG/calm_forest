@@ -1,0 +1,23 @@
+{
+  "slug": "covers",
+  "cards": [
+    {
+      "kind": "cover",
+      "theme": "dark",
+      "img": "art/01_desk_night.svg",
+      "headline": "집에 와서 불도 안 켜고\n한참 앉아 있었다"
+    },
+    {
+      "kind": "cover",
+      "theme": "dark",
+      "img": "art/01_desk_night.svg",
+      "headline": "나 오늘 진짜 바빴는데\n뭐 했는지를 모르겠네"
+    },
+    {
+      "kind": "cover",
+      "theme": "dark",
+      "img": "art/01_desk_night.svg",
+      "headline": "퇴근하고 두 시간\n기억이 없다"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<style>
+  /* 밝은 씬용 반전 — 어두운 스크림을 씌우면 잔디가 탁해진다. 크림으로 덮고 잉크 글자. */
+  .card{background:var(--cream)}
+  .shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:38% 40%}
+  .scrim{position:absolute;left:0;right:0;bottom:0;height:44%;
+    background:linear-gradient(to top,var(--cream) 0%,rgba(253,246,234,.92) 34%,rgba(253,246,234,0) 100%)}
+  .txt{position:absolute;left:80px;right:200px;bottom:104px}
+  .txt .headline{margin:20px 0 24px}
+  .badge{position:absolute;top:64px;left:80px;display:flex;align-items:center;gap:13px;
+    color:var(--ink);font-size:25px;font-weight:700;letter-spacing:.09em;
+    background:rgba(253,246,234,.86);padding:12px 22px 12px 18px;border-radius:99px}
+  .dot{width:11px;height:11px;border-radius:99px;background:var(--accent)}
+</style>
+<div class="card">
+  <img class="shot" src="../shots/arrive_forest.png">
+  <div class="scrim"></div>
+  <div class="badge"><span class="dot"></span>캄포레스트</div>
+  <div class="txt">
+    <div class="eyebrow">그래서 숲에 왔다</div>
+    <div class="headline">여긴 심은 게<br>자란다</div>
+    <div class="body">밭은 물 준 만큼 자란다.</div>
+  </div>
+</div>

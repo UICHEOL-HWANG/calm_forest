@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>고요한 숲 베타 테스트 안내</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 12mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+         color: #16241d; font-size: 10.5pt; line-height: 1.5; }
+  h1 { font-size: 20pt; margin: 0 0 2mm; letter-spacing: -.02em; }
+  .meta { color: #4e5f56; font-size: 10pt; margin: 0 0 5mm; }
+  .meta b { color: #16241d; }
+  h2 { font-size: 13pt; margin: 6mm 0 2.5mm; padding-left: 3mm; border-left: 3px solid #217a4e; letter-spacing: -.01em; }
+  h2 .no { display: inline-block; min-width: 6.5mm; height: 6.5mm; line-height: 6.5mm; text-align: center; border-radius: 50%;
+           background: #217a4e; color: #fff; font-size: 10pt; margin-right: 2mm; }
+  p { margin: 0 0 2mm; }
+  .link { font-family: ui-monospace, Menlo, monospace; font-size: 11pt; font-weight: 700; color: #217a4e; }
+  .warn { background: #fff4e5; border: 1px solid #f0c78a; border-radius: 3mm; padding: 2.5mm 3.5mm; margin: 2mm 0; font-size: 10pt; }
+  .warn b { color: #9a5b00; }
+
+  .shots { display: grid; gap: 4mm; margin: 2mm 0 1mm; }
+  .shots.three { grid-template-columns: repeat(3, 1fr); }
+  .shot { position: relative; }
+  .shot img { width: 100%; display: block; border-radius: 3mm; border: 1px solid #dde5e0; }
+  .shot .cap { font-size: 9pt; color: #4e5f56; margin-top: 1.5mm; line-height: 1.35; }
+  .shot .cap b { color: #16241d; }
+  .pin { position: absolute; width: 7mm; height: 7mm; border-radius: 50%; background: #e0472d; color: #fff;
+         font-weight: 800; font-size: 10pt; display: grid; place-items: center; border: 2px solid #fff;
+         box-shadow: 0 1px 3px rgba(0,0,0,.35); transform: translate(-50%, -50%); }
+
+  .two { display: grid; grid-template-columns: 60mm 1fr; gap: 6mm; align-items: start; }
+  ul.rules { margin: 0; padding-left: 4.5mm; }
+  ul.rules li { margin: 0 0 2.2mm; }
+  ul.rules li b { color: #217a4e; }
+  .box { border: 1px solid #dde5e0; border-radius: 3mm; padding: 3mm 4mm; margin-top: 3mm; background: #f6f8f6; }
+  .box .t { font-weight: 700; margin-bottom: 1.5mm; }
+  .fill { display: inline-block; min-width: 40mm; border-bottom: 1px solid #9aa9a0; }
+  .break { break-before: page; }
+  .foot { margin-top: 5mm; color: #7d8d84; font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<h1>🌿 고요한 숲 베타 테스트 안내</h1>
+<p class="meta"><b>9월 9일(수) ~ 9월 15일(화)</b> · 7일 · 하루 10분 플레이 + 일지 3분</p>
+
+<h2><span class="no">1</span>접속하기 — 9월 9일에 꼭</h2>
+<p>폰이든 PC든 <b>브라우저</b>(크롬 권장)로 아래 주소를 열고, <b>Google로 시작하기</b>를 눌러 안내받은 구글 계정으로 로그인하세요.</p>
+<p class="link">https://calmforest.cloud</p>
+<div class="warn"><b>⚠️ 토스 앱에서 열면 안 됩니다.</b> 토스에서는 구글 로그인이 없어서 테스터로 인식되지 않아요. 꼭 브라우저로 열어 주세요.</div>
+
+<h2><span class="no">2</span>매일 일지 쓰기 — 게임 안 ☰ 메뉴에서</h2>
+<p>게임 화면 <b>왼쪽 위 ☰ 버튼</b>을 누르면 메뉴가 열려요. 그중 <b>📝 오늘 일지</b>를 누르면 일지 창이 새 탭으로 열립니다.</p>
+
+<div class="shots three">
+  <div class="shot">
+    <img src="g1-login.png" alt="로그인 화면" />
+    <div class="pin" style="left:50%; top:53%;">1</div>
+    <div class="cap"><b>① Google로 시작하기</b><br />안내받은 구글 계정으로</div>
+  </div>
+  <div class="shot">
+    <img src="g2-game.png" alt="게임 화면" />
+    <div class="pin" style="left:30%; top:4%;">2</div>
+    <div class="cap"><b>② 왼쪽 위 ☰ 버튼</b><br />게임 중 언제든 눌러요</div>
+  </div>
+  <div class="shot">
+    <img src="g3-menu.png" alt="메뉴" />
+    <div class="pin" style="left:20%; top:24.5%;">3</div>
+    <div class="cap"><b>③ 📝 오늘 일지</b><br />새 탭으로 일지가 열려요</div>
+  </div>
+</div>
+<p style="font-size:9.5pt; color:#4e5f56; margin-top:2mm;">메뉴에서 못 찾으면 주소로 바로 열어도 돼요 → <span class="link" style="font-size:10pt">https://calmforest.cloud/beta/diary</span></p>
+
+<div class="break"></div>
+
+<h2><span class="no">3</span>일지는 이렇게 생겼어요</h2>
+<div class="two">
+  <div class="shot">
+    <img src="g4-diary.png" alt="일지 폼" />
+    <div class="cap">매일 4문항 · 저장 누르면 끝<br />같은 날 다시 열면 고쳐 쓸 수 있어요</div>
+  </div>
+  <div>
+    <ul class="rules">
+      <li><b>매일 한 번</b> 써 주세요. 3분이면 됩니다. 일지는 <b>그날 것만</b> 열려요 — 놓치면 그날 칸은 비어요.</li>
+      <li><b>2번 "어디서 막히거나 지루했어요?"</b>가 제일 중요해요. 사소한 것도 그대로 적어 주세요 — "버튼이 어딨는지 몰랐다", "이게 뭔지 모르겠다" 같은 것.</li>
+      <li><b>9월 15일(화) 마지막 날</b>에는 문항이 2개 더 붙어요. 그날 꼭 써 주세요.</li>
+      <li>게임 안에서 <b>"○일차에 열려요"</b>라고 뜨는 곳이 있어요. 잠긴 게 아니라 그날 열리는 거니까 기다리시면 됩니다.</li>
+      <li>화면 아래에 <b>작은 안내가 잠깐 떴다 사라질 때</b>가 있어요. 뭐라고 떴는지 기억해 두면 4번 문항에 도움이 됩니다.</li>
+      <li>버그나 이상한 점은 일지 2번에 쓰거나, 게임 오른쪽 <b>💬 문의하기</b>로 바로 보내 주세요. 스크린샷이 있으면 더 좋아요.</li>
+      <li>다른 테스터와 게임 얘기는 자유지만, 일지는 <b>본인 느낌</b>으로 써 주세요.</li>
+    </ul>
+    <div class="box">
+      <div class="t">보상</div>
+      <p><b>7일 접속 + 일지 7회</b>를 채우면 약속한 보상을 드려요.</p>
+      <p>금액·방법: <span class="fill">&nbsp;</span></p>
+      <p style="font-size:9.5pt; color:#4e5f56; margin:0;">마지막 날 설문 뒤에 이번 테스트가 무엇을 봤는지도 알려드릴게요.</p>
+    </div>
+    <div class="box">
+      <div class="t">문의</div>
+      <p><span class="fill">&nbsp;</span></p>
+    </div>
+  </div>
+</div>
+
+<p class="foot">고요한 숲 · calmforest.cloud · 베타 안내 v1 (2026-09)</p>
+
+</body>
+</html>

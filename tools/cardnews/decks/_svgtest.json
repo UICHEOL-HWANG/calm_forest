@@ -1,0 +1,14 @@
+{
+  "slug": "deck-01",
+  "title": "퇴근했는데 아무것도 안 남았다",
+  "note": "생성 이미지(회사·일상) 1~4 → 게임 이미지 5~7. 표지에 게임을 쓰지 않는다 — 게임 광고로 분류되면 스크롤에서 걸러진다.",
+  "cards": [
+    {
+      "kind": "cover",
+      "theme": "dark",
+      "img": "art/01_desk_night.svg",
+      "headline": "퇴근했는데\n아무것도 안 남았다",
+      "imgPrompt": "Flat vector illustration, no people, no faces, no text. A single office desk at night seen from a low three-quarter angle: one glowing monitor showing a blank document, an empty swivel chair pushed back, a cold paper coffee cup, dark window behind with a few lit windows of another building. Muted desaturated palette: charcoal #252c28, warm cream #fdf6ea, one terracotta accent #d4703c. Soft flat shapes, no gradients on objects, no glow, no lens flare, no neon. Portrait composition with empty space in the lower third."
+    }
+  ]
+}

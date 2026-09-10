@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <!-- 침대 위 노트북, 낮은 각도. 화면엔 빈 양식만 떠 있다. 평면 벡터, 사람 없음. -->
+
+  <rect width="1080" height="1350" fill="#161a17"/>
+  <!-- 어두운 방 벽 -->
+  <rect x="0" y="0" width="1080" height="470" fill="#1b201c"/>
+
+  <!-- 구겨진 이불. 각진 면으로만 접는다 -->
+  <path d="M0 470 L268 424 L560 468 L836 420 L1080 462 L1080 1350 L0 1350 Z" fill="#2a302b"/>
+  <path d="M0 592 L212 546 L470 596 L742 542 L1080 588 L1080 1350 L0 1350 Z" fill="#313832"/>
+  <path d="M0 806 L300 748 L636 812 L940 754 L1080 780 L1080 1350 L0 1350 Z" fill="#272d28"/>
+  <!-- 이불 주름: 선이 아니라 접힌 면으로 넣는다. 얇은 선은 긁힘처럼 보인다 -->
+  <g fill="#232923" opacity=".55">
+    <path d="M96 656 L214 632 L268 812 L150 846 Z"/>
+    <path d="M520 660 L622 640 L668 820 L566 852 Z"/>
+    <path d="M880 630 L988 612 L1024 780 L918 810 Z"/>
+  </g>
+
+  <!-- 화면이 이불에 떨어뜨리는 광량 -->
+  <path d="M300 690 L784 690 L960 900 L128 900 Z" fill="#fdf6ea" opacity=".05"/>
+
+  <!-- 노트북: 낮은 각도라 화면이 사다리꼴로 보인다 -->
+  <path d="M300 268 L784 268 L800 700 L284 700 Z" fill="#313832"/>
+  <path d="M318 288 L766 288 L780 680 L304 680 Z" fill="#fdf6ea"/>
+
+  <!-- 빈 양식: 사진 들어갈 자리 하나, 그 아래 빈 줄들 -->
+  <rect x="352" y="330" width="128" height="158" fill="none" stroke="#c9d0c8" stroke-width="5"/>
+  <g fill="#dfe4dd">
+    <rect x="512" y="340" width="212" height="15" rx="7"/>
+    <rect x="512" y="382" width="150" height="12" rx="6"/>
+    <rect x="512" y="420" width="176" height="12" rx="6"/>
+  </g>
+  <g fill="#e8ece7">
+    <rect x="348" y="540" width="404" height="11" rx="5"/>
+    <rect x="350" y="580" width="404" height="11" rx="5"/>
+    <rect x="352" y="620" width="404" height="11" rx="5"/>
+  </g>
+  <!-- 아무것도 안 쓴 커서 -->
+  <rect x="352" y="524" width="3" height="34" fill="#d4703c"/>
+
+  <!-- 힌지와 본체 -->
+  <path d="M284 700 L800 700 L840 748 L246 748 Z" fill="#3d443b"/>
+  <path d="M320 712 L764 712 L788 738 L296 738 Z" fill="#2b322c"/>
+
+  <!-- 엎어 둔 휴대폰 -->
+  <g transform="rotate(-11 916 842)">
+    <rect x="836" y="782" width="160" height="118" rx="18" fill="#202621"/>
+    <rect x="854" y="800" width="46" height="30" rx="12" fill="#2b322c"/>
+    <circle cx="866" cy="815" r="7" fill="#181d19"/>
+  </g>
+</svg>

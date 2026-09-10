@@ -1,0 +1,14 @@
+# 체크리스트
+- [x] tests/pwa.test.mjs
+- [x] manifest.webmanifest (start_url /?ref=pwa)
+- [x] icon-maskable.svg + make-pwa-icons.mjs → 192/512/maskable PNG
+- [x] sw.js + offline.html (ko/en)
+- [x] index.html link + SW 등록
+- [x] build-web INCLUDE / build-ait·itch 링크 제거
+- [x] 테스트 GREEN · 빌드 3종 통과 · 로컬 브라우저에서 manifest·SW·오프라인 확인
+- [x] 커밋 (feat/pwa 9a17a66 → 8df0c0a)
+- [x] 검증 4종(code-reviewer·security·verifier·critic) — 블로커 없음
+- [ ] ⏳ 플레이 콘솔 계정 가입 · 앱 등록 (사용자)
+- [ ] ⏳ 앱 서명 키 지문 → assets/pwa/assetlinks.json
+- [ ] main 병합 · 라이브 (AAB 직전)
+- [ ] PWABuilder 로 AAB → 비공개 테스트 트랙

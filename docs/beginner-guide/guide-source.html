@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>고요한 숲 초보자 안내서</title>
+<style>
+  @page { size: 1280px 720px; margin: 0; }
+  :root{
+    --green:#2F6B4A; --green-deep:#1F4A33; --mint:#BFE8CF; --mint-soft:#E6F4EA;
+    --cream:#FBF8EF; --ink:#1E2A24; --ink-soft:#4A5A50; --soil:#8A5A3A; --sky:#CFE7F0; --line:#D9DED3;
+    --warn:#B5541C; --warn-bg:#FBEBDD;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#fff;color:var(--ink);font-family:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .slide{width:1280px;height:720px;position:relative;overflow:hidden;background:var(--cream);page-break-after:always;break-after:page;padding:56px 64px 48px}
+  .slide:last-child{page-break-after:auto}
+  .eyebrow{position:absolute;top:30px;left:64px;font-size:13px;letter-spacing:.12em;font-weight:700;color:var(--green);text-transform:uppercase}
+  .pageno{position:absolute;bottom:22px;right:64px;font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .brand{position:absolute;bottom:22px;left:64px;font-size:12px;color:var(--ink-soft)}
+  h1{font-size:40px;line-height:1.15;margin:0 0 10px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+  h2{font-size:34px;line-height:1.2;margin:0 0 8px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+  h3{font-size:17px;margin:0 0 6px;font-weight:800;color:var(--green-deep)}
+  p{margin:0 0 8px;font-size:16px;line-height:1.55;color:var(--ink)}
+  .lead{font-size:18px;color:var(--ink-soft);margin-bottom:18px}
+  .cols{display:grid;grid-template-columns:470px 1fr;gap:36px;height:calc(100% - 20px);align-items:start}
+  .cols.wide{grid-template-columns:1fr 520px}
+  .cols.even{grid-template-columns:1fr 1fr}
+  .shot{width:100%;border-radius:10px;border:1px solid var(--line);box-shadow:0 6px 18px rgba(30,42,36,.10);display:block;background:#000}
+  .shot-wrap{position:relative}
+  .cap{font-size:12.5px;color:var(--ink-soft);margin-top:7px;line-height:1.4}
+  .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;font-size:15.5px;line-height:1.5}
+  .steps .n{width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15.5px;line-height:1.5}
+  .list li::marker{color:var(--green)}
+  .tip{background:var(--mint-soft);border-left:4px solid var(--green);padding:10px 14px;border-radius:0 8px 8px 0;font-size:14.5px;line-height:1.5;margin-top:14px}
+  .tip b{color:var(--green-deep)}
+  .warn{background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:0 8px 8px 0;font-size:14.5px;line-height:1.5;margin-top:12px}
+  .kbd{display:inline-block;border:1px solid #B9C2B8;border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:13px;font-weight:700;background:#fff;color:var(--ink);line-height:1.5;margin:0 1px;vertical-align:baseline}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
+  th{font-size:12.5px;color:var(--green-deep);letter-spacing:.04em;font-weight:800;background:var(--mint-soft)}
+  td.c,th.c{text-align:center}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card h3{margin-bottom:4px}
+  .card p{font-size:14px;margin:0;color:var(--ink-soft)}
+  .callout{position:absolute;width:26px;height:26px;border-radius:50%;background:var(--soil);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:translate(-50%,-50%)}
+  .legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .legend li{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:start;font-size:14.5px;line-height:1.45}
+  .legend .callout{position:static;transform:none;width:22px;height:22px;font-size:12px;margin-top:2px}
+  .cover{padding:0;background:var(--green-deep)}
+  .cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+  .cover .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(31,74,51,.15) 0%,rgba(31,74,51,.85) 100%)}
+  .cover .txt{position:absolute;left:72px;bottom:72px;color:#fff;max-width:760px}
+  .cover .txt .k{font-size:15px;letter-spacing:.18em;font-weight:700;color:var(--mint);margin-bottom:14px}
+  .cover h1{font-size:64px;line-height:1.05;margin-bottom:16px;color:#fff}
+  .cover p{color:rgba(255,255,255,.85);font-size:19px;max-width:640px}
+  .cover .meta{position:absolute;right:72px;bottom:72px;color:rgba(255,255,255,.75);font-size:13px;text-align:right;line-height:1.6}
+  .section{background:var(--green);color:#fff;display:flex;flex-direction:column;justify-content:center}
+  .section .k{font-size:14px;letter-spacing:.18em;font-weight:700;color:var(--mint);margin-bottom:14px}
+  .section h1{color:#fff;font-size:56px;max-width:900px}
+  .section p{color:rgba(255,255,255,.85);font-size:19px;max-width:760px}
+  .section ol{color:#fff;font-size:17px;line-height:1.7;margin:22px 0 0;padding-left:22px;columns:2;column-gap:60px;max-width:960px}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px;line-height:1.5}
+  .kv b{color:var(--green-deep);white-space:nowrap}
+  .check{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;font-size:17px}
+  .check li{display:flex;gap:10px;align-items:flex-start;line-height:1.45}
+  .check .box{width:20px;height:20px;border:2px solid var(--green);border-radius:5px;flex:none;margin-top:3px;background:#fff}
+  .stack .shot{width:var(--w,86%);margin-left:auto;margin-right:auto}
+  .stack .cap{text-align:center}
+  td.nw{white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- 1 표지 -->
+<section class="slide cover">
+  <img src="img/00_title.jpg" alt="">
+  <div class="veil"></div>
+  <div class="txt">
+    <div class="k">CALM FOREST · 초보자 안내서</div>
+    <h1>고요한 숲,<br>처음 오신 분을 위한 안내</h1>
+    <p>나무를 베고, 밭을 가꾸고, 낚시를 하고, 내 집을 짓는 포근한 숲 마을. 처음 30분 동안 무엇을 하면 좋은지, 실제 플레이 화면과 함께 차근차근 알려드려요.</p>
+  </div>
+  <div class="meta">플레이: https://calmforest.cloud<br>PC 브라우저 · 스마트폰 모두 가능<br>2026년 9월 기준</div>
+</section>
+
+<!-- 2 목차 -->
+<section class="slide section">
+  <div class="k">차례</div>
+  <h1>이 안내서에서 다루는 것</h1>
+  <p>앞에서부터 순서대로 읽으면 튜토리얼과 같은 흐름이 돼요. 이미 아는 부분은 건너뛰어도 괜찮아요.</p>
+  <ol>
+    <li>게임 시작하기 — 로그인·캐릭터·프롤로그</li>
+    <li>화면 읽는 법과 조작법 (PC · 스마트폰)</li>
+    <li>도구 세트 이해하기</li>
+    <li>튜토리얼 코치 따라가기</li>
+    <li>첫 10분 — 벌목 → 상인 → 첫 코인</li>
+    <li>농사 4단계와 내 텃밭</li>
+    <li>상점과 오늘의 시세</li>
+    <li>내 집 짓기와 꾸미기</li>
+    <li>호수 낚시</li>
+    <li>이웃 여섯 명과 퀘스트</li>
+    <li>채굴 동굴 · 작업대 · 자유주방 · 조각</li>
+    <li>카페 · 닭장 · 채집 숲 · 반딧불이 계곡</li>
+    <li>먼 곳 모험 — 바다터 · 나루터 · 안개 낀 숲</li>
+    <li>낮과 밤, 날씨, 밤손님</li>
+    <li>도감 · 배지 · 나의 이야기</li>
+    <li>저장과 계정, 자주 묻는 질문, 첫날 체크리스트</li>
+  </ol>
+  <div class="brand" style="color:rgba(255,255,255,.6)">고요한 숲 초보자 안내서</div>
+</section>
+
+<!-- 3 시작하기 -->
+<section class="slide">
+  <div class="eyebrow">01 · 게임 시작하기</div>
+  <div class="cols">
+    <div>
+      <h2>주소를 열고, 로그인을 고르고, 동물 친구를 고르세요</h2>
+      <p class="lead">크롬 브라우저를 권장해요. 폰에서는 화면을 세로로 들고 플레이해요.</p>
+      <ol class="steps">
+        <li><span class="n">1</span><div><b>https://calmforest.cloud</b> 접속. 첫 화면에서 <b>구글 로그인</b> 또는 <b>게스트로 둘러보기</b>를 고릅니다.</div></li>
+        <li><span class="n">2</span><div><b>캐릭터 선택</b> — 여우·강아지·토끼·고양이·곰·판다·병아리 7종 중 하나. 마음에 드는 이름을 적어요(2~16자, 🎲로 랜덤 이름도 가능).</div></li>
+        <li><span class="n">3</span><div><b>프롤로그</b>가 짧게 흘러요. 회색 도시에서 지친 주인공이 잎사귀를 따라 숲에 도착하는 장면. 오른쪽 위 <b>건너뛰기 ›</b>로 넘길 수 있어요.</div></li>
+        <li><span class="n">4</span><div>마을에 도착하면 환영 안내가 떠요. <b>튜토리얼 시작 🌱</b>을 누르면 화면 안내를 따라 하나씩 배웁니다.</div></li>
+      </ol>
+      <div class="warn"><b>게스트는 저장이 이어지지 않아요.</b> 다음에 다시 오면 새 마을에서 시작해요. 오래 할 생각이면 처음부터 구글 로그인을 추천해요. 캐릭터는 나중에 ☰ 메뉴에서 바꿀 수 있고, 진행 상황(집·밭·도감)은 그대로 남아요.</div>
+    </div>
+    <div>
+      <div class="grid2">
+        <div><img class="shot" src="img/00_title.jpg" alt=""><div class="cap">첫 화면 — 구글 로그인 / 게스트로 둘러보기</div></div>
+        <div><img class="shot" src="img/01_charselect.jpg" alt=""><div class="cap">캐릭터 7종과 닉네임 입력</div></div>
+        <div><img class="shot" src="img/02_intro_b.jpg" alt=""><div class="cap">프롤로그 컷신 (건너뛰기 가능)</div></div>
+        <div><img class="shot" src="img/14_help.jpg" alt=""><div class="cap">환영 안내 — 튜토리얼 시작</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">3</div>
+</section>
+
+<!-- 4 화면 읽는 법 -->
+<section class="slide">
+  <div class="eyebrow">02 · 화면 읽는 법</div>
+  <div class="cols" style="grid-template-columns:400px 1fr">
+    <div>
+      <h2>한 화면에 뭐가 있나요</h2>
+      <p class="lead">숫자는 오른쪽 사진의 위치예요.</p>
+      <ul class="legend">
+        <li><span class="callout">1</span><div><b>메뉴 묶음</b> — 📷 사진 찍기, 🙂 이모트, ☰ 메뉴(캐릭터 바꾸기·리더보드·사진첩·도움말·배경음악·언어·나가기)</div></li>
+        <li><span class="callout">2</span><div><b>미니맵</b> — 내 위치와 주요 장소</div></li>
+        <li><span class="callout">3</span><div><b>이야기 칩 자리</b> — 미니맵 아래. 지금 진행 중인 메인 이야기의 목표가 떠요(안내 배너가 뜰 땐 잠시 숨어요). 누르면 자세히</div></li>
+        <li><span class="callout">4</span><div><b>가진 것</b> — 🪵 목재 · 🌰 씨앗 · 🥕 작물 · 🪙 코인. 🎒 가방을 누르면 전부 보여요</div></li>
+        <li><span class="callout">5</span><div><b>낮·밤 슬라이더</b> — 시간을 직접 돌려볼 수 있어요</div></li>
+        <li><span class="callout">6</span><div><b>📖 도감</b> — 발견한 것과 배지 · 💬 문의하기</div></li>
+        <li><span class="callout">7</span><div><b>안내 말풍선</b> — 근처에서 할 수 있는 행동이 떠요 (문 열기, 대화, 던지기…)</div></li>
+        <li><span class="callout">8</span><div><b>도구바</b> — 맨 앞 칩은 도구 세트 바꾸기(<span class="kbd">1</span>), 그 뒤 4칸이 도구(<span class="kbd">2</span>~<span class="kbd">5</span>)</div></li>
+      </ul>
+    </div>
+    <div class="shot-wrap">
+      <img class="shot" src="img/03_village_start.jpg" alt="">
+      <span class="callout" style="left:10%;top:5.5%">1</span>
+      <span class="callout" style="left:4.5%;top:17%">2</span>
+      <span class="callout" style="left:7%;top:26.5%">3</span>
+      <span class="callout" style="left:87%;top:5.5%">4</span>
+      <span class="callout" style="left:95%;top:10.5%">5</span>
+      <span class="callout" style="left:96%;top:17%">6</span>
+      <span class="callout" style="left:50%;top:88%">7</span>
+      <span class="callout" style="left:50%;top:95%">8</span>
+      <div class="cap">마을 한가운데에서 시작해요. 말풍선 ❕이 뜬 주민은 부탁할 일이 있다는 뜻이에요.</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">4</div>
+</section>
+
+<!-- 5 조작법 -->
+<section class="slide">
+  <div class="eyebrow">03 · 조작법</div>
+  <div class="cols wide" style="grid-template-columns:1fr 300px">
+    <div>
+      <h2>PC와 스마트폰, 두 가지 조작</h2>
+      <div class="grid2" style="margin-top:8px">
+        <div class="card">
+          <h3>🖥️ PC (키보드·마우스)</h3>
+          <div class="kv">
+            <b>이동</b><span><span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> 또는 방향키</span>
+            <b>행동</b><span><span class="kbd">Space</span> 또는 화면 클릭 — 도구질·대화·문 열기·줍기 전부 이 한 키</span>
+            <b>도구 세트</b><span><span class="kbd">1</span> 을 누를 때마다 🌾농사 → 🏕️야외도구 → ✋맨손 순환</span>
+            <b>도구 고르기</b><span><span class="kbd">2</span>~<span class="kbd">5</span> 지금 펼친 세트의 4칸</span>
+            <b>앉기</b><span><span class="kbd">C</span></span>
+            <b>가구 회전</b><span><span class="kbd">R</span> (집 꾸미기 중)</span>
+            <b>안내 닫기</b><span><span class="kbd">Space</span> = "알겠어요"</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>📱 스마트폰 (터치)</h3>
+          <div class="kv">
+            <b>이동</b><span>왼쪽 아래 <b>조이스틱</b>을 끌어요</span>
+            <b>행동</b><span>오른쪽 아래 <b>동그란 버튼</b>. 상황에 따라 모양이 바뀌어요 — 도구 / 💬 대화 / 🚪 문 / 가구 놓기</span>
+            <b>도구 세트</b><span>도구바 맨 앞 🎒 칩을 탭</span>
+            <b>도구 고르기</b><span>도구바 칸을 탭</span>
+            <b>대화</b><span>주민 옆에 가면 <b>💬 대화하기</b> 버튼이 따로 떠요</span>
+            <b>메뉴</b><span>왼쪽 위 ☰</span>
+          </div>
+        </div>
+      </div>
+      <div class="tip"><b>달리기 키는 없어요.</b> 대신 🥘 채소죽이나 🍄 버섯 스프를 먹으면 한동안 40% 빨라져요. 마을이 넓게 느껴지면 요리부터 해보세요.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/30_mobile_coach.jpg" alt="" style="width:262px">
+      <div class="cap">폰 세로 화면 — 왼쪽 조이스틱, 오른쪽 행동 버튼, 아래 도구바</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">5</div>
+</section>
+
+<!-- 6 도구 세트 -->
+<section class="slide">
+  <div class="eyebrow">04 · 도구 세트</div>
+  <div class="cols" style="grid-template-columns:1fr 470px">
+    <div>
+      <h2>도구는 8개, 세트는 세 가지</h2>
+      <p class="lead">처음부터 8개를 다 갖고 시작해요. 도구바에는 한 번에 한 세트만 보이니 "도구가 없어졌다"고 느끼면 <span class="kbd">1</span>(폰은 🎒)을 눌러 세트를 넘겨 보세요.</p>
+      <table>
+        <tr><th>세트</th><th>도구 (칸 번호)</th><th>하는 일</th></tr>
+        <tr><td><b>🌾 농사</b><br><span style="font-size:12px;color:var(--ink-soft)">시작 세트</span></td><td>⛏️ 괭이 (2)<br>🌰 씨앗 (3)<br>💧 물조리개 (4)<br>🌾 낫 (5)</td><td>밭 갈기 · 동굴에서 광석 캐기<br>씨앗 심기<br>물 주기 (성장은 물로만!)<br>다 자란 작물 수확</td></tr>
+        <tr><td><b>🏕️ 야외도구</b></td><td>🪓 도끼 (2)<br>🔨 망치 (3)<br>🎣 낚싯대 (4)<br>🦋 포충망 (5)</td><td>나무 베기<br>집 짓기 · 증축<br>호수 낚시<br>밤에 반딧불이 잡기</td></tr>
+        <tr><td><b>✋ 맨손</b></td><td>—</td><td>채집 숲·실내·카페에선 저절로 맨손이 돼요. 줍기·서빙은 도구가 필요 없어요</td></tr>
+      </table>
+      <div class="tip"><b>구역에 들어가면 알아서 바뀌어요.</b> 동굴에 들어가면 농사 세트(괭이), 호숫가에 가면 야외 세트가 펼쳐지는 식이에요. 작업대에서 재료를 내면 <b>강철 도끼·큰 물조리개·튼튼한 낚싯대·큰 냄비·촘촘한 포충망</b>으로 영구 강화할 수 있어요.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/12_bag.jpg" alt="">
+      <div class="cap">🎒 가방 — 자원·농사/낚시 재료·광물·밤/숲 채집물이 한눈에</div>
+      <img class="shot" src="img/10_bench.jpg" alt="" style="margin-top:14px">
+      <div class="cap">🔧 작업대 도구 탭 — 영구 강화 (예: 강철 도끼 = 목재 20 + 작물 3)</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">6</div>
+</section>
+
+<!-- 7 튜토리얼 -->
+<section class="slide">
+  <div class="eyebrow">05 · 튜토리얼 코치</div>
+  <div class="cols wide">
+    <div>
+      <h2>화면 왼쪽 위 코치를 따라가면 17가지를 배워요</h2>
+      <p class="lead">한 단계를 실제로 해내야 다음으로 넘어가요. 점 17개가 진행도예요. 건너뛰기를 눌러도 되지만, 처음이라면 끝까지 따라가는 걸 추천해요.</p>
+      <div class="grid2">
+        <ol class="steps" style="gap:5px">
+          <li><span class="n">1</span><div>마을 걸어보기</div></li>
+          <li><span class="n">2</span><div><span class="kbd">1</span>로 도구 세트 바꿔보기</div></li>
+          <li><span class="n">3</span><div>🪓 도끼로 나무 베기</div></li>
+          <li><span class="n">4</span><div>🛒 찾아온 상인·좌판에 목재 팔기</div></li>
+          <li><span class="n">5</span><div>⛏️ 괭이로 빈 땅 갈기</div></li>
+          <li><span class="n">6</span><div>🌰 씨앗 심기</div></li>
+          <li><span class="n">7</span><div>💧 물 주기</div></li>
+          <li><span class="n">8</span><div>🌾 낫으로 수확</div></li>
+          <li><span class="n">9</span><div>📊 시세판 보기</div></li>
+        </ol>
+        <ol class="steps" style="gap:5px">
+          <li><span class="n">10</span><div>주민 퀘스트 받고 보상까지</div></li>
+          <li><span class="n">11</span><div>⛏️ 서쪽 동굴에서 광석 캐기</div></li>
+          <li><span class="n">12</span><div>🗿 작업대 조각 주문 해보기</div></li>
+          <li><span class="n">13</span><div>📖 도감 열어보기</div></li>
+          <li><span class="n">14</span><div>🎣 호수 낚시</div></li>
+          <li><span class="n">15</span><div>🔨 집 짓기</div></li>
+          <li><span class="n">16</span><div>🚪 집에 들어가기</div></li>
+          <li><span class="n">17</span><div>🎨 가구로 집 꾸미기</div></li>
+        </ol>
+      </div>
+      <div class="tip">다 마치면 <b>"🎉 튜토리얼 졸업!"</b> 메시지가 떠요. 이 안내서의 다음 슬라이드들은 이 순서를 조금 더 자세히 풀어 쓴 거예요.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/04_coach.jpg" alt="">
+      <div class="cap">코치 카드 — 왼쪽 위에 지금 할 일과 진행 점이 떠요</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">7</div>
+</section>
+
+<!-- 8 첫 10분 -->
+<section class="slide">
+  <div class="eyebrow">06 · 첫 10분</div>
+  <div class="cols">
+    <div>
+      <h2>나무 세 그루면 첫 코인이 생겨요</h2>
+      <p class="lead">시작 코인은 0이에요. 그래서 제일 먼저 할 일은 벌목이에요.</p>
+      <ol class="steps">
+        <li><span class="n">1</span><div><span class="kbd">1</span>로 🏕️ 야외도구 세트를 펴고 <span class="kbd">2</span> 도끼를 들어요.</div></li>
+        <li><span class="n">2</span><div>나무 바로 옆에서 <span class="kbd">Space</span>를 <b>3번</b>. 한 그루에 목재 <b>+5</b> (1 + 1 + 쓰러뜨릴 때 3). 12초 뒤 다시 자라요.</div></li>
+        <li><span class="n">3</span><div>목재가 5개 되면 <b>🧙 방랑 상인이 직접 걸어와요</b>. "목재 5개 팔기 (+30🪙)"를 누르세요 — 평소 가격의 3배예요.</div></li>
+        <li><span class="n">4</span><div>이제 30코인. 상인이 알려준 대로 동쪽 좌판에서 🌰 씨앗이나 🌱 비료를 사도 되고, 그냥 모아둬도 돼요.</div></li>
+      </ol>
+      <div class="tip"><b>❄️ 눈 오는 날</b>엔 나뭇가지가 잘 부러져 목재가 더 나오고, 🍱 모둠 도시락을 먹으면 벌목마다 목재 +1이에요.</div>
+    </div>
+    <div>
+      <div class="grid2">
+        <div><img class="shot" src="img/05_chop.jpg" alt=""><div class="cap">도끼를 들고 나무 옆에서 Space</div></div>
+        <div><img class="shot" src="img/05_chop_fall.jpg" alt=""><div class="cap">3번째에 쓰러지며 목재 +3</div></div>
+      </div>
+      <img class="shot" src="img/05b_merchant.jpg" alt="" style="margin-top:14px">
+      <div class="cap">방랑 상인의 환영 거래 — 처음 한 번만 오는 기회예요</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">8</div>
+</section>
+
+<!-- 9 농사 -->
+<section class="slide">
+  <div class="eyebrow">07 · 농사</div>
+  <div class="cols" style="grid-template-columns:430px 1fr">
+    <div>
+      <h2>갈고 → 심고 → 물 주고 → 베기</h2>
+      <p class="lead">씨앗 8개로 시작해요. 수확할 때마다 작물 +1, 씨앗 +2가 돌아오니 씨앗이 모자랄 일은 거의 없어요.</p>
+      <ol class="steps">
+        <li><span class="n">1</span><div><b>⛏️ 괭이</b> — 빈 땅에서 Space. 나무·호수·집 자리 근처는 "여기엔 밭을 만들 수 없어요"가 떠요. 조금 옮겨 보세요.</div></li>
+        <li><span class="n">2</span><div><b>🌰 씨앗</b> — 갈아둔 밭 위에서 Space. 당근·토마토·블루베리·호박 중 하나가 무작위로 자라요.</div></li>
+        <li><span class="n">3</span><div><b>💧 물조리개</b> — 물을 주면 자라요. 흙이 젖어 있는 5초 동안은 안 받으니 <b>5초 간격으로 3번</b>. 시간이 지나도 저절로 자라진 않아요.</div></li>
+        <li><span class="n">4</span><div><b>🌾 낫</b> — "수확!" 표시가 뜨면 Space.</div></li>
+      </ol>
+      <div class="warn"><b>물을 안 주고 22초 넘게 두면 시들어요(🥀).</b> 시든 밭은 괭이로 다시 갈면 돼요. 🌧️ 비 오는 날은 물 없이 저절로 자라고, 🌱 비료(20🪙)를 주면 바로 수확할 수 있어요.</div>
+    </div>
+    <div>
+      <div class="grid4">
+        <div><img class="shot" src="img/06_farm_till.jpg" alt=""><div class="cap">① 괭이로 갈기 → "씨앗을 넣어요"</div></div>
+        <div><img class="shot" src="img/06_farm_water.jpg" alt=""><div class="cap">② 씨앗을 심고 ③ 물 주기</div></div>
+        <div><img class="shot" src="img/06_farm_mature.jpg" alt=""><div class="cap">세 번 물을 주면 "수확!" 표시</div></div>
+        <div><img class="shot" src="img/06_farm_harvest.jpg" alt=""><div class="cap">④ 낫으로 수확 — 도감에도 등록돼요</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">9</div>
+</section>
+
+<!-- 10 텃밭 + 상점 -->
+<section class="slide">
+  <div class="eyebrow">08 · 내 텃밭 · 상점 · 시세</div>
+  <div class="cols even">
+    <div>
+      <h2>넓게 짓고 싶으면 내 텃밭, 팔 땐 동쪽 좌판</h2>
+      <p>마을 남쪽 <b>🌾 내 텃밭</b> 아치를 지나면 나만의 넓은 밭이 나와요. 심어둔 작물은 저장되고, 나갈 땐 남쪽 문으로 나가요.</p>
+      <img class="shot" src="img/20_farmfield_plot.jpg" alt="" style="margin-top:6px">
+      <div class="cap">내 텃밭 — 밭 여섯 칸을 한 번에</div>
+      <div class="tip" style="margin-top:12px"><b>🛒 상점 사용법</b> — 좌판 앞에서 Space. <b>팔기</b> 탭에서 칸을 탭하면 1개, 꾹 누르면 전부 팔려요. <b>사기</b> 탭엔 씨앗 5개(15🪙)·🌱비료(20)·🪱미끼(25)·목재·돌·석탄과 도구 강화가 있어요.</div>
+    </div>
+    <div class="stack">
+      <img class="shot" src="img/09_shop_buy.jpg" alt="">
+      <div class="cap">상점 사기 탭 — 코인이 부족한 칸은 흐리게 보여요</div>
+      <img class="shot" src="img/09_market.jpg" alt="" style="margin-top:12px">
+      <div class="cap">📊 시세판 — 가격이 매일 자정에 ±30% 안에서 바뀌어요. 빨간 화살표(비쌈)일 때 파는 게 이득. 상인 좌판 말풍선도 오늘 제일 비싼 품목을 알려줘요.</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">10</div>
+</section>
+
+<!-- 11 집 -->
+<section class="slide">
+  <div class="eyebrow">09 · 내 집 짓기</div>
+  <div class="cols">
+    <div>
+      <h2>망치와 목재 30개면 지붕까지</h2>
+      <p class="lead">마을 서북쪽, 초록 원이 그려진 "🏠 여기에 집 짓기" 자리예요.</p>
+      <ol class="steps">
+        <li><span class="n">1</span><div>🏕️ 세트의 <b>🔨 망치</b>(3)를 들고 원 안에서 Space. 한 번에 목재 10개씩 — <b>데크 → 통나무 벽 → 지붕</b> 세 단계.</div></li>
+        <li><span class="n">2</span><div>지붕이 올라가면 집 완성! 🏠 <b>'내 집 마련' 배지(+20🪙)</b>와 <b>이야기 1장 보상(+40🪙)</b>을 받아요.</div></li>
+        <li><span class="n">3</span><div>문 앞에서 Space → 실내. 아래 <b>🎨 꾸미기</b> 버튼으로 가구를 골라 바닥에 놓아요. 가구값은 코인이 아니라 <b>🥕 작물</b>(어항만 🐟 물고기)로 내요. <span class="kbd">R</span>로 회전, 놓은 가구는 다시 클릭해 옮길 수 있어요.</div></li>
+        <li><span class="n">4</span><div>집 밖 근처에서 <b>🎨 집 외관 꾸미기</b>: 지붕·벽·문 색(낚시·수확 중 확률로 해금)과 <b>증축</b>. 4단계 넓은 집(목재 30·돌 15·80🪙) → 5단계 저택 → 6단계 모던 하우스까지.</div></li>
+      </ol>
+    </div>
+    <div>
+      <div class="grid2">
+        <div><img class="shot" src="img/07_build2.jpg" alt=""><div class="cap">2단계 통나무 벽 — 한 번 더 치면 지붕</div></div>
+        <div><img class="shot" src="img/07_house_done.jpg" alt=""><div class="cap">완성! 문 앞 "🚪 집에 들어가기"</div></div>
+        <div><img class="shot" src="img/07_decor.jpg" alt=""><div class="cap">실내 🎨 꾸미기 — 러그 2🥕부터 큰 소파 10🥕까지</div></div>
+        <div><img class="shot" src="img/29_house6.jpg" alt=""><div class="cap">6단계 모던 하우스 — 루프탑 테라스까지</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">11</div>
+</section>
+
+<!-- 12 낚시 -->
+<section class="slide">
+  <div class="eyebrow">10 · 호수 낚시</div>
+  <div class="cols">
+    <div>
+      <h2>던지고, 기다리고, 물면 한 번 더</h2>
+      <p class="lead">마을 동남쪽 호수, 나무 부두 위에서 해요. 물속으로는 못 들어가요.</p>
+      <ol class="steps">
+        <li><span class="n">1</span><div>🏕️ 세트의 <b>🎣 낚싯대</b>(4)를 들고 물가에서 Space → 찌가 날아가요.</div></li>
+        <li><span class="n">2</span><div><b>1.5~4초</b> 기다리면 "❗ 물었어요! 지금 낚아채요!"가 떠요.</div></li>
+        <li><span class="n">3</span><div><b>1.4초 안에</b> 다시 Space. 늦으면 "놓쳤어요 🐟💨". 성공하면 클로즈업 장면과 함께 물고기 +1.</div></li>
+        <li><span class="n">4</span><div>기다리는 동안 다시 누르면 줄을 걷어요(취소). 도구를 바꾸거나 자리를 떠도 취소돼요.</div></li>
+      </ol>
+      <table style="margin-top:12px">
+        <tr><th>물고기</th><th class="c">확률</th><th>팁</th></tr>
+        <tr><td class="nw">🐟 피라미</td><td class="c nw">72%</td><td rowspan="3">🌧️ 비 오는 날 · 🪱 미끼(25🪙, 5회) · 🐟 생선 구이 버프 중엔 희귀가 더 잘 나와요. 🎣 튼튼한 낚싯대(작업대: 목재 10 + 물고기 3)를 만들면 낚아챌 시간이 2.6초로 늘어요.</td></tr>
+        <tr><td class="nw">🐠 붉은 물고기</td><td class="c nw">21%</td></tr>
+        <tr><td class="nw">🌈 무지개 물고기</td><td class="c nw">7%</td></tr>
+      </table>
+    </div>
+    <div class="stack" style="--w:80%">
+      <img class="shot" src="img/08_fish_bite.jpg" alt="">
+      <div class="cap">"❗ 물었어요!" — 이 순간 Space</div>
+      <img class="shot" src="img/08_fish_catch2.jpg" alt="" style="margin-top:12px">
+      <div class="cap">성공하면 잠깐 클로즈업 — 📷 사진 찍기 좋은 순간</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">12</div>
+</section>
+
+<!-- 13 이웃 -->
+<section class="slide">
+  <div class="eyebrow">11 · 이웃과 퀘스트</div>
+  <div class="cols" style="grid-template-columns:1fr 440px">
+    <div>
+      <h2>❕ 말풍선이 뜬 주민에게 말을 걸어보세요</h2>
+      <p class="lead">가까이 가서 Space(폰은 💬 대화하기). <b>수락 → 목표 달성 → 다시 말 걸기</b>로 보상을 받아요.</p>
+      <table>
+        <tr><th>주민</th><th>어디에</th><th>무엇을 부탁하나</th><th>첫 부탁</th></tr>
+        <tr><td>🧑‍🌾 농부 삼촌</td><td>마을 중앙 남동</td><td>농사 4개</td><td>나무 3번 베기 → 씨앗 3 + 5🪙</td></tr>
+        <tr><td>👷 목수 아저씨</td><td>집터 남쪽</td><td>건축 3개</td><td>목재 10개 모으기 → 작물 3 + 10🪙</td></tr>
+        <tr><td>🧙 방랑 상인</td><td>동쪽 좌판</td><td>장사 3개</td><td>씨앗 3번 심기 (씨앗 3개 먼저 줘요)</td></tr>
+        <tr><td>🎣 낚시꾼 할아버지</td><td>호수 남쪽</td><td>낚시 4개</td><td>물고기 2마리 → 작물 3 + 8🪙</td></tr>
+        <tr><td>🐼 요리사 판다</td><td>자유주방 옆</td><td>요리 3개</td><td>작물 3개 모으기 → 8🪙</td></tr>
+        <tr><td>🦉 의뢰 올빼미</td><td>집터 근처</td><td><b>매일 새 의뢰 3건</b></td><td>10 · 15 · 20🪙 + 🎁 럭키박스</td></tr>
+      </table>
+      <div class="tip"><b>❤️ 친밀도</b> — 작업대 🎁 선물 탭에서 꽃다발(작물 2)·과일 바구니·생선 묶음·목각 인형·보석 목걸이를 만들어 주민에게 주면 친밀도가 올라요. 3단계마다 답례(씨앗 3 + 작물 1)가 와요. 주민 5명의 부탁을 전부 끝내면 👑 '마을의 영웅' 배지.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/11_npc.jpg" alt="">
+      <div class="cap">농부 삼촌의 첫 부탁 — 수락하기</div>
+      <img class="shot" src="img/11_owl.jpg" alt="" style="margin-top:12px">
+      <div class="cap">🦉 오늘의 의뢰 — 전 유저에게 같은 의뢰가 나와요</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">13</div>
+</section>
+
+<!-- 14 동굴/작업대/주방/조각 -->
+<section class="slide">
+  <div class="eyebrow">12 · 채굴 동굴 · 작업대 · 자유주방 · 조각</div>
+  <div class="cols even" style="gap:28px">
+    <div>
+      <h2>재료를 캐고, 만들고, 요리하기</h2>
+      <div class="card" style="margin-bottom:10px">
+        <h3>⛏️ 채굴 동굴 — 마을 서쪽 검은 바위 입구</h3>
+        <p>🌾 세트의 <b>괭이</b>로 반짝이는 광맥을 3번 캐요. 돌 55% · 석탄 35% · 💎 보석 10% (🌫️ 안개 낀 날은 보석 20%). 14초 뒤 다시 생겨요. 돌·석탄은 집 증축과 큰 냄비 재료, 보석은 40🪙에 팔려요. 나갈 땐 "나가기" 팻말 앞에서 Space.</p>
+      </div>
+      <div class="card" style="margin-bottom:10px">
+        <h3>🔧 작업대 — 탭 4개</h3>
+        <p><b>도구</b> 영구 강화 · <b>야외</b> 장식(허수아비·울타리·꽃밭·정원등…) · <b>선물</b> 주민에게 줄 것 · <b>🗿 조각</b> 매일 바뀌는 주문 3건. 조각은 밝은 칩을 탭·드래그로 깎아내고 어두운 밑그림만 남기는 놀이예요. 흠집 없이 깎을수록 보상(22~26🪙 × 등급)이 커요.</p>
+      </div>
+      <div class="card">
+        <h3>🍳 자유주방 — 작업대 동쪽</h3>
+        <p>레시피 5종. 재료를 내고 미니게임을 해요 — <b>끓이기</b>는 바늘이 초록 구간에 올 때 탭 3번, <b>썰기</b>는 8박자 리듬 탭. 잘할수록 버프가 오래가요. 채소죽(작물 3) = 60초 이동속도 +40%, 생선 구이(물고기 2) = 낚시 행운, 도시락 = 벌목 +1, 오믈렛 = 채굴 보너스.</p>
+      </div>
+    </div>
+    <div>
+      <div class="grid2">
+        <div><img class="shot" src="img/21_mine_dig.jpg" alt=""><div class="cap">동굴에서 괭이질 — 횃불 옆 광맥</div></div>
+        <div><img class="shot" src="img/17_carve_orders.jpg" alt=""><div class="cap">🗿 조각 탭 — 오늘의 주문 3건</div></div>
+        <div><img class="shot" src="img/16_kitchen_mg.jpg" alt=""><div class="cap">끓이기 미니게임 — 초록 구간에서 탭</div></div>
+        <div><img class="shot" src="img/17_carve_mid.jpg" alt=""><div class="cap">조각 중 — 밑그림만 남기기</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">14</div>
+</section>
+
+<!-- 15 카페/닭장/숲/계곡 -->
+<section class="slide">
+  <div class="eyebrow">13 · 마을 남쪽의 네 곳</div>
+  <h2 style="margin-bottom:14px">카페 · 닭장 · 채집 숲 · 반딧불이 계곡</h2>
+  <div class="grid4" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:16px">
+    <div>
+      <img class="shot" src="img/22_cafe_serve.jpg" alt="">
+      <h3 style="margin-top:10px">☕ 카페 <span style="font-weight:400;color:var(--ink-soft);font-size:13px">남쪽 붉은 지붕 건물</span></h3>
+      <p style="font-size:14px">손님 4명이 머리 위 말풍선으로 요리를 주문해요. 재료(작물·물고기·달걀·채집물)를 들고 옆에 가서 Space = 서빙. 한 잔에 30~46🪙, 넷 다 대접하면 보너스 60🪙. 📋 주문판에서 오늘 주문을 볼 수 있어요.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/18_coop_modal.jpg" alt="">
+      <h3 style="margin-top:10px">🐔 닭장 <span style="font-weight:400;color:var(--ink-soft);font-size:13px">텃밭 입구 남서쪽</span></h3>
+      <p style="font-size:14px"><b>2일 연속 출석</b>하면 지을 수 있어요(목재 25 · 돌 10 · 60🪙). 씨앗 2개로 모이를 주면 다음날 🥚 달걀 2개. 달걀은 6🪙에 팔거나 오믈렛 재료로.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/19_forest_pick.jpg" alt="">
+      <h3 style="margin-top:10px">🍄 채집 숲 <span style="font-weight:400;color:var(--ink-soft);font-size:13px">남서쪽 팻말</span></h3>
+      <p style="font-size:14px"><b>도구가 필요 없어요.</b> 버섯·산딸기·도토리·약초 옆에서 Space로 줍기. 1~2분 뒤 다른 게 다시 자라요. 채집물 3개면 🍄 버섯 스프(150초 빠른 발). 비 온 날엔 버섯이 많아요.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/24_glade.jpg" alt="">
+      <h3 style="margin-top:10px">🌟 반딧불이 계곡 <span style="font-weight:400;color:var(--ink-soft);font-size:13px">카페 남쪽 · 밤에만</span></h3>
+      <p style="font-size:14px">🏕️ 세트의 <b>🦋 포충망</b>(5)으로 반딧불이가 <b>밝게 반짝이는 순간</b> 휘두르면 90% 성공, 아니면 35%. 노랑·푸른·초록·무지개 4종을 다 모으면 🌟 '밤의 수집가' 배지(+40🪙). 낮에 가면 "밤에 다시 오세요"가 떠요.</p>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">15</div>
+</section>
+
+<!-- 16 먼 곳 -->
+<section class="slide">
+  <div class="eyebrow">14 · 먼 곳 모험</div>
+  <h2 style="margin-bottom:6px">마을 밖 세 곳 — 익숙해진 뒤에 가보세요</h2>
+  <p class="lead" style="margin-bottom:14px">셋 다 처음부터 열려 있어요. 각각 마을 가장자리의 팻말 앞에서 Space로 들어가요.</p>
+  <div class="grid4" style="grid-template-columns:1fr 1fr 1fr;gap:18px">
+    <div>
+      <img class="shot" src="img/26_sea_fight.jpg" alt="">
+      <h3 style="margin-top:10px">🌊 바다터 <span style="font-weight:400;color:var(--ink-soft);font-size:13px">북동쪽 등대</span></h3>
+      <p style="font-size:14px">큰 물고기와 <b>줄다리기</b>. 헤엄치는 물고기를 보고 Space로 던지면 입질이 와요. <b>🔴 버텨요…!</b> 땐 아무것도 누르지 말고, <b>🟢 당기세요!!</b> 땐 연타. 부두 끝 빨간 널판까지 끌려가면 놓쳐요. 전갱이(낮)·방어·개복치(밤)·⚔️참치(하루 1마리, 🏆 오늘의 대어 랭킹). 잡으면 무게만 재고 놓아줘요.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/27_river_run2.jpg" alt="">
+      <h3 style="margin-top:10px">🛶 나루터 <span style="font-weight:400;color:var(--ink-soft);font-size:13px">북쪽 12시 방향</span></h3>
+      <p style="font-size:14px">나룻배를 타고 약 60초 동안 강을 내려가요. 배는 저절로 앞으로 가고 <b>좌우로만 조향</b>, Space는 스퍼트. 바위·통나무를 피하고 ⭐ 별조각을 모아요. 💡 램프 3개가 목숨. <b>하루 3번</b>, 코스는 그날 모두에게 같아요. 별조각은 뱃사공의 창고에서 배 강화에 써요.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/28_mist_wave2.jpg" alt="">
+      <h3 style="margin-top:10px">🌫️ 안개 낀 숲 <span style="font-weight:400;color:var(--ink-soft);font-size:13px">북서쪽 고목 아치</span></h3>
+      <p style="font-size:14px">🌳 수호목 앞에서 <b>바로 시작</b>(처음이면 연습해 보기 추천). 그림자 정령이 다가오면 🏮 등불로 늦추고, 정령 곁에서 <b>♪ 표시가 가장 작아질 때 탭</b>해 달래요. 세 무리를 다 달래면 숲이 맑아지고 ✨ 정령빛을 받아요(정령 등불 장식 교환). 싸움이 아니라 음악으로 달래는 놀이라 실패해도 잃는 게 없어요.</p>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">16</div>
+</section>
+
+<!-- 17 낮밤 날씨 -->
+<section class="slide">
+  <div class="eyebrow">15 · 낮과 밤 · 날씨 · 밤손님</div>
+  <div class="cols" style="grid-template-columns:1fr 440px">
+    <div>
+      <h2>하루가 8분, 날씨는 매일 하나</h2>
+      <p class="lead">밤이 오면 별·반딧불이·창문 불빛이 켜지고, 오른쪽 위 슬라이더로 시간을 직접 돌려볼 수도 있어요. 날씨는 날짜에 따라 정해져서 모든 플레이어가 같은 날씨를 겪어요.</p>
+      <table>
+        <tr><th>날씨</th><th class="c">확률</th><th>이런 날엔</th></tr>
+        <tr><td>☀️ 맑음</td><td class="c">55%</td><td>평소대로</td></tr>
+        <tr><td>🌧️ 비</td><td class="c">20%</td><td>밭이 저절로 자라요 · 입질이 빨라지고 희귀 물고기↑ · 버섯↑</td></tr>
+        <tr><td>❄️ 눈</td><td class="c">12%</td><td>벌목할 때 목재가 더 나와요</td></tr>
+        <tr><td>🌫️ 안개</td><td class="c">13%</td><td>동굴 보석 확률 2배 · 낮에도 반딧불이 · 🌟 황금 정령</td></tr>
+      </table>
+      <div class="warn" style="margin-top:12px"><b>🦝 밤손님</b> — 자리를 비운 밤사이 너구리·멧돼지가 밭 작물을 훔쳐 갈 수 있어요. 작업대 야외 탭의 <b>🎃 허수아비(목재 5) 1개</b> 또는 <b>🪵 울타리(목재 3) 4개</b>를 밭 근처에 두면 막을 수 있어요. 다녀간 자리(파헤친 흙)를 조사하면 도감 수집품이 나와요.<br><b>❄️ 서리 · 🌀 태풍</b> 예보가 뜬 날은 오늘 수확하거나 작업대에서 🛡️ 밭 덮개(목재 3)를 준비하세요. 시든 작물은 괭이로 복구할 수 있어요.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/23_night.jpg" alt="">
+      <div class="cap">밤의 마을 — 횃불과 창문 불빛, 떠다니는 반딧불이</div>
+      <img class="shot" src="img/25_rain.jpg" alt="" style="margin-top:12px">
+      <div class="cap">🌧️ 비 오는 날 — 물 안 줘도 자라는 날</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">17</div>
+</section>
+
+<!-- 18 도감/배지/이야기 -->
+<section class="slide">
+  <div class="eyebrow">16 · 도감 · 배지 · 나의 이야기</div>
+  <div class="cols" style="grid-template-columns:1fr 470px">
+    <div>
+      <h2>모으고, 인정받고, 이야기가 이어져요</h2>
+      <div class="card" style="margin-bottom:10px">
+        <h3>📖 도감 — 43종</h3>
+        <p>물고기 3 · 작물 4 · 광물 3 · 요리 5 · 이웃 6 · 채집물 4 · 반딧불이 4 · 밤손님 흔적 2 · 강 4 · 정령 4 · 날씨 4. 처음 만나면 자동 등록되고 다 채우면 <b>150🪙</b>. 오른쪽 📖 도감 버튼으로 언제든 확인해요.</p>
+      </div>
+      <div class="card" style="margin-bottom:10px">
+        <h3>🏅 배지 14개 — 도감 아래에 전시돼요</h3>
+        <p>🏠 내 집 마련(집 완성, +20) · 🎖️ 첫 의뢰 완수(+20) · 🔥 일주일 개근(+30) · 🌈 전천후 탐험가(날씨 4종) · ☕ 마을 바리스타(15잔) · 🛶 첫 뱃길 · 🌫️ 숲의 정화자 · 👑 마을의 영웅(+50) · 📖 도감 마스터 · 🏙️ 드림 하우스(+100) …</p>
+      </div>
+      <div class="card">
+        <h3>📖 나의 이야기 — 4장</h3>
+        <p>왼쪽 위 이야기 칩을 누르면 보여요. <b>1장 나의 첫 집</b>(집 완성, +40🪙) → <b>2장 숲의 이웃들</b>(의뢰 3번) → <b>3장 따뜻한 한 끼</b>(요리 1번 + 서빙 1번) → <b>4장 잎사귀의 주인</b>(안개 낀 숲 정화, +80🪙). 억지로 따라갈 필요는 없어요. 놀다 보면 저절로 넘어가요.</p>
+      </div>
+    </div>
+    <div>
+      <img class="shot" src="img/13_dex.jpg" alt="">
+      <div class="cap">📖 도감 — 아직 못 만난 건 ???로 표시</div>
+      <img class="shot" src="img/15_story.jpg" alt="" style="margin-top:12px">
+      <div class="cap">나의 이야기 — 지금 장의 진행도가 보여요</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">18</div>
+</section>
+
+<!-- 19 저장/FAQ -->
+<section class="slide">
+  <div class="eyebrow">17 · 저장 · 계정 · 자주 묻는 질문</div>
+  <div class="cols even" style="gap:32px">
+    <div>
+      <h2>저장은 자동, 걱정은 접어두세요</h2>
+      <ul class="list">
+        <li><b>30초마다, 그리고 화면을 닫을 때 자동 저장</b>돼요. 저장 버튼은 없어요.</li>
+        <li><b>구글 로그인</b>이면 어느 기기에서든 이어서 해요. <b>게스트</b>는 이번 접속 동안만 유지되고 다음엔 새 마을이에요.</li>
+        <li><b>📸 사진첩</b>(☁️ 업로드, 100장)과 📊 활동 기록은 구글 로그인 전용이에요. 📷 사진 찍기 자체는 누구나 돼요.</li>
+        <li><b>🏆 리더보드</b> 6부문 — 🛶 오늘의 뱃길 · 🌊 오늘의 대어(참치 kg) · 🪙 주간 부자 · ⛏️ 광부왕 · 🍳 요리왕 · 📜 퀘스트. 주간은 월요일에 새로 시작해요.</li>
+        <li><b>🌐 English</b> — ☰ 메뉴에서 영어로 바꿀 수 있어요.</li>
+      </ul>
+      <img class="shot" src="img/14_menu.jpg" alt="" style="margin-top:14px">
+      <div class="cap">☰ 메뉴 — 캐릭터·이름 바꾸기, 리더보드, 사진첩, 도움말, 배경음악, 언어</div>
+    </div>
+    <div>
+      <h2 style="font-size:26px">자주 묻는 질문</h2>
+      <div class="kv" style="font-size:14.5px;gap:9px 14px">
+        <b>도구가 사라졌어요</b><span>숲·실내·카페에선 자동으로 ✋맨손이 돼요. <span class="kbd">1</span>(폰은 🎒 칩)을 누르면 다시 꺼내요.</span>
+        <b>밭을 못 만들어요</b><span>나무·호수·집터·작업대 근처는 안 돼요. 한두 걸음 옮기거나 내 텃밭으로 가세요.</span>
+        <b>작물이 안 자라요</b><span>물을 줘야만 자라요. 5초 간격으로 3번. 시들었으면(🥀) 괭이로 다시 갈기.</span>
+        <b>물고기를 자꾸 놓쳐요</b><span>"물었어요!"가 뜬 뒤 1.4초 안에. 작업대에서 튼튼한 낚싯대를 만들면 2.6초로 늘어요.</span>
+        <b>상인이 안 와요</b><span>목재 5개(또는 물고기 1마리)를 들고 마을 안 실외에 있을 때 딱 한 번 와요. 이미 왔다면 동쪽 좌판으로.</span>
+        <b>코인이 부족해요</b><span>🦉 올빼미 의뢰 3건(45🪙+럭키박스), 카페 서빙, 시세 좋은 날 팔기가 빨라요.</span>
+        <b>바다터가 어려워요</b><span>🔴에 누르면 오히려 끌려가요. 참고, 🟢에만 연타. 처음엔 전갱이(낮)부터.</span>
+        <b>버그·건의는 어디에</b><span>오른쪽 아래 💬 문의하기 버튼으로 바로 보낼 수 있어요.</span>
+      </div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서</div><div class="pageno">19</div>
+</section>
+
+<!-- 20 체크리스트 -->
+<section class="slide">
+  <div class="eyebrow">18 · 첫날 체크리스트</div>
+  <div class="cols" style="grid-template-columns:1fr 430px">
+    <div>
+      <h2>오늘 이만큼만 해보세요</h2>
+      <p class="lead">20~30분이면 충분해요. 다 하면 이 숲의 기본은 전부 배운 거예요.</p>
+      <ul class="check">
+        <li><span class="box"></span><span>🪓 나무 3그루 베기 (목재 15)</span></li>
+        <li><span class="box"></span><span>🧙 찾아온 상인에게 목재 팔기 (+30🪙)</span></li>
+        <li><span class="box"></span><span>⛏️🌰💧🌾 밭 한 칸 갈아서 수확까지</span></li>
+        <li><span class="box"></span><span>🎣 호수에서 물고기 1마리</span></li>
+        <li><span class="box"></span><span>🔨 집 완성 (목재 30) → 🚪 들어가 보기</span></li>
+        <li><span class="box"></span><span>🎨 가구 하나 놓기 (러그 = 작물 2)</span></li>
+        <li><span class="box"></span><span>🧑‍🌾 농부 삼촌 부탁 수락하고 보상 받기</span></li>
+        <li><span class="box"></span><span>🦉 올빼미 오늘의 의뢰 1건</span></li>
+        <li><span class="box"></span><span>⛏️ 동굴에서 광석 하나</span></li>
+        <li><span class="box"></span><span>🍳 채소죽 한 그릇 끓여 빨라진 발로 산책</span></li>
+        <li><span class="box"></span><span>📖 도감 열어서 몇 종인지 보기</span></li>
+        <li><span class="box"></span><span>🌙 밤이 오면 반딧불이 계곡 구경</span></li>
+      </ul>
+      <div class="tip" style="margin-top:20px"><b>내일 또 오면</b> 출석 보상과 올빼미의 새 의뢰, 카페의 새 손님, 새 조각 주문, 새 강 코스가 기다려요. 2일 연속 오면 닭장을 지을 수 있어요. 숲은 서두르지 않아도 괜찮아요 🌲</div>
+    </div>
+    <div>
+      <img class="shot" src="img/08_fish_catch2.jpg" alt="">
+      <div class="cap">월척! 낚시 성공 장면</div>
+      <img class="shot" src="img/22_cafe_serve.jpg" alt="" style="margin-top:12px">
+      <div class="cap">카페 서빙 — 내가 만든 요리로 코인과 친밀도를</div>
+    </div>
+  </div>
+  <div class="brand">고요한 숲 초보자 안내서 · https://calmforest.cloud</div><div class="pageno">20</div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+# 렌더 산출물(수 MB PNG) — 소스(deck·render·shoot·art·templates)만 추적
+out/
+gen/
+shots/
+_dbg*.mjs

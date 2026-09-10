@@ -1,0 +1,33 @@
+{
+  "slug": "deck-01",
+  "title": "퇴근했는데 아무것도 안 남았다",
+  "note": "생성 이미지(회사·일상) 1~4 → 게임 이미지 5~7. 표지에 게임을 쓰지 않는다 — 게임 광고로 분류되면 스크롤에서 걸러진다.",
+  "cards": [
+    {
+      "kind": "turn",
+      "theme": "dark",
+      "img": "shots/city_leaf.png",
+      "eyebrow": "그래서",
+      "headline": "심으면 자라는 걸\n만들었다",
+      "focus": "50% 38%"
+    },
+    {
+      "kind": "game",
+      "theme": "light",
+      "img": "shots/arrive_forest.png",
+      "eyebrow": "하루 5분",
+      "headline": "밭은 물 준 만큼\n자란다",
+      "body": "물 주고, 캐고, 그날은 끝.",
+      "focus": "38% 40%"
+    },
+    {
+      "kind": "cta",
+      "theme": "light",
+      "img": "shots/village_dusk.png",
+      "eyebrow": "설치 없음 · 무료",
+      "headline": "calmforest.cloud",
+      "body": "브라우저에서 바로.",
+      "focus": "50% 45%"
+    }
+  ]
+}

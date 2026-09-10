@@ -1,0 +1,28 @@
+<meta charset="utf-8"><link rel="stylesheet" href="../../templates/_base.css">
+<style>
+  .card{background:var(--ink)}
+  .shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 38%;
+    transform:scale(1);transform-origin:50% 38%}
+  .scrim{position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(to top,rgba(14,18,16,.92) 0%,rgba(14,18,16,.58) 42%,rgba(14,18,16,0) 100%)}
+  .txt{position:absolute;left:80px;right:180px;bottom:104px;color:#fdf6ea}
+  .txt .headline{color:#fdf6ea;margin:20px 0 24px;text-shadow:0 2px 18px rgba(10,14,12,.45);font-size:60px}
+  .txt .body{color:rgba(253,246,234,.80)}
+  .txt .eyebrow{color:#f0a878}
+  .badge{position:absolute;top:64px;left:80px;display:flex;align-items:center;gap:13px;
+    color:rgba(253,246,234,.92);font-size:25px;font-weight:700;letter-spacing:.09em;
+    background:transparent;text-shadow:0 2px 18px rgba(10,14,12,.45);}
+  .dot{width:11px;height:11px;border-radius:99px;background:var(--accent)}
+  .num{position:absolute;right:76px;bottom:96px;font-size:34px;font-weight:800;
+    color:#fdf6ea;opacity:.30;letter-spacing:.02em}
+</style>
+<div class="card">
+  <img class="shot" src="../../shots/city_leaf.png">
+  <div class="scrim"></div>
+  <div class="badge"><span class="dot"></span>캄포레스트</div>
+  <div class="txt">
+    <div class="eyebrow">그래서</div>
+    <div class="headline">티 나는 걸 하나 만들었다</div>
+    <div class="body">심으면 자라는 거.</div>
+  </div>
+  <div class="num">5 / 7</div>
+</div>

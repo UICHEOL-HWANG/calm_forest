@@ -1,0 +1,69 @@
+{
+  "slug": "deck-01",
+  "title": "나 오늘 진짜 바빴는데",
+  "note": "생성 이미지(회사·일상) 1~4 → 게임 이미지 5~7. 표지에 게임을 쓰지 않는다 — 게임 광고로 분류되면 스크롤에서 걸러진다. 카피는 Content Creator·Instagram Curator 두 안에서 추린 것.",
+  "cards": [
+    {
+      "kind": "cover",
+      "theme": "dark",
+      "img": "art/01_desk_night.svg",
+      "headline": "나 오늘 진짜 바빴는데\n뭐 했는지를 모르겠네"
+    },
+    {
+      "kind": "body",
+      "theme": "dark",
+      "img": "art/02_meeting.svg",
+      "eyebrow": "오늘 한 일",
+      "headline": "회의 두 개 들어갔다",
+      "body": "정해진 건 없다.",
+      "imgPrompt": "Flat vector illustration. No people, no faces, no readable text. An empty meeting room table seen from directly above: two closed laptops, three paper cups of cold coffee, one whiteboard marker without its cap, a few blank sticky notes. Muted desaturated palette: charcoal #252c28 background, warm cream #fdf6ea surfaces, a single terracotta #d4703c accent on one cup. Flat shapes with hard edges, no gradients, no glow, no lens flare, no neon. Composition leaves the lower third empty and uncluttered."
+    },
+    {
+      "kind": "body",
+      "theme": "dark",
+      "img": "gen/03_subway.png",
+      "eyebrow": "집에 오는 길",
+      "headline": "11시 지하철에서\n아까 그 말투를 다시 생각한다",
+      "body": "\"확인 부탁드립니다\" 뒤에 붙은 물음표 하나.",
+      "imgPrompt": "Flat vector illustration. No people, no faces, no readable text. Interior of a late-night subway car: an empty row of seats, hanging grab handles in a line, a dark window reflecting the ceiling strip light, one umbrella left leaning in the corner. Muted desaturated palette: charcoal #252c28, warm cream #fdf6ea, a single terracotta #d4703c accent on the umbrella handle. Flat shapes with hard edges, no gradients, no glow. Composition leaves the lower third empty and uncluttered."
+    },
+    {
+      "kind": "body",
+      "theme": "dark",
+      "img": "gen/04_resume.png",
+      "eyebrow": "이력서",
+      "headline": "열었다가\n쓸 말이 없어서\n그냥 껐다",
+      "imgPrompt": "Flat vector illustration. No people, no faces, no readable text. A laptop sitting closed-but-glowing on a rumpled bed sheet in a dark room, seen from a low angle. The screen shows an empty form: one blank rectangle where a photo would go, and several empty ruled lines below it. A phone lies face down beside it. Muted desaturated palette: charcoal #252c28, warm cream #fdf6ea for the screen, a single terracotta #d4703c accent as a small cursor mark. Flat shapes with hard edges, no gradients, no glow. Composition leaves the lower third empty and uncluttered."
+    },
+    {
+      "kind": "turn",
+      "theme": "dark",
+      "img": "shots/city_leaf.png",
+      "eyebrow": "그래서",
+      "headline": "티 나는 걸 하나 만들었다",
+      "body": "심으면 자라는 거.",
+      "focus": "50% 38%"
+    },
+    {
+      "kind": "game",
+      "theme": "light",
+      "img": "shots/farm_watered.png",
+      "eyebrow": "오늘 한 일",
+      "headline": "밭에 물 줬다",
+      "body": "내일 아침엔 자라 있다.",
+      "focus": "50% 60%",
+      "todo": "재촬영 필요 — ?farm=1 이 인트로에 밀려 텃밭 대신 마을에서 찍혔다. 카페 지붕이 화면을 가림",
+      "zoom": 1.25
+    },
+    {
+      "kind": "cta",
+      "theme": "light",
+      "img": "shots/cta_ne.png",
+      "eyebrow": "설치 없음 · 무료",
+      "headline": "calmforest.cloud",
+      "body": "치면 바로 열린다.",
+      "focus": "58% 62%",
+      "zoom": 1.5
+    }
+  ]
+}
