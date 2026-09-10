@@ -12,10 +12,11 @@
  *   items: [{ x, z }]  (메시 position 이나 저장 레코드 모두 됨)
  *   반환: { index, d } | null  (reach 안에 아무것도 없으면 null)
  */
-export function nearestOutdoorAt(items, px, pz, reach) {
+export function nearestOutdoorAt(items, px, pz, reach, getPos = (it) => it) {
   let best = null;
   for (let i = 0; i < items.length; i++) {
-    const d = Math.hypot(px - items[i].x, pz - items[i].z);
+    const p = getPos(items[i]);
+    const d = Math.hypot(px - p.x, pz - p.z);
     if (d < reach && (!best || d < best.d)) best = { index: i, d };
   }
   return best;

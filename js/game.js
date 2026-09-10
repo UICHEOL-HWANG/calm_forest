@@ -7080,8 +7080,10 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
     refreshInventoryUI();
   }
   const m = outdoorMesh(id); m.position.set(wx, 0, wz); scene.add(m); outdoorMeshes.push(m);
-  const rec = { id, x: wx, z: wz };
-  gameState.outdoor.push(rec);
+  // 들고 있던 장식은 저장 레코드를 그대로 쓴다(들고 있는 동안 세이브가 나가도 분실되지 않게 목록에 남겨 둔다) — 옮겨 놓기·제자리 복귀 모두
+  const carried = pickedOutdoor && pickedOutdoor.id === id ? pickedOutdoor.rec : null;
+  const rec = carried ? Object.assign(carried, { x: wx, z: wz }) : { id, x: wx, z: wz };
+  if (!gameState.outdoor.includes(rec)) gameState.outdoor.push(rec);
   const ob = { x: wx, z: wz, r: 0.8 }; obstacles.push(ob);   // 그 위엔 밭 금지
   // 🚧 울타리·돌담·정원등·화로·허수아비는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
   const solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
@@ -7105,7 +7107,7 @@ function stopOutdoorPlacing(putBack) {
 function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea; }
 // 캐릭터에서 가장 가까운 야외 장식(2D 중심 거리) — 규칙은 js/outdoor-move.js
 function nearestOutdoor(reach) {
-  const near = nearestOutdoorAt(outdoorMeshes.map(m => m.position), player.position.x, player.position.z, reach);
+  const near = nearestOutdoorAt(outdoorMeshes, player.position.x, player.position.z, reach, m => m.position);   // 매 프레임 배열 할당 없이
   return near ? { mesh: outdoorMeshes[near.index], d: near.d } : null;
 }
 // 🪵 놓아둔 야외 장식 들어 올리기 — 메시·충돌체·밭 금지 구역·저장 레코드를 같이 빼고 배치 모드로(값 없음)
@@ -7114,9 +7116,9 @@ function pickOutdoor(m) {
   scene.remove(m); outdoorMeshes.splice(outdoorMeshes.indexOf(m), 1);
   if (m.userData.solid) removeSolid(m.userData.solid);                       // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   const oi = obstacles.indexOf(m.userData.obstacle); if (oi >= 0) obstacles.splice(oi, 1);
-  const i = gameState.outdoor.indexOf(rec); if (i >= 0) gameState.outdoor.splice(i, 1);
+  // 저장 레코드는 목록에 남긴다(들고 있는 동안 세이브돼도 분실 없음) — 놓으면 placeOutdoor 가 좌표만 갱신, 보관하면 storeOutdoor 가 뺀다
   m.traverse(o => { if (o.isMesh) { const hi = houseWindows.indexOf(o.material); if (hi >= 0) houseWindows.splice(hi, 1); } });   // 🏮 밤 점등 목록에서도 제거(다시 놓으면 새로 등록)
-  placingOutdoor = rec.id; pickedOutdoor = { id: rec.id, x: rec.x, z: rec.z, farm: atFarm };
+  placingOutdoor = rec.id; pickedOutdoor = { id: rec.id, x: rec.x, z: rec.z, farm: atFarm, rec };
   Sound.blip(); trackEvent('pick_outdoor', { item: rec.id }); // [GA4] 옮기기 시작
   ui.onOutdoorPicked?.(OUTDOOR.find(d => d.id === rec.id));
   return true;
@@ -7127,6 +7129,7 @@ function storeOutdoor() {
   const id = placingOutdoor, def = OUTDOOR.find(d => d.id === id);
   const stored = gameState.outdoorStored || (gameState.outdoorStored = {});
   stored[id] = (stored[id] || 0) + 1;
+  const ri = gameState.outdoor.indexOf(pickedOutdoor.rec); if (ri >= 0) gameState.outdoor.splice(ri, 1);   // 마당 목록에서 빼고 보관함으로
   pickedOutdoor = null; placingOutdoor = null;   // 제자리 복귀 없이 정리
   Sound.blip(); ui.toast?.(`🧺 ${def.name}을(를) 보관했어요 — 작업대에서 다시 꺼낼 수 있어요`);
   trackEvent('store_outdoor', { item: id }); // [GA4]
