@@ -35,6 +35,7 @@ import { farmToolFor, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
+import { buildHouseModel } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -98,9 +99,10 @@ const BUILD_COST = 10;                                  // 건축 단계당 목�
 const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
 // ── 🏗️ 증축(집 완성 후) — 단계마다 집이 커지고 지붕·문 모양이 바뀜. 후반 자원·코인 싱크 ──
 const EXPANSIONS = [
-  { stage: 4, name: '넓은 집', ico: '🏡', cost: { wood: 30, stone: 15, coins: 80 } },
-  { stage: 5, name: '저택',    ico: '🏘️', cost: { wood: 50, stone: 30, coal: 10, coins: 200 } },
-  { stage: 6, name: '모던 하우스', ico: '🏙️', cost: { wood: 80, stone: 50, gem: 3, coins: 450 } },
+  // 2026-09-10 리디자인: 코인 비중↑(베타: "코인 쓸 데가 없다") — 80/200/450 → 120/350/800
+  { stage: 4, name: '브릭 로프트', ico: '🧱', cost: { wood: 30, stone: 15, coins: 120 } },
+  { stage: 5, name: '펜트하우스', ico: '🏢', cost: { wood: 50, stone: 30, coal: 10, coins: 350 } },
+  { stage: 6, name: '루프탑 빌라', ico: '🏝️', cost: { wood: 80, stone: 50, gem: 3, coins: 800 } },
 ];
 const MAX_HOUSE_STAGE = 6;
 const WET_TIME = 5;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(초) — 마르면 다시 물 필요
@@ -1204,7 +1206,17 @@ const ROOF_COLORS = [0xb5734a, 0xd05a5a, 0x5a86d0, 0x5aa86a, 0x9a6ad0];  // 갈�
 const WALL_COLORS = [0xd2a068, 0xe8c99a, 0xa9805a, 0xc9c0aa, 0xe0b0b0];  // 기본·밝은나무·진한나무·회벽·핑크
 const DOOR_COLORS = [0xa9743f, 0x8a5a3a, 0x5a6a8a, 0x5a8a6a, 0xd0a050];  // 갈색·진갈·파랑·초록·황금
 const PART_NAME = { roof: '지붕', wall: '벽', door: '문' };
-const PART_COLORS = () => ({ roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS });
+// 0번 스와치 = 지금 집 모델의 기본색(모델마다 다르다: 코티지 샌드 지붕, 빌라 흰 슬래브…), 1~4 = 공용 팔레트
+function houseBaseColor(role, fallback) {
+  let hex = null;
+  houseGroup?.traverse(o => { if (hex == null && o.isMesh && o.userData.role === role && o.userData.baseColor != null) hex = o.userData.baseColor; });
+  return hex ?? fallback;
+}
+const PART_COLORS = () => ({
+  roof: [houseBaseColor('roof', ROOF_COLORS[0]), ...ROOF_COLORS.slice(1)],
+  wall: [houseBaseColor('wall', WALL_COLORS[0]), ...WALL_COLORS.slice(1)],
+  door: [houseBaseColor('door', DOOR_COLORS[0]), ...DOOR_COLORS.slice(1)],
+});
 // 확률(chance)로 잠긴 외관 색 하나를 랜덤 언락 → "오늘 뭐 나올까" 리텐션 훅
 function tryUnlockDrop(chance) {
   if (Math.random() > chance) return;
@@ -1225,11 +1237,12 @@ function tryUnlockDrop(chance) {
 }
 function applyHouseStyle() {
   if (!houseGroup) return;
+  const cols = PART_COLORS();
   houseGroup.traverse(o => {
-    if (!o.isMesh || !o.userData.role || !o.material) return;
-    if (o.userData.role === 'roof') o.material.color.setHex(ROOF_COLORS[gameState.houseStyle.roof % ROOF_COLORS.length]);
-    else if (o.userData.role === 'wall') o.material.color.setHex(WALL_COLORS[gameState.houseStyle.wall % WALL_COLORS.length]);
-    else if (o.userData.role === 'door') o.material.color.setHex(DOOR_COLORS[gameState.houseStyle.door % DOOR_COLORS.length]);
+    const role = o.userData.role;
+    if (!o.isMesh || !o.material || !cols[role]) return;
+    const list = cols[role];
+    o.material.color.setHex(list[gameState.houseStyle[role] % list.length]);
   });
 }
 const HOUSE_POS = new THREE.Vector3(-8, 0, -8); // 정해진 집 터 위치
@@ -1433,7 +1446,7 @@ export const Input = {
   // 코치가 이미 설명한 시설은 졸업 후 배너를 또 띄우지 않게 '본 것' 처리(튜토리얼 완주 시 호출)
   markHintsSeen(keys) { for (const k of keys) gameState.hintsSeen[k] = true; },
   // 집 외관 커스터마이징
-  getHouseStyle() { return { style: { ...gameState.houseStyle }, unlocked: { roof: [...gameState.unlocked.roof], wall: [...gameState.unlocked.wall], door: [...gameState.unlocked.door] }, roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS }; },
+  getHouseStyle() { return { style: { ...gameState.houseStyle }, unlocked: { roof: [...gameState.unlocked.roof], wall: [...gameState.unlocked.wall], door: [...gameState.unlocked.door] }, ...PART_COLORS() }; },   // 0번 스와치는 현재 모델 기본색
   setHousePart(part, idx) {
     if (!(part in gameState.houseStyle)) return { ok: false };
     if (!gameState.unlocked[part].includes(idx)) return { ok: false, locked: true };
@@ -1866,7 +1879,7 @@ function buildWorld() {
     for (let tries = 0; tries < 60 && !ok; tries++) { // 호수·집터·시설 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r;
-      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 3.5 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
+      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 4.6 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
@@ -2591,7 +2604,7 @@ function buildEnvironment() {
     const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 26;
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, LAKE) < 6.5) continue;       // 호수 위 제외
-    if (dist2D({ x, z }, HOUSE_POS) < 3) continue;    // 집 터 제외
+    if (dist2D({ x, z }, HOUSE_POS) < 3.6) continue;  // 집 터 제외(빌라 발자국 5.4)
     if (dist2D({ x, z }, COOP) < 2.8) continue;       // 🐔 닭장 터 제외
     if (dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 0.5) continue;   // 🛶 나루터 연못 위 제외
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
@@ -4829,16 +4842,10 @@ function buildHouseStage(stage, silent = false) {
       const win = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.66, 0.06), winMat);
       win.position.set(wx, wy, wz); win.rotation.y = r; add(win);
     });
-  } else if (stage === 3) {
-    // 지붕: 우드 피라미드 + 굴뚝
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 4), woodMat(2, 2, ROOF_COLORS[0]));
-    roof.position.y = 2.35; roof.rotation.y = Math.PI / 4; roof.userData.role = 'roof'; add(roof);
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), woodMat(1, 1, 0xa9743f));
-    chimney.position.set(0.9, 2.7, 0.9); add(chimney);
-  } else if (stage >= 4) {
-    // 🏗️ 증축: 기존 집을 지우고 더 큰 새 모델로 통째로 재건축
+  } else if (stage >= 3) {
+    // 🏠 완성(3)·증축(4~6): 짓던 부품(데크·통나무)을 지우고 단계 모델로 통째로 교체 — js/house/
     [...houseGroup.children].forEach(c => houseGroup.remove(c));
-    buildExpandedHouse(stage, add);
+    add(mountHouseModel(stage));
   }
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
@@ -4877,120 +4884,26 @@ function buildHouseStage(stage, silent = false) {
   }
 }
 
-// 🏗️ 증축 모델(4=넓은 집, 5=저택, 6=모던 하우스) — 단계마다 footprint·지붕·문 모양이 달라짐
-//    색 커스텀은 userData.role(roof/wall/door)로 기존 applyHouseStyle 이 그대로 적용
-function buildExpandedHouse(stage, add) {
-  const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
-  houseWindows.push(winMat);   // 밤에 점등
-  const win = (w, h, x, y, z, ry = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), winMat); m.position.set(x, y, z); m.rotation.y = ry; add(m); };
-
-  if (stage === 4) {
-    // 🏡 넓은 집 — 4.2 데크, 4단 통나무 벽, 길쭉한 모임지붕, 아치문
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.26, 4.2), woodMat(4, 4));
-    deck.position.y = 0.22; deck.receiveShadow = true; add(deck);
-    const logMat = woodMat(3, 1, WALL_COLORS[0]);
-    [0.62, 1.0, 1.38, 1.76].forEach(y => [
-      { x: 0, z: 2.0, ry: 0 }, { x: 0, z: -2.0, ry: 0 },
-      { x: 2.0, z: 0, ry: Math.PI / 2 }, { x: -2.0, z: 0, ry: Math.PI / 2 },
-    ].forEach(s => {
-      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 4.0, 8), logMat);
-      log.rotation.z = Math.PI / 2; log.rotation.y = s.ry; log.position.set(s.x, y, s.z);
-      log.userData.role = 'wall'; add(log);
-    }));
-    // 아치문 — 문 상단에 눕힌 원기둥을 겹쳐 둥근 머리 표현(통나무 벽면보다 앞으로)
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.45, 0.14), woodMat(1, 2, DOOR_COLORS[0]));
-    door.position.set(0, 0.88, -2.15); door.userData.role = 'door'; add(door);
-    const arch = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.14, 16), woodMat(1, 1, DOOR_COLORS[0]));
-    arch.rotation.x = Math.PI / 2; arch.position.set(0, 1.6, -2.15); arch.userData.role = 'door'; add(arch);
-    win(0.62, 0.62, -1.2, 1.05, -2.2); win(0.62, 0.62, 1.2, 1.05, -2.2); win(0.62, 0.62, 2.2, 1.05, 0, Math.PI / 2);
-    // 길쭉한 모임지붕(hip) — 지오메트리를 먼저 45° 회전(정렬)한 뒤 x로 늘려 실루엣 차별화
-    const roofGeo = new THREE.ConeGeometry(3.2, 1.7, 4); roofGeo.rotateY(Math.PI / 4);
-    const roof = new THREE.Mesh(roofGeo, woodMat(2, 2, ROOF_COLORS[0]));
-    roof.position.y = 2.8; roof.scale.set(1.25, 1, 1);
-    roof.userData.role = 'roof'; add(roof);
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.8, 0.42), woodMat(1, 1, 0xa9743f));
-    chimney.position.set(1.2, 3.1, 0.9); add(chimney);
-  } else if (stage === 5) {
-    // 🏘️ 저택 — 2층집: 판벽 1층 + 작은 2층 + 발코니 + 2단 지붕(맨사드풍) + 쌍여닫이문
-    const base = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.3, 4.6), new THREE.MeshStandardMaterial({ color: 0xb9b4a4, roughness: 0.95 }));
-    base.position.y = 0.15; base.receiveShadow = true; add(base);
-    const floor1 = new THREE.Mesh(new THREE.BoxGeometry(4.3, 1.8, 4.3), woodMat(3, 2, WALL_COLORS[0]));
-    floor1.position.y = 1.2; floor1.userData.role = 'wall'; add(floor1);
-    const floor2 = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.4, 3.4), woodMat(2, 1, WALL_COLORS[0]));
-    floor2.position.y = 2.8; floor2.userData.role = 'wall'; add(floor2);
-    [[-2.05, -2.05], [2.05, -2.05], [-2.05, 2.05], [2.05, 2.05]].forEach(([px, pz]) => {  // 코너 기둥
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.26, 1.8, 0.26), woodMat(1, 2, 0xa9743f));
-      post.position.set(px, 1.2, pz); add(post);
-    });
-    // 쌍여닫이문 + 채광창
-    [-0.4, 0.4].forEach(dx => {
-      const d = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.5, 0.14), woodMat(1, 2, DOOR_COLORS[0]));
-      d.position.set(dx, 0.95, -2.2); d.userData.role = 'door'; add(d);
-    });
-    win(1.3, 0.34, 0, 1.92, -2.2);                                        // 문 위 가로 채광창
-    win(0.6, 0.7, -1.5, 1.25, -2.18); win(0.6, 0.7, 1.5, 1.25, -2.18);    // 1층 창
-    win(0.55, 0.55, -0.9, 2.85, -1.75); win(0.55, 0.55, 0.9, 2.85, -1.75); // 2층 창
-    win(0.6, 0.7, 2.18, 1.25, 0, Math.PI / 2); win(0.6, 0.7, -2.18, 1.25, 0, Math.PI / 2);
-    // 발코니(문 위) — 슬래브 + 난간
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.12, 0.7), woodMat(2, 1, 0xa9743f));
-    slab.position.set(0, 2.16, -2.05); add(slab);
-    [-0.85, 0, 0.85].forEach(dx => {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), woodMat(1, 1, 0xa9743f));
-      p.position.set(dx, 2.45, -2.34); add(p);
-    });
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 0.08), woodMat(2, 1, 0xa9743f));
-    rail.position.set(0, 2.68, -2.34); add(rail);
-    // 2단 지붕: 넓은 처마 박스 + 위 피라미드
-    const eave = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.45, 3.9), woodMat(3, 1, ROOF_COLORS[0]));
-    eave.position.y = 3.65; eave.userData.role = 'roof'; add(eave);
-    const top = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.3, 4), woodMat(2, 2, ROOF_COLORS[0]));
-    top.position.y = 4.5; top.rotation.y = Math.PI / 4; top.userData.role = 'roof'; add(top);
-    [[-1.3, 1.2], [1.3, -1.2]].forEach(([px, pz]) => {
-      const ch = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.4), woodMat(1, 1, 0xa9743f));
-      ch.position.set(px, 4.1, pz); add(ch);
-    });
-  } else {
-    // 🏙️ 모던 하우스 — 평지붕 박스 조합 + 전면 통유리 + 루프탑 테라스(난간·화분)
-    const concrete = (c = 0xd6d3c9) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 });
-    const plat = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.3, 4.4), concrete(0xc6c3b8));
-    plat.position.y = 0.15; plat.receiveShadow = true; add(plat);
-    // 1층 본체(넓은 박스) + 오른쪽 위 2층 박스 — 왼쪽 지붕은 루프탑 테라스
-    const lower = new THREE.Mesh(new THREE.BoxGeometry(4.6, 1.9, 3.6), woodMat(3, 2, WALL_COLORS[0]));
-    lower.position.y = 1.25; lower.userData.role = 'wall'; add(lower);
-    const upper = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.5, 3.0), woodMat(2, 1, WALL_COLORS[0]));
-    upper.position.set(1.05, 3.04, 0.1); upper.userData.role = 'wall'; add(upper);
-    // 평지붕 슬래브 2장(처마 살짝 돌출) — 1층 지붕이 곧 테라스 바닥
-    const roof1 = new THREE.Mesh(new THREE.BoxGeometry(4.9, 0.18, 3.9), woodMat(3, 1, ROOF_COLORS[0]));
-    roof1.position.y = 2.29; roof1.userData.role = 'roof'; add(roof1);
-    const roof2 = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.18, 3.3), woodMat(2, 1, ROOF_COLORS[0]));
-    roof2.position.set(1.05, 3.88, 0.1); roof2.userData.role = 'roof'; add(roof2);
-    // 루프탑 테라스 난간(왼쪽 절반) — 밝은 회색 포스트+레일
-    const railMat = concrete(0xb9b6ac);
-    [[-2.25, -1.8], [-1.3, -1.8], [-0.35, -1.8], [-2.25, 1.8], [-1.3, 1.8], [-0.35, 1.8], [-2.25, -0.9], [-2.25, 0], [-2.25, 0.9]].forEach(([px, pz]) => {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.46, 0.07), railMat);
-      p.position.set(px, 2.6, pz); add(p);
-    });
-    [[{ w: 2.0, d: 0.06, x: -1.3, z: -1.8 }], [{ w: 2.0, d: 0.06, x: -1.3, z: 1.8 }], [{ w: 0.06, d: 3.66, x: -2.25, z: 0 }]].flat().forEach(r => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(r.w, 0.07, r.d), railMat);
-      m.position.set(r.x, 2.85, r.z); add(m);
-    });
-    // 루프탑 화분(작은 나무) — 아늑한 포인트
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.26, 8), concrete(0xb0897a));
-    pot.position.set(-1.3, 2.5, 0.6); add(pot);
-    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshStandardMaterial({ color: 0x7fbf7f, roughness: 0.9 }));
-    bush.position.set(-1.3, 2.85, 0.6); add(bush);
-    // 현대식 현관 — 큰 문 + 캐노피(어닝) + 콘크리트 스텝
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.7, 0.12), woodMat(1, 2, DOOR_COLORS[0]));
-    door.position.set(0, 1.0, -1.86); door.userData.role = 'door'; add(door);
-    const awning = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.09, 0.55), concrete(0xb9b6ac));
-    awning.position.set(0, 2.02, -1.98); add(awning);
-    const step = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.14, 0.5), concrete(0xc6c3b8));
-    step.position.set(0, 0.1, -2.42); add(step);
-    // 전면 통유리(1층 좌우 대형 창 + 2층 가로로 긴 창) — 밤에 은은히 점등
-    win(1.5, 1.3, -1.4, 1.2, -1.84); win(1.5, 1.3, 1.4, 1.2, -1.84);
-    win(2.1, 0.7, 1.05, 3.05, -1.44);
-    win(1.4, 1.1, 2.32, 1.2, 0.2, Math.PI / 2); win(1.4, 1.1, -2.32, 1.2, 0.2, Math.PI / 2);   // 측면 창
-  }
+// 🏠 단계 모델(js/house/*.js)을 게임에 맞게 얹는다
+//   · 모델 정면은 +z 인데 houseGroup 이 π 회전이라 래퍼를 다시 π 돌려 카메라 쪽(-z 시선)에 정면이 오게 한다
+//   · role roof/wall/door 재질은 기본색을 기억(스와치 0번) · role window 재질은 밤 점등 목록에 등록
+function mountHouseModel(stage) {
+  const g = buildHouseModel(THREE, stage);
+  g.rotation.y = Math.PI;
+  const seen = new Set();
+  g.traverse(o => {
+    if (!o.isMesh) return;
+    const m = o.material; const role = o.userData.role;
+    o.castShadow = !m.transparent; o.receiveShadow = true;
+    if (role === 'roof' || role === 'wall' || role === 'door') o.userData.baseColor = m.color.getHex();
+    if (role === 'window' && !seen.has(m)) {
+      seen.add(m);
+      m.emissive = new THREE.Color(0xffb878); m.emissiveIntensity = 0;
+      m.userData.nightScale = 0.4;   // 새 모델은 유리 면적이 커서(펜트하우스·빌라 통유리) 기존 세기론 하얗게 타 버린다
+      houseWindows.push(m);
+    }
+  });
+  return g;
 }
 
 // 증축 정보(외관 메뉴 렌더용) — 다음 단계·비용·보유량
@@ -8366,7 +8279,7 @@ function updateDayNight(dt) {
   // 별 하늘(밤에 페이드인 + 반짝임)
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
-  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1; });
+  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
   if (interiorLamp) interiorLamp.intensity = indoor ? (1.8 + nightAmt * 2.6) : 0;
   // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
