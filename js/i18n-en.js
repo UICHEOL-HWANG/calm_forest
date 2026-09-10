@@ -1081,6 +1081,7 @@ export const EN = {
   '🥀 시든 작물이에요. 괭이로 다시 심어요': '🥀 This Crop wilted. Till with the hoe to replant',
   '물 줄 작물이 없어요 💧': 'No Crops to water 💧',
   '아직 흙이 촉촉해요 🌱': 'The soil is still moist 🌱',
+  '🔄 밭에 맞는 도구로 바꿨어요 — 농사 도구 아무거나 들고 액션만 누르면 돼요': '🔄 Switched to the right tool for this plot — hold any farm tool and just press action',
   '수확할 작물이 없어요 🌾': 'No Crops ready to harvest 🌾',
   '{0} +1 수확! 🌾': '{0} +1 harvested! 🌾',
   '🥀 작물이 시들었어요… 괭이로 다시 심어요': '🥀 A Crop wilted… till with the hoe to replant',
