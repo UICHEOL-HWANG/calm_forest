@@ -83,6 +83,8 @@
   /* ☰ 펼치면 겹치는 미니맵·퀘스트는 잠깐 숨김(데스크톱·모바일 공통) */
   #topleft.open { z-index: 50; }
   #topleft.open ~ #minimap, #topleft.open ~ #quest-panel { display: none; }
+  /* 🙂 이모트 팝업도 미니맵 자리(모바일 72~154px)를 덮는다 — 열린 동안 미니맵 숨김 */
+  body:has(#emote-pop.show) #minimap { display: none; }
   .bag-cue { opacity: .8; }
   /* 가방 창 */
   #bag-backdrop { display: none; position: fixed; inset: 0; background: rgba(40,55,45,0.28); z-index: 40; }
@@ -1686,6 +1688,7 @@
     // 🗺️ 마지막으로 받은 마을 지명(미니맵 아이콘 + 전체 지도가 공유).
     //    지도는 마을 밖(실내·동굴 등)에서도 열 수 있어야 해서 게임에서 받은 값을 들고 있는다.
     let lastPlaces = null;
+    let lastPlace = 'village';   // 미니맵이 마지막으로 알려준 공간 — 전체 지도 열기 가드용
     let lastNpcs = null;     // 주민 실시간 위치(미니맵·전체 지도 공용)
     let lastMapPos = null;   // 전체 지도의 "현재 위치" 마커 — 마을에 있을 때만 갱신
 
@@ -1791,7 +1794,8 @@
     }
 
     function openWorldMap() {
-      if (!lastPlaces) { ui.toast?.('🗺️ 마을에 있을 때 볼 수 있어요'); return; }   // 실내·서브공간에선 마을 지도가 없다
+      // 실내·서브공간에선 마을 지도가 없다 — lastPlaces 는 한 번 차면 안 비니 현재 공간(lastPlace)으로 판단한다
+      if (!lastPlaces || lastPlace !== 'village') { ui.toast?.('🗺️ 마을 지도는 밖에서 볼 수 있어요 · 여기선 미니맵만'); return; }
       $('worldmap').classList.add('show');
       Input.setAnalog(0, 0);   // 다른 모달과 같은 규칙 — 열 때 조이스틱을 놓는다(안 그러면 뒤에서 계속 걷는다)
       drawWorldMap();
@@ -2205,6 +2209,7 @@
       setPlaces(list) { if (list && list.length) lastPlaces = list; },
       // 미니맵 — 캐릭터 대략 위치 + 주요 지형 (레티나 대응)
       setMinimap(d) {
+        lastPlace = d.place || 'village';
         const cv = $('minimap'); if (!cv) return;
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const S = cv.clientWidth || 108;             // CSS px(108/82) 기준으로 그림
@@ -2632,7 +2637,7 @@
       ui.showCharacterSelect({ change: true });
     });
     // ☰ 메뉴 토글(모바일에서 유틸 버튼 펼치기/접기) + 버튼 누르면 자동으로 접힘
-    $('menu-btn').addEventListener('click', () => $('topleft').classList.toggle('open'));
+    $('menu-btn').addEventListener('click', () => { $('emote-pop').classList.remove('show'); $('topleft').classList.toggle('open'); });   // 🙂 이모트 팝업과 같은 자리 — 서로 배타
     $('util-btns').addEventListener('click', (e) => { if (e.target.closest('button')) $('topleft').classList.remove('open'); });
     // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
     $('tut-skip').addEventListener('click', () => {
@@ -3636,7 +3641,7 @@
 
     // ── 이모트 / 앉기 ──
     const emotePop = $('emote-pop');
-    $('emote-btn').addEventListener('click', () => emotePop.classList.toggle('show'));
+    $('emote-btn').addEventListener('click', () => { $('topleft').classList.remove('open'); emotePop.classList.toggle('show'); });   // ☰ 메뉴와 서로 배타
     emotePop.querySelectorAll('button[data-e]').forEach(b =>
       b.addEventListener('click', () => { Input.emote(b.dataset.e); emotePop.classList.remove('show'); }));
     $('emote-sit').addEventListener('click', () => { Input.toggleSit(); emotePop.classList.remove('show'); });

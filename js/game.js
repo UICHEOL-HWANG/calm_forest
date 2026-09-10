@@ -998,10 +998,11 @@ function checkDailyBonus() {
   if (d.streak > 0 && d.streak % 7 === 0) reward.gem = 1;        // 7일 연속마다 💎
   giveReward(reward, 'daily_bonus', 'day' + d.streak);           // [원장] 출석 코인
   trackEvent('daily_bonus', { streak: d.streak, coins });         // [GA4] 리텐션 KPI
+  // 한 줄에 하나씩(#hint-body 는 pre-line) — 베타 피드백 "한 문단으로 붙어 있어 안 읽힌다"
   let body = `연속 ${d.streak}일째 방문! ${rewardText(reward)} 받았어요.` +
-    (reward.gem ? ' 7일 연속 보너스 💎!' : ' 내일 또 오면 보상이 더 커져요!');
-  if (WEATHER !== 'clear') body += ' ' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
-  body += ' 🔮 ' + forecastLine() + forecastDexNudge(); // 내일 예보 — 재방문 유도(+날씨 도감 훅)
+    (reward.gem ? '\n7일 연속 보너스 💎!' : '\n내일 또 오면 보상이 더 커져요!');
+  if (WEATHER !== 'clear') body += '\n' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
+  body += '\n🔮 ' + forecastLine() + forecastDexNudge(); // 내일 예보 — 재방문 유도(+날씨 도감 훅)
   if (gameState.character && gameState.tutorialSeen) { ui.showHintModal?.({ ico: '🎁', title: `출석 ${d.streak}일차`, body }); return true; }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`);                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
   return false;
@@ -1649,6 +1650,10 @@ export async function enterGame() {
     // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
+    window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
+    window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
+    window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
+    window.__decor = (id, x, z, rot = 0) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true);   // 가구 무료 배치(검수용)
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
@@ -5617,10 +5622,12 @@ function setFogExempt(obj, on) {
 }
 
 const INT_HALF = 7;   // 실내 반경(넓은 방) — 문 앞 스폰/이동/배치 클램프 기준
+const INT_FLOOR_TINT = 0xbfb0a0;   // 실내 바닥 착색(가구 나무색 대비용)
 function buildInterior() {
   const g = new THREE.Group(); g.position.copy(INT);
   const W = INT_HALF * 2;
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), woodMat(7, 7));
+  // 바닥은 가구와 같은 나무 텍스처라 테이블·책장이 묻혔다(베타) — 톤을 낮춰 가구가 도드라지게
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), woodMat(7, 7, INT_FLOOR_TINT));
   floor.position.y = 0.1; floor.receiveShadow = true; g.add(floor);
   interiorFloor = floor;
   const wall = () => clayMat(PAL.wall, false);
@@ -5692,11 +5699,12 @@ function decorMesh(id) {
     [-1.08, 1.08].forEach(x => { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.5, 0.9), clayMat(0x7aa6db, false)); arm.position.set(x, 0.42, 0); g.add(arm); });
     [-.6, .6].forEach(x => { const cush = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.16, 0.7), clayMat(0xa8ccf2, false)); cush.position.set(x, 0.54, 0.05); g.add(cush); });
   } else if (id === 'bookshelf') {
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.7, 0.4), woodMat(1, 1)); body.position.y = 0.85; g.add(body);
+    // 책이 본체에 파묻혀 안 보였다(베타) — 본체는 어둡게, 책은 앞면 밖으로 내밀어 위에서도 보이게
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.7, 0.4), woodMat(1, 1, 0x9a7050)); body.position.y = 0.85; g.add(body);
     const cols = [0xd06b5b, 0x5b86d0, 0x64b06a, 0xe0b64a, 0x9a6ad0];
     for (let i = 0; i < 3; i++) {
-      const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.06, 0.36), woodMat(2, 1)); shelf.position.set(0, 0.5 + i * 0.5, 0.02); g.add(shelf);
-      for (let b = 0; b < 5; b++) { const bk = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.34, 0.24), clayMat(cols[(i + b) % cols.length], false)); bk.position.set(-0.5 + b * 0.22, 0.7 + i * 0.5, 0.05); g.add(bk); }
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.06, 0.4), woodMat(2, 1)); shelf.position.set(0, 0.5 + i * 0.5, 0.04); g.add(shelf);
+      for (let b = 0; b < 5; b++) { const bk = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.34, 0.26), clayMat(cols[(i + b) % cols.length], false)); bk.position.set(-0.5 + b * 0.22, 0.7 + i * 0.5, 0.14); g.add(bk); }
     }
   } else if (id === 'bigrug') {
     const r = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.6), clayMat(0xc7a6e8, false)); r.position.y = 0.03; g.add(r);
@@ -7860,9 +7868,10 @@ let sitting = false;     // 앉기 상태
 // ── 이모트 모션 — 기분에 따라 캐릭터가 실제로 움직임(춤·점프·하트·인사) ──
 let emoteAnim = null;    // { type, t0, dur, fx, baseRot }
 const EMOTE_MOTION = { '👋': ['wave', 1.4], '❤️': ['heart', 1.6], '😄': ['jump', 1.2], '🎵': ['dance', 2.4] };
-function startEmote(type, dur) {
+function startEmote(type, dur, opts = {}) {
   sitting = false;
-  emoteAnim = { type, el: 0, dur, fx: false, baseRot: player.rotation.y }; // el: 프레임 누적 경과(탭 전환 점프에 안전)
+  // noSpin: 📷 액션샷 전용 — 하트/댄스의 회전을 끈다(정점에서 등을 보여 "뒷모습만 찍힌다"는 피드백)
+  emoteAnim = { type, el: 0, dur, fx: false, baseRot: player.rotation.y, noSpin: !!opts.noSpin }; // el: 프레임 누적 경과(탭 전환 점프에 안전)
 }
 // updatePlayer 의 idle 분기에서 호출 — 활성 중이면 true(기본 idle 애니 스킵)
 function updateEmote(dt) {
@@ -7883,11 +7892,11 @@ function updateEmote(dt) {
     A.position.y = b * 0.55;
     A.scale.set(1 + (1 - b) * 0.09, 1 - (1 - b) * 0.11, 1 + (1 - b) * 0.09);
   } else if (emoteAnim.type === 'heart') {  // ❤️ 폴짝 뛰며 한 바퀴 + 반짝
-    player.rotation.y = emoteAnim.baseRot + p * Math.PI * 2;
+    if (!emoteAnim.noSpin) player.rotation.y = emoteAnim.baseRot + p * Math.PI * 2;
     A.position.y = Math.sin(p * Math.PI) * 0.4;
     if (!emoteAnim.fx && p > 0.4) { emoteAnim.fx = true; spawnSparkle(player.position.x, 1.7, player.position.z, 18); }
   } else if (emoteAnim.type === 'dance') {  // 🎵 빙글빙글 스텝 댄스(두 바퀴)
-    player.rotation.y = emoteAnim.baseRot + p * Math.PI * 4;
+    if (!emoteAnim.noSpin) player.rotation.y = emoteAnim.baseRot + p * Math.PI * 4;
     A.position.y = Math.abs(Math.sin(p * Math.PI * 6)) * 0.22;
     A.rotation.z = Math.sin(p * Math.PI * 8) * 0.18;
     A.scale.setScalar(1 + Math.sin(p * Math.PI * 6) * 0.04);
@@ -8087,6 +8096,7 @@ function updatePlayer(dt, t) {
 }
 
 const camOffset = new THREE.Vector3(0, 14, 16);
+const camOffsetIndoor = new THREE.Vector3(0, 17, 10);   // 🏠 실내 전용 ≈60°(마을 41°) — 방 전체가 한 화면에 들어오고 벽 너머 바깥이 안 보인다(2026-09-10 비교 후 확정)
 const _camTarget = new THREE.Vector3();
 const _camLook = new THREE.Vector3(0, 1.2, 0);
 const _camOff = new THREE.Vector3();
@@ -8111,8 +8121,8 @@ function startActionShot() {
   return new Promise((resolve) => {
     const poses = [['jump', 1.2, 0.30], ['dance', 2.4, 0.62], ['heart', 1.6, 0.55], ['wave', 1.4, 0.42]];
     const [pose, dur, peak] = poses[Math.floor(Math.random() * poses.length)];
-    startEmote(pose, dur);                       // 역동적 포즈 발동
-    // 밀착 위치는 시작 시점에 고정(스핀 포즈여도 카메라가 흔들리지 않게) — 정면 어깨높이
+    startEmote(pose, dur, { noSpin: true });     // 역동적 포즈 발동 — 회전은 끈다(카메라가 정면 고정이라 돌면 등이 찍힌다)
+    // 밀착 위치는 시작 시점에 고정 — 정면 어깨높이
     const fy = player.rotation.y;
     const pd = closeUpDist(4.0);
     _photoPos.set(player.position.x + Math.sin(fy) * pd, 1.70 + (pd - 4.0) * 0.14, player.position.z + Math.cos(fy) * pd);
@@ -8220,7 +8230,7 @@ function updateCatchItem(dt) {
 }
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
 function snapCamera() {
-  _camTarget.copy(player.position).add(camOffset);
+  _camTarget.copy(player.position).add(indoor ? camOffsetIndoor : camOffset);
   camera.position.copy(_camTarget);
   _camLook.set(player.position.x, 1.2, player.position.z);
   camera.lookAt(_camLook);
@@ -8268,7 +8278,7 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy(camOffset).multiplyScalar(zoom);
+  _camOff.copy(indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
@@ -8338,7 +8348,7 @@ function updateDayNight(dt) {
   scene.fog.near = 18; scene.fog.far = 74;   // 기본 안개(동굴에선 아래서 걷음)
   if (!atMine) {                             // 날씨별 대기 농도(동굴은 자체 설정 유지)
     if (WEATHER === 'rain') { scene.fog.near = 14; scene.fog.far = 58; }
-    else if (WEATHER === 'fog') { scene.fog.near = 8; scene.fog.far = 36; }   // 🌫️ 시야가 뿌옇게
+    else if (WEATHER === 'fog') { scene.fog.near = 12; scene.fog.far = 50; }   // 🌫️ 뿌옇되 주변 오브젝트는 읽히게(8/36 은 화면 전체가 하얘졌다 — 베타)
     else if (WEATHER === 'snow') { scene.fog.near = 16; scene.fog.far = 62; }
   }
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
@@ -8759,7 +8769,12 @@ function tryFish() {
   if (fishState === 'wait') { resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
   // idle → 캐스팅. 물가 근처여야 함
   const distLake = dist2D(LAKE, player.position);
-  if (distLake > LAKE_R + 2.8) { ui.toast?.('🎣 호수 물가에서 낚시하세요'); return; }
+  if (distLake > LAKE_R + 2.8) {
+    // 🛶 나루터 연못은 호수와 생김새가 같아 낚시터로 오해한다(베타) — "여긴 아니다"를 분명히
+    if (dist2D(DOCK_POND, player.position) < DOCK_POND_R + 3) ui.toast?.('🛶 나루터 연못에선 낚시가 안 돼요 — 🎣 낚시는 마을 호수에서', 2600);
+    else ui.toast?.('🎣 낚시는 마을 호수 물가에서만 할 수 있어요', 2200);
+    return;
+  }
   const dir = _v.set(LAKE.x - player.position.x, 0, LAKE.z - player.position.z).normalize();
   castPos.set(player.position.x + dir.x * 2.6, 0.35, player.position.z + dir.z * 2.6);
   // 물 위로 클램프
@@ -9095,7 +9110,9 @@ function tryHarvest() {
   questEvent('harvest');                                          // 퀘스트 진행
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
-  triggerMoment(true);                                            // 🎉 캐치 세리머니(밀착 + 폴짝)
+  // 🎉 밀착 세리머니는 첫 수확 한 번만 — 반복 동작이라 매번 확대되면 답답하고 멀미가 난다(베타). 이후엔 폴짝 + 열매 팝만.
+  if (!gameState.hintsSeen.harvestZoom) { gameState.hintsSeen.harvestZoom = true; triggerMoment(true); }
+  else { ui.photoNudge?.(); startEmote('jump', 1.0); }
   showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);    // 🥕 열매를 머리 위로 번쩍!
   tryUnlockDrop(0.05);                                            // 🎨 랜덤 색(낮은 확률)
   trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
@@ -9660,7 +9677,7 @@ function buildNPCs() {
       wings: look.wings || null,
       bobParts: look.bob && look.bob.length ? look.bob : null,   // 몸통 숨쉬기를 따라가야 하는 장식(안 그러면 몸통이 뚫고 나온다)
       // 🦉 비행 상태 — 'perch'(앉음, 대화 가능) 외에는 하늘에 있다
-      fly: def.look === 'owl' ? { st: 'perch', t: 0, next: 12 + Math.random() * 10, tx: 0, tz: 0, deliver: false, legs: 0 } : null,
+      fly: def.look === 'owl' ? { st: 'perch', t: 0, next: OWL_REST_MIN + Math.random() * OWL_REST_VAR, tx: 0, tz: 0, deliver: false, legs: 0 } : null,
       home: new THREE.Vector3(def.pos[0], 0, def.pos[2]),
       target: new THREE.Vector3(def.pos[0], 0, def.pos[2]),
       wanderTimer: Math.random() * 3, phase: Math.random() * 6,
@@ -9705,6 +9722,8 @@ function updateNPCGlyph(o) {
 //   "날아다니는 올빼미" 요청. 다만 의뢰를 주는 주민이라 계속 날면 말을 걸 수가 없다 →
 //   평소엔 앉아 있다가 가끔 짧게 한 바퀴 돌고 다시 내려앉고, 특별 의뢰가 있을 때만
 //   플레이어 앞으로 날아와 착지한다. 대화·충돌은 'perch' 일 때만 산다.
+const OWL_REST_MIN = 30, OWL_REST_VAR = 20;   // 앉아 있는 시간 30~50초(전엔 12~22초 — 너무 자주 날았다)
+const OWL_STAY_R = 6;                          // 플레이어가 이 안에 있으면 날지 않는다
 const OWL_CRUISE = 2.7;     // 순회 고도
 const OWL_SPEED = 3.6;      // 공중 이동 속도(유닛/초)
 const OWL_CLIMB = 0.9;      // 이·착륙에 쓰는 시간(초)
@@ -9745,7 +9764,9 @@ function updateOwlFly(o, dt, t) {
     setOwlWings(o, 0, t);
     // 튜토리얼이 "🦉올빼미는 매일 새 의뢰" 라며 올빼미를 가리키는 단계가 있다 —
     //   그때 날아가 버리면 신규 유저가 목적지를 잃는다. 코치 중엔 앉아 있는다.
-    if (f.t > f.next && mode === 'play' && !ui.anyModalOpen?.() && !ui.coachActive?.()) {   // 이따금 홈 주변을 한 바퀴
+    //   플레이어가 말 걸러 다가오는 중에도 날아가면 안 된다(베타: "자꾸 날아다닌다") — 가까이 있으면 앉아서 기다린다.
+    const playerNear = dist2D(player.position, g.position) < OWL_STAY_R;
+    if (f.t > f.next && !playerNear && mode === 'play' && !ui.anyModalOpen?.() && !ui.coachActive?.()) {   // 이따금 홈 주변을 한 바퀴
       const spot = owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5);
       if (spot) startOwlFlight(o, spot.x, spot.z);
       else f.t = 0;                              // 내려앉을 자리가 없으면 이번엔 쉰다
@@ -9779,7 +9800,7 @@ function updateOwlFly(o, dt, t) {
       if (spot) { f.st = 'cruise'; f.t = 0; f.tx = spot.x; f.tz = spot.z; return true; }
     }
     if (f.t >= OWL_CLIMB) {
-      g.position.y = 0; f.st = 'perch'; f.t = 0; f.next = 12 + Math.random() * 10;
+      g.position.y = 0; f.st = 'perch'; f.t = 0; f.next = OWL_REST_MIN + Math.random() * OWL_REST_VAR;
       o.collider.x = g.position.x; o.collider.z = g.position.z; o.collider.off = false;
       if (f.deliver) {
         f.deliver = false;
