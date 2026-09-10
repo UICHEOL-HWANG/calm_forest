@@ -29,3 +29,5 @@ Last Updated: 2026-09-10
 - 07391e0: fix/farm-autotool 머지 — `js/farm-auto.js` farmToolFor(plot, soilWet) 순수 함수, game.js farmAutoAction(). 삽 제외·밭 없으면 원래 동작.
 - 검수 훅(localhost): `__house.enter/exit`, `__camIn`, `__floor()`, `__decor(id,x,z,rot)`. 브라우저 페인에서 캔버스는 `canvas.toDataURL` 로 뽑아 로컬 업로드 서버(scratchpad/upload.py :8099)에 POST 해 저장 — 페인이 숨겨져 있어도 됨.
 - 남은 것: fix/ext-camera 머지 → 코드 리뷰 → main 병합·배포 여부는 사용자 결정.
+- ac81b56: 안개 숲 입구 (-17,-17) + 리뷰 지적 2건. 워크트리·임시 브랜치 정리 완료. 남은 것: main 병합·배포(사용자 결정).
+- 캡처 노하우: 브라우저 페인의 canvas.toDataURL 은 오래된 프레임을 돌려줄 때가 있음 → headless Chrome CDP(`scratchpad/cap.mjs`, `--use-angle=swiftshader --enable-unsafe-swiftshader`, `--disable-gpu` 금지)로 파일 캡처. localhost:8000 에 feat/pwa 의 sw.js 가 남아 오프라인 페이지를 줄 수 있음 → unregister.
