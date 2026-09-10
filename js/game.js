@@ -35,7 +35,8 @@ import { farmToolFor, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
-import { buildHouseModel } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라)
+import { buildHouseModel, mountHouseAddons } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기
+import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -691,7 +692,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
-  house: { decor: [], stored: {} },         // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 }
+  house: { decor: [], stored: {}, addons: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   gifts: {},                                // 보유 선물 { id: count }
@@ -1456,6 +1457,8 @@ export const Input = {
   setExtView(on) { extView = !!on; },            // 🏠 외관 메뉴 열림/닫힘 — 열린 동안 카메라가 집을 화면 위쪽에 둔다
   getExpansion() { return expandInfo(); },       // 🏗️ 증축 정보(외관 메뉴 렌더용)
   expandHouse() { return doExpand(); },          // 🏗️ 증축 실행(외관 메뉴 버튼)
+  getHouseAddons() { return houseAddonInfo(); },  // 🧩 구성품 상점 정보(외관 메뉴 렌더용)
+  buyHouseAddon(id) { return buyHouseAddon(id); }, // 🧩 구성품 구매(코인 → 집에 바로 설치)
   emote(e) {   // 머리 위 이모지 + 기분에 맞는 캐릭터 모션(춤·점프·하트·인사)
     spawnFloatText(player.position.x, 2.7, player.position.z, e, '#4a5a40');
     const m = EMOTE_MOTION[e];
@@ -1722,6 +1725,8 @@ function applySave(saved) {
     gameState.house.stored = {};
     for (const [k, v] of Object.entries(saved.house.stored)) if (DECOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.house.stored[k] = Math.floor(v);
   }
+  if (saved.house && Array.isArray(saved.house.addons))                  // 🧩 구성품 복원(카탈로그에 있는 id 만, 중복 제거) — 집 복원(buildHouseStage) 전에
+    gameState.house.addons = [...new Set(saved.house.addons.filter(id => HOUSE_ADDONS.some(a => a.id === id)))];
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
     saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
@@ -4887,23 +4892,65 @@ function buildHouseStage(stage, silent = false) {
 // 🏠 단계 모델(js/house/*.js)을 게임에 맞게 얹는다
 //   · 모델 정면은 +z 인데 houseGroup 이 π 회전이라 래퍼를 다시 π 돌려 카메라 쪽(-z 시선)에 정면이 오게 한다
 //   · role roof/wall/door 재질은 기본색을 기억(스와치 0번) · role window 재질은 밤 점등 목록에 등록
+//   · 🧩 산 구성품은 래퍼 안에 'addons' 그룹으로 같이 얹어 회전을 물려받는다(refreshHouseAddons 가 이 그룹만 갈아 끼움)
 function mountHouseModel(stage) {
   const g = buildHouseModel(THREE, stage);
   g.rotation.y = Math.PI;
+  const addons = mountHouseAddons(THREE, stage, gameState.house.addons);
+  g.add(addons); prepHouseMeshes(g); registerAddonAnims(addons);
+  return g;
+}
+// 그림자·기본색·밤 점등 등록(모델과 구성품 공통)
+function prepHouseMeshes(root) {
   const seen = new Set();
-  g.traverse(o => {
+  root.traverse(o => {
     if (!o.isMesh) return;
     const m = o.material; const role = o.userData.role;
     o.castShadow = !m.transparent; o.receiveShadow = true;
     if (role === 'roof' || role === 'wall' || role === 'door') o.userData.baseColor = m.color.getHex();
     if (role === 'window' && !seen.has(m)) {
       seen.add(m);
-      m.emissive = new THREE.Color(0xffb878); m.emissiveIntensity = 0;
-      m.userData.nightScale = 0.4;   // 새 모델은 유리 면적이 커서(펜트하우스·빌라 통유리) 기존 세기론 하얗게 타 버린다
+      if (m.userData.nightScale == null) {   // 구성품(정원등·수영장 조명…)은 자기 emissive 색·세기를 갖고 온다 — 덮어쓰지 않는다
+        m.emissive = new THREE.Color(0xffb878);
+        m.userData.nightScale = 0.4;   // 새 모델은 유리 면적이 커서(펜트하우스·빌라 통유리) 기존 세기론 하얗게 타 버린다
+      }
+      m.emissiveIntensity = 0;
       houseWindows.push(m);
     }
   });
-  return g;
+}
+let houseAddonAnims = [];   // 🧩 움직이는 구성품(굴뚝 연기) — updateDayNight 에서 프레임마다 호출
+const registerAddonAnims = (addons) => { houseAddonAnims = addons.children.map(c => c.userData.anim).filter(Boolean); };
+// 🧩 구성품만 다시 얹는다(집 건축 연출 없이): 옛 'addons' 그룹 제거 + 그 점등 재질 등록 해제 → 새로 빌드
+function refreshHouseAddons() {
+  const old = houseGroup?.getObjectByName('addons'); if (!old) return;
+  const mats = new Set(); old.traverse(o => { if (o.isMesh) mats.add(o.material); });
+  for (let i = houseWindows.length - 1; i >= 0; i--) if (mats.has(houseWindows[i])) houseWindows.splice(i, 1);
+  const parent = old.parent; parent.remove(old);
+  const fresh = mountHouseAddons(THREE, gameState.houseStage, gameState.house.addons);
+  parent.add(fresh); prepHouseMeshes(fresh); registerAddonAnims(fresh);
+}
+// 🧩 구성품 상점 정보(외관 메뉴 렌더용) — 단계·코인·항목별 owned/locked/affordable
+function houseAddonInfo() {
+  const stage = gameState.houseStage, coins = gameState.inventory.coins || 0;
+  return { stage, coins, items: addonState(HOUSE_ADDONS, gameState.house.addons, stage, coins) };
+}
+// 🧩 구성품 구매 — 검증 → 코인 차감(원장) → 저장 목록 → 집에 바로 설치. 결과 msg 는 호출부가 토스트
+function buyHouseAddon(id) {
+  const def = HOUSE_ADDONS.find(a => a.id === id); if (!def) return { ok: false, msg: '' };
+  const st = houseAddonInfo().items.find(i => i.id === id);
+  if (st.owned) return { ok: false, msg: '✓ 이미 설치된 구성품이에요' };
+  if (st.locked) return { ok: false, msg: `🔒 ${def.stage}단계부터 살 수 있어요` };
+  if (!st.affordable) return { ok: false, msg: `🪙 코인이 부족해요 — ${def.coins}🪙 필요` };
+  gameState.inventory.coins -= def.coins;
+  logEcon('house_addon', id, -def.coins, gameState.inventory.coins);   // [원장] 코인 소비
+  gameState.house.addons = [...gameState.house.addons, id];
+  refreshHouseAddons();
+  refreshInventoryUI();
+  spawnSparkle(HOUSE_POS.x, 2.4, HOUSE_POS.z, 18);
+  Sound.harvest();
+  trackEvent('house_addon_buy', { id, stage: gameState.houseStage, coins: def.coins });   // [GA4] 코인 싱크 퍼널
+  return { ok: true, msg: `🧩 ${def.name} 설치! (-${def.coins}🪙)` };
 }
 
 // 증축 정보(외관 메뉴 렌더용) — 다음 단계·비용·보유량
@@ -8280,6 +8327,7 @@ function updateDayNight(dt) {
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
+  for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
   if (interiorLamp) interiorLamp.intensity = indoor ? (1.8 + nightAmt * 2.6) : 0;
   // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
