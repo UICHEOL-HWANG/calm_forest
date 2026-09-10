@@ -371,7 +371,7 @@ const boat = {
 //    처음부터 있는 장소(카페·채굴장 문법). 게이트 → 별도 인스턴스, 숲 안은 항상 어둑+짙은 안개.
 //    그림자 정령이 수호목의 빛을 갉아먹으러 다가오고, 플레이어는 등불을 켜(감속) ♪리듬 탭으로
 //    달랜다(성불). 웨이브 3회를 버티면 그날 하루 정화 — 매일 리셋되는 데일리 루프.
-const MIST_GATE = new THREE.Vector3(-13, 0, -13);   // 마을 북서(집 뒤편 어두운 숲)
+const MIST_GATE = new THREE.Vector3(-17, 0, -17);   // 마을 북서(집 뒤편 어두운 숲) — 집터(-8,-8)와 7→12.7 로 띄움(베타: 집 바로 옆이라 답답)
 const MIST = new THREE.Vector3(0, 0, -250);         // 숲 인스턴스(다른 공간과 멀찍이)
 const MIST_HALF = 13;
 const MIST_WAVES = [3, 4, 5];                       // 웨이브별 정령 수(🌫️안개 날 +1)
@@ -4715,7 +4715,7 @@ function buildHouseGhost() {
 
   houseGroup = new THREE.Group();
   houseGroup.position.copy(HOUSE_POS);
-  // 🚪 정면(문·전면 창)을 카메라 쪽으로 — 카메라는 camOffset(0,14,16) 고정이라 시선이 늘 −Z 다.
+  // 🚪 정면(문·전면 창)을 카메라 쪽으로 — 카메라는 camOffset(0,14,16)(실내는 camOffsetIndoor) 고정이라 시선이 늘 −Z 다.
   //    집 모델은 문·아치·통유리·발코니를 전부 −Z 면에 두고 있어서, 돌리지 않으면
   //    제일 공들인 정면이 영원히 뒷면이 되고 플레이어에겐 창문 없는 뒷벽만 보인다.
   houseGroup.rotation.y = Math.PI;
@@ -8272,7 +8272,7 @@ function updateCamera(dt) {
     }
   }
   // 🏠 외관 꾸미기 중: 집을 화면 위쪽에 두고 바라본다(닫으면 아래 기본 추적이 부드럽게 복귀)
-  if (extView && !mgView) {
+  if (extView && !mgView && !indoor) {   // 실내면 무시(방어) — 플래그가 남아도 카메라가 마을 집에 묶이지 않게
     const s = 1 + (Math.min(2.3, Math.max(1, 1.35 / camera.aspect)) - 1) * 0.25;   // 가로 1 ~ 폰 세로 1.33
     _extPos.copy(EXT_CAM_OFF).multiplyScalar(s).add(HOUSE_POS);
     const k = 1 - Math.pow(0.002, dt);   // 액션샷보다 살짝 느긋하게
@@ -8374,7 +8374,7 @@ function updateDayNight(dt) {
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
   if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
   if (mgView?.type === 'carve') { scene.fog.near = 40; scene.fog.far = 140; }   // 🗿 공방 무대는 원거리 카메라(모바일 ~12.5) — 날씨 안개에 잠기지 않게
-  if (extView && !mgView) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
+  if (extView && !mgView && !indoor) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
   if (atCafe) {
     hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
@@ -9117,14 +9117,21 @@ function tryWater(plot = plots.find(p => p.state === 'growing' && dist2D(p.group
 // =============================================================
 const FARM_AUTO_R = 1.8;
 const FARM_ACTIONS = { hoe: tryHoe, seed: trySeed, water: tryWater, sickle: tryHarvest };
-function nearestPlot(r) {
+function nearestPlot(r, pred = null) {
   let best = null, bestD = r;
-  for (const p of plots) { const d = dist2D(p.group.position, player.position); if (d < bestD) { best = p; bestD = d; } }
+  for (const p of plots) { if (pred && !pred(p)) continue; const d = dist2D(p.group.position, player.position); if (d < bestD) { best = p; bestD = d; } }
   return best;
 }
+// 들고 있는 도구가 원래 찾던 밭 상태 — 두 밭 사이(간격 2, 반경 1.8)에 서면 최근접이 아니라 이 밭을 먼저 고른다
+const HELD_PLOT_PREF = {
+  hoe: p => p.state === 'wilted',
+  seed: p => p.state === 'empty' && !p.digAt,
+  water: p => p.state === 'growing',
+  sickle: p => p.state === 'mature',
+};
 function farmAutoAction() {
   const held = TOOLS[currentTool].id;
-  const plot = nearestPlot(FARM_AUTO_R);
+  const plot = nearestPlot(FARM_AUTO_R, HELD_PLOT_PREF[held]) || nearestPlot(FARM_AUTO_R);
   const wet = !!plot && clock.elapsedTime < (plot.wetUntil || 0);
   const want = farmToolFor(plot, wet);
   if (!want) {

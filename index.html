@@ -1700,7 +1700,7 @@
     const WM_BOX = { x0: -26, z0: -20, span: 52 };
     const WM_LAND = [   // 섬 실루엣을 이루는 원들 [월드x, 월드z, 반경]
       [0, 0, 17], [-10, 10, 12], [8, 16, 12], [-8, 20, 12], [5, 24, 11],
-      [-14, 0, 9], [14, -6, 10], [0, -14, 11], [16, 8, 10], [-13, -11, 9], [0, -21, 8],
+      [-14, 0, 9], [14, -6, 10], [0, -14, 11], [16, 8, 10], [-13, -11, 9], [0, -21, 8], [-17, -16, 8],   // 마지막: 🌫️ 안개 숲 입구(-17,-17) 둘레
     ];
     const WM_WATER = [[16, 9, 6], [0, -21.5, 7]];        // 🏞️ 마을 호수 · 🛶 나루터 물가
     const WM_GROVE = [[-13, 24, 9], [2, 25, 7]];         // 🍄 채집 숲 · 🌟 반딧불이 계곡(짙은 수풀)
@@ -2305,7 +2305,11 @@
       setIndoor(on) {
         document.body.classList.toggle('indoor', on);
         if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); stopPlacing(); setDecorGuide(-1); }
-        else startDecorGuideIfNew();   // 🎨 첫 방문이면 단계 안내 ①
+        else {
+          // 🏠 외관 꾸미기를 연 채 문으로 들어올 수 있다(액션은 패널을 안 본다) — 패널·카메라 오버라이드를 같이 접는다
+          if ($('ext-menu').classList.contains('show')) { $('ext-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.setExtView?.(false); }
+          startDecorGuideIfNew();   // 🎨 첫 방문이면 단계 안내 ①
+        }
       },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
