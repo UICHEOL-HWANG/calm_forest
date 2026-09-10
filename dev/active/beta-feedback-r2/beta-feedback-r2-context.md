@@ -23,3 +23,9 @@ Last Updated: 2026-09-10
 ## 검증
 - .claude/launch.json `python3 scripts/serve.py` 8000. 브라우저 페인 document.hidden → rAF 1fps 주의(메모리 mobile-hud-layout)
 - 안개: `?weather=fog`, 실내: enterHouse
+
+## 진행(2026-09-10 오후)
+- ff237fd: A1~A8 + B1 + B4 커밋. 안개 12/50·바닥 0xbfb0a0·실내 카메라 (0,17,10) 사용자 확정.
+- 07391e0: fix/farm-autotool 머지 — `js/farm-auto.js` farmToolFor(plot, soilWet) 순수 함수, game.js farmAutoAction(). 삽 제외·밭 없으면 원래 동작.
+- 검수 훅(localhost): `__house.enter/exit`, `__camIn`, `__floor()`, `__decor(id,x,z,rot)`. 브라우저 페인에서 캔버스는 `canvas.toDataURL` 로 뽑아 로컬 업로드 서버(scratchpad/upload.py :8099)에 POST 해 저장 — 페인이 숨겨져 있어도 됨.
+- 남은 것: fix/ext-camera 머지 → 코드 리뷰 → main 병합·배포 여부는 사용자 결정.
