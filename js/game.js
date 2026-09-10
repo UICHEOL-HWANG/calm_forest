@@ -1161,6 +1161,7 @@ let sunLight, hemiLight, ambient;
 let fireflies, stars;
 const trees = [];
 const swayables = [];
+const grassClumps = [];   // 🌿 InstancedMesh 로 묶은 풀 [{ mesh, items:[{x,y,z,ph}] }] — updateSway 가 행렬을 갱신
 const particles = [];
 const plots = [];                 // 밭 목록 (런타임 객체)
 const obstacles = [];             // 밭 만들기 금지 구역 {x,z,r} (나무·호수·벤치·가로등·집)
@@ -1828,14 +1829,48 @@ function initLights() {
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.set(IS_MOBILE ? 1024 : 2048, IS_MOBILE ? 1024 : 2048); // 모바일 그림자 해상도 ↓
   sunLight.shadow.camera.near = 1; sunLight.shadow.camera.far = 60;
-  sunLight.shadow.camera.left = -30; sunLight.shadow.camera.right = 30;
-  sunLight.shadow.camera.top = 30; sunLight.shadow.camera.bottom = -30;
+  // 그림자 상자는 40m — 화면에 드는 범위는 다 담기고, 밖의 소품은 그림자 패스에서 빠진다(드로우콜 ↓).
+  // 같은 2048 맵을 60m 대신 40m 에 쓰므로 그림자 윤곽도 더 또렷해진다.
+  sunLight.shadow.camera.left = -20; sunLight.shadow.camera.right = 20;
+  sunLight.shadow.camera.top = 20; sunLight.shadow.camera.bottom = -20;
   sunLight.shadow.bias = -0.0005; sunLight.shadow.radius = 6;
   scene.add(sunLight); scene.add(sunLight.target);
 }
 
 function clayMat(color, flat = true) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0, flatShading: flat });
+}
+
+// -------------------------------------------------------------
+//  정적 소품용 공유 리소스 / 지오메트리 합치기 (드로우콜 절감)
+//  ------------------------------------------------------------
+//  같은 모양·같은 색 소품이 수십 개씩 생기는데(나무 40그루, 풀 80포기)
+//  전부 제 지오메트리·제 재질을 들고 있어 GPU 상태 전환이 그 수만큼 났다.
+//  ⚠️ disposeTree() 로 통째로 정리하는 오브젝트(카페 손님 등)에는 쓰지 말 것 —
+//     공유 자원이 함께 해제돼 다른 소품이 사라진다.
+// -------------------------------------------------------------
+const _shared = new Map();
+function shared(key, make) {
+  let v = _shared.get(key);
+  if (v === undefined) { v = make(); _shared.set(key, v); }
+  return v;
+}
+
+// 여러 지오메트리를 위치·법선·uv 만 남겨 하나로 합침(인덱스는 풀어서 붙인다)
+function mergeGeos(geos) {
+  const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
+  const out = new THREE.BufferGeometry();
+  for (const name of ['position', 'normal', 'uv']) {
+    if (!flat[0].attributes[name]) continue;
+    const size = flat[0].attributes[name].itemSize;
+    let total = 0;
+    for (const g of flat) total += g.attributes[name].count;
+    const arr = new Float32Array(total * size);
+    let off = 0;
+    for (const g of flat) { arr.set(g.attributes[name].array, off); off += g.attributes[name].count * size; }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  }
+  return out;
 }
 
 // 테이퍼 튜브 — 곡선(pts)을 따라 관을 뽑되 굵기를 radiusFn(t∈0..1)로 바꿈(끝으로 갈수록 가늘게).
@@ -1879,14 +1914,18 @@ function buildWorld() {
   ground.receiveShadow = true;
   scene.add(ground);
 
+  // 바닥 얼룩 — 한 번 깔면 끝까지 안 건드리는 정적 소품이라 지오메트리 하나로 합쳐 1드로우콜로
+  const patchGeos = [];
   for (let i = 0; i < 40; i++) {
     const r = 6 + Math.random() * 26, a = Math.random() * Math.PI * 2;
     if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 1) continue;  // 🌊 후미 물 위 제외
-    const patch = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2.5, 12), clayMat(PAL.groundDark, false));
-    patch.geometry.rotateX(-Math.PI / 2);
-    patch.position.set(Math.cos(a) * r, 0.01, Math.sin(a) * r);
-    patch.receiveShadow = true;
-    scene.add(patch);
+    patchGeos.push(new THREE.CircleGeometry(1 + Math.random() * 2.5, 12)
+      .rotateX(-Math.PI / 2).translate(Math.cos(a) * r, 0.01, Math.sin(a) * r));
+  }
+  if (patchGeos.length) {
+    const patches = new THREE.Mesh(mergeGeos(patchGeos), clayMat(PAL.groundDark, false));
+    patches.receiveShadow = true;
+    scene.add(patches);
   }
 
   for (let i = 0; i < 14; i++) {
@@ -1919,15 +1958,25 @@ function buildWorld() {
   spawnSeaGate();     // 🌊 바다터 포구(마을 북동)
   buildSea();         // 🌊 바다 인스턴스(부두+대형 낚시)
 
+  // 🌿 풀 — 포기마다 메시였던 것을 색깔별 InstancedMesh 3개로(드로우콜 76→3, 그림자 포함 152→6).
+  //    바람에 흔들리는 건 그대로 — updateSway 가 포기별 인스턴스 행렬을 다시 쓴다.
+  const grassBuckets = [[], [], []];
   for (let i = 0; i < (IS_MOBILE ? 40 : 80); i++) {   // 모바일 풀 개수 ↓
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
-    if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
-    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.7, 5), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
-    blade.position.set(Math.cos(a) * r, 0.35, Math.sin(a) * r);
-    blade.castShadow = true;
-    blade.userData.swayPhase = Math.random() * Math.PI * 2;
-    scene.add(blade); swayables.push(blade);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
+    grassBuckets[i % 3].push({ x, y: 0.35, z, ph: Math.random() * Math.PI * 2 });
   }
+  grassBuckets.forEach((items, k) => {
+    if (!items.length) return;
+    const im = new THREE.InstancedMesh(
+      shared('grass.geo', () => new THREE.ConeGeometry(0.18, 0.7, 5)),
+      clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][k]), items.length);
+    im.castShadow = true;
+    im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    scene.add(im);
+    grassClumps.push({ mesh: im, items });
+  });
 
   buildPlayer();
   buildFireflies();
@@ -1939,15 +1988,20 @@ function buildWorld() {
 function spawnTree(x, z) {
   const tree = new THREE.Group();
   tree.position.set(x, 0, z);
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7), clayMat(PAL.trunk));
+  const trunk = new THREE.Mesh(
+    shared('tree.trunk.geo', () => new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7)),
+    shared('tree.trunk.mat', () => clayMat(PAL.trunk)));
   trunk.position.y = 0.8; trunk.castShadow = true; tree.add(trunk);
 
   const leafColor = [PAL.leaf1, PAL.leaf2, PAL.leaf3][Math.floor(Math.random() * 3)];
-  const canopy = new THREE.Group(); canopy.position.y = 2.0;
-  [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]].forEach(([bx, by, bz, s]) => {
-    const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), clayMat(leafColor));
-    blob.position.set(bx, by, bz); blob.castShadow = true; canopy.add(blob);
-  });
+  // 잎 덩이 4개는 늘 한 몸으로 움직인다(따로 만질 일이 없음) → 지오메트리 하나로 합쳐
+  // 그루당 5개였던 메시를 2개로. 40그루 기준 드로우콜 −240(본 패스+그림자 패스).
+  const canopy = new THREE.Mesh(
+    shared('tree.canopy.geo', () => mergeGeos(
+      [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]]
+        .map(([bx, by, bz, s]) => new THREE.IcosahedronGeometry(s, 0).translate(bx, by, bz)))),
+    shared(`tree.leaf.mat.${leafColor}`, () => clayMat(leafColor)));
+  canopy.position.y = 2.0; canopy.castShadow = true;
   tree.add(canopy);
   canopy.userData.swayPhase = Math.random() * Math.PI * 2; swayables.push(canopy);
 
@@ -4702,10 +4756,25 @@ function makeLamp(x, z) {
   obstacles.push({ x, z, r: 0.8 }); // 가로등 밑엔 밭 금지
   solidCircle(x, z, 0.22);          // 🚧 기둥만(불빛 아래는 지나갈 수 있게)
 }
+// 🌸 꽃 — 줄기+꽃봉오리를 정점색 한 덩이로 합쳐 그린다(꽃 한 송이 = 메시 1개 = 드로우콜 1).
+//    색만 다른 5종이라 색깔별로 지오메트리 한 벌만 만들어 돌려 쓴다.
+function flowerGeo(col) {
+  return shared(`flower.geo.${col}`, () => {
+    const stem = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 4).translate(0, 0.2, 0);
+    const bloom = new THREE.IcosahedronGeometry(0.12, 0).translate(0, 0.42, 0);
+    const geo = mergeGeos([stem, bloom]);
+    const n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+    const stemN = stem.toNonIndexed().attributes.position.count;
+    const cs = new THREE.Color(0x7fbf6a), cb = new THREE.Color(col);
+    for (let i = 0; i < n; i++) { const c = i < stemN ? cs : cb; arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+    return geo;
+  });
+}
 function makeFlower(x, z, col) {
-  const g = new THREE.Group(); g.position.set(x, 0, z);
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 4), clayMat(0x7fbf6a)); stem.position.y = 0.2; g.add(stem);
-  const bloom = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), clayMat(col, false)); bloom.position.y = 0.42; g.add(bloom);
+  const g = new THREE.Mesh(flowerGeo(col),
+    shared('flower.mat', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true })));
+  g.position.set(x, 0, z);
   g.userData.swayPhase = Math.random() * Math.PI * 2; swayables.push(g); // 바람에 흔들림
   scene.add(g);
 }
@@ -7640,7 +7709,7 @@ function initPostProcessing() {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   // 모바일은 블룸 해상도를 절반으로 낮춰 부담 감소
-  const bloomRes = IS_MOBILE ? new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2) : new THREE.Vector2(window.innerWidth, window.innerHeight);
+  const bloomRes = IS_MOBILE ? new THREE.Vector2(window.innerWidth / 3, window.innerHeight / 3) : new THREE.Vector2(window.innerWidth, window.innerHeight);   // 모바일은 1/3 — 어차피 번지는 효과라 눈에 안 띄고 필레이트가 크게 준다
   bloomPass = new UnrealBloomPass(bloomRes, 0.55, 0.9, 0.85); // 세기는 낮/밤에 따라 조절
   composer.addPass(bloomPass);
 
@@ -8394,7 +8463,13 @@ function updateDayNight(dt) {
   ambient.color.setHex(0xfff0dd).lerp(new THREE.Color(0x33406e), nightAmt); // 밤엔 푸른 앰비언트
   ambient.intensity = 0.2 + nightAmt * 0.12;
   const ang = timeOfDay * Math.PI * 2;
-  sunLight.position.set(Math.cos(ang) * 18, Math.sin(ang) * 18 + 2, 8);
+  // 40m 상자가 늘 플레이어를 감싸도록 해 뜬 자리를 함께 옮긴다.
+  // 클램프는 마을 범위(±18) — 텃밭·동굴 등 먼 공간에 들어가도 상자가 따라가지 않아 조명 연출이 그대로다.
+  const shx = THREE.MathUtils.clamp(player.position.x, -18, 18);
+  const shz = THREE.MathUtils.clamp(player.position.z, -18, 18);
+  sunLight.position.set(shx + Math.cos(ang) * 18, Math.sin(ang) * 18 + 2, shz + 8);
+  sunLight.target.position.set(shx, 0, shz);
+  sunLight.target.updateMatrixWorld();
 
   // 반딧불이 점멸(트윙클) — 🌫️ 안개 낀 날엔 낮에도 은은하게 떠다님(신비로운 분위기)
   const twinkle = 0.7 + Math.sin(t * 6) * 0.3;
@@ -8459,11 +8534,23 @@ function updateDayNight(dt) {
   ui.setTime?.(daylight > 0.4 ? 'day' : 'night', timeOfDay, WEATHER === 'clear' ? null : WEATHER);
 }
 
+const _swayDummy = new THREE.Object3D();   // 인스턴스 행렬 계산용(프레임마다 새로 만들지 않게 재사용)
 function updateSway(t) {
   for (const s of swayables) {
     const ph = s.userData.swayPhase || 0;
     s.rotation.z = Math.sin(t * 1.3 + ph) * 0.08;
     s.rotation.x = Math.cos(t * 1.1 + ph) * 0.05;
+  }
+  for (const clump of grassClumps) {   // 🌿 포기별 흔들림을 인스턴스 행렬로(회전 순서는 개별 메시 때와 같은 XYZ)
+    const items = clump.items;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      _swayDummy.position.set(it.x, it.y, it.z);
+      _swayDummy.rotation.set(Math.cos(t * 1.1 + it.ph) * 0.05, 0, Math.sin(t * 1.3 + it.ph) * 0.08);
+      _swayDummy.updateMatrix();
+      clump.mesh.setMatrixAt(i, _swayDummy.matrix);
+    }
+    clump.mesh.instanceMatrix.needsUpdate = true;
   }
   if (fireflies) {
     const base = fireflies.userData.base, pos = fireflies.geometry.attributes.position.array;
