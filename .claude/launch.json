@@ -21,15 +21,6 @@
         "dist-itch"
       ],
       "port": 8010
-    },
-    {
-      "name": "wt-farm",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "scripts/serve.py",
-        "8011"
-      ],
-      "port": 8011
     }
   ]
 }
