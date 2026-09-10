@@ -31,6 +31,7 @@ import { logEcon, startMetrics } from './metrics.js';            // [계측] 경
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
+import { farmToolFor, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -8738,12 +8739,10 @@ function handleAction() {
   if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // ✋ 맨손 — 도구를 등에 메고 있으니 도구질은 안 된다(줍기·대화·문은 위에서 이미 처리됨)
   if (toolPage === 'none') { ui.toast?.('✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
+  // 🌾 농사 도구(괭이·씨앗·물조리개·낫)는 밭 상태에 맞는 도구로 바꿔 바로 실행 — 🪏삽은 명시적으로만
+  if (FARM_AUTO_TOOLS.includes(TOOLS[currentTool].id)) return farmAutoAction();
   switch (TOOLS[currentTool].id) {
     case 'axe': return tryChop();
-    case 'hoe': return tryHoe();
-    case 'seed': return trySeed();
-    case 'water': return tryWater();
-    case 'sickle': return tryHarvest();
     case 'shovel': return tryDig();
     case 'hammer': return tryBuild();
     case 'rod': return tryFish();
@@ -8895,10 +8894,9 @@ function plantSeed(plot) {
 }
 
 // 괭이: 빈 땅이면 밭 만들기(+씨앗 심기), 갈아둔 밭이면 씨앗 심기
-function tryHoe() {
+function tryHoe(plot = plots.find(p => dist2D(p.group.position, player.position) < 1.6)) {
   const gx = Math.round(player.position.x / 2) * 2;
   const gz = Math.round(player.position.z / 2) * 2;
-  let plot = plots.find(p => dist2D(p.group.position, player.position) < 1.6);
   if (!plot) {
     if (isBlocked(gx, gz)) { ui.toast?.('여기엔 밭을 만들 수 없어요 🌳'); return; } // 나무·호수·벤치·가로등·집
     createPlot(gx, gz);                          // 밭만 갈기 (씨앗은 🌰 도구로 심기)
@@ -9020,8 +9018,7 @@ function rollDigDex() {
 }
 
 // 씨앗: 갈아둔 빈 밭에 씨앗 심기
-function trySeed() {
-  const plot = plots.find(p => p.state === 'empty' && !p.digAt && dist2D(p.group.position, player.position) < 1.6);   // 🪏 반쯤 판 밭엔 안 심어짐
+function trySeed(plot = plots.find(p => p.state === 'empty' && !p.digAt && dist2D(p.group.position, player.position) < 1.6)) {   // 🪏 반쯤 판 밭엔 안 심어짐
   if (!plot) { ui.toast?.('갈아둔 밭이 없어요 — ⛏️ 괭이로 먼저 갈기'); return; }
   if (gameState.inventory.seed <= 0) {
     // 밭에 자라는 작물도 없으면 완전히 막힌 상태 → 씨앗 지급(안전장치)
@@ -9056,8 +9053,7 @@ function applyFert(plot) {
 }
 
 // 물조리개: 자라는 밭에 물 → 성장(물 없이는 안 자람) + 물방울 파티클
-function tryWater() {
-  const plot = plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8);
+function tryWater(plot = plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8)) {
   if (!plot) {
     const wilted = plots.find(p => p.state === 'wilted' && dist2D(p.group.position, player.position) < 1.8);
     ui.toast?.(wilted ? '🥀 시든 작물이에요. 괭이로 다시 심어요' : '물 줄 작물이 없어요 💧');
@@ -9076,9 +9072,43 @@ function tryWater() {
   trackEvent('water_crop');     // [GA4]
 }
 
+// =============================================================
+//  🌾 농사 도구 자동 전환 — 규칙은 js/farm-auto.js(farmToolFor), 여기는 게임 상태와 잇는 층
+//  ------------------------------------------------------------
+//  농사 도구(괭이·씨앗·물조리개·낫) 중 아무거나 들고 밭 앞에서 액션 → 밭 상태에 맞는 도구로 바꾸고 그 동작 실행.
+//  · 도구 전환은 Input.selectTool 로 → 하단바 하이라이트·손 모델·효과음이 평소 선택과 똑같이 갱신된다.
+//  · 밭이 없으면 들고 있던 도구의 원래 동작(괭이=새 밭 갈기, 나머지=안내 토스트) — 씨앗을 들고 실수로 밭이 생기지 않게.
+//  · 판정 반경 1.8(물주기·수확과 동일) 안에서 가장 가까운 밭 하나. 판정한 그 밭을 tryX 에 넘겨 다른 밭을 건드리지 않는다.
+// =============================================================
+const FARM_AUTO_R = 1.8;
+const FARM_ACTIONS = { hoe: tryHoe, seed: trySeed, water: tryWater, sickle: tryHarvest };
+function nearestPlot(r) {
+  let best = null, bestD = r;
+  for (const p of plots) { const d = dist2D(p.group.position, player.position); if (d < bestD) { best = p; bestD = d; } }
+  return best;
+}
+function farmAutoAction() {
+  const held = TOOLS[currentTool].id;
+  const plot = nearestPlot(FARM_AUTO_R);
+  const wet = !!plot && clock.elapsedTime < (plot.wetUntil || 0);
+  const want = farmToolFor(plot, wet);
+  if (!want) {
+    // 자라는 중인데 흙이 촉촉하면 도구를 바꾸지 않고 물조리개의 안내만(어떤 도구를 들었든 같은 말)
+    if (plot?.state === 'growing' && wet) { ui.toast?.('아직 흙이 촉촉해요 🌱'); return; }
+    return FARM_ACTIONS[held]();          // 밭 없음·반쯤 판 밭: 들고 있던 도구의 원래 동작(괭이·씨앗은 예전처럼 1.6 반경으로 다시 찾는다 — 의도적 차이)
+  }
+  if (want !== held) {
+    Input.selectTool(TOOLS.findIndex(t => t.id === want));
+    if (!gameState.hintsSeen.farmAuto) {   // 첫 자동 전환 때 한 번만 — 이후엔 조용히 바뀐다
+      gameState.hintsSeen.farmAuto = true;
+      ui.toast?.('🔄 밭에 맞는 도구로 바꿨어요 — 농사 도구 아무거나 들고 액션만 누르면 돼요', 3200);
+    }
+  }
+  return FARM_ACTIONS[want](plot);
+}
+
 // 낫: 다 자란 작물 수확 → 반짝이 스파클 + 작물 +1
-function tryHarvest() {
-  const plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8);
+function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8)) {
   if (!plot) { ui.toast?.('수확할 작물이 없어요 🌾'); return; }
   doPlayerAction(plot.x, plot.z); // 수확 제스처
   gameState.inventory.crop += 1; // 작물 +1
