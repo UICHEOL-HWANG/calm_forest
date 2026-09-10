@@ -27,6 +27,9 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<!-- 📱 PWA — 구글 플레이(TWA)·홈화면 설치용. 아이콘 원본은 assets/pwa/, 빌드가 루트로 편다.
+     토스·itch 번들은 build-ait/build-itch 가 이 링크를 지운다(다른 오리진에서 404). -->
+<link rel="manifest" href="/manifest.webmanifest" />
 
 <!-- =========================================================
      [GA4 트래킹]  js/analytics.js 가 config.js 의 GA4_MEASUREMENT_ID 를
@@ -1548,6 +1551,17 @@
   </div>
 
   <div id="loading">calm forest 불러오는 중… 🌿</div>
+
+  <!-- 📱 PWA service worker — 웹(브라우저·TWA)에서만. 토스 웹뷰·itch iframe 은 플래그로 제외.
+       sw.js 는 오프라인 안내 페이지만 캐시하고 게임 코드는 절대 캐시하지 않는다(sw.js 주석 참고). -->
+  <script>
+    if ('serviceWorker' in navigator && !window.__APPS_IN_TOSS__ && !window.__ITCH__) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+          .catch((e) => console.warn('[pwa] service worker 등록 실패', e));
+      });
+    }
+  </script>
 
   <script type="importmap">
   {

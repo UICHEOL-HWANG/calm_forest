@@ -1,0 +1,26 @@
+<!-- =============================================================
+  calm forest · maskable 아이콘 원본 (PWA manifest purpose:"maskable")
+  안드로이드는 아이콘을 원·둥근사각 등으로 잘라내므로, 나무·해를 중앙 80% 안전영역
+  (반지름 240 원) 안에 두고 하늘·언덕은 캔버스 끝까지 채운다.
+  icon.svg 의 나무·해를 줄기 밑동(300,510) 기준 0.8 배로 줄인 것 — 언덕은 그대로.
+  PNG 변환: node scripts/make-pwa-icons.mjs
+============================================================= -->
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d9f0df"/>
+      <stop offset="100%" stop-color="#bfe8c9"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#sky)"/>
+  <ellipse cx="120" cy="600" rx="300" ry="150" fill="#a8dcb4"/>
+  <ellipse cx="480" cy="612" rx="290" ry="140" fill="#93d3a2"/>
+  <g transform="translate(300 510) scale(0.8) translate(-300 -510)">
+    <circle cx="497" cy="103" r="52" fill="#fdf3d0" opacity="0.85"/>
+    <rect x="272" y="330" width="56" height="180" rx="28" fill="#d8a679"/>
+    <circle cx="206" cy="290" r="84" fill="#a0e0d0"/>
+    <circle cx="394" cy="290" r="84" fill="#b7e6a8"/>
+    <circle cx="300" cy="232" r="141" fill="#8fd6a0"/>
+    <circle cx="258" cy="190" r="46" fill="#a9e2b6" opacity="0.75"/>
+  </g>
+</svg>

@@ -7,7 +7,7 @@
 //   ① index.html 에 플랫폼 플래그 window.__ITCH__ 주입 → js/platform.js 가 'itch' 로 인식
 //   ② js/config.js 의 API_BASE 를 웹 오리진 절대 URL 로 치환('/api/*' 상대경로는 404)
 //      → 안내서(guide)·구글 팝업 복귀 페이지(auth-popup.html)도 이 오리진에서 받아온다
-//   ③ 루트 절대경로 파비콘 <link> 제거(iframe 안에서 itch.zone 루트 404 만 남기므로)
+//   ③ 루트 절대경로 파비콘·manifest <link> 제거(iframe 안에서 itch.zone 루트 404 만 남기므로)
 //   ④ zip 으로 묶어 업로드 파일을 만든다(butler push 는 폴더도 받지만 웹 업로드는 zip)
 //  사용: node scripts/build-itch.mjs   (또는 npm run build:itch)
 // =============================================================
@@ -29,8 +29,9 @@ html = html.replace('<head>', '<head>\n  <script>window.__ITCH__ = true;</script
 
 // ③ 루트 절대경로 파비콘·터치 아이콘 링크 제거
 const before = html;
-html = html.replace(/^\s*<link rel="(?:icon|apple-touch-icon)"[^>]*href="\/[^"]*"[^>]*>\s*\n/gm, '');
-const stripped = (before.match(/<link rel="(?:icon|apple-touch-icon)"/g) || []).length;
+html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n/m, '');   // 📱 manifest 링크 위 설명 주석(링크는 아래에서 제거)
+html = html.replace(/^\s*<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="\/[^"]*"[^>]*>\s*\n/gm, '');   // 📱 PWA manifest 링크도 제거
+const stripped = (before.match(/<link rel="(?:icon|apple-touch-icon|manifest)"/g) || []).length;
 writeFileSync(`${OUT}/index.html`, html);
 
 // 게임 모듈(전부 절차 생성이라 정적 자산은 js/ 뿐 — 안내서는 웹 오리진에서 fetch)
