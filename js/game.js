@@ -31,7 +31,7 @@ import { logEcon, startMetrics } from './metrics.js';            // [계측] 경
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
-import { farmToolFor, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
+import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -9329,10 +9329,11 @@ function farmActionFirst() {
   if (FARM_AUTO_TOOLS.includes(held)) {
     const plot = farmAutoPlot(held);
     if (!plot) return false;
-    if (!(plot.state === 'growing' && clock.elapsedTime < (plot.wetUntil || 0))) return true;
-    // 💧 자라는 밭인데 흙이 아직 촉촉하면 밭일은 '아직 흙이 촉촉해요 🌱' 안내뿐이다(어떤 농사 도구를 들었든).
-    //    아무것도 안 일어나는 몇 초 동안 대화까지 막으면 "눌러도 반응이 없고 말도 못 건다"가 된다 → 대화에 양보.
-    //    단 🌱비료를 줄 수 있으면 그건 의미 있는 밭일이라 그대로 우선 — handleAction 의 비료 분기와 같은 조건을 쓴다.
+    const want = farmToolFor(plot, clock.elapsedTime < (plot.wetUntil || 0));
+    // 밭이 있어도 밭일이 안내 토스트뿐인 순간들(흙이 촉촉 · 반쯤 판 밭 · 씨앗 0)엔 대화에 양보한다.
+    //   아무것도 안 일어나는데 말까지 못 걸면 "눌러도 반응이 없고 대화도 안 된다"가 된다(베타 피드백).
+    if (!farmActionIsNoop(want, { seeds: gameState.inventory.seed, hasGrowing: plots.some(p => p.state === 'growing' || p.state === 'mature') })) return true;
+    // 단 🌱비료를 줄 수 있으면 그건 의미 있는 밭일이라 그대로 우선 — handleAction 의 비료 분기와 같은 조건을 쓴다.
     const fp = fertTarget();
     return !!(fp && !fertBlockedByWatering(held, toolPage, clock.elapsedTime < (fp.wetUntil || 0)));
   }
