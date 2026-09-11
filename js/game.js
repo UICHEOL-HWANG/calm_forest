@@ -26,7 +26,7 @@ import { sampleFrame, startLogging } from './logger.js';         // [센서] 로
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
-import { createKeyState } from './keys.js';                        // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋)
+import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -7761,6 +7761,16 @@ function initInput() {
   window.addEventListener('blur', releaseAll);
   window.addEventListener('pagehide', releaseAll);
   document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
+  // 🖱️ 우클릭 — 브라우저 기본 컨텍스트 메뉴가 뜨면 그동안 keyup 이 페이지에 안 오는데 blur 도 안 나서
+  //    W 가 눌린 채 남아 손을 떼도 계속 걷던 버그(2026-09-11). 게임은 우클릭 메뉴를 안 쓰므로 막고,
+  //    막아도 메뉴가 뜨는 브라우저(파이어폭스 Shift+우클릭)를 대비해 이 시점에 키를 전부 뗀다
+  //    (키를 계속 누르고 있으면 OS 키 반복 keydown 이 곧바로 다시 눌러 주므로 체감 끊김 없음).
+  //    글자 입력칸(닉네임·문의)은 붙여넣기 메뉴가 필요하니 예외.
+  window.addEventListener('contextmenu', (e) => {
+    if (isEditableTarget(e.target)) return;
+    e.preventDefault();
+    releaseAll();
+  });
   renderer.domElement.addEventListener('pointerdown', (e) => {
     if (indoor && placingDecor) { onDecorFloorTap(e); return; } // 실내 가구 배치 중: 탭 = 자리 잡기 / 클릭 = 놓기
     if (indoor && tryPickDecor(e)) return;                      // 놓아 둔 가구 탭 → 들어 올려 옮기기
@@ -8023,9 +8033,12 @@ function updatePlayer(dt, t) {
   if (boat.active) return updateBoatRun(dt, t);    // 🛶 런 중엔 걷기 대신 배 물리
   const speed = 6 * (buffOn('speed') ? 1.4 : 1);   // 🥘 채소죽 버프: 이동속도 +40%
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
-  let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.());
+  // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
+  //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
+  const closeUp = momentT >= 0 || photoT >= 0;
+  let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.() || closeUp);
   // 모바일 조이스틱 아날로그 합산
-  mx += analog.x; mz += analog.z;
+  if (!closeUp) { mx += analog.x; mz += analog.z; }
 
   const moving = Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05;
   if (moving && sitting) sitting = false;   // 움직이면 일어남
