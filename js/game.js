@@ -3313,45 +3313,134 @@ function cafeOrders() {
   });
 }
 
+// 아치(직사각형 + 반원) 를 +z 로 depth 만큼 돌출 — 카페 문·창.
+//   js/house/cottage.js 의 arch() 와 같은 문법(폭 w, 사각 높이 hRect, 위는 반지름 w/2 반원).
+function archGeo(w, hRect, depth) {
+  const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(w / 2, hRect);
+  s.absarc(0, hRect, w / 2, 0, Math.PI, false); s.lineTo(-w / 2, 0);
+  return new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 10 });
+}
+
+// 벽에 붙이는 캔버스 글자 명판(어두운 판 + 밝은 글자) — 카페 CAFE 사인.
+//   ⚡ 판 테두리까지 캔버스에 그려서 평면 1장·재질 1개로 끝낸다(상자로 만들면 옆면 재질이 붙어 2드로우콜).
+function makeWallPlate(text, w, h) {
+  const W = 384, H = Math.round(W * h / w);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#332f2b'; c.fillRect(0, 0, W, H);
+  c.strokeStyle = '#6e675e'; c.lineWidth = 10; c.strokeRect(14, 14, W - 28, H - 28);
+  c.fillStyle = '#f2ede3'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `bold ${Math.round(H * 0.46)}px Georgia, "Times New Roman", serif`;
+  c.fillText(text, W / 2, H / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
+}
+
 // ── 마을 안 카페 건물(입구) — 채굴장 입구처럼 처음부터 서 있음 ────
+//    흰 큐브 + 평지붕 파라펫 + 아치문/아치창의 모던 카페.
+//    ⚠️ 벽 footprint(가로 5.2 · 세로 4.0 · 중심 z-1.2)와 문 위치(x0, 앞면 z+0.8)는
+//       충돌 박스·입장 판정(z+1.3 반경 2.2)이 그대로 쓰므로 바꾸지 말 것.
 function spawnCafeGate() {
   const g = new THREE.Group(); g.position.copy(CAFE_GATE);
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.6, 4.0), woodMat(4, 2, 0xf0d9b8));
-  wall.position.set(0, 1.3, -1.2); wall.castShadow = true; wall.receiveShadow = true; g.add(wall);
-  const roofGeo = new THREE.ConeGeometry(3.6, 1.7, 4); roofGeo.rotateY(Math.PI / 4);
-  const roof = new THREE.Mesh(roofGeo, clayMat(0xa9564a));
-  roof.position.set(0, 3.35, -1.2); roof.scale.set(1.12, 1, 0.86); roof.castShadow = true; g.add(roof);
-  // 문(어두운 사각 + 문틀) — 남쪽(+z)을 향해 열림
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.14), woodMat(1, 1, 0x9a6a42));
-  frame.position.set(0, 1.1, 0.82); g.add(frame);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.9, 0.08), new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.9 }));
-  door.position.set(0, 0.98, 0.9); g.add(door);
-  // 밤에 따뜻하게 빛나는 창(집 창문 시스템 재사용)
-  [-1.7, 1.7].forEach(wx => {
-    const wm = new THREE.MeshStandardMaterial({ color: 0xfff2c8, emissive: 0xffcf7a, emissiveIntensity: 0, roughness: 0.6 });
-    const win = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.0, 0.1), wm);
-    win.position.set(wx, 1.5, 0.82); g.add(win); houseWindows.push(wm);
-  });
-  // 줄무늬 차양
-  for (let i = 0; i < 8; i++) {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.09, 0.9), clayMat(i % 2 ? 0xe07a6a : 0xfff2e0, false));
-    s.position.set(-2.2 + i * 0.62, 2.5, 1.15); s.rotation.x = -0.4; g.add(s);
+  // ⚡ 드로우콜 — 카페는 한 번 세우면 안 움직이는 정적 건물이라, 파츠를 따로 Mesh 로 두지 않고
+  //    "같은 재질끼리 지오메트리를 합쳐" 재질 수 = 드로우콜 수가 되게 한다(합치기 전 30개 → 8개).
+  //    그래서 색은 일부러 7가지로 묶었다(문틀·창턱·계단·옥상면·화분·손잡이는 모두 LIGHT 한 색).
+  const MATS = {
+    white: clayMat(0xfaf8f4, false),   // 회벽·처마·파라펫 (매끈하게 — 아치가 각지지 않도록)
+    trim: clayMat(0x3c3936, false),    // 걸레받이·창틀·창살·차양·칠판의 짙은 회색
+    stone: clayMat(0xd4cfc6, false),   // 포석·화단 석재
+    light: clayMat(0xeceadf, false),   // 문틀·창턱·계단·옥상면·화분·손잡이
+    green: clayMat(0x8fd6a0),          // 덤불·잎 (저폴리 느낌 유지 위해 flatShading)
+    brown: clayMat(0x6f5b46, false),   // 화단 흙·나무 줄기
+    door: clayMat(0x63503d, false),    // 문짝(유일하게 따뜻한 갈색 — 시선이 문으로 가게)
+  };
+  const parts = new Map();                                    // 재질키 → 지오메트리 목록
+  const add = (k, geo) => { const a = parts.get(k); a ? a.push(geo) : parts.set(k, [geo]); };
+  const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+  const WZ = -1.2, FRONT = 0.8;                // 본채 중심 z · 정면 벽 z
+  const BASE = 0.16;                           // 포석 두께(= 건물 바닥 높이)
+
+  // 포석 바닥 — 건물보다 한 뼘 넓게 깔아 마당처럼 보이게
+  add('stone', box(7.6, BASE, 5.8, 0, BASE / 2, -1.0));
+
+  // 본채 + 짙은 걸레받이
+  add('white', box(5.2, 2.75, 4.0, 0, BASE + 1.375, WZ));
+  add('trim', box(5.3, 0.34, 4.1, 0, BASE + 0.17, WZ));
+
+  // 평지붕 — 처마 슬래브 + 한 단 낮은 옥상면 + 네 변 파라펫(위에서 봐도 심심하지 않게)
+  const TOP = BASE + 2.75;                     // 벽 윗면
+  add('white', box(5.76, 0.28, 4.56, 0, TOP + 0.14, WZ));
+  add('light', box(5.1, 0.08, 3.9, 0, TOP + 0.32, WZ));
+  const RIM = TOP + 0.4;                       // 파라펫 중심 높이(처마 윗면 + 반)
+  for (const [sx, sz, px, pz] of [[5.76, 0.2, 0, WZ + 2.18], [5.76, 0.2, 0, WZ - 2.18], [0.2, 4.56, 2.78, WZ], [0.2, 4.56, -2.78, WZ]]) {
+    add('white', box(sx, 0.24, sz, px, RIM, pz));
   }
-  // 문 옆 화분
-  [-2.1, 2.1].forEach(px => {
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, 0.36, 10), clayMat(0xc98a6a, false));
-    pot.position.set(px, 0.18, 1.0); pot.castShadow = true; g.add(pot);
-    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), clayMat(0x8fd6a0));
-    bush.position.set(px, 0.55, 1.0); bush.castShadow = true; g.add(bush);
-  });
+
+  // 아치문(문틀 + 문짝 + 문살 + 손잡이 + 디딤돌) — 남쪽(+z)을 향해 열림.
+  //   문틀을 문짝보다 넉넉히 키워야 밝은 테두리가 보인다(같으면 검은 구멍처럼 읽힌다).
+  add('light', archGeo(1.72, 1.24, 0.1).translate(0, BASE, FRONT - 0.02));
+  add('door', archGeo(1.32, 1.12, 0.1).translate(0, BASE, FRONT + 0.04));
+  for (const dx of [-0.32, 0.32]) add('trim', box(0.05, 1.55, 0.04, dx, BASE + 0.82, FRONT + 0.15));   // 문짝 세로 홈
+  add('light', new THREE.SphereGeometry(0.06, 8, 6).translate(0.47, BASE + 1.0, FRONT + 0.16));
+  add('light', box(1.9, 0.12, 0.55, 0, BASE + 0.06, FRONT + 0.42));
+
+  // 아치창(정면 왼쪽) — 밤에 따뜻하게 빛나는 창(집 창문 시스템 재사용).
+  //   ⚠️ 유리는 emissiveIntensity 를 밤마다 바꾸므로 합치지 않고 제 재질·제 메시로 둔다.
+  const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2c8, emissive: 0xffcf7a, emissiveIntensity: 0, roughness: 0.6 });
+  houseWindows.push(winMat);
+  const SILL = 0.62;
+  const glass = new THREE.Mesh(archGeo(1.22, 0.94, 0.05), winMat);
+  glass.position.set(-1.75, BASE + SILL + 0.06, FRONT + 0.05); g.add(glass);
+  add('trim', archGeo(1.46, 1.02, 0.1).translate(-1.75, BASE + SILL, FRONT - 0.02));
+  add('trim', box(0.05, 1.5, 0.05, -1.75, BASE + SILL + 0.8, FRONT + 0.09));            // 세로 창살
+  for (const dy of [0.5, 1.05]) add('trim', box(1.18, 0.045, 0.05, -1.75, BASE + SILL + dy, FRONT + 0.09));
+  add('light', box(1.62, 0.1, 0.26, -1.75, BASE + SILL, FRONT + 0.06));                 // 창턱
+  // 창 위 짙은 차양(줄무늬 천 → 각진 캐노피)
+  add('trim', box(2.1, 0.12, 0.82, 0, 0, 0).rotateX(-0.22).translate(-1.75, BASE + 2.28, FRONT + 0.34));
+  add('trim', box(2.1, 0.22, 0.1, -1.75, BASE + 2.16, FRONT + 0.72));
+
+  // 정면 오른쪽 석재 화단 — 낮은 담 + 흙 + 둥근 덤불.
+  //   벽에 딱 붙이면 정면에서 건물에 먹히므로 문 쪽(+z)으로 한 걸음 끌어냈다.
+  const PX = 3.05, PZ = FRONT + 0.15;
+  add('stone', box(1.7, 0.56, 1.7, PX, BASE + 0.28, PZ));
+  add('brown', box(1.5, 0.08, 1.5, PX, BASE + 0.58, PZ));
+  for (const [dx, r, dz] of [[-0.38, 0.34, -0.3], [0.3, 0.4, 0.1], [-0.05, 0.3, 0.45]]) {
+    add('green', new THREE.IcosahedronGeometry(r, 0).translate(PX + dx, BASE + 0.68 + r * 0.5, PZ + dz));
+  }
+
+  // 문 왼쪽 화분(흰 화분 + 가는 나무) · 작은 세움 칠판
+  add('light', new THREE.CylinderGeometry(0.3, 0.24, 0.5, 10).translate(-2.6, BASE + 0.25, FRONT + 0.45));
+  add('brown', new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6).translate(-2.6, BASE + 0.78, FRONT + 0.45));
+  for (const [r, y, dx] of [[0.3, 1.06, -0.12], [0.24, 1.32, 0.1]]) {
+    add('green', new THREE.IcosahedronGeometry(r, 0).translate(-2.6 + dx, BASE + y, FRONT + 0.45));
+  }
+  // 세움 칠판은 창(x -2.48~-1.02)과 문(x ±0.86) 사이 빈자리에 — 창에 겹치면 창살이 지저분해진다
+  for (const s of [-1, 1]) {
+    add('trim', box(0.52, 0.72, 0.05, 0, 0, 0).rotateX(s * 0.17)
+      .translate(-0.96 + s * 0.06, BASE + 0.36, FRONT + 0.82 + s * 0.08));
+  }
+
+  // 재질별로 한 덩어리씩 — 여기서 나오는 메시 수가 곧 카페 건물의 드로우콜 수다
+  for (const [k, geos] of parts) {
+    const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+
+  // CAFE 명판 — 참고 이미지는 옆벽이지만, 이 게임 카메라는 건물 정면(+z)만 본다.
+  //   옆벽에 달면 평생 안 보이므로 문 오른쪽 정면 벽에 건다. 벽면(z=0.8)엔 살짝 띄워 z-fighting 회피.
+  const plate = makeWallPlate('CAFE', 1.15, 0.62);
+  plate.position.set(1.62, BASE + 1.72, FRONT + 0.06); g.add(plate);
+
   // 간판은 팻말로 세워 문 옆에 — 지붕에 가리지 않고 멀리서도 보이게
-  g.add(makeSignpost('☕ 카페', -3.1, 1.3));
+  g.add(makeSignpost('☕ 카페', -3.85, 1.5));
   scene.add(g);
   obstacles.push({ x: CAFE_GATE.x, z: CAFE_GATE.z, r: 3.0 });
   // 🚧 건물 벽은 사각으로 — 원으로 막으면 남쪽 문 앞(z+1.3)에 설 수가 없다.
   //    벽 footprint: 가로 5.2, 세로 4.0, 중심 z-1.2 → 문이 있는 z+0.8 면까지만 막는다.
   solidBox(CAFE_GATE.x - 2.6, CAFE_GATE.z - 3.2, CAFE_GATE.x + 2.6, CAFE_GATE.z + 0.8);
-  [-2.1, 2.1].forEach(px => solidCircle(CAFE_GATE.x + px, CAFE_GATE.z + 1.0, 0.3));   // 문 옆 화분
+  solidBox(CAFE_GATE.x + 2.2, CAFE_GATE.z + 0.1, CAFE_GATE.x + 3.9, CAFE_GATE.z + 1.8);   // 석재 화단
+  solidCircle(CAFE_GATE.x - 2.6, CAFE_GATE.z + 1.25, 0.34);                                // 문 왼쪽 화분
+  solidCircle(CAFE_GATE.x - 1.32, CAFE_GATE.z + 1.58, 0.3);                                // 세움 칠판
 }
 
 // ── 카페 홀(별도 공간) — 넓은 실내. 카운터 + 테이블 4세트 + 주문판 ──
