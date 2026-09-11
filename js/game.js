@@ -213,16 +213,42 @@ const FISH_KINDS = [
   { rarity: 'uncommon', name: '붉은 물고기',   p: 0.28 },
   { rarity: 'common',   name: '피라미',        p: 1.00 },
 ];
-// ── 요리 레시피(자유주방) — 작물/물고기 → 일시 버프. mg: 미니게임 종류(pot=끓이기 타이밍, chop=썰기 리듬) ──
+// ── 🍳 요리 미니게임 4종 ─────────────────────────────────────────────
+//    "다양성이 적다"는 피드백에 종류를 늘리되, 넷이 서로 **다른 실패의 모습**을 갖게 갈랐다.
+//    같은 탭이라도 무엇을 망쳤는지가 눈에 달라 보여야 다른 게임으로 느껴진다.
+const COOK_MG = {
+  pot:    { ico: '🍲', name: '끓이기',    tip: '바늘이 초록 구간에 올 때 누르세요' },
+  chop:   { ico: '🔪', name: '썰기',      tip: '재료가 칼 아래 올 때 박자에 맞춰 누르세요' },
+  grill:  { ico: '🔥', name: '굽기',      tip: '노릇해졌을 때 눌러 뒤집으세요 — 지나치면 탑니다' },
+  season: { ico: '🧂', name: '간 맞추기', tip: '꾹 누르고 있다가 목표선에서 손을 떼세요' },
+};
+// 코스 난이도(★) → 단계별 판정창 배율. **난이도는 오직 이 배율로만** 조절한다
+//   (속도·단계 수까지 같이 흔들면 어느 쪽이 어려웠는지 지표로 가를 수 없다).
+//   ★1 은 개편 전(1.0)보다 넉넉한 1.35 — "너무 어렵다"는 피드백의 직접적인 답.
+//   코스 뒤로 갈수록 좁아지는 것이 곧 "단계별로 난이도가 올라간다".
+const COURSE_MULT = { 1: [1.35], 2: [1.15, 1.0], 3: [1.05, 0.95, 0.85] };
+// 코스 점수 가중치 — 뒤 단계일수록 무겁게(마지막 한 판을 잘해야 최고 등급)
+const COURSE_WEIGHT = { 1: [1], 2: [0.85, 1.15], 3: [0.8, 1.0, 1.2] };
+// ── 요리 레시피(자유주방) — 작물/물고기 → 일시 버프 ──
+//    stages: 순서대로 치르는 미니게임(길이 = 난이도 ★). diff 는 stages.length 와 항상 같다.
 const RECIPES = [
-  { id: 'veg_stew',     name: '든든한 채소죽', ico: '🥘', cost: { crop: 3 },          buff: 'speed', dur: 60, desc: '60초 이동속도 +40%', mg: 'pot' },
-  { id: 'grilled_fish', name: '생선 구이',     ico: '🐟', cost: { fish: 2 },          buff: 'luck',  dur: 90, desc: '90초 희귀 물고기 확률↑', mg: 'chop' },
-  { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱', cost: { crop: 2, fish: 1 }, buff: 'chop',  dur: 90, desc: '90초 벌목 시 목재 +1', mg: 'chop' },
-  { id: 'omelette',     name: '푸짐한 오믈렛', ico: '🍳', cost: { egg: 2, crop: 1 },  buff: 'mine',  dur: 90, desc: '90초 채굴 시 광석 추가 확률↑', mg: 'pot' }, // 🥚 닭장 달걀 요리
-  { id: 'mushroom_soup', name: '숲의 버섯 스프', ico: '🍄', cost: { forage: 3 },      buff: 'speed', dur: 150, desc: '150초 이동속도 +40%', mg: 'pot' }, // 🍄 채집 숲 재료
+  // ★1 — 한 판짜리 입문. 네 미니게임을 하나씩 맡아 처음 만나는 자리가 된다
+  { id: 'veg_stew',      name: '든든한 채소죽',   ico: '🥘', cost: { crop: 3 },                      buff: 'speed', dur: 60,  desc: '60초 이동속도 +40%',        stages: ['pot'] },
+  { id: 'mushroom_soup', name: '숲의 버섯 스프',  ico: '🍄', cost: { forage: 3 },                    buff: 'speed', dur: 90,  desc: '90초 이동속도 +40%',        stages: ['pot'] },      // 🍄 채집 숲 재료
+  { id: 'rice_ball',     name: '소금 주먹밥',     ico: '🍙', cost: { crop: 2 },                      buff: 'chop',  dur: 60,  desc: '60초 벌목 시 목재 +1',      stages: ['season'] },   // 🧂 간 맞추기 입문
+  { id: 'baked_yam',     name: '군고구마',        ico: '🍠', cost: { forage: 2, crop: 1 },           buff: 'mine',  dur: 60,  desc: '60초 채굴 시 광석 추가 확률↑', stages: ['grill'] },   // 🔥 굽기 입문
+  { id: 'herb_salad',    name: '들나물 무침',     ico: '🥗', cost: { forage: 2, crop: 1 },           buff: 'luck',  dur: 60,  desc: '60초 희귀 물고기 확률↑',    stages: ['chop'] },     // 🔪 썰기 입문
+  // ★2 — 두 판. 손질 → 조리처럼 "차례가 있는" 요리
+  { id: 'grilled_fish',  name: '생선 구이',       ico: '🐟', cost: { fish: 2 },                      buff: 'luck',  dur: 90,  desc: '90초 희귀 물고기 확률↑',    stages: ['chop', 'grill'] },
+  { id: 'omelette',      name: '푸짐한 오믈렛',   ico: '🍳', cost: { egg: 2, crop: 1 },              buff: 'mine',  dur: 90,  desc: '90초 채굴 시 광석 추가 확률↑', stages: ['pot', 'season'] }, // 🥚 닭장 달걀 요리
+  // ★3 — 세 판 풀코스. 재료도 버프도 가장 크다
+  { id: 'lunchbox',      name: '모둠 도시락',     ico: '🍱', cost: { crop: 2, fish: 1, forage: 1 },  buff: 'chop',  dur: 150, desc: '150초 벌목 시 목재 +1',     stages: ['chop', 'pot', 'season'] },
+  { id: 'forest_feast',  name: '숲의 한상차림',   ico: '🍲', cost: { forage: 2, crop: 2, fish: 1 },  buff: 'luck',  dur: 180, desc: '180초 희귀 물고기 확률↑',   stages: ['chop', 'grill', 'pot'] },
 ];
-// ☕ 카페 서빙 단가 — 재료 원가(시세 기준)보다 넉넉해 "요리해서 파는" 동선이 이득이 되게
-const CAFE_PAY = { veg_stew: 30, grilled_fish: 34, lunchbox: 42, omelette: 40, mushroom_soup: 46 };
+function recipeDiff(r) { return Math.min(3, Math.max(1, r.stages.length)); }   // ★ 등급 = 코스 길이
+// ☕ 카페 서빙 단가 — 재료 원가(시세 기준)보다 넉넉해 "요리해서 파는" 동선이 이득이 되게.
+//    ★ 가 오를수록 판을 더 치르니 단가도 같이 오른다(★1 ~30 · ★2 ~46 · ★3 ~74)
+const CAFE_PAY = { veg_stew: 30, mushroom_soup: 32, rice_ball: 28, baked_yam: 30, herb_salad: 31, grilled_fish: 46, omelette: 48, lunchbox: 74, forest_feast: 78 };
 // 버프 메타 — desc는 초보자용 설명(첫 획득 모달·칩 클릭 모달에 표시)
 const BUFF_META = {
   speed: { ico: '👟', name: '빠른 발',     desc: '이동 속도가 40% 빨라져요. 넓은 마을과 텃밭·동굴을 오갈 때 시간을 아껴줘요.' },
@@ -306,6 +332,26 @@ const CAFE_BOARD = [6.6, -7.9];                 // 📋 주문판(칠판) — �
 let atCafe = false, nearCafeBoard = false;
 let cafeInGroup = null, cafeGuestObjs = [];     // 홀 그룹 / 앉은 손님 런타임 { order, group, sprite, phase }
 let nearCafeGuest = null;
+
+// ── ☕ 카페 손님 캐스트 — **마을 주민이 아닌 "이웃 마을에서 찾아오는 손님들"** ──
+//    왜 따로 만들었나: 예전엔 손님을 마을 주민에서 뽑았는데, 주민 6명 중 5명이 후보이고
+//    하루 손님은 4명이라 마을 인구의 80%가 매일 카페에 복제됐다. 밖에 서 있는 🧙방랑 상인이
+//    카페에도 앉아 있는 게 눈에 띈 게 그 증상이다. 주민을 마을에서 빼는 방식은 퀘스트·상점
+//    NPC 가 사라져 진행이 막히므로, 손님을 아예 별도 캐스트로 갈랐다.
+//    acc(소품) + ear(귀 모양) + color 세 가지로 실루엣을 가른다 — 이름표를 못 읽는 거리에서도 구분되게.
+//    ⚠️ 플레이어가 고르는 동물(여우·강아지·토끼·고양이·곰·판다·병아리)과 마을 주민은 **피해서** 뽑았다 —
+//       내가 여우인데 손님도 여우면 "또 겹쳤다"는 똑같은 인상을 준다.
+const CAFE_GUESTS = [
+  { id: 'guest_deer',     name: '숲길 사슴',       emoji: '🦌', color: 0xd9a86a, hat: 0x7a5f3c, ear: 'round', acc: 'antler' },
+  { id: 'guest_otter',    name: '강가 수달',       emoji: '🦦', color: 0x6fa8c9, hat: 0xf0e0c0, ear: 'tiny',  acc: 'ribbon' },
+  { id: 'guest_hedgehog', name: '가시 고슴도치',   emoji: '🦔', color: 0xa08fb8, hat: 0x5a4d6a, ear: 'tiny',  acc: 'spike' },
+  { id: 'guest_squirrel', name: '부지런한 다람쥐', emoji: '🐿️', color: 0xe08a4a, hat: 0xf0c86a, ear: 'round', acc: 'flower' },
+  { id: 'guest_raccoon',  name: '야행성 너구리',   emoji: '🦝', color: 0x7d8794, hat: 0xc96a5a, ear: 'point', acc: 'scarf' },
+  { id: 'guest_frog',     name: '빗소리 개구리',   emoji: '🐸', color: 0x7ec96a, hat: 0x3a4a3a, ear: 'tiny',  acc: 'glasses' },
+  { id: 'guest_turtle',   name: '느긋한 거북',     emoji: '🐢', color: 0x4fa890, hat: 0xe8a07a, ear: 'tiny',  acc: 'beanie' },
+  { id: 'guest_beaver',   name: '댐 짓는 비버',    emoji: '🦫', color: 0xb06a4a, hat: 0x8a9ab0, ear: 'round', acc: 'cap' },
+];
+const cafeGuestDef = (id) => CAFE_GUESTS.find(g => g.id === id) || null;
 
 // ── 🍄 채집 숲(남서쪽) — 새 동사: 채집(심지 않고 줍기). 시간이 지나면 다시 돋아남 ──
 //    씨앗·물주기 없이 "돌아다니며 발견"하는 재미. 🌧️ 비 온 날엔 버섯이 유독 잘 나옴(날씨 연동)
@@ -744,6 +790,7 @@ const gameState = {
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
+  pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, tier: 등급id, score }]. 최대 PANTRY_MAX 칸
   workshop: { carved: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
   story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
@@ -768,13 +815,8 @@ const DEX = {
     { id: 'coal',  name: '석탄', ico: '⚫' },
     { id: 'gem',   name: '보석', ico: '💎' },
   ],
-  cook: [
-    { id: 'veg_stew',     name: '든든한 채소죽', ico: '🥘' },
-    { id: 'grilled_fish', name: '생선 구이',     ico: '🐟' },
-    { id: 'lunchbox',     name: '모둠 도시락',   ico: '🍱' },
-    { id: 'omelette',     name: '푸짐한 오믈렛', ico: '🍳' },   // 🥚 닭장 해금 후 제작 가능
-    { id: 'mushroom_soup', name: '숲의 버섯 스프', ico: '🍄' },  // 🍄 채집 숲 재료
-  ],
+  // 🍳 요리 — RECIPES 에서 파생. 레시피를 늘릴 때 도감을 따로 고치는 걸 잊어 빈칸이 생기던 걸 막는다
+  cook: RECIPES.map(r => ({ id: r.id, name: r.name, ico: r.ico })),
   npc: [
     { id: 'farmer',   name: '농부 삼촌',       ico: '🧑‍🌾' },
     { id: 'builder',  name: '목수 아저씨',     ico: '👷' },
@@ -782,6 +824,8 @@ const DEX = {
     { id: 'angler',   name: '낚시꾼 할아버지', ico: '🎣' },
     { id: 'courier',  name: '의뢰 올빼미',     ico: '🦉' },
     { id: 'chef',     name: '요리사 판다',     ico: '🐼' },
+    // ☕ 카페 손님 — 마을에 살지 않는 이웃들(서빙하면 채워짐). CAFE_GUESTS 에서 파생
+    ...CAFE_GUESTS.map(g => ({ id: g.id, name: g.name, ico: g.emoji })),
   ],
   // 🍄 채집물 — 남서쪽 채집 숲을 돌아다니며 주워야 채워짐
   forage: [
@@ -1044,8 +1088,16 @@ function checkDailyBonus() {
 }
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
+let firstHintRetries = {};   // key → 미룬 횟수(무한 재시도 방지)
 function firstHint(key, ico, title, body) {
   if (gameState.hintsSeen[key]) return;
+  // 🍳 미니게임(조리·조각) 무대 위에 모달을 띄우면 판을 통째로 덮어 버린다 —
+  //   버프 안내는 요리를 끝내고 먹은 뒤에 오는데, 바로 "🍳 한 번 더" 로 다음 판을 시작하면
+  //   800ms 뒤 도착한 안내가 새 판을 가렸다. 소진하지 말고 미룬다(announceMapOpens 와 같은 규칙).
+  if (mgView || ui.coachActive?.()) {
+    if ((firstHintRetries[key] = (firstHintRetries[key] || 0) + 1) <= 20) setTimeout(() => firstHint(key, ico, title, body), 2500);
+    return;
+  }
   gameState.hintsSeen[key] = true;
   ui.showHintModal?.({ ico, title, body });
 }
@@ -1424,15 +1476,20 @@ export const Input = {
   toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() { return DECOR; },
-  getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+최고점수)
-  kitchenStart(id) { return kitchenStart(id); },        // 🍳 요리 시작(재료 소비, 미니게임 개시)
-  kitchenFinish(id, res) { return kitchenFinish(id, res); }, // 🍳 미니게임 결과 → 등급·버프·트래킹
+  getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
+  kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
+  kitchenFinish(id, res) { return kitchenFinish(id, res); },    // 🍳 코스 결과 → 등급·기록·트래킹(버프는 아직)
+  cookResolve(how) { return cookResolve(how); },        // 🍽️ 결과 화면: 'eat' 먹기 | 'store' 🧺 찬장 보관
+  getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
+  pantryEat(i) { return pantryEat(i); },                // 🍱 찬장에서 꺼내 먹기(버프 발동)
+  cafeCookDone(res) { return cafeCookDone(res); },      // ☕ 카페 조리 완료 → 그 손님에게 바로 서빙
+  cafeCookAbort() { cafeCookAbort(); },                 // ☕ 카페 조리 중단(손님 대기 해제)
   getWorkshop() { return workshopView(); },             // 🗿 조각 공방 주문판(오늘의 주문 + 기록)
   carveStart(id) { return carveStart(id); },            // 🗿 조각 시작(재료 소비, 클로즈업 무대 입장)
   carveAbandon() { carveAbandon(); },                   // 🗿 그만두기(낮은 등급으로 강제 완성)
   carveSceneEnd() { carveSceneEnd(); },                 // 🗿 무대 종료(결과 닫기 → 마을 카메라 복귀)
   carveDebug(a, n) { return carveDebug(a, n); },        // 🗿 로컬 검증 훅(localhost 전용, 실서비스 no-op)
-  mgSceneStart(type, icos, n) { mgSceneStart(type, icos, n); }, // 🍳 클로즈업 조리 무대 입장(카메라 전환)
+  mgSceneStart(type, icos, n, dishIco) { mgSceneStart(type, icos, n, dishIco); }, // 🍳 클로즈업 조리 무대 입장(카메라 전환)
   mgSceneEnd() { mgSceneEnd(); },                       // 🍳 무대 종료(마을 카메라 복귀)
   getStory() { return storyView(); },                   // 📖 메인 퀘스트 현황(칩·모달 렌더용)
   introStart() { return introStart(); },                // 🎬 프롤로그 시작(이미 봤으면 false 반환)
@@ -1441,6 +1498,9 @@ export const Input = {
   mgChopFrame(ps) { mgChopFrame(ps); },                 // 🔪 리듬 노트 위치 동기화(매 프레임)
   mgChopHit(i, judge) { mgChopHit(i, judge); },         // 🔪 칼질 명중 연출
   mgPotHit(step, judge, ico) { mgPotHit(step, judge, ico); }, // 🍲 끓이기 탭 연출
+  mgGrillFlip(judge, over) { mgGrillFlip(judge, over); },     // 🔥 뒤집기 연출(over=태움)
+  mgSeasonPour(on) { mgSeasonPour(on); },                     // 🧂 누르는 동안 소금 쏟기
+  mgSeasonDone(judge) { mgSeasonDone(judge); },               // 🧂 손 뗐을 때 마무리 연출
   getUpgrades() { return UPGRADES; },                   // 도구 업그레이드 목록
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
@@ -1803,6 +1863,13 @@ function applySave(saved) {
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
   if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
+  // 🍱 찬장 복원 — 세이브가 손상되거나 레시피/등급이 개편으로 사라졌으면 그 칸만 버린다(전체를 날리지 않게)
+  if (Array.isArray(saved.pantry)) {
+    gameState.pantry = saved.pantry
+      .filter(f => f && RECIPES.some(r => r.id === f.id) && COOK_TIERS.some(t => t.id === f.tier))
+      .slice(0, PANTRY_MAX)
+      .map(f => ({ id: f.id, tier: f.tier, score: Math.max(0, Math.min(100, Math.round(f.score) || 0)) }));
+  }
   if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
   if (saved.nickname) gameState.nickname = saved.nickname;                          // 🏷️ 닉네임 복원
@@ -1901,7 +1968,7 @@ function clayMat(color, flat = true) {
 //  ------------------------------------------------------------
 //  같은 모양·같은 색 소품이 수십 개씩 생기는데(나무 40그루, 풀 80포기)
 //  전부 제 지오메트리·제 재질을 들고 있어 GPU 상태 전환이 그 수만큼 났다.
-//  ⚠️ disposeTree() 로 통째로 정리하는 오브젝트(카페 손님 등)에는 쓰지 말 것 —
+//  ⚠️ 개별적으로 dispose 하는 오브젝트에는 쓰지 말 것 —
 //     공유 자원이 함께 해제돼 다른 소품이 사라진다.
 // -------------------------------------------------------------
 const _shared = new Map();
@@ -3224,9 +3291,16 @@ function tryForage(node) {
 //   외부 생성기는 async 라서 결과가 올 때까지 로컬 손님으로 플레이가 이어지고,
 //   도착하면 캐시에 담고 홀을 다시 그린다.
 //   형식: [{ id, name, emoji, color, hat, recipeId, line, thanks }]
+// 받침 유무로 조사를 고른다 — 요리 이름이 늘어날 때마다 "채소죽가 당기네요" 같은 문장이 나오던 걸 막는다.
+//   한글 음절(가~힣)의 코드에서 (code-0xAC00)%28 이 0 이면 받침이 없다.
+function josa(word, withJong, noJong) {
+  const c = (word || '').charCodeAt((word || '').length - 1);
+  const hasJong = c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
+  return hasJong ? withJong : noJong;
+}
 const CAFE_LINES = [
   (d) => `${d} 한 그릇 부탁드려요!`,
-  (d) => `오늘은 ${d}가 당기네요 😋`,
+  (d) => josa(d, `오늘은 ${d}이 당기네요 😋`, `오늘은 ${d}가 당기네요 😋`),   // 문장을 통째로 갈라야 영어 번역에 조사가 안 남는다
   (d) => `${d}, 여기 향이 제일 좋더라고요.`,
   (d) => `기다렸어요! ${d} 주세요.`,
 ];
@@ -3259,7 +3333,7 @@ async function ensureCafeGuests() {
     const guests = await cafeGuestFetcher({
       date: today, count: CAFE_ORDERS, weather: WEATHER, phase: playerPhase(),
       recipes: cafeMenu().map(r => ({ id: r.id, name: r.name, ico: r.ico, cost: { ...r.cost } })),
-      npcs: NPCS.filter(n => !n.daily).map(n => ({ id: n.id, name: n.name, emoji: n.emoji })),
+      npcs: CAFE_GUESTS.map(n => ({ id: n.id, name: n.name, emoji: n.emoji })),   // ☕ 손님은 마을 주민이 아니라 별도 캐스트
     });
     if (Array.isArray(guests) && guests.length) {
       cafeGuestCache = { date: today, guests };
@@ -3274,14 +3348,14 @@ async function ensureCafeGuests() {
 // 🥚 달걀 요리는 닭장을 지어야 만들 수 있으므로, 미보유 시 메뉴에서 제외(막히는 주문 방지)
 function cafeMenu() { return RECIPES.filter(r => !r.cost.egg || gameState.coop.built); }
 
-// 로컬 기본 손님 — 날짜 시드라 하루 종일 고정, 자정에 새 손님
+// 로컬 기본 손님 — 날짜 시드라 하루 종일 고정, 자정에 새 손님.
+//   캐스트 8명 > 하루 손님 4명이라 splice 만으로 **같은 손님이 두 자리에 앉는 일이 없다**.
 function localCafeGuests() {
-  const pool = NPCS.filter(n => !n.daily);
   const menu = cafeMenu();
-  const avail = [...pool];
+  const avail = [...CAFE_GUESTS];
   return Array.from({ length: CAFE_ORDERS }, (_, i) => {
     // 주문마다 독립된 날짜 해시 — LCG를 이어 돌리면 하위 비트 주기가 짧아 전부 같은 요리가 뽑혔었음
-    const n = avail.length ? avail.splice(dateHash('cafe:npc:' + i) % avail.length, 1)[0] : pool[i % pool.length];
+    const n = avail.splice(dateHash('cafe:npc:' + i) % avail.length, 1)[0];
     const r = menu[dateHash('cafe:menu:' + i) % menu.length];
     return {
       id: n.id, name: n.name, emoji: n.emoji, color: n.color, hat: n.hat, recipeId: r.id,
@@ -3298,15 +3372,18 @@ function cafeOrders() {
   if (st.date !== today) { st.date = today; st.done = []; st.bonus = false; }   // 새 날 → 주문 리셋
   const menu = cafeMenu();
   const raw = (cafeGuestCache?.date === today ? cafeGuestCache.guests : localCafeGuests()).slice(0, CAFE_ORDERS);
+  const used = new Set();                                   // 같은 손님이 두 자리에 앉지 않게(외부 생성기가 중복을 줄 수 있다)
   return raw.map((g, i) => {
     // 🥚 오믈렛처럼 아직 못 만드는 메뉴를 주문했으면 만들 수 있는 메뉴로 대체
     const recipe = menu.find(r => r.id === g.recipeId) || menu[i % menu.length];
-    // 외형(이름·이모지·색·모자)은 항상 게임의 주민 정보가 기준.
+    // 외형(이름·이모지·색·귀·소품)은 항상 게임의 손님 캐스트가 기준.
     // 외부 생성기(Gemini)는 id·주문·대사만 주면 되고, 나머지는 여기서 채운다.
-    const base = NPCS.find(n => n.id === g.id) || {};
+    let base = cafeGuestDef(g.id);
+    if (!base || used.has(base.id)) base = CAFE_GUESTS.find(c => !used.has(c.id)) || CAFE_GUESTS[i % CAFE_GUESTS.length];
+    used.add(base.id);
     return {
-      i, id: g.id || ('guest' + i), name: g.name || base.name || '손님', emoji: g.emoji || base.emoji || '🙂',
-      color: g.color ?? base.color ?? 0xc9c0aa, hat: g.hat ?? base.hat ?? 0xe9c47a, recipe,
+      i, id: base.id, name: base.name, emoji: base.emoji,
+      color: base.color, hat: base.hat, ear: base.ear, acc: base.acc, recipe,
       line: g.line || CAFE_LINES[0](recipe.name), thanks: g.thanks || CAFE_THANKS[0],
       done: st.done.includes(i),
     };
@@ -3447,193 +3524,259 @@ function spawnCafeGate() {
 function buildCafeHall() {
   const g = new THREE.Group(); g.position.copy(CAFE);
   const H = CAFE_HALF;
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(H * 2, 0.2, H * 2), woodMat(6, 6, 0xd9b98a));
-  floor.position.y = 0.05; floor.receiveShadow = true; g.add(floor);
-  const rug = new THREE.Mesh(new THREE.CircleGeometry(3.4, 28), clayMat(0xd08a7a, false));
-  rug.geometry.rotateX(-Math.PI / 2); rug.position.set(0, 0.16, 1.5); g.add(rug);
-  // 문 밖 현관 데크 — 카메라가 홀 남쪽에 있어, 바닥이 없으면 화면 아래가 허공으로 크게 비어 보임
+  // ⚡ 드로우콜 — 홀은 한 번 지으면 안 움직이는 정적 실내인데, 예전엔 파츠를 전부 따로 Mesh 로 뒀다
+  //    (테이블 1세트가 14메시 × 4세트 + 컵 7 + 펜던트 9 …). ☕카페 외관과 같은 수법으로
+  //    **색을 먼저 몇 가지로 묶고** 그 재질별로 지오메트리를 합친다 → 메시 수 = 재질 수.
+  //    병합 예외는 둘 — 밤/낮으로 밝기가 바뀌는 창유리, 캔버스 글자 간판.
+  const MATS = {
+    floor:  woodMat(6, 6, 0xd9b98a),     // 바닥
+    yard:   clayMat(PAL.ground, false),  // 앞마당 잔디
+    stone:  clayMat(0xcfc7b0, false),    // 디딤돌
+    wall:   clayMat(0xf3e2c8, false),    // 벽
+    wood:   woodMat(4, 1, 0xb5834f),     // 카운터 몸체·선반
+    light:  woodMat(4, 1, 0xe0c398),     // 카운터 상판
+    table:  woodMat(1, 1, 0xe4c79c),     // 테이블 상판
+    chair:  woodMat(1, 1, 0xc9a06a),     // 의자
+    leg:    clayMat(0x8a6a4a),           // 다리(테이블·의자 공용)
+    green:  clayMat(0x8fd6a0),           // 덤불·화초
+    pot:    clayMat(0xc98a6a, false),    // 화분
+    dark:   clayMat(0x5a4a40, false),    // 커피 머신·주전자·전등 코드
+    rug:    clayMat(0xd08a7a, false),    // 러그(펜던트 갓과 색이 달라 합치지 않는다 — 합치면 바닥 색이 바뀐다)
+    shade:  clayMat(0xe8a07a, false),    // 펜던트 갓
+    cup:    clayMat(0xfff2e0, false),    // 컵
+  };
+  const parts = new Map();
+  const add = (k, geo) => { const a = parts.get(k); a ? a.push(geo) : parts.set(k, [geo]); };
+  const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+  const cyl = (rt, rb, h, seg, x, y, z) => new THREE.CylinderGeometry(rt, rb, h, seg).translate(x, y, z);
+
+  add('floor', box(H * 2, 0.2, H * 2, 0, 0.05, 0));
+  add('rug', new THREE.CircleGeometry(3.4, 28).rotateX(-Math.PI / 2).translate(0, 0.16, 1.5));
+
   // ── 문 밖(카페 앞마당) ────────────────────────────────────
   //  장식이 아니라 카메라 때문에 반드시 있어야 하는 바닥이다. 카메라는 플레이어보다
   //  16 뒤·높이 14(세로 화각 42°)에 있어서, 남쪽 문 앞에 섰을 때 화면 맨 아래가
   //  벽 너머 7.1 유닛까지 비춘다. 바닥이 없으면 그만큼 안개색 허공이 뜬다.
-  //  나무 데크로 깔았더니 "왜 있는지 모를 빈 마루"로 보여서, 마을과 같은 잔디 +
-  //  현관 디딤돌 길로 바꿔 "문 밖 앞마당"으로 자연스럽게 읽히게 했다.
   const YARD_D = 9;
-  const yard = new THREE.Mesh(new THREE.BoxGeometry(H * 2 + 8, 0.14, YARD_D), clayMat(PAL.ground, false));
-  yard.position.set(0, 0.03, H + YARD_D / 2); yard.receiveShadow = true; g.add(yard);
-  for (let i = 0; i < 5; i++) {   // 문 → 남쪽으로 이어지는 디딤돌
-    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 8), clayMat(0xcfc7b0, false));
-    st.position.set(i % 2 ? 0.4 : -0.4, 0.12, H + 1.2 + i * 1.6); g.add(st);
+  add('yard', box(H * 2 + 8, 0.14, YARD_D, 0, 0.03, H + YARD_D / 2));
+  for (let i = 0; i < 5; i++) add('stone', cyl(0.5, 0.5, 0.08, 8, i % 2 ? 0.4 : -0.4, 0.12, H + 1.2 + i * 1.6));   // 현관 디딤돌
+  for (const [bx, bz, s] of [[-4.2, 2.0, 0.6], [4.4, 2.4, 0.5], [-7.0, 5.2, 0.65], [6.6, 5.6, 0.55], [-2.0, 7.4, 0.45]])
+    add('green', new THREE.IcosahedronGeometry(s, 0).translate(bx, s * 0.85, H + bz));             // 앞마당 덤불
+  for (const px of [-2.4, 2.4]) {                                                                  // 문 옆 화분
+    add('pot', cyl(0.34, 0.26, 0.5, 10, px, 0.37, H + 1.0));
+    add('green', new THREE.IcosahedronGeometry(0.5, 0).translate(px, 0.95, H + 1.0));
   }
-  [[-4.2, 2.0, 0.6], [4.4, 2.4, 0.5], [-7.0, 5.2, 0.65], [6.6, 5.6, 0.55], [-2.0, 7.4, 0.45]]
-    .forEach(([bx, bz, s]) => {   // 앞마당 덤불
-      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), clayMat(0x8fd6a0));
-      b.position.set(bx, s * 0.85, H + bz); b.castShadow = true; g.add(b);
-    });
-  [-2.4, 2.4].forEach(px => {   // 문 옆 화분
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.26, 0.5, 10), clayMat(0xc98a6a, false));
-    p.position.set(px, 0.37, H + 1.0); p.castShadow = true; g.add(p);
-    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), clayMat(0x8fd6a0));
-    b.position.set(px, 0.95, H + 1.0); b.castShadow = true; g.add(b);
-  });
+
   // 벽 4면. 카메라가 있는 남쪽만 낮은 반벽 — 안쪽이 가려지지 않게(가운데는 출입구)
-  const wallMat = clayMat(0xf3e2c8, false);
-  const wall = (w, d, x, z, h = 3.4) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat); m.position.set(x, h / 2, z); m.receiveShadow = true; g.add(m); };
+  const wall = (w, d, x, z, h = 3.4) => add('wall', box(w, h, d, x, h / 2, z));
   wall(H * 2, 0.4, 0, -H);
   wall(0.4, H * 2, -H, 0); wall(0.4, H * 2, H, 0);
   wall(H - 1.4, 0.4, -(H + 1.4) / 2, H, 1.0); wall(H - 1.4, 0.4, (H + 1.4) / 2, H, 1.0);
-  // 카운터(북쪽) + 뒷선반 + 커피 머신
-  const counter = new THREE.Mesh(new THREE.BoxGeometry(9, 1.05, 1.0), woodMat(4, 1, 0xb5834f));
-  counter.position.set(0, 0.55, -H + 2.2); counter.castShadow = true; g.add(counter);
-  const ctop = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.12, 1.3), woodMat(4, 1, 0xe0c398));
-  ctop.position.set(0, 1.14, -H + 2.2); g.add(ctop);
-  const shelf = new THREE.Mesh(new THREE.BoxGeometry(8, 0.14, 0.5), woodMat(3, 1, 0xb5834f));
-  shelf.position.set(0, 1.9, -H + 0.7); g.add(shelf);
-  for (let i = 0; i < 7; i++) {
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.11, 0.26, 9), clayMat([0xfff2e0, 0xe8a07a, 0x9ad0c0][i % 3], false));
-    cup.position.set(-3 + i, 2.1, -H + 0.7); g.add(cup);
-  }
-  const machine = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 0.6), clayMat(0x7a6a60, false));
-  machine.position.set(3.2, 1.55, -H + 2.2); machine.castShadow = true; g.add(machine);
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.3, 10), clayMat(0x3a2a24, false));
-  pot.position.set(-3.2, 1.35, -H + 2.2); g.add(pot);
+
+  // 카운터(북쪽) + 뒷선반 + 커피 머신 + 컵
+  add('wood', box(9, 1.05, 1.0, 0, 0.55, -H + 2.2));
+  add('light', box(9.4, 0.12, 1.3, 0, 1.14, -H + 2.2));
+  add('wood', box(8, 0.14, 0.5, 0, 1.9, -H + 0.7));
+  for (let i = 0; i < 7; i++) add('cup', cyl(0.14, 0.11, 0.26, 9, -3 + i, 2.1, -H + 0.7));
+  add('dark', box(1.0, 0.8, 0.6, 3.2, 1.55, -H + 2.2));          // 커피 머신
+  add('dark', cyl(0.22, 0.18, 0.3, 10, -3.2, 1.35, -H + 2.2));   // 주전자
+
   // 테이블 4세트(좌석 좌표와 짝) + 의자 두 개씩
-  CAFE_SEATS.forEach(([sx, sz]) => {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.15, 0.68, 9), clayMat(0x8a6a4a));
-    leg.position.set(sx, 0.44, sz); g.add(leg);
-    const tt = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.12, 18), woodMat(1, 1, 0xe4c79c));
-    tt.position.set(sx, 0.83, sz); tt.castShadow = true; g.add(tt);
-    [1.5, -1.5].forEach(cz => {
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.1, 0.62), woodMat(1, 1, 0xc9a06a));
-      seat.position.set(sx, 0.5, sz + cz); seat.castShadow = true; g.add(seat);
-      const back = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.6, 0.09), woodMat(1, 1, 0xc9a06a));
-      back.position.set(sx, 0.8, sz + cz + (cz > 0 ? 0.28 : -0.28)); g.add(back);
-      [-0.24, 0.24].forEach(ox => [-0.24, 0.24].forEach(oz => {
-        const l = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), clayMat(0x8a6a4a));
-        l.position.set(sx + ox, 0.25, sz + cz + oz); g.add(l);
-      }));
-    });
-  });
-  // 창문 + 화분
-  [[-H + 0.3, -4], [-H + 0.3, 4], [H - 0.3, -4], [H - 0.3, 4]].forEach(([wx, wz]) => {
-    const wm = new THREE.MeshStandardMaterial({ color: 0xdff0ff, emissive: 0xffd9a0, emissiveIntensity: 0.25, roughness: 0.4 });
-    const win = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.5, 2.2), wm);
-    win.position.set(wx, 1.9, wz); g.add(win);
-  });
-  [[-H + 1.4, H - 1.6], [H - 1.4, H - 1.6], [-H + 1.4, -H + 1.4]].forEach(([px, pz]) => {
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.26, 0.5, 10), clayMat(0xc98a6a, false));
-    p.position.set(px, 0.3, pz); p.castShadow = true; g.add(p);
-    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0), clayMat(0x8fd6a0));
-    b.position.set(px, 0.95, pz); b.castShadow = true; g.add(b);
-  });
-  // 📋 주문판(칠판) — 오늘의 주문 현황을 한눈에
-  const bpost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.6, 6), woodMat(1, 1));
-  bpost.position.set(CAFE_BOARD[0], 0.8, CAFE_BOARD[1]); g.add(bpost);
+  for (const [sx, sz] of CAFE_SEATS) {
+    add('leg', cyl(0.11, 0.15, 0.68, 9, sx, 0.44, sz));
+    add('table', cyl(0.85, 0.85, 0.12, 18, sx, 0.83, sz));
+    for (const cz of [1.5, -1.5]) {
+      add('chair', box(0.62, 0.1, 0.62, sx, 0.5, sz + cz));
+      add('chair', box(0.62, 0.6, 0.09, sx, 0.8, sz + cz + (cz > 0 ? 0.28 : -0.28)));
+      for (const ox of [-0.24, 0.24]) for (const oz of [-0.24, 0.24])
+        add('leg', box(0.08, 0.5, 0.08, sx + ox, 0.25, sz + cz + oz));
+    }
+  }
+
+  // 화분(홀 안)
+  const POTS = [[-H + 1.4, H - 1.6], [H - 1.4, H - 1.6], [-H + 1.4, -H + 1.4]];
+  for (const [px, pz] of POTS) {
+    add('pot', cyl(0.34, 0.26, 0.5, 10, px, 0.3, pz));
+    add('green', new THREE.IcosahedronGeometry(0.55, 0).translate(px, 0.95, pz));
+  }
+
+  // 📋 주문판(칠판) 기둥 · 펜던트 등의 코드와 갓
+  add('leg', cyl(0.08, 0.1, 1.6, 6, CAFE_BOARD[0], 0.8, CAFE_BOARD[1]));
+  const LAMPS = [[-5.5, 0], [0, -3], [5.5, 0]];
+  for (const [lx, lz] of LAMPS) {
+    add('dark', cyl(0.02, 0.02, 0.9, 5, lx, 3.0, lz));
+    add('shade', new THREE.ConeGeometry(0.42, 0.4, 12).translate(lx, 2.45, lz));
+  }
+
+  // 재질별로 한 덩어리씩 — 여기서 나오는 메시 수가 곧 홀의 드로우콜 수다
+  for (const [k, geos] of parts) {
+    const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+
+  // ── 병합 예외 ──
+  // 창문: 밤에 emissive 가 오르는 재질이라 한 재질에 묶되, 네 장은 지오메트리로 합친다(1콜)
+  const winMat = new THREE.MeshStandardMaterial({ color: 0xdff0ff, emissive: 0xffd9a0, emissiveIntensity: 0.25, roughness: 0.4 });
+  const wins = [[-H + 0.3, -4], [-H + 0.3, 4], [H - 0.3, -4], [H - 0.3, 4]]
+    .map(([wx, wz]) => new THREE.BoxGeometry(0.12, 1.5, 2.2).translate(wx, 1.9, wz));
+  g.add(new THREE.Mesh(mergeGeos(wins), winMat));
+  // 전구: MeshBasic 이라 위 재질들과 못 섞인다. 셋을 합쳐 1콜로
+  const bulbs = LAMPS.map(([lx, lz]) => new THREE.SphereGeometry(0.13, 8, 8).translate(lx, 2.25, lz));
+  g.add(new THREE.Mesh(mergeGeos(bulbs), new THREE.MeshBasicMaterial({ color: 0xfff0c8 })));
+  // 💡 따뜻한 펜던트 빛 — 예전엔 등마다 PointLight 를 달았는데(3개), 실내 전체를 덮는 밝기라
+  //    한 개로 줄여도 눈에 차이가 없고 모바일 셰이더 비용만 3분의 1이 된다.
+  const hallLight = new THREE.PointLight(0xffd9a0, 5.2, 34, 1.2); hallLight.position.set(0, 2.6, -1); g.add(hallLight);
+  // 캔버스 글자판(합치면 옆면 재질이 붙어 콜이 늘어난다)
   const board = makeSignBoard('📋 주문판'); board.scale.setScalar(0.6);
   board.position.set(CAFE_BOARD[0], 1.75, CAFE_BOARD[1] + 0.05); g.add(board);
   // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
   g.add(makeSignpost('🚪 나가기', 1.7, H - 0.55));
-  // 따뜻한 펜던트 등 3개(그룹 안이라 홀에 있을 때만 씬 조명에 잡힘)
-  [[-5.5, 0], [0, -3], [5.5, 0]].forEach(([lx, lz]) => {
-    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), clayMat(0x6a5a4a));
-    cord.position.set(lx, 3.0, lz); g.add(cord);
-    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.4, 12), clayMat(0xe8a07a, false));
-    shade.position.set(lx, 2.45, lz); g.add(shade);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfff0c8 }));
-    bulb.position.set(lx, 2.25, lz); g.add(bulb);
-    const light = new THREE.PointLight(0xffd9a0, 2.6, 20, 1.3); light.position.set(lx, 2.2, lz); g.add(light);
-  });
+
   // 🚧 홀 안 가구 충돌 — 카운터를 뚫고 들어가 서 있던 문제
   solidBox(CAFE.x - 4.75, CAFE.z - H + 1.5, CAFE.x + 4.75, CAFE.z - H + 2.9);   // 카운터
   CAFE_SEATS.forEach(([sx, sz]) => solidCircle(CAFE.x + sx, CAFE.z + sz, 0.9)); // 테이블
-  [[-H + 1.4, H - 1.6], [H - 1.4, H - 1.6], [-H + 1.4, -H + 1.4]]
-    .forEach(([px, pz]) => solidCircle(CAFE.x + px, CAFE.z + pz, 0.4));         // 화분
+  POTS.forEach(([px, pz]) => solidCircle(CAFE.x + px, CAFE.z + pz, 0.4));       // 화분
   solidCircle(CAFE.x + CAFE_BOARD[0], CAFE.z + CAFE_BOARD[1], 0.3);             // 주문판 기둥(읽기 판정 2.2 는 그대로 닿음)
   scene.add(g); cafeInGroup = g; cafeInGroup.visible = false;   // 홀에 있을 때만 표시
   setFogExempt(g, true);                                         // 홀은 안개 밖(바깥 풍경만 안개)
   refreshCafeGuests();
 }
 
-// 자리에 앉은 손님 — 머리 위에 "주문한 요리" 말풍선을 띄움
-function makeCafeGuest(o) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.44, 1), clayMat(o.color, false));
-  body.position.y = 0.72; body.castShadow = true; g.add(body);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.33, 1), clayMat(0xffe0c0, false));
-  head.position.y = 1.24; head.castShadow = true; g.add(head);
-  // 손님은 마을 주민 그 사람이다 — 마을에선 판다·올빼미인데 카페에선 공용 챙모자 블롭으로 나오면
-  //   "같은 사람" 이라는 게 끊긴다. 주민 실루엣을 그대로 얹되 손님 몸 비율(0.868배·+0.242)로 맞춘다.
-  const def = NPCS.find(n => n.id === o.id);
-  if (def) {
-    const look = new THREE.Group();
-    buildNPCLook(look, def);
-    look.scale.setScalar(0.868); look.position.y = 0.242;
-    g.add(look);
-    const tag = makeNameTag(def);                       // 🏷️ 주문판의 이름 ↔ 자리 매칭(서빙은 사람을 맞혀야 한다)
-    tag.position.y = new THREE.Box3().setFromObject(g).max.y + 0.28;   // 모자 위 — 주민과 같은 규칙
-    tag.visible = true; tag.material.opacity = 1;
-    g.add(tag);
-    g.userData.tagY = tag.position.y;
-  } else {
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.055, 12), clayMat(o.hat));
-    brim.position.y = 1.46; g.add(brim);
-    const top = new THREE.Mesh(new THREE.SphereGeometry(0.23, 10, 8), clayMat(o.hat));
-    top.position.y = 1.56; g.add(top);
+// ── ☕ 카페 손님 3D — 캐스트 8명을 **한 번만 만들어 두고 계속 재사용**한다 ──
+//    예전엔 서빙 1회마다 손님을 통째로 새로 만들고 disposeTree() 로 버렸는데,
+//    그 때문에 손님에 공유 지오메트리·재질을 쓸 수 없었다(같이 해제돼 씬이 깨진다).
+//    캐스트가 8명으로 고정이라 캐시가 무한정 커지지 않으니, 만들어 두고 visible 로만 여닫는다.
+//    → dispose 가 사라져 **재질별 지오메트리 병합**을 손님에게도 쓸 수 있다(1명 15메시 → 4메시).
+const cafeGuestCastCache = new Map();   // 손님 id → { group, sprite, ctx, tex, tagY }
+
+// 귀 모양 — 실루엣의 절반은 귀가 만든다(이름표를 못 읽는 거리에서 누군지 가르는 단서)
+function guestEarGeos(ear) {
+  const g = [];
+  const put = (geo, x, y, z, rz = 0) => { if (rz) geo.rotateZ(rz); g.push(geo.translate(x, y, z)); };
+  for (const s of [-1, 1]) {
+    if (ear === 'point')      put(new THREE.ConeGeometry(0.13, 0.3, 7),            s * 0.19, 1.52, 0, s * 0.22);
+    else if (ear === 'round') put(new THREE.SphereGeometry(0.13, 9, 7),            s * 0.24, 1.44, 0);
+    else if (ear === 'long')  put(new THREE.CapsuleGeometry(0.075, 0.34, 4, 8),    s * 0.15, 1.66, 0, s * 0.16);
+    else                      put(new THREE.SphereGeometry(0.075, 8, 6),           s * 0.25, 1.38, 0);   // tiny
   }
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
-  [-0.11, 0.11].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeMat); e.position.set(ex, 1.27, 0.28); g.add(e); });
   return g;
 }
 
-// 주문 말풍선(캔버스 스프라이트) — 주문한 요리 아이콘을 크게
-function cafeGuestSprite(o) {
-  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
-  const c = cv.getContext('2d');
+// 소품 — 귀와 짝지어 "이 색 + 이 실루엣 = 이 손님" 이 되게. 재질키(body/skin/accent/dark)별로 담는다
+function guestAccGeos(acc, add) {
+  const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+  if (acc === 'scarf') {
+    add('accent', new THREE.TorusGeometry(0.3, 0.075, 7, 14).rotateX(Math.PI / 2).translate(0, 1.02, 0));
+    add('accent', box(0.16, 0.34, 0.1, 0.13, 0.85, 0.24));                        // 흘러내린 자락
+  } else if (acc === 'beanie') {
+    add('accent', new THREE.SphereGeometry(0.35, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 1.3, 0));
+    add('accent', new THREE.TorusGeometry(0.34, 0.055, 7, 16).rotateX(Math.PI / 2).translate(0, 1.3, 0));
+    add('accent', new THREE.SphereGeometry(0.08, 8, 6).translate(0, 1.68, 0));    // 방울
+  } else if (acc === 'ribbon') {
+    for (const s of [-1, 1]) add('accent', new THREE.SphereGeometry(0.11, 9, 7).scale(1, 0.72, 0.6).translate(s * 0.15, 1.56, 0));
+    add('accent', new THREE.SphereGeometry(0.055, 8, 6).translate(0, 1.56, 0));
+  } else if (acc === 'glasses') {
+    for (const s of [-1, 1]) add('dark', new THREE.TorusGeometry(0.1, 0.022, 6, 14).translate(s * 0.12, 1.27, 0.29));
+    add('dark', box(0.1, 0.02, 0.02, 0, 1.27, 0.3));
+  } else if (acc === 'antler') {
+    for (const s of [-1, 1]) {
+      add('accent', new THREE.CylinderGeometry(0.03, 0.04, 0.34, 5).translate(s * 0.17, 1.6, -0.02));
+      add('accent', new THREE.CylinderGeometry(0.024, 0.028, 0.2, 5).rotateZ(s * 0.7).translate(s * 0.27, 1.74, -0.02));
+    }
+  } else if (acc === 'cap') {
+    add('accent', new THREE.SphereGeometry(0.34, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 1.32, 0));
+    add('accent', box(0.44, 0.05, 0.3, 0, 1.33, 0.3));                            // 챙
+  } else if (acc === 'spike') {
+    for (let i = 0; i < 6; i++) {
+      const a = -0.9 + i * 0.36;
+      add('dark', new THREE.ConeGeometry(0.06, 0.22, 5).rotateX(-0.9).translate(Math.sin(a) * 0.3, 1.0 + Math.cos(a) * 0.12, -0.3));
+    }
+  } else {                                                                        // flower
+    add('accent', new THREE.SphereGeometry(0.075, 8, 6).translate(0.2, 1.47, 0.12));
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      add('accent', new THREE.SphereGeometry(0.055, 7, 6).translate(0.2 + Math.cos(a) * 0.1, 1.47 + Math.sin(a) * 0.1, 0.1));
+    }
+  }
+}
+
+// 손님 한 명 — 재질 4가지(몸·얼굴·소품·짙은색)로 병합해 메시 4개 + 눈 1개로 끝낸다
+function buildCafeGuestCast(def) {
+  const g = new THREE.Group();
+  const MATS = {
+    body:   clayMat(def.color, false),
+    skin:   clayMat(0xffe0c0, false),
+    accent: clayMat(def.hat, false),
+    dark:   clayMat(0x3a2f2a, false),
+  };
+  const parts = new Map();
+  const add = (k, geo) => { const a = parts.get(k); a ? a.push(geo) : parts.set(k, [geo]); };
+  add('body', new THREE.IcosahedronGeometry(0.44, 1).translate(0, 0.72, 0));       // 몸
+  add('skin', new THREE.IcosahedronGeometry(0.33, 1).translate(0, 1.24, 0));       // 머리
+  guestEarGeos(def.ear).forEach(geo => add('body', geo));                          // 귀는 몸 색(종 구분)
+  guestAccGeos(def.acc, add);
+  for (const ex of [-0.11, 0.11]) add('dark', new THREE.SphereGeometry(0.045, 8, 8).translate(ex, 1.27, 0.28));  // 눈
+  for (const [k, geos] of parts) {
+    const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
+    m.castShadow = true; g.add(m);
+  }
+  const tag = makeNameTag(def);                       // 🏷️ 주문판의 이름 ↔ 자리 매칭(서빙은 사람을 맞혀야 한다)
+  const tagY = new THREE.Box3().setFromObject(g).max.y + 0.28;
+  tag.position.y = tagY; tag.visible = true; tag.material.opacity = 1;
+  g.add(tag);
+  return { group: g, tagY };
+}
+
+// 주문 말풍선 — 캔버스는 손님마다 하나만 두고 주문이 바뀔 때 **다시 그리기만** 한다(텍스처 재생성 없음)
+function paintOrderBubble(ctx, ico) {
+  const c = ctx.c;
+  c.clearRect(0, 0, 128, 128);
   c.fillStyle = 'rgba(255,255,255,0.94)'; roundRect(c, 10, 8, 108, 92, 22); c.fill();
   c.beginPath(); c.moveTo(54, 98); c.lineTo(74, 98); c.lineTo(62, 120); c.closePath(); c.fill();
   c.font = '58px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(o.recipe.ico, 64, 56);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(1.0, 1.0, 1.0); sp.position.y = 2.62;   // 🏷️ 이름표(1.60~2.12) 위 — 주문 말풍선이 이름을 덮지 않게
-  return sp;
+  c.fillStyle = '#000';
+  c.fillText(ico, 64, 56);
+  ctx.tex.needsUpdate = true;
+}
+function cafeGuestCast(def) {
+  let cached = cafeGuestCastCache.get(def.id);
+  if (cached) return cached;
+  const { group, tagY } = buildCafeGuestCast(def);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const ctx = { c: cv.getContext('2d') };
+  ctx.tex = new THREE.CanvasTexture(cv);
+  ctx.tex.minFilter = THREE.LinearFilter; ctx.tex.magFilter = THREE.LinearFilter; ctx.tex.generateMipmaps = false;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: ctx.tex, transparent: true, depthWrite: false }));
+  sprite.scale.set(1.0, 1.0, 1.0);
+  sprite.position.y = tagY + 0.76;                    // 🏷️ 이름표 위 — 주문 말풍선이 이름을 덮지 않게
+  group.add(sprite);
+  cached = { group, sprite, ctx, tagY };
+  cafeGuestCastCache.set(def.id, cached);
+  return cached;
 }
 
-// 지운 그룹의 geometry·material·texture 를 되돌려준다.
-//   손님은 서빙 1회마다 통째로 다시 만들어지는데(refreshCafeGuests), 손님 하나가
-//   메시 십수 개 + 이름표 캔버스 텍스처를 들고 있어 안 버리면 세션 내내 쌓인다.
-function disposeTree(root) {
-  root.traverse(o => {
-    o.geometry?.dispose?.();
-    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
-    for (const m of mats) { m.map?.dispose?.(); m.dispose?.(); }
-  });
-}
-
-// 오늘의 주문에 맞춰 홀의 손님을 다시 배치(입장·서빙·날짜 변경 후 호출)
+// 오늘의 주문에 맞춰 홀의 손님을 다시 배치(입장·서빙·날짜 변경 후 호출).
+//   캐스트는 버리지 않고 홀에서 떼어 두었다가 다시 붙인다 → GPU 자원이 쌓이지 않는다.
 function refreshCafeGuests() {
   if (!cafeInGroup) return;
   while (cafeGuestObjs.length) {
     const g = cafeGuestObjs.pop();
-    cafeInGroup.remove(g.group);
-    disposeTree(g.group);           // GPU 자원 회수 — 서빙 1회마다 다시 그려서 안 버리면 계속 쌓인다
+    cafeInGroup.remove(g.group);    // 버리지 않고 떼어만 둔다(캐스트 캐시가 계속 들고 있다)
     removeSolid(g.collider);        // 🚧 떠난 손님 자리에 안 보이는 벽이 남지 않게
   }
   cafeOrders().forEach((o, n) => {
     if (o.done) return;                                   // 서빙 끝난 손님은 이미 떠남
+    const def = cafeGuestDef(o.id); if (!def) return;
     const [sx, sz] = CAFE_SEATS[n % CAFE_SEATS.length];
-    const group = makeCafeGuest(o);
+    const { group, sprite, ctx, tagY } = cafeGuestCast(def);
+    paintOrderBubble(ctx, o.recipe.ico);                   // 주문이 바뀌면 말풍선만 다시 그린다
     group.position.set(sx, 0.16, sz + 1.5);               // 테이블 남쪽 의자에 앉음(의자 높이만큼 올림)
     group.rotation.y = Math.PI;                           // 테이블(북쪽)을 바라봄
-    const sprite = cafeGuestSprite(o);
-    sprite.position.y = (group.userData.tagY ?? 1.86) + 0.76;   // 이름표 바로 위(손님마다 키가 다르다)
-    group.add(sprite);
-    group.userData.spriteY0 = sprite.position.y;
+    sprite.position.y = tagY + 0.76;
     cafeInGroup.add(group); setFogExempt(group, true);   // 손님도 홀과 같이 안개 밖
     // 🚧 손님도 통과 못 함(홀 좌표 → 월드 좌표). 서빙 사거리 2.4 엔 영향 없음
     const collider = solidCircle(CAFE.x + sx, CAFE.z + sz + 1.5, NPC_R);
-    cafeGuestObjs.push({ order: o, group, sprite, collider, phase: Math.random() * 6 });
+    cafeGuestObjs.push({ order: o, group, sprite, collider, spriteY0: tagY + 0.76, phase: Math.random() * 6 });
   });
 }
 
@@ -3642,7 +3785,7 @@ function updateCafeGuests(dt, t) {
   if (!atCafe) return;
   for (const g of cafeGuestObjs) {
     g.group.position.y = 0.16 + Math.sin(t * 2 + g.phase) * 0.03;
-    g.sprite.position.y = (g.group.userData.spriteY0 ?? 2.62) + Math.sin(t * 2.6 + g.phase) * 0.08;
+    g.sprite.position.y = (g.spriteY0 ?? 2.62) + Math.sin(t * 2.6 + g.phase) * 0.08;
   }
 }
 
@@ -3682,46 +3825,89 @@ function exitCafe() {
   Sound.blip(); trackEvent('exit_cafe');                 // [GA4]
 }
 
-// ☕ 서빙 — 손님 앞에서 재료를 소비해 그 자리에서 만들어 냄
+// ☕ 서빙 — 세 갈래로 갈린다:
+//    ① 🧺 찬장에 그 요리가 있으면 → 미니게임 없이 즉시 서빙 (미리 만들어 둔 보람이 여기서 난다)
+//    ② 재료가 있으면 → **손님 앞에서 코스 미니게임** → 끝나면 바로 서빙 (점수가 팁에 붙는다)
+//    ③ 둘 다 없으면 → 부족 안내
+let cafeCooking = null;   // ☕ 지금 카페에서 조리 중인 { guest, recipeId }
+
 function serveCafeGuest(guest) {
   const o = guest?.order; if (!o) return;
   const st = gameState.cafe;
   if (st.done.includes(o.i)) { ui.toast?.('이미 서빙한 손님이에요'); return; }
+
+  const stock = pantryTake(o.recipe.id);                          // ① 찬장에 있으면 꺼내서 바로
+  if (stock) { finishCafeServe(guest, cookTier(stock.score), { fromPantry: true }); return; }
+
   const lack = Object.entries(o.recipe.cost).filter(([k, v]) => (gameState.inventory[k] || 0) < v);
-  if (lack.length) {
+  if (lack.length) {                                              // ③ 재료도 없음
     const need = Object.entries(o.recipe.cost).map(([k, v]) => `${SELL_ICO_G[k] || ''}${RES_LABEL[k] || k} ${gameState.inventory[k] || 0}/${v}`).join(' · ');
     ui.toast?.(`${o.recipe.ico} ${o.recipe.name} 재료가 부족해요 — ${need}`, 3200);
     return;
   }
+  const started = kitchenStart(o.recipe.id, 'cafe');               // ② 그 자리에서 조리
+  if (!started.ok) { ui.toast?.(started.msg || '재료가 부족해요'); return; }
+  cafeCooking = { guest, recipeId: o.recipe.id };
+  ui.startCookCourse?.(started);                                   // index.html 이 코스 미니게임을 연다
+}
+
+// ☕ 카페 조리 완료 — index.html 이 코스 결과를 넘겨준다. 등급을 그대로 서빙에 싣는다
+function cafeCookDone(res = {}) {
+  const c = cafeCooking; cafeCooking = null;
+  if (!c) return { ok: false };
+  const fin = kitchenFinish(c.recipeId, res);                      // 등급·기록·트래킹(요리 도감도 여기서)
+  pendingDish = null;                                              // 손님에게 낸 요리라 먹기/보관 선택은 없다
+  if (!fin.ok) return { ok: false };
+  const tier = cookTier(fin.score);
+  const served = finishCafeServe(c.guest, tier, { fromPantry: false, score: fin.score });
+  return { ok: true, ...fin, cafe: served };
+}
+
+// ☕ 조리 중 그만두기 — 재료는 이미 소비됐으므로(주방과 같은 규칙) 낮은 등급으로라도 서빙해 손해를 막는다
+function cafeCookAbort() {
+  if (!cafeCooking) return;
+  cafeCookDone({ score: 0, abandoned: true });
+}
+
+// ☕ 서빙 정산 — 코인·호감도·기록·연출. 등급이 좋을수록 팁이 붙는다
+function finishCafeServe(guest, tier, { fromPantry = false, score = null } = {}) {
+  const o = guest.order;
+  const st = gameState.cafe;
   const wx = guest.group.position.x + CAFE.x, wz = guest.group.position.z + CAFE.z;
-  for (const k in o.recipe.cost) gameState.inventory[k] -= o.recipe.cost[k];
   doPlayerAction(wx, wz);
-  const pay = CAFE_PAY[o.recipe.id] || 30;
-  giveReward({ coins: pay }, 'cafe_serve', o.recipe.id);          // [원장] 서빙 수입
+  const base = CAFE_PAY[o.recipe.id] || 30;
+  const pay = Math.round(base * tier.mult);                        // 💫 최고의 맛이면 1.5배 — "잘 만들면 더 받는다"
+  giveReward({ coins: pay }, 'cafe_serve', o.recipe.id);           // [원장] 서빙 수입
   st.done.push(o.i);
   st.served = (st.served || 0) + 1;
-  const aff = gameState.affinity[o.id] = (gameState.affinity[o.id] || 0) + 1;   // ❤️ 접객으로도 친해짐
+  const aff = gameState.affinity[o.id] = (gameState.affinity[o.id] || 0) + (tier.id === 'perfect' ? 2 : 1);   // ❤️ 접객으로도 친해짐
   refreshInventoryUI();
   dexDiscover('cook', o.recipe.id);                               // 📖 요리 도감(만들어 낸 셈)
+  dexDiscover('npc', o.id);                                       // 📖 손님 도감 — 대접한 손님이 채워짐
   refreshCollectQuests();                                         // 🦉 데일리 의뢰(진행도는 오늘 서빙한 손님 수에서 읽는다)
   Sound.harvest();
   spawnFloatText(wx, 2.6, wz, `${o.recipe.ico} ${o.thanks}`, '#c9682a');
-  spawnSparkle(wx, 1.6, wz, 16);
+  spawnSparkle(wx, 1.6, wz, tier.id === 'perfect' ? 26 : 16);
   triggerMoment();
   nearCafeGuest = null;
   refreshCafeGuests();                                            // 만족한 손님은 자리를 뜸
-  trackEvent('cafe_serve', { recipe: o.recipe.id, npc: o.id, pay, served_total: st.served, affinity: aff }); // [GA4] 접객 루프 KPI
+  trackEvent('cafe_serve', { recipe: o.recipe.id, npc: o.id, pay, quality: tier.id, score,
+    from_pantry: fromPantry ? 1 : 0, served_total: st.served, affinity: aff });   // [GA4] 접객 루프 KPI
   syncStory();                                                    // 📖 3장(마을의 맛) 진행
-  if (st.done.length >= CAFE_ORDERS && !st.bonus) {               // 🎉 오늘 영업 완주
+  const complete = st.done.length >= CAFE_ORDERS && !st.bonus;
+  if (complete) {                                                 // 🎉 오늘 영업 완주
     st.bonus = true;
     giveReward({ coins: CAFE_BONUS }, 'cafe_bonus', st.date);
     spawnConfetti(player.position.x, 2.4, player.position.z); Sound.complete();
     ui.toast?.(`🎉 오늘 손님을 모두 대접했어요! 보너스 🪙+${CAFE_BONUS} — 내일 새 손님이 와요`, 3400);
     trackEvent('cafe_complete', { served_total: st.served });     // [GA4] 데일리 완주율
   } else {
-    ui.toast?.(`${o.recipe.ico} ${o.name}에게 ${o.recipe.name} 서빙! 🪙+${pay} ❤️${aff}`, 2600);
+    ui.toast?.(fromPantry
+      ? `${o.recipe.ico} ${o.name}에게 🧺 찬장의 ${o.recipe.name} 서빙! ${tier.ico} 🪙+${pay} ❤️${aff}`
+      : `${o.recipe.ico} ${o.name}에게 ${o.recipe.name} 서빙! ${tier.ico} 🪙+${pay} ❤️${aff}`, 2600);
   }
   syncBadges();                                                   // 🏅 바리스타 배지 판정
+  return { pay, tier: tier.id, name: o.name, emoji: o.emoji, thanks: o.thanks, complete, bonus: CAFE_BONUS };
 }
 
 // 홀 안 손님/주문판 근접 판정 — updateDoorInteract 에서 호출. 프롬프트 문구를 돌려줌
@@ -3735,8 +3921,12 @@ function updateCafeInteract() {
   }
   if (nearCafeGuest) {
     const o = nearCafeGuest.order;
+    // 🧺 찬장에 있으면 바로 낼 수 있고, 없으면 재료로 그 자리에서 만든다 — 무엇이 일어날지 프롬프트가 미리 말해 준다
+    const inPantry = pantryHas(o.recipe.id) >= 0;
     const ready = Object.entries(o.recipe.cost).every(([k, v]) => (gameState.inventory[k] || 0) >= v);
-    return `${o.emoji} ${o.name} — ${o.recipe.ico} ${o.recipe.name} ${ready ? '서빙하기' : '(재료 부족)'}`;
+    if (inPantry) return `${o.emoji} ${o.name} — 🧺 ${o.recipe.ico} ${o.recipe.name} 바로 서빙`;
+    if (ready)    return `${o.emoji} ${o.name} — ${o.recipe.ico} ${o.recipe.name} 만들어 서빙`;
+    return `${o.emoji} ${o.name} — ${o.recipe.ico} ${o.recipe.name} (재료 부족)`;
   }
   if (Math.hypot(CAFE_BOARD[0] + CAFE.x - player.position.x, CAFE_BOARD[1] + CAFE.z - player.position.z) < 2.2) {
     nearCafeBoard = true; return '📋 오늘의 주문판';
@@ -6303,30 +6493,96 @@ function buildKitchenSet() {
   g.add(potGroup);
   // 조명 — 세트 전용 따뜻한 불빛(밤에도 아늑하게 보이게)
   const light = new THREE.PointLight(0xffe0b0, 1.15, 14); light.position.set(0.4, 3.4, 2.2); g.add(light);
+  // 🔥 굽기 무대 — 석쇠 팬 + 불꽃. 재료는 mgSceneStart 가 레시피 아이콘으로 얹는다.
+  //    ⚡ 정적 파츠(팬·손잡이·받침)는 재질별로 미리 합쳐 둔다 — 무대는 매 프레임 카메라 고정이라
+  //       드로우콜이 곧 프레임 시간이다.
+  const grillGroup = new THREE.Group();
+  {
+    const dark = clayMat(0x4a4038, false), metal = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.35, metalness: 0.5 });
+    const body = [
+      new THREE.CylinderGeometry(0.7, 0.74, 0.16, 14).translate(0, 1.12, 0.05),           // 화덕 받침(불꽃이 숨을 자리)
+      new THREE.CylinderGeometry(0.62, 0.66, 0.14, 16).translate(0, 1.28, 0.05),          // 팬
+      new THREE.CylinderGeometry(0.055, 0.06, 0.7, 8).rotateZ(Math.PI / 2).translate(0.88, 1.34, 0.05),  // 손잡이
+    ];
+    grillGroup.add(new THREE.Mesh(mergeGeos(body), dark));
+    const bars = [];
+    for (let i = 0; i < 5; i++) bars.push(new THREE.BoxGeometry(1.02, 0.03, 0.05).translate(0, 1.36, -0.25 + i * 0.125));   // 석쇠 살
+    grillGroup.add(new THREE.Mesh(mergeGeos(bars), metal));
+    grillGroup.position.set(0, 0, 0);
+  }
+  const grillFlames = [];
+  // 팬 앞쪽에서 혀를 내미는 불 — 받침에 묻히지 않게 팬 높이보다 살짝 아래, 카메라 쪽으로 당겨 둔다
+  for (let i = 0; i < 3; i++) { const f = emojiSprite('🔥', 0.34); f.position.set(-0.34 + i * 0.34, 1.16, 0.82); grillGroup.add(f); grillFlames.push(f); }
+  const grillFood = new THREE.Group(); grillFood.position.set(0, 1.46, 0.02); grillGroup.add(grillFood);
+  g.add(grillGroup);
+
+  // 🧂 간 맞추기 무대 — 그릇 + 기울어지는 소금통 + 쏟아지는 소금 입자
+  const seasonGroup = new THREE.Group();
+  {
+    const bowlMat = clayMat(0xeae2d4, false);
+    const bowl = [
+      new THREE.SphereGeometry(0.52, 16, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).translate(0, 1.38, 0.05),  // 반구 그릇
+      new THREE.CylinderGeometry(0.24, 0.3, 0.08, 12).translate(0, 0.92, 0.05),                                   // 굽
+    ];
+    seasonGroup.add(new THREE.Mesh(mergeGeos(bowl), bowlMat));
+    const stew = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.04, 16), clayMat(0xe8a763, false));
+    stew.position.set(0, 1.3, 0.05); seasonGroup.add(stew);
+  }
+  const shaker = new THREE.Group();
+  {
+    const mats = clayMat(0xf4f1ea, false);
+    shaker.add(new THREE.Mesh(mergeGeos([
+      new THREE.CylinderGeometry(0.13, 0.15, 0.36, 10).translate(0, 0, 0),
+      new THREE.SphereGeometry(0.13, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.18, 0),
+    ]), mats));
+  }
+  //  그릇 바로 위에 낮게 — 높이 띄우면 클로즈업 카메라(높이 2.55)에서 그릇과 소금통이 화면 위아래로 갈라진다
+  shaker.position.set(0.26, 1.74, 0.05); seasonGroup.add(shaker);
+  const saltBits = [];
+  {
+    const saltMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const saltGeo = new THREE.SphereGeometry(0.022, 5, 4);
+    for (let i = 0; i < 14; i++) {
+      const b = new THREE.Mesh(saltGeo, saltMat); b.visible = false; seasonGroup.add(b); saltBits.push(b);   // 지오메트리·재질 공유(입자 14개가 1콜)
+    }
+  }
+  g.add(seasonGroup);
+
   g.visible = false;
   scene.add(g);
   kset = { group: g, boardGroup, knife, potGroup, soup, flames, bubbles, steam, ladle, foods, light,
-    notes: [], fx: [], knifeT: -1, ladleT: -1, flareT: -1, drop: null, dropT: -1 };
+    grillGroup, grillFlames, grillFood, seasonGroup, shaker, saltBits,
+    notes: [], fx: [], knifeT: -1, ladleT: -1, flareT: -1, drop: null, dropT: -1,
+    flipT: -1, burn: 0, pouring: false, saltT: 0 };
 }
 
-// 미니게임 무대 입장 — 종류별 소품 토글 + 카메라 클로즈업 고정
-function mgSceneStart(type, icos = [], noteN = 0) {
+// 미니게임 무대 입장 — 종류별 소품 토글 + 카메라 클로즈업 고정.
+//   코스 요리라 한 판 안에서 여러 번 불린다(썰기 → 굽기 → 끓이기). 매번 이전 판 소품을 치우고
+//   그 단계의 소품만 켠다. 세트 자체는 한 번만 짓는다.
+function mgSceneStart(type, icos = [], noteN = 0, dishIco = '') {
   buildKitchenSet();
   kset.group.visible = true;
   kset.boardGroup.visible = type === 'chop';
   kset.potGroup.visible = type === 'pot';
+  kset.grillGroup.visible = type === 'grill';
+  kset.seasonGroup.visible = type === 'season';
   // 이전 판 소품 정리
   kset.notes.forEach(n => n.parent?.remove(n)); kset.notes = [];
   kset.fx.forEach(f => f.sp.parent?.remove(f.sp)); kset.fx = [];
-  kset.foods.clear();
+  kset.foods.clear(); kset.grillFood.clear();
   kset.knifeT = -1; kset.ladleT = -1; kset.flareT = -1; kset.dropT = -1;
+  kset.flipT = -1; kset.burn = 0; kset.pouring = false; kset.saltT = 0;
+  kset.saltBits.forEach(b => { b.visible = false; });
   if (kset.drop) { kset.drop.parent?.remove(kset.drop); kset.drop = null; }
   if (type === 'pot') {                                     // 국물 위 재료
     icos.slice(0, 3).forEach((ico, i) => {
       const sp = emojiSprite(ico, 0.3); sp.position.set(-0.18 + i * 0.18, 0.02, 0); sp.userData.ph = i * 1.7;
       kset.foods.add(sp);
     });
-  } else {                                                  // 리듬 노트(도마 앞을 흘러감)
+  } else if (type === 'grill') {                            // 석쇠 위 한 덩이(뒤집을 대상) — 만들고 있는 요리를 보여준다
+    const sp = emojiSprite(dishIco || icos[0] || '🥕', 0.56);
+    kset.grillFood.add(sp);
+  } else if (type === 'chop') {                             // 리듬 노트(도마 앞을 흘러감)
     for (let i = 0; i < noteN; i++) {
       const sp = emojiSprite(icos[i % Math.max(1, icos.length)] || '🥕', 0.44);
       sp.position.set(3.4, 1.24, 0.75); sp.visible = false;
@@ -6336,8 +6592,29 @@ function mgSceneStart(type, icos = [], noteN = 0) {
   mgView = { type };
   applyMgCamera();
 }
+
+// 🔥 굽기 — 뒤집기 연출(재료가 반 바퀴 돌아 다시 앉음). over=true 면 탄 정도가 한 단계 짙어진다
+function mgGrillFlip(judge, over = false) {
+  if (!kset) return;
+  kset.flipT = 0;
+  if (over) kset.burn = Math.min(1, kset.burn + 0.45);
+  kset.flareT = 0.4;
+  if (judge !== 'miss') spawnSparkle(KSET.x, KSET.y + 1.7, KSET.z + 0.2, judge === 'perfect' ? 14 : 7);
+}
+// 🧂 간 맞추기 — 누르고 있는 동안 소금통이 기울며 소금이 쏟아진다
+function mgSeasonPour(on) { if (kset) kset.pouring = !!on; }
+function mgSeasonDone(judge) {
+  if (!kset) return;
+  kset.pouring = false;
+  if (judge !== 'miss') spawnSparkle(KSET.x, KSET.y + 1.6, KSET.z + 0.2, judge === 'perfect' ? 16 : 8);
+}
+// 무대 카메라 — 고정 좌표로 두면 **세로 화면에서 소품이 화면 밖으로 넘친다**.
+//   three 의 fov 는 세로 화각이라 폰 세로(aspect ≈ 0.46)에선 가로만 좁아진다 →
+//   냄비·그릇·팬이 화면 폭을 꽉 채우고 소금통·불꽃이 잘렸다. 가로 화각이 좁아진 만큼 뒤로 뺀다.
+//   기준 aspect 1.55(데스크톱)에서 k=1 이라 가로 화면 그림은 예전 그대로다.
 function applyMgCamera() {
-  camera.position.set(KSET.x + 0.15, KSET.y + 2.55, KSET.z + 3.55);
+  const k = Math.min(1.75, Math.max(1, 1.55 / (camera.aspect || 1.55)));
+  camera.position.set(KSET.x + 0.15 * k, KSET.y + 1.15 + 1.4 * k, KSET.z + 3.55 * k);
   camera.lookAt(KSET.x, KSET.y + 1.15, KSET.z - 0.3);
 }
 function mgSceneEnd() {
@@ -6441,6 +6718,41 @@ function updateMgScene(dt, t) {
     f.vy -= 6 * dt; f.life -= dt;
     f.sp.material.opacity = Math.max(0, f.life / 0.55);
     if (f.life <= 0) { f.sp.parent?.remove(f.sp); kset.fx.splice(i, 1); }
+  }
+  // 🔥 굽기 — 불꽃 일렁임 + 뒤집기 포물선 + "타는 정도" 를 색으로. 실패가 눈에 남아야 다음 판에 조심한다
+  if (mgView.type === 'grill') {
+    kset.grillFlames.forEach((f, i) => {
+      const boost = kset.flareT > 0 ? 1.5 : 1;
+      f.scale.set(0.3 * boost, 0.3 * boost * (1 + 0.2 * Math.sin(t * 12 + i * 1.9)), 1);
+    });
+    const food = kset.grillFood.children[0];
+    if (food) {
+      if (kset.flipT >= 0) {
+        kset.flipT += dt;
+        const k = Math.min(1, kset.flipT / 0.42);
+        food.position.y = Math.sin(k * Math.PI) * 0.5;                      // 공중으로 떴다 내려앉음
+        food.material.rotation = k * Math.PI;                               // 스프라이트를 반 바퀴
+        if (k >= 1) { kset.flipT = -1; food.position.y = 0; food.material.rotation = 0; }
+      } else {
+        food.position.y = 0.02 * Math.sin(t * 3);
+      }
+      const b = 1 - kset.burn * 0.75;                                       // 탈수록 어두워짐
+      food.material.color.setRGB(b, b * 0.94, b * 0.88);
+    }
+  }
+  // 🧂 간 맞추기 — 누르는 동안 소금통이 기울고 소금이 떨어진다(떼면 곧 멎음)
+  if (mgView.type === 'season') {
+    const want = kset.pouring ? -1.05 : 0;
+    kset.shaker.rotation.z += (want - kset.shaker.rotation.z) * Math.min(1, dt * 12);
+    kset.saltT += dt;
+    kset.saltBits.forEach((b, i) => {
+      if (!b.visible) {
+        if (kset.pouring && kset.saltT > i * 0.045) { b.visible = true; b.position.set(0.18 + (Math.random() - 0.5) * 0.14, 1.64, 0.05 + (Math.random() - 0.5) * 0.1); }
+        return;
+      }
+      b.position.y -= dt * 2.2;
+      if (b.position.y < 1.34) { b.visible = false; if (!kset.pouring) return; b.position.y = 1.64; b.visible = true; }
+    });
   }
 }
 
@@ -7130,8 +7442,7 @@ function buyShop(id) {
   logEcon('shop_buy', id, -it.coin, gameState.inventory.coins);  // [원장] 코인 소비
   return { ok: true, name: it.name };
 }
-
-// ── 🍳 자유주방 — 요리 미니게임(타이밍·리듬). 결과 점수(0~100)가 요리 등급 → 버프 지속 배율을 정한다 ──
+// ── 🍳 자유주방 — 요리 미니게임(코스). 결과 점수(0~100)가 요리 등급 → 버프 지속 배율을 정한다 ──
 //    게임업계식 등급 컷: 점수 구간 → 등급/배율. 잘할수록 같은 재료로 더 오래 가는 버프.
 const COOK_TIERS = [
   { id: 'perfect', min: 88, ico: '💫', name: '최고의 맛', mult: 1.5 },
@@ -7139,46 +7450,79 @@ const COOK_TIERS = [
   { id: 'good',    min: 35, ico: '🙂', name: '무난한 맛', mult: 1.0 },
   { id: 'plain',   min: 0,  ico: '😅', name: '아쉬운 맛', mult: 0.7 },
 ];
+const PANTRY_MAX = 6;                       // 🍱 찬장 칸 수 — 무제한이면 카페를 미리 다 채워두고 미니게임을 안 하게 된다
+function cookTier(score) { return COOK_TIERS.find(t => score >= t.min) || COOK_TIERS[COOK_TIERS.length - 1]; }
+function recipeOf(id) { return RECIPES.find(r => r.id === id) || null; }
+
+// 레시피 → 미니게임 코스. 단계마다 판정창 배율(mult)이 실려 뒤로 갈수록 좁아진다
+function courseOf(r) {
+  const d = recipeDiff(r);
+  const mults = COURSE_MULT[d] || COURSE_MULT[1];
+  return r.stages.map((mg, i) => ({
+    mg, mult: mults[i] ?? mults[mults.length - 1], weight: (COURSE_WEIGHT[d] || [1])[i] ?? 1,
+    ico: COOK_MG[mg].ico, name: COOK_MG[mg].name, tip: COOK_MG[mg].tip,
+  }));
+}
 
 // 주방 메뉴판 데이터 — index.html(ui.openKitchen)이 렌더
 function kitchenView() {
   const inv = gameState.inventory;
   return {
     recipes: RECIPES.map(r => ({
-      id: r.id, name: r.name, ico: r.ico, desc: r.desc, mg: r.mg,
+      id: r.id, name: r.name, ico: r.ico, desc: r.desc, diff: recipeDiff(r),
+      course: courseOf(r).map(s => ({ ico: s.ico, name: s.name })),
       cost: Object.entries(r.cost).map(([k, v]) => ({ k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, need: v, have: inv[k] || 0 })),
       ready: Object.entries(r.cost).every(([k, v]) => (inv[k] || 0) >= v),
       best: gameState.kitchen.best[r.id] || 0,           // 레시피별 최고 점수(진행도 표시)
     })),
     cooked: gameState.kitchen.cooked || 0,
+    pantry: pantryView(),
   };
 }
 
+// 🍱 찬장 목록 — 가방·카페·주방이 함께 쓴다
+function pantryView() {
+  return {
+    max: PANTRY_MAX,
+    items: (gameState.pantry || []).map((f, i) => {
+      const r = recipeOf(f.id), t = cookTier(f.score);
+      return { i, id: f.id, name: r.name, ico: r.ico, score: f.score, tier: { id: t.id, ico: t.ico, name: t.name, mult: t.mult },
+        buff: { ...BUFF_META[r.buff], dur: buffDur(r, t) } };
+    }),
+  };
+}
+function pantryHas(recipeId) { return (gameState.pantry || []).findIndex(f => f.id === recipeId); }   // 없으면 -1
+function buffDur(r, tier) { return Math.round(r.dur * tier.mult * (gameState.upgrades.pot ? 1.5 : 1)); }   // 등급 배율 × 🍲 큰 냄비 1.5배
+
 // 요리 시작 — 재료를 먼저 소비(중도 포기해도 요리는 낮은 등급으로 완성 → 재시도 악용 방지)
-function kitchenStart(id) {
-  const r = RECIPES.find(x => x.id === id); if (!r) return { ok: false };
+//   where: 'kitchen'(자유주방) | 'cafe'(카페에서 손님 앞 조리)
+function kitchenStart(id, where = 'kitchen') {
+  const r = recipeOf(id); if (!r) return { ok: false };
   for (const k in r.cost) {
     if ((gameState.inventory[k] || 0) < r.cost[k]) return { ok: false, msg: `${RES_LABEL[k] || k}이(가) 부족해요` };
   }
   for (const k in r.cost) gameState.inventory[k] -= r.cost[k];
   refreshInventoryUI();
-  trackEvent('cooking_start', { recipe: id, mg_type: r.mg });   // [GA4] 미니게임 퍼널: 시작
-  return { ok: true, id, mg: r.mg, name: r.name, ico: r.ico, icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') }; // icos: 조리 장면 연출용 재료 아이콘
+  const course = courseOf(r);
+  trackEvent('cooking_start', { recipe: id, mg_type: course.map(s => s.mg).join('>'), diff: recipeDiff(r), where });   // [GA4] 미니게임 퍼널: 시작
+  return { ok: true, id, where, name: r.name, ico: r.ico, diff: recipeDiff(r), course,
+    icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') };   // icos: 조리 장면 연출용 재료 아이콘
 }
 
-// 요리 완성 — 미니게임 결과를 받아 등급 판정 + 버프 적용 + 기록/트래킹
-// res: { score(0~100), offsets[탭별 타이밍 오차 ms, 부호 포함], maxCombo, judges:{perfect,good,miss}, durationMs, abandoned, step }
+let pendingDish = null;   // 🍽️ 결과 화면에서 "먹기/보관"을 고르기 전의 요리 { id, tier, score }
+
+// 요리 완성 — 코스 결과를 받아 등급 판정 + 기록/트래킹. **버프는 여기서 걸지 않는다**
+//   (음식이 아이템이 된 뒤로 "만들기"와 "먹기"가 분리됐다 → cookResolve 가 마무리)
+// res: { score(0~100), offsets[], maxCombo, judges:{perfect,good,miss}, durationMs, abandoned, step, stageScores[] }
 function kitchenFinish(id, res = {}) {
-  const r = RECIPES.find(x => x.id === id); if (!r) return { ok: false };
+  const r = recipeOf(id); if (!r) return { ok: false };
   const score = Math.max(0, Math.min(100, Math.round(res.score || 0)));
-  const tier = COOK_TIERS.find(t => score >= t.min) || COOK_TIERS[COOK_TIERS.length - 1];
+  const tier = cookTier(score);
   const st = gameState.kitchen;
   st.cooked = (st.cooked || 0) + 1;
   st.tiers[tier.id] = (st.tiers[tier.id] || 0) + 1;
   const isBest = score > (st.best[id] || 0);
   if (isBest) st.best[id] = score;
-  const dur = Math.round(r.dur * tier.mult * (gameState.upgrades.pot ? 1.5 : 1)); // 등급 배율 × 🍲 큰 냄비 1.5배
-  buffs[r.buff] = clock.elapsedTime + dur;
   Sound.harvest();
   if (tier.id === 'perfect') { Sound.complete(); spawnConfetti(player.position.x, 2.2, player.position.z); }
   spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${tier.ico} ${tier.name}!`, '#c9682a');
@@ -7186,17 +7530,13 @@ function kitchenFinish(id, res = {}) {
   dexDiscover('cook', id);                                   // 📖 도감(첫 요리)
   questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
   triggerMoment();                                           // 📷 순간 줌인
-  emitBuffs();
   syncStory();                                               // 📖 3장(마을의 맛) 진행
-  // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
-  const bm = BUFF_META[r.buff];
-  setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
-    `${bm.desc}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요`), 800);
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
   trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
-    recipe: id, mg_type: r.mg, quality: tier.id, score,
+    recipe: id, mg_type: r.stages.join('>'), diff: recipeDiff(r), quality: tier.id, score,
+    stage_scores: (res.stageScores || []).map(v => Math.round(v)).join(','),   // 단계별 점수(어느 판에서 무너지는지)
     avg_offset_ms: offsets.length ? Math.round(offsets.reduce((a, b) => a + Math.abs(b), 0) / offsets.length) : null, // 평균 절대 오차(정밀도)
     offsets: offsets.join(','),                              // 탭별 원본 타이밍(부호=빠름/늦음)
     max_combo: res.maxCombo || 0,
@@ -7205,12 +7545,62 @@ function kitchenFinish(id, res = {}) {
     step: res.step ?? null,                                  // 포기 시 어느 단계까지 갔는지(퍼널 이탈 지점)
     is_best: isBest ? 1 : 0, total_cooked: st.cooked,        // 유저 진행도(누적 요리 수)
   });
+  pendingDish = { id, tier: tier.id, score };
   return {
     ok: true, name: r.name, ico: r.ico, score, isBest, cooked: st.cooked,
     tier: { id: tier.id, ico: tier.ico, name: tier.name, mult: tier.mult },
-    buff: { ...BUFF_META[r.buff], dur },
+    buff: { ...BUFF_META[r.buff], dur: buffDur(r, tier) },
+    canStore: (gameState.pantry || []).length < PANTRY_MAX,
+    pantryFull: (gameState.pantry || []).length >= PANTRY_MAX,
   };
 }
+
+// 🍽️ 완성한 요리를 어떻게 할지 — 'eat'(바로 먹어 버프) | 'store'(🧺 찬장에 보관)
+//    결과 화면을 그냥 닫아도 'eat' 으로 마무리된다(만든 음식을 잃지 않게).
+function cookResolve(how = 'eat') {
+  const d = pendingDish; if (!d) return { ok: false };
+  pendingDish = null;
+  const r = recipeOf(d.id); if (!r) return { ok: false };
+  if (how === 'store') {
+    if ((gameState.pantry || []).length >= PANTRY_MAX) return eatDish(r, d, true);   // 찬장이 꽉 찼으면 먹는 쪽으로 안전 착지
+    gameState.pantry.push({ id: d.id, tier: d.tier, score: d.score });
+    Sound.blip();
+    trackEvent('cook_store', { recipe: d.id, quality: d.tier, pantry_n: gameState.pantry.length });   // [GA4] 보관 선택률
+    return { ok: true, how: 'store', ico: r.ico, name: r.name, left: PANTRY_MAX - gameState.pantry.length };
+  }
+  return eatDish(r, d, false);
+}
+
+// 음식을 먹어 버프 발동 — 요리 직후(cookResolve)와 찬장에서 꺼내 먹을 때(pantryEat)가 함께 쓴다
+function eatDish(r, d, fallback = false) {
+  const tier = cookTier(d.score);
+  const dur = buffDur(r, tier);
+  buffs[r.buff] = clock.elapsedTime + dur;
+  emitBuffs();
+  const bm = BUFF_META[r.buff];
+  // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
+  setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
+    `${bm.desc}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요`), 800);
+  trackEvent('cook_eat', { recipe: r.id, quality: tier.id, dur });   // [GA4]
+  return { ok: true, how: 'eat', fallback, ico: r.ico, name: r.name, buff: { ...bm, dur } };
+}
+
+// 🍱 찬장에서 꺼내 먹기 — 가방 찬장 칸을 누르면
+function pantryEat(i) {
+  const f = (gameState.pantry || [])[i]; if (!f) return { ok: false };
+  const r = recipeOf(f.id); if (!r) { gameState.pantry.splice(i, 1); return { ok: false }; }
+  gameState.pantry.splice(i, 1);
+  Sound.harvest();
+  spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} 잘 먹었습니다!`, '#c9682a');
+  return eatDish(r, f, false);
+}
+
+// 🍱 찬장에서 한 칸 빼기(카페 서빙용) — 있으면 그 음식을, 없으면 null
+function pantryTake(recipeId) {
+  const i = pantryHas(recipeId); if (i < 0) return null;
+  return gameState.pantry.splice(i, 1)[0];
+}
+
 
 // 도구 업그레이드 제작(영구) — 이미 보유면 거절
 function craftUpgrade(id) {
