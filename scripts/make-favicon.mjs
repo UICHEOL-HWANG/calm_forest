@@ -22,11 +22,20 @@ import { ROOT, iconPNG, encodeICO, ROUND_RATIO } from './lib/icon-art.mjs';
 const ICONS = path.join(ROOT, 'assets', 'favicon');
 await mkdir(ICONS, { recursive: true });
 
+// ── 배경 없는 곰 (브라우저 탭 전용) ────────────────────────────
+// 탭 파비콘은 배경을 깔지 않는다 — 브라우저 테마 색이 그대로 비쳐
+// 아이콘이 탭에 얹힌 칩처럼 보이지 않는다.
+// ⚠️ 갈색 계열 테마에서는 갈색 곰과 대비가 낮아진다(측정치 휘도차 12.5).
+//    그래도 칩처럼 보이는 쪽이 더 어색하다는 판단으로 투명을 택했다.
+// ⚠️ 앱 아이콘(apple-touch·앱인토스·PWA)에는 쓸 수 없다 — iOS 는 투명을
+//    검정으로 채우고, 앱인토스는 불투명 배경을 요구한다. 그쪽은 민트 유지.
+const TAB = { bg: false };
+
 // ── favicon.svg ────────────────────────────────────────────────
 // 곰은 3D 렌더 래스터라 벡터로 옮길 수 없다. 대신 아이콘 한 장을 192px 로
 // 구워 data URI 로 박는다 — 파비콘은 실제로 64px 이하로만 그려지므로 충분.
 const EMBED = 192;
-const dataURI = 'data:image/png;base64,' + iconPNG(EMBED).toString('base64');
+const dataURI = 'data:image/png;base64,' + iconPNG(EMBED, TAB).toString('base64');
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>calm forest</title>
   <image width="64" height="64" href="${dataURI}"/>
@@ -38,13 +47,14 @@ await writeFile(path.join(ICONS, 'favicon.svg'), svg);
 // 구글 권장은 48px 의 배수 → 16/32/48 을 한 ico 에 담는다(탭·검색 모두 커버)
 const sizes = [16, 32, 48];
 await writeFile(path.join(ICONS, 'favicon.ico'),
-  encodeICO(sizes.map(size => ({ size, buf: iconPNG(size) }))));
+  encodeICO(sizes.map(size => ({ size, buf: iconPNG(size, TAB) }))));
 
 // ── 래스터 원본 + iOS 홈화면 아이콘 ────────────────────────────
 // apple-touch 는 iOS 가 스스로 모서리를 깎으므로 정사각으로 굽고,
 // 깎이는 만큼 곰을 안쪽으로 들여놓는다(pad).
-await writeFile(path.join(ICONS, 'favicon-96.png'), iconPNG(96));
+await writeFile(path.join(ICONS, 'favicon-96.png'), iconPNG(96, TAB));
 await writeFile(path.join(ICONS, 'apple-touch-icon.png'), iconPNG(180, { round: false, pad: 0.88 }));
 
 console.log(`✅ assets/favicon/ — favicon.svg(${(svg.length / 1024).toFixed(0)}KB) · favicon.ico(${sizes.join('/')}) · favicon-96.png · apple-touch-icon.png 생성`);
-console.log(`   라운드 반지름 ${(ROUND_RATIO * 100).toFixed(0)}% · 마크 원본 assets/brand/bear-25deg-1024.png`);
+console.log(`   탭 파비콘 3종은 배경 없음(투명) · apple-touch 는 민트 유지(iOS 가 투명을 검정으로 채움)`);
+console.log(`   마크 원본 assets/brand/bear-25deg-1024.png · 라운드 반지름 ${(ROUND_RATIO * 100).toFixed(0)}%`);

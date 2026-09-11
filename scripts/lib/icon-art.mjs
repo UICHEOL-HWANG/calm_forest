@@ -162,25 +162,30 @@ function blit(dst, DW, src, [sx, sy, sw, sh], dx, dy, dw, dh) {
  * @param {object} opt
  *   round  라운드 사각 여부 (false = 정사각 — 앱인토스·maskable·apple-touch)
  *   pad    곰이 차지하는 비율 (1 = 프레임에 꽉)
+ *   bg     false 면 배경을 그리지 않는다(투명) — 브라우저 탭 파비콘 전용.
+ *          앱인토스는 불투명 배경 필수, iOS 홈화면은 투명을 검정으로 채우고,
+ *          PWA maskable 은 캔버스를 꽉 채워야 하므로 그쪽엔 쓸 수 없다.
  */
-export function renderIcon(size, { round = true, pad = 0.99 } = {}) {
+export function renderIcon(size, { round = true, pad = 0.99, bg = true } = {}) {
   const W = size * SS;
   const px = Buffer.alloc(W * W * 4);
 
-  // 배경 — 세로 그라디언트 + (선택) 라운드
-  const top = hex(SKY_TOP), bot = hex(SKY_BOT);
-  const R = round ? W * ROUND_RATIO : 0;
-  for (let y = 0; y < W; y++) {
-    const t = y / (W - 1);
-    const c = [0, 1, 2].map(i => Math.round(top[i] + (bot[i] - top[i]) * t));
-    for (let x = 0; x < W; x++) {
-      if (R) {
-        const cx = Math.min(Math.max(x + .5, R), W - R), cy = Math.min(Math.max(y + .5, R), W - R);
-        const dx = x + .5 - cx, dy = y + .5 - cy;
-        if (dx * dx + dy * dy > R * R) continue;
+  // 배경 — 세로 그라디언트 + (선택) 라운드. bg:false 면 통째로 건너뛴다.
+  if (bg) {
+    const top = hex(SKY_TOP), bot = hex(SKY_BOT);
+    const R = round ? W * ROUND_RATIO : 0;
+    for (let y = 0; y < W; y++) {
+      const t = y / (W - 1);
+      const c = [0, 1, 2].map(i => Math.round(top[i] + (bot[i] - top[i]) * t));
+      for (let x = 0; x < W; x++) {
+        if (R) {
+          const cx = Math.min(Math.max(x + .5, R), W - R), cy = Math.min(Math.max(y + .5, R), W - R);
+          const dx = x + .5 - cx, dy = y + .5 - cy;
+          if (dx * dx + dy * dy > R * R) continue;
+        }
+        const i = (y * W + x) * 4;
+        px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = 255;
       }
-      const i = (y * W + x) * 4;
-      px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = 255;
     }
   }
 
@@ -207,6 +212,6 @@ export function renderIcon(size, { round = true, pad = 0.99 } = {}) {
   return out;
 }
 
-// 정사각(round:false) 아이콘은 전면 불투명이므로 알파 없이 굽는다.
+// 배경이 있는 정사각 아이콘만 전면 불투명이므로 알파 없이 굽는다.
 export const iconPNG = (size, opt = {}) =>
-  encodePNG(renderIcon(size, opt), size, { rgb: opt.round === false });
+  encodePNG(renderIcon(size, opt), size, { rgb: opt.round === false && opt.bg !== false });
