@@ -23,7 +23,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
-import { saveGame, loadGame, sendBoatRun, sendSeaRecord, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록
+import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
+import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
@@ -702,6 +703,7 @@ const gameState = {
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
+  noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
   character: null,                          // 선택한 동물 캐릭터 id
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
@@ -1011,9 +1013,30 @@ function checkDailyBonus() {
     (reward.gem ? '\n7일 연속 보너스 💎!' : '\n내일 또 오면 보상이 더 커져요!');
   if (WEATHER !== 'clear') body += '\n' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
   body += '\n🔮 ' + forecastLine() + forecastDexNudge(); // 내일 예보 — 재방문 유도(+날씨 도감 훅)
-  if (gameState.character && gameState.tutorialSeen) { ui.showHintModal?.({ ico: '🎁', title: `출석 ${d.streak}일차`, body }); return true; }
+  if (gameState.character && gameState.tutorialSeen) {
+    // [알겠어요] 를 누르면 그 자리에서 📮 새 소식(안 읽은 공지·답장)을 이어서 띄운다 — 출석은 하루 한 번이라 "그날 첫 접속" 조건과 같다
+    ui.showHintModal?.({ ico: '🎁', title: `출석 ${d.streak}일차`, body,
+                         ok: { onClick: () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); } } });
+    return true;
+  }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`);                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
   return false;
+}
+
+// ── 📮 소식함 — 접속 시 안 읽은 소식을 미리 받아 두고, 창을 닫으면 본 id 를 세이브에 기록 ──
+//   전체 공지는 게스트도 받지만, 1:1 답장은 고정 uuid(구글·토스 로그인)에게만 간다(RLS).
+let pendingNotices = [];   // 안 읽은 소식(오래된 순). 아직 안 왔으면 빈 배열 → 이번엔 안 띄우고 다음 접속에
+async function prefetchNotices() {
+  const since = gameState.noticeSeenId || 0;
+  const rows = await fetchNotices(since);
+  pendingNotices = unreadNotices(rows, since);
+}
+export function markNoticesSeen(list) {
+  const id = maxId(list);
+  pendingNotices = pendingNotices.filter(n => n.id > id);
+  if (id <= (gameState.noticeSeenId || 0)) return;
+  gameState.noticeSeenId = id;
+  requestSave();
 }
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
@@ -1624,6 +1647,7 @@ export async function bootWorld(uiCallbacks) {
 export async function enterGame() {
   const saved = await loadGame();      // [Supabase] 저장 불러오기(오프라인이면 null)
   if (saved) applySave(saved);
+  prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
   if (_hq >= 1 && _hq <= MAX_HOUSE_STAGE) for (let s = gameState.houseStage + 1; s <= _hq; s++) buildHouseStage(s, true);
@@ -1740,6 +1764,7 @@ function applySave(saved) {
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
+  if (saved.noticeSeenId) gameState.noticeSeenId = Number(saved.noticeSeenId) || 0; // 📮 읽은 소식 복원
   if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, ...saved.dex }; // 📖 도감 복원
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원

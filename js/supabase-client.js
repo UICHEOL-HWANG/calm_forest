@@ -385,6 +385,20 @@ export async function listPhotos() {
   } catch (err) { console.warn('[Supabase 폴백] 사진 목록 실패:', err?.message || err); return []; }
 }
 
+// ── 📮 소식함 — 전체 공지 + 내게 온 답장 (RLS 가 target_user_id 로 거른다) ──
+//   sinceId 보다 큰 id 만(읽음 기준은 세이브의 noticeSeenId). feedback(message) 는 reply_to 임베드 —
+//   본인 글 select 정책(feedback_select_own)이 있어야 값이 오고, 없으면 null 로 올 뿐 에러는 아니다.
+export async function fetchNotices(sinceId = 0, limit = 20) {
+  if (!state.online || !supabase) return [];
+  try {
+    const { data, error } = await supabase.from('notices')
+      .select('id, title, body, title_en, body_en, target_user_id, reply_to, created_at, feedback(message)')
+      .gt('id', sinceId).order('id', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  } catch (err) { console.warn('[Supabase 폴백] 소식 조회 실패:', err?.message || err); return []; }
+}
+
 export async function insertPhotoRow(objectKey, weather) {
   if (!state.online || !supabase) return;
   try {
