@@ -96,6 +96,7 @@ let toolPage = 'farm';                    // 현재 페이지(첫 시작 = 농�
 let lastPageTool = { farm: 1, out: 0 };   // 페이지별 마지막으로 들었던 도구(돌아올 때 복원)
 let lastAutoZone = null;                  // 자동 전환을 이미 적용한 구역(같은 구역에선 수동 선택 유지)
 let pageBeforeAuto = null;                // 자동으로 맨손이 되기 직전 페이지(구역을 벗어나면 되돌린다)
+let toolBeforeAuto = null;                // 구역이 도구를 정해 주기 직전에 들고 있던 도구(⛏️광산 — 나가면 되돌린다)
 let lastOpenPage = 'farm';                // 마지막으로 펼쳐 둔 세트(맨손에서 숫자키를 누르면 여기로 돌아온다)
 const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
 const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
@@ -107,8 +108,12 @@ const EXPANSIONS = [
   { stage: 6, name: '루프탑 빌라', ico: '🏝️', cost: { wood: 80, stone: 50, gem: 3, coins: 800 } },
 ];
 const MAX_HOUSE_STAGE = 6;
-const WET_TIME = 5;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(초) — 마르면 다시 물 필요
-const WILT_TIME = 22;  // 물 없이 목마른 채 방치되면 시드는 시간(초)
+// 🌾 작물 속도 — 베타 피드백 "너무 빨리 자라고 빨리 시든다"(2026-09-11)
+//   자라는 속도 = 물 주는 간격(WET_TIME). 물 1회 +0.4 에 수확 기준이 growth>=0.8 이라 물 2번이면 끝 —
+//   5초일 땐 심고 5초 뒤에 벌써 수확이었다(지금은 9초). 더 늦추려면 tryWater 의 성장량을 낮춘다.
+//   시드는 시간은 흙이 마른 뒤부터 세므로, 한 번 자리를 비우면 22초 만에 밭이 전멸했다.
+const WET_TIME = 9;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(초) — 마르면 다시 물 필요
+const WILT_TIME = 60;  // 물 없이 목마른 채 방치되면 시드는 시간(초)
 
 // ── 날짜 유틸(출석·데일리 퀘스트·날씨 — 로컬 날짜 기준) ─────────
 function todayStr(offsetDays = 0) {
@@ -1065,6 +1070,7 @@ let placingDecor = null;   // 배치 중인 가구 id
 let nearDecorMesh = null, decorNearRing = null;   // 🛋️ 근접 프롬프트 대상 가구 / 그 밑 호박색 링
 let decorRot = 0;          // 배치 방향(0~3 → 90°씩) — 가로/세로 전환
 let decorGhost = null;     // 🫥 바닥 미리보기(반투명 가구 + 초록 링) — 놓일 자리·방향을 미리 보여준다
+let ghostOutdoor = false;  // 그 고스트가 🪵야외 장식인가(실내 가구와 자리 잡는 규칙이 다르다)
 let decorTarget = { x: 0, z: 0, pinned: false }; // 놓일 자리. pinned=false 면 캐릭터 발 앞을 따라다닌다
 let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot} — 취소·퇴장 시 제자리로
 let decorTapHintShown = false; // "여기 놓을까요?" 안내는 배치 1회당 한 번만
@@ -1318,6 +1324,9 @@ const ZONE_PAGE = {
   farm: 'farm', mine: 'farm',        // ⛏️괭이 — 밭갈기·채굴 둘 다 농사 페이지에 있다
   glade: 'out',                      // 🦋포충망(밤 반딧불이)
 };
+// 세트만으론 부족한 구역 — 들 도구까지 정해 준다. 광산은 ⛏️괭이 말고 할 일이 없는데
+// 세트만 펴 주면 마지막에 쓰던 🌰씨앗·낫이 손에 남아 "눌러도 안 캐진다"가 됐다(베타 피드백).
+const ZONE_TOOL = { mine: 'hoe' };
 function toolZoneKey() {
   if (indoor) return 'indoor';
   if (atCafe) return 'cafe';
@@ -1329,11 +1338,30 @@ function toolZoneKey() {
   if (nearGlade && isNight()) return 'glade';
   return null;                       // 마을 — 자동 전환 없음
 }
+// 구역이 정해 주는 도구를 조용히 집어 든다 — Input.selectTool 과 달리 효과음·배치 취소가 없다(자동 전환 전용).
+//   lastPageTool(그 세트에서 직접 고른 도구 기억)은 일부러 건드리지 않는다 —
+//   광산과 밭이 같은 🌾농사 세트를 쓰는데, 광산이 써 버리면 밭에서 고른 🌰씨앗이 영영 사라진다.
+function selectToolAuto(id) {
+  const i = TOOLS.findIndex(t => t.id === id);
+  if (i < 0 || currentTool === i) return;
+  currentTool = i;
+  setHeldTool(id);
+  ui.setTool?.(currentTool, TOOLS, toolPage);
+}
+// 구역이 도구를 정해 주기 직전에 들고 있던 도구로 되돌린다(pageBeforeAuto 와 같은 문법).
+//   구역 안에서 직접 도구를 바꿨으면 Input.selectTool 이 이 기억을 지우므로 되돌리지 않는다.
+function restoreToolBeforeAuto() {
+  if (toolBeforeAuto === null) return;
+  const t = TOOLS[toolBeforeAuto]; toolBeforeAuto = null;
+  if (t && t.grp === toolPage) selectToolAuto(t.id);
+}
 // 구역이 바뀐 그 순간에만 한 번 적용 → 같은 구역 안에서 직접 바꾼 선택은 그대로 지켜진다
 function updateToolPageAuto() {
   const key = toolZoneKey();
   if (key === lastAutoZone) return;
   lastAutoZone = key;
+  const forced = key ? ZONE_TOOL[key] : null;
+  if (!forced) restoreToolBeforeAuto();   // 도구를 정해 주던 구역을 벗어남 → 원래 들던 도구로
   const want = key ? ZONE_PAGE[key] : null;
   if (want) {
     if (want === 'none' && toolPage !== 'none') {
@@ -1345,6 +1373,10 @@ function updateToolPageAuto() {
       }
     }
     setToolPage(want, true);
+    if (forced) {                                        // ⛏️ 광산 = 괭이까지 손에
+      if (toolBeforeAuto === null) toolBeforeAuto = currentTool;   // 나갈 때 되돌릴 자리
+      selectToolAuto(forced);
+    }
   } else if (toolPage === 'none' && pageBeforeAuto) {
     setToolPage(pageBeforeAuto, true); pageBeforeAuto = null;               // 구역을 벗어나면 도로 꺼내 든다
   }
@@ -1361,7 +1393,7 @@ export const Input = {
   selectTool(i) {
     if (placingOutdoor) { stopOutdoorPlacing(true); ui.onDecorPlaced?.(); }   // 🪵 들었던 장식은 제자리로
     currentTool = (i + TOOLS.length) % TOOLS.length;
-    toolPage = TOOLS[currentTool].grp; lastPageTool[toolPage] = currentTool; pageBeforeAuto = null;
+    toolPage = TOOLS[currentTool].grp; lastPageTool[toolPage] = currentTool; pageBeforeAuto = null; toolBeforeAuto = null;
     ui.setTool?.(currentTool, TOOLS, toolPage);
     setHeldTool(TOOLS[currentTool].id); Sound.blip();
   },
@@ -1413,7 +1445,7 @@ export const Input = {
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록
-  selectOutdoor(id) { placingOutdoor = id; },           // 야외 장식 선택(설치 대기)
+  selectOutdoor(id) { placingOutdoor = id; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기)
   getWeatherPrep() { return weatherPrepView(); },       // 🌡️ 내일 궂은 날씨·덮개 상태
   craftCover() { return craftCover(); },                // 🛡️ 덮개 설치(예고일 한정)
   cancelOutdoor() { stopOutdoorPlacing(true); },        // 야외 배치 취소(들었던 장식은 제자리로)
@@ -1697,6 +1729,7 @@ export async function enterGame() {
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
+    window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
@@ -1778,7 +1811,7 @@ function applySave(saved) {
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
   if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
-  if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id)); // 야외 장식 복원
+  if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id, o.rot || 0)); // 야외 장식 복원(방향 포함)
   if (saved.outdoorStored && typeof saved.outdoorStored === 'object') {   // 🧺 보관한 야외 장식 복원(개수만, 음수·비숫자 버림)
     gameState.outdoorStored = {};
     for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
@@ -5906,16 +5939,21 @@ function stopDecorPlacing(putBack) {
   removeDecorGhost();
   setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구(맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
 }
-function buildDecorGhost(id) {
+function buildDecorGhost(id, outdoor = false) {
   removeDecorGhost();
-  const g = decorMesh(id);
+  // 🏮 outdoorMesh 는 정원등·화로·정령등불의 재질을 houseWindows(밤 점등 목록)에 밀어 넣는다.
+  //   고스트 것까지 남으면 목록이 불어나고, 고스트를 지울 때 dispose 된 재질이 목록에 남는다 → 도로 잘라낸다.
+  const hw0 = houseWindows.length;
+  const g = outdoor ? outdoorMesh(id) : decorMesh(id);
+  if (outdoor) houseWindows.length = hw0;
+  ghostOutdoor = outdoor;
   g.traverse(o => {
     if (!o.isMesh) return;
     o.castShadow = false; o.receiveShadow = false;
     o.material = o.material.clone();
     o.material.transparent = true; o.material.opacity = 0.45; o.material.depthWrite = false;
   });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55 * DECOR_SCALE, 0.72 * DECOR_SCALE, 28),
+  const ring = new THREE.Mesh(new THREE.RingGeometry(outdoor ? 0.6 : 0.55 * DECOR_SCALE, outdoor ? 0.78 : 0.72 * DECOR_SCALE, 28),
     new THREE.MeshBasicMaterial({ color: 0x7fce8b, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
   g.rotation.y = decorRot * Math.PI / 2;
@@ -5925,11 +5963,18 @@ function removeDecorGhost() {
   if (!decorGhost) return;
   scene.remove(decorGhost);
   decorGhost.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
-  decorGhost = null;
+  decorGhost = null; ghostOutdoor = false;
 }
 // 매 프레임: 핀 고정이 아니면 캐릭터 발 앞 1.3 을 따라다닌다(걸어가서 버튼으로 놓기)
 function updateDecorGhost() {
   if (!decorGhost) return;
+  // 🪵 야외 장식은 발밑에 놓인다(placeOutdoor) — 고스트도 딱 그 자리에 두어 "어느 방향으로 놓일지"만 보여 준다.
+  //   ↻회전 버튼은 이미 떴지만 미리보기도 반영도 없어서 "회전이 안 되는 것 같다"는 피드백이 나왔다(2026-09-11).
+  if (ghostOutdoor) {
+    decorGhost.position.set(player.position.x, 0.02, player.position.z);
+    decorGhost.rotation.y = decorRot * Math.PI / 2;
+    return;
+  }
   if (!decorTarget.pinned) {
     // 발 앞 거리 — 긴 가구(침대·큰 식탁)를 돌려 놓을 때 상자가 캐릭터를 덮어 놓는 순간 튕기지 않게 발자국만큼 띄운다
     const fdef = DECOR.find(d => d.id === placingDecor);
@@ -7158,8 +7203,9 @@ function outdoorMesh(id) {
 }
 
 // 야외 장식 설치 (플레이어 위치에). silent=true 면 저장 복원 · 들어 올린 걸 다시 놓으면(pickedOutdoor) 값 없음 · 🧺 보관분이 있으면 값 없이 꺼내 놓는다
-function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
+function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   const def = OUTDOOR.find(d => d.id === id); if (!def) return false;
+  const ry = (((rot == null ? decorRot : rot) % 4) + 4) % 4;   // ↻ 90° 4방향 — 실내 가구와 같은 규칙
   const moved = !silent && !!pickedOutdoor;                                   // 🪵 옮겨 놓기(비용 없음)
   const taken = (!silent && !moved) ? takeStored(gameState.outdoorStored, id) : null;   // 🧺 보관분 우선
   if (taken) gameState.outdoorStored = taken;
@@ -7170,10 +7216,10 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
     for (const k in def.cost) gameState.inventory[k] -= def.cost[k];
     refreshInventoryUI();
   }
-  const m = outdoorMesh(id); m.position.set(wx, 0, wz); scene.add(m); outdoorMeshes.push(m);
+  const m = outdoorMesh(id); m.position.set(wx, 0, wz); m.rotation.y = ry * Math.PI / 2; scene.add(m); outdoorMeshes.push(m);
   // 들고 있던 장식은 저장 레코드를 그대로 쓴다(들고 있는 동안 세이브가 나가도 분실되지 않게 목록에 남겨 둔다) — 옮겨 놓기·제자리 복귀 모두
   const carried = pickedOutdoor && pickedOutdoor.id === id ? pickedOutdoor.rec : null;
-  const rec = carried ? Object.assign(carried, { x: wx, z: wz }) : { id, x: wx, z: wz };
+  const rec = carried ? Object.assign(carried, { x: wx, z: wz, rot: ry }) : { id, x: wx, z: wz, rot: ry };
   if (!gameState.outdoor.includes(rec)) gameState.outdoor.push(rec);
   const ob = { x: wx, z: wz, r: 0.8 }; obstacles.push(ob);   // 그 위엔 밭 금지
   // 🚧 울타리·돌담·정원등·화로·허수아비는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
@@ -7184,15 +7230,15 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor) {
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
     if (moved) trackEvent('move_outdoor', { item: id });                                   // [GA4] 옮겨 놓기
     else trackEvent('craft_item', { category: 'outdoor', item: id, from: taken ? 'store' : 'craft' });  // [GA4]
-    pickedOutdoor = null; placingOutdoor = null; ui.onDecorPlaced?.();   // 배치 모드 종료(1회) — 들었던 장식은 새 자리에 놓였다
+    pickedOutdoor = null; placingOutdoor = null; removeDecorGhost(); ui.onDecorPlaced?.();   // 배치 모드 종료(1회) — 들었던 장식은 새 자리에 놓였다
     requestSave();
   }
   return true;
 }
 // 🪵 배치 모드 종료 — 들어 올린 장식이면(putBack) 원래 자리에 값 없이 되돌린다(실내 stopDecorPlacing 과 같은 규칙)
 function stopOutdoorPlacing(putBack) {
-  if (pickedOutdoor && putBack) placeOutdoor(pickedOutdoor.x, pickedOutdoor.z, true, pickedOutdoor.id);
-  pickedOutdoor = null; placingOutdoor = null;
+  if (pickedOutdoor && putBack) placeOutdoor(pickedOutdoor.x, pickedOutdoor.z, true, pickedOutdoor.id, pickedOutdoor.rot);
+  pickedOutdoor = null; placingOutdoor = null; removeDecorGhost();
 }
 // 🪵 야외 장식을 놓을 수 있는 구역(마을 실외·텃밭) — 옮기기 프롬프트도 여기서만
 function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea; }
@@ -7209,7 +7255,8 @@ function pickOutdoor(m) {
   const oi = obstacles.indexOf(m.userData.obstacle); if (oi >= 0) obstacles.splice(oi, 1);
   // 저장 레코드는 목록에 남긴다(들고 있는 동안 세이브돼도 분실 없음) — 놓으면 placeOutdoor 가 좌표만 갱신, 보관하면 storeOutdoor 가 뺀다
   m.traverse(o => { if (o.isMesh) { const hi = houseWindows.indexOf(o.material); if (hi >= 0) houseWindows.splice(hi, 1); } });   // 🏮 밤 점등 목록에서도 제거(다시 놓으면 새로 등록)
-  placingOutdoor = rec.id; pickedOutdoor = { id: rec.id, x: rec.x, z: rec.z, farm: atFarm, rec };
+  placingOutdoor = rec.id; pickedOutdoor = { id: rec.id, x: rec.x, z: rec.z, rot: rec.rot || 0, farm: atFarm, rec };
+  decorRot = rec.rot || 0; buildDecorGhost(rec.id, true);   // 들던 방향 그대로 이어서 ↻회전
   Sound.blip(); trackEvent('pick_outdoor', { item: rec.id }); // [GA4] 옮기기 시작
   ui.onOutdoorPicked?.(OUTDOOR.find(d => d.id === rec.id));
   return true;
@@ -7221,7 +7268,7 @@ function storeOutdoor() {
   const stored = gameState.outdoorStored || (gameState.outdoorStored = {});
   stored[id] = (stored[id] || 0) + 1;
   const ri = gameState.outdoor.indexOf(pickedOutdoor.rec); if (ri >= 0) gameState.outdoor.splice(ri, 1);   // 마당 목록에서 빼고 보관함으로
-  pickedOutdoor = null; placingOutdoor = null;   // 제자리 복귀 없이 정리
+  pickedOutdoor = null; placingOutdoor = null; removeDecorGhost();   // 제자리 복귀 없이 정리
   Sound.blip(); ui.toast?.(`🧺 ${def.name}을(를) 보관했어요 — 작업대에서 다시 꺼낼 수 있어요`);
   trackEvent('store_outdoor', { item: id }); // [GA4]
   ui.onDecorPlaced?.();                      // 액션버튼 아이콘 복원
@@ -7498,6 +7545,7 @@ function spawnMineGate() {
 
 function enterMine() {
   atMine = true;
+  ui.setMine?.(true);   // ⛏️ 우상단 자원칩 → 🪨⚫💎 (마을 자원은 가방에서 그대로 볼 수 있다)
   player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥 캐기 → 돌·석탄·💎보석\n작업대 재료·상점 판매에 써요 · 남쪽 문으로 나가요');
@@ -7506,6 +7554,7 @@ function enterMine() {
 }
 function exitMine() {
   atMine = false;
+  ui.setMine?.(false);
   player.position.set(MINE_GATE.x, 0, MINE_GATE.z + 2);
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   setBGMTheme('main');   // 🎵 마을 테마 복귀
@@ -7566,7 +7615,9 @@ function exitHouse() {
 function updateDoorInteract() {
   let nd = null, prompt = null;
   nearDecorMesh = null; nearOutdoorMesh = null; if (decorNearRing) decorNearRing.visible = false;   // 🛋️🪵 옮기기 링은 대상이 있을 때만
-  if (pickedOutdoor && (!outdoorZone() || pickedOutdoor.farm !== atFarm)) { stopOutdoorPlacing(true); ui.onDecorPlaced?.(); }   // 🪵 들고 다른 구역으로 가면 제자리로(분실 방지)
+  // 🪵 다른 구역으로 가면 배치 모드를 접는다 — 들고 있던 건 제자리로(분실 방지),
+  //   작업대에서 막 고른 것도 접는다(아직 값을 안 치렀고, 실내·동굴에선 놓을 수 없는데 🫥미리보기와 ↻회전 버튼만 따라다닌다).
+  if (placingOutdoor && (!outdoorZone() || (pickedOutdoor && pickedOutdoor.farm !== atFarm))) { stopOutdoorPlacing(true); ui.onDecorPlaced?.(); }
   if (boat.active) {   // 🛶 런 중엔 프롬프트를 전부 끔(액션 = 노 젓기)
     nearDoor = null; nearBoat = nearBoatShop = false;
     if (lastDoorPrompt !== null) { lastDoorPrompt = null; ui.setDoorPrompt?.(null); }
@@ -8896,7 +8947,12 @@ function handleAction() {
     return;
   }
   if (atMine) {                   // 동굴: 괭이로만 채굴 가능
-    if (toolPage !== 'none' && TOOLS[currentTool].id === 'hoe') return tryMine();
+    // 🌾농사 세트의 다른 도구(씨앗·물조리개·낫·삽)를 들었으면 ⛏️괭이로 바꿔 그대로 캔다 —
+    // 입장 시 자동 선택(ZONE_TOOL)을 덮어쓰고 도구를 바꾼 경우의 안전망(밭 자동 전환과 같은 문법).
+    if (toolPage !== 'none') {
+      if (TOOLS[currentTool].grp === 'farm' && TOOLS[currentTool].id !== 'hoe') selectToolAuto('hoe');
+      if (TOOLS[currentTool].id === 'hoe') return tryMine();
+    }
     ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
     return;
   }

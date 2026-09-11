@@ -391,6 +391,10 @@
   #topright { top: calc(16px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   #inv-hud { display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .inv-item { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
+  /* ⛏️ 광산 안에서는 자원칩이 광물로 바뀐다(베타 피드백) — 칸 수는 4개 그대로라 상단 레이아웃이 안 흔들린다 */
+  .inv-item.mine { display: none; }
+  body.at-mine .inv-item.field { display: none; }
+  body.at-mine .inv-item.mine { display: flex; }
   .inv-ico { font-size: 17px; }
   #bag-btn { display: inline-flex; align-items: center; gap: 5px; border: none; border-radius: 13px; padding: 7px 12px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 14px; box-shadow: var(--shadow); transition: transform .1s; }
   #bag-btn:active { transform: scale(0.94); }
@@ -1120,9 +1124,12 @@
 
   <div id="topright" class="panel">
     <div id="inv-hud" title="가방 열기">
-      <span class="inv-item"><span class="inv-ico">🪵</span><b id="inv-wood">0</b></span>
-      <span class="inv-item"><span class="inv-ico">🌰</span><b id="inv-seed">0</b></span>
-      <span class="inv-item"><span class="inv-ico">🥕</span><b id="inv-crop">0</b></span>
+      <span class="inv-item field"><span class="inv-ico">🪵</span><b id="inv-wood">0</b></span>
+      <span class="inv-item field"><span class="inv-ico">🌰</span><b id="inv-seed">0</b></span>
+      <span class="inv-item field"><span class="inv-ico">🥕</span><b id="inv-crop">0</b></span>
+      <span class="inv-item mine"><span class="inv-ico">🪨</span><b id="inv-stone">0</b></span>
+      <span class="inv-item mine"><span class="inv-ico">⚫</span><b id="inv-coal">0</b></span>
+      <span class="inv-item mine"><span class="inv-ico">💎</span><b id="inv-gem">0</b></span>
       <span class="inv-item"><span class="inv-ico">🪙</span><b id="inv-coin">0</b></span>
       <button id="bag-btn" title="가방 열기"><span class="bag-emo">🎒</span><span class="bag-lbl">가방</span></button>
     </div>
@@ -1906,6 +1913,9 @@
         set('inv-wood', inv.wood || 0);
         set('inv-seed', inv.seed || 0);
         set('inv-crop', inv.crop || 0);
+        set('inv-stone', inv.stone || 0);
+        set('inv-coal', inv.coal || 0);
+        set('inv-gem', inv.gem || 0);
         set('inv-coin', inv.coins || 0);
         if ($('bag-menu').classList.contains('show')) renderBag();     // 가방 열려 있으면 갱신
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
@@ -2405,6 +2415,8 @@
         drawExpandBadge();
       },
       // 실내 진입/퇴장 → 꾸미기 버튼 토글
+      // ⛏️ 광산 입·퇴장 — 우상단 자원칩을 🪵🌰🥕 ↔ 🪨⚫💎 로 갈아 끼운다(숫자는 setInventory 가 늘 채워 둔다)
+      setMine(on) { document.body.classList.toggle('at-mine', on); },
       setIndoor(on) {
         document.body.classList.toggle('indoor', on);
         if (!on) { document.body.classList.remove('menu-open'); $('decor-menu').classList.remove('show'); Input.cancelDecor(); stopPlacing(); setDecorGuide(-1); }
