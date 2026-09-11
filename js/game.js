@@ -9084,6 +9084,9 @@ function createPlot(x, z, silent = false) {
   scene.add(g);
   const plot = { group: g, soil, ridges, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0 };
   plots.push(plot);
+  // 🌾 발밑에 밭이 생긴 주민은 바로 비켜선다 — 다음 배회 틱(최대 7초)까지 기다리지 않게 목적지를 즉시 다시 고르게 한다.
+  //    (silent=true 는 세이브 복원 — 그땐 주민이 아직 없거나 제자리를 잡는 중이라 건드리지 않는다)
+  if (!silent) for (const o of npcObjs) if (onPlotArea(o.group.position.x, o.group.position.z)) o.wanderTimer = 0;
   if (!silent) { g.userData.pop = 1; g.scale.setScalar(0.01); spawnDust(x, z, 14); } // 흙먼지 + 톡 등장
   return plot;
 }
@@ -10138,16 +10141,29 @@ function npcBlocked(x, z, self = null) {
   return obstacles.some(ob => Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.35);
 }
 
+// 🌾 밭 위는 주민이 배회하지 않는다 — 갈아둔 밭에 주민이 올라서면 작물을 가리고,
+//   대화 사거리(2.6)가 밭 작업 사거리(1.8)를 덮어 밭일이 대화로 새는 원인이 된다(베타 피드백).
+//   흙(1.7×1.7)에 몸통 반경(0.45)만큼 여유를 둔 사각 판정 — 붙어 있는 밭들은 한 덩어리로 묶여
+//   주민이 밭 사이를 비집고 다니지 않는다. 상인 방문·올빼미 착지 같은 대본 이동에는 적용하지 않는다.
+const PLOT_KEEP_OUT = 1.7 / 2 + 0.4;
+function onPlotArea(x, z) {
+  for (const p of plots) if (Math.abs(x - p.x) < PLOT_KEEP_OUT && Math.abs(z - p.z) < PLOT_KEEP_OUT) return true;
+  return false;
+}
+
 function wanderNPC(o, dt) {
+  const blocked = (x, z) => npcBlocked(x, z, o) || onPlotArea(x, z);
   o.wanderTimer -= dt;
   if (o.wanderTimer <= 0) {
     o.wanderTimer = 3 + Math.random() * 4;
-    // 건물·호수 안쪽은 목적지로 고르지 않음(카페·닭장·집을 뚫고 지나가던 문제)
-    for (let i = 0; i < 6; i++) {
-      const a = Math.random() * Math.PI * 2, r = Math.random() * (o.def.roam ?? 1.6);
+    // 건물·호수 안쪽과 밭은 목적지로 고르지 않음(카페·닭장·집을 뚫고 지나가던 문제 + 밭 밟기)
+    for (let i = 0; i < 9; i++) {
+      // 6번 실패하면 반경을 넓혀 찾는다 — 집 둘레가 통째로 밭이 되면 원래 roam 안엔 설 자리가 없다
+      const a = Math.random() * Math.PI * 2;
+      const r = (o.def.roam ?? 1.6) * (i < 6 ? Math.random() : 1 + Math.random() * 2);
       const nx = o.home.x + Math.cos(a) * r, nz = o.home.z + Math.sin(a) * r;
-      if (!npcBlocked(nx, nz, o)) { o.target.set(nx, 0, nz); break; }
-      if (i === 5) o.target.copy(o.home);   // 전부 막혔으면 제자리
+      if (!blocked(nx, nz)) { o.target.set(nx, 0, nz); break; }
+      if (i === 8) o.target.copy(o.home);   // 전부 막혔으면 제자리
     }
   }
   const dx = o.target.x - o.group.position.x, dz = o.target.z - o.group.position.z;
@@ -10155,8 +10171,8 @@ function wanderNPC(o, dt) {
   if (d > 0.06) {
     const nx = o.group.position.x + (dx / d) * 0.5 * dt;
     const nz = o.group.position.z + (dz / d) * 0.5 * dt;
-    // 이미 막힌 자리에 서 있다면(나무가 나중에 생긴 경우 등) 빠져나올 수 있게 이동을 허용
-    if (npcBlocked(nx, nz, o) && !npcBlocked(o.group.position.x, o.group.position.z, o)) { o.wanderTimer = 0; return; }
+    // 이미 막힌 자리에 서 있다면(나무가 나중에 생긴 경우·발밑에 밭이 생긴 경우) 빠져나올 수 있게 이동을 허용
+    if (blocked(nx, nz) && !blocked(o.group.position.x, o.group.position.z)) { o.wanderTimer = 0; return; }
     o.group.position.x = nx; o.group.position.z = nz;
     o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.1);
   }
