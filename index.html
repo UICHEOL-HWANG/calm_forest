@@ -106,6 +106,11 @@
   .bag-item .bag-ico { font-size: 24px; }
   .bag-item .bag-name { font-size: 11px; font-weight: 600; }
   .bag-item .bag-cnt { font-size: 13px; font-weight: 700; opacity: .8; }
+  /* 🍱 찬장 칸 — 누르면 먹는 버튼이라 재료 칸과 다르게 보여야 한다 */
+  .bag-item.food { border: none; cursor: pointer; font: inherit; color: inherit; background: #fff6e6; transition: transform .08s; }
+  .bag-item.food:active { transform: scale(0.95); }
+  .bag-item .bag-tier { font-size: 10px; font-weight: 700; opacity: .78; font-variant-numeric: tabular-nums; }
+  .bag-empty { font-size: 11.5px; opacity: .62; padding: 8px 4px; line-height: 1.5; }
   /* 집 외관 꾸미기 메뉴 */
   #ext-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(400px, 92vw); flex-direction: column; gap: 10px; max-height: calc(100vh - 100px - env(safe-area-inset-bottom)); overflow-y: auto; }
   #ext-menu.show { display: flex; }
@@ -642,9 +647,12 @@
   .kt-cost { font-size: 11px; opacity: .85; margin-top: 2px; }
   .kt-cost .lack { color: #d05a4a; font-weight: 700; }
   .kt-side { text-align: right; flex: 0 0 auto; }
-  .kt-mg { font-size: 11px; font-weight: 700; border-radius: 9px; padding: 4px 8px; white-space: nowrap; background: #eef2ee; }
-  .kt-mg.pot { background: #ffe9d2; }
-  .kt-mg.chop { background: #dcecfa; }
+  /* ★ 난이도 = 코스 길이. 색으로도 한눈에 갈린다 */
+  .kt-diff { font-size: 11px; font-weight: 800; letter-spacing: -1px; }
+  .kt-diff.d1 { color: #4a9e6a; }
+  .kt-diff.d2 { color: #c9962a; }
+  .kt-diff.d3 { color: #c9682a; }
+  .kt-course { font-size: 11px; font-weight: 600; opacity: .8; margin-top: 2px; }
   .kt-best { font-size: 10.5px; opacity: .7; margin-top: 3px; font-variant-numeric: tabular-nums; }
   /* 📖 메인 퀘스트 칩 — 미니맵 아래, 현재 장 목표(코지 톤: 안내지 강요 아님) */
   #story-chip { position: fixed; top: calc(212px + var(--top-inset)); left: 16px; display: none; align-items: center; gap: 8px;
@@ -749,6 +757,12 @@
   #intro-title .it-sub { margin-top: 4px; font-size: clamp(12px, 3.2vw, 15px); letter-spacing: 4px; color: rgba(255,255,255,0.85); text-shadow: 0 1px 8px rgba(30,60,40,0.5); }
   #intro-fade { position: absolute; inset: 0; background: #fff; opacity: 0; transition: opacity 1.15s ease-in-out; }
 
+  /* 📋 패널(자유주방 메뉴판·상점·작업대·주문판…)이 열려 있으면 마을 조작 UI를 걷는다.
+     패널이 화면을 덮는 동안엔 눌러도 아무 일이 없는데, 💬대화하기 버튼과 존 안내·프롬프트가
+     패널 위로 떠서 목록을 가렸다(보고: "자유주방에서 목록 보다가 NPC랑 겹친다").
+     미니맵·도감·문의 탭은 패널 위쪽 바깥이라 그대로 둔다 — 패널을 안 가린다. */
+  body.menu-open #talk-btn, body.menu-open #catch-banner,
+  body.menu-open #door-prompt, body.menu-open #npc-prompt, body.menu-open #zone-prompt { display: none !important; }
   /* 🍳 미니게임 중엔 마을 UI(프롬프트·미니맵·탭)를 걷어 클로즈업 조리 화면에 몰입 */
   body.mg-open #catch-banner,
   body.mg-open #door-prompt, body.mg-open #npc-prompt, body.mg-open #zone-prompt, body.mg-open #hotbar,
@@ -776,6 +790,25 @@
   #mg-chop { display: none; flex-direction: column; gap: 4px; }
   #mg-chop.show { display: flex; }
   #mg-combo { text-align: center; font-size: 14px; font-weight: 800; color: #c9682a; min-height: 18px; font-variant-numeric: tabular-nums; }
+  /* 🔥 굽기 HUD — 한 방향으로 차오르는 게이지. 구간을 지나면 붉게(=타는 중) */
+  #mg-grill { display: none; flex-direction: column; align-items: center; gap: 8px; }
+  #mg-grill.show { display: flex; }
+  #mg-gbar { position: relative; width: 100%; height: 34px; border-radius: 17px; background: #e8e2d2; overflow: hidden; }
+  #mg-gzone { position: absolute; top: 0; bottom: 0; background: #f0c88a; border-radius: 8px; }
+  #mg-gfill { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0%; border-radius: 14px; background: #c98a4a; transition: background .18s; }
+  #mg-gfill.hot { background: #b34a32; }
+  /* 🧂 간 맞추기 HUD — 누르는 동안 차오르고, 넘치면 붉게(=짜다) */
+  #mg-season { display: none; flex-direction: column; align-items: center; gap: 6px; }
+  #mg-season.show { display: flex; }
+  #mg-sbar { position: relative; width: 100%; height: 34px; border-radius: 17px; background: #e8e2d2; overflow: hidden; }
+  #mg-szone { position: absolute; top: 0; bottom: 0; background: #bfe6c3; border-radius: 8px; }
+  #mg-sfill { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0%; border-radius: 14px; background: #7fa8ce; transition: background .18s; }
+  #mg-sfill.over { background: #b34a32; }
+  #mg-shold { font-size: 12px; font-weight: 700; opacity: .7; }
+  /* 코스 진행 · 단계 이름 · 조작 안내 */
+  .mg-course { font-size: 11px; font-weight: 700; color: #2f7a68; background: #dff0ea; border-radius: 8px; padding: 2px 7px; margin-left: 4px; }
+  .mg-stage { font-size: 12px; font-weight: 700; opacity: .72; margin-left: 4px; }
+  #mg-tip { text-align: center; font-size: 12px; opacity: .62; min-height: 16px; }
   #mg-judge { text-align: center; font-size: 20px; font-weight: 800; min-height: 26px; transition: transform .12s; }
   #mg-judge.pop { transform: scale(1.25); }
   #mg-judge .j-perfect { color: #2fa564; }
@@ -793,6 +826,11 @@
   #mgr-again, #mgr-close { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer; }
   #mgr-again { background: var(--mint); color: var(--ink); }
   #mgr-close { background: #eef2ee; color: var(--ink); }
+  #mgr-cafe { font-size: 14px; font-weight: 700; color: #c9682a; }
+  #mgr-eat, #mgr-store { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  #mgr-eat { background: #ffe0b8; color: var(--ink); }
+  #mgr-store { background: #dff0ea; color: var(--ink); }
+  #mgr-store:disabled { opacity: .45; cursor: default; }
   /* 🗿 조각 공방 HUD — 캔버스가 곧 조작면이라 레이어는 통과(pointer-events:none), 상단바·하단바·결과 카드만 이벤트를 받는다 */
   body.cv-open #topleft, body.cv-open #topright { display: none !important; }   /* 좁은 화면에서 타이틀바와 겹치는 상단 마을 UI 숨김 */
   #cv-layer { position: fixed; inset: 0; z-index: 40; display: none; pointer-events: none; -webkit-user-select: none; user-select: none; }
@@ -1282,7 +1320,17 @@
       <div id="mg-chop">
         <div id="mg-combo"></div>
       </div>
+      <!-- 🔥 굽기(한 방향 게이지): 노릇 구간에서 탭해 뒤집기 — 지나치면 탄다 -->
+      <div id="mg-grill">
+        <div id="mg-gbar"><div id="mg-gzone"></div><div id="mg-gfill"></div></div>
+      </div>
+      <!-- 🧂 간 맞추기(홀드-릴리스): 꾹 누르고 있다가 목표 구간에서 손 떼기 -->
+      <div id="mg-season">
+        <div id="mg-sbar"><div id="mg-szone"></div><div id="mg-sfill"></div></div>
+        <div id="mg-shold">꾹 누르고 계세요</div>
+      </div>
       <div id="mg-judge"></div>
+      <div id="mg-tip"></div>
       <button id="mg-tap">👆 눌러주세요!</button>
       <!-- 결과 화면 -->
       <div id="mg-result">
@@ -1290,6 +1338,9 @@
         <div id="mgr-title">최고의 맛!</div>
         <div id="mgr-sub"></div>
         <div id="mgr-stats"></div>
+        <div id="mgr-cafe"></div>
+        <!-- 🍽️ 만든 요리를 지금 먹을지, 🧺 찬장에 넣어 둘지 -->
+        <div id="mgr-choice" class="dm-actions" style="justify-content:center"><button id="mgr-eat">🍽️ 지금 먹기</button><button id="mgr-store">🧺 보관하기</button></div>
         <div class="dm-actions" style="justify-content:center"><button id="mgr-again">🍳 한 번 더</button><button id="mgr-close">닫기</button></div>
       </div>
     </div>
@@ -2924,26 +2975,36 @@
     function closeCook() { $('cook-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
     $('cook-close').addEventListener('click', closeCook);
 
-    // ═══════════════ 🍳 자유주방 — 메뉴판 + 요리 미니게임 ═══════════════
-    //  · pot(끓이기): 게이지를 왕복하는 바늘이 초록 구간에 올 때 탭 ×3단계(구간이 점점 좁아짐)
-    //  · chop(썰기): 오른쪽에서 흘러오는 재료를 도마(왼쪽 초록 존)에서 리듬 탭 ×8
-    //  탭별 타이밍 오차(ms)·판정·콤보를 수집해 Input.kitchenFinish 로 넘김 → 등급·버프·GA4 트래킹
+    // ═══════════════ 🍳 자유주방 — 메뉴판 ═══════════════
+    //  한 요리는 미니게임 여러 판을 이어 치르는 **코스**다. ★ 개수 = 판 수 = 난이도.
+    //  메뉴판이 "이 요리는 무엇을 몇 판 하는가"를 미리 보여주므로, 플레이어가 난이도를 직접 고른다.
     function renderKitchen(d) {
-      $('kt-sub').textContent = d.cooked ? `누적 요리 ${d.cooked}회` : '';
+      // ⚠️ " · " 로 이어 붙인 한 줄은 i18n 이 '{0} · {1}' 글루 패턴으로 쪼개 번역한다 —
+      //    한쪽이 비면 앞에 구분자만 덩그러니 남으므로 조각을 모아서 잇는다.
+      const bits = [];
+      if (d.cooked) bits.push(`누적 요리 ${d.cooked}회`);
+      if (d.pantry) bits.push(`🧺 찬장 ${d.pantry.items.length}/${d.pantry.max}`);
+      $('kt-sub').textContent = bits.join(' · ');
       const box = $('kt-items'); box.innerHTML = '';
       d.recipes.forEach(r => {
         const costStr = r.cost.map(c => `<span class="${c.have < c.need ? 'lack' : ''}">${c.ico} ${c.have}/${c.need}</span>`).join(' · ');
+        const courseStr = r.course.map(c => `${c.ico} ${c.name}`).join(' → ');
         const el = document.createElement('div');
         el.className = 'kt-row' + (r.ready ? '' : ' off');
         el.innerHTML = `<span class="kt-ico">${r.ico}</span>
-          <div class="kt-body"><div class="kt-name">${r.name}</div><div class="kt-desc">${r.desc}</div><div class="kt-cost">${costStr}</div></div>
-          <div class="kt-side"><span class="kt-mg ${r.mg}">${r.mg === 'pot' ? '🍲 끓이기' : '🔪 썰기'}</span><div class="kt-best">${r.best ? `⭐ 최고 ${r.best}점` : '기록 없음'}</div></div>`;
+          <div class="kt-body">
+            <div class="kt-name">${r.name} <span class="kt-diff d${r.diff}">${'★'.repeat(r.diff)}</span></div>
+            <div class="kt-desc">${r.desc}</div>
+            <div class="kt-course">${courseStr}</div>
+            <div class="kt-cost">${costStr}</div>
+          </div>
+          <div class="kt-side"><div class="kt-best">${r.best ? `⭐ 최고 ${r.best}점` : '기록 없음'}</div></div>`;
         el.addEventListener('click', () => {
           if (!r.ready) { ui.toast('재료가 부족해요'); return; }
           const st = Input.kitchenStart(r.id);
           if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); renderKitchen(Input.getKitchen()); return; }
           closeKitchen();
-          startMinigame(st);
+          startCookCourse(st);
         });
         box.appendChild(el);
       });
@@ -2983,7 +3044,12 @@
     }
     window.addEventListener('resize', layoutQuestPanel);
 
-    // ── 미니게임 상태/상수 ──
+    // ═══════════════ 🍳 요리 미니게임 — 스테이지 4종 + 코스 러너 ═══════════════
+    //  한 레시피는 여러 판(스테이지)을 **순서대로** 치르는 코스다. ★1 = 1판, ★3 = 3판.
+    //  각 스테이지는 아래 공통 인터페이스만 지키면 되고, 러너가 순서·점수 합산·종료를 맡는다:
+    //    { hud, start(cfg), tap(now), release(now), frame(now), timeout } → 끝나면 cfg.done(pts[])
+    //  cfg.mult 는 판정창 배율 — 코스 뒤로 갈수록 작아진다(= 단계별로 난이도가 올라간다).
+    //  ⚠️ 모든 스테이지는 rAF 가 멈춰도(백그라운드 탭) 반드시 정산되게 종료 보증 타이머를 건다.
     const POT_STEPS = [
       { label: '🧺 재료 넣기', half: 13 },     // half: 초록 구간 반폭(%) — 단계마다 좁아져 난이도↑
       { label: '🥄 골고루 젓기', half: 10 },
@@ -2991,183 +3057,405 @@
     ];
     const POT_SWEEP = 700;                                   // 바늘 편도 이동 시간(ms) — 1% ≈ 7ms
     const CHOP_N = 8, CHOP_BEAT = 520, CHOP_TRAVEL = 1400;   // 노트 수 · 박자 간격 · 레인 이동 시간(ms)
-    const MG = { active: false, type: null, id: null, name: '', raf: 0, timers: [], startAt: 0,
-      offsets: [], judges: { perfect: 0, good: 0, miss: 0 }, pts: [], combo: 0, maxCombo: 0,
-      step: 0, zoneC: 50, stepAt: 0, waiting: false,         // pot 전용
-      notes: [], laneW: 0, hitX: 0 };                        // chop 전용
-    const mgT = (ms, fn) => MG.timers.push(setTimeout(fn, ms));
+    const GRILL_N = 3, GRILL_RISE = 2600;                    // 뒤집기 횟수 · 게이지가 0→100 까지 차는 시간(ms)
+    const GRILL_ZONE = 16;                                   // "노릇" 구간 반폭(%) — mult 로 넓어진다
+    const SEASON_N = 2, SEASON_RISE = 2100;                  // 간 맞추기 횟수 · 게이지 상승 시간(ms)
+    const SEASON_ZONE = 13;                                  // 목표 구간 반폭(%)
+
+    const MG = { active: false, id: null, name: '', where: 'kitchen', raf: 0, timers: [],
+      startAt: 0, course: [], si: 0, stageScores: [], stage: null,
+      offsets: [], judges: { perfect: 0, good: 0, miss: 0 }, pts: [], combo: 0, maxCombo: 0, holding: false };
+    const mgT = (ms, fn) => { const h = setTimeout(fn, ms); MG.timers.push(h); return h; };
     function mgJudge(kind, text) {
       const el = $('mg-judge');
       el.innerHTML = `<span class="j-${kind}">${text}</span>`;
       el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
     }
+    function mgCount(kind) {                                  // 판정 집계 — 콤보는 perfect/good 에서만 이어진다
+      MG.judges[kind]++;
+      if (kind === 'miss') { MG.combo = 0; $('mg-combo').textContent = ''; }
+      else { MG.combo++; MG.maxCombo = Math.max(MG.maxCombo, MG.combo); $('mg-combo').textContent = MG.combo >= 2 ? `🔥 ${MG.combo} 콤보!` : ''; }
+    }
+    function mgStepLabel(text, i, n) {                        // 코스 진행 표시 — "지금 몇 번째 판인지"를 늘 보이게
+      const course = MG.course.length > 1 ? ` <span class="mg-course">코스 ${MG.si + 1}/${MG.course.length}</span>` : '';
+      $('mg-step').innerHTML = `${text} <span id="mg-step-n">${i}/${n}</span>${course}`;
+    }
 
-    function startMinigame(st) {
-      MG.active = true; MG.type = st.mg; MG.id = st.id; MG.name = `${st.ico} ${st.name}`;
-      MG.costIcos = st.icos || [];                           // 레시피 재료 아이콘(장면 연출용)
+    // ── 🍲 끓이기 — 왕복하는 바늘이 초록 구간에 올 때 탭 ×3 ──
+    const StagePot = {
+      hud: 'mg-pot',
+      start(cfg) {
+        this.cfg = cfg; this.pts = []; this.step = 0; this.waiting = false;
+        this.next(0);
+      },
+      next(i) {
+        this.step = i; this.waiting = false; this.stepAt = performance.now();
+        this.zoneC = 25 + Math.random() * 50;                 // 초록 구간 중심(25~75%) — 매번 다른 위치
+        const s = POT_STEPS[i];
+        this.half = s.half * this.cfg.mult;                   // ★ 판정창 배율
+        mgStepLabel(s.label, i + 1, POT_STEPS.length);
+        const z = $('mg-zone');
+        z.style.left = (this.zoneC - this.half) + '%';
+        z.style.width = (this.half * 2) + '%';
+        mgT(4200, () => { if (MG.stage === this && this.step === i && !this.waiting) this.tap(null); });  // ⏱️ 3왕복 방치 → 자동 미스
+      },
+      pct(now) {
+        const t = (now - this.stepAt) % (POT_SWEEP * 2);      // 왕복 삼각파(0→100→0)
+        return (t < POT_SWEEP ? t / POT_SWEEP : 2 - t / POT_SWEEP) * 100;
+      },
+      frame(now) { if (!this.waiting) $('mg-needle').style.left = `calc(${this.pct(now).toFixed(2)}% - 2px)`; },
+      tap(now) {
+        if (this.waiting) return;
+        this.waiting = true;
+        let pts;
+        if (now === null) { pts = 0; mgCount('miss'); mgJudge('miss', '⏰ 놓쳤어요'); }
+        else {
+          const pct = this.pct(now);
+          const dist = Math.abs(pct - this.zoneC);
+          MG.offsets.push(Math.round((pct - this.zoneC) * POT_SWEEP / 100));   // 타이밍 오차(ms, 부호=구간 앞/뒤)
+          let kind;
+          if (dist <= this.half * 0.4) { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 완벽해요!'); Sound.harvest(); }
+          else if (dist <= this.half)  { pts = Math.round(95 - (dist / this.half) * 40); kind = 'good'; mgJudge('good', '👍 좋아요'); Sound.blip(); }
+          else { pts = Math.max(0, Math.round(45 - (dist - this.half) * 2)); kind = 'miss'; mgJudge('miss', '😅 아쉬워요'); }
+          mgCount(kind);
+          Input.mgPotHit(this.step, kind, (MG.costIcos || [])[0]);   // 🎥 3D 무대 연출(재료 퐁당/국자 젓기/불길)
+        }
+        this.pts.push(pts);
+        if (this.step + 1 < POT_STEPS.length) mgT(650, () => { if (MG.stage === this) this.next(this.step + 1); });
+        else mgT(650, () => { if (MG.stage === this) this.cfg.done(this.pts); });
+      },
+      release() {},
+      timeout() { return POT_STEPS.length * 5200; },
+      settle() { while (this.pts.length < POT_STEPS.length) this.pts.push(0); return this.pts; },
+    };
+
+    // ── 🔪 썰기 — 흘러오는 재료가 칼 아래 올 때 박자 탭 ×8 ──
+    const StageChop = {
+      hud: 'mg-chop',
+      start(cfg) {
+        this.cfg = cfg; this.pts = []; this.notes = [];
+        this.win = { perfect: 90 * cfg.mult, good: 170 * cfg.mult, late: 260 * cfg.mult };   // ★ 판정창 배율
+        const t0 = performance.now() + 1100;                  // 첫 노트까지 살짝 여유
+        for (let i = 0; i < CHOP_N; i++) this.notes.push({ hitAt: t0 + i * CHOP_BEAT, done: false, missed: false });
+        mgStepLabel('🔪 박자에 맞춰 썰기', 0, CHOP_N);
+      },
+      frame(now) {
+        let allDone = true;
+        for (const n of this.notes) {
+          if (n.done) continue;
+          allDone = false;
+          if (now > n.hitAt + this.win.late) {                // 칼 아래를 지나친 노트 → 미스
+            n.done = true; n.missed = true;
+            this.pts.push(0); mgCount('miss'); mgJudge('miss', '💨 놓쳤어요');
+          }
+        }
+        mgStepLabel('🔪 박자에 맞춰 썰기', this.pts.length, CHOP_N);
+        // 🎥 3D 무대에 노트 진행도 동기화 — p: 0(출발)→1(칼 아래), s: 0진행 1썰림 2미스
+        Input.mgChopFrame(this.notes.map(n => ({
+          p: Math.max(0, Math.min(1.3, (now - (n.hitAt - CHOP_TRAVEL)) / CHOP_TRAVEL)),
+          s: n.done ? (n.missed ? 2 : 1) : 0,
+        })));
+        if (allDone && !this.ending) { this.ending = true; mgT(500, () => { if (MG.stage === this) this.cfg.done(this.pts); }); }
+      },
+      tap(now) {
+        let best = null, bestI = -1, bestAbs = 1e9;
+        this.notes.forEach((n, i) => {
+          if (n.done) return;
+          const abs = Math.abs(now - n.hitAt);
+          if (abs < bestAbs) { bestAbs = abs; best = n; bestI = i; }
+        });
+        if (!best || bestAbs > this.win.late) return;         // 칼 밖 헛스윙은 무판정(연타 방지)
+        best.done = true;
+        MG.offsets.push(Math.round(now - best.hitAt));        // 타이밍 오차(ms, -빠름/+늦음)
+        let pts, kind;
+        if (bestAbs <= this.win.perfect)   { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 싹둑!'); }
+        else if (bestAbs <= this.win.good) { pts = 65;  kind = 'good';    mgJudge('good', '👍 좋아요'); }
+        else                               { pts = 30;  kind = 'good';    mgJudge('good', '😅 아슬아슬'); }
+        mgCount(kind);
+        Input.mgChopHit(bestI, kind);                         // 🎥 칼 내려찍기 + 재료 두 조각 연출
+        Sound.chop();
+        this.pts.push(pts);
+      },
+      release() {},
+      timeout() { return 1100 + CHOP_N * CHOP_BEAT + 1500; },
+      settle() { while (this.pts.length < CHOP_N) this.pts.push(0); return this.pts; },
+    };
+
+    // ── 🔥 굽기 — 한 방향으로 차오르는 게이지를 "노릇" 구간에서 눌러 뒤집기 ×3 ──
+    //    끓이기와 달리 바늘이 **되돌아오지 않는다**. 놓치면 그냥 탄다 — 실패가 색으로 남는다.
+    const StageGrill = {
+      hud: 'mg-grill',
+      start(cfg) {
+        this.cfg = cfg; this.pts = []; this.step = 0; this.waiting = false;
+        this.next(0);
+      },
+      next(i) {
+        this.step = i; this.waiting = false; this.stepAt = performance.now(); this.burnt = false;
+        this.half = GRILL_ZONE * this.cfg.mult;
+        this.zoneC = 46 + Math.random() * 26;                 // 노릇 구간 중심(46~72%)
+        mgStepLabel(i === 0 ? '🔥 앞면 굽기' : i === 1 ? '🔥 뒷면 굽기' : '🔥 마무리 굽기', i + 1, GRILL_N);
+        const z = $('mg-gzone');
+        z.style.left = (this.zoneC - this.half) + '%';
+        z.style.width = (this.half * 2) + '%';
+        $('mg-gfill').style.width = '0%';
+        mgT(GRILL_RISE + 900, () => { if (MG.stage === this && this.step === i && !this.waiting) this.tap(null); });  // 다 타버림
+      },
+      pct(now) { return Math.min(100, (now - this.stepAt) / GRILL_RISE * 100); },
+      frame(now) {
+        if (this.waiting) return;
+        const p = this.pct(now);
+        const f = $('mg-gfill');
+        f.style.width = p + '%';
+        f.classList.toggle('hot', p > this.zoneC + this.half);   // 구간을 지나면 붉게 — 타고 있다는 신호
+      },
+      tap(now) {
+        if (this.waiting) return;
+        this.waiting = true;
+        let pts, kind, over = false;
+        if (now === null) {                                    // 끝까지 안 누름 → 새까맣게
+          pts = 0; kind = 'miss'; over = true;
+          mgJudge('miss', '🔥 타버렸어요');
+          mgCount('miss'); Input.mgGrillFlip('miss', true);
+        } else {
+          const p = this.pct(now);
+          const d = p - this.zoneC;
+          MG.offsets.push(Math.round(d * GRILL_RISE / 100));
+          if (Math.abs(d) <= this.half * 0.4) { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 노릇노릇!'); Sound.harvest(); }
+          else if (Math.abs(d) <= this.half)  { pts = Math.round(92 - (Math.abs(d) / this.half) * 34); kind = 'good'; mgJudge('good', '👍 잘 익었어요'); Sound.blip(); }
+          else if (d < 0)                     { pts = Math.max(0, Math.round(50 - (-d) * 1.6)); kind = 'miss'; mgJudge('miss', '😅 아직 덜 익었어요'); }
+          else                                { pts = Math.max(0, Math.round(45 - d * 2.2)); kind = 'miss'; over = true; mgJudge('miss', '😖 좀 탔어요'); }
+          mgCount(kind);
+          Input.mgGrillFlip(kind, over);                       // 🎥 뒤집기 + 탄 정도 반영
+        }
+        this.pts.push(pts);
+        if (this.step + 1 < GRILL_N) mgT(680, () => { if (MG.stage === this) this.next(this.step + 1); });
+        else mgT(680, () => { if (MG.stage === this) this.cfg.done(this.pts); });
+      },
+      release() {},
+      timeout() { return GRILL_N * (GRILL_RISE + 1700); },
+      settle() { while (this.pts.length < GRILL_N) this.pts.push(0); return this.pts; },
+    };
+
+    // ── 🧂 간 맞추기 — **꾹 누르고 있다가** 목표선에서 손을 떼기 ×2 ──
+    //    유일한 홀드-릴리스 문법이라 같은 탭이어도 손맛이 확실히 다르다.
+    const StageSeason = {
+      hud: 'mg-season',
+      start(cfg) {
+        this.cfg = cfg; this.pts = []; this.step = 0; this.waiting = false;
+        this.next(0);
+      },
+      next(i) {
+        this.step = i; this.waiting = false; this.holdAt = 0; this.level = 0;
+        this.half = SEASON_ZONE * this.cfg.mult;
+        this.target = 44 + Math.random() * 30;                // 목표 중심(44~74%)
+        mgStepLabel(i === 0 ? '🧂 소금 간' : '🌿 허브 간', i + 1, SEASON_N);
+        const z = $('mg-szone');
+        z.style.left = (this.target - this.half) + '%';
+        z.style.width = (this.half * 2) + '%';
+        $('mg-sfill').style.width = '0%';
+        $('mg-shold').textContent = '꾹 누르고 계세요';
+        mgT(9000, () => { if (MG.stage === this && this.step === i && !this.waiting) this.release(null); });  // 아예 안 누름 → 미스
+      },
+      frame(now) {
+        if (this.waiting || !this.holdAt) return;
+        this.level = Math.min(118, (now - this.holdAt) / SEASON_RISE * 100);   // 100 을 넘겨도 계속 오른다(넘치면 짜다)
+        const f = $('mg-sfill');
+        f.style.width = Math.min(100, this.level) + '%';
+        f.classList.toggle('over', this.level > this.target + this.half);
+      },
+      tap(now) {                                              // 누르기 시작 = 쏟기 시작
+        if (this.waiting || this.holdAt) return;
+        this.holdAt = now; MG.holding = true;
+        $('mg-shold').textContent = '지금 손을 떼세요!';
+        Input.mgSeasonPour(true);
+        Sound.blip();
+      },
+      release(now) {
+        if (this.waiting) return;
+        if (!this.holdAt && now !== null) return;             // 누른 적 없는 손 뗌은 무시
+        this.waiting = true; MG.holding = false;
+        Input.mgSeasonPour(false);
+        let pts, kind;
+        if (now === null || !this.holdAt) { pts = 0; kind = 'miss'; mgJudge('miss', '⏰ 간을 안 했어요'); }
+        else {
+          const lv = Math.min(118, (now - this.holdAt) / SEASON_RISE * 100);
+          const d = lv - this.target;
+          MG.offsets.push(Math.round(d * SEASON_RISE / 100));
+          if (Math.abs(d) <= this.half * 0.4) { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 딱 좋은 간!'); Sound.harvest(); }
+          else if (Math.abs(d) <= this.half)  { pts = Math.round(92 - (Math.abs(d) / this.half) * 34); kind = 'good'; mgJudge('good', '👍 괜찮아요'); Sound.blip(); }
+          else if (d < 0)                     { pts = Math.max(0, Math.round(50 - (-d) * 1.8)); kind = 'miss'; mgJudge('miss', '😅 좀 싱거워요'); }
+          else                                { pts = Math.max(0, Math.round(48 - d * 2.0)); kind = 'miss'; mgJudge('miss', '😖 너무 짜요'); }
+        }
+        mgCount(kind);
+        Input.mgSeasonDone(kind);
+        this.pts.push(pts);
+        if (this.step + 1 < SEASON_N) mgT(700, () => { if (MG.stage === this) this.next(this.step + 1); });
+        else mgT(700, () => { if (MG.stage === this) this.cfg.done(this.pts); });
+      },
+      timeout() { return SEASON_N * 10000; },
+      settle() { while (this.pts.length < SEASON_N) this.pts.push(0); return this.pts; },
+    };
+
+    const STAGES = { pot: StagePot, chop: StageChop, grill: StageGrill, season: StageSeason };
+    const STAGE_HUDS = ['mg-pot', 'mg-chop', 'mg-grill', 'mg-season'];
+
+    // ── 코스 러너 ─────────────────────────────────────────────
+    function startCookCourse(st) {
+      MG.active = true; MG.id = st.id; MG.where = st.where || 'kitchen';
+      MG.name = `${st.ico} ${st.name}`; MG.costIcos = st.icos || []; MG.dishIco = st.ico;
+      MG.course = st.course; MG.si = -1; MG.stageScores = [];
       MG.offsets = []; MG.judges = { perfect: 0, good: 0, miss: 0 }; MG.pts = [];
-      MG.combo = 0; MG.maxCombo = 0; MG.step = 0; MG.notes = []; MG.timers = [];
+      MG.combo = 0; MG.maxCombo = 0; MG.holding = false; MG.timers = [];
       MG.startAt = performance.now();
-      $('mg-title').textContent = MG.name;
       $('mg-judge').textContent = ''; $('mg-combo').textContent = '';
       $('mg-result').classList.remove('show');
       $('mg-tap').style.display = '';
-      $('mg-pot').classList.toggle('show', st.mg === 'pot');
-      $('mg-chop').classList.toggle('show', st.mg === 'chop');
       $('mg-layer').classList.add('show'); document.body.classList.add('menu-open'); document.body.classList.add('mg-open');
       Input.setAnalog(0, 0);
-      Input.mgSceneStart(st.mg, MG.costIcos, CHOP_N);        // 🎥 3D 클로즈업 조리 무대로 카메라 전환
-      if (st.mg === 'pot') startPot(); else startChop();
+      nextStage();
+    }
+    function nextStage() {
+      MG.si++;
+      if (MG.si >= MG.course.length) { endCourse(false); return; }
+      const c = MG.course[MG.si];
+      const stage = Object.create(STAGES[c.mg]);              // 스테이지 인스턴스(모듈은 원형으로만 쓴다)
+      MG.stage = stage;
+      STAGE_HUDS.forEach(id => $(id).classList.toggle('show', id === stage.hud));
+      $('mg-title').innerHTML = `${MG.name} <span class="mg-stage">${c.ico} ${c.name}</span>`;
+      $('mg-tap').textContent = c.mg === 'season' ? '👇 꾹 눌러주세요!' : '👆 눌러주세요!';
+      $('mg-tip').textContent = c.tip;
+      Input.mgSceneStart(c.mg, MG.costIcos, CHOP_N, MG.dishIco);   // 🎥 3D 클로즈업 무대를 이 단계로 전환
+      stage.start({ mult: c.mult, done: (pts) => finishStage(pts) });
+      // ⏱️ rAF 가 멈춰도(백그라운드 탭) 판이 영원히 안 끝나지 않게 — 스테이지가 정한 상한
+      mgT(stage.timeout(), () => { if (MG.stage === stage) finishStage(stage.settle()); });
+      cancelAnimationFrame(MG.raf);
+      MG.raf = requestAnimationFrame(mgFrame);
+    }
+    function finishStage(pts) {
+      const stage = MG.stage; if (!stage) return;
+      MG.stage = null;
+      const c = MG.course[MG.si];
+      const avg = pts.length ? pts.reduce((a, b) => a + b, 0) / pts.length : 0;
+      MG.stageScores.push(avg);
+      MG.pts.push(...pts);
+      mgT(240, () => { if (MG.active) nextStage(); });
+    }
+    function mgFrame(now) {
+      if (!MG.active) return;
+      MG.stage?.frame?.(now);
+      MG.raf = requestAnimationFrame(mgFrame);
     }
 
-    // ── 🍲 끓이기(타이밍) — 장면 연출은 3D 무대(Input.mgPotHit), 여기는 게이지 판정만 ──
-    function startPot() {
-      potNextStep(0);
-      MG.raf = requestAnimationFrame(potFrame);
-    }
-    function potNextStep(i) {
-      MG.step = i; MG.waiting = false; MG.stepAt = performance.now();
-      MG.zoneC = 25 + Math.random() * 50;                    // 초록 구간 중심(25~75%) — 매번 다른 위치
-      const s = POT_STEPS[i];
-      $('mg-step').innerHTML = `${s.label} <span id="mg-step-n">${i + 1}/${POT_STEPS.length}</span>`;
-      const z = $('mg-zone');
-      z.style.left = (MG.zoneC - s.half) + '%';
-      z.style.width = (s.half * 2) + '%';
-      mgT(4200, () => { if (MG.active && MG.type === 'pot' && MG.step === i && !MG.waiting) potHit(null); }); // ⏱️ 3왕복 방치 → 자동 미스
-    }
-    function potNeedlePct(now) {
-      const t = (now - MG.stepAt) % (POT_SWEEP * 2);         // 왕복 삼각파(0→100→0)
-      return (t < POT_SWEEP ? t / POT_SWEEP : 2 - t / POT_SWEEP) * 100;
-    }
-    function potFrame(now) {
-      if (!MG.active || MG.type !== 'pot') return;
-      if (!MG.waiting) $('mg-needle').style.left = `calc(${potNeedlePct(now).toFixed(2)}% - 2px)`;
-      MG.raf = requestAnimationFrame(potFrame);
-    }
-    function potHit(now) {                                   // now=null 이면 시간 초과(자동 미스)
-      if (MG.waiting) return;
-      MG.waiting = true;
-      const s = POT_STEPS[MG.step];
-      let pts;
-      if (now === null) {
-        pts = 0; MG.judges.miss++; MG.combo = 0;
-        mgJudge('miss', '⏰ 놓쳤어요');
-      } else {
-        const pct = potNeedlePct(now);
-        const dist = Math.abs(pct - MG.zoneC);
-        MG.offsets.push(Math.round((pct - MG.zoneC) * POT_SWEEP / 100));   // 타이밍 오차(ms, 부호=구간 앞/뒤)
-        let kind;
-        if (dist <= s.half * 0.4)  { pts = 100; kind = 'perfect'; MG.judges.perfect++; MG.combo++; mgJudge('perfect', '💫 완벽해요!'); Sound.harvest(); }
-        else if (dist <= s.half)   { pts = Math.round(95 - (dist / s.half) * 40); kind = 'good'; MG.judges.good++; MG.combo++; mgJudge('good', '👍 좋아요'); Sound.blip(); }
-        else { pts = Math.max(0, Math.round(45 - (dist - s.half) * 2)); kind = 'miss'; MG.judges.miss++; MG.combo = 0; mgJudge('miss', '😅 아쉬워요'); }
-        Input.mgPotHit(MG.step, kind, (MG.costIcos || [])[0]);   // 🎥 3D 무대 연출(재료 퐁당/국자 젓기/불길)
-      }
-      MG.maxCombo = Math.max(MG.maxCombo, MG.combo);
-      MG.pts.push(pts);
-      if (MG.step + 1 < POT_STEPS.length) mgT(650, () => { if (MG.active) potNextStep(MG.step + 1); });
-      else mgT(650, () => { if (MG.active) endMinigame(false); });
-    }
-
-    // ── 🔪 썰기(리듬) — 노트·칼은 3D 무대가 그리고(Input.mgChopFrame/Hit), 여기는 박자 판정만 ──
-    function startChop() {
-      const t0 = performance.now() + 1100;                   // 첫 노트까지 살짝 여유
-      for (let i = 0; i < CHOP_N; i++) MG.notes.push({ hitAt: t0 + i * CHOP_BEAT, done: false, missed: false });
-      MG.raf = requestAnimationFrame(chopFrame);
-      // ⏱️ 탭이 백그라운드로 가는 등 프레임이 멈춰도 판은 반드시 정산되게(남은 노트 미스 처리 후 종료)
-      mgT(1100 + CHOP_N * CHOP_BEAT + 1500, () => {
-        if (!MG.active || MG.type !== 'chop') return;
-        MG.notes.forEach(n => { if (!n.done) { n.done = true; n.missed = true; MG.pts.push(0); MG.judges.miss++; } });
-        endMinigame(false);
-      });
-    }
-    function chopFrame(now) {
-      if (!MG.active || MG.type !== 'chop') return;
-      let allDone = true;
-      for (const n of MG.notes) {
-        if (n.done) continue;
-        allDone = false;
-        if (now > n.hitAt + 260) {                           // 칼 아래를 지나친 노트 → 미스
-          n.done = true; n.missed = true;
-          MG.pts.push(0); MG.judges.miss++; MG.combo = 0;
-          mgJudge('miss', '💨 놓쳤어요'); $('mg-combo').textContent = '';
-        }
-      }
-      // 🎥 3D 무대에 노트 진행도 동기화 — p: 0(출발)→1(칼 아래), s: 0진행 1썰림 2미스
-      Input.mgChopFrame(MG.notes.map(n => ({
-        p: Math.max(0, Math.min(1.3, (now - (n.hitAt - CHOP_TRAVEL)) / CHOP_TRAVEL)),
-        s: n.done ? (n.missed ? 2 : 1) : 0,
-      })));
-      if (allDone) { mgT(500, () => { if (MG.active) endMinigame(false); }); return; }
-      MG.raf = requestAnimationFrame(chopFrame);
-    }
-    function chopTap(now) {
-      let best = null, bestI = -1, bestAbs = 1e9;
-      MG.notes.forEach((n, i) => {
-        if (n.done) return;
-        const abs = Math.abs(now - n.hitAt);
-        if (abs < bestAbs) { bestAbs = abs; best = n; bestI = i; }
-      });
-      if (!best || bestAbs > 260) return;                    // 칼 밖 헛스윙은 무판정(연타 방지)
-      best.done = true;
-      MG.offsets.push(Math.round(now - best.hitAt));         // 타이밍 오차(ms, -빠름/+늦음)
-      let pts, kind;
-      if (bestAbs <= 90)       { pts = 100; kind = 'perfect'; MG.judges.perfect++; mgJudge('perfect', '💫 싹둑!'); }
-      else if (bestAbs <= 170) { pts = 65;  kind = 'good';    MG.judges.good++;    mgJudge('good', '👍 좋아요'); }
-      else                     { pts = 30;  kind = 'good';    MG.judges.good++;    mgJudge('good', '😅 아슬아슬'); }
-      Input.mgChopHit(bestI, kind);                          // 🎥 칼 내려찍기 + 재료 두 조각 연출
-      Sound.chop();
-      MG.combo++; MG.maxCombo = Math.max(MG.maxCombo, MG.combo);
-      $('mg-combo').textContent = MG.combo >= 2 ? `🔥 ${MG.combo} 콤보!` : '';
-      MG.pts.push(pts);
-    }
-
-    // ── 공통 입력(탭/키) & 종료 ──
+    // ── 공통 입력(탭/홀드/키) ──
     function mgTap() {
       if (!MG.active || $('mg-result').classList.contains('show')) return;
-      const now = performance.now();
-      if (MG.type === 'pot') potHit(now); else chopTap(now);
+      MG.stage?.tap?.(performance.now());
+    }
+    function mgRelease() {
+      if (!MG.active || $('mg-result').classList.contains('show')) return;
+      if (!MG.holding) return;                                // 홀드형 스테이지가 아니면 뗌은 무의미
+      MG.stage?.release?.(performance.now());
     }
     $('mg-tap').addEventListener('pointerdown', e => { e.preventDefault(); mgTap(); });
-    $('mg-layer').addEventListener('pointerdown', e => {     // 모바일: 화면 어디를 탭해도 입력(엄지 존 자유)
+    $('mg-layer').addEventListener('pointerdown', e => {      // 모바일: 화면 어디를 탭해도 입력(엄지 존 자유)
       if (e.target.closest('#mg-quit') || e.target.closest('#mg-result') || e.target.closest('#mg-tap')) return;
       mgTap();
     });
-    window.addEventListener('keydown', e => {                // 데스크톱: Space/Enter/J — 게임 조작으로 안 새게 capture
+    // 🧂 홀드-릴리스: 손을 떼는 건 어디서 떼든(레이어 밖으로 끌고 나가도) 받아야 한다.
+    //    pointerup 만 걸면 손가락이 레이어를 벗어난 채 떼었을 때 영영 안 멎는다 → pointercancel 도 함께.
+    for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, mgRelease, true);
+    window.addEventListener('keydown', e => {                 // 데스크톱: Space/Enter/J — 게임 조작으로 안 새게 capture
       if (!MG.active) return;
       if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ') {
         e.preventDefault(); e.stopPropagation();
         if (!e.repeat) mgTap();
       }
     }, true);
-    function endMinigame(abandoned) {
+    window.addEventListener('keyup', e => {
+      if (!MG.active) return;
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ') { e.preventDefault(); e.stopPropagation(); mgRelease(); }
+    }, true);
+
+    // ── 코스 종료 → 등급 판정 ─────────────────────────────────
+    function endCourse(abandoned) {
       cancelAnimationFrame(MG.raf);
       MG.timers.forEach(clearTimeout); MG.timers = [];
-      const denom = MG.type === 'pot' ? POT_STEPS.length : CHOP_N;   // 안 친 단계/노트는 0점 → 중도 포기는 자연히 낮은 등급
-      let score = MG.pts.reduce((a, b) => a + b, 0) / denom;
-      if (MG.type === 'chop' && MG.maxCombo >= CHOP_N) score = Math.min(100, score + 5);  // 풀콤보 보너스
-      const res = Input.kitchenFinish(MG.id, {
+      if (MG.stage) { MG.stageScores.push(0); MG.stage = null; }   // 그만두기: 진행 중이던 판은 0점
+      while (MG.stageScores.length < MG.course.length) MG.stageScores.push(0);   // 남은 판도 0점
+      // 코스 점수 = 단계별 점수의 가중 평균(뒤 단계가 무겁다 — 마지막 한 판을 잘해야 최고 등급)
+      let sum = 0, wsum = 0;
+      MG.course.forEach((c, i) => { sum += MG.stageScores[i] * c.weight; wsum += c.weight; });
+      let score = wsum ? sum / wsum : 0;
+      if (MG.maxCombo >= MG.pts.length && MG.pts.length >= 3) score = Math.min(100, score + 5);   // 풀콤보 보너스
+      const payload = {
         score, offsets: MG.offsets, maxCombo: MG.maxCombo, judges: MG.judges,
-        durationMs: performance.now() - MG.startAt, abandoned,
-        step: MG.type === 'pot' ? MG.step : MG.pts.length,   // 어디까지 진행했는지(퍼널 이탈 지점)
-      });
-      MG.active = false;
-      if (!res.ok) { closeMg(); return; }
-      $('mg-pot').classList.remove('show'); $('mg-chop').classList.remove('show');
-      $('mg-tap').style.display = 'none'; $('mg-judge').textContent = '';
+        stageScores: MG.stageScores, durationMs: performance.now() - MG.startAt, abandoned,
+        step: MG.si,                                          // 어느 판까지 갔는지(퍼널 이탈 지점)
+      };
+      MG.active = false; MG.holding = false;
+      Input.mgSeasonPour(false);
+      if (MG.where === 'cafe') { showCafeResult(Input.cafeCookDone(payload)); return; }
+      showCookResult(Input.kitchenFinish(MG.id, payload));
+    }
+
+    function mgResultChrome(res) {
+      STAGE_HUDS.forEach(id => $(id).classList.remove('show'));
+      $('mg-tap').style.display = 'none'; $('mg-judge').textContent = ''; $('mg-tip').textContent = '';
       $('mgr-ico').textContent = res.tier.ico;
       $('mgr-title').textContent = `${res.tier.name}!`;
-      $('mgr-sub').innerHTML = `${res.ico} ${res.name} 완성 — ${res.buff.ico} <b>${res.buff.name}</b> 버프 <b>${res.buff.dur}초</b>`;
       $('mgr-stats').innerHTML = `<span>점수 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>최대 콤보 <b>${MG.maxCombo}</b></span><span>누적 요리 <b>${res.cooked}</b>회</span>`;
       $('mg-result').classList.add('show');
     }
-    function closeMg() { $('mg-layer').classList.remove('show'); document.body.classList.remove('menu-open'); document.body.classList.remove('mg-open'); MG.active = false; Input.mgSceneEnd(); layoutBuffs(); } // 🎥 마을 카메라 복귀(탭들이 다시 보이니 버프 위치 재계산)
-    $('mg-quit').addEventListener('click', () => { if (MG.active) endMinigame(true); else closeMg(); });
-    $('mgr-close').addEventListener('click', closeMg);
-    $('mgr-again').addEventListener('click', () => {         // 같은 요리 한 번 더(재료 있으면 바로 재시작)
+    // 🍳 자유주방 결과 — 먹을지 보관할지 고른다(그냥 닫으면 먹는 쪽으로 마무리된다)
+    function showCookResult(res) {
+      if (!res.ok) { closeMg(); return; }
+      mgResultChrome(res);
+      $('mgr-sub').innerHTML = `${res.ico} ${res.name} 완성 — 먹으면 ${res.buff.ico} <b>${res.buff.name}</b> 버프 <b>${res.buff.dur}초</b>`;
+      $('mgr-cafe').style.display = 'none';
+      $('mgr-choice').style.display = '';
+      $('mgr-store').disabled = !res.canStore;
+      $('mgr-store').textContent = res.canStore ? '🧺 보관하기' : '🧺 찬장이 가득 찼어요';
+      $('mgr-again').style.display = '';
+    }
+    // ☕ 카페 결과 — 손님에게 바로 나갔으니 고를 게 없다. 받은 팁만 보여준다
+    function showCafeResult(res) {
+      if (!res?.ok) { closeMg(); return; }
+      mgResultChrome(res);
+      const c = res.cafe || {};
+      $('mgr-sub').innerHTML = `${res.ico} ${res.name} 완성 — ${c.emoji || '🙂'} <b>${c.name || '손님'}</b>에게 서빙!`;
+      $('mgr-choice').style.display = 'none';
+      $('mgr-again').style.display = 'none';
+      $('mgr-cafe').style.display = '';
+      $('mgr-cafe').innerHTML = `🪙 <b>+${c.pay || 0}</b>${c.complete ? ` · 🎉 오늘 영업 완주 보너스 🪙+${c.bonus}` : ''}`;
+    }
+    function closeMg() {
+      $('mg-layer').classList.remove('show');
+      document.body.classList.remove('menu-open'); document.body.classList.remove('mg-open');
+      MG.active = false; MG.holding = false;
+      Input.mgSceneEnd();                                     // 🎥 마을 카메라 복귀
+      layoutBuffs();                                          // 탭들이 다시 보이니 버프 위치 재계산
+    }
+    function closeCookResult(how) {                           // 결과 카드 닫기 = 선택 확정
+      const r = Input.cookResolve(how);
+      if (r?.ok && r.how === 'store') ui.toast(`🧺 ${r.ico} ${r.name} 찬장에 넣었어요 — 남은 칸 ${r.left}`, 2600);
+      else if (r?.ok && r.fallback) ui.toast('🧺 찬장이 가득 차서 바로 먹었어요', 2600);
+      closeMg();
+    }
+    $('mg-quit').addEventListener('click', () => {
+      if (!MG.active) { closeMg(); return; }
+      endCourse(true);                                        // 포기해도 재료는 이미 썼으니 낮은 등급으로 완성된다
+    });
+    $('mgr-close').addEventListener('click', () => { MG.where === 'cafe' ? closeMg() : closeCookResult('eat'); });
+    $('mgr-eat').addEventListener('click', () => closeCookResult('eat'));
+    $('mgr-store').addEventListener('click', () => closeCookResult('store'));
+    $('mgr-again').addEventListener('click', () => {          // 같은 요리 한 번 더(재료 있으면 바로 재시작)
+      Input.cookResolve('eat');                               // 방금 만든 건 먹은 걸로 마무리
       const st = Input.kitchenStart(MG.id);
       if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); closeMg(); return; }
-      startMinigame(st);
+      startCookCourse(st);
     });
+    ui.startCookCourse = startCookCourse;                     // ☕ 카페에서 손님 앞 조리를 열 때 game.js 가 부른다
+
     // ── 🗿 조각 공방 HUD — 판정·연출은 game.js(캔버스 소유), 여기는 진행 표시 + 결과 카드만 ──
     let CV = { active: false };
     function openCarveHud(st) {
@@ -3204,9 +3492,11 @@
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
       window.__kitchenOpen = () => { const d = Input.getKitchen(); ui.openKitchen(d); return d; };
-      window.__mgStart = (id) => { const st = Input.kitchenStart(id); if (st.ok) { closeKitchen(); startMinigame(st); } return st; };
+      window.__mgStart = (id) => { const st = Input.kitchenStart(id); if (st.ok) { closeKitchen(); startCookCourse(st); } return st; };
       window.__mgTap = () => mgTap();
-      window.__mgState = () => ({ active: MG.active, type: MG.type, step: MG.step, pts: MG.pts, combo: MG.combo, offsets: MG.offsets });
+      window.__mgState = () => ({ active: MG.active, where: MG.where, si: MG.si, n: MG.course.length,
+        stage: MG.course[MG.si]?.mg || null, stageScores: MG.stageScores, pts: MG.pts, combo: MG.combo, offsets: MG.offsets });
+      window.__mgHold = (on) => { on ? MG.stage?.tap?.(performance.now()) : (MG.holding = true, MG.stage?.release?.(performance.now())); };  // 🧂 홀드-릴리스 검증용
       window.__carveOpen = () => { ui.openCook(); showCookTab('carve'); return Input.getWorkshop(); };
       window.__carveStart = (id) => { const st = Input.carveStart(id); if (st.ok) { closeCook(); openCarveHud(st); } return st; };
       window.__carveChip = (n = 1) => Input.carveDebug('chip', n);
@@ -3794,8 +4084,35 @@
       });
       sec.appendChild(grid); return sec;
     }
+    // 🍱 찬장 — 보관해 둔 음식. 칸을 누르면 그 자리에서 먹어 버프가 켜진다.
+    //   재료와 달리 "등급"이 붙어 있어서 개수만 세는 bagSection 으로는 표현이 안 된다(칸마다 다른 물건).
+    function pantrySection(d) {
+      const sec = document.createElement('div'); sec.className = 'bag-sec';
+      const h = document.createElement('div'); h.className = 'bag-h';
+      h.textContent = `🍱 찬장 ${d.items.length}/${d.max}`;
+      sec.appendChild(h);
+      if (!d.items.length) {
+        const empty = document.createElement('div'); empty.className = 'bag-empty';
+        empty.textContent = '🍳 자유주방에서 요리한 뒤 "🧺 보관하기"를 고르면 여기 담겨요';
+        sec.appendChild(empty); return sec;
+      }
+      const grid = document.createElement('div'); grid.className = 'bag-grid';
+      d.items.forEach(f => {
+        const c = document.createElement('button'); c.className = 'bag-item food';
+        c.innerHTML = `<span class="bag-ico">${f.ico}</span><span class="bag-name">${f.name}</span><span class="bag-tier">${f.tier.ico} ${f.buff.ico}${f.buff.dur}초</span>`;
+        c.title = `${f.tier.name} · ${f.buff.name} ${f.buff.dur}초`;
+        c.addEventListener('click', () => {
+          const r = Input.pantryEat(f.i);
+          if (r?.ok) ui.toast(`${r.ico} ${r.name} 먹었어요 — ${r.buff.ico} ${r.buff.name} ${r.buff.dur}초`, 2600);
+          renderBag();
+        });
+        grid.appendChild(c);
+      });
+      sec.appendChild(grid); return sec;
+    }
     function renderBag() {
       const box = $('bag-content'); box.innerHTML = '';
+      box.appendChild(pantrySection(Input.getPantry()));   // 🍱 찬장을 맨 위로 — 먹으러 여는 일이 가장 잦다
       BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
       const owned = Input.ownedGifts();
       box.appendChild(bagSection('🎁 선물', Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))));
