@@ -32,7 +32,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
-import { PLOT_CAP, popScale, plotsSignature, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
+import { PLOT_CAP, RIDGE_Z, RIDGE_PER_PLOT, popScale, plotsSignature, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -9617,6 +9617,7 @@ function tryChop() {
 //  ⚠️ 공유 지오메트리·재질이므로 dispose 하지 않는다(공유 자원 규칙).
 // =============================================================
 let farmSoilMesh = null;        // InstancedMesh — 흙
+let farmRidgeMesh = null;       // InstancedMesh — 이랑 3줄(칸당 RIDGE_PER_PLOT개)
 let farmSoilCap = 0;            // 현재 버퍼 용량
 let farmSigPrev = NaN;          // 마지막으로 버퍼를 쓴 시점의 시그니처
 const _fmM = new THREE.Matrix4(), _fmC = new THREE.Color();
@@ -9635,6 +9636,16 @@ function buildFarmInstances(cap = PLOT_CAP) {
   farmSoilCap = cap;
   farmSigPrev = NaN;
   scene.add(farmSoilMesh);
+
+  // 🌾 이랑 3줄 — 삽질 중인 1칸만 개별 메시로 승격되고 나머지는 여기서 그린다.
+  if (farmRidgeMesh) { scene.remove(farmRidgeMesh); farmRidgeMesh = null; }
+  const rgeo = new THREE.BoxGeometry(1.5, 0.1, 0.34);
+  const rmat = new THREE.MeshStandardMaterial({ color: 0x80553a, roughness: 0.95, metalness: 0, flatShading: false });
+  farmRidgeMesh = new THREE.InstancedMesh(rgeo, rmat, cap * RIDGE_PER_PLOT);
+  farmRidgeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  farmRidgeMesh.castShadow = false; farmRidgeMesh.receiveShadow = true;
+  farmRidgeMesh.count = 0; farmRidgeMesh.frustumCulled = false;
+  scene.add(farmRidgeMesh);
 }
 
 // 전체 버퍼 다시 쓰기 — 시그니처가 바뀌었을 때만. force 는 부팅·복원용.
@@ -9652,10 +9663,19 @@ function syncFarmSoil(force = false) {
     farmSoilMesh.setMatrixAt(i, _fmM);
     _fmC.setHex(p.watered ? PAL.soilWet : PAL.soil);
     farmSoilMesh.setColorAt(i, _fmC);
+    // 이랑 3줄 — 삽질 중(digAt)인 칸은 개별 메시로 승격돼 있으니 인스턴스에선 숨긴다
+    for (let k = 0; k < RIDGE_PER_PLOT; k++) {
+      const ri = i * RIDGE_PER_PLOT + k;
+      if (p.digAt) { _fmM.makeScale(0, 0, 0); }                 // 크기 0 = 안 보임
+      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21, p.z + RIDGE_Z[k] * s); }
+      farmRidgeMesh.setMatrixAt(ri, _fmM);
+    }
   }
   farmSoilMesh.count = plots.length;
   farmSoilMesh.instanceMatrix.needsUpdate = true;
   farmSoilMesh.instanceColor.needsUpdate = true;
+  farmRidgeMesh.count = plots.length * RIDGE_PER_PLOT;
+  farmRidgeMesh.instanceMatrix.needsUpdate = true;
 }
 
 // 팝 중인 칸만 매 프레임 갱신 — 아무도 안 튀면 버퍼를 건드리지 않는다(인스턴싱 이득 보존)
@@ -9670,8 +9690,15 @@ function updateFarmPops(dt) {
     _fmM.makeScale(s, s, s);
     _fmM.setPosition(p.x, 0.1, p.z);
     farmSoilMesh.setMatrixAt(i, _fmM);
+    for (let k = 0; k < RIDGE_PER_PLOT; k++) {
+      const ri = i * RIDGE_PER_PLOT + k;
+      if (p.digAt) { _fmM.makeScale(0, 0, 0); }
+      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21, p.z + RIDGE_Z[k] * s); }
+      farmRidgeMesh.setMatrixAt(ri, _fmM);
+    }
   }
   farmSoilMesh.instanceMatrix.needsUpdate = true;
+  farmRidgeMesh.instanceMatrix.needsUpdate = true;
 }
 
 // =============================================================
@@ -9681,24 +9708,18 @@ function updateFarmPops(dt) {
 // =============================================================
 function createPlot(x, z, silent = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
-  // 🌾 흙은 farmSoilMesh(InstancedMesh)가 그린다 — 여기선 앵커 Group 만 만든다.
-  //    이랑은 아직 개별 메시(Task 3에서 인스턴스로 옮김).
-  const ridges = [];
-  for (let k = -1; k <= 1; k++) {
-    const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
-    ridge.position.set(0, 0.21, k * 0.5); ridge.receiveShadow = true; g.add(ridge); ridges.push(ridge);
-  }
+  // 🌾 흙·이랑은 InstancedMesh 가 그린다. 여기선 앵커 Group 만.
+  //    ridges 는 🪏삽 1타 때만 개별 메시로 승격된다(promotePlotRidges).
   scene.add(g);
-  const plot = { group: g, ridges, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0, pop: 0 };
+  const plot = { group: g, ridges: null, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0, pop: 0 };
   plots.push(plot);
   // 🌾 발밑에 밭이 생긴 주민은 바로 비켜선다 — 다음 배회 틱(최대 7초)까지 기다리지 않게 목적지를 즉시 다시 고르게 한다.
   //    (silent=true 는 세이브 복원 — 그땐 주민이 아직 없거나 제자리를 잡는 중이라 건드리지 않는다)
   if (!silent) for (const o of npcObjs) if (onPlotArea(o.group.position.x, o.group.position.z)) o.wanderTimer = 0;
   if (!silent) {
-    plot.pop = 1;                                    // 🌾 흙(인스턴스 행렬)은 updateFarmPops 가 튀어오르게 한다
-    g.userData.pop = 1; g.scale.setScalar(0.01);      // 이랑(개별 메시)은 기존 scene 전역 updatePops 로 그대로 튀어오른다
+    plot.pop = 1;                                    // 🌾 흙·이랑(인스턴스 행렬)은 updateFarmPops 가 튀어오르게 한다
     spawnDust(x, z, 14);
-  }   // 흙먼지 + 톡 등장 — 흙·이랑 모두(동일 곡선·감쇠율로 동기화)
+  }
   syncFarmSoil(true);
   return plot;
 }
@@ -9768,12 +9789,14 @@ function digHit(plot, second) {
   if (!plots.includes(plot) || plot.state !== 'empty') return;
   if (second) { removePlot(plot); return; }
   plot.digAt = clock.elapsedTime; plot.digBackT = 0;
+  syncFarmSoil(true);   // 🪏 인스턴스 쪽 이랑을 숨긴다(승격된 개별 메시가 대신 보인다)
   setPlotDug(plot, 1);
   spawnDust(plot.x, plot.z, 10);
   ui.toast?.('한 번 더 파면 밭이 사라져요 🪏');
   trackEvent('dig_plot', { step: 1 });   // [GA4]
 }
 function removePlot(plot) {
+  demotePlotRidges(plot);                  // 🪏 승격된 채 제거되면 개별 메시가 새고 인덱스도 어긋난다
   const i = plots.indexOf(plot); if (i >= 0) plots.splice(i, 1);
   scene.remove(plot.group);
   syncFarmSoil(true);                      // 🌾 흙 인스턴스 버퍼에서도 빠지게
@@ -9785,8 +9808,26 @@ function removePlot(plot) {
   rollDigDex();
   lastDoorPrompt = null; ui.setDoorPrompt?.(null);
 }
+// 🪏 삽 1타 연출 전용 — 이랑 3줄을 제각각 기울이려면 개별 메시여야 한다.
+//   동시에 한 칸뿐이라 +3콜. 유예가 끝나면 demote 로 인스턴스에 되돌린다.
+function promotePlotRidges(plot) {
+  if (plot.ridges) return;
+  plot.ridges = [];
+  for (let k = 0; k < RIDGE_PER_PLOT; k++) {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
+    r.position.set(0, 0.21, RIDGE_Z[k]); r.receiveShadow = true;
+    plot.group.add(r); plot.ridges.push(r);
+  }
+}
+function demotePlotRidges(plot) {
+  if (!plot.ridges) return;
+  for (const r of plot.ridges) plot.group.remove(r);
+  plot.ridges = null;
+  syncFarmSoil(true);      // 인스턴스 쪽 이랑을 다시 보이게
+}
 // 1타 연출: 이랑 3줄이 제각각 기울고 어긋남 + 흙더미·파인 자리. k 0~1(만료 복구 땐 1→0 보간)
 function setPlotDug(plot, k) {
+  promotePlotRidges(plot);
   if (!plot.mound) {
     plot.mound = new THREE.Mesh(new THREE.SphereGeometry(0.32, 9, 7), clayMat(PAL.soilWet, false));
     plot.mound.position.set(0.55, 0.2, -0.45); plot.mound.scale.set(1.3, 0.55, 1.1); plot.mound.castShadow = true;
@@ -9806,6 +9847,7 @@ function expireDig(plot) {
   ui.toast?.('밭을 그대로 두었어요');
   trackEvent('dig_expire');   // [GA4]
   if (lastDoorPrompt && lastDoorPrompt.startsWith('🪏')) { lastDoorPrompt = null; ui.setDoorPrompt?.(null); }
+  demotePlotRidges(plot);
 }
 // 2타 연출: 연한 흙 자국이 풀색으로 돌아가고(페이드) 새싹 7개가 톡톡 돋았다가 사라진다
 function spawnDigRegrow(x, z) {
@@ -10013,7 +10055,11 @@ function updatePlots(dt) {
   if (pendingDig && (actAnim <= 0 || 1 - actAnim >= DIG_HIT_AT)) { const d = pendingDig; pendingDig = null; digHit(d.plot, d.second); }
   for (const plot of plots) {
     if (plot.digAt && now - plot.digAt > DIG_WINDOW && !(pendingDig && pendingDig.plot === plot)) expireDig(plot);
-    if (plot.digBackT > 0) { plot.digBackT = Math.max(0, plot.digBackT - dt); setPlotDug(plot, plot.digBackT / DIG_RESTORE); }
+    if (plot.digBackT > 0) {
+      plot.digBackT = Math.max(0, plot.digBackT - dt);
+      setPlotDug(plot, plot.digBackT / DIG_RESTORE);
+      if (plot.digBackT === 0) demotePlotRidges(plot);   // 🪏 복구 끝 → 인스턴스로 강등
+    }
   }
   updateDigFx(dt);
   for (const plot of plots) {
