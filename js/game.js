@@ -8929,7 +8929,7 @@ function handleAction() {
     if (treeD >= fg.d) return tryForage(fg.node);
   }
   // 🐾 밤손님 흔적 조사 — 도구가 필요 없는 "줍기"류. 모바일 액션 버튼으로도 동일 동작
-  const tr = traceObjs.find(t => dist2D(t.mesh.position, player.position) < 1.7);
+  const tr = traceTarget();
   if (tr) return investigateTrace(tr);
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
@@ -9249,6 +9249,9 @@ function trySeed(plot = plots.find(p => p.state === 'empty' && !p.digAt && dist2
 }
 
 // ── 🌱 비료 — 자라는 밭 한 칸을 즉시 수확 가능 상태로(코인 전용 소모품, 상점 20🪙) ──
+// 🐾 조사할 밤손님 흔적 — handleAction 과 farmActionFirst 가 같은 판정을 써야 한다
+//   (흔적은 작물을 빼앗긴 밭 좌표 위에 그대로 생겨서, 그 밭에 서면 둘 다 걸린다)
+function traceTarget() { return traceObjs.find(t => dist2D(t.mesh.position, player.position) < 1.7) || null; }
 function fertTarget() {
   if (indoor || atMine || atCafe || (gameState.inventory.fert || 0) <= 0) return null;
   return plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8) || null;
@@ -9319,6 +9322,9 @@ function farmActionFirst() {
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
   if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop) return false;
+  // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
+  //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
+  if (forageTarget() || traceTarget()) return false;
   const held = TOOLS[currentTool].id;
   if (FARM_AUTO_TOOLS.includes(held)) {
     const plot = farmAutoPlot(held);
