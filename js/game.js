@@ -32,6 +32,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
+import { PLOT_CAP, popScale, plotsSignature, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -1904,6 +1905,7 @@ function applySave(saved) {
       }
       updatePlotVisual(plot);
     });
+    syncFarmSoil(true);   // 🌾 복원된 밭을 인스턴스 버퍼에 반영
   }
 }
 
@@ -2075,6 +2077,7 @@ function buildWorld() {
   spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   buildFarm();        // 개인 텃밭 필드
+  buildFarmInstances();   // 🌾 밭 흙 인스턴스 버퍼
   spawnMineGate();    // 채굴 동굴 입구
   buildMine();        // 채굴 동굴
   spawnSeaGate();     // 🌊 바다터 포구(마을 북동)
@@ -9607,27 +9610,96 @@ function tryChop() {
 }
 
 // =============================================================
+//  🌾 밭 인스턴싱 — 흙 121칸이 121드로우콜이던 걸 1콜로
+//  ⚠️ plot.group 은 없애지 않는다. 빈 Group 은 드로우콜 0이고,
+//     plot.group.position 을 읽는 코드가 여러 곳 있다(tryHoe·tryWater·
+//     tryHarvest·digTarget·nearestPlot·updatePlots·주민 비켜서기).
+//  ⚠️ 공유 지오메트리·재질이므로 dispose 하지 않는다(공유 자원 규칙).
+// =============================================================
+let farmSoilMesh = null;        // InstancedMesh — 흙
+let farmSoilCap = 0;            // 현재 버퍼 용량
+let farmSigPrev = NaN;          // 마지막으로 버퍼를 쓴 시점의 시그니처
+const _fmM = new THREE.Matrix4(), _fmC = new THREE.Color();
+
+function buildFarmInstances(cap = PLOT_CAP) {
+  if (farmSoilMesh) { scene.remove(farmSoilMesh); farmSoilMesh = null; }   // dispose 안 함 — 공유 자원
+  const geo = new THREE.BoxGeometry(1.7, 0.2, 1.7);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: false });
+  farmSoilMesh = new THREE.InstancedMesh(geo, mat, cap);
+  farmSoilMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  farmSoilMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+  farmSoilMesh.castShadow = false;      // 바닥에 붙어 있어 드리울 그림자가 없다(그림자 패스 절감)
+  farmSoilMesh.receiveShadow = true;
+  farmSoilMesh.count = 0;
+  farmSoilMesh.frustumCulled = false;   // 밭이 넓어지면 경계 상자가 커져 판정이 부정확해진다
+  farmSoilCap = cap;
+  farmSigPrev = NaN;
+  scene.add(farmSoilMesh);
+}
+
+// 전체 버퍼 다시 쓰기 — 시그니처가 바뀌었을 때만. force 는 부팅·복원용.
+function syncFarmSoil(force = false) {
+  if (!farmSoilMesh) return;
+  const sig = plotsSignature(plots);
+  if (!force && sig === farmSigPrev) return;
+  farmSigPrev = sig;
+  if (plots.length > farmSoilCap) { buildFarmInstances(plots.length + 40); farmSigPrev = sig; }
+  for (let i = 0; i < plots.length; i++) {
+    const p = plots[i];
+    const s = popScale(p.pop || 0);
+    _fmM.makeScale(s, s, s);
+    _fmM.setPosition(p.x, 0.1, p.z);          // 기존 soil.position.y = 0.1
+    farmSoilMesh.setMatrixAt(i, _fmM);
+    _fmC.setHex(p.watered ? PAL.soilWet : PAL.soil);
+    farmSoilMesh.setColorAt(i, _fmC);
+  }
+  farmSoilMesh.count = plots.length;
+  farmSoilMesh.instanceMatrix.needsUpdate = true;
+  farmSoilMesh.instanceColor.needsUpdate = true;
+}
+
+// 팝 중인 칸만 매 프레임 갱신 — 아무도 안 튀면 버퍼를 건드리지 않는다(인스턴싱 이득 보존)
+function updateFarmPops(dt) {
+  if (!farmSoilMesh) return;
+  const idx = poppingPlots(plots);
+  if (!idx.length) return;
+  for (const i of idx) {
+    const p = plots[i];
+    p.pop = Math.max(0, p.pop - dt * 3);      // updatePops 와 같은 감쇠율
+    const s = popScale(p.pop);
+    _fmM.makeScale(s, s, s);
+    _fmM.setPosition(p.x, 0.1, p.z);
+    farmSoilMesh.setMatrixAt(i, _fmM);
+  }
+  farmSoilMesh.instanceMatrix.needsUpdate = true;
+}
+
+// =============================================================
 //  농사: 밭 타일 상태머신
 //  state: 'empty'(갈아둔 이랑) → 'growing'(3단계 성장) → 'mature'(수확가능)
 //  stage: 0 새싹 → 1 자람 → 2 수확가능
 // =============================================================
 function createPlot(x, z, silent = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
-  const soil = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), clayMat(PAL.soil, false));
-  soil.position.y = 0.1; soil.receiveShadow = true; g.add(soil);
-  // 이랑(줄무늬) — 갈아엎은 밭 느낌의 두둑 3줄 (🪏 1타 때 흐트러뜨리므로 참조를 남긴다)
+  // 🌾 흙은 farmSoilMesh(InstancedMesh)가 그린다 — 여기선 앵커 Group 만 만든다.
+  //    이랑은 아직 개별 메시(Task 3에서 인스턴스로 옮김).
   const ridges = [];
   for (let k = -1; k <= 1; k++) {
     const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
     ridge.position.set(0, 0.21, k * 0.5); ridge.receiveShadow = true; g.add(ridge); ridges.push(ridge);
   }
   scene.add(g);
-  const plot = { group: g, soil, ridges, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0 };
+  const plot = { group: g, ridges, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0, pop: 0 };
   plots.push(plot);
   // 🌾 발밑에 밭이 생긴 주민은 바로 비켜선다 — 다음 배회 틱(최대 7초)까지 기다리지 않게 목적지를 즉시 다시 고르게 한다.
   //    (silent=true 는 세이브 복원 — 그땐 주민이 아직 없거나 제자리를 잡는 중이라 건드리지 않는다)
   if (!silent) for (const o of npcObjs) if (onPlotArea(o.group.position.x, o.group.position.z)) o.wanderTimer = 0;
-  if (!silent) { g.userData.pop = 1; g.scale.setScalar(0.01); spawnDust(x, z, 14); } // 흙먼지 + 톡 등장
+  if (!silent) {
+    plot.pop = 1;                                    // 🌾 흙(인스턴스 행렬)은 updateFarmPops 가 튀어오르게 한다
+    g.userData.pop = 1; g.scale.setScalar(0.01);      // 이랑(개별 메시)은 기존 scene 전역 updatePops 로 그대로 튀어오른다
+    spawnDust(x, z, 14);
+  }   // 흙먼지 + 톡 등장 — 흙·이랑 모두(동일 곡선·감쇠율로 동기화)
+  syncFarmSoil(true);
   return plot;
 }
 
@@ -9704,6 +9776,7 @@ function digHit(plot, second) {
 function removePlot(plot) {
   const i = plots.indexOf(plot); if (i >= 0) plots.splice(i, 1);
   scene.remove(plot.group);
+  syncFarmSoil(true);                      // 🌾 흙 인스턴스 버퍼에서도 빠지게
   spawnDust(plot.x, plot.z, 22);
   spawnDigRegrow(plot.x, plot.z);
   Sound.harvest();
@@ -9972,6 +10045,7 @@ function updatePlots(dt) {
     if (plot.harvest && plot.harvest.visible) plot.harvest.position.y = 1.4 + Math.sin(now * 3 + 1) * 0.06;
     if (plot.seedHint && plot.seedHint.visible) plot.seedHint.position.y = 1.4 + Math.sin(now * 3 + 2) * 0.06;
   }
+  updateFarmPops(dt);   // 🌾 팝 중인 칸만 행렬 갱신
 }
 
 // 시들기: 갈색으로 축 처지고 'wilted' 상태로(괭이로 다시 심어야 함)
@@ -10060,7 +10134,7 @@ function setPlotSeedHint(plot, show) {
 }
 
 function updatePlotVisual(plot) {
-  plot.soil.material.color.set(plot.watered ? PAL.soilWet : PAL.soil); // 젖은 흙 색
+  syncFarmSoil();   // 🌾 젖은 흙 색은 인스턴스 색으로 — 시그니처가 바뀌었을 때만 실제로 쓴다
 }
 
 // 성장 단계(0 새싹 → 1 자람 → 2 수확가능)를 growth로 판정, 변할 때 메시 재생성 + 팝
