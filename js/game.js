@@ -790,7 +790,7 @@ const gameState = {
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
-  pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, tier: 등급id, score }]. 최대 PANTRY_MAX 칸
+  pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, score }]. 등급은 score 에서 파생. 최대 PANTRY_MAX 칸
   workshop: { carved: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
   story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
@@ -1483,7 +1483,6 @@ export const Input = {
   getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
   pantryEat(i) { return pantryEat(i); },                // 🍱 찬장에서 꺼내 먹기(버프 발동)
   cafeCookDone(res) { return cafeCookDone(res); },      // ☕ 카페 조리 완료 → 그 손님에게 바로 서빙
-  cafeCookAbort() { cafeCookAbort(); },                 // ☕ 카페 조리 중단(손님 대기 해제)
   getWorkshop() { return workshopView(); },             // 🗿 조각 공방 주문판(오늘의 주문 + 기록)
   carveStart(id) { return carveStart(id); },            // 🗿 조각 시작(재료 소비, 클로즈업 무대 입장)
   carveAbandon() { carveAbandon(); },                   // 🗿 그만두기(낮은 등급으로 강제 완성)
@@ -1864,11 +1863,12 @@ function applySave(saved) {
   if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
   // 🍱 찬장 복원 — 세이브가 손상되거나 레시피/등급이 개편으로 사라졌으면 그 칸만 버린다(전체를 날리지 않게)
+  //   등급은 저장하지 않고 score 로 다시 계산한다 — 두 벌로 들고 있으면 등급 컷을 손볼 때 어긋난다
   if (Array.isArray(saved.pantry)) {
     gameState.pantry = saved.pantry
-      .filter(f => f && RECIPES.some(r => r.id === f.id) && COOK_TIERS.some(t => t.id === f.tier))
+      .filter(f => f && RECIPES.some(r => r.id === f.id) && Number.isFinite(+f.score))
       .slice(0, PANTRY_MAX)
-      .map(f => ({ id: f.id, tier: f.tier, score: Math.max(0, Math.min(100, Math.round(f.score) || 0)) }));
+      .map(f => ({ id: f.id, score: Math.max(0, Math.min(100, Math.round(+f.score) || 0)) }));
   }
   if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
@@ -3861,12 +3861,6 @@ function cafeCookDone(res = {}) {
   const tier = cookTier(fin.score);
   const served = finishCafeServe(c.guest, tier, { fromPantry: false, score: fin.score });
   return { ok: true, ...fin, cafe: served };
-}
-
-// ☕ 조리 중 그만두기 — 재료는 이미 소비됐으므로(주방과 같은 규칙) 낮은 등급으로라도 서빙해 손해를 막는다
-function cafeCookAbort() {
-  if (!cafeCooking) return;
-  cafeCookDone({ score: 0, abandoned: true });
 }
 
 // ☕ 서빙 정산 — 코인·호감도·기록·연출. 등급이 좋을수록 팁이 붙는다
@@ -6425,14 +6419,24 @@ const KSET = new THREE.Vector3(0, 0, 420);
 let kset = null;      // 세트 소품 핸들
 let mgView = null;    // { type: 'pot'|'chop' } — 활성이면 카메라가 조리대 클로즈업 고정
 
-function emojiSprite(emoji, size = 0.5) {
+//  ⚠️ 텍스처는 이모지별로 공유한다 — 이 스프라이트들은 dispose 하는 곳이 없어서,
+//     호출마다 새 캔버스를 만들면 판을 거듭할수록 GPU 텍스처가 그대로 쌓인다.
+//     재질(색·회전)은 스프라이트마다 따로 둬야 하므로(굽기의 탄 색, 뒤집기 회전) 재질은 공유하지 않는다.
+const _emojiTex = new Map();
+function emojiTexture(emoji) {
+  let tex = _emojiTex.get(emoji);
+  if (tex) return tex;
   const cv = document.createElement('canvas'); cv.width = cv.height = 128;
   const c = cv.getContext('2d');
   // ♨️처럼 위로 긴 글리프도 안 잘리게 폰트를 캔버스보다 넉넉히 작게(시각 크기는 sp.scale이 결정)
   c.font = '84px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText(emoji, 64, 66);
-  const tex = new THREE.CanvasTexture(cv);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  tex = new THREE.CanvasTexture(cv);
+  _emojiTex.set(emoji, tex);
+  return tex;
+}
+function emojiSprite(emoji, size = 0.5) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: emojiTexture(emoji), transparent: true, depthWrite: false }));
   sp.scale.set(size, size, 1);
   return sp;
 }
@@ -7563,7 +7567,7 @@ function cookResolve(how = 'eat') {
   const r = recipeOf(d.id); if (!r) return { ok: false };
   if (how === 'store') {
     if ((gameState.pantry || []).length >= PANTRY_MAX) return eatDish(r, d, true);   // 찬장이 꽉 찼으면 먹는 쪽으로 안전 착지
-    gameState.pantry.push({ id: d.id, tier: d.tier, score: d.score });
+    gameState.pantry.push({ id: d.id, score: d.score });   // 등급은 score 에서 파생(cookTier)
     Sound.blip();
     trackEvent('cook_store', { recipe: d.id, quality: d.tier, pantry_n: gameState.pantry.length });   // [GA4] 보관 선택률
     return { ok: true, how: 'store', ico: r.ico, name: r.name, left: PANTRY_MAX - gameState.pantry.length };

@@ -780,15 +780,13 @@
   /* 🍲 끓이기 HUD — 타이밍 게이지(조리 장면은 3D 무대가 담당) */
   #mg-pot { display: none; flex-direction: column; align-items: center; gap: 8px; }
   #mg-pot.show { display: flex; }
-  #mg-step { font-size: 14px; font-weight: 700; }
   #mg-step-n { font-size: 12px; opacity: .6; font-variant-numeric: tabular-nums; }
   #mg-gauge { position: relative; width: 100%; height: 34px; border-radius: 17px; background: #e8e2d2; overflow: hidden; }
   #mg-zone { position: absolute; top: 0; bottom: 0; background: #bfe6c3; border-radius: 8px; display: grid; place-items: center; }
   #mg-zone-core { width: 40%; height: 100%; background: #7fce8b; border-radius: 6px; }
   #mg-needle { position: absolute; top: -2px; bottom: -2px; width: 5px; border-radius: 3px; background: #d05a4a; box-shadow: 0 0 6px rgba(208,90,74,.7); }
   /* 🔪 썰기 HUD — 콤보 표시(노트·칼은 3D 무대가 담당) */
-  #mg-chop { display: none; flex-direction: column; gap: 4px; }
-  #mg-chop.show { display: flex; }
+  #mg-chop { display: none; }
   #mg-combo { text-align: center; font-size: 14px; font-weight: 800; color: #c9682a; min-height: 18px; font-variant-numeric: tabular-nums; }
   /* 🔥 굽기 HUD — 한 방향으로 차오르는 게이지. 구간을 지나면 붉게(=타는 중) */
   #mg-grill { display: none; flex-direction: column; align-items: center; gap: 8px; }
@@ -809,6 +807,9 @@
   .mg-course { font-size: 11px; font-weight: 700; color: #2f7a68; background: #dff0ea; border-radius: 8px; padding: 2px 7px; margin-left: 4px; }
   .mg-stage { font-size: 12px; font-weight: 700; opacity: .72; margin-left: 4px; }
   #mg-tip { text-align: center; font-size: 12px; opacity: .62; min-height: 16px; }
+  #mg-step { font-size: 14px; font-weight: 700; text-align: center; }
+  /* 결과 카드가 뜨면 판 진행 표시는 의미가 없다 */
+  #mg-card.done #mg-step, #mg-card.done #mg-combo, #mg-card.done #mg-tip { display: none; }
   #mg-judge { text-align: center; font-size: 20px; font-weight: 800; min-height: 26px; transition: transform .12s; }
   #mg-judge.pop { transform: scale(1.25); }
   #mg-judge .j-perfect { color: #2fa564; }
@@ -1311,15 +1312,16 @@
     <div id="mg-card">
       <div id="mg-head"><span id="mg-title">🥘 든든한 채소죽</span><button id="mg-quit">그만두기</button></div>
       <!-- 조리 장면은 3D 클로즈업 무대(게임 화면)가 보여주고, 여기는 하단 조작 HUD만 -->
+      <!-- ⚠️ 단계 이름·코스 칩·콤보는 판 종류와 무관하게 쓰이므로 판별 HUD 밖에 둔다.
+           (안에 두면 그 판이 꺼질 때 같이 숨어 "지금 몇 번째 판인지"가 사라진다) -->
+      <div id="mg-step">🧺 재료 넣기 <span id="mg-step-n">1/3</span></div>
+      <div id="mg-combo"></div>
       <!-- 🍲 끓이기(타이밍): 바늘이 초록 구간에 올 때 탭 ×3단계 -->
       <div id="mg-pot">
-        <div id="mg-step">🧺 재료 넣기 <span id="mg-step-n">1/3</span></div>
         <div id="mg-gauge"><div id="mg-zone"><div id="mg-zone-core"></div></div><div id="mg-needle"></div></div>
       </div>
       <!-- 🔪 썰기(리듬): 도마 위로 흘러온 재료가 칼 아래 올 때 탭 -->
-      <div id="mg-chop">
-        <div id="mg-combo"></div>
-      </div>
+      <div id="mg-chop"></div>
       <!-- 🔥 굽기(한 방향 게이지): 노릇 구간에서 탭해 뒤집기 — 지나치면 탄다 -->
       <div id="mg-grill">
         <div id="mg-gbar"><div id="mg-gzone"></div><div id="mg-gfill"></div></div>
@@ -3064,7 +3066,7 @@
 
     const MG = { active: false, id: null, name: '', where: 'kitchen', raf: 0, timers: [],
       startAt: 0, course: [], si: 0, stageScores: [], stage: null,
-      offsets: [], judges: { perfect: 0, good: 0, miss: 0 }, pts: [], combo: 0, maxCombo: 0, holding: false };
+      offsets: [], judges: { perfect: 0, good: 0, miss: 0 }, pts: [], combo: 0, maxCombo: 0, holding: false, holdPid: null };
     const mgT = (ms, fn) => { const h = setTimeout(fn, ms); MG.timers.push(h); return h; };
     function mgJudge(kind, text) {
       const el = $('mg-judge');
@@ -3254,7 +3256,12 @@
         z.style.width = (this.half * 2) + '%';
         $('mg-sfill').style.width = '0%';
         $('mg-shold').textContent = '꾹 누르고 계세요';
-        mgT(9000, () => { if (MG.stage === this && this.step === i && !this.waiting) this.release(null); });  // 아예 안 누름 → 미스
+        // ⏱️ 누르지도 않은 채 9초가 지나면 미스. 이미 누르고 있었다면 그 시점으로 정상 판정한다
+        //    (팁을 읽다 늦게 누른 사람이 누르고 있는데도 "간을 안 했어요" 0점을 받던 문제)
+        mgT(9000, () => {
+          if (MG.stage !== this || this.step !== i || this.waiting) return;
+          this.release(this.holdAt ? performance.now() : null);
+        });
       },
       frame(now) {
         if (this.waiting || !this.holdAt) return;
@@ -3305,10 +3312,11 @@
       MG.name = `${st.ico} ${st.name}`; MG.costIcos = st.icos || []; MG.dishIco = st.ico;
       MG.course = st.course; MG.si = -1; MG.stageScores = [];
       MG.offsets = []; MG.judges = { perfect: 0, good: 0, miss: 0 }; MG.pts = [];
-      MG.combo = 0; MG.maxCombo = 0; MG.holding = false; MG.timers = [];
+      MG.combo = 0; MG.maxCombo = 0; MG.holding = false; MG.holdPid = null; MG.timers = [];
       MG.startAt = performance.now();
       $('mg-judge').textContent = ''; $('mg-combo').textContent = '';
       $('mg-result').classList.remove('show');
+      $('mg-card').classList.remove('done');
       $('mg-tap').style.display = '';
       $('mg-layer').classList.add('show'); document.body.classList.add('menu-open'); document.body.classList.add('mg-open');
       Input.setAnalog(0, 0);
@@ -3334,6 +3342,7 @@
     function finishStage(pts) {
       const stage = MG.stage; if (!stage) return;
       MG.stage = null;
+      MG.holding = false; MG.holdPid = null; Input.mgSeasonPour(false);   // 타임아웃으로 끝났다면 소금이 계속 쏟아진 채 남는다
       const c = MG.course[MG.si];
       const avg = pts.length ? pts.reduce((a, b) => a + b, 0) / pts.length : 0;
       MG.stageScores.push(avg);
@@ -3347,19 +3356,24 @@
     }
 
     // ── 공통 입력(탭/홀드/키) ──
-    function mgTap() {
+    function mgTap(e) {
       if (!MG.active || $('mg-result').classList.contains('show')) return;
+      if (e && e.pointerId !== undefined) MG.holdPid = e.pointerId;   // 이 포인터의 up 만 릴리스로 친다
       MG.stage?.tap?.(performance.now());
     }
-    function mgRelease() {
+    // 🧂 홀드-릴리스는 **누른 그 손가락**이 떨어질 때만 확정한다.
+    //    pointerId 를 안 보면 다른 손가락으로 아무 데나 탭했다 떼는 것만으로 간이 확정된다.
+    function mgRelease(e) {
       if (!MG.active || $('mg-result').classList.contains('show')) return;
       if (!MG.holding) return;                                // 홀드형 스테이지가 아니면 뗌은 무의미
+      if (e && e.pointerId !== undefined && MG.holdPid !== null && e.pointerId !== MG.holdPid) return;
+      MG.holdPid = null;
       MG.stage?.release?.(performance.now());
     }
-    $('mg-tap').addEventListener('pointerdown', e => { e.preventDefault(); mgTap(); });
+    $('mg-tap').addEventListener('pointerdown', e => { e.preventDefault(); mgTap(e); });
     $('mg-layer').addEventListener('pointerdown', e => {      // 모바일: 화면 어디를 탭해도 입력(엄지 존 자유)
       if (e.target.closest('#mg-quit') || e.target.closest('#mg-result') || e.target.closest('#mg-tap')) return;
-      mgTap();
+      mgTap(e);
     });
     // 🧂 홀드-릴리스: 손을 떼는 건 어디서 떼든(레이어 밖으로 끌고 나가도) 받아야 한다.
     //    pointerup 만 걸면 손가락이 레이어를 벗어난 채 떼었을 때 영영 안 멎는다 → pointercancel 도 함께.
@@ -3368,25 +3382,30 @@
       if (!MG.active) return;
       if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ') {
         e.preventDefault(); e.stopPropagation();
-        if (!e.repeat) mgTap();
+        if (!e.repeat) { MG.holdPid = null; mgTap(); }
       }
     }, true);
     window.addEventListener('keyup', e => {
       if (!MG.active) return;
-      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ') { e.preventDefault(); e.stopPropagation(); mgRelease(); }
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ') { e.preventDefault(); e.stopPropagation(); mgRelease(null); }
     }, true);
 
     // ── 코스 종료 → 등급 판정 ─────────────────────────────────
     function endCourse(abandoned) {
       cancelAnimationFrame(MG.raf);
       MG.timers.forEach(clearTimeout); MG.timers = [];
+      // 마지막 판까지 다 치른 뒤 다음 판 대기(240ms) 중에 눌렀다면 그건 포기가 아니다 —
+      // 점수는 만점일 수 있는데 지표에만 cooking_abandon 으로 찍히면 이탈률이 거짓말을 한다
+      if (abandoned && !MG.stage && MG.stageScores.length >= MG.course.length) abandoned = false;
       if (MG.stage) { MG.stageScores.push(0); MG.stage = null; }   // 그만두기: 진행 중이던 판은 0점
       while (MG.stageScores.length < MG.course.length) MG.stageScores.push(0);   // 남은 판도 0점
       // 코스 점수 = 단계별 점수의 가중 평균(뒤 단계가 무겁다 — 마지막 한 판을 잘해야 최고 등급)
       let sum = 0, wsum = 0;
       MG.course.forEach((c, i) => { sum += MG.stageScores[i] * c.weight; wsum += c.weight; });
       let score = wsum ? sum / wsum : 0;
-      if (MG.maxCombo >= MG.pts.length && MG.pts.length >= 3) score = Math.min(100, score + 5);   // 풀콤보 보너스
+      // 풀콤보 보너스 — "한 번도 안 놓쳤다" 가 기준. 판 수로 재면 🧂 두 번짜리(소금 주먹밥)는
+      // 영영 못 받고 8노트짜리 썰기만 받는 불공평이 생긴다.
+      if (MG.pts.length && MG.maxCombo >= MG.pts.length) score = Math.min(100, score + 5);
       const payload = {
         score, offsets: MG.offsets, maxCombo: MG.maxCombo, judges: MG.judges,
         stageScores: MG.stageScores, durationMs: performance.now() - MG.startAt, abandoned,
@@ -3405,6 +3424,7 @@
       $('mgr-title').textContent = `${res.tier.name}!`;
       $('mgr-stats').innerHTML = `<span>점수 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>최대 콤보 <b>${MG.maxCombo}</b></span><span>누적 요리 <b>${res.cooked}</b>회</span>`;
       $('mg-result').classList.add('show');
+      $('mg-card').classList.add('done');
     }
     // 🍳 자유주방 결과 — 먹을지 보관할지 고른다(그냥 닫으면 먹는 쪽으로 마무리된다)
     function showCookResult(res) {
@@ -3442,10 +3462,12 @@
       closeMg();
     }
     $('mg-quit').addEventListener('click', () => {
-      if (!MG.active) { closeMg(); return; }
+      if (!MG.active) { closeResult(); return; }              // 결과 화면 위에서 눌렀다 = 닫기와 같다(만든 요리를 잃지 않게)
       endCourse(true);                                        // 포기해도 재료는 이미 썼으니 낮은 등급으로 완성된다
     });
-    $('mgr-close').addEventListener('click', () => { MG.where === 'cafe' ? closeMg() : closeCookResult('eat'); });
+    // 결과 화면을 닫는 모든 길은 여기로 — 주방이면 먹기로 마무리, 카페면 이미 손님에게 나갔다
+    function closeResult() { MG.where === 'cafe' ? closeMg() : closeCookResult('eat'); }
+    $('mgr-close').addEventListener('click', closeResult);
     $('mgr-eat').addEventListener('click', () => closeCookResult('eat'));
     $('mgr-store').addEventListener('click', () => closeCookResult('store'));
     $('mgr-again').addEventListener('click', () => {          // 같은 요리 한 번 더(재료 있으면 바로 재시작)
@@ -4100,10 +4122,10 @@
       d.items.forEach(f => {
         const c = document.createElement('button'); c.className = 'bag-item food';
         c.innerHTML = `<span class="bag-ico">${f.ico}</span><span class="bag-name">${f.name}</span><span class="bag-tier">${f.tier.ico} ${f.buff.ico}${f.buff.dur}초</span>`;
-        c.title = `${f.tier.name} · ${f.buff.name} ${f.buff.dur}초`;
+        c.title = `${f.tier.name} · ${f.buff.name} 버프 ${f.buff.dur}초`;
         c.addEventListener('click', () => {
           const r = Input.pantryEat(f.i);
-          if (r?.ok) ui.toast(`${r.ico} ${r.name} 먹었어요 — ${r.buff.ico} ${r.buff.name} ${r.buff.dur}초`, 2600);
+          if (r?.ok) ui.toast(`${r.ico} ${r.name} 먹었어요 — ${r.buff.ico} ${r.buff.name} 버프 ${r.buff.dur}초`, 2600);
           renderBag();
         });
         grid.appendChild(c);

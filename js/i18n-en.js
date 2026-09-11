@@ -261,10 +261,8 @@ export const EN = {
   '거리': 'Distance',
   '시간': 'Time',
   '점수': 'Score',
-  '{0}초': '{0}s',
   '{0} 🏆 최고 기록!': '{0} 🏆 New best!',
   '충돌': 'Bumps',
-  '{0}회': '{0}x',
   '⭐ 별조각': '⭐ Star Shards',
   '+{0} (보유 {1})': '+{0} ({1} total)',
   '수집물': 'Pickups',
@@ -403,7 +401,6 @@ export const EN = {
   '재료가 칼 아래 올 때 박자에 맞춰 누르세요': 'Tap on the beat as each piece slides under the knife',
   '노릇해졌을 때 눌러 뒤집으세요 — 지나치면 탑니다': 'Tap to flip once it turns golden — wait too long and it burns',
   '꾹 누르고 있다가 목표선에서 손을 떼세요': 'Press and hold, then let go right on the target',
-  '<span class="mg-course">코스 {0}/{1}</span>': '<span class="mg-course">Course {0}/{1}</span>',
   '🔪 박자에 맞춰 썰기': '🔪 Chop on the beat',
   '🔥 앞면 굽기': '🔥 Grill the first side',
   '🔥 뒷면 굽기': '🔥 Grill the other side',
@@ -423,19 +420,22 @@ export const EN = {
   '👍 괜찮아요': '👍 Not bad',
   '😅 좀 싱거워요': '😅 A touch bland',
   '😖 너무 짜요': '😖 Far too salty',
+  // ⚠️ 옛 키 '{0} {1} 완성 — {2}' 는 "먹으면" 이 끼면서 안 맞는다 — 새 문장을 따로 등록
+  '{0} {1} 완성 — 먹으면 {2}': '{0} {1} is ready — eat it for {2}',
+  '에게 서빙!': ' — served!',
+  '· 🎉 오늘 영업 완주 보너스 🪙+{0}': '· 🎉 All guests served today — bonus 🪙+{0}',
+  '코스 {0}/{1}': 'Course {0}/{1}',
+  '잘 먹었습니다!': 'Thanks for the meal!',
   '🍽️ 지금 먹기': '🍽️ Eat it now',
   '🧺 보관하기': '🧺 Store it',
   '🧺 찬장이 가득 찼어요': '🧺 Your pantry is full',
   '🧺 {0} {1} 찬장에 넣었어요 — 남은 칸 {2}': '🧺 {0} {1} stored — {2} slots left',
   '🧺 찬장이 가득 차서 바로 먹었어요': '🧺 Pantry was full, so you ate it right away',
-  '{0} {1} 먹었어요 — {2} {3} {4}초': '{0} {1} eaten — {2} {3} for {4}s',
+  '{0} {1} 먹었어요 — {2} {3} 버프 {4}초': '{0} {1} eaten — {2} {3} buff, {4}s',
+  '{0} 버프 {1}초': '{0} buff, {1}s',
   '🍱 찬장 {0}/{1}': '🍱 Pantry {0}/{1}',
   '🧺 찬장 {0}/{1}': '🧺 Pantry {0}/{1}',
   '🍳 자유주방에서 요리한 뒤 "🧺 보관하기"를 고르면 여기 담겨요': 'Cook at the 🍳 Free Kitchen and pick "🧺 Store it" to keep dishes here',
-  '<span class="bag-ico">{0}</span><span class="bag-name">{1}</span><span class="bag-tier">{2} {3}{4}초</span>':
-    '<span class="bag-ico">{0}</span><span class="bag-name">{1}</span><span class="bag-tier">{2} {3}{4}s</span>',
-  '<span>점수 <b>{0}</b>점{1}</span><span>최대 콤보 <b>{2}</b></span><span>누적 요리 <b>{3}</b>회</span>':
-    '<span>Score <b>{0}</b>{1}</span><span>Best combo <b>{2}</b></span><span>Dishes cooked <b>{3}</b></span>',
   // ── ☕ 카페 손님(이웃 마을에서 찾아오는 손님들) ──
   '숲길 사슴': 'Trailside Deer',
   '강가 수달': 'Riverside Otter',
@@ -531,7 +531,6 @@ export const EN = {
   '아직 이 보드에 내 기록이 없어요 — 지금 만들어봐요!': 'You\'re not on this board yet — go set a record!',
   '순위를 불러오지 못했어요.': 'Couldn\'t load the rankings.',
   '잠시 후 다시 열어주세요 🌧️': 'Please try again in a bit 🌧️',
-  '{0}점': '{0} pts',
   '{0}건': '{0} done',
   '🎣 물고기': '🎣 Fish',
   '🌾 작물': '🌾 Crops',
@@ -1284,4 +1283,11 @@ export const EN = {
     '🍳 Enter the Free Kitchen and cook a recipe you have the ingredients for',
   '☕ 카페에 들어가 손님이 말한 요리를 만들어 내드려요':
     '☕ Enter the Café, make what the guest asked for and serve it',
+
+  // ── ⚠️ 캐치올 꼬리 패턴 — 반드시 사전 맨 끝에 둔다 ──────────────
+  //    PATTERNS 는 삽입 순서로 첫 매치를 쓴다. 이 셋을 위쪽에 두면
+  //    "…60초"·"…3회" 로 끝나는 **모든** 구체 문장을 먼저 삼켜 버린다.
+  '{0}초': '{0}s',
+  '{0}회': '{0}x',
+  '{0}점': '{0} pts',
 };
