@@ -8933,7 +8933,8 @@ function handleAction() {
   if (tr) return investigateTrace(tr);
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
-  if (nearNPC && !IS_MOBILE) return talkToNPC();
+  // 단, 밭 위에서 농사 도구를 들고 있으면 밭일이 먼저다(farmActionFirst 주석 참고)
+  if (nearNPC && !IS_MOBILE && !farmActionFirst()) return talkToNPC();
   // 🌱 비료 — 자라는 밭 앞 + 비료 보유. 💧물조리개를 들고 흙이 말라 있으면 평소대로 물주기가 우선
   const fp = fertTarget();
   if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
@@ -9307,6 +9308,26 @@ const HELD_PLOT_PREF = {
   water: p => p.state === 'growing',
   sickle: p => p.state === 'mature',
 };
+// 🌾 밭일이 대화보다 먼저인가 — 밭 작업 사거리(1.8) 안에 밭이 있고 농사 도구를 들었을 때만.
+//   대화 사거리(2.6)가 밭 사거리보다 넓어서, 주민이 밭 옆에 서 있기만 해도 데스크톱 Space 가
+//   전부 대화로 샜다(베타 피드백: "밭에 NPC가 겹치면 행동하기가 어려워요").
+//   빠져나갈 길은 둘 — 밭에서 한 발 물러나거나(밭이 1.8 밖) 도구를 접으면(✋) 평소대로 대화.
+//   🪏삽은 제외 — 밭을 없애는 파괴 동작이라 명시적으로만 쓴다(farm-auto.js 와 같은 기준).
+//   ※ 밭이 없는 맨땅에서는 적용 안 함 — 괭이를 든 채 돌아다닐 때 대화가 막히면 안 된다.
+function farmActionFirst() {
+  if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
+  // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
+  //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop) return false;
+  const held = TOOLS[currentTool].id;
+  if (FARM_AUTO_TOOLS.includes(held)) return !!nearestPlot(FARM_AUTO_R);
+  // 🪏삽 — 빈 밭 위면 밭일 우선. "digAt 이 살아 있을 때만"으로 좁히면 1타부터 대화에 뺏겨 2타에 영영 못 닿는다.
+  //   삽을 자동 전환 대상에서 뺀 이유는 "다른 농사 도구를 들었는데 삽질이 되면 안 된다"는 것이지,
+  //   삽을 손에 쥔 명시적 의도까지 막자는 게 아니다. 1타는 6초 뒤 저절로 복구되고 제거엔 2타가 필요해 되돌릴 수 있다.
+  if (held === 'shovel') return !!digTarget();
+  return false;
+}
+
 function farmAutoAction() {
   const held = TOOLS[currentTool].id;
   const plot = nearestPlot(FARM_AUTO_R, HELD_PLOT_PREF[held]) || nearestPlot(FARM_AUTO_R);
@@ -10295,16 +10316,24 @@ function updateShopCue(t) {
 }
 
 // 근접 시 가장 가까운 주민 선택 → 프롬프트 + 퀘스트 패널
+let npcPromptFarm = false;   // 지금 뜬 프롬프트가 "밭일 먼저" 문구인지(주민이 안 바뀌어도 다시 그려야 해서)
 function updateNPCInteract() {
   let near = null, nd = 2.6;
   for (const o of npcObjs) {
     if (o.fly && o.fly.st !== 'perch') continue;    // 🦉 날고 있는 동안엔 말을 걸 수 없다
     const d = dist2D(o.group.position, player.position); if (d < nd) { nd = d; near = o; }
   }
-  if (near !== nearNPC) {
-    nearNPC = near;
-    ui.setInteractPrompt?.(near ? `💬 ${near.def.name} · Space 로 대화` : null);
-    if (near) { const st = npcState(near.def.id); if (st.given && !st.allDone) { trackedNPC = near; refreshQuestPanel(); } }
+  // 밭일이 먼저인 동안 "Space 로 대화"라고 띄우면 거짓말이 된다 → 문구를 바꿔 빠져나갈 길을 알려준다.
+  //   (모바일은 전용 💬 버튼이 있어 언제든 대화되므로 해당 없음)
+  const farmFirst = !!near && !IS_MOBILE && farmActionFirst();
+  const npcChanged = near !== nearNPC;
+  if (npcChanged || farmFirst !== npcPromptFarm) {
+    nearNPC = near; npcPromptFarm = farmFirst;
+    ui.setInteractPrompt?.(!near ? null
+      : farmFirst ? `🌾 ${near.def.name} · 밭일이 먼저예요 — ✋맨손(숫자 1)으로 바꾸면 대화해요`
+      : `💬 ${near.def.name} · Space 로 대화`);
+    // 퀘스트 패널은 주민이 실제로 바뀐 경우만 — 밭 경계를 드나들 때마다 다시 그릴 일이 아니다
+    if (npcChanged && near) { const st = npcState(near.def.id); if (st.given && !st.allDone) { trackedNPC = near; refreshQuestPanel(); } }
   }
 }
 

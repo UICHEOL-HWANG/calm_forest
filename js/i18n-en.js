@@ -1141,6 +1141,10 @@ export const EN = {
   '🪙코인': '🪙Coins',
   '✨정령빛': '✨Spirit Glow',
   '💬 {0} · Space 로 대화': '💬 {0} · Space to talk',
+  'Space 로 대화': 'Space to talk',                 // ' · ' 글루가 쪼갠 우변(위 키는 글루에 먼저 잡혀 도달하지 않는다)
+  '🌾 {0}': '🌾 {0}',                               // 좌변 글루 — '💬 {0}' 과 같은 역할
+  '밭일이 먼저예요 — ✋맨손(숫자 1)으로 바꾸면 대화해요':
+    'farm work comes first — switch to ✋ bare hands (key 1) to talk',
   '덕분에 마을이 살아났어요. 정말 고마워요! 🌼': 'The Village feels alive again, thanks to you. Thank you so much! 🌼',
   '조금만 더 부탁해요!': 'Just a little more, please!',
   '다 해냈네요! 보상을 받아요 🎁': 'You did it! Claim your reward 🎁',
