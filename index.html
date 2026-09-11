@@ -174,6 +174,7 @@
   body:not(.playing) #decor-guide,
   body:not(.playing) #mist-guide,
   body:not(.playing) #mist-choice,
+  body:not(.playing) #catch-banner,
   body:not(.playing) #door-prompt,
   body:not(.playing) #fish-prompt,
   body:not(.playing) #zone-prompt,
@@ -198,6 +199,7 @@
   body.boat-run #topleft,
   body.boat-run #topright,
   body.boat-run #talk-btn,
+  body.boat-run #catch-banner,
   body.boat-run #door-prompt,
   body.boat-run #zone-prompt { display: none !important; }
   #boat-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + var(--top-inset)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 7px; pointer-events: none; }
@@ -340,7 +342,7 @@
   /* 패널이 떠 있는 동안 게임 HUD 전부 숨김 — 미니게임(mg-open)과 같은 방식, 터치가 조이스틱에 닿을 수 없다 */
   body.guide-open #mobile-controls, body.guide-open #talk-btn, body.guide-open #hotbar, body.guide-open #minimap,
   body.guide-open #dex-tab, body.guide-open #feedback-tab, body.guide-open #quest-panel, body.guide-open #hint,
-  body.guide-open #hint-banner, body.guide-open #coach, body.guide-open #door-prompt, body.guide-open #npc-prompt,
+  body.guide-open #hint-banner, body.guide-open #coach, body.guide-open #door-prompt, body.guide-open #npc-prompt, body.guide-open #catch-banner,
   body.guide-open #zone-prompt, body.guide-open #buffs, body.guide-open #topleft, body.guide-open #topright { display: none !important; }
   .fb-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
   .fb-card h3 { margin: 0 0 4px; font-size: 18px; }
@@ -508,7 +510,10 @@
   body.story-on #quest-panel { top: calc(272px + var(--top-inset)); }   /* 📖 스토리 칩이 떠 있으면 그 아래로 스택(겹침 방지) */
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-  #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 8px; }
+  #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 2px; }
+  /* 📜 수행 방법 — "무엇을" 밑에 "어디서·무슨 도구로"(베타: 목표만 보고 막힘) */
+  #quest-panel .q-how { font-size: 11.5px; line-height: 1.45; color: #3f7a55; margin: 0 0 8px; }
+  #quest-panel .q-how:empty { margin-bottom: 6px; }   /* 완료 후엔 문구만 비고 아래 여백(총 8px)은 유지 */
   #quest-bar { height: 7px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
   #quest-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
   #quest-panel .q-prog { font-size: 11px; opacity: .7; margin-top: 4px; }
@@ -532,6 +537,21 @@
   #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
   #door-prompt.show { opacity: 1; }
 
+  /* 🎣 캐치 배너 — "무엇을 얻었나"를 프롬프트 줄에 두 줄로 크게 띄운다.
+     월드 플로트 텍스트는 밀착 줌이 걸리면 화면을 덮을 만큼 커지고 1.4초에 사라졌다
+     (베타: "갑자기 글씨가 커서 잘 안 보여요"). 토스트 자리를 빌려 쓰면 같은 순간에 오는
+     📖도감·📜퀘스트·🎨색 해금 토스트가 이걸 덮어버려서, 서로 안 겹치는 프롬프트 줄로 뺐다.
+     같은 줄을 쓰는 문/구역 프롬프트는 배너가 떠 있는 동안만 비켜준다(#mist-choice 와 같은 방식). */
+  #catch-banner { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) scale(.86);
+    opacity: 0; transition: opacity .22s, transform .22s; pointer-events: none; text-align: center;
+    padding: 12px 24px; border: 2px solid var(--mint); width: max-content; max-width: min(400px, 86vw); }
+  #catch-banner.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  @media (prefers-reduced-motion: reduce) { #catch-banner { transform: translateX(-50%); transition: opacity .22s; } }
+  #catch-banner .tb-main { font-size: 19px; font-weight: 800; line-height: 1.25; }
+  #catch-banner .tb-sub { font-size: 12.5px; line-height: 1.3; opacity: .72; margin-top: 3px; }
+  body:has(#catch-banner.show) #door-prompt,
+  body:has(#catch-banner.show) #zone-prompt { opacity: 0 !important; }
+
   /* 낚시 프롬프트(하단 중앙) */
   #fish-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 15px; font-weight: 700; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   #fish-prompt.show { opacity: 1; }
@@ -544,6 +564,31 @@
   #zone-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .25s, bottom .15s; pointer-events: none; max-width: 88vw; text-align: center; }
   #zone-prompt.show { opacity: 1; }
   @keyframes biteFlash { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
+
+  /* 🖥️ 데스크톱 안내 글씨 — 넓은 화면에서 같은 px 는 작게 읽힌다(베타 피드백: "PC에서 안내 멘트가 작아요").
+     ※ 경계는 640 이 아니라 760 — 좁은 화면 규칙이 max-width:640px 과 max-width:760px 두 블록에 걸쳐 있어서,
+       641px 부터 키우면 760px 블록(코치·시설 안내 배너를 좌측 슬롯으로 보내는 폰 레이아웃)과 충돌한다.
+       .02 는 분수 뷰포트(760.5px)가 어느 블록에도 안 걸리는 틈을 막는다. */
+  @media (min-width: 760.02px) {
+    #toast { font-size: 17px; padding: 13px 20px; }
+    #hint { font-size: 14px; }
+    #npc-prompt { font-size: 16px; }
+    #door-prompt { font-size: 17px; }
+    #fish-prompt { font-size: 18px; }
+    #zone-prompt { font-size: 16px; }
+    #coach-text { font-size: 16px; }
+    #coach-skip { font-size: 12.5px; }
+    #mc-title { font-size: 15px; }
+    #hint-banner .hb-title { font-size: 15.5px; }
+    #hint-banner .hb-line { font-size: 13.5px; }
+    #quest-panel { max-width: 268px; }
+    #quest-panel .q-title { font-size: 16px; }
+    #quest-panel .q-desc { font-size: 13.5px; }
+    #quest-panel .q-how { font-size: 13px; }
+    #catch-banner .tb-main { font-size: 22px; }
+    #catch-banner .tb-sub { font-size: 14px; }
+    #quest-panel .q-prog { font-size: 12.5px; }
+  }
 
   /* 집 꾸미기 버튼(실내에서만, 하단 중앙 — 토스트와 안 겹침) */
   #decor-btn { display: none; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); cursor: pointer; font-weight: 700; font-size: 15px; padding: 11px 22px; border: 2px solid var(--mint); }
@@ -678,6 +723,7 @@
   /* 컷신 중 게임 HUD 전부 숨김 — 모바일 조이스틱 포함 */
   body.intro-open #topleft, body.intro-open #topright, body.intro-open #minimap, body.intro-open #hotbar,
   body.intro-open #mobile-controls, body.intro-open #talk-btn, body.intro-open #dex-tab, body.intro-open #feedback-tab,
+  body.intro-open #catch-banner,
   body.intro-open #door-prompt, body.intro-open #npc-prompt, body.intro-open #zone-prompt, body.intro-open #quest-panel,
   body.intro-open #buffs, body.intro-open #decor-btn, body.intro-open #ext-btn, body.intro-open #mist-choice, body.intro-open #mist-guide,
   body.intro-open #hint, body.intro-open #story-chip { display: none !important; }
@@ -700,6 +746,7 @@
   #intro-fade { position: absolute; inset: 0; background: #fff; opacity: 0; transition: opacity 1.15s ease-in-out; }
 
   /* 🍳 미니게임 중엔 마을 UI(프롬프트·미니맵·탭)를 걷어 클로즈업 조리 화면에 몰입 */
+  body.mg-open #catch-banner,
   body.mg-open #door-prompt, body.mg-open #npc-prompt, body.mg-open #zone-prompt, body.mg-open #hotbar,
   body.mg-open #minimap, body.mg-open #dex-tab, body.mg-open #feedback-tab, body.mg-open #quest-panel,
   body.mg-open #talk-btn, body.mg-open #mobile-controls { display: none !important; }
@@ -888,6 +935,8 @@
   #npc-quest { background: #f4faf5; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
   #npc-quest.hidden { display: none; }
   .nq-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+  .nq-how { font-size: 12.5px; line-height: 1.5; color: #3f7a55; background: #e8f5ec; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .nq-how:empty { display: none; }
   #npc-qbar { height: 8px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
   #npc-qfill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
   .nq-meta { display: flex; justify-content: space-between; font-size: 12px; opacity: .72; margin-top: 6px; }
@@ -1025,6 +1074,9 @@
     /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
     /* 손님 이름+요리가 길어지면 화면 밖으로 나가므로 모바일에선 줄바꿈 허용 */
     #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; white-space: normal; max-width: 88vw; text-align: center; }
+    #catch-banner { bottom: calc(234px + env(safe-area-inset-bottom)); padding: 10px 18px; max-width: min(300px, 84vw); }
+    #catch-banner .tb-main { font-size: 17px; line-height: 1.2; }
+    #catch-banner .tb-sub { font-size: 11.5px; line-height: 1.25; margin-top: 2px; }
     /* 기본 위치는 문 프롬프트와 동일 — 둘 다 뜨면 JS가 실제 높이만큼 올림 */
     #zone-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 12px; max-width: 86vw; }
     #ext-btn { bottom: calc(282px + env(safe-area-inset-bottom)); font-size: 13px; padding: 9px 16px; }
@@ -1109,6 +1161,7 @@
   <div id="quest-panel" class="panel">
     <div class="q-title"><span>📜</span><span id="quest-title"></span></div>
     <div class="q-desc" id="quest-desc"></div>
+    <div class="q-how" id="quest-how"></div>
     <div id="quest-bar"><div id="quest-fill"></div></div>
     <div class="q-prog" id="quest-prog"></div>
   </div>
@@ -1125,6 +1178,7 @@
 
   <!-- 문 입장/퇴장 프롬프트 -->
   <div id="door-prompt" class="panel"></div>
+  <div id="catch-banner" class="panel"></div>
 
   <!-- 낚시 프롬프트 -->
   <div id="fish-prompt" class="panel"></div>
@@ -1468,6 +1522,7 @@
       <p id="npc-line"></p>
       <div id="npc-quest">
         <div class="nq-title" id="npc-qtitle"></div>
+        <div class="nq-how" id="npc-qhow"></div>
         <div id="npc-qbar"><div id="npc-qfill"></div></div>
         <div class="nq-meta"><span id="npc-qprog"></span><span id="npc-qreward"></span></div>
       </div>
@@ -1692,7 +1747,7 @@
     }
     window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
-    let toastTimer;
+    let toastTimer, catchTimer;   // 토스트와 🎣캐치 배너는 다른 줄·다른 타이머(서로 안 지운다)
     // 🪧 시설 배너 큐 — 그 앞에 있으면 3초(읽을 시간), 이미 지나쳤으면 1.4초로 빠르게 흘림.
     //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
     //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
@@ -1889,6 +1944,17 @@
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
         clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
       },
+      // 🎣 캐치 배너 — 획득 순간 "무엇을 얻었나"를 크게·조금 더 오래. 토스트와 다른 줄(프롬프트 줄)을 써서
+      //   같은 순간에 뜨는 📖도감·📜퀘스트 토스트와 서로 지우지 않는다. 월드 플로트 텍스트와 달리
+      //   카메라가 밀착해도 글씨 크기가 변하지 않는다.
+      catchBanner(main, sub = '', ms = 2400) {
+        const el = $('catch-banner');
+        el.textContent = '';                       // 이전 배너 자식 정리
+        const m = document.createElement('div'); m.className = 'tb-main'; m.textContent = main; el.appendChild(m);
+        if (sub) { const b = document.createElement('div'); b.className = 'tb-sub'; b.textContent = sub; el.appendChild(b); }
+        el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');   // 연속 획득에도 팝 인 재생
+        clearTimeout(catchTimer); catchTimer = setTimeout(() => el.classList.remove('show'), ms);
+      },
       // 퀘스트 패널 갱신(null이면 숨김)
       setQuest(v) {
         const p = $('quest-panel');
@@ -1897,6 +1963,7 @@
         p.classList.toggle('ready', !!v.ready);
         $('quest-title').textContent = v.name ? `${v.title}` : v.title;
         $('quest-desc').textContent = (v.name ? `${v.name} · ` : '') + v.desc;
+        $('quest-how').textContent = v.ready ? '' : (v.how || '');   // 📜 수행 방법(완료 후엔 감춤)
         $('quest-fill').style.width = Math.round(100 * v.progress / v.target) + '%';
         $('quest-prog').textContent = v.ready ? '✅ 완료! 주민에게 가세요' : `${v.progress} / ${v.target}`;
       },
@@ -1930,6 +1997,7 @@
         } else {
           quest.classList.remove('hidden');
           $('npc-qtitle').textContent = '📜 ' + view.title;
+          $('npc-qhow').textContent = view.mode === 'claim' ? '' : (view.how || '');   // 📜 수행 방법(보상 대기 땐 감춤)
           $('npc-qfill').style.width = Math.round(100 * view.progress / view.target) + '%';
           $('npc-qprog').textContent = `${view.progress} / ${view.target}`;
           $('npc-qreward').textContent = '보상 ' + view.reward;
@@ -3132,6 +3200,7 @@
       window.__carveChip = (n = 1) => Input.carveDebug('chip', n);
       window.__carveScratch = () => Input.carveDebug('scratch');
       window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent });
+      window.__ui = ui;        // HUD 문구·크기 검증용(캐치 배너·퀘스트 패널을 직접 그려본다)
     }
 
     // ── 상점 메뉴 (팔기 / 사기) ──

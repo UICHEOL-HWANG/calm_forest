@@ -504,6 +504,28 @@ let bobber = null;        // 찌(3D)
 const castPos = new THREE.Vector3();
 const _v = new THREE.Vector3(); // 임시 벡터
 
+// ── 📜 퀘스트 "어떻게 하나요" 한 줄 — 유형별 단일 출처 ───────────────
+//   베타 피드백: "방랑 상인이 씨앗뿌리기 0/3 이라는데 어쩌라는 건지 모르겠어요."
+//   제목·목표(무엇을)만 있고 수행 방법(어디서·무슨 도구로)이 없어서 생긴 막힘 →
+//   퀘스트 패널과 주민 대화창에 이 줄을 함께 띄운다. 지명은 VILLAGE_PLACES 와 같은 이름을 쓴다.
+const QUEST_HOW = {
+  plant:        '🌾 텃밭에서 🌰씨앗을 들고 일군 밭에 심어요 (밭이 없으면 ⛏️괭이로 먼저 갈아요)',
+  water:        '🌾 텃밭에서 💧물조리개를 들고 씨앗 심은 밭에 물을 줘요',
+  harvest:      '🌾 텃밭에서 다 자란 작물 앞에 서서 낫으로 거둬요',
+  collect_crop: '🌾 텃밭에서 씨앗을 심고 물을 주면 자라요 — 거두면 가방에 쌓여요',
+  collect_wood: '🪓 도끼를 들고 마을 나무 앞에서 액션을 눌러요',
+  chop:         '🪓 도끼를 들고 마을 나무 앞에서 액션을 눌러요',
+  fish:         '🏞️ 호수에서 🎣낚싯대를 던지고, "물었어요!" 가 뜨면 바로 액션!',
+  fish_rare:    '🏞️ 호수에서 계속 낚아요 — 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요',
+  house:        '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요',
+  sell:         '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요',
+  catch:        '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요',
+  forage:       '🍄 채집 숲에서 열매·버섯 앞에 서서 맨손으로 주워요',
+  mine:         '⛏️ 채굴 동굴에서 괭이를 들고 광석 앞에서 액션을 눌러요',
+  cook:         '🍳 자유주방에 들어가 재료가 있는 요리를 골라 만들어요',
+  serve:        '☕ 카페에 들어가 손님이 말한 요리를 만들어 내드려요',
+};
+
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
 //   퀘스트 type: chop(벌목) harvest(수확) water(물주기) plant(심기)
 //               house(집완성) collect_wood/collect_crop(보유량 달성)
@@ -8256,7 +8278,10 @@ function startActionShot() {
 // ── 🎉 캐치 세리머니 — 수확·낚시 성공 순간: 액션샷처럼 정면 밀착 + 폴짝 모션 ──
 //    (프레임 누적 진행이라 탭 전환 점프에 안전 — photoT 와 동일 메커니즘)
 let momentT = -1;                 // 세리머니 경과(초). 0 미만 = 비활성
-const MOMENT_HOLD = 1.15;         // 밀착 유지 시간(액션샷보다 짧게 — 게임 흐름 안 끊게)
+const MOMENT_HOLD = 1.5;          // 밀착 유지 시간(액션샷보다 짧게 — 게임 흐름 안 끊게)
+                                  //   베타 피드백 "빠르게 지나가서 잘 안 보여요" → 1.15 → 1.5s.
+                                  //   ※ updateCatchItem() 의 "머리 위에 들고 있는" 시간도 이 값이 정한다
+                                  //     → 수확·반딧불이 등 밀착 줌이 없는 2회차 이후 연출도 같이 길어진다(의도)
 const _momentPos = new THREE.Vector3();
 // ── 🏠 외관 꾸미기 뷰 — 패널이 화면 아래 절반을 덮는 동안 집을 화면 위쪽에 두고 바라본다 ──
 //    (베타 피드백: "외관 꾸미기 창이 집을 가려서 어떻게 변하는지 안 보인다")
@@ -8967,7 +8992,12 @@ function catchFish() {
   const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
-  spawnFloatText(castPos.x, 1.0, castPos.z, `+1 🐟 ${kind.name}`, '#2f6a8a');
+  // 🎣 무엇을 낚았는지는 캐치 배너로(월드 플로트 텍스트는 밀착 줌에서 화면을 덮었다 — 베타 피드백).
+  //    서브 문구는 📖도감 토스트와 겹치지 않게 '희소성'만 말한다(둘이 동시에 뜬다).
+  ui.catchBanner?.(`🐟 ${kind.name} +1`,
+    kind.rarity === 'rare' ? '✨ 아주 귀한 물고기예요!'
+    : kind.rarity === 'uncommon' ? '💫 조금 귀한 물고기예요'
+    : '가방에 담았어요 — 상점에서 팔 수 있어요');
   if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
@@ -10284,7 +10314,7 @@ export function npcDialogState() {
   const st = npcState(o.def.id);
   if (st.allDone) return { npc: o.def, mode: 'done', line: o.def.doneLine || '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
   const q = o.def.quests[st.idx];
-  const base = { npc: o.def, title: q.title, desc: q.desc, target: q.target, reward: rewardText(q.reward), qid: o.def.id + ':' + st.idx }; // qid: 퍼널 분석용 표준 퀘스트 ID
+  const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward: rewardText(q.reward), qid: o.def.id + ':' + st.idx }; // qid: 퍼널 분석용 표준 퀘스트 ID
   if (!st.given) return { ...base, mode: 'offer', line: q.line, progress: 0 };
   if (st.progress < q.target) return { ...base, mode: 'progress', line: '조금만 더 부탁해요!', progress: st.progress };
   return { ...base, mode: 'claim', line: '다 해냈네요! 보상을 받아요 🎁', progress: st.progress };
@@ -10373,7 +10403,7 @@ function questView(o) {
   const st = npcState(o.def.id);
   if (st.allDone || !st.given) return null;
   const q = o.def.quests[st.idx];
-  return { name: o.def.name, title: q.title, desc: q.desc, progress: st.progress, target: q.target, ready: st.progress >= q.target };
+  return { name: o.def.name, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', progress: st.progress, target: q.target, ready: st.progress >= q.target };
 }
 function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지

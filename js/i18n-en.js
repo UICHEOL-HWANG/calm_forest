@@ -1091,7 +1091,10 @@ export const EN = {
   '🛶 나루터 연못에선 낚시가 안 돼요 — 🎣 낚시는 마을 호수에서': '🛶 No fishing in the dock pond — 🎣 fish at the village Lake',
   '🎣 낚시는 마을 호수 물가에서만 할 수 있어요': '🎣 Fishing only works by the village Lake shore',
   '🎣 던졌어요… 물 때까지 기다려요': '🎣 Cast! Wait for a bite…',
-  '+1 🐟 {0}': '+1 🐟 {0}',
+  '🐟 {0} +1': '🐟 {0} +1',
+  '✨ 아주 귀한 물고기예요!': '✨ A truly rare fish!',
+  '💫 조금 귀한 물고기예요': '💫 A slightly uncommon fish',
+  '가방에 담았어요 — 상점에서 팔 수 있어요': 'Tucked into your bag — sell it at the Shop',
   '❗ 물었어요! 지금 낚아채요!': '❗ A bite! Reel it in now!',
   '놓쳤어요 🐟💨': 'It got away 🐟💨',
   '가까운 나무가 없어요': 'No tree nearby',
@@ -1176,4 +1179,34 @@ export const EN = {
   '상점 좌판': 'Market stall',
   '동쪽 좌판에서 언제든 팔 수 있어요': 'You can sell anytime at the stall in the east',
   '{0} 오늘 비싸요 +{1}%': '{0} Best price today +{1}%',
+
+  // 📜 퀘스트 수행 방법(QUEST_HOW) — 목표가 아니라 '어디서·무슨 도구로'
+  '🌾 텃밭에서 🌰씨앗을 들고 일군 밭에 심어요 (밭이 없으면 ⛏️괭이로 먼저 갈아요)':
+    '🌾 At the Farm, hold 🌰Seeds and plant them in tilled soil (till bare ground with the ⛏️Hoe first)',
+  '🌾 텃밭에서 💧물조리개를 들고 씨앗 심은 밭에 물을 줘요':
+    '🌾 At the Farm, hold the 💧Watering Can and water the plots you seeded',
+  '🌾 텃밭에서 다 자란 작물 앞에 서서 낫으로 거둬요':
+    '🌾 At the Farm, stand by a fully grown crop and reap it with the Sickle',
+  '🌾 텃밭에서 씨앗을 심고 물을 주면 자라요 — 거두면 가방에 쌓여요':
+    '🌾 Seed and water plots at the Farm — what you harvest piles up in your bag',
+  '🪓 도끼를 들고 마을 나무 앞에서 액션을 눌러요':
+    '🪓 Hold the Axe and press action in front of a village tree',
+  '🏞️ 호수에서 🎣낚싯대를 던지고, "물었어요!" 가 뜨면 바로 액션!':
+    '🏞️ Cast the 🎣Fishing Rod at the Lake, and press action the moment "A bite!" shows',
+  '🏞️ 호수에서 계속 낚아요 — 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요':
+    '🏞️ Keep fishing at the Lake — 🪱Bait raises your odds of a rare fish',
+  '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요':
+    '🔨 Hold the Hammer and press action at your house — each load of wood raises it a stage',
+  '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요':
+    '🏪 Sell what is in your bag at the Shop — or to the 🧙Wandering Merchant when they visit',
+  '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요':
+    '🌟 Head to Firefly Valley at night and swing the Bug Net while they glow bright',
+  '🍄 채집 숲에서 열매·버섯 앞에 서서 맨손으로 주워요':
+    '🍄 In the Foraging Woods, stand by berries or mushrooms and pick them bare-handed',
+  '⛏️ 채굴 동굴에서 괭이를 들고 광석 앞에서 액션을 눌러요':
+    '⛏️ In the Mining Cave, hold the Hoe and press action at an ore vein',
+  '🍳 자유주방에 들어가 재료가 있는 요리를 골라 만들어요':
+    '🍳 Enter the Free Kitchen and cook a recipe you have the ingredients for',
+  '☕ 카페에 들어가 손님이 말한 요리를 만들어 내드려요':
+    '☕ Enter the Café, make what the guest asked for and serve it',
 };
