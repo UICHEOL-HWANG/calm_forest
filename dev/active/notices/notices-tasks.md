@@ -9,6 +9,9 @@
 - [x] js/game.js noticeSeenId 세이브/복원 · 선조회 · 출석 ok 콜백 · markNoticesSeen
 - [x] index.html #notice-modal · ui.showNotices · ☰ 📮 소식함 버튼
 - [x] js/i18n-en.js 문구 7종 · i18n_check
-- [ ] 검증: npm test · node --check · 브라우저(출석→소식 창→재접속 안 뜸) · ?lang=en · 375px
-- [ ] docs/NOTICES_OPS.md 발송 SQL 예시
-- [ ] code-reviewer 리뷰 → main 병합 → wrangler deploy → 메모리 갱신
+- [x] 검증(부분): npm test · node --check · 게스트 RLS · ?lang=en · 375px · 빈 상태
+- [ ] 검증(잔여): 로그인 계정 출석→📮 새 소식 체인 → 새로고침 후 안 뜸 (사용자 계정 필요)
+- [x] docs/NOTICES_OPS.md 발송 SQL 예시
+- [ ] 사용자 추가 수정(새 세션)
+- [ ] code-reviewer 결과 반영
+- [ ] ⏸️ main 병합 → wrangler deploy → 메모리 갱신 (사용자 지시 전까지 배포 금지, 2026-09-11)
