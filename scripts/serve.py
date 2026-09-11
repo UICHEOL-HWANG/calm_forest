@@ -627,7 +627,7 @@ ROOT_ASSET_ALIASES = {
     '/favicon.svg': 'assets/favicon/favicon.svg',
     '/favicon-96.png': 'assets/favicon/favicon-96.png',
     '/apple-touch-icon.png': 'assets/favicon/apple-touch-icon.png',
-    '/preview.png': 'assets/social/preview.png',
+    '/preview.jpg': 'assets/social/preview.jpg',
     # 📱 PWA(assets/pwa/ → 루트) — sw.js·offline.html 은 저장소 루트라 매핑 불필요
     '/manifest.webmanifest': 'assets/pwa/manifest.webmanifest',
     '/icon-192.png': 'assets/pwa/icon-192.png',

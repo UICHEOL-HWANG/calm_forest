@@ -1,36 +1,24 @@
 // =============================================================
-//  📱 PWA 아이콘 생성 — assets/brand/icon*.svg → assets/pwa/icon-*.png
-//  make-icon.mjs 와 같은 방식(헤드리스 Chrome 스크린샷) — 이미지 라이브러리 불필요.
-//   icon.svg          → icon-192.png · icon-512.png        (purpose: any)
-//   icon-maskable.svg → icon-maskable-512.png              (purpose: maskable)
+//  📱 PWA 아이콘 생성 — assets/brand/bear-25deg-1024.png → assets/pwa/icon-*.png
+//  그림 정의는 scripts/lib/icon-art.mjs (favicon·앱인토스 아이콘과 같은 소스).
+//   icon-192.png · icon-512.png        purpose:"any"      — 라운드 사각 그대로 표시
+//   icon-maskable-512.png              purpose:"maskable" — 안드로이드가 원·둥근사각 등으로
+//     잘라내므로 배경은 캔버스 끝까지 채우고(정사각), 곰은 중앙 80% 안전영역 안에 둔다.
 //  사용: node scripts/make-pwa-icons.mjs
 // =============================================================
-import { execFileSync } from 'node:child_process';
-import { writeFileSync, rmSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { ROOT, iconPNG } from './lib/icon-art.mjs';
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const OUT_DIR = 'assets/pwa';
+const OUT_DIR = path.join(ROOT, 'assets', 'pwa');
 const JOBS = [
-  { svg: 'icon.svg', size: 192, out: 'icon-192.png' },
-  { svg: 'icon.svg', size: 512, out: 'icon-512.png' },
-  { svg: 'icon-maskable.svg', size: 512, out: 'icon-maskable-512.png' },
+  { out: 'icon-192.png',          size: 192, opt: { round: true } },
+  { out: 'icon-512.png',          size: 512, opt: { round: true } },
+  { out: 'icon-maskable-512.png', size: 512, opt: { round: false, pad: 0.76 } },
 ];
 
 mkdirSync(OUT_DIR, { recursive: true });
-for (const { svg, size, out } of JOBS) {
-  const tmp = resolve('assets/brand/_render.html');
-  writeFileSync(tmp, `<!doctype html><meta charset="utf-8">
-<style>html,body{margin:0;padding:0}img{display:block;width:${size}px;height:${size}px}</style>
-<img src="${svg}">`);
-  try {
-    execFileSync(CHROME, [
-      '--headless', '--disable-gpu', '--hide-scrollbars',
-      '--force-device-scale-factor=1', `--window-size=${size},${size}`,
-      `--screenshot=${OUT_DIR}/${out}`, 'file://' + tmp,
-    ], { stdio: 'ignore' });
-    console.log(`[make-pwa-icons] ${OUT_DIR}/${out} (${size}×${size})`);
-  } finally {
-    rmSync(tmp, { force: true });
-  }
+for (const { out, size, opt } of JOBS) {
+  writeFileSync(path.join(OUT_DIR, out), iconPNG(size, opt));
+  console.log(`[make-pwa-icons] assets/pwa/${out} (${size}×${size})`);
 }

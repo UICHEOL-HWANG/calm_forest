@@ -18,8 +18,10 @@ calm_forest/
 ├─ README.md
 ├─ assets/               # 🎨 이미지 소스 (런타임 참조 없음 — 빌드가 골라 넣는다)
 │  ├─ favicon/           #   favicon.ico · favicon.svg · favicon-96.png · apple-touch-icon.png
-│  ├─ social/preview.png #   링크 미리보기(OG) 커버 이미지 (1200×630)
-│  └─ brand/icon.svg     #   앱 아이콘 원본(토스 아이콘 생성 입력)
+│  ├─ social/           #   🖼️ title-source.jpg(원본) · preview.jpg(OG 1200×630)
+│  │                     #      toss-thumbnail.png(앱인토스 가로 썸네일 1932×828 · 웹 배포 제외)
+│  ├─ brand/            #   🐻 브랜드 마크 — bear-25deg-1024.png(원본) · icon-600.png(앱인토스)
+│  └─ pwa/               #   PWA 매니페스트 · icon-192/512 · maskable-512
 ├─ sims/                 # 🧪 검수용 프로토타입 (배포 제외)
 │  ├─ sea-sim.html       #   바다 낚시 미니게임·연출
 │  ├─ arm-sim.html       #   릴대 조형·모션
