@@ -11,8 +11,12 @@
 - 다음: 사용자 추가 수정 → 리뷰 반영 → main 병합 → `npx wrangler deploy` → 토스 번들은 다음 제출 때 포함.
 - 참고: 🖱️ 우클릭 키 고착·🎉 클로즈업 이동 차단 fix(12e5583)는 이미 main 에 커밋·웹 배포됨(feat/notices 에도 병합돼 있음).
 
-## 리뷰 메모
-(대기)
+## 리뷰 메모 (code-reviewer, 2026-09-11) — Important 2건 반영 완료
+- ✅ **20건 초과 유실**: `fetchNotices` 가 최신순+limit 20 이라 안 읽은 게 20건 넘으면 오래된 것이 조회되지 않은 채 읽음 id 만 점프 → `fetchNotices(since, { ascending: true })` 로 접속 시 조회는 오래된 순(남은 건 다음 접속에). 메뉴 소식함은 최신순 유지.
+- ✅ **출석 모달 위에 다른 안내 모달이 덮어쓰면 ok 콜백 소실**: 밤손님 날엔 `resolveNightVisit` 이 +1.2s/+4.6s 에 `showHintModal` 을 다시 불러 `okb.onclick=null` → 그날 📮 새 소식 체인 통째로 사라짐 → `showHintModal` 이 이미 떠 있는 모달의 ok 콜백을 이어 부르도록 체인.
+- 확인 OK: XSS(textContent 만) · 선조회 미도착 시 skip 무해 · markNoticesSeen 단조 · TDZ 없음 · SQL 재실행 가능.
+- 미반영(nice-to-have): inbox-btn 더블탭 가드 · OK_BTN 리터럴 호이스팅 · 서버/클라 이중 `id > since` 필터.
+- 드로우콜: 씬 변경 없음(HTML 모달·조회뿐) → 측정 생략(사용자 지시).
 
 ## 핵심 파일
 - `sql/migrate_notices.sql` — notices 테이블 + RLS + feedback select-own 정책 (신규)

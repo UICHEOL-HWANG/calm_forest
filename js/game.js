@@ -1028,7 +1028,7 @@ function checkDailyBonus() {
 let pendingNotices = [];   // 안 읽은 소식(오래된 순). 아직 안 왔으면 빈 배열 → 이번엔 안 띄우고 다음 접속에
 async function prefetchNotices() {
   const since = gameState.noticeSeenId || 0;
-  const rows = await fetchNotices(since);
+  const rows = await fetchNotices(since, { ascending: true });   // 오래된 순 — 20건 넘게 밀려도 읽음 id 가 건너뛰지 않게
   pendingNotices = unreadNotices(rows, since);
 }
 export function markNoticesSeen(list) {

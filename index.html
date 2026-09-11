@@ -2098,7 +2098,12 @@
         $('hint-body').textContent = body || '';
         // ok/alt: 선택형 안내(🌫️ 실패 후 연습 제안 등 — 주 버튼·보조 버튼). 닫기는 아래 hint-ok 리스너가 담당, 여기선 콜백만 갈아끼운다
         const okb = $('hint-ok'), altb = $('hint-alt');
-        okb.textContent = ok?.label || '알겠어요 🌱'; okb.onclick = ok?.onClick ? () => ok.onClick() : null;
+        okb.textContent = ok?.label || '알겠어요 🌱';
+        // 이미 떠 있는 모달을 덮어쓰는 경우(출석 모달 위에 🦝 밤손님 쪽지 등) 앞 모달의 ok 콜백을 버리지 않고 이어 부른다 —
+        // 출석 → 📮 새 소식 체인이 그날 통째로 사라지던 문제(리뷰 2026-09-11)
+        const prevOk = $('hint-modal').classList.contains('show') ? okb.onclick : null;
+        const nextOk = ok?.onClick ? () => ok.onClick() : null;
+        okb.onclick = (prevOk && nextOk) ? () => { prevOk(); nextOk(); } : (nextOk || prevOk);
         altb.hidden = !alt;
         if (alt) { altb.textContent = alt.label; altb.onclick = () => { $('hint-modal').classList.remove('show'); alt.onClick?.(); }; }
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지

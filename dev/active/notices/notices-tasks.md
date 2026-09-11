@@ -13,5 +13,5 @@
 - [ ] 검증(잔여): 로그인 계정 출석→📮 새 소식 체인 → 새로고침 후 안 뜸 (사용자 계정 필요)
 - [x] docs/NOTICES_OPS.md 발송 SQL 예시
 - [ ] 사용자 추가 수정(새 세션)
-- [ ] code-reviewer 결과 반영
+- [x] code-reviewer 결과 반영(Important 2건 — 오래된 순 선조회 · 모달 ok 콜백 체인)
 - [ ] ⏸️ main 병합 → wrangler deploy → 메모리 갱신 (사용자 지시 전까지 배포 금지, 2026-09-11)
