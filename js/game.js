@@ -9663,10 +9663,12 @@ function syncFarmSoil(force = false) {
     farmSoilMesh.setMatrixAt(i, _fmM);
     _fmC.setHex(p.watered ? PAL.soilWet : PAL.soil);
     farmSoilMesh.setColorAt(i, _fmC);
-    // 이랑 3줄 — 삽질 중(digAt)인 칸은 개별 메시로 승격돼 있으니 인스턴스에선 숨긴다
+    // 이랑 3줄 — 개별 메시로 승격된(plot.ridges) 칸은 인스턴스에선 숨긴다.
+    //   digAt 이 아니라 ridges 승격 여부로 게이트해야 두 표현이 항상 상호배타가 된다
+    //   (digAt=0 이어도 digBackT 복구 애니메이션 중엔 여전히 승격 상태일 수 있다).
     for (let k = 0; k < RIDGE_PER_PLOT; k++) {
       const ri = i * RIDGE_PER_PLOT + k;
-      if (p.digAt) { _fmM.makeScale(0, 0, 0); }                 // 크기 0 = 안 보임
+      if (p.ridges) { _fmM.makeScale(0, 0, 0); }                 // 크기 0 = 안 보임
       else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21, p.z + RIDGE_Z[k] * s); }
       farmRidgeMesh.setMatrixAt(ri, _fmM);
     }
@@ -9692,7 +9694,7 @@ function updateFarmPops(dt) {
     farmSoilMesh.setMatrixAt(i, _fmM);
     for (let k = 0; k < RIDGE_PER_PLOT; k++) {
       const ri = i * RIDGE_PER_PLOT + k;
-      if (p.digAt) { _fmM.makeScale(0, 0, 0); }
+      if (p.ridges) { _fmM.makeScale(0, 0, 0); }   // 승격된(개별 메시) 칸은 인스턴스 쪽을 숨긴다
       else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21, p.z + RIDGE_Z[k] * s); }
       farmRidgeMesh.setMatrixAt(ri, _fmM);
     }
@@ -9789,8 +9791,8 @@ function digHit(plot, second) {
   if (!plots.includes(plot) || plot.state !== 'empty') return;
   if (second) { removePlot(plot); return; }
   plot.digAt = clock.elapsedTime; plot.digBackT = 0;
-  syncFarmSoil(true);   // 🪏 인스턴스 쪽 이랑을 숨긴다(승격된 개별 메시가 대신 보인다)
-  setPlotDug(plot, 1);
+  setPlotDug(plot, 1);   // plot.ridges 를 먼저 승격시켜야 아래 sync 가 인스턴스를 숨긴다
+  syncFarmSoil(true);    // 🪏 인스턴스 쪽 이랑을 숨긴다(승격된 개별 메시가 대신 보인다)
   spawnDust(plot.x, plot.z, 10);
   ui.toast?.('한 번 더 파면 밭이 사라져요 🪏');
   trackEvent('dig_plot', { step: 1 });   // [GA4]
@@ -9847,7 +9849,12 @@ function expireDig(plot) {
   ui.toast?.('밭을 그대로 두었어요');
   trackEvent('dig_expire');   // [GA4]
   if (lastDoorPrompt && lastDoorPrompt.startsWith('🪏')) { lastDoorPrompt = null; ui.setDoorPrompt?.(null); }
-  demotePlotRidges(plot);
+  // 🪏 여기서 demotePlotRidges 를 부르지 않는다 — plot.ridges 는 승격 상태 그대로 두고
+  //   바로 뒤이은 updatePlots 의 digBackT 복구 루프가 같은 ridges 를 계속 써서 애니메이션한다.
+  //   여기서 demote(→null)했다가 그 루프가 즉시 다시 promote 하면, 그 사이 syncFarmSoil(true)
+  //   가 "ridges 없음"으로 인스턴스를 되살려버려 복구 애니메이션 내내 인스턴스(고정)와
+  //   개별 메시(기울기 애니메이션)가 겹쳐 보이는 고스트가 생긴다. 진짜 강등은
+  //   digBackT 가 0 에 닿는 시점(updatePlots)에서 한 번만 일어나면 충분하다.
 }
 // 2타 연출: 연한 흙 자국이 풀색으로 돌아가고(페이드) 새싹 7개가 톡톡 돋았다가 사라진다
 function spawnDigRegrow(x, z) {
