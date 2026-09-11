@@ -9320,7 +9320,16 @@ function farmActionFirst() {
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
   if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop) return false;
   const held = TOOLS[currentTool].id;
-  if (FARM_AUTO_TOOLS.includes(held)) return !!nearestPlot(FARM_AUTO_R);
+  if (FARM_AUTO_TOOLS.includes(held)) {
+    const plot = farmAutoPlot(held);
+    if (!plot) return false;
+    if (!(plot.state === 'growing' && clock.elapsedTime < (plot.wetUntil || 0))) return true;
+    // 💧 자라는 밭인데 흙이 아직 촉촉하면 밭일은 '아직 흙이 촉촉해요 🌱' 안내뿐이다(어떤 농사 도구를 들었든).
+    //    아무것도 안 일어나는 몇 초 동안 대화까지 막으면 "눌러도 반응이 없고 말도 못 건다"가 된다 → 대화에 양보.
+    //    단 🌱비료를 줄 수 있으면 그건 의미 있는 밭일이라 그대로 우선 — handleAction 의 비료 분기와 같은 조건을 쓴다.
+    const fp = fertTarget();
+    return !!(fp && !fertBlockedByWatering(held, toolPage, clock.elapsedTime < (fp.wetUntil || 0)));
+  }
   // 🪏삽 — 빈 밭 위면 밭일 우선. "digAt 이 살아 있을 때만"으로 좁히면 1타부터 대화에 뺏겨 2타에 영영 못 닿는다.
   //   삽을 자동 전환 대상에서 뺀 이유는 "다른 농사 도구를 들었는데 삽질이 되면 안 된다"는 것이지,
   //   삽을 손에 쥔 명시적 의도까지 막자는 게 아니다. 1타는 6초 뒤 저절로 복구되고 제거엔 2타가 필요해 되돌릴 수 있다.
@@ -9328,9 +9337,15 @@ function farmActionFirst() {
   return false;
 }
 
+// 지금 든 도구로 밭일을 하면 대상이 될 밭 — farmActionFirst 와 farmAutoAction 이 같은 밭을 봐야
+//   "밭일이 먼저예요" 프롬프트와 실제 동작이 어긋나지 않는다.
+function farmAutoPlot(held) {
+  return nearestPlot(FARM_AUTO_R, HELD_PLOT_PREF[held]) || nearestPlot(FARM_AUTO_R);
+}
+
 function farmAutoAction() {
   const held = TOOLS[currentTool].id;
-  const plot = nearestPlot(FARM_AUTO_R, HELD_PLOT_PREF[held]) || nearestPlot(FARM_AUTO_R);
+  const plot = farmAutoPlot(held);
   const wet = !!plot && clock.elapsedTime < (plot.wetUntil || 0);
   const want = farmToolFor(plot, wet);
   if (!want) {
