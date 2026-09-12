@@ -99,6 +99,12 @@ export const EN = {
   '(또는 탭)으로 다시 들어 옮기고, 든 채로 여기서': '(or tap) to pick it up and move it, or while holding it,',
   '할 수 있어요 ·': 'from here ·',
   '옮기기': 'Move',
+  '자기': 'Sleep',
+  '🛏️ 밤에 누우면 아침까지 잘 수 있어요': '🛏️ Lie down at night and sleep until morning',
+  '☀️ 잘 잤어요 — 아침이에요': '☀️ Slept well — it\'s morning',
+  '🛏️ 침대를 놓아뒀어요 — 밤에 누우면 아침까지 자요': '🛏️ A bed is set up for you — lie down at night to sleep until morning',
+  '🛏️ 침대를 창고에 넣어뒀어요 — 🎨꾸미기에서 꺼내 놓아요': '🛏️ Your bed is in storage — place it from 🎨Decorate',
+  '밤에 누우면 아침까지 자요': 'Lie down at night to sleep until morning',
   '보유 {0}': 'Owned {0}',
   '{0} {1}을(를) 창고에 넣었어요': 'Put {0} {1} in storage',
   // ── 🪵 야외 장식 옮기기·🧺 보관(작업대 제작품, 실내 가구와 같은 문법) ──

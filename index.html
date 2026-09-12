@@ -740,6 +740,9 @@
 
   /* 🎬 프롤로그 컷신 — 시네마틱 오버레이(자막·레터박스·페이드·타이틀·스킵) */
   #intro-layer { position: fixed; inset: 0; z-index: 55; display: none; pointer-events: none; }
+  /* 🛏️ 자는 동안 덮는 암전 — 밤→아침으로 시간이 건너뛰는 걸 가린다. 덮인 동안엔 입력도 막는다 */
+  #sleep-fade { position: fixed; inset: 0; z-index: 52; background: #0b1020; opacity: 0; pointer-events: none; transition: opacity .7s ease-in-out; }
+  #sleep-fade.on { pointer-events: auto; }
   body.intro-open #intro-layer { display: block; }
   /* 컷신 중 게임 HUD 전부 숨김 — 모바일 조이스틱 포함 */
   body.intro-open #topleft, body.intro-open #topright, body.intro-open #minimap, body.intro-open #hotbar,
@@ -1316,6 +1319,9 @@
     <div id="intro-title"><div class="it-logo">calm forest</div><div class="it-sub">a cozy little forest</div></div>
     <div id="intro-fade"></div>
   </div>
+
+  <!-- 🛏️ 자기 암전 -->
+  <div id="sleep-fade"></div>
 
   <!-- 🍳 요리 미니게임 오버레이 (풀스크린 — 모바일은 화면 전체가 탭 버튼) -->
   <div id="mg-layer">
@@ -2198,6 +2204,8 @@
         el.classList.add('show');
       },
       introFade(a) { $('intro-fade').style.opacity = a; },
+      // 🛏️ 자는 동안의 암전. a=1 덮기 / a=0 걷기 — .on 은 덮인 동안 입력을 막는 용도
+      sleepFade(a) { const el = $('sleep-fade'); el.style.opacity = a; el.classList.toggle('on', a > 0); },
       introTitle(on) { $('intro-title').classList.toggle('show', !!on); },
       // 📖 메인 퀘스트 칩 갱신 — game.js(syncStory)가 진행 변화 때마다 호출
       setStory(v) {
@@ -2327,7 +2335,7 @@
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
           : t.includes('리듬') || t.includes('달래기') ? '♪' : t.includes('등불 켜기') ? '🏮' : t.includes('정화') ? '🌳'
           : t.includes('던지기') || t.includes('기다리는') ? '🎣' : t.includes('당기세요') ? '🎣' : t.includes('버텨') ? '💪'
-          : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : t.includes('옮기기') ? '✋' : '🚪';
+          : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : t.includes('· 자기') ? '🛏️' : t.includes('옮기기') ? '✋' : '🚪';
         refreshActionIcon();
         if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');

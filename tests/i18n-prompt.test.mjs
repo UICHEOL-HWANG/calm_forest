@@ -46,4 +46,8 @@ for (const ko of DECOR_PROMPTS) {
     assert.ok(!HAS_KO.test(en), `번역이 덜 됐다 → "${en}"`);
   });
 }
-
+// 🛏️ 자기 — 밤에만 뜨는 프롬프트도 같은 조합 규칙을 탄다
+test('🛏️ 자기 프롬프트가 끝까지 번역된다', () => {
+  const en = t('🛏️ 침대 · 자기');
+  assert.ok(!HAS_KO.test(en), `번역이 덜 됐다 → "${en}"`);
+});
