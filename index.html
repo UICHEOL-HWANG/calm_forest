@@ -773,6 +773,9 @@
      미니맵·도감·문의 탭은 패널 위쪽 바깥이라 그대로 둔다 — 패널을 안 가린다. */
   body.menu-open #talk-btn, body.menu-open #catch-banner,
   body.menu-open #door-prompt, body.menu-open #npc-prompt, body.menu-open #zone-prompt { display: none !important; }
+  /* 📖 퀘스트 칩·시설 배너는 시트(작업대·자유주방·상점)보다 DOM 뒤라 위에 겹쳐 내용을 가렸다.
+     시트가 반투명이라 뒤로 보내면 비쳐 보이므로, 다른 HUD 와 같게 아예 비켜준다. */
+  body.menu-open #story-chip, body.menu-open #hint-banner { display: none !important; }
   /* 🍳 미니게임 중엔 마을 UI(프롬프트·미니맵·탭)를 걷어 클로즈업 조리 화면에 몰입 */
   body.mg-open #catch-banner,
   body.mg-open #door-prompt, body.mg-open #npc-prompt, body.mg-open #zone-prompt, body.mg-open #hotbar,
