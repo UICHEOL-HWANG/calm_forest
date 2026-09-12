@@ -53,6 +53,10 @@ const INCLUDE = [
   ['assets/pwa/assetlinks.json', '.well-known/assetlinks.json'],   // TWA 도메인 소유 확인(지문은 콘솔 키 생성 후)
   'sw.js',           // service worker — 오프라인 안내 페이지만 캐시
   'offline.html',    // 오프라인 안내 페이지
+  // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
+  //    빼면 링크가 404 가 되어 심사에서 반려된다.
+  'privacy.html',        // → /privacy
+  'delete-account.html', // → /delete-account
   '_headers',        // 캐시 헤더
 ];
 // assets/brand 는 아이콘 "원본"(빌드 입력)이라 배포에 넣지 않는다 — 런타임 참조 없음.
