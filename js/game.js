@@ -25,6 +25,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
+import { NIGHT_MIN, WAKE_TIME, isNightAt } from './daynight.js';   // 🌞🌙 밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
@@ -306,7 +307,7 @@ let farmGroup, mineGroup;                        // 텃밭/동굴 그룹(가시�
 const GLADE = new THREE.Vector3(2, 0, 25);      // 계곡 중심(남쪽 숲) — ☕카페 구역과 안 겹치게 더 남쪽으로
 const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
 const GLADE_MAX = IS_MOBILE ? 5 : 7;            // 동시 개체 수
-const NIGHT_MIN = 0.45;                         // 이 이상 어두워야 출현(밤 판정)
+//   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
 // 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
 const BUG_KINDS = [
   { id: 'rainbow', name: '무지개반디', ico: '🌈', color: 0xffc0f0, p: 0.06 },
@@ -318,7 +319,7 @@ const gladeBugs = [];                           // 살아있는 반딧불이 개
 let gladeGroup = null, nearGlade = false;
 let bugRespawnAt = 0;                           // 다음 개체 보충 시각(clock.elapsedTime)
 let nightLevel = 0;                             // updateDayNight 이 매 프레임 갱신(0=한낮 1=한밤)
-function isNight() { return nightLevel >= NIGHT_MIN; }
+function isNight() { return nightLevel >= NIGHT_MIN; }   // nightLevel 은 updateDayNight 가 isNightAt 과 같은 식으로 갱신
 
 // ── ☕ 카페 — 채굴장처럼 처음부터 마을에 있는 장소. 새 동사: 접객/서빙 ──
 //    마을 남쪽 건물로 들어가면 별도의 넓은 홀이 열리고, 그 안에 손님 NPC가 앉아 있다.
@@ -1162,7 +1163,7 @@ let interiorGroup, interiorFloor, interiorLamp;
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
-let dayPaused = false;  // 낮/밤 자동 순환 정지 여부(수동 조절 시)
+let dayPaused = false;  // 낮/밤 자동 순환 정지 여부 — ?time= 로 시간대를 고정하는 스토어 촬영용
 const npcObjs = [];     // 런타임 NPC 객체들
 let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 
@@ -1504,8 +1505,8 @@ export const Input = {
   getTools() { return TOOLS; },
   getToolPage() { return toolPage; },
   getToolPages() { return TOOL_PAGES; },
-  setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
-  toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
+  // 낮/밤 수동 조절(setTimeOfDay·toggleDayFlow)은 제거됐다 — 시간은 늘 자동으로 흐르고,
+  // 플레이어가 만질 수 있는 건 🛏️ 침대뿐(밤에 누우면 아침). dayPaused 는 ?time= dev 파라미터 전용.
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() { return DECOR; },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
