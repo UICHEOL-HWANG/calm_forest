@@ -71,6 +71,7 @@ export function setLang(l) {
 // ── 사전 정규화 + 패턴 컴파일 ──────────────────────────────────
 //   · 키·값의 양끝 공백/개행을 정리한 변형도 함께 등록(텍스트 노드는 trim 후 조회되므로)
 //   · {0},{1} 포함 키는 정규식으로 컴파일 — dotAll(s)이라 캡처가 개행도 삼킨다
+//   · {0#} 은 숫자만 잡는 자리 — '{0}장'(챕터)이 '책장' 같은 낱말을 먹던 충돌을 막는다
 const EXACT = new Map();
 const PATTERNS = [];
 for (const ko in EN) {
@@ -81,6 +82,7 @@ for (const ko in EN) {
   if (ko.includes('{')) {
     for (const [k, v] of koT !== ko ? [[ko, en], [koT, en.trim()]] : [[ko, en]]) {
       const src = k.replace(/[.*+?^$()|[\]\\]/g, '\\$&')   // 정규식 이스케이프({}는 남김)
+        .replace(/\{(\d+)#\}/g, '(\\d+)')                    // {0#} = 숫자 전용 자리
         .replace(/\{(\d+)\}/g, '(.+?)');
       PATTERNS.push({ re: new RegExp('^' + src + '$', 's'), en: v });
     }
@@ -99,6 +101,15 @@ export function t(s) {
   for (const p of PATTERNS) {
     const m = p.re.exec(s);
     if (m) return p.en.replace(/\{(\d+)\}/g, (_, i) => t(m[+i + 1] ?? ''));
+  }
+  // 이모지 접두사 — '🛏️ 침대' 처럼 아이콘이 앞에 붙으면 '침대' 키에 도달하지 못한다.
+  //   조합 프롬프트 '{0} · {1}' 의 좌변이 거의 이 꼴이라, 가구 옮기기 프롬프트 전부가
+  //   영어 모드에서 "🛏️ 침대 · Move" 처럼 반만 번역되고 있었다.
+  //   아이콘을 떼고 번역해 다시 붙인다 — 떼어낸 쪽이 사전에 없으면 그대로 흘려보낸다(무해).
+  const emo = /^([^\p{L}\p{N}]+\s)(.+)$/su.exec(s);
+  if (emo) {
+    const inner = t(emo[2]);
+    if (inner !== emo[2]) return emo[1] + inner;
   }
   if (s.includes('\n')) {                                  // 줄 단위
     const out = s.split('\n').map(line => {

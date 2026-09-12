@@ -31,3 +31,19 @@ for (const ko of PROMPTS) {
     assert.ok(!HAS_KO.test(en), `번역이 덜 됐다 → "${en}"`);
   });
 }
+
+// 🛋️ 가구 옮기기 프롬프트 — 좌변이 '🛏️ 침대' 처럼 이모지+이름이라 사전에 안 잡혔다.
+//   '🛏️ 침대 · Move' 처럼 반만 번역되던 회귀를 잠근다(DECOR 전 품목이 같은 꼴).
+const DECOR_PROMPTS = [
+  '🛏️ 침대 · 옮기기',
+  '🛋️ 소파 · 옮기기',
+  '🐟 어항 · 옮기기',
+  '📚 책장 · 옮기기',
+];
+for (const ko of DECOR_PROMPTS) {
+  test(`가구 프롬프트가 끝까지 번역된다: ${ko}`, () => {
+    const en = t(ko);
+    assert.ok(!HAS_KO.test(en), `번역이 덜 됐다 → "${en}"`);
+  });
+}
+
