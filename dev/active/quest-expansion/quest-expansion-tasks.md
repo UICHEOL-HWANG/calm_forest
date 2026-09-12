@@ -51,7 +51,11 @@
 - [ ] ⏸️ **`-40` 검수 결과 대기** → 끝나면 `-41` 검수 요청
       (`-41` 에 `-38`~`-40` 내용이 전부 들어 있다. `-40` 승인 시 먼저 출시하거나 건너뛰어도 된다)
 - [ ] 토스 콘솔 웹에서 **출시하기** (MCP 로는 불가)
-- [ ] 🎮 itch — `npm run build:itch` 후 zip 재업로드
+- [x] 🎮 itch — `npm run build:itch` 로 `dist-itch.zip` 생성·검증 완료
+      (로컬 8010 에서 새 주민 4명 로드·콘솔 에러 0 확인)
+- [ ] 🎮 itch 대시보드에 zip 업로드 — butler 미설치라 웹 업로드
+      cheorish.itch.io/calmforest › Edit › Uploads › dist-itch.zip
+      ⚠️ "This file will be played in the browser" 체크 유지
 - [ ] 📮 **토스 출시 후** `sql/notice_quest_expansion.sql` 실행
       (소식함은 웹·토스가 같은 DB — 먼저 넣으면 토스 이용자가 새 이웃을 못 찾는다)
 
