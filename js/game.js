@@ -484,6 +484,14 @@ const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, s
 function setSpaceVisible() {
   if (interiorGroup) interiorGroup.visible = indoor;
   if (farmGroup) farmGroup.visible = atFarm;
+  // 🌾 밭 흙·이랑·작물·배지 InstancedMesh 는 scene 직속(farmGroup 자식이 아님) — 따로 토글해야 한다.
+  //   plots 배열엔 마을 밭과 텃밭 밭이 함께 들어있고 두 곳이 같은 InstancedMesh 를 공유하므로
+  //   atFarm 이 아니라 "실외인가"(outdoorZone) 기준으로 켜야 마을 안 밭도 보인다.
+  const farmVisible = outdoorZone();
+  if (farmSoilMesh) farmSoilMesh.visible = farmVisible;
+  if (farmRidgeMesh) farmRidgeMesh.visible = farmVisible;
+  if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) farmCropMeshes[k].visible = farmVisible;
+  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint']) farmHintMeshes[k].visible = farmVisible;
   if (mineGroup) mineGroup.visible = atMine;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (riverGroup) riverGroup.visible = atRiver;
@@ -1788,6 +1796,16 @@ export async function enterGame() {
     // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
+    // 🌾 __farmMax() — 텃밭을 밭으로 가득 채워 최악 상태를 재현(드로우콜 측정용). 로컬 전용.
+    window.__farmMax = () => {
+      const H = FARM_HALF;
+      for (let x = -H + 1; x <= H - 1; x += 2) for (let z = -H + 1; z <= H - 1; z += 2) {
+        if (!plots.some(p => p.x === FARM.x + x && p.z === FARM.z + z)) createPlot(FARM.x + x, FARM.z + z, true);
+      }
+      for (const p of plots) { p.state = 'growing'; p.growth = 0.9; p.stage = -1; p.cropType = CROP_TYPES[Math.abs(p.x + p.z) & 3]; refreshCropStage(p); }
+      syncFarmSoil(true); syncFarmCrops(true);
+      return plots.length;
+    };
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
@@ -7877,27 +7895,46 @@ function buildFarm() {
   const skirtGeo = new THREE.CircleGeometry(48, 48); skirtGeo.rotateX(-Math.PI / 2);
   const skirt = new THREE.Mesh(skirtGeo, clayMat(PAL.groundDark, false));
   skirt.position.y = -0.02; skirt.receiveShadow = true; g.add(skirt);
-  // 둘레 나무들(장식) — 강둑 나무와 같은 간단 조형. 남쪽 출입구 방향은 비워 시야 확보
+  // 둘레 나무 24그루(장식) — 강둑 나무와 같은 간단 조형. 남쪽 출입구 방향은 비워 시야 확보.
+  //   줄기·잎을 각각 InstancedMesh 1개로 묶는다(48메시 → 2콜). 줄기 높이(h)가 위치마다 달라
+  //   지오메트리 자체 높이는 1로 고정해 두고 인스턴스 행렬의 Y 스케일로 표현한다(반지름은 그대로).
+  //   잎 색은 원래 leaf1/2/3 세 가지였으나 배경 장식이라 차이가 안 보여 leaf1 하나로 통일(재질 절감).
+  const _treeTrunks = [], _treeLeaves = [];
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2;
     if (Math.abs(a - Math.PI / 2) < 0.45) continue;              // 남쪽(+z) 출입구
     const r = FARM_HALF + 5 + ((i * 7) % 6) * 2.4;
     const h = 2.0 + ((i * 13) % 7) * 0.3;
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, h, 5), clayMat(PAL.trunk));
-    trunk.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r); g.add(trunk);
-    const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.6, 6), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
-    leaf.position.set(trunk.position.x, h + 1.0, trunk.position.z); g.add(leaf);
+    _treeTrunks.push([Math.cos(a) * r, h, Math.sin(a) * r]);
+    _treeLeaves.push([Math.cos(a) * r, h + 1.0, Math.sin(a) * r]);
   }
+  const trunkMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.22, 1, 5), clayMat(PAL.trunk), _treeTrunks.length);
+  const leafMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(1.2, 2.6, 6), clayMat(PAL.leaf1), _treeLeaves.length);
+  {
+    const _tm = new THREE.Matrix4(), _ts = new THREE.Vector3(), _tq = new THREE.Quaternion(), _tp = new THREE.Vector3();
+    _treeTrunks.forEach(([x, h, z], i) => { _ts.set(1, h, 1); _tp.set(x, h / 2, z); _tm.compose(_tp, _tq, _ts); trunkMesh.setMatrixAt(i, _tm); });
+    _treeLeaves.forEach(([x, y, z], i) => { _tm.makeTranslation(x, y, z); leafMesh.setMatrixAt(i, _tm); });
+  }
+  trunkMesh.instanceMatrix.needsUpdate = true; leafMesh.instanceMatrix.needsUpdate = true;
+  g.add(trunkMesh, leafMesh);
   const ground = new THREE.Mesh(new THREE.BoxGeometry(FARM_HALF * 2, 0.2, FARM_HALF * 2), clayMat(0x8fce7e, false));
   ground.position.y = 0.05; ground.receiveShadow = true; g.add(ground);
-  // 울타리 둘레
+  // 울타리 둘레 — 말뚝 36~60개가 위치만 다르고 크기·재질은 같아 InstancedMesh 1개로 묶는다.
   const H = FARM_HALF;
+  const _posts = [];
   for (let i = -H; i <= H; i += 1.5) {
     for (const [x, z] of [[i, -H], [i, H], [-H, i], [H, i]]) {
       if (Math.abs(x) < 1.2 && z === H) continue; // 남쪽 가운데는 출입구
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1)); post.position.set(x, 0.35, z); g.add(post);
+      _posts.push([x, z]);
     }
   }
+  const postMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1), _posts.length);
+  {
+    const _pm = new THREE.Matrix4();
+    _posts.forEach(([x, z], i) => { _pm.makeTranslation(x, 0.35, z); postMesh.setMatrixAt(i, _pm); });
+  }
+  postMesh.instanceMatrix.needsUpdate = true;
+  g.add(postMesh);
   // 나가는 문(남쪽 가운데)
   const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.14, 0.4), woodMat(1, 2, 0xa9743f)); gate.position.set(0, 0.16, H); g.add(gate);
   // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
