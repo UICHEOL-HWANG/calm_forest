@@ -257,7 +257,6 @@ export const EN = {
   'createCharacterPreview 없음(게임 파일 캐시일 수 있음)': 'createCharacterPreview missing (game files may be cached)',
   '{0} {1}(으)로 바꿨어요!': '{0} Switched to {1}!',
   '{0} {1}(으)로 시작해요!': '{0} Off we go as {1}!',
-  '{0#}장 · {1}': 'Ch. {0} · {1}',   // {0#}=숫자 — '책장 · 옮기기' 를 챕터로 잘못 잡지 않게
   '{0#}장': 'Ch. {0}',
   '이전 이야기를 먼저 완성해보세요': 'Finish the earlier chapter first',
   '— 보통': '— steady',
