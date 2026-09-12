@@ -10207,7 +10207,7 @@ function updatePlots(dt) {
         if (!plot.needSince) plot.needSince = now;              // 목마르기 시작
         else if (now - plot.needSince > WILT_TIME) wiltPlot(plot); // 오래 방치 → 시듦
       }
-      // '물을 줘야해요!' 알림: 목마른 성장 작물 위에
+      // '물 줘요!' 알림: 목마른 성장 작물 위에
       setPlotWarn(plot, !wet);
       setPlotHarvest(plot, false); setPlotSeedHint(plot, false);
     } else if (plot.state === 'mature') {
@@ -10266,7 +10266,11 @@ function _hintTexFromCanvas(cv) {
 function warnTexture() {
   if (_warnTex) return _warnTex;
   const [cv, c] = _hintCanvas();
-  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#14406b', t('💧 물을 줘야해요!'), 46);
+  //   ⚠️ 브리프 Step1 은 '물을 줘야해요!' 로 적었지만 이는 계획서 작성 중 코드 주석("'물을 줘야해요!' 알림: ...")과
+  //     실제 fillText 문자열을 착각해 옮긴 것 — i18n-en.js 사전 키는 원래 문구 '💧 물 줘요!' 그대로다(리뷰 fix round 1).
+  //     기능 변화 0 원칙에 따라 원래 문구로 되돌린다. padX 도 짧아진 문구 폭에 맞춰 재계산(다른 두 배지와 같은
+  //     여백 공식 — padX = 106 - textWidth/2, 측정값 44).
+  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#14406b', t('💧 물 줘요!'), 44);
   return (_warnTex = _hintTexFromCanvas(cv));
 }
 function harvestTexture() {
