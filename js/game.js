@@ -9682,7 +9682,11 @@ function syncFarmSoil(force = false) {
   const sig = plotsSignature(plots);
   if (!force && sig === farmSigPrev) return;
   farmSigPrev = sig;
-  if (plots.length > farmSoilCap) { buildFarmInstances(plots.length + 40); farmSigPrev = sig; }
+  if (plots.length > farmSoilCap) {
+    buildFarmInstances(plots.length + 40);
+    farmSigPrev = sig;
+    syncFarmCrops(true);   // 🌱 재할당으로 새로 만든 작물 버퍼(count 전부 0)를 다시 채운다 — 흙·이랑은 아래 루프가 self-heal 하지만 작물은 아무도 안 채워준다
+  }
   for (let i = 0; i < plots.length; i++) {
     const p = plots[i];
     const s = popScale(p.pop || 0);
