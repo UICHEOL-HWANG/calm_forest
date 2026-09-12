@@ -35,6 +35,7 @@ import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
 import { PLOT_CAP, RIDGE_Z, RIDGE_PER_PLOT, popScale, plotsSignature, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
+import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, soilSignature, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -9768,21 +9769,28 @@ let farmHintMeshes = null;      // { warn, harvest, seedHint } — 밭 알림 �
 const _fmM = new THREE.Matrix4(), _fmC = new THREE.Color();
 
 function buildFarmInstances(cap = PLOT_CAP) {
-  if (farmSoilMesh) { scene.remove(farmSoilMesh); farmSoilMesh = null; }   // dispose 안 함 — 공유 자원
-  const geo = new THREE.BoxGeometry(1.7, 0.2, 1.7);
-  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: false });
-  farmSoilMesh = new THREE.InstancedMesh(geo, mat, cap);
-  farmSoilMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  farmSoilMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+  // 🌾 A안 — 흙은 인스턴스가 아니라 **갈아둔 영역을 덮는 면 하나**다.
+  //    인스턴싱은 지오메트리를 공유하니 121칸이 전부 같은 얼룩이 되어 격자가 눈에 보인다.
+  //    무늬는 월드 좌표로 굽기 때문에 칸 경계를 넘어 이어진다. 드로우콜은 여전히 1.
+  if (farmSoilMesh) { scene.remove(farmSoilMesh); farmSoilMesh.geometry.dispose(); farmSoilMesh = null; }
+  const vpc = vertsPerCell(), ipc = indicesPerCell();
+  const sgeo = new THREE.BufferGeometry();
+  sgeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cap * vpc * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  sgeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cap * vpc * 3), 3));
+  sgeo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(cap * vpc * 3), 3));
+  sgeo.setIndex(new THREE.BufferAttribute(cap * vpc > 65535 ? new Uint32Array(cap * ipc) : new Uint16Array(cap * ipc), 1));
+  sgeo.setDrawRange(0, 0);
+  farmSoilMesh = new THREE.Mesh(sgeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.97, metalness: 0 }));
   farmSoilMesh.castShadow = false;      // 바닥에 붙어 있어 드리울 그림자가 없다(그림자 패스 절감)
   farmSoilMesh.receiveShadow = true;
-  farmSoilMesh.count = 0;
   farmSoilMesh.frustumCulled = false;   // 밭이 넓어지면 경계 상자가 커져 판정이 부정확해진다
   farmSoilCap = cap;
   farmSigPrev = NaN;
   scene.add(farmSoilMesh);
 
-  // 🌾 이랑 3줄 — 삽질 중인 1칸만 개별 메시로 승격되고 나머지는 여기서 그린다.
+  // 🌾 이랑 — A안에서 평상시엔 그리지 않는다(얼룩이 대신한다). 🪏삽으로 판 칸만
+  //    promotePlotRidges 가 개별 메시로 띄운다. 인스턴스 버퍼는 count 0 으로 남겨 둔다
+  //    (드로우콜 0. 버퍼를 없애면 승격/복귀 경로의 RIDGE_PER_PLOT 인덱싱이 흐트러진다).
   if (farmRidgeMesh) { scene.remove(farmRidgeMesh); farmRidgeMesh = null; }
   const rgeo = new THREE.BoxGeometry(1.5, 0.1, 0.34);
   const rmat = new THREE.MeshStandardMaterial({ color: 0x80553a, roughness: 0.95, metalness: 0, flatShading: false });
@@ -9811,13 +9819,16 @@ function buildFarmInstances(cap = PLOT_CAP) {
     scene.add(m);
     return m;
   };
+  //  🌾 A안 — 칸마다 큰 작물 하나가 아니라 **작은 포기 여러 개**를 흩뿌린다.
+  //     그래서 용량이 칸당 SPRIG_PER_PLOT 배다(잎은 포기당 2장). 인스턴스라 콜 수는 그대로 5.
   if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) scene.remove(farmCropMeshes[k]);
+  const sc = cap * SPRIG_PER_PLOT;
   farmCropMeshes = {
-    sprout: mk(new THREE.ConeGeometry(0.09, 0.3, 5), cap),
-    stem:   mk(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), cap),
-    leaf:   mk(new THREE.SphereGeometry(0.14, 8, 6), cap * 2),
-    bush:   mk(new THREE.IcosahedronGeometry(0.3, 0), cap),
-    fruit:  mk(new THREE.IcosahedronGeometry(0.19, 0), cap, false),
+    sprout: mk(new THREE.ConeGeometry(0.09, 0.3, 5), sc),
+    stem:   mk(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), sc),
+    leaf:   mk(new THREE.SphereGeometry(0.14, 8, 6), sc * 2),
+    bush:   mk(new THREE.IcosahedronGeometry(0.3, 0), sc),
+    fruit:  mk(new THREE.IcosahedronGeometry(0.19, 0), sc, false),
   };
   farmCropSigPrev = NaN;
 
@@ -9840,43 +9851,87 @@ function buildFarmInstances(cap = PLOT_CAP) {
   _hintAnyPrev = false;   // 재할당 직후엔 카운트가 전부 0 — 다음 syncFarmHints 가 필요하면 다시 채운다
 }
 
-// 전체 버퍼 다시 쓰기 — 시그니처가 바뀌었을 때만. force 는 부팅·복원용.
+// 🌾 흙 면 다시 굽기 — 시그니처가 바뀌었을 때만. force 는 부팅·복원용.
+//    칸마다 (CELL_SEG+1)² 정점을 찍고, 얼룩·기복은 **월드 좌표**로 계산해 경계를 넘어 잇는다.
+//    젖은 칸은 그 칸 정점만 어둡게 물들인다(칸 경계에서 색이 갈리는 건 의도 — 물 준 칸이 보여야 한다).
+const _soilBase = { y: null };        // 구워 둔 기준 y — 팝 애니메이션이 여기서 되돌린다
+const _soilSunk = new Set();          // 지금 땅 밑에 내려가 있는 칸 — 복귀를 한 번만 쓰게
+const _fmC2 = new THREE.Color();
 function syncFarmSoil(force = false) {
   if (!farmSoilMesh) return;
-  const sig = plotsSignature(plots);
+  const sig = soilSignature(plots);
   if (!force && sig === farmSigPrev) return;
   farmSigPrev = sig;
   if (plots.length > farmSoilCap) {
     buildFarmInstances(plots.length + 40);
     farmSigPrev = sig;
-    syncFarmCrops(true);   // 🌱 재할당으로 새로 만든 작물 버퍼(count 전부 0)를 다시 채운다 — 흙·이랑은 아래 루프가 self-heal 하지만 작물은 아무도 안 채워준다
-    syncFarmHints(clock.elapsedTime);   // 🌾 배지 버퍼(count 전부 0)도 지금 떠 있는 배지가 있으면 즉시 다시 채운다
+    syncFarmCrops(true);   // 🌱 재할당으로 새로 만든 작물 버퍼(count 전부 0)를 다시 채운다
+    syncFarmHints(clock.elapsedTime);   // 🌾 배지 버퍼도 지금 떠 있는 배지가 있으면 즉시 다시 채운다
   }
+
+  const seg = CELL_SEG, vpc = vertsPerCell(), half = CELL / 2, step = CELL / seg;
+  const g = farmSoilMesh.geometry;
+  const pos = g.attributes.position.array, col = g.attributes.color.array, nrm = g.attributes.normal.array;
+  const idx = g.index.array;
+  if (!_soilBase.y || _soilBase.y.length < farmSoilCap * vpc) _soilBase.y = new Float32Array(farmSoilCap * vpc);
+  _soilSunk.clear();   // 버퍼를 새로 구웠으니 "내려가 있던" 기록도 리셋
+
+  const cBase = new THREE.Color(PAL.soil), cWet = new THREE.Color(PAL.soilWet);
+  const cDark = new THREE.Color(0x6f4128), cLight = new THREE.Color(0xc08a5f);   // ⚠️ cLight 는 PAL.soil 보다 밝아야 한다(같으면 얼룩의 밝은 쪽이 안 보인다)
+  let v = 0, ii = 0;
   for (let i = 0; i < plots.length; i++) {
     const p = plots[i];
-    const s = popScale(p.pop || 0);
-    _fmM.makeScale(s, s, s);
-    // ⚠️ 0.1 * s 다. 옛 코드는 plot.group 전체를 스케일했고 흙은 그 자식(y=0.1)이라 팝 중엔 중심 y 도 같이 줄어
-    //   흙 윗면이 **지면에서** 솟아올랐다. y 를 0.1 로 고정하면 s=0.01 일 때 얇은 판이 공중에 뜬다.
-    _fmM.setPosition(p.x, 0.1 * s, p.z);      // 기존 soil.position.y = 0.1 (그룹 스케일 s 적용)
-    farmSoilMesh.setMatrixAt(i, _fmM);
-    _fmC.setHex(p.watered ? PAL.soilWet : PAL.soil);
-    farmSoilMesh.setColorAt(i, _fmC);
-    // 이랑 3줄 — 개별 메시로 승격된(plot.ridges) 칸은 인스턴스에선 숨긴다.
-    //   digAt 이 아니라 ridges 승격 여부로 게이트해야 두 표현이 항상 상호배타가 된다
-    //   (digAt=0 이어도 digBackT 복구 애니메이션 중엔 여전히 승격 상태일 수 있다).
-    for (let k = 0; k < RIDGE_PER_PLOT; k++) {
-      const ri = i * RIDGE_PER_PLOT + k;
-      if (p.ridges) { _fmM.makeScale(0, 0, 0); }                 // 크기 0 = 안 보임
-      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21 * s, p.z + RIDGE_Z[k] * s); }   // 흙과 같은 이유로 y 도 * s
-      farmRidgeMesh.setMatrixAt(ri, _fmM);
+    const v0 = v;
+    for (let r = 0; r <= seg; r++) {
+      for (let c = 0; c <= seg; c++) {
+        const wx = p.x - half + c * step, wz = p.z - half + r * step;
+        const y = 0.2 + reliefAt(wx, wz);           // 예전 흙 상자 윗면(중심 0.1 + 높이 0.1)과 같은 높이
+        pos[v * 3] = wx; pos[v * 3 + 1] = y; pos[v * 3 + 2] = wz;
+        _soilBase.y[v] = y;
+        // 얼룩: 어두움↔기본↔밝음. 젖은 칸은 그 결과를 젖은 색 쪽으로 한 번 더 당긴다
+        const mix = mottleMix(mottleAt(wx, wz));
+        const from = mix.from === 'dark' ? cDark : cBase;
+        const to = mix.to === 'base' ? cBase : cLight;
+        _fmC2.copy(from).lerp(to, mix.t);
+        if (p.watered) _fmC2.lerp(cWet, 0.55);
+        col[v * 3] = _fmC2.r; col[v * 3 + 1] = _fmC2.g; col[v * 3 + 2] = _fmC2.b;
+        nrm[v * 3] = 0; nrm[v * 3 + 1] = 1; nrm[v * 3 + 2] = 0;   // 기복이 얕아 위 방향이면 충분하다
+        v++;
+      }
+    }
+    for (let r = 0; r < seg; r++) {
+      for (let c = 0; c < seg; c++) {
+        const a = v0 + r * (seg + 1) + c, b = a + 1, d = a + seg + 1, e = d + 1;
+        idx[ii++] = a; idx[ii++] = d; idx[ii++] = b;
+        idx[ii++] = b; idx[ii++] = d; idx[ii++] = e;
+      }
     }
   }
-  farmSoilMesh.count = plots.length;
-  farmSoilMesh.instanceMatrix.needsUpdate = true;
-  farmSoilMesh.instanceColor.needsUpdate = true;
-  farmRidgeMesh.count = plots.length * RIDGE_PER_PLOT;
-  farmRidgeMesh.instanceMatrix.needsUpdate = true;
+  g.setDrawRange(0, ii);
+  g.attributes.position.needsUpdate = true;
+  g.attributes.color.needsUpdate = true;
+  g.attributes.normal.needsUpdate = true;
+  g.index.needsUpdate = true;
+  applySoilPops();   // 구운 직후 지금 팝 중인 칸을 즉시 반영(안 그러면 한 프레임 튄다)
+
+  farmRidgeMesh.count = 0;   // 이랑은 평상시 안 그린다 — 🪏삽 승격 메시가 대신한다
+}
+
+// 🌾 팝(밭이 새로 생길 때 솟아오름) — 구워 둔 정점의 y 만 내렸다 올린다.
+//    면이 하나라 칸별 스케일을 쓸 수 없다. 대신 갓 생긴 칸을 땅 밑에 묻었다가 끌어올린다.
+function applySoilPops() {
+  if (!farmSoilMesh || !_soilBase.y) return;
+  const g = farmSoilMesh.geometry, pos = g.attributes.position.array;
+  const vpc = vertsPerCell();
+  let touched = false;
+  for (let i = 0; i < plots.length; i++) {
+    const sink = (1 - popScale(plots[i].pop || 0)) * 0.45;   // pop 이 끝나면 0(제자리)
+    if (sink === 0 && !_soilSunk.has(i)) continue;           // 평상시 칸은 건너뛴다
+    if (sink === 0) _soilSunk.delete(i); else _soilSunk.add(i);
+    for (let k = i * vpc; k < (i + 1) * vpc; k++) pos[k * 3 + 1] = _soilBase.y[k] - sink;
+    touched = true;
+  }
+  if (touched) g.attributes.position.needsUpdate = true;
 }
 
 // 🌱 작물 인스턴스 버퍼 — 단계가 바뀔 때만 다시 쓴다(성장도는 단계 안에서 모양이 안 변한다)
@@ -9901,37 +9956,48 @@ function syncFarmCrops(force = false) {
   const LEAF = [[-0.16, 0.3], [0.16, 0.42]];
   const base = 0.26;                                   // 기존 crop 그룹의 position.y
   const WILT_COL = 0x9a844f;                            // 🥀 시든 색 — 기존 wiltPlot 이 모든 파츠에 칠하던 그 색
+  //  포기 배치는 칸 좌표로 고정된다 — 매번 흔들리면 자랄 때마다 작물이 순간이동한다.
+  //    포기가 여러 개라 하나하나는 작아야 한다(SPRIG_SCALE). 크기 그대로 6개면 덩어리가 된다.
+  const SPRIG_SCALE = 0.5;
   for (const p of plots) {
     if (!p.crop) continue;
     const s = popScale(p.cropPop || 0);
-    if (p.stage === 0) {
-      _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, base + 0.15 * s, p.z);
-      M.sprout.setMatrixAt(nSprout, _fmM);
-      _fmC.setHex(p.wilted ? WILT_COL : 0x9be89b);
-      M.sprout.setColorAt(nSprout++, _fmC);
-    } else if (p.stage === 1) {
-      _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, base + 0.25 * s, p.z);
-      M.stem.setMatrixAt(nStem, _fmM);
-      _fmC.setHex(p.wilted ? WILT_COL : PAL.sprout);
-      M.stem.setColorAt(nStem++, _fmC);
-      _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
-      for (const [lx, ly] of LEAF) {
-        _fmM.makeScale(s, 0.5 * s, 0.7 * s);
-        _fmM.setPosition(p.x + lx * s, base + ly * s, p.z);
-        M.leaf.setMatrixAt(nLeaf, _fmM);
-        M.leaf.setColorAt(nLeaf++, _fmC);
+    for (const sp of sprigOffsets(((p.x | 0) * 73856093) ^ ((p.z | 0) * 19349663))) {
+      const k = s * SPRIG_SCALE * sp.scale;                // 팝 × 포기 축소 × 개체 편차
+      const px = p.x + sp.dx * s, pz = p.z + sp.dz * s;    // 팝 중엔 가운데서 퍼져 나온다
+      if (p.stage === 0) {
+        _fmM.makeScale(k, k, k); _fmM.setPosition(px, base + 0.15 * k, pz);
+        M.sprout.setMatrixAt(nSprout, _fmM);
+        _fmC.setHex(p.wilted ? WILT_COL : 0x9be89b);
+        M.sprout.setColorAt(nSprout++, _fmC);
+      } else if (p.stage === 1) {
+        _fmM.makeScale(k, k, k); _fmM.setPosition(px, base + 0.25 * k, pz);
+        M.stem.setMatrixAt(nStem, _fmM);
+        _fmC.setHex(p.wilted ? WILT_COL : PAL.sprout);
+        M.stem.setColorAt(nStem++, _fmC);
+        _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+        for (const [lx, ly] of LEAF) {
+          _fmM.makeScale(k, 0.5 * k, 0.7 * k);
+          _fmM.setPosition(px + lx * k, base + ly * k, pz);
+          M.leaf.setMatrixAt(nLeaf, _fmM);
+          M.leaf.setColorAt(nLeaf++, _fmC);
+        }
+      } else if (p.stage === 2) {
+        _fmM.makeScale(k, 0.82 * k, k);
+        _fmM.setPosition(px, base + 0.32 * k, pz);
+        M.bush.setMatrixAt(nBush, _fmM);
+        _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+        M.bush.setColorAt(nBush++, _fmC);
+        // 🌼 열매(=수확 신호)는 일부 포기에만 — 레퍼런스의 "드문드문 핀 노란 꽃" 느낌.
+        //    다 달면 칸이 열매로 뒤덮여 무엇이 수확 대상인지 오히려 안 보인다.
+        if (sp.flower) {
+          _fmM.makeScale(k, k, k);
+          _fmM.setPosition(px, base + 0.56 * k, pz);
+          M.fruit.setMatrixAt(nFruit, _fmM);
+          _fmC.setHex(p.wilted ? WILT_COL : (p.cropType?.fruit ?? PAL.crop));
+          M.fruit.setColorAt(nFruit++, _fmC);
+        }
       }
-    } else if (p.stage === 2) {
-      _fmM.makeScale(s, 0.82 * s, s);
-      _fmM.setPosition(p.x, base + 0.32 * s, p.z);
-      M.bush.setMatrixAt(nBush, _fmM);
-      _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
-      M.bush.setColorAt(nBush++, _fmC);
-      _fmM.makeScale(s, s, s);
-      _fmM.setPosition(p.x, base + 0.56 * s, p.z);
-      M.fruit.setMatrixAt(nFruit, _fmM);
-      _fmC.setHex(p.wilted ? WILT_COL : (p.cropType?.fruit ?? PAL.crop));
-      M.fruit.setColorAt(nFruit++, _fmC);
     }
   }
   M.sprout.count = nSprout; M.stem.count = nStem; M.leaf.count = nLeaf;
@@ -9952,23 +10018,9 @@ function updateFarmPops(dt) {
   if (cropPopping) syncFarmCrops(true);
 
   const idx = poppingPlots(plots);
-  if (!idx.length) return;
-  for (const i of idx) {
-    const p = plots[i];
-    p.pop = Math.max(0, p.pop - dt * 3);      // updatePops 와 같은 감쇠율
-    const s = popScale(p.pop);
-    _fmM.makeScale(s, s, s);
-    _fmM.setPosition(p.x, 0.1 * s, p.z);         // 지면에서 솟아오르게 — syncFarmSoil 과 같은 공식
-    farmSoilMesh.setMatrixAt(i, _fmM);
-    for (let k = 0; k < RIDGE_PER_PLOT; k++) {
-      const ri = i * RIDGE_PER_PLOT + k;
-      if (p.ridges) { _fmM.makeScale(0, 0, 0); }   // 승격된(개별 메시) 칸은 인스턴스 쪽을 숨긴다
-      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21 * s, p.z + RIDGE_Z[k] * s); }
-      farmRidgeMesh.setMatrixAt(ri, _fmM);
-    }
-  }
-  farmSoilMesh.instanceMatrix.needsUpdate = true;
-  farmRidgeMesh.instanceMatrix.needsUpdate = true;
+  if (!idx.length && !_soilSunk.size) return;
+  for (const i of idx) plots[i].pop = Math.max(0, plots[i].pop - dt * 3);   // updatePops 와 같은 감쇠율
+  applySoilPops();
 }
 
 // =============================================================
