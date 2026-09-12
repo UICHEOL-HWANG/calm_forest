@@ -32,6 +32,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
+import { PLOT_CAP, RIDGE_Z, RIDGE_PER_PLOT, popScale, plotsSignature, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -483,6 +484,14 @@ const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, s
 function setSpaceVisible() {
   if (interiorGroup) interiorGroup.visible = indoor;
   if (farmGroup) farmGroup.visible = atFarm;
+  // 🌾 밭 흙·이랑·작물·배지 InstancedMesh 는 scene 직속(farmGroup 자식이 아님) — 따로 토글해야 한다.
+  //   plots 배열엔 마을 밭과 텃밭 밭이 함께 들어있고 두 곳이 같은 InstancedMesh 를 공유하므로
+  //   atFarm 이 아니라 "실외인가"(outdoorZone) 기준으로 켜야 마을 안 밭도 보인다.
+  const farmVisible = outdoorZone();
+  if (farmSoilMesh) farmSoilMesh.visible = farmVisible;
+  if (farmRidgeMesh) farmRidgeMesh.visible = farmVisible;
+  if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) farmCropMeshes[k].visible = farmVisible;
+  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint']) farmHintMeshes[k].visible = farmVisible;
   if (mineGroup) mineGroup.visible = atMine;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (riverGroup) riverGroup.visible = atRiver;
@@ -1787,6 +1796,20 @@ export async function enterGame() {
     // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
+    // 🌾 __farmMax() — 텃밭을 밭으로 가득 채워 최악 상태를 재현(드로우콜 측정용). 로컬 전용.
+    //   ⚠️ tryHoe 는 Math.round(x/2)*2 로 **짝수 세계좌표** 격자에만 밭을 만든다. FARM 도 (0,84) 로 짝수라
+    //     오프셋이 홀수면 실제로는 생길 수 없는 배치가 되고 중복 검사(p.x === …)도 무의미해진다.
+    //   half 인자는 PLOT_CAP(160) 재할당 분기를 실제로 밟아보기 위한 것 — __farmMax(14) 면 13×13=169칸.
+    //   기본값은 실제 텃밭 크기라 드로우콜 측정은 인자 없이 부른다.
+    window.__farmMax = (half = FARM_HALF) => {
+      const H = half;
+      for (let x = -H + 2; x <= H - 2; x += 2) for (let z = -H + 2; z <= H - 2; z += 2) {
+        if (!plots.some(p => p.x === FARM.x + x && p.z === FARM.z + z)) createPlot(FARM.x + x, FARM.z + z, true);
+      }
+      for (const p of plots) { p.state = 'growing'; p.growth = 0.9; p.stage = -1; p.cropType = CROP_TYPES[Math.abs(p.x + p.z) & 3]; refreshCropStage(p); }
+      syncFarmSoil(true); syncFarmCrops(true);
+      return plots.length;
+    };
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
@@ -1904,6 +1927,8 @@ function applySave(saved) {
       }
       updatePlotVisual(plot);
     });
+    syncFarmSoil(true);    // 🌾 복원된 밭을 인스턴스 버퍼에 반영
+    syncFarmCrops(true);   // 🌱 복원된 작물을 인스턴스 버퍼에 반영
   }
 }
 
@@ -2075,6 +2100,7 @@ function buildWorld() {
   spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   buildFarm();        // 개인 텃밭 필드
+  buildFarmInstances();   // 🌾 밭 흙 인스턴스 버퍼
   spawnMineGate();    // 채굴 동굴 입구
   buildMine();        // 채굴 동굴
   spawnSeaGate();     // 🌊 바다터 포구(마을 북동)
@@ -7873,27 +7899,46 @@ function buildFarm() {
   const skirtGeo = new THREE.CircleGeometry(48, 48); skirtGeo.rotateX(-Math.PI / 2);
   const skirt = new THREE.Mesh(skirtGeo, clayMat(PAL.groundDark, false));
   skirt.position.y = -0.02; skirt.receiveShadow = true; g.add(skirt);
-  // 둘레 나무들(장식) — 강둑 나무와 같은 간단 조형. 남쪽 출입구 방향은 비워 시야 확보
+  // 둘레 나무 24그루(장식) — 강둑 나무와 같은 간단 조형. 남쪽 출입구 방향은 비워 시야 확보.
+  //   줄기·잎을 각각 InstancedMesh 1개로 묶는다(48메시 → 2콜). 줄기 높이(h)가 위치마다 달라
+  //   지오메트리 자체 높이는 1로 고정해 두고 인스턴스 행렬의 Y 스케일로 표현한다(반지름은 그대로).
+  //   잎 색은 원래 leaf1/2/3 세 가지였으나 배경 장식이라 차이가 안 보여 leaf1 하나로 통일(재질 절감).
+  const _treeTrunks = [], _treeLeaves = [];
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2;
     if (Math.abs(a - Math.PI / 2) < 0.45) continue;              // 남쪽(+z) 출입구
     const r = FARM_HALF + 5 + ((i * 7) % 6) * 2.4;
     const h = 2.0 + ((i * 13) % 7) * 0.3;
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, h, 5), clayMat(PAL.trunk));
-    trunk.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r); g.add(trunk);
-    const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.6, 6), clayMat([PAL.leaf1, PAL.leaf2, PAL.leaf3][i % 3]));
-    leaf.position.set(trunk.position.x, h + 1.0, trunk.position.z); g.add(leaf);
+    _treeTrunks.push([Math.cos(a) * r, h, Math.sin(a) * r]);
+    _treeLeaves.push([Math.cos(a) * r, h + 1.0, Math.sin(a) * r]);
   }
+  const trunkMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.22, 1, 5), clayMat(PAL.trunk), _treeTrunks.length);
+  const leafMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(1.2, 2.6, 6), clayMat(PAL.leaf1), _treeLeaves.length);
+  {
+    const _tm = new THREE.Matrix4(), _ts = new THREE.Vector3(), _tq = new THREE.Quaternion(), _tp = new THREE.Vector3();
+    _treeTrunks.forEach(([x, h, z], i) => { _ts.set(1, h, 1); _tp.set(x, h / 2, z); _tm.compose(_tp, _tq, _ts); trunkMesh.setMatrixAt(i, _tm); });
+    _treeLeaves.forEach(([x, y, z], i) => { _tm.makeTranslation(x, y, z); leafMesh.setMatrixAt(i, _tm); });
+  }
+  trunkMesh.instanceMatrix.needsUpdate = true; leafMesh.instanceMatrix.needsUpdate = true;
+  g.add(trunkMesh, leafMesh);
   const ground = new THREE.Mesh(new THREE.BoxGeometry(FARM_HALF * 2, 0.2, FARM_HALF * 2), clayMat(0x8fce7e, false));
   ground.position.y = 0.05; ground.receiveShadow = true; g.add(ground);
-  // 울타리 둘레
+  // 울타리 둘레 — 말뚝 36~60개가 위치만 다르고 크기·재질은 같아 InstancedMesh 1개로 묶는다.
   const H = FARM_HALF;
+  const _posts = [];
   for (let i = -H; i <= H; i += 1.5) {
     for (const [x, z] of [[i, -H], [i, H], [-H, i], [H, i]]) {
       if (Math.abs(x) < 1.2 && z === H) continue; // 남쪽 가운데는 출입구
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1)); post.position.set(x, 0.35, z); g.add(post);
+      _posts.push([x, z]);
     }
   }
+  const postMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1), _posts.length);
+  {
+    const _pm = new THREE.Matrix4();
+    _posts.forEach(([x, z], i) => { _pm.makeTranslation(x, 0.35, z); postMesh.setMatrixAt(i, _pm); });
+  }
+  postMesh.instanceMatrix.needsUpdate = true;
+  g.add(postMesh);
   // 나가는 문(남쪽 가운데)
   const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.14, 0.4), woodMat(1, 2, 0xa9743f)); gate.position.set(0, 0.16, H); g.add(gate);
   // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
@@ -9607,27 +9652,246 @@ function tryChop() {
 }
 
 // =============================================================
+//  🌾 밭 인스턴싱 — 흙 121칸이 121드로우콜이던 걸 1콜로
+//  ⚠️ plot.group 은 없애지 않는다. 빈 Group 은 드로우콜 0이고,
+//     plot.group.position 을 읽는 코드가 여러 곳 있다(tryHoe·tryWater·
+//     tryHarvest·digTarget·nearestPlot·updatePlots·주민 비켜서기).
+//  ⚠️ 공유 지오메트리·재질이므로 dispose 하지 않는다(공유 자원 규칙).
+// =============================================================
+let farmSoilMesh = null;        // InstancedMesh — 흙
+let farmRidgeMesh = null;       // InstancedMesh — 이랑 3줄(칸당 RIDGE_PER_PLOT개)
+let farmSoilCap = 0;            // 현재 버퍼 용량
+let farmSigPrev = NaN;          // 마지막으로 버퍼를 쓴 시점의 시그니처
+let farmCropMeshes = null;      // { sprout, stem, leaf, bush, fruit } — 단계별 InstancedMesh
+let farmHintMeshes = null;      // { warn, harvest, seedHint } — 밭 알림 배지 InstancedMesh ×3
+//   ⚠️ 아틀라스 1장 + onBeforeCompile 대신 종류별 텍스처 3장 + 메시 3개(컨트롤러 판정, task-5:
+//     1콜과 3콜 차이는 무의미한데 커스텀 GLSL 은 three 버전마다 깨지기 쉽다).
+const _fmM = new THREE.Matrix4(), _fmC = new THREE.Color();
+
+function buildFarmInstances(cap = PLOT_CAP) {
+  if (farmSoilMesh) { scene.remove(farmSoilMesh); farmSoilMesh = null; }   // dispose 안 함 — 공유 자원
+  const geo = new THREE.BoxGeometry(1.7, 0.2, 1.7);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: false });
+  farmSoilMesh = new THREE.InstancedMesh(geo, mat, cap);
+  farmSoilMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  farmSoilMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+  farmSoilMesh.castShadow = false;      // 바닥에 붙어 있어 드리울 그림자가 없다(그림자 패스 절감)
+  farmSoilMesh.receiveShadow = true;
+  farmSoilMesh.count = 0;
+  farmSoilMesh.frustumCulled = false;   // 밭이 넓어지면 경계 상자가 커져 판정이 부정확해진다
+  farmSoilCap = cap;
+  farmSigPrev = NaN;
+  scene.add(farmSoilMesh);
+
+  // 🌾 이랑 3줄 — 삽질 중인 1칸만 개별 메시로 승격되고 나머지는 여기서 그린다.
+  if (farmRidgeMesh) { scene.remove(farmRidgeMesh); farmRidgeMesh = null; }
+  const rgeo = new THREE.BoxGeometry(1.5, 0.1, 0.34);
+  const rmat = new THREE.MeshStandardMaterial({ color: 0x80553a, roughness: 0.95, metalness: 0, flatShading: false });
+  farmRidgeMesh = new THREE.InstancedMesh(rgeo, rmat, cap * RIDGE_PER_PLOT);
+  farmRidgeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  farmRidgeMesh.castShadow = false; farmRidgeMesh.receiveShadow = true;
+  farmRidgeMesh.count = 0; farmRidgeMesh.frustumCulled = false;
+  scene.add(farmRidgeMesh);
+
+  // 🌱 작물 — 단계별 지오메트리는 고정, 색은 인스턴스 색으로(열매는 작물종 색, 나머지는 시듦 여부만).
+  //   ⚠️ 전부 인스턴스 색을 쓴다 — sprout/stem/leaf/bush 도 시들면 갈색으로 바뀌어야 하기 때문
+  //   (원래 wiltPlot 은 traverse 로 작물 그룹 전체를 물들였다. fruit 만 색을 입히면 새싹·줄기 단계에서
+  //   시들어도 색이 그대로라 "기능 변화 0" 을 깬다 — task-4-report 자체 검증에서 발견).
+  //   flat 은 기존 clayMat(color, flat) 의 그 인자 — 원래 sprout/stem/leaf/bush 는 flatShading:true(각진 클레이 룩),
+  //   fruit 만 flatShading:false(매끈)였다. 색이 인스턴스로 옮겨가도 이 구분은 그대로 유지한다.
+  const mk = (geo, count, flat = true) => {
+    const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: flat,
+    }), count);
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+    // ⚠️ 옛 buildCropStage(c621d19)는 작물 파츠에 castShadow/receiveShadow 를 **한 군데도 설정하지 않았다**(= 둘 다 false).
+    //   켜면 없던 작물 그림자가 새로 생기고 그림자 패스가 +5콜 상시다 — 기능 변화 0 계약을 깬다.
+    //   (스펙 §5-3-4 는 "작물은 유지"라고 적었지만 그건 현행 동작을 잘못 안 것 — 컨트롤러 판정)
+    m.castShadow = false; m.receiveShadow = false; m.count = 0; m.frustumCulled = false;
+    scene.add(m);
+    return m;
+  };
+  if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) scene.remove(farmCropMeshes[k]);
+  farmCropMeshes = {
+    sprout: mk(new THREE.ConeGeometry(0.09, 0.3, 5), cap),
+    stem:   mk(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), cap),
+    leaf:   mk(new THREE.SphereGeometry(0.14, 8, 6), cap * 2),
+    bush:   mk(new THREE.IcosahedronGeometry(0.3, 0), cap),
+    fruit:  mk(new THREE.IcosahedronGeometry(0.19, 0), cap, false),
+  };
+  farmCropSigPrev = NaN;
+
+  // 🌾 알림 배지 — '물!'·'수확!'·'씨앗을 넣어요' 는 동시에 하나만 뜬다(updatePlots 가 배타 토글).
+  //   종류별 캔버스 텍스처 + 종류별 InstancedMesh 3개(아틀라스·커스텀 셰이더 없음).
+  const hgeo = new THREE.PlaneGeometry(1.5, 1.5 * HINT_H / HINT_W);
+  const mkHint = (tex) => {
+    const m = new THREE.InstancedMesh(hgeo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }), cap);
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    m.castShadow = false; m.receiveShadow = false; m.count = 0; m.frustumCulled = false;
+    scene.add(m);
+    return m;
+  };
+  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint']) scene.remove(farmHintMeshes[k]);
+  farmHintMeshes = {
+    warn: mkHint(warnTexture()),
+    harvest: mkHint(harvestTexture()),
+    seedHint: mkHint(seedHintTexture()),
+  };
+  _hintAnyPrev = false;   // 재할당 직후엔 카운트가 전부 0 — 다음 syncFarmHints 가 필요하면 다시 채운다
+}
+
+// 전체 버퍼 다시 쓰기 — 시그니처가 바뀌었을 때만. force 는 부팅·복원용.
+function syncFarmSoil(force = false) {
+  if (!farmSoilMesh) return;
+  const sig = plotsSignature(plots);
+  if (!force && sig === farmSigPrev) return;
+  farmSigPrev = sig;
+  if (plots.length > farmSoilCap) {
+    buildFarmInstances(plots.length + 40);
+    farmSigPrev = sig;
+    syncFarmCrops(true);   // 🌱 재할당으로 새로 만든 작물 버퍼(count 전부 0)를 다시 채운다 — 흙·이랑은 아래 루프가 self-heal 하지만 작물은 아무도 안 채워준다
+    syncFarmHints(clock.elapsedTime);   // 🌾 배지 버퍼(count 전부 0)도 지금 떠 있는 배지가 있으면 즉시 다시 채운다
+  }
+  for (let i = 0; i < plots.length; i++) {
+    const p = plots[i];
+    const s = popScale(p.pop || 0);
+    _fmM.makeScale(s, s, s);
+    // ⚠️ 0.1 * s 다. 옛 코드는 plot.group 전체를 스케일했고 흙은 그 자식(y=0.1)이라 팝 중엔 중심 y 도 같이 줄어
+    //   흙 윗면이 **지면에서** 솟아올랐다. y 를 0.1 로 고정하면 s=0.01 일 때 얇은 판이 공중에 뜬다.
+    _fmM.setPosition(p.x, 0.1 * s, p.z);      // 기존 soil.position.y = 0.1 (그룹 스케일 s 적용)
+    farmSoilMesh.setMatrixAt(i, _fmM);
+    _fmC.setHex(p.watered ? PAL.soilWet : PAL.soil);
+    farmSoilMesh.setColorAt(i, _fmC);
+    // 이랑 3줄 — 개별 메시로 승격된(plot.ridges) 칸은 인스턴스에선 숨긴다.
+    //   digAt 이 아니라 ridges 승격 여부로 게이트해야 두 표현이 항상 상호배타가 된다
+    //   (digAt=0 이어도 digBackT 복구 애니메이션 중엔 여전히 승격 상태일 수 있다).
+    for (let k = 0; k < RIDGE_PER_PLOT; k++) {
+      const ri = i * RIDGE_PER_PLOT + k;
+      if (p.ridges) { _fmM.makeScale(0, 0, 0); }                 // 크기 0 = 안 보임
+      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21 * s, p.z + RIDGE_Z[k] * s); }   // 흙과 같은 이유로 y 도 * s
+      farmRidgeMesh.setMatrixAt(ri, _fmM);
+    }
+  }
+  farmSoilMesh.count = plots.length;
+  farmSoilMesh.instanceMatrix.needsUpdate = true;
+  farmSoilMesh.instanceColor.needsUpdate = true;
+  farmRidgeMesh.count = plots.length * RIDGE_PER_PLOT;
+  farmRidgeMesh.instanceMatrix.needsUpdate = true;
+}
+
+// 🌱 작물 인스턴스 버퍼 — 단계가 바뀔 때만 다시 쓴다(성장도는 단계 안에서 모양이 안 변한다)
+let farmCropSigPrev = NaN;
+function cropsSignature() {
+  let sig = plots.length | 0;
+  for (const p of plots) {
+    sig = (Math.imul(sig, 31) + (p.x | 0)) | 0;
+    sig = (Math.imul(sig, 31) + (p.z | 0)) | 0;
+    sig = (Math.imul(sig, 31) + (p.crop ? p.stage + 2 : 0)) | 0;
+    sig = (Math.imul(sig, 31) + (p.wilted ? 1 : 0)) | 0;
+  }
+  return sig;
+}
+function syncFarmCrops(force = false) {
+  if (!farmCropMeshes) return;
+  const sig = cropsSignature();
+  if (!force && sig === farmCropSigPrev) return;
+  farmCropSigPrev = sig;
+  const M = farmCropMeshes;
+  let nSprout = 0, nStem = 0, nLeaf = 0, nBush = 0, nFruit = 0;
+  const LEAF = [[-0.16, 0.3], [0.16, 0.42]];
+  const base = 0.26;                                   // 기존 crop 그룹의 position.y
+  const WILT_COL = 0x9a844f;                            // 🥀 시든 색 — 기존 wiltPlot 이 모든 파츠에 칠하던 그 색
+  for (const p of plots) {
+    if (!p.crop) continue;
+    const s = popScale(p.cropPop || 0);
+    if (p.stage === 0) {
+      _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, base + 0.15 * s, p.z);
+      M.sprout.setMatrixAt(nSprout, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : 0x9be89b);
+      M.sprout.setColorAt(nSprout++, _fmC);
+    } else if (p.stage === 1) {
+      _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, base + 0.25 * s, p.z);
+      M.stem.setMatrixAt(nStem, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : PAL.sprout);
+      M.stem.setColorAt(nStem++, _fmC);
+      _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+      for (const [lx, ly] of LEAF) {
+        _fmM.makeScale(s, 0.5 * s, 0.7 * s);
+        _fmM.setPosition(p.x + lx * s, base + ly * s, p.z);
+        M.leaf.setMatrixAt(nLeaf, _fmM);
+        M.leaf.setColorAt(nLeaf++, _fmC);
+      }
+    } else if (p.stage === 2) {
+      _fmM.makeScale(s, 0.82 * s, s);
+      _fmM.setPosition(p.x, base + 0.32 * s, p.z);
+      M.bush.setMatrixAt(nBush, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+      M.bush.setColorAt(nBush++, _fmC);
+      _fmM.makeScale(s, s, s);
+      _fmM.setPosition(p.x, base + 0.56 * s, p.z);
+      M.fruit.setMatrixAt(nFruit, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : (p.cropType?.fruit ?? PAL.crop));
+      M.fruit.setColorAt(nFruit++, _fmC);
+    }
+  }
+  M.sprout.count = nSprout; M.stem.count = nStem; M.leaf.count = nLeaf;
+  M.bush.count = nBush; M.fruit.count = nFruit;
+  for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) {
+    M[k].instanceMatrix.needsUpdate = true;
+    M[k].instanceColor.needsUpdate = true;
+  }
+}
+
+// 팝 중인 칸만 매 프레임 갱신 — 아무도 안 튀면 버퍼를 건드리지 않는다(인스턴싱 이득 보존)
+function updateFarmPops(dt) {
+  if (!farmSoilMesh) return;
+  // 🌱 작물 팝 — 흙 팝과 독립 사건이다. 씨앗 심기·단계 상승은 흙이 그대로인 채 작물만 튀는
+  //   가장 흔한 경우라, 아래 흙 쪽 조기 반환에 갇히면 안 된다(브리프 결함 수정 — task-4-brief §Step5 참고).
+  let cropPopping = false;
+  for (const p of plots) if ((p.cropPop || 0) > 0) { p.cropPop = Math.max(0, p.cropPop - dt * 3); cropPopping = true; }
+  if (cropPopping) syncFarmCrops(true);
+
+  const idx = poppingPlots(plots);
+  if (!idx.length) return;
+  for (const i of idx) {
+    const p = plots[i];
+    p.pop = Math.max(0, p.pop - dt * 3);      // updatePops 와 같은 감쇠율
+    const s = popScale(p.pop);
+    _fmM.makeScale(s, s, s);
+    _fmM.setPosition(p.x, 0.1 * s, p.z);         // 지면에서 솟아오르게 — syncFarmSoil 과 같은 공식
+    farmSoilMesh.setMatrixAt(i, _fmM);
+    for (let k = 0; k < RIDGE_PER_PLOT; k++) {
+      const ri = i * RIDGE_PER_PLOT + k;
+      if (p.ridges) { _fmM.makeScale(0, 0, 0); }   // 승격된(개별 메시) 칸은 인스턴스 쪽을 숨긴다
+      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21 * s, p.z + RIDGE_Z[k] * s); }
+      farmRidgeMesh.setMatrixAt(ri, _fmM);
+    }
+  }
+  farmSoilMesh.instanceMatrix.needsUpdate = true;
+  farmRidgeMesh.instanceMatrix.needsUpdate = true;
+}
+
+// =============================================================
 //  농사: 밭 타일 상태머신
 //  state: 'empty'(갈아둔 이랑) → 'growing'(3단계 성장) → 'mature'(수확가능)
 //  stage: 0 새싹 → 1 자람 → 2 수확가능
 // =============================================================
 function createPlot(x, z, silent = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
-  const soil = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), clayMat(PAL.soil, false));
-  soil.position.y = 0.1; soil.receiveShadow = true; g.add(soil);
-  // 이랑(줄무늬) — 갈아엎은 밭 느낌의 두둑 3줄 (🪏 1타 때 흐트러뜨리므로 참조를 남긴다)
-  const ridges = [];
-  for (let k = -1; k <= 1; k++) {
-    const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
-    ridge.position.set(0, 0.21, k * 0.5); ridge.receiveShadow = true; g.add(ridge); ridges.push(ridge);
-  }
+  // 🌾 흙·이랑은 InstancedMesh 가 그린다. 여기선 앵커 Group 만.
+  //    ridges 는 🪏삽 1타 때만 개별 메시로 승격된다(promotePlotRidges).
   scene.add(g);
-  const plot = { group: g, soil, ridges, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0 };
+  const plot = { group: g, ridges: null, crop: null, state: 'empty', growth: 0, stage: -1, x, z, watered: false, digAt: 0, digBackT: 0, pop: 0 };
   plots.push(plot);
   // 🌾 발밑에 밭이 생긴 주민은 바로 비켜선다 — 다음 배회 틱(최대 7초)까지 기다리지 않게 목적지를 즉시 다시 고르게 한다.
   //    (silent=true 는 세이브 복원 — 그땐 주민이 아직 없거나 제자리를 잡는 중이라 건드리지 않는다)
   if (!silent) for (const o of npcObjs) if (onPlotArea(o.group.position.x, o.group.position.z)) o.wanderTimer = 0;
-  if (!silent) { g.userData.pop = 1; g.scale.setScalar(0.01); spawnDust(x, z, 14); } // 흙먼지 + 톡 등장
+  if (!silent) {
+    plot.pop = 1;                                    // 🌾 흙·이랑(인스턴스 행렬)은 updateFarmPops 가 튀어오르게 한다
+    spawnDust(x, z, 14);
+  }
+  syncFarmSoil(true);
   return plot;
 }
 
@@ -9696,14 +9960,17 @@ function digHit(plot, second) {
   if (!plots.includes(plot) || plot.state !== 'empty') return;
   if (second) { removePlot(plot); return; }
   plot.digAt = clock.elapsedTime; plot.digBackT = 0;
-  setPlotDug(plot, 1);
+  setPlotDug(plot, 1);   // plot.ridges 를 먼저 승격시켜야 아래 sync 가 인스턴스를 숨긴다
+  syncFarmSoil(true);    // 🪏 인스턴스 쪽 이랑을 숨긴다(승격된 개별 메시가 대신 보인다)
   spawnDust(plot.x, plot.z, 10);
   ui.toast?.('한 번 더 파면 밭이 사라져요 🪏');
   trackEvent('dig_plot', { step: 1 });   // [GA4]
 }
 function removePlot(plot) {
+  demotePlotRidges(plot);                  // 🪏 승격된 채 제거되면 개별 메시가 새고 인덱스도 어긋난다
   const i = plots.indexOf(plot); if (i >= 0) plots.splice(i, 1);
   scene.remove(plot.group);
+  syncFarmSoil(true);                      // 🌾 흙 인스턴스 버퍼에서도 빠지게
   spawnDust(plot.x, plot.z, 22);
   spawnDigRegrow(plot.x, plot.z);
   Sound.harvest();
@@ -9712,8 +9979,33 @@ function removePlot(plot) {
   rollDigDex();
   lastDoorPrompt = null; ui.setDoorPrompt?.(null);
 }
+// 🪏 삽 1타 연출 전용 — 이랑 3줄을 제각각 기울이려면 개별 메시여야 한다.
+//   동시에 한 칸뿐이라 +3콜. 유예가 끝나면 demote 로 인스턴스에 되돌린다.
+//   ⚠️ 지오메트리·재질은 3줄이 전부 같고 삽질은 한 세션에 수십~수백 번 반복하는 행동이다. 호출마다
+//     new BoxGeometry ×3 + clayMat ×3 을 만들면 demote 가 참조만 버리고(dispose 금지 규칙) three 는
+//     dispose 이벤트로만 VBO 를 정리하므로 컨텍스트 수명 내내 샌다 → **모듈 수준에서 한 번만 만들어 공유**한다.
+//     setPlotDug 가 바꾸는 건 r.rotation / r.position 뿐이라(재질·지오메트리는 안 건드린다) 공유해도 안전하다.
+let _ridgeGeoShared = null, _ridgeMatShared = null;
+function promotePlotRidges(plot) {
+  if (plot.ridges) return;
+  if (!_ridgeGeoShared) _ridgeGeoShared = new THREE.BoxGeometry(1.5, 0.1, 0.34);
+  if (!_ridgeMatShared) _ridgeMatShared = clayMat(0x80553a, false);
+  plot.ridges = [];
+  for (let k = 0; k < RIDGE_PER_PLOT; k++) {
+    const r = new THREE.Mesh(_ridgeGeoShared, _ridgeMatShared);
+    r.position.set(0, 0.21, RIDGE_Z[k]); r.receiveShadow = true;
+    plot.group.add(r); plot.ridges.push(r);
+  }
+}
+function demotePlotRidges(plot) {
+  if (!plot.ridges) return;
+  for (const r of plot.ridges) plot.group.remove(r);
+  plot.ridges = null;
+  syncFarmSoil(true);      // 인스턴스 쪽 이랑을 다시 보이게
+}
 // 1타 연출: 이랑 3줄이 제각각 기울고 어긋남 + 흙더미·파인 자리. k 0~1(만료 복구 땐 1→0 보간)
 function setPlotDug(plot, k) {
+  promotePlotRidges(plot);
   if (!plot.mound) {
     plot.mound = new THREE.Mesh(new THREE.SphereGeometry(0.32, 9, 7), clayMat(PAL.soilWet, false));
     plot.mound.position.set(0.55, 0.2, -0.45); plot.mound.scale.set(1.3, 0.55, 1.1); plot.mound.castShadow = true;
@@ -9733,6 +10025,12 @@ function expireDig(plot) {
   ui.toast?.('밭을 그대로 두었어요');
   trackEvent('dig_expire');   // [GA4]
   if (lastDoorPrompt && lastDoorPrompt.startsWith('🪏')) { lastDoorPrompt = null; ui.setDoorPrompt?.(null); }
+  // 🪏 여기서 demotePlotRidges 를 부르지 않는다 — plot.ridges 는 승격 상태 그대로 두고
+  //   바로 뒤이은 updatePlots 의 digBackT 복구 루프가 같은 ridges 를 계속 써서 애니메이션한다.
+  //   여기서 demote(→null)했다가 그 루프가 즉시 다시 promote 하면, 그 사이 syncFarmSoil(true)
+  //   가 "ridges 없음"으로 인스턴스를 되살려버려 복구 애니메이션 내내 인스턴스(고정)와
+  //   개별 메시(기울기 애니메이션)가 겹쳐 보이는 고스트가 생긴다. 진짜 강등은
+  //   digBackT 가 0 에 닿는 시점(updatePlots)에서 한 번만 일어나면 충분하다.
 }
 // 2타 연출: 연한 흙 자국이 풀색으로 돌아가고(페이드) 새싹 7개가 톡톡 돋았다가 사라진다
 function spawnDigRegrow(x, z) {
@@ -9919,7 +10217,7 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   ui.toast?.(`${plot.cropType?.name || '작물'} +1 수확! 🌾`);
   spawnFloatText(plot.x, 1.1, plot.z, '+1 🥕', '#c05a2a'); // 획득 표시
   spawnSparkle(plot.x, 0.7, plot.z, 24); // [파티클] 반짝이 폭발
-  if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
+  clearCrop(plot);          // 🌱 작물 인스턴스 버퍼에서도 제거
   plot.state = 'empty'; plot.growth = 0; plot.stage = -1; plot.watered = false;
   updatePlotVisual(plot);
   refreshCovers();          // 🛡️ 수확한 빈 밭에선 덮개 표시 제거
@@ -9940,7 +10238,11 @@ function updatePlots(dt) {
   if (pendingDig && (actAnim <= 0 || 1 - actAnim >= DIG_HIT_AT)) { const d = pendingDig; pendingDig = null; digHit(d.plot, d.second); }
   for (const plot of plots) {
     if (plot.digAt && now - plot.digAt > DIG_WINDOW && !(pendingDig && pendingDig.plot === plot)) expireDig(plot);
-    if (plot.digBackT > 0) { plot.digBackT = Math.max(0, plot.digBackT - dt); setPlotDug(plot, plot.digBackT / DIG_RESTORE); }
+    if (plot.digBackT > 0) {
+      plot.digBackT = Math.max(0, plot.digBackT - dt);
+      setPlotDug(plot, plot.digBackT / DIG_RESTORE);
+      if (plot.digBackT === 0) demotePlotRidges(plot);   // 🪏 복구 끝 → 인스턴스로 강등
+    }
   }
   updateDigFx(dt);
   for (const plot of plots) {
@@ -9958,7 +10260,7 @@ function updatePlots(dt) {
         if (!plot.needSince) plot.needSince = now;              // 목마르기 시작
         else if (now - plot.needSince > WILT_TIME) wiltPlot(plot); // 오래 방치 → 시듦
       }
-      // '물을 줘야해요!' 알림: 목마른 성장 작물 위에
+      // '물 줘요!' 알림: 목마른 성장 작물 위에
       setPlotWarn(plot, !wet);
       setPlotHarvest(plot, false); setPlotSeedHint(plot, false);
     } else if (plot.state === 'mature') {
@@ -9968,99 +10270,144 @@ function updatePlots(dt) {
     } else {
       setPlotWarn(plot, false); setPlotHarvest(plot, false); setPlotSeedHint(plot, false); // 시든 밭 등
     }
-    if (plot.warn && plot.warn.visible) plot.warn.position.y = 1.4 + Math.sin(now * 3) * 0.06; // 살짝 둥실
-    if (plot.harvest && plot.harvest.visible) plot.harvest.position.y = 1.4 + Math.sin(now * 3 + 1) * 0.06;
-    if (plot.seedHint && plot.seedHint.visible) plot.seedHint.position.y = 1.4 + Math.sin(now * 3 + 2) * 0.06;
   }
+  updateFarmPops(dt);   // 🌾 팝 중인 칸만 행렬 갱신
+  syncFarmHints(now);   // 🌾 배지 빌보드 — 떠 있는 배지가 있을 때만 내부에서 실제로 버퍼를 건드린다
 }
 
-// 시들기: 갈색으로 축 처지고 'wilted' 상태로(괭이로 다시 심어야 함)
+// 시들기: 누런 색으로(괭이로 다시 심어야 함)
+//   ⚠️ 인스턴스 전환으로 기울어짐(rotation.z)·눌림(scale.y)은 버렸다 — 시든 상태는 색만으로도
+//   충분히 읽히고, 회전까지 넣으면 syncFarmCrops 가 복잡해진다(의도적 연출 축소, task-4-brief §Step4).
 function wiltPlot(plot) {
   plot.wilted = true; plot.state = 'wilted';
-  if (plot.crop) {
-    plot.crop.traverse(o => { if (o.material && o.material.color) { o.material = o.material.clone(); o.material.color.set(0x9a844f); } });
-    plot.crop.rotation.z = 0.5; plot.crop.scale.y *= 0.6;
-  }
+  syncFarmCrops(true);              // 🥀 시든 색(0x9a844f)은 인스턴스 색으로
   setPlotWarn(plot, false);
   ui.toast?.('🥀 작물이 시들었어요… 괭이로 다시 심어요');
 }
 
+// 단계별 작물 — 메시는 farmCropMeshes(InstancedMesh)가 그린다. 여기선 상태만 바꾸고 버퍼를 갱신한다.
 function clearCrop(plot) {
-  if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
-  plot.crop = null;
+  plot.crop = null; plot.cropPop = 0;
+  syncFarmCrops(true);
 }
 
-// 밭 위 '물!' 경고 스프라이트 토글(공유 텍스처)
-let _warnMat = null;
-function warnMaterial() {
-  if (_warnMat) return _warnMat;
-  const cv = document.createElement('canvas'); cv.width = 176; cv.height = 104;
-  const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(140,200,255,0.96)'; roundRect(c, 8, 8, 160, 64, 18); c.fill();
-  c.beginPath(); c.moveTo(78, 72); c.lineTo(98, 72); c.lineTo(84, 94); c.closePath(); c.fill();
-  c.fillStyle = '#164a6a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(t('💧 물 줘요!'), 88, 40);
-  const tex = new THREE.CanvasTexture(cv);
-  _warnMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  return _warnMat;
+// =============================================================
+//  🌾 밭 알림 배지 — '물!'·'수확!'·'씨앗을 넣어요' 세 배지를 종류별 텍스처 + InstancedMesh 로.
+//  Sprite 는 객체마다 1드로우콜이라 121칸이면 121콜이었다 → 종류당 InstancedMesh 1개(총 3콜)로.
+//  ⚠️ 아틀라스 1장 + onBeforeCompile 커스텀 셰이더는 쓰지 않는다(컨트롤러 판정, task-5-report 참고):
+//     스펙이 이 항목을 3콜로 잡아뒀고, map_fragment 치환은 three 버전마다 깨지기 쉬운 코드다.
+//  ⚠️ t() 로 번역한 문구를 캔버스에 굽는다 — 그러나 setLang() 이 location.reload() 를 하므로
+//     언어 전환 시 모듈이 통째로 다시 로드되어 텍스처도 새로 그려진다(별도 무효화 불필요).
+// =============================================================
+const HINT_W = 256, HINT_H = 112;
+// 🌾 배지 종류별 월드 스케일 — 옛 Sprite 는 종류마다 **캔버스 크기도 scale 도 달랐다**(126293e 원본 확인):
+//     warn     캔버스 176×104 → sprite.scale.set(1.15, 0.68, 1)
+//     harvest  캔버스 200×104 → sprite.scale.set(1.28, 0.70, 1)
+//     seedHint 캔버스 248×104 → sprite.scale.set(1.55, 0.65, 1)
+//   지금은 셋이 256×112 캔버스 하나(+ PlaneGeometry(1.5, 1.5*HINT_H/HINT_W))를 공유한다.
+//   ⚠️ 옛 scale 을 지오메트리 크기로 나눈 값(warn 0.767/1.037 등)을 그대로 쓰면 **안 된다** —
+//     쿼드 겉넓이만 옛것과 같아질 뿐, 캔버스 종횡비(2.286)와 쿼드 종횡비(1.69)가 어긋나 글자가
+//     가로로 26% 찌그러지고 그려진 알약·글자는 오히려 더 작아진다. 플레이어가 보는 건 쿼드가 아니라
+//     쿼드에 그려진 내용이므로, 맞춰야 하는 건 **"옛 캔버스 1px = 월드 몇" 비율**이다:
+//       scale = (옛 월드크기 / 옛 캔버스크기) × (새 캔버스크기 / 지오메트리크기)
+//     지오메트리가 1.5 × 1.5*HINT_H/HINT_W 라 가로·세로 모두 (HINT_W / 1.5) 배가 된다.
+const _HINT_K = HINT_W / 1.5;
+//   plot.hint 값 순서와 같다: 0 물! · 1 수확! · 2 씨앗을 넣어요
+const _HINT_SCALE = [
+  new THREE.Vector3(1.15 / 176 * _HINT_K, 0.68 / 104 * _HINT_K, 1),
+  new THREE.Vector3(1.28 / 200 * _HINT_K, 0.70 / 104 * _HINT_K, 1),
+  new THREE.Vector3(1.55 / 248 * _HINT_K, 0.65 / 104 * _HINT_K, 1),
+];
+let _warnTex = null, _harvestTex = null, _seedHintTex = null;
+function _hintCanvas() {
+  const cv = document.createElement('canvas'); cv.width = HINT_W; cv.height = HINT_H;
+  return [cv, cv.getContext('2d')];
 }
-function setPlotWarn(plot, show) {
-  if (show && !plot.warn) {
-    plot.warn = new THREE.Sprite(warnMaterial());
-    plot.warn.scale.set(1.15, 0.68, 1); plot.warn.position.set(0, 1.4, 0);
-    plot.group.add(plot.warn);
-  }
-  if (plot.warn) plot.warn.visible = show;
+// 알약 폭은 **그릴 문자열을 직접 재서** 정한다.
+//   ⚠️ padX 를 한국어 폭에서 뽑은 상수로 넘기면 t() 가 돌려준 다른 언어에서 글자가 알약 밖으로 넘친다
+//     (영어 '🌾 Harvest!' 는 bold 28px 에서 140.5px — padX 60 이 만드는 136px 알약을 4.5px 삐져나갔다).
+//   캔버스는 언어당 한 번만 그리므로 measureText 비용은 없고, 어떤 언어가 와도 자가치유된다.
+//   ⚠️ measureText 전에 c.font 를 먼저 설정해야 폭이 맞는다.
+function _drawHintBadge(c, bg, ink, text, fontPx) {
+  c.font = `bold ${fontPx}px sans-serif`;
+  const w = c.measureText(text).width;
+  const padX = Math.max(8, (HINT_W - (w + 44)) / 2);   // 글자 좌우 22px 여백
+  c.fillStyle = bg; roundRect(c, padX, 8, HINT_W - padX * 2, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(HINT_W / 2 - 10, 72); c.lineTo(HINT_W / 2 + 10, 72); c.lineTo(HINT_W / 2 - 4, 94); c.closePath(); c.fill();
+  c.fillStyle = ink; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(text, HINT_W / 2, 40);
+}
+function _hintTexFromCanvas(cv) {
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  return tex;
+}
+function warnTexture() {
+  if (_warnTex) return _warnTex;
+  const [cv, c] = _hintCanvas();
+  //   ⚠️ 브리프 Step1 은 '물을 줘야해요!' 로 적었지만 이는 계획서 작성 중 코드 주석("'물을 줘야해요!' 알림: ...")과
+  //     실제 fillText 문자열을 착각해 옮긴 것 — i18n-en.js 사전 키는 원래 문구 '💧 물 줘요!' 그대로다(리뷰 fix round 1).
+  //     기능 변화 0 원칙에 따라 원래 문구로 되돌린다.
+  //   폰트 30px·잉크 #164a6a 는 옛 warnMaterial(126293e) 그대로다.
+  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#164a6a', t('💧 물 줘요!'), 30);
+  return (_warnTex = _hintTexFromCanvas(cv));
+}
+function harvestTexture() {
+  if (_harvestTex) return _harvestTex;
+  const [cv, c] = _hintCanvas();
+  _drawHintBadge(c, 'rgba(150,220,150,0.96)', '#245a2a', t('🌾 수확!'), 30);   // 옛 harvestMaterial 도 bold 30px
+  return (_harvestTex = _hintTexFromCanvas(cv));
+}
+function seedHintTexture() {
+  if (_seedHintTex) return _seedHintTex;
+  const [cv, c] = _hintCanvas();
+  _drawHintBadge(c, 'rgba(233,206,150,0.97)', '#6b4a20', t('🌰 씨앗을 넣어요'), 28);   // ⚠️ 이것만 옛 값이 bold 28px
+  return (_seedHintTex = _hintTexFromCanvas(cv));
 }
 
-// 밭 위 '수확!' 알림 스프라이트(공유 텍스처)
-let _harvestMat = null;
-function harvestMaterial() {
-  if (_harvestMat) return _harvestMat;
-  const cv = document.createElement('canvas'); cv.width = 200; cv.height = 104;
-  const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(150,220,150,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
-  c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
-  c.fillStyle = '#245a2a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(t('🌾 수확!'), 100, 40);
-  const tex = new THREE.CanvasTexture(cv);
-  _harvestMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  return _harvestMat;
-}
-function setPlotHarvest(plot, show) {
-  if (show && !plot.harvest) {
-    plot.harvest = new THREE.Sprite(harvestMaterial());
-    plot.harvest.scale.set(1.28, 0.7, 1); plot.harvest.position.set(0, 1.4, 0);
-    plot.group.add(plot.harvest);
-  }
-  if (plot.harvest) plot.harvest.visible = show;
-}
+// 세 종류가 동시에 뜨지 않으므로 칸당 하나의 값(plot.hint)으로 관리한다.
+//   -1 없음 · 0 물! · 1 수확! · 2 씨앗을 넣어요  (런타임 전용 — 세이브 스키마에 없음)
+function setPlotWarn(plot, show)     { if (show) plot.hint = 0; else if (plot.hint === 0) plot.hint = -1; }
+function setPlotHarvest(plot, show)  { if (show) plot.hint = 1; else if (plot.hint === 1) plot.hint = -1; }
+function setPlotSeedHint(plot, show) { if (show) plot.hint = 2; else if (plot.hint === 2) plot.hint = -1; }
 
-// 밭 위 '씨앗을 넣어요' 알림(빈 밭)
-let _seedHintMat = null;
-function seedHintMaterial() {
-  if (_seedHintMat) return _seedHintMat;
-  const cv = document.createElement('canvas'); cv.width = 248; cv.height = 104;
-  const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(233,206,150,0.97)'; roundRect(c, 8, 8, 232, 64, 18); c.fill();
-  c.beginPath(); c.moveTo(114, 72); c.lineTo(134, 72); c.lineTo(120, 94); c.closePath(); c.fill();
-  c.fillStyle = '#6b4a20'; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(t('🌰 씨앗을 넣어요'), 124, 40);
-  const tex = new THREE.CanvasTexture(cv);
-  _seedHintMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  return _seedHintMat;
-}
-function setPlotSeedHint(plot, show) {
-  if (show && !plot.seedHint) {
-    plot.seedHint = new THREE.Sprite(seedHintMaterial());
-    plot.seedHint.scale.set(1.55, 0.65, 1); plot.seedHint.position.set(0, 1.4, 0);
-    plot.group.add(plot.seedHint);
+// 배지 빌보드 갱신 — 카메라를 향해 돌리고 살짝 둥실거린다(기존 연출 유지).
+//   떠 있는 배지가 하나도 없고(now) 이전 프레임에도 없었다면(prev) 버퍼를 건드리지 않는다.
+const _hintQ = new THREE.Quaternion(), _hintP = new THREE.Vector3();
+let _hintAnyPrev = false;
+function syncFarmHints(now) {
+  if (!farmHintMeshes) return;
+  // 실내·동굴·카페·강·안개숲·바다에선 배지 메시가 visible=false 라 GPU 업로드는 안 일어나지만
+  //   JS 는 매 프레임 밭 전체를 돌았다 → 실외에서만 돈다.
+  //   ⚠️ 여기선 _hintAnyPrev 를 건드리지 않는다. 실외로 돌아왔을 때 뜬 배지가 있으면 any=true 로 다시 채우고,
+  //     들어가기 전에 떠 있었는데(prev=true) 그 사이 사라졌으면 any=false 라도 통과해 카운트를 0 으로 되돌린다.
+  if (!outdoorZone()) return;
+  let any = false;
+  for (const p of plots) if ((p.hint ?? -1) >= 0) { any = true; break; }
+  if (!any && !_hintAnyPrev) return;   // 인스턴싱 이득 보존 — 아무도 안 떠 있으면 매 프레임 스킵
+  camera.getWorldQuaternion(_hintQ);
+  let nWarn = 0, nHarvest = 0, nSeed = 0;
+  const M = farmHintMeshes;
+  for (const p of plots) {
+    const h = p.hint ?? -1;
+    if (h < 0) continue;
+    _hintP.set(p.x, 1.4 + Math.sin(now * 3 + h) * 0.06, p.z);
+    _fmM.compose(_hintP, _hintQ, _HINT_SCALE[h]);   // 종류마다 크기가 다르다 — 옛 Sprite 와 같게
+    if (h === 0) M.warn.setMatrixAt(nWarn++, _fmM);
+    else if (h === 1) M.harvest.setMatrixAt(nHarvest++, _fmM);
+    else if (h === 2) M.seedHint.setMatrixAt(nSeed++, _fmM);
   }
-  if (plot.seedHint) plot.seedHint.visible = show;
+  M.warn.count = nWarn; M.harvest.count = nHarvest; M.seedHint.count = nSeed;
+  // 빈 메시엔 needsUpdate 를 걸지 않는다 — 올릴 게 없는데 버퍼를 다시 올리는 건 낭비다.
+  //   (직전 프레임에 인스턴스가 있었다면 count 만 줄이면 되므로 역시 업로드가 필요 없다)
+  if (nWarn) M.warn.instanceMatrix.needsUpdate = true;
+  if (nHarvest) M.harvest.instanceMatrix.needsUpdate = true;
+  if (nSeed) M.seedHint.instanceMatrix.needsUpdate = true;
+  _hintAnyPrev = any;
 }
 
 function updatePlotVisual(plot) {
-  plot.soil.material.color.set(plot.watered ? PAL.soilWet : PAL.soil); // 젖은 흙 색
+  syncFarmSoil();   // 🌾 젖은 흙 색은 인스턴스 색으로 — 시그니처가 바뀌었을 때만 실제로 쓴다
 }
 
 // 성장 단계(0 새싹 → 1 자람 → 2 수확가능)를 growth로 판정, 변할 때 메시 재생성 + 팝
@@ -10074,34 +10421,14 @@ function refreshCropStage(plot) {
     spawnSparkle(plot.x, 0.7, plot.z, 8);
     ui.toast?.(`🌾 ${plot.cropType?.name || '작물'}가 다 자랐어요! 낫으로 수확하세요`);
   }
+  syncFarmCrops(true);   // 🌱 단계 전환을 인스턴스 버퍼에 반영(buildCropStage 안에서도 부르지만, 여기서도 명시)
 }
 
-// 단계별 작물 메시(그룹 scale=1, 크기는 지오메트리로 → updatePops 팝과 호환)
+// 단계별 작물 — 메시는 farmCropMeshes(InstancedMesh)가 그린다. 여기선 상태만 바꾸고 팝을 건다.
 function buildCropStage(plot) {
-  if (plot.crop) plot.group.remove(plot.crop);
-  const g = new THREE.Group(); g.position.y = 0.26;
-  const col = plot.cropType?.fruit ?? PAL.crop;
-  if (plot.stage === 0) {
-    // 새싹: 작고 연두
-    const sprout = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 5), clayMat(0x9be89b));
-    sprout.position.y = 0.15; g.add(sprout);
-  } else if (plot.stage === 1) {
-    // 자람: 중간 줄기 + 잎
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), clayMat(PAL.sprout));
-    stem.position.y = 0.25; g.add(stem);
-    [[-0.16, 0.3], [0.16, 0.42]].forEach(([lx, ly]) => {
-      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), clayMat(PAL.cropLeaf));
-      leaf.scale.set(1, 0.5, 0.7); leaf.position.set(lx, ly, 0); g.add(leaf);
-    });
-  } else {
-    // 수확가능: 무성한 잎 + 열매 톡 보임
-    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), clayMat(PAL.cropLeaf));
-    bush.position.y = 0.32; bush.scale.set(1, 0.82, 1); g.add(bush);
-    const fruit = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), clayMat(col, false));
-    fruit.position.y = 0.56; g.add(fruit);
-  }
-  plot.group.add(g); plot.crop = g;
-  g.userData.pop = 1; g.scale.setScalar(0.01);   // 단계 전환 시 톡 튀는 팝 스케일
+  plot.crop = true;          // "작물이 있다" 플래그 — 기존 코드가 truthy 검사만 한다
+  plot.cropPop = 1;          // 단계 전환 시 톡 튀는 팝
+  syncFarmCrops(true);
 }
 
 // =============================================================
