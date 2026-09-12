@@ -256,8 +256,18 @@
   .boat-up button:disabled { opacity: .45; cursor: default; }
   .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show { display: grid; }
+  /* 📮 소식함 — 공지·개발자 답장 목록(최신이 위). 답장은 내 문의 원문을 한 줄 인용 */
+  #notice-list { text-align: left; margin: 0 0 16px; }
+  .nt-item { padding: 12px 0; border-bottom: 1px solid #f0f4f0; }
+  .nt-item:last-child { border-bottom: none; }
+  .nt-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; opacity: .65; margin-bottom: 4px; }
+  .nt-kind { color: #b0563a; font-weight: 700; }
+  .nt-item h3 { margin: 0 0 6px; font-size: 15px; }
+  .nt-quote { margin: 0 0 8px; padding: 6px 10px; background: #f3f6f2; border-left: 3px solid var(--mint); border-radius: 6px; font-size: 12.5px; opacity: .8; }
+  .nt-body { margin: 0; font-size: 14px; line-height: 1.6; opacity: .9; white-space: pre-line; overflow-wrap: anywhere; }
+  .nt-empty { text-align: center; opacity: .7; font-size: 14px; margin: 8px 0 20px; }
   #char-layout { display: flex; gap: 16px; align-items: stretch; text-align: left; }
   #char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1 1 auto; align-content: start; }
   .char-card { padding: 10px 6px; border-radius: 14px; background: #f4faf5; box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, outline-color .12s; outline: 3px solid transparent; text-align: center; }
@@ -307,7 +317,7 @@
   .photo-actions button { border: none; border-radius: 12px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .photo-actions .primary { background: var(--mint); }
   #hint-alt { margin-left: 8px; border: none; border-radius: 14px; padding: 13px 22px; background: #eef2ee; color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; }
-  #seed-ok, #hint-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
+  #seed-ok, #hint-ok, #notice-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
   #seed-ok:active { transform: scale(0.96); }
   .tut-card { width: min(440px, 92vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
   .tut-emoji { font-size: 40px; }
@@ -1147,6 +1157,7 @@
       <button id="diary-btn" style="display:none;"><span class="uico">📝</span><span class="ulbl">오늘 일지</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
       <button id="help-btn"><span class="uico">📖</span><span class="ulbl">초보자 안내서</span></button>
+      <button id="inbox-btn"><span class="uico">📮</span><span class="ulbl">소식함</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
       <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
       <button id="lang-btn"><span class="uico">🌐</span><span class="ulbl">언어</span></button>
@@ -1635,6 +1646,16 @@
     </div>
   </div>
 
+  <!-- 📮 소식함 — 출석 모달 [알겠어요] 다음에 안 읽은 소식이 있으면 이어서 뜨고, ☰ 메뉴 📮 에서 다시 읽는다 -->
+  <div id="notice-modal">
+    <div class="tut-card">
+      <div class="tut-emoji">📮</div>
+      <h2 id="notice-title">📮 새 소식</h2>
+      <div id="notice-list"></div>
+      <button id="notice-ok">알겠어요 🌱</button>
+    </div>
+  </div>
+
   <!-- 🧙 상인 방문 모달 — 환영 거래(1회) → 좌판 안내 -->
   <div id="merchant-modal">
     <div class="tut-card">
@@ -1709,9 +1730,10 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { pickText, quoteLine } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용
     import { IS_TOSS, IS_ITCH } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input } from './js/game.js';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen } from './js/game.js';
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
     import { initControls } from './js/controls.js';
@@ -1955,6 +1977,7 @@
     $('map-btn').addEventListener('click', openWorldMap);
     window.addEventListener('resize', () => { if ($('worldmap').classList.contains('show')) drawWorldMap(); });
 
+    let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
     const ui = {
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       showHintBanner({ ico, title, line, near, attention, onTap }) { hintBQ.push({ ico, title, line, near, attention, onTap }); if (!hintBShowing) nextHintBanner(); },
@@ -2206,11 +2229,41 @@
         $('hint-body').textContent = body || '';
         // ok/alt: 선택형 안내(🌫️ 실패 후 연습 제안 등 — 주 버튼·보조 버튼). 닫기는 아래 hint-ok 리스너가 담당, 여기선 콜백만 갈아끼운다
         const okb = $('hint-ok'), altb = $('hint-alt');
-        okb.textContent = ok?.label || '알겠어요 🌱'; okb.onclick = ok?.onClick ? () => ok.onClick() : null;
+        okb.textContent = ok?.label || '알겠어요 🌱';
+        // 이미 떠 있는 모달을 덮어쓰는 경우(출석 모달 위에 🦝 밤손님 쪽지 등) 앞 모달의 ok 콜백을 버리지 않고 이어 부른다 —
+        // 출석 → 📮 새 소식 체인이 그날 통째로 사라지던 문제(리뷰 2026-09-11)
+        const prevOk = $('hint-modal').classList.contains('show') ? okb.onclick : null;
+        const nextOk = ok?.onClick ? () => ok.onClick() : null;
+        okb.onclick = (prevOk && nextOk) ? () => { prevOk(); nextOk(); } : (nextOk || prevOk);
         altb.hidden = !alt;
         if (alt) { altb.textContent = alt.label; altb.onclick = () => { $('hint-modal').classList.remove('show'); alt.onClick?.(); }; }
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지
         $('hint-modal').classList.add('show');
+      },
+      // 📮 소식함 — kind 'new'(출석 직후: 안 읽은 것만) / 'inbox'(메뉴: 최근 목록). 닫으면 notice-ok 리스너가 읽음 처리
+      //    유저·관리자 문자열은 전부 textContent 로만 넣는다(innerHTML 금지). 영어 모드 본문은 pickText 가 *_en 우선
+      showNotices(list, kind = 'inbox') {
+        $('notice-title').textContent = kind === 'new' ? '📮 새 소식' : '📮 소식함';
+        const wrap = $('notice-list'); wrap.innerHTML = '';
+        const rows = [...(list || [])].sort((a, b) => b.id - a.id);   // 최신이 위
+        if (!rows.length) { const p = document.createElement('p'); p.className = 'nt-empty'; p.textContent = '아직 온 소식이 없어요 🌱'; wrap.appendChild(p); }
+        for (const n of rows) {
+          const { title, body } = pickText(n, LANG);
+          const item = document.createElement('div'); item.className = 'nt-item';
+          const head = document.createElement('div'); head.className = 'nt-head';
+          if (n.reply_to) { const kindEl = document.createElement('span'); kindEl.className = 'nt-kind'; kindEl.textContent = '💌 개발자의 답장'; head.appendChild(kindEl); }
+          const date = document.createElement('span'); date.className = 'nt-date'; date.textContent = String(n.created_at || '').slice(0, 10); head.appendChild(date);
+          const h = document.createElement('h3'); h.textContent = title;
+          item.append(head, h);
+          const q = quoteLine(n);
+          if (q) { const qe = document.createElement('p'); qe.className = 'nt-quote'; qe.textContent = `내 문의: ${q}`; item.appendChild(qe); }
+          const b = document.createElement('p'); b.className = 'nt-body'; b.textContent = body; item.appendChild(b);
+          wrap.appendChild(item);
+        }
+        noticeShown = rows;
+        Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지(안내 모달과 동일)
+        $('notice-modal').classList.add('show');
+        trackEvent('notice_open', { kind, count: rows.length });   // [GA4] 소식 도달률
       },
       // 🌫️ 안개 숲 — 수호목 갈림길 카드(비차단) / 연습 단계 안내(컨텍스트 슬롯, decor-guide 와 같은 자리)
       showMistChoice({ onStart, onPractice }) { $('mc-start').onclick = onStart; $('mc-learn').onclick = onPractice; $('mist-choice').classList.add('show'); },
@@ -2803,6 +2856,16 @@
     // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
     $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
     $('help-btn').addEventListener('click', () => openGuide('menu'));   // 📖 초보자 안내서(튜토리얼 다시 보기는 안내서 첫 장 버튼)
+    // 📮 소식함 — 메뉴에서 열면 최근 소식 전부(읽은 것 포함). 닫을 때 가장 큰 id 를 읽음으로 기록
+    $('inbox-btn').addEventListener('click', async () => {
+      $('topleft').classList.remove('open');
+      const rows = await fetchNotices(0);
+      ui.showNotices(rows, 'inbox');
+    });
+    $('notice-ok').addEventListener('click', () => {
+      $('notice-modal').classList.remove('show');
+      markNoticesSeen(noticeShown); noticeShown = [];
+    });
     // 🐾 캐릭터 바꾸기 — 진행 상황은 그대로, 겉모습만 교체(유저 피드백)
     $('char-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
@@ -3662,10 +3725,11 @@
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
     window.addEventListener('keydown', e => {                // 데스크톱: 안내 모달이 떠 있으면 Space = 알겠어요 — 게임 조작으로 안 새게 capture
       if (e.code !== 'Space' || e.repeat) return;
-      const open = ['hint-modal', 'seed-modal'].find(id => $(id).classList.contains('show'));
+      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok' };
+      const open = Object.keys(OK_BTN).find(id => $(id).classList.contains('show'));
       if (!open) return;
       e.preventDefault(); e.stopPropagation();
-      $(open === 'hint-modal' ? 'hint-ok' : 'seed-ok').click();
+      $(OK_BTN[open]).click();
     }, true);
     $('intro-skip').addEventListener('click', () => Input.introSkip());   // 🎬 프롤로그 건너뛰기
 

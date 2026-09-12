@@ -385,6 +385,22 @@ export async function listPhotos() {
   } catch (err) { console.warn('[Supabase 폴백] 사진 목록 실패:', err?.message || err); return []; }
 }
 
+// ── 📮 소식함 — 전체 공지 + 내게 온 답장 (RLS 가 target_user_id 로 거른다) ──
+//   sinceId 보다 큰 id 만(읽음 기준은 세이브의 noticeSeenId). feedback(message) 는 reply_to 임베드 —
+//   본인 글 select 정책(feedback_select_own)이 있어야 값이 오고, 없으면 null 로 올 뿐 에러는 아니다.
+//   ascending=true 는 접속 시 "안 읽은 것" 조회용 — 오래된 순으로 limit 만큼 받아야 20건이 넘게 밀렸을 때
+//   읽음 id 가 못 본 것을 건너뛰지 않는다(남은 건 다음 접속에). 메뉴 소식함은 최신순(false).
+export async function fetchNotices(sinceId = 0, { limit = 20, ascending = false } = {}) {
+  if (!state.online || !supabase) return [];
+  try {
+    const { data, error } = await supabase.from('notices')
+      .select('id, title, body, title_en, body_en, target_user_id, reply_to, created_at, feedback(message)')
+      .gt('id', sinceId).order('id', { ascending }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  } catch (err) { console.warn('[Supabase 폴백] 소식 조회 실패:', err?.message || err); return []; }
+}
+
 export async function insertPhotoRow(objectKey, weather) {
   if (!state.online || !supabase) return;
   try {

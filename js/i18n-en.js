@@ -66,6 +66,13 @@ export const EN = {
   '초보자 안내서가 있어요': "There's a beginner's guide",
   '눌러서 열기 · ☰ 메뉴 → 📖 에서 언제든': 'Tap to open · anytime via ☰ → 📖',
   '활동 기록': 'Activity Log',
+  // ── 📮 소식함(공지·개발자 답장) ──
+  '소식함': 'Inbox',
+  '📮 소식함': '📮 Inbox',
+  '📮 새 소식': "📮 What's new",
+  '💌 개발자의 답장': '💌 A reply from the developer',
+  '내 문의: {0}': 'My message: {0}',
+  '아직 온 소식이 없어요 🌱': 'No news yet 🌱',
   '배경음악': 'Music',
   '나가기': 'Log out',
   '문의하기': 'Feedback',
