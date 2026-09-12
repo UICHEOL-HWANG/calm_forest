@@ -29,8 +29,12 @@ export function popScale(pop) {
 
 /**
  * 흙·이랑 인스턴스 버퍼를 다시 써야 하는지 판정하는 시그니처.
- * **흙 버퍼에 실제로 반영되는 것만** 넣는다 — 위치·젖음(색)·삽질(이랑 흐트러짐)·칸 수.
+ * **흙·이랑 버퍼에 실제로 반영되는 것만** 넣는다 — 위치 · 젖음(색) · 이랑 승격 여부 · 칸 수.
  * 성장도(growth)는 작물 메시 쪽이라 여기 넣으면 매 프레임 다시 쓰게 된다.
+ *
+ * ⚠️ 삽질 시점(digAt)이 아니라 **이랑이 개별 메시로 승격됐는지(p.ridges)** 를 넣는다.
+ *   syncFarmSoil 이 인스턴스 이랑을 숨길지 판정하는 게 정확히 이 값이고, digAt=0 이어도
+ *   digBackT 복구 애니메이션 중엔 여전히 승격 상태라 두 값이 어긋난다.
  */
 export function plotsSignature(plots) {
   let sig = plots.length | 0;
@@ -38,7 +42,7 @@ export function plotsSignature(plots) {
     sig = (Math.imul(sig, 31) + (p.x | 0)) | 0;
     sig = (Math.imul(sig, 31) + (p.z | 0)) | 0;
     sig = (Math.imul(sig, 31) + (p.watered ? 1 : 0)) | 0;
-    sig = (Math.imul(sig, 31) + (p.digAt ? 1 : 0)) | 0;
+    sig = (Math.imul(sig, 31) + (p.ridges ? 1 : 0)) | 0;
   }
   return sig;
 }

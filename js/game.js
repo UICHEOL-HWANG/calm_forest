@@ -1797,9 +1797,13 @@ export async function enterGame() {
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
     // 🌾 __farmMax() — 텃밭을 밭으로 가득 채워 최악 상태를 재현(드로우콜 측정용). 로컬 전용.
-    window.__farmMax = () => {
-      const H = FARM_HALF;
-      for (let x = -H + 1; x <= H - 1; x += 2) for (let z = -H + 1; z <= H - 1; z += 2) {
+    //   ⚠️ tryHoe 는 Math.round(x/2)*2 로 **짝수 세계좌표** 격자에만 밭을 만든다. FARM 도 (0,84) 로 짝수라
+    //     오프셋이 홀수면 실제로는 생길 수 없는 배치가 되고 중복 검사(p.x === …)도 무의미해진다.
+    //   half 인자는 PLOT_CAP(160) 재할당 분기를 실제로 밟아보기 위한 것 — __farmMax(14) 면 13×13=169칸.
+    //   기본값은 실제 텃밭 크기라 드로우콜 측정은 인자 없이 부른다.
+    window.__farmMax = (half = FARM_HALF) => {
+      const H = half;
+      for (let x = -H + 2; x <= H - 2; x += 2) for (let z = -H + 2; z <= H - 2; z += 2) {
         if (!plots.some(p => p.x === FARM.x + x && p.z === FARM.z + z)) createPlot(FARM.x + x, FARM.z + z, true);
       }
       for (const p of plots) { p.state = 'growing'; p.growth = 0.9; p.stage = -1; p.cropType = CROP_TYPES[Math.abs(p.x + p.z) & 3]; refreshCropStage(p); }
@@ -9701,7 +9705,10 @@ function buildFarmInstances(cap = PLOT_CAP) {
     }), count);
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
-    m.castShadow = true; m.receiveShadow = true; m.count = 0; m.frustumCulled = false;
+    // ⚠️ 옛 buildCropStage(c621d19)는 작물 파츠에 castShadow/receiveShadow 를 **한 군데도 설정하지 않았다**(= 둘 다 false).
+    //   켜면 없던 작물 그림자가 새로 생기고 그림자 패스가 +5콜 상시다 — 기능 변화 0 계약을 깬다.
+    //   (스펙 §5-3-4 는 "작물은 유지"라고 적었지만 그건 현행 동작을 잘못 안 것 — 컨트롤러 판정)
+    m.castShadow = false; m.receiveShadow = false; m.count = 0; m.frustumCulled = false;
     scene.add(m);
     return m;
   };
@@ -9750,7 +9757,9 @@ function syncFarmSoil(force = false) {
     const p = plots[i];
     const s = popScale(p.pop || 0);
     _fmM.makeScale(s, s, s);
-    _fmM.setPosition(p.x, 0.1, p.z);          // 기존 soil.position.y = 0.1
+    // ⚠️ 0.1 * s 다. 옛 코드는 plot.group 전체를 스케일했고 흙은 그 자식(y=0.1)이라 팝 중엔 중심 y 도 같이 줄어
+    //   흙 윗면이 **지면에서** 솟아올랐다. y 를 0.1 로 고정하면 s=0.01 일 때 얇은 판이 공중에 뜬다.
+    _fmM.setPosition(p.x, 0.1 * s, p.z);      // 기존 soil.position.y = 0.1 (그룹 스케일 s 적용)
     farmSoilMesh.setMatrixAt(i, _fmM);
     _fmC.setHex(p.watered ? PAL.soilWet : PAL.soil);
     farmSoilMesh.setColorAt(i, _fmC);
@@ -9760,7 +9769,7 @@ function syncFarmSoil(force = false) {
     for (let k = 0; k < RIDGE_PER_PLOT; k++) {
       const ri = i * RIDGE_PER_PLOT + k;
       if (p.ridges) { _fmM.makeScale(0, 0, 0); }                 // 크기 0 = 안 보임
-      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21, p.z + RIDGE_Z[k] * s); }
+      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21 * s, p.z + RIDGE_Z[k] * s); }   // 흙과 같은 이유로 y 도 * s
       farmRidgeMesh.setMatrixAt(ri, _fmM);
     }
   }
@@ -9850,12 +9859,12 @@ function updateFarmPops(dt) {
     p.pop = Math.max(0, p.pop - dt * 3);      // updatePops 와 같은 감쇠율
     const s = popScale(p.pop);
     _fmM.makeScale(s, s, s);
-    _fmM.setPosition(p.x, 0.1, p.z);
+    _fmM.setPosition(p.x, 0.1 * s, p.z);         // 지면에서 솟아오르게 — syncFarmSoil 과 같은 공식
     farmSoilMesh.setMatrixAt(i, _fmM);
     for (let k = 0; k < RIDGE_PER_PLOT; k++) {
       const ri = i * RIDGE_PER_PLOT + k;
       if (p.ridges) { _fmM.makeScale(0, 0, 0); }   // 승격된(개별 메시) 칸은 인스턴스 쪽을 숨긴다
-      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21, p.z + RIDGE_Z[k] * s); }
+      else { _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, 0.21 * s, p.z + RIDGE_Z[k] * s); }
       farmRidgeMesh.setMatrixAt(ri, _fmM);
     }
   }
@@ -9972,11 +9981,18 @@ function removePlot(plot) {
 }
 // 🪏 삽 1타 연출 전용 — 이랑 3줄을 제각각 기울이려면 개별 메시여야 한다.
 //   동시에 한 칸뿐이라 +3콜. 유예가 끝나면 demote 로 인스턴스에 되돌린다.
+//   ⚠️ 지오메트리·재질은 3줄이 전부 같고 삽질은 한 세션에 수십~수백 번 반복하는 행동이다. 호출마다
+//     new BoxGeometry ×3 + clayMat ×3 을 만들면 demote 가 참조만 버리고(dispose 금지 규칙) three 는
+//     dispose 이벤트로만 VBO 를 정리하므로 컨텍스트 수명 내내 샌다 → **모듈 수준에서 한 번만 만들어 공유**한다.
+//     setPlotDug 가 바꾸는 건 r.rotation / r.position 뿐이라(재질·지오메트리는 안 건드린다) 공유해도 안전하다.
+let _ridgeGeoShared = null, _ridgeMatShared = null;
 function promotePlotRidges(plot) {
   if (plot.ridges) return;
+  if (!_ridgeGeoShared) _ridgeGeoShared = new THREE.BoxGeometry(1.5, 0.1, 0.34);
+  if (!_ridgeMatShared) _ridgeMatShared = clayMat(0x80553a, false);
   plot.ridges = [];
   for (let k = 0; k < RIDGE_PER_PLOT; k++) {
-    const r = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.34), clayMat(0x80553a, false));
+    const r = new THREE.Mesh(_ridgeGeoShared, _ridgeMatShared);
     r.position.set(0, 0.21, RIDGE_Z[k]); r.receiveShadow = true;
     plot.group.add(r); plot.ridges.push(r);
   }
@@ -10284,15 +10300,41 @@ function clearCrop(plot) {
 //     언어 전환 시 모듈이 통째로 다시 로드되어 텍스처도 새로 그려진다(별도 무효화 불필요).
 // =============================================================
 const HINT_W = 256, HINT_H = 112;
+// 🌾 배지 종류별 월드 스케일 — 옛 Sprite 는 종류마다 **캔버스 크기도 scale 도 달랐다**(126293e 원본 확인):
+//     warn     캔버스 176×104 → sprite.scale.set(1.15, 0.68, 1)
+//     harvest  캔버스 200×104 → sprite.scale.set(1.28, 0.70, 1)
+//     seedHint 캔버스 248×104 → sprite.scale.set(1.55, 0.65, 1)
+//   지금은 셋이 256×112 캔버스 하나(+ PlaneGeometry(1.5, 1.5*HINT_H/HINT_W))를 공유한다.
+//   ⚠️ 옛 scale 을 지오메트리 크기로 나눈 값(warn 0.767/1.037 등)을 그대로 쓰면 **안 된다** —
+//     쿼드 겉넓이만 옛것과 같아질 뿐, 캔버스 종횡비(2.286)와 쿼드 종횡비(1.69)가 어긋나 글자가
+//     가로로 26% 찌그러지고 그려진 알약·글자는 오히려 더 작아진다. 플레이어가 보는 건 쿼드가 아니라
+//     쿼드에 그려진 내용이므로, 맞춰야 하는 건 **"옛 캔버스 1px = 월드 몇" 비율**이다:
+//       scale = (옛 월드크기 / 옛 캔버스크기) × (새 캔버스크기 / 지오메트리크기)
+//     지오메트리가 1.5 × 1.5*HINT_H/HINT_W 라 가로·세로 모두 (HINT_W / 1.5) 배가 된다.
+const _HINT_K = HINT_W / 1.5;
+//   plot.hint 값 순서와 같다: 0 물! · 1 수확! · 2 씨앗을 넣어요
+const _HINT_SCALE = [
+  new THREE.Vector3(1.15 / 176 * _HINT_K, 0.68 / 104 * _HINT_K, 1),
+  new THREE.Vector3(1.28 / 200 * _HINT_K, 0.70 / 104 * _HINT_K, 1),
+  new THREE.Vector3(1.55 / 248 * _HINT_K, 0.65 / 104 * _HINT_K, 1),
+];
 let _warnTex = null, _harvestTex = null, _seedHintTex = null;
 function _hintCanvas() {
   const cv = document.createElement('canvas'); cv.width = HINT_W; cv.height = HINT_H;
   return [cv, cv.getContext('2d')];
 }
-function _drawHintBadge(c, bg, ink, text, padX) {
+// 알약 폭은 **그릴 문자열을 직접 재서** 정한다.
+//   ⚠️ padX 를 한국어 폭에서 뽑은 상수로 넘기면 t() 가 돌려준 다른 언어에서 글자가 알약 밖으로 넘친다
+//     (영어 '🌾 Harvest!' 는 bold 28px 에서 140.5px — padX 60 이 만드는 136px 알약을 4.5px 삐져나갔다).
+//   캔버스는 언어당 한 번만 그리므로 measureText 비용은 없고, 어떤 언어가 와도 자가치유된다.
+//   ⚠️ measureText 전에 c.font 를 먼저 설정해야 폭이 맞는다.
+function _drawHintBadge(c, bg, ink, text, fontPx) {
+  c.font = `bold ${fontPx}px sans-serif`;
+  const w = c.measureText(text).width;
+  const padX = Math.max(8, (HINT_W - (w + 44)) / 2);   // 글자 좌우 22px 여백
   c.fillStyle = bg; roundRect(c, padX, 8, HINT_W - padX * 2, 64, 18); c.fill();
   c.beginPath(); c.moveTo(HINT_W / 2 - 10, 72); c.lineTo(HINT_W / 2 + 10, 72); c.lineTo(HINT_W / 2 - 4, 94); c.closePath(); c.fill();
-  c.fillStyle = ink; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = ink; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText(text, HINT_W / 2, 40);
 }
 function _hintTexFromCanvas(cv) {
@@ -10305,21 +10347,21 @@ function warnTexture() {
   const [cv, c] = _hintCanvas();
   //   ⚠️ 브리프 Step1 은 '물을 줘야해요!' 로 적었지만 이는 계획서 작성 중 코드 주석("'물을 줘야해요!' 알림: ...")과
   //     실제 fillText 문자열을 착각해 옮긴 것 — i18n-en.js 사전 키는 원래 문구 '💧 물 줘요!' 그대로다(리뷰 fix round 1).
-  //     기능 변화 0 원칙에 따라 원래 문구로 되돌린다. padX 도 짧아진 문구 폭에 맞춰 재계산(다른 두 배지와 같은
-  //     여백 공식 — padX = 106 - textWidth/2, 측정값 44).
-  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#14406b', t('💧 물 줘요!'), 44);
+  //     기능 변화 0 원칙에 따라 원래 문구로 되돌린다.
+  //   폰트 30px·잉크 #164a6a 는 옛 warnMaterial(126293e) 그대로다.
+  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#164a6a', t('💧 물 줘요!'), 30);
   return (_warnTex = _hintTexFromCanvas(cv));
 }
 function harvestTexture() {
   if (_harvestTex) return _harvestTex;
   const [cv, c] = _hintCanvas();
-  _drawHintBadge(c, 'rgba(150,220,150,0.96)', '#245a2a', t('🌾 수확!'), 60);
+  _drawHintBadge(c, 'rgba(150,220,150,0.96)', '#245a2a', t('🌾 수확!'), 30);   // 옛 harvestMaterial 도 bold 30px
   return (_harvestTex = _hintTexFromCanvas(cv));
 }
 function seedHintTexture() {
   if (_seedHintTex) return _seedHintTex;
   const [cv, c] = _hintCanvas();
-  _drawHintBadge(c, 'rgba(233,206,150,0.97)', '#6b4a20', t('🌰 씨앗을 넣어요'), 12);
+  _drawHintBadge(c, 'rgba(233,206,150,0.97)', '#6b4a20', t('🌰 씨앗을 넣어요'), 28);   // ⚠️ 이것만 옛 값이 bold 28px
   return (_seedHintTex = _hintTexFromCanvas(cv));
 }
 
@@ -10331,10 +10373,15 @@ function setPlotSeedHint(plot, show) { if (show) plot.hint = 2; else if (plot.hi
 
 // 배지 빌보드 갱신 — 카메라를 향해 돌리고 살짝 둥실거린다(기존 연출 유지).
 //   떠 있는 배지가 하나도 없고(now) 이전 프레임에도 없었다면(prev) 버퍼를 건드리지 않는다.
-const _hintQ = new THREE.Quaternion(), _hintS = new THREE.Vector3(1, 1, 1), _hintP = new THREE.Vector3();
+const _hintQ = new THREE.Quaternion(), _hintP = new THREE.Vector3();
 let _hintAnyPrev = false;
 function syncFarmHints(now) {
   if (!farmHintMeshes) return;
+  // 실내·동굴·카페·강·안개숲·바다에선 배지 메시가 visible=false 라 GPU 업로드는 안 일어나지만
+  //   JS 는 매 프레임 밭 전체를 돌았다 → 실외에서만 돈다.
+  //   ⚠️ 여기선 _hintAnyPrev 를 건드리지 않는다. 실외로 돌아왔을 때 뜬 배지가 있으면 any=true 로 다시 채우고,
+  //     들어가기 전에 떠 있었는데(prev=true) 그 사이 사라졌으면 any=false 라도 통과해 카운트를 0 으로 되돌린다.
+  if (!outdoorZone()) return;
   let any = false;
   for (const p of plots) if ((p.hint ?? -1) >= 0) { any = true; break; }
   if (!any && !_hintAnyPrev) return;   // 인스턴싱 이득 보존 — 아무도 안 떠 있으면 매 프레임 스킵
@@ -10345,15 +10392,17 @@ function syncFarmHints(now) {
     const h = p.hint ?? -1;
     if (h < 0) continue;
     _hintP.set(p.x, 1.4 + Math.sin(now * 3 + h) * 0.06, p.z);
-    _fmM.compose(_hintP, _hintQ, _hintS);
+    _fmM.compose(_hintP, _hintQ, _HINT_SCALE[h]);   // 종류마다 크기가 다르다 — 옛 Sprite 와 같게
     if (h === 0) M.warn.setMatrixAt(nWarn++, _fmM);
     else if (h === 1) M.harvest.setMatrixAt(nHarvest++, _fmM);
     else if (h === 2) M.seedHint.setMatrixAt(nSeed++, _fmM);
   }
   M.warn.count = nWarn; M.harvest.count = nHarvest; M.seedHint.count = nSeed;
-  M.warn.instanceMatrix.needsUpdate = true;
-  M.harvest.instanceMatrix.needsUpdate = true;
-  M.seedHint.instanceMatrix.needsUpdate = true;
+  // 빈 메시엔 needsUpdate 를 걸지 않는다 — 올릴 게 없는데 버퍼를 다시 올리는 건 낭비다.
+  //   (직전 프레임에 인스턴스가 있었다면 count 만 줄이면 되므로 역시 업로드가 필요 없다)
+  if (nWarn) M.warn.instanceMatrix.needsUpdate = true;
+  if (nHarvest) M.harvest.instanceMatrix.needsUpdate = true;
+  if (nSeed) M.seedHint.instanceMatrix.needsUpdate = true;
   _hintAnyPrev = any;
 }
 
