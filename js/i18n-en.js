@@ -856,6 +856,10 @@ export const EN = {
   '마지막 시험이야 — 풀코스 세 접시를 완성해 봐! 💎 특별 보상이 있어.': 'The final test — plate up a three-dish full course! 💎 There\'s a special reward.',
   '오늘 의뢰는 전부 끝! 내일 새 의뢰를 가져올게요 🦉': 'All of today\'s errands are done! I\'ll bring new ones tomorrow 🦉',
   '오늘 의뢰는 전부 끝! {0}{1} 내일 새 의뢰 들고 올게요 🦉': 'All of today\'s errands are done! {0}{1} I\'ll bring new ones tomorrow 🦉',
+  // 🦉 일일 의뢰 줄 — DAILY_COUNT 가 문구에 그대로 들어간다. 개수를 바꿔도 번역이 끊기지 않게
+  //    지금 쓰는 /3 과 베타 후 올릴 /5 를 둘 다 둔다(럭키박스는 앞 QUEST_LUCKY 건에만 붙는다).
+  '[오늘의 의뢰 {0}/3] {1}! 완료하면 🎁럭키박스도 준다구.': '[Daily errand {0}/3] {1}! Finish it and there\'s a 🎁Lucky Box in it for you.',
+  '[오늘의 의뢰 {0}/3] {1}!': '[Daily errand {0}/3] {1}!',
   '[오늘의 의뢰 {0}/5] {1}! 완료하면 🎁럭키박스도 준다구.': '[Daily errand {0}/5] {1}! Finish it and there\'s a 🎁Lucky Box in it for you.',
   '[오늘의 의뢰 {0}/5] {1}!': '[Daily errand {0}/5] {1}!',
   '오늘의 벌목': 'Today\'s Chopping',

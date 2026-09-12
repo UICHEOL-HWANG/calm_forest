@@ -694,14 +694,21 @@ const NPCS = [
   },
 ];
 
-const DAILY_COUNT = 5;   // 하루 일일 의뢰 개수 — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
-//   3 → 5 (2026-09-12) 베타 건의 1위: "일일 퀘스트가 없어서 할 일이 없다".
-//   ⚠️ 서버도 같이 올려야 한다 — functions/api/daily-quests.js 의 NEED 와 scripts/serve.py 미러.
-//      한쪽만 올리면 AI 의뢰가 4개만 와서 validDailyQuests 검증에 걸려 통째로 버려진다.
+const DAILY_COUNT = 3;   // 하루 일일 의뢰 개수 — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
+//   ⏸️ 베타 건의 1위가 "일일 퀘스트가 없어서 할 일이 없다" 라 5로 올릴 준비를 해 뒀지만,
+//      🧪베타(~2026-09-15) 중에는 3으로 둔다. 개수를 바꾸면 validDailyQuests 의 개수 검증에 걸려
+//      그날 진행 중이던 사람의 목록이 통째로 다시 뽑히고(포인터도 리셋),
+//      이미 3건을 다 깬 사람은 새 목록으로 보상을 한 번 더 받는다 — 베타 경제 지표가 흔들린다.
+//      베타가 끝나면 아래 셋을 함께 5로 올린다:
+//        · 여기 DAILY_COUNT 와 QUEST_COINS(= [10, 10, 15, 15, 20])
+//        · functions/api/daily-quests.js 의 NEED
+//        · scripts/serve.py 의 QUEST_NEED
+//      (셋이 어긋나면 AI 의뢰가 개수 검증에 걸려 통째로 버려진다 — tests/quests.test.mjs 가 잠근다)
+//      i18n 사전에는 /3 · /5 문구가 둘 다 들어 있어 개수만 바꾸면 된다.
 
-// 의뢰 하나당 코인. 앞이 가볍고 뒤가 무겁다 — 5건으로 늘리면서 건당 평균은 낮췄다(발행량 억제).
-const QUEST_COINS = [10, 10, 15, 15, 20];
-const QUEST_LUCKY = 3;   // 🎁럭키박스가 붙는 건수(앞에서부터). 5건 전부에 붙이면 코인 발행이 두 배가 된다
+// 의뢰 하나당 코인. 앞이 가볍고 뒤가 무겁다.
+const QUEST_COINS = [10, 15, 20];
+const QUEST_LUCKY = 3;   // 🎁럭키박스가 붙는 건수(앞에서부터). 5건으로 올릴 땐 3 을 유지한다(전부 붙이면 발행이 두 배)
 
 // 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 상태형(refreshCollectQuests).
 //   이 목록에 없는 type 을 가진 의뢰는 아무리 플레이해도 영원히 완료되지 않는다.

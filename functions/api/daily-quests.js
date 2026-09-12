@@ -38,9 +38,9 @@ const QUEST_SPEC = {
 //   캐시 키가 갈라져 Gemini 호출이 폭증한다. 그런 목표는 게임 쪽 DAILY_POOL 에만 두고
 //   js/quests.js 의 QUEST_GATES 가 거른다.
 const TYPES = Object.keys(QUEST_SPEC);
-const NEED = 5;   // 3 → 5 (2026-09-12) 베타 건의: "일일 퀘스트가 없어서 할 일이 없다"
-                  // ⚠️ js/game.js 의 DAILY_COUNT · scripts/serve.py 의 QUEST_NEED 와 반드시 같아야 한다.
-                  //    작으면 클라이언트가 validDailyQuests 검증에서 AI 의뢰를 통째로 버린다.
+const NEED = 3;   // ⚠️ js/game.js 의 DAILY_COUNT · scripts/serve.py 의 QUEST_NEED 와 반드시 같아야 한다.
+                  //    어긋나면 클라이언트가 validDailyQuests 검증에서 AI 의뢰를 통째로 버린다.
+                  //    🧪베타(~2026-09-15) 종료 후 셋을 함께 5 로 올린다.
 
 // 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
 //   사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로, 3칸으로만 받는다.
@@ -88,10 +88,10 @@ const RESPONSE_SCHEMA = {
   },
 };
 
-const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 다섯 가지 의뢰로 전한다.
+const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 세 가지 의뢰로 전한다.
 규칙:
 - 한국어. 다정하고 담백한 말투. 과장·이모지·따옴표 금지.
-- 다섯 의뢰가 하나의 하루로 이어지게 짠다. 아래는 '결'의 예시일 뿐이니, 매일 다른 결을 고른다:
+- 세 의뢰가 하나의 하루로 이어지게 짠다. 아래는 '결'의 예시일 뿐이니, 매일 다른 결을 고른다:
   · 숲에서 재료를 모으고 → 요리하고 → 카페 손님에게 낸다
   · 밭을 갈아 심고 → 물을 주고 → 거둔다
   · 나무를 베고 → 광석을 캐고 → 상점에 내다 판다
@@ -106,10 +106,10 @@ ${PHASE_RULE_KO}
 - 마을에 있는 것만 언급한다: 밭 · 집 · 카페 · 상점 · 작업대 · 자유주방 · 동굴 · 호수 · 채집 숲 · 닭장 · 나루터 · 안개 숲.
   게임에 없는 시설이나 물건(비닐하우스·시장 좌판 같은 것)을 지어내지 않는다.`;
 
-const SYSTEM_EN = `You are the Owl who hands out requests in "calm forest", a cozy healing game. You gather what the villagers need today and pass it to the player as five requests.
+const SYSTEM_EN = `You are the Owl who hands out requests in "calm forest", a cozy healing game. You gather what the villagers need today and pass it to the player as three requests.
 Rules:
 - English. Warm and understated. No exaggeration, no emoji, no quotation marks.
-- The five requests should read as one connected day. These are only examples of a "shape" — pick a different one each day:
+- The three requests should read as one connected day. These are only examples of a "shape" — pick a different one each day:
   · forage in the woods → cook → serve it to café guests
   · till and sow → water → harvest
   · chop wood → mine ore → sell it at the shop
