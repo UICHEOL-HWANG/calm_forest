@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <!-- "셋 중 하나". 통계를 문장이 아니라 그림으로 읽히게 한 표지용.
+       사람을 그리지 않는다(AI 티가 제일 잘 나는 게 얼굴이다) — 자리 셋으로 대신한다.
+       팔레트는 01_desk_night.svg 와 동일. 같은 세계로 보여야 한다.
+       ⚠️ 표지 스크림이 아래 56%를 덮는다 → 구성은 y<560 안에 둔다. -->
+
+  <rect width="1080" height="1350" fill="#1e241f"/>
+  <rect x="0" y="0" width="1080" height="560" fill="#252c28"/>
+
+  <!-- 상태 점: 둘은 꺼진 색, 하나만 액센트. 이 한 줄이 곧 "3명 중 1명"이다 -->
+  <g>
+    <circle cx="218" cy="286" r="17" fill="#46504a"/>
+    <circle cx="540" cy="286" r="17" fill="#d4703c"/>
+    <circle cx="862" cy="286" r="17" fill="#46504a"/>
+  </g>
+
+  <!-- 자리 셋. 형태는 완전히 같다 — 다른 건 오직 표시뿐이라는 뜻 -->
+  <g>
+    <!-- 왼쪽 -->
+    <rect x="96" y="336" width="244" height="176" rx="8" fill="#313832"/>
+    <rect x="108" y="348" width="220" height="152" rx="4" fill="#e8ded0" opacity=".62"/>
+    <rect x="130" y="372" width="92" height="9" rx="4" fill="#aab3aa"/>
+    <rect x="130" y="396" width="148" height="7" rx="3" fill="#c2c9c1"/>
+    <rect x="130" y="414" width="118" height="7" rx="3" fill="#c2c9c1"/>
+    <rect x="196" y="512" width="44" height="30" fill="#2b322c"/>
+    <rect x="166" y="542" width="104" height="12" rx="6" fill="#313832"/>
+
+    <!-- 가운데 — 표시된 자리. 화면만 또렷하고 커서가 액센트다 -->
+    <rect x="418" y="336" width="244" height="176" rx="8" fill="#3a423b"/>
+    <rect x="430" y="348" width="220" height="152" rx="4" fill="#fdf6ea"/>
+    <rect x="452" y="372" width="92" height="9" rx="4" fill="#8d968c"/>
+    <rect x="452" y="396" width="148" height="7" rx="3" fill="#b4bcb3"/>
+    <rect x="452" y="414" width="118" height="7" rx="3" fill="#b4bcb3"/>
+    <rect x="452" y="440" width="3" height="24" fill="#d4703c"/>
+    <rect x="518" y="512" width="44" height="30" fill="#2b322c"/>
+    <rect x="488" y="542" width="104" height="12" rx="6" fill="#313832"/>
+
+    <!-- 오른쪽 -->
+    <rect x="740" y="336" width="244" height="176" rx="8" fill="#313832"/>
+    <rect x="752" y="348" width="220" height="152" rx="4" fill="#e8ded0" opacity=".62"/>
+    <rect x="774" y="372" width="92" height="9" rx="4" fill="#aab3aa"/>
+    <rect x="774" y="396" width="148" height="7" rx="3" fill="#c2c9c1"/>
+    <rect x="774" y="414" width="118" height="7" rx="3" fill="#c2c9c1"/>
+    <rect x="840" y="512" width="44" height="30" fill="#2b322c"/>
+    <rect x="810" y="542" width="104" height="12" rx="6" fill="#313832"/>
+  </g>
+
+  <!-- 책상 상판 + 그 아래 바닥. 01_desk_night 과 같은 띠라 같은 사무실로 읽힌다 -->
+  <rect x="-20" y="554" width="1120" height="56" fill="#3d443b"/>
+  <rect x="-20" y="610" width="1120" height="740" fill="#2a302b"/>
+
+  <!-- 키보드 셋 -->
+  <g fill="#353c36">
+    <rect x="130" y="572" width="176" height="22" rx="5"/>
+    <rect x="452" y="572" width="176" height="22" rx="5"/>
+    <rect x="774" y="572" width="176" height="22" rx="5"/>
+  </g>
+
+  <!-- 의자 셋. 책상 아래가 비면 구도가 뜬다 — 01_desk_night 과 같은 의자로 메운다.
+       스크림이 위에서 아래로 짙어지며 덮으므로 자연스럽게 어둠 속으로 잠긴다 -->
+  <g>
+    <rect x="118" y="672" width="200" height="190" rx="24" fill="#232923"/>
+    <rect x="201" y="862" width="34" height="112" fill="#1f251f"/>
+    <rect x="440" y="672" width="200" height="190" rx="24" fill="#232923"/>
+    <rect x="523" y="862" width="34" height="112" fill="#1f251f"/>
+    <rect x="762" y="672" width="200" height="190" rx="24" fill="#232923"/>
+    <rect x="845" y="862" width="34" height="112" fill="#1f251f"/>
+  </g>
+
+  <!-- 가운데 자리에만 남은 종이컵. 표시된 자리가 늦게까지 있었다는 유일한 흔적 -->
+  <path d="M642 546 L694 546 L687 598 L649 598 Z" fill="#e8ded0"/>
+  <rect x="639" y="540" width="58" height="11" rx="5" fill="#d4703c"/>
+</svg>

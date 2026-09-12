@@ -1,4 +1,4 @@
-// 덱 JSON 한 개 → 카드 N장 PNG. 카피·이미지·레이아웃의 단일 소스.
+// 카드 묶음 JSON 한 개 → 카드 N장 JPEG. 카피·이미지·레이아웃의 단일 소스.
 //
 // 카드 한 장은 { kind, theme, img, eyebrow, headline, body, imgPrompt } 로 기술한다.
 //   kind      cover | body | turn | game | cta   (역할 — 배지·번호 표시가 달라진다)
@@ -8,7 +8,7 @@
 //   imgPrompt gen/ 이미지가 없을 때 generate.mjs 가 gti 에 넘길 프롬프트
 //
 // 사용: node deck.mjs decks/deck-01.json
-import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, access, readdir } from 'node:fs/promises';
 import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
@@ -86,6 +86,30 @@ if (missing.length) {
   process.exit(1);
 }
 
+// 🔁 다른 카드 묶음이 이미 쓴 이미지는 거부한다.
+//    재사용은 항상 편한 쪽이라 규칙이 없으면 그쪽으로 흘러간다. 실제로 deck-02 초안이
+//    deck-01 의 아트 3장을 그대로 돌려썼고, 팔로워 눈에는 재탕으로 보인다.
+//    카드 묶음마다 이미지는 새로 만든다 — SVG 는 새로 그리고, 게임 컷은 새로 찍는다.
+//    ⚠️ 경로가 아니라 **파일명(확장자 제외)** 으로 비교한다. deck-01 은 `gen/03_subway.png`,
+//    deck-02 초안은 `art/03_subway.svg` 를 썼다 — 경로는 다르지만 같은 그림이다.
+const stem = p => basename(p).replace(/\.[^.]+$/, '');
+const usedElsewhere = new Map();          // 파일명 → 그 이미지를 쓰는 다른 카드 묶음 slug
+for (const f of await readdir(resolve(HERE, 'decks'))) {
+  if (!f.endsWith('.json') || f.startsWith('_') || f === basename(deckPath)) continue;
+  try {
+    const other = JSON.parse(await readFile(resolve(HERE, 'decks', f), 'utf-8'));
+    for (const c of other.cards || []) usedElsewhere.set(stem(c.img), basename(f, '.json'));
+  } catch { /* 카드 묶음 하나가 깨졌다고 렌더를 막을 이유는 없다 */ }
+}
+const reused = deck.cards.map(c => c.img).filter(img => usedElsewhere.has(stem(img)));
+if (reused.length) {
+  console.error('이미 다른 카드 묶음이 쓴 이미지다:\n' +
+    reused.map(i => `  ${i}  ← ${usedElsewhere.get(stem(i))}`).join('\n') +
+    '\n→ 새 SVG 를 그리거나 `node shoot.mjs <포트> <새이름>` 으로 새로 찍을 것.' +
+    '\n   (정말 재사용하려면 ALLOW_REUSE=1)');
+  if (!process.env.ALLOW_REUSE) process.exit(1);
+}
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1080, height: 1350 }, deviceScaleFactor: 1 });
 for (const [i, card] of deck.cards.entries()) {
@@ -94,7 +118,9 @@ for (const [i, card] of deck.cards.entries()) {
   await writeFile(html, cardHtml(card, i, deck.cards.length), 'utf-8');
   await page.goto(pathToFileURL(html).href, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: resolve(outDir, name + '.png') });
+  // JPEG 고정 — 인스타 발행 API 가 JPEG 만 받는다(PNG 는 컨테이너 생성에서 거부).
+  // 어차피 인스타가 재인코딩하므로 화질 손해는 없고, 카드 묶음당 2.1MB → ~1MB 로 준다.
+  await page.screenshot({ path: resolve(outDir, name + '.jpg'), type: 'jpeg', quality: 92 });
   console.log('card', name, card.kind, '·', card.headline.split('\n')[0]);
 }
 await browser.close();

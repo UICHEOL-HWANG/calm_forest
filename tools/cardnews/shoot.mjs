@@ -45,6 +45,14 @@ export const SHOTS = {
   cta_n:         { q: 'weather=clear&time=0.72&spawn=0,-16',   wait: 1400 },
   cta_nw:        { q: 'weather=clear&time=0.72&spawn=-18,-14', wait: 1400 },
   cta_ne:        { q: 'weather=clear&time=0.72&spawn=18,-12',  wait: 1400 },
+
+  // ── deck-02 전용 컷 ───────────────────────────────────────
+  //    카드 묶음마다 이미지를 새로 만든다(deck.mjs 재사용 가드). 기존 컷을 돌려쓰지 않는다.
+  //    연못은 나루터 앞 DOCK_POND(0,0,-21.5) r=7 — js/game.js:377.
+  //    마을 간판·시세판(10,5.5)·랭킹보드(13.5,1.5)는 전부 z >= -8 이라 북쪽은 비어 있다.
+  d02_pond_sit:    { q: 'weather=clear&time=0.66&spawn=0,-16',   wait: 1500 },
+  d02_forest_dawn: { q: 'weather=clear&time=0.34&spawn=-20,-17', wait: 1500 },
+  d02_cta_pond:    { q: 'weather=clear&time=0.74&spawn=10,-20',  wait: 1500 },
 };
 
 // HUD 전부 숨김. body 직계 중 #app(Three.js 캔버스)만 남긴다 —
@@ -63,11 +71,41 @@ async function step(page, sel, timeout = 8000) {
   return true;
 }
 
+/** 실제로 플레이 화면에 들어왔는가. 인트로 레이어가 남아 있으면 아직이다. */
+async function inPlay(page) {
+  return page.evaluate(() => {
+    if (document.querySelector('#login-screen.show')) return false;
+    if (!document.body.classList.contains('playing')) return false;
+    const intro = document.querySelector('#intro-layer');
+    if (intro && getComputedStyle(intro).display !== 'none') return false;
+    return typeof window.__pos === 'function' && Array.isArray(window.__pos());
+  });
+}
+
 async function enterGame(page) {
   if (!await step(page, '#guest-btn', 30000)) throw new Error('로그인 게이트 통과 실패');  // 구글 로그인 안 씀
   if (!await step(page, '#char-confirm', 30000)) throw new Error('캐릭터 선택 실패');
-  await step(page, '#intro-skip', 4000);   // 이미 본 세이브면 안 뜬다
-  await step(page, '#tut-skip', 4000);     // 〃
+  // 예산 6초. 예전 4초는 DSF 2 에서 모자랐다 — 헤드리스가 2배 해상도로 그리면 프레임이
+  // 1/2~1/4 로 떨어지고(문서화된 기존 실측), 집 리디자인·야외 장식·배칭이 들어가며
+  // 기동이 더 느려져 스킵 버튼이 4초 안에 안 떴다.
+  await step(page, '#intro-skip', 6000);   // 이미 본 세이브면 안 뜬다
+  await step(page, '#tut-skip', 6000);     // 〃
+
+  // ⚠️ step() 은 "안 보이면 그냥 지나간다". 그래서 스킵을 놓쳐도 촬영은 계속됐고
+  //    인트로 도시가 마을 컷인 척 찍혔다(village_noon 이 밝기 170 → 72 로 바뀐 사고).
+  //    조용히 틀린 그림을 내보내느니 여기서 멈춘다.
+  for (let i = 0; i < 40; i++) {           // 최대 20초
+    if (await inPlay(page)) return;
+    await page.waitForTimeout(500);
+  }
+  const why = await page.evaluate(() => ({
+    login: !!document.querySelector('#login-screen.show'),
+    playing: document.body.classList.contains('playing'),
+    intro: !!document.querySelector('#intro-layer') &&
+           getComputedStyle(document.querySelector('#intro-layer')).display !== 'none',
+    pos: window.__pos?.() ?? null,
+  }));
+  throw new Error(`20초 안에 플레이 화면 진입 실패 — ${JSON.stringify(why)}`);
 }
 
 /** 밭: 세 칸을 갈고 심은 뒤 마지막에 몰아서 물을 준다.

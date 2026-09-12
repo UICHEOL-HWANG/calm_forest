@@ -20,6 +20,8 @@ import { onRequestPost as photoUrls } from '../functions/api/photo-urls.js';
 import { onRequestGet as leaderboard } from '../functions/api/leaderboard.js';
 import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
+import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
+import { runCardnewsCron } from '../functions/cardnews-cron.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -40,6 +42,13 @@ export default {
         if (res) return withCors(res);
       }
 
+      // 🗂️ /cardnews/* — 인스타 발행용 카드 JPEG(KV). 정적 자산보다 먼저 가로챈다.
+      //    /api/* 게이트 밖이라 CORS 를 안 씌운다 — 브라우저가 아니라 Meta 서버가 가져간다.
+      if (pathname.startsWith('/cardnews/')) {
+        if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+        return await cardnewsImg({ request, env });
+      }
+
       // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.
       return await env.ASSETS.fetch(request);
     } catch (err) {
@@ -54,6 +63,14 @@ export default {
       const res = Response.json({ error: 'Internal server error' }, { status: 500 });
       return new URL(request.url).pathname.startsWith('/api/') ? withCors(res) : res;
     }
+  },
+
+  // ⏰ Cron Trigger — 매일 깨어나 "사흘 지났나"를 판단한다.
+  //    날짜식(*/3)으로 주기를 잡으면 월말에 간격이 어긋나므로 판단을 코드가 한다.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runCardnewsCron(env).then(r => {
+      console.log(JSON.stringify({ message: 'cardnews cron', cron: event.cron, ...r }));
+    }));
   },
 };
 

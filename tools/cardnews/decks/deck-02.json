@@ -1,0 +1,70 @@
+{
+  "slug": "deck-02",
+  "title": "셋 중 하나래",
+  "note": "소재: 뉴스(다인 상반기 분석). 통계는 2번 카드 한 장에만 두고 나머지는 1인칭으로 간다 — 카드 전체가 기사 요약이 되면 브랜드 계정이 아니라 뉴스 계정이 된다.",
+  "source": {
+    "title": "다인, 상반기 직장인 스트레스 주의·위험군 36.3% 분석",
+    "outlet": "로이슈 외 (이투데이·전자신문 동일 사안)",
+    "date": "2026-09-08",
+    "link": "https://news.google.com/rss/articles/CBMiekFVX3lxTE9oOFo0bW1WcHdhUHFfeWh3QVN5bWxsUmtVQjAzS0pzdWc1dXFQSV9wSlFYMms4WVJSM3BKZzNRWUgxWkRIYUc4amllMHczS2tEMUt4ZTltcmE3TEhGU3VVVjlFV1A4T0xBN0VQTGljeWYyTEMybkZ1VmRB?oc=5",
+    "caveat": "제목만 확인했다. 본문 미확인 — 카드에는 제목이 말하는 범위 밖을 쓰지 않는다."
+  },
+  "caption": "직장인 4465명을 봤더니 36.3%가 스트레스 주의나 위험이었다.\n셋 중 하나다.\n(다인 2026 상반기 분석)\n\n나는 그냥 좀 피곤한 줄 알았다.\n퇴근하고 쉰다고 앉으면 또 화면만 봤다.\n\n그래서 남는 걸 하나 두기로 했다.\n숲에 자리 하나. 물을 주면 다음 날 아침에 커져 있다.\n\n설치 없다. 주소만 치면 열린다.\ncalmforest.cloud\n\n#캄포레스트 #직장인스트레스 #회사생활 #직장인일상 #퇴근후\n#힐링게임 #농장게임 #방치형게임 #무료게임 #웹게임 #게임추천",
+  "cards": [
+    {
+      "kind": "cover",
+      "theme": "dark",
+      "img": "art/05_three_desks.svg",
+      "headline": "셋 중 하나래\n내가 그 하나인가"
+    },
+    {
+      "kind": "body",
+      "theme": "dark",
+      "img": "art/06_survey_grid.svg",
+      "eyebrow": "직장인 4465명 분석",
+      "headline": "36.3%가 스트레스\n주의 아니면 위험",
+      "body": "다인 2026 상반기.",
+      "imgNote": "SVG 고정 — 60칸 중 22칸(36.3%)이 정확해야 한다. 생성기는 개수를 못 지킨다."
+    },
+    {
+      "kind": "body",
+      "theme": "dark",
+      "img": "gen/d02_03_alarm_dawn.png",
+      "eyebrow": "나는",
+      "headline": "그냥 좀 피곤한\n줄 알았다",
+      "imgPrompt": "Flat vector illustration. No people, no faces, no readable text. A dark bedroom just before dawn: a nightstand holding a phone lying face-up with its screen still lit, a glass of water beside it, the corner of a bed with the duvet thrown back on one side, and a window where thin cold dawn light leaks between nearly-closed curtains. Charcoal #1a1f1b and #202621 for the room, warm cream #e8ded0 for the lit phone screen, cool slate #33404a for the dawn light, a single terracotta #d4703c accent as one small notification dot on the screen. Muted desaturated palette only. Flat shapes with hard edges, no gradients, no texture, no lens flare, no bokeh, no glow effects. Vertical composition. Leave the lower third dark and empty — text will be placed there."
+    },
+    {
+      "kind": "body",
+      "theme": "dark",
+      "img": "gen/d02_04_sofa_glow.png",
+      "eyebrow": "퇴근하고",
+      "headline": "쉰다고 앉았는데\n또 화면만 봤다",
+      "imgPrompt": "Flat vector illustration. No people, no faces, no readable text. A living room at night lit only by a wall-mounted screen: a long low sofa seen straight on with one cushion pressed down, a remote control fallen between the cushions, a low table in front holding one paper cup. The rest of the room is unlit. Charcoal #1c211d and #232a25 for the room, pale grey-green #cfd8d0 for the glowing screen, a single terracotta #d4703c accent on the cup rim. Muted desaturated palette only. Flat shapes with hard edges, no gradients, no texture, no lens flare, no bokeh, no glow effects. Vertical composition. Leave the lower third dark and empty — text will be placed there."
+    },
+    {
+      "kind": "turn",
+      "theme": "light",
+      "img": "shots/d02_forest_dawn.png",
+      "eyebrow": "그래서",
+      "headline": "남는 걸 하나\n두기로 했다",
+      "body": "숲에 자리 하나."
+    },
+    {
+      "kind": "game",
+      "theme": "light",
+      "img": "shots/d02_pond_sit.png",
+      "eyebrow": "오늘 한 일",
+      "headline": "연못에 앉아 있었다",
+      "body": "그게 다다. 그걸로 됐다."
+    },
+    {
+      "kind": "cta",
+      "theme": "light",
+      "img": "shots/d02_cta_pond.png",
+      "eyebrow": "설치 없음 · 무료",
+      "headline": "calmforest.cloud",
+      "body": "치면 바로 열린다."
+    }
+  ]
+}

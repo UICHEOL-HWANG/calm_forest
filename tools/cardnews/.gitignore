@@ -3,3 +3,6 @@ out/
 gen/
 shots/
 _dbg*.mjs
+
+# 뉴스 후보(매번 재수집 가능) — 기록으로 남길 이유가 없다
+decks/_inbox/
