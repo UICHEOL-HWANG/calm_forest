@@ -41,6 +41,7 @@ import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [�
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
 import { buildHouseModel, mountHouseAddons } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
+import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -499,6 +500,9 @@ function setSpaceVisible() {
   if (riverGroup) riverGroup.visible = atRiver;
   if (mistGroup) mistGroup.visible = atMist;
   if (seaGroup) seaGroup.visible = atSea;
+  // 🌓 그림자: 마을에서만 섀도맵을 갱신한다. 어떤 공간을 멈출지는 js/shadow-scope.js(SUBSPACE_FLAGS).
+  //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
+  setShadowActive(shadowActiveFor({ indoor, atFarm, atMine, atCafe, atRiver, atMist, atSea }));
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe) startRainSound();
   else stopRainSound();
@@ -1837,7 +1841,10 @@ export async function enterGame() {
     };
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
-    window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
+    window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, shadowAuto: renderer.shadowMap.autoUpdate, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
+    // 🌓 그림자·드로우콜 검수용 즉시 입퇴장 — __house·__mine 과 같은 패턴(마을 밖 공간 전부)
+    window.__space = { farm: [enterFarm, exitFarm], cafe: [enterCafe, exitCafe], river: [enterRiver, exitRiver],
+      mist: [enterMist, exitMist], sea: [enterSea, exitSea], house: [enterHouse, exitHouse], mine: [enterMine, exitMine] };
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
     window.__decor = (id, x, z, rot = 0) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true);   // 가구 무료 배치(검수용)
@@ -2009,6 +2016,20 @@ function initLights() {
   sunLight.shadow.camera.top = 20; sunLight.shadow.camera.bottom = -20;
   sunLight.shadow.bias = -0.0005; sunLight.shadow.radius = 6;
   scene.add(sunLight); scene.add(sunLight.target);
+}
+
+// 🌓 섀도맵 갱신 스위치 — 마을 밖 인스턴스 공간에서는 보이는 그림자가 없는데도 마을 캐스터
+//   180여 개가 매 프레임 섀도맵에 계속 렌더된다. 그 공간에 있는 동안 갱신을 멈추면 화면은
+//   그대로인 채 그림자 패스가 빠진다(실측 2026-09-12: 실내 −132~153콜, 동굴 −184~205콜,
+//   태양 각도 5개 전부에서 바뀐 픽셀 0 — 같은 절차로 마을은 9~44% 가 틀어지는 대조군 조건에서).
+//   어떤 공간이 해당되는지와 그 근거(기하 6곳 + 실측 예외인 실내)는 js/shadow-scope.js 참고.
+//   ⚠️ shadowMap.enabled 를 끄면 머티리얼 셰이더가 전부 재컴파일돼 진입할 때 프레임이 튄다.
+//   autoUpdate 만 끊으면 셰이더는 그대로 두고 그림자 패스만 건너뛴다.
+function setShadowActive(on) {
+  if (!renderer) return;                             // 부팅 전(어트랙트 씬 준비 중) 호출 방어
+  if (renderer.shadowMap.autoUpdate === on) return;
+  renderer.shadowMap.autoUpdate = on;
+  if (on) renderer.shadowMap.needsUpdate = true;     // 마을로 돌아오면 그 프레임에 한 번 갱신
 }
 
 function clayMat(color, flat = true) {
