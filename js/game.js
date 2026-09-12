@@ -1905,7 +1905,8 @@ function applySave(saved) {
       }
       updatePlotVisual(plot);
     });
-    syncFarmSoil(true);   // 🌾 복원된 밭을 인스턴스 버퍼에 반영
+    syncFarmSoil(true);    // 🌾 복원된 밭을 인스턴스 버퍼에 반영
+    syncFarmCrops(true);   // 🌱 복원된 작물을 인스턴스 버퍼에 반영
   }
 }
 
@@ -9620,6 +9621,7 @@ let farmSoilMesh = null;        // InstancedMesh — 흙
 let farmRidgeMesh = null;       // InstancedMesh — 이랑 3줄(칸당 RIDGE_PER_PLOT개)
 let farmSoilCap = 0;            // 현재 버퍼 용량
 let farmSigPrev = NaN;          // 마지막으로 버퍼를 쓴 시점의 시그니처
+let farmCropMeshes = null;      // { sprout, stem, leaf, bush, fruit } — 단계별 InstancedMesh
 const _fmM = new THREE.Matrix4(), _fmC = new THREE.Color();
 
 function buildFarmInstances(cap = PLOT_CAP) {
@@ -9646,6 +9648,32 @@ function buildFarmInstances(cap = PLOT_CAP) {
   farmRidgeMesh.castShadow = false; farmRidgeMesh.receiveShadow = true;
   farmRidgeMesh.count = 0; farmRidgeMesh.frustumCulled = false;
   scene.add(farmRidgeMesh);
+
+  // 🌱 작물 — 단계별 지오메트리는 고정, 색은 인스턴스 색으로(열매는 작물종 색, 나머지는 시듦 여부만).
+  //   ⚠️ 전부 인스턴스 색을 쓴다 — sprout/stem/leaf/bush 도 시들면 갈색으로 바뀌어야 하기 때문
+  //   (원래 wiltPlot 은 traverse 로 작물 그룹 전체를 물들였다. fruit 만 색을 입히면 새싹·줄기 단계에서
+  //   시들어도 색이 그대로라 "기능 변화 0" 을 깬다 — task-4-report 자체 검증에서 발견).
+  //   flat 은 기존 clayMat(color, flat) 의 그 인자 — 원래 sprout/stem/leaf/bush 는 flatShading:true(각진 클레이 룩),
+  //   fruit 만 flatShading:false(매끈)였다. 색이 인스턴스로 옮겨가도 이 구분은 그대로 유지한다.
+  const mk = (geo, count, flat = true) => {
+    const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 0.95, metalness: 0, flatShading: flat,
+    }), count);
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+    m.castShadow = true; m.receiveShadow = true; m.count = 0; m.frustumCulled = false;
+    scene.add(m);
+    return m;
+  };
+  if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) scene.remove(farmCropMeshes[k]);
+  farmCropMeshes = {
+    sprout: mk(new THREE.ConeGeometry(0.09, 0.3, 5), cap),
+    stem:   mk(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), cap),
+    leaf:   mk(new THREE.SphereGeometry(0.14, 8, 6), cap * 2),
+    bush:   mk(new THREE.IcosahedronGeometry(0.3, 0), cap),
+    fruit:  mk(new THREE.IcosahedronGeometry(0.19, 0), cap, false),
+  };
+  farmCropSigPrev = NaN;
 }
 
 // 전체 버퍼 다시 쓰기 — 시그니처가 바뀌었을 때만. force 는 부팅·복원용.
@@ -9680,9 +9708,78 @@ function syncFarmSoil(force = false) {
   farmRidgeMesh.instanceMatrix.needsUpdate = true;
 }
 
+// 🌱 작물 인스턴스 버퍼 — 단계가 바뀔 때만 다시 쓴다(성장도는 단계 안에서 모양이 안 변한다)
+let farmCropSigPrev = NaN;
+function cropsSignature() {
+  let sig = plots.length | 0;
+  for (const p of plots) {
+    sig = (Math.imul(sig, 31) + (p.x | 0)) | 0;
+    sig = (Math.imul(sig, 31) + (p.z | 0)) | 0;
+    sig = (Math.imul(sig, 31) + (p.crop ? p.stage + 2 : 0)) | 0;
+    sig = (Math.imul(sig, 31) + (p.wilted ? 1 : 0)) | 0;
+  }
+  return sig;
+}
+function syncFarmCrops(force = false) {
+  if (!farmCropMeshes) return;
+  const sig = cropsSignature();
+  if (!force && sig === farmCropSigPrev) return;
+  farmCropSigPrev = sig;
+  const M = farmCropMeshes;
+  let nSprout = 0, nStem = 0, nLeaf = 0, nBush = 0, nFruit = 0;
+  const LEAF = [[-0.16, 0.3], [0.16, 0.42]];
+  const base = 0.26;                                   // 기존 crop 그룹의 position.y
+  const WILT_COL = 0x9a844f;                            // 🥀 시든 색 — 기존 wiltPlot 이 모든 파츠에 칠하던 그 색
+  for (const p of plots) {
+    if (!p.crop) continue;
+    const s = popScale(p.cropPop || 0);
+    if (p.stage === 0) {
+      _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, base + 0.15 * s, p.z);
+      M.sprout.setMatrixAt(nSprout, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : 0x9be89b);
+      M.sprout.setColorAt(nSprout++, _fmC);
+    } else if (p.stage === 1) {
+      _fmM.makeScale(s, s, s); _fmM.setPosition(p.x, base + 0.25 * s, p.z);
+      M.stem.setMatrixAt(nStem, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : PAL.sprout);
+      M.stem.setColorAt(nStem++, _fmC);
+      _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+      for (const [lx, ly] of LEAF) {
+        _fmM.makeScale(s, 0.5 * s, 0.7 * s);
+        _fmM.setPosition(p.x + lx * s, base + ly * s, p.z);
+        M.leaf.setMatrixAt(nLeaf, _fmM);
+        M.leaf.setColorAt(nLeaf++, _fmC);
+      }
+    } else if (p.stage === 2) {
+      _fmM.makeScale(s, 0.82 * s, s);
+      _fmM.setPosition(p.x, base + 0.32 * s, p.z);
+      M.bush.setMatrixAt(nBush, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+      M.bush.setColorAt(nBush++, _fmC);
+      _fmM.makeScale(s, s, s);
+      _fmM.setPosition(p.x, base + 0.56 * s, p.z);
+      M.fruit.setMatrixAt(nFruit, _fmM);
+      _fmC.setHex(p.wilted ? WILT_COL : (p.cropType?.fruit ?? PAL.crop));
+      M.fruit.setColorAt(nFruit++, _fmC);
+    }
+  }
+  M.sprout.count = nSprout; M.stem.count = nStem; M.leaf.count = nLeaf;
+  M.bush.count = nBush; M.fruit.count = nFruit;
+  for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) {
+    M[k].instanceMatrix.needsUpdate = true;
+    M[k].instanceColor.needsUpdate = true;
+  }
+}
+
 // 팝 중인 칸만 매 프레임 갱신 — 아무도 안 튀면 버퍼를 건드리지 않는다(인스턴싱 이득 보존)
 function updateFarmPops(dt) {
   if (!farmSoilMesh) return;
+  // 🌱 작물 팝 — 흙 팝과 독립 사건이다. 씨앗 심기·단계 상승은 흙이 그대로인 채 작물만 튀는
+  //   가장 흔한 경우라, 아래 흙 쪽 조기 반환에 갇히면 안 된다(브리프 결함 수정 — task-4-brief §Step5 참고).
+  let cropPopping = false;
+  for (const p of plots) if ((p.cropPop || 0) > 0) { p.cropPop = Math.max(0, p.cropPop - dt * 3); cropPopping = true; }
+  if (cropPopping) syncFarmCrops(true);
+
   const idx = poppingPlots(plots);
   if (!idx.length) return;
   for (const i of idx) {
@@ -10041,7 +10138,7 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   ui.toast?.(`${plot.cropType?.name || '작물'} +1 수확! 🌾`);
   spawnFloatText(plot.x, 1.1, plot.z, '+1 🥕', '#c05a2a'); // 획득 표시
   spawnSparkle(plot.x, 0.7, plot.z, 24); // [파티클] 반짝이 폭발
-  if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
+  clearCrop(plot);          // 🌱 작물 인스턴스 버퍼에서도 제거
   plot.state = 'empty'; plot.growth = 0; plot.stage = -1; plot.watered = false;
   updatePlotVisual(plot);
   refreshCovers();          // 🛡️ 수확한 빈 밭에선 덮개 표시 제거
@@ -10101,20 +10198,20 @@ function updatePlots(dt) {
   updateFarmPops(dt);   // 🌾 팝 중인 칸만 행렬 갱신
 }
 
-// 시들기: 갈색으로 축 처지고 'wilted' 상태로(괭이로 다시 심어야 함)
+// 시들기: 누런 색으로(괭이로 다시 심어야 함)
+//   ⚠️ 인스턴스 전환으로 기울어짐(rotation.z)·눌림(scale.y)은 버렸다 — 시든 상태는 색만으로도
+//   충분히 읽히고, 회전까지 넣으면 syncFarmCrops 가 복잡해진다(의도적 연출 축소, task-4-brief §Step4).
 function wiltPlot(plot) {
   plot.wilted = true; plot.state = 'wilted';
-  if (plot.crop) {
-    plot.crop.traverse(o => { if (o.material && o.material.color) { o.material = o.material.clone(); o.material.color.set(0x9a844f); } });
-    plot.crop.rotation.z = 0.5; plot.crop.scale.y *= 0.6;
-  }
+  syncFarmCrops(true);              // 🥀 시든 색(0x9a844f)은 인스턴스 색으로
   setPlotWarn(plot, false);
   ui.toast?.('🥀 작물이 시들었어요… 괭이로 다시 심어요');
 }
 
+// 단계별 작물 — 메시는 farmCropMeshes(InstancedMesh)가 그린다. 여기선 상태만 바꾸고 버퍼를 갱신한다.
 function clearCrop(plot) {
-  if (plot.crop) { plot.group.remove(plot.crop); plot.crop = null; }
-  plot.crop = null;
+  plot.crop = null; plot.cropPop = 0;
+  syncFarmCrops(true);
 }
 
 // 밭 위 '물!' 경고 스프라이트 토글(공유 텍스처)
@@ -10201,34 +10298,14 @@ function refreshCropStage(plot) {
     spawnSparkle(plot.x, 0.7, plot.z, 8);
     ui.toast?.(`🌾 ${plot.cropType?.name || '작물'}가 다 자랐어요! 낫으로 수확하세요`);
   }
+  syncFarmCrops(true);   // 🌱 단계 전환을 인스턴스 버퍼에 반영(buildCropStage 안에서도 부르지만, 여기서도 명시)
 }
 
-// 단계별 작물 메시(그룹 scale=1, 크기는 지오메트리로 → updatePops 팝과 호환)
+// 단계별 작물 — 메시는 farmCropMeshes(InstancedMesh)가 그린다. 여기선 상태만 바꾸고 팝을 건다.
 function buildCropStage(plot) {
-  if (plot.crop) plot.group.remove(plot.crop);
-  const g = new THREE.Group(); g.position.y = 0.26;
-  const col = plot.cropType?.fruit ?? PAL.crop;
-  if (plot.stage === 0) {
-    // 새싹: 작고 연두
-    const sprout = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 5), clayMat(0x9be89b));
-    sprout.position.y = 0.15; g.add(sprout);
-  } else if (plot.stage === 1) {
-    // 자람: 중간 줄기 + 잎
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), clayMat(PAL.sprout));
-    stem.position.y = 0.25; g.add(stem);
-    [[-0.16, 0.3], [0.16, 0.42]].forEach(([lx, ly]) => {
-      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), clayMat(PAL.cropLeaf));
-      leaf.scale.set(1, 0.5, 0.7); leaf.position.set(lx, ly, 0); g.add(leaf);
-    });
-  } else {
-    // 수확가능: 무성한 잎 + 열매 톡 보임
-    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), clayMat(PAL.cropLeaf));
-    bush.position.y = 0.32; bush.scale.set(1, 0.82, 1); g.add(bush);
-    const fruit = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), clayMat(col, false));
-    fruit.position.y = 0.56; g.add(fruit);
-  }
-  plot.group.add(g); plot.crop = g;
-  g.userData.pop = 1; g.scale.setScalar(0.01);   // 단계 전환 시 톡 튀는 팝 스케일
+  plot.crop = true;          // "작물이 있다" 플래그 — 기존 코드가 truthy 검사만 한다
+  plot.cropPop = 1;          // 단계 전환 시 톡 튀는 팝
+  syncFarmCrops(true);
 }
 
 // =============================================================
