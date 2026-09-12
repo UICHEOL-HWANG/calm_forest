@@ -2205,7 +2205,13 @@
       },
       introFade(a) { $('intro-fade').style.opacity = a; },
       // 🛏️ 자는 동안의 암전. a=1 덮기 / a=0 걷기 — .on 은 덮인 동안 입력을 막는 용도
-      sleepFade(a) { const el = $('sleep-fade'); el.style.opacity = a; el.classList.toggle('on', a > 0); },
+      //   ⚠️ a=0 일 때 .on 을 바로 빼면 화면이 아직 새까만 0.7초 동안 탭이 통과한다 —
+      //   전환이 끝난 뒤에 푼다(game.js 의 sleeping 해제 타이밍과 맞춘다).
+      sleepFade(a) {
+        const el = $('sleep-fade'); el.style.opacity = a;
+        if (a > 0) { clearTimeout(el._unlock); el.classList.add('on'); }
+        else el._unlock = setTimeout(() => el.classList.remove('on'), 700);
+      },
       introTitle(on) { $('intro-title').classList.toggle('show', !!on); },
       // 📖 메인 퀘스트 칩 갱신 — game.js(syncStory)가 진행 변화 때마다 호출
       setStory(v) {

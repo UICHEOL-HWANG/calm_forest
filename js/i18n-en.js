@@ -99,12 +99,14 @@ export const EN = {
   '(또는 탭)으로 다시 들어 옮기고, 든 채로 여기서': '(or tap) to pick it up and move it, or while holding it,',
   '할 수 있어요 ·': 'from here ·',
   '옮기기': 'Move',
-  '자기': 'Sleep',
+  '🛏️ 침대 · 자기': '🛏️ Bed · Sleep',   // '자기' 단독 키는 위험(자기 자신·자기장) — 전체 문장을 정확 키로
   '🛏️ 밤에 누우면 아침까지 잘 수 있어요': '🛏️ Lie down at night and sleep until morning',
   '☀️ 잘 잤어요 — 아침이에요': '☀️ Slept well — it\'s morning',
   '🛏️ 침대를 놓아뒀어요 — 밤에 누우면 아침까지 자요': '🛏️ A bed is set up for you — lie down at night to sleep until morning',
   '🛏️ 침대를 창고에 넣어뒀어요 — 🎨꾸미기에서 꺼내 놓아요': '🛏️ Your bed is in storage — place it from 🎨Decorate',
   '밤에 누우면 아침까지 자요': 'Lie down at night to sleep until morning',
+  '침대 옮기기': 'Moving the bed',
+  '밤엔 침대를 직접 탭하면 옮겨요': 'At night, tap the bed itself to move it',
   '보유 {0}': 'Owned {0}',
   '{0} {1}을(를) 창고에 넣었어요': 'Put {0} {1} in storage',
   // ── 🪵 야외 장식 옮기기·🧺 보관(작업대 제작품, 실내 가구와 같은 문법) ──
@@ -534,7 +536,7 @@ export const EN = {
   '📜 퀘스트': '📜 Quests',
   '이번 주 완료한 의뢰': 'Requests completed this week',
   '{0} — 매주 월요일 새로 시작해요': '{0} — resets every Monday',
-  '{0}위': '#{0}',
+  '{0#}위': '#{0}',
   '불러오는 중… 🌿': 'Loading… 🌿',
   '아직 기록이 없어요.': 'No records yet.',
   '{0}의 첫 주인공이 되어보세요!': 'Be the first hero of {0}!',
@@ -543,7 +545,7 @@ export const EN = {
   '아직 이 보드에 내 기록이 없어요 — 지금 만들어봐요!': 'You\'re not on this board yet — go set a record!',
   '순위를 불러오지 못했어요.': 'Couldn\'t load the rankings.',
   '잠시 후 다시 열어주세요 🌧️': 'Please try again in a bit 🌧️',
-  '{0}건': '{0} done',
+  '{0#}건': '{0} done',
   '🎣 물고기': '🎣 Fish',
   '🌾 작물': '🌾 Crops',
   '⛏️ 광물': '⛏️ Minerals',
@@ -934,7 +936,7 @@ export const EN = {
   '의뢰 {0}/3': 'Quests {0}/3',
   '요리 {0}/1 · 서빙 {1}/1': 'Cooking {0}/1 · Serving {1}/1',
   '정화 {0}/1': 'Purified {0}/1',
-  '{0}장 완료 — {1}': 'Chapter {0} Complete — {1}',
+  '{0#}장 완료 — {1}': 'Chapter {0} Complete — {1}',
   '{0}\n\n🦉 의뢰 올빼미가 당신의 이야기를 기록했어요. 보상 🪙{1}{2}': '{0}\n\n🦉 The Errand Owl wrote your story down. Reward 🪙{1}{2}',
   '\n\n다음 이야기 — {0} {1}장 「{2}」: {3}': '\n\nNext up — {0} Chapter {1}, "{2}": {3}',
   '📖 지난 이야기 {0}장까지의 기록이 정리됐어요 (+보상)': '📖 Your story so far is all written down — through Chapter {0} (+rewards)',
@@ -1295,7 +1297,7 @@ export const EN = {
   // ── ⚠️ 캐치올 꼬리 패턴 — 반드시 사전 맨 끝에 둔다 ──────────────
   //    PATTERNS 는 삽입 순서로 첫 매치를 쓴다. 이 셋을 위쪽에 두면
   //    "…60초"·"…3회" 로 끝나는 **모든** 구체 문장을 먼저 삼켜 버린다.
-  '{0}초': '{0}s',
-  '{0}회': '{0}x',
-  '{0}점': '{0} pts',
+  '{0#}초': '{0}s',
+  '{0#}회': '{0}x',
+  '{0#}점': '{0} pts',
 };
