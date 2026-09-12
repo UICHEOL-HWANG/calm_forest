@@ -31,6 +31,21 @@ export function maxId(list) {
   return (Array.isArray(list) ? list : []).reduce((m, n) => Math.max(m, Number(n?.id) || 0), 0);
 }
 
+/**
+ * 펼친 채로 보여줄 소식 id 들. 나머지는 제목 한 줄로 접는다.
+ *   · 안 읽은 소식(id > seenId)은 전부 펼친다 — 새로 온 건 읽으라고 띄우는 거니까.
+ *   · 다 읽은 상태(소식함을 다시 열었을 때)면 가장 최근 하나만 펼친다 — 전부 접힌 화면은 빈칸처럼 보인다.
+ * 공지 하나가 200자를 넘어서, 쌓이면 본문을 전부 펼쳐 잇는 방식은 스크롤 벽이 된다.
+ */
+export function expandedIds(list, seenId) {
+  const rows = (Array.isArray(list) ? list : []).filter(n => n && Number.isFinite(Number(n.id)));
+  if (!rows.length) return [];
+  const since = Number(seenId) || 0;
+  const unread = rows.filter(n => Number(n.id) > since).map(n => Number(n.id));
+  if (unread.length) return unread;
+  return [maxId(rows)];
+}
+
 /** 1:1 답장이면 원문 한 줄(앞 60자, 줄바꿈→공백). 전체 공지거나 원문을 못 읽으면 null. */
 export function quoteLine(n) {
   if (!n?.reply_to) return null;

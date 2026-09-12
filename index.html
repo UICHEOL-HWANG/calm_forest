@@ -267,6 +267,14 @@
   .nt-item h3 { margin: 0 0 6px; font-size: 15px; }
   .nt-quote { margin: 0 0 8px; padding: 6px 10px; background: #f3f6f2; border-left: 3px solid var(--mint); border-radius: 6px; font-size: 12.5px; opacity: .8; }
   .nt-body { margin: 0; font-size: 14px; line-height: 1.6; opacity: .9; white-space: pre-line; overflow-wrap: anywhere; }
+  /* 접힌 지난 소식 — 제목 한 줄만. 줄 전체가 버튼이라 폰에서도 누르기 쉽다 */
+  .nt-item.nt-fold { padding: 0; }
+  .nt-toggle { display: block; width: 100%; padding: 11px 0; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .nt-toggle .nt-head { margin-bottom: 2px; }
+  .nt-toggle h3 { font-weight: 600; opacity: .75; }
+  .nt-item.open .nt-toggle h3 { opacity: 1; }
+  .nt-item.nt-fold h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; }
+  .nt-caret { opacity: .55; font-size: 13px; flex: none; }
   .nt-empty { text-align: center; opacity: .7; font-size: 14px; margin: 8px 0 20px; }
   #char-layout { display: flex; gap: 16px; align-items: stretch; text-align: left; }
   #char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1 1 auto; align-content: start; }
@@ -1735,7 +1743,7 @@
 
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
-    import { pickText, quoteLine } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용
+    import { pickText, quoteLine, expandedIds } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·펼침 대상
     import { IS_TOSS, IS_ITCH } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen } from './js/game.js';
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
@@ -2253,11 +2261,13 @@
       },
       // 📮 소식함 — kind 'new'(출석 직후: 안 읽은 것만) / 'inbox'(메뉴: 최근 목록). 닫으면 notice-ok 리스너가 읽음 처리
       //    유저·관리자 문자열은 전부 textContent 로만 넣는다(innerHTML 금지). 영어 모드 본문은 pickText 가 *_en 우선
-      showNotices(list, kind = 'inbox') {
+      showNotices(list, kind = 'inbox', seenId = 0) {
         $('notice-title').textContent = kind === 'new' ? '📮 새 소식' : '📮 소식함';
         const wrap = $('notice-list'); wrap.innerHTML = '';
         const rows = [...(list || [])].sort((a, b) => b.id - a.id);   // 최신이 위
         if (!rows.length) { const p = document.createElement('p'); p.className = 'nt-empty'; p.textContent = '아직 온 소식이 없어요 🌱'; wrap.appendChild(p); }
+        // 공지 하나가 200자를 넘어서 다 펼치면 스크롤 벽이 된다 → 안 읽은 것만 펼치고 지난 소식은 제목 한 줄로 접는다
+        const open = new Set(expandedIds(rows, seenId));
         for (const n of rows) {
           const { title, body } = pickText(n, LANG);
           const item = document.createElement('div'); item.className = 'nt-item';
@@ -2266,9 +2276,27 @@
           const date = document.createElement('span'); date.className = 'nt-date'; date.textContent = String(n.created_at || '').slice(0, 10); head.appendChild(date);
           const h = document.createElement('h3'); h.textContent = title;
           item.append(head, h);
-          const q = quoteLine(n);
-          if (q) { const qe = document.createElement('p'); qe.className = 'nt-quote'; qe.textContent = `내 문의: ${q}`; item.appendChild(qe); }
-          const b = document.createElement('p'); b.className = 'nt-body'; b.textContent = body; item.appendChild(b);
+          // 본문(+ 답장이면 원문 인용)은 접힌 소식에선 처음엔 안 만든다 — 펼칠 때 한 번만 만든다
+          const fill = () => {
+            const q = quoteLine(n);
+            if (q) { const qe = document.createElement('p'); qe.className = 'nt-quote'; qe.textContent = `내 문의: ${q}`; item.appendChild(qe); }
+            const b = document.createElement('p'); b.className = 'nt-body'; b.textContent = body; item.appendChild(b);
+          };
+          if (open.has(Number(n.id))) { fill(); }
+          else {
+            item.classList.add('nt-fold');
+            const caret = document.createElement('span'); caret.className = 'nt-caret'; caret.textContent = '▸';
+            h.appendChild(caret);   // 제목 줄 끝에 — 날짜 줄에 붙이면 점처럼 보여서 눌리는 줄인지 모른다
+            const btn = document.createElement('button'); btn.className = 'nt-toggle'; btn.type = 'button';
+            btn.setAttribute('aria-expanded', 'false');
+            btn.append(head, h); item.appendChild(btn);
+            btn.addEventListener('click', () => {
+              if (item.classList.contains('open')) return;   // 한 번 펼치면 그대로 둔다(다시 접을 일이 없다)
+              item.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); caret.textContent = '▾';
+              fill();
+              trackEvent('notice_expand', { id: Number(n.id), kind });   // [GA4] 지난 소식을 실제로 열어보는지
+            });
+          }
           wrap.appendChild(item);
         }
         noticeShown = rows;
@@ -2871,7 +2899,7 @@
     $('inbox-btn').addEventListener('click', async () => {
       $('topleft').classList.remove('open');
       const rows = await fetchNotices(0);
-      ui.showNotices(rows, 'inbox');
+      ui.showNotices(rows, 'inbox', getGameState().noticeSeenId || 0);   // 안 읽은 것만 펼친 채로
     });
     $('notice-ok').addEventListener('click', () => {
       $('notice-modal').classList.remove('show');
