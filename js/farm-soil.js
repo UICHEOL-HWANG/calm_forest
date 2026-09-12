@@ -87,6 +87,44 @@ export function soilSignature(plots) {
   return sig;
 }
 
+/**
+ * 칸 테두리를 얼마나 어둡게 할지 0~1 — 이랑을 걷어내니 **빈 밭은 칸 구분이 0** 이 됐다.
+ * 배지가 뜨는 칸은 그걸로 알지만, 갓 갈아둔 빈 밭은 어디가 한 칸인지 알 방법이 없다.
+ * 씨앗을 어디에 심는지가 초보 이탈 지점이라 아주 얕은 이음매를 남긴다(얼룩은 그대로 이어진다).
+ *   c·r 은 칸 안 세그먼트 좌표(0..seg). 가장자리 정점만 값이 붙는다.
+ */
+export function seamAt(c, r, seg = CELL_SEG) {
+  const edge = Math.min(c, seg - c, r, seg - r);   // 테두리까지의 거리(0 = 경계)
+  return edge === 0 ? 0.22 : edge === 1 ? 0.07 : 0;
+}
+
+/**
+ * 팝 중인 칸이 땅 밑으로 얼마나 내려가 있나. 면이 하나라 칸별 스케일을 못 써서,
+ * 갓 생긴 칸을 묻었다가 끌어올리는 방식이다. pop 이 끝나면 **정확히 0** 이어야 한다
+ * (0 이 아니면 칸이 영영 가라앉은 채 남는다 — popScale 이 1 을 정확히 돌려주는 데 기댄다).
+ */
+export function soilSink(pop, popScale) {
+  return (1 - popScale(pop || 0)) * 0.45;
+}
+
+/**
+ * 팝 상태전이 — 어떤 칸의 정점 y 를 다시 써야 하는지, 그리고 다음 "내려가 있는 칸" 집합.
+ * 평상시 칸은 건드리지 않고, 막 제자리로 돌아온 칸은 **딱 한 프레임만** 쓴다.
+ *   sinks: 칸별 sink 값 배열 · sunk: 지금 내려가 있는 칸 인덱스 Set
+ *   반환 { write: number[], sunk: Set } — write 가 비면 버퍼를 올릴 필요가 없다
+ */
+export function nextSunk(sinks, sunk) {
+  const write = [];
+  const out = new Set(sunk);
+  for (let i = 0; i < sinks.length; i++) {
+    const sink = sinks[i];
+    if (sink === 0 && !out.has(i)) continue;   // 평상시 칸 — 건너뛴다
+    if (sink === 0) out.delete(i); else out.add(i);
+    write.push(i);
+  }
+  return { write, sunk: out };
+}
+
 /** 칸 하나가 만드는 정점 수 — 버퍼 크기를 미리 잡을 때 쓴다. */
 export function vertsPerCell(seg = CELL_SEG) {
   return (seg + 1) * (seg + 1);

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CELL, CELL_SEG, SPRIG_PER_PLOT, SPRIG_SPAN,
-  mottleAt, reliefAt, mottleMix, sprigOffsets, soilSignature, vertsPerCell, indicesPerCell, rng,
+  mottleAt, reliefAt, mottleMix, sprigOffsets, soilSignature, seamAt, soilSink, nextSunk, vertsPerCell, indicesPerCell, rng,
 } from '../js/farm-soil.js';
 
 test('격자 간격은 2.0 — 흙 면이 이 폭이어야 옆 칸과 맞닿는다', () => {
@@ -109,4 +109,60 @@ test('rng — 시드 고정, 0~1', () => {
     assert.ok(v >= 0 && v < 1);
     assert.equal(v, s());
   }
+});
+
+// ── 팝: 갓 생긴 칸을 묻었다 끌어올린다 ───────────────────────────
+import { popScale } from '../js/farm-render.js';
+
+test('soilSink — pop 이 끝나면 정확히 0(부동소수 잔차가 남으면 칸이 가라앉은 채 남는다)', () => {
+  assert.equal(soilSink(0, popScale), 0);
+  assert.equal(soilSink(undefined, popScale), 0);
+  assert.equal(soilSink(-0.3, popScale), 0);
+  assert.ok(soilSink(1, popScale) > 0.44, '갓 생긴 칸은 거의 다 묻혀 있어야 한다');
+  // 단조 감소 — 솟아오르다 다시 내려가면 안 된다
+  let prev = Infinity;
+  for (let p = 1; p >= 0; p -= 0.05) { const v = soilSink(p, popScale); assert.ok(v <= prev + 1e-12); prev = v; }
+});
+
+test('nextSunk — 평상시 칸은 건드리지 않는다', () => {
+  const r = nextSunk([0, 0, 0], new Set());
+  assert.deepEqual(r.write, [], '아무도 안 튀는데 버퍼를 올리고 있다');
+  assert.equal(r.sunk.size, 0);
+});
+
+test('nextSunk — 복귀는 딱 한 프레임만 쓴다', () => {
+  // 1칸이 내려가 있다가 제자리로: 그 프레임엔 쓰고, 다음 프레임엔 안 쓴다
+  let st = nextSunk([0.45, 0], new Set());
+  assert.deepEqual(st.write, [0], '내려간 칸을 안 썼다');
+  assert.deepEqual([...st.sunk], [0]);
+
+  st = nextSunk([0, 0], st.sunk);
+  assert.deepEqual(st.write, [0], '복귀 프레임에 제자리로 안 돌려놨다');
+  assert.equal(st.sunk.size, 0);
+
+  st = nextSunk([0, 0], st.sunk);
+  assert.deepEqual(st.write, [], '복귀를 두 번 이상 쓰고 있다 — 매 프레임 버퍼가 올라간다');
+});
+
+test('nextSunk — 여러 칸이 서로 다른 시점에 복귀해도 각각 한 번씩', () => {
+  let st = nextSunk([0.4, 0.2, 0], new Set());
+  assert.deepEqual(st.write, [0, 1]);
+  st = nextSunk([0.1, 0, 0], st.sunk);
+  assert.deepEqual(st.write, [0, 1], '0 은 아직 내려가 있고 1 은 복귀 프레임');
+  st = nextSunk([0, 0, 0], st.sunk);
+  assert.deepEqual(st.write, [0], '0 만 복귀 — 1 은 이미 끝났다');
+  st = nextSunk([0, 0, 0], st.sunk);
+  assert.deepEqual(st.write, []);
+});
+
+// ── 칸 경계 이음매 ─────────────────────────────────────────────
+test('seamAt — 경계 정점만 어둡고 안쪽은 건드리지 않는다', () => {
+  const seg = 4;
+  assert.ok(seamAt(0, 0, seg) > 0, '모서리는 이음매가 있어야 한다');
+  assert.ok(seamAt(0, 2, seg) > 0, '변 위도 이음매');
+  assert.ok(seamAt(seg, seg, seg) > 0, '반대쪽 모서리도 대칭이어야 한다');
+  assert.equal(seamAt(2, 2, seg), 0, '칸 한가운데는 손대면 안 된다');
+  assert.equal(seamAt(0, 0, seg), seamAt(seg, 0, seg), '좌우 비대칭이면 밭이 기울어 보인다');
+  // 너무 진하면 이랑을 되살린 꼴이다 — A안의 "이어진 흙"을 깨지 않을 만큼만
+  for (let c = 0; c <= seg; c++) for (let r = 0; r <= seg; r++) assert.ok(seamAt(c, r, seg) <= 0.25);
 });
