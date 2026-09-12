@@ -35,6 +35,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
+import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
@@ -591,6 +592,13 @@ const QUEST_HOW = {
   mine:         '⛏️ 채굴 동굴에서 괭이를 들고 광석 앞에서 액션을 눌러요',
   cook:         '🍳 자유주방에 들어가 재료가 있는 요리를 골라 만들어요',
   serve:        '☕ 카페에 들어가 손님이 말한 요리를 만들어 내드려요',
+  carve:        '🗿 작업대에서 조각 탭을 열고, 오늘의 주문 하나를 골라 깎아요',
+  egg:          '🥚 닭장에 가서 달걀을 걷어요 — 하루에 한 번 나와요',
+  gift:         '🎁 작업대에서 선물을 만들어, 주민 앞에서 가방을 열고 건네요',
+  decor:        '🪵 작업대에서 야외 장식을 만들어 마당에 놓아요',
+  boat:         '🛶 나루터에서 배를 타고 강을 끝까지 내려가요',
+  seafish:      '🌊 바다터에서 낚싯대를 던지고, 물면 힘겨루기를 버텨요',
+  mist:         '🌫️ 안개 숲에 들어가 등불을 밝히고 숲을 정화해요',
 };
 
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
@@ -641,6 +649,44 @@ const NPCS = [
     ],
   },
   {
+    // 🦡 채집 숲지기 — 마을 외곽이 텅 비었다는 베타 건의에 맞춰 숲 입구에 상주.
+    //    🐿️다람쥐·🦦수달은 ☕카페 손님 캐스트에 이미 있다(같은 동물이 밖과 카페에 동시에 있으면 헷갈린다)
+    id: 'forager', name: '숲지기 오소리', emoji: '🦡', color: 0x6b6157, hat: 0xf2efe8, skin: 0xe8e4dc, pos: [-16.5, 0, 15.5], roam: 0.5, look: 'badger',   // ⬛⬜ 잿빛 몸 + 흰 줄무늬 얼굴
+    quests: [
+      { type: 'forage', target: 5,  title: '숲 첫걸음',   desc: '🍄 채집물 5개 줍기',      reward: { seed: 4, coins: 8 },  line: '숲에 들어온 김에 다섯 개만 주워다 줄래? 어디에 뭐가 나는지 알려줄게.' },
+      { type: 'forage', target: 12, title: '바구니 가득', desc: '🍄 채집물 12개 줍기',     reward: { crop: 4, coins: 14 }, line: '겨울 준비를 해야 해. 열두 개면 바구니가 그득해질 거야!' },
+      { type: 'gift',   target: 1,  title: '이웃의 몫',   desc: '🎁 주민에게 선물 1번 주기', reward: { seed: 6, coins: 12 }, line: '주운 걸 혼자 쌓아두면 재미없잖아. 누구든 하나 나눠줘 봐.' },
+      { type: 'carve',  target: 1,  title: '나뭇결 읽기', desc: '🗿 조각 1개 완성하기',    reward: { coins: 20, gem: 1 },   line: '마지막은 손재주야 — 작업대에서 조각 하나만 완성해 보렴. 💎 값진 걸 줄게.' },
+    ],
+  },
+  {
+    // ⭐ 밤 콘텐츠 안내역 — 반딧불이 계곡 입구(밤에만 의미가 생기는 구역의 길잡이)
+    id: 'stargazer', name: '별 보는 아이', emoji: '⭐', color: 0x5b6fd0, hat: 0xffd86b, skin: 0xfde3c8, pos: [6, 0, 20.5], roam: 0.5, look: 'stargazer',   // 🔵 남색 + 별 머리핀·포충망
+    quests: [
+      { type: 'catch', target: 3, title: '첫 반딧불이', desc: '🌟 반딧불이 3마리 잡기(밤)', reward: { crop: 3, coins: 10 }, line: '밤이 되면 여기 반딧불이가 떠올라요. 세 마리만 같이 잡아요!' },
+      { type: 'gift',  target: 1, title: '나눠 주기',   desc: '🎁 주민에게 선물 1번 주기',  reward: { seed: 5, coins: 10 }, line: '예쁜 걸 보면 누구 주고 싶어져요. 선물 하나만 건네 보실래요?' },
+      { type: 'catch', target: 8, title: '별이 내린 밤', desc: '🌟 반딧불이 8마리 잡기(밤)', reward: { coins: 24, gem: 1 },  line: '여덟 마리가 모이면 계곡이 하늘처럼 보인대요. 보고 싶어요!' },
+    ],
+  },
+  {
+    // 🦆 나루터지기 — 🛶강·🌊바다는 잠길 수 있어 체인엔 넣지 않는다(일일·반복 풀에서만 나온다)
+    id: 'ferryman', name: '사공 오리', emoji: '🦆', color: 0xf0ede4, hat: 0xe8a33c, skin: 0xf5f2ea, pos: [2.5, 0, -13.5], roam: 0.5, look: 'duck',   // ⚪ 흰 몸 + 주황 부리·밀짚 삿갓·노
+    quests: [
+      { type: 'fish',         target: 4,  title: '나루 조황',   desc: '물고기 4마리 낚기',  reward: { wood: 5, coins: 10 }, line: '물때가 좋구먼. 네 마리만 낚아 보시게 — 뱃길 이야기를 들려주지.' },
+      { type: 'collect_wood', target: 15, title: '나루 손보기', desc: '목재 15개 모으기',   reward: { crop: 4, coins: 16 }, line: '선착장 널이 삭았어. 목재 열다섯이면 든든하게 고치겠군.' },
+      { type: 'fish',         target: 8,  title: '한나절 낚시', desc: '물고기 8마리 낚기',  reward: { coins: 22, gem: 1 },  line: '마지막일세 — 여덟 마리를 채우면 진짜 물가 사람이 되는 게야.' },
+    ],
+  },
+  {
+    // 🐔 목장터 — 🥚달걀은 닭장을 지어야 가능하므로 체인엔 넣지 않는다(일일·반복 풀에서만 나온다)
+    id: 'rancher', name: '목장 아주머니', emoji: '🐔', color: 0xd9694f, hat: 0xfaf3e2, skin: 0xfbe0c4, pos: [-6.5, 0, 12.8], roam: 0.5, look: 'rancher',   // 🔴 벽돌빛 저고리 + 쪽진 머리에 비녀 · 달걀 바구니
+    quests: [
+      { type: 'cook',         target: 2, title: '아침상 차리기', desc: '요리 2번 하기',            reward: { seed: 5, coins: 10 }, line: '아침은 든든해야지! 부엌에서 두 번만 만들어 봐요.' },
+      { type: 'serve',        target: 3, title: '손님맞이',     desc: '☕ 카페 손님 3명 서빙하기', reward: { crop: 4, coins: 16 }, line: '카페가 바쁘대요. 손님 세 분만 봐주면 큰 도움이 될 거예요.' },
+      { type: 'collect_crop', target: 8, title: '곳간 채우기',   desc: '작물 8개 보유',            reward: { coins: 22, gem: 1 },  line: '마지막 부탁이에요 — 작물 여덟 개면 겨울이 무섭지 않아요.' },
+    ],
+  },
+  {
     // 📋 데일리 의뢰 담당 — quests 는 매일 refreshDailyQuests() 가 날짜 시드로 채움(전원 동일)
     id: 'courier', name: '의뢰 올빼미', emoji: '🦉', color: 0xe0a52e, hat: 0x8a5c28, skin: 0xfdfaf3, pos: [-3, 0, -3], look: 'owl',   // 🦉 원숭이올빼미(크림 얼굴 + 황금 등·날개)
     daily: true, doneLine: '오늘 의뢰는 전부 끝! 내일 새 의뢰를 가져올게요 🦉',
@@ -648,7 +694,14 @@ const NPCS = [
   },
 ];
 
-const DAILY_COUNT = 3;   // 하루 일일 의뢰 개수 — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
+const DAILY_COUNT = 5;   // 하루 일일 의뢰 개수 — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
+//   3 → 5 (2026-09-12) 베타 건의 1위: "일일 퀘스트가 없어서 할 일이 없다".
+//   ⚠️ 서버도 같이 올려야 한다 — functions/api/daily-quests.js 의 NEED 와 scripts/serve.py 미러.
+//      한쪽만 올리면 AI 의뢰가 4개만 와서 validDailyQuests 검증에 걸려 통째로 버려진다.
+
+// 의뢰 하나당 코인. 앞이 가볍고 뒤가 무겁다 — 5건으로 늘리면서 건당 평균은 낮췄다(발행량 억제).
+const QUEST_COINS = [10, 10, 15, 15, 20];
+const QUEST_LUCKY = 3;   // 🎁럭키박스가 붙는 건수(앞에서부터). 5건 전부에 붙이면 코인 발행이 두 배가 된다
 
 // 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 상태형(refreshCollectQuests).
 //   이 목록에 없는 type 을 가진 의뢰는 아무리 플레이해도 영원히 완료되지 않는다.
@@ -658,6 +711,9 @@ const QUEST_TYPES = new Set([
   'chop', 'plant', 'water', 'harvest', 'fish', 'fish_rare', 'mine',
   'sell', 'cook', 'serve', 'catch', 'forage', 'house',
   'collect_wood', 'collect_crop',
+  // 🦉 의뢰가 "베고·심고·낚고" 로만 돌던 것을 넓힌다(베타: "컨텐츠가 부족하다").
+  //   이 중 일부는 전제조건이 있다 — js/quests.js 의 QUEST_GATES 가 거른다.
+  'carve', 'egg', 'gift', 'decor', 'boat', 'seafish', 'mist',
 ]);
 
 // ── 데일리 퀘스트 풀 — 매일 3개 뽑기(완료 시 코인 + 🎁럭키박스 확률 보상) ──
@@ -672,7 +728,27 @@ const DAILY_POOL = [
   { type: 'catch',   target: 3, title: '밤의 산책',    desc: '🌟 반딧불이 3마리 잡기(밤)' },
   { type: 'serve',   target: 2, title: '오늘의 접객',  desc: '☕ 카페 손님 2명 서빙하기' },
   { type: 'forage',  target: 5, title: '숲의 아침',    desc: '🍄 채집물 5개 줍기' },
+  // ↓ 게임에 있는데 의뢰로는 한 번도 안 쓰이던 것들(2026-09-12). 일부는 전제조건이 있어
+  //   js/quests.js 의 QUEST_GATES 가 거른다 — 닭장을 안 지었으면 🥚는 아예 안 뽑힌다.
+  //   target 은 QUEST_LIMITS 를 넘지 않는다(하루 1회 제한 콘텐츠는 그날 못 깨는 의뢰가 된다).
+  { type: 'carve',   target: 1, title: '오늘의 주문',  desc: '🗿 조각 1개 완성하기' },
+  { type: 'gift',    target: 1, title: '마음 전하기',  desc: '🎁 주민에게 선물 1번 주기' },
+  { type: 'decor',   target: 2, title: '마당 가꾸기',  desc: '🪵 야외 장식 2개 놓기' },
+  { type: 'egg',     target: 1, title: '아침 달걀',    desc: '🥚 달걀 걷기' },
+  { type: 'boat',    target: 1, title: '뱃길 따라',    desc: '🛶 강 한 번 완주하기' },
+  { type: 'seafish', target: 2, title: '먼바다까지',   desc: '🌊 바다 물고기 2마리 낚기' },
+  { type: 'mist',    target: 1, title: '안개 걷기',    desc: '🌫️ 안개 숲 정화하기' },
 ];
+
+// 🔒 지금 이 세이브에서 깰 수 있는 의뢰인지 판정하는 데 필요한 상태 — js/quests.js 의 게이트가 본다.
+//   ⚠️ 베타 A/B 가 끝나 맵 잠금이 항상 false 가 되어도 닭장·집 단계 조건은 계속 일한다.
+function questCtx() {
+  return {
+    coopBuilt: !!gameState.coop.built,
+    houseStage: gameState.houseStage,
+    locked: { river: mapLocked('river'), sea: mapLocked('sea'), mist: mapLocked('mist') },
+  };
+}
 
 // 세이브에 박아둔 오늘 의뢰가 그대로 쓸 만한지 — 형태와 목표 종류까지 확인한다.
 //   type 이 목록 밖이면(옛 세이브·삭제된 목표) 완료가 불가능하므로 통째로 새로 뽑는다.
@@ -687,11 +763,52 @@ function validQuest(q) {
   return !!q && QUEST_TYPES.has(q.type) && Number.isFinite(q.target) && q.target > 0 && !!q.desc;
 }
 
+// ── 🔁 주민 반복 의뢰 ─────────────────────────────────────────
+//   베타 건의: "올빼미 의뢰랑 미션들 깨다보면 미션이 없어지는 지점이 있는데 그때는 뭘 해야할지 모르겠어요".
+//   체인을 다 깬 주민이 영원히 doneLine 만 하던 것을 없앤다.
+//   ⚠️ st.idx(체인 포인터)는 절대 건드리지 않는다 — 체인 길이는 배포로 바뀌고,
+//      포인터가 범위를 벗어나면 그 주민의 대화가 통째로 깨진다.
+//      그래서 올빼미 ✨특별 의뢰와 같이 별도 슬롯(st.repeat)에 보관한다.
+//   ⚠️ 주민 전원이 매일 의뢰를 내면 코인 발행이 3배가 된다 → 하루 REPEAT_OPEN 명만 열린다.
+function refreshRepeatQuests() {
+  const today = todayStr();
+  const open = new Set(repeatNPCsFor(NPCS.map(n => n.id), dateHash('repeat')));
+  const ctx = questCtx();
+  for (const def of NPCS) {
+    const st = npcState(def.id);
+    if (st.repeat && st.repeat.date !== today) st.repeat = null;   // 어제 부탁은 소멸
+    if (!open.has(def.id)) continue;
+    if (st.idx < def.quests.length) continue;   // 아직 체인이 남았다 — 반복 의뢰는 그다음 차례
+    if (st.repeat) continue;                    // 오늘 것은 이미 정해졌다(진행 중일 수 있다)
+    const q = repeatQuestFor(def.id, dateHash('repeat'), ctx);
+    if (!q || !validQuest(q)) continue;         // 전문 분야가 전부 막혔다 → 오늘은 열지 않는다
+    st.repeat = { date: today, done: false, q: { ...q, line: `오늘은 이것 좀 도와줄래요? ${q.desc}!` } };
+    st.allDone = false; st.given = false; st.progress = 0; st.readyToasted = false;
+  }
+}
+
+// 지금 이 주민이 내주고 있는 의뢰 — 체인이 남았으면 체인, 다 깼으면 오늘의 반복 의뢰.
+//   둘 다 없으면 null(= 대화는 'done').
+function currentQuest(def, st) {
+  if (st.idx < def.quests.length) return def.quests[st.idx];
+  const r = st.repeat;
+  return (r && r.date === todayStr() && !r.done) ? r.q : null;
+}
+
+// 지금 진행 중인 게 반복 의뢰인가 — 보상 처리(친밀도·포인터)가 갈린다
+function onRepeatQuest(def, st) { return st.idx >= def.quests.length; }
+
+// 퍼널 분석용 표준 퀘스트 id. 반복 의뢰는 순번이 없으니 목표 종류로 구분한다
+//   (날짜를 넣으면 GA4 에서 매일 다른 id 가 되어 집계가 갈린다).
+function questId(def, st) {
+  return onRepeatQuest(def, st) ? `${def.id}:repeat:${st.repeat?.q?.type || '?'}` : `${def.id}:${st.idx}`;
+}
+
 // 매일 접속 시 호출 — 날짜가 바뀌면 의뢰 리셋, 아니면 그날 확정된 의뢰를 그대로 쓴다.
 //   ⚠️ 진행도는 "몇 번째(st.idx) 를 몇 개(st.progress)" 라는 순번 포인터로만 저장된다.
 //      의뢰 목록을 하루 중에 다시 뽑으면 그 포인터가 엉뚱한 의뢰를 가리켜,
 //      손도 안 댄 의뢰가 절반 차 있고 하던 진행도는 증발한다.
-//      그래서 뽑은 3개를 st.quests 에 통째로 저장해 두고 날짜가 바뀔 때까지 재생성하지 않는다.
+//      그래서 뽑은 DAILY_COUNT 개를 st.quests 에 통째로 저장해 두고 날짜가 바뀔 때까지 재생성하지 않는다.
 //      (지금은 날짜 시드라 결과가 같아 드러나지 않지만, DAILY_POOL 을 낮에 배포로 바꾸면
 //       풀 길이가 달라져 곧바로 어긋난다. 나중에 의뢰를 동적 생성하면 상시 문제가 된다.)
 function refreshDailyQuests() {
@@ -705,20 +822,31 @@ function refreshDailyQuests() {
   }
   def.doneLine = `오늘 의뢰는 전부 끝! ${forecastLine()}${forecastDexNudge()} 내일 새 의뢰 들고 올게요 🦉`; // 예보로 재방문 유도(+날씨 도감 훅)
 
-  //   ✨특별 의뢰는 st.special 에 따로 보관한다 — 일일 3개 배열에 섞어 저장하면
-  //   validDailyQuests 의 "3개" 검증에 걸려 다음 접속 때 의뢰가 통째로 다시 뽑히고 진행도가 어긋난다.
+  //   ✨특별 의뢰는 st.special 에 따로 보관한다 — 일일 배열에 섞어 저장하면
+  //   validDailyQuests 의 개수(DAILY_COUNT) 검증에 걸려 다음 접속 때 의뢰가 통째로 다시 뽑히고 진행도가 어긋난다.
   if (st.special && !validQuest(st.special)) st.special = null;   // 옛 세이브·바뀐 풀에서 온 못 깨는 의뢰는 버린다
-  const withSpecial = (three) => (st.special ? [...three, st.special] : three);
+  const withSpecial = (daily) => (st.special ? [...daily, st.special] : daily);
   if (validDailyQuests(st.quests)) { def.quests = withSpecial(st.quests); return; }   // 오늘 의뢰는 이미 확정됨
 
-  const pool = [...DAILY_POOL];
-  let h = dateHash('daily');
-  def.quests = Array.from({ length: DAILY_COUNT }, (_, i) => {
-    h = (h * 1103515245 + 12345) & 0x7fffffff;
-    const q = pool.splice(h % pool.length, 1)[0];
-    return { ...q, reward: { coins: 10 + i * 5 }, lucky: true, line: `[오늘의 의뢰 ${i + 1}/3] ${q.desc}! 완료하면 🎁럭키박스도 준다구.` };
-  });
-  st.quests = def.quests;    // 세이브에 고정 — 오늘은 이 3개로 간다
+  // ⚠️ 여기까지 왔다는 건 오늘 목록을 새로 뽑는다는 뜻이다. 그런데 st.date 가 오늘이면
+  //    위쪽 리셋을 건너뛰어 포인터(idx·progress·given)가 옛 목록 기준으로 남아 있다.
+  //    DAILY_COUNT 를 3→5 로 바꾼 배포처럼 개수가 달라지면 validDailyQuests 가 false 가 되어
+  //    "진행 중인 사람 전원" 이 이 경로를 탄다 — 포인터를 안 맞추면 손도 안 댄 의뢰가
+  //    절반 차 있고 하던 진행도는 엉뚱한 의뢰로 옮겨간다.
+  st.idx = 0; st.progress = 0; st.given = false; st.readyToasted = false; st.acceptedAt = null;
+  st.special = null;   // ✨특별 의뢰도 버린다 — 개수 검증(DAILY_COUNT)의 기준 자체가 바뀌었다
+
+  // 🔒 깰 수 있는 의뢰만 뽑는다 — 닭장을 안 지었는데 🥚가 나오면 진행도가 영원히 0 이고,
+  //    그러면 st.idx 가 못 올라가 그날 의뢰 전체가 잠긴다.
+  const picked = pickGated(DAILY_POOL, DAILY_COUNT, dateHash('daily'), questCtx());
+  // 풀 17종 중 전제조건이 걸린 건 5종뿐이라 실제로는 도달하지 않는다.
+  //   그래도 남겨 둔다 — 풀이 줄거나 게이트가 늘면 조용히 어긋나느니 오늘 건너뛰는 편이 낫다.
+  if (picked.length < DAILY_COUNT) return;
+  def.quests = picked.map((q, i) => ({
+    ...q, reward: { coins: QUEST_COINS[i] ?? 10 }, lucky: i < QUEST_LUCKY,
+    line: `[오늘의 의뢰 ${i + 1}/${DAILY_COUNT}] ${q.desc}!` + (i < QUEST_LUCKY ? ' 완료하면 🎁럭키박스도 준다구.' : ''),
+  }));
+  st.quests = def.quests;    // 세이브에 고정 — 오늘은 이 다섯으로 간다
   def.quests = withSpecial(def.quests);
 }
 
@@ -742,15 +870,18 @@ async function upgradeDailyQuestsAI() {
     if (!res.ok) return;
     raw = await res.json();
   } catch (e) { return; }                                          // 오프라인·타임아웃 → 로컬 의뢰 유지
-  if (!Array.isArray(raw) || raw.length < 3) return;
-  // 서버가 이미 걸렀지만 한 번 더 — 게임이 아는 목표만 통과시킨다(방어적 이중 검증)
-  const built = raw.slice(0, 3).map((q, i) => ({
+  if (!Array.isArray(raw) || raw.length < DAILY_COUNT) return;
+  // 서버가 이미 걸렀지만 한 번 더 — 게임이 아는 목표만 통과시킨다(방어적 이중 검증).
+  //   ⚠️ 서버는 이 세이브의 닭장·집 단계·맵 잠금을 모른다. 게이트는 여기서만 걸 수 있다.
+  const ctx = questCtx();
+  if (raw.slice(0, DAILY_COUNT).some(q => !questAvailable(String(q?.type || ''), ctx))) return;
+  const built = raw.slice(0, DAILY_COUNT).map((q, i) => ({
     type: String(q.type || ''), target: Math.round(Number(q.target)),
     title: String(q.title || '').trim(), desc: String(q.desc || '').trim(),
-    reward: { coins: 10 + i * 5 }, lucky: true,
+    reward: { coins: QUEST_COINS[i] ?? 10 }, lucky: i < QUEST_LUCKY,
     // 접두사는 사전을 타지 않는다 — 뒤에 붙는 AI 문장이 매번 달라 키가 성립하지 않는다.
     // 서버가 lang 에 맞춰 생성하므로 접두사도 같은 언어로 직접 만든다.
-    line: `[${LANG === 'en' ? `Request ${i + 1}/3` : `오늘의 의뢰 ${i + 1}/3`}] ${String(q.line || '').trim()}`,
+    line: `[${LANG === 'en' ? `Request ${i + 1}/${DAILY_COUNT}` : `오늘의 의뢰 ${i + 1}/${DAILY_COUNT}`}] ${String(q.line || '').trim()}`,
   }));
   if (!validDailyQuests(built) || built.some(q => !q.title || !q.line)) return;
   if (st.given || st.idx > 0 || st.progress > 0) return;           // 받아오는 사이에 시작했을 수 있다
@@ -802,13 +933,13 @@ const gameState = {
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
   night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
-  boat: { date: null, count: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 최고 점수, 완주 횟수, 배 업그레이드 }
+  boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, score }]. 등급은 score 에서 파생. 최대 PANTRY_MAX 칸
-  workshop: { carved: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
+  workshop: { carved: 0, carvedToday: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 오늘 완성 수(의뢰 판정용), 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
   story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
 };
@@ -951,7 +1082,9 @@ function syncBadges() {
   if (gameState.houseStage >= 3) awardBadge('house');
   if (gameState.houseStage >= MAX_HOUSE_STAGE) awardBadge('modern');   // 🏙️ 모던 하우스 증축
   const chains = NPCS.filter(n => !n.daily);   // 데일리(올빼미) 제외 상시 의뢰 체인
-  const done = chains.filter(n => gameState.npcs[n.id]?.allDone).length;
+  //   ⚠️ allDone 은 🔁반복 의뢰가 열리면 false 로 돌아간다(지금 내줄 의뢰가 있다는 뜻).
+  //   체인을 끝까지 깼는지는 포인터로 봐야 배지가 들쭉날쭉하지 않는다.
+  const done = chains.filter(n => (gameState.npcs[n.id]?.idx || 0) >= n.quests.length).length;
   if (done >= 1) awardBadge('first_chain');
   if (done === chains.length) awardBadge('all_chains');
   if (gameState.daily.streak >= 7) awardBadge('streak7');
@@ -1785,11 +1918,22 @@ export async function enterGame() {
   if (_wq.get('coop') === '1' && !gameState.coop.built) buildCoop(true);   // 테스트: ?coop=1 — 닭장 미리보기
   if (_wq.get('farm') === '1') setTimeout(() => enterFarm(), 60); // 테스트: ?farm=1 — 개인 텃밭 바로 입장(?give=seed:9 와 조합)
   refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
-  // 테스트: ?owl=1 — 오늘 일일 의뢰 3건을 끝낸 상태로 만들어 ✨특별 의뢰 배달을 바로 본다
-  //   (3건을 실제로 깨려면 한참 걸려 검수 때마다 막힌다 — ?coop=1·?sea=1 과 같은 개발용 파라미터)
+  refreshRepeatQuests();               // [반복] 체인을 다 깬 주민 중 오늘 열리는 3명
+  // 테스트: ?owl=1 — 오늘 일일 의뢰를 전부 끝낸 상태로 만들어 ✨특별 의뢰 배달을 바로 본다
+  //   (전부 깨려면 한참 걸려 검수 때마다 막힌다 — ?coop=1·?sea=1 과 같은 개발용 파라미터)
+  //   ⚠️ idx 는 DAILY_COUNT 를 따라가야 한다. 숫자를 박아 두면 개수를 바꿀 때 조건(idx >= DAILY_COUNT)이 어긋나 배달이 안 온다.
   if (_wq.get('owl') === '1') {
     const _od = NPCS.find(n => n.daily);
-    if (_od) { const _os = npcState(_od.id); _os.idx = 3; _os.given = false; _os.progress = 0; _os.allDone = true; }
+    if (_od) { const _os = npcState(_od.id); _os.idx = DAILY_COUNT; _os.given = false; _os.progress = 0; _os.allDone = true; }
+  }
+  // 테스트: ?repeat=1 — 주민 체인을 전부 끝낸 상태로 만들어 🔁반복 의뢰를 바로 본다
+  if (_wq.get('repeat') === '1') {
+    for (const _d of NPCS) {
+      if (_d.daily) continue;
+      const _s = npcState(_d.id);
+      _s.idx = _d.quests.length; _s.given = false; _s.progress = 0; _s.allDone = true; _s.repeat = null;
+    }
+    refreshRepeatQuests();   // 체인을 소진시킨 뒤 다시 — 위쪽 호출은 아직 체인이 남아 있어 아무것도 열지 않았다
   }
   upgradeDailyQuestsAI();              // 🦉 AI 의뢰는 백그라운드로 — 도착하면 조용히 교체(await 하지 않는다)
   refreshInventoryUI();
@@ -1938,7 +2082,7 @@ function applySave(saved) {
       .slice(0, PANTRY_MAX)
       .map(f => ({ id: f.id, score: Math.max(0, Math.min(100, Math.round(+f.score) || 0)) }));
   }
-  if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
+  if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, carvedToday: saved.workshop.carvedToday || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
   if (saved.nickname) gameState.nickname = saved.nickname;                          // 🏷️ 닉네임 복원
   else if (saved.npcs) gameState.story.q = Object.values(gameState.npcs).reduce((a, n) => a + (n.idx || 0), 0); // 옛 세이브: 의뢰 수 소급 추정
@@ -4184,7 +4328,7 @@ function buildRiverSpace() {
 // ── 하루 횟수 / 업그레이드 ──────────────────────────────────
 function boatDaily() {
   const st = gameState.boat;
-  if (st.date !== todayStr()) { st.date = todayStr(); st.count = 0; }   // 자정 지나면 리셋
+  if (st.date !== todayStr()) { st.date = todayStr(); st.count = 0; st.clearsToday = 0; }   // 자정 지나면 리셋
   return st;
 }
 function boatRunsLeft() { return Math.max(0, BOAT_RUNS_PER_DAY - boatDaily().count); }
@@ -4430,7 +4574,11 @@ function endBoatRun(result) {
   const score = distM + boat.stars * 8 + rareCount * 40 + (result === 'clear' ? 200 : 0);
   const best = score > (gameState.boat.best || 0);
   if (best) gameState.boat.best = score;
-  if (result === 'clear') gameState.boat.clears = (gameState.boat.clears || 0) + 1;
+  if (result === 'clear') {
+    gameState.boat.clears = (gameState.boat.clears || 0) + 1;
+    boatDaily().clearsToday = (gameState.boat.clearsToday || 0) + 1;   // 오늘치 — 🛶 의뢰는 이 값을 읽는다
+    refreshCollectQuests();   // 보상(giveReward)은 별조각·희귀가 있을 때만 나가므로 여기서 직접 갱신한다
+  }
   if (result === 'clear' && boat.hits === 0) gameState.boat.perfect = (gameState.boat.perfect || 0) + 1;   // 🌊 무피해 완주(배지 소급용)
 
   clearRiverObjects();
@@ -5888,6 +6036,7 @@ function seaCatch() {
   spawnFloatText(player.position.x, 2.0, player.position.z - 1, `${sp.ico} ${sp.name} ${w}kg!`, '#2e6a9d', 1.25);
   ui.toast?.(`${sp.ico} ${sp.name} ${w}kg — 무게를 기록하고 바다로 돌려보냈어요! (+🐟${sp.give.fish} +🪙${sp.give.coins})`
     + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : ''), 4200);
+  questEvent('seafish');                            // 🦉 의뢰(바다 물고기)
   trackEvent('sea_catch', { species: sp.id, weight: w, duration: dur, good: seaMG.good, bad: seaMG.bad });   // [GA4] 코어 KPI
   sendSeaRecord({ species: sp.id, weight: w });   // [Supabase] 무게 기록 → 리더보드('sea'는 참치만 집계)
   requestSave();
@@ -6927,7 +7076,7 @@ let carveBound = false;
 function workshopOrders() {
   const st = gameState.workshop;
   const today = todayStr();
-  if (st.date !== today) { st.date = today; st.done = []; }
+  if (st.date !== today) { st.date = today; st.done = []; st.carvedToday = 0; }
   const start = dateHash('carve') % CARVE_DESIGNS.length;
   return [0, 2, 5].map(off => {                     // +0/+2/+5 (mod 7) — 항상 서로 다른 도안
     const d = CARVE_DESIGNS[(start + off) % CARVE_DESIGNS.length];
@@ -7111,6 +7260,7 @@ function carveFinish(kind) {
   if (!st.done.includes(d.id)) st.done.push(d.id);        // 시도 자체가 오늘 주문 소진(재도전 파밍 방지)
   const coins = Math.round(d.pay * tier.mult);
   gameState.inventory.coins += coins;
+  if (kind === 'done') st.carvedToday = (st.carvedToday || 0) + 1;   // 🦉 의뢰는 오늘 완성 수를 읽는다(망치거나 포기한 건 "완성" 이 아니다)
   refreshInventoryUI();
   revealCarve(tier, kind === 'done');
   logEcon('carve_reward', d.id, coins, gameState.inventory.coins);   // [원장] 코인 유입
@@ -7828,6 +7978,9 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
     if (moved) trackEvent('move_outdoor', { item: id });                                   // [GA4] 옮겨 놓기
     else trackEvent('craft_item', { category: 'outdoor', item: id, from: taken ? 'store' : 'craft' });  // [GA4]
+    // 🦉 의뢰(야외 장식 놓기) — 새로 만들어 놓은 것만 센다.
+    //   옮겨 놓기(moved)·🧺보관분 꺼내기(taken)까지 세면 같은 장식을 넣었다 뺐다 하며 무한히 채울 수 있다.
+    if (!moved && !taken) questEvent('decor');
     pickedOutdoor = null; placingOutdoor = null; removeDecorGhost(); ui.onDecorPlaced?.();   // 배치 모드 종료(1회) — 들었던 장식은 새 자리에 놓였다
     requestSave();
   }
@@ -7893,21 +8046,30 @@ function craftGift(id) {
 }
 
 // 근처 주민에게 선물 주기 → 친밀도↑ (3개마다 감사 보상)
+// ❤️ 친밀도 올리기 — 선물(giveGift)과 🔁반복 의뢰 보상이 함께 쓴다.
+//   친밀 3단계마다 답례. +2 증가로 배수를 "건너뛴" 경우도 통과하도록 몫을 비교한다.
+//   답례를 줬으면 그 보상을 돌려준다(없으면 null).
+function addAffinity(id, amount = 1) {
+  const before = gameState.affinity[id] || 0;
+  gameState.affinity[id] = before + amount;
+  if (Math.floor(gameState.affinity[id] / 3) <= Math.floor(before / 3)) return null;
+  const reward = { seed: 3, crop: 1 };
+  giveReward(reward, 'affinity_gift', id);
+  return reward;
+}
+
 function giveGift(giftId) {
   const o = nearNPC; if (!o) return { ok: false, msg: '가까운 주민이 없어요' };
   if ((gameState.gifts[giftId] || 0) <= 0) return { ok: false, msg: '그 선물이 없어요' };
   const g = GIFTS.find(x => x.id === giftId);
   gameState.gifts[giftId] -= 1;
   const id = o.def.id;
-  const before = gameState.affinity[id] || 0;
-  gameState.affinity[id] = before + (g.love || 1);           // 📿 보석 목걸이 등은 친밀도 +2
   refreshInventoryUI();
   Sound.harvest();
   spawnFloatText(o.group.position.x, 2.2, o.group.position.z, g.love > 1 ? '❤️❤️' : '❤️', '#e6789a');
   spawnSparkle(o.group.position.x, 1.4, o.group.position.z, 14);
-  let reward = null;
-  // 친밀 3단계마다 답례 — +2 증가로 배수를 "건너뛴" 경우도 통과 판정
-  if (Math.floor(gameState.affinity[id] / 3) > Math.floor(before / 3)) { reward = { seed: 3, crop: 1 }; giveReward(reward, 'affinity_gift', id); }
+  const reward = addAffinity(id, g.love || 1);              // 📿 보석 목걸이 등은 친밀도 +2
+  questEvent('gift');                                  // 🦉 의뢰(주민에게 선물)
   trackEvent('gift_give', { npc: id, gift: giftId });  // [GA4]
   return { ok: true, npc: o.def.name, ico: g.ico, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
 }
@@ -8618,7 +8780,7 @@ function animate() {
   // ?dbg=1 — 루프 상태 스냅샷(로컬 조사용): 모드·위치·눌린 키·현재 공간
   // ?dbg=1 — 주민별 키·이름표 높이(이름표가 모자에 가리는지 눈금으로 확인)
   if (_wq.has('dbg')) window.__npcDbg = npcObjs.map(o => ({
-    id: o.def.id, top: +o.topY.toFixed(3), tag: +o.tag.position.y.toFixed(3),
+    id: o.def.id, glyph: o.lastGlyph, top: +o.topY.toFixed(3), tag: +o.tag.position.y.toFixed(3),
     gap: +(o.tag.position.y - 0.26 - o.topY).toFixed(3),   // 0 보다 커야 이름표 아래가 모자 위에 뜬다
     x: +o.group.position.x.toFixed(2), z: +o.group.position.z.toFixed(2), y: +o.group.position.y.toFixed(2),
   }));
@@ -10815,6 +10977,9 @@ const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물�
 
 // id별 퀘스트 진행 상태(없으면 생성)
 function npcState(id) {
+  // ⚠️ allDone 은 더 이상 읽지 않는다(세이브 포맷 호환용으로만 계속 쓴다).
+  //    "지금 내줄 의뢰가 있는가" 는 currentQuest(), "체인을 끝냈는가" 는 idx >= quests.length 로 본다.
+  //    🔁반복 의뢰가 열리면 allDone 은 false 로 돌아가므로, 이 값으로 분기하면 바로 버그다.
   if (!gameState.npcs[id]) gameState.npcs[id] = { idx: 0, progress: 0, given: false, allDone: false };
   return gameState.npcs[id];
 }
@@ -10971,6 +11136,94 @@ function buildNPCLook(g, def) {
       return pivot;
     });
     return { eyes: true, wings, bob };
+  } else if (def.look === 'badger') {
+    // 🦡 오소리 — 🐼요리사 판다와 헷갈리지 않는 게 제일 중요하다(둘 다 흑백 얼굴).
+    //    판다는 "흰 얼굴에 검은 눈 패치", 오소리는 정반대로 "짙은 얼굴에 흰 줄" 로 간다.
+    //    머리 구(def.skin)는 짙게 두고 그 위에 흰 줄을 얹는다 — 실루엣이 아니라 명암이 뒤집혀 한눈에 갈린다.
+    const WHITE = 0xf5f2ea;
+    const cap = add(new THREE.Mesh(new THREE.SphereGeometry(0.395, 14, 10), clayMat(0x3a342e, false)), 0, 1.15, 0);   // 짙은 얼굴 바탕
+    cap.castShadow = true;
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.52, 0.12), clayMat(WHITE, false)), 0, 1.26, 0.27).rotation.x = -0.3;   // 콧등 흰 줄(가운데)
+    [-0.235, 0.235].forEach(ex => {                                   // 눈 위를 지나는 흰 줄 두 개
+      const st = add(new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.46, 0.11), clayMat(WHITE, false)), ex, 1.24, 0.21);
+      st.rotation.set(-0.3, 0, ex > 0 ? -0.16 : 0.16);
+    });
+    [-0.28, 0.28].forEach(ex => {                                     // 짧고 둥근 귀 — 흰 테두리로 한 번 더 오소리 표시
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.105, 8, 6), clayMat(0x3a342e, false)), ex, 1.4, -0.02).scale.set(1, 0.85, 0.6);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), clayMat(WHITE, false)), ex, 1.41, 0.02).scale.set(1, 0.85, 0.6);
+    });
+    const snout = add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), clayMat(WHITE, false)), 0, 1.07, 0.33);
+    snout.scale.set(0.85, 0.7, 1.15);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), clayMat(0x2a2320, false)), 0, 1.08, 0.46);   // 코
+    // 🧺 채집 바구니 — 뒤에 메면 위에서 내려다보는 기본 카메라에 안 걸린다. 앞으로 안고 있게 한다
+    const basket = bobbing(add(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.19, 0.26, 12), clayMat(0xc79a63, false)), 0.02, 0.74, 0.44));
+    basket.rotation.x = -0.18; basket.castShadow = true;
+    add(new THREE.Mesh(new THREE.TorusGeometry(0.235, 0.03, 6, 14), clayMat(0x8e6b3a, false)), 0.02, 0.86, 0.46).rotation.set(Math.PI / 2 - 0.18, 0, 0);
+    [[-0.08, 0], [0.07, 0.04]].forEach(([dx, dz]) => add(new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), clayMat(0xd9524a, false)), 0.02 + dx, 0.86, 0.46 + dz));  // 담긴 열매
+    return { bob };
+  } else if (def.look === 'duck') {
+    // 🦆 오리 사공 — 몸·머리가 둘 다 희면 눈사람이 된다. 몸에 물빛 조끼를 입혀 흰 머리와 나눈다.
+    //    소품(노)은 옆으로 크게 빼야 위에서 내려다보는 기본 카메라의 실루엣에 걸린다.
+    const vest = bobbing(add(new THREE.Mesh(new THREE.SphereGeometry(0.512, 16, 12, 0, Math.PI * 2, Math.PI / 2.8, Math.PI), clayMat(0x4f7f9c, false)), 0, 0.55, 0));
+    vest.scale.set(1.01, 1.05, 1.01);
+    const bill = add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.28), clayMat(0xe8912c, false)), 0, 1.09, 0.34);
+    bill.rotation.x = 0.14; bill.castShadow = true;
+    // ⚠️ 챙이 크면 위에서 내려다보는 기본 카메라에서 얼굴을 통째로 가린다 — 눈·부리가 보이는 크기까지 줄이고 뒤로 젖혀 쓴다
+    const brimD = add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.045, 16), clayMat(def.hat)), 0, 1.47, -0.12);
+    brimD.rotation.x = -0.3; brimD.castShadow = true;
+    const coneD = add(new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.28, 16), clayMat(def.hat)), 0, 1.58, -0.15);
+    coneD.rotation.x = -0.3;
+    const oar = add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.9, 6), clayMat(0x9b7247, false)), 0.6, 1.0, 0.3);
+    oar.rotation.set(0.34, 0, -0.42); oar.castShadow = true;
+    const blade = add(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.52, 0.06), clayMat(0xd9b077, false)), 0.98, 0.24, 0.62);
+    blade.rotation.set(0.34, 0, -0.42); blade.castShadow = true;
+    return { bob };
+  } else if (def.look === 'rancher') {
+    // 🐔 목장 아주머니 — 머릿수건이 머리를 통째로 덮으면 대머리로 보인다.
+    //    정수리만 덮고 앞머리·옆머리를 남겨 "수건을 쓴 사람" 으로 읽히게 한다.
+    // 💇‍♀️ 쪽진 머리 + 🪡비녀 — 머릿수건은 머리를 통째로 덮어 대머리로 보였다.
+    //    위에서 내려다보는 기본 카메라에선 정수리가 가장 잘 보이므로, 정수리에 얹는 쪽과 비녀가 제일 또렷하다.
+    //    ⚠️ 머리 덮개는 위쪽 캡까지만 — 머리 전체를 덮으면 공용 눈(y1.18·z0.32)이 묻힌다.
+    const HAIR = 0x4a382a;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.405, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2.5), clayMat(HAIR, false)), 0, 1.15, 0).castShadow = true;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10, 0, Math.PI * 2, Math.PI / 2.6, 0.5), clayMat(HAIR, false)), 0, 1.14, -0.08);   // 뒤통수
+    const bun = add(new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), clayMat(HAIR, false)), 0, 1.44, -0.14);   // 정수리 뒤에 얹은 쪽
+    bun.scale.set(1.15, 0.9, 1.05); bun.castShadow = true;
+    // 🪡 비녀 — 쪽 속에 묻히면 구슬만 떠 있는 꼴이 된다. 쪽보다 위로 올려 막대가 드러나게 꽂는다
+    const pin = add(new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.62, 6), clayMat(0xe4c26a, false)), 0, 1.5, -0.12);
+    pin.rotation.set(0, 0, Math.PI / 2 - 0.16); pin.castShadow = true;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), clayMat(0xd9524a, false)), 0.305, 1.55, -0.12);   // 비녀 머리(붉은 구슬)
+    // 앞치마 — 판자처럼 붙지 않게 몸통 곡면을 따라가는 얇은 구 조각 + 어깨끈
+    const apron = bobbing(add(new THREE.Mesh(new THREE.SphereGeometry(0.514, 16, 12, Math.PI / 2 - 0.62, 1.24, Math.PI / 2.4, 1.15), clayMat(0xfaf3e2, false)), 0, 0.55, 0));
+    apron.scale.set(1.02, 1.02, 1.02);   // ⚠️ rotation.y 를 주면 앞면이 뒤로 돌아간다 — phi 가 이미 +z(앞) 중심이다
+    [-0.16, 0.16].forEach(ex => add(new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.26, 0.04), clayMat(0xfaf3e2, false)), ex, 0.85, 0.45).rotation.x = -0.22);
+    // 🥚 달걀 바구니 — 몸에 파묻히지 않게 앞으로 안고, 달걀이 위로 보이게 담는다
+    const basket = bobbing(add(new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.18, 0.2, 12), clayMat(0xc79a63, false)), 0.06, 0.72, 0.46));
+    basket.rotation.x = -0.16; basket.castShadow = true;
+    add(new THREE.Mesh(new THREE.TorusGeometry(0.225, 0.028, 6, 14), clayMat(0x8e6b3a, false)), 0.06, 0.81, 0.47).rotation.set(Math.PI / 2 - 0.16, 0, 0);
+    [[-0.09, -0.02], [0.02, 0.03], [0.1, -0.01]].forEach(([dx, dz]) => {
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.058, 8, 6), clayMat(0xfdf6e6, false)), 0.06 + dx, 0.83, 0.47 + dz).scale.set(1, 1.3, 1);
+    });
+    return { bob };
+  } else if (def.look === 'stargazer') {
+    // ⭐ 별 보는 아이 — 어른들보다 작고(scale), 별 머리띠 + 옆으로 든 포충망.
+    //    소품을 뒤에 두면 위에서 내려다보는 기본 카메라에선 통째로 가려 몸통만 남는다 → 옆·위로 뺀다.
+    g.scale.setScalar(0.84);
+    // ⚠️ 머리카락은 위쪽 반구로만 — 머리 전체를 덮으면 공용 눈(y1.18·z0.32)이 묻혀 검은 헬멧이 된다
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.405, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2.5), clayMat(0x3b2f2a, false)), 0, 1.16, 0).castShadow = true;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10, 0, Math.PI * 2, Math.PI / 2.6, 0.5), clayMat(0x3b2f2a, false)), 0, 1.15, -0.07);   // 뒤통수 단발
+    const band = add(new THREE.Mesh(new THREE.TorusGeometry(0.375, 0.038, 6, 18), clayMat(0xf5f0e4, false)), 0, 1.3, 0);        // 머리띠
+    band.rotation.x = 1.42;
+    const star = add(new THREE.Mesh(new THREE.OctahedronGeometry(0.19, 0), clayMat(def.hat, false)), 0, 1.56, 0.06);           // 머리 위 별(정면에서 바로 보이게)
+    star.rotation.set(0.25, 0.5, 0.1); star.castShadow = true;
+    // 🦋 포충망 — 몸 옆으로 들어 올려 실루엣에 확실히 걸리게
+    const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 1.25, 6), clayMat(0x9b7247, false)), 0.5, 1.05, 0.16);
+    pole.rotation.set(0.22, 0, -0.42); pole.castShadow = true;
+    const hoop = add(new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.028, 6, 16), clayMat(0xdfe7f2, false)), 0.76, 1.57, 0.28);
+    hoop.rotation.set(1.35, 0, -0.42);
+    const net = add(new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.32, 12, 1, true), clayMat(0xeef3fa, false)), 0.78, 1.42, 0.29);
+    net.rotation.set(-0.2, 0, -0.42); net.material.transparent = true; net.material.opacity = 0.5;
+    return {};
   } else {
     const brim = add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12), clayMat(def.hat)), 0, 1.4, 0);
     add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), clayMat(def.hat)), 0, 1.5, 0);
@@ -10979,7 +11232,12 @@ function buildNPCLook(g, def) {
 
 // 모든 주민 생성 (데이터 기반)
 function buildNPCs() {
-  refreshDailyQuests();   // 부팅 시점에도 데일리 의뢰 채움(빈 quests 로 글리프 접근 방지)
+  // ⚠️ 여기서 의뢰를 뽑지 않는다. buildNPCs 는 bootWorld(로그인·loadGame 전)에서 돌기 때문에
+  //    authState.variant 가 아직 없어 mapLocked() 가 전부 false 로 판정된다 —
+  //    그 상태로 뽑으면 베타 1일차에게 🌊바다·🌫️안개처럼 아직 못 가는 목표가 확정돼
+  //    진행도가 영원히 0 이고 그날 의뢰 전체가 잠긴다.
+  //    의뢰는 enterGame(세이브 로드 후)에서만 뽑고, 그 전까지 def.quests 는 비어 있다
+  //    (currentQuest 가 빈 배열을 null 로 돌려주므로 글리프·대화 모두 안전하다).
   for (const def of NPCS) {
     const g = new THREE.Group();
     g.position.set(def.pos[0], 0, def.pos[2]);
@@ -11040,9 +11298,10 @@ function roundRect(c, x, y, w, h, r) {
 // 상태 글리프: ! 수락가능 / … 진행중 / ✓ 완료 / (없음) 전부완료
 function npcGlyph(o) {
   const st = npcState(o.def.id);
-  if (st.allDone) return '';
+  const q = currentQuest(o.def, st);
+  if (!q) return '';                 // 체인도 끝나고 오늘 반복 의뢰도 없다
   if (!st.given) return '!';
-  return st.progress >= o.def.quests[st.idx].target ? '✓' : '…';
+  return st.progress >= q.target ? '✓' : '…';
 }
 function updateNPCGlyph(o) {
   if (!o || !o.ctx) return;
@@ -11178,7 +11437,8 @@ function owlSpecialPending() {
 function deliverOwlSpecial(o) {
   const def = o.def, st = npcState(def.id);
   if (!owlSpecialPending()) return;   // 나는 사이에 자정이 지났거나 이미 받았다 — 판정은 한 곳에서만
-  const pick = OWL_SPECIAL_POOL[dateHash('owl:special') % OWL_SPECIAL_POOL.length];
+  const pick = pickGated(OWL_SPECIAL_POOL, 1, dateHash('owl:special'), questCtx())[0];
+  if (!pick) return;   // 전부 막혀 있으면 오늘은 특별 의뢰를 내지 않는다
   // 보상 조정: 코인 80 + 💎1(판매가 40) = 120 코인어치는 일일 3건 전부(45 + 럭키박스 기대값 ~37)
   //   보다 컸다 — 하루 발행량이 두 배가 되어 베타 경제 지표가 흔들린다.
   //   30 + 💎1 = 70 코인어치로 낮춘다(가장 큰 일일 의뢰 20 의 1.5배 + 특별함은 💎 가 맡는다).
@@ -11421,7 +11681,7 @@ function updateNPCInteract() {
       : farmFirst ? `🌾 ${near.def.name} · 밭일이 먼저예요 — ✋맨손(숫자 1)으로 바꾸면 대화해요`
       : `💬 ${near.def.name} · Space 로 대화`);
     // 퀘스트 패널은 주민이 실제로 바뀐 경우만 — 밭 경계를 드나들 때마다 다시 그릴 일이 아니다
-    if (npcChanged && near) { const st = npcState(near.def.id); if (st.given && !st.allDone) { trackedNPC = near; refreshQuestPanel(); } }
+    if (npcChanged && near) { const st = npcState(near.def.id); if (st.given && currentQuest(near.def, st)) { trackedNPC = near; refreshQuestPanel(); } }
   }
 }
 
@@ -11445,9 +11705,9 @@ function talkToNPC() {
 export function npcDialogState() {
   const o = nearNPC; if (!o) return null;
   const st = npcState(o.def.id);
-  if (st.allDone) return { npc: o.def, mode: 'done', line: o.def.doneLine || '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
-  const q = o.def.quests[st.idx];
-  const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward: rewardText(q.reward), qid: o.def.id + ':' + st.idx }; // qid: 퍼널 분석용 표준 퀘스트 ID
+  const q = currentQuest(o.def, st);
+  if (!q) return { npc: o.def, mode: 'done', line: o.def.doneLine || '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
+  const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward: rewardText(q.reward), qid: questId(o.def, st) }; // qid: 퍼널 분석용 표준 퀘스트 ID
   if (!st.given) return { ...base, mode: 'offer', line: q.line, progress: 0 };
   if (st.progress < q.target) return { ...base, mode: 'progress', line: '조금만 더 부탁해요!', progress: st.progress };
   return { ...base, mode: 'claim', line: '다 해냈네요! 보상을 받아요 🎁', progress: st.progress };
@@ -11457,11 +11717,12 @@ export function npcDialogState() {
 export function npcAccept() {
   const o = nearNPC; if (!o) return null;
   const st = npcState(o.def.id);
-  if (!st.given && !st.allDone) {
+  const pending = currentQuest(o.def, st);
+  if (!st.given && pending) {
     st.given = true; st.progress = 0; st.readyToasted = false;
     st.acceptedAt = Date.now();         // [퍼널②] 수락 시각(epoch ms) — 저장돼 세션 넘어도 유지
-    const q = o.def.quests[st.idx];
-    const qid = o.def.id + ':' + st.idx;
+    const q = pending;
+    const qid = questId(o.def, st);
     if (q.grant) giveReward(q.grant, 'quest_grant', qid);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
     trackedNPC = o; refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
     trackEvent('quest_accept', { quest: q.title, npc: o.def.id, quest_id: qid }); // [GA4]
@@ -11474,11 +11735,15 @@ export function npcAccept() {
 export function npcClaim() {
   const o = nearNPC; if (!o) return null;
   const st = npcState(o.def.id);
-  if (st.allDone) return npcDialogState();
-  const q = o.def.quests[st.idx];
+  const q = currentQuest(o.def, st);
+  if (!q) return npcDialogState();
+  const repeating = onRepeatQuest(o.def, st);
   if (st.given && st.progress >= q.target) {
-    const qid = o.def.id + ':' + st.idx;
+    const qid = questId(o.def, st);
     giveReward(q.reward, 'quest_reward', qid); Sound.harvest();      // [원장] 퀘스트 코인 보상 출처 기록
+    // 🔁 반복 의뢰는 코인을 억제한 대신 친밀도로 갚는다 — 선물과 같은 경로라 3단계 답례도 그대로 걸린다
+    //    ("주민들한테 선물줘서 친밀도 올리면 뭐가 좋나요" — 베타 건의)
+    if (repeating) addAffinity(o.def.id, 1);
     if (o.def.daily && q.lucky) rollLuckyBox(qid);                   // 🎁 데일리 의뢰: 럭키박스 확률 보상
     ui.act?.('quest');                                               // 튜토리얼: 퀘스트 보상까지 완료
     tryUnlockDrop(0.5);                                              // 🎨 랜덤 색(퀘스트 보상, 높은 확률)
@@ -11486,9 +11751,11 @@ export function npcClaim() {
     const elapsed = st.acceptedAt ? Math.round((Date.now() - st.acceptedAt) / 1000) : null;
     trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0 }); // [GA4]
     churnTrigger('quest');   // [🎯 이탈 예측]
-    st.idx++; st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
+    // ⚠️ 반복 의뢰에서는 st.idx 를 올리지 않는다 — 체인 길이를 넘어가면 그 주민 대화가 깨진다
+    if (repeating) st.repeat.done = true; else st.idx++;
+    st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     gameState.story.q = (gameState.story.q || 0) + 1; syncStory();   // 📖 2장(이웃들) 진행
-    if (st.idx >= o.def.quests.length) { st.allDone = true; ui.setQuest?.(null); syncBadges(); } // 🏅 체인 완료 배지
+    if (!currentQuest(o.def, st)) { st.allDone = true; ui.setQuest?.(null); syncBadges(); } // 🏅 체인 완료 배지
     if (trackedNPC === o) trackedNPC = null;
     refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
   }
@@ -11499,9 +11766,9 @@ export function npcClaim() {
 function questEvent(type, amount = 1) {
   for (const o of npcObjs) {
     const st = npcState(o.def.id);
-    if (st.allDone || !st.given) continue;
-    const q = o.def.quests[st.idx];
-    if (q.type !== type) continue;
+    if (!st.given) continue;
+    const q = currentQuest(o.def, st);
+    if (!q || q.type !== type) continue;
     st.progress = Math.min(q.target, st.progress + amount);
     if (st.progress >= q.target) ui.toast?.(`✅ ${o.def.name}의 목표 달성!`);
     updateNPCGlyph(o);
@@ -11516,8 +11783,9 @@ function questEvent(type, amount = 1) {
 function refreshCollectQuests() {
   for (const o of npcObjs) {
     const st = npcState(o.def.id);
-    if (st.allDone || !st.given) continue;
-    const q = o.def.quests[st.idx];
+    if (!st.given) continue;
+    const q = currentQuest(o.def, st);
+    if (!q) continue;
     if (q.type === 'collect_wood') st.progress = Math.min(q.target, gameState.inventory.wood);
     else if (q.type === 'collect_crop') st.progress = Math.min(q.target, gameState.inventory.crop);
     else if (q.type === 'house') st.progress = gameState.houseStage >= 3 ? q.target : 0;
@@ -11525,6 +11793,13 @@ function refreshCollectQuests() {
     //   먼저 서빙하고 나중에 의뢰를 받으면 남은 손님이 모자라 그날은 완료가 불가능해진다.
     //   그래서 "오늘 서빙한 손님 수"를 읽는다. 날짜가 지난 기록(cafeOrders() 가 아직 안 비운 어제치)은 0.
     else if (q.type === 'serve') st.progress = Math.min(q.target, gameState.cafe.date === todayStr() ? gameState.cafe.done.length : 0);
+    // 🥚🌫️🛶 도 같은 함정 — 하루 1회뿐이라 "수락 전에 이미 해버린" 사람은 다시 할 방법이 없다.
+    //   이벤트가 아니라 오늘의 상태를 읽는다(이미 갇힌 세이브도 접속하면 저절로 풀린다).
+    else if (q.type === 'egg')  st.progress = gameState.coop.collected === todayStr() ? q.target : 0;
+    else if (q.type === 'mist') st.progress = (gameState.mist.date === todayStr() && gameState.mist.purified) ? q.target : 0;
+    else if (q.type === 'boat') st.progress = Math.min(q.target, gameState.boat.date === todayStr() ? (gameState.boat.clearsToday || 0) : 0);
+    // 🗿 조각도 같다 — 일일 주문 3건은 포기·실패로도 소진되므로, 수락 전에 다 써버리면 다시 할 방법이 없다
+    else if (q.type === 'carve') st.progress = Math.min(q.target, gameState.workshop.date === todayStr() ? (gameState.workshop.carvedToday || 0) : 0);
     else continue;
     if (st.progress >= q.target && !st.readyToasted) { st.readyToasted = true; ui.toast?.(`✅ ${o.def.name}의 목표 달성!`); }
     updateNPCGlyph(o);
@@ -11534,8 +11809,9 @@ function refreshCollectQuests() {
 
 function questView(o) {
   const st = npcState(o.def.id);
-  if (st.allDone || !st.given) return null;
-  const q = o.def.quests[st.idx];
+  if (!st.given) return null;
+  const q = currentQuest(o.def, st);
+  if (!q) return null;
   return { name: o.def.name, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', progress: st.progress, target: q.target, ready: st.progress >= q.target };
 }
 function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
