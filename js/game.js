@@ -25,7 +25,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
-import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
+import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
+import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
@@ -1819,6 +1820,13 @@ export async function enterGame() {
     window.__frostTest = () => { gameState.frost.lastDate = todayStr(-1); return resolveWeatherEvent(); };
     // 🛶 __boatTest() — 오늘 탄 횟수를 초기화(코스 반복 테스트용). 코스 시드는 그대로라 같은 물길이 나온다
     window.__boatTest = () => { gameState.boat.date = null; return boatRunsLeft(); };
+    // 🛶 __boat — 나룻배 검수용. up('lamp',1) 로 업그레이드를 채우고 start() 로 즉시 출항(🏮등불·물보라 시야 확인)
+    window.__boat = {
+      start: startBoatRun, quit: () => endBoatRun('quit'), state: boat,
+      up: (id, lv = 1) => { if (id in gameState.boat.up) gameState.boat.up[id] = lv; return { ...gameState.boat.up }; },
+      course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
+      seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
+    };
     // 🌫️ __mistTest() — 오늘 정화를 무른 셈 치고 다시(코스 아님이라 리롤 유인 없음)
     window.__mistTest = () => { gameState.mist.date = null; gameState.mist.purified = false; return mistDaily(); };
     window.__mist = mist;   // 🎓 연습 모드·갈림길 검수용(로컬 전용) — 정령 좌표·♪ phase 를 콘솔에서 본다
@@ -4348,7 +4356,7 @@ function startBoatRun() {
   boat.group.visible = true;
   const lit = !!(boat.night && gameState.boat.up.lamp);   // 🏮 밤 + 등불 업그레이드일 때만 점등
   boat.group.userData.lantern.visible = lit;
-  boat.group.userData.light.intensity = lit ? 1.6 : 0;
+  boat.group.userData.light.intensity = lit ? 2.4 : 0;    // 등불 자체는 어둡게, 대신 **앞쪽 물길**을 더 밝힌다
   playerAnchor.visible = (boatView === 'third');     // 1인칭이면 캐릭터를 숨김(시야 방해 방지)
   if (heldGroup) heldGroup.visible = false;          // 🛶 배 위에선 도구를 내려놓는다(두 손으로 노를 잡는 느낌)
   playerAnchor.position.y = 0; playerAnchor.rotation.set(0, 0, 0);   // 노 젓기 자세 초기화
@@ -4372,11 +4380,31 @@ function makeBoatRideable() {
   // 노 — 1인칭에서 화면 아래 양옆으로 뻗게(시야 정중앙을 가리지 않도록 낮고 눕혀서)
   for (const side of [-1, 1]) g.add(makeOar(side));
   // 🏮 뱃머리 등불 — 업그레이드를 샀고 밤일 때만 켜진다(밤 주행의 체감 보상)
-  const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xffc85a, emissiveIntensity: 1 }));
-  lantern.position.set(0, 0.95, -1.9); lantern.visible = false; g.add(lantern);
-  const light = new THREE.PointLight(0xffd79a, 0, 22, 1.4);
-  light.position.set(0, 1.2, -2.4); g.add(light);
+  //   예전엔 구 하나를 시선 바로 아래 정중앙(0, 0.95, -1.9)에 박아 뒀다 → 밤에 블룸(임계 0.85)까지
+  //   타면서 8~15m 앞 바위가 통째로 후광에 묻혔다("등불 단 게 더 안 보여요").
+  //   → 뱃전 왼쪽 기둥에 매달아 **시선 위**로 올리고, 발광도 후광이 번지지 않는 선까지 낮춘다.
+  //   → 배치 근거·회귀 테스트: js/boat-lamp.js + tests/boat-lamp.test.mjs
+  const lantern = new THREE.Group();
+  const P = BOAT_LAMP_POST, dark = clayMat(0x6f4c2e, false);   // 어두운 나무 — 밝은 막대는 그 자체로 시선을 끈다
+  // 뱃전 왼쪽에 세운 가는 기둥. 화면을 세로로 긋긴 하지만 20m 앞 바위 폭의 1/3 도 안 된다.
+  //   ⚠️ "카메라 뒤(z>0.55)에 세우면 안 보인다"는 함정이다 — 1인칭 카메라는 달릴수록 뒤로 밀려서
+  //     z 0.95 에 세운 돛대가 화면 왼쪽에 통나무처럼 잡혔다. js/boat-lamp.js EYE_Z_RANGE 참고.
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(P.r, P.r * 1.3, P.top - P.bottom, 6), dark);
+  post.position.set(P.x, (P.top + P.bottom) / 2, P.z);
+  lantern.add(post);
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(BOAT_LAMP.r, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0xf2d79a, emissive: 0xe8a93c, emissiveIntensity: 0.9 }));
+  //   ⚠️ 색은 휘도 0.68 — UnrealBloomPass 임계(0.85) 아래다. 흰끼가 도는 색(0xffe9a8, 휘도 0.93)으로
+  //      되돌리면 세기를 아무리 낮춰도 후광이 번져 다시 앞이 안 보인다.
+  globe.position.set(BOAT_LAMP.x, BOAT_LAMP.y, BOAT_LAMP.z);
+  lantern.add(globe);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(BOAT_LAMP.r * 1.3, 0.13, 6), dark);
+  cap.position.set(BOAT_LAMP.x, BOAT_LAMP.y + BOAT_LAMP.r + 0.04, BOAT_LAMP.z);   // 갓 — 위로 새는 빛을 가려 하늘이 덜 밝다
+  lantern.add(cap);
+  lantern.visible = false; g.add(lantern);
+  // 빛은 뱃머리보다 앞·위에서 떨어뜨린다 — 코앞 물살이 하얗게 타지 않고 10~25m 앞이 밝아진다
+  const light = new THREE.PointLight(0xffd79a, 0, 34, 1.2);
+  light.position.set(0, 2.0, -5.0); g.add(light);
   g.userData.lantern = lantern; g.userData.light = light;
   return g;
 }
@@ -4460,7 +4488,7 @@ function updateBoatRun(dt, t) {
     playerAnchor.position.y = -k * k * 0.75;                         // 캐릭터도 배와 함께 잠긴다(3인칭)
     playerAnchor.rotation.x = k * 0.4;
     if (Math.random() < (IS_MOBILE ? 0.2 : 0.4))                     // 보글보글 물거품
-      spawnSparkle(player.position.x + (Math.random() - 0.5) * 1.4, 0.15, player.position.z - 1 + Math.random() * 2, 4);
+      spawnSplash(player.position.x + (Math.random() - 0.5) * 1.4, 0.15, player.position.z - 1 + Math.random() * 2, 2);
     return;                                                          // 침몰 중엔 조향·충돌·HUD 갱신 없음
   }
   const p = Math.min(1, boat.dist / RIVER_LEN);
@@ -4503,7 +4531,7 @@ function updateBoatRun(dt, t) {
     wantAction = false;
     if (!stunned && boat.t >= boat.boostReadyAt) {
       boat.boostUntil = boat.t + 1.5; boat.boostReadyAt = boat.t + BOAT_BOOST_CD; boat.boostUsed++;
-      Sound.water(); spawnSparkle(player.position.x, 0.6, player.position.z + 1.5, 10);
+      Sound.water(); spawnSplash(player.position.x, 0.6, player.position.z + 1.5, 6, 1.3);
     }
   }
 
@@ -4543,7 +4571,7 @@ function updateBoatRun(dt, t) {
 
   // 물보라(뱃머리) — 가끔씩만 뿌려 부담 최소화(📱 모바일은 더 드물게). 재출발 땐 노 뒤로 물살
   const sprayP = stunned ? 0 : IS_MOBILE ? ((boosting || restarting) ? 0.25 : 0.08) : ((boosting || restarting) ? 0.5 : 0.2);
-  if (Math.random() < sprayP) spawnSparkle(player.position.x, 0.35, player.position.z - 2, 3);
+  if (Math.random() < sprayP) spawnSplash(player.position.x, 0.35, player.position.z - 2.4, 2);
 
   ui.setBoatHud?.({
     p, seg, dist: Math.round(boat.dist), total: RIVER_LEN,
@@ -4595,7 +4623,7 @@ function updateRiverObjects(dt, t, seg) {
           Sound.harvest(); spawnFloatText(player.position.x, 1.9, player.position.z - 10, `${k?.ico || ''} ${k?.name || ''}`, '#2fa564', 0.8);
           trackEvent('boat_pickup', { item: it.pick, dist_m: Math.round(boat.dist), seg });   // [GA4] 희귀 획득 분포
         }
-        spawnSparkle(player.position.x, 1, player.position.z, 8);
+        spawnSparkle(player.position.x, 1.1, player.position.z - 4, 8);   // 눈앞(카메라 0.5m 앞)이 아니라 뱃머리 너머에서 반짝
       }
       continue;
     }
@@ -4619,7 +4647,7 @@ function updateRiverObjects(dt, t, seg) {
       boat.shake = 1.3;
       Sound.build();
       spawnDust(player.position.x, player.position.z, 10);
-      spawnSparkle(player.position.x, 0.5, player.position.z - 1.5, 14);       // 물보라 팍!
+      spawnSplash(player.position.x, 0.5, player.position.z - 1.5, 10, 1.5);   // 물보라 팍!
       // 배 앞쪽에 작게 — 세로 화면(모바일)의 좁은 가로 시야각 안에 들어오게
       spawnFloatText(player.position.x, 1.9, player.position.z - 10, boat.lamps > 0 ? `💥 -1 (💡${boat.lamps})` : '💥 배가 가라앉아요…', '#d9534f', 0.8);
       trackEvent('boat_hit', { obstacle: it.kind, dist_m: Math.round(boat.dist), seg, lamps_left: boat.lamps }); // [GA4] 난이도 튜닝
@@ -9273,8 +9301,9 @@ function updateDayNight(dt) {
   // 집 안내판: 낮엔 매트(후광X), 밤엔 주변에 맞춰 감광 — 밝기를 키우면 밤 블룸(0.85 임계)에
   // 걸려 판 전체가 형광등처럼 번지므로, 닭장 터 배너처럼 어둡게 가라앉힌다
   if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 - nightAmt * 0.35);
-  // 블룸 밤에 살짝 더 강하게
-  if (bloomPass) bloomPass.strength = 0.5 + nightAmt * 0.5;
+  // 블룸 밤에 살짝 더 강하게 — 단 🛶 1인칭 나룻배에선 화면 전체가 코앞이라 같은 세기도 훨씬 부시다.
+  //   (피드백: "물보라 발광이 과해 계속 보면 눈이 피로해요") 주행 중엔 절반 아래로 낮춘다.
+  if (bloomPass) bloomPass.strength = (0.5 + nightAmt * 0.5) * (boat.active && boatView === 'first' ? 0.4 : 1);
   // 밤 푸른 톤 그레이딩
   if (gradePass) gradePass.uniforms.uNight.value = nightAmt;
 
@@ -10730,6 +10759,24 @@ function spawnSparkle(x, y, z, count = 16) {
     p.position.set(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6);
     // maxO: 반짝이 농도 캡 — 클로즈업(요리 무대 등)에서 화면을 하얗게 덮지 않게 은은하게
     p.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * 2, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2), spin: rndSpin(8), life: 1.0, gravity: -3, flutter: false, maxO: 0.55 };
+    particles.push(p);
+  }
+}
+// 🛶 물보라·물거품 — 뱃머리·노 주위로 튀는 물.
+//   반짝이(spawnSparkle)를 돌려 쓰다가 눈이 부시다는 피드백을 받았다. 반짝이는
+//   ① 가산 합성 ② emissive ③ 노란 고휘도라 UnrealBloomPass(임계 0.85)에 그대로 걸려
+//   1인칭 화면 아래쪽이 통째로 하얗게 타 버렸다(장애물도 그 뒤에 묻힘).
+//   → 여기선 가산 합성·발광을 쓰지 않고, 블룸 임계 아래의 옅은 물색으로만 튄다.
+//   → 좌우로 뿌려 정면(장애물이 보이는 자리)을 비운다.
+function spawnSplash(x, y, z, count = 3, spread = 1) {
+  for (let i = 0; i < count; i++) {
+    const p = makeParticle(_dropGeo, new THREE.Color(0x9ec6dc));      // 휘도 0.75 — 블룸 임계(0.85) 아래
+    const side = Math.random() < 0.5 ? -1 : 1;                        // 뱃머리 좌우로 갈라지는 물살
+    p.position.set(x + side * (0.4 + Math.random() * 0.5) * spread, y + Math.random() * 0.12, z + (Math.random() - 0.5) * 0.9);
+    p.userData = {
+      vel: new THREE.Vector3(side * (0.7 + Math.random() * 0.9) * spread, 1.1 + Math.random() * 0.8, (Math.random() - 0.5) * 1.2),
+      spin: rndSpin(3), life: 0.5, gravity: -7, flutter: false, maxO: 0.3,   // 짧게 튀고 옅게 — 잔상이 쌓이지 않게
+    };
     particles.push(p);
   }
 }
