@@ -304,7 +304,7 @@ let farmGroup, mineGroup;                        // 텃밭/동굴 그룹(가시�
 
 // ── 🌟 반딧불이 계곡(남쪽 숲) — 🌙 밤에만 나타나고 🦋포충망으로 잡는 "새 동사" ──
 //    마을 불빛에서 떨어뜨려 배치(어두울수록 잘 보임). 낮에만 하던 플레이에 "밤에 다시 올 이유"를 만듦.
-const GLADE = new THREE.Vector3(2, 0, 25);      // 계곡 중심(남쪽 숲) — ☕카페 구역과 안 겹치게 더 남쪽으로
+const GLADE = new THREE.Vector3(7, 0, 26);      // 계곡 중심(남동쪽 숲) — ☕카페·🍄채집 숲과 안 겹치게
 const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
 const GLADE_MAX = IS_MOBILE ? 5 : 7;            // 동시 개체 수
 //   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
@@ -358,7 +358,7 @@ const cafeGuestDef = (id) => CAFE_GUESTS.find(g => g.id === id) || null;
 
 // ── 🍄 채집 숲(남서쪽) — 새 동사: 채집(심지 않고 줍기). 시간이 지나면 다시 돋아남 ──
 //    씨앗·물주기 없이 "돌아다니며 발견"하는 재미. 🌧️ 비 온 날엔 버섯이 유독 잘 나옴(날씨 연동)
-const FOREST = new THREE.Vector3(-13, 0, 24);
+const FOREST = new THREE.Vector3(-18, 0, 23);   // 남서쪽 — 🌟계곡과 중심거리 25.2(나무 링까지 4.0 여유)
 const FOREST_R = 9;
 const FORAGE_NODES = IS_MOBILE ? 8 : 11;        // 동시에 돋아 있는 채집물 수
 const FORAGE_RESPAWN = [55, 110];               // 채집 후 다시 돋기까지(초) 최소~최대
