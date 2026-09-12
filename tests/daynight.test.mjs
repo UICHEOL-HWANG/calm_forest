@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NIGHT_MIN, WAKE_TIME, daylightAt, nightLevelAt, isNightAt } from '../js/daynight.js';
+import { readFileSync } from 'node:fs';
 
 test('daylightAt — 자정 0, 정오 1, 일출·노을 0.5', () => {
   assert.ok(Math.abs(daylightAt(0) - 0) < 1e-9);
@@ -50,4 +51,16 @@ test('WAKE_TIME — 자고 일어난 아침은 밤이 아니어야 한다', () =
   assert.ok(WAKE_TIME > 0.266 && WAKE_TIME < 0.4, `WAKE_TIME=${WAKE_TIME}`);
   // 경계에 너무 붙으면 깨자마자 다시 밤 프롬프트가 뜬다 — 최소 여유 확보
   assert.ok(nightLevelAt(WAKE_TIME) < NIGHT_MIN - 0.05);
+});
+
+// 이 모듈이 "단일 출처" 라는 약속을 game.js 쪽에서 강제한다.
+//   식을 베껴 비교하는 위 테스트만으로는 game.js 가 자기 식을 따로 갖고 있어도 통과한다.
+test('game.js 는 햇빛·밤 판정을 직접 계산하지 않고 이 모듈에 위임한다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.ok(src.includes("from './daynight.js'"), 'daynight.js 를 import 해야 한다');
+  assert.ok(/const daylight = daylightAt\(timeOfDay\)/.test(src), 'updateDayNight 이 daylightAt 을 써야 한다');
+  assert.ok(/function isNight\(\) \{ return isNightAt\(timeOfDay\)/.test(src), 'isNight 이 isNightAt 에 위임해야 한다');
+  // 인라인으로 되살아나면 잡는다
+  assert.ok(!/Math\.sin\(timeOfDay \* Math\.PI \* 2 - Math\.PI \/ 2\)/.test(src),
+    'game.js 에 햇빛 식이 다시 인라인으로 들어왔다 — daynight.js 와 갈라진다');
 });

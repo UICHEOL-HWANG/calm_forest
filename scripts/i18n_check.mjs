@@ -23,7 +23,7 @@ for (const k of Object.keys(EN)) {
   if (k.includes('{')) {
     for (const kk of new Set([k, k.trim()])) {
       patterns.push(new RegExp('^' + kk.replace(/[.*+?^$()|[\]\\]/g, '\\$&')
-        .replace(/\{(\d+)#\}/g, '(?:\\d+|\\{\\d+\\})')   // {0#} = 숫자 전용. 체커는 소스의 ${..} 를 {0} 으로
+        .replace(/\{(\d+)#\}/g, '(?:\\d[\\d.,]*|\\{\\d+\\})')   // {0#} = 숫자 전용. 체커는 소스의 ${..} 를 {0} 으로
         //                                        치환해 넣으므로 그 자리표시자도 덮는 것으로 본다
         .replace(/\{(\d+)\}/g, '(.+?)') + '$', 's'));
     }

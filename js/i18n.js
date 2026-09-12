@@ -82,7 +82,7 @@ for (const ko in EN) {
   if (ko.includes('{')) {
     for (const [k, v] of koT !== ko ? [[ko, en], [koT, en.trim()]] : [[ko, en]]) {
       const src = k.replace(/[.*+?^$()|[\]\\]/g, '\\$&')   // 정규식 이스케이프({}는 남김)
-        .replace(/\{(\d+)#\}/g, '(\\d+)')                    // {0#} = 숫자 전용 자리
+        .replace(/\{(\d+)#\}/g, '(\\d[\\d.,]*)')              // {0#} = 숫자 전용 자리(42.3 · 1,200 포함)
         .replace(/\{(\d+)\}/g, '(.+?)');
       PATTERNS.push({ re: new RegExp('^' + src + '$', 's'), en: v });
     }
@@ -109,10 +109,15 @@ export function t(s) {
   //   ⚠️ +? (lazy) 여야 한다 — greedy 면 '🎨 ✅ 완료!' 에서 이모지 둘을 한꺼번에 떼어
   //   정확히 존재하는 '✅ 완료!' 키를 건너뛴다. 하나만 떼면 재귀가 나머지를 이어서 본다.
   //   s 플래그라 여러 줄 문자열도 여기서 먼저 잡힌다 — 첫 줄 이모지를 뗀 뒤 줄 단위 폴백으로 간다(의도).
-  const emo = /^([^\p{L}\p{N}]+?\s)(.+)$/su.exec(s);
-  if (emo) {
-    const inner = t(emo[2]);
-    if (inner !== emo[2]) return emo[1] + inner;
+  //   공백을 요구하지 않는다 — '🥇 ⚡60초' 처럼 아이콘과 숫자가 붙어 있는 칩이 있다.
+  //   글자·숫자가 처음 나오는 지점까지만 떼고, 나머지 아이콘은 재귀가 이어서 본다.
+  //   ① 공백까지 떼기 — '🎨 ✅ 완료!' 처럼 두 번째 아이콘부터가 통째로 키인 경우를 살린다
+  //   ② 글자·숫자 직전까지 떼기 — '⚡60초' 처럼 아이콘과 값이 붙어 있는 경우
+  for (const re of [/^([^\p{L}\p{N}]+?\s)(.+)$/su, /^([^\p{L}\p{N}]+?)(?=[\p{L}\p{N}])(.+)$/su]) {
+    const m = re.exec(s);
+    if (!m) continue;
+    const inner = t(m[2]);
+    if (inner !== m[2]) return m[1] + inner;
   }
   if (s.includes('\n')) {                                  // 줄 단위
     const out = s.split('\n').map(line => {
