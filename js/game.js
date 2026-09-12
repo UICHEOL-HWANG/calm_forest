@@ -8157,7 +8157,7 @@ function updateOreRocks() {
 //   밤낮 수동 조절을 없앤 뒤로 침대가 유일한 시간 조작 수단인데, 작물 8개짜리 구매 가구로
 //   두면 "집 완성 → 작물 8개" 를 통과할 때까지 잘 수가 없다.
 //   이미 사서 놓았거나 창고에 넣어 둔 사람에겐 주지 않는다(공짜 두 번째 침대 방지).
-const BED_SPOTS = [   // 벽을 등지는 자리부터 — 앞의 자리가 다른 가구와 겹치면 다음 후보로
+const BED_SPOTS = [   // 방 네 귀퉁이 — 앞의 자리가 다른 가구와 겹치면 다음 후보로(전부 rot 0)
   { x: -4.4, z: 4.4, rot: 0 }, { x: 4.4, z: 4.4, rot: 0 },
   { x: -4.4, z: -3.2, rot: 0 }, { x: 4.4, z: -3.2, rot: 0 },
 ];
@@ -8416,6 +8416,10 @@ function initInput() {
   window.addEventListener('keydown', (e) => {
     // 닉네임 칸 등 글자 입력 중이면 게임 조작으로 안 잡는다(W/A/S/D 로 걷기·C 앉기·숫자 도구 전환·방향키 preventDefault 전부 스킵)
     if (!keys.down(e)) return;
+    // 🛏️ 자는 동안엔 어떤 조작도 받지 않는다 — #sleep-fade 는 포인터만 막고 키는 여기로 들어온다.
+    //   루프의 sleeping 분기가 이동·액션은 이미 막지만, 앉기·도구 전환은 이 핸들러가 직접 처리해
+    //   암전 아래에서 앉은 채로 깨거나 도구가 바뀌어 있었다. 스크롤 방지만 남기고 전부 무시한다.
+    if (sleeping) { if (MOVE_KEYS.includes(e.code)) e.preventDefault(); return; }
     if (e.code === 'Space') wantAction = true;
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
@@ -9240,8 +9244,9 @@ function updateDayNight(dt) {
   // 밤 푸른 톤 그레이딩
   if (gradePass) gradePass.uniforms.uNight.value = nightAmt;
 
-  // 노브 위치는 timeOfDay(하루 사이클 0~1) 기준 — 슬라이더 클릭 위치와 1:1 대응
-  ui.setTime?.(daylight > 0.4 ? 'day' : 'night', timeOfDay, WEATHER === 'clear' ? null : WEATHER);
+  // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
+  //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
+  ui.setTime?.(isNight() ? 'night' : 'day', WEATHER === 'clear' ? null : WEATHER);
 }
 
 const _swayDummy = new THREE.Object3D();   // 인스턴스 행렬 계산용(프레임마다 새로 만들지 않게 재사용)

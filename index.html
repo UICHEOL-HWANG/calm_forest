@@ -414,10 +414,8 @@
   #bag-btn { display: inline-flex; align-items: center; gap: 5px; border: none; border-radius: 13px; padding: 7px 12px; cursor: pointer; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 14px; box-shadow: var(--shadow); transition: transform .1s; }
   #bag-btn:active { transform: scale(0.94); }
   #bag-btn .bag-emo { font-size: 18px; }
-  #time-indicator { display: flex; align-items: center; gap: 8px; justify-content: center; }
-  /* 시간 바 — 하루 사이클(자정→아침→정오→노을→자정)과 1:1 대응하는 그라데이션 */
-  #time-bar { width: 90px; height: 8px; border-radius: 6px; background: linear-gradient(90deg,#2a2c50 0%,#394073 18%,#ffd9b3 28%,#dff3ff 50%,#ffc79c 72%,#4a3f70 84%,#2a2c50 100%); position: relative; }
-  #time-knob { position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); transform: translateX(-7px); }
+  /* 🌤️ 날씨·밤낮 표시 — 조절 기능이 없어진 뒤로 진행 바는 뺐다(아이콘 하나면 충분) */
+  #time-indicator { display: flex; align-items: center; justify-content: center; }
 
   /* 하단 중앙: 도구 하트바 */
   /* 🎒 페이지당 4칸 + 칩 1개 = 가장 좁은 화면에서도 한 줄에 들어간다.
@@ -1053,8 +1051,6 @@
     .inv-ico { font-size: 13px; }
     #bag-btn { padding: 5px 9px; font-size: 12px; }
     #bag-btn .bag-emo { font-size: 15px; }
-    #time-bar { width: 56px; height: 10px; }
-    #time-indicator { gap: 4px; }
     #time-emoji { font-size: 13px; }
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + var(--top-inset)); right: 12px; padding: 6px 10px; font-size: 12px; }
@@ -1185,7 +1181,7 @@
       <span class="inv-item"><span class="inv-ico">🪙</span><b id="inv-coin">0</b></span>
       <button id="bag-btn" title="가방 열기"><span class="bag-emo">🎒</span><span class="bag-lbl">가방</span></button>
     </div>
-    <div id="time-indicator"><span id="time-emoji">🌤️</span><div id="time-bar"><div id="time-knob"></div></div></div>
+    <div id="time-indicator"><span id="time-emoji">🌤️</span></div>
   </div>
 
   <!-- 이모트 팝업 (이모트 버튼 누르면) -->
@@ -2005,10 +2001,9 @@
         if ($('shop-menu').classList.contains('show')) renderShop();
         if ($('cafe-menu').classList.contains('show')) renderCafe(Input.getCafe());   // ☕ 재료 보유량 실시간 반영
       },
-      setTime(mode, frac, weather) {
+      // 날씨가 있으면 날씨를, 없으면 밤낮만 보여 준다. 시간 진행 정도는 표시하지 않는다.
+      setTime(mode, weather) {
         $('time-emoji').textContent = ({ rain: '🌧️', snow: '❄️', fog: '🌫️' })[weather] || (mode === 'day' ? '🌤️' : '🌙');
-        // frac = timeOfDay(하루 사이클 0~1) — 클릭/드래그 위치와 1:1 로 일치
-        $('time-knob').style.left = (Math.max(0, Math.min(1, frac)) * 100) + '%';  // 바 폭 무관(퍼센트) — 모바일서 튀어나감 방지
       },
       setTool(idx, tools, page) {
         if (!$('hotbar').children.length) buildHotbar(tools);
