@@ -856,7 +856,12 @@ export const EN = {
   '마지막 시험이야 — 풀코스 세 접시를 완성해 봐! 💎 특별 보상이 있어.': 'The final test — plate up a three-dish full course! 💎 There\'s a special reward.',
   '오늘 의뢰는 전부 끝! 내일 새 의뢰를 가져올게요 🦉': 'All of today\'s errands are done! I\'ll bring new ones tomorrow 🦉',
   '오늘 의뢰는 전부 끝! {0}{1} 내일 새 의뢰 들고 올게요 🦉': 'All of today\'s errands are done! {0}{1} I\'ll bring new ones tomorrow 🦉',
+  // 🦉 일일 의뢰 줄 — DAILY_COUNT 가 문구에 그대로 들어간다. 개수를 바꿔도 번역이 끊기지 않게
+  //    지금 쓰는 /3 과 베타 후 올릴 /5 를 둘 다 둔다(럭키박스는 앞 QUEST_LUCKY 건에만 붙는다).
   '[오늘의 의뢰 {0}/3] {1}! 완료하면 🎁럭키박스도 준다구.': '[Daily errand {0}/3] {1}! Finish it and there\'s a 🎁Lucky Box in it for you.',
+  '[오늘의 의뢰 {0}/3] {1}!': '[Daily errand {0}/3] {1}!',
+  '[오늘의 의뢰 {0}/5] {1}! 완료하면 🎁럭키박스도 준다구.': '[Daily errand {0}/5] {1}! Finish it and there\'s a 🎁Lucky Box in it for you.',
+  '[오늘의 의뢰 {0}/5] {1}!': '[Daily errand {0}/5] {1}!',
   '오늘의 벌목': 'Today\'s Chopping',
   '나무 5번 베기': 'Chop trees 5 times',
   '오늘의 수확': 'Today\'s Harvest',
@@ -1292,6 +1297,142 @@ export const EN = {
     '🍳 Enter the Free Kitchen and cook a recipe you have the ingredients for',
   '☕ 카페에 들어가 손님이 말한 요리를 만들어 내드려요':
     '☕ Enter the Café, make what the guest asked for and serve it',
+
+  // ── 🦉 퀘스트 확장(2026-09-12) — 새 주민 4명 · 새 목표 7종 · 반복 의뢰 ──
+  '숲지기 오소리': 'Badger the Forest Keeper',
+  '별 보는 아이': 'Stargazing Kid',
+  '사공 오리': 'Duck the Ferryman',
+  '목장 아주머니': 'Ranch Auntie',
+
+  // 수행 방법 한 줄(QUEST_HOW)
+  '🗿 작업대에서 조각 탭을 열고, 오늘의 주문 하나를 골라 깎아요':
+    '🗿 Open the Carving tab at the Workbench and pick one of today\'s orders to carve',
+  '🥚 닭장에 가서 달걀을 걷어요 — 하루에 한 번 나와요':
+    '🥚 Collect eggs at the Coop — they come once a day',
+  '🎁 작업대에서 선물을 만들어, 주민 앞에서 가방을 열고 건네요':
+    '🎁 Craft a gift at the Workbench, then open your bag in front of a neighbour to hand it over',
+  '🪵 작업대에서 야외 장식을 만들어 마당에 놓아요':
+    '🪵 Craft an outdoor decoration at the Workbench and place it in your yard',
+  '🛶 나루터에서 배를 타고 강을 끝까지 내려가요':
+    '🛶 Take the boat at the Dock and ride the river all the way down',
+  '🌊 바다터에서 낚싯대를 던지고, 물면 힘겨루기를 버텨요':
+    '🌊 Cast at the Sea and hold out through the tug-of-war when something bites',
+  '🌫️ 안개 숲에 들어가 등불을 밝히고 숲을 정화해요':
+    '🌫️ Enter the Misty Woods, light the lanterns and clear the forest',
+
+  // 새 목표(일일 풀·반복 풀 공용 표현)
+  '🗿 조각 1개 완성하기': 'Finish 1 carving',
+  '🗿 조각 {0#}개 완성하기': 'Finish {0} carvings',
+  '🥚 달걀 걷기': 'Collect the eggs',
+  '🎁 주민에게 선물 1번 주기': 'Give a neighbour 1 gift',
+  '🎁 주민에게 선물 {0#}번 주기': 'Give neighbours {0} gifts',
+  '🪵 야외 장식 1개 놓기': 'Place 1 outdoor decoration',
+  '🪵 야외 장식 {0#}개 놓기': 'Place {0} outdoor decorations',
+  '🛶 강 한 번 완주하기': 'Finish 1 river run',
+  '🌊 바다 물고기 {0#}마리 낚기': 'Catch {0} sea fish',
+  '🌫️ 안개 숲 정화하기': 'Clear the Misty Woods',
+
+  // 일일 의뢰 제목
+  '오늘의 주문': "Today's Order",
+  '마음 전하기': 'A Little Something',
+  '마당 가꾸기': 'Tending the Yard',
+  '아침 달걀': 'Morning Eggs',
+  '뱃길 따라': 'Down the River',
+  '먼바다까지': 'Out to Sea',
+  '안개 걷기': 'Lifting the Mist',
+
+  // 🐿️→🦡 숲지기 오소리 체인
+  '숲 첫걸음': 'First Steps in the Woods',
+  '숲에 들어온 김에 다섯 개만 주워다 줄래? 어디에 뭐가 나는지 알려줄게.':
+    'While you\'re in the woods, could you pick up five for me? I\'ll show you where things grow.',
+  '바구니 가득': 'A Full Basket',
+  '겨울 준비를 해야 해. 열두 개면 바구니가 그득해질 거야!':
+    'We need to get ready for winter. Twelve would fill the basket nicely!',
+  '이웃의 몫': "A Neighbour's Share",
+  '주운 걸 혼자 쌓아두면 재미없잖아. 누구든 하나 나눠줘 봐.':
+    'No fun hoarding what you gather. Share one with somebody.',
+  '나뭇결 읽기': 'Reading the Grain',
+  '마지막은 손재주야 — 작업대에서 조각 하나만 완성해 보렴. 💎 값진 걸 줄게.':
+    'The last one is craft — finish a carving at the Workbench. I\'ll give you something 💎precious.',
+
+  // ⭐ 별 보는 아이 체인
+  '첫 반딧불이': 'First Fireflies',
+  '밤이 되면 여기 반딧불이가 떠올라요. 세 마리만 같이 잡아요!':
+    'The fireflies come up here at night. Let\'s catch three together!',
+  '나눠 주기': 'Passing It On',
+  '예쁜 걸 보면 누구 주고 싶어져요. 선물 하나만 건네 보실래요?':
+    'Pretty things make you want to give them away. Would you hand someone a gift?',
+  '별이 내린 밤': 'A Night of Stars',
+  '여덟 마리가 모이면 계곡이 하늘처럼 보인대요. 보고 싶어요!':
+    'They say with eight of them the valley looks like the sky. I want to see it!',
+
+  // 🦆 사공 오리 체인
+  '나루 조황': "The Dock's Catch",
+  '물때가 좋구먼. 네 마리만 낚아 보시게 — 뱃길 이야기를 들려주지.':
+    'The tide is good. Land four and I\'ll tell you about the river routes.',
+  '나루 손보기': 'Mending the Dock',
+  '선착장 널이 삭았어. 목재 열다섯이면 든든하게 고치겠군.':
+    'The dock planks have rotted. Fifteen wood would set it right.',
+  '한나절 낚시': 'Half a Day Fishing',
+  '마지막일세 — 여덟 마리를 채우면 진짜 물가 사람이 되는 게야.':
+    'This is the last — land eight and you\'re a proper river hand.',
+
+  // 🐔 목장 아주머니 체인
+  '아침상 차리기': 'Setting Breakfast',
+  '아침은 든든해야지! 부엌에서 두 번만 만들어 봐요.':
+    'Breakfast should be hearty! Cook twice in the kitchen for me.',
+  '손님맞이': 'Greeting the Guests',
+  '카페가 바쁘대요. 손님 세 분만 봐주면 큰 도움이 될 거예요.':
+    'The café is busy. Serving three guests would be a great help.',
+  '곳간 채우기': 'Filling the Store',
+  '마지막 부탁이에요 — 작물 여덟 개면 겨울이 무섭지 않아요.':
+    'One last favour — eight crops and winter holds no fear.',
+
+  // 숫자만 다른 변형 — 기존 사전이 구체 문장을 하나씩 등록하는 방식이라 그대로 따른다
+  '🍄 채집물 12개 줍기': '🍄 Pick up 12 Forage finds',
+  '🍄 채집물 6개 줍기': '🍄 Pick up 6 Forage finds',
+  '🌟 반딧불이 8마리 잡기(밤)': '🌟 Catch 8 fireflies (at night)',
+  '🌟 반딧불이 4마리 잡기(밤)': '🌟 Catch 4 fireflies (at night)',
+  '목재 15개 모으기': 'Gather 15 Wood',
+  '목재 12개 모으기': 'Gather 12 Wood',
+  '작물 5개 수확하기': 'Harvest 5 Crops',
+  '작물 8개 보유': 'Hold 8 Crops',
+  '작물 6개 보유': 'Hold 6 Crops',
+  '작물 4개 보유': 'Hold 4 Crops',
+  '씨앗 4번 심기': 'Plant Seeds 4 times',
+  '씨앗 5번 심기': 'Plant Seeds 5 times',
+  '나무 6번 베기': 'Chop trees 6 times',
+  '상점에서 8개 팔기': 'Sell 8 items at the Shop',
+  '물고기 4마리 낚기': 'Catch 4 fish',
+  '물고기 5마리 낚기': 'Catch 5 fish',
+  '물고기 7마리 낚기': 'Catch 7 fish',
+  '물고기 8마리 낚기': 'Catch 8 fish',
+  '물 6번 주기': 'Water 6 times',
+  '광석 5개 캐기': 'Mine 5 ore',
+  '요리 2번 하기': 'Cook 2 times',
+  '☕ 카페 손님 3명 서빙하기': '☕ Serve 3 café guests',
+
+  // 🔁 반복 의뢰 — 제목과 공통 말머리
+  '오늘은 이것 좀 도와줄래요? {0}!': 'Could you help with this today? {0}!',
+  '밭일 거들기': 'A Hand in the Field',
+  '물 당번': 'Watering Duty',
+  '이랑 채우기': 'Filling the Rows',
+  '땔감 보충': 'Topping Up Firewood',
+  '자재 창고': 'The Material Store',
+  '마당 손질': 'Yard Upkeep',
+  '오늘의 장사': "Today's Trade",
+  '물량 확보': 'Securing Stock',
+  '광물 수배': 'Ore Wanted',
+  '먼바다 소식': 'News from Open Water',
+  '오늘의 메뉴': "Today's Menu",
+  '홀 거들기': 'Helping in the Hall',
+  '재료 손질': 'Prepping Ingredients',
+  '숲 한 바퀴': 'A Round of the Woods',
+  '밤 마중': 'Meeting the Night',
+  '등 하나 더': 'One More Lamp',
+  '뱃길 점검': 'Checking the Route',
+  '강가 줍기': 'Gathering by the River',
+  '모이밭 가꾸기': 'Tending the Feed Patch',
 
   // ── ⚠️ 캐치올 꼬리 패턴 — 반드시 사전 맨 끝에 둔다 ──────────────
   //    PATTERNS 는 삽입 순서로 첫 매치를 쓴다. 이 셋을 위쪽에 두면

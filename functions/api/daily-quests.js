@@ -29,9 +29,18 @@ const QUEST_SPEC = {
   serve:   { min: 2, max: 4, ko: n => `☕ 카페 손님 ${n}명 서빙하기`,   en: n => `Serve ${n} café guests` , where: '카페', whereEn: 'the café' },
   catch:   { min: 2, max: 5, ko: n => `🌟 반딧불이 ${n}마리 잡기(밤)`, en: n => `Catch ${n} fireflies (night)` , where: '반딧불이 계곡(밤)', whereEn: 'Firefly Glade (at night)' },
   forage:  { min: 3, max: 8, ko: n => `🍄 채집물 ${n}개 줍기`,         en: n => `Forage ${n} finds` , where: '채집 숲', whereEn: 'the foraging woods' },
+  carve:   { min: 1, max: 1, ko: n => `🗿 조각 ${n}개 완성하기`,       en: n => `Finish ${n} carving(s)` , where: '작업대 조각 탭', whereEn: 'the carving bench' },
+  gift:    { min: 1, max: 3, ko: n => `🎁 주민에게 선물 ${n}번 주기`,  en: n => `Give ${n} gift(s) to neighbours` , where: '마을 주민 앞', whereEn: 'any neighbour in the village' },
 };
+// ⚠️ 여기엔 "전제조건이 없는 목표" 만 넣는다.
+//   🥚달걀(닭장 필요) · 🪵장식(집 필요) · 🛶강 · 🌊바다 · 🌫️안개(맵 잠금)는 사람마다 가능 여부가 다른데,
+//   서버는 그 세이브를 모른다. 상태를 파라미터로 받으면 (날짜 × 날씨 × 언어 × 단계 × 잠금 조합)으로
+//   캐시 키가 갈라져 Gemini 호출이 폭증한다. 그런 목표는 게임 쪽 DAILY_POOL 에만 두고
+//   js/quests.js 의 QUEST_GATES 가 거른다.
 const TYPES = Object.keys(QUEST_SPEC);
-const NEED = 3;
+const NEED = 3;   // ⚠️ js/game.js 의 DAILY_COUNT · scripts/serve.py 의 QUEST_NEED 와 반드시 같아야 한다.
+                  //    어긋나면 클라이언트가 validDailyQuests 검증에서 AI 의뢰를 통째로 버린다.
+                  //    🧪베타(~2026-09-15) 종료 후 셋을 함께 5 로 올린다.
 
 // 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
 //   사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로, 3칸으로만 받는다.
@@ -232,7 +241,9 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   // 날짜·날씨·언어가 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번(엣지 PoP당)
   const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}/api/daily-quests?date=${date}&weather=${weather}&lang=${lang}&phase=${phase}`, { method: 'GET' });
+  // ⚠️ 키에 NEED 를 넣는다 — 개수를 바꿔 배포해도 옛 개수로 캐시된 응답이 TTL 동안 계속 나가면
+  //    클라이언트가 validDailyQuests 에서 통째로 버려 그날 AI 의뢰가 전원 미적용된다.
+  const cacheKey = new Request(`${url.origin}/api/daily-quests?date=${date}&weather=${weather}&lang=${lang}&phase=${phase}&n=${NEED}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 

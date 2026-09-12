@@ -307,8 +307,15 @@ QUEST_SPEC = {
     'serve':   (2, 4, lambda n: f'☕ 카페 손님 {n}명 서빙하기', '카페'),
     'catch':   (2, 5, lambda n: f'🌟 반딧불이 {n}마리 잡기(밤)', '반딧불이 계곡(밤)'),
     'forage':  (3, 8, lambda n: f'🍄 채집물 {n}개 줍기', '채집 숲'),
+    'carve':   (1, 1, lambda n: f'🗿 조각 {n}개 완성하기', '작업대 조각 탭'),
+    'gift':    (1, 3, lambda n: f'🎁 주민에게 선물 {n}번 주기', '마을 주민 앞'),
 }
-QUEST_NEED = 3
+# ⚠️ 여기엔 "전제조건이 없는 목표" 만 넣는다.
+#   🥚달걀(닭장 필요)·🪵장식(집 필요)·🛶강·🌊바다·🌫️안개(맵 잠금)는 사람마다 가능 여부가 다른데
+#   서버는 그 세이브를 모른다. 상태를 파라미터로 받으면 캐시 키가 갈라져 호출이 폭증한다.
+#   그런 목표는 게임 쪽 DAILY_POOL 에만 두고 js/quests.js 의 QUEST_GATES 가 거른다.
+QUEST_NEED = 3   # ⚠️ js/game.js 의 DAILY_COUNT · functions/api/daily-quests.js 의 NEED 와 같아야 한다
+#   🧪베타(~2026-09-15) 종료 후 셋을 함께 5 로 올린다
 QTITLE_MAX, QLINE_MAX = 12, 48
 
 QUEST_SYSTEM = f"""너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 세 가지 의뢰로 전한다.
