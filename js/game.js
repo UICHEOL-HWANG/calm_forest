@@ -25,6 +25,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
+import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
@@ -306,7 +307,7 @@ let farmGroup, mineGroup;                        // 텃밭/동굴 그룹(가시�
 const GLADE = new THREE.Vector3(2, 0, 25);      // 계곡 중심(남쪽 숲) — ☕카페 구역과 안 겹치게 더 남쪽으로
 const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
 const GLADE_MAX = IS_MOBILE ? 5 : 7;            // 동시 개체 수
-const NIGHT_MIN = 0.45;                         // 이 이상 어두워야 출현(밤 판정)
+//   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
 // 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
 const BUG_KINDS = [
   { id: 'rainbow', name: '무지개반디', ico: '🌈', color: 0xffc0f0, p: 0.06 },
@@ -318,7 +319,7 @@ const gladeBugs = [];                           // 살아있는 반딧불이 개
 let gladeGroup = null, nearGlade = false;
 let bugRespawnAt = 0;                           // 다음 개체 보충 시각(clock.elapsedTime)
 let nightLevel = 0;                             // updateDayNight 이 매 프레임 갱신(0=한낮 1=한밤)
-function isNight() { return nightLevel >= NIGHT_MIN; }
+function isNight() { return isNightAt(timeOfDay); }   // 판정은 js/daynight.js 가 단일 출처(테스트가 잠근다)
 
 // ── ☕ 카페 — 채굴장처럼 처음부터 마을에 있는 장소. 새 동사: 접객/서빙 ──
 //    마을 남쪽 건물로 들어가면 별도의 넓은 홀이 열리고, 그 안에 손님 NPC가 앉아 있다.
@@ -778,7 +779,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
-  house: { decor: [], stored: {}, addons: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록
+  house: { decor: [], stored: {}, addons: [], bedGiven: false },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   outdoorStored: {},                        // 🧺 보관한 야외 장식 { id: 개수 } — 작업대에서 값 없이 다시 꺼냄
@@ -1162,7 +1163,7 @@ let interiorGroup, interiorFloor, interiorLamp;
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
-let dayPaused = false;  // 낮/밤 자동 순환 정지 여부(수동 조절 시)
+let dayPaused = false;  // 낮/밤 자동 순환 정지 여부 — ?time= 로 시간대를 고정하는 스토어 촬영용
 const npcObjs = [];     // 런타임 NPC 객체들
 let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 
@@ -1504,8 +1505,8 @@ export const Input = {
   getTools() { return TOOLS; },
   getToolPage() { return toolPage; },
   getToolPages() { return TOOL_PAGES; },
-  setTimeOfDay(f) { timeOfDay = ((f % 1) + 1) % 1; dayPaused = true; }, // 슬라이더로 시간 지정(수동 → 정지)
-  toggleDayFlow() { dayPaused = !dayPaused; return dayPaused; },        // 자동 순환 재생/정지
+  // 낮/밤 수동 조절(setTimeOfDay·toggleDayFlow)은 제거됐다 — 시간은 늘 자동으로 흐르고,
+  // 플레이어가 만질 수 있는 건 🛏️ 침대뿐(밤에 누우면 아침). dayPaused 는 ?time= dev 파라미터 전용.
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() { return DECOR; },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
@@ -1895,6 +1896,7 @@ function applySave(saved) {
   }
   if (saved.house && Array.isArray(saved.house.addons))                  // 🧩 구성품 복원(카탈로그에 있는 id 만, 중복 제거) — 집 복원(buildHouseStage) 전에
     gameState.house.addons = [...new Set(saved.house.addons.filter(id => HOUSE_ADDONS.some(a => a.id === id)))];
+  if (saved.house && saved.house.bedGiven) gameState.house.bedGiven = true;   // 🛏️ 기본 침대를 이미 받았는지(두 번 주지 않게)
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
     saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
@@ -8151,8 +8153,41 @@ function updateOreRocks() {
   }
 }
 
+// 🛏️ 기본 침대 — 집에 처음 들어오면 하나 놓아 준다.
+//   밤낮 수동 조절을 없앤 뒤로 침대가 유일한 시간 조작 수단인데, 작물 8개짜리 구매 가구로
+//   두면 "집 완성 → 작물 8개" 를 통과할 때까지 잘 수가 없다.
+//   이미 사서 놓았거나 창고에 넣어 둔 사람에겐 주지 않는다(공짜 두 번째 침대 방지).
+const BED_SPOTS = [   // 방 네 귀퉁이 — 앞의 자리가 다른 가구와 겹치면 다음 후보로(전부 rot 0)
+  { x: -4.4, z: 4.4, rot: 0 }, { x: 4.4, z: 4.4, rot: 0 },
+  { x: -4.4, z: -3.2, rot: 0 }, { x: 4.4, z: -3.2, rot: 0 },
+];
+function grantStarterBed() {
+  if (gameState.house.bedGiven) return;
+  gameState.house.bedGiven = true;
+  const stored = gameState.house.stored || {};
+  if (gameState.house.decor.some(d => d.id === 'bed') || (stored.bed || 0) > 0) { requestSave(); return; }
+
+  const def = DECOR.find(d => d.id === 'bed');
+  const free = (spot) => {
+    const hw = def.foot[spot.rot % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[spot.rot % 2 ? 0 : 1] / 2 * DECOR_SCALE;
+    return !gameState.house.decor.some(rec => {
+      const o = DECOR.find(d => d.id === rec.id); if (!o?.foot) return false;   // 러그류는 밟고 지나가니 겹쳐도 된다
+      const ohw = o.foot[rec.rot % 2 ? 1 : 0] / 2 * DECOR_SCALE, ohd = o.foot[rec.rot % 2 ? 0 : 1] / 2 * DECOR_SCALE;
+      return Math.abs(rec.x - spot.x) < hw + ohw && Math.abs(rec.z - spot.z) < hd + ohd;
+    });
+  };
+  const spot = BED_SPOTS.find(free);
+  if (spot) placeDecor('bed', INT.x + spot.x, INT.z + spot.z, true, spot.rot);
+  else { gameState.house.stored = stored; stored.bed = (stored.bed || 0) + 1; }   // 방이 꽉 찼으면 🧺 창고로
+  trackEvent('starter_bed', { to: spot ? 'floor' : 'store' });   // [GA4] sleep 이벤트의 분모
+  requestSave();
+  setTimeout(() => ui.toast?.(spot ? '🛏️ 침대를 놓아뒀어요 — 밤에 누우면 아침까지 자요'
+                                   : '🛏️ 침대를 창고에 넣어뒀어요 — 🎨꾸미기에서 꺼내 놓아요', 3200), 700);
+}
+
 function enterHouse() {
   indoor = true; setFogExempt(player, true);   // 방 안에선 캐릭터도 안개 밖
+  grantStarterBed();
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true); snapCamera(); setSpaceVisible();
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
@@ -8208,7 +8243,15 @@ function updateDoorInteract() {
       const near = nearestDecor(0.9);
       if (near) {
         nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
-        nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
+        if (def.id === 'bed' && isNight()) {
+          // 🛏️ 밤엔 액션이 '자기' — 옮기기는 탭(레이캐스트) 경로로 밤낮 상관없이 그대로 된다
+          nd = 'sleep'; prompt = `${def.ico} ${def.name} · 자기`;
+          // 밤엔 액션이 '자기' 로 넘어가 침대를 들 수 없다 — 탭 경로가 있다는 걸 한 번 알려 준다
+          firstHintBanner('bedMove', '🛏️', '침대 옮기기', '밤엔 침대를 직접 탭하면 옮겨요');
+        } else {
+          nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
+          if (def.id === 'bed') firstHintBanner('bedSleep', '🛏️', '침대', '밤에 누우면 아침까지 자요');
+        }
         const ring = ensureNearRing(); ring.position.set(near.root.position.x, 0.22, near.root.position.z); ring.visible = true;
       }
     }
@@ -8373,6 +8416,10 @@ function initInput() {
   window.addEventListener('keydown', (e) => {
     // 닉네임 칸 등 글자 입력 중이면 게임 조작으로 안 잡는다(W/A/S/D 로 걷기·C 앉기·숫자 도구 전환·방향키 preventDefault 전부 스킵)
     if (!keys.down(e)) return;
+    // 🛏️ 자는 동안엔 어떤 조작도 받지 않는다 — #sleep-fade 는 포인터만 막고 키는 여기로 들어온다.
+    //   루프의 sleeping 분기가 이동·액션은 이미 막지만, 앉기·도구 전환은 이 핸들러가 직접 처리해
+    //   암전 아래에서 앉은 채로 깨거나 도구가 바뀌어 있었다. 스크롤 방지만 남기고 전부 무시한다.
+    if (sleeping) { if (MOVE_KEYS.includes(e.code)) e.preventDefault(); return; }
     if (e.code === 'Space') wantAction = true;
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
@@ -8517,6 +8564,9 @@ function animate() {
 
   if (mode === 'play') {
     if (intro) { updateIntro(dt, t); wantAction = false; }   // 🎬 프롤로그 컷신이 카메라·연출을 가짐
+    // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
+    //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
+    else if (sleeping) { wantAction = false; }
     else if (!mgView) { updatePlayer(dt, t); updateCamera(dt); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (!mgView && !intro) {
@@ -9084,10 +9134,32 @@ function skyAt(t) {
   };
 }
 
+// 🛏️ 자기 — 밤에 침대에 누우면 아침(WAKE_TIME)까지 건너뛴다.
+//   시간만 옮길 뿐 정산은 없다: 🦝밤손님·🌡️날씨·🛶나룻배·🌫️안개·출석은 전부
+//   실제 날짜(todayStr) 기준이라 게임 내 시간과 무관하다 — 자서 얻거나 잃는 게 없다.
+let sleeping = false;   // 암전 중 재입력 차단
+function doSleep() {
+  if (sleeping) return;
+  if (!isNight()) { ui.toast?.('🛏️ 밤에 누우면 아침까지 잘 수 있어요'); return; }
+  sleeping = true;
+  Sound.blip();
+  trackEvent('sleep', { from: Math.round(timeOfDay * 100) / 100 });   // [GA4] 자기 사용률
+  ui.sleepFade?.(1);
+  setTimeout(() => {
+    timeOfDay = WAKE_TIME; gameState.timeOfDay = timeOfDay;
+    dayPaused = false;   // ?time= 로 멈춰 둔 시계도 자고 나면 다시 흐른다(0.30 에 고착 방지).
+                         // 촬영은 자기 전까지의 고정만 쓰므로 손해가 없고, 검수 때 ?time= 로 밤을 만들 수 있다.
+    requestSave();
+    ui.sleepFade?.(0);
+    ui.toast?.('☀️ 잘 잤어요 — 아침이에요', 2600);
+    setTimeout(() => { sleeping = false; }, 700);   // 암전이 걷힌 뒤에 풀어 연타 방지
+  }, 750);
+}
+
 function updateDayNight(dt) {
   if (!dayPaused) timeOfDay = (timeOfDay + DAY_SPEED * dt) % 1; // 일시정지 아니면 자동 순환
   gameState.timeOfDay = timeOfDay;
-  const daylight = Math.max(0, Math.sin(timeOfDay * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5);
+  const daylight = daylightAt(timeOfDay);   // 식은 js/daynight.js 한 곳에만 (isNight 과 반드시 같아야 한다)
   const nightAmt = 1 - daylight;
   nightLevel = nightAmt;   // 🌟 반딧불이 등 "밤 전용" 콘텐츠가 참조
   const t = clock.elapsedTime;
@@ -9172,8 +9244,9 @@ function updateDayNight(dt) {
   // 밤 푸른 톤 그레이딩
   if (gradePass) gradePass.uniforms.uNight.value = nightAmt;
 
-  // 노브 위치는 timeOfDay(하루 사이클 0~1) 기준 — 슬라이더 클릭 위치와 1:1 대응
-  ui.setTime?.(daylight > 0.4 ? 'day' : 'night', timeOfDay, WEATHER === 'clear' ? null : WEATHER);
+  // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
+  //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
+  ui.setTime?.(isNight() ? 'night' : 'day', WEATHER === 'clear' ? null : WEATHER);
 }
 
 const _swayDummy = new THREE.Object3D();   // 인스턴스 행렬 계산용(프레임마다 새로 만들지 않게 재사용)
@@ -9477,6 +9550,7 @@ function handleAction() {
   // 문/게이트(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
+  if (nearDoor === 'sleep') return doSleep();   // 🛏️ 밤에 침대 옆에서 액션 = 자기
   if (nearDoor === 'decor') { if (nearDecorMesh) pickDecor(nearDecorMesh); return; }   // 🛋️ 가구 옆에서 액션 = 들기
   if (nearDoor === 'outdoor') { if (nearOutdoorMesh) pickOutdoor(nearOutdoorMesh); return; }   // 🪵 야외 장식 옆에서 액션 = 들기
   if (nearDoor === 'farm') return enterFarm();
