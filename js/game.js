@@ -502,7 +502,7 @@ function setSpaceVisible() {
   if (seaGroup) seaGroup.visible = atSea;
   // 🌓 그림자: 마을에서만 섀도맵을 갱신한다. 어떤 공간을 멈출지는 js/shadow-scope.js(SUBSPACE_FLAGS).
   //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
-  setShadowActive(shadowActiveFor({ indoor, atFarm, atMine, atCafe, atRiver, atMist, atSea }));
+  setShadowActive(shadowActiveFor(spaceFlags()));
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe) startRainSound();
   else stopRainSound();
@@ -2020,9 +2020,10 @@ function initLights() {
 
 // 🌓 섀도맵 갱신 스위치 — 마을 밖 인스턴스 공간에서는 보이는 그림자가 없는데도 마을 캐스터
 //   180여 개가 매 프레임 섀도맵에 계속 렌더된다. 그 공간에 있는 동안 갱신을 멈추면 화면은
-//   그대로인 채 그림자 패스가 빠진다(실측 2026-09-12: 실내 −132~153콜, 동굴 −184~205콜,
-//   태양 각도 5개 전부에서 바뀐 픽셀 0 — 같은 절차로 마을은 9~44% 가 틀어지는 대조군 조건에서).
-//   어떤 공간이 해당되는지와 그 근거(기하 6곳 + 실측 예외인 실내)는 js/shadow-scope.js 참고.
+//   그대로인 채 그림자 패스가 빠진다(실측 2026-09-12: 실내 −132~153콜 · 동굴 −184~205콜 ·
+//   텃밭 −132~154콜, 태양 각도 5개 전부에서 바뀐 픽셀 0 — 같은 절차로 마을은 5~44% 가
+//   틀어지는 대조군 조건에서). 어떤 공간이 해당되는지와 그 근거(기하 5곳 + 실측 예외인
+//   실내·텃밭)는 js/shadow-scope.js 참고.
 //   ⚠️ shadowMap.enabled 를 끄면 머티리얼 셰이더가 전부 재컴파일돼 진입할 때 프레임이 튄다.
 //   autoUpdate 만 끊으면 셰이더는 그대로 두고 그림자 패스만 건너뛴다.
 function setShadowActive(on) {
@@ -2030,6 +2031,15 @@ function setShadowActive(on) {
   if (renderer.shadowMap.autoUpdate === on) return;
   renderer.shadowMap.autoUpdate = on;
   if (on) renderer.shadowMap.needsUpdate = true;     // 마을로 돌아오면 그 프레임에 한 번 갱신
+}
+
+// 현재 공간 플래그 묶음 — updateDayNight 가 매 프레임 부르므로 객체를 재사용한다(프레임당 할당 0).
+const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false };
+function spaceFlags() {
+  _spaceFlags.indoor = indoor; _spaceFlags.atFarm = atFarm; _spaceFlags.atMine = atMine;
+  _spaceFlags.atCafe = atCafe; _spaceFlags.atRiver = atRiver; _spaceFlags.atMist = atMist;
+  _spaceFlags.atSea = atSea;
+  return _spaceFlags;
 }
 
 function clayMat(color, flat = true) {
@@ -9268,6 +9278,12 @@ function updateDayNight(dt) {
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
   //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
   ui.setTime?.(isNight() ? 'night' : 'day', WEATHER === 'clear' ? null : WEATHER);
+
+  // 🌓 그림자 화해 — 공간 전환은 setSpaceVisible() 이 처리하지만, exit 함수 몇 곳은 플래그를
+  //   내린 뒤 setSpaceVisible() 전에 다른 호출이 끼어 있다(exitHouse·exitMine·exitCafe).
+  //   거기서 예외가 나면 마을인데 섀도맵이 얼어붙은 채 복구 경로가 없다. 여기서 매 프레임 맞춘다.
+  //   setShadowActive 는 값이 같으면 즉시 반환하므로 평소 비용은 불리언 비교 하나다.
+  setShadowActive(shadowActiveFor(spaceFlags()));
 }
 
 const _swayDummy = new THREE.Object3D();   // 인스턴스 행렬 계산용(프레임마다 새로 만들지 않게 재사용)
