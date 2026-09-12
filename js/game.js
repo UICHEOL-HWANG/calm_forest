@@ -9622,6 +9622,9 @@ let farmRidgeMesh = null;       // InstancedMesh — 이랑 3줄(칸당 RIDGE_PE
 let farmSoilCap = 0;            // 현재 버퍼 용량
 let farmSigPrev = NaN;          // 마지막으로 버퍼를 쓴 시점의 시그니처
 let farmCropMeshes = null;      // { sprout, stem, leaf, bush, fruit } — 단계별 InstancedMesh
+let farmHintMeshes = null;      // { warn, harvest, seedHint } — 밭 알림 배지 InstancedMesh ×3
+//   ⚠️ 아틀라스 1장 + onBeforeCompile 대신 종류별 텍스처 3장 + 메시 3개(컨트롤러 판정, task-5:
+//     1콜과 3콜 차이는 무의미한데 커스텀 GLSL 은 three 버전마다 깨지기 쉽다).
 const _fmM = new THREE.Matrix4(), _fmC = new THREE.Color();
 
 function buildFarmInstances(cap = PLOT_CAP) {
@@ -9674,6 +9677,24 @@ function buildFarmInstances(cap = PLOT_CAP) {
     fruit:  mk(new THREE.IcosahedronGeometry(0.19, 0), cap, false),
   };
   farmCropSigPrev = NaN;
+
+  // 🌾 알림 배지 — '물!'·'수확!'·'씨앗을 넣어요' 는 동시에 하나만 뜬다(updatePlots 가 배타 토글).
+  //   종류별 캔버스 텍스처 + 종류별 InstancedMesh 3개(아틀라스·커스텀 셰이더 없음).
+  const hgeo = new THREE.PlaneGeometry(1.5, 1.5 * HINT_H / HINT_W);
+  const mkHint = (tex) => {
+    const m = new THREE.InstancedMesh(hgeo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }), cap);
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    m.castShadow = false; m.receiveShadow = false; m.count = 0; m.frustumCulled = false;
+    scene.add(m);
+    return m;
+  };
+  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint']) scene.remove(farmHintMeshes[k]);
+  farmHintMeshes = {
+    warn: mkHint(warnTexture()),
+    harvest: mkHint(harvestTexture()),
+    seedHint: mkHint(seedHintTexture()),
+  };
+  _hintAnyPrev = false;   // 재할당 직후엔 카운트가 전부 0 — 다음 syncFarmHints 가 필요하면 다시 채운다
 }
 
 // 전체 버퍼 다시 쓰기 — 시그니처가 바뀌었을 때만. force 는 부팅·복원용.
@@ -9686,6 +9707,7 @@ function syncFarmSoil(force = false) {
     buildFarmInstances(plots.length + 40);
     farmSigPrev = sig;
     syncFarmCrops(true);   // 🌱 재할당으로 새로 만든 작물 버퍼(count 전부 0)를 다시 채운다 — 흙·이랑은 아래 루프가 self-heal 하지만 작물은 아무도 안 채워준다
+    syncFarmHints(clock.elapsedTime);   // 🌾 배지 버퍼(count 전부 0)도 지금 떠 있는 배지가 있으면 즉시 다시 채운다
   }
   for (let i = 0; i < plots.length; i++) {
     const p = plots[i];
@@ -10195,11 +10217,9 @@ function updatePlots(dt) {
     } else {
       setPlotWarn(plot, false); setPlotHarvest(plot, false); setPlotSeedHint(plot, false); // 시든 밭 등
     }
-    if (plot.warn && plot.warn.visible) plot.warn.position.y = 1.4 + Math.sin(now * 3) * 0.06; // 살짝 둥실
-    if (plot.harvest && plot.harvest.visible) plot.harvest.position.y = 1.4 + Math.sin(now * 3 + 1) * 0.06;
-    if (plot.seedHint && plot.seedHint.visible) plot.seedHint.position.y = 1.4 + Math.sin(now * 3 + 2) * 0.06;
   }
   updateFarmPops(dt);   // 🌾 팝 중인 칸만 행렬 갱신
+  syncFarmHints(now);   // 🌾 배지 빌보드 — 떠 있는 배지가 있을 때만 내부에서 실제로 버퍼를 건드린다
 }
 
 // 시들기: 누런 색으로(괭이로 다시 심어야 함)
@@ -10218,73 +10238,82 @@ function clearCrop(plot) {
   syncFarmCrops(true);
 }
 
-// 밭 위 '물!' 경고 스프라이트 토글(공유 텍스처)
-let _warnMat = null;
-function warnMaterial() {
-  if (_warnMat) return _warnMat;
-  const cv = document.createElement('canvas'); cv.width = 176; cv.height = 104;
-  const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(140,200,255,0.96)'; roundRect(c, 8, 8, 160, 64, 18); c.fill();
-  c.beginPath(); c.moveTo(78, 72); c.lineTo(98, 72); c.lineTo(84, 94); c.closePath(); c.fill();
-  c.fillStyle = '#164a6a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(t('💧 물 줘요!'), 88, 40);
-  const tex = new THREE.CanvasTexture(cv);
-  _warnMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  return _warnMat;
+// =============================================================
+//  🌾 밭 알림 배지 — '물!'·'수확!'·'씨앗을 넣어요' 세 배지를 종류별 텍스처 + InstancedMesh 로.
+//  Sprite 는 객체마다 1드로우콜이라 121칸이면 121콜이었다 → 종류당 InstancedMesh 1개(총 3콜)로.
+//  ⚠️ 아틀라스 1장 + onBeforeCompile 커스텀 셰이더는 쓰지 않는다(컨트롤러 판정, task-5-report 참고):
+//     스펙이 이 항목을 3콜로 잡아뒀고, map_fragment 치환은 three 버전마다 깨지기 쉬운 코드다.
+//  ⚠️ t() 로 번역한 문구를 캔버스에 굽는다 — 그러나 setLang() 이 location.reload() 를 하므로
+//     언어 전환 시 모듈이 통째로 다시 로드되어 텍스처도 새로 그려진다(별도 무효화 불필요).
+// =============================================================
+const HINT_W = 256, HINT_H = 112;
+let _warnTex = null, _harvestTex = null, _seedHintTex = null;
+function _hintCanvas() {
+  const cv = document.createElement('canvas'); cv.width = HINT_W; cv.height = HINT_H;
+  return [cv, cv.getContext('2d')];
 }
-function setPlotWarn(plot, show) {
-  if (show && !plot.warn) {
-    plot.warn = new THREE.Sprite(warnMaterial());
-    plot.warn.scale.set(1.15, 0.68, 1); plot.warn.position.set(0, 1.4, 0);
-    plot.group.add(plot.warn);
-  }
-  if (plot.warn) plot.warn.visible = show;
+function _drawHintBadge(c, bg, ink, text, padX) {
+  c.fillStyle = bg; roundRect(c, padX, 8, HINT_W - padX * 2, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(HINT_W / 2 - 10, 72); c.lineTo(HINT_W / 2 + 10, 72); c.lineTo(HINT_W / 2 - 4, 94); c.closePath(); c.fill();
+  c.fillStyle = ink; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(text, HINT_W / 2, 40);
+}
+function _hintTexFromCanvas(cv) {
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  return tex;
+}
+function warnTexture() {
+  if (_warnTex) return _warnTex;
+  const [cv, c] = _hintCanvas();
+  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#14406b', t('💧 물을 줘야해요!'), 46);
+  return (_warnTex = _hintTexFromCanvas(cv));
+}
+function harvestTexture() {
+  if (_harvestTex) return _harvestTex;
+  const [cv, c] = _hintCanvas();
+  _drawHintBadge(c, 'rgba(150,220,150,0.96)', '#245a2a', t('🌾 수확!'), 60);
+  return (_harvestTex = _hintTexFromCanvas(cv));
+}
+function seedHintTexture() {
+  if (_seedHintTex) return _seedHintTex;
+  const [cv, c] = _hintCanvas();
+  _drawHintBadge(c, 'rgba(233,206,150,0.97)', '#6b4a20', t('🌰 씨앗을 넣어요'), 12);
+  return (_seedHintTex = _hintTexFromCanvas(cv));
 }
 
-// 밭 위 '수확!' 알림 스프라이트(공유 텍스처)
-let _harvestMat = null;
-function harvestMaterial() {
-  if (_harvestMat) return _harvestMat;
-  const cv = document.createElement('canvas'); cv.width = 200; cv.height = 104;
-  const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(150,220,150,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
-  c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
-  c.fillStyle = '#245a2a'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(t('🌾 수확!'), 100, 40);
-  const tex = new THREE.CanvasTexture(cv);
-  _harvestMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  return _harvestMat;
-}
-function setPlotHarvest(plot, show) {
-  if (show && !plot.harvest) {
-    plot.harvest = new THREE.Sprite(harvestMaterial());
-    plot.harvest.scale.set(1.28, 0.7, 1); plot.harvest.position.set(0, 1.4, 0);
-    plot.group.add(plot.harvest);
-  }
-  if (plot.harvest) plot.harvest.visible = show;
-}
+// 세 종류가 동시에 뜨지 않으므로 칸당 하나의 값(plot.hint)으로 관리한다.
+//   -1 없음 · 0 물! · 1 수확! · 2 씨앗을 넣어요  (런타임 전용 — 세이브 스키마에 없음)
+function setPlotWarn(plot, show)     { if (show) plot.hint = 0; else if (plot.hint === 0) plot.hint = -1; }
+function setPlotHarvest(plot, show)  { if (show) plot.hint = 1; else if (plot.hint === 1) plot.hint = -1; }
+function setPlotSeedHint(plot, show) { if (show) plot.hint = 2; else if (plot.hint === 2) plot.hint = -1; }
 
-// 밭 위 '씨앗을 넣어요' 알림(빈 밭)
-let _seedHintMat = null;
-function seedHintMaterial() {
-  if (_seedHintMat) return _seedHintMat;
-  const cv = document.createElement('canvas'); cv.width = 248; cv.height = 104;
-  const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(233,206,150,0.97)'; roundRect(c, 8, 8, 232, 64, 18); c.fill();
-  c.beginPath(); c.moveTo(114, 72); c.lineTo(134, 72); c.lineTo(120, 94); c.closePath(); c.fill();
-  c.fillStyle = '#6b4a20'; c.font = 'bold 28px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(t('🌰 씨앗을 넣어요'), 124, 40);
-  const tex = new THREE.CanvasTexture(cv);
-  _seedHintMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  return _seedHintMat;
-}
-function setPlotSeedHint(plot, show) {
-  if (show && !plot.seedHint) {
-    plot.seedHint = new THREE.Sprite(seedHintMaterial());
-    plot.seedHint.scale.set(1.55, 0.65, 1); plot.seedHint.position.set(0, 1.4, 0);
-    plot.group.add(plot.seedHint);
+// 배지 빌보드 갱신 — 카메라를 향해 돌리고 살짝 둥실거린다(기존 연출 유지).
+//   떠 있는 배지가 하나도 없고(now) 이전 프레임에도 없었다면(prev) 버퍼를 건드리지 않는다.
+const _hintQ = new THREE.Quaternion(), _hintS = new THREE.Vector3(1, 1, 1), _hintP = new THREE.Vector3();
+let _hintAnyPrev = false;
+function syncFarmHints(now) {
+  if (!farmHintMeshes) return;
+  let any = false;
+  for (const p of plots) if ((p.hint ?? -1) >= 0) { any = true; break; }
+  if (!any && !_hintAnyPrev) return;   // 인스턴싱 이득 보존 — 아무도 안 떠 있으면 매 프레임 스킵
+  camera.getWorldQuaternion(_hintQ);
+  let nWarn = 0, nHarvest = 0, nSeed = 0;
+  const M = farmHintMeshes;
+  for (const p of plots) {
+    const h = p.hint ?? -1;
+    if (h < 0) continue;
+    _hintP.set(p.x, 1.4 + Math.sin(now * 3 + h) * 0.06, p.z);
+    _fmM.compose(_hintP, _hintQ, _hintS);
+    if (h === 0) M.warn.setMatrixAt(nWarn++, _fmM);
+    else if (h === 1) M.harvest.setMatrixAt(nHarvest++, _fmM);
+    else if (h === 2) M.seedHint.setMatrixAt(nSeed++, _fmM);
   }
-  if (plot.seedHint) plot.seedHint.visible = show;
+  M.warn.count = nWarn; M.harvest.count = nHarvest; M.seedHint.count = nSeed;
+  M.warn.instanceMatrix.needsUpdate = true;
+  M.harvest.instanceMatrix.needsUpdate = true;
+  M.seedHint.instanceMatrix.needsUpdate = true;
+  _hintAnyPrev = any;
 }
 
 function updatePlotVisual(plot) {
