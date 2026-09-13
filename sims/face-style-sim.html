@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>face style sim</title>
+<style>
+body{margin:0;background:#dfe9f3;font-family:system-ui;overflow:hidden}
+#lbl{position:fixed;top:10px;left:0;right:0;display:flex;justify-content:space-around;font-size:15px;color:#345;pointer-events:none}
+#lbl span{background:rgba(255,255,255,.55);padding:4px 10px;border-radius:8px}
+#ctl{position:fixed;bottom:10px;left:10px;font-size:13px;color:#345;background:rgba(255,255,255,.6);padding:8px 10px;border-radius:8px;line-height:1.7}
+#ctl label{display:block}
+#ctl input[type=range]{width:120px;vertical-align:middle}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head><body>
+<div id="lbl"></div>
+<div id="ctl">
+  왼쪽=현재 게임 코드 그대로 · 오른쪽=레퍼런스 스타일 · 드래그로 회전 · 클릭=자동회전 토글<br>
+  <label><button id="setBtn">세트 전환: 🐰🐻🐼🐤 보기</button></label>
+  <label><input type="checkbox" id="smoothBody" checked> 새 스타일: 몸통도 매끈하게</label>
+  <label>눈 크기 <input type="range" id="eyeK" min="0.7" max="1.4" step="0.05" value="1"> <span id="eyeKv">1.00</span></label>
+  <label>귀 크기 <input type="range" id="earK" min="0.7" max="1.4" step="0.05" value="1"> <span id="earKv">1.00</span></label>
+</div>
+<script type="module">
+import * as THREE from 'three';
+const clayMat = (color, flat=true)=> new THREE.MeshStandardMaterial({color, roughness:0.95, metalness:0, flatShading:flat});
+const softMat = (color)=> new THREE.MeshStandardMaterial({color, roughness:0.88, metalness:0});   // 새 스타일: 살짝 덜 거칠게(플러시 느낌)
+
+// ── 게임 ANIMALS 에서 그대로 가져온 값(현재 버전 재현용) ──
+const ANIMALS = {
+  fox: { body:0xe07b3c, belly:0xf5e9d8, ear:0x8a4a24, bodyR:0.52, bodyScale:[0.90,1.08,0.90], headR:0.37, headY:1.26,
+         ears:'pointy', earScale:1.15, snout:{len:0.34,r:0.13,color:0xf7efe2,nose:0x2a2320} },
+  dog: { body:0xc9945a, belly:0xf0e2cc, ear:0x8a6038, bodyR:0.56, bodyScale:[1.03,0.99,1.00], headR:0.40, headY:1.24,
+         ears:'floppy', snout:{len:0.24,r:0.17,color:0xf0e2cc,nose:0x2a2320}, extras:['collar'] },
+  cat: { body:0x9aa0a8, belly:0xf0f0f0, ear:0xf0b0b8, bodyR:0.50, bodyScale:[0.88,1.10,0.88], headR:0.36, headY:1.25,
+         ears:'pointy', earScale:0.85, snout:{len:0.14,r:0.13,color:0xf0f0f0,nose:0xf08a9a}, extras:['whiskers'] },
+  rabbit:{ body:0xe6e0dc, belly:0xffffff, ear:0xf0c0c8, bodyR:0.46, bodyScale:[1.00,0.96,1.00], headR:0.39, headY:1.12,
+         ears:'long', snout:{len:0.16,r:0.14,color:0xffffff,nose:0xe89aa8}, extras:['teeth'] },
+  bear: { body:0x8a6038, belly:0xc9a878, ear:0x6a4828, bodyR:0.63, bodyScale:[1.08,1.00,1.06], headR:0.44, headY:1.34,
+         ears:'round', earScale:1.1, snout:{len:0.22,r:0.20,color:0xc9a878,nose:0x2a2320,noseR:0.075} },
+  panda:{ body:0xf2f2f2, belly:0xffffff, ear:0x2a2a2a, bodyR:0.63, bodyScale:[1.08,1.00,1.06], headR:0.45, headY:1.34,
+         ears:'round', earScale:1.15, snout:{len:0.18,r:0.19,color:0xffffff,nose:0x2a2a2a,noseR:0.07}, extras:['patches','band'] },
+  chick:{ body:0xffe05a, belly:0xfff0a0, ear:0xffb020, bodyR:0.50, bodyScale:[1.02,0.94,1.02], headR:0.35, headY:1.06,
+         ears:'none', extras:['beak','comb'] },
+};
+const SETS = [ ['fox','dog','cat'], ['rabbit','bear','panda','chick'] ];
+const EMOJI = { fox:'🦊 여우', dog:'🐶 강아지', cat:'🐱 고양이', rabbit:'🐰 토끼', bear:'🐻 곰', panda:'🐼 판다', chick:'🐤 병아리' };
+
+// ── 새 스타일 팔레트(레퍼런스에서 뽑음) — 체형 수치는 위와 동일하게 유지(이식 시 ANIMALS 색·얼굴만 교체) ──
+const NEW = {
+  fox: { body:0xf0883a, belly:0xf9ecd8, cream:0xf9ecd8, nose:0x3a2a24, eye:0x2a1e18, earIn:0xf9ecd8 },
+  dog: { body:0xf0913a, belly:0xfaf3e8, cream:0xfaf3e8, nose:0x1e1a18, eye:0x151212, earIn:0xfaf3e8 },
+  cat: { body:0x9fa0c2, belly:0xf2f2f8, stripe:0x7b7c9e, earIn:0xf2b3c0, nose:0xf0a0b0, blush:0xf0a9b8, muzzle:0xf3d4d8, eye:0x161616 },
+  rabbit:{ body:0xf3eeea, belly:0xffffff, earIn:0xf5c3cc, nose:0xe89aa8, blush:0xf6c6cf, eye:0x2a2226, teeth:0xffffff },
+  bear: { body:0x936a44, belly:0xd2b38a, muzzle:0xd2b38a, earIn:0xd2b38a, nose:0x231c19, eye:0x1a1412 },
+  panda:{ body:0xf6f6f6, belly:0xffffff, black:0x262626, nose:0x262626, eye:0x161616 },
+  chick:{ body:0xffe05a, belly:0xfff0a0, beak:0xff9a3a, comb:0xf2564a, blush:0xffb39a, eye:0x1a1412 },
+};
+
+const S = (r, segs=32) => new THREE.SphereGeometry(r, segs, Math.round(segs*0.75));
+const put = (parent, geo, mat, x,y,z, sx=1,sy=1,sz=1, rx=0,ry=0,rz=0) => {
+  const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.scale.set(sx,sy,sz); m.rotation.set(rx,ry,rz);
+  m.castShadow = true; parent.add(m); return m;
+};
+
+// ═══════════════ 현재(게임 buildAnimalMesh 의 머리 부분을 그대로 옮김) ═══════════════
+function buildOld(id){
+  const a = ANIMALS[id], g = new THREE.Group();
+  const R=a.bodyR, HR=a.headR, HY=a.headY, bs=a.bodyScale, ex=a.extras||[];
+  const skin=()=>clayMat(a.body,false);
+  const bodyY = R*bs[1]+0.02;
+  put(g, new THREE.IcosahedronGeometry(R,1), skin(), 0,bodyY,0, bs[0],bs[1],bs[2]);
+  put(g, new THREE.SphereGeometry(R*0.62,16,12), clayMat(a.belly,false), 0,bodyY-R*0.16,R*0.55, 1,1.1,0.6);
+  put(g, new THREE.IcosahedronGeometry(HR,1), skin(), 0,HY,0);
+  const eyeMat = new THREE.MeshStandardMaterial({color:0x3a2f2a, roughness:0.6});
+  const eyeX=HR*0.36, eyeY=HY+HR*0.10, eyeZ=HR*0.86;
+  if (ex.includes('patches')) [-1,1].forEach(s=> put(g, new THREE.SphereGeometry(HR*0.30,12,10), clayMat(0x2a2a2a,false), s*eyeX*1.05,eyeY-HR*0.02,eyeZ*0.86, 1,1.25,0.45, 0,0,s*0.35));
+  [-1,1].forEach(s=> put(g, new THREE.SphereGeometry(HR*0.145,8,8), eyeMat, s*eyeX,eyeY,eyeZ));
+  if (ex.includes('beak')) put(g, new THREE.ConeGeometry(HR*0.26,HR*0.50,4), clayMat(0xff9a3a,false), 0,HY-HR*0.12,HR*0.92, 1,1,1, Math.PI/2,0,0);
+  if (ex.includes('comb')) [0,1,2].forEach(i=> put(g, new THREE.SphereGeometry(HR*(0.16-i*0.03),8,6), clayMat(0xf2564a,false), 0,HY+HR*(0.92-i*0.10),-HR*(0.02+i*0.22)));
+  if (ex.includes('band')) [-1,1].forEach(s=> put(g, new THREE.SphereGeometry(R*0.34,10,8), clayMat(0x2a2a2a,false), s*R*0.78,bodyY+R*0.22,0, 0.5,0.8,0.78));
+  const sn=a.snout||null;
+  if (sn) {
+  put(g, new THREE.SphereGeometry(sn.r,12,10), clayMat(sn.color,false), 0,HY-HR*0.16,HR*0.60+sn.len*0.35, 1,0.82,sn.len/sn.r);
+  const nr = sn.r*0.44;
+  put(g, new THREE.SphereGeometry(nr,10,8), clayMat(sn.nose,false), 0,HY-HR*0.13,HR*0.60+sn.len*0.92, 1.25,0.85,0.9);
+  if (ex.includes('whiskers')){
+    const wm = new THREE.MeshStandardMaterial({color:0xf2ece4, roughness:0.8});
+    [-1,1].forEach(s=>[0.06,0,-0.06].forEach((dy,i)=>{
+      put(g, new THREE.CylinderGeometry(0.006,0.006,HR*0.95,4), wm, s*(HR*0.30),HY-HR*0.10+dy,HR*0.62+sn.len*0.6, 1,1,1, 0,0,s*(Math.PI/2-0.25+i*0.16));
+    }));
+  }
+  if (ex.includes('teeth')) put(g, new THREE.BoxGeometry(HR*0.17,HR*0.20,0.03), clayMat(0xffffff,false), 0,HY-HR*0.36,HR*0.60+sn.len*0.85);
+  }
+  const earMat=clayMat(a.ear,false), es=a.earScale??1;
+  if (a.ears==='pointy') [-1,1].forEach(s=> put(g, new THREE.ConeGeometry(HR*0.33*es,HR*0.78*es,5), earMat, s*HR*0.55,HY+HR*0.85*es,-HR*0.05, 1,1,1, 0,0,-s*0.25));
+  else if (a.ears==='floppy') [-1,1].forEach(s=> put(g, new THREE.SphereGeometry(HR*0.30,8,8), earMat, s*HR*0.78,HY+HR*0.28,0, 0.6,1.5,0.4, 0,0,-s*0.5));
+  else if (a.ears==='long') [-1,1].forEach(s=> put(g, new THREE.SphereGeometry(HR*0.26,8,8), earMat, s*HR*0.42,HY+HR*1.40,0, 0.7,2.6,0.55, 0,0,-s*0.12));
+  else if (a.ears==='round') [-1,1].forEach(s=> put(g, new THREE.SphereGeometry(HR*0.36*es,10,8), earMat, s*HR*0.66,HY+HR*0.70,-HR*0.05));
+  if (ex.includes('collar')){
+    put(g, new THREE.TorusGeometry(HR*0.92,HR*0.11,6,18), clayMat(0xd9534f,false), 0,HY-HR*0.55,0, 1,1,1, Math.PI/2,0,0);
+    put(g, new THREE.SphereGeometry(HR*0.13,8,8), clayMat(0xf0c040,false), 0,HY-HR*0.72,HR*0.86, 1,1,0.55);
+  }
+  return g;
+}
+
+// ═══════════════ 새 스타일 — 머리는 단위 공간(HR=1)에서 조립 후 group.scale=HR ═══════════════
+//  레퍼런스 공통 문법:
+//   1) 구는 세분화 32 + 스무스 셰이딩(Icosahedron(…,1) 의 각진 면이 '싸구려' 인상의 8할)
+//   2) 눈 = 검은 구 + 흰 하이라이트 구 2개(큰 것 하나·작은 것 하나) → 생기
+//   3) 얼굴 무늬 = 납작한 타원 구를 표면에 살짝 파묻기(눈썹 점·볼·주둥이) — 텍스처 불필요
+//   4) 귀 = 원뿔 대신 납작한 타원 구(둥근 삼각형) + 안쪽 색 한 겹
+const state = { eyeK:1, earK:1 };
+function eyes(g, opt){
+  const {x,y,z, r, color, ring} = opt;
+  const k = state.eyeK;
+  [-1,1].forEach(s=>{
+    if (ring) put(g, S(r*1.10*k), softMat(0xffffff), s*x, y, z - r*0.40*k);               // 흰자(고양이)
+    put(g, S(r*k), new THREE.MeshStandardMaterial({color, roughness:0.35}), s*x, y, z);
+    put(g, S(r*0.36*k), new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.3}), s*x + r*0.34*k, y + r*0.42*k, z + r*0.78*k);
+    put(g, S(r*0.16*k), new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.3}), s*x - r*0.30*k, y - r*0.30*k, z + r*0.86*k);
+  });
+}
+function ear(g, side, opt){
+  const {x,y,z, outer, inner, w=0.30, h=1.35, tilt=0.35} = opt; const k=state.earK;
+  put(g, S(w), softMat(outer), side*x, y, z, 0.9*k,h*k,0.45*k, 0,0,-side*tilt);
+  put(g, S(w*0.70), softMat(inner), side*x, y-0.02, z+0.10, 0.65*k,(h*0.78)*k,0.32*k, 0,0,-side*tilt);
+}
+//  patch: 단위구 표면의 방향 (dx,dy,dz) 에 납작 타원을 반쯤 파묻어 붙임 — 줄무늬·볼터치·눈썹처럼 '무늬'용
+function patch(g, dx,dy,dz, w,h, color, roll=0, sink=0.94, thick=0.12){
+  const d=new THREE.Vector3(dx,dy,dz).normalize();
+  const m=new THREE.Mesh(S(1,24), softMat(color));
+  m.position.copy(d).multiplyScalar(sink); m.lookAt(d.clone().multiplyScalar(3)); m.rotateZ(roll);
+  m.scale.set(w,h,thick); m.castShadow=true; g.add(m); return m;
+}
+function smile(g, x,y,z, r, color, rz=Math.PI){   // 아래쪽 반원 호(ω 입)
+  put(g, new THREE.TorusGeometry(r, r*0.20, 6, 14, Math.PI), new THREE.MeshStandardMaterial({color, roughness:0.6}), x,y,z, 1,1,1, 0,0,rz);
+}
+
+function headFox(){
+  const c=NEW.fox, g=new THREE.Group();
+  put(g, S(1), softMat(c.body), 0,0,0, 1.0,0.95,1.0);
+  put(g, S(0.40), softMat(c.body), 0,-0.14,0.74, 0.95,0.74,1.50);           // 콧대(주둥이 윗면, 몸색)
+  put(g, S(0.34), softMat(c.cream), 0,-0.36,0.78, 0.95,0.55,1.05);          // 크림 아래턱(코 밑 주둥이 밑면만)
+  put(g, S(0.15), softMat(c.nose), 0,-0.08,1.30, 1.15,0.9,0.9);             // 코
+  eyes(g, {x:0.38,y:0.14,z:0.86, r:0.13, color:c.eye});
+  [-1,1].forEach(s=> patch(g, s*0.40,0.34,0.84, 0.17,0.085, c.cream, -s*0.30));  // 눈썹 점(눈 바로 위, 표면 밀착)
+  [-1,1].forEach(s=> ear(g, s, {x:0.62,y:0.95,z:-0.10, outer:c.body, inner:c.earIn, h:1.45}));
+  return g;
+}
+function headDog(){
+  const c=NEW.dog, g=new THREE.Group();
+  put(g, S(1), softMat(c.body), 0,0,0, 1.05,0.95,1.0);
+  [-1,1].forEach(s=> put(g, S(0.46), softMat(c.cream), s*0.50,-0.26,0.52, 1.0,0.82,0.95));   // 흰 볼
+  put(g, S(0.42), softMat(c.cream), 0,-0.30,0.85, 1.10,0.80,1.00);          // 흰 주둥이
+  put(g, S(0.16), softMat(c.nose), 0,-0.12,1.22, 1.2,0.85,0.8);             // 코
+  smile(g, 0,-0.42,1.26, 0.10, 0x3a2a24);
+  eyes(g, {x:0.37,y:0.12,z:0.88, r:0.19, color:c.eye});
+  [-1,1].forEach(s=> patch(g, s*0.40,0.46,0.82, 0.16,0.11, c.cream, -s*0.15));   // 눈썹 점(표면 밀착)
+  [-1,1].forEach(s=> ear(g, s, {x:0.60,y:0.90,z:-0.05, outer:c.body, inner:c.earIn, h:1.30, tilt:0.30}));
+  return g;
+}
+function headCat(){
+  const c=NEW.cat, g=new THREE.Group();
+  put(g, S(1), softMat(c.body), 0,0,0, 1.08,1.0,1.0);
+  put(g, S(0.32), softMat(c.muzzle), 0,-0.34,0.88, 1.40,0.75,0.5);          // 연분홍 주둥이
+  put(g, S(0.11), softMat(c.nose), 0,-0.22,1.04, 1.3,0.8,0.7);              // 코
+  smile(g,-0.09,-0.40,1.04, 0.09, 0x6a5a66); smile(g, 0.09,-0.40,1.04, 0.09, 0x6a5a66);
+  eyes(g, {x:0.36,y:0.08,z:0.90, r:0.20, color:c.eye, ring:true});
+  [-1,1].forEach(s=> patch(g, s*0.66,-0.18,0.72, 0.15,0.10, c.blush, 0, 0.98));    // 볼터치
+  const wm = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.6});
+  [-1,1].forEach(s=>[0.10,0,-0.10].forEach((dy,i)=>{
+    // 주둥이 옆에서 시작하는 피벗 → 막대는 피벗의 +X 방향으로 L 만큼 뻗음(끝이 살짝 뒤·위아래로 벌어짐)
+    const L=0.80, pv=new THREE.Group(); pv.position.set(s*0.30, -0.20+dy*1.2, 0.95);
+    pv.rotation.set(0, -s*0.55, s*(i-1)*0.16); g.add(pv);
+    put(pv, new THREE.CylinderGeometry(0.014,0.014,L,5), wm, s*L/2,0,0, 1,1,1, 0,0,Math.PI/2);
+  }));
+  // 줄무늬: 이마 3 + 볼 2×2 (납작 타원)
+  patch(g, 0,0.70,0.66, 0.11,0.30, c.stripe, 0, 0.99);
+  [-1,1].forEach(s=> patch(g, s*0.36,0.64,0.64, 0.10,0.26, c.stripe, -s*0.30, 0.99));
+  [-1,1].forEach(s=>[0.12,-0.16].forEach(dy=> patch(g, s*1.0,dy,0.20, 0.09,0.30, c.stripe, s*0.10, 1.0)));
+  [-1,1].forEach(s=> ear(g, s, {x:0.64,y:0.88,z:-0.05, outer:c.body, inner:c.earIn, w:0.32, h:1.30}));
+  return g;
+}
+
+function headRabbit(){
+  const c=NEW.rabbit, g=new THREE.Group();
+  put(g, S(1), softMat(c.body), 0,0,0, 1.0,1.0,1.0);
+  [-1,1].forEach(s=> put(g, S(0.21), softMat(c.body), s*0.17,-0.30,0.90, 1.0,0.85,0.8));   // 볼록한 볼 두 개(코 아래)
+  put(g, S(0.09), softMat(c.nose), 0,-0.12,1.02, 1.3,0.8,0.6);                             // 분홍 코
+  put(g, new THREE.BoxGeometry(0.20,0.16,0.05), softMat(c.teeth), 0,-0.46,0.92);           // 앞니
+  eyes(g, {x:0.36,y:0.12,z:0.90, r:0.17, color:c.eye});
+  [-1,1].forEach(s=> patch(g, s*0.62,-0.16,0.74, 0.14,0.09, c.blush, 0, 0.98));            // 볼터치
+  [-1,1].forEach(s=> ear(g, s, {x:0.40,y:1.50,z:-0.05, outer:c.body, inner:c.earIn, w:0.30, h:2.35, tilt:0.12}));  // 긴 귀
+  return g;
+}
+function headBear(){
+  const c=NEW.bear, g=new THREE.Group();
+  put(g, S(1), softMat(c.body), 0,0,0, 1.05,0.95,1.0);
+  put(g, S(0.42), softMat(c.muzzle), 0,-0.28,0.80, 1.15,0.85,0.95);                        // 연갈색 주둥이
+  put(g, S(0.17), softMat(c.nose), 0,-0.08,1.18, 1.25,0.85,0.8);                           // 코
+  smile(g, 0,-0.40,1.16, 0.10, 0x3a2a24);
+  eyes(g, {x:0.36,y:0.16,z:0.90, r:0.15, color:c.eye});
+  [-1,1].forEach(s=>{                                                                      // 둥근 귀 + 안쪽 연갈색
+    put(g, S(0.34), softMat(c.body), s*0.68,0.72,-0.10, 1,1,0.7);
+    put(g, S(0.22), softMat(c.earIn), s*0.68,0.70,0.06, 1,1,0.5);
+  });
+  return g;
+}
+function headPanda(){
+  const c=NEW.panda, g=new THREE.Group();
+  put(g, S(1), softMat(c.body), 0,0,0, 1.08,0.95,1.0);
+  [-1,1].forEach(s=> patch(g, s*0.40,0.10,0.86, 0.30,0.37, c.black, -s*0.55, 0.97));      // 눈 패치(기울인 타원)
+  eyes(g, {x:0.38,y:0.10,z:0.92, r:0.15, color:c.eye, ring:true});                        // 흰 테두리로 패치와 분리
+  put(g, S(0.36), softMat(c.body), 0,-0.26,0.78, 1.2,0.8,0.8);                             // 살짝 나온 주둥이
+  put(g, S(0.13), softMat(c.nose), 0,-0.14,1.06, 1.3,0.8,0.7);                             // 코
+  smile(g, 0,-0.38,1.02, 0.09, 0x3a3a3a);
+  [-1,1].forEach(s=> put(g, S(0.34), softMat(c.black), s*0.66,0.74,-0.08, 1,1,0.7));       // 검은 둥근 귀
+  return g;
+}
+function headChick(){
+  const c=NEW.chick, g=new THREE.Group();
+  put(g, S(1), softMat(c.body), 0,0,0, 1.05,1.0,1.0);
+  put(g, new THREE.ConeGeometry(0.20,0.46,20), softMat(c.beak), 0,-0.10,1.06, 1.0,1.0,0.75, Math.PI/2,0,0);   // 위 부리: 앞을 향한 둥근 원뿔(위아래로 납작)
+  put(g, S(0.11), softMat(c.beak), 0,-0.24,1.00, 1.2,0.45,1.0);                             // 아래 부리(작게)
+  eyes(g, {x:0.34,y:0.16,z:0.90, r:0.16, color:c.eye});
+  [-1,1].forEach(s=> patch(g, s*0.58,-0.14,0.76, 0.15,0.10, c.blush, 0, 0.98));            // 볼터치
+  [[0,0.98,0.05,0.16],[0,1.00,-0.18,0.13],[0,0.94,-0.38,0.10]].forEach(([x,y,z,r])=> put(g, S(r,20), softMat(c.comb), x,y,z));  // 볏
+  return g;
+}
+
+function buildNew(id, smoothBody){
+  const a=ANIMALS[id], c=NEW[id], g=new THREE.Group();
+  const R=a.bodyR, HR=a.headR, HY=a.headY, bs=a.bodyScale;
+  const bodyY = R*bs[1]+0.02;
+  const bodyGeo = smoothBody ? S(R) : new THREE.IcosahedronGeometry(R,1);
+  put(g, bodyGeo, softMat(c.body), 0,bodyY,0, bs[0],bs[1],bs[2]);
+  put(g, S(R*0.62,24), softMat(c.belly), 0,bodyY-R*0.16,R*0.55, 1,1.1,0.6);
+  const head = ({fox:headFox, dog:headDog, cat:headCat, rabbit:headRabbit, bear:headBear, panda:headPanda, chick:headChick})[id]();
+  head.position.y = HY; head.scale.setScalar(HR); g.add(head);
+  if (id==='panda') [-1,1].forEach(s=> put(g, S(R*0.34,24), softMat(NEW.panda.black), s*R*0.78,bodyY+R*0.22,0, 0.5,0.8,0.78));   // 어깨 띠 유지
+  if (id==='dog'){   // 목줄은 유지
+    put(g, new THREE.TorusGeometry(HR*0.92,HR*0.11,8,24), softMat(0xd9534f), 0,HY-HR*0.55,0, 1,1,1, Math.PI/2,0,0);
+    put(g, S(HR*0.13,16), softMat(0xf0c040), 0,HY-HR*0.72,HR*0.86, 1,1,0.55);
+  }
+  return g;
+}
+
+// ── 씬 ──
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdfe9f3);
+const cam = new THREE.PerspectiveCamera(30, innerWidth/innerHeight, 0.1, 100);
+let viewIdx = -1;   // -1=전체, 0..2=클로즈업 대상(리사이즈 때 같은 뷰를 다시 잡기 위해 기억)
+function frameAll(){ viewIdx=-1; const n=setIds().length; cam.position.set(0, 1.9, Math.max(9.2, 16.4/cam.aspect) * (n===4 ? 1.3 : 1)); cam.lookAt(0, 1.0, 0); }
+function closeup(i){ viewIdx=i; const cx=colX(i); cam.position.set(cx, 1.55, Math.max(3.9, 6.6/cam.aspect)); cam.lookAt(cx, 1.25, 0); }
+function reframe(){ viewIdx<0 ? frameAll() : closeup(viewIdx); }
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.05));
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.6); sun.position.set(3,6,4); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048); const sc=sun.shadow.camera; sc.left=-7; sc.right=7; sc.top=5; sc.bottom=-3; scene.add(sun);
+const fill = new THREE.DirectionalLight(0xdde8ff, 0.5); fill.position.set(-4,2,-3); scene.add(fill);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30,30), new THREE.MeshStandardMaterial({color:0xcfdccb, roughness:1}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+const pivots=[]; let built=[]; let setIdx=0;
+const setIds = ()=> SETS[setIdx];
+const colX = (i)=> (i-(setIds().length-1)/2)*3.0;
+function rebuild(){
+  built.forEach(p=>scene.remove(p)); built=[]; pivots.length=0;
+  const smooth = document.getElementById('smoothBody').checked;
+  document.getElementById('lbl').innerHTML = setIds().map(id=>`<span>${EMOJI[id]} (현재 → 새)</span>`).join('');
+  document.getElementById('setBtn').textContent = setIdx===0 ? '세트 전환: 🐰🐻🐼🐤 보기' : '세트 전환: 🦊🐶🐱 보기';
+  setIds().forEach((id,i)=>{
+    const cx=colX(i);
+    [[buildOld(id), -0.75],[buildNew(id, smooth), 0.75]].forEach(([m,dx])=>{
+      const p=new THREE.Group(); p.position.set(cx+dx,0,0); p.add(m); scene.add(p); built.push(p); pivots.push(p);
+    });
+  });
+}
+document.getElementById('setBtn').addEventListener('click', ()=>{ setIdx=1-setIdx; rebuild(); reframe(); });
+['smoothBody','eyeK','earK'].forEach(k=>{
+  const el=document.getElementById(k);
+  el.addEventListener('input', ()=>{
+    state.eyeK=+document.getElementById('eyeK').value; state.earK=+document.getElementById('earK').value;
+    document.getElementById('eyeKv').textContent=state.eyeK.toFixed(2); document.getElementById('earKv').textContent=state.earK.toFixed(2);
+    rebuild();
+  });
+});
+
+let auto=true, rot=0.35, dragging=false, lastX=0, moved=false;
+addEventListener('pointerdown', e=>{ if (e.target.closest('#ctl')) return; dragging=true; lastX=e.clientX; moved=false; });
+addEventListener('pointermove', e=>{ if(!dragging) return; const dx=e.clientX-lastX; if (Math.abs(dx)>2) moved=true; rot+=dx*0.01; lastX=e.clientX; });
+addEventListener('pointerup', ()=>{ if (dragging && !moved) auto=!auto; dragging=false; });
+addEventListener('resize', ()=>{ cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); reframe(); });
+const clock=new THREE.Clock();
+(function loop(){
+  requestAnimationFrame(loop);
+  const dt=clock.getDelta(); if (auto && !dragging) rot+=dt*0.45;
+  pivots.forEach(p=>p.rotation.y=rot);
+  renderer.render(scene,cam);
+})();
+rebuild(); frameAll();
+// ?view=all|all2|<animal id>&rot=0.25 → 캡처용 고정 카메라(헤드리스 스크린샷)
+const Q = new URLSearchParams(location.search);
+if (Q.has('view')) {
+  auto=false; rot=+(Q.get('rot')||0.25); const v=Q.get('view');
+  const si=SETS.findIndex(st=>st.includes(v)); if (si>=0) setIdx=si;
+  if (Q.get('view')==='all2') setIdx=1;
+  rebuild(); const i=setIds().indexOf(v); i>=0 ? closeup(i) : frameAll();
+}
+window.__sim = { setRot:(r)=>{ auto=false; rot=r; }, state, rebuild, frameAll, closeup };
+</script>
+</body></html>

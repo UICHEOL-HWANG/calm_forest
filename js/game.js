@@ -36,6 +36,7 @@ import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
 import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
+import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
@@ -1323,56 +1324,41 @@ let charGroup = null, tailPivot = null, tailPhase = 0;   // 캐릭터 메시 그
 //
 //   bodyR/bodyScale/headR/headY : 실루엣의 8할. 곰·판다는 크고 육중, 토끼·병아리는
 //        작고 동글, 여우·고양이는 날씬 — 멀리서 봐도 구분되도록 비율을 벌림.
-//   snout  : 주둥이(길이·굵기·색·코). 여우는 뾰족·길게, 곰은 뭉툭·크게.
+//   얼굴(눈·코·입·귀·주둥이·무늬)은 js/animal-faces.js 가 종별로 전담 — 여기엔 체형·색·꼬리·팔만 둔다.
 //   tail   : 종류별 실루엣 + 흔들기 속도/진폭(강아지는 신나게, 고양이는 느긋하게).
-//   extras : 그 동물에서만 보이는 포인트(판다 눈패치, 고양이 수염, 병아리 볏·날개…).
+//   extras : 몸통에 붙는 포인트만 남김 — 'collar'(강아지 목줄) 'band'(판다 어깨 띠) 'wings'(병아리 날개=팔).
 //   armX   : 도구 든 손의 좌우 위치 — 몸집에 맞춰야 도구가 붕 뜨지 않음.
 export const ANIMALS = [
-  { id: 'fox', name: '여우', emoji: '🦊', body: 0xe07b3c, belly: 0xf5e9d8, ear: 0x8a4a24,
+  { id: 'fox', name: '여우', emoji: '🦊', body: 0xf0883a, belly: 0xf9ecd8, ear: 0x8a4a24,
     bodyR: 0.52, bodyScale: [0.90, 1.08, 0.90], headR: 0.37, headY: 1.26, armX: 0.74,
-    ears: 'pointy', earScale: 1.15,
-    snout: { len: 0.34, r: 0.13, color: 0xf7efe2, nose: 0x2a2320 },
-    tail: { type: 'bushy', color: 0xe07b3c, tip: 0xf7efe2, wagSpeed: 2.2, wagAmp: 0.16 } },
+    tail: { type: 'bushy', color: 0xf0883a, tip: 0xf9ecd8, wagSpeed: 2.2, wagAmp: 0.16 } },
 
-  { id: 'dog', name: '강아지', emoji: '🐶', body: 0xc9945a, belly: 0xf0e2cc, ear: 0x8a6038,
+  { id: 'dog', name: '강아지', emoji: '🐶', body: 0xf0913a, belly: 0xfaf3e8, ear: 0x8a6038,
     bodyR: 0.56, bodyScale: [1.03, 0.99, 1.00], headR: 0.40, headY: 1.24, armX: 0.80,
-    ears: 'floppy',
-    snout: { len: 0.24, r: 0.17, color: 0xf0e2cc, nose: 0x2a2320 },
-    tail: { type: 'curl', color: 0xc9945a, wagSpeed: 6.5, wagAmp: 0.55 },   // 신나게 살랑살랑
+    tail: { type: 'curl', color: 0xf0913a, wagSpeed: 6.5, wagAmp: 0.55 },   // 신나게 살랑살랑
     extras: ['collar'] },
 
-  { id: 'rabbit', name: '토끼', emoji: '🐰', body: 0xe6e0dc, belly: 0xffffff, ear: 0xf0c0c8,
+  { id: 'rabbit', name: '토끼', emoji: '🐰', body: 0xf3eeea, belly: 0xffffff, ear: 0xf0c0c8,
     bodyR: 0.46, bodyScale: [1.00, 0.96, 1.00], headR: 0.39, headY: 1.12, armX: 0.66,
-    ears: 'long',
-    snout: { len: 0.16, r: 0.14, color: 0xffffff, nose: 0xe89aa8 },
-    tail: { type: 'puff', color: 0xffffff, wagSpeed: 1.6, wagAmp: 0.10 },
-    extras: ['teeth'] },
+    tail: { type: 'puff', color: 0xffffff, wagSpeed: 1.6, wagAmp: 0.10 } },
 
-  { id: 'cat', name: '고양이', emoji: '🐱', body: 0x9aa0a8, belly: 0xf0f0f0, ear: 0xf0b0b8,
+  { id: 'cat', name: '고양이', emoji: '🐱', body: 0x9fa0c2, belly: 0xf2f2f8, ear: 0xf0b0b8,
     bodyR: 0.50, bodyScale: [0.88, 1.10, 0.88], headR: 0.36, headY: 1.25, armX: 0.72,
-    ears: 'pointy', earScale: 0.85,
-    snout: { len: 0.14, r: 0.13, color: 0xf0f0f0, nose: 0xf08a9a },
-    tail: { type: 'long', color: 0x9aa0a8, wagSpeed: 1.5, wagAmp: 0.30 },   // 느긋하게 살랑
-    extras: ['whiskers'] },
+    tail: { type: 'long', color: 0x9fa0c2, wagSpeed: 1.5, wagAmp: 0.30 } },   // 느긋하게 살랑
 
-  { id: 'bear', name: '곰', emoji: '🐻', body: 0x8a6038, belly: 0xc9a878, ear: 0x6a4828,
+  { id: 'bear', name: '곰', emoji: '🐻', body: 0x936a44, belly: 0xd2b38a, ear: 0x6a4828,
     bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.44, headY: 1.34, armX: 0.88,
-    ears: 'round', earScale: 1.1,
-    snout: { len: 0.22, r: 0.20, color: 0xc9a878, nose: 0x2a2320, noseR: 0.075 },
-    tail: { type: 'stub', color: 0x8a6038, wagSpeed: 1.2, wagAmp: 0.08 } },
+    tail: { type: 'stub', color: 0x936a44, wagSpeed: 1.2, wagAmp: 0.08 } },
 
-  { id: 'panda', name: '판다', emoji: '🐼', body: 0xf2f2f2, belly: 0xffffff, ear: 0x2a2a2a, armColor: 0x2a2a2a,   // 실제 판다처럼 팔은 검게(흰 몸에 묻히지 않게)
+  { id: 'panda', name: '판다', emoji: '🐼', body: 0xf6f6f6, belly: 0xffffff, ear: 0x2a2a2a, armColor: 0x262626,   // 실제 판다처럼 팔은 검게(흰 몸에 묻히지 않게)
     bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.45, headY: 1.34, armX: 0.88,
-    ears: 'round', earScale: 1.15,
-    snout: { len: 0.18, r: 0.19, color: 0xffffff, nose: 0x2a2a2a, noseR: 0.07 },
     tail: { type: 'stub', color: 0xffffff, wagSpeed: 1.2, wagAmp: 0.08 },
-    extras: ['patches', 'band'] },   // 검은 눈 패치 + 어깨 띠 = 판다의 정체성
+    extras: ['band'] },   // 검은 어깨 띠 = 판다의 정체성(눈 패치는 animal-faces.js)
 
   { id: 'chick', name: '병아리', emoji: '🐤', body: 0xffe05a, belly: 0xfff0a0, ear: 0xffb020,
     bodyR: 0.50, bodyScale: [1.02, 0.94, 1.02], headR: 0.35, headY: 1.06, armX: 0.62,
-    ears: 'none',
     tail: { type: 'feather', color: 0xffd23a, wagSpeed: 2.6, wagAmp: 0.14 },
-    extras: ['beak', 'comb', 'wings'] },
+    extras: ['wings'] },   // 부리·볏은 animal-faces.js, 날개만 여기(팔 역할)
 ];
 let heldGroup, handAnchor, heldToolMesh; // 도구 캐리어(손 따라가기/등 수납) / 손 / 든 도구
 let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아리는 날개가 팔 역할(같은 구조)
@@ -2418,103 +2404,23 @@ export function buildAnimalMesh(id) {
   const R = a.bodyR ?? 0.55, HR = a.headR ?? 0.40, HY = a.headY ?? 1.25;
   const bs = a.bodyScale || [1, 1.05, 1];
   const ex = a.extras || [];
-  const skin = () => clayMat(a.body, false);
+  const skin = () => plushMat(a.body);   // 🎭 플러시 재질(머리와 같은 톤)
 
   // ── 몸통 — 바닥에 딱 닿게 배치(동물마다 키가 달라짐) ──
+  //   Icosahedron(R,1) 의 각진 면 → 매끈한 구(머리와 같은 세분화). 정점 수는 늘지만 드로우콜은 동일.
   const bodyY = R * bs[1] + 0.02;
-  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(R, 1), skin());
+  const body = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), skin());
   body.position.y = bodyY; body.scale.set(bs[0], bs[1], bs[2]); body.castShadow = true; g.add(body);
 
   // 배(밝은 색)
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 16, 12), clayMat(a.belly, false));
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 24, 18), plushMat(a.belly));
   belly.position.set(0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
 
-  // ── 머리 ──
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(HR, 1), skin());
-  head.position.y = HY; head.castShadow = true; g.add(head);
+  // ── 머리 — 🎭 얼굴 생김새는 animal-faces.js 가 전담(눈·코·입·귀·무늬 전부) ──
+  //   체형 수치(HR/HY)와 몸·배 색만 넘긴다. 예전엔 여기서 눈·주둥이·귀·부리·볏을 종별로 분기했지만
+  //   (Icosahedron 머리 + 원뿔 귀) 플러시 스타일로 바꾸며 sims/face-style-sim.html 검수값을 모듈로 옮김.
+  g.add(buildAnimalHead(a.id, { HR, HY, body: a.body, belly: a.belly }));
 
-  // 눈 — 머리 크기에 맞춰 자동 배치
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
-  const eyeX = HR * 0.36, eyeY = HY + HR * 0.10, eyeZ = HR * 0.86;
-  if (ex.includes('patches')) {   // 🐼 검은 눈 패치 — 눈보다 먼저(뒤에) 깔기
-    [-1, 1].forEach(s => {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.30, 12, 10), clayMat(0x2a2a2a, false));
-      p.position.set(s * eyeX * 1.05, eyeY - HR * 0.02, eyeZ * 0.86);
-      p.scale.set(1, 1.25, 0.45); p.rotation.z = s * 0.35; g.add(p);
-    });
-  }
-  [-1, 1].forEach(s => {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.145, 8, 8), eyeMat);
-    e.position.set(s * eyeX, eyeY, eyeZ); g.add(e);
-  });
-
-  // ── 주둥이 + 코 ──
-  if (a.snout) {
-    const sn = a.snout;
-    const m = new THREE.Mesh(new THREE.SphereGeometry(sn.r, 12, 10), clayMat(sn.color, false));
-    m.position.set(0, HY - HR * 0.16, HR * 0.60 + sn.len * 0.35);
-    m.scale.set(1, 0.82, sn.len / sn.r); g.add(m);
-    const nr = sn.noseR ?? sn.r * 0.44;
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(nr, 10, 8), clayMat(sn.nose, false));
-    nose.position.set(0, HY - HR * 0.13, HR * 0.60 + sn.len * 0.92);
-    nose.scale.set(1.25, 0.85, 0.9); g.add(nose);
-
-    if (ex.includes('whiskers')) {   // 🐱 수염 — 코 옆에서 좌우로
-      const wm = new THREE.MeshStandardMaterial({ color: 0xf2ece4, roughness: 0.8 });
-      [-1, 1].forEach(s => [0.06, 0, -0.06].forEach((dy, i) => {
-        const w = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, HR * 0.95, 4), wm);
-        w.position.set(s * (HR * 0.30), HY - HR * 0.10 + dy, HR * 0.62 + a.snout.len * 0.6);
-        w.rotation.z = s * (Math.PI / 2 - 0.25 + i * 0.16); g.add(w);
-      }));
-    }
-    if (ex.includes('teeth')) {      // 🐰 앞니
-      const t = new THREE.Mesh(new THREE.BoxGeometry(HR * 0.17, HR * 0.20, 0.03), clayMat(0xffffff, false));
-      t.position.set(0, HY - HR * 0.36, HR * 0.60 + sn.len * 0.85); g.add(t);
-    }
-  }
-
-  // ── 귀 ──
-  const earMat = clayMat(a.ear, false);
-  const es = a.earScale ?? 1;
-  if (a.ears === 'pointy') {                     // 🦊🐱 쫑긋
-    [-1, 1].forEach(s => {
-      const e = new THREE.Mesh(new THREE.ConeGeometry(HR * 0.33 * es, HR * 0.78 * es, 5), earMat);
-      e.position.set(s * HR * 0.55, HY + HR * 0.85 * es, -HR * 0.05);
-      e.rotation.z = -s * 0.25; e.castShadow = true; g.add(e);
-    });
-  } else if (a.ears === 'long') {                // 🐰 길쭉
-    [-1, 1].forEach(s => {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.26, 8, 8), earMat);
-      e.scale.set(0.7, 2.6, 0.55);
-      e.position.set(s * HR * 0.42, HY + HR * 1.40, 0);
-      e.rotation.z = -s * 0.12; e.castShadow = true; g.add(e);
-    });
-  } else if (a.ears === 'floppy') {              // 🐶 축 늘어진
-    [-1, 1].forEach(s => {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.30, 8, 8), earMat);
-      e.scale.set(0.6, 1.5, 0.4);
-      e.position.set(s * HR * 0.78, HY + HR * 0.28, 0);
-      e.rotation.z = -s * 0.5; e.castShadow = true; g.add(e);
-    });
-  } else if (a.ears === 'round') {               // 🐻🐼 동그란
-    [-1, 1].forEach(s => {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.36 * es, 10, 8), earMat);
-      e.position.set(s * HR * 0.66, HY + HR * 0.70, -HR * 0.05);
-      e.castShadow = true; g.add(e);
-    });
-  }
-
-  // ── 동물별 포인트 ──
-  if (ex.includes('beak')) {        // 🐤 부리
-    const b = new THREE.Mesh(new THREE.ConeGeometry(HR * 0.26, HR * 0.50, 4), clayMat(0xff9a3a, false));
-    b.position.set(0, HY - HR * 0.12, HR * 0.92); b.rotation.x = Math.PI / 2; g.add(b);
-  }
-  if (ex.includes('comb')) {        // 🐤 머리 위 볏
-    [0, 1, 2].forEach(i => {
-      const c = new THREE.Mesh(new THREE.SphereGeometry(HR * (0.16 - i * 0.03), 8, 6), clayMat(0xf2564a, false));
-      c.position.set(0, HY + HR * (0.92 - i * 0.10), -HR * (0.02 + i * 0.22)); g.add(c);
-    });
-  }
   // 🐤 날개는 아래 팔 조립부에서 어깨 피벗에 매달아 만든다(팔처럼 스윙 — sims/chick-wing-sim.html 검증)
   if (ex.includes('band')) {        // 🐼 검은 어깨 무늬 — 팔처럼 안 보이게 몸에 밀착(진짜 팔은 armColor 로 검게)
     [-1, 1].forEach(s => {
