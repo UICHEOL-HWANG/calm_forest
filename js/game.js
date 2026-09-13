@@ -31,7 +31,7 @@ import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lo
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -628,6 +628,7 @@ const QUEST_HOW = {
   fish_rare:    '🏞️ 호수에서 계속 낚아요 — 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요',
   house:        '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요',
   collect_dex:  '📖 처음 보는 것을 잡거나 캐거나 거두면 도감에 등록돼요 — ☰ 메뉴 → 📖 에서 확인',
+  dex_one:      '📖 큐레이터가 집어 준 그것을 찾아 도감에 등록해요 — ☰ 메뉴 → 📖 에서 어디서 나오는지 확인',
   expand:       '🎨 완성된 집 근처에서 [집 외관 꾸미기] 버튼을 열면, 맨 위에 🏗️ 증축이 있어요',
   sell:         '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요',
   catch:        '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요',
@@ -787,6 +788,7 @@ const QUEST_TYPES = new Set([
   //   이 중 일부는 전제조건이 있다 — js/quests.js 의 QUEST_GATES 가 거른다.
   'carve', 'egg', 'gift', 'decor', 'boat', 'seafish', 'mist',
   'collect_dex',   // 🏛️ 도감 등록 종수 — 상태형(dexCount 에서 읽는다)
+  'dex_one',       // 🏛️ 콕 집은 한 종 — 상태형(그 종이 도감에 있는가)
 ]);
 
 // ── 데일리 퀘스트 풀 — 매일 3개 뽑기(완료 시 코인 + 🎁럭키박스 확률 보상) ──
@@ -855,7 +857,16 @@ function refreshRepeatQuests() {
     if (!open.has(def.id)) continue;
     if (st.idx < def.quests.length) continue;   // 아직 체인이 남았다 — 반복 의뢰는 그다음 차례
     if (st.repeat) continue;                    // 오늘 것은 이미 정해졌다(진행 중일 수 있다)
-    const q = repeatQuestFor(def.id, dateHash('repeat'), ctx);
+    let q = repeatQuestFor(def.id, dateHash('repeat'), ctx);
+    if (def.id === 'curator') {
+      // 🏛️ "아직 🌈무지개 물고기가 없군요" — 남은 종을 콕 집어 준다.
+      //   베타 피드백 "미션이 없어지는 지점에서 뭘 해야 할지 모르겠다" 를 직접 푸는 자리.
+      //   다 모았으면 집을 게 없으니 일반 반복 의뢰(채집·채굴)로 폴백한다.
+      const miss = pickMissingDex(gameState.dex, DEX, dateHash('repeat'), ctx);
+      if (miss) q = { type: 'dex_one', cat: miss.cat, dexId: miss.id, target: 1,
+        title: '빈 진열장', desc: `${miss.ico} ${miss.name} 도감 등록`, reward: { coins: 14 },
+        line: `아직 ${miss.ico}${miss.name}이(가) 없군요. 구해다 주시겠어요?` };
+    }
     if (!q || !validQuest(q)) continue;         // 전문 분야가 전부 막혔다 → 오늘은 열지 않는다
     st.repeat = { date: today, done: false, q: { ...q, line: `오늘은 이것 좀 도와줄래요? ${q.desc}!` } };
     st.allDone = false; st.given = false; st.progress = 0; st.readyToasted = false;
@@ -2439,6 +2450,8 @@ function buildWorld() {
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
+      || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
+      || dist2D({ x, z }, { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 5 }) < 3.5   //    계단 앞 진입로도 틔운다
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
@@ -13408,6 +13421,7 @@ function refreshCollectQuests() {
     else if (q.type === 'expand') st.progress = gameState.houseStage >= q.stage ? q.target : 0;
     // 📖 도감도 되돌릴 수 없다 — 수락 전에 이미 모은 사람이 영원히 못 깨면 안 된다
     else if (q.type === 'collect_dex') st.progress = Math.min(q.target, dexCount());
+    else if (q.type === 'dex_one') st.progress = gameState.dex[q.cat]?.[q.dexId] ? q.target : 0;   // 🏛️ 콕 집은 그 종
     // ☕ 서빙도 같은 함정 — 손님은 하루 CAFE_ORDERS 명뿐이고 다시 서빙할 수 없다.
     //   먼저 서빙하고 나중에 의뢰를 받으면 남은 손님이 모자라 그날은 완료가 불가능해진다.
     //   그래서 "오늘 서빙한 손님 수"를 읽는다. 날짜가 지난 기록(cafeOrders() 가 아직 안 비운 어제치)은 0.

@@ -58,3 +58,37 @@ export function nextFloorNeed(dex = {}, DEX) {
   const { have } = floorProgress(open, dex, DEX);
   return { floor: next.id, name: next.name, need: next.need, have, left: Math.max(0, next.need - have) };
 }
+
+// ── 🧑‍🦳 남은 종을 콕 집는 의뢰 ───────────────────────────────
+//   베타 피드백 "미션이 없어지는 지점에서 뭘 해야 할지 모르겠다" 를 직접 푸는 자리다.
+//   도감이 남아 있는 한 큐레이터의 의뢰가 마르지 않는다.
+
+/** 하루 종일 같은 결과가 나오게 — 의뢰가 도중에 바뀌면 진행도가 증발한다(js/quests.js 와 같은 상수). */
+function nextSeed(h) { return (h * 1103515245 + 12345) & 0x7fffffff; }
+
+// ⚠️ 집으면 안 되는 카테고리
+//   · river / sea(seafish) / mist — 잠긴 맵에서만 나온다. 잠긴 채로 집으면 "영원히 못 깨는 의뢰" 가 된다
+//   · weather — "그 날씨인 날 접속" 이라 오늘 안에 맞출 수가 없다
+const DEX_MAP_LOCK = { river: 'river', spirit: 'mist' };
+const DEX_NEVER = ['weather'];
+
+/**
+ * 아직 도감에 없는 종 하나 — 날짜 시드로 고른다. 남은 게 없으면 null(호출부가 폴백한다).
+ * @param {object} dex gameState.dex
+ * @param {object} DEX 도감 정의(game.js)
+ * @param {number} seed 날짜 시드
+ * @param {{locked?:{river:boolean,sea:boolean,mist:boolean}}} ctx
+ */
+export function pickMissingDex(dex = {}, DEX = {}, seed = 0, ctx = {}) {
+  const locked = ctx.locked || {};
+  const pool = [];
+  for (const cat of Object.keys(DEX)) {
+    if (DEX_NEVER.includes(cat)) continue;
+    const lock = DEX_MAP_LOCK[cat];
+    if (lock && locked[lock]) continue;
+    for (const e of DEX[cat]) if (!dex[cat]?.[e.id]) pool.push({ ...e, cat });
+  }
+  if (!pool.length) return null;
+  const h = nextSeed(seed & 0x7fffffff);
+  return pool[h % pool.length];
+}

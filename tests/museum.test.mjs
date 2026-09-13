@@ -135,3 +135,51 @@ test('주민 도감은 NPCS 에서 파생한다(손으로 적지 않는다)', ()
   assert.match(block, /\.\.\.NPCS\.map\(/, '주민 목록을 손으로 적고 있다 — 새 주민이 조용히 빠진다');
   assert.doesNotMatch(block, /id: 'farmer'/, '하드코딩이 남아 있다');
 });
+
+// ── 🧑‍🦳 "아직 🌈무지개 물고기가 없군요" — 남은 종을 콕 집는 의뢰 ─────
+//   베타 피드백 "미션이 없어지는 지점에서 뭘 해야 할지 모르겠다" 를 직접 푸는 자리다.
+import { pickMissingDex } from '../js/museum.js';
+
+const OPEN = { locked: { river: false, sea: false, mist: false } };
+
+test('아직 없는 종 하나를 집어 준다', () => {
+  const d = dexWith('crop', 6);                       // 🍇포도만 빠졌다
+  const pick = pickMissingDex(d, DEX, 1234, OPEN);
+  assert.ok(pick, '남은 게 있는데 못 집었다');
+  assert.ok(!d[pick.cat]?.[pick.id], '이미 가진 것을 집었다');
+});
+
+test('같은 시드면 같은 종 — 하루 안에 의뢰가 바뀌면 진행도가 증발한다', () => {
+  const d = dexWith('crop', 3);
+  const a = pickMissingDex(d, DEX, 777, OPEN), b = pickMissingDex(d, DEX, 777, OPEN);
+  assert.deepEqual(a, b);
+});
+
+test('다 모았으면 null — 호출부가 다른 의뢰로 폴백한다', () => {
+  const d = {};
+  for (const k of Object.keys(DEX)) { d[k] = {}; DEX[k].forEach(e => { d[k][e.id] = 1; }); }
+  assert.equal(pickMissingDex(d, DEX, 1, OPEN), null);
+});
+
+// ⚠️ 잠긴 맵에서만 나오는 것을 집으면 "영원히 못 깨는 의뢰" 가 된다(js/quests.js 가 막으려는 그 사고)
+test('잠긴 맵의 종은 집지 않는다', () => {
+  const d = {};
+  for (const k of Object.keys(DEX)) d[k] = {};
+  for (const k of Object.keys(DEX)) if (k !== 'river') DEX[k].forEach(e => { d[k][e.id] = 1; });
+  const locked = { locked: { river: true, sea: false, mist: false } };
+  assert.equal(pickMissingDex(d, DEX, 5, locked), null, '🛶강이 잠겼는데 강 도감을 집었다');
+  assert.ok(pickMissingDex(d, DEX, 5, OPEN), '열려 있으면 집어야 한다');
+});
+
+// 🌦️ 날씨는 "그 날씨인 날 접속" 이라 하루 안에 못 맞출 수 있다 — 오늘의 의뢰로는 부적절
+test('날씨 도감은 집지 않는다(그 날씨인 날을 기다려야 한다)', () => {
+  const d = {};
+  for (const k of Object.keys(DEX)) d[k] = {};
+  for (const k of Object.keys(DEX)) if (k !== 'weather') DEX[k].forEach(e => { d[k][e.id] = 1; });
+  assert.equal(pickMissingDex(d, DEX, 9, OPEN), null);
+});
+
+test('상태가 비어도 터지지 않는다', () => {
+  assert.ok(pickMissingDex({}, DEX, 3, OPEN));
+  assert.ok(pickMissingDex({}, DEX, 3, {}));
+});

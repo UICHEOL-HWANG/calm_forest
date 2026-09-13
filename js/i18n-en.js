@@ -849,6 +849,9 @@ export const EN = {
   '아홉 가지가 모이면 위층을 열 수 있어요. 조금만 더 부탁드립니다 — 💎값진 걸로 보답하지요.':
     'Nine finds will open the floor above. A little more, if you would — I shall repay you with something 💎precious.',
   '새 전시품': 'A New Exhibit',
+  '빈 진열장': 'An Empty Case',
+  '📖 큐레이터가 집어 준 그것을 찾아 도감에 등록해요 — ☰ 메뉴 → 📖 에서 어디서 나오는지 확인':
+    '📖 Find the one the Curator named and register it — see ☰ menu → 📖 for where it turns up',
   '📖 도감 1종 새로 등록하기': 'Register 1 new species in the Field Guide',
   '숲의 표본': 'Forest Specimens',
   '광물 표본': 'Mineral Specimens',
