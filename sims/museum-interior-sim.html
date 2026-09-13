@@ -1,0 +1,282 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🏛️ 박물관 전시실 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#2a2a28;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  button{font:inherit;padding:5px 11px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:130px}
+  b{color:#2f5e2f}
+  #hud{position:fixed;top:10px;right:12px;background:rgba(255,255,255,.92);padding:9px 12px;border-radius:10px;font-size:12.5px;line-height:1.7;min-width:200px}
+  #hud .big{font-size:19px;font-weight:700;color:#2f5e2f}
+  #hud .warn{color:#b5462f;font-weight:700}
+  /* 명판 — 3D 텍스처가 아니라 HTML 패널이다(진열장마다 캔버스를 만들면 그게 곧 드로우콜) */
+  #plate{position:fixed;left:50%;transform:translateX(-50%);bottom:104px;background:rgba(255,252,245,.96);
+         padding:10px 16px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:14px;line-height:1.6;
+         text-align:center;min-width:220px;display:none}
+  #plate .t{font-weight:700;font-size:15.5px}
+  #plate .d{opacity:.7;font-size:12.5px;margin-top:3px}
+  #plate .empty{color:#a08a6a}
+  #note{position:fixed;top:10px;left:12px;background:rgba(255,255,255,.88);padding:8px 11px;border-radius:9px;font-size:12px;line-height:1.6;max-width:250px;cursor:pointer}
+  #note.min{opacity:.15}
+</style>
+<div id="note"></div>
+<div id="hud"></div>
+<div id="plate"></div>
+<div id="ui">
+  <div class="row">
+    <b>수집률</b> <input id="fill" type="range" min="0" max="13" step="1" value="5"><span id="fillV">5 / 13</span>
+    <b style="margin-left:8px">보기</b> <span id="views"></span>
+  </div>
+  <div class="row">
+    <label><input id="merge" type="checkbox" checked> <b>재질별 병합</b></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="0"><span id="angV">0°</span></label>
+    <label><input id="spin" type="checkbox"> 자동</label>
+    <label>둘러보기 <input id="walk" type="range" min="-1" max="1" step="0.02" value="0"></label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// =============================================================
+//  🏛️ 박물관 1층 전시실 — 🌾작물7 · 🐟물고기3 · ⛏️광물3 = 13칸
+//  ------------------------------------------------------------
+//  ▶ 이 시안이 증명할 것 두 가지
+//    ① **미획득은 아예 만들지 않는다** — 빈 받침만 남는다. 그게 곧 목표 표시이고
+//       동시에 드로우콜을 아낀다. [수집률] 슬라이더로 0→13 을 움직여 보면 안다.
+//    ② **명판은 3D 텍스처가 아니라 HTML 패널이다.** 진열장마다 캔버스 텍스처를 만들면
+//       그 하나하나가 드로우콜이 된다(13칸이면 13콜). 가까이 간 칸만 아래에 뜬다.
+//  ▶ 전시물은 기존 게임 메시(작물·광석·물고기)를 재사용한다 — 여기선 형태만 흉내 낸다.
+// =============================================================
+
+const PAL = {
+  wall:  0xf3e2c8, trim: 0xf2ece0, floor: 0xd9b98a, stone: 0xcfc7b0,
+  dark:  0x6b5a46, wood: 0xb5834f, base: 0xe8dcc4,
+};
+const clayMat = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const glassMat = () => new THREE.MeshStandardMaterial({ color: 0xbfe3ea, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
+
+function mergeGeos(geos) {   // js/game.js 와 같은 구현
+  const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
+  const out = new THREE.BufferGeometry();
+  for (const name of ['position', 'normal', 'uv', 'color']) {   // ⚠️ color 추가 — 정점색을 쓰면 색이 달라도 한 재질로 합쳐진다
+    if (!flat[0].attributes[name]) continue;
+    const size = flat[0].attributes[name].itemSize;
+    let total = 0; for (const g of flat) total += g.attributes[name].count;
+    const arr = new Float32Array(total * size);
+    let off = 0;
+    for (const g of flat) { arr.set(g.attributes[name].array, off); off += g.attributes[name].count * size; }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  }
+  return out;
+}
+const box = (w, h, d, x, y, z, ry = 0) => { const g = new THREE.BoxGeometry(w, h, d); if (ry) g.rotateY(ry); g.translate(x, y, z); return g; };
+const cyl = (r, h, seg, x, y, z) => { const g = new THREE.CylinderGeometry(r, r, h, seg); g.translate(x, y, z); return g; };
+
+// ── 1층 전시 목록 — 실제 DEX 의 fish/crop/ore 와 같은 구성 ──
+const ITEMS = [
+  { cat: '🌾 작물', name: '당근',        ico: '🥕', kind: 'crop', c: 0xe08a3c },
+  { cat: '🌾 작물', name: '토마토',      ico: '🍅', kind: 'crop', c: 0xd0453c },
+  { cat: '🌾 작물', name: '블루베리',    ico: '🫐', kind: 'crop', c: 0x5566b8 },
+  { cat: '🌾 작물', name: '호박',        ico: '🎃', kind: 'crop', c: 0xd98026 },
+  { cat: '🌾 작물', name: '밀',          ico: '🌾', kind: 'crop', c: 0xd9bc5c },
+  { cat: '🌾 작물', name: '옥수수',      ico: '🌽', kind: 'crop', c: 0xd9c14a },
+  { cat: '🌾 작물', name: '포도',        ico: '🍇', kind: 'crop', c: 0x8a5cd0 },
+  { cat: '🐟 물고기', name: '피라미',     ico: '🐟', kind: 'fish', c: 0x7fa8c8 },
+  { cat: '🐟 물고기', name: '붉은 물고기', ico: '🐠', kind: 'fish', c: 0xd06a4a },
+  { cat: '🐟 물고기', name: '무지개 물고기', ico: '🌈', kind: 'fish', c: 0x62c0c8 },
+  { cat: '⛏️ 광물', name: '돌',          ico: '🪨', kind: 'ore', c: 0x9a9086 },
+  { cat: '⛏️ 광물', name: '석탄',        ico: '⚫', kind: 'ore', c: 0x4a4a4a },
+  { cat: '⛏️ 광물', name: '보석',        ico: '💎', kind: 'ore', c: 0x5ad0e0 },
+];
+// 명판에 쓸 "내 기록" — 실제로는 gameState.dex 의 첫 발견 시각(ms)에서 온다
+const FOUND = ['2026년 8월 21일', '2026년 8월 24일', '2026년 8월 29일', '2026년 9월 1일', '2026년 9월 3일',
+               '2026년 9월 5일', '2026년 9월 6일', '2026년 9월 8일', '2026년 9월 9일', '2026년 9월 11일',
+               '2026년 9월 12일', '2026년 9월 13일', '2026년 9월 14일'];
+
+const HALL_W = 13, HALL_D = 9.5, HALL_H = 3.6;
+// 진열장 자리 — 좌우 벽면을 따라. [x, z, 바라보는 방향]
+function slots() {
+  const out = [];
+  for (let i = 0; i < 5; i++) out.push([-HALL_W / 2 + 1.0, -3.4 + i * 1.75,  Math.PI / 2]);   // 왼쪽 벽 5칸
+  for (let i = 0; i < 5; i++) out.push([ HALL_W / 2 - 1.0, -3.4 + i * 1.75, -Math.PI / 2]);   // 오른쪽 벽 5칸
+  for (let i = 0; i < 3; i++) out.push([-2.2 + i * 2.2, -HALL_D / 2 + 1.0, 0]);               // 안쪽 벽 3칸
+  return out;
+}
+
+let fill = 5, merged = true, meshCount = 0, view = 'room';
+const caseAt = [];   // 진열장 월드 위치(명판 근접 판정용)
+
+function buildHall() {
+  const P = {};
+  const put = (k, ...gs) => {
+    (P[k] ||= []).push(...gs.flat().map(g => {
+      if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+      if (k === 'exhibit' && !g.attributes.color) throw new Error('전시물에 정점색이 없다');
+      return g;
+    }));
+  };
+  // 바닥·천장·벽
+  put('floor', box(HALL_W, 0.2, HALL_D, 0, -0.1, 0));
+  put('ceil',  box(HALL_W + 0.4, 0.22, HALL_D + 0.4, 0, HALL_H, 0));   // 전체 보기에선 숨긴다
+  put('wall',  box(HALL_W, HALL_H, 0.3, 0, HALL_H / 2, -HALL_D / 2));
+  put('wall',  box(0.3, HALL_H, HALL_D, -HALL_W / 2, HALL_H / 2, 0));
+  put('wall',  box(0.3, HALL_H, HALL_D,  HALL_W / 2, HALL_H / 2, 0));
+  // 굽도리 + 벽 상단 띠 — 크림 벽이 밋밋하지 않게
+  for (const [x, z, w, d] of [[0, -HALL_D / 2 + 0.2, HALL_W, 0.12], [-HALL_W / 2 + 0.2, 0, 0.12, HALL_D], [HALL_W / 2 - 0.2, 0, 0.12, HALL_D]]) {
+    put('trim', box(w, 0.22, d, x, 0.11, z));
+    put('trim', box(w, 0.14, d, x, HALL_H - 0.45, z));
+  }
+  // 입구(정면) — 아치 개구부만 어둡게
+  put('dark', box(2.6, 2.5, 0.16, 0, 1.25, HALL_D / 2));
+  put('trim', box(3.1, 0.24, 0.34, 0, 2.6, HALL_D / 2));
+
+  caseAt.length = 0;
+  slots().forEach(([x, z, ry], i) => {
+    const item = ITEMS[i], got = i < fill;
+    caseAt.push({ x, z, i, got });
+    // 받침 — 있든 없든 늘 있다. **빈 받침이 곧 목표 표시다**
+    put('stone', box(1.25, 0.12, 0.85, x, 0.9, z, ry));
+    put('wood',  box(1.05, 0.85, 0.7, x, 0.46, z, ry));
+    // 명판 판 — 글자는 HTML 패널이 그린다(텍스처를 쓰면 칸마다 드로우콜이 는다)
+    put('trim', box(0.62, 0.16, 0.05, x + Math.sin(ry) * 0.38, 0.99, z + Math.cos(ry) * 0.38, ry));
+    if (!got) return;                         // ⚡ 미획득은 유리장도 전시물도 만들지 않는다
+    // 유리장 — 기둥 4 + 갓
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const px = x + (ry ? sz * 0.3 : sx * 0.52), pz = z + (ry ? sx * 0.52 : sz * 0.3);
+      put('trim', cyl(0.028, 1.0, 5, px, 1.46, pz));
+    }
+    put('glass', box(1.12, 0.98, 0.66, x, 1.46, z, ry));
+    put('trim',  box(1.2, 0.08, 0.74, x, 1.98, z, ry));
+    // 전시물 — 종류마다 실루엣을 다르게(실제로는 게임의 작물·광석·물고기 메시를 재사용)
+    // ⚡ 전시물은 종마다 색이 다르다 — 재질을 따로 만들면 13종이 13 드로우콜이 된다.
+    //    색을 **정점에 실어** 한 재질(vertexColors)로 묶으면 전부 1콜이다.
+    const g = item.kind === 'fish' ? new THREE.SphereGeometry(0.17, 8, 6).scale(1.5, 0.8, 0.5)
+            : item.kind === 'ore'  ? new THREE.IcosahedronGeometry(0.18, 0)
+            :                        new THREE.SphereGeometry(0.17, 8, 7).scale(1, 1.2, 1);
+    g.rotateY(ry); g.translate(x, 1.28, z);
+    const flat = g.index ? g.toNonIndexed() : g;
+    const col = new THREE.Color(item.c), arr = new Float32Array(flat.attributes.position.count * 3);
+    for (let v = 0; v < flat.attributes.position.count; v++) { arr[v*3] = col.r; arr[v*3+1] = col.g; arr[v*3+2] = col.b; }
+    flat.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+    put('exhibit', flat);
+  });
+  return P;
+}
+
+// ── 씬 ───────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.info.autoReset = false;
+renderer.setClearColor(0x241f1a);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 200);
+scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a7a62, 1.15));   // 전시실은 밝아야 한다 — 어두우면 크림 벽이 흙빛으로 보인다
+const lamp = new THREE.DirectionalLight(0xfff3dc, 1.05); lamp.position.set(2, 9, 5); scene.add(lamp);
+const rig = new THREE.Group(); scene.add(rig);
+
+function rebuild() {
+  for (let i = rig.children.length - 1; i >= 0; i--) {
+    const o = rig.children[i];
+    o.traverse(m => { if (m.isMesh) { m.geometry.dispose(); m.material.dispose(); } });
+    rig.remove(o);
+  }
+  const P = buildHall();
+  meshCount = 0;
+  for (const [k, geos] of Object.entries(P)) {
+    const mat = k === 'glass' ? glassMat()
+              : k === 'exhibit' ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true })
+              : clayMat(PAL[k] || PAL.trim);
+    const tag = m => { m.userData.key = k; return m; };
+    if (merged) { rig.add(tag(new THREE.Mesh(mergeGeos(geos), mat))); meshCount++; }
+    else for (const g of geos) { rig.add(tag(new THREE.Mesh(g, mat.clone()))); meshCount++; }
+  }
+}
+
+// ── UI ───────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function chips(host, items, get, set) {
+  host.innerHTML = '';
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.textContent = it.name; b.title = it.desc || '';
+    b.className = get() === it.id ? 'on' : '';
+    b.onclick = () => { set(it.id); chips(host, items, get, set); };
+    host.appendChild(b);
+  });
+}
+chips($('views'), [
+  { id: 'room', name: '전체', desc: '전시실 전경' },
+  { id: 'eye',  name: '눈높이', desc: '관람객 시점 — 명판이 뜬다' },
+], () => view, id => view = id);
+
+let ang = 0, spin = false, walk = 0;
+$('fill').oninput = e => { fill = +e.target.value; $('fillV').textContent = `${fill} / 13`; rebuild(); };
+$('ang').oninput = e => { ang = +e.target.value; $('angV').textContent = ang + '°'; spin = false; $('spin').checked = false; };
+$('spin').onchange = e => spin = e.target.checked;
+$('walk').oninput = e => walk = +e.target.value;
+$('merge').onchange = e => { merged = e.target.checked; rebuild(); };
+const note = $('note');
+note.onclick = () => note.classList.toggle('min');
+note.innerHTML = '<b>🏛️ 1층 전시실 13칸</b><br>🌾작물7 · 🐟물고기3 · ⛏️광물3<br><br>' +
+  '<b>[수집률]</b> 을 0 으로 내려 보세요 —<br>빈 받침만 남고 드로우콜이 줍니다.<br>' +
+  '<b>미획득은 아예 안 만듭니다</b><br><br>명판 글자는 3D 가 아니라<br>아래 HTML 패널입니다<br><br><small>이 상자를 누르면 접힙니다</small>';
+
+function resize() {
+  const uh = $('ui').offsetHeight;
+  const h = innerHeight - uh;
+  renderer.setSize(innerWidth, h);
+  camera.aspect = innerWidth / h; camera.updateProjectionMatrix();
+  $('plate').style.bottom = (uh + 14) + 'px';   // 조작줄이 두 줄로 접히는 좁은 화면에서 명판이 가리지 않게
+}
+addEventListener('resize', resize); resize(); rebuild();
+
+const plate = $('plate');
+let t0 = performance.now();
+(function loop(now) {
+  const dt = (now - t0) / 1000; t0 = now;
+  if (spin) { ang += dt * 12; if (ang > 180) ang -= 360; $('ang').value = ang.toFixed(0); $('angV').textContent = Math.round(ang) + '°'; }
+  rig.rotation.y = 0;
+  let near = null;
+  if (view === 'eye') {
+    // 관람객 시점 — 통로를 따라 걷는다. 가장 가까운 진열장의 명판이 뜬다
+    const pz = walk * 3.6, px = 0;
+    camera.position.set(px, 1.55, pz + 2.2);
+    camera.lookAt(px + Math.sin(ang * Math.PI / 180) * 3, 1.35, pz - Math.cos(ang * Math.PI / 180) * 3);
+    let best = 9e9;
+    for (const c of caseAt) { const d = Math.hypot(c.x - px, c.z - pz); if (d < best) { best = d; near = c; } }
+    if (best > 5.2) near = null;
+  } else {
+    // 세로 화면은 가로 시야가 좁다 — 비율만큼 물러나야 방 전체가 들어온다
+    const r = 15 * Math.max(1, 1.5 / Math.max(0.4, camera.aspect));
+    camera.position.set(Math.sin(ang * Math.PI / 180) * r * 0.5, r * 0.52, Math.cos(ang * Math.PI / 180) * r);
+    camera.lookAt(0, 1.1, -0.4);
+  }
+  for (const m of rig.children) if (m.userData.key === 'ceil') m.visible = (view === 'eye');
+  if (near) {
+    const it = ITEMS[near.i];
+    plate.style.display = 'block';
+    plate.innerHTML = near.got
+      ? `<div class="t">${it.ico} ${it.name}</div><div class="d">${FOUND[near.i]}, 당신이 처음 발견했습니다</div>`
+      : `<div class="t empty">${it.cat} — 빈 자리</div><div class="d empty">아직 발견하지 못했어요</div>`;
+  } else plate.style.display = 'none';
+
+  renderer.info.reset();
+  renderer.render(scene, camera);
+  const calls = renderer.info.render.calls, over = calls > 25;
+  $('hud').innerHTML =
+    `드로우콜 <span class="big ${over ? 'warn' : ''}">${calls}</span>${over ? ' <span class="warn">⚠︎ 목표 25 초과</span>' : ' <small>(목표 ≤25)</small>'}<br>` +
+    `메시 ${meshCount} · 삼각형 ${renderer.info.render.triangles.toLocaleString()}<br>` +
+    `<small>전시 ${fill}/13 · 병합 ${merged ? 'ON' : 'OFF'}</small>`;
+  requestAnimationFrame(loop);
+})(performance.now());
+</script>
