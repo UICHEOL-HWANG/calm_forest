@@ -1,0 +1,330 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>도구 등급 외형 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  button{font:inherit;padding:5px 11px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:130px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:600;
+       background:rgba(255,255,255,.82);padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.35}
+  .tag small{display:block;font-weight:400;opacity:.65;font-size:10.5px}
+  #hud.min{opacity:.12}
+  #hud{position:fixed;top:10px;right:12px;cursor:pointer;transition:opacity .15s;background:rgba(255,255,255,.85);padding:8px 12px;border-radius:9px;font-size:12px;line-height:1.65;max-width:260px}
+</style>
+<div id="labels"></div>
+<div id="hud"></div>
+<div id="ui">
+  <div class="row">
+    <b>보기</b> <span id="views"></span>
+    <b style="margin-left:6px">2단계 시안</b> <span id="styles"></span>
+  </div>
+  <div class="row">
+    <label>카메라 거리 <input id="dist" type="range" min="1.2" max="12" step="0.1" value="5.6"><span id="distV">5.6</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="18"><span id="angV">18°</span></label>
+    <label><input id="spin" type="checkbox"> 자동 회전</label>
+    <label><input id="night" type="checkbox"> 밤 조명</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// =============================================================
+//  🪓 도구 등급 외형 시안 — 0단계(기본) / 1단계(업그레이드) / 2단계(히든)
+//  ------------------------------------------------------------
+//  · 조형은 js/game.js 의 toolMesh() 를 그대로 옮겨 왔다(axe·water·rod 3종).
+//    등급 차이만 이 파일에서 얹어 비교한다 — 확정되면 규칙을 모듈로 뽑아 game.js 에 연결.
+//  · 1단계는 이미 게임에 있는 업그레이드다: 강철 도끼 / 큰 물조리개 / 튼튼한 낚싯대.
+//    지금은 성능만 바뀌고 모습이 그대로라, 코인을 쓰고도 보상이 눈에 안 보인다.
+//  · ⚠️ 블룸 임계 0.85 — 색 채널이 0xd9 를 넘으면 후광이 번져 형태를 삼킨다(나룻배 등불 사고).
+//    그래서 "금"은 광택이 아니라 색으로만 표현한다(metalness 0 · flatShading 유지).
+// =============================================================
+
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0, flatShading: flat });
+
+// ── 등급 팔레트 ───────────────────────────────────────────────
+//   wood  자루 · metal 금속 몸체 · edge 날/밝은 면 · accent 포인트(밴드·장식)
+const TIERS = [
+  { id: 0, name: '기본',      sub: '지금 모습',                wood: 0x8a5a3a, grip: 0x5f3d26, metal: 0x6d757c, edge: 0xd9dfe4, accent: 0x5f3d26, can: 0x8fd0ea, pole: 0x7a4a2a },
+  { id: 1, name: '업그레이드', sub: '강철·큰·튼튼한 (코인/제작)', wood: 0x6b4224, grip: 0x4a3018, metal: 0x8a939c, edge: 0xd9dfe4, accent: 0x9aa3ab, can: 0x6fb8d6, pole: 0x5e3a20 },
+  { id: 2, name: '히든',      sub: '친밀도 보상',              wood: 0x4a2f1c, grip: 0x3a2414, metal: 0xc9a227, edge: 0xd9bc5c, accent: 0xc9a227, can: 0x4fb8c8, pole: 0x4a2f1c },
+];
+// 2단계 시안 — 화려함의 방향을 고르는 축
+const STYLES = [
+  { id: 'gold',  name: 'A 금 도금',   desc: '금속만 금색으로. 실루엣은 1단계와 같다' },
+  { id: 'carve', name: 'B 각인 무늬', desc: '금색 + 자루에 무늬 밴드 3줄' },
+  { id: 'gem',   name: 'C 보석 상감', desc: '금색 + 무늬 + 보석 포인트(청록)' },
+];
+let styleId = 'gem';   // 확정: C 보석 상감
+
+// ── 공용 부품 ────────────────────────────────────────────────
+// 테이퍼 자루 + 그립 밴드 + 끝 혹. 반환: 자루 꼭대기 y (game.js 의 handle 과 같은 조형)
+function handle(g, T, l, r = 0.030) {
+  const h = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clayMat(T.wood));
+  h.position.y = l / 2 - 0.08;
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.18, r * 1.18, 0.07, 7), clayMat(T.grip));
+  band.position.y = -0.02;
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(r * 1.35, 7, 6), clayMat(T.grip));
+  knob.position.y = -0.08;
+  g.add(h, band, knob);
+  // 1단계부터: 자루 금속 보강 밴드 — 멀리서도 "달라졌다" 가 읽히는 가장 싼 신호
+  if (T.id >= 1) {
+    const rein = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.1, r * 1.1, 0.045, 7), clayMat(T.accent));
+    rein.position.y = l * 0.52 - 0.08; g.add(rein);
+  }
+  // 2단계 B·C: 무늬 밴드 3줄(얇은 링) — 자루를 타고 오르는 각인
+  if (T.id === 2 && styleId !== 'gold') {
+    for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.05, 0.008, 5, 10), clayMat(T.accent));
+      ring.rotation.x = Math.PI / 2; ring.position.y = l * (0.18 + i * 0.12) - 0.08; g.add(ring);
+    }
+  }
+  return l - 0.08;
+}
+// 2단계 C: 보석 한 알
+function gem(g, T, x, y, s = 1) {
+  if (T.id !== 2 || styleId !== 'gem') return;
+  const j = new THREE.Mesh(new THREE.OctahedronGeometry(0.032 * s, 0), clayMat(0x4fb8c8));
+  j.position.set(x, y, 0.055); g.add(j);        // 앞면으로 살짝 띄워 몸체에 묻히지 않게
+}
+
+// ── 도구 3종 ─────────────────────────────────────────────────
+function makeAxe(T) {
+  const g = new THREE.Group();
+  const top = handle(g, T, 0.52);
+  // 1단계부터 머리가 커진다(강철 도끼) — 성능(2번에 벌목)이 실루엣으로 보이게
+  const k = T.id >= 1 ? 1.22 : 1;
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.17 * k, 0.13 * k, 0.06), clayMat(T.metal));
+  head.position.set(0.075, top - 0.05, 0); g.add(head);
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07 * k, 0.155 * k, 0.028), clayMat(T.edge));
+  blade.position.set(0.175 * k, top - 0.05, 0); blade.rotation.z = 0.06; g.add(blade);
+  const poll = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09 * k, 0.07), clayMat(T.metal));
+  poll.position.set(-0.035, top - 0.05, 0); g.add(poll);
+  gem(g, T, 0.0, top - 0.16, 1.15);   // 자루 꼭대기 정면 — 머리에 가려지지 않는 자리
+  g.scale.setScalar(1.18);
+  return g;
+}
+function makeWater(T) {
+  const g = new THREE.Group();
+  // 1단계 "큰 물조리개" — 통이 실제로 커진다
+  const k = T.id >= 1 ? 1.28 : 1;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * k, 0.12 * k, 0.2 * k, 10), clayMat(T.can));
+  body.position.y = 0.18; g.add(body);
+  const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22 * k, 6), clayMat(T.can));
+  spout.position.set(0.15 * k, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
+  if (T.id >= 1) {
+    // 테두리 띠 + 손잡이 — 민짜 원통이던 것에 "물건" 느낌을 준다
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.115 * k, 0.115 * k, 0.028, 10), clayMat(T.accent));
+    rim.position.y = 0.18 + 0.1 * k; g.add(rim);
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 5, 10), clayMat(T.accent));
+    hoop.position.set(-0.06 * k, 0.30, 0); hoop.rotation.y = Math.PI / 2; g.add(hoop);
+    // 장미꼭지(샤워 헤드) — 물이 넓게 퍼진다는 성능의 시각화
+    const rose = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.032, 0.04, 8), clayMat(T.accent));
+    rose.position.set(0.265 * k, 0.40, 0); rose.rotation.z = -0.9; g.add(rose);
+  }
+  if (T.id === 2 && styleId !== 'gold') {
+    for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.118 * k, 0.007, 5, 12), clayMat(T.accent));
+      ring.rotation.x = Math.PI / 2; ring.position.y = 0.11 + i * 0.06; g.add(ring);
+    }
+  }
+  gem(g, T, 0, 0.30, 1.15);
+  g.scale.setScalar(1.25);
+  return g;
+}
+function makeRod(T) {
+  const g = new THREE.Group();
+  const k = T.id >= 1 ? 1.18 : 1;
+  // 🎣 "튼튼한 낚싯대" 를 릴 없이 보여준다(🌊바다터 대물 릴대와 실루엣이 겹치면 안 된다).
+  //   멀리서 읽히는 건 굵기가 아니라 ① 밝은 코르크 그립 ② 2색 이음 장대 ③ 길이 — 색 대비와 실루엣이다.
+  const CORK = 0xd9b98a, UPPER = 0xb8975e;
+  const gripCol = T.id >= 1 ? CORK : T.grip;
+  const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(T.id >= 1 ? T.accent : T.grip));
+  rknob.position.y = -0.09; g.add(rknob);
+  const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.030 * k, 0.034 * k, T.id >= 1 ? 0.26 : 0.20, 7), clayMat(gripCol));
+  rear.position.y = T.id >= 1 ? 0.02 : -0.01; g.add(rear);
+  const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
+  const L = T.id >= 1 ? 1.06 : 0.92;                 // 튼튼한 = 더 길다(실루엣이 먼저 달라진다)
+  if (T.id >= 1) {
+    // 2색 이음 장대 — 아래는 진한 대, 위는 밝은 대. 이음쇠 위치가 한눈에 읽힌다
+    const lowH = L * 0.58, upH = L * 0.42;
+    const low = new THREE.Mesh(new THREE.CylinderGeometry(0.022 * k, 0.030 * k, lowH, 6), clayMat(T.pole));
+    low.position.y = lowH / 2; poleG.add(low);
+    const up = new THREE.Mesh(new THREE.CylinderGeometry(0.011 * k, 0.022 * k, upH, 6), clayMat(T.id === 2 ? T.edge : UPPER));
+    up.position.y = lowH + upH / 2; poleG.add(up);
+    const ferr = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.055, 7), clayMat(T.accent));
+    ferr.position.y = lowH; poleG.add(ferr);
+    [[0.26, 0.046], [0.62, 0.036], [0.92, 0.028]].forEach(([f, r]) => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.012, 5, 10), clayMat(T.accent));
+      ring.rotation.x = Math.PI / 2; ring.position.set(0.02, L * f, 0); poleG.add(ring);
+    });
+  } else {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.026, L, 6), clayMat(T.pole));
+    pole.position.y = L / 2; poleG.add(pole);
+  }
+  if (T.id === 2 && styleId !== 'gold') {
+    for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.007, 5, 10), clayMat(T.accent));
+      ring.rotation.x = Math.PI / 2; ring.position.y = -0.04 + i * 0.05; g.add(ring);
+    }
+  }
+  const lineG = new THREE.Group(); lineG.position.y = L; lineG.rotation.z = 0.12; poleG.add(lineG);
+  const line = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 5), clayMat(0xe8e4d8));
+  line.position.y = -0.17; lineG.add(line);
+  const bobCol = T.id === 2 ? T.edge : 0xd94f4f;
+  const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042 * k, 8, 7), clayMat(bobCol));
+  bob.position.y = -0.38; bob.scale.set(1, T.id >= 1 ? 1.5 : 1.25, 1); lineG.add(bob);
+  const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.041 * k, 0.041 * k, 0.022, 9), clayMat(0xf4efe6));
+  stripe.position.y = -0.38; lineG.add(stripe);
+  gem(g, T, 0, 0.10, 0.9);
+  g.scale.setScalar(1.25);
+  return g;
+}
+
+const TOOLS = [
+  { id: 'axe',   ico: '🪓', name: '도끼',     up: '강철 도끼',     make: makeAxe },
+  { id: 'water', ico: '💧', name: '물조리개', up: '큰 물조리개',   make: makeWater },
+  { id: 'rod',   ico: '🎣', name: '낚싯대',   up: '튼튼한 낚싯대', make: makeRod },
+];
+
+// ── 씬 ───────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });   // 배경은 body 그라데이션을 그대로 쓴다
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+const hemi = new THREE.HemisphereLight(0xdff0ff, 0x9ab88f, 1.05); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3dc, 1.35); sun.position.set(3, 6, 4); scene.add(sun);
+
+const rig = new THREE.Group(); scene.add(rig);   // 도구들이 올라가는 판
+let cells = [];   // { group, tool, tier, x, y }
+
+// 보기 모드: 격자(9칸 비교) / 실전(게임 카메라 각도·거리에서 3단계가 구분되나)
+let view = 'grid';
+
+function rebuild() {
+  cells.forEach(c => rig.remove(c.group));
+  cells = [];
+  dist = view === 'grid' ? 5.6 : 4.2;          // 실전 보기 = 게임에서 도구가 보이는 실제 거리
+  $('dist').value = dist; $('distV').textContent = dist.toFixed(1);
+  const rows = view === 'grid' ? TOOLS : [TOOLS.find(t => t.id === focusTool)];
+  const rows2 = rows.filter(Boolean);
+  // 도구마다 원점 기준이 다르다(낚싯대는 원점 아래로 길게 뻗는다) — 바운딩 박스로 세로 중심을 맞춰야
+  // 격자가 어긋나지 않고, 등급 간 "커졌다" 만 순수하게 비교된다(스케일은 건드리지 않는다).
+  const madeRows = rows2.map(tool => {
+    const made = TIERS.map(T => ({ T, g: tool.make(T) }));
+    let h = 0, cy = 0;
+    made.forEach(m => {
+      const b = new THREE.Box3().setFromObject(m.g);
+      h = Math.max(h, b.max.y - b.min.y);
+      cy = Math.max(cy, (b.max.y + b.min.y) / 2);
+    });
+    return { tool, made, h, cy };
+  });
+  const gap = 0.34;
+  const total = madeRows.reduce((a, r) => a + r.h, 0) + gap * (madeRows.length - 1);
+  let top = total / 2;                                  // 위에서부터 행을 쌓는다
+  madeRows.forEach(row => {
+    const yc = top - row.h / 2; top -= row.h + gap;
+    row.made.forEach(({ T, g }, ci) => {
+      const x = (ci - 1) * (view === 'grid' ? 1.05 : 1.35);
+      g.position.set(x, (view === 'grid' ? yc : 0) - row.cy, 0);
+      rig.add(g);
+      cells.push({ group: g, tool: row.tool, tier: T, x, y: yc });
+    });
+  });
+}
+let focusTool = 'axe';
+
+// ── UI ───────────────────────────────────────────────────────
+function chips(host, items, get, set) {
+  host.innerHTML = '';
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.textContent = it.name; b.title = it.desc || '';
+    b.className = get() === it.id ? 'on' : '';
+    b.onclick = () => { set(it.id); chips(host, items, get, set); rebuild(); };
+    host.appendChild(b);
+  });
+}
+const VIEWS = [
+  { id: 'grid', name: '격자 비교(9칸)', desc: '3종 × 3단계를 한눈에' },
+  { id: 'axe',  name: '🪓 실전 거리',   desc: '게임 카메라에서 등급이 구분되나' },
+  { id: 'water', name: '💧 실전 거리',  desc: '게임 카메라에서 등급이 구분되나' },
+  { id: 'rod',  name: '🎣 실전 거리',   desc: '게임 카메라에서 등급이 구분되나' },
+];
+chips(document.getElementById('views'), VIEWS, () => view === 'grid' ? 'grid' : focusTool,
+  id => { if (id === 'grid') view = 'grid'; else { view = 'solo'; focusTool = id; } });
+chips(document.getElementById('styles'), STYLES, () => styleId, id => { styleId = id; });
+
+const $ = id => document.getElementById(id);
+let dist = 5.6, ang = 18, spin = false;
+$('dist').oninput = e => { dist = +e.target.value; $('distV').textContent = dist.toFixed(1); };
+$('ang').oninput = e => { ang = +e.target.value; $('angV').textContent = ang + '°'; spin = false; $('spin').checked = false; };
+$('spin').onchange = e => spin = e.target.checked;
+$('night').onchange = e => {
+  const n = e.target.checked;
+  hemi.intensity = n ? 0.45 : 1.05; sun.intensity = n ? 0.35 : 1.35;
+  sun.color.set(n ? 0x9fb6e0 : 0xfff3dc);
+  document.body.style.background = n ? 'linear-gradient(#1b2740,#2b3a4a)' : 'linear-gradient(#cfe4ee,#eaf2e6)';
+};
+
+// ── 라벨 ─────────────────────────────────────────────────────
+const labelBox = document.getElementById('labels');
+function syncLabels() {
+  labelBox.innerHTML = '';
+  const v = new THREE.Vector3();
+  cells.forEach(c => {
+    const box = new THREE.Box3().setFromObject(c.group);
+    v.set(c.x, box.max.y + 0.10, 0).applyMatrix4(rig.matrixWorld).project(camera);
+    if (v.z > 1) return;
+    const el = document.createElement('div');
+    el.className = 'tag';
+    const label = c.tier.id === 1 ? c.tool.up : `${c.tool.ico} ${c.tool.name}`;
+    el.innerHTML = `${c.tier.id}단계 · ${label}<small>${c.tier.name} — ${c.tier.sub}</small>`;
+    el.style.left = (v.x * 0.5 + 0.5) * innerWidth + 'px';
+    el.style.top = Math.max(2, (-v.y * 0.5 + 0.5) * (innerHeight - document.getElementById('ui').offsetHeight) - 40) + 'px';
+    labelBox.appendChild(el);
+  });
+}
+
+const hudEl = document.getElementById('hud');
+hudEl.onclick = () => hudEl.classList.toggle('min');   // 라벨을 가리면 눌러서 접는다
+hudEl.innerHTML =
+  '<b>무엇을 보는가</b><br>0단계 = 지금 게임 모습<br>1단계 = <b>이미 있는 업그레이드</b><br>' +
+  '&nbsp;&nbsp;(코인·제작으로 사지만 모습이 안 바뀜)<br>2단계 = 친밀도 히든 보상<br><br>' +
+  '<b>고를 것</b><br>① 1단계 변화가 충분히 보이나<br>② 2단계 시안 A / B / C<br>③ 실전 거리에서 구분되나<br><br><small>이 상자를 누르면 접힙니다</small>';
+
+function resize() {
+  const h = innerHeight - document.getElementById('ui').offsetHeight;
+  renderer.setSize(innerWidth, h);
+  camera.aspect = innerWidth / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize(); rebuild();
+
+let t0 = performance.now();
+(function loop(now) {
+  const dt = (now - t0) / 1000; t0 = now;
+  if (spin) { ang += dt * 22; if (ang > 180) ang -= 360; $('ang').value = ang.toFixed(0); $('angV').textContent = Math.round(ang) + '°'; }
+  rig.rotation.y = ang * Math.PI / 180;
+  // 실전 보기는 게임 카메라 내려보는 각(41°)을 흉내 낸다 — 도구는 늘 이 각도에서 보인다
+  const pitch = view === 'grid' ? 0.12 : 0.72;
+  camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
+  camera.lookAt(0, view === 'grid' ? 0 : -0.25, 0);
+  rig.updateMatrixWorld();
+  renderer.render(scene, camera);
+  syncLabels();
+  requestAnimationFrame(loop);
+})(performance.now());
+</script>
