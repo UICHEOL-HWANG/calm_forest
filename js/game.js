@@ -341,6 +341,10 @@ function isNight() { return isNightAt(timeOfDay); }   // 판정은 js/daynight.j
 //    손님에게 직접 걸어가 요리를 가져다주는 "공간 기반" 의뢰.
 //    농사(작물)·낚시(물고기)·닭장(달걀)·채집(버섯)이 전부 "쓸 곳"을 얻어 하나로 엮임.
 const CAFE_GATE = new THREE.Vector3(4, 0, 14);  // 마을 안 카페 건물(입구) — 주민 자리·호수·계곡과 안 겹치는 빈터
+const MUSEUM_GATE = new THREE.Vector3(-13, 0, 17.5);   // 🏛️ 박물관 — 마을에서 🍄채집 숲으로 가는 길목.
+//   충돌체 스캔으로 뽑은 자리다: 🍄채집 숲 7.4 · ⛏️채굴 14.5 · 마을 중심 21.8(후보 중 최단) ·
+//   🐔닭장 10.5 · ☕카페 17.4 · 🌟계곡 21.6. 반경 3.2 안에 나무·바위가 없어 지형을 안 깎는다.
+const MUSEUM = new THREE.Vector3(0, 0, 360);    // 🏛️ 전시실(다른 인스턴스 공간과 멀찍이)
 const CAFE = new THREE.Vector3(0, 0, 320);      // 카페 홀(다른 인스턴스 공간과 멀찍이)
 const CAFE_HALF = 11;                           // 넓은 홀 반경
 const CAFE_ORDERS = 4;                          // 하루 손님 수
@@ -546,7 +550,7 @@ const SHOP_BUY = [
   { id: 'buy_water', name: '큰 물조리개',   ico: '💧', coin: 90,  upgrade: 'water', desc: '물 한 번에 성장↑' },
   { id: 'buy_hoe',    name: '무쇠 괭이',        ico: '⛏️', coin: 110, upgrade: 'hoe',    desc: '광맥을 한 번 덜 캐도 돼요' },
   { id: 'buy_seed',   name: '넉넉한 씨앗 주머니', ico: '🌰', coin: 80,  upgrade: 'seed',   desc: '기본 씨앗이 가끔 안 줄어요' },
-  { id: 'buy_sickle', name: '잘 드는 낫',       ico: '🌾', coin: 130, upgrade: 'sickle', desc: '옆 칸 작물도 함께 거둬요' },
+  { id: 'buy_sickle', name: '잘 드는 낫',       ico: '🌾', coin: 150, upgrade: 'sickle', desc: '옆 칸 작물도 함께 거둬요' },   // 효과 대비 싸서 130 → 150
   { id: 'buy_shovel', name: '넓은 삽',          ico: '🪏', coin: 100, upgrade: 'shovel', desc: '빈 밭을 한 번에 메워요' },
   { id: 'buy_hammer', name: '묵직한 망치',      ico: '🔨', coin: 140, upgrade: 'hammer', desc: '건축·증축 목재가 줄어요' },
 ];
@@ -560,11 +564,13 @@ const UPGRADES = [
   { id: 'net',   name: '촘촘한 포충망', ico: '🦋', cost: { wood: 12, bug: 2 }, desc: '반딧불이 포획 성공률↑' },   // 🌟 밤 콘텐츠 강화
   // 🔧 신설 5종 — 도구 9종이 전부 같은 3단계 규칙을 따르게(dev/active/tool-tiers/).
   //    효과는 전부 "반복 노동 완화" 다 — 보상량을 늘리면 코인 인플레가 생기는데, 지금은 코인이 남는 게 문제다.
-  { id: 'hoe',    name: '무쇠 괭이',        ico: '⛏️', cost: { wood: 15, stone: 8 },  desc: '광맥을 한 번 덜 캐도 돼요' },
-  { id: 'seed',   name: '넉넉한 씨앗 주머니', ico: '🌰', cost: { crop: 6, wood: 6 },   desc: '기본 씨앗이 가끔 안 줄어요' },
-  { id: 'sickle', name: '잘 드는 낫',       ico: '🌾', cost: { stone: 10, crop: 4 },  desc: '옆 칸 작물도 함께 거둬요' },
-  { id: 'shovel', name: '넓은 삽',          ico: '🪏', cost: { wood: 12, stone: 6 },  desc: '빈 밭을 한 번에 메워요' },
-  { id: 'hammer', name: '묵직한 망치',      ico: '🔨', cost: { stone: 14, coal: 3 },  desc: '건축·증축 목재가 줄어요' },
+  //   ⚠️ 재료에 ⚫석탄·💎보석을 섞는다 — 목재·돌만으로 만들 수 있으면 후반 플레이어는
+  //      코인을 한 푼도 안 내고, 이 기획의 목표인 코인 싱크가 실현되지 않는다(리뷰 지적).
+  { id: 'hoe',    name: '무쇠 괭이',        ico: '⛏️', cost: { wood: 15, stone: 8, coal: 2 },  desc: '광맥을 한 번 덜 캐도 돼요' },
+  { id: 'seed',   name: '넉넉한 씨앗 주머니', ico: '🌰', cost: { crop: 8, wood: 6, coal: 1 },   desc: '기본 씨앗이 가끔 안 줄어요' },
+  { id: 'sickle', name: '잘 드는 낫',       ico: '🌾', cost: { stone: 10, crop: 8, gem: 1 },   desc: '옆 칸 작물도 함께 거둬요' },
+  { id: 'shovel', name: '넓은 삽',          ico: '🪏', cost: { wood: 12, stone: 6, coal: 2 },  desc: '빈 밭을 한 번에 메워요' },
+  { id: 'hammer', name: '묵직한 망치',      ico: '🔨', cost: { stone: 14, coal: 3, gem: 1 },   desc: '건축·증축 목재가 줄어요' },
 ];
 
 // ── 야외 장식(작업대) — 마당에 설치, 재료 소비 ──
@@ -3290,6 +3296,7 @@ function buildEnvironment() {
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
   buildGlade();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
   spawnCafeGate();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  spawnMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음
   buildCafeHall();   // ☕ 카페 홀(별도 공간)
   buildForest();     // 🍄 채집 숲(남서쪽) — 줍기
   buildDockGate();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
@@ -3933,6 +3940,87 @@ function makeWallPlate(text, w, h) {
 //    흰 큐브 + 평지붕 파라펫 + 아치문/아치창의 모던 카페.
 //    ⚠️ 벽 footprint(가로 5.2 · 세로 4.0 · 중심 z-1.2)와 문 위치(x0, 앞면 z+0.8)는
 //       충돌 박스·입장 판정(z+1.3 반경 2.2)이 그대로 쓰므로 바꾸지 말 것.
+// ── 🏛️ 박물관 건물(마을 서쪽) — 처음부터 서 있다 ─────────────
+//   조형 검수: sims/museum-sim.html · ⚡ 재질별 병합으로 **메시 수 = 재질 수**.
+//   증축(2·3층)은 수집률로 열린다 — 지금은 1층만 세운다.
+function spawnMuseumGate() {
+  const g = new THREE.Group(); g.position.copy(MUSEUM_GATE);
+  const MATS = {
+    wall:  clayMat(0xf3e2c8, false),   // 크림 벽 — ☕카페 실내와 같은 색
+    trim:  clayMat(0xf2ece0, false),   // 흰 트림(아치·코니스·난간)
+    roof:  clayMat(0x8a8f96, false),   // 슬레이트 지붕
+    stone: clayMat(0xcfc7b0, false),   // 기단·계단
+    dark:  clayMat(0x6b5a46, false),   // 아치 안쪽(입구 그늘)
+    pot:   clayMat(0xc4764a, false),   // 화분
+    leaf:  clayMat(0x5fa15f),          // 화분 잎(저폴리 느낌 유지)
+  };
+  const parts = new Map();
+  const add = (k, ...geos) => { const a = parts.get(k); a ? a.push(...geos) : parts.set(k, [...geos]); };
+  const box = (w, h, d, x, y, z, ry = 0) => { const b = new THREE.BoxGeometry(w, h, d); if (ry) b.rotateY(ry); return b.translate(x, y, z); };
+  const W = 7.2, D = 5.4, FH = 3.0;            // 마을 건물 크기에 맞춘 1층(시안보다 작다 — ☕카페 5.2 와 나란히)
+
+  // 기단 + 정면 계단
+  add('stone', box(W + 1.2, 0.4, D + 1.2, 0, 0.2, 0));
+  for (let i = 0; i < 3; i++) add('stone', box(3.4, 0.14, 0.5, 0, 0.4 - 0.14 * (i + 0.5), D / 2 + 0.4 + i * 0.5));
+
+  // 벽 — 정면은 개구부를 위해 좌우 + 위 인방으로 나눈다(구멍을 뚫지 않고 조립한다)
+  const openW = 2.2, side = (W - openW) / 2;
+  add('wall', box(W, FH, 0.3, 0, 0.4 + FH / 2, -D / 2));
+  add('wall', box(0.3, FH, D, -W / 2, 0.4 + FH / 2, 0));
+  add('wall', box(0.3, FH, D,  W / 2, 0.4 + FH / 2, 0));
+  add('wall', box(side, FH, 0.3, -(openW + side) / 2, 0.4 + FH / 2, D / 2));
+  add('wall', box(side, FH, 0.3,  (openW + side) / 2, 0.4 + FH / 2, D / 2));
+  add('wall', box(openW, FH - 2.4, 0.3, 0, 0.4 + FH - (FH - 2.4) / 2, D / 2));
+
+  // 아치 — ⚠️ 막대의 길이축을 그 자리의 접선에 맞춰야 한다(rotateZ(am)).
+  //   π/2-am 으로 두면 꼭대기에서 막대가 수직으로 서서 아치가 톱니처럼 벌어진다(시안에서 겪었다).
+  const archFrame = (w, h, d, t, x, y, z, ry = 0) => {
+    const out = [], legH = h - w / 2, R = w / 2, seg = 10;
+    const place = (geo, px, py) => { if (ry) geo.rotateY(ry); return geo.translate(ry ? x : px, py, ry ? py * 0 + z + (px - x) * Math.sign(ry) * 0 : z); };
+    out.push(box(t, legH, d, x - w / 2 + t / 2, y + legH / 2, z, ry));
+    out.push(box(t, legH, d, x + w / 2 - t / 2, y + legH / 2, z, ry));
+    for (let i = 0; i < seg; i++) {
+      const a0 = Math.PI * i / seg, a1 = Math.PI * (i + 1) / seg, am = (a0 + a1) / 2;
+      const len = 2 * R * Math.sin((a1 - a0) / 2) * 1.06;
+      const b = new THREE.BoxGeometry(t, len, d);
+      b.rotateZ(am);
+      b.translate(Math.cos(am) * (R - t / 2), y + legH + Math.sin(am) * (R - t / 2), 0);
+      if (ry) b.rotateY(ry);
+      out.push(b.translate(x, 0, z));
+    }
+    return out;
+  };
+  add('trim', ...archFrame(openW + 0.45, 2.4, 0.4, 0.24, 0, 0.4, D / 2 + 0.02));
+  add('dark', box(openW + 0.2, 2.3, 0.14, 0, 0.4 + 1.15, D / 2 + 0.06));
+  for (const sx of [-1, 1]) {
+    add('trim', ...archFrame(1.1, 1.8, 0.32, 0.16, sx * 2.35, 0.9, D / 2 + 0.02));
+    add('dark', box(0.9, 1.7, 0.12, sx * 2.35, 0.9 + 0.85, D / 2 + 0.06));
+  }
+  // 코니스 + 평지붕 파라펫
+  add('trim', box(W + 0.6, 0.26, D + 0.6, 0, 0.4 + FH, 0));
+  add('roof', box(W + 0.9, 0.28, D + 0.9, 0, 0.4 + FH + 0.27, 0));
+  add('trim', box(W + 1.0, 0.4, 0.2, 0, 0.4 + FH + 0.6, D / 2 + 0.45));
+
+  // 입구 화분
+  for (const sx of [-1, 1]) {
+    add('pot', new THREE.CylinderGeometry(0.3, 0.26, 0.44, 8).translate(sx * 1.85, 0.62, D / 2 + 0.75));
+    add('leaf', new THREE.IcosahedronGeometry(0.44, 0).translate(sx * 1.85, 1.16, D / 2 + 0.75));
+  }
+
+  for (const [k, geos] of parts) {
+    const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+  const plate = makeWallPlate('MUSEUM', 1.5, 0.6);
+  plate.position.set(0, 0.4 + FH - 0.36, D / 2 + 0.08); g.add(plate);
+  g.add(makeSignpost('🏛️ 박물관', -4.3, 1.6));
+  scene.add(g);
+  obstacles.push({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z, r: 3.2 });
+  // 🚧 벽은 사각으로 — 원으로 막으면 정면 문 앞에 설 수가 없다(카페와 같은 이유)
+  solidBox(MUSEUM_GATE.x - W / 2 - 0.2, MUSEUM_GATE.z - D / 2 - 0.8, MUSEUM_GATE.x + W / 2 + 0.2, MUSEUM_GATE.z + D / 2);
+  for (const sx of [-1, 1]) solidCircle(MUSEUM_GATE.x + sx * 1.85, MUSEUM_GATE.z + D / 2 + 0.75, 0.3);   // 화분
+}
+
 function spawnCafeGate() {
   const g = new THREE.Group(); g.position.copy(CAFE_GATE);
   // ⚡ 드로우콜 — 카페는 한 번 세우면 안 움직이는 정적 건물이라, 파츠를 따로 Mesh 로 두지 않고
@@ -9223,6 +9311,7 @@ const VILLAGE_PLACES = [
   { ico: '☕', name: '카페',          x: CAFE_GATE.x,   z: CAFE_GATE.z,   pri: 1 },
   { ico: '🌟', name: '반딧불이 계곡', x: GLADE.x,       z: GLADE.z,       pri: 1 },
   { ico: '🍄', name: '채집 숲',       x: FOREST.x,      z: FOREST.z,      pri: 1 },
+  { ico: '🏛️', name: '박물관',        x: MUSEUM_GATE.x, z: MUSEUM_GATE.z, pri: 1 },
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
