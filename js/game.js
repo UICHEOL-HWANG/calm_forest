@@ -107,6 +107,8 @@ let pageBeforeAuto = null;                // 자동으로 맨손이 되기 직�
 let toolBeforeAuto = null;                // 구역이 도구를 정해 주기 직전에 들고 있던 도구(⛏️광산 — 나가면 되돌린다)
 let lastOpenPage = 'farm';                // 마지막으로 펼쳐 둔 세트(맨손에서 숫자키를 누르면 여기로 돌아온다)
 const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
+const CHOP_WOOD = 3;                                    // 🪵 나무 한 그루를 쓰러뜨릴 때 목재(타격마다는 0)
+const TREE_RESPAWN_SEC = 30;                            // 🌳 쓰러진 나무 재생 시간(초)
 const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
 // ── 🏗️ 증축(집 완성 후) — 단계마다 집이 커지고 지붕·문 모양이 바뀜. 후반 자원·코인 싱크 ──
 const EXPANSIONS = [
@@ -261,7 +263,7 @@ const CAFE_PAY = { veg_stew: 30, mushroom_soup: 32, rice_ball: 28, baked_yam: 30
 const BUFF_META = {
   speed: { ico: '👟', name: '빠른 발',     desc: '이동 속도가 40% 빨라져요. 넓은 마을과 텃밭·동굴을 오갈 때 시간을 아껴줘요.' },
   luck:  { ico: '🍀', name: '낚시 행운',   desc: '낚시할 때 희귀 물고기(🐠 붉은 물고기·🌈 무지개 물고기)가 잡힐 확률이 올라가요. 호수 부두에서 낚싯대(7번)로 낚아보세요!' },
-  chop:  { ico: '🪓', name: '벌목 보너스', desc: '나무를 벨 때마다 목재를 1개 더 받아요. 건축·작업대 재료를 모을 때 딱이에요.' },
+  chop:  { ico: '🪓', name: '벌목 보너스', desc: '나무를 쓰러뜨릴 때마다 목재를 1개 더 받아요. 건축·작업대 재료를 모을 때 딱이에요.' },
   mine:  { ico: '⛏️', name: '광부의 힘',   desc: '동굴에서 채굴할 때 광석(돌·석탄·💎보석)을 추가로 얻을 확률이 올라가요. 마을 서쪽 동굴 입구로!' },
 };
 const buffs = { speed: 0, luck: 0, chop: 0, mine: 0 };   // 각 버프 만료 시각(clock.elapsedTime 기준)
@@ -9882,13 +9884,14 @@ function tryChop() {
   Sound.chop();
   spawnLeafBurst(nearest); spawnWoodChips(nearest);
   ud.hp -= gameState.upgrades.axe ? 2 : 1;                     // 강철 도끼: 2번에 벌목
-  const bonus = (buffOn('chop') ? 1 : 0)
-    + (WEATHER === 'snow' && Math.random() < 0.5 ? 1 : 0);     // 🪓 도시락 버프 / ❄️ 눈: 가지가 잘 부러져 +1 확률
-  if (ud.hp <= 0) {
-    gameState.inventory.wood += 3 + bonus; ud.fallen = true; ud.respawnAt = clock.elapsedTime + 12;
+  if (ud.hp <= 0) {                                             // 🪵 목재는 쓰러뜨릴 때만(타격마다 주던 부스러기 제거 · 인플레 억제, 2026-09-13)
+    const bonus = (buffOn('chop') ? 1 : 0)
+      + (WEATHER === 'snow' && Math.random() < 0.5 ? 1 : 0);   // 🪓 도시락 버프 / ❄️ 눈: 가지가 잘 부러져 +1 확률
+    const gain = CHOP_WOOD + bonus;
+    gameState.inventory.wood += gain; ud.fallen = true; ud.respawnAt = clock.elapsedTime + TREE_RESPAWN_SEC;
     nearest.visible = false; spawnLeafBurst(nearest, 26);
-    spawnFloatText(nearest.position.x, 2.4, nearest.position.z, `+${3 + bonus} 🪵`, '#7a5230'); // 획득 표시
-  } else { gameState.inventory.wood += 1 + bonus; spawnFloatText(nearest.position.x, 2.2, nearest.position.z, `+${1 + bonus} 🪵`, '#7a5230'); }
+    spawnFloatText(nearest.position.x, 2.4, nearest.position.z, `+${gain} 🪵`, '#7a5230'); // 획득 표시
+  }
   refreshInventoryUI();
   questEvent('chop');                                          // 퀘스트 진행
   ui.act?.('chop');                                            // 튜토리얼
