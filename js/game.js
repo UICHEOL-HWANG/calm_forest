@@ -40,6 +40,7 @@ import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러�
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
 import { MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees } from './farm-stage.js';   // 🌾 밭 단계 증축 규칙(텃밭 6 → 넓은 밭 9 → 대농장 11)
+import { ADV_CROPS, MATURE, isAdv, growthPerWater, stageIndex, renderStage, wiltTimeFor, weedRoll, pestChance, harvestYield, nextSeedSel, seedKeyOf } from './farm-crops.js';   // 🌾 고급 작물 공정(밀·옥수수·포도 · 비료/잡초/해충)
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -57,7 +58,9 @@ const CROP_TYPES = [
   { id: 'tomato',    name: '토마토', fruit: 0xff7b7b },
   { id: 'blueberry', name: '블루베리', fruit: 0x8aa8ff },
   { id: 'pumpkin',   name: '호박',   fruit: 0xffc36e },
+  ...ADV_CROPS,   // 🌾 고급 3종(adv:true) — 표는 js/farm-crops.js. 랜덤 심기는 BASIC_CROPS 에서만 뽑는다
 ];
+const BASIC_CROPS = CROP_TYPES.filter(c => !c.adv);
 
 // ── 도구 하트바 (선택 도구에 따라 상호작용이 달라짐) ─────────────
 //   grp = 하단바 페이지. 🌾농사(밭에서 연달아 쓰는 4종) / 🏕️야외도구(장소마다 단독으로 쓰는 4종).
@@ -284,7 +287,7 @@ let nearMarket = false;
 //    ⚠️ 스폰보다 남쪽(z+)에 두면 카메라(남→북)와 캐릭터 사이에 끼어 캐릭터를 가림 — 같은 z선상 동쪽으로.
 const RANK = new THREE.Vector3(13.5, 0, 1.5);  // 🏆 랭킹 게시판 — 호수 북쪽 가로등(15,3) 잔디. 한복판(2.4,0.2)에서 옮김(NPC 안 가림·활동 구역 밖·호수 가는 길에 보임). 부두 옆(8.5,9.5)·텃밭 입구 앞(-0.5,10.5)은 비좁아 제외
 let nearRank = false;
-const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
+const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 function farmHalf() { return farmHalfOf(gameState.farm?.stage || 1); }   // 텃밭 반경(정사각 한 변의 절반) — 단계 표는 js/farm-stage.js
 const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
@@ -500,7 +503,7 @@ function setSpaceVisible() {
   const farmVisible = outdoorZone();
   if (farmSoilMesh) farmSoilMesh.visible = farmVisible;
   if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) farmCropMeshes[k].visible = farmVisible;
-  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint']) farmHintMeshes[k].visible = farmVisible;
+  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint', 'weed', 'pest']) farmHintMeshes[k].visible = farmVisible;
   if (mineGroup) mineGroup.visible = atMine;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (riverGroup) riverGroup.visible = atRiver;
@@ -513,7 +516,7 @@ function setSpaceVisible() {
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe) startRainSound();
   else stopRainSound();
 }
-const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7 };   // 기본 판매 단가(코인)
+const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배)
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
 //    팔 타이밍 전략이 생기고, econ_logs 에 시세 반응 데이터가 쌓임(분석용)
 function priceRate(k) { return 0.7 + (dateHash('price:' + k) % 61) / 100; }     // 0.70 ~ 1.30
@@ -525,6 +528,10 @@ const SHOP_BUY = [
   // 소모품·재료 번들
   { id: 'seed5',   name: '씨앗 5개',   ico: '🌰', coin: 15,  give: { seed: 5 } },
   { id: 'seed20',  name: '씨앗 20개',  ico: '🌰', coin: 50,  give: { seed: 20 }, desc: '대량 할인' },
+  // 🌾 고급 작물 씨앗 — 코인으로만(코인 싱크). 🌰씨앗 도구를 다시 누르면 종류를 고른다. 수확해도 씨앗은 안 돌아온다
+  { id: 'seedw3', name: '밀 씨앗 3개',    ico: '🌾', coin: 18, give: { seed_wheat: 3 }, desc: '물 2번 · 잡초가 잦아요 · 🪙15에 팔려요' },
+  { id: 'seedc3', name: '옥수수 씨앗 3개', ico: '🌽', coin: 24, give: { seed_corn: 3 },  desc: '물 3번 · 해충이 잘 붙어요 · 🪙20에 팔려요' },
+  { id: 'seedg3', name: '포도 씨앗 3개',   ico: '🍇', coin: 36, give: { seed_grape: 3 }, desc: '🍇지지대 옆에만 · 물 3번 · 🪙30에 팔려요' },
   { id: 'wood10',  name: '목재 10개',  ico: '🪵', coin: 24,  give: { wood: 10 }, desc: '건축·제작용' },
   { id: 'stone8',  name: '돌 8개',     ico: '🪨', coin: 30,  give: { stone: 8 }, desc: '돌담·화로용' },
   { id: 'coal4',   name: '석탄 4개',   ico: '⚫', coin: 28,  give: { coal: 4 } },
@@ -920,7 +927,8 @@ function rollLuckyBox(qid) {
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0, fert: 0, bait: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐)
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0, fert: 0, bait: 0,
+    wheat: 0, corn: 0, grape: 0, seed_wheat: 0, seed_corn: 0, seed_grape: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐) + 🌾고급 작물·씨앗(js/farm-crops.js)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -942,7 +950,7 @@ const gameState = {
   dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
-  farm: { stage: 1 },                       // 🌾 밭 단계 { 1 텃밭 · 2 넓은 밭 · 3 대농장 } — 표는 js/farm-stage.js, 축소 없음
+  farm: { stage: 1, seedSel: 'basic', pestDate: null },   // 🌾 밭 { 단계(1 텃밭 · 2 넓은 밭 · 3 대농장, js/farm-stage.js) · 고른 씨앗(basic|wheat|corn|grape) · 해충 정산일(YYYY-MM-DD) }
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
   night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
@@ -970,6 +978,9 @@ const DEX = {
     { id: 'tomato',    name: '토마토',   ico: '🍅' },
     { id: 'blueberry', name: '블루베리', ico: '🫐' },
     { id: 'pumpkin',   name: '호박',     ico: '🎃' },
+    { id: 'wheat',     name: '밀',       ico: '🌾' },   // 🌾 고급 작물 3종(js/farm-crops.js)
+    { id: 'corn',      name: '옥수수',   ico: '🌽' },
+    { id: 'grape',     name: '포도',     ico: '🍇' },
   ],
   ore: [
     { id: 'stone', name: '돌',   ico: '🪨' },
@@ -1616,6 +1627,8 @@ export const Input = {
   // 슬롯 탭 / 숫자키 1~8 — 페이지와 무관한 절대 선택. 다른 페이지 도구를 고르면 페이지가 따라오고, ✋맨손도 풀린다
   selectTool(i) {
     if (placingOutdoor) { stopOutdoorPlacing(true); ui.onDecorPlaced?.(); }   // 🪵 들었던 장식은 제자리로
+    // 🌾 이미 든 🌰씨앗을 다시 고르면(숫자키·슬롯 탭) 씨앗 종류 순환 — 기본 → 밀 → 옥수수 → 포도(보유분만)
+    if (TOOLS[i]?.id === 'seed' && currentTool === i && toolPage === 'farm') return cycleSeedSel();
     currentTool = (i + TOOLS.length) % TOOLS.length;
     toolPage = TOOLS[currentTool].grp; lastPageTool[toolPage] = currentTool; pageBeforeAuto = null; toolBeforeAuto = null;
     ui.setTool?.(currentTool, TOOLS, toolPage);
@@ -1996,6 +2009,7 @@ export async function enterGame() {
       syncFarmSoil(true); syncFarmCrops(true);
       return plots.length;
     };
+    window.__gs = () => gameState; window.__plots = () => plots;   // 🌾 검수용 상태 열람(dev 세션 전용)
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, shadowAuto: renderer.shadowMap.autoUpdate, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
@@ -2039,6 +2053,7 @@ export async function enterGame() {
   }
   resolveWeatherEvent();                // 🌡️ 날씨 이벤트 정산(동기) — 시든 작물은 밤손님 후보에서 빠짐
   resolveNightVisit();                  // 🦝 밤손님 — 밤이 지났으면 서버 판정(await 안 함, 실패해도 입장 안 막음)
+  resolveFarmPests();                   // 🐛 고급 작물 해충 — 하루 1회, 비 온 다음 날 확률↑(서버 불필요)
   if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
     const s = SEVERE_INFO[SEVERE_TOMORROW];
     setTimeout(() => ui.toast?.(`${s.ico} 내일 ${s.name} 예보! 오늘 수확하거나 작업대에서 🛡️ 덮개를 준비하세요`, 3600), 3000);
@@ -2064,6 +2079,11 @@ function applySave(saved) {
   if (saved.farm && Number.isFinite(saved.farm.stage)) {                     // 🌾 밭 단계 복원 — 밭(plots) 복원보다 먼저 울타리를 맞춘다. 없으면 1단계
     gameState.farm.stage = Math.max(1, Math.min(MAX_FARM_STAGE, Math.floor(saved.farm.stage)));
     if (gameState.farm.stage > 1) rebuildFarm(true);
+  }
+  if (saved.farm) {   // 🌾 고른 씨앗·해충 정산일 — 없는 값(옛 세이브)은 기본값 유지
+    if (['basic', 'wheat', 'corn', 'grape'].includes(saved.farm.seedSel)) gameState.farm.seedSel = saved.farm.seedSel;
+    if (typeof saved.farm.pestDate === 'string') gameState.farm.pestDate = saved.farm.pestDate;
+    syncSeedToolIcon();
   }
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
@@ -2117,7 +2137,8 @@ function applySave(saved) {
       plot.state = p.state; plot.growth = p.growth || 0; plot.stage = -1;
       if (p.state === 'growing' || p.state === 'mature') {
         // 저장된 작물 종류 복원 — 없으면(옛 세이브) 랜덤. 밤손님이 "뭘 훔쳐갔는지" 말하려면 종류가 보존돼야 한다
-        plot.cropType = CROP_TYPES.find(c => c.id === p.crop) || CROP_TYPES[Math.floor(Math.random() * CROP_TYPES.length)];
+        plot.cropType = CROP_TYPES.find(c => c.id === p.crop) || BASIC_CROPS[Math.floor(Math.random() * BASIC_CROPS.length)];
+        plot.fert = !!p.fert; plot.weed = !!p.weed; plot.pest = !!p.pest;   // 🌾 고급 작물 공정 상태(기존 작물은 전부 false)
         refreshCropStage(plot);   // growth에 맞는 단계 메시 복원
       }
       updatePlotVisual(plot);
@@ -2129,7 +2150,8 @@ function applySave(saved) {
 
 export function getGameState() {
   gameState.playerPos = { x: player.position.x, z: player.position.z };
-  gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id })); // crop: 밤손님 판정·복원용 작물 종류
+  gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id,   // crop: 밤손님 판정·복원용 작물 종류
+    ...(p.fert ? { fert: 1 } : {}), ...(p.weed ? { weed: 1 } : {}), ...(p.pest ? { pest: 1 } : {}) }));   // 🌾 고급 작물 공정 — 켜진 것만 기록(옛 스키마와 호환), claimedBy 는 런타임 전용
   gameState.timeOfDay = timeOfDay;   // 시간대 저장
   return gameState;
 }
@@ -3284,6 +3306,7 @@ function updateFireflyBugs(dt, t) {
 
 // 🦋 포충망 휘두르기 — 밤 + 계곡 + 반딧불이 근처에서만. 반짝일 때 휘둘러야 잘 잡힘
 function tryNet() {
+  const pp = pestTarget(); if (pp) return clearPest(pp);   // 🐛 밭의 해충 쫓기 — 포충망의 두 번째 용도(스펙 §2-1)
   if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🌟 남쪽 반딧불이 계곡에서 쓰는 도구예요'); return; }
   if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요 — 해가 지면 다시 오세요', 2600); return; }
   let target = null, nd = 2.2;
@@ -9820,10 +9843,15 @@ function handleAction() {
   // 🐾 밤손님 흔적 조사 — 도구가 필요 없는 "줍기"류. 모바일 액션 버튼으로도 동일 동작
   const tr = traceTarget();
   if (tr) return investigateTrace(tr);
+  // 🌿 김매기 — 도구가 필요 없는 "줍기"류(🍄채집과 같은 문법). 어떤 도구를 들었든 잡초 밭 앞이면 뽑는다
+  const wd = weedTarget();
+  if (wd) return pullWeed(wd);
   // 데스크톱(Space)만 근접 시 대화로 분기. 모바일은 전용 "대화하기" 버튼으로만
   // 대화 → 수확·벌목 중 NPC가 겹쳐도 액션 버튼이 대화로 새지 않음
   // 단, 밭 위에서 농사 도구를 들고 있으면 밭일이 먼저다(farmActionFirst 주석 참고)
   if (nearNPC && !IS_MOBILE && !farmActionFirst()) return talkToNPC();
+  // 🐛 포충망을 들고 해충 밭 앞이면 쫓기부터 — 비료 판정보다 먼저(비료 안 준 고급 작물에 해충이 붙었을 때)
+  if (TOOLS[currentTool].id === 'net') { const pp = pestTarget(); if (pp) return clearPest(pp); }
   // 🌱 비료 — 자라는 밭 앞 + 비료 보유. 💧물조리개를 들고 흙이 말라 있으면 평소대로 물주기가 우선
   const fp = fertTarget();
   if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
@@ -10035,11 +10063,13 @@ function buildFarmInstances(cap = PLOT_CAP) {
     scene.add(m);
     return m;
   };
-  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint']) scene.remove(farmHintMeshes[k]);
+  if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint', 'weed', 'pest']) scene.remove(farmHintMeshes[k]);
   farmHintMeshes = {
     warn: mkHint(warnTexture()),
     harvest: mkHint(harvestTexture()),
     seedHint: mkHint(seedHintTexture()),
+    weed: mkHint(weedTexture()),   // 🌿 고급 작물 공정 배지 2종(+2콜)
+    pest: mkHint(pestTexture()),
   };
   _hintAnyPrev = false;   // 재할당 직후엔 카운트가 전부 0 — 다음 syncFarmHints 가 필요하면 다시 채운다
 }
@@ -10170,7 +10200,7 @@ function syncFarmCrops(force = false) {
         M.stem.setMatrixAt(nStem, _fmM);
         _fmC.setHex(p.wilted ? WILT_COL : PAL.sprout);
         M.stem.setColorAt(nStem++, _fmC);
-        _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+        _fmC.setHex(p.wilted ? WILT_COL : (p.cropType?.leaf ?? PAL.cropLeaf));   // 🌾 고급 작물은 잎 색으로 구분(새 메시 없음)
         for (const [lx, ly] of LEAF) {
           _fmM.makeScale(k, 0.5 * k, 0.7 * k);
           _fmM.setPosition(px + lx * k, base + ly * k, pz);
@@ -10181,7 +10211,7 @@ function syncFarmCrops(force = false) {
         _fmM.makeScale(k, 0.82 * k, k);
         _fmM.setPosition(px, base + 0.32 * k, pz);
         M.bush.setMatrixAt(nBush, _fmM);
-        _fmC.setHex(p.wilted ? WILT_COL : PAL.cropLeaf);
+        _fmC.setHex(p.wilted ? WILT_COL : (p.cropType?.leaf ?? PAL.cropLeaf));
         M.bush.setColorAt(nBush++, _fmC);
         // 🌼 열매(=수확 신호)는 일부 포기에만 — 레퍼런스의 "드문드문 핀 노란 꽃" 느낌.
         //    다 달면 칸이 열매로 뒤덮여 무엇이 수확 대상인지 오히려 안 보인다.
@@ -10241,11 +10271,53 @@ function createPlot(x, z, silent = false) {
   return plot;
 }
 
+// ── 🌾 고급 작물 — 씨앗 선택 · 지지대 · 잡초 · 해충 (규칙은 js/farm-crops.js) ──────────
+function seedSelCrop() { return ADV_CROPS.find(c => c.id === gameState.farm.seedSel) || null; }   // null = 기본 씨앗
+// 🍇 지지대 인접 — 밭 칸(2×2 격자)과 지지대 발자국이 맞닿아 있으면. 시설(gameState.farmBuildings)은 4단계에서 놓인다
+function trellisAdjacent(x, z) {
+  return (gameState.farmBuildings || []).some(b => b.id === 'trellis' && farmBuildingCellsOf(b).some(([cx, cz]) => Math.abs(cx - x) <= 2.01 && Math.abs(cz - z) <= 2.01 && (Math.abs(cx - x) > 0.5 || Math.abs(cz - z) > 0.5)));
+}
+function trellisAnywhere() { return (gameState.farmBuildings || []).some(b => b.id === 'trellis'); }
+// 시설 레코드 {id,x,z,rot} 가 덮는 밭 격자 칸 목록 — 시설 카탈로그(FARM_BUILDINGS, 4단계)가 없으면 빈 배열
+function farmBuildingCellsOf(b) {
+  const def = (typeof FARM_BUILDINGS !== 'undefined' ? FARM_BUILDINGS : []).find(d => d.id === b.id);
+  if (!def?.fp) return [];
+  const [w, d] = (b.rot || 0) % 2 ? [def.fp[1], def.fp[0]] : def.fp;   // ↻ 90°·270° 는 가로·세로 교환
+  const cells = [];
+  for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) cells.push([b.x + (i - (w - 1) / 2) * 2, b.z + (j - (d - 1) / 2) * 2]);
+  return cells;
+}
+// 🌰 씨앗 도구 아이콘 — 고른 종류를 슬롯에 그대로 보여 준다(index.html setTool 이 매번 아이콘을 다시 읽는다)
+function syncSeedToolIcon() {
+  const t = TOOLS.find(t => t.id === 'seed'); const c = seedSelCrop();
+  t.ico = c ? c.ico : '🌰';
+  ui.setTool?.(currentTool, TOOLS, toolPage);
+}
+function cycleSeedSel() {
+  const cur = gameState.farm.seedSel || 'basic';
+  const next = nextSeedSel(cur, gameState.inventory, trellisAnywhere());
+  if (next === cur) {
+    ui.toast?.(cur === 'basic' ? '🌰 고급 씨앗이 없어요 — 상점에서 🌾밀·🌽옥수수·🍇포도 씨앗을 팔아요' : '🌰 다른 씨앗이 없어요', 2600);
+    return;
+  }
+  gameState.farm.seedSel = next; syncSeedToolIcon(); Sound.blip();
+  const c = seedSelCrop();
+  ui.toast?.(c ? `${c.ico} ${c.name} 씨앗 (${gameState.inventory[seedKeyOf(next)] || 0}개) — 다시 누르면 바꿔요` : '🌰 기본 씨앗 — 다시 누르면 바꿔요', 2200);
+  trackEvent('seed_select', { sel: next });   // [GA4] 고급 씨앗 채택 여부
+}
 function plantSeed(plot) {
-  if (gameState.inventory.seed <= 0) { ui.toast?.('씨앗이 없어요 🌰'); return; }
-  gameState.inventory.seed -= 1;
+  const adv = seedSelCrop();
+  const key = adv ? seedKeyOf(adv.id) : 'seed';
+  if (adv && (gameState.inventory[key] || 0) <= 0) {   // 고급 씨앗이 다 떨어졌으면 기본으로 되돌리고 안내
+    gameState.farm.seedSel = 'basic'; syncSeedToolIcon();
+    ui.toast?.(`${adv.ico} ${adv.name} 씨앗이 다 떨어졌어요 — 🌰 기본 씨앗으로 돌아가요`, 2600); return;
+  }
+  if (adv && adv.trellis && !trellisAdjacent(plot.x, plot.z)) { ui.toast?.('🍇 포도는 지지대 바로 옆 밭에만 심을 수 있어요', 2600); return; }
+  if (!adv && gameState.inventory.seed <= 0) { ui.toast?.('씨앗이 없어요 🌰'); return; }
+  gameState.inventory[key] -= 1;
   plot.state = 'growing'; plot.growth = 0.05; plot.stage = -1;
-  plot.cropType = CROP_TYPES[Math.floor(Math.random() * CROP_TYPES.length)]; // 작물 종류 랜덤
+  plot.cropType = adv || BASIC_CROPS[Math.floor(Math.random() * BASIC_CROPS.length)]; // 기본은 종류 랜덤
+  plot.fert = false; plot.weed = false; plot.pest = false;                             // 🌾 공정 상태 초기화
   doPlayerAction(plot.x, plot.z); // 심기 제스처
   Sound.plant();
   refreshCropStage(plot);   // 0단계(새싹) 메시 생성 + 팝
@@ -10253,7 +10325,8 @@ function plantSeed(plot) {
   refreshInventoryUI(); updatePlotVisual(plot);
   questEvent('plant');      // 퀘스트 진행
   ui.act?.('seed');         // 튜토리얼
-  trackEvent('plant_seed'); // [GA4]
+  if (adv) firstHintBanner('advCrop', adv.ico, '고급 작물', '🌱비료를 줘야 제 속도 · 🌿잡초는 맨손 액션 · 🐛해충은 포충망');
+  trackEvent('plant_seed', { kind: plot.cropType.id, adv: !!adv }); // [GA4] 종류별 파종 분포
 }
 
 // 괭이: 빈 땅이면 밭 만들기(+씨앗 심기), 갈아둔 밭이면 씨앗 심기
@@ -10411,9 +10484,64 @@ function trySeed(plot = plots.find(p => p.state === 'empty' && !p.digAt && dist2
 function traceTarget() { return traceObjs.find(t => dist2D(t.mesh.position, player.position) < 1.7) || null; }
 function fertTarget() {
   if (indoor || atMine || atCafe || (gameState.inventory.fert || 0) <= 0) return null;
-  return plots.find(p => p.state === 'growing' && dist2D(p.group.position, player.position) < 1.8) || null;
+  // 🌾 고급 작물에 이미 비료를 줬으면 대상이 아니다 — 안 그러면 포충망·낫 액션이 "이미 줬어요"에 막힌다
+  return plots.find(p => p.state === 'growing' && !(p.fert && isAdv(p.cropType)) && dist2D(p.group.position, player.position) < 1.8) || null;
+}
+// 🌿 잡초 밭 — handleAction 이 채집·흔적 다음, 대화보다 먼저 본다
+function weedTarget() {
+  if (!outdoorZone()) return null;
+  return plots.find(p => p.weed && dist2D(p.group.position, player.position) < 1.8) || null;
+}
+function pullWeed(plot) {
+  plot.weed = false;
+  doPlayerAction(plot.x, plot.z, 'pick');   // 허리 숙여 뽑기(채집 제스처)
+  Sound.harvest(); spawnDust(plot.x, plot.z, 8);
+  spawnFloatText(plot.x, 1.0, plot.z, '🌿', '#3f7a3a');
+  { const nm = plot.cropType?.name || '작물'; ui.toast?.(`🌿 잡초를 뽑았어요 — ${nm}${josa(nm, '이', '가')} 다시 자라요`, 2000); }
+  trackEvent('weed_pull', { kind: plot.cropType?.id });   // [GA4] 공정 수행
+}
+// 🐛 해충 — 하루 1회 정산(접속 시). 비 온 다음 날 확률↑. 고급 작물만. 밤손님·날씨 이벤트와 같은 "날짜 비교" 문법
+function resolveFarmPests() {
+  const today = todayStr(), st = gameState.farm;
+  if (st.pestDate === today) return;
+  const first = !st.pestDate; st.pestDate = today;
+  if (first) return;   // 처음 기록하는 날은 판정 없이 날짜만(밤손님과 같은 첫날 규칙)
+  const rain = weatherOf(-1) === 'rain';
+  let hit = 0;
+  for (const p of plots) {
+    if ((p.state !== 'growing' && p.state !== 'mature') || p.pest || !isAdv(p.cropType)) continue;
+    if (Math.random() < pestChance(p.cropType, rain)) { p.pest = true; hit++; }
+  }
+  if (hit) {
+    setTimeout(() => ui.toast?.(`🐛 밭 ${hit}칸에 해충이 붙었어요${rain ? '(비 온 다음 날)' : ''} — 🦋포충망으로 쫓아요`, 3600), 1500);
+    trackEvent('pest_spawn', { plots: hit, rain });   // [GA4]
+  }
+  requestSave();
+}
+function pestTarget() {
+  if (!outdoorZone()) return null;
+  return plots.find(p => p.pest && dist2D(p.group.position, player.position) < 1.8) || null;
+}
+function clearPest(plot) {
+  plot.pest = false;
+  doPlayerAction(plot.x, plot.z);   // 휘두르기
+  Sound.blip(); spawnSparkle(plot.x, 0.6, plot.z, 10);
+  spawnFloatText(plot.x, 1.0, plot.z, '🐛💨', '#6b4a20');
+  ui.toast?.(`🦋 해충을 쫓았어요 — ${plot.cropType?.name || '작물'} 수확량이 돌아와요`, 2200);
+  trackEvent('pest_clear', { kind: plot.cropType?.id });   // [GA4] 공정 수행
 }
 function applyFert(plot) {
+  if (isAdv(plot.cropType)) {   // 🌾 고급 작물: 즉시 수확이 아니라 "제 속도로 자란다"(없으면 절반). 한 번만
+    if (plot.fert) { ui.toast?.('🌱 이미 비료를 준 밭이에요'); return; }
+    gameState.inventory.fert -= 1; plot.fert = true;
+    doPlayerAction(plot.x, plot.z);
+    spawnSparkle(plot.x, 0.6, plot.z, 12); Sound.plant();
+    ui.toast?.(`🌱 비료를 줬어요 — ${plot.cropType.name}${josa(plot.cropType.name, '이', '가')} 제 속도로 자라요`, 2400);
+    trackEvent('use_fert', { left: gameState.inventory.fert, adv: true, kind: plot.cropType.id });   // [GA4]
+    refreshInventoryUI();
+    lastDoorPrompt = null; ui.setDoorPrompt?.(null);
+    return;
+  }
   gameState.inventory.fert -= 1;
   plot.growth = 1; plot.wetUntil = clock.elapsedTime + WET_TIME; plot.watered = true;
   doPlayerAction(plot.x, plot.z);
@@ -10421,7 +10549,7 @@ function applyFert(plot) {
   updatePlotVisual(plot);
   spawnSparkle(plot.x, 0.6, plot.z, 18); Sound.harvest();
   ui.toast?.('🌱 비료를 줬어요! 바로 수확할 수 있어요');
-  trackEvent('use_fert', { left: gameState.inventory.fert });   // [GA4] 소모품 사용
+  trackEvent('use_fert', { left: gameState.inventory.fert, adv: false });   // [GA4] 소모품 사용
   refreshInventoryUI();
   lastDoorPrompt = null; ui.setDoorPrompt?.(null);   // 프롬프트를 즉시 내린다 — 다음 프레임에 필요하면 다시 뜬다
 }
@@ -10433,9 +10561,14 @@ function tryWater(plot = plots.find(p => p.state === 'growing' && dist2D(p.group
     ui.toast?.(wilted ? '🥀 시든 작물이에요. 괭이로 다시 심어요' : '물 줄 작물이 없어요 💧');
     return;
   }
+  if (plot.weed) { ui.toast?.('🌿 잡초가 자라요 — 맨손(또는 아무 도구)으로 액션해서 뽑아요', 2400); return; }   // 🌾 잡초면 성장 정지(부드러운 실패)
   if (clock.elapsedTime < (plot.wetUntil || 0)) { ui.toast?.('아직 흙이 촉촉해요 🌱'); return; } // 마른 뒤에만 성장
-  plot.growth = Math.min(1, plot.growth + (gameState.upgrades.water ? 0.7 : 0.4)); // 큰 물조리개: 성장 증가↑
+  plot.growth = Math.min(1, plot.growth + growthPerWater(plot.cropType, !!gameState.upgrades.water, !!plot.fert)); // 기존 0.4/0.7 · 고급은 js/farm-crops.js
   plot.wetUntil = clock.elapsedTime + WET_TIME; plot.watered = true;
+  if (plot.growth < MATURE && weedRoll(plot.cropType, Math.random())) {   // 🌿 고급 작물만 — 물 준 뒤 잡초가 돋는다(다 익은 뒤엔 안 돋음)
+    plot.weed = true;
+    setTimeout(() => ui.toast?.(`🌿 ${plot.cropType.name}밭에 잡초가 돋았어요 — 뽑기 전엔 안 자라요`, 2600), 900);
+  }
   doPlayerAction(plot.x, plot.z); // 물주기 제스처
   Sound.water();
   spawnWater(plot.x, plot.z);   // [파티클] 물방울 + 무지개 반짝임
@@ -10531,11 +10664,18 @@ function farmAutoAction() {
 function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8)) {
   if (!plot) { ui.toast?.('수확할 작물이 없어요 🌾'); return; }
   doPlayerAction(plot.x, plot.z); // 수확 제스처
-  gameState.inventory.crop += 1; // 작물 +1
-  gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
+  const adv = isAdv(plot.cropType), qty = harvestYield(plot.cropType, !!plot.pest);
+  if (adv) {   // 🌾 고급: 종류별 인벤 키(wheat/corn/grape)로, 씨앗은 안 돌아온다(코인 싱크). 해충이면 절반
+    gameState.inventory[plot.cropType.id] = (gameState.inventory[plot.cropType.id] || 0) + qty;
+  } else {
+    gameState.inventory.crop += 1; // 작물 +1
+    gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
+  }
   Sound.harvest();
-  ui.toast?.(`${plot.cropType?.name || '작물'} +1 수확! 🌾`);
-  spawnFloatText(plot.x, 1.1, plot.z, '+1 🥕', '#c05a2a'); // 획득 표시
+  ui.toast?.(adv && plot.pest ? `🐛 해충 탓에 ${plot.cropType.name} +${qty}만 수확했어요…` : `${plot.cropType?.name || '작물'} +${qty} 수확! 🌾`);
+  spawnFloatText(plot.x, 1.1, plot.z, `+${qty} ${adv ? plot.cropType.ico : '🥕'}`, '#c05a2a'); // 획득 표시
+  const harvestKind = plot.cropType?.id, harvestPest = !!plot.pest;
+  plot.fert = false; plot.weed = false; plot.pest = false;
   spawnSparkle(plot.x, 0.7, plot.z, 24); // [파티클] 반짝이 폭발
   clearCrop(plot);          // 🌱 작물 인스턴스 버퍼에서도 제거
   plot.state = 'empty'; plot.growth = 0; plot.stage = -1; plot.watered = false;
@@ -10548,7 +10688,7 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   catchCeremony('harvestZoom');                                   // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
   showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);    // 🥕 열매를 머리 위로 번쩍!
   tryUnlockDrop(0.05);                                            // 🎨 랜덤 색(낮은 확률)
-  trackEvent('harvest_crop', { crop: gameState.inventory.crop }); // [GA4]
+  trackEvent('harvest_crop', { crop: gameState.inventory.crop, kind: harvestKind, qty, adv, pest: harvestPest }); // [GA4] 종류·수량·해충 손실
 }
 
 // 성장은 오직 물주기로만! 여기선 마름·목마름 알림·시들기를 처리(리얼리티)
@@ -10578,13 +10718,12 @@ function updatePlots(dt) {
       if (wet) { plot.needSince = 0; }
       else {
         if (!plot.needSince) plot.needSince = now;              // 목마르기 시작
-        else if (now - plot.needSince > WILT_TIME) wiltPlot(plot); // 오래 방치 → 시듦
+        else if (now - plot.needSince > wiltTimeFor(plot.cropType, WILT_TIME)) wiltPlot(plot); // 오래 방치 → 시듦(고급은 60%)
       }
-      // '물 줘요!' 알림: 목마른 성장 작물 위에
-      setPlotWarn(plot, !wet);
-      setPlotHarvest(plot, false); setPlotSeedHint(plot, false);
+      // 배지: 🌿잡초 > 🐛해충 > 💧물 줘요(목마른 성장 작물) — 막고 있는 것부터 보여 준다
+      plot.hint = plot.weed ? 3 : plot.pest ? 4 : !wet ? 0 : -1;
     } else if (plot.state === 'mature') {
-      setPlotWarn(plot, false); setPlotHarvest(plot, true); setPlotSeedHint(plot, false); // 다 자람 → "수확!"
+      plot.hint = plot.pest ? 4 : 1;   // 다 자람 → "수확!" (해충이 붙어 있으면 그걸 먼저 — 수확량 절반)
     } else if (plot.state === 'empty') {
       setPlotWarn(plot, false); setPlotHarvest(plot, false); setPlotSeedHint(plot, true); // 빈 밭 → "씨앗!"
     } else {
@@ -10637,8 +10776,10 @@ const _HINT_SCALE = [
   new THREE.Vector3(1.15 / 176 * _HINT_K, 0.68 / 104 * _HINT_K, 1),
   new THREE.Vector3(1.28 / 200 * _HINT_K, 0.70 / 104 * _HINT_K, 1),
   new THREE.Vector3(1.55 / 248 * _HINT_K, 0.65 / 104 * _HINT_K, 1),
+  new THREE.Vector3(1.28 / 200 * _HINT_K, 0.70 / 104 * _HINT_K, 1),   // 3 🌿 잡초! — 수확! 과 같은 크기
+  new THREE.Vector3(1.55 / 248 * _HINT_K, 0.65 / 104 * _HINT_K, 1),   // 4 🐛 해충! 포충망 — 씨앗 배지와 같은 긴 알약
 ];
-let _warnTex = null, _harvestTex = null, _seedHintTex = null;
+let _warnTex = null, _harvestTex = null, _seedHintTex = null, _weedTex = null, _pestTex = null;
 function _hintCanvas() {
   const cv = document.createElement('canvas'); cv.width = HINT_W; cv.height = HINT_H;
   return [cv, cv.getContext('2d')];
@@ -10684,6 +10825,18 @@ function seedHintTexture() {
   _drawHintBadge(c, 'rgba(233,206,150,0.97)', '#6b4a20', t('🌰 씨앗을 넣어요'), 28);   // ⚠️ 이것만 옛 값이 bold 28px
   return (_seedHintTex = _hintTexFromCanvas(cv));
 }
+function weedTexture() {   // 🌿 고급 작물 — 잡초가 성장을 막고 있다(맨손 액션으로 뽑기)
+  if (_weedTex) return _weedTex;
+  const [cv, c] = _hintCanvas();
+  _drawHintBadge(c, 'rgba(190,225,160,0.96)', '#2f5a24', t('🌿 잡초 뽑기'), 30);
+  return (_weedTex = _hintTexFromCanvas(cv));
+}
+function pestTexture() {   // 🐛 고급 작물 — 해충(포충망으로 쫓기, 안 쫓으면 수확 절반)
+  if (_pestTex) return _pestTex;
+  const [cv, c] = _hintCanvas();
+  _drawHintBadge(c, 'rgba(245,200,170,0.97)', '#7a3a1a', t('🐛 해충! 포충망'), 28);
+  return (_pestTex = _hintTexFromCanvas(cv));
+}
 
 // 세 종류가 동시에 뜨지 않으므로 칸당 하나의 값(plot.hint)으로 관리한다.
 //   -1 없음 · 0 물! · 1 수확! · 2 씨앗을 넣어요  (런타임 전용 — 세이브 스키마에 없음)
@@ -10706,7 +10859,7 @@ function syncFarmHints(now) {
   for (const p of plots) if ((p.hint ?? -1) >= 0) { any = true; break; }
   if (!any && !_hintAnyPrev) return;   // 인스턴싱 이득 보존 — 아무도 안 떠 있으면 매 프레임 스킵
   camera.getWorldQuaternion(_hintQ);
-  let nWarn = 0, nHarvest = 0, nSeed = 0;
+  let nWarn = 0, nHarvest = 0, nSeed = 0, nWeed = 0, nPest = 0;
   const M = farmHintMeshes;
   for (const p of plots) {
     const h = p.hint ?? -1;
@@ -10716,13 +10869,17 @@ function syncFarmHints(now) {
     if (h === 0) M.warn.setMatrixAt(nWarn++, _fmM);
     else if (h === 1) M.harvest.setMatrixAt(nHarvest++, _fmM);
     else if (h === 2) M.seedHint.setMatrixAt(nSeed++, _fmM);
+    else if (h === 3) M.weed.setMatrixAt(nWeed++, _fmM);
+    else if (h === 4) M.pest.setMatrixAt(nPest++, _fmM);
   }
-  M.warn.count = nWarn; M.harvest.count = nHarvest; M.seedHint.count = nSeed;
+  M.warn.count = nWarn; M.harvest.count = nHarvest; M.seedHint.count = nSeed; M.weed.count = nWeed; M.pest.count = nPest;
   // 빈 메시엔 needsUpdate 를 걸지 않는다 — 올릴 게 없는데 버퍼를 다시 올리는 건 낭비다.
   //   (직전 프레임에 인스턴스가 있었다면 count 만 줄이면 되므로 역시 업로드가 필요 없다)
   if (nWarn) M.warn.instanceMatrix.needsUpdate = true;
   if (nHarvest) M.harvest.instanceMatrix.needsUpdate = true;
   if (nSeed) M.seedHint.instanceMatrix.needsUpdate = true;
+  if (nWeed) M.weed.instanceMatrix.needsUpdate = true;
+  if (nPest) M.pest.instanceMatrix.needsUpdate = true;
   _hintAnyPrev = any;
 }
 
@@ -10732,14 +10889,17 @@ function updatePlotVisual(plot) {
 
 // 성장 단계(0 새싹 → 1 자람 → 2 수확가능)를 growth로 판정, 변할 때 메시 재생성 + 팝
 function refreshCropStage(plot) {
-  const desired = plot.growth >= 0.8 ? 2 : plot.growth >= 0.4 ? 1 : 0;
-  if (desired === plot.stage) return;
+  // 기존 작물은 0.4/0.8 그대로 · 고급은 4~5단계를 그림 0/1/2 로 접는다(js/farm-crops.js). 익는 기준은 둘 다 MATURE(0.8)
+  const idx = stageIndex(plot.cropType, plot.growth);
+  const desired = renderStage(plot.cropType, idx);
+  const ripe = plot.growth >= MATURE;
+  if (desired === plot.stage && !(ripe && plot.state === 'growing')) return;
   plot.stage = desired;
   buildCropStage(plot);        // 새 단계 메시 생성 + 톡 튀는 팝
-  if (desired === 2) {         // 수확 준비 완료
+  if (ripe && plot.state === 'growing') {   // 수확 준비 완료
     plot.state = 'mature';
     spawnSparkle(plot.x, 0.7, plot.z, 8);
-    ui.toast?.(`🌾 ${plot.cropType?.name || '작물'}가 다 자랐어요! 낫으로 수확하세요`);
+    { const nm = plot.cropType?.name || '작물'; ui.toast?.(`🌾 ${nm}${josa(nm, '이', '가')} 다 자랐어요! 낫으로 수확하세요`); }   // 밀→'밀이' · 당근→'당근이' · 토마토→'토마토가'
   }
   syncFarmCrops(true);   // 🌱 단계 전환을 인스턴스 버퍼에 반영(buildCropStage 안에서도 부르지만, 여기서도 명시)
 }
@@ -10949,7 +11109,8 @@ function updateParticles(dt) {
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
 let trackedNPC = null;                 // 퀘스트 패널에 표시할 NPC
-const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼' };
+const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
+  wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗' };   // 🌾 고급 작물·씨앗
 
 // id별 퀘스트 진행 상태(없으면 생성)
 function npcState(id) {
