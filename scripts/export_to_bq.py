@@ -36,6 +36,7 @@ LOGS_SCHEMA = [
     bigquery.SchemaField("client_id", "STRING"),   # 분석용 영구 기기 식별자
     bigquery.SchemaField("is_guest", "BOOL"),       # 게스트(익명) 여부
     bigquery.SchemaField("variant", "STRING"),      # A/B 변형(control/A/B)
+    bigquery.SchemaField("platform", "STRING"),     # web|toss|itch — 2026-09-13 추가(이전엔 ignore_unknown_values 로 조용히 버려짐)
     bigquery.SchemaField("mouse_x", "FLOAT"),
     bigquery.SchemaField("mouse_y", "FLOAT"),
     bigquery.SchemaField("char_x", "FLOAT"),
@@ -58,6 +59,7 @@ ECON_SCHEMA = [
     bigquery.SchemaField("client_id", "STRING"),
     bigquery.SchemaField("is_guest", "BOOL"),
     bigquery.SchemaField("variant", "STRING"),
+    bigquery.SchemaField("platform", "STRING"),     # web|toss|itch
     bigquery.SchemaField("source", "STRING"),       # shop_sell/shop_buy/quest_reward/...
     bigquery.SchemaField("item", "STRING"),
     bigquery.SchemaField("currency", "STRING"),
@@ -73,6 +75,7 @@ SESSIONS_SCHEMA = [
     bigquery.SchemaField("client_id", "STRING"),
     bigquery.SchemaField("is_guest", "BOOL"),
     bigquery.SchemaField("variant", "STRING"),
+    bigquery.SchemaField("platform", "STRING"),     # web|toss|itch
     bigquery.SchemaField("play_sec", "INT64"),
     bigquery.SchemaField("counts", "STRING"),       # jsonb → 문자열로 보관
     bigquery.SchemaField("coins", "INT64"),
@@ -284,7 +287,12 @@ def main():
     prune_old_logs()
 
     # 로그가 BQ에 안전히 이관된 뒤에만 익명 계정 정리(7일 유예)
-    delete_old_anon_users()
+    # 익명 계정 자동 삭제는 2026-09-13 부터 기본 OFF (사용자 결정: 게스트 계정은 두는 편이 안전 —
+    #   삭제하면 feedback.user_id 가 null 이 되는 등 흔적이 끊긴다). 켜려면 ANON_CLEANUP=1.
+    if os.environ.get("ANON_CLEANUP") == "1":
+        delete_old_anon_users()
+    else:
+        print("[anon-clean] skipped (ANON_CLEANUP != 1)")
     print("[done] export + prune + anon-clean complete")
 
 

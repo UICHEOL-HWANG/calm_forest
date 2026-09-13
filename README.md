@@ -53,7 +53,7 @@ calm_forest/
 │  ├─ make-favicon.mjs   #   파비콘 생성 → assets/favicon/
 │  ├─ i18n_check.mjs     #   번역 키 누락 검사
 │  ├─ serve.py           #   로컬 개발 서버(no-store + API 미러 + 루트 에셋 별칭)
-│  └─ export_to_bq.py    #   Supabase→BigQuery 일일 적재+경량화+익명계정 정리
+│  └─ export_to_bq.py    #   Supabase→BigQuery 일일 적재+경량화 (익명계정 정리는 ANON_CLEANUP=1 일 때만)
 ├─ .github/workflows/    # ⚙️ GitHub Actions
 │  ├─ ci.yml             #   dev/PR 구문 검사(배포 아님)
 │  ├─ supabase-to-bq.yml #   매일 cron 데이터 파이프라인
@@ -73,7 +73,7 @@ calm_forest/
    ├─ metrics.js ── econ_logs(코인 원장) + session_logs(세션 요약: 행동 카운트·플레이 시간)
    │        ▼
    │   Supabase(Postgres, RLS "본인만")  ──일일 파이프라인(GitHub Actions)──▶  BigQuery
-   │        · 7일치만 보관(hot) · 익명계정 7일 뒤 정리        scripts/export_to_bq.py   (전체 이력, cold)
+   │        · 7일치만 보관(hot) · 익명계정 정리 기본 OFF        scripts/export_to_bq.py   (전체 이력, cold)
    │        ▼
    │   dashboards/ (본인·관리자 대시보드)
    │

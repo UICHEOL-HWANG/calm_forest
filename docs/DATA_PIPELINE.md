@@ -3,6 +3,13 @@
 Supabase는 **최근 7일**만 유지(핫 스토리지), BigQuery에 **전체 이력**을 쌓습니다(콜드 스토리지).
 GitHub Actions가 매일 자동으로: ①`game_logs`·`econ_logs` 증분 적재(id 기준) → ②`session_logs` 증분 적재(updated_at 기준) → ③`game_saves` 스냅샷 → ④7일 지난 로그 prune.
 
+> **익명(게스트) 계정 자동 삭제는 2026-09-13부터 기본 OFF** — 계정을 지우면 FK cascade/set null 로 `feedback.user_id` 등 흔적이 끊긴다.
+> 켜려면 워크플로 env 에 `ANON_CLEANUP: '1'`. 게스트 저장은 재방문 때 불러오지 않으므로(휘발성) 남겨 둬도 동작엔 영향 없다.
+>
+> **`platform` 컬럼(web|toss|itch)**: 2026-09-13 스키마에 추가. 그 전 적재분은 `ignore_unknown_values` 로 버려져 있었고,
+> Supabase 잔존 7일 세션(`session_platform`) + GA4 user_id별 platform(`user_platform`) + 토스 출시(9/4) 이전=web 규칙으로 백필했다.
+> ⚠️ BigQuery 무료 티어는 DML(UPDATE) 불가 — 백필은 `CREATE OR REPLACE TABLE … AS SELECT` 로 재생성해야 한다.
+
 ```
 GA4  ──(자동 export)──▶ BigQuery(analytics_547127440)   # 행동 이벤트
 Supabase ─(이 파이프라인)▶ BigQuery(calm_forest_raw)      # 좌표·경제원장·세션요약·진행도
