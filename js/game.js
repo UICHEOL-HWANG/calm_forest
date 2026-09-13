@@ -3975,12 +3975,14 @@ const MUSEUM_TINT = { carrot: 0xe08a3c, tomato: 0xd0453c, blueberry: 0x5566b8, p
 // 진열장 자리 — 좌우 벽 5칸씩 + 안쪽 3칸. [x, z, 바라보는 방향]
 function museumSlots() {
   const out = [];
-  for (let i = 0; i < 5; i++) out.push([-MUSEUM_HALF_W + 1.1, -3.6 + i * 1.7,  Math.PI / 2]);
-  for (let i = 0; i < 5; i++) out.push([ MUSEUM_HALF_W - 1.1, -3.6 + i * 1.7, -Math.PI / 2]);
-  for (let i = 0; i < 3; i++) out.push([-2.6 + i * 2.6, -MUSEUM_HALF_D + 1.1, 0]);
+  //   ⚠️ 간격이 좁으면 진열장 다섯이 한 덩어리로 읽힌다 — 받침 폭 0.95 의 두 배 이상 띄운다.
+  for (let i = 0; i < 5; i++) out.push([-MUSEUM_HALF_W + 1.2, -4.4 + i * 2.2,  Math.PI / 2]);
+  for (let i = 0; i < 5; i++) out.push([ MUSEUM_HALF_W - 1.2, -4.4 + i * 2.2, -Math.PI / 2]);
+  for (let i = 0; i < 3; i++) out.push([-3.2 + i * 3.2, -MUSEUM_HALF_D + 1.2, 0]);
   return out;
 }
-let museumCases = [];   // 명판 근접 판정용 { x, z, i }
+let museumCases = [];        // 명판 근접 판정용 { x, z, i }
+let museumColliders = [];    // 진열장 충돌체 — 다시 지을 때 걷어낸다
 
 // 🏛️ 진열장 앞에 서면 뜨는 명판. dex 의 **첫 발견 시각**을 쓴다 —
 //   그래야 남의 도감이 아니라 "내 기록" 이 된다(지금 그 값은 아무 데도 안 쓰이고 있었다).
@@ -4055,12 +4057,20 @@ function buildMuseumHall() {
   });
 
   museumCases = [];
+  // 🚧 이전 전시실의 충돌체를 걷어낸다 — 들어갈 때마다 다시 지으므로 안 지우면 계속 쌓인다
+  for (const c of museumColliders) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
+  museumColliders = [];
   slots.forEach(([x, z, ry], i) => {
     const item = MUSEUM_FLOOR1[i];
     const got = !!gameState.dex[item.cat]?.[item.id];
     museumCases.push({ x, z, i });
     add('stone', box(0.95, 0.12, 0.7, x, 0.9, z, ry));
     add('wood',  box(0.8, 0.85, 0.58, x, 0.46, z, ry));
+    // 받침은 통과할 수 없다. 원으로 두면 모서리에 낄 수 있어 사각으로 — 명판 판정(1.9)은 그대로 닿는다.
+    //   ⚠️ 벽 쪽으로 0.6 까지 덮어야 한다. 진열장은 벽에서 1.2, 이동 제한은 0.8 이라
+    //      그냥 받침 크기(0.34)로 두면 그 사이 0.4 틈으로 진열장 뒤를 지나갈 수 있다.
+    const hw = ry ? 0.6 : 0.5, hd = ry ? 0.5 : 0.6;
+    museumColliders.push(solidBox(MUSEUM.x + x - hw, MUSEUM.z + z - hd, MUSEUM.x + x + hw, MUSEUM.z + z + hd));
     add('trim',  box(0.5, 0.14, 0.05, x + Math.sin(ry) * 0.32, 0.99, z + Math.cos(ry) * 0.32, ry));
     if (!got) {   // 🎀 "아직 없음" 이 아니라 "곧 열릴 전시" — 수집하면 천이 걷힌다
       add('cloth', box(0.9, 0.26, 0.66, x, 1.09, z, ry), box(0.78, 0.18, 0.54, x, 1.28, z, ry));
