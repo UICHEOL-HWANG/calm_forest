@@ -834,6 +834,26 @@ export const EN = {
   '집 완성하기': 'Finish your house',
   '이제 근사한 집을 완성해보자고!': 'Now let\'s finish you a fine house!',
   '큰 창고 짓기': 'The Big Warehouse',
+  // 🏛️ 큐레이터
+  '큐레이터 할아버지': 'The Curator',
+  '개관 준비': 'Opening Day',
+  '📖 도감 3종 등록하기': 'Register 3 species in the Field Guide',
+  '박물관이 텅 비어 있답니다… 무엇이든 세 가지만 찾아다 주시겠어요? 첫 전시를 열고 싶군요.':
+    'The museum stands quite empty… could you bring me any three finds? I should like to open the first display.',
+  '첫 전시실': 'The First Hall',
+  '📖 도감 8종 등록하기': 'Register 8 species in the Field Guide',
+  '진열장이 아직 헐렁하군요. 여덟 가지가 모이면 1층이 제법 박물관다워질 겁니다.':
+    'The cases still look sparse. With eight, the ground floor will feel like a proper museum.',
+  '2층을 향해': 'Towards the Second Floor',
+  '📖 도감 13종 등록하기': 'Register 13 species in the Field Guide',
+  '아홉 가지가 모이면 위층을 열 수 있어요. 조금만 더 부탁드립니다 — 💎값진 걸로 보답하지요.':
+    'Nine finds will open the floor above. A little more, if you would — I shall repay you with something 💎precious.',
+  '새 전시품': 'A New Exhibit',
+  '📖 도감 1종 새로 등록하기': 'Register 1 new species in the Field Guide',
+  '숲의 표본': 'Forest Specimens',
+  '광물 표본': 'Mineral Specimens',
+  '📖 처음 보는 것을 잡거나 캐거나 거두면 도감에 등록돼요 — ☰ 메뉴 → 📖 에서 확인':
+    '📖 Catch, mine or harvest anything new and it is added to the Field Guide — see ☰ menu → 📖',
   '목재 20개 모으기': 'Gather 20 Wood',
   '마을 창고를 지으려면 목재가 많이 필요해. 스무 개 부탁해!': 'The Village warehouse needs lots of Wood. Twenty, please!',
   // 🏗️ 목수 증축 체인 — '펜트하우스' 는 증축 메뉴 키(위)와 같은 문자열이라 여기 다시 넣지 않는다

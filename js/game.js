@@ -627,6 +627,7 @@ const QUEST_HOW = {
   fish:         '🏞️ 호수에서 🎣낚싯대를 던지고, "물었어요!" 가 뜨면 바로 액션!',
   fish_rare:    '🏞️ 호수에서 계속 낚아요 — 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요',
   house:        '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요',
+  collect_dex:  '📖 처음 보는 것을 잡거나 캐거나 거두면 도감에 등록돼요 — ☰ 메뉴 → 📖 에서 확인',
   expand:       '🎨 완성된 집 근처에서 [집 외관 꾸미기] 버튼을 열면, 맨 위에 🏗️ 증축이 있어요',
   sell:         '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요',
   catch:        '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요',
@@ -736,6 +737,21 @@ const NPCS = [
     ],
   },
   {
+    // 🧑‍🦳 박물관 큐레이터 — 🏛️ 입구 옆 상주. 마을에서 유일하게 차려입은 사람이라 실루엣으로 구분된다.
+    //   개관 체인이 박물관 자체를 소개한다(🔨목수 체인이 숨어 있던 증축을 소개했듯).
+    //   ⚠️ 목표는 전부 도감 등록(collect_dex)이다 — 무엇을 가져오든 "처음 보는 것" 이면 된다.
+    id: 'curator', name: '큐레이터 할아버지', emoji: '🧑‍🦳', color: 0x4a5a7a, hat: 0x8a2f3a, skin: 0xf0ddc8,
+    pos: [-23.4, 0, 8.2], look: 'curator',   // 🔵 남색 정장 + 🔴 자주 나비넥타이
+    quests: [
+      { type: 'collect_dex', target: 3,  title: '개관 준비',   desc: '📖 도감 3종 등록하기',  reward: { coins: 20 },
+        line: '박물관이 텅 비어 있답니다… 무엇이든 세 가지만 찾아다 주시겠어요? 첫 전시를 열고 싶군요.' },
+      { type: 'collect_dex', target: 8,  title: '첫 전시실',   desc: '📖 도감 8종 등록하기',  reward: { seed: 6, coins: 26 },
+        line: '진열장이 아직 헐렁하군요. 여덟 가지가 모이면 1층이 제법 박물관다워질 겁니다.' },
+      { type: 'collect_dex', target: 13, title: '2층을 향해',  desc: '📖 도감 13종 등록하기', reward: { coins: 40, gem: 1 },
+        line: '아홉 가지가 모이면 위층을 열 수 있어요. 조금만 더 부탁드립니다 — 💎값진 걸로 보답하지요.' },
+    ],
+  },
+  {
     // 📋 데일리 의뢰 담당 — quests 는 매일 refreshDailyQuests() 가 날짜 시드로 채움(전원 동일)
     id: 'courier', name: '의뢰 올빼미', emoji: '🦉', color: 0xe0a52e, hat: 0x8a5c28, skin: 0xfdfaf3, pos: [-3, 0, -3], look: 'owl',   // 🦉 원숭이올빼미(크림 얼굴 + 황금 등·날개)
     daily: true, doneLine: '오늘 의뢰는 전부 끝! 내일 새 의뢰를 가져올게요 🦉',
@@ -770,6 +786,7 @@ const QUEST_TYPES = new Set([
   // 🦉 의뢰가 "베고·심고·낚고" 로만 돌던 것을 넓힌다(베타: "컨텐츠가 부족하다").
   //   이 중 일부는 전제조건이 있다 — js/quests.js 의 QUEST_GATES 가 거른다.
   'carve', 'egg', 'gift', 'decor', 'boat', 'seafish', 'mist',
+  'collect_dex',   // 🏛️ 도감 등록 종수 — 상태형(dexCount 에서 읽는다)
 ]);
 
 // ── 데일리 퀘스트 풀 — 매일 3개 뽑기(완료 시 코인 + 🎁럭키박스 확률 보상) ──
@@ -1044,13 +1061,11 @@ const DEX = {
   ],
   // 🍳 요리 — RECIPES 에서 파생. 레시피를 늘릴 때 도감을 따로 고치는 걸 잊어 빈칸이 생기던 걸 막는다
   cook: RECIPES.map(r => ({ id: r.id, name: r.name, ico: r.ico })),
+  // ⚠️ **NPCS 에서 파생한다.** 손으로 적어 두면 주민을 추가할 때마다 빠뜨린다 —
+  //    실제로 🦡숲지기·⭐별 보는 아이·🦆사공·🐔목장 아주머니가 빠져 있었고,
+  //    도감 토스트에 이름 대신 id 가 그대로 떴다(🧑‍🦳큐레이터를 넣다 발견).
   npc: [
-    { id: 'farmer',   name: '농부 삼촌',       ico: '🧑‍🌾' },
-    { id: 'builder',  name: '목수 아저씨',     ico: '👷' },
-    { id: 'merchant', name: '방랑 상인',       ico: '🧙' },
-    { id: 'angler',   name: '낚시꾼 할아버지', ico: '🎣' },
-    { id: 'courier',  name: '의뢰 올빼미',     ico: '🦉' },
-    { id: 'chef',     name: '요리사 판다',     ico: '🐼' },
+    ...NPCS.map(n => ({ id: n.id, name: n.name, ico: n.emoji })),
     // ☕ 카페 손님 — 마을에 살지 않는 이웃들(서빙하면 채워짐). CAFE_GUESTS 에서 파생
     ...CAFE_GUESTS.map(g => ({ id: g.id, name: g.name, ico: g.emoji })),
   ],
@@ -12640,6 +12655,41 @@ function buildNPCLook(g, def) {
     const beard = add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), clayMat(0xdcd3c8, false)), 0, 0.98, 0.26);
     beard.scale.set(1, 0.7, 0.6);
     return { bob };
+  } else if (def.look === 'curator') {
+    // 🧑‍🦳 박물관 큐레이터 — 흰머리 · 체인 달린 둥근 금테 안경 · 정장(조끼·나비넥타이).
+    //   마을 주민은 전부 밀짚모자·안전모·앞치마 계열이라, 차려입은 사람 하나면 멀리서도 구분된다.
+    const GOLD = 0xc9a227, WHITE = 0xeae6de;   // ⚠️ 금은 색으로만(블룸 임계 0.85 — 🪓도구 등급과 같은 규칙)
+    // 흰머리 — 뒤로 넘긴 볼륨 + 옆머리
+    const hair = add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10), clayMat(WHITE, false)), 0, 1.3, -0.03);
+    hair.scale.set(1.04, 0.78, 1.0); hair.castShadow = true;
+    [-0.34, 0.34].forEach(ex => add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), clayMat(WHITE, false)), ex, 1.12, 0.02).scale.set(0.7, 1.1, 0.9));
+    // 둥근 금테 안경 — 렌즈 두 개 + 브리지 + 귀 다리
+    [-0.17, 0.17].forEach(ex => {
+      const r = add(new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.022, 7, 16), clayMat(GOLD, false)), ex, 1.13, 0.3);
+      r.rotation.x = 0.06;
+    });
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.022, 0.022), clayMat(GOLD, false)), 0, 1.15, 0.31);
+    [-0.3, 0.3].forEach(ex => add(new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.022, 0.2), clayMat(GOLD, false)), ex, 1.14, 0.2));
+    // 안경 체인 — 귀 옆에서 턱 아래로 늘어진다(참고 이미지). 짧은 마디를 호를 그리며 잇는다
+    [-1, 1].forEach(sx => {
+      for (let i = 0; i < 6; i++) {
+        const t = i / 5, ang = Math.PI * (0.12 + t * 0.5);
+        const bead = add(new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), clayMat(GOLD, false)),
+          sx * (0.3 - Math.sin(ang) * 0.07), 1.12 - t * 0.3, 0.2 - t * 0.06);
+        bead.castShadow = false;
+      }
+    });
+    // 정장 — 조끼(몸통 앞판) + 나비넥타이 + 회중시계 줄
+    const vest = bobbing(add(new THREE.Mesh(new THREE.SphereGeometry(0.47, 14, 10), clayMat(def.color, false)), 0, 0.62, 0.06));
+    vest.scale.set(0.92, 1.0, 0.78);
+    const collar = bobbing(add(new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.05, 8, 16), clayMat(0xf4f1ea, false)), 0, 0.9, 0.12));
+    collar.rotation.x = Math.PI / 2 - 0.25;
+    [-1, 1].forEach(sx => {
+      const w = bobbing(add(new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.16, 6), clayMat(def.hat, false)), sx * 0.09, 0.84, 0.3));
+      w.rotation.z = sx * Math.PI / 2;
+    });
+    bobbing(add(new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), clayMat(def.hat, false)), 0, 0.84, 0.32));
+    return { bob };
   } else if (def.look === 'farmer') {
     // 🧑‍🌾 넓은 밀짚모자(공용 챙보다 크고 얇다) + 정수리 매듭 + 입에 문 풀잎
     add(new THREE.Mesh(new THREE.CylinderGeometry(0.74, 0.74, 0.05, 16), clayMat(def.hat)), 0, 1.42, 0).castShadow = true;
@@ -13356,6 +13406,8 @@ function refreshCollectQuests() {
     else if (q.type === 'house') st.progress = gameState.houseStage >= 3 ? q.target : 0;
     // 🏗️ 증축도 되돌릴 수 없다 — 이벤트가 아니라 지금 집 단계를 읽는다(수락 전에 지어버린 사람도 통과).
     else if (q.type === 'expand') st.progress = gameState.houseStage >= q.stage ? q.target : 0;
+    // 📖 도감도 되돌릴 수 없다 — 수락 전에 이미 모은 사람이 영원히 못 깨면 안 된다
+    else if (q.type === 'collect_dex') st.progress = Math.min(q.target, dexCount());
     // ☕ 서빙도 같은 함정 — 손님은 하루 CAFE_ORDERS 명뿐이고 다시 서빙할 수 없다.
     //   먼저 서빙하고 나중에 의뢰를 받으면 남은 손님이 모자라 그날은 완료가 불가능해진다.
     //   그래서 "오늘 서빙한 손님 수"를 읽는다. 날짜가 지난 기록(cafeOrders() 가 아직 안 비운 어제치)은 0.

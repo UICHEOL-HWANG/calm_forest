@@ -126,3 +126,12 @@ test('도감 등록이 외관 갱신을 부른다', () => {
   const body = SRC.slice(i, SRC.indexOf('\n}\n', i));
   assert.match(body, /refreshMuseumGate\(true\)/, '도감이 늘어도 건물이 그대로다');
 });
+
+// ⚠️ 주민 도감을 손으로 적어 두면 주민을 추가할 때마다 빠뜨린다 —
+//    실제로 주민 4명이 빠져 도감 토스트에 이름 대신 id 가 떴다. NPCS 에서 파생해야 한다.
+test('주민 도감은 NPCS 에서 파생한다(손으로 적지 않는다)', () => {
+  const i = SRC.indexOf('  npc: [');
+  const block = SRC.slice(i, SRC.indexOf('  ],', i));
+  assert.match(block, /\.\.\.NPCS\.map\(/, '주민 목록을 손으로 적고 있다 — 새 주민이 조용히 빠진다');
+  assert.doesNotMatch(block, /id: 'farmer'/, '하드코딩이 남아 있다');
+});

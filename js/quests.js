@@ -110,6 +110,12 @@ export const REPEAT_POOL = {
     { type: 'fish',   target: 5, title: '나루 조황',  desc: '물고기 5마리 낚기',    reward: { wood: 5, coins: 6 } },
     { type: 'forage', target: 5, title: '강가 줍기',  desc: '🍄 채집물 5개 줍기',   reward: { crop: 3, coins: 5 } },
   ],
+  curator: [
+    // 🏛️ 큐레이터는 "전시할 것" 을 찾아 달라 한다 — 도감이 남아 있는 한 의뢰가 마르지 않는다
+    { type: 'collect_dex', target: 1, title: '새 전시품',   desc: '📖 도감 1종 새로 등록하기', reward: { coins: 10 } },
+    { type: 'forage',      target: 5, title: '숲의 표본',   desc: '🍄 채집물 5개 줍기',       reward: { seed: 4, coins: 6 } },
+    { type: 'mine',        target: 4, title: '광물 표본',   desc: '광석 4개 캐기',            reward: { coins: 9 } },
+  ],
   rancher: [
     { type: 'egg',   target: 1, title: '아침 달걀',     desc: '🥚 달걀 걷기',  reward: { crop: 3, coins: 6 } },
     { type: 'cook',  target: 2, title: '아침상 차리기', desc: '요리 2번 하기', reward: { seed: 4, coins: 6 } },
