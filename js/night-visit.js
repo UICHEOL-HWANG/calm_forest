@@ -15,7 +15,11 @@ import { LANG } from './i18n.js';
 import { setNightVisitSource, setNightNoteSource } from './game.js';
 import { state as auth } from './supabase-client.js';
 
-const TIMEOUT_MS = 6000;   // 이 안에 안 오면 포기(다음 접속에 재판정 — 결정적이라 결과는 같다)
+// ⏱️ 두 호출은 기다려야 하는 대상이 달라서 예산도 다르다.
+const VISIT_TIMEOUT_MS = 6000;    // 판정은 서버가 HMAC 으로 바로 계산(실측 0.6초) — 빨리 포기해도
+                                  //   다음 접속에 재판정되고 결정적이라 결과는 같다
+const NOTE_TIMEOUT_MS = 15000;    // 쪽지는 서버가 Gemini 생성을 기다린다 — 엣지 캐시가 비면
+                                  //   실측 7~10초(2026-09-14: 6.95s · 8.35s · 10.35s)라 6초로는 매번 놓쳤다
 
 // 서버 응답을 그대로 믿지 않고 형태를 좁혀서 통과시킨다(방어적 정규화)
 function normalizeVerdict(v) {
@@ -41,7 +45,7 @@ export function initNightVisit() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(VISIT_TIMEOUT_MS),
         body: JSON.stringify({ uid, date: ctx.date, nights: ctx.nights, plots: ctx.plots, defense: ctx.defense }),
       });
       if (!res.ok) throw new Error(`night-visit ${res.status}`);
@@ -54,7 +58,7 @@ export function initNightVisit() {
       const url = `${CONFIG.NIGHT_NOTE_API}?date=${encodeURIComponent(date)}`
         + `&animal=${encodeURIComponent(animal)}&crop=${encodeURIComponent(crop || '')}`
         + `&lang=${LANG}`;   // [i18n] 표시 언어로 쪽지 생성(서버가 ko/en 화이트리스트)
-      const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
+      const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(NOTE_TIMEOUT_MS) });
       if (!res.ok) return null;
       const n = await res.json();
       if (!n || typeof n.text !== 'string' || !n.text.trim()) return null;

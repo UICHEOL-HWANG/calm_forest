@@ -69,8 +69,21 @@ export const HAMMER_BUILD_COST = 7;
 /** ⛏️ 무쇠 괭이 — 광맥 hp 를 한 번에 얼마나 깎는가(🪓강철 도끼와 같은 패턴). */
 export function mineHitPower(state = {}) { return state.upgrades?.hoe ? 2 : 1; }
 
-/** 🔨 묵직한 망치 — 건축·증축에 드는 목재. 없으면 기본값 그대로. */
+/** 🔨 묵직한 망치 — 0→3단계 건축에 드는 목재. 없으면 기본값 그대로. */
 export function buildCostOf(state = {}, base) { return state.upgrades?.hammer ? HAMMER_BUILD_COST : base; }
+
+/** 🏗️ 증축 목재 비율 — 건축(10→7)과 같은 30% 절감. */
+export const HAMMER_EXPAND_RATE = 0.7;
+
+/**
+ * 🔨 묵직한 망치 — 증축에 드는 목재.
+ * ⚠️ **코인은 건드리지 않는다.** 증축 코인은 2026-09-10 에 "코인 쓸 데가 없다" 는
+ *    베타 피드백으로 일부러 올린 후반 싱크의 본체다(80/200/450 → 120/350/800).
+ *    목재만 줄여야 그 리밸런스를 되돌리지 않으면서 망치가 증축까지 이어진다.
+ */
+export function expandWoodOf(state = {}, wood) {
+  return state.upgrades?.hammer ? Math.ceil(wood * HAMMER_EXPAND_RATE) : wood;
+}
 
 /**
  * 🌰 이번에 심을 때 씨앗이 안 줄어드는가.

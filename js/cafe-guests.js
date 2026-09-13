@@ -15,7 +15,10 @@ import { LANG } from './i18n.js';
 import { setCafeGuestSource } from './game.js';
 import { sendCafeGuests } from './supabase-client.js';
 
-const TIMEOUT_MS = 6000;   // 이 안에 안 오면 포기하고 기본 손님으로(입장 흐름을 막지 않음)
+const TIMEOUT_MS = 15000;  // 이 안에 안 오면 포기하고 기본 손님으로(입장 흐름을 막지 않음)
+//  ⏱️ 6초였을 땐 그날 첫 입장이 100% 실패했다 — 엣지 캐시가 비면 서버가 Gemini 생성을
+//     기다리느라 실측 10~12초가 걸린다(2026-09-14 측정: snow 9.97s · fog 9.93s · rain 12.17s).
+//     ensureCafeGuests() 는 await 하지 않으므로(game.js) 길게 기다려도 입장은 안 밀린다.
 
 // 서버 응답을 한 번 더 검증 — 게임이 아는 주민/메뉴만 통과시킨다(방어적 이중 검증)
 function normalize(raw, ctx) {

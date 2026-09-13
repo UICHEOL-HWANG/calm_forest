@@ -30,7 +30,7 @@ import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
-import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
+import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -915,7 +915,10 @@ function refreshDailyQuests() {
 //   플레이가 멈추지 않는다(카페 손님과 같은 방식).
 //   ⚠️ 아직 의뢰를 받지 않았을 때만 교체한다 — 진행 중에 목록이 바뀌면 st.idx 포인터가
 //      엉뚱한 의뢰를 가리켜, 손도 안 댄 의뢰가 절반 차 있고 하던 진행도는 증발한다.
-const AI_QUEST_TIMEOUT = 6000;
+const AI_QUEST_TIMEOUT = 15000;   // 서버가 Gemini 생성을 기다린다 — 엣지 캐시가 비면 실측
+//   8~10초(2026-09-14: fog 8.63s · rain 10.10s)라 6초로는 그날 첫 접속이 거의 다 놓쳤다.
+//   upgradeDailyQuestsAI() 는 로컬 의뢰를 채운 뒤 백그라운드로 도는 데다, 진행이 시작됐으면
+//   교체를 포기하므로 오래 기다려도 플레이가 밀리지 않는다.
 async function upgradeDailyQuestsAI() {
   const def = NPCS.find(n => n.daily); if (!def) return;
   const st = npcState(def.id);
@@ -2195,6 +2198,7 @@ function applySave(saved) {
     //    그때는 upgrades 가 비어 있어 0단계로 만들어진다 — 여기서 다시 만들지 않으면
     //    "이미 산 사람은 접속할 때마다 옛 모습" 이 되어, 이 기능이 구매한 그 세션에서만 동작한다.
     refreshHeldTool();
+    updateHouseSign();   // 🔨 묵직한 망치를 산 뒤 아직 한 단계도 안 지었으면 건축 루프가 0바퀴라 간판이 옛 숫자로 남는다
   }
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id, o.rot || 0)); // 야외 장식 복원(방향 포함)
   if (saved.outdoorStored && typeof saved.outdoorStored === 'object') {   // 🧺 보관한 야외 장식 복원(개수만, 음수·비숫자 버림)
@@ -3152,7 +3156,9 @@ function setHeldTool(id) {
   if (id === 'shovel' && gameState.character) {
     const A = IS_MOBILE ? '오른쪽 동그란 버튼' : 'Space';
     firstHint('shovel', '🪏', '삽 — 빈 밭을 풀밭으로 되돌려요',
-      `① 삽을 들고 빈 밭 앞에서 ${A}\n② ${DIG_WINDOW}초 안에 한 번 더 ${A} → 밭이 사라져요\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`);
+      digIsOneShot(gameState)
+        ? `① 삽을 들고 빈 밭 앞에서 ${A} → 밭이 사라져요\n· 🪏넓은 삽이라 한 번에 메워져요 — 되돌릴 수 없으니 조심!\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`
+        : `① 삽을 들고 빈 밭 앞에서 ${A}\n② ${DIG_WINDOW}초 안에 한 번 더 ${A} → 밭이 사라져요\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`);
   }
 }
 // 꾸미기: 선택한 가구를 손에 작게 들기
@@ -5906,7 +5912,12 @@ function expandInfo() {
   if (gameState.houseStage < 3) return { maxed: false, next: null };
   const next = EXPANSIONS.find(e => e.stage === gameState.houseStage + 1) || null;
   if (!next) return { maxed: true, next: null };
-  const items = Object.entries(next.cost).map(([k, v]) => ({ k, need: v, have: gameState.inventory[k] || 0, label: RES_LABEL[k] || k }));
+  //   🔨 묵직한 망치는 목재만 줄인다(코인은 후반 싱크의 본체라 그대로).
+  //   ⚠️ doExpand 가 이 items 를 그대로 소비한다 — 표시와 실제가 갈리지 않게 여기서 한 번만 계산한다.
+  const items = Object.entries(next.cost).map(([k, v]) => {
+    const need = k === 'wood' ? expandWoodOf(gameState, v) : v;
+    return { k, need, have: gameState.inventory[k] || 0, label: RES_LABEL[k] || k };
+  });
   return { maxed: false, next: { stage: next.stage, name: next.name, ico: next.ico }, items, affordable: items.every(i => i.have >= i.need) };
 }
 
@@ -5920,8 +5931,9 @@ function doExpand() {
     return { ok: false, msg: `${info.next.ico} ${info.next.name} 증축 재료 부족 — ${lack}` };
   }
   const exp = EXPANSIONS.find(e => e.stage === info.next.stage);
-  for (const k in exp.cost) gameState.inventory[k] -= exp.cost[k];
-  if (exp.cost.coins) logEcon('house_expand', 'stage' + exp.stage, -exp.cost.coins, gameState.inventory.coins); // [원장] 코인 소비
+  for (const it of info.items) gameState.inventory[it.k] -= it.need;   // expandInfo 가 계산한 그 값으로 소비
+  const coinCost = info.items.find(i => i.k === 'coins')?.need || 0;
+  if (coinCost) logEcon('house_expand', 'stage' + exp.stage, -coinCost, gameState.inventory.coins); // [원장] 코인 소비
   refreshInventoryUI();
   doPlayerAction(HOUSE_POS.x, HOUSE_POS.z);   // 건축 제스처
   buildHouseStage(exp.stage);
@@ -8833,7 +8845,8 @@ function tryMine() {
   const ud = nearest.userData;
   doPlayerAction(nearest.position.x, nearest.position.z);
   Sound.chop(); spawnDust(nearest.position.x, nearest.position.z, 8);
-  ud.hp -= mineHitPower(gameState);            // ⛏️ 무쇠 괭이: 2씩 — 광맥 hp 3 이라 두 번에 캔다
+  const minePow = mineHitPower(gameState);      // ⛏️ 무쇠 괭이: 2씩 — 광맥 hp 3 이라 두 번에 캔다
+  ud.hp -= minePow;
   if (ud.hp <= 0) {
     const ore = ud.ore;
     const amt = ore.id === 'gem' ? 1 : (1 + (Math.random() < 0.5 ? 1 : 0) + (buffOn('mine') && Math.random() < 0.6 ? 1 : 0)); // 🍳 오믈렛 버프: 광석 추가 확률
@@ -8846,7 +8859,7 @@ function tryMine() {
     questEvent('mine', amt);                       // 데일리 의뢰(광석 캐기) 진행
     dexDiscover('ore', ore.id);                    // 📖 도감(광물 첫 채굴)
     ui.act?.('mine');                              // 튜토리얼: 첫 채굴
-    trackEvent('mine_ore', { ore: ore.id, amt });  // [GA4]
+    trackEvent('mine_ore', { ore: ore.id, amt, pick: minePow });  // [GA4] ⛏️ 무쇠 괭이 사용 여부(pick=2)
   }
 }
 
@@ -10856,7 +10869,7 @@ function plantSeed(plot) {
   questEvent('plant');      // 퀘스트 진행
   ui.act?.('seed');         // 튜토리얼
   if (adv) firstHintBanner('advCrop', adv.ico, '고급 작물', '🌱비료를 줘야 제 속도 · 🌿잡초는 맨손 액션 · 🐛해충은 포충망');
-  trackEvent('plant_seed', { kind: plot.cropType.id, adv: !!adv }); // [GA4] 종류별 파종 분포
+  trackEvent('plant_seed', { kind: plot.cropType.id, adv: !!adv, saved: saved ? 1 : 0 }); // [GA4] 종류별 파종 분포 + 🌰 주머니 절약 발동
 }
 
 // 괭이: 빈 땅이면 밭 만들기(+씨앗 심기), 갈아둔 밭이면 씨앗 심기
@@ -10922,7 +10935,7 @@ function removePlot(plot) {
   spawnDigRegrow(plot.x, plot.z);
   Sound.harvest();
   ui.toast?.('밭을 메웠어요 — 다시 풀밭이 됐어요 🌱');
-  trackEvent('dig_plot', { step: 2, plots: plots.length });   // [GA4]
+  trackEvent('dig_plot', { step: 2, plots: plots.length, one_shot: digIsOneShot(gameState) ? 1 : 0 });   // [GA4] 🪏 넓은 삽은 step:1 이 안 나가 퍼널이 끊긴다
   rollDigDex();
   lastDoorPrompt = null; ui.setDoorPrompt?.(null);
 }
@@ -11225,8 +11238,12 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
     gameState.inventory.crop += 1; // 작물 +1
     gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
   }
-  Sound.harvest();
-  ui.toast?.(adv && plot.pest ? `🐛 해충 탓에 ${plot.cropType.name} +${qty}만 수확했어요…` : `${plot.cropType?.name || '작물'} +${qty} 수확! 🌾`);
+  if (!viaSickle) {
+    // 🌾 낫으로 딸려 온 칸은 조용히 처리한다 — 토스트가 첫 칸을 덮어쓰면
+    //    🐛해충 손실 안내처럼 꼭 봐야 할 메시지가 사라지고, 소리도 같은 프레임에 겹쳐 볼륨이 튄다.
+    Sound.harvest();
+    ui.toast?.(adv && plot.pest ? `🐛 해충 탓에 ${plot.cropType.name} +${qty}만 수확했어요…` : `${plot.cropType?.name || '작물'} +${qty} 수확! 🌾`);
+  }
   spawnFloatText(plot.x, 1.1, plot.z, `+${qty} ${adv ? plot.cropType.ico : '🥕'}`, '#c05a2a'); // 획득 표시
   const harvestKind = plot.cropType?.id, harvestPest = !!plot.pest;
   plot.fert = false; plot.weed = false; plot.pest = false;
@@ -11239,9 +11256,13 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   questEvent('harvest');                                          // 퀘스트 진행
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
-  catchCeremony('harvestZoom');                                   // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
-  showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);    // 🥕 열매를 머리 위로 번쩍!
-  tryUnlockDrop(0.05);                                            // 🎨 랜덤 색(낮은 확률)
+  if (!viaSickle) {
+    catchCeremony('harvestZoom');                                 // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
+    showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);  // 🥕 열매를 머리 위로 번쩍! (두 번 부르면 첫 열매가 즉시 지워진다)
+    // ⚠️ 🎨 색 해금은 확률 보상이다 — 두 칸에서 두 번 굴리면 낫 보유자의 기대치가 1.95배가 된다.
+    //    "총량은 그대로고 손만 덜 간다" 는 이 업그레이드의 설계와 어긋나므로 액션당 한 번만 굴린다.
+    tryUnlockDrop(0.05);                                          // 🎨 랜덤 색(낮은 확률)
+  }
   trackEvent('harvest_crop', { crop: gameState.inventory.crop, kind: harvestKind, qty, adv, pest: harvestPest, sickle: viaSickle ? 1 : 0 }); // [GA4] 종류·수량·해충 손실 + 낫으로 딸려 온 칸
   // 🌾 잘 드는 낫 — 옆 칸도 함께. 총량은 그대로고 손만 덜 간다(🌾밭 확장 7단계로 밭이 많아졌다).
   //   ⚠️ 밭 격자는 짝수 좌표 2칸 간격이라 2.6 이면 상하좌우만 걸린다(대각선은 2.83).
@@ -11336,6 +11357,8 @@ function workerApply(rec, task, tally) {
     }
     case 'plant': {
       if (!p || (gameState.inventory.seed || 0) <= 0) return false;
+      // 🌰 넉넉한 씨앗 주머니는 플레이어가 직접 심을 때만 — 일꾼은 오프라인 12시간까지 돌아서
+      //    여기에 난수를 넣으면 정산 결과가 접속할 때마다 달라진다(재현이 안 되는 경제).
       gameState.inventory.seed -= 1;
       p.wilted = false; p.state = 'growing'; p.growth = 0.05; p.stage = -1;
       p.cropType = BASIC_CROPS[Math.floor(Math.random() * BASIC_CROPS.length)];   // 일꾼은 기본 씨앗만(고급 씨앗은 플레이어 몫)

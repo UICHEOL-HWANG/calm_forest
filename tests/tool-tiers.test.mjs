@@ -199,3 +199,61 @@ test('세이브 기본값에 5종이 있다(없으면 복원 때 undefined 가 �
     assert.match(line, new RegExp(`${id}: false`), `gameState.upgrades 기본값에 ${id} 없음`);
   }
 });
+
+// ── 🌾 낫의 재귀 가드 — 이 묶음에서 가장 위험한 코드 ─────────────
+//   tryHarvest 가 자기를 다시 부른다. game.js 는 노드에서 import 할 수 없어 원문으로 잠근다.
+const harvestFn = SRC.slice(SRC.indexOf('function tryHarvest('), SRC.indexOf('\n}\n', SRC.indexOf('function tryHarvest(')));
+
+test('낫의 재귀는 한 번만 — !viaSickle 안에서만 다시 부른다', () => {
+  const call = harvestFn.indexOf('tryHarvest(near, true)');
+  assert.ok(call > 0, '인접 수확 호출을 못 찾음');
+  const guard = harvestFn.lastIndexOf('!viaSickle', call);
+  assert.ok(guard > 0 && guard < call, '재귀가 !viaSickle 가드 밖에 있다 — 밭이 이어진 곳에서 줄줄이 수확된다');
+});
+
+// ⚠️ 🎨 색 해금은 확률 보상이다. 두 칸에서 두 번 굴리면 낫 보유자의 기대치가 1.95배 —
+//    "총량은 그대로고 손만 덜 간다" 는 이 업그레이드의 설계와 정면으로 어긋난다.
+test('딸려 온 칸은 확률 보상을 다시 굴리지 않는다', () => {
+  const drop = harvestFn.indexOf('tryUnlockDrop');
+  assert.ok(drop > 0, 'tryUnlockDrop 을 못 찾음');
+  const guard = harvestFn.lastIndexOf('if (!viaSickle)', drop);
+  assert.ok(guard > 0 && guard < drop, '색 해금이 액션당 두 번 굴려진다');
+});
+
+test('딸려 온 칸은 제스처·토스트를 되풀이하지 않는다', () => {
+  assert.match(harvestFn, /if \(!viaSickle\) doPlayerAction/, '제스처가 두 번 나간다');
+  const toast = harvestFn.indexOf('해충 탓에');
+  const guard = harvestFn.lastIndexOf('if (!viaSickle)', toast);
+  assert.ok(guard > 0 && guard < toast, '두 번째 칸 토스트가 첫 칸을 덮어써 🐛해충 손실 안내가 사라진다');
+});
+
+// ── 🏗️ 묵직한 망치가 증축까지 닿는가 ──────────────────────────
+import { expandWoodOf, HAMMER_EXPAND_RATE } from '../js/tool-tiers.js';
+
+test('🔨 묵직한 망치는 증축 목재도 줄인다', () => {
+  assert.equal(expandWoodOf({ upgrades: {} }, 30), 30);
+  assert.equal(expandWoodOf({ upgrades: { hammer: true } }, 30), 21);
+  assert.equal(expandWoodOf({ upgrades: { hammer: true } }, 50), 35);
+  assert.equal(expandWoodOf({ upgrades: { hammer: true } }, 80), 56);
+  assert.ok(HAMMER_EXPAND_RATE < 1);
+});
+
+// ⚠️ 증축 코인은 2026-09-10 에 "코인 쓸 데가 없다" 는 피드백으로 일부러 올린 후반 싱크다.
+//    망치가 코인까지 깎으면 그 리밸런스를 되돌리는 셈이다.
+test('증축 코인은 건드리지 않는다', () => {
+  const fn = SRC.slice(SRC.indexOf('function expandInfo('), SRC.indexOf('\n}\n', SRC.indexOf('function expandInfo(')));
+  assert.match(fn, /k === 'wood' \? expandWoodOf/, '목재만 줄이는 게 아니다');
+});
+
+// 표시(expandInfo)와 소비(doExpand)가 따로 계산하면 "21 이라 적어 놓고 30 을 가져가는" 사고가 난다
+test('증축 비용은 한 곳에서 계산해 그대로 소비한다', () => {
+  const fn = SRC.slice(SRC.indexOf('function doExpand('), SRC.indexOf('\n}\n', SRC.indexOf('function doExpand(')));
+  assert.match(fn, /for \(const it of info\.items\)/, 'doExpand 가 EXPANSIONS 원가를 직접 쓴다');
+  assert.doesNotMatch(fn, /exp\.cost\.coins/, '코인 원장이 표시값과 갈린다');
+});
+
+test('세이브 복원 뒤 집 간판을 다시 그린다', () => {
+  const i = SRC.indexOf('function applySave(');
+  const body = SRC.slice(i, SRC.indexOf('\n}\n', i));
+  assert.match(body, /updateHouseSign\(\)/, '🔨 망치를 산 뒤 한 단계도 안 지었으면 간판이 옛 숫자로 남는다');
+});
