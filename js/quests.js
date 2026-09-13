@@ -144,3 +144,15 @@ export function repeatQuestFor(npcId, seed, ctx = {}) {
   for (let i = 0; i < npcId.length; i++) h = (h * 31 + npcId.charCodeAt(i)) & 0x7fffffff;
   return pickGated(pool, 1, h, ctx)[0] || null;
 }
+
+/**
+ * 퍼널 분석용 표준 quest_id — GA4 이벤트와 econ_logs.item 이 같은 문자열을 쓴다.
+ *   체인:      `farmer:2`             (순번 — 같은 자리는 늘 같은 의뢰)
+ *   반복 의뢰:  `farmer:repeat:plant`  (순번이 없으니 목표 종류. 날짜를 넣으면 GA4 집계가 갈린다)
+ *   ✨특별 의뢰: `courier:special:chop`     (예전엔 순번 `courier:3` 이라 종류를 알 수 없었다)
+ */
+export function questIdFor({ npcId, idx, repeat = false, repeatType, specialType }) {
+  if (specialType) return `${npcId}:special:${specialType}`;
+  if (repeat) return `${npcId}:repeat:${repeatType || '?'}`;
+  return `${npcId}:${idx}`;
+}

@@ -35,7 +35,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
-import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
+import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
 import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
@@ -809,7 +809,8 @@ function onRepeatQuest(def, st) { return st.idx >= def.quests.length; }
 // 퍼널 분석용 표준 퀘스트 id. 반복 의뢰는 순번이 없으니 목표 종류로 구분한다
 //   (날짜를 넣으면 GA4 에서 매일 다른 id 가 되어 집계가 갈린다).
 function questId(def, st) {
-  return onRepeatQuest(def, st) ? `${def.id}:repeat:${st.repeat?.q?.type || '?'}` : `${def.id}:${st.idx}`;
+  const special = def.daily && st.special && st.idx >= DAILY_COUNT && !onRepeatQuest(def, st) ? st.special.type : undefined;
+  return questIdFor({ npcId: def.id, idx: st.idx, repeat: onRepeatQuest(def, st), repeatType: st.repeat?.q?.type, specialType: special });
 }
 
 // 매일 접속 시 호출 — 날짜가 바뀌면 의뢰 리셋, 아니면 그날 확정된 의뢰를 그대로 쓴다.
@@ -11364,7 +11365,7 @@ function deliverOwlSpecial(o) {
   updateNPCGlyph(o); refreshQuestPanel(); syncBadges();
   Sound.complete?.();
   ui.toast?.('✨ 의뢰 올빼미가 특별 의뢰를 물고 날아왔어요!', 3200);
-  trackEvent('owl_special_deliver', { quest: sp.title, target: sp.target });   // [GA4]
+  trackEvent('owl_special_deliver', { quest: sp.title, target: sp.target, quest_id: questIdFor({ npcId: def.id, specialType: sp.type }) });   // [GA4] 수락·완료의 quest_id 와 같은 값
 }
 
 // 조건이 맞으면 올빼미를 플레이어 앞으로 날려 보낸다.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   QUEST_GATES, QUEST_LIMITS, REPEAT_POOL, REPEAT_OPEN,
-  questAvailable, pickGated, repeatNPCsFor, repeatQuestFor,
+  questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor,
 } from '../js/quests.js';
 
 // 🦉 의뢰 공급 규칙 — "영원히 못 깨는 의뢰" 를 막는 게 이 모듈의 존재 이유다.
@@ -331,4 +331,13 @@ test('REPEAT_POOL 의 목표 수치가 하루 한도 안이다', () => {
     }
   }
   assert.deepEqual(over, [], `하루 안에 못 깨는 반복 의뢰: ${over.join(', ')}`);
+});
+
+// ── 퍼널용 quest_id — GA4·econ_logs 가 같은 문자열로 묶인다 ───────────────
+//   ✨특별 의뢰는 예전엔 순번(courier:3)이라 종류를 알 수 없었다 → 종류로 구분한다.
+test('quest_id — 체인은 순번, 반복은 목표 종류, 특별 의뢰는 special:종류', () => {
+  assert.equal(questIdFor({ npcId: 'farmer', idx: 2 }), 'farmer:2');
+  assert.equal(questIdFor({ npcId: 'farmer', idx: 4, repeat: true, repeatType: 'plant' }), 'farmer:repeat:plant');
+  assert.equal(questIdFor({ npcId: 'courier', idx: 3, specialType: 'chop' }), 'courier:special:chop');
+  assert.equal(questIdFor({ npcId: 'farmer', idx: 4, repeat: true, repeatType: undefined }), 'farmer:repeat:?');
 });
