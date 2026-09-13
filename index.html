@@ -2048,8 +2048,6 @@
         [...$('hotbar').querySelectorAll('.slot[data-i]')].forEach((slot) => {
           const i = +slot.dataset.i;
           slot.classList.toggle('active', i === idx && !bare);
-          const ic = slot.querySelector('.s-ico');   // 🌰 씨앗 종류처럼 아이콘이 바뀌는 도구가 있다 — 낫은 SVG 마크업이라 innerHTML(buildHotbar 와 같게), 바뀔 때만
-          if (ic.dataset.ico !== tools[i].ico) { ic.innerHTML = tools[i].ico; ic.dataset.ico = tools[i].ico; }
           slot.hidden = bare || slot.dataset.grp !== page;  // 지금 페이지 도구만 노출
           if (!slot.hidden) slot.querySelector('.s-n').textContent = n++;
         });
@@ -2420,7 +2418,7 @@
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
-      openCook() { showCookTab('tool'); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      openCook(tab = 'tool') { showCookTab(tab); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },   // 🏗️ 밭 자재 작업대는 'out'(🌷야외 = 밭 시설) 탭으로 연다
       // 🍳 자유주방 메뉴판 열기 (요리를 고르면 미니게임 시작)
       openKitchen(d) { renderKitchen(d); Input.setAnalog(0, 0); $('kitchen-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       carveProgress(p) { cvProgress(p); },                 // 🗿 조각 진행(game.js 레이캐스트 판정 → HUD)
@@ -3036,7 +3034,9 @@
     function renderOutdoor() {
       updateCookInv();
       const box = $('out-items'); box.innerHTML = '';
+      const atFarm = !!Input.isAtFarm?.();
       Input.getOutdoor().forEach(o => {
+        if (o.farm && !atFarm) return;   // 🏗️ 밭 시설은 텃밭 안 작업대 목록에서만(마을에선 놓을 수 없으니 보여 주지 않는다)
         const costStr = Object.entries(o.cost).map(([k, n]) => ico(k) + n).join(' ');
         const stored = (Input.getOutdoorStored?.() || {})[o.id] || 0;   // 🧺 보관분 — 값 없이 꺼내 놓는다
         const enough = stored > 0 || Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
@@ -3665,7 +3665,7 @@
 
     // ── 상점 메뉴 (팔기 / 사기) ──
     let shopTab = 'sell';
-    const SELL_ICO = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇' };
+    const SELL_ICO = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯' };
     // 판매 바인딩: 탭=1개, 꾹 누르면(450ms) 전부 — pointer 이벤트로 모바일/데스크톱 공통
     function bindSell(el, k) {
       let timer = null, longFired = false;
@@ -4226,11 +4226,12 @@
       fert: { ico: '🌱', name: '비료' }, bait: { ico: '🪱', name: '미끼' },
       wheat: { ico: '🌾', name: '밀' }, corn: { ico: '🌽', name: '옥수수' }, grape: { ico: '🍇', name: '포도' },
       seed_wheat: { ico: '🌾', name: '밀 씨앗' }, seed_corn: { ico: '🌽', name: '옥수수 씨앗' }, seed_grape: { ico: '🍇', name: '포도 씨앗' },
+      honey: { ico: '🍯', name: '꿀' },
     };
     const BAG_CATS = [
       { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
       { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg', 'fert', 'bait'] },
-      { name: '🌾 고급 작물', keys: ['wheat', 'corn', 'grape', 'seed_wheat', 'seed_corn', 'seed_grape'] },
+      { name: '🌾 고급 작물', keys: ['wheat', 'corn', 'grape', 'honey', 'seed_wheat', 'seed_corn', 'seed_grape'] },
       { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
       { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
       { name: '🛶 강 · 🌫️ 숲', keys: ['star', 'glow'] },

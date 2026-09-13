@@ -1,6 +1,6 @@
 # Context — farm-stage (🌾 밭 단계 증축, 논밭 확장 2단계)
 
-Last Updated: 2026-09-13 (검증 완료, 리뷰 대기)
+Last Updated: 2026-09-13 (4단계 밭 시설 + 측량소 이전까지 검증 완료, 리뷰 대기)
 
 ## 핵심 파일
 
@@ -11,7 +11,8 @@ Last Updated: 2026-09-13 (검증 완료, 리뷰 대기)
 | `js/farm-stage.js` | **신규** 순수 규칙 — FARM_STAGES·farmHalfOf·farmStageInfo·fencePosts·perimeterTrees |
 | `tests/farm-stage.test.mjs` | **신규** 위 모듈 테스트 |
 | `js/game.js:288` | `FARM_HALF = 6` → `farmHalf()` 로 교체(9곳) |
-| `js/game.js:8062` | `buildFarm()` → `rebuildFarm(silent)` + 📐측량 말뚝 |
+| `js/game.js` `rebuildFarm()` | 울타리·나무·문 + 📐측량소 마당(makeSurveyOffice: 사무소·제도 탁자·🔧자재 작업대·서쪽 문 콜라이더) |
+| `js/farm-building.js` | 밭 시설 7종 규칙(발자국·스냅·배치 판정·반경·창고/퇴비 상한) |
 | `js/game.js:3088` | `coopInteract()` — 말뚝 상호작용이 따르는 문법 |
 | `js/game.js:8398` | 텃밭 근접 판정 브랜치(출구 + 말뚝) |
 | `js/game.js:9704` | `interact()` 디스패치 |
@@ -20,7 +21,8 @@ Last Updated: 2026-09-13 (검증 완료, 리뷰 대기)
 
 ## 의사결정
 - 확인/모달 없이 닭장 문법(프롬프트에 비용 표시 → 액션 즉시 건설). 집 증축 메뉴는 쓰지 않음(근접 상호작용 원칙).
-- 말뚝 위치 (-2.2, H-0.2) — 출구 팻말(+1.9)의 거울. 울타리가 커지면 말뚝도 따라감.
+- 📐증축 창구는 **울타리 밖 서쪽 마당**(사용자 결정 2026-09-13: "논밭은 공간이 제일 중요"). 말뚝 팻말은 폐기, 측량소 건물로 교체. 마당 규칙(YARD_D/YARD_HZ·건물·탁자·작업대 자리)은 js/farm-stage.js.
+- 밭 시설 주문은 마당의 🔧자재 작업대 — 마을 작업대 메뉴를 🌷야외 탭으로 연다(`ui.openCook('out')`).
 - 흙·작물 인스턴스는 plots 기반 동적 버퍼라 half 와 무관 — 손대지 않음.
 - 배지·progressScore 는 스펙에 없어 넣지 않음(YAGNI).
 - 미니맵 죽은 허수아비 마크(FARM_HALF 코너)는 같이 삭제.

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees } from '../js/farm-stage.js';
+import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees, YARD_D, YARD_HZ, surveyYard, surveyOfficePos, surveyDeskPos, surveyBenchPos } from '../js/farm-stage.js';
 
 test('FARM_STAGES: 스펙 §1 표 그대로 — half 6/9/11 · 비용 · 노동자 상한', () => {
   assert.equal(FARM_STAGES.length, 3); assert.equal(MAX_FARM_STAGE, 3);
@@ -29,11 +29,12 @@ test('farmStageInfo: 다음 단계 비용 대조 — 부족/충분/최대', () =
   assert.equal(farmStageInfo(undefined, {}).cur.stage, 1, '세이브에 없으면 1단계');
 });
 
-test('fencePosts: 둘레에만 · 남쪽 출입구 비움 · 중복 없음 · 넓을수록 많다', () => {
+test('fencePosts: 둘레에만 · 남쪽·서쪽 출입구 비움 · 중복 없음 · 넓을수록 많다', () => {
   for (const H of [6, 9, 11]) {
     const posts = fencePosts(H);
     assert.ok(posts.every(([x, z]) => Math.abs(x) === H || Math.abs(z) === H), '둘레');
     assert.ok(!posts.some(([x, z]) => z === H && Math.abs(x) < 1.2), '남쪽 가운데 출입구');
+    assert.ok(!posts.some(([x, z]) => x === -H && Math.abs(z) < 1.2), '서쪽 가운데 측량소 문');
     assert.equal(new Set(posts.map(p => p.join(','))).size, posts.length, '모서리 중복 없음');
     assert.ok(posts.some(([x, z]) => z === -H && x === -H), '북서 모서리는 있다');
   }
@@ -49,6 +50,26 @@ test('perimeterTrees: 남쪽 비움 · 스커트 원판(r48) 안 · 울타리 �
       assert.ok(r > H + 4 && r < 48, `울타리 밖·원판 안 (r=${r})`);
       assert.ok(t.h >= 2.0);
       assert.ok(!(t.z > 0 && Math.abs(t.x) < 0.3 * t.z), '남쪽 출입구 방향은 비어 있다');
+      assert.ok(!(t.x < 0 && Math.abs(t.z) < 0.3 * -t.x), '서쪽 측량소 방향은 비어 있다');
     }
+  }
+});
+
+test('측량소 마당: 울타리 밖 서쪽 · 건물·탁자가 마당 안 · 문 앞 통로(|z|<1.2)는 비어 있다', () => {
+  for (const H of [6, 9, 11]) {
+    const y = surveyYard(H), o = surveyOfficePos(H), d = surveyDeskPos(H), b = surveyBenchPos(H);
+    assert.equal(y.x1, -H, '마당은 울타리 서쪽 면에 붙는다');
+    assert.equal(y.x0, -H - YARD_D);
+    assert.deepEqual([y.z0, y.z1], [-YARD_HZ, YARD_HZ]);
+    for (const p of [o, d, b]) {
+      assert.ok(p.x > y.x0 && p.x < y.x1, `마당 안 x (${p.x})`);
+      assert.ok(p.z > y.z0 && p.z < y.z1, `마당 안 z (${p.z})`);
+    }
+    // 건물(4.4×3.6)·탁자가 서쪽 문 통로(|z|<1.2)를 막지 않아야 한다 — 막으면 밭에서 나올 수 없다
+    assert.ok(o.z + 1.8 < -1.2, '건물 북쪽 끝이 통로 아래');
+    assert.ok(d.z + 0.5 < -1.2, '탁자도 통로 아래');
+    assert.ok(d.x > o.x, '탁자는 건물 동쪽(문 쪽) 앞');
+    assert.ok(b.z - 0.7 > 1.2, '작업대는 통로 위쪽(남쪽)');
+    assert.ok(Math.hypot(b.x - d.x, b.z - d.z) > 3, '두 상호작용 지점이 서로 프롬프트를 잡아먹지 않게 떨어져 있다');
   }
 });

@@ -34,12 +34,13 @@ export function farmStageInfo(stage, inventory = {}) {
   return { maxed: false, cur, next, items, affordable: items.every(i => i.have >= i.need) };
 }
 
-/** 울타리 말뚝 [x,z] 목록 — 1.5 간격 둘레, 남쪽 가운데(|x|<1.2)는 출입구, 모서리 중복 제거 */
+/** 울타리 말뚝 [x,z] 목록 — 1.5 간격 둘레, 남쪽 가운데(|x|<1.2)는 마을 출구, 서쪽 가운데(|z|<1.2)는 📐측량소 문. 모서리 중복 제거 */
 export function fencePosts(half) {
   const seen = new Set(), out = [];
   for (let i = -half; i <= half; i += 1.5) {
     for (const [x, z] of [[i, -half], [i, half], [-half, i], [half, i]]) {
-      if (z === half && Math.abs(x) < 1.2) continue;
+      if (z === half && Math.abs(x) < 1.2) continue;      // 남쪽 — 마을로 나가는 문
+      if (x === -half && Math.abs(z) < 1.2) continue;      // 서쪽 — 측량소 마당으로 나가는 문
       const key = x + ',' + z;
       if (seen.has(key)) continue;
       seen.add(key); out.push([x, z]);
@@ -48,15 +49,31 @@ export function fencePosts(half) {
   return out;
 }
 
-/** 둘레 나무 {x, h, z} — 24자리 중 남쪽(+z) 출입구 ±0.45rad 비움. 반지름은 울타리 밖 5~17 */
+/** 둘레 나무 {x, h, z} — 24자리 중 남쪽(+z) 출구·서쪽(-x) 측량소 방향 비움. 반지름은 울타리 밖 5~17 */
 export function perimeterTrees(half) {
   const out = [];
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2;
-    if (Math.abs(a - Math.PI / 2) < 0.45) continue;
+    if (Math.abs(a - Math.PI / 2) < 0.45) continue;       // 남쪽 출구
+    if (Math.abs(a - Math.PI) < 0.5) continue;             // 서쪽 측량소 마당
     const r = half + 5 + ((i * 7) % 6) * 2.4;
     const h = 2.0 + ((i * 13) % 7) * 0.3;
     out.push({ x: Math.cos(a) * r, h, z: Math.sin(a) * r });
   }
   return out;
 }
+
+// ── 📐 측량소 — 밭 서쪽 문 밖 마당(밭 로컬 좌표) ───────────────────────────
+//    밭 안은 심는 공간이 제일 귀하다. 증축 창구를 울타리 밖으로 내보내 안쪽 칸을 한 칸도 쓰지 않는다.
+//    울타리가 커지면 마당도 그만큼 서쪽으로 밀려난다(모든 좌표가 half 기준).
+export const YARD_D = 8;      // 마당 깊이(울타리 → 서쪽)
+export const YARD_HZ = 5.5;   // 마당 남북 반폭
+
+/** 마당 사각 {x0,x1,z0,z1} — 울타리 서쪽 면에 딱 붙는다 */
+export function surveyYard(half) { return { x0: -half - YARD_D, x1: -half, z0: -YARD_HZ, z1: YARD_HZ }; }
+/** 측량소 건물 중심 [x,z] — 문(z 0 부근) 앞을 비우도록 남쪽으로 물러나 있다 */
+export function surveyOfficePos(half) { return { x: -half - 4.4, z: -3.2 }; }
+/** 제도 탁자(상호작용 지점) — 건물 동쪽 앞. 여기 서면 다음 단계 비용 프롬프트가 뜬다 */
+export function surveyDeskPos(half) { return { x: -half - 1.9, z: -2.6 }; }
+/** 🔧 자재 작업대 — 밭 시설을 주문하는 곳(마을 작업대는 텃밭에서 너무 멀다). 문 앞 통로 반대편 */
+export function surveyBenchPos(half) { return { x: -half - 2.6, z: 2.6 }; }
