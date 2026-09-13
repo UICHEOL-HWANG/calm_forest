@@ -39,6 +39,7 @@ import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor } 
 import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
+import { MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees } from './farm-stage.js';   // 🌾 밭 단계 증축 규칙(텃밭 6 → 넓은 밭 9 → 대농장 11)
 import { nearestOutdoorAt, takeStored } from './outdoor-move.js';   // 🪵 야외 장식 옮기기·보관 규칙(근접 탐색·보관함)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -285,7 +286,7 @@ const RANK = new THREE.Vector3(13.5, 0, 1.5);  // 🏆 랭킹 게시판 — 호�
 let nearRank = false;
 const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
-const FARM_HALF = 6;                            // 텃밭 반경(정사각 한 변의 절반)
+function farmHalf() { return farmHalfOf(gameState.farm?.stage || 1); }   // 텃밭 반경(정사각 한 변의 절반) — 단계 표는 js/farm-stage.js
 const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
 let atFarm = false;                             // 텃밭 안에 있는지
 let lastMini = 0;                               // 미니맵 갱신 throttle
@@ -941,6 +942,7 @@ const gameState = {
   dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
+  farm: { stage: 1 },                       // 🌾 밭 단계 { 1 텃밭 · 2 넓은 밭 · 3 대농장 } — 표는 js/farm-stage.js, 축소 없음
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
   night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
@@ -1913,6 +1915,10 @@ export async function enterGame() {
   if (_hq >= 1 && _hq <= MAX_HOUSE_STAGE) for (let s = gameState.houseStage + 1; s <= _hq; s++) buildHouseStage(s, true);
   if (_wq.get('coop') === '1' && !gameState.coop.built) buildCoop(true);   // 테스트: ?coop=1 — 닭장 미리보기
   if (_wq.get('farm') === '1') setTimeout(() => enterFarm(), 60); // 테스트: ?farm=1 — 개인 텃밭 바로 입장(?give=seed:9 와 조합)
+  // 테스트: ?farmstage=2|3 — 밭 증축 미리보기 / ?farmmax=1 — 3단계 만땅(121칸 심음, 스펙 §5-4 드로우콜 최악 상태)
+  const _fs = parseInt(_wq.get('farmstage') || '', 10);
+  if (_fs >= 1 && _fs <= MAX_FARM_STAGE && _fs !== gameState.farm.stage) { gameState.farm.stage = _fs; rebuildFarm(true); }
+  if (_wq.get('farmmax') === '1') { gameState.farm.stage = MAX_FARM_STAGE; rebuildFarm(true); setTimeout(() => window.__farmMax?.(), 120); }
   refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
   refreshRepeatQuests();               // [반복] 체인을 다 깬 주민 중 오늘 열리는 3명
   // 테스트: ?owl=1 — 오늘 일일 의뢰를 전부 끝낸 상태로 만들어 ✨특별 의뢰 배달을 바로 본다
@@ -1981,7 +1987,7 @@ export async function enterGame() {
     //     오프셋이 홀수면 실제로는 생길 수 없는 배치가 되고 중복 검사(p.x === …)도 무의미해진다.
     //   half 인자는 PLOT_CAP(160) 재할당 분기를 실제로 밟아보기 위한 것 — __farmMax(14) 면 13×13=169칸.
     //   기본값은 실제 텃밭 크기라 드로우콜 측정은 인자 없이 부른다.
-    window.__farmMax = (half = FARM_HALF) => {
+    window.__farmMax = (half = farmHalf()) => {
       const H = half;
       for (let x = -H + 2; x <= H - 2; x += 2) for (let z = -H + 2; z <= H - 2; z += 2) {
         if (!plots.some(p => p.x === FARM.x + x && p.z === FARM.z + z)) createPlot(FARM.x + x, FARM.z + z, true);
@@ -2055,6 +2061,10 @@ function applySave(saved) {
   if (saved.house && Array.isArray(saved.house.addons))                  // 🧩 구성품 복원(카탈로그에 있는 id 만, 중복 제거) — 집 복원(buildHouseStage) 전에
     gameState.house.addons = [...new Set(saved.house.addons.filter(id => HOUSE_ADDONS.some(a => a.id === id)))];
   if (saved.house && saved.house.bedGiven) gameState.house.bedGiven = true;   // 🛏️ 기본 침대를 이미 받았는지(두 번 주지 않게)
+  if (saved.farm && Number.isFinite(saved.farm.stage)) {                     // 🌾 밭 단계 복원 — 밭(plots) 복원보다 먼저 울타리를 맞춘다. 없으면 1단계
+    gameState.farm.stage = Math.max(1, Math.min(MAX_FARM_STAGE, Math.floor(saved.farm.stage)));
+    if (gameState.farm.stage > 1) rebuildFarm(true);
+  }
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
     saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
@@ -2308,7 +2318,7 @@ function buildWorld() {
   spawnRankBoard();   // 🏆 랭킹 게시판(리더보드)
   spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
-  buildFarm();        // 개인 텃밭 필드
+  rebuildFarm(true);  // 개인 텃밭 필드(1단계) — 세이브에 단계가 있으면 applySave 가 다시 짓는다
   buildFarmInstances();   // 🌾 밭 흙 인스턴스 버퍼
   spawnMineGate();    // 채굴 동굴 입구
   buildMine();        // 채굴 동굴
@@ -3082,6 +3092,29 @@ function updateChickens(dt) {
     ch.rotation.y = Math.atan2(dx, dz);
     ch.position.y = Math.abs(Math.sin(u.phase)) * 0.045;   // 종종걸음 통통
   }
+}
+
+// 📐 측량 말뚝 — 밭 단계 증축(텃밭 → 넓은 밭 → 대농장). 닭장과 같은 문법: 부족하면 토스트, 충분하면 즉시 차감·재빌드.
+//   비용은 프롬프트에 이미 보이므로 확인 모달은 없다. 확장은 바깥으로만 — 심어둔 밭·장식 좌표는 그대로.
+function farmStakeInteract() {
+  const info = farmStageInfo(gameState.farm.stage, gameState.inventory);
+  if (info.maxed) { ui.toast?.('📐 이미 가장 넓은 밭이에요', 2400); return; }
+  const lack = info.items.filter(i => i.have < i.need);
+  if (lack.length) {
+    ui.toast?.('📐 넓히기 재료 부족 — ' + lack.map(i => `${RES_LABEL[i.k] || i.k} ${i.have}/${i.need}`).join(' · '), 3000);
+    return;
+  }
+  const next = info.next;
+  for (const k in next.cost) gameState.inventory[k] -= next.cost[k];
+  logEcon('farm_expand', 'stage' + next.stage, -next.cost.coins, gameState.inventory.coins);   // [원장] 코인 소비 — 집 증축 'house_expand'/'stageN' 과 같은 축
+  refreshInventoryUI();
+  const sp = farmStakePos(); doPlayerAction(sp.x, sp.z);   // 건축 제스처는 옛 말뚝 자리에서
+  gameState.farm.stage = next.stage;
+  rebuildFarm();                                            // 축하 연출 포함 — 울타리·나무·팻말·말뚝이 새 반경으로
+  ui.toast?.(`🌾 ${next.name} 완성! 울타리가 더 멀리 나갔어요 🎉`, 3200);
+  trackEvent('farm_expand', { stage: next.stage, wood: next.cost.wood, stone: next.cost.stone, coins: next.cost.coins });   // [GA4] 증축 퍼널(집 house_expand 와 같은 축: stage)
+  nearDoor = null; ui.setDoorPrompt?.(null);               // 말뚝이 새 울타리로 옮겨갔다 — 옛 프롬프트를 지우고 다음 프레임에 다시 판정
+  requestSave();
 }
 
 // 🐔 닭장 상호작용 — 미건설: 배지+재료로 건설 / 건설 후: 달걀 걷기 → 모이 주기(하루 루프)
@@ -8026,7 +8059,8 @@ function makeSignpost(text, x = 0, z = 1.3) {
   // 🚧 기둥 충돌 — 캐릭터가 팻말을 뚫고 들어가 판이 머리를 가리던 문제.
   //    월드 좌표는 부모 그룹 배치 뒤에야 확정되므로 다음 프레임에 등록한다.
   //    (출입 판정은 반경 1.9 근접이라 r0.3 기둥이 문을 막지 않음)
-  requestAnimationFrame(() => { const wp = new THREE.Vector3(); post.getWorldPosition(wp); solidCircle(wp.x, wp.z, 0.3); });
+  //    콜라이더는 grp.userData.solid 에 보관 — 팻말이 든 그룹을 다시 지을 때(rebuildFarm) removeSolid 로 같이 치운다
+  requestAnimationFrame(() => { const wp = new THREE.Vector3(); post.getWorldPosition(wp); grp.userData.solid = solidCircle(wp.x, wp.z, 0.3); });
   return grp;
 }
 
@@ -8058,8 +8092,21 @@ function spawnFarmGate() {
   [-1.1, 1.1].forEach(px => solidCircle(FARM_GATE.x + px, FARM_GATE.z, 0.28));
 }
 
-// 텃밭 필드(잔디 바닥 + 울타리 + 나가는 문 + 허수아비)
-function buildFarm() {
+// 📐 측량 말뚝 월드 좌표 — 남쪽 출구 왼쪽(출구 팻말 +1.9 의 거울). 울타리가 커지면 같이 옮겨진다
+function farmStakePos() { return { x: FARM.x - 2.2, z: FARM.z + farmHalf() - 0.2 }; }
+
+// 텃밭 필드(잔디 바닥 + 울타리 + 나가는 문 + 📐측량 말뚝) — 단계(farmHalf)에 맞춰 다시 지을 수 있다.
+//   흙·작물·배지 InstancedMesh 는 plots 만 덮는 동적 버퍼라(scene 직속) 여기와 무관 — 울타리 안쪽 지형만 다시 그린다.
+//   silent=false 면 증축 축하 연출(색종이·반짝임·효과음). 초기 생성·세이브 복원·dev 파라미터는 silent=true.
+function rebuildFarm(silent = false) {
+  if (farmGroup) {
+    // 이 그룹의 재질·지오메트리는 전부 여기서 만든 것(clayMat/woodMat 은 호출마다 새 재질, 텍스처는 clone) — 공유 자원 없음
+    farmGroup.traverse(o => {
+      if (o.userData.solid) removeSolid(o.userData.solid);   // 팻말 기둥 콜라이더 — 안 치우면 옛 울타리 자리에 안 보이는 벽이 남는다
+      if (o.isMesh) { o.geometry.dispose(); if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
+    });
+    scene.remove(farmGroup); farmGroup = null;
+  }
   const g = new THREE.Group(); g.position.copy(FARM);
   // 주변 배경 — 필드가 마을 지면(r60) 밖 허공에 떠 있어, 밤엔 필드 너머가 하늘색 허공으로
   // 그대로 노출됐다(밤 그레이딩까지 얹혀 보랏빛 허공). 동굴·안개 숲처럼 자체 배경을 깐다.
@@ -8070,15 +8117,10 @@ function buildFarm() {
   //   줄기·잎을 각각 InstancedMesh 1개로 묶는다(48메시 → 2콜). 줄기 높이(h)가 위치마다 달라
   //   지오메트리 자체 높이는 1로 고정해 두고 인스턴스 행렬의 Y 스케일로 표현한다(반지름은 그대로).
   //   잎 색은 원래 leaf1/2/3 세 가지였으나 배경 장식이라 차이가 안 보여 leaf1 하나로 통일(재질 절감).
-  const _treeTrunks = [], _treeLeaves = [];
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2;
-    if (Math.abs(a - Math.PI / 2) < 0.45) continue;              // 남쪽(+z) 출입구
-    const r = FARM_HALF + 5 + ((i * 7) % 6) * 2.4;
-    const h = 2.0 + ((i * 13) % 7) * 0.3;
-    _treeTrunks.push([Math.cos(a) * r, h, Math.sin(a) * r]);
-    _treeLeaves.push([Math.cos(a) * r, h + 1.0, Math.sin(a) * r]);
-  }
+  const H = farmHalf();
+  const _trees = perimeterTrees(H);                                // 자리 규칙은 js/farm-stage.js (남쪽 출입구 비움)
+  const _treeTrunks = _trees.map(t => [t.x, t.h, t.z]);
+  const _treeLeaves = _trees.map(t => [t.x, t.h + 1.0, t.z]);
   const trunkMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.22, 1, 5), clayMat(PAL.trunk), _treeTrunks.length);
   const leafMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(1.2, 2.6, 6), clayMat(PAL.leaf1), _treeLeaves.length);
   {
@@ -8088,17 +8130,10 @@ function buildFarm() {
   }
   trunkMesh.instanceMatrix.needsUpdate = true; leafMesh.instanceMatrix.needsUpdate = true;
   g.add(trunkMesh, leafMesh);
-  const ground = new THREE.Mesh(new THREE.BoxGeometry(FARM_HALF * 2, 0.2, FARM_HALF * 2), clayMat(0x8fce7e, false));
+  const ground = new THREE.Mesh(new THREE.BoxGeometry(H * 2, 0.2, H * 2), clayMat(0x8fce7e, false));
   ground.position.y = 0.05; ground.receiveShadow = true; g.add(ground);
-  // 울타리 둘레 — 말뚝 36~60개가 위치만 다르고 크기·재질은 같아 InstancedMesh 1개로 묶는다.
-  const H = FARM_HALF;
-  const _posts = [];
-  for (let i = -H; i <= H; i += 1.5) {
-    for (const [x, z] of [[i, -H], [i, H], [-H, i], [H, i]]) {
-      if (Math.abs(x) < 1.2 && z === H) continue; // 남쪽 가운데는 출입구
-      _posts.push([x, z]);
-    }
-  }
+  // 울타리 둘레 — 말뚝 35~58개가 위치만 다르고 크기·재질은 같아 InstancedMesh 1개로 묶는다(자리 규칙은 js/farm-stage.js).
+  const _posts = fencePosts(H);
   const postMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), woodMat(1, 1), _posts.length);
   {
     const _pm = new THREE.Matrix4();
@@ -8110,16 +8145,23 @@ function buildFarm() {
   const gate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.14, 0.4), woodMat(1, 2, 0xa9743f)); gate.position.set(0, 0.16, H); g.add(gate);
   // 출구 팻말은 문 옆으로 — 문 가운데 띄우면(카메라가 남쪽이라) 문 앞에 선 캐릭터를 판이 가린다
   g.add(makeSignpost('🚪 나가기', 1.9, H - 0.2));
+  // 📐 측량 말뚝 — 출구 반대편. 근접하면 다음 단계 비용 프롬프트, 액션이면 증축(farmStakeInteract)
+  g.add(makeSignpost('📐 측량 말뚝', -2.2, H - 0.2));
   // (허수아비 장식은 제거 — 이제 작업대에서 만들어 직접 배치해야 밤손님을 막는다)
-  scene.add(g); farmGroup = g; farmGroup.visible = false;   // 텃밭에 있을 때만 표시
+  scene.add(g); farmGroup = g; farmGroup.visible = atFarm;   // 텃밭에 있을 때만 표시
+  if (!silent) {   // 🏗️ 증축 축하 — 토스트는 호출부(farmStakeInteract)가 담당(집 증축과 같은 분담)
+    const sp = farmStakePos();
+    spawnConfetti(sp.x, 2.4, sp.z); spawnSparkle(sp.x, 3.0, sp.z, 40);
+    Sound.complete(); triggerMoment();
+  }
 }
 
 function enterFarm() {
   atFarm = true;
-  player.position.set(FARM.x, 0, FARM.z + FARM_HALF - 1.5); player.rotation.y = Math.PI;
+  player.position.set(FARM.x, 0, FARM.z + farmHalf() - 1.5); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요 · 나갈 땐 남쪽 문');
-  Sound.blip(); trackEvent('enter_farm'); // [GA4]
+  Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
 }
 function exitFarm() {
   atFarm = false;
@@ -8396,7 +8438,14 @@ function updateDoorInteract() {
       }
     }
   } else if (atFarm) {
-    if (dist2D({ x: FARM.x, z: FARM.z + FARM_HALF }, player.position) < 1.8) { nd = 'farmexit'; prompt = '🚪 나가기'; }
+    if (dist2D({ x: FARM.x, z: FARM.z + farmHalf() }, player.position) < 1.8) { nd = 'farmexit'; prompt = '🚪 나가기'; }
+    else if (dist2D(farmStakePos(), player.position) < 1.8) {   // 📐 측량 말뚝 — 다음 단계 비용을 프롬프트에(닭장 문법: 액션 = 즉시 증축)
+      nd = 'farmstake';
+      const info = farmStageInfo(gameState.farm.stage, gameState.inventory);
+      prompt = info.maxed ? '📐 더 넓힐 수 없어요'
+        : `📐 ${info.next.name}으로 넓히기 🪵${info.next.cost.wood} 🪨${info.next.cost.stone} 🪙${info.next.cost.coins}`;
+      firstHintBanner('farmStake', '📐', '측량 말뚝', '재료를 모아 밭을 넓혀요. 심어둔 밭은 그대로예요');
+    }
   } else if (atMine) {
     if (dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
@@ -8644,10 +8693,11 @@ function villagePlaces() {
 function minimapMarks(place) {
   const marks = [];
   if (place === 'farm') {
-    marks.push({ x: FARM.x, z: FARM.z + FARM_HALF, c: '#c8905a', kind: 'exit' });            // 나가는 문(남쪽)
-    marks.push({ x: FARM.x - FARM_HALF + 1.5, z: FARM.z - FARM_HALF + 1.5, c: '#d9b25f', r: 2.4 }); // 허수아비
+    const H = farmHalf();
+    marks.push({ x: FARM.x, z: FARM.z + H, c: '#c8905a', kind: 'exit' });            // 나가는 문(남쪽)
+    // (허수아비 마크는 제거 — 고정 장식이 없어진 뒤로 빈 모서리를 가리키던 죽은 표시였다)
     for (const p of plots) {   // 텃밭 안 밭만(경계로 필터)
-      if (Math.abs(p.x - FARM.x) > FARM_HALF + 1 || Math.abs(p.z - FARM.z) > FARM_HALF + 1) continue;
+      if (Math.abs(p.x - FARM.x) > H + 1 || Math.abs(p.z - FARM.z) > H + 1) continue;
       marks.push({ x: p.x, z: p.z, c: PLOT_MINI[p.state] || '#7a5230', r: 2.4 });
     }
   } else if (place === 'mine') {
@@ -8734,7 +8784,7 @@ function animate() {
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? FARM : place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? INT_HALF : place === 'farm' ? FARM_HALF : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
+        md.half = place === 'house' ? INT_HALF : place === 'farm' ? farmHalf() : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -8890,8 +8940,9 @@ function updatePlayer(dt, t) {
     player.position.x = Math.max(INT.x - INT_HALF + 0.6, Math.min(INT.x + INT_HALF - 0.6, player.position.x));
     player.position.z = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.6, player.position.z));
   } else if (atFarm) { // 텃밭: 울타리 안쪽으로 제한
-    player.position.x = Math.max(FARM.x - FARM_HALF + 0.6, Math.min(FARM.x + FARM_HALF - 0.6, player.position.x));
-    player.position.z = Math.max(FARM.z - FARM_HALF + 0.6, Math.min(FARM.z + FARM_HALF - 0.6, player.position.z));
+    const H = farmHalf();
+    player.position.x = Math.max(FARM.x - H + 0.6, Math.min(FARM.x + H - 0.6, player.position.x));
+    player.position.z = Math.max(FARM.z - H + 0.6, Math.min(FARM.z + H - 0.6, player.position.z));
   } else if (atMine) { // 동굴: 벽 안쪽으로 제한
     player.position.x = Math.max(MINE.x - MINE_HALF + 0.7, Math.min(MINE.x + MINE_HALF - 0.7, player.position.x));
     player.position.z = Math.max(MINE.z - MINE_HALF + 0.6, Math.min(MINE.z + MINE_HALF - 0.7, player.position.z));
@@ -9702,6 +9753,7 @@ function handleAction() {
   if (nearDoor === 'outdoor') { if (nearOutdoorMesh) pickOutdoor(nearOutdoorMesh); return; }   // 🪵 야외 장식 옆에서 액션 = 들기
   if (nearDoor === 'farm') return enterFarm();
   if (nearDoor === 'farmexit') return exitFarm();
+  if (nearDoor === 'farmstake') return farmStakeInteract();   // 📐 측량 말뚝 옆에서 액션 = 밭 증축
   if (nearDoor === 'mine') return enterMine();
   if (nearDoor === 'mineexit') return exitMine();
   if (nearDoor === 'cafe') return enterCafe();

@@ -20,6 +20,8 @@ test('isDevSession: dev 파라미터가 있으면 true', () => {
   assert.equal(isDevSession('?house=6'), true);
   assert.equal(isDevSession('?platform=toss&coop=1'), true);
   assert.equal(isDevSession('?weather=rain'), true);
+  assert.equal(isDevSession('?farm=1&farmstage=3'), true);   // 🌾 밭 증축 미리보기
+  assert.equal(isDevSession('?farmmax=1'), true);            // 🌾 드로우콜 최악 상태 재현
   assert.equal(isDevSession('?spawn=3,4'), true);
   assert.equal(isDevSession('?sea=1'), true);
   assert.equal(isDevSession('?give=wood'), true);
