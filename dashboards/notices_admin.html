@@ -44,6 +44,12 @@
   .pv { border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface-0); }
   .pv .t { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
   .pv .b { font-size: 13px; line-height: 1.6; white-space: pre-wrap; color: var(--ink-2); }
+  .pv table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12.5px; line-height: 1.45; margin: 6px 0; }
+  .pv th { text-align: left; font-size: 11px; color: var(--ink-3); padding: 3px 7px; border-bottom: 1.5px solid var(--line); }
+  .pv td { padding: 6px 7px; border-bottom: 1px solid var(--line-soft); vertical-align: top; overflow-wrap: anywhere; }
+  .pv tr:last-child td { border-bottom: 0; }
+  .pv th:first-child, .pv td:first-child { width: 32%; }
+  .pv td:first-child { font-weight: 700; background: var(--surface-2); border-radius: 6px; }
   .pv .d { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
   .pvtabs { display: flex; gap: 6px; margin-bottom: 8px; }
   .pvtabs button.on { background: var(--surface-2); }
@@ -81,7 +87,7 @@
       <div class="stack">
         <div class="card">
           <h2 id="formTitle">새 공지 쓰기</h2>
-          <p class="hint">한국어는 필수, 영어는 비워 두면 영어 모드 유저에게 한국어가 그대로 보여요.</p>
+          <p class="hint">한국어는 필수, 영어는 비워 두면 영어 모드 유저에게 한국어가 그대로 보여요.<br>본문 줄에 <code>|</code> 를 넣으면 표가 돼요 — 첫 <code>|</code> 줄이 머리(예: <code>무엇이 | 어떻게</code>), 표 앞뒤 줄은 문단. 한 줄 30자 안쪽이 폰에서 깔끔해요.</p>
           <label class="f" for="title">제목</label>
           <input type="text" id="title" maxlength="80" placeholder="🦉 의뢰가 늘었어요" />
           <label class="f" for="body">본문</label>
@@ -124,6 +130,7 @@
 
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
+    import { parseBody } from '../js/notices.js';   // 게임 소식함과 같은 '|' 표 규칙
     const $ = (id) => document.getElementById(id);
     const showMsg = (html) => { $('load').style.display = 'none'; const m = $('msg'); m.style.display = 'block'; m.innerHTML = html; };
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -183,10 +190,26 @@
       const v = read();
       const en = pvLang === 'en';
       $('pvT').textContent = (en && v.title_en) ? v.title_en : (v.title || '제목');
-      $('pvB').textContent = (en && v.body_en) ? v.body_en : (v.body || '본문');
+      renderBody($('pvB'), (en && v.body_en) ? v.body_en : (v.body || '본문'));
       const noEn = en && !(v.title_en || v.body_en);
       $('pvD').textContent = (replyTo ? '💬 1:1 답장 · ' : '📣 전체 공지 · ') + (noEn ? 'English 비어 있음 → 한국어 그대로 보임' : fmtDate(new Date().toISOString()));
     }
+
+    // 게임 소식함과 같은 렌더: 문단 + '|' 표 (문자열은 전부 textContent)
+    function renderBody(box, text) {
+      const b = parseBody(text); box.innerHTML = '';
+      const p = (lines) => lines.forEach((l) => { const e = document.createElement('div'); e.textContent = l; e.style.marginBottom = '6px'; box.appendChild(e); });
+      if (b.lead.length) p(b.lead);
+      if (b.header || b.rows.length) {
+        const t = document.createElement('table');
+        if (b.header) { const tr = t.createTHead().insertRow(); b.header.forEach((c) => { const th = document.createElement('th'); th.textContent = c; tr.appendChild(th); }); }
+        const tb = t.createTBody(); b.rows.forEach((r) => { const tr = tb.insertRow(); r.forEach((c) => { tr.insertCell().textContent = c; }); });
+        box.appendChild(t);
+      }
+      if (b.tail.length) p(b.tail);
+    }
+
+    window.__noticesAdmin = { renderBody };   // 디버그 훅 — 게이트 없이 미리보기 렌더만 확인할 때(게임의 __introJump 와 같은 용도)
 
     function resetForm() {
       editing = null; replyTo = null; fill(null); setTarget(); preview();

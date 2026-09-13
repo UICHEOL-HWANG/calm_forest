@@ -54,3 +54,25 @@ export function quoteLine(n) {
   const flat = raw.replace(/\s+/g, ' ').trim();
   return flat.length > QUOTE_MAX ? flat.slice(0, QUOTE_MAX) + '…' : flat;
 }
+
+/**
+ * 본문 텍스트 → 문단/표. DB 는 그냥 텍스트고, 줄에 '|' 가 있으면 표 행으로 읽는 규칙 하나뿐이다
+ * (게임 소식함과 관리자 미리보기가 같은 함수를 써서 보이는 모양이 어긋나지 않는다).
+ *   · lead   : 표 앞의 문단들 · tail : 표 뒤의 문단들 (빈 줄은 버림)
+ *   · header : 첫 '|' 줄 — 단, '|' 줄이 둘 이상일 때만 머리로 쓴다(한 줄뿐이면 그냥 행)
+ *   · rows   : 나머지 '|' 줄, 셀은 앞뒤 공백 제거. 셀 수는 줄마다 달라도 그대로 둔다
+ */
+export function parseBody(text) {
+  const out = { lead: [], header: null, rows: [], tail: [] };
+  if (typeof text !== 'string') return out;
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const table = lines.filter(l => l.includes('|')).map(l => l.split('|').map(c => c.trim()));
+  let seenTable = false;
+  for (const l of lines) {
+    if (l.includes('|')) { seenTable = true; continue; }
+    (seenTable ? out.tail : out.lead).push(l);
+  }
+  if (table.length >= 2) { out.header = table[0]; out.rows = table.slice(1); }
+  else out.rows = table;
+  return out;
+}

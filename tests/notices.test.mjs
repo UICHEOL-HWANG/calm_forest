@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { unreadNotices, pickText, maxId, quoteLine, expandedIds } from '../js/notices.js';
+import { unreadNotices, pickText, maxId, quoteLine, expandedIds, parseBody } from '../js/notices.js';
 
 const N = (id, extra = {}) => ({ id, title: `제목${id}`, body: `본문${id}`, title_en: null, body_en: null,
                                  target_user_id: null, reply_to: null, created_at: '2026-09-11T00:00:00Z', feedback: null, ...extra });
@@ -57,4 +57,36 @@ test('expandedIds: 빈 목록·쓰레기 행은 조용히 무시', () => {
   assert.deepEqual(expandedIds([], 0), []);
   assert.deepEqual(expandedIds(null, 0), []);
   assert.deepEqual(expandedIds([null, { id: 'x' }, N(2)], 0), [2]);
+});
+
+// ── parseBody: 본문 텍스트의 '|' 줄을 표로 — DB 는 텍스트 그대로, 렌더 규칙만 공유(게임 소식함·관리자 미리보기) ──
+test('parseBody: | 없는 본문은 문단(lead)만', () => {
+  const r = parseBody('첫 줄\n\n둘째 줄');
+  assert.deepEqual(r, { lead: ['첫 줄', '둘째 줄'], header: null, rows: [], tail: [] });
+});
+test('parseBody: 첫 | 줄은 표 머리, 나머지는 행 — 셀 앞뒤 공백 제거', () => {
+  const r = parseBody('리드 문장\n무엇이 | 어떻게\n반복 의뢰 |  다시 말을 걸어요 \n새 이웃|🦡오소리 · 🦆오리');
+  assert.deepEqual(r.lead, ['리드 문장']);
+  assert.deepEqual(r.header, ['무엇이', '어떻게']);
+  assert.deepEqual(r.rows, [['반복 의뢰', '다시 말을 걸어요'], ['새 이웃', '🦡오소리 · 🦆오리']]);
+});
+test('parseBody: | 줄이 하나뿐이면 머리 없이 행 하나', () => {
+  const r = parseBody('얼굴 | 매끈하게');
+  assert.equal(r.header, null);
+  assert.deepEqual(r.rows, [['얼굴', '매끈하게']]);
+});
+test('parseBody: 표 뒤의 문단은 tail — 빈 줄은 버림', () => {
+  const r = parseBody('a | b\nc | d\n\n놀이 방식은 그대로예요\n');
+  assert.deepEqual(r.rows, [['c', 'd']]);
+  assert.deepEqual(r.header, ['a', 'b']);
+  assert.deepEqual(r.tail, ['놀이 방식은 그대로예요']);
+});
+test('parseBody: 빈 값·null 은 빈 결과', () => {
+  assert.deepEqual(parseBody(''), { lead: [], header: null, rows: [], tail: [] });
+  assert.deepEqual(parseBody(null), { lead: [], header: null, rows: [], tail: [] });
+});
+test('parseBody: 셀 수는 줄마다 달라도 그대로(렌더가 맞춤)', () => {
+  const r = parseBody('h1 | h2\nx | y | z\nq');
+  assert.deepEqual(r.rows, [['x', 'y', 'z']]);
+  assert.deepEqual(r.tail, ['q']);
 });

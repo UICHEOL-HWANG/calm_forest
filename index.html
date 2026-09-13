@@ -267,14 +267,28 @@
   .nt-item h3 { margin: 0 0 6px; font-size: 15px; }
   .nt-quote { margin: 0 0 8px; padding: 6px 10px; background: #f3f6f2; border-left: 3px solid var(--mint); border-radius: 6px; font-size: 12.5px; opacity: .8; }
   .nt-body { margin: 0; font-size: 14px; line-height: 1.6; opacity: .9; white-space: pre-line; overflow-wrap: anywhere; }
-  /* 접힌 지난 소식 — 제목 한 줄만. 줄 전체가 버튼이라 폰에서도 누르기 쉽다 */
-  .nt-item.nt-fold { padding: 0; }
-  .nt-toggle { display: block; width: 100%; padding: 11px 0; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-  .nt-toggle .nt-head { margin-bottom: 2px; }
-  .nt-toggle h3 { font-weight: 600; opacity: .75; }
-  .nt-item.open .nt-toggle h3 { opacity: 1; }
-  .nt-item.nt-fold h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; }
-  .nt-caret { opacity: .55; font-size: 13px; flex: none; }
+  /* 한 페이지에 공지 하나 — 아래 1·2·3 버튼으로 넘긴다(다 펼쳐 잇던 방식은 폰에서 스크롤 벽) */
+  .nt-page .nt-head { justify-content: flex-start; }
+  .nt-page h3 { margin: 0 0 10px; font-size: 16px; }
+  .nt-lead, .nt-tail { margin: 0 0 7px; font-size: 13.5px; line-height: 1.55; opacity: .85; overflow-wrap: anywhere; }   /* 줄마다 문단 — 빈 줄 없이도 숨이 트인다 */
+  .nt-tail { margin: 8px 0 0; }
+  /* 본문 '|' 줄 → 2열 표. 첫 열은 굵게·연녹 배경(폰에서 열 구분) · 셀이 길면 줄바꿈(가로 넘침 금지) */
+  table.nt-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.45; margin: 0 0 6px; }   /* fixed: 긴 영문·URL 이 와도 첫 열이 찌그러지지 않는다(폰 실측) */
+  table.nt-tbl th { text-align: left; font-size: 11.5px; color: #7d8d84; font-weight: 700; padding: 4px 8px; border-bottom: 1.5px solid #e3ebe4; }
+  table.nt-tbl td { padding: 7px 8px; border-bottom: 1px solid #eef3ee; vertical-align: top; overflow-wrap: anywhere; }
+  table.nt-tbl tr:last-child td { border-bottom: none; }
+  table.nt-tbl th:first-child, table.nt-tbl td:first-child { width: 32%; }
+  table.nt-tbl td:first-child { font-weight: 700; color: #2d4a3a; background: #f4faf5; border-radius: 6px; }
+  .nt-foot { font-size: 11.5px; opacity: .55; text-align: right; margin-top: 4px; }
+  .nt-pager { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+  .nt-pager button { min-width: 30px; height: 30px; border: 1.5px solid #dfe8df; background: #fbfdfa; border-radius: 10px; font: inherit; font-weight: 700; font-size: 13px; color: #4e5f56; cursor: pointer; }
+  .nt-pager button.on { background: var(--mint); border-color: var(--mint); color: var(--ink); }
+  .nt-pager button.unread::after { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e07b3c; margin-left: 3px; vertical-align: top; }
+  .nt-pager button.arrow { color: #9aa7a0; border-color: transparent; background: transparent; }
+  .nt-pager button:disabled { opacity: .3; cursor: default; }
+  /* 토스는 상단 52px 을 토스 헤더가 덮는다 — 카드가 그 밑에 깔리지 않게 오버레이 자체를 인셋만큼 내린다 */
+  #notice-modal { padding-top: var(--top-inset); box-sizing: border-box; }
+  #notice-modal .tut-card { max-height: calc(100dvh - 24px - var(--top-inset)); }
   .nt-empty { text-align: center; opacity: .7; font-size: 14px; margin: 8px 0 20px; }
   #char-layout { display: flex; gap: 16px; align-items: stretch; text-align: left; }
   #char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1 1 auto; align-content: start; }
@@ -1743,7 +1757,7 @@
 
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
-    import { pickText, quoteLine, expandedIds } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·펼침 대상
+    import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { IS_TOSS, IS_ITCH } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen } from './js/game.js';
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
@@ -2264,41 +2278,48 @@
       showNotices(list, kind = 'inbox', seenId = 0) {
         $('notice-title').textContent = kind === 'new' ? '📮 새 소식' : '📮 소식함';
         const wrap = $('notice-list'); wrap.innerHTML = '';
-        const rows = [...(list || [])].sort((a, b) => b.id - a.id);   // 최신이 위
+        const rows = [...(list || [])].sort((a, b) => b.id - a.id);   // 최신이 1페이지
         if (!rows.length) { const p = document.createElement('p'); p.className = 'nt-empty'; p.textContent = '아직 온 소식이 없어요 🌱'; wrap.appendChild(p); }
-        // 공지 하나가 200자를 넘어서 다 펼치면 스크롤 벽이 된다 → 안 읽은 것만 펼치고 지난 소식은 제목 한 줄로 접는다
-        const open = new Set(expandedIds(rows, seenId));
-        for (const n of rows) {
+        // 한 페이지에 공지 하나 + 1·2·3 페이저. 안 읽은 페이지(id > seenId)는 번호에 점 — 한 번 들르면 점이 꺼진다
+        const since = Number(seenId) || 0;
+        const visited = new Set();
+        const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+        const renderPage = (i) => {
+          const n = rows[i]; visited.add(Number(n.id)); wrap.innerHTML = '';
           const { title, body } = pickText(n, LANG);
-          const item = document.createElement('div'); item.className = 'nt-item';
-          const head = document.createElement('div'); head.className = 'nt-head';
-          if (n.reply_to) { const kindEl = document.createElement('span'); kindEl.className = 'nt-kind'; kindEl.textContent = '💌 개발자의 답장'; head.appendChild(kindEl); }
-          const date = document.createElement('span'); date.className = 'nt-date'; date.textContent = String(n.created_at || '').slice(0, 10); head.appendChild(date);
-          const h = document.createElement('h3'); h.textContent = title;
-          item.append(head, h);
-          // 본문(+ 답장이면 원문 인용)은 접힌 소식에선 처음엔 안 만든다 — 펼칠 때 한 번만 만든다
-          const fill = () => {
-            const q = quoteLine(n);
-            if (q) { const qe = document.createElement('p'); qe.className = 'nt-quote'; qe.textContent = `내 문의: ${q}`; item.appendChild(qe); }
-            const b = document.createElement('p'); b.className = 'nt-body'; b.textContent = body; item.appendChild(b);
-          };
-          if (open.has(Number(n.id))) { fill(); }
-          else {
-            item.classList.add('nt-fold');
-            const caret = document.createElement('span'); caret.className = 'nt-caret'; caret.textContent = '▸';
-            h.appendChild(caret);   // 제목 줄 끝에 — 날짜 줄에 붙이면 점처럼 보여서 눌리는 줄인지 모른다
-            const btn = document.createElement('button'); btn.className = 'nt-toggle'; btn.type = 'button';
-            btn.setAttribute('aria-expanded', 'false');
-            btn.append(head, h); item.appendChild(btn);
-            btn.addEventListener('click', () => {
-              if (item.classList.contains('open')) return;   // 한 번 펼치면 그대로 둔다(다시 접을 일이 없다)
-              item.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); caret.textContent = '▾';
-              fill();
-              trackEvent('notice_expand', { id: Number(n.id), kind });   // [GA4] 지난 소식을 실제로 열어보는지
-            });
+          const page = el('div', 'nt-item nt-page');
+          const head = el('div', 'nt-head');
+          if (n.reply_to) head.appendChild(el('span', 'nt-kind', '💌 개발자의 답장'));
+          head.appendChild(el('span', 'nt-date', String(n.created_at || '').slice(0, 10)));
+          page.append(head, el('h3', null, title));
+          const q = quoteLine(n);
+          if (q) page.appendChild(el('p', 'nt-quote', `내 문의: ${q}`));
+          const b = parseBody(body);
+          b.lead.forEach(l => page.appendChild(el('p', 'nt-lead', l)));
+          if (b.rows.length || b.header) {
+            const t = el('table', 'nt-tbl');
+            if (b.header) { const tr = t.createTHead().insertRow(); b.header.forEach(c => tr.appendChild(el('th', null, c))); }
+            const tb = t.createTBody(); b.rows.forEach(r => { const tr = tb.insertRow(); r.forEach(c => { tr.insertCell().textContent = c; }); });
+            page.appendChild(t);
           }
-          wrap.appendChild(item);
-        }
+          b.tail.forEach(l => page.appendChild(el('p', 'nt-tail', l)));
+          if (rows.length > 1) page.appendChild(el('div', 'nt-foot', `${i + 1} / ${rows.length}`));
+          wrap.appendChild(page);
+          if (rows.length > 1) {
+            const pager = el('div', 'nt-pager');
+            const go = (j) => { if (j < 0 || j >= rows.length || j === i) return; renderPage(j); trackEvent('notice_page', { id: Number(rows[j].id), index: j, kind }); };   // [GA4] 지난 소식을 실제로 넘겨보는지
+            const btn = (label, j, cls) => { const x = el('button', cls, label); x.type = 'button'; x.disabled = j < 0 || j >= rows.length; x.addEventListener('click', () => go(j)); return x; };
+            pager.appendChild(btn('‹', i - 1, 'arrow'));
+            rows.forEach((r, j) => {
+              const unread = Number(r.id) > since && !visited.has(Number(r.id));
+              const x = btn(String(j + 1), j, (j === i ? 'on' : '') + (unread ? ' unread' : ''));
+              x.setAttribute('aria-current', j === i ? 'page' : 'false'); pager.appendChild(x);
+            });
+            pager.appendChild(btn('›', i + 1, 'arrow'));
+            wrap.appendChild(pager);
+          }
+        };
+        if (rows.length) renderPage(0);
         noticeShown = rows;
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지(안내 모달과 동일)
         $('notice-modal').classList.add('show');
