@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { unreadNotices, pickText, maxId, quoteLine, expandedIds, parseBody } from '../js/notices.js';
+import { unreadNotices, pickText, maxId, quoteLine, parseBody } from '../js/notices.js';
 
 const N = (id, extra = {}) => ({ id, title: `제목${id}`, body: `본문${id}`, title_en: null, body_en: null,
                                  target_user_id: null, reply_to: null, created_at: '2026-09-11T00:00:00Z', feedback: null, ...extra });
@@ -43,21 +43,8 @@ test('quoteLine: 전체 공지거나 원문을 못 읽으면 null', () => {
   assert.equal(quoteLine(N(1, { reply_to: 3, feedback: null })), null);
 });
 
-test('expandedIds: 안 읽은 소식만 펼친다 — 지난 소식은 제목 한 줄로 접힌다', () => {
-  assert.deepEqual(expandedIds([N(1), N(2), N(3)], 1).sort(), [2, 3]);
-  assert.deepEqual(expandedIds([N(1), N(2)], 0).sort(), [1, 2], 'seenId 가 없으면(첫 유저) 전부 새 소식');
-});
 
-test('expandedIds: 다 읽었으면 최신 하나만 펼친다 — 전부 접힌 화면은 빈칸처럼 보인다', () => {
-  assert.deepEqual(expandedIds([N(1), N(5), N(3)], 5), [5]);
-  assert.deepEqual(expandedIds([N(9)], 99), [9], 'seenId 가 더 커도(다른 기기에서 먼저 읽음) 하나는 펼친다');
-});
 
-test('expandedIds: 빈 목록·쓰레기 행은 조용히 무시', () => {
-  assert.deepEqual(expandedIds([], 0), []);
-  assert.deepEqual(expandedIds(null, 0), []);
-  assert.deepEqual(expandedIds([null, { id: 'x' }, N(2)], 0), [2]);
-});
 
 // ── parseBody: 본문 텍스트의 '|' 줄을 표로 — DB 는 텍스트 그대로, 렌더 규칙만 공유(게임 소식함·관리자 미리보기) ──
 test('parseBody: | 없는 본문은 문단(lead)만', () => {

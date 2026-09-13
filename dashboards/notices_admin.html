@@ -203,7 +203,8 @@
       if (b.header || b.rows.length) {
         const t = document.createElement('table');
         if (b.header) { const tr = t.createTHead().insertRow(); b.header.forEach((c) => { const th = document.createElement('th'); th.textContent = c; tr.appendChild(th); }); }
-        const tb = t.createTBody(); b.rows.forEach((r) => { const tr = tb.insertRow(); r.forEach((c) => { tr.insertCell().textContent = c; }); });
+        const cols = b.header ? b.header.length : Math.max(...b.rows.map((r) => r.length));
+        const tb = t.createTBody(); b.rows.forEach((r) => { const tr = tb.insertRow(); for (let k = 0; k < cols; k++) tr.insertCell().textContent = r[k] ?? ''; });
         box.appendChild(t);
       }
       if (b.tail.length) p(b.tail);
