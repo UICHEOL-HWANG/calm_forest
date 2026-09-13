@@ -341,9 +341,9 @@ function isNight() { return isNightAt(timeOfDay); }   // 판정은 js/daynight.j
 //    손님에게 직접 걸어가 요리를 가져다주는 "공간 기반" 의뢰.
 //    농사(작물)·낚시(물고기)·닭장(달걀)·채집(버섯)이 전부 "쓸 곳"을 얻어 하나로 엮임.
 const CAFE_GATE = new THREE.Vector3(4, 0, 14);  // 마을 안 카페 건물(입구) — 주민 자리·호수·계곡과 안 겹치는 빈터
-const MUSEUM_GATE = new THREE.Vector3(-13, 0, 17.5);   // 🏛️ 박물관 — 마을에서 🍄채집 숲으로 가는 길목.
-//   충돌체 스캔으로 뽑은 자리다: 🍄채집 숲 7.4 · ⛏️채굴 14.5 · 마을 중심 21.8(후보 중 최단) ·
-//   🐔닭장 10.5 · ☕카페 17.4 · 🌟계곡 21.6. 반경 3.2 안에 나무·바위가 없어 지형을 안 깎는다.
+const MUSEUM_GATE = new THREE.Vector3(-26, 0, 5);   // 🏛️ 박물관 — 마을 서쪽 끝, ⛏️채굴 동굴 너머.
+//   사용자가 고른 자리다(전체 지도의 "지금 여기"). 반경 3.4 안에 나무·바위가 없어 지형을 안 깎는다.
+//   ⛏️채굴 동굴(-14,3) 에서 12 — 서쪽 벨트의 끝점이라 가는 길에 자연히 지나친다.
 const MUSEUM = new THREE.Vector3(0, 0, 360);    // 🏛️ 전시실(다른 인스턴스 공간과 멀찍이)
 const CAFE = new THREE.Vector3(0, 0, 320);      // 카페 홀(다른 인스턴스 공간과 멀찍이)
 const CAFE_HALF = 11;                           // 넓은 홀 반경
@@ -1614,7 +1614,7 @@ function setToolPage(id, auto = false) {
 // 구역별 기본 페이지. 마을은 일부러 비워 뒀다 —
 // 밭일·벌목·건축이 한곳에 뒤섞이는 곳이라, 자동으로 넘기면 방금 고른 도구를 뺏는 꼴이 된다.
 const ZONE_PAGE = {
-  indoor: 'none', cafe: 'none', forest: 'none', river: 'none', mist: 'none',  // 도구를 쓰지 않는 곳
+  indoor: 'none', cafe: 'none', forest: 'none', river: 'none', mist: 'none', museum: 'none',  // 도구를 쓰지 않는 곳
   farm: 'farm', mine: 'farm',        // ⛏️괭이 — 밭갈기·채굴 둘 다 농사 페이지에 있다
   glade: 'out',                      // 🦋포충망(밤 반딧불이)
 };
@@ -4036,6 +4036,7 @@ function openMuseumView(i) {
   const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
   group.position.set(MUSEUM.x + sx + inward[0] * 1.25, 1.75, MUSEUM.z + sz + inward[1] * 1.25);   // 명판(화면 중앙) 위로 띄운다
   scene.add(group);
+  player.visible = false;   // 🔍 관람 중엔 캐릭터를 숨긴다 — 몸이 화면 절반을 가린다(1인칭처럼 물건만)
   museumView = { group, mesh, idx: i, spin: 0, inward };
   const at = gameState.dex[item.cat][item.id], d = new Date(at);
   ui.setZoneHint?.(`${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일에 처음 발견`);
@@ -4047,6 +4048,7 @@ function closeMuseumView() {
   if (!museumView) return;
   scene.remove(museumView.group); disposeTree(museumView.group);
   museumView = null;
+  player.visible = true;
   ui.setDoorPrompt?.(null); lastZoneHint = null;
   Sound.blip();
 }
@@ -9983,6 +9985,7 @@ function updatePlayer(dt, t) {
 const camOffset = new THREE.Vector3(0, 14, 16);
 const camOffsetIndoor = new THREE.Vector3(0, 17, 10);   // 🏠 실내 전용 ≈60°(마을 41°) — 방 전체가 한 화면에 들어오고 벽 너머 바깥이 안 보인다(2026-09-10 비교 후 확정)
 const _camTarget = new THREE.Vector3();
+const _camAux = new THREE.Vector3();   // 🔍 관람 시선 보정용
 const _camLook = new THREE.Vector3(0, 1.2, 0);
 const _camOff = new THREE.Vector3();
 let momentUntil = 0;   // 이벤트 순간 줌인 종료 시각(clock.elapsedTime)
@@ -10151,9 +10154,10 @@ function updateCamera(dt) {
   if (boat.active) return updateBoatCamera(dt);   // 🛶 런 중: 1인칭 뱃머리 시점
   if (museumView) {                               // 🔍 전시물 관람: 띄워 둔 것을 정면 가까이서
     const p = museumView.group.position, iw = museumView.inward;
-    _camTarget.set(p.x + iw[0] * 2.3, p.y + 0.3, p.z + iw[1] * 2.3);   // 물체가 화면 중앙 40% 쯤 차게
+    _camTarget.set(p.x + iw[0] * 2.0, p.y + 0.15, p.z + iw[1] * 2.0);   // 물체가 화면 40% 쯤 차게
     camera.position.lerp(_camTarget, 1 - Math.pow(0.002, dt));
-    _camLook.lerp(p, 1 - Math.pow(0.002, dt));
+    // 물건보다 살짝 아래를 본다 — 물건이 화면 위쪽에 오고 그 아래가 설명 자리다
+    _camLook.lerp(_camAux.set(p.x, p.y - 0.55, p.z), 1 - Math.pow(0.002, dt));
     camera.lookAt(_camLook);
     return;
   }
@@ -10691,6 +10695,8 @@ function handleAction() {
   if (nearDoor === 'museum') return enterMuseum();
   if (nearDoor === 'museumexit') return exitMuseum();
   if (nearDoor === 'museumview') return openMuseumView(_museumNear);
+  // 🏛️ 전시실에선 문·전시 말고는 아무 액션도 없다 — 안 막으면 여기서 밭이 갈린다(실제로 겪었다)
+  if (atMuseum) return;
   if (nearDoor === 'river') return enterRiver();
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
