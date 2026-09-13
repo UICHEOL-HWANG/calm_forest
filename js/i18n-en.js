@@ -836,6 +836,29 @@ export const EN = {
   '큰 창고 짓기': 'The Big Warehouse',
   // 🏛️ 큐레이터
   '큐레이터 할아버지': 'The Curator',
+  // 🏛️ 박물관 — 간판·프롬프트·명판·층
+  '🏛️ 박물관': '🏛️ Museum',
+  '박물관': 'Museum',
+  '🏛️ 박물관에 들어가기': '🏛️ Enter the Museum',
+  '📖도감에 등록한 것이 전시되는 곳 — 빈 자리가 다음 목표예요':
+    'Everything in your 📖Field Guide is displayed here — the empty cases are your next goal',
+  '🔍 자세히 보기': '🔍 Take a closer look',
+  '🔙 돌아가기': '🔙 Step back',
+  '1층': 'Ground Floor', '2층': 'Second Floor', '3층': 'Third Floor', '특별전': 'Special Exhibition',
+  '🌾 작물': '🌾 Crops', '🐟 물고기': '🐟 Fish', '⛏️ 광물': '⛏️ Minerals', '🍄 채집물': '🍄 Foraged',
+  '🌟 반딧불이': '🌟 Fireflies', '🪏 땅속': '🪏 Unearthed', '🐾 흔적': '🐾 Tracks', '🛶 강': '🛶 River',
+  '🌫️ 정령': '🌫️ Spirits', '🌦️ 날씨': '🌦️ Weather', '🧑 주민': '🧑 Neighbours', '🍳 요리': '🍳 Dishes',
+  // 조합 문구 — 글루 패턴으로 넣어야 {0} 이 재귀 번역된다(이 사전의 함정)
+  '🎀 {0} — 아직 덮여 있어요. 찾아오면 천을 걷을게요':
+    '🎀 {0} — still under cloth. Bring one in and we will draw it back',
+  '{0} {1} — {2}년 {3}월 {4}일, 당신이 처음 발견했어요':
+    '{0} {1} — first found by you on {3}/{4}/{2}',
+  '🪜 {0}으로': '🪜 Up to the {0}',
+  '🏛️ {0} — {1}/{2}': '🏛️ {0} — {1}/{2}',
+  '🏛️ 박물관이 {0}까지 늘었어요! 가서 보세요':
+    '🏛️ The Museum has grown to the {0}! Go and see',
+  '{0} 도감 등록': 'Register {0} in the Field Guide',
+  '아직 {0}이(가) 없군요. 구해다 주시겠어요?': 'We still have no {0}. Could you find one?',
   '개관 준비': 'Opening Day',
   '📖 도감 3종 등록하기': 'Register 3 species in the Field Guide',
   '박물관이 텅 비어 있답니다… 무엇이든 세 가지만 찾아다 주시겠어요? 첫 전시를 열고 싶군요.':

@@ -863,6 +863,7 @@ function refreshRepeatQuests() {
       //   베타 피드백 "미션이 없어지는 지점에서 뭘 해야 할지 모르겠다" 를 직접 푸는 자리.
       //   다 모았으면 집을 게 없으니 일반 반복 의뢰(채집·채굴)로 폴백한다.
       const miss = pickMissingDex(gameState.dex, DEX, dateHash('repeat'), ctx);
+      //   ⚠️ 문구는 사전 패턴으로 — 템플릿 리터럴 그대로면 영어에서 한국어가 그대로 남는다
       if (miss) q = { type: 'dex_one', cat: miss.cat, dexId: miss.id, target: 1,
         title: '빈 진열장', desc: `${miss.ico} ${miss.name} 도감 등록`, reward: { coins: 14 },
         line: `아직 ${miss.ico}${miss.name}이(가) 없군요. 구해다 주시겠어요?` };
@@ -1138,9 +1139,10 @@ function dexDiscover(cat, id) {
   const total = dexCount();
   ui.toast?.(`📖 도감 등록! ${entry?.ico || ''} ${entry?.name || id} (${total}/${DEX_TOTAL})`, 2400);
   refreshMuseumGate(true);   // 🏛️ 이번 등록으로 층이 열렸으면 건물이 자란다
+  refreshCollectQuests();    // 📖 도감 목표(collect_dex·dex_one) 진행 — 🪏땅속은 인벤이 안 늘어 이 경로가 없었다
   spawnSparkle(player.position.x, 1.6, player.position.z, 14);
   trackEvent('dex_discover', { category: cat, entry: id, total });   // [GA4] 수집 퍼널
-  if (total === DEX_TOTAL) {                                         // 🎉 도감 완성
+  if (total === DEX_TOTAL && !gameState.badges.dex_master) {   // ⚠️ 총계가 늘면 옛 완성자에게 보상이 다시 나간다 — 배지로 막는다                                         // 🎉 도감 완성
     giveReward({ coins: 150 }, 'dex_complete', 'all');               // [원장] 완성 보상
     spawnConfetti(player.position.x, 1.6, player.position.z);
     Sound.complete();
@@ -3993,6 +3995,9 @@ const MUSEUM_ZONES = [
   { key: 'rugA', color: 0xb8cfa8 }, { key: 'rugB', color: 0xa8c4d8 },
   { key: 'rugC', color: 0xcbc0ad }, { key: 'rugD', color: 0xd8c0c8 },
 ];
+// 전시물 기본색 — 아직 전용 조형이 없는 카테고리(임시). ORES·CROP_TYPES 에 없는 것들이 여기로 온다
+const MUSEUM_CAT_TINT = { forage: 0xc07a4a, bug: 0xd9c14a, dig: 0x8a6a4a, track: 0x9a8f80,
+  river: 0x5f9ec8, spirit: 0xb8a8d8, weather: 0xa8c4d8, npc: 0xd9a06a, cook: 0xe0a05a };
 const DEX_CAT_LABEL = { crop: '🌾 작물', fish: '🐟 물고기', ore: '⛏️ 광물', forage: '🍄 채집물',
   bug: '🌟 반딧불이', dig: '🪏 땅속', track: '🐾 흔적', river: '🛶 강', spirit: '🌫️ 정령',
   weather: '🌦️ 날씨', npc: '🧑 주민', cook: '🍳 요리' };
@@ -4009,12 +4014,15 @@ function museumFloorItems(floor = museumFloor) {
 function museumExhibitMesh(item) {
   if (item.cat === 'crop') return cropMini(CROP_TYPES.find(c => c.id === item.id));
   if (item.cat === 'fish') return fishMesh(item.id);   // common / uncommon / rare 가 곧 등급 키다
+  // ⚠️ 2·3층 카테고리(🍄채집·🌟반딧불이·🪏땅속·🐾흔적·🛶강·🌫️정령·🌦️날씨·🧑주민)는
+  //    ORES 에 없다. 폴백이 없으면 **2층에 들어가는 순간 undefined.color 로 터진다.**
   const ore = ORES.find(o => o.id === item.id);
+  const tint = ore ? ore.color : (MUSEUM_CAT_TINT[item.cat] ?? 0xcfc8b8);
   const g = new THREE.Group();
   const m = new THREE.Mesh(new THREE.IcosahedronGeometry(item.id === 'gem' ? 0.2 : 0.24, 0),
     item.id === 'gem'
-      ? new THREE.MeshStandardMaterial({ color: ore.color, roughness: 0.25, metalness: 0.1, flatShading: true })
-      : clayMat(ore.color));
+      ? new THREE.MeshStandardMaterial({ color: tint, roughness: 0.25, metalness: 0.1, flatShading: true })
+      : clayMat(tint));
   m.castShadow = true; g.add(m);
   return g;
 }
@@ -4027,8 +4035,22 @@ function museumSlots(count = 13) {
   const step = side > 1 ? 8.8 / (side - 1) : 0, z0 = -4.4;
   for (let i = 0; i < side; i++) out.push([-MUSEUM_HALF_W + 1.2, z0 + i * step,  Math.PI / 2]);
   for (let i = 0; i < side; i++) out.push([ MUSEUM_HALF_W - 1.2, z0 + i * step, -Math.PI / 2]);
-  const back = count - out.length;
+  const back = Math.min(3, count - out.length);
   for (let i = 0; i < back; i++) out.push([(i - (back - 1) / 2) * 2.6, -MUSEUM_HALF_D + 1.2, 0]);
+  // 🏛️ 중앙 아일랜드 — 벽면(좌우 5+5 · 뒷벽 3 = 13)으로 모자라면 가운데 진열대가 받는다.
+  //   ⚠️ 예전엔 남는 것을 뒷벽 한 줄에 계속 늘어놓아, 3층 31칸 중 16칸이 벽 밖 허공에 떴다.
+  //      이동 제한 밖이라 명판도 못 읽는 "있지만 볼 수 없는" 전시물이 됐다.
+  let rest = count - out.length;
+  if (rest > 0) {
+    const cols = Math.min(3, rest), rows = Math.ceil(rest / cols);
+    const cw = 2.3, rh = rows > 1 ? Math.min(1.65, 8.4 / (rows - 1)) : 0;
+    const z0i = -(rows - 1) * rh / 2 + 0.6;
+    for (let r = 0; r < rows && rest > 0; r++) {
+      for (let c = 0; c < cols && rest > 0; c++, rest--) {
+        out.push([(c - (cols - 1) / 2) * cw, z0i + r * rh, r % 2 ? Math.PI : 0]);
+      }
+    }
+  }
   return out.slice(0, count);
 }
 let museumCases = [];        // 명판 근접 판정용 { x, z, i }
@@ -4074,7 +4096,10 @@ function openMuseumView(i) {
   group.add(mesh);
   // ⚠️ 캐릭터가 보는 쪽에 띄우면 벽을 뚫는다(진열장은 벽에 붙어 있다).
   //    **진열장에서 통로 쪽으로** 띄우고 카메라는 그보다 더 통로 안쪽에서 본다 — 방향과 무관하게 안전하다.
-  const [sx, sz, ry] = museumSlots()[i];
+  // ⚠️ 층마다 칸 수가 다르다 — 13칸 기준으로 읽으면 3층에서 undefined 를 구조분해해 터진다
+  const slot = museumSlots(museumFloorItems().length)[i];
+  if (!slot) return;
+  const [sx, sz, ry] = slot;
   const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
   group.position.set(MUSEUM.x + sx + inward[0] * 1.25, 1.75, MUSEUM.z + sz + inward[1] * 1.25);   // 명판(화면 중앙) 위로 띄운다
   scene.add(group);
@@ -4111,7 +4136,8 @@ function buildMuseumHall() {
     floor: woodMat(6, 6, 0xd9b98a),  stone: clayMat(0xcfc7b0, false),
     wood:  woodMat(4, 1, 0xb5834f),  dark: clayMat(0x6b5a46, false),
     cloth: clayMat(0xe4dccb, false),                       // 🎀 빈 칸을 덮은 천
-    rugA:  clayMat(0xb8cfa8, false), rugB: clayMat(0xa8c4d8, false), rugC: clayMat(0xcbc0ad, false),
+    rugA:  clayMat(0xb8cfa8, false), rugB: clayMat(0xa8c4d8, false),
+    rugC:  clayMat(0xcbc0ad, false), rugD: clayMat(0xd8c0c8, false),   // ⚠️ rugD 가 없으면 three 가 흰 MeshBasicMaterial 로 떨어진다(2층 🐾흔적·3층 🧑주민)
     glass: new THREE.MeshStandardMaterial({ color: 0xbfe3ea, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.28, side: THREE.DoubleSide }),
   };
   const parts = new Map();
@@ -4254,13 +4280,22 @@ function exitMuseum() {
   Sound.blip(); trackEvent('museum_exit');
 }
 
-let museumGateGroup = null, museumGateColliders = [], museumBuiltFloors = -1;
+let museumGateGroup = null, museumGateColliders = [], museumBuiltFloors = -1, museumAnnounced = 0;
 // 🏗️ 층이 열리면 건물을 다시 세운다 — 밖에서 보고 "늘었다" 를 알 수 있어야 증축이 보상이 된다.
 //   ⚠️ 충돌체도 같이 걷어내야 한다(colliders 는 전역이라 안 지우면 유령 벽이 쌓인다).
 function refreshMuseumGate(announce = false) {
-  const f = Math.min(3, openFloors(gameState.dex, DEX));
+  const opened = openFloors(gameState.dex, DEX);
+  const f = Math.min(3, opened);   // 외관은 3층까지만 쌓는다(특별전은 별관 몫)
+  // ⚠️ 알림·트래킹은 **원본 층수**로 본다 — min(3) 으로 보면 특별전이 열려도 조용히 지나간다
+  if (opened > museumAnnounced) {
+    const def = MUSEUM_FLOORS.find(d => d.id === opened);
+    if (announce && museumAnnounced > 0) {
+      ui.toast?.(`🏛️ 박물관이 ${def?.name || opened + '층'}까지 늘었어요! 가서 보세요`, 3600);
+      trackEvent('museum_expand', { floor: opened });   // [GA4] 증축 퍼널 — 수집률 대비 실제 도달
+    }
+    museumAnnounced = opened;
+  }
   if (f === museumBuiltFloors) return;
-  const grew = museumBuiltFloors > 0 && f > museumBuiltFloors;
   museumBuiltFloors = f;
   if (museumGateGroup) {
     scene.remove(museumGateGroup); disposeTree(museumGateGroup);
@@ -4270,11 +4305,6 @@ function refreshMuseumGate(announce = false) {
   }
   museumGateColliders = [];
   museumGateGroup = spawnMuseumGate();
-  if (grew && announce) {
-    const def = MUSEUM_FLOORS.find(d => d.id === f);
-    ui.toast?.(`🏛️ 박물관이 ${def?.name || f + '층'}까지 늘었어요! 가서 보세요`, 3600);
-    trackEvent('museum_expand', { floor: f });   // [GA4] 증축 퍼널 — 수집률 대비 실제 도달
-  }
 }
 
 function spawnMuseumGate() {
