@@ -10,9 +10,10 @@
 // =============================================================
 
 import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 🧪 dev 세션 — 리더보드 원천 기록 차단용
-import { PLATFORM, IS_ITCH } from './platform.js';         // 'web' | 'toss' | 'itch' — 로그 세그먼트 · itch 는 구글 팝업 로그인
+import { PLATFORM, IS_ITCH, IS_TOSS } from './platform.js'; // 'web' | 'toss' | 'itch' — 로그 세그먼트 · itch 는 구글 팝업 로그인 · toss 는 게스트 이관
+import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
-import { setAbVariant } from './analytics.js';
+import { setAbVariant, trackEvent } from './analytics.js';
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -113,6 +114,10 @@ export async function initAuth(onStatusChange) {
       return { needLogin: false, offline: false };
     }
     if (s && isAnon(s)) {
+      // 🔵 토스: 식별키 연결이 안 돼 게스트로 플레이했던 진행도를 잠시 들고 있는다.
+      //    익명 세션을 정리하면 그 계정의 저장을 더는 읽을 수 없으므로(RLS) 로그아웃 전에 읽어야 한다.
+      //    정식 계정으로 붙은 뒤 loadGame() 이 pickSave 로 어느 쪽을 남길지 정한다.
+      if (IS_TOSS) pendingGuest = await readGuestSave(s.user.id);
       await supabase.auth.signOut();          // 게스트 재방문 → 이전 익명 세션 정리(매번 새로 시작)
     }
     return { needLogin: true, offline: false };
@@ -292,8 +297,34 @@ export async function loadGame() {
   try {
     const { data, error } = await supabase.from(CONFIG.SAVE_TABLE).select('state').eq('user_id', state.userId).maybeSingle();
     if (error) throw error;
-    return data?.state ?? null;
+    const saved = data?.state ?? null;
+    return await migrateGuestSave(saved);
   } catch (err) { console.warn('[Supabase 폴백] 불러오기 실패:', err?.message || err); return null; }
+}
+
+// ── 🔵 게스트 → 토스 정식 계정 진행도 이관 ────────────────────────
+//   initAuth 가 로그아웃 전에 읽어 둔 게스트 저장(pendingGuest)을, 토스 계정으로 붙은 첫 loadGame 에서 처리한다.
+//   규칙은 save-migrate.js(순수 모듈, 테스트로 잠금). 한 번 처리하면 비운다 — 새로고침마다 다시 옮기지 않게.
+let pendingGuest = null;   // { userId, state } | null
+
+async function readGuestSave(userId) {
+  try {
+    const { data, error } = await supabase.from(CONFIG.SAVE_TABLE).select('state').eq('user_id', userId).maybeSingle();
+    if (error) throw error;
+    return data?.state ? { userId, state: data.state } : null;
+  } catch (err) { console.warn('[토스] 게스트 저장 읽기 실패(이관 생략):', err?.message || err); return null; }
+}
+
+async function migrateGuestSave(tossSave) {
+  if (!pendingGuest || state.provider !== 'toss') return tossSave;   // 토스 정식 계정으로 붙었을 때만 소비(다시 게스트면 다음 기회에)
+  const guest = pendingGuest; pendingGuest = null;
+  const pick = pickSave(tossSave, guest.state);
+  trackEvent('guest_migrate', { kept: pick.keep, guest_score: progressScore(guest.state), toss_score: progressScore(tossSave) }); // [GA4] 사고 복구 추적
+  if (!pick.migrate) return tossSave;
+  const { error } = await supabase.from(CONFIG.SAVE_TABLE).upsert({ user_id: state.userId, state: guest.state, updated_at: new Date().toISOString() });
+  if (error) { console.warn('[토스] 게스트 진행도 이관 실패 — 정식 저장 유지:', error.message); return tossSave; }
+  console.log('[토스] 게스트 진행도를 정식 계정으로 옮김', guest.userId, '→', state.userId);
+  return guest.state;
 }
 
 // ── 개발자 피드백 전송(feedback 테이블) — 오프라인이면 콘솔 폴백 ──
