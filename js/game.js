@@ -3966,11 +3966,21 @@ const MUSEUM_ZONES = [
   { key: 'rugB', label: '🐟 물고기', color: 0xa8c4d8 },
   { key: 'rugC', label: '⛏️ 광물',   color: 0xcbc0ad },
 ];
-// 전시물 색 — 도감 아이콘과 어울리게(실제 작물·광석 메시를 쓰기 전까지의 임시 조형)
-const MUSEUM_TINT = { carrot: 0xe08a3c, tomato: 0xd0453c, blueberry: 0x5566b8, pumpkin: 0xd98026,
-  wheat: 0xd9bc5c, corn: 0xd9c14a, grape: 0x8a5cd0,
-  common: 0x7fa8c8, uncommon: 0xd06a4a, rare: 0x62c0c8,
-  stone: 0x9a9086, coal: 0x4a4a4a, gem: 0x5ad0e0 };
+// 🏛️ 전시물 메시 — **게임에서 실제로 쓰는 조형을 그대로 쓴다.**
+//   🌾작물은 수확 때 머리 위로 드는 cropMini, 🐟물고기는 낚시 때의 fishMesh,
+//   ⛏️광물은 광맥과 같은 다면체. 도감에 등록한 그것이 그대로 전시되어야 "내 것" 으로 읽힌다.
+function museumExhibitMesh(item) {
+  if (item.cat === 'crop') return cropMini(CROP_TYPES.find(c => c.id === item.id));
+  if (item.cat === 'fish') return fishMesh(item.id);   // common / uncommon / rare 가 곧 등급 키다
+  const ore = ORES.find(o => o.id === item.id);
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.IcosahedronGeometry(item.id === 'gem' ? 0.2 : 0.24, 0),
+    item.id === 'gem'
+      ? new THREE.MeshStandardMaterial({ color: ore.color, roughness: 0.25, metalness: 0.1, flatShading: true })
+      : clayMat(ore.color));
+  m.castShadow = true; g.add(m);
+  return g;
+}
 
 // 진열장 자리 — 좌우 벽 5칸씩 + 안쪽 3칸. [x, z, 바라보는 방향]
 function museumSlots() {
@@ -4006,6 +4016,50 @@ function museumPlateText() {
   return `${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일, 당신이 처음 발견했어요`;
 }
 
+// 🔍 전시물 관람 — 진열장 앞에서 액션을 누르면 크게 띄워 돌려 본다.
+//   ⚠️ 진열장 안 메시를 쓰지 않고 **새로 하나 만든다.** 원본을 옮기면 돌아올 때 자리·크기를
+//      되돌려야 하고, 관람 중 전시실을 다시 지으면 참조가 끊긴다.
+let museumView = null;   // { group, mesh, idx, spin }
+const MUSEUM_VIEW_DIST = 2.4;
+
+function openMuseumView(i) {
+  if (museumView) return;
+  const item = MUSEUM_FLOOR1[i];
+  if (!gameState.dex[item.cat]?.[item.id]) return;   // 천이 덮인 칸은 볼 게 없다
+  const group = new THREE.Group();
+  const mesh = museumExhibitMesh(item);
+  mesh.scale.setScalar(1.25);                         // 손바닥만 한 것을 얼굴 크기로(더 키우면 화면을 꽉 채운다)
+  group.add(mesh);
+  // ⚠️ 캐릭터가 보는 쪽에 띄우면 벽을 뚫는다(진열장은 벽에 붙어 있다).
+  //    **진열장에서 통로 쪽으로** 띄우고 카메라는 그보다 더 통로 안쪽에서 본다 — 방향과 무관하게 안전하다.
+  const [sx, sz, ry] = museumSlots()[i];
+  const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
+  group.position.set(MUSEUM.x + sx + inward[0] * 1.25, 1.75, MUSEUM.z + sz + inward[1] * 1.25);   // 명판(화면 중앙) 위로 띄운다
+  scene.add(group);
+  museumView = { group, mesh, idx: i, spin: 0, inward };
+  const at = gameState.dex[item.cat][item.id], d = new Date(at);
+  ui.setZoneHint?.(`${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일에 처음 발견`);
+  ui.setDoorPrompt?.('🔙 돌아가기');
+  Sound.blip();
+  trackEvent('museum_view_open', { item: item.id, cat: item.cat });   // [GA4] 실제로 들여다보는가
+}
+function closeMuseumView() {
+  if (!museumView) return;
+  scene.remove(museumView.group); disposeTree(museumView.group);
+  museumView = null;
+  ui.setDoorPrompt?.(null); lastZoneHint = null;
+  Sound.blip();
+}
+// 좌우 입력으로 돌린다(모바일은 조이스틱 좌우). 손을 떼면 천천히 저절로 돈다 — 멈춰 있으면 사진 같다
+function updateMuseumView(dt) {
+  if (!museumView) return;
+  const { mx } = keys.moveAxes(false);
+  const turn = mx + (analog.x || 0);
+  museumView.spin = turn ? turn * 2.4 : museumView.spin * 0.92 + 0.35 * 0.08;
+  museumView.mesh.rotation.y += museumView.spin * dt;
+  museumView.mesh.rotation.x = Math.sin(museumView.mesh.rotation.y * 0.5) * 0.08;   // 살짝 기울여 입체감
+}
+
 function buildMuseumHall() {
   const g = new THREE.Group(); g.position.copy(MUSEUM); g.visible = false;
   const MATS = {
@@ -4015,9 +4069,9 @@ function buildMuseumHall() {
     cloth: clayMat(0xe4dccb, false),                       // 🎀 빈 칸을 덮은 천
     rugA:  clayMat(0xb8cfa8, false), rugB: clayMat(0xa8c4d8, false), rugC: clayMat(0xcbc0ad, false),
     glass: new THREE.MeshStandardMaterial({ color: 0xbfe3ea, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.28, side: THREE.DoubleSide }),
-    exhibit: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true }),
   };
   const parts = new Map();
+  const exhibitMeshes = [];
   const add = (k, ...geos) => {
     const a = parts.get(k) || (parts.set(k, []), parts.get(k));
     for (const geo of geos) {
@@ -4082,15 +4136,9 @@ function buildMuseumHall() {
     }
     add('glass', box(0.86, 0.88, 0.54, x, 1.41, z, ry));
     add('trim',  box(0.94, 0.07, 0.62, x, 1.88, z, ry));
-    const geo = item.cat === 'fish' ? new THREE.SphereGeometry(0.15, 8, 6).scale(1.5, 0.8, 0.5)
-              : item.cat === 'ore'  ? new THREE.IcosahedronGeometry(0.16, 0)
-              :                       new THREE.SphereGeometry(0.15, 8, 7).scale(1, 1.2, 1);
-    geo.rotateY(ry); geo.translate(x, 1.24, z);
-    const flat = geo.index ? geo.toNonIndexed() : geo;
-    const col = new THREE.Color(MUSEUM_TINT[item.id] || 0xcfc8b8), arr = new Float32Array(flat.attributes.position.count * 3);
-    for (let v = 0; v < flat.attributes.position.count; v++) { arr[v * 3] = col.r; arr[v * 3 + 1] = col.g; arr[v * 3 + 2] = col.b; }
-    flat.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-    add('exhibit', flat);
+    const ex = museumExhibitMesh(item);
+    ex.position.set(x, 1.2, z); ex.rotation.y = ry + 0.5; ex.scale.setScalar(0.72);
+    exhibitMeshes.push(ex); g.add(ex);   // 병합하지 않는다 — 실제 조형이라 재질이 제각각이고, 13개뿐이다
   });
 
   for (const [k, geos] of parts) {
@@ -4121,6 +4169,7 @@ function enterMuseum() {
   Sound.blip(); trackEvent('museum_enter', { have, total: MUSEUM_FLOOR1.length });   // [GA4] 방문 빈도·그때의 수집률
 }
 function exitMuseum() {
+  closeMuseumView();
   atMuseum = false; setFogExempt(player, false);
   if (museumGroup) museumGroup.visible = false;
   player.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4);
@@ -9270,8 +9319,12 @@ function updateDoorInteract() {
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
-  } else if (atMuseum) {   // 🏛️ 전시실: 남쪽 문으로 나가기 / 진열장 앞 명판
+  } else if (atMuseum) {   // 🏛️ 전시실: 남쪽 문으로 나가기 / 진열장 앞 자세히 보기
     if (dist2D({ x: MUSEUM.x, z: MUSEUM.z + MUSEUM_HALF_D }, player.position) < 1.9) { nd = 'museumexit'; prompt = '🚪 나가기'; }
+    else if (_museumNear >= 0) {
+      const it = MUSEUM_FLOOR1[_museumNear];
+      if (gameState.dex[it.cat]?.[it.id]) { nd = 'museumview'; prompt = '🔍 자세히 보기'; }
+    }
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < houseSolidR() + 0.6) { // 증축 크기에 맞춰 문 사거리도 확장
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {
@@ -9596,9 +9649,11 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (!mgView) { updatePlayer(dt, t); updateCamera(dt); }
+    else if (!mgView) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
-    if (!mgView && !intro) {
+    if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
+      if (wantAction) { wantAction = false; closeMuseumView(); }
+    } else if (!mgView && !intro) {
       handleAction();
       updateNPCInteract();
       updateDoorInteract();
@@ -9741,7 +9796,7 @@ function updatePlayer(dt, t) {
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
   //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
-  const closeUp = momentT >= 0 || photoT >= 0;
+  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView;   // 🔍 전시물 관람 중엔 이동 차단(좌우는 회전에 쓴다)
   let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.() || closeUp);
   // 모바일 조이스틱 아날로그 합산
   if (!closeUp) { mx += analog.x; mz += analog.z; }
@@ -10087,13 +10142,21 @@ function updateCatchItem(dt) {
 }
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
 function snapCamera() {
-  _camTarget.copy(player.position).add(indoor ? camOffsetIndoor : camOffset);
+  _camTarget.copy(player.position).add(indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°)
   camera.position.copy(_camTarget);
   _camLook.set(player.position.x, 1.2, player.position.z);
   camera.lookAt(_camLook);
 }
 function updateCamera(dt) {
   if (boat.active) return updateBoatCamera(dt);   // 🛶 런 중: 1인칭 뱃머리 시점
+  if (museumView) {                               // 🔍 전시물 관람: 띄워 둔 것을 정면 가까이서
+    const p = museumView.group.position, iw = museumView.inward;
+    _camTarget.set(p.x + iw[0] * 2.3, p.y + 0.3, p.z + iw[1] * 2.3);   // 물체가 화면 중앙 40% 쯤 차게
+    camera.position.lerp(_camTarget, 1 - Math.pow(0.002, dt));
+    _camLook.lerp(p, 1 - Math.pow(0.002, dt));
+    camera.lookAt(_camLook);
+    return;
+  }
   // 📷 액션샷 중: 캐릭터 정면 어깨높이로 빠르게 밀착(끝나면 아래 기본 추적이 부드럽게 복귀)
   if (photoT >= 0) {
     photoT += dt;                          // 프레임 누적 진행(탭 전환 점프에 안전)
@@ -10627,6 +10690,7 @@ function handleAction() {
   if (nearDoor === 'cafeexit') return exitCafe();
   if (nearDoor === 'museum') return enterMuseum();
   if (nearDoor === 'museumexit') return exitMuseum();
+  if (nearDoor === 'museumview') return openMuseumView(_museumNear);
   if (nearDoor === 'river') return enterRiver();
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
