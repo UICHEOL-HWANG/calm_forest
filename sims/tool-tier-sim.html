@@ -45,6 +45,9 @@ import { TIER_PALETTE, GEM_COLOR } from '../js/tool-tiers.js';   // 색은 게�
 // =============================================================
 //  🪓 도구 등급 외형 시안 — 0단계(기본) / 1단계(업그레이드) / 2단계(히든)
 //  ------------------------------------------------------------
+//  · ⚠️ 조형의 **정본은 js/game.js 의 toolMesh()** 다. 이 파일은 복제본이라 갈릴 수 있다 —
+//    실제로 0단계 낚싯대 값이 갈려 게임에 역이식된 사고가 있었다(그립·찌 띠가 굵어짐).
+//    조형을 고치면 양쪽을 함께 고치고, 0단계는 game.js 원값을 그대로 둘 것.
 //  · 조형은 js/game.js 의 toolMesh() 를 그대로 옮겨 왔다(axe·water·rod 3종).
 //    등급 차이만 이 파일에서 얹어 비교한다 — 확정되면 규칙을 모듈로 뽑아 game.js 에 연결.
 //  · 1단계는 이미 게임에 있는 업그레이드다: 강철 도끼 / 큰 물조리개 / 튼튼한 낚싯대.
@@ -152,7 +155,7 @@ function makeRod(T) {
   const gripCol = T.id >= 1 ? CORK : T.grip;
   const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(T.id >= 1 ? T.accent : T.grip));
   rknob.position.y = -0.09; g.add(rknob);
-  const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.030 * k, 0.034 * k, T.id >= 1 ? 0.26 : 0.20, 7), clayMat(gripCol));
+  const rear = new THREE.Mesh(new THREE.CylinderGeometry(T.id >= 1 ? 0.030 : 0.026, T.id >= 1 ? 0.034 : 0.030, T.id >= 1 ? 0.26 : 0.20, 7), clayMat(gripCol));
   rear.position.y = T.id >= 1 ? 0.02 : -0.01; g.add(rear);
   const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
   const L = T.id >= 1 ? 1.06 : 0.92;                 // 튼튼한 = 더 길다(실루엣이 먼저 달라진다)
@@ -185,7 +188,7 @@ function makeRod(T) {
   const bobCol = T.id === 2 ? T.edge : 0xd94f4f;
   const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042 * k, 8, 7), clayMat(bobCol));
   bob.position.y = -0.38; bob.scale.set(1, T.id >= 1 ? 1.5 : 1.25, 1); lineG.add(bob);
-  const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.041 * k, 0.041 * k, 0.022, 9), clayMat(0xf4efe6));
+  const stripe = new THREE.Mesh(new THREE.CylinderGeometry(T.id >= 1 ? 0.041 : 0.040, T.id >= 1 ? 0.041 : 0.040, 0.022, 9), clayMat(0xf4efe6));
   stripe.position.y = -0.38; lineG.add(stripe);
   gem(g, T, 0, 0.10, 0.9);
   g.scale.setScalar(1.25);

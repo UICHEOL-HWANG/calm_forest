@@ -84,12 +84,31 @@ test('toolMesh 가 등급을 받는다', () => {
   assert.match(SRC, /function toolMesh\(id, tier = 0\)/, 'toolMesh 가 tier 를 안 받거나 기본값이 0 이 아니다');
 });
 
-// ⚠️ 주민도 같은 toolMesh 를 쓴다(js/game.js 의 NPC 손). 등급을 넘기면 마을 전체가 금빛이 된다.
-test('주민 손의 도구는 등급을 넘기지 않는다(기본 0단계)', () => {
+// ⚠️ 🧑‍🌾일꾼(makeWorkerMesh)도 같은 toolMesh 를 쓴다. 등급을 넘기면 고용한 일꾼까지 금빛 도구를 든다.
+test('일꾼 손의 도구는 등급을 넘기지 않는다(기본 0단계)', () => {
   const i = SRC.indexOf('armR.hand.add(tool)');
-  assert.ok(i > 0, 'NPC 손 도구 부착 지점을 못 찾음');
-  const line = SRC.slice(SRC.lastIndexOf('\n', SRC.lastIndexOf('toolMesh(', i)), i);
-  assert.match(line, /toolMesh\(toolId\)/, '주민 도구에 등급이 넘어간다');
+  assert.ok(i > 0, '일꾼 손 도구 부착 지점을 못 찾음');
+  // 창을 좁게 — 위쪽에 toolMesh 호출이 하나 더 생겨도 엉뚱한 줄을 검사하고 통과하면 안 된다
+  const win = SRC.slice(Math.max(0, i - 200), i);
+  assert.match(win, /toolMesh\(toolId\)/, '일꾼 도구에 등급이 넘어간다');
+});
+
+// 🌊 바다 릴대도 같은 함수를 탄다 — 등급 개념이 없는 도구라 0단계로 고정되어야 한다
+test('바다 릴대는 등급을 넘기지 않는다', () => {
+  assert.match(SRC, /seaRodMesh = toolMesh\('reel'\)/, '릴대에 등급이 넘어간다');
+});
+
+// ⚠️ bootWorld → buildPlayer → setHeldTool 은 세이브를 읽기 전에 돈다.
+//    복원 뒤에 다시 만들지 않으면 "이미 산 사람은 접속할 때마다 옛 모습" 이 되어,
+//    이 기능이 구매한 그 세션에서만 동작한다(테스트가 잡지 못한 채 배포될 뻔했다).
+test('세이브에서 업그레이드를 복원하면 손에 든 도구를 다시 만든다', () => {
+  const i = SRC.indexOf('function applySave(');
+  assert.ok(i > 0, 'applySave 를 못 찾음');
+  const body = SRC.slice(i, SRC.indexOf('\n}\n', i));
+  const up = body.indexOf('saved.upgrades');
+  const ref = body.indexOf('refreshHeldTool()');
+  assert.ok(ref > 0, 'applySave 가 손에 든 도구를 갱신하지 않는다 — 접속 시 옛 모습이 남는다');
+  assert.ok(ref > up, '업그레이드 복원보다 먼저 갱신하면 아무 소용이 없다');
 });
 
 test('손에 든 도구는 지금 등급으로 만든다', () => {

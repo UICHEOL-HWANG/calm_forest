@@ -29,8 +29,8 @@ import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
-import { createKeyState, isEditableTarget } from './keys.js';
-import { tierOf, paletteOf, GEM_COLOR } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
+import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
+import { tierOf, paletteOf, GEM_COLOR } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -2176,7 +2176,13 @@ function applySave(saved) {
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
-  if (saved.upgrades) gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
+  if (saved.upgrades) {
+    gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
+    // 🪓 ⚠️ buildPlayer() → setHeldTool() 은 bootWorld 안에서 이미 돌았다(세이브를 읽기 전).
+    //    그때는 upgrades 가 비어 있어 0단계로 만들어진다 — 여기서 다시 만들지 않으면
+    //    "이미 산 사람은 접속할 때마다 옛 모습" 이 되어, 이 기능이 구매한 그 세션에서만 동작한다.
+    refreshHeldTool();
+  }
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id, o.rot || 0)); // 야외 장식 복원(방향 포함)
   if (saved.outdoorStored && typeof saved.outdoorStored === 'object') {   // 🧺 보관한 야외 장식 복원(개수만, 음수·비숫자 버림)
     gameState.outdoorStored = {};
@@ -2682,7 +2688,8 @@ function makeCharacterPreview(canvas) {
 
 // 손에 든 도구 메시(도구 전환 시 교체)
 // 🪓 도구 조형. tier: 0 기본 / 1 업그레이드(강철·큰·튼튼한) / 2 히든(금 + 각인 + 보석).
-//   ⚠️ 기본값이 0 인 이유 — 주민(NPC)도 이 함수를 쓴다. 등급을 넘기면 마을 전체가 금빛이 된다.
+//   ⚠️ 기본값이 0 인 이유 — 🧑‍🌾일꾼(makeWorkerMesh)과 🌊바다 릴대도 이 함수를 쓴다.
+//      등급을 넘기면 고용한 일꾼들까지 금빛 도구를 들게 된다.
 //   ⚠️ 1단계는 성능을 실루엣으로 번역한다(크기·부품). 멀리서 읽히는 건 굵기가 아니라 크기와 색 대비다.
 //   조형 검수: sims/tool-tier-sim.html · 색: js/tool-tiers.js
 function toolMesh(id, tier = 0) {
@@ -2712,7 +2719,9 @@ function toolMesh(id, tier = 0) {
     }
     return l - 0.08;
   };
-  // 2단계 포인트 보석 — 몸체에 묻히지 않게 앞면(z+)으로 띄운다
+  // 2단계 포인트 보석 — 몸체에 묻히지 않게 앞면(z+)으로 띄운다.
+  //   ⚠️ tierOf 는 아직 2 를 돌려주지 않는다(친밀도 도면 제작이 붙을 때 열린다).
+  //      그때 블룸·드로우콜을 다시 실측할 것 — 지금 2단계 조형은 검수되지 않은 채 잠들어 있다.
   const gem = (x, y, sc = 1) => {
     if (tier !== 2) return;
     const j = new THREE.Mesh(new THREE.OctahedronGeometry(0.032 * sc, 0), clayMat(GEM_COLOR));
@@ -2867,7 +2876,7 @@ function toolMesh(id, tier = 0) {
     const rk = up ? 1.18 : 1, CORK = 0xd9b98a, UPPER = 0xb8975e;
     const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(up ? T.accent : GRIP));
     rknob.position.y = -0.09; g.add(rknob);
-    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.030 * rk, 0.034 * rk, up ? 0.26 : 0.20, 7), clayMat(up ? CORK : GRIP));
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(up ? 0.030 : 0.026, up ? 0.034 : 0.030, up ? 0.26 : 0.20, 7), clayMat(up ? CORK : GRIP));   // 0단계는 원래 값 그대로
     rear.position.y = up ? 0.02 : -0.01; g.add(rear);
     const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
     const RL = up ? 1.06 : 0.92;
@@ -2896,7 +2905,7 @@ function toolMesh(id, tier = 0) {
     line.position.y = -0.17; lineG.add(line);
     const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042 * rk, 8, 7), clayMat(tier === 2 ? EDGE : 0xd94f4f));   // 빨간 찌
     bob.position.y = -0.38; bob.scale.set(1, up ? 1.5 : 1.25, 1); lineG.add(bob);
-    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.041 * rk, 0.041 * rk, 0.022, 9), clayMat(0xf4efe6));
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(up ? 0.041 : 0.040, up ? 0.041 : 0.040, 0.022, 9), clayMat(0xf4efe6));
     stripe.position.y = -0.38; lineG.add(stripe);
     gem(0, 0.10, 0.9);
     g.scale.setScalar(1.25);
