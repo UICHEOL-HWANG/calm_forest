@@ -60,7 +60,18 @@ import * as THREE from 'three';
 const PAL = {
   wall:  0xf3e2c8, trim: 0xf2ece0, floor: 0xd9b98a, stone: 0xcfc7b0,
   dark:  0x6b5a46, wood: 0xb5834f, base: 0xe8dcc4,
+  cloth: 0xe4dccb,     // 🎀 빈 칸을 덮은 천 — 썰렁함이 아니라 "곧 열릴 전시"
+  rugA:  0xb8cfa8,     // 🌾 작물 구역
+  rugB:  0xa8c4d8,     // 🐟 물고기 구역
+  rugC:  0xcbc0ad,     // ⛏️ 광물 구역
 };
+// 구역 — 바닥 러그로 나눈다(벽을 세우면 방이 좁아 보인다). 팻말은 HTML 패널이 대신한다
+const ZONES = [
+  { key: 'rugA', label: '🌾 작물',   from: 0,  to: 7 },
+  { key: 'rugB', label: '🐟 물고기', from: 7,  to: 10 },
+  { key: 'rugC', label: '⛏️ 광물',   from: 10, to: 13 },
+];
+const zoneOf = i => ZONES.find(z => i >= z.from && i < z.to);
 const clayMat = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
 const glassMat = () => new THREE.MeshStandardMaterial({ color: 0xbfe3ea, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
 
@@ -139,6 +150,14 @@ function buildHall() {
   put('dark', box(2.6, 2.5, 0.16, 0, 1.25, HALL_D / 2));
   put('trim', box(3.1, 0.24, 0.34, 0, 2.6, HALL_D / 2));
 
+  // 구역 러그 — 진열장 앞 바닥. 재질 3개로 구역 경계가 읽힌다
+  for (const zn of ZONES) {
+    const pts = slots().slice(zn.from, zn.to);
+    for (const [x, z, ry] of pts) {
+      const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
+      put(zn.key, box(1.7, 0.03, 1.7, x + inward[0] * 1.15, 0.015, z + inward[1] * 1.15));
+    }
+  }
   caseAt.length = 0;
   slots().forEach(([x, z, ry], i) => {
     const item = ITEMS[i], got = i < fill;
@@ -148,7 +167,15 @@ function buildHall() {
     put('wood',  box(1.05, 0.85, 0.7, x, 0.46, z, ry));
     // 명판 판 — 글자는 HTML 패널이 그린다(텍스처를 쓰면 칸마다 드로우콜이 는다)
     put('trim', box(0.62, 0.16, 0.05, x + Math.sin(ry) * 0.38, 0.99, z + Math.cos(ry) * 0.38, ry));
-    if (!got) return;                         // ⚡ 미획득은 유리장도 전시물도 만들지 않는다
+    if (!got) {
+      // 🎀 빈 칸은 천을 덮어 둔다 — "아직 없음" 이 아니라 "곧 열릴 전시" 로 읽히고,
+      //    수집하는 순간 천이 걷히는 연출이 도감 등록의 보상이 된다.
+      //    받침과 같은 재질 수 안에서 끝나므로 드로우콜은 늘지 않는다.
+      const c1 = box(1.18, 0.30, 0.80, x, 1.12, z, ry);
+      const c2 = box(1.02, 0.22, 0.66, x, 1.34, z, ry);   // 천이 덮인 아래 형태가 어렴풋이
+      put('cloth', c1, c2);
+      return;                                 // ⚡ 유리장도 전시물도 만들지 않는다
+    }
     // 유리장 — 기둥 4 + 갓
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const px = x + (ry ? sz * 0.3 : sx * 0.52), pz = z + (ry ? sx * 0.52 : sz * 0.3);
@@ -266,8 +293,8 @@ let t0 = performance.now();
     const it = ITEMS[near.i];
     plate.style.display = 'block';
     plate.innerHTML = near.got
-      ? `<div class="t">${it.ico} ${it.name}</div><div class="d">${FOUND[near.i]}, 당신이 처음 발견했습니다</div>`
-      : `<div class="t empty">${it.cat} — 빈 자리</div><div class="d empty">아직 발견하지 못했어요</div>`;
+      ? `<div class="d">${zoneOf(near.i).label} 구역</div><div class="t">${it.ico} ${it.name}</div><div class="d">${FOUND[near.i]}, 당신이 처음 발견했습니다</div>`
+      : `<div class="d">${zoneOf(near.i).label} 구역</div><div class="t empty">🎀 아직 덮여 있어요</div><div class="d empty">${it.cat} — 찾아오면 천을 걷을게요</div>`;
   } else plate.style.display = 'none';
 
   renderer.info.reset();
