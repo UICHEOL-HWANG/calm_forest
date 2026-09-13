@@ -29,7 +29,8 @@ import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
-import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
+import { createKeyState, isEditableTarget } from './keys.js';
+import { tierOf, paletteOf, GEM_COLOR } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -1410,6 +1411,7 @@ export const ANIMALS = [
     extras: ['wings'] },   // 부리·볏은 animal-faces.js, 날개만 여기(팔 역할)
 ];
 let heldGroup, handAnchor, heldToolMesh; // 도구 캐리어(손 따라가기/등 수납) / 손 / 든 도구
+let heldToolId = null;                   // 🪓 지금 든 도구 id — 업그레이드 직후 같은 도구를 다시 만들 때 쓴다
 let playerArms = null;    // { R:{pivot,hand}, L:{pivot,hand} } — 🐤병아리는 날개가 팔 역할(같은 구조)
 let armWristK = 0;        // 손목 펴짐 0(자루 세움)~1(팔의 연장) — 스윙 중에만 커짐
 let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(rad)
@@ -2679,62 +2681,121 @@ function makeCharacterPreview(canvas) {
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
-function toolMesh(id) {
+// 🪓 도구 조형. tier: 0 기본 / 1 업그레이드(강철·큰·튼튼한) / 2 히든(금 + 각인 + 보석).
+//   ⚠️ 기본값이 0 인 이유 — 주민(NPC)도 이 함수를 쓴다. 등급을 넘기면 마을 전체가 금빛이 된다.
+//   ⚠️ 1단계는 성능을 실루엣으로 번역한다(크기·부품). 멀리서 읽히는 건 굵기가 아니라 크기와 색 대비다.
+//   조형 검수: sims/tool-tier-sim.html · 색: js/tool-tiers.js
+function toolMesh(id, tier = 0) {
   const g = new THREE.Group();
-  const wood = (l) => new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, l, 6), clayMat(0x8a5a3a));
+  const T = paletteOf(tier);
+  const up = tier >= 1;                   // 업그레이드 이상 — 크기·부품이 붙는다
+  const wood = (l) => new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, l, 6), clayMat(T.wood));
   // ── 새 4종(도끼·곡괭이·망치·낫) 공용 — sims/arm-sim.html 에서 검수받은 조형 ──
-  const GRIP = 0x5f3d26, STEEL = 0x6d757c, EDGE = 0xd9dfe4;
+  const GRIP = T.grip, STEEL = T.metal, EDGE = T.edge;
   const handle = (l, r = 0.030) => {   // 테이퍼 자루 + 그립 밴드 + 끝 혹. 반환: 자루 꼭대기 y
-    const h = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clayMat(0x8a5a3a));
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clayMat(T.wood));
     h.position.y = l / 2 - 0.08;
     const band = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.18, r * 1.18, 0.07, 7), clayMat(GRIP));
     band.position.y = -0.02;
     const knob = new THREE.Mesh(new THREE.SphereGeometry(r * 1.35, 7, 6), clayMat(GRIP));
     knob.position.y = -0.08;
     g.add(h, band, knob);
+    if (up) {   // 자루 금속 보강 밴드 — 멀리서도 "달라졌다" 가 읽히는 가장 싼 신호
+      const rein = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.1, r * 1.1, 0.045, 7), clayMat(T.accent));
+      rein.position.y = l * 0.52 - 0.08; g.add(rein);
+    }
+    if (tier === 2) {   // 각인 무늬 3줄이 자루를 타고 오른다
+      for (let i = 0; i < 3; i++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.05, 0.008, 5, 10), clayMat(T.accent));
+        ring.rotation.x = Math.PI / 2; ring.position.y = l * (0.18 + i * 0.12) - 0.08; g.add(ring);
+      }
+    }
     return l - 0.08;
+  };
+  // 2단계 포인트 보석 — 몸체에 묻히지 않게 앞면(z+)으로 띄운다
+  const gem = (x, y, sc = 1) => {
+    if (tier !== 2) return;
+    const j = new THREE.Mesh(new THREE.OctahedronGeometry(0.032 * sc, 0), clayMat(GEM_COLOR));
+    j.position.set(x, y, 0.055); g.add(j);
   };
   if (id === 'axe') {
     const top = handle(0.52);
     // 쐐기형 머리: 강철 몸체 + 밝은 날 + 뒤통수 망치면
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.13, 0.06), clayMat(STEEL));
+    const ak = up ? 1.22 : 1;   // 강철 도끼 — 머리가 커진다("2번에 벌목" 이 실루엣으로 보이게)
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.17 * ak, 0.13 * ak, 0.06), clayMat(STEEL));
     head.position.set(0.075, top - 0.05, 0); g.add(head);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.155, 0.028), clayMat(EDGE));
-    blade.position.set(0.175, top - 0.05, 0); blade.rotation.z = 0.06; g.add(blade);
-    const poll = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.07), clayMat(STEEL));
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07 * ak, 0.155 * ak, 0.028), clayMat(EDGE));
+    blade.position.set(0.175 * ak, top - 0.05, 0); blade.rotation.z = 0.06; g.add(blade);
+    const poll = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09 * ak, 0.07), clayMat(STEEL));
     poll.position.set(-0.035, top - 0.05, 0); g.add(poll);
+    gem(0, top - 0.16, 1.15);
     g.scale.setScalar(1.18);
   } else if (id === 'hoe') {
     const top = handle(0.52);
     // 곡괭이 — 소켓에서 양팔이 대칭으로 뻗고 끝으로 갈수록 처지며 뾰족해진다. 검은 무쇠 톤
-    const IRON = 0x4d5156;
+    const IRON = tier === 2 ? T.metal : (up ? 0x3f4348 : 0x4d5156);   // 무쇠 괭이 — 더 검은 무쇠
+    const hk = up ? 1.20 : 1;
     const hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
-    const boss = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.095, 0.075), clayMat(IRON));
+    const boss = new THREE.Mesh(new THREE.BoxGeometry(0.085 * hk, 0.095 * hk, 0.075), clayMat(IRON));
     hd.add(boss);
     [-1, 1].forEach(sx => {
-      const TH = [0.14, 0.32], LEN = [0.13, 0.12];
+      const TH = [0.14, 0.32], LEN = [0.13 * hk, 0.12 * hk];
       let px = sx * 0.042, py = 0.012;
       for (let i = 0; i < 2; i++) {
         const dx = Math.cos(TH[i]) * sx, dy = -Math.sin(TH[i]);
-        const seg = new THREE.Mesh(new THREE.BoxGeometry(LEN[i], 0.048 - i * 0.012, 0.05 - i * 0.012), clayMat(IRON));
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(LEN[i], (0.048 - i * 0.012) * hk, 0.05 - i * 0.012), clayMat(IRON));
         seg.position.set(px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
         seg.rotation.z = -sx * TH[i];
         hd.add(seg);
         px += dx * LEN[i]; py += dy * LEN[i];
       }
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.020, 0.085, 6), clayMat(IRON));
+      // 끝만 밝은 강철로 — "한 번 덜 친다" 가 날 끝에서 읽힌다
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.020 * hk, 0.085 * hk, 6), clayMat(up ? EDGE : IRON));
       const t3 = 0.48, dx = Math.cos(t3) * sx, dy = -Math.sin(t3);
       tip.position.set(px + dx * 0.042, py + dy * 0.042, 0);
       tip.rotation.z = -sx * (Math.PI / 2 + t3);
       hd.add(tip);
     });
+    gem(0, top + 0.01, 1);
     g.scale.setScalar(1.18);
   } else if (id === 'seed') {
-    const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), clayMat(0xcaa06a)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
+    const sk = up ? 1.30 : 1;   // 넉넉한 = 주머니가 커진다
+    const cloth = tier === 2 ? 0x8a6a3a : (up ? 0xb8873f : 0xcaa06a);
+    const bag = new THREE.Mesh(new THREE.SphereGeometry(0.12 * sk, 8, 8), clayMat(cloth)); bag.position.y = 0.08; bag.scale.set(1, 1.15, 1); g.add(bag);
+    if (up) {   // 목 끈 + 매듭 — "안 새어 나간다" 를 닫힌 주머니로 보여준다
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * sk, 0.075 * sk, 0.06, 8), clayMat(cloth));
+      neck.position.y = 0.20 * sk; g.add(neck);
+      const cord = new THREE.Mesh(new THREE.TorusGeometry(0.062 * sk, 0.012, 5, 12), clayMat(T.accent));
+      cord.rotation.x = Math.PI / 2; cord.position.y = 0.20 * sk; g.add(cord);
+      [-1, 1].forEach(sx => {
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.024, 6, 5), clayMat(T.accent));
+        knot.position.set(sx * 0.07 * sk, 0.21 * sk, 0); g.add(knot);
+      });
+    }
+    if (tier === 2) for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry((0.118 - i * 0.022) * sk, 0.007, 5, 12), clayMat(T.accent));
+      ring.rotation.x = Math.PI / 2; ring.position.y = 0.03 + i * 0.055; g.add(ring);
+    }
+    gem(0, 0.10, 1.1);
     g.scale.setScalar(1.25);   // 소형 도구 확대 — 원 크기론 41° 카메라에서 몸에 묻혀 안 보임(도구 가시성 시뮬)
   } else if (id === 'water') {
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clayMat(0x8fd0ea)); body.position.y = 0.18; g.add(body);
-    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clayMat(0x8fd0ea)); spout.position.set(0.15, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
+    const wk = up ? 1.28 : 1;   // 큰 물조리개 — 통이 실제로 커진다
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * wk, 0.12 * wk, 0.2 * wk, 10), clayMat(T.can)); body.position.y = 0.18; g.add(body);
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.22 * wk, 6), clayMat(T.can)); spout.position.set(0.15 * wk, 0.26, 0); spout.rotation.z = -0.9; g.add(spout);
+    if (up) {
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.115 * wk, 0.115 * wk, 0.028, 10), clayMat(T.accent));
+      rim.position.y = 0.18 + 0.1 * wk; g.add(rim);
+      const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 5, 10), clayMat(T.accent));
+      hoop.position.set(-0.06 * wk, 0.30, 0); hoop.rotation.y = Math.PI / 2; g.add(hoop);
+      // 장미꼭지 — 물이 넓게 퍼진다는 성능의 시각화
+      const rose = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.032, 0.04, 8), clayMat(T.accent));
+      rose.position.set(0.265 * wk, 0.40, 0); rose.rotation.z = -0.9; g.add(rose);
+    }
+    if (tier === 2) for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.118 * wk, 0.007, 5, 12), clayMat(T.accent));
+      ring.rotation.x = Math.PI / 2; ring.position.y = 0.11 + i * 0.06; g.add(ring);
+    }
+    gem(0, 0.30, 1.15);
     g.scale.setScalar(1.25);
   } else if (id === 'sickle') {
     const top = handle(0.30, 0.034);
@@ -2742,68 +2803,102 @@ function toolMesh(id) {
     //   완만한 곡선은 각도가 조금씩 커지는 3개 세그먼트로 — 급하게 꺾으면 갈고리가 된다.
     const bl = new THREE.Group();
     bl.position.y = top + 0.01; bl.rotation.y = 0.10; g.add(bl);
-    const TH = [0.06, 0.28, 0.60], LEN = [0.15, 0.12, 0.10], W = [0.055, 0.045, 0.030];
+    const ck = up ? 1.24 : 1;   // 잘 드는 낫 — 날이 길어진다(옆 칸까지 닿는다)
+    const TH = [0.06, 0.28, 0.60], LEN = [0.15 * ck, 0.12 * ck, 0.10 * ck], W = [0.055, 0.045, 0.030];
     let px = 0, py = 0;
     for (let i = 0; i < 3; i++) {
       const dx = Math.sin(TH[i]), dy = Math.cos(TH[i]);
-      const seg = new THREE.Mesh(new THREE.BoxGeometry(W[i], LEN[i], 0.016), clayMat(0x6d757c));
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(W[i], LEN[i], 0.016), clayMat(STEEL));
       seg.position.set(px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
       seg.rotation.z = -TH[i];
       bl.add(seg);
-      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.013, LEN[i] * 0.94, 0.012), clayMat(0xd9dfe4));
+      // 밝은 날을 1단계부터 두껍게 — "잘 든다" 는 날에서 읽혀야 한다
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(up ? 0.020 : 0.013, LEN[i] * 0.94, 0.012), clayMat(EDGE));
       edge.position.set(px + dx * LEN[i] / 2 + dy * (W[i] / 2), py + dy * LEN[i] / 2 - dx * (W[i] / 2), 0);
       edge.rotation.z = -TH[i];
       bl.add(edge);
       px += dx * LEN[i]; py += dy * LEN[i];
     }
-    const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clayMat(0x6d757c));
+    const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clayMat(up ? T.accent : STEEL));
     ferrule.position.y = top - 0.01; g.add(ferrule);
+    gem(0, top - 0.01, 0.95);
     g.scale.setScalar(1.18);
   } else if (id === 'shovel') {
     // 🪏 삽 — sims/shovel-sim.html 검수판. 긴 자루 위에 목 이음쇠 + 넓적한 날(위가 넓고 끝이 좁아짐)
     const top = handle(0.58);
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.042, 0.07, 7), clayMat(STEEL));
+    const vk = up ? 1.26 : 1;   // 넓은 삽 — 날이 넓어진다(한 번에 메운다)
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.042, 0.07, 7), clayMat(up ? T.accent : STEEL));
     collar.position.y = top + 0.01; g.add(collar);
     // 날: 둥근 삽날 윤곽(어깨 직선 + 반원 끝)을 얇게 뽑고 모서리를 둥글게 깎아 매끈한 한 덩어리로(참고 이미지 피드백 2026-09-08).
     //   날끝 밝은 막대·발판 턱은 게임 시점에서 점처럼 따로 떠 보여 없앴다.
-    const bw = 0.105, bh = 0.13;
+    const bw = 0.105 * vk, bh = 0.13 * vk;
     const sh = new THREE.Shape();
     sh.moveTo(-bw, 0); sh.lineTo(-bw, bh); sh.absarc(0, bh, bw, Math.PI, 0, true); sh.lineTo(bw, 0); sh.closePath();
     const bladeGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 3, curveSegments: 14 });
     bladeGeo.translate(0, 0, -0.015);
     const blade = new THREE.Mesh(bladeGeo, clayMat(STEEL, false));
     blade.position.y = top + 0.03; g.add(blade);
+    if (up) [-1, 1].forEach(sx => {   // 발판 턱 — 발로 밟아 한 번에 박는다
+      const step = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.022, 0.045), clayMat(T.accent));
+      step.position.set(sx * bw * 0.75, top + 0.045, 0.02); g.add(step);
+    });
+    gem(0, top + 0.10, 1.1);
     g.scale.setScalar(1.18);
   } else if (id === 'hammer') {
     const top = handle(0.50);
     // 원통형 머리(가로) + 양끝 밝은 캡 + 자루 고정핀
-    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.20, 8), clayMat(STEEL));
+    const mk = up ? 1.24 : 1;   // 묵직한 = 머리가 크다(목재를 덜 먹는다)
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * mk, 0.055 * mk, 0.20 * mk, 8), clayMat(STEEL));
     head.position.y = top - 0.04; head.rotation.z = Math.PI / 2; g.add(head);
     [-1, 1].forEach(sx => {
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.058, 0.03, 8), clayMat(EDGE));
-      cap.position.set(sx * 0.105, top - 0.04, 0); cap.rotation.z = Math.PI / 2; g.add(cap);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.062 * mk, 0.058 * mk, up ? 0.045 : 0.03, 8), clayMat(EDGE));
+      cap.position.set(sx * 0.105 * mk, top - 0.04, 0); cap.rotation.z = Math.PI / 2; g.add(cap);
     });
-    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), clayMat(GRIP));
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), clayMat(up ? T.accent : GRIP));
     pin.position.y = top + 0.022; g.add(pin);
+    gem(0, top - 0.16, 1.05);
     g.scale.setScalar(1.18);
   } else if (id === 'rod') {
     // 🎣 민낚싯대 — 도구 가시성 시뮬 검수판. 이전 버전은 찌(흰 공)가 장대 끝 옆에
     //   낚싯줄 없이 떠 있어 가까이서 보면 부러진 막대처럼 읽혔다.
     //   주먹 아래 그립(혹+밴드) + 장대 끝에서 줄로 내려오는 빨간 찌.
-    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(GRIP));
+    //   튼튼한 낚싯대(1단계)는 릴을 달지 않는다 — 🌊바다터 대물 릴대와 실루엣이 겹친다.
+    //   멀리서 읽히는 건 ① 밝은 코르크 그립 ② 2색 이음 장대 ③ 길이다.
+    const rk = up ? 1.18 : 1, CORK = 0xd9b98a, UPPER = 0xb8975e;
+    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.040, 7, 6), clayMat(up ? T.accent : GRIP));
     rknob.position.y = -0.09; g.add(rknob);
-    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.030, 0.20, 7), clayMat(GRIP));
-    rear.position.y = -0.01; g.add(rear);
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.030 * rk, 0.034 * rk, up ? 0.26 : 0.20, 7), clayMat(up ? CORK : GRIP));
+    rear.position.y = up ? 0.02 : -0.01; g.add(rear);
     const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.026, 0.92, 6), clayMat(0x7a4a2a));
-    pole.position.y = 0.46; poleG.add(pole);
-    const lineG = new THREE.Group(); lineG.position.y = 0.92; lineG.rotation.z = 0.12; poleG.add(lineG);  // 줄은 수직으로
+    const RL = up ? 1.06 : 0.92;
+    if (up) {
+      const lowH = RL * 0.58, upH = RL * 0.42;
+      const low = new THREE.Mesh(new THREE.CylinderGeometry(0.022 * rk, 0.030 * rk, lowH, 6), clayMat(T.pole));
+      low.position.y = lowH / 2; poleG.add(low);
+      const upSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.011 * rk, 0.022 * rk, upH, 6), clayMat(tier === 2 ? EDGE : UPPER));
+      upSeg.position.y = lowH + upH / 2; poleG.add(upSeg);
+      const ferr = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.055, 7), clayMat(T.accent));
+      ferr.position.y = lowH; poleG.add(ferr);
+      [[0.26, 0.046], [0.62, 0.036], [0.92, 0.028]].forEach(([f, r]) => {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.012, 5, 10), clayMat(T.accent));
+        ring.rotation.x = Math.PI / 2; ring.position.set(0.02, RL * f, 0); poleG.add(ring);
+      });
+    } else {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.026, RL, 6), clayMat(T.pole));
+      pole.position.y = RL / 2; poleG.add(pole);
+    }
+    if (tier === 2) for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.007, 5, 10), clayMat(T.accent));
+      ring.rotation.x = Math.PI / 2; ring.position.y = -0.04 + i * 0.05; g.add(ring);
+    }
+    const lineG = new THREE.Group(); lineG.position.y = RL; lineG.rotation.z = 0.12; poleG.add(lineG);  // 줄은 수직으로
     const line = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 5), clayMat(0xe8e4d8));
     line.position.y = -0.17; lineG.add(line);
-    const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 7), clayMat(0xd94f4f));   // 빨간 찌
-    bob.position.y = -0.38; bob.scale.set(1, 1.25, 1); lineG.add(bob);
-    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.040, 0.040, 0.022, 9), clayMat(0xf4efe6));
+    const bob = new THREE.Mesh(new THREE.SphereGeometry(0.042 * rk, 8, 7), clayMat(tier === 2 ? EDGE : 0xd94f4f));   // 빨간 찌
+    bob.position.y = -0.38; bob.scale.set(1, up ? 1.5 : 1.25, 1); lineG.add(bob);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.041 * rk, 0.041 * rk, 0.022, 9), clayMat(0xf4efe6));
     stripe.position.y = -0.38; lineG.add(stripe);
+    gem(0, 0.10, 0.9);
     g.scale.setScalar(1.25);
   } else if (id === 'reel') {
     // 🌊 대물 릴대 — sims/arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
@@ -2837,12 +2932,22 @@ function toolMesh(id) {
     g.userData.sea = { crank, tip: rtip, tipEnd };
   } else if (id === 'net') {
     // 🦋 포충망 — 긴 손잡이 + 테 + 반투명 망(밤에 실루엣이 또렷하게 보이도록 밝은 색)
+    const nk = up ? 1.22 : 1;   // 촘촘한 = 테가 커지고 망이 덜 비친다(잡을 확률↑)
     const h = wood(0.62); h.position.y = 0.2; g.add(h);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 6, 14), clayMat(0xdfe6ea));
+    if (up) {
+      const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.034, 0.05, 7), clayMat(T.accent));
+      rein.position.y = 0.34; g.add(rein);
+    }
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17 * nk, up ? 0.024 : 0.018, 6, 14), clayMat(tier === 2 ? T.metal : 0xdfe6ea));
     ring.position.y = 0.6; ring.rotation.x = Math.PI / 2; g.add(ring);
-    const bag = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 10, 1, true),
-      new THREE.MeshStandardMaterial({ color: 0xfaffff, transparent: true, opacity: 0.45, roughness: 1, side: THREE.DoubleSide }));
+    const bag = new THREE.Mesh(new THREE.ConeGeometry(0.16 * nk, 0.3 * nk, 10, 1, true),
+      new THREE.MeshStandardMaterial({ color: tier === 2 ? 0xf2e8c8 : 0xfaffff, transparent: true, opacity: up ? 0.58 : 0.45, roughness: 1, side: THREE.DoubleSide }));
     bag.position.y = 0.74; g.add(bag);
+    if (tier === 2) for (let i = 0; i < 3; i++) {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.033, 0.007, 5, 10), clayMat(T.accent));
+      r.rotation.x = Math.PI / 2; r.position.y = 0.06 + i * 0.06; g.add(r);
+    }
+    gem(0, 0.44, 1.05);
     g.scale.setScalar(1.25);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
@@ -2988,11 +3093,17 @@ function poseHeldTool(stow, swingX, swingZ) {
   heldGroup.rotation.set(rx * j + HELD_STOW.rx * k, 0, rz * j + HELD_STOW.rz * k);
 }
 
+// 🪓 업그레이드를 얻은 직후 손에 든 도구를 다시 만든다.
+//   안 하면 코인을 쓴 그 순간엔 아무 일도 안 일어나고, 다음 도구 전환까지 옛 모습이 남는다.
+function refreshHeldTool() { if (heldToolId) setHeldTool(heldToolId); }
+
 function setHeldTool(id) {
   if (!handAnchor) return;
   if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) handAnchor.remove(heldToolMesh);
-  heldToolMesh = toolMesh(id); measureStowLen(heldToolMesh); updateStowPose();
+  heldToolId = id;
+  heldToolMesh = toolMesh(id, tierOf(id, gameState));   // 지금 등급으로 — 업그레이드를 샀으면 모습이 다르다
+  measureStowLen(heldToolMesh); updateStowPose();
   handAnchor.add(heldToolMesh);
   if (indoor || atCafe) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
   // 🪏 처음 삽을 들면 쓰는 법 1회 안내(모달) — 밭을 지우고 싶은 사람이 정확히 이 순간 답을 얻는다
@@ -7862,6 +7973,7 @@ function buyShop(id) {
   if (it.give) giveReward(it.give, 'shop_buy_bundle', id);
   if (it.upgrade) {                                   // 도구 업그레이드 코인 구매
     gameState.upgrades[it.upgrade] = true;
+    refreshHeldTool();                                // 🪓 산 즉시 손에 든 도구가 달라진다
     spawnFloatText(player.position.x, 1.6, player.position.z, `${it.ico} ${it.name}!`, '#2f7a44');
     Sound.complete();
   } else {
@@ -8043,6 +8155,7 @@ function craftUpgrade(id) {
   }
   for (const k in u.cost) gameState.inventory[k] -= u.cost[k];
   gameState.upgrades[id] = true;
+  refreshHeldTool();                                  // 🪓 만든 즉시 손에 든 도구가 달라진다
   refreshInventoryUI();
   Sound.complete();
   spawnFloatText(player.position.x, 1.5, player.position.z, `${u.ico} ${u.name}!`, '#2f7a44');

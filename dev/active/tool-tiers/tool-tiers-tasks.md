@@ -4,15 +4,15 @@
 - [x] 🪓💧🎣 3종 0/1/2단계 시안 — `sims/tool-tier-sim.html` (커밋 `499be46`)
 - [x] 2단계 시안 A/B/C 중 **C 보석 상감** 확정
 - [x] 🎣 1단계를 릴 없이 강화 (코르크 그립·2색 이음·길이)
-- [ ] 나머지 6종 확장 — ⛏️괭이 🌰씨앗 낫 🪏삽 🔨망치 🦋포충망
+- [x] 나머지 6종 확장 — ⛏️괭이 🌰씨앗 낫 🪏삽 🔨망치 🦋포충망 (커밋 `9139f16`)
 - [ ] 9종 전체를 실전 거리·밤 조명에서 확인받기
 
 ## 2. 외형을 게임에 연결
-- [ ] 등급 규칙을 모듈로 분리 (`js/tool-tiers.js`) — sim 과 game 이 같은 소스를 쓰게
-- [ ] `toolMesh(id, tier)` 로 확장 · 주민 도구는 tier 0 고정
-- [ ] `gameState.upgrades` → tier 1 판정 (기존 유저 즉시 체감)
-- [ ] 업그레이드 구매 직후 `heldToolMesh` 갱신
-- [ ] 순수 함수 테스트 (`tests/tool-tiers.test.mjs`) — 도구별 tier 해석·주민 고정
+- [x] 등급 규칙을 모듈로 분리 (`js/tool-tiers.js`) — sim 이 TIER_PALETTE 를 import 한다
+- [x] `toolMesh(id, tier)` 로 확장 · 주민 도구는 tier 0 고정(기본 인자 + 테스트로 잠금)
+- [x] `gameState.upgrades` → tier 1 판정 (기존 유저 즉시 체감)
+- [x] 업그레이드 구매 직후 `heldToolMesh` 갱신 (`refreshHeldTool`) — 상점 실측 확인
+- [x] 순수 함수 테스트 (`tests/tool-tiers.test.mjs`) 13개 — 블룸 휘도 규칙까지 잠금
 
 ## 3. 새 업그레이드 5종
 - [ ] `UPGRADES` · 상점 `buy_*` 에 5종 추가 + `gameState.upgrades` 기본값
