@@ -1,5 +1,5 @@
 // =============================================================
-//  calm forest · 🪓 도구 등급 (순수 모듈 — THREE/DOM 의존 없음)
+//  calm forest · 🪓 도구 등급 + 업그레이드 효과 (순수 모듈 — THREE/DOM 의존 없음)
 //  ------------------------------------------------------------
 //  ▶ 어떤 등급인가(tierOf) + 그 등급의 색(TIER_PALETTE) 만 정한다.
 //    조형은 game.js 의 toolMesh() 가, 검수는 sims/tool-tier-sim.html 이 이 팔레트를 함께 쓴다.
@@ -14,7 +14,7 @@
 //   🍲 pot(큰 냄비)은 요리 버프라 손에 드는 도구가 아니다 — 일부러 넣지 않는다.
 export const TOOL_UPGRADE = {
   axe: 'axe', water: 'water', rod: 'rod', net: 'net',
-  // ⛏️hoe · 🌰seed · 🌾sickle · 🪏shovel · 🔨hammer 는 업그레이드 신설 후 여기 추가한다
+  hoe: 'hoe', seed: 'seed', sickle: 'sickle', shovel: 'shovel', hammer: 'hammer',
 };
 
 /** ⚠️ UnrealBloomPass 임계(js/game.js 의 bloomPass) — 휘도가 이 값을 넘는 색은 후광이 번진다.
@@ -55,3 +55,36 @@ export function tierOf(toolId, state = {}) {
 export function paletteOf(tier) {
   return TIER_PALETTE[tier] || TIER_PALETTE[0];
 }
+
+// ── 🔧 업그레이드 효과 ────────────────────────────────────────
+//   효과는 전부 **반복 노동 완화** 다. 보상량을 늘리면(수확 +1 같은) 코인 인플레가 생기는데,
+//   지금 문제는 "코인 쓸 데가 없다"(코인이 남는 것)라 정반대 방향이다.
+//   수치를 game.js 에 흩어 두면 밸런스를 한눈에 볼 수 없어 여기 모은다.
+
+/** 🌰 넉넉한 씨앗 주머니 — 기본 씨앗을 아낄 확률 */
+export const SEED_SAVE = 0.30;
+/** 🔨 묵직한 망치 — 건축 단계당 목재 */
+export const HAMMER_BUILD_COST = 7;
+
+/** ⛏️ 무쇠 괭이 — 광맥 hp 를 한 번에 얼마나 깎는가(🪓강철 도끼와 같은 패턴). */
+export function mineHitPower(state = {}) { return state.upgrades?.hoe ? 2 : 1; }
+
+/** 🔨 묵직한 망치 — 건축·증축에 드는 목재. 없으면 기본값 그대로. */
+export function buildCostOf(state = {}, base) { return state.upgrades?.hammer ? HAMMER_BUILD_COST : base; }
+
+/**
+ * 🌰 이번에 심을 때 씨앗이 안 줄어드는가.
+ * ⚠️ 고급 씨앗(🌾밀·🌽옥수수·🍇포도)은 상점에서 코인으로 사는 물건이다 —
+ *    절약이 붙으면 이 기획이 늘리려는 코인 싱크를 스스로 깎는다.
+ * @param {number} roll 0 이상 1 미만 난수
+ * @param {boolean} adv 고급 씨앗인가
+ */
+export function seedSaved(state = {}, roll, adv = false) {
+  return !adv && !!state.upgrades?.seed && roll < SEED_SAVE;
+}
+
+/** 🪏 넓은 삽 — 빈 밭을 한 번에 메우는가(기본은 DIG_WINDOW 안에 두 번). */
+export function digIsOneShot(state = {}) { return !!state.upgrades?.shovel; }
+
+/** 🌾 잘 드는 낫 — 수확할 때 함께 거둘 옆 칸 수. */
+export function sickleReach(state = {}) { return state.upgrades?.sickle ? 1 : 0; }

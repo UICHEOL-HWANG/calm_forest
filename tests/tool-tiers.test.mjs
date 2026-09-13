@@ -125,3 +125,77 @@ test('업그레이드를 얻으면 손에 든 도구를 다시 만든다', () =>
     assert.match(body, /refreshHeldTool\(\)/, `${name} 이 손에 든 도구를 갱신하지 않는다`);
   }
 });
+
+// ── 🔧 새 업그레이드 5종의 효과 규칙 ──────────────────────────
+//   효과는 전부 "반복 노동 완화" 다. 보상량을 늘리면 코인 인플레가 생기는데,
+//   지금 문제는 코인이 남는 것이라 정반대다(dev/active/tool-tiers/).
+import { mineHitPower, buildCostOf, seedSaved, digIsOneShot, sickleReach, SEED_SAVE } from '../js/tool-tiers.js';
+
+const none = { upgrades: {} };
+
+test('⛏️ 무쇠 괭이 — 광맥을 한 번 덜 친다(🪓강철 도끼와 같은 패턴)', () => {
+  assert.equal(mineHitPower(none), 1);
+  assert.equal(mineHitPower({ upgrades: { hoe: true } }), 2);
+});
+
+test('🔨 묵직한 망치 — 건축 목재가 준다', () => {
+  assert.equal(buildCostOf(none, 10), 10);
+  assert.equal(buildCostOf({ upgrades: { hammer: true } }, 10), 7);
+});
+
+// 🌰 고급 씨앗(🌾밀·🌽옥수수·🍇포도)은 상점에서 코인으로 사는 물건이다.
+//    절약이 붙으면 이 기획이 늘리려는 코인 싱크를 스스로 깎는다.
+test('🌰 씨앗 주머니 — 기본 씨앗만 아낀다', () => {
+  assert.equal(seedSaved(none, 0.0, false), false);
+  assert.equal(seedSaved({ upgrades: { seed: true } }, 0.0, false), true);
+  assert.equal(seedSaved({ upgrades: { seed: true } }, 0.99, false), false);
+  assert.equal(seedSaved({ upgrades: { seed: true } }, 0.0, true), false, '고급 씨앗까지 아끼면 코인 싱크가 깎인다');
+});
+
+test('🌰 절약 확률은 경계에서 갈린다', () => {
+  const up = { upgrades: { seed: true } };
+  assert.equal(seedSaved(up, SEED_SAVE - 0.001, false), true);
+  assert.equal(seedSaved(up, SEED_SAVE, false), false, '난수는 0 이상 1 미만이라 경계는 제외여야 한다');
+});
+
+test('🪏 넓은 삽 — 한 번에 메운다', () => {
+  assert.equal(digIsOneShot(none), false);
+  assert.equal(digIsOneShot({ upgrades: { shovel: true } }), true);
+});
+
+test('🌾 잘 드는 낫 — 옆 칸까지 닿는다', () => {
+  assert.equal(sickleReach(none), 0);
+  assert.equal(sickleReach({ upgrades: { sickle: true } }), 1);
+});
+
+test('상태가 없어도 터지지 않는다', () => {
+  assert.equal(mineHitPower({}), 1);
+  assert.equal(buildCostOf({}, 10), 10);
+  assert.equal(digIsOneShot({}), false);
+  assert.equal(sickleReach({}), 0);
+  assert.equal(seedSaved({}, 0, false), false);
+});
+
+// ── 짝 검증: 5종이 실제로 게임에 등록됐는가 ───────────────────
+test('새 업그레이드 5종이 도구 등급 매핑에 들어 있다', () => {
+  for (const id of ['hoe', 'seed', 'sickle', 'shovel', 'hammer']) {
+    assert.equal(TOOL_UPGRADE[id], id, `${id} 매핑 없음 — 사도 모습이 안 바뀐다`);
+    assert.equal(tierOf(id, { upgrades: { [id]: true } }), 1);
+  }
+});
+
+test('5종이 작업대(UPGRADES)와 상점(SHOP_BUY) 양쪽에 있다', () => {
+  const up = SRC.slice(SRC.indexOf('const UPGRADES = ['), SRC.indexOf('\n];', SRC.indexOf('const UPGRADES = [')));
+  const shop = SRC.slice(SRC.indexOf('const SHOP_BUY'), SRC.indexOf('\n];', SRC.indexOf('const SHOP_BUY')));
+  for (const id of ['hoe', 'seed', 'sickle', 'shovel', 'hammer']) {
+    assert.match(up, new RegExp(`id: '${id}'`), `작업대에 ${id} 없음`);
+    assert.match(shop, new RegExp(`upgrade: '${id}'`), `상점에 ${id} 없음`);
+  }
+});
+
+test('세이브 기본값에 5종이 있다(없으면 복원 때 undefined 가 섞인다)', () => {
+  const line = SRC.match(/upgrades: \{[^}]*\}/)[0];
+  for (const id of ['hoe', 'seed', 'sickle', 'shovel', 'hammer']) {
+    assert.match(line, new RegExp(`${id}: false`), `gameState.upgrades 기본값에 ${id} 없음`);
+  }
+});

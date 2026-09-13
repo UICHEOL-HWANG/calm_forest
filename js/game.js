@@ -30,7 +30,7 @@ import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
-import { tierOf, paletteOf, GEM_COLOR } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
+import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -544,6 +544,11 @@ const SHOP_BUY = [
   { id: 'buy_axe',   name: '강철 도끼',    ico: '🪓', coin: 120, upgrade: 'axe',   desc: '나무를 2번에 벌목' },
   { id: 'buy_rod',   name: '튼튼한 낚싯대', ico: '🎣', coin: 100, upgrade: 'rod',   desc: '입질 시간 여유↑' },
   { id: 'buy_water', name: '큰 물조리개',   ico: '💧', coin: 90,  upgrade: 'water', desc: '물 한 번에 성장↑' },
+  { id: 'buy_hoe',    name: '무쇠 괭이',        ico: '⛏️', coin: 110, upgrade: 'hoe',    desc: '광맥을 한 번 덜 캐도 돼요' },
+  { id: 'buy_seed',   name: '넉넉한 씨앗 주머니', ico: '🌰', coin: 80,  upgrade: 'seed',   desc: '기본 씨앗이 가끔 안 줄어요' },
+  { id: 'buy_sickle', name: '잘 드는 낫',       ico: '🌾', coin: 130, upgrade: 'sickle', desc: '옆 칸 작물도 함께 거둬요' },
+  { id: 'buy_shovel', name: '넓은 삽',          ico: '🪏', coin: 100, upgrade: 'shovel', desc: '빈 밭을 한 번에 메워요' },
+  { id: 'buy_hammer', name: '묵직한 망치',      ico: '🔨', coin: 140, upgrade: 'hammer', desc: '건축·증축 목재가 줄어요' },
 ];
 
 // ── 도구 업그레이드(작업대) — 영구 강화, 재료 소비 ──
@@ -553,6 +558,13 @@ const UPGRADES = [
   { id: 'rod',   name: '튼튼한 낚싯대', ico: '🎣', cost: { wood: 10, fish: 3 }, desc: '입질 시간 여유↑' },
   { id: 'pot',   name: '큰 냄비',      ico: '🍲', cost: { stone: 5, coal: 3 }, desc: '요리 버프 시간 1.5배(채굴)' },
   { id: 'net',   name: '촘촘한 포충망', ico: '🦋', cost: { wood: 12, bug: 2 }, desc: '반딧불이 포획 성공률↑' },   // 🌟 밤 콘텐츠 강화
+  // 🔧 신설 5종 — 도구 9종이 전부 같은 3단계 규칙을 따르게(dev/active/tool-tiers/).
+  //    효과는 전부 "반복 노동 완화" 다 — 보상량을 늘리면 코인 인플레가 생기는데, 지금은 코인이 남는 게 문제다.
+  { id: 'hoe',    name: '무쇠 괭이',        ico: '⛏️', cost: { wood: 15, stone: 8 },  desc: '광맥을 한 번 덜 캐도 돼요' },
+  { id: 'seed',   name: '넉넉한 씨앗 주머니', ico: '🌰', cost: { crop: 6, wood: 6 },   desc: '기본 씨앗이 가끔 안 줄어요' },
+  { id: 'sickle', name: '잘 드는 낫',       ico: '🌾', cost: { stone: 10, crop: 4 },  desc: '옆 칸 작물도 함께 거둬요' },
+  { id: 'shovel', name: '넓은 삽',          ico: '🪏', cost: { wood: 12, stone: 6 },  desc: '빈 밭을 한 번에 메워요' },
+  { id: 'hammer', name: '묵직한 망치',      ico: '🔨', cost: { stone: 14, coal: 3 },  desc: '건축·증축 목재가 줄어요' },
 ];
 
 // ── 야외 장식(작업대) — 마당에 설치, 재료 소비 ──
@@ -965,7 +977,8 @@ const gameState = {
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
   house: { decor: [], stored: {}, addons: [], bedGiven: false },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부
-  upgrades: { axe: false, water: false, rod: false, pot: false, net: false }, // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
+  upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
+              hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   outdoorStored: {},                        // 🧺 보관한 야외 장식 { id: 개수 } — 작업대에서 값 없이 다시 꺼냄
   gifts: {},                                // 보유 선물 { id: count }
@@ -1881,7 +1894,7 @@ let churnPredictor = null;
 // 다음 집 단계를 지금 지을 수 있는가 — 0~2단계는 🔨망치(목재), 3단계부터는 증축(EXPANSIONS 비용).
 //   tryBuild()/expandInfo() 가 쓰는 판정과 같은 기준을 읽기 전용으로 다시 물어본 것.
 function churnHouseReady() {
-  if (gameState.houseStage < 3) return (gameState.inventory.wood || 0) >= BUILD_COST;
+  if (gameState.houseStage < 3) return (gameState.inventory.wood || 0) >= buildCostOf(gameState, BUILD_COST);
   const info = expandInfo();
   return !info.maxed && !!info.affordable;
 }
@@ -5699,7 +5712,7 @@ function updateHouseSign() {
   c.fillStyle = '#204a2c'; c.font = 'bold 92px sans-serif';
   c.fillText(t('🏠 여기에 집 짓기'), 512, 108);
   c.fillStyle = '#33503c'; c.font = 'bold 66px sans-serif';
-  c.fillText(t(`🔨 망치 · 🪵 ${BUILD_COST}`), 512, 210);
+  c.fillText(t(`🔨 망치 · 🪵 ${buildCostOf(gameState, BUILD_COST)}`), 512, 210);   // 🔨 묵직한 망치를 사면 간판 숫자도 바뀐다
   houseSignTex.needsUpdate = true;
 }
 
@@ -8003,6 +8016,7 @@ function buyShop(id) {
   if (it.upgrade) {                                   // 도구 업그레이드 코인 구매
     gameState.upgrades[it.upgrade] = true;
     refreshHeldTool();                                // 🪓 산 즉시 손에 든 도구가 달라진다
+    if (it.upgrade === 'hammer') updateHouseSign();   // 🔨 집 간판의 🪵 숫자도 같이 내려간다
     spawnFloatText(player.position.x, 1.6, player.position.z, `${it.ico} ${it.name}!`, '#2f7a44');
     Sound.complete();
   } else {
@@ -8185,6 +8199,7 @@ function craftUpgrade(id) {
   for (const k in u.cost) gameState.inventory[k] -= u.cost[k];
   gameState.upgrades[id] = true;
   refreshHeldTool();                                  // 🪓 만든 즉시 손에 든 도구가 달라진다
+  if (id === 'hammer') updateHouseSign();             // 🔨 집 간판의 🪵 숫자도 같이 내려간다
   refreshInventoryUI();
   Sound.complete();
   spawnFloatText(player.position.x, 1.5, player.position.z, `${u.ico} ${u.name}!`, '#2f7a44');
@@ -8818,7 +8833,7 @@ function tryMine() {
   const ud = nearest.userData;
   doPlayerAction(nearest.position.x, nearest.position.z);
   Sound.chop(); spawnDust(nearest.position.x, nearest.position.z, 8);
-  ud.hp -= 1;
+  ud.hp -= mineHitPower(gameState);            // ⛏️ 무쇠 괭이: 2씩 — 광맥 hp 3 이라 두 번에 캔다
   if (ud.hp <= 0) {
     const ore = ud.ore;
     const amt = ore.id === 'gem' ? 1 : (1 + (Math.random() < 0.5 ? 1 : 0) + (buffOn('mine') && Math.random() < 0.6 ? 1 : 0)); // 🍳 오믈렛 버프: 광석 추가 확률
@@ -10826,7 +10841,9 @@ function plantSeed(plot) {
   }
   if (adv && adv.trellis && !trellisAdjacent(plot.x, plot.z)) { ui.toast?.('🍇 포도는 지지대 바로 옆 밭에만 심을 수 있어요', 2600); return; }
   if (!adv && gameState.inventory.seed <= 0) { ui.toast?.('씨앗이 없어요 🌰'); return; }
-  gameState.inventory[key] -= 1;
+  // 🌰 넉넉한 씨앗 주머니 — 기본 씨앗만 아낀다(고급 씨앗은 코인으로 사는 물건이라 제외)
+  const saved = seedSaved(gameState, Math.random(), !!adv);
+  if (!saved) gameState.inventory[key] -= 1;
   plot.state = 'growing'; plot.growth = 0.05; plot.stage = -1;
   plot.cropType = adv || BASIC_CROPS[Math.floor(Math.random() * BASIC_CROPS.length)]; // 기본은 종류 랜덤
   plot.fert = false; plot.weed = false; plot.pest = false;                             // 🌾 공정 상태 초기화
@@ -10835,6 +10852,7 @@ function plantSeed(plot) {
   refreshCropStage(plot);   // 0단계(새싹) 메시 생성 + 팝
   refreshCovers();          // 🛡️ 덮개 설치 중이면 새로 심은 밭에도 표시
   refreshInventoryUI(); updatePlotVisual(plot);
+  if (saved) spawnFloatText(plot.x, 1.2, plot.z, '🌰 아꼈어요!', '#2f7a44');   // 눈에 보여야 업그레이드가 일한 걸 안다
   questEvent('plant');      // 퀘스트 진행
   ui.act?.('seed');         // 튜토리얼
   if (adv) firstHintBanner('advCrop', adv.ico, '고급 작물', '🌱비료를 줘야 제 속도 · 🌿잡초는 맨손 액션 · 🐛해충은 포충망');
@@ -10882,7 +10900,7 @@ function tryDig() {
   const plot = digTarget();
   if (!plot) { ui.toast?.('여긴 밭이 없어요 — 빈 밭 위에서 파요'); return; }
   if (plot.state !== 'empty') { ui.toast?.('작물이 있어요 — 수확하거나 괭이로 정리한 뒤 메울 수 있어요'); return; }
-  const second = !!plot.digAt && clock.elapsedTime - plot.digAt <= DIG_WINDOW;   // 누른 순간 기준으로 판정
+  const second = digIsOneShot(gameState) || (!!plot.digAt && clock.elapsedTime - plot.digAt <= DIG_WINDOW);   // 🪏 넓은 삽은 첫 타가 곧 2타. 아니면 누른 순간 기준으로 판정
   doPlayerAction(plot.x, plot.z, 'dig');
   Sound.till();
   pendingDig = { plot, second };
@@ -11195,9 +11213,11 @@ function farmAutoAction() {
 }
 
 // 낫: 다 자란 작물 수확 → 반짝이 스파클 + 작물 +1
-function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8)) {
+// 🌾 viaSickle — "잘 드는 낫" 이 옆 칸을 함께 거두는 두 번째 호출.
+//   제스처·연출은 첫 칸에서만. 이 플래그가 없으면 밭이 줄줄이 이어진 곳에서 무한 재귀가 된다.
+function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.group.position, player.position) < 1.8), viaSickle = false) {
   if (!plot) { ui.toast?.('수확할 작물이 없어요 🌾'); return; }
-  doPlayerAction(plot.x, plot.z); // 수확 제스처
+  if (!viaSickle) doPlayerAction(plot.x, plot.z); // 수확 제스처
   const adv = isAdv(plot.cropType), qty = harvestYield(plot.cropType, !!plot.pest);
   if (adv) {   // 🌾 고급: 종류별 인벤 키(wheat/corn/grape)로, 씨앗은 안 돌아온다(코인 싱크). 해충이면 절반
     gameState.inventory[plot.cropType.id] = (gameState.inventory[plot.cropType.id] || 0) + qty;
@@ -11222,7 +11242,13 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   catchCeremony('harvestZoom');                                   // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
   showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);    // 🥕 열매를 머리 위로 번쩍!
   tryUnlockDrop(0.05);                                            // 🎨 랜덤 색(낮은 확률)
-  trackEvent('harvest_crop', { crop: gameState.inventory.crop, kind: harvestKind, qty, adv, pest: harvestPest }); // [GA4] 종류·수량·해충 손실
+  trackEvent('harvest_crop', { crop: gameState.inventory.crop, kind: harvestKind, qty, adv, pest: harvestPest, sickle: viaSickle ? 1 : 0 }); // [GA4] 종류·수량·해충 손실 + 낫으로 딸려 온 칸
+  // 🌾 잘 드는 낫 — 옆 칸도 함께. 총량은 그대로고 손만 덜 간다(🌾밭 확장 7단계로 밭이 많아졌다).
+  //   ⚠️ 밭 격자는 짝수 좌표 2칸 간격이라 2.6 이면 상하좌우만 걸린다(대각선은 2.83).
+  if (!viaSickle && sickleReach(gameState)) {
+    const near = plots.find(p => p !== plot && p.state === 'mature' && dist2D(p.group.position, plot.group.position) < 2.6);
+    if (near) tryHarvest(near, true);
+  }
 }
 
 
@@ -11843,11 +11869,12 @@ function tryBuild() {
   if (dist2D(HOUSE_POS, player.position) > 3.2) { ui.toast?.('집 터(반투명 자리)로 가세요 🏠'); return; }
   if (gameState.houseStage >= 3) { const r = doExpand(); ui.toast?.(r.msg, 3200); return; }   // 🏗️ 완성 후엔 망치=증축
   const next = gameState.houseStage + 1;
-  if (gameState.inventory.wood < BUILD_COST) { ui.toast?.(`${STAGE_NAMES[next]}엔 목재 ${BUILD_COST}개가 필요해요 🪵`); return; }
-  gameState.inventory.wood -= BUILD_COST;
+  const cost = buildCostOf(gameState, BUILD_COST);   // 🔨 묵직한 망치: 10 → 7
+  if (gameState.inventory.wood < cost) { ui.toast?.(`${STAGE_NAMES[next]}엔 목재 ${cost}개가 필요해요 🪵`); return; }
+  gameState.inventory.wood -= cost;
   doPlayerAction(HOUSE_POS.x, HOUSE_POS.z); // 건축 제스처
   buildHouseStage(next);
-  if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성! (-${BUILD_COST} 목재)`);
+  if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성! (-${cost} 목재)`);
   refreshInventoryUI();
 }
 

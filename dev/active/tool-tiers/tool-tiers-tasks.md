@@ -15,11 +15,11 @@
 - [x] 순수 함수 테스트 (`tests/tool-tiers.test.mjs`) 13개 — 블룸 휘도 규칙까지 잠금
 
 ## 3. 새 업그레이드 5종
-- [ ] `UPGRADES` · 상점 `buy_*` 에 5종 추가 + `gameState.upgrades` 기본값
-- [ ] 효과 구현: 무쇠 괭이(`ud.hp`) · 씨앗 주머니(심기 소모) · 넓은 삽(`DIG_WINDOW` 1타) · 묵직한 망치(`BUILD_COST`)
-- [ ] 잘 드는 낫 — 인접 밭 판정 (이 묶음에서 가장 무겁다)
-- [ ] i18n 영어 · 문구 선검수
-- [ ] 트래킹 `tool_upgrade_buy`
+- [x] `UPGRADES` · 상점 `buy_*` 에 5종 추가 + `gameState.upgrades` 기본값
+- [x] 효과 구현 — 수치는 `js/tool-tiers.js` 에 모았다(밸런스를 한눈에)
+- [x] 잘 드는 낫 — 인접 밭 판정(`viaSickle` 플래그로 재귀 1회 제한)
+- [x] i18n 영어 11줄
+- [x] 트래킹 — `harvest_crop` 에 `sickle` 축 추가(낫으로 딸려 온 칸 구분). 구매는 기존 `shop_buy`/`craft_item` 이 덮는다
 
 ## 4. 2단계 — 친밀도 히든 퀘스트
 - [ ] 친밀도 문턱 설계 (지금은 3단계마다 답례가 전부)
