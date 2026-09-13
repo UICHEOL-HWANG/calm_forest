@@ -41,7 +41,14 @@
 | `quest_complete` | 퀘스트 완료(퍼널③) | `quest`, `npc`, `quest_id`, `elapsed_sec`(수락→완료 초), `reward_coins` |
 | `feedback_submit` | 문의 제출 | `category` |
 | `enter_house` / `exit_house` | 집 실내 입장/퇴장 | — |
-| `enter_farm` / `exit_farm` | 개인 텃밭 입장/퇴장 | — |
+| `enter_farm` / `exit_farm` | 개인 텃밭 입장/퇴장 | 입장: `stage`(밭 단계 1~3 — 단계별 방문 분포) |
+| `farm_expand` | 🌾 📐측량 말뚝으로 밭 증축(퍼널: 텃밭→넓은 밭→대농장) | `stage`(도달 단계 2/3), `wood`, `stone`, `coins`(치른 비용) — 원장 `farm_expand`/`stageN` 과 같은 축 |
+| `seed_select` | 🌰 씨앗 도구 재선택으로 씨앗 종류 바꿈 | `sel`(basic/wheat/corn/grape) — 고급 씨앗 채택률 |
+| `plant_seed` | 파종 | `kind`(carrot…/wheat/corn/grape), `adv`(고급 여부) |
+| `harvest_crop` | 수확 | `crop`(기본 작물 누적), `kind`, `qty`, `adv`, `pest`(해충으로 절반 수확) |
+| `use_fert` | 🌱 비료 | `left`, `adv`(고급 작물이면 "제 속도" 효과, 기본은 즉시 수확), `kind` |
+| `weed_pull` / `pest_clear` | 🌿 김매기 · 🐛 해충 쫓기(고급 작물 공정 수행) | `kind` |
+| `pest_spawn` | 접속 시 하루 1회 해충 정산 결과 | `plots`(붙은 칸 수), `rain`(비 온 다음 날 여부) |
 | `enter_mine` / `exit_mine` | 채굴 동굴 입장/퇴장 | — |
 | `mine_ore` | 광맥 채굴 | `ore`(stone/coal/gem), `amt` |
 | `place_decor` | 가구 배치(꾸미기) | `item`(rug/plant/…) |
