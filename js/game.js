@@ -3106,7 +3106,7 @@ function farmStakeInteract() {
   }
   const next = info.next;
   for (const k in next.cost) gameState.inventory[k] -= next.cost[k];
-  logEcon('farm_expand', 'stage' + next.stage, -next.cost.coins, gameState.inventory.coins);   // [원장] 코인 소비 — 집 증축 'house_expand'/'stageN' 과 같은 축
+  if (next.cost.coins) logEcon('farm_expand', 'stage' + next.stage, -next.cost.coins, gameState.inventory.coins);   // [원장] 코인 소비 — 집 증축 'house_expand'/'stageN' 과 같은 축
   refreshInventoryUI();
   const sp = farmStakePos(); doPlayerAction(sp.x, sp.z);   // 건축 제스처는 옛 말뚝 자리에서
   gameState.farm.stage = next.stage;
@@ -8059,8 +8059,10 @@ function makeSignpost(text, x = 0, z = 1.3) {
   // 🚧 기둥 충돌 — 캐릭터가 팻말을 뚫고 들어가 판이 머리를 가리던 문제.
   //    월드 좌표는 부모 그룹 배치 뒤에야 확정되므로 다음 프레임에 등록한다.
   //    (출입 판정은 반경 1.9 근접이라 r0.3 기둥이 문을 막지 않음)
-  //    콜라이더는 grp.userData.solid 에 보관 — 팻말이 든 그룹을 다시 지을 때(rebuildFarm) removeSolid 로 같이 치운다
-  requestAnimationFrame(() => { const wp = new THREE.Vector3(); post.getWorldPosition(wp); grp.userData.solid = solidCircle(wp.x, wp.z, 0.3); });
+  //    콜라이더는 grp.userData.solid 에 보관 — 팻말이 든 그룹을 다시 지을 때(rebuildFarm) removeSolid 로 같이 치운다.
+  //    같은 틱에 두 번 다시 지으면(세이브 복원 직후 ?farmstage=) 첫 팻말의 rAF 가 철거 뒤에 도는데, 그때 등록하면
+  //    아무도 못 치우는 고아 벽이 된다 → 철거된 그룹(userData.dead)은 등록을 건너뛴다.
+  requestAnimationFrame(() => { if (grp.userData.dead) return; const wp = new THREE.Vector3(); post.getWorldPosition(wp); grp.userData.solid = solidCircle(wp.x, wp.z, 0.3); });
   return grp;
 }
 
@@ -8103,6 +8105,7 @@ function rebuildFarm(silent = false) {
     // 이 그룹의 재질·지오메트리는 전부 여기서 만든 것(clayMat/woodMat 은 호출마다 새 재질, 텍스처는 clone) — 공유 자원 없음
     farmGroup.traverse(o => {
       if (o.userData.solid) removeSolid(o.userData.solid);   // 팻말 기둥 콜라이더 — 안 치우면 옛 울타리 자리에 안 보이는 벽이 남는다
+      o.userData.dead = true;                                // 아직 rAF 등록 전인 팻말은 등록 자체를 건너뛰게(makeSignpost 참고)
       if (!o.isMesh) return;
       o.geometry.dispose();
       // 팻말(makeSignBoard)의 캔버스 텍스처처럼 dispose 가 없는 map 도 있다 — 옵셔널로 부른다(예외가 나면 옛 울타리가 그대로 남는다)
