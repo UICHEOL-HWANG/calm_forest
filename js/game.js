@@ -30,7 +30,8 @@ import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
-import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
+import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -1110,6 +1111,7 @@ function dexDiscover(cat, id) {
   const entry = DEX[cat].find(e => e.id === id);
   const total = dexCount();
   ui.toast?.(`📖 도감 등록! ${entry?.ico || ''} ${entry?.name || id} (${total}/${DEX_TOTAL})`, 2400);
+  refreshMuseumGate(true);   // 🏛️ 이번 등록으로 층이 열렸으면 건물이 자란다
   spawnSparkle(player.position.x, 1.6, player.position.z, 14);
   trackEvent('dex_discover', { category: cat, entry: id, total });   // [GA4] 수집 퍼널
   if (total === DEX_TOTAL) {                                         // 🎉 도감 완성
@@ -2178,7 +2180,10 @@ function applySave(saved) {
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
   if (saved.noticeSeenId) gameState.noticeSeenId = Number(saved.noticeSeenId) || 0; // 📮 읽은 소식 복원
-  if (saved.dex) gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, ...saved.dex }; // 📖 도감 복원
+  if (saved.dex) {
+    gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, ...saved.dex }; // 📖 도감 복원
+    refreshMuseumGate();   // 🏛️ 열어 둔 층만큼 건물을 세운다 — 안 하면 접속할 때마다 1층으로 보인다
+  }
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
@@ -3299,7 +3304,7 @@ function buildEnvironment() {
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
   buildGlade();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
   spawnCafeGate();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
-  spawnMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음
+  refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
   buildCafeHall();   // ☕ 카페 홀(별도 공간)
   buildForest();     // 🍄 채집 숲(남서쪽) — 줍기
   buildDockGate();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
@@ -3955,17 +3960,21 @@ function makeWallPlate(text, w, h) {
 //         색을 **정점에 실어** 한 재질(vertexColors)로 묶는다
 //   ▶ 명판 글자는 3D 텍스처가 아니라 HUD 패널이다(칸마다 캔버스를 만들면 그게 곧 드로우콜).
 const MUSEUM_HALF_W = 7.5, MUSEUM_HALF_D = 6.5, MUSEUM_H = 3.2;
-// 1층 전시 목록 — DEX 의 crop/fish/ore 를 그 순서로 늘어놓는다
-const MUSEUM_FLOOR1 = [
-  ...DEX.crop.map(e => ({ ...e, cat: 'crop', zone: 0 })),
-  ...DEX.fish.map(e => ({ ...e, cat: 'fish', zone: 1 })),
-  ...DEX.ore.map(e  => ({ ...e, cat: 'ore',  zone: 2 })),
-];
+// 구역 러그 — 카테고리마다 색을 달리해 경계가 읽히게. 층마다 카테고리가 다르므로 순서대로 돌려 쓴다
 const MUSEUM_ZONES = [
-  { key: 'rugA', label: '🌾 작물',   color: 0xb8cfa8 },
-  { key: 'rugB', label: '🐟 물고기', color: 0xa8c4d8 },
-  { key: 'rugC', label: '⛏️ 광물',   color: 0xcbc0ad },
+  { key: 'rugA', color: 0xb8cfa8 }, { key: 'rugB', color: 0xa8c4d8 },
+  { key: 'rugC', color: 0xcbc0ad }, { key: 'rugD', color: 0xd8c0c8 },
 ];
+const DEX_CAT_LABEL = { crop: '🌾 작물', fish: '🐟 물고기', ore: '⛏️ 광물', forage: '🍄 채집물',
+  bug: '🌟 반딧불이', dig: '🪏 땅속', track: '🐾 흔적', river: '🛶 강', spirit: '🌫️ 정령',
+  weather: '🌦️ 날씨', npc: '🧑 주민', cook: '🍳 요리' };
+let museumFloor = 1;                       // 지금 보고 있는 층
+// 이 층에 전시할 목록 — 카테고리 순서대로 러그 구역이 갈린다
+function museumFloorItems(floor = museumFloor) {
+  const def = MUSEUM_FLOORS.find(f => f.id === floor);
+  if (!def) return [];
+  return floorEntries(floor, DEX).map(e => ({ ...e, zone: def.cats.indexOf(e.cat) % MUSEUM_ZONES.length }));
+}
 // 🏛️ 전시물 메시 — **게임에서 실제로 쓰는 조형을 그대로 쓴다.**
 //   🌾작물은 수확 때 머리 위로 드는 cropMini, 🐟물고기는 낚시 때의 fishMesh,
 //   ⛏️광물은 광맥과 같은 다면체. 도감에 등록한 그것이 그대로 전시되어야 "내 것" 으로 읽힌다.
@@ -3983,16 +3992,20 @@ function museumExhibitMesh(item) {
 }
 
 // 진열장 자리 — 좌우 벽 5칸씩 + 안쪽 3칸. [x, z, 바라보는 방향]
-function museumSlots() {
+function museumSlots(count = 13) {
   const out = [];
+  const side = Math.min(5, Math.ceil((count - 3) / 2));   // 안쪽 벽 3칸을 빼고 좌우로 나눈다
   //   ⚠️ 간격이 좁으면 진열장 다섯이 한 덩어리로 읽힌다 — 받침 폭 0.95 의 두 배 이상 띄운다.
-  for (let i = 0; i < 5; i++) out.push([-MUSEUM_HALF_W + 1.2, -4.4 + i * 2.2,  Math.PI / 2]);
-  for (let i = 0; i < 5; i++) out.push([ MUSEUM_HALF_W - 1.2, -4.4 + i * 2.2, -Math.PI / 2]);
-  for (let i = 0; i < 3; i++) out.push([-3.2 + i * 3.2, -MUSEUM_HALF_D + 1.2, 0]);
-  return out;
+  const step = side > 1 ? 8.8 / (side - 1) : 0, z0 = -4.4;
+  for (let i = 0; i < side; i++) out.push([-MUSEUM_HALF_W + 1.2, z0 + i * step,  Math.PI / 2]);
+  for (let i = 0; i < side; i++) out.push([ MUSEUM_HALF_W - 1.2, z0 + i * step, -Math.PI / 2]);
+  const back = count - out.length;
+  for (let i = 0; i < back; i++) out.push([(i - (back - 1) / 2) * 2.6, -MUSEUM_HALF_D + 1.2, 0]);
+  return out.slice(0, count);
 }
 let museumCases = [];        // 명판 근접 판정용 { x, z, i }
-let museumColliders = [];    // 진열장 충돌체 — 다시 지을 때 걷어낸다
+let museumColliders = [];    // 진열장·계단 충돌체 — 다시 지을 때 걷어낸다
+let museumStairs = [];      // { x, z, up } — 층 이동 지점
 
 // 🏛️ 진열장 앞에 서면 뜨는 명판. dex 의 **첫 발견 시각**을 쓴다 —
 //   그래야 남의 도감이 아니라 "내 기록" 이 된다(지금 그 값은 아무 데도 안 쓰이고 있었다).
@@ -4005,13 +4018,14 @@ function museumPlateText() {
   }
   if (best > 1.9) hit = -1;
   if (hit < 0) { _museumNear = -1; return null; }
-  const item = MUSEUM_FLOOR1[hit], zone = MUSEUM_ZONES[item.zone];
+  const item = museumFloorItems()[hit]; if (!item) return null;
+  const zone = DEX_CAT_LABEL[item.cat] || '';
   const at = gameState.dex[item.cat]?.[item.id];
   if (hit !== _museumNear) {   // 같은 진열장 앞에 서 있는 동안 이벤트를 쏟지 않는다
     _museumNear = hit;
     trackEvent('museum_exhibit_view', { item: item.id, cat: item.cat, got: at ? 1 : 0 });   // [GA4] 어떤 진열장 앞에 서는가
   }
-  if (!at) return `🎀 ${zone.label} — 아직 덮여 있어요. 찾아오면 천을 걷을게요`;
+  if (!at) return `🎀 ${zone} — 아직 덮여 있어요. 찾아오면 천을 걷을게요`;
   const d = new Date(at);
   return `${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일, 당신이 처음 발견했어요`;
 }
@@ -4024,8 +4038,8 @@ const MUSEUM_VIEW_DIST = 2.4;
 
 function openMuseumView(i) {
   if (museumView) return;
-  const item = MUSEUM_FLOOR1[i];
-  if (!gameState.dex[item.cat]?.[item.id]) return;   // 천이 덮인 칸은 볼 게 없다
+  const item = museumFloorItems()[i];
+  if (!item || !gameState.dex[item.cat]?.[item.id]) return;   // 천이 덮인 칸은 볼 게 없다
   const group = new THREE.Group();
   const mesh = museumExhibitMesh(item);
   mesh.scale.setScalar(1.25);                         // 손바닥만 한 것을 얼굴 크기로(더 키우면 화면을 꽉 채운다)
@@ -4104,10 +4118,11 @@ function buildMuseumHall() {
     add('trim', box(w, 0.22, d, x, 0.11, z), box(w, 0.14, d, x, H - 0.45, z));
   }
 
-  const slots = museumSlots();
+  const items = museumFloorItems();
+  const slots = museumSlots(items.length);
   // 구역 러그 — 벽을 세우면 방이 좁아 보인다. 바닥은 공간감을 안 해치면서 경계가 읽힌다
   slots.forEach(([x, z, ry], i) => {
-    const zn = MUSEUM_ZONES[MUSEUM_FLOOR1[i].zone];
+    const zn = MUSEUM_ZONES[items[i].zone];
     const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
     add(zn.key, box(1.0, 0.03, 1.0, x + inward[0] * 0.95, 0.015, z + inward[1] * 0.95));
   });
@@ -4117,7 +4132,7 @@ function buildMuseumHall() {
   for (const c of museumColliders) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
   museumColliders = [];
   slots.forEach(([x, z, ry], i) => {
-    const item = MUSEUM_FLOOR1[i];
+    const item = items[i];
     const got = !!gameState.dex[item.cat]?.[item.id];
     museumCases.push({ x, z, i });
     add('stone', box(0.95, 0.12, 0.7, x, 0.9, z, ry));
@@ -4147,6 +4162,19 @@ function buildMuseumHall() {
     const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
     m.receiveShadow = true; g.add(m);
   }
+  // 🪜 계단 — 열린 층이 둘 이상일 때만 놓는다. 위층은 북동, 아래층은 북서 구석
+  const opened = openFloors(gameState.dex, DEX);
+  museumStairs = [];
+  const stair = (sx, up) => {
+    const bx = sx * (MUSEUM_HALF_W - 1.5), bz = -MUSEUM_HALF_D + 1.6;
+    for (let i = 0; i < 5; i++) add('stone', box(1.5, 0.22, 0.5, bx, 0.11 + i * 0.22, bz + i * 0.5));
+    add('trim', box(1.7, 0.16, 0.2, bx, 0.11 + 5 * 0.22, bz + 5 * 0.5));
+    museumStairs.push({ x: bx, z: bz + 1.2, up });
+    museumColliders.push(solidBox(MUSEUM.x + bx - 0.85, MUSEUM.z + bz - 0.3, MUSEUM.x + bx + 0.85, MUSEUM.z + bz + 2.6));
+  };
+  if (museumFloor < opened) stair(1, true);
+  if (museumFloor > 1) stair(-1, false);
+
   const lamp = new THREE.PointLight(0xfff3dc, 0.8, 26); lamp.position.set(0, H - 0.7, 0); g.add(lamp);
   scene.add(g);
   return g;
@@ -4165,19 +4193,60 @@ function enterMuseum() {
   player.position.set(MUSEUM.x, 0, MUSEUM.z + MUSEUM_HALF_D - 2.2); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  const have = MUSEUM_FLOOR1.filter(e => gameState.dex[e.cat]?.[e.id]).length;
+  const { have, total } = floorProgress(museumFloor, gameState.dex, DEX);
   firstHint('museum', '🏛️', '박물관',
-    `도감에 등록한 것이 여기 전시돼요 (지금 ${have}/${MUSEUM_FLOOR1.length})\n🎀 천이 덮인 자리는 아직 못 찾은 것 — 찾아오면 천을 걷을게요\n진열장 앞에 서면 아래에 설명이 떠요 · 나갈 땐 남쪽 문`);
-  Sound.blip(); trackEvent('museum_enter', { have, total: MUSEUM_FLOOR1.length });   // [GA4] 방문 빈도·그때의 수집률
+    `도감에 등록한 것이 여기 전시돼요 (1층 ${have}/${total})\n🎀 천이 덮인 자리는 아직 못 찾은 것 — 찾아오면 천을 걷을게요\n진열장 앞에 서면 아래에 설명이 떠요 · 나갈 땐 남쪽 문`);
+  Sound.blip();
+  trackEvent('museum_enter', { floor: museumFloor, have, total, floors: openFloors(gameState.dex, DEX) });   // [GA4] 방문 빈도·수집률·열린 층
 }
+// 🪜 층을 옮긴다 — 방을 다시 짓고 반대편 계단 앞에 세운다
+function museumGoFloor(up) {
+  const opened = openFloors(gameState.dex, DEX);
+  const next = museumFloor + (up ? 1 : -1);
+  if (next < 1 || next > opened) return;
+  museumFloor = next;
+  refreshMuseumHall(); museumGroup.visible = true;
+  const back = museumStairs.find(st => st.up !== up) || { x: 0, z: 0 };
+  player.position.set(MUSEUM.x + back.x, 0, MUSEUM.z + back.z + 1.4);
+  _museumNear = -1; lastZoneHint = null; snapCamera();
+  const def = MUSEUM_FLOORS.find(f => f.id === museumFloor);
+  const { have, total } = floorProgress(museumFloor, gameState.dex, DEX);
+  ui.toast?.(`🏛️ ${def.name} — ${have}/${total}`);
+  Sound.blip(); trackEvent('museum_floor', { floor: museumFloor, have, total });   // [GA4] 어느 층까지 올라가는가
+}
+
 function exitMuseum() {
   closeMuseumView();
+  museumFloor = 1;                 // 다음에 들어오면 1층부터
   atMuseum = false; setFogExempt(player, false);
   if (museumGroup) museumGroup.visible = false;
   player.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4);
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null; _museumNear = -1;
   snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('museum_exit');
+}
+
+let museumGateGroup = null, museumGateColliders = [], museumBuiltFloors = -1;
+// 🏗️ 층이 열리면 건물을 다시 세운다 — 밖에서 보고 "늘었다" 를 알 수 있어야 증축이 보상이 된다.
+//   ⚠️ 충돌체도 같이 걷어내야 한다(colliders 는 전역이라 안 지우면 유령 벽이 쌓인다).
+function refreshMuseumGate(announce = false) {
+  const f = Math.min(3, openFloors(gameState.dex, DEX));
+  if (f === museumBuiltFloors) return;
+  const grew = museumBuiltFloors > 0 && f > museumBuiltFloors;
+  museumBuiltFloors = f;
+  if (museumGateGroup) {
+    scene.remove(museumGateGroup); disposeTree(museumGateGroup);
+    for (const c of museumGateColliders) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
+    const oi = obstacles.findIndex(o => o.x === MUSEUM_GATE.x && o.z === MUSEUM_GATE.z);
+    if (oi >= 0) obstacles.splice(oi, 1);
+  }
+  museumGateColliders = [];
+  museumGateGroup = spawnMuseumGate();
+  if (grew && announce) {
+    const def = MUSEUM_FLOORS.find(d => d.id === f);
+    ui.toast?.(`🏛️ 박물관이 ${def?.name || f + '층'}까지 늘었어요! 가서 보세요`, 3600);
+    trackEvent('museum_expand', { floor: f });   // [GA4] 증축 퍼널 — 수집률 대비 실제 도달
+  }
 }
 
 function spawnMuseumGate() {
@@ -4194,23 +4263,6 @@ function spawnMuseumGate() {
   const parts = new Map();
   const add = (k, ...geos) => { const a = parts.get(k); a ? a.push(...geos) : parts.set(k, [...geos]); };
   const box = (w, h, d, x, y, z, ry = 0) => { const b = new THREE.BoxGeometry(w, h, d); if (ry) b.rotateY(ry); return b.translate(x, y, z); };
-  const W = 7.2, D = 5.4, FH = 3.0;            // 마을 건물 크기에 맞춘 1층(시안보다 작다 — ☕카페 5.2 와 나란히)
-
-  // 기단 + 정면 계단
-  add('stone', box(W + 1.2, 0.4, D + 1.2, 0, 0.2, 0));
-  for (let i = 0; i < 3; i++) add('stone', box(3.4, 0.14, 0.5, 0, 0.4 - 0.14 * (i + 0.5), D / 2 + 0.4 + i * 0.5));
-
-  // 벽 — 정면은 개구부를 위해 좌우 + 위 인방으로 나눈다(구멍을 뚫지 않고 조립한다)
-  const openW = 2.2, side = (W - openW) / 2;
-  add('wall', box(W, FH, 0.3, 0, 0.4 + FH / 2, -D / 2));
-  add('wall', box(0.3, FH, D, -W / 2, 0.4 + FH / 2, 0));
-  add('wall', box(0.3, FH, D,  W / 2, 0.4 + FH / 2, 0));
-  add('wall', box(side, FH, 0.3, -(openW + side) / 2, 0.4 + FH / 2, D / 2));
-  add('wall', box(side, FH, 0.3,  (openW + side) / 2, 0.4 + FH / 2, D / 2));
-  add('wall', box(openW, FH - 2.4, 0.3, 0, 0.4 + FH - (FH - 2.4) / 2, D / 2));
-
-  // 아치 — ⚠️ 막대의 길이축을 그 자리의 접선에 맞춰야 한다(rotateZ(am)).
-  //   π/2-am 으로 두면 꼭대기에서 막대가 수직으로 서서 아치가 톱니처럼 벌어진다(시안에서 겪었다).
   const archFrame = (w, h, d, t, x, y, z, ry = 0) => {
     const out = [], legH = h - w / 2, R = w / 2, seg = 10;
     const place = (geo, px, py) => { if (ry) geo.rotateY(ry); return geo.translate(ry ? x : px, py, ry ? py * 0 + z + (px - x) * Math.sign(ry) * 0 : z); };
@@ -4226,7 +4278,38 @@ function spawnMuseumGate() {
       out.push(b.translate(x, 0, z));
     }
     return out;
-  };
+  };  const W = 7.2, D = 5.4, FH = 3.0;            // 마을 건물 크기에 맞춘 한 층(☕카페 5.2 와 나란히)
+  //   🏗️ 밖에서 보고 "늘었다" 를 알 수 있어야 증축이 보상이 된다 — 열린 층만큼 쌓는다(특별전 별관 제외)
+  const floors = Math.min(3, openFloors(gameState.dex, DEX));
+
+  // 기단 + 정면 계단
+  add('stone', box(W + 1.2, 0.4, D + 1.2, 0, 0.2, 0));
+  for (let i = 0; i < 3; i++) add('stone', box(3.4, 0.14, 0.5, 0, 0.4 - 0.14 * (i + 0.5), D / 2 + 0.4 + i * 0.5));
+
+  // 벽 — 정면은 개구부를 위해 좌우 + 위 인방으로 나눈다(구멍을 뚫지 않고 조립한다)
+  const openW = 2.2, side = (W - openW) / 2;
+  for (let f = 0; f < floors; f++) {
+    const y0 = 0.4 + f * FH;
+    add('wall', box(W, FH, 0.3, 0, y0 + FH / 2, -D / 2));
+    add('wall', box(0.3, FH, D, -W / 2, y0 + FH / 2, 0));
+    add('wall', box(0.3, FH, D,  W / 2, y0 + FH / 2, 0));
+    if (f === 0) {
+      add('wall', box(side, FH, 0.3, -(openW + side) / 2, y0 + FH / 2, D / 2));
+      add('wall', box(side, FH, 0.3,  (openW + side) / 2, y0 + FH / 2, D / 2));
+      add('wall', box(openW, FH - 2.4, 0.3, 0, y0 + FH - (FH - 2.4) / 2, D / 2));
+    } else {   // 위층 정면은 아치창 둘
+      add('wall', box(W, FH, 0.3, 0, y0 + FH / 2, D / 2));
+      for (const sx of [-1, 1]) {
+        add('trim', ...archFrame(1.1, 1.8, 0.32, 0.16, sx * 1.7, y0 + 0.5, D / 2 + 0.02));
+        add('dark', box(0.9, 1.7, 0.12, sx * 1.7, y0 + 0.5 + 0.85, D / 2 + 0.06));
+      }
+      add('trim', box(W + 0.5, 0.22, D + 0.5, 0, y0, 0));   // 층 경계 코니스
+    }
+  }
+
+  // 아치 — ⚠️ 막대의 길이축을 그 자리의 접선에 맞춰야 한다(rotateZ(am)).
+  //   π/2-am 으로 두면 꼭대기에서 막대가 수직으로 서서 아치가 톱니처럼 벌어진다(시안에서 겪었다).
+
   add('trim', ...archFrame(openW + 0.45, 2.4, 0.4, 0.24, 0, 0.4, D / 2 + 0.02));
   add('dark', box(openW + 0.2, 2.3, 0.14, 0, 0.4 + 1.15, D / 2 + 0.06));
   for (const sx of [-1, 1]) {
@@ -4234,9 +4317,10 @@ function spawnMuseumGate() {
     add('dark', box(0.9, 1.7, 0.12, sx * 2.35, 0.9 + 0.85, D / 2 + 0.06));
   }
   // 코니스 + 평지붕 파라펫
-  add('trim', box(W + 0.6, 0.26, D + 0.6, 0, 0.4 + FH, 0));
-  add('roof', box(W + 0.9, 0.28, D + 0.9, 0, 0.4 + FH + 0.27, 0));
-  add('trim', box(W + 1.0, 0.4, 0.2, 0, 0.4 + FH + 0.6, D / 2 + 0.45));
+  const TOP = 0.4 + floors * FH;
+  add('trim', box(W + 0.6, 0.26, D + 0.6, 0, TOP, 0));
+  add('roof', box(W + 0.9, 0.28, D + 0.9, 0, TOP + 0.27, 0));
+  add('trim', box(W + 1.0, 0.4, 0.2, 0, TOP + 0.6, D / 2 + 0.45));
 
   // 입구 화분
   for (const sx of [-1, 1]) {
@@ -4249,13 +4333,14 @@ function spawnMuseumGate() {
     m.castShadow = true; m.receiveShadow = true; g.add(m);
   }
   const plate = makeWallPlate('MUSEUM', 1.5, 0.6);
-  plate.position.set(0, 0.4 + FH - 0.36, D / 2 + 0.08); g.add(plate);
+  plate.position.set(0, 0.4 + FH - 0.36, D / 2 + 0.08); g.add(plate);   // 명판은 늘 1층 문 위
   g.add(makeSignpost('🏛️ 박물관', -4.3, 1.6));
   scene.add(g);
   obstacles.push({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z, r: 3.2 });
   // 🚧 벽은 사각으로 — 원으로 막으면 정면 문 앞에 설 수가 없다(카페와 같은 이유)
-  solidBox(MUSEUM_GATE.x - W / 2 - 0.2, MUSEUM_GATE.z - D / 2 - 0.8, MUSEUM_GATE.x + W / 2 + 0.2, MUSEUM_GATE.z + D / 2);
-  for (const sx of [-1, 1]) solidCircle(MUSEUM_GATE.x + sx * 1.85, MUSEUM_GATE.z + D / 2 + 0.75, 0.3);   // 화분
+  museumGateColliders.push(solidBox(MUSEUM_GATE.x - W / 2 - 0.2, MUSEUM_GATE.z - D / 2 - 0.8, MUSEUM_GATE.x + W / 2 + 0.2, MUSEUM_GATE.z + D / 2));
+  for (const sx of [-1, 1]) museumGateColliders.push(solidCircle(MUSEUM_GATE.x + sx * 1.85, MUSEUM_GATE.z + D / 2 + 0.75, 0.3));   // 화분
+  return g;
 }
 
 function spawnCafeGate() {
@@ -9323,9 +9408,15 @@ function updateDoorInteract() {
     else prompt = updateCafeInteract();
   } else if (atMuseum) {   // 🏛️ 전시실: 남쪽 문으로 나가기 / 진열장 앞 자세히 보기
     if (dist2D({ x: MUSEUM.x, z: MUSEUM.z + MUSEUM_HALF_D }, player.position) < 1.9) { nd = 'museumexit'; prompt = '🚪 나가기'; }
-    else if (_museumNear >= 0) {
-      const it = MUSEUM_FLOOR1[_museumNear];
-      if (gameState.dex[it.cat]?.[it.id]) { nd = 'museumview'; prompt = '🔍 자세히 보기'; }
+    else {
+      const st = museumStairs.find(t => dist2D({ x: MUSEUM.x + t.x, z: MUSEUM.z + t.z }, player.position) < 1.8);
+      if (st) {
+        const to = MUSEUM_FLOORS.find(f => f.id === museumFloor + (st.up ? 1 : -1));
+        nd = st.up ? 'museumup' : 'museumdown'; prompt = `🪜 ${to?.name || ''}으로`;
+      } else if (_museumNear >= 0) {
+        const it = museumFloorItems()[_museumNear];
+        if (it && gameState.dex[it.cat]?.[it.id]) { nd = 'museumview'; prompt = '🔍 자세히 보기'; }
+      }
     }
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < houseSolidR() + 0.6) { // 증축 크기에 맞춰 문 사거리도 확장
     nd = 'enter'; prompt = '🚪 집에 들어가기';
@@ -10695,6 +10786,8 @@ function handleAction() {
   if (nearDoor === 'museum') return enterMuseum();
   if (nearDoor === 'museumexit') return exitMuseum();
   if (nearDoor === 'museumview') return openMuseumView(_museumNear);
+  if (nearDoor === 'museumup') return museumGoFloor(true);
+  if (nearDoor === 'museumdown') return museumGoFloor(false);
   // 🏛️ 전시실에선 문·전시 말고는 아무 액션도 없다 — 안 막으면 여기서 밭이 갈린다(실제로 겪었다)
   if (atMuseum) return;
   if (nearDoor === 'river') return enterRiver();
