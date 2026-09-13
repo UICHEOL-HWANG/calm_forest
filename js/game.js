@@ -2027,6 +2027,7 @@ export async function enterGame() {
       return plots.length;
     };
     window.__gs = () => gameState; window.__plots = () => plots;   // 🌾 검수용 상태 열람(dev 세션 전용)
+    window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
     window.__workSteps = (n = 1) => { const t = {}; workerSteps(n, t); return t; };   // 🧑‍🌾 오프라인 스텝 강제 실행(검수용 — 접속 중 60초 스텝과 같은 함수)
     window.__workers = () => workerObjs.map(o => ({ name: o.rec.name, job: o.rec.job, works: o.rec.works, phase: o.phase, t: +o.t.toFixed(2), task: o.task?.type || null, vis: o.group.visible, x: +o.group.position.x.toFixed(1), z: +o.group.position.z.toFixed(1) }));   // 🧑‍🌾 일꾼 상태 열람(검수용)
     window.__solids = () => colliders.map(c => c.r != null ? ['c', +c.x.toFixed(1), +c.z.toFixed(1), c.r] : ['b', +c.x1.toFixed(1), +c.z1.toFixed(1), +c.x2.toFixed(1), +c.z2.toFixed(1)]);   // 🚧 충돌체 목록 — 재빌드 뒤 고아 벽이 남았는지 세는 용(밭 증축 검수)
@@ -2858,7 +2859,7 @@ function farmBuildingMesh(id, g) {
 
   if (id === 'board') {                    // 📋 일꾼 게시판 — 흰 기둥 + 회색 차양 + 빨간 판 + 쪽지
     M([CY(0.08, 0.09, 1.75, 6, -0.45, 0.87, 0), CY(0.08, 0.09, 1.75, 6, 0.45, 0.87, 0), B(1.2, 0.1, 0.12, 0, 1.66, 0),
-       B(1.34, 0.08, 0.1, 0, 0.66, 0.06), B(1.34, 0.08, 0.1, 0, 1.5, 0.06)], clayMat(BARN.trim, false));
+       B(1.34, 0.08, 0.1, 0, 0.66, 0.06), B(1.34, 0.08, 0.1, 0, 1.5, 0.06)], clayMat(BARN.trim, false), false);
     M([B(1.26, 0.82, 0.09, 0, 1.08, 0)], clayMat(BARN.wall, false));
     M([B(1.6, 0.08, 0.5, 0, 1.82, 0.14, -0.3)], clayMat(BARN.roof));                                  // 비 가리개
     M([B(0.34, 0.26, 0.02, -0.28, 1.2, 0.07), B(0.3, 0.22, 0.02, 0.26, 1.02, 0.07), B(0.26, 0.2, 0.02, 0.2, 1.32, 0.07)], clayMat(0xfff6e0, false), false);
@@ -2871,8 +2872,8 @@ function farmBuildingMesh(id, g) {
        B(1.5, 0.1, 0.06, 0, 0.81, D / 2 + 0.06, 0.83), B(1.5, 0.1, 0.06, 0, 0.81, D / 2 + 0.06, -0.83),                                        // ✕ 브레이스
        B(0.14, E, 0.14, -W / 2 + 0.07, E / 2, D / 2 - 0.07), B(0.14, E, 0.14, W / 2 - 0.07, E / 2, D / 2 - 0.07),                              // 모서리 트림
        B(0.14, E, 0.14, -W / 2 + 0.07, E / 2, -D / 2 + 0.07), B(0.14, E, 0.14, W / 2 - 0.07, E / 2, -D / 2 + 0.07),
-       B(0.62, 0.62, 0.08, 0, 2.62, D / 2 - 0.05)], clayMat(BARN.trim, false));                                                                // 다락 창틀
-    M([SP(0.36, -2.25, 0.34, 1.0, 0.86), CY(0.34, 0.34, 0.62, 10, -2.25, 0.34, 0.1, 'z'), CY(0.32, 0.32, 0.58, 10, -2.2, 0.98, 0.1, 'z')], clayMat(BARN.straw, false));   // 건초 더미
+       B(0.62, 0.62, 0.08, 0, 2.62, D / 2 - 0.05)], clayMat(BARN.trim, false), false);   // 트림은 벽에 붙어 있어 그림자 기여가 없다 — castShadow 생략(드로우콜)                                                                // 다락 창틀
+    M([SP(0.36, -2.25, 0.34, 1.0, 0.86), CY(0.34, 0.34, 0.62, 10, -2.25, 0.34, 0.1, 'z'), CY(0.32, 0.32, 0.58, 10, -2.2, 0.98, 0.1, 'z')], clayMat(BARN.straw, false), false);   // 건초 더미
   } else if (id === 'trellis') {           // 🍇 포도 지지대 1×3 — 흰 기둥 + 덩굴 + 포도
     M([CY(0.07, 0.08, 1.75, 6, 0, 0.87, -2), CY(0.07, 0.08, 1.75, 6, 0, 0.87, 0), CY(0.07, 0.08, 1.75, 6, 0, 0.87, 2),
        B(0.09, 0.09, 5.4, 0, 1.66, 0), B(0.09, 0.09, 5.4, 0, 1.12, 0)], clayMat(BARN.trim, false));
@@ -2882,22 +2883,22 @@ function farmBuildingMesh(id, g) {
   } else if (id === 'well') {              // 💧 우물 — 돌 원통 + 흰 기둥 + 회색 지붕 + 두레박
     M([CY(0.64, 0.7, 0.68, 12, 0, 0.34, 0), new THREE.TorusGeometry(0.66, 0.06, 6, 14).rotateX(Math.PI / 2).translate(0, 0.68, 0)], clayMat(BARN.base));
     M([CY(0.52, 0.52, 0.04, 12, 0, 0.62, 0)], clayMat(0x6fb6dd, false), false);
-    M([CY(0.07, 0.07, 1.5, 6, -0.56, 1.12, 0), CY(0.07, 0.07, 1.5, 6, 0.56, 1.12, 0), CY(0.05, 0.05, 1.2, 8, 0, 1.74, 0, 'z')], clayMat(BARN.trim, false));
+    M([CY(0.07, 0.07, 1.5, 6, -0.56, 1.12, 0), CY(0.07, 0.07, 1.5, 6, 0.56, 1.12, 0), CY(0.05, 0.05, 1.2, 8, 0, 1.74, 0, 'z')], clayMat(BARN.trim, false), false);
     M([B(0.28, 0.26, 0.26, 0.12, 1.34, 0)], clayMat(BARN.wood));                                       // 두레박
     M([CO(1.0, 0.54, 4, 0, 2.08, 0)], clayMat(BARN.roof));
   } else if (id === 'compost') {           // 🌱 퇴비통 — 빨간 판자 + 흰 테두리 + 흙·새싹
     M([B(1.26, 0.72, 0.1, 0, 0.36, 0.58), B(1.26, 0.72, 0.1, 0, 0.36, -0.58), B(0.1, 0.72, 1.26, 0.58, 0.36, 0), B(0.1, 0.72, 1.26, -0.58, 0.36, 0)], clayMat(BARN.wall, false));
     M([B(1.4, 0.09, 0.09, 0, 0.74, 0.58), B(1.4, 0.09, 0.09, 0, 0.74, -0.58), B(0.09, 0.09, 1.4, 0.58, 0.74, 0), B(0.09, 0.09, 1.4, -0.58, 0.74, 0),
-       B(1.34, 0.08, 0.4, 0, 0.86, -0.74)], clayMat(BARN.trim, false));                                // 테두리 + 열린 뚜껑
+       B(1.34, 0.08, 0.4, 0, 0.86, -0.74)], clayMat(BARN.trim, false), false);                                // 테두리 + 열린 뚜껑
     M([SP(0.5, 0, 0.6, 0, 0.4)], clayMat(0x4a3526, false), false);
     M([CO(0.1, 0.26, 5, 0.2, 0.84, -0.12), CO(0.08, 0.2, 5, -0.16, 0.8, 0.14)], clayMat(0x7fce7f, false), false);
   } else if (id === 'shelter') {           // 🏚️ 일꾼 쉼터 2×2 — 빨간 헛간 지붕의 열린 쉼터
     const W = 3.3, D = 3.3;
     M([B(3.4, 0.24, 3.4, 0, 0.12, 0), B(1.7, 0.18, 0.75, 0, 0.6, -0.95), B(0.14, 0.36, 0.14, -0.66, 0.4, -0.95), B(0.14, 0.36, 0.14, 0.66, 0.4, -0.95)], clayMat(BARN.wood));   // 마루 + 평상
     M([CY(0.11, 0.12, 1.95, 6, -1.5, 1.22, -1.5), CY(0.11, 0.12, 1.95, 6, 1.5, 1.22, -1.5), CY(0.11, 0.12, 1.95, 6, -1.5, 1.22, 1.5), CY(0.11, 0.12, 1.95, 6, 1.5, 1.22, 1.5),
-       B(3.4, 0.12, 0.12, 0, 2.2, -1.5), B(3.4, 0.12, 0.12, 0, 2.2, 1.5)], clayMat(BARN.trim, false));
+       B(3.4, 0.12, 0.12, 0, 2.2, -1.5), B(3.4, 0.12, 0.12, 0, 2.2, 1.5)], clayMat(BARN.trim, false), false);
     M([...gambrelRoofSlabs(W, 2.26, 2.9, 3.25, D + 0.3)], clayMat(BARN.roof));
-    M([B(0.8, 0.62, 0.1, 0, 2.62, -D / 2 + 0.06), B(0.8, 0.62, 0.1, 0, 2.62, D / 2 - 0.06)], clayMat(BARN.wall, false));   // 박공 가림판
+    M([B(0.8, 0.62, 0.1, 0, 2.62, -D / 2 + 0.06), B(0.8, 0.62, 0.1, 0, 2.62, D / 2 - 0.06)], clayMat(BARN.wall, false), false);   // 박공 가림판
     { const lampMat = clayMat(0xffd98a, false); houseWindows.push(lampMat);
       M([SP(0.15, 1.24, 1.9, 1.24)], lampMat, false); }                                                // 🏮 밤에 켜지는 등불
   } else if (id === 'beehive') {           // 🐝 벌통 — 흰 상자 3단 + 회색 뚜껑 + 벌
@@ -8360,8 +8361,8 @@ function makeSurveyOffice(H) {
     const body = new THREE.Mesh(gambrelSolid(OW, OE, OK2, OR, OD).rotateY(Math.PI / 2), clayMat(BARN.wall, false));
     body.position.set(o.x, 0.22, o.z); body.castShadow = true; g.add(body);                             // 정면이 동쪽(밭 문 쪽)을 보게 90° 돌린다
     const roofGeos = gambrelRoofSlabs(OW, OE, OK2, OR, OD + 0.25).map(q => q.rotateY(Math.PI / 2).translate(o.x, 0.22, o.z));
+    roofGeos.push(new THREE.BoxGeometry(3.0, 0.22, 2.7).translate(o.x, 0.11, o.z));                     // 돌 기초도 같은 메시로(드로우콜)
     const roof = new THREE.Mesh(mergeGeos(roofGeos), clayMat(BARN.roof)); roof.castShadow = true; g.add(roof);
-    box(3.0, 0.22, 2.7, clayMat(BARN.base), o.x, 0.11, o.z);                                            // 돌 기초
   }
   box(0.8, 1.15, 0.08, clayMat(BARN.dark), o.x + OD / 2 + 0.02, 0.8, o.z + 0.3);                        // 문(동쪽)
   const win = clayMat(0xffe3a4, false); houseWindows.push(win);                                         // 🏮 창 — 밤에 켜진다
@@ -8390,15 +8391,17 @@ function makeSurveyOffice(H) {
   box(0.3, 0.22, 0.3, clayMat(0x5b6472), tx, 1.42, tz);
   const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), clayMat(0x3f4650));
   scope.position.set(tx + 0.2, 1.56, tz); scope.rotation.z = Math.PI / 2; scope.castShadow = true; g.add(scope);
-  // 밭 문 → 탁자 디딤돌 3장(어디로 가면 되는지 바닥이 말해 준다)
-  for (let i = 0; i < 3; i++) {
-    const st = box(0.7, 0.08, 0.55, clayMat(0xa89272), -H - 0.9 - i * 1.5, 0.13, -0.5 - i * 0.65);
-    st.castShadow = false; st.receiveShadow = true;
+  // 밭 문 → 탁자 디딤돌 3장(어디로 가면 되는지 바닥이 말해 준다) — 한 메시로 합친다
+  {
+    const sts = [];
+    for (let i = 0; i < 3; i++) sts.push(new THREE.BoxGeometry(0.7, 0.08, 0.55).translate(-H - 0.9 - i * 1.5, 0.13, -0.5 - i * 0.65));
+    const st = new THREE.Mesh(mergeGeos(sts), clayMat(0xa89272)); st.receiveShadow = true; g.add(st);
   }
-  // 벽에 기대 둔 말뚝 다발(옛 측량 말뚝이 여기로 왔다)
-  for (const [dx, r] of [[-0.16, 0.16], [0.14, -0.13]]) {
-    const st = box(0.1, 1.4, 0.1, woodMat(1, 1), o.x + 1.32 + dx, 0.7, o.z + 1.0);
-    st.rotation.z = r; st.rotation.x = 0.1;
+  // 벽에 기대 둔 말뚝 다발(옛 측량 말뚝이 여기로 왔다) — 역시 한 메시
+  {
+    const sts = [];
+    for (const [dx, r] of [[-0.16, 0.16], [0.14, -0.13]]) sts.push(new THREE.BoxGeometry(0.1, 1.4, 0.1).rotateZ(r).rotateX(0.1).translate(o.x + 1.32 + dx, 0.7, o.z + 1.0));
+    const st = new THREE.Mesh(mergeGeos(sts), woodMat(1, 1)); st.castShadow = true; g.add(st);
   }
   // 🔧 자재 작업대 — 마을 작업대(spawnWorkbench)와 같은 조형. 액션이면 제작 메뉴의 🌷야외 탭이 열린다
   // 🔧 자재 작업대 — 상판·다리·뒤판 공구걸이·목재 더미까지 나무는 한 메시로 묶는다(조형은 살리고 드로우콜은 아끼고)
@@ -11280,28 +11283,24 @@ function makeWorkerHat(grade) {
 
 function makeWorkerMesh(rec) {
   const j = jobOf(rec.job), g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), clayMat(j.body, false));
-  body.position.y = 0.5; body.scale.set(1, 1.05, 1); body.castShadow = true; g.add(body);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 1), clayMat(j.body, false));
-  head.position.y = 1.0; head.castShadow = true; g.add(head);
-  const eyes = new THREE.Mesh(mergeGeos([                                // 눈 둘을 한 메시로
+  // 몸·머리·귀·꼬리는 색이 같다 — **한 메시로 합친다**(일꾼 6명이면 콜 차이가 20 넘는다, 스펙 §5 예산)
+  const bodyGeos = [
+    new THREE.IcosahedronGeometry(0.42, 1).scale(1, 1.05, 1).translate(0, 0.5, 0),
+    new THREE.IcosahedronGeometry(0.3, 1).translate(0, 1.0, 0),
+  ];
+  if (rec.job === 'mole') for (const sd of [-1, 1]) bodyGeos.push(new THREE.SphereGeometry(0.07, 7, 6).translate(sd * 0.2, 1.16, 0));
+  if (rec.job === 'hamster') for (const sd of [-1, 1]) bodyGeos.push(new THREE.SphereGeometry(0.1, 8, 7).translate(sd * 0.22, 1.2, 0));
+  if (rec.job === 'squirrel') {
+    for (const sd of [-1, 1]) bodyGeos.push(new THREE.ConeGeometry(0.08, 0.18, 6).translate(sd * 0.18, 1.26, 0));
+    bodyGeos.push(new THREE.SphereGeometry(0.16, 8, 7).translate(0, 0.62, -0.42), new THREE.SphereGeometry(0.13, 8, 7).translate(0, 0.92, -0.5));   // 🐿️ 꼬리
+  }
+  const body = new THREE.Mesh(mergeGeos(bodyGeos), clayMat(j.body, false)); body.castShadow = true; g.add(body);
+  const eyes = new THREE.Mesh(mergeGeos([
     new THREE.SphereGeometry(0.045, 8, 8).translate(-0.11, 1.03, 0.26),
     new THREE.SphereGeometry(0.045, 8, 8).translate(0.11, 1.03, 0.26),
   ]), new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 }));
   g.add(eyes);
-  const earGeos = [];   // 직군 실루엣 — 두더지(작고 낮음) · 햄스터(동그람) · 다람쥐(뾰족)
-  if (rec.job === 'mole') for (const sd of [-1, 1]) earGeos.push(new THREE.SphereGeometry(0.07, 7, 6).translate(sd * 0.2, 1.16, 0));
-  if (rec.job === 'hamster') for (const sd of [-1, 1]) earGeos.push(new THREE.SphereGeometry(0.1, 8, 7).translate(sd * 0.22, 1.2, 0));
-  if (rec.job === 'squirrel') for (const sd of [-1, 1]) earGeos.push(new THREE.ConeGeometry(0.08, 0.18, 6).translate(sd * 0.18, 1.26, 0));
-  if (earGeos.length) { const ears = new THREE.Mesh(mergeGeos(earGeos), clayMat(j.body, false)); ears.castShadow = true; g.add(ears); }
-  if (rec.job === 'squirrel') {   // 🐿️ 꼬리 — 구 두 개를 합쳐 1콜
-    const tail = new THREE.Mesh(mergeGeos([
-      new THREE.SphereGeometry(0.16, 8, 7).translate(0, 0.62, -0.42),
-      new THREE.SphereGeometry(0.13, 8, 7).translate(0, 0.92, -0.5),
-    ]), clayMat(0xc9764a, false));
-    tail.castShadow = true; g.add(tail);
-  }
-  const mkArm = sd => {
+  const mkArm = sd => {   // 팔은 흔들어야 해서 따로(회전 축이 필요하다)
     const pivot = new THREE.Group(); pivot.rotation.order = 'YXZ';
     pivot.position.set(sd * 0.38, 0.62, 0.1);
     const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.2, 4, 6), clayMat(j.body, false));
@@ -11317,7 +11316,6 @@ function makeWorkerMesh(rec) {
   if (toolId) { tool = toolMesh(toolId); tool.scale.setScalar(0.8); tool.visible = false; armR.hand.add(tool); }
   return { group: g, armR, armL, hat, tool };
 }
-
 function spawnWorkers() {
   despawnWorkers();
   for (const rec of gameState.workers) {

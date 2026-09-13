@@ -1,6 +1,6 @@
 # Context — farm-stage (🌾 밭 단계 증축, 논밭 확장 2단계)
 
-Last Updated: 2026-09-13 (4단계 밭 시설 + 측량소 이전까지 검증 완료, 리뷰 대기)
+Last Updated: 2026-09-14 (2~7단계 전부 구현·검증 — 문구 검수 후 배포 판단)
 
 ## 핵심 파일
 
@@ -12,7 +12,10 @@ Last Updated: 2026-09-13 (4단계 밭 시설 + 측량소 이전까지 검증 완
 | `tests/farm-stage.test.mjs` | **신규** 위 모듈 테스트 |
 | `js/game.js:288` | `FARM_HALF = 6` → `farmHalf()` 로 교체(9곳) |
 | `js/game.js` `rebuildFarm()` | 울타리·나무·문 + 📐측량소 마당(makeSurveyOffice: 사무소·제도 탁자·🔧자재 작업대·서쪽 문 콜라이더) |
-| `js/farm-building.js` | 밭 시설 7종 규칙(발자국·스냅·배치 판정·반경·창고/퇴비 상한) |
+| `js/farm-building.js` | 밭 시설 7종 규칙(발자국·스냅·배치 판정 · 밭∪마당 · 반경/배율 상수) |
+| `js/farm-worker.js` | 일꾼 규칙(직군·등급·기술·월급·작업 우선순위·오프라인 스텝) |
+| `js/game.js` `updateWorkers/workerSteps/hireWorker` | 일꾼 3D·FSM·정산·고용 창 |
+| `index.html` `#hire-modal` / `openHire` | 📋 고용 UI |
 | `js/game.js:3088` | `coopInteract()` — 말뚝 상호작용이 따르는 문법 |
 | `js/game.js:8398` | 텃밭 근접 판정 브랜치(출구 + 말뚝) |
 | `js/game.js:9704` | `interact()` 디스패치 |
