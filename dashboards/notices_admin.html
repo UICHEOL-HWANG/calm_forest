@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>calm forest · 소식함 관리 📮</title>
+<meta name="description" content="calm forest — 소식함 공지·1:1 답장 작성(관리자)" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="_dash.css" />
+<style>
+  /* 페이지 전용 — 공통 토큰/컴포넌트는 _dash.css (색은 토큰만 쓴다) */
+  .two { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+  .stack { display: grid; gap: 16px; }
+  label.f { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin: 10px 0 4px; }
+  label.f:first-of-type { margin-top: 0; }
+  input[type=text], textarea {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: 13.5px; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px;
+  }
+  input[type=text]:focus, textarea:focus { outline: 2px solid var(--s1); outline-offset: -1px; background: var(--surface-1); }
+  textarea { min-height: 150px; resize: vertical; line-height: 1.55; }
+  textarea.en { min-height: 110px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  .btn {
+    border: 1px solid var(--line); background: var(--surface-1); color: var(--ink); font: inherit; font-weight: 600;
+    border-radius: 10px; padding: 8px 14px; cursor: pointer;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.pri { background: var(--s1); border-color: var(--s1); color: #fff; }
+  .btn.pri:hover { filter: brightness(.95); }
+  .btn.sm { padding: 4px 9px; font-size: 11.5px; border-radius: 8px; }
+  .btn.danger { color: var(--down); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .target {
+    display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-2);
+    background: var(--surface-2); border-radius: 10px; padding: 8px 11px; margin-top: 10px;
+  }
+  .target b { color: var(--ink); }
+  .target .quote { color: var(--ink-3); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+  /* 미리보기 — 게임 소식함 카드와 같은 비율(제목 굵게·본문 줄바꿈 유지) */
+  .pv { border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface-0); }
+  .pv .t { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+  .pv .b { font-size: 13px; line-height: 1.6; white-space: pre-wrap; color: var(--ink-2); }
+  .pv .d { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
+  .pvtabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .pvtabs button.on { background: var(--surface-2); }
+  table.mini td.t { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  table.mini td.act { white-space: nowrap; text-align: right; }
+  table.mini tr.sel td { background: var(--surface-2); }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); }
+  .tag.reply { color: var(--s3); }
+  .tag.done { color: var(--up); }
+  .fb { font-size: 12.5px; line-height: 1.5; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+  .fb:last-child { border-bottom: 0; }
+  .fb .m { white-space: pre-wrap; color: var(--ink); }
+  .fb .meta { font-size: 11px; color: var(--ink-3); display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  .fb .meta .sp { flex: 1; }
+  .count { font-weight: 400; color: var(--ink-3); font-size: 11.5px; margin-left: 6px; }
+  .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--surface-1);
+    padding: 9px 16px; border-radius: 12px; font-size: 13px; box-shadow: var(--shadow); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <a class="back" href="../index.html">← 게임으로</a>
+      <h1>📮 calm forest · 소식함 관리</h1>
+    </div>
+  </header>
+  <div class="sub">공지는 모든 유저에게, 답장은 피드백을 남긴 유저 한 명에게만 보여요 · 웹·토스가 같은 소식함을 봐요</div>
+
+  <div id="msg"></div>
+  <div id="load">불러오는 중…</div>
+
+  <div id="dash" style="display:none">
+    <div class="two">
+      <div class="stack">
+        <div class="card">
+          <h2 id="formTitle">새 공지 쓰기</h2>
+          <p class="hint">한국어는 필수, 영어는 비워 두면 영어 모드 유저에게 한국어가 그대로 보여요.</p>
+          <label class="f" for="title">제목</label>
+          <input type="text" id="title" maxlength="80" placeholder="🦉 의뢰가 늘었어요" />
+          <label class="f" for="body">본문</label>
+          <textarea id="body" placeholder="줄바꿈은 그대로 보여요."></textarea>
+          <label class="f" for="title_en">Title (English)</label>
+          <input type="text" id="title_en" maxlength="80" placeholder="🦉 More errands to go around" />
+          <label class="f" for="body_en">Body (English)</label>
+          <textarea id="body_en" class="en"></textarea>
+          <div class="target" id="target"><span>📣 대상: <b>전체 공지</b></span></div>
+          <div class="row">
+            <button class="btn pri" id="submit">발행하기</button>
+            <button class="btn" id="cancel" style="display:none">수정 취소</button>
+            <button class="btn" id="clear">비우기</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>미리보기</h2>
+          <div class="pvtabs"><button class="btn sm on" data-l="ko">한국어</button><button class="btn sm" data-l="en">English</button></div>
+          <div class="pv"><div class="t" id="pvT">제목</div><div class="b" id="pvB">본문</div><div class="d" id="pvD"></div></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <h2>최근 소식 <span class="count" id="nCount"></span></h2>
+          <p class="hint">고치기를 누르면 폼에 불러와요. 삭제는 되돌릴 수 없어요.</p>
+          <table class="mini"><thead><tr><th>#</th><th>제목</th><th>대상</th><th>날짜</th><th></th></tr></thead><tbody id="nList"></tbody></table>
+          <div class="empty" id="nEmpty" style="display:none">아직 소식이 없어요</div>
+        </div>
+        <div class="card">
+          <h2>받은 피드백 <span class="count" id="fCount"></span></h2>
+          <p class="hint">답장을 누르면 그 유저에게만 가는 소식으로 바뀌어요.</p>
+          <div id="fList"></div>
+          <div class="empty" id="fEmpty" style="display:none">받은 피드백이 없어요</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { CONFIG, isSupabaseConfigured } from '../js/config.js';
+    const $ = (id) => document.getElementById(id);
+    const showMsg = (html) => { $('load').style.display = 'none'; const m = $('msg'); m.style.display = 'block'; m.innerHTML = html; };
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDate = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    let toastT = 0;
+    const toast = (text) => { const t = $('toast'); t.textContent = text; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200); };
+
+    let sb = null;
+    // 폼 상태 — 편집 중인 소식(행) / 답장 대상(feedback 행). 둘 다 null 이면 새 전체 공지.
+    let editing = null;
+    let replyTo = null;
+    let pvLang = 'ko';
+
+    // ── 부팅: 로그인 게이트 → 관리자 확인(cf_is_admin) → 목록 ──
+    (async () => {
+      if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
+      $('load').style.display = 'block';
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: true, persistSession: true } });
+      const { data: s } = await sb.auth.getSession();
+      if (!s?.session) {
+        showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">관리자 계정으로 로그인하세요</small>');
+        $('lg').onclick = () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+        return;
+      }
+      const { data: isAdmin, error } = await sb.rpc('cf_is_admin');
+      if (error) {
+        if (/function|does not exist/i.test(String(error.message))) showMsg('권한 함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/migrate_notices_admin.sql 을 SQL Editor 에서 실행하세요.</small>');
+        else showMsg('오류: ' + esc(error.message));
+        return;
+      }
+      if (!isAdmin) { showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/migrate_notices_admin.sql 의 허용목록에 이메일을 추가하세요.</small>'); return; }
+      $('load').style.display = 'none'; $('dash').style.display = 'block';
+      wire();
+      await loadNotices(); await loadFeedback();   // 피드백의 '답장함' 표시는 소식 목록을 참조하므로 순서 유지
+    })();
+
+    // ── 폼 ──
+    const fields = ['title', 'body', 'title_en', 'body_en'];
+    const read = () => Object.fromEntries(fields.map((k) => [k, $(k).value.trim()]));
+    const fill = (row) => fields.forEach((k) => { $(k).value = row?.[k] || ''; });
+
+    function setTarget() {
+      const t = $('target');
+      if (replyTo) {
+        t.innerHTML = `<span>💬 답장 → <b>피드백 #${replyTo.id}</b></span><span class="quote">“${esc(replyTo.message)}”</span><button class="btn sm" id="untarget">전체 공지로</button>`;
+        $('untarget').onclick = () => { replyTo = null; setTarget(); preview(); };
+      } else {
+        t.innerHTML = '<span>📣 대상: <b>전체 공지</b></span>';
+      }
+      $('formTitle').textContent = editing ? `소식 #${editing.id} 고치기` : (replyTo ? '답장 쓰기' : '새 공지 쓰기');
+      $('submit').textContent = editing ? '수정 저장' : '발행하기';
+      $('cancel').style.display = editing ? '' : 'none';
+    }
+
+    function preview() {
+      const v = read();
+      const en = pvLang === 'en';
+      $('pvT').textContent = (en && v.title_en) ? v.title_en : (v.title || '제목');
+      $('pvB').textContent = (en && v.body_en) ? v.body_en : (v.body || '본문');
+      const noEn = en && !(v.title_en || v.body_en);
+      $('pvD').textContent = (replyTo ? '💬 1:1 답장 · ' : '📣 전체 공지 · ') + (noEn ? 'English 비어 있음 → 한국어 그대로 보임' : fmtDate(new Date().toISOString()));
+    }
+
+    function resetForm() {
+      editing = null; replyTo = null; fill(null); setTarget(); preview();
+      document.querySelectorAll('#nList tr').forEach((r) => r.classList.remove('sel'));
+    }
+
+    function wire() {
+      fields.forEach((k) => $(k).addEventListener('input', preview));
+      document.querySelectorAll('.pvtabs button').forEach((b) => b.onclick = () => {
+        pvLang = b.dataset.l; document.querySelectorAll('.pvtabs button').forEach((x) => x.classList.toggle('on', x === b)); preview();
+      });
+      $('clear').onclick = () => { fill(null); preview(); };
+      $('cancel').onclick = resetForm;
+      $('submit').onclick = submit;
+      setTarget(); preview();
+    }
+
+    async function submit() {
+      const v = read();
+      if (!v.title || !v.body) { toast('제목과 본문(한국어)은 꼭 넣어주세요'); return; }
+      if ((v.title_en && !v.body_en) || (!v.title_en && v.body_en)) { toast('영어는 제목·본문을 같이 넣거나 둘 다 비워주세요'); return; }
+      const row = { title: v.title, body: v.body, title_en: v.title_en || null, body_en: v.body_en || null };
+      $('submit').disabled = true;
+      try {
+        if (editing) {
+          const { error } = await sb.from('notices').update(row).eq('id', editing.id);
+          if (error) throw error;
+          toast(`소식 #${editing.id} 을 고쳤어요`);
+        } else {
+          const ins = replyTo ? { ...row, reply_to: replyTo.id, target_user_id: replyTo.user_id } : row;
+          const { data, error } = await sb.from('notices').insert(ins).select('id').single();
+          if (error) throw error;
+          toast(replyTo ? `피드백 #${replyTo.id} 에 답장했어요 (소식 #${data.id})` : `공지 #${data.id} 를 발행했어요`);
+        }
+        resetForm();
+        await loadNotices(); await loadFeedback();
+      } catch (err) {
+        toast('실패: ' + (err?.message || err));
+        console.error('[notices_admin]', err);
+      } finally { $('submit').disabled = false; }
+    }
+
+    // ── 목록 ──
+    let notices = [];
+    async function loadNotices() {
+      const { data, error } = await sb.from('notices')
+        .select('id, title, body, title_en, body_en, target_user_id, reply_to, created_at')
+        .order('id', { ascending: false }).limit(50);
+      if (error) { toast('소식 조회 실패: ' + error.message); return; }
+      notices = data || [];
+      $('nCount').textContent = notices.length ? `${notices.length}건` : '';
+      $('nEmpty').style.display = notices.length ? 'none' : '';
+      $('nList').innerHTML = notices.map((n) => `
+        <tr data-id="${n.id}">
+          <td>${n.id}</td>
+          <td class="t" title="${esc(n.title)}">${esc(n.title)}${n.title_en ? ' <span class="tag">EN</span>' : ''}</td>
+          <td>${n.reply_to ? `<span class="tag reply">답장 #${n.reply_to}</span>` : '<span class="tag">전체</span>'}</td>
+          <td>${fmtDate(n.created_at)}</td>
+          <td class="act"><button class="btn sm" data-edit="${n.id}">고치기</button> <button class="btn sm danger" data-del="${n.id}">삭제</button></td>
+        </tr>`).join('');
+      $('nList').querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => startEdit(+b.dataset.edit));
+      $('nList').querySelectorAll('[data-del]').forEach((b) => b.onclick = () => del(+b.dataset.del));
+    }
+
+    function startEdit(id) {
+      const n = notices.find((x) => x.id === id); if (!n) return;
+      editing = n; replyTo = null; fill(n); setTarget(); preview();
+      document.querySelectorAll('#nList tr').forEach((r) => r.classList.toggle('sel', +r.dataset.id === id));
+      $('title').focus(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function del(id) {
+      const n = notices.find((x) => x.id === id); if (!n) return;
+      if (!confirm(`소식 #${id} 「${n.title}」 을 삭제할까요? 유저 화면에서도 사라지고 되돌릴 수 없어요.`)) return;
+      const { error } = await sb.from('notices').delete().eq('id', id);
+      if (error) { toast('삭제 실패: ' + error.message); return; }
+      toast(`소식 #${id} 를 삭제했어요`);
+      if (editing?.id === id) resetForm();
+      await loadNotices(); await loadFeedback();
+    }
+
+    async function loadFeedback() {
+      const { data, error } = await sb.from('feedback')
+        .select('id, category, message, user_id, created_at')
+        .order('id', { ascending: false }).limit(40);
+      if (error) { toast('피드백 조회 실패: ' + error.message); return; }
+      const list = data || [];
+      const replied = new Set(notices.filter((n) => n.reply_to).map((n) => n.reply_to));
+      $('fCount').textContent = list.length ? `${list.length}건` : '';
+      $('fEmpty').style.display = list.length ? 'none' : '';
+      $('fList').innerHTML = list.map((f) => `
+        <div class="fb">
+          <div class="m">${esc(f.message)}</div>
+          <div class="meta">
+            <span>#${f.id}</span><span>${esc(f.category || '기타')}</span><span>${fmtDate(f.created_at)}</span>
+            ${replied.has(f.id) ? '<span class="tag done">답장함</span>' : ''}
+            <span class="sp"></span>
+            <button class="btn sm" data-reply="${f.id}" ${f.user_id ? '' : 'disabled title="게스트 피드백은 받을 계정이 없어요"'}>답장</button>
+          </div>
+        </div>`).join('');
+      $('fList').querySelectorAll('[data-reply]').forEach((b) => b.onclick = () => {
+        const f = list.find((x) => x.id === +b.dataset.reply); if (!f) return;
+        editing = null; replyTo = f; setTarget(); preview();
+        document.querySelectorAll('#nList tr').forEach((r) => r.classList.remove('sel'));
+        $('title').focus(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+  </script>
+</body>
+</html>
