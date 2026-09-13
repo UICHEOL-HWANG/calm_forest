@@ -57,6 +57,10 @@ export default {
 
       return json({ access_token: session.access_token, refresh_token: session.refresh_token }, 200, cors);
     } catch (err) {
+      // 진단 로그 — 실기기 실패 원인을 대시보드 Logs/tail 에서 볼 수 있게(키 원문은 남기지 않는다)
+      const status = err instanceof HttpError ? err.status : 500;
+      console.error(JSON.stringify({ tossAuthFail: true, status, message: String(err?.message || err).slice(0, 300),
+                                     ua: (req.headers.get('User-Agent') || '').slice(0, 80) }));
       if (err instanceof HttpError) return json({ error: err.message }, err.status, cors);
       return json({ error: String(err?.message || err) }, 500, cors);
     }
