@@ -2692,6 +2692,16 @@ function makeCharacterPreview(canvas) {
 //      등급을 넘기면 고용한 일꾼들까지 금빛 도구를 들게 된다.
 //   ⚠️ 1단계는 성능을 실루엣으로 번역한다(크기·부품). 멀리서 읽히는 건 굵기가 아니라 크기와 색 대비다.
 //   조형 검수: sims/tool-tier-sim.html · 색: js/tool-tiers.js
+// 메시 트리의 지오메트리·재질을 버린다(제거만 하면 GPU 자원이 남는다)
+function disposeTree(root) {
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.geometry?.dispose();
+    const m = o.material;
+    if (Array.isArray(m)) m.forEach(x => x?.dispose()); else m?.dispose();
+  });
+}
+
 function toolMesh(id, tier = 0) {
   const g = new THREE.Group();
   const T = paletteOf(tier);
@@ -2960,6 +2970,7 @@ function toolMesh(id, tier = 0) {
     g.scale.setScalar(1.25);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData.toolId = id; g.userData.tier = tier;   // refreshHeldTool 이 "지금 든 게 이 도구의 이 등급인가" 를 본다
   return g;
 }
 // 🏗️ 밭 시설 조형 — 🚜 빨간 헛간 세트(사용자 레퍼런스 2026-09-13: 갬브럴 지붕 + 빨간 판자 + 흰 트림 + X 브레이스).
@@ -3104,12 +3115,21 @@ function poseHeldTool(stow, swingX, swingZ) {
 
 // 🪓 업그레이드를 얻은 직후 손에 든 도구를 다시 만든다.
 //   안 하면 코인을 쓴 그 순간엔 아무 일도 안 일어나고, 다음 도구 전환까지 옛 모습이 남는다.
-function refreshHeldTool() { if (heldToolId) setHeldTool(heldToolId); }
+//   ⚠️ 지금 손에 든 게 도구가 아닐 수 있다 — 꾸미기 가구(setHeldDecor)·🌊바다 릴대는
+//      heldToolMesh 만 바꾸고 heldToolId 는 그대로 둔다. 그때 다시 만들면 손의 가구가 도구로 바뀐다.
+//   ⚠️ 등급이 그대로면 다시 만들지 않는다 — 🍲큰 냄비처럼 도구와 무관한 업그레이드에서도
+//      불리므로, 무조건 재생성하면 setHeldTool 의 부작용(🪏삽 첫 사용 안내)을 공짜로 다시 태운다.
+function refreshHeldTool() {
+  if (!heldToolId || !heldToolMesh) return;
+  if (heldToolMesh.userData.toolId !== heldToolId) return;
+  if (heldToolMesh.userData.tier === tierOf(heldToolId, gameState)) return;
+  setHeldTool(heldToolId);
+}
 
 function setHeldTool(id) {
   if (!handAnchor) return;
   if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
-  if (heldToolMesh) handAnchor.remove(heldToolMesh);
+  if (heldToolMesh) { handAnchor.remove(heldToolMesh); disposeTree(heldToolMesh); }   // clayMat 은 캐시가 없다 — 안 버리면 도구를 바꿀 때마다 샌다
   heldToolId = id;
   heldToolMesh = toolMesh(id, tierOf(id, gameState));   // 지금 등급으로 — 업그레이드를 샀으면 모습이 다르다
   measureStowLen(heldToolMesh); updateStowPose();
