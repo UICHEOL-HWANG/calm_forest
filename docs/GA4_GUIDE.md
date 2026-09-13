@@ -41,7 +41,8 @@
 | `quest_complete` | 퀘스트 완료(퍼널③) | `quest`, `npc`, `quest_id`, `elapsed_sec`(수락→완료 초), `reward_coins` |
 | `feedback_submit` | 문의 제출 | `category` |
 | `enter_house` / `exit_house` | 집 실내 입장/퇴장 | — |
-| `enter_farm` / `exit_farm` | 개인 텃밭 입장/퇴장 | — |
+| `enter_farm` / `exit_farm` | 개인 텃밭 입장/퇴장 | 입장: `stage`(밭 단계 1~3 — 단계별 방문 분포) |
+| `farm_expand` | 🌾 📐측량 말뚝으로 밭 증축(퍼널: 텃밭→넓은 밭→대농장) | `stage`(도달 단계 2/3), `wood`, `stone`, `coins`(치른 비용) — 원장 `farm_expand`/`stageN` 과 같은 축 |
 | `enter_mine` / `exit_mine` | 채굴 동굴 입장/퇴장 | — |
 | `mine_ore` | 광맥 채굴 | `ore`(stone/coal/gem), `amt` |
 | `place_decor` | 가구 배치(꾸미기) | `item`(rug/plant/…) |

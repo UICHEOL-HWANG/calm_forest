@@ -8103,7 +8103,10 @@ function rebuildFarm(silent = false) {
     // 이 그룹의 재질·지오메트리는 전부 여기서 만든 것(clayMat/woodMat 은 호출마다 새 재질, 텍스처는 clone) — 공유 자원 없음
     farmGroup.traverse(o => {
       if (o.userData.solid) removeSolid(o.userData.solid);   // 팻말 기둥 콜라이더 — 안 치우면 옛 울타리 자리에 안 보이는 벽이 남는다
-      if (o.isMesh) { o.geometry.dispose(); if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
+      if (!o.isMesh) return;
+      o.geometry.dispose();
+      // 팻말(makeSignBoard)의 캔버스 텍스처처럼 dispose 가 없는 map 도 있다 — 옵셔널로 부른다(예외가 나면 옛 울타리가 그대로 남는다)
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m?.map?.dispose?.(); m?.dispose?.(); }
     });
     scene.remove(farmGroup); farmGroup = null;
   }
@@ -8442,8 +8445,9 @@ function updateDoorInteract() {
     else if (dist2D(farmStakePos(), player.position) < 1.8) {   // 📐 측량 말뚝 — 다음 단계 비용을 프롬프트에(닭장 문법: 액션 = 즉시 증축)
       nd = 'farmstake';
       const info = farmStageInfo(gameState.farm.stage, gameState.inventory);
+      // 이모지와 숫자 사이 U+2060(WORD JOINER) — 모바일 폭에선 두 줄이 되는데, 없으면 "🪨" 와 "20" 사이에서 꺾인다(i18n 키도 같은 문자열)
       prompt = info.maxed ? '📐 더 넓힐 수 없어요'
-        : `📐 ${info.next.name}으로 넓히기 🪵${info.next.cost.wood} 🪨${info.next.cost.stone} 🪙${info.next.cost.coins}`;
+        : `📐 ${info.next.name}으로 넓히기 🪵⁠${info.next.cost.wood} 🪨⁠${info.next.cost.stone} 🪙⁠${info.next.cost.coins}`;
       firstHintBanner('farmStake', '📐', '측량 말뚝', '재료를 모아 밭을 넓혀요. 심어둔 밭은 그대로예요');
     }
   } else if (atMine) {
