@@ -927,6 +927,18 @@
   /* 📊 시세판 모달(전광판) */
   #market-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #market-modal.show { display: grid; }
+  /* 📋 일꾼 게시판 — 시세판 톤 재사용 */
+  #hire-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #hire-modal.show { display: grid; }
+  #hire-modal .tut-card { max-height: 82dvh; overflow-y: auto; }
+  .hire-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,0.55); margin-bottom: 6px; text-align: left; }
+  .hire-row .h-ico { font-size: 22px; }
+  .hire-row .h-main { flex: 1; min-width: 0; }
+  .hire-row .h-name { font-weight: 700; }
+  .hire-row .h-sub { font-size: 12px; opacity: 0.75; }
+  .hire-row button { border: 0; border-radius: 10px; padding: 7px 12px; font-weight: 700; background: #7fc98a; color: #15321f; }
+  .hire-row button[disabled] { background: #cfd6cf; color: #7b847b; }
+  .hire-row.resting { opacity: 0.62; }
   /* 📖 도감 모달 + 로그인 넛지 */
   #worldmap { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #worldmap.show { display: grid; }
@@ -1464,6 +1476,18 @@
       <div id="market-rows"></div>
       <div id="market-forecast" class="market-hint"></div>
       <div class="dm-actions"><button id="market-close">닫기</button></div>
+    </div>
+  </div>
+
+  <div id="hire-modal">
+    <div class="tut-card">
+      <h2>📋 일꾼 게시판</h2>
+      <div class="market-hint" id="hire-head"></div>
+      <div class="market-hint" id="hire-cap"></div>
+      <div id="hire-cands"></div>
+      <div class="market-hint" id="hire-crew-head"></div>
+      <div id="hire-crew"></div>
+      <div class="dm-actions"><button id="hire-close">닫기</button></div>
     </div>
   </div>
 
@@ -2368,6 +2392,50 @@
           || document.body.classList.contains('menu-open') || document.body.classList.contains('mg-open');
       },
       // 📊 시세판(전광판 상호작용) — 품목별 오늘 가격·등락 + 내일 예보
+      openHire(v) {
+        // ⚠️ 문장 안에 <b> 를 넣지 않는다 — 영어 모드 번역은 텍스트 노드 단위라 조각나면 한국어로 남는다
+        $('hire-head').textContent = `초빙료 🪙${v.cost} · 오늘 온 3명 중에서 골라요`;
+        $('hire-cap').textContent = `지금 ${v.n}/${v.cap}명 — 밭을 넓히면 더 뽑을 수 있어요`;
+        const cands = $('hire-cands'); cands.innerHTML = '';
+        v.candidates.forEach(c => {
+          const row = document.createElement('div'); row.className = 'hire-row';
+          const can = !c.taken && v.n < v.cap && v.coins >= v.cost;
+          const main = document.createElement('span'); main.className = 'h-main';
+          const nm = document.createElement('div'); nm.className = 'h-name'; nm.textContent = `${c.name} · ${c.job} · 견습`;
+          const sub = document.createElement('div'); sub.className = 'h-sub'; sub.textContent = c.skill;
+          main.append(nm, sub);
+          const ico = document.createElement('span'); ico.className = 'h-ico'; ico.textContent = c.ico;
+          const btn = document.createElement('button');
+          btn.textContent = c.taken ? '고용함' : `🪙${v.cost}`;
+          btn.disabled = !can;
+          btn.addEventListener('click', () => Input.hireWorker(c.i));
+          row.append(ico, main, btn); cands.appendChild(row);
+        });
+        $('hire-crew-head').textContent = v.workers.length
+          ? `우리 일꾼 ${v.workers.length}명 · 하루 월급 🪙${v.wage}`
+          : '아직 일꾼이 없어요 — 밭일을 대신 해 줘요';
+        const crew = $('hire-crew'); crew.innerHTML = '';
+        v.workers.forEach(w => {
+          const row = document.createElement('div'); row.className = 'hire-row' + (w.resting ? ' resting' : '');
+          const ico = document.createElement('span'); ico.className = 'h-ico'; ico.textContent = w.ico;
+          const main = document.createElement('span'); main.className = 'h-main';
+          const nm = document.createElement('div'); nm.className = 'h-name';
+          nm.textContent = `${w.name} · ${w.job} · ${w.grade}` + (w.resting ? ' · 😴쉬는 중' : '');
+          const sub = document.createElement('div'); sub.className = 'h-sub'; sub.textContent = w.skill;
+          const sub2 = document.createElement('div'); sub2.className = 'h-sub';
+          sub2.textContent = `일급 🪙${w.wage} · 누적 ${w.works}회 · ` + (w.next == null ? '장인 — 최고 등급' : `다음 등급까지 ${w.next}회`);
+          main.append(nm, sub, sub2);
+          const btn = document.createElement('button');   // 두 번 눌러야 나간다(브라우저 confirm 은 번역이 안 된다)
+          btn.textContent = '내보내기'; btn.dataset.armed = '';
+          btn.addEventListener('click', () => {
+            if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = '정말 내보낼까요?'; setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { btn.dataset.armed = ''; btn.textContent = '내보내기'; } }, 3000); return; }
+            Input.fireWorker(w.id);
+          });
+          row.append(ico, main, btn); crew.appendChild(row);
+        });
+        Input.setAnalog(0, 0);
+        $('hire-modal').classList.add('show');
+      },
       openMarket(d) {
         const rows = $('market-rows'); rows.innerHTML = '';
         d.items.forEach(it => {
@@ -3893,6 +3961,8 @@
       renderLb(lbBoard);
     }
     $('lb-btn').addEventListener('click', openLb);   // ☰메뉴 접힘은 util-btns 위임 핸들러가 처리
+    $('hire-close').addEventListener('click', () => $('hire-modal').classList.remove('show'));
+    $('hire-modal').addEventListener('click', (e) => { if (e.target === $('hire-modal')) $('hire-modal').classList.remove('show'); });
     $('market-close').addEventListener('click', () => $('market-modal').classList.remove('show'));
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 

@@ -49,11 +49,16 @@ const sameCell = (a, b) => Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) 
  * 놓을 수 있나 — { ok, reason }. reason: notFarm | outside | plot | overlap
  *   buildings 는 farm 시설 레코드만 [{id,x,z,rot}] (호출부가 OUTDOOR 에서 farm:true 인 것만 골라 넘긴다)
  */
-export function canPlaceBuilding({ def, x, z, rot, atFarm, center, half, plots, buildings }) {
+export function canPlaceBuilding({ def, x, z, rot, atFarm, center, half, plots, buildings, yard }) {
   if (!atFarm) return { ok: false, reason: 'notFarm' };
   const cells = buildingCells(def.fp, x, z, rot);
   const lim = half - 1;   // 울타리 안쪽 칸 중심은 ±(half-1)까지
-  if (cells.some(([cx, cz]) => Math.abs(cx - center.x) > lim + 0.01 || Math.abs(cz - center.z) > lim + 0.01)) return { ok: false, reason: 'outside' };
+  // 밭 안 ∪ 📐측량소 마당 — 창고·게시판처럼 반경 효과가 없는 건물은 마당에 두어 밭 칸을 아낄 수 있다
+  //   (사용자 지적 2026-09-13: "논밭 너무 좁아진다" — 밭은 심는 데 쓰고 건물은 마당으로)
+  const inField = c => Math.abs(c[0] - center.x) <= lim + 0.01 && Math.abs(c[1] - center.z) <= lim + 0.01;
+  const inYard = c => !!yard && c[0] - center.x >= yard.x0 + 1 && c[0] - center.x <= yard.x1 - 1
+    && c[1] - center.z >= yard.z0 + 1 && c[1] - center.z <= yard.z1 - 1;
+  if (cells.some(c => !inField(c) && !inYard(c))) return { ok: false, reason: 'outside' };
   if (cells.some(c => plots.some(p => sameCell(c, [p.x, p.z])))) return { ok: false, reason: 'plot' };
   for (const b of buildings) {
     const bd = FARM_BUILDINGS.find(d => d.id === b.id); if (!bd) continue;
@@ -64,6 +69,16 @@ export function canPlaceBuilding({ def, x, z, rot, atFarm, center, half, plots, 
 }
 
 export function withinRadius(bx, bz, r, px, pz) { return Math.hypot(px - bx, pz - bz) <= r; }
+/** 시설 효과 배율·품목 목록 — game.js 에 숫자를 박아 두면 위 표를 고쳐도 동작이 안 따라온다(코드 리뷰 2026-09-13) */
+export const WELL_WET_MUL = 1.4;      // 💧 우물 반경: 흙이 촉촉한 시간
+export const HIVE_GROWTH_MUL = 1.1;   // 🐝 벌통 반경: 물 한 번당 성장량
+export const STORAGE_KEYS = ['crop', 'wheat', 'corn', 'grape', 'honey'];   // 🧺 창고·더미에 담기는 품목(한 곳에서만 센다)
+export function buildingRadius(id) { return FARM_BUILDINGS.find(d => d.id === id)?.radius || 0; }
+/** 이 좌표가 해당 시설의 효과 반경 안인가 — 반경은 표(FARM_BUILDINGS.radius)가 유일한 출처 */
+export function inRadiusOf(buildings, id, x, z) {
+  const r = buildingRadius(id);
+  return !!r && buildings.some(b => b.id === id && withinRadius(b.x, b.z, r, x, z));
+}
 export function warehouseCap(buildings) { return buildings.filter(b => b.id === 'warehouse').length * (FARM_BUILDINGS.find(d => d.id === 'warehouse').cap); }
 export function storageTotal(storage) { return storage ? Object.values(storage).reduce((a, v) => a + (v || 0), 0) : 0; }
 /** 오늘 퇴비통이 더 만들어 줄 수 있는 비료 수 */

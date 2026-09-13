@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees, YARD_D, YARD_HZ, surveyYard, surveyOfficePos, surveyDeskPos, surveyBenchPos } from '../js/farm-stage.js';
+import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees, YARD_D, YARD_HZ, surveyYard, surveyOfficePos, surveyDeskPos, surveyBenchPos, clampFarmPos, GATE_HZ } from '../js/farm-stage.js';
 
 test('FARM_STAGES: 스펙 §1 표 그대로 — half 6/9/11 · 비용 · 노동자 상한', () => {
   assert.equal(FARM_STAGES.length, 3); assert.equal(MAX_FARM_STAGE, 3);
@@ -72,4 +72,32 @@ test('측량소 마당: 울타리 밖 서쪽 · 건물·탁자가 마당 안 · 
     assert.ok(b.z - 0.7 > 1.2, '작업대는 통로 위쪽(남쪽)');
     assert.ok(Math.hypot(b.x - d.x, b.z - d.z) > 3, '두 상호작용 지점이 서로 프롬프트를 잡아먹지 않게 떨어져 있다');
   }
+});
+
+test('clampFarmPos: 문을 지나야만 마당 — 울타리를 따라 밀어도 z 순간이동이 없다', () => {
+  for (const H of [6, 9, 11]) {
+    // 울타리 안 북서쪽에서 서쪽으로 밀기 — 통로 밖이라 x 만 막히고 z 는 그대로여야 한다
+    const side = clampFarmPos(-H - 0.05, H - 1.2, H, false);
+    assert.equal(side.inYard, false, '통로 밖에선 마당으로 넘어가지 않는다');
+    assert.equal(side.z, H - 1.2, 'z 가 튀지 않는다');
+    assert.ok(side.x >= -H + 0.6, '울타리 안쪽으로 되돌린다');
+
+    // 문 통로(|z| < GATE_HZ)에서 서쪽으로 나가면 마당
+    const inYard = clampFarmPos(-H - 0.05, 0.4, H, false);
+    assert.equal(inYard.inYard, true);
+    assert.ok(inYard.x < -H + 0.61);
+
+    // 마당 안에선 마당 사각으로 제한
+    const deep = clampFarmPos(-H - 99, 99, H, true);
+    assert.ok(deep.x > -H - YARD_D, '마당 서쪽 끝'); assert.ok(deep.z <= YARD_HZ - 0.6);
+
+    // 마당 → 밭 복귀(문을 지나 동쪽으로)
+    const back = clampFarmPos(-H + 1.5, 0.2, H, true);
+    assert.equal(back.inYard, false); assert.equal(back.x, -H + 1.5);
+
+    // 마당 남쪽 끝과 밭 남쪽 끝이 어긋나 순간이동하지 않는다(H=6 에서 둘 다 5.4)
+    const edge = clampFarmPos(-H - 1, YARD_HZ, H, true);
+    assert.ok(edge.z <= Math.max(YARD_HZ - 0.6, H - 0.6));
+  }
+  assert.equal(GATE_HZ, 1.6);
 });
