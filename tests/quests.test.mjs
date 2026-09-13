@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   QUEST_GATES, QUEST_LIMITS, REPEAT_POOL, REPEAT_OPEN,
-  questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor,
+  questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, skipSatisfied, pickCurrent,
 } from '../js/quests.js';
 
 // 🦉 의뢰 공급 규칙 — "영원히 못 깨는 의뢰" 를 막는 게 이 모듈의 존재 이유다.
@@ -340,4 +340,152 @@ test('quest_id — 체인은 순번, 반복은 목표 종류, 특별 의뢰는 s
   assert.equal(questIdFor({ npcId: 'farmer', idx: 4, repeat: true, repeatType: 'plant' }), 'farmer:repeat:plant');
   assert.equal(questIdFor({ npcId: 'courier', idx: 3, specialType: 'chop' }), 'courier:special:chop');
   assert.equal(questIdFor({ npcId: 'farmer', idx: 4, repeat: true, repeatType: undefined }), 'farmer:repeat:?');
+});
+
+// ── 🏗️ 체인 자동 스킵 — 이미 해버린 1회성 목표를 건너뛴다 ─────────────
+//   목수 체인에 증축(expand)을 이어붙이면, 이미 🏝️루프탑 빌라까지 지은 기존 유저에게
+//   "🧱브릭 로프트를 지어라" 가 간다. 증축은 되돌릴 수 없어 진행도가 영원히 0 —
+//   st.idx 가 못 올라가 목수가 통째로 잠긴다(quests.js 모듈이 존재하는 바로 그 사고).
+//   그래서 "아직 받지 않았고 이미 만족된" 선두 의뢰만 조용히 지나보낸다.
+const CHAIN = [
+  { type: 'collect_wood', target: 10 },
+  { type: 'house',   target: 1 },
+  { type: 'expand',  stage: 4, target: 1 },
+  { type: 'expand',  stage: 5, target: 1 },
+  { type: 'expand',  stage: 6, target: 1 },
+];
+
+test('아직 증축 안 한 사람은 아무것도 건너뛰지 않는다', () => {
+  assert.equal(skipSatisfied(CHAIN, { idx: 2, given: false }, { houseStage: 3 }), 2);
+});
+
+test('이미 지은 단계까지만 건너뛰고 다음 증축에서 멈춘다', () => {
+  assert.equal(skipSatisfied(CHAIN, { idx: 2, given: false }, { houseStage: 4 }), 3);
+  assert.equal(skipSatisfied(CHAIN, { idx: 2, given: false }, { houseStage: 5 }), 4);
+});
+
+test('끝까지 증축한 사람은 증축 의뢰 전부를 건너뛴다(체인 종료 → 반복 의뢰로)', () => {
+  assert.equal(skipSatisfied(CHAIN, { idx: 2, given: false }, { houseStage: 6 }), CHAIN.length);
+});
+
+// ⚠️ 이미 받아 든 의뢰를 스킵하면 정상 완료 경로(보상)를 통째로 빼앗는다.
+//    "수락한 뒤에 증축했다" 는 스킵 대상이 아니라 그냥 완료다.
+test('이미 수락한 의뢰는 만족돼 있어도 건너뛰지 않는다', () => {
+  assert.equal(skipSatisfied(CHAIN, { idx: 2, given: true }, { houseStage: 6 }), 2);
+});
+
+// ⚠️ house 를 스킵 대상에 넣으면 집을 다 지어둔 사람이 '보금자리' 보상을 잃는다 —
+//    그건 지금 동작(상태형이라 수락 즉시 완료 + 보상)의 회귀다. expand 만 대상이다.
+test('되돌릴 수 있거나 보상을 줘야 하는 목표는 스킵 대상이 아니다', () => {
+  assert.equal(skipSatisfied(CHAIN, { idx: 0, given: false }, { houseStage: 6 }), 0);
+  assert.equal(skipSatisfied(CHAIN, { idx: 1, given: false }, { houseStage: 6 }), 1);
+});
+
+test('체인을 이미 끝낸 상태는 그대로 둔다(범위 밖 idx 안전)', () => {
+  assert.equal(skipSatisfied(CHAIN, { idx: CHAIN.length, given: false }, { houseStage: 6 }), CHAIN.length);
+  assert.equal(skipSatisfied([], { idx: 0, given: false }, { houseStage: 6 }), 0);
+});
+
+// ── 짝 검증: game.js 의 목수 체인 ─────────────────────────────
+test('목수 체인에 증축 3단계가 순서대로 들어 있다', () => {
+  const builder = block(/\bid: 'builder'/, '\n  },');
+  const stages = [...builder.matchAll(/type: 'expand',\s*stage: (\d)/g)].map(m => +m[1]);
+  assert.deepEqual(stages, [4, 5, 6], '목수 체인의 증축 단계가 4→5→6 이 아니다');
+});
+
+test("expand 가 QUEST_TYPES 에 등록돼 있다(없으면 영원히 완료되지 않는다)", () => {
+  assert.ok(questTypes.includes('expand'), 'QUEST_TYPES 에 expand 없음');
+});
+
+test('증축 의뢰는 상태형으로 읽힌다 — houseStage 를 보고 진행도를 채운다', () => {
+  const fn = block(/^function refreshCollectQuests\(\)/m, '\n}');
+  assert.match(fn, /q\.type === 'expand'/, "refreshCollectQuests 가 expand 를 상태형으로 읽지 않는다");
+  assert.match(fn, /houseStage >= q\.stage/, 'expand 진행도가 houseStage 기준이 아니다');
+});
+
+// ⚠️ 스킵은 저장 시점이 아니라 "의뢰를 읽는 자리" 에서 돌아야 한다.
+//    진입 경로마다 호출을 심는 구조는 언젠가 하나를 빠뜨린다 — 세이브를 만든 적 없는 유저,
+//    ?house=N 디버그 파라미터(silent 건축이라 갱신을 안 탄다) 가 실제로 그 구멍이었다.
+test('의뢰를 읽는 한 곳(currentQuest)에서 스킵과 반복 의뢰 판정을 함께 한다', () => {
+  const fn = block(/^function currentQuest\(/m, '\n}');
+  assert.match(fn, /pickCurrent\(/, 'currentQuest 가 pickCurrent 를 쓰지 않는다');
+  assert.match(fn, /skip: !def\.daily/, '🦉 일일 의뢰 포인터까지 밀릴 수 있다');
+  assert.match(fn, /quest_autoskip/, '건너뛴 의뢰에 트래킹이 없다(퍼널에서 미도달과 구분 불가)');
+  const rep = block(/^function onRepeatQuest\(/m, '\n}');
+  assert.match(rep, /pickCurrent\(/, '반복 의뢰 판정이 여전히 길이 비교다');
+  assert.doesNotMatch(rep, /idx >= def\.quests\.length/, '체인이 길어지면 뒤집히는 판정이 남아 있다');
+});
+
+test('쓰기 시점 스킵 호출은 남아 있지 않다(읽기 시점 한 곳으로 모았다)', () => {
+  assert.doesNotMatch(SRC, /skipDoneChainQuests/, '중복된 스킵 경로가 남았다');
+});
+
+test('stage 없는 증축 의뢰는 공급 단계에서 걸러진다', () => {
+  const fn = block(/^function validQuest\(/m, '\n}');
+  assert.match(fn, /expand'/, "validQuest 가 expand 의 stage 를 확인하지 않는다");
+});
+
+// ── 🚨 체인 길이는 배포로 바뀐다 — 기존 세이브의 포인터 해석 ─────────────
+//   목수 체인이 3 → 6 으로 길어지자 "반복 의뢰 중인가" 판정(idx >= quests.length)이 뒤집혔다.
+//   🔁반복 의뢰를 수락해 둔 유저가 접속하면 그게 증축 의뢰로 바꿔치기되고,
+//   이미 증축을 끝낸 사람은 가만히 있어도 보상 3건이 연속으로 굴러들어온다
+//   ("이미 스스로 한 일엔 보상 없음" 이라는 이 기능의 설계 원칙과 정반대).
+const OLD_LEN = 3;   // 배포 전 목수 체인 길이 — 기존 세이브의 idx 는 여기까지만 올라가 있다
+const TODAY = '2026-09-14';
+const repeatSt = (over = {}) => ({
+  idx: OLD_LEN, given: true, progress: 4, readyToasted: false,
+  repeat: { date: TODAY, done: false, q: { type: 'chop', target: 6, title: '땔감 보충' } },
+  ...over,
+});
+
+test('수행 중인 반복 의뢰는 체인이 길어져도 증축 의뢰로 바뀌지 않는다', () => {
+  const r = pickCurrent(CHAIN, repeatSt(), { houseStage: 3 }, TODAY);
+  assert.equal(r.q.title, '땔감 보충', '수락해 둔 반복 의뢰가 사라졌다');
+  assert.equal(r.repeat, true, '보상 처리가 체인 경로로 새면 친밀도·포인터가 어긋난다');
+});
+
+test('증축을 끝낸 사람도 반복 의뢰를 수행 중이면 공짜 보상이 굴러오지 않는다', () => {
+  const r = pickCurrent(CHAIN, repeatSt(), { houseStage: 6 }, TODAY);
+  assert.equal(r.q.title, '땔감 보충');
+  assert.equal(r.repeat, true);
+});
+
+test('반복 의뢰를 받지 않았다면 새로 늘어난 체인 의뢰가 나온다', () => {
+  const r = pickCurrent(CHAIN, repeatSt({ given: false }), { houseStage: 3 }, TODAY);
+  assert.equal(r.q.type, 'expand');
+  assert.equal(r.repeat, false);
+});
+
+// 읽는 자리에서 스킵하므로, 세이브에 손대지 않은 유저·디버그 파라미터로 집만 올린 경우까지 함께 닫힌다
+test('읽는 순간 이미 만족된 증축 의뢰는 건너뛴 채로 나온다', () => {
+  const r = pickCurrent(CHAIN, { idx: 2, given: false }, { houseStage: 5 }, TODAY);
+  assert.equal(r.idx, 4, '이미 지은 단계를 건너뛰지 않았다');
+  assert.equal(r.q.stage, 6);
+});
+
+test('전부 지었으면 체인은 끝나고 오늘의 반복 의뢰로 넘어간다', () => {
+  const st = { idx: 2, given: false, repeat: { date: TODAY, done: false, q: { type: 'chop', target: 6, title: '땔감 보충' } } };
+  const r = pickCurrent(CHAIN, st, { houseStage: 6 }, TODAY);
+  assert.equal(r.idx, CHAIN.length);
+  assert.equal(r.q.title, '땔감 보충');
+  assert.equal(r.repeat, true);
+});
+
+test('어제 남은 반복 의뢰는 오늘 것이 아니다', () => {
+  const st = { idx: CHAIN.length, given: true, repeat: { date: '2026-09-13', done: false, q: { type: 'chop', target: 6 } } };
+  const r = pickCurrent(CHAIN, st, { houseStage: 6 }, TODAY);
+  assert.equal(r.q, null, '어제 부탁이 오늘 의뢰로 되살아났다');
+});
+
+// 🦉 올빼미의 idx 는 체인 포인터가 아니라 그날 일일 의뢰 포인터다 — 스킵이 밀면 진행도가 통째로 어긋난다
+test('일일 의뢰 담당(올빼미)은 스킵 대상이 아니다', () => {
+  const daily = [{ type: 'expand', stage: 4, target: 1 }];
+  const r = pickCurrent(daily, { idx: 0, given: false }, { houseStage: 6 }, TODAY, { skip: false });
+  assert.equal(r.idx, 0, '일일 의뢰 포인터가 밀렸다');
+});
+
+// ⚠️ stage 가 없는 expand 는 스킵도 진행도 갱신도 안 돼 "영원히 못 깨는 의뢰" 가 된다
+test('stage 없는 증축 의뢰는 스킵이 삼키지 않는다(조용히 사라지면 더 위험)', () => {
+  const broken = [{ type: 'expand', target: 1 }];
+  assert.equal(skipSatisfied(broken, { idx: 0, given: false }, { houseStage: 6 }), 0);
 });

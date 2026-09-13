@@ -3729,6 +3729,7 @@
       window.__carveScratch = () => Input.carveDebug('scratch');
       window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent });
       window.__ui = ui;        // HUD 문구·크기 검증용(캐치 배너·퀘스트 패널을 직접 그려본다)
+      window.__state = () => getGameState();   // 의뢰 진행(npcs.<id>.idx)·집 단계 검증용 — 직접 고쳐서 상황을 만든다
     }
 
     // ── 상점 메뉴 (팔기 / 사기) ──

@@ -35,7 +35,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
-import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
+import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
 import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
@@ -605,6 +605,7 @@ const QUEST_HOW = {
   fish:         '🏞️ 호수에서 🎣낚싯대를 던지고, "물었어요!" 가 뜨면 바로 액션!',
   fish_rare:    '🏞️ 호수에서 계속 낚아요 — 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요',
   house:        '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요',
+  expand:       '🎨 완성된 집 근처에서 [집 외관 꾸미기] 버튼을 열면, 맨 위에 🏗️ 증축이 있어요',
   sell:         '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요',
   catch:        '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요',
   forage:       '🍄 채집 숲에서 열매·버섯 앞에 서서 맨손으로 주워요',
@@ -639,6 +640,13 @@ const NPCS = [
       { type: 'collect_wood', target: 10, title: '목재 납품', desc: '목재 10개 모으기', reward: { crop: 3, coins: 10 },          line: '집 지으려면 목재 10개가 필요해. 모아올 수 있겠어?' },
       { type: 'house',        target: 1,  title: '보금자리',  desc: '집 완성하기',      reward: { seed: 6, crop: 3, coins: 30 }, line: '이제 근사한 집을 완성해보자고!' },
       { type: 'collect_wood', target: 20, title: '큰 창고 짓기', desc: '목재 20개 모으기', reward: { coins: 25 }, line: '마을 창고를 지으려면 목재가 많이 필요해. 스무 개 부탁해!' },
+      // 🏗️ 증축 안내 — 증축은 [🎨 집 외관 꾸미기] 버튼 안에 숨어 있어 아무도 찾지 못했다.
+      //    목수가 그 위치를 직접 말해 주는 게 이 세 의뢰의 존재 이유다.
+      //    ⚠️ 되돌릴 수 없는 1회성 목표 — 진행도는 상태형(houseStage)으로 읽고,
+      //       이미 지어 둔 기존 유저에게는 pickCurrent(js/quests.js)가 읽는 자리에서 조용히 건너뛴다.
+      { type: 'expand', stage: 4, target: 1, title: '한 층 더', desc: '🧱 브릭 로프트로 증축', reward: { stone: 6, coins: 20 }, line: '집이 좁지 않아? 집 앞에서 🎨집 외관 꾸미기를 열면 🏗️증축이 있어. 벽돌 한 층 올려보자고!' },
+      { type: 'expand', stage: 5, target: 1, title: '펜트하우스', desc: '🏢 펜트하우스로 증축', reward: { wood: 10, coal: 3, coins: 25 }, line: '한 층 더 올릴 수 있어. 목재랑 돌, 석탄까지 모아야 하니 만만치 않을 거야.' },
+      { type: 'expand', stage: 6, target: 1, title: '옥상 정원', desc: '🏝️ 루프탑 빌라로 증축', reward: { coins: 30, gem: 1 }, line: '마지막이야 — 옥상 정원까지 얹으면 마을에서 제일 근사한 집이 돼.' },
     ],
   },
   {
@@ -735,7 +743,7 @@ const QUEST_LUCKY = 3;   // 🎁럭키박스가 붙는 건수(앞에서부터). 
 //   이벤트는 수락 전에 이미 끝내버린 사람에게 두 번 다시 쏘이지 않는다.
 const QUEST_TYPES = new Set([
   'chop', 'plant', 'water', 'harvest', 'fish', 'fish_rare', 'mine',
-  'sell', 'cook', 'serve', 'catch', 'forage', 'house',
+  'sell', 'cook', 'serve', 'catch', 'forage', 'house', 'expand',
   'collect_wood', 'collect_crop',
   // 🦉 의뢰가 "베고·심고·낚고" 로만 돌던 것을 넓힌다(베타: "컨텐츠가 부족하다").
   //   이 중 일부는 전제조건이 있다 — js/quests.js 의 QUEST_GATES 가 거른다.
@@ -786,7 +794,9 @@ function validDailyQuests(qs) {
 //   ✨특별 의뢰(st.special)도 반드시 이걸 통과해야 한다. 안 그러면 type 이 목록 밖일 때
 //   진행도가 영원히 0 이라 st.idx 가 못 올라가고 그날 올빼미 의뢰 전체가 잠긴다.
 function validQuest(q) {
-  return !!q && QUEST_TYPES.has(q.type) && Number.isFinite(q.target) && q.target > 0 && !!q.desc;
+  if (!q || !QUEST_TYPES.has(q.type) || !Number.isFinite(q.target) || q.target <= 0 || !q.desc) return false;
+  if (q.type === 'expand' && !Number.isFinite(q.stage)) return false;   // 목표 단계가 없으면 진행도가 영원히 0
+  return true;
 }
 
 // ── 🔁 주민 반복 의뢰 ─────────────────────────────────────────
@@ -815,14 +825,24 @@ function refreshRepeatQuests() {
 
 // 지금 이 주민이 내주고 있는 의뢰 — 체인이 남았으면 체인, 다 깼으면 오늘의 반복 의뢰.
 //   둘 다 없으면 null(= 대화는 'done').
+//   ⚠️ 판정은 js/quests.js 의 pickCurrent 한 곳에만 둔다. 체인 길이는 배포로 바뀌므로
+//      "idx >= quests.length" 로 반복 의뢰를 가려내면, 체인이 길어지는 순간 수행 중이던
+//      반복 의뢰가 새 체인 의뢰로 바꿔치기된다(진행도·보상 증발 + 이미 만족된 의뢰 공짜 수령).
+//   🦉 올빼미의 idx 는 체인 포인터가 아니라 그날 일일 의뢰 포인터라 스킵 대상이 아니다.
 function currentQuest(def, st) {
-  if (st.idx < def.quests.length) return def.quests[st.idx];
-  const r = st.repeat;
-  return (r && r.date === todayStr() && !r.done) ? r.q : null;
+  const r = pickCurrent(def.quests, st, questCtx(), todayStr(), { skip: !def.daily });
+  if (r.idx !== st.idx) {
+    // [GA4] 마이그레이션으로 건너뛴 의뢰 — 없으면 "아직 도달 못 함" 과 구분되지 않아 체인 퍼널이 왜곡된다
+    trackEvent('quest_autoskip', { npc: def.id, from: st.idx, to: r.idx, house_stage: gameState.houseStage });
+    st.idx = r.idx;
+  }
+  return r.q;
 }
 
 // 지금 진행 중인 게 반복 의뢰인가 — 보상 처리(친밀도·포인터)가 갈린다
-function onRepeatQuest(def, st) { return st.idx >= def.quests.length; }
+function onRepeatQuest(def, st) {
+  return pickCurrent(def.quests, st, questCtx(), todayStr(), { skip: !def.daily }).repeat;
+}
 
 // 퍼널 분석용 표준 퀘스트 id. 반복 의뢰는 순번이 없으니 목표 종류로 구분한다
 //   (날짜를 넣으면 GA4 에서 매일 다른 id 가 되어 집계가 갈린다).
@@ -5653,6 +5673,7 @@ function buildHouseStage(stage, silent = false) {
       triggerMoment();                           // 📷 순간 줌인
       tryUnlockDrop(1);                          // 🎨 증축 보상: 랜덤 색 1개 확정
       trackEvent('house_expand', { stage });     // [GA4] 증축 퍼널
+      refreshCollectQuests();                    // 이미 받아 둔 증축 의뢰는 여기서 달성 처리
       syncBadges();                              // 🏅 궁전의 주인 배지
     }
   }
@@ -12688,6 +12709,8 @@ function refreshCollectQuests() {
     if (q.type === 'collect_wood') st.progress = Math.min(q.target, gameState.inventory.wood);
     else if (q.type === 'collect_crop') st.progress = Math.min(q.target, gameState.inventory.crop);
     else if (q.type === 'house') st.progress = gameState.houseStage >= 3 ? q.target : 0;
+    // 🏗️ 증축도 되돌릴 수 없다 — 이벤트가 아니라 지금 집 단계를 읽는다(수락 전에 지어버린 사람도 통과).
+    else if (q.type === 'expand') st.progress = gameState.houseStage >= q.stage ? q.target : 0;
     // ☕ 서빙도 같은 함정 — 손님은 하루 CAFE_ORDERS 명뿐이고 다시 서빙할 수 없다.
     //   먼저 서빙하고 나중에 의뢰를 받으면 남은 손님이 모자라 그날은 완료가 불가능해진다.
     //   그래서 "오늘 서빙한 손님 수"를 읽는다. 날짜가 지난 기록(cafeOrders() 가 아직 안 비운 어제치)은 0.

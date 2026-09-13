@@ -824,6 +824,18 @@ export const EN = {
   '큰 창고 짓기': 'The Big Warehouse',
   '목재 20개 모으기': 'Gather 20 Wood',
   '마을 창고를 지으려면 목재가 많이 필요해. 스무 개 부탁해!': 'The Village warehouse needs lots of Wood. Twenty, please!',
+  // 🏗️ 목수 증축 체인 — '펜트하우스' 는 증축 메뉴 키(위)와 같은 문자열이라 여기 다시 넣지 않는다
+  '한 층 더': 'One More Floor',
+  '🧱 브릭 로프트로 증축': '🧱 Upgrade to the Brick Loft',
+  '집이 좁지 않아? 집 앞에서 🎨집 외관 꾸미기를 열면 🏗️증축이 있어. 벽돌 한 층 올려보자고!':
+    'Feeling cramped? Open 🎨Decorate Exterior by your house and you\'ll find 🏗️Upgrade at the top. Let\'s stack a floor of brick!',
+  '🏢 펜트하우스로 증축': '🏢 Upgrade to the Penthouse',
+  '한 층 더 올릴 수 있어. 목재랑 돌, 석탄까지 모아야 하니 만만치 않을 거야.':
+    'There\'s another floor in this house. Wood, Stone and Coal this time — it won\'t come easy.',
+  '옥상 정원': 'Rooftop Garden',
+  '🏝️ 루프탑 빌라로 증축': '🏝️ Upgrade to the Rooftop Villa',
+  '마지막이야 — 옥상 정원까지 얹으면 마을에서 제일 근사한 집이 돼.':
+    'This is the last one — crown it with a rooftop garden and it\'s the finest house in the Village.',
   '씨앗 뿌리기': 'Sowing Seeds',
   '씨앗 3번 심기': 'Plant Seeds 3 times',
   '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?': 'Here are 3 Seeds — care to plant them thrice?',
@@ -1394,6 +1406,8 @@ export const EN = {
     '🏞️ Keep fishing at the Lake — 🪱Bait raises your odds of a rare fish',
   '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요':
     '🔨 Hold the Hammer and press action at your house — each load of wood raises it a stage',
+  '🎨 완성된 집 근처에서 [집 외관 꾸미기] 버튼을 열면, 맨 위에 🏗️ 증축이 있어요':
+    '🎨 Stand near your finished house, open the [Decorate Exterior] button — 🏗️ Upgrade sits right at the top',
   '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요':
     '🏪 Sell what is in your bag at the Shop — or to the 🧙Wandering Merchant when they visit',
   '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요':

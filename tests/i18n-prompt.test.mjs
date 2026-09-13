@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // 🌐 " · " 로 이어 붙인 조합 프롬프트가 영어에서 끝까지 번역되는지.
 //   사전 맨 앞의 글루 패턴 '{0} · {1}' 이 " · " 가 든 문장을 통째로 먼저 잡아 좌·우변을 따로 번역하므로,
@@ -89,3 +90,37 @@ test('아이콘과 숫자가 붙어 있어도 번역된다', () => {
 
 // '자기' 는 흔한 낱말(자기 자신·자기장) — 단독 키로 두면 옵저버가 오역한다
 test("'자기' 단독은 번역하지 않는다", () => assert.equal(t('자기'), '자기'));
+
+// ── 🏗️ 목수 증축 체인 — 원문에서 그대로 뽑아 번역까지 도달하는지 ───────
+//   대사·제목·설명은 통 문장이라 키만 맞으면 되지만, 빠뜨리면 영어 화면에 한국어가 그대로 남는다.
+//   문구를 고치면 이 테스트가 같이 따라오도록 game.js 원문에서 읽는다.
+const GAME_SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+
+function builderExpandStrings() {
+  const i = GAME_SRC.indexOf("id: 'builder'");
+  const chain = GAME_SRC.slice(i, GAME_SRC.indexOf('\n  },', i));
+  const out = [];
+  for (const row of chain.split('\n').filter(l => l.includes("type: 'expand'"))) {
+    for (const key of ['title', 'desc', 'line']) {
+      const m = row.match(new RegExp(`${key}: '((?:[^'\\\\]|\\\\.)*)'`));
+      if (m) out.push(m[1].replace(/\\'/g, "'"));
+    }
+  }
+  return out;
+}
+
+test('목수 증축 체인의 문구를 전부 뽑았다', () => {
+  assert.equal(builderExpandStrings().length, 9, '증축 3건 × (제목·설명·대사) 가 아니다');
+});
+
+for (const s of builderExpandStrings()) {
+  test(`증축 체인 문구가 영어로 끝까지 번역된다: ${s.slice(0, 24)}…`, () => {
+    assert.ok(!HAS_KO.test(t(s)), `한국어가 남았다 → ${t(s)}`);
+  });
+}
+
+test('증축 수행 방법 안내가 영어로 끝까지 번역된다', () => {
+  const how = GAME_SRC.match(/^\s{2}expand:\s*'((?:[^'\\]|\\.)*)'/m);
+  assert.ok(how, 'QUEST_HOW.expand 를 못 찾음');
+  assert.ok(!HAS_KO.test(t(how[1])), `한국어가 남았다 → ${t(how[1])}`);
+});

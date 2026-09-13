@@ -156,3 +156,66 @@ export function questIdFor({ npcId, idx, repeat = false, repeatType, specialType
   if (repeat) return `${npcId}:repeat:${repeatType || '?'}`;
   return `${npcId}:${idx}`;
 }
+
+// ── 🏗️ 체인 자동 스킵 — 이미 해버린 1회성 목표는 조용히 지나간다 ───────
+//   목수 체인 뒤에 증축(expand)을 이어붙이면, 이미 🏝️루프탑 빌라까지 지은 기존 유저에게
+//   "🧱브릭 로프트를 지어라" 가 간다. 증축은 되돌릴 수 없어 진행도가 영원히 0 이고,
+//   st.idx 가 못 올라가 목수가 통째로 잠긴다 — 이 모듈이 막으려는 바로 그 사고다.
+//
+//   ⚠️ 스킵 대상은 "되돌릴 수 없고, 이미 해버린 사람에게 줄 보상도 없는" 목표뿐이다.
+//      house(집 완성)를 여기 넣으면 안 된다 — 집을 지어둔 사람이 '보금자리' 의뢰를
+//      수락 즉시 완료하며 받던 보상을 통째로 잃는다(지금 동작의 회귀).
+export const CHAIN_SKIP = {
+  expand: (q, ctx) => Number.isFinite(q.stage) && (ctx.houseStage || 0) >= q.stage,
+};
+
+/**
+ * 아직 받지 않은 선두 의뢰가 이미 만족돼 있으면 건너뛴 새 idx 를 돌려준다.
+ * 이미 수락한 의뢰(st.given)는 정상 완료 경로(보상)를 뺏지 않도록 손대지 않는다.
+ * @param {Array} quests 그 주민의 체인
+ * @param {{idx:number, given:boolean}} st 주민별 진행 상태
+ * @param {{houseStage?:number}} ctx 세이브 상태 요약
+ * @returns {number} 새 idx (변화가 없으면 원래 값)
+ */
+export function skipSatisfied(quests, st = {}, ctx = {}) {
+  let idx = st.idx || 0;
+  if (st.given) return idx;
+  while (idx < quests.length) {
+    const q = quests[idx], satisfied = CHAIN_SKIP[q.type];
+    if (!satisfied || !satisfied(q, ctx)) break;
+    idx++;
+  }
+  return idx;
+}
+
+// ── 지금 이 주민이 내주는 의뢰 ────────────────────────────────
+//   ⚠️ 체인 길이는 배포로 바뀐다. 예전엔 "반복 의뢰 중인가" 를 idx >= quests.length 로만 봐서,
+//      목수 체인이 3 → 6 이 되는 순간 판정이 뒤집혔다:
+//      🔁반복 의뢰를 수락해 둔 유저는 그게 증축 의뢰로 바꿔치기되고(진행도·보상 증발),
+//      이미 증축을 끝낸 사람은 가만히 있어도 보상 3건이 연속으로 굴러들어왔다.
+//      그래서 "수락해서 수행 중인 반복 의뢰" 가 언제나 최우선이다.
+//
+//   스킵도 저장 시점이 아니라 이 읽는 자리에서 한다 — 진입 경로가 늘 때마다 호출을
+//   심는 구조는 언젠가 하나를 빠뜨린다(세이브를 안 만든 유저·?house=N 디버그 파라미터 등).
+
+/** 오늘 수행할 수 있는 반복 의뢰가 걸려 있는가(어제 부탁은 아니다). */
+export function repeatActive(st, today) {
+  const r = st.repeat;
+  return !!(r && r.date === today && !r.done);
+}
+
+/**
+ * 지금 내줄 의뢰와 그 성격을 함께 돌려준다.
+ * @param {Array} quests 그 주민의 체인
+ * @param {{idx:number, given:boolean, repeat?:object}} st 주민별 진행 상태
+ * @param {{houseStage?:number}} ctx 세이브 상태 요약
+ * @param {string} today 오늘 날짜 문자열(todayStr())
+ * @param {{skip?:boolean}} opt skip=false 면 건너뛰지 않는다(🦉 일일 의뢰는 idx 가 체인 포인터가 아니다)
+ * @returns {{q:object|null, repeat:boolean, idx:number}} idx 는 스킵이 반영된 값 — 호출부가 st.idx 에 되쓴다
+ */
+export function pickCurrent(quests, st, ctx = {}, today = '', { skip = true } = {}) {
+  if (st.given && repeatActive(st, today)) return { q: st.repeat.q, repeat: true, idx: st.idx };
+  const idx = skip ? skipSatisfied(quests, st, ctx) : (st.idx || 0);
+  if (idx < quests.length) return { q: quests[idx], repeat: false, idx };
+  return { q: repeatActive(st, today) ? st.repeat.q : null, repeat: true, idx };
+}
