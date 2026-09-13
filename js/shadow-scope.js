@@ -30,7 +30,7 @@ export function shadowReaches(x, z, reach = MAX_REACH) {
 // 에서 상자 중심(clamp 된 플레이어 위치)까지 잰 값이다 — 중심만 보면 큰 배경 메시를 놓친다.
 //   실측 2026-09-12 (씬 그래프 Box3): 동굴 218.5m · 안개 217.5m · 카페 290.8m · 바다 292m · 강 376m.
 //   전부 MAX_REACH(60) 보다 한참 밖이라 여유가 크다.
-export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea'];
+export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea', 'atMuseum'];
 
 // ② 상자는 닿지만 실측상 보이는 그림자가 없는 공간.
 // 진입 시점(timeOfDay 0.32)에 섀도맵을 한 번 굽고 얼린 뒤 해를 옮기며 live 렌더와 픽셀 비교했다

@@ -352,6 +352,7 @@ const CAFE_BONUS = 60;                          // 손님 전원 서빙 시 보�
 const CAFE_SEATS = [[-6, -3.5], [6, -3.5], [-6, 4.5], [6, 4.5]];   // 홀 안 테이블 좌석(홀 로컬 좌표)
 const CAFE_BOARD = [6.6, -7.9];                 // 📋 주문판(칠판) — 카운터 옆(동선상 눈에 띄게)
 let atCafe = false, nearCafeBoard = false;
+let atMuseum = false, museumGroup = null;   // 🏛️ 박물관 전시실
 let cafeInGroup = null, cafeGuestObjs = [];     // 홀 그룹 / 앉은 손님 런타임 { order, group, sprite, phase }
 let nearCafeGuest = null;
 
@@ -515,6 +516,7 @@ function setSpaceVisible() {
   if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint', 'weed', 'pest']) farmHintMeshes[k].visible = farmVisible;
   if (mineGroup) mineGroup.visible = atMine;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
+  if (museumGroup) museumGroup.visible = atMuseum;
   if (riverGroup) riverGroup.visible = atRiver;
   if (mistGroup) mistGroup.visible = atMist;
   if (seaGroup) seaGroup.visible = atSea;
@@ -522,7 +524,7 @@ function setSpaceVisible() {
   //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
   setShadowActive(shadowActiveFor(spaceFlags()));
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
-  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe) startRainSound();
+  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum) startRainSound();
   else stopRainSound();
 }
 const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통
@@ -1622,6 +1624,7 @@ const ZONE_TOOL = { mine: 'hoe' };
 function toolZoneKey() {
   if (indoor) return 'indoor';
   if (atCafe) return 'cafe';
+  if (atMuseum) return 'museum';
   if (atMist) return 'mist';
   if (atRiver) return 'river';
   if (atFarm) return 'farm';
@@ -2102,7 +2105,7 @@ export async function enterGame() {
   setTimeout(announceMapOpens, 4000);   // 🧪 [베타 2차] 열린 맵 안내 — 시작 직후 코치·환영 배너와 겹치지 않게 4초 뒤
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
-    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
+    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
     x: player.position.x, z: player.position.z,
   }));
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
@@ -2307,11 +2310,11 @@ function setShadowActive(on) {
 }
 
 // 현재 공간 플래그 묶음 — updateDayNight 가 매 프레임 부르므로 객체를 재사용한다(프레임당 할당 0).
-const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false };
+const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false, atMuseum: false };
 function spaceFlags() {
   _spaceFlags.indoor = indoor; _spaceFlags.atFarm = atFarm; _spaceFlags.atMine = atMine;
   _spaceFlags.atCafe = atCafe; _spaceFlags.atRiver = atRiver; _spaceFlags.atMist = atMist;
-  _spaceFlags.atSea = atSea;
+  _spaceFlags.atSea = atSea; _spaceFlags.atMuseum = atMuseum;
   return _spaceFlags;
 }
 
@@ -2338,7 +2341,7 @@ function shared(key, make) {
 function mergeGeos(geos) {
   const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
   const out = new THREE.BufferGeometry();
-  for (const name of ['position', 'normal', 'uv']) {
+  for (const name of ['position', 'normal', 'uv', 'color']) {   // color — 정점색을 쓰면 색이 달라도 한 재질로 합쳐진다(🏛️전시물)
     if (!flat[0].attributes[name]) continue;
     const size = flat[0].attributes[name].itemSize;
     let total = 0;
@@ -3201,7 +3204,7 @@ function buildRain() {
 
 function updateRain(dt) {
   if (!rainLines) return;
-  const show = mode === 'play' && !indoor && !atMine && !atCafe;   // 실내·동굴·카페 홀에선 숨김(텃밭은 야외)
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum;   // 실내·동굴·카페 홀·박물관에선 숨김(텃밭은 야외)
   rainLines.visible = show;
   if (!show) return;
   const { vel, snow, len } = rainLines.userData;
@@ -3943,6 +3946,179 @@ function makeWallPlate(text, w, h) {
 // ── 🏛️ 박물관 건물(마을 서쪽) — 처음부터 서 있다 ─────────────
 //   조형 검수: sims/museum-sim.html · ⚡ 재질별 병합으로 **메시 수 = 재질 수**.
 //   증축(2·3층)은 수집률로 열린다 — 지금은 1층만 세운다.
+// ── 🏛️ 전시실(실내) ───────────────────────────────────────────
+//   조형 검수: sims/museum-interior-sim.html
+//   ▶ 1층 13칸 = 🌾작물7 · 🐟물고기3 · ⛏️광물3. 구역은 바닥 러그로 나눈다.
+//   ▶ ⚡ 최적화 셋: ① 재질별 병합(메시 수 = 재질 수)
+//      ② **미획득은 유리장도 전시물도 만들지 않는다** — 천만 덮어 둔다(그게 곧 목표 표시)
+//      ③ 전시물은 종마다 색이 달라 재질을 따로 만들면 13종이 13콜이 된다 →
+//         색을 **정점에 실어** 한 재질(vertexColors)로 묶는다
+//   ▶ 명판 글자는 3D 텍스처가 아니라 HUD 패널이다(칸마다 캔버스를 만들면 그게 곧 드로우콜).
+const MUSEUM_HALF_W = 7.5, MUSEUM_HALF_D = 6.5, MUSEUM_H = 3.2;
+// 1층 전시 목록 — DEX 의 crop/fish/ore 를 그 순서로 늘어놓는다
+const MUSEUM_FLOOR1 = [
+  ...DEX.crop.map(e => ({ ...e, cat: 'crop', zone: 0 })),
+  ...DEX.fish.map(e => ({ ...e, cat: 'fish', zone: 1 })),
+  ...DEX.ore.map(e  => ({ ...e, cat: 'ore',  zone: 2 })),
+];
+const MUSEUM_ZONES = [
+  { key: 'rugA', label: '🌾 작물',   color: 0xb8cfa8 },
+  { key: 'rugB', label: '🐟 물고기', color: 0xa8c4d8 },
+  { key: 'rugC', label: '⛏️ 광물',   color: 0xcbc0ad },
+];
+// 전시물 색 — 도감 아이콘과 어울리게(실제 작물·광석 메시를 쓰기 전까지의 임시 조형)
+const MUSEUM_TINT = { carrot: 0xe08a3c, tomato: 0xd0453c, blueberry: 0x5566b8, pumpkin: 0xd98026,
+  wheat: 0xd9bc5c, corn: 0xd9c14a, grape: 0x8a5cd0,
+  common: 0x7fa8c8, uncommon: 0xd06a4a, rare: 0x62c0c8,
+  stone: 0x9a9086, coal: 0x4a4a4a, gem: 0x5ad0e0 };
+
+// 진열장 자리 — 좌우 벽 5칸씩 + 안쪽 3칸. [x, z, 바라보는 방향]
+function museumSlots() {
+  const out = [];
+  for (let i = 0; i < 5; i++) out.push([-MUSEUM_HALF_W + 1.1, -3.6 + i * 1.7,  Math.PI / 2]);
+  for (let i = 0; i < 5; i++) out.push([ MUSEUM_HALF_W - 1.1, -3.6 + i * 1.7, -Math.PI / 2]);
+  for (let i = 0; i < 3; i++) out.push([-2.6 + i * 2.6, -MUSEUM_HALF_D + 1.1, 0]);
+  return out;
+}
+let museumCases = [];   // 명판 근접 판정용 { x, z, i }
+
+// 🏛️ 진열장 앞에 서면 뜨는 명판. dex 의 **첫 발견 시각**을 쓴다 —
+//   그래야 남의 도감이 아니라 "내 기록" 이 된다(지금 그 값은 아무 데도 안 쓰이고 있었다).
+let _museumNear = -1;
+function museumPlateText() {
+  let best = 9e9, hit = -1;
+  for (const c of museumCases) {
+    const d = dist2D({ x: MUSEUM.x + c.x, z: MUSEUM.z + c.z }, player.position);
+    if (d < best) { best = d; hit = c.i; }
+  }
+  if (best > 1.9) hit = -1;
+  if (hit < 0) { _museumNear = -1; return null; }
+  const item = MUSEUM_FLOOR1[hit], zone = MUSEUM_ZONES[item.zone];
+  const at = gameState.dex[item.cat]?.[item.id];
+  if (hit !== _museumNear) {   // 같은 진열장 앞에 서 있는 동안 이벤트를 쏟지 않는다
+    _museumNear = hit;
+    trackEvent('museum_exhibit_view', { item: item.id, cat: item.cat, got: at ? 1 : 0 });   // [GA4] 어떤 진열장 앞에 서는가
+  }
+  if (!at) return `🎀 ${zone.label} — 아직 덮여 있어요. 찾아오면 천을 걷을게요`;
+  const d = new Date(at);
+  return `${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일, 당신이 처음 발견했어요`;
+}
+
+function buildMuseumHall() {
+  const g = new THREE.Group(); g.position.copy(MUSEUM); g.visible = false;
+  const MATS = {
+    wall:  clayMat(0xf3e2c8, false), trim: clayMat(0xf2ece0, false),
+    floor: woodMat(6, 6, 0xd9b98a),  stone: clayMat(0xcfc7b0, false),
+    wood:  woodMat(4, 1, 0xb5834f),  dark: clayMat(0x6b5a46, false),
+    cloth: clayMat(0xe4dccb, false),                       // 🎀 빈 칸을 덮은 천
+    rugA:  clayMat(0xb8cfa8, false), rugB: clayMat(0xa8c4d8, false), rugC: clayMat(0xcbc0ad, false),
+    glass: new THREE.MeshStandardMaterial({ color: 0xbfe3ea, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.28, side: THREE.DoubleSide }),
+    exhibit: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true }),
+  };
+  const parts = new Map();
+  const add = (k, ...geos) => {
+    const a = parts.get(k) || (parts.set(k, []), parts.get(k));
+    for (const geo of geos) {
+      if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+      a.push(geo);
+    }
+  };
+  const box = (w, h, d, x, y, z, ry = 0) => { const b = new THREE.BoxGeometry(w, h, d); if (ry) b.rotateY(ry); return b.translate(x, y, z); };
+  const W = MUSEUM_HALF_W * 2, D = MUSEUM_HALF_D * 2, H = MUSEUM_H;
+
+  add('floor', box(W, 0.2, D, 0, -0.1, 0));
+  // ⚠️ 천장은 만들지 않는다 — 카메라가 41° 로 내려다보므로 천장을 덮으면 방 안이 통째로 가린다.
+  //    집 실내(buildInterior)·☕카페 홀도 같은 이유로 천장이 없다(js/shadow-scope.js 주석 참고).
+  add('trim',  box(W + 0.4, 0.18, 0.5, 0, H, -MUSEUM_HALF_D));   // 뒷벽 위 처마만 — 공간의 위쪽을 닫아 보이게
+  add('wall',  box(W, H, 0.3, 0, H / 2, -MUSEUM_HALF_D));
+  add('wall',  box(0.3, H, D, -MUSEUM_HALF_W, H / 2, 0));
+  add('wall',  box(0.3, H, D,  MUSEUM_HALF_W, H / 2, 0));
+  // 정면(입구 쪽) 벽 — 문 자리를 비우고 좌우만
+  //   ⚠️ 정면(남쪽)은 낮은 난간만 — 카메라가 이쪽에서 41° 로 내려다보므로 벽을 세우면 방이 가린다
+  const doorW = 2.8, side = (W - doorW) / 2, RAIL = 0.9;
+  add('wall', box(side, RAIL, 0.3, -(doorW + side) / 2, RAIL / 2, MUSEUM_HALF_D));
+  add('wall', box(side, RAIL, 0.3,  (doorW + side) / 2, RAIL / 2, MUSEUM_HALF_D));
+  add('trim', box(side + 0.1, 0.12, 0.4, -(doorW + side) / 2, RAIL, MUSEUM_HALF_D));
+  add('trim', box(side + 0.1, 0.12, 0.4,  (doorW + side) / 2, RAIL, MUSEUM_HALF_D));
+  add('dark', box(doorW, 0.06, 1.1, 0, 0.02, MUSEUM_HALF_D - 0.2));   // 문턱(나가는 자리 표시)
+  // 굽도리 + 벽 상단 띠
+  for (const [x, z, w, d] of [[0, -MUSEUM_HALF_D + 0.2, W, 0.12], [-MUSEUM_HALF_W + 0.2, 0, 0.12, D], [MUSEUM_HALF_W - 0.2, 0, 0.12, D]]) {
+    add('trim', box(w, 0.22, d, x, 0.11, z), box(w, 0.14, d, x, H - 0.45, z));
+  }
+
+  const slots = museumSlots();
+  // 구역 러그 — 벽을 세우면 방이 좁아 보인다. 바닥은 공간감을 안 해치면서 경계가 읽힌다
+  slots.forEach(([x, z, ry], i) => {
+    const zn = MUSEUM_ZONES[MUSEUM_FLOOR1[i].zone];
+    const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
+    add(zn.key, box(1.0, 0.03, 1.0, x + inward[0] * 0.95, 0.015, z + inward[1] * 0.95));
+  });
+
+  museumCases = [];
+  slots.forEach(([x, z, ry], i) => {
+    const item = MUSEUM_FLOOR1[i];
+    const got = !!gameState.dex[item.cat]?.[item.id];
+    museumCases.push({ x, z, i });
+    add('stone', box(0.95, 0.12, 0.7, x, 0.9, z, ry));
+    add('wood',  box(0.8, 0.85, 0.58, x, 0.46, z, ry));
+    add('trim',  box(0.5, 0.14, 0.05, x + Math.sin(ry) * 0.32, 0.99, z + Math.cos(ry) * 0.32, ry));
+    if (!got) {   // 🎀 "아직 없음" 이 아니라 "곧 열릴 전시" — 수집하면 천이 걷힌다
+      add('cloth', box(0.9, 0.26, 0.66, x, 1.09, z, ry), box(0.78, 0.18, 0.54, x, 1.28, z, ry));
+      return;
+    }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const px = x + (ry ? sz * 0.25 : sx * 0.4), pz = z + (ry ? sx * 0.4 : sz * 0.25);
+      add('trim', new THREE.CylinderGeometry(0.024, 0.024, 0.9, 5).translate(px, 1.41, pz));
+    }
+    add('glass', box(0.86, 0.88, 0.54, x, 1.41, z, ry));
+    add('trim',  box(0.94, 0.07, 0.62, x, 1.88, z, ry));
+    const geo = item.cat === 'fish' ? new THREE.SphereGeometry(0.15, 8, 6).scale(1.5, 0.8, 0.5)
+              : item.cat === 'ore'  ? new THREE.IcosahedronGeometry(0.16, 0)
+              :                       new THREE.SphereGeometry(0.15, 8, 7).scale(1, 1.2, 1);
+    geo.rotateY(ry); geo.translate(x, 1.24, z);
+    const flat = geo.index ? geo.toNonIndexed() : geo;
+    const col = new THREE.Color(MUSEUM_TINT[item.id] || 0xcfc8b8), arr = new Float32Array(flat.attributes.position.count * 3);
+    for (let v = 0; v < flat.attributes.position.count; v++) { arr[v * 3] = col.r; arr[v * 3 + 1] = col.g; arr[v * 3 + 2] = col.b; }
+    flat.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+    add('exhibit', flat);
+  });
+
+  for (const [k, geos] of parts) {
+    const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
+    m.receiveShadow = true; g.add(m);
+  }
+  const lamp = new THREE.PointLight(0xfff3dc, 0.8, 26); lamp.position.set(0, H - 0.7, 0); g.add(lamp);
+  scene.add(g);
+  return g;
+}
+
+// 수집이 늘면 천이 걷힌다 — 전시실은 들어갈 때마다 다시 짓는다(13칸이라 싸다)
+function refreshMuseumHall() {
+  if (museumGroup) { scene.remove(museumGroup); disposeTree(museumGroup); }
+  museumGroup = buildMuseumHall();
+}
+
+function enterMuseum() {
+  atMuseum = true; setFogExempt(player, true);
+  refreshMuseumHall();                                   // 그사이 채운 칸이 있으면 천이 걷혀 있다
+  museumGroup.visible = true;
+  player.position.set(MUSEUM.x, 0, MUSEUM.z + MUSEUM_HALF_D - 2.2); player.rotation.y = Math.PI;
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
+  snapCamera(); setSpaceVisible();
+  const have = MUSEUM_FLOOR1.filter(e => gameState.dex[e.cat]?.[e.id]).length;
+  firstHint('museum', '🏛️', '박물관',
+    `도감에 등록한 것이 여기 전시돼요 (지금 ${have}/${MUSEUM_FLOOR1.length})\n🎀 천이 덮인 자리는 아직 못 찾은 것 — 찾아오면 천을 걷을게요\n진열장 앞에 서면 아래에 설명이 떠요 · 나갈 땐 남쪽 문`);
+  Sound.blip(); trackEvent('museum_enter', { have, total: MUSEUM_FLOOR1.length });   // [GA4] 방문 빈도·그때의 수집률
+}
+function exitMuseum() {
+  atMuseum = false; setFogExempt(player, false);
+  if (museumGroup) museumGroup.visible = false;
+  player.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4);
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null; _museumNear = -1;
+  snapCamera(); setSpaceVisible();
+  Sound.blip(); trackEvent('museum_exit');
+}
+
 function spawnMuseumGate() {
   const g = new THREE.Group(); g.position.copy(MUSEUM_GATE);
   const MATS = {
@@ -6087,7 +6263,7 @@ function updateWavyWater(w, t, amp, speed) {
 // 매 프레임: 보이는 수면만 일렁임 + 등대 야간 빔 회전(마을 후미)
 function updateSeaVisuals(t) {
   if (atSea) { if (seaWater) updateWavyWater(seaWater, t, 0.13, 1.4); }
-  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe)
+  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe && !atMuseum)
     updateWavyWater(coveWater, t, 0.085, 1.6);
   if (seaBeacon) {
     // 밤뿐 아니라 악천후(비·눈·안개) 낮에도 점등 — 흐린 날 등대가 물을 쓸어 비추는 이벤트
@@ -8434,7 +8610,7 @@ function stopOutdoorPlacing(putBack) {
   pickedOutdoor = null; placingOutdoor = null; removeDecorGhost();
 }
 // 🪵 야외 장식을 놓을 수 있는 구역(마을 실외·텃밭) — 옮기기 프롬프트도 여기서만
-function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea; }
+function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum; }
 // 캐릭터에서 가장 가까운 야외 장식(2D 중심 거리) — 규칙은 js/outdoor-move.js
 function nearestOutdoor(reach) {
   // 🏗️ 발자국이 있는 시설은 가장자리 거리로(2×2 는 중심까지 1.0 안에 설 수 없다 — 실내 nearestDecor 와 같은 규칙), 장식은 중심 거리
@@ -9084,6 +9260,8 @@ function updateDoorInteract() {
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
+  } else if (atMuseum) {   // 🏛️ 전시실: 남쪽 문으로 나가기 / 진열장 앞 명판
+    if (dist2D({ x: MUSEUM.x, z: MUSEUM.z + MUSEUM_HALF_D }, player.position) < 1.9) { nd = 'museumexit'; prompt = '🚪 나가기'; }
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < houseSolidR() + 0.6) { // 증축 크기에 맞춰 문 사거리도 확장
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {
@@ -9106,6 +9284,9 @@ function updateDoorInteract() {
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
+  } else if (dist2D({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 }, player.position) < 2.4) {
+    nd = 'museum'; prompt = '🏛️ 박물관에 들어가기';
+    firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시되는 곳 — 빈 자리가 다음 목표예요');
   }
   nearDoor = nd;
   if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
@@ -9169,6 +9350,11 @@ function updateZoneHint() {
     if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
     return;
   }
+  if (atMuseum) {   // 🏛️ 진열장 앞 명판 — 같은 자리(액션 버튼을 뺏지 않는다)
+    hint = museumPlateText();
+    if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
+    return;
+  }
   const wasGlade = nearGlade;
   nearGlade = inVillage2() && dist2D(GLADE, player.position) < GLADE_R + 0.5;
   if (nearGlade) {
@@ -9185,7 +9371,7 @@ function updateZoneHint() {
   }
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
-function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea; }   // 마을 실외 여부(집 근처 버튼용)
+function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum; }   // 마을 실외 여부(집 근처 버튼용)
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 function ensureNearRing() {
   if (!decorNearRing) {
@@ -9412,7 +9598,7 @@ function animate() {
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
+      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
       if (place === 'village') {
         md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
@@ -9592,6 +9778,9 @@ function updatePlayer(dt, t) {
   } else if (atCafe) { // ☕ 카페 홀: 벽 안쪽으로 제한
     player.position.x = Math.max(CAFE.x - CAFE_HALF + 0.8, Math.min(CAFE.x + CAFE_HALF - 0.8, player.position.x));
     player.position.z = Math.max(CAFE.z - CAFE_HALF + 0.8, Math.min(CAFE.z + CAFE_HALF - 0.7, player.position.z));
+  } else if (atMuseum) { // 🏛️ 전시실: 벽 안쪽으로 제한
+    player.position.x = Math.max(MUSEUM.x - MUSEUM_HALF_W + 0.8, Math.min(MUSEUM.x + MUSEUM_HALF_W - 0.8, player.position.x));
+    player.position.z = Math.max(MUSEUM.z - MUSEUM_HALF_D + 0.8, Math.min(MUSEUM.z + MUSEUM_HALF_D - 0.7, player.position.z));
   } else if (atRiver) { // 🛶 나루터 데크: 물에 빠지지 않게 데크 안쪽으로 제한
     player.position.x = Math.max(RIVER.x - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.x + RIVER_DOCK_HALF - 0.7, player.position.x));
     player.position.z = Math.max(RIVER.z - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.z + RIVER_DOCK_HALF - 0.5, player.position.z));
@@ -10426,6 +10615,8 @@ function handleAction() {
   if (nearDoor === 'mineexit') return exitMine();
   if (nearDoor === 'cafe') return enterCafe();
   if (nearDoor === 'cafeexit') return exitCafe();
+  if (nearDoor === 'museum') return enterMuseum();
+  if (nearDoor === 'museumexit') return exitMuseum();
   if (nearDoor === 'river') return enterRiver();
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
