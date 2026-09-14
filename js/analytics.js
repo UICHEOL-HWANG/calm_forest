@@ -12,6 +12,7 @@
 import { CONFIG, isGaConfigured, IS_DEV_SESSION } from './config.js';
 import { PLATFORM } from './platform.js';         // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
 import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
+import { renameReservedParams } from './ga-params.js';  // source/medium 등 GA4 예약어 충돌 방지
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -84,11 +85,12 @@ export function trackEvent(name, params = {}) {
   trackHooks.forEach(cb => { try { cb(name, payload); } catch (e) {} }); // 카운터 훅(실패해도 트래킹 계속)
 
   // [GA4 전송 지점] gtag 가 로드되어 있고 설정이 유효할 때만 실제 전송
+  const gaPayload = renameReservedParams(payload);   // 예약어 충돌 제거 후 전송(유입 소스 보호)
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('event', name, payload);
+    window.gtag('event', name, gaPayload);
   } else {
     // 오프라인 폴백: 실제 전송 대신 콘솔 기록 (에러 없이 계속 진행)
-    console.log('[GA4 폴백] event:', name, payload);
+    console.log('[GA4 폴백] event:', name, gaPayload);
   }
 }
 

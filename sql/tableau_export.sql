@@ -121,7 +121,12 @@ with tx as (
   select
     parse_date('%Y%m%d', event_date) as d,
     user_pseudo_id,
-    (select value.string_value from unnest(event_params) where key = 'source') as src,
+    -- 2026-09-14 이전 데이터는 'source', 이후는 'src'.
+    -- ('source' 는 GA4 예약어라 세션 유입을 덮어써서 이름을 바꿨다 — js/analytics.js 참조)
+    coalesce(
+      (select value.string_value from unnest(event_params) where key = 'src'),
+      (select value.string_value from unnest(event_params) where key = 'source')
+    ) as src,
     (select value.int_value    from unnest(event_params) where key = 'amount') as amt
   from `calm-forest.analytics_547127440.events_*`
   where event_name = 'econ_tx'
