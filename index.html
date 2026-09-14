@@ -2072,11 +2072,30 @@
     const ui = {
       // 🛡️ 세이브를 아직 못 읽었다 — 읽을 때까지 화면을 덮어 게임이 시작되지 않게 한다.
       //   빈 마을로 들여보내면 30초 뒤 자동저장이 서버의 진짜 마을을 덮어쓴다(js/save-guard.js).
-      setLoadWait(on) {
+      //   stuck=true 면 "다시 들어가기"를 함께 띄운다 — 스스로 낫지 않는 실패(토큰 만료·RLS 사고)에서
+      //   유일한 탈출구다. 새로고침은 세션 갱신부터 다시 타므로, 토큰이 살아 있으면 그대로 이어지고
+      //   죽었으면 로그인 화면이 떠 재로그인으로 이어진다.
+      setLoadWait(on, stuck = false) {
         const el = $('loading');
         if (!el) return;
-        if (on) el.textContent = t('🌙 잠시만요, 마을을 찾는 중이에요');
         el.style.display = on ? '' : 'none';
+        if (!on) return;
+        if (!stuck) { el.textContent = t('🌙 잠시만요, 마을을 찾는 중이에요'); return; }
+        if (el.dataset.stuck === '1') return;          // 이미 띄웠으면 5초마다 다시 그리지 않는다
+        el.dataset.stuck = '1';
+        el.textContent = '';
+        const box = document.createElement('div');
+        box.style.cssText = 'display:grid; gap:14px; place-items:center; text-align:center; padding:0 24px;';
+        const msg = document.createElement('div');
+        msg.textContent = t('🌙 연결이 오래 걸리네요. 마을은 그대로 있으니 다시 들어와 주세요');
+        msg.style.cssText = 'line-height:1.5; max-width:30ch;';
+        const btn = document.createElement('button');
+        btn.className = 'primary';
+        btn.textContent = t('🔄 다시 들어가기');
+        btn.style.cssText = 'padding:12px 22px; font-size:15px; font-weight:700; border:none; border-radius:14px; cursor:pointer; background:var(--mint); color:var(--ink); box-shadow:var(--shadow);';
+        btn.onclick = () => { trackEvent('save_load_reload'); location.reload(); };   // [GA4] 몇 명이 갇혀 이 버튼까지 왔나
+        box.append(msg, btn);
+        el.appendChild(box);
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss }); if (!hintBShowing) nextHintBanner(); },

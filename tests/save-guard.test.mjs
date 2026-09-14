@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { loadOutcome, retryDelay } from '../js/save-guard.js';
+import { loadOutcome, retryDelay, offerReload } from '../js/save-guard.js';
 
 const GAME_SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
 
@@ -93,6 +93,19 @@ test('supabase-client.js — game_saves 쓰기는 writeSave 한 곳만 지난다
   const upserts = SRC.match(/\.from\(CONFIG\.SAVE_TABLE\)\.upsert\(/g) || [];
   assert.equal(upserts.length, 1,
     `game_saves upsert 가 ${upserts.length} 곳이다 — 저장 잠금을 우회하는 쓰기가 생겼다. writeSave() 를 지나게 고칠 것`);
+});
+
+// 🚪 스스로 낫지 않는 실패가 있다(refresh token 폐기·RLS 정책 사고·프로젝트 정지).
+//   그 경우 5초마다 영원히 재시도만 하고 유저에겐 나갈 길이 없다 — 로그아웃 버튼은
+//   enterGame() 다음 줄에서야 붙고 새로고침해도 같은 루프로 들어온다.
+//   새로고침은 세션 갱신부터 다시 타므로, 토큰이 살아 있으면 복구되고 죽었으면
+//   로그인 화면이 떠 재로그인으로 이어진다. 한 버튼으로 두 경우가 다 풀린다.
+test('offerReload — 처음에는 참고 기다리다가, 오래 끌면 길을 열어 준다', () => {
+  assert.equal(offerReload(0), false);
+  assert.equal(offerReload(3), false);
+  assert.equal(offerReload(5), false);
+  assert.equal(offerReload(6), true);    // 약 30초(600·1200·2400·4800·5000·5000ms) 뒤
+  assert.equal(offerReload(20), true);   // 한 번 열리면 계속 열려 있다
 });
 
 test('retryDelay — 점점 뜸하게, 상한에서 멈춘다(무한 대기라도 서버를 때리지 않게)', () => {

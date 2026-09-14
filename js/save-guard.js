@@ -50,3 +50,18 @@ export function retryDelay(attempt) {
   const n = Math.max(0, Math.floor(attempt) || 0);
   return Math.min(RETRY_MAX, RETRY_FIRST * Math.pow(2, n));
 }
+
+//  🚪 스스로 낫지 않는 실패 — refresh token 폐기·만료(모든 요청이 401), game_saves RLS 정책
+//    사고, 결제 문제로 정지된 프로젝트. 이때는 5초마다 영원히 재시도만 하고 유저는 갇힌다.
+//    로그아웃 버튼은 enterGame() 다음 줄에서야 화면에 붙어서 손댈 수도 없다.
+//
+//    다시 들어가기(새로고침)면 세션 갱신부터 다시 타므로 두 경우가 다 풀린다:
+//      · 토큰이 살아 있다 → 읽기가 되살아나 그대로 이어서 플레이
+//      · 토큰이 죽었다   → initAuth 가 로그인 화면을 띄워 재로그인으로 이어짐
+//    처음부터 버튼을 보이면 일시적 딸꾹질에도 누르게 되니, 한동안은 조용히 기다린다.
+const RELOAD_AFTER = 6;   // 6회 실패 ≈ 30초(600+1200+2400+4800+5000+5000ms)
+
+/** 이 회차에 "다시 들어가기" 버튼을 보여줄까. 한 번 열리면 계속 열려 있다. */
+export function offerReload(attempt) {
+  return (Math.max(0, Math.floor(attempt) || 0)) >= RELOAD_AFTER;
+}

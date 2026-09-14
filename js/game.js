@@ -24,7 +24,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
-import { retryDelay } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격
+import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격 + 오래 끌 때 탈출구
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
@@ -2028,6 +2028,8 @@ export async function enterGame() {
     // [GA4] 갇힌 사람을 셀 분모. recovered 만 쏘면 영영 못 들어온 사람이 통계에서 사라진다.
     //   매 시도마다 보내면 한 세션이 지표를 삼키므로 1회차 + 매 10회차만.
     if (tries === 0 || (tries + 1) % 10 === 0) trackEvent('save_load_failed', { attempt: tries + 1, code: load.code || 'unknown' });
+    // 🚪 오래 끌면 "다시 들어가기"를 띄운다 — 토큰 만료처럼 스스로 낫지 않는 실패의 유일한 출구
+    if (offerReload(tries)) ui.setLoadWait?.(true, true);
     await new Promise(r => setTimeout(r, retryDelay(tries)));
     load = await loadGame();
     if (load.canPlay) trackEvent('save_load_recovered', { tries: tries + 1 });   // [GA4] 사고 재발 감시 — 몇 번 만에 붙었나
