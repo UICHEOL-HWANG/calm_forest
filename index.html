@@ -661,13 +661,32 @@
   .dm-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .dm-actions button { border: none; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   /* 요리(작업대) 메뉴 — 꾸미기 메뉴와 동일 톤 */
-  #cook-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; }
+  /* 🔧 작업대 — 목록이 길어져도(밭 시설 7종 합류) 창이 화면 밖으로 넘치지 않게 높이를 가둔다.
+     바닥 기준으로 뜨는 창이라 "화면 높이 − 바닥여백 − 상단인셋" 이 최대치다.
+     --menu-bottom 을 변수로 둬서 좁은 화면(미디어쿼리)에서 바닥값만 바꿔도 최대 높이가 따라온다. */
+  #cook-menu { --menu-bottom: calc(90px + env(safe-area-inset-bottom));
+    display: none; bottom: var(--menu-bottom); left: 50%; transform: translateX(-50%); width: min(460px, 92vw);
+    flex-direction: column; gap: 10px;
+    max-height: calc(100dvh - var(--menu-bottom) - var(--top-inset) - 12px); overflow: hidden; }
   #cook-menu.show { display: flex; }
+  /* 세로가 짧은 화면(SE 계열·가로모드) — 머리말과 여백을 줄여 목록에 높이를 넘긴다 */
+  @media (max-height: 640px) {
+    #cook-menu { --menu-bottom: calc(58px + env(safe-area-inset-bottom)); gap: 6px; padding: 9px 12px; }
+    #cook-menu .dm-head { font-size: 13px; }
+    #cook-menu .ck-tab { padding: 4px 11px; font-size: 12px; }
+    #cook-menu .ck-item { width: 78px; padding: 7px 5px; }
+    #cook-menu .ck-item .ck-ico { font-size: 21px; }
+  }
   .ck-tabs { display: flex; gap: 6px; justify-content: center; }
   .ck-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .ck-tab.active { background: var(--mint); }
   .ck-inv { font-size: 12px; opacity: .75; text-align: center; }
-  #tool-items, #out-items, #gift-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  /* 목록만 스크롤 — 제목·탭·안내·닫기는 항상 보이게 고정(창 전체를 스크롤하면 닫기가 화면 밖으로 나간다).
+     머리말·꼬리말은 flex-shrink 를 막아야 자리를 뺏기지 않는다(도감 모달과 같은 방식) */
+  #cook-menu > *:not(#tool-items):not(#out-items):not(#gift-items):not(#carve-items) { flex: 0 0 auto; }
+  #tool-items, #out-items, #gift-items, #carve-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+    align-content: flex-start; padding: 2px 0; }
   /* 🍳 자유주방 메뉴판 — 레시피 카드(미니게임 종류·최고 점수 표시) */
   #kitchen-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); max-height: 66dvh; overflow-y: auto; flex-direction: column; gap: 10px; }
   #kitchen-menu.show { display: flex; }
@@ -1133,7 +1152,9 @@
     #boat-view { top: calc(50px + var(--top-inset)); }
     /* 런 중에는 도구 하트바가 없으므로 조이스틱·액션버튼이 그대로 노출된다(조향+노 젓기) */
     /* 작업대/상점/자유주방 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
-    #cook-menu, #shop-menu, #kitchen-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
+    #shop-menu, #kitchen-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
+    /* 작업대는 바닥값만 낮춘다 — 최대 높이는 --menu-bottom 을 물고 자동으로 다시 계산된다 */
+    #cook-menu { --menu-bottom: calc(78px + env(safe-area-inset-bottom)); width: 94vw; }
     /* 🍳 미니게임: 좁은 화면 — 카드 폭 확장, 큰 탭 버튼 유지(엄지 존) */
     #mg-card { width: 94vw; padding: 11px 12px calc(11px + env(safe-area-inset-bottom)); gap: 8px; margin-bottom: 6px; }
     #mg-title { font-size: 14px; }
