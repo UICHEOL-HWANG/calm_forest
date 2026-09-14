@@ -1089,7 +1089,9 @@
   /* 꾸미기 메뉴 열려 있으면 조이스틱/액션버튼 숨김 + 이동 정지 */
   body.menu-open #mobile-controls { display: none !important; }
 
-  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--cream); color: var(--ink); font-size: 20px; z-index: 10; }
+  /* z-index 31 — HUD(30) 위. 🛡️ 세이브를 못 읽어 다시 띄울 때(setLoadWait) HUD 아래로 깔리면
+     빈 마을이 비쳐 보여 "시작됐다"고 오해한다. 모달(32)보다는 아래에 둔다. */
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--cream); color: var(--ink); font-size: 20px; z-index: 31; }
 
   /* ── 모바일(좁은 화면) 전용: HUD를 더 작고 촘촘하게 ── */
   @media (max-width: 640px) {
@@ -1927,9 +1929,17 @@
       el.classList.toggle('tap', !!item.onTap);
       const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
-      let timer, watch;
-      const done = () => { clearTimeout(timer); clearInterval(watch); el.onclick = null; el.classList.remove('show', 'tap'); setTimeout(nextHintBanner, 250); };
-      el.onclick = item.onTap ? () => { const f = item.onTap; done(); f(); } : null;   // 한 번 탭하면 배너를 걷고 실행
+      let timer, watch, settled = false;
+      try { item.onShow?.(); } catch (e) { /* 계측 실패가 배너를 막지 않게 */ }
+      const done = (reason = 'timeout') => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer); clearInterval(watch); el.onclick = null;
+        el.classList.remove('show', 'tap');
+        try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
+        setTimeout(nextHintBanner, 250);
+      };
+      el.onclick = item.onTap ? () => { const f = item.onTap; done('tap'); f(); } : null;   // 한 번 탭하면 배너를 걷고 실행
       const hold = item.attention ? HINT_B_ATTN : (near() ? HINT_B_FULL : HINT_B_MIN);
       timer = setTimeout(done, hold);
       if (hold > HINT_B_MIN && !item.attention) watch = setInterval(() => {   // attention 은 조기 종료 없이 8초   // 조기 페이드아웃 감시
@@ -2060,8 +2070,16 @@
 
     let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
     const ui = {
+      // 🛡️ 세이브를 아직 못 읽었다 — 읽을 때까지 화면을 덮어 게임이 시작되지 않게 한다.
+      //   빈 마을로 들여보내면 30초 뒤 자동저장이 서버의 진짜 마을을 덮어쓴다(js/save-guard.js).
+      setLoadWait(on) {
+        const el = $('loading');
+        if (!el) return;
+        if (on) el.textContent = t('🌙 잠시만요, 마을을 찾는 중이에요');
+        el.style.display = on ? '' : 'none';
+      },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
-      showHintBanner({ ico, title, line, near, attention, onTap }) { hintBQ.push({ ico, title, line, near, attention, onTap }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0; },
       setInventory(inv) {

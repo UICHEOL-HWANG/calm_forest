@@ -12,6 +12,7 @@
 import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 🧪 dev 세션 — 리더보드 원천 기록 차단용
 import { PLATFORM, IS_ITCH, IS_TOSS } from './platform.js'; // 'web' | 'toss' | 'itch' — 로그 세그먼트 · itch 는 구글 팝업 로그인 · toss 는 게스트 이관
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
+import { loadOutcome } from './save-guard.js';                 // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant, trackEvent } from './analytics.js';
 
@@ -50,6 +51,9 @@ function applySession(session) {
   state.online = true;
   state.userId = session.user.id;
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
+  //  🚪 정식 계정으로 바뀌면 "잃을 세이브가 없다"는 전제가 깨진다 — 빗장을 원래대로.
+  //    (signInAsGuest 는 이 함수를 부른 뒤에 다시 true 로 세운다)
+  if (!isAnon(session)) freshGuest = false;
   state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : (session.user.email || session.user.user_metadata?.name || '유저');
   state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : (session.user.app_metadata?.provider || 'google');
   state.betaReady = resolveBetaGroup(session);
@@ -251,6 +255,9 @@ export async function signInAsGuest() {
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) throw error;
       applySession(data.session);          // state.online = true → DB 저장 활성화
+      //  🚪 방금 만든 계정이다 — game_saves 에 행이 있을 수 없다(잃을 세이브 0).
+      //    읽기가 실패해도 이 세션은 입장을 막지 않는다(save-guard.js 의 freshGuest).
+      freshGuest = true;
       console.log('[게스트] 익명 로그인 성공 → DB 저장 활성화', state.userId);
       return { online: true };
     } catch (err) {
@@ -282,24 +289,49 @@ export async function signOut() {
 // =============================================================
 //  게임 저장 / 불러오기 / 로그 전송  (오프라인이면 콘솔 폴백)
 // =============================================================
+//  🛡️ 세이브를 못 읽은 세션은 서버를 덮어쓰면 안 된다(js/save-guard.js 참고).
+//    ⚠️ 이 빗장은 game_saves 로 가는 **모든** 쓰기를 지나야 뜻이 있다. 그래서 저장 경로를
+//    writeSave() 하나로 모았다 — saveGame 도, 게스트 이관도 여기를 통과한다.
+let saveLocked = false;
+let freshGuest = false;   // 이 세션에서 익명 계정을 방금 만들었나(= 잃을 세이브가 없다)
+
+//  game_saves 로 나가는 유일한 쓰기 통로. allowLocked 는 "잠금을 알고도 써야 하는" 경우(게스트 이관)에만.
+async function writeSave(row, { allowLocked = false } = {}) {
+  if (saveLocked && !allowLocked) { console.warn('[Supabase] 저장 잠금 — 세이브를 못 읽은 세션이라 덮어쓰지 않습니다'); return { ok: false, locked: true }; }
+  const { error } = await supabase.from(CONFIG.SAVE_TABLE).upsert(row);
+  if (error) throw error;
+  return { ok: true };
+}
+
 export async function saveGame(gameState) {
   const row = { user_id: state.userId, state: gameState, updated_at: new Date().toISOString() };
   if (!state.online || !supabase) { console.log('[Supabase 폴백] 저장(오프라인):', row); return { ok: true, offline: true }; }
   try {
-    const { error } = await supabase.from(CONFIG.SAVE_TABLE).upsert(row);
-    if (error) throw error;
+    const r = await writeSave(row);
+    if (!r.ok) return { ok: false, locked: true };
     console.log('[Supabase] 저장 완료'); return { ok: true, offline: false };
   } catch (err) { console.warn('[Supabase 폴백] 저장 실패:', err?.message || err); return { ok: false, offline: false, error: err }; }
 }
 
+//  ⚠️ 읽기 실패를 절대 null(= 저장 없음 = 신규 유저)로 뭉개지 않는다.
+//    예전에는 둘 다 null 이라 호출부가 실패를 신규로 읽고 새 마을을 만들었고,
+//    30초 뒤 자동저장이 서버의 멀쩡한 마을을 덮어썼다(2026-09-14·09-11 사고 2건).
+//    판정은 save-guard.js 가 하고 테스트가 잠근다. 호출부는 canPlay 가 설 때까지 기다린다.
 export async function loadGame() {
-  if (!state.online || !supabase) return null;
-  try {
-    const { data, error } = await supabase.from(CONFIG.SAVE_TABLE).select('state').eq('user_id', state.userId).maybeSingle();
-    if (error) throw error;
-    const saved = data?.state ?? null;
-    return await migrateGuestSave(saved);
-  } catch (err) { console.warn('[Supabase 폴백] 불러오기 실패:', err?.message || err); return null; }
+  const online = !!(state.online && supabase);
+  let row = null, error = null;
+  if (online) {
+    try {
+      const { data, error: readErr } = await supabase.from(CONFIG.SAVE_TABLE).select('state').eq('user_id', state.userId).maybeSingle();
+      if (readErr) throw readErr;
+      row = await migrateGuestSave(data?.state ?? null);
+    } catch (err) { error = err; console.warn('[Supabase] 불러오기 실패(신규로 보지 않고 다시 시도):', err?.message || err); }
+  }
+  const out = loadOutcome({ online, error, row, freshGuest });
+  saveLocked = !out.canSave;   // 성공하면 풀리고, 실패한 동안은 걸려 있다
+  //  실패 원인을 호출부가 GA4 로 보낼 수 있게 넘긴다 — 갇힌 사람을 셀 분모가 여기서 나온다
+  if (error) out.code = String(error?.code || error?.status || error?.name || 'unknown');
+  return out;
 }
 
 // ── 🔵 게스트 → 토스 정식 계정 진행도 이관 ────────────────────────
@@ -317,12 +349,20 @@ async function readGuestSave(userId) {
 
 async function migrateGuestSave(tossSave) {
   if (!pendingGuest || state.provider !== 'toss') return tossSave;   // 토스 정식 계정으로 붙었을 때만 소비(다시 게스트면 다음 기회에)
-  const guest = pendingGuest; pendingGuest = null;
+  const guest = pendingGuest;
   const pick = pickSave(tossSave, guest.state);
   trackEvent('guest_migrate', { kept: pick.keep, guest_score: progressScore(guest.state), toss_score: progressScore(tossSave) }); // [GA4] 사고 복구 추적
-  if (!pick.migrate) return tossSave;
-  const { error } = await supabase.from(CONFIG.SAVE_TABLE).upsert({ user_id: state.userId, state: guest.state, updated_at: new Date().toISOString() });
-  if (error) { console.warn('[토스] 게스트 진행도 이관 실패 — 정식 저장 유지:', error.message); return tossSave; }
+  if (!pick.migrate) { pendingGuest = null; return tossSave; }       // 옮길 이유가 없다 — 여기서 비운다
+  try {
+    //  ⚠️ allowLocked: 이 upsert 는 "이 저장을 남긴다"고 방금 판정한 결과다. 읽기가 한 번
+    //    실패해 빗장이 걸려 있어도 이관은 나가야 게스트 진행도가 고아가 되지 않는다.
+    await writeSave({ user_id: state.userId, state: guest.state, updated_at: new Date().toISOString() }, { allowLocked: true });
+  } catch (err) {
+    //  ⚠️ pendingGuest 를 비우지 않는다 — 비우고 실패하면 재시도 때 이관이 영영 건너뛰어진다.
+    console.warn('[토스] 게스트 진행도 이관 실패 — 다음 시도에서 다시 옮긴다:', err?.message || err);
+    return tossSave;
+  }
+  pendingGuest = null;                                               // 성공한 뒤에만 비운다
   console.log('[토스] 게스트 진행도를 정식 계정으로 옮김', guest.userId, '→', state.userId);
   return guest.state;
 }

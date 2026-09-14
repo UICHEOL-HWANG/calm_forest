@@ -238,6 +238,7 @@ export const EN = {
   '☁️ 사진첩': '☁️ Photo Album',
   '💾 저장': '💾 Save',
   'calm forest 불러오는 중… 🌿': 'Loading calm forest… 🌿',
+  '🌙 잠시만요, 마을을 찾는 중이에요': '🌙 One moment — finding your Village',
 
   // ── HTML UI 스크립트 ──
   '수락하기': 'Accept',

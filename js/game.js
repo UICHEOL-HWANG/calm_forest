@@ -24,6 +24,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
+import { retryDelay } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
@@ -2018,8 +2019,35 @@ export async function bootWorld(uiCallbacks) {
 
 // ② 로그인 완료 후 실제 플레이 시작 (저장 로드 + 로깅 + 조작 on)
 export async function enterGame() {
-  const saved = await loadGame();      // [Supabase] 저장 불러오기(오프라인이면 null)
-  if (saved) applySave(saved);
+  // [Supabase] 저장 불러오기 — 🛡️ 읽을 때까지 기다린다.
+  //   읽기에 실패했는데 그냥 들여보내면 새 마을이 만들어지고, 30초 뒤 자동저장이
+  //   서버의 멀쩡한 마을을 덮어쓴다(2026-09-14·09-11 사고 2건). 판정은 js/save-guard.js.
+  let load = await loadGame();
+  if (!load.canPlay) ui.setLoadWait?.(true);     // 🌙 "잠시만요, 마을을 찾는 중이에요" — 루프 밖에서 한 번만
+  for (let tries = 0; !load.canPlay; tries++) {
+    // [GA4] 갇힌 사람을 셀 분모. recovered 만 쏘면 영영 못 들어온 사람이 통계에서 사라진다.
+    //   매 시도마다 보내면 한 세션이 지표를 삼키므로 1회차 + 매 10회차만.
+    if (tries === 0 || (tries + 1) % 10 === 0) trackEvent('save_load_failed', { attempt: tries + 1, code: load.code || 'unknown' });
+    await new Promise(r => setTimeout(r, retryDelay(tries)));
+    load = await loadGame();
+    if (load.canPlay) trackEvent('save_load_recovered', { tries: tries + 1 });   // [GA4] 사고 재발 감시 — 몇 번 만에 붙었나
+  }
+  ui.setLoadWait?.(false);
+  // [GA4] 읽기는 됐는데 행이 없는 경우. RLS 거부·유저 id 재매핑도 여기로 들어오므로(둘 다 data·error 가 null),
+  //   "신규 유저 급증"이 사실은 복귀 유저인 상황을 이 이벤트로 가려낸다.
+  if (load.kind === 'empty') trackEvent('save_load_empty', { provider: authState.provider || 'unknown' });
+  if (load.kind === 'failed_fresh') {
+    trackEvent('save_load_failed', { attempt: 1, code: load.code || 'unknown', fresh_guest: 1 });   // 🚪 입장은 시켰지만 저장은 잠긴 세션
+    //  게스트는 위 루프를 돌지 않으므로(바로 입장) 아무도 다시 읽지 않는다 → 저장이 세션 내내 잠긴 채로 남는다.
+    //  뒤에서 조용히 다시 읽어 본다. 성공하면 잠금이 풀려 이 게스트의 진행도 저장되기 시작한다.
+    (async () => {
+      for (let i = 0; i < 12; i++) {                       // 약 1분간. 그 뒤에도 안 되면 이 세션은 저장을 포기한다
+        await new Promise(r => setTimeout(r, retryDelay(i)));
+        if ((await loadGame()).canSave) { trackEvent('save_load_recovered', { tries: i + 1, fresh_guest: 1 }); return; }
+      }
+    })();
+  }
+  if (load.state) applySave(load.state);
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -2172,6 +2200,15 @@ export async function enterGame() {
 }
 
 function applySave(saved) {
+  //  🛡️ loadGame() 의 판정 객체가 통째로 들어오는 사고 방어(옛 브랜치와 섞여 병합될 때).
+  //    그 객체는 항상 truthy 라 `if (saved) applySave(saved)` 를 통과하고, 안의 필드는 죄다
+  //    undefined 라 조용히 빈 마을이 된다 — 정확히 2026-09-14 사고의 형태다. 터뜨리지 말고 교정한다.
+  if (saved && typeof saved === 'object' && 'canPlay' in saved) {
+    console.error('[치명] applySave 에 loadGame() 결과가 통째로 들어왔다 — load.state 를 넘겨야 한다. 교정하고 진행');
+    trackEvent('save_apply_misuse', { kind: String(saved.kind || 'unknown') });   // [GA4] 병합 사고 즉시 감지
+    saved = saved.state;
+  }
+  if (!saved || typeof saved !== 'object') return;   // 빈 세이브를 덮어쓰지 않는다
   if (saved.inventory) Object.assign(gameState.inventory, saved.inventory);
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
