@@ -1,7 +1,8 @@
-# 렌더 산출물(수 MB PNG) — 소스(deck·render·shoot·art·templates)만 추적
+# 렌더 산출물(수 MB PNG/MP4) — 소스(deck·render·shoot·art·templates)만 추적
 out/
 gen/
 shots/
+clips/
 _dbg*.mjs
 
 # 뉴스 후보(매번 재수집 가능) — 기록으로 남길 이유가 없다
