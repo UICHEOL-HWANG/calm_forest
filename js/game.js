@@ -8958,6 +8958,19 @@ function nearestOutdoor(reach) {
 // 🪵 야외 장식을 **직접 탭** = 들어 올리기(실내 가구 tryPickDecor 와 같은 문법).
 //   액션 버튼/Space 는 밭일에 양보하므로(updateDoorInteract), 밭에 겹쳐 놓은 허수아비는 이 경로로 옮긴다.
 //   조준이 명시적이라 근접 프롬프트(1.0)보다 넉넉하되, 화면 건너편 것이 집히지 않게 사거리로 막는다.
+//   장식만 쏘면 나무·집·주민 뒤에 숨은 것도 맞아서, 나무를 찍어 벌목하려던 클릭이 울타리 집기로 샌다.
+//   씬 전체로 한 번 더 쏘아 "맨 앞에 보이는 게 정말 그 장식인가"를 본다.
+//   링·고스트·떠오르는 글자처럼 판정에 끼면 안 되는 연출물은 건너뛴다(그림자 연출은 메시가 아니라 자동 제외).
+function tapOccluded(m, dist) {
+  for (const h of raycaster.intersectObjects(scene.children, true)) {
+    const o = h.object;
+    if (!o.isMesh || !o.visible || o === decorNearRing) continue;
+    if (h.distance >= dist - 0.01) return false;            // 그 장식보다 앞에 아무것도 없다
+    let r = o; while (r.parent && !outdoorMeshes.includes(r)) r = r.parent;
+    if (r !== m) return true;                               // 다른 게 먼저 맞았다 = 가려져 있다
+  }
+  return false;
+}
 function tryPickOutdoor(e) {
   if (!outdoorMeshes.length) return false;
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -8966,6 +8979,7 @@ function tryPickOutdoor(e) {
   const hit = raycaster.intersectObjects(outdoorMeshes, true)[0]; if (!hit) return false;
   let m = hit.object; while (m.parent && !outdoorMeshes.includes(m)) m = m.parent;
   if (!outdoorMeshes.includes(m) || outdoorDist(m) > OUTDOOR_TAP_REACH) return false;
+  if (tapOccluded(m, hit.distance)) return false;   // 가려져 있으면 평소 탭(도구질)으로 흘려보낸다
   pickOutdoor(m);
   return true;   // 🧺창고·🍇포도처럼 안내 토스트만 나가는 경우도 탭은 여기서 소비 — 뒤로 새서 밭일까지 나가면 안 된다
 }
