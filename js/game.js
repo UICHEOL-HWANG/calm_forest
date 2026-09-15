@@ -46,7 +46,7 @@ import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, per
 import { ADV_CROPS, MATURE, isAdv, growthPerWater, stageIndex, renderStage, wiltTimeFor, weedRoll, pestChance, harvestYield, nextSeedSel, seedKeyOf } from './farm-crops.js';   // 🌾 고급 작물 공정(밀·옥수수·포도 · 비료/잡초/해충)
 import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, jobOf, gradeInfo, gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages, pickTask, catchUpSteps, worksPerStep, candidatesFor } from './farm-worker.js';   // 🧑‍🌾 노동자 규칙(직군·등급·우선순위·월급·오프라인 스텝)
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
-import { takeStored } from './outdoor-move.js';   // 🪵 야외 장식 보관 규칙(근접 탐색은 발자국 때문에 nearestOutdoor 가 직접 한다)
+import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -8812,11 +8812,36 @@ function outdoorMesh(id) {
     const rail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), woodMat(2, 1)); rail.position.y = 0.42; g.add(rail);
     const rail2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), woodMat(2, 1)); rail2.position.y = 0.22; g.add(rail2);
   } else if (id === 'scarecrow') {
-    // 예전 텃밭 장식과 같은 실루엣 — 이제는 사서 밭 근처에 "배치"해야 밤손님을 막는다
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5), clayMat(0x8a6a3a)); pole.position.y = 0.8; g.add(pole);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.08), clayMat(0x8a6a3a)); arm.position.y = 1.1; g.add(arm);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), clayMat(0xf1a444, false)); head.position.y = 1.5; g.add(head); // 🎃 호박 머리
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.3, 10), clayMat(0xc98a4f)); hat.position.y = 1.72; g.add(hat);
+    // 🧙 마법사 허수아비 — 삼베 자루 머리 + 파란 고깔모자 + 널빤지 십자 뼈대(사용자 지시 2026-09-15).
+    //   호박 머리 시절엔 실루엣이 밋밋했다. 모자의 파랑 하나만 강한 색으로 두고 나머지는 나무·삼베·짚의
+    //   흙색으로 묶어, 멀리서도 "밭을 지키는 사람 형상"으로 읽히게 한다.
+    const WOOD = clayMat(0x7b5a36), ARM = clayMat(0x8a6a3a), CLOTH = clayMat(0xb9b6ae), STRAW = clayMat(0xd9b25f), FACE = clayMat(0x4a3a2a, false);
+    // 뼈대 — 쪼갠 널빤지 기둥에 팔 두 짝을 바깥쪽이 들리게 붙인다(양팔을 벌린 자세)
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.5, 0.12), WOOD); post.position.y = 0.75; g.add(post);
+    for (const sx of [-1, 1]) {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.09, 0.13), ARM);
+      arm.position.set(sx * 0.34, 1.13, 0); arm.rotation.z = sx * 0.13; g.add(arm);
+    }
+    // 어깨를 동인 천 — 팔과 기둥이 만나는 이음매를 가린다
+    const wrap = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.16), CLOTH); wrap.position.y = 1.14; g.add(wrap);
+    // 목덜미로 삐져나온 짚
+    for (const sx of [-1, 1]) {
+      const t = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 5), STRAW);
+      t.position.set(sx * 0.11, 1.3, 0.02); t.rotation.z = sx * 0.9; g.add(t);
+    }
+    // 삼베 자루 머리 + 꿰맨 × 눈 두 짝, 축 처진 입
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 6), clayMat(0xe6d7b8, false));
+    head.position.y = 1.45; head.scale.set(1, 1.12, 0.95); g.add(head);
+    for (const sx of [-1, 1]) for (const d of [1, -1]) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.016, 0.016), FACE);
+      st.position.set(sx * 0.075, 1.47, 0.165); st.rotation.z = d * 0.78; g.add(st);
+    }
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.018, 0.018), FACE); mouth.position.set(0, 1.36, 0.17); g.add(mouth);
+    // 🔮 파란 고깔모자 — 넓은 챙 + 띠 + 살짝 기운 뿔(이 장식의 유일한 강한 색)
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.05, 12), clayMat(0x2f4a7a)); brim.position.y = 1.6; g.add(brim);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.33, 0.07, 12), clayMat(0x1e3252)); band.position.y = 1.655; g.add(band);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.5, 12), clayMat(0x35538a));
+    cone.position.set(0.03, 1.93, 0); cone.rotation.z = -0.1; g.add(cone);
   } else if (id === 'path') {
     const s = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.08, 8), clayMat(0xbfae95, false)); s.position.y = 0.04; s.scale.z = 0.8; g.add(s);
   } else if (id === 'flowerbed') {
@@ -8916,20 +8941,33 @@ function stopOutdoorPlacing(putBack) {
 }
 // 🪵 야외 장식을 놓을 수 있는 구역(마을 실외·텃밭) — 옮기기 프롬프트도 여기서만
 function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum; }
-// 캐릭터에서 가장 가까운 야외 장식(2D 중심 거리) — 규칙은 js/outdoor-move.js
+// 캐릭터↔야외 장식 거리 — 규칙은 js/outdoor-move.js
+//   🏗️ 발자국이 있는 시설은 가장자리 거리로(2×2 는 중심까지 1.0 안에 설 수 없다 — 실내 nearestDecor 와 같은 규칙), 장식은 중심 거리.
+//   근접 프롬프트(nearestOutdoor)와 탭 집기(tryPickOutdoor)가 같은 잣대를 써야 한다.
+function outdoorDist(m) {
+  const rec = m.userData.rec, def = rec && FARM_BUILDINGS.find(d => d.id === rec.id);
+  const [w, dd] = def ? rotatedFp(def.fp, rec.rot || 0) : [0, 0];
+  return outdoorDistance(player.position.x, player.position.z, m.position.x, m.position.z, w * FARM_CELL / 2, dd * FARM_CELL / 2);
+}
+// 캐릭터에서 가장 가까운 야외 장식
 function nearestOutdoor(reach) {
-  // 🏗️ 발자국이 있는 시설은 가장자리 거리로(2×2 는 중심까지 1.0 안에 설 수 없다 — 실내 nearestDecor 와 같은 규칙), 장식은 중심 거리
   let best = null, bd = reach;
-  for (const m of outdoorMeshes) {
-    const rec = m.userData.rec, def = rec && FARM_BUILDINGS.find(d => d.id === rec.id);
-    let d;
-    if (def) {
-      const [w, dd] = rotatedFp(def.fp, rec.rot || 0), hw = w * FARM_CELL / 2, hd = dd * FARM_CELL / 2;
-      d = Math.hypot(Math.max(0, Math.abs(player.position.x - m.position.x) - hw), Math.max(0, Math.abs(player.position.z - m.position.z) - hd));
-    } else d = Math.hypot(player.position.x - m.position.x, player.position.z - m.position.z);
-    if (d < bd) { bd = d; best = m; }
-  }
+  for (const m of outdoorMeshes) { const d = outdoorDist(m); if (d < bd) { bd = d; best = m; } }
   return best ? { mesh: best, d: bd } : null;
+}
+// 🪵 야외 장식을 **직접 탭** = 들어 올리기(실내 가구 tryPickDecor 와 같은 문법).
+//   액션 버튼/Space 는 밭일에 양보하므로(updateDoorInteract), 밭에 겹쳐 놓은 허수아비는 이 경로로 옮긴다.
+//   조준이 명시적이라 근접 프롬프트(1.0)보다 넉넉하되, 화면 건너편 것이 집히지 않게 사거리로 막는다.
+function tryPickOutdoor(e) {
+  if (!outdoorMeshes.length) return false;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(outdoorMeshes, true)[0]; if (!hit) return false;
+  let m = hit.object; while (m.parent && !outdoorMeshes.includes(m)) m = m.parent;
+  if (!outdoorMeshes.includes(m) || outdoorDist(m) > OUTDOOR_TAP_REACH) return false;
+  pickOutdoor(m);
+  return true;   // 🧺창고·🍇포도처럼 안내 토스트만 나가는 경우도 탭은 여기서 소비 — 뒤로 새서 밭일까지 나가면 안 된다
 }
 // 🍇 이 지지대에 포도가 붙어 있나(옆 밭에 자라는/익은 포도) — 있으면 옮길 수 없다(§4-3)
 function trellisHasGrapes(rec) {
@@ -9630,16 +9668,27 @@ function updateDoorInteract() {
     const fp = fertTarget();
     if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) prompt = '🌱 비료 주기';
   }
-  if (!prompt && !placingOutdoor && !nearNPC && outdoorZone()) {   // 🪵 놓아둔 야외 장식 옆 → "옮기기" — 문·시설·주민보다 낮은 우선순위(실내 가구와 같은 문법)
-    const near = nearestOutdoor(1.0);
-    if (near) {
-      nearOutdoorMesh = near.mesh; const def = OUTDOOR.find(d => d.id === near.mesh.userData.rec.id);
-      const stock = def.id === 'warehouse' ? storageTotal(gameState.farm.storage) : 0;
-      if (stock > 0) { nearDoor = 'warehouse'; prompt = `🧺 창고에서 꺼내기 ${stock}개`; }   // 🏗️ 내용물이 있으면 액션 = 꺼내기(비워야 옮긴다)
-      else if (def.id === 'board') { nearDoor = 'hireboard'; prompt = `📋 일꾼 구하기 (${gameState.workers.length}/${workerCap()})`; }   // 📋 게시판 액션 = 고용 창(옮기기는 탭)
-      else { nearDoor = 'outdoor'; prompt = `${def.ico} ${def.name} · 옮기기`; }
-      const ring = ensureNearRing(); ring.position.set(near.mesh.position.x, 0.04, near.mesh.position.z); ring.visible = true;
-    }
+  // 🪵 놓아둔 야외 장식 옆 → "옮기기" — 문·시설·주민보다 낮은 우선순위(실내 가구와 같은 문법).
+  //   🌾 밭일보다도 낮다: 밭에 세운 허수아비·정원등이 파종·물주기를 통째로 가로채던 문제(2026-09-15).
+  //      옮기기 프롬프트가 잡히면 handleAction 맨 위에서 채가서 농사 분기까지 못 갔다 —
+  //      주민(NPC)에 이미 쓰던 규칙 farmActionFirst 를 그대로 적용한다.
+  //      겹쳐 놓은 장식은 액션 대신 **직접 탭**해서 옮긴다(tryPickOutdoor) — 조준이 명시적이라 밭일과 안 겹친다.
+  //      🧺창고 꺼내기·📋게시판 고용도 같이 양보한다 — 밭 위에서 농사 도구를 들었으면 밭일이라는 한 가지 규칙으로 두는 게 맞고,
+  //      밭일이 없으면(farmActionFirst 가 noop 을 양보) 그 자리에서 곧바로 다시 뜬다.
+  //      farmActionFirst 는 밭·채집을 훑으므로(매 프레임) 근처에 장식이 있을 때만 본다.
+  const outdoorNear = (!prompt && !placingOutdoor && !nearNPC && outdoorZone()) ? nearestOutdoor(OUTDOOR_MOVE_REACH) : null;
+  const outdoorDef = outdoorNear && OUTDOOR.find(d => d.id === outdoorNear.mesh.userData.rec.id);
+  const outdoorStock = outdoorDef?.id === 'warehouse' ? storageTotal(gameState.farm.storage) : 0;
+  const outdoorFacility = outdoorStock > 0 || outdoorDef?.id === 'board';   // 🧺꺼내기·📋고용은 밭일에 양보하지 않는다
+  const outdoorShow = !!outdoorNear && canPromptOutdoorMove({ hasPrompt: !!prompt, placing: !!placingOutdoor, nearNPC: !!nearNPC, outdoorZone: true, farmFirst: farmActionFirst(), isFacility: outdoorFacility });
+  // 밭일에 가려 옮기기가 처음 숨는 순간 — 탭이라는 길이 있다는 걸 한 번만 알려 준다(🛏️침대 bedMove 와 같은 문법)
+  if (outdoorNear && !outdoorShow) firstHintBanner('outdoorMoveTap', '🎃', '허수아비 옮기기', '밭 위에선 밭일이 먼저예요. 허수아비를 직접 탭하면 옮겨요');
+  if (outdoorShow) {
+    nearOutdoorMesh = outdoorNear.mesh; const def = outdoorDef, stock = outdoorStock;
+    if (stock > 0) { nearDoor = 'warehouse'; prompt = `🧺 창고에서 꺼내기 ${stock}개`; }   // 🏗️ 내용물이 있으면 액션 = 꺼내기(비워야 옮긴다)
+    else if (def.id === 'board') { nearDoor = 'hireboard'; prompt = `📋 일꾼 구하기 (${gameState.workers.length}/${workerCap()})`; }   // 📋 게시판 액션 = 고용 창(옮기기는 탭)
+    else { nearDoor = 'outdoor'; prompt = `${def.ico} ${def.name} · 옮기기`; }
+    const ring = ensureNearRing(); ring.position.set(outdoorNear.mesh.position.x, 0.04, outdoorNear.mesh.position.z); ring.visible = true;
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
@@ -9773,7 +9822,11 @@ function initInput() {
   renderer.domElement.addEventListener('pointerdown', (e) => {
     if (indoor && placingDecor) { onDecorFloorTap(e); return; } // 실내 가구 배치 중: 탭 = 자리 잡기 / 클릭 = 놓기
     if (!indoor && placingOutdoor) { onOutdoorGroundTap(e); return; }   // 🪵 야외(울타리·밭 시설)도 같은 손맛 — 탭한 자리에 놓는다
+    // 🛑 월드가 멈춘 동안엔 집기도 멈춘다 — 🗿조각·🍳요리 무대는 같은 캔버스에 자기 pointerdown 을 걸어 두어서(bindCarvePointer),
+    //    이 가드가 없으면 깎는 탭마다 옆에 놓인 울타리를 조용히 집어 든다. handleAction 의 정지 가드와 같은 목록.
+    if (intro || sleeping || mgView || museumView || ui.anyModalOpen?.()) return;
     if (indoor && tryPickDecor(e)) return;                      // 놓아 둔 가구 탭 → 들어 올려 옮기기
+    if (outdoorZone() && tryPickOutdoor(e)) return;              // 🪵 놓아 둔 야외 장식 탭 → 들어 올려 옮기기(밭일에 가려져도 이 길은 열려 있다)
     wantAction = true;
   });
   // 마우스 호버 → 고스트가 커서를 따라간다(호버가 곧 미리보기). 터치는 탭으로 자리 잡기
