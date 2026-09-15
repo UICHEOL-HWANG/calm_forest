@@ -382,6 +382,13 @@ const cafeGuestDef = (id) => CAFE_GUESTS.find(g => g.id === id) || null;
 //    씨앗·물주기 없이 "돌아다니며 발견"하는 재미. 🌧️ 비 온 날엔 버섯이 유독 잘 나옴(날씨 연동)
 const FOREST = new THREE.Vector3(-18, 0, 23);   // 남서쪽 — 🌟계곡과 중심거리 25.2(나무 링까지 4.0 여유)
 const FOREST_R = 9;
+// 🪵 바닥에 누운 통나무 [숲 기준 x, z, 회전] — 굵기 0.34, 길이 2.6
+const FOREST_LOGS = [[-3.2, -1.4, 0.6], [2.8, 2.2, -0.9], [0.4, -4.2, 1.9]];
+const FOREST_LOG_R = 0.45;                      // 🚧 통나무 충돌 반경(굵기 + 캐릭터가 파묻히지 않을 여유)
+// 누운 통나무는 회전이 제각각이라 축정렬 사각으로 못 막는다 — 축을 따라 원을 늘어놓아 캡슐처럼 막는다.
+//   rotation(0, ry, π/2) 이면 통나무 축은 월드 XZ 에서 (-cos ry, sin ry).
+const FOREST_LOG_SPOTS = FOREST_LOGS.flatMap(([lx, lz, ry]) =>
+  [-0.85, -0.425, 0, 0.425, 0.85].map(t => ({ x: FOREST.x + lx - Math.cos(ry) * t, z: FOREST.z + lz + Math.sin(ry) * t })));
 const FORAGE_NODES = IS_MOBILE ? 8 : 11;        // 동시에 돋아 있는 채집물 수
 const FORAGE_RESPAWN = [55, 110];               // 채집 후 다시 돋기까지(초) 최소~최대
 // p는 누적 확률(FISH_KINDS 규칙과 동일). give 는 획득 자원
@@ -3758,11 +3765,12 @@ function buildForest() {
     leaf.geometry.rotateX(-Math.PI / 2);
     leaf.position.set(Math.cos(a) * r, 0.03, Math.sin(a) * r); forestGroup.add(leaf);
   }
-  // 쓰러진 통나무 몇 개(숲 느낌 + 시선 유도)
-  [[-3.2, -1.4, 0.6], [2.8, 2.2, -0.9], [0.4, -4.2, 1.9]].forEach(([lx, lz, ry]) => {
+  // 쓰러진 통나무 몇 개(숲 느낌 + 시선 유도) — 🚧 서 있는 나무처럼 통과 못 한다
+  FOREST_LOGS.forEach(([lx, lz, ry]) => {
     const log = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 2.6, 8), clayMat(PAL.trunk));
     log.rotation.set(0, ry, Math.PI / 2); log.position.set(lx, 0.34, lz); log.castShadow = true; forestGroup.add(log);
   });
+  for (const s of FOREST_LOG_SPOTS) solidCircle(s.x, s.z, FOREST_LOG_R);
   forestGroup.add(makeSignpost('🍄 채집 숲', 0, -FOREST_R + 1.4));
   scene.add(forestGroup);
   // 숲을 감싸는 나무들 — 안쪽에도 듬성듬성 심어 "숲 속을 헤집는" 느낌
@@ -3827,10 +3835,11 @@ function spawnForageNode(i, first = false) {
   let node = forageNodes[i];
   if (first) {
     let x, z, tries = 0;
-    do {   // 통나무·나무와 안 겹치게 재시도
+    do {   // 통나무·나무와 안 겹치게 재시도 — 둘 다 막혀 있어 겹치면 주우러 갈 수가 없다
       const a = Math.random() * Math.PI * 2, r = 1.6 + Math.random() * (FOREST_R - 2.4);
       x = FOREST.x + Math.cos(a) * r; z = FOREST.z + Math.sin(a) * r; tries++;
-    } while (tries < 20 && trees.some(t => dist2D(t.position, { x, z }) < 1.6));
+    } while (tries < 20 && (trees.some(t => dist2D(t.position, { x, z }) < 1.6)
+      || FOREST_LOG_SPOTS.some(s => dist2D(s, { x, z }) < FOREST_LOG_R + 0.4)));
     node = { mesh: null, kind, x, z, ready: true, respawnAt: 0, phase: Math.random() * 6 };
     forageNodes[i] = node;
   }
