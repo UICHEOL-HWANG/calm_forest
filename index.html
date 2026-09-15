@@ -3035,7 +3035,7 @@
       };
 
       // 1) 소진 판정이 먼저다 — 남은 게 없으면 서버를 부르지 않는다
-      if (!npc.left) { bye(); trackEvent('npc_talk_exhausted', { npc: npc.id }); return; }
+      if (!npc.left) { bye(); trackEvent('npc_chat_exhausted', { npc: npc.id }); return; }
 
       // 2) 대사를 먼저 받는다
       talkSay('npc', '…');
@@ -3047,13 +3047,13 @@
       //    빈 풀은 실제로 겪은 사고다(영어 대사 전량 폐기 후 재시딩 전).
       if (!sets.length) {
         bye();
-        trackEvent('npc_talk_empty', { npc: npc.id, lang: LANG, reason: failed ? 'fetch_failed' : 'empty_pool' });
+        trackEvent('npc_chat_empty', { npc: npc.id, lang: LANG, reason: failed ? 'fetch_failed' : 'empty_pool' });
         return;
       }
 
       // 3) 실제로 받은 뒤에 소비한다. 반환값이 곧 오늘 몇 번째 대화인지다.
       const nth = Input.useTalk(npc.id);
-      if (!nth) { bye(); trackEvent('npc_talk_exhausted', { npc: npc.id }); return; }
+      if (!nth) { bye(); trackEvent('npc_chat_exhausted', { npc: npc.id }); return; }
       // 풀이 하루 세트 수보다 적으면 같은 세트가 반복된다(빈 대화가 아니라 반복이다).
       const setIdx = Math.min(nth - 1, sets.length - 1);
 
@@ -3062,7 +3062,7 @@
       if (opener) talkSay('npc', opener);
 
       talkNow = { npc, set: sets[setIdx], turn: 0, t0: Date.now() };
-      trackEvent('npc_talk_open', { npc: npc.id, lang: LANG, set_index: setIdx });
+      trackEvent('npc_chat_open', { npc: npc.id, lang: LANG, set_index: setIdx });
       renderTalkTurn();
     }
 
@@ -3075,7 +3075,7 @@
         // 3턴을 다 돌면 주민이 제 일로 돌아간다 — 유저를 나무라지 않고 대화를 닫는다
         talkSay('bye', t(TALK_FAREWELL[talkNow.npc.id] || '오늘은 여기까지 하죠.'));
         talkCloseBtn(t('닫기'));
-        trackEvent('npc_talk_done', { npc: talkNow.npc.id, duration_ms: Date.now() - talkNow.t0 });
+        trackEvent('npc_chat_done', { npc: talkNow.npc.id, duration_ms: Date.now() - talkNow.t0 });
         talkNow = null;
         return;
       }
@@ -3089,7 +3089,7 @@
           talkSay('me', c);
           const reply = (turn.replies || [])[i];
           if (reply) talkSay('npc', reply);
-          trackEvent('npc_talk_turn', { npc: talkNow.npc.id, turn: talkNow.turn + 1, choice: i + 1 });
+          trackEvent('npc_chat_turn', { npc: talkNow.npc.id, turn: talkNow.turn + 1, choice: i + 1 });
           talkNow.turn += 1;
           renderTalkTurn();
         });

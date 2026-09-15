@@ -164,10 +164,11 @@ gameState.talk = { date: '2026-09-15', used: { farmer: 1, angler: 2 } }
 
 | 이벤트 | 파라미터 | 왜 |
 |---|---|---|
-| `npc_talk_open` | `npc_id`, `set_index` | 누구와 얼마나 대화하나 |
-| `npc_talk_turn` | `npc_id`, `turn`, `choice` | 중간 이탈 지점 |
-| `npc_talk_done` | `npc_id`, `duration_ms` | 끝까지 보나 |
-| `npc_talk_exhausted` | `npc_id` | 소진 연출 도달률 |
+| `npc_chat_open` | `npc`, `lang`, `set_index`(0부터) | 누구와 얼마나 대화하나 |
+| `npc_chat_turn` | `npc`, `turn`(1~3), `choice`(1~3) | 중간 이탈 지점 |
+| `npc_chat_done` | `npc`, `duration_ms` | 끝까지 보나 |
+| `npc_chat_exhausted` | `npc` | 소진 연출 도달률 |
+| `npc_chat_empty` | `npc`, `lang`, `reason`(empty_pool/fetch_failed) | 빈 풀·통신 실패가 유저에게 보인 횟수 |
 
 **성공 기준:** 대화를 연 유저의 재방문율이 안 연 유저보다 높은가.
 높지 않으면 콘텐츠를 늘리지 말고 접는다.

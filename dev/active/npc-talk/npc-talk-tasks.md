@@ -45,8 +45,10 @@
 - [x] 🎨 대화창 리디자인 — 꼬리 말풍선·선택지 강조선·작별 구분·스태거 등장
 
 ## 6. 트래킹
-- [x] `npc_talk_open` / `_turn` / `_done` / `_exhausted`
-- [ ] 다음날 BQ 재검증
+- [x] `npc_chat_open` / `_turn` / `_done` / `_exhausted`
+- [ ] 다음날 BQ 재검증 — `ml/sql/g6_npc_chat_verify.sql`
+      ⚠️ 9/15 배포분은 `npc_talk_*` 로 찍힌다. 이름 정리(`npc_chat_*`)가 배포된 뒤부터 새 이름.
+      쿼리가 두 이름을 함께 세니, 어느 쪽이 나오는지로 "전송됐나"와 "이름 정리가 나갔나"를 한 번에 판별한다.
 
 ## 7. 마무리
 - [x] code-reviewer 결과 반영 — C1·H2·H3·M1·M3·M4·M5·L1 처리, H1 은 ops-monitor 로 이관
@@ -82,3 +84,40 @@
   → 이 모듈은 `NPC_GEMINI_MODEL` 만 본다. (⚠️ `scripts/serve.py` 미러 4종은 아직 `GEMINI_MODEL` 을 읽는다 — 별건)
 - **responseSchema 의 바깥 배열에도 `minItems/maxItems`** 를 걸어야 한다. 안 걸면 "3세트 달라"를
   무시하고 1세트만 줘도 스키마를 통과한다(실측: 66 요청 → 42 수신).
+
+---
+
+## 8. GA4 이벤트 이름 정리 (2026-09-15)
+
+기존 `npc_talk`(퀘스트 대화창, 2026-07~ 누적)과 잡담 `npc_talk_*` 가 접두사를 공유해
+GA4 탐색·`starts_with('npc_talk')` 에서 성격이 다른 두 기능이 한 덩어리로 잡혔다.
+실측: 9/13~14 `npc_talk` 461건은 전부 퀘스트 쪽.
+
+- [x] 잡담 5종 → `npc_chat_open` / `_turn` / `_done` / `_exhausted` / `_empty` (index.html 6곳)
+- [x] 기존 `npc_talk` 은 **그대로 둔다** — 바꾸면 7월부터의 시계열이 끊긴다. 데이터가 하루치뿐인 신규 쪽을 바꿨다
+- [x] `docs/GA4_GUIDE.md` — 표에 잡담 5종 추가 + 두 계열을 합치지 말라는 주의 문단
+- [x] 회귀 테스트 3개(`tests/npc-talk.test.mjs`) — 옛 이름 잔존·퀘스트 이벤트 소실·문서 누락을 잡는다
+- [x] `npm test` 503 pass / 0 fail
+- [x] 브라우저 실증(`?dbg=1`, GA4 미전송 확인) — 잡담 3턴 + 작별 정상, 콘솔 에러 0
+- [ ] ⚠️ **미배포** — 배포해야 새 이름으로 찍히기 시작한다(웹 + 토스 번들)
+
+### 바꾸지 않은 것 (헷갈리기 쉬운 지점)
+API 경로 `/api/npc-talk` · 파일 `functions/api/npc-talk.js` · Supabase 테이블은 **그대로**다.
+바뀐 것은 GA4 이벤트 이름뿐.
+
+### 코드 리뷰 반영 (2026-09-15)
+리네임 자체는 누락 없음(경로·파일명·테이블 무손상), 테스트 3개는 뮤테이션으로 회귀 탐지 확인됨.
+지적은 대부분 같이 만든 `ml/sql/g6_*.sql` 쪽이었다.
+
+- [x] **H1** 전후 비교가 자막이 아니라 **인트로 길이 변화**를 재고 있었다 — 같은 커밋이
+      인트로를 18.9→21.7초로 늘렸다. `surv_15_to_18`(공통 구간 조건부 생존율)로 지표 교체
+- [x] **H2** 실행 시점(9/16+) 명시 + `plays_per_day` 로 일수 정규화
+- [x] **H3** 퍼널 쿼리 localhost 필터 누락 + 기기 단위 분모 중복 합산 → **세션 단위**로 내림
+      (정정: 스킵률 59.7% → **69.0%**, 시작 145 세션 중 100)
+- [x] **M1** `skip_pct` → `skip_pct_events` / `skip_pct_of_starts` / `skip_pct_of_finished`
+- [x] **M2** `NULL not in (...)` 은 NULL → 필터에서 조용히 탈락. `coalesce(hostname,'')` 로 수정
+- [x] **M3** 라우트 3벌 고정 테스트 추가(뮤테이션으로 RED 확인) — 404 재발 패턴 차단
+- [x] **M4** spec·plan 표의 `npc_id` → 실제 키 `npc`, `npc_chat_empty` 행 추가
+- [x] **M5** 파라미터 검증을 이벤트별로 — `_open` 행에서 `miss_turn` 이 100%로 뜨던 오해 제거
+- [x] **L1** `set_index` 0-based 명시
+- [x] `npm test` **504 pass / 0 fail**

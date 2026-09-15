@@ -274,3 +274,58 @@ test('크론 표현식이 wrangler.jsonc 에 실제로 등록돼 있다', () => 
   // npc-gen 크론도 배열에 있어야 한다(없으면 영원히 안 돈다)
   assert.ok(crons[1].split(',').length >= 2, 'crons 배열에 크론이 2개 있어야 한다(카드뉴스 + npc-gen)');
 });
+
+// ═══ GA4 이벤트 이름 — 잡담과 퀘스트 말걸기를 구분한다 ═══
+//  기존 `npc_talk`(퀘스트 대화창 열기)는 2026-07 부터 쌓인 이벤트다. 잡담을
+//  `npc_talk_*` 로 두면 GA4 탐색·starts_with 쿼리에서 성격이 다른 두 기능이
+//  한 덩어리로 잡힌다(실측: 9/13~14 `npc_talk` 461건은 전부 퀘스트 쪽).
+//  → 잡담은 `npc_chat_*`. 과거 데이터가 없는 신규 쪽을 바꾼다.
+
+test('잡담 트래킹은 npc_chat_* 를 쓴다 — 퀘스트 npc_talk 과 접두사가 겹치지 않게', () => {
+  const html = src('index.html');
+  const names = [...html.matchAll(/trackEvent\('(npc_(?:talk|chat)[a-z_]*)'/g)].map(m => m[1]);
+  assert.ok(names.length >= 5, `잡담 트래킹 호출을 못 찾았다 (찾은 것: ${names.join(', ')})`);
+  const stale = names.filter(n => n.startsWith('npc_talk'));
+  assert.deepEqual(stale, [], `index.html 에 옛 이름이 남았다: ${stale.join(', ')}`);
+  assert.deepEqual(
+    [...new Set(names)].sort(),
+    ['npc_chat_done', 'npc_chat_empty', 'npc_chat_exhausted', 'npc_chat_open', 'npc_chat_turn'],
+    '잡담 이벤트 5종이 어긋났다',
+  );
+});
+
+test('퀘스트 말걸기는 npc_talk 그대로 — 과거 데이터와 끊기면 안 된다', () => {
+  const game = src('js/game.js');
+  assert.ok(
+    /trackEvent\('npc_talk', \{ npc:/.test(game),
+    'js/game.js 의 npc_talk(퀘스트 대화창)이 사라졌다 — 7월부터의 시계열이 끊긴다',
+  );
+  assert.ok(
+    !/trackEvent\('npc_chat/.test(game),
+    'js/game.js 에서 잡담 이벤트가 나가면 안 된다 — 잡담 트래킹은 index.html 소관',
+  );
+});
+
+test('GA4_GUIDE 에 두 계열이 모두 적혀 있다 — 분석할 때 헷갈리지 않게', () => {
+  const doc = src('docs/GA4_GUIDE.md');
+  for (const name of ['npc_talk', 'npc_chat_open', 'npc_chat_turn', 'npc_chat_done',
+                      'npc_chat_exhausted', 'npc_chat_empty']) {
+    assert.ok(doc.includes(`\`${name}\``), `docs/GA4_GUIDE.md 에 ${name} 이 없다`);
+  }
+});
+
+test('잡담 API 경로 3벌이 같다 (index.html fetch · worker 라우트 · serve.py 미러)', () => {
+  // GA4 이벤트 이름을 npc_chat_* 로 바꿨을 때 이 경로까지 같이 바꾸면 404 다.
+  // 이 저장소는 worker 라우트 미등록으로 404 낸 이력이 있다(dex-notes · daily-quests).
+  const route = src('worker/index.js').match(/pathname === '(\/api\/npc-talk)'/);
+  assert.ok(route, "worker/index.js 에 '/api/npc-talk' 라우트가 없다 — 등록을 빠뜨리면 404 다");
+
+  assert.ok(
+    src('index.html').includes(`\${CONFIG.API_BASE}${route[1]}?`),
+    `index.html 의 fetch 가 ${route[1]} 와 어긋났다`,
+  );
+  assert.ok(
+    src('scripts/serve.py').includes(`== '${route[1]}'`),
+    `scripts/serve.py 로컬 미러가 ${route[1]} 와 어긋났다`,
+  );
+});

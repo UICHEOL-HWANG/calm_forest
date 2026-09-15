@@ -35,7 +35,12 @@
 | `water_crop` | 물주기 | — |
 | `harvest_crop` | 수확 | `crop` (누적 작물 수) |
 | `house_complete` | 집 완성 | — |
-| `npc_talk` | 주민과 대화창 열기 | `npc`, `mode`(offer/progress/claim/done) |
+| `npc_talk` | 주민과 **퀘스트** 대화창 열기 (2026-07~) | `npc`, `mode`(offer/progress/claim/done) |
+| `npc_chat_open` | 💬 **잡담** 시작 — 퀘스트와 다른 기능이다 | `npc`, `lang`, `set_index`(그날 몇 번째 세트 — **0부터**) |
+| `npc_chat_turn` | 잡담 한 턴 진행 | `npc`, `turn`(1~3), `choice`(1~3) — 중간 이탈 지점 |
+| `npc_chat_done` | 잡담 3턴 완주 | `npc`, `duration_ms` |
+| `npc_chat_exhausted` | 그날 잡담을 다 써서 거절당함 | `npc` — 소진 연출 도달률 |
+| `npc_chat_empty` | 대사 풀이 비었거나 통신 실패 | `npc`, `lang`, `reason`(empty_pool/fetch_failed) — 운영 경보용 |
 | `quest_offered` | 퀘스트 제안 화면 노출(퍼널①) | `quest_id`(npc:idx), `npc`, `quest` |
 | `quest_accept` | 퀘스트 수락(퍼널②) | `quest`, `npc`, `quest_id` |
 | `quest_complete` | 퀘스트 완료(퍼널③) | `quest`, `npc`, `quest_id`, `elapsed_sec`(수락→완료 초), `reward_coins` |
@@ -80,6 +85,10 @@
 | `merchant_visit` | 🧙 상인 방문 환영 거래 성사(1회) | `item`(wood/fish), `gain` |
 | `use_fert` | 🌱 비료 사용 | `left`(남은 개수) |
 | `use_bait` | 🪱 미끼 소모(캐스팅) | `left`(남은 횟수) |
+
+> ⚠️ **`npc_talk` 과 `npc_chat_*` 은 다른 기능이다.** 앞은 퀘스트 대화창(수락·보상, 2026-07~),
+> 뒤는 2026-09-15 부터의 잡담이다. GA4 탐색에서 `npc_` 로 묶거나 `starts_with('npc_talk')` 로
+> 걸면 성격이 다른 둘이 한 덩어리가 된다. 접두사를 갈라 둔 이유가 이것이다.
 
 ### 남쪽 필드 확장 (🌟 반딧불이 · ☕ 카페 · 🍄 채집)
 

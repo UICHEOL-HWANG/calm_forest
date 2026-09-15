@@ -39,5 +39,5 @@ Workers observability + Analytics Engine 적재가 선행돼야 함(별개 공�
       (현재 MAX_COMBOS=15 로 15×2+3=33, 무료 플랜 상한 50)
 
 ### 그 밖에 관제가 보여야 할 것
-- [ ] `npc_talk_empty` 이벤트 추이 — 빈 풀·통신 실패가 유저에게 보인 횟수
+- [ ] `npc_chat_empty` 이벤트 추이 — 빈 풀·통신 실패가 유저에게 보인 횟수
       (기능 구현 때 GA4 이벤트는 넣어 뒀다: `reason: empty_pool | fetch_failed`)
