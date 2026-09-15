@@ -1069,6 +1069,8 @@ export const EN = {
   // 🔧 자재 작업대 — 밭 시설 주문(측량소 마당)
   '🔧 자재 작업대': '🔧 Supply Bench',
   '자재 작업대': 'Supply Bench',
+  '허수아비 옮기기': 'Moving the scarecrow',
+  '밭 위에선 밭일이 먼저예요. 허수아비를 직접 탭하면 옮겨요': "Field work comes first while you're on a plot. Tap the scarecrow itself to move it",
   '🔧 밭 시설 만들기': '🔧 Build farm facilities',
   '🧺창고·💧우물·🐝벌통 같은 밭 시설을 여기서 만들어 울타리 안에 놓아요': 'Build farm facilities like the 🧺warehouse, 💧well and 🐝beehive here, then place them inside the fence',
   '넓은 밭': 'Wide Field',
