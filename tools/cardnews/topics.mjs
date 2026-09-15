@@ -22,6 +22,7 @@ import { promisify } from 'node:util';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { rejectReason } from './topic-filter.mjs';
 
 const run = promisify(execFile);
@@ -31,9 +32,28 @@ const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const TOP = Number(arg('--top', '5'));
 
+/** aside 실행 파일을 찾는다.
+ *  ⚠️ 함정이 두 겹이다. 이 스크립트를 **aside 루틴이 부를 때**:
+ *   1. 에이전트 셸의 PATH 에 aside 가 없다(runtime/bin 엔 node·python 만)
+ *   2. HOME 이 샌드박스 홈(~/.aside/runtime/home)이라 $HOME 기준 경로도 빗나간다
+ *  둘 다 "사람이 터미널에서 돌리면 되는데 루틴에서만 실패"해서 찾기 어렵다.
+ *  그래서 실재하는 절대경로를 직접 훑는다. */
+function findAside() {
+  if (process.env.ASIDE_BIN) return process.env.ASIDE_BIN;
+  const home = process.env.HOME || '';
+  const real = home.includes('/.aside/runtime') ? home.split('/.aside/runtime')[0] : home;
+  for (const p of [`${real}/.local/bin/aside`,
+                   `${real}/.aside/cli/Aside CLI.app/Contents/MacOS/aside`,
+                   '/usr/local/bin/aside', '/opt/homebrew/bin/aside']) {
+    if (existsSync(p)) return p;
+  }
+  throw new Error('aside 실행 파일을 못 찾았다 — ASIDE_BIN 으로 지정할 것');
+}
+const ASIDE = findAside();
+
 /** aside repl 한 번. 실패 사유를 그대로 올린다 — 조용한 폴백 금지 */
 async function repl(code) {
-  const { stdout, stderr } = await run('aside', ['repl', code],
+  const { stdout, stderr } = await run(ASIDE, ['repl', code],
     { maxBuffer: 32 * 1024 * 1024, timeout: 180_000 });
   const out = stdout + stderr;
   if (/\[error \|/.test(out)) throw new Error(`aside repl 실패:\n${out}`);
