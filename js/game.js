@@ -47,6 +47,7 @@ import { ADV_CROPS, MATURE, isAdv, growthPerWater, stageIndex, renderStage, wilt
 import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, jobOf, gradeInfo, gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages, pickTask, catchUpSteps, worksPerStep, candidatesFor } from './farm-worker.js';   // 🧑‍🌾 노동자 규칙(직군·등급·우선순위·월급·오프라인 스텝)
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored } from './outdoor-move.js';   // 🪵 야외 장식 보관 규칙(근접 탐색은 발자국 때문에 nearestOutdoor 가 직접 한다)
+import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -314,7 +315,8 @@ const PARK_BENCHES = [[-2.2, 4.6, 0.3], [6.5, 6.5, -1.1]];
 const COOP_COST = { wood: 25, stone: 10, coins: 60 };
 const COOP_FEED = 2;                            // 모이(씨앗) 소비량
 let nearCoop = false, coopGroup = null, coopSign = null;
-const chickens = [];
+const chickens = [];                            // 닭 메시
+const chickenStates = [];                       // 같은 순서의 행동 상태(js/coop-chickens.js)
 const oreRocks = [];                            // 동굴 광석 바위들
 const mineTorches = [];                         // 동굴 벽 횃불(깜빡임)
 let farmGroup, mineGroup;                        // 텃밭/동굴 그룹(가시성 토글용)
@@ -3450,8 +3452,9 @@ function buildCoop(silent = false) {
   const roofGeo = new THREE.ConeGeometry(1.35, 0.85, 4); roofGeo.rotateY(Math.PI / 4);
   const roof = new THREE.Mesh(roofGeo, woodMat(2, 1, 0xa9564a));
   roof.position.set(-0.85, 1.68, -0.55); roof.scale.set(1.1, 1, 0.95); roof.castShadow = true; coopGroup.add(roof);
-  const hole = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.5, 0.06), new THREE.MeshStandardMaterial({ color: 0x4a3a30, roughness: 1 }));
-  hole.position.set(-0.85, 0.5, 0.17); coopGroup.add(hole);
+  // 🚪 닭이 드나드는 문 — 오두막 바닥(y 0.145)까지 내려와야 "들어간다" 가 말이 된다
+  const hole = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.63, 0.06), new THREE.MeshStandardMaterial({ color: 0x3a2c24, roughness: 1 }));
+  hole.position.set(-0.85, 0.46, 0.17); coopGroup.add(hole);
   // 울타리 — 남쪽 중앙 입구 개방
   const postMat = woodMat(1, 1, 0xc9a06a);
   const posts = [];
@@ -3469,9 +3472,9 @@ function buildCoop(silent = false) {
   trough.position.set(0.7, 0.12, -0.9); coopGroup.add(trough);
   for (let i = 0; i < 3; i++) {
     const ch = makeChicken();
-    ch.position.set(-0.6 + i * 0.7, 0, 0.2 - i * 0.35);
-    ch.userData.tx = ch.position.x; ch.userData.tz = ch.position.z;
-    chickens.push(ch); coopGroup.add(ch);
+    const s = makeChickenState(i);            // 행동 규칙은 js/coop-chickens.js (첫 자리도 거기서)
+    ch.position.set(s.x, 0, s.z);
+    chickens.push(ch); chickenStates.push(s); coopGroup.add(ch);
   }
   scene.add(coopGroup);
   obstacles.push({ x: COOP.x, z: COOP.z, r: 2.0 });   // 밭 금지
@@ -3490,27 +3493,21 @@ function makeChicken() {
   comb.position.set(0, 0.56, 0.12); g.add(comb);
   const beak = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.12, 6), clayMat(0xf0a050, false));
   beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.43, 0.26); g.add(beak);
-  g.userData = { tx: 0, tz: 0, wait: Math.random() * 2, phase: Math.random() * 6 };
   return g;
 }
 
-// 닭 배회 — 도착하면 잠깐 모이 쪼기(대기) 후 새 목적지(펜 내부 로컬 좌표)
+// 닭 배회 — 규칙은 js/coop-chickens.js(오두막·모이통 통과 금지 + 앞문으로 드나들기).
+//   여기선 계산된 상태를 메시에 옮기기만 한다.
 function updateChickens(dt) {
-  for (const ch of chickens) {
-    const u = ch.userData;
-    u.phase += dt * 8;
-    if (u.wait > 0) { u.wait -= dt; ch.position.y = 0; continue; }
-    const dx = u.tx - ch.position.x, dz = u.tz - ch.position.z;
-    const d = Math.hypot(dx, dz);
-    if (d < 0.08) {
-      u.wait = 0.8 + Math.random() * 2.2;
-      u.tx = -1.2 + Math.random() * 2.4; u.tz = -1.0 + Math.random() * 2.0;
-      continue;
-    }
-    ch.position.x += (dx / d) * dt * 0.55;
-    ch.position.z += (dz / d) * dt * 0.55;
-    ch.rotation.y = Math.atan2(dx, dz);
-    ch.position.y = Math.abs(Math.sin(u.phase)) * 0.045;   // 종종걸음 통통
+  if (!chickenStates.length) return;
+  stepChickens(chickenStates, dt);
+  for (let i = 0; i < chickens.length; i++) {
+    const ch = chickens[i], s = chickenStates[i];
+    ch.visible = s.visible;
+    if (!s.visible) continue;                    // 🏠 오두막 안 — 벽을 뚫는 대신 안 보인다
+    ch.position.set(s.x, s.bob, s.z);
+    ch.rotation.y = s.ry;
+    ch.scale.setScalar(s.scale);
   }
 }
 
