@@ -1495,6 +1495,25 @@ export const EN = {
   '사공 오리': 'Duck the Ferryman',
   '목장 아주머니': 'Ranch Auntie',
 
+  // ── 💬 주민과 잡담 ────────────────────────────────────────────
+  //  ⚠️ 대화 본문은 여기 없다. 서버가 lang 별로 따로 생성해 내려준다(사전에 넣지 말 것).
+  //     여기 있는 건 **고정 문구**뿐 — 주민 고르기 UI 와 주민별 작별 인사.
+  //     작별 인사는 각자 말투를 영어에서도 지킨다(노인·아이·상인이 같은 말투면 캐릭터가 무너진다).
+  '누구와 이야기할까요?': 'Who would you like to talk to?',
+  '오늘은 그만': 'Not today',
+  '오늘은 여기까지 하죠.': "Let's leave it here for today.",
+  '오늘은 여기까지. 밭이 나를 기다려서 말이야.': "That's it for today. The field's waiting on me.",
+  '얘기는 이쯤 하고 — 나도 못질을 마저 해야 해서.': "Let's leave it there — I've got nails left to hammer.",
+  '이야기가 길어졌구려. 좌판을 비워둘 순 없으니 이만.': "We've talked a good while. I can't leave my stall empty — farewell.",
+  '허허, 이러다 입질을 놓치겠네. 오늘은 여기까지 하세.': "Heh, I'll miss a bite at this rate. Let's stop here for today.",
+  '냄비 올려둔 게 있어서! 다음에 또 얘기하자.': "I've got a pot on the stove! Let's talk again soon.",
+  '해 지기 전에 한 바퀴 더 돌아야 해. 오늘은 여기까지.': "One more round before sundown. That's it for today.",
+  '저 이만 가볼게요. 해 지면 또 봐요!': "I'll be off now. See you when the sun goes down!",
+  '물때가 바뀌겠군. 나루로 돌아가 봐야겠네.': "Tide's turning. I'd best head back to the landing.",
+  '닭들이 부르네요. 이만 가볼게요.': "The hens are calling. I'll be off now.",
+  '즐거웠습니다. 전시를 마저 손봐야 해서 이만 실례하지요.': 'A pleasure. I must finish tending the exhibit — do excuse me.',
+  '다음 의뢰를 정리해야 하니 이만. 또 들르시게.': "I've the next request to sort. Do drop by again.",
+
   // 수행 방법 한 줄(QUEST_HOW)
   '🗿 작업대에서 조각 탭을 열고, 오늘의 주문 하나를 골라 깎아요':
     '🗿 Open the Carving tab at the Workbench and pick one of today\'s orders to carve',

@@ -662,6 +662,11 @@ const QUEST_HOW = {
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
 //   퀘스트 type: chop(벌목) harvest(수확) water(물주기) plant(심기)
 //               house(집완성) collect_wood/collect_crop(보유량 달성)
+// 💬 하루에 주민 한 명과 나눌 수 있는 대화 횟수.
+//    ⚠️ functions/api/npc-talk.js 의 SETS_PER_DAY 와 반드시 같아야 한다 —
+//    서버가 2세트만 내려주는데 여기가 3이면 세 번째에 빈 대화가 열린다.
+const TALK_PER_DAY = 2;
+
 const NPCS = [
   {
     id: 'farmer', name: '농부 삼촌', emoji: '🧑‍🌾', color: 0x5fbf62, hat: 0xf0cd6a, pos: [5, 0, 4], look: 'farmer',   // 🟢 초록 + 넓은 밀짚모자
@@ -1042,6 +1047,10 @@ const gameState = {
   outdoorStored: {},                        // 🧺 보관한 야외 장식 { id: 개수 } — 작업대에서 값 없이 다시 꺼냄
   gifts: {},                                // 보유 선물 { id: count }
   affinity: {},                             // 주민 친밀도 { npcId: level }
+  // 💬 오늘 주민별 대화 횟수 { npcId: n }. date 가 오늘이 아니면 전부 리셋한다.
+  //    ⚠️ 서버에 두지 않는다 — 대화는 보상이 0이라 조작해도 얻을 게 없고,
+  //    유저 테이블을 만들면 RLS·인증·동기화 비용만 는다.
+  talk: { date: '', used: {} },
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
   noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
   character: null,                          // 선택한 동물 캐릭터 id
@@ -1832,6 +1841,30 @@ export const Input = {
   craftGift(id) { return craftGift(id); },              // 선물 제작
   giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
+  // ── 💬 잡담 ────────────────────────────────────────────────
+  //  보상이 없다. 친밀도도 코인도 안 준다 — 선물(재료를 쓴다)·접객의 가치를 희석하지 않기 위해서다.
+  //  하루 주민당 TALK_PER_DAY 번. 다 쓰면 그 주민은 작별 문구만 남긴다.
+  //  ⚠️ TALK_PER_DAY 는 functions/api/npc-talk.js 의 SETS_PER_DAY 와 같아야 한다.
+  getTalkNpcs() {
+    const t = gameState.talk?.date === todayStr() ? gameState.talk : { used: {} };
+    return NPCS.map(n => ({
+      id: n.id, name: n.name, emoji: n.emoji,
+      left: Math.max(0, TALK_PER_DAY - (t.used[n.id] || 0)),
+    }));
+  },
+  // 대화를 한 번 소비한다. 반환값은 "오늘 이 주민과 몇 번째 대화인가"(1부터), 소진이면 0.
+  //  ⚠️ 호출부는 대사를 **실제로 받은 뒤에** 부를 것. 먼저 부르면 통신이 실패한 날
+  //     아무 대화도 못 보고 횟수만 날아간다.
+  useTalk(npcId) {
+    if (!NPCS.some(n => n.id === npcId)) return 0;
+    if (gameState.talk?.date !== todayStr()) gameState.talk = { date: todayStr(), used: {} };
+    const used = gameState.talk.used[npcId] || 0;
+    if (used >= TALK_PER_DAY) return 0;
+    gameState.talk.used[npcId] = used + 1;
+    requestSave();
+    return used + 1;
+  },
+  talkWeather() { return WEATHER; },             // 첫인사를 고를 때 쓴다
   capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(현재 화면 그대로)
   captureActionShot() { return startActionShot(); },  // 📷 밀착 액션샷(포즈 정점 캡처, Promise<dataURL>)
   toggleSit() { if (intro) return; sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글(컷신 중엔 포즈 보호)
@@ -2307,6 +2340,13 @@ function applySave(saved) {
   }
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
+  // 💬 대화 횟수 복원 — 날짜가 오늘이 아니면 버린다(어제 소진이 오늘까지 남지 않게).
+  //    ⚠️ 없으면 기본값 그대로 둔다. 옛 세이브에 이 필드가 없다고 새 세이브로 취급하면 안 된다.
+  if (saved.talk && typeof saved.talk === 'object') {
+    gameState.talk = saved.talk.date === todayStr()
+      ? { date: saved.talk.date, used: { ...(saved.talk.used || {}) } }
+      : { date: todayStr(), used: {} };
+  }
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
   if (saved.houseStyle) { gameState.houseStyle = { ...gameState.houseStyle, ...saved.houseStyle }; applyHouseStyle(); } // 집 외관 복원
@@ -10890,6 +10930,10 @@ function resolveWeatherEvent() {
 function handleAction() {
   if (!wantAction) return;
   wantAction = false;
+  // ⚠️ 모달이 떠 있으면 월드 액션을 삼킨다. 이동은 이미 moveAxes 가 막고 있었는데(:10056)
+  //    액션은 안 막혀서, 대화창을 띄운 채 Space 를 누르면 나무를 베거나 — NPC 옆이면
+  //    퀘스트 모달이 대화창 **위에 겹쳐** 떴다. 모달 위에서는 아무 일도 일어나지 않아야 한다.
+  if (ui.anyModalOpen?.()) return;
   // 문/게이트(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();

@@ -575,6 +575,70 @@
   #quest-panel .q-item.sub .q-bar { height: 5px; margin-top: 5px; }   /* 제목 바로 밑에 붙으면 밑줄처럼 읽힌다 */
   #quest-panel .q-more { font-size: 11px; opacity: .6; margin-top: 6px; }
   #quest-panel .q-more:empty { display: none; }
+
+  /* ── 💬 대화 모달 ──────────────────────────────────────────────
+     말풍선 로그 + 선택지. 반복되는 회색 상자 나열을 피하려고 셋을 다르게 만든다:
+       · 주민 말 = 왼쪽 꼬리 달린 연녹 말풍선
+       · 내 말   = 오른쪽 꼬리 달린 연청 말풍선
+       · 선택지  = 말풍선이 아니라 "고르는 것" — 왼쪽 강조선 + 들어오는 꺾쇠
+     그림자는 배경 색조(따뜻한 녹)에 맞춰 틴트한다. 순수 검정은 쓰지 않는다. */
+  #chat-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center;
+                background: rgba(24,42,33,0.42); backdrop-filter: blur(2px); padding: 16px; }
+  #chat-modal.show { display: grid; }
+  #chat-modal .chat-card { width: min(92vw, 430px); max-height: 84dvh; display: flex; flex-direction: column;
+                           background: linear-gradient(180deg, #fffefa 0%, #fdfaf1 100%);
+                           border: 1px solid rgba(120,150,120,0.16); border-radius: 20px; padding: 14px 16px 16px;
+                           box-shadow: 0 18px 44px -12px rgba(38,64,48,0.34);
+                           animation: chatPop .22s cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes chatPop { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
+
+  /* 머리 — 이모지를 동그란 칩에 앉혀 이름과 무게를 맞춘다 */
+  #chat-modal .chat-head { display: flex; align-items: center; gap: 9px; padding-bottom: 11px;
+                           border-bottom: 1px solid rgba(120,150,120,0.14); }
+  #chat-modal #chat-emoji { width: 30px; height: 30px; flex: none; display: grid; place-items: center;
+                            background: #eef5ea; border-radius: 50%; font-size: 17px; }
+  #chat-modal #chat-name { font-weight: 700; font-size: 15px; color: #2f5d43; letter-spacing: -0.2px; }
+
+  /* 로그 — 카드가 아니라 여기만 스크롤한다(선택지가 아래에 붙어 있게) */
+  #chat-modal .chat-log { flex: 1 1 auto; overflow-y: auto; min-height: 0;
+                          margin: 12px 0 4px; display: flex; flex-direction: column; gap: 8px; }
+  #chat-modal .tl { position: relative; font-size: 14px; line-height: 1.6; padding: 9px 13px;
+                    max-width: 84%; word-break: keep-all;
+                    animation: tlIn .26s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+  @keyframes tlIn { from { opacity: 0; transform: translateY(6px); } }
+  #chat-modal .tl.npc { background: #ecf4e8; color: #2b4a37; align-self: flex-start;
+                        border-radius: 14px 14px 14px 4px; }
+  #chat-modal .tl.me  { background: #e6eef8; color: #2a4560; align-self: flex-end;
+                        border-radius: 14px 14px 4px 14px; }
+  /* 작별은 대화가 아니라 맺음이다 — 말풍선을 벗기고 한 톤 낮춘다 */
+  #chat-modal .tl.bye { background: none; color: #6d7f71; font-style: italic; align-self: center;
+                        text-align: center; max-width: 100%; padding: 10px 4px 2px; }
+
+  /* 선택지 — 말풍선과 다른 물성. 왼쪽 강조선이 호버에 자라고 꺾쇠가 들어온다 */
+  #chat-modal .chat-choices { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
+  #chat-modal .chat-choices button { position: relative; display: flex; align-items: center; gap: 8px;
+                                     text-align: left; padding: 10px 12px 10px 14px; font-size: 13.5px; line-height: 1.45;
+                                     font-family: inherit; color: #35604a; word-break: keep-all;
+                                     background: #fff; border: 1px solid rgba(120,150,120,0.22);
+                                     border-left: 3px solid #cfe0cd; border-radius: 12px; cursor: pointer;
+                                     transition: background .16s ease, border-color .16s ease, transform .1s ease;
+                                     animation: tlIn .28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+                                     animation-delay: calc(var(--i, 0) * 55ms); }
+  #chat-modal .chat-choices button::after { content: '›'; margin-left: auto; color: #9ab79c; font-size: 16px;
+                                            opacity: 0; transform: translateX(-3px); transition: all .16s ease; }
+  #chat-modal .chat-choices button:hover { background: #f5faf3; border-left-color: #7fb389; }
+  #chat-modal .chat-choices button:hover::after { opacity: 1; transform: translateX(0); }
+  #chat-modal .chat-choices button:active { transform: scale(0.985); }
+
+  /* 닫기 — .ghost 는 .npc-actions 안에서만 정의돼 있어(1163행) 여기선 안 먹는다.
+     의뢰 모달의 ghost 버튼과 같은 물성으로 맞춘다. */
+  #chat-modal .chat-done { display: flex; justify-content: flex-end; padding-top: 12px; }
+  #chat-modal .chat-done button { border: none; border-radius: 12px; padding: 9px 20px;
+                                  font-family: inherit; font-weight: 600; font-size: 13.5px;
+                                  background: #eef2ee; color: var(--ink); cursor: pointer;
+                                  transition: background .16s ease, transform .1s ease; }
+  #chat-modal .chat-done button:hover { background: #e4ebe3; }
+  #chat-modal .chat-done button:active { transform: scale(0.95); }
   /* 세로가 아주 짧은 화면(폰 가로·분할 화면) — 패널에 남는 높이가 한 줄 분량뿐이다.
      questPanelTop() 이 이미 1건으로 줄이지만, 펼친 항목의 "수행 방법" 까지 넣으면 그 한 건마저 잘린다.
      목표·진행도가 먼저고 방법은 주민에게 가면 다시 들을 수 있으므로 방법 줄을 접는다. */
@@ -1342,6 +1406,16 @@
   <div id="quest-panel" class="panel">
     <div id="quest-list"></div>
     <div class="q-more" id="quest-more"></div>
+  </div>
+
+  <!-- 💬 주민과 잡담 — 의뢰와 무관한 순수 플레이버(보상 없음). 하루 주민당 2번. -->
+  <div id="chat-modal">
+    <div class="chat-card">
+      <div class="chat-head"><span id="chat-emoji">💬</span><span id="chat-name"></span></div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-choices" id="chat-choices"></div>
+      <div class="chat-done" id="chat-done"></div>
+    </div>
   </div>
 
   <!-- NPC 대화 프롬프트(데스크톱: Space 안내) -->
@@ -2340,6 +2414,18 @@
         } else {
           addBtn('닫기', 'ghost', closeNpc);
         }
+        // 💬 잡담 — 의뢰와 갈래를 나눈다. Space 한 번에 곧장 의뢰로 빠지지 않고
+        //    "의뢰 / 대화" 중에 고르게 한다. 오늘 몫을 다 쓴 주민은 버튼을 비활성해
+        //    눌러 보고 나서야 아는 일이 없게 한다.
+        const talkable = Input.getTalkNpcs().find(n => n.id === view.npc.id);
+        if (talkable) {
+          const b = document.createElement('button');
+          b.className = 'ghost';
+          b.textContent = talkable.left ? t('💬 대화하기') : `${t('💬 대화하기')} · ${t('오늘은 그만')}`;
+          b.disabled = !talkable.left;
+          b.addEventListener('click', () => { closeNpc(); startTalk(talkable); });
+          $('npc-actions').appendChild(b);
+        }
         // 🎁 선물 주기 — 보유 선물이 있을 때만
         if (Object.values(Input.ownedGifts()).some(n => n > 0)) addBtn('🎁 선물 주기', 'ghost', () => showGiftPicker(view));
         $('npc-modal').classList.add('show');
@@ -2873,6 +2959,145 @@
       },
     };
     const closeNpc = () => $('npc-modal').classList.remove('show');
+
+    // ── 💬 주민과 잡담 ───────────────────────────────────────────
+    //  의뢰와 무관한 순수 플레이버다. 보상이 0 — 선물(재료를 쓴다)·접객의 가치를
+    //  희석하지 않으려는 결정이다. 하루 주민당 2번, 다 쓰면 작별 문구만 나온다.
+    //  대사는 서버가 미리 채워 둔 풀에서 날짜 시드로 뽑아 온다(Gemini 실시간 호출 없음).
+    //  ⚠️ 작별 문구는 고정이라 여기 둔다 — 여기 있어야 i18n 사전이 닿는다.
+    //     생성 대사는 사전에 없으므로 서버가 lang 별로 내려준다.
+    const TALK_FAREWELL = {
+      farmer:    '오늘은 여기까지. 밭이 나를 기다려서 말이야.',
+      builder:   '얘기는 이쯤 하고 — 나도 못질을 마저 해야 해서.',
+      merchant:  '이야기가 길어졌구려. 좌판을 비워둘 순 없으니 이만.',
+      angler:    '허허, 이러다 입질을 놓치겠네. 오늘은 여기까지 하세.',
+      chef:      '냄비 올려둔 게 있어서! 다음에 또 얘기하자.',
+      forager:   '해 지기 전에 한 바퀴 더 돌아야 해. 오늘은 여기까지.',
+      stargazer: '저 이만 가볼게요. 해 지면 또 봐요!',
+      ferryman:  '물때가 바뀌겠군. 나루로 돌아가 봐야겠네.',
+      rancher:   '닭들이 부르네요. 이만 가볼게요.',
+      curator:   '즐거웠습니다. 전시를 마저 손봐야 해서 이만 실례하지요.',
+      courier:   '다음 의뢰를 정리해야 하니 이만. 또 들르시게.',
+    };
+
+    // js/game.js 의 todayStr() 과 같은 규칙(기기 로컬 날짜) — 서버가 ±1일로 clamp 한다
+    const talkDay = () => { const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+    const talkCache = new Map();     // npcId → {openers, sets} · 한 세션에서 같은 주민을 다시 열어도 재요청 없음
+    let talkNow = null;              // { npc, set, turn, t0 }
+    const closeTalk = () => { $('chat-modal').classList.remove('show'); talkNow = null; };
+
+    function talkClear() {
+      $('chat-log').textContent = ''; $('chat-choices').textContent = '';
+      $('chat-done').textContent = '';
+    }
+    function talkSay(who, text) {
+      const el = document.createElement('div');
+      el.className = 'tl ' + who; el.textContent = text;
+      const log = $('chat-log');
+      log.appendChild(el);
+      // ⚠️ 스크롤 컨테이너는 카드가 아니라 로그다(선택지·닫기는 아래 고정).
+      //    parentElement 를 스크롤하면 마지막 줄(작별)이 잘린 채 남는다.
+      log.scrollTop = log.scrollHeight;
+    }
+    function talkCloseBtn(label) {
+      const b = document.createElement('button'); b.className = 'ghost';
+      b.textContent = label; b.addEventListener('click', closeTalk);
+      $('chat-done').appendChild(b);
+    }
+
+    async function fetchTalk(npcId) {
+      // ⚠️ 캐시 키에 날짜를 넣는다. 자정을 넘겨 켜 두면 useTalk 의 카운터는 리셋되는데
+      //    캐시가 어제 세트를 물고 있어 "새 날인데 어제 대사"가 된다.
+      const key = `${talkDay()}/${npcId}/${LANG}`;
+      if (talkCache.has(key)) return talkCache.get(key);
+      const res = await fetch(`${CONFIG.API_BASE}/api/npc-talk?date=${talkDay()}&npc=${npcId}&lang=${LANG}`);
+      if (!res.ok) throw new Error(`npc-talk ${res.status}`);
+      const data = await res.json();
+      // ⚠️ 빈 결과는 캐시하지 않는다. 서버가 한 번 5xx 를 뱉으면(=빈 응답) 그걸 물고 있어
+      //    서버가 곧 회복돼도 그 주민은 새로고침 전까지 영영 작별만 나온다.
+      if (data?.sets?.length) talkCache.set(key, data);
+      return data;
+    }
+
+
+    async function startTalk(npc) {
+      talkClear();
+      $('chat-emoji').textContent = npc.emoji;
+      $('chat-name').textContent = t(npc.name);
+      $('chat-modal').classList.add('show');
+
+      const bye = () => {
+        talkClear();
+        talkSay('bye', t(TALK_FAREWELL[npc.id] || '오늘은 여기까지 하죠.'));
+        talkCloseBtn(t('닫기'));
+      };
+
+      // 1) 소진 판정이 먼저다 — 남은 게 없으면 서버를 부르지 않는다
+      if (!npc.left) { bye(); trackEvent('npc_talk_exhausted', { npc: npc.id }); return; }
+
+      // 2) 대사를 먼저 받는다
+      talkSay('npc', '…');
+      let data = null, failed = false;
+      try { data = await fetchTalk(npc.id); } catch { failed = true; }
+      const sets = data?.sets || [];
+      // 풀이 비었거나 통신 실패 — 게임을 막지 않고, 횟수도 **차감하지 않는다**.
+      // ⚠️ 여기서 이벤트를 안 쏘면 "인기 없는 기능"과 "고장난 기능"을 구분할 수 없다.
+      //    빈 풀은 실제로 겪은 사고다(영어 대사 전량 폐기 후 재시딩 전).
+      if (!sets.length) {
+        bye();
+        trackEvent('npc_talk_empty', { npc: npc.id, lang: LANG, reason: failed ? 'fetch_failed' : 'empty_pool' });
+        return;
+      }
+
+      // 3) 실제로 받은 뒤에 소비한다. 반환값이 곧 오늘 몇 번째 대화인지다.
+      const nth = Input.useTalk(npc.id);
+      if (!nth) { bye(); trackEvent('npc_talk_exhausted', { npc: npc.id }); return; }
+      // 풀이 하루 세트 수보다 적으면 같은 세트가 반복된다(빈 대화가 아니라 반복이다).
+      const setIdx = Math.min(nth - 1, sets.length - 1);
+
+      talkClear();
+      const opener = (data.openers || {})[Input.talkWeather()];
+      if (opener) talkSay('npc', opener);
+
+      talkNow = { npc, set: sets[setIdx], turn: 0, t0: Date.now() };
+      trackEvent('npc_talk_open', { npc: npc.id, lang: LANG, set_index: setIdx });
+      renderTalkTurn();
+    }
+
+    function renderTalkTurn() {
+      if (!talkNow) return;
+      const turns = talkNow.set.turns || [];
+      const box = $('chat-choices'); box.textContent = '';
+
+      if (talkNow.turn >= turns.length) {
+        // 3턴을 다 돌면 주민이 제 일로 돌아간다 — 유저를 나무라지 않고 대화를 닫는다
+        talkSay('bye', t(TALK_FAREWELL[talkNow.npc.id] || '오늘은 여기까지 하죠.'));
+        talkCloseBtn(t('닫기'));
+        trackEvent('npc_talk_done', { npc: talkNow.npc.id, duration_ms: Date.now() - talkNow.t0 });
+        talkNow = null;
+        return;
+      }
+
+      const turn = turns[talkNow.turn];
+      (turn.choices || []).forEach((c, i) => {
+        const b = document.createElement('button');
+        b.textContent = c;
+        b.style.setProperty('--i', i);   // 한 줄씩 차례로 떠오르게(CSS animation-delay)
+        b.addEventListener('click', () => {
+          talkSay('me', c);
+          const reply = (turn.replies || [])[i];
+          if (reply) talkSay('npc', reply);
+          trackEvent('npc_talk_turn', { npc: talkNow.npc.id, turn: talkNow.turn + 1, choice: i + 1 });
+          talkNow.turn += 1;
+          renderTalkTurn();
+        });
+        box.appendChild(b);
+      });
+    }
+
+    $('chat-modal').addEventListener('click', (e) => { if (e.target === $('chat-modal')) closeTalk(); });
 
     // 선물 주기 선택기 — 보유 선물 버튼으로 교체
     function showGiftPicker(view) {

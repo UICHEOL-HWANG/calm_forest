@@ -672,7 +672,64 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.split('?')[0] == '/api/leaderboard':
             self.serve_leaderboard()
             return
+        if self.path.split('?')[0] == '/api/npc-talk':
+            self.serve_npc_talk()
+            return
         super().do_GET()
+
+    # ── 💬 NPC 대화 (functions/api/npc-talk.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+    #    Gemini 를 부르지 않는다. 미리 채워 둔 Supabase 풀에서 날짜 시드로 뽑는다.
+    #    로컬은 엣지 캐시가 없으니 매번 조회한다(개발 편의).
+    NPC_IDS = ('farmer', 'builder', 'merchant', 'angler', 'chef', 'forager',
+               'stargazer', 'ferryman', 'rancher', 'curator', 'courier')   # functions/api/_npc-gen.js 의 NPC_SHEET 와 같아야 한다
+    WEATHERS = ('clear', 'rain', 'snow', 'fog')
+    SETS_PER_DAY = 2   # ⚠️ functions/api/npc-talk.js 의 SETS_PER_DAY · js/game.js 의 TALK_PER_DAY 와 같아야 한다
+
+    def serve_npc_talk(self):
+        import urllib.parse as _up
+        import datetime as _date   # ⚠️ 모듈 상단에 time/datetime 이 없다. 여기서만 쓰므로 지역 import.
+        q = _up.parse_qs(_up.urlparse(self.path).query)
+        npc = (q.get('npc') or [''])[0]
+        lang = (q.get('lang') or ['ko'])[0]
+        date = (q.get('date') or [''])[0]
+        if lang not in ('ko', 'en'):
+            lang = 'ko'
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', date or ''):
+            date = _date.date.today().isoformat()
+
+        if npc not in self.NPC_IDS:            # 화이트리스트(운영과 같은 규칙)
+            payload = json.dumps({'openers': {}, 'sets': []}).encode(); code = 200
+        else:
+            url = os.environ.get('SUPABASE_URL'); anon = os.environ.get('SUPABASE_ANON_KEY')
+            seed = f'{date}:{npc}'
+
+            def rpc(name, body):
+                req = urllib.request.Request(url + '/rest/v1/rpc/' + name,
+                                             data=json.dumps(body).encode(), method='POST',
+                                             headers={'Content-Type': 'application/json', 'apikey': anon,
+                                                      'Authorization': 'Bearer ' + anon})
+                with urllib.request.urlopen(req, timeout=15, context=ssl_context()) as res:
+                    return json.loads(res.read())
+
+            try:
+                sets = rpc('npc_dialogue_pick', {'p_npc': npc, 'p_lang': lang,
+                                                 'p_seed': seed, 'p_n': self.SETS_PER_DAY})
+                openers = {}
+                for w in self.WEATHERS:
+                    line = rpc('npc_opener_pick', {'p_npc': npc, 'p_lang': lang,
+                                                   'p_weather': w, 'p_seed': seed})
+                    if line:
+                        openers[w] = line
+                payload = json.dumps({'openers': openers, 'sets': sets},
+                                     ensure_ascii=False).encode(); code = 200
+            except Exception as e:
+                print(f'[npc-talk] RPC 실패: {type(e).__name__}: {e}')
+                payload = json.dumps({'openers': {}, 'sets': []}).encode(); code = 200
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     # ── 🏆 리더보드 (functions/api/leaderboard.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
     #    Supabase RPC(public.leaderboard) 프록시. 로컬은 캐시 없이 매번 조회(개발 편의).
