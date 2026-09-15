@@ -485,8 +485,10 @@
   /* 토스트(피드백 메시지) */
   #toast { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
-  /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지 */
-  body.coaching #toast { top: calc(210px + var(--top-inset)); }
+  /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지.
+     카드 높이는 문구 줄 수·목표 줄 유무로 변하므로 renderCoach 가 실측해 --coach-h 로 넘긴다
+     (이전엔 110px 로 하드코딩해 목표 줄이 붙자 토스트가 카드를 덮었다). */
+  body.coaching #toast { top: calc(92px + var(--top-inset) + var(--coach-h, 110px) + 16px); }
 
   /* 🪧 시설 첫 접근 배너 — 이동을 안 끊는 비차단 안내(토스트보다 한 단계 큰 카드) */
   #hint-banner { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
@@ -590,6 +592,12 @@
   /* 인터랙티브 튜토리얼 코치(상단 중앙) */
   #coach { top: calc(92px + var(--top-inset)); left: 50%; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 7px; max-width: 90vw; text-align: center; border: 2px solid var(--mint); }
   #coach.show { display: flex; }
+  /* 🎯 코칭 내내 "지금 뭘 향해 가는지" — 튜토리얼 중엔 #story-chip 이 숨겨져(body.coaching) 목적이 사라졌었다.
+     카드 안의 줄이라 모바일 3단 레이아웃에 새 고정 좌표를 추가하지 않는다. */
+  /* 색은 --mint(#bfe8c9) 대신 진한 초록 — 10.5px 본문에 밝은 민트는 크림 카드 위에서 대비가 모자란다 */
+  #coach-goal { font-size: 11px; font-weight: 800; color: #2f7d54; letter-spacing: .01em;
+    border-bottom: 1px solid rgba(47,125,84,0.18); padding-bottom: 5px; margin-bottom: 1px; align-self: stretch; text-align: center; }
+  #coach-goal:empty { display: none; }
   #coach-text { font-size: 13.5px; font-weight: 700; }
   #coach-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; font-size: 10px; }
   #coach-dots span { color: rgba(0,0,0,0.18); }
@@ -641,6 +649,7 @@
     #fish-prompt { font-size: 18px; }
     #zone-prompt { font-size: 16px; }
     #coach-text { font-size: 16px; }
+    #coach-goal { font-size: 12.5px; }
     #coach-skip { font-size: 12.5px; }
     #mc-title { font-size: 15px; }
     #hint-banner .hb-title { font-size: 15.5px; }
@@ -779,8 +788,9 @@
     #coach { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px);
              text-align: left; align-items: flex-start; padding: 9px 11px; }
     #coach-text { font-size: 12.5px; }
+    #coach-goal { font-size: 10.5px; text-align: left; padding-bottom: 4px; }
     #coach-dots { justify-content: flex-start; }
-    body.coaching #toast { top: calc(290px + var(--top-inset)); }   /* 코치 카드(≈110px) 아래 */
+    body.coaching #toast { top: calc(162px + var(--top-inset) + var(--coach-h, 110px) + 16px); }   /* 코치 카드 실측 아래 */
     #hint-banner { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
     body:has(#hint-banner.show) #story-chip { display: none !important; }   /* 배너가 떠 있는 1.4~3초만 칩을 비켜준다 */
     body.coaching #hint-banner { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); }   /* 코치가 슬롯을 쓰면 배너는 프롬프트 줄 위로 */
@@ -1241,8 +1251,8 @@
     #mist-choice { bottom: calc(282px + env(safe-area-inset-bottom)); padding: 8px 10px; max-width: calc(100vw - 24px); }   /* 조이스틱·액션 버튼 위 */
     #mc-title { font-size: 12.5px; margin-bottom: 6px; }
     #mist-choice button { font-size: 13px; padding: 10px 12px; }
-    /* 모바일: 코치는 컨텍스트 슬롯(162px, 카드 ≈110px) — 토스트는 그 아래 */
-    body.coaching #toast { top: calc(290px + var(--top-inset)); }
+    /* 모바일: 코치는 컨텍스트 슬롯(162px) — 토스트는 실측한 카드 높이 아래 */
+    body.coaching #toast { top: calc(162px + var(--top-inset) + var(--coach-h, 110px) + 16px); }
   }
   /* ── 세로가 아주 짧은 화면(폰 가로·분할 화면) — 좌측 상단 한 자리를 두고 다투는 것들 ──
      📖 스토리 칩은 읽을거리고 📜 퀘스트 패널은 지금 할 일이다. 자리가 하나뿐이면 할 일이 이긴다
@@ -1339,6 +1349,7 @@
 
   <!-- 인터랙티브 튜토리얼 코치(단계별 진행) -->
   <div id="coach" class="panel">
+    <div id="coach-goal"></div>
     <div id="coach-text"></div>
     <div id="coach-dots"></div>
     <button id="coach-skip">건너뛰기</button>
@@ -1741,7 +1752,7 @@
       <ul class="tut-list">
         <li><b>🕹️ 이동</b> WASD·방향키 <span class="mo">(모바일: 왼쪽 조이스틱)</span></li>
         <li><b>✋ 상호작용</b> Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span></li>
-        <li><b>🎒 도구 세트</b> 1번으로 🌾농사 · 🏕️야외도구 · ✋맨손을 바꾸고, 2~6번으로 도구를 골라요</li>
+        <li><b>🎒 도구 세트</b> 1번으로 🌾농사 · 🏕️야외도구 · ✋맨손을 바꿔요. 2~6번으로 도구를 골라요</li>
         <li><b>💾 진행상황</b>은 자동 저장돼요</li>
       </ul>
       <button id="tut-start">튜토리얼 시작 🌱</button>
@@ -2344,7 +2355,7 @@
         $('char-modal').classList.toggle('change', change);
         $('char-title').textContent = change ? '🐾 캐릭터 바꾸기' : '🐾 캐릭터를 골라주세요';
         $('char-sub').textContent = change
-          ? '언제든 다시 바꿀 수 있어요 — 진행 상황(집·밭·도감)은 그대로예요'
+          ? '언제든 다시 바꿀 수 있어요. 진행 상황(집·밭·도감)은 그대로예요'
           : '함께 마을을 가꿀 동물 친구예요 (메뉴에서 언제든 바꿀 수 있어요)';
         $('char-confirm').textContent = change ? '이 친구로 바꾸기' : '이 친구로 시작하기';
         // 🏷️ 닉네임 — 랜덤 제안으로 미리 채우고, 유저가 직접 고치면(dirty) 동물을 바꿔도 덮어쓰지 않음
@@ -2451,6 +2462,7 @@
         $('sc-goal').textContent = cur.goal;
         chip.classList.add('show');
         if ($('story-modal').classList.contains('show')) renderStory();
+        if (tutIdx >= 0) renderCoachGoal();   // 코칭 중 장이 넘어가면 목표 줄도 따라간다
       },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
@@ -2584,7 +2596,7 @@
         });
         $('hire-crew-head').textContent = v.workers.length
           ? `우리 일꾼 ${v.workers.length}명 · 하루 월급 🪙${v.wage}`
-          : '아직 일꾼이 없어요 — 밭일을 대신 해 줘요';
+          : '밭일을 대신 해 줄 일꾼이 아직 없어요';
         const crew = $('hire-crew'); crew.innerHTML = '';
         v.workers.forEach(w => {
           const row = document.createElement('div'); row.className = 'hire-row' + (w.resting ? ' resting' : '');
@@ -2651,9 +2663,9 @@
       },
       onDecorAimed() { if (decorGuideStep === 1) setDecorGuide(2); },   // ③ 놓기
       // 놓아 둔 가구를 탭해 들어 올림 → 액션버튼 = 그 가구(다시 놓기)
-      onDecorPicked(d) { if (decorGuideStep >= 0) endDecorGuide(); placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요 — 바닥을 탭해 옮긴 뒤 버튼으로 놓기 · 🎨 메뉴에서 🧺 보관`); },
+      onDecorPicked(d) { if (decorGuideStep >= 0) endDecorGuide(); placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요. 바닥을 탭해 옮겨 버튼으로 놓기. 🎨 메뉴에서 🧺 보관`); },
       // 🪵 놓아 둔 야외 장식을 들어 올림 → 액션버튼 = 그 장식(다시 놓기) · 🧺 보관 버튼 노출(body.picked-decor)
-      onOutdoorPicked(d) { placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요 — 원하는 곳에서 ${TOUCH ? '오른쪽 버튼' : 'Space'}으로 놓기 · 🧺 보관 버튼으로 보관`); },
+      onOutdoorPicked(d) { placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요. 원하는 곳에서 ${TOUCH ? '오른쪽 버튼' : 'Space'}으로 놓기 · 🧺 보관 버튼으로 보관`); },
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
@@ -2709,8 +2721,8 @@
         $('br-sub').textContent = clear
           ? (d.hits === 0 ? '한 번도 부딪히지 않았어요 — 완벽한 뱃길! 🌊' : `${d.dist_m}m 를 내려왔어요`)
           : wreck
-            ? `${d.dist_m}m 지점에서 가라앉았어요 — 주운 건 그대로 가져가요, 배는 내일 멀쩡해요!`
-            : `${d.dist_m}m 지점에서 멈췄어요 — 여기까지 모은 건 그대로 가져가요`;
+            ? `${d.dist_m}m 지점에서 가라앉았어요. 주운 건 그대로 가져가요, 배는 내일 멀쩡해요!`
+            : `${d.dist_m}m 지점에서 멈췄어요. 여기까지 모은 건 그대로 가져가요`;
         const rows = [
           ['거리', `${d.dist_m}m`], ['시간', `${d.time_sec}초`], ['점수', `${d.score}${d.best ? ' 🏆 최고 기록!' : ''}`],
           ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
@@ -2886,32 +2898,35 @@
     // ── 인터랙티브 튜토리얼(코치) 상태머신 ──
     // 기기별 조작 안내(터치=조이스틱/액션버튼, 데스크톱=키보드/클릭)
     const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-    const A = TOUCH ? '오른쪽 동그란 버튼' : 'Space(또는 클릭)';
+    const A = TOUCH ? '(액션)' : '(Space)';   // ⭕(U+2B55)는 빨간 원으로 렌더돼 민트색 액션 버튼과 어긋난다
     const MOVE = TOUCH ? '왼쪽 조이스틱' : 'WASD·방향키';
+    // 코치 카드는 모바일에서 폭 213px(375px 화면) — 한 단계가 30자를 넘으면 4~6줄로 터진다.
+    //   ① 에서 조작을 한 번 가르치고, 이후 단계는 ⭕(액션 버튼) 한 글자로 받는다.
+    //   벌목·집짓기 단계엔 "왜"(집 지을 목재 · 1장 완성)를 붙여 1장 목표와 이어 준다.
     const TUT_STEPS = [
-      { key: 'move',     text: `① ${MOVE}로 마을을 걸어보세요 🕹️` },
+      { key: 'move',     text: TOUCH
+          ? `① 🕹️${MOVE}으로 걷고 오른쪽 동그란 (액션) 버튼으로 행동해요`
+          : `① ${MOVE}로 걷고, Space로 행동해요` },
       { key: 'toolpage', text: TOUCH
-          ? '② 하단 왼쪽 🎒 버튼을 눌러 보세요 — 🌾농사 · 🏕️야외도구 · ✋맨손 세트가 번갈아 나와요'
-          : '② 숫자 1 을 눌러 보세요 — 🌾농사 · 🏕️야외도구 · ✋맨손 세트가 번갈아 바뀌어요 (도구는 2~6)' },
-      { key: 'chop',    text: `③ 🏕️야외도구 세트에서 🪓도끼(2) 고르고 나무 앞에서 ${A}으로 벌목! 🪵` },
-      { key: 'sell',    text: `④ 🛒 찾아온 상인이나 동쪽 좌판에 목재를 팔아 첫 코인을 벌어요 (${A})` },
-      { key: 'till',    text: `⑤ 🌾농사 세트의 ⛏️괭이(2)로 빈 땅을 갈아요 (${A})` },
-      { key: 'seed',    text: `⑥ 🌰씨앗(3)을 갈아둔 밭에 심어요 (${A})` },
-      { key: 'water',   text: `⑦ 💧물조리개(4)로 물을 주면 자라요 (${A})` },
-      { key: 'harvest', text: `⑧ 다 자란 작물을 낫(5)으로 수확! (${A})` },
-      { key: 'market',  text: `⑨ 📊 상점 옆 전광판에서 오늘의 시세를 확인! 비쌀 때 팔면 이득 (${A})` },
-      { key: 'quest',   text: TOUCH
-          ? '⑩ 🧑‍🌾주민에게 말 걸어 퀘스트 수락 → 목표 달성 → 다시 말 걸어 보상까지 받기! (🦉올빼미는 매일 새 의뢰)'
-          : '⑩ 🧑‍🌾주민에게 말 걸어 퀘스트를 수락하고, 목표를 채운 뒤 다시 말 걸어 보상까지 받으세요 (🦉올빼미는 매일 새 의뢰)' },
-      { key: 'mine',    text: `⑪ ⛏️ 서쪽 동굴에 들어가 🌾농사 세트의 괭이(2)로 광석을 캐요 — 돌·석탄·💎보석! (${A})` },
-      { key: 'carve',   text: `⑫ 🔧작업대의 🗿조각 탭에서 오늘의 주문을 시작해보세요 — 모은 목재·캔 돌이 재료! (${A})` },
-      { key: 'dex',     text: `⑬ 📖 우측 하단 도감 버튼을 눌러 발견한 것들과 🏅배지를 확인해요! 도감을 다 채우면 🪙150` },
-      { key: 'fish',    text: `⑭ 🎣낚싯대(4) 들고 호숫가에서 던진 뒤, 물면 ${A}으로 낚아채기! 🐟` },
-      { key: 'build',   text: `⑮ 🔨망치(3)로 집 터에서 목재를 모아 집을 완성해요 🏠` },
+          ? '② 🎒로 도구 세트 바꾸기 — 🌾농사·🏕️야외·✋맨손'
+          : '② 1 키로 도구 세트 바꾸기 — 도구는 2~6' },
+      { key: 'chop',    text: `③ 🪓도끼(2)로 나무를 베면 집 지을 🪵목재가 나와요 ${A}` },
+      { key: 'sell',    text: `④ 🪵목재를 🛒상인·좌판에 팔아 🪙코인 ${A}` },
+      { key: 'till',    text: `⑤ ⛏️괭이(2)로 빈 땅 갈기 ${A}` },
+      { key: 'seed',    text: `⑥ 🌰씨앗(3)을 갈아둔 밭에 심기 ${A}` },
+      { key: 'water',   text: `⑦ 💧물조리개(4)로 물 주기 ${A}` },
+      { key: 'harvest', text: `⑧ 다 자란 작물을 낫(5)으로 수확 ${A}` },
+      { key: 'market',  text: `⑨ 📊전광판에서 시세를 보고 비쌀 때 팔아요 ${A}` },
+      { key: 'quest',   text: '⑩ ❕주민과 대화 → 목표 달성 → 다시 대화로 보상' },   // ${A} 금지: '→' 와 겹치면 i18n 글루 패턴에 먹힌다
+      { key: 'mine',    text: `⑪ 서쪽 ⛏️동굴에서 괭이(2)로 광석 캐기 ${A}` },
+      { key: 'carve',   text: `⑫ 🔧작업대 🗿조각 탭에서 오늘의 주문 ${A}` },
+      { key: 'dex',     text: '⑬ 📖도감에서 발견한 것·🏅배지 확인 — 다 채우면 🪙150' },
+      { key: 'fish',    text: `⑭ 🎣낚싯대(4)로 호숫가에 던지고, 물면 ${A}` },
+      { key: 'build',   text: '⑮ 🔨망치(3)로 집 터에 목재 넣어 1장 완성 🏠' },
       { key: 'enter',   text: TOUCH
-          ? '⑯ 완성된 집 문 앞에서 오른쪽 🚪버튼을 눌러 들어가요'
-          : '⑯ 완성된 집 문 앞에서 Space로 들어가요' },
-      { key: 'decor',   text: `⑰ 🎨꾸미기 버튼으로 가구를 골라 바닥에 놓아 집을 꾸며요!` },
+          ? '⑯ 집 문 앞에서 🚪버튼으로 들어가기'
+          : '⑯ 집 문 앞에서 Space로 들어가기' },
+      { key: 'decor',   text: '⑰ 🎨꾸미기로 가구를 놓아 집 꾸미기' },
     ];
     let tutIdx = -1;
     // ── 🎨 첫 가구 배치 단계 안내(1회) — "소파 어떻게 옮겨요?"·"미리보기가 안 보여요" 베타 피드백
@@ -2919,14 +2934,14 @@
     //   튜토리얼 코치가 ⑰꾸미기 단계로 떠 있으면 새 카드를 띄우지 않고 코치 문구를 단계별로 바꿔 쓴다(슬롯 충돌 방지).
     const DECOR_GUIDE = TOUCH ? [
       '① 아래 🎨 꾸미기 버튼을 눌러 가구를 골라요',
-      '② 바닥을 탭해 놓을 자리를 잡아요 — 초록 링이 놓일 자리예요',
+      '② 바닥을 탭해 놓을 자리를 잡아요. 초록 링이 놓일 자리예요',
       '③ 오른쪽 가구 버튼(또는 자리를 한 번 더 탭)으로 놓기 · ↻ 회전',
-      '④ 놓은 가구 옆에 서면 옮기기 안내가 떠요 — 오른쪽 버튼(또는 탭)으로 들어요',
+      '④ 놓은 가구 옆에 서면 옮기기 안내가 떠요. 오른쪽 버튼(또는 탭)으로 들어요',
     ] : [
       '① 아래 🎨 꾸미기 버튼을 눌러 가구를 골라요',
-      '② 마우스를 움직여 놓을 자리를 잡아요 — 초록 링이 놓일 자리예요',
+      '② 마우스를 움직여 놓을 자리를 잡아요. 초록 링이 놓일 자리예요',
       '③ 클릭(또는 Space)으로 놓기 · R 회전',
-      '④ 놓은 가구 옆에 서면 옮기기 안내가 떠요 — Space(또는 클릭)로 들어요',
+      '④ 놓은 가구 옆에 서면 옮기기 안내가 떠요. Space(또는 클릭)로 들어요',
     ];
     let decorGuideStep = -1, decorGuideTimer = null;   // -1 = 꺼짐
     function renderDecorGuide() {
@@ -2947,6 +2962,15 @@
     //   안내문은 "🪓도끼(1)" 처럼 번호로 말하는데, 모바일엔 숫자키가 없어 다른 페이지 도구는 손이 닿지 않는다.
     const TUT_TOOL = { chop: 'axe', till: 'hoe', seed: 'seed', water: 'water', harvest: 'sickle',
                        mine: 'hoe', fish: 'rod', build: 'hammer' };
+    // 🎯 코치 카드 안의 현재 장 목표 — 튜토리얼 중엔 #story-chip 이 숨겨지므로 여기가 목적의 유일한 창구.
+    //   스토리 칩과 같은 출처(lastStoryView)를 읽어 두 곳이 어긋나지 않는다.
+    function renderCoachGoal() {
+      const el = $('coach-goal'); if (!el) return;
+      const v = lastStoryView;
+      if (!v || v.allDone) { el.textContent = ''; return; }
+      const cur = v.chapters[v.ch];
+      el.textContent = cur ? `${cur.n}장 · ${cur.ico} ${cur.goal}` : '';
+    }
     function renderCoach() {
       const want = TUT_TOOL[TUT_STEPS[tutIdx].key];
       if (want) Input.revealTool?.(want);
@@ -2954,9 +2978,19 @@
       // A군 영어 표시는 번호 차이로 번역 키 미스가 날 수 있으나 베타 대상자는 전원 한국어 사용자라 허용.
       const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰';
       $('coach-text').textContent = TUT_STEPS[tutIdx].text.replace(/^[①-⑰]/, CIRC[tutIdx]);
+      renderCoachGoal();
       if (decorGuideStep >= 0) renderDecorGuide();   // 🎨 단계 안내가 켜져 있으면 코치 문구를 단계별로
       $('coach-dots').innerHTML = TUT_STEPS.map((_, i) =>
         `<span class="${i < tutIdx ? 'done' : i === tutIdx ? 'cur' : ''}">●</span>`).join('');
+      measureCoach();
+    }
+    // 카드 실제 높이를 CSS 로 넘긴다 — 토스트가 이 값을 기준으로 아래에 선다.
+    //   문구 줄 수(1~2줄)·목표 줄 유무로 높이가 변해 상수로는 맞출 수 없다.
+    function measureCoach() {
+      requestAnimationFrame(() => {
+        const el = $('coach'); if (!el) return;
+        document.body.style.setProperty('--coach-h', Math.round(el.getBoundingClientRect().height) + 'px');
+      });
     }
     // 🧪 [베타 A군] 재미 단계(낚시·집짓기·꾸미기) 전진 — 스텝 내용은 그대로, 순서만.
     //   고정 키(TUT_ORDER_A) 기준 정렬이라 여러 번 불러도 결과가 같다(멱등).
@@ -2976,7 +3010,7 @@
       tutIdx = -1; $('coach').classList.remove('show');
       document.body.classList.remove('coaching');   // 코치 종료 → 토스트 원위치
       if (done) {
-        ui.toast('🎉 튜토리얼 졸업! 벌목·농사·조각·낚시·집짓기·꾸미기 다 배웠어요. 이제 자유롭게 마을을 가꿔보세요 🌿');
+        ui.toast('🎉 튜토리얼 졸업! 이제 마을을 자유롭게 가꿔보세요 🌿');
         Input.markHintsSeen?.(['shop', 'market', 'mineGate', 'bench']);   // 코치 ⑧⑨⑪⑫가 이미 설명한 시설 — 졸업 후 배너 중복 방지
         trackEvent('tutorial_complete');
       }
@@ -3001,7 +3035,7 @@
       $('login-note').textContent = offline
         ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
         : why === 'toss_fail'
-          ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 시작할 수 있어요.'
+          ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 할 수 있어요.'
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
       trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
     }
@@ -3171,7 +3205,11 @@
 
     // 튜토리얼: 시작하기 닫기 / 도움말(❓) 다시 열기
     // 환영 모달의 "시작하기" → 모달 닫고 인터랙티브 코치 시작
-    $('tut-start').addEventListener('click', () => { $('tutorial-modal').classList.remove('show'); startCoach(); });
+    $('tut-start').addEventListener('click', () => {
+      $('tutorial-modal').classList.remove('show');
+      startCoach();                   // 먼저 코치를 켜 둔다 — 지도를 열어둔 채 이탈해도 튜토리얼이 사라지지 않게
+      showStoryMapOnce(null);         // 📖 4장 지도를 그 위에 1회
+    });
     $('help-btn').addEventListener('click', () => openGuide('menu'));   // 📖 초보자 안내서(튜토리얼 다시 보기는 안내서 첫 장 버튼)
     // 📮 소식함 — 메뉴에서 열면 최근 소식 전부(읽은 것 포함). 닫을 때 가장 큰 id 를 읽음으로 기록
     $('inbox-btn').addEventListener('click', async () => {
@@ -3402,7 +3440,7 @@
       const chip = e.target.closest('.buff'); if (!chip) return;
       const b = lastBuffs.find(x => x.k === chip.dataset.k); if (!b) return;
       ui.showHintModal({ ico: b.ico, title: `${b.name} 버프`,
-        body: `${b.desc}\n\n⏱️ 남은 시간 약 ${b.remain}초 — 🍳 자유주방에서 요리하면 다시 받을 수 있고, 요리 타이밍(등급)이 좋을수록 더 오래가요.` });
+        body: `${b.desc}\n\n⏱️ 남은 시간 약 ${b.remain}초 — 🍳 자유주방에서 요리하면 다시 받을 수 있고 요리 타이밍(등급)이 좋을수록 더 오래가요.` });
     });
 
     // 버프 HUD 위치 — 우상단에 실제로 떠 있는 요소들(자원+시간바 패널, 문의하기·도감 탭) 아래로 실측 배치.
@@ -3842,7 +3880,7 @@
     }
     function closeCookResult(how) {                           // 결과 카드 닫기 = 선택 확정
       const r = Input.cookResolve(how);
-      if (r?.ok && r.how === 'store') ui.toast(`🧺 ${r.ico} ${r.name} 찬장에 넣었어요 — 남은 칸 ${r.left}`, 2600);
+      if (r?.ok && r.how === 'store') ui.toast(`🧺 ${r.ico} ${r.name} 찬장에 넣었어요. 남은 칸 ${r.left}`, 2600);
       else if (r?.ok && r.fallback) ui.toast('🧺 찬장이 가득 차서 바로 먹었어요', 2600);
       closeMg();
     }
@@ -3935,7 +3973,7 @@
         const lo = ks.reduce((a, b) => (rates[a] <= rates[b] ? a : b));
         const banner = document.createElement('div');
         banner.className = 'market-banner';
-        banner.innerHTML = `📊 <b>오늘의 시세</b> · ${SELL_ICO[hi]} 비싸요 <b>+${rates[hi] - 100}%</b> · ${SELL_ICO[lo]} 싸요 <b>${rates[lo] - 100}%</b> — 내일 또 바뀌어요`;
+        banner.innerHTML = `📊 <b>오늘의 시세</b> · ${SELL_ICO[hi]} 비싸요 <b>+${rates[hi] - 100}%</b> · ${SELL_ICO[lo]} 싸요 <b>${rates[lo] - 100}%</b>. 내일 또 바뀌어요`;
         box.appendChild(banner);
         ks.forEach(k => {
           const have = lastInv[k] || 0;
@@ -3996,7 +4034,7 @@
         orders.appendChild(row);
       });
       hint.innerHTML = d.allDone
-        ? '🎉 오늘 주문은 모두 완료! <b>내일 새 손님</b>이 와요 — 내일 또 만나요'
+        ? '🎉 오늘 주문은 모두 완료! <b>내일 새 손님</b>이 와요. 내일 또 만나요'
         : `재료를 들고 <b>손님에게 다가가 액션</b>을 누르면 서빙돼요 · 모두 서빙하면 🎉 보너스 🪙${d.bonus}`;
     }
     $('cafe-close').addEventListener('click', () => { $('cafe-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
@@ -4039,7 +4077,7 @@
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {
       if (authState.provider !== 'google') {
-        ui.toast('📊 로그인하면 내 활동 기록을 볼 수 있어요 (게스트는 기록이 이어지지 않아요)');
+        ui.toast('📊 로그인하면 내 활동 기록을 볼 수 있어요 (게스트는 안 이어져요)');
         return;
       }
       window.open('dashboards/analytics.html', '_blank');
@@ -4058,6 +4096,22 @@
 
     // 📖 이야기 모달 — 칩 클릭으로 열람(완결 장은 완료 문구, 현재 장은 진행도)
     let lastStoryView = null;
+    let storyModalThen = null;   // 이야기 모달이 닫힐 때 이어서 할 일(온보딩 체인)
+    function closeStoryModal() {
+      $('story-modal').classList.remove('show');
+      const then = storyModalThen; storyModalThen = null;
+      if (then) then();
+    }
+    // 📖 4장 지도 1회 — 목적("목적이 뭔지 모르겠다" 피드백)을 플레이 시작 전에 보여준다.
+    //   진행이 아직 안 붙었으면(세이브 로드 전) 지도 없이 곧바로 다음 단계로 — 온보딩을 막지 않는다.
+    let storyMapShown = false;
+    function showStoryMapOnce(then) {
+      if (storyMapShown || !lastStoryView || lastStoryView.allDone) { then?.(); return; }
+      storyMapShown = true;
+      storyModalThen = then || null;
+      renderStory(); Input.setAnalog(0, 0);
+      $('story-modal').classList.add('show');
+    }
     function renderStory() {
       const v = lastStoryView || Input.getStory();
       const box = $('story-rows'); box.innerHTML = '';
@@ -4074,7 +4128,8 @@
       });
     }
     $('story-chip').addEventListener('click', () => { renderStory(); Input.setAnalog(0, 0); $('story-modal').classList.add('show'); });
-    $('story-close').addEventListener('click', () => $('story-modal').classList.remove('show'));
+    $('story-close').addEventListener('click', () => closeStoryModal());
+    $('story-modal').addEventListener('click', (e) => { if (e.target === $('story-modal')) closeStoryModal(); });
 
     // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
     const LB_BOARDS = [
@@ -4119,7 +4174,7 @@
         if (d.me && !(top.some(r => r.rank === d.me.rank && r.nick === myNick))) {
           meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${escapeHtml(myNick || '나')} (나)</span><span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
         } else if (!d.me && authState.userId) {
-          meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요 — 지금 만들어봐요!</div>`;
+          meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요. 지금 만들어봐요!</div>`;
         }
       } catch (e) {
         list.innerHTML = '<div class="lb-empty">순위를 불러오지 못했어요.<br>잠시 후 다시 열어주세요 🌧️</div>';
@@ -4245,8 +4300,8 @@
       const d = Input.getDex();
       $('nudge-title').textContent = `도감 ${d.count}종 수집 중!`;
       $('nudge-body').textContent = IS_TOSS
-        ? '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 토스 계정 연결 한 번이면 영구 보존돼요.'
-        : '게스트로 나가면 지금까지 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
+        ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 토스 계정 연결 한 번이면 영구 보존돼요.'
+        : '게스트로 나가면 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
       $('nudge-modal').classList.add('show');
       Input.setAnalog(0, 0);
       trackEvent('login_nudge', { trigger, target: NUDGE_TARGET });   // [GA4] 넛지 노출
@@ -4361,8 +4416,8 @@
           body: JSON.stringify({ image: jpeg }),
         });
         const d = await res.json().catch(() => ({}));
-        if (res.status === 409) { ui.toast(`📸 사진첩이 가득 찼어요 (${d.count}/100) — 오래된 사진을 지우면 새로 담을 수 있어요`, 3200); }
-        else if (res.status === 503) { ui.toast('☁️ 사진첩 서버 준비 중이에요 — 조금만 기다려주세요'); }
+        if (res.status === 409) { ui.toast(`📸 사진첩이 가득 찼어요 (${d.count}/100). 오래된 사진을 지우면 더 담을 수 있어요`, 3200); }
+        else if (res.status === 503) { ui.toast('☁️ 사진첩 서버 준비 중이에요. 조금만 기다려주세요'); }
         else if (!res.ok || !d.ok) { throw new Error(d.error || 'HTTP ' + res.status); }
         else {
           insertPhotoRow(d.key, $('time-emoji')?.textContent || null);   // 목록용 메타 행
@@ -4374,7 +4429,7 @@
         }
       } catch (err) {
         console.warn('[사진첩] 업로드 실패:', err?.message || err);
-        ui.toast('☁️ 저장에 실패했어요 — 잠시 후 다시 시도해주세요');
+        ui.toast('☁️ 저장에 실패했어요. 잠시 후 다시 시도해주세요');
       }
       btn.disabled = false; btn.textContent = '☁️ 사진첩'; cloudBusy = false;
     });
@@ -4393,7 +4448,7 @@
       $('album-count').textContent = `${rows.length}/100`;
       trackEvent('album_open', { count: rows.length });               // [GA4]
       if (!rows.length) {
-        grid.innerHTML = '<div class="album-empty">아직 사진이 없어요 — 📷 액션샷을 찍고 ☁️ 버튼으로 저장해보세요!</div>';
+        grid.innerHTML = '<div class="album-empty">아직 사진이 없어요. 📷 액션샷을 찍고 ☁️ 버튼으로 저장해보세요!</div>';
         return;
       }
       let urls = {};
@@ -4420,7 +4475,7 @@
         });
         grid.appendChild(cell);
       });
-      if (!shown) grid.innerHTML = '<div class="album-empty">사진을 불러오지 못했어요 — ☁️ 서버 설정을 확인해주세요</div>';
+      if (!shown) grid.innerHTML = '<div class="album-empty">사진을 불러오지 못했어요. ☁️ 서버 설정을 확인해주세요</div>';
     }
     $('album-btn').addEventListener('click', openAlbum);
     $('album-close').addEventListener('click', () => $('album-modal').classList.remove('show'));
@@ -4446,7 +4501,7 @@
         $('album-view').classList.remove('show');
         ui.toast('🗑️ 사진을 지웠어요');
         openAlbum();                                                  // 목록 갱신
-      } catch (err) { ui.toast('삭제에 실패했어요 — 잠시 후 다시'); }
+      } catch (err) { ui.toast('삭제에 실패했어요. 잠시 후 다시'); }
     });
 
     // ── 배경음악 토글 ──
@@ -4552,7 +4607,7 @@
           s.style.background = has ? hex(c) : '#c8ccc8';
           if (!has) s.textContent = '🔒';
           s.addEventListener('click', () => {
-            if (!has) { ui.toast('아직 잠긴 색이에요 — 낚시·수확·퀘스트로 얻어요 🎨'); return; }
+            if (!has) { ui.toast('아직 잠긴 색이에요. 낚시·수확·퀘스트로 얻어요 🎨'); return; }
             Input.setHousePart(part, i); renderExt();
           });
           el.appendChild(s);
@@ -4614,7 +4669,7 @@
           await navigator.share({ files: [file], title: 'calm forest 🌿', text: t('내 마을 구경오세요 · https://calmforest.cloud') });
           trackEvent('photo_share');   // [GA4] 공유 훅
         } else {
-          ui.toast('이 기기는 바로 공유가 안 돼요 — 💾저장으로 받아 공유해요');
+          ui.toast('이 기기는 바로 공유가 안 되니 💾저장으로 받아 공유해요');
         }
       } catch (e) { /* 사용자 취소 등은 무시 */ }
     });

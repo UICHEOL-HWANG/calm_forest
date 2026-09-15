@@ -274,7 +274,7 @@ const BUFF_META = {
   speed: { ico: '👟', name: '빠른 발',     desc: '이동 속도가 40% 빨라져요. 넓은 마을과 텃밭·동굴을 오갈 때 시간을 아껴줘요.' },
   luck:  { ico: '🍀', name: '낚시 행운',   desc: '낚시할 때 희귀 물고기(🐠 붉은 물고기·🌈 무지개 물고기)가 잡힐 확률이 올라가요. 호수 부두에서 낚싯대(7번)로 낚아보세요!' },
   chop:  { ico: '🪓', name: '벌목 보너스', desc: '나무를 쓰러뜨릴 때마다 목재를 1개 더 받아요. 건축·작업대 재료를 모을 때 딱이에요.' },
-  mine:  { ico: '⛏️', name: '광부의 힘',   desc: '동굴에서 채굴할 때 광석(돌·석탄·💎보석)을 추가로 얻을 확률이 올라가요. 마을 서쪽 동굴 입구로!' },
+  mine:  { ico: '⛏️', name: '광부의 힘',   desc: '동굴에서 채굴할 때 광석(돌·석탄·💎보석)을 더 얻을 확률이 올라가요. 마을 서쪽 동굴 입구로!' },
 };
 const buffs = { speed: 0, luck: 0, chop: 0, mine: 0 };   // 각 버프 만료 시각(clock.elapsedTime 기준)
 function buffOn(k) { return clock.elapsedTime < buffs[k]; }
@@ -602,7 +602,7 @@ const OUTDOOR = [
   { id: 'spiritlamp', name: '정령 등불', ico: '✨', cost: { glow: 8, coins: 60 }, desc: '정령빛이 깃든 등불 — 밤에 청록빛(안개 숲)' },
   ...FARM_BUILDINGS,   // 🏗️ 밭 시설 7종(farm:true, fp:[가로칸,세로칸]) — 같은 배치 문법, 텃밭 안에서만(js/farm-building.js)
 ];
-const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안이나 📐측량소 마당에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요 — 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
+const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안이나 📐측량소 마당에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
 function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 function farmBuildingRecs(except = null) { return gameState.outdoor.filter(r => r !== except && isFarmBuilding(r.id)); }   // 시설 레코드만(옮기는 중인 자기 자신 제외)
 let placingOutdoor = null;      // 배치 중인 야외 장식 id
@@ -635,15 +635,15 @@ const QUEST_HOW = {
   plant:        '🌾 텃밭에서 🌰씨앗을 들고 일군 밭에 심어요 (밭이 없으면 ⛏️괭이로 먼저 갈아요)',
   water:        '🌾 텃밭에서 💧물조리개를 들고 씨앗 심은 밭에 물을 줘요',
   harvest:      '🌾 텃밭에서 다 자란 작물 앞에 서서 낫으로 거둬요',
-  collect_crop: '🌾 텃밭에서 씨앗을 심고 물을 주면 자라요 — 거두면 가방에 쌓여요',
+  collect_crop: '🌾 텃밭에서 씨앗을 심고 물을 주면 자라요. 거두면 가방에 쌓여요',
   collect_wood: '🪓 도끼를 들고 마을 나무 앞에서 액션을 눌러요',
   chop:         '🪓 도끼를 들고 마을 나무 앞에서 액션을 눌러요',
   fish:         '🏞️ 호수에서 🎣낚싯대를 던지고, "물었어요!" 가 뜨면 바로 액션!',
-  fish_rare:    '🏞️ 호수에서 계속 낚아요 — 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요',
+  fish_rare:    '🏞️ 호수에서 계속 낚아요. 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요',
   house:        '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요',
   collect_dex:  '📖 처음 보는 것을 잡거나 캐거나 거두면 도감에 등록돼요 — ☰ 메뉴 → 📖 에서 확인',
-  dex_one:      '📖 큐레이터가 집어 준 그것을 찾아 도감에 등록해요 — ☰ 메뉴 → 📖 에서 어디서 나오는지 확인',
-  expand:       '🎨 완성된 집 근처에서 [집 외관 꾸미기] 버튼을 열면, 맨 위에 🏗️ 증축이 있어요',
+  dex_one:      '📖 큐레이터가 집어 준 것을 찾아 도감에 등록해요 — ☰ 메뉴 → 📖 에서 어디서 나오는지 확인',
+  expand:       '🎨 완성된 집 근처에서 [집 외관 꾸미기] 버튼을 열면 맨 위에 🏗️ 증축이 있어요',
   sell:         '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요',
   catch:        '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요',
   forage:       '🍄 채집 숲에서 열매·버섯 앞에 서서 맨손으로 주워요',
@@ -651,7 +651,7 @@ const QUEST_HOW = {
   cook:         '🍳 자유주방에 들어가 재료가 있는 요리를 골라 만들어요',
   serve:        '☕ 카페에 들어가 손님이 말한 요리를 만들어 내드려요',
   carve:        '🗿 작업대에서 조각 탭을 열고, 오늘의 주문 하나를 골라 깎아요',
-  egg:          '🥚 닭장에 가서 달걀을 걷어요 — 하루에 한 번 나와요',
+  egg:          '🥚 닭장에 가서 달걀을 걷어요. 하루에 한 번 나와요',
   gift:         '🎁 작업대에서 선물을 만들어, 주민 앞에서 가방을 열고 건네요',
   decor:        '🪵 작업대에서 야외 장식을 만들어 마당에 놓아요',
   boat:         '🛶 나루터에서 배를 타고 강을 끝까지 내려가요',
@@ -767,7 +767,7 @@ const NPCS = [
       { type: 'collect_dex', target: 8,  title: '첫 전시실',   desc: '📖 도감 8종 등록하기',  reward: { seed: 6, coins: 26 },
         line: '진열장이 아직 헐렁하군요. 여덟 가지가 모이면 1층이 제법 박물관다워질 겁니다.' },
       { type: 'collect_dex', target: 13, title: '2층을 향해',  desc: '📖 도감 13종 등록하기', reward: { coins: 40, gem: 1 },
-        line: '아홉 가지가 모이면 위층을 열 수 있어요. 조금만 더 부탁드립니다 — 💎값진 걸로 보답하지요.' },
+        line: '아홉 가지가 모이면 위층을 열 수 있어요. 조금만 더 부탁드립니다. 💎값진 걸로 보답하지요.' },
     ],
   },
   {
@@ -1164,7 +1164,7 @@ function dexDiscover(cat, id) {
     giveReward({ coins: 150 }, 'dex_complete', 'all');               // [원장] 완성 보상
     spawnConfetti(player.position.x, 1.6, player.position.z);
     Sound.complete();
-    ui.showHintModal?.({ ico: '📖', title: '도감 완성!', body: `마을의 모든 것 ${DEX_TOTAL}종을 발견했어요! 축하 보상 🪙150 을 받았어요.` });
+    ui.showHintModal?.({ ico: '📖', title: '도감 완성!', body: `마을의 모든 것 ${DEX_TOTAL}종을 발견했어요! 축하 보상 🪙150을 받았어요.` });
     trackEvent('dex_complete');                                      // [GA4]
   } else if (total === 5 || total === 12) {
     ui.loginNudge?.('dex' + total);   // 게스트면 "로그인하면 영구 보존" 넛지(index.html 이 판단)
@@ -1231,25 +1231,25 @@ function syncBadges() {
 //  안내자는 🦉 의뢰 올빼미 — 완료 모달의 기록자 화자.
 const STORY = [
   {
-    id: 'home', ico: '🏠', title: '나의 첫 집', goal: '빈터에 내 집 완성하기',
+    id: 'home', ico: '🏠', title: '나의 첫 집', goal: '내 집 짓기',
     start: '떠돌이 생활은 오늘로 끝. 마을 한켠의 빈터에 내 집을 지어보자. 나무를 베면 목재를 얻을 수 있어요.',
     done: '지붕 아래에서 맞는 첫 밤. 이제 이 숲이 진짜 집이 되었어요.',
     reward: { coins: 40 },
   },
   {
-    id: 'friends', ico: '💬', title: '숲의 이웃들', goal: '주민 의뢰 3번 도와주기',
+    id: 'friends', ico: '💬', title: '숲의 이웃들', goal: '주민 의뢰 3번',
     start: '이 숲엔 먼저 자리 잡은 이웃들이 있어요. ❕ 말풍선이 뜬 주민을 도와주며 얼굴을 익혀보자.',
     done: '이제 길에서 마주치면 반갑게 인사를 건네는 사이가 되었어요.',
     reward: { seed: 5, coins: 30 },
   },
   {
-    id: 'taste', ico: '🍳', title: '따뜻한 한 끼', goal: '자유주방에서 요리하고, 카페에서 서빙하기',
+    id: 'taste', ico: '🍳', title: '따뜻한 한 끼', goal: '요리하고 서빙하기',
     start: '숲에서 거둔 재료로 요리를 해보자. 정성껏 만든 음식은 나눌 때 더 맛있는 법이에요.',
     done: '내가 만든 요리가 누군가의 하루를 데웠어요. 마을에 맛있는 소문이 돌기 시작해요.',
     reward: { coins: 50 },
   },
   {
-    id: 'secret', ico: '🌿', title: '잎사귀의 주인', goal: '안개 낀 숲의 안개 걷어내기',
+    id: 'secret', ico: '🌿', title: '잎사귀의 주인', goal: '안개 걷어내기',
     start: '북서쪽 숲엔 걷히지 않는 안개가 있대요. 문득, 그날 바람에 실려 온 잎사귀가 떠올라요.',
     done: '수호목이 나직이 속삭였어요. "그 잎사귀, 내가 보낸 거란다. 먼 길 오느라 고생했어." 당신의 이야기는 이제 이 숲과 함께 흘러갑니다.',
     reward: { coins: 80 },
@@ -1712,7 +1712,7 @@ function updateToolPageAuto() {
       // 바가 저절로 접히는 첫 순간 — 왜 접혔고 어떻게 되돌리는지 한 번만 알려 준다
       if (!gameState.hintsSeen.toolStow) {
         gameState.hintsSeen.toolStow = true;
-        ui.toast?.('🎒 도구를 등에 멨어요 — 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요', 3200);
+        ui.toast?.('🎒 도구를 등에 멨어요. 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요', 3200);
       }
     }
     setToolPage(want, true);
@@ -3256,10 +3256,10 @@ function setHeldTool(id) {
   if (indoor || atCafe) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
   // 🪏 처음 삽을 들면 쓰는 법 1회 안내(모달) — 밭을 지우고 싶은 사람이 정확히 이 순간 답을 얻는다
   if (id === 'shovel' && gameState.character) {
-    const A = IS_MOBILE ? '오른쪽 동그란 버튼' : 'Space';
+    const A = IS_MOBILE ? '(액션)' : '(Space)';   // index.html TUT_STEPS 와 같은 표기로 통일
     firstHint('shovel', '🪏', '삽 — 빈 밭을 풀밭으로 되돌려요',
       digIsOneShot(gameState)
-        ? `① 삽을 들고 빈 밭 앞에서 ${A} → 밭이 사라져요\n· 🪏넓은 삽이라 한 번에 메워져요 — 되돌릴 수 없으니 조심!\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`
+        ? `① 삽을 들고 빈 밭 앞에서 ${A} → 밭이 사라져요\n· 🪏넓은 삽이라 한 번에 메워져요. 되돌릴 수 없으니 조심!\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`
         : `① 삽을 들고 빈 밭 앞에서 ${A}\n② ${DIG_WINDOW}초 안에 한 번 더 ${A} → 밭이 사라져요\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`);
   }
 }
@@ -3579,7 +3579,7 @@ function coopInteract() {
     gameState.inventory.seed -= COOP_FEED; refreshInventoryUI();
     c.fed = today;
     Sound.blip(); spawnFloatText(COOP.x, 1.6, COOP.z, '🐔 냠냠!', '#c9682a');
-    ui.toast?.('🌰 모이를 줬어요! 내일 🥚 달걀을 낳을 거예요 — 내일 또 만나요', 3000);
+    ui.toast?.('🌰 모이를 줬어요! 내일 🥚 달걀을 낳을 거예요. 내일 또 만나요', 3000);
     trackEvent('coop_feed');                                                      // [GA4] 데일리 루프 KPI
     return;
   }
@@ -3711,7 +3711,7 @@ function updateFireflyBugs(dt, t) {
 function tryNet() {
   const pp = pestTarget(); if (pp) return clearPest(pp);   // 🐛 밭의 해충 쫓기 — 포충망의 두 번째 용도(스펙 §2-1)
   if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🌟 남쪽 반딧불이 계곡에서 쓰는 도구예요'); return; }
-  if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요 — 해가 지면 다시 오세요', 2600); return; }
+  if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요. 해가 지면 다시 오세요', 2600); return; }
   let target = null, nd = 2.2;
   for (const bug of gladeBugs) {
     const d = Math.hypot(bug.position.x + GLADE.x - player.position.x, bug.position.z + GLADE.z - player.position.z);
@@ -4304,7 +4304,7 @@ function enterMuseum() {
   snapCamera(); setSpaceVisible();
   const { have, total } = floorProgress(museumFloor, gameState.dex, DEX);
   firstHint('museum', '🏛️', '박물관',
-    `도감에 등록한 것이 여기 전시돼요 (1층 ${have}/${total})\n🎀 천이 덮인 자리는 아직 못 찾은 것 — 찾아오면 천을 걷을게요\n진열장 앞에 서면 아래에 설명이 떠요 · 나갈 땐 남쪽 문`);
+    `도감에 등록한 것이 전시돼요 (1층 ${have}/${total})\n🎀 천이 덮인 자리는 아직 못 찾은 것\n진열장 앞에 서면 설명이 떠요. 나갈 땐 남쪽 문`);
   Sound.blip();
   trackEvent('museum_enter', { floor: museumFloor, have, total, floors: openFloors(gameState.dex, DEX) });   // [GA4] 방문 빈도·수집률·열린 층
 }
@@ -4853,7 +4853,7 @@ function enterCafe() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('cafeHall', '☕', '카페',
-    '손님 머리 위 요리를 보고, 재료 들고 다가가 액션 → 서빙!\n📋 주문판에서 오늘 주문 전체 확인\n나갈 땐 남쪽 문');
+    '손님 머리 위 요리를 보고 재료 들고 다가가 액션\n📋 주문판에서 오늘 주문 확인\n나갈 땐 남쪽 문');
   Sound.blip(); trackEvent('enter_cafe');                // [GA4]
 }
 function exitCafe() {
@@ -5172,7 +5172,7 @@ function enterRiver() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('riverDock', '🛶', '나루터',
-    '나룻배 앞에서 액션 → 강 내려가기 (하루 3번)\n⬅️➡️ 좌우로 피하고, 액션으로 노 저어 스퍼트!\n⭐별조각을 모아 🧰창고에서 배를 강화해요');
+    '나룻배 앞에서 액션 → 강 내려가기 (하루 3번)\n⬅️➡️ 피하고 액션으로 스퍼트!\n⭐별조각으로 🧰창고에서 배 강화');
   Sound.blip();
   trackEvent('boat_enter', { runs_left: boatRunsLeft(), night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
@@ -5281,7 +5281,7 @@ function clearRiverObjects() {
 function startBoatRun() {
   const st = boatDaily();
   if (st.count >= BOAT_RUNS_PER_DAY) {
-    ui.showHintModal?.({ ico: '🛶', title: '오늘은 여기까지', body: `나룻배는 하루 ${BOAT_RUNS_PER_DAY}번까지 탈 수 있어요. 내일 새로운 물길(코스)이 열려요 — 또 만나요!` });
+    ui.showHintModal?.({ ico: '🛶', title: '오늘은 여기까지', body: `나룻배는 하루 ${BOAT_RUNS_PER_DAY}번까지 탈 수 있어요. 내일 새로운 물길(코스)이 열려요. 또 만나요!` });
     return;
   }
   st.count += 1;
@@ -5632,7 +5632,7 @@ function updateRiverInteract() {
   if (Math.hypot(lx, lz + RIVER_DOCK_HALF + 1.4) < 2.6) {
     nearBoat = true;
     const left = boatRunsLeft();
-    return left > 0 ? `🛶 나룻배 타기 (오늘 ${left}/${BOAT_RUNS_PER_DAY}회 남음)` : '🛶 오늘은 다 탔어요 — 내일 새 물길이 열려요';
+    return left > 0 ? `🛶 나룻배 타기 (오늘 ${left}/${BOAT_RUNS_PER_DAY}회 남음)` : '🛶 오늘은 다 탔어요. 내일 새 물길이 열려요';
   }
   if (Math.hypot(lx + RIVER_DOCK_HALF - 2, lz - 1.6) < 2.6) {
     nearBoatShop = true;
@@ -5802,10 +5802,10 @@ function enterMist() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible(); applyMistVisuals();
   if (st.purified) {
-    ui.toast?.('🌤️ 오늘의 숲은 맑아요 — 정령들이 고마워하고 있어요. 내일 다시 안개가 차요');
+    ui.toast?.('🌤️ 오늘의 숲은 맑아요. 정령들이 고마워해요. 내일 다시 안개가 차요');
   } else {
     firstHint('mistWood', '🌫️', '안개 낀 숲',
-      '🌳수호목 앞에서 정화 시작 → 그림자 정령이 다가와요\n🏮등불로 늦추고, 정령 곁에서 ♪가 가장 작을 때 탭!\n정령 세 무리를 모두 달래면 숲이 맑아져요');
+      '🌳수호목 앞에서 정화 시작\n🏮등불로 늦추고 ♪가 가장 작을 때 탭!\n세 무리를 모두 달래면 숲이 맑아져요');
   }
   Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
   trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
@@ -5824,7 +5824,7 @@ function exitMist() {
 // ── 정화 시작 / 웨이브 ──────────────────────────────────────
 function startPurify() {
   const st = mistDaily();
-  if (st.purified) { ui.toast?.('오늘은 이미 숲이 맑아요 — 내일 새 안개가 차면 다시 와요'); return; }
+  if (st.purified) { ui.toast?.('오늘은 이미 숲이 맑아요. 내일 새 안개가 차면 다시 와요'); return; }
   closeMistChoice(); setMistStep(-1);
   Object.assign(mist, { active: true, practice: false, wave: 0, treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false });
   clearMistSpirits();
@@ -6734,7 +6734,7 @@ function enterSea() {
   snapCamera(); setSpaceVisible();
   Sound.blip();
   firstHint('sea', '🌊', '바다터',
-    '물고기 보고 🎣 던지기 → 입질 오면 줄다리기\n🔴 버둥칠 땐 참고, 🟢 당기세요!! 땐 연타\n부두 끝(빨간 널판)까지 끌려가면 놓쳐요 · ⚔️참치는 하루 1번 대어');
+    '🎣던지고 입질 오면 줄다리기\n🔴버둥칠 땐 참고 · 🟢당기세요!! 땐 연타\n부두 끝까지 끌려가면 놓쳐요. ⚔️참치는 하루 1번');
   trackEvent('sea_enter', { night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
 function exitSea() {
@@ -6780,7 +6780,7 @@ const _seaQ1 = new THREE.Quaternion(), _seaQ2 = new THREE.Quaternion(), _seaEule
 const _seaV = new THREE.Vector3(), _seaUp = new THREE.Vector3(0, 1, 0);
 function seaAction() {
   if (seaMG.st === 'idle') {
-    if (!seaFishes.length) { ui.toast?.('🐟 지금은 물고기가 안 보여요 — 시간대가 바뀌면 다른 어종이 와요'); return; }
+    if (!seaFishes.length) { ui.toast?.('🐟 지금은 물고기가 안 보여요. 시간대가 바뀌면 다른 어종이 와요'); return; }
     // 조준 — 가장 가까운 배회 물고기의 어종이 걸린다("뭘 노리느냐"가 난이도)
     let best = null, bd = Infinity;
     for (const f of seaFishes) {
@@ -8299,11 +8299,14 @@ function makeIntroLeaf() {
   return g;
 }
 
-// 자막·컷 타이밍(초) — 총 ~19초, 언제든 스킵 가능
+// 자막·컷 타이밍(초) — 총 ~22초, 언제든 스킵 가능
+//   마지막 자막은 4장 '잎사귀의 주인'의 회수를 첫 20초에 질문으로 심는다 —
+//   "목적이 뭔지 모르겠다" 베타 피드백. 분위기만 주고 끝내면 플레이어는 목표 없이 마을에 떨궈진다.
 const INTRO_CAPTIONS = [
   { at: 0.6, until: 5.2, text: '매일이 시끄럽고, 매일이 똑같았다.' },
-  { at: 6.0, until: 10.2, text: '그날, 바람이 초록 잎사귀 하나를 데려왔다.' },
-  { at: 12.6, until: 16.0, text: '…여기라면, 조금 쉬어가도 되지 않을까.' },
+  { at: 6.0, until: 10.2, text: '그날, 바람이 잎사귀 하나를 데려왔다.' },
+  { at: 12.6, until: 15.2, text: '…여기라면, 조금 쉬어가도 되지 않을까.' },
+  { at: 15.9, until: 18.3, text: '그런데 이 잎사귀… 누가 보낸 걸까?' },
 ];
 
 function introStart(force = false) {
@@ -8423,19 +8426,21 @@ function updateIntro(dt, t) {
     playerAnchor.position.y = -0.3; playerAnchor.rotation.x = 0.05;  // 아직 앉아서 둘러보는 중
     ui.introFade?.(0);
   }
-  // ── 컷3b (11.9~16.2s): 숲의 색채 — 천천히 일어선다 ──
-  if (T >= 11.9 && T < 16.2) {
-    const vp = Math.min(1, (T - 11.9) / 4.3), ve = vp * vp * (3 - 2 * vp);
+  // ── 컷3b (11.9~18.6s): 숲의 색채 — 천천히 일어선다 ──
+  //   달리인은 16.2s에 끝나고(ve=1) 그 뒤는 홀드 — '누가 보낸 걸까?' 자막 동안 숨쉬기만 이어진다.
+  if (T >= 11.9 && T < 18.6) {
+    const vp = Math.min(1, (T - 11.9) / 6.7), ve = vp * vp * (3 - 2 * vp);   // 6.7 = 홀드 끝(18.6)까지 — 4.3이면 16.2에 멈춰 2.4초 정지 화면이 된다
     const sx = intro.savedPos.x, sz = intro.savedPos.z;
     introCam(sx, 1.1, sz,
       sx + 0.5 - ve * 0.5, 3.4 - ve * 0.5, sz + 6.6 - ve * 1.3);
     playerAnchor.position.y = Math.sin(t * 2) * 0.03 - 0.3 * Math.max(0, 1 - Math.max(0, (T - 13.2) / 1.4)); // 13.2s부터 일어남
     if (T > 14.6) playerAnchor.rotation.x = Math.max(0, playerAnchor.rotation.x - dt * 0.3);
   }
-  // ── 컷4 (15.6s~): 타이틀 인/아웃 → 종료 ──
-  if (T >= 15.6 && !F.title) { F.title = true; ui.introTitle?.(true); Sound.blip(); }
-  if (T >= 18.2 && !F.titleOut) { F.titleOut = true; ui.introTitle?.(false); }
-  if (T >= 18.9) introEnd(false);
+  // ── 컷4 (18.9s~): 타이틀 인/아웃 → 종료 ──
+  //   자막 페이드(.5s)가 끝난 뒤에 들어온다 — 마지막 자막 18.3 종료 + 0.6s 여유.
+  if (T >= 18.9 && !F.title) { F.title = true; ui.introTitle?.(true); Sound.blip(); }
+  if (T >= 21.1 && !F.titleOut) { F.titleOut = true; ui.introTitle?.(false); }
+  if (T >= 21.7) introEnd(false);
 }
 
 // 상점 좌판(절차적)
@@ -8898,7 +8903,7 @@ function withdrawWarehouse() {
   for (const k of Object.keys(st)) if (st[k] > 0) { got[k] = st[k]; st[k] = 0; }
   if (!Object.keys(got).length) { ui.toast?.('🧺 창고가 비어 있어요'); return; }
   giveReward(got, 'warehouse');
-  { const n = Object.values(got).reduce((a, b) => a + b, 0); ui.toast?.(`🧺 창고에서 ${n}개를 꺼냈어요 — 가방을 확인해요`, 2600); }   // 품목별 조합은 i18n 이 못 쪼갠다(가방에서 보인다)
+  { const n = Object.values(got).reduce((a, b) => a + b, 0); ui.toast?.(`🧺 창고에서 ${n}개를 꺼냈어요. 가방을 확인해요`, 2600); }   // 품목별 조합은 i18n 이 못 쪼갠다(가방에서 보인다)
   trackEvent('warehouse_take', { ...got });   // [GA4] 창고 인출 — 일꾼 수확분이 실제로 쓰이는지
   nearDoor = null; ui.setDoorPrompt?.(null); requestSave();
 }
@@ -8928,7 +8933,7 @@ function storeOutdoor() {
   stored[id] = (stored[id] || 0) + 1;
   const ri = gameState.outdoor.indexOf(pickedOutdoor.rec); if (ri >= 0) gameState.outdoor.splice(ri, 1);   // 마당 목록에서 빼고 보관함으로
   pickedOutdoor = null; placingOutdoor = null; removeDecorGhost();   // 제자리 복귀 없이 정리
-  Sound.blip(); ui.toast?.(`🧺 ${def.name}을(를) 보관했어요 — 작업대에서 다시 꺼낼 수 있어요`);
+  Sound.blip(); ui.toast?.(`🧺 ${def.name}을(를) 보관했어요. 작업대에서 다시 꺼낼 수 있어요`);
   trackEvent('store_outdoor', { item: id }); // [GA4]
   ui.onDecorPlaced?.();                      // 액션버튼 아이콘 복원
   requestSave();
@@ -9223,7 +9228,7 @@ function enterFarm() {
   atFarm = true; playerInYard = false;
   player.position.set(FARM.x, 0, FARM.z + farmHalf() - 1.5); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요 · 나갈 땐 남쪽 문');
+  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요. 나갈 땐 남쪽 문');
   Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
 }
 function exitFarm() {
@@ -9348,7 +9353,7 @@ function enterMine() {
   ui.setMine?.(true);   // ⛏️ 우상단 자원칩 → 🪨⚫💎 (마을 자원은 가방에서 그대로 볼 수 있다)
   player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 반짝이는 광맥 캐기 → 돌·석탄·💎보석\n작업대 재료·상점 판매에 써요 · 남쪽 문으로 나가요');
+  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 광맥 캐기 → 돌·석탄·💎보석\n작업대 재료·상점 판매에 써요. 나갈 땐 남쪽 문');
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
 }
@@ -9427,8 +9432,8 @@ function grantStarterBed() {
   else { gameState.house.stored = stored; stored.bed = (stored.bed || 0) + 1; }   // 방이 꽉 찼으면 🧺 창고로
   trackEvent('starter_bed', { to: spot ? 'floor' : 'store' });   // [GA4] sleep 이벤트의 분모
   requestSave();
-  setTimeout(() => ui.toast?.(spot ? '🛏️ 침대를 놓아뒀어요 — 밤에 누우면 아침까지 자요'
-                                   : '🛏️ 침대를 창고에 넣어뒀어요 — 🎨꾸미기에서 꺼내 놓아요', 3200), 700);
+  setTimeout(() => ui.toast?.(spot ? '🛏️ 침대를 놓아뒀어요. 밤에 누우면 아침까지 자요'
+                                   : '🛏️ 침대를 창고에 넣어뒀어요. 🎨꾸미기에서 꺼내 놓아요', 3200), 700);
 }
 
 function enterHouse() {
@@ -9545,7 +9550,7 @@ function updateDoorInteract() {
     if (!locked) firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
-    firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 강을 내려가요 — 하루 3번');
+    firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
   } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
     nd = 'sea';
     const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
@@ -9556,7 +9561,7 @@ function updateDoorInteract() {
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
   } else if (dist2D({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 }, player.position) < 2.4) {
     nd = 'museum'; prompt = '🏛️ 박물관에 들어가기';
-    firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시되는 곳 — 빈 자리가 다음 목표예요');
+    firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
   }
   nearDoor = nd;
   if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
@@ -9571,8 +9576,8 @@ function updateDoorInteract() {
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
   else if (nearShop) prompt = '🛒 상점';
-  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문 — 매주 리셋'); }
-  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌어요 — 비쌀 때 파세요'); }
+  else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문, 매주 리셋'); }
+  else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
@@ -10482,7 +10487,7 @@ function doSleep() {
                          // 촬영은 자기 전까지의 고정만 쓰므로 손해가 없고, 검수 때 ?time= 로 밤을 만들 수 있다.
     requestSave();
     ui.sleepFade?.(0);
-    ui.toast?.('☀️ 잘 잤어요 — 아침이에요', 2600);
+    ui.toast?.('☀️ 잘 잤어요. 아침이에요', 2600);
     setTimeout(() => { sleeping = false; }, 700);   // 암전이 걷힌 뒤에 풀어 연타 방지
   }, 750);
 }
@@ -10771,7 +10776,7 @@ async function resolveNightVisit() {
   setTimeout(() => {   // 출석 모달·날씨 토스트와 겹치지 않게 한 박자 늦게
     ui.toast?.(`${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`, 3800);
     firstHint('night', a.ico, '밤손님이 다녀갔어요',
-      '밤사이 숲 친구가 밭에 다녀갔어요\n🐾 파헤쳐진 흙을 조사하면 수집품!\n🎃허수아비·🪵울타리를 밭 근처에 두면 피해가 줄어요');
+      '밤사이 숲 친구가 밭에 다녀갔어요\n🐾 파헤쳐진 흙을 조사하면 수집품!\n🎃허수아비·🪵울타리를 두면 피해가 줄어요');
   }, 1200);
   // 📜 주민 쪽지(Gemini·자정 캐시) — 도착하면 카드로. 실패하면 조용히 생략
   if (nightNoteFetcher) {
@@ -10870,7 +10875,7 @@ function resolveWeatherEvent() {
     setTimeout(() => {
       ui.toast?.(`${s.ico} ${s.hit} 작물 ${exposed.length}개가 시들었어요… ⛏️ 괭이로 갈면 다시 심을 수 있어요`, 3800);
       firstHint('severe', s.ico, `${s.name}가 지나갔어요`,
-        '예보가 뜬 날엔 미리 수확하거나 🛡️덮개를 설치해요\n시든 밭은 ⛏️괭이로 갈면 다시 심을 수 있어요');
+        '예보가 뜬 날엔 미리 수확하거나 🛡️덮개를\n시든 밭은 ⛏️괭이로 갈면 다시 심어요');
     }, 900);
     trackEvent('weather_event', { kind, protected: false, plots: exposed.length });  // [GA4]
   }
@@ -11039,7 +11044,7 @@ function catchFish() {
   ui.catchBanner?.(`🐟 ${kind.name} +1`,
     kind.rarity === 'rare' ? '✨ 아주 귀한 물고기예요!'
     : kind.rarity === 'uncommon' ? '💫 조금 귀한 물고기예요'
-    : '가방에 담았어요 — 상점에서 팔 수 있어요');
+    : '가방에 담았어요. 상점에서 팔 수 있어요');
   if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
@@ -11408,7 +11413,7 @@ function cycleSeedSel() {
   const cur = gameState.farm.seedSel || 'basic';
   const next = nextSeedSel(cur, gameState.inventory, trellisAnywhere());
   if (next === cur) {
-    ui.toast?.(cur === 'basic' ? '🌰 고급 씨앗이 없어요 — 상점에서 🌾밀·🌽옥수수·🍇포도 씨앗을 팔아요' : '🌰 다른 씨앗이 없어요', 2600);
+    ui.toast?.(cur === 'basic' ? '🌰 고급 씨앗이 없어요. 상점에서 🌾밀·🌽옥수수·🍇포도 씨앗을 팔아요' : '🌰 다른 씨앗이 없어요', 2600);
     return;
   }
   gameState.farm.seedSel = next; syncSeedToolIcon(); Sound.blip();
@@ -11421,7 +11426,7 @@ function plantSeed(plot) {
   const key = adv ? seedKeyOf(adv.id) : 'seed';
   if (adv && (gameState.inventory[key] || 0) <= 0) {   // 고급 씨앗이 다 떨어졌으면 기본으로 되돌리고 안내
     gameState.farm.seedSel = 'basic'; syncSeedToolIcon();
-    ui.toast?.(`${adv.ico} ${adv.name} 씨앗이 다 떨어졌어요 — 🌰 기본 씨앗으로 돌아가요`, 2600); return;
+    ui.toast?.(`${adv.ico} ${adv.name} 씨앗이 다 떨어져서 🌰 기본 씨앗으로 돌아가요`, 2600); return;
   }
   if (adv && adv.trellis && !trellisAdjacent(plot.x, plot.z)) { ui.toast?.('🍇 포도는 지지대 바로 옆 밭에만 심을 수 있어요', 2600); return; }
   if (!adv && gameState.inventory.seed <= 0) { ui.toast?.('씨앗이 없어요 🌰'); return; }
@@ -11453,14 +11458,14 @@ function tryHoe(plot = plots.find(p => dist2D(p.group.position, player.position)
     doPlayerAction(gx, gz);                      // 밭갈기 제스처
     Sound.till();
     ui.act?.('till');                            // 튜토리얼
-    ui.toast?.('밭을 갈았어요 — 🌰 씨앗 도구로 심어요');
+    ui.toast?.('밭을 갈았어요. 🌰 씨앗 도구로 심어요');
     return;
   }
   if (plot.state === 'wilted') {                 // 시든 밭 → 다시 갈아엎기(빈 밭)
     clearCrop(plot);
     plot.state = 'empty'; plot.wilted = false; plot.growth = 0; plot.stage = -1; plot.needSince = 0;
     spawnDust(plot.x, plot.z, 10); Sound.till();
-    ui.toast?.('밭을 다시 갈았어요 — 🌰 씨앗을 심어요');
+    ui.toast?.('밭을 다시 갈았어요. 🌰 씨앗을 심어요');
   } else if (plot.state === 'empty') ui.toast?.('이미 갈아둔 밭이에요 — 🌰 씨앗을 심어요 · 없애려면 🪏삽');
   else ui.toast?.('이미 작물이 자라는 중이에요');
 }
@@ -11482,7 +11487,7 @@ function digTarget() { return plots.find(p => dist2D(p.group.position, player.po
 function tryDig() {
   if (pendingDig) return;                                  // 제스처 중 연타 무시
   const plot = digTarget();
-  if (!plot) { ui.toast?.('여긴 밭이 없어요 — 빈 밭 위에서 파요'); return; }
+  if (!plot) { ui.toast?.('여긴 밭이 없어요. 빈 밭 위에서 파요'); return; }
   if (plot.state !== 'empty') { ui.toast?.('작물이 있어요 — 수확하거나 괭이로 정리한 뒤 메울 수 있어요'); return; }
   const second = digIsOneShot(gameState) || (!!plot.digAt && clock.elapsedTime - plot.digAt <= DIG_WINDOW);   // 🪏 넓은 삽은 첫 타가 곧 2타. 아니면 누른 순간 기준으로 판정
   doPlayerAction(plot.x, plot.z, 'dig');
@@ -11694,7 +11699,7 @@ function tryWater(plot = plots.find(p => p.state === 'growing' && dist2D(p.group
     ui.toast?.(wilted ? '🥀 시든 작물이에요. 괭이로 다시 심어요' : '물 줄 작물이 없어요 💧');
     return;
   }
-  if (plot.weed) { ui.toast?.('🌿 잡초가 자라요 — 맨손(또는 아무 도구)으로 액션해서 뽑아요', 2400); return; }   // 🌾 잡초면 성장 정지(부드러운 실패)
+  if (plot.weed) { ui.toast?.('🌿 잡초가 자라요. 맨손(또는 아무 도구)으로 액션해서 뽑아요', 2400); return; }   // 🌾 잡초면 성장 정지(부드러운 실패)
   if (clock.elapsedTime < (plot.wetUntil || 0)) { ui.toast?.('아직 흙이 촉촉해요 🌱'); return; } // 마른 뒤에만 성장
   // 🏗️ 🐝벌통 반경(성장 +10%) · 💧우물 반경(흙이 40% 오래 촉촉) — 반경·배율은 js/farm-building.js 표가 유일한 출처
   const recs = farmBuildingRecs();
@@ -11703,7 +11708,7 @@ function tryWater(plot = plots.find(p => p.state === 'growing' && dist2D(p.group
   plot.wetUntil = clock.elapsedTime + WET_TIME * (wellNear ? WELL_WET_MUL : 1); plot.watered = true;
   if (plot.growth < MATURE && weedRoll(plot.cropType, Math.random())) {   // 🌿 고급 작물만 — 물 준 뒤 잡초가 돋는다(다 익은 뒤엔 안 돋음)
     plot.weed = true;
-    setTimeout(() => ui.toast?.(`🌿 ${plot.cropType.name}밭에 잡초가 돋았어요 — 뽑기 전엔 안 자라요`, 2600), 900);
+    setTimeout(() => ui.toast?.(`🌿 ${plot.cropType.name}밭에 잡초가 돋았어요. 뽑기 전엔 안 자라요`, 2600), 900);
   }
   doPlayerAction(plot.x, plot.z); // 물주기 제스처
   Sound.water();
@@ -11790,7 +11795,7 @@ function farmAutoAction() {
     Input.selectTool(TOOLS.findIndex(t => t.id === want));
     if (!gameState.hintsSeen.farmAuto) {   // 첫 자동 전환 때 한 번만 — 이후엔 조용히 바뀐다
       gameState.hintsSeen.farmAuto = true;
-      ui.toast?.('🔄 밭에 맞는 도구로 바꿨어요 — 농사 도구 아무거나 들고 액션만 누르면 돼요', 3200);
+      ui.toast?.('🔄 밭에 맞는 도구로 바꿨어요. 농사 도구 아무거나 들고 액션만 누르면 돼요', 3200);
     }
   }
   return FARM_ACTIONS[want](plot);
@@ -13395,7 +13400,7 @@ function updateNPCInteract() {
   if (npcChanged || farmFirst !== npcPromptFarm) {
     nearNPC = near; npcPromptFarm = farmFirst;
     ui.setInteractPrompt?.(!near ? null
-      : farmFirst ? `🌾 ${near.def.name} · 밭일이 먼저예요 — ✋맨손(숫자 1)으로 바꾸면 대화해요`
+      : farmFirst ? `🌾 ${near.def.name} · 밭일이 먼저예요. ✋맨손(숫자 1)으로 바꾸면 대화해요`
       : `💬 ${near.def.name} · Space 로 대화`);
     // 📜 근처 주민이 바뀌면 패널을 다시 그린다 — 그 사람 의뢰가 맨 위로 올라온다(pin).
     //    ⚠️ 멀어질 때(near === null)도 다시 그려야 핀이 풀린다. 안 그러면 마을 반대편에서도
