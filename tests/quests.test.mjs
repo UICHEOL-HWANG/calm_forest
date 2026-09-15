@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   QUEST_GATES, QUEST_LIMITS, REPEAT_POOL, REPEAT_OPEN,
-  questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, skipSatisfied, pickCurrent,
+  questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, skipSatisfied, pickCurrent, activeQuestList,
 } from '../js/quests.js';
 
 // 🦉 의뢰 공급 규칙 — "영원히 못 깨는 의뢰" 를 막는 게 이 모듈의 존재 이유다.
@@ -488,4 +488,59 @@ test('일일 의뢰 담당(올빼미)은 스킵 대상이 아니다', () => {
 test('stage 없는 증축 의뢰는 스킵이 삼키지 않는다(조용히 사라지면 더 위험)', () => {
   const broken = [{ type: 'expand', target: 1 }];
   assert.equal(skipSatisfied(broken, { idx: 0, given: false }, { houseStage: 6 }), 0);
+});
+
+// ── activeQuestList — 퀘스트 패널이 "진행 중 전부" 를 보여 주는 규칙 ──────────
+//   ⚠️ 이 함수가 생긴 이유는 실제 버그다(베타 r5):
+//      패널이 trackedNPC 한 명만 그려서, A 수락 → B 수락 → B 완료 를 하면
+//      trackedNPC=null 이 되어 **아직 살아 있는 A 가 패널에서 사라졌다**.
+//      아래 회귀 테스트가 그 경로를 그대로 못 박는다.
+const V = (id, progress, target = 10) => ({ id, name: id, title: id + ' 의뢰', desc: '', how: '', progress, target });
+
+test('진행 중 의뢰는 하나도 빠지지 않는다', () => {
+  const r = activeQuestList([V('a', 3), V('b', 5)]);
+  assert.deepEqual(r.items.map(i => i.id), ['b', 'a'], '진행률 높은 순');
+  assert.equal(r.more, 0);
+});
+
+test('완료된 의뢰가 맨 위로 온다(주민에게 가라는 신호)', () => {
+  const r = activeQuestList([V('a', 3), V('b', 10), V('c', 9)]);
+  assert.equal(r.items[0].id, 'b');
+  assert.equal(r.items[0].ready, true);
+});
+
+test('[회귀] A 수락 → B 수락 → B 완료 후에도 A 가 목록에 남는다', () => {
+  // B 를 완료해 목록에서 빠지고, 근접 고정(pin)도 사라진 순간
+  const r = activeQuestList([V('a', 3)], { pinId: null });
+  assert.equal(r.items.length, 1, '남은 의뢰가 패널에서 사라졌다 — 바로 그 버그다');
+  assert.equal(r.items[0].id, 'a');
+});
+
+test('근처 주민의 의뢰는 맨 위에 고정된다', () => {
+  const r = activeQuestList([V('a', 1), V('b', 10)], { pinId: 'a' });
+  assert.equal(r.items[0].id, 'a', '완료된 b 보다 근처의 a 가 위');
+  assert.equal(r.items[1].id, 'b');
+});
+
+test('없는 주민을 고정해도 목록이 깨지지 않는다', () => {
+  const r = activeQuestList([V('a', 1)], { pinId: 'zzz' });
+  assert.deepEqual(r.items.map(i => i.id), ['a']);
+});
+
+test('상위 N 건만 그리고 나머지는 개수로 알린다', () => {
+  const r = activeQuestList([V('a', 1), V('b', 2), V('c', 3), V('d', 4), V('e', 5)], { top: 3 });
+  assert.equal(r.items.length, 3);
+  assert.equal(r.more, 2);
+});
+
+test('빈 목록은 빈 채로 돌려준다(패널을 숨기는 신호)', () => {
+  const r = activeQuestList([]);
+  assert.equal(r.items.length, 0);
+  assert.equal(r.more, 0);
+});
+
+test('target 이 0 이어도 나누기로 터지지 않는다', () => {
+  const r = activeQuestList([{ id: 'x', progress: 0, target: 0 }]);
+  assert.equal(r.items.length, 1);
+  assert.equal(Number.isFinite(r.items[0].pct), true);
 });

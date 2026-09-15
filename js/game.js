@@ -38,7 +38,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
-import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
+import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
 import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
@@ -2094,7 +2094,7 @@ export async function enterGame() {
   upgradeDailyQuestsAI();              // 🦉 AI 의뢰는 백그라운드로 — 도착하면 조용히 교체(await 하지 않는다)
   refreshInventoryUI();
   ui.setTool?.(currentTool, TOOLS, toolPage);
-  ui.setQuest?.(null);                  // 퀘스트 패널은 주민 근처에서 표시
+  refreshQuestPanel();                  // 📜 복원 직후에도 수락해 둔 의뢰가 그대로 보이게(빈 패널로 시작하지 않는다)
   npcObjs.forEach(updateNPCGlyph);     // 저장 복원 후 말풍선 상태 반영
   ui.setPlaces?.(villagePlaces());     // 🗺️ 실내·서브공간에서 시작해도 지도가 열리게(미니맵 틱은 마을에서만 돈다)
   player.visible = true;
@@ -2154,6 +2154,8 @@ export async function enterGame() {
     window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
     window.__workSteps = (n = 1) => { const t = {}; workerSteps(n, t); return t; };   // 🧑‍🌾 오프라인 스텝 강제 실행(검수용 — 접속 중 60초 스텝과 같은 함수)
     window.__workers = () => workerObjs.map(o => ({ name: o.rec.name, job: o.rec.job, works: o.rec.works, phase: o.phase, t: +o.t.toFixed(2), task: o.task?.type || null, vis: o.group.visible, x: +o.group.position.x.toFixed(1), z: +o.group.position.z.toFixed(1) }));   // 🧑‍🌾 일꾼 상태 열람(검수용)
+    // 📜 의뢰 패널 검수용 — __gs().npcs 를 손으로 고친 뒤 이걸 부르면 패널·말풍선·지도가 같이 갱신된다
+    window.__questPanel = () => { refreshCollectQuests(); npcObjs.forEach(updateNPCGlyph); refreshQuestPanel(); return npcObjs.map(questView).filter(Boolean); };
     window.__solids = () => colliders.map(c => c.r != null ? ['c', +c.x.toFixed(1), +c.z.toFixed(1), c.r] : ['b', +c.x1.toFixed(1), +c.z1.toFixed(1), +c.x2.toFixed(1), +c.z2.toFixed(1)]);   // 🚧 충돌체 목록 — 재빌드 뒤 고아 벽이 남았는지 세는 용(밭 증축 검수)
     window.__place = (id, x, z, rot = 0) => placeOutdoor(x, z, false, id, rot);
     window.__select = (id) => { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); return id; };   // 🏗️ 검수용 배치 모드 진입(작업대 메뉴 대신)
@@ -9874,10 +9876,14 @@ function animate() {
         md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
         // 주민 위치 — 배회·비행하니 실시간이어야 한다. 색은 이름표 배지와 같은 고유색이라
         //   지도의 점만 보고도 누구인지 알 수 있다(예전 보라 점 6개를 대신한다).
+        //   q = 머리 위 말풍선과 같은 글자('!' 받을 수 있음 / '…' 진행 중 / '✓' 완료) —
+        //   베타 r5 — 의뢰 있는 주민이 어디 있는지 지도에서 찾고 싶다는 요청에 대한 답이다.
         md.npcs = npcObjs.map(o => ({
-          x: o.group.position.x, z: o.group.position.z, ico: o.def.emoji,
+          x: o.group.position.x, z: o.group.position.z, ico: o.def.emoji, name: o.def.name,
           c: '#' + o.def.color.toString(16).padStart(6, '0'),
           air: !!(o.fly && o.fly.st !== 'perch'),
+          q: o.lastGlyph || '',   // ⚠️ npcGlyph() 를 직접 부르지 않는다 — currentQuest 가 st.idx 를 고치고 GA4 를 쏘는 부작용 함수다.
+                                  //    말풍선(updateNPCGlyph)이 캐시해 둔 같은 값이라 머리 위 표시와 지도가 자동으로 일치한다.
         }));
       }
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
@@ -12648,7 +12654,6 @@ function updateParticles(dt) {
 // =============================================================
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
-let trackedNPC = null;                 // 퀘스트 패널에 표시할 NPC
 const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통)
 
@@ -13392,8 +13397,10 @@ function updateNPCInteract() {
     ui.setInteractPrompt?.(!near ? null
       : farmFirst ? `🌾 ${near.def.name} · 밭일이 먼저예요 — ✋맨손(숫자 1)으로 바꾸면 대화해요`
       : `💬 ${near.def.name} · Space 로 대화`);
-    // 퀘스트 패널은 주민이 실제로 바뀐 경우만 — 밭 경계를 드나들 때마다 다시 그릴 일이 아니다
-    if (npcChanged && near) { const st = npcState(near.def.id); if (st.given && currentQuest(near.def, st)) { trackedNPC = near; refreshQuestPanel(); } }
+    // 📜 근처 주민이 바뀌면 패널을 다시 그린다 — 그 사람 의뢰가 맨 위로 올라온다(pin).
+    //    ⚠️ 멀어질 때(near === null)도 다시 그려야 핀이 풀린다. 안 그러면 마을 반대편에서도
+    //       그 사람 의뢰가 맨 위에 붙들려 "펼친 자리" 를 계속 차지한다.
+    if (npcChanged) refreshQuestPanel();
   }
 }
 
@@ -13436,7 +13443,7 @@ export function npcAccept() {
     const q = pending;
     const qid = questId(o.def, st);
     if (q.grant) giveReward(q.grant, 'quest_grant', qid);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
-    trackedNPC = o; refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
+    refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
     trackEvent('quest_accept', { quest: q.title, npc: o.def.id, quest_id: qid }); // [GA4]
     churnTrigger('quest');   // [🎯 이탈 예측] 대화·수락·완료는 신뢰구간이 겹쳐 한 트리거로 묶었다
   }
@@ -13467,8 +13474,7 @@ export function npcClaim() {
     if (repeating) st.repeat.done = true; else st.idx++;
     st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     gameState.story.q = (gameState.story.q || 0) + 1; syncStory();   // 📖 2장(이웃들) 진행
-    if (!currentQuest(o.def, st)) { st.allDone = true; ui.setQuest?.(null); syncBadges(); } // 🏅 체인 완료 배지
-    if (trackedNPC === o) trackedNPC = null;
+    if (!currentQuest(o.def, st)) { st.allDone = true; syncBadges(); } // 🏅 체인 완료 배지(패널은 아래 refreshQuestPanel 이 다시 그린다)
     refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
   }
   return npcDialogState();
@@ -13529,9 +13535,21 @@ function questView(o) {
   if (!st.given) return null;
   const q = currentQuest(o.def, st);
   if (!q) return null;
-  return { name: o.def.name, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', progress: st.progress, target: q.target, ready: st.progress >= q.target };
+  return { id: o.def.id, name: o.def.name, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', progress: st.progress, target: q.target, ready: st.progress >= q.target };
 }
-function refreshQuestPanel() { ui.setQuest?.(trackedNPC ? questView(trackedNPC) : null); }
+// 📱 화면이 좁으면 HUD 3단 레이아웃이라, 짧으면(폰 가로·분할 화면) 패널 아래가 잘려
+//    줄 자리가 없다 — 담는 건수를 줄인다(나머지는 "+ N건 더" 로 알린다).
+function questPanelTop() {
+  if (window.innerHeight < 560) return 1;                                  // 폰 가로·분할 화면
+  return window.matchMedia?.('(max-width: 640px)').matches ? 2 : 3;
+}
+// 📜 패널은 "수락된 의뢰 전부" 를 받는다 — 한 명만 그리면 다른 의뢰를 완료했을 때
+//    살아 있는 의뢰가 화면에서 사라진다(규칙·회귀 테스트는 js/quests.js activeQuestList).
+//    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
+function refreshQuestPanel() {
+  const views = npcObjs.map(questView).filter(Boolean);
+  ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: nearNPC?.def.id || null }));
+}
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
 // 🧪 [베타 A군] 미니게임 첫 3회 관대 판정 — 시도 카운트를 올리고 현재 ease 배율을 돌려준다
@@ -13571,6 +13589,7 @@ function lerpAngle(a, b, t) {
   return a + d * t;
 }
 function onResize() {
+  refreshQuestPanel();   // 📜 가로/세로 전환으로 폭이 바뀌면 패널에 담기는 건수도 달라진다
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);

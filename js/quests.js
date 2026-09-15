@@ -225,3 +225,38 @@ export function pickCurrent(quests, st, ctx = {}, today = '', { skip = true } = 
   if (idx < quests.length) return { q: quests[idx], repeat: false, idx };
   return { q: repeatActive(st, today) ? st.repeat.q : null, repeat: true, idx };
 }
+
+// ── 퀘스트 패널 목록 ──────────────────────────────────────────
+//   ⚠️ 이 함수가 존재하는 이유는 "살아 있는 의뢰가 화면에서 사라지던" 버그다(베타 r5).
+//      패널이 주민 한 명(trackedNPC)만 그렸기 때문에, A 를 수락한 뒤 B 를 수락하면
+//      A 가 밀려나고, 그 B 를 완료하면 추적 대상이 비어 패널이 통째로 꺼졌다.
+//      A 는 멀쩡히 진행 중인데도 A 근처로 다시 걸어가야만 다시 보였다.
+//      그래서 패널의 입력을 "한 명" 이 아니라 "지금 수락된 의뢰 전부" 로 바꾼다.
+
+/** 패널에 한 번에 그리는 최대 건수(모바일은 호출부가 2 로 줄인다) */
+export const QUEST_PANEL_TOP = 3;
+
+/**
+ * 진행 중 의뢰를 패널이 그릴 순서로 정렬하고 상위 top 건만 남긴다.
+ *   views: [{ id, name, title, desc, how, progress, target }] — 수락된 의뢰 전부
+ *   pinId: 지금 근처에 있는 주민 id(있으면 맨 위 고정 — 눈앞의 사람이 먼저다)
+ *   반환: { items: [...view, ready, pct], more }   more = 잘라낸 나머지 건수
+ *
+ * 순서: 근처 주민 → ✅완료(주민에게 가야 함) → 진행률 높은 순 → 원래 순서(동률은 흔들리지 않게)
+ */
+export function activeQuestList(views, { top = QUEST_PANEL_TOP, pinId = null } = {}) {
+  const items = (views || []).filter(Boolean).map((v, i) => {
+    const target = Number(v.target) > 0 ? Number(v.target) : 0;   // target 0/누락은 깨진 데이터 — 0 으로 나누지 않는다
+    const progress = Math.max(0, Math.min(Number(v.progress) || 0, target || Number.MAX_SAFE_INTEGER));
+    return { ...v, progress, target, ready: target > 0 && progress >= target, pct: target > 0 ? progress / target : 0, _i: i };
+  });
+  items.sort((a, b) => {
+    const pin = (b.id === pinId) - (a.id === pinId);
+    if (pin) return pin;
+    if (a.ready !== b.ready) return a.ready ? -1 : 1;
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    return a._i - b._i;
+  });
+  const n = Math.max(1, top | 0);
+  return { items: items.slice(0, n).map(({ _i, ...rest }) => rest), more: Math.max(0, items.length - n) };
+}

@@ -550,18 +550,38 @@
   /* 퀘스트 패널(좌측 상단, 로그인 패널 아래) */
   /* 미니맵 — 좌상단(버튼 아래), 캐릭터 위치 표시 */
   #minimap { position: fixed; top: calc(94px + var(--top-inset)); left: 16px; width: 108px; height: 108px; border-radius: 14px; box-shadow: var(--shadow); background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.5); }
-  #quest-panel { top: calc(222px + var(--top-inset)); left: 16px; display: none; max-width: 230px; }
-  body.story-on #quest-panel { top: calc(272px + var(--top-inset)); }   /* 📖 스토리 칩이 떠 있으면 그 아래로 스택(겹침 방지) */
+  /* 📜 목록이 최대 3건이 된 뒤로는 높이 가드가 필요하다 — 폰 가로·분할 화면에선 아래가 잘려
+     둘째·셋째 의뢰가 화면 밖으로 나간다. 건수는 questPanelTop() 이 화면 높이를 보고 줄이고,
+     여기서는 그래도 넘칠 때를 대비한 하드 가드만 둔다(--qp-top 을 top 과 함께 쓴다). */
+  #quest-panel { --qp-base: calc(222px + var(--top-inset)); --qp-top: var(--qp-base);
+    top: var(--qp-top); left: 16px; display: none; max-width: 230px;
+    max-height: max(84px, calc(100dvh - var(--qp-top) - 84px)); overflow: hidden; }
+  body.story-on #quest-panel { --qp-top: calc(272px + var(--top-inset)); }   /* 📖 스토리 칩이 떠 있으면 그 아래로 스택(겹침 방지) */
   #quest-panel.show { display: block; }
   #quest-panel .q-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   #quest-panel .q-desc { font-size: 12px; opacity: .75; margin: 3px 0 2px; }
   /* 📜 수행 방법 — "무엇을" 밑에 "어디서·무슨 도구로"(베타: 목표만 보고 막힘) */
   #quest-panel .q-how { font-size: 11.5px; line-height: 1.45; color: #3f7a55; margin: 0 0 8px; }
   #quest-panel .q-how:empty { margin-bottom: 6px; }   /* 완료 후엔 문구만 비고 아래 여백(총 8px)은 유지 */
-  #quest-bar { height: 7px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
-  #quest-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
+  .q-bar { height: 7px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
+  .q-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
   #quest-panel .q-prog { font-size: 11px; opacity: .7; margin-top: 4px; }
-  #quest-panel.ready .q-title { color: #2fa564; }
+  #quest-panel .q-item.ready .q-title { color: #2fa564; }
+  /* 둘째 줄부터는 요약형 — 제목·진행바만. 맨 위(근처 주민/완료)만 수행 방법까지 펼친다 */
+  #quest-panel .q-item + .q-item { margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.08); }
+  #quest-panel .q-item.sub .q-title { font-size: 12.5px; }
+  #quest-panel .q-item.sub .q-bar { height: 5px; margin-top: 5px; }   /* 제목 바로 밑에 붙으면 밑줄처럼 읽힌다 */
+  #quest-panel .q-more { font-size: 11px; opacity: .6; margin-top: 6px; }
+  #quest-panel .q-more:empty { display: none; }
+  /* 세로가 아주 짧은 화면(폰 가로·분할 화면) — 패널에 남는 높이가 한 줄 분량뿐이다.
+     questPanelTop() 이 이미 1건으로 줄이지만, 펼친 항목의 "수행 방법" 까지 넣으면 그 한 건마저 잘린다.
+     목표·진행도가 먼저고 방법은 주민에게 가면 다시 들을 수 있으므로 방법 줄을 접는다. */
+  @media (max-height: 560px) {
+    #quest-panel { padding: 8px 11px; }
+    #quest-panel .q-how { display: none; }
+    #quest-panel .q-desc { margin: 3px 0 5px; }
+  }
+  /* (자리 재배치는 모바일 미디어쿼리보다 뒤에 와야 이긴다 — 스타일시트 끝 '짧은 화면' 블록 참고) */
 
   /* NPC 대화 프롬프트(하단, 하트바 위) */
   #npc-prompt { bottom: calc(118px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; }
@@ -664,10 +684,17 @@
   /* 🔧 작업대 — 목록이 길어져도(밭 시설 7종 합류) 창이 화면 밖으로 넘치지 않게 높이를 가둔다.
      바닥 기준으로 뜨는 창이라 "화면 높이 − 바닥여백 − 상단인셋" 이 최대치다.
      --menu-bottom 을 변수로 둬서 좁은 화면(미디어쿼리)에서 바닥값만 바꿔도 최대 높이가 따라온다. */
+  /* 🔧 탭을 바꿔도 창 크기가 그대로여야 한다(베타 r5: "도구→야외→선물→조각 누를 때마다 크기가 달라져 불편").
+     창은 바닥 고정이라 높이가 변하면 윗변과 탭 줄이 위아래로 튄다.
+     → max-height(상한)만으로는 항목이 적은 탭이 쪼그라들어 여전히 튄다. **height 를 못 박아** 네 탭이
+       같은 크기를 쓰게 하고, 그보다 긴 목록만 지금처럼 목록 안에서 스크롤한다.
+     화면이 짧으면 값이 자동으로 작아지므로(min) 창이 화면 밖으로 나가지 않는다. */
   #cook-menu { --menu-bottom: calc(90px + env(safe-area-inset-bottom));
+    /* max() 하한 — 값이 음수가 되면 height 선언이 무효가 되어 "탭마다 크기가 변하는" 원래 증상으로 조용히 되돌아간다 */
+    --menu-room: max(220px, calc(100dvh - var(--menu-bottom) - var(--top-inset) - 12px));
     display: none; bottom: var(--menu-bottom); left: 50%; transform: translateX(-50%); width: min(460px, 92vw);
     flex-direction: column; gap: 10px;
-    max-height: calc(100dvh - var(--menu-bottom) - var(--top-inset) - 12px); overflow: hidden; }
+    height: min(560px, var(--menu-room)); max-height: var(--menu-room); overflow: hidden; }
   #cook-menu.show { display: flex; }
   /* 세로가 짧은 화면(SE 계열·가로모드) — 머리말과 여백을 줄여 목록에 높이를 넘긴다 */
   @media (max-height: 640px) {
@@ -676,6 +703,7 @@
     #cook-menu .ck-tab { padding: 4px 11px; font-size: 12px; }
     #cook-menu .ck-item { width: 78px; padding: 7px 5px; }
     #cook-menu .ck-item .ck-ico { font-size: 21px; }
+    #cook-menu #cook-hint { min-height: 2.6em; }   /* 뒤쪽 #cook-hint 규칙과 명시도를 맞춰야 이긴다 */
   }
   .ck-tabs { display: flex; gap: 6px; justify-content: center; }
   .ck-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
@@ -684,9 +712,15 @@
   /* 목록만 스크롤 — 제목·탭·안내·닫기는 항상 보이게 고정(창 전체를 스크롤하면 닫기가 화면 밖으로 나간다).
      머리말·꼬리말은 flex-shrink 를 막아야 자리를 뺏기지 않는다(도감 모달과 같은 방식) */
   #cook-menu > *:not(#tool-items):not(#out-items):not(#gift-items):not(#carve-items) { flex: 0 0 auto; }
+  /* 목록은 고정된 창 높이의 남는 자리를 전부 먹고(flex:1), 넘치면 목록만 스크롤한다 */
   #tool-items, #out-items, #gift-items, #carve-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
     align-content: flex-start; padding: 2px 0; }
+  /* 안내문도 탭마다 줄 수가 달라 창을 흔든다 — 두 줄 자리를 늘 비워 둔다.
+     ⚠️ display:flex 를 주면 안 된다 — 안내문은 네 탭 모두 <b> 를 품은 한 줄이라
+        flex 가 <b> 와 앞뒤 글을 **별개 item** 으로 쪼개면서 사이 공백까지 버린다
+        ("영구 도구 강화" → "영구도구 강화"). 높이만 잡으면 목적은 이미 달성된다. */
+  #cook-hint { min-height: 2.9em; }
   /* 🍳 자유주방 메뉴판 — 레시피 카드(미니게임 종류·최고 점수 표시) */
   #kitchen-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); max-height: 66dvh; overflow-y: auto; flex-direction: column; gap: 10px; }
   #kitchen-menu.show { display: flex; }
@@ -965,6 +999,9 @@
   /* 하한을 주지 않으면 폰 가로·분할 화면(dvh 작음)에서 calc 가 음수가 되어 지도가 통째로 사라진다 */
   #wm-canvas { display: block; width: max(240px, min(100%, calc(100dvh - 260px))); aspect-ratio: 1 / 1; border-radius: 18px; margin: 10px auto 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
   #worldmap .dm-actions { justify-content: center; margin-top: 18px; padding-bottom: 4px; }
+  .wm-quests { font-size: 12.5px; line-height: 1.5; text-align: center; margin: 10px 2px 0; opacity: .85; }
+  .wm-quests:empty { display: none; }
+  .wm-quests b { color: #2f7a44; }
   @media (max-width: 560px) {
     #worldmap .wm-card { padding: 14px 12px 12px; }
     #worldmap .wm-card h2 { margin: 2px 0 6px; font-size: 17px; }
@@ -1129,8 +1166,8 @@
     .dex-item.badge { width: 88px; }
     /* 미니맵: 모바일에선 조금 작게, 버튼 아래로 (충분한 간격) */
     #minimap { top: calc(72px + var(--top-inset)); left: 12px; width: 82px; height: 82px; }
-    #quest-panel { top: calc(168px + var(--top-inset)); max-width: 52vw; }
-    body.story-on #quest-panel { top: calc(218px + var(--top-inset)); }   /* 모바일도 스토리 칩 아래로 */
+    #quest-panel { --qp-base: calc(168px + var(--top-inset)); --qp-top: var(--qp-base); max-width: 52vw; }
+    body.story-on #quest-panel { --qp-top: calc(218px + var(--top-inset)); }   /* 모바일도 스토리 칩 아래로 */
     /* 🪧 시설 안내 배너: 좁은 화면에선 상단 HUD 와 같은 높이라 겹치고, 화면 중앙에 두면 캐릭터·대화 버튼을
        가린다(실기기 피드백) → 우측 컬럼(문의하기·도감) 바로 아래에 우측 정렬로 붙인다. 좌측 컬럼과는 폭으로 분리. */
     #hint-banner { top: calc(162px + var(--top-inset)); left: auto; right: 10px;
@@ -1206,6 +1243,14 @@
     #mist-choice button { font-size: 13px; padding: 10px 12px; }
     /* 모바일: 코치는 컨텍스트 슬롯(162px, 카드 ≈110px) — 토스트는 그 아래 */
     body.coaching #toast { top: calc(290px + var(--top-inset)); }
+  }
+  /* ── 세로가 아주 짧은 화면(폰 가로·분할 화면) — 좌측 상단 한 자리를 두고 다투는 것들 ──
+     📖 스토리 칩은 읽을거리고 📜 퀘스트 패널은 지금 할 일이다. 자리가 하나뿐이면 할 일이 이긴다
+     (모바일 슬롯 우선순위 규칙과 같은 취지). 칩을 내리면 패널이 기본 자리로 돌아와
+     한 건이 잘리지 않고 들어간다. ⚠️ 이 블록은 모바일 폭 미디어쿼리보다 **뒤**에 있어야 이긴다. */
+  @media (max-height: 560px) {
+    #story-chip { display: none !important; }
+    body.story-on #quest-panel { --qp-top: var(--qp-base); }
   }
 </style>
 </head>
@@ -1283,12 +1328,10 @@
   </div>
 
   <!-- 퀘스트 패널 -->
+  <!-- 📜 진행 중 의뢰 목록 — 한 명만 그리면 다른 의뢰를 완료했을 때 살아 있는 의뢰가 사라진다(베타 r5) -->
   <div id="quest-panel" class="panel">
-    <div class="q-title"><span>📜</span><span id="quest-title"></span></div>
-    <div class="q-desc" id="quest-desc"></div>
-    <div class="q-how" id="quest-how"></div>
-    <div id="quest-bar"><div id="quest-fill"></div></div>
-    <div class="q-prog" id="quest-prog"></div>
+    <div id="quest-list"></div>
+    <div class="q-more" id="quest-more"></div>
   </div>
 
   <!-- NPC 대화 프롬프트(데스크톱: Space 안내) -->
@@ -1521,6 +1564,8 @@
       <h2>🗺️ 마을 지도</h2>
       <div class="market-hint">가고 싶은 곳을 찾아보세요 — <b>흐린 곳은 아직 잠겨 있어요</b></div>
       <canvas id="wm-canvas"></canvas>
+      <!-- 📜 의뢰 요약 — 배지만으로는 "누가 어디" 를 한 번에 못 읽는다(작은 아이콘 16개) -->
+      <div id="wm-quests" class="wm-quests"></div>
       <div class="dm-actions"><button id="wm-close">닫기</button></div>
     </div>
   </div>
@@ -2002,9 +2047,16 @@
       (lastNpcs || []).forEach(n => {
         const [a, b] = px(n.x, n.z);
         c.beginPath(); c.arc(a, b, 9, 0, 7); c.fillStyle = 'rgba(255,255,255,0.88)'; c.fill();
-        c.lineWidth = 2; c.strokeStyle = n.c; c.stroke();
+        c.lineWidth = n.q === '!' || n.q === '✓' ? 3 : 2;
+        c.strokeStyle = n.q === '!' ? '#f0a72c' : n.q === '✓' ? '#2fa564' : n.c;
+        c.stroke();
         c.font = '11px sans-serif';
         c.fillText(n.ico, a, b + 0.5);
+        // 📜 의뢰 배지 — 오른쪽 위 어깨에. 받을 수 있으면 ❗, 완료해서 돌아가면 되면 ✅
+        if (n.q === '!' || n.q === '✓') {
+          c.font = '10px sans-serif';
+          c.fillText(n.q === '!' ? '❗' : '✅', a + 8, b - 8);
+        }
         placed.push({ x: a, y: b, w: 20, h: 20 });
       });
 
@@ -2052,6 +2104,33 @@
         c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.95)'; c.strokeText(here, box.x, box.y);
         c.fillStyle = '#2f7a44'; c.fillText(here, box.x, box.y);
       }
+      drawMapQuests();
+    }
+
+    // 📜 지도 아래 의뢰 요약 — 배지는 "어디" 를, 이 줄은 "누구" 를 맡는다.
+    //   ⚠️ 이름은 주민이 지은 게 아니라 def.name 이지만 i18n 은 텍스트 노드 단위라
+    //      한 줄을 통째로 만들면 영어 모드에서 한국어로 남는다 → 조각을 element 로 나눈다.
+    function drawMapQuests() {
+      const box = $('wm-quests'); if (!box) return;
+      box.textContent = '';
+      const take = (lastNpcs || []).filter(n => n.q === '!').map(n => n.name).filter(Boolean);
+      const done = (lastNpcs || []).filter(n => n.q === '✓').map(n => n.name).filter(Boolean);
+      if (!take.length && !done.length) return;
+      const line = (label, names) => {
+        if (!names.length) return;
+        const row = document.createElement('div');
+        const head = document.createElement('b'); head.textContent = label;   // 이모지까지 한 덩어리 = i18n 키
+        row.appendChild(head);
+        //  이름은 각각 제 텍스트 노드로 — 한 줄로 이으면 i18n(텍스트 노드 단위)이 통째로 못 읽어 한국어로 남는다
+        names.forEach((nm, i) => {
+          const sep = document.createElement('span'); sep.textContent = i ? ' · ' : ' ';
+          const sp = document.createElement('span'); sp.textContent = nm;
+          row.append(sep, sp);
+        });
+        box.appendChild(row);
+      };
+      line('❗ 새 의뢰', take);
+      line('✅ 완료! 돌아가기', done);
     }
 
     function openWorldMap() {
@@ -2158,17 +2237,51 @@
         el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');   // 연속 획득에도 팝 인 재생
         clearTimeout(catchTimer); catchTimer = setTimeout(() => el.classList.remove('show'), ms);
       },
-      // 퀘스트 패널 갱신(null이면 숨김)
+      // 퀘스트 패널 갱신 — 진행 중 의뢰 **전부**를 받는다({items, more}).
+      //   ⚠️ 예전엔 의뢰 하나만 받았고, 그래서 다른 의뢰를 완료하면 아직 살아 있는 의뢰가
+      //      화면에서 사라졌다(베타 r5 버그). 순서·절단 규칙은 js/quests.js activeQuestList.
+      //   null·단일 객체로 부르던 옛 호출부도 그대로 받아 준다.
       setQuest(v) {
         const p = $('quest-panel');
-        if (!v) { p.classList.remove('show', 'ready'); return; }
+        const list = (!v ? [] : Array.isArray(v.items) ? v.items : Array.isArray(v) ? v : [v]).filter(q => q && q.title);
+        const more = (v && !Array.isArray(v) && v.more) || 0;
+        if (!list.length) { p.classList.remove('show'); $('quest-list').textContent = ''; $('quest-more').textContent = ''; return; }
         p.classList.add('show');
-        p.classList.toggle('ready', !!v.ready);
-        $('quest-title').textContent = v.name ? `${v.title}` : v.title;
-        $('quest-desc').textContent = (v.name ? `${v.name} · ` : '') + v.desc;
-        $('quest-how').textContent = v.ready ? '' : (v.how || '');   // 📜 수행 방법(완료 후엔 감춤)
-        $('quest-fill').style.width = Math.round(100 * v.progress / v.target) + '%';
-        $('quest-prog').textContent = v.ready ? '✅ 완료! 주민에게 가세요' : `${v.progress} / ${v.target}`;
+        const box = $('quest-list'); box.textContent = '';
+        //  세로가 아주 짧은 화면(폰 가로·분할 화면)에선 펼친 카드 한 장도 안 들어간다 → 전부 요약형으로.
+        //  요약형은 주민 이름을 진행도 줄이 물고 있어서, 줄여도 "누구 의뢰인지" 는 남는다.
+        const compact = window.innerHeight < 560;     // questPanelTop() 의 기준과 같은 값
+        list.forEach((q, i) => {
+          const lead = i === 0 && !compact;           // 맨 위 한 건만 펼친다(근처 주민 → 완료 → 진행률 순)
+          const el = document.createElement('div');
+          el.className = 'q-item' + (lead ? '' : ' sub') + (q.ready ? ' ready' : '');
+          const title = document.createElement('div'); title.className = 'q-title';
+          const ico = document.createElement('span'); ico.textContent = q.ready ? '✅' : '📜';
+          const tx = document.createElement('span'); tx.textContent = q.title || '';
+          title.append(ico, tx); el.appendChild(title);
+          if (lead) {
+            const desc = document.createElement('div'); desc.className = 'q-desc';
+            desc.textContent = (q.name ? `${q.name} · ` : '') + (q.desc || '');
+            el.appendChild(desc);
+            const how = document.createElement('div'); how.className = 'q-how';
+            how.textContent = q.ready ? '' : (q.how || '');   // 📜 수행 방법(완료 후엔 감춤)
+            el.appendChild(how);
+          }
+          const bar = document.createElement('div'); bar.className = 'q-bar';
+          const fill = document.createElement('div'); fill.className = 'q-fill';
+          //  width 는 **붙인 뒤 다음 프레임에** 준다 — 만들자마자 박으면 이전 값이 없어
+          //  .q-fill 의 transition 이 걸리지 않고 진행바가 툭 튀어 오른다(차오르는 느낌이 사라진다)
+          const pct = Math.round(100 * (q.pct != null ? q.pct : (q.target ? q.progress / q.target : 0))) + '%';
+          bar.appendChild(fill); el.appendChild(bar);
+          requestAnimationFrame(() => { fill.style.width = pct; });
+          const prog = document.createElement('div'); prog.className = 'q-prog';
+          prog.textContent = q.ready
+            ? (lead ? '✅ 완료! 주민에게 가세요' : `✅ ${q.name}에게 가세요`)
+            : (lead ? `${q.progress} / ${q.target}` : `${q.name} · ${q.progress} / ${q.target}`);
+          el.appendChild(prog);
+          box.appendChild(el);
+        });
+        $('quest-more').textContent = more ? `+ ${more}건 더` : '';
       },
       // 낚시 프롬프트(던지는 중 / 물었어요!)
       setFishPrompt(text) {
@@ -2704,12 +2817,19 @@
           ctx.fillText(p.ico, a, b);
         });
         ctx.globalAlpha = 1;
-        // 주민 — 이름표 배지와 같은 고유색 점. 하늘에 있는 🦉 는 흰 테로 구분한다
+        // 주민 — 이름표 배지와 같은 고유색 점. 하늘에 있는 🦉 는 흰 테로 구분한다.
+        //   📜 의뢰가 걸린 주민은 굵은 테로 티를 낸다(베타 r5 — 의뢰 있는 주민을 지도에서 찾고 싶다는 요청).
+        //   미니맵은 82~108px 이라 이모지 배지를 얹으면 뭉개진다 → 색·굵기만 쓴다.
+        //   노랑 = 받을 수 있음('!'), 초록 = 완료('✓'). 진행 중('…')은 평소 테두리 그대로.
         lastNpcs = d.npcs || lastNpcs;
         (lastNpcs || []).forEach(n => {
           const [a, b] = px(n.x, n.z);
+          const qc = n.q === '!' ? '#f0a72c' : n.q === '✓' ? '#2fa564' : null;
+          if (qc) { ctx.beginPath(); ctx.arc(a, b, 4.6, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3.4; ctx.stroke(); }
           ctx.beginPath(); ctx.arc(a, b, 2.8, 0, 7); ctx.fillStyle = n.c; ctx.fill();
-          ctx.lineWidth = 1.2; ctx.strokeStyle = n.air ? 'rgba(255,255,255,0.95)' : 'rgba(60,80,65,0.55)'; ctx.stroke();
+          ctx.lineWidth = qc ? 2.2 : 1.2;
+          ctx.strokeStyle = qc || (n.air ? 'rgba(255,255,255,0.95)' : 'rgba(60,80,65,0.55)');
+          ctx.stroke();
         });
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
@@ -3301,9 +3421,12 @@
     window.addEventListener('resize', layoutBuffs);
 
     // 퀘스트 패널을 스토리 칩 바로 아래로(칩이 없으면 CSS 기본 위치) — 칩 높이 실측
+    //   ⚠️ .show 클래스만 보면 안 된다 — 칩은 CSS 로도 내려간다(짧은 화면·코치·배너·미니게임 중).
+    //      그때 getBoundingClientRect().bottom 은 0 이라 패널이 화면 맨 위(top:8px)로 튄다.
+    //      실제로 그려지고 있는지(offsetParent)를 봐야 한다.
     function layoutQuestPanel() {
       const chip = $('story-chip'), qp = $('quest-panel');
-      if (!chip.classList.contains('show')) { qp.style.top = ''; return; }
+      if (!chip.classList.contains('show') || !chip.offsetParent) { qp.style.top = ''; return; }
       qp.style.top = Math.round(chip.getBoundingClientRect().bottom + 8) + 'px';
     }
     window.addEventListener('resize', layoutQuestPanel);
