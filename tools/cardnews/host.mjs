@@ -58,6 +58,28 @@ export async function hostDeck(slug, { ttl = TTL } = {}) {
   return urls;
 }
 
+/** 릴스 mp4 한 편을 KV 에 올리고 공개 URL 을 돌려준다.
+ *  ⚠️ KV 값 상한이 25MiB 다. 넘으면 wrangler 가 애매한 오류를 뱉으므로 여기서 막는다.
+ *     (30초 720p 가 7~8MB 라 여유가 있지만, 길이를 늘리면 금방 닿는다) */
+export async function hostReel(slug, file, { ttl = TTL } = {}) {
+  const abs = resolve(HERE, file);
+  const { size } = await stat(abs);
+  if (size > 25 * 1024 * 1024) {
+    throw new Error(`${basename(abs)} 가 ${(size / 1048576).toFixed(1)}MB — KV 값 상한 25MiB 초과`);
+  }
+  const key = `${slug}/${basename(abs)}`;
+  await run('npx', [
+    'wrangler', 'kv', 'key', 'put', key,
+    '--binding', 'CARDNEWS',
+    '--path', abs,
+    '--ttl', String(ttl),
+    '--remote',
+  ], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
+  const url = `${BASE_URL}/cardnews/${key}`;
+  console.log(`  ↑ ${key}  ${(size / 1048576).toFixed(1)}MB  →  ${url}`);
+  return url;
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const slug = process.argv[2];
   if (!slug) { console.error('사용: node host.mjs <묶음이름>   예) node host.mjs deck-01'); process.exit(1); }
