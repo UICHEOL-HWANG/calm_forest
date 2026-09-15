@@ -146,3 +146,23 @@ test('미니게임 이름·안내 문구가 영어 사전에 있다', () => {
   const missing = texts.filter(t => !EN_SRC.includes(`'${t}':`));
   assert.deepEqual(missing, [], `영어 사전에 빠진 문구: ${missing.join(', ')}`);
 });
+
+// ── ☕ 손님 생성 API(서버) ↔ 게임 명단 ────────────────────
+//   서버가 프롬프트에 박는 손님·메뉴 목록은 게임과 별도 파일이라 한쪽만 고쳐도 조용히 어긋난다.
+//   실제로 요리 코스 개편에서 손님을 별도 캐스트로 가른 뒤 서버가 옛 주민 목록(farmer…)을
+//   그대로 들고 있었고, 생성된 손님이 클라이언트 화이트리스트에 전량 걸러져
+//   **하루도 빠짐없이 기본 손님으로 폴백**했다. 예외가 안 나 콘솔에도 안 잡히는 실패다.
+const API_SRC = readFileSync(new URL('../functions/api/cafe-guests.js', import.meta.url), 'utf8');
+function apiIds(name) {
+  const i = API_SRC.indexOf(`const ${name} = [`);
+  assert.ok(i >= 0, `${name} 을 functions/api/cafe-guests.js 에서 못 찾음`);
+  return [...API_SRC.slice(i, API_SRC.indexOf('\n];', i)).matchAll(/id: '([a-z_]+)'/g)].map(m => m[1]);
+}
+
+test('서버가 아는 손님 id 가 게임의 손님 캐스트와 같다 — 어긋나면 AI 손님이 전량 폴백된다', () => {
+  assert.deepEqual(apiIds('GUESTS').sort(), GUESTS.map(g => g.id).sort());
+});
+
+test('서버가 아는 메뉴 id 가 게임의 레시피와 같다 — 빠진 요리는 손님이 영영 주문하지 못한다', () => {
+  assert.deepEqual(apiIds('MENU').sort(), RECIPES.map(r => r.id).sort());
+});

@@ -59,7 +59,16 @@ export function initCafeGuests() {
     //   엣지 캐시가 이미 "Gemini 호출은 하루 한 번"을 보장하므로 브라우저 캐시는 불필요.
     const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (!res.ok) throw new Error(`cafe-guests ${res.status}`);
-    const guests = normalize(await res.json(), ctx);
+    const raw = await res.json();
+    const guests = normalize(raw, ctx);
+    // 서버는 멀쩡히 응답했는데 검증에서 하나도 안 남았다 = 서버 명단이 게임과 어긋난 것.
+    //   이 경우 예외가 안 나고 조용히 기본 손님으로 폴백되므로 아무 데도 흔적이 안 남는다.
+    //   실제로 손님을 별도 캐스트로 가른 뒤 서버가 옛 주민 목록을 들고 있어, 그 사실을
+    //   아무도 모른 채 매일 폴백만 나갔다(functions/api/cafe-guests.js). 한 줄이라도 남긴다.
+    if (!guests.length && Array.isArray(raw) && raw.length) {
+      console.warn(`[cafe] 서버가 준 손님 ${raw.length}명이 검증에서 전부 걸러졌어요 — `
+        + `서버 명단이 게임과 어긋났는지 보세요. 받은 id: ${raw.map(g => g?.id).join(', ')}`);
+    }
     if (guests.length) {
       console.log(`[cafe] 오늘의 손님 ${guests.length}명을 새로 받아왔어요`);
       // 📊 그날의 생성 콘텐츠 아카이브 — (날짜, 날씨, 인원)당 1행이라 먼저 온 사람만 실제로 기록되고

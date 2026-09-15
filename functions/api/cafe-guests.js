@@ -13,21 +13,33 @@
 //  ▶ 실패하면 빈 배열을 주고, 게임은 로컬 기본 손님으로 조용히 진행합니다.
 // =============================================================
 
-// 게임의 NPCS / RECIPES 와 id 가 일치해야 합니다(js/game.js).
+// 게임의 CAFE_GUESTS / RECIPES 와 id 가 일치해야 합니다(js/game.js).
 // 이름·색·모자 같은 외형은 게임이 id 로 채우므로 여기선 id 와 표시용 이름만 둡니다.
-const RESIDENTS = [
-  { id: 'farmer',   name: '농부 삼촌',       name_en: 'Farmer' },
-  { id: 'builder',  name: '목수 아저씨',     name_en: 'Carpenter' },
-  { id: 'merchant', name: '방랑 상인',       name_en: 'Wandering Merchant' },
-  { id: 'angler',   name: '낚시꾼 할아버지', name_en: 'Old Fisherman' },
-  { id: 'chef',     name: '요리사 판다',     name_en: 'Chef Panda' },
+//   ⚠️ 이 목록이 마을 주민(farmer·builder…)이던 시절이 있었다. 요리 코스 개편에서 손님을
+//      별도 캐스트로 가른 뒤에도 서버가 옛 목록을 들고 있어, 생성된 손님이 클라이언트
+//      화이트리스트(js/cafe-guests.js normalize)에 전부 걸러져 **하루도 빠짐없이 기본
+//      손님으로 조용히 폴백**했다. 예외가 안 나므로 콘솔에도 안 잡힌다.
+//      게임 쪽 캐스트·레시피를 건드리면 이 두 표와 CAST_REV 를 같이 고칠 것.
+const GUESTS = [
+  { id: 'guest_deer',     name: '숲길 사슴',       name_en: 'Trailside Deer' },
+  { id: 'guest_otter',    name: '강가 수달',       name_en: 'Riverside Otter' },
+  { id: 'guest_hedgehog', name: '가시 고슴도치',   name_en: 'Prickly Hedgehog' },
+  { id: 'guest_squirrel', name: '부지런한 다람쥐', name_en: 'Busy Squirrel' },
+  { id: 'guest_raccoon',  name: '야행성 너구리',   name_en: 'Night-Owl Raccoon' },
+  { id: 'guest_frog',     name: '빗소리 개구리',   name_en: 'Rainsong Frog' },
+  { id: 'guest_turtle',   name: '느긋한 거북',     name_en: 'Easygoing Tortoise' },
+  { id: 'guest_beaver',   name: '댐 짓는 비버',    name_en: 'Dam-Building Beaver' },
 ];
 const MENU = [
   { id: 'veg_stew',      name: '든든한 채소죽',  name_en: 'Hearty Veggie Porridge', hint: '작물로 끓인 따뜻한 죽',        hint_en: 'warm porridge made from crops' },
-  { id: 'grilled_fish',  name: '생선 구이',      name_en: 'Grilled Fish',           hint: '호수에서 잡은 물고기 구이',    hint_en: 'fish grilled fresh from the lake' },
-  { id: 'lunchbox',      name: '모둠 도시락',    name_en: 'Picnic Lunchbox',        hint: '작물과 물고기를 담은 도시락',  hint_en: 'lunchbox of crops and fish' },
-  { id: 'omelette',      name: '푸짐한 오믈렛',  name_en: 'Fluffy Omelette',        hint: '닭장 달걀로 만든 오믈렛',      hint_en: 'omelette from coop-fresh eggs' },
   { id: 'mushroom_soup', name: '숲의 버섯 스프', name_en: 'Forest Mushroom Soup',   hint: '채집 숲 버섯으로 끓인 스프',   hint_en: 'soup of foraged forest mushrooms' },
+  { id: 'rice_ball',     name: '소금 주먹밥',    name_en: 'Salted Rice Ball',       hint: '작물을 뭉쳐 소금 간을 한 밥',  hint_en: 'rice pressed by hand and lightly salted' },
+  { id: 'baked_yam',     name: '군고구마',       name_en: 'Roasted Sweet Potato',   hint: '불에 천천히 구운 고구마',      hint_en: 'sweet potato roasted slowly over coals' },
+  { id: 'herb_salad',    name: '들나물 무침',    name_en: 'Wild Herb Salad',        hint: '채집한 들나물을 무친 반찬',    hint_en: 'foraged wild herbs tossed fresh' },
+  { id: 'grilled_fish',  name: '생선 구이',      name_en: 'Grilled Fish',           hint: '호수에서 잡은 물고기 구이',    hint_en: 'fish grilled fresh from the lake' },
+  { id: 'omelette',      name: '푸짐한 오믈렛',  name_en: 'Fluffy Omelette',        hint: '닭장 달걀로 만든 오믈렛',      hint_en: 'omelette from coop-fresh eggs' },
+  { id: 'lunchbox',      name: '모둠 도시락',    name_en: 'Picnic Lunchbox',        hint: '작물과 물고기를 담은 도시락',  hint_en: 'lunchbox of crops and fish' },
+  { id: 'forest_feast',  name: '숲의 한상차림',  name_en: 'Forest Feast',           hint: '숲 재료를 모아 차린 한상',     hint_en: 'a full spread gathered from the forest' },
 ];
 // 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
 //   사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로, 3칸으로만 받는다.
@@ -61,13 +73,16 @@ function trim(s, max) {
   return (sp > max * 0.6 ? cut.slice(0, sp) : cut) + '…';
 }
 const CACHE_TTL = 60 * 60 * 12;   // 12시간(날짜가 바뀌면 캐시 키 자체가 달라짐)
+// 손님 캐스트·메뉴가 바뀌면 이 숫자를 올린다 — 안 올리면 옛 명단으로 만든 응답이
+// 엣지 캐시에 최대 12시간 남아, 배포 직후에도 클라이언트가 계속 걸러 낸다.
+const CAST_REV = 2;
 
 const RESPONSE_SCHEMA = {
   type: 'ARRAY',
   items: {
     type: 'OBJECT',
     properties: {
-      id: { type: 'STRING', description: '주민 id' },
+      id: { type: 'STRING', description: '손님 id' },
       recipeId: { type: 'STRING', description: '주문한 메뉴 id' },
       line: { type: 'STRING', description: '주문 대사' },
       thanks: { type: 'STRING', description: '서빙 받은 뒤 한마디' },
@@ -78,11 +93,11 @@ const RESPONSE_SCHEMA = {
 
 const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 마을 카페 손님을 쓰는 작가야.
 규칙:
-- 한국어. 주민의 말투를 살리되 따뜻하고 담백하게. 과장·이모지·따옴표 금지.
+- 한국어. 손님의 성격을 살리되 따뜻하고 담백하게. 과장·이모지·따옴표 금지.
 - line 은 ${LINE_ASK}자 이내 한 문장. "오늘 무슨 일이 있었는지" 를 한 조각 곁들여 그 메뉴가 당기는 이유를 만든다.
 - thanks 는 ${THANKS_ASK}자 이내 한마디.
 - id 와 recipeId 는 반드시 주어진 목록의 값만 쓴다.
-- 같은 주민이 두 번 오지 않는다. 메뉴는 되도록 겹치지 않게 고른다.
+- 같은 손님이 두 번 오지 않는다. 메뉴는 되도록 겹치지 않게 고른다.
 ${PHASE_RULE_KO}`;
 
 // 영어 손님 — 한글 대비 라틴 글자폭이 좁아 글자수 상한을 넉넉히 잡는다(주문판 폭 기준)
@@ -92,11 +107,11 @@ const LINE_ASK_EN = 78;
 const THANKS_ASK_EN = 46;
 const SYSTEM_EN = `You write the village café guests for "calm forest", a cozy healing game.
 Rules:
-- English. Warm and understated, in each villager's voice. No exaggeration, no emoji, no quotation marks.
+- English. Warm and understated, in each guest's voice. No exaggeration, no emoji, no quotation marks.
 - "line" is one sentence, at most ${LINE_ASK_EN} characters, weaving in a small moment from their day that makes them crave that dish.
 - "thanks" is a short remark, at most ${THANKS_ASK_EN} characters.
 - Use only ids from the given lists for id and recipeId.
-- No villager appears twice. Avoid repeating menus when possible.
+- No guest appears twice. Avoid repeating menus when possible.
 ${PHASE_RULE_EN}`;
 
 // 🔒 날짜 범위 제한 — 임의의 날짜를 받으면 (날짜 × 나머지 조합)이 무한해져
@@ -117,8 +132,8 @@ function buildPrompt(date, weather, count, lang, phase) {
       `Date: ${date} (weather: ${WEATHER_EN[weather] || 'sunny'})`,
       `The player ${PHASES[phase].en}.`,
       '',
-      'Villagers:',
-      ...RESIDENTS.map(r => `- ${r.id}: ${r.name_en}`),
+      'Guests:',
+      ...GUESTS.map(g => `- ${g.id}: ${g.name_en}`),
       '',
       'Menu:',
       ...MENU.map(m => `- ${m.id}: ${m.name_en} (${m.hint_en})`),
@@ -130,8 +145,8 @@ function buildPrompt(date, weather, count, lang, phase) {
     `날짜: ${date} (날씨: ${WEATHER_KO[weather] || '맑음'})`,
     `플레이어는 ${PHASES[phase].ko}.`,
     '',
-    '주민 목록:',
-    ...RESIDENTS.map(r => `- ${r.id}: ${r.name}`),
+    '손님 목록:',
+    ...GUESTS.map(g => `- ${g.id}: ${g.name}`),
     '',
     '메뉴 목록:',
     ...MENU.map(m => `- ${m.id}: ${m.name} (${m.hint})`),
@@ -143,7 +158,7 @@ function buildPrompt(date, weather, count, lang, phase) {
 // 모델 응답을 그대로 믿지 않고 화이트리스트로 정규화
 function sanitize(raw, count, lang) {
   if (!Array.isArray(raw)) return [];
-  const okId = new Set(RESIDENTS.map(r => r.id));
+  const okId = new Set(GUESTS.map(g => g.id));
   const okRecipe = new Set(MENU.map(m => m.id));
   const seen = new Set();
   const out = [];
@@ -210,7 +225,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   // 날짜·날씨·인원이 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번
   const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&weather=${weather}&count=${count}&lang=${lang}&phase=${phase}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&weather=${weather}&count=${count}&lang=${lang}&phase=${phase}&cast=${CAST_REV}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
