@@ -507,6 +507,10 @@ const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, s
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
   if (interiorGroup) interiorGroup.visible = indoor;
+  // 🛋️ 가구 메시는 scene 직속(interiorGroup 자식이 아님) — 방과 같이 따로 꺼야 한다.
+  //    방은 월드 (0,0,52)에 실제로 서 있고 마을 이동 한계는 반경 42다. 그래서 북쪽 끝에 서면
+  //    벽·바닥이 숨은 자리에 가구만 들판 위에 떠 보였다(제보 2026-09-15 "맵 끝에 피아노·장롱").
+  for (const m of decorMeshes) m.visible = indoor;
   if (farmGroup) farmGroup.visible = atFarm;
   setWorkersVisible(atFarm);   // 🧑‍🌾 일꾼은 텃밭에서만 보인다(밖에선 규칙만 돌아간다)
   // 🌾 밭 흙·이랑·작물·배지 InstancedMesh 는 scene 직속(farmGroup 자식이 아님) — 따로 토글해야 한다.
@@ -7234,6 +7238,7 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
     const hw = def.foot[ry % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[ry % 2 ? 0 : 1] / 2 * DECOR_SCALE;
     m.userData.collider = solidBox(lx - hw, lz - hd, lx + hw, lz + hd);
   }
+  m.visible = indoor;                                       // 세이브 복원은 실외에서 일어난다 — 방 밖에선 숨긴다(setSpaceVisible 과 같은 규칙)
   scene.add(m); decorMeshes.push(m);
   gameState.house.decor.push(rec);
   if (!silent) {
