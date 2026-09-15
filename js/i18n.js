@@ -98,9 +98,19 @@ export function t(s) {
   if (LANG !== 'en' || typeof s !== 'string' || !HAS_KO.test(s)) return s;
   const hit = EXACT.get(s);
   if (hit !== undefined) return hit;
+  // 첫 매칭이 아니라 "한국어가 안 남는" 매칭을 고른다.
+  //   사전 앞쪽의 글루 패턴('{0} {1}!' 처럼 좌우를 그대로 잇는 항등 패턴)은 아무 문장이나 삼키는데,
+  //   쪼갠 조각('설치' · '잘 먹었습니다')은 사전에 없어 한국어가 그대로 남았다. 그러면서 뒤에 있는
+  //   구체적인 키('{0} 설치!' · '{0} {1} {2}!')엔 영영 도달하지 못했다 — 야외 장식 설치,
+  //   바다 낚시 무게, 찬장 먹기, 카페 감사 인사가 전부 이 경로로 새고 있었다.
+  //   ⇒ 덜 번역된 결과는 보류(miss)해 두고 계속 찾다가, 끝내 아무것도 못 찾으면 그때 쓴다.
+  let miss;
   for (const p of PATTERNS) {
     const m = p.re.exec(s);
-    if (m) return p.en.replace(/\{(\d+)\}/g, (_, i) => t(m[+i + 1] ?? ''));
+    if (!m) continue;
+    const out = p.en.replace(/\{(\d+)\}/g, (_, i) => t(m[+i + 1] ?? ''));
+    if (!HAS_KO.test(out)) return out;   // 끝까지 번역됨 — 확정
+    miss ??= out;                        // 한국어가 남았다 — 더 구체적인 키를 계속 본다
   }
   // 이모지 접두사 — '🛏️ 침대' 처럼 아이콘이 앞에 붙으면 '침대' 키에 도달하지 못한다.
   //   조합 프롬프트 '{0} · {1}' 의 좌변이 거의 이 꼴이라, 가구 옮기기 프롬프트 전부가
@@ -131,7 +141,7 @@ export function t(s) {
     const out = parts.map(p => t(p)).join(' ');
     if (out !== s) return out;
   }
-  return s;
+  return miss ?? s;   // 어느 경로도 못 잡았을 때만 덜 번역된 글루 결과 사용(기존 동작 보존)
 }
 
 // ── DOM 번역 — 텍스트 노드 + 주요 속성(placeholder/title 등) ────

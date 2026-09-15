@@ -1287,7 +1287,7 @@ export const EN = {
   '{0} 버프 획득!': 'Got the {0} buff!',
   '{0}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요': '{0}\nTime left shows on the chip at top right · tap it to see this again',
   '이미 보유한 업그레이드예요': 'You already own this upgrade',
-  '{0} 설치!': '{0} placed!',
+  '{0} 설치!': '{0} Placed!',   // 🪵 야외 장식·밭 시설 — 실내 '{0} 배치!' 와 같은 자리에 뜨므로 표기를 맞춘다
   '가까운 주민이 없어요': 'No Villager nearby',
   '그 선물이 없어요': 'You don\'t have that gift',
   '🌾 내 텃밭': '🌾 My Farm',
@@ -1369,6 +1369,8 @@ export const EN = {
   '가방에 담았어요. 상점에서 팔 수 있어요': 'Tucked into your bag. sell it at the Shop',
   '❗ 물었어요! 지금 낚아채요!': '❗ A bite! Reel it in now!',
   '놓쳤어요 🐟💨': 'It got away 🐟💨',
+  '입질!! 🐟': 'A bite!! 🐟',          // 🌊 바다 낚시 — 입질 플로트
+  '놓쳤다…!': 'It got away…!',          // 🌊 바다 낚시 — 놓침 플로트
   '가까운 나무가 없어요': 'No tree nearby',
   '+{0} 🪵': '+{0} 🪵',
   '씨앗이 없어요 🌰': 'No Seeds left 🌰',
