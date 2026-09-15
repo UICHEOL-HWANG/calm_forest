@@ -19,7 +19,7 @@
 // =============================================================
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, mkdir, stat } from 'node:fs/promises';
+import { readFile, readdir, mkdir, stat } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,11 +27,38 @@ const run = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 const argv = process.argv.slice(2);
-const slug = argv.find(a => !a.startsWith('--'));
+let slug = argv.find(a => !a.startsWith('--'));
 const FORCE = argv.includes('--force');
+
+/** 아직 발행되지 않은 reel deck 중 가장 앞선 것을 고른다.
+ *  4일 주기 루틴이 쓴다 — 사람이 미리 써 둔 deck 을 집어다 만든다.
+ *  준비된 게 없으면 만들 것도 없다(주제·프롬프트는 사람이 쓴다). */
+async function pickNext() {
+  const dir = resolve(HERE, 'decks');
+  const names = (await readdir(dir))
+    .filter(f => /^reel-.*\.json$/.test(f))
+    .sort();
+  for (const f of names) {
+    const spec = JSON.parse(await readFile(resolve(dir, f), 'utf-8'));
+    if (spec.publishedAt) continue;                 // 이미 나간 것
+    if (!Array.isArray(spec.cuts) || !spec.cuts.length) continue;
+    return f.replace(/\.json$/, '');
+  }
+  return null;
+}
+
+if (!slug && argv.includes('--next')) {
+  slug = await pickNext();
+  if (!slug) {
+    console.log('준비된 쇼츠 deck 이 없다 — decks/reel-NN.json 에 cuts 를 먼저 쓸 것');
+    process.exit(0);                                 // 실패가 아니다. 할 일이 없을 뿐
+  }
+  console.log(`다음 deck: ${slug}`);
+}
 
 if (!slug) {
   console.error('사용: node reel-make.mjs <이름> [--force]');
+  console.error('      node reel-make.mjs --next        (발행 안 된 deck 자동 선택)');
   process.exit(1);
 }
 

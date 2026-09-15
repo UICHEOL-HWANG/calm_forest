@@ -51,6 +51,17 @@ export const POLITICS = new RegExp([
 /** 🔞 성적 소재 — 커뮤니티 랭킹 단골이다 */
 export const ADULT = /누드|섹스|야짤|19금|성인물|노출|몸매|비키니|가슴|엉덩이/;
 
+/**
+ * 🚯 혐오·비하. 본문까지 긁으면서 드러났다 — 제목은 뉴스처럼 멀쩡한데
+ *    본문(댓글 포함)이 지역 비하 덩어리인 글이 실시간베스트 상위에 있었다.
+ *    제목만 보고 통과시키면 그대로 소재 후보에 오른다.
+ */
+export const HATE = new RegExp([
+  '홍어|전라도 1찍|과학이다|광주=|틀딱|급식충|맘충|한남|김치녀|된장녀',
+  '짱깨|쪽바리|흑형|조선족 새끼|외노자',
+  '병신|애미|애비|씨발|좆|새끼들|ㅅㅂ|ㅄ|ㅗ|뒤져|꺼져',
+].join('|'));
+
 /** 🧹 목록에서 딸려 오는 부스러기(댓글 수, 안내 공지 등) */
 export const JUNK = /^\[\d+(\/\d+)?\]$|^\d+$|이용 안내|공지사항|운영 원칙/;
 
@@ -62,6 +73,7 @@ export function rejectReason(text) {
   if (BLOCK.test(t)) return '피해·사건';
   if (POLITICS.test(t)) return '정치';
   if (ADULT.test(t)) return '성인';
+  if (HATE.test(t)) return '혐오·비하';
   if (SPAM.test(t)) return '도박 스팸';
   if (NOISE.test(t)) return '연예 PR';
   return null;
