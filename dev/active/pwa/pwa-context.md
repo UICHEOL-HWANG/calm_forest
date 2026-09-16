@@ -21,4 +21,4 @@
 - **SW 등록은 web 플랫폼만** — 토스 웹뷰·itch iframe 은 `window.__APPS_IN_TOSS__`/`__ITCH__` 플래그로 제외.
 - **maskable 은 별도 SVG** — 원본 아이콘의 해가 안전영역(중앙 80% 원) 밖에 걸려 원형 마스크에서 잘림.
 - **assetlinks 지문은 빈 배열로 두고 배포** — 콘솔에서 키가 나와야 채울 수 있음. 채우기 전엔 TWA 상단에 주소창이 뜨는 게 정상.
-- 패키지명 후보: `cloud.calmforest.app`
+- 패키지명 후보: `com.cheorish.lab.calmforest`

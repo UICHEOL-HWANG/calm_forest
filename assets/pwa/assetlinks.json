@@ -3,8 +3,12 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "cloud.calmforest.app",
-      "sha256_cert_fingerprints": []
+      "package_name": "com.cheorish.lab.calmforest",
+      "sha256_cert_fingerprints": [
+        "81:72:33:AE:4A:D9:D5:8F:82:08:F8:5E:22:72:33:8D:95:6D:F5:3B:66:9E:CF:39:65:2B:86:4C:01:AD:5E:C1",
+        "18:4F:F5:58:07:21:2B:46:B9:D0:E6:B3:37:B4:53:45:C7:85:02:DD:A2:F2:D3:71:AC:27:64:68:B1:F5:54:86",
+        "17:F9:71:8C:A1:60:D7:CB:B0:C8:6B:CB:54:55:EA:0F:88:B4:19:2A:29:9E:36:70:48:D8:A9:0A:73:24:BC:A7"
+      ]
     }
   }
 ]
