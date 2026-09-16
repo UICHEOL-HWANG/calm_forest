@@ -39,6 +39,7 @@ Capacitor·WebView 는 **우리 앱 프로세스 안에서** WebView 가 돌아 
 ## 단계
 
 ### 1. CDN 자체 호스팅 ⭐ 선행 필수
+
 현재 핵심 라이브러리가 전부 외부 CDN 이다.
 ```
 three@0.160.0          → unpkg.com          (index.html importmap)
@@ -49,11 +50,38 @@ three@0.160.0          → unpkg.com          (index.html importmap)
 정작 Three.js 를 네트워크로 받으러 가기 때문. TWA 로 가든 말든 어차피 해야 하는 숙제다
 ([[google-play-pwa]] 에 "미완"으로 기록돼 있던 항목).
 
-- `vendor/` 에 three.module.js · three/addons 필요분 · supabase-js 를 받아 커밋
-- `index.html` importmap 을 상대경로로
-- 토스 SDK 는 토스 번들에서만 쓰므로 후순위(웹·Play 에서는 로드되지 않음)
-- `build-web.mjs` INCLUDE 에 `vendor` 추가
-- ⚠️ three/addons 는 필요한 모듈만 — 전부 받으면 번들이 커진다. 실제 import 를 전수 조사할 것
+#### 실증 결과 (2026-09-16 · scratchpad 에서 실제로 받아 확인)
+
+**three — 번들 불필요, 파일만 받으면 된다**
+- `three.module.js` 1.2MB, **자기완결**(외부 import 0건)
+- addons 는 실제 사용이 postprocessing 5개뿐. 의존까지 합쳐 **10개 파일**:
+  `EffectComposer` `UnrealBloomPass` `OutputPass` `ShaderPass` `RenderPass`
+  + `Pass.js` `MaskPass.js` + `shaders/{CopyShader,LuminosityHighPassShader,OutputShader}.js`
+- 디렉터리 구조(`three/addons/...`)만 유지하면 상대 import 가 그대로 동작한다
+
+**supabase-js — 단순 다운로드로는 불가능. 번들이 답이다**
+- `esm.sh/@supabase/supabase-js@2` 는 **531B 짜리 스텁**이고 실제 코드는 다른 URL 에 있다
+- jsDelivr `+esm` 도 12KB 인데 `functions-js`·`postgrest-js` 등을 다시 import 한다
+- → **esbuild 번들로 해결**:
+  ```
+  npm i -D esbuild
+  echo "export { createClient } from '@supabase/supabase-js';" > vendor/_entry.js
+  npx esbuild vendor/_entry.js --bundle --format=esm --minify --outfile=vendor/supabase.js
+  ```
+  결과: **217KB · import 문 0 · 동적 import 0.** 남은 URL 3건은 에러 메시지 속 문자열뿐.
+  실제 로드 검증: `createClient` 동작, **`signInWithIdToken` 존재**(4단계에서 쓸 함수).
+
+#### 할 일
+- [ ] `vendor/three/` — three.module.js + addons 10개 (디렉터리 구조 유지)
+- [ ] `vendor/supabase.js` — esbuild 번들. **산출물을 커밋**해 빌드 때 네트워크를 타지 않게
+- [ ] `package.json` 에 `build:vendor` 스크립트 + devDep `esbuild`
+- [ ] `index.html` importmap 을 상대경로로 (⚠️ build-ait 치환 앵커 확인)
+- [ ] `js/supabase-client.js:101` 동적 import 경로 교체
+- [ ] `build-web.mjs` INCLUDE 에 `vendor` 추가
+- [ ] 토스 SDK 는 토스 번들에서만 쓰므로 후순위(웹·Play 에서는 로드되지 않음)
+- [ ] 검증: 3종 빌드 + 테스트 615건 + **네트워크 탭에 외부 CDN 요청 0건**
+
+추가 용량 ~1.5MB. 현재 AAB 1.8MB → 3MB 대로, APK 크기 부담 없음.
 
 ### 2. 서비스워커 캐시 범위 (선택)
 `sw.js` 는 `offline.html` 하나만 캐시한다. 게임 코드는 **의도적으로** 캐시하지 않는다

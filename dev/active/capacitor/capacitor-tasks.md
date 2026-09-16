@@ -6,10 +6,11 @@
 - [ ] 업체에 구체적 구성 확인 (Capacitor 버전 · OAuth 처리 방식 · 제출 전 점검 항목)
 - [ ] 현재 TWA AAB 로 내부 테스트에 한 번 올려볼지 결정 (지문·assetlinks 검증용, 손해 없음)
 
-## 1. CDN 자체 호스팅 ⭐ 선행
-- [ ] `js/` 전체에서 `three/addons/` 실제 import 전수 조사
-- [ ] `vendor/three/` 에 three.module.js + 필요한 addons 만 배치
-- [ ] `vendor/supabase/` 에 supabase-js 배치
+## 1. CDN 자체 호스팅 ⭐ 선행 (실현성 실증 완료 2026-09-16)
+- [x] `three/addons/` 실제 import 전수 조사 — postprocessing 5개 + 의존 5개 = 10개 파일
+- [x] supabase-js 자체 호스팅 방법 확정 — esm.sh 는 531B 스텁이라 불가, **esbuild 번들 217KB** 로 해결(로드·signInWithIdToken 검증)
+- [ ] `vendor/three/` 에 three.module.js(1.2MB) + addons 10개 배치 (디렉터리 구조 유지)
+- [ ] `npm i -D esbuild` + `build:vendor` 스크립트, `vendor/supabase.js` 산출물 커밋
 - [ ] `index.html` importmap 을 상대경로로 (⚠️ build-ait 치환 앵커 확인)
 - [ ] `js/supabase-client.js:101` 동적 import 경로 교체
 - [ ] `scripts/build-web.mjs` INCLUDE 에 `vendor` 추가
