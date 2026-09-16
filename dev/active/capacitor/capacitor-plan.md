@@ -156,39 +156,46 @@ WebView 안에서 구글 로그인 **페이지를 여는 게 아니라** 안드�
 - 토스·itch 번들 구조 변경
 - React Native 재작성 — 이미 기각([[google-play-pwa]])
 
-## ⚠️ 최대 리스크 — WebView 의 WebGL 성능 (2026-09-16 추가)
+## WebView 의 WebGL 성능 — 조사 결과 (2026-09-16, 2차 조사로 하향 조정)
 
-TWA 는 **Chrome** 이 렌더링하고 Capacitor 는 **Android System WebView** 가 렌더링한다.
-Three.js 3D 게임이라 이 차이가 그대로 프레임에 나타난다.
+처음엔 "최대 리스크"로 올렸으나 **근거를 직접 읽어보니 과했다.** 정황은 오히려 우호적이다.
 
-- 호환성은 문제없다 — "WebGL, gltf, Three.js are compatible with Capacitor on Android,
-  with very good WebGL support"
-- 그러나 Capacitor 공식 Discussion 에 이런 보고가 있다:
-  **"same app installed as a PWA has no performance issues, but bundled via Capacitor
-  Native on Android has significant slowdowns on many devices"**
-- 구조도 갈린다: Android 5–6·10+ 는 System WebView, **7–9 는 Chrome** 이 WebView 를 제공.
-  테스터 기기가 제각각이면 일부에서만 느려져 원인 찾기가 성가시다.
+### "느려진다"는 보고는 WebGL 이 아니었다
+근거로 삼았던 Capacitor Discussion #3899 를 열어보니 문제는 **DOM/CSS UI** 였다 —
+`ion-slides`, skeleton 로더 애니메이션, 페이지 전환. 원인 중 하나는 **접근성 서비스가
+켜져 있으면 접근성 트리가 JS 스레드를 막는 것**이다.
+DOM 이 많고 CSS 애니메이션이 많은 앱의 문제이고, **우리 게임은 canvas 하나가 주력이고
+DOM 은 HUD 정도**라 구조가 다르다. WebGL 은 GPU 가 하는 일이라 JS 스레드 경합과도 성격이 다르다.
 
-이 프로젝트는 성능이 이미 민감하다 — 드로우콜 920→567, 마을 밖 섀도맵 정지까지 해 왔다
-([[draw-call-optimization]] [[shadow-subspace-optimization]]). **렌더러가 바뀌면 그 측정치가
-전부 무효**다.
+### 우호적인 근거
+| 항목 | 확인 내용 |
+|---|---|
+| 엔진 | WebView 는 **Chrome 과 같은 Chromium 렌더링 엔진** — "rendering should be consistent between the WebView and Chrome" |
+| 하드웨어 가속 | WebView 에서 **기본 활성화** |
+| three.js 커뮤니티 | "If it runs well in the browser, **it will run well in a webview**(capacitor 예시)" |
+| WebGL 블로커 | 보고 없음. 한 사례의 검은 화면은 **잘못된 glTF 모델** 탓이었고 Capacitor 문제가 아니었다 |
+| 알려진 WebGL 이슈 | "초기 몇 프레임 janky" 수준 — 지속적 저하가 아니다 |
 
-### 그래서 순서를 바꾼다 — 성능 확인을 앞으로
-```
-1. CDN 자체 호스팅            (실증 완료, 안전)
-2. Capacitor 최소 프로토타입   ← OAuth·빌드 정리 없이 그냥 감싸서 설치만
-★ 실기기 FPS 측정 ★           ← 여기서 계속할지 판단
-3~4. 나머지(OAuth·빌드 파이프라인)
-```
-가장 큰 불확실성을 가장 싸게 걷어내는 순서다. 여기서 프레임이 안 나오면 OAuth 작업을
-시작하기 전에 방향을 다시 잡을 수 있다.
+### 그래도 재야 하는 이유
+**공개된 실측 데이터가 없다.** Capacitor 공식 게임 문서도 "broad support for WebGL…
+high-performance game experiences" 한 줄이 전부이고 프레임 언급이 없다. three.js 포럼에도
+"Capacitor + Three.js 를 실기기에서 재본 사람 없나"는 질문이 답 없이 남아 있다.
+Chromium 쪽엔 "WebView 는 Chrome 보다 항상 성능이 떨어진다"는 일반 주장(이슈 1289741)도 있다.
+
+→ **정황 근거는 충분하나 숫자로 증명된 건 없다.** 우리가 직접 잰다.
+
+### 프로토타입 게이트 (성격 조정)
+2단계에서 최소 프로토타입으로 실기기 FPS 를 잰다. 다만 **"안 되면 중단"이 아니라 확인 절차**다.
+문제가 나와도 손쓸 방법이 있다 — DOM HUD 최적화, 하드웨어 가속 명시, 접근성 서비스 영향 확인.
+드로우콜·섀도맵 측정치([[draw-call-optimization]] [[shadow-subspace-optimization]])는
+렌더러가 바뀌므로 어차피 한 번 다시 재야 한다.
 
 ## 확실한 것 / 아직 모르는 것
 
 **확실**: CDN 자체 호스팅 가능(실증) · Capacitor 에서 Three.js 동작 · 패키지명·서명 키 재사용 ·
 기존 `android/` TWA 로 롤백 가능
 
-**미검증**: ① **WebView 에서 우리 게임이 몇 FPS 나오는지**(제일 중요) ② 네이티브 로그인이
+**미검증**: ① WebView 에서 우리 게임이 몇 FPS 나오는지(정황상 통과 가능성 높음, 실측 공개 데이터가 없어 직접 잰다) ② 네이티브 로그인이
 4갈래 로그인 구조(웹·토스·itch·앱)에 깔끔히 붙는지 ③ **이 전환이 실제로 반려를 피하게
 해주는지** — 업체 주장은 공식 문서 근거가 아니라 14일 돌려봐야 안다
 

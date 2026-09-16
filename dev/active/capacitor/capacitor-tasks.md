@@ -20,7 +20,8 @@
 - [ ] OAuth·빌드 정리 없이 그냥 감싸서 실기기 설치
 - [ ] **FPS 측정 — Chrome(TWA) 대비 얼마나 떨어지는지**
 - [ ] Android 7~9(Chrome WebView)와 10+(System WebView) 각각 확인
-- [ ] 여기서 프레임이 안 나오면 **중단하고 방향 재검토** (OAuth 작업 착수 전)
+- [ ] 프레임이 모자라면 대응부터 — DOM HUD 최적화 · 하드웨어 가속 명시 · 접근성 서비스 영향 확인
+      (2차 조사 결과 정황은 우호적 — "느려진다"는 보고는 DOM/CSS UI 문제였고 WebGL 이 아니었다)
 
 ## 3. Capacitor 정식 도입
 - [ ] `@capacitor/cli` · `core` · `android` 설치
