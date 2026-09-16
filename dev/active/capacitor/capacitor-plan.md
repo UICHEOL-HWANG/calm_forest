@@ -156,6 +156,42 @@ WebView 안에서 구글 로그인 **페이지를 여는 게 아니라** 안드�
 - 토스·itch 번들 구조 변경
 - React Native 재작성 — 이미 기각([[google-play-pwa]])
 
+## ⚠️ 최대 리스크 — WebView 의 WebGL 성능 (2026-09-16 추가)
+
+TWA 는 **Chrome** 이 렌더링하고 Capacitor 는 **Android System WebView** 가 렌더링한다.
+Three.js 3D 게임이라 이 차이가 그대로 프레임에 나타난다.
+
+- 호환성은 문제없다 — "WebGL, gltf, Three.js are compatible with Capacitor on Android,
+  with very good WebGL support"
+- 그러나 Capacitor 공식 Discussion 에 이런 보고가 있다:
+  **"same app installed as a PWA has no performance issues, but bundled via Capacitor
+  Native on Android has significant slowdowns on many devices"**
+- 구조도 갈린다: Android 5–6·10+ 는 System WebView, **7–9 는 Chrome** 이 WebView 를 제공.
+  테스터 기기가 제각각이면 일부에서만 느려져 원인 찾기가 성가시다.
+
+이 프로젝트는 성능이 이미 민감하다 — 드로우콜 920→567, 마을 밖 섀도맵 정지까지 해 왔다
+([[draw-call-optimization]] [[shadow-subspace-optimization]]). **렌더러가 바뀌면 그 측정치가
+전부 무효**다.
+
+### 그래서 순서를 바꾼다 — 성능 확인을 앞으로
+```
+1. CDN 자체 호스팅            (실증 완료, 안전)
+2. Capacitor 최소 프로토타입   ← OAuth·빌드 정리 없이 그냥 감싸서 설치만
+★ 실기기 FPS 측정 ★           ← 여기서 계속할지 판단
+3~4. 나머지(OAuth·빌드 파이프라인)
+```
+가장 큰 불확실성을 가장 싸게 걷어내는 순서다. 여기서 프레임이 안 나오면 OAuth 작업을
+시작하기 전에 방향을 다시 잡을 수 있다.
+
+## 확실한 것 / 아직 모르는 것
+
+**확실**: CDN 자체 호스팅 가능(실증) · Capacitor 에서 Three.js 동작 · 패키지명·서명 키 재사용 ·
+기존 `android/` TWA 로 롤백 가능
+
+**미검증**: ① **WebView 에서 우리 게임이 몇 FPS 나오는지**(제일 중요) ② 네이티브 로그인이
+4갈래 로그인 구조(웹·토스·itch·앱)에 깔끔히 붙는지 ③ **이 전환이 실제로 반려를 피하게
+해주는지** — 업체 주장은 공식 문서 근거가 아니라 14일 돌려봐야 안다
+
 ## 열린 질문
 1. 업체가 권하는 구체적 구성(Capacitor 버전·OAuth 처리)을 받아둘 것인가
 2. APK 에 `dashboards/`·`beta/` 를 넣을 것인가 (크기 vs 단순함)
