@@ -16,9 +16,11 @@
 - [x] AAB 빌드 · 검증 — `android/app-release-bundle.aab` 1.7MB
       · 업로드 키 SHA-256 `15:39:D4:EA:…:AD:EB` · 라벨 "고요한 숲" · 사용자 권한 0건
 - [x] 패키지명 `cloud.calmforest.app` → `com.cheorish.lab.calmforest` 변경·AAB 재빌드(2026-09-16)
-- [ ] 🗑️ 계정 삭제 — SQL RPC 작성 완료(`sql/migrate_delete_account.sql`, 미적용)
-      · 남은 것: 게임 내 버튼 · 웹 `/delete-account` 페이지 · 사진 선삭제 연동
-- [ ] 개인정보처리방침 `/privacy` 작성 · 배포
+- [x] 웹 `/privacy` · `/delete-account` 페이지 — 사진 선삭제→RPC 순서까지 구현(`e8c53ed`)
+- [x] ☰ 메뉴에 🔒 개인정보 처리방침 · 🗑️ 계정 삭제 항목(2026-09-16 `5863353`)
+      · 새 탭 + 팝업차단 폴백 · API_BASE 접두(토스·itch) · GA4 privacy_open·delete_account_open
+- [ ] ⚠️ **`sql/migrate_delete_account.sql` 프로덕션 적용** — Supabase MCP 가 읽기전용이라 사용자가 콘솔에서 실행
+      · 적용 전까지 삭제 버튼을 누르면 RPC 없음 오류
 - [ ] 스토어 스크린샷(폰) · 피처 그래픽 1024×500
 - [ ] 스토어 설명문 (짧은 80자 / 자세한)
 - [x] 지문 3종 assetlinks.json 갱신 · 웹 배포(2026-09-16 `5ff8c9d`)
