@@ -1348,6 +1348,9 @@
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
       <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
       <button id="lang-btn"><span class="uico">🌐</span><span class="ulbl">언어</span></button>
+      <!-- ⚖️ 스토어 정책 항목 — 구글 플레이는 앱 안에서도 방침·계정 삭제 경로가 보이길 요구한다 -->
+      <button id="privacy-btn"><span class="uico">🔒</span><span class="ulbl">개인정보 처리방침</span></button>
+      <button id="delacc-btn"><span class="uico">🗑️</span><span class="ulbl">계정 삭제</span></button>
       <button id="logout-btn" style="display:none;"><span class="uico">🚪</span><span class="ulbl">나가기</span></button>
     </div>
   </div>
@@ -3436,6 +3439,19 @@
       showStoryMapOnce(null);         // 📖 4장 지도를 그 위에 1회
     });
     $('help-btn').addEventListener('click', () => openGuide('menu'));   // 📖 초보자 안내서(튜토리얼 다시 보기는 안내서 첫 장 버튼)
+    // ⚖️ 정책 페이지(개인정보 처리방침·계정 삭제) — 마을은 그대로 두고 새 탭으로 연다.
+    //    · API_BASE 를 앞에 붙이는 이유: 토스·itch 번들은 오리진이 달라 상대경로가 404 다(일지 버튼과 같은 처리).
+    //    · window.open 에 'noopener' 를 features 로 주면 항상 null 이 돌아와 폴백까지 타므로, 열고 나서 opener 만 끊는다.
+    const openPolicyPage = (path, evt) => {
+      $('topleft').classList.remove('open');        // 메뉴는 접고 — 돌아왔을 때 열린 채로 남지 않게
+      trackEvent(evt);                               // [GA4] 정책·삭제 경로에 실제로 도달하는 비율
+      const url = `${CONFIG.API_BASE}${path}`;
+      const w = window.open(url, '_blank');
+      if (w) { try { w.opener = null; } catch {} }
+      else location.href = url;                      // 팝업 차단·웹뷰 폴백
+    };
+    $('privacy-btn').addEventListener('click', () => openPolicyPage('/privacy', 'privacy_open'));
+    $('delacc-btn').addEventListener('click', () => openPolicyPage('/delete-account', 'delete_account_open'));
     // 📮 소식함 — 메뉴에서 열면 최근 소식 전부(읽은 것 포함). 닫을 때 가장 큰 id 를 읽음으로 기록
     $('inbox-btn').addEventListener('click', async () => {
       $('topleft').classList.remove('open');

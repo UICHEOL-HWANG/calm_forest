@@ -79,6 +79,9 @@ export const EN = {
   '내 문의: {0}': 'My message: {0}',
   '아직 온 소식이 없어요 🌱': 'No news yet 🌱',
   '배경음악': 'Music',
+  // ⚖️ 스토어 정책 항목(☰ 메뉴)
+  '개인정보 처리방침': 'Privacy Policy',
+  '계정 삭제': 'Delete account',
   '나가기': 'Log out',
   '문의하기': 'Feedback',
   '도감': 'Collection',
