@@ -23,11 +23,13 @@
 - [ ] 앱 번들 화이트리스트 결정 — `dashboards/`·`beta/` 제외 여부, 안내서는 웹 오리진 유지
 - [ ] `.gitignore` 정리 (`android-cap/` 산출물)
 
-## 3. 구글 OAuth
-- [ ] A안(App Links) 검토 — `https://calmforest.cloud/auth-callback` 을 앱이 가로채기
-- [ ] `@capacitor/browser` 로 시스템 브라우저 열기
-- [ ] Supabase Auth 리다이렉트 허용 목록에 추가
-- [ ] 기존 팝업 경로(`auth-popup.html`)와 분기 정리 — 웹·토스·itch·앱 4개 경로
+## 3. 구글 OAuth — 네이티브 로그인
+- [ ] `@capgo/capacitor-social-login` 설치 (대안: `@codetrix-studio/capacitor-google-auth`)
+- [ ] Google Cloud Console — Android 클라이언트 생성, SHA-1 **3개** 등록
+      · 업로드 `39:9F:88…E3:0C` · deployment `CB:AD:D7…9A:4F` · hybrid `EF:CD:D5…A3:A0`
+- [ ] 웹 클라이언트 ID 를 `signInWithIdToken` audience 로 전달
+- [ ] ⚠️ nonce — 구글에 SHA-256 해시본 / Supabase 에 원본
+- [ ] `js/platform.js` 패턴으로 앱 경로 분기 추가 (웹·토스·itch·앱 4경로)
 - [ ] 게스트 로그인 동작 확인(영향 없을 것으로 예상)
 
 ## 4. 검증

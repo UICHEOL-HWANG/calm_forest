@@ -68,22 +68,48 @@ three@0.160.0          → unpkg.com          (index.html importmap)
 - ⚠️ `dist/` 에는 `dashboards/` · `beta/` 등 앱에 불필요한 것도 들어간다.
   앱 번들용 화이트리스트를 따로 둘지 검토(APK 크기)
 
-### 4. 구글 OAuth 재설계 ⚠️ 가장 까다로움
-구글은 **WebView 안에서의 OAuth 를 차단한다**(`disallowed_useragent`). 시스템 브라우저로
-열고 앱으로 돌아와야 한다.
+### 4. 구글 OAuth — 네이티브 로그인 (표준 레시피)
 
-**유리한 점**: 팝업 로그인 경로가 이미 있다 — `auth-popup.html` + `postMessage`
-(itch.io iframe 대응으로 만들어 둔 것, `js/supabase-client.js`). 구조를 재활용할 수 있다.
+**2026-09-16 수정**: 처음엔 "가장 까다로움 / 시스템 브라우저 + App Links 복귀"로 적었으나
+**과대평가였다.** Capacitor + Supabase 에는 확립된 표준 경로가 있고, 그 경로에서는
+WebView OAuth 차단 문제가 **애초에 발생하지 않는다.**
 
-방향 두 가지:
-- **A. `@capacitor/browser` + App Links** — 시스템 브라우저(Custom Tabs)로 구글 로그인 →
-  `https://calmforest.cloud/auth-callback` 로 리다이렉트 → **오늘 넣은 assetlinks 덕분에**
-  앱이 그 URL 을 가로챈다 → 토큰 전달. assetlinks 가 여기서 다시 쓸모를 얻는다.
-- **B. 커스텀 스킴 딥링크** — `com.cheorish.lab.calmforest://auth` 로 돌아오게. 단순하지만
-  Supabase 리다이렉트 허용 목록에 스킴을 등록해야 하고 웹과 경로가 갈린다.
+```
+@capgo/capacitor-social-login  (대안: @codetrix-studio/capacitor-google-auth)
+  → 네이티브 Google Sign-In SDK 가 계정 선택 시트를 띄운다
+  → ID token 수신
+  → supabase.auth.signInWithIdToken({ provider: 'google', token, nonce })
+```
 
-→ **A 안 우선 검토.** 웹/토스/itch 와 리다이렉트 URL 을 공유할 수 있다.
+WebView 안에서 구글 로그인 **페이지를 여는 게 아니라** 안드로이드 네이티브 SDK 가
+처리하므로 `disallowed_useragent` 가 뜨지 않는다. 브라우저 왕복이 없어 UX 도 더 낫다.
+
+#### ⚠️ 함정 1 — nonce 를 양쪽에 다르게 넘긴다
+> "you need to provide a **hashed** version to Google and a **non-hashed** version to `signInWithIdToken`"
+
+구글에는 **SHA-256 해시본**, Supabase 에는 **원본**. 헷갈리면 토큰이 거부된다.
+
+#### ⚠️ 함정 2 — Google Cloud Console 에 Android 클라이언트 등록
+패키지명 + **SHA-1 지문**이 필요하다. 하이브리드 서명이라 여기서도 여러 개를 넣어야 한다.
+
+| 지문 | 용도 |
+|---|---|
+| `39:9F:88:91:53:BB:51:2E:E4:D4:6D:24:74:62:BF:11:A3:87:E3:0C` | 업로드 키 — 로컬 `cap run android` 개발 빌드 |
+| `CB:AD:D7:D0:CA:CD:D9:BE:A3:F3:51:EB:FD:ED:7A:25:D8:AB:9A:4F` | Play 앱 서명(deployment) — Android 16 이하 |
+| `EF:CD:D5:B5:C5:11:CA:AD:D3:70:80:51:82:5B:F7:89:3B:E5:A3:A0` | Play 앱 서명(hybrid classical) — Android 17+ |
+
+셋 다 등록해야 개발·구형·신형 기기 모두에서 로그인이 된다.
+`signInWithIdToken` 의 audience 는 **웹 클라이언트 ID** 를 쓰므로 그것도 함께 넘긴다.
+
+#### 경로 분기
+로그인 경로가 이미 넷이다 — 웹(리다이렉트) · 토스 · itch(팝업 `auth-popup.html`) · **앱(신규)**.
+`js/platform.js` 에 플랫폼 감지가 이미 있으니 같은 패턴으로 분기를 하나 더 둔다.
 게스트(익명) 로그인은 네트워크만 있으면 되므로 영향 없다.
+
+#### 폐기한 대안
+- ~~시스템 브라우저(`@capacitor/browser`) + App Links 복귀~~ — 동작은 하지만 구식 우회로다.
+  브라우저 왕복이 생기고 딥링크 처리가 늘어난다. 네이티브 SDK 가 있으므로 쓸 이유가 없다.
+- assetlinks.json 은 그대로 둔다(해 없음). 다만 OAuth 복귀용으로는 **쓰지 않는다.**
 
 ### 5. CORS·네트워크
 - Worker 는 `Access-Control-Allow-Origin: '*'` 라 **오리진 추가 작업이 없다**(확인 완료)

@@ -25,12 +25,14 @@
 - **CDN 자체 호스팅이 선행 필수** — 이걸 안 하면 Capacitor 로 감싸도 오프라인에서 빈 화면.
 - **SW 캐시는 건드리지 않는다** — [[cache-version-cleanup]] 사고 재발 방지 원칙 유지.
   Capacitor 는 앱 자산으로 로드하므로 SW 확대가 필요 없다.
-- **OAuth 는 App Links(A안) 우선** — 오늘 넣은 assetlinks 를 딥링크로 재활용.
+- **OAuth 는 네이티브 SDK** — `@capgo/capacitor-social-login` + `signInWithIdToken`.
+  App Links 복귀는 구식 우회로라 폐기. assetlinks 는 남기되 OAuth 에는 쓰지 않는다.
 
 ## 함정
 
-- ⚠️ **구글은 WebView 안 OAuth 를 차단한다**(`disallowed_useragent`). 시스템 브라우저로
-  열고 앱으로 돌아오는 경로가 반드시 필요하다. 이게 이 전환의 최대 난관.
+- ✅ **OAuth 는 표준 레시피가 있다**(2026-09-16 수정 — 처음엔 최대 난관으로 봤으나 과대평가).
+  네이티브 Google Sign-In SDK → ID token → `signInWithIdToken` 이면 WebView 차단이
+  애초에 발생하지 않는다. 함정은 nonce(구글=해시본/Supabase=원본)와 SHA-1 3개 등록.
 - ⚠️ **three/addons 는 필요한 모듈만 받을 것.** 전부 받으면 번들이 불필요하게 커진다.
   실제 import 를 전수 조사해야 한다.
 - ⚠️ `dist/` 에는 `dashboards/`·`beta/`·`guide/` 가 함께 들어간다. 앱 번들에 그대로 넣으면
