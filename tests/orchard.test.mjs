@@ -161,3 +161,14 @@ test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만
     assert.equal(Number(m[1]), f.price, `${f.id}: SELL_PRICE 와 FRUITS[].price 가 어긋난다`);
   }
 });
+
+// 🍎 과수원 입구(ORCHARD_GATE)가 배경 나무 회피 목록에서 빠지면, 매 접속마다 새로 뿌리는
+//   나무 14그루 중 하나가 그 자리를 막을 확률이 생긴다(다른 게이트 7곳은 전부 이 목록에 있다).
+//   Task 6 에서 이 줄을 추가했다 — 나중에 buildWorld() 를 리팩터링하다 이 줄이 빠지면 여기서 잡는다.
+test('buildWorld 의 배경 나무 회피 목록에 ORCHARD_GATE 가 다른 게이트들과 같은 패턴으로 들어있다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.ok(
+    src.includes("dist2D({ x, z }, ORCHARD_GATE) < 4.5"),
+    'ORCHARD_GATE 회피 조건을 못 찾았다 — 배경 나무가 과수원 입구를 가릴 수 있다'
+  );
+});
