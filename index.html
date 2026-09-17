@@ -3508,7 +3508,7 @@
       const box = $('dm-items'); box.innerHTML = '';
       Input.getDecor().forEach(d => {
         const pay = d.pay || 'crop';
-        const payIco = pay === 'fish' ? '🐟' : '🥕';
+        const payIco = pay === 'fish' ? '🐟' : pay === 'coins' ? '🪙' : '🥕';
         const have = lastInv[pay] || 0;
         const stored = (Input.getStored?.() || {})[d.id] || 0;      // 🧺 창고 보유분 — 값 없이 꺼내 놓는다
         const ok = !d.locked && (stored > 0 || have >= d.cost);
@@ -3518,7 +3518,7 @@
         el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${d.locked ? '🔒' : (stored > 0 ? `보유 ${stored}` : payIco + d.cost)}</span>`;
         el.addEventListener('click', () => {
           if (d.locked) { ui.toast('집을 더 증축하면 살 수 있어요'); return; }
-          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
+          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : pay === 'coins' ? '코인이 부족해요 🪙' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)
           if (decorGuideStep >= 0) setDecorGuide(1);              // 단계 안내 ② 자리 잡기
