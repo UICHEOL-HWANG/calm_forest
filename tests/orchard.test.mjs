@@ -175,6 +175,32 @@ test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만
   }
 });
 
+// 객체 리터럴 선언(`const NAME = { ... };`)에서 키 이름만 뽑는다 — 값은 이모지 문자열·숫자뿐이라
+// 중첩 객체를 고려할 필요가 없다. 선언 형태가 바뀌면 여기서 먼저 터진다(그게 의도다).
+function literalKeys(src, name) {
+  const start = src.indexOf(`const ${name} = {`);
+  if (start < 0) return null;
+  const open = src.indexOf('{', start), close = src.indexOf('};', open);
+  if (close < 0) return null;
+  return [...src.slice(open + 1, close).matchAll(/(?:^|[,{\s])([A-Za-z_$][\w$]*)\s*:/g)].map(m => m[1]);
+}
+
+// 📊 시세판 월드 텍스처(hi/lo argmax)·상인 말풍선(topPriceLine)·시세판 모달(marketData)은
+//   전부 SELL_PRICE 의 키를 돌면서 SELL_ICO_G 로 아이콘을 찾는다. 한쪽에만 품목을 추가하면
+//   화면에 문자 그대로 "undefined" 가 찍힌다 — 과일 5종이 정확히 그 상태였다.
+//   "과일이 들어있나"가 아니라 "두 표가 같은 키 집합인가"가 진짜 불변식이다.
+test('SELL_ICO_G 가 SELL_PRICE 의 모든 키를 덮는다 — 빠지면 화면에 "undefined" 가 찍힌다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const priceKeys = literalKeys(src, 'SELL_PRICE');
+  const icoKeys = literalKeys(src, 'SELL_ICO_G');
+  assert.ok(priceKeys?.length, 'SELL_PRICE 선언을 못 찾았다 — 변수명·형태가 바뀌었으면 이 테스트를 같이 고친다');
+  assert.ok(icoKeys?.length, 'SELL_ICO_G 선언을 못 찾았다 — 변수명·형태가 바뀌었으면 이 테스트를 같이 고친다');
+
+  const missing = priceKeys.filter(k => !icoKeys.includes(k));
+  assert.deepEqual(missing, [], `SELL_ICO_G 에 아이콘이 없는 판매 품목: ${missing.join(', ')}`);
+  for (const f of FRUITS) assert.ok(icoKeys.includes(f.id), `SELL_ICO_G 에 ${f.id} 가 없다`);
+});
+
 // 🍎 과수원 입구(ORCHARD_GATE)가 배경 나무 회피 목록에서 빠지면, 매 접속마다 새로 뿌리는
 //   나무 14그루 중 하나가 그 자리를 막을 확률이 생긴다(다른 게이트 7곳은 전부 이 목록에 있다).
 //   Task 6 에서 이 줄을 추가했다 — 나중에 buildWorld() 를 리팩터링하다 이 줄이 빠지면 여기서 잡는다.

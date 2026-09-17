@@ -296,7 +296,11 @@ let nearMarket = false;
 //    ⚠️ 스폰보다 남쪽(z+)에 두면 카메라(남→북)와 캐릭터 사이에 끼어 캐릭터를 가림 — 같은 z선상 동쪽으로.
 const RANK = new THREE.Vector3(13.5, 0, 1.5);  // 🏆 랭킹 게시판 — 호수 북쪽 가로등(15,3) 잔디. 한복판(2.4,0.2)에서 옮김(NPC 안 가림·활동 구역 밖·호수 가는 길에 보임). 부두 옆(8.5,9.5)·텃밭 입구 앞(-0.5,10.5)은 비좁아 제외
 let nearRank = false;
-const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯' };
+// 품목 아이콘 — **SELL_PRICE 의 모든 키를 덮어야 한다**(tests/orchard.test.mjs 가 강제).
+//   빠진 키가 있으면 📊시세판 월드 텍스처·상인 말풍선·시세판 모달이 문자 그대로 "undefined" 를 그린다.
+//   🍎 과수원 과일 아이콘은 js/orchard.js FRUITS[].ico 와 같은 값.
+const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯',
+                     apple: '🍎', pear: '🍐', peach: '🍑', persimmon: '🍊', chestnut: '🌰' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 function farmHalf() { return farmHalfOf(gameState.farm?.stage || 1); }
 let playerInYard = false;   // 📐 측량소 마당(울타리 밖)에 있나 — 문을 지날 때만 바뀐다(clampFarmPos)   // 텃밭 반경(정사각 한 변의 절반) — 단계 표는 js/farm-stage.js
@@ -9041,7 +9045,7 @@ function spawnMarketBoard() {
 function marketData() {
   return {
     items: Object.keys(SELL_PRICE).map(k => ({
-      k, ico: SELL_ICO_G[k], label: RES_LABEL[k] || k,
+      k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k,   // 파일의 다른 모든 호출부와 같은 폴백 — 빠진 키가 "undefined" 로 그려지지 않게
       price: priceOf(k), base: SELL_PRICE[k], rate: Math.round(priceRate(k) * 100) - 100, // 등락 %(0=기본가)
     })).sort((a, b) => b.rate - a.rate),       // 비싼 순 정렬(오늘 뭘 팔지 바로 보이게)
     forecast: forecastLine(),
