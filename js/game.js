@@ -9088,6 +9088,13 @@ function buyShop(id) {
   }
   refreshInventoryUI();
   trackEvent('shop_buy', { item: id, cost: it.coin });  // [GA4] 구매 금액 포함
+  // 🍎 묘목 구매는 생애주기 1단계라 따로 보낸다(스펙 §6-2). shop_buy 만으로는
+  //   ① item 이 상점 id('sap_apple')라 파종·수확의 kind('apple')와 join 이 안 되고
+  //   ② §6-3 이 요구하는 trees(그 시점 보유 그루 수)가 나중에 복원 불가다 —
+  //      "몇 그루째부터 이탈하는지"는 이 축 없이는 영영 못 묻는다.
+  //   ⚠️ GA4 예약어(source/medium/campaign/campaign_id/term/content)는 쓰지 않는다.
+  const sapFruit = FRUITS.find(f => sapKeyOf(f.id) === it.id);
+  if (sapFruit) trackEvent('sapling_buy', { kind: sapFruit.id, coin: it.coin, trees: (gameState.orchard?.trees || []).length });   // [GA4]
   logEcon('shop_buy', id, -it.coin, gameState.inventory.coins);  // [원장] 코인 소비
   return { ok: true, name: it.name };
 }

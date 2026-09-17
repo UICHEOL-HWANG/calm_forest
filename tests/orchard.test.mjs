@@ -270,6 +270,30 @@ test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만
   }
 });
 
+// 팔 때(SELL_PRICE)는 위에서 잠갔다. 살 때도 같은 자물쇠가 필요하다 —
+//   상점 묘목값과 "N일이면 자라요" 문구가 FRUITS[] 를 손으로 베낀 두 번째 사본이라
+//   한쪽만 고치면 상점에서 90🪙 를 받고 3일이라 써 놓고 실제로는 다른 값으로 자란다.
+test('SHOP_BUY 묘목의 값·자람일 문구가 FRUITS[] 와 일치한다 — 한쪽만 고치면 여기서 터진다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const lines = src.split('\n');
+  for (const f of FRUITS) {
+    const line = lines.find(l => l.includes(`{ id: '${sapKeyOf(f.id)}'`));
+    assert.ok(line, `SHOP_BUY 에 ${sapKeyOf(f.id)} 묘목 줄이 없다`);
+
+    const coin = /\bcoin:\s*(\d+)/.exec(line);
+    assert.ok(coin, `${f.id}: 묘목 줄에 coin 이 없다`);
+    assert.equal(Number(coin[1]), f.sapCoin, `${f.id}: 상점 묘목값과 FRUITS[].sapCoin 이 어긋난다`);
+
+    const desc = /desc:\s*'(\d+)일이면 자라요 · 매일 (\S+?)2개'/.exec(line);
+    assert.ok(desc, `${f.id}: 묘목 설명이 "N일이면 자라요 · 매일 <아이콘>2개" 꼴이 아니다 — 문구를 바꿨으면 이 테스트도 같이 고친다`);
+    assert.equal(Number(desc[1]), f.growDays, `${f.id}: 상점 설명의 자람일과 FRUITS[].growDays 가 어긋난다`);
+    assert.equal(desc[2], f.ico, `${f.id}: 상점 설명의 아이콘과 FRUITS[].ico 가 어긋난다`);
+
+    assert.match(line, new RegExp(`give:\\s*\\{\\s*${sapKeyOf(f.id)}:\\s*1\\s*\\}`),
+      `${f.id}: 묘목 인벤 키가 sapKeyOf(id) 와 다르다 — 산 묘목을 못 심게 된다`);
+  }
+});
+
 // 객체 리터럴 선언(`const NAME = { ... };`)에서 키 이름만 뽑는다 — 값은 이모지 문자열·숫자뿐이라
 // 중첩 객체를 고려할 필요가 없다. 선언 형태가 바뀌면 여기서 먼저 터진다(그게 의도다).
 function literalKeys(src, name) {
@@ -464,6 +488,26 @@ test('workerApply: 일꾼이 거둔 고급 작물도 과수원 해금에 센다'
   // 오프라인(tally 있음)과 접속 중(tally 없음)의 알림이 갈라져 있어야 한다
   assert.match(body, /tally\.orchardUnlock\s*=\s*true/,
     '오프라인 정산에서 해금을 tally 에 남기지 않는다 — 요약 모달에 알릴 방법이 없다');
+});
+
+// 스펙 §6-2 가 이름 붙인 생애주기 이벤트. shop_buy 만으로는 안 되는 이유가 둘이다 —
+//   item 이 상점 id('sap_apple')라 파종·수확의 kind('apple')와 join 이 끊기고,
+//   §6-3 의 trees(그 시점 보유 그루 수)는 나중에 복원할 길이 아예 없다.
+test('sapling_buy: kind·coin·trees 를 보내고 GA4 예약어를 쓰지 않는다', () => {
+  const src = GAME_SRC();
+  const body = sliceFunctionBody(src, /^function buyShop\(/m);
+  assert.ok(body, 'game.js 에서 buyShop 을 찾지 못했다');
+  const m = body.match(/trackEvent\('sapling_buy',\s*\{([^}]*)\}\)/);
+  assert.ok(m, 'buyShop 안에서 sapling_buy 트래킹 호출을 찾지 못했다 — 스펙 §6-2 의 이벤트다');
+  for (const p of ['kind', 'coin', 'trees']) {
+    assert.match(m[1], new RegExp(`\\b${p}\\s*:`), `sapling_buy 에 ${p} 파라미터가 없다`);
+  }
+  // 상점 id 가 아니라 과일 kind 여야 한다 — 'sap_apple' 을 그대로 보내면 퍼널이 끊긴다
+  assert.doesNotMatch(m[1], /kind:\s*id\b/, "sapling_buy 의 kind 로 상점 item id 를 보낸다 — 'apple' 같은 과일 id 여야 한다");
+  for (const banned of ['source', 'medium', 'campaign', 'campaign_id', 'term', 'content']) {
+    assert.doesNotMatch(m[1], new RegExp(`\\b${banned}\\s*:`),
+      `sapling_buy 가 GA4 예약어 "${banned}" 를 파라미터 키로 쓴다 — 세션 유입 정보가 오염된다`);
+  }
 });
 
 test('tree_water 트래킹은 GA4 캠페인 예약어(source/medium/campaign 등)가 아니라 method 로 물주기 방식을 보낸다', () => {
