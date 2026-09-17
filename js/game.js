@@ -240,6 +240,8 @@ const DECOR = [
   { id: 'parasol_set', name: '파라솔 세트', ico: '🏖️', cost: 0, pay: 'coins', stage: 6, outdoorOnly: true, hidden: true, foot: [1.8, 1.2] },
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
+const ROOF_Y = 3.4;   // ☀️ 루프탑만 집 한 층 높이만큼 띄운다 — "지붕 위에서 마을을 내려다보는" 높이감(2026-09-17 사용자 피드백).
+//   다른 실내 층(1층·다락·2층)은 전부 y=0 그대로 — 벽으로 막힌 방이라 높이가 안 보여도 상관없다.
 
 // ── 낚시 ─────────────────────────────────────────────────────
 const LAKE_R = 6;   // 호수 반경(환경 호수와 동일)
@@ -7164,6 +7166,10 @@ function curFloorDef() {
   return floorAt(gameState.houseStage, houseFloor) || { id: 'ground', half: INT_HALF, outdoor: false };
 }
 function curHalf() { return curFloorDef().half; }   // 클램프 기준(js/house-floors.js 의 half)
+// 🏠 층 인덱스 f 의 바닥 높이 — floorAt(MAX_HOUSE_STAGE, f) 로 구조상 정의를 그대로 읽는다(해금 여부와 무관).
+//   세이브 복원 중(applySave)엔 gameState.houseStage 가 아직 낮을 수 있어 curFloorDef() 대신 이걸 쓴다 —
+//   f=2(루프탑)면 지금 단계와 상관없이 항상 ROOF_Y(가구 좌표는 층 인덱스로만 저장되니 복원해도 맞는 높이에 놓인다).
+function floorBaseY(f) { return floorAt(MAX_HOUSE_STAGE, f)?.outdoor ? ROOF_Y : 0; }
 
 // 🌀 나선 계단 치수 — sims/stair-concepts/stairs.js(kind='spiral') 그대로 포팅(재설계 아님, 사용자 승인 조형).
 //   오르내림을 한 몸으로 처리하는 단일 랜드마크 하나가 원형 구멍을 통과한다 — 직선형의
@@ -7193,7 +7199,7 @@ function rodBetween(p1, p2, r, mat) {
 
 // 방 한 채를 짓는다 — def = floorAt() 이 주는 층 정의(반경·실외 여부·id)
 function buildRoom(def) {
-  const g = new THREE.Group(); g.position.copy(INT);
+  const g = new THREE.Group(); g.position.set(INT.x, def.outdoor ? ROOF_Y : INT.y, INT.z);   // ☀️ 루프탑만 ROOF_Y 만큼 띄운다(내부 좌표는 그대로 — 방 전체가 같이 올라간다)
   g.userData.floorIdx = def.f;   // refreshStairsLandmarks 가 위/아래 목적지를 계산할 때 쓴다
   const H = def.half, W = H * 2;
   const fin = finishFor(gameState.houseStage);   // 🎨 집 단계에 맞춘 실내 마감(바닥·계단)
@@ -7664,7 +7670,8 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = nu
   }
   const m = decorMesh(id);
   const lx = decorClampX(wx), lz = decorClampZ(wz);
-  m.position.set(lx, 0.2, lz);
+  const fy = floorBaseY(curFloor);   // ☀️ 루프탑이면 ROOF_Y — 옛 세이브(y 저장 안 함, x·z·f 만)도 f 로 다시 계산되어 자동으로 맞는 높이에 놓인다
+  m.position.set(lx, fy + 0.2, lz);
   m.rotation.y = ry * Math.PI / 2;
   const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry, f: curFloor };
   m.userData.rec = rec;                                     // 탭해서 들어 올릴 때 저장 레코드를 같이 뺀다
@@ -7680,7 +7687,7 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = nu
   gameState.house.decor.push(rec);
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
-    Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
+    Sound.blip(); spawnFloatText(lx, fy + 1.3, lz, def.ico + ' 배치!', '#2fa564');
     if (free) trackEvent('move_decor', { item: id });    // [GA4] 옮겨 놓기
     else { ui.act?.('decor'); trackEvent('place_decor', { item: id, from: fromStore ? 'store' : 'buy' }); } // 튜토리얼: 가구 배치
     pickedDecor = null;                      // 들었던 가구는 새 자리에 놓였다(제자리 복귀 불필요)
@@ -7780,7 +7787,7 @@ function updateDecorGhost() {
     decorTarget.x = decorClampX(player.position.x + Math.sin(player.rotation.y) * reach);
     decorTarget.z = decorClampZ(player.position.z + Math.cos(player.rotation.y) * reach);
   }
-  decorGhost.position.set(decorTarget.x, 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);
+  decorGhost.position.set(decorTarget.x, floorBaseY(houseFloor) + 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);   // ☀️ 루프탑이면 덱 높이에서 미리보기
   decorGhost.rotation.y = decorRot * Math.PI / 2;
 }
 // 🪵 야외 배치 조준 — 실내는 바닥 메시를 쓰지만 야외는 지면 평면(y=0.05)에 레이를 맞춘다(마을·텃밭·마당 공통)
@@ -9941,6 +9948,7 @@ function exitHouse() {
 function goFloor(f) {
   const def = floorAt(gameState.houseStage, f); if (!def) return;
   houseFloor = f;
+  player.position.y = def.outdoor ? ROOF_Y : 0;   // ☀️ 루프탑만 층 높이만큼 띄운다 — 카메라·시선은 player.position 을 그대로 따라간다
   // 🏖️ 루프탑에 처음 올라갈 때, 이미 산 구성품(예: rooftop_set)을 값 없이 실물로 놓아 준다.
   // "줬는지"는 gameState.house.grantedDecor 로 영구히 기억한다 — 지금 바닥에 놓여 있는지로만 보면,
   // 옮기려고 든 순간(pickDecor 가 decor 배열에서 즉시 빼낸다)이나 창고에 넣은 뒤 재방문했을 때
@@ -10035,7 +10043,7 @@ function updateDoorInteract() {
             nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
             if (def.id === 'bed') firstHintBanner('bedSleep', '🛏️', '침대', '밤에 누우면 아침까지 자요');
           }
-          const ring = ensureNearRing(); ring.position.set(near.root.position.x, 0.22, near.root.position.z); ring.visible = true;
+          const ring = ensureNearRing(); ring.position.set(near.root.position.x, near.root.position.y + 0.02, near.root.position.z); ring.visible = true;   // ☀️ 루프탑 가구는 ROOF_Y 만큼 높다 — 그 가구의 실제 y 를 그대로 따라간다
         }
       }
     }
@@ -10926,7 +10934,7 @@ function updateCatchItem(dt) {
 function snapCamera() {
   _camTarget.copy(player.position).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
-  _camLook.set(player.position.x, 1.2, player.position.z);
+  _camLook.set(player.position.x, player.position.y + 1.2, player.position.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
 }
 function updateCamera(dt) {
@@ -11007,7 +11015,7 @@ function updateCamera(dt) {
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
-  _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z - lookAhead), k);
+  _camLook.lerp(_camTarget.set(player.position.x, player.position.y + 1.2, player.position.z - lookAhead), k);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
 }
 
