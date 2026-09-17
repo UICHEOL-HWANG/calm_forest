@@ -788,7 +788,146 @@ git commit -m "feat: 🏖️ 산 옥상 파라솔 세트를 루프탑에 실물�
 
 ---
 
-### Task 7: i18n 영문 + 시각 검증
+### Task 7: 🪜 실내 마감을 집 단계에 맞춘다 (계단·바닥)
+
+**Files:**
+- Modify: `js/game.js` (`buildRoom` 의 바닥·계단, `INT_FLOOR_TINT`, `buildHouseStage`)
+
+**Interfaces:**
+- Consumes: Task 1 `floorAt`, Task 4 `buildRoom`/`refreshStairsLandmarks`/`interiorFloors`
+- Produces: 단계별 실내 마감(바닥 재질·계단 조형), `rebuildInteriorFinish()`
+
+**배경(사용자 요청):** 계단이 `woodMat(1,1,0x9c6b40)` 박스 3개라 조악하고, 바닥은 전 단계·전 층이
+`woodMat(7,7,INT_FLOOR_TINT)` 로 동일하다. 800🪙 를 내고 루프탑 빌라를 지어도 실내 바닥이 코티지와
+같으면 증축 체감이 또 밖에서 끝난다 — 이 프로젝트가 고치려는 바로 그 문제다.
+
+**팔레트는 외관 모델에서 그대로 가져온다**(실내·외관이 같은 집으로 읽혀야 한다):
+
+| 단계 | 바닥 | 계단 | 출처 |
+|---|---|---|---|
+| 3 코티지 | 따뜻한 원목(지금 그대로) | 나무 디딤판 + 나무 난간 | `js/house/cottage.js` |
+| 4 브릭 로프트 | 콘크리트 | 검은 철골 | `js/house/loft.js` steel `0x23252a` |
+| 5 펜트하우스 | 밝은 폴리시드 스톤 | 원목 디딤판 + 검은 철제 난간 | `js/house/penthouse.js` black `0x1e1f23` |
+| 6 루프탑 빌라 | 흰 대리석 | 유리 난간 | `js/house/villa.js` interior `0xf1ece3`, railGlass |
+| 루프탑(실외) | 나무 데크 | — | `js/house/villa.js` wood `0xc19a66` (수영장 데크와 같은 색) |
+
+**계단 조형**: 박스 3개 → 디딤판 5단 + 측면 스트링어 + 난간(기둥·손잡이).
+여전히 **올라가지 않는다** — 스펙 §4.2 의 표지물 성격과 위/아래 두 랜드마크 구조는 그대로 둔다.
+
+> 드로우콜(스펙 §8.3): 계단 메시가 3 → 10 안팎으로 는다. 층당 계단이 최대 2개이므로
+> 재질을 **단계당 2종(디딤판·난간)** 으로 묶어 증가를 재질 수만큼으로 제한한다.
+> 재질은 `buildStairs` 안이 아니라 밖에서 한 번 만들어 그 방의 계단 둘이 나눠 쓴다.
+
+- [ ] **Step 1: 단계별 마감 팔레트를 한 곳에 정의한다**
+
+`buildRoom` 위에 단계 → 마감 표를 만든다. 재질 인스턴스가 아니라 **색·파라미터**만 담는다
+(재질은 방을 지을 때 만들어야 `setFogExempt` 가 방별로 걸린다):
+
+```js
+// 🎨 단계별 실내 마감 — 팔레트는 외관 모델(js/house/*.js)에서 가져와 안팎이 같은 집으로 읽히게 한다.
+//    색만 담고 재질은 buildRoom 에서 만든다(방마다 fog 예외를 따로 걸어야 하므로).
+const INT_FINISH = {
+  3: { floor: { kind: 'wood',  c: 0xbfb0a0, rep: 7 }, tread: 0x9c6b40, rail: 0x8a5a36 },
+  4: { floor: { kind: 'stone', c: 0xb9b3a8, rep: 6 }, tread: 0x3a3d44, rail: 0x23252a },
+  5: { floor: { kind: 'stone', c: 0xe2ddd2, rep: 5 }, tread: 0xb98a4e, rail: 0x1e1f23 },
+  6: { floor: { kind: 'stone', c: 0xf1ece3, rep: 4 }, tread: 0xf1ece3, rail: 'glass' },
+};
+const finishFor = (stage) => INT_FINISH[Math.min(6, Math.max(3, stage || 3))];
+```
+
+- [ ] **Step 2: 바닥을 단계별로 바꾼다**
+
+`buildRoom` 의 바닥 한 줄을 교체한다. 루프탑(`def.outdoor`)은 실외 데크이므로 표와 무관하게 나무 데크다:
+
+```js
+  const fin = finishFor(gameState.houseStage);
+  const floorMat = def.outdoor
+    ? woodMat(3, 3, 0xc19a66)                                   // 루프탑 — 수영장 데크와 같은 널(villa.js wood)
+    : fin.floor.kind === 'wood' ? woodMat(fin.floor.rep, fin.floor.rep, fin.floor.c)
+                                : clayMat(fin.floor.c, false);   // 돌·대리석은 평면 음영 없이
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), floorMat);
+```
+
+- [ ] **Step 3: 계단을 제대로 된 조형으로 바꾼다**
+
+`buildStairs` 를 교체한다. 재질은 함수 **밖에서 한 번** 만들어 두 계단이 나눠 쓴다(드로우콜):
+
+```js
+  // 계단 재질은 방에 하나씩 — 위/아래 두 랜드마크가 같은 재질을 쓴다(스펙 §8.3)
+  const treadMat = clayMat(fin.tread);
+  const railMat = fin.rail === 'glass' ? makeHouseHelpers(THREE).glass(0xa9d8ea) : clayMat(fin.rail);
+  if (fin.rail === 'glass') railMat.opacity = 0.22;             // villa.js railGlass 와 같은 값
+  const STEPS = 5, RISE = 0.17, RUN = 0.34;
+  const slope = Math.atan2(STEPS * RISE, STEPS * RUN);
+  const runLen = Math.hypot(STEPS * RUN, STEPS * RISE);
+  const buildStairs = (cx) => {
+    const st = new THREE.Group(); st.position.set(cx, 0.2, H - 1.2);
+    for (let i = 0; i < STEPS; i++) {                           // 디딤판
+      const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, RUN), treadMat);
+      s.position.set(0, RISE * (i + 1), -i * RUN); s.castShadow = true; st.add(s);
+    }
+    [-0.5, 0.5].forEach(sx => {                                 // 측면 스트링어(비스듬한 판)
+      const side = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.26, runLen), treadMat);
+      side.position.set(sx, RISE * STEPS / 2, -(STEPS - 1) * RUN / 2);
+      side.rotation.x = slope; st.add(side);
+    });
+    if (fin.rail === 'glass') {                                 // 유리 난간 — 판 하나
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, runLen), railMat);
+      pane.position.set(0.52, RISE * STEPS / 2 + 0.36, -(STEPS - 1) * RUN / 2);
+      pane.rotation.x = slope; st.add(pane);
+    } else {                                                    // 기둥 + 손잡이
+      for (let i = 0; i < 3; i++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.5, 6), railMat);
+        post.position.set(0.52, RISE * (i * 2 + 1) + 0.25, -i * 2 * RUN); st.add(post);
+      }
+      const hand = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, runLen, 6), railMat);
+      hand.position.set(0.52, RISE * STEPS / 2 + 0.5, -(STEPS - 1) * RUN / 2);
+      hand.rotation.set(Math.PI / 2 - slope, 0, 0); st.add(hand);
+    }
+    g.add(st);
+    return st;
+  };
+```
+
+> 계단 프롬프트 판정 좌표(`updateDoorInteract`)는 `H - 1.2` 를 그대로 쓴다 — 계단 자리는 안 바뀐다.
+
+- [ ] **Step 4: 증축하면 실내 마감이 따라오게 한다**
+
+`buildRoom` 이 `gameState.houseStage` 를 읽으므로 **방을 지을 때의 단계**로 마감이 굳는다.
+집 안에서 증축하면 마감이 안 따라온다. 방을 다시 짓는 함수를 만든다:
+
+```js
+// 🏠 증축하면 실내 마감(바닥·계단)도 그 단계로 다시 짓는다 — 방 안에서 증축해도 즉시 반영된다.
+function rebuildInteriorFinish() {
+  for (const id in interiorFloors) {
+    const grp = interiorFloors[id];
+    unregisterWindows(grp);            // 창 재질이 houseWindows 에 남지 않게(누수 방지)
+    scene.remove(grp);
+  }
+  interiorFloors = {};
+  buildInterior();
+  setSpaceVisible();
+}
+```
+
+`buildHouseStage` 안에서 `refreshStairsLandmarks()` 를 부르던 자리를 `rebuildInteriorFinish()` 로 바꾼다.
+
+> ⚠️ `buildInterior` 는 `interiorLamp` 도 만든다. 다시 부를 때 조명이 **두 번** 생기지 않는지 확인하고,
+> 생긴다면 램프 생성은 `rebuildInteriorFinish` 경로에서 건너뛴다.
+
+- [ ] **Step 5: 전체 테스트**
+
+Run: `npm test`
+Expected: PASS (629+)
+
+- [ ] **Step 6: 커밋**
+
+커밋 메시지: `feat: 🪜 실내 바닥·계단을 집 단계에 맞춰 고급스럽게 한다`
+(스테이징 대상: `js/game.js`)
+
+---
+
+### Task 8: i18n 영문 + 시각 검증
 
 **Files:**
 - Modify: `js/i18n-en.js`
