@@ -49,7 +49,7 @@ export function build(THREE, H, variant, part = 'ascend') {
     add(H.box(W, 0.16, W, deckMat, 0, -0.08, 0));
     const frame = H.clay(0xf4f3ee);
     const darkGlass = H.glass(0x1e3242); darkGlass.opacity = 0.6;
-    const BX = -1.6, BZ = -1.2, BW = 1.7, BD = 1.7, BH = 2.3;
+    const BX = -1.6, BZ = -1.2, BW = 1.7, BD = 1.7, BH = 2.9;   // BH 2.3→2.9 — 문이 캐릭터(키 1.1)보다 확실히 커 보이게(리뷰: "캡슐이랑 비슷해서 옹색해 보인다")
     add(H.box(BW, BH, 0.1, frame, BX, BH / 2, BZ - BD / 2));                    // 뒤벽
     add(H.box(0.1, BH, BD, frame, BX - BW / 2, BH / 2, BZ));                    // 왼벽
     add(H.box(0.1, BH, BD, frame, BX + BW / 2, BH / 2, BZ));                    // 오른벽
@@ -58,7 +58,7 @@ export function build(THREE, H, variant, part = 'ascend') {
     add(H.box(0.9, BH - 0.2, 0.08, frame, BX, (BH - 0.2) / 2, BZ + BD / 2));            // 문틀
     add(H.box(0.64, BH - 0.5, 0.05, darkGlass, BX, (BH - 0.2) / 2 + 0.05, BZ + BD / 2 + 0.05));  // 문 유리
     add(H.box(2.4, 0.85, 0.05, railMat, BX + 0.3, 0.5, BZ + BD / 2 + 0.9));      // 유리 난간
-    mkCapsule(0.2, 0.6);
+    mkCapsule(0.9, -1.0);   // 카메라에서 더 멀리 — 문 바로 앞이라 가까우면 원근 때문에 캡슐이 실제보다 크게 보인다
     return g;
   }
 
@@ -100,16 +100,30 @@ export function build(THREE, H, variant, part = 'ascend') {
       const skirt2 = skirt.clone(); skirt2.position.x = holeX + DTW / 2; add(skirt2);
     }
     {
-      const railH = 0.9, postR = 0.05;
+      // 난간은 계단임을 알리는 가장 강한 신호다(리뷰) — 기둥을 굵게(0.08, 손스침대는 0.1), 손잡이도 굵게(0.08).
+      //   입구 두 모서리에도 손스침대를 세운다 — "여기가 내려가는 입구"라는 표시가 없으면 그냥 뚫린 구멍으로 보인다.
+      const railH = 0.9, postR = 0.08, newelR = 0.1;
       const corners = [[x1, z1], [x1, z2], [x2, z2], [x2, z1]];
       corners.forEach(([cx, cz], idx) => {
-        if (idx === 0) return;   // 입구 쪽 앞-왼 모서리는 기둥 없이 열어 둔다(진입로)
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, railH, 8), railMat);
+        const isEntry = idx === 0 || idx === 3;   // 입구(앞) 두 모서리 — 손스침대
+        const r = isEntry ? newelR : postR;
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(r, r, railH, 8), railMat);
         post.position.set(cx, railH / 2, cz); post.castShadow = true; add(post);
       });
-      add(H.box(0.06, 0.06, z2 - z1, railMat, x1, railH, holeZ));
-      add(H.box(x2 - x1, 0.06, 0.06, railMat, holeX, railH, z2));
-      add(H.box(0.06, 0.06, z2 - z1, railMat, x2, railH, holeZ));
+      // 중간 기둥 하나씩 더(왼쪽·오른쪽 변) — 4모서리 기둥만으론 긴 변에서 난간이 가늘게 끊겨 보인다.
+      [-1, 1].forEach(s => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, railH, 8), railMat);
+        post.position.set(s < 0 ? x1 : x2, railH / 2, holeZ); post.castShadow = true; add(post);
+      });
+      const handR = 0.08;
+      const railBar = (len, x, z, alongX) => {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(handR, handR, len, 8), railMat);
+        m.rotation.z = alongX ? Math.PI / 2 : 0; m.rotation.x = alongX ? 0 : Math.PI / 2;
+        m.position.set(x, railH, z); m.castShadow = true; add(m);
+      };
+      railBar(z2 - z1, x1, holeZ, false);   // 왼쪽 변
+      railBar(x2 - x1, holeX, z2, true);    // 뒤쪽 변
+      railBar(z2 - z1, x2, holeZ, false);   // 오른쪽 변
     }
     mkCapsule(holeX + 0.3, z1 + 0.2 + 5 * DRUN, -5 * DRISE + 0.62);   // 여섯 번째 디딤판 위 — 실제로 내려가는 중처럼, 카메라 정면 시야 안에서 너무 크지 않게
   } else {
@@ -141,13 +155,14 @@ export function build(THREE, H, variant, part = 'ascend') {
       pane.position.set(railX, riseTotal / 2 + RAIL_LIFT - paneH / 2, az - (ASTEPS - 1) * ARUN / 2);
       pane.rotation.x = slope; add(pane);
     } else {
+      // 기둥을 굵게(0.08, 손스침대 0.1) — 가늘면 게임 카메라 거리에서 배경에 묻혀 사라진다(리뷰).
       const postH = RAIL_LIFT - ARISE / 2;
-      [0, 3, 6, ASTEPS - 1].forEach(idx => {
-        const newel = idx === 0; const r = newel ? 0.075 : 0.05;
+      [0, 3, 6, 9, ASTEPS - 1].forEach(idx => {
+        const newel = idx === 0; const r = newel ? 0.1 : 0.08;
         const post = new THREE.Mesh(new THREE.CylinderGeometry(r, r, postH, 8), railMat);
         post.position.set(railX, ARISE * (idx + 1) + postH / 2, az - idx * ARUN); post.castShadow = true; add(post);
       });
-      const hand = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, runLen, 8), railMat);
+      const hand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, runLen, 8), railMat);
       hand.position.set(railX, riseTotal / 2 + RAIL_LIFT, az - (ASTEPS - 1) * ARUN / 2);
       hand.rotation.set(Math.PI / 2 - slope, 0, 0); hand.castShadow = true; add(hand);
     }
