@@ -36,7 +36,6 @@ const DIST = path.join(ROOT, 'dist');
 const INCLUDE = [
   'index.html',      // 게임 본체
   'js',              // 게임 모듈
-  'vendor',          // 📦 자체 호스팅 라이브러리(three·supabase) — scripts/fetch-vendor.mjs 산출물
   'dashboards',      // 관리자·분석 페이지(index.html 에서 링크)
   'beta',            // 🧪 베타 일지 페이지(/beta/diary.html) — 대시보드와 분리
   'guide',           // 📖 초보자 안내서(fragment+이미지) — index.html 의 #guide-panel 이 fetch 로 주입
