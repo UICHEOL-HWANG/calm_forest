@@ -2748,12 +2748,12 @@ function buildOrchardGround() {
   const streamW = t => 1.05 + Math.sin(t * Math.PI * 2.1 + 0.6) * 0.25;
 
   const shallow = new THREE.Mesh(                       // 얕은 여울 — 물보다 조금 넓게
-    shared('orchard.shallow.geo', () => ribbonGeo(streamPath, t => streamW(t) + 0.42)),
+    shared('orchard.shallow.geo', () => ribbonGeo(streamPath, t => streamW(t) + 0.42, (t, side) => Math.sin(t * Math.PI * (side > 0 ? 6.7 : 5.3)) * 0.12)),
     shared('orchard.shallow.mat', () => new THREE.MeshStandardMaterial({ color: 0xa8c4c0, roughness: 0.95, metalness: 0, side: THREE.DoubleSide })));
   shallow.position.set(ORCHARD.x, 0.022, ORCHARD.z); orchardGroup.add(shallow);
 
   const water = new THREE.Mesh(
-    shared('orchard.water.geo', () => ribbonGeo(streamPath, streamW)),
+    shared('orchard.water.geo', () => ribbonGeo(streamPath, streamW, (t, side) => Math.sin(t * Math.PI * (side > 0 ? 8.1 : 6.2)) * 0.1)),
     shared('orchard.water.mat', () => new THREE.MeshStandardMaterial({ color: 0x8fb9d6, roughness: 0.6, metalness: 0, side: THREE.DoubleSide })));
   water.position.set(ORCHARD.x, 0.035, ORCHARD.z); orchardGroup.add(water);
 
@@ -2838,7 +2838,7 @@ function syncOrchardTrees() {
 // 🎗️ 중심선 + 폭 함수 → 이어진 띠(ribbon) 지오메트리. XZ 평면, y=0.
 //   원반을 겹쳐 깔면 저지형 원이 씹혀 톱니가 되고, 작은 원을 줄줄이 찍으면 점박이가 된다.
 //   띠는 가장자리가 매끈하고 한 줄로 이어진다. path 는 [x, z, t] 배열(t 는 0~1 진행도).
-function ribbonGeo(path, halfWidth) {
+function ribbonGeo(path, halfWidth, edge = () => 0) {
   const pos = [], idx = [];
   for (let i = 0; i < path.length; i++) {
     const x = path[i][0], z = path[i][1], t = path[i][2];
@@ -2846,7 +2846,8 @@ function ribbonGeo(path, halfWidth) {
     let dx = pNext[0] - pPrev[0], dz = pNext[1] - pPrev[1];
     const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
     const nx = -dz, nz = dx, w = halfWidth(t);
-    pos.push(x + nx * w, 0, z + nz * w, x - nx * w, 0, z - nz * w);
+    const wl = w + edge(t, 1), wr = w + edge(t, -1);   // 좌우를 따로 — 평행한 두 선은 자연물처럼 안 보인다
+    pos.push(x + nx * wl, 0, z + nz * wl, x - nx * wr, 0, z - nz * wr);
     if (i < path.length - 1) { const a2 = i * 2; idx.push(a2, a2 + 1, a2 + 2, a2 + 1, a2 + 3, a2 + 2); }
   }
   const g2 = new THREE.BufferGeometry();
@@ -2858,22 +2859,29 @@ function ribbonGeo(path, halfWidth) {
 // 🍎 오솔길 — 입구(남쪽)에서 자리들을 훑고 지나가는 흙길. 디딤돌을 합쳐 드로우콜 1.
 //   자리를 잇는 게 아니라 '자리 옆을 스쳐 가게' 둔다 — 길 위에 나무가 서면 이상하다.
 function buildOrchardPaths() {
-  const way = [[0, 19], [1.5, 12], [0.5, 6], [-1, 0], [0.5, -6], [2, -12], [1.2, -19]];   // 국소 좌표(남→북)
-  const path = [];
-  for (let i = 0; i < way.length - 1; i++) {
-    const [x0, z0] = way[i], [x1, z1] = way[i + 1];
-    for (let k = 0; k < 8; k++) {
-      const u = k / 8, t = (i + u) / (way.length - 1);
-      path.push([x0 + (x1 - x0) * u, z0 + (z1 - z0) * u, t]);
-    }
-  }
-  path.push([way[way.length - 1][0], way[way.length - 1][1], 1]);
-  // 폭은 가운데가 조금 넓고 양 끝이 좁게 — 밟아 다져진 길처럼
-  const w = t => 0.62 + Math.sin(t * Math.PI) * 0.18;
+  // 참고: 실제 흙길은 ① 꺾이지 않고 완만한 S 자로 휘고 ② 양 가장자리가 제각각이고 ③ 모래빛으로 밝다.
+  //   직선 보간은 웨이포인트마다 각이 지므로 Catmull-Rom 곡선으로 샘플링한다.
+  const way = [[0, 19], [2.2, 12], [-0.6, 5], [1.4, -2], [-0.8, -9], [2.4, -14], [1.2, -19]];
+  const curve = new THREE.CatmullRomCurve3(way.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'catmullrom', 0.5);
+  const N = 70, path = [];
+  for (let i = 0; i <= N; i++) { const t = i / N, v = curve.getPoint(t); path.push([v.x, v.z, t]); }
+
+  const w = t => 0.66 + Math.sin(t * Math.PI) * 0.16;                       // 가운데가 넓고 양 끝이 좁게
+  const edge = (t, side) => Math.sin(t * Math.PI * (side > 0 ? 9.3 : 7.1) + (side > 0 ? 0 : 1.9)) * 0.13;   // 좌우 따로 흔든다
+
   const mesh = new THREE.Mesh(
-    shared('orchard.path.geo', () => ribbonGeo(path, w)),
-    shared('orchard.path.mat', () => new THREE.MeshStandardMaterial({ color: 0xc9b393, roughness: 1, metalness: 0, side: THREE.DoubleSide })));
+    shared('orchard.path.geo', () => ribbonGeo(path, w, edge)),
+    shared('orchard.path.mat', () => new THREE.MeshStandardMaterial({ color: 0xded0b4, roughness: 1, metalness: 0, side: THREE.DoubleSide })));
   mesh.position.set(ORCHARD.x, 0.018, ORCHARD.z); mesh.receiveShadow = true; orchardGroup.add(mesh);
+
+  // 길가에 흩어진 잔모래·작은 돌 — 길과 풀의 경계를 흐린다(한 덩이로 합쳐 드로우콜 1)
+  const grit = new THREE.Mesh(
+    shared('orchard.grit.geo', () => mergeGeos(path.filter((_, i) => i % 3 === 0).flatMap(([x, z, t], i) => {
+      const off = w(t) + 0.12 + (i % 4) * 0.07, r = 0.055 + (i % 3) * 0.022;
+      return [1, -1].map(side => new THREE.IcosahedronGeometry(r, 0).translate(x + side * off, 0.015, z + (i % 2 ? 0.22 : -0.24)));
+    }))),
+    shared('orchard.grit.mat', () => clayMat(0xcdbf9e)));
+  grit.position.set(ORCHARD.x, 0.02, ORCHARD.z); orchardGroup.add(grit);
 }
 
 function syncOrchardSlotHints() {
