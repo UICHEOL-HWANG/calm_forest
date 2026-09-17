@@ -2855,11 +2855,18 @@ function syncOrchardSlotHints() {
   const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
   const free = orchardSlotsWorld().filter(s => !taken.has(`${s.x},${s.z}`));
   if (!free.length) return;
-  const im = new THREE.InstancedMesh(
-    shared('orchard.slot.geo', () => new THREE.CircleGeometry(0.9, 12).rotateX(-Math.PI / 2)),
-    shared('orchard.slot.mat', () => clayMat(0x8a6440)), free.length);
+  // 흙바닥과 색이 비슷해 "여기 심어라" 가 안 읽혔다 — 밝은 테두리를 깔고 그 위에 어두운 흙을 얹어 대비를 준다
   const m = new THREE.Matrix4();
-  free.forEach((s, i) => { m.makeTranslation(s.x, 0.04, s.z); im.setMatrixAt(i, m); });
+  const ring = new THREE.InstancedMesh(
+    shared('orchard.slotring.geo', () => new THREE.CircleGeometry(1.05, 14).rotateX(-Math.PI / 2)),
+    shared('orchard.slotring.mat', () => clayMat(0xe8dcc0, false)), free.length);
+  free.forEach((s, i) => { m.makeTranslation(s.x, 0.042, s.z); ring.setMatrixAt(i, m); });
+  ring.instanceMatrix.needsUpdate = true; orchardGroup.add(ring);
+
+  const im = new THREE.InstancedMesh(
+    shared('orchard.slot.geo', () => new THREE.CircleGeometry(0.82, 12).rotateX(-Math.PI / 2)),
+    shared('orchard.slot.mat', () => clayMat(0x6f4a2a, false)), free.length);
+  free.forEach((s, i) => { m.makeTranslation(s.x, 0.05, s.z); im.setMatrixAt(i, m); });
   im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
 }
 
@@ -6238,8 +6245,12 @@ function enterOrchard() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   settleOrchard();   // 🍎 일일 정산(날짜 게이트) — 벌통과 같은 문법
-  firstHint('orchardIntro', '🍎', '과수원',
-    '🌰씨앗 도구로 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요');
+  // 묘목이 없으면 "심어라" 가 아니라 "사 와라" 를 먼저 말한다 — 살 곳을 안 알려준 탓에
+  //   고급 작물 채택률이 0% 였다. 같은 실수를 반복하지 않는다.
+  const hasSap = FRUITS.some(f => (gameState.inventory[sapKeyOf(f.id)] || 0) > 0);
+  firstHint('orchardIntro', '🍎', '과수원', hasSap
+    ? '🌰씨앗 도구로 흙 자리에 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요'
+    : '🌰묘목은 마을 🛒상점에서 팔아요\n사 와서 씨앗 도구로 흙 자리에 심어요\n시냇가에 심으면 물을 안 줘도 돼요');
   Sound.blip(); setBGMTheme?.('main');
   trackEvent('orchard_enter', { trees: (gameState.orchard?.trees || []).length });   // [GA4] 유입
 }
