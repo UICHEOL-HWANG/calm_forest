@@ -7172,7 +7172,9 @@ const HOLE_HW = 0.7, HOLE_HD = 1.6;                         // 구멍 반폭·�
 // 🪜 계단 배치 좌표(순수 함수) — buildRoom(짓기)과 updateDoorInteract(프롬프트 판정)가
 //   반드시 같은 공식을 써야 한다. 컨셉 뷰어 stairs.js 의 layout() 그대로.
 function stairLayout(H) {
-  const holeX = -H * 0.32, holeZ = -H * 0.05;
+  // 🚧 리뷰 반영: 구멍이 방 한가운데 떠 있어 가구 놓을 자리를 잡아먹었다 — 왼쪽 벽에 바짝 붙인다
+  //   (오르는 계단이 오른쪽 벽에 붙는 것과 같은 간격 0.15, 구멍 폭 자체(1.4)·비례는 손대지 않는다).
+  const holeX = -H + HOLE_HW + 0.15, holeZ = -H * 0.05;
   const ax = H - ATW / 2 - 0.12, az = H - 1.2;   // 오르는 계단 진입점(오른쪽 벽 붙박이)
   return { holeX, holeZ, ax, az, x1: holeX - HOLE_HW, x2: holeX + HOLE_HW, z1: holeZ - HOLE_HD, z2: holeZ + HOLE_HD };
 }
@@ -7323,9 +7325,12 @@ function buildRoom(def) {
     });
     st.add(HH.box(x2 - x1, 0.05, z2 - z1, shaftMatDown, holeX, -shaftDepth + 0.02, holeZ));   // 맨 밑은 닫아 둔다
     // 🔦 구멍 안을 밝히는 보조광 — interiorLamp(방 중앙 점광)는 바닥 아래까지 거의 안 닿는다.
-    const holeLight = new THREE.PointLight(0xfff4d8, 5.0, 9, 1.1);
+    //   🚧 리뷰 반영: stairs.js(컨셉 뷰어)의 5.0/4.5 는 그 뷰어 전용 조명(보조광 없음·bloom 없음) 기준값이라
+    //   그대로 옮기면 실제 게임의 UnrealBloomPass(임계 0.85, js/game.js:10216)에 걸려 디딤판이 흰 빛으로 날아간다
+    //   (예전 나룻배 물보라와 같은 함정). 실측(1.2/1.0)으로 디딤판·난간이 또렷이 보이면서 번지지 않는 값을 확인했다.
+    const holeLight = new THREE.PointLight(0xfff4d8, 1.2, 9, 1.1);
     holeLight.position.set(holeX, 0.6, holeZ - 1.0); st.add(holeLight);
-    const holeLight2 = new THREE.PointLight(0xfff4d8, 4.5, 8, 1.1);
+    const holeLight2 = new THREE.PointLight(0xfff4d8, 1.0, 8, 1.1);
     holeLight2.position.set(holeX, -flightDepth * 0.5, holeZ + 0.2); st.add(holeLight2);
     const DTW = HOLE_HW * 2 - 0.12;   // 디딤판 폭 — 구멍 폭(1.4)의 거의 전부(스커트용 여유만)
     const ENTRY_OFFSET = 0.22;        // 입구에서 첫 단까지(디딤판 반두께보다 커야 입구 밖으로 안 삐져나온다)
