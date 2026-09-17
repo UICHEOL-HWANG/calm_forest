@@ -7,7 +7,7 @@
 export const HALF_BY_STAGE = { 3: 7, 4: 4.5, 5: 6, 6: 6 };
 
 // 계단 치수(공통) — index.html 카메라 타게팅과 여기 지오메트리가 같은 숫자를 봐야 한다.
-const DSTEPS = 8, DRISE = 0.25, DRUN = 0.34;                 // 내려가는 계단(구멍형)
+const DSTEPS = 9, DRISE = 0.25, DRUN = 0.34;                 // 내려가는 계단(구멍형) — 9단으로 구멍 길이(3.2)를 거의 채운다
 const ASTEPS = 12, ARISE = 0.25, ARUN = 0.32, ATW = 1.1;      // 올라가는 계단(벽 붙박이, 천장 3.0 까지)
 const HOLE_HW = 0.7, HOLE_HD = 1.6;                            // 구멍 반폭·반깊이(1.4×3.2)
 
@@ -80,45 +80,44 @@ export function build(THREE, H, variant, part = 'ascend') {
     add(H.box(half - x2, 0.2, W, floorMat, (x2 + half) / 2, -0.1, 0));                     // 오른쪽 띠
     add(H.box(x2 - x1, 0.2, z1 - (-half), floorMat, holeX, -0.1, (-half + z1) / 2));       // 앞 띠(입구 쪽, 열어 둔다)
     add(H.box(x2 - x1, 0.2, half - z2, floorMat, holeX, -0.1, (z2 + half) / 2));           // 뒤 띠
-    const shaftDepth = DSTEPS * DRISE;   // 2.0 — 디딤판이 바닥까지 닿는다
-    // 벽을 위/아래 두 톤으로 나눈다 — 밑으로 갈수록 어둡게(아래층 그림자 느낌) + 바닥을 밝은 "아래층 바닥 살짝 보임" 조각으로.
-    //   전에는 통짜 회색 한 판이라 "얕은 상자"로 보였다(리뷰).
+    const flightDepth = DSTEPS * DRISE;      // 2.25 — 디딤판이 실제로 닿는 깊이
+    const shaftDepth = flightDepth + 1.75;   // 4.0 — 계단이 끝난 뒤로도 한참 더 어둠 속으로 이어진다("아래층으로 가는 통로", 얕은 상자 아님)
+    // 벽을 위/아래 두 톤으로 나눈다 — 디딤판이 끝나는 지점(flightDepth)에서 갈라, 그 아래는 쭉 어둡게(바닥 없이 어둠 속으로).
     const shaftMatUp = H.clay(0x5e616a, { roughness: 0.95 });
-    const shaftMatDown = H.clay(0x2c2e33, { roughness: 0.95 });
-    const midY = -shaftDepth * 0.55;
-    [[0, midY, shaftMatUp], [midY, -shaftDepth, shaftMatDown]].forEach(([y0, y1, mat]) => {
+    const shaftMatDown = H.clay(0x22242a, { roughness: 0.95 });
+    [[0, -flightDepth, shaftMatUp], [-flightDepth, -shaftDepth, shaftMatDown]].forEach(([y0, y1, mat]) => {
       const h = y0 - y1, cy = (y0 + y1) / 2;
       add(H.box(x2 - x1, h, 0.06, mat, holeX, cy, z1));
       add(H.box(0.06, h, z2 - z1, mat, x1, cy, holeZ));
       add(H.box(0.06, h, z2 - z1, mat, x2, cy, holeZ));
       add(H.box(x2 - x1, h, 0.06, mat, holeX, cy, z2));
     });
-    // 바닥 — 가운데는 아래층 바닥을 살짝 비춘 듯 floorMat 을 어둡게 섞어서, 가장자리만 그림자 띠로.
-    const belowFloorMat = H.clay(fin.floor, { roughness: 0.95 });
-    belowFloorMat.color.multiplyScalar(0.4);
-    add(H.box(x2 - x1 - 0.1, 0.06, z2 - z1 - 0.1, belowFloorMat, holeX, -shaftDepth - 0.03, holeZ));
-    add(H.box(x2 - x1, 0.05, z2 - z1, shaftMatDown, holeX, -shaftDepth + 0.02, holeZ));
-    // 구멍 안을 밝히는 보조광 — 실내 조명 없이는 샤프트가 새까맣게 뭉개진다(리뷰: "검은 구멍")
-    // 메인 조명은 위(해)·옆(보조광)에서 오기 때문에 바닥 밑 샤프트까지는 거의 안 닿는다 — 안쪽 전용 광원 2개.
-    const holeLight = new THREE.PointLight(0xfff4d8, 5.0, 8, 1.2);
-    holeLight.position.set(holeX, 0.5, holeZ); add(holeLight);
-    const holeLight2 = new THREE.PointLight(0xfff4d8, 3.0, 6, 1.2);
-    holeLight2.position.set(holeX, -shaftDepth + 0.5, holeZ); add(holeLight2);   // 바닥 쪽도 따로
-    const DTW = 1.2;
+    add(H.box(x2 - x1, 0.05, z2 - z1, shaftMatDown, holeX, -shaftDepth + 0.02, holeZ));   // 맨 밑은 그냥 닫아 둔다(바닥처럼 안 보이게 짙게)
+    // 구멍 안을 밝히는 보조광 — 메인 조명은 위(해)·옆(보조광)에서 오기 때문에 바닥 밑 샤프트까지는 거의 안 닿는다.
+    //   두 번째 광원은 디딤판이 끝나는 자리까지만 비춘다 — 그 아래는 자연히 어둠에 묻힌다(요청대로 "바닥 안 보여도 된다").
+    const holeLight = new THREE.PointLight(0xfff4d8, 5.0, 9, 1.1);
+    holeLight.position.set(holeX, 0.6, holeZ - 1.0); add(holeLight);   // 입구 쪽
+    const holeLight2 = new THREE.PointLight(0xfff4d8, 4.5, 8, 1.1);
+    holeLight2.position.set(holeX, -flightDepth * 0.5, holeZ + 0.2); add(holeLight2);   // 중간 — 계단이 길어져 하나로는 중간이 어둡게 죽는다
+    const holeLight3 = new THREE.PointLight(0xfff4d8, 3.0, 6, 1.2);
+    holeLight3.position.set(holeX, -flightDepth + 0.5, holeZ + 1.2); add(holeLight3);   // 계단 끝(뒤쪽)
+    // 디딤판 폭 — 구멍 폭(1.4)을 거의 채운다(스커트용 여유 0.06 만 남긴다). 전엔 1.2 라 구멍 옆이 휑하게 비어 보였다(리뷰).
+    const DTW = HOLE_HW * 2 - 0.12;
+    const ENTRY_OFFSET = 0.22;   // 입구에서 첫 단까지 — 디딤판 반두께(0.2)보다 커야 판이 입구 밖으로 안 삐져나온다
     for (let i = 0; i < DSTEPS; i++) {
       const s = new THREE.Mesh(new THREE.BoxGeometry(DTW, 0.14, DRUN + 0.05), treadMat);
-      s.position.set(holeX, -DRISE * (i + 1) + DRISE, z1 + 0.2 + i * DRUN);
+      s.position.set(holeX, -DRISE * i, z1 + ENTRY_OFFSET + i * DRUN);
       s.castShadow = true; add(s);
     }
     {
       const skirtShape = new THREE.Shape();
       skirtShape.moveTo(0, 0); skirtShape.lineTo(-0.3, 0);
-      skirtShape.lineTo(-(DSTEPS * DRUN), -DSTEPS * DRISE); skirtShape.lineTo(0, -DSTEPS * DRISE); skirtShape.closePath();
+      skirtShape.lineTo(-(DSTEPS * DRUN), -flightDepth); skirtShape.lineTo(0, -flightDepth); skirtShape.closePath();
       const skirtThick = 0.08;
       const geo = new THREE.ExtrudeGeometry(skirtShape, { depth: skirtThick, bevelEnabled: false });
       geo.translate(0, 0, -skirtThick / 2); geo.rotateY(Math.PI / 2);
       const skirt = new THREE.Mesh(geo, treadMat);
-      skirt.position.set(holeX - DTW / 2, 0, z1 + 0.2); skirt.castShadow = true; add(skirt);
+      skirt.position.set(holeX - DTW / 2, 0, z1 + ENTRY_OFFSET); skirt.castShadow = true; add(skirt);
       const skirt2 = skirt.clone(); skirt2.position.x = holeX + DTW / 2; add(skirt2);
     }
     {
@@ -133,7 +132,7 @@ export function build(THREE, H, variant, part = 'ascend') {
       add(H.box(handT, handW, z2 - z1, railMat, x2, railH, holeZ));   // 오른쪽 손잡이
       // 입구 쪽엔 손잡이를 안 걸친다 — 이게 "여기로 들어간다"는 유일한 신호라 눈에 띄어야 한다.
     }
-    mkCapsule(holeX + 0.3, z1 + 0.2 + 5 * DRUN, -5 * DRISE + 0.62);   // 여섯 번째 디딤판 위 — 실제로 내려가는 중처럼, 카메라 정면 시야 안에서 너무 크지 않게
+    mkCapsule(holeX + 0.15, z1 + ENTRY_OFFSET + 7 * DRUN, -7 * DRISE + 0.62);   // 뒤쪽(여덟 번째) 디딤판 위 — 머리가 바닥 아래로 뚜렷이 내려가 있어야 깊이가 읽힌다(리뷰: "머리가 바닥 높이 근처")
   } else {
     add(H.box(W, 0.2, W, floorMat, 0, -0.1, 0));   // 통 바닥판 — 가장자리가 그 단계 방의 실제 반경을 보여준다(벽은 안 짓는다)
     // ── B. 올라가는 계단 — 오른쪽 벽 자리를 따라 천장 높이(3.0)까지 닿는다 ──

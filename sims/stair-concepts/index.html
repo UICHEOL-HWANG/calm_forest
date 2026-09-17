@@ -58,8 +58,8 @@ if (camMode === 'ascend') {   // 오르는 계단 크게, 3/4 각도(정면 위 
   tgt = [first.ax - 1.1, 1.4, first.az - 1.9];
 } else if (camMode === 'descend') {   // 내려가는 구멍 — 방 안에 "서서" 옆에서 본다. 구멍 정면(길이 축)으로 보면 위 디딤판에
   //   나머지가 다 가려 널빤지 하나로만 보인다(리뷰) — 옆(폭 축)에서 봐야 단이 층져 보인다. 그래도 방 바닥은 넉넉히 보이게 뒤로 뺀다.
-  camera.position.set(first.x1 - 4.2, 3.4, first.holeZ - 3.6);
-  tgt = [first.x2 + 0.2, -1.0, first.holeZ + 0.6];
+  camera.position.set(first.holeX + 1.6, 4.6, first.holeZ - 2.6);
+  tgt = [first.holeX - 0.2, -1.3, first.holeZ + 0.3];
 } else if (camMode === 'roof') {
   camera.position.set(2.4, 3.2, 5.6); tgt = [-1.3, 1.2, -0.8];
 } else if (camMode === 'compare') {   // all=1 전용 — 나란히 놓은 계단들을 한 각도로(계단마다 ax 는 0 으로 맞췄지만 반경 half 가 달라 간격은 균일하지 않다)
