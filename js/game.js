@@ -5918,18 +5918,32 @@ function buildOrchardGate() {
     rail.position.set(mid, 0.07, sz); g.add(rail);
   }
 
-  // 문이 있는 앞면(국소 x=0)
+  // 앞면 — **아치 실루엣 안에서만** 채운다. 판 하나를 얹으면 곡선 밖으로 넘친다(이전 판 4.2 폭이 그랬다).
+  //   폭을 잘게 쪼개고 각 조각 높이를 아치 식 h = √(R² − z²) 로 구하면 절대 넘칠 수 없다.
   const wall = clayMat(0xe6d8bf);
-  for (const [wz, ww] of [[-1.42, 1.36], [1.42, 1.36]]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.0, ww), wall);
-    m.position.set(0, 1.0, wz); m.castShadow = true; g.add(m);
+  const SLATS = 16, DOOR_Z0 = -0.9, DOOR_Z1 = 0.3, DOOR_H = 1.8;   // 문은 참고 이미지처럼 작고 살짝 치우친다
+  for (let i = 0; i < SLATS; i++) {
+    const z0 = -R + (2 * R) * i / SLATS, z1 = -R + (2 * R) * (i + 1) / SLATS;
+    const zc = (z0 + z1) / 2, w = (z1 - z0) + 0.02;
+    const h = Math.sqrt(Math.max(0, R * R - Math.max(Math.abs(z0), Math.abs(z1)) ** 2));   // 양 끝 중 낮은 쪽에 맞춰 안전하게
+    if (h < 0.06) continue;
+    const inDoor = zc > DOOR_Z0 && zc < DOOR_Z1;
+    if (!inDoor) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, h, w), wall);
+      m.position.set(0, h / 2, zc); m.castShadow = true; g.add(m);
+    } else if (h > DOOR_H + 0.08) {                    // 문 위 인방 — 아치 높이를 넘지 않는 만큼만
+      const lin = new THREE.Mesh(new THREE.BoxGeometry(0.12, h - DOOR_H, w), wall);
+      lin.position.set(0, DOOR_H + (h - DOOR_H) / 2, zc); g.add(lin);
+    }
   }
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 4.2), wall);
-  head.position.set(0, 2.2, 0); g.add(head);
-  const arcFront = new THREE.Mesh(new THREE.TorusGeometry(R, 0.09, 6, 14, Math.PI), trim);
+  const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, DOOR_H, DOOR_Z1 - DOOR_Z0), clayMat(0x4a3b2c));
+  doorway.position.set(0.09, DOOR_H / 2, (DOOR_Z0 + DOOR_Z1) / 2); g.add(doorway);           // 문 안쪽 어둠
+  const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, DOOR_H + 0.1, DOOR_Z1 - DOOR_Z0 + 0.16), clayMat(0xa2632f));
+  doorFrame.position.set(-0.03, (DOOR_H + 0.1) / 2, (DOOR_Z0 + DOOR_Z1) / 2); g.add(doorFrame);   // 문틀(참고 이미지의 주황 테)
+  const win = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.34, 0.34), clayMat(0x7d9b93));    // 문 옆 작은 창
+  win.position.set(-0.04, 1.15, 0.95); g.add(win);
+  const arcFront = new THREE.Mesh(new THREE.TorusGeometry(R, 0.09, 6, 16, Math.PI), trim);   // 앞 아치 테
   arcFront.position.set(0, 0, 0); arcFront.rotation.y = Math.PI / 2; g.add(arcFront);
-  const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.95, 2.4), clayMat(0x4a3b2c));
-  doorway.position.set(0.1, 0.97, 0); g.add(doorway);
 
   for (const rz of [-1.05, 0, 1.05]) {                  // 안쪽 이랑
     const bed = new THREE.Mesh(new THREE.BoxGeometry(LEN - 1.2, 0.22, 0.5), clayMat(0x8a6440));
@@ -5938,11 +5952,12 @@ function buildOrchardGate() {
     crop.position.set(mid + 0.3, 0.38, rz); g.add(crop);
   }
 
-  [[-1.5, -1.6], [-1.6, -0.3], [-1.4, 1.5]].forEach(([cx, cz], i) => {   // 문 앞 과일 궤짝
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.42, 0.72), wood);
-    box.position.set(cx, 0.21, cz); box.castShadow = true; g.add(box);
-    const fill = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.16, 0.58), clayMat(FRUITS[i % FRUITS.length].fruitColor));
-    fill.position.set(cx, 0.48, cz); g.add(fill);
+  // 과일 궤짝 — 참고 이미지처럼 문 앞을 막지 않고 옆으로 비켜 놓는다
+  [[-0.7, 2.6], [-0.7, 3.4], [0.4, 3.0]].forEach(([cx, cz], i) => {
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.4, 0.66), wood);
+    box.position.set(cx, 0.2, cz); box.castShadow = true; g.add(box);
+    const fill = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.15, 0.52), clayMat(FRUITS[i % FRUITS.length].fruitColor));
+    fill.position.set(cx, 0.45, cz); g.add(fill);
   });
 
   // 둘레 과일나무 — 몸통 좌우로 넉넉히 띄운다(R 2.1 + 캐노피 1.2 여유)
