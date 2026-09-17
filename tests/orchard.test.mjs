@@ -182,3 +182,28 @@ test('자리 배치: 앞 4자리는 시냇가 면제, 뒤 6자리는 매일 물�
   assert.deepEqual(near, [true, true, true, true, false, false, false, false, false, false]);
   assert.equal(near.filter(Boolean).length, STREAM_SLOTS);
 });
+
+// 위 테스트는 불리언 패턴만 본다 — 시냇가 자리가 STREAM_R(5)에 정확히 걸쳐 있어도
+// (예: hypot(4,3)===5) `<=` 판정이 우연히 참이기만 하면 그대로 통과해 버린다.
+// 좌표를 살짝 흔들거나 `<=`→`<` 로 리팩터링하면 "물 면제"가 조용히 뒤집히는데, 위 테스트는
+// 여전히 자기 자신과 일치해 실패하지 않는다. 그래서 실제 거리값에 여유(0.5)를 못 박는다.
+test('자리 배치: 시냇가 자리는 경계에서 최소 0.5 안쪽, 먼 자리는 최소 0.5 바깥이다', () => {
+  const stream = ORCHARD_STREAM_LOCAL.map(([x, z]) => ({ x, z }));
+  const MARGIN = 0.5;
+  const distToNearestStream = ({ x, z }) =>
+    Math.min(...stream.map(p => Math.hypot(p.x - x, p.z - z)));   // nearStream 과 같은 "최근접 점" 기준
+
+  const nearSlots = ORCHARD_SLOTS_LOCAL.slice(0, STREAM_SLOTS).map(([x, z]) => ({ x, z }));
+  const farSlots = ORCHARD_SLOTS_LOCAL.slice(STREAM_SLOTS).map(([x, z]) => ({ x, z }));
+
+  for (const s of nearSlots) {
+    const d = distToNearestStream(s);
+    assert.ok(d <= STREAM_R - MARGIN,
+      `시냇가 자리(${s.x},${s.z})가 경계에서 ${(STREAM_R - d).toFixed(2)}m 안쪽뿐이다 — ${MARGIN}m 이상 필요`);
+  }
+  for (const s of farSlots) {
+    const d = distToNearestStream(s);
+    assert.ok(d >= STREAM_R + MARGIN,
+      `먼 자리(${s.x},${s.z})가 경계에서 ${(d - STREAM_R).toFixed(2)}m 바깥뿐이다 — ${MARGIN}m 이상 필요`);
+  }
+});

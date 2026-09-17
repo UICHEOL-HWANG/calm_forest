@@ -30,7 +30,11 @@ export function shadowReaches(x, z, reach = MAX_REACH) {
 // 에서 상자 중심(clamp 된 플레이어 위치)까지 잰 값이다 — 중심만 보면 큰 배경 메시를 놓친다.
 //   실측 2026-09-12 (씬 그래프 Box3): 동굴 218.5m · 안개 217.5m · 카페 290.8m · 바다 292m · 강 376m.
 //   전부 MAX_REACH(60) 보다 한참 밖이라 여유가 크다.
-export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea', 'atMuseum'];
+//   🍎 과수원 — 브라우저 실측 대신 지오메트리로 계산(2026-09-17, Task 7): receiveShadow 메시는
+//   buildOrchardGround() 의 지면 원반(CircleGeometry(ORCHARD_HALF=20), 중심 ORCHARD(0,0,160))
+//   뿐이라 최근접점을 손으로 뽑을 수 있다 — AABB 는 x:[-20,20], z:[140,180], VILLAGE_CLAMP 상자
+//   (x,z 각 ±18)까지 z 축으로만 벌어져 있어 최근접 거리 = 140 − 18 = 122m. MAX_REACH(60) 밖.
+export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea', 'atMuseum', 'atOrchard'];
 
 // ② 상자는 닿지만 실측상 보이는 그림자가 없는 공간.
 // 진입 시점(timeOfDay 0.32)에 섀도맵을 한 번 굽고 얼린 뒤 해를 옮기며 live 렌더와 픽셀 비교했다

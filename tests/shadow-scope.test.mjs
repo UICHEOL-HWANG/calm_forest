@@ -79,15 +79,18 @@ test('game.js 의 그림자 카메라 반폭이 BOX_HALF 와 같다', () => {
 // ─────────────────────────────────────────────────────────────
 
 // 기하학적으로 상자 밖인 공간(플래그 이름 ↔ game.js 좌표 상수). OUT_OF_REACH_FLAGS 와 짝이다.
-const OUT_OF_REACH = { atMine: 'MINE', atCafe: 'CAFE', atMist: 'MIST', atRiver: 'RIVER', atSea: 'SEA', atMuseum: 'MUSEUM' };
+const OUT_OF_REACH = { atMine: 'MINE', atCafe: 'CAFE', atMist: 'MIST', atRiver: 'RIVER', atSea: 'SEA', atMuseum: 'MUSEUM', atOrchard: 'ORCHARD' };
 // 상자는 닿지만 실측상 보이는 그림자가 없는 공간.
 const MEASURED_SHADOWLESS = { indoor: 'INT', atFarm: 'FARM' };
 
 // 2026-09-12 씬 그래프 Box3 실측 — 각 공간에서 receiveShadow=true 인 메시의 **최근접점**이
 // 상자 중심에서 얼마나 떨어져 있는가. 공간 중심 좌표만 보면 큰 배경 메시를 놓친다
 // (텃밭 중심은 66m 지만 배경 skirt 는 18m, 실내 중심 34m 지만 바닥은 27m).
+// 🍎 과수원(atOrchard: 122)은 브라우저 실측이 아니라 지오메트리 계산값(2026-09-17, Task 7) —
+// receiveShadow 메시가 buildOrchardGround() 의 지면 원반 하나뿐이라 AABB 를 손으로 구할 수 있다.
+// js/shadow-scope.js 의 OUT_OF_REACH_FLAGS 주석에 산출 과정을 적어 뒀다.
 const NEAREST_RECEIVER_M = { atMine: 218.5, atMist: 217.5, atCafe: 290.8, atSea: 292, atRiver: 376,
-                             atMuseum: 330, indoor: 27, atFarm: 18 };   // 🏛️ z=360 — ☕카페(320)보다 멀다
+                             atMuseum: 330, indoor: 27, atFarm: 18, atOrchard: 122 };   // 🏛️ z=360 — ☕카페(320)보다 멀다
 // 마을 땅 안의 구역: 그림자가 실제로 보인다. 절대 끄면 안 된다.
 const VILLAGE_SPACES = ['GLADE', 'FOREST', 'DOCK_POND'];
 

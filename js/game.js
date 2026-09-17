@@ -2751,12 +2751,6 @@ function rebuildOrchard() {
   syncOrchardSlotHints();   // 빈 자리 1(인스턴스)
 }
 
-// 🌰 나무 한 그루를 심는다 — gameState 에 더하고 통째로 다시 그린다(불변 — 저장소 코딩 규칙)
-function spawnFruitTree(x, z, kind, stage = 'sapling', fruit = 0) {
-  gameState.orchard.trees = [...gameState.orchard.trees, { x, z, kind, stage, age: 0, watered: false, fruit }];
-  rebuildOrchard();
-}
-
 function buildPlayer() {
   playerAnchor = new THREE.Group();
   player = new THREE.Group();
