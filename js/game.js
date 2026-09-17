@@ -2268,7 +2268,7 @@ export async function enterGame() {
   setTimeout(announceMapOpens, 4000);   // 🧪 [베타 2차] 열린 맵 안내 — 시작 직후 코치·환영 배너와 겹치지 않게 4초 뒤
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
-    place: indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
+    place: indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
     x: player.position.x, z: player.position.z,
   }));
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
@@ -3888,7 +3888,7 @@ function removeFirefly(bug) {
 function updateFireflyBugs(dt, t) {
   if (!gladeGroup) return;
   const night = isNight();
-  gladeGroup.visible = !indoor && !atFarm && !atMine;
+  gladeGroup.visible = !indoor && !atFarm && !atMine && !atOrchard;
   if (!night) {                                   // ☀️ 낮 → 전부 사라짐(밤에 다시 피어오름)
     while (gladeBugs.length) removeFirefly(gladeBugs[gladeBugs.length - 1]);
     return;
@@ -4077,7 +4077,7 @@ function spawnForageNode(i, first = false) {
 // 매 프레임 — 돋아나는 팝 애니메이션 + 살랑임 + 재생성 타이머
 function updateForage(dt, t) {
   if (!forestGroup) return;
-  forestGroup.visible = !indoor && !atFarm && !atMine;
+  forestGroup.visible = !indoor && !atFarm && !atMine && !atOrchard;
   for (let i = 0; i < forageNodes.length; i++) {
     const n = forageNodes[i];
     if (!n.ready) { if (t >= n.respawnAt) spawnForageNode(i); continue; }
@@ -4092,7 +4092,7 @@ function updateForage(dt, t) {
 
 // 가장 가까운(주울 수 있는) 채집물 — 없으면 null
 function forageTarget() {
-  if (!forestGroup || indoor || atFarm || atMine) return null;
+  if (!forestGroup || indoor || atFarm || atMine || atOrchard) return null;
   let best = null, bd = 1.9;
   for (const n of forageNodes) {
     if (!n || !n.ready) continue;
@@ -10316,7 +10316,7 @@ function animate() {
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      const place = indoor ? 'house' : atFarm ? 'farm' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
+      const place = indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
       if (place === 'village') {
         md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
@@ -10513,6 +10513,10 @@ function updatePlayer(dt, t) {
     // 🌊 부두 위만 걷기 — 좌우는 널판 안, 앞뒤는 뭍끝~부두끝(싸움 중 끌려가는 건 updateSea 의 pz 가 제어)
     player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
     player.position.z = Math.max(SEA.z + SEA_EDGE - 0.1, Math.min(SEA.z + SEA_DECK_Z0 - 0.2, player.position.z));
+  } else if (atOrchard) {  // 🍎 과수원: 원형 언덕 안쪽으로 제한(안개 숲과 같은 문법)
+    //   이 분기가 없으면 아래 else 가 원점 반경 42 로 끌어당겨, 입장하자마자 (0,42) 로 튕겨 나간다.
+    const R = ORCHARD_HALF - 0.8, dx = player.position.x - ORCHARD.x, dz = player.position.z - ORCHARD.z, dd = Math.hypot(dx, dz);
+    if (dd > R) { player.position.x = ORCHARD.x + dx / dd * R; player.position.z = ORCHARD.z + dz / dd * R; }
   } else {
     const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
     if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
