@@ -6,12 +6,13 @@
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 // 계단 컨셉 뷰어 — ?stair=3|4|5|6|rooftop  ·  ?part=ascend|descend(rooftop 은 무시)  ·  ?all=1 나란히(오르는 계단만)
-//   ?cam=ascend|descend|roof|compare|orbit — 모드별로 stairs.js 의 layout() 과 같은 좌표를 써서 정확히 그쪽을 본다.
+//   ?kind=straight(기본, 포팅됨)|spiral(신규 컨셉)  ·  ?cam=ascend|descend|roof|compare|spiral|spiralunder|orbit
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { layout } from './stairs.js?v=1';
+import { layout, layoutSpiral } from './stairs.js?v=1';
 const q = new URLSearchParams(location.search);
 const part = q.get('part') === 'descend' ? 'descend' : 'ascend';
+const kind = q.get('kind') === 'spiral' ? 'spiral' : 'straight';
 const NAMES = ['3', '4', '5', '6'];
 const list = q.get('all') ? NAMES : [q.get('stair') || '4'];
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -41,9 +42,9 @@ for (let i = 0; i < list.length; i++) {
   try {
     const mod = await import(`./stairs.js?v=${Date.now()}`);
     const p = q.get('all') ? 'ascend' : part;
-    const g = mod.build(THREE, H, name, p);
+    const g = mod.build(THREE, H, name, p, kind);
     if (q.get('all')) g.position.x = (i - (list.length - 1) / 2) * GAP - layout(name).ax;   // 단계마다 half 가 달라 ax 도 다르다 — 계단 자체를 먼저 0 으로 맞추고 나서 간격을 준다
-    scene.add(g); label.push(name + (q.get('all') ? '' : `:${p}`));
+    scene.add(g); label.push(name + (kind === 'spiral' ? ':spiral' : (q.get('all') ? '' : `:${p}`)));
   } catch (e) { console.error(name, e); label.push(name + ' ✗'); }
 }
 document.getElementById('lbl').textContent = label.join('  ·  ');
@@ -62,6 +63,18 @@ if (camMode === 'ascend') {   // 오르는 계단 크게, 3/4 각도(정면 위 
   tgt = [first.holeX - 0.2, -1.3, first.holeZ + 0.3];
 } else if (camMode === 'roof') {
   camera.position.set(2.4, 3.2, 5.6); tgt = [-1.3, 1.2, -0.8];
+} else if (camMode === 'spiral') {   // 방 안에 서서 보는 정상 눈높이 각도(위에서 내려다보지 않는다)
+  const sp = layoutSpiral(list[0]);
+  camera.position.set(sp.cx + 6.0, 3.4, sp.cz + 5.4);
+  tgt = [sp.cx - 0.2, 1.3, sp.cz - 0.2];
+} else if (camMode === 'spiralunder') {   // 바닥 아래에서 위로 — 구멍을 뚫고 지나가는 모습(위/아래 두 모습 중 "아래")
+  const sp = layoutSpiral(list[0]);
+  camera.position.set(sp.cx + 1.6, -2.4, sp.cz + 1.4);
+  tgt = [sp.cx, -0.3, sp.cz];
+} else if (camMode === 'spiralabove') {   // 위층 바닥에서 내려다본 모습 — 구멍을 뚫고 올라온 나선 위쪽(위/아래 두 모습 중 "위")
+  const sp = layoutSpiral(list[0]);
+  camera.position.set(sp.cx + 2.0, 4.6, sp.cz + 1.6);
+  tgt = [sp.cx, 2.6, sp.cz];
 } else if (camMode === 'compare') {   // all=1 전용 — 나란히 놓은 계단들을 한 각도로(계단마다 ax 는 0 으로 맞췄지만 반경 half 가 달라 간격은 균일하지 않다)
   const xs = list.map((n, i) => (i - (list.length - 1) / 2) * GAP - layout(n).ax);
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2, halfw = (Math.max(...xs) - Math.min(...xs)) / 2;
