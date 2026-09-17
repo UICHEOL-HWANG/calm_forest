@@ -6401,7 +6401,7 @@ function buildHouseStage(stage, silent = false) {
   }
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
-  if (interiorFloors.ground) refreshStairsLandmarks();   // 🪜 실내에 있는 채로 증축했을 드문 경우까지 대비(스펙 §3 위반 A)
+  if (interiorFloors.ground) rebuildInteriorFinish();   // 🪜🎨 실내 마감(바닥·계단)을 새 단계로 다시 짓는다 — 실내에 있는 채로 증축했을 드문 경우까지 대비(스펙 §3 위반 A)
   syncHouseCollider();                        // 🚧 완성되면 충돌 on + 증축 크기 반영(짓는 동안엔 통행 자유)
   if (!silent) syncStory();                   // 📖 1장(보금자리) 진행
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
@@ -7145,7 +7145,18 @@ function setFogExempt(obj, on) {
 }
 
 const INT_HALF = 7;   // 실내 반경(1층 기준) — 문 앞 스폰/이동/배치 클램프 기본값
-const INT_FLOOR_TINT = 0xbfb0a0;   // 실내 바닥 착색(가구 나무색 대비용)
+
+// 🎨 단계별 실내 마감 — 팔레트는 외관 모델(js/house/*.js)에서 가져와 안팎이 같은 집으로 읽히게 한다.
+//    색만 담고 재질은 buildRoom 에서 만든다(방마다 fog 예외를 따로 걸어야 하므로).
+//    tread/rail 은 계단 재질용, floor 는 바닥용 — 출처: cottage.js(3) · loft.js steel(4) · penthouse.js black(5) · villa.js interior/railGlass(6)
+const INT_FINISH = {
+  3: { floor: { kind: 'wood',  c: 0xbfb0a0, rep: 7 }, tread: 0x9c6b40, rail: 0x8a5a36 },
+  4: { floor: { kind: 'stone', c: 0xb9b3a8, rep: 6 }, tread: 0x3a3d44, rail: 0x23252a },
+  5: { floor: { kind: 'stone', c: 0xe2ddd2, rep: 5 }, tread: 0xb98a4e, rail: 0x1e1f23 },
+  6: { floor: { kind: 'stone', c: 0xf1ece3, rep: 4 }, tread: 0xf1ece3, rail: 'glass' },
+};
+const finishFor = (stage) => INT_FINISH[Math.min(6, Math.max(3, stage || 3))];
+
 // 🏠 지금 서 있는 층 정의 — houseStage 가 아직 안 연 층이면 1층 기본값으로.
 function curFloorDef() {
   return floorAt(gameState.houseStage, houseFloor) || { id: 'ground', half: INT_HALF, outdoor: false };
@@ -7157,8 +7168,14 @@ function buildRoom(def) {
   const g = new THREE.Group(); g.position.copy(INT);
   g.userData.floorIdx = def.f;   // refreshStairsLandmarks 가 위/아래 목적지를 계산할 때 쓴다
   const H = def.half, W = H * 2;
-  // 바닥은 가구와 같은 나무 텍스처라 테이블·책장이 묻혔다(베타) — 톤을 낮춰 가구가 도드라지게
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), woodMat(7, 7, INT_FLOOR_TINT));
+  const fin = finishFor(gameState.houseStage);   // 🎨 집 단계에 맞춘 실내 마감(바닥·계단)
+  // 바닥은 단계별 마감 — 루프탑(def.outdoor)은 표와 무관하게 나무 데크(villa.js 수영장 데크와 같은 널)
+  //   돌·대리석은 가구용 나무 텍스처를 안 써서(베타 때 테이블·책장이 텍스처에 묻힌 문제 재발 방지) 평면 음영으로 둔다
+  const floorMat = def.outdoor
+    ? woodMat(3, 3, 0xc19a66)
+    : fin.floor.kind === 'wood' ? woodMat(fin.floor.rep, fin.floor.rep, fin.floor.c)
+                                : clayMat(fin.floor.c, false);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), floorMat);
   floor.position.y = 0.1; floor.receiveShadow = true; g.add(floor);
   if (def.outdoor) {   // ☀️ 루프탑 — 벽 대신 유리 난간, 하늘·밤별이 보인다
     // 🪟 외관 루프탑 모델(js/house/villa.js railGlass)과 같은 재질 — 스펙 "유리 난간", 불투명 크림색이면
@@ -7192,12 +7209,37 @@ function buildRoom(def) {
   //   반대쪽으로 가려고 다른 층을 거쳐 돌아야 한다(스펙 §4.1은 두 방향을 같이 보여준다).
   //   실제로 보일지는 refreshStairsLandmarks() 가 지금 houseStage 기준으로 매번 정한다 —
   //   3단계 1층처럼 목적지가 아직 없으면 장식만 하는 계단을 보여주지 않는다(스펙 §3 "지금 그대로").
+  //   계단 재질은 방에 하나씩 — 위/아래 두 랜드마크가 같은 재질을 나눠 쓴다(드로우콜, 스펙 §8.3)
+  const treadMat = clayMat(fin.tread);
+  const railMat = fin.rail === 'glass' ? makeHouseHelpers(THREE).glass(0xa9d8ea) : clayMat(fin.rail);
+  if (fin.rail === 'glass') railMat.opacity = 0.22;   // villa.js railGlass 와 같은 값
+  const STEPS = 5, RISE = 0.17, RUN = 0.34;
+  const slope = Math.atan2(STEPS * RISE, STEPS * RUN);
+  const runLen = Math.hypot(STEPS * RUN, STEPS * RISE);
   const buildStairs = (cx) => {
     const st = new THREE.Group(); st.position.set(cx, 0.2, H - 1.2);
-    [0, 1, 2].forEach(i => {
-      const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.22, 0.4), woodMat(1, 1, 0x9c6b40));
-      s.position.set(0, 0.11 + i * 0.22, -i * 0.4); st.add(s);
+    for (let i = 0; i < STEPS; i++) {                             // 디딤판 5단
+      const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, RUN), treadMat);
+      s.position.set(0, RISE * (i + 1), -i * RUN); s.castShadow = true; st.add(s);
+    }
+    [-0.5, 0.5].forEach(sx => {                                   // 측면 스트링어(경사판)
+      const side = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.26, runLen), treadMat);
+      side.position.set(sx, RISE * STEPS / 2, -(STEPS - 1) * RUN / 2);
+      side.rotation.x = slope; st.add(side);
     });
+    if (fin.rail === 'glass') {                                   // 유리 난간 — 판 하나(villa.js 루프탑과 같은 느낌)
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, runLen), railMat);
+      pane.position.set(0.52, RISE * STEPS / 2 + 0.36, -(STEPS - 1) * RUN / 2);
+      pane.rotation.x = slope; st.add(pane);
+    } else {                                                      // 기둥 + 손잡이
+      for (let i = 0; i < 3; i++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.5, 6), railMat);
+        post.position.set(0.52, RISE * (i * 2 + 1) + 0.25, -i * 2 * RUN); st.add(post);
+      }
+      const hand = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, runLen, 6), railMat);
+      hand.position.set(0.52, RISE * STEPS / 2 + 0.5, -(STEPS - 1) * RUN / 2);
+      hand.rotation.set(Math.PI / 2 - slope, 0, 0); st.add(hand);
+    }
     g.add(st);
     return st;
   };
@@ -7216,9 +7258,26 @@ function buildInterior() {
   for (const def of defs) interiorFloors[def.id] = buildRoom(def);
   interiorGroup = interiorFloors.ground;
   interiorFloor = interiorGroup.children[0];
-  interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
-  scene.add(interiorLamp);
+  if (!interiorLamp) {   // 🏠 증축으로 재호출돼도 조명은 한 번만(rebuildInteriorFinish 경로)
+    interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
+    scene.add(interiorLamp);
+  }
   refreshStairsLandmarks();
+}
+
+// 🏠 증축하면 실내 마감(바닥·계단)도 그 단계로 다시 짓는다 — 방 안에서 증축해도 즉시 반영된다.
+//   방마다 등록된 창 재질을 먼저 빼고(unregisterWindows, 안 빼면 houseWindows 누수) 지오메트리·재질도 버린 뒤
+//   scene 에서 떼고 다시 짓는다. 가구(decorMeshes)는 room 그룹의 자식이 아니라 손대지 않는다.
+function rebuildInteriorFinish() {
+  for (const id in interiorFloors) {
+    const grp = interiorFloors[id];
+    unregisterWindows(grp);      // 창 재질이 houseWindows 에 남지 않게(누수 방지)
+    disposeTree(grp);            // 옛 방의 지오메트리·재질 GPU 자원 반환
+    scene.remove(grp);
+  }
+  interiorFloors = {};
+  buildInterior();
+  setSpaceVisible();
 }
 
 // 🪜 계단 표지물 위/아래 각각을 지금 houseStage 에서 실제로 갈 수 있을 때만 보이게 한다(스펙 §3 위반 A 수정).
