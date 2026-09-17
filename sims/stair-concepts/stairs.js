@@ -19,8 +19,10 @@ export function layout(variant) {
   return { half, holeX, holeZ, ax, az, x1: holeX - HOLE_HW, x2: holeX + HOLE_HW, z1: holeZ - HOLE_HD, z2: holeZ + HOLE_HD };
 }
 
-// 나선 계단 상수 — 반경 1.1·12단·27°/단(12×27°=324°, 완전히 한 바퀴는 안 돌아 위/아래가 안 겹친다)·기둥 반경 0.14.
-export const SPIRAL_STEPS = 12, SPIRAL_RISE = 0.25, SPIRAL_R = 1.1, SPIRAL_NEWEL_R = 0.14, SPIRAL_HOLE_R = 1.25;
+// 나선 계단 상수 — 반경 1.1→1.2(리뷰: 4/6단계 어두운 마감에서 디딤판 사이 틈이 너무 좁아 단을 세기 힘들었다).
+//   12단·27°/단(12×27°=324°, 완전히 한 바퀴는 안 돌아 위/아래가 안 겹친다)·기둥 반경 0.14.
+export const SPIRAL_STEPS = 12, SPIRAL_RISE = 0.25, SPIRAL_R = 1.2, SPIRAL_NEWEL_R = 0.14;
+export const SPIRAL_HOLE_R = SPIRAL_R + 0.15;   // 반경이 늘어난 만큼 구멍도 같이 늘린다(디딤판 바깥 여유는 그대로 0.15)
 const SPIRAL_STEP_DEG = 324 / SPIRAL_STEPS;   // 27°
 export function layoutSpiral(variant) {
   const half = HALF_BY_STAGE[Number(variant)] || 5;
@@ -86,6 +88,12 @@ export function build(THREE, H, variant, part = 'ascend', kind = 'straight') {
   if (kind === 'spiral') {
     // ── 나선 계단 — 오르내림을 한 몸으로 — 원형 구멍 하나를 통과한다(직선형의 "복도벽 계단+바닥 구멍" 두 개를 하나로 줄인 것) ──
     const { cx: sx, cz: sz, r: R, holeR } = layoutSpiral(variant);
+    // 4단계(브릭 로프트)는 난간·디딤판이 같은 색(0x23252a)이라 반경을 1.1→1.2 로 키워도 틈이 안 읽혔다(리뷰 확인) —
+    //   직선형은 벽 앞의 얇은 대각선이라 괜찮았지만, 나선은 난간이 디딤판 바로 위·뒤를 지나가 통짜 검은 덩어리로 뭉친다.
+    //   틈 크기가 아니라 재질 대비 문제라 반경을 더 키우는 대신, 난간 색만(디딤판은 그대로) 살짝 밝혀 실루엣을 분리한다.
+    const spiralRailMat = (fin.rail !== 'glass' && fin.rail === fin.tread)
+      ? H.clay(new THREE.Color(fin.rail).offsetHSL(0, 0, 0.16).getHex())
+      : railMat;
     const stepRad = (SPIRAL_STEP_DEG * Math.PI) / 180;
     const newelH = SPIRAL_STEPS * SPIRAL_RISE + 0.3;   // 기둥은 계단 꼭대기보다 살짝 더 올라간다(끝이 허전해 보이지 않게)
 
@@ -117,32 +125,43 @@ export function build(THREE, H, variant, part = 'ascend', kind = 'straight') {
     const newel = new THREE.Mesh(new THREE.CylinderGeometry(SPIRAL_NEWEL_R, SPIRAL_NEWEL_R, newelH, 10), treadMat);
     newel.position.set(sx, newelH / 2, sz); newel.castShadow = true; add(newel);
 
-    // 난간 — 한 단 걸러 기둥(바깥 가장자리, 그 단의 각도 중앙), 손잡이는 기둥 "꼭대기"끼리 잇는다(직선형과 같은 규칙 — 어긋나지 않는다).
-    const RAIL_LIFT = 0.85, postIdx = [0, 2, 4, 6, 8, 10, SPIRAL_STEPS - 1];
+    // 난간 — 손잡이는 나선을 그대로 따라 도는 매끈한 곡선 하나(TubeGeometry+CatmullRom) 로 만든다.
+    //   전엔 기둥 위치에서만 꺾인 직선 구간을 이었더니 다각형처럼 각져 보였다(리뷰) — 관 하나로 바꾸면 각이 안 생긴다.
+    //   기둥은 여전히 한 단 걸러 세우고, 그 "꼭대기" 좌표를 곡선의 제어점으로도 그대로 쓴다 — 기둥이 관을 뚫거나 못 미칠 수가 없다.
+    const RAIL_LIFT = 0.9;   // 바닥 난간(0.9)과 정확히 같은 높이에서 만나야 이어져 보인다(피스2)
+    const postIdx = [0, 2, 4, 6, 8, 10, SPIRAL_STEPS - 1];
     const postPoint = (idx, top) => {
       const a = (idx + 0.5) * stepRad;   // 그 단의 바깥 가장자리 중앙(각도)
       return [sx + Math.cos(a) * (R - 0.06), idx * SPIRAL_RISE + (top ? RAIL_LIFT : 0), sz - Math.sin(a) * (R - 0.06)];
     };
     postIdx.forEach(idx => {
       const newelPost = idx === 0; const r = newelPost ? 0.075 : 0.05;
-      add(rodBetween(postPoint(idx, false), postPoint(idx, true), r, railMat));
+      add(rodBetween(postPoint(idx, false), postPoint(idx, true), r, spiralRailMat));
     });
-    for (let k = 0; k < postIdx.length - 1; k++) add(rodBetween(postPoint(postIdx[k], true), postPoint(postIdx[k + 1], true), 0.05, railMat));
 
-    // 구멍 둘레 난간(입구는 막지 않는다 — 직선형과 같은 규칙) — 나선이 뚫고 나가는 자리 바로 앞만 비워 둔다.
-    const rimSegs = 20, rimStartDeg = 40, rimEndDeg = 320;   // 40~320° 만 두른다(0° 근처가 진입구)
+    // 구멍 둘레 난간 — 나선이 뚫고 나가는 자리(0단 각도)에서 계단 손잡이와 만나 하나로 이어지고,
+    //   반대쪽 끝(입구)만 손스침대로 비워 둔다(피스2: "따로 노는 원이 아니라 한 줄").
+    const flightA0 = 0.5 * stepRad;   // 0단 바깥 가장자리 각도 — 곡선이 바닥 난간과 만나는 자리
+    const rimSpanRad = (325 * Math.PI) / 180, rimSegs = 24;
     const rimPts = [];
-    for (let i = 0; i <= rimSegs; i++) {
-      const a = ((rimStartDeg + (rimEndDeg - rimStartDeg) * i / rimSegs) * Math.PI) / 180;
-      rimPts.push([sx + Math.cos(a) * holeR, 0.9, sz - Math.sin(a) * holeR]);
+    for (let i = rimSegs; i >= 0; i--) {   // 입구 쪽(먼 끝)에서 시작해 0단 방향으로 다가오는 순서 — 곡선 이어붙이기 순서와 맞춘다
+      const a = flightA0 + (rimSpanRad * i) / rimSegs;
+      rimPts.push([sx + Math.cos(a) * holeR, RAIL_LIFT, sz - Math.sin(a) * holeR]);
     }
-    for (let i = 0; i < rimPts.length - 1; i++) add(rodBetween(rimPts[i], rimPts[i + 1], 0.05, railMat));
-    [0, rimPts.length - 1].forEach(i => add(rodBetween([rimPts[i][0], 0, rimPts[i][2]], rimPts[i], 0.09, railMat)));   // 진입구 옆 손스침대 둘
+    // 0단 근처에서 반경이 holeR→R-0.06 으로 줄어드는 구간도 같은 곡선 제어점으로 넣어 매끄럽게 잇는다.
+    const flightPts = []; for (let idx = 0; idx < SPIRAL_STEPS; idx++) flightPts.push(postPoint(idx, true));
+    const curvePts = [...rimPts, ...flightPts].map(p => new THREE.Vector3(...p));
+    const railCurve = new THREE.CatmullRomCurve3(curvePts);
+    const railTube = new THREE.Mesh(new THREE.TubeGeometry(railCurve, 140, 0.05, 8, false), spiralRailMat);
+    railTube.castShadow = true; add(railTube);
+    // 손스침대 둘 — 입구(먼 끝, 바닥에서 난간까지)와 0단 쪽(반경이 커지는 지점, 바닥 구멍 테두리에서 난간까지).
+    add(rodBetween([rimPts[0][0], 0, rimPts[0][2]], rimPts[0], 0.09, spiralRailMat));
+    add(rodBetween([rimPts[rimPts.length - 1][0], 0, rimPts[rimPts.length - 1][2]], rimPts[rimPts.length - 1], 0.08, spiralRailMat));
 
-    mkCapsule(sx - R - 0.7, sz - R - 0.3, 0.55);   // 나선 옆(바깥, 진입구 쪽) — 크기 비교. 카메라 시선축 밖으로 빼 기둥과 안 겹치게
+    mkCapsule(sx + holeR + 1.0, sz, 0.55);   // 진입구(난간이 비어 있는 쪽, 카메라 정면) 밖으로 — 기둥·난간에 가리지 않고 크기 비교가 바로 된다
     // 가구 하나(침대 크기 상자, 1.4×0.4×2.0)를 옆에 둔다 — "이게 공간을 얼마나 먹는지" 는 숫자보다 가구 옆에 놓고 보는 게 빠르다(요청).
     const bedMat = H.clay(0x9ec7ff);
-    add(H.box(1.4, 0.4, 2.0, bedMat, sx + R + 1.6, 0.2, sz + 0.3));
+    add(H.box(1.4, 0.4, 2.0, bedMat, sx + R + 3.1, 0.2, sz + 0.3));   // 캡슐(진입구 밖)과 겹치지 않게 더 떨어뜨린다
     return g;
   }
 
