@@ -5974,7 +5974,10 @@ function buildOrchardGate() {
   lockBody.position.set(-0.6, 1.18, 0); orchardGateBar.add(lockBody);
   g.add(orchardGateBar);
 
-  g.add(makeSignpost('🍎 과수원 언덕', -2.6, 2.4));
+  // 팻말 — 판은 제 그룹의 +z 를 향한다. 그룹이 rotation.y=+π/2 라 그대로 두면 동쪽(마을 반대)을 본다.
+  //   래퍼를 -π/2 돌려 국소 -x(= 월드 +z, 걸어오는 남쪽)를 보게 한다. 래퍼 원점에 팻말을 두어 회전해도 안 밀린다.
+  const sp = makeSignpost('🍎 과수원 언덕', 0, 0);
+  sp.position.set(-2.6, 0, 2.4); sp.rotation.y = -Math.PI / 2; g.add(sp);
   g.rotation.y = Math.PI / 2;    // 국소 +x → 월드 -z(북). 몸통이 북쪽으로 뻗고 **문은 남쪽을 본다** — 마을에서 걸어오는 쪽
   scene.add(g);
 
