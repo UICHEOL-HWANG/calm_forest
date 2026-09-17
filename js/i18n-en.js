@@ -45,7 +45,7 @@ export const EN = {
   '마을 지도': 'Village Map',
   '가고 싶은 곳을 찾아보세요 —': 'Find where you want to go —',
   '흐린 곳은 아직 잠겨 있어요': 'faded spots are still locked',
-  '지금 여기': 'You are here',
+  '현위치': 'You are here',
   '나의 집': 'My House',
   '시세판': 'Price Board',
   '호수': 'Lake',

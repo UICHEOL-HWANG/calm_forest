@@ -348,7 +348,7 @@ function isNight() { return isNightAt(timeOfDay); }   // 판정은 js/daynight.j
 //    농사(작물)·낚시(물고기)·닭장(달걀)·채집(버섯)이 전부 "쓸 곳"을 얻어 하나로 엮임.
 const CAFE_GATE = new THREE.Vector3(4, 0, 14);  // 마을 안 카페 건물(입구) — 주민 자리·호수·계곡과 안 겹치는 빈터
 const MUSEUM_GATE = new THREE.Vector3(-26, 0, 5);   // 🏛️ 박물관 — 마을 서쪽 끝, ⛏️채굴 동굴 너머.
-//   사용자가 고른 자리다(전체 지도의 "지금 여기"). 반경 3.4 안에 나무·바위가 없어 지형을 안 깎는다.
+//   사용자가 고른 자리다(전체 지도의 "현위치"). 반경 3.4 안에 나무·바위가 없어 지형을 안 깎는다.
 //   ⛏️채굴 동굴(-14,3) 에서 12 — 서쪽 벨트의 끝점이라 가는 길에 자연히 지나친다.
 const MUSEUM = new THREE.Vector3(0, 0, 360);    // 🏛️ 전시실(다른 인스턴스 공간과 멀찍이)
 const CAFE = new THREE.Vector3(0, 0, 320);      // 카페 홀(다른 인스턴스 공간과 멀찍이)
@@ -2310,7 +2310,7 @@ function applySave(saved) {
   if (saved.orchard) {   // 🍎 과수원 나무 복원 — 모르는 종류·상한 초과·음수 열매는 걸러낸다(옛/조작 세이브 방어)
     if (Array.isArray(saved.orchard.trees)) {
       gameState.orchard.trees = saved.orchard.trees
-        .filter(t => FRUITS.some(f => f.id === t.kind))            // 모르는 종류는 버린다
+        .filter(t => t && FRUITS.some(f => f.id === t.kind))       // null/undefined 항목·모르는 종류는 버린다
         .slice(0, TREE_SLOTS)                                       // 상한 방어
         .map(t => ({ x: t.x, z: t.z, kind: t.kind, stage: t.stage || 'sapling',
                      age: t.age || 0, watered: !!t.watered, fruit: Math.max(0, t.fruit || 0) }));

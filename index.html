@@ -2149,7 +2149,7 @@
       });
 
       // 현재 위치 — 마을에 있을 때만(실내·동굴에선 lastMapPos 가 null 이라 마커를 안 그린다).
-      //   점 자리만 먼저 예약하고, 마커와 "지금 여기" 글자는 지명 라벨을 다 놓은 뒤 맨 위에 그린다
+      //   점 자리만 먼저 예약하고, 마커와 "현위치" 글자는 지명 라벨을 다 놓은 뒤 맨 위에 그린다
       //   — 고정 위치로 찍으면 옆 지명 라벨과 글자가 겹쳐 둘 다 못 읽는다.
       const hereXY = lastMapPos ? px(lastMapPos.x, lastMapPos.z) : null;
       if (hereXY) placed.push({ x: hereXY[0], y: hereXY[1], w: 24, h: 24 });
@@ -2181,7 +2181,7 @@
         c.beginPath(); c.arc(a, b, 9, 0, 7); c.fillStyle = 'rgba(47,122,68,0.22)'; c.fill();
         c.beginPath(); c.arc(a, b, 4.5, 0, 7); c.fillStyle = '#fff'; c.fill();
         c.lineWidth = 2.5; c.strokeStyle = '#2f7a44'; c.stroke();
-        const here = t('지금 여기');
+        const here = t('현위치');
         c.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
         const hw = c.measureText(here).width + 8, hh = 18;
         let box = null;                                  // 지명 라벨과 같은 배치기를 탄다
@@ -2869,7 +2869,7 @@
           ctx.beginPath(); ctx.arc(pxx, pyy, 4, 0, 7); ctx.fill(); ctx.stroke();
         };
         if (d.place !== 'village') {   // 실내/텃밭/동굴 — 공간 경계 + 랜드마크 미니맵
-          lastMapPos = null;            // 🗺️ 마을 지도의 "지금 여기" 는 마을에 있을 때만
+          lastMapPos = null;            // 🗺️ 마을 지도의 "현위치" 는 마을에 있을 때만
           const half = d.half || 8, cx = d.cx || 0, cz = d.cz || 0;
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
