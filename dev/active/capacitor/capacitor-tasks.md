@@ -24,6 +24,12 @@
       (2차 조사 결과 정황은 우호적 — "느려진다"는 보고는 DOM/CSS UI 문제였고 WebGL 이 아니었다)
 
 ## 3. Capacitor 정식 도입
+- [ ] 🔴 **localStorage → `@capacitor/preferences` 이관** (안정성 조사에서 나온 최우선 항목)
+      · 대상 5키: `DEX_NOTE_KEY`(도감 메모·사용자 작성) `cf_client_id`(분석 연속성) `cf_lang` `cf_music` `PAGE_HINT_KEY`
+      · 웹은 localStorage 폴백이라 웹·토스·itch 동작 불변
+      · 기존 값 1회 마이그레이션 필요(앱 첫 실행 시 localStorage 에 있으면 옮기고 지운다)
+- [ ] minSdk 21 → 23 확인 (Android 5 탈락 — 실질 영향 없음)
+- [ ] Capacitor **8.x** 고정 (targetSdk 36, 우리 TWA 와 일치)
 - [ ] `@capacitor/cli` · `core` · `android` 설치
 - [ ] `capacitor.config.json` — appId `com.cheorish.lab.calmforest`, webDir `dist`
 - [ ] `npx cap add android` → `android-cap/` (기존 `android/` 는 남긴다)

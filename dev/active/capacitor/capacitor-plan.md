@@ -190,6 +190,62 @@ Chromium 쪽엔 "WebView 는 Chrome 보다 항상 성능이 떨어진다"는 일
 드로우콜·섀도맵 측정치([[draw-call-optimization]] [[shadow-subspace-optimization]])는
 렌더러가 바뀌므로 어차피 한 번 다시 재야 한다.
 
+
+## 안정성 조사 (2026-09-17, 성능 외 항목 전수)
+
+성능만 보다가 놓칠 뻔한 것들. **여기서 나온 1번이 성능보다 중요하다.**
+
+### 🔴 1. localStorage — 반드시 손봐야 한다
+Capacitor 공식 문서가 못 박는다:
+> "mobile OSs **may periodically clear data** set in window.localStorage, so this API
+> (Preferences) should be used instead"
+
+보고된 증상: **앱을 강제 종료하면 localStorage 가 비워지고**, 기기 저장공간이 부족하면
+OS 가 WebView 의 로컬 저장소를 회수한다(Capacitor 이슈 #636, Closed).
+
+우리가 쓰는 키 5개와 유실 시 피해:
+
+| 키 | 용도 | 날아가면 |
+|---|---|---|
+| `DEX_NOTE_KEY` | **도감 메모** | 🔴 **사용자가 쓴 글이 사라진다** |
+| `cf_client_id` | 클라이언트 식별자 | 🟠 분석 연속성 파괴 — 같은 사람이 새 사용자로 잡힌다([[feature-tracking-checklist]] [[churn-intervention-pipeline]] 에 영향) |
+| `cf_lang` | 언어 | 🟡 기본값으로 되돌아감 |
+| `cf_music` | 배경음악 on/off | 🟡 설정 초기화 |
+| `PAGE_HINT_KEY` | 안내 본 적 있는지 | 🟡 안내가 다시 뜸 |
+
+게임 세이브 본체는 Supabase 라 **안전하다**. 그러나 도감 메모는 로컬에만 있고,
+`cf_client_id` 유실은 분석을 조용히 오염시킨다(에러가 안 나서 더 위험).
+
+→ **`@capacitor/preferences` 로 이관한다.** 웹에서는 localStorage 로 폴백되므로
+   웹·토스·itch 는 동작이 그대로다. 기존 값 마이그레이션(localStorage → Preferences) 1회 필요.
+
+### 🟡 2. minSdk 21 → 23
+Capacitor 최소는 **API 23(Android 6)**, 우리 TWA 는 21(Android 5)이라 Android 5 기기가 빠진다.
+2026년 점유율이 사실상 0 이고 Three.js 3D 가 그 기기에서 돌 리도 없어 **실질 영향 없음**.
+
+### 🟡 3. targetSdk 가 Capacitor 버전에 묶인다
+> "Capacitor Android does not support custom target SDK versions."
+
+| Capacitor | targetSdk |
+|---|---|
+| 8.x | **36** ← 우리 TWA 와 일치 ✅ |
+| 7.x | 35 |
+
+지금은 맞지만, **Play 가 37 을 요구하면 Capacitor 9 를 기다려야 한다.** TWA 처럼 우리가
+숫자만 올릴 수 없다. 출시 주기에 외부 의존이 하나 생긴다는 뜻.
+
+### 🟡 4. 백그라운드 오디오
+Android WebView 는 백그라운드에서 신뢰성 있게 돌지 않고 Media Session Web API 도 미지원이다.
+**게임이라 앱이 내려가면 소리가 꺼지는 게 정상**이므로 문제는 아니다.
+다만 복귀 시 AudioContext 가 suspended 로 남을 수 있는데, `js/sound.js` 의 resume 이
+pointerdown·keydown·touchstart 에 `once:false` 로 걸려 있어 **첫 입력에 자동 복구된다.**
+→ 개선 여지: `visibilitychange` 에도 resume 을 걸면 복귀 직후의 정적이 사라진다(선택).
+
+### 🟢 문제 없는 것
+- **사진** — `renderer.domElement.toDataURL()` → 서버 업로드. 파일 다운로드 API 를 안 쓴다
+- **CORS** — Worker 가 `Access-Control-Allow-Origin: *`
+- **WebGL/Three.js** — 위 성능 절 참고
+
 ## 확실한 것 / 아직 모르는 것
 
 **확실**: CDN 자체 호스팅 가능(실증) · Capacitor 에서 Three.js 동작 · 패키지명·서명 키 재사용 ·
