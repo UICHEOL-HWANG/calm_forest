@@ -87,6 +87,22 @@ test('game.js — 세이브를 읽었는지 canPlay 로 판정하고, 실패는 
   assert.ok(/save_load_failed/.test(GAME_CODE), '읽기 실패 계측(save_load_failed)이 없다 — 갇힌 사람을 셀 분모가 사라진다');
 });
 
+// 🍎 2026-09-17 리뷰 HIGH — saved.orchard.trees 에 null/undefined 항목이 하나만 섞여도
+//   `t.kind` 접근에서 throw 했다. applySave() 는 index.html 의 `await enterGame()`(try/catch 없음)
+//   경로에서 그대로 호출되므로, 이 한 줄이 던지면 이후의 모든 복원 블록(workers·house.decor·npcs·
+//   hintsSeen·character·houseStyle·unlocked·houseStage·plots)이 조용히 실행되지 않고, index.html 쪽의
+//   initControls()·30초 자동저장 setInterval 도 같이 스킵된다.
+//   ⚠️ 이 테스트는 **소스 텍스트**만 본다 — game.js 는 THREE.js/DOM 의존이라 node 테스트로 import 해
+//   실행할 수 없다(이 파일의 다른 game.js 검사들도 전부 같은 이유로 정규식 검사). 즉 "가드 문구가
+//   파일에 있는지/없는지"만 증명하며, 런타임에 실제로 안 던지는지는 증명하지 않는다 — 그 증명은
+//   같은 로직을 그대로 복제한 별도 스크립트(applySave() 를 import 하지 않음)로 별도 확인했다.
+test('game.js — 과수원 나무 복원이 null/undefined 항목에서 안 던지도록 가드한다(HIGH 재발 방지)', () => {
+  assert.ok(!/\.filter\(t => FRUITS\.some\(f => f\.id === t\.kind\)\)/.test(GAME_CODE),
+    'game.js 에 가드 없는 옛 패턴 `.filter(t => FRUITS.some(f => f.id === t.kind))` 이 남아 있다 — null/undefined 항목에서 throw 한다');
+  assert.ok(/\.filter\(t => t && FRUITS\.some\(f => f\.id === t\.kind\)\)/.test(GAME_CODE),
+    'game.js 의 과수원 나무 복원에 `t &&` 가드가 없다 — saved.orchard.trees 의 null/undefined 항목에서 throw 할 수 있다');
+});
+
 test('supabase-client.js — game_saves 쓰기는 writeSave 한 곳만 지난다', () => {
   const SRC = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
   // upsert 호출은 writeSave 안의 한 줄뿐이어야 한다. 늘어나면 빗장을 우회하는 쓰기가 생긴 것이다.
