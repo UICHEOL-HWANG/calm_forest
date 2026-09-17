@@ -320,6 +320,44 @@ test('SELL_ICO_G 가 SELL_PRICE 의 모든 키를 덮는다 — 빠지면 화면
   for (const f of FRUITS) assert.ok(icoKeys.includes(f.id), `SELL_ICO_G 에 ${f.id} 가 없다`);
 });
 
+// ♻️ rebuildOrchard() 는 심기·물주기·수확·베기·정산마다 불린다. 매번 InstancedMesh 8~15개를
+//   새로 만들어 버리므로 인스턴스 행렬 버퍼를 안 놓으면 GPU 메모리가 계속 샌다.
+//   반대로 지오메트리·재질은 shared() 캐시라 dispose 하면 다음 rebuild 가 해제된 자원을 쓰고,
+//   줄기·잎은 마을 숲 나무와도 공유해서 마을 나무까지 같이 사라진다. 둘 다 잠근다.
+test('rebuildOrchard: 인스턴스 버퍼만 dispose 하고 shared() 지오메트리·재질은 건드리지 않는다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const start = src.search(/^function rebuildOrchard\(/m);
+  assert.ok(start >= 0, 'game.js 에서 rebuildOrchard 를 찾지 못했다');
+  // 주석에 "geometry.dispose() 를 부르면 안 된다" 같은 설명이 들어 있으므로 코드만 남긴다
+  const body = src.slice(start, start + src.slice(start).indexOf('\n}'))
+    .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+
+  assert.match(body, /isInstancedMesh/,
+    'rebuildOrchard 가 InstancedMesh 를 가려내지 않는다 — 인스턴스 행렬 버퍼(instanceMatrix)가 호출마다 샌다');
+  assert.match(body, /\.dispose\(\)/, 'rebuildOrchard 에 dispose 호출이 없다');
+  assert.doesNotMatch(body, /geometry\.dispose\(\)/,
+    'rebuildOrchard 가 geometry.dispose() 를 부른다 — shared() 캐시라 다음 rebuild 와 마을 숲 나무가 같이 깨진다');
+  assert.doesNotMatch(body, /material[^.]*\.dispose\(\)/,
+    'rebuildOrchard 가 material.dispose() 를 부른다 — shared() 캐시라 다른 소품까지 사라진다');
+});
+
+// 🎒 도구 페이지 자동 전환 — toolZoneKey() 가 돌려주는 구역 이름은 전부 ZONE_PAGE 에 있어야 한다.
+//   'orchard' 만 빠져 있어서 과수원이 유일하게 페이지가 안 열리는 구역이었다(M4).
+//   ZONE_PAGE 에 없으면 조용히 아무 일도 안 일어나므로, 새 구역을 넣을 때 또 빠뜨리기 쉽다.
+test("toolZoneKey() 가 돌려주는 구역 이름은 전부 ZONE_PAGE 에 있다", () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const body = src.slice(src.search(/^function toolZoneKey\(/m));
+  const zoneBody = body.slice(0, body.indexOf('\n}'));
+  const zones = [...zoneBody.matchAll(/return '([a-z]+)'/g)].map(m => m[1]);
+  assert.ok(zones.length >= 8, `toolZoneKey 에서 구역 이름을 못 뽑았다(${zones.length}개) — 함수 모양이 바뀌었으면 이 테스트도 같이 고친다`);
+  assert.ok(zones.includes('orchard'), 'toolZoneKey 가 과수원을 안 돌려준다');
+
+  const pages = literalKeys(src, 'ZONE_PAGE');
+  assert.ok(pages?.length, 'ZONE_PAGE 선언을 못 찾았다');
+  const missing = zones.filter(z => !pages.includes(z));
+  assert.deepEqual(missing, [], `ZONE_PAGE 에 빠진 구역: ${missing.join(', ')} — 그 구역만 도구 페이지가 안 열린다`);
+});
+
 // 🍎 과수원 입구(ORCHARD_GATE)가 배경 나무 회피 목록에서 빠지면, 매 접속마다 새로 뿌리는
 //   나무 14그루 중 하나가 그 자리를 막을 확률이 생긴다(다른 게이트 7곳은 전부 이 목록에 있다).
 //   Task 6 에서 이 줄을 추가했다 — 나중에 buildWorld() 를 리팩터링하다 이 줄이 빠지면 여기서 잡는다.

@@ -511,9 +511,9 @@ const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동쪽 —
 const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 const ORCHARD_HALF = 20;                            // 언덕 반경
 let orchardGroup = null;                            // 과수원 그룹(가시성 토글용) — rebuildOrchard() 가 채운다
-let orchardTreeObstacles = [];   // 밭 금지 표시
+let orchardTreeObstacles = [];   // 밭 금지 표시 — syncOrchardTrees() 가 obstacles 에 등록한 항목. 다시 부르기 전에 지운다(시설 obstacle 정리와 같은 방식)
 let orchardTreeSolids = [];      // 나무 몸 충돌체 — 다시 그릴 때 removeSolid 로 치운다
-let orchardStreamSolids = [];    // 시냇물 충돌체 — 물 위를 걸을 수 없게                      // syncOrchardTrees() 가 obstacles 에 등록한 항목 — 다시 부르기 전에 지운다(9158행 시설 패턴과 같은 방식)
+let orchardStreamSolids = [];    // 시냇물 충돌체 — 물 위를 걸을 수 없게
 const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
 const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
 // 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
@@ -1702,6 +1702,9 @@ function setToolPage(id, auto = false) {
 const ZONE_PAGE = {
   indoor: 'none', cafe: 'none', forest: 'none', river: 'none', mist: 'none', museum: 'none',  // 도구를 쓰지 않는 곳
   farm: 'farm', mine: 'farm',        // ⛏️괭이 — 밭갈기·채굴 둘 다 농사 페이지에 있다
+  orchard: 'farm',                   // 🍎 심기·물주기·수확(🌰💧🌾)이 전부 농사 페이지다. 이 줄이 없어서
+                                     //    과수원만 페이지가 안 열렸고, 묘목 종류를 바꾸려면(🌰 다시 누르기)
+                                     //    페이지 넘기기를 한 번 더 눌러야 했다. 🪓베기는 'out' 이라 명시적으로 넘긴다(의도대로)
   glade: 'out',                      // 🦋포충망(밤 반딧불이)
 };
 // 세트만으론 부족한 구역 — 들 도구까지 정해 준다. 광산은 ⛏️괭이 말고 할 일이 없는데
@@ -2852,7 +2855,6 @@ function syncOrchardTrees() {
   orchardTreeSolids = trees.map(t => solidCircle(t.x, t.z, 0.55 * (ORCHARD_SCALE[t.stage] ?? 1) + 0.25));
 }
 
-// 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다
 // 🎗️ 중심선 + 폭 함수 → 이어진 띠(ribbon) 지오메트리. XZ 평면, y=0.
 //   원반을 겹쳐 깔면 저지형 원이 씹혀 톱니가 되고, 작은 원을 줄줄이 찍으면 점박이가 된다.
 //   띠는 가장자리가 매끈하고 한 줄로 이어진다. path 는 [x, z, t] 배열(t 는 0~1 진행도).
@@ -2874,8 +2876,6 @@ function ribbonGeo(path, halfWidth, edge = () => 0) {
   return g2;   // 평면이라 winding 에 따라 법선이 아래를 볼 수 있다 → 재질은 DoubleSide 로 쓴다
 }
 
-// 🍎 오솔길 — 입구(남쪽)에서 자리들을 훑고 지나가는 흙길. 디딤돌을 합쳐 드로우콜 1.
-//   자리를 잇는 게 아니라 '자리 옆을 스쳐 가게' 둔다 — 길 위에 나무가 서면 이상하다.
 // 🍎 경계 나무 — 걸을 수 있는 범위 바깥을 나무로 둘러 공간을 닫는다.
 //   울타리 대신 숲으로 막는 건 텃밭의 perimeterTrees 와 같은 생각이다.
 //   줄기·잎을 각각 InstancedMesh 하나로 묶어 드로우콜은 2 만 쓴다.
@@ -2904,6 +2904,8 @@ function buildOrchardRim() {
   canopies.instanceMatrix.needsUpdate = true; canopies.castShadow = true; orchardGroup.add(canopies);
 }
 
+// 🍎 오솔길 — 입구(남쪽)에서 자리들을 훑고 지나가는 흙길. 띠 1 + 잔모래 1 로 드로우콜 2.
+//   자리를 잇는 게 아니라 '자리 옆을 스쳐 가게' 둔다 — 길 위에 나무가 서면 이상하다.
 function buildOrchardPaths() {
   // 참고: 실제 흙길은 ① 꺾이지 않고 완만한 S 자로 휘고 ② 양 가장자리가 제각각이고 ③ 모래빛으로 밝다.
   //   직선 보간은 웨이포인트마다 각이 지므로 Catmull-Rom 곡선으로 샘플링한다.
@@ -2930,6 +2932,7 @@ function buildOrchardPaths() {
   grit.position.set(ORCHARD.x, 0.02, ORCHARD.z); orchardGroup.add(grit);
 }
 
+// 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다
 function syncOrchardSlotHints() {
   const free = freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld());
   if (!free.length) return;
@@ -2951,7 +2954,18 @@ function syncOrchardSlotHints() {
 // 밭의 rebuildFarm() 과 같은 꼴 — 상태가 바뀌면 통째로 다시 그린다
 function rebuildOrchard() {
   if (!orchardGroup) { orchardGroup = new THREE.Group(); scene.add(orchardGroup); }
-  while (orchardGroup.children.length) orchardGroup.remove(orchardGroup.children[0]);
+  // ♻️ 이 그룹의 지오메트리·재질은 **전부 shared() 캐시**다 — 다음 rebuild 가 그대로 다시 쓰고,
+  //    줄기·잎 지오메트리는 마을 숲 나무와도 공유한다. 그래서 rebuildFarm 처럼
+  //    geometry/material.dispose() 를 부르면 안 된다(주석 2538행 경고 그대로).
+  //    반면 InstancedMesh 는 인스턴스 행렬 버퍼(instanceMatrix)를 **자기 것으로** 갖는데,
+  //    심기·물주기·수확·베기·정산마다 8~15개가 새로 만들어져 버려졌다. GPU 버퍼가 그만큼 샌다.
+  //    InstancedMesh.dispose() 는 instanceMatrix(·instanceColor) 만 해제하고 공유 지오메트리·재질은
+  //    건드리지 않는다(three 0.160 WebGLObjects.onInstancedMeshDispose) — 여기서 부를 수 있는 유일한 dispose 다.
+  while (orchardGroup.children.length) {
+    const c = orchardGroup.children[0];
+    orchardGroup.remove(c);
+    if (c.isInstancedMesh) c.dispose();
+  }
   buildOrchardGround();     // 지면 1 + 시냇물 1(합침)
   buildOrchardPaths();      // 오솔길 1 + 잔모래 1
   buildOrchardRim();        // 경계 나무(줄기 1 + 잎 1)
