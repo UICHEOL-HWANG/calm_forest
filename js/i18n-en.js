@@ -1651,6 +1651,51 @@ export const EN = {
   '강가 줍기': 'Gathering by the River',
   '모이밭 가꾸기': 'Tending the Feed Patch',
 
+  // ── 🍎 과수원(js/orchard.js) — 묘목·시냇가 나무·열매 ──
+  '🍎 과수원': '🍎 Orchard', '과수원': 'Orchard',
+  '사과': 'Apple', '배': 'Pear', '복숭아': 'Peach', '감': 'Persimmon', '밤': 'Chestnut',
+  '🍎사과': '🍎Apple', '🍐배': '🍐Pear', '🍑복숭아': '🍑Peach', '🍊감': '🍊Persimmon', '🌰밤': '🌰Chestnut',
+  '사과나무 묘목': 'Apple Sapling', '배나무 묘목': 'Pear Sapling', '복숭아나무 묘목': 'Peach Sapling',
+  '감나무 묘목': 'Persimmon Sapling', '밤나무 묘목': 'Chestnut Sapling',
+  '🍎사과나무 묘목': '🍎Apple Sapling', '🍐배나무 묘목': '🍐Pear Sapling', '🍑복숭아나무 묘목': '🍑Peach Sapling',
+  '🍊감나무 묘목': '🍊Persimmon Sapling', '🌰밤나무 묘목': '🌰Chestnut Sapling',
+  '3일이면 자라요 · 매일 🍎2개': 'Grows in 3 days · 🍎×2 daily',
+  '3일이면 자라요 · 매일 🍐2개': 'Grows in 3 days · 🍐×2 daily',
+  '4일이면 자라요 · 매일 🍑2개': 'Grows in 4 days · 🍑×2 daily',
+  '4일이면 자라요 · 매일 🍊2개': 'Grows in 4 days · 🍊×2 daily',
+  '5일이면 자라요 · 매일 🌰2개': 'Grows in 5 days · 🌰×2 daily',
+  '🍎 과수원에 들어가기': '🍎 Enter the Orchard',
+  '묘목을 심어 매일 열매를 따는 곳': 'Plant saplings and pick fruit every day',
+  // 🌰씨앗 도구 인트로 — firstHint 본문 3줄이 통째로 한 키(다른 인트로 힌트와 같은 문법 · js/i18n.js 줄 단위 폴백 대신 전체를 등록)
+  '🌰씨앗 도구로 흙 자리에 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요':
+    'Plant a sapling in an empty spot with the 🌰Seed tool\nStreamside trees don\'t need watering\nOnce it\'s grown, come back every day to pick',
+  '🌰묘목은 마을 🛒상점에서 팔아요\n사 와서 씨앗 도구로 흙 자리에 심어요\n시냇가에 심으면 물을 안 줘도 돼요':
+    '🌰Saplings are sold at the 🛒Shop in town\nBuy one and plant it in an empty spot with the Seed tool\nPlant it by the stream and it won\'t need watering',
+  '🌰 묘목이 없어요. 상점에서 🍎사과·🍐배·🍑복숭아·🍊감·🌰밤 묘목을 팔아요':
+    '🌰 No saplings — the Shop sells 🍎Apple·🍐Pear·🍑Peach·🍊Persimmon·🌰Chestnut saplings',
+  '{0} {1}나무 묘목 ({2}개) — 다시 누르면 바꿔요': '{0} {1} Sapling ({2}) — press again to switch',
+  '{0} 묘목이 없어요': '{0} No saplings',
+  '🍎 자리가 다 찼어요 — 10그루까지 심을 수 있어요': '🍎 All spots are full — you can plant up to 10 trees',
+  '💧 시냇가 나무라 물을 안 줘도 돼요': '💧 It\'s a streamside tree — no watering needed',
+  '💧 오늘은 이미 물을 줬어요': '💧 Already watered today',
+  '🌳 아직 열매가 없어요 — 내일 다시 와요': '🌳 No fruit yet — come back tomorrow',
+  '🌿 아직 자라는 중이에요': '🌿 Still growing',
+  '{0} 열매를 먼저 따고 베요': '{0} Pick the fruit first, then chop',
+  '🪓 {0}번 더 치면 쓰러져요': '🪓 {0} more hits to fell it',
+  '🪓 벨 나무 앞으로 가요': '🪓 Head to a tree to chop',
+  '🔄 나무에 맞는 도구로 바꿨어요. 🌰💧🌾 아무거나 들고 액션만 누르면 돼요 (🪓베기는 따로)':
+    '🔄 Switched to the right tool for this tree — hold any of 🌰💧🌾 and just act (🪓chopping is separate)',
+  '🌰 심을 빈 자리 앞으로 가요': '🌰 Head to an empty spot to plant',
+  '💧 물 줄 나무 앞으로 가요': '💧 Head to a tree to water',
+  '🌳 딸 나무 앞으로 가요': '🌳 Head to a tree to pick',
+  '🍎 과수원에 열매 {0}개가 열렸어요': '🍎 {0} fruit ripened in the Orchard',
+  // 🚨 글루 함정 — '{0} {1}!' 캐치올 글루가 이 해금 토스트를 통째로 삼켜(양쪽 다 한국어라 t()가 "miss"로 보류)
+  //   영어 모드에서도 한국어 그대로 노출되고 있었다. 체커는 글루 패턴 매치만 보고 "커버됨"으로 오판하니
+  //   구체적인 키를 등록해 EXACT 매치가 먼저 걸리게 한다(node scripts/i18n_check.mjs 는 이 케이스를 못 잡는다).
+  '🍎 마을 동쪽 과수원 언덕이 열렸어요!': '🍎 The Orchard hill east of town has opened!',
+  '🍎 해금 — 마을 동쪽': '🍎 Unlocked — east side of town',
+  '(__tp 로 이동)': '(move with __tp)',
+
   // ── ⚠️ 캐치올 꼬리 패턴 — 반드시 사전 맨 끝에 둔다 ──────────────
   //    PATTERNS 는 삽입 순서로 첫 매치를 쓴다. 이 셋을 위쪽에 두면
   //    "…60초"·"…3회" 로 끝나는 **모든** 구체 문장을 먼저 삼켜 버린다.
