@@ -44,3 +44,12 @@ export function canPlaceOn(def, floor) {
   if (!floor) return false;
   return def?.outdoorOnly ? !!floor.outdoor : true;
 }
+
+/**
+ * 🏖️ 이미 산 구성품 중 루프탑에 실물로 놓아 줄 것 — 추가 비용 없음.
+ * 옥상 파라솔 세트(900🪙)는 외관 장식으로만 붙어 있었다. 루프탑에 올라갈 수 있게 된 뒤로는
+ * 같은 공간을 두 시스템이 다투므로, 산 사람에게는 실제로 앉을 수 있는 가구로 돌려준다.
+ */
+export function rooftopFreeDecor(addons = []) {
+  return addons.includes('rooftop_set') ? ['parasol_set'] : [];
+}

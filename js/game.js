@@ -54,7 +54,7 @@ import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링
 import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기 + 재질 도우미(루프탑 유리 난간)
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
-import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈) — rooftopFreeDecor 는 Task 6 이 추가한다
+import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -235,6 +235,9 @@ const DECOR = [
   { id: 'firepit',   name: '파이어핏',   ico: '🔥', cost: 500, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.9, 0.9] },
   { id: 'planttree', name: '큰 화분나무', ico: '🌿', cost: 700, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.8, 0.8] },
   { id: 'jacuzzi',   name: '자쿠지',     ico: '♨️', cost: 900, pay: 'coins', stage: 6, outdoorOnly: true, big: true, foot: [2.0, 1.6] },
+  // 🏖️ 옥상 파라솔 세트 승계(§8.2) — 구성품(js/house/addons.js rooftop_set, 900🪙)을 이미 산 사람에게
+  // 루프탑에 실물로 놓아 준다. 상점엔 안 뜬다(hidden) · 값은 이미 치렀으므로 cost: 0.
+  { id: 'parasol_set', name: '파라솔 세트', ico: '🏖️', cost: 0, pay: 'coins', stage: 6, outdoorOnly: true, hidden: true, foot: [1.8, 1.2] },
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
 
@@ -1063,7 +1066,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
-  house: { decor: [], stored: {}, addons: [], bedGiven: false },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부
+  house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
   outdoor: [],                              // 야외 장식 [{id,x,z}]
@@ -2299,6 +2302,8 @@ function applySave(saved) {
   if (saved.house && Array.isArray(saved.house.addons))                  // 🧩 구성품 복원(카탈로그에 있는 id 만, 중복 제거) — 집 복원(buildHouseStage) 전에
     gameState.house.addons = [...new Set(saved.house.addons.filter(id => HOUSE_ADDONS.some(a => a.id === id)))];
   if (saved.house && saved.house.bedGiven) gameState.house.bedGiven = true;   // 🛏️ 기본 침대를 이미 받았는지(두 번 주지 않게)
+  if (saved.house && Array.isArray(saved.house.grantedDecor))                // 🏖️ 승계 가구를 이미 줬는지(옮기거나 창고에 넣어도 다시 안 주게)
+    gameState.house.grantedDecor = [...new Set(saved.house.grantedDecor.filter(id => typeof id === 'string'))];
   if (saved.farm && Number.isFinite(saved.farm.stage)) {                     // 🌾 밭 단계 복원 — 밭(plots) 복원보다 먼저 울타리를 맞춘다. 없으면 1단계
     gameState.farm.stage = Math.max(1, Math.min(MAX_FARM_STAGE, Math.floor(saved.farm.stage)));
     if (gameState.farm.stage > 1) rebuildFarm(true);
@@ -9763,6 +9768,16 @@ function exitHouse() {
 function goFloor(f) {
   const def = floorAt(gameState.houseStage, f); if (!def) return;
   houseFloor = f;
+  // 🏖️ 루프탑에 처음 올라갈 때, 이미 산 구성품(예: rooftop_set)을 값 없이 실물로 놓아 준다.
+  // "줬는지"는 gameState.house.grantedDecor 로 영구히 기억한다 — 지금 바닥에 놓여 있는지로만 보면,
+  // 옮기려고 든 순간(pickDecor 가 decor 배열에서 즉시 빼낸다)이나 창고에 넣은 뒤 재방문했을 때
+  // "안 보이니 다시 준다"고 오판해 무한 복제된다. 한 번 줬으면 그 뒤로는 평범한 가구라 옮기거나 창고에 넣을 수 있다.
+  if (def.outdoor) {
+    const granted = gameState.house.grantedDecor || (gameState.house.grantedDecor = []);
+    for (const id of rooftopFreeDecor(gameState.house.addons)) {
+      if (!granted.includes(id)) { granted.push(id); placeDecor(id, INT.x, INT.z + def.half - 2, true, 0, true, f); }
+    }
+  }
   const h = def.half;
   player.position.x = Math.max(INT.x - h + 1.5, Math.min(INT.x + h - 1.5, player.position.x));
   player.position.z = Math.max(INT.z - h + 1.5, Math.min(INT.z + h - 1.5, player.position.z));

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn } from '../js/house-floors.js';
+import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from '../js/house-floors.js';
 
 test('3단계는 1층뿐', () => {
   const fs = floorsFor(3);
@@ -48,22 +48,41 @@ test('실외 전용 가구는 루프탑에만 놓인다', () => {
   assert.equal(canPlaceOn({ id: 'sofa' }, floorAt(6, 2)), true);
 });
 
+// ── Task 6: 옥상 파라솔 세트 승계(§8.2) ──────────────────────────
+test('옥상 파라솔 세트를 샀으면 루프탑에 값 없이 놓인다', () => {
+  assert.deepEqual(rooftopFreeDecor(['rooftop_set']), ['parasol_set']);
+  assert.deepEqual(rooftopFreeDecor([]), []);
+  assert.deepEqual(rooftopFreeDecor(['palms']), []);
+});
+
 // ── Task 2: 고급 가구 10종 데이터 + 코인 결제 ─────────────────────
 const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
 const DECOR_SRC = SRC.slice(SRC.indexOf('const DECOR = ['), SRC.indexOf('\n];', SRC.indexOf('const DECOR = [')));
+// 🏖️ Task 6 가 hidden: true 인 parasol_set(승계 전용, 상점에 안 뜸)을 DECOR 에 추가했다.
+// 아래 세 카운트는 "상점에 보이는 고급 가구"만 세도록 hidden 줄을 뺀다 — 그래야 누가 실수로
+// 팔리는 항목을 늘려도(=상점 노출 개수가 어긋나면) 여전히 실패한다.
+const SHOP_DECOR_SRC = DECOR_SRC.split('\n').filter(l => !l.includes('hidden: true')).join('\n');
 
-test('고급 가구 10종이 코인 전용으로 들어 있다', () => {
-  const coinLines = DECOR_SRC.split('\n').filter(l => l.includes("pay: 'coins'"));
+test('상점에 보이는 고급 가구 10종이 코인 전용으로 들어 있다', () => {
+  const coinLines = SHOP_DECOR_SRC.split('\n').filter(l => l.includes("pay: 'coins'"));
   assert.equal(coinLines.length, 10);
 });
 
-test('고급 가구 가격은 구성품 대역과 같다', () => {
-  const costs = [...DECOR_SRC.matchAll(/cost: (\d+),\s*pay: 'coins'/g)].map(m => +m[1]);
+test('상점에 보이는 고급 가구 가격은 구성품 대역과 같다', () => {
+  const costs = [...SHOP_DECOR_SRC.matchAll(/cost: (\d+),\s*pay: 'coins'/g)].map(m => +m[1]);
   assert.deepEqual(costs.sort((a, b) => a - b), [120, 150, 180, 250, 280, 300, 400, 500, 700, 900]);
 });
 
-test('루프탑 가구 3종만 실외 전용이다', () => {
-  assert.equal((DECOR_SRC.match(/outdoorOnly: true/g) || []).length, 3);
+test('상점에 보이는 루프탑 가구 3종만 실외 전용이다', () => {
+  assert.equal((SHOP_DECOR_SRC.match(/outdoorOnly: true/g) || []).length, 3);
+});
+
+test('parasol_set 은 승계 전용(hidden)이라 상점에 안 뜬다 — 값 0 이고 실외 전용', () => {
+  const line = DECOR_SRC.split('\n').find(l => l.includes("id: 'parasol_set'"));
+  assert.ok(line, 'parasol_set 정의가 DECOR 에 있어야 한다');
+  assert.match(line, /hidden: true/);
+  assert.match(line, /cost: 0/);
+  assert.match(line, /outdoorOnly: true/);
 });
 
 test('기존 21종은 작물·생선 그대로다', () => {
