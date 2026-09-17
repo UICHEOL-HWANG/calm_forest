@@ -72,3 +72,14 @@ test('기존 21종은 작물·생선 그대로다', () => {
   const old = DECOR_SRC.split('\n').filter(l => /pay: '(crop|fish)'/.test(l));
   assert.equal(old.length, 21);
 });
+
+// ── Task 3: 가구 f(층) 저장 + 복원 마이그레이션 ─────────────────────
+test('옛 세이브(f 없음)의 가구는 전부 1층으로 읽힌다', () => {
+  const oldSave = [{ id: 'sofa', x: 1, z: 2, rot: 0 }, { id: 'bed', x: -3, z: 0, rot: 1 }];
+  const restored = oldSave.map(d => ({ ...d, f: normalizeFloor(d.f, 6) }));
+  assert.deepEqual(restored.map(d => d.f), [0, 0]);
+});
+
+test('복원 코드가 house 부재 가드를 유지한다', () => {
+  assert.ok(SRC.includes('if (saved.house && Array.isArray(saved.house.decor))'));
+});

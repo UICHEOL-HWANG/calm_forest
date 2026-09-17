@@ -54,6 +54,7 @@ import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링
 import { buildHouseModel, mountHouseAddons } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
+import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈) — rooftopFreeDecor 는 Task 6 이 추가한다
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -1448,6 +1449,7 @@ const OUTDOOR_REACH = 7;   // 조준 가능한 최대 거리 — 화면 끝을 �
 let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot} — 취소·퇴장 시 제자리로
 let decorTapHintShown = false; // "여기 놓을까요?" 안내는 배치 1회당 한 번만
 let interiorGroup, interiorFloor, interiorLamp;
+let houseFloor = 0;   // 🏠 지금 서 있는 실내 층(0=1층) — 층 이동 UI는 Task 4
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
@@ -2305,7 +2307,9 @@ function applySave(saved) {
   }
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
-    saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
+    // ⚠️ f 부재(옛 세이브)는 1층으로 읽는다 — house 부재(저장 없음)와 절대 섞지 않는다.
+    saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0, false,
+                                              normalizeFloor(d.f, saved.houseStage || 0)));
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
@@ -7369,9 +7373,10 @@ function decorMesh(id) {
 }
 
 // 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음) · free=true 면 옮겨 놓기(비용 없음)
-function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
+function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = null) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
   const ry = (rot == null ? decorRot : rot) % 4;
+  const curFloor = f == null ? houseFloor : f;    // f = 지금 서 있는 층(복원 시엔 호출부가 정규화해서 넘긴다)
   const stored = gameState.house.stored || (gameState.house.stored = {});
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
@@ -7394,7 +7399,7 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   const lx = decorClampX(wx), lz = decorClampZ(wz);
   m.position.set(lx, 0.2, lz);
   m.rotation.y = ry * Math.PI / 2;
-  const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry };
+  const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry, f: curFloor };
   m.userData.rec = rec;                                     // 탭해서 들어 올릴 때 저장 레코드를 같이 뺀다
   if (def.foot) {                                           // 🚧 발자국만큼 통행 차단 — 90°·270° 로 놓으면 가로·세로 교환
     const hw = def.foot[ry % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[ry % 2 ? 0 : 1] / 2 * DECOR_SCALE;
