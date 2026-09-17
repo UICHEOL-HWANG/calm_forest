@@ -27,3 +27,24 @@ export function fruitOf(id) { return FRUITS.find(f => f.id === id) || null; }
 export function fruitKeyOf(id) { return id; }          // 과일 인벤 키 = id 그대로
 export function sapKeyOf(id) { return 'sap_' + id; }   // 묘목 인벤 키
 export function growDaysOf(id) { return fruitOf(id)?.growDays ?? 3; }
+
+/** 시냇물 중심선 점 목록 중 **가장 가까운 점**까지의 거리가 STREAM_R 이내인가.
+ *  시작점만 보면 시냇물 아래쪽 나무가 통째로 새므로 전 구간을 본다. */
+export function nearStream(tree, stream = []) {
+  return stream.some(p => Math.hypot(p.x - tree.x, p.z - tree.z) <= STREAM_R);
+}
+
+/** 정산 시점에 "물이 있는 상태"인가. 시냇가면 플래그와 무관하게 항상 true. */
+export function isWatered(tree, stream = []) {
+  return nearStream(tree, stream) || !!tree.watered;
+}
+
+/** 지금 딸 수 있는 열매 수. 다 자란 나무만 딸 수 있다. */
+export function harvestable(tree) {
+  return tree.stage === 'mature' ? Math.max(0, tree.fruit || 0) : 0;
+}
+
+/** 상한(3일치)에 걸려 더 안 쌓이는가. */
+export function capped(tree) {
+  return (tree.fruit || 0) >= YIELD_PER_DAY * CAP_DAYS;
+}
