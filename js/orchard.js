@@ -75,6 +75,9 @@ export function settleTrees(trees = [], stream = [], days = 1) {
   const out = trees.map(t => {
     let tree = { ...t };
     let cappedOnce = false;   // capped 는 정산 1회당 나무 1그루에 최대 1건만 기록한다 — 며칠이 걸려 있어도 이벤트는 하나
+    // fruited 도 마찬가지로 하루 정산이 아니라 나무 1그루당 정산 1회에 최대 1건으로 모은다.
+    // 몇 달치 offline 정산이 한 번에 들어오면 하루짜리 이벤트가 수백 건 쏟아져 GA4 신호가 묻힌다.
+    let fruitN = 0, fruitWatered = 0, fruitDays = 0;
     for (let d = 0; d < days; d++) {
       if (tree.stage === 'sapling' || tree.stage === 'growing') {
         const age = (tree.age || 0) + 1;
@@ -95,10 +98,13 @@ export function settleTrees(trees = [], stream = [], days = 1) {
       const wet = isWatered(tree, stream);
       const before = tree.fruit || 0;
       const fruit = Math.min(YIELD_PER_DAY * CAP_DAYS, before + (wet ? YIELD_PER_DAY : 0));
-      fruited.push({ kind: tree.kind, n: fruit - before, watered: wet ? 1 : 0 });
+      fruitN += fruit - before;
+      fruitWatered += wet ? 1 : 0;
+      fruitDays += 1;
       tree = { ...tree, fruit, watered: false };
       if (capped(tree) && !cappedOnce) { cappedList.push({ kind: tree.kind }); cappedOnce = true; }
     }
+    if (fruitDays > 0) fruited.push({ kind: tree.kind, n: fruitN, watered: fruitWatered, days: fruitDays });
     return tree;
   });
   return { trees: out, matured, fruited, capped: cappedList };

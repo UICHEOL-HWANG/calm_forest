@@ -104,14 +104,21 @@ test('settleTrees: 물이 있으면 하루 2개가 달리고 watered 는 꺼진�
   const out = settleTrees([mk({ x: 40, z: 40, stage: 'mature', watered: true })], STREAM, 1);
   assert.equal(out.trees[0].fruit, 2);
   assert.equal(out.trees[0].watered, false, '정산 직후 플래그는 꺼진다 — 매일 다시 줘야 한다');
-  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 2, watered: 1 }]);
+  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 2, watered: 1, days: 1 }]);
 });
 
 test('settleTrees: 물이 없으면 열매가 안 달리지만 나무는 살아 있다', () => {
   const out = settleTrees([mk({ x: 40, z: 40, stage: 'mature', watered: false })], STREAM, 1);
   assert.equal(out.trees[0].fruit, 0);
   assert.equal(out.trees[0].stage, 'mature', '죽지 않는다');
-  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 0, watered: 0 }]);
+  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 0, watered: 0, days: 1 }]);
+});
+
+test('settleTrees: 마른 채로 여러 날이 지나도 fruited 는 나무당 한 건, n:0·watered:0 으로 뭉친다', () => {
+  const out = settleTrees([mk({ x: 40, z: 40, stage: 'mature', watered: false })], STREAM, 3);
+  assert.equal(out.trees[0].fruit, 0, '물이 없으니 3일이 지나도 열매가 안 열린다');
+  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 0, watered: 0, days: 3 }],
+    '정산 3일이 전부 마른 날이어도 이벤트는 한 건 — GA4 로 그대로 보낸다');
 });
 
 test('settleTrees: 시냇가 나무는 물을 안 줘도 열린다', () => {
@@ -135,13 +142,18 @@ test('settleTrees: 이미 상한인 나무를 여러 날 정산해도 capped 는
 test('settleTrees: 여러 날이 지났으면 그만큼 돌지만 상한은 지켜진다', () => {
   const out = settleTrees([mk({ x: 1, z: 10, stage: 'mature' })], STREAM, 5);
   assert.equal(out.trees[0].fruit, 6, '5일이 지나도 3일치까지만');
-  assert.deepEqual(out.fruited, [
-    { kind: 'apple', n: 2, watered: 1 },
-    { kind: 'apple', n: 2, watered: 1 },
-    { kind: 'apple', n: 2, watered: 1 },
-  ], '상한에 걸리기 전 3일치만 fruited 기록이 쌓인다');
+  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 6, watered: 3, days: 3 }],
+    '상한에 걸리기 전 3일치가 나무 1그루당 한 건으로 뭉쳐 실린다 — 하루 1건씩이 아니다');
   assert.deepEqual(out.capped, [{ kind: 'apple' }], '상한에 걸린 뒤 남은 날들은 capped 한 건으로만 묶인다');
   assert.deepEqual(out.matured, [], '이미 mature 였으므로 matured 이벤트는 없다');
+});
+
+test('settleTrees: 상한에 안 걸리는 여러 날도 fruited 는 나무당 한 건으로 총합이 실린다', () => {
+  const out = settleTrees([mk({ x: 1, z: 10, stage: 'mature' })], STREAM, 2);
+  assert.equal(out.trees[0].fruit, 4);
+  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 4, watered: 2, days: 2 }],
+    '이틀치 n·watered·days 총합이 한 건에 실린다');
+  assert.deepEqual(out.capped, [], '상한에 걸리지 않았다');
 });
 
 test('settleTrees: days 가 0 이하면 아무것도 안 한다', () => {
