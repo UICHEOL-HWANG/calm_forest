@@ -505,7 +505,8 @@ const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동쪽 —
 const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 const ORCHARD_HALF = 20;                            // 언덕 반경
 let orchardGroup = null;                            // 과수원 그룹(가시성 토글용) — rebuildOrchard() 가 채운다
-let orchardTreeObstacles = [];                      // syncOrchardTrees() 가 obstacles 에 등록한 항목 — 다시 부르기 전에 지운다(9158행 시설 패턴과 같은 방식)
+let orchardTreeObstacles = [];   // 밭 금지 표시
+let orchardTreeSolids = [];      // 몸 충돌체 — 다시 그릴 때 removeSolid 로 치운다                      // syncOrchardTrees() 가 obstacles 에 등록한 항목 — 다시 부르기 전에 지운다(9158행 시설 패턴과 같은 방식)
 const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
 const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
 // 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
@@ -2216,7 +2217,7 @@ export async function enterGame() {
         stage: 'mature', age: 9, watered: false, fruit,
       }));
       rebuildOrchard();
-      return { trees: gameState.orchard.trees.length, calls: renderer.info.render.calls };
+      return { trees: gameState.orchard.trees.length, calls: __perf().calls };   // __perf 가 컴포저까지 한 프레임 돌려 정확히 센다
     };
     window.__orchardDbg = () => {            // 🍎 진단 한 방 — 입구가 실제로 섰는지·어디 있는지·왜 안 열리는지
       const gate = scene.children.find(o => o.isGroup && o.position.distanceTo(ORCHARD_GATE) < 0.01);
@@ -2231,11 +2232,11 @@ export async function enterGame() {
         가로대보임: orchardGateBar ? orchardGateBar.visible : null,
         문충돌체켜짐: orchardGateSolid ? !orchardGateSolid.off : null,
         과수원안: atOrchard, 나무수: (gameState.orchard?.trees || []).length,
-        드로우콜: renderer.info.render.calls,
+        드로우콜: __perf().calls,
       };
     };
-    window.__orchardClear = () => { gameState.orchard.trees = []; rebuildOrchard(); return { trees: 0, calls: renderer.info.render.calls }; };
-    window.__orchardCalls = () => renderer.info.render.calls;   // 프레임이 한 번 더 돈 뒤의 실제 값
+    window.__orchardClear = () => { gameState.orchard.trees = []; rebuildOrchard(); return { trees: 0, calls: __perf().calls }; };
+    window.__orchardCalls = () => __perf().calls;   // 블룸 컴포저 탓에 renderer.info 를 그냥 읽으면 마지막 패스(1)만 보인다
     window.__workSteps = (n = 1) => { const t = {}; workerSteps(n, t); return t; };   // 🧑‍🌾 오프라인 스텝 강제 실행(검수용 — 접속 중 60초 스텝과 같은 함수)
     window.__workers = () => workerObjs.map(o => ({ name: o.rec.name, job: o.rec.job, works: o.rec.works, phase: o.phase, t: +o.t.toFixed(2), task: o.task?.type || null, vis: o.group.visible, x: +o.group.position.x.toFixed(1), z: +o.group.position.z.toFixed(1) }));   // 🧑‍🌾 일꾼 상태 열람(검수용)
     // 📜 의뢰 패널 검수용 — __gs().npcs 를 손으로 고친 뒤 이걸 부르면 패널·말풍선·지도가 같이 갱신된다
@@ -2721,8 +2722,17 @@ function buildOrchardGround() {
 
   // 시냇물 — nearStream 이 보는 것과 같은 좌표에 원반을 놓고 하나로 합친다
   const water = new THREE.Mesh(
-    shared('orchard.water.geo', () => mergeGeos(ORCHARD_STREAM_LOCAL.map(([x, z]) =>
-      new THREE.CircleGeometry(2.2, 12).rotateX(-Math.PI / 2).translate(x, 0, z)))),
+    shared('orchard.water.geo', () => {
+      // 규칙(nearStream)은 ORCHARD_STREAM_LOCAL 그대로 쓰고, 그림만 사이를 채워 끊기지 않게 한다.
+      //   점 간격이 7 인데 반경이 2.2 라 원이 서로 안 닿아 웅덩이 두 개처럼 보였다.
+      const pts = [];
+      for (let i = 0; i < ORCHARD_STREAM_LOCAL.length - 1; i++) {
+        const [x0, z0] = ORCHARD_STREAM_LOCAL[i], [x1, z1] = ORCHARD_STREAM_LOCAL[i + 1];
+        for (let k = 0; k < 6; k++) pts.push([x0 + (x1 - x0) * k / 6, z0 + (z1 - z0) * k / 6]);
+      }
+      pts.push(ORCHARD_STREAM_LOCAL[ORCHARD_STREAM_LOCAL.length - 1]);
+      return mergeGeos(pts.map(([x, z]) => new THREE.CircleGeometry(1.5, 10).rotateX(-Math.PI / 2).translate(x, 0, z)));
+    }),
     shared('orchard.water.mat', () => clayMat(0x8fb9d6)));
   water.position.set(ORCHARD.x, 0.03, ORCHARD.z); orchardGroup.add(water);
 }
@@ -2784,6 +2794,10 @@ function syncOrchardTrees() {
   for (const ob of orchardTreeObstacles) { const oi = obstacles.indexOf(ob); if (oi >= 0) obstacles.splice(oi, 1); }
   orchardTreeObstacles = trees.map(t => ({ x: t.x, z: t.z, r: 0.8 }));
   obstacles.push(...orchardTreeObstacles);
+  // 🚧 몸 충돌 — obstacles 는 "여기 밭 금지" 일 뿐이라 캐릭터가 나무를 그냥 통과했다(입구 장식 나무와 같은 실수).
+  //    실제로 막으려면 colliders 다. 다시 그릴 때 이전 것을 치우고 새로 건다.
+  for (const c of orchardTreeSolids) removeSolid(c);
+  orchardTreeSolids = trees.map(t => solidCircle(t.x, t.z, 0.55 * (ORCHARD_SCALE[t.stage] ?? 1) + 0.25));
 }
 
 // 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다
