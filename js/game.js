@@ -51,7 +51,7 @@ import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 �
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
-import { buildHouseModel, mountHouseAddons } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기
+import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기 + 재질 도우미(루프탑 유리 난간)
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈) — rooftopFreeDecor 는 Task 6 이 추가한다
@@ -530,13 +530,19 @@ function setSpaceVisible() {
   // 🏠 층은 한 번에 하나만 — interiorGroup 하나가 아니라 층별 그룹(id 로 키)을 토글한다.
   const showId = (floorAt(gameState.houseStage, houseFloor) || { id: 'ground' }).id;
   for (const id in interiorFloors) interiorFloors[id].visible = indoor && id === showId;
+  refreshStairsLandmarks();   // 증축으로 houseStage 가 바뀌었을 수도 있으니 전환마다 다시 계산(스펙 §3 위반 A)
   interiorGroup = interiorFloors[showId] || interiorFloors.ground;   // 레이캐스트(interiorFloor)·미니맵 등이 참조하는 "지금 방"
   interiorFloor = interiorGroup ? interiorGroup.children[0] : interiorFloor;
   // 🛋️ 가구 메시는 scene 직속(interiorGroup 자식이 아님) — 방과 같이 따로 꺼야 한다.
   //    방은 월드 (0,0,52)에 실제로 서 있고 마을 이동 한계는 반경 42다. 그래서 북쪽 끝에 서면
   //    벽·바닥이 숨은 자리에 가구만 들판 위에 떠 보였다(제보 2026-09-15 "맵 끝에 피아노·장롱").
   //    ⚠️ 층이 생긴 뒤로는 다른 층 가구도 같은 이유로 떠 보인다 — indoor && 같은 층(f) 두 조건을 모두 본다.
-  for (const m of decorMeshes) m.visible = indoor && (m.userData.rec?.f || 0) === houseFloor;
+  // 🚧 발자국 콜라이더도 층별로 꺼야 한다 — solidBox 는 off:false 로 시작해 층과 무관하게 항상 막고 있었다.
+  //   1층 침대가 2층 같은 로컬 좌표에 안 보이는 벽으로 남는 신규 회귀(오레·그루터기와 같은 off 관용구로 고침).
+  for (const m of decorMeshes) {
+    m.visible = indoor && (m.userData.rec?.f || 0) === houseFloor;
+    if (m.userData.collider) m.userData.collider.off = !m.visible;
+  }
   if (farmGroup) farmGroup.visible = atFarm;
   setWorkersVisible(atFarm);   // 🧑‍🌾 일꾼은 텃밭에서만 보인다(밖에선 규칙만 돌아간다)
   // 🌾 밭 흙·이랑·작물·배지 InstancedMesh 는 scene 직속(farmGroup 자식이 아님) — 따로 토글해야 한다.
@@ -6387,6 +6393,7 @@ function buildHouseStage(stage, silent = false) {
   }
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
+  if (interiorFloors.ground) refreshStairsLandmarks();   // 🪜 실내에 있는 채로 증축했을 드문 경우까지 대비(스펙 §3 위반 A)
   syncHouseCollider();                        // 🚧 완성되면 충돌 on + 증축 크기 반영(짓는 동안엔 통행 자유)
   if (!silent) syncStory();                   // 📖 1장(보금자리) 진행
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
@@ -7140,12 +7147,15 @@ function curHalf() { return curFloorDef().half; }   // 클램프 기준(js/house
 // 방 한 채를 짓는다 — def = floorAt() 이 주는 층 정의(반경·실외 여부·id)
 function buildRoom(def) {
   const g = new THREE.Group(); g.position.copy(INT);
+  g.userData.floorIdx = def.f;   // refreshStairsLandmarks 가 위/아래 목적지를 계산할 때 쓴다
   const H = def.half, W = H * 2;
   // 바닥은 가구와 같은 나무 텍스처라 테이블·책장이 묻혔다(베타) — 톤을 낮춰 가구가 도드라지게
   const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), woodMat(7, 7, INT_FLOOR_TINT));
   floor.position.y = 0.1; floor.receiveShadow = true; g.add(floor);
   if (def.outdoor) {   // ☀️ 루프탑 — 벽 대신 유리 난간, 하늘·밤별이 보인다
-    const rail = clayMat(0xf4f3ee, false);
+    // 🪟 외관 루프탑 모델(js/house/villa.js railGlass)과 같은 재질 — 스펙 "유리 난간", 불투명 크림색이면
+    // 같은 건물처럼 안 읽힌다. H.glass() 는 기본 opacity 0.55 라 난간 전용으로 0.22 를 덮어쓴다.
+    const rail = makeHouseHelpers(THREE).glass(0xa9d8ea); rail.opacity = 0.22;
     [[0, H], [0, -H], [-H, 0], [H, 0]].forEach(([rx, rz], i) => {
       const w = i < 2 ? W : 0.12, d = i < 2 ? 0.12 : W;
       const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, d), rail);
@@ -7169,13 +7179,22 @@ function buildRoom(def) {
       const fw = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); fw.position.set(0, 1.5, -H); g.add(fw);
     }
   }
-  // 🪜 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2). 오른쪽 뒤 모서리에 고정.
-  const st = new THREE.Group(); st.position.set(H - 1.2, 0.2, H - 1.2);
-  [0, 1, 2].forEach(i => {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.22, 0.4), woodMat(1, 1, 0x9c6b40));
-    s.position.set(0, 0.11 + i * 0.22, -i * 0.4); st.add(s);
-  });
-  g.add(st);
+  // 🪜 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2).
+  //   위/아래 두 자리를 따로 둔다 — 중간 층(다락·2층)에서 한쪽 방향만 고를 수 있으면
+  //   반대쪽으로 가려고 다른 층을 거쳐 돌아야 한다(스펙 §4.1은 두 방향을 같이 보여준다).
+  //   실제로 보일지는 refreshStairsLandmarks() 가 지금 houseStage 기준으로 매번 정한다 —
+  //   3단계 1층처럼 목적지가 아직 없으면 장식만 하는 계단을 보여주지 않는다(스펙 §3 "지금 그대로").
+  const buildStairs = (cx) => {
+    const st = new THREE.Group(); st.position.set(cx, 0.2, H - 1.2);
+    [0, 1, 2].forEach(i => {
+      const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.22, 0.4), woodMat(1, 1, 0x9c6b40));
+      s.position.set(0, 0.11 + i * 0.22, -i * 0.4); st.add(s);
+    });
+    g.add(st);
+    return st;
+  };
+  if (def.f < 2) g.userData.stUp = buildStairs(H - 1.2);        // 위로 — 오른쪽 뒤 모서리(기존 자리)
+  if (def.f > 0) g.userData.stDown = buildStairs(-(H - 1.2));   // 아래로 — 왼쪽 뒤 모서리
   scene.add(g); g.visible = false;
   setFogExempt(g, true);   // 방은 안개 밖(작은 방이라 안개가 지척의 벽까지 흐리게 만든다 — 루프탑도 좁아 같은 이유로 예외)
   return g;
@@ -7191,6 +7210,18 @@ function buildInterior() {
   interiorFloor = interiorGroup.children[0];
   interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
   scene.add(interiorLamp);
+  refreshStairsLandmarks();
+}
+
+// 🪜 계단 표지물 위/아래 각각을 지금 houseStage 에서 실제로 갈 수 있을 때만 보이게 한다(스펙 §3 위반 A 수정).
+//   houseStage 는 플레이 중 올라갈 수 있어 매번 다시 계산해야 한다 — setSpaceVisible·증축 직후 호출.
+function refreshStairsLandmarks() {
+  for (const id in interiorFloors) {
+    const room = interiorFloors[id];
+    const f = room.userData.floorIdx;
+    if (room.userData.stUp) room.userData.stUp.visible = !!floorAt(gameState.houseStage, f + 1);
+    if (room.userData.stDown) room.userData.stDown.visible = f > 0 && !!floorAt(gameState.houseStage, f - 1);
+  }
 }
 
 // 가구 메시(로우폴리)
@@ -7447,7 +7478,10 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = nu
     const hw = def.foot[ry % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[ry % 2 ? 0 : 1] / 2 * DECOR_SCALE;
     m.userData.collider = solidBox(lx - hw, lz - hd, lx + hw, lz + hd);
   }
-  m.visible = indoor;                                       // 세이브 복원은 실외에서 일어난다 — 방 밖에선 숨긴다(setSpaceVisible 과 같은 규칙)
+  // ⚠️ §8.1 재발 지점 — indoor 만 보면 취소 경로(stopDecorPlacing→placeDecor, indoor===true인 채로 실행)에서
+  //   다른 층 좌표에 새로 생긴 메시가 그대로 보여 버린다. 지금 층(houseFloor)까지 같이 봐야 한다.
+  m.visible = indoor && curFloor === houseFloor;
+  if (m.userData.collider) m.userData.collider.off = !m.visible;   // 🚧 안 보이는 층의 발자국은 막지 않는다(§8.1 콜라이더 버전)
   scene.add(m); decorMeshes.push(m);
   gameState.house.decor.push(rec);
   if (!silent) {
@@ -9761,12 +9795,15 @@ function updateDoorInteract() {
   if (indoor) {
     if (houseFloor === 0 && dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 1층 문 바로 앞에서만
     else {
-      // 🪜 계단 — 층이 둘 이상일 때만. buildRoom 이 세운 계단 위치(오른쪽 뒤 모서리)와 같은 자리.
-      const fdef = curFloorDef();
-      const opens = floorsFor(gameState.houseStage).filter(o => o.f !== houseFloor);
-      if (opens.length && dist2D({ x: INT.x + fdef.half - 1.2, z: INT.z + fdef.half - 1.2 }, player.position) < 1.6) {
-        const up = opens.find(o => o.f > houseFloor) || opens[0];   // 위가 있으면 위로, 없으면 아래로
-        nd = 'floor'; nearDoorFloor = up.f; prompt = `🪜 ${up.name}으로`;
+      // 🪜 계단 — 위/아래 두 자리를 따로 본다(buildRoom 의 stUp/stDown과 같은 좌표).
+      //   이웃 층(f±1)만 직접 잇는다 — 3층 구성(6단계)에서도 다른 층을 거치지 않고 바로 오갈 수 있다.
+      const h = curHalf();
+      const upDef = floorAt(gameState.houseStage, houseFloor + 1);
+      const downDef = houseFloor > 0 ? floorAt(gameState.houseStage, houseFloor - 1) : null;
+      if (upDef && dist2D({ x: INT.x + h - 1.2, z: INT.z + h - 1.2 }, player.position) < 1.6) {
+        nd = 'floor'; nearDoorFloor = houseFloor + 1; prompt = `🪜 ${upDef.name}으로`;
+      } else if (downDef && dist2D({ x: INT.x - (h - 1.2), z: INT.z + h - 1.2 }, player.position) < 1.6) {
+        nd = 'floor'; nearDoorFloor = houseFloor - 1; prompt = `🪜 ${downDef.name}으로`;
       } else if (!placingDecor) {
         // 🛋️ 놓아둔 가구 옆에 서면 "옮기기" — NPC·문과 같은 근접 프롬프트+액션 문법(탭으로 드는 경로는 그대로)
         const near = nearestDecor(0.9);
