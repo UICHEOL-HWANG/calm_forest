@@ -2235,6 +2235,7 @@ export async function enterGame() {
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
     window.__decor = (id, x, z, rot = 0) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true);   // 가구 무료 배치(검수용)
+    window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
