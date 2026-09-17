@@ -2355,6 +2355,13 @@ function applySave(saved) {
     gameState.progress.advHarvest = Math.max(0, Math.floor(saved.progress.advHarvest));
   }
   syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다
+  // 🍎 복원된 나무를 그린다. buildWorld() 의 rebuildOrchard() 는 **로그인 전**이라 나무 목록이
+  //    항상 비어 있었다 — 그 뒤 여기서 trees 를 채워 놓고 다시 그리지 않으면, 같은 날 새로고침한
+  //    유저의 과수원이 통째로 빈 언덕으로 보인다(나무 안 보임 · 몸 충돌체 없음 · 자리는 "심을 수 있는 흙"
+  //    으로 그려지는데 orchardSlotNear() 는 이미 찼다며 거부 → "내 과수원이 날아갔다").
+  //    settleOrchard() 의 rebuildOrchard() 는 날짜 게이트(settleDate === today)에 막혀 안 돈다.
+  //    밭이 바로 위에서 rebuildFarm(true) 로 복원하는 것과 같은 자리·같은 이유다.
+  rebuildOrchard();
   if (Array.isArray(saved.workers)) {   // 🧑‍🌾 일꾼 — 직군·등급은 표 밖 값을 받지 않는다(옛/조작 세이브 방어)
     gameState.workers = saved.workers.filter(w => w && typeof w.id === 'string' && JOBS.some(j => j.id === w.job)).slice(0, 6).map(w => ({
       id: w.id, job: w.job, name: String(w.name || '일꾼').slice(0, 12),

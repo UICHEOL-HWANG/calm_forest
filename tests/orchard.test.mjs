@@ -278,6 +278,32 @@ test('getGameState: 과수원 나무의 hp(도끼질 진행도)를 저장용 스
     '저장할 때마다(모든 액션 뒤) 진행 중인 도끼질 hp 가 초기화된다');
 });
 
+// 🍎 복원된 나무가 안 그려지던 회귀(C1).
+//   buildWorld() 의 rebuildOrchard() 는 로그인 전이라 나무 목록이 항상 비어 있고,
+//   settleOrchard() 의 rebuildOrchard() 는 날짜 게이트(settleDate === today)에 막힌다.
+//   그래서 applySave() 가 trees 를 복원한 **뒤에** 직접 다시 그려야 한다.
+//
+//   ⚠️ 이 테스트가 증명하는 것: applySave 안에 rebuildOrchard() 호출이 있고,
+//      그것이 saved.orchard 복원 코드보다 뒤에 있다(=빈 목록을 그리지 않는다).
+//   ⚠️ 증명하지 못하는 것: rebuildOrchard() 가 실제로 나무를 그리는지, 충돌체가 붙는지.
+//      js/game.js 는 THREE·document 전역에 묶여 이 파일에서 실행할 수 없다(이 파일 다른 소스-텍스트
+//      테스트와 같은 한계). 렌더 자체는 브라우저에서 확인해야 한다.
+test('applySave: 복원한 과수원 나무를 rebuildOrchard() 로 다시 그린다 — 복원 코드보다 뒤에서', () => {
+  const src = GAME_SRC();
+  const body = sliceFunctionBody(src, /^function applySave\(/m);
+  assert.ok(body, 'game.js 에서 applySave 를 찾지 못했다 — 함수명이 바뀌었으면 이 테스트도 같이 고친다');
+
+  const restoreIdx = body.search(/gameState\.orchard\.trees\s*=\s*saved\.orchard\.trees/);
+  assert.ok(restoreIdx >= 0, 'applySave 안에서 과수원 나무를 복원하는 줄을 못 찾았다');
+
+  const drawIdx = body.search(/rebuildOrchard\(\)/);
+  assert.ok(drawIdx >= 0,
+    'applySave 가 rebuildOrchard() 를 부르지 않는다 — 같은 날 새로고침하면 과수원이 빈 언덕으로 보인다 ' +
+    '(나무도 충돌체도 없고, 찬 자리는 "심을 수 있는 흙"으로 그려진다)');
+  assert.ok(restoreIdx < drawIdx,
+    'rebuildOrchard() 가 나무 복원보다 앞에 있다 — 빈 목록을 그리게 되어 고친 회귀가 그대로 돌아온다');
+});
+
 test('chopTree: 열매가 있으면 hp 를 깎기 전에 막는다(먼저 따야 벤다)', () => {
   const src = GAME_SRC();
   const body = sliceFunctionBody(src, /^function chopTree\(/m);
