@@ -10137,7 +10137,9 @@ function updateDoorInteract() {
   } else if (!indoor && dist2D(player.position, ORCHARD_GATE) < 2.2) {
     nd = 'orchard';
     const locked = mapLocked('orchard');
-    prompt = locked ? '🔒 🌾고급 작물을 한 번 거두면 열려요' : '🍎 과수원에 들어가기';
+    // 🔒 잠금 문구는 다른 게이트(🌫️·🌊)와 같이 BETA_COPY.lock 한 곳에서만 나온다.
+    //    진행도 게이트라 {N}(날짜)이 없어 openDay 를 넘기지 않는다 — replace 가 그대로 통과한다.
+    prompt = locked ? lockLine('orchard') : '🍎 과수원에 들어가기';
     if (!locked) firstHintBanner('orchardGate', '🍎', '과수원', '묘목을 심어 매일 열매를 따는 곳');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';

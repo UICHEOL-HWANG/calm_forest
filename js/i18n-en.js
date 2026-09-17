@@ -1689,6 +1689,14 @@ export const EN = {
   '💧 물 줄 나무 앞으로 가요': '💧 Head to a tree to water',
   '🌳 딸 나무 앞으로 가요': '🌳 Head to a tree to pick',
   '🍎 과수원에 열매 {0}개가 열렸어요': '🍎 {0} fruit ripened in the Orchard',
+  // 🔒 잠긴 입구 프롬프트 + 잠금 토스트 — 둘 다 js/tuning.js BETA_COPY.lock.orchard 한 문자열에서 나온다.
+  //    영어 플레이어가 과수원에서 **가장 먼저 보는** 줄이라 빠지면 눈에 바로 띈다.
+  '🔒 🌾고급 작물을 한 번 거두면 열려요': '🔒 Harvest an advanced 🌾crop once to open',
+  // 🪓 벤 뒤 토스트 — 숫자 자리는 {0#}(숫자 전용)로 잡는다. 캐치올 글루 '{0} · {1}' 이
+  //    이 문장을 먼저 삼켜도 t() 가 "한국어가 남은 매칭"을 보류하므로 이 구체 키까지 도달한다.
+  '🪵 목재 +{0#} · 자리가 비었어요': '🪵 Wood +{0} · the spot is free again',
+  '🌰 씨앗으로 심고 💧 물 주고 🌾 낫으로 따요 · 🪓 도끼로 베요':
+    '🌰 Seed to plant · 💧 water · 🌾 sickle to pick · 🪓 axe to chop',
   // 🚨 글루 함정 — '{0} {1}!' 캐치올 글루가 이 해금 토스트를 통째로 삼켜(양쪽 다 한국어라 t()가 "miss"로 보류)
   //   영어 모드에서도 한국어 그대로 노출되고 있었다. 체커는 글루 패턴 매치만 보고 "커버됨"으로 오판하니
   //   구체적인 키를 등록해 EXACT 매치가 먼저 걸리게 한다(node scripts/i18n_check.mjs 는 이 케이스를 못 잡는다).
