@@ -10,6 +10,7 @@
     "deploy": "ait deploy",
     "build": "node scripts/build-ait.mjs && ait build",
     "build:itch": "node scripts/build-itch.mjs",
+    "build:vendor": "node scripts/fetch-vendor.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "repository": {
@@ -25,7 +26,9 @@
   "homepage": "https://github.com/UICHEOL-HWANG/calm_forest#readme",
   "devDependencies": {
     "@apps-in-toss/devtools": "^3.0.2",
-    "@apps-in-toss/web-framework": "^3.0.2"
+    "@apps-in-toss/web-framework": "^3.0.2",
+    "@supabase/supabase-js": "^2.116.0",
+    "esbuild": "^0.28.2"
   },
   "private": true
 }

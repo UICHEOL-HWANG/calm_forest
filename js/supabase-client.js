@@ -137,7 +137,10 @@ export async function initAuth(onStatusChange) {
   }
 
   try {
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    // 📦 자체 호스팅(vendor/) — esm.sh 는 531B 스텁이라 그대로 못 받는다. esbuild 로 구운
+    //    단일 ESM 을 쓴다(scripts/fetch-vendor.mjs). 앱(Capacitor)에서 오프라인으로 뜨려면
+    //    라이브러리가 번들 안에 있어야 한다.
+    const { createClient } = await import('../vendor/supabase.js');
     supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
       auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true },
     });
