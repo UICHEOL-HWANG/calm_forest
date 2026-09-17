@@ -70,6 +70,12 @@ export const CONFIG = {
   PHOTO_API: `${API_BASE}/api/photo`,             // POST 업로드 · DELETE ?key= 삭제
   PHOTO_URLS_API: `${API_BASE}/api/photo-urls`,   // POST { keys } → presigned <img> URL 일괄 발급
 
+  // ── 🍎 과수원 이벤트 원장 엔드포인트 ───────────────────────────
+  //    GA4 는 광고차단에 유실·BigQuery export 가 일별이라 당일 확인이 안 되므로,
+  //    과수원(리텐션 측정이 존재 이유) 핵심 이벤트만 Supabase 에도 직접 남긴다.
+  //    js/orchard-log.js 가 fire-and-forget 으로 호출(실패해도 게임에 영향 없음).
+  ORCHARD_EVENTS_API: `${API_BASE}/api/orchard-events`,
+
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)
   //    'map'  = 맵 크기 A/B (client_id 해시로 A/B 50:50 배정)

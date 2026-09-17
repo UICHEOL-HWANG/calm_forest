@@ -49,6 +49,7 @@ import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·정산)
+import { logOrchardEvent } from './orchard-log.js';   // 🍎 과수원 이벤트 원장(Supabase, fire-and-forget) — GA4 유실·지연 대비
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -12080,6 +12081,8 @@ function plantSapling(slot) {
   rebuildOrchard(); refreshInventoryUI(); requestSave();
   trackEvent('sapling_plant', {                                  // [GA4] 생애주기 2단계
     kind, near_stream: nearStream(tree, orchardStreamWorld()) ? 1 : 0, trees: gameState.orchard.trees.length });
+  logOrchardEvent('sapling_plant', {                             // [원장] GA4 유실 대비 — Supabase 직접 기록
+    kind, near_stream: nearStream(tree, orchardStreamWorld()), trees: gameState.orchard.trees.length });
 }
 
 function waterTree(tree) {
@@ -12090,6 +12093,7 @@ function waterTree(tree) {
   spawnFloatText(tree.x, 1.4, tree.z, '💧', '#8fb9d6');
   // ⚠️ source/content 같은 GA4 예약어를 쓰지 않는다 — method 로 보낸다
   trackEvent('tree_water', { kind: tree.kind, method: 'manual' });
+  logOrchardEvent('tree_water', { kind: tree.kind, method: 'manual' });   // [원장]
 }
 
 function harvestTree(tree) {
@@ -12101,6 +12105,7 @@ function harvestTree(tree) {
   doPlayerAction(tree.x, tree.z); Sound.harvest();
   rebuildOrchard(); refreshInventoryUI(); requestSave();
   trackEvent('fruit_harvest', { kind: tree.kind, n, stacked_days: stacked });   // [GA4]
+  logOrchardEvent('fruit_harvest', { kind: tree.kind, n });                     // [원장]
 }
 
 // 🪓 과일나무 베기 — 숲 나무와 같은 hp 방식(도끼 3번 · 강철 도끼 2번).
@@ -12122,6 +12127,7 @@ function chopTree(tree) {
   rebuildOrchard(); refreshInventoryUI(); requestSave();
   ui.toast?.(`🪵 목재 +${wood} · 자리가 비었어요`, 2400);
   trackEvent('tree_chop', { kind: tree.kind, stage: tree.stage, wood, trees: gameState.orchard.trees.length });
+  logOrchardEvent('tree_chop', { kind: tree.kind, trees: gameState.orchard.trees.length });   // [원장]
 }
 
 // 도구별 동작 — 밭처럼 자동 전환하지 않는다(자리가 10개뿐이라 헷갈릴 일이 적다).
@@ -12398,9 +12404,9 @@ function settleOrchard() {
   st.settleDate = today;
   const out = settleTrees(st.trees || [], orchardStreamWorld(), days);
   st.trees = out.trees;
-  for (const m of out.matured) trackEvent('tree_mature', m);     // [GA4] kind·grew_days
-  for (const f of out.fruited) trackEvent('fruit_ready', f);     // [GA4] kind·n·watered
-  for (const c of out.capped)  trackEvent('fruit_capped', c);    // [GA4] kind
+  for (const m of out.matured) trackEvent('tree_mature', m);     // [GA4] kind·grew_days (원장 없음 — 생애주기 이벤트 아님)
+  for (const f of out.fruited) { trackEvent('fruit_ready', f); logOrchardEvent('fruit_ready', { kind: f.kind, n: f.n }); }     // [GA4]/[원장] kind·n·watered
+  for (const c of out.capped)  { trackEvent('fruit_capped', c); logOrchardEvent('fruit_capped', { kind: c.kind }); }          // [GA4]/[원장] kind
   const total = out.fruited.reduce((s, f) => s + f.n, 0);
   if (total) setTimeout(() => ui.toast?.(`🍎 과수원에 열매 ${total}개가 열렸어요`, 2600), 1400);
   rebuildOrchard(); requestSave();

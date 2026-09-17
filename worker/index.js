@@ -21,6 +21,7 @@ import { onRequestGet as leaderboard } from '../functions/api/leaderboard.js';
 import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
+import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
@@ -142,6 +143,12 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/leaderboard') {
     if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
     return await leaderboard({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+  }
+
+  // 🍎 과수원 이벤트 원장 — GA4 유실·지연 대비, 유저 본인 토큰으로 orchard_events 에 적재
+  if (pathname === '/api/orchard-events') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await orchardEvents({ request, env });
   }
 
   return null;
