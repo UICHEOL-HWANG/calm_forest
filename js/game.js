@@ -5918,32 +5918,34 @@ function buildOrchardGate() {
     rail.position.set(mid, 0.07, sz); g.add(rail);
   }
 
-  // 앞면 — **아치 실루엣 안에서만** 채운다. 판 하나를 얹으면 곡선 밖으로 넘친다(이전 판 4.2 폭이 그랬다).
-  //   폭을 잘게 쪼개고 각 조각 높이를 아치 식 h = √(R² − z²) 로 구하면 절대 넘칠 수 없다.
+  // 앞면 — 반원 도형에 문 구멍을 뚫어 통째로 깎는다. 조각을 이어붙이면 계단처럼 각지는데,
+  //   도형을 쓰면 아치 곡선을 그대로 따라가고 메시도 하나다(드로우콜 1).
   const wall = clayMat(0xe6d8bf);
-  const SLATS = 16, DOOR_Z0 = -0.9, DOOR_Z1 = 0.3, DOOR_H = 1.8;   // 문은 참고 이미지처럼 작고 살짝 치우친다
-  for (let i = 0; i < SLATS; i++) {
-    const z0 = -R + (2 * R) * i / SLATS, z1 = -R + (2 * R) * (i + 1) / SLATS;
-    const zc = (z0 + z1) / 2, w = (z1 - z0) + 0.02;
-    const h = Math.sqrt(Math.max(0, R * R - Math.max(Math.abs(z0), Math.abs(z1)) ** 2));   // 양 끝 중 낮은 쪽에 맞춰 안전하게
-    if (h < 0.06) continue;
-    const inDoor = zc > DOOR_Z0 && zc < DOOR_Z1;
-    if (!inDoor) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, h, w), wall);
-      m.position.set(0, h / 2, zc); m.castShadow = true; g.add(m);
-    } else if (h > DOOR_H + 0.08) {                    // 문 위 인방 — 아치 높이를 넘지 않는 만큼만
-      const lin = new THREE.Mesh(new THREE.BoxGeometry(0.12, h - DOOR_H, w), wall);
-      lin.position.set(0, DOOR_H + (h - DOOR_H) / 2, zc); g.add(lin);
-    }
-  }
-  const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, DOOR_H, DOOR_Z1 - DOOR_Z0), clayMat(0x4a3b2c));
-  doorway.position.set(0.09, DOOR_H / 2, (DOOR_Z0 + DOOR_Z1) / 2); g.add(doorway);           // 문 안쪽 어둠
-  const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, DOOR_H + 0.1, DOOR_Z1 - DOOR_Z0 + 0.16), clayMat(0xa2632f));
-  doorFrame.position.set(-0.03, (DOOR_H + 0.1) / 2, (DOOR_Z0 + DOOR_Z1) / 2); g.add(doorFrame);   // 문틀(참고 이미지의 주황 테)
-  const win = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.34, 0.34), clayMat(0x7d9b93));    // 문 옆 작은 창
-  win.position.set(-0.04, 1.15, 0.95); g.add(win);
-  const arcFront = new THREE.Mesh(new THREE.TorusGeometry(R, 0.09, 6, 16, Math.PI), trim);   // 앞 아치 테
-  arcFront.position.set(0, 0, 0); arcFront.rotation.y = Math.PI / 2; g.add(arcFront);
+  const DOOR_W = 1.15, DOOR_H = 1.8, DOOR_C = 0.25;        // 문 폭·높이·중심(참고 이미지처럼 살짝 치우침)
+  const face = new THREE.Shape();
+  face.moveTo(-R, 0);
+  face.absarc(0, 0, R, Math.PI, 0, true);                   // 반원(왼끝 → 위 → 오른끝)
+  face.lineTo(-R, 0);
+  const hole = new THREE.Path();                            // 문 구멍
+  hole.moveTo(DOOR_C - DOOR_W / 2, 0.02);
+  hole.lineTo(DOOR_C + DOOR_W / 2, 0.02);
+  hole.lineTo(DOOR_C + DOOR_W / 2, DOOR_H);
+  hole.lineTo(DOOR_C - DOOR_W / 2, DOOR_H);
+  hole.lineTo(DOOR_C - DOOR_W / 2, 0.02);
+  face.holes.push(hole);
+  const faceMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(face, { depth: 0.12, bevelEnabled: false, curveSegments: 20 }), wall);
+  faceMesh.rotation.y = Math.PI / 2;                        // 도형 X → 국소 -z · 압출 방향 → 국소 +x(안쪽)
+  faceMesh.castShadow = true; g.add(faceMesh);
+
+  const dz = -DOOR_C;                                       // rotation.y=+π/2 로 도형 X 가 뒤집힌다
+  const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, DOOR_H, DOOR_W), clayMat(0x4a3b2c));
+  doorway.position.set(0.14, DOOR_H / 2, dz); g.add(doorway);                       // 문 안쪽 어둠
+  const doorFrame = new THREE.Mesh(new THREE.TorusGeometry(DOOR_W * 0.62, 0.05, 5, 4, Math.PI), clayMat(0xa2632f));
+  doorFrame.position.set(-0.02, DOOR_H - 0.15, dz); doorFrame.rotation.y = Math.PI / 2; g.add(doorFrame);   // 문 위 둥근 테
+  const win = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 0.3), clayMat(0x7d9b93));
+  win.position.set(-0.02, 1.1, dz - 1.15); g.add(win);                              // 문 옆 작은 창
+  const arcFront = new THREE.Mesh(new THREE.TorusGeometry(R, 0.09, 6, 20, Math.PI), trim);
+  arcFront.position.set(0.02, 0, 0); arcFront.rotation.y = Math.PI / 2; g.add(arcFront);
 
   for (const rz of [-1.05, 0, 1.05]) {                  // 안쪽 이랑
     const bed = new THREE.Mesh(new THREE.BoxGeometry(LEN - 1.2, 0.22, 0.5), clayMat(0x8a6440));
@@ -5960,17 +5962,7 @@ function buildOrchardGate() {
     fill.position.set(cx, 0.45, cz); g.add(fill);
   });
 
-  // 둘레 과일나무 — 몸통 좌우로 넉넉히 띄운다(R 2.1 + 캐노피 1.2 여유)
-  [[1.8, -4.2, 0], [5.4, -4.2, 1], [1.8, 4.2, 2], [5.4, 4.2, 3]].forEach(([tx, tz, fi]) => {
-    const def = FRUITS[fi % FRUITS.length];
-    const trunk = new THREE.Mesh(shared('tree.trunk.geo', () => new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7)), shared('tree.trunk.mat', () => clayMat(PAL.trunk)));
-    trunk.position.set(tx, 0.7, tz); trunk.scale.setScalar(0.85); trunk.castShadow = true; g.add(trunk);
-    const cano = new THREE.Mesh(shared('tree.canopy.geo', () => mergeGeos(
-      [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]]
-        .map(([bx, by, bz, cs]) => new THREE.IcosahedronGeometry(cs, 0).translate(bx, by, bz)))),
-      shared(`orchard.leaf.mat.${def.leafColor}`, () => clayMat(def.leafColor)));
-    cano.position.set(tx, 1.75, tz); cano.scale.setScalar(0.85); cano.castShadow = true; g.add(cano);
-  });
+  // (둘레 과일나무 없음 — 벌목 가능한 숲 나무와 지오메트리가 같아 유저가 벨 수 있다. 과일나무는 과수원 안에만 둔다)
 
   [[-4.4, 0.06], [-3.4, 0.14], [-2.5, 0.2]].forEach(([sx, sy]) => {   // 문으로 오르는 흙 계단
     const st = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.18, 9), clayMat(0xb08a5e, false));
