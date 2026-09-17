@@ -2856,7 +2856,7 @@ function syncOrchardTrees() {
 // 🍎 오솔길 — 입구(남쪽)에서 자리들을 훑고 지나가는 흙길. 디딤돌을 합쳐 드로우콜 1.
 //   자리를 잇는 게 아니라 '자리 옆을 스쳐 가게' 둔다 — 길 위에 나무가 서면 이상하다.
 function buildOrchardPaths() {
-  const way = [[0, 18], [1.5, 12], [0.5, 6], [-1, 0], [0.5, -6], [2, -12], [1, -17]];   // 국소 좌표(남→북)
+  const way = [[0, 19], [1.5, 12], [0.5, 6], [-1, 0], [0.5, -6], [2, -12], [1.2, -19]];   // 국소 좌표(남→북) — 가장자리에서 가장자리까지
   const steps = [];
   for (let i = 0; i < way.length - 1; i++) {
     const [x0, z0] = way[i], [x1, z1] = way[i + 1];
@@ -2867,8 +2867,8 @@ function buildOrchardPaths() {
   }
   const path = new THREE.Mesh(
     shared('orchard.path.geo', () => mergeGeos(steps.map(([x, z], i) =>
-      new THREE.CircleGeometry(0.62 + (i % 3) * 0.07, 8).rotateX(-Math.PI / 2).translate(x, 0, z)))),
-    shared('orchard.path.mat', () => clayMat(0xbfa077, false)));
+      new THREE.CircleGeometry(0.42 + (i % 3) * 0.05, 8).rotateX(-Math.PI / 2).translate(x, 0, z)))),
+    shared('orchard.path.mat', () => clayMat(0xc9b393, false)));
   path.position.set(ORCHARD.x, 0.018, ORCHARD.z); path.receiveShadow = true; orchardGroup.add(path);
 }
 
