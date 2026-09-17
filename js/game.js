@@ -2724,7 +2724,8 @@ const FRUIT_SPOTS = [[-0.75, 0.15, 0.45], [0.8, -0.05, -0.3], [0.2, 0.5, 0.75], 
 // 언덕 지면 + 시냇물 — 둘 다 정적. 시냇물은 점 5개를 한 지오메트리로 합쳐 드로우콜 1
 function buildOrchardGround() {
   const ground = new THREE.Mesh(
-    shared('orchard.ground.geo', () => new THREE.CircleGeometry(ORCHARD_HALF, 32).rotateX(-Math.PI / 2)),
+    // 걸을 수 있는 범위(ORCHARD_HALF-0.8)보다 훨씬 넓게 깐다 — 원판 끝이 보이면 허공이 드러난다
+    shared('orchard.ground.geo', () => new THREE.CircleGeometry(ORCHARD_HALF + 16, 40).rotateX(-Math.PI / 2)),
     shared('orchard.ground.mat', () => clayMat(0xc0cf9e)));
   ground.position.set(ORCHARD.x, 0.01, ORCHARD.z); ground.receiveShadow = true; orchardGroup.add(ground);
 
@@ -2742,6 +2743,10 @@ function buildOrchardGround() {
     }
     const [lx, lz] = ORCHARD_STREAM_LOCAL[ORCHARD_STREAM_LOCAL.length - 1];
     pts.push([lx + Math.sin(Math.PI * 2.4) * 0.9, lz, 1]);
+    // 걸을 수 있는 범위 밖으로 더 흘려 보낸다 — 땅 끝에서 물이 뚝 끊기면 판때기처럼 보인다
+    const [fx, fz] = ORCHARD_STREAM_LOCAL[0];
+    pts.unshift([fx - 0.6, fz - 8, 0], [fx - 1.1, fz - 16, 0]);
+    pts.push([lx + 0.4, lz + 8, 1], [lx + 0.9, lz + 16, 1]);
     return pts;
   })();
   // 폭 — 시냇물답게 좁게(0.8~1.3). 전에는 3 이 넘어 운하처럼 보였다
@@ -2858,10 +2863,38 @@ function ribbonGeo(path, halfWidth, edge = () => 0) {
 
 // 🍎 오솔길 — 입구(남쪽)에서 자리들을 훑고 지나가는 흙길. 디딤돌을 합쳐 드로우콜 1.
 //   자리를 잇는 게 아니라 '자리 옆을 스쳐 가게' 둔다 — 길 위에 나무가 서면 이상하다.
+// 🍎 경계 나무 — 걸을 수 있는 범위 바깥을 나무로 둘러 공간을 닫는다.
+//   울타리 대신 숲으로 막는 건 텃밭의 perimeterTrees 와 같은 생각이다.
+//   줄기·잎을 각각 InstancedMesh 하나로 묶어 드로우콜은 2 만 쓴다.
+function buildOrchardRim() {
+  const N = 26, m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3();
+  const put = (im, i, x, y, z, sc) => { m.compose(v.set(x, y, z), q, new THREE.Vector3(sc, sc, sc)); im.setMatrixAt(i, m); };
+  const spots = [];
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const r = ORCHARD_HALF + 2.2 + ((i * 7) % 5) * 1.3;          // 들쭉날쭉한 링(난수 없이)
+    const sc = 0.9 + ((i * 11) % 4) * 0.12;
+    spots.push([ORCHARD.x + Math.cos(a) * r, ORCHARD.z + Math.sin(a) * r, sc]);
+  }
+  const trunks = new THREE.InstancedMesh(
+    shared('tree.trunk.geo', () => new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7)),
+    shared('tree.trunk.mat', () => clayMat(PAL.trunk)), spots.length);
+  spots.forEach(([x, z, sc], i) => put(trunks, i, x, 0.8 * sc, z, sc));
+  trunks.instanceMatrix.needsUpdate = true; trunks.castShadow = true; orchardGroup.add(trunks);
+
+  const canopies = new THREE.InstancedMesh(
+    shared('tree.canopy.geo', () => mergeGeos(
+      [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]]
+        .map(([bx, by, bz, cs]) => new THREE.IcosahedronGeometry(cs, 0).translate(bx, by, bz)))),
+    shared('orchard.rimleaf.mat', () => clayMat(0x5a8f4e)), spots.length);
+  spots.forEach(([x, z, sc], i) => put(canopies, i, x, 2.0 * sc, z, sc));
+  canopies.instanceMatrix.needsUpdate = true; canopies.castShadow = true; orchardGroup.add(canopies);
+}
+
 function buildOrchardPaths() {
   // 참고: 실제 흙길은 ① 꺾이지 않고 완만한 S 자로 휘고 ② 양 가장자리가 제각각이고 ③ 모래빛으로 밝다.
   //   직선 보간은 웨이포인트마다 각이 지므로 Catmull-Rom 곡선으로 샘플링한다.
-  const way = [[0, 19], [2.2, 12], [-0.6, 5], [1.4, -2], [-0.8, -9], [2.4, -14], [1.2, -19]];
+  const way = [[-1.5, 30], [0, 19], [2.2, 12], [-0.6, 5], [1.4, -2], [-0.8, -9], [2.4, -14], [1.2, -19], [2.6, -30]];   // 양 끝은 걸을 수 있는 범위 밖
   const curve = new THREE.CatmullRomCurve3(way.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'catmullrom', 0.5);
   const N = 70, path = [];
   for (let i = 0; i <= N; i++) { const t = i / N, v = curve.getPoint(t); path.push([v.x, v.z, t]); }
@@ -2908,7 +2941,8 @@ function rebuildOrchard() {
   if (!orchardGroup) { orchardGroup = new THREE.Group(); scene.add(orchardGroup); }
   while (orchardGroup.children.length) orchardGroup.remove(orchardGroup.children[0]);
   buildOrchardGround();     // 지면 1 + 시냇물 1(합침)
-  buildOrchardPaths();      // 오솔길 1(합침)
+  buildOrchardPaths();      // 오솔길 1 + 잔모래 1
+  buildOrchardRim();        // 경계 나무(줄기 1 + 잎 1)
   syncOrchardTrees();       // 줄기 1 + 잎 ≤5 + 열매 ≤5
   syncOrchardSlotHints();   // 빈 자리 1(인스턴스)
 }
