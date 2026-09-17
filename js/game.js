@@ -527,11 +527,16 @@ const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, s
 
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
-  if (interiorGroup) interiorGroup.visible = indoor;
+  // 🏠 층은 한 번에 하나만 — interiorGroup 하나가 아니라 층별 그룹(id 로 키)을 토글한다.
+  const showId = (floorAt(gameState.houseStage, houseFloor) || { id: 'ground' }).id;
+  for (const id in interiorFloors) interiorFloors[id].visible = indoor && id === showId;
+  interiorGroup = interiorFloors[showId] || interiorFloors.ground;   // 레이캐스트(interiorFloor)·미니맵 등이 참조하는 "지금 방"
+  interiorFloor = interiorGroup ? interiorGroup.children[0] : interiorFloor;
   // 🛋️ 가구 메시는 scene 직속(interiorGroup 자식이 아님) — 방과 같이 따로 꺼야 한다.
   //    방은 월드 (0,0,52)에 실제로 서 있고 마을 이동 한계는 반경 42다. 그래서 북쪽 끝에 서면
   //    벽·바닥이 숨은 자리에 가구만 들판 위에 떠 보였다(제보 2026-09-15 "맵 끝에 피아노·장롱").
-  for (const m of decorMeshes) m.visible = indoor;
+  //    ⚠️ 층이 생긴 뒤로는 다른 층 가구도 같은 이유로 떠 보인다 — indoor && 같은 층(f) 두 조건을 모두 본다.
+  for (const m of decorMeshes) m.visible = indoor && (m.userData.rec?.f || 0) === houseFloor;
   if (farmGroup) farmGroup.visible = atFarm;
   setWorkersVisible(atFarm);   // 🧑‍🌾 일꾼은 텃밭에서만 보인다(밖에선 규칙만 돌아간다)
   // 🌾 밭 흙·이랑·작물·배지 InstancedMesh 는 scene 직속(farmGroup 자식이 아님) — 따로 토글해야 한다.
@@ -1446,10 +1451,12 @@ let decorTarget = { x: 0, z: 0, pinned: false }; // 놓일 자리. pinned=false 
 //   (사용자 지시 2026-09-13: "집에서 배치하는 것처럼"). pinned=false 면 예전처럼 발밑을 따라간다.
 let outdoorTarget = { x: 0, z: 0, pinned: false };
 const OUTDOOR_REACH = 7;   // 조준 가능한 최대 거리 — 화면 끝을 눌러 멀리 놓지 못하게(근접 상호작용 원칙)
-let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot} — 취소·퇴장 시 제자리로
+let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot, f} — 취소·퇴장 시 제자리(원래 층)로
 let decorTapHintShown = false; // "여기 놓을까요?" 안내는 배치 1회당 한 번만
 let interiorGroup, interiorFloor, interiorLamp;
-let houseFloor = 0;   // 🏠 지금 서 있는 실내 층(0=1층) — 층 이동 UI는 Task 4
+let interiorFloors = {};   // { [id]: THREE.Group } — 층 id('ground'|'attic'|'upper'|'roof')별 방. 항상 넷 다 짓는다
+let houseFloor = 0;   // 🏠 지금 서 있는 실내 층 인덱스(f) — 0=1층 · 1=다락/2층 · 2=루프탑
+let nearDoorFloor = 0;   // nearDoor === 'floor' 일 때 갈 층(f)
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
@@ -7122,31 +7129,66 @@ function setFogExempt(obj, on) {
   });
 }
 
-const INT_HALF = 7;   // 실내 반경(넓은 방) — 문 앞 스폰/이동/배치 클램프 기준
+const INT_HALF = 7;   // 실내 반경(1층 기준) — 문 앞 스폰/이동/배치 클램프 기본값
 const INT_FLOOR_TINT = 0xbfb0a0;   // 실내 바닥 착색(가구 나무색 대비용)
-function buildInterior() {
+// 🏠 지금 서 있는 층 정의 — houseStage 가 아직 안 연 층이면 1층 기본값으로.
+function curFloorDef() {
+  return floorAt(gameState.houseStage, houseFloor) || { id: 'ground', half: INT_HALF, outdoor: false };
+}
+function curHalf() { return curFloorDef().half; }   // 클램프 기준(js/house-floors.js 의 half)
+
+// 방 한 채를 짓는다 — def = floorAt() 이 주는 층 정의(반경·실외 여부·id)
+function buildRoom(def) {
   const g = new THREE.Group(); g.position.copy(INT);
-  const W = INT_HALF * 2;
+  const H = def.half, W = H * 2;
   // 바닥은 가구와 같은 나무 텍스처라 테이블·책장이 묻혔다(베타) — 톤을 낮춰 가구가 도드라지게
   const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), woodMat(7, 7, INT_FLOOR_TINT));
   floor.position.y = 0.1; floor.receiveShadow = true; g.add(floor);
-  interiorFloor = floor;
-  const wall = () => clayMat(PAL.wall, false);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, INT_HALF); back.castShadow = true; g.add(back);
-  const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); left.position.set(-INT_HALF, 1.5, 0); g.add(left);
-  const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); right.position.set(INT_HALF, 1.5, 0); g.add(right);
-  // 앞면 문(가운데 폭 2 구멍) 양옆 벽
-  const sideW = INT_HALF - 1;            // 문 반폭 1
-  const fL = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fL.position.set(-(1 + sideW / 2), 1.5, -INT_HALF); g.add(fL);
-  const fR = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fR.position.set((1 + sideW / 2), 1.5, -INT_HALF); g.add(fR);
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.24), wall()); lintel.position.set(0, 2.6, -INT_HALF); g.add(lintel);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.14), woodMat(1, 2, 0xa9743f)); door.position.set(0, 1.05, -INT_HALF); g.add(door); // 나가는 문
-  const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
-  houseWindows.push(winMat);
-  // 뒷벽 창문 2개(넓어진 방)
-  [-2.5, 2.5].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, INT_HALF - 0.1); g.add(win); });
-  scene.add(g); interiorGroup = g; interiorGroup.visible = false;   // 들어갈 때만 표시
-  setFogExempt(g, true);                                              // 방은 안개 밖
+  if (def.outdoor) {   // ☀️ 루프탑 — 벽 대신 유리 난간, 하늘·밤별이 보인다
+    const rail = clayMat(0xf4f3ee, false);
+    [[0, H], [0, -H], [-H, 0], [H, 0]].forEach(([rx, rz], i) => {
+      const w = i < 2 ? W : 0.12, d = i < 2 ? 0.12 : W;
+      const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, d), rail);
+      r.position.set(rx, 0.65, rz); g.add(r);
+    });
+  } else {
+    const wall = () => clayMat(PAL.wall, false);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, H); back.castShadow = true; g.add(back);
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); left.position.set(-H, 1.5, 0); g.add(left);
+    const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); right.position.set(H, 1.5, 0); g.add(right);
+    const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
+    houseWindows.push(winMat);
+    [-H / 2.8, H / 2.8].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, H - 0.1); g.add(win); });
+    if (def.id === 'ground') {   // 1층에만 나가는 문
+      const sideW = H - 1;            // 문 반폭 1
+      const fL = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fL.position.set(-(1 + sideW / 2), 1.5, -H); g.add(fL);
+      const fR = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fR.position.set((1 + sideW / 2), 1.5, -H); g.add(fR);
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.24), wall()); lintel.position.set(0, 2.6, -H); g.add(lintel);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.14), woodMat(1, 2, 0xa9743f)); door.position.set(0, 1.05, -H); g.add(door); // 나가는 문
+    } else {
+      const fw = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); fw.position.set(0, 1.5, -H); g.add(fw);
+    }
+  }
+  // 🪜 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2). 오른쪽 뒤 모서리에 고정.
+  const st = new THREE.Group(); st.position.set(H - 1.2, 0.2, H - 1.2);
+  [0, 1, 2].forEach(i => {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.22, 0.4), woodMat(1, 1, 0x9c6b40));
+    s.position.set(0, 0.11 + i * 0.22, -i * 0.4); st.add(s);
+  });
+  g.add(st);
+  scene.add(g); g.visible = false;
+  setFogExempt(g, true);   // 방은 안개 밖(작은 방이라 안개가 지척의 벽까지 흐리게 만든다 — 루프탑도 좁아 같은 이유로 예외)
+  return g;
+}
+
+// 🏠 층 4개(1층·다락·2층·루프탑)를 항상 다 지어 두고 층 전환 때 보이는 것만 바꾼다(드로우콜은 늘지 않는다).
+//   floorsFor(stage) 는 그 단계에서 "열린" 층만 주므로, 정의 4개를 다 뽑으려면 각자 열리는 최소 단계로 조회한다.
+function buildInterior() {
+  const defs = [floorAt(4, 0), floorAt(4, 1), floorAt(5, 1), floorAt(6, 2)];   // ground · attic · upper · roof
+  interiorFloors = {};
+  for (const def of defs) interiorFloors[def.id] = buildRoom(def);
+  interiorGroup = interiorFloors.ground;
+  interiorFloor = interiorGroup.children[0];
   interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
   scene.add(interiorLamp);
 }
@@ -7421,8 +7463,8 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = nu
   return true;
 }
 const DECOR_WALL_PAD = 0.5 * DECOR_SCALE;   // 벽 여유 — 가구 배율만큼
-function decorClampX(x) { return Math.max(INT.x - INT_HALF + DECOR_WALL_PAD, Math.min(INT.x + INT_HALF - DECOR_WALL_PAD, x)); }
-function decorClampZ(z) { return Math.max(INT.z - INT_HALF + DECOR_WALL_PAD, Math.min(INT.z + INT_HALF - DECOR_WALL_PAD, z)); }
+function decorClampX(x) { const h = curHalf(); return Math.max(INT.x - h + DECOR_WALL_PAD, Math.min(INT.x + h - DECOR_WALL_PAD, x)); }
+function decorClampZ(z) { const h = curHalf(); return Math.max(INT.z - h + DECOR_WALL_PAD, Math.min(INT.z + h - DECOR_WALL_PAD, z)); }
 
 // ── 🫥 가구 배치 미리보기(고스트) + 놓은 가구 옮기기 ──────────────
 //   손에 든 축소 메시는 실내에 들어오면 맨손(등 수납)이라 화면에서 안 보였다(베타 피드백 "미리보기가 안 보여요").
@@ -7438,7 +7480,9 @@ function startDecorPlacing(id, picked = null) {
   buildDecorGhost(id);
 }
 function stopDecorPlacing(putBack) {
-  if (pickedDecor && putBack) placeDecor(pickedDecor.id, pickedDecor.wx, pickedDecor.wz, true, pickedDecor.rot); // 들었던 가구는 제자리로
+  // 🏠 들었던 가구는 제자리(원래 층)로 — f 를 안 넘기면 placeDecor 가 "지금 서 있는 층" 을 써서,
+  //   위층에서 들고 취소했는데 그사이 1층으로 내려가 있으면 가구가 1층에 떨어지는 사고가 난다(Ruling B).
+  if (pickedDecor && putBack) placeDecor(pickedDecor.id, pickedDecor.wx, pickedDecor.wz, true, pickedDecor.rot, false, pickedDecor.f);
   pickedDecor = null; placingDecor = null; decorTarget.pinned = false;
   removeDecorGhost();
   setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구(맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
@@ -7551,20 +7595,24 @@ function onDecorFloorTap(e) {
 // 배치 확정(바닥 탭·액션 버튼·Space 공통). 재료가 부족하면 배치 모드를 유지한다
 function commitDecor(x, z) { placeDecor(placingDecor, x, z, false, null, !!pickedDecor); }
 // 놓아 둔 가구 탭 → 들어 올리기(저장 레코드도 같이 뺀다)
+//   ⚠️ three.js Raycaster 는 invisible 메시도 그대로 맞힌다(visible 을 안 본다) — 층이 겹치는 좌표라
+//   다른 층(안 보이는) 가구까지 후보에 넣으면 안 보이는 걸 탭해서 들어 올리는 사고가 난다. 지금 층만 후보로.
 function tryPickDecor(e) {
-  if (!decorMeshes.length) return false;
+  const curDecor = decorMeshes.filter(m => (m.userData.rec?.f || 0) === houseFloor);
+  if (!curDecor.length) return false;
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObjects(decorMeshes, true)[0]; if (!hit) return false;
-  let root = hit.object; while (root.parent && !decorMeshes.includes(root)) root = root.parent;
+  const hit = raycaster.intersectObjects(curDecor, true)[0]; if (!hit) return false;
+  let root = hit.object; while (root.parent && !curDecor.includes(root)) root = root.parent;
   return pickDecor(root);
 }
 // 캐릭터에서 가장 가까운 가구 — 발자국 상자 가장자리까지의 거리(러그처럼 foot 없는 건 중심 거리)
+//   다른 층 가구는 같은 좌표에 겹칠 수 있어 반드시 지금 층만 본다(위 tryPickDecor 와 같은 이유).
 function nearestDecor(reach) {
   let best = null;
   for (const root of decorMeshes) {
-    const rec = root.userData.rec; if (!rec) continue;
+    const rec = root.userData.rec; if (!rec || (rec.f || 0) !== houseFloor) continue;
     const def = DECOR.find(d => d.id === rec.id);
     const dx = player.position.x - root.position.x, dz = player.position.z - root.position.z;
     let d;
@@ -7584,7 +7632,7 @@ function pickDecor(root) {
   if (root.userData.collider) removeSolid(root.userData.collider);   // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   const i = gameState.house.decor.indexOf(rec); if (i >= 0) gameState.house.decor.splice(i, 1);
   decorRot = rec.rot || 0;
-  startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot });
+  startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot, f: rec.f || 0 }); // f: 원래 있던 층 — 취소 시 그 층으로 되돌린다(Ruling B)
   Sound.blip(); trackEvent('pick_decor', { item: rec.id }); // [GA4] 옮기기 시작
   ui.onDecorPicked?.(DECOR.find(d => d.id === rec.id));
   return true;
@@ -9649,17 +9697,28 @@ function grantStarterBed() {
 }
 
 function enterHouse() {
-  indoor = true; setFogExempt(player, true);   // 방 안에선 캐릭터도 안개 밖
+  indoor = true; houseFloor = 0; setFogExempt(player, true);   // 항상 1층에서 시작 · 방 안에선 캐릭터도 안개 밖
   grantStarterBed();
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true); snapCamera(); setSpaceVisible();
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
-  indoor = false; setFogExempt(player, false); stopDecorPlacing(true);   // 들고 있던 가구는 제자리로
+  indoor = false; setFogExempt(player, false); stopDecorPlacing(true);   // 들고 있던 가구는 제자리로(원래 층으로)
   player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
+}
+/** 🪜 층 이동 — 계단을 걸어 올라가지 않는다(스펙 §4.2). 같은 자리에 서서 층만 바뀐다. */
+function goFloor(f) {
+  const def = floorAt(gameState.houseStage, f); if (!def) return;
+  houseFloor = f;
+  const h = def.half;
+  player.position.x = Math.max(INT.x - h + 1.5, Math.min(INT.x + h - 1.5, player.position.x));
+  player.position.z = Math.max(INT.z - h + 1.5, Math.min(INT.z + h - 1.5, player.position.z));
+  nearDoor = null; ui.setDoorPrompt?.(null); setSpaceVisible();
+  Sound.blip();
+  trackEvent('house_floor', { to: def.id, stage: gameState.houseStage });   // [GA4] 층 사용률
 }
 
 // 문 근접 감지(입장/퇴장 프롬프트)
@@ -9700,22 +9759,30 @@ function updateDoorInteract() {
     return;
   }
   if (indoor) {
-    if (dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 문 바로 앞에서만
-    else if (!placingDecor) {
-      // 🛋️ 놓아둔 가구 옆에 서면 "옮기기" — NPC·문과 같은 근접 프롬프트+액션 문법(탭으로 드는 경로는 그대로)
-      const near = nearestDecor(0.9);
-      if (near) {
-        nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
-        if (def.id === 'bed' && isNight()) {
-          // 🛏️ 밤엔 액션이 '자기' — 옮기기는 탭(레이캐스트) 경로로 밤낮 상관없이 그대로 된다
-          nd = 'sleep'; prompt = `${def.ico} ${def.name} · 자기`;
-          // 밤엔 액션이 '자기' 로 넘어가 침대를 들 수 없다 — 탭 경로가 있다는 걸 한 번 알려 준다
-          firstHintBanner('bedMove', '🛏️', '침대 옮기기', '밤엔 침대를 직접 탭하면 옮겨요');
-        } else {
-          nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
-          if (def.id === 'bed') firstHintBanner('bedSleep', '🛏️', '침대', '밤에 누우면 아침까지 자요');
+    if (houseFloor === 0 && dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 1층 문 바로 앞에서만
+    else {
+      // 🪜 계단 — 층이 둘 이상일 때만. buildRoom 이 세운 계단 위치(오른쪽 뒤 모서리)와 같은 자리.
+      const fdef = curFloorDef();
+      const opens = floorsFor(gameState.houseStage).filter(o => o.f !== houseFloor);
+      if (opens.length && dist2D({ x: INT.x + fdef.half - 1.2, z: INT.z + fdef.half - 1.2 }, player.position) < 1.6) {
+        const up = opens.find(o => o.f > houseFloor) || opens[0];   // 위가 있으면 위로, 없으면 아래로
+        nd = 'floor'; nearDoorFloor = up.f; prompt = `🪜 ${up.name}으로`;
+      } else if (!placingDecor) {
+        // 🛋️ 놓아둔 가구 옆에 서면 "옮기기" — NPC·문과 같은 근접 프롬프트+액션 문법(탭으로 드는 경로는 그대로)
+        const near = nearestDecor(0.9);
+        if (near) {
+          nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
+          if (def.id === 'bed' && isNight()) {
+            // 🛏️ 밤엔 액션이 '자기' — 옮기기는 탭(레이캐스트) 경로로 밤낮 상관없이 그대로 된다
+            nd = 'sleep'; prompt = `${def.ico} ${def.name} · 자기`;
+            // 밤엔 액션이 '자기' 로 넘어가 침대를 들 수 없다 — 탭 경로가 있다는 걸 한 번 알려 준다
+            firstHintBanner('bedMove', '🛏️', '침대 옮기기', '밤엔 침대를 직접 탭하면 옮겨요');
+          } else {
+            nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
+            if (def.id === 'bed') firstHintBanner('bedSleep', '🛏️', '침대', '밤에 누우면 아침까지 자요');
+          }
+          const ring = ensureNearRing(); ring.position.set(near.root.position.x, 0.22, near.root.position.z); ring.visible = true;
         }
-        const ring = ensureNearRing(); ring.position.set(near.root.position.x, 0.22, near.root.position.z); ring.visible = true;
       }
     }
   } else if (atFarm) {
@@ -10038,8 +10105,11 @@ function minimapMarks(place) {
       marks.push({ x: rock.position.x, z: rock.position.z, c: ORE_MINI[rock.userData.ore.id] || '#c3c3b8', r: 2.2 });
     }
   } else if (place === 'house') {
-    marks.push({ x: INT.x, z: INT.z - INT_HALF, c: '#c8905a', kind: 'exit' });                // 나가는 문(앞쪽)
-    for (const d of gameState.house.decor) marks.push({ x: INT.x + d.x, z: INT.z + d.z, c: '#e0b483', r: 2.2 }); // 배치한 가구
+    if (houseFloor === 0) marks.push({ x: INT.x, z: INT.z - INT_HALF, c: '#c8905a', kind: 'exit' });   // 나가는 문(1층에만)
+    for (const d of gameState.house.decor) {
+      if ((d.f || 0) !== houseFloor) continue;                                                  // 🏠 지금 층만 — 다른 층 가구가 겹쳐 찍히면 빈 자리를 못 읽는다
+      marks.push({ x: INT.x + d.x, z: INT.z + d.z, c: '#e0b483', r: 2.2 });                     // 배치한 가구
+    }
   } else if (place === 'river') {
     if (boat.active) {   // 🛶 런 중엔 "앞을 보는 레이더" — 다가오는 장애물·수집물을 미리 알려줌
       for (const a of riverActive) {
@@ -10121,7 +10191,7 @@ function animate() {
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } :  place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? INT_HALF : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -10274,9 +10344,10 @@ function updatePlayer(dt, t) {
     tailPivot.rotation.x = Math.sin(tailPhase * 0.5) * u.wagAmp * 0.3;
   }
 
-  if (indoor) { // 실내: 방 벽 안쪽으로 제한(넓어진 방)
-    player.position.x = Math.max(INT.x - INT_HALF + 0.6, Math.min(INT.x + INT_HALF - 0.6, player.position.x));
-    player.position.z = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.6, player.position.z));
+  if (indoor) { // 실내: 지금 층의 방 벽 안쪽으로 제한(층마다 반경이 다르다)
+    const h = curHalf();
+    player.position.x = Math.max(INT.x - h + 0.6, Math.min(INT.x + h - 0.6, player.position.x));
+    player.position.z = Math.max(INT.z - h + 0.5, Math.min(INT.z + h - 0.6, player.position.z));
   } else if (atFarm) { // 텃밭: 울타리 안쪽 + 📐측량소 마당(서쪽 문 밖) — 규칙은 js/farm-stage.js clampFarmPos
     const c = clampFarmPos(player.position.x - FARM.x, player.position.z - FARM.z, farmHalf(), playerInYard);
     player.position.x = FARM.x + c.x; player.position.z = FARM.z + c.z; playerInYard = c.inYard;
@@ -10758,7 +10829,9 @@ function updateDayNight(dt) {
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
   for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
-  if (interiorLamp) interiorLamp.intensity = indoor ? (1.8 + nightAmt * 2.6) : 0;
+  // ☀️ 루프탑엔 벽도 천장도 없다 — 실내용 따뜻한 점광이 허공에 뜬 것처럼 보여 끈다.
+  //   밤엔 대신 파이어핏·자쿠지 같은 층 전용 가구(houseWindows 점등)와 기본 밤 앰비언트로 밝힌다.
+  if (interiorLamp) interiorLamp.intensity = indoor && !curFloorDef().outdoor ? (1.8 + nightAmt * 2.6) : 0;
   // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
   if (playerLight) playerLight.intensity = Math.max(0, nightAmt - 0.15) * 4.4;
   scene.fog.near = 18; scene.fog.far = 74;   // 기본 안개(동굴에선 아래서 걷음)
@@ -11124,6 +11197,7 @@ function handleAction() {
   // 문/게이트(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
+  if (nearDoor === 'floor') return goFloor(nearDoorFloor);   // 🪜 계단 옆에서 액션 = 층 이동
   if (nearDoor === 'sleep') return doSleep();   // 🛏️ 밤에 침대 옆에서 액션 = 자기
   if (nearDoor === 'decor') { if (nearDecorMesh) pickDecor(nearDecorMesh); return; }   // 🛋️ 가구 옆에서 액션 = 들기
   if (nearDoor === 'outdoor') { if (nearOutdoorMesh) pickOutdoor(nearOutdoorMesh); return; }   // 🪵 야외 장식 옆에서 액션 = 들기
