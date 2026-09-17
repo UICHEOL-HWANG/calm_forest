@@ -2832,6 +2832,25 @@ function syncOrchardTrees() {
 }
 
 // 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다
+// 🍎 오솔길 — 입구(남쪽)에서 자리들을 훑고 지나가는 흙길. 디딤돌을 합쳐 드로우콜 1.
+//   자리를 잇는 게 아니라 '자리 옆을 스쳐 가게' 둔다 — 길 위에 나무가 서면 이상하다.
+function buildOrchardPaths() {
+  const way = [[0, 18], [1.5, 12], [0.5, 6], [-1, 0], [0.5, -6], [2, -12], [1, -17]];   // 국소 좌표(남→북)
+  const steps = [];
+  for (let i = 0; i < way.length - 1; i++) {
+    const [x0, z0] = way[i], [x1, z1] = way[i + 1];
+    for (let k = 0; k < 7; k++) {
+      const u = k / 7;
+      steps.push([x0 + (x1 - x0) * u, z0 + (z1 - z0) * u]);
+    }
+  }
+  const path = new THREE.Mesh(
+    shared('orchard.path.geo', () => mergeGeos(steps.map(([x, z], i) =>
+      new THREE.CircleGeometry(0.62 + (i % 3) * 0.07, 8).rotateX(-Math.PI / 2).translate(x, 0, z)))),
+    shared('orchard.path.mat', () => clayMat(0xbfa077, false)));
+  path.position.set(ORCHARD.x, 0.018, ORCHARD.z); path.receiveShadow = true; orchardGroup.add(path);
+}
+
 function syncOrchardSlotHints() {
   const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
   const free = orchardSlotsWorld().filter(s => !taken.has(`${s.x},${s.z}`));
@@ -2849,6 +2868,7 @@ function rebuildOrchard() {
   if (!orchardGroup) { orchardGroup = new THREE.Group(); scene.add(orchardGroup); }
   while (orchardGroup.children.length) orchardGroup.remove(orchardGroup.children[0]);
   buildOrchardGround();     // 지면 1 + 시냇물 1(합침)
+  buildOrchardPaths();      // 오솔길 1(합침)
   syncOrchardTrees();       // 줄기 1 + 잎 ≤5 + 열매 ≤5
   syncOrchardSlotHints();   // 빈 자리 1(인스턴스)
 }
@@ -10289,6 +10309,19 @@ function minimapMarks(place) {
     for (const p of plots) {   // 텃밭 안 밭만(경계로 필터)
       if (Math.abs(p.x - FARM.x) > H + 1 || Math.abs(p.z - FARM.z) > H + 1) continue;
       marks.push({ x: p.x, z: p.z, c: PLOT_MINI[p.state] || '#7a5230', r: 2.4 });
+    }
+  } else if (place === 'orchard') {   // 🍎 과수원 — 나가는 문(남쪽) · 시냇물 · 나무(익으면 열매색) · 빈 자리
+    marks.push({ x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF, c: '#c8905a', kind: 'exit' });
+    for (const [lx, lz] of ORCHARD_STREAM_LOCAL) marks.push({ x: ORCHARD.x + lx, z: ORCHARD.z + lz, c: '#8fb9d6', r: 3.4 });
+    const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
+    for (const [lx, lz] of ORCHARD_SLOTS_LOCAL) {
+      const x = ORCHARD.x + lx, z = ORCHARD.z + lz;
+      if (!taken.has(`${x},${z}`)) marks.push({ x, z, c: '#8a6440', r: 2.0 });   // 빈 자리
+    }
+    for (const t of (gameState.orchard?.trees || [])) {
+      const def = FRUITS.find(f => f.id === t.kind);
+      const col = t.stage === 'mature' && t.fruit > 0 && def ? '#' + def.fruitColor.toString(16).padStart(6, '0') : '#5f9e52';
+      marks.push({ x: t.x, z: t.z, c: col, r: 2.6 });
     }
   } else if (place === 'mine') {
     marks.push({ x: MINE.x, z: MINE.z - MINE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
