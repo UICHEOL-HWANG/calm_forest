@@ -504,6 +504,7 @@ const ORCHARD_GATE = new THREE.Vector3(22, 0, 2);   // 🍎 마을 정동쪽 —
 const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 const ORCHARD_HALF = 20;                            // 언덕 반경
 let orchardGroup = null;                            // 과수원 그룹(가시성 토글용) — rebuildOrchard() 가 채운다
+let orchardTreeObstacles = [];                      // syncOrchardTrees() 가 obstacles 에 등록한 항목 — 다시 부르기 전에 지운다(9158행 시설 패턴과 같은 방식)
 const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
 const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
 // 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
@@ -2725,8 +2726,16 @@ function syncOrchardTrees() {
     im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
   }
 
-  // 🚧 충돌체는 그리기와 무관하다 — 나무마다 하나씩 그대로 둔다
-  for (const t of trees) obstacles.push({ x: t.x, z: t.z, r: 0.8 });
+  // 🚧 충돌체는 그리기와 무관하다 — 나무마다 하나씩 등록한다.
+  //   rebuildOrchard() 는 심기·정산(Task 8)이 상태를 바꿀 때마다 반복 호출된다 — 지난 항목을
+  //   먼저 안 지우면 부를 때마다 obstacles 에 나무 수만큼 중복이 쌓여(rebuildFarm() 의 둘레
+  //   나무는 애초에 obstacles 에 안 넣어서 이 문제를 피한다) obstacles 를 순회하는 모든 충돌
+  //   검사(밭 일꾼 이동·주민 배회 자리 판정 등)가 영원히 느려진다. 9158행 시설 obstacle 정리와
+  //   같은 방식(참조를 들고 있다가 indexOf 로 지움) — 나무는 메시가 하나로 합쳐져 userData 를
+  //   걸어 둘 개별 메시가 없으므로 모듈 변수(orchardTreeObstacles)에 참조를 보관한다.
+  for (const ob of orchardTreeObstacles) { const oi = obstacles.indexOf(ob); if (oi >= 0) obstacles.splice(oi, 1); }
+  orchardTreeObstacles = trees.map(t => ({ x: t.x, z: t.z, r: 0.8 }));
+  obstacles.push(...orchardTreeObstacles);
 }
 
 // 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다

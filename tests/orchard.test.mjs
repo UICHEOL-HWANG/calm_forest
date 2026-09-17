@@ -207,3 +207,28 @@ test('자리 배치: 시냇가 자리는 경계에서 최소 0.5 안쪽, 먼 자
       `먼 자리(${s.x},${s.z})가 경계에서 ${(d - STREAM_R).toFixed(2)}m 바깥뿐이다 — ${MARGIN}m 이상 필요`);
   }
 });
+
+// syncOrchardTrees() 는 rebuildOrchard() 가 반복 호출될 때마다(Task 8 심기·정산) obstacles 에
+// 나무를 다시 등록한다. 지난 항목을 먼저 안 지우면 부를 때마다 나무 수만큼 중복이 쌓여
+// obstacles 를 순회하는 모든 충돌 검사가 영원히 느려진다 — 오늘은 rebuildOrchard() 가 월드
+// 생성 시 빈 나무 목록으로 딱 한 번만 불려서 무해하지만, 심기 기능이 붙는 순간 터진다.
+// js/game.js 는 브라우저 전역(THREE·document)에 의존해 이 파일에서 import 해 실행할 수 없으므로
+// (ORCHARD_GATE 회피 테스트와 같은 이유) 소스 텍스트로 "지우는 코드가 있고, 새로 등록하는 코드보다
+// 앞에 있다"만 확인한다 — push 존재만 확인하면 이번에 고친 회귀를 못 잡는다.
+test('syncOrchardTrees: obstacles 재등록 전에 지난 과수원 나무 항목을 먼저 지운다(중복 누적 방지)', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const start = src.search(/^function syncOrchardTrees\(/m);
+  assert.ok(start >= 0, 'game.js 에서 syncOrchardTrees 를 찾지 못했다 — 함수명이 바뀌었으면 이 테스트도 같이 고친다');
+  const rest = src.slice(start + 1);
+  const endRel = rest.search(/^function \w+\(/m);
+  const body = endRel < 0 ? rest : rest.slice(0, endRel);
+
+  assert.match(body, /obstacles\.push\(/, 'obstacles 에 나무를 등록하는 줄을 못 찾았다');
+  const pushIdx = body.search(/obstacles\.push\(/);
+  const clearIdx = body.search(/obstacles\.splice\(/);
+  assert.ok(clearIdx >= 0,
+    'syncOrchardTrees 안에 obstacles.splice(...) 로 지난 항목을 지우는 코드가 없다 — ' +
+    'rebuildOrchard() 를 나무가 있는 상태로 반복 호출하면(심기·정산) obstacles 에 중복이 쌓인다');
+  assert.ok(clearIdx < pushIdx,
+    '지우는 코드가 새로 등록하는 코드보다 뒤에 있다 — 순서가 바뀌면 방금 등록한 항목까지 같이 지워질 수 있다');
+});
