@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { FRUITS, TREE_SLOTS, STREAM_SLOTS, STREAM_R, YIELD_PER_DAY, CAP_DAYS,
+import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, STREAM_SLOTS, STREAM_R, YIELD_PER_DAY, CAP_DAYS,
          ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL,
          fruitOf, fruitKeyOf, sapKeyOf, growDaysOf, nearStream, isWatered, harvestable, capped, settleTrees } from '../js/orchard.js';
 
@@ -309,4 +309,31 @@ test('ORCHARD_CHOP_WOOD 는 숲 나무의 CHOP_WOOD(상수 3) 와 이름이 겹�
   // 같은 이름의 두 번째 선언은 SyntaxError(중복 선언)를 낸다 — node --check 로도 잡히지만
   // "왜 이름을 나눴는지"는 여기 남겨 둔다.
   assert.doesNotMatch(src, /const CHOP_WOOD = \{/, 'CHOP_WOOD 를 객체로 다시 선언하는 곳이 있다 — 기존 숲 나무 상수(숫자 3)와 이름이 겹친다');
+});
+
+// ── 🍎 도구 자동 전환 (밭의 farm-auto 와 같은 원칙) ──
+test('ORCHARD_AUTO_TOOLS: 🪓도끼는 자동 전환에서 빠진다 — 파괴 동작은 명시적으로만', () => {
+  assert.deepEqual(ORCHARD_AUTO_TOOLS, ['seed', 'water', 'sickle']);
+  assert.equal(ORCHARD_AUTO_TOOLS.includes('axe'), false, '도끼가 들어가면 실수로 나무를 벤다');
+});
+
+test('orchardToolFor: 빈 자리면 씨앗 · 열매 있으면 낫 · 마른 성목이면 물', () => {
+  assert.equal(orchardToolFor(null, true, false), 'seed');
+  assert.equal(orchardToolFor(null, false, false), null, '아무것도 없으면 바꾸지 않는다');
+  assert.equal(orchardToolFor({ stage: 'mature', fruit: 4, watered: false }, false, false), 'sickle');
+  assert.equal(orchardToolFor({ stage: 'mature', fruit: 0, watered: false }, false, false), 'water');
+});
+
+test('orchardToolFor: 시냇가거나 이미 물을 준 성목은 바꾸지 않는다', () => {
+  assert.equal(orchardToolFor({ stage: 'mature', fruit: 0, watered: false }, false, true), null, '시냇가는 물이 필요 없다');
+  assert.equal(orchardToolFor({ stage: 'mature', fruit: 0, watered: true }, false, false), null, '이미 줬다');
+});
+
+test('orchardToolFor: 어린 나무는 바꾸지 않는다 — 물을 줘도 성장이 안 빨라진다', () => {
+  assert.equal(orchardToolFor({ stage: 'sapling', fruit: 0, watered: false }, false, false), null);
+  assert.equal(orchardToolFor({ stage: 'growing', fruit: 0, watered: false }, false, false), null);
+});
+
+test('orchardToolFor: 열매가 있으면 물보다 수확이 먼저 — 딸 것이 눈앞에 있는데 물조리개가 나오면 안 된다', () => {
+  assert.equal(orchardToolFor({ stage: 'mature', fruit: 2, watered: false }, false, false), 'sickle');
 });

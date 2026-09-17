@@ -48,7 +48,7 @@ import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, 
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
-import { FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·정산)
+import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·정산)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -12127,15 +12127,33 @@ function chopTree(tree) {
 // 도구별 동작 — 밭처럼 자동 전환하지 않는다(자리가 10개뿐이라 헷갈릴 일이 적다).
 // 🪓도끼를 들고 나무 앞이면 베기가 먼저다.
 function orchardAction() {
-  // ✋ 맨손(도구를 등에 멘 채 forest 구역 등을 거쳐 들어온 경우) — currentTool 은 남아 있어도
-  //   화면상 도구가 없으니 밭·숲과 같은 안내로 통일한다(js/game.js:11269 와 같은 문구).
+  // ✋ 맨손(도구를 등에 멘 채 숲 구역 등을 거쳐 들어온 경우)
   if (toolPage === 'none') { ui.toast?.('✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
-  if (TOOLS[currentTool].id === 'axe') { const t = orchardTreeNear(); if (t) return chopTree(t); ui.toast?.('🪓 벨 나무 앞으로 가요', 2200); return; }
-  if (TOOLS[currentTool].id === 'seed') { const slot = orchardSlotNear(); if (slot) return plantSapling(slot); ui.toast?.('🌰 심을 빈 자리 앞으로 가요', 2200); return; }
-  if (TOOLS[currentTool].id === 'water') { const t = orchardTreeNear(); if (t) return waterTree(t); ui.toast?.('💧 물 줄 나무 앞으로 가요', 2200); return; }
-  if (TOOLS[currentTool].id === 'sickle') { const t = orchardTreeNear(); if (t) return harvestTree(t); ui.toast?.('🌳 딸 나무 앞으로 가요', 2200); return; }
+  const held = TOOLS[currentTool].id;
+
+  // 🪓 도끼는 자동 전환에 끼지 않는다 — 나무를 없애는 파괴 동작이라 밭의 🪏삽과 같이 명시적으로만.
+  if (held === 'axe') { const t = orchardTreeNear(); if (t) return chopTree(t); ui.toast?.('🪓 벨 나무 앞으로 가요', 2200); return; }
+
+  // 🌰💧🌾 셋 중 아무거나 들고 있으면 앞에 있는 것에 맞는 도구로 바꿔서 바로 실행한다
+  //   (밭의 farmAutoAction 과 같은 문법 — 베타에서 "매번 골라야 해 복잡하다"는 피드백을 받은 그 구조)
+  if (ORCHARD_AUTO_TOOLS.includes(held)) {
+    const tree = orchardTreeNear(), slot = tree ? null : orchardSlotNear();
+    const want = orchardToolFor(tree, !!slot, tree ? nearStream(tree, orchardStreamWorld()) : false);
+    if (want && want !== held) {
+      Input.selectTool(TOOLS.findIndex(t => t.id === want));            // 밭의 farmAutoAction 과 같은 방식
+      if (!gameState.hintsSeen.orchardAuto) {                           // 첫 전환 때 한 번만 알린다
+        gameState.hintsSeen.orchardAuto = true;
+        ui.toast?.('🔄 나무에 맞는 도구로 바꿨어요. 🌰💧🌾 아무거나 들고 액션만 누르면 돼요 (🪓베기는 따로)', 3400);
+      }
+    }
+    const use = want || held;
+    if (use === 'seed')   { if (slot) return plantSapling(slot); ui.toast?.('🌰 심을 빈 자리 앞으로 가요', 2200); return; }
+    if (use === 'water')  { if (tree) return waterTree(tree);    ui.toast?.('💧 물 줄 나무 앞으로 가요', 2200); return; }
+    if (use === 'sickle') { if (tree) return harvestTree(tree);  ui.toast?.('🌳 딸 나무 앞으로 가요', 2200); return; }
+  }
   ui.toast?.('🌰 씨앗으로 심고 💧 물 주고 🌾 낫으로 따요 · 🪓 도끼로 베요', 2600);
 }
+
 function plantSeed(plot) {
   const adv = seedSelCrop();
   const key = adv ? seedKeyOf(adv.id) : 'seed';

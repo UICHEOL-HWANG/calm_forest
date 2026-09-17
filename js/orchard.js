@@ -111,3 +111,25 @@ export function settleTrees(trees = [], stream = [], days = 1) {
   });
   return { trees: out, matured, fruited, capped: cappedList };
 }
+
+/** 자동 전환 대상 도구 id — 🪓도끼는 **뺀다**. 나무를 없애는 파괴 동작이라
+ *  밭의 🪏삽과 같은 이유로 명시적으로만 쓴다(js/farm-auto.js 와 같은 원칙). */
+export const ORCHARD_AUTO_TOOLS = ['seed', 'water', 'sickle'];
+
+/**
+ * 과수원에서 무엇 앞에 서 있느냐 → 써야 할 도구 id. null 이면 바꾸지 않는다.
+ *   tree: 앞에 있는 나무 { stage, fruit, watered } 또는 null
+ *   slot: 앞에 있는 빈 자리 여부(boolean)
+ *   near: 그 나무가 시냇가인가(물이 필요 없다)
+ *
+ *   빈 자리                       → seed
+ *   다 자랐고 열매 있음           → sickle
+ *   다 자랐고 열매 없음 · 물 필요 → water
+ *   묘목·자라는 중                → null  (어린 나무는 물을 줘도 성장이 안 빨라진다)
+ */
+export function orchardToolFor(tree, slot, near) {
+  if (!tree) return slot ? 'seed' : null;
+  if (tree.stage !== 'mature') return null;
+  if ((tree.fruit || 0) > 0) return 'sickle';
+  return (near || tree.watered) ? null : 'water';
+}
