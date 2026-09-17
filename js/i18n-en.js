@@ -347,6 +347,7 @@ export const EN = {
   '게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요': 'Guest offline mode — you can play, but progress won\'t be saved',
   '물고기가 부족해요 🐟': 'Not enough Fish 🐟',
   '작물이 부족해요 🥕': 'Not enough Crops 🥕',
+  '코인이 부족해요 🪙': 'Not enough Coins 🪙',
   '{0} {1} — 바닥을 탭해 자리 잡고, 버튼으로 놓기': '{0} {1} — tap the floor to pick a spot, then press the button to place it',
   '{0} {1} — 바닥에 놓을 자리를 클릭 · R 회전': '{0} {1} — click where to place it · R rotates',
   '{0} {1} 들었어요. 바닥을 탭해 옮겨 버튼으로 놓기. 🎨 메뉴에서 🧺 보관': 'Picked up {0} {1}. Tap the floor to move it, then press the button to set it down. Store it from the 🎨 menu',
@@ -685,6 +686,13 @@ export const EN = {
   '브릭 로프트': 'Brick Loft',
   '펜트하우스': 'Penthouse',
   '루프탑 빌라': 'Rooftop Villa',
+  // 🏠 실내 층(4단계 다락·5단계 2층·6단계 루프탑) — '1층'·'2층'은 박물관 사전(아래)과 값이 같아 중복 등록하지 않는다
+  '다락': 'Attic', '루프탑': 'Rooftop',
+  '집을 더 증축하면 살 수 있어요': 'Expand your house to unlock this',
+  // 조합 프롬프트/토스트 — {0} 이 층 이름·가구 이름으로 채워지는 글루 패턴(이 사전의 함정, i18n.js 참고)
+  '{0}은 루프탑에만 놓을 수 있어요': 'The {0} can only be placed on the Rooftop',
+  '{0}는 루프탑에만 놓을 수 있어요': 'The {0} can only be placed on the Rooftop',
+  '코인이 부족해요 (필요 {0} 🪙)': 'Not enough Coins (need {0} 🪙)',
   '내일은 ☀️ 맑을 예정이에요!': 'Tomorrow looks ☀️ sunny!',
   '내일은 🌧️ 비 소식 — 밭이 저절로 자라는 날!': 'Tomorrow brings 🌧️ rain — a day when Crops grow all on their own!',
   '내일은 ❄️ 눈 소식 — 목재가 잘 나오는 날!': 'Tomorrow brings ❄️ snow — a great day for extra Wood!',
@@ -718,6 +726,11 @@ export const EN = {
   '벽난로': 'Fireplace',
   '피아노': 'Piano',
   '큰 어항': 'Big Aquarium',
+  // 🏠 층별 해금 고급 가구(코인 전용, 4~6단계)
+  '흔들의자': 'Rocking Chair', '망원경': 'Telescope', '여행 트렁크': 'Travel Trunk',
+  '욕조': 'Bathtub', '큰 그림': 'Large Painting', '샹들리에': 'Chandelier',
+  '그랜드 피아노': 'Grand Piano', '파이어핏': 'Fire Pit', '큰 화분나무': 'Potted Tree',
+  '자쿠지': 'Jacuzzi', '파라솔 세트': 'Parasol Set',
   '무지개 물고기': 'Rainbow Fish',
   '붉은 물고기': 'Red Fish',
   '피라미': 'Minnow',
@@ -865,7 +878,9 @@ export const EN = {
     '🎀 {0} — still under cloth. Bring one in and we will draw it back',
   '{0} {1} — {2}년 {3}월 {4}일, 당신이 처음 발견했어요':
     '{0} {1} — first found by you on {3}/{4}/{2}',
-  '🪜 {0}으로': '🪜 Up to the {0}',
+  // 🏠 house-floors: 이 글루는 원래 박물관(항상 위층행) 전용이었으나 이 브랜치부터 집 계단이 위/아래
+  //   양방향으로 재사용한다 — "Up to"는 내려갈 때 오역이라 방향 중립 문구로 바꾼다(museum 쪽도 문제 없음).
+  '🪜 {0}으로': '🪜 To the {0}',
   '🏛️ {0} — {1}/{2}': '🏛️ {0} — {1}/{2}',
   '🏛️ 박물관이 {0}까지 늘었어요! 가서 보세요':
     '🏛️ The Museum has grown to the {0}! Go and see',
