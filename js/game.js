@@ -2218,6 +2218,22 @@ export async function enterGame() {
       rebuildOrchard();
       return { trees: gameState.orchard.trees.length, calls: renderer.info.render.calls };
     };
+    window.__orchardDbg = () => {            // 🍎 진단 한 방 — 입구가 실제로 섰는지·어디 있는지·왜 안 열리는지
+      const gate = scene.children.find(o => o.isGroup && o.position.distanceTo(ORCHARD_GATE) < 0.01);
+      const p = player.position;
+      return {
+        gate위치: [ORCHARD_GATE.x, ORCHARD_GATE.z],
+        입구세워짐: !!gate, 입구부품수: gate ? gate.children.length : 0, 입구보임: gate ? gate.visible : null,
+        내위치: [Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10],
+        문까지거리: Math.round(dist2D(p, ORCHARD_GATE) * 10) / 10,
+        프롬프트반경: 2.2,
+        잠김: mapLocked('orchard'), advHarvest: gameState.progress?.advHarvest,
+        가로대보임: orchardGateBar ? orchardGateBar.visible : null,
+        문충돌체켜짐: orchardGateSolid ? !orchardGateSolid.off : null,
+        과수원안: atOrchard, 나무수: (gameState.orchard?.trees || []).length,
+        드로우콜: renderer.info.render.calls,
+      };
+    };
     window.__orchardClear = () => { gameState.orchard.trees = []; rebuildOrchard(); return { trees: 0, calls: renderer.info.render.calls }; };
     window.__orchardCalls = () => renderer.info.render.calls;   // 프레임이 한 번 더 돈 뒤의 실제 값
     window.__workSteps = (n = 1) => { const t = {}; workerSteps(n, t); return t; };   // 🧑‍🌾 오프라인 스텝 강제 실행(검수용 — 접속 중 60초 스텝과 같은 함수)
