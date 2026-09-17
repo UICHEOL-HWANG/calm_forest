@@ -180,8 +180,10 @@ test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만
 //   Task 6 에서 이 줄을 추가했다 — 나중에 buildWorld() 를 리팩터링하다 이 줄이 빠지면 여기서 잡는다.
 test('buildWorld 의 배경 나무 회피 목록에 ORCHARD_GATE 가 다른 게이트들과 같은 패턴으로 들어있다', () => {
   const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
-  assert.ok(
-    src.includes("dist2D({ x, z }, ORCHARD_GATE) < 4.5"),
+  // 반경은 조형이 커지면 바뀐다(문 앞 5 + 몸통 6.5). 숫자를 박지 말고 "조건이 있는가"만 본다
+  assert.match(
+    src,
+    /dist2D\(\{ x, z \}, ORCHARD_GATE\) < [\d.]+/,
     'ORCHARD_GATE 회피 조건을 못 찾았다 — 배경 나무가 과수원 입구를 가릴 수 있다'
   );
 });

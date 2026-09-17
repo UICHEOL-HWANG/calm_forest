@@ -2605,7 +2605,8 @@ function buildWorld() {
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
       || dist2D({ x, z }, { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 5 }) < 3.5   //    계단 앞 진입로도 틔운다
-      || dist2D({ x, z }, ORCHARD_GATE) < 4.5   // 🍎 과수원 입구가 나무에 가리지 않게
+      || dist2D({ x, z }, ORCHARD_GATE) < 5   // 🍎 과수원 문 앞은 비워 둔다
+      || dist2D({ x, z }, { x: ORCHARD_GATE.x, z: ORCHARD_GATE.z + 4 }) < 6.5   //    온실 몸통(북쪽으로 뻗음)에 나무가 박히지 않게
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
@@ -5882,67 +5883,70 @@ function mistPuffSprite(scale, opacity) {
 // 🍎 과수원 언덕길 입구 — 마을 정동쪽. **잠겨 있어도 멀리서 보여야 한다.**
 //   해금은 "안 보이는 것"이 아니라 "보이는데 가로대가 막고 있는 것"이다. 안 그러면
 //   유저가 존재 자체를 모르고, 무엇을 하면 열리는지도 알 수 없다.
-let orchardGateBar = null;   // 잠금 가로대 — mapLocked('orchard') 에 따라 켜고 끈다
+let orchardGateBar = null;      // 잠금 가로대(조형) — mapLocked('orchard') 에 따라 켜고 끈다
+let orchardGateSolid = null;    // 가로대 충돌체 — 잠겼을 때만 켠다. 잠긴 문을 걸어서 통과하면 안 된다
 /** 가로대 표시 갱신. 입구를 세울 때·공간이 바뀔 때·해금된 순간에 부른다(매 프레임 아님). */
-function syncOrchardGateLock() { if (orchardGateBar) orchardGateBar.visible = mapLocked('orchard'); }
+function syncOrchardGateLock() {
+  const locked = mapLocked('orchard');
+  if (orchardGateBar) orchardGateBar.visible = locked;
+  if (orchardGateSolid) orchardGateSolid.off = !locked;   // 잠겼을 때만 막는다(해금되면 그대로 통과)
+}
 function buildOrchardGate() {
+  // 국소 좌표 원점 = **문 앞**. 온실 몸통은 +x 로 뻗고, 그룹을 돌려 북쪽을 향하게 한다.
+  //   ORCHARD_GATE 가 곧 문 위치라 프롬프트 반경 2.2 가 문 앞에 정확히 걸린다.
   const g = new THREE.Group(); g.position.copy(ORCHARD_GATE);
   const wood = clayMat(0x9a7248), woodDark = clayMat(0x7d5a38), trim = clayMat(0xc06a72);
-  const R = 2.1, LEN = 6.2, PANELS = 5;          // 터널 반경·길이·아치 면 수
+  const R = 2.1, LEN = 7.0, PANELS = 5;
   const glass = new THREE.MeshStandardMaterial({ color: 0xcfe9e4, transparent: true, opacity: 0.34, roughness: 0.15, metalness: 0, side: THREE.DoubleSide });
+  const mid = LEN / 2;   // 몸통 중심(문에서 +x 쪽)
 
-  // 아치 지붕 — 저지형 톤에 맞춰 반원을 다섯 면으로 접는다(면 하나당 판 하나)
+  // 아치 지붕 — 반원을 다섯 면으로 접는다(저지형 톤)
   const pw = Math.PI * R / PANELS + 0.06;
   for (let i = 0; i < PANELS; i++) {
     const a = Math.PI * (i + 0.5) / PANELS;
     const panel = new THREE.Mesh(new THREE.BoxGeometry(LEN, 0.05, pw), glass);
-    panel.position.set(0, R * Math.sin(a), R * Math.cos(a));
+    panel.position.set(mid, R * Math.sin(a), R * Math.cos(a));
     panel.rotation.x = Math.PI / 2 - a;
     g.add(panel);
   }
-  // 아치 뼈대(분홍 트림) — 앞·중간·뒤 세 줄
-  for (const bx of [-LEN / 2 + 0.06, 0, LEN / 2 - 0.06]) {
+  for (const bx of [0.08, mid, LEN - 0.08]) {          // 분홍 트림 뼈대 셋
     const rib = new THREE.Mesh(new THREE.TorusGeometry(R, 0.075, 6, 14, Math.PI), trim);
     rib.position.set(bx, 0, 0); rib.rotation.y = Math.PI / 2; rib.castShadow = true; g.add(rib);
   }
-  // 바닥 레일 둘
-  for (const sz of [-R, R]) {
+  for (const sz of [-R, R]) {                           // 바닥 레일
     const rail = new THREE.Mesh(new THREE.BoxGeometry(LEN, 0.14, 0.16), wood);
-    rail.position.set(0, 0.07, sz); g.add(rail);
+    rail.position.set(mid, 0.07, sz); g.add(rail);
   }
 
-  // 서쪽 앞면 — 크림색 벽에 문 구멍(마을에서 보이는 얼굴)
-  const FW = 0.12, fx = -LEN / 2;
+  // 문이 있는 앞면(국소 x=0)
   const wall = clayMat(0xe6d8bf);
-  for (const [wz, ww] of [[-1.42, 1.36], [1.42, 1.36]]) {           // 문 양옆 벽
-    const m = new THREE.Mesh(new THREE.BoxGeometry(FW, 2.0, ww), wall);
-    m.position.set(fx, 1.0, wz); m.castShadow = true; g.add(m);
+  for (const [wz, ww] of [[-1.42, 1.36], [1.42, 1.36]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.0, ww), wall);
+    m.position.set(0, 1.0, wz); m.castShadow = true; g.add(m);
   }
-  const head = new THREE.Mesh(new THREE.BoxGeometry(FW, 0.42, 4.2), wall);   // 문 위 인방
-  head.position.set(fx, 2.2, 0); g.add(head);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 4.2), wall);
+  head.position.set(0, 2.2, 0); g.add(head);
   const arcFront = new THREE.Mesh(new THREE.TorusGeometry(R, 0.09, 6, 14, Math.PI), trim);
-  arcFront.position.set(fx, 0, 0); arcFront.rotation.y = Math.PI / 2; g.add(arcFront);
-  const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.95, 2.4), clayMat(0x4a3b2c));  // 문 안쪽 어둠
-  doorway.position.set(fx + 0.1, 0.97, 0); g.add(doorway);
+  arcFront.position.set(0, 0, 0); arcFront.rotation.y = Math.PI / 2; g.add(arcFront);
+  const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.95, 2.4), clayMat(0x4a3b2c));
+  doorway.position.set(0.1, 0.97, 0); g.add(doorway);
 
-  // 안쪽 이랑 — 문으로 들여다보이는 초록 줄(온실이라는 걸 알리는 디테일)
-  for (const rz of [-1.05, 0, 1.05]) {
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(LEN - 0.8, 0.22, 0.5), clayMat(0x8a6440));
-    bed.position.set(0.2, 0.11, rz); g.add(bed);
-    const crop = new THREE.Mesh(new THREE.BoxGeometry(LEN - 1.2, 0.34, 0.3), clayMat(0x5f9e52));
-    crop.position.set(0.2, 0.38, rz); g.add(crop);
+  for (const rz of [-1.05, 0, 1.05]) {                  // 안쪽 이랑
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(LEN - 1.2, 0.22, 0.5), clayMat(0x8a6440));
+    bed.position.set(mid + 0.3, 0.11, rz); g.add(bed);
+    const crop = new THREE.Mesh(new THREE.BoxGeometry(LEN - 1.8, 0.34, 0.3), clayMat(0x5f9e52));
+    crop.position.set(mid + 0.3, 0.38, rz); g.add(crop);
   }
 
-  // 문 앞 과일 상자 셋 — 참고 이미지의 나무 궤짝
-  [[-4.0, -1.5], [-4.0, -0.2], [-4.2, 1.2]].forEach(([cx, cz], i) => {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.42, 0.75), wood);
+  [[-1.5, -1.6], [-1.6, -0.3], [-1.4, 1.5]].forEach(([cx, cz], i) => {   // 문 앞 과일 궤짝
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.42, 0.72), wood);
     box.position.set(cx, 0.21, cz); box.castShadow = true; g.add(box);
-    const fill = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 0.6), clayMat(FRUITS[i % FRUITS.length].fruitColor));
+    const fill = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.16, 0.58), clayMat(FRUITS[i % FRUITS.length].fruitColor));
     fill.position.set(cx, 0.48, cz); g.add(fill);
   });
 
-  // 둘레 과일나무 넷 — 숲 나무와 같은 공유 지오메트리(색만 다름)
-  [[-2.6, -3.6, 0], [1.4, -3.9, 1], [-2.2, 3.7, 2], [2.2, 3.6, 3]].forEach(([tx, tz, fi]) => {
+  // 둘레 과일나무 — 몸통 좌우로 넉넉히 띄운다(R 2.1 + 캐노피 1.2 여유)
+  [[1.8, -4.2, 0], [5.4, -4.2, 1], [1.8, 4.2, 2], [5.4, 4.2, 3]].forEach(([tx, tz, fi]) => {
     const def = FRUITS[fi % FRUITS.length];
     const trunk = new THREE.Mesh(shared('tree.trunk.geo', () => new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7)), shared('tree.trunk.mat', () => clayMat(PAL.trunk)));
     trunk.position.set(tx, 0.7, tz); trunk.scale.setScalar(0.85); trunk.castShadow = true; g.add(trunk);
@@ -5953,28 +5957,32 @@ function buildOrchardGate() {
     cano.position.set(tx, 1.75, tz); cano.scale.setScalar(0.85); cano.castShadow = true; g.add(cano);
   });
 
-  // 서쪽에서 올라오는 흙 계단 — 마을 쪽에서 "저기 길이 있다"가 읽히게
-  [[-7.4, 0.06], [-6.3, 0.14], [-5.3, 0.2]].forEach(([sx, sy]) => {
-    const st = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.18, 9), clayMat(0xb08a5e, false));
+  [[-4.4, 0.06], [-3.4, 0.14], [-2.5, 0.2]].forEach(([sx, sy]) => {   // 문으로 오르는 흙 계단
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.18, 9), clayMat(0xb08a5e, false));
     st.position.set(sx, sy, 0); st.receiveShadow = true; g.add(st);
   });
 
-  // 🔒 잠금 가로대 — 문 앞을 가로지른다. 잠긴 동안만 보인다
+  // 🔒 잠금 가로대 — 문 앞을 가로지른다
   orchardGateBar = new THREE.Group();
   for (const [by, bh] of [[0.95, 0.2], [1.5, 0.15]]) {
     const bar = new THREE.Mesh(new THREE.BoxGeometry(0.16, bh, 2.9), woodDark);
-    bar.position.set(fx - 0.35, by, 0); bar.castShadow = true; orchardGateBar.add(bar);
+    bar.position.set(-0.45, by, 0); bar.castShadow = true; orchardGateBar.add(bar);
   }
   const lockRing = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.045, 6, 10), clayMat(0xb9b3a6));
-  lockRing.position.set(fx - 0.5, 1.36, 0); lockRing.rotation.y = Math.PI / 2; orchardGateBar.add(lockRing);
+  lockRing.position.set(-0.6, 1.36, 0); lockRing.rotation.y = Math.PI / 2; orchardGateBar.add(lockRing);
   const lockBody = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.26), clayMat(0xd8d2c4));
-  lockBody.position.set(fx - 0.5, 1.18, 0); orchardGateBar.add(lockBody);
+  lockBody.position.set(-0.6, 1.18, 0); orchardGateBar.add(lockBody);
   g.add(orchardGateBar);
 
-  g.add(makeSignpost('🍎 과수원 언덕', -4.6, 2.3));
+  g.add(makeSignpost('🍎 과수원 언덕', -2.6, 2.4));
+  g.rotation.y = -Math.PI / 2;   // 국소 +x → 월드 -z. 몸통이 북쪽으로 서고 문은 남쪽(마을 쪽)을 본다
   scene.add(g);
-  // 🚧 온실 몸통은 막고, 문 앞(서쪽)은 비워 둔다 — 프롬프트 반경 2.2 안에 설 수 있어야 한다
-  solidCircle(ORCHARD_GATE.x + 1.0, ORCHARD_GATE.z, 2.0);
+
+  // 🚧 몸통을 실제로 막는다 — 원 하나로는 7 길이를 못 덮어 그냥 통과했다.
+  //    문 앞(국소 -x = 월드 +z)은 비워 둬야 프롬프트 반경 2.2 안에 설 수 있다.
+  for (let d = 1.0; d <= LEN; d += 1.5) solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z - d, 1.9);
+  orchardGateSolid = solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z - 0.45, 1.5);   // 🔒 잠긴 동안 문을 막는다
+  obstacles.push({ x: ORCHARD_GATE.x, z: ORCHARD_GATE.z - mid, r: R + 1.4 });   // 밭·나무 금지 구역
   syncOrchardGateLock();
 }
 
