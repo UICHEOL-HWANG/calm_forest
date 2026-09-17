@@ -86,11 +86,12 @@ const MEASURED_SHADOWLESS = { indoor: 'INT', atFarm: 'FARM' };
 // 2026-09-12 씬 그래프 Box3 실측 — 각 공간에서 receiveShadow=true 인 메시의 **최근접점**이
 // 상자 중심에서 얼마나 떨어져 있는가. 공간 중심 좌표만 보면 큰 배경 메시를 놓친다
 // (텃밭 중심은 66m 지만 배경 skirt 는 18m, 실내 중심 34m 지만 바닥은 27m).
-// 🍎 과수원(atOrchard: 122)은 브라우저 실측이 아니라 지오메트리 계산값(2026-09-17, Task 7) —
-// receiveShadow 메시가 buildOrchardGround() 의 지면 원반 하나뿐이라 AABB 를 손으로 구할 수 있다.
-// js/shadow-scope.js 의 OUT_OF_REACH_FLAGS 주석에 산출 과정을 적어 뒀다.
+// 🍎 과수원(atOrchard: 106)은 브라우저 실측이 아니라 지오메트리 계산값(2026-09-17) —
+// receiveShadow 메시는 지면 원반(buildOrchardGround)과 오솔길 띠(buildOrchardPaths) 둘인데
+// 지면이 더 넓어 최근접점을 정한다: CircleGeometry(ORCHARD_HALF + 16 = 36) @ (0,160)
+// → z 최소 124, 상자 클램프 18 을 빼서 106m. js/shadow-scope.js 주석에 산출 과정을 적어 뒀다.
 const NEAREST_RECEIVER_M = { atMine: 218.5, atMist: 217.5, atCafe: 290.8, atSea: 292, atRiver: 376,
-                             atMuseum: 330, indoor: 27, atFarm: 18, atOrchard: 122 };   // 🏛️ z=360 — ☕카페(320)보다 멀다
+                             atMuseum: 330, indoor: 27, atFarm: 18, atOrchard: 106 };   // 🏛️ z=360 — ☕카페(320)보다 멀다
 // 마을 땅 안의 구역: 그림자가 실제로 보인다. 절대 끄면 안 된다.
 const VILLAGE_SPACES = ['GLADE', 'FOREST', 'DOCK_POND'];
 
@@ -139,6 +140,24 @@ test('기하 분류의 근거는 중심이 아니라 최근접 수신면이다',
     assert.ok(NEAREST_RECEIVER_M[flag] <= MAX_REACH,
       `${flag} 이 도달 밖이면 실측 예외가 아니라 기하로 분류해야 한다`);
   }
+});
+
+// 🍎 과수원 값만 실측이 아니라 계산이다 — 전제(지면 반경·중심)가 바뀌면 숫자가 조용히 거짓이 된다.
+//   실제로 한 번 그렇게 됐다: 반경 20 으로 적어 둔 뒤 "언덕 끝에서 허공이 보인다" 를 고치며 36 이 됐고,
+//   122m 라는 숫자는 아무도 모르게 틀린 채 남아 있었다(결론만 우연히 같았다).
+test('🍎 과수원의 최근접 수신면 106m 는 game.js 의 지면 반경·중심에서 실제로 나오는 값이다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const half = /const ORCHARD_HALF = (\d+)/.exec(src);
+  const center = /const ORCHARD = new THREE\.Vector3\(\s*0,\s*0,\s*(\d+)\s*\)/.exec(src);
+  const radius = /shared\('orchard\.ground\.geo',[\s\S]{0,80}?CircleGeometry\(ORCHARD_HALF \+ (\d+)/.exec(src);
+  assert.ok(half && center && radius,
+    '과수원 지면의 반경·중심을 game.js 에서 못 읽었다 — 조형 코드가 바뀌었으면 NEAREST_RECEIVER_M.atOrchard 를 다시 계산할 것');
+
+  const groundR = Number(half[1]) + Number(radius[1]);
+  const nearestZ = Number(center[1]) - groundR;          // 지면 AABB 의 z 최소
+  const expected = nearestZ - VILLAGE_CLAMP;             // 상자 중심은 ±VILLAGE_CLAMP 로 클램프된다
+  assert.equal(NEAREST_RECEIVER_M.atOrchard, expected,
+    `과수원 지면(반경 ${groundR} @ z=${center[1]})에서 나오는 최근접 거리는 ${expected}m 인데 표에는 ${NEAREST_RECEIVER_M.atOrchard}m 로 적혀 있다`);
 });
 
 test('두 분류가 서로 겹치지 않고 SUBSPACE_FLAGS 를 이룬다', () => {
