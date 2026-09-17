@@ -5940,8 +5940,13 @@ function buildOrchardGate() {
   const dz = -DOOR_C;                                       // rotation.y=+π/2 로 도형 X 가 뒤집힌다
   const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, DOOR_H, DOOR_W), clayMat(0x4a3b2c));
   doorway.position.set(0.14, DOOR_H / 2, dz); g.add(doorway);                       // 문 안쪽 어둠
-  const doorFrame = new THREE.Mesh(new THREE.TorusGeometry(DOOR_W * 0.62, 0.05, 5, 4, Math.PI), clayMat(0xa2632f));
-  doorFrame.position.set(-0.02, DOOR_H - 0.15, dz); doorFrame.rotation.y = Math.PI / 2; g.add(doorFrame);   // 문 위 둥근 테
+  // 문 위 간판 사과 — 전에 둔 둥근 테가 나뭇가지처럼 보였다. 무엇을 파는 곳인지 한눈에 읽히게 한다
+  const badge = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 1), clayMat(0xd64a42));
+  badge.position.set(-0.06, DOOR_H + 0.26, dz); badge.castShadow = true; g.add(badge);
+  const badgeLeaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), clayMat(0x5f9e52));
+  badgeLeaf.position.set(-0.08, DOOR_H + 0.47, dz + 0.12); g.add(badgeLeaf);
+  const badgeStem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.14, 4), clayMat(0x7d5a38));
+  badgeStem.position.set(-0.06, DOOR_H + 0.46, dz); g.add(badgeStem);
   const win = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 0.3), clayMat(0x7d9b93));
   win.position.set(-0.02, 1.1, dz - 1.15); g.add(win);                              // 문 옆 작은 창
   const arcFront = new THREE.Mesh(new THREE.TorusGeometry(R, 0.09, 6, 20, Math.PI), trim);
@@ -5983,7 +5988,7 @@ function buildOrchardGate() {
 
   // 팻말 — 판은 제 그룹의 +z 를 향한다. 그룹이 rotation.y=+π/2 라 그대로 두면 동쪽(마을 반대)을 본다.
   //   래퍼를 -π/2 돌려 국소 -x(= 월드 +z, 걸어오는 남쪽)를 보게 한다. 래퍼 원점에 팻말을 두어 회전해도 안 밀린다.
-  const sp = makeSignpost('🍎 과수원 언덕', 0, 0);
+  const sp = makeSignpost('🍎 과수원', 0, 0);
   sp.position.set(-2.6, 0, 2.4); sp.rotation.y = -Math.PI / 2; g.add(sp);
   g.rotation.y = Math.PI / 2;    // 국소 +x → 월드 -z(북). 몸통이 북쪽으로 뻗고 **문은 남쪽을 본다** — 마을에서 걸어오는 쪽
   scene.add(g);
@@ -6152,7 +6157,7 @@ function enterOrchard() {
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   settleOrchard();   // 🍎 일일 정산(날짜 게이트) — 벌통과 같은 문법
-  firstHint('orchardIntro', '🍎', '과수원 언덕',
+  firstHint('orchardIntro', '🍎', '과수원',
     '🌰씨앗 도구로 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요');
   Sound.blip(); setBGMTheme?.('main');
   trackEvent('orchard_enter', { trees: (gameState.orchard?.trees || []).length });   // [GA4] 유입
@@ -9958,8 +9963,8 @@ function updateDoorInteract() {
   } else if (!indoor && dist2D(player.position, ORCHARD_GATE) < 2.2) {
     nd = 'orchard';
     const locked = mapLocked('orchard');
-    prompt = locked ? '🔒 🌾고급 작물을 한 번 거두면 열려요' : '🍎 과수원 언덕에 올라가기';
-    if (!locked) firstHintBanner('orchardGate', '🍎', '과수원 언덕', '묘목을 심어 매일 열매를 따는 언덕');
+    prompt = locked ? '🔒 🌾고급 작물을 한 번 거두면 열려요' : '🍎 과수원에 들어가기';
+    if (!locked) firstHintBanner('orchardGate', '🍎', '과수원', '묘목을 심어 매일 열매를 따는 곳');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
@@ -10195,7 +10200,7 @@ const VILLAGE_PLACES = [
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
-  { ico: '🍎', name: '과수원 언덕',   x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
+  { ico: '🍎', name: '과수원',        x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];
 
 // 지금 이 세이브 기준의 지명 목록 — 아직 못 가는 곳은 locked 로 내려보내 지도에서 흐리게 그린다.
