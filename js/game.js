@@ -2711,7 +2711,14 @@ function orchardSlotsWorld()  { return ORCHARD_SLOTS_LOCAL.map(([x, z]) => ({ x:
 // 단계별 크기 — 묘목은 작고 다 자라면 1
 const ORCHARD_SCALE = { sapling: 0.35, growing: 0.7, mature: 1 };
 // 열매가 달리는 자리(나무 국소 좌표) — 최대 6개
-const FRUIT_SPOTS = [[-0.7, 2.2, 0.3], [0.8, 2.0, -0.2], [0.2, 2.6, 0.5], [-0.3, 1.8, -0.7], [0.6, 2.5, 0.1], [-0.9, 2.4, -0.3]];
+// 열매 자리 — **캐노피 표면**에 건다. 전에는 잎 덩어리 안쪽 좌표라 통째로 파묻혀 안 보였다.
+//   캐노피는 y≈2.0 에 반경 약 1.2 이므로, 중심에서 1.25 만큼 바깥으로 밀어 표면에 걸친다.
+const CANOPY_Y = 2.0, FRUIT_R = 1.25;
+const FRUIT_SPOTS = [[-0.75, 0.15, 0.45], [0.8, -0.05, -0.3], [0.2, 0.5, 0.75], [-0.35, -0.3, -0.8], [0.65, 0.45, 0.2], [-0.85, 0.35, -0.35]]
+  .map(([dx, dy, dz]) => {
+    const L = Math.hypot(dx, dy, dz) || 1;
+    return [dx / L * FRUIT_R, CANOPY_Y + dy / L * FRUIT_R, dz / L * FRUIT_R];
+  });
 
 // 언덕 지면 + 시냇물 — 둘 다 정적. 시냇물은 점 5개를 한 지오메트리로 합쳐 드로우콜 1
 function buildOrchardGround() {
@@ -2720,21 +2727,45 @@ function buildOrchardGround() {
     shared('orchard.ground.mat', () => clayMat(0xc0cf9e)));
   ground.position.set(ORCHARD.x, 0.01, ORCHARD.z); ground.receiveShadow = true; orchardGroup.add(ground);
 
-  // 시냇물 — nearStream 이 보는 것과 같은 좌표에 원반을 놓고 하나로 합친다
-  const water = new THREE.Mesh(
-    shared('orchard.water.geo', () => {
-      // 규칙(nearStream)은 ORCHARD_STREAM_LOCAL 그대로 쓰고, 그림만 사이를 채워 끊기지 않게 한다.
-      //   점 간격이 7 인데 반경이 2.2 라 원이 서로 안 닿아 웅덩이 두 개처럼 보였다.
-      const pts = [];
-      for (let i = 0; i < ORCHARD_STREAM_LOCAL.length - 1; i++) {
-        const [x0, z0] = ORCHARD_STREAM_LOCAL[i], [x1, z1] = ORCHARD_STREAM_LOCAL[i + 1];
-        for (let k = 0; k < 6; k++) pts.push([x0 + (x1 - x0) * k / 6, z0 + (z1 - z0) * k / 6]);
+  // 시냇물 — 규칙(nearStream)은 ORCHARD_STREAM_LOCAL 그대로, 그림만 자연스럽게.
+  //   같은 크기 원을 일직선으로 늘어놓으면 기계적으로 보인다. 폭을 물결치게 바꾸고
+  //   얕은 여울(밝은 층)을 한 겹 깔아 가장자리를 흐린다. 난수는 안 쓴다(접속마다 달라지면 안 됨).
+  const streamPts = (() => {
+    const pts = [];
+    for (let i = 0; i < ORCHARD_STREAM_LOCAL.length - 1; i++) {
+      const [x0, z0] = ORCHARD_STREAM_LOCAL[i], [x1, z1] = ORCHARD_STREAM_LOCAL[i + 1];
+      for (let k = 0; k < 10; k++) {
+        const u = k / 10, t = (i + u) / (ORCHARD_STREAM_LOCAL.length - 1);
+        // 좌우로 살짝 굽이치게(진폭 0.55) — 직선 티를 없앤다
+        const bend = Math.sin(t * Math.PI * 3.1) * 0.55;
+        pts.push([x0 + (x1 - x0) * u + bend, z0 + (z1 - z0) * u, t]);
       }
-      pts.push(ORCHARD_STREAM_LOCAL[ORCHARD_STREAM_LOCAL.length - 1]);
-      return mergeGeos(pts.map(([x, z]) => new THREE.CircleGeometry(1.5, 10).rotateX(-Math.PI / 2).translate(x, 0, z)));
-    }),
-    shared('orchard.water.mat', () => clayMat(0x8fb9d6)));
-  water.position.set(ORCHARD.x, 0.03, ORCHARD.z); orchardGroup.add(water);
+    }
+    const [lx, lz] = ORCHARD_STREAM_LOCAL[ORCHARD_STREAM_LOCAL.length - 1];
+    pts.push([lx, lz, 1]);
+    return pts;
+  })();
+  const widthAt = t => 1.15 + Math.sin(t * Math.PI * 2.3 + 0.7) * 0.35;   // 폭이 넓어졌다 좁아졌다
+
+  const shallow = new THREE.Mesh(                       // 얕은 여울 — 물보다 넓고 밝게
+    shared('orchard.shallow.geo', () => mergeGeos(streamPts.map(([x, z, t]) =>
+      new THREE.CircleGeometry(widthAt(t) + 0.5, 9).rotateX(-Math.PI / 2).translate(x, 0, z)))),
+    shared('orchard.shallow.mat', () => clayMat(0xa8c4c0, false)));
+  shallow.position.set(ORCHARD.x, 0.022, ORCHARD.z); orchardGroup.add(shallow);
+
+  const water = new THREE.Mesh(
+    shared('orchard.water.geo', () => mergeGeos(streamPts.map(([x, z, t]) =>
+      new THREE.CircleGeometry(widthAt(t), 9).rotateX(-Math.PI / 2).translate(x, 0, z)))),
+    shared('orchard.water.mat', () => clayMat(0x8fb9d6, false)));
+  water.position.set(ORCHARD.x, 0.035, ORCHARD.z); orchardGroup.add(water);
+
+  const pebbles = new THREE.Mesh(                       // 양 기슭 조약돌 — 물가가 딱 끊기지 않게
+    shared('orchard.pebble.geo', () => mergeGeos(streamPts.filter((_, i) => i % 4 === 0).flatMap(([x, z, t], i) => {
+      const w = widthAt(t) + 0.34, r = 0.13 + (i % 3) * 0.05;
+      return [1, -1].map(side => new THREE.IcosahedronGeometry(r, 0).translate(x + side * w, 0.02, z + (i % 2 ? 0.18 : -0.18)));
+    }))),
+    shared('orchard.pebble.mat', () => clayMat(0x9aa1ad)));
+  pebbles.position.set(ORCHARD.x, 0.03, ORCHARD.z); orchardGroup.add(pebbles);
 }
 
 // 🍎 나무를 전부 InstancedMesh 로 묶어 그린다 — 풀(js/game.js:2576 근처)과 같은 방식.
@@ -2778,7 +2809,7 @@ function syncOrchardTrees() {
     }
     if (!spots.length) continue;
     const im = new THREE.InstancedMesh(
-      shared('orchard.fruit.geo', () => new THREE.IcosahedronGeometry(0.17, 0)),
+      shared('orchard.fruit.geo', () => new THREE.IcosahedronGeometry(0.23, 0)),
       shared(`orchard.fruit.mat.${def.fruitColor}`, () => clayMat(def.fruitColor)), spots.length);
     spots.forEach(([x, y, z], i) => put(im, i, x, y, z, 1));
     im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
