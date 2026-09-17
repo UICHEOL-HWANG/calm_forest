@@ -7153,7 +7153,7 @@ const INT_HALF = 7;   // 실내 반경(1층 기준) — 문 앞 스폰/이동/�
 //    tread/rail 은 계단 재질용, floor 는 바닥용 — 출처: cottage.js(3) · loft.js steel(4) · penthouse.js black(5) · villa.js interior/railGlass(6)
 const INT_FINISH = {
   3: { floor: { kind: 'wood',  c: 0xbfb0a0, rep: 7 }, tread: 0x9c6b40, rail: 0x8a5a36 },
-  4: { floor: { kind: 'stone', c: 0xb9b3a8, rep: 6 }, tread: 0x3a3d44, rail: 0x23252a },
+  4: { floor: { kind: 'stone', c: 0xb9b3a8, rep: 6 }, tread: 0x23252a, rail: 0x23252a },
   5: { floor: { kind: 'stone', c: 0xe2ddd2, rep: 5 }, tread: 0xb98a4e, rail: 0x1e1f23 },
   6: { floor: { kind: 'stone', c: 0xf1ece3, rep: 4 }, tread: 0xf1ece3, rail: 'glass' },
 };
@@ -7261,10 +7261,13 @@ function buildRoom(def) {
   const treadMat = clayMat(fin.tread);
   const railMat = fin.rail === 'glass' ? HH.glass(0xa9d8ea) : clayMat(fin.rail);
   if (fin.rail === 'glass') railMat.opacity = 0.22;   // villa.js railGlass 와 같은 값
-  // 🎨 4단계(브릭 로프트)는 난간·디딤판이 같은 색이라 나선 형태에서 난간이 디딤판 바로 위를 지나가며
-  //   통짜 검은 덩어리로 뭉쳤다(컨셉 뷰어에서 실측 확인). 난간 색만 밝혀(+0.16 HSL lightness) 분리한다 —
-  //   실제 게임 팔레트(INT_FINISH)는 4단계 tread(0x3a3d44)≠rail(0x23252a)라 이 조건은 지금 안 걸리지만,
-  //   규칙 자체(같은 색이면 밝힌다)를 그대로 포팅해 둔다. 밝기 측정은 아래 "우려 사항"에 기록.
+  // 🎨 4단계(브릭 로프트)는 난간·디딤판이 같은 색(0x23252a)이라 나선 형태에서 난간이 디딤판 바로 위를 지나가며
+  //   통짜 검은 덩어리로 뭉쳤다(컨셉 뷰어에서 실측 확인). 난간 색만 밝혀(+0.16 HSL lightness) 분리한다.
+  //   ⚠️ 리뷰에서 드러난 사고: 포팅 당시 INT_FINISH[4].tread 를 0x3a3d44 로 다르게 적어놔서
+  //   (컨셉 승인안은 tread=rail=0x23252a) 이 조건이 게임에선 한 번도 안 걸렸다 — 컨셉 뷰어에서만
+  //   밝아지고 실제 나선 계단은 계속 뭉쳐 있었다. tread 를 승인안 그대로 0x23252a 로 되돌려 조건이
+  //   다시 걸리게 한다. 밝힌 색(#484c57, 휘도 0.30)은 UnrealBloomPass 임계 0.85(js/game.js:10219)에서
+  //   한참 아래라 블룸 함정과는 무관 — 직선형 포팅 때 겪은 그 사고가 아니다.
   const spiralRailMat = (fin.rail !== 'glass' && fin.rail === fin.tread)
     ? clayMat(new THREE.Color(fin.tread).offsetHSL(0, 0, 0.16).getHex())
     : railMat;
