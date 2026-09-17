@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FRUITS, TREE_SLOTS, STREAM_SLOTS, STREAM_R, YIELD_PER_DAY, CAP_DAYS,
-         fruitOf, fruitKeyOf, sapKeyOf, growDaysOf, nearStream, isWatered, harvestable, capped } from '../js/orchard.js';
+         fruitOf, fruitKeyOf, sapKeyOf, growDaysOf, nearStream, isWatered, harvestable, capped, settleTrees } from '../js/orchard.js';
 
 test('FRUITS: 스펙 §5 표 — 5종의 id·묘목값·자람일·판매가가 정확히 일치한다', () => {
   assert.deepEqual(FRUITS.map(f => f.id), ['apple', 'pear', 'peach', 'persimmon', 'chestnut']);
@@ -67,4 +67,63 @@ test('capped: 3일치(6개) 도달이면 더 안 쌓인다', () => {
   assert.equal(capped({ fruit: 6 }), true);
   assert.equal(capped({ fruit: 5 }), false);
   assert.equal(capped({ fruit: 7 }), true, '어쩌다 넘어도 상한으로 본다');
+});
+
+const mk = (o = {}) => ({ x: 20, z: 20, kind: 'apple', stage: 'growing', age: 0, watered: false, fruit: 0, ...o });
+
+test('settleTrees: 원본을 건드리지 않고 새 배열을 돌려준다', () => {
+  const trees = [mk()];
+  const out = settleTrees(trees, STREAM, 1);
+  assert.notEqual(out.trees, trees);
+  assert.notEqual(out.trees[0], trees[0]);
+  assert.equal(trees[0].age, 0, '원본 나무의 나이가 안 변해야 한다');
+});
+
+test('settleTrees: 자람일을 채우면 mature 로 바뀌고 matured 에 kind 가 실린다', () => {
+  const out = settleTrees([mk({ age: 2 })], STREAM, 1);   // 사과 3일
+  assert.equal(out.trees[0].stage, 'mature');
+  assert.deepEqual(out.matured, [{ kind: 'apple', grew_days: 3 }]);
+});
+
+test('settleTrees: 다 자라기 전엔 열매가 안 달린다', () => {
+  const out = settleTrees([mk({ age: 0 })], STREAM, 1);
+  assert.equal(out.trees[0].stage, 'growing');
+  assert.equal(out.trees[0].fruit, 0);
+  assert.deepEqual(out.fruited, []);
+});
+
+test('settleTrees: 물이 있으면 하루 2개가 달리고 watered 는 꺼진다', () => {
+  const out = settleTrees([mk({ x: 40, z: 40, stage: 'mature', watered: true })], STREAM, 1);
+  assert.equal(out.trees[0].fruit, 2);
+  assert.equal(out.trees[0].watered, false, '정산 직후 플래그는 꺼진다 — 매일 다시 줘야 한다');
+  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 2, watered: 1 }]);
+});
+
+test('settleTrees: 물이 없으면 열매가 안 달리지만 나무는 살아 있다', () => {
+  const out = settleTrees([mk({ x: 40, z: 40, stage: 'mature', watered: false })], STREAM, 1);
+  assert.equal(out.trees[0].fruit, 0);
+  assert.equal(out.trees[0].stage, 'mature', '죽지 않는다');
+  assert.deepEqual(out.fruited, [{ kind: 'apple', n: 0, watered: 0 }]);
+});
+
+test('settleTrees: 시냇가 나무는 물을 안 줘도 열린다', () => {
+  const out = settleTrees([mk({ x: 1, z: 10, stage: 'mature', watered: false })], STREAM, 1);
+  assert.equal(out.trees[0].fruit, 2);
+});
+
+test('settleTrees: 상한 6개를 넘지 않고, 걸린 나무는 capped 에 실린다', () => {
+  const out = settleTrees([mk({ x: 1, z: 10, stage: 'mature', fruit: 5 })], STREAM, 1);
+  assert.equal(out.trees[0].fruit, 6);
+  assert.deepEqual(out.capped, [{ kind: 'apple' }]);
+});
+
+test('settleTrees: 여러 날이 지났으면 그만큼 돌지만 상한은 지켜진다', () => {
+  const out = settleTrees([mk({ x: 1, z: 10, stage: 'mature' })], STREAM, 5);
+  assert.equal(out.trees[0].fruit, 6, '5일이 지나도 3일치까지만');
+});
+
+test('settleTrees: days 가 0 이하면 아무것도 안 한다', () => {
+  const out = settleTrees([mk({ stage: 'mature' })], STREAM, 0);
+  assert.equal(out.trees[0].fruit, 0);
+  assert.deepEqual(out.fruited, []);
 });

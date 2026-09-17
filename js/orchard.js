@@ -48,3 +48,38 @@ export function harvestable(tree) {
 export function capped(tree) {
   return (tree.fruit || 0) >= YIELD_PER_DAY * CAP_DAYS;
 }
+
+/**
+ * 하루(또는 여러 날) 정산. 🐝벌통·🐛해충과 같은 날짜 게이트에서 한 번 호출한다.
+ *   trees  : [{ x, z, kind, stage:'sapling'|'growing'|'mature', age, watered, fruit }]
+ *   stream : 시냇물 중심선 점 목록
+ *   days   : 경과 일수(접속이 끊겼던 날 포함)
+ * 원본을 바꾸지 않고 새 배열을 돌려준다(저장소 코딩 규칙 — 불변).
+ */
+export function settleTrees(trees = [], stream = [], days = 1) {
+  const matured = [], fruited = [], cappedList = [];
+  if (days <= 0) return { trees: trees.map(t => ({ ...t })), matured, fruited, capped: cappedList };
+
+  const out = trees.map(t => {
+    let tree = { ...t };
+    for (let d = 0; d < days; d++) {
+      if (tree.stage === 'sapling' || tree.stage === 'growing') {
+        const age = (tree.age || 0) + 1;
+        const need = growDaysOf(tree.kind);
+        tree = age >= need ? { ...tree, age, stage: 'mature' } : { ...tree, age, stage: 'growing' };
+        if (tree.stage === 'mature') matured.push({ kind: tree.kind, grew_days: need });
+        continue;                     // 다 자란 날엔 열매가 안 달린다 — 다음 날부터
+      }
+      // mature
+      if (capped(tree)) { cappedList.push({ kind: tree.kind }); continue; }
+      const wet = isWatered(tree, stream);
+      const before = tree.fruit || 0;
+      const fruit = Math.min(YIELD_PER_DAY * CAP_DAYS, before + (wet ? YIELD_PER_DAY : 0));
+      fruited.push({ kind: tree.kind, n: fruit - before, watered: wet ? 1 : 0 });
+      tree = { ...tree, fruit, watered: false };
+      if (capped(tree)) cappedList.push({ kind: tree.kind });
+    }
+    return tree;
+  });
+  return { trees: out, matured, fruited, capped: cappedList };
+}
