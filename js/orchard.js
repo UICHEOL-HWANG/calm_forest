@@ -62,22 +62,30 @@ export function settleTrees(trees = [], stream = [], days = 1) {
 
   const out = trees.map(t => {
     let tree = { ...t };
+    let cappedOnce = false;   // capped 는 정산 1회당 나무 1그루에 최대 1건만 기록한다 — 며칠이 걸려 있어도 이벤트는 하나
     for (let d = 0; d < days; d++) {
       if (tree.stage === 'sapling' || tree.stage === 'growing') {
         const age = (tree.age || 0) + 1;
         const need = growDaysOf(tree.kind);
-        tree = age >= need ? { ...tree, age, stage: 'mature' } : { ...tree, age, stage: 'growing' };
+        // watered 는 자라는 중이어도 매일 정산 후 꺼진다 — 다 자란 그날도 예외 없음
+        tree = age >= need
+          ? { ...tree, age, stage: 'mature', watered: false }
+          : { ...tree, age, stage: 'growing', watered: false };
         if (tree.stage === 'mature') matured.push({ kind: tree.kind, grew_days: need });
         continue;                     // 다 자란 날엔 열매가 안 달린다 — 다음 날부터
       }
       // mature
-      if (capped(tree)) { cappedList.push({ kind: tree.kind }); continue; }
+      if (capped(tree)) {
+        if (!cappedOnce) { cappedList.push({ kind: tree.kind }); cappedOnce = true; }
+        tree = { ...tree, watered: false };   // 상한에 걸려 못 따도 물 플래그는 매일 꺼진다
+        continue;
+      }
       const wet = isWatered(tree, stream);
       const before = tree.fruit || 0;
       const fruit = Math.min(YIELD_PER_DAY * CAP_DAYS, before + (wet ? YIELD_PER_DAY : 0));
       fruited.push({ kind: tree.kind, n: fruit - before, watered: wet ? 1 : 0 });
       tree = { ...tree, fruit, watered: false };
-      if (capped(tree)) cappedList.push({ kind: tree.kind });
+      if (capped(tree) && !cappedOnce) { cappedList.push({ kind: tree.kind }); cappedOnce = true; }
     }
     return tree;
   });

@@ -85,6 +85,12 @@ test('settleTrees: 자람일을 채우면 mature 로 바뀌고 matured 에 kind 
   assert.deepEqual(out.matured, [{ kind: 'apple', grew_days: 3 }]);
 });
 
+test('settleTrees: growing→mature 로 넘어가는 날에도 watered 는 꺼진다', () => {
+  const out = settleTrees([mk({ age: 2, watered: true })], STREAM, 1);   // 사과 3일 — 이 날 mature 로 바뀐다
+  assert.equal(out.trees[0].stage, 'mature');
+  assert.equal(out.trees[0].watered, false, '자라는 중에 준 물이 정산 후에도 남아있으면 다음 정산에서 공짜 열매가 된다');
+});
+
 test('settleTrees: 다 자라기 전엔 열매가 안 달린다', () => {
   const out = settleTrees([mk({ age: 0 })], STREAM, 1);
   assert.equal(out.trees[0].stage, 'growing');
@@ -117,13 +123,29 @@ test('settleTrees: 상한 6개를 넘지 않고, 걸린 나무는 capped 에 실
   assert.deepEqual(out.capped, [{ kind: 'apple' }]);
 });
 
+test('settleTrees: 이미 상한인 나무를 여러 날 정산해도 capped 는 한 번만 기록된다', () => {
+  const out = settleTrees([mk({ x: 1, z: 10, stage: 'mature', fruit: 6 })], STREAM, 4);
+  assert.equal(out.trees[0].fruit, 6, '상한을 넘지 않는다');
+  assert.deepEqual(out.capped, [{ kind: 'apple' }], '4일이 지나도 capped 이벤트는 한 번뿐');
+  assert.deepEqual(out.fruited, [], '상한에 걸린 날은 fruited 기록을 남기지 않는다');
+});
+
 test('settleTrees: 여러 날이 지났으면 그만큼 돌지만 상한은 지켜진다', () => {
   const out = settleTrees([mk({ x: 1, z: 10, stage: 'mature' })], STREAM, 5);
   assert.equal(out.trees[0].fruit, 6, '5일이 지나도 3일치까지만');
+  assert.deepEqual(out.fruited, [
+    { kind: 'apple', n: 2, watered: 1 },
+    { kind: 'apple', n: 2, watered: 1 },
+    { kind: 'apple', n: 2, watered: 1 },
+  ], '상한에 걸리기 전 3일치만 fruited 기록이 쌓인다');
+  assert.deepEqual(out.capped, [{ kind: 'apple' }], '상한에 걸린 뒤 남은 날들은 capped 한 건으로만 묶인다');
+  assert.deepEqual(out.matured, [], '이미 mature 였으므로 matured 이벤트는 없다');
 });
 
 test('settleTrees: days 가 0 이하면 아무것도 안 한다', () => {
   const out = settleTrees([mk({ stage: 'mature' })], STREAM, 0);
   assert.equal(out.trees[0].fruit, 0);
+  assert.deepEqual(out.matured, []);
   assert.deepEqual(out.fruited, []);
+  assert.deepEqual(out.capped, []);
 });
