@@ -48,7 +48,7 @@ import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, 
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
-import { FRUITS, TREE_SLOTS, YIELD_PER_DAY, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·정산)
+import { FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·정산)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -503,6 +503,7 @@ const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 —
 const ORCHARD_GATE = new THREE.Vector3(22, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1)
 const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 const ORCHARD_HALF = 20;                            // 언덕 반경
+let orchardGroup = null;                            // 과수원 그룹(가시성 토글용) — rebuildOrchard() 가 채운다
 const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
 const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
 // 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
@@ -542,6 +543,7 @@ function setSpaceVisible() {
   if (riverGroup) riverGroup.visible = atRiver;
   if (mistGroup) mistGroup.visible = atMist;
   if (seaGroup) seaGroup.visible = atSea;
+  if (orchardGroup) orchardGroup.visible = atOrchard;
   // 🌓 그림자: 마을에서만 섀도맵을 갱신한다. 어떤 공간을 멈출지는 js/shadow-scope.js(SUBSPACE_FLAGS).
   //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
   setShadowActive(shadowActiveFor(spaceFlags()));
@@ -2592,6 +2594,7 @@ function buildWorld() {
   buildMine();        // 채굴 동굴
   spawnSeaGate();     // 🌊 바다터 포구(마을 북동)
   buildSea();         // 🌊 바다 인스턴스(부두+대형 낚시)
+  rebuildOrchard();   // 🍎 과수원 언덕(지형·시냇물·나무)
 
   // 🌿 풀 — 포기마다 메시였던 것을 색깔별 InstancedMesh 3개로(드로우콜 76→3, 그림자 포함 152→6).
   //    바람에 흔들리는 건 그대로 — updateSway 가 포기별 인스턴스 행렬을 다시 쓴다.
@@ -2644,6 +2647,114 @@ function spawnTree(x, z) {
   tree.userData = { hp: 3, canopy, trunk, squash: 0, fallen: false, respawnAt: 0, leafColor, collider: solidCircle(x, z, 0.8) };
   scene.add(tree); trees.push(tree);
   obstacles.push({ x, z, r: 1.3 }); // 나무 밑엔 밭 금지
+}
+
+// =============================================================
+//  🍎 과수원 언덕 — 지형·시냇물·나무(js/orchard.js 규칙을 그린다)
+//  ------------------------------------------------------------
+//  드로우콜 예산: 나무 10그루 다 찬 과수원에서 본 패스 ≤14
+//  (풀 최적화 — 위 "🌿 풀" 주석 — 와 같은 방식: 그루당 Mesh 대신 종류별 InstancedMesh)
+// =============================================================
+function orchardStreamWorld() { return ORCHARD_STREAM_LOCAL.map(([x, z]) => ({ x: ORCHARD.x + x, z: ORCHARD.z + z })); }
+function orchardSlotsWorld()  { return ORCHARD_SLOTS_LOCAL.map(([x, z]) => ({ x: ORCHARD.x + x, z: ORCHARD.z + z })); }
+
+// 단계별 크기 — 묘목은 작고 다 자라면 1
+const ORCHARD_SCALE = { sapling: 0.35, growing: 0.7, mature: 1 };
+// 열매가 달리는 자리(나무 국소 좌표) — 최대 6개
+const FRUIT_SPOTS = [[-0.7, 2.2, 0.3], [0.8, 2.0, -0.2], [0.2, 2.6, 0.5], [-0.3, 1.8, -0.7], [0.6, 2.5, 0.1], [-0.9, 2.4, -0.3]];
+
+// 언덕 지면 + 시냇물 — 둘 다 정적. 시냇물은 점 5개를 한 지오메트리로 합쳐 드로우콜 1
+function buildOrchardGround() {
+  const ground = new THREE.Mesh(
+    shared('orchard.ground.geo', () => new THREE.CircleGeometry(ORCHARD_HALF, 32).rotateX(-Math.PI / 2)),
+    shared('orchard.ground.mat', () => clayMat(0xc0cf9e)));
+  ground.position.set(ORCHARD.x, 0.01, ORCHARD.z); ground.receiveShadow = true; orchardGroup.add(ground);
+
+  // 시냇물 — nearStream 이 보는 것과 같은 좌표에 원반을 놓고 하나로 합친다
+  const water = new THREE.Mesh(
+    shared('orchard.water.geo', () => mergeGeos(ORCHARD_STREAM_LOCAL.map(([x, z]) =>
+      new THREE.CircleGeometry(2.2, 12).rotateX(-Math.PI / 2).translate(x, 0, z)))),
+    shared('orchard.water.mat', () => clayMat(0x8fb9d6)));
+  water.position.set(ORCHARD.x, 0.03, ORCHARD.z); orchardGroup.add(water);
+}
+
+// 🍎 나무를 전부 InstancedMesh 로 묶어 그린다 — 풀(js/game.js:2576 근처)과 같은 방식.
+//   그루마다 Mesh 를 만들면 열매까지 76 드로우콜이 된다. 여기선 ≤11 이다.
+//   🚫 sway 는 넣지 않는다 — 인스턴스 행렬을 매 프레임 다시 쓰는 비용이 효과보다 크다.
+function syncOrchardTrees() {
+  const trees = gameState.orchard?.trees || [];
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3();
+  const put = (im, i, x, y, z, s) => { m.compose(v.set(x, y, z), q, new THREE.Vector3(s, s, s)); im.setMatrixAt(i, m); };
+
+  // 1) 줄기 — 전부 같은 재질이라 한 덩이
+  if (trees.length) {
+    const im = new THREE.InstancedMesh(
+      shared('tree.trunk.geo', () => new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7)),
+      shared('tree.trunk.mat', () => clayMat(PAL.trunk)), trees.length);
+    trees.forEach((t, i) => { const s = ORCHARD_SCALE[t.stage] ?? 1; put(im, i, t.x, 0.8 * s, t.z, s); });
+    im.instanceMatrix.needsUpdate = true; im.castShadow = true; orchardGroup.add(im);
+  }
+
+  // 2) 잎 — 과일 종류별로 색이 다르니 종류마다 한 덩이(최대 5)
+  for (const def of FRUITS) {
+    const mine = trees.filter(t => t.kind === def.id);
+    if (!mine.length) continue;
+    const im = new THREE.InstancedMesh(
+      shared('tree.canopy.geo', () => mergeGeos(
+        [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]]
+          .map(([bx, by, bz, cs]) => new THREE.IcosahedronGeometry(cs, 0).translate(bx, by, bz)))),
+      shared(`orchard.leaf.mat.${def.leafColor}`, () => clayMat(def.leafColor)), mine.length);
+    mine.forEach((t, i) => { const s = ORCHARD_SCALE[t.stage] ?? 1; put(im, i, t.x, 2.0 * s, t.z, s); });
+    im.instanceMatrix.needsUpdate = true; im.castShadow = true; orchardGroup.add(im);
+  }
+
+  // 3) 열매 — 나무별이 아니라 과수원 전체를 종류별 한 덩이로(최대 5)
+  for (const def of FRUITS) {
+    const spots = [];
+    for (const t of trees) {
+      if (t.kind !== def.id || t.stage !== 'mature') continue;
+      for (let i = 0; i < Math.min(t.fruit || 0, FRUIT_SPOTS.length); i++) {
+        spots.push([t.x + FRUIT_SPOTS[i][0], FRUIT_SPOTS[i][1], t.z + FRUIT_SPOTS[i][2]]);
+      }
+    }
+    if (!spots.length) continue;
+    const im = new THREE.InstancedMesh(
+      shared('orchard.fruit.geo', () => new THREE.IcosahedronGeometry(0.17, 0)),
+      shared(`orchard.fruit.mat.${def.fruitColor}`, () => clayMat(def.fruitColor)), spots.length);
+    spots.forEach(([x, y, z], i) => put(im, i, x, y, z, 1));
+    im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
+  }
+
+  // 🚧 충돌체는 그리기와 무관하다 — 나무마다 하나씩 그대로 둔다
+  for (const t of trees) obstacles.push({ x: t.x, z: t.z, r: 0.8 });
+}
+
+// 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다
+function syncOrchardSlotHints() {
+  const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
+  const free = orchardSlotsWorld().filter(s => !taken.has(`${s.x},${s.z}`));
+  if (!free.length) return;
+  const im = new THREE.InstancedMesh(
+    shared('orchard.slot.geo', () => new THREE.CircleGeometry(0.9, 12).rotateX(-Math.PI / 2)),
+    shared('orchard.slot.mat', () => clayMat(0x8a6440)), free.length);
+  const m = new THREE.Matrix4();
+  free.forEach((s, i) => { m.makeTranslation(s.x, 0.04, s.z); im.setMatrixAt(i, m); });
+  im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
+}
+
+// 밭의 rebuildFarm() 과 같은 꼴 — 상태가 바뀌면 통째로 다시 그린다
+function rebuildOrchard() {
+  if (!orchardGroup) { orchardGroup = new THREE.Group(); scene.add(orchardGroup); }
+  while (orchardGroup.children.length) orchardGroup.remove(orchardGroup.children[0]);
+  buildOrchardGround();     // 지면 1 + 시냇물 1(합침)
+  syncOrchardTrees();       // 줄기 1 + 잎 ≤5 + 열매 ≤5
+  syncOrchardSlotHints();   // 빈 자리 1(인스턴스)
+}
+
+// 🌰 나무 한 그루를 심는다 — gameState 에 더하고 통째로 다시 그린다(불변 — 저장소 코딩 규칙)
+function spawnFruitTree(x, z, kind, stage = 'sapling', fruit = 0) {
+  gameState.orchard.trees = [...gameState.orchard.trees, { x, z, kind, stage, age: 0, watered: false, fruit }];
+  rebuildOrchard();
 }
 
 function buildPlayer() {

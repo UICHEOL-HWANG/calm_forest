@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { FRUITS, TREE_SLOTS, STREAM_SLOTS, STREAM_R, YIELD_PER_DAY, CAP_DAYS,
+         ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL,
          fruitOf, fruitKeyOf, sapKeyOf, growDaysOf, nearStream, isWatered, harvestable, capped, settleTrees } from '../js/orchard.js';
 
 test('FRUITS: 스펙 §5 표 — 5종의 id·묘목값·자람일·판매가가 정확히 일치한다', () => {
@@ -171,4 +172,13 @@ test('buildWorld 의 배경 나무 회피 목록에 ORCHARD_GATE 가 다른 게�
     src.includes("dist2D({ x, z }, ORCHARD_GATE) < 4.5"),
     'ORCHARD_GATE 회피 조건을 못 찾았다 — 배경 나무가 과수원 입구를 가릴 수 있다'
   );
+});
+
+test('자리 배치: 앞 4자리는 시냇가 면제, 뒤 6자리는 매일 물이 필요하다', () => {
+  const stream = ORCHARD_STREAM_LOCAL.map(([x, z]) => ({ x, z }));
+  const slots = ORCHARD_SLOTS_LOCAL.map(([x, z]) => ({ x, z }));
+  assert.equal(slots.length, TREE_SLOTS);
+  const near = slots.map(s => nearStream(s, stream));
+  assert.deepEqual(near, [true, true, true, true, false, false, false, false, false, false]);
+  assert.equal(near.filter(Boolean).length, STREAM_SLOTS);
 });

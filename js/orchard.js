@@ -23,6 +23,14 @@ export const FRUITS = [
   { id: 'chestnut',  name: '밤',     ico: '🌰', sapCoin: 300, growDays: 5, price: 12, fruitColor: 0x7a5433, leafColor: 0x4a833f },
 ];
 
+// 🍎 시냇물 중심선 — 과수원을 세로로 가로지른다(ORCHARD 기준 국소 좌표)
+export const ORCHARD_STREAM_LOCAL = [[-6, -14], [-5, -7], [-4, 0], [-5, 7], [-6, 14]];
+// 나무 자리 10개 — 앞 4개는 시냇가(면제), 뒤 6개는 멀다
+export const ORCHARD_SLOTS_LOCAL = [
+  [-2, -11], [-1, -4], [-1, 4], [-2, 11],                       // 시냇가 4
+  [7, -12], [11, -5], [12, 3], [8, 11], [3, 15], [14, -13],      // 먼 자리 6
+];
+
 export function fruitOf(id) { return FRUITS.find(f => f.id === id) || null; }
 export function fruitKeyOf(id) { return id; }          // 과일 인벤 키 = id 그대로
 export function sapKeyOf(id) { return 'sap_' + id; }   // 묘목 인벤 키
