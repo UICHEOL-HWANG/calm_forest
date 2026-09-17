@@ -7240,6 +7240,10 @@ function buildRoom(def) {
       hand.position.set(0.52, RISE * STEPS / 2 + 0.5, -(STEPS - 1) * RUN / 2);
       hand.rotation.set(Math.PI / 2 - slope, 0, 0); st.add(hand);
     }
+    // 🚧 계단은 표지물이라 못 올라가지만, 몸은 그대로 지나가면 안 된다(랜드마크≠콜라이더 없음).
+    //   딱 디딤판 발자국만큼만 막는다 — 넓히면 stUp/stDown 프롬프트 반경(1.6)에 못 들어간다.
+    st.userData.collider = solidBox(g.position.x + cx - 0.5, g.position.z + (H - 1.2) - STEPS * RUN,
+                                     g.position.x + cx + 0.5, g.position.z + (H - 1.2));
     g.add(st);
     return st;
   };
@@ -7272,6 +7276,10 @@ function rebuildInteriorFinish() {
   for (const id in interiorFloors) {
     const grp = interiorFloors[id];
     unregisterWindows(grp);      // 창 재질이 houseWindows 에 남지 않게(누수 방지)
+    // 🚧 계단 콜라이더는 scene 그래프가 아니라 별도 colliders 배열에 산다 — scene.remove() 로는 안 빠진다.
+    //    안 빼면 증축(재건축)할 때마다 안 보이는 벽이 쌓인다.
+    if (grp.userData.stUp?.userData.collider) removeSolid(grp.userData.stUp.userData.collider);
+    if (grp.userData.stDown?.userData.collider) removeSolid(grp.userData.stDown.userData.collider);
     disposeTree(grp);            // 옛 방의 지오메트리·재질 GPU 자원 반환
     scene.remove(grp);
   }
@@ -7286,8 +7294,16 @@ function refreshStairsLandmarks() {
   for (const id in interiorFloors) {
     const room = interiorFloors[id];
     const f = room.userData.floorIdx;
-    if (room.userData.stUp) room.userData.stUp.visible = !!floorAt(gameState.houseStage, f + 1);
-    if (room.userData.stDown) room.userData.stDown.visible = f > 0 && !!floorAt(gameState.houseStage, f - 1);
+    if (room.userData.stUp) {
+      room.userData.stUp.visible = !!floorAt(gameState.houseStage, f + 1);
+      // 🚧 방(다른 층)이 지금 안 보이면 그 계단 콜라이더도 꺼야 한다 — 네 방이 같은 좌표(INT)에
+      //    겹쳐 있어서, 안 보이는 층의 콜라이더를 켜 두면 지금 서 있는 층에 안 보이는 벽이 생긴다(Task 4 review Critical 2 재발).
+      if (room.userData.stUp.userData.collider) room.userData.stUp.userData.collider.off = !(room.visible && room.userData.stUp.visible);
+    }
+    if (room.userData.stDown) {
+      room.userData.stDown.visible = f > 0 && !!floorAt(gameState.houseStage, f - 1);
+      if (room.userData.stDown.userData.collider) room.userData.stDown.userData.collider.off = !(room.visible && room.userData.stDown.visible);
+    }
   }
 }
 
