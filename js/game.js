@@ -49,7 +49,7 @@ import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, 
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
-import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·정산)
+import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { logOrchardEvent } from './orchard-log.js';   // 🍎 과수원 이벤트 원장(Supabase, fire-and-forget) — GA4 유실·지연 대비
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -2931,8 +2931,7 @@ function buildOrchardPaths() {
 }
 
 function syncOrchardSlotHints() {
-  const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
-  const free = orchardSlotsWorld().filter(s => !taken.has(`${s.x},${s.z}`));
+  const free = freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld());
   if (!free.length) return;
   // 흙바닥과 색이 비슷해 "여기 심어라" 가 안 읽혔다 — 밝은 테두리를 깔고 그 위에 어두운 흙을 얹어 대비를 준다
   const m = new THREE.Matrix4();
@@ -10408,11 +10407,8 @@ function minimapMarks(place) {
   } else if (place === 'orchard') {   // 🍎 과수원 — 나가는 문(남쪽) · 시냇물 · 나무(익으면 열매색) · 빈 자리
     marks.push({ x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF, c: '#c8905a', kind: 'exit' });
     for (const [lx, lz] of ORCHARD_STREAM_LOCAL) marks.push({ x: ORCHARD.x + lx, z: ORCHARD.z + lz, c: '#8fb9d6', r: 3.4 });
-    const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
-    for (const [lx, lz] of ORCHARD_SLOTS_LOCAL) {
-      const x = ORCHARD.x + lx, z = ORCHARD.z + lz;
-      if (!taken.has(`${x},${z}`)) marks.push({ x, z, c: '#8a6440', r: 2.0 });   // 빈 자리
-    }
+    // 빈 자리 — 그리기(syncOrchardSlotHints)·심기 판정(orchardSlotNear)과 같은 함수로 뽑는다
+    for (const s of freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld())) marks.push({ x: s.x, z: s.z, c: '#8a6440', r: 2.0 });
     for (const t of (gameState.orchard?.trees || [])) {
       const def = FRUITS.find(f => f.id === t.kind);
       const col = t.stage === 'mature' && t.fruit > 0 && def ? '#' + def.fruitColor.toString(16).padStart(6, '0') : '#5f9e52';
@@ -12073,12 +12069,11 @@ function orchardTreeNear() {
   }
   return best;
 }
-// 심을 빈 자리 판정 — syncOrchardSlotHints() 와 같은 "타 있는 자리 제외" 계산
+// 심을 빈 자리 판정 — 그리기(syncOrchardSlotHints)·지도(minimapMarks)와 **같은 freeSlots()** 로 뽑는다.
+//   손으로 세 번 베끼면 하나만 어긋나도 "빈 흙으로 보이는데 못 심는" 화면이 된다.
 function orchardSlotNear() {
-  const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
   let best = null, bestD = ORCHARD_ACTION_R;
-  for (const s of orchardSlotsWorld()) {
-    if (taken.has(`${s.x},${s.z}`)) continue;
+  for (const s of freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld())) {
     const d = dist2D(s, player.position);
     if (d < bestD) { best = s; bestD = d; }
   }
@@ -12124,20 +12119,19 @@ function harvestTree(tree) {
   logOrchardEvent('fruit_harvest', { kind: tree.kind, n });                     // [원장]
 }
 
-// 🪓 과일나무 베기 — 숲 나무와 같은 hp 방식(도끼 3번 · 강철 도끼 2번).
-//   여러 번 쳐야 쓰러지는 것 자체가 실수 방지라 확인 창을 띄우지 않는다.
+// 🪓 과일나무 베기 — 규칙(열매 가드 · hp · 단계별 목재)은 js/orchard.js chopHit() 이고
+//   여기서는 결과를 화면·세이브에 반영하기만 한다(스펙 §7 — game.js 는 배선과 그리기만).
 //   tree.hp 는 런타임 전용(반쯤 팬 밭의 digAt 과 같은 취급) — getGameState() 가 세이브에서 걸러낸다.
-const ORCHARD_CHOP_WOOD = { sapling: 1, growing: 2, mature: 3 };   // 단계 비례 — 숲 나무 최대치(3)를 넘지 않는다
-
 function chopTree(tree) {
-  if ((tree.fruit || 0) > 0) {   // 🪏삽이 "작물 있는 밭은 안 된다"와 같은 규칙
+  const r = chopHit(tree, !!gameState.upgrades.axe);
+  if (!r.ok) {   // 🪏삽이 "작물 있는 밭은 안 된다"와 같은 규칙
     ui.toast?.(`${fruitOf(tree.kind).ico} 열매를 먼저 따고 베요`, 2600); return;
   }
-  tree.hp = (tree.hp ?? 3) - (gameState.upgrades.axe ? 2 : 1);
+  tree.hp = r.hp;
   doPlayerAction(tree.x, tree.z); Sound.chop();
-  if (tree.hp > 0) { ui.toast?.(`🪓 ${tree.hp}번 더 치면 쓰러져요`, 1600); return; }
+  if (!r.felled) { ui.toast?.(`🪓 ${r.hp}번 더 치면 쓰러져요`, 1600); return; }
 
-  const wood = ORCHARD_CHOP_WOOD[tree.stage] ?? 1;
+  const wood = r.wood;
   gameState.orchard.trees = gameState.orchard.trees.filter(t => t !== tree);   // 불변 갱신
   giveReward({ wood }, 'orchard_chop', tree.kind);          // econ_logs 의 item 도 같은 id
   rebuildOrchard(); refreshInventoryUI(); requestSave();
@@ -12416,7 +12410,7 @@ function settleOrchard() {
   const st = gameState.orchard; if (!st) return;
   const today = todayStr();                         // js/game.js:139 — 저장소의 KST 날짜 헬퍼(kstDate 아님)
   if (st.settleDate === today) return;
-  const days = st.settleDate ? Math.max(1, Math.round((Date.parse(today) - Date.parse(st.settleDate)) / 86400000)) : 1;
+  const days = daysBetween(st.settleDate, today);   // 규칙은 js/orchard.js — 며칠 만에 들어온 유저의 복귀 경로가 여기 달렸다
   st.settleDate = today;
   const out = settleTrees(st.trees || [], orchardStreamWorld(), days);
   st.trees = out.trees;

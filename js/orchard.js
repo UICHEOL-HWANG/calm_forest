@@ -112,6 +112,50 @@ export function settleTrees(trees = [], stream = [], days = 1) {
   return { trees: out, matured, fruited, capped: cappedList };
 }
 
+// ── 🪓 베기 규칙 (스펙 §4) ────────────────────────────────────
+//  숲 나무와 같은 hp 방식 — 도끼 3번, 강철 도끼 2번. 여러 번 쳐야 쓰러진다는 것 자체가
+//  실수 방지라 확인 창이 없다. 목재는 단계 비례(묘목 1 · 자라는 중 2 · 다 자람 3)라
+//  "심자마자 베기" 가 무의미하고, 숲 나무 최대치(3)를 넘지 않아 목재 인플레가 안 생긴다.
+export const ORCHARD_CHOP_HP = 3;                                  // 나무 한 그루의 체력
+export const ORCHARD_CHOP_WOOD = { sapling: 1, growing: 2, mature: 3 };
+
+/** 이 단계의 나무를 베면 나오는 목재. 모르는 단계는 가장 적게(1). */
+export function chopWoodOf(stage) { return ORCHARD_CHOP_WOOD[stage] ?? 1; }
+
+/** 한 번 칠 때 깎이는 체력 — 강철 도끼면 2(= 두 번에 쓰러진다). */
+export function chopDamage(steelAxe) { return steelAxe ? 2 : 1; }
+
+/**
+ * 🪓 도끼질 한 번의 결과. 원본을 바꾸지 않는다 — 부르는 쪽이 결과를 반영한다.
+ *   { ok:false, reason:'fruit' }            열매가 달려 못 벤다(먼저 따야 한다)
+ *   { ok:true, felled:false, hp }           아직 서 있다 — 남은 타수
+ *   { ok:true, felled:true, hp:0, wood }    쓰러졌다 — 목재 보상
+ */
+export function chopHit(tree, steelAxe = false) {
+  if ((tree?.fruit || 0) > 0) return { ok: false, reason: 'fruit' };
+  const hp = (tree?.hp ?? ORCHARD_CHOP_HP) - chopDamage(steelAxe);
+  return hp > 0
+    ? { ok: true, felled: false, hp }
+    : { ok: true, felled: true, hp: 0, wood: chopWoodOf(tree?.stage) };
+}
+
+/** 나무가 안 선 자리 목록. 자리는 좌표가 곧 정체성이라 `x,z` 문자열로 맞춘다.
+ *  syncOrchardSlotHints(그리기) · minimapMarks(지도) · orchardSlotNear(심기 판정)가
+ *  같은 답을 내야 한다 — 손으로 세 번 베끼면 하나만 어긋나도 "빈 흙인데 못 심는" 화면이 된다. */
+export function freeSlots(trees = [], slots = []) {
+  const taken = new Set(trees.map(t => `${t.x},${t.z}`));
+  return slots.filter(s => !taken.has(`${s.x},${s.z}`));
+}
+
+/** 정산해야 할 날수. 'YYYY-MM-DD' 두 개를 받아 최소 1일.
+ *  오프라인 복귀 경로(며칠 만에 들어온 유저)가 이 한 줄에 달려 있다.
+ *  from 이 없으면(첫 정산) 1일, 날짜가 깨졌으면 1일로 안전하게 떨어진다. */
+export function daysBetween(from, to) {
+  if (!from || !to) return 1;
+  const d = (Date.parse(to) - Date.parse(from)) / 86400000;
+  return Number.isFinite(d) ? Math.max(1, Math.round(d)) : 1;
+}
+
 /** 자동 전환 대상 도구 id — 🪓도끼는 **뺀다**. 나무를 없애는 파괴 동작이라
  *  밭의 🪏삽과 같은 이유로 명시적으로만 쓴다(js/farm-auto.js 와 같은 원칙). */
 export const ORCHARD_AUTO_TOOLS = ['seed', 'water', 'sickle'];

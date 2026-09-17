@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, STREAM_SLOTS, STREAM_R, YIELD_PER_DAY, CAP_DAYS,
-         ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL,
+         ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, ORCHARD_CHOP_HP, ORCHARD_CHOP_WOOD,
+         chopWoodOf, chopDamage, chopHit, freeSlots, daysBetween,
          fruitOf, fruitKeyOf, sapKeyOf, growDaysOf, nearStream, isWatered, harvestable, capped, settleTrees } from '../js/orchard.js';
 
 test('FRUITS: 스펙 §5 표 — 5종의 id·묘목값·자람일·판매가가 정확히 일치한다', () => {
@@ -162,6 +163,100 @@ test('settleTrees: days 가 0 이하면 아무것도 안 한다', () => {
   assert.deepEqual(out.matured, []);
   assert.deepEqual(out.fruited, []);
   assert.deepEqual(out.capped, []);
+});
+
+// ── 🪓 베기 규칙 (스펙 §4) — 소스 텍스트가 아니라 동작으로 잠근다 ──
+test('ORCHARD_CHOP_WOOD: 단계 비례 목재 — 묘목 1 · 자라는 중 2 · 다 자람 3', () => {
+  assert.deepEqual(ORCHARD_CHOP_WOOD, { sapling: 1, growing: 2, mature: 3 });
+  assert.equal(chopWoodOf('sapling'), 1);
+  assert.equal(chopWoodOf('growing'), 2);
+  assert.equal(chopWoodOf('mature'), 3);
+  assert.equal(chopWoodOf('bogus'), 1, '모르는 단계는 가장 적게 — 목재 인플레 쪽으로 떨어지면 안 된다');
+  assert.equal(chopWoodOf(undefined), 1);
+  for (const w of Object.values(ORCHARD_CHOP_WOOD)) {
+    assert.ok(w <= 3, '숲 나무 한 그루(3)보다 많이 주면 과수원이 목재 소스가 된다');
+  }
+});
+
+test('chopHit: 맨 도끼는 3번 · 강철 도끼는 2번에 쓰러진다', () => {
+  assert.equal(ORCHARD_CHOP_HP, 3);
+  assert.equal(chopDamage(false), 1);
+  assert.equal(chopDamage(true), 2);
+
+  // 맨 도끼 — hp 3 → 2 → 1 → 0
+  let tree = { kind: 'apple', stage: 'mature', fruit: 0 };
+  const seq = [];
+  for (let i = 0; i < 3; i++) { const r = chopHit(tree, false); seq.push([r.hp, r.felled]); tree = { ...tree, hp: r.hp }; }
+  assert.deepEqual(seq, [[2, false], [1, false], [0, true]], '맨 도끼는 정확히 세 번');
+
+  // 강철 도끼 — hp 3 → 1 → 0
+  let steel = { kind: 'apple', stage: 'mature', fruit: 0 };
+  const seq2 = [];
+  for (let i = 0; i < 2; i++) { const r = chopHit(steel, true); seq2.push([r.hp, r.felled]); steel = { ...steel, hp: r.hp }; }
+  assert.deepEqual(seq2, [[1, false], [0, true]], '강철 도끼는 한 번 덜 친다');
+});
+
+test('chopHit: 쓰러지는 순간 단계에 맞는 목재가 나온다', () => {
+  assert.equal(chopHit({ stage: 'sapling', hp: 1, fruit: 0 }, false).wood, 1);
+  assert.equal(chopHit({ stage: 'growing', hp: 1, fruit: 0 }, false).wood, 2);
+  assert.equal(chopHit({ stage: 'mature', hp: 1, fruit: 0 }, false).wood, 3);
+  assert.equal(chopHit({ stage: 'mature', hp: 2, fruit: 0 }, false).wood, undefined, '아직 안 쓰러졌으면 목재가 없다');
+});
+
+test('chopHit: 열매가 달린 나무는 못 벤다 — hp 도 안 깎인다(먼저 따야 한다)', () => {
+  const tree = { kind: 'apple', stage: 'mature', fruit: 2, hp: 3 };
+  const r = chopHit(tree, true);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'fruit');
+  assert.equal(r.hp, undefined, '거부인데 hp 를 돌려주면 부르는 쪽이 그걸 써서 조용히 깎는다');
+  assert.equal(tree.hp, 3, '원본을 건드리지 않는다');
+  // 다 따면 그때부터 베인다
+  assert.equal(chopHit({ ...tree, fruit: 0 }, true).ok, true);
+});
+
+// ── 빈 자리 — 그리기·지도·심기 판정이 같은 답을 내야 한다 ──
+test('freeSlots: 나무가 선 자리를 빼고 돌려준다(입력 순서 유지)', () => {
+  const slots = [{ x: 0, z: 0 }, { x: 1, z: 2 }, { x: 3, z: 4 }];
+  const trees = [{ x: 1, z: 2, kind: 'apple' }];
+  assert.deepEqual(freeSlots(trees, slots), [{ x: 0, z: 0 }, { x: 3, z: 4 }]);
+  assert.deepEqual(freeSlots([], slots), slots, '나무가 없으면 전부 빈 자리');
+  assert.deepEqual(freeSlots(slots.map(s => ({ ...s })), slots), [], '다 차면 빈 자리가 없다');
+  assert.deepEqual(freeSlots(), [], '인자가 없어도 터지지 않는다');
+});
+
+test('freeSlots: 좌표가 다르면 자리가 아니다 — 음수·소수도 문자열 키가 갈리지 않는다', () => {
+  const slots = [{ x: -3, z: -12 }, { x: 0.5, z: 1.5 }];
+  assert.deepEqual(freeSlots([{ x: -3, z: -12 }], slots), [{ x: 0.5, z: 1.5 }]);
+  assert.deepEqual(freeSlots([{ x: 3, z: 12 }], slots), slots, '부호만 달라도 다른 자리다');
+  assert.deepEqual(freeSlots([{ x: 0.5, z: 1.5 }], slots), [{ x: -3, z: -12 }]);
+});
+
+// 실제 과수원 자리표로도 확인 — 자리 좌표가 바뀌어도 규칙이 따라온다
+test('freeSlots: 실제 자리표에서 3그루를 심으면 7자리가 남는다', () => {
+  const slots = ORCHARD_SLOTS_LOCAL.map(([x, z]) => ({ x, z }));
+  const trees = slots.slice(0, 3).map(s => ({ ...s, kind: 'apple' }));
+  assert.equal(freeSlots(trees, slots).length, TREE_SLOTS - 3);
+});
+
+// ── 오프라인 복귀 — 과일 상한 설계가 통째로 여기에 기댄다 ──
+test('daysBetween: 날짜 경계로 센다 · 최소 1일', () => {
+  assert.equal(daysBetween('2026-09-16', '2026-09-17'), 1);
+  assert.equal(daysBetween('2026-09-10', '2026-09-17'), 7, '일주일 만에 들어오면 7일치');
+  assert.equal(daysBetween('2026-09-17', '2026-09-17'), 1, '같은 날이어도 0일이 아니라 1일(호출부가 날짜 게이트로 막는다)');
+  assert.equal(daysBetween('2026-09-18', '2026-09-17'), 1, '시계가 거꾸로 가도 음수 정산은 없다');
+});
+
+test('daysBetween: 달·해 경계를 넘어도 맞는다 — 월말 계산이 흔한 사고 자리다', () => {
+  assert.equal(daysBetween('2026-08-31', '2026-09-01'), 1);
+  assert.equal(daysBetween('2026-12-31', '2027-01-01'), 1);
+  assert.equal(daysBetween('2026-02-27', '2026-03-01'), 2, '2026년 2월은 28일까지');
+});
+
+test('daysBetween: 값이 없거나 깨졌으면 1일로 안전하게 떨어진다', () => {
+  assert.equal(daysBetween(null, '2026-09-17'), 1, '첫 정산(settleDate 없음)');
+  assert.equal(daysBetween('', '2026-09-17'), 1);
+  assert.equal(daysBetween('2026-09-17', null), 1);
+  assert.equal(daysBetween('망가진 값', '2026-09-17'), 1, 'NaN 이 그대로 settleTrees 로 흘러가면 정산이 통째로 멈춘다');
 });
 
 test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만 고치면 여기서 터진다', () => {
@@ -330,15 +425,15 @@ test('applySave: 복원한 과수원 나무를 rebuildOrchard() 로 다시 그�
     'rebuildOrchard() 가 나무 복원보다 앞에 있다 — 빈 목록을 그리게 되어 고친 회귀가 그대로 돌아온다');
 });
 
-test('chopTree: 열매가 있으면 hp 를 깎기 전에 막는다(먼저 따야 벤다)', () => {
+// game.js 의 chopTree 는 이제 배선만 한다 — 규칙 자체는 위 chopHit() 동작 테스트가 잠근다.
+//   여기서는 "규칙 모듈을 실제로 쓰는가" 만 본다(규칙을 다시 손으로 쓰면 두 벌이 갈라진다).
+test('chopTree(game.js): 규칙을 다시 쓰지 않고 js/orchard.js 의 chopHit() 을 쓴다', () => {
   const src = GAME_SRC();
   const body = sliceFunctionBody(src, /^function chopTree\(/m);
   assert.ok(body, 'game.js 에서 chopTree 를 찾지 못했다');
-  const fruitGuardIdx = body.search(/tree\.fruit/);
-  const hpIdx = body.search(/tree\.hp\s*=/);
-  assert.ok(fruitGuardIdx >= 0, 'chopTree 안에 열매 확인 코드가 없다');
-  assert.ok(hpIdx >= 0, 'chopTree 안에 hp 를 깎는 코드가 없다');
-  assert.ok(fruitGuardIdx < hpIdx, '열매 확인이 hp 를 깎는 코드보다 뒤에 있다 — 열매 달린 나무도 베어진다');
+  assert.match(body, /chopHit\(tree,/, 'chopTree 가 chopHit() 을 안 쓴다 — 규칙이 game.js 로 다시 새어 들어왔다');
+  assert.doesNotMatch(body, /tree\.hp\s*\?\?/, 'chopTree 안에서 hp 기본값을 다시 정한다 — ORCHARD_CHOP_HP 가 유일한 출처여야 한다');
+  assert.doesNotMatch(body, /upgrades\.axe\s*\?/, 'chopTree 안에서 강철 도끼 타수를 다시 계산한다 — chopDamage() 가 유일한 출처여야 한다');
 });
 
 // 🔒 해금 카운터 — 🧑‍🌾일꾼이 거둔 고급 작물이 안 세지면, 밀을 심고 일꾼에게 맡긴 유저는
@@ -384,13 +479,15 @@ test('tree_water 트래킹은 GA4 캠페인 예약어(source/medium/campaign 등
   }
 });
 
-test('ORCHARD_CHOP_WOOD 는 숲 나무의 CHOP_WOOD(상수 3) 와 이름이 겹치지 않는다', () => {
+test('숲 나무 CHOP_WOOD(숫자 3) 와 과수원 목재 표는 이름이 겹치지 않는다', () => {
   const src = GAME_SRC();
   assert.match(src, /const CHOP_WOOD = 3;/, '숲 나무 CHOP_WOOD 상수를 못 찾았다 — 상수명이 바뀌었으면 이 테스트도 같이 고친다');
-  assert.match(src, /const ORCHARD_CHOP_WOOD = \{/, '과수원 단계별 목재 상수(ORCHARD_CHOP_WOOD)를 못 찾았다');
   // 같은 이름의 두 번째 선언은 SyntaxError(중복 선언)를 낸다 — node --check 로도 잡히지만
   // "왜 이름을 나눴는지"는 여기 남겨 둔다.
   assert.doesNotMatch(src, /const CHOP_WOOD = \{/, 'CHOP_WOOD 를 객체로 다시 선언하는 곳이 있다 — 기존 숲 나무 상수(숫자 3)와 이름이 겹친다');
+  // 과수원 목재 표는 js/orchard.js 로 옮겼다 — game.js 에 다시 생기면 두 벌이 갈라진다
+  assert.doesNotMatch(src, /const ORCHARD_CHOP_WOOD = \{/,
+    'game.js 에 ORCHARD_CHOP_WOOD 가 다시 선언됐다 — 단계별 목재 규칙은 js/orchard.js 가 유일한 출처다');
 });
 
 // ── 🍎 도구 자동 전환 (밭의 farm-auto 와 같은 원칙) ──
