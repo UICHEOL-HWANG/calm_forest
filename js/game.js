@@ -10757,6 +10757,12 @@ function updatePlayer(dt, t) {
 
 const camOffset = new THREE.Vector3(0, 14, 16);
 const camOffsetIndoor = new THREE.Vector3(0, 17, 10);   // 🏠 실내 전용 ≈60°(마을 41°) — 방 전체가 한 화면에 들어오고 벽 너머 바깥이 안 보인다(2026-09-10 비교 후 확정)
+// ☀️ 루프탑 전용 — camOffsetIndoor 를 그대로 쓰면 피치가 너무 가팔라(≈58°, 시야 위쪽 경계가 수평선보다
+//   36° 아래) 마을 전체가 프러스텀 위로 잘려 나간다(진단: Frustum.containsPoint 로 마을 중심 NDC.y=2.39,
+//   화면 밖). 루프탑은 벽이 없어 "밖이 안 보이게" 가리는 게 오히려 결함이 된다 — 피치를 완만하게
+//   낮춰(≈29°) 마을이 프레임 안에 들어오게 하면서도, camOffset(마을 시점)보다 더 위에서 내려다봐
+//   "지붕 위에서 마을을 내려다보는" 높이감은 유지한다.
+const camOffsetRoof = new THREE.Vector3(0, 10, 18);
 const _camTarget = new THREE.Vector3();
 const _camAux = new THREE.Vector3();   // 🔍 관람 시선 보정용
 const _camLook = new THREE.Vector3(0, 1.2, 0);
@@ -10918,7 +10924,7 @@ function updateCatchItem(dt) {
 }
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
 function snapCamera() {
-  _camTarget.copy(player.position).add(indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°)
+  _camTarget.copy(player.position).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
   _camLook.set(player.position.x, 1.2, player.position.z);
   camera.lookAt(_camLook);
@@ -10997,7 +11003,7 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy(indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);
+  _camOff.copy(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
