@@ -232,3 +232,67 @@ test('syncOrchardTrees: obstacles 재등록 전에 지난 과수원 나무 항�
   assert.ok(clearIdx < pushIdx,
     '지우는 코드가 새로 등록하는 코드보다 뒤에 있다 — 순서가 바뀌면 방금 등록한 항목까지 같이 지워질 수 있다');
 });
+
+// =============================================================
+//  Task 8 — 심기·물주기·수확·베기·정산의 game.js 쪽 배선(wiring)
+//  js/game.js 는 THREE·document 전역에 의존해 이 파일에서 import 해 실행할 수 없다(위와 같은 이유).
+//  그래서 소스 텍스트로 "규칙이 지켜지는 형태로 쓰여 있다"만 확인한다 — 실제 동작은 수동 추적으로 검증했다.
+// =============================================================
+const GAME_SRC = () => readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+
+// 함수 하나의 본문만 잘라낸다(다음 최상위 function 선언 전까지) — 위 syncOrchardTrees 테스트와 같은 절단 방식.
+function sliceFunctionBody(src, headerRe) {
+  const start = src.search(headerRe);
+  if (start < 0) return null;
+  const rest = src.slice(start + 1);
+  const endRel = rest.search(/^(function|export function|const) \w+/m);
+  return endRel < 0 ? rest : rest.slice(0, endRel);
+}
+
+test('getGameState: 과수원 나무의 hp(도끼질 진행도)를 저장용 스냅샷에서만 걷어내고, 살아 있는 gameState.orchard.trees 는 건드리지 않는다', () => {
+  const src = GAME_SRC();
+  const body = sliceFunctionBody(src, /^export function getGameState\(/m);
+  assert.ok(body, 'game.js 에서 getGameState 를 찾지 못했다 — 함수명이 바뀌었으면 이 테스트도 같이 고친다');
+  // hp 를 스프레드에서 빼는 구조 분해가 있어야 한다(저장 스냅샷 전용)
+  assert.match(body, /\{\s*hp,\s*\.\.\.rest\s*\}/,
+    'getGameState 안에 { hp, ...rest } 형태로 hp 를 걸러내는 코드가 없다 — ' +
+    '도끼로 반쯤 벤 나무의 hp 가 그대로 세이브에 들어간다');
+  // gameState.orchard.trees 자체를 재할당하면 안 된다 — 재할당하면 저장할 때마다
+  // 진행 중인 도끼질 타수가 사라진다(요청마다 requestSave 가 불린다).
+  assert.doesNotMatch(body, /gameState\.orchard\.trees\s*=/,
+    'getGameState 가 gameState.orchard.trees 를 직접 재할당한다 — ' +
+    '저장할 때마다(모든 액션 뒤) 진행 중인 도끼질 hp 가 초기화된다');
+});
+
+test('chopTree: 열매가 있으면 hp 를 깎기 전에 막는다(먼저 따야 벤다)', () => {
+  const src = GAME_SRC();
+  const body = sliceFunctionBody(src, /^function chopTree\(/m);
+  assert.ok(body, 'game.js 에서 chopTree 를 찾지 못했다');
+  const fruitGuardIdx = body.search(/tree\.fruit/);
+  const hpIdx = body.search(/tree\.hp\s*=/);
+  assert.ok(fruitGuardIdx >= 0, 'chopTree 안에 열매 확인 코드가 없다');
+  assert.ok(hpIdx >= 0, 'chopTree 안에 hp 를 깎는 코드가 없다');
+  assert.ok(fruitGuardIdx < hpIdx, '열매 확인이 hp 를 깎는 코드보다 뒤에 있다 — 열매 달린 나무도 베어진다');
+});
+
+test('tree_water 트래킹은 GA4 캠페인 예약어(source/medium/campaign 등)가 아니라 method 로 물주기 방식을 보낸다', () => {
+  const src = GAME_SRC();
+  const body = sliceFunctionBody(src, /^function waterTree\(/m);
+  assert.ok(body, 'game.js 에서 waterTree 를 찾지 못했다');
+  const m = body.match(/trackEvent\('tree_water',\s*\{([^}]*)\}\)/);
+  assert.ok(m, 'waterTree 안에서 tree_water 트래킹 호출을 찾지 못했다');
+  assert.match(m[1], /\bmethod\s*:/, 'tree_water 이벤트에 method 파라미터가 없다');
+  for (const banned of ['source', 'medium', 'campaign', 'campaign_id', 'term', 'content']) {
+    assert.doesNotMatch(m[1], new RegExp(`\\b${banned}\\s*:`),
+      `tree_water 이벤트가 GA4 예약어 "${banned}" 를 파라미터 키로 쓴다 — 세션 유입 정보가 오염된다`);
+  }
+});
+
+test('ORCHARD_CHOP_WOOD 는 숲 나무의 CHOP_WOOD(상수 3) 와 이름이 겹치지 않는다', () => {
+  const src = GAME_SRC();
+  assert.match(src, /const CHOP_WOOD = 3;/, '숲 나무 CHOP_WOOD 상수를 못 찾았다 — 상수명이 바뀌었으면 이 테스트도 같이 고친다');
+  assert.match(src, /const ORCHARD_CHOP_WOOD = \{/, '과수원 단계별 목재 상수(ORCHARD_CHOP_WOOD)를 못 찾았다');
+  // 같은 이름의 두 번째 선언은 SyntaxError(중복 선언)를 낸다 — node --check 로도 잡히지만
+  // "왜 이름을 나눴는지"는 여기 남겨 둔다.
+  assert.doesNotMatch(src, /const CHOP_WOOD = \{/, 'CHOP_WOOD 를 객체로 다시 선언하는 곳이 있다 — 기존 숲 나무 상수(숫자 3)와 이름이 겹친다');
+});

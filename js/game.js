@@ -2399,7 +2399,10 @@ export function getGameState() {
   gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id,   // crop: 밤손님 판정·복원용 작물 종류
     ...(p.fert ? { fert: 1 } : {}), ...(p.weed ? { weed: 1 } : {}), ...(p.pest ? { pest: 1 } : {}) }));   // 🌾 고급 작물 공정 — 켜진 것만 기록(옛 스키마와 호환), claimedBy 는 런타임 전용
   gameState.timeOfDay = timeOfDay;   // 시간대 저장
-  return gameState;
+  // 🍎 tree.hp 는 런타임 전용(반쯤 팬 밭의 digAt 과 같은 취급) — plots 처럼 별도 사본이 없으니
+  //   저장용 스냅샷에서만 걸러낸다. gameState.orchard.trees 자체를 바꾸면 진행 중인 도끼질 타수가
+  //   저장할 때마다 사라지므로, 살아 있는 배열은 그대로 두고 반환값만 사본을 준다.
+  return { ...gameState, orchard: { ...gameState.orchard, trees: (gameState.orchard?.trees || []).map(({ hp, ...rest }) => rest) } };
 }
 export async function requestSave() { return await saveGame(getGameState()); }
 
@@ -6002,8 +6005,7 @@ function enterOrchard() {
   player.position.set(ORCHARD.x, 0, ORCHARD.z + ORCHARD_HALF - 1.6); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  // ⚠️ 일일 정산 호출은 여기 넣지 않는다 — settleOrchard 는 Task 8 에서 만들어진다.
-  //    Task 8 Step 4 가 이 자리에 `settleOrchard();` 한 줄을 넣는다.
+  settleOrchard();   // 🍎 일일 정산(날짜 게이트) — 벌통과 같은 문법
   firstHint('orchardIntro', '🍎', '과수원 언덕',
     '🌰씨앗 도구로 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요');
   Sound.blip(); setBGMTheme?.('main');
@@ -11199,6 +11201,7 @@ function handleAction() {
   if (nearDoor === 'seaexit') return exitSea();
   if (atSea) { seaAction(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
   if (atMist) { mistAction(); return; }
+  if (atOrchard) return orchardAction();   // 🍎 과수원: 심기·물주기·수확·베기(js/game.js orchardAction)
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기
     if (nearBoat) return startBoatRun();
     if (nearBoatShop) { trackEvent('boat_shop_open'); return ui.openBoatShop?.(boatShopView()); }
@@ -11688,6 +11691,7 @@ function trellisAnywhere() { return farmBuildingRecs().some(b => b.id === 'trell
 // 🌰 씨앗 도구 아이콘은 종류와 무관하게 🌰 고정(사용자 결정 2026-09-13) — 고른 종류는 토스트로만 알린다
 function syncSeedToolIcon() { /* 의도적으로 비움 — 슬롯 아이콘을 바꾸지 않는다 */ }
 function cycleSeedSel() {
+  if (atOrchard) return cycleSapSel();   // 🍎 과수원에선 묘목만 돈다
   const cur = gameState.farm.seedSel || 'basic';
   const next = nextSeedSel(cur, gameState.inventory, trellisAnywhere());
   if (next === cur) {
@@ -11698,6 +11702,112 @@ function cycleSeedSel() {
   const c = seedSelCrop();
   ui.toast?.(c ? `${c.ico} ${c.name} 씨앗 (${gameState.inventory[seedKeyOf(next)] || 0}개) — 다시 누르면 바꿔요` : '🌰 기본 씨앗 — 다시 누르면 바꿔요', 2200);
   trackEvent('seed_select', { sel: next });   // [GA4] 고급 씨앗 채택 여부
+}
+
+// =============================================================
+//  🍎 과수원 액션 — 묘목 심기 · 물주기 · 수확 · 베기 (규칙은 js/orchard.js)
+//  ------------------------------------------------------------
+//  판정 반경은 밭 자동 전환(FARM_AUTO_R = 1.8)과 같은 값을 쓴다.
+// =============================================================
+const ORCHARD_ACTION_R = 1.8;
+function cycleSapSel() {
+  const owned = FRUITS.filter(f => (gameState.inventory[sapKeyOf(f.id)] || 0) > 0);
+  if (!owned.length) { ui.toast?.('🌰 묘목이 없어요. 상점에서 🍎사과·🍐배·🍑복숭아·🍊감·🌰밤 묘목을 팔아요', 2800); return; }
+  const i = owned.findIndex(f => f.id === gameState.orchard.sapSel);
+  const next = owned[(i + 1) % owned.length];
+  gameState.orchard.sapSel = next.id; Sound.blip();
+  ui.toast?.(`${next.ico} ${next.name}나무 묘목 (${gameState.inventory[sapKeyOf(next.id)]}개) — 다시 누르면 바꿔요`, 2200);
+  trackEvent('sap_select', { kind: next.id });   // [GA4] 묘목 종류 채택
+}
+
+// 나무 판정 — 물주기·수확·베기가 공유한다(가장 가까운 나무 하나)
+function orchardTreeNear() {
+  let best = null, bestD = ORCHARD_ACTION_R;
+  for (const t of gameState.orchard?.trees || []) {
+    const d = dist2D(t, player.position);
+    if (d < bestD) { best = t; bestD = d; }
+  }
+  return best;
+}
+// 심을 빈 자리 판정 — syncOrchardSlotHints() 와 같은 "타 있는 자리 제외" 계산
+function orchardSlotNear() {
+  const taken = new Set((gameState.orchard?.trees || []).map(t => `${t.x},${t.z}`));
+  let best = null, bestD = ORCHARD_ACTION_R;
+  for (const s of orchardSlotsWorld()) {
+    if (taken.has(`${s.x},${s.z}`)) continue;
+    const d = dist2D(s, player.position);
+    if (d < bestD) { best = s; bestD = d; }
+  }
+  return best;
+}
+
+function plantSapling(slot) {
+  const kind = gameState.orchard.sapSel || 'apple';
+  const key = sapKeyOf(kind);
+  if ((gameState.inventory[key] || 0) <= 0) { ui.toast?.(`${fruitOf(kind).ico} 묘목이 없어요`, 2400); return; }
+  if ((gameState.orchard.trees || []).length >= TREE_SLOTS) { ui.toast?.('🍎 자리가 다 찼어요 — 10그루까지 심을 수 있어요', 2600); return; }
+  gameState.inventory[key] -= 1;
+  const tree = { x: slot.x, z: slot.z, kind, stage: 'sapling', age: 0, watered: false, fruit: 0 };
+  gameState.orchard.trees = [...(gameState.orchard.trees || []), tree];   // 불변 갱신
+  doPlayerAction(slot.x, slot.z); Sound.plant();
+  rebuildOrchard(); refreshInventoryUI(); requestSave();
+  trackEvent('sapling_plant', {                                  // [GA4] 생애주기 2단계
+    kind, near_stream: nearStream(tree, orchardStreamWorld()) ? 1 : 0, trees: gameState.orchard.trees.length });
+}
+
+function waterTree(tree) {
+  if (nearStream(tree, orchardStreamWorld())) { ui.toast?.('💧 시냇가 나무라 물을 안 줘도 돼요', 2400); return; }
+  if (tree.watered) { ui.toast?.('💧 오늘은 이미 물을 줬어요', 2000); return; }
+  tree.watered = true;
+  doPlayerAction(tree.x, tree.z); Sound.water(); requestSave();
+  spawnFloatText(tree.x, 1.4, tree.z, '💧', '#8fb9d6');
+  // ⚠️ source/content 같은 GA4 예약어를 쓰지 않는다 — method 로 보낸다
+  trackEvent('tree_water', { kind: tree.kind, method: 'manual' });
+}
+
+function harvestTree(tree) {
+  const n = harvestable(tree);
+  if (!n) { ui.toast?.(tree.stage === 'mature' ? '🌳 아직 열매가 없어요 — 내일 다시 와요' : '🌿 아직 자라는 중이에요', 2400); return; }
+  const stacked = Math.ceil(n / YIELD_PER_DAY);
+  giveReward({ [fruitKeyOf(tree.kind)]: n }, 'orchard', tree.kind);   // econ_logs 의 item 도 같은 id
+  tree.fruit = 0;
+  doPlayerAction(tree.x, tree.z); Sound.harvest();
+  rebuildOrchard(); refreshInventoryUI(); requestSave();
+  trackEvent('fruit_harvest', { kind: tree.kind, n, stacked_days: stacked });   // [GA4]
+}
+
+// 🪓 과일나무 베기 — 숲 나무와 같은 hp 방식(도끼 3번 · 강철 도끼 2번).
+//   여러 번 쳐야 쓰러지는 것 자체가 실수 방지라 확인 창을 띄우지 않는다.
+//   tree.hp 는 런타임 전용(반쯤 팬 밭의 digAt 과 같은 취급) — getGameState() 가 세이브에서 걸러낸다.
+const ORCHARD_CHOP_WOOD = { sapling: 1, growing: 2, mature: 3 };   // 단계 비례 — 숲 나무 최대치(3)를 넘지 않는다
+
+function chopTree(tree) {
+  if ((tree.fruit || 0) > 0) {   // 🪏삽이 "작물 있는 밭은 안 된다"와 같은 규칙
+    ui.toast?.(`${fruitOf(tree.kind).ico} 열매를 먼저 따고 베요`, 2600); return;
+  }
+  tree.hp = (tree.hp ?? 3) - (gameState.upgrades.axe ? 2 : 1);
+  doPlayerAction(tree.x, tree.z); Sound.chop();
+  if (tree.hp > 0) { ui.toast?.(`🪓 ${tree.hp}번 더 치면 쓰러져요`, 1600); return; }
+
+  const wood = ORCHARD_CHOP_WOOD[tree.stage] ?? 1;
+  gameState.orchard.trees = gameState.orchard.trees.filter(t => t !== tree);   // 불변 갱신
+  giveReward({ wood }, 'orchard_chop', tree.kind);          // econ_logs 의 item 도 같은 id
+  rebuildOrchard(); refreshInventoryUI(); requestSave();
+  ui.toast?.(`🪵 목재 +${wood} · 자리가 비었어요`, 2400);
+  trackEvent('tree_chop', { kind: tree.kind, stage: tree.stage, wood, trees: gameState.orchard.trees.length });
+}
+
+// 도구별 동작 — 밭처럼 자동 전환하지 않는다(자리가 10개뿐이라 헷갈릴 일이 적다).
+// 🪓도끼를 들고 나무 앞이면 베기가 먼저다.
+function orchardAction() {
+  // ✋ 맨손(도구를 등에 멘 채 forest 구역 등을 거쳐 들어온 경우) — currentTool 은 남아 있어도
+  //   화면상 도구가 없으니 밭·숲과 같은 안내로 통일한다(js/game.js:11269 와 같은 문구).
+  if (toolPage === 'none') { ui.toast?.('✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
+  if (TOOLS[currentTool].id === 'axe') { const t = orchardTreeNear(); if (t) return chopTree(t); ui.toast?.('🪓 벨 나무 앞으로 가요', 2200); return; }
+  if (TOOLS[currentTool].id === 'seed') { const slot = orchardSlotNear(); if (slot) return plantSapling(slot); ui.toast?.('🌰 심을 빈 자리 앞으로 가요', 2200); return; }
+  if (TOOLS[currentTool].id === 'water') { const t = orchardTreeNear(); if (t) return waterTree(t); ui.toast?.('💧 물 줄 나무 앞으로 가요', 2200); return; }
+  if (TOOLS[currentTool].id === 'sickle') { const t = orchardTreeNear(); if (t) return harvestTree(t); ui.toast?.('🌳 딸 나무 앞으로 가요', 2200); return; }
+  ui.toast?.('🌰 씨앗으로 심고 💧 물 주고 🌾 낫으로 따요 · 🪓 도끼로 베요', 2600);
 }
 function plantSeed(plot) {
   const adv = seedSelCrop();
@@ -11934,6 +12044,22 @@ function resolveFarmPests() {
   }
   requestSave();
 }
+// 🍎 과수원 일일 정산 — 🐝벌통과 같은 날짜 게이트(입장 시 한 번). 여러 날치가 쌓여 있으면 한 번에 돌린다.
+function settleOrchard() {
+  const st = gameState.orchard; if (!st) return;
+  const today = todayStr();                         // js/game.js:139 — 저장소의 KST 날짜 헬퍼(kstDate 아님)
+  if (st.settleDate === today) return;
+  const days = st.settleDate ? Math.max(1, Math.round((Date.parse(today) - Date.parse(st.settleDate)) / 86400000)) : 1;
+  st.settleDate = today;
+  const out = settleTrees(st.trees || [], orchardStreamWorld(), days);
+  st.trees = out.trees;
+  for (const m of out.matured) trackEvent('tree_mature', m);     // [GA4] kind·grew_days
+  for (const f of out.fruited) trackEvent('fruit_ready', f);     // [GA4] kind·n·watered
+  for (const c of out.capped)  trackEvent('fruit_capped', c);    // [GA4] kind
+  const total = out.fruited.reduce((s, f) => s + f.n, 0);
+  if (total) setTimeout(() => ui.toast?.(`🍎 과수원에 열매 ${total}개가 열렸어요`, 2600), 1400);
+  rebuildOrchard(); requestSave();
+}
 function pestTarget() {
   if (!outdoorZone()) return null;
   return plots.find(p => p.pest && dist2D(p.group.position, player.position) < 1.8) || null;
@@ -12088,6 +12214,12 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   const adv = isAdv(plot.cropType), qty = harvestYield(plot.cropType, !!plot.pest);
   if (adv) {   // 🌾 고급: 종류별 인벤 키(wheat/corn/grape)로, 씨앗은 안 돌아온다(코인 싱크). 해충이면 절반
     gameState.inventory[plot.cropType.id] = (gameState.inventory[plot.cropType.id] || 0) + qty;
+    gameState.progress.advHarvest = (gameState.progress.advHarvest || 0) + 1;   // 🔒 과수원 해금 카운터
+    if (gameState.progress.advHarvest === 1) {
+      ui.toast?.('🍎 마을 동쪽 과수원 언덕이 열렸어요!', 3200);
+      trackEvent('orchard_unlock', { via: plot.cropType.id });   // [GA4] 어떤 고급 작물이 열었나
+      giveReward({ sap_apple: 2 }, 'orchard_unlock', 'apple');   // 빈 언덕 방지 — 사과 묘목 2그루
+    }
   } else {
     gameState.inventory.crop += 1; // 작물 +1
     gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
