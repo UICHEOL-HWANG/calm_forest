@@ -2307,6 +2307,20 @@ function applySave(saved) {
     if (typeof saved.farm.hireDate === 'string') { gameState.farm.hireDate = saved.farm.hireDate; gameState.farm.hireTaken = Array.isArray(saved.farm.hireTaken) ? saved.farm.hireTaken.filter(n => Number.isInteger(n)) : []; }
     syncSeedToolIcon();
   }
+  if (saved.orchard) {   // 🍎 과수원 나무 복원 — 모르는 종류·상한 초과·음수 열매는 걸러낸다(옛/조작 세이브 방어)
+    if (Array.isArray(saved.orchard.trees)) {
+      gameState.orchard.trees = saved.orchard.trees
+        .filter(t => FRUITS.some(f => f.id === t.kind))            // 모르는 종류는 버린다
+        .slice(0, TREE_SLOTS)                                       // 상한 방어
+        .map(t => ({ x: t.x, z: t.z, kind: t.kind, stage: t.stage || 'sapling',
+                     age: t.age || 0, watered: !!t.watered, fruit: Math.max(0, t.fruit || 0) }));
+    }
+    if (FRUITS.some(f => f.id === saved.orchard.sapSel)) gameState.orchard.sapSel = saved.orchard.sapSel;
+    if (typeof saved.orchard.settleDate === 'string') gameState.orchard.settleDate = saved.orchard.settleDate;
+  }
+  if (saved.progress && typeof saved.progress.advHarvest === 'number') {   // 🔒 과수원 해금 카운터 복원
+    gameState.progress.advHarvest = Math.max(0, Math.floor(saved.progress.advHarvest));
+  }
   if (Array.isArray(saved.workers)) {   // 🧑‍🌾 일꾼 — 직군·등급은 표 밖 값을 받지 않는다(옛/조작 세이브 방어)
     gameState.workers = saved.workers.filter(w => w && typeof w.id === 'string' && JOBS.some(j => j.id === w.job)).slice(0, 6).map(w => ({
       id: w.id, job: w.job, name: String(w.name || '일꾼').slice(0, 12),
