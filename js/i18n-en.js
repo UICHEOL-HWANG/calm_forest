@@ -693,6 +693,9 @@ export const EN = {
   '{0}은 루프탑에만 놓을 수 있어요': 'The {0} can only be placed on the Rooftop',
   '{0}는 루프탑에만 놓을 수 있어요': 'The {0} can only be placed on the Rooftop',
   '코인이 부족해요 (필요 {0} 🪙)': 'Not enough Coins (need {0} 🪙)',
+  // 🏠☀️ 층 이동 도착 토스트(goFloor) — 좌변 글루, '🌾 {0}' · '💬 {0}' 과 같은 역할
+  '🏠 {0}': '🏠 {0}',
+  '☀️ {0}': '☀️ {0}',
   '내일은 ☀️ 맑을 예정이에요!': 'Tomorrow looks ☀️ sunny!',
   '내일은 🌧️ 비 소식 — 밭이 저절로 자라는 날!': 'Tomorrow brings 🌧️ rain — a day when Crops grow all on their own!',
   '내일은 ❄️ 눈 소식 — 목재가 잘 나오는 날!': 'Tomorrow brings ❄️ snow — a great day for extra Wood!',

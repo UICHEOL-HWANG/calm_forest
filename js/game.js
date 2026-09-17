@@ -9955,6 +9955,9 @@ function goFloor(f) {
   lastFloorChoiceKey = null; ui.setFloorChoice?.(null);   // 🪜 양방향 선택 UI도 즉시 닫는다(다음 프레임에 필요하면 다시 뜬다)
   setSpaceVisible();
   Sound.blip();
+  // 🏠 지금 어디로 왔는지 잠깐 확인 — 프롬프트(🪜)는 "이동" 동작이라 도착 확인엔 다른 아이콘을 쓴다.
+  //   실외 층(루프탑)은 ☀️, 실내 층은 🏠(정착 느낌) — def.outdoor 로 갈린다.
+  ui.toast?.(def.outdoor ? `☀️ ${def.name}` : `🏠 ${def.name}`, 1200);
   trackEvent('house_floor', { to: def.id, stage: gameState.houseStage });   // [GA4] 층 사용률
 }
 
