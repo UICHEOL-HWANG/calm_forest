@@ -747,6 +747,7 @@
   .dm-item { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 62px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,0.6); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s; }
   .dm-item:active { transform: scale(0.94); }
   .dm-item.off { opacity: .4; }
+  .dm-item.locked .di-ico { filter: grayscale(1); }
   .dm-item .di-ico { font-size: 22px; }
   .dm-item .di-name { font-size: 11px; font-weight: 600; }
   .dm-item .di-cost { font-size: 10px; opacity: .7; }
@@ -3488,11 +3489,13 @@
         const payIco = pay === 'fish' ? '🐟' : '🥕';
         const have = lastInv[pay] || 0;
         const stored = (Input.getStored?.() || {})[d.id] || 0;      // 🧺 창고 보유분 — 값 없이 꺼내 놓는다
-        const ok = stored > 0 || have >= d.cost;
+        const ok = !d.locked && (stored > 0 || have >= d.cost);
         const el = document.createElement('div');
-        el.className = 'dm-item' + (ok ? '' : ' off');
-        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${stored > 0 ? `보유 ${stored}` : payIco + d.cost}</span>`;
+        // 🔒 잠긴 고급 가구도 목록엔 그대로 둔다 — 뭘 향해 모으는지 보여야 코인 싱크가 된다(흐리게 + 자물쇠만)
+        el.className = 'dm-item' + (ok ? '' : ' off') + (d.locked ? ' locked' : '');
+        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${d.locked ? '🔒' : (stored > 0 ? `보유 ${stored}` : payIco + d.cost)}</span>`;
         el.addEventListener('click', () => {
+          if (d.locked) { ui.toast('집을 더 증축하면 살 수 있어요'); return; }
           if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)

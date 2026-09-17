@@ -1803,7 +1803,10 @@ export const Input = {
   // 낮/밤 수동 조절(setTimeOfDay·toggleDayFlow)은 제거됐다 — 시간은 늘 자동으로 흐르고,
   // 플레이어가 만질 수 있는 건 🛏️ 침대뿐(밤에 누우면 아침). dayPaused 는 ?time= dev 파라미터 전용.
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
-  getDecor() { return DECOR; },
+  getDecor() {   // 🏠 층별 해금 — 잠긴 것도 목록엔 보이되 locked 로 흐리게(살 목표가 보여야 싱크가 된다)
+    const st = gameState.houseStage;
+    return DECOR.filter(d => !d.hidden).map(d => ({ ...d, locked: !decorUnlocked(d, st) }));
+  },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
   kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
   kitchenFinish(id, res) { return kitchenFinish(id, res); },    // 🍳 코스 결과 → 등급·기록·트래킹(버프는 아직)
@@ -7450,6 +7453,19 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = nu
   const def = DECOR.find(d => d.id === id); if (!def) return false;
   const ry = (rot == null ? decorRot : rot) % 4;
   const curFloor = f == null ? houseFloor : f;    // f = 지금 서 있는 층(복원 시엔 호출부가 정규화해서 넘긴다)
+  // 🔒 층 해금 · 실외 전용 가드 — silent(세이브 복원)는 건너뛴다: applySave 는 houseStage 를
+  // 가구보다 나중에 복원하므로(js/game.js applySave), 여기서 즉시 gameState.houseStage 로 걸면
+  // 이미 정당하게 산 고급 가구가 복원 시점에 stage=0 취급되어 통째로 사라진다. 결제·신규 배치(!silent)만 막으면
+  // Task 4 가 찾은 구멍(3단계에서 사서 실내에 놓기)은 그대로 막힌다.
+  if (!silent) {
+    const floorDef = floorAt(gameState.houseStage, curFloor);
+    if (!decorUnlocked(def, gameState.houseStage)) { ui.toast?.('집을 더 증축하면 살 수 있어요'); return false; }
+    // 받침 유무로 "은/는" 이 갈린다(자쿠지·화분나무엔 받침이 없다) — josa() 로 문장 통째로 분기
+    if (!canPlaceOn(def, floorDef)) {
+      ui.toast?.(josa(def.name, `${def.ico} ${def.name}은 루프탑에만 놓을 수 있어요`, `${def.ico} ${def.name}는 루프탑에만 놓을 수 있어요`));
+      return false;
+    }
+  }
   const stored = gameState.house.stored || (gameState.house.stored = {});
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }

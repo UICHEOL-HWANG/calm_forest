@@ -83,3 +83,36 @@ test('옛 세이브(f 없음)의 가구는 전부 1층으로 읽힌다', () => {
 test('복원 코드가 house 부재 가드를 유지한다', () => {
   assert.ok(SRC.includes('if (saved.house && Array.isArray(saved.house.decor))'));
 });
+
+// ── Task 5: 상점에 층 해금 반영 ─────────────────────────────────
+test('상점 목록은 잠긴 가구에 locked 를 붙인다', () => {
+  const list = [{ id: 'sofa' }, { id: 'jacuzzi', stage: 6 }].map(d => ({ ...d, locked: !decorUnlocked(d, 4) }));
+  assert.deepEqual(list.map(d => d.locked), [false, true]);
+});
+
+test('getDecor 가 해금 상태를 실어 보낸다', () => {
+  assert.ok(SRC.includes('locked: !decorUnlocked('));
+});
+
+test('getDecor 가 hidden 가구는 목록에서 뺀다(Task 6 parasol_set 대비)', () => {
+  assert.ok(SRC.includes('DECOR.filter(d => !d.hidden)'));
+});
+
+test('placeDecor 가 결제 전에 층 해금·실외 전용 가드를 건다', () => {
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2000);
+  const guardIdx = decorSrc.indexOf('decorUnlocked(def, gameState.houseStage)');
+  const payIdx = decorSrc.indexOf('gameState.inventory[pay] -= def.cost');
+  assert.ok(guardIdx > -1 && payIdx > -1 && guardIdx < payIdx);
+  assert.ok(decorSrc.includes('canPlaceOn(def, floorDef)'));
+  assert.ok(decorSrc.includes('집을 더 증축하면 살 수 있어요'));
+  assert.ok(decorSrc.includes('루프탑에만 놓을 수 있어요'));
+});
+
+test('placeDecor 의 해금 가드는 silent(세이브 복원) 복원을 막지 않는다', () => {
+  // applySave 는 houseStage 를 가구보다 나중에 복원한다 — silent 경로까지 gameState.houseStage 로
+  // 즉시 걸면 이미 정당하게 산 고급 가구가 복원 시 사라진다(회귀). guard 가 !silent 안에 있어야 한다.
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2000);
+  const guardBlockIdx = decorSrc.indexOf('if (!silent) {');
+  const innerGuardIdx = decorSrc.indexOf('decorUnlocked(def, gameState.houseStage)');
+  assert.ok(guardBlockIdx > -1 && innerGuardIdx > guardBlockIdx);
+});
