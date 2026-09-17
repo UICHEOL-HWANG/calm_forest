@@ -24,8 +24,6 @@ writeFileSync('dist-toss/index.html', html);
 
 // 게임 모듈(전부 절차 생성이라 정적 자산은 js/ 뿐)
 cpSync('js', 'dist-toss/js', { recursive: true });
-// 📦 자체 호스팅 라이브러리(three·supabase) — importmap 이 ./vendor/ 를 가리키므로 함께 넣는다
-cpSync('vendor', 'dist-toss/vendor', { recursive: true });
 
 // ② config.js: API_BASE 를 절대 오리진으로 치환.
 //    앵커가 사라지면(리팩터링 등) 조용히 깨진 번들이 나가지 않도록 빌드를 실패시킨다.

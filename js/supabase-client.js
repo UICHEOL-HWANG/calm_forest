@@ -137,10 +137,10 @@ export async function initAuth(onStatusChange) {
   }
 
   try {
-    // 📦 자체 호스팅(vendor/) — esm.sh 는 531B 스텁이라 그대로 못 받는다. esbuild 로 구운
-    //    단일 ESM 을 쓴다(scripts/fetch-vendor.mjs). 앱(Capacitor)에서 오프라인으로 뜨려면
-    //    라이브러리가 번들 안에 있어야 한다.
-    const { createClient } = await import('../vendor/supabase.js');
+    // 📦 웹·토스·itch 는 CDN 그대로. 구글 플레이(Capacitor) 빌드만 scripts/build-cap.mjs 가
+    //    이 줄을 vendor/supabase.js 로 치환한다 — 앱은 오프라인에서도 떠야 하기 때문.
+    //    ⚠️ 이 문자열이 build-cap 의 치환 앵커다. 바꾸면 빌드가 실패하도록 되어 있다.
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
     supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
       auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true },
     });
