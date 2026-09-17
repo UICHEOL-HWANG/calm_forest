@@ -90,3 +90,11 @@ test('isMapLocked: 베타 날짜 게이트는 한 글자도 안 바뀐다', () =
   assert.equal(isMapLocked({ ...beta, nowMs: T('2026-09-10T02:00:00Z') }, 'sea'), true,  'D1 엔 잠김');
   assert.equal(isMapLocked({ ...beta, nowMs: T('2026-09-12T02:00:00Z') }, 'sea'), false, 'D3 에 열림');
 });
+
+// 🍎 blockIfLocked(game.js) 가 잠긴 진행도 게이트 맵에서 lockLine(map, openDay) 를 그대로 부른다.
+//   openDay 가 null(진행도 게이트엔 여는 "날"이 없다)이어도, BETA_COPY.lock[map] 자체가 없으면
+//   .replace 가 undefined 위에서 터진다 — orchard 를 PROGRESS_GATE 에 넣을 때 이 항목을 깜빡하면
+//   잠긴 과수원 입구에서 액션(Space)을 누르는 순간 예외가 난다.
+test('lockLine: 진행도 게이트 맵(openDay=null)도 죽지 않고 문구를 돌려준다', () => {
+  assert.equal(lockLine('orchard', null), '🔒 🌾고급 작물을 한 번 거두면 열려요');
+});

@@ -305,6 +305,7 @@ const MINE = new THREE.Vector3(0, 0, 250);      // 채굴 동굴(다른 공간�
 const MINE_HALF = 12;                           // 넓은 동굴
 const MINE_GATE = new THREE.Vector3(-14, 0, 3); // 마을 서쪽 동굴 입구
 let atMine = false;
+let atOrchard = false;                          // 🍎 과수원 언덕 안에 있는지
 // 🌉 낚시 부두 — 호수 서쪽 물가에서 안쪽으로 뻗음. 물은 못 들어가고 부두 위만 걸을 수 있음
 const PIER = { x1: 9.6, x2: 13.4, z1: 8.25, z2: 9.75 };
 function onPier(p) { return p.x > PIER.x1 - 0.5 && p.x < PIER.x2 && p.z > PIER.z1 && p.z < PIER.z2; }
@@ -497,6 +498,11 @@ const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, s
 const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
 const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
 const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
+
+// ── 🍎 과수원 언덕 — 기획: docs/superpowers/specs/2026-09-17-orchard-design.md ──────────────
+const ORCHARD_GATE = new THREE.Vector3(22, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1)
+const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
+const ORCHARD_HALF = 20;                            // 언덕 반경
 const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
 const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
 // 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
@@ -1078,6 +1084,8 @@ const gameState = {
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
+  orchard: { trees: [], sapSel: 'apple', settleDate: null },   // 🍎 과수원(js/orchard.js)
+  progress: { advHarvest: 0 },   // 🔒 진행도 해금 카운터 — 고급 작물 수확 횟수(js/tuning.js PROGRESS_GATE)
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, score }]. 등급은 score 에서 파생. 최대 PANTRY_MAX 칸
   workshop: { carved: 0, carvedToday: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 오늘 완성 수(의뢰 판정용), 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
@@ -1695,6 +1703,7 @@ function toolZoneKey() {
   if (atRiver) return 'river';
   if (atFarm) return 'farm';
   if (atMine) return 'mine';
+  if (atOrchard) return 'orchard';
   if (nearForest) return 'forest';
   if (nearGlade && isNight()) return 'glade';
   return null;                       // 마을 — 자동 전환 없음
@@ -1949,7 +1958,8 @@ function betaNowMs() {
 }
 function mapLocked(map) {
   return isMapLocked({ variant: authState.variant, mapOrder: authState.mapOrder,
-                       createdAtIso: authState.createdAt, nowMs: betaNowMs() }, map);
+                       createdAtIso: authState.createdAt, progress: gameState.progress,
+                       nowMs: betaNowMs() }, map);
 }
 /** 잠긴 입구에서 액션했을 때 — 토스트 + GA4. true 면 입장을 막는다. */
 function blockIfLocked(map) {
@@ -2450,11 +2460,11 @@ function setShadowActive(on) {
 }
 
 // 현재 공간 플래그 묶음 — updateDayNight 가 매 프레임 부르므로 객체를 재사용한다(프레임당 할당 0).
-const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false, atMuseum: false };
+const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false, atMuseum: false, atOrchard: false };
 function spaceFlags() {
   _spaceFlags.indoor = indoor; _spaceFlags.atFarm = atFarm; _spaceFlags.atMine = atMine;
   _spaceFlags.atCafe = atCafe; _spaceFlags.atRiver = atRiver; _spaceFlags.atMist = atMist;
-  _spaceFlags.atSea = atSea; _spaceFlags.atMuseum = atMuseum;
+  _spaceFlags.atSea = atSea; _spaceFlags.atMuseum = atMuseum; _spaceFlags.atOrchard = atOrchard;
   return _spaceFlags;
 }
 
@@ -5868,6 +5878,29 @@ function exitMist() {
   snapCamera(); setSpaceVisible();
   Sound.blip(); setBGMTheme?.('main');
   trackEvent('mist_exit');                             // [GA4]
+}
+
+// ── 🍎 과수원 언덕 — 입장 / 퇴장 ─────────────────────────────
+function enterOrchard() {
+  if (blockIfLocked('orchard')) return;           // 🔒 고급 작물 1회 수확 전이면 여기서 막힌다
+  atOrchard = true;
+  player.position.set(ORCHARD.x, 0, ORCHARD.z + ORCHARD_HALF - 1.6); player.rotation.y = Math.PI;
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
+  snapCamera(); setSpaceVisible();
+  // ⚠️ 일일 정산 호출은 여기 넣지 않는다 — settleOrchard 는 Task 8 에서 만들어진다.
+  //    Task 8 Step 4 가 이 자리에 `settleOrchard();` 한 줄을 넣는다.
+  firstHint('orchardIntro', '🍎', '과수원 언덕',
+    '🌰씨앗 도구로 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요');
+  Sound.blip(); setBGMTheme?.('main');
+  trackEvent('orchard_enter', { trees: (gameState.orchard?.trees || []).length });   // [GA4] 유입
+}
+function exitOrchard() {
+  atOrchard = false;
+  player.position.set(ORCHARD_GATE.x - 1.6, 0, ORCHARD_GATE.z + 1.6);
+  nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); lastZoneHint = null;
+  snapCamera(); setSpaceVisible();
+  Sound.blip();
+  trackEvent('orchard_exit');   // [GA4]
 }
 
 // ── 정화 시작 / 웨이브 ──────────────────────────────────────
@@ -9623,6 +9656,8 @@ function updateDoorInteract() {
     }
   } else if (atMine) {
     if (dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
+  } else if (atOrchard) {   // 🍎 과수원 언덕: 들어온 남쪽 경계로 나가기
+    if (dist2D({ x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF }, player.position) < 1.9) { nd = 'orchardexit'; prompt = '🚪 나가기'; }
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
@@ -9657,6 +9692,11 @@ function updateDoorInteract() {
     const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     prompt = locked ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';
     if (!locked) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
+  } else if (!indoor && dist2D(player.position, ORCHARD_GATE) < 2.2) {
+    nd = 'orchard';
+    const locked = mapLocked('orchard');
+    prompt = locked ? '🔒 🌾고급 작물을 한 번 거두면 열려요' : '🍎 과수원 언덕에 올라가기';
+    if (!locked) firstHintBanner('orchardGate', '🍎', '과수원 언덕', '묘목을 심어 매일 열매를 따는 언덕');
   } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
@@ -9758,7 +9798,7 @@ function updateZoneHint() {
   }
   if (hint !== lastZoneHint) { lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
-function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum; }   // 마을 실외 여부(집 근처 버튼용)
+function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atOrchard; }   // 마을 실외 여부(집 근처 버튼용)
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 function ensureNearRing() {
   if (!decorNearRing) {
@@ -9892,6 +9932,7 @@ const VILLAGE_PLACES = [
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
+  { ico: '🍎', name: '과수원 언덕',   x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];
 
 // 지금 이 세이브 기준의 지명 목록 — 아직 못 가는 곳은 locked 로 내려보내 지도에서 흐리게 그린다.
@@ -11024,6 +11065,8 @@ function handleAction() {
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'mine') return enterMine();
   if (nearDoor === 'mineexit') return exitMine();
+  if (nearDoor === 'orchard') return enterOrchard();
+  if (nearDoor === 'orchardexit') return exitOrchard();
   if (nearDoor === 'cafe') return enterCafe();
   if (nearDoor === 'cafeexit') return exitCafe();
   if (nearDoor === 'museum') return enterMuseum();

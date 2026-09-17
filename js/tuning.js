@@ -55,7 +55,8 @@ export const BETA = {
 export const BETA_COPY = {
   diaryBtn: '📝 오늘 일지',
   diaryTitle: '고요한 숲 베타 일지',
-  lock: { sea: '🌊 바다터는 {N}일차에 열려요', mist: '🌫️ 안개 낀 숲은 {N}일차에 열려요' },
+  lock: { sea: '🌊 바다터는 {N}일차에 열려요', mist: '🌫️ 안개 낀 숲은 {N}일차에 열려요',
+          orchard: '🔒 🌾고급 작물을 한 번 거두면 열려요' },   // 🍎 진행도 게이트라 {N}(날짜)이 없다 — replace 가 그대로 통과한다
   open: {
     sea:  '🌊 바다터가 열렸어요 — 먼 바다 대형 물고기와 줄다리기',
     mist: '🌫️ 안개 낀 숲이 열렸어요 — 등불과 ♪음악으로 안개를 정화하는 숲',
