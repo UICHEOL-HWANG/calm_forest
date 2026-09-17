@@ -2207,6 +2207,18 @@ export async function enterGame() {
     };
     window.__gs = () => gameState; window.__plots = () => plots;   // 🌾 검수용 상태 열람(dev 세션 전용)
     window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
+    // 🍎 과수원 검수용 — 해금·자리 채우기·비우기·드로우콜 측정(__spawnWorkers 와 같은 용도)
+    window.__orchardOpen = () => { gameState.progress.advHarvest = Math.max(1, gameState.progress.advHarvest || 0); return '🍎 해금 — 마을 동쪽 ' + ORCHARD_GATE.x + ',' + ORCHARD_GATE.z + ' (__tp 로 이동)'; };
+    window.__orchardFill = (fruit = 6) => {   // 자리 10개를 5종으로 꽉 채운다(최악 조건)
+      gameState.orchard.trees = ORCHARD_SLOTS_LOCAL.map(([x, z], i) => ({
+        x: ORCHARD.x + x, z: ORCHARD.z + z, kind: FRUITS[i % FRUITS.length].id,
+        stage: 'mature', age: 9, watered: false, fruit,
+      }));
+      rebuildOrchard();
+      return { trees: gameState.orchard.trees.length, calls: renderer.info.render.calls };
+    };
+    window.__orchardClear = () => { gameState.orchard.trees = []; rebuildOrchard(); return { trees: 0, calls: renderer.info.render.calls }; };
+    window.__orchardCalls = () => renderer.info.render.calls;   // 프레임이 한 번 더 돈 뒤의 실제 값
     window.__workSteps = (n = 1) => { const t = {}; workerSteps(n, t); return t; };   // 🧑‍🌾 오프라인 스텝 강제 실행(검수용 — 접속 중 60초 스텝과 같은 함수)
     window.__workers = () => workerObjs.map(o => ({ name: o.rec.name, job: o.rec.job, works: o.rec.works, phase: o.phase, t: +o.t.toFixed(2), task: o.task?.type || null, vis: o.group.visible, x: +o.group.position.x.toFixed(1), z: +o.group.position.z.toFixed(1) }));   // 🧑‍🌾 일꾼 상태 열람(검수용)
     // 📜 의뢰 패널 검수용 — __gs().npcs 를 손으로 고친 뒤 이걸 부르면 패널·말풍선·지도가 같이 갱신된다
