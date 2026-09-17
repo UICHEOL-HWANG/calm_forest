@@ -521,7 +521,7 @@ export const EN = {
   '오늘의 물길 최고 점수 — 코스는 모두에게 같아요': 'Today\'s best river score — the course is the same for everyone',
   // ── 🌊 바다터(대형 낚시) ──
   '🌊 오늘의 대어': '🌊 Catch of the Day',
-  '오늘 낚은 ⚔️참치 최고 무게 — 대어의 급은 모두에게 같은 날 같아요': 'Heaviest ⚔️tuna landed today — everyone gets the same class of fish each day',
+  '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요': 'Heaviest fish landed today — any species counts',
   '🌊 바다터 (먼 바다로 나가볼까요?)': '🌊 Seaside Pier (head out to the open sea?)',
   '🎣 던지기 — 물고기를 보고!': '🎣 Cast — aim at a fish!',
   '…기다리는 중…': '…waiting for a bite…',

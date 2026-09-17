@@ -24,6 +24,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
+import { pickSeaTarget } from './sea-aim.js';   // 🎣 바다터 조준 — 바라보는 쪽의 물고기가 걸린다
 import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격 + 오래 끌 때 탈출구
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
@@ -7291,12 +7292,14 @@ const _seaV = new THREE.Vector3(), _seaUp = new THREE.Vector3(0, 1, 0);
 function seaAction() {
   if (seaMG.st === 'idle') {
     if (!seaFishes.length) { ui.toast?.('🐟 지금은 물고기가 안 보여요. 시간대가 바뀌면 다른 어종이 와요'); return; }
-    // 조준 — 가장 가까운 배회 물고기의 어종이 걸린다("뭘 노리느냐"가 난이도)
-    let best = null, bd = Infinity;
-    for (const f of seaFishes) {
-      const d = dist2D({ x: SEA.x + f.g.position.x, z: SEA.z + f.g.position.z }, player.position);
-      if (d < bd) { bd = d; best = f; }
-    }
+    // 조준 — 바라보는 쪽의 물고기가 걸린다("뭘 노리느냐"가 난이도).
+    //   ⚠️ 예전엔 '가장 가까운' 이었는데, 부두가 좁고 어종이 배열 순서대로 깔리는 탓에
+    //      맨 끝 어종(⚔️참치)이 부두 한가운데서 조준 확률 0% 였다 — js/sea-aim.js 참고.
+    const best = pickSeaTarget(
+      seaFishes.map(f => ({ f, x: SEA.x + f.g.position.x, z: SEA.z + f.g.position.z })),
+      player.position, player.rotation.y,
+    )?.f;
+    if (!best) return;
     seaMG.sp = best.sp; seaMG.st = 'cast'; seaMG.t = 0; seaMG.landed = false;
     seaMG.ease = betaEase('sea');   // 🧪 첫 3회 관대 판정
     seaMG.good = 0; seaMG.bad = 0; seaMG.progress = 0; seaMG.t0 = clock.elapsedTime;
