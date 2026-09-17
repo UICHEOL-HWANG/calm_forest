@@ -7440,11 +7440,11 @@ function stopDecorPlacing(putBack) {
 }
 function buildDecorGhost(id, outdoor = false) {
   removeDecorGhost();
-  // 🏮 outdoorMesh 는 정원등·화로·정령등불의 재질을 houseWindows(밤 점등 목록)에 밀어 넣는다.
+  // 🏮 outdoorMesh·decorMesh 둘 다 램프·화로 같은 재질을 houseWindows(밤 점등 목록)에 밀어 넣는다.
   //   고스트 것까지 남으면 목록이 불어나고, 고스트를 지울 때 dispose 된 재질이 목록에 남는다 → 도로 잘라낸다.
   const hw0 = houseWindows.length;
   const g = outdoor ? outdoorMesh(id) : decorMesh(id);
-  if (outdoor) houseWindows.length = hw0;
+  houseWindows.length = hw0;
   ghostOutdoor = outdoor;
   g.traverse(o => {
     if (!o.isMesh) return;
@@ -7575,6 +7575,7 @@ function nearestDecor(reach) {
 function pickDecor(root) {
   const rec = root.userData.rec; if (!rec) return false;
   scene.remove(root); decorMeshes.splice(decorMeshes.indexOf(root), 1);
+  unregisterWindows(root);   // 🏮 샹들리에·파이어핏·자쿠지처럼 밤 점등 목록에 올라간 재질을 들어 올릴 때 같이 뺀다(pickOutdoor 와 같은 규칙)
   if (root.userData.collider) removeSolid(root.userData.collider);   // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   const i = gameState.house.decor.indexOf(rec); if (i >= 0) gameState.house.decor.splice(i, 1);
   decorRot = rec.rot || 0;
