@@ -223,6 +223,17 @@ const DECOR = [
   { id: 'fireplace',   name: '벽난로',   ico: '🔥', cost: 12, pay: 'crop', big: true, foot: [1.4, 0.6] },
   { id: 'piano',       name: '피아노',   ico: '🎹', cost: 12, pay: 'crop', big: true, foot: [1.4, 1.1] },
   { id: 'bigaquarium', name: '큰 어항',  ico: '🐠', cost: 5,  pay: 'fish', big: true, foot: [1.3, 0.6] },
+  // 🏠 층별 해금 고급 가구 — 코인 전용(후반 싱크). stage = 증축 단계 해금, outdoorOnly = 루프탑에만.
+  { id: 'rocker',    name: '흔들의자',   ico: '🪑', cost: 120, pay: 'coins', stage: 4, foot: [0.7, 0.8] },
+  { id: 'telescope', name: '망원경',     ico: '🔭', cost: 150, pay: 'coins', stage: 4, foot: [0.6, 0.6] },
+  { id: 'trunk',     name: '여행 트렁크', ico: '🧳', cost: 180, pay: 'coins', stage: 4, foot: [0.9, 0.55] },
+  { id: 'bathtub',   name: '욕조',       ico: '🛁', cost: 250, pay: 'coins', stage: 5, big: true, foot: [1.6, 0.8] },
+  { id: 'bigart',    name: '큰 그림',    ico: '🖼️', cost: 280, pay: 'coins', stage: 5, foot: [1.2, 0.2] },
+  { id: 'chandelier', name: '샹들리에',  ico: '💠', cost: 300, pay: 'coins', stage: 5 },
+  { id: 'grandpiano', name: '그랜드 피아노', ico: '🎹', cost: 400, pay: 'coins', stage: 5, big: true, foot: [2.0, 1.6] },
+  { id: 'firepit',   name: '파이어핏',   ico: '🔥', cost: 500, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.9, 0.9] },
+  { id: 'planttree', name: '큰 화분나무', ico: '🌿', cost: 700, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.8, 0.8] },
+  { id: 'jacuzzi',   name: '자쿠지',     ico: '♨️', cost: 900, pay: 'coins', stage: 6, outdoorOnly: true, big: true, foot: [2.0, 1.6] },
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
 
@@ -7255,6 +7266,102 @@ function decorMesh(id) {
       const fish = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 6), clayMat(c, false));
       fish.rotation.z = Math.PI / 2; fish.position.set(x, y, 0); fish.userData.swim = true; fish.userData.swimW = 0.42; fish.userData.swimY = y; fish.userData.swimP = ph; g.add(fish);
     });
+  } else if (id === 'rocker') {
+    const w = woodMat(1, 1, 0x9c6b40);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.55), w); seat.position.y = 0.42; g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.08), w); back.position.set(0, 0.72, -0.24); back.rotation.x = -0.18; g.add(back);
+    [-0.26, 0.26].forEach(x => {   // 곡선 다리(흔들이)
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 6, 8, Math.PI), w);
+      r.position.set(x, 0.3, 0); r.rotation.set(Math.PI / 2, 0, Math.PI); g.add(r);
+    });
+  } else if (id === 'telescope') {
+    const tri = clayMat(0x4a4f57);
+    [0, 2.1, 4.2].forEach(a => {   // 삼각대
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 5), tri);
+      leg.position.set(Math.cos(a) * 0.16, 0.35, Math.sin(a) * 0.16); leg.rotation.z = Math.cos(a) * 0.32; leg.rotation.x = -Math.sin(a) * 0.32; g.add(leg);
+    });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.66, 10), clayMat(0xd8dde0, false));
+    tube.position.set(0, 0.82, 0); tube.rotation.z = 0.5; g.add(tube);
+    const eye = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.14, 8), clayMat(0x23252a));
+    eye.position.set(-0.3, 0.68, 0); eye.rotation.z = 0.5; g.add(eye);
+  } else if (id === 'trunk') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.45, 0.5), woodMat(1, 1, 0x7a4a2e)); body.position.y = 0.23; g.add(body);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.85, 10, 1, false, 0, Math.PI), woodMat(1, 1, 0x8d5636));
+    lid.position.y = 0.45; lid.rotation.z = Math.PI / 2; g.add(lid);
+    const strapMat = clayMat(0x4a3526);
+    [-0.28, 0.28].forEach(x => {   // 가죽 띠
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.48, 0.53), strapMat); b.position.set(x, 0.24, 0); g.add(b);
+    });
+  } else if (id === 'bathtub') {
+    const porcelain = clayMat(0xf7f5f0, false);
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.75), porcelain); outer.position.y = 0.25; g.add(outer);
+    const water = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.06, 0.58), clayMat(0x8fd0e8, false)); water.position.y = 0.46; g.add(water);
+    const fixture = clayMat(0xd8dde0, false);   // 발·수도꼭지 공용 금속 재질
+    [-0.6, 0.6].forEach(x => {     // 발
+      const ft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.12, 6), fixture); ft.position.set(x, 0.06, 0.26); g.add(ft);
+    });
+    const tap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 6), fixture); tap.position.set(-0.68, 0.6, 0); g.add(tap);
+  } else if (id === 'bigart') {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.85, 0.07), clayMat(0xb98a4e)); frame.position.y = 1.15; g.add(frame);
+    const canvas = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.03), clayMat(0xe8ddc8, false)); canvas.position.set(0, 1.15, 0.04); g.add(canvas);
+    [[-0.22, 1.05, 0x7fb08a], [0.16, 1.24, 0xd98b6a], [0.3, 1.0, 0x8fa8d0]].forEach(([x, y, c]) => {
+      const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 0), clayMat(c, false)); blob.position.set(x, y, 0.06); blob.scale.z = 0.2; g.add(blob);
+    });
+  } else if (id === 'chandelier') {
+    const gold = new THREE.MeshStandardMaterial({ color: 0xe9b949, roughness: 0.35, metalness: 0.5 });   // clayMat 은 flat(bool)만 받아 금속 재질은 직접 생성
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 5), gold); chain.position.y = 2.35; g.add(chain);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.035, 6, 14), gold); ring.position.y = 2.05; ring.rotation.x = Math.PI / 2; g.add(ring);
+    const cmat = new THREE.MeshStandardMaterial({ color: 0xfff2c4, emissive: 0xffca70, emissiveIntensity: 0, roughness: 0.6 });
+    houseWindows.push(cmat);       // 🌙 밤에 창문·램프와 함께 켜진다
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 7), cmat);
+      c.position.set(Math.cos(a) * 0.34, 2.14, Math.sin(a) * 0.34); g.add(c);
+    }
+  } else if (id === 'grandpiano') {
+    const black = clayMat(0x1a1b1f);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.78, 0.26, 16, 1, false, 0, Math.PI), black);
+    body.position.y = 0.62; body.rotation.y = -Math.PI / 2; g.add(body);
+    const front = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.26, 0.5), black); front.position.set(0, 0.62, 0.62); g.add(front);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 0.9), clayMat(0x26282e, false)); lid.position.set(0.1, 0.9, -0.1); lid.rotation.z = -0.28; g.add(lid);
+    const keys = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.24), clayMat(0xf5f2e8, false)); keys.position.set(0, 0.76, 0.8); g.add(keys);
+    [[-0.6, 0.72], [0.6, 0.72], [0, -0.5]].forEach(([x, z]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.5, 6), black); leg.position.set(x, 0.25, z); g.add(leg);
+    });
+  } else if (id === 'firepit') {
+    const stone = clayMat(0x8b857a);
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      const s = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.14), stone);
+      s.position.set(Math.cos(a) * 0.36, 0.08, Math.sin(a) * 0.36); s.rotation.y = -a; g.add(s);
+    }
+    const fmat = new THREE.MeshStandardMaterial({ color: 0xffb057, emissive: 0xff7b2e, emissiveIntensity: 0, roughness: 0.7 });
+    houseWindows.push(fmat);       // 🌙 밤에 켜진다(실외 층이라 더 잘 보인다)
+    [[0, 0.2, 0.17], [0.1, 0.3, 0.12], [-0.09, 0.28, 0.1]].forEach(([x, y, r]) => {
+      const f = new THREE.Mesh(new THREE.ConeGeometry(r, r * 2.4, 6), fmat); f.position.set(x, y, 0); g.add(f);
+    });
+  } else if (id === 'planttree') {
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.27, 0.42, 10), clayMat(0xb87f5e)); pot.position.y = 0.21; g.add(pot);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.07, 10), clayMat(0xa06d4e)); rim.position.y = 0.44; g.add(rim);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.6, 6), clayMat(0x6b4a34)); trunk.position.y = 0.72; g.add(trunk);
+    const leafMat = clayMat(0x6b9a4c);
+    [[0, 1.16, 0.34], [-0.2, 0.98, 0.24], [0.22, 1.0, 0.22]].forEach(([x, y, r]) => {
+      const l = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leafMat); l.position.set(x, y, 0); g.add(l);
+    });
+  } else if (id === 'jacuzzi') {
+    const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.72, 0.55, 14), clayMat(0xe9e4d8)); shell.position.y = 0.28; g.add(shell);
+    const wmat = new THREE.MeshStandardMaterial({ color: 0x5fd3e8, emissive: 0x2aa8c4, emissiveIntensity: 0, roughness: 0.25 });
+    houseWindows.push(wmat);       // 🌙 밤에 물이 파랗게 빛난다(구성품 수영장 조명과 같은 문법)
+    const water = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.07, 14), wmat); water.position.y = 0.53; g.add(water);
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 0.88, 0.1, 14), woodMat(2, 2, 0xc19a66)); deck.position.y = 0.05; g.add(deck);
+  } else if (id === 'parasol_set') {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.5, 6), clayMat(0xd8dde0, false)); pole.position.y = 0.75; g.add(pole);
+    const top = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.4, 10), clayMat(0x6fd3e3, false)); top.position.y = 1.55; g.add(top);
+    const chairMat = clayMat(0xf4f3ee);
+    [-0.55, 0.55].forEach(x => {   // 라운지 체어 2개
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.09, 0.85), chairMat); seat.position.set(x, 0.26, 0.5); g.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.08), chairMat); back.position.set(x, 0.46, 0.12); back.rotation.x = 0.42; g.add(back);
+    });
   }
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   setFogExempt(root, true);   // 실내 가구는 안개 밖(고스트는 재질을 clone 하므로 플래그가 따라간다)
@@ -7269,12 +7376,19 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
   if (!silent && !free && !fromStore) {
-    const pay = def.pay || 'crop';                          // 화폐: 작물 or 물고기
-    if ((gameState.inventory[pay] || 0) < def.cost) {
-      ui.toast?.(pay === 'fish' ? `물고기가 부족해요 (필요 ${def.cost} 🐟)` : `작물이 부족해요 (필요 ${def.cost} 🥕)`);
+    const pay = def.pay || 'crop';                          // 화폐: 작물 · 물고기 · 🪙코인(고급 가구)
+    const have = pay === 'coins' ? (gameState.inventory.coins || 0) : (gameState.inventory[pay] || 0);
+    if (have < def.cost) {
+      ui.toast?.(pay === 'coins' ? `코인이 부족해요 (필요 ${def.cost} 🪙)`
+               : pay === 'fish'  ? `물고기가 부족해요 (필요 ${def.cost} 🐟)`
+               :                   `작물이 부족해요 (필요 ${def.cost} 🥕)`);
       return false;
     }
     gameState.inventory[pay] -= def.cost; refreshInventoryUI();
+    if (pay === 'coins') {
+      logEcon('decor_buy', id, -def.cost, gameState.inventory.coins);   // [원장] 코인 소비 — 다른 코인 싱크와 같은 축
+      trackEvent('decor_buy_coins', { item: id, coins: def.cost, stage: gameState.houseStage }); // [GA4] 코인 싱크 퍼널
+    }
   }
   const m = decorMesh(id);
   const lx = decorClampX(wx), lz = decorClampZ(wz);

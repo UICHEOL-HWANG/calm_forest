@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn } from '../js/house-floors.js';
 
 test('3단계는 1층뿐', () => {
@@ -45,4 +46,29 @@ test('실외 전용 가구는 루프탑에만 놓인다', () => {
   assert.equal(canPlaceOn(firepit, floorAt(6, 2)), true);
   assert.equal(canPlaceOn(firepit, floorAt(6, 0)), false);
   assert.equal(canPlaceOn({ id: 'sofa' }, floorAt(6, 2)), true);
+});
+
+// ── Task 2: 고급 가구 10종 데이터 + 코인 결제 ─────────────────────
+const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const DECOR_SRC = SRC.slice(SRC.indexOf('const DECOR = ['), SRC.indexOf('\n];', SRC.indexOf('const DECOR = [')));
+
+test('고급 가구 10종이 코인 전용으로 들어 있다', () => {
+  const coinLines = DECOR_SRC.split('\n').filter(l => l.includes("pay: 'coins'"));
+  assert.equal(coinLines.length, 10);
+});
+
+test('고급 가구 가격은 구성품 대역과 같다', () => {
+  const costs = [...DECOR_SRC.matchAll(/cost: (\d+),\s*pay: 'coins'/g)].map(m => +m[1]);
+  assert.deepEqual(costs.sort((a, b) => a - b), [120, 150, 180, 250, 280, 300, 400, 500, 700, 900]);
+});
+
+test('루프탑 가구 3종만 실외 전용이다', () => {
+  assert.equal((DECOR_SRC.match(/outdoorOnly: true/g) || []).length, 3);
+});
+
+test('기존 21종은 작물·생선 그대로다', () => {
+  // ⚠️ task-2-brief 는 "기존 22종"을 전제했으나 DECOR 원본을 세어 보면 21종이다(주석
+  // "2026-09-09 추가 9종" 기준으로도 12+9=21). 실측값에 맞춰 기대치를 21로 둔다.
+  const old = DECOR_SRC.split('\n').filter(l => /pay: '(crop|fish)'/.test(l));
+  assert.equal(old.length, 21);
 });
