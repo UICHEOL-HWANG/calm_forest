@@ -2606,7 +2606,7 @@ function buildWorld() {
       || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
       || dist2D({ x, z }, { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 5 }) < 3.5   //    계단 앞 진입로도 틔운다
       || dist2D({ x, z }, ORCHARD_GATE) < 5   // 🍎 과수원 문 앞은 비워 둔다
-      || dist2D({ x, z }, { x: ORCHARD_GATE.x, z: ORCHARD_GATE.z + 4 }) < 6.5   //    온실 몸통(북쪽으로 뻗음)에 나무가 박히지 않게
+      || dist2D({ x, z }, { x: ORCHARD_GATE.x, z: ORCHARD_GATE.z - 4 }) < 6.5   //    온실 몸통(북쪽으로 뻗음)에 나무가 박히지 않게
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
@@ -5975,13 +5975,13 @@ function buildOrchardGate() {
   g.add(orchardGateBar);
 
   g.add(makeSignpost('🍎 과수원 언덕', -2.6, 2.4));
-  g.rotation.y = -Math.PI / 2;   // 국소 +x → 월드 -z. 몸통이 북쪽으로 서고 문은 남쪽(마을 쪽)을 본다
+  g.rotation.y = Math.PI / 2;    // 국소 +x → 월드 -z(북). 몸통이 북쪽으로 뻗고 **문은 남쪽을 본다** — 마을에서 걸어오는 쪽
   scene.add(g);
 
   // 🚧 몸통을 실제로 막는다 — 원 하나로는 7 길이를 못 덮어 그냥 통과했다.
   //    문 앞(국소 -x = 월드 +z)은 비워 둬야 프롬프트 반경 2.2 안에 설 수 있다.
-  for (let d = 1.0; d <= LEN; d += 1.5) solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z - d, 1.9);
-  orchardGateSolid = solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z - 0.45, 1.5);   // 🔒 잠긴 동안 문을 막는다
+  for (let d = 1.0; d <= LEN; d += 1.5) solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z - d, 1.9);   // 몸통은 -z(북)
+  orchardGateSolid = solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z + 0.45, 1.5);   // 🔒 잠긴 동안 문을 막는다
   obstacles.push({ x: ORCHARD_GATE.x, z: ORCHARD_GATE.z - mid, r: R + 1.4 });   // 밭·나무 금지 구역
   syncOrchardGateLock();
 }
