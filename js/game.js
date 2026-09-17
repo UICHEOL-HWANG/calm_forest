@@ -535,7 +535,7 @@ function setSpaceVisible() {
   for (const id in interiorFloors) interiorFloors[id].visible = indoor && id === showId;
   refreshStairsLandmarks();   // 증축으로 houseStage 가 바뀌었을 수도 있으니 전환마다 다시 계산(스펙 §3 위반 A)
   interiorGroup = interiorFloors[showId] || interiorFloors.ground;   // 레이캐스트(interiorFloor)·미니맵 등이 참조하는 "지금 방"
-  interiorFloor = interiorGroup ? interiorGroup.userData.floorGroup : interiorFloor;   // 🪜 구멍 뚫린 방은 바닥이 조각 여럿(floorGroup) — floorHitFromEvent 가 재귀 레이캐스트로 받는다
+  interiorFloor = interiorGroup ? interiorGroup.userData.floorGroup : interiorFloor;   // 🌀 방마다 바닥 메시를 담은 floorGroup — floorHitFromEvent 가 재귀 레이캐스트로 받는다
   // 🛋️ 가구 메시는 scene 직속(interiorGroup 자식이 아님) — 방과 같이 따로 꺼야 한다.
   //    방은 월드 (0,0,52)에 실제로 서 있고 마을 이동 한계는 반경 42다. 그래서 북쪽 끝에 서면
   //    벽·바닥이 숨은 자리에 가구만 들판 위에 떠 보였다(제보 2026-09-15 "맵 끝에 피아노·장롱").
@@ -1466,6 +1466,7 @@ let interiorGroup, interiorFloor, interiorLamp;
 let interiorFloors = {};   // { [id]: THREE.Group } — 층 id('ground'|'attic'|'upper'|'roof')별 방. 항상 넷 다 짓는다
 let houseFloor = 0;   // 🏠 지금 서 있는 실내 층 인덱스(f) — 0=1층 · 1=다락/2층 · 2=루프탑
 let nearDoorFloor = 0;   // nearDoor === 'floor' 일 때 갈 층(f)
+let lastFloorChoiceKey = null;   // 🪜 양방향(6단계 2층) 선택 UI 중복 갱신 방지 — null 이면 닫힘
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
@@ -7163,20 +7164,20 @@ function curFloorDef() {
 }
 function curHalf() { return curFloorDef().half; }   // 클램프 기준(js/house-floors.js 의 half)
 
-// 🪜 계단 치수 — sims/stair-concepts/stairs.js 그대로 포팅(재설계 아님, 사용자 승인 조형).
-//   오르는 계단(벽 붙박이, 천장까지) · 내려가는 계단(바닥 구멍형) 두 종류.
-const ASTEPS = 12, ARISE = 0.25, ARUN = 0.32, ATW = 1.1;   // 오르는 계단
-const DSTEPS = 9, DRISE = 0.25, DRUN = 0.34;               // 내려가는 계단(참고용 — 트레드 생성에서 직접 씀)
-const HOLE_HW = 0.7, HOLE_HD = 1.6;                         // 구멍 반폭·반깊이(전체 1.4×3.2)
+// 🌀 나선 계단 치수 — sims/stair-concepts/stairs.js(kind='spiral') 그대로 포팅(재설계 아님, 사용자 승인 조형).
+//   오르내림을 한 몸으로 처리하는 단일 랜드마크 하나가 원형 구멍을 통과한다 — 직선형의
+//   "오르는 계단(벽 붙박이)+내려가는 계단(바닥 구멍)" 두 오브젝트를 이것 하나로 대체한다(공간 절약이 재설계 이유).
+const SPIRAL_STEPS = 12, SPIRAL_RISE = 0.25, SPIRAL_R = 1.2, SPIRAL_NEWEL_R = 0.14;
+const SPIRAL_HOLE_R = SPIRAL_R + 0.15;                       // 디딤판 바깥 여유 0.15 — 구멍이 디딤판보다 살짝 크다
+const SPIRAL_STEP_DEG = 324 / SPIRAL_STEPS;                  // 12×27°=324° — 한 바퀴를 다 안 돌아 위/아래가 안 겹친다
+const STAIR_PROMPT_R = 1.9;                                  // 🪜 근접 프롬프트 반경 — solidCircle(반경 SPIRAL_HOLE_R)+PLAYER_R(0.42)=1.77 보다 커야 막힌 자리에서 반드시 뜬다
 
 // 🪜 계단 배치 좌표(순수 함수) — buildRoom(짓기)과 updateDoorInteract(프롬프트 판정)가
-//   반드시 같은 공식을 써야 한다. 컨셉 뷰어 stairs.js 의 layout() 그대로.
+//   반드시 같은 공식을 써야 한다(계단을 옮기면 판정 좌표도 같이 옮긴다 — task-7 교훈).
+//   컨셉 뷰어 stairs.js 의 layoutSpiral() 그대로: 구멍(=나선) 중심을 방 크기(H)에 비례해 잡는다.
 function stairLayout(H) {
-  // 🚧 리뷰 반영: 구멍이 방 한가운데 떠 있어 가구 놓을 자리를 잡아먹었다 — 왼쪽 벽에 바짝 붙인다
-  //   (오르는 계단이 오른쪽 벽에 붙는 것과 같은 간격 0.15, 구멍 폭 자체(1.4)·비례는 손대지 않는다).
-  const holeX = -H + HOLE_HW + 0.15, holeZ = -H * 0.05;
-  const ax = H - ATW / 2 - 0.12, az = H - 1.2;   // 오르는 계단 진입점(오른쪽 벽 붙박이)
-  return { holeX, holeZ, ax, az, x1: holeX - HOLE_HW, x2: holeX + HOLE_HW, z1: holeZ - HOLE_HD, z2: holeZ + HOLE_HD };
+  const cx = -H * 0.3, cz = -H * 0.05;
+  return { cx, cz, r: SPIRAL_R, holeR: SPIRAL_HOLE_R };
 }
 
 // 두 점을 정확히 잇는 원기둥 — 각도를 손으로 계산하면 부호 실수가 낀다(컨셉 뷰어에서 이미 겪은 버그, stairs.js 그대로).
@@ -7204,17 +7205,19 @@ function buildRoom(def) {
     ? woodMat(3, 3, 0xc19a66)
     : fin.floor.kind === 'wood' ? woodMat(fin.floor.rep, fin.floor.rep, fin.floor.c)
                                 : clayMat(fin.floor.c, false);
-  // 🪜 바닥 — 내려가는 구멍이 있는 층은 통 판이 아니라 4조각 프레임으로 실제로 뚫는다
-  //   (통 판이면 디딤판이 바닥 밑에 묻혀 안 보인다 — 컨셉 뷰어에서 겪은 버그, stairs.js 주석 참고).
-  //   floorGroup 에 조각을 몰아 두면(레이캐스트는 raycaster.intersectObject(g, true) 로 재귀 탐색해서)
-  //   4조각이어도 바닥 전체가 가구 배치 클릭에 정상 반응한다(floorHitFromEvent 쪽도 같이 고침).
+  // 🌀 바닥 — 내려갈 곳이 있는 층은 통 판에 THREE.Shape.holes 로 진짜 원형 구멍 하나를 낸다
+  //   (나선 계단이 지나가는 자리). stairs.js 의 spiral 바닥과 같은 shape+extrude 방식 —
+  //   메시 하나가 갈라지지 않아(직선형 포팅 때의 "4조각으로 쪼개져 가구 배치 레이캐스트가 1/4만
+  //   먹힌" 회귀를 애초에 피한다) 그래도 다른 층과 구조를 맞추려 floorGroup 에 그대로 넣는다.
   const floorGroup = new THREE.Group(); g.add(floorGroup); g.userData.floorGroup = floorGroup;
   if (hasDown) {
-    const mkFloor = (w, d, cx, cz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, d), floorMat); m.position.set(cx, 0.1, cz); m.receiveShadow = true; floorGroup.add(m); };
-    mkFloor(lay.x1 - (-H), W, (-H + lay.x1) / 2, 0);                            // 왼쪽 띠
-    mkFloor(H - lay.x2, W, (lay.x2 + H) / 2, 0);                                // 오른쪽 띠
-    mkFloor(lay.x2 - lay.x1, lay.z1 - (-H), lay.holeX, (-H + lay.z1) / 2);      // 입구 쪽 띠(열어 둔다)
-    mkFloor(lay.x2 - lay.x1, H - lay.z2, lay.holeX, (lay.z2 + H) / 2);          // 안쪽 띠
+    const outer = new THREE.Shape();
+    outer.moveTo(-H, -H); outer.lineTo(H, -H); outer.lineTo(H, H); outer.lineTo(-H, H); outer.closePath();
+    const holePath = new THREE.Path(); holePath.absarc(lay.cx, -lay.cz, lay.holeR, 0, Math.PI * 2, false);   // shape.y = -world z (stairs.js 규칙)
+    outer.holes.push(holePath);
+    const floorGeo = new THREE.ExtrudeGeometry(outer, { depth: 0.2, bevelEnabled: false });
+    floorGeo.rotateX(-Math.PI / 2);   // 회전 후 깊이(0~0.2)가 그대로 world y — 기존 박스 바닥(position.y=0.1 → [0,0.2])과 같은 범위라 translate 불필요
+    const floor = new THREE.Mesh(floorGeo, floorMat); floor.receiveShadow = true; floorGroup.add(floor);
   } else {
     const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), floorMat);
     floor.position.y = 0.1; floor.receiveShadow = true; floorGroup.add(floor);
@@ -7246,127 +7249,102 @@ function buildRoom(def) {
       const fw = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); fw.position.set(0, 1.5, -H); g.add(fw);
     }
   }
-  // 🪜 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2).
-  //   sims/stair-concepts/stairs.js 승인안 포팅: 오르는 계단(벽 붙박이, 닫힌 스트링어) ·
-  //   내려가는 계단(바닥 구멍형, 3면 난간). 좌표는 stairLayout(H) — updateDoorInteract 의
-  //   프롬프트 판정도 반드시 같은 공식을 쓴다(계단을 옮기면 판정 좌표도 같이 옮긴다 — task-7 교훈).
-  //   실제로 보일지는 refreshStairsLandmarks() 가 지금 houseStage 기준으로 매번 정한다 —
-  //   3단계 1층처럼 목적지가 아직 없으면 장식만 하는 계단을 보여주지 않는다(스펙 §3 "지금 그대로").
-  //   계단 재질은 방에 하나씩 — 오르는/내려가는 두 랜드마크가 같은 재질을 나눠 쓴다(드로우콜, 스펙 §8.3)
+  // 🌀 나선 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2).
+  //   sims/stair-concepts/stairs.js(kind='spiral') 승인안 포팅. 좌표는 stairLayout(H) —
+  //   updateDoorInteract 의 프롬프트 판정도 반드시 같은 공식을 쓴다(계단을 옮기면 판정 좌표도
+  //   같이 옮긴다 — task-7 교훈). 실제로 보일지는 refreshStairsLandmarks() 가 지금 houseStage
+  //   기준으로 매번 정한다(스펙 §3 "지금 그대로"). 계단 재질은 방에 하나씩(드로우콜, 스펙 §8.3).
+  //   🔦 볼룸 함정(직선형 포팅 때 겪음, js/game.js:10216 UnrealBloomPass 임계 0.85): 나선은
+  //   추가 광원을 넣지 않는다(컨셉 뷰어 확인 — grep 으로 PointLight 없음 재확인) — 형태·재질
+  //   대비만으로 읽히게 짠 설계라 그 함정을 원천적으로 피한다.
   const treadMat = clayMat(fin.tread);
   const railMat = fin.rail === 'glass' ? HH.glass(0xa9d8ea) : clayMat(fin.rail);
   if (fin.rail === 'glass') railMat.opacity = 0.22;   // villa.js railGlass 와 같은 값
+  // 🎨 4단계(브릭 로프트)는 난간·디딤판이 같은 색이라 나선 형태에서 난간이 디딤판 바로 위를 지나가며
+  //   통짜 검은 덩어리로 뭉쳤다(컨셉 뷰어에서 실측 확인). 난간 색만 밝혀(+0.16 HSL lightness) 분리한다 —
+  //   실제 게임 팔레트(INT_FINISH)는 4단계 tread(0x3a3d44)≠rail(0x23252a)라 이 조건은 지금 안 걸리지만,
+  //   규칙 자체(같은 색이면 밝힌다)를 그대로 포팅해 둔다. 밝기 측정은 아래 "우려 사항"에 기록.
+  const spiralRailMat = (fin.rail !== 'glass' && fin.rail === fin.tread)
+    ? clayMat(new THREE.Color(fin.tread).offsetHSL(0, 0, 0.16).getHex())
+    : railMat;
 
-  // A. 오르는 계단 — 오른쪽 벽에 붙어 천장(3.0)까지 닿는다. 닫힌 스트링어(삼각 옆판, shape+extrude) +
-  //    디딤판마다 "그 자리 높이 + 0.85"로 꼭대기를 잡는 기둥(끝점 두 개를 직접 잇는다 — 고정 길이로 주면
-  //    기울기가 안 맞아 기둥이 손잡이를 뚫거나 못 미친다, 컨셉 뷰어에서 겪은 버그) + 기둥 꼭대기끼리 잇는 손잡이.
-  const buildAscendStair = () => {
+  // 🪜 오르내림을 한 몸으로 — hasFlight(위로, def.f<2) · hasHole(아래로, def.f>0) 조합에 따라
+  //   부분만 짓는다(직선형이 def.f<2/def.f>0 로 오르는/내려가는 계단을 따로 건 것과 같은 규칙,
+  //   랜드마크 하나로 합쳤을 뿐): 1층(f=0)은 오르는 나선만(바닥에 구멍이 없다),
+  //   루프탑(f=2)은 구멍+테두리 난간만(위로 갈 곳이 없다), 그 사이(f=1)는 둘 다.
+  const buildSpiralStair = (hasFlight, hasHole) => {
     const st = new THREE.Group();
-    const { ax, az } = lay;
-    const runTotal = ASTEPS * ARUN, riseTotal = ASTEPS * ARISE;
-    const slope = Math.atan2(riseTotal, runTotal);
-    const runLen = Math.hypot(runTotal, riseTotal);
-    for (let i = 0; i < ASTEPS; i++) {
-      const s = new THREE.Mesh(new THREE.BoxGeometry(ATW, 0.14, ARUN + 0.05), treadMat);
-      s.position.set(ax, ARISE * (i + 1), az - i * ARUN); s.castShadow = true; st.add(s);
-    }
-    const roomX = ax - (ATW / 2 - 0.05);
-    const railX = ax - (ATW / 2 + 0.14);
-    const RAIL_LIFT = 0.85;
-    {
-      const skirtShape = new THREE.Shape();
-      skirtShape.moveTo(0, 0); skirtShape.lineTo(0, ARISE * 0.6);
-      skirtShape.lineTo(runTotal, riseTotal); skirtShape.lineTo(runTotal, 0); skirtShape.closePath();
-      const skirtThick = 0.1;
-      const geo = new THREE.ExtrudeGeometry(skirtShape, { depth: skirtThick, bevelEnabled: false });
-      geo.translate(0, 0, -skirtThick / 2); geo.rotateY(Math.PI / 2);
-      const skirt = new THREE.Mesh(geo, treadMat);
-      skirt.position.set(roomX, 0, az); skirt.castShadow = true; st.add(skirt);
-    }
-    if (fin.rail === 'glass') {
-      const paneH = 0.7;
-      const pane = new THREE.Mesh(new THREE.BoxGeometry(0.04, paneH, runLen), railMat);
-      pane.position.set(railX, riseTotal / 2 + RAIL_LIFT - paneH / 2, az - (ASTEPS - 1) * ARUN / 2);
-      pane.rotation.x = slope; st.add(pane);
-    } else {
-      const postIdx = [0, 3, 6, 9, ASTEPS - 1];
-      const postTop = (idx) => [railX, ARISE * (idx + 1) + RAIL_LIFT, az - idx * ARUN];
-      const postBase = (idx) => [railX, ARISE * (idx + 1), az - idx * ARUN];
+    const { cx, cz, r: R, holeR } = lay;
+    const stepRad = (SPIRAL_STEP_DEG * Math.PI) / 180;
+    const RAIL_LIFT = 0.9;
+    const postPoint = (idx, top) => {
+      const a = (idx + 0.5) * stepRad;   // 그 단의 바깥 가장자리 중앙(각도)
+      return [cx + Math.cos(a) * (R - 0.06), idx * SPIRAL_RISE + (top ? RAIL_LIFT : 0), cz - Math.sin(a) * (R - 0.06)];
+    };
+
+    if (hasFlight) {
+      // 쐐기 디딤판 — 한 장을 만들어 단마다 회전만 시킨다(재질·지오메트리 공유, 드로우콜 절감).
+      const wedgeShape = new THREE.Shape();
+      const rIn = SPIRAL_NEWEL_R + 0.04, segs = 5;
+      for (let i = 0; i <= segs; i++) { const a = stepRad * i / segs; wedgeShape[i === 0 ? 'moveTo' : 'lineTo'](Math.cos(a) * R, -Math.sin(a) * R); }
+      for (let i = segs; i >= 0; i--) { const a = stepRad * i / segs; wedgeShape.lineTo(Math.cos(a) * rIn, -Math.sin(a) * rIn); }
+      wedgeShape.closePath();
+      const wedgeGeo = new THREE.ExtrudeGeometry(wedgeShape, { depth: 0.14, bevelEnabled: false });
+      wedgeGeo.rotateX(-Math.PI / 2); wedgeGeo.translate(0, 0.14, 0);
+      for (let i = 0; i < SPIRAL_STEPS; i++) {
+        const tread = new THREE.Mesh(wedgeGeo, treadMat);
+        tread.position.set(cx, i * SPIRAL_RISE, cz);
+        tread.rotation.y = i * stepRad;
+        tread.castShadow = true; st.add(tread);
+      }
+      // 중앙 기둥 — 얇은 디딤판이 떠 있는 게 아니라 굵은 기둥에 박혀 있는 것처럼 보이게 한다.
+      const newelH = SPIRAL_STEPS * SPIRAL_RISE + 0.3;   // 천장(3.0)보다 살짝 더 올라간다(끝이 허전해 보이지 않게)
+      const newel = new THREE.Mesh(new THREE.CylinderGeometry(SPIRAL_NEWEL_R, SPIRAL_NEWEL_R, newelH, 10), treadMat);
+      newel.position.set(cx, newelH / 2, cz); newel.castShadow = true; st.add(newel);
+      // 난간 기둥 — 두 단 걸러 세운다. "꼭대기" 좌표를 아래 손잡이 곡선의 제어점으로도 그대로 써서
+      //   기둥이 손잡이를 뚫거나 못 미치는 불일치가 구조적으로 생길 수 없다.
+      const postIdx = [0, 2, 4, 6, 8, 10, SPIRAL_STEPS - 1];
       postIdx.forEach(idx => {
-        const newel = idx === 0; const r = newel ? 0.1 : 0.08;
-        st.add(rodBetween(postBase(idx), postTop(idx), r, railMat));
+        const newelPost = idx === 0; const r = newelPost ? 0.075 : 0.05;
+        st.add(rodBetween(postPoint(idx, false), postPoint(idx, true), r, spiralRailMat));
       });
-      st.add(rodBetween(postTop(0), postTop(ASTEPS - 1), 0.08, railMat));
     }
-    // 🚧 계단은 표지물이라 못 올라가지만 몸은 그대로 지나가면 안 된다 — 발자국(디딤판+스커트+기둥)만큼 막는다.
-    st.userData.collider = solidBox(
-      g.position.x + railX - 0.15, g.position.z + az - runTotal - 0.1,
-      g.position.x + ax + ATW / 2 + 0.05, g.position.z + az + 0.2);
+
+    // 손잡이 — 나선을 그대로 따라 도는 매끈한 곡선 하나(TubeGeometry+CatmullRom).
+    //   구멍이 있으면(hasHole) 테두리 난간(입구 쪽 35° 만 비움)을 같은 곡선 제어점에 이어붙여
+    //   "따로 노는 원이 아니라 한 줄"로 만든다.
+    let rimPts = null;
+    if (hasHole) {
+      const flightA0 = 0.5 * stepRad;   // 0단 바깥 가장자리 각도 — 곡선이 나선 손잡이와 만나는 자리
+      const rimSpanRad = (325 * Math.PI) / 180, rimSegs = 24;
+      rimPts = [];
+      for (let i = rimSegs; i >= 0; i--) {   // 입구 쪽(먼 끝)에서 0단 방향으로 다가오는 순서 — 이어붙이기 순서 맞춤
+        const a = flightA0 + (rimSpanRad * i) / rimSegs;
+        rimPts.push([cx + Math.cos(a) * holeR, RAIL_LIFT, cz - Math.sin(a) * holeR]);
+      }
+    }
+    const flightPts = hasFlight ? Array.from({ length: SPIRAL_STEPS }, (_, idx) => postPoint(idx, true)) : null;
+    const curvePts = [...(rimPts || []), ...(flightPts || [])];
+    if (curvePts.length >= 2) {
+      const railCurve = new THREE.CatmullRomCurve3(curvePts.map(p => new THREE.Vector3(...p)));
+      const railTube = new THREE.Mesh(new THREE.TubeGeometry(railCurve, hasFlight && hasHole ? 140 : hasFlight ? 100 : 80, 0.05, 8, false), spiralRailMat);
+      railTube.castShadow = true; st.add(railTube);
+    }
+    if (rimPts) {
+      // 손스침대 둘 — 입구(먼 끝)와 0단 쪽(반경이 holeR→R 로 줄어드는 지점), 둘 다 바닥에서 난간까지.
+      st.add(rodBetween([rimPts[0][0], 0, rimPts[0][2]], rimPts[0], 0.09, spiralRailMat));
+      st.add(rodBetween([rimPts[rimPts.length - 1][0], 0, rimPts[rimPts.length - 1][2]], rimPts[rimPts.length - 1], 0.08, spiralRailMat));
+    }
+
+    // 🚧 콜라이더 — 원형 발자국이라 solidCircle 로 정확히 막는다(각도에 상관없이 같은 반경에서 멈춘다).
+    //   구멍이 있는 층(hasHole)은 구멍 전체를, 없는 층(1층)은 디딤판 바깥 반경을 — 둘 다 holeR 로
+    //   통일해 단순하게(디딤판 R=1.2 보다 살짝 넉넉한 값이라 발이 걸리지 않는다).
+    st.userData.collider = solidCircle(g.position.x + cx, g.position.z + cz, holeR);
     g.add(st);
     return st;
   };
 
-  // B. 내려가는 계단 — 바닥의 진짜 구멍(위 floorGroup 이 이미 4조각으로 뚫어 뒀다)으로 내려간다.
-  //    3면(왼·오른·안쪽) 난간 + 입구(z1, 방 안쪽에서 접근하는 쪽) 난간 없이 개방 — 승인안 그대로.
-  //    ⚠️ 콜라이더는 시각과 달리 구멍 전체(4면)를 막는다 — 난간이 없는 입구 쪽도 실제로 걸어 들어가면
-  //       빠지므로, "여기가 입구"라는 신호는 난간(시각)만 주고 통행은 프롬프트(층 이동)로만 허용한다.
-  const buildDescendStair = () => {
-    const st = new THREE.Group();
-    const { holeX, holeZ, x1, x2, z1, z2 } = lay;
-    const flightDepth = DSTEPS * DRISE;      // 디딤판이 실제로 닿는 깊이
-    const shaftDepth = flightDepth + 1.75;   // 그 아래로도 한참 더 어둠 속으로(모델링된 바닥 없음 — 의도)
-    const shaftMatUp = clayMat(0x5e616a), shaftMatDown = clayMat(0x22242a);   // 방 하나에 2개 더(디딤판/난간과 별개 — 단계 무관 중립색)
-    [[0, -flightDepth, shaftMatUp], [-flightDepth, -shaftDepth, shaftMatDown]].forEach(([y0, y1, mat]) => {
-      const h = y0 - y1, cy = (y0 + y1) / 2;
-      st.add(HH.box(x2 - x1, h, 0.06, mat, holeX, cy, z1));
-      st.add(HH.box(0.06, h, z2 - z1, mat, x1, cy, holeZ));
-      st.add(HH.box(0.06, h, z2 - z1, mat, x2, cy, holeZ));
-      st.add(HH.box(x2 - x1, h, 0.06, mat, holeX, cy, z2));
-    });
-    st.add(HH.box(x2 - x1, 0.05, z2 - z1, shaftMatDown, holeX, -shaftDepth + 0.02, holeZ));   // 맨 밑은 닫아 둔다
-    // 🔦 구멍 안을 밝히는 보조광 — interiorLamp(방 중앙 점광)는 바닥 아래까지 거의 안 닿는다.
-    //   🚧 리뷰 반영: stairs.js(컨셉 뷰어)의 5.0/4.5 는 그 뷰어 전용 조명(보조광 없음·bloom 없음) 기준값이라
-    //   그대로 옮기면 실제 게임의 UnrealBloomPass(임계 0.85, js/game.js:10216)에 걸려 디딤판이 흰 빛으로 날아간다
-    //   (예전 나룻배 물보라와 같은 함정). 실측(1.2/1.0)으로 디딤판·난간이 또렷이 보이면서 번지지 않는 값을 확인했다.
-    const holeLight = new THREE.PointLight(0xfff4d8, 1.2, 9, 1.1);
-    holeLight.position.set(holeX, 0.6, holeZ - 1.0); st.add(holeLight);
-    const holeLight2 = new THREE.PointLight(0xfff4d8, 1.0, 8, 1.1);
-    holeLight2.position.set(holeX, -flightDepth * 0.5, holeZ + 0.2); st.add(holeLight2);
-    const DTW = HOLE_HW * 2 - 0.12;   // 디딤판 폭 — 구멍 폭(1.4)의 거의 전부(스커트용 여유만)
-    const ENTRY_OFFSET = 0.22;        // 입구에서 첫 단까지(디딤판 반두께보다 커야 입구 밖으로 안 삐져나온다)
-    for (let i = 0; i < DSTEPS; i++) {
-      const s = new THREE.Mesh(new THREE.BoxGeometry(DTW, 0.14, DRUN + 0.05), treadMat);
-      s.position.set(holeX, -DRISE * i, z1 + ENTRY_OFFSET + i * DRUN);
-      s.castShadow = true; st.add(s);
-    }
-    {   // 닫힌 스커트(양옆) — 계단 밑이 비계처럼 뚫려 보이지 않게
-      const skirtShape = new THREE.Shape();
-      skirtShape.moveTo(0, 0); skirtShape.lineTo(-0.3, 0);
-      skirtShape.lineTo(-(DSTEPS * DRUN), -flightDepth); skirtShape.lineTo(0, -flightDepth); skirtShape.closePath();
-      const skirtThick = 0.08;
-      const geo = new THREE.ExtrudeGeometry(skirtShape, { depth: skirtThick, bevelEnabled: false });
-      geo.translate(0, 0, -skirtThick / 2); geo.rotateY(Math.PI / 2);
-      const skirt = new THREE.Mesh(geo, treadMat);
-      skirt.position.set(holeX - DTW / 2, 0, z1 + ENTRY_OFFSET); skirt.castShadow = true; st.add(skirt);
-      const skirt2 = skirt.clone(); skirt2.position.x = holeX + DTW / 2; st.add(skirt2);
-    }
-    {   // 난간 3면(왼·오른·안쪽) — 입구(z1)는 개방. 각목(사각 단면) — 원기둥은 이 축척에서 배관처럼 보인다.
-      const railH = 0.9, postW = 0.11, newelW = 0.14, handW = 0.12, handT = 0.07;
-      const post = (cx, cz, w) => { st.add(HH.box(w, railH, w, railMat, cx, railH / 2, cz)); };
-      post(x1, z1, newelW); post(x1, z2, postW); post(x2, z2, postW); post(x2, z1, newelW);
-      post(x1, holeZ, postW); post(x2, holeZ, postW);
-      st.add(HH.box(handT, handW, z2 - z1, railMat, x1, railH, holeZ));
-      st.add(HH.box(x2 - x1, handW, handT, railMat, holeX, railH, z2));
-      st.add(HH.box(handT, handW, z2 - z1, railMat, x2, railH, holeZ));
-    }
-    // 🚧 구멍 전체를 막는다(4면 다) — "우려 사항" 위 주석 참고.
-    st.userData.collider = solidBox(g.position.x + x1, g.position.z + z1, g.position.x + x2, g.position.z + z2);
-    g.add(st);
-    return st;
-  };
-
-  if (def.f < 2) g.userData.stUp = buildAscendStair();     // 위로 — 오른쪽 벽 붙박이
-  if (hasDown) g.userData.stDown = buildDescendStair();    // 아래로 — 바닥 구멍
+  g.userData.st = buildSpiralStair(def.f < 2, hasDown);   // f<2 = 위로 갈 수 있는 구조(1·2층) · hasDown(f>0) = 아래로 갈 구멍
   scene.add(g); g.visible = false;
   setFogExempt(g, true);   // 방은 안개 밖(작은 방이라 안개가 지척의 벽까지 흐리게 만든다 — 루프탑도 좁아 같은 이유로 예외)
   return g;
@@ -7396,8 +7374,7 @@ function rebuildInteriorFinish() {
     unregisterWindows(grp);      // 창 재질이 houseWindows 에 남지 않게(누수 방지)
     // 🚧 계단 콜라이더는 scene 그래프가 아니라 별도 colliders 배열에 산다 — scene.remove() 로는 안 빠진다.
     //    안 빼면 증축(재건축)할 때마다 안 보이는 벽이 쌓인다.
-    if (grp.userData.stUp?.userData.collider) removeSolid(grp.userData.stUp.userData.collider);
-    if (grp.userData.stDown?.userData.collider) removeSolid(grp.userData.stDown.userData.collider);
+    if (grp.userData.st?.userData.collider) removeSolid(grp.userData.st.userData.collider);
     disposeTree(grp);            // 옛 방의 지오메트리·재질 GPU 자원 반환
     scene.remove(grp);
   }
@@ -7406,22 +7383,21 @@ function rebuildInteriorFinish() {
   setSpaceVisible();
 }
 
-// 🪜 계단 표지물 위/아래 각각을 지금 houseStage 에서 실제로 갈 수 있을 때만 보이게 한다(스펙 §3 위반 A 수정).
-//   houseStage 는 플레이 중 올라갈 수 있어 매번 다시 계산해야 한다 — setSpaceVisible·증축 직후 호출.
+// 🪜 계단 랜드마크(방마다 하나)를 지금 houseStage 에서 어느 한쪽이라도 실제로 갈 수 있을 때만 보이게 한다
+//   (스펙 §3 위반 A 수정). houseStage 는 플레이 중 올라갈 수 있어 매번 다시 계산해야 한다 —
+//   setSpaceVisible·증축 직후 호출.
 function refreshStairsLandmarks() {
   for (const id in interiorFloors) {
     const room = interiorFloors[id];
     const f = room.userData.floorIdx;
-    if (room.userData.stUp) {
-      room.userData.stUp.visible = !!floorAt(gameState.houseStage, f + 1);
-      // 🚧 방(다른 층)이 지금 안 보이면 그 계단 콜라이더도 꺼야 한다 — 네 방이 같은 좌표(INT)에
-      //    겹쳐 있어서, 안 보이는 층의 콜라이더를 켜 두면 지금 서 있는 층에 안 보이는 벽이 생긴다(Task 4 review Critical 2 재발).
-      if (room.userData.stUp.userData.collider) room.userData.stUp.userData.collider.off = !(room.visible && room.userData.stUp.visible);
-    }
-    if (room.userData.stDown) {
-      room.userData.stDown.visible = f > 0 && !!floorAt(gameState.houseStage, f - 1);
-      if (room.userData.stDown.userData.collider) room.userData.stDown.userData.collider.off = !(room.visible && room.userData.stDown.visible);
-    }
+    const st = room.userData.st;
+    if (!st) continue;
+    const upOk = f < 2 && !!floorAt(gameState.houseStage, f + 1);
+    const downOk = f > 0 && !!floorAt(gameState.houseStage, f - 1);
+    st.visible = upOk || downOk;
+    // 🚧 방(다른 층)이 지금 안 보이면 이 콜라이더도 꺼야 한다 — 네 방이 같은 좌표(INT)에 겹쳐 있어서,
+    //    안 보이는 층의 콜라이더를 켜 두면 지금 서 있는 층에 안 보이는 벽이 생긴다(Task 4 review Critical 2 재발).
+    if (st.userData.collider) st.userData.collider.off = !(room.visible && st.visible);
   }
 }
 
@@ -7828,7 +7804,7 @@ function floorHitFromEvent(e) {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObject(interiorFloor, true)[0];   // 🪜 floorGroup — 구멍 뚫린 방은 바닥 조각이 여럿이라 재귀 탐색
+  const hit = raycaster.intersectObject(interiorFloor, true)[0];   // 🌀 floorGroup — 나선 포팅 후 구멍 뚫린 바닥도 메시 하나(Shape.holes)뿐이지만, 방마다 조각 수가 달라도 안전하도록 재귀 탐색은 그대로 둔다
   return hit ? hit.point : null;
 }
 // 배치 중 바닥 탭/클릭
@@ -9974,14 +9950,16 @@ function goFloor(f) {
   const h = def.half;
   player.position.x = Math.max(INT.x - h + 1.5, Math.min(INT.x + h - 1.5, player.position.x));
   player.position.z = Math.max(INT.z - h + 1.5, Math.min(INT.z + h - 1.5, player.position.z));
-  nearDoor = null; ui.setDoorPrompt?.(null); setSpaceVisible();
+  nearDoor = null; ui.setDoorPrompt?.(null);
+  lastFloorChoiceKey = null; ui.setFloorChoice?.(null);   // 🪜 양방향 선택 UI도 즉시 닫는다(다음 프레임에 필요하면 다시 뜬다)
+  setSpaceVisible();
   Sound.blip();
   trackEvent('house_floor', { to: def.id, stage: gameState.houseStage });   // [GA4] 층 사용률
 }
 
 // 문 근접 감지(입장/퇴장 프롬프트)
 function updateDoorInteract() {
-  let nd = null, prompt = null;
+  let nd = null, prompt = null, floorChoiceOpts = null;   // 🪜 floorChoiceOpts — 같은 자리에서 두 방향 다 갈 수 있을 때만(6단계 2층)
   nearDecorMesh = null; nearOutdoorMesh = null; if (decorNearRing) decorNearRing.visible = false;   // 🛋️🪵 옮기기 링은 대상이 있을 때만
   // 🪵 다른 구역으로 가면 배치 모드를 접는다 — 들고 있던 건 제자리로(분실 방지),
   //   작업대에서 막 고른 것도 접는다(아직 값을 안 치렀고, 실내·동굴에선 놓을 수 없는데 🫥미리보기와 ↻회전 버튼만 따라다닌다).
@@ -10019,17 +9997,23 @@ function updateDoorInteract() {
   if (indoor) {
     if (houseFloor === 0 && dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 1층 문 바로 앞에서만
     else {
-      // 🪜 계단 — buildRoom 의 stUp/stDown 과 같은 stairLayout(h) 공식으로 진입점을 잡는다
+      // 🌀 나선 계단 — buildRoom 의 st(단일 랜드마크)와 같은 stairLayout(h) 공식으로 자리를 잡는다
       //   (계단을 옮기면 이 판정 좌표도 반드시 같이 옮긴다 — 포팅 전 "아래로 못 내려간다" 제보의 원인).
-      //   이웃 층(f±1)만 직접 잇는다 — 3층 구성(6단계)에서도 다른 층을 거치지 않고 바로 오갈 수 있다.
+      //   오르내림이 한 자리(원형 발자국 하나)라 근접 판정도 하나 — 반경 안이면 이웃 층(f±1) 둘 다
+      //   후보에 올린다. 하나면 예전처럼 Space 로 바로, **둘 다면(6단계 2층) 버튼 두 개로 동시에
+      //   제시**한다(우선순위로 하나만 주면 "원치 않는 층을 거쳐야" 하는 문제가 재발 — task 지시).
       const h = curHalf();
       const lay = stairLayout(h);
       const upDef = floorAt(gameState.houseStage, houseFloor + 1);
       const downDef = houseFloor > 0 ? floorAt(gameState.houseStage, houseFloor - 1) : null;
-      if (upDef && dist2D({ x: INT.x + lay.ax, z: INT.z + lay.az }, player.position) < 1.6) {
-        nd = 'floor'; nearDoorFloor = houseFloor + 1; prompt = `🪜 ${upDef.name}으로`;
-      } else if (downDef && dist2D({ x: INT.x + lay.holeX, z: INT.z + lay.z1 }, player.position) < 1.6) {
-        nd = 'floor'; nearDoorFloor = houseFloor - 1; prompt = `🪜 ${downDef.name}으로`;
+      const nearStair = dist2D({ x: INT.x + lay.cx, z: INT.z + lay.cz }, player.position) < STAIR_PROMPT_R;
+      const opts = [];
+      if (nearStair && upDef) opts.push({ f: houseFloor + 1, label: `🪜 ${upDef.name}으로` });
+      if (nearStair && downDef) opts.push({ f: houseFloor - 1, label: `🪜 ${downDef.name}으로` });
+      if (opts.length === 2) {
+        nd = 'floorchoice'; floorChoiceOpts = opts;
+      } else if (opts.length === 1) {
+        nd = 'floor'; nearDoorFloor = opts[0].f; prompt = opts[0].label;
       } else if (!placingDecor) {
         // 🛋️ 놓아둔 가구 옆에 서면 "옮기기" — NPC·문과 같은 근접 프롬프트+액션 문법(탭으로 드는 경로는 그대로)
         const near = nearestDecor(0.9);
@@ -10155,6 +10139,13 @@ function updateDoorInteract() {
     const ring = ensureNearRing(); ring.position.set(outdoorNear.mesh.position.x, 0.04, outdoorNear.mesh.position.z); ring.visible = true;
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+  // 🪜 양방향 선택 UI(6단계 2층 전용) — door-prompt 와 같은 중복 갱신 방지 패턴.
+  //   opts 가 바뀔 때만 버튼을 다시 그린다(매 프레임 onclick 재바인딩 낭비 방지).
+  const fcKey = floorChoiceOpts ? floorChoiceOpts.map(o => o.f).join(',') : null;
+  if (fcKey !== lastFloorChoiceKey) {
+    lastFloorChoiceKey = fcKey;
+    ui.setFloorChoice?.(floorChoiceOpts ? floorChoiceOpts.map(o => ({ label: o.label, onSelect: () => goFloor(o.f) })) : null);
+  }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
   else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물·🗿조각 만들기');
