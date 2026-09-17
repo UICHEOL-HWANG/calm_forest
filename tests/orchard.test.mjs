@@ -341,6 +341,36 @@ test('chopTree: 열매가 있으면 hp 를 깎기 전에 막는다(먼저 따야
   assert.ok(fruitGuardIdx < hpIdx, '열매 확인이 hp 를 깎는 코드보다 뒤에 있다 — 열매 달린 나무도 베어진다');
 });
 
+// 🔒 해금 카운터 — 🧑‍🌾일꾼이 거둔 고급 작물이 안 세지면, 밀을 심고 일꾼에게 맡긴 유저는
+//   "고급 작물을 한 번 거두세요" 를 이미 해낸 채로 영원히 본다(I6).
+//   증가 지점이 하나뿐이어야 "정확히 한 번만 해금" 이 구조적으로 보장된다.
+test('advHarvest 를 올리는 곳은 bumpAdvHarvest() 한 곳뿐이다 — 해금이 두 번 터질 수 없다', () => {
+  const src = GAME_SRC();
+  const bumps = [...src.matchAll(/progress\.advHarvest\s*=\s*\(gameState\.progress\.advHarvest\s*\|\|\s*0\)\s*\+\s*1/g)];
+  assert.equal(bumps.length, 1, '고급 작물 수확 카운터를 올리는 코드가 한 곳이 아니다 — 해금 분기가 갈라지면 묘목 2그루가 두 번 나간다');
+
+  const body = sliceFunctionBody(src, /^function bumpAdvHarvest\(/m);
+  assert.ok(body, 'game.js 에서 bumpAdvHarvest 를 찾지 못했다');
+  assert.match(body, /advHarvest\s*!==\s*1\)\s*return false/, '"처음 1이 될 때만" 가드가 없다 — 거둘 때마다 해금이 다시 터진다');
+  assert.match(body, /trackEvent\('orchard_unlock'/, 'bumpAdvHarvest 가 orchard_unlock 을 안 보낸다');
+  assert.match(body, /sap_apple:\s*2/, 'bumpAdvHarvest 가 묘목 2그루를 안 준다');
+  assert.match(body, /syncOrchardGateLock\(\)/, 'bumpAdvHarvest 가 가로대를 안 치운다');
+  assert.doesNotMatch(body, /ui\.toast/,
+    'bumpAdvHarvest 안에서 토스트를 띄운다 — 오프라인 일꾼 정산에선 플레이어가 마을 밖에 있었으므로 ' +
+    '토스트가 아니라 요약 모달 한 줄로 알려야 한다. 토스트는 부르는 쪽이 정한다');
+});
+
+test('workerApply: 일꾼이 거둔 고급 작물도 과수원 해금에 센다', () => {
+  const src = GAME_SRC();
+  const body = sliceFunctionBody(src, /^function workerApply\(/m);
+  assert.ok(body, 'game.js 에서 workerApply 를 찾지 못했다');
+  assert.match(body, /bumpAdvHarvest\(/,
+    'workerApply 가 bumpAdvHarvest 를 안 부른다 — 일꾼에게 밭을 맡긴 유저는 과수원을 영영 못 연다');
+  // 오프라인(tally 있음)과 접속 중(tally 없음)의 알림이 갈라져 있어야 한다
+  assert.match(body, /tally\.orchardUnlock\s*=\s*true/,
+    '오프라인 정산에서 해금을 tally 에 남기지 않는다 — 요약 모달에 알릴 방법이 없다');
+});
+
 test('tree_water 트래킹은 GA4 캠페인 예약어(source/medium/campaign 등)가 아니라 method 로 물주기 방식을 보낸다', () => {
   const src = GAME_SRC();
   const body = sliceFunctionBody(src, /^function waterTree\(/m);

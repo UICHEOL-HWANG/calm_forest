@@ -12572,6 +12572,21 @@ function farmAutoAction() {
   return FARM_ACTIONS[want](plot);
 }
 
+// 🔒 고급 작물 수확 카운터 — **과수원 해금의 유일한 증가 지점**.
+//   플레이어가 직접 낫으로 거두든(tryHarvest) 🧑‍🌾일꾼이 거두든(workerApply) 같은 일이다.
+//   일꾼 경로가 이걸 안 타서, 밀을 심고 일꾼에게 맡긴 유저는 "고급 작물을 한 번 거두세요" 라는
+//   안내를 이미 해낸 채로 영원히 보고 있었다.
+//   해금 순간(카운터가 처음 1이 되는 순간)에만 true 를 돌려준다 — 증가 지점이 여기 하나뿐이라
+//   두 번 불릴 수 없다. 토스트는 **부르는 쪽**이 정한다(일꾼 오프라인 정산은 요약 모달로 미룬다).
+function bumpAdvHarvest(via) {
+  gameState.progress.advHarvest = (gameState.progress.advHarvest || 0) + 1;
+  if (gameState.progress.advHarvest !== 1) return false;
+  trackEvent('orchard_unlock', { via });                      // [GA4] 어떤 고급 작물이 열었나
+  giveReward({ sap_apple: 2 }, 'orchard_unlock', 'apple');    // 빈 언덕 방지 — 사과 묘목 2그루
+  syncOrchardGateLock();                                      // 🔓 가로대를 즉시 치운다(다음 접속까지 기다리지 않게)
+  return true;
+}
+
 // 낫: 다 자란 작물 수확 → 반짝이 스파클 + 작물 +1
 // 🌾 viaSickle — "잘 드는 낫" 이 옆 칸을 함께 거두는 두 번째 호출.
 //   제스처·연출은 첫 칸에서만. 이 플래그가 없으면 밭이 줄줄이 이어진 곳에서 무한 재귀가 된다.
@@ -12581,13 +12596,8 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   const adv = isAdv(plot.cropType), qty = harvestYield(plot.cropType, !!plot.pest);
   if (adv) {   // 🌾 고급: 종류별 인벤 키(wheat/corn/grape)로, 씨앗은 안 돌아온다(코인 싱크). 해충이면 절반
     gameState.inventory[plot.cropType.id] = (gameState.inventory[plot.cropType.id] || 0) + qty;
-    gameState.progress.advHarvest = (gameState.progress.advHarvest || 0) + 1;   // 🔒 과수원 해금 카운터
-    if (gameState.progress.advHarvest === 1) {
-      ui.toast?.('🍎 마을 동쪽 과수원 언덕이 열렸어요!', 3200);
-      trackEvent('orchard_unlock', { via: plot.cropType.id });   // [GA4] 어떤 고급 작물이 열었나
-      giveReward({ sap_apple: 2 }, 'orchard_unlock', 'apple');   // 빈 언덕 방지 — 사과 묘목 2그루
-      syncOrchardGateLock();                                     // 🔓 가로대를 즉시 치운다(다음 접속까지 기다리지 않게)
-    }
+    // 🔒 과수원 해금 카운터 — 플레이어가 눈앞에 있으니 해금 순간엔 바로 토스트
+    if (bumpAdvHarvest(plot.cropType.id)) ui.toast?.('🍎 마을 동쪽 과수원 언덕이 열렸어요!', 3200);
   } else {
     gameState.inventory.crop += 1; // 작물 +1
     gameState.inventory.seed += 2; // 씨앗 +2 (심기 1 소모 대비 순증 → 농사 지속 가능)
@@ -12704,6 +12714,14 @@ function workerApply(rec, task, tally) {
       const key = adv ? p.cropType.id : 'crop';
       gameState.farm.pending[key] = (gameState.farm.pending[key] || 0) + qty;
       if (!adv) gameState.inventory.seed += 2;                          // 기본 작물은 씨앗이 돌아온다(플레이어 수확과 같게)
+      // 🔒 일꾼이 거둔 고급 작물도 과수원 해금에 센다 — 플레이어 수확과 같은 함수를 탄다.
+      //   토스트는 오프라인 정산(tally 가 있는 호출)에선 띄우지 않는다. 그때 플레이어는 마을에
+      //   막 접속한 참이고 요약 모달이 1.4초 뒤에 뜨므로, 거기 한 줄로 얹는 편이 안 묻힌다.
+      //   접속 중 일꾼(tally === null)은 플레이어가 그 자리에서 보고 있으니 바로 알린다.
+      if (adv && bumpAdvHarvest(p.cropType.id)) {
+        if (tally) tally.orchardUnlock = true;
+        else ui.toast?.('🍎 마을 동쪽 과수원 언덕이 열렸어요!', 3200);
+      }
       if (p.cropType?.id) dexDiscover('crop', p.cropType.id);           // 📖 일꾼이 거둔 작물도 도감에
       p.fert = false; p.weed = false; p.pest = false; p.wilted = false;
       clearCrop(p); p.state = 'empty'; p.growth = 0; p.stage = -1; p.watered = false; p.cropType = null;
@@ -12820,7 +12838,8 @@ function catchUpWorkers() {
   const body = (lines.join(' · ') || '할 일이 없어 쉬었어요')
     + (tally.wage ? `\n💰 월급 🪙${tally.wage} 나갔어요` : '')
     + (tally.resting ? `\n😴 코인이 모자라 ${tally.resting}명이 쉬고 있어요` : '')
-    + (tally.promoted?.length ? `\n🎉 ${tally.promoted.join(' · ')} 승급!` : '');
+    + (tally.promoted?.length ? `\n🎉 ${tally.promoted.join(' · ')} 승급!` : '')
+    + (tally.orchardUnlock ? '\n🍎 일꾼이 고급 작물을 거둬 마을 동쪽 과수원이 열렸어요!' : '');   // 🔒 오프라인 해금은 토스트 대신 여기 한 줄로
   setTimeout(() => ui.showHintModal?.({ ico: '🧑‍🌾', title: '일꾼들이 일했어요', body }), 1400);
   trackEvent('worker_offline', { steps, harvest: tally.harvest || 0, water: tally.water || 0, wage: tally.wage || 0 });   // [GA4] 오프라인 산출
   requestSave();

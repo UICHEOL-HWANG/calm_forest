@@ -1701,6 +1701,7 @@ export const EN = {
   //   영어 모드에서도 한국어 그대로 노출되고 있었다. 체커는 글루 패턴 매치만 보고 "커버됨"으로 오판하니
   //   구체적인 키를 등록해 EXACT 매치가 먼저 걸리게 한다(node scripts/i18n_check.mjs 는 이 케이스를 못 잡는다).
   '🍎 마을 동쪽 과수원 언덕이 열렸어요!': '🍎 The Orchard hill east of town has opened!',
+  '🍎 일꾼이 고급 작물을 거둬 마을 동쪽 과수원이 열렸어요!': '🍎 A worker harvested an advanced crop — the Orchard hill east of town has opened!',
   '🍎 해금 — 마을 동쪽': '🍎 Unlocked — east side of town',
   '(__tp 로 이동)': '(move with __tp)',
 
