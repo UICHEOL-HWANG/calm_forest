@@ -42,6 +42,17 @@ export function build(THREE, H, variant, part = 'ascend') {
 
   const capMat = H.clay(0x8a8f96);
   const mkCapsule = (x, z, y = 0.55) => { const c = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.3, 4, 8), capMat); c.position.set(x, y, z); c.castShadow = true; add(c); };
+  // 두 점을 정확히 잇는 원기둥 — 회전각을 손으로 계산하다 기둥/손잡이가 어긋났다(리뷰: "기둥 끝이 손잡이 선과 안 맞는다").
+  //   끝점 두 개를 직접 넣으면 삼각함수 부호 실수가 끼어들 자리가 없다.
+  const rodBetween = (p1, p2, r, mat) => {
+    const dx = p2[0] - p1[0], dy = p2[1] - p1[1], dz = p2[2] - p1[2];
+    const len = Math.hypot(dx, dy, dz);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8), mat);
+    m.position.set((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2, (p1[2] + p2[2]) / 2);
+    const axis = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3(dx, dy, dz).normalize();
+    m.quaternion.setFromUnitVectors(axis, dir);
+    m.castShadow = true; return m;
+  };
 
   if (variant === 'rooftop') {
     // ── 루프탑: 나무 데크 + 흰 프레임 계단실 박스(villa.js 어휘: 프레임 0xf4f3ee·짙은 유리·유리 난간) ──
@@ -70,12 +81,23 @@ export function build(THREE, H, variant, part = 'ascend') {
     add(H.box(x2 - x1, 0.2, z1 - (-half), floorMat, holeX, -0.1, (-half + z1) / 2));       // 앞 띠(입구 쪽, 열어 둔다)
     add(H.box(x2 - x1, 0.2, half - z2, floorMat, holeX, -0.1, (z2 + half) / 2));           // 뒤 띠
     const shaftDepth = DSTEPS * DRISE;   // 2.0 — 디딤판이 바닥까지 닿는다
-    const shaftMat = H.clay(0x53565d, { roughness: 0.95 });   // 중간 회색 — 디딤판(3/4단계는 밝고 4/6단계는 어둡다)과 둘 다 대비가 나게
-    add(H.box(x2 - x1, shaftDepth, 0.06, shaftMat, holeX, -shaftDepth / 2, z1));
-    add(H.box(0.06, shaftDepth, z2 - z1, shaftMat, x1, -shaftDepth / 2, holeZ));
-    add(H.box(0.06, shaftDepth, z2 - z1, shaftMat, x2, -shaftDepth / 2, holeZ));
-    add(H.box(x2 - x1, shaftDepth, 0.06, shaftMat, holeX, -shaftDepth / 2, z2));
-    add(H.box(x2 - x1 - 0.1, 0.08, z2 - z1 - 0.1, shaftMat, holeX, -shaftDepth - 0.04, holeZ));
+    // 벽을 위/아래 두 톤으로 나눈다 — 밑으로 갈수록 어둡게(아래층 그림자 느낌) + 바닥을 밝은 "아래층 바닥 살짝 보임" 조각으로.
+    //   전에는 통짜 회색 한 판이라 "얕은 상자"로 보였다(리뷰).
+    const shaftMatUp = H.clay(0x5e616a, { roughness: 0.95 });
+    const shaftMatDown = H.clay(0x2c2e33, { roughness: 0.95 });
+    const midY = -shaftDepth * 0.55;
+    [[0, midY, shaftMatUp], [midY, -shaftDepth, shaftMatDown]].forEach(([y0, y1, mat]) => {
+      const h = y0 - y1, cy = (y0 + y1) / 2;
+      add(H.box(x2 - x1, h, 0.06, mat, holeX, cy, z1));
+      add(H.box(0.06, h, z2 - z1, mat, x1, cy, holeZ));
+      add(H.box(0.06, h, z2 - z1, mat, x2, cy, holeZ));
+      add(H.box(x2 - x1, h, 0.06, mat, holeX, cy, z2));
+    });
+    // 바닥 — 가운데는 아래층 바닥을 살짝 비춘 듯 floorMat 을 어둡게 섞어서, 가장자리만 그림자 띠로.
+    const belowFloorMat = H.clay(fin.floor, { roughness: 0.95 });
+    belowFloorMat.color.multiplyScalar(0.4);
+    add(H.box(x2 - x1 - 0.1, 0.06, z2 - z1 - 0.1, belowFloorMat, holeX, -shaftDepth - 0.03, holeZ));
+    add(H.box(x2 - x1, 0.05, z2 - z1, shaftMatDown, holeX, -shaftDepth + 0.02, holeZ));
     // 구멍 안을 밝히는 보조광 — 실내 조명 없이는 샤프트가 새까맣게 뭉개진다(리뷰: "검은 구멍")
     // 메인 조명은 위(해)·옆(보조광)에서 오기 때문에 바닥 밑 샤프트까지는 거의 안 닿는다 — 안쪽 전용 광원 2개.
     const holeLight = new THREE.PointLight(0xfff4d8, 5.0, 8, 1.2);
@@ -100,30 +122,16 @@ export function build(THREE, H, variant, part = 'ascend') {
       const skirt2 = skirt.clone(); skirt2.position.x = holeX + DTW / 2; add(skirt2);
     }
     {
-      // 난간은 계단임을 알리는 가장 강한 신호다(리뷰) — 기둥을 굵게(0.08, 손스침대는 0.1), 손잡이도 굵게(0.08).
-      //   입구 두 모서리에도 손스침대를 세운다 — "여기가 내려가는 입구"라는 표시가 없으면 그냥 뚫린 구멍으로 보인다.
-      const railH = 0.9, postR = 0.08, newelR = 0.1;
-      const corners = [[x1, z1], [x1, z2], [x2, z2], [x2, z1]];
-      corners.forEach(([cx, cz], idx) => {
-        const isEntry = idx === 0 || idx === 3;   // 입구(앞) 두 모서리 — 손스침대
-        const r = isEntry ? newelR : postR;
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(r, r, railH, 8), railMat);
-        post.position.set(cx, railH / 2, cz); post.castShadow = true; add(post);
-      });
-      // 중간 기둥 하나씩 더(왼쪽·오른쪽 변) — 4모서리 기둥만으론 긴 변에서 난간이 가늘게 끊겨 보인다.
-      [-1, 1].forEach(s => {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, railH, 8), railMat);
-        post.position.set(s < 0 ? x1 : x2, railH / 2, holeZ); post.castShadow = true; add(post);
-      });
-      const handR = 0.08;
-      const railBar = (len, x, z, alongX) => {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(handR, handR, len, 8), railMat);
-        m.rotation.z = alongX ? Math.PI / 2 : 0; m.rotation.x = alongX ? 0 : Math.PI / 2;
-        m.position.set(x, railH, z); m.castShadow = true; add(m);
-      };
-      railBar(z2 - z1, x1, holeZ, false);   // 왼쪽 변
-      railBar(x2 - x1, holeX, z2, true);    // 뒤쪽 변
-      railBar(z2 - z1, x2, holeZ, false);   // 오른쪽 변
+      // 난간 3면만(왼·오른·뒤) — 입구(앞, z1 쪽)는 막지 않는다. 여기가 계단으로 내려가는 자리다(리뷰: "네 면을 다 막아 우물처럼 보인다").
+      //   각목(사각 단면) — 굵은 원기둥은 이 축척에서 배관처럼 보인다(리뷰). 목공 손잡이처럼 폭>두께로 살짝 납작하게.
+      const railH = 0.9, postW = 0.11, newelW = 0.14, handW = 0.12, handT = 0.07;
+      const post = (cx, cz, w) => { add(H.box(w, railH, w, railMat, cx, railH / 2, cz)); };
+      post(x1, z1, newelW); post(x1, z2, postW); post(x2, z2, postW); post(x2, z1, newelW);   // 네 모서리 — 입구 쪽 둘은 손스침대(굵게)
+      post(x1, holeZ, postW); post(x2, holeZ, postW);                                          // 왼·오른 변 중간 기둥
+      add(H.box(handT, handW, z2 - z1, railMat, x1, railH, holeZ));   // 왼쪽 손잡이
+      add(H.box(x2 - x1, handW, handT, railMat, holeX, railH, z2));   // 뒤쪽 손잡이
+      add(H.box(handT, handW, z2 - z1, railMat, x2, railH, holeZ));   // 오른쪽 손잡이
+      // 입구 쪽엔 손잡이를 안 걸친다 — 이게 "여기로 들어간다"는 유일한 신호라 눈에 띄어야 한다.
     }
     mkCapsule(holeX + 0.3, z1 + 0.2 + 5 * DRUN, -5 * DRISE + 0.62);   // 여섯 번째 디딤판 위 — 실제로 내려가는 중처럼, 카메라 정면 시야 안에서 너무 크지 않게
   } else {
@@ -155,16 +163,17 @@ export function build(THREE, H, variant, part = 'ascend') {
       pane.position.set(railX, riseTotal / 2 + RAIL_LIFT - paneH / 2, az - (ASTEPS - 1) * ARUN / 2);
       pane.rotation.x = slope; add(pane);
     } else {
-      // 기둥을 굵게(0.08, 손스침대 0.1) — 가늘면 게임 카메라 거리에서 배경에 묻혀 사라진다(리뷰).
-      const postH = RAIL_LIFT - ARISE / 2;
-      [0, 3, 6, 9, ASTEPS - 1].forEach(idx => {
+      // 기둥은 "그 자리 디딤판 높이 + 난간 높이(0.85)" 로 꼭대기를 잡는다 — 길이를 고정값으로 주면
+      // 단마다 실제 손잡이 선(기울기)과 안 맞아 기둥이 손잡이를 뚫고 올라가거나 못 미친다(리뷰에서 잡힌 버그).
+      const postIdx = [0, 3, 6, 9, ASTEPS - 1];
+      const postTop = (idx) => [railX, ARISE * (idx + 1) + RAIL_LIFT, az - idx * ARUN];
+      const postBase = (idx) => [railX, ARISE * (idx + 1), az - idx * ARUN];
+      postIdx.forEach(idx => {
         const newel = idx === 0; const r = newel ? 0.1 : 0.08;
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(r, r, postH, 8), railMat);
-        post.position.set(railX, ARISE * (idx + 1) + postH / 2, az - idx * ARUN); post.castShadow = true; add(post);
+        add(rodBetween(postBase(idx), postTop(idx), r, railMat));
       });
-      const hand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, runLen, 8), railMat);
-      hand.position.set(railX, riseTotal / 2 + RAIL_LIFT, az - (ASTEPS - 1) * ARUN / 2);
-      hand.rotation.set(Math.PI / 2 - slope, 0, 0); hand.castShadow = true; add(hand);
+      // 손잡이는 기둥 "꼭대기"끼리 직접 잇는다 — 기울기를 따로 계산하지 않으니 어긋날 수가 없다.
+      add(rodBetween(postTop(0), postTop(ASTEPS - 1), 0.08, railMat));
     }
     mkCapsule(ax - 1.0, az + 0.6);
   }
