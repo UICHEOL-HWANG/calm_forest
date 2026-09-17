@@ -2208,7 +2208,7 @@ export async function enterGame() {
     window.__gs = () => gameState; window.__plots = () => plots;   // 🌾 검수용 상태 열람(dev 세션 전용)
     window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
     // 🍎 과수원 검수용 — 해금·자리 채우기·비우기·드로우콜 측정(__spawnWorkers 와 같은 용도)
-    window.__orchardOpen = () => { gameState.progress.advHarvest = Math.max(1, gameState.progress.advHarvest || 0); return '🍎 해금 — 마을 동쪽 ' + ORCHARD_GATE.x + ',' + ORCHARD_GATE.z + ' (__tp 로 이동)'; };
+    window.__orchardOpen = () => { gameState.progress.advHarvest = Math.max(1, gameState.progress.advHarvest || 0); syncOrchardGateLock(); return '🍎 해금 — 마을 동쪽 ' + ORCHARD_GATE.x + ',' + ORCHARD_GATE.z + ' (__tp 로 이동)'; };
     window.__orchardFill = (fruit = 6) => {   // 자리 10개를 5종으로 꽉 채운다(최악 조건)
       gameState.orchard.trees = ORCHARD_SLOTS_LOCAL.map(([x, z], i) => ({
         x: ORCHARD.x + x, z: ORCHARD.z + z, kind: FRUITS[i % FRUITS.length].id,
@@ -3601,6 +3601,7 @@ function buildEnvironment() {
   buildDockGate();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
   buildRiverSpace(); // 🛶 강(별도 공간) — 나룻배 러너
   buildMistGate();   // 🌫️ 안개 낀 숲 입구(북서) — 처음부터 있음
+  buildOrchardGate();   // 🍎 과수원 언덕길 입구(정동) — 잠겨 있어도 보인다(잠금은 가로대로 표시)
   buildMistSpace();  // 🌫️ 숲(별도 공간) — 정령 달래기 웨이브
 }
 
@@ -5874,6 +5875,61 @@ function mistPuffSprite(scale, opacity) {
   }));
   sp.scale.set(scale, scale * 0.62, 1);
   return sp;
+}
+
+// 🍎 과수원 언덕길 입구 — 마을 정동쪽. **잠겨 있어도 멀리서 보여야 한다.**
+//   해금은 "안 보이는 것"이 아니라 "보이는데 가로대가 막고 있는 것"이다. 안 그러면
+//   유저가 존재 자체를 모르고, 무엇을 하면 열리는지도 알 수 없다.
+let orchardGateBar = null;   // 잠금 가로대 — mapLocked('orchard') 에 따라 켜고 끈다
+/** 가로대 표시 갱신. 입구를 세울 때·공간이 바뀔 때·해금된 순간에 부른다(매 프레임 아님). */
+function syncOrchardGateLock() { if (orchardGateBar) orchardGateBar.visible = mapLocked('orchard'); }
+function buildOrchardGate() {
+  const g = new THREE.Group(); g.position.copy(ORCHARD_GATE);
+  const wood = clayMat(0x9a7248), woodDark = clayMat(0x7d5a38);
+
+  // 언덕길 — 동쪽으로 올라가는 흙 계단. 멀리서 "저쪽으로 길이 있다"가 읽히는 게 핵심
+  [[0.0, 1.4, 1.45, 0.10], [0.15, 2.9, 1.30, 0.26], [0.30, 4.4, 1.15, 0.46], [0.45, 5.9, 1.0, 0.70]]
+    .forEach(([sx, sz, sr, sy]) => {
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(sr, sr + 0.1, 0.18, 9), clayMat(0xb08a5e, false));
+      st.position.set(sx, sy, sz); st.receiveShadow = true; g.add(st);
+    });
+
+  // 문기둥 둘 + 상인방 — 농장 문 꼴
+  for (const side of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.21, 2.7, 6), wood);
+    post.position.set(side * 1.5, 1.35, 0); post.castShadow = true; g.add(post);
+    const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), woodDark);
+    cap.position.set(side * 1.5, 2.78, 0); g.add(cap);
+  }
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.24, 0.26), wood);
+  lintel.position.set(0, 2.62, 0); lintel.castShadow = true; g.add(lintel);
+
+  // 상인방 위 사과 셋 — 멀리서도 "과수원"으로 읽히는 색 신호
+  [-0.95, 0, 0.95].forEach((ax, i) => {
+    const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), clayMat(FRUITS[i % FRUITS.length].fruitColor));
+    f.position.set(ax, 2.92, 0); g.add(f);
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), clayMat(0x5f9e52));
+    leaf.position.set(ax + 0.13, 3.06, 0.02); g.add(leaf);
+  });
+
+  // 🔒 잠금 가로대 — 잠겨 있을 때만 보인다. "막혀 있다"가 한눈에 읽혀야 한다
+  orchardGateBar = new THREE.Group();
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 0.18), woodDark);
+  bar.position.set(0, 1.15, 0); bar.castShadow = true; orchardGateBar.add(bar);
+  const bar2 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.14, 0.14), woodDark);
+  bar2.position.set(0, 1.62, 0); orchardGateBar.add(bar2);
+  const lock = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.045, 6, 10), clayMat(0xb9b3a6));
+  lock.position.set(0, 1.5, 0.12); orchardGateBar.add(lock);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 0.14), clayMat(0xd8d2c4));
+  body.position.set(0, 1.32, 0.12); orchardGateBar.add(body);
+  g.add(orchardGateBar);
+
+  g.add(makeSignpost('🍎 과수원 언덕', -2.2, 1.3));
+  g.rotation.y = -Math.PI / 2;            // 마을(서쪽)을 바라보게 — 길은 동쪽으로 오른다
+  scene.add(g);
+  syncOrchardGateLock();
+  obstacles.push({ x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, r: 0.6 });   // 기둥 사이는 지나갈 수 있게 좁게
+  [-1, 1].forEach(side => solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z + side * 1.5, 0.22));   // 문기둥(회전 반영)
 }
 
 function buildMistGate() {
@@ -12245,6 +12301,7 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
       ui.toast?.('🍎 마을 동쪽 과수원 언덕이 열렸어요!', 3200);
       trackEvent('orchard_unlock', { via: plot.cropType.id });   // [GA4] 어떤 고급 작물이 열었나
       giveReward({ sap_apple: 2 }, 'orchard_unlock', 'apple');   // 빈 언덕 방지 — 사과 묘목 2그루
+      syncOrchardGateLock();                                     // 🔓 가로대를 즉시 치운다(다음 접속까지 기다리지 않게)
     }
   } else {
     gameState.inventory.crop += 1; // 작물 +1
