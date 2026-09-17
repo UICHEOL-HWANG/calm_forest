@@ -500,7 +500,8 @@ const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 �
 const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 
 // ── 🍎 과수원 언덕 — 기획: docs/superpowers/specs/2026-09-17-orchard-design.md ──────────────
-const ORCHARD_GATE = new THREE.Vector3(22, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1)
+const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
+//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다. 동쪽은 x>18 에 고정물이 없다.
 const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 const ORCHARD_HALF = 20;                            // 언덕 반경
 let orchardGroup = null;                            // 과수원 그룹(가시성 토글용) — rebuildOrchard() 가 채운다
@@ -2333,6 +2334,7 @@ function applySave(saved) {
   if (saved.progress && typeof saved.progress.advHarvest === 'number') {   // 🔒 과수원 해금 카운터 복원
     gameState.progress.advHarvest = Math.max(0, Math.floor(saved.progress.advHarvest));
   }
+  syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다
   if (Array.isArray(saved.workers)) {   // 🧑‍🌾 일꾼 — 직군·등급은 표 밖 값을 받지 않는다(옛/조작 세이브 방어)
     gameState.workers = saved.workers.filter(w => w && typeof w.id === 'string' && JOBS.some(j => j.id === w.job)).slice(0, 6).map(w => ({
       id: w.id, job: w.job, name: String(w.name || '일꾼').slice(0, 12),
@@ -5885,51 +5887,95 @@ let orchardGateBar = null;   // 잠금 가로대 — mapLocked('orchard') 에 �
 function syncOrchardGateLock() { if (orchardGateBar) orchardGateBar.visible = mapLocked('orchard'); }
 function buildOrchardGate() {
   const g = new THREE.Group(); g.position.copy(ORCHARD_GATE);
-  const wood = clayMat(0x9a7248), woodDark = clayMat(0x7d5a38);
+  const wood = clayMat(0x9a7248), woodDark = clayMat(0x7d5a38), trim = clayMat(0xc06a72);
+  const R = 2.1, LEN = 6.2, PANELS = 5;          // 터널 반경·길이·아치 면 수
+  const glass = new THREE.MeshStandardMaterial({ color: 0xcfe9e4, transparent: true, opacity: 0.34, roughness: 0.15, metalness: 0, side: THREE.DoubleSide });
 
-  // 언덕길 — 동쪽으로 올라가는 흙 계단. 멀리서 "저쪽으로 길이 있다"가 읽히는 게 핵심
-  [[0.0, 1.4, 1.45, 0.10], [0.15, 2.9, 1.30, 0.26], [0.30, 4.4, 1.15, 0.46], [0.45, 5.9, 1.0, 0.70]]
-    .forEach(([sx, sz, sr, sy]) => {
-      const st = new THREE.Mesh(new THREE.CylinderGeometry(sr, sr + 0.1, 0.18, 9), clayMat(0xb08a5e, false));
-      st.position.set(sx, sy, sz); st.receiveShadow = true; g.add(st);
-    });
-
-  // 문기둥 둘 + 상인방 — 농장 문 꼴
-  for (const side of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.21, 2.7, 6), wood);
-    post.position.set(side * 1.5, 1.35, 0); post.castShadow = true; g.add(post);
-    const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), woodDark);
-    cap.position.set(side * 1.5, 2.78, 0); g.add(cap);
+  // 아치 지붕 — 저지형 톤에 맞춰 반원을 다섯 면으로 접는다(면 하나당 판 하나)
+  const pw = Math.PI * R / PANELS + 0.06;
+  for (let i = 0; i < PANELS; i++) {
+    const a = Math.PI * (i + 0.5) / PANELS;
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(LEN, 0.05, pw), glass);
+    panel.position.set(0, R * Math.sin(a), R * Math.cos(a));
+    panel.rotation.x = Math.PI / 2 - a;
+    g.add(panel);
   }
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.24, 0.26), wood);
-  lintel.position.set(0, 2.62, 0); lintel.castShadow = true; g.add(lintel);
+  // 아치 뼈대(분홍 트림) — 앞·중간·뒤 세 줄
+  for (const bx of [-LEN / 2 + 0.06, 0, LEN / 2 - 0.06]) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(R, 0.075, 6, 14, Math.PI), trim);
+    rib.position.set(bx, 0, 0); rib.rotation.y = Math.PI / 2; rib.castShadow = true; g.add(rib);
+  }
+  // 바닥 레일 둘
+  for (const sz of [-R, R]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(LEN, 0.14, 0.16), wood);
+    rail.position.set(0, 0.07, sz); g.add(rail);
+  }
 
-  // 상인방 위 사과 셋 — 멀리서도 "과수원"으로 읽히는 색 신호
-  [-0.95, 0, 0.95].forEach((ax, i) => {
-    const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), clayMat(FRUITS[i % FRUITS.length].fruitColor));
-    f.position.set(ax, 2.92, 0); g.add(f);
-    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), clayMat(0x5f9e52));
-    leaf.position.set(ax + 0.13, 3.06, 0.02); g.add(leaf);
+  // 서쪽 앞면 — 크림색 벽에 문 구멍(마을에서 보이는 얼굴)
+  const FW = 0.12, fx = -LEN / 2;
+  const wall = clayMat(0xe6d8bf);
+  for (const [wz, ww] of [[-1.42, 1.36], [1.42, 1.36]]) {           // 문 양옆 벽
+    const m = new THREE.Mesh(new THREE.BoxGeometry(FW, 2.0, ww), wall);
+    m.position.set(fx, 1.0, wz); m.castShadow = true; g.add(m);
+  }
+  const head = new THREE.Mesh(new THREE.BoxGeometry(FW, 0.42, 4.2), wall);   // 문 위 인방
+  head.position.set(fx, 2.2, 0); g.add(head);
+  const arcFront = new THREE.Mesh(new THREE.TorusGeometry(R, 0.09, 6, 14, Math.PI), trim);
+  arcFront.position.set(fx, 0, 0); arcFront.rotation.y = Math.PI / 2; g.add(arcFront);
+  const doorway = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.95, 2.4), clayMat(0x4a3b2c));  // 문 안쪽 어둠
+  doorway.position.set(fx + 0.1, 0.97, 0); g.add(doorway);
+
+  // 안쪽 이랑 — 문으로 들여다보이는 초록 줄(온실이라는 걸 알리는 디테일)
+  for (const rz of [-1.05, 0, 1.05]) {
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(LEN - 0.8, 0.22, 0.5), clayMat(0x8a6440));
+    bed.position.set(0.2, 0.11, rz); g.add(bed);
+    const crop = new THREE.Mesh(new THREE.BoxGeometry(LEN - 1.2, 0.34, 0.3), clayMat(0x5f9e52));
+    crop.position.set(0.2, 0.38, rz); g.add(crop);
+  }
+
+  // 문 앞 과일 상자 셋 — 참고 이미지의 나무 궤짝
+  [[-4.0, -1.5], [-4.0, -0.2], [-4.2, 1.2]].forEach(([cx, cz], i) => {
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.42, 0.75), wood);
+    box.position.set(cx, 0.21, cz); box.castShadow = true; g.add(box);
+    const fill = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 0.6), clayMat(FRUITS[i % FRUITS.length].fruitColor));
+    fill.position.set(cx, 0.48, cz); g.add(fill);
   });
 
-  // 🔒 잠금 가로대 — 잠겨 있을 때만 보인다. "막혀 있다"가 한눈에 읽혀야 한다
+  // 둘레 과일나무 넷 — 숲 나무와 같은 공유 지오메트리(색만 다름)
+  [[-2.6, -3.6, 0], [1.4, -3.9, 1], [-2.2, 3.7, 2], [2.2, 3.6, 3]].forEach(([tx, tz, fi]) => {
+    const def = FRUITS[fi % FRUITS.length];
+    const trunk = new THREE.Mesh(shared('tree.trunk.geo', () => new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7)), shared('tree.trunk.mat', () => clayMat(PAL.trunk)));
+    trunk.position.set(tx, 0.7, tz); trunk.scale.setScalar(0.85); trunk.castShadow = true; g.add(trunk);
+    const cano = new THREE.Mesh(shared('tree.canopy.geo', () => mergeGeos(
+      [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]]
+        .map(([bx, by, bz, cs]) => new THREE.IcosahedronGeometry(cs, 0).translate(bx, by, bz)))),
+      shared(`orchard.leaf.mat.${def.leafColor}`, () => clayMat(def.leafColor)));
+    cano.position.set(tx, 1.75, tz); cano.scale.setScalar(0.85); cano.castShadow = true; g.add(cano);
+  });
+
+  // 서쪽에서 올라오는 흙 계단 — 마을 쪽에서 "저기 길이 있다"가 읽히게
+  [[-7.4, 0.06], [-6.3, 0.14], [-5.3, 0.2]].forEach(([sx, sy]) => {
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.18, 9), clayMat(0xb08a5e, false));
+    st.position.set(sx, sy, 0); st.receiveShadow = true; g.add(st);
+  });
+
+  // 🔒 잠금 가로대 — 문 앞을 가로지른다. 잠긴 동안만 보인다
   orchardGateBar = new THREE.Group();
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 0.18), woodDark);
-  bar.position.set(0, 1.15, 0); bar.castShadow = true; orchardGateBar.add(bar);
-  const bar2 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.14, 0.14), woodDark);
-  bar2.position.set(0, 1.62, 0); orchardGateBar.add(bar2);
-  const lock = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.045, 6, 10), clayMat(0xb9b3a6));
-  lock.position.set(0, 1.5, 0.12); orchardGateBar.add(lock);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 0.14), clayMat(0xd8d2c4));
-  body.position.set(0, 1.32, 0.12); orchardGateBar.add(body);
+  for (const [by, bh] of [[0.95, 0.2], [1.5, 0.15]]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.16, bh, 2.9), woodDark);
+    bar.position.set(fx - 0.35, by, 0); bar.castShadow = true; orchardGateBar.add(bar);
+  }
+  const lockRing = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.045, 6, 10), clayMat(0xb9b3a6));
+  lockRing.position.set(fx - 0.5, 1.36, 0); lockRing.rotation.y = Math.PI / 2; orchardGateBar.add(lockRing);
+  const lockBody = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.26), clayMat(0xd8d2c4));
+  lockBody.position.set(fx - 0.5, 1.18, 0); orchardGateBar.add(lockBody);
   g.add(orchardGateBar);
 
-  g.add(makeSignpost('🍎 과수원 언덕', -2.2, 1.3));
-  g.rotation.y = -Math.PI / 2;            // 마을(서쪽)을 바라보게 — 길은 동쪽으로 오른다
+  g.add(makeSignpost('🍎 과수원 언덕', -4.6, 2.3));
   scene.add(g);
+  // 🚧 온실 몸통은 막고, 문 앞(서쪽)은 비워 둔다 — 프롬프트 반경 2.2 안에 설 수 있어야 한다
+  solidCircle(ORCHARD_GATE.x + 1.0, ORCHARD_GATE.z, 2.0);
   syncOrchardGateLock();
-  obstacles.push({ x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, r: 0.6 });   // 기둥 사이는 지나갈 수 있게 좁게
-  [-1, 1].forEach(side => solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z + side * 1.5, 0.22));   // 문기둥(회전 반영)
 }
 
 function buildMistGate() {
