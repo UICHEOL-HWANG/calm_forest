@@ -135,3 +135,25 @@ test('placeDecor 의 해금 가드는 silent(세이브 복원) 복원을 막지 
   const innerGuardIdx = decorSrc.indexOf('decorUnlocked(def, gameState.houseStage)');
   assert.ok(guardBlockIdx > -1 && innerGuardIdx > guardBlockIdx);
 });
+
+// ── §8.1 회귀 고정: "맵 끝에 뜬 가구" — 두 번 깨진 자리(최초 출시 + Task 4 재발) ─────
+// 지금까지 코드 추적으로만 확인했지 잠가둔 테스트가 없었다(리뷰 지적). 주석이 아니라
+// 정확히 그 식이 빠지면 실패하도록 조건을 통째로 정규식으로 고정한다.
+test('§8.1: placeDecor 는 가구 가시성을 indoor 뿐 아니라 지금 층(f)까지 본다', () => {
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 4000);
+  // indoor 단독(`m.visible = indoor;`)으로 되돌아가면 이 매치가 사라진다 — 층 조건이 빠진 회귀를 잡는다.
+  assert.match(decorSrc, /m\.visible\s*=\s*indoor\s*&&\s*curFloor\s*===\s*houseFloor\s*;/);
+});
+
+test('§8.1: stopDecorPlacing 취소(putBack)는 들었던 원래 층(pickedDecor.f)으로 되돌린다', () => {
+  // Ruling B: f 를 안 넘기면 placeDecor 가 "지금 서 있는 층"을 쓰게 되어, 위층에서 들고
+  // 다른 층으로 이동한 뒤 취소하면 가구가 엉뚱한 층(지금 서 있는 층)에 떨어진다(Task 4 재발 지점).
+  const stopSrc = SRC.slice(SRC.indexOf('function stopDecorPlacing('), SRC.indexOf('function buildDecorGhost('));
+  assert.ok(stopSrc.includes('function stopDecorPlacing('), 'stopDecorPlacing 함수를 찾아야 한다');
+  // putBack 조건 안에서 placeDecor 를 부르고, 마지막 인자(f)로 pickedDecor.f 를 그대로 넘겨야 한다 —
+  // houseFloor 를 쓰거나 f 인자를 아예 생략하면(=현재 층으로 암묵 대입) 이 매치가 사라진다.
+  assert.match(
+    stopSrc,
+    /if\s*\(pickedDecor\s*&&\s*putBack\)\s*placeDecor\([^)]*,\s*pickedDecor\.f\)\s*;/,
+  );
+});
