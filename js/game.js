@@ -54,7 +54,7 @@ import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링
 import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기 + 재질 도우미(루프탑 유리 난간)
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
-import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
+import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
