@@ -506,7 +506,8 @@ const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 �
 const ORCHARD_HALF = 20;                            // 언덕 반경
 let orchardGroup = null;                            // 과수원 그룹(가시성 토글용) — rebuildOrchard() 가 채운다
 let orchardTreeObstacles = [];   // 밭 금지 표시
-let orchardTreeSolids = [];      // 몸 충돌체 — 다시 그릴 때 removeSolid 로 치운다                      // syncOrchardTrees() 가 obstacles 에 등록한 항목 — 다시 부르기 전에 지운다(9158행 시설 패턴과 같은 방식)
+let orchardTreeSolids = [];      // 나무 몸 충돌체 — 다시 그릴 때 removeSolid 로 치운다
+let orchardStreamSolids = [];    // 시냇물 충돌체 — 물 위를 걸을 수 없게                      // syncOrchardTrees() 가 obstacles 에 등록한 항목 — 다시 부르기 전에 지운다(9158행 시설 패턴과 같은 방식)
 const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
 const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
 // 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
@@ -2727,45 +2728,65 @@ function buildOrchardGround() {
     shared('orchard.ground.mat', () => clayMat(0xc0cf9e)));
   ground.position.set(ORCHARD.x, 0.01, ORCHARD.z); ground.receiveShadow = true; orchardGroup.add(ground);
 
-  // 시냇물 — 규칙(nearStream)은 ORCHARD_STREAM_LOCAL 그대로, 그림만 자연스럽게.
-  //   같은 크기 원을 일직선으로 늘어놓으면 기계적으로 보인다. 폭을 물결치게 바꾸고
-  //   얕은 여울(밝은 층)을 한 겹 깔아 가장자리를 흐린다. 난수는 안 쓴다(접속마다 달라지면 안 됨).
-  const streamPts = (() => {
+  // 시냇물 — 원반을 겹치면 저지형 원(9각)이 서로 씹혀 가장자리가 톱니가 된다.
+  //   중심선을 따라 좌우 정점을 뽑아 **띠(ribbon)** 로 잇는다 — 모서리가 매끈하고 폭도 정확히 제어된다.
+  //   규칙(nearStream)은 ORCHARD_STREAM_LOCAL 그대로 쓰고 여기선 그림만 만든다.
+  const streamPath = (() => {
     const pts = [];
     for (let i = 0; i < ORCHARD_STREAM_LOCAL.length - 1; i++) {
       const [x0, z0] = ORCHARD_STREAM_LOCAL[i], [x1, z1] = ORCHARD_STREAM_LOCAL[i + 1];
-      for (let k = 0; k < 10; k++) {
-        const u = k / 10, t = (i + u) / (ORCHARD_STREAM_LOCAL.length - 1);
-        // 좌우로 살짝 굽이치게(진폭 0.55) — 직선 티를 없앤다
-        const bend = Math.sin(t * Math.PI * 3.1) * 0.55;
-        pts.push([x0 + (x1 - x0) * u + bend, z0 + (z1 - z0) * u, t]);
+      for (let k = 0; k < 12; k++) {
+        const u = k / 12, t = (i + u) / (ORCHARD_STREAM_LOCAL.length - 1);
+        pts.push([x0 + (x1 - x0) * u + Math.sin(t * Math.PI * 2.4) * 0.9, z0 + (z1 - z0) * u, t]);
       }
     }
     const [lx, lz] = ORCHARD_STREAM_LOCAL[ORCHARD_STREAM_LOCAL.length - 1];
-    pts.push([lx, lz, 1]);
+    pts.push([lx + Math.sin(Math.PI * 2.4) * 0.9, lz, 1]);
     return pts;
   })();
-  const widthAt = t => 1.15 + Math.sin(t * Math.PI * 2.3 + 0.7) * 0.35;   // 폭이 넓어졌다 좁아졌다
+  // 폭 — 시냇물답게 좁게(0.8~1.3). 전에는 3 이 넘어 운하처럼 보였다
+  const streamW = t => 1.05 + Math.sin(t * Math.PI * 2.1 + 0.6) * 0.25;
 
-  const shallow = new THREE.Mesh(                       // 얕은 여울 — 물보다 넓고 밝게
-    shared('orchard.shallow.geo', () => mergeGeos(streamPts.map(([x, z, t]) =>
-      new THREE.CircleGeometry(widthAt(t) + 0.5, 9).rotateX(-Math.PI / 2).translate(x, 0, z)))),
-    shared('orchard.shallow.mat', () => clayMat(0xa8c4c0, false)));
+  function ribbonGeo(path, halfWidth) {
+    const pos = [], idx = [];
+    for (let i = 0; i < path.length; i++) {
+      const [x, , t] = path[i];
+      const z = path[i][1];
+      const pPrev = path[Math.max(0, i - 1)], pNext = path[Math.min(path.length - 1, i + 1)];
+      let dx = pNext[0] - pPrev[0], dz = pNext[1] - pPrev[1];
+      const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+      const nx = -dz, nz = dx, w = halfWidth(t);
+      pos.push(x + nx * w, 0, z + nz * w, x - nx * w, 0, z - nz * w);
+      if (i < path.length - 1) { const a2 = i * 2; idx.push(a2, a2 + 1, a2 + 2, a2 + 1, a2 + 3, a2 + 2); }
+    }
+    const g2 = new THREE.BufferGeometry();
+    g2.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g2.setIndex(idx); g2.computeVertexNormals();
+    return g2;
+  }
+
+  const shallow = new THREE.Mesh(                       // 얕은 여울 — 물보다 조금 넓게
+    shared('orchard.shallow.geo', () => ribbonGeo(streamPath, t => streamW(t) + 0.42)),
+    shared('orchard.shallow.mat', () => new THREE.MeshStandardMaterial({ color: 0xa8c4c0, roughness: 0.95, metalness: 0, side: THREE.DoubleSide })));
   shallow.position.set(ORCHARD.x, 0.022, ORCHARD.z); orchardGroup.add(shallow);
 
   const water = new THREE.Mesh(
-    shared('orchard.water.geo', () => mergeGeos(streamPts.map(([x, z, t]) =>
-      new THREE.CircleGeometry(widthAt(t), 9).rotateX(-Math.PI / 2).translate(x, 0, z)))),
-    shared('orchard.water.mat', () => clayMat(0x8fb9d6, false)));
+    shared('orchard.water.geo', () => ribbonGeo(streamPath, streamW)),
+    shared('orchard.water.mat', () => new THREE.MeshStandardMaterial({ color: 0x8fb9d6, roughness: 0.6, metalness: 0, side: THREE.DoubleSide })));
   water.position.set(ORCHARD.x, 0.035, ORCHARD.z); orchardGroup.add(water);
 
-  const pebbles = new THREE.Mesh(                       // 양 기슭 조약돌 — 물가가 딱 끊기지 않게
-    shared('orchard.pebble.geo', () => mergeGeos(streamPts.filter((_, i) => i % 4 === 0).flatMap(([x, z, t], i) => {
-      const w = widthAt(t) + 0.34, r = 0.13 + (i % 3) * 0.05;
-      return [1, -1].map(side => new THREE.IcosahedronGeometry(r, 0).translate(x + side * w, 0.02, z + (i % 2 ? 0.18 : -0.18)));
+  const pebbles = new THREE.Mesh(                       // 양 기슭 조약돌
+    shared('orchard.pebble.geo', () => mergeGeos(streamPath.filter((_, i) => i % 5 === 0).flatMap(([x, z, t], i) => {
+      const w = streamW(t) + 0.5, r = 0.12 + (i % 3) * 0.04;
+      return [1, -1].map(side => new THREE.IcosahedronGeometry(r, 0).translate(x + side * w, 0.02, z + (i % 2 ? 0.2 : -0.2)));
     }))),
     shared('orchard.pebble.mat', () => clayMat(0x9aa1ad)));
   pebbles.position.set(ORCHARD.x, 0.03, ORCHARD.z); orchardGroup.add(pebbles);
+
+  // 🚧 물 위를 걸어 다니던 문제 — 시냇물에 충돌체를 깐다. 자리는 전부 물 동쪽이라 갇히지 않는다.
+  for (const c of orchardStreamSolids) removeSolid(c);
+  orchardStreamSolids = streamPath.filter((_, i) => i % 3 === 0)
+    .map(([x, z, t]) => solidCircle(ORCHARD.x + x, ORCHARD.z + z, streamW(t) + 0.15));
 }
 
 // 🍎 나무를 전부 InstancedMesh 로 묶어 그린다 — 풀(js/game.js:2576 근처)과 같은 방식.
