@@ -55,7 +55,8 @@ export const BETA = {
 export const BETA_COPY = {
   diaryBtn: '📝 오늘 일지',
   diaryTitle: '고요한 숲 베타 일지',
-  lock: { sea: '🌊 바다터는 {N}일차에 열려요', mist: '🌫️ 안개 낀 숲은 {N}일차에 열려요' },
+  lock: { sea: '🌊 바다터는 {N}일차에 열려요', mist: '🌫️ 안개 낀 숲은 {N}일차에 열려요',
+          orchard: '🔒 🌾고급 작물을 한 번 거두면 열려요' },   // 🍎 진행도 게이트라 {N}(날짜)이 없다 — replace 가 그대로 통과한다
   open: {
     sea:  '🌊 바다터가 열렸어요 — 먼 바다 대형 물고기와 줄다리기',
     mist: '🌫️ 안개 낀 숲이 열렸어요 — 등불과 ♪음악으로 안개를 정화하는 숲',
@@ -82,8 +83,22 @@ export function mapOpenDay(mapOrder, map) {
   return BETA.mapGate[mapOrder]?.[map] ?? null;
 }
 
-/** 잠겼나. 베타 테스터(beta_*)이고 배정이 있으며 아직 여는 날 전이면 true. */
-export function isMapLocked({ variant, mapOrder, createdAtIso, nowMs = Date.now() }, map) {
+/** 진행도 해금 표 — 날짜가 아니라 "무엇을 해냈나"로 여는 공간.
+ *  세이브 기반이라 유저마다 열리는 시점이 자연히 다르다. */
+export const PROGRESS_GATE = {
+  orchard: { kind: 'advHarvest', n: 1 },   // 🌾고급 작물(밀·옥수수·포도) 1회 수확
+};
+
+/** 진행도 게이트로 잠겼나. 표에 없는 맵은 잠그지 않는다. */
+export function isProgressLocked(map, progress) {
+  const g = PROGRESS_GATE[map];
+  if (!g) return false;
+  return ((progress || {})[g.kind] || 0) < g.n;
+}
+
+/** 잠겼나 — 베타 날짜 게이트 **또는** 진행도 게이트. 둘 중 하나라도 잠그면 잠긴다. */
+export function isMapLocked({ variant, mapOrder, createdAtIso, progress, nowMs = Date.now() }, map) {
+  if (isProgressLocked(map, progress)) return true;
   if (!/^beta_/.test(variant || '')) return false;
   const openDay = mapOpenDay(mapOrder, map);
   if (openDay == null) return false;

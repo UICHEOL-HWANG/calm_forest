@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BETA, BETA_COPY, kstDate, betaDay, mapOpenDay, isMapLocked, lockLine, openLine, isFinalDay } from '../js/tuning.js';
+import { BETA, BETA_COPY, kstDate, betaDay, mapOpenDay, isMapLocked, lockLine, openLine, isFinalDay, PROGRESS_GATE, isProgressLocked } from '../js/tuning.js';
 
 const T = (iso) => Date.parse(iso);
 
@@ -60,4 +60,41 @@ test('문구: N 이 채워지고 열림 문구는 맵별', () => {
   assert.match(openLine('mist'), /안개 낀 숲이 열렸어요/);
   assert.equal(BETA_COPY.diaryBtn, '📝 오늘 일지');
   assert.equal(BETA.startDate, '2026-09-09');
+});
+
+test('PROGRESS_GATE: 과수원은 고급 작물 1회 수확으로 열린다', () => {
+  assert.deepEqual(PROGRESS_GATE.orchard, { kind: 'advHarvest', n: 1 });
+});
+
+test('isProgressLocked: 카운터가 기준에 못 미치면 잠긴다', () => {
+  assert.equal(isProgressLocked('orchard', { advHarvest: 0 }), true);
+  assert.equal(isProgressLocked('orchard', { advHarvest: 1 }), false);
+  assert.equal(isProgressLocked('orchard', { advHarvest: 9 }), false);
+  assert.equal(isProgressLocked('orchard', {}), true, '카운터가 없으면 0 으로 본다');
+  assert.equal(isProgressLocked('orchard', undefined), true, '옛 세이브 방어');
+});
+
+test('isProgressLocked: 표에 없는 맵은 잠그지 않는다', () => {
+  assert.equal(isProgressLocked('sea', { advHarvest: 0 }), false);
+});
+
+test('isMapLocked: 일반 유저에게도 진행도 게이트는 적용된다', () => {
+  const base = { variant: 'prod', mapOrder: null, createdAtIso: null, nowMs: T('2026-09-17T02:00:00Z') };
+  assert.equal(isMapLocked({ ...base, progress: { advHarvest: 0 } }, 'orchard'), true);
+  assert.equal(isMapLocked({ ...base, progress: { advHarvest: 1 } }, 'orchard'), false);
+  assert.equal(isMapLocked({ ...base, progress: { advHarvest: 0 } }, 'sea'), false, '날짜 게이트 맵은 그대로');
+});
+
+test('isMapLocked: 베타 날짜 게이트는 한 글자도 안 바뀐다', () => {
+  const beta = { variant: 'beta_a', mapOrder: 'sea_first', createdAtIso: '2026-09-10T01:00:00Z' };
+  assert.equal(isMapLocked({ ...beta, nowMs: T('2026-09-10T02:00:00Z') }, 'sea'), true,  'D1 엔 잠김');
+  assert.equal(isMapLocked({ ...beta, nowMs: T('2026-09-12T02:00:00Z') }, 'sea'), false, 'D3 에 열림');
+});
+
+// 🍎 blockIfLocked(game.js) 가 잠긴 진행도 게이트 맵에서 lockLine(map, openDay) 를 그대로 부른다.
+//   openDay 가 null(진행도 게이트엔 여는 "날"이 없다)이어도, BETA_COPY.lock[map] 자체가 없으면
+//   .replace 가 undefined 위에서 터진다 — orchard 를 PROGRESS_GATE 에 넣을 때 이 항목을 깜빡하면
+//   잠긴 과수원 입구에서 액션(Space)을 누르는 순간 예외가 난다.
+test('lockLine: 진행도 게이트 맵(openDay=null)도 죽지 않고 문구를 돌려준다', () => {
+  assert.equal(lockLine('orchard', null), '🔒 🌾고급 작물을 한 번 거두면 열려요');
 });
