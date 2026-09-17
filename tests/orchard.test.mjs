@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { FRUITS, TREE_SLOTS, STREAM_SLOTS, STREAM_R, YIELD_PER_DAY, CAP_DAYS,
          fruitOf, fruitKeyOf, sapKeyOf, growDaysOf, nearStream, isWatered, harvestable, capped, settleTrees } from '../js/orchard.js';
 
@@ -148,4 +149,15 @@ test('settleTrees: days 가 0 이하면 아무것도 안 한다', () => {
   assert.deepEqual(out.matured, []);
   assert.deepEqual(out.fruited, []);
   assert.deepEqual(out.capped, []);
+});
+
+test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만 고치면 여기서 터진다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const line = src.split('\n').find(l => l.includes('const SELL_PRICE'));
+  assert.ok(line, 'SELL_PRICE 선언을 못 찾았다 — 변수명이 바뀌었으면 이 테스트를 같이 고친다');
+  for (const f of FRUITS) {
+    const m = new RegExp(`\\b${f.id}\\s*:\\s*(\\d+)`).exec(line);
+    assert.ok(m, `SELL_PRICE 에 ${f.id} 가 없다`);
+    assert.equal(Number(m[1]), f.price, `${f.id}: SELL_PRICE 와 FRUITS[].price 가 어긋난다`);
+  }
 });

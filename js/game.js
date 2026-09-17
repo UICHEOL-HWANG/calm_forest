@@ -48,6 +48,7 @@ import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, 
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
+import { FRUITS, TREE_SLOTS, YIELD_PER_DAY, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·정산)
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -542,7 +543,7 @@ function setSpaceVisible() {
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum) startRainSound();
   else stopRainSound();
 }
-const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통
+const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 5, pear: 6, peach: 8, persimmon: 10, chestnut: 12 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
 //    팔 타이밍 전략이 생기고, econ_logs 에 시세 반응 데이터가 쌓임(분석용)
 function priceRate(k) { return 0.7 + (dateHash('price:' + k) % 61) / 100; }     // 0.70 ~ 1.30
@@ -558,6 +559,12 @@ const SHOP_BUY = [
   { id: 'seedw3', name: '밀 씨앗 3개',    ico: '🌾', coin: 18, give: { seed_wheat: 3 }, desc: '물 2번 · 잡초가 잦아요 · 🪙15에 팔려요' },
   { id: 'seedc3', name: '옥수수 씨앗 3개', ico: '🌽', coin: 24, give: { seed_corn: 3 },  desc: '물 3번 · 해충이 잘 붙어요 · 🪙20에 팔려요' },
   { id: 'seedg3', name: '포도 씨앗 3개',   ico: '🍇', coin: 36, give: { seed_grape: 3 }, desc: '🍇지지대 옆에만 · 물 3번 · 🪙30에 팔려요' },
+  // 🍎 과수원 묘목 — 코인 전용(최대 코인 싱크). 한 번 심으면 영구 자산이라 씨앗보다 훨씬 비싸다
+  { id: 'sap_apple',     name: '사과나무 묘목',   ico: '🍎', coin: 90,  give: { sap_apple: 1 },     desc: '3일이면 자라요 · 매일 🍎2개' },
+  { id: 'sap_pear',      name: '배나무 묘목',     ico: '🍐', coin: 130, give: { sap_pear: 1 },      desc: '3일이면 자라요 · 매일 🍐2개' },
+  { id: 'sap_peach',     name: '복숭아나무 묘목', ico: '🍑', coin: 180, give: { sap_peach: 1 },     desc: '4일이면 자라요 · 매일 🍑2개' },
+  { id: 'sap_persimmon', name: '감나무 묘목',     ico: '🍊', coin: 240, give: { sap_persimmon: 1 }, desc: '4일이면 자라요 · 매일 🍊2개' },
+  { id: 'sap_chestnut',  name: '밤나무 묘목',     ico: '🌰', coin: 300, give: { sap_chestnut: 1 },  desc: '5일이면 자라요 · 매일 🌰2개' },
   { id: 'wood10',  name: '목재 10개',  ico: '🪵', coin: 24,  give: { wood: 10 }, desc: '건축·제작용' },
   { id: 'stone8',  name: '돌 8개',     ico: '🪨', coin: 30,  give: { stone: 8 }, desc: '돌담·화로용' },
   { id: 'coal4',   name: '석탄 4개',   ico: '⚫', coin: 28,  give: { coal: 4 } },
@@ -1033,7 +1040,9 @@ function rollLuckyBox(qid) {
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
   inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0, fert: 0, bait: 0,
-    wheat: 0, corn: 0, grape: 0, seed_wheat: 0, seed_corn: 0, seed_grape: 0, honey: 0 }, // + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐) + 🌾고급 작물·씨앗(js/farm-crops.js) + 🍯꿀(벌통)
+    wheat: 0, corn: 0, grape: 0, seed_wheat: 0, seed_corn: 0, seed_grape: 0, honey: 0,
+    apple: 0, pear: 0, peach: 0, persimmon: 0, chestnut: 0,
+    sap_apple: 0, sap_pear: 0, sap_peach: 0, sap_persimmon: 0, sap_chestnut: 0 }, // 🍎 과수원(js/orchard.js) + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐) + 🌾고급 작물·씨앗(js/farm-crops.js) + 🍯꿀(벌통)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -12771,7 +12780,10 @@ function updateParticles(dt) {
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
 const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
-  wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통)
+  wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
+  apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
+  sap_apple: '🍎사과나무 묘목', sap_pear: '🍐배나무 묘목', sap_peach: '🍑복숭아나무 묘목',
+  sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
 
 // id별 퀘스트 진행 상태(없으면 생성)
 function npcState(id) {
