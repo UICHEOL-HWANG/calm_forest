@@ -7735,6 +7735,44 @@ function buildRoom(def) {
       const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, d), rail);
       r.position.set(rx, 0.65, rz); g.add(r);
     });
+    // 🏠 루프탑 계단실 — 컨셉(sims/stair-concepts/stairs.js "루프탑 계단실 박스", 사용자 승인)을
+    //   포팅한다. 컨셉은 직선형 계단의 좁고 긴 구멍 위에 지어진 박스라 치수를 그대로 못 쓴다 —
+    //   지금은 나선 계단의 원형 구멍(lay.holeR)이라 정사각 평면(SH)으로 다시 잡아 그 구멍을 감싼다.
+    //   문(+x 쪽)은 테두리 난간이 비어 있는 진입 방향(buildSpiralStair 의 a=0, "postPoint(0,..)" 방향)과
+    //   똑같이 맞춘다 — 난간 틈으로 들어오면 그대로 문틀을 지나 구멍 앞에 선다(둘이 따로 안 논다).
+    //   재질은 컨셉 그대로 villa.js 어휘(흰 프레임 0xf4f3ee · 짙은 유리 0x1e3242 opacity 0.6 ·
+    //   유리 난간은 위에서 이미 만든 rail 을 그대로 재사용 — 재질 하나 더 만들지 않는다, 스펙 §8.3).
+    const SH = 2.2, WT = 0.14, DOORW = 1.6, HBH = 2.9, DOORH = 2.2;   // HBH — 컨셉의 BH 와 겹치지 않는 이름
+    const hcx = lay.cx, hcz = lay.cz;
+    const frame = HH.clay(0xf4f3ee);
+    const darkGlass = HH.glass(0x1e3242); darkGlass.opacity = 0.6;
+    const fbox = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+    const frameGeos = [
+      fbox(WT, HBH, SH * 2, hcx - SH, HBH / 2, hcz),                                  // 뒷벽(문 반대편)
+      fbox(SH * 2, HBH, WT, hcx, HBH / 2, hcz - SH),                                  // 왼벽
+      fbox(SH * 2, HBH, WT, hcx, HBH / 2, hcz + SH),                                  // 오른벽
+      fbox(WT, HBH, SH - DOORW / 2, hcx + SH, HBH / 2, hcz - (SH + DOORW / 2) / 2),   // 문 왼쪽 기둥
+      fbox(WT, HBH, SH - DOORW / 2, hcx + SH, HBH / 2, hcz + (SH + DOORW / 2) / 2),   // 문 오른쪽 기둥
+      fbox(WT, HBH - DOORH, DOORW, hcx + SH, DOORH + (HBH - DOORH) / 2, hcz),         // 문 위 인방(콜라이더 없음 — 머리 위)
+      fbox(SH * 2 + 0.16, 0.12, SH * 2 + 0.16, hcx, HBH + 0.06, hcz),                 // 지붕 캡
+    ];
+    const stairHouseFrame = new THREE.Mesh(mergeGeos(frameGeos), frame);   // 재질 하나 = 드로우콜 하나(프레임 7조각)
+    stairHouseFrame.castShadow = stairHouseFrame.receiveShadow = true; g.add(stairHouseFrame);
+    const stairHouseGlass = new THREE.Mesh(fbox(0.06, HBH - 0.5, SH * 2 - 0.4, hcx - SH + 0.1, HBH / 2, hcz), darkGlass);   // 뒷벽(x 얇은 면)과 같은 축 — w/d 를 바꿔 적으면 벽 밖으로 삐져나간다(실측으로 잡은 버그)
+    g.add(stairHouseGlass);   // 뒷벽 안쪽 통유리(컨셉의 "뒷면 통유리") — 재질 하나 더 = 드로우콜 하나
+    // 🚧 콜라이더 3면 + 문 좌우 기둥(문 자리는 뺀다 — 여기가 들어가는 자리, 인방은 머리 위라 안 막는다).
+    //   colliders 는 월드 좌표계다 — buildSpiralStair 의 solidCircle(g.position.x+cx, ...) 와 같은 이유로
+    //   g.position(=INT)을 반드시 더한다(안 더하면 벽이 마을 원점 근처에 엉뚱하게 생긴다 — 실측으로 잡은 버그).
+    //   rebuildInteriorFinish 가 증축마다 방을 다시 지으므로 g.userData 에 담아 그때 같이 지운다
+    //   (안 지우면 안 보이는 벽이 누적된다 — 나선 계단 콜라이더와 같은 이유).
+    const wcx = g.position.x + hcx, wcz = g.position.z + hcz;
+    g.userData.stairHouseColliders = [
+      solidBox(wcx - SH - WT / 2, wcz - SH, wcx - SH + WT / 2, wcz + SH),                  // 뒷벽
+      solidBox(wcx - SH, wcz - SH - WT / 2, wcx + SH, wcz - SH + WT / 2),                  // 왼벽
+      solidBox(wcx - SH, wcz + SH - WT / 2, wcx + SH, wcz + SH + WT / 2),                  // 오른벽
+      solidBox(wcx + SH - WT / 2, wcz - SH, wcx + SH + WT / 2, wcz - DOORW / 2),           // 문 왼쪽 기둥
+      solidBox(wcx + SH - WT / 2, wcz + DOORW / 2, wcx + SH + WT / 2, wcz + SH),           // 문 오른쪽 기둥
+    ];
   } else {
     const wall = () => clayMat(PAL.wall, false);
     const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, H); back.castShadow = true; g.add(back);
@@ -7882,6 +7920,7 @@ function rebuildInteriorFinish() {
     // 🚧 계단 콜라이더는 scene 그래프가 아니라 별도 colliders 배열에 산다 — scene.remove() 로는 안 빠진다.
     //    안 빼면 증축(재건축)할 때마다 안 보이는 벽이 쌓인다.
     if (grp.userData.st?.userData.collider) removeSolid(grp.userData.st.userData.collider);
+    if (grp.userData.stairHouseColliders) grp.userData.stairHouseColliders.forEach(removeSolid);   // 🏠 계단실 벽 3면(+문기둥)도 같이
     disposeTree(grp);            // 옛 방의 지오메트리·재질 GPU 자원 반환
     scene.remove(grp);
   }
@@ -10519,7 +10558,9 @@ function goFloor(f) {
   if (def.outdoor) {
     const granted = gameState.house.grantedDecor || (gameState.house.grantedDecor = []);
     for (const id of rooftopFreeDecor(gameState.house.addons)) {
-      if (!granted.includes(id)) { granted.push(id); placeDecor(id, INT.x, INT.z + def.half - 2, true, 0, true, f); }
+      // 🏖️ 계단 구멍(stairLayout 기준 -x·z≈0 쪽)에서 대각선으로 먼 +x·+z 구석에 놓는다 —
+      //   원 자리(INT.x, INT.z+half-2)는 구멍 위에 겹쳐 있었다(2026-09-18 리뷰: 세트가 구멍 위에 떠 보임).
+      if (!granted.includes(id)) { granted.push(id); placeDecor(id, INT.x + def.half - 2, INT.z + def.half - 2, true, 0, true, f); }
     }
   }
   const h = def.half;
