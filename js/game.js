@@ -631,6 +631,51 @@ const OUTDOOR = [
 const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안이나 📐측량소 마당에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
 function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 function farmBuildingRecs(except = null) { return gameState.outdoor.filter(r => r !== except && isFarmBuilding(r.id)); }   // 시설 레코드만(옮기는 중인 자기 자신 제외)
+
+// ── 🦋 텃밭 방문객 — 환경 점수 입력 ──────────────────────────────
+//   js/habitat.js 는 순수 모듈이라 좌표·상태를 여기서 모아 넘긴다.
+//   ⚠️ gameState.outdoor 와 plots 는 월드 좌표, perimeterTrees() 는 **밭 로컬**이다(FARM 을 더한다).
+//   ⚠️ 여기에 물 준 상태를 넣지 않는다 — WET_TIME=9 라 9초짜리인 데다 세이브에도 안 남는다.
+//      스폰 지연이 6~14초라 🐸 가 영원히 안 온다(habitat.js 주석·테스트가 잠근다).
+let habitatSrc = null, habitatSrcAt = -1e9;   // 1초 스로틀 캐시
+let habitatDirty = true;
+
+function markHabitatDirty() { habitatDirty = true; }
+
+/** 밭 주변만 본다 — 마을 장식은 80 이상 떨어져 있어 가장 넓은 반경(8) 안에 들어올 수 없다 */
+function habitatSources() {
+  const H = farmHalf(), reach = H + 12;
+  const nearFarm = (x, z) => Math.hypot(x - FARM.x, z - FARM.z) <= reach;
+  return {
+    decor: gameState.outdoor.filter(o => ENV_TAG[o.id] && nearFarm(o.x, o.z)),
+    mature: plots.filter(p => p.state === 'mature').map(p => ({ x: p.x, z: p.z })),
+    trees: perimeterTrees(H).map(t => ({ x: FARM.x + t.x, z: FARM.z + t.z })),
+    rain: RAIN_DAY,
+  };
+}
+
+function habitatCtx() { return { night: isNight(), rain: RAIN_DAY }; }
+
+/** 스로틀된 소스로 한 지점 판정 — 매 프레임 불러도 초당 1회만 다시 모은다 */
+function habitatEnvAt(x, z) {
+  const now = clock.elapsedTime;
+  if (habitatDirty || !habitatSrc || now - habitatSrcAt >= 1) {
+    habitatSrc = habitatSources(); habitatSrcAt = now; habitatDirty = false;
+  }
+  return envAt(habitatSrc, x, z);
+}
+
+/** 밭 안을 한 칸 간격으로 훑은 후보 지점(월드) — 3단계(half 11)에서 최대 약 120칸 */
+function habitatCells() {
+  const H = farmHalf(), out = [];
+  for (let x = -H; x <= H; x += FARM_CELL) {
+    for (let z = -H; z <= H; z += FARM_CELL) {
+      if (Math.hypot(x, z) > H) continue;
+      out.push({ x: FARM.x + x, z: FARM.z + z });
+    }
+  }
+  return out;
+}
 let placingOutdoor = null;      // 배치 중인 야외 장식 id
 const outdoorMeshes = [];
 let pickedOutdoor = null;       // 🪵 들어 올린 기존 야외 장식 {id, x, z, farm} — 취소·구역 이탈 시 제자리로(값 없이 다시 놓기)
@@ -2262,6 +2307,7 @@ export async function enterGame() {
     window.__place = (id, x, z, rot = 0) => placeOutdoor(x, z, false, id, rot);
     window.__select = (id) => { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); return id; };   // 🏗️ 검수용 배치 모드 진입(작업대 메뉴 대신)
     window.__ghost = () => decorGhost ? { x: +decorGhost.position.x.toFixed(2), z: +decorGhost.position.z.toFixed(2), pinned: outdoorTarget.pinned, ok: ghostOk } : null;   // 🏗️ 검수용 시설·장식 즉시 배치(검사·비용 포함)
+    window.__habitat = { env: habitatEnvAt, ctx: habitatCtx, cells: habitatCells, src: habitatSources, dirty: markHabitatDirty };   // 🦋 방문객 환경 점수 검수용
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, shadowAuto: renderer.shadowMap.autoUpdate, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
@@ -9418,6 +9464,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   const carried = pickedOutdoor && pickedOutdoor.id === id ? pickedOutdoor.rec : null;
   const rec = carried ? Object.assign(carried, { x: wx, z: wz, rot: ry }) : { id, x: wx, z: wz, rot: ry };
   if (!gameState.outdoor.includes(rec)) gameState.outdoor.push(rec);
+  markHabitatDirty();   // 🦋 환경 점수 즉시 반영 — 1초 스로틀을 기다리면 미터가 한 박자 늦는다
   let ob, solid;
   if (def.farm) {   // 🏗️ 시설: 덮는 칸마다 밭 금지 원(r 0.1 + isBlocked 의 0.95 = 그 칸만) + 발자국 사각 충돌체(칸 경계 0.35 안쪽)
     ob = buildingCells(def.fp, wx, wz, ry).map(([cx, cz]) => ({ x: cx, z: cz, r: 0.1 })); obstacles.push(...ob);
@@ -9537,6 +9584,7 @@ function storeOutdoor() {
   const stored = gameState.outdoorStored || (gameState.outdoorStored = {});
   stored[id] = (stored[id] || 0) + 1;
   const ri = gameState.outdoor.indexOf(pickedOutdoor.rec); if (ri >= 0) gameState.outdoor.splice(ri, 1);   // 마당 목록에서 빼고 보관함으로
+  markHabitatDirty();   // 🦋 치운 장식의 태그도 즉시 빠져야 한다
   pickedOutdoor = null; placingOutdoor = null; removeDecorGhost();   // 제자리 복귀 없이 정리
   Sound.blip(); ui.toast?.(`🧺 ${def.name}을(를) 보관했어요. 작업대에서 다시 꺼낼 수 있어요`);
   trackEvent('store_outdoor', { item: id }); // [GA4]
