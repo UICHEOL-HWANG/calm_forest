@@ -85,7 +85,7 @@ export const CONFIG = {
   //             배정·언어 결정 로직은 js/i18n.js (detectLang/assignVariant).
   //    'beta' = 베타 번들 A/B — beta_testers 명단으로 배정(supabase-client). 일반 유저=control.
   //    실험을 켜기 전까지는 그냥 'control'만 쌓이고, 켜는 순간부터 배정됨.
-  EXPERIMENT: 'beta',   // 🧪 베타 A/B 가동(2026-09-02~) — docs/BETA_AB_TEST_PLAN.md
+  EXPERIMENT: 'off',    // 🏁 베타 A/B 종료(2026-09-02~09-15, 정리 2026-09-19) — docs/BETA_AB_TEST_PLAN.md
 };
 
 // 플레이스홀더가 그대로면 "오프라인 모드" 로 간주하기 위한 헬퍼
