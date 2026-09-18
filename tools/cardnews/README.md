@@ -52,3 +52,11 @@ decks/deck-01.json      카피 + 이미지 슬롯 + 생성 프롬프트  ← 단
 
 - `node shoot.mjs` — 로컬 서버가 떠 있어야 한다 (`python3 scripts/serve.py`)
 - `node generate.mjs` — `codex login` 으로 `~/.codex/auth.json` 이 있어야 한다
+
+## ⚠️ 로컬에만 있는 소재 의존
+
+`templates/{a-fullbleed,b-frame,c-contrast}.html` 이 플레이스홀더로
+`../../../docs/beginner-guide/img/06_farm_water.jpg` 를 참조한다.
+그 디렉토리는 안내서 마스터 원본(고해상도 94장 9.7MB)이라 `.gitignore` 에 있다
+— **새로 클론한 환경에서는 이 이미지가 깨진다.** 템플릿을 미리보기 할 일이 있으면
+`guide/img/06_farm_water.jpg`(배포본, 추적됨)로 바꾸거나 원본을 따로 받아 둘 것.
