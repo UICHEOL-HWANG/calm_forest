@@ -263,3 +263,69 @@ test('visitor 카테고리가 어느 층엔가 전시된다', () => {
   const placed = new Set(MUSEUM_FLOORS.flatMap(f => f.cats));
   assert.ok(placed.has('visitor'), '빠지면 방문객 4종이 영영 전시되지 않는다');
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  🛡️ 기존 유저 보호 — 도감 카테고리를 늘려도 이미 모은 사람이 손해를 보면 안 된다
+//     (세이브 덮어쓰기 사고 2026-09-14 의 교훈: "괜찮을 것" 이 아니라 테스트로 잠근다)
+// ═══════════════════════════════════════════════════════════════
+
+/** game.js 의 dex 객체 리터럴에서 카테고리 키 목록을 뽑는다 */
+function dexKeysAt(marker) {
+  const i = SRC.indexOf(marker);
+  assert.ok(i > 0, `${marker} 를 찾지 못했다 — 테스트가 낡았다`);
+  const body = SRC.slice(i, SRC.indexOf('\n', i));   // 한 줄 리터럴 — `fish: {}` 의 첫 `}` 에서 자르면 안 된다
+  return (body.match(/(\w+):\s*\{\}/g) || []).map(s => s.split(':')[0]);
+}
+
+// ⚠️ 기본 객체와 applySave 복원이 **같은 키 목록**이어야 한다.
+//    한쪽만 고치면 세이브가 있는 유저에게 그 카테고리가 undefined 가 되고,
+//    dexDiscover 첫 줄(`if (!gameState.dex[cat] ...) return;`)에서 조용히 반환해 영영 등록이 안 된다.
+test('도감 기본 객체와 세이브 복원의 카테고리 목록이 같다', () => {
+  const base = dexKeysAt('  dex: { fish: {}');
+  const restore = dexKeysAt('gameState.dex = { fish: {}');
+  assert.deepEqual(restore, base, '한쪽에만 카테고리가 추가됐다 — 그 종은 영영 등록되지 않는다');
+  assert.ok(base.includes('visitor'), '🦋 방문객이 빠졌다');
+});
+
+test('세이브에 없던 카테고리가 생겨도 기존 도감은 그대로 살아남는다', () => {
+  // applySave 와 같은 병합: 기본 키를 깔고 saved.dex 를 덮어쓴다
+  const defaults = Object.fromEntries(dexKeysAt('  dex: { fish: {}').map(k => [k, {}]));
+  const oldSave = { fish: { common: 111 }, crop: { carrot: 222 }, weather: { clear: 333 } };   // visitor 를 모르던 시절 세이브
+  const merged = { ...defaults, ...oldSave };
+  assert.deepEqual(merged.fish, { common: 111 }, '기존 기록이 사라졌다');
+  assert.deepEqual(merged.crop, { carrot: 222 });
+  assert.deepEqual(merged.weather, { clear: 333 });
+  assert.deepEqual(merged.visitor, {}, '새 카테고리는 빈 채로 열려 있어야 등록이 된다');
+});
+
+// ⚠️ 종이 늘면 floorProgress 의 total 이 커진다. have 는 그대로이므로 해금이 후퇴하면 안 된다.
+test('도감 종이 늘어도 이미 열린 층이 닫히지 않는다', () => {
+  const OLD = { ...DEX }; delete OLD.visitor;          // 방문객이 없던 시절 표
+  const owned = {};                                     // 2층을 9종 채워 3층을 연 유저
+  for (const k of Object.keys(DEX)) owned[k] = {};
+  OLD.crop.slice(0, 7).forEach(e => { owned.crop[e.id] = 1; });
+  OLD.fish.slice(0, 2).forEach(e => { owned.fish[e.id] = 1; });   // 1층 9종
+  OLD.forage.forEach(e => { owned.forage[e.id] = 1; });
+  OLD.bug.forEach(e => { owned.bug[e.id] = 1; });
+  OLD.dig.slice(0, 1).forEach(e => { owned.dig[e.id] = 1; });     // 2층 9종
+  const before = openFloors(owned, OLD);
+  const after = openFloors(owned, DEX);
+  assert.equal(before, 3, '전제가 틀렸다 — 이 세이브는 원래 3층이 열려 있어야 한다');
+  assert.equal(after, before, '방문객을 추가했더니 열려 있던 층이 닫혔다');
+});
+
+// ⚠️ 총계가 늘면 "다 모은 사람" 이 미완성으로 바뀐다. 배지는 회수하지 않아야 한다.
+test('배지는 부여만 하고 회수하지 않는다 — 도감을 늘려도 도감 마스터가 사라지지 않는다', () => {
+  const i = SRC.indexOf('function awardBadge(');
+  const body = SRC.slice(i, SRC.indexOf('\n}\n', i));
+  assert.ok(i > 0, 'awardBadge 를 찾지 못했다');
+  assert.doesNotMatch(body, /delete\s+gameState\.badges|badges\[\w+\]\s*=\s*(null|false|0)\b/,
+    '배지를 회수하는 경로가 있다 — 종을 늘리면 옛 완성자의 배지가 사라진다');
+});
+
+test('완성 보상은 배지로 막혀 다시 나가지 않는다', () => {
+  const i = SRC.indexOf('function dexDiscover(');
+  const body = SRC.slice(i, SRC.indexOf('\n}\n', i));
+  assert.match(body, /total === DEX_TOTAL && !gameState\.badges\.dex_master/,
+    '총계가 늘면 옛 완성자에게 완성 보상이 다시 나간다');
+});
