@@ -1,0 +1,207 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>밭 외관 개선안</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin:0; background:#f4f1ea; font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:#2f3a33; }
+  header { padding:22px 24px 10px; max-width:1400px; margin:0 auto; }
+  h1 { margin:0 0 6px; font-size:24px; }
+  .sub { margin:0; color:#5d6b62; }
+  .grid { display:grid; gap:18px; padding:18px 24px 40px; max-width:1400px; margin:0 auto; grid-template-columns:1fr; }
+  @media (min-width:1000px){ .grid { grid-template-columns:repeat(3,1fr); } }
+  .card { background:#fff; border:1px solid #e2ded3; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .card h2 { margin:0; padding:13px 16px; font-size:16px; border-bottom:1px solid #eee8dc; background:#faf8f3; }
+  .card h2 small { font-weight:400; color:#7b8a80; }
+  canvas { display:block; width:100%; height:auto; background:linear-gradient(180deg,#cfe8c2,#bcdcae); cursor:grab; }
+  canvas:active { cursor:grabbing; }
+  .body { padding:12px 16px 16px; font-size:14px; }
+  .body p { margin:0 0 8px; }
+  .tag { display:inline-block; font-size:12px; padding:2px 8px; border-radius:99px; margin-right:5px; }
+  .good { background:#e4f3e0; color:#2e7d5b; }
+  .warn { background:#fbeee2; color:#a4552f; }
+  .calls { font-variant-numeric:tabular-nums; font-weight:700; }
+  footer { max-width:1400px; margin:0 auto; padding:0 24px 48px; color:#5d6b62; }
+  code { background:#eee9de; padding:1px 5px; border-radius:4px; font-size:13px; }
+</style>
+
+<header>
+  <h1>🌾 밭 외관 개선안 — 레퍼런스 반영</h1>
+  <p class="sub">보내주신 레퍼런스는 <b>이어진 흙바닥 + 작은 포기를 잔뜩 흩뿌린</b> 모습입니다. 지금은 1.7×1.7 흙 상자가 0.3 간격으로 떨어져 있고 칸마다 큰 작물 하나가 서 있죠. 드래그하면 돌려볼 수 있습니다.</p>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <h2>지금 <small>— 칸이 또렷이 나뉨</small></h2>
+    <canvas class="v" data-mode="now" width="620" height="460"></canvas>
+    <div class="body">
+      <p>흙 상자 사이에 <b>0.3 간격</b>이 있고 이랑 3줄이 칸 경계를 강조합니다. 작물은 칸 중앙에 큰 것 하나.</p>
+      <p><span class="tag good">어디 심을지 명확</span> <span class="tag warn">121칸이면 바둑판처럼 보임</span></p>
+      <p>포기 밀도: 칸당 1 · 드로우콜 <span class="calls">칸당 3.17</span></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>A안 · 이어진 밭 <small>— 레퍼런스에 가장 가까움</small></h2>
+    <canvas class="v" data-mode="cont" width="620" height="460"></canvas>
+    <div class="body">
+      <p>간격을 없애 흙이 <b>하나의 면</b>으로 이어지고, 이랑 대신 흙에 <b>얼룩</b>(정점색)을 넣었습니다. 작물은 칸마다 <b>작은 포기 6개</b>를 흩뿌립니다.</p>
+      <p><span class="tag good">넓을수록 진짜 밭처럼</span> <span class="tag good">포기 수백 개도 1콜</span> <span class="tag warn">칸 경계가 흐려짐</span></p>
+      <p>포기 밀도: 칸당 6 · 드로우콜 <span class="calls">칸당 ~0.1</span></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>B안 · 이랑 유지 + 포기만 흩뿌리기 <small>— 변화 최소</small></h2>
+    <canvas class="v" data-mode="keep" width="620" height="460"></canvas>
+    <div class="body">
+      <p>지금 실루엣(간격·이랑)을 그대로 두고 <b>작물만</b> 여러 포기로 바꿉니다.</p>
+      <p><span class="tag good">기존 유저에게 이질감 적음</span> <span class="tag warn">레퍼런스의 "이어진 밭" 느낌은 안 남</span></p>
+      <p>포기 밀도: 칸당 5 · 드로우콜 <span class="calls">칸당 ~0.1</span></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p><b>왜 지금이 적기인가</b> — 예전 구조였다면 포기를 칸당 6개로 늘리는 순간 121칸 × 6 = 726메시가 되어 드로우콜이 폭발했습니다. 진행 중인 인스턴싱 작업이 끝나면 <b>포기가 몇 개든 종류당 1콜</b>이라, 이 개선은 성능 면에서 사실상 공짜입니다.</p>
+  <p><b>공통 전제</b> — 외부 텍스처 파일을 쓰지 않는 프로젝트 규칙을 지킵니다. 흙 얼룩도 이미지가 아니라 <code>정점색</code>으로 굽습니다. 타일 판정(2유닛 격자·칸별 상태)은 <b>하나도 바뀌지 않습니다</b> — 보이는 것만 바뀝니다.</p>
+</footer>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const SOIL = 0x8a5636, SOIL_DK = 0x6f4128, SOIL_LT = 0x9c6b4a;
+const RIDGE = 0x80553a;
+const LEAF = 0x6fa84a, LEAF2 = 0x86c05f, FLOWER = 0xe8b23c, FLOWER2 = 0xf0c44a;
+
+const clay = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: .95, metalness: 0, flatShading: flat });
+// 결정적 난수 — 패널마다 같은 배치가 나오게
+function rng(seed) { let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+
+// 얼룩진 흙 판 — 정점색으로 구움(텍스처 파일 없음)
+function mottledSoil(w, d, seg, seed) {
+  const g = new THREE.PlaneGeometry(w, d, seg, seg);
+  g.rotateX(-Math.PI / 2);
+  const r = rng(seed);
+  const pos = g.attributes.position, col = [];
+  const a = new THREE.Color(SOIL), b = new THREE.Color(SOIL_DK), c = new THREE.Color(SOIL_LT);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const n = Math.sin(x * 1.7 + z * .9) * .5 + Math.sin(x * .6 - z * 2.1) * .3 + (r() - .5) * .5;
+    const t = (n + 1) / 2;
+    const col3 = t < .45 ? b.clone().lerp(a, t / .45) : a.clone().lerp(c, (t - .45) / .55);
+    col.push(col3.r, col3.g, col3.b);
+    pos.setY(i, (Math.sin(x * 2.3 + z * 1.1) + Math.sin(x * .8 - z * 1.9)) * .012);   // 아주 얕은 기복
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .97, metalness: 0 }));
+  m.receiveShadow = true;
+  return m;
+}
+
+// 작은 포기 하나 — 줄기 + 잎 2~3장 + 꽃봉오리. 레퍼런스의 노란 꽃 + 초록 잎
+function sprig(r) {
+  const g = new THREE.Group();
+  const h = .16 + r() * .1;
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(.012, .018, h, 4), clay(LEAF));
+  stem.position.y = h / 2; g.add(stem);
+  const nLeaf = 2 + (r() < .4 ? 1 : 0);
+  for (let i = 0; i < nLeaf; i++) {
+    const a = r() * Math.PI * 2;
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(.075 + r() * .03, 6, 4), clay(r() < .5 ? LEAF : LEAF2, false));
+    leaf.scale.set(1, .32, .62);
+    leaf.position.set(Math.cos(a) * .08, h * (.35 + r() * .3), Math.sin(a) * .08);
+    leaf.rotation.set(0, -a, .34);
+    g.add(leaf);
+  }
+  if (r() < .78) {   // 꽃은 일부 포기에만 — 다 달리면 단조롭다
+    const f = new THREE.Mesh(new THREE.IcosahedronGeometry(.055 + r() * .02, 0), clay(r() < .5 ? FLOWER : FLOWER2, false));
+    f.position.y = h + .03; f.scale.y = .8; g.add(f);
+    const c = new THREE.Mesh(new THREE.SphereGeometry(.022, 6, 5), clay(0xb8781f, false));
+    c.position.y = h + .05; g.add(c);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+// 밭 한 칸 — mode 에 따라 흙·이랑·포기 구성이 달라진다
+function plot(mode, gx, gz, seed) {
+  const g = new THREE.Group();
+  g.position.set(gx * 2, 0, gz * 2);
+  const r = rng(seed);
+  if (mode === 'cont') {
+    g.add(mottledSoil(2.0, 2.0, 7, seed));   // 간격 없이 2.0 폭 → 옆 칸과 맞닿아 하나의 면
+  } else {
+    const soil = new THREE.Mesh(new THREE.BoxGeometry(1.7, .2, 1.7), clay(0x9c6b4a, false));
+    soil.position.y = .1; soil.receiveShadow = true; g.add(soil);
+    for (let k = -1; k <= 1; k++) {
+      const rg = new THREE.Mesh(new THREE.BoxGeometry(1.5, .1, .34), clay(RIDGE, false));
+      rg.position.set(0, .21, k * .5); rg.receiveShadow = true; g.add(rg);
+    }
+  }
+  const y = mode === 'cont' ? .02 : .22;
+  if (mode === 'now') {
+    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(.3, 0), clay(0x86d18a, false));
+    bush.position.y = y + .32; bush.scale.y = .82; bush.castShadow = true; g.add(bush);
+    const fruit = new THREE.Mesh(new THREE.IcosahedronGeometry(.19, 0), clay(0xff9e5e, false));
+    fruit.position.y = y + .56; fruit.castShadow = true; g.add(fruit);
+  } else {
+    const n = mode === 'cont' ? 6 : 5;
+    const span = mode === 'cont' ? .78 : .62;
+    for (let i = 0; i < n; i++) {
+      const s = sprig(r);
+      s.position.set((r() - .5) * 2 * span, y, (r() - .5) * 2 * span);
+      s.rotation.y = r() * Math.PI * 2;
+      s.scale.setScalar(.9 + r() * .45);
+      g.add(s);
+    }
+  }
+  return g;
+}
+
+function mount(canvas) {
+  const mode = canvas.dataset.mode;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(canvas.width, canvas.height, false);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(30, canvas.width / canvas.height, .1, 100);
+  cam.position.set(0, 6.4, 8.2); cam.lookAt(0, 0, .4);
+
+  scene.add(new THREE.HemisphereLight(0xdff0ff, 0x9a8f7a, 1.05));
+  const sun = new THREE.DirectionalLight(0xfff3d8, 1.25);
+  sun.position.set(4, 8, 5); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -8; sun.shadow.camera.right = 8;
+  sun.shadow.camera.top = 8; sun.shadow.camera.bottom = -8;
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, .3); fill.position.set(-4, 3, 4); scene.add(fill);
+
+  const grass = new THREE.Mesh(new THREE.CircleGeometry(20, 40), new THREE.MeshStandardMaterial({ color: 0xa8d894, roughness: 1 }));
+  grass.rotation.x = -Math.PI / 2; grass.position.y = -.01; grass.receiveShadow = true; scene.add(grass);
+
+  const pivot = new THREE.Group(); scene.add(pivot);
+  let seed = 11;
+  for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) pivot.add(plot(mode, gx, gz, seed += 977));
+
+  let drag = false, lastX = 0, spin = 0, auto = true;
+  canvas.addEventListener('pointerdown', e => { drag = true; auto = false; lastX = e.clientX; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e => { if (!drag) return; spin += (e.clientX - lastX) * .01; lastX = e.clientX; });
+  canvas.addEventListener('pointerup', () => { drag = false; });
+
+  const t0 = performance.now();
+  (function loop() {
+    requestAnimationFrame(loop);
+    const t = (performance.now() - t0) / 1000;
+    if (auto) spin = Math.sin(t * .22) * .42;
+    pivot.rotation.y = spin;
+    renderer.render(scene, cam);
+  })();
+}
+document.querySelectorAll('canvas.v').forEach(mount);
+</script>
