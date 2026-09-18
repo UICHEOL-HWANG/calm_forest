@@ -183,7 +183,7 @@ export const EN = {
   '💰 팔기': '💰 Sell',
   '🛍️ 사기': '🛍️ Buy',
   '📖 도감': '📖 Collection',
-  '물고기·작물·광물·요리·이웃을 처음 만나면 기록돼요 — 전부 모으면 🪙150!': 'Fish, crops, minerals, dishes & neighbors get recorded when you first meet them — collect them all for 🪙150!',
+  '처음 만나거나 찾아오면 기록돼요 — 전부 모으면 🪙150!': 'Anything you first meet — or that comes to visit — gets recorded. Collect them all for 🪙150!',
   '게스트 도감은 이 기기에서만 임시 보관': 'Your guest Collection is only kept on this device',
   '돼요.': ' for now.',
   '구글로 로그인하면': 'Sign in with Google for',
