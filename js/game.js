@@ -33,7 +33,7 @@ import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lo
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
-import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
+import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
@@ -7913,11 +7913,13 @@ let ghostRing = null, ghostFarmDef = null, ghostOk = true;   // 🏗️ 배치 �
 function updateHabitatMeter() {
   if (!atFarm || !decorGhost) { ui.setHabitatMeter?.(null); lastNearMiss = null; return; }
   const env = habitatEnvAt(decorGhost.position.x, decorGhost.position.z);
-  const near = nearMiss(env, habitatCtx(), gameState.dex.visitor || {});
-  ui.setHabitatMeter?.(env, near);
+  const known = gameState.dex.visitor || {};
+  ui.setHabitatMeter?.(spotInfo(env, habitatCtx(), known));
+  // [GA4] 퍼널 2단 — 화면 표시와 별개로 "70% 왔는데 막혔다" 만 기록한다(blocker 가 튜닝 축)
+  const near = nearMiss(env, habitatCtx(), known);
   if (near && near.visitor !== lastNearMiss) {
     lastNearMiss = near.visitor;
-    trackEvent('visitor_nearmiss', { visitor: near.visitor, blocker: near.blocker });   // [GA4] 퍼널 2단 — blocker 가 튜닝 축
+    trackEvent('visitor_nearmiss', { visitor: near.visitor, blocker: near.blocker });
   } else if (!near) lastNearMiss = null;
 }
 
@@ -9901,16 +9903,18 @@ function rebuildFarm(silent = false) {
 // ── 🦋 텃밭 방문객 — 스폰·등록은 js/farm-visitors.js, 판정은 js/habitat.js ──
 let visitors = null;   // 텃밭 안에서만 살아 있다
 
-// 막는 요인별 안내 — 정답(목표치)이 아니라 방향만 말한다.
+// 막는 요인별 안내 — 앞에 동물 아이콘이 붙는다("🦋 허수아비를 무서워해요").
+// ⚠️ 은유를 쓰지 않는다. "무언가 맴돌다 갔어요" 는 무슨 말인지 모르겠다는 지적을 받았다(2026-09-18).
+//    원인이 되는 **오브젝트 이름**을 그대로 쓴다.
 // ⚠️ 여기 문구가 i18n 키다. 조각을 이어 붙이지 말고 통째로 사전에 넣는다(" · " 글루 함정).
 const HABITAT_BLOCK_LINE = {
-  fear:    '무서워하는 것 같아요',
-  nectar:  '꽃이 더 있어야 할 것 같아요',
-  food:    '먹을 게 없나 봐요',
-  shelter: '숨을 데가 없나 봐요',
-  shade:   '그늘이 부족한가 봐요',
-  damp:    '너무 말랐나 봐요',
-  light:   '너무 어두운가 봐요',
+  fear:    '허수아비를 무서워해요',
+  nectar:  '꽃이 더 필요해요',
+  food:    '다 자란 작물이 더 필요해요',
+  shelter: '숨을 데가 더 필요해요',
+  shade:   '그늘이 더 필요해요 — 울타리 쪽이 그늘져요',
+  damp:    '물기가 더 필요해요 — 💧우물이나 비 오는 날',
+  light:   '빛이 더 필요해요',
 };
 let lastNearMiss = null;   // 같은 근접 신호를 GA4 로 반복해 쏘지 않기 위한 기억
 

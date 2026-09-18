@@ -141,6 +141,46 @@ export const NEAR_MISS_RATIO = 0.7;
  * 목표치를 안 보여주는 대신, 70% 이상 채운 **미발견** 종의 막는 요인 하나를 집어 준다.
  * @param {Record<string, any>} known gameState.dex.visitor
  */
+/**
+ * 미터에 뿌릴 줄 목록 — 태그마다 현재치·목표치·충족 여부.
+ * ⚠️ 점 개수만 보여주면 "4개가 많은 건가" 를 알 수 없다(2026-09-18 사용자 지적).
+ * block 태그는 need 가 0 이고 block:true 로 온다 — UI 가 "없어야 해요" 로 쓴다.
+ */
+export function needRows(v, env) {
+  const rows = Object.entries(v.need).map(([tag, need]) => ({
+    tag, have: env[tag] || 0, need, block: false, ok: (env[tag] || 0) >= need,
+  }));
+  for (const [tag, n] of Object.entries(v.block || {})) {
+    rows.push({ tag, have: env[tag] || 0, need: 0, block: true, ok: (env[tag] || 0) < n });
+  }
+  return rows;
+}
+
+/**
+ * 이 자리에 대해 미터가 할 말.
+ *   kind 'match' — 지금 조건이면 이 종이 온다
+ *   kind 'near'  — 제일 가까운 종과 막는 요인 하나
+ *   kind 'none'  — 실마리가 없다(빈 미터)
+ * 아직 못 만난 종을 먼저 권한다 — 이미 만난 종을 또 권하면 수집이 안 나아간다.
+ */
+export function spotInfo(env, ctx, known = {}) {
+  const ok = matchVisitors(env, ctx);
+  if (ok.length) {
+    const v = ok.find(x => !known[x.id]) || ok[0];
+    return { kind: 'match', visitor: v, rows: needRows(v, env), blocker: null };
+  }
+  let best = null;
+  for (const v of VISITORS) {
+    if (!whenOk(v.when, ctx)) continue;      // 지금 못 할 일을 권하지 않는다
+    const p = progressOf(v, env);
+    if (p <= 0) continue;                    // 아무 실마리도 없는 종은 후보가 아니다
+    const fresh = known[v.id] ? 0 : 1;       // 미발견 우선
+    if (!best || fresh > best.fresh || (fresh === best.fresh && p > best.p)) best = { v, p, fresh };
+  }
+  if (!best) return { kind: 'none', visitor: null, rows: [], blocker: null };
+  return { kind: 'near', visitor: best.v, rows: needRows(best.v, env), blocker: blockerOf(best.v, env) };
+}
+
 export function nearMiss(env, ctx, known = {}) {
   let best = null;
   for (const v of VISITORS) {

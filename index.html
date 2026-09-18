@@ -485,13 +485,38 @@
   /* 토스트(피드백 메시지) */
   #toast { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
-  /* 🦋 환경 미터 — 배치 모드에서만. 왼쪽 아래(도구 바 위)라 컨텍스트 슬롯·프롬프트 줄을 침범하지 않는다 */
-  #habitat-meter { position: absolute; left: 12px; bottom: calc(150px + var(--toss-reserve)); z-index: 6;
-    background: rgba(20,28,22,.82); color: #eaf3ea; border-radius: 10px; padding: 8px 10px;
-    font-size: 13px; line-height: 1.5; pointer-events: none; max-width: 210px; }
+  /* 🦋 환경 미터 — 배치 모드에서만 뜬다.
+     ⚠️ 하단 기준은 env(safe-area-inset-bottom) 이다. --toss-reserve 는 **상단** 여백이라
+        bottom 에 더하면 토스에서만 52px 떠오른다(--top-inset 계산을 보면 용도가 분명하다).
+     ⚠️ 192px 는 #door-prompt(150px, 가운데 정렬) 위다. 150 에 두면 폰 폭에서 겹친다
+        — 미터는 왼쪽 고정이고 프롬프트는 가운데라, 좁은 화면에선 가로로 피할 방법이 없다. */
+  #habitat-meter { position: absolute; left: 12px; bottom: calc(192px + env(safe-area-inset-bottom)); z-index: 6;
+    background: rgba(20,28,22,.86); color: #eaf3ea; border-radius: 10px; padding: 8px 10px;
+    font-size: 13px; line-height: 1.5; pointer-events: none;
+    max-width: min(250px, calc(100vw - 24px)); box-sizing: border-box; }
   #habitat-meter .hm-title { font-weight: 700; margin-bottom: 4px; }
-  #habitat-meter .hm-row { display: flex; justify-content: space-between; gap: 10px; white-space: nowrap; }
-  #habitat-meter .hm-dots { letter-spacing: 1px; }
+  #habitat-meter .hm-row { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+  #habitat-meter .hm-row > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #habitat-meter .hm-dots { letter-spacing: 1px; min-width: 42px; text-align: right; flex: none; }
+  /* 충족은 초록, 모자라면 주황 — 어느 줄을 고쳐야 하는지 한눈에 */
+  #habitat-meter .hm-goal { font-size: 11px; opacity: .78; min-width: 54px; text-align: right; flex: none; }
+  #habitat-meter .hm-row.ok .hm-dots { color: #9fe0a0; }
+  #habitat-meter .hm-row.no .hm-dots { color: #e8b48a; }
+  /* 📱 폰·토스 — 규약대로 **컨텍스트 슬롯(12px, 162px)** 을 쓴다.
+     하단에 두면 #door-prompt(가운데 정렬)와 가로로 피할 방법이 없어 겹친다(실측 확인).
+     오른쪽 버튼 열(문의하기·도감 ≈150px)은 침범하지 않고, 가운데 띠(캐릭터)는 비운다. */
+  @media (max-width: 760px) {
+    #habitat-meter { top: calc(162px + var(--top-inset)); bottom: auto; left: 12px;
+      max-width: calc(100vw - 12px - 150px); font-size: 12px; padding: 7px 9px; }
+    #habitat-meter .hm-goal { font-size: 10px; min-width: 48px; }
+    #habitat-meter .hm-dots { min-width: 36px; }
+    /* 슬롯 우선순위: 코치 > 단계 안내 > **환경 미터** > 시설 배너 > 퀘스트 칩.
+       위 둘은 1회성 튜토리얼이라 미터가 비켜주고, 아래 둘은 미터가 떠 있는 동안 비켜준다. */
+    body.coaching #habitat-meter,
+    body.decor-guide #habitat-meter { display: none !important; }
+    body:has(#habitat-meter:not([hidden])) #story-chip,
+    body:has(#habitat-meter:not([hidden])) #hint-banner { display: none !important; }
+  }
   #habitat-meter .hm-near { margin-top: 6px; padding-top: 6px; white-space: normal;
     border-top: 1px solid rgba(255,255,255,.18); font-size: 12px; opacity: .92; }
   /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지.
@@ -2333,19 +2358,29 @@
       // 🦋 환경 미터 — 라벨·문구는 game.js 가 js/habitat.js 에서 가져와 한 번 넘긴다(여기서 다시 적지 않는다)
       _hmLabel: {}, _hmBlock: {},
       setHabitatLabels(label, block) { this._hmLabel = label || {}; this._hmBlock = block || {}; },
-      /** env 가 없으면(null) 미터를 끈다. near = {visitor, blocker} 또는 null */
-      setHabitatMeter(env, near) {
+      /**
+       * info 가 없으면(null) 미터를 끈다.
+       * info = { kind:'match'|'near'|'none', visitor, rows:[{tag,have,need,block,ok}], blocker }
+       * ⚠️ 점만 보여주면 "4개가 많은 건가" 를 모른다 — 목표치를 같이 쓴다(2026-09-18 사용자 지적).
+       */
+      setHabitatMeter(info) {
         const el = $('habitat-meter');
-        if (!env) { el.hidden = true; return; }
+        if (!info) { el.hidden = true; return; }
         el.hidden = false;
-        // 0 인 태그는 줄을 먹지 않는다 — 일곱 줄이 늘 떠 있으면 화면을 가린다
-        const rows = Object.entries(env).filter(([, n]) => n > 0)
-          .map(([k, n]) => `<div class="hm-row"><span>${this._hmLabel[k] || k}</span>`
-                         + `<span class="hm-dots">${'●'.repeat(Math.min(6, n))}</span></div>`).join('');
-        el.querySelector('.hm-rows').innerHTML = rows || '<div class="hm-row"><span>아직 허전해요</span></div>';
+        const v = info.visitor;
+        const head = el.querySelector('.hm-title');
+        head.textContent = v ? `${v.ico} ${v.name}` : '🌿 이 자리';
+        el.querySelector('.hm-rows').innerHTML = (info.rows || []).map(r => {
+          const label = this._hmLabel[r.tag] || r.tag;
+          const dots = '●'.repeat(Math.min(6, r.have)) || '—';
+          const goal = r.block ? '없어야 해요' : `${r.need} 필요`;   // i18n 키 '{0} 필요'
+          return `<div class="hm-row ${r.ok ? 'ok' : 'no'}"><span>${label}</span>`
+               + `<span class="hm-dots">${dots}</span><span class="hm-goal">${goal}</span></div>`;
+        }).join('') || '<div class="hm-row"><span>아직 허전해요</span></div>';
         const nb = el.querySelector('.hm-near');
-        nb.hidden = !near;
-        if (near) nb.textContent = `❓ 무언가 맴돌다 갔어요 — ${this._hmBlock[near.blocker] || ''}`;
+        nb.hidden = info.kind === 'none';
+        if (info.kind === 'match') nb.textContent = `✅ 여기라면 찾아올 거예요`;
+        else if (info.kind === 'near') nb.textContent = `${v.ico} ${this._hmBlock[info.blocker] || ''}`;
       },
       // 🎣 캐치 배너 — 획득 순간 "무엇을 얻었나"를 크게·조금 더 오래. 토스트와 다른 줄(프롬프트 줄)을 써서
       //   같은 순간에 뜨는 📖도감·📜퀘스트 토스트와 서로 지우지 않는다. 월드 플로트 텍스트와 달리

@@ -164,3 +164,55 @@ test('런타임 전용 필드를 태그 소스로 쓰지 않는다', () => {
       `WET_TIME=9 라 물 준 흙은 9초만 촉촉하고 스폰 지연이 6~14초다(🐸 가 영원히 안 온다).`);
   }
 });
+
+// ── 🌿 배치 미터에 뿌릴 정보 ─────────────────────────────────
+//   사용자 결정(2026-09-18): 점만 보여주면 "4개가 많은 건지" 를 모른다 →
+//   목표치를 같이 보여주고, 막는 동물 이름도 밝힌다.
+import { needRows, spotInfo } from '../js/habitat.js';
+
+test('needRows: 필요한 태그마다 현재치·목표치·충족 여부를 돌려준다', () => {
+  const v = VISITORS.find(x => x.id === 'hedgehog');   // shelter 3, shade 2
+  const rows = needRows(v, { ...emptyEnv(), shelter: 3, shade: 1 });
+  assert.deepEqual(rows.find(r => r.tag === 'shelter'), { tag: 'shelter', have: 3, need: 3, block: false, ok: true });
+  assert.deepEqual(rows.find(r => r.tag === 'shade'),   { tag: 'shade',   have: 1, need: 2, block: false, ok: false });
+});
+
+test('needRows: block 태그는 "없어야 한다" 로 따로 표시된다', () => {
+  const v = VISITORS.find(x => x.id === 'butterfly');   // need nectar 3, block fear 1
+  const rows = needRows(v, { ...emptyEnv(), nectar: 4, fear: 3 });
+  const fear = rows.find(r => r.tag === 'fear');
+  assert.equal(fear.block, true, 'block 인 줄 알아야 UI 가 "없어야 해요" 로 쓴다');
+  assert.equal(fear.ok, false, '공포가 있으니 안 된다');
+  assert.equal(fear.have, 3);
+});
+
+test('spotInfo: 조건을 만족하면 그 종이 온다고 알려준다', () => {
+  const info = spotInfo({ ...emptyEnv(), nectar: 4 }, { night: false, rain: false }, {});
+  assert.equal(info.kind, 'match');
+  assert.equal(info.visitor.id, 'butterfly');
+  assert.ok(info.rows.every(r => r.ok), '온다고 했으면 모든 줄이 충족이어야 한다');
+});
+
+test('spotInfo: 못 오면 가장 가까운 종과 막는 요인을 집어 준다', () => {
+  const info = spotInfo({ ...emptyEnv(), nectar: 4, fear: 3 }, { night: false, rain: false }, {});
+  assert.equal(info.kind, 'near');
+  assert.equal(info.visitor.id, 'butterfly');
+  assert.equal(info.blocker, 'fear');
+});
+
+test('spotInfo: 아무 실마리도 없으면 kind 가 none — 빈 미터를 띄운다', () => {
+  assert.equal(spotInfo(emptyEnv(), { night: false, rain: false }, {}).kind, 'none');
+});
+
+test('spotInfo: 시간대가 안 맞는 종은 후보에 넣지 않는다 — 지금 못 할 일을 권하지 않는다', () => {
+  // 밤에 낮 손님 조건이 차 있어도 낮 손님을 권하면 안 된다
+  const info = spotInfo({ ...emptyEnv(), nectar: 9 }, { night: true, rain: false }, {});
+  assert.notEqual(info.visitor?.id, 'butterfly');
+});
+
+test('spotInfo: 이미 발견한 종보다 아직 못 만난 종을 먼저 권한다', () => {
+  // 🦋(발견함)와 🐦(미발견) 둘 다 실마리가 있을 때
+  const env = { ...emptyEnv(), nectar: 2, food: 1 };
+  const info = spotInfo(env, { night: false, rain: false }, { butterfly: 1 });
+  assert.equal(info.visitor.id, 'sparrow', '새로 만날 수 있는 쪽을 알려줘야 수집이 진행된다');
+});

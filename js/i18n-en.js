@@ -10,6 +10,40 @@
 // =============================================================
 
 export const EN = {
+  // ── 🦋 텃밭 방문객 ────────────────────────────────────────────
+  //   ⚠️ 미터 줄은 라벨·점·목표를 각각 다른 DOM 에 넣는다 — 조각마다 따로 키가 잡힌다.
+  //   숫자가 끼는 줄은 {0} 슬롯으로 둔다(" · " 글루와 같은 함정).
+  '🦋 텃밭 방문객': '🦋 Garden Visitors',
+  '🦋 방문객': '🦋 Visitors',
+  '🌿 이 자리': 'Right here',
+  '아직 허전해요': 'Nothing here yet',
+  '{0} 필요': 'need {0}',
+  '없어야 해요': 'must be none',
+  '✅ 여기라면 찾아올 거예요': "✅ They'll come to a spot like this",
+  '호랑나비': 'Swallowtail',
+  '참새': 'Sparrow',
+  '고슴도치': 'Hedgehog',
+  '청개구리': 'Tree Frog',
+  '꽃이 많은 곳': 'Somewhere full of flowers',
+  '먹을 게 익은 곳': 'Somewhere with ripe food',
+  '숨을 데가 있는 어두운 곳': 'A dark spot with places to hide',
+  '축축하고 그늘진 곳': 'Somewhere damp and shaded',
+  '🌷 꽃': '🌷 Flowers',
+  '🏮 빛': '🏮 Light',
+  '🧱 은신처': '🧱 Shelter',
+  '💧 물기': '💧 Moisture',
+  '🌑 그늘': '🌑 Shade',
+  '🌾 먹이': '🌾 Food',
+  '🎃 공포': '🎃 Fear',
+  '허수아비를 무서워해요': 'is scared of the scarecrow',
+  '꽃이 더 필요해요': 'wants more flowers',
+  '다 자란 작물이 더 필요해요': 'wants more ripe crops',
+  '숨을 데가 더 필요해요': 'wants more places to hide',
+  '그늘이 더 필요해요 — 울타리 쪽이 그늘져요': 'wants more shade — it is shadier near the fence',
+  '물기가 더 필요해요 — 💧우물이나 비 오는 날': 'wants more moisture — a 💧well or a rainy day',
+  '빛이 더 필요해요': 'wants more light',
+  '{0}가 다시 찾아왔어요': '{0} came back',
+
   // ── 공통(글루 패턴·토글) ──────────────────────────────────────
   '{0} · {1}': '{0} · {1}',
   // 🍳 코스 표기 글루 — "🔪 썰기 → 🔥 굽기" 처럼 이어 붙인 줄을 조각별로 재귀 번역시킨다
