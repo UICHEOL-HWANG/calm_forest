@@ -91,6 +91,6 @@ description: 데이터 질문 하나를 처리하는 방식. 쿼리를 먼저 �
 
 ## 참고
 
-- 여러 단계를 묶은 분석 프로젝트: `gated-analysis` 스킬 · `docs/ANALYSIS_PROTOCOL.md`
+- 여러 단계를 묶은 분석 프로젝트: `gated-analysis` 스킬 · `docs/analysis/ANALYSIS_PROTOCOL.md`
 - 차트 헬퍼: `ml/calm_ml/report.py` · BQ 조회: `ml/calm_ml/bq.py`
 - 사람 단위 키는 `user_pseudo_id`(GA4) / `client_id`(BQ 미러). **`user_id` 금지**

@@ -6,7 +6,7 @@
 **분석이 틀려서가 아니라 전달되지 않아서** 실패한다. 이 문서는 그걸 막는 절차다.
 
 자동 적용판은 스킬 둘이다. 바깥 틀이 `gated-analysis`(게이트 구조), 안쪽 루프가
-`analysis-step`(질문 하나를 쿼리→결과→차트→한계→멈춤으로 처리). 진행 상태는 `docs/ANALYSIS_GATES.md`.
+`analysis-step`(질문 하나를 쿼리→결과→차트→한계→멈춤으로 처리). 진행 상태는 `docs/analysis/ANALYSIS_GATES.md`.
 
 ---
 

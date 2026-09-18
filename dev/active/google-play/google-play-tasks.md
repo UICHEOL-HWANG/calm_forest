@@ -23,7 +23,7 @@
       · 새 탭 + 팝업차단 폴백 · API_BASE 접두(토스·itch) · GA4 privacy_open·delete_account_open
 - [x] `sql/migrate_delete_account.sql` 프로덕션 적용(2026-09-16, 사용자가 콘솔에서 실행)
       · 검증: security definer=true · owner=postgres · 실행권한 authenticated 만(anon 없음)
-- [x] 스토어 등록정보 초안 — `docs/STORE_LISTING.md`(설명문·스크린샷 8장 선정·IARC 답안)
+- [x] 스토어 등록정보 초안 — `docs/ops/STORE_LISTING.md`(설명문·스크린샷 8장 선정·IARC 답안)
 - [x] 피처 그래픽 1024×500 — `assets/social/play-feature.png` (`scripts/make-play-feature.mjs`)
 - [x] 지문 3종 assetlinks.json 갱신 · 웹 배포(2026-09-16 `5ff8c9d`)
       · deployment `81:72:33…5E:C1` · hybrid classical `18:4F:F5…54:86` · hybrid PQC `17:F9:71…BC:A7`

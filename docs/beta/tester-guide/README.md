@@ -3,7 +3,7 @@
 `베타테스트_안내.pdf` 가 산출물. 금액·문의처를 채우거나 문구를 고치면 `guide.html` 을 편집한 뒤 다시 뽑는다:
 
 ```bash
-cd docs/beta-tester-guide
+cd docs/beta/tester-guide
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
   --no-pdf-header-footer --print-to-pdf="$PWD/베타테스트_안내.pdf" "file://$PWD/guide.html"
 ```

@@ -518,7 +518,7 @@ const mistLanterns = [];                             // { group, headMat, light,
 const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, soothe: null, t: 0, warned: false,
                practice: false, step: -1, choiceOpen: false };   // practice=연습 중 · step=연습 단계(3=완료 카드 표시 중) · choiceOpen=갈림길 카드
 
-// ── 🌊 바다터(대형 낚시) — 기획: docs/SEA_FISHING_PLAN.md ──────────────
+// ── 🌊 바다터(대형 낚시) — 기획: docs/design/SEA_FISHING_PLAN.md ──────────────
 const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
 const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
 const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
@@ -7117,7 +7117,7 @@ function doExpand() {
 //  집 실내(입장) + 꾸미기
 // =============================================================
 // =============================================================
-//  🌊 바다터 — 대형 낚시 (docs/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
+//  🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 //  포구 게이트(마을 북동) → 부두 인스턴스. 수면의 물고기를 노려 던지고,
 //  버둥칠 땐 버티고(부두 끝까지 끌려가면 놓침) "당기세요!!"에 연타로 감는다.
 //  참치 = "오늘의 대어"(날짜 시드 급수) → sea_records → 🏆 'sea' 리더보드.

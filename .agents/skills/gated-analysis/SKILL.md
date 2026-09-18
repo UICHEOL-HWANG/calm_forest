@@ -27,7 +27,7 @@ Claude 는 근거(실측 숫자)와 반증 조건을 붙인 **후보**를 낼 �
 
 ### 2. 통과/기각 기준은 게이트를 시작하기 전에 적는다
 결과를 보고 기준을 만들면 p-hacking 이다. **기각도 정상적인 결과다.**
-`docs/CHURN_ANALYSIS_PLAN.md` §5 의 사전 기준은 결과가 나빠도 고치지 않는다.
+`docs/analysis/CHURN_ANALYSIS_PLAN.md` §5 의 사전 기준은 결과가 나빠도 고치지 않는다.
 
 ### 3. 산출물 구조는 고정
 `plain-analysis-report` 스킬의 구조를 그대로 쓴다:
@@ -66,7 +66,7 @@ Claude 는 근거(실측 숫자)와 반증 조건을 붙인 **후보**를 낼 �
    모델 실험뿐 아니라 G1·G2 의 표본 수·라벨 분포도 남긴다. 나중에
    "언제 기준이 바뀌었나"를 추적할 수 있는 유일한 방법이다.
 4. **Artifact 1장 발행** — 게이트당 한 장. 링크를 사용자에게 준다.
-5. **원장 갱신** — `docs/ANALYSIS_GATES.md` 에 상태·날짜·링크·런 이름.
+5. **원장 갱신** — `docs/analysis/ANALYSIS_GATES.md` 에 상태·날짜·링크·런 이름.
 6. **멈춘다.**
 
 ## 이 프로젝트에서 반드시 지킬 것
@@ -88,6 +88,6 @@ Claude 는 근거(실측 숫자)와 반증 조건을 붙인 **후보**를 낼 �
 
 - 질문 하나를 어떻게 처리하는지: **`analysis-step`** 스킬. 이 스킬이 게이트라는 '바깥 틀'이라면
   그쪽이 게이트 안에서 실제로 손을 움직이는 '안쪽 루프'다
-- 사람이 읽는 판: `docs/ANALYSIS_PROTOCOL.md`
-- 진행 상태: `docs/ANALYSIS_GATES.md`
-- 이탈 분석 사전등록: `docs/CHURN_ANALYSIS_PLAN.md`
+- 사람이 읽는 판: `docs/analysis/ANALYSIS_PROTOCOL.md`
+- 진행 상태: `docs/analysis/ANALYSIS_GATES.md`
+- 이탈 분석 사전등록: `docs/analysis/CHURN_ANALYSIS_PLAN.md`

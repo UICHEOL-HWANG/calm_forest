@@ -84,7 +84,7 @@
 
 ## 5. D. 계측 · 로깅 가드
 
-새 GA4 이벤트(docs/GA4_GUIDE.md 표에 추가):
+새 GA4 이벤트(docs/analysis/GA4_GUIDE.md 표에 추가):
 
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
@@ -96,7 +96,7 @@
 
 **dev 파라미터 로깅 가드**: `config.js`에 `IS_DEV_SESSION`(URL에 `house`·`coop`·`weather`·`spawn` 중 하나라도 있으면 true) 추가. 참이면 `logEcon`·세션 요약 upsert(metrics.js)·센서 로그(logger.js)·GA4 `trackEvent`(analytics.js) 모두 조기 반환. 콘솔에 1회 안내 로그.
 
-**배포일 기록**: 배포 후 docs/GA4_GUIDE.md 변경 이력에 "YYYY-MM-DD 상인 방문·비료/미끼 배포 — 초반 세션 이동 분포 변화, 이탈 모델 전후 세그먼트 구분" 한 줄 추가.
+**배포일 기록**: 배포 후 docs/analysis/GA4_GUIDE.md 변경 이력에 "YYYY-MM-DD 상인 방문·비료/미끼 배포 — 초반 세션 이동 분포 변화, 이탈 모델 전후 세그먼트 구분" 한 줄 추가.
 
 ## 6. E. 분석 연속성
 
@@ -148,7 +148,7 @@
 - `js/config.js`: `IS_DEV_SESSION`
 - `js/metrics.js` · `js/logger.js` · `js/analytics.js`: 로깅 가드
 - `js/i18n-en.js`: 영문 키
-- `docs/GA4_GUIDE.md`: 이벤트 3종·`via` 매개변수·변경 이력
+- `docs/analysis/GA4_GUIDE.md`: 이벤트 3종·`via` 매개변수·변경 이력
 - `sql/analytics/tableau_export.sql`: t3 key 기준 전환
 
 ## 10. 검증

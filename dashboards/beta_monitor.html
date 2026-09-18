@@ -184,7 +184,7 @@
     });
     function draw(id, cfg) { charts[id]?.destroy(); charts[id] = new Chart($(id), cfg); }
 
-    // 임시 공개 링크: ?k=<토큰> — cf_share_links 표에서 발급 (docs/DEPLOY.md 참고)
+    // 임시 공개 링크: ?k=<토큰> — cf_share_links 표에서 발급 (docs/ops/DEPLOY.md 참고)
     const shareKey = new URLSearchParams(location.search).get('k') || '';
 
     // ── 부팅 (admin_analytics.html의 인증·RPC 부트 블록 그대로 복제, rpc명만 교체) ──

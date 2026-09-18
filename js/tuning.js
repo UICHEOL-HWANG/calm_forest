@@ -1,5 +1,5 @@
 // =============================================================
-//  calm forest · 베타 A/B 변형 파라미터 (docs/BETA_AB_TEST_PLAN.md)
+//  calm forest · 베타 A/B 변형 파라미터 (docs/beta/BETA_AB_TEST_PLAN.md)
 //  ------------------------------------------------------------
 //  A군(beta_A)에만 적용되는 개편 3종의 수치를 한 곳에 모은다.
 //  배정 자체는 supabase-client.js(명단 테이블), 적용은 game.js/index.html.
@@ -53,7 +53,7 @@ export function easeMult(variant, tries) {
 }
 
 // =============================================================
-//  🧪 베타 2차 (2026-09-06) — 맵 계단식 열기 · 문구 (docs/BETA_AB_TEST_PLAN.md 2차 설계 §5)
+//  🧪 베타 2차 (2026-09-06) — 맵 계단식 열기 · 문구 (docs/beta/BETA_AB_TEST_PLAN.md 2차 설계 §5)
 //  잠금 대상은 beta_A/beta_B 뿐. 판정은 여기 순수 함수로, game.js 는 부르기만 한다.
 // =============================================================
 export const BETA = {

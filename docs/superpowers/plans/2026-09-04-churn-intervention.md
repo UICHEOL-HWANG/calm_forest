@@ -2409,7 +2409,7 @@ MSG
 
 - [ ] **Step 3: 원장을 갱신한다**
 
-`docs/ANALYSIS_GATES.md` 의 "지금 상태" 를 구현 완료 시점으로 바꾸고,
+`docs/analysis/ANALYSIS_GATES.md` 의 "지금 상태" 를 구현 완료 시점으로 바꾸고,
 실측된 AUC·표본 규모·미달 여부를 적는다. 다음 세션이 여기만 보고 복원할 수 있어야 한다.
 
 ---

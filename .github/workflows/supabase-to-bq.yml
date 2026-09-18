@@ -8,7 +8,7 @@
 #   [Variables]  SUPABASE_URL, BQ_PROJECT(=calm-forest), BQ_DATASET(=calm_forest_raw), BQ_LOCATION
 #   [Secrets]    SUPABASE_SERVICE_ROLE (Supabase service_role 키),
 #                GCP_SA_KEY (GCP 서비스계정 JSON 키 전체)
-#  자세한 건 docs/DATA_PIPELINE.md 참고.
+#  자세한 건 docs/analysis/DATA_PIPELINE.md 참고.
 # =============================================================
 name: Supabase → BigQuery (daily)
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** 바닐라 ES 모듈(빌드 없음) · Supabase(Postgres RPC + RLS) · Chart.js(기존 대시보드와 동일) · Cloudflare Pages(main 병합 = 배포)
 
-**Spec:** `docs/BETA_AB_TEST_PLAN.md`
+**Spec:** `docs/beta/BETA_AB_TEST_PLAN.md`
 
 ## Global Constraints
 
@@ -36,7 +36,7 @@
 
 ```js
 // =============================================================
-//  calm forest · 베타 A/B 변형 파라미터 (docs/BETA_AB_TEST_PLAN.md)
+//  calm forest · 베타 A/B 변형 파라미터 (docs/beta/BETA_AB_TEST_PLAN.md)
 //  ------------------------------------------------------------
 //  A군(beta_A)에만 적용되는 개편 3종의 수치를 한 곳에 모은다.
 //  배정 자체는 supabase-client.js(명단 테이블), 적용은 game.js/index.html.
@@ -75,7 +75,7 @@ export function easeMult(variant, tries) {
 
 ```js
   //    'beta' = 베타 번들 A/B — beta_testers 명단으로 배정(supabase-client). 일반 유저=control.
-  EXPERIMENT: 'beta',   // 🧪 베타 A/B 가동(2026-09-02~) — docs/BETA_AB_TEST_PLAN.md
+  EXPERIMENT: 'beta',   // 🧪 베타 A/B 가동(2026-09-02~) — docs/beta/BETA_AB_TEST_PLAN.md
 ```
 
 - [ ] **Step 3: assignVariant 가드**
@@ -116,7 +116,7 @@ export function easeMult(variant, tries) {
 
 ```sql
 -- =============================================================
---  🧪 베타 A/B (2026-09-02) — docs/BETA_AB_TEST_PLAN.md
+--  🧪 베타 A/B (2026-09-02) — docs/beta/BETA_AB_TEST_PLAN.md
 --  베타테스터 명단: email → A/B 군 직접 배정(5:5)
 -- =============================================================
 create table if not exists public.beta_testers (

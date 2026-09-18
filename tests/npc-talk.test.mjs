@@ -307,10 +307,10 @@ test('퀘스트 말걸기는 npc_talk 그대로 — 과거 데이터와 끊기�
 });
 
 test('GA4_GUIDE 에 두 계열이 모두 적혀 있다 — 분석할 때 헷갈리지 않게', () => {
-  const doc = src('docs/GA4_GUIDE.md');
+  const doc = src('docs/analysis/GA4_GUIDE.md');
   for (const name of ['npc_talk', 'npc_chat_open', 'npc_chat_turn', 'npc_chat_done',
                       'npc_chat_exhausted', 'npc_chat_empty']) {
-    assert.ok(doc.includes(`\`${name}\``), `docs/GA4_GUIDE.md 에 ${name} 이 없다`);
+    assert.ok(doc.includes(`\`${name}\``), `docs/analysis/GA4_GUIDE.md 에 ${name} 이 없다`);
   }
 });
 

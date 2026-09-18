@@ -72,7 +72,7 @@ DOM·네트워크 없음. `tests/notices.test.mjs`를 먼저 작성(RED) → 구
 ## 7. 문서·메모리
 
 - `dev/active/notices/` plan·context·tasks 3종.
-- `docs/DEPLOY.md` 또는 새 `docs/NOTICES_OPS.md`에 발송 SQL 예시(전체/답장/영어 병기).
+- `docs/ops/DEPLOY.md` 또는 새 `docs/ops/NOTICES_OPS.md`에 발송 SQL 예시(전체/답장/영어 병기).
 
 ## 문구 (검수 완료 — 2026-09-11)
 

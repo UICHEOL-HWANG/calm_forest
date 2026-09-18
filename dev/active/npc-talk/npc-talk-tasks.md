@@ -95,7 +95,7 @@ GA4 탐색·`starts_with('npc_talk')` 에서 성격이 다른 두 기능이 한 
 
 - [x] 잡담 5종 → `npc_chat_open` / `_turn` / `_done` / `_exhausted` / `_empty` (index.html 6곳)
 - [x] 기존 `npc_talk` 은 **그대로 둔다** — 바꾸면 7월부터의 시계열이 끊긴다. 데이터가 하루치뿐인 신규 쪽을 바꿨다
-- [x] `docs/GA4_GUIDE.md` — 표에 잡담 5종 추가 + 두 계열을 합치지 말라는 주의 문단
+- [x] `docs/analysis/GA4_GUIDE.md` — 표에 잡담 5종 추가 + 두 계열을 합치지 말라는 주의 문단
 - [x] 회귀 테스트 3개(`tests/npc-talk.test.mjs`) — 옛 이름 잔존·퀘스트 이벤트 소실·문서 누락을 잡는다
 - [x] `npm test` 503 pass / 0 fail
 - [x] 브라우저 실증(`?dbg=1`, GA4 미전송 확인) — 잡담 3턴 + 작별 정상, 콘솔 에러 0

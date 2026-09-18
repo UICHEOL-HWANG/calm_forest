@@ -165,7 +165,7 @@ export const TUNING = {
 | 맵 방문 | `game_logs.char_x/char_z` 씬 판정(바다터 원점 (400,0), 안개숲 원점 별도) |
 | 일지 | `beta_diary` |
 
-⚠️ 분석 시 제외: 9/6 로컬 테스트 세션(`docs/ANALYSIS_GATES.md` 인수인계 3번) · `smoke` 행 · 8/31~9/1 자동 테스트 게스트.
+⚠️ 분석 시 제외: 9/6 로컬 테스트 세션(`docs/analysis/ANALYSIS_GATES.md` 인수인계 3번) · `smoke` 행 · 8/31~9/1 자동 테스트 게스트.
 
 ## 7. 준비 목록
 

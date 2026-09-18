@@ -41,7 +41,7 @@
    GA4_MEASUREMENT_ID: 'G-XXXXXXXXXX',
    ```
 3. GA4 **실시간 보고서**에서 `login`, `first_chop`, `harvest_crop`, `house_complete`, `quest_complete` 이벤트가 뜨는지 확인.
-   자세한 탐색/퍼널 구성은 `docs/GA4_GUIDE.md` 참고.
+   자세한 탐색/퍼널 구성은 `docs/analysis/GA4_GUIDE.md` 참고.
 
 ---
 

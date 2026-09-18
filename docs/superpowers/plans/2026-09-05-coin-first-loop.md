@@ -37,7 +37,7 @@
 | `js/game.js` | 상점 품목·인벤토리 키·비료 적용·미끼·상인 방문 상태 머신·좌판 말풍선·상점 큐 |
 | `index.html` | `#merchant-modal` 마크업/CSS/`ui.openMerchantModal`·`ui.anyModalOpen`, 가방·상점 하단·튜토리얼 순서·프롬프트 아이콘 |
 | `js/i18n-en.js` | 영문 키 |
-| `docs/GA4_GUIDE.md` | 이벤트 표·변경 이력 |
+| `docs/analysis/GA4_GUIDE.md` | 이벤트 표·변경 이력 |
 | `sql/analytics/tableau_export.sql` | `t3_tutorial_funnel` key 기준 전환 |
 
 ---
@@ -844,7 +844,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 10: 계측 문서 + Tableau 튜토리얼 퍼널 key 기준 전환
 
 **Files:**
-- Modify: `docs/GA4_GUIDE.md:50` (`shop_sell` 행), 표 끝(`badge_earn` 행 아래)에 3행 추가, 문서 끝에 변경 이력
+- Modify: `docs/analysis/GA4_GUIDE.md:50` (`shop_sell` 행), 표 끝(`badge_earn` 행 아래)에 3행 추가, 문서 끝에 변경 이력
 - Modify: `sql/analytics/tableau_export.sql:91-113` (`t3_tutorial_funnel`)
 
 - [ ] **Step 1: GA4 가이드**
@@ -896,7 +896,7 @@ BigQuery MCP `execute_sql`로 위 쿼리를 `dry_run: true`로 문법 검사 후
 - [ ] **Step 4: 커밋**
 
 ```bash
-git add docs/GA4_GUIDE.md sql/analytics/tableau_export.sql
+git add docs/analysis/GA4_GUIDE.md sql/analytics/tableau_export.sql
 git commit -m "Docs: 📊 GA4 이벤트 3종(merchant_visit·use_fert·use_bait)·via 매개변수 + Tableau 튜토리얼 퍼널 key 기준 전환
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"

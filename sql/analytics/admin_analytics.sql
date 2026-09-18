@@ -42,7 +42,7 @@ declare
   result jsonb;
 begin
   -- ── 접근 권한: 관리자 계정 OR 유효한 임시 공유 토큰 ──────────
-  --  공유 토큰은 cf_share_links 표에서 발급합니다(생성/발급 SQL 은 docs/DEPLOY.md).
+  --  공유 토큰은 cf_share_links 표에서 발급합니다(생성/발급 SQL 은 docs/ops/DEPLOY.md).
   --  만료(expires_at)가 지나면 자동으로 막히고, 행을 지우면 즉시 회수됩니다.
   if caller_email = any (admins) then
     allowed := true;
@@ -418,7 +418,7 @@ revoke all on function public.cf_admin_overview(int, text) from public;
 grant execute on function public.cf_admin_overview(int, text) to authenticated, anon;
 
 -- =============================================================
---  🧪 베타 A/B (2026-09-02) — docs/BETA_AB_TEST_PLAN.md
+--  🧪 베타 A/B (2026-09-02) — docs/beta/BETA_AB_TEST_PLAN.md
 --  베타테스터 명단: email → A/B 군 직접 배정(5:5)
 -- =============================================================
 create table if not exists public.beta_testers (
