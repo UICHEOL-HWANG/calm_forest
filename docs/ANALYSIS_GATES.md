@@ -5,9 +5,210 @@
 
 ---
 
-## 지금 상태 (2026-09-14 대조)
+## 지금 상태 (2026-09-15 대조)
 
-**축을 나눠 읽어야 한다.** 기존 세션 이탈 예측모델은 학습·검증·2026-09-06 계수 교체까지 기록돼 있다(현재 VM 상태는 새로 검증하지 않음). 전체 활동·토스 행동 EDA는 00~09번 노트북에 있다. 토스 기존 집계의 1차 오프라인 세그먼트 검증은 `13_toss_offline_cohort_segments.ipynb`에 기록했다. `14_toss_early_later_label_audit.ipynb`에서 첫 10분/이후 24시간 경계 위반 0을 확인했고, `15_toss_segment_readiness_for_modeling.ipynb`에서 같은 46대·임시 양성 8대 기준 세그먼트 준비도를 확인했다. `16_toss_later_target_label_eda.ipynb`에서 후속 행동을 새 영역·퀘스트·낚시 후보로 쪼갰지만, 전체 양성 8대·새 영역 양성 6대라 **G3 표본·라벨 확정은 보류**했다. 다음 세션에서 실제 예측 목표를 합의한다. 라이브 낚시 A/B 안은 철회됐고 배포하지 않았다.
+**축을 나눠 읽어야 한다.** 기존 세션 이탈 예측모델은 학습·검증·2026-09-06 계수 교체까지 기록돼 있다(현재 VM 상태는 새로 검증하지 않음). 전체 활동·토스 행동 EDA는 00~09번 노트북에 있다. 토스 기존 집계의 1차 오프라인 세그먼트 검증은 `13_toss_offline_cohort_segments.ipynb`에 기록했다. `14_toss_early_later_label_audit.ipynb`에서 첫 10분/이후 24시간 경계 위반 0을 확인했고, `15_toss_segment_readiness_for_modeling.ipynb`에서 같은 46대·임시 양성 8대 기준 세그먼트 준비도를 확인했다. `16_toss_later_target_label_eda.ipynb`에서 후속 행동을 새 영역·퀘스트·낚시 후보로 쪼갰다. 이후 토스만 보지 않고 전체 채널로 확장하되, beta_A/B 표시 기기는 제외했다. `18_all_channel_exploratory_retention_model.ipynb`의 탐색 AUC 최고는 raw-rank `early_tracked_events` 0.883이고, `19`~`21`에서 이를 이벤트 밀도·의도행동·이벤트 구성으로 감사했다. 현재 결론은 `tracked>=20` 신호를 킵하되, 운영 피처는 원시 이벤트 수 단독이 아니라 의도행동 비율·자동/접속 이벤트·행동 다양성으로 분리해야 한다는 것이다. A/B 효과는 아직 보지 않는다. 라이브 낚시 A/B 안은 철회됐고 배포하지 않았다.
+
+### 🧪 베타 번들 A/B — Hβ1 EDA (2026-09-16) · 방향 혼재, 검정 전 보류
+
+**후보 Hβ1**: `beta_A` 번들(튜토리얼 순서 재배치·3일 보상 1.5배·첫 3회 관대 판정)은
+`beta_B` 현행판보다 참여 깊이를 높인다. **사전 EDA 기준**: 베타 명단 10명과
+세션 로그가 사람 단위로 조인되고, 활동 가짓수·하루 1회 초과 접속·총 플레이 시간을
+A/B별로 계산할 수 있으면 EDA 통과. 표식이나 조인이 깨지면 검정으로 넘어가지 않는다.
+
+- **조인 감사**: Supabase `beta_testers` 10명과 BigQuery `session_logs`의 `beta_A/B`
+  사용자 10명이 모두 매칭됐다. BigQuery 미러에는 `beta_testers`·`beta_diary`가 없어
+  명단은 Supabase에서 읽고 행동 로그는 BQ에서 읽었다.
+- **기간·중복**: KST 2026-09-09~09-15, `session_logs`는 `session_id`별 최신
+  `updated_at` 1행만 사용했다.
+- **활동 가짓수**: 튜토리얼·일지·자동/계측 키를 제외한 `counts` 키 수 기준.
+  `beta_A` 평균 101.8/중앙값 102.0, `beta_B` 평균 76.2/중앙값 83.0.
+  A는 5명 모두 96~110으로 고르게 높고, B는 12~127로 분산이 크다.
+- **자발 추가 접속**: 하루 첫 접속은 의무 접속으로 보고 같은 날 2번째 이후 세션만 합산.
+  `beta_A` 총 19회/평균 3.8, `beta_B` 총 35회/평균 7.0.
+- **총 플레이 시간**: `play_sec` 벽시계 합산 기준. `beta_A` 총 833.8분/평균 166.8분,
+  `beta_B` 총 3,682.2분/평균 736.4분. B의 긴 꼬리 2명이 평균을 크게 끌어올렸다.
+- **판정**: 주지표는 A 우세, 보조지표 둘은 B 평균 우세라 방향이 갈린다.
+  Hβ1을 그대로 “A가 참여 깊이를 높였다”로 채택하기 어렵고, 검정 전 기준으로는
+  **혼재/보류**다. p값·permutation 검정은 아직 하지 않았다.
+- **후속 검정(사용자 승인 후 2026-09-16)**: 두 해석을 모두 봤다. ① 활동 가짓수만
+  주지표로 보면 A 평균 101.8, B 평균 76.2, 차이 +25.6이지만 5:5 정확 permutation
+  단측 p=0.155(양측 p=0.310)로 유의하다고 말하기 어렵다. ② 사전 설계의 세 지표
+  동시 방향 기준은 활동 가짓수만 A 우세이고 자발 추가 접속(A-B -3.2, 단측 p=0.790)과
+  총 플레이 시간(A-B -569.7분, 단측 p=0.873)이 반대 방향이라 통과하지 못했다.
+- **기록**: CSV `ml/reports/beta_h1_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h1_activity_breadth.png`,
+  `ml/reports/figs/beta_h1_extra_sessions.png`,
+  `ml/reports/figs/beta_h1_play_minutes.png`.
+
+### 🧪 베타 맵 계단식 개방 — Hβ2 EDA (2026-09-16) · 효과 신호 약함
+
+**후보 Hβ2**: 바다터·안개숲 계단식 개방은 플레이 관심도를 끌어올린다. **사전 EDA 기준**:
+각 테스터의 맵 개방 전날·당일·다음날을 사람 단위로 맞춰 플레이 시간, 방문 수,
+다음날 재방문을 계산할 수 있으면 EDA 통과. `sea_first`와 `mist_first` 두 순서에서
+모두 개방일이 전날보다 높아야 맵 효과 신호로 본다.
+
+- **범위·단위**: Supabase `beta_testers`의 `map_order`와 BigQuery `session_logs` 최신행을
+  조인했다. D1은 KST 2026-09-09, 첫 맵 D3(2026-09-11), 두 번째 맵 D5(2026-09-13)로 고정했다.
+  개방 이벤트는 10명 × 2회 = 20건.
+- **첫 맵(D3)**: 평균 플레이 시간 차이는 `sea_first` +276.4분, `mist_first` +165.0분이지만
+  긴 플레이 2건이 평균을 끌어올렸다. 중앙값은 전체 -12.2분이고, 전날보다 늘어난 사람은
+  3/10명뿐이다. 세션 수 증가는 2/10명, 다음날 재방문은 5/10명.
+- **두 번째 맵(D5)**: 전체 평균 차이 -3.8분, 중앙값 +7.0분으로 방향이 약하다.
+  전날보다 늘어난 사람은 5/10명, 세션 수 증가는 3/10명, 다음날 재방문은 8/10명.
+- **실제 맵 입장 기록**: 개방일에 `sea_enter` 또는 `mist_enter`가 찍힌 이벤트는
+  20건 중 8건뿐이다. 바다터 3/10, 안개숲 5/10. 개방이 곧 실제 방문으로 이어졌다고
+  보기 어렵다.
+- **판정**: 두 순서 모두에서 개방일 지표가 전날보다 일관되게 높다는 기준을 충족하지 못했다.
+  Hβ2는 현재 **효과 신호 약함/보류**다. 특히 평균 증가는 긴 꼬리에 민감하므로
+  맵 개방 효과로 읽지 않는다.
+- **기록**: CSV `ml/reports/beta_h2_map_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h2_first_map_play_delta.png`,
+  `ml/reports/figs/beta_h2_second_map_play_delta.png`,
+  `ml/reports/figs/beta_h2_map_enter_users.png`.
+
+### 🧪 베타 힌트 배너 — Hβ3 EDA (2026-09-16) · 방향성 약함, 단위 민감
+
+**후보 Hβ3**: 곧 나갈 것 같은 순간의 비차단 힌트 배너는 60초 생존율을 높인다.
+**사전 EDA 기준**: `churn_events`의 `arm`이 `treat/control`로 찍히고, 각 이벤트 뒤
+세션 최신 `updated_at`까지 60초 이상 남았는지 계산할 수 있으면 EDA 통과.
+
+- **범위·단위**: KST 2026-09-09~09-16 전, `variant in ('beta_A','beta_B')`인
+  `churn_events` 1,920건을 봤다. 세션 종료 근사는 `session_logs`의 `session_id`별
+  최신 `updated_at`을 사용했다.
+- **arm 규모**: 이벤트 단위 control 920건/36세션/10명, treat 1,000건/37세션/8명.
+  세션 동전 배정이더라도 점수 이벤트 수는 완전 5:5가 아니다.
+- **이벤트 단위 결과**: control 897/920(97.5%), treat 957/1,000(95.9%) 생존.
+  같은 세션의 반복 점수를 그대로 세면 control이 약간 높다.
+- **세션 단위 결과**: 같은 세션의 여러 점수를 1개로 접으면 control 30/36(83.3%),
+  treat 32/37(91.4%) 생존. 이 단위에서는 treat가 높다.
+- **해석 한계**: `intervene=true`는 control에도 존재한다. 이는 모델이 개입 후보로 판단했으나
+  control arm에서는 배너를 보류한 사건으로 읽어야 하며, 단순히 "배너 노출"과 같지 않다.
+  또한 `updated_at` 기반 60초 생존은 실제 브라우저 종료 시각이 아니라 세션 요약의 최신 갱신
+  시각 근사다.
+- **판정**: 세션 단위에서는 힌트 배너 방향성 신호가 있으나, 이벤트 단위에서는 반대다.
+  Hβ3는 **약한 방향성/보류**로 둔다. 다음 게이트에서 검정을 하려면 세션 단위를 사전 고정해야 한다.
+- **기록**: CSV `ml/reports/beta_h3_banner_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h3_banner_survival_event.png`,
+  `ml/reports/figs/beta_h3_banner_survival_session.png`,
+  `ml/reports/figs/beta_h3_banner_arm_counts.png`.
+
+### 🧪 베타 일지 만족도·선호 — Hβ4 EDA (2026-09-16) · A 우세 근거 약함
+
+**후보 Hβ4**: 행동 로그에서 보인 차이가 일지의 만족도·선호·막힘 서술에서도 같은 방향으로
+나타난다. **사전 EDA 기준**: `beta_diary`가 명단과 조인되고, D7 선호도(`q5/q6`)와
+매일 재방문 의향(`q3`)을 사람 단위로 요약할 수 있으면 통과.
+
+- **범위·응답**: Supabase `beta_diary` 45행. `beta_A`는 5명/26일지, `beta_B`는
+  4명/19일지다. B 1명은 일지 분석 분모에 없다.
+- **재방문 의향(q3)**: 행 단위 평균은 A 2.92, B 3.11, 중앙값은 둘 다 3. 사람 평균으로도
+  B가 약간 높지만, n이 작고 B 응답자 4명이라 우열을 주장하지 않는다.
+- **처음 10분 선호(q6)**: 응답 6명 중 B 4명, A 2명. 사전 기준인 한쪽 9명 이상에
+  못 미쳐 유의한 선호라고 보지 않는다.
+- **제일 재밌었던 곳(q5)**: 응답 6명 중 마을 3명, 요리 3명. 바다터·안개숲 같은
+  계단식 맵 선호가 직접적으로 두드러지지는 않았다.
+- **자유응답 키워드 코딩**: 막힘/불편/버그와 농사/채집/반복이 각각 9명에서 잡혔다.
+  튜토리얼/안내와 맵/탐험은 각각 8명, 재미/콘텐츠 호감은 5명이다. 단순 키워드 코딩이라
+  감정 방향을 확정하지 않고, 반복 주제의 위치만 본다.
+- **판정**: Hβ1에서 A가 활동 가짓수는 넓혔지만, 일지 만족도·선호는 A 우세를
+  지지하지 않는다. Hβ4는 **A 우세 근거 약함/보류**다.
+- **기록**: CSV `ml/reports/beta_h4_diary_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h4_q3_revisit_intent.png`,
+  `ml/reports/figs/beta_h4_q6_preference.png`,
+  `ml/reports/figs/beta_h4_q5_favorite_place.png`,
+  `ml/reports/figs/beta_h4_free_text_themes.png`.
+
+### 🧪 베타 튜토리얼 재배치 — Hβ5 EDA (2026-09-16) · 재미 스텝 전진은 성공, 완주는 약함
+
+**후보 Hβ5**: A군 튜토리얼 재배치(낚시·집짓기·입장·꾸미기 전진)는 초반 재미 스텝 도달을
+늘리고 튜토리얼 진행 폭을 넓힌다. **사전 EDA 기준**: `session_logs.counts`의
+`tut_*`, `tutorial_complete`, `tutorial_skip` 키로 사람별 도달 스텝 수와 핵심 스텝
+도달률을 만들 수 있으면 통과.
+
+- **스텝 폭**: `tut_*` 고유 스텝 수는 A 평균 8.8/중앙값 6, B 평균 7.4/중앙값 3.
+  A가 약간 높지만 양쪽 모두 완주자와 거의 미진행자가 섞여 분산이 크다.
+- **앞당긴 재미 스텝**: `fish/build/enter/decor` 중 도달 개수는 A 평균 3.4, B 평균 1.6.
+  A는 5명 모두 `fish/build/enter`까지 도달했고 2명은 4개 모두 도달했다. B는 2명만
+  4개 모두 도달했고 3명은 0개다.
+- **완주·스킵**: `tutorial_complete`는 A 1/5, B 2/5. `tutorial_skip`은 A 4/5,
+  B 2/5. A는 재미 스텝까지 더 빨리 닿았지만 끝까지 보게 만들지는 못했다.
+- **판정**: 재배치가 초반 재미 스텝 노출을 늘렸다는 신호는 있다. 다만 완주율과 스킵률은
+  반대 방향이라 “튜토리얼 개선 성공”으로는 채택하지 않는다. Hβ5는
+  **부분 성공/보류**다.
+- **기록**: CSV `ml/reports/beta_h5_tutorial_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h5_tutorial_step_count.png`,
+  `ml/reports/figs/beta_h5_fun_steps_reached.png`,
+  `ml/reports/figs/beta_h5_complete_skip.png`.
+
+### 🧪 베타 보상 부스트·경제 진행 — Hβ6 EDA (2026-09-16) · 적용은 됐지만 A 우세 아님
+
+**후보 Hβ6**: A군 3일 보상 부스트(출석·퀘스트·확률 보상, 구현상 판매 부스트 포함)는
+경제 진행을 빠르게 만든다. **사전 EDA 기준**: `econ_logs`에서 베타 기간의 코인 유입·소비,
+부스트 대상 source, `item|boost` 표식을 사람 단위로 요약할 수 있으면 통과.
+
+- **범위·단위**: KST 2026-09-09~09-16 전, BigQuery `econ_logs`와 Supabase 명단을
+  `user_id`로 조인했다. 지표는 사람 단위 합산이다.
+- **총 코인 유입**: A 총 19,100/평균 3,820/중앙값 3,556, B 총 22,442/평균 4,488/중앙값 2,208.
+  B 평균은 한 명의 큰 판매 수익 꼬리에 민감하다.
+- **부스트 대상 source 유입**: `daily_bonus/quest_reward/lucky_box/shop_sell` 양수 합은
+  A 13,462, B 16,871. B가 더 높다.
+- **적용 감사**: `item`에 `|boost`가 붙은 양수 amount는 A에서만 7,455, B는 0이다.
+  즉 A군 부스트 표식 자체는 의도대로 남았다.
+- **source별 차이**: B의 `shop_sell` 유입이 13,749로 A 7,512보다 크다. 반대로
+  A의 `quest_reward`는 5,035로 B 2,589보다 크다. 총 유입은 특정 source 꼬리에 민감하다.
+- **판정**: 부스트가 적용된 증거는 명확하지만, 경제 진행 전체가 A에서 더 빨랐다고
+  말할 수 없다. Hβ6는 **적용 확인/효과 보류**다.
+- **기록**: CSV `ml/reports/beta_h6_reward_economy_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h6_total_inflow.png`,
+  `ml/reports/figs/beta_h6_boost_source_inflow.png`,
+  `ml/reports/figs/beta_h6_shop_sell_inflow.png`,
+  `ml/reports/figs/beta_h6_boost_item_inflow.png`,
+  `ml/reports/figs/beta_h6_source_stack.png`.
+
+### 🧪 베타 첫 3회 관대 판정 — Hβ7 EDA (2026-09-16) · 바다낚시만 A 우세
+
+**후보 Hβ7**: A군 첫 3회 관대 판정은 미니게임 성공률을 높인다. **사전 EDA 기준**:
+성공/실패 쌍이 있는 미니게임에서 사람 단위 성공률을 만들 수 있으면 통과. 배 운행은
+`boat_hit`만 있어 `boat_hit / boat_start`를 낮을수록 좋은 보조지표로 본다.
+
+- **일반 낚시**: A 224/229(97.8%), B 343/353(97.2%). 양쪽 모두 천장에 가까워
+  차이를 말하기 어렵다.
+- **바다낚시**: A 14/25(56.0%), B 11/27(40.7%). 사람 평균도 A 48.9%, B 44.0%로
+  A가 약간 높다. 다만 시도자는 양쪽 3명뿐이다.
+- **안개숲 정화**: A 89/162(54.9%), B 66/112(58.9%). pooled rate와 사람 평균 모두
+  B가 높다. B 시도자는 2명뿐이라 불안정하다.
+- **배 운행**: `boat_hit / boat_start` 사람 평균은 A 1.30, B 1.25로 거의 같다.
+- **판정**: 첫 3회 관대 판정이 전반 미니게임 성공률을 높였다는 일관된 신호는 없다.
+  바다낚시만 A 우세 후보로 남고, Hβ7 전체는 **혼재/보류**다.
+- **기록**: CSV `ml/reports/beta_h7_minigame_ease_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h7_pooled_success_rates.png`,
+  `ml/reports/figs/beta_h7_fishing_person_success.png`,
+  `ml/reports/figs/beta_h7_sea_person_success.png`,
+  `ml/reports/figs/beta_h7_mist_person_success.png`,
+  `ml/reports/figs/beta_h7_boat_hit_per_run.png`.
+
+### 🧪 베타 완주·성실도 — Hβ8 EDA (2026-09-16) · A 성실도 우세, 처치 효과 아님
+
+**후보 Hβ8**: 베타 기간 동안 매일 접속·일지를 수행한 성실도에 A/B 차이가 있는가.
+유급 테스터라 이탈률은 판정하지 않고, 운영 순응도와 이후 해석의 보정 변수로 본다.
+**사전 EDA 기준**: 사람×날짜 10명×7일 그리드에서 접속일, 일지 작성일, 둘 다 한 날을
+계산할 수 있으면 통과.
+
+- **접속일 수**: A 평균 5.8일/중앙값 6일, B 평균 4.6일/중앙값 6일. 7일 모두 접속한
+  테스터는 A 2명, B 0명.
+- **일지 작성일 수**: A 평균 5.2일/중앙값 5일, B 평균 3.8일/중앙값 4일. 7일 모두
+  작성한 테스터는 A 2명, B 0명.
+- **접속+일지 동시 완료일**: A 평균 4.6일, B 평균 3.4일. 7일 모두 완료는 A 2명,
+  B 0명.
+- **날짜 흐름**: 전체적으로 후반부 접속자가 줄었다. B는 D4에 1명으로 특히 낮았고,
+  A는 D7에 5명 모두 접속했다.
+- **판정**: 성실도는 A가 높다. 다만 이 차이는 게임 처치 효과라기보다 테스터 개인차·일정·
+  보상 순응도일 수 있어, Hβ1~Hβ7 해석의 보정 맥락으로만 둔다. **A 성실도 우세/인과 보류**.
+- **기록**: CSV `ml/reports/beta_h8_completion_eda_2026-09-16/`,
+  차트 `ml/reports/figs/beta_h8_active_days.png`,
+  `ml/reports/figs/beta_h8_diary_days.png`,
+  `ml/reports/figs/beta_h8_both_days.png`,
+  `ml/reports/figs/beta_h8_daily_active_line.png`.
 
 📄 **[설계서](superpowers/specs/2026-09-04-churn-intervention-design.md)** · 📊 **판정 노트북** `ml/notebooks/04_churn_model.ipynb`
 
@@ -294,6 +495,129 @@ export가 있는 2026-09-04~09-12(KST)만 사용한다. `traffic_source.source`�
   `ml/reports/figs/g5_event_density_action_split_rates.png`,
   `ml/reports/figs/g5_event_density_action_target_mix.png`,
   `ml/reports/figs/g5_event_density_action_channel_check.png`.
+
+### 🧭 이벤트 밀도 구성 감사 — G5 피처 정제 (2026-09-15) · 유지하되 분리
+
+**감사 질문**: `early_tracked_events >= 20` 신호는 실제 플레이 행동에서 왔나,
+아니면 GA4 자동·세션·접속 이벤트가 많이 쌓인 착시인가. **사전 기준**: 고밀도 양성에서
+의도행동 비중이 고밀도 음성보다 높으면 밀도 신호를 유지한다. 양쪽 모두 자동·접속 이벤트가
+대부분이면 원시 이벤트 수를 그대로 쓰지 않고 구성 피처로 분리한다.
+
+- **결과**: 고밀도+의도행동 많음의 양성 7대는 첫 10분 이벤트 1,115건 중
+  의도행동 615건(**55.2%**)이다. 같은 세그먼트 음성 11대는 657건 중 241건(**36.7%**).
+  중앙값 기준 의도행동 비율도 양성 53.1% vs 음성 31.0%.
+- **구성**: 고밀도+의도행동 많음 양성은 `chop_tree` 21.5%, `mine_ore` 7.3%,
+  `npc_talk` 2.9%, `plant_seed` 2.8%처럼 실제 행동 이벤트가 상위에 있다.
+  음성에도 행동은 있지만 `churn_score`, `tutorial_step`, `quest_offered`, `page_view`,
+  `scroll` 비중이 상대적으로 더 섞인다.
+- **반례**: 고밀도+의도행동 적음 양성 3대는 후속 행동률은 높았지만 첫 10분 의도행동은
+  151건 중 1건(**0.7%**)뿐이다. 이 집단은 “즐길거리 추천”보다 “첫 행동·진입 보조”로
+  따로 다뤄야 한다.
+- **판정**: `early_tracked_events`는 버리지 않는다. 다만 운영/학습 피처에서는
+  `early_actions`, `early_action_kinds`, `early_area_count`, `deliberate_share`,
+  자동·세션 이벤트 수, 접속 성공/실패 수를 분리해 넣는다. 원시 이벤트 수 하나만으로
+  규칙을 만들지 않는다.
+- **한계**: 전체 95대, 양성 12대이고 고밀도 양성은 10대다. 이벤트명만으로
+  `session_time`, `econ_tx`, `daily_bonus` 같은 추적 이벤트의 의도를 완전히 분리할 수 없다.
+- **기록**: SQL `ml/sql/g5_event_density_event_composition.sql`,
+  실행된 노트북 `ml/notebooks/21_event_density_composition_audit.ipynb`,
+  빌더 `ml/scripts/build_g5_event_density_composition_audit_notebook.py`,
+  집계 `ml/reports/g5_event_density_composition_2026-09-15/`, 차트
+  `ml/reports/figs/g5_event_density_composition_categories.png`,
+  `ml/reports/figs/g5_event_density_composition_high_top_events.png`,
+  `ml/reports/figs/g5_event_density_composition_deliberate_share.png`.
+
+### 🧭 정제 피처 리텐션 모델 — G5 모델 검증 (2026-09-15) · 피처셋 채택 후보, 운영 보류
+
+**검증 질문**: `early_tracked_events`를 자동·세션·진입·접속·의도행동 피처로 분해하면
+원시 밀도 신호의 성능을 유지하면서 설명 가능한 모델 피처셋이 되는가. **사전 기준**:
+refined model AUC가 majority 0.50과 channel baseline보다 높고, PR-AUC가 raw
+`early_tracked_events` baseline 대비 80% 이상이면 피처셋 채택 후보. 운영 배포와
+threshold 확정은 하지 않는다.
+
+- **표본**: 전체 채널 신규 기기 95대, 양성 12대. 2026-09-04~09-11 KST 첫 관측,
+  24시간 라벨 창 완료, beta_A/B 표시 기기 제외. 경계 위반 0. A/B 효과는 보지 않았다.
+- **성능**: raw `early_tracked_events` baseline AUC **0.883**, PR-AUC **0.665**.
+  `refined_behavior` logistic은 AUC **0.915**, bootstrap 95% 구간 **0.766~0.995**,
+  PR-AUC **0.822**. named event count까지 넣으면 AUC **0.928**, PR-AUC **0.849**지만
+  자유도가 커서 보조 결과로만 둔다.
+- **상위 컷**: `refined_behavior` 점수 상위 20%는 19대 중 양성 10대
+  precision **52.6%**, recall **83.3%**. 상위 30%는 29대 중 양성 11대
+  precision **37.9%**, recall **91.7%**.
+- **계수 해석**: 양의 계수 상위는 `early_ga_auto_events`, `early_advanced_events`,
+  `early_entry_auth_events`, `early_fishing_sea_events`, `entry_auth_share`,
+  `early_tracked_events`, `early_nature_events`. `early_connect_fail_events`는 음의 계수다.
+  자동 이벤트가 양수인 것은 “자동 이벤트 자체가 좋다”가 아니라 첫 10분 체류/활동 밀도의
+  대리 신호로 읽는다.
+- **판정**: 피처셋은 채택 후보. 다음 학습 파이프라인 기본형은 `refined_behavior`로 두고,
+  raw `early_tracked_events`는 baseline과 fallback rule로 보관한다. 표본이 늘기 전까지
+  XGBoost/LightGBM, 운영 계수 export, G6 적용 설계는 보류한다.
+- **기록**: SQL `ml/sql/g5_refined_retention_feature_table.sql`,
+  실행된 노트북 `ml/notebooks/22_refined_retention_feature_model.ipynb`,
+  빌더 `ml/scripts/build_g5_refined_retention_model_notebook.py`,
+  집계·점수·계수 `ml/reports/g5_refined_retention_model_2026-09-15/`, 차트
+  `ml/reports/figs/g5_refined_retention_model_auc.png`,
+  `ml/reports/figs/g5_refined_retention_model_coefficients.png`,
+  `ml/reports/figs/g5_refined_retention_model_scores.png`.
+
+### 🧭 정제 모델 하이퍼파라미터 탐색 — G5 안정성 서치 (2026-09-15) · 후보 config 저장, 운영 보류
+
+**탐색 질문**: 정제 피처 모델의 하이퍼파라미터를 좁게 탐색하면 기본값보다 안정적인
+설정을 찾을 수 있는가. **사전 기준**: repeated CV AUC가 기본 `refined_behavior`
+이상, PR-AUC가 기본값의 95% 이상, top 30% recall 80% 이상, nested CV AUC 0.85 이상이면
+채택 후보. A/B 효과, `later_*` 피처, 원시 식별자, XGBoost/LightGBM은 쓰지 않는다.
+
+- **탐색 범위**: LogisticRegression(`liblinear`)만 사용. feature set 3종
+  (`lean_behavior`, `refined_behavior`, `refined_behavior_plus_named_events`),
+  `C` 0.03·0.05·0.1·0.2·0.5·1.0, penalty L1/L2, class weight `balanced`·`pos_4`·`pos_7`.
+- **선택 config**: `refined_behavior_plus_named_events`, `C=0.2`, `penalty=l2`,
+  `class_weight={0:1, 1:4}`. 같은 repeated CV에서 AUC **0.935**, PR-AUC **0.875**,
+  top 30% precision **37.9%**, recall **91.7%**.
+- **nested 확인**: 상위 3개 설정만 바깥 4-fold×20회에서 재평가했다. nested AUC **0.928**,
+  PR-AUC **0.884**, top 30% precision **37.9%**, recall **91.7%**. 안쪽 CV 선택은
+  모두 named event 계열이며 `C=0.2` 36회, `C=0.1` 24회, `C=0.05` 20회였다.
+- **계수 안정성**: `early_ga_auto_events`, `zone_enter`, `mine_ore`,
+  `fishing_sea`, `session_time`, `advanced`, `entry_auth`, `econ_tx`,
+  `connect_ok`, `tracked_events`는 대체로 양의 방향. `connect_fail`,
+  `event_name_count`, `churn_score`는 음의 방향. `entry_auth_share`는 10~90% 구간이
+  0을 걸쳐 운영 설명에는 보조로만 둔다.
+- **판정**: 후보 config는 저장한다. 다만 named event까지 들어간 모델이라 표본이 늘기 전
+  운영 배포·threshold 확정·계수 export는 하지 않는다. `refined_behavior`는 보수적 fallback,
+  raw `early_tracked_events`는 baseline/rule fallback으로 유지한다.
+- **기록**: 실행된 노트북 `ml/notebooks/23_refined_model_hyperparameter_search.ipynb`,
+  빌더 `ml/scripts/build_g5_refined_hyperparam_search_notebook.py`, 결과·config
+  `ml/reports/g5_refined_hyperparam_search_2026-09-15/selected_hyperparams.json`,
+  grid·nested·계수 CSV `ml/reports/g5_refined_hyperparam_search_2026-09-15/`,
+  차트 `ml/reports/figs/g5_refined_hyperparam_grid_auc.png`,
+  `ml/reports/figs/g5_refined_hyperparam_nested_selection.png`,
+  `ml/reports/figs/g5_refined_hyperparam_coef_stability.png`.
+
+### 🧭 모델 패밀리 비교 — G5 대체 모델 점검 (2026-09-15) · Logistic 유지
+
+**비교 질문**: Logistic 후보 외에 다음 모델로 평가할 가치가 있는 패밀리가 있는가.
+**사전 기준**: Logistic보다 AUC 또는 PR-AUC가 높고 top 30% recall 80% 이상이면 대체 후보.
+Logistic보다 낮지만 recall 80% 이상이고 해석이 쉬우면 보조 후보. AUC 0.75 미만 또는
+top 30% recall 80% 미만이면 보류. XGBoost/LightGBM은 양성 12대라 이번 비교에서 제외했다.
+
+- **결과**: `logistic_selected`가 AUC **0.933**, PR-AUC **0.867**,
+  top 30% precision **37.9%**, recall **91.7%**로 1위다.
+- **Naive Bayes**: `gaussian_nb`가 NB 계열 중 가장 낫다. AUC **0.837**, PR-AUC **0.465**,
+  top 30% precision **34.5%**, recall **83.3%**. 보조 baseline 가치는 있지만
+  Logistic 대체 후보는 아니다. ComplementNB는 AUC 0.54 수준이라 보류.
+- **얕은 Tree**: `decision_tree_depth_2`는 AUC **0.838**, PR-AUC **0.433**,
+  top 30% precision **31.0%**, recall **75.0%**라 성능 기준으로는 보류다.
+  다만 full-fit 규칙은 `entry_auth_events`와 `zone_enter`를 먼저 봐서, 제품 규칙
+  설명에는 참고할 만하다.
+- **판정**: 주 모델은 하이퍼파라미터 탐색에서 고른 Logistic 후보를 유지한다.
+  GaussianNB는 다음 재검증 때 보조 baseline으로 남기고, 얕은 Tree는 규칙 설명용으로만 쓴다.
+  XGBoost/LightGBM은 양성 30대 이상이 되면 다시 연다.
+- **기록**: 실행된 노트북 `ml/notebooks/24_model_family_comparison.ipynb`,
+  빌더 `ml/scripts/build_g5_model_family_comparison_notebook.py`, 결과
+  `ml/reports/g5_model_family_comparison_2026-09-15/`, Tree 규칙
+  `ml/reports/g5_model_family_comparison_2026-09-15/decision_tree_depth_2_rules.txt`,
+  차트 `ml/reports/figs/g5_model_family_auc.png`,
+  `ml/reports/figs/g5_model_family_pr_precision.png`,
+  `ml/reports/figs/g5_model_family_tree_importance.png`.
 
 ### 🧭 토스 선택형 지역 안내 — G1 계측 준비도 (2026-09-14) · 미통과, 로컬 완료
 

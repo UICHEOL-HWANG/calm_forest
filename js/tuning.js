@@ -22,6 +22,19 @@ export const TUNING = {
     treatRate: 0.5,        // 세션 단위 개입 배정 확률 — 0 이면 개입 전면 off
     timeTriggerSec: 15,    // 시간 트리거 — 설계서 §3-1(커버리지 84%)
   },
+  // 🌿 리텐션 안내 — 모델 서버 없이 1차 룰로 실제 배너를 띄운다.
+  // 모델 점수는 나중에 들어오면 rule-low 구간 rescue 로만 쓰도록 js/retention-guidance.js 에 자리를 열어둔다.
+  retentionGuidance: {
+    enabled: true,
+    highTracked: 20,
+    highActions: 6,
+    modelThreshold: 0.285,
+    triggerSec: [180, 600],   // 3분: 진입 보조 / 10분: 다음 콘텐츠
+    maxPerSession: 1,
+    cooldownMs: 180000,
+    outcomeWindowMs: 600000,
+    policyVersion: 'retention-guidance-rules-2026-09-18',
+  },
 };
 
 export function isBetaA(variant) { return variant === 'beta_A'; }
