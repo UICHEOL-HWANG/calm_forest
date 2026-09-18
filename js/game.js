@@ -7911,18 +7911,34 @@ function refreshStairsLandmarks() {
 // 가구 메시(로우폴리)
 // 🏖️ 파라솔 캔버스 패널 하나(부채꼴, a0~a1) — 이 게임 카메라는 늘 위에서 내려다보므로 윗면이 핵심이다.
 //   가장자리 반지름을 sin 으로 부풀려(솔기=0 → 패널 중앙=최대 → 솔기=0) 스캘럽(물결) 테두리를 만들고,
-//   중앙(hub)에서 부채살처럼 삼각형 팬을 편다. 색이 다른 패널·흰 솔기까지 전부 정점색(vertex color)으로
-//   구분해 mergeGeos 로 한 지오메트리에 합친다 — 재질은 결국 하나(§8.3, 🏛️전시물과 같은 기법).
+//   중앙(hub)에서 테두리까지 고리를 RSEGS 단으로 나눠 볼록한 곡선(prof)으로 낮춘다 — 위에서 내려다봐도
+//   고리마다 면 방향이 달라 중심이 도드라지는 "돔" 음영이 생긴다(2026-09-18: 부채꼴 1장짜리 팬이라 평평해
+//   보이던 문제 수정). 색이 다른 패널·흰 솔기까지 전부 정점색(vertex color)으로 구분해 mergeGeos 로 한
+//   지오메트리에 합친다 — 재질은 결국 하나(§8.3, 🏛️전시물과 같은 기법).
 function parasolPanel(a0, a1, rNear, bulge, yHub, yRim, dip, segs, color) {
-  const pos = [], col = [], rim = [];
-  for (let i = 0; i <= segs; i++) {
-    const t = i / segs, a = a0 + (a1 - a0) * t, bump = Math.sin(t * Math.PI);   // 0(솔기)→1(패널 중앙)→0(솔기)
-    const r = rNear + bulge * bump, y = yRim - dip * bump;                     // 중앙이 살짝 처지는 실제 파라솔 느낌
-    rim.push([Math.cos(a) * r, y, -Math.sin(a) * r]);
-  }
-  for (let i = 0; i < segs; i++) {
-    pos.push(0, yHub, 0, ...rim[i], ...rim[i + 1]);
-    for (let k = 0; k < 3; k++) col.push(color.r, color.g, color.b);
+  const RSEGS = 3;   // 중심→테두리 고리 단수 — 많을수록 곡면이 부드러워지지만 로우폴리 각짐은 유지
+  const pos = [], col = [];
+  const ring = (u, t) => {                                    // u: 중심(0)→테두리(1), t: 패널 내 각도 진행(0~1)
+    const bump = Math.sin(t * Math.PI);                       // 0(솔기)→1(패널 중앙)→0(솔기)
+    const rOuter = rNear + bulge * bump, yOuter = yRim - dip * bump;   // 테두리 반지름·높이(스캘럽 — 기존과 동일)
+    const prof = 1 - Math.cos(u * Math.PI / 2);               // 0→1, 중심 근처는 완만하고 테두리로 갈수록 가팔라지는 볼록 곡선
+    const a = a0 + (a1 - a0) * t;
+    return [Math.cos(a) * (rOuter * u), yHub - (yHub - yOuter) * prof, -Math.sin(a) * (rOuter * u)];
+  };
+  for (let ri = 0; ri < RSEGS; ri++) {
+    const u0 = ri / RSEGS, u1 = (ri + 1) / RSEGS;
+    for (let i = 0; i < segs; i++) {
+      const t0 = i / segs, t1 = (i + 1) / segs;
+      const p10 = ring(u1, t0), p11 = ring(u1, t1);
+      if (ri === 0) {   // 첫 고리는 중심 한 점(꼭대기)으로 모이므로 삼각형 하나만
+        pos.push(0, yHub, 0, ...p10, ...p11);
+        for (let k = 0; k < 3; k++) col.push(color.r, color.g, color.b);
+      } else {
+        const p00 = ring(u0, t0), p01 = ring(u0, t1);
+        pos.push(...p00, ...p10, ...p11, ...p00, ...p11, ...p01);   // 고리 사이 사각형 = 삼각형 2개
+        for (let k = 0; k < 6; k++) col.push(color.r, color.g, color.b);
+      }
+    }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -8148,20 +8164,21 @@ function decorMesh(id) {
     const geos = [];
     for (let i = 0; i < PANELS; i++) {
       const a0 = i * SLOT, a1 = a0 + SLOT;
-      geos.push(parasolPanel(a0 + SEAM_HALF, a1 - SEAM_HALF, 0.58, 0.16, 1.60, 1.42, 0.05, SEGS, i % 2 === 0 ? ORANGE : SKY));
+      geos.push(parasolPanel(a0 + SEAM_HALF, a1 - SEAM_HALF, 0.58, 0.16, 1.74, 1.30, 0.05, SEGS, i % 2 === 0 ? ORANGE : SKY));
     }
     for (let i = 0; i < PANELS; i++) {   // 얇은 흰 솔기 — 패널과 같은 반지름식이라 이음매에 정확히 맞물린다
       const a = i * SLOT;
-      geos.push(parasolPanel(a - SEAM_HALF, a + SEAM_HALF, 0.58, 0.02, 1.60, 1.42, 0.05, 2, SEAM));
+      geos.push(parasolPanel(a - SEAM_HALF, a + SEAM_HALF, 0.58, 0.02, 1.74, 1.30, 0.05, 2, SEAM));
     }
     const canopy = new THREE.Mesh(mergeGeos(geos), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true }));
     canopy.castShadow = true; g.add(canopy);
-    // 🛋️ 라운지 체어 2개 — 등받이를 기울이고 다리 4개를 세워 위에서도 "누울 자리"로 읽히게, 쿠션은 파라솔의 하늘색과 짝을 맞춘다
+    // 🛋️ 라운지 체어 2개 — 등받이를 기울이고 다리 4개를 세워 위에서도 "누울 자리"로 읽히게, 쿠션은 파라솔의 하늘색과 짝을 맞춘다.
+    //   캔버스 테두리 반지름(rNear+bulge=0.74)보다 안쪽으로 당겨 파라솔 그늘 밑에 들어오게 배치(2026-09-18: 기존엔 그늘 밖으로 삐져나와 있었다)
     const frameMat = clayMat(0xe4e0d4, false), cushionMat = clayMat(0x8fd3ea, false);
-    [-0.55, 0.55].forEach(x => {
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.85), cushionMat); seat.position.set(x, 0.28, 0.5); g.add(seat);
-      const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.07), cushionMat); back.position.set(x, 0.48, 0.12); back.rotation.x = 0.42; g.add(back);
-      [[-0.16, 0.18], [0.16, 0.18], [-0.16, 0.82], [0.16, 0.82]].forEach(([lx, lz]) => {
+    [-0.36, 0.36].forEach(x => {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.85), cushionMat); seat.position.set(x, 0.28, 0); g.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.07), cushionMat); back.position.set(x, 0.48, -0.38); back.rotation.x = 0.42; g.add(back);
+      [[-0.16, -0.32], [0.16, -0.32], [-0.16, 0.32], [0.16, 0.32]].forEach(([lx, lz]) => {
         const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.24, 5), frameMat); leg.position.set(x + lx, 0.12, lz); g.add(leg);
       });
     });
