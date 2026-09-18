@@ -35,6 +35,7 @@ import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
+import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
@@ -657,6 +658,11 @@ function habitatSources() {
 }
 
 function habitatCtx() { return { night: isNight(), rain: RAIN_DAY }; }
+
+// 📖 게이트 판정 입력 — 획득 판정은 날씨와 밤낮을 **둘 다** 본다.
+//   ⚠️ 🧑‍🦳큐레이터 의뢰는 weatherOpen(날씨만) 을 쓴다. 의뢰는 하루치 시드로 고정되는데
+//      밤낮은 하루 안에 바뀌므로, 밤 종을 낮에 걸러내면 그날 의뢰가 사라진다(스펙 참고).
+function situation() { return { weather: WEATHER, night: isNight() }; }
 
 /** 스로틀된 소스로 한 지점 판정 — 매 프레임 불러도 초당 1회만 다시 모은다 */
 function habitatEnvAt(x, z) {
@@ -4062,11 +4068,14 @@ function buildGlade() {
   obstacles.push({ x: GLADE.x, z: GLADE.z, r: GLADE_R });   // 계곡 안엔 밭 금지(빈터 유지)
 }
 
-// 종류 추첨 — 🌧️ 비 온 날엔 초록반디가, 🌫️ 안개 낀 날엔 무지개반디가 잘 나옴(날씨 훅 재사용)
+// 종류 추첨 — 🌈무지개반디는 🌧️비·🌫️안개 낀 날 **밤**에만(게이트 안에서 18%). 표는 js/dex-gates.js
+//   ⚠️ 옛 주석은 "비 온 날엔 초록반디가, 안개 낀 날엔 무지개반디가" 였지만 실제 코드는
+//      rain||fog 둘 다 희귀↑ 였다. 게이트가 그 동작을 명시적으로 만든 것이다.
 function rollBugKind() {
-  let roll = Math.random();
-  if (WEATHER === 'rain' || WEATHER === 'fog') roll = Math.min(roll, Math.random());   // 두 번 굴려 작은 값 → 희귀↑
-  return BUG_KINDS.find(k => roll <= k.p) || BUG_KINDS[BUG_KINDS.length - 1];
+  const rnd = (WEATHER === 'rain' || WEATHER === 'fog')
+    ? () => Math.min(Math.random(), Math.random())   // 두 번 굴려 작은 값 → 희귀↑
+    : Math.random;
+  return rollKind(BUG_KINDS, 'bug', situation(), rnd);
 }
 
 // 반딧불이 한 마리 — 발광 코어 + 넓은 헤일로(Additive). 블룸과 겹쳐 밤에 또렷하게 빛남
@@ -4233,11 +4242,14 @@ function buildForest() {
   for (let i = 0; i < FORAGE_NODES; i++) spawnForageNode(i, true);
 }
 
-// 종류 추첨 — 🌧️ 비 온 날엔 버섯이 확 늘고(두 번 굴려 큰 값), 평소엔 골고루
+// 종류 추첨 — 🌿숲 약초는 **밤**에만(게이트 안에서 30%). 날씨는 안 본다. 표는 js/dex-gates.js
+//   ⚠️ 🌧️비 온 날 "큰 값 → 목록 뒤쪽(버섯)" 보정은 **그대로 유지**한다.
+//      약초 게이트를 날씨로 잡지 않은 이유가 바로 이것이다 — 비는 약초가 아니라 버섯을 밀어준다.
 function rollForageKind() {
-  let roll = Math.random();
-  if (WEATHER === 'rain') roll = Math.max(roll, Math.random());   // 큰 값 = 목록 뒤쪽(버섯) 쪽으로
-  return FORAGE_KINDS.find(k => roll <= k.p) || FORAGE_KINDS[FORAGE_KINDS.length - 1];
+  const rnd = WEATHER === 'rain'
+    ? () => Math.max(Math.random(), Math.random())
+    : Math.random;
+  return rollKind(FORAGE_KINDS, 'forage', situation(), rnd);
 }
 
 function forageMesh(kind) {
@@ -11805,10 +11817,13 @@ function tryFish() {
 }
 
 function catchFish() {
-  // 🐟 생선구이 버프(luck)·🌧️ 비 오는 날: 두 번 굴려 작은 값 채택 → 희귀/고급 확률↑
-  let roll = Math.random();
-  if (buffOn('luck') || RAIN_DAY || baitActive) roll = Math.min(roll, Math.random());
-  const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
+  // 🐟 🌈무지개 물고기는 🌧️비 오는 날에만(게이트 안에서 22%). 표는 js/dex-gates.js
+  //   ⚠️ 생선구이 버프(luck)·비·미끼의 "두 번 굴려 작은 값" 보정은 **유지**한다.
+  //      게이트가 후보를 먼저 제한하고, 보정은 남은 후보 안에서 앞쪽(희귀)을 밀어준다.
+  const fishRnd = (buffOn('luck') || RAIN_DAY || baitActive)
+    ? () => Math.min(Math.random(), Math.random())
+    : Math.random;
+  const kind = rollKind(FISH_KINDS, 'fish', situation(), fishRnd);
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
   // 🎣 무엇을 낚았는지는 캐치 배너로(월드 플로트 텍스트는 밀착 줌에서 화면을 덮었다 — 베타 피드백).
