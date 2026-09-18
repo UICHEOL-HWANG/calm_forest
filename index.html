@@ -179,6 +179,7 @@
   body:not(.playing) #decor-guide,
   body:not(.playing) #mist-guide,
   body:not(.playing) #mist-choice,
+  body:not(.playing) #floor-choice,
   body:not(.playing) #catch-banner,
   body:not(.playing) #door-prompt,
   body:not(.playing) #fish-prompt,
@@ -386,7 +387,7 @@
   body.guide-open #mobile-controls, body.guide-open #talk-btn, body.guide-open #hotbar, body.guide-open #minimap,
   body.guide-open #dex-tab, body.guide-open #feedback-tab, body.guide-open #quest-panel, body.guide-open #hint,
   body.guide-open #hint-banner, body.guide-open #coach, body.guide-open #door-prompt, body.guide-open #npc-prompt, body.guide-open #catch-banner,
-  body.guide-open #zone-prompt, body.guide-open #buffs, body.guide-open #topleft, body.guide-open #topright { display: none !important; }
+  body.guide-open #zone-prompt, body.guide-open #buffs, body.guide-open #topleft, body.guide-open #topright, body.guide-open #floor-choice { display: none !important; }
   .fb-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
   .fb-card h3 { margin: 0 0 4px; font-size: 18px; }
   .fb-sub { margin: 0 0 16px; font-size: 13px; opacity: .7; }
@@ -604,6 +605,16 @@
   #mist-choice button:active { transform: scale(0.96); }
   body:has(#mist-choice.show) #door-prompt { opacity: 0 !important; }   /* 카드가 프롬프트 줄을 쓰는 동안 같은 말을 하는 문 프롬프트는 숨김 */
 
+  /* 🪜 계단 양방향 선택 — 나선 계단은 한 자리가 위/아래를 동시에 제시할 수 있다(6단계 2층).
+     Space 하나로는 어느 쪽인지 정할 수 없어(§4.1 "같은 자리에서 두 층 다") #mist-choice 와 같은
+     패턴으로 버튼을 나눈다 — 하나만 갈 수 있을 땐 그대로 #door-prompt+Space 를 쓴다(이 패널 안 뜸). */
+  #floor-choice { display: none; bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 7; }
+  #floor-choice.show { display: block; }
+  #floor-choice .row { display: flex; gap: 8px; }
+  #floor-choice button { flex: 1; border: none; border-radius: 12px; padding: 11px 16px; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap; font-family: inherit; background: var(--mint); color: var(--ink); }
+  #floor-choice button:active { transform: scale(0.96); }
+  body:has(#floor-choice.show) #door-prompt { opacity: 0 !important; }
+
   /* 조작 도움말(데스크톱만) — 하단 중앙, 도구바 위. 잠시 뒤 자동으로 사라짐 */
   #hint { bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .82; white-space: nowrap; animation: hintFade .8s ease 8s forwards; }
   @keyframes hintFade { to { opacity: 0; visibility: hidden; } }
@@ -807,6 +818,7 @@
   .dm-item { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 62px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,0.6); box-shadow: var(--shadow); cursor: pointer; transition: transform .1s; }
   .dm-item:active { transform: scale(0.94); }
   .dm-item.off { opacity: .4; }
+  .dm-item.locked .di-ico { filter: grayscale(1); }
   .dm-item .di-ico { font-size: 22px; }
   .dm-item .di-name { font-size: 11px; font-weight: 600; }
   .dm-item .di-cost { font-size: 10px; opacity: .7; }
@@ -962,7 +974,7 @@
   body.intro-open #mobile-controls, body.intro-open #talk-btn, body.intro-open #dex-tab, body.intro-open #feedback-tab,
   body.intro-open #catch-banner,
   body.intro-open #door-prompt, body.intro-open #npc-prompt, body.intro-open #zone-prompt, body.intro-open #quest-panel,
-  body.intro-open #buffs, body.intro-open #decor-btn, body.intro-open #ext-btn, body.intro-open #mist-choice, body.intro-open #mist-guide,
+  body.intro-open #buffs, body.intro-open #decor-btn, body.intro-open #ext-btn, body.intro-open #mist-choice, body.intro-open #floor-choice, body.intro-open #mist-guide,
   body.intro-open #hint, body.intro-open #story-chip { display: none !important; }
   body.mg-open #hint { display: none !important; }   /* 조작 안내 바는 요리 미니게임 중에도 숨김 */
   body.mg-open #coach { display: none !important; }  /* 튜토리얼 코치도 미니게임 무대 위엔 안 띄움(끝나면 복귀) */
@@ -987,7 +999,7 @@
      패널 위로 떠서 목록을 가렸다(보고: "자유주방에서 목록 보다가 NPC랑 겹친다").
      미니맵·도감·문의 탭은 패널 위쪽 바깥이라 그대로 둔다 — 패널을 안 가린다. */
   body.menu-open #talk-btn, body.menu-open #catch-banner,
-  body.menu-open #door-prompt, body.menu-open #npc-prompt, body.menu-open #zone-prompt { display: none !important; }
+  body.menu-open #door-prompt, body.menu-open #npc-prompt, body.menu-open #zone-prompt, body.menu-open #floor-choice { display: none !important; }
   /* 📖 퀘스트 칩·시설 배너는 시트(작업대·자유주방·상점)보다 DOM 뒤라 위에 겹쳐 내용을 가렸다.
      시트가 반투명이라 뒤로 보내면 비쳐 보이므로, 다른 HUD 와 같게 아예 비켜준다. */
   body.menu-open #story-chip, body.menu-open #hint-banner { display: none !important; }
@@ -995,7 +1007,7 @@
   body.mg-open #catch-banner,
   body.mg-open #door-prompt, body.mg-open #npc-prompt, body.mg-open #zone-prompt, body.mg-open #hotbar,
   body.mg-open #minimap, body.mg-open #dex-tab, body.mg-open #feedback-tab, body.mg-open #quest-panel,
-  body.mg-open #talk-btn, body.mg-open #mobile-controls { display: none !important; }
+  body.mg-open #talk-btn, body.mg-open #mobile-controls, body.mg-open #floor-choice { display: none !important; }
   /* 🍳 미니게임 오버레이 — 3D 조리 무대 위에 얹는 투명 풀스크린. 화면 어디를 탭해도 입력 */
   #mg-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
     background: linear-gradient(rgba(20,40,30,0) 55%, rgba(20,40,30,0.42)); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
@@ -1515,6 +1527,8 @@
   <!-- 🌳 수호목 갈림길: 바로 시작 / 연습해 보기 (연습·정화 경험 전까지만) -->
   <div id="mist-choice" class="panel"><div id="mc-title">🌳 수호목 앞이에요</div>
     <div class="row"><button id="mc-start">🌳 바로 시작</button><button id="mc-learn">🎓 연습해 보기</button></div></div>
+  <!-- 🪜 계단 양방향 선택 — 6단계 2층처럼 한 자리에서 위/아래 둘 다 갈 수 있을 때만(버튼은 JS 가 채운다) -->
+  <div id="floor-choice" class="panel"><div class="row" id="fc-row"></div></div>
   <div id="decor-menu" class="panel">
     <div class="dm-head">🎨 집 꾸미기 <span id="dm-crop"></span></div>
     <div id="dm-items"></div>
@@ -2730,6 +2744,15 @@
       // 🌫️ 안개 숲 — 수호목 갈림길 카드(비차단) / 연습 단계 안내(컨텍스트 슬롯, decor-guide 와 같은 자리)
       showMistChoice({ onStart, onPractice }) { $('mc-start').onclick = onStart; $('mc-learn').onclick = onPractice; $('mist-choice').classList.add('show'); },
       hideMistChoice() { $('mist-choice').classList.remove('show'); },
+      // 🪜 계단 양방향 선택 — opts=null(또는 빈 배열)이면 닫는다. opts=[{label,onSelect}, ...] 로 버튼을 다시 그린다
+      //   (Space 하나로는 위/아래 중 하나를 못 고르니, 둘 다 갈 수 있는 자리에서만 이 패널이 door-prompt 를 대신한다).
+      setFloorChoice(opts) {
+        const el = $('floor-choice');
+        if (!opts || !opts.length) { el.classList.remove('show'); return; }
+        const row = $('fc-row'); row.innerHTML = '';
+        opts.forEach(o => { const b = document.createElement('button'); b.textContent = o.label; b.onclick = o.onSelect; row.appendChild(b); });
+        el.classList.add('show');
+      },
       setMistGuide(step, steps, onGo) {   // step < 0 = 끄기 · 마지막 단계면 [🌳 바로 시작하기] 버튼 노출
         const el = $('mist-guide');
         if (step < 0) { el.classList.remove('show', 'done'); document.body.classList.remove('mist-guide'); return; }
@@ -3580,15 +3603,17 @@
       const box = $('dm-items'); box.innerHTML = '';
       Input.getDecor().forEach(d => {
         const pay = d.pay || 'crop';
-        const payIco = pay === 'fish' ? '🐟' : '🥕';
+        const payIco = pay === 'fish' ? '🐟' : pay === 'coins' ? '🪙' : '🥕';
         const have = lastInv[pay] || 0;
         const stored = (Input.getStored?.() || {})[d.id] || 0;      // 🧺 창고 보유분 — 값 없이 꺼내 놓는다
-        const ok = stored > 0 || have >= d.cost;
+        const ok = !d.locked && (stored > 0 || have >= d.cost);
         const el = document.createElement('div');
-        el.className = 'dm-item' + (ok ? '' : ' off');
-        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${stored > 0 ? `보유 ${stored}` : payIco + d.cost}</span>`;
+        // 🔒 잠긴 고급 가구도 목록엔 그대로 둔다 — 뭘 향해 모으는지 보여야 코인 싱크가 된다(흐리게 + 자물쇠만)
+        el.className = 'dm-item' + (ok ? '' : ' off') + (d.locked ? ' locked' : '');
+        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${d.locked ? '🔒' : (stored > 0 ? `보유 ${stored}` : payIco + d.cost)}</span>`;
         el.addEventListener('click', () => {
-          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : '작물이 부족해요 🥕'); return; }
+          if (d.locked) { ui.toast('집을 더 증축하면 살 수 있어요'); return; }
+          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : pay === 'coins' ? '코인이 부족해요 🪙' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)
           if (decorGuideStep >= 0) setDecorGuide(1);              // 단계 안내 ② 자리 잡기

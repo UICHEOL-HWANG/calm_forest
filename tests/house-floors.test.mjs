@@ -1,0 +1,159 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from '../js/house-floors.js';
+
+test('3단계는 1층뿐', () => {
+  const fs = floorsFor(3);
+  assert.equal(fs.length, 1);
+  assert.equal(fs[0].half, 7);
+});
+
+test('4단계는 다락이 열린다(작은 층)', () => {
+  const fs = floorsFor(4);
+  assert.deepEqual(fs.map(f => f.id), ['ground', 'attic']);
+  assert.equal(floorAt(4, 1).half, 4.5);
+});
+
+test('5단계에서 위층이 2층으로 넓어진다 — f 는 그대로 1', () => {
+  assert.equal(floorAt(5, 1).id, 'upper');
+  assert.equal(floorAt(5, 1).half, 6);
+});
+
+test('6단계에서만 루프탑이 열리고 실외다', () => {
+  assert.equal(floorAt(5, 2), null);
+  assert.equal(floorAt(6, 2).outdoor, true);
+});
+
+test('위층은 넓어지기만 한다 — 다락 가구 좌표가 2층에서도 유효', () => {
+  assert.ok(floorAt(5, 1).half >= floorAt(4, 1).half);
+});
+
+test('normalizeFloor: 없거나 아직 안 열린 층은 1층으로 떨군다', () => {
+  assert.equal(normalizeFloor(undefined, 6), 0);
+  assert.equal(normalizeFloor(2, 4), 0);   // 4단계엔 루프탑이 없다
+  assert.equal(normalizeFloor(1, 4), 1);
+});
+
+test('고급 가구는 stage 로 해금되고, 기존 가구는 항상 열려 있다', () => {
+  assert.equal(decorUnlocked({ id: 'sofa' }, 3), true);
+  assert.equal(decorUnlocked({ id: 'jacuzzi', stage: 6 }, 5), false);
+  assert.equal(decorUnlocked({ id: 'jacuzzi', stage: 6 }, 6), true);
+});
+
+test('실외 전용 가구는 루프탑에만 놓인다', () => {
+  const firepit = { id: 'firepit', stage: 6, outdoorOnly: true };
+  assert.equal(canPlaceOn(firepit, floorAt(6, 2)), true);
+  assert.equal(canPlaceOn(firepit, floorAt(6, 0)), false);
+  assert.equal(canPlaceOn({ id: 'sofa' }, floorAt(6, 2)), true);
+});
+
+// ── Task 6: 옥상 파라솔 세트 승계(§8.2) ──────────────────────────
+test('옥상 파라솔 세트를 샀으면 루프탑에 값 없이 놓인다', () => {
+  assert.deepEqual(rooftopFreeDecor(['rooftop_set']), ['parasol_set']);
+  assert.deepEqual(rooftopFreeDecor([]), []);
+  assert.deepEqual(rooftopFreeDecor(['palms']), []);
+});
+
+// ── Task 2: 고급 가구 10종 데이터 + 코인 결제 ─────────────────────
+const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const DECOR_SRC = SRC.slice(SRC.indexOf('const DECOR = ['), SRC.indexOf('\n];', SRC.indexOf('const DECOR = [')));
+// 🏖️ Task 6 가 hidden: true 인 parasol_set(승계 전용, 상점에 안 뜸)을 DECOR 에 추가했다.
+// 아래 세 카운트는 "상점에 보이는 고급 가구"만 세도록 hidden 줄을 뺀다 — 그래야 누가 실수로
+// 팔리는 항목을 늘려도(=상점 노출 개수가 어긋나면) 여전히 실패한다.
+const SHOP_DECOR_SRC = DECOR_SRC.split('\n').filter(l => !l.includes('hidden: true')).join('\n');
+
+test('상점에 보이는 고급 가구 10종이 코인 전용으로 들어 있다', () => {
+  const coinLines = SHOP_DECOR_SRC.split('\n').filter(l => l.includes("pay: 'coins'"));
+  assert.equal(coinLines.length, 10);
+});
+
+test('상점에 보이는 고급 가구 가격은 구성품 대역과 같다', () => {
+  const costs = [...SHOP_DECOR_SRC.matchAll(/cost: (\d+),\s*pay: 'coins'/g)].map(m => +m[1]);
+  assert.deepEqual(costs.sort((a, b) => a - b), [120, 150, 180, 250, 280, 300, 400, 500, 700, 900]);
+});
+
+test('상점에 보이는 루프탑 가구 3종만 실외 전용이다', () => {
+  assert.equal((SHOP_DECOR_SRC.match(/outdoorOnly: true/g) || []).length, 3);
+});
+
+test('parasol_set 은 승계 전용(hidden)이라 상점에 안 뜬다 — 값 0 이고 실외 전용', () => {
+  const line = DECOR_SRC.split('\n').find(l => l.includes("id: 'parasol_set'"));
+  assert.ok(line, 'parasol_set 정의가 DECOR 에 있어야 한다');
+  assert.match(line, /hidden: true/);
+  assert.match(line, /cost: 0/);
+  assert.match(line, /outdoorOnly: true/);
+});
+
+test('기존 21종은 작물·생선 그대로다', () => {
+  // ⚠️ task-2-brief 는 "기존 22종"을 전제했으나 DECOR 원본을 세어 보면 21종이다(주석
+  // "2026-09-09 추가 9종" 기준으로도 12+9=21). 실측값에 맞춰 기대치를 21로 둔다.
+  const old = DECOR_SRC.split('\n').filter(l => /pay: '(crop|fish)'/.test(l));
+  assert.equal(old.length, 21);
+});
+
+// ── Task 3: 가구 f(층) 저장 + 복원 마이그레이션 ─────────────────────
+test('옛 세이브(f 없음)의 가구는 전부 1층으로 읽힌다', () => {
+  const oldSave = [{ id: 'sofa', x: 1, z: 2, rot: 0 }, { id: 'bed', x: -3, z: 0, rot: 1 }];
+  const restored = oldSave.map(d => ({ ...d, f: normalizeFloor(d.f, 6) }));
+  assert.deepEqual(restored.map(d => d.f), [0, 0]);
+});
+
+test('복원 코드가 house 부재 가드를 유지한다', () => {
+  assert.ok(SRC.includes('if (saved.house && Array.isArray(saved.house.decor))'));
+});
+
+// ── Task 5: 상점에 층 해금 반영 ─────────────────────────────────
+test('상점 목록은 잠긴 가구에 locked 를 붙인다', () => {
+  const list = [{ id: 'sofa' }, { id: 'jacuzzi', stage: 6 }].map(d => ({ ...d, locked: !decorUnlocked(d, 4) }));
+  assert.deepEqual(list.map(d => d.locked), [false, true]);
+});
+
+test('getDecor 가 해금 상태를 실어 보낸다', () => {
+  assert.ok(SRC.includes('locked: !decorUnlocked('));
+});
+
+test('getDecor 가 hidden 가구는 목록에서 뺀다(Task 6 parasol_set 대비)', () => {
+  assert.ok(SRC.includes('DECOR.filter(d => !d.hidden)'));
+});
+
+test('placeDecor 가 결제 전에 층 해금·실외 전용 가드를 건다', () => {
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2000);
+  const guardIdx = decorSrc.indexOf('decorUnlocked(def, gameState.houseStage)');
+  const payIdx = decorSrc.indexOf('gameState.inventory[pay] -= def.cost');
+  assert.ok(guardIdx > -1 && payIdx > -1 && guardIdx < payIdx);
+  assert.ok(decorSrc.includes('canPlaceOn(def, floorDef)'));
+  assert.ok(decorSrc.includes('집을 더 증축하면 살 수 있어요'));
+  assert.ok(decorSrc.includes('루프탑에만 놓을 수 있어요'));
+});
+
+test('placeDecor 의 해금 가드는 silent(세이브 복원) 복원을 막지 않는다', () => {
+  // applySave 는 houseStage 를 가구보다 나중에 복원한다 — silent 경로까지 gameState.houseStage 로
+  // 즉시 걸면 이미 정당하게 산 고급 가구가 복원 시 사라진다(회귀). guard 가 !silent 안에 있어야 한다.
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2000);
+  const guardBlockIdx = decorSrc.indexOf('if (!silent) {');
+  const innerGuardIdx = decorSrc.indexOf('decorUnlocked(def, gameState.houseStage)');
+  assert.ok(guardBlockIdx > -1 && innerGuardIdx > guardBlockIdx);
+});
+
+// ── §8.1 회귀 고정: "맵 끝에 뜬 가구" — 두 번 깨진 자리(최초 출시 + Task 4 재발) ─────
+// 지금까지 코드 추적으로만 확인했지 잠가둔 테스트가 없었다(리뷰 지적). 주석이 아니라
+// 정확히 그 식이 빠지면 실패하도록 조건을 통째로 정규식으로 고정한다.
+test('§8.1: placeDecor 는 가구 가시성을 indoor 뿐 아니라 지금 층(f)까지 본다', () => {
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 4000);
+  // indoor 단독(`m.visible = indoor;`)으로 되돌아가면 이 매치가 사라진다 — 층 조건이 빠진 회귀를 잡는다.
+  assert.match(decorSrc, /m\.visible\s*=\s*indoor\s*&&\s*curFloor\s*===\s*houseFloor\s*;/);
+});
+
+test('§8.1: stopDecorPlacing 취소(putBack)는 들었던 원래 층(pickedDecor.f)으로 되돌린다', () => {
+  // Ruling B: f 를 안 넘기면 placeDecor 가 "지금 서 있는 층"을 쓰게 되어, 위층에서 들고
+  // 다른 층으로 이동한 뒤 취소하면 가구가 엉뚱한 층(지금 서 있는 층)에 떨어진다(Task 4 재발 지점).
+  const stopSrc = SRC.slice(SRC.indexOf('function stopDecorPlacing('), SRC.indexOf('function buildDecorGhost('));
+  assert.ok(stopSrc.includes('function stopDecorPlacing('), 'stopDecorPlacing 함수를 찾아야 한다');
+  // putBack 조건 안에서 placeDecor 를 부르고, 마지막 인자(f)로 pickedDecor.f 를 그대로 넘겨야 한다 —
+  // houseFloor 를 쓰거나 f 인자를 아예 생략하면(=현재 층으로 암묵 대입) 이 매치가 사라진다.
+  assert.match(
+    stopSrc,
+    /if\s*\(pickedDecor\s*&&\s*putBack\)\s*placeDecor\([^)]*,\s*pickedDecor\.f\)\s*;/,
+  );
+});

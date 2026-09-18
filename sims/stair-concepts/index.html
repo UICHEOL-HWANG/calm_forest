@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>stair concepts</title>
+<style>html,body{margin:0;height:100%;background:#cfe6dc}canvas{display:block}#lbl{position:fixed;left:12px;top:10px;font:600 14px sans-serif;color:#3b4a40;background:rgba(255,255,255,.7);padding:6px 10px;border-radius:10px}</style>
+<div id="lbl"></div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+// 계단 컨셉 뷰어 — ?stair=3|4|5|6|rooftop  ·  ?part=ascend|descend(rooftop 은 무시)  ·  ?all=1 나란히(오르는 계단만)
+//   ?kind=straight(기본, 포팅됨)|spiral(신규 컨셉)  ·  ?cam=ascend|descend|roof|compare|spiral|spiralunder|orbit
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { layout, layoutSpiral } from './stairs.js?v=1';
+const q = new URLSearchParams(location.search);
+const part = q.get('part') === 'descend' ? 'descend' : 'ascend';
+const kind = q.get('kind') === 'spiral' ? 'spiral' : 'straight';
+const NAMES = ['3', '4', '5', '6'];
+const list = q.get('all') ? NAMES : [q.get('stair') || '4'];
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xcfe6dc); scene.fog = new THREE.Fog(0xcfe6dc, 40, 90);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+// 조명 — 어두운 마감(4단계 철골·6단계 shadowGap)이 새까맣게 뭉개지지 않게 반구광·보조광을 세게 올린다.
+//   뷰어 전용 튜닝이라 실제 게임 조명과 같을 필요는 없다 — 목적은 "형태가 보이는가" 판단.
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x88a878, 1.3));
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xffe8c8, 1.5); sun.position.set(8, 14, 6); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20 }); scene.add(sun);
+const fill = new THREE.DirectionalLight(0xcfe0ff, 0.85); fill.position.set(-9, 7, -8); scene.add(fill);   // 반대편 보조광 — 그림자 쪽 디딤판·난간도 죽지 않게
+const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 48), new THREE.MeshStandardMaterial({ color: 0x9fd08a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -3; scene.add(ground);   // 내려가는 계단 구멍(깊이 2)보다 낮게
+const H = {
+  clay: (hex, opts = {}) => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.85, metalness: 0, flatShading: true, ...opts }),
+  glass: (hex = 0x7fb3d5) => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.55 }),
+  box: (w, h, d, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; return m; },
+};
+const label = [];
+const GAP = 3.6;   // all=1 나란히 놓을 때 간격(오르는 계단 자체 폭 1.1+난간 여유)
+for (let i = 0; i < list.length; i++) {
+  const name = list[i];
+  try {
+    const mod = await import(`./stairs.js?v=${Date.now()}`);
+    const p = q.get('all') ? 'ascend' : part;
+    const g = mod.build(THREE, H, name, p, kind);
+    if (q.get('all')) g.position.x = (i - (list.length - 1) / 2) * GAP - layout(name).ax;   // 단계마다 half 가 달라 ax 도 다르다 — 계단 자체를 먼저 0 으로 맞추고 나서 간격을 준다
+    scene.add(g); label.push(name + (kind === 'spiral' ? ':spiral' : (q.get('all') ? '' : `:${p}`)));
+  } catch (e) { console.error(name, e); label.push(name + ' ✗'); }
+}
+document.getElementById('lbl').textContent = label.join('  ·  ');
+window.__scene = scene;   // 디버그용(콘솔 조사)
+const camMode = q.get('cam') || 'ascend';
+const first = layout(list[0]);
+// ⚠️ OrbitControls.update() 는 camera.lookAt() 을 곧장 덮어써 target 을 다시 본다 —
+//    모드별 목표점을 tgt 에 넣고 ctl.target 도 같이 옮겨야 실제로 그쪽을 본다.
+let tgt = [0, 1.2, 0];
+if (camMode === 'ascend') {   // 오르는 계단 크게, 3/4 각도(정면 위 X) — 열린 쪽(벽 없음)에서 본다
+  camera.position.set(first.ax - 6.6, 3.6, first.az - 6.0);
+  tgt = [first.ax - 1.1, 1.4, first.az - 1.9];
+} else if (camMode === 'descend') {   // 내려가는 구멍 — 방 안에 "서서" 옆에서 본다. 구멍 정면(길이 축)으로 보면 위 디딤판에
+  //   나머지가 다 가려 널빤지 하나로만 보인다(리뷰) — 옆(폭 축)에서 봐야 단이 층져 보인다. 그래도 방 바닥은 넉넉히 보이게 뒤로 뺀다.
+  camera.position.set(first.holeX + 1.6, 4.6, first.holeZ - 2.6);
+  tgt = [first.holeX - 0.2, -1.3, first.holeZ + 0.3];
+} else if (camMode === 'roof') {
+  camera.position.set(2.4, 3.2, 5.6); tgt = [-1.3, 1.2, -0.8];
+} else if (camMode === 'spiral') {   // 방 안에 서서 보는 정상 눈높이 각도(위에서 내려다보지 않는다)
+  const sp = layoutSpiral(list[0]);
+  camera.position.set(sp.cx + 6.0, 3.4, sp.cz + 5.4);
+  tgt = [sp.cx - 0.2, 1.3, sp.cz - 0.2];
+} else if (camMode === 'spiralunder') {   // 바닥 아래에서 위로 — 구멍을 뚫고 지나가는 모습(위/아래 두 모습 중 "아래")
+  const sp = layoutSpiral(list[0]);
+  camera.position.set(sp.cx + 1.6, -2.4, sp.cz + 1.4);
+  tgt = [sp.cx, -0.3, sp.cz];
+} else if (camMode === 'spiralabove') {   // 위층 바닥에서 내려다본 모습 — 구멍을 뚫고 올라온 나선 위쪽(위/아래 두 모습 중 "위")
+  const sp = layoutSpiral(list[0]);
+  camera.position.set(sp.cx + 2.0, 4.6, sp.cz + 1.6);
+  tgt = [sp.cx, 2.6, sp.cz];
+} else if (camMode === 'compare') {   // all=1 전용 — 나란히 놓은 계단들을 한 각도로(계단마다 ax 는 0 으로 맞췄지만 반경 half 가 달라 간격은 균일하지 않다)
+  const xs = list.map((n, i) => (i - (list.length - 1) / 2) * GAP - layout(n).ax);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, halfw = (Math.max(...xs) - Math.min(...xs)) / 2;
+  camera.position.set(cx, 3.6, -halfw - 8.5); tgt = [cx, 1.4, 1.5];
+} else { camera.position.set(6, 6, 9); tgt = [0, 1.5, 0]; }
+const ctl = new OrbitControls(camera, renderer.domElement); ctl.target.set(...tgt); camera.lookAt(...tgt); ctl.update();
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+window.__ready = true;
+renderer.setAnimationLoop(() => renderer.render(scene, camera));
+</script>

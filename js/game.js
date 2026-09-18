@@ -58,9 +58,10 @@ import { logOrchardEvent } from './orchard-log.js';   // 🍎 과수원 이벤�
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
-import { buildHouseModel, mountHouseAddons } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기
+import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기 + 재질 도우미(루프탑 유리 난간)
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
+import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -230,8 +231,24 @@ const DECOR = [
   { id: 'fireplace',   name: '벽난로',   ico: '🔥', cost: 12, pay: 'crop', big: true, foot: [1.4, 0.6] },
   { id: 'piano',       name: '피아노',   ico: '🎹', cost: 12, pay: 'crop', big: true, foot: [1.4, 1.1] },
   { id: 'bigaquarium', name: '큰 어항',  ico: '🐠', cost: 5,  pay: 'fish', big: true, foot: [1.3, 0.6] },
+  // 🏠 층별 해금 고급 가구 — 코인 전용(후반 싱크). stage = 증축 단계 해금, outdoorOnly = 루프탑에만.
+  { id: 'rocker',    name: '흔들의자',   ico: '🪑', cost: 120, pay: 'coins', stage: 4, foot: [0.7, 0.8] },
+  { id: 'telescope', name: '망원경',     ico: '🔭', cost: 150, pay: 'coins', stage: 4, foot: [0.6, 0.6] },
+  { id: 'trunk',     name: '여행 트렁크', ico: '🧳', cost: 180, pay: 'coins', stage: 4, foot: [0.9, 0.55] },
+  { id: 'bathtub',   name: '욕조',       ico: '🛁', cost: 250, pay: 'coins', stage: 5, big: true, foot: [1.6, 0.8] },
+  { id: 'bigart',    name: '큰 그림',    ico: '🖼️', cost: 280, pay: 'coins', stage: 5, foot: [1.2, 0.2] },
+  { id: 'chandelier', name: '샹들리에',  ico: '💠', cost: 300, pay: 'coins', stage: 5 },
+  { id: 'grandpiano', name: '그랜드 피아노', ico: '🎹', cost: 400, pay: 'coins', stage: 5, big: true, foot: [2.0, 1.6] },
+  { id: 'firepit',   name: '파이어핏',   ico: '🔥', cost: 500, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.9, 0.9] },
+  { id: 'planttree', name: '큰 화분나무', ico: '🌿', cost: 700, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.8, 0.8] },
+  { id: 'jacuzzi',   name: '자쿠지',     ico: '♨️', cost: 900, pay: 'coins', stage: 6, outdoorOnly: true, big: true, foot: [2.0, 1.6] },
+  // 🏖️ 옥상 파라솔 세트 승계(§8.2) — 구성품(js/house/addons.js rooftop_set, 900🪙)을 이미 산 사람에게
+  // 루프탑에 실물로 놓아 준다. 상점엔 안 뜬다(hidden) · 값은 이미 치렀으므로 cost: 0.
+  { id: 'parasol_set', name: '파라솔 세트', ico: '🏖️', cost: 0, pay: 'coins', stage: 6, outdoorOnly: true, hidden: true, foot: [1.8, 1.2] },
 ];
 const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
+const ROOF_Y = 3.4;   // ☀️ 루프탑만 집 한 층 높이만큼 띄운다 — "지붕 위에서 마을을 내려다보는" 높이감(2026-09-17 사용자 피드백).
+//   다른 실내 층(1층·다락·2층)은 전부 y=0 그대로 — 벽으로 막힌 방이라 높이가 안 보여도 상관없다.
 
 // ── 낚시 ─────────────────────────────────────────────────────
 const LAKE_R = 6;   // 호수 반경(환경 호수와 동일)
@@ -537,11 +554,22 @@ const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, s
 
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
-  if (interiorGroup) interiorGroup.visible = indoor;
+  // 🏠 층은 한 번에 하나만 — interiorGroup 하나가 아니라 층별 그룹(id 로 키)을 토글한다.
+  const showId = (floorAt(gameState.houseStage, houseFloor) || { id: 'ground' }).id;
+  for (const id in interiorFloors) interiorFloors[id].visible = indoor && id === showId;
+  refreshStairsLandmarks();   // 증축으로 houseStage 가 바뀌었을 수도 있으니 전환마다 다시 계산(스펙 §3 위반 A)
+  interiorGroup = interiorFloors[showId] || interiorFloors.ground;   // 레이캐스트(interiorFloor)·미니맵 등이 참조하는 "지금 방"
+  interiorFloor = interiorGroup ? interiorGroup.userData.floorGroup : interiorFloor;   // 🌀 방마다 바닥 메시를 담은 floorGroup — floorHitFromEvent 가 재귀 레이캐스트로 받는다
   // 🛋️ 가구 메시는 scene 직속(interiorGroup 자식이 아님) — 방과 같이 따로 꺼야 한다.
   //    방은 월드 (0,0,52)에 실제로 서 있고 마을 이동 한계는 반경 42다. 그래서 북쪽 끝에 서면
   //    벽·바닥이 숨은 자리에 가구만 들판 위에 떠 보였다(제보 2026-09-15 "맵 끝에 피아노·장롱").
-  for (const m of decorMeshes) m.visible = indoor;
+  //    ⚠️ 층이 생긴 뒤로는 다른 층 가구도 같은 이유로 떠 보인다 — indoor && 같은 층(f) 두 조건을 모두 본다.
+  // 🚧 발자국 콜라이더도 층별로 꺼야 한다 — solidBox 는 off:false 로 시작해 층과 무관하게 항상 막고 있었다.
+  //   1층 침대가 2층 같은 로컬 좌표에 안 보이는 벽으로 남는 신규 회귀(오레·그루터기와 같은 off 관용구로 고침).
+  for (const m of decorMeshes) {
+    m.visible = indoor && (m.userData.rec?.f || 0) === houseFloor;
+    if (m.userData.collider) m.userData.collider.off = !m.visible;
+  }
   if (farmGroup) farmGroup.visible = atFarm;
   setWorkersVisible(atFarm);   // 🧑‍🌾 일꾼은 텃밭에서만 보인다(밖에선 규칙만 돌아간다)
   // 🌾 밭 흙·이랑·작물·배지 InstancedMesh 는 scene 직속(farmGroup 자식이 아님) — 따로 토글해야 한다.
@@ -1141,7 +1169,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
-  house: { decor: [], stored: {}, addons: [], bedGiven: false },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부
+  house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
   outdoor: [],                              // 야외 장식 [{id,x,z}]
@@ -1543,9 +1571,13 @@ let decorTarget = { x: 0, z: 0, pinned: false }; // 놓일 자리. pinned=false 
 //   (사용자 지시 2026-09-13: "집에서 배치하는 것처럼"). pinned=false 면 예전처럼 발밑을 따라간다.
 let outdoorTarget = { x: 0, z: 0, pinned: false };
 const OUTDOOR_REACH = 7;   // 조준 가능한 최대 거리 — 화면 끝을 눌러 멀리 놓지 못하게(근접 상호작용 원칙)
-let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot} — 취소·퇴장 시 제자리로
+let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot, f} — 취소·퇴장 시 제자리(원래 층)로
 let decorTapHintShown = false; // "여기 놓을까요?" 안내는 배치 1회당 한 번만
 let interiorGroup, interiorFloor, interiorLamp;
+let interiorFloors = {};   // { [id]: THREE.Group } — 층 id('ground'|'attic'|'upper'|'roof')별 방. 항상 넷 다 짓는다
+let houseFloor = 0;   // 🏠 지금 서 있는 실내 층 인덱스(f) — 0=1층 · 1=다락/2층 · 2=루프탑
+let nearDoorFloor = 0;   // nearDoor === 'floor' 일 때 갈 층(f)
+let lastFloorChoiceKey = null;   // 🪜 양방향(6단계 2층) 선택 UI 중복 갱신 방지 — null 이면 닫힘
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
@@ -1890,7 +1922,10 @@ export const Input = {
   // 낮/밤 수동 조절(setTimeOfDay·toggleDayFlow)은 제거됐다 — 시간은 늘 자동으로 흐르고,
   // 플레이어가 만질 수 있는 건 🛏️ 침대뿐(밤에 누우면 아침). dayPaused 는 ?time= dev 파라미터 전용.
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
-  getDecor() { return DECOR; },
+  getDecor() {   // 🏠 층별 해금 — 잠긴 것도 목록엔 보이되 locked 로 흐리게(살 목표가 보여야 싱크가 된다)
+    const st = gameState.houseStage;
+    return DECOR.filter(d => !d.hidden).map(d => ({ ...d, locked: !decorUnlocked(d, st) }));
+  },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
   kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
   kitchenFinish(id, res) { return kitchenFinish(id, res); },    // 🍳 코스 결과 → 등급·기록·트래킹(버프는 아직)
@@ -2350,6 +2385,7 @@ export async function enterGame() {
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
     window.__decor = (id, x, z, rot = 0) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true);   // 가구 무료 배치(검수용)
+    window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
@@ -2418,6 +2454,8 @@ function applySave(saved) {
   if (saved.house && Array.isArray(saved.house.addons))                  // 🧩 구성품 복원(카탈로그에 있는 id 만, 중복 제거) — 집 복원(buildHouseStage) 전에
     gameState.house.addons = [...new Set(saved.house.addons.filter(id => HOUSE_ADDONS.some(a => a.id === id)))];
   if (saved.house && saved.house.bedGiven) gameState.house.bedGiven = true;   // 🛏️ 기본 침대를 이미 받았는지(두 번 주지 않게)
+  if (saved.house && Array.isArray(saved.house.grantedDecor))                // 🏖️ 승계 가구를 이미 줬는지(옮기거나 창고에 넣어도 다시 안 주게)
+    gameState.house.grantedDecor = [...new Set(saved.house.grantedDecor.filter(id => typeof id === 'string'))];
   if (saved.farm && Number.isFinite(saved.farm.stage)) {                     // 🌾 밭 단계 복원 — 밭(plots) 복원보다 먼저 울타리를 맞춘다. 없으면 1단계
     gameState.farm.stage = Math.max(1, Math.min(MAX_FARM_STAGE, Math.floor(saved.farm.stage)));
     if (gameState.farm.stage > 1) rebuildFarm(true);
@@ -2464,7 +2502,9 @@ function applySave(saved) {
   }
   if (saved.house && Array.isArray(saved.house.decor)) {                 // 실내 가구 복원
     gameState.house.decor = [];
-    saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0));
+    // ⚠️ f 부재(옛 세이브)는 1층으로 읽는다 — house 부재(저장 없음)와 절대 섞지 않는다.
+    saved.house.decor.forEach(d => placeDecor(d.id, INT.x + d.x, INT.z + d.z, true, d.rot || 0, false,
+                                              normalizeFloor(d.f, saved.houseStage || 0)));
   }
   if (saved.npcs) gameState.npcs = { ...gameState.npcs, ...saved.npcs }; // NPC 퀘스트 복원
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
@@ -6956,6 +6996,7 @@ function buildHouseStage(stage, silent = false) {
   }
 
   gameState.houseStage = Math.max(gameState.houseStage, stage);
+  if (interiorFloors.ground) rebuildInteriorFinish();   // 🪜🎨 실내 마감(바닥·계단)을 새 단계로 다시 짓는다 — 실내에 있는 채로 증축했을 드문 경우까지 대비(스펙 §3 위반 A)
   syncHouseCollider();                        // 🚧 완성되면 충돌 on + 증축 크기 반영(짓는 동안엔 통행 자유)
   if (!silent) syncStory();                   // 📖 1장(보금자리) 진행
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
@@ -7700,36 +7741,310 @@ function setFogExempt(obj, on) {
   });
 }
 
-const INT_HALF = 7;   // 실내 반경(넓은 방) — 문 앞 스폰/이동/배치 클램프 기준
-const INT_FLOOR_TINT = 0xbfb0a0;   // 실내 바닥 착색(가구 나무색 대비용)
+const INT_HALF = 7;   // 실내 반경(1층 기준) — 문 앞 스폰/이동/배치 클램프 기본값
+
+// 🎨 단계별 실내 마감 — 팔레트는 외관 모델(js/house/*.js)에서 가져와 안팎이 같은 집으로 읽히게 한다.
+//    색만 담고 재질은 buildRoom 에서 만든다(방마다 fog 예외를 따로 걸어야 하므로).
+//    tread/rail 은 계단 재질용, floor 는 바닥용 — 출처: cottage.js(3) · loft.js steel(4) · penthouse.js black(5) · villa.js interior/railGlass(6)
+const INT_FINISH = {
+  3: { floor: { kind: 'wood',  c: 0xbfb0a0, rep: 7 }, tread: 0x9c6b40, rail: 0x8a5a36 },
+  4: { floor: { kind: 'stone', c: 0xb9b3a8, rep: 6 }, tread: 0x23252a, rail: 0x23252a },
+  5: { floor: { kind: 'stone', c: 0xe2ddd2, rep: 5 }, tread: 0xb98a4e, rail: 0x1e1f23 },
+  6: { floor: { kind: 'stone', c: 0xf1ece3, rep: 4 }, tread: 0xf1ece3, rail: 'glass' },
+};
+const finishFor = (stage) => INT_FINISH[Math.min(6, Math.max(3, stage || 3))];
+
+// 🏠 지금 서 있는 층 정의 — houseStage 가 아직 안 연 층이면 1층 기본값으로.
+function curFloorDef() {
+  return floorAt(gameState.houseStage, houseFloor) || { id: 'ground', half: INT_HALF, outdoor: false };
+}
+function curHalf() { return curFloorDef().half; }   // 클램프 기준(js/house-floors.js 의 half)
+// 🏠 층 인덱스 f 의 바닥 높이 — floorAt(MAX_HOUSE_STAGE, f) 로 구조상 정의를 그대로 읽는다(해금 여부와 무관).
+//   세이브 복원 중(applySave)엔 gameState.houseStage 가 아직 낮을 수 있어 curFloorDef() 대신 이걸 쓴다 —
+//   f=2(루프탑)면 지금 단계와 상관없이 항상 ROOF_Y(가구 좌표는 층 인덱스로만 저장되니 복원해도 맞는 높이에 놓인다).
+function floorBaseY(f) { return floorAt(MAX_HOUSE_STAGE, f)?.outdoor ? ROOF_Y : 0; }
+
+// 🌀 나선 계단 치수 — sims/stair-concepts/stairs.js(kind='spiral') 그대로 포팅(재설계 아님, 사용자 승인 조형).
+//   오르내림을 한 몸으로 처리하는 단일 랜드마크 하나가 원형 구멍을 통과한다 — 직선형의
+//   "오르는 계단(벽 붙박이)+내려가는 계단(바닥 구멍)" 두 오브젝트를 이것 하나로 대체한다(공간 절약이 재설계 이유).
+const SPIRAL_STEPS = 12, SPIRAL_RISE = 0.25, SPIRAL_R = 1.2, SPIRAL_NEWEL_R = 0.14;
+const SPIRAL_HOLE_R = SPIRAL_R + 0.15;                       // 디딤판 바깥 여유 0.15 — 구멍이 디딤판보다 살짝 크다
+const SPIRAL_STEP_DEG = 324 / SPIRAL_STEPS;                  // 12×27°=324° — 한 바퀴를 다 안 돌아 위/아래가 안 겹친다
+const STAIR_PROMPT_R = 1.9;                                  // 🪜 근접 프롬프트 반경 — solidCircle(반경 SPIRAL_HOLE_R)+PLAYER_R(0.42)=1.77 보다 커야 막힌 자리에서 반드시 뜬다
+
+// 🪜 계단 배치 좌표(순수 함수) — buildRoom(짓기)과 updateDoorInteract(프롬프트 판정)가
+//   반드시 같은 공식을 써야 한다(계단을 옮기면 판정 좌표도 같이 옮긴다 — task-7 교훈).
+//   컨셉 뷰어 stairs.js 의 layoutSpiral() 그대로: 구멍(=나선) 중심을 방 크기(H)에 비례해 잡는다.
+function stairLayout(H) {
+  const cx = -H * 0.3, cz = -H * 0.05;
+  return { cx, cz, r: SPIRAL_R, holeR: SPIRAL_HOLE_R };
+}
+
+// 두 점을 정확히 잇는 원기둥 — 각도를 손으로 계산하면 부호 실수가 낀다(컨셉 뷰어에서 이미 겪은 버그, stairs.js 그대로).
+function rodBetween(p1, p2, r, mat) {
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1], dz = p2[2] - p1[2];
+  const len = Math.hypot(dx, dy, dz);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8), mat);
+  m.position.set((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2, (p1[2] + p2[2]) / 2);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx, dy, dz).normalize());
+  m.castShadow = true; return m;
+}
+
+// 방 한 채를 짓는다 — def = floorAt() 이 주는 층 정의(반경·실외 여부·id)
+function buildRoom(def) {
+  const g = new THREE.Group(); g.position.set(INT.x, def.outdoor ? ROOF_Y : INT.y, INT.z);   // ☀️ 루프탑만 ROOF_Y 만큼 띄운다(내부 좌표는 그대로 — 방 전체가 같이 올라간다)
+  g.userData.floorIdx = def.f;   // refreshStairsLandmarks 가 위/아래 목적지를 계산할 때 쓴다
+  const H = def.half, W = H * 2;
+  const fin = finishFor(gameState.houseStage);   // 🎨 집 단계에 맞춘 실내 마감(바닥·계단)
+  const lay = stairLayout(H);       // 🪜 이 방의 계단 좌표(오르는 진입점 · 내려가는 구멍)
+  const hasDown = def.f > 0;        // 1층(f=0)은 내려갈 곳이 없다 — 바닥에 구멍을 뚫지 않는다
+  const HH = makeHouseHelpers(THREE);   // house/*.js 와 같은 box/glass 도우미(계단·유리 난간에 씀)
+  // 바닥은 단계별 마감 — 루프탑(def.outdoor)은 표와 무관하게 나무 데크(villa.js 수영장 데크와 같은 널)
+  //   돌·대리석은 가구용 나무 텍스처를 안 써서(베타 때 테이블·책장이 텍스처에 묻힌 문제 재발 방지) 평면 음영으로 둔다
+  const floorMat = def.outdoor
+    ? woodMat(3, 3, 0xc19a66)
+    : fin.floor.kind === 'wood' ? woodMat(fin.floor.rep, fin.floor.rep, fin.floor.c)
+                                : clayMat(fin.floor.c, false);
+  // 🌀 바닥 — 내려갈 곳이 있는 층은 통 판에 THREE.Shape.holes 로 진짜 원형 구멍 하나를 낸다
+  //   (나선 계단이 지나가는 자리). stairs.js 의 spiral 바닥과 같은 shape+extrude 방식 —
+  //   메시 하나가 갈라지지 않아(직선형 포팅 때의 "4조각으로 쪼개져 가구 배치 레이캐스트가 1/4만
+  //   먹힌" 회귀를 애초에 피한다) 그래도 다른 층과 구조를 맞추려 floorGroup 에 그대로 넣는다.
+  const floorGroup = new THREE.Group(); g.add(floorGroup); g.userData.floorGroup = floorGroup;
+  if (hasDown) {
+    const outer = new THREE.Shape();
+    outer.moveTo(-H, -H); outer.lineTo(H, -H); outer.lineTo(H, H); outer.lineTo(-H, H); outer.closePath();
+    const holePath = new THREE.Path(); holePath.absarc(lay.cx, -lay.cz, lay.holeR, 0, Math.PI * 2, false);   // shape.y = -world z (stairs.js 규칙)
+    outer.holes.push(holePath);
+    const floorGeo = new THREE.ExtrudeGeometry(outer, { depth: 0.2, bevelEnabled: false });
+    floorGeo.rotateX(-Math.PI / 2);   // 회전 후 깊이(0~0.2)가 그대로 world y — 기존 박스 바닥(position.y=0.1 → [0,0.2])과 같은 범위라 translate 불필요
+    const floor = new THREE.Mesh(floorGeo, floorMat); floor.receiveShadow = true; floorGroup.add(floor);
+  } else {
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), floorMat);
+    floor.position.y = 0.1; floor.receiveShadow = true; floorGroup.add(floor);
+  }
+  if (def.outdoor) {   // ☀️ 루프탑 — 벽 대신 유리 난간, 하늘·밤별이 보인다
+    // 🪟 외관 루프탑 모델(js/house/villa.js railGlass)과 같은 재질 — 스펙 "유리 난간", 불투명 크림색이면
+    // 같은 건물처럼 안 읽힌다. H.glass() 는 기본 opacity 0.55 라 난간 전용으로 0.22 를 덮어쓴다.
+    const rail = HH.glass(0xa9d8ea); rail.opacity = 0.22;
+    [[0, H], [0, -H], [-H, 0], [H, 0]].forEach(([rx, rz], i) => {
+      const w = i < 2 ? W : 0.12, d = i < 2 ? 0.12 : W;
+      const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, d), rail);
+      r.position.set(rx, 0.65, rz); g.add(r);
+    });
+    // 🏠 루프탑 계단실 박스는 짓지 않는다 — 사용자가 원한 건 "통과만 안 되게" 였지 구조물이
+    //   아니었다(2026-09-18 지시 오해로 한 차례 지었다 철거). 나무 데크 + 유리 난간 + 원형 구멍
+    //   (뒤이어 buildSpiralStair 가 짓는 테두리 난간 + solidCircle 차단)이 루프탑의 전부다.
+  } else {
+    const wall = () => clayMat(PAL.wall, false);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, H); back.castShadow = true; g.add(back);
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); left.position.set(-H, 1.5, 0); g.add(left);
+    const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); right.position.set(H, 1.5, 0); g.add(right);
+    const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
+    houseWindows.push(winMat);
+    [-H / 2.8, H / 2.8].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, H - 0.1); g.add(win); });
+    if (def.id === 'ground') {   // 1층에만 나가는 문
+      const sideW = H - 1;            // 문 반폭 1
+      const fL = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fL.position.set(-(1 + sideW / 2), 1.5, -H); g.add(fL);
+      const fR = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fR.position.set((1 + sideW / 2), 1.5, -H); g.add(fR);
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.24), wall()); lintel.position.set(0, 2.6, -H); g.add(lintel);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.14), woodMat(1, 2, 0xa9743f)); door.position.set(0, 1.05, -H); g.add(door); // 나가는 문
+    } else {
+      const fw = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); fw.position.set(0, 1.5, -H); g.add(fw);
+    }
+  }
+  // 🌀 나선 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2).
+  //   sims/stair-concepts/stairs.js(kind='spiral') 승인안 포팅. 좌표는 stairLayout(H) —
+  //   updateDoorInteract 의 프롬프트 판정도 반드시 같은 공식을 쓴다(계단을 옮기면 판정 좌표도
+  //   같이 옮긴다 — task-7 교훈). 실제로 보일지는 refreshStairsLandmarks() 가 지금 houseStage
+  //   기준으로 매번 정한다(스펙 §3 "지금 그대로"). 계단 재질은 방에 하나씩(드로우콜, 스펙 §8.3).
+  //   🔦 볼룸 함정(직선형 포팅 때 겪음, js/game.js:10216 UnrealBloomPass 임계 0.85): 나선은
+  //   추가 광원을 넣지 않는다(컨셉 뷰어 확인 — grep 으로 PointLight 없음 재확인) — 형태·재질
+  //   대비만으로 읽히게 짠 설계라 그 함정을 원천적으로 피한다.
+  const treadMat = clayMat(fin.tread);
+  const railMat = fin.rail === 'glass' ? HH.glass(0xa9d8ea) : clayMat(fin.rail);
+  if (fin.rail === 'glass') railMat.opacity = 0.22;   // villa.js railGlass 와 같은 값
+  // 🎨 4단계(브릭 로프트)는 난간·디딤판이 같은 색(0x23252a)이라 나선 형태에서 난간이 디딤판 바로 위를 지나가며
+  //   통짜 검은 덩어리로 뭉쳤다(컨셉 뷰어에서 실측 확인). 난간 색만 밝혀(+0.16 HSL lightness) 분리한다.
+  //   ⚠️ 리뷰에서 드러난 사고: 포팅 당시 INT_FINISH[4].tread 를 0x3a3d44 로 다르게 적어놔서
+  //   (컨셉 승인안은 tread=rail=0x23252a) 이 조건이 게임에선 한 번도 안 걸렸다 — 컨셉 뷰어에서만
+  //   밝아지고 실제 나선 계단은 계속 뭉쳐 있었다. tread 를 승인안 그대로 0x23252a 로 되돌려 조건이
+  //   다시 걸리게 한다. 밝힌 색(#484c57, 휘도 0.30)은 UnrealBloomPass 임계 0.85(js/game.js:10219)에서
+  //   한참 아래라 블룸 함정과는 무관 — 직선형 포팅 때 겪은 그 사고가 아니다.
+  const spiralRailMat = (fin.rail !== 'glass' && fin.rail === fin.tread)
+    ? clayMat(new THREE.Color(fin.tread).offsetHSL(0, 0, 0.16).getHex())
+    : railMat;
+
+  // 🪜 오르내림을 한 몸으로 — hasFlight(위로, def.f<2) · hasHole(아래로, def.f>0) 조합에 따라
+  //   부분만 짓는다(직선형이 def.f<2/def.f>0 로 오르는/내려가는 계단을 따로 건 것과 같은 규칙,
+  //   랜드마크 하나로 합쳤을 뿐): 1층(f=0)은 오르는 나선만(바닥에 구멍이 없다),
+  //   루프탑(f=2)은 구멍+테두리 난간만(위로 갈 곳이 없다), 그 사이(f=1)는 둘 다.
+  const buildSpiralStair = (hasFlight, hasHole) => {
+    const st = new THREE.Group();
+    const { cx, cz, r: R, holeR } = lay;
+    const stepRad = (SPIRAL_STEP_DEG * Math.PI) / 180;
+    const RAIL_LIFT = 0.9;
+    const postPoint = (idx, top) => {
+      const a = (idx + 0.5) * stepRad;   // 그 단의 바깥 가장자리 중앙(각도)
+      return [cx + Math.cos(a) * (R - 0.06), idx * SPIRAL_RISE + (top ? RAIL_LIFT : 0), cz - Math.sin(a) * (R - 0.06)];
+    };
+
+    if (hasFlight) {
+      // 쐐기 디딤판 — 한 장을 만들어 단마다 회전만 시킨다(재질·지오메트리 공유, 드로우콜 절감).
+      const wedgeShape = new THREE.Shape();
+      const rIn = SPIRAL_NEWEL_R + 0.04, segs = 5;
+      for (let i = 0; i <= segs; i++) { const a = stepRad * i / segs; wedgeShape[i === 0 ? 'moveTo' : 'lineTo'](Math.cos(a) * R, -Math.sin(a) * R); }
+      for (let i = segs; i >= 0; i--) { const a = stepRad * i / segs; wedgeShape.lineTo(Math.cos(a) * rIn, -Math.sin(a) * rIn); }
+      wedgeShape.closePath();
+      const wedgeGeo = new THREE.ExtrudeGeometry(wedgeShape, { depth: 0.14, bevelEnabled: false });
+      wedgeGeo.rotateX(-Math.PI / 2); wedgeGeo.translate(0, 0.14, 0);
+      for (let i = 0; i < SPIRAL_STEPS; i++) {
+        const tread = new THREE.Mesh(wedgeGeo, treadMat);
+        tread.position.set(cx, i * SPIRAL_RISE, cz);
+        tread.rotation.y = i * stepRad;
+        tread.castShadow = true; st.add(tread);
+      }
+      // 중앙 기둥 — 얇은 디딤판이 떠 있는 게 아니라 굵은 기둥에 박혀 있는 것처럼 보이게 한다.
+      const newelH = SPIRAL_STEPS * SPIRAL_RISE + 0.3;   // 천장(3.0)보다 살짝 더 올라간다(끝이 허전해 보이지 않게)
+      const newel = new THREE.Mesh(new THREE.CylinderGeometry(SPIRAL_NEWEL_R, SPIRAL_NEWEL_R, newelH, 10), treadMat);
+      newel.position.set(cx, newelH / 2, cz); newel.castShadow = true; st.add(newel);
+      // 난간 기둥 — 두 단 걸러 세운다. "꼭대기" 좌표를 아래 손잡이 곡선의 제어점으로도 그대로 써서
+      //   기둥이 손잡이를 뚫거나 못 미치는 불일치가 구조적으로 생길 수 없다.
+      const postIdx = [0, 2, 4, 6, 8, 10, SPIRAL_STEPS - 1];
+      postIdx.forEach(idx => {
+        const newelPost = idx === 0; const r = newelPost ? 0.075 : 0.05;
+        st.add(rodBetween(postPoint(idx, false), postPoint(idx, true), r, spiralRailMat));
+      });
+    }
+
+    // 손잡이 — 나선을 그대로 따라 도는 매끈한 곡선 하나(TubeGeometry+CatmullRom).
+    //   구멍이 있으면(hasHole) 테두리 난간(입구 쪽 35° 만 비움)을 같은 곡선 제어점에 이어붙여
+    //   "따로 노는 원이 아니라 한 줄"로 만든다.
+    let rimPts = null;
+    if (hasHole) {
+      const flightA0 = 0.5 * stepRad;   // 0단 바깥 가장자리 각도 — 곡선이 나선 손잡이와 만나는 자리
+      const rimSpanRad = (325 * Math.PI) / 180, rimSegs = 24;
+      rimPts = [];
+      for (let i = rimSegs; i >= 0; i--) {   // 입구 쪽(먼 끝)에서 0단 방향으로 다가오는 순서 — 이어붙이기 순서 맞춤
+        const a = flightA0 + (rimSpanRad * i) / rimSegs;
+        rimPts.push([cx + Math.cos(a) * holeR, RAIL_LIFT, cz - Math.sin(a) * holeR]);
+      }
+    }
+    const flightPts = hasFlight ? Array.from({ length: SPIRAL_STEPS }, (_, idx) => postPoint(idx, true)) : null;
+    const curvePts = [...(rimPts || []), ...(flightPts || [])];
+    if (curvePts.length >= 2) {
+      const railCurve = new THREE.CatmullRomCurve3(curvePts.map(p => new THREE.Vector3(...p)));
+      const railTube = new THREE.Mesh(new THREE.TubeGeometry(railCurve, hasFlight && hasHole ? 140 : hasFlight ? 100 : 80, 0.05, 8, false), spiralRailMat);
+      railTube.castShadow = true; st.add(railTube);
+    }
+    if (rimPts) {
+      // 손스침대 둘 — 입구(먼 끝)와 0단 쪽(반경이 holeR→R 로 줄어드는 지점), 둘 다 바닥에서 난간까지.
+      st.add(rodBetween([rimPts[0][0], 0, rimPts[0][2]], rimPts[0], 0.09, spiralRailMat));
+      st.add(rodBetween([rimPts[rimPts.length - 1][0], 0, rimPts[rimPts.length - 1][2]], rimPts[rimPts.length - 1], 0.08, spiralRailMat));
+    }
+
+    // 🚧 콜라이더 — 원형 발자국이라 solidCircle 로 정확히 막는다(각도에 상관없이 같은 반경에서 멈춘다).
+    //   구멍이 있는 층(hasHole)은 구멍 전체를, 없는 층(1층)은 디딤판 바깥 반경을 — 둘 다 holeR 로
+    //   통일해 단순하게(디딤판 R=1.2 보다 살짝 넉넉한 값이라 발이 걸리지 않는다).
+    st.userData.collider = solidCircle(g.position.x + cx, g.position.z + cz, holeR);
+    g.add(st);
+    return st;
+  };
+
+  g.userData.st = buildSpiralStair(def.f < 2, hasDown);   // f<2 = 위로 갈 수 있는 구조(1·2층) · hasDown(f>0) = 아래로 갈 구멍
+  scene.add(g); g.visible = false;
+  setFogExempt(g, true);   // 방은 안개 밖(작은 방이라 안개가 지척의 벽까지 흐리게 만든다 — 루프탑도 좁아 같은 이유로 예외)
+  return g;
+}
+
+// 🏠 층 4개(1층·다락·2층·루프탑)를 항상 다 지어 두고 층 전환 때 보이는 것만 바꾼다(드로우콜은 늘지 않는다).
+//   floorsFor(stage) 는 그 단계에서 "열린" 층만 주므로, 정의 4개를 다 뽑으려면 각자 열리는 최소 단계로 조회한다.
 function buildInterior() {
-  const g = new THREE.Group(); g.position.copy(INT);
-  const W = INT_HALF * 2;
-  // 바닥은 가구와 같은 나무 텍스처라 테이블·책장이 묻혔다(베타) — 톤을 낮춰 가구가 도드라지게
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, W), woodMat(7, 7, INT_FLOOR_TINT));
-  floor.position.y = 0.1; floor.receiveShadow = true; g.add(floor);
-  interiorFloor = floor;
-  const wall = () => clayMat(PAL.wall, false);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, INT_HALF); back.castShadow = true; g.add(back);
-  const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); left.position.set(-INT_HALF, 1.5, 0); g.add(left);
-  const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); right.position.set(INT_HALF, 1.5, 0); g.add(right);
-  // 앞면 문(가운데 폭 2 구멍) 양옆 벽
-  const sideW = INT_HALF - 1;            // 문 반폭 1
-  const fL = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fL.position.set(-(1 + sideW / 2), 1.5, -INT_HALF); g.add(fL);
-  const fR = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fR.position.set((1 + sideW / 2), 1.5, -INT_HALF); g.add(fR);
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.24), wall()); lintel.position.set(0, 2.6, -INT_HALF); g.add(lintel);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.14), woodMat(1, 2, 0xa9743f)); door.position.set(0, 1.05, -INT_HALF); g.add(door); // 나가는 문
-  const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
-  houseWindows.push(winMat);
-  // 뒷벽 창문 2개(넓어진 방)
-  [-2.5, 2.5].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, INT_HALF - 0.1); g.add(win); });
-  scene.add(g); interiorGroup = g; interiorGroup.visible = false;   // 들어갈 때만 표시
-  setFogExempt(g, true);                                              // 방은 안개 밖
-  interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
-  scene.add(interiorLamp);
+  const defs = [floorAt(4, 0), floorAt(4, 1), floorAt(5, 1), floorAt(6, 2)];   // ground · attic · upper · roof
+  interiorFloors = {};
+  for (const def of defs) interiorFloors[def.id] = buildRoom(def);
+  interiorGroup = interiorFloors.ground;
+  interiorFloor = interiorGroup.userData.floorGroup;
+  if (!interiorLamp) {   // 🏠 증축으로 재호출돼도 조명은 한 번만(rebuildInteriorFinish 경로)
+    interiorLamp = new THREE.PointLight(0xffd9a0, 0, 26); interiorLamp.position.copy(INT).add(new THREE.Vector3(0, 3.4, 0));
+    scene.add(interiorLamp);
+  }
+  refreshStairsLandmarks();
+}
+
+// 🏠 증축하면 실내 마감(바닥·계단)도 그 단계로 다시 짓는다 — 방 안에서 증축해도 즉시 반영된다.
+//   방마다 등록된 창 재질을 먼저 빼고(unregisterWindows, 안 빼면 houseWindows 누수) 지오메트리·재질도 버린 뒤
+//   scene 에서 떼고 다시 짓는다. 가구(decorMeshes)는 room 그룹의 자식이 아니라 손대지 않는다.
+function rebuildInteriorFinish() {
+  for (const id in interiorFloors) {
+    const grp = interiorFloors[id];
+    unregisterWindows(grp);      // 창 재질이 houseWindows 에 남지 않게(누수 방지)
+    // 🚧 계단 콜라이더는 scene 그래프가 아니라 별도 colliders 배열에 산다 — scene.remove() 로는 안 빠진다.
+    //    안 빼면 증축(재건축)할 때마다 안 보이는 벽이 쌓인다.
+    if (grp.userData.st?.userData.collider) removeSolid(grp.userData.st.userData.collider);
+    disposeTree(grp);            // 옛 방의 지오메트리·재질 GPU 자원 반환
+    scene.remove(grp);
+  }
+  interiorFloors = {};
+  buildInterior();
+  setSpaceVisible();
+}
+
+// 🪜 계단 랜드마크(방마다 하나)를 지금 houseStage 에서 어느 한쪽이라도 실제로 갈 수 있을 때만 보이게 한다
+//   (스펙 §3 위반 A 수정). houseStage 는 플레이 중 올라갈 수 있어 매번 다시 계산해야 한다 —
+//   setSpaceVisible·증축 직후 호출.
+function refreshStairsLandmarks() {
+  for (const id in interiorFloors) {
+    const room = interiorFloors[id];
+    const f = room.userData.floorIdx;
+    const st = room.userData.st;
+    if (!st) continue;
+    const upOk = f < 2 && !!floorAt(gameState.houseStage, f + 1);
+    const downOk = f > 0 && !!floorAt(gameState.houseStage, f - 1);
+    st.visible = upOk || downOk;
+    // 🚧 방(다른 층)이 지금 안 보이면 이 콜라이더도 꺼야 한다 — 네 방이 같은 좌표(INT)에 겹쳐 있어서,
+    //    안 보이는 층의 콜라이더를 켜 두면 지금 서 있는 층에 안 보이는 벽이 생긴다(Task 4 review Critical 2 재발).
+    if (st.userData.collider) st.userData.collider.off = !(room.visible && st.visible);
+  }
 }
 
 // 가구 메시(로우폴리)
+// 🏖️ 파라솔 캔버스 패널 하나(부채꼴, a0~a1) — 이 게임 카메라는 늘 위에서 내려다보므로 윗면이 핵심이다.
+//   가장자리 반지름을 sin 으로 부풀려(솔기=0 → 패널 중앙=최대 → 솔기=0) 스캘럽(물결) 테두리를 만들고,
+//   중앙(hub)에서 테두리까지 고리를 RSEGS 단으로 나눠 볼록한 곡선(prof)으로 낮춘다 — 위에서 내려다봐도
+//   고리마다 면 방향이 달라 중심이 도드라지는 "돔" 음영이 생긴다(2026-09-18: 부채꼴 1장짜리 팬이라 평평해
+//   보이던 문제 수정). 색이 다른 패널·흰 솔기까지 전부 정점색(vertex color)으로 구분해 mergeGeos 로 한
+//   지오메트리에 합친다 — 재질은 결국 하나(§8.3, 🏛️전시물과 같은 기법).
+function parasolPanel(a0, a1, rNear, bulge, yHub, yRim, dip, segs, color) {
+  const RSEGS = 3;   // 중심→테두리 고리 단수 — 많을수록 곡면이 부드러워지지만 로우폴리 각짐은 유지
+  const pos = [], col = [];
+  const ring = (u, t) => {                                    // u: 중심(0)→테두리(1), t: 패널 내 각도 진행(0~1)
+    const bump = Math.sin(t * Math.PI);                       // 0(솔기)→1(패널 중앙)→0(솔기)
+    const rOuter = rNear + bulge * bump, yOuter = yRim - dip * bump;   // 테두리 반지름·높이(스캘럽 — 기존과 동일)
+    const prof = 1 - Math.cos(u * Math.PI / 2);               // 0→1, 중심 근처는 완만하고 테두리로 갈수록 가팔라지는 볼록 곡선
+    const a = a0 + (a1 - a0) * t;
+    return [Math.cos(a) * (rOuter * u), yHub - (yHub - yOuter) * prof, -Math.sin(a) * (rOuter * u)];
+  };
+  for (let ri = 0; ri < RSEGS; ri++) {
+    const u0 = ri / RSEGS, u1 = (ri + 1) / RSEGS;
+    for (let i = 0; i < segs; i++) {
+      const t0 = i / segs, t1 = (i + 1) / segs;
+      const p10 = ring(u1, t0), p11 = ring(u1, t1);
+      if (ri === 0) {   // 첫 고리는 중심 한 점(꼭대기)으로 모이므로 삼각형 하나만
+        pos.push(0, yHub, 0, ...p10, ...p11);
+        for (let k = 0; k < 3; k++) col.push(color.r, color.g, color.b);
+      } else {
+        const p00 = ring(u0, t0), p01 = ring(u0, t1);
+        pos.push(...p00, ...p10, ...p11, ...p00, ...p11, ...p01);   // 고리 사이 사각형 = 삼각형 2개
+        for (let k = 0; k < 6; k++) col.push(color.r, color.g, color.b);
+      }
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();   // 정점 공유가 없는 팬이라(비인덱스) 삼각형별 평면 노멀 = 로우폴리 각짐 그대로
+  return geo;
+}
 function decorMesh(id) {
   const root = new THREE.Group();
   const g = new THREE.Group(); g.scale.setScalar(DECOR_SCALE); root.add(g);   // 부품은 여기에 — 배율은 안쪽만
@@ -7848,6 +8163,124 @@ function decorMesh(id) {
       const fish = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 6), clayMat(c, false));
       fish.rotation.z = Math.PI / 2; fish.position.set(x, y, 0); fish.userData.swim = true; fish.userData.swimW = 0.42; fish.userData.swimY = y; fish.userData.swimP = ph; g.add(fish);
     });
+  } else if (id === 'rocker') {
+    const w = woodMat(1, 1, 0x9c6b40);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.55), w); seat.position.y = 0.42; g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.08), w); back.position.set(0, 0.72, -0.24); back.rotation.x = -0.18; g.add(back);
+    [-0.26, 0.26].forEach(x => {   // 곡선 다리(흔들이)
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 6, 8, Math.PI), w);
+      r.position.set(x, 0.3, 0); r.rotation.set(Math.PI / 2, 0, Math.PI); g.add(r);
+    });
+  } else if (id === 'telescope') {
+    const tri = clayMat(0x4a4f57);
+    [0, 2.1, 4.2].forEach(a => {   // 삼각대
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 5), tri);
+      leg.position.set(Math.cos(a) * 0.16, 0.35, Math.sin(a) * 0.16); leg.rotation.z = Math.cos(a) * 0.32; leg.rotation.x = -Math.sin(a) * 0.32; g.add(leg);
+    });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.66, 10), clayMat(0xd8dde0, false));
+    tube.position.set(0, 0.82, 0); tube.rotation.z = 0.5; g.add(tube);
+    const eye = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.14, 8), clayMat(0x23252a));
+    eye.position.set(-0.3, 0.68, 0); eye.rotation.z = 0.5; g.add(eye);
+  } else if (id === 'trunk') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.45, 0.5), woodMat(1, 1, 0x7a4a2e)); body.position.y = 0.23; g.add(body);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.85, 10, 1, false, 0, Math.PI), woodMat(1, 1, 0x8d5636));
+    lid.position.y = 0.45; lid.rotation.z = Math.PI / 2; g.add(lid);
+    const strapMat = clayMat(0x4a3526);
+    [-0.28, 0.28].forEach(x => {   // 가죽 띠
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.48, 0.53), strapMat); b.position.set(x, 0.24, 0); g.add(b);
+    });
+  } else if (id === 'bathtub') {
+    const porcelain = clayMat(0xf7f5f0, false);
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.75), porcelain); outer.position.y = 0.25; g.add(outer);
+    const water = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.06, 0.58), clayMat(0x8fd0e8, false)); water.position.y = 0.46; g.add(water);
+    const fixture = clayMat(0xd8dde0, false);   // 발·수도꼭지 공용 금속 재질
+    [-0.6, 0.6].forEach(x => {     // 발
+      const ft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.12, 6), fixture); ft.position.set(x, 0.06, 0.26); g.add(ft);
+    });
+    const tap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 6), fixture); tap.position.set(-0.68, 0.6, 0); g.add(tap);
+  } else if (id === 'bigart') {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.85, 0.07), clayMat(0xb98a4e)); frame.position.y = 1.15; g.add(frame);
+    const canvas = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.03), clayMat(0xe8ddc8, false)); canvas.position.set(0, 1.15, 0.04); g.add(canvas);
+    [[-0.22, 1.05, 0x7fb08a], [0.16, 1.24, 0xd98b6a], [0.3, 1.0, 0x8fa8d0]].forEach(([x, y, c]) => {
+      const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 0), clayMat(c, false)); blob.position.set(x, y, 0.06); blob.scale.z = 0.2; g.add(blob);
+    });
+  } else if (id === 'chandelier') {
+    const gold = new THREE.MeshStandardMaterial({ color: 0xe9b949, roughness: 0.35, metalness: 0.5 });   // clayMat 은 flat(bool)만 받아 금속 재질은 직접 생성
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 5), gold); chain.position.y = 2.35; g.add(chain);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.035, 6, 14), gold); ring.position.y = 2.05; ring.rotation.x = Math.PI / 2; g.add(ring);
+    const cmat = new THREE.MeshStandardMaterial({ color: 0xfff2c4, emissive: 0xffca70, emissiveIntensity: 0, roughness: 0.6 });
+    houseWindows.push(cmat);       // 🌙 밤에 창문·램프와 함께 켜진다
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 7), cmat);
+      c.position.set(Math.cos(a) * 0.34, 2.14, Math.sin(a) * 0.34); g.add(c);
+    }
+  } else if (id === 'grandpiano') {
+    const black = clayMat(0x1a1b1f);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.78, 0.26, 16, 1, false, 0, Math.PI), black);
+    body.position.y = 0.62; body.rotation.y = -Math.PI / 2; g.add(body);
+    const front = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.26, 0.5), black); front.position.set(0, 0.62, 0.62); g.add(front);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 0.9), clayMat(0x26282e, false)); lid.position.set(0.1, 0.9, -0.1); lid.rotation.z = -0.28; g.add(lid);
+    const keys = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.24), clayMat(0xf5f2e8, false)); keys.position.set(0, 0.76, 0.8); g.add(keys);
+    [[-0.6, 0.72], [0.6, 0.72], [0, -0.5]].forEach(([x, z]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.5, 6), black); leg.position.set(x, 0.25, z); g.add(leg);
+    });
+  } else if (id === 'firepit') {
+    const stone = clayMat(0x8b857a);
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      const s = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.14), stone);
+      s.position.set(Math.cos(a) * 0.36, 0.08, Math.sin(a) * 0.36); s.rotation.y = -a; g.add(s);
+    }
+    const fmat = new THREE.MeshStandardMaterial({ color: 0xffb057, emissive: 0xff7b2e, emissiveIntensity: 0, roughness: 0.7 });
+    houseWindows.push(fmat);       // 🌙 밤에 켜진다(실외 층이라 더 잘 보인다)
+    [[0, 0.2, 0.17], [0.1, 0.3, 0.12], [-0.09, 0.28, 0.1]].forEach(([x, y, r]) => {
+      const f = new THREE.Mesh(new THREE.ConeGeometry(r, r * 2.4, 6), fmat); f.position.set(x, y, 0); g.add(f);
+    });
+  } else if (id === 'planttree') {
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.27, 0.42, 10), clayMat(0xb87f5e)); pot.position.y = 0.21; g.add(pot);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.07, 10), clayMat(0xa06d4e)); rim.position.y = 0.44; g.add(rim);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.6, 6), clayMat(0x6b4a34)); trunk.position.y = 0.72; g.add(trunk);
+    const leafMat = clayMat(0x6b9a4c);
+    [[0, 1.16, 0.34], [-0.2, 0.98, 0.24], [0.22, 1.0, 0.22]].forEach(([x, y, r]) => {
+      const l = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leafMat); l.position.set(x, y, 0); g.add(l);
+    });
+  } else if (id === 'jacuzzi') {
+    const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.72, 0.55, 14), clayMat(0xe9e4d8)); shell.position.y = 0.28; g.add(shell);
+    const wmat = new THREE.MeshStandardMaterial({ color: 0x5fd3e8, emissive: 0x2aa8c4, emissiveIntensity: 0, roughness: 0.25 });
+    houseWindows.push(wmat);       // 🌙 밤에 물이 파랗게 빛난다(구성품 수영장 조명과 같은 문법)
+    const water = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.07, 14), wmat); water.position.y = 0.53; g.add(water);
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 0.88, 0.1, 14), woodMat(2, 2, 0xc19a66)); deck.position.y = 0.05; g.add(deck);
+  } else if (id === 'parasol_set') {
+    // 🥈 슬림한 크롬 기둥(재질 하나를 기둥·꼭대기 구슬이 같이 쓴다)
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0xd7dbe0, roughness: 0.3, metalness: 0.55, flatShading: true });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 1.58, 8), poleMat); pole.position.y = 0.79; g.add(pole);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), poleMat); cap.position.y = 1.62; g.add(cap);
+    // ☂️ 캔버스 — 10패널(오렌지 5·하늘색 5) + 패널 사이 흰 솔기 10개, 스캘럽 테두리(사용자 제공 참고 사진 반영).
+    //   위에서 보는 시점이 핵심이라 옆면 두께보단 윗면 부채꼴 윤곽·색 대비·물결 테두리에 공을 들였다.
+    const PANELS = 10, SLOT = Math.PI * 2 / PANELS, SEAM_HALF = 0.045, SEGS = 5;
+    const ORANGE = new THREE.Color(0xe08a3c), SKY = new THREE.Color(0x5fb6e0), SEAM = new THREE.Color(0xf7f4ea);
+    const geos = [];
+    for (let i = 0; i < PANELS; i++) {
+      const a0 = i * SLOT, a1 = a0 + SLOT;
+      geos.push(parasolPanel(a0 + SEAM_HALF, a1 - SEAM_HALF, 0.58, 0.16, 1.74, 1.30, 0.05, SEGS, i % 2 === 0 ? ORANGE : SKY));
+    }
+    for (let i = 0; i < PANELS; i++) {   // 얇은 흰 솔기 — 패널과 같은 반지름식이라 이음매에 정확히 맞물린다
+      const a = i * SLOT;
+      geos.push(parasolPanel(a - SEAM_HALF, a + SEAM_HALF, 0.58, 0.02, 1.74, 1.30, 0.05, 2, SEAM));
+    }
+    const canopy = new THREE.Mesh(mergeGeos(geos), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true }));
+    canopy.castShadow = true; g.add(canopy);
+    // 🛋️ 라운지 체어 2개 — 등받이를 기울이고 다리 4개를 세워 위에서도 "누울 자리"로 읽히게, 쿠션은 파라솔의 하늘색과 짝을 맞춘다.
+    //   캔버스 테두리 반지름(rNear+bulge=0.74)보다 안쪽으로 당겨 파라솔 그늘 밑에 들어오게 배치(2026-09-18: 기존엔 그늘 밖으로 삐져나와 있었다)
+    const frameMat = clayMat(0xe4e0d4, false), cushionMat = clayMat(0x8fd3ea, false);
+    [-0.36, 0.36].forEach(x => {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.85), cushionMat); seat.position.set(x, 0.28, 0); g.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.07), cushionMat); back.position.set(x, 0.48, -0.38); back.rotation.x = 0.42; g.add(back);
+      [[-0.16, -0.32], [0.16, -0.32], [-0.16, 0.32], [0.16, 0.32]].forEach(([lx, lz]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.24, 5), frameMat); leg.position.set(x + lx, 0.12, lz); g.add(leg);
+      });
+    });
   }
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   setFogExempt(root, true);   // 실내 가구는 안개 밖(고스트는 재질을 clone 하므로 플래그가 따라간다)
@@ -7855,36 +8288,61 @@ function decorMesh(id) {
 }
 
 // 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음) · free=true 면 옮겨 놓기(비용 없음)
-function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
+function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = null) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
   const ry = (rot == null ? decorRot : rot) % 4;
+  const curFloor = f == null ? houseFloor : f;    // f = 지금 서 있는 층(복원 시엔 호출부가 정규화해서 넘긴다)
+  // 🔒 층 해금 · 실외 전용 가드 — silent(세이브 복원)는 건너뛴다: applySave 는 houseStage 를
+  // 가구보다 나중에 복원하므로(js/game.js applySave), 여기서 즉시 gameState.houseStage 로 걸면
+  // 이미 정당하게 산 고급 가구가 복원 시점에 stage=0 취급되어 통째로 사라진다. 결제·신규 배치(!silent)만 막으면
+  // Task 4 가 찾은 구멍(3단계에서 사서 실내에 놓기)은 그대로 막힌다.
+  if (!silent) {
+    const floorDef = floorAt(gameState.houseStage, curFloor);
+    if (!decorUnlocked(def, gameState.houseStage)) { ui.toast?.('집을 더 증축하면 살 수 있어요'); return false; }
+    // 받침 유무로 "은/는" 이 갈린다(자쿠지·화분나무엔 받침이 없다) — josa() 로 문장 통째로 분기
+    if (!canPlaceOn(def, floorDef)) {
+      ui.toast?.(josa(def.name, `${def.ico} ${def.name}은 루프탑에만 놓을 수 있어요`, `${def.ico} ${def.name}는 루프탑에만 놓을 수 있어요`));
+      return false;
+    }
+  }
   const stored = gameState.house.stored || (gameState.house.stored = {});
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
   if (!silent && !free && !fromStore) {
-    const pay = def.pay || 'crop';                          // 화폐: 작물 or 물고기
-    if ((gameState.inventory[pay] || 0) < def.cost) {
-      ui.toast?.(pay === 'fish' ? `물고기가 부족해요 (필요 ${def.cost} 🐟)` : `작물이 부족해요 (필요 ${def.cost} 🥕)`);
+    const pay = def.pay || 'crop';                          // 화폐: 작물 · 물고기 · 🪙코인(고급 가구)
+    const have = pay === 'coins' ? (gameState.inventory.coins || 0) : (gameState.inventory[pay] || 0);
+    if (have < def.cost) {
+      ui.toast?.(pay === 'coins' ? `코인이 부족해요 (필요 ${def.cost} 🪙)`
+               : pay === 'fish'  ? `물고기가 부족해요 (필요 ${def.cost} 🐟)`
+               :                   `작물이 부족해요 (필요 ${def.cost} 🥕)`);
       return false;
     }
     gameState.inventory[pay] -= def.cost; refreshInventoryUI();
+    if (pay === 'coins') {
+      logEcon('decor_buy', id, -def.cost, gameState.inventory.coins);   // [원장] 코인 소비 — 다른 코인 싱크와 같은 축
+      trackEvent('decor_buy_coins', { item: id, coins: def.cost, stage: gameState.houseStage }); // [GA4] 코인 싱크 퍼널
+    }
   }
   const m = decorMesh(id);
   const lx = decorClampX(wx), lz = decorClampZ(wz);
-  m.position.set(lx, 0.2, lz);
+  const fy = floorBaseY(curFloor);   // ☀️ 루프탑이면 ROOF_Y — 옛 세이브(y 저장 안 함, x·z·f 만)도 f 로 다시 계산되어 자동으로 맞는 높이에 놓인다
+  m.position.set(lx, fy + 0.2, lz);
   m.rotation.y = ry * Math.PI / 2;
-  const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry };
+  const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry, f: curFloor };
   m.userData.rec = rec;                                     // 탭해서 들어 올릴 때 저장 레코드를 같이 뺀다
   if (def.foot) {                                           // 🚧 발자국만큼 통행 차단 — 90°·270° 로 놓으면 가로·세로 교환
     const hw = def.foot[ry % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[ry % 2 ? 0 : 1] / 2 * DECOR_SCALE;
     m.userData.collider = solidBox(lx - hw, lz - hd, lx + hw, lz + hd);
   }
-  m.visible = indoor;                                       // 세이브 복원은 실외에서 일어난다 — 방 밖에선 숨긴다(setSpaceVisible 과 같은 규칙)
+  // ⚠️ §8.1 재발 지점 — indoor 만 보면 취소 경로(stopDecorPlacing→placeDecor, indoor===true인 채로 실행)에서
+  //   다른 층 좌표에 새로 생긴 메시가 그대로 보여 버린다. 지금 층(houseFloor)까지 같이 봐야 한다.
+  m.visible = indoor && curFloor === houseFloor;
+  if (m.userData.collider) m.userData.collider.off = !m.visible;   // 🚧 안 보이는 층의 발자국은 막지 않는다(§8.1 콜라이더 버전)
   scene.add(m); decorMeshes.push(m);
   gameState.house.decor.push(rec);
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
-    Sound.blip(); spawnFloatText(lx, 1.3, lz, def.ico + ' 배치!', '#2fa564');
+    Sound.blip(); spawnFloatText(lx, fy + 1.3, lz, def.ico + ' 배치!', '#2fa564');
     if (free) trackEvent('move_decor', { item: id });    // [GA4] 옮겨 놓기
     else { ui.act?.('decor'); trackEvent('place_decor', { item: id, from: fromStore ? 'store' : 'buy' }); } // 튜토리얼: 가구 배치
     pickedDecor = null;                      // 들었던 가구는 새 자리에 놓였다(제자리 복귀 불필요)
@@ -7895,8 +8353,8 @@ function placeDecor(id, wx, wz, silent = false, rot = null, free = false) {
   return true;
 }
 const DECOR_WALL_PAD = 0.5 * DECOR_SCALE;   // 벽 여유 — 가구 배율만큼
-function decorClampX(x) { return Math.max(INT.x - INT_HALF + DECOR_WALL_PAD, Math.min(INT.x + INT_HALF - DECOR_WALL_PAD, x)); }
-function decorClampZ(z) { return Math.max(INT.z - INT_HALF + DECOR_WALL_PAD, Math.min(INT.z + INT_HALF - DECOR_WALL_PAD, z)); }
+function decorClampX(x) { const h = curHalf(); return Math.max(INT.x - h + DECOR_WALL_PAD, Math.min(INT.x + h - DECOR_WALL_PAD, x)); }
+function decorClampZ(z) { const h = curHalf(); return Math.max(INT.z - h + DECOR_WALL_PAD, Math.min(INT.z + h - DECOR_WALL_PAD, z)); }
 
 // ── 🫥 가구 배치 미리보기(고스트) + 놓은 가구 옮기기 ──────────────
 //   손에 든 축소 메시는 실내에 들어오면 맨손(등 수납)이라 화면에서 안 보였다(베타 피드백 "미리보기가 안 보여요").
@@ -7912,7 +8370,9 @@ function startDecorPlacing(id, picked = null) {
   buildDecorGhost(id);
 }
 function stopDecorPlacing(putBack) {
-  if (pickedDecor && putBack) placeDecor(pickedDecor.id, pickedDecor.wx, pickedDecor.wz, true, pickedDecor.rot); // 들었던 가구는 제자리로
+  // 🏠 들었던 가구는 제자리(원래 층)로 — f 를 안 넘기면 placeDecor 가 "지금 서 있는 층" 을 써서,
+  //   위층에서 들고 취소했는데 그사이 1층으로 내려가 있으면 가구가 1층에 떨어지는 사고가 난다(Ruling B).
+  if (pickedDecor && putBack) placeDecor(pickedDecor.id, pickedDecor.wx, pickedDecor.wz, true, pickedDecor.rot, false, pickedDecor.f);
   pickedDecor = null; placingDecor = null; decorTarget.pinned = false;
   removeDecorGhost();
   setHeldTool(TOOLS[currentTool].id);      // 손에 든 가구 → 원래 도구(맨손이어도 메시는 필요 — 등에 멘 채로 돌아간다)
@@ -7920,11 +8380,11 @@ function stopDecorPlacing(putBack) {
 function buildDecorGhost(id, outdoor = false) {
   removeDecorGhost();
   if (outdoor && atFarm) trackEvent('habitat_meter', { farm_stage: gameState.farm.stage });   // [GA4] 🦋 퍼널 1단 — 미터를 봤다
-  // 🏮 outdoorMesh 는 정원등·화로·정령등불의 재질을 houseWindows(밤 점등 목록)에 밀어 넣는다.
+  // 🏮 outdoorMesh·decorMesh 둘 다 램프·화로 같은 재질을 houseWindows(밤 점등 목록)에 밀어 넣는다.
   //   고스트 것까지 남으면 목록이 불어나고, 고스트를 지울 때 dispose 된 재질이 목록에 남는다 → 도로 잘라낸다.
   const hw0 = houseWindows.length;
   const g = outdoor ? outdoorMesh(id) : decorMesh(id);
-  if (outdoor) houseWindows.length = hw0;
+  houseWindows.length = hw0;
   ghostOutdoor = outdoor;
   g.traverse(o => {
     if (!o.isMesh) return;
@@ -8003,7 +8463,7 @@ function updateDecorGhost() {
     decorTarget.x = decorClampX(player.position.x + Math.sin(player.rotation.y) * reach);
     decorTarget.z = decorClampZ(player.position.z + Math.cos(player.rotation.y) * reach);
   }
-  decorGhost.position.set(decorTarget.x, 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);
+  decorGhost.position.set(decorTarget.x, floorBaseY(houseFloor) + 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);   // ☀️ 루프탑이면 덱 높이에서 미리보기
   decorGhost.rotation.y = decorRot * Math.PI / 2;
 }
 // 🪵 야외 배치 조준 — 실내는 바닥 메시를 쓰지만 야외는 지면 평면(y=0.05)에 레이를 맞춘다(마을·텃밭·마당 공통)
@@ -8031,7 +8491,7 @@ function floorHitFromEvent(e) {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObject(interiorFloor, false)[0];
+  const hit = raycaster.intersectObject(interiorFloor, true)[0];   // 🌀 floorGroup — 나선 포팅 후 구멍 뚫린 바닥도 메시 하나(Shape.holes)뿐이지만, 방마다 조각 수가 달라도 안전하도록 재귀 탐색은 그대로 둔다
   return hit ? hit.point : null;
 }
 // 배치 중 바닥 탭/클릭
@@ -8046,20 +8506,24 @@ function onDecorFloorTap(e) {
 // 배치 확정(바닥 탭·액션 버튼·Space 공통). 재료가 부족하면 배치 모드를 유지한다
 function commitDecor(x, z) { placeDecor(placingDecor, x, z, false, null, !!pickedDecor); }
 // 놓아 둔 가구 탭 → 들어 올리기(저장 레코드도 같이 뺀다)
+//   ⚠️ three.js Raycaster 는 invisible 메시도 그대로 맞힌다(visible 을 안 본다) — 층이 겹치는 좌표라
+//   다른 층(안 보이는) 가구까지 후보에 넣으면 안 보이는 걸 탭해서 들어 올리는 사고가 난다. 지금 층만 후보로.
 function tryPickDecor(e) {
-  if (!decorMeshes.length) return false;
+  const curDecor = decorMeshes.filter(m => (m.userData.rec?.f || 0) === houseFloor);
+  if (!curDecor.length) return false;
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObjects(decorMeshes, true)[0]; if (!hit) return false;
-  let root = hit.object; while (root.parent && !decorMeshes.includes(root)) root = root.parent;
+  const hit = raycaster.intersectObjects(curDecor, true)[0]; if (!hit) return false;
+  let root = hit.object; while (root.parent && !curDecor.includes(root)) root = root.parent;
   return pickDecor(root);
 }
 // 캐릭터에서 가장 가까운 가구 — 발자국 상자 가장자리까지의 거리(러그처럼 foot 없는 건 중심 거리)
+//   다른 층 가구는 같은 좌표에 겹칠 수 있어 반드시 지금 층만 본다(위 tryPickDecor 와 같은 이유).
 function nearestDecor(reach) {
   let best = null;
   for (const root of decorMeshes) {
-    const rec = root.userData.rec; if (!rec) continue;
+    const rec = root.userData.rec; if (!rec || (rec.f || 0) !== houseFloor) continue;
     const def = DECOR.find(d => d.id === rec.id);
     const dx = player.position.x - root.position.x, dz = player.position.z - root.position.z;
     let d;
@@ -8075,10 +8539,11 @@ function nearestDecor(reach) {
 function pickDecor(root) {
   const rec = root.userData.rec; if (!rec) return false;
   scene.remove(root); decorMeshes.splice(decorMeshes.indexOf(root), 1);
+  unregisterWindows(root);   // 🏮 샹들리에·파이어핏·자쿠지처럼 밤 점등 목록에 올라간 재질을 들어 올릴 때 같이 뺀다(pickOutdoor 와 같은 규칙)
   if (root.userData.collider) removeSolid(root.userData.collider);   // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   const i = gameState.house.decor.indexOf(rec); if (i >= 0) gameState.house.decor.splice(i, 1);
   decorRot = rec.rot || 0;
-  startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot });
+  startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot, f: rec.f || 0 }); // f: 원래 있던 층 — 취소 시 그 층으로 되돌린다(Ruling B)
   Sound.blip(); trackEvent('pick_decor', { item: rec.id }); // [GA4] 옮기기 시작
   ui.onDecorPicked?.(DECOR.find(d => d.id === rec.id));
   return true;
@@ -10210,22 +10675,51 @@ function grantStarterBed() {
 }
 
 function enterHouse() {
-  indoor = true; setFogExempt(player, true);   // 방 안에선 캐릭터도 안개 밖
+  indoor = true; houseFloor = 0; setFogExempt(player, true);   // 항상 1층에서 시작 · 방 안에선 캐릭터도 안개 밖
   grantStarterBed();
   player.position.set(INT.x, 0, INT.z - 3); player.rotation.y = 0;
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(true); snapCamera(); setSpaceVisible();
   Sound.blip(); ui.act?.('enter'); trackEvent('enter_house'); // [GA4]
 }
 function exitHouse() {
-  indoor = false; setFogExempt(player, false); stopDecorPlacing(true);   // 들고 있던 가구는 제자리로
+  indoor = false; setFogExempt(player, false); stopDecorPlacing(true);   // 들고 있던 가구는 제자리로(원래 층으로)
   player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
   nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
 }
+/** 🪜 층 이동 — 계단을 걸어 올라가지 않는다(스펙 §4.2). 같은 자리에 서서 층만 바뀐다. */
+function goFloor(f) {
+  const def = floorAt(gameState.houseStage, f); if (!def) return;
+  houseFloor = f;
+  player.position.y = def.outdoor ? ROOF_Y : 0;   // ☀️ 루프탑만 층 높이만큼 띄운다 — 카메라·시선은 player.position 을 그대로 따라간다
+  // 🏖️ 루프탑에 처음 올라갈 때, 이미 산 구성품(예: rooftop_set)을 값 없이 실물로 놓아 준다.
+  // "줬는지"는 gameState.house.grantedDecor 로 영구히 기억한다 — 지금 바닥에 놓여 있는지로만 보면,
+  // 옮기려고 든 순간(pickDecor 가 decor 배열에서 즉시 빼낸다)이나 창고에 넣은 뒤 재방문했을 때
+  // "안 보이니 다시 준다"고 오판해 무한 복제된다. 한 번 줬으면 그 뒤로는 평범한 가구라 옮기거나 창고에 넣을 수 있다.
+  if (def.outdoor) {
+    const granted = gameState.house.grantedDecor || (gameState.house.grantedDecor = []);
+    for (const id of rooftopFreeDecor(gameState.house.addons)) {
+      // 🏖️ 계단 구멍(stairLayout 기준 -x·z≈0 쪽)에서 대각선으로 먼 +x·+z 구석에 놓는다 —
+      //   원 자리(INT.x, INT.z+half-2)는 구멍 위에 겹쳐 있었다(2026-09-18 리뷰: 세트가 구멍 위에 떠 보임).
+      if (!granted.includes(id)) { granted.push(id); placeDecor(id, INT.x + def.half - 2, INT.z + def.half - 2, true, 0, true, f); }
+    }
+  }
+  const h = def.half;
+  player.position.x = Math.max(INT.x - h + 1.5, Math.min(INT.x + h - 1.5, player.position.x));
+  player.position.z = Math.max(INT.z - h + 1.5, Math.min(INT.z + h - 1.5, player.position.z));
+  nearDoor = null; ui.setDoorPrompt?.(null);
+  lastFloorChoiceKey = null; ui.setFloorChoice?.(null);   // 🪜 양방향 선택 UI도 즉시 닫는다(다음 프레임에 필요하면 다시 뜬다)
+  setSpaceVisible();
+  Sound.blip();
+  // 🏠 지금 어디로 왔는지 잠깐 확인 — 프롬프트(🪜)는 "이동" 동작이라 도착 확인엔 다른 아이콘을 쓴다.
+  //   실외 층(루프탑)은 ☀️, 실내 층은 🏠(정착 느낌) — def.outdoor 로 갈린다.
+  ui.toast?.(def.outdoor ? `☀️ ${def.name}` : `🏠 ${def.name}`, 1200);
+  trackEvent('house_floor', { to: def.id, stage: gameState.houseStage });   // [GA4] 층 사용률
+}
 
 // 문 근접 감지(입장/퇴장 프롬프트)
 function updateDoorInteract() {
-  let nd = null, prompt = null;
+  let nd = null, prompt = null, floorChoiceOpts = null;   // 🪜 floorChoiceOpts — 같은 자리에서 두 방향 다 갈 수 있을 때만(6단계 2층)
   nearDecorMesh = null; nearOutdoorMesh = null; if (decorNearRing) decorNearRing.visible = false;   // 🛋️🪵 옮기기 링은 대상이 있을 때만
   // 🪵 다른 구역으로 가면 배치 모드를 접는다 — 들고 있던 건 제자리로(분실 방지),
   //   작업대에서 막 고른 것도 접는다(아직 값을 안 치렀고, 실내·동굴에선 놓을 수 없는데 🫥미리보기와 ↻회전 버튼만 따라다닌다).
@@ -10261,22 +10755,41 @@ function updateDoorInteract() {
     return;
   }
   if (indoor) {
-    if (dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 문 바로 앞에서만
-    else if (!placingDecor) {
-      // 🛋️ 놓아둔 가구 옆에 서면 "옮기기" — NPC·문과 같은 근접 프롬프트+액션 문법(탭으로 드는 경로는 그대로)
-      const near = nearestDecor(0.9);
-      if (near) {
-        nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
-        if (def.id === 'bed' && isNight()) {
-          // 🛏️ 밤엔 액션이 '자기' — 옮기기는 탭(레이캐스트) 경로로 밤낮 상관없이 그대로 된다
-          nd = 'sleep'; prompt = `${def.ico} ${def.name} · 자기`;
-          // 밤엔 액션이 '자기' 로 넘어가 침대를 들 수 없다 — 탭 경로가 있다는 걸 한 번 알려 준다
-          firstHintBanner('bedMove', '🛏️', '침대 옮기기', '밤엔 침대를 직접 탭하면 옮겨요');
-        } else {
-          nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
-          if (def.id === 'bed') firstHintBanner('bedSleep', '🛏️', '침대', '밤에 누우면 아침까지 자요');
+    if (houseFloor === 0 && dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 1층 문 바로 앞에서만
+    else {
+      // 🌀 나선 계단 — buildRoom 의 st(단일 랜드마크)와 같은 stairLayout(h) 공식으로 자리를 잡는다
+      //   (계단을 옮기면 이 판정 좌표도 반드시 같이 옮긴다 — 포팅 전 "아래로 못 내려간다" 제보의 원인).
+      //   오르내림이 한 자리(원형 발자국 하나)라 근접 판정도 하나 — 반경 안이면 이웃 층(f±1) 둘 다
+      //   후보에 올린다. 하나면 예전처럼 Space 로 바로, **둘 다면(6단계 2층) 버튼 두 개로 동시에
+      //   제시**한다(우선순위로 하나만 주면 "원치 않는 층을 거쳐야" 하는 문제가 재발 — task 지시).
+      const h = curHalf();
+      const lay = stairLayout(h);
+      const upDef = floorAt(gameState.houseStage, houseFloor + 1);
+      const downDef = houseFloor > 0 ? floorAt(gameState.houseStage, houseFloor - 1) : null;
+      const nearStair = dist2D({ x: INT.x + lay.cx, z: INT.z + lay.cz }, player.position) < STAIR_PROMPT_R;
+      const opts = [];
+      if (nearStair && upDef) opts.push({ f: houseFloor + 1, label: `🪜 ${upDef.name}으로` });
+      if (nearStair && downDef) opts.push({ f: houseFloor - 1, label: `🪜 ${downDef.name}으로` });
+      if (opts.length === 2) {
+        nd = 'floorchoice'; floorChoiceOpts = opts;
+      } else if (opts.length === 1) {
+        nd = 'floor'; nearDoorFloor = opts[0].f; prompt = opts[0].label;
+      } else if (!placingDecor) {
+        // 🛋️ 놓아둔 가구 옆에 서면 "옮기기" — NPC·문과 같은 근접 프롬프트+액션 문법(탭으로 드는 경로는 그대로)
+        const near = nearestDecor(0.9);
+        if (near) {
+          nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
+          if (def.id === 'bed' && isNight()) {
+            // 🛏️ 밤엔 액션이 '자기' — 옮기기는 탭(레이캐스트) 경로로 밤낮 상관없이 그대로 된다
+            nd = 'sleep'; prompt = `${def.ico} ${def.name} · 자기`;
+            // 밤엔 액션이 '자기' 로 넘어가 침대를 들 수 없다 — 탭 경로가 있다는 걸 한 번 알려 준다
+            firstHintBanner('bedMove', '🛏️', '침대 옮기기', '밤엔 침대를 직접 탭하면 옮겨요');
+          } else {
+            nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
+            if (def.id === 'bed') firstHintBanner('bedSleep', '🛏️', '침대', '밤에 누우면 아침까지 자요');
+          }
+          const ring = ensureNearRing(); ring.position.set(near.root.position.x, near.root.position.y + 0.02, near.root.position.z); ring.visible = true;   // ☀️ 루프탑 가구는 ROOF_Y 만큼 높다 — 그 가구의 실제 y 를 그대로 따라간다
         }
-        const ring = ensureNearRing(); ring.position.set(near.root.position.x, 0.22, near.root.position.z); ring.visible = true;
       }
     }
   } else if (atFarm) {
@@ -10395,6 +10908,13 @@ function updateDoorInteract() {
     const ring = ensureNearRing(); ring.position.set(outdoorNear.mesh.position.x, 0.04, outdoorNear.mesh.position.z); ring.visible = true;
   }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+  // 🪜 양방향 선택 UI(6단계 2층 전용) — door-prompt 와 같은 중복 갱신 방지 패턴.
+  //   opts 가 바뀔 때만 버튼을 다시 그린다(매 프레임 onclick 재바인딩 낭비 방지).
+  const fcKey = floorChoiceOpts ? floorChoiceOpts.map(o => o.f).join(',') : null;
+  if (fcKey !== lastFloorChoiceKey) {
+    lastFloorChoiceKey = fcKey;
+    ui.setFloorChoice?.(floorChoiceOpts ? floorChoiceOpts.map(o => ({ label: o.label, onSelect: () => goFloor(o.f) })) : null);
+  }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
   else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물·🗿조각 만들기');
@@ -10619,8 +11139,11 @@ function minimapMarks(place) {
       marks.push({ x: rock.position.x, z: rock.position.z, c: ORE_MINI[rock.userData.ore.id] || '#c3c3b8', r: 2.2 });
     }
   } else if (place === 'house') {
-    marks.push({ x: INT.x, z: INT.z - INT_HALF, c: '#c8905a', kind: 'exit' });                // 나가는 문(앞쪽)
-    for (const d of gameState.house.decor) marks.push({ x: INT.x + d.x, z: INT.z + d.z, c: '#e0b483', r: 2.2 }); // 배치한 가구
+    if (houseFloor === 0) marks.push({ x: INT.x, z: INT.z - INT_HALF, c: '#c8905a', kind: 'exit' });   // 나가는 문(1층에만)
+    for (const d of gameState.house.decor) {
+      if ((d.f || 0) !== houseFloor) continue;                                                  // 🏠 지금 층만 — 다른 층 가구가 겹쳐 찍히면 빈 자리를 못 읽는다
+      marks.push({ x: INT.x + d.x, z: INT.z + d.z, c: '#e0b483', r: 2.2 });                     // 배치한 가구
+    }
   } else if (place === 'river') {
     if (boat.active) {   // 🛶 런 중엔 "앞을 보는 레이더" — 다가오는 장애물·수집물을 미리 알려줌
       for (const a of riverActive) {
@@ -10702,7 +11225,7 @@ function animate() {
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } :  place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? INT_HALF : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -10856,9 +11379,10 @@ function updatePlayer(dt, t) {
     tailPivot.rotation.x = Math.sin(tailPhase * 0.5) * u.wagAmp * 0.3;
   }
 
-  if (indoor) { // 실내: 방 벽 안쪽으로 제한(넓어진 방)
-    player.position.x = Math.max(INT.x - INT_HALF + 0.6, Math.min(INT.x + INT_HALF - 0.6, player.position.x));
-    player.position.z = Math.max(INT.z - INT_HALF + 0.5, Math.min(INT.z + INT_HALF - 0.6, player.position.z));
+  if (indoor) { // 실내: 지금 층의 방 벽 안쪽으로 제한(층마다 반경이 다르다)
+    const h = curHalf();
+    player.position.x = Math.max(INT.x - h + 0.6, Math.min(INT.x + h - 0.6, player.position.x));
+    player.position.z = Math.max(INT.z - h + 0.5, Math.min(INT.z + h - 0.6, player.position.z));
   } else if (atFarm) { // 텃밭: 울타리 안쪽 + 📐측량소 마당(서쪽 문 밖) — 규칙은 js/farm-stage.js clampFarmPos
     const c = clampFarmPos(player.position.x - FARM.x, player.position.z - FARM.z, farmHalf(), playerInYard);
     player.position.x = FARM.x + c.x; player.position.z = FARM.z + c.z; playerInYard = c.inYard;
@@ -11011,6 +11535,12 @@ function updatePlayer(dt, t) {
 
 const camOffset = new THREE.Vector3(0, 14, 16);
 const camOffsetIndoor = new THREE.Vector3(0, 17, 10);   // 🏠 실내 전용 ≈60°(마을 41°) — 방 전체가 한 화면에 들어오고 벽 너머 바깥이 안 보인다(2026-09-10 비교 후 확정)
+// ☀️ 루프탑 전용 — camOffsetIndoor 를 그대로 쓰면 피치가 너무 가팔라(≈58°, 시야 위쪽 경계가 수평선보다
+//   36° 아래) 마을 전체가 프러스텀 위로 잘려 나간다(진단: Frustum.containsPoint 로 마을 중심 NDC.y=2.39,
+//   화면 밖). 루프탑은 벽이 없어 "밖이 안 보이게" 가리는 게 오히려 결함이 된다 — 피치를 완만하게
+//   낮춰(≈29°) 마을이 프레임 안에 들어오게 하면서도, camOffset(마을 시점)보다 더 위에서 내려다봐
+//   "지붕 위에서 마을을 내려다보는" 높이감은 유지한다.
+const camOffsetRoof = new THREE.Vector3(0, 10, 18);
 const _camTarget = new THREE.Vector3();
 const _camAux = new THREE.Vector3();   // 🔍 관람 시선 보정용
 const _camLook = new THREE.Vector3(0, 1.2, 0);
@@ -11172,9 +11702,9 @@ function updateCatchItem(dt) {
 }
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
 function snapCamera() {
-  _camTarget.copy(player.position).add(indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°)
+  _camTarget.copy(player.position).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
-  _camLook.set(player.position.x, 1.2, player.position.z);
+  _camLook.set(player.position.x, player.position.y + 1.2, player.position.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
 }
 function updateCamera(dt) {
@@ -11251,11 +11781,11 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy(indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);
+  _camOff.copy(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
   _camTarget.copy(player.position).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
-  _camLook.lerp(_camTarget.set(player.position.x, 1.2, player.position.z - lookAhead), k);
+  _camLook.lerp(_camTarget.set(player.position.x, player.position.y + 1.2, player.position.z - lookAhead), k);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
 }
 
@@ -11344,7 +11874,9 @@ function updateDayNight(dt) {
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
   for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
-  if (interiorLamp) interiorLamp.intensity = indoor ? (1.8 + nightAmt * 2.6) : 0;
+  // ☀️ 루프탑엔 벽도 천장도 없다 — 실내용 따뜻한 점광이 허공에 뜬 것처럼 보여 끈다.
+  //   밤엔 대신 파이어핏·자쿠지 같은 층 전용 가구(houseWindows 점등)와 기본 밤 앰비언트로 밝힌다.
+  if (interiorLamp) interiorLamp.intensity = indoor && !curFloorDef().outdoor ? (1.8 + nightAmt * 2.6) : 0;
   // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
   if (playerLight) playerLight.intensity = Math.max(0, nightAmt - 0.15) * 4.4;
   scene.fog.near = 18; scene.fog.far = 74;   // 기본 안개(동굴에선 아래서 걷음)
@@ -11710,6 +12242,7 @@ function handleAction() {
   // 문/게이트(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
+  if (nearDoor === 'floor') return goFloor(nearDoorFloor);   // 🪜 계단 옆에서 액션 = 층 이동
   if (nearDoor === 'sleep') return doSleep();   // 🛏️ 밤에 침대 옆에서 액션 = 자기
   if (nearDoor === 'decor') { if (nearDecorMesh) pickDecor(nearDecorMesh); return; }   // 🛋️ 가구 옆에서 액션 = 들기
   if (nearDoor === 'outdoor') { if (nearOutdoorMesh) pickOutdoor(nearOutdoorMesh); return; }   // 🪵 야외 장식 옆에서 액션 = 들기
