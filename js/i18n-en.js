@@ -39,8 +39,8 @@ export const EN = {
   '꽃이 더 필요해요': 'wants more flowers',
   '다 자란 작물이 더 필요해요': 'wants more ripe crops',
   '숨을 데가 더 필요해요': 'wants more places to hide',
-  '그늘이 더 필요해요 — 울타리 쪽이 그늘져요': 'wants more shade — it is shadier near the fence',
-  '물기가 더 필요해요 — 💧우물이나 비 오는 날': 'wants more moisture — a 💧well or a rainy day',
+  '그늘이 더 필요해요': 'wants more shade',
+  '물기가 더 필요해요': 'wants more moisture',
   '빛이 더 필요해요': 'wants more light',
   '{0}가 다시 찾아왔어요': '{0} came back',
 

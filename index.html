@@ -502,6 +502,11 @@
   #habitat-meter .hm-goal { font-size: 11px; opacity: .78; min-width: 54px; text-align: right; flex: none; }
   #habitat-meter .hm-row.ok .hm-dots { color: #9fe0a0; }
   #habitat-meter .hm-row.no .hm-dots { color: #e8b48a; }
+  /* ⚠️ 이 규칙은 아래 미디어쿼리보다 **앞**에 있어야 한다.
+     뒤에 두면 같은 특이도라 나중 것이 이겨, 짧은 화면 규칙이 무시되고 안내 줄이 두 줄로 늘어난다
+     (실제로 그래서 320×568+토스 에서 #door-prompt 와 겹쳤다). */
+  #habitat-meter .hm-near { margin-top: 6px; padding-top: 6px; white-space: normal;
+    border-top: 1px solid rgba(255,255,255,.18); font-size: 12px; opacity: .92; }
   /* 📱 폰·토스 — 규약대로 **컨텍스트 슬롯(12px, 162px)** 을 쓴다.
      하단에 두면 #door-prompt(가운데 정렬)와 가로로 피할 방법이 없어 겹친다(실측 확인).
      오른쪽 버튼 열(문의하기·도감 ≈150px)은 침범하지 않고, 가운데 띠(캐릭터)는 비운다. */
@@ -517,8 +522,29 @@
     body:has(#habitat-meter:not([hidden])) #story-chip,
     body:has(#habitat-meter:not([hidden])) #hint-banner { display: none !important; }
   }
-  #habitat-meter .hm-near { margin-top: 6px; padding-top: 6px; white-space: normal;
-    border-top: 1px solid rgba(255,255,255,.18); font-size: 12px; opacity: .92; }
+  /* 📏 세로가 짧은 화면 — 토스 상단 52px 까지 밀리면 미터 아래가 #door-prompt 와 겹친다.
+     실측(320×568 + 토스): 슬롯 top 214, 문 프롬프트 top 307 → **여유 93px**. */
+  @media (max-height: 640px) {
+    /* ⚠️ 슬롯(162)을 위로 올려 해결하려 했더니 **미니맵과 겹쳤다** — 위는 못 쓴다.
+       top 은 그대로 두고 **높이만** 줄인다. 안내 줄을 한 줄로 유지하는 게 핵심
+       (game.js HABITAT_BLOCK_LINE 주석 참고). */
+    #habitat-meter { font-size: 11px; line-height: 1.34; padding: 6px 8px; }
+    #habitat-meter .hm-title { margin-bottom: 2px; }
+    #habitat-meter .hm-near { font-size: 10px; margin-top: 4px; padding-top: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 두 줄 방지 안전망 */
+    #habitat-meter .hm-goal { font-size: 9.5px; min-width: 44px; }
+  }
+  /* 가로로 눕힌 폰 — 세로가 극단적으로 짧다. 안내 줄을 접고 수치만 남긴다(수치가 본질). */
+  /* 가로로 눕힌 폰 — 세로가 극단적으로 짧다. 안내 줄을 접고 수치만 남긴다(수치가 본질).
+     ⚠️ 가로는 폭이 760 을 넘어 위 슬롯 규칙을 안 타고 **하단 기준**(192)으로 떨어지는데,
+        화면이 375 밖에 안 돼 그 자리가 미니맵이다(실측 812×375: 미터 top 125 = 미니맵).
+        도구 바(top≈316)와 문 프롬프트(bottom≈225) 사이 빈 띠로 내린다. */
+  @media (max-height: 460px) {
+    /* 실측(812×375+토스): 미니맵 b=254 · 도구바 t=297 → 아래 여유 43px, 미터는 58px 로 안 들어간다.
+       대신 **미니맵 오른쪽**(r=124) 빈 띠로 옮긴다. 문 프롬프트(l=357)를 넘지 않게 폭을 190 으로 묶는다. */
+    #habitat-meter { top: calc(162px + var(--top-inset)); bottom: auto; left: 136px; max-width: 190px; }
+    #habitat-meter .hm-near { display: none; }
+  }
   /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지.
      카드 높이는 문구 줄 수·목표 줄 유무로 변하므로 renderCoach 가 실측해 --coach-h 로 넘긴다
      (이전엔 110px 로 하드코딩해 목표 줄이 붙자 토스트가 카드를 덮었다). */
