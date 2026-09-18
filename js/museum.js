@@ -16,7 +16,7 @@
  */
 export const MUSEUM_FLOORS = [
   { id: 1, name: '1층',   cats: ['crop', 'fish', 'ore'],                  need: 0 },
-  { id: 2, name: '2층',   cats: ['forage', 'bug', 'dig', 'track'],        need: 9 },
+  { id: 2, name: '2층',   cats: ['forage', 'bug', 'dig', 'track', 'visitor'], need: 9 },
   { id: 3, name: '3층',   cats: ['river', 'spirit', 'weather', 'npc'],    need: 9 },
   { id: 4, name: '특별전', cats: ['cook'],                                 need: 12 },
 ];
@@ -69,8 +69,10 @@ function nextSeed(h) { return (h * 1103515245 + 12345) & 0x7fffffff; }
 // ⚠️ 집으면 안 되는 카테고리
 //   · river / sea(seafish) / mist — 잠긴 맵에서만 나온다. 잠긴 채로 집으면 "영원히 못 깨는 의뢰" 가 된다
 //   · weather — "그 날씨인 날 접속" 이라 오늘 안에 맞출 수가 없다
+//   · visitor — 🦋텃밭 방문객. 장식을 사서 배치해야 하고 🐸청개구리는 비 오는 날(약 20%)에만 온다.
+//     weather 와 정확히 같은 문제라 같이 막는다.
 const DEX_MAP_LOCK = { river: 'river', spirit: 'mist' };
-const DEX_NEVER = ['weather'];
+const DEX_NEVER = ['weather', 'visitor'];
 
 /**
  * 아직 도감에 없는 종 하나 — 날짜 시드로 고른다. 남은 게 없으면 null(호출부가 폴백한다).

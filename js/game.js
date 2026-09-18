@@ -33,6 +33,7 @@ import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lo
 import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -1084,7 +1085,7 @@ const gameState = {
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
-  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
+  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   workers: [],                              // 🧑‍🌾 고용한 일꾼 [{id, job, grade, works, name, hiredAt, restingSince}] — 규칙은 js/farm-worker.js
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
@@ -1183,8 +1184,14 @@ const DEX = {
     { id: 'snow',  name: '눈 오는 날',  ico: '❄️' },
     { id: 'fog',   name: '안개 낀 날',  ico: '🌫️' },
   ],
+  // 🦋 방문객 — 텃밭 환경을 만들면 스스로 찾아온다. 조건·판정의 단일 출처는 js/habitat.js 다.
+  //   여기서 표를 다시 적지 않는다(주민 도감을 손으로 적어 4명이 빠졌던 사고와 같은 유형).
+  visitor: VISITORS.map(v => ({ id: v.id, name: v.name, ico: v.ico })),
 };
-const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);   // 전 카테고리 합(현재 33종)
+// 전 카테고리 합. ⚠️ 여기에 숫자를 적어두지 않는다 — npc·cook 이 NPCS/CAFE_GUESTS/RECIPES 에서
+//    파생하므로 주민·레시피를 늘릴 때마다 조용히 낡는다(실제로 "33종" 주석이 오래 남아 70종인 걸 가렸다).
+//    지금 값이 궁금하면 도감 제목(📖 도감 n/m)이나 dexCount() 를 본다.
+const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);
 function dexCount() { return Object.keys(DEX).reduce((n, cat) => n + Object.keys(gameState.dex[cat] || {}).length, 0); }
 
 // 첫 발견 시 도감 등록 — 낚시/수확/채굴 성공 지점에서 호출
@@ -2384,7 +2391,9 @@ function applySave(saved) {
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
   if (saved.noticeSeenId) gameState.noticeSeenId = Number(saved.noticeSeenId) || 0; // 📮 읽은 소식 복원
   if (saved.dex) {
-    gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, ...saved.dex }; // 📖 도감 복원
+    // ⚠️ 기본 객체(gameState 선언부)와 **반드시 같은 키 목록**이어야 한다. 한쪽만 고치면
+    //    세이브가 있는 유저에게 그 카테고리가 undefined 가 되고, dexDiscover 첫 줄에서 조용히 반환해 등록이 안 된다.
+    gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {}, ...saved.dex }; // 📖 도감 복원
     refreshMuseumGate();   // 🏛️ 열어 둔 층만큼 건물을 세운다 — 안 하면 접속할 때마다 1층으로 보인다
   }
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
@@ -4440,10 +4449,10 @@ const MUSEUM_ZONES = [
 ];
 // 전시물 기본색 — 아직 전용 조형이 없는 카테고리(임시). ORES·CROP_TYPES 에 없는 것들이 여기로 온다
 const MUSEUM_CAT_TINT = { forage: 0xc07a4a, bug: 0xd9c14a, dig: 0x8a6a4a, track: 0x9a8f80,
-  river: 0x5f9ec8, spirit: 0xb8a8d8, weather: 0xa8c4d8, npc: 0xd9a06a, cook: 0xe0a05a };
+  river: 0x5f9ec8, spirit: 0xb8a8d8, weather: 0xa8c4d8, npc: 0xd9a06a, cook: 0xe0a05a, visitor: 0x8fbf6a };
 const DEX_CAT_LABEL = { crop: '🌾 작물', fish: '🐟 물고기', ore: '⛏️ 광물', forage: '🍄 채집물',
   bug: '🌟 반딧불이', dig: '🪏 땅속', track: '🐾 흔적', river: '🛶 강', spirit: '🌫️ 정령',
-  weather: '🌦️ 날씨', npc: '🧑 주민', cook: '🍳 요리' };
+  weather: '🌦️ 날씨', npc: '🧑 주민', cook: '🍳 요리', visitor: '🦋 방문객' };
 let museumFloor = 1;                       // 지금 보고 있는 층
 // 이 층에 전시할 목록 — 카테고리 순서대로 러그 구역이 갈린다
 function museumFloorItems(floor = museumFloor) {

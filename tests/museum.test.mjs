@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed } from '../js/museum.js';
+import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
 //   층별 전시 목록도 여기서 정한다(game.js 의 DEX 를 인자로 받아 순수하게 유지).
@@ -25,6 +26,8 @@ const DEX = {
   river:[1,2,3,4].map(i => ({ id: 'r' + i })),
   spirit:[1,2,3,4].map(i => ({ id: 's' + i })),
   weather:[1,2,3,4].map(i => ({ id: 'w' + i })),
+  // 🦋 방문객도 **실제 개수를 읽는다** — 손으로 적으면 2층 진열장 자리 검증이 옛 칸 수로 돈다
+  visitor: VISITORS.map(v => ({ id: v.id })),
   // ⚠️ npc·cook 은 **game.js 에서 실제 개수를 읽는다.** 손으로 적어 두면 실제와 갈리고,
   //    실제로 그 때문에 "3층 18칸" 이라 단언하며 통과했다(진짜는 31칸 — 절반이 방 밖에 놓였다).
   npc:  Array.from({ length: REAL_NPC }, (_, i) => ({ id: 'n' + i })),
@@ -38,10 +41,10 @@ function dexWith(cat, n) {
   return out;
 }
 
-test('층 구성 — 1층 13 · 2층 13 · 3층 18 · 특별전', () => {
+test('층 구성 — 1층 13 · 2층 17 · 3층 18 · 특별전', () => {
   assert.equal(MUSEUM_FLOORS.length, 4);
   assert.equal(floorEntries(1, DEX).length, 13);
-  assert.equal(floorEntries(2, DEX).length, 13);
+  assert.equal(floorEntries(2, DEX).length, 13 + VISITORS.length);   // 🍄🌟🪏🐾 13 + 🦋방문객
   assert.equal(floorEntries(3, DEX).length, 12 + REAL_NPC);   // 🛶강4+🌫️정령4+🌦️날씨4 + 주민·손님
   assert.ok(floorEntries(4, DEX).length > 0);
 });
@@ -243,4 +246,20 @@ test('모든 층 카테고리에 전시물 색 폴백이 있다', () => {
   }
   const fn = SRC.slice(SRC.indexOf('function museumExhibitMesh('), SRC.indexOf('\n}', SRC.indexOf('function museumExhibitMesh(')));
   assert.match(fn, /MUSEUM_CAT_TINT\[item\.cat\]/, '폴백을 쓰지 않는다');
+});
+
+// ⚠️ 🦋 방문객은 큐레이터가 집으면 안 된다 — weather 와 같은 이유다.
+//    장식 구매·배치가 선행이고 🐸 는 비 오는 날(약 20%)에만 온다.
+//    DEX_NEVER 에서 빠지면 그날 dex_one 의뢰가 통째로 막힌다.
+test('큐레이터는 방문객을 집지 않는다 — 오늘 안에 맞출 수가 없다', () => {
+  const ONLY_VISITOR = { visitor: VISITORS.map(v => ({ id: v.id, name: v.name, ico: v.ico })) };
+  for (let seed = 0; seed < 50; seed++) {
+    assert.equal(pickMissingDex({}, ONLY_VISITOR, seed, {}), null,
+      'visitor 만 있는 풀에서는 아무것도 집으면 안 된다');
+  }
+});
+
+test('visitor 카테고리가 어느 층엔가 전시된다', () => {
+  const placed = new Set(MUSEUM_FLOORS.flatMap(f => f.cats));
+  assert.ok(placed.has('visitor'), '빠지면 방문객 4종이 영영 전시되지 않는다');
 });
