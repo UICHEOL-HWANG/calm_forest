@@ -64,21 +64,55 @@ function cluster(THREE, geo, material, at, shadow = false) {
 }
 
 /**
+ * 🦔 **가시끼리 이어진 껍질** — 낱개 바늘을 꽂는 게 아니라 하나의 지오메트리다.
+ *   정이십면체의 각 면을 꼭짓점 하나로 뽑아올려, 이웃 가시와 **변을 공유**하게 만든다.
+ *   ⚠️ 공에 바늘을 꽂는 방식은 7차까지 시도했고 전부 🌰밤 으로 읽혔다(2026-09-18).
+ *      바늘이 공보다 작으면 시선이 공을 먼저 읽는다 — 껍질 자체가 형태가 되어야 한다.
+ *   ⚠️ detail 을 1 이상으로 올리면 면이 80개가 되어 가시가 촘촘해진다 → 환공포증. 0 을 유지한다.
+ * @param {(c:{x,y,z}) => boolean} keep 그 면을 가시로 뽑을지(얼굴 쪽은 비운다)
+ */
+function spikyShell(THREE, radius, spikeLen, keep) {
+  const base = new THREE.IcosahedronGeometry(radius, 0).toNonIndexed();
+  const pos = base.attributes.position;
+  const out = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i += 3) {
+    a.fromBufferAttribute(pos, i); b.fromBufferAttribute(pos, i + 1); c.fromBufferAttribute(pos, i + 2);
+    const cen = a.clone().add(b).add(c).multiplyScalar(1 / 3);
+    if (!keep(cen)) continue;
+    const apex = cen.clone().normalize().multiplyScalar(radius + spikeLen);
+    // 면 하나 → 삼각뿔 세 면. 밑변을 원래 면에 두므로 이웃 가시와 변이 붙는다.
+    for (const [p, q] of [[a, b], [b, c], [c, a]]) {
+      out.push(p.x, p.y, p.z, q.x, q.y, q.z, apex.x, apex.y, apex.z);
+    }
+  }
+  base.dispose();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  g.computeVertexNormals();   // 평면 음영 — 저폴리 톤에 맞는다
+  return g;
+}
+
+/**
  * 공통 얼굴 — 🐸 사양 그대로. 모든 종이 이걸 쓴다. 부속은 호출부가 더한다.
  * @param {{mouth?:boolean, nose?:boolean, eyes?:'bulge'|'flat'|'dark', eyeMul?:number}} opt
  *   부리·코가 입·콧구멍을 대신하는 종은 끈다. eyes 는 종별 눈 모양(위 주석 참고).
  *   eyeMul 은 눈 크기 배율 — 🐦 레퍼런스는 눈이 얼굴의 3분의 1씩을 차지한다.
  */
 function makeHead(THREE, bodyColor, opt = {}) {
-  const { mouth = true, nose = true, eyes = 'bulge', eyeMul = 1 } = opt;
+  const { mouth = true, nose = true, eyes = 'bulge', eyeMul = 1, dome = true, blush = true } = opt;
   const g = new THREE.Group();
 
-  // 머리 — 가로로 약간 넓은 타원(1 : 0.9). 앞뒤도 살짝 눌러 옆 실루엣을 만든다
-  const head = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R, 18, 14), mat(THREE, bodyColor));
-  head.scale.set(1, 0.9, 0.92);
-  head.position.y = HEAD_Y;
-  head.castShadow = true;
-  g.add(head);
+  // 머리 — 가로로 약간 넓은 타원(1 : 0.9). 앞뒤도 살짝 눌러 옆 실루엣을 만든다.
+  // ⚠️ 🦔 는 가시 껍질이 머리 역할을 한다 — 안에 구체를 또 넣으면 껍질 틈으로 둥근 면이 비쳐
+  //    다시 "공 + 가시" 로 읽힌다. dome:false 로 끈다.
+  if (dome) {
+    const head = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R, 18, 14), mat(THREE, bodyColor));
+    head.scale.set(1, 0.9, 0.92);
+    head.position.y = HEAD_Y;
+    head.castShadow = true;
+    g.add(head);
+  }
 
   // 눈 — ⚠️ 🐸 의 "머리 윤곽 위로 튀어나온 눈" 은 **개구리 특징**이다.
   //   네 마리에 똑같이 붙이면 고슴도치가 골프공 두 개를 얹은 꼴이 된다(2026-09-18 지적).
@@ -87,7 +121,7 @@ function makeHead(THREE, bodyColor, opt = {}) {
   //     flat  — 🦋🐦. 흰자는 있지만 얼굴에 붙어 솟지 않는다
   //     dark  — 🦔. 흰자 없이 얼굴에 박힌 검은 눈 + 작은 반짝임(레퍼런스)
   if (eyes === 'dark') {
-    const eyeX = HEAD_R * 0.42, eyeY = HEAD_Y + HEAD_R * 0.26, eyeZ = HEAD_R * 0.74;
+    const eyeX = HEAD_R * 0.34, eyeY = HEAD_Y - HEAD_R * 0.08, eyeZ = HEAD_R * 0.78;
     const R = HEAD_R * 0.19;
     g.add(cluster(THREE, new THREE.SphereGeometry(R, 12, 10), mat(THREE, 0x241d18),
       [-1, 1].map(s => ({ p: [eyeX * s, eyeY, eyeZ], s: [1, 1, 0.7] }))));
@@ -122,7 +156,7 @@ function makeHead(THREE, bodyColor, opt = {}) {
   }
 
   // 볼터치 — 연분홍. 이 크기에선 사선 2줄이 뭉개지므로 납작한 원반으로 옮긴다.
-  g.add(cluster(THREE, new THREE.SphereGeometry(HEAD_R * 0.17, 10, 8), mat(THREE, BLUSH),
+  if (blush) g.add(cluster(THREE, new THREE.SphereGeometry(HEAD_R * 0.17, 10, 8), mat(THREE, BLUSH),
     [-1, 1].map(s => ({ p: [HEAD_R * 0.62 * s, HEAD_Y - HEAD_R * 0.10, HEAD_R * 0.68], s: [1, 0.75, 0.35] }))));
   return g;
 }
@@ -140,8 +174,8 @@ export function makeVisitor(THREE, id) {
   const FACE = {
     butterfly: { eyes: 'flat' },
     // ⚠️ eyeMul 을 1.4 로 키웠더니 올빼미·원숭이처럼 보였다(2026-09-18). 기본 크기가 맞다.
-    sparrow:   { eyes: 'flat', mouth: false },
-    hedgehog:  { eyes: 'dark', nose: false },
+    sparrow:   { eyes: 'flat', mouth: false, nose: false },
+    hedgehog:  { eyes: 'dark', nose: false, mouth: false, dome: false, blush: false },
     frog:      { eyes: 'bulge' },
   };
   const g = makeHead(THREE, color, FACE[id] || FACE.frog);
@@ -174,19 +208,23 @@ export function makeVisitor(THREE, id) {
     //   밤과 갈리는 건 색이 아니라 **관모와 눈썹띠** 다 — 둘이 얼굴 위쪽에 결을 만든다.
     const CREST = 0xc4553c, BROW = 0x5d4433, WING = 0xa8825e;
 
-    // 부리 — ⚠️ 눈 아래로 내려오고 크면 늘어진 혀처럼 보인다(6차 시안 지적).
-    //   레퍼런스는 **눈 사이 높이**에서 앞으로 짧고 좁게 뻗는다. 작게, 위로.
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(HEAD_R * 0.21, HEAD_R * 0.38, 4), mat(THREE, 0xef8f5c));
-    beak.rotation.set(Math.PI / 2 + 0.12, 0, Math.PI / 4);   // 앞으로, 끝만 살짝 아래
-    beak.position.set(0, HEAD_Y + HEAD_R * 0.17, HEAD_R * 0.92);
-    beak.scale.set(1, 1, 0.48);                              // 위아래로 눌러 넓적하게
-    beak.castShadow = true;
-    g.add(beak);
-    // 윗부리 — 한 겹 더 얹어 위아래가 갈린 부리로 읽히게(단색은 고무 마개처럼 보인다)
-    const upper = new THREE.Mesh(new THREE.ConeGeometry(HEAD_R * 0.20, HEAD_R * 0.30, 4), mat(THREE, 0xd97442));
-    upper.rotation.set(Math.PI / 2 + 0.02, 0, Math.PI / 4);
-    upper.position.set(0, HEAD_Y + HEAD_R * 0.23, HEAD_R * 0.90);
-    upper.scale.set(1, 1, 0.34);
+    // 부리 — ⚠️ 여섯 번 틀렸다. 답은 추측이 아니라 **이미 통과한 수치**에 있었다:
+    //   🦔 주둥이(반경 0.40R · 길이 0.80R · 아래로 0.34rad · 눌림 없음)가 잘 읽혔으므로
+    //   그 비율을 그대로 쓰고 색만 주황으로, 눌림만 살짝(0.55) 준다.
+    //   카메라가 내려다보므로 수평에 가까우면 짓눌려 안 보이고, 더 꺾으면 당근처럼 늘어진다.
+    const BEAK_LEN = HEAD_R * 0.78;
+    const lower = new THREE.Mesh(new THREE.ConeGeometry(HEAD_R * 0.32, BEAK_LEN, 4), mat(THREE, 0xf0a06a));
+    lower.rotation.set(Math.PI / 2 + 0.30, 0, Math.PI / 4);
+    lower.position.set(0, HEAD_Y - HEAD_R * 0.04, HEAD_R * 0.80);
+    lower.scale.set(1, 1, 0.55);
+    lower.castShadow = true;
+    g.add(lower);
+    // 윗부리 — 같은 계열로 살짝만 진하게. 대비를 크게 하면 "당근 + 이파리" 가 된다.
+    const upper = new THREE.Mesh(new THREE.ConeGeometry(HEAD_R * 0.31, BEAK_LEN * 0.90, 4), mat(THREE, 0xdf8a4c));
+    upper.rotation.set(Math.PI / 2 + 0.19, 0, Math.PI / 4);
+    upper.position.set(0, HEAD_Y + HEAD_R * 0.07, HEAD_R * 0.80);
+    upper.scale.set(1, 1, 0.50);
+    upper.castShadow = true;
     g.add(upper);
 
     // (웃는 입 선은 사용자 지시로 제외 — 부리만으로 충분하다)
@@ -229,55 +267,35 @@ export function makeVisitor(THREE, id) {
     tail.castShadow = true;
     g.add(tail);
   } else if (id === 'hedgehog') {
-    // 🦔 ⚠️⚠️ 🌰밤 으로 읽힌 시안이 네 번 나왔다(2026-09-18). 색 변경·귀 추가로는 안 됐다.
-    //   근본 원인: **따뜻한 갈색·크림 계열 둥근 공**이 곧 밤이다. 위에 무엇을 얹어도 밤이다.
-    //   그래서 밤에 **없는 것**으로 승부한다:
-    //     ① 차가운 **회색** 가시 (밤은 언제나 따뜻한 갈색이다)
-    //     ② 앞으로 뻗은 **뾰족한 주둥이** (밤에는 주둥이가 없다)
-    //     ③ 머리 위쪽을 **뒤덮는** 가시 덩어리 — 얼굴은 아래 앞쪽만 남긴다
-    //   ⚠️ 따뜻한 갈색으로 되돌리거나 가시를 짧게 줄이지 말 것. 바로 밤으로 돌아간다.
-    const EAR = 0x7f776c, SNOUT = 0xc4bbaf, QUILL = 0x6f6d66, QUILL_TIP = 0xa9a49a;
+    // 🦔 가시는 **서로 이어진 껍질**이다(사용자 제안 2026-09-18). spikyShell 주석 참고.
+    //   얼굴은 껍질 앞아래를 비워 그 틈으로 내민다 — 그래서 "공 + 부속" 이 아니라 "가시 덩어리 + 얼굴" 이 된다.
+    const QUILL = 0x8d867c, SNOUT = 0xc4bbaf, EAR = 0x7f776c;
 
-    // 주둥이 — 앞으로 길고 뾰족하게. 밤과 갈리는 두 번째 신호다.
-    const snout = new THREE.Mesh(new THREE.ConeGeometry(HEAD_R * 0.34, HEAD_R * 0.86, 12), mat(THREE, SNOUT));
-    snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, HEAD_Y - HEAD_R * 0.22, HEAD_R * 0.92);
+    // 가시 껍질 — 앞아래(얼굴 자리)만 비운다
+    const shell = new THREE.Mesh(
+      spikyShell(THREE, HEAD_R * 0.96, HEAD_R * 0.52,
+        (c) => !(c.z > HEAD_R * 0.30 && c.y < HEAD_R * 0.34)),
+      new THREE.MeshStandardMaterial({ color: QUILL, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }));
+    shell.position.y = HEAD_Y;
+    shell.castShadow = true;
+    g.add(shell);
+
+    // 주둥이 — 껍질 틈으로 앞아래로 내민다. 밤에 없는 형태다.
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(HEAD_R * 0.40, HEAD_R * 0.80, 12), mat(THREE, SNOUT));
+    snout.rotation.x = Math.PI / 2 + 0.34;
+    snout.position.set(0, HEAD_Y - HEAD_R * 0.38, HEAD_R * 0.78);
     snout.castShadow = true;
     g.add(snout);
-    // 코 — 주둥이 끝 진한 점
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R * 0.11, 10, 8), mat(THREE, 0x2e2621));
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R * 0.12, 10, 8), mat(THREE, 0x2e2621));
     nose.scale.set(1.2, 0.9, 0.8);
-    nose.position.set(0, HEAD_Y - HEAD_R * 0.20, HEAD_R * 1.32);
+    nose.position.set(0, HEAD_Y - HEAD_R * 0.62, HEAD_R * 1.06);
     g.add(nose);
-    // 둥근 귀 — 가시 앞쪽에 살짝 걸치게
-    g.add(cluster(THREE, new THREE.SphereGeometry(HEAD_R * 0.26, 12, 10), mat(THREE, EAR),
+    // 둥근 귀 — 껍질 옆에 살짝 걸친다
+    g.add(cluster(THREE, new THREE.SphereGeometry(HEAD_R * 0.24, 12, 10), mat(THREE, EAR),
       [-1, 1].map(s => ({
-        p: [HEAD_R * 0.74 * s, HEAD_Y + HEAD_R * 0.46, HEAD_R * 0.16],
-        s: [0.88, 1.00, 0.50],
+        p: [HEAD_R * 0.80 * s, HEAD_Y + HEAD_R * 0.10, HEAD_R * 0.34],
+        s: [0.86, 1.00, 0.48],
       })), true));
-
-    // 가시 — ⚠️ 가늘고 촘촘하게 84개를 박으니 **환공포증**을 일으킨다는 지적을 받았다(2026-09-18).
-    //   오솔길 자갈에서 겪은 것과 같은 문제다: 작은 모양의 촘촘한 반복이 원인이다.
-    //   그래서 **적고 굵게** 간다 — 14개의 넓은 삼각 가시로 실루엣만 만든다.
-    //   개수를 다시 늘리지 말 것. 실루엣은 굵기로 만든다.
-    const SPIKE_LEN = HEAD_R * 0.86;
-    const at = [];
-    const TIERS = [0.34, 0.80];                    // +Y 로부터의 각도(rad) — 정수리 / 옆
-    for (const t of TIERS) {
-      const n = t < 0.5 ? 6 : 8;
-      for (let i = 0; i < n; i++) {
-        const phi = Math.PI * (0.34 + (i / (n - 1)) * 1.32);   // +Z(정면)에서 61°~299°
-        const sy = Math.sin(t), cy = Math.cos(t);
-        at.push({
-          p: [HEAD_R * sy * Math.sin(phi) * 0.86,
-              HEAD_Y + HEAD_R * cy * 0.86,
-              HEAD_R * sy * Math.cos(phi) * 0.86],
-          // 바깥 법선으로 눕힌다 — 원뿔의 +Y 축을 (t, phi) 방향으로 돌리는 근사
-          r: [t * Math.cos(phi), 0, -t * Math.sin(phi)],
-        });
-      }
-    }
-    g.add(cluster(THREE, new THREE.ConeGeometry(HEAD_R * 0.17, SPIKE_LEN, 4), mat(THREE, QUILL), at, true));
   }
   // 🐸 는 공통 얼굴 그대로 — 레퍼런스가 "머리 하나" 라 부속이 없다
   return g;
