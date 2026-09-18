@@ -25,7 +25,10 @@ export const TUNING = {
   // 🌿 리텐션 안내 — 모델 서버 없이 1차 룰로 실제 배너를 띄운다.
   // 모델 점수는 나중에 들어오면 rule-low 구간 rescue 로만 쓰도록 js/retention-guidance.js 에 자리를 열어둔다.
   retentionGuidance: {
-    enabled: true,
+    // ⏸️ 꺼 둔다(2026-09-19) — 배너 한국어 문구 10종이 아직 검수 전이고,
+    //    js/retention-guidance.js 가 i18n 을 안 거쳐 영어 모드에서 한국어가 그대로 뜬다.
+    //    문구 확정 + i18n-en.js 등재가 끝나면 true 로 되돌린다.
+    enabled: false,
     highTracked: 20,
     highActions: 6,
     modelThreshold: 0.285,
