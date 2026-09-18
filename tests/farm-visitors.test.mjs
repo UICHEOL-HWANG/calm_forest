@@ -171,3 +171,64 @@ test('group 이 없어도 터지지 않는다 — 퇴장 직후 update 가 한 �
   });
   assert.doesNotThrow(() => { v.update(0.016); v.update(SPAWN_DELAY_MIN); v.update(STAY); v.clear(); });
 });
+
+// ⚠️⚠️ 실제 사고(2026-09-18): farmGroup 은 position (0,0,84) 를 가진다.
+//   월드 좌표를 mesh.position 에 그대로 넣으면 월드 z=168 — 밭에서 84 떨어진 허공에 뜬다.
+//   화면에 안 보이는데 근접 판정은 같은 로컬 값을 써서 "등록은 되는" 상태라 놓치기 쉽다.
+//   그래서 ① 메시는 **로컬로 변환해** 놓고 ② 근접 판정은 **월드로** 한다.
+test('부모 그룹이 오프셋을 가지면 메시 좌표를 로컬로 변환해 놓는다', () => {
+  const group = fakeGroup();
+  const spawned = [];
+  const v = createVisitors({
+    group, origin: { x: 0, z: 84 },              // farmGroup 의 월드 오프셋
+    makeMesh: () => fakeMesh(),
+    cells: () => [{ x: -2, z: 84 }],             // 월드 좌표
+    envAt: () => ({}),
+    matchVisitors: () => [VISITORS[0]],
+    ctx: () => ({ night: false, rain: false }),
+    playerPos: () => ({ x: 999, z: 999 }),
+    onSpawn: (id) => spawned.push(id), onDiscover: () => {},
+    random: () => 0,
+  });
+  v.update(0.016); v.update(SPAWN_DELAY_MIN);
+  assert.deepEqual(spawned, ['butterfly'], '전제: 떴어야 한다');
+  const m = group.children[0];
+  assert.equal(m.position.x, -2, '로컬 x = 월드 x - origin.x');
+  assert.equal(m.position.z, 0, '로컬 z = 월드 z - origin.z (84 - 84)');
+});
+
+test('근접 등록은 월드 좌표로 판정한다 — 오프셋 그룹에서도 제대로 잡힌다', () => {
+  const discovered = [];
+  const v = createVisitors({
+    group: fakeGroup(), origin: { x: 0, z: 84 },
+    makeMesh: () => fakeMesh(),
+    cells: () => [{ x: 0, z: 84 }],
+    envAt: () => ({}),
+    matchVisitors: () => [VISITORS[0]],
+    ctx: () => ({ night: false, rain: false }),
+    playerPos: () => ({ x: 0, z: 85 }),          // 월드로 거리 1 — 등록돼야 한다
+    onSpawn: () => {}, onDiscover: (id) => discovered.push(id),
+    random: () => 0,
+  });
+  v.update(0.016); v.update(SPAWN_DELAY_MIN); v.update(0.016);
+  assert.deepEqual(discovered, ['butterfly'],
+    '로컬(0,0) 과 플레이어 월드(0,85) 를 비교하면 거리 85 로 나와 영영 등록되지 않는다');
+});
+
+test('origin 이 없으면 월드 = 로컬로 동작한다(하위 호환)', () => {
+  const group = fakeGroup();
+  const v = createVisitors({
+    group,
+    makeMesh: () => fakeMesh(),
+    cells: () => [{ x: 3, z: 7 }],
+    envAt: () => ({}),
+    matchVisitors: () => [VISITORS[0]],
+    ctx: () => ({ night: false, rain: false }),
+    playerPos: () => ({ x: 999, z: 999 }),
+    onSpawn: () => {}, onDiscover: () => {},
+    random: () => 0,
+  });
+  v.update(0.016); v.update(SPAWN_DELAY_MIN);
+  assert.equal(group.children[0].position.x, 3);
+  assert.equal(group.children[0].position.z, 7);
+});

@@ -9923,6 +9923,7 @@ function makeVisitorMesh(id) { return makeVisitor(THREE, id); }   // 조형은 j
 function startVisitors() {
   visitors = createVisitors({
     group: farmGroup,
+    origin: FARM,   // ⚠️ farmGroup 은 FARM(0,0,84) 에 놓여 있다 — 월드 좌표를 그대로 넣으면 z=168 허공에 뜬다
     makeMesh: makeVisitorMesh,
     cells: habitatCells,
     envAt: habitatEnvAt,

@@ -29,6 +29,8 @@ function setOpacity(obj, v) {
 /**
  * @param {object} deps
  *   group          THREE.Group             farmGroup — 여기에 메시를 붙인다
+ *   origin         {x, z}                  ⚠️ group 의 **월드 오프셋**. farmGroup 은 (0,0,84) 다.
+ *                                          없으면 0 으로 본다(월드 = 로컬).
  *   makeMesh       (visitorId) => Object3D  y 높이는 조형이 스스로 정한다
  *   cells          () => {x,z}[]           후보 지점(월드)
  *   envAt          (x,z) => env
@@ -41,6 +43,11 @@ function setOpacity(obj, v) {
  */
 export function createVisitors(deps) {
   const rnd = deps.random || Math.random;
+  // ⚠️ 실제 사고(2026-09-18): farmGroup.position = (0,0,84) 인데 월드 좌표를 mesh.position 에
+  //   그대로 넣어, 방문객이 월드 z=168(밭에서 84 떨어진 허공)에 떠서 화면에 안 보였다.
+  //   근접 판정도 같은 로컬 값을 써서 "등록은 되는" 상태라 눈치채기 어려웠다.
+  //   → 메시는 **로컬로 변환해** 놓고, 근접 판정은 레코드에 들고 있는 **월드 좌표**로 한다.
+  const ox = deps.origin?.x || 0, oz = deps.origin?.z || 0;
   const nextDelay = () => SPAWN_DELAY_MIN + rnd() * (SPAWN_DELAY_MAX - SPAWN_DELAY_MIN);
   let alive = [];
   // ⚠️ 0 으로 시작하면 첫 update 에서 곧바로 뜬다 — 텃밭에 들어서자마자 나비가 튀어나온다.
@@ -77,7 +84,7 @@ export function createVisitors(deps) {
       setOpacity(a.mesh, Math.min(fadeIn, fadeOut));
       if (!a.caught) {
         const p = deps.playerPos();
-        if (Math.hypot(a.mesh.position.x - p.x, a.mesh.position.z - p.z) <= CATCH_R) {
+        if (Math.hypot(a.wx - p.x, a.wz - p.z) <= CATCH_R) {
           a.caught = true;
           deps.onDiscover(a.id);
         }
@@ -98,10 +105,10 @@ export function createVisitors(deps) {
     const pick = pickSpot();
     if (!pick) return;
     const mesh = deps.makeMesh(pick.id);
-    mesh.position.x = pick.c.x; mesh.position.z = pick.c.z;
+    mesh.position.x = pick.c.x - ox; mesh.position.z = pick.c.z - oz;   // 부모 오프셋만큼 뺀다
     setOpacity(mesh, 0);
     deps.group?.add(mesh);
-    alive.push({ id: pick.id, mesh, life: 0, caught: false });
+    alive.push({ id: pick.id, mesh, life: 0, caught: false, wx: pick.c.x, wz: pick.c.z });
     deps.onSpawn(pick.id);
   }
 
