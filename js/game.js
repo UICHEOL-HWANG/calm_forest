@@ -35,6 +35,7 @@ import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
+import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -9913,14 +9914,7 @@ const HABITAT_BLOCK_LINE = {
 };
 let lastNearMiss = null;   // 같은 근접 신호를 GA4 로 반복해 쏘지 않기 위한 기억
 
-// 임시 조형 — 조형 사양이 확정되면 js/visitor-art.js 로 교체한다
-const VISITOR_TMP_COLOR = { butterfly: 0xe8a0c8, sparrow: 0xb09070, hedgehog: 0x8a6a4a, frog: 0xa8d586 };
-function makeVisitorMesh(id) {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10),
-    new THREE.MeshStandardMaterial({ color: VISITOR_TMP_COLOR[id] || 0xffffff }));
-  m.position.y = 0.45;   // 높이는 조형이 정한다(farm-visitors 는 x·z 만 놓는다)
-  return m;
-}
+function makeVisitorMesh(id) { return makeVisitor(THREE, id); }   // 조형은 js/visitor-art.js (높이도 거기서 정한다)
 
 function startVisitors() {
   visitors = createVisitors({
