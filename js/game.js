@@ -7736,42 +7736,54 @@ function buildRoom(def) {
       r.position.set(rx, 0.65, rz); g.add(r);
     });
     // 🏠 루프탑 계단실 — 컨셉(sims/stair-concepts/stairs.js "루프탑 계단실 박스", 사용자 승인)을
-    //   포팅한다. 컨셉은 직선형 계단의 좁고 긴 구멍 위에 지어진 박스라 치수를 그대로 못 쓴다 —
-    //   지금은 나선 계단의 원형 구멍(lay.holeR)이라 정사각 평면(SH)으로 다시 잡아 그 구멍을 감싼다.
-    //   문(+x 쪽)은 테두리 난간이 비어 있는 진입 방향(buildSpiralStair 의 a=0, "postPoint(0,..)" 방향)과
-    //   똑같이 맞춘다 — 난간 틈으로 들어오면 그대로 문틀을 지나 구멍 앞에 선다(둘이 따로 안 논다).
-    //   재질은 컨셉 그대로 villa.js 어휘(흰 프레임 0xf4f3ee · 짙은 유리 0x1e3242 opacity 0.6 ·
-    //   유리 난간은 위에서 이미 만든 rail 을 그대로 재사용 — 재질 하나 더 만들지 않는다, 스펙 §8.3).
-    const SH = 2.2, WT = 0.14, DOORW = 1.6, HBH = 2.9, DOORH = 2.2;   // HBH — 컨셉의 BH 와 겹치지 않는 이름
+    //   포팅한다. 컨셉은 직선형 계단의 좁고 긴 구멍 위에 지어진 훨씬 작은 박스라 치수를 그대로 못
+    //   쓴다 — 나선 계단의 원형 구멍(holeR 1.35)을 덮으려면 정사각 평면(SH)을 조금 키워야 한다.
+    //   2026-09-18 리뷰에서 두 가지가 잘못됐었다:
+    //   1) SH=2.2(4.4×4.4, 덱의 44%)로 너무 컸다 — 지금은 SH=1.6(3.2×3.2, 덱의 10%)로 구멍만 덮는다.
+    //   2) 문·짙은 유리를 X축 벽(뒷벽/문기둥)에 달았는데, 이 게임의 지붕 카메라는 −Z 로 고정 시선이라
+    //      (js/game.js:6781 "카메라는 고정이라 시선이 늘 −Z" · villa.js:2 "정면 +z" 관례와 같은 이유)
+    //      X축 벽은 옆에서 날처럼 보여 문·유리가 사실상 안 보였다 — 재질·라이팅 문제가 아니라
+    //      순전히 어느 벽에 달았는지의 문제였다. 지금은 Z축 벽(카메라를 정면으로 보는 면)에
+    //      문(남쪽, +z)과 짙은 유리(북쪽, −z, 문 너머로 살짝 보이는 뒷벽)를 단다.
+    // SH=1.8 — holeR(1.35)+PLAYER_R(0.42)=1.77 보다 커야 한다. 1.6 으로 지었을 때 구멍의 원형
+    //   콜라이더 자체가 벽보다 더 넓게 밀어내 문간에 아예 설 자리가 없었다(실측: 문 앞으로 가도
+    //   그대로 밀려 반대편 벽 밖으로 튕겨 나감 — 2026-09-18 재검수에서 잡은 버그).
+    const SH = 1.8, WT = 0.1, DOORW = 1.7, HBH = 2.9, DOORH = HBH - 0.2;   // 문은 컨셉처럼 천장까지 거의 닿는 통유리
     const hcx = lay.cx, hcz = lay.cz;
     const frame = HH.clay(0xf4f3ee);
     const darkGlass = HH.glass(0x1e3242); darkGlass.opacity = 0.6;
     const fbox = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+    const jambW = SH - DOORW / 2;   // 문 좌우 기둥 폭
     const frameGeos = [
-      fbox(WT, HBH, SH * 2, hcx - SH, HBH / 2, hcz),                                  // 뒷벽(문 반대편)
-      fbox(SH * 2, HBH, WT, hcx, HBH / 2, hcz - SH),                                  // 왼벽
-      fbox(SH * 2, HBH, WT, hcx, HBH / 2, hcz + SH),                                  // 오른벽
-      fbox(WT, HBH, SH - DOORW / 2, hcx + SH, HBH / 2, hcz - (SH + DOORW / 2) / 2),   // 문 왼쪽 기둥
-      fbox(WT, HBH, SH - DOORW / 2, hcx + SH, HBH / 2, hcz + (SH + DOORW / 2) / 2),   // 문 오른쪽 기둥
-      fbox(WT, HBH - DOORH, DOORW, hcx + SH, DOORH + (HBH - DOORH) / 2, hcz),         // 문 위 인방(콜라이더 없음 — 머리 위)
-      fbox(SH * 2 + 0.16, 0.12, SH * 2 + 0.16, hcx, HBH + 0.06, hcz),                 // 지붕 캡
+      fbox(WT, HBH, SH * 2, hcx - SH, HBH / 2, hcz),                                   // 서쪽 옆벽
+      fbox(WT, HBH, SH * 2, hcx + SH, HBH / 2, hcz),                                   // 동쪽 옆벽
+      fbox(SH * 2, HBH, WT, hcx, HBH / 2, hcz - SH),                                   // 북쪽 뒷벽(문 반대편, 짙은 유리가 여기 박힌다)
+      fbox(jambW, HBH, WT, hcx - SH + jambW / 2, HBH / 2, hcz + SH),                   // 남쪽 문 왼쪽 기둥
+      fbox(jambW, HBH, WT, hcx + SH - jambW / 2, HBH / 2, hcz + SH),                   // 남쪽 문 오른쪽 기둥
+      fbox(DOORW, HBH - DOORH, WT, hcx, DOORH + (HBH - DOORH) / 2, hcz + SH),          // 문 위 인방(콜라이더 없음 — 머리 위)
+      fbox(SH * 2 + 0.16, 0.12, SH * 2 + 0.16, hcx, HBH + 0.06, hcz),                  // 지붕 캡
     ];
     const stairHouseFrame = new THREE.Mesh(mergeGeos(frameGeos), frame);   // 재질 하나 = 드로우콜 하나(프레임 7조각)
     stairHouseFrame.castShadow = stairHouseFrame.receiveShadow = true; g.add(stairHouseFrame);
-    const stairHouseGlass = new THREE.Mesh(fbox(0.06, HBH - 0.5, SH * 2 - 0.4, hcx - SH + 0.1, HBH / 2, hcz), darkGlass);   // 뒷벽(x 얇은 면)과 같은 축 — w/d 를 바꿔 적으면 벽 밖으로 삐져나간다(실측으로 잡은 버그)
-    g.add(stairHouseGlass);   // 뒷벽 안쪽 통유리(컨셉의 "뒷면 통유리") — 재질 하나 더 = 드로우콜 하나
-    // 🚧 콜라이더 3면 + 문 좌우 기둥(문 자리는 뺀다 — 여기가 들어가는 자리, 인방은 머리 위라 안 막는다).
+    // 짙은 유리 2장 — 북쪽 뒷벽 안쪽(컨셉의 "뒷면 통유리") + 문 자리에 선 유리 문(컨셉의 "문 유리",
+    //   비충돌 — 실제로 막는 건 아래 solidBox 문기둥 둘뿐이라 걸어서 그대로 지나간다).
+    const stairHouseGlass = new THREE.Mesh(mergeGeos([
+      fbox(SH * 2 - 0.4, HBH - 0.5, 0.05, hcx, HBH / 2, hcz - SH + 0.1),               // 북쪽 뒷벽 안쪽 통유리
+      fbox(DOORW - 0.2, DOORH - 0.3, 0.05, hcx, (DOORH - 0.3) / 2 + 0.15, hcz + SH + 0.04),   // 문 유리(남쪽, 카메라 정면)
+    ]), darkGlass);
+    g.add(stairHouseGlass);   // 재질 하나 더 = 드로우콜 하나
+    // 🚧 콜라이더 3면(서·동·북) + 문 좌우 기둥(문 자리는 뺀다 — 여기가 들어가는 자리, 인방은 머리 위라 안 막는다).
     //   colliders 는 월드 좌표계다 — buildSpiralStair 의 solidCircle(g.position.x+cx, ...) 와 같은 이유로
     //   g.position(=INT)을 반드시 더한다(안 더하면 벽이 마을 원점 근처에 엉뚱하게 생긴다 — 실측으로 잡은 버그).
     //   rebuildInteriorFinish 가 증축마다 방을 다시 지으므로 g.userData 에 담아 그때 같이 지운다
     //   (안 지우면 안 보이는 벽이 누적된다 — 나선 계단 콜라이더와 같은 이유).
     const wcx = g.position.x + hcx, wcz = g.position.z + hcz;
     g.userData.stairHouseColliders = [
-      solidBox(wcx - SH - WT / 2, wcz - SH, wcx - SH + WT / 2, wcz + SH),                  // 뒷벽
-      solidBox(wcx - SH, wcz - SH - WT / 2, wcx + SH, wcz - SH + WT / 2),                  // 왼벽
-      solidBox(wcx - SH, wcz + SH - WT / 2, wcx + SH, wcz + SH + WT / 2),                  // 오른벽
-      solidBox(wcx + SH - WT / 2, wcz - SH, wcx + SH + WT / 2, wcz - DOORW / 2),           // 문 왼쪽 기둥
-      solidBox(wcx + SH - WT / 2, wcz + DOORW / 2, wcx + SH + WT / 2, wcz + SH),           // 문 오른쪽 기둥
+      solidBox(wcx - SH - WT / 2, wcz - SH, wcx - SH + WT / 2, wcz + SH),                  // 서쪽 옆벽
+      solidBox(wcx + SH - WT / 2, wcz - SH, wcx + SH + WT / 2, wcz + SH),                  // 동쪽 옆벽
+      solidBox(wcx - SH, wcz - SH - WT / 2, wcx + SH, wcz - SH + WT / 2),                  // 북쪽 뒷벽
+      solidBox(wcx - SH, wcz + SH - WT / 2, wcx - DOORW / 2, wcz + SH + WT / 2),           // 남쪽 문 왼쪽 기둥
+      solidBox(wcx + DOORW / 2, wcz + SH - WT / 2, wcx + SH, wcz + SH + WT / 2),           // 남쪽 문 오른쪽 기둥
     ];
   } else {
     const wall = () => clayMat(PAL.wall, false);
