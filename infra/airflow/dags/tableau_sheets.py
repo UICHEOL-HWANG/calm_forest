@@ -11,12 +11,12 @@
            --(이 DAG, 04:00 KST)--> 구글 시트 --(24h 자동)--> 태블로 퍼블릭
 
 SQL 원본
-  sql/tableau_export.sql 하나뿐입니다. 이 DAG 는 그 파일의 `-- @tab: <이름>`
+  sql/analytics/tableau_export.sql 하나뿐입니다. 이 DAG 는 그 파일의 `-- @tab: <이름>`
   마커를 읽어 쿼리를 쪼갤 뿐, SQL 을 복사해 두지 않습니다.
   (복사본을 두면 콘솔에서 고친 쿼리와 자동 갱신되는 쿼리가 조용히 갈라집니다.)
 
 배포
-  scp sql/tableau_export.sql oracle-calmforest:/opt/airflow/dags/sql/
+  scp sql/analytics/tableau_export.sql oracle-calmforest:/opt/airflow/dags/sql/
   scp infra/airflow/dags/tableau_sheets.py oracle-calmforest:/opt/airflow/dags/
 
 사전 준비(사람이 한 번만)

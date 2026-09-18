@@ -7,7 +7,7 @@
 //
 //  ▶ 왜 있나: GA4 는 광고차단에 유실되고 BigQuery export 가 일별이라 당일
 //    확인이 안 된다. 과수원은 리텐션 측정이 존재 이유인 기능이라 핵심
-//    생애주기 이벤트를 sql/orchard_events.sql 테이블에도 직접 남긴다.
+//    생애주기 이벤트를 sql/setup/orchard_events.sql 테이블에도 직접 남긴다.
 //    game_logs(좌표 전용)와 섞지 않는다.
 //
 //  ▶ 인증: Authorization: Bearer <Supabase JWT> → GoTrue /auth/v1/user 로 검증.
@@ -20,7 +20,7 @@
 //  ▶ 실패해도 게임을 막지 않는다 — 클라이언트가 fire-and-forget 으로 호출한다.
 // =============================================================
 
-// js/game.js 가 실제로 쏘는 이벤트만 허용한다(sql/orchard_events.sql 의 열 주석과 짝).
+// js/game.js 가 실제로 쏘는 이벤트만 허용한다(sql/setup/orchard_events.sql 의 열 주석과 짝).
 const EVENTS = new Set(['sapling_plant', 'tree_water', 'fruit_ready', 'fruit_harvest', 'fruit_capped', 'tree_chop']);
 const KINDS = new Set(['apple', 'pear', 'peach', 'persimmon', 'chestnut']);
 

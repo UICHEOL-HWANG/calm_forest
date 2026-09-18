@@ -66,7 +66,7 @@ export const TUNING = {
   - 테스터 10명 **개별 현황 행** (최근 접속·진행도·소속 군) — 10명 규모 관제의 핵심 뷰
   - A/B 군별 비교: DAU·체류시간·이탈 퍼널(variant 분할)·미니게임 성공률
   - 튜토리얼 스텝 퍼널 (군별, §3의 인덱스+key 기반)
-- SQL은 `sql/admin_analytics.sql`에 이어서 추가. 차트 색은 `_dash.css` 토큰만 사용.
+- SQL은 `sql/analytics/admin_analytics.sql`에 이어서 추가. 차트 색은 `_dash.css` 토큰만 사용.
 
 ## 5. 검증
 
@@ -170,7 +170,7 @@ export const TUNING = {
 ## 7. 준비 목록
 
 **Claude(승인 뒤 착수)**
-1. `beta_testers.map_order` + 배정 SQL(이메일만 채우면 됨) — `sql/admin_analytics.sql` §베타
+1. `beta_testers.map_order` + 배정 SQL(이메일만 채우면 됨) — `sql/analytics/admin_analytics.sql` §베타
 2. 맵 잠금(`js/tuning.js` + 바다터·안개숲 입구) + 안내 문구
 3. `beta/diary.html` + `beta_diary` 테이블·RLS + 메뉴 버튼 + 빌드 목록
 4. `beta_monitor` 일지·맵 탭
@@ -186,7 +186,7 @@ export const TUNING = {
 
 **실행 명령 (사용자)**
 1. 배정 SQL 만들기: `node scripts/beta-roster.mjs a@x.com b@x.com …` (4명 이상이면 수는 자유 — 번들 반반, 맵 순서 교차) → 출력을 복사. 예비 인원은 나중에 같은 명령으로 다시 돌려 붙이면 덮어쓰기됨
-2. Supabase SQL 편집기에서 순서대로 실행: `sql/admin_analytics.sql` §베타 전체(컬럼·일지 테이블·RPC) → 1번 출력
+2. Supabase SQL 편집기에서 순서대로 실행: `sql/analytics/admin_analytics.sql` §베타 전체(컬럼·일지 테이블·RPC) → 1번 출력
 2-1. Supabase 대시보드 → Authentication → URL Configuration → Redirect URLs 에 `https://calmforest.cloud/beta/diary.html` 추가(안 하면 일지 페이지의 구글 로그인 복귀가 막힌다)
 3. 로컬 확인: `?forceVariant=beta_A&forceMapOrder=sea_first&betaDay=2` (localhost 전용)
 4. 배포: `git checkout main && git merge dev && node scripts/build-web.mjs && npx wrangler deploy && git push`

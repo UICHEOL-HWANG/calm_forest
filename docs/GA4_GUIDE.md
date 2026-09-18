@@ -183,7 +183,7 @@ GA4는 커스텀 매개변수를 등록해야 탐색에서 쪼갤 수 있어요.
 | 유입 경로·기기·지역·재방문 | **GA4** |
 | 캐릭터 이동 히트맵·체류 구역 | **Supabase** (`game_logs`, 히트맵 쿼리) |
 | 인벤토리/집 진행도 분포 | **Supabase** (`game_saves`) |
-| 전체 유저 합산 커스텀 통계 | **Supabase SQL** (`sql/analytics_queries.sql`) / 관리자 대시보드 |
+| 전체 유저 합산 커스텀 통계 | **Supabase SQL** (`sql/analytics/analytics_queries.sql`) / 관리자 대시보드 |
 
 GA4는 이벤트 카운트·퍼널·유입에 강하고, 좌표처럼 촘촘한 원자료는 Supabase가 강합니다. 둘을 같이 보면 "무엇을(GA4) 어디서(Supabase)"가 완성돼요.
 

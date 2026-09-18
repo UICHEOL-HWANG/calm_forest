@@ -54,7 +54,7 @@ Supabase --(GH Actions supabase-to-bq.yml, 03:00)--> BigQuery
 태블로 퍼블릭은 **구글 시트 연결만** 자동 갱신한다(CSV/엑셀 업로드는 대상 아님).
 갱신 시각은 지정할 수 없고, 급하면 작성자가 Request Update 를 누른다.
 
-SQL 은 `sql/tableau_export.sql` 한 파일이 원본이고, DAG 는 그 안의
+SQL 은 `sql/analytics/tableau_export.sql` 한 파일이 원본이고, DAG 는 그 안의
 `-- @tab: <이름>` 마커로 쿼리를 쪼갠다. **DAG 에 SQL 복사본을 두지 않는다.**
 
 #### 최초 1회 설정
@@ -75,7 +75,7 @@ ssh oracle-calmforest 'chmod 600 /opt/airflow/secrets/gcp_sa.json'
 
 ```bash
 ssh oracle-calmforest 'mkdir -p /opt/airflow/dags/sql'
-scp sql/tableau_export.sql oracle-calmforest:/opt/airflow/dags/sql/
+scp sql/analytics/tableau_export.sql oracle-calmforest:/opt/airflow/dags/sql/
 scp infra/airflow/dags/tableau_sheets.py oracle-calmforest:/opt/airflow/dags/
 scp infra/airflow/Dockerfile infra/airflow/docker-compose.yml oracle-calmforest:/opt/airflow/
 ssh oracle-calmforest 'cd /opt/airflow && sudo docker compose up -d --build'

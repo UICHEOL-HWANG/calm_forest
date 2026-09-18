@@ -100,8 +100,8 @@
 
 ## 6. E. 분석 연속성
 
-- `sql/tableau_export.sql`의 `t3_tutorial_funnel`을 `step` 번호 대신 `key` 기준으로 집계하고 고정 순서 컬럼(`ord`)을 CASE 매핑으로 부여한다(17 key). 결과 컬럼: `ord, step_key, devices, events`.
-- 변경 후 `scp sql/tableau_export.sql oracle-calmforest:/opt/airflow/dags/sql/`로 반영(README 절차). scp는 사용자 확인 후 실행.
+- `sql/analytics/tableau_export.sql`의 `t3_tutorial_funnel`을 `step` 번호 대신 `key` 기준으로 집계하고 고정 순서 컬럼(`ord`)을 CASE 매핑으로 부여한다(17 key). 결과 컬럼: `ord, step_key, devices, events`.
+- 변경 후 `scp sql/analytics/tableau_export.sql oracle-calmforest:/opt/airflow/dags/sql/`로 반영(README 절차). scp는 사용자 확인 후 실행.
 - 대시보드 `admin_analytics.sql`의 거래 단계(`shop_buy`/`shop_sell` 키)는 환영 거래도 `shop_sell` 카운트로 잡히므로 변경 없음.
 
 ## 7. F. 디자인 · 모바일 · 토스 요구사항
@@ -149,7 +149,7 @@
 - `js/metrics.js` · `js/logger.js` · `js/analytics.js`: 로깅 가드
 - `js/i18n-en.js`: 영문 키
 - `docs/GA4_GUIDE.md`: 이벤트 3종·`via` 매개변수·변경 이력
-- `sql/tableau_export.sql`: t3 key 기준 전환
+- `sql/analytics/tableau_export.sql`: t3 key 기준 전환
 
 ## 10. 검증
 

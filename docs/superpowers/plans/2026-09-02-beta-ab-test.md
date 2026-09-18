@@ -104,7 +104,7 @@ export function easeMult(variant, tries) {
 ### Task 2: beta_testers 테이블 + 로그인 배정 + forceVariant
 
 **Files:**
-- Modify: `sql/admin_analytics.sql` (파일 끝에 §베타 섹션 추가)
+- Modify: `sql/analytics/admin_analytics.sql` (파일 끝에 §베타 섹션 추가)
 - Modify: `js/supabase-client.js:42-49` (applySession), `js/supabase-client.js:16-25` (state)
 - Modify: `js/analytics.js` (setAbVariant 신설, 56행 setGaUser 근처)
 
@@ -112,7 +112,7 @@ export function easeMult(variant, tries) {
 - Consumes: 없음 (Task 1과 독립)
 - Produces: `state.variant`가 로그인 후 `'beta_A'|'beta_B'`로 확정, `state.createdAt`(ISO 문자열) — Task 3이 사용. `setAbVariant(v: string): void` (analytics.js)
 
-- [ ] **Step 1: SQL — 테이블·RLS** (`sql/admin_analytics.sql` 끝에 추가)
+- [ ] **Step 1: SQL — 테이블·RLS** (`sql/analytics/admin_analytics.sql` 끝에 추가)
 
 ```sql
 -- =============================================================
@@ -179,7 +179,7 @@ async function resolveBetaGroup(session) {
 
 ③ 파라미터 없이 열면 `'control'` 확인.
 
-- [ ] **Step 5: Commit** — `git add sql/admin_analytics.sql js/supabase-client.js js/analytics.js && git commit -m "Feat: 🧪 beta_testers 명단 테이블(RLS)·로그인 배정·forceVariant 검증 파라미터"`
+- [ ] **Step 5: Commit** — `git add sql/analytics/admin_analytics.sql js/supabase-client.js js/analytics.js && git commit -m "Feat: 🧪 beta_testers 명단 테이블(RLS)·로그인 배정·forceVariant 검증 파라미터"`
 
 ---
 
@@ -332,7 +332,7 @@ onTrack((name, p) => {
 ### Task 6: cf_beta_overview RPC (SQL)
 
 **Files:**
-- Modify: `sql/admin_analytics.sql` (§베타 섹션에 이어서 추가 — Task 2 다음)
+- Modify: `sql/analytics/admin_analytics.sql` (§베타 섹션에 이어서 추가 — Task 2 다음)
 
 **Interfaces:**
 - Consumes: `beta_testers`(Task 2), `session_logs`(counts jsonb·variant·play_sec·started_at·updated_at), `game_saves`(state jsonb), `game_logs`(variant·created_at·client_id·user_id), `cf_share_links`(기존 공유 토큰), `auth.users`(email→id)
@@ -451,7 +451,7 @@ grant execute on function public.cf_beta_overview(int, text) to authenticated, a
 
 - [ ] **Step 2: 검증** — 유저에게 Supabase SQL 편집기에서 §베타 섹션 전체 실행을 요청. 이어 편집기에서 `select public.cf_beta_overview(7);` — 권한 예외 없이 jsonb 4키(testers/ab_daily/tut_funnel/minigame) 반환 확인(테스터 미등록 시 빈 배열 정상).
 
-- [ ] **Step 3: Commit** — `git add sql/admin_analytics.sql && git commit -m "Feat: 🧪 cf_beta_overview RPC — 테스터 개별 현황·군별 일별·튜토리얼 퍼널·미니게임 성공률"`
+- [ ] **Step 3: Commit** — `git add sql/analytics/admin_analytics.sql && git commit -m "Feat: 🧪 cf_beta_overview RPC — 테스터 개별 현황·군별 일별·튜토리얼 퍼널·미니게임 성공률"`
 
 ---
 

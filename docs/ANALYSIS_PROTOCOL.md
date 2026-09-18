@@ -102,4 +102,4 @@ Claude 는 근거와 반증 조건을 붙인 **후보**를 낼 뿐이다. 채택
 | 표본 정의 | `ml/sql/churn_sample.sql` — **단일 소스**. 노트북에 쿼리를 복사하지 않는다 |
 | 차트 | `ml/calm_ml/report.py` — 한글 폰트·마이너스 글리프·검증 팔레트·n 표기 강제 |
 | 실험 기록 | `ml/calm_ml/tracking.py` — W&B `calm-forest` |
-| 계측 점검 | `sql/quality_checks.sql` — Supabase 실시간용. G1의 BQ 이력 점검과 **역할이 다르니 둘 다 쓴다** |
+| 계측 점검 | `sql/analytics/quality_checks.sql` — Supabase 실시간용. G1의 BQ 이력 점검과 **역할이 다르니 둘 다 쓴다** |

@@ -53,4 +53,4 @@ delete from public.notices where id = 3;   -- 이미 읽은 유저의 noticeSeen
 ```
 
 ## 스키마
-`sql/migrate_notices.sql` — `notices(id, title, body, title_en, body_en, target_user_id, reply_to, created_at)` + RLS 두 정책(`notices_select_visible`, `feedback_select_own`).
+`sql/migrations/migrate_notices.sql` — `notices(id, title, body, title_en, body_en, target_user_id, reply_to, created_at)` + RLS 두 정책(`notices_select_visible`, `feedback_select_own`).

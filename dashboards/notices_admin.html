@@ -158,11 +158,11 @@
       }
       const { data: isAdmin, error } = await sb.rpc('cf_is_admin');
       if (error) {
-        if (/function|does not exist/i.test(String(error.message))) showMsg('권한 함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/migrate_notices_admin.sql 을 SQL Editor 에서 실행하세요.</small>');
+        if (/function|does not exist/i.test(String(error.message))) showMsg('권한 함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/migrations/migrate_notices_admin.sql 을 SQL Editor 에서 실행하세요.</small>');
         else showMsg('오류: ' + esc(error.message));
         return;
       }
-      if (!isAdmin) { showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/migrate_notices_admin.sql 의 허용목록에 이메일을 추가하세요.</small>'); return; }
+      if (!isAdmin) { showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/migrations/migrate_notices_admin.sql 의 허용목록에 이메일을 추가하세요.</small>'); return; }
       $('load').style.display = 'none'; $('dash').style.display = 'block';
       wire();
       await loadNotices(); await loadFeedback();   // 피드백의 '답장함' 표시는 소식 목록을 참조하므로 순서 유지

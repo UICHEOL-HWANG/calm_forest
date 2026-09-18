@@ -8,8 +8,8 @@
 ## 1. Supabase 연결 (저장 + 로그 전송 켜기)
 
 1. https://supabase.com 에서 프로젝트 생성 (무료 플랜 OK).
-2. 좌측 **SQL Editor → New query** 에 `sql/supabase_setup.sql` 내용을 통째로 붙여넣고 **Run**.
-   (관리자 대시보드까지 쓰려면 `sql/admin_analytics.sql` 도 실행)
+2. 좌측 **SQL Editor → New query** 에 `sql/setup/supabase_setup.sql` 내용을 통째로 붙여넣고 **Run**.
+   (관리자 대시보드까지 쓰려면 `sql/analytics/admin_analytics.sql` 도 실행)
    → `game_saves`, `game_logs` 테이블 + RLS + 분석 뷰가 만들어집니다.
 3. **구글 로그인 설정** (Authentication → Providers → **Google** 켜기):
    - Google Cloud Console → **API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹)** 생성
@@ -104,7 +104,7 @@ alter table public.cf_share_links enable row level security;
 revoke all on table public.cf_share_links from anon, authenticated;
 ```
 
-그다음 `sql/admin_analytics.sql` 을 **다시** 실행해 함수를 `(days, token)` 시그니처로 교체하고, 링크를 발급합니다:
+그다음 `sql/analytics/admin_analytics.sql` 을 **다시** 실행해 함수를 `(days, token)` 시그니처로 교체하고, 링크를 발급합니다:
 
 ```sql
 insert into public.cf_share_links (token, label, expires_at)

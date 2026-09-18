@@ -2,7 +2,7 @@
 
 작성 2026-09-02. 데이터 출처는 구글 시트 `calm-forest-dashboard`
 (ID `1_oNYTupZoKOCuquRy2-Bam1AkqYNRU8BPErtxyunWPE`, 탭 8개).
-파이프라인·쿼리 원본은 `sql/tableau_export.sql`, 적재는 `infra/airflow/dags/tableau_sheets.py`.
+파이프라인·쿼리 원본은 `sql/analytics/tableau_export.sql`, 적재는 `infra/airflow/dags/tableau_sheets.py`.
 
 저작 환경은 **Tableau Public Desktop (Apple silicon)** — 커스텀 팔레트·셰이프가
 웹 편집기에서 안 되기 때문. 팔레트는 이미 설치됨(아래 참조).
@@ -301,7 +301,7 @@ twbx 손 조립은 중단(§ 메모리 참고). Desktop에서 직접 그린다. 
 `S1b 분포`(t7_activity_breadth에서 0종 필터 제외, 곰 갈색 단색). 도넛 조각을 셋으로 나눈 덕에
 「142대는 누구인가」가 이 한 장에 들어가 별도 Q3 시트는 만들지 않음. 옛 S1은 워크북에만 남김.
 
-**새 데이터** (`sql/tableau_export.sql` A10·A11, 시트 탭 적재 완료, 9/1 기준으로 239/142와 일치):
+**새 데이터** (`sql/analytics/tableau_export.sql` A10·A11, 시트 탭 적재 완료, 9/1 기준으로 239/142와 일치):
 - `t10_idle_who` — 무행동/활동 × 국내/해외, 국내 기기별. **해외 119대는 활동 0(한 대도 없음)**. 국내 120대 중 무행동 23(19%), 모바일 28% vs 데스크톱 12%.
   → 59.4% 헤드라인의 대부분이 해외 트래픽. 실제 과제는 국내 모바일 진입. 유입경로별(인스타 인앱)은 n=7이라 뺌.
 - `t8b_dau_wau_region` — DAU/WAU 국내/해외 분리. 필터 「국내」로 두면 8/15 봉우리가 거의 사라짐.
@@ -338,6 +338,6 @@ HUD 없는 판은 `Input.capturePhoto()`, 앞모습 포즈는 `Input.captureActi
 **S3 완주율 검산(2026-09-04)**: 진짜 per-device 퍼널이 맞음 — 던지기 28 → 그중 잡기 26(93%), 심기 30 → 물주기 25 → 그중 수확 23(77%).
 `fishing_catch` 만 있고 `fishing_cast` 가 없는 기기 0대, `harvest_crop` 만 있고 `plant_seed` 가 없는 기기 0대 → '그중 몇 대'로 말해도 된다.
 ⚠️ 분모가 28·30 이라 기기 한두 대에 몇 %가 흔들린다. 문구에 원 숫자를 반드시 병기.
-⚠️ `x_completion` 은 `sql/tableau_export.sql` 에 정의가 없다(초기 세션에서 임시로 만든 x_ 탭). 재현이 필요하면 위 쿼리를 A13 으로 넣을 것.
+⚠️ `x_completion` 은 `sql/analytics/tableau_export.sql` 에 정의가 없다(초기 세션에서 임시로 만든 x_ 탭). 재현이 필요하면 위 쿼리를 A13 으로 넣을 것.
 
 **미완**: 재발행.
