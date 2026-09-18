@@ -9981,7 +9981,18 @@ const ORES = [
   { id: 'coal',  name: '석탄', color: 0x2a2a2a },
   { id: 'gem',   name: '보석', color: 0x5ad0e0 },
 ];
-function weightedOre() { const gemP = WEATHER === 'fog' ? 0.2 : 0.1; const r = Math.random(); return r < 0.55 ? ORES[0] : r < 1 - gemP ? ORES[1] : ORES[2]; } // 돌55/석탄~35/보석10(🌫️ 안개 낀 날 20)
+// 💎 보석은 🌫️안개 낀 날에만(그 안에서 28%). 표는 js/dex-gates.js
+//   ⚠️ 광맥은 **스폰 시** 종류가 정해지고 재생성(14초) 때 바뀌지 않는다(spawnOreRock 의 userData.ore).
+//      즉 동굴을 지을 때의 날씨가 그 세션 광맥 구성을 정한다 — 안개 낀 날 동굴에 가야 한다.
+//   ⚠️ rollKind 를 쓰지 않는다: 누적 확률 구조가 아니고, 여기가 이미 WEATHER 를 보던 자리다.
+//   실측 — 맑음 돌61/석탄39/보석0 · 안개 돌44/석탄28/보석28 (원래는 돌55/석탄35/보석10, 안개 20)
+function weightedOre() {
+  const gemP = gateOpen(gateOf('ore', 'gem'), situation()) ? DEX_GATES.ore.gem.p : 0;
+  const r = Math.random();
+  if (r < gemP) return ORES[2];                    // 💎 보석
+  const t = (r - gemP) / (1 - gemP);               // 나머지를 0~1 로 다시 펴서 원래 55:35 비율 유지
+  return t < 0.55 / 0.9 ? ORES[0] : ORES[1];
+}
 
 function spawnOreRock(x, z, ore) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
