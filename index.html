@@ -486,6 +486,66 @@
   /* 토스트(피드백 메시지) */
   #toast { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
+  /* 🦋 환경 미터 — 배치 모드에서만 뜬다.
+     ⚠️ 하단 기준은 env(safe-area-inset-bottom) 이다. --toss-reserve 는 **상단** 여백이라
+        bottom 에 더하면 토스에서만 52px 떠오른다(--top-inset 계산을 보면 용도가 분명하다).
+     ⚠️ 192px 는 #door-prompt(150px, 가운데 정렬) 위다. 150 에 두면 폰 폭에서 겹친다
+        — 미터는 왼쪽 고정이고 프롬프트는 가운데라, 좁은 화면에선 가로로 피할 방법이 없다. */
+  #habitat-meter { position: absolute; left: 12px; bottom: calc(192px + env(safe-area-inset-bottom)); z-index: 6;
+    background: rgba(20,28,22,.86); color: #eaf3ea; border-radius: 10px; padding: 8px 10px;
+    font-size: 13px; line-height: 1.5; pointer-events: none;
+    max-width: min(250px, calc(100vw - 24px)); box-sizing: border-box; }
+  #habitat-meter .hm-title { font-weight: 700; margin-bottom: 4px; }
+  #habitat-meter .hm-row { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+  #habitat-meter .hm-row > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #habitat-meter .hm-dots { letter-spacing: 1px; min-width: 42px; text-align: right; flex: none; }
+  /* 충족은 초록, 모자라면 주황 — 어느 줄을 고쳐야 하는지 한눈에 */
+  #habitat-meter .hm-goal { font-size: 11px; opacity: .78; min-width: 54px; text-align: right; flex: none; }
+  #habitat-meter .hm-row.ok .hm-dots { color: #9fe0a0; }
+  #habitat-meter .hm-row.no .hm-dots { color: #e8b48a; }
+  /* ⚠️ 이 규칙은 아래 미디어쿼리보다 **앞**에 있어야 한다.
+     뒤에 두면 같은 특이도라 나중 것이 이겨, 짧은 화면 규칙이 무시되고 안내 줄이 두 줄로 늘어난다
+     (실제로 그래서 320×568+토스 에서 #door-prompt 와 겹쳤다). */
+  #habitat-meter .hm-near { margin-top: 6px; padding-top: 6px; white-space: normal;
+    border-top: 1px solid rgba(255,255,255,.18); font-size: 12px; opacity: .92; }
+  /* 📱 폰·토스 — 규약대로 **컨텍스트 슬롯(12px, 162px)** 을 쓴다.
+     하단에 두면 #door-prompt(가운데 정렬)와 가로로 피할 방법이 없어 겹친다(실측 확인).
+     오른쪽 버튼 열(문의하기·도감 ≈150px)은 침범하지 않고, 가운데 띠(캐릭터)는 비운다. */
+  @media (max-width: 760px) {
+    #habitat-meter { top: calc(162px + var(--top-inset)); bottom: auto; left: 12px;
+      max-width: calc(100vw - 12px - 150px); font-size: 12px; padding: 7px 9px; }
+    #habitat-meter .hm-goal { font-size: 10px; min-width: 48px; }
+    #habitat-meter .hm-dots { min-width: 36px; }
+    /* 슬롯 우선순위: 코치 > 단계 안내 > **환경 미터** > 시설 배너 > 퀘스트 칩.
+       위 둘은 1회성 튜토리얼이라 미터가 비켜주고, 아래 둘은 미터가 떠 있는 동안 비켜준다. */
+    body.coaching #habitat-meter,
+    body.decor-guide #habitat-meter { display: none !important; }
+    body:has(#habitat-meter:not([hidden])) #story-chip,
+    body:has(#habitat-meter:not([hidden])) #hint-banner { display: none !important; }
+  }
+  /* 📏 세로가 짧은 화면 — 토스 상단 52px 까지 밀리면 미터 아래가 #door-prompt 와 겹친다.
+     실측(320×568 + 토스): 슬롯 top 214, 문 프롬프트 top 307 → **여유 93px**. */
+  @media (max-height: 640px) {
+    /* ⚠️ 슬롯(162)을 위로 올려 해결하려 했더니 **미니맵과 겹쳤다** — 위는 못 쓴다.
+       top 은 그대로 두고 **높이만** 줄인다. 안내 줄을 한 줄로 유지하는 게 핵심
+       (game.js HABITAT_BLOCK_LINE 주석 참고). */
+    #habitat-meter { font-size: 11px; line-height: 1.34; padding: 6px 8px; }
+    #habitat-meter .hm-title { margin-bottom: 2px; }
+    #habitat-meter .hm-near { font-size: 10px; margin-top: 4px; padding-top: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 두 줄 방지 안전망 */
+    #habitat-meter .hm-goal { font-size: 9.5px; min-width: 44px; }
+  }
+  /* 가로로 눕힌 폰 — 세로가 극단적으로 짧다. 안내 줄을 접고 수치만 남긴다(수치가 본질). */
+  /* 가로로 눕힌 폰 — 세로가 극단적으로 짧다. 안내 줄을 접고 수치만 남긴다(수치가 본질).
+     ⚠️ 가로는 폭이 760 을 넘어 위 슬롯 규칙을 안 타고 **하단 기준**(192)으로 떨어지는데,
+        화면이 375 밖에 안 돼 그 자리가 미니맵이다(실측 812×375: 미터 top 125 = 미니맵).
+        도구 바(top≈316)와 문 프롬프트(bottom≈225) 사이 빈 띠로 내린다. */
+  @media (max-height: 460px) {
+    /* 실측(812×375+토스): 미니맵 b=254 · 도구바 t=297 → 아래 여유 43px, 미터는 58px 로 안 들어간다.
+       대신 **미니맵 오른쪽**(r=124) 빈 띠로 옮긴다. 문 프롬프트(l=357)를 넘지 않게 폭을 190 으로 묶는다. */
+    #habitat-meter { top: calc(162px + var(--top-inset)); bottom: auto; left: 136px; max-width: 190px; }
+    #habitat-meter .hm-near { display: none; }
+  }
   /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지.
      카드 높이는 문구 줄 수·목표 줄 유무로 변하므로 renderCoach 가 실측해 --coach-h 로 넘긴다
      (이전엔 110px 로 하드코딩해 목표 줄이 붙자 토스트가 카드를 덮었다). */
@@ -1083,7 +1143,7 @@
   #worldmap.show { display: grid; }
   #worldmap .wm-card { width: min(520px, 94vw); }
   /* 하한을 주지 않으면 폰 가로·분할 화면(dvh 작음)에서 calc 가 음수가 되어 지도가 통째로 사라진다 */
-  #wm-canvas { display: block; width: max(240px, min(100%, calc(100dvh - 260px))); aspect-ratio: 1 / 1; border-radius: 18px; margin: 10px auto 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
+  #wm-canvas { display: block; width: max(240px, min(100%, calc((100dvh - 260px) * 66 / 57))); aspect-ratio: 66 / 57; border-radius: 18px; margin: 10px auto 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
   #worldmap .dm-actions { justify-content: center; margin-top: 18px; padding-bottom: 4px; }
   .wm-quests { font-size: 12.5px; line-height: 1.5; text-align: center; margin: 10px 2px 0; opacity: .85; }
   .wm-quests:empty { display: none; }
@@ -1403,6 +1463,13 @@
   <div id="hint" class="panel">이동 WASD/방향키 · 1 도구 세트 바꾸기 · 2~6 도구 고르기 · 상호작용 Space/클릭</div>
   <div id="toast" class="panel"></div>
 
+  <!-- 🦋 텃밭 환경 미터 — 장식을 놓거나 옮기는 동안에만 뜬다(평소엔 조용) -->
+  <div id="habitat-meter" hidden>
+    <div class="hm-title">🌿 이 자리</div>
+    <div class="hm-rows"></div>
+    <div class="hm-near" hidden></div>
+  </div>
+
   <!-- 🪧 시설 첫 접근 배너 (비차단 — 입력을 받지 않고 자동으로 사라짐) -->
   <!-- 🎨 첫 가구 배치 단계 안내(1회) -->
   <div id="decor-guide" class="panel"><div id="dg-text"></div><div id="dg-dots"></div></div>
@@ -1615,7 +1682,8 @@
   <div id="dex-modal">
     <div class="tut-card">
       <h2 id="dex-title">📖 도감</h2>
-      <div class="market-hint">물고기·작물·광물·요리·이웃을 처음 만나면 기록돼요 — 전부 모으면 🪙150!</div>
+      <!-- ⚠️ 카테고리를 나열하지 않는다 — 늘 때마다 낡는다(🦋방문객 추가 때 실제로 어긋났다) -->
+      <div class="market-hint">처음 만나거나 찾아오면 기록돼요 — 전부 모으면 🪙150!</div>
       <div id="dex-sections"></div>
       <div id="dex-guest" class="dex-guest">
         🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>구글로 로그인하면 <b>영구 보존 + 기기 간 연동</b>!
@@ -1939,6 +2007,18 @@
 
   <div id="loading">calm forest 불러오는 중… 🌿</div>
 
+  <!-- 🌐 로딩 화면만 먼저 번역한다 — 아래 큰 모듈 스크립트에 맡기면 늦는다.
+       그 스크립트는 js/game.js(+three.js, 모듈 64개)를 static import 하는데, ES 모듈은
+       import 를 전부 평가한 뒤에야 본문 첫 줄을 실행한다. 즉 로딩 화면은 **게임이 다 내려온 뒤**,
+       곧 사라지기 직전에야 영어가 된다(로컬은 빨라서 안 보이고, itch·느린 망에서 그대로 드러났다).
+       이 스크립트의 의존은 i18n 하나뿐이라 훨씬 먼저 실행된다. 언어 판정은 그대로 i18n.js 가 하므로
+       감지 로직을 여기에 복사하지 않는다(단일 출처). 잠금: tests/i18n-boot.test.mjs -->
+  <script type="module">
+    import { LANG, translateDom } from './js/i18n.js';
+    document.documentElement.lang = LANG;
+    translateDom(document.getElementById('loading'));
+  </script>
+
   <!-- 📱 PWA service worker — 웹(브라우저·TWA)에서만. 토스 웹뷰·itch iframe 은 플래그로 제외.
        sw.js 는 오프라인 안내 페이지만 캐시하고 게임 코드는 절대 캐시하지 않는다(sw.js 주석 참고). -->
   <script>
@@ -1981,7 +2061,7 @@
 
     // ── 🌐 i18n 부팅 — 영어 모드면 정적 마크업을 즉시 번역하고,
     //    이후 동적으로 나타나는 텍스트는 옵저버가 사전으로 치환한다(ko 모드 오버헤드 0).
-    document.documentElement.lang = LANG;
+    // (lang 속성과 #loading 번역은 위 부트 스크립트가 이미 끝냈다 — 여기선 나머지 DOM 만)
     translateDom(document.body);
     watchDom(document.body);
     // 토글 라벨은 "전환될 언어"를 보여준다(🌐 English ↔ 🌐 한국어)
@@ -2103,12 +2183,20 @@
     // ── 🗺️ 마을 지도 ────────────────────────────────────────────
     //   미니맵과 같은 월드 좌표계를 쓰되, 큰 캔버스라 한글 지명을 붙일 수 있다.
     //   섬 실루엣은 겹친 원들의 합집합 — 손으로 그린 듯한 동물의숲 톤을 코드로만 낸다.
-    // 지도가 담는 월드 범위(정사각). 미니맵의 R=30 을 그대로 쓰면 바다만 넓고 마을이 좁아져
-    //   중앙 시설(작업대·상점·시세판…)의 라벨이 서로 겹친다 — 지명이 있는 범위까지만 잘라 크게 본다.
-    const WM_BOX = { x0: -26, z0: -20, span: 52 };
+    // 🗺️ 미니맵과 전체 지도가 **함께 쓰는** 월드 범위(정사각). 여기 한 곳만 고친다.
+    //   예전엔 전체 지도가 {x0:-26, z0:-20, span:52}, 미니맵이 중심(0,0)·반경 30 으로 서로 달라
+    //   같은 장소가 두 화면에서 다른 자리에 보였고(싱크 어긋남), 둘 다 x=32 인 🍎과수원 입구를
+    //   범위 밖으로 흘려 지도 가장자리에 라벨만 잘려 보였다.
+    //   지명 x 는 -26(🏛️박물관) ~ 32(🍎과수원), z 는 -17(🌫️안개 숲) ~ 26(🌟반딧불이 계곡).
+    //   사방에 라벨 여백 4 를 두고 정사각으로 감싼다 — 지명을 새로 늘리면 이 숫자를 다시 잰다.
+    //   마을은 가로로 길다(x 66 · z 57 — 아래 🍄채집 숲·🌟계곡 라벨이 잘리지 않는 선까지). 정사각으로 감싸면 남는 건 바다뿐인데 그만큼 축척이
+    //   작아져 중앙 시설(작업대·상점·시세판·리더보드) 라벨이 서로 먹는다 — 박스도 캔버스도
+    //   같은 66:57 로 눕힌다(#wm-canvas aspect-ratio 와 이 숫자는 함께 움직인다).
+    const MAP_VIEW = { x0: -30, z0: -21, w: 66, h: 57 };
     const WM_LAND = [   // 섬 실루엣을 이루는 원들 [월드x, 월드z, 반경]
       [0, 0, 17], [-10, 10, 12], [8, 16, 12], [-8, 20, 12], [5, 24, 11],
       [-14, 0, 9], [14, -6, 10], [0, -14, 11], [16, 8, 10], [-13, -11, 9], [0, -21, 8], [-17, -16, 8],   // 마지막: 🌫️ 안개 숲 입구(-17,-17) 둘레
+      [24, 2, 8], [32, 2, 7],   // 🍎 과수원 언덕길 — 마을 동쪽으로 뻗는다. 없으면 과수원이 바다 위에 뜬다
     ];
     const WM_WATER = [[16, 9, 6], [0, -21.5, 7]];        // 🏞️ 마을 호수 · 🛶 나루터 물가
     const WM_GROVE = [[-13, 24, 9], [2, 25, 7]];         // 🍄 채집 숲 · 🌟 반딧불이 계곡(짙은 수풀)
@@ -2117,14 +2205,16 @@
       const cv = $('wm-canvas'); if (!cv) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const S = cv.clientWidth || 400;
-      cv.width = Math.round(S * dpr); cv.height = Math.round(S * dpr);
+      const SH = Math.round(S * MAP_VIEW.h / MAP_VIEW.w);   // 캔버스 높이 = 박스 비율 그대로(늘어나지 않는다)
+      cv.width = Math.round(S * dpr); cv.height = Math.round(SH * dpr);
       const c = cv.getContext('2d');
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const px = (wx, wz) => [(wx - WM_BOX.x0) / WM_BOX.span * S, (wz - WM_BOX.z0) / WM_BOX.span * S];
-      const pr = (r) => r / WM_BOX.span * S;
+      const K = S / MAP_VIEW.w;                              // 월드 1 → 화면 px (x·z 공통 — 왜곡 없음)
+      const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K];
+      const pr = (r) => r * K;
       const blob = (list, grow = 0) => { c.beginPath(); list.forEach(([x, z, r]) => { const [a, b] = px(x, z); c.moveTo(a + pr(r + grow), b); c.arc(a, b, pr(r + grow), 0, 7); }); c.fill(); };
 
-      c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, S, S);                   // 바다
+      c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, S, SH);                  // 바다
       c.fillStyle = '#f0e0b8'; blob(WM_LAND, 2.2);                       // 모래 해변
       c.fillStyle = '#a8d88a'; blob(WM_LAND, 0);                         // 섬(잔디)
       c.fillStyle = '#7cc06e'; blob(WM_GROVE, 0);                        // 짙은 수풀
@@ -2180,10 +2270,24 @@
         const w = c.measureText(label).width + 8, h = 19;   // 실제 글자 높이(어센더·디센더)만큼 — 작으면 라벨끼리 스친다
         let box = null;
         for (const [ox, oy] of OFFS) { const r = { x: a + ox, y: b + oy, w, h }; if (!hit(r)) { box = r; break; } }
-        if (!box) box = { x: a, y: b + 19, w, h };
+        if (!box) {
+          // 후보가 다 막혔을 때 아이콘 바로 아래로 떨어뜨리면 **제 아이콘을 덮는다**(🏆리더보드가
+          //   '더보드'로 읽히던 것). 대신 겹치는 넓이가 가장 작은 후보를 고른다.
+          let bestOv = Infinity;
+          for (const [ox, oy] of OFFS) {
+            const r = { x: a + ox, y: b + oy, w, h };
+            const ov = placed.reduce((sum, q) => sum
+              + Math.max(0, Math.min(q.x + q.w / 2, r.x + r.w / 2) - Math.max(q.x - q.w / 2, r.x - r.w / 2))
+              * Math.max(0, Math.min(q.y + q.h / 2, r.y + r.h / 2) - Math.max(q.y - q.h / 2, r.y - r.h / 2)), 0);
+            if (ov < bestOv) { bestOv = ov; box = r; }
+          }
+          if (!box) box = { x: a, y: b + 19, w, h };
+        }
         // 가장자리 지명(🌟계곡·🍄숲·🛶나루터)이 캔버스 밖으로 잘리지 않게 안쪽으로 당긴다
+        //   ⚠️ 세로는 SH 로 묶는다 — 캔버스가 가로로 길어진 뒤에도 S 로 묶고 있어서 아래쪽
+        //      지명(🌟반딧불이 계곡)이 캔버스 밖에 그려져 글자가 잘렸다.
         box.x = Math.max(w / 2 + 2, Math.min(S - w / 2 - 2, box.x));
-        box.y = Math.max(h / 2 + 2, Math.min(S - h / 2 - 2, box.y));
+        box.y = Math.max(h / 2 + 2, Math.min(SH - h / 2 - 2, box.y));
         placed.push(box);
         c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.92)'; c.strokeText(label, box.x, box.y);   // 흰 테두리로 잔디 위에서도 읽히게
         c.fillStyle = '#33513c'; c.fillText(label, box.x, box.y);
@@ -2327,6 +2431,33 @@
       toast(msg, ms = 1600) {
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
         clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+      },
+      // 🦋 환경 미터 — 라벨·문구는 game.js 가 js/habitat.js 에서 가져와 한 번 넘긴다(여기서 다시 적지 않는다)
+      _hmLabel: {}, _hmBlock: {},
+      setHabitatLabels(label, block) { this._hmLabel = label || {}; this._hmBlock = block || {}; },
+      /**
+       * info 가 없으면(null) 미터를 끈다.
+       * info = { kind:'match'|'near'|'none', visitor, rows:[{tag,have,need,block,ok}], blocker }
+       * ⚠️ 점만 보여주면 "4개가 많은 건가" 를 모른다 — 목표치를 같이 쓴다(2026-09-18 사용자 지적).
+       */
+      setHabitatMeter(info) {
+        const el = $('habitat-meter');
+        if (!info) { el.hidden = true; return; }
+        el.hidden = false;
+        const v = info.visitor;
+        const head = el.querySelector('.hm-title');
+        head.textContent = v ? `${v.ico} ${v.name}` : '🌿 이 자리';
+        el.querySelector('.hm-rows').innerHTML = (info.rows || []).map(r => {
+          const label = this._hmLabel[r.tag] || r.tag;
+          const dots = '●'.repeat(Math.min(6, r.have)) || '—';
+          const goal = r.block ? '없어야 해요' : `${r.need} 필요`;   // i18n 키 '{0} 필요'
+          return `<div class="hm-row ${r.ok ? 'ok' : 'no'}"><span>${label}</span>`
+               + `<span class="hm-dots">${dots}</span><span class="hm-goal">${goal}</span></div>`;
+        }).join('') || '<div class="hm-row"><span>아직 허전해요</span></div>';
+        const nb = el.querySelector('.hm-near');
+        nb.hidden = info.kind === 'none';
+        if (info.kind === 'match') nb.textContent = `✅ 여기라면 찾아올 거예요`;
+        else if (info.kind === 'near') nb.textContent = `${v.ico} ${this._hmBlock[info.blocker] || ''}`;
       },
       // 🎣 캐치 배너 — 획득 순간 "무엇을 얻었나"를 크게·조금 더 오래. 토스트와 다른 줄(프롬프트 줄)을 써서
       //   같은 순간에 뜨는 📖도감·📜퀘스트 토스트와 서로 지우지 않는다. 월드 플로트 텍스트와 달리
@@ -2921,12 +3052,15 @@
           drawExpandBadge();
           return;
         }
-        const R = 30;                  // 월드 반경 → 미니맵 (남쪽 🌟계곡·🍄숲까지 담기게 확장)
-        const px = (wx, wz) => [(wx + R) / (R * 2) * S, (wz + R) / (R * 2) * S];
+        // 🗺️ 전체 지도와 **같은 박스**(MAP_VIEW)를 쓴다 — 예전엔 중심(0,0)·반경 30 이라
+        //   전체 지도와 장소가 어긋났고 x=32 인 🍎과수원이 범위 밖이었다.
+        const K = S / MAP_VIEW.w;                       // 월드 1 → 미니맵 px
+        const OY = (S - MAP_VIEW.h * K) / 2;            // 정사각 캔버스라 위아래 레터박스(가로가 더 길다)
+        const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K + OY];
         // 호수
         const [lx, lz] = px(16, 9);
         ctx.fillStyle = 'rgba(120,180,220,0.85)';
-        ctx.beginPath(); ctx.arc(lx, lz, 6 / (R * 2) * S, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(lx, lz, 6 * K, 0, 7); ctx.fill();
         // 🗺️ 지명 아이콘 — 색점은 "무슨 색이 뭐였지?"가 되어 못 읽혔다(베타). 이모지로 바꿔 바로 알아보게.
         //    작은 캔버스(모바일 82px)엔 다 넣으면 겹치므로 pri 1(갈 수 있는 곳)만 그리고,
         //    나머지 지명은 탭해서 여는 전체 지도(#worldmap)가 맡는다.
@@ -4470,7 +4604,9 @@
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
     // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
-    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서' };
+    // ⚠️ js/game.js 에도 같은 이름의 표가 있다(박물관 명판용). 문구가 서로 달라 **둘 다** 고쳐야 한다 —
+    //    한쪽만 고치면 도감 모달 제목에 카테고리 키가 날것으로 뜬다('visitor' 가 그대로 보였다).
+    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서', visitor: '🦋 텃밭 방문객' };
     const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글 로그인·토스 계정 = 영구 계정
     // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
     //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.

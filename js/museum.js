@@ -10,13 +10,15 @@
 //     "증축 연출을 봤는가" 만 gameState.museum.seen 에 남긴다.
 // =============================================================
 
+import { gateOf, weatherOpen } from './dex-gates.js';   // 📖 희귀종 게이트 — 획득 판정과 같은 표를 본다
+
 /**
  * 층 구성. cats = 그 층에 전시되는 도감 카테고리, need = **아래층에서** 몇 종을 채워야 열리는가.
  * ⚠️ 모든 도감 카테고리가 어느 한 층에는 들어가야 한다 — 빠지면 그 종은 영영 전시되지 않는다(테스트로 잠금).
  */
 export const MUSEUM_FLOORS = [
   { id: 1, name: '1층',   cats: ['crop', 'fish', 'ore'],                  need: 0 },
-  { id: 2, name: '2층',   cats: ['forage', 'bug', 'dig', 'track'],        need: 9 },
+  { id: 2, name: '2층',   cats: ['forage', 'bug', 'dig', 'track', 'visitor'], need: 9 },
   { id: 3, name: '3층',   cats: ['river', 'spirit', 'weather', 'npc'],    need: 9 },
   { id: 4, name: '특별전', cats: ['cook'],                                 need: 12 },
 ];
@@ -69,8 +71,12 @@ function nextSeed(h) { return (h * 1103515245 + 12345) & 0x7fffffff; }
 // ⚠️ 집으면 안 되는 카테고리
 //   · river / sea(seafish) / mist — 잠긴 맵에서만 나온다. 잠긴 채로 집으면 "영원히 못 깨는 의뢰" 가 된다
 //   · weather — "그 날씨인 날 접속" 이라 오늘 안에 맞출 수가 없다
+//   · 게이트가 걸린 희귀종 — 오늘 날씨에 닫혀 있으면 후보에서 뺀다(js/dex-gates.js).
+//     카테고리가 아니라 **종 단위**라 DEX_NEVER 로는 못 막는다.
+//   · visitor — 🦋텃밭 방문객. 장식을 사서 배치해야 하고 🐸청개구리는 비 오는 날(약 20%)에만 온다.
+//     weather 와 정확히 같은 문제라 같이 막는다.
 const DEX_MAP_LOCK = { river: 'river', spirit: 'mist' };
-const DEX_NEVER = ['weather'];
+const DEX_NEVER = ['weather', 'visitor'];
 
 /**
  * 아직 도감에 없는 종 하나 — 날짜 시드로 고른다. 남은 게 없으면 null(호출부가 폴백한다).
@@ -86,7 +92,14 @@ export function pickMissingDex(dex = {}, DEX = {}, seed = 0, ctx = {}) {
     if (DEX_NEVER.includes(cat)) continue;
     const lock = DEX_MAP_LOCK[cat];
     if (lock && locked[lock]) continue;
-    for (const e of DEX[cat]) if (!dex[cat]?.[e.id]) pool.push({ ...e, cat });
+    for (const e of DEX[cat]) {
+      if (dex[cat]?.[e.id]) continue;
+      // 📖 오늘 날씨에 닫힌 희귀종은 집지 않는다 — 그날 못 깨는 의뢰가 된다.
+      //   ⚠️ night 은 보지 않는다. 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀌므로,
+      //      밤 종을 낮에 걸러내면 의뢰가 사라진다. 플레이어가 밤까지 기다리면 된다.
+      if (ctx.weather && !weatherOpen(gateOf(cat, e.id), ctx.weather)) continue;
+      pool.push({ ...e, cat });
+    }
   }
   if (!pool.length) return null;
   const h = nextSeed(seed & 0x7fffffff);

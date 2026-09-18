@@ -71,7 +71,11 @@ async function resolveBetaGroup(session) {
     if (forced === 'beta_A' || forced === 'beta_B') state.variant = forced;
     const forcedOrder = isLocal ? new URLSearchParams(location.search).get('forceMapOrder') : null;
     if (forcedOrder === 'sea_first' || forcedOrder === 'mist_first') state.mapOrder = forcedOrder;
-    if (supabase && !isAnon(session)) {
+    // 🏁 베타가 끝나면(EXPERIMENT !== 'beta') 명단 조회 자체를 하지 않는다.
+    //   이 가드가 없으면 스위치를 내려도 명단에 남은 계정은 계속 beta_* 로 덮여
+    //   맵 날짜 게이트·보상 부스트가 살아 있었다. 로그인마다 나가던 조회 요청
+    //   (이메일이 쿼리스트링에 실린다)도 함께 사라진다.
+    if (supabase && !isAnon(session) && CONFIG.EXPERIMENT === 'beta') {
       const email = (session.user.email || '').toLowerCase();
       const { data } = await supabase.from('beta_testers').select('grp, map_order').eq('email', email).maybeSingle();
       if (data?.grp) state.variant = 'beta_' + data.grp;   // 명단이 최우선

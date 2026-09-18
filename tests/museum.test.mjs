@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed } from '../js/museum.js';
+import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
 //   층별 전시 목록도 여기서 정한다(game.js 의 DEX 를 인자로 받아 순수하게 유지).
@@ -25,6 +26,8 @@ const DEX = {
   river:[1,2,3,4].map(i => ({ id: 'r' + i })),
   spirit:[1,2,3,4].map(i => ({ id: 's' + i })),
   weather:[1,2,3,4].map(i => ({ id: 'w' + i })),
+  // 🦋 방문객도 **실제 개수를 읽는다** — 손으로 적으면 2층 진열장 자리 검증이 옛 칸 수로 돈다
+  visitor: VISITORS.map(v => ({ id: v.id })),
   // ⚠️ npc·cook 은 **game.js 에서 실제 개수를 읽는다.** 손으로 적어 두면 실제와 갈리고,
   //    실제로 그 때문에 "3층 18칸" 이라 단언하며 통과했다(진짜는 31칸 — 절반이 방 밖에 놓였다).
   npc:  Array.from({ length: REAL_NPC }, (_, i) => ({ id: 'n' + i })),
@@ -38,10 +41,10 @@ function dexWith(cat, n) {
   return out;
 }
 
-test('층 구성 — 1층 13 · 2층 13 · 3층 18 · 특별전', () => {
+test('층 구성 — 1층 13 · 2층 17 · 3층 18 · 특별전', () => {
   assert.equal(MUSEUM_FLOORS.length, 4);
   assert.equal(floorEntries(1, DEX).length, 13);
-  assert.equal(floorEntries(2, DEX).length, 13);
+  assert.equal(floorEntries(2, DEX).length, 13 + VISITORS.length);   // 🍄🌟🪏🐾 13 + 🦋방문객
   assert.equal(floorEntries(3, DEX).length, 12 + REAL_NPC);   // 🛶강4+🌫️정령4+🌦️날씨4 + 주민·손님
   assert.ok(floorEntries(4, DEX).length > 0);
 });
@@ -243,4 +246,129 @@ test('모든 층 카테고리에 전시물 색 폴백이 있다', () => {
   }
   const fn = SRC.slice(SRC.indexOf('function museumExhibitMesh('), SRC.indexOf('\n}', SRC.indexOf('function museumExhibitMesh(')));
   assert.match(fn, /MUSEUM_CAT_TINT\[item\.cat\]/, '폴백을 쓰지 않는다');
+});
+
+// ⚠️ 🦋 방문객은 큐레이터가 집으면 안 된다 — weather 와 같은 이유다.
+//    장식 구매·배치가 선행이고 🐸 는 비 오는 날(약 20%)에만 온다.
+//    DEX_NEVER 에서 빠지면 그날 dex_one 의뢰가 통째로 막힌다.
+test('큐레이터는 방문객을 집지 않는다 — 오늘 안에 맞출 수가 없다', () => {
+  const ONLY_VISITOR = { visitor: VISITORS.map(v => ({ id: v.id, name: v.name, ico: v.ico })) };
+  for (let seed = 0; seed < 50; seed++) {
+    assert.equal(pickMissingDex({}, ONLY_VISITOR, seed, {}), null,
+      'visitor 만 있는 풀에서는 아무것도 집으면 안 된다');
+  }
+});
+
+test('visitor 카테고리가 어느 층엔가 전시된다', () => {
+  const placed = new Set(MUSEUM_FLOORS.flatMap(f => f.cats));
+  assert.ok(placed.has('visitor'), '빠지면 방문객 4종이 영영 전시되지 않는다');
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  🛡️ 기존 유저 보호 — 도감 카테고리를 늘려도 이미 모은 사람이 손해를 보면 안 된다
+//     (세이브 덮어쓰기 사고 2026-09-14 의 교훈: "괜찮을 것" 이 아니라 테스트로 잠근다)
+// ═══════════════════════════════════════════════════════════════
+
+/** game.js 의 dex 객체 리터럴에서 카테고리 키 목록을 뽑는다 */
+function dexKeysAt(marker) {
+  const i = SRC.indexOf(marker);
+  assert.ok(i > 0, `${marker} 를 찾지 못했다 — 테스트가 낡았다`);
+  const body = SRC.slice(i, SRC.indexOf('\n', i));   // 한 줄 리터럴 — `fish: {}` 의 첫 `}` 에서 자르면 안 된다
+  return (body.match(/(\w+):\s*\{\}/g) || []).map(s => s.split(':')[0]);
+}
+
+// ⚠️ 기본 객체와 applySave 복원이 **같은 키 목록**이어야 한다.
+//    한쪽만 고치면 세이브가 있는 유저에게 그 카테고리가 undefined 가 되고,
+//    dexDiscover 첫 줄(`if (!gameState.dex[cat] ...) return;`)에서 조용히 반환해 영영 등록이 안 된다.
+test('도감 기본 객체와 세이브 복원의 카테고리 목록이 같다', () => {
+  const base = dexKeysAt('  dex: { fish: {}');
+  const restore = dexKeysAt('gameState.dex = { fish: {}');
+  assert.deepEqual(restore, base, '한쪽에만 카테고리가 추가됐다 — 그 종은 영영 등록되지 않는다');
+  assert.ok(base.includes('visitor'), '🦋 방문객이 빠졌다');
+});
+
+test('세이브에 없던 카테고리가 생겨도 기존 도감은 그대로 살아남는다', () => {
+  // applySave 와 같은 병합: 기본 키를 깔고 saved.dex 를 덮어쓴다
+  const defaults = Object.fromEntries(dexKeysAt('  dex: { fish: {}').map(k => [k, {}]));
+  const oldSave = { fish: { common: 111 }, crop: { carrot: 222 }, weather: { clear: 333 } };   // visitor 를 모르던 시절 세이브
+  const merged = { ...defaults, ...oldSave };
+  assert.deepEqual(merged.fish, { common: 111 }, '기존 기록이 사라졌다');
+  assert.deepEqual(merged.crop, { carrot: 222 });
+  assert.deepEqual(merged.weather, { clear: 333 });
+  assert.deepEqual(merged.visitor, {}, '새 카테고리는 빈 채로 열려 있어야 등록이 된다');
+});
+
+// ⚠️ 종이 늘면 floorProgress 의 total 이 커진다. have 는 그대로이므로 해금이 후퇴하면 안 된다.
+test('도감 종이 늘어도 이미 열린 층이 닫히지 않는다', () => {
+  const OLD = { ...DEX }; delete OLD.visitor;          // 방문객이 없던 시절 표
+  const owned = {};                                     // 2층을 9종 채워 3층을 연 유저
+  for (const k of Object.keys(DEX)) owned[k] = {};
+  OLD.crop.slice(0, 7).forEach(e => { owned.crop[e.id] = 1; });
+  OLD.fish.slice(0, 2).forEach(e => { owned.fish[e.id] = 1; });   // 1층 9종
+  OLD.forage.forEach(e => { owned.forage[e.id] = 1; });
+  OLD.bug.forEach(e => { owned.bug[e.id] = 1; });
+  OLD.dig.slice(0, 1).forEach(e => { owned.dig[e.id] = 1; });     // 2층 9종
+  const before = openFloors(owned, OLD);
+  const after = openFloors(owned, DEX);
+  assert.equal(before, 3, '전제가 틀렸다 — 이 세이브는 원래 3층이 열려 있어야 한다');
+  assert.equal(after, before, '방문객을 추가했더니 열려 있던 층이 닫혔다');
+});
+
+// ⚠️ 총계가 늘면 "다 모은 사람" 이 미완성으로 바뀐다. 배지는 회수하지 않아야 한다.
+test('배지는 부여만 하고 회수하지 않는다 — 도감을 늘려도 도감 마스터가 사라지지 않는다', () => {
+  const i = SRC.indexOf('function awardBadge(');
+  const body = SRC.slice(i, SRC.indexOf('\n}\n', i));
+  assert.ok(i > 0, 'awardBadge 를 찾지 못했다');
+  assert.doesNotMatch(body, /delete\s+gameState\.badges|badges\[\w+\]\s*=\s*(null|false|0)\b/,
+    '배지를 회수하는 경로가 있다 — 종을 늘리면 옛 완성자의 배지가 사라진다');
+});
+
+test('완성 보상은 배지로 막혀 다시 나가지 않는다', () => {
+  const i = SRC.indexOf('function dexDiscover(');
+  const body = SRC.slice(i, SRC.indexOf('\n}\n', i));
+  assert.match(body, /total === DEX_TOTAL && !gameState\.badges\.dex_master/,
+    '총계가 늘면 옛 완성자에게 완성 보상이 다시 나간다');
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  📖 희귀종 게이트 — 큐레이터가 오늘 못 깨는 의뢰를 내면 안 된다
+// ═══════════════════════════════════════════════════════════════
+
+// ⚠️ 맑은 날에 🌈무지개 물고기를 집으면 그날 의뢰가 불가능해진다(🦋방문객 DEX_NEVER 와 같은 함정).
+//    DEX_NEVER 로 전부 막는 건 손해다 — 제일 재미있는 종을 큐레이터가 영영 못 집는다.
+//    대신 **오늘 날씨에 열린 종만** 후보에 넣는다.
+test('큐레이터는 오늘 날씨에 닫힌 게이트 종을 집지 않는다', () => {
+  const GATED = { fish: [{ id: 'rare' }, { id: 'uncommon' }, { id: 'common' }] };
+  const owned = { fish: { uncommon: 1, common: 1 } };   // rare 만 안 가졌다
+  for (let seed = 0; seed < 30; seed++) {
+    assert.equal(pickMissingDex(owned, GATED, seed, { weather: 'clear' }), null,
+      '맑은 날에 🌈무지개 물고기를 집었다 — 그날 못 깨는 의뢰가 된다');
+    const rain = pickMissingDex(owned, GATED, seed, { weather: 'rain' });
+    assert.deepEqual(rain && { cat: rain.cat, id: rain.id }, { cat: 'fish', id: 'rare' },
+      '비 오는 날엔 집어야 한다');
+  }
+});
+
+// ⚠️ 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다.
+//    밤 종을 낮에 걸러내면 그날 의뢰가 아예 사라진다 → 날씨만 본다.
+test('큐레이터 의뢰는 밤 조건을 보지 않는다 — 플레이어가 밤까지 기다리면 된다', () => {
+  const GATED = { forage: [{ id: 'herb' }, { id: 'mushroom' }] };
+  const owned = { forage: { mushroom: 1 } };
+  const pick = pickMissingDex(owned, GATED, 7, { weather: 'clear' });
+  assert.equal(pick && pick.id, 'herb',
+    '🌿숲 약초는 night 게이트만 있다 — 낮에도 의뢰로 나와야 한다');
+});
+
+test('weather 를 안 넘기면 게이트를 보지 않는다(하위 호환)', () => {
+  const GATED = { fish: [{ id: 'rare' }, { id: 'common' }] };
+  const owned = { fish: { common: 1 } };
+  assert.ok(pickMissingDex(owned, GATED, 3, {}), 'ctx.weather 없이도 동작해야 한다');
+});
+
+test('게이트 없는 종은 어떤 날씨에도 집을 수 있다 — 게이트가 흔한 종을 막으면 안 된다', () => {
+  const PLAIN = { crop: [{ id: 'carrot' }, { id: 'tomato' }] };
+  const owned = { crop: { tomato: 1 } };
+  for (const w of ['clear', 'rain', 'snow', 'fog']) {
+    assert.equal(pickMissingDex(owned, PLAIN, 11, { weather: w })?.id, 'carrot', `${w} 에서 막혔다`);
+  }
 });

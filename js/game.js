@@ -33,6 +33,10 @@ import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lo
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
+import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
+import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
+import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -664,6 +668,73 @@ const OUTDOOR = [
 const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안이나 📐측량소 마당에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
 function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 function farmBuildingRecs(except = null) { return gameState.outdoor.filter(r => r !== except && isFarmBuilding(r.id)); }   // 시설 레코드만(옮기는 중인 자기 자신 제외)
+
+// ── 🦋 텃밭 방문객 — 환경 점수 입력 ──────────────────────────────
+//   js/habitat.js 는 순수 모듈이라 좌표·상태를 여기서 모아 넘긴다.
+//   ⚠️ gameState.outdoor 와 plots 는 월드 좌표, perimeterTrees() 는 **밭 로컬**이다(FARM 을 더한다).
+//   ⚠️ 여기에 물 준 상태를 넣지 않는다 — WET_TIME=9 라 9초짜리인 데다 세이브에도 안 남는다.
+//      스폰 지연이 6~14초라 🐸 가 영원히 안 온다(habitat.js 주석·테스트가 잠근다).
+let habitatSrc = null, habitatSrcAt = -1e9;   // 1초 스로틀 캐시
+let habitatDirty = true;
+
+function markHabitatDirty() { habitatDirty = true; }
+
+/** 밭 주변만 본다 — 마을 장식은 80 이상 떨어져 있어 가장 넓은 반경(8) 안에 들어올 수 없다 */
+function habitatSources() {
+  const H = farmHalf(), reach = H + 12;
+  const nearFarm = (x, z) => Math.hypot(x - FARM.x, z - FARM.z) <= reach;
+  return {
+    decor: gameState.outdoor.filter(o => ENV_TAG[o.id] && nearFarm(o.x, o.z)),
+    mature: plots.filter(p => p.state === 'mature').map(p => ({ x: p.x, z: p.z })),
+    trees: perimeterTrees(H).map(t => ({ x: FARM.x + t.x, z: FARM.z + t.z })),
+    rain: RAIN_DAY,
+  };
+}
+
+function habitatCtx() { return { night: isNight(), rain: RAIN_DAY }; }
+
+// 📖 게이트 판정 입력 — 획득 판정은 날씨와 밤낮을 **둘 다** 본다.
+//   ⚠️ 🧑‍🦳큐레이터 의뢰는 weatherOpen(날씨만) 을 쓴다. 의뢰는 하루치 시드로 고정되는데
+//      밤낮은 하루 안에 바뀌므로, 밤 종을 낮에 걸러내면 그날 의뢰가 사라진다(스펙 참고).
+function situation() { return { weather: WEATHER, night: isNight() }; }
+
+// 📖 [GA4] 게이트가 닫혀 못 얻은 순간 — 게이트가 너무 조이는지 보는 축.
+//   예: 🌈무지개 물고기 획득률이 한 달 뒤에도 안 오르면 확률 22%를 올린다.
+//   ⚠️ 굴림마다 쏘면 이벤트가 폭주한다. 카테고리별로 **하루 한 번**만 쏜다
+//      (🦋visitor_nearmiss 에서 실제로 겪었다 — 조건 안팎 10번 오가니 이벤트 10개).
+//   ⚠️ 굴림 함수 안이 아니라 **플레이어가 그 활동을 실제로 한 지점**에서 부른다.
+//      반딧불이는 스폰마다 rollBugKind 가 돌지만 플레이어가 잡은 건 아니다.
+const _gateBlockedToday = {};
+function trackGateBlocked(cat, id) {
+  if (gameState.dex[cat]?.[id]) return;                 // 이미 가진 사람은 관심 없다
+  if (gateOpen(gateOf(cat, id), situation())) return;   // 열려 있으면 막힌 게 아니다
+  const key = cat + ':' + todayStr();
+  if (_gateBlockedToday[key]) return;
+  _gateBlockedToday[key] = 1;
+  const s = situation();
+  trackEvent('dex_gate_blocked', { category: cat, entry: id, weather: s.weather, night: s.night ? 1 : 0 });
+}
+
+/** 스로틀된 소스로 한 지점 판정 — 매 프레임 불러도 초당 1회만 다시 모은다 */
+function habitatEnvAt(x, z) {
+  const now = clock.elapsedTime;
+  if (habitatDirty || !habitatSrc || now - habitatSrcAt >= 1) {
+    habitatSrc = habitatSources(); habitatSrcAt = now; habitatDirty = false;
+  }
+  return envAt(habitatSrc, x, z);
+}
+
+/** 밭 안을 한 칸 간격으로 훑은 후보 지점(월드) — 3단계(half 11)에서 최대 약 120칸 */
+function habitatCells() {
+  const H = farmHalf(), out = [];
+  for (let x = -H; x <= H; x += FARM_CELL) {
+    for (let z = -H; z <= H; z += FARM_CELL) {
+      if (Math.hypot(x, z) > H) continue;
+      out.push({ x: FARM.x + x, z: FARM.z + z });
+    }
+  }
+  return out;
+}
 let placingOutdoor = null;      // 배치 중인 야외 장식 id
 const outdoorMeshes = [];
 let pickedOutdoor = null;       // 🪵 들어 올린 기존 야외 장식 {id, x, z, farm} — 취소·구역 이탈 시 제자리로(값 없이 다시 놓기)
@@ -904,6 +975,9 @@ function questCtx() {
     coopBuilt: !!gameState.coop.built,
     houseStage: gameState.houseStage,
     locked: { river: mapLocked('river'), sea: mapLocked('sea'), mist: mapLocked('mist') },
+    // 📖 오늘 날씨에 닫힌 희귀종은 의뢰로 나오지 않게(js/dex-gates.js).
+    //   ⚠️ 밤낮은 안 넘긴다 — 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다.
+    weather: WEATHER,
   };
 }
 
@@ -1118,7 +1192,7 @@ const gameState = {
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
-  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
+  dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   workers: [],                              // 🧑‍🌾 고용한 일꾼 [{id, job, grade, works, name, hiredAt, restingSince}] — 규칙은 js/farm-worker.js
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
@@ -1217,8 +1291,14 @@ const DEX = {
     { id: 'snow',  name: '눈 오는 날',  ico: '❄️' },
     { id: 'fog',   name: '안개 낀 날',  ico: '🌫️' },
   ],
+  // 🦋 방문객 — 텃밭 환경을 만들면 스스로 찾아온다. 조건·판정의 단일 출처는 js/habitat.js 다.
+  //   여기서 표를 다시 적지 않는다(주민 도감을 손으로 적어 4명이 빠졌던 사고와 같은 유형).
+  visitor: VISITORS.map(v => ({ id: v.id, name: v.name, ico: v.ico })),
 };
-const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);   // 전 카테고리 합(현재 33종)
+// 전 카테고리 합. ⚠️ 여기에 숫자를 적어두지 않는다 — npc·cook 이 NPCS/CAFE_GUESTS/RECIPES 에서
+//    파생하므로 주민·레시피를 늘릴 때마다 조용히 낡는다(실제로 "33종" 주석이 오래 남아 70종인 걸 가렸다).
+//    지금 값이 궁금하면 도감 제목(📖 도감 n/m)이나 dexCount() 를 본다.
+const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);
 function dexCount() { return Object.keys(DEX).reduce((n, cat) => n + Object.keys(gameState.dex[cat] || {}).length, 0); }
 
 // 첫 발견 시 도감 등록 — 낚시/수확/채굴 성공 지점에서 호출
@@ -2178,6 +2258,7 @@ function initRetentionGuidance() {
 // ① 로그인 화면 뒤에서 도는 "어트랙트" 씬 부팅 (플레이어 조작 X)
 export async function bootWorld(uiCallbacks) {
   ui = uiCallbacks || {};
+  ui.setHabitatLabels?.(TAG_LABEL, HABITAT_BLOCK_LINE);   // 🦋 미터 라벨·안내 문구는 js/habitat.js 가 단일 출처
   initRenderer();
   initScene();
   initLights();
@@ -2353,6 +2434,11 @@ export async function enterGame() {
     window.__place = (id, x, z, rot = 0) => placeOutdoor(x, z, false, id, rot);
     window.__select = (id) => { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); return id; };   // 🏗️ 검수용 배치 모드 진입(작업대 메뉴 대신)
     window.__ghost = () => decorGhost ? { x: +decorGhost.position.x.toFixed(2), z: +decorGhost.position.z.toFixed(2), pinned: outdoorTarget.pinned, ok: ghostOk } : null;   // 🏗️ 검수용 시설·장식 즉시 배치(검사·비용 포함)
+    window.__gates = { sit: situation, open: (c, i) => gateOpen(gateOf(c, i), situation()),
+      blocked: trackGateBlocked };   // 📖 게이트 검수용 — trackGateBlocked 는 실제 발사 확인에 쓴다
+    window.__habitat = { env: habitatEnvAt, ctx: habitatCtx, cells: habitatCells, src: habitatSources, dirty: markHabitatDirty,
+      alive: () => visitors?.alive || [],                                   // 🦋 지금 떠 있는 종
+      tick: (s) => { for (let i = 0; i < s * 60; i++) visitors?.update(1 / 60); return visitors?.alive || []; } };   // 시간을 앞당겨 스폰을 확인(검수용)
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, shadowAuto: renderer.shadowMap.autoUpdate, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
@@ -2490,7 +2576,9 @@ function applySave(saved) {
   if (saved.daily) gameState.daily = { ...gameState.daily, ...saved.daily }; // 출석 스트릭 복원
   if (saved.noticeSeenId) gameState.noticeSeenId = Number(saved.noticeSeenId) || 0; // 📮 읽은 소식 복원
   if (saved.dex) {
-    gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, ...saved.dex }; // 📖 도감 복원
+    // ⚠️ 기본 객체(gameState 선언부)와 **반드시 같은 키 목록**이어야 한다. 한쪽만 고치면
+    //    세이브가 있는 유저에게 그 카테고리가 undefined 가 되고, dexDiscover 첫 줄에서 조용히 반환해 등록이 안 된다.
+    gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {}, ...saved.dex }; // 📖 도감 복원
     refreshMuseumGate();   // 🏛️ 열어 둔 층만큼 건물을 세운다 — 안 하면 접속할 때마다 1층으로 보인다
   }
   if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
@@ -4108,11 +4196,14 @@ function buildGlade() {
   obstacles.push({ x: GLADE.x, z: GLADE.z, r: GLADE_R });   // 계곡 안엔 밭 금지(빈터 유지)
 }
 
-// 종류 추첨 — 🌧️ 비 온 날엔 초록반디가, 🌫️ 안개 낀 날엔 무지개반디가 잘 나옴(날씨 훅 재사용)
+// 종류 추첨 — 🌈무지개반디는 🌧️비·🌫️안개 낀 날 **밤**에만(게이트 안에서 18%). 표는 js/dex-gates.js
+//   ⚠️ 옛 주석은 "비 온 날엔 초록반디가, 안개 낀 날엔 무지개반디가" 였지만 실제 코드는
+//      rain||fog 둘 다 희귀↑ 였다. 게이트가 그 동작을 명시적으로 만든 것이다.
 function rollBugKind() {
-  let roll = Math.random();
-  if (WEATHER === 'rain' || WEATHER === 'fog') roll = Math.min(roll, Math.random());   // 두 번 굴려 작은 값 → 희귀↑
-  return BUG_KINDS.find(k => roll <= k.p) || BUG_KINDS[BUG_KINDS.length - 1];
+  const rnd = (WEATHER === 'rain' || WEATHER === 'fog')
+    ? () => Math.min(Math.random(), Math.random())   // 두 번 굴려 작은 값 → 희귀↑
+    : Math.random;
+  return rollKind(BUG_KINDS, 'bug', situation(), rnd);
 }
 
 // 반딧불이 한 마리 — 발광 코어 + 넓은 헤일로(Additive). 블룸과 겹쳐 밤에 또렷하게 빛남
@@ -4238,6 +4329,7 @@ function tryNet() {
   spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
   questEvent('catch');                                    // 🦉 데일리 의뢰(반딧불이 잡기)
   dexDiscover('bug', kind.id);                            // 📖 도감(반딧불이 첫 발견)
+  trackGateBlocked('bug', 'rainbow');     // [GA4] 📖
   catchCeremony('bugZoom');                               // 🎉 첫 반딧불이만 밀착, 이후 폴짝 + 병 팝
   showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
   if (kind.id === 'rainbow') tryUnlockDrop(0.5);          // 🎨 최희귀 → 집 색 해금 확률
@@ -4279,11 +4371,14 @@ function buildForest() {
   for (let i = 0; i < FORAGE_NODES; i++) spawnForageNode(i, true);
 }
 
-// 종류 추첨 — 🌧️ 비 온 날엔 버섯이 확 늘고(두 번 굴려 큰 값), 평소엔 골고루
+// 종류 추첨 — 🌿숲 약초는 **밤**에만(게이트 안에서 30%). 날씨는 안 본다. 표는 js/dex-gates.js
+//   ⚠️ 🌧️비 온 날 "큰 값 → 목록 뒤쪽(버섯)" 보정은 **그대로 유지**한다.
+//      약초 게이트를 날씨로 잡지 않은 이유가 바로 이것이다 — 비는 약초가 아니라 버섯을 밀어준다.
 function rollForageKind() {
-  let roll = Math.random();
-  if (WEATHER === 'rain') roll = Math.max(roll, Math.random());   // 큰 값 = 목록 뒤쪽(버섯) 쪽으로
-  return FORAGE_KINDS.find(k => roll <= k.p) || FORAGE_KINDS[FORAGE_KINDS.length - 1];
+  const rnd = WEATHER === 'rain'
+    ? () => Math.max(Math.random(), Math.random())
+    : Math.random;
+  return rollKind(FORAGE_KINDS, 'forage', situation(), rnd);
 }
 
 function forageMesh(kind) {
@@ -4388,6 +4483,7 @@ function tryForage(node) {
   spawnSparkle(node.x, 0.55, node.z, kind.id === 'herb' ? 18 : 10);   // 발밑에서 반짝(잎 파티클은 나무 높이라 안 맞음)
   questEvent('forage');                                       // 🦉 데일리 의뢰(채집)
   dexDiscover('forage', kind.id);                             // 📖 채집 도감
+  trackGateBlocked('forage', 'herb');     // [GA4] 📖
   trackEvent('forage_pick', { kind: kind.id, weather: WEATHER });   // [GA4] 채집 루프 KPI
 }
 
@@ -4546,10 +4642,10 @@ const MUSEUM_ZONES = [
 ];
 // 전시물 기본색 — 아직 전용 조형이 없는 카테고리(임시). ORES·CROP_TYPES 에 없는 것들이 여기로 온다
 const MUSEUM_CAT_TINT = { forage: 0xc07a4a, bug: 0xd9c14a, dig: 0x8a6a4a, track: 0x9a8f80,
-  river: 0x5f9ec8, spirit: 0xb8a8d8, weather: 0xa8c4d8, npc: 0xd9a06a, cook: 0xe0a05a };
+  river: 0x5f9ec8, spirit: 0xb8a8d8, weather: 0xa8c4d8, npc: 0xd9a06a, cook: 0xe0a05a, visitor: 0x8fbf6a };
 const DEX_CAT_LABEL = { crop: '🌾 작물', fish: '🐟 물고기', ore: '⛏️ 광물', forage: '🍄 채집물',
   bug: '🌟 반딧불이', dig: '🪏 땅속', track: '🐾 흔적', river: '🛶 강', spirit: '🌫️ 정령',
-  weather: '🌦️ 날씨', npc: '🧑 주민', cook: '🍳 요리' };
+  weather: '🌦️ 날씨', npc: '🧑 주민', cook: '🍳 요리', visitor: '🦋 방문객' };
 let museumFloor = 1;                       // 지금 보고 있는 층
 // 이 층에 전시할 목록 — 카테고리 순서대로 러그 구역이 갈린다
 function museumFloorItems(floor = museumFloor) {
@@ -6256,11 +6352,11 @@ function buildOrchardGate() {
 
   // (둘레 과일나무 없음 — 벌목 가능한 숲 나무와 지오메트리가 같아 유저가 벨 수 있다. 과일나무는 과수원 안에만 둔다)
 
-  // 문으로 오르는 흙 계단 — 🏛️ 박물관 정면 계단과 같은 패턴(박스 단·겹치지 않는 간격·문보다 넓은 폭).
+  // 문으로 오르는 흙 계단 — 🏛️ 박물관 정면 계단과 같은 패턴(박스 단·문보다 넓은 폭).
   //   예전엔 반경 1.2 원기둥을 0.9 간격으로 놓아 단끼리 크게 겹쳤다 — 계단이 아니라 팬케이크 더미로 읽혔다.
-  //   문(폭 1.15)에서 멀어질수록 넓고 낮아져 땅에 녹아든다. z 중심은 문 중심(dz)에 맞춘다.
   //   디딤면(0.7)은 좁게, 단 높이차(0.10)는 뚜렷하게 — 얇고 넓으면 계단이 아니라 데크로 읽힌다.
-  //   단끼리는 디딤면 길이만큼 띄워 딱 맞물린다(간격 = 안길이 0.7).
+  //   단끼리는 디딤면 길이만큼 띄워 딱 맞물리고, 첫 단은 문턱에 붙여 정면과 한 덩어리로 읽히게 한다.
+  //   문(폭 1.15)에서 멀어질수록 넓고 낮아져 땅에 녹아든다. z 중심은 문 중심(dz)에 맞춘다.
   [[-0.9, 0.28, 1.9], [-1.6, 0.18, 2.2], [-2.3, 0.09, 2.5]].forEach(([sx, sh, sw]) => {
     const st = new THREE.Mesh(new THREE.BoxGeometry(0.7, sh, sw), clayMat(0xb08a5e, false));
     st.position.set(sx, sh / 2, dz); st.receiveShadow = true; g.add(st);
@@ -8357,6 +8453,7 @@ function stopDecorPlacing(putBack) {
 }
 function buildDecorGhost(id, outdoor = false) {
   removeDecorGhost();
+  if (outdoor && atFarm) trackEvent('habitat_meter', { farm_stage: gameState.farm.stage });   // [GA4] 🦋 퍼널 1단 — 미터를 봤다
   // 🏮 outdoorMesh·decorMesh 둘 다 램프·화로 같은 재질을 houseWindows(밤 점등 목록)에 밀어 넣는다.
   //   고스트 것까지 남으면 목록이 불어나고, 고스트를 지울 때 dispose 된 재질이 목록에 남는다 → 도로 잘라낸다.
   const hw0 = houseWindows.length;
@@ -8381,7 +8478,26 @@ function buildDecorGhost(id, outdoor = false) {
   scene.add(g); decorGhost = g; updateDecorGhost();
 }
 let ghostRing = null, ghostFarmDef = null, ghostOk = true;   // 🏗️ 배치 미리보기 — 링·발자국 정의·지금 놓을 수 있는지
+// 🦋 배치 중인 자리의 환경을 미터에 띄운다. 텃밭 밖이면 조용히 끈다.
+//   현재치는 정직하게 보여주되 **목표치는 보여주지 않는다** — 대신 nearMiss 가 막는 요인 하나를 집어 준다.
+function updateHabitatMeter() {
+  if (!atFarm || !decorGhost) { ui.setHabitatMeter?.(null); lastNearMiss = {}; return; }
+  const env = habitatEnvAt(decorGhost.position.x, decorGhost.position.z);
+  const known = gameState.dex.visitor || {};
+  ui.setHabitatMeter?.(spotInfo(env, habitatCtx(), known));
+  // [GA4] 퍼널 2단 — 화면 표시와 별개로 "70% 왔는데 막혔다" 만 기록한다(blocker 가 튜닝 축).
+  //   ⚠️ 이 함수는 **매 프레임** 돈다. 조건 안팎을 오갈 때마다 쏘면 폭주한다
+  //      (실측: 10번 왕복 = 같은 이벤트 10개). 배치 세션 하나에서 **종별 한 번**만 쏜다.
+  //      removeDecorGhost 가 세션을 끝내며 기억을 비운다.
+  const near = nearMiss(env, habitatCtx(), known);
+  if (near && !lastNearMiss[near.visitor]) {
+    lastNearMiss[near.visitor] = 1;
+    trackEvent('visitor_nearmiss', { visitor: near.visitor, blocker: near.blocker });
+  }
+}
+
 function removeDecorGhost() {
+  ui.setHabitatMeter?.(null); lastNearMiss = {};   // 🦋 배치 모드가 끝나면 미터도 사라지고 근접 신호 기억도 비운다
   ghostRing = null; ghostFarmDef = null;
   if (!decorGhost) return;
   scene.remove(decorGhost);
@@ -8410,6 +8526,7 @@ function updateDecorGhost() {
       ui.setZoneHint?.(v.ok ? `${fdef.ico} ${fdef.name} — 바닥을 눌러 자리를 고르고 액션으로 놓기 · ↻ 방향` : FARM_PLACE_MSG[v.reason]);
     } else decorGhost.position.set(ax, 0.02, az);
     decorGhost.rotation.y = decorRot * Math.PI / 2;
+    updateHabitatMeter();   // 🦋 정보가 필요한 순간은 정확히 "지금 어디에 놓을까" 다
     return;
   }
   if (!decorTarget.pinned) {
@@ -9948,6 +10065,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   const carried = pickedOutdoor && pickedOutdoor.id === id ? pickedOutdoor.rec : null;
   const rec = carried ? Object.assign(carried, { x: wx, z: wz, rot: ry }) : { id, x: wx, z: wz, rot: ry };
   if (!gameState.outdoor.includes(rec)) gameState.outdoor.push(rec);
+  markHabitatDirty();   // 🦋 환경 점수 즉시 반영 — 1초 스로틀을 기다리면 미터가 한 박자 늦는다
   let ob, solid;
   if (def.farm) {   // 🏗️ 시설: 덮는 칸마다 밭 금지 원(r 0.1 + isBlocked 의 0.95 = 그 칸만) + 발자국 사각 충돌체(칸 경계 0.35 안쪽)
     ob = buildingCells(def.fp, wx, wz, ry).map(([cx, cz]) => ({ x: cx, z: cz, r: 0.1 })); obstacles.push(...ob);
@@ -10067,6 +10185,7 @@ function storeOutdoor() {
   const stored = gameState.outdoorStored || (gameState.outdoorStored = {});
   stored[id] = (stored[id] || 0) + 1;
   const ri = gameState.outdoor.indexOf(pickedOutdoor.rec); if (ri >= 0) gameState.outdoor.splice(ri, 1);   // 마당 목록에서 빼고 보관함으로
+  markHabitatDirty();   // 🦋 치운 장식의 태그도 즉시 빠져야 한다
   pickedOutdoor = null; placingOutdoor = null; removeDecorGhost();   // 제자리 복귀 없이 정리
   Sound.blip(); ui.toast?.(`🧺 ${def.name}을(를) 보관했어요. 작업대에서 다시 꺼낼 수 있어요`);
   trackEvent('store_outdoor', { item: id }); // [GA4]
@@ -10359,14 +10478,60 @@ function rebuildFarm(silent = false) {
   }
 }
 
+// ── 🦋 텃밭 방문객 — 스폰·등록은 js/farm-visitors.js, 판정은 js/habitat.js ──
+let visitors = null;   // 텃밭 안에서만 살아 있다
+
+// 막는 요인별 안내 — 앞에 동물 아이콘이 붙는다("🦋 허수아비를 무서워해요").
+// ⚠️ 은유를 쓰지 않는다. "무언가 맴돌다 갔어요" 는 무슨 말인지 모르겠다는 지적을 받았다(2026-09-18).
+//    원인이 되는 **오브젝트 이름**을 그대로 쓴다.
+// ⚠️ 여기 문구가 i18n 키다. 조각을 이어 붙이지 말고 통째로 사전에 넣는다(" · " 글루 함정).
+// ⚠️ **한 줄을 넘기지 말 것.** 두 줄이 되면 미터가 높아져 소형폰+토스에서 #door-prompt 와 겹친다
+//    (320×568 실측: 여유 93px, 두 줄이면 103px). "어디서 찾나"는 도감의 hint 가 말한다.
+const HABITAT_BLOCK_LINE = {
+  fear:    '허수아비를 무서워해요',
+  nectar:  '꽃이 더 필요해요',
+  food:    '다 자란 작물이 더 필요해요',
+  shelter: '숨을 데가 더 필요해요',
+  shade:   '그늘이 더 필요해요',
+  damp:    '물기가 더 필요해요',
+  light:   '빛이 더 필요해요',
+};
+let lastNearMiss = {};   // 🦋 이번 배치 세션에 이미 쏜 근접 신호 { 종id: 1 } — 폭주 방지(updateHabitatMeter 주석)
+
+function makeVisitorMesh(id) { return makeVisitor(THREE, id); }   // 조형은 js/visitor-art.js (높이도 거기서 정한다)
+
+function startVisitors() {
+  visitors = createVisitors({
+    group: farmGroup,
+    origin: FARM,   // ⚠️ farmGroup 은 FARM(0,0,84) 에 놓여 있다 — 월드 좌표를 그대로 넣으면 z=168 허공에 뜬다
+    makeMesh: makeVisitorMesh,
+    cells: habitatCells,
+    envAt: habitatEnvAt,
+    matchVisitors,
+    ctx: habitatCtx,
+    playerPos: () => player.position,
+    onSpawn: (id) => trackEvent('visitor_spawn', { visitor: id, farm_stage: gameState.farm.stage }),   // [GA4] 퍼널 3단
+    onDiscover: (id) => {
+      if (!gameState.dex.visitor?.[id]) {
+        dexDiscover('visitor', id);   // 📖 등록 + 토스트 + 박물관 게이트 + 퀘스트 + GA4 를 한 번에
+      } else {
+        const v = visitorOf(id);      // 재방문 — "정원이 살아있다" 는 신호. 보상은 없다.
+        ui.toast?.(`${v.ico} ${v.name}가 다시 찾아왔어요`, 1800);
+      }
+    },
+  });
+}
+
 function enterFarm() {
   atFarm = true; playerInYard = false;
   player.position.set(FARM.x, 0, FARM.z + farmHalf() - 1.5); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요. 나갈 땐 남쪽 문');
+  startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다
   Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
 }
 function exitFarm() {
+  visitors?.clear(); visitors = null;   // 🦋 ⚠️ setSpaceVisible 이 farmGroup 을 정리하기 전에 메시를 빼야 한다
   atFarm = false;
   player.position.set(FARM_GATE.x, 0, FARM_GATE.z + 2);
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
@@ -10379,7 +10544,18 @@ const ORES = [
   { id: 'coal',  name: '석탄', color: 0x2a2a2a },
   { id: 'gem',   name: '보석', color: 0x5ad0e0 },
 ];
-function weightedOre() { const gemP = WEATHER === 'fog' ? 0.2 : 0.1; const r = Math.random(); return r < 0.55 ? ORES[0] : r < 1 - gemP ? ORES[1] : ORES[2]; } // 돌55/석탄~35/보석10(🌫️ 안개 낀 날 20)
+// 💎 보석은 🌫️안개 낀 날에만(그 안에서 28%). 표는 js/dex-gates.js
+//   ⚠️ 광맥은 **스폰 시** 종류가 정해지고 재생성(14초) 때 바뀌지 않는다(spawnOreRock 의 userData.ore).
+//      즉 동굴을 지을 때의 날씨가 그 세션 광맥 구성을 정한다 — 안개 낀 날 동굴에 가야 한다.
+//   ⚠️ rollKind 를 쓰지 않는다: 누적 확률 구조가 아니고, 여기가 이미 WEATHER 를 보던 자리다.
+//   실측 — 맑음 돌61/석탄39/보석0 · 안개 돌44/석탄28/보석28 (원래는 돌55/석탄35/보석10, 안개 20)
+function weightedOre() {
+  const gemP = gateOpen(gateOf('ore', 'gem'), situation()) ? DEX_GATES.ore.gem.p : 0;
+  const r = Math.random();
+  if (r < gemP) return ORES[2];                    // 💎 보석
+  const t = (r - gemP) / (1 - gemP);               // 나머지를 0~1 로 다시 펴서 원래 55:35 비율 유지
+  return t < 0.55 / 0.9 ? ORES[0] : ORES[1];
+}
 
 function spawnOreRock(x, z, ore) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -10522,6 +10698,7 @@ function tryMine() {
     ud.depleted = true; ud.respawnAt = clock.elapsedTime + 14; nearest.visible = false;
     questEvent('mine', amt);                       // 데일리 의뢰(광석 캐기) 진행
     dexDiscover('ore', ore.id);                    // 📖 도감(광물 첫 채굴)
+    trackGateBlocked('ore', 'gem');        // [GA4] 📖
     ui.act?.('mine');                              // 튜토리얼: 첫 채굴
     trackEvent('mine_ore', { ore: ore.id, amt, pick: minePow });  // [GA4] ⛏️ 무쇠 괭이 사용 여부(pick=2)
   }
@@ -11151,6 +11328,7 @@ function animate() {
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
   updateWorkers(dt);        // 🧑‍🌾 일꾼 — 밭 안이면 걸어서, 밖이면 60초 스텝으로
+  if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
   updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
@@ -12282,10 +12460,13 @@ function tryFish() {
 }
 
 function catchFish() {
-  // 🐟 생선구이 버프(luck)·🌧️ 비 오는 날: 두 번 굴려 작은 값 채택 → 희귀/고급 확률↑
-  let roll = Math.random();
-  if (buffOn('luck') || RAIN_DAY || baitActive) roll = Math.min(roll, Math.random());
-  const kind = FISH_KINDS.find(k => roll <= k.p) || FISH_KINDS[FISH_KINDS.length - 1];
+  // 🐟 🌈무지개 물고기는 🌧️비 오는 날에만(게이트 안에서 22%). 표는 js/dex-gates.js
+  //   ⚠️ 생선구이 버프(luck)·비·미끼의 "두 번 굴려 작은 값" 보정은 **유지**한다.
+  //      게이트가 후보를 먼저 제한하고, 보정은 남은 후보 안에서 앞쪽(희귀)을 밀어준다.
+  const fishRnd = (buffOn('luck') || RAIN_DAY || baitActive)
+    ? () => Math.min(Math.random(), Math.random())
+    : Math.random;
+  const kind = rollKind(FISH_KINDS, 'fish', situation(), fishRnd);
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
   // 🎣 무엇을 낚았는지는 캐치 배너로(월드 플로트 텍스트는 밀착 줌에서 화면을 덮었다 — 베타 피드백).
@@ -12298,6 +12479,7 @@ function catchFish() {
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   dexDiscover('fish', kind.rarity);                                     // 📖 도감(어종 첫 발견)
+  trackGateBlocked('fish', 'rare');       // [GA4] 📖 게이트가 닫혀 못 얻은 날
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
   catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
   showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
