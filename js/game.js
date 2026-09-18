@@ -664,6 +664,23 @@ function habitatCtx() { return { night: isNight(), rain: RAIN_DAY }; }
 //      밤낮은 하루 안에 바뀌므로, 밤 종을 낮에 걸러내면 그날 의뢰가 사라진다(스펙 참고).
 function situation() { return { weather: WEATHER, night: isNight() }; }
 
+// 📖 [GA4] 게이트가 닫혀 못 얻은 순간 — 게이트가 너무 조이는지 보는 축.
+//   예: 🌈무지개 물고기 획득률이 한 달 뒤에도 안 오르면 확률 22%를 올린다.
+//   ⚠️ 굴림마다 쏘면 이벤트가 폭주한다. 카테고리별로 **하루 한 번**만 쏜다
+//      (🦋visitor_nearmiss 에서 실제로 겪었다 — 조건 안팎 10번 오가니 이벤트 10개).
+//   ⚠️ 굴림 함수 안이 아니라 **플레이어가 그 활동을 실제로 한 지점**에서 부른다.
+//      반딧불이는 스폰마다 rollBugKind 가 돌지만 플레이어가 잡은 건 아니다.
+const _gateBlockedToday = {};
+function trackGateBlocked(cat, id) {
+  if (gameState.dex[cat]?.[id]) return;                 // 이미 가진 사람은 관심 없다
+  if (gateOpen(gateOf(cat, id), situation())) return;   // 열려 있으면 막힌 게 아니다
+  const key = cat + ':' + todayStr();
+  if (_gateBlockedToday[key]) return;
+  _gateBlockedToday[key] = 1;
+  const s = situation();
+  trackEvent('dex_gate_blocked', { category: cat, entry: id, weather: s.weather, night: s.night ? 1 : 0 });
+}
+
 /** 스로틀된 소스로 한 지점 판정 — 매 프레임 불러도 초당 1회만 다시 모은다 */
 function habitatEnvAt(x, z) {
   const now = clock.elapsedTime;
@@ -2319,6 +2336,8 @@ export async function enterGame() {
     window.__place = (id, x, z, rot = 0) => placeOutdoor(x, z, false, id, rot);
     window.__select = (id) => { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); return id; };   // 🏗️ 검수용 배치 모드 진입(작업대 메뉴 대신)
     window.__ghost = () => decorGhost ? { x: +decorGhost.position.x.toFixed(2), z: +decorGhost.position.z.toFixed(2), pinned: outdoorTarget.pinned, ok: ghostOk } : null;   // 🏗️ 검수용 시설·장식 즉시 배치(검사·비용 포함)
+    window.__gates = { sit: situation, open: (c, i) => gateOpen(gateOf(c, i), situation()),
+      blocked: trackGateBlocked };   // 📖 게이트 검수용 — trackGateBlocked 는 실제 발사 확인에 쓴다
     window.__habitat = { env: habitatEnvAt, ctx: habitatCtx, cells: habitatCells, src: habitatSources, dirty: markHabitatDirty,
       alive: () => visitors?.alive || [],                                   // 🦋 지금 떠 있는 종
       tick: (s) => { for (let i = 0; i < s * 60; i++) visitors?.update(1 / 60); return visitors?.alive || []; } };   // 시간을 앞당겨 스폰을 확인(검수용)
@@ -4204,6 +4223,7 @@ function tryNet() {
   spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
   questEvent('catch');                                    // 🦉 데일리 의뢰(반딧불이 잡기)
   dexDiscover('bug', kind.id);                            // 📖 도감(반딧불이 첫 발견)
+  trackGateBlocked('bug', 'rainbow');     // [GA4] 📖
   catchCeremony('bugZoom');                               // 🎉 첫 반딧불이만 밀착, 이후 폴짝 + 병 팝
   showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
   if (kind.id === 'rainbow') tryUnlockDrop(0.5);          // 🎨 최희귀 → 집 색 해금 확률
@@ -4357,6 +4377,7 @@ function tryForage(node) {
   spawnSparkle(node.x, 0.55, node.z, kind.id === 'herb' ? 18 : 10);   // 발밑에서 반짝(잎 파티클은 나무 높이라 안 맞음)
   questEvent('forage');                                       // 🦉 데일리 의뢰(채집)
   dexDiscover('forage', kind.id);                             // 📖 채집 도감
+  trackGateBlocked('forage', 'herb');     // [GA4] 📖
   trackEvent('forage_pick', { kind: kind.id, weather: WEATHER });   // [GA4] 채집 루프 KPI
 }
 
@@ -10138,6 +10159,7 @@ function tryMine() {
     ud.depleted = true; ud.respawnAt = clock.elapsedTime + 14; nearest.visible = false;
     questEvent('mine', amt);                       // 데일리 의뢰(광석 캐기) 진행
     dexDiscover('ore', ore.id);                    // 📖 도감(광물 첫 채굴)
+    trackGateBlocked('ore', 'gem');        // [GA4] 📖
     ui.act?.('mine');                              // 튜토리얼: 첫 채굴
     trackEvent('mine_ore', { ore: ore.id, amt, pick: minePow });  // [GA4] ⛏️ 무쇠 괭이 사용 여부(pick=2)
   }
@@ -11850,6 +11872,7 @@ function catchFish() {
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   dexDiscover('fish', kind.rarity);                                     // 📖 도감(어종 첫 발견)
+  trackGateBlocked('fish', 'rare');       // [GA4] 📖 게이트가 닫혀 못 얻은 날
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
   catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
   showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
