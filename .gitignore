@@ -66,7 +66,8 @@ docs/beginner-guide/img/
 
 # 📸 카드뉴스 산출물은 tools/cardnews/.gitignore 가 이미 막고 있다(out·gen·shots·clips·_dbg*.mjs).
 #   node_modules/ 도 위에서 이미 막았다. 여기에 다시 적지 말 것 — 규칙이 두 곳에 흩어진다.
-#   assets/story 는 산출물이 아니라 입력 소재(재촬영 불가한 과거 빌드 화면 포함)라 추적한다.
+#   tools/cardnews/assets/story 는 산출물이 아니라 입력 소재다 — rough-first-build.png ·
+#   calm-mobile-old.png 처럼 지금은 다시 못 찍는 과거 빌드 화면이 섞여 있어 추적한다.
 
 # 📱 구글 플레이 TWA 빌드 산출물(33MB) — bubblewrap 이 다시 만든다.
 #   twa-manifest.json · build.gradle · app/src 는 설정이라 추적한다.
