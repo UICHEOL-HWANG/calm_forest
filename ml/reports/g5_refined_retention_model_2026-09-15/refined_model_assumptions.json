@@ -1,0 +1,99 @@
+{
+  "date": "2026-09-15",
+  "sample": {
+    "devices": 95,
+    "positives": 12,
+    "positive_rate": 0.12631578947368421
+  },
+  "target": "later_active: first 10m excluded, 10m-24h deliberate action",
+  "excluded": "marked beta tester devices where GA4 user_properties.ab_variant matches beta_A/beta_B",
+  "not_used": [
+    "A/B variant effect",
+    "later_* columns as features",
+    "raw identifiers"
+  ],
+  "selected_model": "refined_behavior",
+  "criteria": "candidate if above majority/channel and PR-AUC >= 80% of raw early_tracked baseline",
+  "metrics": [
+    {
+      "model": "refined_behavior_plus_named_events",
+      "kind": "cv_logistic",
+      "features": 29,
+      "auc": 0.927710843373494,
+      "auc_ci_low": 0.7927159810126582,
+      "auc_ci_high": 0.9989177489177489,
+      "pr_auc": 0.8493788819875777,
+      "balanced_acc_at_top_30pct": 0.8498995983935742
+    },
+    {
+      "model": "refined_behavior",
+      "kind": "cv_logistic",
+      "features": 19,
+      "auc": 0.9146586345381525,
+      "auc_ci_low": 0.7662337662337663,
+      "auc_ci_high": 0.9952941176470589,
+      "pr_auc": 0.8218996883380446,
+      "balanced_acc_at_top_30pct": 0.8498995983935742
+    },
+    {
+      "model": "refined_plus_profile",
+      "kind": "cv_logistic",
+      "features": 23,
+      "auc": 0.9146586345381525,
+      "auc_ci_low": 0.7729358288770054,
+      "auc_ci_high": 0.9953095684803002,
+      "pr_auc": 0.8174867724867726,
+      "balanced_acc_at_top_30pct": 0.8498995983935742
+    },
+    {
+      "model": "early_tracked_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.8830321285140562,
+      "auc_ci_low": 0.7760136418908649,
+      "auc_ci_high": 0.9655172413793104,
+      "pr_auc": 0.6651626228308476,
+      "balanced_acc_at_top_30pct": 0.8022088353413654
+    },
+    {
+      "model": "early_actions_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.7605421686746988,
+      "auc_ci_low": 0.5889489136320563,
+      "auc_ci_high": 0.9162318705259881,
+      "pr_auc": 0.5543322337181986,
+      "balanced_acc_at_top_30pct": 0.5
+    },
+    {
+      "model": "deliberate_share_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.7575301204819277,
+      "auc_ci_low": 0.5876618711748022,
+      "auc_ci_high": 0.9123563218390804,
+      "pr_auc": 0.5019220349844705,
+      "balanced_acc_at_top_30pct": 0.5
+    },
+    {
+      "model": "channel_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.6044176706827309,
+      "auc_ci_low": 0.44418386491557227,
+      "auc_ci_high": 0.7414658634538152,
+      "pr_auc": 0.15804729214340196,
+      "balanced_acc_at_top_30pct": 0.6044176706827309
+    },
+    {
+      "model": "majority_prevalence",
+      "kind": "baseline",
+      "features": 0,
+      "auc": 0.5,
+      "auc_ci_low": 0.5,
+      "auc_ci_high": 0.5,
+      "pr_auc": 0.12631578947368421,
+      "balanced_acc_at_top_30pct": 0.5
+    }
+  ]
+}

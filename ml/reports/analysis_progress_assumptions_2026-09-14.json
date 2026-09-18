@@ -1,0 +1,55 @@
+{
+  "analysis_name": "calm forest 분석·실험 진행 상태 감사",
+  "analyst": "Codex",
+  "created": "2026-09-14",
+  "assumptions": [
+    {
+      "id": 1,
+      "category": "data",
+      "assumption": "기존 노트북의 저장 출력은 당시 실행 결과이며 현재 데이터의 재조회 결과가 아니다.",
+      "rationale": "이번 작업에서는 데이터 쿼리를 재실행하지 않고 파일과 분석 원장을 대조했다.",
+      "confidence": "high",
+      "impact_if_wrong": "medium",
+      "validation_plan": "새 지표를 발표할 때 원본 SQL을 최신 완전 일별 export에 재실행한다.",
+      "validated": true,
+      "validation_result": "confirmed",
+      "validation_notes": "01번 노트북은 저장된 출력이 0개여서 현재 확정 수치의 근거에서 제외했다."
+    },
+    {
+      "id": 2,
+      "category": "business_logic",
+      "assumption": "기존 세션 이탈 예측과 앞으로 정의할 토스 행동 코호트 모델은 다른 목표·라벨·판정 기준을 가진다.",
+      "rationale": "04번 노트북은 세션 이탈을 다뤘고, 토스 행동 코호트의 목표·라벨은 아직 정하지 않았다.",
+      "confidence": "high",
+      "impact_if_wrong": "critical",
+      "validation_plan": "각 결과를 별도 단계표로 보고한다.",
+      "validated": true,
+      "validation_result": "confirmed",
+      "validation_notes": "12번 일지에서 기존 이탈 모델 G3~G5와 새 오프라인 코호트 분석을 분리했다."
+    },
+    {
+      "id": 3,
+      "category": "technical",
+      "assumption": "과거 VM 핫리로드 기록이 현재 운영 버전/가동을 보장한다.",
+      "rationale": "2026-09-06 당시 확인 기록만 있고 이번 상태 감사에서는 운영 API를 새로 조회하지 않았다.",
+      "confidence": "low",
+      "impact_if_wrong": "high",
+      "validation_plan": "운영 모델을 논의할 때 /health와 model_version을 읽기 전용으로 확인한다.",
+      "validated": false,
+      "validation_result": null,
+      "validation_notes": null
+    },
+    {
+      "id": 4,
+      "category": "technical",
+      "assumption": "기존 로그만으로 토스 유저의 낚시 행동 코호트를 편향 없이 정의할 수 있다.",
+      "rationale": "과거 캐스트 실패 이력과 노출 계측이 불완전하며 관측 기기 수가 적다.",
+      "confidence": "low",
+      "impact_if_wrong": "critical",
+      "validation_plan": "기존 GA4/BigQuery 로그에서 기기 중복·관측 기간·양성 수·시간 누수를 확인하고 코호트 정의별 민감도를 비교한다.",
+      "validated": false,
+      "validation_result": null,
+      "validation_notes": "라이브 파일럿 계획은 사용자 의도와 달라 철회했고 관련 코드·SQL을 삭제했다."
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "analysis": "g1-toss-fishing-experiment-readiness",
+  "date": "2026-09-14",
+  "decision": "토스 낚시 안내 실험을 시작하기 전에 현재 데이터와 계측의 연결성을 판정한다",
+  "source": "BigQuery GA4 daily export, 2026-09-04 through 2026-09-12 KST",
+  "assumptions": [
+    {
+      "category": "population",
+      "assumption": "event_params.platform=toss identifies observed Toss webview events, not first-ever game users.",
+      "rationale": "A device may have played elsewhere or before the observed window.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Reconcile platform and prior activity with deduplicated session logs."
+    },
+    {
+      "category": "exclusion",
+      "assumption": "beta_A/beta_B flags exclude marked testers but may miss unmarked paid testers.",
+      "rationale": "The earlier Toss marker audit found zero marked rows.",
+      "confidence": "low",
+      "impact_if_wrong": "high",
+      "validation": "Verify the paid tester roster against a durable experiment unit key before randomization."
+    },
+    {
+      "category": "identity",
+      "assumption": "GA4 user_pseudo_id is an observed browser/device key but is not a proven crosswalk to the app client_id.",
+      "rationale": "None of the relevant historical Toss GA4 event rows contain a client_id parameter.",
+      "confidence": "high",
+      "impact_if_wrong": "high",
+      "validation": "Log a privacy-safe stable experiment unit ID at assignment and verify its continuity with GA4 outcomes."
+    },
+    {
+      "category": "metric_definition",
+      "assumption": "tutorial_skip has multiple meanings: welcome skip, coach interruption, and reopened guide dismissal.",
+      "rationale": "The same client event name is emitted at several UI paths; at=welcome accounts for 16 historical rows.",
+      "confidence": "high",
+      "impact_if_wrong": "high",
+      "validation": "Record a distinct first-eligible timestamp from runtime state rather than treating all tutorial_skip events as eligibility."
+    },
+    {
+      "category": "outcome",
+      "assumption": "fishing_cast records a successful cast attempt near the lake, not a catch or all fishing intent.",
+      "rationale": "The client emits it after distance validation; fishing_catch is a separate event.",
+      "confidence": "high",
+      "impact_if_wrong": "medium",
+      "validation": "Check duplicate emissions and event delivery in the 20-device-per-arm telemetry pilot."
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+event_name,event_rows,devices,treat_rows,control_rows,trigger_rows,skipped_rows,cue_rows,shown_rows,target_area_rows,recommendation_id_rows,zone_rows
+zone_enter,257,10,0,0,0,0,0,0,0,0,257
+churn_score,217,15,115,102,217,12,15,15,0,0,0
+guide_open,2,2,0,0,0,0,0,0,0,0,0

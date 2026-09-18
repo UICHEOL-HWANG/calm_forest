@@ -1,0 +1,9 @@
+device_label,first_toss_day,device,early_action_segment,early_area_segment,early_connection_segment,later_actions,later_new_area,later_quest_social,later_fishing_sea,later_nature
+D004,2026-09-05,mobile,6회 이상,2개 이상,연결 실패 기록,755,True,True,True,True
+D001,2026-09-04,mobile,6회 이상,2개 이상,연결 성공만 기록,753,True,True,True,True
+D005,2026-09-04,mobile,6회 이상,2개 이상,연결 성공만 기록,319,True,True,True,True
+D018,2026-09-04,mobile,6회 이상,2개 이상,연결 성공만 기록,317,True,True,True,True
+D006,2026-09-05,mobile,6회 이상,2개 이상,연결 성공만 기록,182,False,True,True,True
+D003,2026-09-09,mobile,6회 이상,2개 이상,연결 이벤트 없음,105,False,True,True,True
+D011,2026-09-04,mobile,0회,0개,연결 성공만 기록,14,True,False,True,False
+D012,2026-09-04,desktop,0회,0개,연결 이벤트 없음,1,True,False,False,False

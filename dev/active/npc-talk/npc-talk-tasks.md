@@ -9,7 +9,7 @@
 - [ ] ⚠️ 올빼미(`courier`) persona 잠정 — 실제 대사 확인 후 조정
 
 ## 1. DB
-- [x] `sql/migrate_npc_talk.sql` — 테이블 3개 + 읽기 rpc 3개 + RLS
+- [x] `sql/migrations/migrate_npc_talk.sql` — 테이블 3개 + 읽기 rpc 3개 + RLS
 - [x] Supabase 적용(사용자) · `wrangler secret put SUPABASE_SERVICE_KEY`(사용자)
 - [x] 검증: anon 쓰기 **401 RLS 차단** · anon 읽기 rpc 200 · 테이블 직접 select 빈 집합
 

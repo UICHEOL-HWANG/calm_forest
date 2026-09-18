@@ -1,0 +1,5 @@
+open_no,map,events,play_delta_mean,play_up,session_delta_mean,session_up,next_revisit,map_enter_users,map_enter_sum,map_action_users,map_action_sum
+first,mist,5,164.98000000000002,1,-0.2,1,2,2,3.0,2,133.0
+first,sea,5,276.3666666666667,2,0.2,1,3,1,1.0,1,22.0
+second,mist,5,-25.889999999999997,2,-0.2,1,4,3,3.0,3,147.0
+second,sea,5,18.296666666666667,3,0.4,2,4,2,3.0,2,52.0

@@ -1,0 +1,3 @@
+grp,variant,testers,sessions,active_days,activity_breadth_mean,activity_breadth_median,extra_sessions_mean,extra_sessions_sum,play_min_mean,play_min_median,play_min_sum,client_ids
+A,beta_A,5,48,29,101.8,102.0,3.8,19,166.75666666666666,153.58333333333334,833.7833333333333,11
+B,beta_B,5,58,23,76.2,83.0,7.0,35,736.4466666666667,245.81666666666666,3682.2333333333336,9

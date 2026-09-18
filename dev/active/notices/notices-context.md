@@ -4,7 +4,7 @@
 **Branch:** feat/notices (main 에서 분기, 커밋 139c1d8 feat · 1f492ad docs) — main 미병합
 
 ## 현재 상태 (새 세션이 이어받을 때)
-- DB: `sql/migrate_notices.sql` 사용자가 SQL Editor 로 적용 완료. 테스트 행 id 1(전체 공지)·2(문의 14번 답장). 행 1 본문 `\n` 정정 완료.
+- DB: `sql/migrations/migrate_notices.sql` 사용자가 SQL Editor 로 적용 완료. 테스트 행 id 1(전체 공지)·2(문의 14번 답장). 행 1 본문 `\n` 정정 완료.
 - 검증 완료: npm test 112 통과 · node --check · 게스트 RLS(공지만 보임) · `?lang=en` 영어 폴백 · 375px 배치 · 빈 상태 문구.
 - 검증 미완: **로그인 계정의 출석 [알겠어요] → 📮 새 소식 체인**(구글 로그인은 자동화 불가 → 사용자 계정으로 확인 필요).
 - code-reviewer 결과: 도착하면 아래 "리뷰 메모"에 추가. 아직 미반영.
@@ -19,7 +19,7 @@
 - 드로우콜: 씬 변경 없음(HTML 모달·조회뿐) → 측정 생략(사용자 지시).
 
 ## 핵심 파일
-- `sql/migrate_notices.sql` — notices 테이블 + RLS + feedback select-own 정책 (신규)
+- `sql/migrations/migrate_notices.sql` — notices 테이블 + RLS + feedback select-own 정책 (신규)
 - `js/notices.js` — 순수 로직 unreadNotices / pickText / maxId (신규, 테스트 대상)
 - `tests/notices.test.mjs` — node --test (신규)
 - `js/supabase-client.js` — `fetchNotices(sinceId)` (listPhotos 패턴)

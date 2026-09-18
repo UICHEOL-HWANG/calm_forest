@@ -1,0 +1,40 @@
+{
+  "analysis": "g2-toss-first-day-behavior",
+  "date": "2026-09-14",
+  "decision": "앱인토스 첫 관측일의 행동 구성을 기술하고 후속 분석의 표본 정의를 정한다",
+  "source": "BigQuery GA4 daily export, 2026-09-04 through 2026-09-12 KST; BigQuery session_logs for identity audit only",
+  "assumptions": [
+    {
+      "category": "population",
+      "assumption": "GA4 event parameter platform=toss identifies in-app Toss play, but excludes exits before the parameter is recorded.",
+      "rationale": "js/platform.js and js/analytics.js attach platform to tracked events; automatic events may lack it.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Compare platform-tagged GA4 activity with deduplicated session_logs; inspect early-exit instrumentation."
+    },
+    {
+      "category": "exclusion",
+      "assumption": "Recorded beta_A/beta_B markers exclude known A/B testers from the Toss cohort.",
+      "rationale": "Both GA4 Toss rows and Toss session rows have zero marked beta rows in the audited window.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Check beta roster-to-device mapping coverage before claiming all testers were removed."
+    },
+    {
+      "category": "metric_definition",
+      "assumption": "The audited deliberate-action allowlist approximates actual play.",
+      "rationale": "Same allowlist as the previous spike-day behavior notebook; automatic and bookkeeping events excluded.",
+      "confidence": "medium",
+      "impact_if_wrong": "medium",
+      "validation": "Audit newly added game event names against code and GA4 export."
+    },
+    {
+      "category": "time_window",
+      "assumption": "2026-09-12 is the latest complete GA4 daily export for this run.",
+      "rationale": "The identity audit found GA4 rows through 9/12 but only raw session rows on 9/13.",
+      "confidence": "high",
+      "impact_if_wrong": "medium",
+      "validation": "Re-run the audit when 9/13 GA4 daily export appears."
+    }
+  ]
+}

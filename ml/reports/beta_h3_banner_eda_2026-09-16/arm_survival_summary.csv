@@ -1,0 +1,3 @@
+arm,events,sessions,users,variants,intervene_true,survived_60s,survival_rate,p_mean,p_median,sec_after_median
+control,920,36,10,"beta_A,beta_B",560,897,0.975,0.1467929159587493,0.15665904103620445,918.5
+treat,1000,37,8,"beta_A,beta_B",702,957,0.9589178356713427,0.15509954791866423,0.15550889564448245,756.0

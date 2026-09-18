@@ -434,7 +434,7 @@ export async function sendCafeGuests({ date, weather, count, phase, model, guest
     const { error } = await supabase.from('cafe_guests').insert({
       // phase = 집 단계 버킷. unique 키에 들어가므로 버킷마다 한 벌씩 남는다.
       //   (없으면 같은 날·날씨에서 먼저 온 한 벌만 남고 나머지 두 벌이 버려진다 —
-      //    sql/migrate_cafe_guests_phase.sql 참고)
+      //    sql/migrations/migrate_cafe_guests_phase.sql 참고)
       gen_date: date, weather, guest_count: count, phase: phase || 'settled', model, guests,
     });
     if (error && error.code !== '23505') throw error;   // 23505 = 그 조합은 이미 기록됨(정상)

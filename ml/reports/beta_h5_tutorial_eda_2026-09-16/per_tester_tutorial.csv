@@ -1,0 +1,11 @@
+tester,variant,grp,map_order,tutorial_start,tutorial_complete,tutorial_skip,tutorial_step_events,tut_step_count,max_order_reached,fun_steps_reached,late_progress_steps_reached,tut_build,tut_carve,tut_chop,tut_decor,tut_dex,tut_enter,tut_fish,tut_harvest,tut_market,tut_mine,tut_move,tut_quest,tut_seed,tut_sell,tut_till,tut_toolpage,tut_water
+T01,beta_A,A,mist_first,1,1,0,17,17,17,4,6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+T02,beta_A,A,mist_first,1,0,1,6,6,6,3,0,1,0,1,0,0,1,1,0,0,0,1,0,0,0,0,1,0
+T03,beta_A,A,sea_first,1,0,1,6,6,6,3,0,1,0,1,0,0,1,1,0,0,0,1,0,0,0,0,1,0
+T04,beta_A,A,sea_first,1,0,1,6,6,6,3,0,1,0,1,0,0,1,1,0,0,0,1,0,0,0,0,1,0
+T05,beta_A,A,sea_first,1,0,1,9,9,9,4,0,1,0,1,1,0,1,1,0,0,0,1,0,1,0,1,1,0
+T06,beta_B,B,sea_first,1,1,0,17,17,17,4,6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+T07,beta_B,B,mist_first,1,1,1,17,17,17,4,6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+T08,beta_B,B,sea_first,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+T09,beta_B,B,mist_first,1,0,0,3,3,3,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1,0
+T10,beta_B,B,mist_first,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

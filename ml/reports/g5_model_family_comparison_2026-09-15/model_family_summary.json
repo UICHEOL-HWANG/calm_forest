@@ -1,0 +1,86 @@
+{
+  "date": "2026-09-15",
+  "verdict": "logistic_selected 유지; ComplementNB는 보조 baseline; Tree는 규칙 설명용",
+  "sample": {
+    "devices": 95,
+    "positives": 12,
+    "positive_rate": 0.12631578947368421
+  },
+  "target": "later_active: 10m-24h deliberate action",
+  "excluded": "GA4 ab_variant beta_A/beta_B marked devices",
+  "not_used": [
+    "A/B variant effect",
+    "later_* as features",
+    "raw identifiers",
+    "XGBoost/LightGBM"
+  ],
+  "best_overall": {
+    "model": "logistic_selected",
+    "family": "logistic",
+    "n_features": 29,
+    "auc": 0.9327309236947791,
+    "pr_auc": 0.8667540792540794,
+    "top30_cutoff": 0.23325880234865076,
+    "top30_flagged": 29,
+    "top30_precision": 0.3793103448275862,
+    "top30_recall": 0.9166666666666666,
+    "top30_balanced_acc": 0.8498995983935742,
+    "auc_ci_low": 0.8040044402802673,
+    "auc_ci_high": 1.0,
+    "pr_auc_ci_low": 0.6709821428571429,
+    "pr_auc_ci_high": 1.0
+  },
+  "logistic_selected": {
+    "model": "logistic_selected",
+    "family": "logistic",
+    "n_features": 29,
+    "auc": 0.9327309236947791,
+    "pr_auc": 0.8667540792540794,
+    "top30_cutoff": 0.23325880234865076,
+    "top30_flagged": 29,
+    "top30_precision": 0.3793103448275862,
+    "top30_recall": 0.9166666666666666,
+    "top30_balanced_acc": 0.8498995983935742,
+    "auc_ci_low": 0.8040044402802673,
+    "auc_ci_high": 1.0,
+    "pr_auc_ci_low": 0.6709821428571429,
+    "pr_auc_ci_high": 1.0
+  },
+  "best_naive_bayes": {
+    "model": "gaussian_nb",
+    "family": "naive_bayes",
+    "n_features": 29,
+    "auc": 0.8373493975903614,
+    "pr_auc": 0.46534674333522397,
+    "top30_cutoff": 0.017446916296387976,
+    "top30_flagged": 29,
+    "top30_precision": 0.3448275862068966,
+    "top30_recall": 0.8333333333333334,
+    "top30_balanced_acc": 0.8022088353413654,
+    "auc_ci_low": 0.6858822097020627,
+    "auc_ci_high": 0.9494117647058823,
+    "pr_auc_ci_low": 0.24143701527108766,
+    "pr_auc_ci_high": 0.7633868623957799
+  },
+  "best_rule_tree": {
+    "model": "decision_tree_depth_2",
+    "family": "rule_tree",
+    "n_features": 32,
+    "auc": 0.8383534136546186,
+    "pr_auc": 0.4326964881506807,
+    "top30_cutoff": 0.2689231550749569,
+    "top30_flagged": 29,
+    "top30_precision": 0.3103448275862069,
+    "top30_recall": 0.75,
+    "top30_balanced_acc": 0.7545180722891567,
+    "auc_ci_low": 0.7270558253310053,
+    "auc_ci_high": 0.935296777625779,
+    "pr_auc_ci_low": 0.21868793308184953,
+    "pr_auc_ci_high": 0.6996719869231443
+  },
+  "criteria": {
+    "alternative_requires_auc_or_pr_auc_above_logistic": true,
+    "alternative_requires_top30_recall_gte_80pct": true,
+    "support_model_allowed_when_interpretable": true
+  }
+}

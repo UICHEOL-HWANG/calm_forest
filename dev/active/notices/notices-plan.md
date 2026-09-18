@@ -13,7 +13,7 @@
 - 발신은 관리자 UI 없이 SQL Editor / Supabase MCP insert (클라이언트 insert 정책 없음).
 - 언어: `title_en`/`body_en` 선택 컬럼. 영어 모드면 있을 때만 영어, 없으면 한국어 폴백(i18n 철학과 동일).
 
-## 1. DB — `sql/migrate_notices.sql`
+## 1. DB — `sql/migrations/migrate_notices.sql`
 
 ```sql
 create table public.notices (
@@ -35,7 +35,7 @@ create policy feedback_select_own on public.feedback for select to authenticated
   using (user_id = (select auth.uid()));
 ```
 
-- RLS는 `(select auth.uid())` + `to authenticated` 규칙([migrate_struct_01_rls_perf.sql](sql/migrate_struct_01_rls_perf.sql) 패턴). 익명 세션도 `authenticated` 롤이라 전체 공지는 게스트에게도 보임.
+- RLS는 `(select auth.uid())` + `to authenticated` 규칙([migrate_struct_01_rls_perf.sql](sql/migrations/migrate_struct_01_rls_perf.sql) 패턴). 익명 세션도 `authenticated` 롤이라 전체 공지는 게스트에게도 보임.
 - 파일 머리에 발송 예시 두 줄(전체 공지 / 답장) 주석으로 남김 → 앞으로 운영 시 복붙.
 
 ## 2. 순수 로직 — `js/notices.js` (새 파일, 테스트 대상)

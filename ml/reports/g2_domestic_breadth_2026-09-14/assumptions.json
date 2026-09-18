@@ -1,0 +1,67 @@
+{
+  "analysis_name": "H3 domestic spike first-day activity breadth",
+  "analyst": "Codex",
+  "created": "2026-09-14",
+  "assumptions": [
+    {
+      "id": 1,
+      "category": "data",
+      "assumption": "The first observed GA4 country is a usable proxy for domestic arrival.",
+      "rationale": "The cohort is defined by first-touch geo.country; location can reflect VPN or IP routing.",
+      "confidence": "medium",
+      "impact_if_wrong": "medium",
+      "validation_plan": "Cross-check country against language and acquisition in a separate gate.",
+      "validated": false,
+      "validation_result": null,
+      "validation_notes": null
+    },
+    {
+      "id": 2,
+      "category": "business_logic",
+      "assumption": "The audited deliberate-event allowlist represents meaningful play across five areas.",
+      "rationale": "Reuses the definition from the prior 02 and 06 notebooks; auto and ledger events are excluded.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation_plan": "Audit new game events against the allowlist and recalculate breadth.",
+      "validated": false,
+      "validation_result": null,
+      "validation_notes": null
+    },
+    {
+      "id": 3,
+      "category": "technical",
+      "assumption": "The GA4 export frozen through 2026-09-11 contains the relevant first-day events.",
+      "rationale": "Both target days precede the frozen end date; late arrivals may still move counts.",
+      "confidence": "high",
+      "impact_if_wrong": "medium",
+      "validation_plan": "Compare cohort sizes and numerators on rerun.",
+      "validated": false,
+      "validation_result": null,
+      "validation_notes": null
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "assumption": "Paid beta testers are not dominating the deeper-play tail.",
+      "rationale": "There is no stable tester flag in this GA4 extract; 3 and 4 devices reached all five areas.",
+      "confidence": "low",
+      "impact_if_wrong": "high",
+      "validation_plan": "Obtain consented tester flags, check join coverage, and rerun sensitivity without testers.",
+      "validated": false,
+      "validation_result": null,
+      "validation_notes": null
+    },
+    {
+      "id": 5,
+      "category": "statistical",
+      "assumption": "Distinct GA4 devices should not be interpreted as independent people.",
+      "rationale": "Cookie deletion and multiple devices may split one human across IDs.",
+      "confidence": "high",
+      "impact_if_wrong": "high",
+      "validation_plan": "Keep conclusions descriptive until stable consented person-level identity exists.",
+      "validated": false,
+      "validation_result": null,
+      "validation_notes": null
+    }
+  ]
+}

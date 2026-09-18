@@ -1,0 +1,40 @@
+{
+  "analysis": "g2-toss-deep-device-actions",
+  "date": "2026-09-14",
+  "decision": "토스 첫날 심층 행동의 반복 유형을 익명 기기별로 기술한다",
+  "source": "BigQuery GA4 daily export, 2026-09-04 through 2026-09-12 KST",
+  "assumptions": [
+    {
+      "category": "population",
+      "assumption": "The first platform=toss event marks the first observed Toss day, not necessarily the first-ever game day.",
+      "rationale": "A device could have played on web before opening the Toss webview.",
+      "confidence": "high",
+      "impact_if_wrong": "medium",
+      "validation": "Check prior web events by device internally before any new-user interpretation."
+    },
+    {
+      "category": "selection",
+      "assumption": "31+ deliberate events is the deep-play band fixed in notebook 08 before this query.",
+      "rationale": "The user asked to inspect the devices responsible for the heavy tail.",
+      "confidence": "high",
+      "impact_if_wrong": "medium",
+      "validation": "If needed, compare 6-30 and 31+ bands in a separately approved gate."
+    },
+    {
+      "category": "exclusion",
+      "assumption": "beta_A/beta_B markers identify known A/B testers, but unmarked internal use may remain.",
+      "rationale": "The Toss audit found zero marked beta rows in GA4 and raw sessions.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Audit beta roster-to-device coverage before calling these ordinary users."
+    },
+    {
+      "category": "metric_definition",
+      "assumption": "Counted GA4 action events represent repeated behaviors, not visits or time spent.",
+      "rationale": "The same event_name may be emitted many times within one GA session; first_chop and chop_tree may overlap.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Inspect event instrumentation and duplicate emission for the largest action types."
+    }
+  ]
+}

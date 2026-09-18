@@ -84,7 +84,7 @@ create policy "own session select" on public.session_logs
 --    ⚠️ `with (security_invoker = on)` 필수 — 빼면 RLS 가 우회됩니다.
 --    Postgres 뷰는 기본이 정의자(definer) 권한 실행이라, RLS 걸린 econ_logs 를
 --    감싸도 소유자(postgres) 권한으로 돌아 전체 유저 데이터가 노출됩니다.
---    자세한 배경은 sql/supabase_setup.sql 의 "4) 분석용 뷰" 주석 참고.
+--    자세한 배경은 sql/setup/supabase_setup.sql 의 "4) 분석용 뷰" 주석 참고.
 --
 --    security_invoker = on → 조회자 권한 실행 → 본인 데이터만(전체는 service_role)
 --    이미 만든 뷰: alter view public.v_econ_daily set (security_invoker = on);

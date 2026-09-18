@@ -1,0 +1,5 @@
+variant,arm,events,sessions,users,survived_60s,survival_rate,intervene_true
+beta_A,control,517,14,5,509,0.9845261121856866,287
+beta_A,treat,603,21,4,567,0.9434276206322796,442
+beta_B,control,403,22,5,388,0.9627791563275434,273
+beta_B,treat,397,16,4,390,0.982367758186398,260

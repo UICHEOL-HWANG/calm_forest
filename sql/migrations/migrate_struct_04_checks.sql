@@ -24,7 +24,7 @@
 --     variant      : control/A/B 에 beta_A 가 이미 섞여 있음 (실험마다 신설)
 --     weather      : 날씨 종류가 게임 코드 쪽에서 확장 중
 --
---  → source 오타 방어는 CHECK 대신 sql/quality_checks.sql 의 정기 점검으로
+--  → source 오타 방어는 CHECK 대신 sql/analytics/quality_checks.sql 의 정기 점검으로
 --    잡는 편이 현실적이다. (아래 검증 쿼리 참고)
 --
 --  ⚠️ NOT VALID 로 걸지 않는다. 데이터가 작고(최대 5.6만 행) 위반 행이

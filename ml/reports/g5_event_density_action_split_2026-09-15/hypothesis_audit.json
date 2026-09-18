@@ -1,0 +1,80 @@
+{
+  "analysis": "g5-event-density-action-split-hypothesis",
+  "date": "2026-09-15",
+  "source": "/Users/uicheol_hwang/calm_forest/ml/reports/g3_all_channel_later_targets_2026-09-15/all_channel_later_target_candidates.csv",
+  "hypothesis": "Within early_tracked_events >= 20, deliberate action depth separates next-content guidance from first-action guidance candidates.",
+  "thresholds": {
+    "early_tracked_events": 20,
+    "early_actions": 6
+  },
+  "n": 95,
+  "positives": 12,
+  "segments": [
+    {
+      "split_segment": "저밀도+의도행동 없음",
+      "devices": 64,
+      "positives": 2,
+      "new_area": 2,
+      "quest_social": 1,
+      "fishing_sea": 0,
+      "nature": 0,
+      "rate": 0.03125
+    },
+    {
+      "split_segment": "저밀도+의도행동 있음",
+      "devices": 2,
+      "positives": 0,
+      "new_area": 0,
+      "quest_social": 0,
+      "fishing_sea": 0,
+      "nature": 0,
+      "rate": 0.0
+    },
+    {
+      "split_segment": "고밀도+의도행동 적음",
+      "devices": 11,
+      "positives": 3,
+      "new_area": 3,
+      "quest_social": 1,
+      "fishing_sea": 2,
+      "nature": 0,
+      "rate": 0.2727272727272727
+    },
+    {
+      "split_segment": "고밀도+의도행동 많음",
+      "devices": 18,
+      "positives": 7,
+      "new_area": 4,
+      "quest_social": 7,
+      "fishing_sea": 6,
+      "nature": 7,
+      "rate": 0.3888888888888889
+    }
+  ],
+  "tests": [
+    {
+      "검증": "고밀도+의도행동 많음 vs 저밀도",
+      "차이": 0.35858585858585856,
+      "bootstrap_95_하한": 0.13636363636363635,
+      "bootstrap_95_상한": 0.595959595959596,
+      "판정": "즐길거리 유도 후보"
+    },
+    {
+      "검증": "고밀도+의도행동 적음 vs 저밀도",
+      "차이": 0.2424242424242424,
+      "bootstrap_95_하한": -0.015151515151515152,
+      "bootstrap_95_상한": 0.5303030303030303,
+      "판정": "첫 행동·진입 안내 후보"
+    }
+  ],
+  "verdict": {
+    "high_tracked_high_deliberate": "즐길거리 유도 후보",
+    "high_tracked_low_deliberate": "첫 행동·진입 안내 후보"
+  },
+  "constraints": [
+    "not an A/B read",
+    "no production deployment",
+    "device-level, not person-level",
+    "post-10-minute fields used only as labels and interpretation targets"
+  ]
+}

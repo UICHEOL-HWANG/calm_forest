@@ -1,0 +1,242 @@
+activity_day,segment_type,segment_value,dau
+2026-07-27,acquisition,(direct) / (none),10
+2026-07-27,acquisition,기타 (<30),1
+2026-07-27,country,South Korea,11
+2026-07-27,device,desktop,6
+2026-07-27,device,mobile,5
+2026-07-28,acquisition,(direct) / (none),3
+2026-07-28,acquisition,기타 (<30),1
+2026-07-28,country,South Korea,4
+2026-07-28,device,mobile,3
+2026-07-28,device,desktop,1
+2026-07-29,acquisition,(direct) / (none),2
+2026-07-29,acquisition,기타 (<30),1
+2026-07-29,country,South Korea,3
+2026-07-29,device,desktop,2
+2026-07-29,device,mobile,1
+2026-07-30,acquisition,(direct) / (none),5
+2026-07-30,acquisition,기타 (<30),1
+2026-07-30,country,South Korea,6
+2026-07-30,device,mobile,5
+2026-07-30,device,desktop,1
+2026-07-31,acquisition,(direct) / (none),2
+2026-07-31,acquisition,기타 (<30),1
+2026-07-31,country,South Korea,3
+2026-07-31,device,mobile,2
+2026-07-31,device,desktop,1
+2026-08-01,acquisition,(direct) / (none),2
+2026-08-01,acquisition,기타 (<30),1
+2026-08-01,country,South Korea,3
+2026-08-01,device,desktop,2
+2026-08-01,device,mobile,1
+2026-08-03,acquisition,(direct) / (none),11
+2026-08-03,acquisition,기타 (<30),1
+2026-08-03,country,South Korea,12
+2026-08-03,device,desktop,8
+2026-08-03,device,mobile,4
+2026-08-04,acquisition,(direct) / (none),9
+2026-08-04,acquisition,기타 (<30),4
+2026-08-04,country,South Korea,11
+2026-08-04,country,United States,2
+2026-08-04,device,mobile,7
+2026-08-04,device,desktop,6
+2026-08-05,acquisition,(direct) / (none),9
+2026-08-05,acquisition,기타 (<30),1
+2026-08-05,country,South Korea,10
+2026-08-05,device,mobile,7
+2026-08-05,device,desktop,3
+2026-08-06,acquisition,(direct) / (none),7
+2026-08-06,country,South Korea,7
+2026-08-06,device,desktop,4
+2026-08-06,device,mobile,3
+2026-08-07,acquisition,(direct) / (none),2
+2026-08-07,country,South Korea,2
+2026-08-07,device,mobile,2
+2026-08-08,acquisition,(direct) / (none),5
+2026-08-08,country,South Korea,5
+2026-08-08,device,desktop,3
+2026-08-08,device,mobile,2
+2026-08-09,acquisition,(direct) / (none),7
+2026-08-09,country,South Korea,7
+2026-08-09,device,desktop,4
+2026-08-09,device,mobile,3
+2026-08-10,acquisition,(direct) / (none),4
+2026-08-10,acquisition,기타 (<30),4
+2026-08-10,country,South Korea,7
+2026-08-10,country,기타 (<30),1
+2026-08-10,device,mobile,5
+2026-08-10,device,desktop,3
+2026-08-11,acquisition,(direct) / (none),7
+2026-08-11,country,South Korea,6
+2026-08-11,country,United States,1
+2026-08-11,device,desktop,4
+2026-08-11,device,mobile,3
+2026-08-12,acquisition,(direct) / (none),8
+2026-08-12,country,South Korea,8
+2026-08-12,device,desktop,6
+2026-08-12,device,mobile,2
+2026-08-13,acquisition,(direct) / (none),6
+2026-08-13,country,South Korea,6
+2026-08-13,device,mobile,3
+2026-08-13,device,desktop,3
+2026-08-14,acquisition,(direct) / (none),4
+2026-08-14,country,South Korea,4
+2026-08-14,device,desktop,3
+2026-08-14,device,mobile,1
+2026-08-15,acquisition,(direct) / (none),43
+2026-08-15,acquisition,기타 (<30),4
+2026-08-15,country,United States,32
+2026-08-15,country,South Korea,12
+2026-08-15,country,기타 (<30),3
+2026-08-15,device,desktop,27
+2026-08-15,device,mobile,20
+2026-08-16,acquisition,(direct) / (none),23
+2026-08-16,country,United States,10
+2026-08-16,country,기타 (<30),7
+2026-08-16,country,South Korea,6
+2026-08-16,device,desktop,19
+2026-08-16,device,mobile,4
+2026-08-17,acquisition,(direct) / (none),12
+2026-08-17,acquisition,기타 (<30),1
+2026-08-17,country,기타 (<30),7
+2026-08-17,country,South Korea,5
+2026-08-17,country,United States,1
+2026-08-17,device,desktop,9
+2026-08-17,device,mobile,4
+2026-08-18,acquisition,(direct) / (none),17
+2026-08-18,country,United States,8
+2026-08-18,country,South Korea,5
+2026-08-18,country,기타 (<30),4
+2026-08-18,device,desktop,16
+2026-08-18,device,mobile,1
+2026-08-19,acquisition,(direct) / (none),13
+2026-08-19,country,United States,8
+2026-08-19,country,South Korea,4
+2026-08-19,country,기타 (<30),1
+2026-08-19,device,desktop,9
+2026-08-19,device,mobile,4
+2026-08-20,acquisition,(direct) / (none),9
+2026-08-20,country,South Korea,3
+2026-08-20,country,United States,3
+2026-08-20,country,기타 (<30),3
+2026-08-20,device,desktop,7
+2026-08-20,device,mobile,2
+2026-08-21,acquisition,(direct) / (none),5
+2026-08-21,country,기타 (<30),2
+2026-08-21,country,United States,2
+2026-08-21,country,South Korea,1
+2026-08-21,device,desktop,5
+2026-08-22,acquisition,(direct) / (none),8
+2026-08-22,country,기타 (<30),5
+2026-08-22,country,South Korea,2
+2026-08-22,country,United States,1
+2026-08-22,device,desktop,7
+2026-08-22,device,mobile,1
+2026-08-23,acquisition,(direct) / (none),11
+2026-08-23,country,기타 (<30),4
+2026-08-23,country,South Korea,4
+2026-08-23,country,United States,3
+2026-08-23,device,desktop,11
+2026-08-24,acquisition,(direct) / (none),6
+2026-08-24,country,South Korea,4
+2026-08-24,country,United States,2
+2026-08-24,device,desktop,4
+2026-08-24,device,mobile,2
+2026-08-25,acquisition,(direct) / (none),8
+2026-08-25,acquisition,기타 (<30),3
+2026-08-25,country,South Korea,10
+2026-08-25,country,United States,1
+2026-08-25,device,desktop,8
+2026-08-25,device,mobile,3
+2026-08-26,acquisition,(direct) / (none),7
+2026-08-26,acquisition,기타 (<30),1
+2026-08-26,country,South Korea,6
+2026-08-26,country,기타 (<30),2
+2026-08-26,device,desktop,7
+2026-08-26,device,mobile,1
+2026-08-27,acquisition,(direct) / (none),4
+2026-08-27,country,South Korea,3
+2026-08-27,country,United States,1
+2026-08-27,device,desktop,4
+2026-08-28,acquisition,(direct) / (none),5
+2026-08-28,country,South Korea,5
+2026-08-28,device,desktop,4
+2026-08-28,device,mobile,1
+2026-08-29,acquisition,(direct) / (none),6
+2026-08-29,country,South Korea,4
+2026-08-29,country,기타 (<30),1
+2026-08-29,country,United States,1
+2026-08-29,device,desktop,5
+2026-08-29,device,mobile,1
+2026-08-30,acquisition,(direct) / (none),4
+2026-08-30,country,South Korea,2
+2026-08-30,country,United States,1
+2026-08-30,country,기타 (<30),1
+2026-08-30,device,desktop,4
+2026-08-31,acquisition,(direct) / (none),5
+2026-08-31,acquisition,기타 (<30),1
+2026-08-31,country,South Korea,6
+2026-08-31,device,mobile,4
+2026-08-31,device,desktop,2
+2026-09-01,acquisition,(direct) / (none),3
+2026-09-01,country,South Korea,2
+2026-09-01,country,United States,1
+2026-09-01,device,desktop,3
+2026-09-02,acquisition,(direct) / (none),4
+2026-09-02,acquisition,기타 (<30),1
+2026-09-02,country,South Korea,3
+2026-09-02,country,United States,2
+2026-09-02,device,desktop,4
+2026-09-02,device,mobile,1
+2026-09-03,acquisition,기타 (<30),4
+2026-09-03,acquisition,(direct) / (none),2
+2026-09-03,country,South Korea,5
+2026-09-03,country,United States,1
+2026-09-03,device,mobile,4
+2026-09-03,device,desktop,2
+2026-09-04,acquisition,(direct) / (none),32
+2026-09-04,country,South Korea,31
+2026-09-04,country,United States,1
+2026-09-04,device,mobile,26
+2026-09-04,device,desktop,6
+2026-09-05,acquisition,(direct) / (none),18
+2026-09-05,country,South Korea,15
+2026-09-05,country,United States,2
+2026-09-05,country,기타 (<30),1
+2026-09-05,device,mobile,12
+2026-09-05,device,desktop,6
+2026-09-06,acquisition,(direct) / (none),8
+2026-09-06,country,South Korea,6
+2026-09-06,country,United States,2
+2026-09-06,device,desktop,4
+2026-09-06,device,mobile,4
+2026-09-07,acquisition,(direct) / (none),8
+2026-09-07,country,South Korea,6
+2026-09-07,country,United States,2
+2026-09-07,device,desktop,5
+2026-09-07,device,mobile,3
+2026-09-08,acquisition,(direct) / (none),11
+2026-09-08,country,South Korea,10
+2026-09-08,country,기타 (<30),1
+2026-09-08,device,desktop,6
+2026-09-08,device,mobile,5
+2026-09-09,acquisition,(direct) / (none),18
+2026-09-09,acquisition,기타 (<30),2
+2026-09-09,country,South Korea,17
+2026-09-09,country,기타 (<30),2
+2026-09-09,country,United States,1
+2026-09-09,device,mobile,10
+2026-09-09,device,desktop,10
+2026-09-10,acquisition,(direct) / (none),33
+2026-09-10,acquisition,기타 (<30),1
+2026-09-10,country,South Korea,31
+2026-09-10,country,United States,2
+2026-09-10,country,기타 (<30),1
+2026-09-10,device,desktop,18
+2026-09-10,device,mobile,16
+2026-09-11,acquisition,(direct) / (none),18
+2026-09-11,acquisition,기타 (<30),2
+2026-09-11,country,South Korea,18
+2026-09-11,country,United States,2
+2026-09-11,device,desktop,13
+2026-09-11,device,mobile,7

@@ -2,7 +2,7 @@
 --  calm forest · 🌊 '오늘의 대어' 보드를 전 어종으로 확대
 --  ------------------------------------------------------------
 --  사용법: Supabase 대시보드 > SQL Editor 에 전체 붙여넣고 Run (1회).
---  선행: sql/migrate_leaderboard.sql · sql/migrate_leaderboard_sanity.sql
+--  선행: sql/migrations/migrate_leaderboard.sql · sql/migrations/migrate_leaderboard_sanity.sql
 --
 --  ▶ 왜 필요한가 (2026-09-17 사고)
 --    sea 분기가 `species = 'tuna'` 로 참치만 집계했다. 그런데 참치는

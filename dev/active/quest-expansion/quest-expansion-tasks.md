@@ -56,7 +56,7 @@
 - [ ] 🎮 itch 대시보드에 zip 업로드 — butler 미설치라 웹 업로드
       cheorish.itch.io/calmforest › Edit › Uploads › dist-itch.zip
       ⚠️ "This file will be played in the browser" 체크 유지
-- [ ] 📮 **토스 출시 후** `sql/notice_quest_expansion.sql` 실행
+- [ ] 📮 **토스 출시 후** `sql/notices/notice_quest_expansion.sql` 실행
       (소식함은 웹·토스가 같은 DB — 먼저 넣으면 토스 이용자가 새 이웃을 못 찾는다)
 
 ### 토스 번들 현황 (2026-09-13 기준)

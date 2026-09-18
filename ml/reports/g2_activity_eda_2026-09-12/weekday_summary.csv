@@ -1,0 +1,8 @@
+weekday_num,weekday,observed_days,mean_dau,median_dau,min_dau,max_dau
+1,Sun,5,10.6,8,4,23
+2,Mon,7,9.14,8,6,13
+3,Tue,7,9.43,11,3,17
+4,Wed,7,9.57,8,3,20
+5,Thu,7,10.29,6,4,34
+6,Fri,7,10.14,5,2,32
+7,Sat,6,14.5,6,3,47

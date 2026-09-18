@@ -1,0 +1,11 @@
+email,grp,variant,map_order,user_id,sessions,active_days,extra_sessions,play_sec,play_min,activity_breadth,all_count_keys,client_ids,observed_variants
+2017103824nhc@gmail.com,A,beta_A,mist_first,fabd3109-d3f3-463e-b718-f1eb9a7bdeee,7,7,0,9136.0,152.26666666666668,103,125,2,beta_A
+hansj.log@gmail.com,A,beta_A,mist_first,dba0c17e-cf7b-4fbc-be57-0f88d08029da,12,6,6,9215.0,153.58333333333334,96,107,3,beta_A
+jkim12955@gmail.com,A,beta_A,sea_first,d6ccb4ea-a790-4733-89ee-9b78aaa277c7,9,5,4,7522.0,125.36666666666666,98,109,3,beta_A
+jykim0931@gmail.com,A,beta_A,sea_first,d7fa8f5f-3fd5-45fb-93c4-16c35e8af6fd,15,7,8,9549.0,159.15,102,113,2,beta_A
+sqwogh@gmail.com,A,beta_A,sea_first,e449a249-1fea-49e0-9cda-615810f132ca,5,4,1,14605.0,243.41666666666666,110,124,1,beta_A
+gjdbqls250@gmail.com,B,beta_B,sea_first,e9e102ad-dc26-4d4f-9aab-0c8b2df0e925,25,6,19,111220.0,1853.6666666666667,127,149,1,beta_B
+kwonjiwon6886@gmail.com,B,beta_B,mist_first,96ce06d2-f9f0-4eaa-ae7e-f85a84b100b5,16,6,10,80929.0,1348.8166666666666,110,132,2,beta_B
+phoebeeju@gmail.com,B,beta_B,sea_first,867ef5fa-448b-44e3-9b48-a2738234b6f7,11,6,5,14749.0,245.81666666666666,83,87,3,beta_B
+tpdlsh1616@gmail.com,B,beta_B,mist_first,2dc25242-eecf-4132-af7e-d5911c7a7d64,2,1,1,5345.0,89.08333333333333,12,19,1,beta_B
+yewon8353@gmail.com,B,beta_B,mist_first,62b2b0ac-deaf-4e16-81c9-4983aee910c9,4,4,0,8691.0,144.85,49,53,2,beta_B

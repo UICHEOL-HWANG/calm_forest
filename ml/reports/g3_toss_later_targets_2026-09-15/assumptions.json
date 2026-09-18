@@ -1,0 +1,45 @@
+{
+  "analysis": "g3-toss-later-target-label-eda",
+  "date": "2026-09-15",
+  "source": "BigQuery GA4 daily export, 2026-09-04 through 2026-09-12 KST",
+  "gate": "G3 label target EDA",
+  "result": "candidate_targets_documented_no_modeling",
+  "checks": {
+    "device_rows": 46,
+    "later_active_devices": 8,
+    "new_area_devices": 6,
+    "quest_social_later_devices": 6,
+    "fishing_sea_later_devices": 7,
+    "feature_boundary_violations": 0,
+    "label_boundary_violations": 0
+  },
+  "candidate_next_label": {
+    "name": "later_new_area",
+    "definition": "A device reaches at least one deliberate-play area in the 10m-to-24h label window that was absent in the first 10m feature window.",
+    "positive_devices": 6,
+    "status": "candidate_only"
+  },
+  "assumptions": [
+    {
+      "assumption": "Splitting later actions by area better matches in-game guidance than a generic later-active label.",
+      "confidence": "medium",
+      "impact_if_wrong": "medium",
+      "validation": "Needs product agreement on which next action is worth guiding.",
+      "result": "candidate_only"
+    },
+    {
+      "assumption": "Later new area is observable without label leakage from the first 10m window.",
+      "confidence": "high",
+      "impact_if_wrong": "critical",
+      "validation": "Feature and label boundary violations are zero.",
+      "result": "passed"
+    },
+    {
+      "assumption": "The current eight later-active devices are representative enough to choose a target.",
+      "confidence": "low",
+      "impact_if_wrong": "critical",
+      "validation": "Needs more Toss devices or tester/deep-device sensitivity checks.",
+      "result": "open"
+    }
+  ]
+}

@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hypothesis Test Summary</title>
+  <style>
+    :root {
+      --ink: #101217;
+      --muted: #5e6672;
+      --line: #d9dee5;
+      --paper: #f7f8f4;
+      --panel: #ffffff;
+      --accent: #1c6b5a;
+      --accent-soft: #dcebe6;
+      --amber: #8f5b13;
+      --amber-soft: #f2e5ce;
+      --red: #9a3f3c;
+      --red-soft: #f0d8d6;
+      --blue: #41526a;
+      --blue-soft: #dfe6ef;
+      --shadow: 0 24px 70px rgba(28, 36, 44, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #dde3db;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+
+    .slide {
+      width: 1600px;
+      height: 900px;
+      background:
+        linear-gradient(150deg, rgba(28,107,90,0.08), rgba(255,255,255,0) 45%),
+        var(--paper);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+      padding: 48px 64px 42px;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(16,18,23,0.034) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16,18,23,0.034) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.35), transparent 72%);
+    }
+
+    .content {
+      position: relative;
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 24px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 34px;
+      align-items: start;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(16,18,23,0.14);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 50px;
+      line-height: 1.04;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 13px 0 0;
+      color: var(--muted);
+      font-size: 21px;
+      line-height: 1.35;
+      font-weight: 530;
+      max-width: 920px;
+    }
+
+    .principle {
+      background: var(--ink);
+      color: #f8faf6;
+      border-radius: 20px;
+      padding: 22px 25px;
+    }
+
+    .principle strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
+
+    .principle span {
+      display: block;
+      color: rgba(248,250,246,0.76);
+      font-size: 17px;
+      line-height: 1.35;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 385px 1fr;
+      gap: 24px;
+      min-height: 0;
+    }
+
+    .method {
+      display: grid;
+      grid-template-rows: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .method-item {
+      background: rgba(255,255,255,0.76);
+      border: 1px solid rgba(16,18,23,0.12);
+      border-radius: 18px;
+      padding: 17px 20px;
+      display: grid;
+      align-content: center;
+      gap: 8px;
+    }
+
+    .method-item .kicker {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .method-item h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.12;
+      font-weight: 790;
+    }
+
+    .method-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.32;
+      font-weight: 510;
+    }
+
+    .matrix {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(16,18,23,0.12);
+      border-radius: 22px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .matrix-head,
+    .row {
+      display: grid;
+      grid-template-columns: 1.06fr 1.28fr 0.55fr 1.1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .matrix-head {
+      padding: 16px 22px 14px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1;
+      font-weight: 800;
+      border-bottom: 1px solid rgba(16,18,23,0.12);
+    }
+
+    .rows {
+      display: grid;
+    }
+
+    .row {
+      padding: 10px 22px 9px;
+      border-bottom: 1px solid rgba(16,18,23,0.095);
+      min-height: 61px;
+    }
+
+    .row:last-child { border-bottom: 0; }
+
+    .hyp {
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 790;
+    }
+
+    .test,
+    .read {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.28;
+      font-weight: 520;
+    }
+
+    .badge {
+      justify-self: start;
+      padding: 7px 10px 8px;
+      border-radius: 999px;
+      font-size: 13px;
+      line-height: 1;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge.hold { color: var(--blue); background: var(--blue-soft); }
+    .badge.keep { color: var(--accent); background: var(--accent-soft); }
+    .badge.retest { color: var(--amber); background: var(--amber-soft); }
+    .badge.fix { color: var(--red); background: var(--red-soft); }
+
+    footer {
+      display: none;
+    }
+
+    .unused-footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: center;
+      padding-top: 18px;
+      border-top: 1px solid rgba(16,18,23,0.14);
+    }
+
+    .takeaway {
+      font-size: 24px;
+      line-height: 1.28;
+      font-weight: 770;
+    }
+
+    .takeaway span { color: var(--accent); }
+
+    .note {
+      max-width: 470px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.32;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <main class="slide" aria-label="Hypothesis testing summary">
+    <section class="content">
+      <header>
+        <div>
+          <h1>가설검정은 이렇게 읽으면 됩니다</h1>
+          <p class="subtitle">이번 베타는 5명씩 비교했습니다. 그래서 “A가 더 낫다”는 결론보다 “다음 실험에서 무엇을 남길지”에 초점을 뒀습니다.</p>
+        </div>
+        <aside class="principle">
+          <strong>판정 기준</strong>
+          <span>먼저 사람 단위로 봤습니다. 같은 사람이 여러 번 만든 이벤트는 여러 명의 의견처럼 세지 않았습니다.</span>
+        </aside>
+      </header>
+
+      <section class="main">
+        <aside class="method">
+          <article class="method-item">
+            <div class="kicker">대상</div>
+            <h2>사람별로 묶어서 비교</h2>
+            <p>beta_testers의 beta_A, beta_B 배정을 기준으로 같은 유저의 행동을 한 묶음으로 봤습니다.</p>
+          </article>
+          <article class="method-item">
+            <div class="kicker">검정</div>
+            <h2>전체 번들은 순열검정</h2>
+            <p>Hβ1은 가능한 A/B 배치를 모두 비교해 p값을 계산했습니다. 다른 가설은 방향과 크기를 함께 봤습니다.</p>
+          </article>
+          <article class="method-item">
+            <div class="kicker">해석</div>
+            <h2>p값은 참고값</h2>
+            <p>n=10이라 작은 차이를 확정 결론으로 말하지 않았습니다. 여러 지표가 같은 방향인지 더 중요하게 봤습니다.</p>
+          </article>
+          <article class="method-item">
+            <div class="kicker">한계</div>
+            <h2>A 그룹이 더 자주 참여</h2>
+            <p>A의 활동일이 더 높았습니다. 그래서 일부 결과에는 기능 효과와 개인 차이가 섞였을 수 있습니다.</p>
+          </article>
+        </aside>
+
+        <section class="matrix">
+          <div class="matrix-head">
+            <div>가설</div>
+            <div>어떻게 봤나</div>
+            <div>판정</div>
+            <div>읽는 법</div>
+          </div>
+          <div class="rows">
+            <article class="row">
+              <div class="hyp">Hβ1 전체 번들</div>
+              <div class="test">활동 폭, 추가 세션, 플레이 시간을 사람별로 비교했습니다. 활동 폭 p=0.155.</div>
+              <div><span class="badge hold">보류</span></div>
+              <div class="read">A는 더 이것저것 해봤지만, B는 시간과 재방문이 높았습니다. A가 더 낫다고 단정하긴 어렵습니다.</div>
+            </article>
+            <article class="row">
+              <div class="hyp">Hβ2 맵 해금</div>
+              <div class="test">D3, D5 전후 플레이 변화와 실제 맵 입장자 수를 비교했습니다.</div>
+              <div><span class="badge hold">보류</span></div>
+              <div class="read">맵을 늦게 여는 효과보다, 어디로 가야 하는지 알려주는 문제가 더 커 보였습니다.</div>
+            </article>
+            <article class="row">
+              <div class="hyp">Hβ3 힌트 배너</div>
+              <div class="test">60초 뒤에도 세션이 이어졌는지 이벤트 기준과 세션 기준으로 나눠 봤습니다.</div>
+              <div><span class="badge retest">재검증</span></div>
+              <div class="read">세션 기준으로는 좋아 보였지만 이벤트 기준은 약했습니다. 다음엔 기준을 하나로 고정해야 합니다.</div>
+            </article>
+            <article class="row">
+              <div class="hyp">Hβ4 일지 반응</div>
+              <div class="test">재방문 의향, A/B 선호, 자유응답 키워드를 그룹별로 비교했습니다.</div>
+              <div><span class="badge hold">보류</span></div>
+              <div class="read">A가 더 좋았다는 응답 근거는 약했습니다. 오히려 B 선호가 더 많았습니다.</div>
+            </article>
+            <article class="row">
+              <div class="hyp">Hβ5 튜토리얼 순서</div>
+              <div class="test">몇 단계까지 갔는지, 재미 단계 4개를 얼마나 봤는지, 완주와 건너뛰기를 비교했습니다.</div>
+              <div><span class="badge keep">유지 후보</span></div>
+              <div class="read">재미 콘텐츠를 더 빨리 보여준 점은 좋았습니다. 다만 끝까지 따라오게 하는 흐름은 약했습니다.</div>
+            </article>
+            <article class="row">
+              <div class="hyp">Hβ6 보상 경제</div>
+              <div class="test">코인이 얼마나 들어왔는지, 보상 1.5배 표시가 실제로 찍혔는지 확인했습니다.</div>
+              <div><span class="badge fix">수정</span></div>
+              <div class="read">1.5배 보상은 적용됐습니다. 하지만 A가 경제 지표에서 더 좋다고 보긴 어려웠습니다.</div>
+            </article>
+            <article class="row">
+              <div class="hyp">Hβ7 미니게임 완화</div>
+              <div class="test">낚시, 바다, 안개 미니게임의 성공률과 보트 피격 횟수를 비교했습니다.</div>
+              <div><span class="badge retest">부분 재검증</span></div>
+              <div class="read">바다 미니게임만 A가 나아 보였습니다. 낚시는 이미 성공률이 너무 높아 차이가 작았습니다.</div>
+            </article>
+            <article class="row">
+              <div class="hyp">Hβ8 베타 이행률</div>
+              <div class="test">7일 동안 접속한 날과 일지를 쓴 날을 사람별로 세었습니다.</div>
+              <div><span class="badge hold">해석 보정</span></div>
+              <div class="read">A가 더 자주 참여했습니다. 그래서 다른 결과를 읽을 때 이 차이를 함께 봐야 합니다.</div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <footer>
+        <div class="takeaway">핵심: <span>검정 결과는 확정 판정이 아니라 다음 실험 설계의 우선순위</span>로 정리했습니다.</div>
+        <div class="note">근거 파일: docs/analysis/ANALYSIS_GATES.md, beta_h1-h8 EDA outputs. 해석 기준일 2026-09-16.</div>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

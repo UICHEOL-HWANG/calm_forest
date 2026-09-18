@@ -1,0 +1,5 @@
+arm,trigger,events,survived_60s,survival_rate
+treat,quest,968,930,0.9607438016528925
+control,quest,891,873,0.9797979797979798
+treat,time15,32,27,0.9
+control,time15,29,24,0.8275862068965517
