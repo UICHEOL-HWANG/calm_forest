@@ -2007,6 +2007,18 @@
 
   <div id="loading">calm forest 불러오는 중… 🌿</div>
 
+  <!-- 🌐 로딩 화면만 먼저 번역한다 — 아래 큰 모듈 스크립트에 맡기면 늦는다.
+       그 스크립트는 js/game.js(+three.js, 모듈 64개)를 static import 하는데, ES 모듈은
+       import 를 전부 평가한 뒤에야 본문 첫 줄을 실행한다. 즉 로딩 화면은 **게임이 다 내려온 뒤**,
+       곧 사라지기 직전에야 영어가 된다(로컬은 빨라서 안 보이고, itch·느린 망에서 그대로 드러났다).
+       이 스크립트의 의존은 i18n 하나뿐이라 훨씬 먼저 실행된다. 언어 판정은 그대로 i18n.js 가 하므로
+       감지 로직을 여기에 복사하지 않는다(단일 출처). 잠금: tests/i18n-boot.test.mjs -->
+  <script type="module">
+    import { LANG, translateDom } from './js/i18n.js';
+    document.documentElement.lang = LANG;
+    translateDom(document.getElementById('loading'));
+  </script>
+
   <!-- 📱 PWA service worker — 웹(브라우저·TWA)에서만. 토스 웹뷰·itch iframe 은 플래그로 제외.
        sw.js 는 오프라인 안내 페이지만 캐시하고 게임 코드는 절대 캐시하지 않는다(sw.js 주석 참고). -->
   <script>
@@ -2049,7 +2061,7 @@
 
     // ── 🌐 i18n 부팅 — 영어 모드면 정적 마크업을 즉시 번역하고,
     //    이후 동적으로 나타나는 텍스트는 옵저버가 사전으로 치환한다(ko 모드 오버헤드 0).
-    document.documentElement.lang = LANG;
+    // (lang 속성과 #loading 번역은 위 부트 스크립트가 이미 끝냈다 — 여기선 나머지 DOM 만)
     translateDom(document.body);
     watchDom(document.body);
     // 토글 라벨은 "전환될 언어"를 보여준다(🌐 English ↔ 🌐 한국어)
