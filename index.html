@@ -485,6 +485,15 @@
   /* 토스트(피드백 메시지) */
   #toast { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
+  /* 🦋 환경 미터 — 배치 모드에서만. 왼쪽 아래(도구 바 위)라 컨텍스트 슬롯·프롬프트 줄을 침범하지 않는다 */
+  #habitat-meter { position: absolute; left: 12px; bottom: calc(150px + var(--toss-reserve)); z-index: 6;
+    background: rgba(20,28,22,.82); color: #eaf3ea; border-radius: 10px; padding: 8px 10px;
+    font-size: 13px; line-height: 1.5; pointer-events: none; max-width: 210px; }
+  #habitat-meter .hm-title { font-weight: 700; margin-bottom: 4px; }
+  #habitat-meter .hm-row { display: flex; justify-content: space-between; gap: 10px; white-space: nowrap; }
+  #habitat-meter .hm-dots { letter-spacing: 1px; }
+  #habitat-meter .hm-near { margin-top: 6px; padding-top: 6px; white-space: normal;
+    border-top: 1px solid rgba(255,255,255,.18); font-size: 12px; opacity: .92; }
   /* 튜토리얼 코치가 떠 있으면 토스트를 코치 아래로 내려 겹침 방지.
      카드 높이는 문구 줄 수·목표 줄 유무로 변하므로 renderCoach 가 실측해 --coach-h 로 넘긴다
      (이전엔 110px 로 하드코딩해 목표 줄이 붙자 토스트가 카드를 덮었다). */
@@ -1390,6 +1399,13 @@
 
   <div id="hint" class="panel">이동 WASD/방향키 · 1 도구 세트 바꾸기 · 2~6 도구 고르기 · 상호작용 Space/클릭</div>
   <div id="toast" class="panel"></div>
+
+  <!-- 🦋 텃밭 환경 미터 — 장식을 놓거나 옮기는 동안에만 뜬다(평소엔 조용) -->
+  <div id="habitat-meter" hidden>
+    <div class="hm-title">🌿 이 자리</div>
+    <div class="hm-rows"></div>
+    <div class="hm-near" hidden></div>
+  </div>
 
   <!-- 🪧 시설 첫 접근 배너 (비차단 — 입력을 받지 않고 자동으로 사라짐) -->
   <!-- 🎨 첫 가구 배치 단계 안내(1회) -->
@@ -2313,6 +2329,23 @@
       toast(msg, ms = 1600) {
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
         clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+      },
+      // 🦋 환경 미터 — 라벨·문구는 game.js 가 js/habitat.js 에서 가져와 한 번 넘긴다(여기서 다시 적지 않는다)
+      _hmLabel: {}, _hmBlock: {},
+      setHabitatLabels(label, block) { this._hmLabel = label || {}; this._hmBlock = block || {}; },
+      /** env 가 없으면(null) 미터를 끈다. near = {visitor, blocker} 또는 null */
+      setHabitatMeter(env, near) {
+        const el = $('habitat-meter');
+        if (!env) { el.hidden = true; return; }
+        el.hidden = false;
+        // 0 인 태그는 줄을 먹지 않는다 — 일곱 줄이 늘 떠 있으면 화면을 가린다
+        const rows = Object.entries(env).filter(([, n]) => n > 0)
+          .map(([k, n]) => `<div class="hm-row"><span>${this._hmLabel[k] || k}</span>`
+                         + `<span class="hm-dots">${'●'.repeat(Math.min(6, n))}</span></div>`).join('');
+        el.querySelector('.hm-rows').innerHTML = rows || '<div class="hm-row"><span>아직 허전해요</span></div>';
+        const nb = el.querySelector('.hm-near');
+        nb.hidden = !near;
+        if (near) nb.textContent = `❓ 무언가 맴돌다 갔어요 — ${this._hmBlock[near.blocker] || ''}`;
       },
       // 🎣 캐치 배너 — 획득 순간 "무엇을 얻었나"를 크게·조금 더 오래. 토스트와 다른 줄(프롬프트 줄)을 써서
       //   같은 순간에 뜨는 📖도감·📜퀘스트 토스트와 서로 지우지 않는다. 월드 플로트 텍스트와 달리

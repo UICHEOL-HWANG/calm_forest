@@ -2133,6 +2133,7 @@ function churnTrigger(kind) {
 // ① 로그인 화면 뒤에서 도는 "어트랙트" 씬 부팅 (플레이어 조작 X)
 export async function bootWorld(uiCallbacks) {
   ui = uiCallbacks || {};
+  ui.setHabitatLabels?.(TAG_LABEL, HABITAT_BLOCK_LINE);   // 🦋 미터 라벨·안내 문구는 js/habitat.js 가 단일 출처
   initRenderer();
   initScene();
   initLights();
@@ -7881,6 +7882,7 @@ function stopDecorPlacing(putBack) {
 }
 function buildDecorGhost(id, outdoor = false) {
   removeDecorGhost();
+  if (outdoor && atFarm) trackEvent('habitat_meter', { farm_stage: gameState.farm.stage });   // [GA4] 🦋 퍼널 1단 — 미터를 봤다
   // 🏮 outdoorMesh 는 정원등·화로·정령등불의 재질을 houseWindows(밤 점등 목록)에 밀어 넣는다.
   //   고스트 것까지 남으면 목록이 불어나고, 고스트를 지울 때 dispose 된 재질이 목록에 남는다 → 도로 잘라낸다.
   const hw0 = houseWindows.length;
@@ -7905,7 +7907,21 @@ function buildDecorGhost(id, outdoor = false) {
   scene.add(g); decorGhost = g; updateDecorGhost();
 }
 let ghostRing = null, ghostFarmDef = null, ghostOk = true;   // 🏗️ 배치 미리보기 — 링·발자국 정의·지금 놓을 수 있는지
+// 🦋 배치 중인 자리의 환경을 미터에 띄운다. 텃밭 밖이면 조용히 끈다.
+//   현재치는 정직하게 보여주되 **목표치는 보여주지 않는다** — 대신 nearMiss 가 막는 요인 하나를 집어 준다.
+function updateHabitatMeter() {
+  if (!atFarm || !decorGhost) { ui.setHabitatMeter?.(null); lastNearMiss = null; return; }
+  const env = habitatEnvAt(decorGhost.position.x, decorGhost.position.z);
+  const near = nearMiss(env, habitatCtx(), gameState.dex.visitor || {});
+  ui.setHabitatMeter?.(env, near);
+  if (near && near.visitor !== lastNearMiss) {
+    lastNearMiss = near.visitor;
+    trackEvent('visitor_nearmiss', { visitor: near.visitor, blocker: near.blocker });   // [GA4] 퍼널 2단 — blocker 가 튜닝 축
+  } else if (!near) lastNearMiss = null;
+}
+
 function removeDecorGhost() {
+  ui.setHabitatMeter?.(null); lastNearMiss = null;   // 🦋 배치 모드가 끝나면 미터도 사라진다
   ghostRing = null; ghostFarmDef = null;
   if (!decorGhost) return;
   scene.remove(decorGhost);
@@ -7934,6 +7950,7 @@ function updateDecorGhost() {
       ui.setZoneHint?.(v.ok ? `${fdef.ico} ${fdef.name} — 바닥을 눌러 자리를 고르고 액션으로 놓기 · ↻ 방향` : FARM_PLACE_MSG[v.reason]);
     } else decorGhost.position.set(ax, 0.02, az);
     decorGhost.rotation.y = decorRot * Math.PI / 2;
+    updateHabitatMeter();   // 🦋 정보가 필요한 순간은 정확히 "지금 어디에 놓을까" 다
     return;
   }
   if (!decorTarget.pinned) {
@@ -9882,6 +9899,19 @@ function rebuildFarm(silent = false) {
 
 // ── 🦋 텃밭 방문객 — 스폰·등록은 js/farm-visitors.js, 판정은 js/habitat.js ──
 let visitors = null;   // 텃밭 안에서만 살아 있다
+
+// 막는 요인별 안내 — 정답(목표치)이 아니라 방향만 말한다.
+// ⚠️ 여기 문구가 i18n 키다. 조각을 이어 붙이지 말고 통째로 사전에 넣는다(" · " 글루 함정).
+const HABITAT_BLOCK_LINE = {
+  fear:    '무서워하는 것 같아요',
+  nectar:  '꽃이 더 있어야 할 것 같아요',
+  food:    '먹을 게 없나 봐요',
+  shelter: '숨을 데가 없나 봐요',
+  shade:   '그늘이 부족한가 봐요',
+  damp:    '너무 말랐나 봐요',
+  light:   '너무 어두운가 봐요',
+};
+let lastNearMiss = null;   // 같은 근접 신호를 GA4 로 반복해 쏘지 않기 위한 기억
 
 // 임시 조형 — 조형 사양이 확정되면 js/visitor-art.js 로 교체한다
 const VISITOR_TMP_COLOR = { butterfly: 0xe8a0c8, sparrow: 0xb09070, hedgehog: 0x8a6a4a, frog: 0xa8d586 };
