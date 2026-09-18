@@ -528,6 +528,11 @@ const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 —
 
 // ── 🍎 과수원 언덕 — 기획: docs/superpowers/specs/2026-09-17-orchard-design.md ──────────────
 const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
+// 🔒 문 앞 프롬프트 반경 — **잠금 충돌체를 넘어서야 한다**. 잠겼을 때 문을 막는 원은
+//   (문 앞 0.45, 반경 1.5)라 남쪽에서 다가설 수 있는 한계가 0.45+1.5+PLAYER_R(0.42)=2.37 이다.
+//   예전 값 2.2 는 그 한계보다 작아, 잠긴 동안에는 해금 안내("🌾고급 작물을 한 번 거두면 열려요")가
+//   한 번도 뜨지 못했다 — 유저는 무엇을 하면 열리는지 알 길이 없었다(🏛️ 박물관 계단 STAIR_PROMPT_R 과 같은 교훈).
+const ORCHARD_PROMPT_R = 2.8;
 //   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다. 동쪽은 x>18 에 고정물이 없다.
 const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 const ORCHARD_HALF = 20;                            // 언덕 반경
@@ -2353,7 +2358,7 @@ export async function enterGame() {
         입구세워짐: !!gate, 입구부품수: gate ? gate.children.length : 0, 입구보임: gate ? gate.visible : null,
         내위치: [Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10],
         문까지거리: Math.round(dist2D(p, ORCHARD_GATE) * 10) / 10,
-        프롬프트반경: 2.2,
+        프롬프트반경: ORCHARD_PROMPT_R,
         잠김: mapLocked('orchard'), advHarvest: gameState.progress?.advHarvest,
         가로대보임: orchardGateBar ? orchardGateBar.visible : null,
         문충돌체켜짐: orchardGateSolid ? !orchardGateSolid.off : null,
@@ -6286,9 +6291,14 @@ function buildOrchardGate() {
 
   // (둘레 과일나무 없음 — 벌목 가능한 숲 나무와 지오메트리가 같아 유저가 벨 수 있다. 과일나무는 과수원 안에만 둔다)
 
-  [[-4.4, 0.06], [-3.4, 0.14], [-2.5, 0.2]].forEach(([sx, sy]) => {   // 문으로 오르는 흙 계단
-    const st = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.18, 9), clayMat(0xb08a5e, false));
-    st.position.set(sx, sy, 0); st.receiveShadow = true; g.add(st);
+  // 문으로 오르는 흙 계단 — 🏛️ 박물관 정면 계단과 같은 패턴(박스 단·문보다 넓은 폭).
+  //   예전엔 반경 1.2 원기둥을 0.9 간격으로 놓아 단끼리 크게 겹쳤다 — 계단이 아니라 팬케이크 더미로 읽혔다.
+  //   디딤면(0.7)은 좁게, 단 높이차(0.10)는 뚜렷하게 — 얇고 넓으면 계단이 아니라 데크로 읽힌다.
+  //   단끼리는 디딤면 길이만큼 띄워 딱 맞물리고, 첫 단은 문턱에 붙여 정면과 한 덩어리로 읽히게 한다.
+  //   문(폭 1.15)에서 멀어질수록 넓고 낮아져 땅에 녹아든다. z 중심은 문 중심(dz)에 맞춘다.
+  [[-0.9, 0.28, 1.9], [-1.6, 0.18, 2.2], [-2.3, 0.09, 2.5]].forEach(([sx, sh, sw]) => {
+    const st = new THREE.Mesh(new THREE.BoxGeometry(0.7, sh, sw), clayMat(0xb08a5e, false));
+    st.position.set(sx, sh / 2, dz); st.receiveShadow = true; g.add(st);
   });
 
   // 🔒 잠금 가로대 — 문 앞을 가로지른다
@@ -6315,6 +6325,9 @@ function buildOrchardGate() {
   for (let d = 1.0; d <= LEN; d += 1.5) solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z - d, 1.9);   // 몸통은 -z(북)
   orchardGateSolid = solidCircle(ORCHARD_GATE.x, ORCHARD_GATE.z + 0.45, 1.5);   // 🔒 잠긴 동안 문을 막는다
   obstacles.push({ x: ORCHARD_GATE.x, z: ORCHARD_GATE.z - mid, r: R + 1.4 });   // 밭·나무 금지 구역
+  // 🚧 문 앞 흙 계단·광장도 밭 금지 — 몸통 원(북쪽)만 막아 두니 계단 위에서 괭이질이 됐다.
+  //   과수원 입구가 텃밭에 파묻히면 "들어가는 곳"으로 안 읽힌다.
+  obstacles.push({ x: ORCHARD_GATE.x, z: ORCHARD_GATE.z + 2.6, r: 2.4 });
   syncOrchardGateLock();
 }
 
@@ -10844,7 +10857,7 @@ function updateDoorInteract() {
     const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     prompt = locked ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';
     if (!locked) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
-  } else if (!indoor && dist2D(player.position, ORCHARD_GATE) < 2.2) {
+  } else if (!indoor && dist2D(player.position, ORCHARD_GATE) < ORCHARD_PROMPT_R) {
     nd = 'orchard';
     const locked = mapLocked('orchard');
     // 🔒 잠금 문구는 다른 게이트(🌫️·🌊)와 같이 BETA_COPY.lock 한 곳에서만 나온다.
