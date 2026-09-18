@@ -924,6 +924,9 @@ function questCtx() {
     coopBuilt: !!gameState.coop.built,
     houseStage: gameState.houseStage,
     locked: { river: mapLocked('river'), sea: mapLocked('sea'), mist: mapLocked('mist') },
+    // 📖 오늘 날씨에 닫힌 희귀종은 의뢰로 나오지 않게(js/dex-gates.js).
+    //   ⚠️ 밤낮은 안 넘긴다 — 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다.
+    weather: WEATHER,
   };
 }
 

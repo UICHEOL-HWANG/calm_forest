@@ -329,3 +329,46 @@ test('완성 보상은 배지로 막혀 다시 나가지 않는다', () => {
   assert.match(body, /total === DEX_TOTAL && !gameState\.badges\.dex_master/,
     '총계가 늘면 옛 완성자에게 완성 보상이 다시 나간다');
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  📖 희귀종 게이트 — 큐레이터가 오늘 못 깨는 의뢰를 내면 안 된다
+// ═══════════════════════════════════════════════════════════════
+
+// ⚠️ 맑은 날에 🌈무지개 물고기를 집으면 그날 의뢰가 불가능해진다(🦋방문객 DEX_NEVER 와 같은 함정).
+//    DEX_NEVER 로 전부 막는 건 손해다 — 제일 재미있는 종을 큐레이터가 영영 못 집는다.
+//    대신 **오늘 날씨에 열린 종만** 후보에 넣는다.
+test('큐레이터는 오늘 날씨에 닫힌 게이트 종을 집지 않는다', () => {
+  const GATED = { fish: [{ id: 'rare' }, { id: 'uncommon' }, { id: 'common' }] };
+  const owned = { fish: { uncommon: 1, common: 1 } };   // rare 만 안 가졌다
+  for (let seed = 0; seed < 30; seed++) {
+    assert.equal(pickMissingDex(owned, GATED, seed, { weather: 'clear' }), null,
+      '맑은 날에 🌈무지개 물고기를 집었다 — 그날 못 깨는 의뢰가 된다');
+    const rain = pickMissingDex(owned, GATED, seed, { weather: 'rain' });
+    assert.deepEqual(rain && { cat: rain.cat, id: rain.id }, { cat: 'fish', id: 'rare' },
+      '비 오는 날엔 집어야 한다');
+  }
+});
+
+// ⚠️ 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다.
+//    밤 종을 낮에 걸러내면 그날 의뢰가 아예 사라진다 → 날씨만 본다.
+test('큐레이터 의뢰는 밤 조건을 보지 않는다 — 플레이어가 밤까지 기다리면 된다', () => {
+  const GATED = { forage: [{ id: 'herb' }, { id: 'mushroom' }] };
+  const owned = { forage: { mushroom: 1 } };
+  const pick = pickMissingDex(owned, GATED, 7, { weather: 'clear' });
+  assert.equal(pick && pick.id, 'herb',
+    '🌿숲 약초는 night 게이트만 있다 — 낮에도 의뢰로 나와야 한다');
+});
+
+test('weather 를 안 넘기면 게이트를 보지 않는다(하위 호환)', () => {
+  const GATED = { fish: [{ id: 'rare' }, { id: 'common' }] };
+  const owned = { fish: { common: 1 } };
+  assert.ok(pickMissingDex(owned, GATED, 3, {}), 'ctx.weather 없이도 동작해야 한다');
+});
+
+test('게이트 없는 종은 어떤 날씨에도 집을 수 있다 — 게이트가 흔한 종을 막으면 안 된다', () => {
+  const PLAIN = { crop: [{ id: 'carrot' }, { id: 'tomato' }] };
+  const owned = { crop: { tomato: 1 } };
+  for (const w of ['clear', 'rain', 'snow', 'fog']) {
+    assert.equal(pickMissingDex(owned, PLAIN, 11, { weather: w })?.id, 'carrot', `${w} 에서 막혔다`);
+  }
+});
