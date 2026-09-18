@@ -1,0 +1,106 @@
+{
+  "analysis": "g4-all-channel-exploratory-retention-model",
+  "date": "2026-09-15",
+  "source": "/Users/uicheol_hwang/calm_forest/ml/reports/g3_all_channel_later_targets_2026-09-15/all_channel_later_target_candidates.csv",
+  "target": "later_active",
+  "n": 95,
+  "positives": 12,
+  "best_serving_eligible_model": "compact_plus_profile",
+  "metrics": [
+    {
+      "model": "early_tracked_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.8830321285140562,
+      "auc_ci_low": 0.7790720493411831,
+      "auc_ci_high": 0.9653144016227181,
+      "pr_auc": 0.6651626228308476,
+      "balanced_acc_at_0_5": null,
+      "balanced_acc_at_median_score": null
+    },
+    {
+      "model": "compact_plus_profile",
+      "kind": "cv_logistic",
+      "features": 17,
+      "auc": 0.8463855421686748,
+      "auc_ci_low": 0.707222678343368,
+      "auc_ci_high": 0.9682391818796484,
+      "pr_auc": 0.6691494323481901,
+      "balanced_acc_at_0_5": null,
+      "balanced_acc_at_median_score": 0.6877510040160643
+    },
+    {
+      "model": "date_sensitivity_not_for_serving",
+      "kind": "cv_logistic",
+      "features": 15,
+      "auc": 0.8012048192771084,
+      "auc_ci_low": 0.623469126506024,
+      "auc_ci_high": 0.9550485422436641,
+      "pr_auc": 0.597144507992343,
+      "balanced_acc_at_0_5": null,
+      "balanced_acc_at_median_score": 0.6400602409638554
+    },
+    {
+      "model": "compact_behavior",
+      "kind": "cv_logistic",
+      "features": 14,
+      "auc": 0.7881526104417671,
+      "auc_ci_low": 0.603359173126615,
+      "auc_ci_high": 0.9466847133643983,
+      "pr_auc": 0.5636265872285608,
+      "balanced_acc_at_0_5": null,
+      "balanced_acc_at_median_score": 0.6400602409638554
+    },
+    {
+      "model": "early_actions_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.7605421686746988,
+      "auc_ci_low": 0.596829474071104,
+      "auc_ci_high": 0.9216702174551866,
+      "pr_auc": 0.5543322337181986,
+      "balanced_acc_at_0_5": null,
+      "balanced_acc_at_median_score": null
+    },
+    {
+      "model": "early_area_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.7570281124497992,
+      "auc_ci_low": 0.5957733896850276,
+      "auc_ci_high": 0.9107278138528138,
+      "pr_auc": 0.43632621439638986,
+      "balanced_acc_at_0_5": null,
+      "balanced_acc_at_median_score": null
+    },
+    {
+      "model": "channel_raw_rank",
+      "kind": "raw_rank_baseline",
+      "features": 1,
+      "auc": 0.6044176706827309,
+      "auc_ci_low": 0.4520779454022989,
+      "auc_ci_high": 0.7481597087796273,
+      "pr_auc": 0.15804729214340196,
+      "balanced_acc_at_0_5": null,
+      "balanced_acc_at_median_score": null
+    },
+    {
+      "model": "majority_prevalence",
+      "kind": "baseline",
+      "features": 0,
+      "auc": 0.5,
+      "auc_ci_low": 0.5,
+      "auc_ci_high": 0.5,
+      "pr_auc": 0.12631578947368421,
+      "balanced_acc_at_0_5": 0.5,
+      "balanced_acc_at_median_score": null
+    }
+  ],
+  "constraints": [
+    "exploratory only",
+    "no A/B effect analysis",
+    "no post-10-minute features",
+    "no production coefficient export",
+    "no W&B upload"
+  ]
+}

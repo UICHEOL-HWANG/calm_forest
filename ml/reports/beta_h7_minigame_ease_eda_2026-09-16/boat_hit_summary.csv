@@ -1,0 +1,3 @@
+variant,testers,runners,runs,hits,hit_per_run_mean,ends
+beta_A,5,5,10.0,13.0,1.3,10.0
+beta_B,5,3,24.0,22.0,1.2549019607843137,24.0

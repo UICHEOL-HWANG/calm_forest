@@ -1,0 +1,357 @@
+first_day,cohort,device,country_group,acquisition_group,ga4_events,observed_span_sec,deliberate_events,deliberate_kinds,onboarding_events,nature_events,fishing_sea_events,quest_social_events,craft_home_events,advanced_events,d1_eligible,returned_d1,d7_eligible,returned_d7,acted
+2026-07-27,non-spike,mobile,South Korea,direct / none,8,272,0,0,0,0,0,0,0,0,True,True,True,False,False
+2026-07-27,non-spike,mobile,South Korea,direct / none,77,331,61,4,0,53,0,8,0,0,True,False,True,False,True
+2026-07-27,non-spike,desktop,South Korea,other acquisition,54,28822,18,6,0,16,0,2,0,0,True,True,True,True,True
+2026-07-27,non-spike,desktop,South Korea,direct / none,10,35,1,1,0,1,0,0,0,0,True,False,True,False,True
+2026-07-27,non-spike,desktop,South Korea,direct / none,219,592,204,8,0,189,0,14,1,0,True,False,True,False,True
+2026-07-27,non-spike,desktop,South Korea,direct / none,141,425,132,8,0,117,0,14,1,0,True,False,True,False,True
+2026-07-27,non-spike,desktop,South Korea,direct / none,52,4715,42,6,0,39,0,3,0,0,True,False,True,False,True
+2026-07-27,non-spike,mobile,South Korea,direct / none,94,74767,21,6,0,13,0,8,0,0,True,True,True,True,True
+2026-07-27,non-spike,desktop,South Korea,direct / none,275,42768,112,7,0,101,0,11,0,0,True,False,True,False,True
+2026-07-27,non-spike,mobile,South Korea,direct / none,51,178,45,7,0,32,0,12,1,0,True,False,True,False,True
+2026-07-27,non-spike,mobile,South Korea,direct / none,13,13,8,3,0,7,0,1,0,0,True,False,True,False,True
+2026-07-28,non-spike,mobile,South Korea,direct / none,20,90,8,5,6,7,0,1,0,0,True,False,True,False,True
+2026-07-30,non-spike,mobile,South Korea,direct / none,83,752,65,10,9,40,17,8,0,0,True,False,True,False,True
+2026-07-30,non-spike,mobile,South Korea,direct / none,46,810,27,7,10,19,0,8,0,0,True,False,True,False,True
+2026-07-30,non-spike,mobile,South Korea,direct / none,27,139,11,4,6,11,0,0,0,0,True,False,True,False,True
+2026-08-01,non-spike,mobile,South Korea,direct / none,22,22963,1,1,0,0,0,1,0,0,True,False,True,False,True
+2026-08-01,non-spike,desktop,South Korea,direct / none,36,1230,8,1,0,0,0,0,8,0,True,False,True,False,True
+2026-08-03,non-spike,mobile,South Korea,direct / none,46,23471,21,4,0,19,0,1,1,0,True,True,True,False,True
+2026-08-03,non-spike,desktop,South Korea,direct / none,65,134,51,8,8,39,0,12,0,0,True,True,True,False,True
+2026-08-03,non-spike,desktop,South Korea,direct / none,22,38,15,4,0,13,0,2,0,0,True,False,True,False,True
+2026-08-03,non-spike,desktop,South Korea,direct / none,38,240,28,5,4,19,0,9,0,0,True,False,True,False,True
+2026-08-03,non-spike,mobile,South Korea,direct / none,8,24,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-03,non-spike,desktop,South Korea,direct / none,13,4748,2,2,0,0,0,2,0,0,True,False,True,False,True
+2026-08-03,non-spike,desktop,South Korea,direct / none,27,142,20,7,0,3,10,7,0,0,True,False,True,False,True
+2026-08-03,non-spike,desktop,South Korea,direct / none,36,2422,6,4,2,2,0,2,0,2,True,True,True,False,True
+2026-08-03,non-spike,mobile,South Korea,direct / none,80,325,54,12,13,46,2,4,2,0,True,False,True,False,True
+2026-08-04,non-spike,desktop,South Korea,direct / none,104,5258,68,8,17,59,0,4,5,0,True,False,True,False,True
+2026-08-04,non-spike,desktop,South Korea,direct / none,10,12,0,0,0,0,0,0,0,0,True,False,True,True,False
+2026-08-04,non-spike,desktop,South Korea,direct / none,370,9056,316,19,0,171,48,61,35,1,True,False,True,False,True
+2026-08-04,non-spike,mobile,United States,other acquisition,5,31,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-04,non-spike,mobile,United States,other acquisition,5,17,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-04,non-spike,mobile,South Korea,other acquisition,13,400,2,2,2,0,0,2,0,0,True,False,True,False,True
+2026-08-04,non-spike,mobile,South Korea,direct / none,7,8,0,0,2,0,0,0,0,0,True,False,True,False,False
+2026-08-04,non-spike,mobile,South Korea,other acquisition,10,495,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-05,non-spike,mobile,South Korea,direct / none,25,334,0,0,3,0,0,0,0,0,True,False,True,False,False
+2026-08-05,non-spike,mobile,South Korea,direct / none,19,304,0,0,3,0,0,0,0,0,True,True,True,False,False
+2026-08-05,non-spike,mobile,South Korea,direct / none,11,177,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-05,non-spike,mobile,South Korea,direct / none,28,15146,4,1,2,4,0,0,0,0,True,True,True,False,True
+2026-08-05,non-spike,mobile,South Korea,direct / none,115,3784,1,1,13,0,0,1,0,0,True,False,True,False,True
+2026-08-05,non-spike,mobile,South Korea,other acquisition,81,173,67,6,2,49,0,17,1,0,True,False,True,False,True
+2026-08-05,non-spike,desktop,South Korea,direct / none,18,347,4,2,2,4,0,0,0,0,True,False,True,False,True
+2026-08-06,non-spike,desktop,South Korea,direct / none,315,15050,10,3,15,4,0,0,0,6,True,False,True,False,True
+2026-08-06,non-spike,mobile,South Korea,direct / none,361,612,277,12,1,174,33,59,11,0,True,False,True,False,True
+2026-08-06,non-spike,desktop,South Korea,direct / none,94,3029,39,7,3,32,2,2,1,2,True,False,True,False,True
+2026-08-07,non-spike,mobile,South Korea,direct / none,23,33,11,1,1,0,11,0,0,0,True,False,True,False,True
+2026-08-08,non-spike,desktop,South Korea,direct / none,97,2930,2,1,9,0,0,0,0,2,True,False,True,False,True
+2026-08-08,non-spike,mobile,South Korea,direct / none,113,362,71,14,13,42,9,15,4,1,True,False,True,False,True
+2026-08-08,non-spike,desktop,South Korea,direct / none,166,1848,6,1,5,0,0,0,0,6,True,False,True,False,True
+2026-08-09,non-spike,desktop,South Korea,direct / none,229,10909,11,5,13,2,2,0,0,7,True,False,True,False,True
+2026-08-09,non-spike,mobile,South Korea,direct / none,49,1485,4,4,3,0,2,0,0,2,True,False,True,False,True
+2026-08-09,non-spike,mobile,South Korea,direct / none,112,418,62,6,2,38,0,23,1,0,True,True,True,False,True
+2026-08-09,non-spike,desktop,South Korea,direct / none,34,2253,0,0,1,0,0,0,0,0,True,False,True,False,False
+2026-08-10,non-spike,desktop,South Korea,direct / none,12,88,0,0,1,0,0,0,0,0,True,False,True,False,False
+2026-08-10,non-spike,mobile,South Korea,other acquisition,5,4,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-10,non-spike,desktop,Other,other acquisition,5,28,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-10,non-spike,mobile,South Korea,other acquisition,14,40,1,1,1,0,0,1,0,0,True,False,True,False,True
+2026-08-10,non-spike,mobile,South Korea,other acquisition,9,15,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-11,non-spike,desktop,South Korea,direct / none,5,68,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-11,non-spike,mobile,South Korea,direct / none,5,3,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-11,non-spike,mobile,South Korea,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-11,non-spike,mobile,South Korea,direct / none,4,4,0,0,0,0,0,0,0,0,True,True,True,False,False
+2026-08-11,non-spike,desktop,United States,direct / none,5,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-12,non-spike,desktop,South Korea,direct / none,5,9,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-12,non-spike,desktop,South Korea,direct / none,1616,17691,44,8,86,21,2,0,0,21,True,False,True,False,True
+2026-08-12,non-spike,mobile,South Korea,direct / none,52,10621,0,0,3,0,0,0,0,0,True,True,True,False,False
+2026-08-12,non-spike,desktop,South Korea,direct / none,35,14376,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-13,non-spike,mobile,South Korea,direct / none,14,9,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-13,non-spike,desktop,South Korea,direct / none,70,2167,6,3,6,0,0,4,1,1,True,False,True,False,True
+2026-08-14,non-spike,desktop,South Korea,direct / none,135,20294,2,1,9,0,2,0,0,0,True,False,True,False,True
+2026-08-15,08/15 spike,desktop,Other,direct / none,8,46,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,9,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,South Korea,direct / none,12,23,0,0,1,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,other acquisition,5,29,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,other acquisition,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,South Korea,direct / none,16,220,0,0,1,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,5,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,South Korea,direct / none,57,3569,0,0,3,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,South Korea,other acquisition,22,2196,0,0,2,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,South Korea,direct / none,54,35159,5,2,3,0,3,0,0,2,True,True,True,False,True
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,10,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,5,3,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,5,2,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,5,9,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,South Korea,direct / none,63,292,3,2,4,0,0,0,0,3,True,True,True,True,True
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,South Korea,direct / none,47,480,0,0,3,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,13,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,Other,direct / none,4,4,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,South Korea,other acquisition,45,447,14,5,2,11,3,0,0,0,True,False,True,False,True
+2026-08-15,08/15 spike,desktop,South Korea,direct / none,642,837,414,17,1,241,52,89,3,29,True,False,True,False,True
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,5,3,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,5,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,5,13,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,desktop,United States,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-15,08/15 spike,mobile,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,South Korea,direct / none,23,72,0,0,2,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,South Korea,direct / none,228,4279,14,1,18,0,0,0,14,0,True,False,True,False,True
+2026-08-16,non-spike,desktop,United States,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,Other,direct / none,5,18,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,Other,direct / none,5,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,mobile,South Korea,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,Other,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,Other,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,United States,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-16,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,mobile,Other,direct / none,4,17,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,desktop,Other,direct / none,4,10,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,desktop,Other,direct / none,4,10,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,desktop,Other,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,mobile,South Korea,other acquisition,14,23,0,0,1,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,desktop,South Korea,direct / none,204,14961,3,1,31,0,0,0,3,0,True,True,True,False,True
+2026-08-17,non-spike,desktop,Other,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,desktop,Other,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-17,non-spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,United States,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,Other,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,South Korea,direct / none,5,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,Other,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,South Korea,direct / none,288,5665,29,6,46,22,0,4,1,2,True,False,True,False,True
+2026-08-18,non-spike,desktop,United States,direct / none,5,25,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-18,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,mobile,South Korea,direct / none,36,56,7,2,4,7,0,0,0,0,True,False,True,False,True
+2026-08-19,non-spike,mobile,South Korea,direct / none,87,72,61,5,4,57,0,4,0,0,True,False,True,False,True
+2026-08-19,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,desktop,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,desktop,South Korea,direct / none,515,16219,278,18,11,179,8,47,3,41,True,False,True,False,True
+2026-08-19,non-spike,desktop,Other,direct / none,6,4,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,desktop,United States,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,desktop,United States,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,mobile,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,desktop,United States,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-19,non-spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-20,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-20,non-spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-20,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-20,non-spike,desktop,South Korea,direct / none,89,671,1,1,18,0,0,0,0,1,True,False,True,False,True
+2026-08-20,non-spike,desktop,Other,direct / none,5,15,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-20,non-spike,desktop,South Korea,direct / none,10,195,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-20,non-spike,desktop,Other,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-20,non-spike,mobile,United States,direct / none,5,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-21,non-spike,desktop,Other,direct / none,5,14,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-21,non-spike,desktop,United States,direct / none,5,9,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-21,non-spike,desktop,Other,direct / none,4,1,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-21,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-22,non-spike,mobile,South Korea,direct / none,32,469,10,5,4,7,3,0,0,0,True,False,True,False,True
+2026-08-22,non-spike,desktop,Other,direct / none,4,10,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-22,non-spike,desktop,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-22,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-22,non-spike,desktop,Other,direct / none,4,10,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-22,non-spike,desktop,Other,direct / none,4,10,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-22,non-spike,desktop,Other,direct / none,4,13,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-23,non-spike,desktop,South Korea,direct / none,30,6935,0,0,7,0,0,0,0,0,True,True,True,False,False
+2026-08-23,non-spike,desktop,Other,direct / none,5,12,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-23,non-spike,desktop,Other,direct / none,5,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-23,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-23,non-spike,desktop,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-23,non-spike,desktop,South Korea,direct / none,1178,18280,2,1,51,2,0,0,0,0,True,False,True,False,True
+2026-08-23,non-spike,desktop,Other,direct / none,4,4,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-23,non-spike,desktop,Other,direct / none,5,2,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-23,non-spike,desktop,United States,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-24,non-spike,desktop,United States,direct / none,4,8,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-24,non-spike,mobile,South Korea,direct / none,71,2342,10,4,12,5,0,0,0,5,True,False,True,False,True
+2026-08-24,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-24,non-spike,mobile,South Korea,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-25,non-spike,desktop,South Korea,other acquisition,22,44,6,4,4,4,0,2,0,0,True,False,True,False,True
+2026-08-25,non-spike,desktop,South Korea,direct / none,25,26,3,3,9,2,0,1,0,0,True,False,True,False,True
+2026-08-25,non-spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-25,non-spike,mobile,South Korea,direct / none,20,1253,2,2,4,0,0,2,0,0,True,False,True,False,True
+2026-08-25,non-spike,mobile,South Korea,other acquisition,89,156,45,7,4,31,0,12,1,1,True,False,True,False,True
+2026-08-25,non-spike,desktop,South Korea,direct / none,14,13,0,0,3,0,0,0,0,0,True,False,True,False,False
+2026-08-25,non-spike,desktop,South Korea,other acquisition,14,17,0,0,3,0,0,0,0,0,True,False,True,False,False
+2026-08-25,non-spike,desktop,South Korea,direct / none,25,75,2,2,6,0,0,2,0,0,True,False,True,False,True
+2026-08-25,non-spike,desktop,South Korea,direct / none,195,367,113,12,4,61,1,47,3,1,True,False,True,False,True
+2026-08-25,non-spike,desktop,South Korea,direct / none,25,603,2,2,4,0,0,1,0,1,True,False,True,False,True
+2026-08-26,non-spike,desktop,Other,direct / none,5,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-26,non-spike,desktop,South Korea,direct / none,21,53,1,1,4,0,0,1,0,0,True,False,True,False,True
+2026-08-26,non-spike,desktop,South Korea,direct / none,22,1070,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-26,non-spike,desktop,South Korea,direct / none,39,69,10,3,4,7,0,3,0,0,True,False,True,False,True
+2026-08-26,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-26,non-spike,mobile,South Korea,direct / none,25,183,7,1,4,7,0,0,0,0,True,False,True,False,True
+2026-08-26,non-spike,desktop,South Korea,other acquisition,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-27,non-spike,desktop,South Korea,direct / none,434,24534,23,3,75,0,22,0,0,1,True,False,True,False,True
+2026-08-27,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-27,non-spike,desktop,South Korea,direct / none,13,1457,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-28,non-spike,mobile,South Korea,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-28,non-spike,desktop,South Korea,direct / none,260,13570,12,2,41,0,12,0,0,0,True,False,True,False,True
+2026-08-28,non-spike,desktop,South Korea,direct / none,150,7302,0,0,12,0,0,0,0,0,True,False,True,False,False
+2026-08-29,non-spike,mobile,South Korea,direct / none,34,135,2,2,4,0,1,0,0,1,True,False,True,False,True
+2026-08-29,non-spike,desktop,South Korea,direct / none,30,1668,2,2,5,0,1,1,0,0,True,False,True,False,True
+2026-08-29,non-spike,desktop,South Korea,direct / none,129,1909,58,16,10,31,9,2,1,15,True,False,True,False,True
+2026-08-29,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-29,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-30,non-spike,desktop,South Korea,direct / none,114,2998,0,0,25,0,0,0,0,0,True,False,True,False,False
+2026-08-30,non-spike,desktop,United States,direct / none,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-30,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-31,non-spike,mobile,South Korea,other acquisition,90,6022,38,8,2,0,22,8,1,7,True,False,True,False,True
+2026-08-31,non-spike,desktop,South Korea,direct / none,936,29228,2,2,44,0,2,0,0,0,True,False,True,False,True
+2026-08-31,non-spike,mobile,South Korea,direct / none,47,180,4,3,8,2,0,2,0,0,True,False,True,False,True
+2026-08-31,non-spike,mobile,South Korea,direct / none,15,78,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-08-31,non-spike,mobile,South Korea,direct / none,5,4,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-01,non-spike,desktop,South Korea,direct / none,178,21094,10,1,38,0,0,0,10,0,True,False,True,False,True
+2026-09-01,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-02,non-spike,desktop,South Korea,direct / none,35,16749,0,0,5,0,0,0,0,0,True,False,True,False,False
+2026-09-02,non-spike,mobile,South Korea,other acquisition,6,31,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-02,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-02,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-03,non-spike,mobile,South Korea,other acquisition,6,34,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-03,non-spike,mobile,South Korea,other acquisition,4,7,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-03,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-03,non-spike,mobile,South Korea,other acquisition,3,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-03,non-spike,mobile,South Korea,other acquisition,6,34,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,16,24,0,0,4,0,0,0,0,0,True,True,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,19,66,1,1,4,0,0,0,0,1,True,False,True,False,True
+2026-09-04,09/04 spike,mobile,United States,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,95,32106,5,3,4,0,5,0,0,0,True,True,True,True,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,13,6,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,522,1255,389,15,6,347,13,20,4,5,True,True,True,False,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,12,10,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,12,9,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,16,45,0,0,4,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,4,4,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,26,162,7,2,4,7,0,0,0,0,True,False,True,False,True
+2026-09-04,09/04 spike,desktop,South Korea,direct / none,120,8708,1,1,20,0,0,0,0,1,True,False,True,False,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,4,4,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,29,59,4,4,10,4,0,0,0,0,True,False,True,False,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,773,1630,545,20,10,275,160,63,25,22,True,False,True,False,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,14,9,0,0,3,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,5,3,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,582,11784,331,18,8,264,4,35,10,18,True,False,True,False,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,23,102,3,3,4,0,0,2,0,1,True,False,True,False,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,19,110,0,0,6,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,4,1,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,18,122,0,0,6,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,13,18,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,49,177,15,6,10,5,0,10,0,0,True,False,True,False,True
+2026-09-04,09/04 spike,desktop,South Korea,direct / none,117,654,1,1,12,0,0,0,0,1,True,True,True,False,True
+2026-09-04,09/04 spike,desktop,South Korea,direct / none,19,22,0,0,4,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,18,53,0,0,6,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,desktop,South Korea,direct / none,5,5,0,0,0,0,0,0,0,0,True,False,True,False,False
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,28,48,4,2,4,0,0,4,0,0,True,False,True,False,True
+2026-09-04,09/04 spike,mobile,South Korea,direct / none,14,8,0,0,3,0,0,0,0,0,True,False,True,False,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,13,12,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,24,42,0,0,6,0,0,0,0,0,True,False,False,,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,50,137,9,4,4,7,0,1,0,1,True,False,False,,True
+2026-09-05,non-spike,desktop,South Korea,direct / none,7,5,0,0,0,0,0,0,0,0,True,True,False,,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,19,47,1,1,6,0,0,1,0,0,True,False,False,,True
+2026-09-05,non-spike,desktop,United States,direct / none,5,8,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,21,41,0,0,5,0,0,0,0,0,True,False,False,,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,1344,3686,843,28,23,532,78,116,60,57,True,True,False,,True
+2026-09-05,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,61,124,5,3,6,0,0,4,0,1,True,False,False,,True
+2026-09-05,non-spike,mobile,South Korea,direct / none,416,1065,258,19,23,197,8,44,7,2,True,False,False,,True
+2026-09-05,non-spike,desktop,United States,direct / none,4,6,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-05,non-spike,mobile,South Korea,direct / none,11,9,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-06,non-spike,mobile,South Korea,direct / none,100,4499,47,10,20,41,0,4,2,0,True,False,False,,True
+2026-09-06,non-spike,desktop,United States,direct / none,5,8,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-06,non-spike,desktop,United States,direct / none,4,9,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-06,non-spike,mobile,South Korea,direct / none,50,148,21,4,4,19,1,0,1,0,True,False,False,,True
+2026-09-07,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-07,non-spike,desktop,South Korea,direct / none,23,29361,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-07,non-spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-07,non-spike,desktop,South Korea,direct / none,6,1,0,0,0,0,0,0,0,0,True,True,False,,False
+2026-09-08,non-spike,mobile,South Korea,direct / none,67,266,29,10,0,13,0,10,5,1,True,False,False,,True
+2026-09-08,non-spike,desktop,South Korea,direct / none,158,399,87,7,4,75,6,6,0,0,True,True,False,,True
+2026-09-08,non-spike,desktop,South Korea,direct / none,129,1158,45,7,7,29,0,12,0,4,True,False,False,,True
+2026-09-08,non-spike,desktop,Other,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-08,non-spike,mobile,South Korea,direct / none,52,132,7,5,11,5,0,1,1,0,True,False,False,,True
+2026-09-08,non-spike,desktop,South Korea,direct / none,127,25372,0,0,12,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,mobile,South Korea,direct / none,507,1633,205,26,6,105,37,31,12,20,True,False,False,,True
+2026-09-09,non-spike,desktop,South Korea,direct / none,21,3662,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,mobile,South Korea,direct / none,6,8,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,desktop,South Korea,direct / none,2319,24938,1491,24,23,1060,130,109,63,129,True,True,False,,True
+2026-09-09,non-spike,mobile,South Korea,direct / none,8,1491,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,desktop,South Korea,direct / none,96,9649,7,2,8,0,0,7,0,0,True,False,False,,True
+2026-09-09,non-spike,mobile,South Korea,direct / none,6,440,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,mobile,Other,other acquisition,5,27,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,mobile,South Korea,direct / none,1074,1692,473,18,12,231,50,88,23,81,True,False,False,,True
+2026-09-09,non-spike,desktop,United States,direct / none,5,8,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,desktop,South Korea,direct / none,31,11357,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,desktop,South Korea,direct / none,287,2824,145,18,23,112,12,13,6,2,True,True,False,,True
+2026-09-09,non-spike,desktop,South Korea,direct / none,583,12457,326,21,23,208,16,68,11,23,True,True,False,,True
+2026-09-09,non-spike,mobile,Other,other acquisition,5,21,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-09,non-spike,mobile,South Korea,direct / none,58,140,18,9,13,9,0,6,1,2,True,False,False,,True
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,29,54,3,1,4,0,0,3,0,0,True,False,False,,True
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,430,1288,245,16,0,104,45,59,9,28,True,False,False,,True
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,6,163,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,5,6,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,242,1041,93,18,14,50,15,15,4,9,True,True,False,,True
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,51,223,17,3,4,8,0,9,0,0,True,False,False,,True
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,46,4971,4,2,8,4,0,0,0,0,True,False,False,,True
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,8,67,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,7,5322,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,227,506,121,11,0,40,31,31,16,3,True,False,False,,True
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,380,973,231,19,0,139,30,34,17,11,True,False,False,,True
+2026-09-10,09/10 spike,mobile,South Korea,other acquisition,18,40,0,0,4,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,4,0,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,3,0,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,19,26,0,0,6,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,desktop,United States,direct / none,5,7,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,desktop,Other,direct / none,6,4,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,desktop,United States,direct / none,4,5,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,90,204,38,7,6,25,0,10,2,1,True,False,False,,True
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,12,6,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,11,14,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,260,402,143,11,0,80,4,48,11,0,True,False,False,,True
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,33,35,7,3,4,2,0,5,0,0,True,False,False,,True
+2026-09-10,09/10 spike,desktop,South Korea,direct / none,25,22167,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-10,09/10 spike,mobile,South Korea,direct / none,5,5,0,0,0,0,0,0,0,0,True,False,False,,False
+2026-09-11,non-spike,desktop,South Korea,other acquisition,5,5,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,mobile,South Korea,direct / none,111,248,55,12,13,40,0,8,6,1,False,,False,,True
+2026-09-11,non-spike,mobile,South Korea,direct / none,20,144,2,2,5,2,0,0,0,0,False,,False,,True
+2026-09-11,non-spike,mobile,South Korea,other acquisition,4,0,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,desktop,South Korea,direct / none,6,2,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,desktop,United States,direct / none,3,0,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,desktop,South Korea,direct / none,28,2658,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,mobile,South Korea,direct / none,7,17,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,desktop,United States,direct / none,4,9,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,mobile,South Korea,direct / none,6,8,0,0,0,0,0,0,0,0,False,,False,,False
+2026-09-11,non-spike,desktop,South Korea,direct / none,33,4770,0,0,0,0,0,0,0,0,False,,False,,False

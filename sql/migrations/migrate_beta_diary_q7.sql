@@ -2,7 +2,7 @@
 --  📝 베타 일지 7번 "기타 건의사항" 추가 (2026-09-09)
 --  Supabase SQL Editor 에서 그대로 실행. 두 번 실행해도 안전(if not exists · or replace).
 --  ① beta_diary.q7 컬럼 추가  ② cf_beta_overview 집계에 q7 포함(모니터 대시보드용)
---  원본은 sql/admin_analytics.sql — 여기와 같이 맞춰 둔다.
+--  원본은 sql/analytics/admin_analytics.sql — 여기와 같이 맞춰 둔다.
 -- =============================================================
 alter table public.beta_diary add column if not exists q7 text;
 

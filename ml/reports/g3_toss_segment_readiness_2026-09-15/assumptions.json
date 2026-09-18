@@ -1,0 +1,46 @@
+{
+  "analysis": "g3-toss-segment-readiness-for-modeling",
+  "date": "2026-09-15",
+  "source": "BigQuery GA4 daily export, 2026-09-04 through 2026-09-12 KST",
+  "gate": "G3 supplemental readiness audit",
+  "decision_supported": "Whether the Toss early/later candidate label is ready for G4 baselines.",
+  "result": "not_ready_for_model_training",
+  "checks": {
+    "device_rows": 46,
+    "candidate_positive_devices": 8,
+    "candidate_negative_devices": 38,
+    "feature_boundary_violations": 0,
+    "label_boundary_violations": 0,
+    "overall_flag": "minority<10"
+  },
+  "assumptions": [
+    {
+      "assumption": "platform=toss identifies the relevant Toss webview cohort after the first recorded Toss event.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Cross-check against server-side session platform when available.",
+      "result": "open"
+    },
+    {
+      "assumption": "The 10-minute feature window contains only information available before intervention.",
+      "confidence": "high",
+      "impact_if_wrong": "critical",
+      "validation": "Boundary violation counts are zero.",
+      "result": "passed"
+    },
+    {
+      "assumption": "A 10m-to-24h deliberate action label is useful for quest/content guidance.",
+      "confidence": "low",
+      "impact_if_wrong": "critical",
+      "validation": "Needs user agreement on the business target before G4.",
+      "result": "candidate_only"
+    },
+    {
+      "assumption": "Marked beta_A/B devices are enough to remove testers.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Needs tester roster/device coverage or sensitivity exclusion of deep devices.",
+      "result": "open"
+    }
+  ]
+}

@@ -14,7 +14,7 @@
 --     (앱인토스 심사·IAA 광고 지표에 섞이면 부정 트래픽이 됩니다)
 --
 --  실행: Supabase SQL Editor 에 붙여넣고 Run (한 번).
---  생성: scripts/seed_synthetic.py  ·  분석: sql/synthetic_analysis.sql
+--  생성: scripts/seed_synthetic.py  ·  분석: sql/analytics/synthetic_analysis.sql
 -- =============================================================
 
 -- ── 센서/행동 로그(실제 game_logs 와 동일 컬럼, FK 없음) ──

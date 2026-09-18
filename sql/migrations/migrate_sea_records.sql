@@ -3,7 +3,7 @@
 --  ------------------------------------------------------------
 --  사용법: Supabase 대시보드 > SQL Editor 에 전체 붙여넣고 Run (1회).
 --  멱등(if not exists / or replace)이라 여러 번 실행해도 안전합니다.
---  선행: sql/migrate_leaderboard.sql + migrate_leaderboard_sanity.sql
+--  선행: sql/migrations/migrate_leaderboard.sql + migrate_leaderboard_sanity.sql
 --
 --  ▶ 어획 1회 = 1행. 참치(species='tuna')의 무게가 "오늘의 대어" 보드의 원천.
 --    참치 급수는 클라이언트가 날짜 시드로 정하므로(전원 동일) 무게 차이는

@@ -1,0 +1,27 @@
+{
+  "analysis": "g3-all-channel-later-target-label-eda",
+  "date": "2026-09-15",
+  "source": "BigQuery GA4 daily export, first-observed devices 2026-09-04 through 2026-09-11 KST",
+  "gate": "G3 all-channel label target EDA",
+  "result": "larger_sample_but_model_training_still_deferred",
+  "checks": {
+    "device_rows": 95,
+    "later_active_devices": 12,
+    "later_new_area_devices": 9,
+    "feature_boundary_violations": 0,
+    "label_boundary_violations": 0
+  },
+  "exclusions": [
+    "marked beta tester devices: beta_A/beta_B"
+  ],
+  "not_analyzed": [
+    "A/B effect",
+    "causal channel comparison",
+    "D1/D7 retention"
+  ],
+  "candidate_next_label": {
+    "name": "later_new_area",
+    "positive_devices": 9,
+    "status": "candidate_only"
+  }
+}

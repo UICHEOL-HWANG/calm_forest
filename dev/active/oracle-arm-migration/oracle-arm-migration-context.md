@@ -54,7 +54,7 @@
    Oracle 기본 룰셋 형태를 전제한 값이라 24.04 에서 그대로인지 확인 필요.
 4. **`netfilter-persistent`** — iptables-persistent 패키지가 있어야 저장된다.
 5. **백업에 시크릿 포함** — `~/oracle-vm-backup-20260912/` 는 리포 밖. 커밋 금지.
-6. **SQL 원본** — `sql/tableau_export.sql` 이 원본이고 DAG 에 복사본을 두지 않는다.
+6. **SQL 원본** — `sql/analytics/tableau_export.sql` 이 원본이고 DAG 에 복사본을 두지 않는다.
 
 ## 진행 상황
 

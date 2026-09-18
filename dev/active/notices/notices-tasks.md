@@ -4,7 +4,7 @@
 - [x] feat/notices 브랜치 · dev docs 3종
 - [x] tests/notices.test.mjs (RED)
 - [x] js/notices.js (GREEN)
-- [x] sql/migrate_notices.sql 작성 → Supabase MCP 적용
+- [x] sql/migrations/migrate_notices.sql 작성 → Supabase MCP 적용
 - [x] js/supabase-client.js fetchNotices
 - [x] js/game.js noticeSeenId 세이브/복원 · 선조회 · 출석 ok 콜백 · markNoticesSeen
 - [x] index.html #notice-modal · ui.showNotices · ☰ 📮 소식함 버튼

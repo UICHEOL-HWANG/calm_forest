@@ -3,7 +3,7 @@
 --  ------------------------------------------------------------
 --  사용법: Supabase 대시보드 > SQL Editor 에 전체 붙여넣고 Run (1회).
 --  멱등(if not exists / if exists)이라 여러 번 실행해도 안전합니다.
---  선행: sql/migrate_cafe_guests.sql
+--  선행: sql/migrations/migrate_cafe_guests.sql
 --
 --  ▶ 왜 필요한가
 --    손님 대사가 집 단계 버킷(settling/settled/thriving)에 따라 달라지도록 바뀌었습니다.

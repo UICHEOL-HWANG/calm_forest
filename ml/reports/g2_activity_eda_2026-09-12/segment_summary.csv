@@ -1,0 +1,8 @@
+segment_type,segment_value,devices,returned_devices,observed_return_pct,median_active_days,median_span_days
+acquisition,(direct) / (none),326,38,11.7,1,0
+acquisition,기타 (<30),30,1,3.3,1,0
+country,South Korea,217,39,18.0,1,0
+country,United States,93,0,0.0,1,0
+country,기타 (<30),46,0,0.0,1,0
+device,desktop,205,21,10.2,1,0
+device,mobile,151,18,11.9,1,0

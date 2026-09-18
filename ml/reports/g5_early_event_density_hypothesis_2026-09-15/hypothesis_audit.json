@@ -1,0 +1,33 @@
+{
+  "analysis": "g5-early-event-density-hypothesis",
+  "date": "2026-09-15",
+  "source": "/Users/uicheol_hwang/calm_forest/ml/reports/g3_all_channel_later_targets_2026-09-15/all_channel_later_target_candidates.csv",
+  "hypothesis": "Devices with early_tracked_events >= 20 have higher 10m-to-24h later_active rate than devices below 20.",
+  "threshold": 20,
+  "n": 95,
+  "positives": 12,
+  "high_group": {
+    "devices": 29,
+    "positives": 10,
+    "rate": 0.3448275862068966
+  },
+  "low_group": {
+    "devices": 66,
+    "positives": 2,
+    "rate": 0.030303030303030304
+  },
+  "difference_pp": 31.45245559038663,
+  "difference_ci_pp": [
+    14.106753812636164,
+    50.05040322580645
+  ],
+  "permutation_p_value": 5e-05,
+  "auc": 0.8830321285140562,
+  "verdict": "채택 후보",
+  "constraints": [
+    "not an A/B read",
+    "beta tester marked devices excluded upstream",
+    "no production deployment",
+    "device-level, not person-level"
+  ]
+}

@@ -1,0 +1,47 @@
+device_label,first_toss_day,device,country_group,acquisition_source,early_actions,early_action_kinds,early_area_count,early_nature_events,early_fishing_sea_events,early_quest_social_events,early_craft_home_events,early_advanced_events,early_connect_fail,early_connect_ok,early_toss_login,early_login_screen,later_actions,later_action_kinds,later_area_count,later_nature_events,later_fishing_sea_events,later_quest_social_events,later_craft_home_events,later_advanced_events,later_new_nature_events,later_new_fishing_sea_events,later_new_quest_social_events,later_new_craft_home_events,later_new_advanced_events,later_active,later_new_area,later_quest_social,later_fishing_sea,later_nature,early_action_segment,early_area_segment,early_connection_segment,feature_boundary_violations,label_boundary_violations
+D001,2026-09-04,mobile,South Korea,(direct),114,10,3,98,0,15,0,1,0,1,2,0,753,20,5,576,65,68,37,7,0,65,0,37,0,True,True,True,True,True,6회 이상,2개 이상,연결 성공만 기록,0,0
+D002,2026-09-11,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 실패 기록,0,0
+D003,2026-09-09,mobile,South Korea,(direct),100,16,5,62,4,15,5,14,0,0,0,0,105,21,5,43,33,16,7,6,0,0,0,0,0,True,False,True,True,True,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D004,2026-09-05,mobile,South Korea,(direct),88,13,4,75,0,8,4,1,3,0,0,3,755,27,5,457,78,108,56,56,0,78,0,0,0,True,True,True,True,True,6회 이상,2개 이상,연결 실패 기록,0,0
+D005,2026-09-04,mobile,South Korea,(direct),226,12,4,187,0,17,1,21,0,1,1,0,319,14,5,88,160,46,24,1,0,160,0,0,0,True,True,True,True,True,6회 이상,2개 이상,연결 성공만 기록,0,0
+D006,2026-09-05,mobile,South Korea,(direct),76,16,5,66,2,4,2,2,0,1,1,0,182,14,4,131,6,40,5,0,0,0,0,0,0,True,False,True,True,True,6회 이상,2개 이상,연결 성공만 기록,0,0
+D007,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D008,2026-09-11,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 실패 기록,0,0
+D009,2026-09-06,mobile,South Korea,(direct),47,10,3,41,0,4,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D010,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D011,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,14,6,2,0,13,0,1,0,0,13,0,1,0,True,True,False,True,False,0회,0개,연결 성공만 기록,0,0
+D012,2026-09-04,desktop,South Korea,(direct),0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,0,1,True,True,False,False,False,0회,0개,연결 이벤트 없음,0,0
+D013,2026-09-10,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 이벤트 없음,0,0
+D014,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D015,2026-09-10,mobile,South Korea,(direct),7,3,2,2,0,5,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D016,2026-09-05,mobile,South Korea,(direct),9,4,3,7,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D017,2026-09-04,mobile,South Korea,(direct),1,1,1,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,1~5회,1개,연결 성공만 기록,0,0
+D018,2026-09-04,mobile,South Korea,(direct),14,4,2,13,1,0,0,0,0,1,2,0,317,18,5,251,3,35,10,18,0,0,35,10,18,True,True,True,True,True,6회 이상,2개 이상,연결 성공만 기록,0,0
+D019,2026-09-11,mobile,South Korea,(direct),55,12,4,40,0,8,6,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D020,2026-09-05,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,4,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 실패 기록,0,0
+D021,2026-09-06,mobile,South Korea,(direct),21,4,3,19,1,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D022,2026-09-05,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,4,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 실패 기록,0,0
+D023,2026-09-04,mobile,South Korea,(direct),4,4,1,4,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,1~5회,1개,연결 성공만 기록,0,0
+D024,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D025,2026-09-04,mobile,South Korea,(direct),7,2,1,7,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,1개,연결 실패 기록,0,0
+D026,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D027,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D028,2026-09-10,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 실패 기록,0,0
+D029,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D030,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D031,2026-09-05,mobile,South Korea,(direct),5,3,2,0,0,4,0,1,5,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,1~5회,2개 이상,연결 실패 기록,0,0
+D032,2026-09-10,mobile,South Korea,(direct),38,7,4,25,0,10,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D033,2026-09-05,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D034,2026-09-05,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 실패 기록,0,0
+D035,2026-09-11,mobile,South Korea,(direct),2,2,1,2,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,1~5회,1개,연결 실패 기록,0,0
+D036,2026-09-08,mobile,South Korea,(direct),7,5,3,5,0,1,1,0,3,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 실패 기록,0,0
+D037,2026-09-04,mobile,South Korea,(direct),15,6,2,5,0,10,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 성공만 기록,0,0
+D038,2026-09-04,mobile,South Korea,(direct),3,3,2,0,0,2,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,1~5회,2개 이상,연결 성공만 기록,0,0
+D039,2026-09-10,mobile,South Korea,(direct),17,3,2,8,0,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D040,2026-09-10,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 이벤트 없음,0,0
+D041,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D042,2026-09-04,mobile,South Korea,(direct),4,2,1,0,0,4,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,1~5회,1개,연결 성공만 기록,0,0
+D043,2026-09-09,mobile,South Korea,(direct),18,9,4,9,0,6,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,6회 이상,2개 이상,연결 이벤트 없음,0,0
+D044,2026-09-04,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 성공만 기록,0,0
+D045,2026-09-09,mobile,South Korea,(direct),0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,0회,0개,연결 실패 기록,0,0
+D046,2026-09-05,mobile,South Korea,(direct),1,1,1,0,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,False,False,False,False,False,1~5회,1개,연결 성공만 기록,0,0

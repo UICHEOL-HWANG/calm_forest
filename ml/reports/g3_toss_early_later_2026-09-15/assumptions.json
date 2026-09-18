@@ -1,0 +1,28 @@
+{
+  "analysis": "g3-toss-early-later-label-audit",
+  "date": "2026-09-15",
+  "source": "BigQuery GA4 daily export, 2026-09-04 through 2026-09-12 KST",
+  "assumptions": [
+    {
+      "assumption": "첫 토스 이벤트 뒤 10분 미만 행동은 입력, 10분 이후 24시간 미만 행동은 임시 라벨로 시간 분리된다.",
+      "confidence": "high",
+      "impact_if_wrong": "critical",
+      "validation": "집계된 feature/label boundary violation이 모두 0인지 확인",
+      "result": "passed"
+    },
+    {
+      "assumption": "platform=toss와 beta_A/B 부재가 비베타 토스 기기를 충분히 식별한다.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "테스터 명단-기기 매핑 없이는 완전 검증 불가",
+      "result": "open"
+    },
+    {
+      "assumption": "10분 이후 24시간 내 의도적 행동이 유용한 모델 목표다.",
+      "confidence": "low",
+      "impact_if_wrong": "critical",
+      "validation": "사용자와 목표 합의 후 라벨 채택 여부 결정",
+      "result": "candidate_only"
+    }
+  ]
+}

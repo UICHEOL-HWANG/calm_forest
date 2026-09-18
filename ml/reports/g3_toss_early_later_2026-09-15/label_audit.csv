@@ -1,0 +1,4 @@
+early_segment,devices,later_active_devices,later_inactive_devices,early_action_events,later_action_events,feature_boundary_violations,label_boundary_violations
+0회,22,2,20,0,15,0,0
+1~5회,7,0,7,20,0,0,0
+6회 이상,17,6,11,859,2431,0,0

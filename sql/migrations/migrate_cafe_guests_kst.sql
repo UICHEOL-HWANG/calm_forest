@@ -5,7 +5,7 @@
 --  멱등(drop + create)이라 여러 번 실행해도 안전합니다.
 --
 --  ▶ 무엇이 잘못됐나
---    기존 정책(sql/migrate_cafe_guests.sql)은 `with check (gen_date = current_date)` 였습니다.
+--    기존 정책(sql/migrations/migrate_cafe_guests.sql)은 `with check (gen_date = current_date)` 였습니다.
 --    그런데 Postgres 의 current_date 는 **DB 타임존(UTC)** 날짜이고,
 --    게임이 보내는 gen_date 는 js/game.js todayStr() — **브라우저 로컬 날짜** 입니다.
 --    한국(KST=UTC+9)에서 00:00~09:00 사이에는 두 값이 하루 어긋납니다.

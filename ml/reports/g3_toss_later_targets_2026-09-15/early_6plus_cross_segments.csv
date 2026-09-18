@@ -1,0 +1,5 @@
+early_area_segment,early_connection_segment,devices,later_active_devices,later_new_area_devices,later_quest_social_devices,later_fishing_sea_devices
+1개,연결 실패 기록,1,0,0,0,0
+2개 이상,연결 성공만 기록,5,4,3,4,4
+2개 이상,연결 실패 기록,2,1,1,1,1
+2개 이상,연결 이벤트 없음,9,1,0,1,1

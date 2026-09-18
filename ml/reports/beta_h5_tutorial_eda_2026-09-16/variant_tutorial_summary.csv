@@ -1,0 +1,3 @@
+variant,testers,starts,completes,skips,tut_steps_mean,tut_steps_median,max_order_mean,fun_steps_mean,fun_all4,late_steps_mean
+beta_A,5,5,1,4,8.8,6.0,8.8,3.4,2,1.2
+beta_B,5,4,2,2,7.4,3.0,7.4,1.6,2,2.4

@@ -1,0 +1,48 @@
+{
+  "analysis": "g1-toss-guidance-measurement-readiness",
+  "date": "2026-09-14",
+  "decision": "선택형 지역 안내의 효과를 재기 전에 기존 GA4 계측 연결성을 감사한다",
+  "source": "BigQuery GA4 daily export, 2026-09-04 through 2026-09-12 KST",
+  "assumptions": [
+    {
+      "category": "population",
+      "assumption": "GA4 event parameter platform=toss identifies observed Toss webview events, not necessarily first-ever players.",
+      "rationale": "The same device could have played through another platform earlier.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Reconcile event-level platform with internal session logs and prior web activity."
+    },
+    {
+      "category": "exclusion",
+      "assumption": "beta_A/beta_B markers exclude known testers, but unmarked internal use may remain.",
+      "rationale": "Earlier marker audit found no beta-marked Toss rows.",
+      "confidence": "medium",
+      "impact_if_wrong": "high",
+      "validation": "Audit tester roster-to-device coverage."
+    },
+    {
+      "category": "metric_definition",
+      "assumption": "shown=true records a banner-display request, not proof that a user saw or heard it.",
+      "rationale": "Client logs the requested UI and cue; playback success and attention are not measured.",
+      "confidence": "high",
+      "impact_if_wrong": "high",
+      "validation": "Instrument UI render success and separate sound requested from sound played."
+    },
+    {
+      "category": "attribution",
+      "assumption": "zone_enter cannot be attributed to a recommendation without a shared recommendation ID and target area.",
+      "rationale": "Current score rows have neither field and zone_enter covers only some zones.",
+      "confidence": "high",
+      "impact_if_wrong": "high",
+      "validation": "Add shared recommendation ID to impression, tap, arrival, and first target action."
+    },
+    {
+      "category": "time_window",
+      "assumption": "September 12 is the last complete GA4 daily export in this analysis.",
+      "rationale": "The previous Toss audit excluded September 13 pending its daily export.",
+      "confidence": "high",
+      "impact_if_wrong": "medium",
+      "validation": "Recheck export availability before the next gate."
+    }
+  ]
+}

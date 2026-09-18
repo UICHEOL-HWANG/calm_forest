@@ -35,10 +35,10 @@ export const CONFIG = {
   SAVE_TABLE: 'game_saves',
 
   // ── 계측 테이블(경제 원장 / 세션 요약) ───────────────────────
-  //    sql/migrate_metrics_tables.sql 실행으로 생성 (ML 피처의 원천)
+  //    sql/migrations/migrate_metrics_tables.sql 실행으로 생성 (ML 피처의 원천)
   ECON_TABLE: 'econ_logs',       // 코인 증감 원장 {source,item,amount,balance}
   SESSION_TABLE: 'session_logs', // 세션 요약(세션당 1행 upsert)
-  //    🛶 나룻배 런 기록 — sql/migrate_boat_runs.sql 실행으로 생성
+  //    🛶 나룻배 런 기록 — sql/migrations/migrate_boat_runs.sql 실행으로 생성
   BOAT_TABLE: 'boat_runs',       // 런당 1행(코스 시드·충돌 지점·수집물·결과)
   SEA_TABLE: 'sea_records',      // 🌊 바다터 어획 1행(어종·무게) — '오늘의 대어' 리더보드 원천
 

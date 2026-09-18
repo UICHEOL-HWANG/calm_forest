@@ -2,7 +2,7 @@
 --  calm forest · 🏆 리더보드 방어 강화 (점수 상한 · 닉네임 길이 · 안전 캐스팅)
 --  ------------------------------------------------------------
 --  사용법: Supabase 대시보드 > SQL Editor 에 전체 붙여넣고 Run (1회).
---  선행: sql/migrate_leaderboard.sql
+--  선행: sql/migrations/migrate_leaderboard.sql
 --
 --  ▶ 왜 필요한가
 --    점수 출처(boat_runs · econ_logs · session_logs)는 전부 클라이언트가 쓰는 테이블이다.

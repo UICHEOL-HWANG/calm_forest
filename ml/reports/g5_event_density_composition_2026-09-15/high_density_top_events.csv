@@ -1,0 +1,159 @@
+later_active,event_name,event_category,event_count,devices_with_event,event_share
+True,chop_tree,의도행동:nature,272,6,0.21484992101105846
+True,mine_ore,의도행동:nature,92,4,0.07266982622432859
+True,dex_discover,기타 추적,77,9,0.060821484992101105
+True,session_summary,기타 추적,58,5,0.045813586097946286
+True,zone_enter,기타 추적,42,7,0.03317535545023697
+True,forage_pick,의도행동:nature,38,5,0.030015797788309637
+True,tutorial_step,기타 추적,38,7,0.030015797788309637
+True,econ_tx,기타 추적,37,9,0.029225908372827805
+True,npc_talk,의도행동:quest_social,37,6,0.029225908372827805
+True,plant_seed,의도행동:nature,36,6,0.02843601895734597
+True,water_crop,의도행동:nature,31,3,0.02448657187993681
+True,firefly_swing,의도행동:advanced,28,2,0.022116903633491312
+True,page_view,GA4 자동·세션,25,10,0.019747235387045814
+True,scroll,GA4 자동·세션,25,10,0.019747235387045814
+True,firefly_catch,기타 추적,22,2,0.017377567140600316
+True,quest_offered,기타 추적,21,6,0.016587677725118485
+True,churn_score,기타 추적,19,2,0.015007898894154818
+True,harvest_crop,의도행동:nature,18,4,0.014218009478672985
+True,firefly_swing_empty,기타 추적,16,2,0.01263823064770932
+True,mist_soothe_miss,기타 추적,16,2,0.01263823064770932
+True,login,진입·로그인·튜토리얼,15,9,0.011848341232227487
+True,login_screen,진입·로그인·튜토리얼,14,4,0.011058451816745656
+True,quest_accept,의도행동:quest_social,14,5,0.011058451816745656
+True,session_time,기타 추적,13,4,0.010268562401263823
+True,story_chapter_start,기타 추적,13,9,0.010268562401263823
+True,daily_bonus,기타 추적,12,9,0.009478672985781991
+True,color_unlock,기타 추적,11,4,0.008688783570300158
+True,weather_day,기타 추적,11,6,0.008688783570300158
+True,character_select,기타 추적,10,8,0.007898894154818325
+True,first_visit,GA4 자동·세션,10,10,0.007898894154818325
+True,intro_start,기타 추적,10,8,0.007898894154818325
+True,nickname_set,기타 추적,10,8,0.007898894154818325
+True,session_start,GA4 자동·세션,10,10,0.007898894154818325
+True,enter_farm,기타 추적,9,2,0.0071090047393364926
+True,quest_complete,의도행동:quest_social,9,5,0.0071090047393364926
+True,exit_farm,기타 추적,8,2,0.00631911532385466
+True,shop_sell,의도행동:craft_home,7,3,0.005529225908372828
+True,tutorial_skip,기타 추적,7,5,0.005529225908372828
+True,tutorial_start,진입·로그인·튜토리얼,7,7,0.005529225908372828
+True,first_chop,의도행동:nature,6,6,0.004739336492890996
+True,intro_complete,기타 추적,6,6,0.004739336492890996
+True,leaderboard_open,의도행동:advanced,6,3,0.004739336492890996
+True,mist_lantern,기타 추적,6,1,0.004739336492890996
+True,enter_mine,기타 추적,5,4,0.0039494470774091624
+True,exit_mine,기타 추적,5,4,0.0039494470774091624
+True,toss_connect,토스 연결 성공,5,5,0.0039494470774091624
+True,intro_skip,기타 추적,4,2,0.00315955766192733
+True,lang_toggle,기타 추적,4,1,0.00315955766192733
+True,mist_soothe,기타 추적,4,2,0.00315955766192733
+True,badge_earn,기타 추적,3,2,0.002369668246445498
+True,fishing_cast,의도행동:fishing_sea,3,2,0.002369668246445498
+True,fishing_catch,의도행동:fishing_sea,3,2,0.002369668246445498
+True,guide_open,기타 추적,3,1,0.002369668246445498
+True,login_nudge,기타 추적,3,2,0.002369668246445498
+True,login_nudge_click,기타 추적,3,1,0.002369668246445498
+True,mist_purify_start,의도행동:advanced,3,2,0.002369668246445498
+True,mist_wave,기타 추적,3,2,0.002369668246445498
+True,photo_capture,의도행동:advanced,3,2,0.002369668246445498
+True,toss_connect,토스 연결 실패,3,1,0.002369668246445498
+True,boat_enter,기타 추적,2,1,0.001579778830963665
+True,boat_exit,기타 추적,2,1,0.001579778830963665
+True,cafe_serve,의도행동:advanced,2,1,0.001579778830963665
+True,carve_start,의도행동:craft_home,2,2,0.001579778830963665
+True,dex_open,의도행동:advanced,2,2,0.001579778830963665
+True,lucky_box,기타 추적,2,2,0.001579778830963665
+True,mist_enter,기타 추적,2,2,0.001579778830963665
+True,cafe_guests_generated,기타 추적,1,1,0.0007898894154818325
+True,carve_result,기타 추적,1,1,0.0007898894154818325
+True,craft_item,의도행동:craft_home,1,1,0.0007898894154818325
+True,enter_cafe,기타 추적,1,1,0.0007898894154818325
+True,enter_house,기타 추적,1,1,0.0007898894154818325
+True,exit_cafe,기타 추적,1,1,0.0007898894154818325
+True,exit_house,기타 추적,1,1,0.0007898894154818325
+True,guide_section,기타 추적,1,1,0.0007898894154818325
+True,house_complete,의도행동:craft_home,1,1,0.0007898894154818325
+True,merchant_visit,기타 추적,1,1,0.0007898894154818325
+True,mist_choice,기타 추적,1,1,0.0007898894154818325
+True,mist_choice_shown,기타 추적,1,1,0.0007898894154818325
+True,mist_end,기타 추적,1,1,0.0007898894154818325
+True,mist_practice_end,기타 추적,1,1,0.0007898894154818325
+True,mist_practice_offer,기타 추적,1,1,0.0007898894154818325
+True,mist_practice_soothe,기타 추적,1,1,0.0007898894154818325
+True,mist_practice_start,기타 추적,1,1,0.0007898894154818325
+True,mist_practice_step,기타 추적,1,1,0.0007898894154818325
+True,sea_cast,의도행동:fishing_sea,1,1,0.0007898894154818325
+True,sea_enter,기타 추적,1,1,0.0007898894154818325
+True,shop_buy,의도행동:craft_home,1,1,0.0007898894154818325
+True,story_chapter_complete,기타 추적,1,1,0.0007898894154818325
+True,user_engagement,GA4 자동·세션,1,1,0.0007898894154818325
+False,chop_tree,의도행동:nature,102,10,0.11434977578475336
+False,dex_discover,기타 추적,55,19,0.061659192825112105
+False,churn_score,기타 추적,50,8,0.05605381165919283
+False,tutorial_step,기타 추적,46,9,0.0515695067264574
+False,npc_talk,의도행동:quest_social,41,13,0.04596412556053812
+False,econ_tx,기타 추적,37,19,0.04147982062780269
+False,quest_offered,기타 추적,33,13,0.03699551569506727
+False,plant_seed,의도행동:nature,29,9,0.032511210762331835
+False,page_view,GA4 자동·세션,24,19,0.026905829596412557
+False,scroll,GA4 자동·세션,24,19,0.026905829596412557
+False,quest_accept,의도행동:quest_social,23,10,0.0257847533632287
+False,mist_soothe_miss,기타 추적,22,2,0.02466367713004484
+False,session_summary,기타 추적,21,18,0.023542600896860985
+False,story_chapter_start,기타 추적,20,18,0.02242152466367713
+False,water_crop,의도행동:nature,20,4,0.02242152466367713
+False,character_select,기타 추적,19,19,0.021300448430493273
+False,daily_bonus,기타 추적,19,19,0.021300448430493273
+False,first_visit,GA4 자동·세션,19,19,0.021300448430493273
+False,intro_start,기타 추적,19,19,0.021300448430493273
+False,login,진입·로그인·튜토리얼,19,19,0.021300448430493273
+False,nickname_set,기타 추적,19,19,0.021300448430493273
+False,session_start,GA4 자동·세션,19,19,0.021300448430493273
+False,toss_connect,토스 연결 실패,18,6,0.020179372197309416
+False,intro_skip,기타 추적,14,14,0.01569506726457399
+False,harvest_crop,의도행동:nature,11,4,0.01233183856502242
+False,session_time,기타 추적,11,4,0.01233183856502242
+False,tutorial_start,진입·로그인·튜토리얼,11,11,0.01233183856502242
+False,first_chop,의도행동:nature,10,10,0.011210762331838564
+False,login_screen,진입·로그인·튜토리얼,10,5,0.011210762331838564
+False,tutorial_skip,기타 추적,10,10,0.011210762331838564
+False,user_engagement,GA4 자동·세션,10,10,0.011210762331838564
+False,weather_day,기타 추적,10,10,0.011210762331838564
+False,lang_toggle,기타 추적,8,2,0.008968609865470852
+False,shop_sell,의도행동:craft_home,8,5,0.008968609865470852
+False,color_unlock,기타 추적,6,4,0.006726457399103139
+False,intro_complete,기타 추적,5,5,0.005605381165919282
+False,merchant_visit,기타 추적,5,5,0.005605381165919282
+False,zone_enter,기타 추적,5,4,0.005605381165919282
+False,leaderboard_open,의도행동:advanced,4,3,0.004484304932735426
+False,mist_enter,기타 추적,4,3,0.004484304932735426
+False,toss_connect,토스 연결 성공,4,4,0.004484304932735426
+False,mist_exit,기타 추적,3,2,0.0033632286995515697
+False,mist_soothe,기타 추적,3,1,0.0033632286995515697
+False,mist_wave,기타 추적,3,2,0.0033632286995515697
+False,quest_complete,의도행동:quest_social,3,2,0.0033632286995515697
+False,shop_buy,의도행동:craft_home,3,2,0.0033632286995515697
+False,badge_earn,기타 추적,2,2,0.002242152466367713
+False,enter_farm,기타 추적,2,2,0.002242152466367713
+False,enter_mine,기타 추적,2,1,0.002242152466367713
+False,exit_farm,기타 추적,2,2,0.002242152466367713
+False,house_complete,의도행동:craft_home,2,2,0.002242152466367713
+False,kitchen_open,기타 추적,2,1,0.002242152466367713
+False,login_nudge,기타 추적,2,2,0.002242152466367713
+False,mist_end,기타 추적,2,2,0.002242152466367713
+False,mist_purify_start,의도행동:advanced,2,2,0.002242152466367713
+False,story_chapter_complete,기타 추적,2,2,0.002242152466367713
+False,boat_end,기타 추적,1,1,0.0011210762331838565
+False,boat_enter,기타 추적,1,1,0.0011210762331838565
+False,boat_exit,기타 추적,1,1,0.0011210762331838565
+False,boat_hit,기타 추적,1,1,0.0011210762331838565
+False,boat_shop_open,기타 추적,1,1,0.0011210762331838565
+False,boat_start,의도행동:fishing_sea,1,1,0.0011210762331838565
+False,enter_house,기타 추적,1,1,0.0011210762331838565
+False,exit_mine,기타 추적,1,1,0.0011210762331838565
+False,forage_pick,의도행동:nature,1,1,0.0011210762331838565
+False,mine_ore,의도행동:nature,1,1,0.0011210762331838565
+False,mist_lantern,기타 추적,1,1,0.0011210762331838565
+False,photo_capture,의도행동:advanced,1,1,0.0011210762331838565
+False,use_fert,기타 추적,1,1,0.0011210762331838565
