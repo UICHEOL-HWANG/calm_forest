@@ -34,6 +34,7 @@ import { trackChop, trackEvent } from './analytics.js';          // [GA4] 이벤
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
+import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -2307,7 +2308,9 @@ export async function enterGame() {
     window.__place = (id, x, z, rot = 0) => placeOutdoor(x, z, false, id, rot);
     window.__select = (id) => { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); return id; };   // 🏗️ 검수용 배치 모드 진입(작업대 메뉴 대신)
     window.__ghost = () => decorGhost ? { x: +decorGhost.position.x.toFixed(2), z: +decorGhost.position.z.toFixed(2), pinned: outdoorTarget.pinned, ok: ghostOk } : null;   // 🏗️ 검수용 시설·장식 즉시 배치(검사·비용 포함)
-    window.__habitat = { env: habitatEnvAt, ctx: habitatCtx, cells: habitatCells, src: habitatSources, dirty: markHabitatDirty };   // 🦋 방문객 환경 점수 검수용
+    window.__habitat = { env: habitatEnvAt, ctx: habitatCtx, cells: habitatCells, src: habitatSources, dirty: markHabitatDirty,
+      alive: () => visitors?.alive || [],                                   // 🦋 지금 떠 있는 종
+      tick: (s) => { for (let i = 0; i < s * 60; i++) visitors?.update(1 / 60); return visitors?.alive || []; } };   // 시간을 앞당겨 스폰을 확인(검수용)
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, shadowAuto: renderer.shadowMap.autoUpdate, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
@@ -9877,14 +9880,49 @@ function rebuildFarm(silent = false) {
   }
 }
 
+// ── 🦋 텃밭 방문객 — 스폰·등록은 js/farm-visitors.js, 판정은 js/habitat.js ──
+let visitors = null;   // 텃밭 안에서만 살아 있다
+
+// 임시 조형 — 조형 사양이 확정되면 js/visitor-art.js 로 교체한다
+const VISITOR_TMP_COLOR = { butterfly: 0xe8a0c8, sparrow: 0xb09070, hedgehog: 0x8a6a4a, frog: 0xa8d586 };
+function makeVisitorMesh(id) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10),
+    new THREE.MeshStandardMaterial({ color: VISITOR_TMP_COLOR[id] || 0xffffff }));
+  m.position.y = 0.45;   // 높이는 조형이 정한다(farm-visitors 는 x·z 만 놓는다)
+  return m;
+}
+
+function startVisitors() {
+  visitors = createVisitors({
+    group: farmGroup,
+    makeMesh: makeVisitorMesh,
+    cells: habitatCells,
+    envAt: habitatEnvAt,
+    matchVisitors,
+    ctx: habitatCtx,
+    playerPos: () => player.position,
+    onSpawn: (id) => trackEvent('visitor_spawn', { visitor: id, farm_stage: gameState.farm.stage }),   // [GA4] 퍼널 3단
+    onDiscover: (id) => {
+      if (!gameState.dex.visitor?.[id]) {
+        dexDiscover('visitor', id);   // 📖 등록 + 토스트 + 박물관 게이트 + 퀘스트 + GA4 를 한 번에
+      } else {
+        const v = visitorOf(id);      // 재방문 — "정원이 살아있다" 는 신호. 보상은 없다.
+        ui.toast?.(`${v.ico} ${v.name}가 다시 찾아왔어요`, 1800);
+      }
+    },
+  });
+}
+
 function enterFarm() {
   atFarm = true; playerInYard = false;
   player.position.set(FARM.x, 0, FARM.z + farmHalf() - 1.5); player.rotation.y = Math.PI;
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요. 나갈 땐 남쪽 문');
+  startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다
   Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
 }
 function exitFarm() {
+  visitors?.clear(); visitors = null;   // 🦋 ⚠️ setSpaceVisible 이 farmGroup 을 정리하기 전에 메시를 빼야 한다
   atFarm = false;
   player.position.set(FARM_GATE.x, 0, FARM_GATE.z + 2);
   nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
@@ -10611,6 +10649,7 @@ function animate() {
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
   updateWorkers(dt);        // 🧑‍🌾 일꾼 — 밭 안이면 걸어서, 밖이면 60초 스텝으로
+  if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
   updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
