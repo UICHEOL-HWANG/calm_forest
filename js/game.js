@@ -7911,20 +7911,23 @@ let ghostRing = null, ghostFarmDef = null, ghostOk = true;   // 🏗️ 배치 �
 // 🦋 배치 중인 자리의 환경을 미터에 띄운다. 텃밭 밖이면 조용히 끈다.
 //   현재치는 정직하게 보여주되 **목표치는 보여주지 않는다** — 대신 nearMiss 가 막는 요인 하나를 집어 준다.
 function updateHabitatMeter() {
-  if (!atFarm || !decorGhost) { ui.setHabitatMeter?.(null); lastNearMiss = null; return; }
+  if (!atFarm || !decorGhost) { ui.setHabitatMeter?.(null); lastNearMiss = {}; return; }
   const env = habitatEnvAt(decorGhost.position.x, decorGhost.position.z);
   const known = gameState.dex.visitor || {};
   ui.setHabitatMeter?.(spotInfo(env, habitatCtx(), known));
-  // [GA4] 퍼널 2단 — 화면 표시와 별개로 "70% 왔는데 막혔다" 만 기록한다(blocker 가 튜닝 축)
+  // [GA4] 퍼널 2단 — 화면 표시와 별개로 "70% 왔는데 막혔다" 만 기록한다(blocker 가 튜닝 축).
+  //   ⚠️ 이 함수는 **매 프레임** 돈다. 조건 안팎을 오갈 때마다 쏘면 폭주한다
+  //      (실측: 10번 왕복 = 같은 이벤트 10개). 배치 세션 하나에서 **종별 한 번**만 쏜다.
+  //      removeDecorGhost 가 세션을 끝내며 기억을 비운다.
   const near = nearMiss(env, habitatCtx(), known);
-  if (near && near.visitor !== lastNearMiss) {
-    lastNearMiss = near.visitor;
+  if (near && !lastNearMiss[near.visitor]) {
+    lastNearMiss[near.visitor] = 1;
     trackEvent('visitor_nearmiss', { visitor: near.visitor, blocker: near.blocker });
-  } else if (!near) lastNearMiss = null;
+  }
 }
 
 function removeDecorGhost() {
-  ui.setHabitatMeter?.(null); lastNearMiss = null;   // 🦋 배치 모드가 끝나면 미터도 사라진다
+  ui.setHabitatMeter?.(null); lastNearMiss = {};   // 🦋 배치 모드가 끝나면 미터도 사라지고 근접 신호 기억도 비운다
   ghostRing = null; ghostFarmDef = null;
   if (!decorGhost) return;
   scene.remove(decorGhost);
@@ -9918,7 +9921,7 @@ const HABITAT_BLOCK_LINE = {
   damp:    '물기가 더 필요해요',
   light:   '빛이 더 필요해요',
 };
-let lastNearMiss = null;   // 같은 근접 신호를 GA4 로 반복해 쏘지 않기 위한 기억
+let lastNearMiss = {};   // 🦋 이번 배치 세션에 이미 쏜 근접 신호 { 종id: 1 } — 폭주 방지(updateHabitatMeter 주석)
 
 function makeVisitorMesh(id) { return makeVisitor(THREE, id); }   // 조형은 js/visitor-art.js (높이도 거기서 정한다)
 
