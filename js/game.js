@@ -23,7 +23,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
-import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
+import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, upsertRetentionGuidanceScore, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
 import { pickSeaTarget } from './sea-aim.js';   // 🎣 바다터 조준 — 바라보는 쪽의 물고기가 걸린다
 import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격 + 오래 끌 때 탈출구
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
@@ -2209,6 +2209,16 @@ function retentionGuidanceSuppressed() {
     if (b.classList.contains('guide-open')) return 'guide';
     if (b.classList.contains('intro-open')) return 'intro';
     if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show')) return 'modal';
+    // ⚠️ 아래는 **CSS 가 #hint-banner 를 display:none 으로 숨기는 상태**다(index.html 524·580·595·937·1005).
+    //    JS 가 이걸 모르면 안 보이는 배너를 "띄웠다"고 치고 세션당 1회 예산을 날린 뒤,
+    //    shown 이벤트까지 찍어 10분 성과창이 아무도 못 본 배너를 잰다.
+    //    CSS 에 #hint-banner 숨김 규칙을 추가하면 여기도 같이 추가할 것.
+    if (b.classList.contains('menu-open')) return 'menu';
+    if (b.classList.contains('sea-mode')) return 'sea';
+    if (b.classList.contains('decor-guide')) return 'decor_guide';
+    if (b.classList.contains('mist-guide')) return 'mist_guide';
+    const meter = document.getElementById('habitat-meter');
+    if (meter && !meter.hasAttribute('hidden')) return 'habitat_meter';
   } catch (e) {
     return 'unknown';
   }
@@ -2224,15 +2234,26 @@ function retentionGuidanceState() {
     houseReady: churnHouseReady(),
     dex: gameState.dex,
   });
-  return buildRetentionGameStateSnapshot(snap);
+  // ⌨️ 조작 안내를 PC/터치로 나누기 위한 플래그 — index.html 의 TOUCH 와 같은 판정식.
+  //    retention-guidance.js 는 브라우저 전역을 안 쓰는 순수 모듈이라 여기서 재서 넘긴다.
+  let touch = false;
+  try { touch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; } catch (e) { touch = false; }
+  return { ...buildRetentionGameStateSnapshot(snap), touch };
 }
 
 function initRetentionGuidance() {
   retentionGuidance = createRetentionGuidance({
     config: TUNING.retentionGuidance,
     platform: () => authState.provider === 'toss' ? 'toss' : undefined,
+    identity: () => ({
+      sessionId: authState.sessionId,
+      clientId: authState.clientId,
+      variant: authState.variant || 'control',
+      platform: authState.provider === 'toss' ? 'toss' : 'web',
+    }),
     gameState: retentionGuidanceState,
     suppress: retentionGuidanceSuppressed,
+    persistScore: row => upsertRetentionGuidanceScore(row),
     showBanner: (b) => {
       if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
       ui.showHintBanner?.({
