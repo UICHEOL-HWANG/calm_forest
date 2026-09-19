@@ -1314,6 +1314,11 @@
     #minimap { top: calc(72px + var(--top-inset)); left: 12px; width: 82px; height: 82px; }
     #quest-panel { --qp-base: calc(168px + var(--top-inset)); --qp-top: var(--qp-base); max-width: 52vw; }
     body.story-on #quest-panel { --qp-top: calc(218px + var(--top-inset)); }   /* 모바일도 스토리 칩 아래로 */
+    /* 🪧 배너가 떠 있는 1.4~3초 동안 의뢰 패널을 그 아래로 내린다(스토리 칩과 같은 처리).
+       아래 주석은 두 컬럼이 "폭으로 분리" 된다고 하지만 52vw + 58vw = 110vw 라 좁은 화면에선
+       10vw 가 겹친다 — 375px 에서 39px 실측, 배너가 의뢰 제목 오른쪽을 덮었다.
+       배너 최대 하단이 245px(영어 최장 문구 기준)이라 255px 로 내린다. */
+    body:has(#hint-banner.show) #quest-panel { --qp-top: calc(255px + var(--top-inset)); }
     /* 🪧 시설 안내 배너: 좁은 화면에선 상단 HUD 와 같은 높이라 겹치고, 화면 중앙에 두면 캐릭터·대화 버튼을
        가린다(실기기 피드백) → 우측 컬럼(문의하기·도감) 바로 아래에 우측 정렬로 붙인다. 좌측 컬럼과는 폭으로 분리. */
     #hint-banner { top: calc(162px + var(--top-inset)); left: auto; right: 10px;

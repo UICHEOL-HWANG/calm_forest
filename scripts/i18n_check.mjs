@@ -113,6 +113,9 @@ const targets = [
   ['js/cafe-guests.js', s => jsStrings(stripJsComments(s))],
   ['js/supabase-client.js', s => jsStrings(stripJsComments(s))],
   ['js/controls.js', s => jsStrings(stripJsComments(s))],
+  // 🌿 배너 문구를 만드는 모듈. 목록에 없던 탓에 "영어 모드에서 한국어가 그대로 뜬다"를
+  //    이 도구가 못 잡았다(2026-09-19). UI 문자열을 내보내는 모듈은 여기 꼭 추가할 것.
+  ['js/retention-guidance.js', s => jsStrings(stripJsComments(s))],
 ];
 
 let totalMiss = 0, totalHit = 0;

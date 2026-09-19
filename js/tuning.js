@@ -22,13 +22,11 @@ export const TUNING = {
     treatRate: 0.5,        // 세션 단위 개입 배정 확률 — 0 이면 개입 전면 off
     timeTriggerSec: 15,    // 시간 트리거 — 설계서 §3-1(커버리지 84%)
   },
-  // 🌿 리텐션 안내 — 모델 서버 없이 1차 룰로 실제 배너를 띄운다.
-  // 모델 점수는 나중에 들어오면 rule-low 구간 rescue 로만 쓰도록 js/retention-guidance.js 에 자리를 열어둔다.
+  // 🌿 리텐션 안내 — 1차 룰로 배너를 고르고, VM 모델 점수는 rule-low 구간 rescue 로만 쓴다.
   retentionGuidance: {
-    // ⏸️ 꺼 둔다(2026-09-19) — 배너 한국어 문구 10종이 아직 검수 전이고,
-    //    js/retention-guidance.js 가 i18n 을 안 거쳐 영어 모드에서 한국어가 그대로 뜬다.
-    //    문구 확정 + i18n-en.js 등재가 끝나면 true 로 되돌린다.
-    enabled: false,
+    enabled: true,
+    endpoint: 'https://lab.calmforest.cloud/retention-guidance/predict',
+    timeoutMs: 800,
     highTracked: 20,
     highActions: 6,
     modelThreshold: 0.285,
