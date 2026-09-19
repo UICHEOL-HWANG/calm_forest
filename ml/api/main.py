@@ -5,7 +5,8 @@
 #
 #  ▶ 로컬:  cd ml && uv run uvicorn api.main:app --reload --port 8100
 #  ▶ 운영:  오라클 VM 의 docker compose 서비스 'api' (infra/api/docker-compose.yml)
-#           앞단은 nginx(lab.calmforest.cloud) — /predict, /health 만 넘어온다
+#           앞단은 nginx(lab.calmforest.cloud) — /predict,
+#           /retention-guidance/predict, /health 만 넘어온다
 # =============================================================
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.churn import router as churn_router
+from api.retention_guidance import router as retention_guidance_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -32,6 +34,7 @@ app.add_middleware(
 )
 
 app.include_router(churn_router)
+app.include_router(retention_guidance_router)
 
 
 @app.get("/health")

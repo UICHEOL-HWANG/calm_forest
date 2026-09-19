@@ -13,7 +13,14 @@ Airflow 와 **별도 스택**이다. 서로의 재시작에 영향받지 않는�
 
 ## 확인
     curl -s https://lab.calmforest.cloud/health   # {"ok":true}
+    curl -s -X POST https://lab.calmforest.cloud/retention-guidance/predict \
+      -H 'Content-Type: application/json' \
+      -d '{"features":{"early_tracked_events":1,"early_actions":0},"trigger":"smoke","session_id":"smoke","client_id":"smoke","variant":"control"}'
 
-계수(`model/coef.json`)는 Airflow DAG 가 쓴다. 단, **최초 1회**는 학습 산출물을
-손으로 `model/` 에 두고(VM 에 GCP 자격증명이 없는 동안), 그 뒤 갱신은 DAG 가
-한다 — 평소에는 손으로 두지 않는다.
+계수:
+- `model/coef.json` — 기존 이탈 예측 `/predict`
+- `model/retention_guidance.json` — 리텐션 안내 `/retention-guidance/predict`
+
+기존 이탈 예측 계수는 Airflow DAG 가 쓴다. 리텐션 안내 모델은 먼저
+`cd ml && uv run python train_retention_guidance.py --out /tmp/retention_guidance.json`
+로 export 한 뒤 VM 의 `/opt/calm-api/model/retention_guidance.json` 에 둔다.

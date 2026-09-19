@@ -9,7 +9,7 @@
 --  📌 그런데 전부에 CHECK 를 걸지는 않는다. 관측된 실제 값 기준:
 --
 --   [닫힌 집합 — CHECK 건다]
---     platform : web(9,652+464+53) / toss(46,023+311+48)  ... 2종 고정
+--     platform : web / toss / itch                         ... 코드상 3종 고정
 --     currency : coins(775)                                ... 1종
 --     boat.result : clear(8) / quit(6) / wreck(4)          ... 게임 규칙상 3종
 --
@@ -35,16 +35,16 @@
 
 begin;
 
--- ── platform: web | toss ──────────────────────────────────────
+-- ── platform: web | toss | itch ───────────────────────────────
 do $$
 declare t text;
 begin
-  foreach t in array array['game_logs','session_logs','econ_logs','boat_runs','sea_records'] loop
+  foreach t in array array['game_logs','session_logs','econ_logs','boat_runs','sea_records','retention_guidance_scores'] loop
     if not exists (select 1 from pg_constraint
                    where conname = t || '_platform_chk'
                      and conrelid = ('public.' || t)::regclass) then
       execute format(
-        'alter table public.%I add constraint %I check (platform is null or platform in (''web'',''toss''))',
+        'alter table public.%I add constraint %I check (platform is null or platform in (''web'',''toss'',''itch''))',
         t, t || '_platform_chk');
     end if;
   end loop;

@@ -18,6 +18,13 @@ def test_predict_route_is_mounted():
     assert r.status_code == 200, "라우터가 등록되지 않았다"
 
 
+def test_retention_guidance_route_is_mounted():
+    r = client.post("/retention-guidance/predict", json={
+        "features": {"early_tracked_events": 1, "early_actions": 0},
+        "trigger": "t180", "session_id": "s", "client_id": "c", "variant": "control"})
+    assert r.status_code == 200, "리텐션 안내 라우터가 등록되지 않았다"
+
+
 def test_old_stub_is_gone():
     """d1_return_prob 스텁이 남아 있으면 안 된다 — 이번 설계와 타깃이 다르다."""
     assert "d1_return_prob" not in (client.post("/predict", json={
@@ -29,6 +36,15 @@ def test_old_stub_is_gone():
 def test_cors_allows_any_origin():
     """CORS 는 보안 경계가 아니다 — 토스 웹뷰 오리진을 미리 알 수 없어 가리지 않는다."""
     r = client.options("/predict", headers={
+        "Origin": "https://unknown-toss-webview.example",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type"})
+    assert r.status_code in (200, 204)
+    assert r.headers.get("access-control-allow-origin") == "*"
+
+
+def test_cors_allows_retention_guidance_endpoint():
+    r = client.options("/retention-guidance/predict", headers={
         "Origin": "https://unknown-toss-webview.example",
         "Access-Control-Request-Method": "POST",
         "Access-Control-Request-Headers": "content-type"})

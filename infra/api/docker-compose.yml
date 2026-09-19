@@ -8,6 +8,8 @@ services:
     environment:
       CHURN_MODEL_PATH: /opt/calm-api/model/coef.json
       CHURN_LOG_DIR: /opt/calm-api/data
+      RETENTION_GUIDANCE_MODEL_PATH: /opt/calm-api/model/retention_guidance.json
+      RETENTION_GUIDANCE_LOG_DIR: /opt/calm-api/data
     volumes:
       - ./app:/app:ro                    # ml/api · ml/calm_ml 을 올린 것
       - ./model:/opt/calm-api/model:ro   # Airflow 가 coef.json 을 쓰는 곳

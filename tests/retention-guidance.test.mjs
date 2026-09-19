@@ -4,6 +4,7 @@ import {
   classifyGuidance,
   createGuidanceCounters,
   createRetentionGuidance,
+  buildRetentionModelFeatures,
   eventFamily,
   pickGuidanceBanner,
 } from '../js/retention-guidance.js';
@@ -59,7 +60,28 @@ test('카운터는 시스템/자기 계측 이벤트를 tracked 에 섞지 않�
   assert.deepEqual(s.seenFamilies, ['sea_boat']);
 });
 
-test('엔진은 decision/show/dismiss/outcome 을 계측한다', () => {
+test('VM으로 보낼 raw 모델 피처를 카운터에서 만든다', () => {
+  const c = createGuidanceCounters(0);
+  c.record('chop_tree');
+  c.record('mine_ore');
+  c.record('npc_talk');
+  c.record('sea_cast');
+  c.record('shop_buy');
+  c.record('tutorial_step_open');
+  const f = buildRetentionModelFeatures(c.snapshot(1000));
+  assert.equal(f.early_tracked_events, 6);
+  assert.equal(f.early_actions, 5);
+  assert.equal(f.early_action_kinds, 5);
+  assert.equal(f.early_area_count, 4);
+  assert.equal(f.early_chop_tree_events, 1);
+  assert.equal(f.early_mine_ore_events, 1);
+  assert.equal(f.early_npc_talk_events, 1);
+  assert.equal(f.early_fishing_sea_events, 1);
+  assert.equal(f.early_econ_tx_events, 1);
+  assert.equal(f.early_tutorial_step_events, 1);
+});
+
+test('엔진은 decision/show/dismiss/outcome 을 계측한다', async () => {
   let now = 0;
   const events = [];
   const banners = [];
@@ -75,7 +97,7 @@ test('엔진은 decision/show/dismiss/outcome 을 계측한다', () => {
   });
 
   for (let i = 0; i < 20; i += 1) rg.recordEvent('shop_buy');
-  rg.run('manual');
+  await rg.run('manual');
   assert.equal(banners.length, 1);
   assert.ok(events.some(([n]) => n === 'retention_guidance_decision'));
   assert.ok(events.some(([n]) => n === 'retention_guidance_show'));
@@ -84,4 +106,46 @@ test('엔진은 decision/show/dismiss/outcome 을 계측한다', () => {
   rg.recordEvent('sea_cast', { platform: 'web' });
   const outcome = events.find(([n]) => n === 'retention_guidance_outcome');
   assert.equal(outcome?.[1].outcome_event, 'sea_cast');
+});
+
+test('rule-low 구간은 VM 모델 점수로 rescue 할 수 있다', async () => {
+  const events = [];
+  const banners = [];
+  const rg = createRetentionGuidance({
+    now: () => 0,
+    config: { triggerSec: [], cooldownMs: 0, maxPerSession: 1 },
+    modelScore: async () => 0.62,
+    track: (name, params) => events.push([name, params]),
+    showBanner: b => banners.push(b),
+    gameState: {},
+  });
+
+  rg.recordEvent('shop_buy');
+  await rg.run('manual');
+  assert.equal(banners.length, 1);
+  const decision = events.find(([n]) => n === 'retention_guidance_decision')?.[1];
+  assert.equal(decision.rule_segment, 'model_rescue');
+  assert.equal(decision.model_score, 0.62);
+});
+
+test('모델 점수와 raw feature 스냅샷을 Supabase 적립 row 로 넘긴다', async () => {
+  const rows = [];
+  const rg = createRetentionGuidance({
+    now: () => 0,
+    config: { triggerSec: [], cooldownMs: 0, maxPerSession: 1 },
+    modelScore: async () => 0.62,
+    persistScore: row => rows.push(row),
+    track: () => {},
+    showBanner: () => {},
+    gameState: {},
+  });
+
+  rg.recordEvent('shop_buy');
+  await rg.run('manual');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].rule_segment, 'model_rescue');
+  assert.equal(rows[0].final_eligible, true);
+  assert.equal(rows[0].model_score, 0.62);
+  assert.equal(rows[0].raw_features.early_tracked_events, 1);
+  assert.equal(rows[0].raw_features.early_econ_tx_events, 1);
 });

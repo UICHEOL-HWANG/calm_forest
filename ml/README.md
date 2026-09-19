@@ -54,7 +54,9 @@ with start_run("실험이름", config={"lr": 0.01}, tags=["baseline"]) as run:
 uv run uvicorn api.main:app --reload --port 8100
 ```
 
-- `GET /health` — 헬스체크 · `POST /predict` — 예측 스텁(모델 나오면 교체)
+- `GET /health` — 헬스체크
+- `POST /predict` — 기존 세션 이탈 예측
+- `POST /retention-guidance/predict` — 리텐션 안내 모델 점수
 - 문서: http://localhost:8100/docs
 
 ### 오라클 클라우드 배포(예정 절차)

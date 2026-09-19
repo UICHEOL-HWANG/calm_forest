@@ -547,3 +547,21 @@ export async function upsertSessionRow(row) {
     if (error) throw error;
   } catch (err) { console.warn('[Supabase 폴백] 세션 요약 전송 실패:', err?.message || err); }
 }
+
+// ── [계측] 리텐션 안내 예측 점수/피처 스냅샷(retention_guidance_scores) ──
+//    VM API 가 계산한 score 와 그 요청에 들어간 raw feature 를 세션 트리거 단위로 남긴다.
+//    실패해도 안내 배너·게임 진행에는 영향이 없어야 하므로 전부 삼킨다.
+export async function upsertRetentionGuidanceScore(row) {
+  const full = {
+    session_id: state.sessionId, user_id: state.userId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
+    ...row, updated_at: new Date().toISOString(),
+  };
+  if (!state.online || !supabase) { console.log('[Supabase 폴백] 리텐션 안내 점수(오프라인):', full); return; }
+  try {
+    const { error } = await supabase
+      .from(CONFIG.RETENTION_GUIDANCE_SCORE_TABLE)
+      .upsert(full, { onConflict: 'session_id,trigger,policy_version' });
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 리텐션 안내 점수 전송 실패:', err?.message || err); }
+}
