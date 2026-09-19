@@ -930,6 +930,10 @@
     #hint-banner { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
     body:has(#hint-banner.show) #story-chip { display: none !important; }   /* 배너가 떠 있는 1.4~3초만 칩을 비켜준다 */
     body.coaching #hint-banner { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); }   /* 코치가 슬롯을 쓰면 배너는 프롬프트 줄 위로 */
+    /* 🌿 리텐션 안내는 상시 프롬프트 줄 위로 — 상단 슬롯은 캔버스에 그려지는 월드 라벨(NPC 이름표·
+       간판)을 가린다. 코치 자리와 같은 282px(검증된 값): 배너 83px 기준 y 447~530 으로,
+       프롬프트(568)·하트바(753)와 안 겹친다. 🪧 시설 배너는 상단 그대로 둔다. */
+    #hint-banner.slot-bottom { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); left: 12px; right: auto; max-width: calc(100vw - 24px); }
     /* 🌊 바다터: 큰 글자 HUD 를 위 띠(인벤토리 바)에서 프롬프트 줄로 내리고, 같은 말을 하는 문 프롬프트는 숨긴다 */
     body.is-touch #sea-hud { top: auto; bottom: calc(234px + env(safe-area-inset-bottom)); gap: 5px; }
     body.is-touch #sea-banner { font-size: 18px; }
@@ -2158,6 +2162,9 @@
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
       const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention); el.classList.add('show');
+      // 🌿 리텐션 안내만 프롬프트 줄 위로 내린다 — 상단 슬롯은 월드 라벨(NPC 이름표·간판)을 가린다.
+      //    🪧 시설 배너는 "이 앞에 뭐가 있다"는 안내라 대상 근처인 상단이 맞다.
+      el.classList.toggle('slot-bottom', !!item.slotBottom);
       el.classList.toggle('tap', !!item.onTap);
       const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
@@ -2388,7 +2395,7 @@
         el.appendChild(box);
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
-      showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0; },
       setInventory(inv) {
