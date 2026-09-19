@@ -11,7 +11,7 @@
 --    "호출한 본인" 만 지우므로, 권한을 이 한 가지 동작에만 가둘 수 있다.
 --
 --  cascade 로 함께 지워지는 것(각 테이블의 user_id references auth.users on delete cascade):
---    game_saves · game_logs · econ_logs · session_logs · boat_runs · sea_records · photos
+--    game_saves · game_logs · econ_logs · session_logs · boat_runs · sea_records · photos · retention_guidance_scores
 --
 --  ⚠️ cascade 가 못 지우는 것 — OCI 버킷의 사진 원본(photos 행만 지워지고 오브젝트는 남는다).
 --     클라이언트가 이 함수를 부르기 전에 DELETE /api/photo 로 먼저 지워야 한다.

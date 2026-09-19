@@ -3,9 +3,11 @@
 #  calm forest · Supabase → BigQuery 증분 적재 + Supabase 경량화(prune)
 #  ------------------------------------------------------------
 #  동작 순서(안전):
-#    1) game_logs: BQ의 max(id) 이후 행만 Supabase에서 읽어 BQ에 append
+#    1) 로그성 테이블: BQ의 증분 기준 이후 행만 Supabase에서 읽어 BQ에 append
+#       - game_logs/econ_logs: id 기준
+#       - session_logs/retention_guidance_scores: updated_at 기준
 #    2) game_saves: 전체 스냅샷을 BQ에 덮어쓰기(WRITE_TRUNCATE) — Supabase는 그대로 둠
-#    3) prune: BQ 적재가 끝난 뒤에만, RETENTION_DAYS(기본 7일) 지난 game_logs 삭제
+#    3) prune: BQ 적재가 끝난 뒤에만, RETENTION_DAYS(기본 7일) 지난 로그성 테이블 삭제
 #  ★ game_saves 는 유저의 현재 저장 상태이므로 절대 삭제하지 않음.
 #  ★ Supabase 읽기/삭제는 REST(PostgREST, HTTPS)로 → IPv6/풀러 이슈 회피.
 # =============================================================
@@ -85,6 +87,34 @@ SESSIONS_SCHEMA = [
     bigquery.SchemaField("started_at", "TIMESTAMP"),
     bigquery.SchemaField("updated_at", "TIMESTAMP"),
 ]
+# [계측] 리텐션 안내 예측 점수/피처 — updated_at 증분 append
+#   session_logs 처럼 같은 session_id/trigger 가 여러 번 실릴 수 있음 →
+#   분석 시 ROW_NUMBER() OVER (PARTITION BY session_id, trigger, policy_version ORDER BY updated_at DESC) 로 최신행만 사용.
+RETENTION_GUIDANCE_SCHEMA = [
+    bigquery.SchemaField("id", "INT64"),
+    bigquery.SchemaField("user_id", "STRING"),
+    bigquery.SchemaField("session_id", "STRING"),
+    bigquery.SchemaField("client_id", "STRING"),
+    bigquery.SchemaField("is_guest", "BOOL"),
+    bigquery.SchemaField("variant", "STRING"),
+    bigquery.SchemaField("platform", "STRING"),
+    bigquery.SchemaField("policy_version", "STRING"),
+    bigquery.SchemaField("trigger", "STRING"),
+    bigquery.SchemaField("rule_segment", "STRING"),
+    bigquery.SchemaField("reason", "STRING"),
+    bigquery.SchemaField("final_eligible", "BOOL"),
+    bigquery.SchemaField("suppressed_reason", "STRING"),
+    bigquery.SchemaField("selected_kind", "STRING"),
+    bigquery.SchemaField("target_family", "STRING"),
+    bigquery.SchemaField("model_score", "FLOAT"),
+    bigquery.SchemaField("model_threshold", "FLOAT"),
+    bigquery.SchemaField("model_version", "STRING"),
+    bigquery.SchemaField("model_band", "STRING"),
+    bigquery.SchemaField("model_eligible", "BOOL"),
+    bigquery.SchemaField("raw_features", "STRING"),
+    bigquery.SchemaField("created_at", "TIMESTAMP"),
+    bigquery.SchemaField("updated_at", "TIMESTAMP"),
+]
 
 
 def bq_client():
@@ -104,6 +134,7 @@ def ensure_tables(client):
     client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.game_saves", schema=SAVES_SCHEMA), exists_ok=True)
     client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.econ_logs", schema=ECON_SCHEMA), exists_ok=True)      # [계측] 경제 원장
     client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.session_logs", schema=SESSIONS_SCHEMA), exists_ok=True)  # [계측] 세션 요약
+    client.create_table(bigquery.Table(f"{BQ_PROJECT}.{BQ_DATASET}.retention_guidance_scores", schema=RETENTION_GUIDANCE_SCHEMA), exists_ok=True)
 
 
 def bq_max_log_id(client):
@@ -168,13 +199,47 @@ def fetch_sessions_after(after_ts):
     if after_ts is not None:
         iso = after_ts.isoformat().replace("+00:00", "Z")
         filt = f"&updated_at=gt.{iso}"
-    url = f"{SUPABASE_URL}/rest/v1/session_logs?select=*{filt}&order=updated_at.asc"
-    r = requests.get(url, headers=HEADERS, timeout=60)
-    r.raise_for_status()
-    return [
-        {**s, "counts": json.dumps(s.get("counts"), ensure_ascii=False)}  # jsonb → 문자열
-        for s in r.json()
-    ]
+    rows, offset = [], 0
+    while True:
+        url = f"{SUPABASE_URL}/rest/v1/session_logs?select=*{filt}&order=updated_at.asc&limit={PAGE}&offset={offset}"
+        r = requests.get(url, headers=HEADERS, timeout=60)
+        r.raise_for_status()
+        batch = r.json()
+        if not batch:
+            break
+        rows.extend({**s, "counts": json.dumps(s.get("counts"), ensure_ascii=False)} for s in batch)  # jsonb → 문자열
+        if len(batch) < PAGE:
+            break
+        offset += PAGE
+    return rows
+
+
+def bq_max_retention_guidance_updated(client):
+    q = f"SELECT MAX(updated_at) AS m FROM `{BQ_PROJECT}.{BQ_DATASET}.retention_guidance_scores`"
+    for row in client.query(q, location=BQ_LOCATION).result():
+        return row.m
+    return None
+
+
+def fetch_retention_guidance_after(after_ts):
+    """updated_at > after_ts 인 retention_guidance_scores 를 읽음(upsert 갱신분 append)."""
+    filt = ""
+    if after_ts is not None:
+        iso = after_ts.isoformat().replace("+00:00", "Z")
+        filt = f"&updated_at=gt.{iso}"
+    rows, offset = [], 0
+    while True:
+        url = f"{SUPABASE_URL}/rest/v1/retention_guidance_scores?select=*{filt}&order=updated_at.asc&limit={PAGE}&offset={offset}"
+        r = requests.get(url, headers=HEADERS, timeout=60)
+        r.raise_for_status()
+        batch = r.json()
+        if not batch:
+            break
+        rows.extend({**s, "raw_features": json.dumps(s.get("raw_features"), ensure_ascii=False)} for s in batch)
+        if len(batch) < PAGE:
+            break
+        offset += PAGE
+    return rows
 
 
 def fetch_all_saves():
@@ -205,7 +270,12 @@ def prune_old_logs():
     # ISO의 '+00:00'는 URL에서 '+'가 공백으로 해석돼 400 → 'Z'로 치환
     cutoff = (datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)).isoformat().replace('+00:00', 'Z')
     # (테이블, 기준 컬럼) — session_logs 는 마지막 갱신(updated_at) 기준으로 보존
-    for table, col in [("game_logs", "created_at"), ("econ_logs", "created_at"), ("session_logs", "updated_at")]:
+    for table, col in [
+        ("game_logs", "created_at"),
+        ("econ_logs", "created_at"),
+        ("session_logs", "updated_at"),
+        ("retention_guidance_scores", "updated_at"),
+    ]:
         url = f"{SUPABASE_URL}/rest/v1/{table}?{col}=lt.{cutoff}"
         r = requests.delete(url, headers={**HEADERS, "Prefer": "return=minimal"}, timeout=120)
         r.raise_for_status()
@@ -278,10 +348,14 @@ def main():
     sessions = fetch_sessions_after(sess_after)
     n_sess = load_json(client, "session_logs", sessions, SESSIONS_SCHEMA, "WRITE_APPEND")
 
+    rg_after = bq_max_retention_guidance_updated(client)
+    rg_scores = fetch_retention_guidance_after(rg_after)
+    n_rg = load_json(client, "retention_guidance_scores", rg_scores, RETENTION_GUIDANCE_SCHEMA, "WRITE_APPEND")
+
     saves = fetch_all_saves()
     n_saves = load_json(client, "game_saves", saves, SAVES_SCHEMA, "WRITE_TRUNCATE")
 
-    print(f"[export] logs +{n_logs} (after id {after}) · econ +{n_econ} · sessions +{n_sess} · saves snapshot {n_saves}")
+    print(f"[export] logs +{n_logs} (after id {after}) · econ +{n_econ} · sessions +{n_sess} · retention_guidance +{n_rg} · saves snapshot {n_saves}")
 
     # 적재가 성공적으로 끝난 뒤에만 경량화
     prune_old_logs()
