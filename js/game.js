@@ -2258,6 +2258,10 @@ function initRetentionGuidance() {
       if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
       ui.showHintBanner?.({
         ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention,
+        // 🌿 상단 슬롯은 캔버스에 그려지는 월드 라벨(NPC 이름표·간판)을 가린다.
+        //    좁은 화면에선 프롬프트 줄 위로 내린다(#hint-banner.slot-bottom).
+        //    🪧 시설 배너는 "이 앞에 뭐가 있다"는 안내라 대상 근처인 상단이 맞아서 안 내린다.
+        slotBottom: true,
         onShow: b.onShow,
         onDismiss: b.onDismiss,
         onTap: b.onTap,
