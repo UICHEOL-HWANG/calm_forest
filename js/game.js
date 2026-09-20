@@ -2501,6 +2501,15 @@ export async function enterGame() {
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
     };
+    // ⚡ __kilnDC() — 화덕이 드로우콜을 얼마나 쓰는지. 화덕 메시만 껐다 켜서 차이를 본다(로컬 전용)
+    window.__kilnDC = () => {
+      const ms = outdoorMeshes.filter(m => m.userData.rec?.id === 'kiln');
+      // renderer.info 가 정확하다 — gl 호출을 직접 세면 섀도맵 갱신이 겹쳐 과대 측정된다
+      const count = () => { renderer.render(scene, camera); return renderer.info.render.calls; };
+      const on = count();
+      ms.forEach(m => m.visible = false); const off = count(); ms.forEach(m => m.visible = true);
+      return { kilns: ms.length, withKiln: on, without: off, perKiln: ms.length ? +((on - off) / ms.length).toFixed(1) : 0 };
+    };
     // 🔥 __craftAge(days) — 걸어 둔 것을 days 일 전에 건 셈 친다(완성·정산 검증용, 로컬 전용).
     //    시스템 시계를 못 바꾸니 슬롯의 날짜를 뒤로 민다.
     window.__craftAge = (days = 1) => {
@@ -2889,6 +2898,16 @@ function shared(key, make) {
 }
 
 // 여러 지오메트리를 위치·법선·uv 만 남겨 하나로 합침(인덱스는 풀어서 붙인다)
+// 색을 정점에 실어 둔다 — mergeGeos 가 color 속성을 합치므로 색이 달라도 한 재질로 묶인다.
+//   재질을 색마다 만들면 그 수가 곧 드로우콜이다(🏛️전시물 13종에서 쓴 수법).
+function paintGeo(geo, hex) {
+  const c = new THREE.Color(hex), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return geo;
+}
+const vtxMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
+
 function mergeGeos(geos) {
   const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
   const out = new THREE.BufferGeometry();
@@ -10249,12 +10268,15 @@ function outdoorMesh(id) {
     // 마을에서 너무 작게 읽혔다 — 시안 비례는 그대로 두고 안쪽 그룹만 키운다.
     // 바깥 g 에 걸면 설치 애니메이션(m.scale.setScalar(0.01))이 덮어쓴다.
     const kg = new THREE.Group(); kg.scale.setScalar(KILN_SCALE); g.add(kg);
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.98, 0.86), clayMat(KC.body)); body.position.y = 0.49; kg.add(body);
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.14, 1.0), clayMat(KC.top)); top.position.y = 1.05; kg.add(top);
-    // 아궁이 입은 **하나**. 둘이면 눈이 되어 얼굴로 읽힌다(시안 1차 실패)
-    const mouth = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.5, 10, 1, false, 0, Math.PI), clayMat(KC.hole, false));
-    mouth.rotation.z = Math.PI / 2; mouth.rotation.y = Math.PI / 2; mouth.position.set(-0.3, 0.42, 0.26); kg.add(mouth);
-    const ledge = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.22, 0.34), clayMat(KC.ledge)); ledge.position.set(0.44, 0.25, 0.58); kg.add(ledge);
+    // ⚡ 몸통·상판·아궁이·장작단은 색만 다르다 → 정점색으로 한 덩이(4 → 1 드로우콜).
+    //    아궁이 입은 **하나**. 둘이면 눈이 되어 얼굴로 읽힌다(시안 1차 실패)
+    kg.add(new THREE.Mesh(mergeGeos([
+      paintGeo(new THREE.BoxGeometry(1.5, 0.98, 0.86).translate(0, 0.49, 0), KC.body),
+      paintGeo(new THREE.BoxGeometry(1.64, 0.14, 1.0).translate(0, 1.05, 0), KC.top),
+      paintGeo(new THREE.CylinderGeometry(0.29, 0.29, 0.5, 10, 1, false, 0, Math.PI)
+        .rotateZ(Math.PI / 2).rotateY(Math.PI / 2).translate(-0.3, 0.42, 0.26), KC.hole),
+      paintGeo(new THREE.BoxGeometry(0.52, 0.22, 0.34).translate(0.44, 0.25, 0.58), KC.ledge),
+    ]), vtxMat()));
 
     // 장작 — 빈 화덕·굽는 중에만. 2개를 한 덩어리로(1 드로우콜)
     const logs = new THREE.Mesh(mergeGeos([[0.42, 0.42, 0.04], [0.46, 0.51, -0.05]].map(([lx, ly, rz]) =>
@@ -10277,13 +10299,14 @@ function outdoorMesh(id) {
     // 상판 산출물 — 다 구워졌을 때만. 숯 3덩이·포대 2개가 각각 1 드로우콜
     const load = new THREE.Group(); kg.add(load);
     const ly0 = 1.12;
-    load.add(new THREE.Mesh(mergeGeos([[-0.42, -0.1, 0.11], [-0.28, 0.08, 0.09], [-0.46, 0.14, 0.075]].map(([x, z, r]) =>
-      new THREE.IcosahedronGeometry(r, 0).rotateX(0.4).rotateY(0.8).translate(x, ly0 + r * 0.7, z))), clayMat(0x2f2b28)));
-    // 포대는 **눕혀 쌓는다**. 세우면 목·매듭이 생겨 도자기·등대로 읽혔다(시안 2회 실패)
+    // ⚡ 숯(검정)과 포대(베이지)도 색만 다르다 → 정점색으로 한 덩이(2 → 1 드로우콜).
+    //    포대는 **눕혀 쌓는다**. 세우면 목·매듭이 생겨 도자기·등대로 읽혔다(시안 2회 실패)
     load.add(new THREE.Mesh(mergeGeos([
-      new THREE.CapsuleGeometry(0.1, 0.18, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).translate(0.3, ly0 + 0.085, 0.02),
-      new THREE.CapsuleGeometry(0.088, 0.14, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).rotateY(0.42).translate(0.315, ly0 + 0.23, -0.015),
-    ]), clayMat(0xf2ead6)));
+      ...[[-0.42, -0.1, 0.11], [-0.28, 0.08, 0.09], [-0.46, 0.14, 0.075]].map(([x, z, r]) =>
+        paintGeo(new THREE.IcosahedronGeometry(r, 0).rotateX(0.4).rotateY(0.8).translate(x, ly0 + r * 0.7, z), 0x2f2b28)),
+      paintGeo(new THREE.CapsuleGeometry(0.1, 0.18, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).translate(0.3, ly0 + 0.085, 0.02), 0xf2ead6),
+      paintGeo(new THREE.CapsuleGeometry(0.088, 0.14, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).rotateY(0.42).translate(0.315, ly0 + 0.23, -0.015), 0xf2ead6),
+    ]), vtxMat()));
 
     // 🪧 팻말 — 채굴장·측량소와 같은 문법. kg(1.35배) 밖에 둬야 다른 팻말과 크기가 같다.
     //    makeSignpost 가 기둥 충돌체까지 등록한다.
