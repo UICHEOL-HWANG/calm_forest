@@ -2535,6 +2535,8 @@ export async function enterGame() {
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
     };
+    // 📷 __fadeN() — 지금 몇 그루가 비쳐지고 있는지(카메라 가림 처리 검증용, 로컬 전용)
+    window.__fadeN = () => _faded.length;
     // ⚡ __kilnDC() — 화덕이 드로우콜을 얼마나 쓰는지. 화덕 메시만 껐다 켜서 차이를 본다(로컬 전용)
     window.__kilnDC = () => {
       const ms = outdoorMeshes.filter(m => m.userData.rec?.id === 'kiln');
@@ -11593,7 +11595,7 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (!mgView) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); }
+    else if (!mgView) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
@@ -12102,6 +12104,43 @@ function updateCatchItem(dt) {
   }
 }
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
+// 📷 카메라와 캐릭터 사이에 들어온 나무를 비춰 준다 — 다가가면 화면이 잎으로 덮이던 문제.
+//    나무는 재질을 공유하므로(shared('tree.trunk.mat') 등) 재질 자체를 건드리면 마을 전체가 투명해진다.
+//    가려진 그루의 메시만 **반투명 사본**으로 바꿔 끼우고, 벗어나면 원본으로 되돌린다.
+//    사본은 원본 재질당 하나만 만들어 캐시한다(재질 종류 = 줄기 1 + 잎 3).
+const _fadeCache = new Map();
+const _fadeRay = new THREE.Raycaster();
+const _fadeTo = new THREE.Vector3(), _fadeDir = new THREE.Vector3();
+let _faded = [], _fadeTick = 0;
+
+function fadeMatOf(mat) {
+  let f = _fadeCache.get(mat);
+  if (!f) {
+    f = mat.clone(); f.transparent = true; f.opacity = 0.2; f.depthWrite = false;
+    _fadeCache.set(mat, f);
+  }
+  return f;
+}
+function updateCameraFade() {
+  if ((_fadeTick = (_fadeTick + 1) % 3) !== 0) return;      // 3프레임에 한 번이면 눈에 안 띈다
+  for (const f of _faded) f.mesh.material = f.mat;          // 먼저 전부 되돌린다
+  _faded.length = 0;
+  if (indoor || atMine || atFarm || atSea || atRiver || mgView || boat.active) return;
+  _fadeTo.set(player.position.x, player.position.y + 1.0, player.position.z);
+  _fadeDir.subVectors(_fadeTo, camera.position);
+  const dist = _fadeDir.length();
+  if (!(dist > 0.5)) return;
+  _fadeDir.normalize();
+  _fadeRay.set(camera.position, _fadeDir);
+  _fadeRay.far = dist;
+  for (const h of _fadeRay.intersectObjects(trees, true)) {
+    const m = h.object;
+    if (!m.isMesh || _faded.some(f => f.mesh === m)) continue;
+    _faded.push({ mesh: m, mat: m.material });
+    m.material = fadeMatOf(m.material);
+  }
+}
+
 function snapCamera() {
   _camTarget.copy(player.position).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
