@@ -1,0 +1,231 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🔥 화덕 가공 창 UI 시안 — calm forest</title>
+<style>
+  /* ── 게임과 같은 토큰(index.html :root) ── */
+  :root {
+    --cream: #fff7ec; --mint: #bfe8c9; --ink: #4a5a4f;
+    --panel: rgba(255,255,255,0.72); --shadow: 0 6px 18px rgba(90,120,100,0.18);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+    /* 게임 화면 위에 뜬 창임이 보이도록 하늘+풀밭을 깔았다 */
+    background: linear-gradient(#cfe4ee 0 34%, #9dbd7a 34% 100%);
+    padding: 26px 18px 40px;
+  }
+  h1 { font-size: 15px; margin: 0 0 16px; text-align: center; opacity: .75; font-weight: 600; }
+  #bar { display: flex; gap: 10px; justify-content: center; margin-bottom: 22px; flex-wrap: wrap; }
+  #bar button { font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 10px; border: 1px solid #b8c8b8; background: #fff; cursor: pointer; }
+  #bar button.on { background: #5b8f5b; color: #fff; border-color: #4a7a4a; }
+  #row { display: flex; gap: 26px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .cap { font-size: 12.5px; font-weight: 700; background: rgba(255,255,255,.82); padding: 4px 11px; border-radius: 8px; text-align: center; }
+  .cap small { display: block; font-weight: 400; opacity: .65; font-size: 10.5px; margin-top: 1px; }
+
+  /* ── 창 공통(게임 .panel 문법: 반투명 흰색 + blur 8 + radius 18) ── */
+  .win {
+    background: var(--panel); backdrop-filter: blur(8px);
+    border-radius: 18px; box-shadow: var(--shadow); padding: 12px 16px 14px;
+    width: 460px; display: flex; flex-direction: column; gap: 10px;
+  }
+  body.mobile .win { width: 340px; }          /* 폰 세로 실측 폭 */
+  body.narrow .win { width: 320px; }          /* 작은 폰(iPhone SE 등) */
+  .win-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 15px; }
+  .win-head .x { font-weight: 400; opacity: .5; cursor: pointer; }
+  .hint { font-size: 11.5px; opacity: .62; text-align: center; line-height: 1.45; }
+
+  .btn { border: none; border-radius: 10px; padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; background: #eef2ee; color: var(--ink); }
+  .btn.go { background: var(--mint); }
+  .btn.wide { width: 100%; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .ready { color: #2fa564; font-weight: 700; }
+
+  /* ── A안: 슬롯 2칸을 큰 카드로 ── */
+  .slots-2 { display: flex; gap: 10px; }
+  body.mobile .slots-2 { flex-direction: column; }
+  .slot-card {
+    flex: 1; background: rgba(255,255,255,.62); border-radius: 14px; padding: 12px 10px 11px;
+    text-align: center; display: flex; flex-direction: column; gap: 7px; align-items: center;
+    border: 1px solid rgba(255,255,255,.7);
+  }
+  .slot-card.empty { border: 1.5px dashed #c3d2c3; background: rgba(255,255,255,.34); }
+  .slot-ico { font-size: 30px; line-height: 1.1; }
+  .slot-name { font-size: 13.5px; font-weight: 700; }
+  .slot-sub { font-size: 11.5px; opacity: .62; }
+
+  /* ── B안: 슬롯 띠 + 레시피 목록 ── */
+  .slot-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+  /* 칸이 늘면 두 줄로 흘린다. 한 줄에 최소 2칸은 남도록 폭 하한을 준다 */
+  .slot-strip .chip { min-width: 88px; }
+  .chip {
+    flex: 1; display: flex; align-items: center; gap: 5px; justify-content: center; white-space: nowrap;
+    background: rgba(255,255,255,.62); border-radius: 12px; padding: 8px 8px; font-size: 12.5px; font-weight: 700;
+  }
+  /* 칸이 늘면 칩이 좁아진다 — 상태는 글자 대신 기호와 색으로 (문구를 넣으면 두 줄로 깨졌다) */
+  .chip .mark { font-size: 11px; }
+  .chip.empty { border: 1.5px dashed #c3d2c3; background: rgba(255,255,255,.3); font-weight: 400; opacity: .72; }
+  .chip .mini { font-size: 18px; }
+  .sect { font-size: 12px; opacity: .6; margin-top: 2px; }
+  .recipe { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.55); border-radius: 12px; padding: 8px 11px; }
+  .recipe .ico { font-size: 22px; }
+  .recipe .txt { flex: 1; min-width: 0; }
+  .recipe .nm { display: block; font-size: 13px; font-weight: 700; }
+  .recipe .cost { display: block; font-size: 11.5px; opacity: .65; }
+  .recipe.lack { opacity: .62; }
+  /* 부족 안내를 문장으로 붙이면 320px 에서 마지막 글자가 다음 줄로 떨어졌다.
+     버튼이 이미 disabled 이므로 모자란 재료만 색으로 짚는다 */
+  .recipe .cost .short { color: #d05a4a; font-weight: 700; }
+  .recipe .cost { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── C안: 세로 리스트 ── */
+  .rowitem { display: flex; align-items: center; gap: 11px; background: rgba(255,255,255,.58); border-radius: 13px; padding: 10px 12px; }
+  .rowitem.empty { border: 1.5px dashed #c3d2c3; background: rgba(255,255,255,.3); }
+  .rowitem .no { font-size: 11px; font-weight: 700; opacity: .4; width: 12px; }
+  .rowitem .ico { font-size: 24px; }
+  .rowitem .txt { flex: 1; min-width: 0; }
+  .rowitem .nm { display: block; font-size: 13.5px; font-weight: 700; }
+  .rowitem .sub { display: block; font-size: 11.5px; opacity: .62; }
+</style>
+
+<h1>🔥 화덕 — 가공 창 UI 시안 · 세 안 모두 같은 상태(다 구워짐 · 굽는 중 · 빈 칸)</h1>
+<div id="bar">
+  <button id="pc" class="on">🖥️ PC (460px)</button>
+  <button id="mo">📱 폰 세로 (340px)</button>
+  <button id="na">📱 작은 폰 (320px)</button>
+</div>
+
+<div id="row">
+
+  <!-- ══ A안 ══ -->
+  <div class="col">
+    <div class="cap">A · 슬롯 카드<small>두 칸을 큰 카드로 나란히</small></div>
+    <div class="win">
+      <div class="win-head"><span>🔥 화덕</span><span class="x">✕</span></div>
+      <div class="slots-2">
+        <div class="slot-card">
+          <div class="slot-ico">⚫</div>
+          <div class="slot-name">숯 ×4</div>
+          <div class="slot-sub ready">다 구워졌어요</div>
+          <button class="btn go wide">받기</button>
+        </div>
+        <div class="slot-card">
+          <div class="slot-ico">⚫</div>
+          <div class="slot-name">숯</div>
+          <div class="slot-sub">굽는 중</div>
+          <button class="btn wide" disabled>굽는 중</button>
+        </div>
+        <div class="slot-card empty">
+          <div class="slot-ico" style="opacity:.35">🔥</div>
+          <div class="slot-name" style="opacity:.6">비어 있음</div>
+          <div class="slot-sub">재료를 걸어두세요</div>
+          <button class="btn wide">걸기</button>
+        </div>
+      </div>
+      <div class="hint">걸어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요<br>서두르지 않아도 돼요 — 언제 와도 그대로예요</div>
+    </div>
+  </div>
+
+  <!-- ══ B안 ══ -->
+  <div class="col">
+    <div class="cap">B · 슬롯 띠 + 레시피<small>상태와 고를 것을 한 화면에</small></div>
+    <div class="win">
+      <div class="win-head"><span>🔥 화덕</span><span class="x">✕</span></div>
+      <div class="slot-strip">
+        <div class="chip"><span class="mini">⚫</span> 숯 ×4 <span class="ready mark">✓</span></div>
+        <div class="chip"><span class="mini">⚫</span> 숯 <span class="mark" style="opacity:.55">🔥</span></div>
+        <div class="chip empty">비어 있음</div>
+      </div>
+      <button class="btn go wide">⚫ 숯 받기</button>
+      <div class="sect">무엇을 구울까요</div>
+      <div class="recipe">
+        <span class="ico">⚫</span>
+        <span class="txt"><span class="nm">숯</span><span class="cost">🪵 목재 8 → 2~5개</span></span>
+        <button class="btn">걸기</button>
+      </div>
+      <div class="recipe">
+        <span class="ico">🌾</span>
+        <span class="txt"><span class="nm">밀가루</span><span class="cost">🌾 밀 4 → 2~5개</span></span>
+        <button class="btn">걸기</button>
+      </div>
+      <div class="recipe lack">
+        <span class="ico">🧱</span>
+        <span class="txt"><span class="nm">벽돌</span><span class="cost"><span class="short">🪨 돌 6</span> · ⚫ 석탄 2</span></span>
+        <button class="btn" disabled>걸기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ B안 · 6칸 검증 ══ -->
+  <div class="col">
+    <div class="cap">B · 화덕 3채(6칸)<small>칸이 늘었을 때 띠가 버티는가</small></div>
+    <div class="win">
+      <div class="win-head"><span>🔥 화덕</span><span class="x">✕</span></div>
+      <div class="slot-strip">
+        <div class="chip"><span class="mini">⚫</span> 숯 ×4 <span class="ready mark">✓</span></div>
+        <div class="chip"><span class="mini">🌾</span> 밀가루 ×3 <span class="ready mark">✓</span></div>
+        <div class="chip"><span class="mini">⚫</span> 숯 <span class="mark" style="opacity:.55">🔥</span></div>
+        <div class="chip"><span class="mini">🧱</span> 벽돌 <span class="mark" style="opacity:.55">🔥</span></div>
+        <div class="chip empty">비어 있음</div>
+        <div class="chip empty">비어 있음</div>
+      </div>
+      <button class="btn go wide">다 구워진 것 모두 받기 (2)</button>
+      <div class="sect">무엇을 구울까요</div>
+      <div class="recipe">
+        <span class="ico">⚫</span>
+        <span class="txt"><span class="nm">숯</span><span class="cost">🪵 목재 8 → 2~5개</span></span>
+        <button class="btn">걸기</button>
+      </div>
+      <div class="recipe">
+        <span class="ico">🌾</span>
+        <span class="txt"><span class="nm">밀가루</span><span class="cost">🌾 밀 4 → 2~5개</span></span>
+        <button class="btn">걸기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ C안 ══ -->
+  <div class="col">
+    <div class="cap">C · 세로 리스트<small>칸이 늘어도 모양이 그대로</small></div>
+    <div class="win">
+      <div class="win-head"><span>🔥 화덕</span><span class="x">✕</span></div>
+      <div class="rowitem">
+        <span class="no">1</span>
+        <span class="ico">⚫</span>
+        <span class="txt"><span class="nm">숯 ×4</span><span class="sub ready">다 구워졌어요</span></span>
+        <button class="btn go">받기</button>
+      </div>
+      <div class="rowitem">
+        <span class="no">2</span>
+        <span class="ico">⚫</span>
+        <span class="txt"><span class="nm">숯</span><span class="sub">굽는 중</span></span>
+        <button class="btn" disabled>굽는 중</button>
+      </div>
+      <div class="rowitem empty">
+        <span class="no">3</span>
+        <span class="ico" style="opacity:.3">🔥</span>
+        <span class="txt"><span class="nm" style="opacity:.6">비어 있음</span><span class="sub">재료를 걸어두세요</span></span>
+        <button class="btn">걸기</button>
+      </div>
+      <div class="hint">걸어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const setMode = m => {
+    document.body.classList.toggle('mobile', m === 'mobile' || m === 'narrow');
+    document.body.classList.toggle('narrow', m === 'narrow');
+    pc.classList.toggle('on', m === 'pc');
+    mo.classList.toggle('on', m === 'mobile');
+    na.classList.toggle('on', m === 'narrow');
+  };
+  pc.onclick = () => setMode('pc');
+  mo.onclick = () => setMode('mobile');
+  na.onclick = () => setMode('narrow');
+  const m0 = q.get('m'); if (m0) setMode(m0);          // 📸 캡처 재현용 (?m=mobile|narrow)
+  if (q.get('ui') === '0') document.getElementById('bar').style.display = 'none';
+</script>
