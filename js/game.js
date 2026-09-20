@@ -9077,12 +9077,29 @@ function applyKilnCamera(rec) {
   camera.position.set(rec.x + 0.1 * k, 1.95 + 0.35 * k, rec.z + 3.8 * k);
   camera.lookAt(rec.x, 1.25, rec.z);
 }
+// 클로즈업 중 카메라와 화덕 사이에 선 것들을 잠깐 숨긴다.
+//   마을 한복판이라 나무·장식이 화덕을 가린다(요리·조각 무대엔 없던 문제).
+//   안개로는 못 지운다 — 가리는 것이 화덕보다 **카메라 쪽**에 있어 더 가깝기 때문이다.
+let kilnHidden = [];
+function hideKilnOccluders(rec, on) {
+  if (!on) { for (const o of kilnHidden) o.visible = true; kilnHidden = []; return; }
+  const camZ = rec.z + 5.0;                      // 카메라 거리(3.8)보다 넉넉히
+  const between = (p) => p.z > rec.z + 0.7 && p.z < camZ && Math.abs(p.x - rec.x) < 4.5;   // 3.2 로는 화면 가장자리 나무가 남았다
+  for (const t of trees) if (t.visible && between(t.position)) { t.visible = false; kilnHidden.push(t); }
+  for (const m of outdoorMeshes) {
+    if (m.userData.rec?.id === 'kiln') continue;  // 화덕 자신은 둔다
+    if (m.visible && between(m.position)) { m.visible = false; kilnHidden.push(m); }
+  }
+}
+
 function craftFocus(on) {
   if (on && nearKiln) {
     mgView = { type: 'kiln' };
     player.visible = false;      // 마을에 선 화덕이라 캐릭터가 카메라와 화덕 사이를 가린다(요리 무대엔 없던 문제)
+    hideKilnOccluders(nearKiln, true);
     applyKilnCamera(nearKiln);
   } else if (!on) {
+    hideKilnOccluders(null, false);
     mgView = null; player.visible = true; snapCamera();
   }
   return !!mgView;
@@ -10241,7 +10258,8 @@ function outdoorMesh(id) {
 
     // 🪧 팻말 — 채굴장·측량소와 같은 문법. kg(1.35배) 밖에 둬야 다른 팻말과 크기가 같다.
     //    makeSignpost 가 기둥 충돌체까지 등록한다.
-    g.add(makeSignpost('🔥 화덕', 1.5, 0.35));
+    //    z 0.35 는 상판(±0.68) 안쪽이라 천장에 박혀 보였다 — 앞으로 당긴다(2026-09-20 실측)
+    g.add(makeSignpost('🔥 화덕', 1.38, 0.8));
 
     g.userData.kiln = { fire, load, logs };
   }
