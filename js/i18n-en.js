@@ -807,6 +807,7 @@ export const EN = {
   '들나물 무침': 'Wild Herb Salad',
   '60초 희귀 물고기 확률↑': 'Rare fish odds↑ for 60s',
   '숲의 한상차림': 'Forest Feast',
+  '갓 구운 빵': 'Fresh Bread',
   '90초 이동속도 +40%': '+40% move speed for 90s',
   '60초 벌목 시 목재 +1': '+1 Wood per felled tree for 60s',
   '60초 채굴 시 광석 추가 확률↑': 'Bonus ore chance↑ for 60s',
