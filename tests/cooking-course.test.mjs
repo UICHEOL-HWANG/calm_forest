@@ -29,7 +29,7 @@ const paySrc = block(/^const CAFE_PAY = \{/m, '};');
 const PAY = Object.fromEntries([...paySrc.matchAll(/([a-z_]+): (\d+)/g)].map(m => [m[1], +m[2]]));
 
 test('레시피를 모두 파싱했다', () => {
-  assert.equal(RECIPES.length, 9, `레시피 ${RECIPES.length}개만 파싱됨 — 줄 모양이 바뀌었나?`);
+  assert.equal(RECIPES.length, 10, `레시피 ${RECIPES.length}개만 파싱됨 — 줄 모양이 바뀌었나?`);
   assert.ok(mgKeys.length === 4 && mgKeys.includes('grill') && mgKeys.includes('season'));
 });
 
