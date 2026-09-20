@@ -1239,7 +1239,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
-  craft: { slots: [] },                     // 🔥 화덕에 걸어 둔 것 [{st,item,qty,grade,day}] — 규칙은 js/craft/slots.js
+  craft: { slots: [], noticedDay: null },   // 🔥 화덕에 걸어 둔 것 [{item,qty,grade,day}] · 완성 알림을 띄운 날 — 규칙은 js/craft/slots.js
   house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
@@ -2471,6 +2471,7 @@ export async function enterGame() {
     placeOutdoor(kx, kz, true, 'kiln', 0);
   }
   refreshKilns();
+  catchUpCraft();                      // 🔥 자는 사이 다 구워진 게 있으면 알린다
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -2535,6 +2536,8 @@ export async function enterGame() {
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
     };
+    // 🔥 __craftNotice() — 완성 알림을 다시 띄운다(하루 1회 제한을 풀고 재실행, 검증용)
+    window.__craftNotice = () => { gameState.craft.noticedDay = null; catchUpCraft(); return gameState.craft.slots.length; };
     // 📷 __fadeN() — 지금 몇 그루가 비쳐지고 있는지(카메라 가림 처리 검증용, 로컬 전용)
     window.__fadeN = () => _faded.length;
     // ⚡ __kilnDC() — 화덕이 드로우콜을 얼마나 쓰는지. 화덕 메시만 껐다 켜서 차이를 본다(로컬 전용)
@@ -2796,6 +2799,7 @@ function applySave(saved) {
   // 🔥 화덕에 걸어 둔 것 — 세이브를 믿지 않고 정제한다(표에 없는 품목·깨진 날짜는 버린다).
   //    필드가 없는 옛 세이브도 빈 배열로 떨어질 뿐, 신규로 오인해 덮어쓰지 않는다.
   gameState.craft.slots = sanitizeSlots(saved.craft?.slots);
+  gameState.craft.noticedDay = typeof saved.craft?.noticedDay === 'string' ? saved.craft.noticedDay : null;
   if (saved.outdoorStored && typeof saved.outdoorStored === 'object') {   // 🧺 보관한 야외 장식 복원(개수만, 음수·비숫자 버림)
     gameState.outdoorStored = {};
     for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
@@ -14022,6 +14026,26 @@ function catchUpWorkers() {
     + (tally.orchardUnlock ? '\n🍎 일꾼이 고급 작물을 거둬 마을 동쪽 과수원이 열렸어요!' : '');   // 🔒 오프라인 해금은 토스트 대신 여기 한 줄로
   setTimeout(() => ui.showHintModal?.({ ico: '🧑‍🌾', title: '일꾼들이 일했어요', body }), 1400);
   trackEvent('worker_offline', { steps, harvest: tally.harvest || 0, water: tally.water || 0, wage: tally.wage || 0 });   // [GA4] 오프라인 산출
+  requestSave();
+}
+
+// 🔥 자고 일어난 사이에 다 된 것을 알린다. **자동으로 받아 주지는 않는다** —
+//    받으러 가는 행동 자체가 '돌아온 보람' 이라 그것까지 없애면 알림만 남는다.
+//    받기 전까지 매 세션 뜨면 성가시므로 하루 한 번만.
+function catchUpCraft() {
+  const today = todayStr();
+  const ready = (gameState.craft?.slots || []).filter(s => isReady(s, today));
+  if (!ready.length || gameState.craft.noticedDay === today) return;
+  gameState.craft.noticedDay = today;
+  const names = [...new Set(ready.map(s => craftRecipeOf(s.item).ico + craftRecipeOf(s.item).name))];
+  trackEvent('craft_ready_notice', {
+    n: ready.length,
+    max_waited: Math.max(...ready.map(s => waitedDays(s.day, today))),
+  });
+  setTimeout(() => ui.showHintModal?.({
+    ico: '🔥', title: '화덕에서 다 구워졌어요',
+    body: `${names.join(' · ')}\n화덕에 가서 받아 가세요`,
+  }), 2200);            // 일꾼 요약(1400) 뒤에 뜨도록
   requestSave();
 }
 
