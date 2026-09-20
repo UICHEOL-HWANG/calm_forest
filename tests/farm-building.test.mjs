@@ -50,13 +50,13 @@ test('withinRadius / warehouseCap / storageTotal / compostLeft / 상수', () => 
   assert.equal(HONEY_PER_HIVE, 2); assert.equal(COMPOST_PER_DAY, 3);
 });
 
-test('canPlaceBuilding: 📐측량소 마당에도 놓을 수 있다(밭 칸을 아끼려고) · 마당 밖은 거절', () => {
+test('canPlaceBuilding: 📐측량소 마당엔 못 놓는다(시설로 꽉 찼다) · 마당 밖도 거절', () => {
   const def = FARM_BUILDINGS.find(d => d.id === 'warehouse');
   const center = { x: 0, z: 84 }, half = 6;
   const yard = { x0: -half - 8, x1: -half, z0: -6, z1: 6 };   // surveyYard(6)
   const base = { def, rot: 0, atFarm: true, center, half, plots: [], buildings: [] };
-  assert.equal(canPlaceBuilding({ ...base, x: -10, z: 84, yard }).ok, true, '마당 한가운데');
-  assert.equal(canPlaceBuilding({ ...base, x: -10, z: 84 }).ok, false, 'yard 를 안 주면 예전대로 울타리 안만');
+  assert.equal(canPlaceBuilding({ ...base, x: -10, z: 84, yard }).reason, 'yard', '마당 한가운데는 막힌다');
+  assert.equal(canPlaceBuilding({ ...base, x: -10, z: 84 }).ok, false, 'yard 를 안 줘도 울타리 밖이라 거절');
   assert.equal(canPlaceBuilding({ ...base, x: -20, z: 84, yard }).reason, 'outside', '마당보다 서쪽');
   assert.equal(canPlaceBuilding({ ...base, x: -10, z: 94, yard }).reason, 'outside', '마당보다 남쪽');
   assert.equal(canPlaceBuilding({ ...base, x: 0, z: 84, yard }).ok, true, '밭 안은 그대로 된다');

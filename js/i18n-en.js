@@ -10,6 +10,62 @@
 // =============================================================
 
 export const EN = {
+  // ── 🔥 화덕(밤사이 가공) ─────────────────────────────────────
+  //   ⚠️ 안내줄은 <b> 강조 때문에 텍스트 노드가 쪼개진다 — 조각째 등재한다.
+  '🔥 화덕': '🔥 Kiln',
+  '화덕': 'Kiln',
+  '재료를 걸어두면 다음 날 구워져 있어요 · 한 채에 2칸': 'Leave materials overnight · 2 slots each',
+  '재료를 걸어두면 다음 날 구워져 있어요': 'Leave materials — ready the next day',   // 첫 접근 안내 배너(짧은 판)
+  '비어 있음': 'Empty',
+  '재료를 걸어두세요': 'Leave materials here',
+  '다 구워졌어요': 'Ready',
+  '굽는 중': 'Firing',
+  '무엇을 구울까요': 'What to fire',
+  '걸기': 'Load',
+  '받기': 'Collect',
+  '걸어두기': 'Leave it',
+  '다 구워진 것 모두 받기 ({0})': 'Collect all ready ({0})',
+  '{0} 받기': 'Collect {0}',
+  '걸어둔 것은': 'What you leave',
+  '다음 날': 'the next day',
+  '찾아가면 다 구워져 있어요': 'will be ready when you come back',
+  '서두르지 않아도 돼요 — 언제 와도 그대로예요': 'No rush — it waits for you',
+  '화덕에서 다 구워졌어요': 'Ready at the kiln',
+  '화덕에 가서 받아 가세요': 'Go to the kiln and collect it',
+  // ── 🫙 발효통(2단계 가공) ────────────────────────────────────
+  '🫙 발효통': '🫙 Vat',
+  '발효통': 'Vat',
+  '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요 · 한 채에 2칸': 'Tread 🍇grapes and leave them — 🍷juice the next day · 2 slots each',
+  '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요': 'Tread 🍇grapes — 🍷juice the next day',
+  '다 익었어요': 'Ready',
+  '익는 중': 'Aging',
+  '무엇을 익힐까요': 'What to age',
+  '다 익은 것 모두 받기 ({0})': 'Collect all ready ({0})',
+  '찾아가면 다 익어 있어요': 'will be ready when you come back',
+  '발효통에서 다 익었어요': 'Ready at the vat',
+  '텃밭 발효통에 가서 받아 가세요': 'Go to the vat in your garden and collect it',
+  '밤사이 가공이 다 됐어요': 'Ready overnight',
+  '시설에 가서 받아 가세요': 'Go collect them',
+  '포도즙': 'Grape Juice', '🍷포도즙': '🍷Grape Juice',   // 발효통 산출물(원액)
+  '포도주스': 'Grape Cooler',                                 // 카페에서 잔에 따라 내는 것
+  '🍷 포도 밟기': '🍷 Tread the Grapes',
+  '퍼지는 링에 맞춰': 'Match the spreading ring —',
+  '같은 박자로': 'same beat',
+  '여섯 번 밟으세요': 'six times',
+  '빠르게 연타하면 즙이 뭉개져요': 'Mashing too fast ruins the juice',
+  // 가공물
+  '숯': 'Charcoal', '밀가루': 'Flour', '벽돌': 'Brick',
+  '⚫숯': '⚫Charcoal', '🌾밀가루': '🌾Flour', '🧱벽돌': '🧱Brick',
+  // 미니게임
+  '⚫ 불 조절': '⚫ Tend the Fire',
+  '🌾 맷돌 돌리기': '🌾 Turn the Millstone',
+  '🧱 반죽 다지기': '🧱 Pack the Clay',
+  '바늘이 초록 구간에 왔을 때 눌러 멈추세요': 'Stop the needle inside the green band',
+  '손잡이를 원을 따라 <b>일정한 속도로</b> 돌리세요<br>빠르기가 아니라 고르기가 점수예요':
+    'Turn the handle around the circle at a <b>steady pace</b><br>Evenness scores, not speed',
+  '꾹 누르고 있다가 초록 구간에서 떼세요': 'Hold, then release inside the green band',
+  '{0}개가 나와요': '{0} will come out',
+
   // ── 🦋 텃밭 방문객 ────────────────────────────────────────────
   //   ⚠️ 미터 줄은 라벨·점·목표를 각각 다른 DOM 에 넣는다 — 조각마다 따로 키가 잡힌다.
   //   숫자가 끼는 줄은 {0} 슬롯으로 둔다(" · " 글루와 같은 함정).
@@ -807,6 +863,7 @@ export const EN = {
   '들나물 무침': 'Wild Herb Salad',
   '60초 희귀 물고기 확률↑': 'Rare fish odds↑ for 60s',
   '숲의 한상차림': 'Forest Feast',
+  '갓 구운 빵': 'Fresh Bread',
   '90초 이동속도 +40%': '+40% move speed for 90s',
   '60초 벌목 시 목재 +1': '+1 Wood per felled tree for 60s',
   '60초 채굴 시 광석 추가 확률↑': 'Bonus ore chance↑ for 60s',

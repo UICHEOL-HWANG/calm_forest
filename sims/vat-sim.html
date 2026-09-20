@@ -1,0 +1,305 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🫙 발효통 조형 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:130px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:600;
+       background:rgba(255,255,255,.82);padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.35}
+  .tag small{display:block;font-weight:400;opacity:.65;font-size:10.5px}
+  @media (max-width:700px){ .tag{font-size:10.5px;padding:2px 6px} .tag small{display:none} }
+</style>
+<div id="labels"></div>
+<div id="ui">
+  <div class="row">
+    <b>카메라</b>
+    <label>거리 <input id="dist" type="range" min="3" max="16" step="0.1" value="9"><span id="distV">9</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="20"><span id="angV">20</span>°</label>
+    <label>높이 <input id="hgt" type="range" min="0.5" max="6" step="0.1" value="2"><span id="hgtV">2</span></label>
+    <label><input id="spin" type="checkbox"> 자동 회전</label>
+    <label><input id="night" type="checkbox"> 밤 조명</label>
+    <label><input id="ref" type="checkbox" checked> 크기 비교(화덕·캐릭터)</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ── 게임과 같은 재질 문법(js/game.js:2759 clayMat) ──
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0, flatShading: flat });
+const ni = g => (g.index ? g.toNonIndexed() : g);
+const merged = (geos, mat) => new THREE.Mesh(mergeGeometries(geos.map(ni)), mat);
+
+// 🔥 화덕에서 확정한 팔레트를 잇는다 — 같은 마을의 가공 시설이라 결이 같아야 한다
+const C = {
+  wood:  0x8a5a3a,   // 통널(짙은 나무)
+  woodL: 0xa87a4e,   // 밝은 널
+  hoop:  0x6b6258,   // 쇠테
+  lid:   0xcfc7b0,   // 뚜껑 — 화덕 상판과 같은 색(두 시설이 한 식구로 보이게)
+  juice: 0x7d3a5a,   // 포도즙
+  stone: 0x9a7358,   // 받침 — 화덕 몸통색
+};
+
+// 통널 — **배흘림**(가운데가 불룩)이 있어야 '통' 으로 읽힌다. 곧은 원통은 드럼이다.
+// t(0~1) 에서의 반지름 — 테 반지름도 여기서 뽑아 써야 테가 통에 딱 감긴다
+function staveR(t, rEnd, rMid) {
+  const b = Math.sin(Math.PI * Math.min(1, Math.max(0, t)) ** 0.78);   // 끝에서 빨리 부풀고 가운데는 평평
+  return rEnd + (rMid - rEnd) * b;
+}
+function staveProfile(len, rEnd, rMid, n = 7) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) { const t = i / n; pts.push(new THREE.Vector2(staveR(t, rEnd, rMid), t * len)); }
+  return pts;
+}
+
+/** 🛢️ 눕힌 배럴 — 레퍼런스(양조장 오크통)를 저폴리로 옮긴다.
+ *  통 축은 **좌우(x)** 다. 앞뒤로 눕히면 정면에서 원만 보여 배흘림이 죽는다.
+ *  ① 가로로 뉜 배흘림 통 ② 금테 ③ 받침 ④ 앞으로 난 꼭지. */
+function barrel({ ts = [0.09, 0.3, 0.5, 0.7, 0.91], gold = 0xc9a44e, wood = C.wood,
+                  len = 1.6, rMid = 0.5, rEnd = 0.39, cradle = 'beam', tap = true } = {}) {
+  const g = new THREE.Group();
+  const y0 = rMid + (cradle === 'x' ? 0.42 : 0.13);        // 통 중심 높이 — X자 받침은 교차점이 보이게 띄운다
+
+  // 통을 y축으로 세워 만든 뒤 통째로 눕힌다 — (0,h,0) → x = len/2 - h
+  const inner = new THREE.Group();
+  inner.rotation.z = Math.PI / 2; inner.position.set(len / 2, y0, 0); g.add(inner);
+
+  inner.add(new THREE.Mesh(new THREE.LatheGeometry(staveProfile(len, rEnd, rMid), 12), clayMat(wood)));
+
+  for (const h of [0.02, len - 0.02]) {                    // 마구리 — 통 끝을 막는 판
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(rEnd * 0.94, rEnd * 0.94, 0.05, 12), clayMat(C.woodL));
+    cap.position.y = h; inner.add(cap);
+  }
+
+  for (const t of ts) {                                    // 금테 — 통 곡면에 딱 감기게 반지름을 프로필에서 뽑는다
+    const r = staveR(t, rEnd, rMid) + 0.018;
+    const hoop = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.055, 12), clayMat(gold, false));
+    hoop.position.y = t * len; inner.add(hoop);
+  }
+
+  // 받침 — 통은 받침 **위에 얹혀야** 한다. 띄워 두면 다리 네 개 달린 짐승이 된다.
+  // 받침은 통보다 좁고 낮게: 넓고 높으면 통이 아니라 받침이 주인공이 된다
+  for (const x of [-len * 0.31, len * 0.31]) {
+    const rr = staveR(0.5 - Math.abs(x) / len, rEnd, rMid);   // 그 자리의 통 반지름
+    if (cradle === 'x') {
+      // X 는 교차점이 **통 아래** 로 내려와야 보인다. 위로 숨기면 다리 네 개가 된다
+      const tilt = 0.5, topY = y0 - rr * 0.55;
+      for (const sz of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, topY / Math.cos(tilt), 0.115), clayMat(0x6b4a34));
+        leg.position.set(x, topY * 0.5, 0); leg.rotation.x = sz * tilt; g.add(leg);
+      }
+      continue;
+    }
+    const h = Math.max(0.1, y0 - rr);                         // 통 아랫면까지
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, h, rr * 1.35), clayMat(0x6b4a34));
+    post.position.set(x, h / 2, 0); g.add(post);
+    for (const sz of [-1, 1]) {                               // 굄목 — 통 곡면에 닿게 높이를 맞춘다
+      const sz2 = sz * rr * 0.62;
+      const surf = y0 - Math.sqrt(Math.max(0.01, rr * rr - sz2 * sz2));
+      const chock = new THREE.Mesh(new THREE.BoxGeometry(0.22, surf + 0.06, 0.1), clayMat(0x7d5c46));
+      chock.position.set(x, (surf + 0.06) / 2, sz2); g.add(chock);
+    }
+  }
+
+  if (cradle === 'x') {                                      // 가로 보 — X 두 짝을 묶어야 받침대로 읽힌다
+    const rr0 = staveR(0.19, rEnd, rMid);
+    const tie = new THREE.Mesh(new THREE.BoxGeometry(len * 0.66, 0.1, 0.1), clayMat(0x6b4a34));
+    tie.position.set(0, (y0 - rr0 * 0.55) * 0.5, 0); g.add(tie);
+  }
+
+  // 꼭지 — 통 배 앞쪽 아래. 통 곡면에 박히게 z 를 원 위에서 구한다
+  if (tap) {
+    const dy = rMid * 0.36, dz = Math.sqrt(Math.max(0.01, rMid * rMid - dy * dy));
+    const ty = y0 - dy;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.17, 8), clayMat(gold, false));
+    neck.rotation.x = Math.PI / 2; neck.position.set(0, ty, dz + 0.06); g.add(neck);
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.052, 0.13, 8), clayMat(gold, false));
+    spout.position.set(0, ty - 0.08, dz + 0.13); g.add(spout);
+    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.15, 0.055), clayMat(0xb04a3a));  // 손잡이 — 금색 속 붉은 점 하나가 눈을 잡는다
+    lever.position.set(0, ty + 0.12, dz + 0.06); lever.rotation.x = -0.25; g.add(lever);
+  }
+  return g;
+}
+
+// =============================================================
+//  A — 레퍼런스 그대로 · 굄목 받침 + 금테 5줄
+// =============================================================
+const VAT = { ts: [0.1, 0.5, 0.9], cradle: 'x', len: 1.45 };   // ✅ 확정안 — X자 다리 · 금테 3줄
+function vatEmpty() { return barrel(VAT); }
+
+// =============================================================
+//  B — X자 다리 · 금테 3줄 (가볍고 농장 도구 같은 인상)
+// =============================================================
+/** 익는 중 — 재료를 넣어둔 티가 나야 한다. 통 위 마개 + 옆에 놓인 포도 바구니 */
+function vatFiring() {
+  const g = barrel(VAT);
+  const y0 = 0.5 + 0.42;
+  const bung = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.085, 0.14, 8), clayMat(0x7d5c46));
+  bung.position.set(0, y0 + 0.52, 0); g.add(bung);
+  const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.19, 0.22, 9), clayMat(0xb08a5a));
+  basket.position.set(0.7, 0.11, 0.46); g.add(basket);
+  const gm = clayMat(0x6d4a72);
+  for (const [dx, dy, dz] of [[0, 0.11, 0], [-0.09, 0.09, 0.06], [0.08, 0.1, -0.05], [0.02, 0.16, 0.05]])
+    { const b = new THREE.Mesh(new THREE.SphereGeometry(0.072, 6, 5), gm); b.position.set(0.7 + dx, 0.22 + dy, 0.46 + dz); g.add(b); }
+  return g;
+}
+
+// =============================================================
+//  C — 레퍼런스 + **다 익은 상태** — 꼭지 아래 잔 + 채운 병
+//      멀리서도 '받아 갈 게 있다' 가 읽히는지 보는 안
+// =============================================================
+function vatDone() {
+  const g = barrel(VAT);
+  const juiceMat = new THREE.MeshStandardMaterial({ color: C.juice, roughness: 0.4, flatShading: true });
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.11, 0.19, 9), clayMat(0xe8dcc4));
+  cup.position.set(0, 0.095, 0.74); g.add(cup);
+  const juice = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.125, 0.03, 9), juiceMat);
+  juice.position.set(0, 0.175, 0.74); g.add(juice);
+  for (const [x, z] of [[-0.46, 0.72], [0.48, 0.74]]) {     // 채운 병 — 즙 색이 통 밖으로 나와야 상태가 읽힌다
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.095, 0.3, 8), juiceMat);
+    b.position.set(x, 0.15, z); g.add(b);
+    const nk = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.048, 0.1, 8), clayMat(0x5a4a3a));
+    nk.position.set(x, 0.34, z); g.add(nk);
+  }
+  return g;
+}
+
+// ── 크기 비교 — 🔥 화덕(확정안)이 기준이다 ──────────────────
+function kilnRef() {
+  const g = new THREE.Group();
+  const kg = new THREE.Group(); kg.scale.setScalar(1.35); g.add(kg);
+  const KC = { body: 0x9a7358, ledge: 0x7d5c46, top: 0xcfc7b0, hole: 0x4a4844 };
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.98, 0.86), clayMat(KC.body)); body.position.y = 0.49; kg.add(body);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.14, 1.0), clayMat(KC.top)); top.position.y = 1.05; kg.add(top);
+  const mouth = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.5, 10, 1, false, 0, Math.PI), clayMat(KC.hole, false));
+  mouth.rotation.z = Math.PI / 2; mouth.rotation.y = Math.PI / 2; mouth.position.set(-0.3, 0.42, 0.26); kg.add(mouth);
+  const ledge = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.22, 0.34), clayMat(KC.ledge)); ledge.position.set(0.44, 0.25, 0.58); kg.add(ledge);
+  return g;
+}
+function humanRef() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.62, 3, 8), clayMat(0xb9c0c4));
+  body.position.y = 0.61; g.add(body);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1), clayMat(0xf3e2c8));
+  head.position.y = 1.12; g.add(head);
+  return g;
+}
+
+// =============================================================
+const CANDIDATES = [
+  { make: vatEmpty,  name: '비었음',   desc: '재료를 걸 수 있다' },
+  { make: vatFiring, name: '익는 중',   desc: '마개 + 포도 바구니' },
+  { make: vatDone,   name: '다 익었다', desc: '꼭지 아래 잔 + 채운 병' },
+];
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe4ee);
+scene.fog = new THREE.Fog(0xcfe4ee, 18, 74);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(30, 40), new THREE.MeshStandardMaterial({ color: 0x9dbd7a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const sun = new THREE.DirectionalLight(0xfff0dd, 1.3);
+sun.position.set(6, 12, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -10; sun.shadow.camera.right = 10;
+sun.shadow.camera.top = 10; sun.shadow.camera.bottom = -10;
+scene.add(sun, sun.target);
+const hemi = new THREE.HemisphereLight(0xdff0ff, 0x6a7a5a, 0.95); scene.add(hemi);
+const amb = new THREE.AmbientLight(0xfff0dd, 0.2); scene.add(amb);
+
+const SPACING = 2.4;
+const anchors = [];
+CANDIDATES.forEach((c, i) => {
+  const g = c.make();
+  g.position.x = (i - 1) * SPACING;
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g);
+  anchors.push({ obj: g, ...c });
+});
+
+const refGroup = new THREE.Group();
+const kl = kilnRef(); kl.position.set(SPACING + 2.4, 0, 0); refGroup.add(kl);
+const hm = humanRef(); hm.position.set(SPACING + 4.2, 0, 0); refGroup.add(hm);
+refGroup.traverse(o => { if (o.isMesh) o.castShadow = true; });
+scene.add(refGroup);
+
+const labelBox = document.getElementById('labels');
+const tags = anchors.map(a => {
+  const el = document.createElement('div'); el.className = 'tag';
+  el.innerHTML = `${a.name}<small>${a.desc}</small>`;
+  labelBox.appendChild(el); return el;
+});
+const refTag = document.createElement('div'); refTag.className = 'tag';
+refTag.innerHTML = `크기 비교<small>🔥화덕(확정안) · 캐릭터(키 1.25)</small>`;
+labelBox.appendChild(refTag);
+
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const qNum = (k, d) => (Q.has(k) ? +Q.get(k) : d);
+const st = { dist: qNum('dist', 9), ang: qNum('ang', 20), hgt: qNum('hgt', 2), spin: false, night: Q.get('night') === '1', ref: Q.get('ref') !== '0' };
+for (const k of ['dist', 'ang', 'hgt']) {
+  $(k).addEventListener('input', e => { st[k] = +e.target.value; $(k + 'V').textContent = st[k]; });
+}
+$('spin').addEventListener('change', e => st.spin = e.target.checked);
+$('ref').addEventListener('change', e => { st.ref = e.target.checked; refGroup.visible = st.ref; });
+$('night').addEventListener('change', e => {
+  const n = st.night = e.target.checked;
+  scene.background.setHex(n ? 0x2b3358 : 0xcfe4ee);
+  scene.fog.color.setHex(n ? 0x2b3358 : 0xcfe4ee);
+  sun.intensity = n ? 0.12 : 1.3;
+  hemi.intensity = n ? 0.22 : 0.95;
+  amb.color.setHex(n ? 0x33406e : 0xfff0dd); amb.intensity = n ? 0.32 : 0.2;
+  ground.material.color.setHex(n ? 0x4a5c46 : 0x9dbd7a);
+});
+// 📸 캡처 재현용 — URL 로 들어온 값을 UI 에도 반영한다
+for (const k of ['dist', 'ang', 'hgt']) { $(k).value = st[k]; $(k + 'V').textContent = st[k]; }
+$('ref').checked = st.ref; refGroup.visible = st.ref;
+if (st.night) { $('night').checked = true; $('night').dispatchEvent(new Event('change')); }
+if (Q.get('ui') === '0') $('ui').style.display = 'none';
+
+const _v = new THREE.Vector3();
+function project(obj, yOff) {
+  obj.getWorldPosition(_v); _v.y += yOff;
+  _v.project(camera);
+  return [(_v.x * 0.5 + 0.5) * innerWidth, (-_v.y * 0.5 + 0.5) * innerHeight];
+}
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+renderer.setAnimationLoop(() => {
+  if (st.spin) { st.ang = (st.ang + 0.35 + 180) % 360 - 180; $('ang').value = st.ang; $('angV').textContent = Math.round(st.ang); }
+  const a = st.ang * Math.PI / 180;
+  camera.position.set(Math.sin(a) * st.dist, st.hgt, Math.cos(a) * st.dist);
+  camera.lookAt(0, 0.6, 0);
+  sun.target.position.set(0, 0, 0);
+  anchors.forEach((an, i) => {
+    const [x, y] = project(an.obj, 1.7);
+    tags[i].style.left = x + 'px'; tags[i].style.top = y + 'px';
+  });
+  const [rx, ry] = project(refGroup, 1.5);
+  refTag.style.left = rx + 'px'; refTag.style.top = ry + 'px';
+  refTag.style.display = st.ref ? '' : 'none';
+  renderer.render(scene, camera);
+});
+</script>
