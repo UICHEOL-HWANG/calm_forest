@@ -46,7 +46,7 @@
   /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
   #app { position: fixed; inset: 0; touch-action: none; }
   /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 (도감·NPC·피드백·로그인 카드 포함) */
-  #bag-content, #shop-menu, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, .tut-card, .fb-card, .npc-card, #login-card {
+  #bag-content, #shop-menu, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, #craft-menu, .tut-card, .fb-card, .npc-card, #login-card {
     touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   }
 
@@ -1118,6 +1118,75 @@
   .cf-state.ready { background: var(--mint); }
   .cf-state.lack { background: #f5e0dc; color: #a2503f; }
   /* 상점 메뉴 (cook-menu 톤 재사용) */
+  /* 🔥 화덕 미니게임 오버레이 — 걸 때 몇 초만. 3D 무대를 쓰지 않는다(매일 치르는 조작이라 전환이 과하다) */
+  /* 화면은 화덕을 비추고(카메라 클로즈업) 조작만 아래에서 한다 — 화면을 덮지 않는다 */
+  #craft-mg { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(26px + env(safe-area-inset-bottom));
+              z-index: 34; display: none; }
+  #craft-mg.show { display: block; }
+  .cmg-card { width: min(380px, 92vw); background: var(--panel); backdrop-filter: blur(8px);
+              border-radius: 20px; box-shadow: var(--shadow);
+              padding: 16px 20px 14px; color: var(--ink); text-align: center; user-select: none; }
+  .cmg-title { font-size: 15px; font-weight: 700; }
+  .cmg-tip { font-size: 12px; opacity: .65; margin: 5px 0 14px; line-height: 1.5; }
+  /* 🌾 맷돌 — 원을 따라 끌면 각이 쌓인다 */
+  .cmg-wheel { width: 190px; height: 190px; margin: 0 auto; border-radius: 50%; position: relative;
+               background: radial-gradient(circle at 50% 45%, #efe6d2 0 38%, #d9cbb0 38% 100%); border: 3px solid #c2ac86;
+               touch-action: none; cursor: grab; }
+  .cmg-wheel .hub { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+                    border-radius: 50%; background: #8e7450; }
+  .cmg-wheel .grip { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+                     background: #6b4a34; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  /* ⚫ 불 조절 — 오가는 바늘을 초록 구간에서 멈춘다 */
+  .cmg-bar { position: relative; height: 26px; border-radius: 13px; background: #eef2ee; overflow: hidden; margin: 6px 0 4px; }
+  .cmg-bar .zone { position: absolute; top: 0; bottom: 0; background: var(--mint); }
+  .cmg-bar .needle { position: absolute; top: -3px; bottom: -3px; width: 4px; background: #d05a4a; border-radius: 2px; }
+  /* 🧱 반죽 — 꾹 눌렀다 목표에서 뗀다 */
+  .cmg-hold { height: 26px; border-radius: 13px; background: #eef2ee; overflow: hidden; position: relative; margin: 6px 0 4px; }
+  .cmg-hold .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ffd08a; }
+  .cmg-hold .goal { position: absolute; top: -3px; bottom: -3px; background: rgba(47,165,100,.35); }
+  /* 🍷 포도 밟기 — 박자에 맞춰 누른다. 링이 목표 간격으로 퍼져 박자를 눈으로 알려 준다 */
+  .cmg-stomp { width: 150px; height: 150px; margin: 8px auto 4px; position: relative; border-radius: 50%;
+               background: radial-gradient(circle at 50% 42%, #8d5f92, #5d3a63); box-shadow: inset 0 -5px 10px rgba(0,0,0,.25);
+               display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; user-select: none; }
+  .cmg-stomp .pulse { position: absolute; inset: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,.85);
+                      animation: cmgBeat 520ms linear infinite; pointer-events: none; }
+  @keyframes cmgBeat { 0% { transform: scale(.42); opacity: 0; } 55% { opacity: .95; } 100% { transform: scale(1); opacity: 0; } }
+  .cmg-stomp .cnt { font-size: 34px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.3); pointer-events: none; }
+  .cmg-stomp.hit { animation: cmgStomp 150ms ease-out; }
+  @keyframes cmgStomp { 0% { transform: scale(1); } 45% { transform: scale(.9); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .cmg-stomp .pulse, .cmg-stomp.hit { animation: none; } }
+  .cmg-press { width: 100%; margin-top: 10px; }
+  .cmg-result { font-size: 26px; margin: 6px 0 2px; }
+  .cmg-yield { font-size: 13px; font-weight: 700; }
+  /* 🔥 화덕 가공 창 — sims/craft-ui-sim.html 에서 확정한 B안(슬롯 띠 + 레시피).
+     걸기가 한 번에 끝나야 한다: 레시피 줄의 [걸기] 를 바로 누른다(A·C안은 창이 한 번 더 떠서 2단계였다). */
+  #craft-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+                width: min(460px, 92vw); flex-direction: column; gap: 10px;
+                max-height: calc(100dvh - 24px - var(--top-inset)); overflow-y: auto; }
+  #craft-menu.show { display: flex; }
+  #craft-slots { display: flex; gap: 8px; flex-wrap: wrap; }
+  /* 96px 이면 320px 에서 3칸이 2+1 로 흘러 빈 칸이 혼자 한 줄을 먹었다(시안 실측).
+     88px 면 3칸이 한 줄(88×3+16=280 < 288)이고 6칸은 3×2 로 떨어진다 */
+  .cf-chip { flex: 1; min-width: 88px; white-space: nowrap; display: flex; align-items: center; gap: 5px; justify-content: center;
+             background: rgba(255,255,255,.62); border-radius: 12px; padding: 8px; font-size: 12.5px; font-weight: 700; }
+  .cf-chip.empty { border: 1.5px dashed #c3d2c3; background: rgba(255,255,255,.3); font-weight: 400; opacity: .72; }
+  .cf-chip .mini { font-size: 18px; }
+  .cf-chip .mark { font-size: 11px; }
+  .cf-ready { color: #2fa564; font-weight: 700; }
+  .cf-sect { font-size: 12px; opacity: .6; margin-top: 2px; }
+  .cf-recipe { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.55); border-radius: 12px; padding: 8px 11px; }
+  .cf-recipe.lack { opacity: .62; }
+  .cf-recipe .ico { font-size: 22px; }
+  .cf-recipe .txt { flex: 1; min-width: 0; }
+  .cf-recipe .nm { display: block; font-size: 13px; font-weight: 700; }
+  /* 부족 안내를 문장으로 붙이면 320px 에서 마지막 글자가 다음 줄로 떨어진다(시안 실측).
+     모자란 재료만 색으로 짚는다 — 버튼이 이미 disabled 라 신호는 둘로 충분하다 */
+  .cf-recipe .cost { display: block; font-size: 11.5px; opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cf-recipe .cost .short { color: #d05a4a; font-weight: 700; opacity: 1; }
+  .cf-btn { border: none; border-radius: 10px; padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; background: #eef2ee; color: var(--ink); }
+  .cf-btn.go { background: var(--mint); width: 100%; }
+  .cf-btn:disabled { opacity: .45; cursor: default; }
+  .cf-hint { font-size: 11.5px; opacity: .62; text-align: center; line-height: 1.45; }
   #shop-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; }
   #shop-menu.show { display: flex; }
   .sh-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
@@ -1676,6 +1745,30 @@
   </div>
 
   <!-- 상점 메뉴 (팔기 / 사기 탭) — cook-menu 스타일 재사용 -->
+  <!-- 🔥🫙 가공 창 — 제목·안내는 시설마다 다르다(js/craft/recipes.js STATIONS) -->
+  <div id="craft-menu" class="panel">
+    <div class="dm-head" id="craft-title">🔥 화덕</div>
+    <div id="craft-slots"></div>
+    <button id="craft-claim" class="cf-btn go"></button>
+    <div class="cf-sect" id="craft-ask">무엇을 구울까요</div>
+    <div id="craft-recipes" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="cf-hint" id="craft-hint">걸어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요<br>서두르지 않아도 돼요 — 언제 와도 그대로예요</div>
+    <div class="dm-actions"><button id="craft-close">닫기</button></div>
+  </div>
+
+  <!-- 🔥 화덕 미니게임 오버레이 -->
+  <div id="craft-mg">
+    <div class="cmg-card">
+      <div class="cmg-title" id="cmg-title"></div>
+      <div class="cmg-tip" id="cmg-tip"></div>
+      <div id="cmg-stage"></div>
+      <div id="cmg-after" style="display:none">
+        <div class="cmg-result" id="cmg-grade"></div>
+        <div class="cmg-yield" id="cmg-yield"></div>
+        <button class="cf-btn go cmg-press" id="cmg-ok">걸어두기</button>
+      </div>
+    </div>
+  </div>
   <div id="shop-menu" class="panel">
     <div class="dm-head">🛒 상점 <span id="shop-coin" class="ck-inv"></span></div>
     <div class="ck-tabs">
@@ -2925,6 +3018,8 @@
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
       openCook(tab = 'tool') { showCookTab(tab); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },   // 🏗️ 밭 자재 작업대는 'out'(🌷야외 = 밭 시설) 탭으로 연다
+      // 🔥 화덕 가공 창 열기 — 슬롯 띠(상태)와 레시피(걸기)를 한 화면에
+      openCraft(d) { renderCraft(d); Input.setAnalog(0, 0); $('craft-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🍳 자유주방 메뉴판 열기 (요리를 고르면 미니게임 시작)
       openKitchen(d) { renderKitchen(d); Input.setAnalog(0, 0); $('kitchen-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       carveProgress(p) { cvProgress(p); },                 // 🗿 조각 진행(game.js 레이캐스트 판정 → HUD)
@@ -3812,6 +3907,179 @@
     // ═══════════════ 🍳 자유주방 — 메뉴판 ═══════════════
     //  한 요리는 미니게임 여러 판을 이어 치르는 **코스**다. ★ 개수 = 판 수 = 난이도.
     //  메뉴판이 "이 요리는 무엇을 몇 판 하는가"를 미리 보여주므로, 플레이어가 난이도를 직접 고른다.
+    // 🔥 화덕 미니게임 — 걸 때 한 번. 판정은 js/craft/minigame.js(순수)가 하고 여기선 조작만 받는다.
+    //    3D 무대를 쓰지 않는다: 매일 치르는 조작이라 무대 전환이 거추장스럽다.
+    const CMG = {
+      charcoal: { title: '⚫ 불 조절', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
+      flour:    { title: '🌾 맷돌 돌리기', tip: '손잡이를 원을 따라 <b>일정한 속도로</b> 돌리세요<br>빠르기가 아니라 고르기가 점수예요' },
+      brick:    { title: '🧱 반죽 다지기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
+      juice:    { title: '🍷 포도 밟기', tip: '퍼지는 링에 맞춰 <b>같은 박자로</b> 여섯 번 밟으세요<br>빠르게 연타하면 즙이 뭉개져요' },
+    };
+    const GRADE_FACE = ['😅', '🙂', '😋', '💫'];
+    let cmgRaf = 0, cmgCleanup = null;
+
+    function craftMinigame(itemId, onDone) {
+      const meta = CMG[itemId]; if (!meta) { onDone(1); return; }
+      $('cmg-title').innerHTML = meta.title;
+      $('cmg-tip').innerHTML = meta.tip;
+      $('cmg-after').style.display = 'none';
+      const stage = $('cmg-stage'); stage.innerHTML = '';
+      // 가공 창을 접고 화면을 화덕으로 옮긴다 — 걸 때만 잠깐 클로즈업(요리·조각과 같은 문법)
+      $('craft-menu').classList.remove('show');
+      Input.craftFocus(true);
+      document.body.classList.add('menu-open', 'mg-open');   // 마을 UI 를 걷고 무대에 몰입(요리·조각과 같은 문법)
+      $('craft-mg').classList.add('show');
+
+      const finish = (score) => {
+        if (cmgRaf) { cancelAnimationFrame(cmgRaf); cmgRaf = 0; }
+        cmgCleanup?.(); cmgCleanup = null;
+        const grade = Input.craftGrade(score);
+        $('cmg-grade').textContent = GRADE_FACE[grade];
+        $('cmg-yield').textContent = `${Input.craftYield(itemId, grade)}개가 나와요`;
+        $('cmg-after').style.display = '';
+        $('cmg-ok').onclick = () => {
+          $('craft-mg').classList.remove('show');
+          document.body.classList.remove('mg-open');
+          Input.craftFocus(false);                       // 마을 카메라로 복귀
+          $('craft-menu').classList.add('show');         // 가공 창을 다시 편다
+          onDone(grade);
+        };
+      };
+
+      if (itemId === 'flour') {
+        // 🌾 맷돌 — 원을 따라 끈 각을 쌓는다. 한 바퀴 반이면 끝.
+        stage.innerHTML = '<div class="cmg-wheel"><div class="hub"></div><div class="grip"></div></div>';
+        const wheel = stage.querySelector('.cmg-wheel'), grip = stage.querySelector('.grip');
+        const R = 72, samples = [];
+        let ang = -Math.PI / 2, total = 0, dragging = false, last = ang;
+        const put = () => {
+          grip.style.left = `${95 + Math.cos(ang) * R}px`;
+          grip.style.top = `${95 + Math.sin(ang) * R}px`;
+        };
+        put();
+        const at = e => {
+          const r = wheel.getBoundingClientRect();
+          const p = e.touches ? e.touches[0] : e;
+          return Math.atan2(p.clientY - (r.top + r.height / 2), p.clientX - (r.left + r.width / 2));
+        };
+        const down = e => { dragging = true; last = at(e); e.preventDefault(); };
+        const move = e => {
+          if (!dragging) return;
+          const a = at(e);
+          let d = a - last; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+          last = a; ang = a; total += Math.abs(d); put();
+          samples.push({ t: performance.now(), a: total });
+          if (total >= Math.PI * 3) { up(); finish(Input.craftScore('flour', samples)); }
+        };
+        const up = () => { dragging = false; };
+        wheel.addEventListener('pointerdown', down); window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+        cmgCleanup = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+      } else if (itemId === 'charcoal') {
+        // ⚫ 불 조절 — 바늘이 오간다. 초록 구간에서 멈춘다.
+        const half = 0.12, target = 0.5;
+        stage.innerHTML = `<div class="cmg-bar"><div class="zone"></div><div class="needle"></div></div>
+                           <button class="cf-btn go cmg-press">멈추기</button>`;
+        const zone = stage.querySelector('.zone'), needle = stage.querySelector('.needle');
+        zone.style.left = `${(target - half) * 100}%`; zone.style.width = `${half * 200}%`;
+        const t0 = performance.now();
+        let pos = 0;
+        const tick = () => {
+          const t = (performance.now() - t0) / 1000;
+          pos = 0.5 + Math.sin(t * 2.4) * 0.48;                 // 좌우로 오감
+          needle.style.left = `calc(${pos * 100}% - 2px)`;
+          Input.craftFlame(pos);                                // 🔥 실제 화덕의 불이 바늘을 따라 반응한다
+          cmgRaf = requestAnimationFrame(tick);
+        };
+        tick();
+        stage.querySelector('button').onclick = () => {
+          const score = Input.craftScore('charcoal', { pos, target, half });
+          Input.craftFlameBurst(score > 0);                     // 맞으면 확 타오르고 불티, 빗나가면 사그라듦
+          finish(score);
+        };
+      } else if (itemId === 'juice') {
+        // 🍷 포도 밟기 — 링이 퍼지는 박자에 맞춰 여섯 번. 판정은 간격이라 첫 탭은 기준점이다.
+        const TARGET = 520, NEED = 6;
+        stage.innerHTML = '<div class="cmg-stomp"><div class="pulse"></div><div class="cnt"></div></div>';
+        const pad = stage.querySelector('.cmg-stomp'), cnt = stage.querySelector('.cnt');
+        pad.querySelector('.pulse').style.animationDuration = TARGET + 'ms';
+        const taps = [];
+        cnt.textContent = NEED;
+        const down = (e) => {
+          e.preventDefault();
+          taps.push(performance.now());
+          pad.classList.remove('hit'); void pad.offsetWidth; pad.classList.add('hit');   // 재생 중이어도 다시 튄다
+          cnt.textContent = Math.max(0, NEED - taps.length);
+          Input.craftStomp();                                  // 🫙 실제 통에서 즙이 튄다
+          if (taps.length >= NEED) finish(Input.craftScore('juice', taps));
+        };
+        pad.addEventListener('pointerdown', down);
+        cmgCleanup = () => pad.removeEventListener('pointerdown', down);
+      } else {
+        // 🧱 반죽 — 꾹 눌렀다 목표 구간에서 뗀다
+        const targetMs = 1200, tol = 400, MAX = 2200;
+        stage.innerHTML = `<div class="cmg-hold"><div class="fill"></div><div class="goal"></div></div>
+                           <button class="cf-btn go cmg-press">꾹 누르기</button>`;
+        const fill = stage.querySelector('.fill'), goal = stage.querySelector('.goal');
+        goal.style.left = `${((targetMs - tol) / MAX) * 100}%`;
+        goal.style.width = `${((tol * 2) / MAX) * 100}%`;
+        let t0 = 0;
+        const btn = stage.querySelector('button');
+        const tick = () => {
+          if (t0) { const held = performance.now() - t0; fill.style.width = `${Math.min(100, (held / MAX) * 100)}%`; }
+          cmgRaf = requestAnimationFrame(tick);
+        };
+        tick();
+        const down = () => { t0 = performance.now(); };
+        const up = () => { if (!t0) return; const held = performance.now() - t0; t0 = 0; finish(Input.craftScore('brick', { heldMs: held, targetMs, tol })); };
+        btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up);
+        cmgCleanup = () => { btn.removeEventListener('pointerdown', down); btn.removeEventListener('pointerup', up); };
+      }
+    }
+
+    // 🔥 가공 창 — game.js 의 craftPanelData() 가 준 데이터를 그리기만 한다.
+    //    상태는 글자가 아니라 기호로(✓ 🔥) — 칸이 3개만 되어도 문구가 두 줄로 깨졌다(시안 실측).
+    function renderCraft(d) {
+      $('craft-title').textContent = d.title;
+      $('craft-ask').textContent = d.ask;
+      $('craft-hint').innerHTML = d.hint;
+      const strip = $('craft-slots');
+      strip.innerHTML = '';
+      for (let i = 0; i < d.cap; i++) {
+        const s = d.slots[i], el = document.createElement('div');
+        if (!s) { el.className = 'cf-chip empty'; el.textContent = '비어 있음'; }
+        else {
+          el.className = 'cf-chip';
+          el.innerHTML = `<span class="mini">${s.ico}</span> ${s.name}${s.ready ? ' ×' + s.qty : ''} ` +
+            (s.ready ? '<span class="cf-ready mark">✓</span>' : `<span class="mark" style="opacity:.55">${d.ico}</span>`);
+        }
+        strip.appendChild(el);
+      }
+      const ready = d.slots.filter(s => s.ready);
+      const claim = $('craft-claim');
+      claim.style.display = ready.length ? '' : 'none';
+      claim.textContent = ready.length === 1
+        ? `${ready[0].ico} ${ready[0].name} 받기`
+        : `${d.claimAll} (${ready.length})`;
+      claim.onclick = () => { const nd = Input.craftClaim(d.station); if (nd) renderCraft(nd); };
+
+      const list = $('craft-recipes');
+      list.innerHTML = '';
+      const full = d.slots.length >= d.cap;
+      for (const r of d.recipes) {
+        const row = document.createElement('div');
+        row.className = 'cf-recipe' + (r.lack.length || full ? ' lack' : '');
+        const cost = r.cost.map(c =>
+          `<span class="${r.lack.includes(c.k) ? 'short' : ''}">${c.ico}${c.label} ${c.have}/${c.need}</span>`).join(' · ');
+        row.innerHTML = `<span class="ico">${r.ico}</span>` +
+          `<span class="txt"><span class="nm">${r.name}</span><span class="cost">${cost} → 2~5개</span></span>`;
+        const b = document.createElement('button');
+        b.className = 'cf-btn'; b.textContent = '걸기';
+        b.disabled = r.lack.length > 0 || full;
+        b.onclick = () => craftMinigame(r.id, (grade) => { const nd = Input.craftSet(r.id, grade); if (nd) renderCraft(nd); });
+        row.appendChild(b); list.appendChild(row);
+      }
+    }
+
     function renderKitchen(d) {
       // ⚠️ " · " 로 이어 붙인 한 줄은 i18n 이 '{0} · {1}' 글루 패턴으로 쪼개 번역한다 —
       //    한쪽이 비면 앞에 구분자만 덩그러니 남으므로 조각을 모아서 잇는다.
@@ -4425,6 +4693,7 @@
     }
     document.querySelectorAll('.sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));
     $('shop-close').addEventListener('click', () => { $('shop-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
+    $('craft-close').addEventListener('click', () => { $('craft-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
 
     // ── ☕ 주문판 — 오늘 손님들의 주문 현황(서빙은 홀에서 손님에게 직접) ──
     function renderCafe(d) {

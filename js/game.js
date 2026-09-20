@@ -63,6 +63,10 @@ import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/ind
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
+import { STATIONS, stationDef, CRAFT_RECIPES, recipesOf, recipeOf as craftRecipeOf, yieldOf, lackOf, canAfford } from './craft/recipes.js';   // 🔥🫙 가공 레시피 표(순수 모듈) — recipeOf 는 요리(:9813)가 이미 쓰는 이름이라 별칭
+import { millScore, fireScore, knead2Score, crushScore, gradeOfScore } from './craft/minigame.js';   // 🔥🫙 가공 미니게임 판정(순수 모듈)
+import { SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, stationOf, slotsOf, unitState } from './craft/slots.js';   // 🔥🫙 가공 슬롯 규칙(순수 모듈)
+import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js';   // 🫙 발효통 조형(sims/vat-sim.html B안)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -287,6 +291,12 @@ const RECIPES = [
   // ★2 — 두 판. 손질 → 조리처럼 "차례가 있는" 요리
   { id: 'grilled_fish',  name: '생선 구이',       ico: '🐟', cost: { fish: 2 },                      buff: 'luck',  dur: 90,  desc: '90초 희귀 물고기 확률↑',    stages: ['chop', 'grill'] },
   { id: 'omelette',      name: '푸짐한 오믈렛',   ico: '🍳', cost: { egg: 2, crop: 1 },              buff: 'mine',  dur: 90,  desc: '90초 채굴 시 광석 추가 확률↑', stages: ['pot', 'season'] }, // 🥚 닭장 달걀 요리
+  // 🥐 화덕에서 밤새 빻은 밀가루가 있어야 만든다 — 화덕이 요리를 대체하지 않고 **입구**가 된다.
+  //    ★2 인데 지속이 ★3급(150초)인 건 하룻밤을 기다린 값을 여기서 돌려주는 것이다.
+  { id: 'bread',         name: '갓 구운 빵',      ico: '🥐', cost: { flour: 2 },                     buff: 'speed', dur: 150, desc: '150초 이동속도 +40%',       stages: ['pot', 'grill'] },
+  // 🍹 발효통에서 밤새 익은 🍷포도즙을 잔에 따라 낸다 — 🫙 가 요리를 대체하지 않고 **입구**가 된다(빵과 같은 규칙).
+  //    ★2 인데 재료가 한 개뿐인 건 하룻밤을 기다린 값을 여기서 돌려주는 것이다.
+  { id: 'grape_juice',   name: '포도주스',        ico: '🍹', cost: { juice: 1 },                     buff: 'luck',  dur: 120, desc: '120초 희귀 물고기 확률↑',   stages: ['chop', 'season'] },
   // ★3 — 세 판 풀코스. 재료도 버프도 가장 크다
   { id: 'lunchbox',      name: '모둠 도시락',     ico: '🍱', cost: { crop: 2, fish: 1, forage: 1 },  buff: 'chop',  dur: 150, desc: '150초 벌목 시 목재 +1',     stages: ['chop', 'pot', 'season'] },
   { id: 'forest_feast',  name: '숲의 한상차림',   ico: '🍲', cost: { forage: 2, crop: 2, fish: 1 },  buff: 'luck',  dur: 180, desc: '180초 희귀 물고기 확률↑',   stages: ['chop', 'grill', 'pot'] },
@@ -294,7 +304,7 @@ const RECIPES = [
 function recipeDiff(r) { return Math.min(3, Math.max(1, r.stages.length)); }   // ★ 등급 = 코스 길이
 // ☕ 카페 서빙 단가 — 재료 원가(시세 기준)보다 넉넉해 "요리해서 파는" 동선이 이득이 되게.
 //    ★ 가 오를수록 판을 더 치르니 단가도 같이 오른다(★1 ~30 · ★2 ~46 · ★3 ~74)
-const CAFE_PAY = { veg_stew: 30, mushroom_soup: 32, rice_ball: 28, baked_yam: 30, herb_salad: 31, grilled_fish: 46, omelette: 48, lunchbox: 74, forest_feast: 78 };
+const CAFE_PAY = { bread: 56, grape_juice: 62, veg_stew: 30, mushroom_soup: 32, rice_ball: 28, baked_yam: 30, herb_salad: 31, grilled_fish: 46, omelette: 48, lunchbox: 74, forest_feast: 78 };
 // 버프 메타 — desc는 초보자용 설명(첫 획득 모달·칩 클릭 모달에 표시)
 const BUFF_META = {
   speed: { ico: '👟', name: '빠른 발',     desc: '이동 속도가 40% 빨라져요. 넓은 마을과 텃밭·동굴을 오갈 때 시간을 아껴줘요.' },
@@ -306,6 +316,8 @@ const buffs = { speed: 0, luck: 0, chop: 0, mine: 0 };   // 각 버프 만료 �
 function buffOn(k) { return clock.elapsedTime < buffs[k]; }
 const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(도구·장식·선물 제작) 위치
 let nearBench = false;
+let nearStation = null;           // 🔥🫙 가까운 가공 시설 레코드(배치형이라 좌표가 여럿 — 가장 가까운 것)
+const stationLabel = (rec) => { const d = OUTDOOR.find(o => o.id === rec.id); return `${d.ico} ${d.name}`; };
 // 🍳 자유주방 — 작업대에서 요리를 분리한 새 작업장. 요리는 이제 미니게임(타이밍·리듬)으로 만든다
 const KITCHEN = new THREE.Vector3(7.4, 0, -6.4);  // 작업대 동쪽 옆(상점·시세판과 안 겹치는 빈터)
 let nearKitchen = false;
@@ -322,7 +334,7 @@ let nearRank = false;
 // 품목 아이콘 — **SELL_PRICE 의 모든 키를 덮어야 한다**(tests/orchard.test.mjs 가 강제).
 //   빠진 키가 있으면 📊시세판 월드 텍스처·상인 말풍선·시세판 모달이 문자 그대로 "undefined" 를 그린다.
 //   🍎 과수원 과일 아이콘은 js/orchard.js FRUITS[].ico 와 같은 값.
-const SELL_ICO_G = { crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯',
+const SELL_ICO_G = { charcoal: '⚫', flour: '🌾', brick: '🧱', bread: '🥐', juice: '🍷', grape_juice: '🍹', crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯',
                      apple: '🍎', pear: '🍐', peach: '🍑', persimmon: '🍊', chestnut: '🌰' };
 const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 function farmHalf() { return farmHalfOf(gameState.farm?.stage || 1); }
@@ -600,7 +612,10 @@ function setSpaceVisible() {
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum) startRainSound();
   else stopRainSound();
 }
-const SELL_PRICE = { crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 5, pear: 6, peach: 8, persimmon: 10, chestnut: 12 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
+// 🔥 가공물(charcoal·flour·brick·bread) — **파는 건 출구 중 가장 나쁜 선택**이 되게 잡았다.
+//   밀 4개(60)로 밀가루 평균 3.5개(63)라 팔면 본전이고, 빵으로 구우면 카페에서 56을 받는다.
+//   ⚠️ 이 표는 한 줄로 유지한다 — tests/orchard.test.mjs 가 한 줄 정규식으로 파싱한다.
+const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 5, pear: 6, peach: 8, persimmon: 10, chestnut: 12 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
 //    팔 타이밍 전략이 생기고, econ_logs 에 시세 반응 데이터가 쌓임(분석용)
 function priceRate(k) { return 0.7 + (dateHash('price:' + k) % 61) / 100; }     // 0.70 ~ 1.30
@@ -664,9 +679,96 @@ const OUTDOOR = [
   { id: 'stonewall', name: '돌담',    ico: '🧱', cost: { stone: 3 }, desc: '튼튼한 돌담(채굴)' },
   { id: 'brazier',   name: '화로',    ico: '🔥', cost: { stone: 2, coal: 2 }, desc: '밤에 빛나는 화로(채굴)' },
   { id: 'spiritlamp', name: '정령 등불', ico: '✨', cost: { glow: 8, coins: 60 }, desc: '정령빛이 깃든 등불 — 밤에 청록빛(안개 숲)' },
+  { id: 'kiln',      name: '화덕',    ico: '🔥', cost: { stone: 20, wood: 15, coins: 150 }, desc: '재료를 걸어두면 다음 날 구워져 있어요 · 한 채에 2칸' },
+  { id: 'vat',       name: '발효통',  ico: '🫙', cost: { wood: 25, stone: 10, coins: 200 }, desc: '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요 · 한 채에 2칸' },
   ...FARM_BUILDINGS,   // 🏗️ 밭 시설 7종(farm:true, fp:[가로칸,세로칸]) — 같은 배치 문법, 텃밭 안에서만(js/farm-building.js)
 ];
-const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안이나 📐측량소 마당에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
+// 🔥 첫 화덕 자리 — ⛏️채굴장 입구(-14,3) 아래 빈터. 마을 서쪽 동선 위라 오가며 눈에 들어온다.
+//    (-6,4) 는 목수 아저씨와 겹쳐 캐릭터 뒤에 가렸다(2026-09-20 실측).
+//    한 점에 박으면 그 자리에 나무가 서 있을 때 화덕이 파묻힌다 — 후보 중 **가장 트인 곳**을 고른다.
+const KILN_SPOTS = [[-9.5, 12.5], [-11.5, 9.5], [-13, 8], [-7.5, 14], [-12, 6.4]];   // 채굴장(-14,3)에 붙지 않게 남동쪽 빈터를 앞에 둔다
+const KILN_HOME = KILN_SPOTS[0];                 // 기본값(후보를 못 고를 때)
+const KILN_CLEAR_R = 2.4;                        // 이 반경 안엔 나무가 없어야 한다(화덕 폭 2.03 + 여유)
+
+/** 후보 점수 — 나무에서 멀고 **기존 시설·주민에서도 떨어진** 자리.
+ *  나무만 보고 고르니 화덕이 ⛏️채굴장 옆에 붙었다(2026-09-20 실측).
+ *  나무는 일정 거리만 벌면 충분하지만(3 에서 포화), 시설은 멀수록 좋으므로 가중치를 크게 둔다. */
+function kilnAvoidPoints() {
+  return [MINE_GATE, CAFE_GATE, MUSEUM_GATE, FARM_GATE, KITCHEN, BENCH, SHOP, MARKET, RANK, COOP]
+    .filter(Boolean)
+    .concat(NPCS.map(n => ({ x: n.pos[0], z: n.pos[2] })));   // 주민 자리도 피한다
+}
+function pickKilnSpot() {
+  const avoid = kilnAvoidPoints();
+  let best = KILN_HOME, bestScore = -1;
+  for (const [x, z] of KILN_SPOTS) {
+    let treeD = 99, lmD = 99;
+    for (const t of trees) treeD = Math.min(treeD, Math.hypot(t.position.x - x, t.position.z - z));
+    for (const a of avoid) lmD = Math.min(lmD, Math.hypot(a.x - x, a.z - z));
+    const score = Math.min(treeD, 3) * 0.8 + lmD;      // 나무는 3 이면 충분, 시설 거리가 주도한다
+    if (score > bestScore) { bestScore = score; best = [x, z]; }
+  }
+  return best;
+}
+/** 화덕 자리와 **앞 통로**를 비운다.
+ *  주변만 치우면 다가갈 때 카메라가 앞 나무를 뚫어 화면이 잎으로 덮인다(사용자 실측 2026-09-20).
+ *  카메라는 플레이어 뒤 남쪽에 있으므로 화덕 앞(z+) 좁은 길만 낸다 — 마을이 휑해지지 않게 폭은 조인다. */
+function clearTreesForKiln(x, z) {
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const t = trees[i];
+    const dx = t.position.x - x, dz = t.position.z - z;
+    const near = Math.hypot(dx, dz) < KILN_CLEAR_R;
+    const front = dz > 0 && dz < 5.5 && Math.abs(dx) < 2.7;     // 접근 통로(1.9 로는 팻말 쪽 나무가 남았다)
+    if (near || front) {
+      scene.remove(t); trees.splice(i, 1);
+      const oi = obstacles.findIndex(o => Math.abs(o.x - t.position.x) < 0.01 && Math.abs(o.z - t.position.z) < 0.01);
+      if (oi >= 0) obstacles.splice(oi, 1);      // 밭 금지 원도 같이 치운다
+      // 🚧 충돌체도 반드시 같이 —— 안 치우면 **안 보이는 나무**가 그대로 서서
+      //    화덕 앞을 지날 때마다 걸린다(사용자 지적 2026-09-21). spawnTree 가 userData.collider 에 달아 둔다.
+      if (t.userData?.collider) removeSolid(t.userData.collider);
+    }
+  }
+}
+const KILN_SCALE = 1.35;        // 마을 기준 체감 크기(1.0 은 벤치보다 작게 읽혔다)
+// 🔥 화덕·🫙 발효통은 같은 규칙을 쓴다 — 한 채에 2칸, 종류마다 3채까지.
+//    마을·텃밭이 가공 시설로 뒤덮이지 않게. 슬롯 상한 6칸도 여기서 나온다
+const STATION_IDS = STATIONS.map(s => s.id);
+function stationCount(id) { return gameState.outdoor.filter(r => r.id === id).length; }
+function canBuildStation(id) { return stationCount(id) < MAX_UNITS; }
+function kilnCount() { return stationCount('kiln'); }
+
+// 🫙 첫 발효통 자리 — 텃밭 마당 북서쪽(밭 로컬). 밭 위가 아니라 마당이라 파종·물주기를 가로채지 않고,
+//    x -12.5 는 밭이 3단계(half 11)까지 커져도 마당 안에 남는다. 🔧자재 작업대(z 2.6)와도 2.6 이상 벌어진다.
+const VAT_HOME_LOCAL = [-12.5, 5.0];
+
+// 🔥 화덕 불꽃 — 서로 다른 박자로 늘었다 줄고 비틀린다. updateDayNight 가 매 프레임 돌린다
+const kilnFlames = [];
+
+// 가공 시설의 겉모습을 슬롯 상태에 맞춘다. 슬롯은 특정 채에 묶여 있지 않고
+// 'i 번째 = 그 시설 칸의 2i·2i+1' 로 파생한다(배치 장식엔 고유 id 가 없다 — js/craft/slots.js 참고).
+// 안 보이는 부분은 드로우콜도 잡히지 않으므로 visible 토글로 끝낸다.
+function refreshStations() {
+  const today = todayStr();
+  const seq = { kiln: 0, vat: 0 };
+  for (const m of outdoorMeshes) {
+    const id = m.userData.rec?.id;
+    if (id !== 'kiln' && id !== 'vat') continue;
+    const parts = m.userData.station;
+    if (!parts) { seq[id]++; continue; }
+    const st = unitState(gameState.craft.slots, id, seq[id], today);
+    if (id === 'kiln') {
+      parts.fire.visible = st === 'firing';
+      parts.load.visible = st === 'done';
+      parts.logs.visible = st !== 'done';   // 다 구우면 장작을 썼다
+    } else {
+      parts.firing.visible = st === 'firing';   // 마개 + 포도 바구니
+      parts.done.visible = st === 'done';       // 꼭지 아래 잔 + 채운 병
+    }
+    seq[id]++;
+  }
+}
+
+const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안 밭에 놓아요', yard: '🏗️ 시설 마당은 이미 꽉 찼어요. 울타리 안 밭에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
 function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 function farmBuildingRecs(except = null) { return gameState.outdoor.filter(r => r !== except && isFarmBuilding(r.id)); }   // 시설 레코드만(옮기는 중인 자기 자신 제외)
 
@@ -1169,13 +1271,15 @@ const gameState = {
   inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0, fert: 0, bait: 0,
     wheat: 0, corn: 0, grape: 0, seed_wheat: 0, seed_corn: 0, seed_grape: 0, honey: 0,
     apple: 0, pear: 0, peach: 0, persimmon: 0, chestnut: 0,
-    sap_apple: 0, sap_pear: 0, sap_peach: 0, sap_persimmon: 0, sap_chestnut: 0 }, // 🍎 과수원(js/orchard.js) + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐) + 🌾고급 작물·씨앗(js/farm-crops.js) + 🍯꿀(벌통)
+    sap_apple: 0, sap_pear: 0, sap_peach: 0, sap_persimmon: 0, sap_chestnut: 0,
+    charcoal: 0, flour: 0, brick: 0, bread: 0, juice: 0 },   // 🔥 화덕 가공물 + 🫙 발효통 🍷포도즙 + 🥐 밀가루로 굽는 빵 // 🍎 과수원(js/orchard.js) + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐) + 🌾고급 작물·씨앗(js/farm-crops.js) + 🍯꿀(벌통)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
+  craft: { slots: [], noticedDay: null },   // 🔥 화덕에 걸어 둔 것 [{item,qty,grade,day}] · 완성 알림을 띄운 날 — 규칙은 js/craft/slots.js
   house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
@@ -1889,6 +1993,65 @@ function updateToolPageAuto() {
 // =============================================================
 //  입력 API (키보드 + 모바일 터치 컨트롤이 함께 사용)
 // =============================================================
+// 🔥🫙 가공 창에 넘길 데이터. 표시용 문자열은 여기서 만들고 index.html 은 그리기만 한다.
+//    시설마다 칸도 레시피도 따로다 — 화덕 창에 포도주스가 뜨면 안 된다.
+function craftPanelData(station = 'kiln') {
+  const today = todayStr(), inv = gameState.inventory;
+  const def = stationDef(station);
+  return {
+    station: def.id, title: `${def.ico} ${def.name}`, ico: def.ico,
+    ask: def.ask, claimAll: def.claim, hint: def.hint,
+    cap: capacityOf(stationCount(def.id)),
+    slots: slotsOf(gameState.craft.slots, def.id).map(s => {
+      const r = craftRecipeOf(s.item);
+      return { item: s.item, ico: r.ico, name: r.name, qty: s.qty, ready: isReady(s, today) };
+    }),
+    recipes: recipesOf(def.id).map(r => ({
+      id: r.id, ico: r.ico, name: r.name,
+      lack: lackOf(r.id, inv),
+      cost: Object.entries(r.cost).map(([k, v]) => {
+        // RES_LABEL 은 항목에 따라 이모지를 이미 품고 있다('🌾밀' · '⚫숯' …).
+        //   그대로 아이콘을 덧붙이면 '🌾🌾밀' 이 된다(340px 실측에서 발견).
+        const label = RES_LABEL[k] || k;
+        const ico = /^[\p{Extended_Pictographic}]/u.test(label) ? '' : (SELL_ICO_G[k] || '📦');
+        return { k, ico, label, need: v, have: inv[k] || 0 };
+      }),
+    })),
+  };
+}
+
+// 걸기 — 등급은 미니게임(가공 창 오버레이)이 정한다. 완성 여부는 등급과 무관하다.
+function craftSet(itemId, grade = 1) {
+  const r = craftRecipeOf(itemId); if (!r) return null;
+  const station = stationOf(itemId);
+  if (slotsOf(gameState.craft.slots, station).length >= capacityOf(stationCount(station))) {
+    trackEvent('craft_blocked', { reason: 'full', item: itemId, station }); return null;
+  }
+  if (!canAfford(itemId, gameState.inventory)) {
+    trackEvent('craft_blocked', { reason: 'no_material', item: itemId, station }); return null;
+  }
+  for (const [k, v] of Object.entries(r.cost)) gameState.inventory[k] -= v;
+  gameState.craft.slots = setSlot(gameState.craft.slots, { item: itemId, grade, day: todayStr() });
+  trackEvent('craft_set', { item: itemId, grade, qty: yieldOf(itemId, grade), station,
+                            slot_idx: slotsOf(gameState.craft.slots, station).length - 1, station_seq: stationCount(station) });
+  requestSave(); refreshStations(); refreshInventoryUI();
+  return craftPanelData(station);
+}
+
+// 받기 — 다 구워진 칸만 거둔다. waited_days 가 이 기능의 핵심 지표다.
+function craftClaim(station = 'kiln') {
+  const today = todayStr();
+  const { rest, gained, claimed } = claimAll(gameState.craft.slots, today, station);
+  if (!claimed.length) return craftPanelData(station);
+  gameState.craft.slots = rest;
+  for (const [k, v] of Object.entries(gained)) gameState.inventory[k] = (gameState.inventory[k] || 0) + v;
+  for (const c of claimed) trackEvent('craft_claim', { item: c.item, qty: c.qty, grade: c.grade, station, waited_days: c.waitedDays });
+  requestSave(); refreshStations(); refreshInventoryUI();
+  const ico = stationDef(station).ico;
+  ui.toast?.(ico + ' ' + claimed.map(c => `${craftRecipeOf(c.item).ico}${craftRecipeOf(c.item).name} ${c.qty}`).join(' · '));
+  return craftPanelData(station);
+}
+
 export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
   doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space (도구질)
@@ -1939,6 +2102,22 @@ export const Input = {
   cookResolve(how) { return cookResolve(how); },        // 🍽️ 결과 화면: 'eat' 먹기 | 'store' 🧺 찬장 보관
   getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
   pantryEat(i) { return pantryEat(i); },                // 🍱 찬장에서 꺼내 먹기(버프 발동)
+  craftSet(itemId, grade) { return craftSet(itemId, grade); },   // 🔥 화덕에 걸기(다음 날 완성)
+  // 🔥 미니게임 판정 — 조작은 index.html 이 받고 판정은 순수 모듈이 한다
+  craftScore(itemId, input) {
+    if (itemId === 'flour') return millScore(input);
+    if (itemId === 'charcoal') return fireScore(input.pos, input.target, input.half);
+    if (itemId === 'juice') return crushScore(input);
+    return knead2Score(input.heldMs, input.targetMs, input.tol);
+  },
+  craftGrade(score) { return gradeOfScore(score); },
+  craftFocus(on) { return craftFocus(on); },            // 🔥 걸 때 화면을 화덕으로 옮긴다
+  craftFlame(v) { craftFlame(v); },                     // ⚫ 불 조절 — 바늘을 따라 실제 불이 반응
+  craftFlameBurst(good) { craftFlameBurst(good); },     // ⚫ 멈춘 순간 연출
+  craftStomp() { craftStomp(); },                       // 🍷 밟을 때마다 통에서 즙이 튄다
+  craftYield(itemId, grade) { return yieldOf(itemId, grade); },
+  craftClaim(station) { return craftClaim(station); },  // 🔥🫙 다 된 것 받기(그 시설 칸만)
+  craftData(station) { return craftPanelData(station); },
   cafeCookDone(res) { return cafeCookDone(res); },      // ☕ 카페 조리 완료 → 그 손님에게 바로 서빙
   getWorkshop() { return workshopView(); },             // 🗿 조각 공방 주문판(오늘의 주문 + 기록)
   carveStart(id) { return carveStart(id); },            // 🗿 조각 시작(재료 소비, 클로즈업 무대 입장)
@@ -2335,6 +2514,19 @@ export async function enterGame() {
     })();
   }
   if (load.state) applySave(load.state);
+  // 🔥 첫 화덕 — 세이브가 있든 없든 한 채는 서 있어야 한다. applySave 안에 두면 신규 유저가 못 받는다.
+  //    스토리 보상으로 주려던 원안은 1장 완료가 25명(진입 109명의 23%)뿐이라 폐기했다.
+  //    이미 지어 두거나 옮겨 둔 사람의 자리는 건드리지 않는다.
+  if (!kilnCount()) {
+    const [kx, kz] = pickKilnSpot();
+    clearTreesForKiln(kx, kz);                   // 나무에 파묻히지 않게 자리를 낸다
+    placeOutdoor(kx, kz, true, 'kiln', 0);
+  }
+  // 🫙 첫 발효통 — 텃밭 마당에 한 채. 화덕과 같은 이유로 기본 지급한다.
+  //    🍇포도는 씨앗을 사서 심어야 나오는 고급 작물이라, 통이 먼저 서 있는 편이 '심을 이유' 가 된다.
+  if (!stationCount('vat')) placeOutdoor(FARM.x + VAT_HOME_LOCAL[0], FARM.z + VAT_HOME_LOCAL[1], true, 'vat', 0);
+  refreshStations();
+  catchUpCraft();                      // 🔥 자는 사이 다 구워진 게 있으면 알린다
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -2398,6 +2590,32 @@ export async function enterGame() {
       up: (id, lv = 1) => { if (id in gameState.boat.up) gameState.boat.up[id] = lv; return { ...gameState.boat.up }; },
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
+    };
+    // 🔥 __craftNotice() — 완성 알림을 다시 띄운다(하루 1회 제한을 풀고 재실행, 검증용)
+    window.__craftNotice = () => { gameState.craft.noticedDay = null; catchUpCraft(); return gameState.craft.slots.length; };
+    // 📷 __fadeN() — 지금 몇 그루가 비쳐지고 있는지(카메라 가림 처리 검증용, 로컬 전용)
+    window.__fadeN = () => _faded.length;
+    // ⚡ __stationDC(id) — 🔥🫙 시설이 드로우콜을 얼마나 쓰는지 + 지금 어떤 상태인지(로컬 전용).
+    //    그 시설 메시만 껐다 켜서 차이를 본다.
+    window.__stationDC = (id = 'kiln') => {
+      const ms = outdoorMeshes.filter(m => m.userData.rec?.id === id);
+      // renderer.info 가 정확하다 — gl 호출을 직접 세면 섀도맵 갱신이 겹쳐 과대 측정된다
+      const count = () => { renderer.render(scene, camera); return renderer.info.render.calls; };
+      const on = count();
+      ms.forEach(m => m.visible = false); const off = count(); ms.forEach(m => m.visible = true);
+      const shown = (p) => p ? Object.fromEntries(Object.entries(p).map(([k, v]) => [k, !!v.visible])) : null;
+      return { id, n: ms.length, at: ms.map(m => [+m.position.x.toFixed(1), +m.position.z.toFixed(1)]),
+               parts: ms.map(m => shown(m.userData.station)),
+               withIt: on, without: off, per: ms.length ? +((on - off) / ms.length).toFixed(1) : 0 };
+    };
+    window.__kilnDC = () => window.__stationDC('kiln');   // 옛 이름(화덕 검수 기록이 이걸 쓴다)
+    // 🔥 __craftAge(days) — 걸어 둔 것을 days 일 전에 건 셈 친다(완성·정산 검증용, 로컬 전용).
+    //    시스템 시계를 못 바꾸니 슬롯의 날짜를 뒤로 민다.
+    window.__craftAge = (days = 1) => {
+      const key = dayStr(Date.now() - days * 86400000);   // 형식을 손으로 조립하면 어긋난다(2026-09-20 사고)
+      gameState.craft.slots = gameState.craft.slots.map(s => ({ ...s, day: key }));
+      refreshStations(); requestSave();
+      return gameState.craft.slots.map(s => `${s.item}:${s.day}`);
     };
     // 🌫️ __mistTest() — 오늘 정화를 무른 셈 치고 다시(코스 아님이라 리롤 유인 없음)
     window.__mistTest = () => { gameState.mist.date = null; gameState.mist.purified = false; return mistDaily(); };
@@ -2638,6 +2856,10 @@ function applySave(saved) {
     updateHouseSign();   // 🔨 묵직한 망치를 산 뒤 아직 한 단계도 안 지었으면 건축 루프가 0바퀴라 간판이 옛 숫자로 남는다
   }
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id, o.rot || 0)); // 야외 장식 복원(방향 포함)
+  // 🔥 화덕에 걸어 둔 것 — 세이브를 믿지 않고 정제한다(표에 없는 품목·깨진 날짜는 버린다).
+  //    필드가 없는 옛 세이브도 빈 배열로 떨어질 뿐, 신규로 오인해 덮어쓰지 않는다.
+  gameState.craft.slots = sanitizeSlots(saved.craft?.slots);
+  gameState.craft.noticedDay = typeof saved.craft?.noticedDay === 'string' ? saved.craft.noticedDay : null;
   if (saved.outdoorStored && typeof saved.outdoorStored === 'object') {   // 🧺 보관한 야외 장식 복원(개수만, 음수·비숫자 버림)
     gameState.outdoorStored = {};
     for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
@@ -2776,6 +2998,16 @@ function shared(key, make) {
 }
 
 // 여러 지오메트리를 위치·법선·uv 만 남겨 하나로 합침(인덱스는 풀어서 붙인다)
+// 색을 정점에 실어 둔다 — mergeGeos 가 color 속성을 합치므로 색이 달라도 한 재질로 묶인다.
+//   재질을 색마다 만들면 그 수가 곧 드로우콜이다(🏛️전시물 13종에서 쓴 수법).
+function paintGeo(geo, hex) {
+  const c = new THREE.Color(hex), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return geo;
+}
+const vtxMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
+
 function mergeGeos(geos) {
   const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
   const out = new THREE.BufferGeometry();
@@ -8950,10 +9182,97 @@ function mgSeasonDone(judge) {
 //   냄비·그릇·팬이 화면 폭을 꽉 채우고 소금통·불꽃이 잘렸다. 가로 화각이 좁아진 만큼 뒤로 뺀다.
 //   기준 aspect 1.55(데스크톱)에서 k=1 이라 가로 화면 그림은 예전 그대로다.
 function applyMgCamera() {
+  if (mgView?.type === 'station' && nearStation) return applyStationCamera(nearStation);   // 🔥🫙 가공 시설 클로즈업 유지
   const k = Math.min(1.75, Math.max(1, 1.55 / (camera.aspect || 1.55)));
   camera.position.set(KSET.x + 0.15 * k, KSET.y + 1.15 + 1.4 * k, KSET.z + 3.55 * k);
   camera.lookAt(KSET.x, KSET.y + 1.15, KSET.z - 0.3);
 }
+// 🔥🫙 가공 시설 클로즈업 — 걸 때 화면을 그 시설로 옮긴다(요리·조각과 같은 문법).
+//    부엌 무대(KSET)를 쓰지 않고 마을·텃밭에 선 그 시설을 그대로 비춘다.
+//    세로 화면은 가로 화각만 좁아지므로 그만큼 뒤로 뺀다(applyMgCamera 와 같은 보정).
+let stationCamDist = 5;        // 무대 안개를 카메라 거리에 맞추려고 마지막 값을 들고 있는다
+function applyStationCamera(rec) {
+  const k = Math.min(1.75, Math.max(1, 1.55 / (camera.aspect || 1.55)));
+  // 멀찍이 물러서 시설을 화면 **위쪽**에 두고 아래를 조작대 자리로 비운다.
+  //   실측 3회로 잡은 값 — 2.35 는 상판이 화면을 덮었고, 5.2 는 앞의 나무가 화덕을 가렸다.
+  //   🫙 발효통은 옆으로 길어(월드 1.9) 3.8 에선 통이 화면을 넘쳐 잘렸다 — 5.2 로 물러선다(실측 2026-09-21).
+  //   lookAt 은 대상보다 **낮게** 잡아야 대상이 화면 위로 올라간다(통 중심 y 1.2 → 0.95).
+  const far = rec.id === 'vat' ? 4.7 : 3.8, aim = rec.id === 'vat' ? 0.95 : 1.25;
+  stationCamDist = far * k;
+  camera.position.set(rec.x + (rec.id === 'vat' ? 0 : 0.1) * k, 1.95 + 0.35 * k, rec.z + far * k);   // 🫙 는 옆으로 길어 가운데서 본다
+  camera.lookAt(rec.x, aim, rec.z);
+}
+// 클로즈업 중 카메라와 화덕 사이에 선 것들을 잠깐 숨긴다.
+//   마을 한복판이라 나무·장식이 화덕을 가린다(요리·조각 무대엔 없던 문제).
+//   안개로는 못 지운다 — 가리는 것이 화덕보다 **카메라 쪽**에 있어 더 가깝기 때문이다.
+let kilnHidden = [];
+function hideKilnOccluders(rec, on) {
+  if (!on) { for (const o of kilnHidden) o.visible = true; kilnHidden = []; return; }
+  const camZ = rec.z + 5.0;                      // 카메라 거리(3.8)보다 넉넉히
+  const between = (p) => p.z > rec.z + 0.7 && p.z < camZ && Math.abs(p.x - rec.x) < 4.5;   // 3.2 로는 화면 가장자리 나무가 남았다
+  for (const t of trees) if (t.visible && between(t.position)) { t.visible = false; kilnHidden.push(t); }
+  for (const m of outdoorMeshes) {
+    if (m.userData.rec === rec) continue;         // 시설 자신은 둔다
+    if (m.visible && between(m.position)) { m.visible = false; kilnHidden.push(m); }
+  }
+}
+
+// ⚫ 불 조절 중 실제 화덕의 불이 바늘을 따라 반응한다 — 화면에 화덕이 보이니
+//    바에서만 움직이면 심심하다. v: 0(사그라듦) ~ 1(활활)
+function kilnFireOf(rec) {
+  const st = outdoorMeshes.find(m => m.userData.rec === rec)?.userData.station;
+  return st?.fire ? st : null;                 // 🫙 발효통엔 불이 없다
+}
+function craftFlame(v) {
+  const k = nearStation && kilnFireOf(nearStation); if (!k) return;
+  k.fire.visible = true;
+  //   1.05 배까지 키우니 불기둥이 조작대를 침범했다 — 0.75 로 줄인다(2026-09-20 실측)
+  const s = 0.45 + Math.max(0, Math.min(1, v)) * 0.75;
+  k.fire.scale.set(0.85 + s * 0.25, s, 0.85 + s * 0.25);      // 세로로 자라고 가로는 덜 퍼진다
+}
+/** 멈춘 순간 — 잘 맞으면 확 타오르며 불티가 뜬다 */
+function craftFlameBurst(good) {
+  const k = nearStation && kilnFireOf(nearStation); if (!k) return;
+  if (good) {
+    k.fire.scale.set(1.2, 1.45, 1.2);
+    spawnSparkle(nearStation.x, 1.05, nearStation.z + 0.5, 16);
+    Sound.blip?.();
+  } else {
+    k.fire.scale.set(0.7, 0.35, 0.7);                          // 사그라든다
+  }
+}
+
+/** 🍷 밟는 순간 — 통 언저리에서 포도색 알갱이가 튄다(불 조절의 craftFlameBurst 와 같은 자리) */
+function craftStomp() {
+  if (!nearStation) return;
+  spawnSparkle(nearStation.x, 1.0, nearStation.z + 0.7, 10);
+  Sound.blip?.();
+}
+
+/** 그 시설의 🪧 팻말 — 클로즈업에선 카메라 앞으로 튀어나와 글자가 시설만큼 커 보인다 */
+function stationSign(rec, visible) {
+  const sign = outdoorMeshes.find(m => m.userData.rec === rec)?.userData.sign;
+  if (sign) sign.visible = visible;
+}
+
+function craftFocus(on) {
+  if (on && nearStation) {
+    mgView = { type: 'station' };
+    player.visible = false;      // 마을에 선 시설이라 캐릭터가 카메라와 시설 사이를 가린다(요리 무대엔 없던 문제)
+    hideKilnOccluders(nearStation, true);
+    stationSign(nearStation, false);
+    applyStationCamera(nearStation);
+  } else if (!on) {
+    const k = nearStation && kilnFireOf(nearStation);
+    if (k) k.fire.scale.set(1, 1, 1);        // 미니게임에서 키운 불을 되돌린다
+    hideKilnOccluders(null, false);
+    if (nearStation) stationSign(nearStation, true);
+    mgView = null; player.visible = true; snapCamera();
+    refreshStations();                          // 불·상판을 슬롯 상태에 맞게 다시 맞춘다
+  }
+  return !!mgView;
+}
+
 function mgSceneEnd() {
   if (kset) kset.group.visible = false;
   mgView = null;
@@ -9004,6 +9323,7 @@ function mgPotHit(step, judge, ico) {
 function updateMgScene(dt, t) {
   if (!mgView) return;
   if (mgView.type === 'carve') { updateCarveScene(dt, t); return; }  // 🗿 조각 공방 무대는 전용 루프
+  if (mgView.type === 'station') return;                             // 🔥🫙 가공 시설은 선 자리 그대로를 비춘다(부엌 소품 없음)
   if (!kset) return;
   applyMgCamera();                                          // 다른 카메라 로직이 못 뺏게 매 프레임 고정
   // 김/거품/불/재료 — 냄비가 계속 "요리 중"으로 보이게
@@ -10060,8 +10380,75 @@ function outdoorMesh(id) {
     houseWindows.push(headMat);
     const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), headMat); head.position.set(0.16, 1.36, 0); g.add(head);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 5, 12), clayMat(0x4a5a58)); ring.position.set(0.16, 1.36, 0); g.add(ring);
+  } else if (id === 'kiln') {
+    // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
+    //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
+    //    상태별 부분을 미리 만들어 두고 visible 로 토글한다(refreshStations) — 안 보이면 드로우콜도 안 잡힌다.
+    const KC = { body: 0x9a7358, ledge: 0x7d5c46, top: 0xcfc7b0, hole: 0x4a4844 };   // 시안 확정색. body 를 0x5a5148 로 두면 낮에 검게 읽힌다
+    // 마을에서 너무 작게 읽혔다 — 시안 비례는 그대로 두고 안쪽 그룹만 키운다.
+    // 바깥 g 에 걸면 설치 애니메이션(m.scale.setScalar(0.01))이 덮어쓴다.
+    const kg = new THREE.Group(); kg.scale.setScalar(KILN_SCALE); g.add(kg);
+    // ⚡ 몸통·상판·아궁이·장작단은 색만 다르다 → 정점색으로 한 덩이(4 → 1 드로우콜).
+    //    아궁이 입은 **하나**. 둘이면 눈이 되어 얼굴로 읽힌다(시안 1차 실패)
+    kg.add(new THREE.Mesh(mergeGeos([
+      paintGeo(new THREE.BoxGeometry(1.5, 0.98, 0.86).translate(0, 0.49, 0), KC.body),
+      paintGeo(new THREE.BoxGeometry(1.64, 0.14, 1.0).translate(0, 1.05, 0), KC.top),
+      paintGeo(new THREE.CylinderGeometry(0.29, 0.29, 0.5, 10, 1, false, 0, Math.PI)
+        .rotateZ(Math.PI / 2).rotateY(Math.PI / 2).translate(-0.3, 0.42, 0.26), KC.hole),
+      paintGeo(new THREE.BoxGeometry(0.52, 0.22, 0.34).translate(0.44, 0.25, 0.58), KC.ledge),
+    ]), vtxMat()));
+
+    // 장작 — 빈 화덕·굽는 중에만. 2개를 한 덩어리로(1 드로우콜)
+    const logs = new THREE.Mesh(mergeGeos([[0.42, 0.42, 0.04], [0.46, 0.51, -0.05]].map(([lx, ly, rz]) =>
+      new THREE.CylinderGeometry(0.055, 0.055, 0.44, 6).rotateZ(Math.PI / 2 + rz).rotateY(0.22).translate(lx, ly, 0.58))), clayMat(0x6b4a34));
+    kg.add(logs);
+
+    // 불꽃 — 원뿔은 "고깔"로 읽혔다(시안 1차 실패). 옆모습 프로필을 LatheGeometry 로 돌린다.
+    //    밑동이 불룩하고 중간이 잘록해지다 끝이 가늘게 빠진다. 떠오르는 불똥은 쓰지 않는다.
+    const fire = new THREE.Group(); fire.position.set(-0.3, 0.3, 0.52); kg.add(fire);
+    const flameProfile = (sc, tall) => [[0.002, 0], [0.085, 0.035], [0.108, 0.10], [0.088, 0.185], [0.048, 0.278], [0.013, 0.355], [0.001, 0.44]]
+      .map(([x, yy]) => new THREE.Vector2(x * sc, yy * tall));
+    for (const f of [{ c: 0xff7320, e: 0xff3d00, sc: 1.0, t: 1.0, sp: 6.8, ph: 0, spin: 0.9 },
+                     { c: 0xffd44e, e: 0xffab10, sc: 0.52, t: 0.66, sp: 10.6, ph: 2.3, spin: -1.5 }]) {
+      const m = new THREE.MeshStandardMaterial({ color: f.c, emissive: f.e, emissiveIntensity: 0.95, roughness: 0.55 });
+      houseWindows.push(m);                                   // 밤에 더 밝게
+      const mesh = new THREE.Mesh(new THREE.LatheGeometry(flameProfile(f.sc, f.t), 6), m);
+      fire.add(mesh); kilnFlames.push({ mesh, sp: f.sp, ph: f.ph, spin: f.spin });
+    }
+
+    // 상판 산출물 — 다 구워졌을 때만. 숯 3덩이·포대 2개가 각각 1 드로우콜
+    const load = new THREE.Group(); kg.add(load);
+    const ly0 = 1.12;
+    // ⚡ 숯(검정)과 포대(베이지)도 색만 다르다 → 정점색으로 한 덩이(2 → 1 드로우콜).
+    //    포대는 **눕혀 쌓는다**. 세우면 목·매듭이 생겨 도자기·등대로 읽혔다(시안 2회 실패)
+    load.add(new THREE.Mesh(mergeGeos([
+      ...[[-0.42, -0.1, 0.11], [-0.28, 0.08, 0.09], [-0.46, 0.14, 0.075]].map(([x, z, r]) =>
+        paintGeo(new THREE.IcosahedronGeometry(r, 0).rotateX(0.4).rotateY(0.8).translate(x, ly0 + r * 0.7, z), 0x2f2b28)),
+      paintGeo(new THREE.CapsuleGeometry(0.1, 0.18, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).translate(0.3, ly0 + 0.085, 0.02), 0xf2ead6),
+      paintGeo(new THREE.CapsuleGeometry(0.088, 0.14, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).rotateY(0.42).translate(0.315, ly0 + 0.23, -0.015), 0xf2ead6),
+    ]), vtxMat()));
+
+    // 🪧 팻말 — 채굴장·측량소와 같은 문법. kg(1.35배) 밖에 둬야 다른 팻말과 크기가 같다.
+    //    makeSignpost 가 기둥 충돌체까지 등록한다.
+    //    z 0.35 는 상판(±0.68) 안쪽이라 천장에 박혀 보였다 — 앞으로 당긴다(2026-09-20 실측)
+    g.userData.sign = makeSignpost('🔥 화덕', 1.38, 0.8); g.add(g.userData.sign);
+
+    g.userData.station = { fire, load, logs };
+  } else if (id === 'vat') {
+    // 🫙 발효통 — 조형은 js/craft/vat-model.js(sims/vat-sim.html B안). 색만 다른 부품을
+    //    정점색으로 한 덩이씩 묶어 정적 1 + 익는 중 1 + 다 됨 1 = 3 드로우콜로 끝낸다.
+    const { group, parts } = buildVatModel(THREE, { paint: paintGeo, vtx: vtxMat, merge: mergeGeos });
+    g.add(group);
+    // 팻말은 통 **옆**으로 물린다. 클로즈업 동안엔 아예 숨긴다(stationSign) —
+    //   카메라 앞으로 튀어나와 글자가 통만큼 커 보였다(사용자 지적 2026-09-21)
+    g.userData.sign = makeSignpost('🫙 발효통', 1.62, 0.2); g.add(g.userData.sign);
+    g.userData.station = parts;
   }
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  // 그림자는 기본으로 켜되, noShadow 를 단 가지는 통째로 뺀다 —
+  //   섀도맵 텍셀보다 작은 소품은 카메라가 움직일 때마다 그림자가 지글거린다(사용자 지적 2026-09-21).
+  //   traverse 는 형제로 넘어가도 상태가 남으니 플래그를 들고 다니지 말고 **부모 사슬**을 본다
+  const noShadowUnder = (o) => { for (let p = o; p; p = p.parent) if (p.userData?.noShadow) return true; return false; };
+  g.traverse(o => { if (o.isMesh) o.castShadow = !noShadowUnder(o); });
   return g;
 }
 
@@ -10075,6 +10462,12 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       const v = canPlaceBuilding({ def, x: wx, z: wz, rot: ry, atFarm, center: FARM, half: farmHalf(), plots, buildings: farmBuildingRecs(pickedOutdoor?.rec || null), yard: surveyYard(farmHalf()) });
       if (!v.ok) { ui.toast?.(FARM_PLACE_MSG[v.reason], 2400); return false; }   // 배치 모드는 유지 — 자리를 옮겨 다시
     }
+  }
+  // 📐측량소 마당 — 밭 시설이든 장식이든 새로 놓지 못하게 막는다(사용자 지시 2026-09-21).
+  //   🔥🫙 가공 시설만 예외: 게임이 기본으로 놓아 주고, 플레이어는 마당 안에서 자리만 고친다.
+  if (!silent && !def.farm && !STATION_IDS.includes(id) && atFarm) {
+    const y = surveyYard(farmHalf()), lx = wx - FARM.x, lz = wz - FARM.z;
+    if (lx >= y.x0 && lx <= y.x1 && lz >= y.z0 && lz <= y.z1) { ui.toast?.(FARM_PLACE_MSG.yard, 2400); return false; }
   }
   const moved = !silent && !!pickedOutdoor;                                   // 🪵 옮겨 놓기(비용 없음)
   const taken = (!silent && !moved) ? takeStored(gameState.outdoorStored, id) : null;   // 🧺 보관분 우선
@@ -10100,9 +10493,26 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   } else {
     ob = { x: wx, z: wz, r: 0.8 }; obstacles.push(ob);   // 그 위엔 밭 금지
     // 🚧 울타리·돌담·정원등·화로·허수아비는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
-    solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
+    if (id === 'kiln') {
+      // 🔥 화덕 — 목록에 없어서 캐릭터가 통과했다(2026-09-20 실측). 옆으로 긴 덩어리라 원이 아니라 박스,
+      //    회전(ry 0~3)에 따라 가로·세로를 바꾼다. 반치수는 몸통 1.5×0.86 에 KILN_SCALE 을 곱한 값.
+      const [hw, hd] = (ry % 2) ? [0.58, 1.01] : [1.01, 0.58];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+      obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);   // 밭·나무 금지 반경도 몸집에 맞춘다
+    } else if (id === 'vat') {
+      // 🫙 발효통 — 화덕과 같은 문법. 반치수는 조형 모듈이 준 발자국(VAT_BOX)의 절반
+      const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+      obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
+  if (STATION_IDS.includes(id)) {
+    refreshStations();                     // 🔥🫙 방금 놓은 시설의 겉모습을 슬롯 상태에 맞춘다
+    // [GA4] 몇 채째를 짓는가 — 2·3채를 짓는다는 건 슬롯이 모자랄 만큼 쓰고 있다는 뜻이다.
+    //   silent(세이브 복원·기본 지급)는 제외해야 '지은 것' 만 잡힌다.
+    if (!silent) trackEvent('craft_station_build', { station: id, seq: stationCount(id) });
+  }
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
@@ -10355,25 +10765,86 @@ function makeSurveyOffice(H) {
   yard.castShadow = false; yard.receiveShadow = true;
   // 건물 — 작은 측량 오두막(사용자 지적 2026-09-13: "넓히기만 하는데 너무 크다" → 4.2 → 2.6폭으로 축소).
   //   색·지붕은 밭 시설 세트(BARN)와 같게 — 빨간 판자 + 회색 갬브럴 + 흰 트림.
+  //   다듬기(sims/survey-sim.html C안, 2026-09-21): 판자 결 + 지붕 널 + 차양·굴뚝·등불·도면 통.
+  //   ⚠️ 문·창은 **z 폭**이다. 예전엔 x 폭(0.8)이라 정면에서 두께 0.08 짜리 선으로만 보였다
+  //      — 문틀(흰 트림)은 z 기준으로 세워 둬서 둘이 어긋나 있었다.
   const OW = 2.6, OD = 2.3, OE = 1.5, OK2 = 2.0, OR = 2.4;
+  const TP = 0.045;   // 트림이 벽 밖으로 나오는 여유. 반두께(0.06)면 면이 겹쳐 줄무늬가 어른거린다
+  const P = (geo, hex) => paintGeo(geo, hex);
+  const at = (geo) => geo.translate(o.x, 0, o.z);          // 밭 로컬 → 건물 자리
   {
-    const body = new THREE.Mesh(gambrelSolid(OW, OE, OK2, OR, OD).rotateY(Math.PI / 2), clayMat(BARN.wall, false));
-    body.position.set(o.x, 0.22, o.z); body.castShadow = true; g.add(body);                             // 정면이 동쪽(밭 문 쪽)을 보게 90° 돌린다
-    const roofGeos = gambrelRoofSlabs(OW, OE, OK2, OR, OD + 0.25).map(q => q.rotateY(Math.PI / 2).translate(o.x, 0.22, o.z));
-    roofGeos.push(new THREE.BoxGeometry(3.0, 0.22, 2.7).translate(o.x, 0.11, o.z));                     // 돌 기초도 같은 메시로(드로우콜)
-    const roof = new THREE.Mesh(mergeGeos(roofGeos), clayMat(BARN.roof)); roof.castShadow = true; g.add(roof);
-  }
-  box(0.8, 1.15, 0.08, clayMat(BARN.dark), o.x + OD / 2 + 0.02, 0.8, o.z + 0.3);                        // 문(동쪽)
-  const win = clayMat(0xffe3a4, false); houseWindows.push(win);                                         // 🏮 창 — 밤에 켜진다
-  box(0.6, 0.5, 0.08, win, o.x + OD / 2 + 0.02, 1.15, o.z - 0.55);
-  {   // 흰 트림 — 문틀 · 모서리 기둥(한 메시로)
-    const t = [];
-    const tb = (w, h, d, x, y, z) => t.push(new THREE.BoxGeometry(w, h, d).translate(o.x + x, y, o.z + z));
+    const solid = [];
+    solid.push(P(at(gambrelSolid(OW, OE, OK2, OR, OD).rotateY(Math.PI / 2).translate(0, 0.22, 0)), BARN.wall));
+    for (const q of gambrelRoofSlabs(OW, OE, OK2, OR, OD + 0.25))
+      solid.push(P(at(q.rotateY(Math.PI / 2).translate(0, 0.22, 0)), BARN.roof));
+    solid.push(P(at(new THREE.BoxGeometry(3.0, 0.22, 2.7).translate(0, 0.11, 0)), BARN.base));   // 돌 기초
+
+    // 판자 결 — 벽에 세로 홈. 있어야 벽이 '판자' 로 읽힌다(단색은 종이 상자로 보인다)
+    const PH = OE - 0.12;
+    for (const sx of [1, -1]) for (let i = -3; i <= 3; i++) {
+      const z = i * 0.34; if (Math.abs(z) > OW / 2 - 0.22) continue;
+      solid.push(P(at(new THREE.BoxGeometry(0.03, PH, 0.05).translate(sx * (OD / 2 + 0.005), 0.22 + PH / 2, z)), BARN.dark));
+    }
+    for (const sz of [1, -1]) for (let i = -2; i <= 2; i++) {
+      const x = i * 0.38; if (Math.abs(x) > OD / 2 - 0.2) continue;
+      solid.push(P(at(new THREE.BoxGeometry(0.05, PH, 0.03).translate(x, 0.22 + PH / 2, sz * (OW / 2 + 0.005))), BARN.dark));
+    }
+
+    // 지붕 널 — 경사면에 가로 단을 얹어 '널을 이었다' 로 읽히게
+    {
+      const hw = OW / 2;
+      for (const sgn of [1, -1]) {
+        const ax = sgn * (hw + 0.15), ay = OE - 0.07, bx = sgn * hw * 0.62, by = OK2, cx = 0, cy = OR + 0.07;
+        for (const t of [0.2, 0.42, 0.68, 0.88]) {
+          const [px, py] = t < 0.55 ? [ax + (bx - ax) * (t / 0.55), ay + (by - ay) * (t / 0.55)]
+                                    : [bx + (cx - bx) * ((t - 0.55) / 0.45), by + (cy - by) * ((t - 0.55) / 0.45)];
+          solid.push(P(at(new THREE.BoxGeometry(OD + 0.3, 0.045, 0.1).translate(0, 0.22 + py + 0.088, px)), 0x7c828a));
+        }
+      }
+    }
+
+    // 🏕️ 문 위 줄무늬 차양 — 정면에 그늘이 져 입구가 어디인지 바로 읽힌다
+    for (let i = 0; i < 5; i++)
+      solid.push(P(at(new THREE.BoxGeometry(0.78, 0.06, 0.21).rotateZ(-0.3).translate(OD / 2 + 0.34, 1.66, 0.3 + (i - 2) * 0.21)), i % 2 ? BARN.trim : BARN.wall));
+    for (const sz of [-0.42, 1.02])
+      solid.push(P(at(new THREE.BoxGeometry(0.05, 0.52, 0.05).rotateZ(0.52).translate(OD / 2 + 0.26, 1.42, sz)), BARN.wood));
+
+    // 🧱 굴뚝 — 지붕선에 수직 요소가 하나 있어야 실루엣이 산다
+    solid.push(P(at(new THREE.BoxGeometry(0.34, 1.1, 0.34).translate(-0.5, 2.5, -0.62)), BARN.base));
+    solid.push(P(at(new THREE.BoxGeometry(0.44, 0.1, 0.44).translate(-0.5, 3.08, -0.62)), 0x7d7469));
+
+    // 📜 벽에 기대 둔 도면 통 — 말뚝 다발(z +1.0)과 반대쪽이라 겹치지 않는다
+    for (const [dz, h, tilt] of [[-1.12, 0.78, 0.2], [-0.99, 0.66, -0.14]])
+      solid.push(P(at(new THREE.CylinderGeometry(0.065, 0.065, h, 7).rotateX(tilt).translate(OD / 2 + 0.16, h / 2 + 0.12, dz)), 0xdcd2bb));
+
+    // 문 + 흰 트림(문틀 · 모서리 기둥 · 창틀)
+    solid.push(P(at(new THREE.BoxGeometry(0.08, 1.15, 0.8).translate(OD / 2 + 0.02, 0.8, 0.3)), BARN.dark));
+    const tb = (w, h, d, x, y, z) => solid.push(P(at(new THREE.BoxGeometry(w, h, d).translate(x, y, z)), BARN.trim));
     tb(0.1, 1.25, 0.08, OD / 2 + 0.05, 0.82, -0.14); tb(0.1, 1.25, 0.08, OD / 2 + 0.05, 0.82, 0.74); tb(0.1, 0.1, 0.96, OD / 2 + 0.05, 1.42, 0.3);
-    for (const [tx, tz] of [[-OD / 2 + 0.06, -OW / 2 + 0.06], [-OD / 2 + 0.06, OW / 2 - 0.06], [OD / 2 - 0.06, -OW / 2 + 0.06], [OD / 2 - 0.06, OW / 2 - 0.06]]) tb(0.12, OE, 0.12, tx, 0.22 + OE / 2, tz);
-    const trim = new THREE.Mesh(mergeGeos(t), clayMat(BARN.trim, false)); trim.castShadow = true; g.add(trim);
+    for (const [tx2, tz2] of [[-OD / 2 + TP, -OW / 2 + TP], [-OD / 2 + TP, OW / 2 - TP], [OD / 2 - TP, -OW / 2 + TP], [OD / 2 - TP, OW / 2 - TP]])
+      tb(0.12, OE, 0.12, tx2, 0.22 + OE / 2, tz2);
+    // 창틀 — 틀이 없으면 창이 벽에 붙인 판때기로 읽힌다
+    for (const wy of [1.42, 0.88]) tb(0.09, 0.07, 0.74, OD / 2 + 0.05, wy, -0.55);
+    for (const wz of [-0.89, -0.21]) tb(0.09, 0.61, 0.07, OD / 2 + 0.05, 1.15, wz);
+    tb(0.09, 0.54, 0.05, OD / 2 + 0.05, 1.15, -0.55);                 // 가운데 살
+    const sm = new THREE.Mesh(mergeGeos(solid), vtxMat()); sm.castShadow = true; sm.receiveShadow = true; g.add(sm);
   }
-  const sign = makeSignBoard('📐 측량소'); sign.scale.setScalar(0.52); sign.position.set(o.x + 0.2, 1.62, o.z + OW / 2 + 0.06); g.add(sign);   // 남쪽 벽 간판
+  {   // 🏮 창 둘 + 처마 등불 — 밤에 함께 켜진다(재질 하나를 houseWindows 가 물고 있다)
+    const win = clayMat(0xffe3a4, false); houseWindows.push(win);
+    const lit = [
+      at(new THREE.BoxGeometry(0.08, 0.5, 0.6).translate(OD / 2 + 0.02, 1.15, -0.55)),   // 동쪽 창(정면)
+      at(new THREE.BoxGeometry(0.62, 0.5, 0.08).translate(-0.68, 1.12, OW / 2 + 0.02)),  // 남쪽 창 — 벽 왼쪽(오른쪽은 간판 자리)
+      at(new THREE.BoxGeometry(0.18, 0.2, 0.18).translate(OD / 2 + 0.16, 1.58, -0.2)),   // 등불
+    ];
+    const wm = new THREE.Mesh(mergeGeos(lit), win); wm.castShadow = false; g.add(wm);
+    box(0.06, 0.18, 0.06, woodMat(1, 1), o.x + OD / 2 + 0.16, 1.76, o.z - 0.2);          // 등불 걸이
+    box(0.74, 0.08, 0.06, clayMat(BARN.trim, false), o.x - 0.68, 0.84, o.z + OW / 2 + 0.03);  // 남쪽 창 선반
+  }
+  // 남쪽 벽 간판 — 처마 그늘(y 1.62)에 묻혀 글씨가 안 읽혔다(2026-09-21). 벽 가운데로 내리고
+  //   🪟 남쪽 창(x -0.74)과 자리를 나눠 오른쪽에 붙인다. 벽에서 띄워야 판이 벽에 파묻히지 않는다.
+  const sign = makeSignBoard('📐 측량소'); sign.scale.setScalar(0.56);
+  sign.position.set(o.x + 0.36, 1.16, o.z + OW / 2 + 0.12); g.add(sign);
+
   // 제도 탁자 — 여기 서면 다음 단계 비용이 프롬프트에 뜬다
   box(1.6, 0.1, 1.1, woodMat(2, 1, 0xc9a071), d.x, 0.8, d.z);
   box(1.1, 0.75, 0.7, woodMat(1, 1), d.x, 0.38, d.z);
@@ -10968,8 +11439,16 @@ function updateDoorInteract() {
   nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
   nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
+  // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
+  //   가장 가까운 한 채를 잡는다(몸집이 커서 반경 2.6). 텃밭에선 밭일이 먼저다(허수아비와 같은 규칙).
+  const stationZone = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop)
+    || (atFarm && !farmActionFirst());
+  nearStation = stationZone
+    ? (gameState.outdoor.find(r => STATION_IDS.includes(r.id) && Math.hypot(r.x - player.position.x, r.z - player.position.z) < 2.6) || null)
+    : null;
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
+  else if (nearStation) prompt = stationLabel(nearStation);
   else if (nearShop) prompt = '🛒 상점';
   else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문, 매주 리셋'); }
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }
@@ -11018,6 +11497,8 @@ function updateDoorInteract() {
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
   else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물·🗿조각 만들기');
+  else if (nearStation?.id === 'kiln') firstHintBanner('kiln', '🔥', '화덕', '재료를 걸어두면 다음 날 구워져 있어요');
+  else if (nearStation?.id === 'vat') firstHintBanner('vat', '🫙', '발효통', '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요');
   else if (nearShop) firstHintBanner('shop', '🛒', '상점', '수확물을 팔고 씨앗을 사는 곳');
   else if (nd === 'farm') firstHintBanner('farmGate', '🌾', '내 텃밭 입구', '마음껏 농사짓는 나만의 넓은 밭');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)
@@ -11292,7 +11773,7 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (!mgView) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); }
+    else if (!mgView) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
@@ -11801,6 +12282,43 @@ function updateCatchItem(dt) {
   }
 }
 // 순간이동(집/텃밭 입퇴장) 시 카메라를 즉시 맞춰 긴 스윕 방지
+// 📷 카메라와 캐릭터 사이에 들어온 나무를 비춰 준다 — 다가가면 화면이 잎으로 덮이던 문제.
+//    나무는 재질을 공유하므로(shared('tree.trunk.mat') 등) 재질 자체를 건드리면 마을 전체가 투명해진다.
+//    가려진 그루의 메시만 **반투명 사본**으로 바꿔 끼우고, 벗어나면 원본으로 되돌린다.
+//    사본은 원본 재질당 하나만 만들어 캐시한다(재질 종류 = 줄기 1 + 잎 3).
+const _fadeCache = new Map();
+const _fadeRay = new THREE.Raycaster();
+const _fadeTo = new THREE.Vector3(), _fadeDir = new THREE.Vector3();
+let _faded = [], _fadeTick = 0;
+
+function fadeMatOf(mat) {
+  let f = _fadeCache.get(mat);
+  if (!f) {
+    f = mat.clone(); f.transparent = true; f.opacity = 0.2; f.depthWrite = false;
+    _fadeCache.set(mat, f);
+  }
+  return f;
+}
+function updateCameraFade() {
+  if ((_fadeTick = (_fadeTick + 1) % 3) !== 0) return;      // 3프레임에 한 번이면 눈에 안 띈다
+  for (const f of _faded) f.mesh.material = f.mat;          // 먼저 전부 되돌린다
+  _faded.length = 0;
+  if (indoor || atMine || atFarm || atSea || atRiver || mgView || boat.active) return;
+  _fadeTo.set(player.position.x, player.position.y + 1.0, player.position.z);
+  _fadeDir.subVectors(_fadeTo, camera.position);
+  const dist = _fadeDir.length();
+  if (!(dist > 0.5)) return;
+  _fadeDir.normalize();
+  _fadeRay.set(camera.position, _fadeDir);
+  _fadeRay.far = dist;
+  for (const h of _fadeRay.intersectObjects(trees, true)) {
+    const m = h.object;
+    if (!m.isMesh || _faded.some(f => f.mesh === m)) continue;
+    _faded.push({ mesh: m, mat: m.material });
+    m.material = fadeMatOf(m.material);
+  }
+}
+
 function snapCamera() {
   _camTarget.copy(player.position).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum ? camOffsetIndoor : camOffset);   // 🏛️ 전시실도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
@@ -11973,6 +12491,12 @@ function updateDayNight(dt) {
   // 집 창문 따뜻한 불빛
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
   for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
+  // 🔥 화덕 불꽃 — 세로로 늘 때 가로가 눌리고(부피 보존 인상), 두 겹이 반대로 비틀린다
+  for (const f of kilnFlames) {
+    const k = Math.sin(t * f.sp + f.ph), k2 = Math.sin(t * f.sp * 0.37 + f.ph * 1.7);
+    f.mesh.scale.set(1 - k * 0.16, 1 + k * 0.3, 1 - k * 0.16);
+    f.mesh.rotation.y = t * f.spin; f.mesh.rotation.z = k2 * 0.16; f.mesh.position.x = k2 * 0.02;
+  }
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
   // ☀️ 루프탑엔 벽도 천장도 없다 — 실내용 따뜻한 점광이 허공에 뜬 것처럼 보여 끈다.
   //   밤엔 대신 파이어핏·자쿠지 같은 층 전용 가구(houseWindows 점등)와 기본 밤 앰비언트로 밝힌다.
@@ -11988,6 +12512,10 @@ function updateDayNight(dt) {
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
   if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
   if (mgView?.type === 'carve') { scene.fog.near = 40; scene.fog.far = 140; }   // 🗿 공방 무대는 원거리 카메라(모바일 ~12.5) — 날씨 안개에 잠기지 않게
+  // 🔥 화덕은 반대다 — 마을 한복판이라 채굴장·팻말·나무가 다 보여 산만했다.
+  //    안개를 바짝 당겨 화덕 뒤를 지우고 무대처럼 만든다(카메라 거리 3.8 기준).
+  // 무대 안개는 **카메라 거리에 맞춰** 민다 — 고정값(5.2/11)으로 두니 뒤로 뺀 🫙 가 뿌옇게 묻혔다(실측 2026-09-21)
+  if (mgView?.type === 'station') { scene.fog.near = stationCamDist + 1.4; scene.fog.far = stationCamDist + 6.2; }
   if (extView && !mgView && !indoor) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
   if (atCafe) {
@@ -12408,6 +12936,7 @@ function handleAction() {
     return placeOutdoor(ax, az);
   }
   if (nearKitchen) { trackEvent('kitchen_open'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
+  if (nearStation) return ui.openCraft?.(craftPanelData(nearStation.id));   // 🔥🫙 가공 시설 근처 → 가공 창
   if (nearBench) return ui.openCook?.();   // 작업대 근처 → 제작 메뉴(도구·야외·선물)
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
@@ -13675,6 +14204,30 @@ function catchUpWorkers() {
   requestSave();
 }
 
+// 🔥 자고 일어난 사이에 다 된 것을 알린다. **자동으로 받아 주지는 않는다** —
+//    받으러 가는 행동 자체가 '돌아온 보람' 이라 그것까지 없애면 알림만 남는다.
+//    받기 전까지 매 세션 뜨면 성가시므로 하루 한 번만.
+function catchUpCraft() {
+  const today = todayStr();
+  const ready = (gameState.craft?.slots || []).filter(s => isReady(s, today));
+  if (!ready.length || gameState.craft.noticedDay === today) return;
+  gameState.craft.noticedDay = today;
+  const names = [...new Set(ready.map(s => craftRecipeOf(s.item).ico + craftRecipeOf(s.item).name))];
+  trackEvent('craft_ready_notice', {
+    n: ready.length,
+    max_waited: Math.max(...ready.map(s => waitedDays(s.day, today))),
+  });
+  // 시설이 섞였으면 한쪽 이름으로 말하면 안 된다 — 발효통 것을 "구워졌다" 고 알리면 거짓말이다
+  const kinds = [...new Set(ready.map(s => stationOf(s.item)))];
+  const one = kinds.length === 1 ? stationDef(kinds[0]) : null;
+  setTimeout(() => ui.showHintModal?.({
+    ico: one ? one.ico : '📦',
+    title: one ? one.notice : '밤사이 가공이 다 됐어요',
+    body: `${names.join(' · ')}\n${one ? one.go : '시설에 가서 받아 가세요'}`,
+  }), 2200);            // 일꾼 요약(1400) 뒤에 뜨도록
+  requestSave();
+}
+
 // ── 조형 — 주민 블롭 몸 + 플레이어 문법 팔 + 등급 모자(견습 두건 · 숙련 밀짚 · 장인 넓은 챙) ──
 function makeWorkerHat(grade) {
   const g = new THREE.Group();
@@ -14295,7 +14848,7 @@ function updateParticles(dt) {
 // =============================================================
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
-const RES_LABEL = { wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
+const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
   sap_apple: '🍎사과나무 묘목', sap_pear: '🍐배나무 묘목', sap_peach: '🍑복숭아나무 묘목',
