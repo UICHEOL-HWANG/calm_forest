@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SLOTS_PER_KILN, MAX_KILNS, capacityOf, isReady, setSlot, readySlots, claimAll, waitedDays,
+  slotsOfKiln, kilnState,
 } from '../js/craft/slots.js';
 
 test('용량: 화덕 1채 2칸 · 최대 3채 6칸', () => {
@@ -20,14 +21,15 @@ test('isReady: 날짜가 바뀌어야 완성 — 같은 날은 아직', () => {
 
 test('setSlot: 새 배열을 돌려주고 원본을 건드리지 않는다', () => {
   const before = [];
-  const after = setSlot(before, { st: 'kiln_1', item: 'charcoal', grade: 2, day: '20260920' });
+  const after = setSlot(before, { item: 'charcoal', grade: 2, day: '20260920' });
   assert.equal(before.length, 0, '원본 불변');
   assert.equal(after.length, 1);
-  assert.deepEqual(after[0], { st: 'kiln_1', item: 'charcoal', qty: 4, grade: 2, day: '20260920' });
+  assert.deepEqual(after[0], { item: 'charcoal', qty: 4, grade: 2, day: '20260920' },
+    '슬롯은 특정 화덕에 묶지 않는다 — 배치 장식에 고유 id 가 없어 옮기면 연결이 끊긴다');
 });
 
 test('setSlot: 등급이 수량으로 굳는다 — 나중에 표가 바뀌어도 받는 양은 그대로', () => {
-  const s = setSlot([], { st: 'kiln_1', item: 'flour', grade: 0, day: '20260920' });
+  const s = setSlot([], { item: 'flour', grade: 0, day: '20260920' });
   assert.equal(s[0].qty, 2);
 });
 
@@ -111,4 +113,21 @@ test('sanitizeSlots: 날짜 꼴이 아니면 버린다 — 완성 판정이 문�
     { st: 'kiln_1', item: 'flour', qty: 2, grade: 0, day: '20260920' },
   ];
   assert.equal(sanitizeSlots(raw).length, 1);
+});
+
+// ── 화덕별 파생 상태 (Task 4) ──
+test('slotsOfKiln: i 번째 화덕이 맡는 두 칸', () => {
+  const slots = [{ item: 'charcoal' }, { item: 'flour' }, { item: 'brick' }];
+  assert.deepEqual(slotsOfKiln(slots, 0).map(s => s.item), ['charcoal', 'flour']);
+  assert.deepEqual(slotsOfKiln(slots, 1).map(s => s.item), ['brick']);
+  assert.deepEqual(slotsOfKiln(slots, 2), [], '아직 안 찬 화덕은 빈 칸');
+});
+
+test('kilnState: 빈 화덕 · 굽는 중 · 다 구워짐', () => {
+  const today = '20260921';
+  assert.equal(kilnState([], 0, today), 'empty');
+  assert.equal(kilnState([{ item: 'charcoal', day: '20260921' }], 0, today), 'firing');
+  assert.equal(kilnState([{ item: 'charcoal', day: '20260920' }], 0, today), 'done');
+  assert.equal(kilnState([{ item: 'charcoal', day: '20260921' }, { item: 'flour', day: '20260920' }], 0, today), 'done',
+    '한 칸이라도 다 됐으면 상판에 올라간다');
 });
