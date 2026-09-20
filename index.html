@@ -1119,10 +1119,13 @@
   .cf-state.lack { background: #f5e0dc; color: #a2503f; }
   /* 상점 메뉴 (cook-menu 톤 재사용) */
   /* 🔥 화덕 미니게임 오버레이 — 걸 때 몇 초만. 3D 무대를 쓰지 않는다(매일 치르는 조작이라 전환이 과하다) */
-  #craft-mg { position: fixed; inset: 0; z-index: 34; display: none; place-items: center; background: rgba(20,40,30,.55); }
-  #craft-mg.show { display: grid; }
-  .cmg-card { width: min(380px, 90vw); background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,.35);
-              padding: 22px 22px 18px; color: var(--ink); text-align: center; user-select: none; }
+  /* 화면은 화덕을 비추고(카메라 클로즈업) 조작만 아래에서 한다 — 화면을 덮지 않는다 */
+  #craft-mg { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(26px + env(safe-area-inset-bottom));
+              z-index: 34; display: none; }
+  #craft-mg.show { display: block; }
+  .cmg-card { width: min(380px, 92vw); background: var(--panel); backdrop-filter: blur(8px);
+              border-radius: 20px; box-shadow: var(--shadow);
+              padding: 16px 20px 14px; color: var(--ink); text-align: center; user-select: none; }
   .cmg-title { font-size: 15px; font-weight: 700; }
   .cmg-tip { font-size: 12px; opacity: .65; margin: 5px 0 14px; line-height: 1.5; }
   /* 🌾 맷돌 — 원을 따라 끌면 각이 쌓인다 */
@@ -3909,6 +3912,9 @@
       $('cmg-tip').innerHTML = meta.tip;
       $('cmg-after').style.display = 'none';
       const stage = $('cmg-stage'); stage.innerHTML = '';
+      // 가공 창을 접고 화면을 화덕으로 옮긴다 — 걸 때만 잠깐 클로즈업(요리·조각과 같은 문법)
+      $('craft-menu').classList.remove('show');
+      Input.craftFocus(true);
       $('craft-mg').classList.add('show');
 
       const finish = (score) => {
@@ -3918,7 +3924,12 @@
         $('cmg-grade').textContent = GRADE_FACE[grade];
         $('cmg-yield').textContent = `${Input.craftYield(itemId, grade)}개가 나와요`;
         $('cmg-after').style.display = '';
-        $('cmg-ok').onclick = () => { $('craft-mg').classList.remove('show'); onDone(grade); };
+        $('cmg-ok').onclick = () => {
+          $('craft-mg').classList.remove('show');
+          Input.craftFocus(false);                       // 마을 카메라로 복귀
+          $('craft-menu').classList.add('show');         // 가공 창을 다시 편다
+          onDone(grade);
+        };
       };
 
       if (itemId === 'flour') {
