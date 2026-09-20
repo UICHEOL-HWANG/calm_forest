@@ -354,111 +354,145 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-## Task 3: 세이브 필드와 첫 화덕 배치
+## Task 3: 세이브 복원과 첫 화덕 배치
+
+> **계획 정정(2026-09-20 실행 중):** 원래 `js/save-migrate.js` 의 `migrate()` 를 고치려 했으나
+> 그 파일은 34줄짜리 **게스트→정식 계정 이관 전용** 모듈이고 `migrate()` 가 없다.
+> 실제 복원은 `js/game.js:2528 applySave()` 다. 다만 거기 규칙을 넣으면 테스트할 수 없으므로,
+> **정제 로직은 `js/craft/slots.js` 의 순수 함수로 두고 `applySave` 는 호출만** 한다.
 
 **Files:**
-- Modify: `js/save-migrate.js`
-- Test: `tests/save-migrate.test.mjs` (없으면 생성)
+- Modify: `js/craft/slots.js` — `sanitizeSlots` 추가
+- Modify: `tests/craft-slots.test.mjs` — 정제 테스트 추가
+- Modify: `js/game.js` — `gameState` 에 `craft` 필드 · `applySave`(`:2640` 직후) 복원·첫 화덕
 
 **Interfaces:**
-- Consumes: 없음 (세이브 형태만 다룬다)
-- Produces: 세이브에 `craft: { slots: [] }` 보장 · `gameState.outdoor` 에 `{ id: 'kiln', x, z, rot }` 1채 보장
+- Consumes: `recipeOf` (Task 1)
+- Produces: `sanitizeSlots(raw: unknown) => slot[]` · `KILN_HOME` 상수 · `applySave` 가 `gameState.craft.slots` 를 채운다
 
-**첫 화덕을 기본 배치하는 이유** — 스토리 1장 완료가 25명(진입 109명의 23%)뿐이라 보상으로 주면 대부분이 못 받는다. 마이그레이션으로 놓으면 신규·기존 유저 모두 100% 도달한다. 배치형이므로 플레이어가 원하면 옮길 수 있다.
+**첫 화덕을 기본 배치하는 이유** — 스토리 1장 완료가 25명(진입 109명의 23%)뿐이라 보상으로 주면 대부분이 못 받는다. 배치형이므로 플레이어가 원하면 옮길 수 있다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
+`tests/craft-slots.test.mjs` 끝에 추가:
+
 ```javascript
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { migrate } from '../js/save-migrate.js';
+import { sanitizeSlots } from '../js/craft/slots.js';
 
-test('craft: 필드가 없는 옛 세이브에 빈 슬롯을 만들어 준다', () => {
-  const out = migrate({ inventory: { wood: 3 }, outdoor: [] });
-  assert.deepEqual(out.craft, { slots: [] });
+test('sanitizeSlots: 배열이 아니면 빈 배열 — 옛 세이브를 신규로 오인하지 않는다', () => {
+  assert.deepEqual(sanitizeSlots(undefined), []);
+  assert.deepEqual(sanitizeSlots(null), []);
+  assert.deepEqual(sanitizeSlots({}), []);
+  assert.deepEqual(sanitizeSlots('x'), []);
 });
 
-test('craft: 이미 있는 슬롯은 건드리지 않는다', () => {
-  const slots = [{ st: 'kiln_1', item: 'flour', qty: 3, grade: 1, day: '20260920' }];
-  const out = migrate({ inventory: {}, outdoor: [], craft: { slots } });
-  assert.deepEqual(out.craft.slots, slots);
+test('sanitizeSlots: 표에 없는 품목은 버린다', () => {
+  const raw = [
+    { st: 'kiln_1', item: 'charcoal', qty: 4, grade: 2, day: '20260920' },
+    { st: 'kiln_1', item: 'plutonium', qty: 99, grade: 3, day: '20260920' },
+  ];
+  assert.deepEqual(sanitizeSlots(raw).map(s => s.item), ['charcoal']);
 });
 
-test('첫 화덕: 한 채도 없으면 마을에 하나 놓아 준다', () => {
-  const out = migrate({ inventory: {}, outdoor: [] });
-  const kilns = out.outdoor.filter(r => r.id === 'kiln');
-  assert.equal(kilns.length, 1, '스토리 1장 완료가 23% 뿐이라 보상으로 주면 못 받는다');
-  assert.equal(typeof kilns[0].x, 'number');
-  assert.equal(typeof kilns[0].z, 'number');
+test('sanitizeSlots: 수량·등급을 범위 안으로 물린다', () => {
+  const raw = [{ st: 'kiln_1', item: 'flour', qty: 9999, grade: 77, day: '20260920' }];
+  const out = sanitizeSlots(raw);
+  assert.equal(out[0].qty, 5, '표의 최대 산출을 넘길 수 없다');
+  assert.equal(out[0].grade, 3);
 });
 
-test('첫 화덕: 이미 지어 둔 게 있으면 더 놓지 않는다', () => {
-  const mine = { id: 'kiln', x: 2, z: -3, rot: 1 };
-  const out = migrate({ inventory: {}, outdoor: [mine] });
-  assert.deepEqual(out.outdoor.filter(r => r.id === 'kiln'), [mine], '옮겨 둔 자리를 되돌리지 않는다');
+test('sanitizeSlots: 음수·비숫자 수량은 최소로', () => {
+  const raw = [
+    { st: 'kiln_1', item: 'flour', qty: -3, grade: 0, day: '20260920' },
+    { st: 'kiln_1', item: 'flour', qty: 'many', grade: 0, day: '20260920' },
+  ];
+  assert.deepEqual(sanitizeSlots(raw).map(s => s.qty), [2, 2]);
 });
 
-test('첫 화덕: 세 채를 지은 사람에게 네 번째를 얹지 않는다', () => {
-  const three = [{ id: 'kiln', x: 0, z: 0 }, { id: 'kiln', x: 1, z: 0 }, { id: 'kiln', x: 2, z: 0 }];
-  const out = migrate({ inventory: {}, outdoor: three });
-  assert.equal(out.outdoor.filter(r => r.id === 'kiln').length, 3);
+test('sanitizeSlots: 날짜 꼴이 아니면 버린다 — 완성 판정이 문자열 비교라 형식이 깨지면 위험하다', () => {
+  const raw = [
+    { st: 'kiln_1', item: 'flour', qty: 2, grade: 0, day: '2026-09-20' },
+    { st: 'kiln_1', item: 'flour', qty: 2, grade: 0 },
+    { st: 'kiln_1', item: 'flour', qty: 2, grade: 0, day: '20260920' },
+  ];
+  assert.equal(sanitizeSlots(raw).length, 1);
 });
 ```
 
 - [ ] **Step 2: 테스트를 돌려 실패를 확인한다**
 
-Run: `node --test tests/save-migrate.test.mjs`
-Expected: FAIL — `out.craft` 가 `undefined`
+Run: `node --test tests/craft-slots.test.mjs`
+Expected: FAIL — `sanitizeSlots` 가 export 되지 않음
 
-- [ ] **Step 3: 마이그레이션을 구현한다**
+- [ ] **Step 3: 정제 함수를 구현한다**
 
-`js/save-migrate.js` 파일 위쪽 상수 구간에:
-
-```javascript
-// 첫 화덕 자리 — 집과 밭 사이 빈터. 마을 동선 위라 처음 나갈 때 눈에 들어온다
-const KILN_HOME = [-6, 4];
-```
-
-`migrate` 안, 기존 기본값 채우기 구간 옆에:
+`js/craft/slots.js` 에 추가(`recipeOf` import 를 함께 늘린다):
 
 ```javascript
-  // 🔥 화덕 — 가공 슬롯. 필드가 없는 옛 세이브를 신규로 오인하지 않게 기본값을 채운다
-  if (!s.craft || !Array.isArray(s.craft.slots)) s.craft = { slots: [] };
+import { recipeOf, yieldOf } from './recipes.js';
 
-  // 첫 화덕은 스토리 보상이 아니라 기본 배치다.
-  // story_chapter_complete 의 1장이 25명(진입 109명의 23%)뿐이라 보상으로 주면 대부분이 못 받는다.
-  // 배치형이므로 마음에 안 들면 플레이어가 옮긴다.
-  s.outdoor = Array.isArray(s.outdoor) ? s.outdoor : [];
-  if (!s.outdoor.some(r => r.id === 'kiln')) {
-    s.outdoor = [...s.outdoor, { id: 'kiln', x: KILN_HOME[0], z: KILN_HOME[1], rot: 0 }];
-  }
+/** 세이브에서 온 슬롯 배열을 믿지 않고 정제한다.
+ *  기존 복원 코드와 같은 문법 — 카탈로그에 있는 것만, 숫자는 범위 안으로. */
+export function sanitizeSlots(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(s => {
+    if (!s || typeof s !== 'object') return false;
+    if (!recipeOf(s.item)) return false;                       // 표에 없는 품목
+    return typeof s.day === 'string' && /^\d{8}$/.test(s.day); // 완성 판정이 문자열 비교라 형식이 깨지면 위험
+  }).map(s => {
+    const grade = Math.max(0, Math.min(3, Number.isFinite(s.grade) ? Math.floor(s.grade) : 0));
+    const max = yieldOf(s.item, 3);
+    const qty = Number.isFinite(s.qty) ? Math.max(yieldOf(s.item, 0), Math.min(max, Math.floor(s.qty)))
+                                       : yieldOf(s.item, 0);
+    return { st: String(s.st || ''), item: s.item, qty, grade, day: s.day };
+  });
+}
 ```
 
 - [ ] **Step 4: 테스트를 돌려 통과를 확인한다**
 
-Run: `node --test tests/save-migrate.test.mjs`
-Expected: PASS (5 tests)
+Run: `node --test tests/craft-slots.test.mjs`
+Expected: PASS (13 tests)
 
-- [ ] **Step 5: 좌표가 다른 시설과 겹치지 않는지 실측한다**
+- [ ] **Step 5: `gameState` 와 `applySave` 를 잇는다**
 
-Run: 브라우저에서 `http://localhost:8000/?dbg` 로 새 세이브를 만들고 `(-6, 4)` 자리를 본다.
-Expected: 집·밭·기존 야외 장식과 겹치지 않음. 겹치면 `KILN_HOME` 을 옮기고 다시 확인.
+`js/game.js` 의 `gameState` 초기값(`:1168` 부근)에:
 
-- [ ] **Step 6: 커밋한다**
+```javascript
+  craft: { slots: [] },          // 🔥 화덕에 걸어 둔 것(js/craft/slots.js 가 규칙을 가진다)
+```
+
+첫 화덕 자리 상수를 `OUTDOOR` 정의 근처에:
+
+```javascript
+// 🔥 첫 화덕 자리 — 집과 밭 사이 빈터. 마을 동선 위라 처음 나갈 때 눈에 들어온다
+const KILN_HOME = [-6, 4];
+```
+
+`applySave` 의 야외 장식 복원(`:2640`) **직후**에:
+
+```javascript
+  // 🔥 화덕에 걸어 둔 것 — 세이브를 믿지 않고 정제한다(표에 없는 품목·깨진 날짜는 버린다)
+  gameState.craft.slots = sanitizeSlots(saved.craft?.slots);
+  // 첫 화덕은 스토리 보상이 아니라 기본 배치다. story_chapter_complete 의 1장이 25명
+  // (진입 109명의 23%)뿐이라 보상으로 주면 대부분이 존재를 모른다. 옮겨 둔 사람의 자리는 건드리지 않는다.
+  if (!gameState.outdoor.some(r => r.id === 'kiln')) placeOutdoor(KILN_HOME[0], KILN_HOME[1], true, 'kiln', 0);
+```
+
+**주의:** 이 호출은 Task 4 에서 `OUTDOOR` 에 `kiln` 을 등록한 뒤에야 동작한다. Task 3 에서는 상태만 넣고, 배치 한 줄은 Task 4 와 함께 켠다.
+
+- [ ] **Step 6: 게임이 뜨는지 확인한다**
+
+Run: 브라우저에서 `?dbg` 로 열고 게스트로 진입.
+Expected: 콘솔 에러 0 · `document.body.className` 에 `playing`.
+**저장은 따로 손댈 게 없다** — `getGameState()`(`:2685`)가 `{ ...gameState }` 를 반환하므로 `craft` 가 자동으로 실린다.
+**슬롯 왕복 실측은 Task 6 뒤로 미룬다** — 그 전에는 슬롯을 채울 수단이 없다.
+
+- [ ] **Step 7: 커밋한다**
 
 ```bash
-git add js/save-migrate.js tests/save-migrate.test.mjs
-git commit -m "feat: 🔥 첫 화덕을 시작부터 마을에 놓는다
-
-스펙은 스토리 보상으로 주려 했지만 데이터가 반대였다 —
-story_chapter_complete 의 1장(home)이 25명으로, 시작한 121명의 21% ·
-진입 유저 109명의 23% 다. 성공 기준(40% 도달)에 애초에 못 미친다.
-
-마이그레이션으로 한 채를 놓으면 신규·기존 모두 100% 도달한다.
-배치형이라 마음에 안 들면 옮길 수 있고, 이미 지어 둔 사람의 자리는
-건드리지 않는다.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+git add js/craft/slots.js tests/craft-slots.test.mjs js/game.js
+git commit -m "feat: 🔥 화덕 슬롯을 세이브에 싣는다 — 정제는 순수 함수로"
 ```
 
 ---
@@ -470,7 +504,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Reference: `sims/kiln-sim.html` (확정 시안)
 
 **Interfaces:**
-- Consumes: `recipeOf` (Task 1) · `isReady`, `MAX_KILNS` (Task 2)
+- Consumes: `recipeOf`→`craftRecipeOf` (Task 1) · `isReady`, `MAX_KILNS` (Task 2)
 - Produces: `OUTDOOR` 에 `{ id: 'kiln', … }` 등록 · `kilnCount()` · `canBuildKiln()` · 메시가 `'empty' | 'firing' | 'done'` 세 상태를 그린다
 
 - [ ] **Step 1: `OUTDOOR` 에 화덕을 등록한다**
@@ -567,7 +601,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Reference: `sims/craft-ui-sim.html` (확정 시안 B안)
 
 **Interfaces:**
-- Consumes: `CRAFT_RECIPES`, `recipeOf`, `lackOf` (Task 1) · `SLOTS_PER_KILN`, `isReady`, `claimAll` (Task 2) · 기존 `SELL_ICO_G`(`js/game.js:325`)·`RES_LABEL` 재료 표기 테이블
+- Consumes: `CRAFT_RECIPES`, `recipeOf`(게임에서는 `craftRecipeOf` 별칭 — 요리용 `recipeOf`(`js/game.js:9813`)와 이름이 겹친다), `lackOf` (Task 1) · `SLOTS_PER_KILN`, `isReady`, `claimAll` (Task 2) · 기존 `SELL_ICO_G`(`js/game.js:325`)·`RES_LABEL` 재료 표기 테이블
 - Produces: `openCraftWindow(recId: string)` · `renderCraftWindow(recId: string)` · `startCraftMinigame(recId, itemId)` 호출(구현은 Task 6)
 
 - [ ] **Step 1: 마크업과 CSS 를 이식한다**
@@ -617,7 +651,7 @@ function renderCraftWindow(recId) {
     const s = mine[i], el = document.createElement('div');
     if (!s) { el.className = 'chip empty'; el.textContent = '비어 있음'; }
     else {
-      const r = recipeOf(s.item), ready = isReady(s, today);
+      const r = craftRecipeOf(s.item), ready = isReady(s, today);
       el.className = 'chip';
       // 상태는 글자가 아니라 기호로 — 칸 3개만 되어도 문구가 두 줄로 깨졌다
       el.innerHTML = `<span class="mini">${r.ico}</span> ${r.name}${ready ? ` ×${s.qty}` : ''} ` +
@@ -631,7 +665,7 @@ function renderCraftWindow(recId) {
   const claimBtn = document.getElementById('craft-claim');
   claimBtn.style.display = ready.length ? '' : 'none';
   claimBtn.textContent = ready.length === 1
-    ? `${recipeOf(ready[0].item).ico} ${recipeOf(ready[0].item).name} 받기`
+    ? `${craftRecipeOf(ready[0].item).ico} ${craftRecipeOf(ready[0].item).name} 받기`
     : `다 구워진 것 모두 받기 (${ready.length})`;
 
   // ── 레시피 목록 ──
@@ -678,7 +712,7 @@ document.getElementById('craft-claim').onclick = () => {
     trackEvent('craft_claim', { item: c.item, qty: c.qty, grade: c.grade, waited_days: c.waitedDays });
   }
   requestSave(); rebuildOutdoor(); renderCraftWindow(curKiln);
-  ui.toast?.(`🔥 ${claimed.map(c => `${recipeOf(c.item).ico}${recipeOf(c.item).name} ${c.qty}`).join(' · ')}`);
+  ui.toast?.(`🔥 ${claimed.map(c => `${craftRecipeOf(c.item).ico}${craftRecipeOf(c.item).name} ${c.qty}`).join(' · ')}`);
 };
 ```
 
@@ -848,7 +882,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Modify: `js/game.js` — `catchUpWorkers()` 호출부(`:2517`) 옆
 
 **Interfaces:**
-- Consumes: `isReady`, `waitedDays` (Task 2) · `recipeOf` (Task 1)
+- Consumes: `isReady`, `waitedDays` (Task 2) · `recipeOf`→`craftRecipeOf` (Task 1)
 - Produces: `catchUpCraft() => slot[] | null`
 
 **자동으로 받아 주지 않는다.** 받는 행동 자체가 "돌아온 보람"이라 요약은 **알려만 주고** 수령은 화덕에서 한다.
@@ -873,7 +907,7 @@ function catchUpCraft() {
 
 ```javascript
 if (craftReady?.length) {
-  bits.push(`🔥 화덕에 ${craftReady.map(s => recipeOf(s.item).ico + recipeOf(s.item).name).join(' · ')}이(가) 다 구워졌어요`);
+  bits.push(`🔥 화덕에 ${craftReady.map(s => craftRecipeOf(s.item).ico + craftRecipeOf(s.item).name).join(' · ')}이(가) 다 구워졌어요`);
 }
 ```
 

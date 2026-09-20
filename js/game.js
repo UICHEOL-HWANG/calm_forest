@@ -63,6 +63,8 @@ import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/ind
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
+import { CRAFT_RECIPES, recipeOf as craftRecipeOf, yieldOf, lackOf } from './craft/recipes.js';   // 🔥 화덕 레시피 표(순수 모듈) — recipeOf 는 요리(:9813)가 이미 쓰는 이름이라 별칭
+import { SLOTS_PER_KILN, MAX_KILNS, isReady, setSlot, claimAll, waitedDays, sanitizeSlots } from './craft/slots.js';   // 🔥 화덕 슬롯 규칙(순수 모듈)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -1176,6 +1178,7 @@ const gameState = {
   npcs: {},                                 // id별 {idx,progress,given,allDone}
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
+  craft: { slots: [] },                     // 🔥 화덕에 걸어 둔 것 [{st,item,qty,grade,day}] — 규칙은 js/craft/slots.js
   house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
@@ -2638,6 +2641,9 @@ function applySave(saved) {
     updateHouseSign();   // 🔨 묵직한 망치를 산 뒤 아직 한 단계도 안 지었으면 건축 루프가 0바퀴라 간판이 옛 숫자로 남는다
   }
   if (Array.isArray(saved.outdoor)) saved.outdoor.forEach(o => placeOutdoor(o.x, o.z, true, o.id, o.rot || 0)); // 야외 장식 복원(방향 포함)
+  // 🔥 화덕에 걸어 둔 것 — 세이브를 믿지 않고 정제한다(표에 없는 품목·깨진 날짜는 버린다).
+  //    필드가 없는 옛 세이브도 빈 배열로 떨어질 뿐, 신규로 오인해 덮어쓰지 않는다.
+  gameState.craft.slots = sanitizeSlots(saved.craft?.slots);
   if (saved.outdoorStored && typeof saved.outdoorStored === 'object') {   // 🧺 보관한 야외 장식 복원(개수만, 음수·비숫자 버림)
     gameState.outdoorStored = {};
     for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
