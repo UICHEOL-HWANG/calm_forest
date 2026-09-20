@@ -2031,6 +2031,8 @@ export const Input = {
   },
   craftGrade(score) { return gradeOfScore(score); },
   craftFocus(on) { return craftFocus(on); },            // 🔥 걸 때 화면을 화덕으로 옮긴다
+  craftFlame(v) { craftFlame(v); },                     // ⚫ 불 조절 — 바늘을 따라 실제 불이 반응
+  craftFlameBurst(good) { craftFlameBurst(good); },     // ⚫ 멈춘 순간 연출
   craftYield(itemId, grade) { return yieldOf(itemId, grade); },
   craftClaim() { return craftClaim(); },                // 🔥 다 구워진 것 받기
   craftData() { return craftPanelData(); },
@@ -9092,6 +9094,30 @@ function hideKilnOccluders(rec, on) {
   }
 }
 
+// ⚫ 불 조절 중 실제 화덕의 불이 바늘을 따라 반응한다 — 화면에 화덕이 보이니
+//    바에서만 움직이면 심심하다. v: 0(사그라듦) ~ 1(활활)
+function kilnFireOf(rec) {
+  return outdoorMeshes.find(m => m.userData.rec === rec)?.userData.kiln || null;
+}
+function craftFlame(v) {
+  const k = nearKiln && kilnFireOf(nearKiln); if (!k) return;
+  k.fire.visible = true;
+  //   1.05 배까지 키우니 불기둥이 조작대를 침범했다 — 0.75 로 줄인다(2026-09-20 실측)
+  const s = 0.45 + Math.max(0, Math.min(1, v)) * 0.75;
+  k.fire.scale.set(0.85 + s * 0.25, s, 0.85 + s * 0.25);      // 세로로 자라고 가로는 덜 퍼진다
+}
+/** 멈춘 순간 — 잘 맞으면 확 타오르며 불티가 뜬다 */
+function craftFlameBurst(good) {
+  const k = nearKiln && kilnFireOf(nearKiln); if (!k) return;
+  if (good) {
+    k.fire.scale.set(1.2, 1.45, 1.2);
+    spawnSparkle(nearKiln.x, 1.05, nearKiln.z + 0.5, 16);
+    Sound.blip?.();
+  } else {
+    k.fire.scale.set(0.7, 0.35, 0.7);                          // 사그라든다
+  }
+}
+
 function craftFocus(on) {
   if (on && nearKiln) {
     mgView = { type: 'kiln' };
@@ -9099,8 +9125,11 @@ function craftFocus(on) {
     hideKilnOccluders(nearKiln, true);
     applyKilnCamera(nearKiln);
   } else if (!on) {
+    const k = nearKiln && kilnFireOf(nearKiln);
+    if (k) k.fire.scale.set(1, 1, 1);        // 미니게임에서 키운 불을 되돌린다
     hideKilnOccluders(null, false);
     mgView = null; player.visible = true; snapCamera();
+    refreshKilns();                          // 불·상판을 슬롯 상태에 맞게 다시 맞춘다
   }
   return !!mgView;
 }

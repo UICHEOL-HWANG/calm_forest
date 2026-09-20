@@ -3975,10 +3975,15 @@
           const t = (performance.now() - t0) / 1000;
           pos = 0.5 + Math.sin(t * 2.4) * 0.48;                 // 좌우로 오감
           needle.style.left = `calc(${pos * 100}% - 2px)`;
+          Input.craftFlame(pos);                                // 🔥 실제 화덕의 불이 바늘을 따라 반응한다
           cmgRaf = requestAnimationFrame(tick);
         };
         tick();
-        stage.querySelector('button').onclick = () => finish(Input.craftScore('charcoal', { pos, target, half }));
+        stage.querySelector('button').onclick = () => {
+          const score = Input.craftScore('charcoal', { pos, target, half });
+          Input.craftFlameBurst(score > 0);                     // 맞으면 확 타오르고 불티, 빗나가면 사그라듦
+          finish(score);
+        };
       } else {
         // 🧱 반죽 — 꾹 눌렀다 목표 구간에서 뗀다
         const targetMs = 1200, tol = 400, MAX = 2200;
