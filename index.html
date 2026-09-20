@@ -1118,6 +1118,32 @@
   .cf-state.ready { background: var(--mint); }
   .cf-state.lack { background: #f5e0dc; color: #a2503f; }
   /* 상점 메뉴 (cook-menu 톤 재사용) */
+  /* 🔥 화덕 미니게임 오버레이 — 걸 때 몇 초만. 3D 무대를 쓰지 않는다(매일 치르는 조작이라 전환이 과하다) */
+  #craft-mg { position: fixed; inset: 0; z-index: 34; display: none; place-items: center; background: rgba(20,40,30,.55); }
+  #craft-mg.show { display: grid; }
+  .cmg-card { width: min(380px, 90vw); background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,.35);
+              padding: 22px 22px 18px; color: var(--ink); text-align: center; user-select: none; }
+  .cmg-title { font-size: 15px; font-weight: 700; }
+  .cmg-tip { font-size: 12px; opacity: .65; margin: 5px 0 14px; line-height: 1.5; }
+  /* 🌾 맷돌 — 원을 따라 끌면 각이 쌓인다 */
+  .cmg-wheel { width: 190px; height: 190px; margin: 0 auto; border-radius: 50%; position: relative;
+               background: radial-gradient(circle at 50% 45%, #efe6d2 0 38%, #d9cbb0 38% 100%); border: 3px solid #c2ac86;
+               touch-action: none; cursor: grab; }
+  .cmg-wheel .hub { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+                    border-radius: 50%; background: #8e7450; }
+  .cmg-wheel .grip { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+                     background: #6b4a34; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  /* ⚫ 불 조절 — 오가는 바늘을 초록 구간에서 멈춘다 */
+  .cmg-bar { position: relative; height: 26px; border-radius: 13px; background: #eef2ee; overflow: hidden; margin: 6px 0 4px; }
+  .cmg-bar .zone { position: absolute; top: 0; bottom: 0; background: var(--mint); }
+  .cmg-bar .needle { position: absolute; top: -3px; bottom: -3px; width: 4px; background: #d05a4a; border-radius: 2px; }
+  /* 🧱 반죽 — 꾹 눌렀다 목표에서 뗀다 */
+  .cmg-hold { height: 26px; border-radius: 13px; background: #eef2ee; overflow: hidden; position: relative; margin: 6px 0 4px; }
+  .cmg-hold .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ffd08a; }
+  .cmg-hold .goal { position: absolute; top: -3px; bottom: -3px; background: rgba(47,165,100,.35); }
+  .cmg-press { width: 100%; margin-top: 10px; }
+  .cmg-result { font-size: 26px; margin: 6px 0 2px; }
+  .cmg-yield { font-size: 13px; font-weight: 700; }
   /* 🔥 화덕 가공 창 — sims/craft-ui-sim.html 에서 확정한 B안(슬롯 띠 + 레시피).
      걸기가 한 번에 끝나야 한다: 레시피 줄의 [걸기] 를 바로 누른다(A·C안은 창이 한 번 더 떠서 2단계였다). */
   #craft-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
@@ -1714,6 +1740,20 @@
     <div id="craft-recipes" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="cf-hint">걸어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요<br>서두르지 않아도 돼요 — 언제 와도 그대로예요</div>
     <div class="dm-actions"><button id="craft-close">닫기</button></div>
+  </div>
+
+  <!-- 🔥 화덕 미니게임 오버레이 -->
+  <div id="craft-mg">
+    <div class="cmg-card">
+      <div class="cmg-title" id="cmg-title"></div>
+      <div class="cmg-tip" id="cmg-tip"></div>
+      <div id="cmg-stage"></div>
+      <div id="cmg-after" style="display:none">
+        <div class="cmg-result" id="cmg-grade"></div>
+        <div class="cmg-yield" id="cmg-yield"></div>
+        <button class="cf-btn go cmg-press" id="cmg-ok">걸어두기</button>
+      </div>
+    </div>
   </div>
   <div id="shop-menu" class="panel">
     <div class="dm-head">🛒 상점 <span id="shop-coin" class="ck-inv"></span></div>
@@ -3853,6 +3893,101 @@
     // ═══════════════ 🍳 자유주방 — 메뉴판 ═══════════════
     //  한 요리는 미니게임 여러 판을 이어 치르는 **코스**다. ★ 개수 = 판 수 = 난이도.
     //  메뉴판이 "이 요리는 무엇을 몇 판 하는가"를 미리 보여주므로, 플레이어가 난이도를 직접 고른다.
+    // 🔥 화덕 미니게임 — 걸 때 한 번. 판정은 js/craft/minigame.js(순수)가 하고 여기선 조작만 받는다.
+    //    3D 무대를 쓰지 않는다: 매일 치르는 조작이라 무대 전환이 거추장스럽다.
+    const CMG = {
+      charcoal: { title: '⚫ 불 조절', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
+      flour:    { title: '🌾 맷돌 돌리기', tip: '손잡이를 원을 따라 <b>일정한 속도로</b> 돌리세요<br>빠르기가 아니라 고르기가 점수예요' },
+      brick:    { title: '🧱 반죽 다지기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
+    };
+    const GRADE_FACE = ['😅', '🙂', '😋', '💫'];
+    let cmgRaf = 0, cmgCleanup = null;
+
+    function craftMinigame(itemId, onDone) {
+      const meta = CMG[itemId]; if (!meta) { onDone(1); return; }
+      $('cmg-title').innerHTML = meta.title;
+      $('cmg-tip').innerHTML = meta.tip;
+      $('cmg-after').style.display = 'none';
+      const stage = $('cmg-stage'); stage.innerHTML = '';
+      $('craft-mg').classList.add('show');
+
+      const finish = (score) => {
+        if (cmgRaf) { cancelAnimationFrame(cmgRaf); cmgRaf = 0; }
+        cmgCleanup?.(); cmgCleanup = null;
+        const grade = Input.craftGrade(score);
+        $('cmg-grade').textContent = GRADE_FACE[grade];
+        $('cmg-yield').textContent = `${Input.craftYield(itemId, grade)}개가 나와요`;
+        $('cmg-after').style.display = '';
+        $('cmg-ok').onclick = () => { $('craft-mg').classList.remove('show'); onDone(grade); };
+      };
+
+      if (itemId === 'flour') {
+        // 🌾 맷돌 — 원을 따라 끈 각을 쌓는다. 한 바퀴 반이면 끝.
+        stage.innerHTML = '<div class="cmg-wheel"><div class="hub"></div><div class="grip"></div></div>';
+        const wheel = stage.querySelector('.cmg-wheel'), grip = stage.querySelector('.grip');
+        const R = 72, samples = [];
+        let ang = -Math.PI / 2, total = 0, dragging = false, last = ang;
+        const put = () => {
+          grip.style.left = `${95 + Math.cos(ang) * R}px`;
+          grip.style.top = `${95 + Math.sin(ang) * R}px`;
+        };
+        put();
+        const at = e => {
+          const r = wheel.getBoundingClientRect();
+          const p = e.touches ? e.touches[0] : e;
+          return Math.atan2(p.clientY - (r.top + r.height / 2), p.clientX - (r.left + r.width / 2));
+        };
+        const down = e => { dragging = true; last = at(e); e.preventDefault(); };
+        const move = e => {
+          if (!dragging) return;
+          const a = at(e);
+          let d = a - last; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+          last = a; ang = a; total += Math.abs(d); put();
+          samples.push({ t: performance.now(), a: total });
+          if (total >= Math.PI * 3) { up(); finish(Input.craftScore('flour', samples)); }
+        };
+        const up = () => { dragging = false; };
+        wheel.addEventListener('pointerdown', down); window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+        cmgCleanup = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+      } else if (itemId === 'charcoal') {
+        // ⚫ 불 조절 — 바늘이 오간다. 초록 구간에서 멈춘다.
+        const half = 0.12, target = 0.5;
+        stage.innerHTML = `<div class="cmg-bar"><div class="zone"></div><div class="needle"></div></div>
+                           <button class="cf-btn go cmg-press">멈추기</button>`;
+        const zone = stage.querySelector('.zone'), needle = stage.querySelector('.needle');
+        zone.style.left = `${(target - half) * 100}%`; zone.style.width = `${half * 200}%`;
+        const t0 = performance.now();
+        let pos = 0;
+        const tick = () => {
+          const t = (performance.now() - t0) / 1000;
+          pos = 0.5 + Math.sin(t * 2.4) * 0.48;                 // 좌우로 오감
+          needle.style.left = `calc(${pos * 100}% - 2px)`;
+          cmgRaf = requestAnimationFrame(tick);
+        };
+        tick();
+        stage.querySelector('button').onclick = () => finish(Input.craftScore('charcoal', { pos, target, half }));
+      } else {
+        // 🧱 반죽 — 꾹 눌렀다 목표 구간에서 뗀다
+        const targetMs = 1200, tol = 400, MAX = 2200;
+        stage.innerHTML = `<div class="cmg-hold"><div class="fill"></div><div class="goal"></div></div>
+                           <button class="cf-btn go cmg-press">꾹 누르기</button>`;
+        const fill = stage.querySelector('.fill'), goal = stage.querySelector('.goal');
+        goal.style.left = `${((targetMs - tol) / MAX) * 100}%`;
+        goal.style.width = `${((tol * 2) / MAX) * 100}%`;
+        let t0 = 0;
+        const btn = stage.querySelector('button');
+        const tick = () => {
+          if (t0) { const held = performance.now() - t0; fill.style.width = `${Math.min(100, (held / MAX) * 100)}%`; }
+          cmgRaf = requestAnimationFrame(tick);
+        };
+        tick();
+        const down = () => { t0 = performance.now(); };
+        const up = () => { if (!t0) return; const held = performance.now() - t0; t0 = 0; finish(Input.craftScore('brick', { heldMs: held, targetMs, tol })); };
+        btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up);
+        cmgCleanup = () => { btn.removeEventListener('pointerdown', down); btn.removeEventListener('pointerup', up); };
+      }
+    }
+
     // 🔥 가공 창 — game.js 의 craftPanelData() 가 준 데이터를 그리기만 한다.
     //    상태는 글자가 아니라 기호로(✓ 🔥) — 칸이 3개만 되어도 문구가 두 줄로 깨졌다(시안 실측).
     function renderCraft(d) {
@@ -3889,7 +4024,7 @@
         const b = document.createElement('button');
         b.className = 'cf-btn'; b.textContent = '걸기';
         b.disabled = r.lack.length > 0 || full;
-        b.onclick = () => { const nd = Input.craftSet(r.id); if (nd) renderCraft(nd); };
+        b.onclick = () => craftMinigame(r.id, (grade) => { const nd = Input.craftSet(r.id, grade); if (nd) renderCraft(nd); });
         row.appendChild(b); list.appendChild(row);
       }
     }
