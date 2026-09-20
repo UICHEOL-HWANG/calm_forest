@@ -1982,9 +1982,13 @@ function craftPanelData() {
     recipes: CRAFT_RECIPES.map(r => ({
       id: r.id, ico: r.ico, name: r.name,
       lack: lackOf(r.id, inv),
-      cost: Object.entries(r.cost).map(([k, v]) => ({
-        k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, need: v, have: inv[k] || 0,
-      })),
+      cost: Object.entries(r.cost).map(([k, v]) => {
+        // RES_LABEL 은 항목에 따라 이모지를 이미 품고 있다('🌾밀' · '⚫숯' …).
+        //   그대로 아이콘을 덧붙이면 '🌾🌾밀' 이 된다(340px 실측에서 발견).
+        const label = RES_LABEL[k] || k;
+        const ico = /^[\p{Extended_Pictographic}]/u.test(label) ? '' : (SELL_ICO_G[k] || '📦');
+        return { k, ico, label, need: v, have: inv[k] || 0 };
+      }),
     })),
   };
 }
