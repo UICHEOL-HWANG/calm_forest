@@ -53,12 +53,14 @@ export function canPlaceBuilding({ def, x, z, rot, atFarm, center, half, plots, 
   if (!atFarm) return { ok: false, reason: 'notFarm' };
   const cells = buildingCells(def.fp, x, z, rot);
   const lim = half - 1;   // 울타리 안쪽 칸 중심은 ±(half-1)까지
-  // 밭 안 ∪ 📐측량소 마당 — 창고·게시판처럼 반경 효과가 없는 건물은 마당에 두어 밭 칸을 아낄 수 있다
-  //   (사용자 지적 2026-09-13: "논밭 너무 좁아진다" — 밭은 심는 데 쓰고 건물은 마당으로)
+  // 📐측량소 마당은 **막는다**. 한때 밭 칸을 아끼려 열어 뒀지만(2026-09-13),
+  //   측량소·🔧자재 작업대·🫙발효통이 들어서며 꽉 차 통로까지 막혔다(사용자 지시 2026-09-21).
+  //   마당에 서는 건 게임이 놓는 시설뿐이고, 플레이어가 짓는 건물은 울타리 안에만 둔다.
   const inField = c => Math.abs(c[0] - center.x) <= lim + 0.01 && Math.abs(c[1] - center.z) <= lim + 0.01;
-  const inYard = c => !!yard && c[0] - center.x >= yard.x0 + 1 && c[0] - center.x <= yard.x1 - 1
-    && c[1] - center.z >= yard.z0 + 1 && c[1] - center.z <= yard.z1 - 1;
-  if (cells.some(c => !inField(c) && !inYard(c))) return { ok: false, reason: 'outside' };
+  const inYard = c => !!yard && c[0] - center.x >= yard.x0 && c[0] - center.x <= yard.x1
+    && c[1] - center.z >= yard.z0 && c[1] - center.z <= yard.z1;
+  if (cells.some(inYard)) return { ok: false, reason: 'yard' };
+  if (cells.some(c => !inField(c))) return { ok: false, reason: 'outside' };
   if (cells.some(c => plots.some(p => sameCell(c, [p.x, p.z])))) return { ok: false, reason: 'plot' };
   for (const b of buildings) {
     const bd = FARM_BUILDINGS.find(d => d.id === b.id); if (!bd) continue;

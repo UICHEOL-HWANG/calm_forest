@@ -45,3 +45,14 @@ export function knead2Score(heldMs, targetMs = 1200, tol = 400) {
   if (d >= tol) return 0;
   return 1 - d / tol;
 }
+
+/** 🍷 포도 밟기 — 목표 박자(targetMs)에 맞춰 밟는다. 점수는 '박자에 붙기'다.
+ *  taps 는 밟은 시각(ms) 배열. 연타로 뭉개면 목표에서 크게 벗어나 0 이 된다.
+ *  밀가루(millScore)는 고르기, 이쪽은 **정해진 간격** — 같은 손놀림이 되지 않게 축을 달리했다. */
+export function crushScore(taps = [], targetMs = 520, tolRatio = 0.5) {
+  if (!Array.isArray(taps) || taps.length < 4) return 0;   // 최소 네 번은 밟아야 평가한다
+  const gaps = [];
+  for (let i = 1; i < taps.length; i++) gaps.push(taps[i] - taps[i - 1]);
+  const err = gaps.reduce((a, g) => a + Math.abs(g - targetMs) / targetMs, 0) / gaps.length;
+  return Math.max(0, Math.min(1, 1 - err / tolRatio));
+}

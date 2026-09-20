@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SLOTS_PER_KILN, MAX_KILNS, capacityOf, isReady, setSlot, readySlots, claimAll, waitedDays,
-  slotsOfKiln, kilnState,
+  SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, readySlots, claimAll, waitedDays,
+  stationOf, slotsOf, unitSlots, unitState,
 } from '../js/craft/slots.js';
 
 test('용량: 화덕 1채 2칸 · 최대 3채 6칸', () => {
-  assert.equal(SLOTS_PER_KILN, 2);
-  assert.equal(MAX_KILNS, 3);
+  assert.equal(SLOTS_PER_STATION, 2);
+  assert.equal(MAX_UNITS, 3);
   assert.deepEqual([0, 1, 2, 3, 4].map(capacityOf), [0, 2, 4, 6, 6], '3채를 넘겨도 6칸에서 멈춘다');
 });
 
@@ -76,6 +76,8 @@ test('waitedDays: 며칠 만에 받으러 왔는가 — 핵심 지표', () => {
 // ── 세이브 복원 정제 (Task 3) ──
 import { sanitizeSlots } from '../js/craft/slots.js';
 
+const D = '2026-09-21';   // 건 날 — 완성 판정을 안 보는 테스트는 이 날짜 하나면 된다
+
 test('sanitizeSlots: 배열이 아니면 빈 배열 — 옛 세이브를 신규로 오인하지 않는다', () => {
   assert.deepEqual(sanitizeSlots(undefined), []);
   assert.deepEqual(sanitizeSlots(null), []);
@@ -116,18 +118,60 @@ test('sanitizeSlots: dayStr 형식(YYYY-MM-DD)이 아니면 버린다 — 완성
 });
 
 // ── 화덕별 파생 상태 (Task 4) ──
-test('slotsOfKiln: i 번째 화덕이 맡는 두 칸', () => {
+test('unitSlots: i 번째 화덕이 맡는 두 칸', () => {
   const slots = [{ item: 'charcoal' }, { item: 'flour' }, { item: 'brick' }];
-  assert.deepEqual(slotsOfKiln(slots, 0).map(s => s.item), ['charcoal', 'flour']);
-  assert.deepEqual(slotsOfKiln(slots, 1).map(s => s.item), ['brick']);
-  assert.deepEqual(slotsOfKiln(slots, 2), [], '아직 안 찬 화덕은 빈 칸');
+  assert.deepEqual(unitSlots(slots, 'kiln', 0).map(s => s.item), ['charcoal', 'flour']);
+  assert.deepEqual(unitSlots(slots, 'kiln', 1).map(s => s.item), ['brick']);
+  assert.deepEqual(unitSlots(slots, 'kiln', 2), [], '아직 안 찬 화덕은 빈 칸');
 });
 
-test('kilnState: 빈 화덕 · 굽는 중 · 다 구워짐', () => {
+test('unitState: 빈 화덕 · 굽는 중 · 다 구워짐', () => {
   const today = '2026-09-21';
-  assert.equal(kilnState([], 0, today), 'empty');
-  assert.equal(kilnState([{ item: 'charcoal', day: '2026-09-21' }], 0, today), 'firing');
-  assert.equal(kilnState([{ item: 'charcoal', day: '2026-09-20' }], 0, today), 'done');
-  assert.equal(kilnState([{ item: 'charcoal', day: '2026-09-21' }, { item: 'flour', day: '2026-09-20' }], 0, today), 'done',
+  assert.equal(unitState([], 'kiln', 0, today), 'empty');
+  assert.equal(unitState([{ item: 'charcoal', day: '2026-09-21' }], 'kiln', 0, today), 'firing');
+  assert.equal(unitState([{ item: 'charcoal', day: '2026-09-20' }], 'kiln', 0, today), 'done');
+  assert.equal(unitState([{ item: 'charcoal', day: '2026-09-21' }, { item: 'flour', day: '2026-09-20' }], 'kiln', 0, today), 'done',
     '한 칸이라도 다 됐으면 상판에 올라간다');
+});
+
+// ── 시설이 둘 이상 — 🔥 화덕과 🫙 발효통은 칸을 나눠 쓴다 ─────────────
+test('stationOf: 품목이 어느 시설 것인지', () => {
+  assert.equal(stationOf('flour'), 'kiln');
+  assert.equal(stationOf('juice'), 'vat');
+  assert.equal(stationOf('없는것'), null);
+});
+
+test('slotsOf: 시설별로 칸을 갈라 센다', () => {
+  const slots = [{ item: 'flour', day: D }, { item: 'juice', day: D }, { item: 'charcoal', day: D }];
+  assert.deepEqual(slotsOf(slots, 'kiln').map(s => s.item), ['flour', 'charcoal']);
+  assert.deepEqual(slotsOf(slots, 'vat').map(s => s.item), ['juice']);
+});
+
+test('용량은 시설마다 따로 — 화덕이 꽉 차도 발효통은 비어 있다', () => {
+  const slots = [{ item: 'flour', day: D }, { item: 'charcoal', day: D }];   // 화덕 1채(2칸) 만석
+  assert.equal(slotsOf(slots, 'kiln').length, capacityOf(1), '화덕은 꽉 찼다');
+  assert.equal(slotsOf(slots, 'vat').length, 0, '발효통 칸은 그대로 비어 있다');
+});
+
+test('unitSlots: 발효통도 i 번째가 두 칸씩 맡는다', () => {
+  const slots = [{ item: 'flour', day: D }, { item: 'juice', day: D }, { item: 'juice', day: D }, { item: 'juice', day: D }];
+  assert.deepEqual(unitSlots(slots, 'vat', 0).map(s => s.item), ['juice', 'juice'], '화덕 칸은 건너뛴다');
+  assert.deepEqual(unitSlots(slots, 'vat', 1).map(s => s.item), ['juice']);
+});
+
+test('unitState: 발효통 상태는 발효통 칸만 본다', () => {
+  const today = '2026-09-21';
+  const slots = [{ item: 'flour', day: '2026-09-20' }, { item: 'juice', day: today }];
+  assert.equal(unitState(slots, 'vat', 0, today), 'firing', '다 구워진 밀가루가 발효통을 익힌 걸로 만들면 안 된다');
+  assert.equal(unitState(slots, 'kiln', 0, today), 'done');
+});
+
+test('claimAll: 시설을 주면 그 시설 것만 거둔다', () => {
+  const today = '2026-09-21', y = '2026-09-20';
+  const slots = [{ item: 'flour', qty: 3, grade: 1, day: y }, { item: 'juice', qty: 4, grade: 2, day: y }];
+  const kiln = claimAll(slots, today, 'kiln');
+  assert.deepEqual(kiln.gained, { flour: 3 }, '발효통 것은 손대지 않는다');
+  assert.deepEqual(kiln.rest.map(s => s.item), ['juice'], '남은 칸에 그대로 걸려 있다');
+  const all = claimAll(slots, today);
+  assert.deepEqual(all.gained, { flour: 3, juice: 4 }, '시설을 안 주면 전부 — 자고 일어난 알림은 한 번에 센다');
 });
