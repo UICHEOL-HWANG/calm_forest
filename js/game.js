@@ -2564,7 +2564,8 @@ export async function enterGame() {
       const count = () => { renderer.render(scene, camera); return renderer.info.render.calls; };
       const on = count();
       ms.forEach(m => m.visible = false); const off = count(); ms.forEach(m => m.visible = true);
-      return { kilns: ms.length, withKiln: on, without: off, perKiln: ms.length ? +((on - off) / ms.length).toFixed(1) : 0 };
+      return { kilns: ms.length, at: ms.map(m => [+m.position.x.toFixed(1), +m.position.z.toFixed(1)]),
+               withKiln: on, without: off, perKiln: ms.length ? +((on - off) / ms.length).toFixed(1) : 0 };
     };
     // 🔥 __craftAge(days) — 걸어 둔 것을 days 일 전에 건 셈 친다(완성·정산 검증용, 로컬 전용).
     //    시스템 시계를 못 바꾸니 슬롯의 날짜를 뒤로 민다.
@@ -10420,7 +10421,12 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
     } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
-  if (id === 'kiln') refreshKilns();   // 🔥 방금 놓은 화덕의 겉모습(불·상판)을 슬롯 상태에 맞춘다
+  if (id === 'kiln') {
+    refreshKilns();                     // 🔥 방금 놓은 화덕의 겉모습(불·상판)을 슬롯 상태에 맞춘다
+    // [GA4] 몇 채째를 짓는가 — 2·3채를 짓는다는 건 슬롯이 모자랄 만큼 쓰고 있다는 뜻이다.
+    //   silent(세이브 복원·기본 지급)는 제외해야 '지은 것' 만 잡힌다.
+    if (!silent) trackEvent('craft_station_build', { seq: kilnCount() });
+  }
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
