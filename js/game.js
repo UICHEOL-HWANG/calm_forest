@@ -673,7 +673,37 @@ const OUTDOOR = [
 ];
 // 🔥 첫 화덕 자리 — ⛏️채굴장 입구(-14,3) 아래 빈터. 마을 서쪽 동선 위라 오가며 눈에 들어온다.
 //    (-6,4) 는 목수 아저씨와 겹쳐 캐릭터 뒤에 가렸다(2026-09-20 실측).
-const KILN_HOME = [-13, 8];
+//    한 점에 박으면 그 자리에 나무가 서 있을 때 화덕이 파묻힌다 — 후보 중 **가장 트인 곳**을 고른다.
+const KILN_SPOTS = [[-13, 8], [-11.5, 9.5], [-15, 9], [-12, 6.4], [-16, 7.5]];
+const KILN_HOME = KILN_SPOTS[0];                 // 기본값(후보를 못 고를 때)
+const KILN_CLEAR_R = 2.4;                        // 이 반경 안엔 나무가 없어야 한다(화덕 폭 2.03 + 여유)
+
+/** 후보 중 가장 가까운 나무가 멀리 있는 자리 */
+function pickKilnSpot() {
+  let best = KILN_HOME, bestD = -1;
+  for (const [x, z] of KILN_SPOTS) {
+    let d = 99;
+    for (const t of trees) d = Math.min(d, Math.hypot(t.position.x - x, t.position.z - z));
+    if (d > bestD) { bestD = d; best = [x, z]; }
+  }
+  return best;
+}
+/** 화덕 자리와 **앞 통로**를 비운다.
+ *  주변만 치우면 다가갈 때 카메라가 앞 나무를 뚫어 화면이 잎으로 덮인다(사용자 실측 2026-09-20).
+ *  카메라는 플레이어 뒤 남쪽에 있으므로 화덕 앞(z+) 좁은 길만 낸다 — 마을이 휑해지지 않게 폭은 조인다. */
+function clearTreesForKiln(x, z) {
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const t = trees[i];
+    const dx = t.position.x - x, dz = t.position.z - z;
+    const near = Math.hypot(dx, dz) < KILN_CLEAR_R;
+    const front = dz > 0 && dz < 5.5 && Math.abs(dx) < 2.7;     // 접근 통로(1.9 로는 팻말 쪽 나무가 남았다)
+    if (near || front) {
+      scene.remove(t); trees.splice(i, 1);
+      const oi = obstacles.findIndex(o => Math.abs(o.x - t.position.x) < 0.01 && Math.abs(o.z - t.position.z) < 0.01);
+      if (oi >= 0) obstacles.splice(oi, 1);      // 밭 금지 원도 같이 치운다
+    }
+  }
+}
 const KILN_SCALE = 1.35;        // 마을 기준 체감 크기(1.0 은 벤치보다 작게 읽혔다)
 function kilnCount() { return gameState.outdoor.filter(r => r.id === 'kiln').length; }
 // 화덕은 3채까지 — 마을이 화덕으로 뒤덮이지 않게. 슬롯 상한 6칸도 여기서 나온다
@@ -2435,7 +2465,11 @@ export async function enterGame() {
   // 🔥 첫 화덕 — 세이브가 있든 없든 한 채는 서 있어야 한다. applySave 안에 두면 신규 유저가 못 받는다.
   //    스토리 보상으로 주려던 원안은 1장 완료가 25명(진입 109명의 23%)뿐이라 폐기했다.
   //    이미 지어 두거나 옮겨 둔 사람의 자리는 건드리지 않는다.
-  if (!kilnCount()) placeOutdoor(KILN_HOME[0], KILN_HOME[1], true, 'kiln', 0);
+  if (!kilnCount()) {
+    const [kx, kz] = pickKilnSpot();
+    clearTreesForKiln(kx, kz);                   // 나무에 파묻히지 않게 자리를 낸다
+    placeOutdoor(kx, kz, true, 'kiln', 0);
+  }
   refreshKilns();
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
