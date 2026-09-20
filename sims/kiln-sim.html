@@ -1,0 +1,353 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🔥 화덕 조형 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:130px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:600;
+       background:rgba(255,255,255,.82);padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.35}
+  .tag small{display:block;font-weight:400;opacity:.65;font-size:10.5px}
+  @media (max-width:700px){ .tag{font-size:10.5px;padding:2px 6px} .tag small{display:none} }
+</style>
+<div id="labels"></div>
+<div id="dc" style="position:fixed;top:10px;right:12px;background:rgba(255,255,255,.85);padding:7px 11px;border-radius:9px;font-size:12px;line-height:1.6"></div>
+<div id="ui">
+  <div class="row">
+    <b>카메라</b>
+    <label>거리 <input id="dist" type="range" min="3" max="16" step="0.1" value="7.4"><span id="distV">7.4</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="22"><span id="angV">22</span>°</label>
+    <label>높이 <input id="hgt" type="range" min="0.5" max="6" step="0.1" value="2.4"><span id="hgtV">2.4</span></label>
+    <label><input id="spin" type="checkbox"> 자동 회전</label>
+    <label><input id="night" type="checkbox"> 밤 조명</label>
+    <label><input id="ref" type="checkbox" checked> 크기 비교(화로·캐릭터)</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+// ⚡ 드로우콜: 게임 본편은 js/game.js:2779 mergeGeos 로 같은 일을 한다(정점색까지 합치는 수동 병합).
+//    시안에선 결과가 같은 표준 유틸로 개수만 검증한다.
+
+// ── 게임과 같은 재질 문법(js/game.js:2759 clayMat) ──
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0, flatShading: flat });
+
+// 게임 팔레트에서 뽑은 색 — clayMat 사용 빈도 상위값
+const C = {
+  stone:  0x5a5148,   // 회갈색 돌 (기존 화로 다리와 같은 값)
+  stoneD: 0x4a4844,   // 짙은 돌 (기존 화로 그릇)
+  clay:   0xc79a63,   // 밝은 갈색(흙)
+  cream:  0xcfc7b0,   // 밝은 회베이지
+  brick:  0x9a7358,   // 따뜻한 흙벽돌 — stone(0x5a5148) 은 낮에 검게 읽혔다
+  brickD: 0x7d5c46,   // 그 그늘색 — 장작단이 검은 상자로 튀지 않게
+};
+
+const emissives = [];                       // 밤 점등(게임의 houseWindows 와 같은 역할)
+const fireLights = [];                      // 불이 주변을 밝히는 몫
+function fireMat() {
+  const m = new THREE.MeshStandardMaterial({ color: 0xff8a3a, emissive: 0xff6a1a, emissiveIntensity: 0, roughness: 0.5 });
+  emissives.push(m); return m;
+}
+// 🔥 불꽃 — 원뿔은 "고깔"로 읽혔다(2026-09-20 1차 실패).
+//    진짜 불의 옆모습은 ① 밑동이 불룩하고 ② 중간이 잘록해지다 ③ 끝이 가늘게 빠진다.
+//    그 프로필을 LatheGeometry 로 돌려 만든다. 세그먼트 6 — 주변 flat shading 과 결을 맞춘다.
+const flames = [];
+const sparkSets = [];
+function flameProfile(scale, tall) {
+  return [[0.002, 0], [0.085, 0.035], [0.108, 0.10], [0.088, 0.185], [0.048, 0.278], [0.013, 0.355], [0.001, 0.44]]
+    .map(([x, yy]) => new THREE.Vector2(x * scale, yy * tall));
+}
+function fireBall(r) {
+  const g = new THREE.Group();
+  const k = r / 0.17;                                   // 기준 크기(0.17)에 대한 배율
+  const spec = [
+    { c: 0xff7320, e: 0xff3d00, s: 1.0 * k,  t: 1.0 * k,  sp: 6.8,  ph: 0.0, spin: 0.9 },   // 바깥 — 주황
+    { c: 0xffd44e, e: 0xffab10, s: 0.52 * k, t: 0.66 * k, sp: 10.6, ph: 2.3, spin: -1.5 },  // 안쪽 — 밝은 노랑(심지)
+  ];
+  for (const s2 of spec) {
+    const m = new THREE.MeshStandardMaterial({ color: s2.c, emissive: s2.e, emissiveIntensity: 0.95, roughness: 0.55 });
+    emissives.push(m);
+    const mesh = new THREE.Mesh(new THREE.LatheGeometry(flameProfile(s2.s, s2.t), 6), m);
+    g.add(mesh);
+    flames.push({ mesh, sp: s2.sp, ph: s2.ph, spin: s2.spin });
+  }
+  // 불똥(떠오르는 점)은 쓰지 않는다 — 불꽃 끝에서 동그란 점이 튀어 나가는 것으로 보였다(2026-09-20).
+  const l = new THREE.PointLight(0xff8c3a, 0, 3.4, 2); l.position.y = r * 1.2;
+  fireLights.push(l); g.add(l);
+  return g;
+}
+
+// ⚡ 같은 재질 조각을 하나의 지오메트리로 — 드로우콜 절감.
+//    game.js:2779 mergeGeos 와 같이 non-indexed 로 통일한 뒤 합친다
+const ni = g => (g.index ? g.toNonIndexed() : g);
+const merged = (geos, mat) => new THREE.Mesh(mergeGeometries(geos.map(ni)), mat);
+
+// 아궁이 입 — 반원통을 눕혀 "파낸 구멍"으로 읽히게(별도 부속이 아니라 몸통의 음각)
+function mouth(r, depth) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, depth, 10, 1, false, 0, Math.PI), clayMat(C.stoneD, false));
+  m.rotation.z = Math.PI / 2; m.rotation.y = Math.PI / 2;
+  return m;
+}
+
+// =============================================================
+//  A — 돌 돔 가마 : 반구를 눌러 만든 돔 하나. 실루엣이 "둥근 언덕"
+// =============================================================
+function kilnDome() {
+  const g = new THREE.Group();
+  // 기단 2단 — 돌을 쌓아 올린 단면을 만들어 "지어진 것"으로 읽히게
+  const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 0.98, 0.2, 10), clayMat(C.stone));
+  b1.position.y = 0.1; g.add(b1);
+  const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.84, 0.9, 0.18, 10), clayMat(C.stoneD));
+  b2.position.y = 0.29; g.add(b2);
+  // 반구를 살짝만 눌러 키를 준다(0.78 은 무덤으로 읽혔다 — 0.95)
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.82, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), clayMat(C.clay));
+  dome.scale.y = 0.95; dome.position.y = 0.38; g.add(dome);
+  // 입구 — 돔 표면보다 안쪽(z 0.5)에 두어 튀어나오지 않고 파인 것으로 보이게
+  const m = mouth(0.29, 0.5); m.position.set(0, 0.5, 0.5); g.add(m);
+  // 불은 입구 **앞쪽 끝**에 둔다 — 안쪽에 두면 반원통 내벽에 가려 밤에 안 보인다
+  const fire = fireBall(0.2); fire.position.set(0, 0.44, 0.68); g.add(fire);
+  return g;
+}
+
+// =============================================================
+//  B — 원통 굴뚝 가마 : 위로 좁아지는 원뿔대. 실루엣이 "탑"
+// =============================================================
+function kilnTower() {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.78, 0.22, 10), clayMat(C.stone));
+  base.position.y = 0.11; g.add(base);
+  // 아래 0.66 → 위 0.34 로 좁아지는 하나의 덩어리(마디를 넣지 않는다)
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.66, 1.35, 10), clayMat(C.clay));
+  body.position.y = 0.89; g.add(body);
+  // 목 — 굴뚝을 덧붙이는 게 아니라 몸통 비례를 이어받는 연장.
+  //      색을 몸통과 같게 두어야 위가 잘린 것처럼 보이지 않는다(stoneD 는 끊겨 보였다)
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.33, 0.34, 10), clayMat(C.clay));
+  neck.position.y = 1.73; g.add(neck);
+  // 아궁이 테 — 굴뚝 끝을 한 줄로 마감(면을 끊어 실루엣 위쪽에 선이 생긴다)
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.31, 0.08, 10), clayMat(C.stoneD));
+  rim.position.y = 1.93; g.add(rim);
+  const m = mouth(0.22, 0.3); m.position.set(0, 0.42, 0.56); g.add(m);
+  const fire = fireBall(0.16); fire.position.set(0, 0.38, 0.66); g.add(fire);
+  return g;
+}
+
+// =============================================================
+//  C — 낮은 아궁이  ★ 2026-09-20 채택
+//  옆으로 긴 덩어리 + 평평한 상판. 상판에 완성물을 올려 멀리서도 "다 됐다"가 읽힌다.
+//  state: 'empty'(빈 화덕) | 'firing'(굽는 중) | 'done'(완성 — 상판에 산출물)
+// =============================================================
+function kilnHearth(state = 'firing') {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.98, 0.86), clayMat(C.brick));
+  body.position.y = 0.49; g.add(body);
+  // 상판을 본체보다 넓게 얹어 그림자 선이 한 줄 생기게 — 이 면이 완성물 자리다
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.14, 1.0), clayMat(C.cream));
+  top.position.y = 1.05; g.add(top);
+  // 아궁이 입은 하나. 둘이면 눈이 되어 얼굴로 읽힌다
+  const m = mouth(0.29, 0.5); m.position.set(-0.3, 0.42, 0.26); g.add(m);
+  // 굽는 중일 때만 불. 빈 화덕와 완성은 꺼져 있다
+  if (state === 'firing') {
+    // 아궁이 입 앞턱에 걸치게 — 안쪽에 두면 반원통에 가려 불이 작아 보인다
+    const f = fireBall(0.17); f.position.set(-0.3, 0.3, 0.52); g.add(f);
+  }
+  // 장작 단 — 비대칭을 만들어 좌우가 같은 얼굴이 되지 않게
+  const ledge = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.22, 0.34), clayMat(C.brickD));
+  ledge.position.set(0.44, 0.25, 0.58); g.add(ledge);
+  if (state !== 'done') {                       // 다 구우면 장작을 썼다 — 하나만 남는다
+    const logs = state === 'firing' ? [[0.42, 0.42, 0.04], [0.46, 0.51, -0.05]] : [[0.44, 0.42, 0.04]];
+    g.add(merged(logs.map(([lx, ly, rz]) =>
+      new THREE.CylinderGeometry(0.055, 0.055, 0.44, 6)
+        .rotateZ(Math.PI / 2 + rz).rotateY(0.22).translate(lx, ly, 0.58)), clayMat(0x6b4a34)));
+  }
+  if (state === 'done') g.add(topLoad());
+  return g;
+}
+
+// 상판 위 완성물 — 슬롯 2칸이 곧 두 무더기.
+// 멀리서 "뭔가 놓여 있다"가 읽히는 게 목적이라 실루엣을 서로 다르게 둔다
+function topLoad() {
+  const g = new THREE.Group();
+  const y = 1.12;                                // 상판 윗면(1.05 + 0.07)
+  // ⚫ 숯 — 검은 덩어리 셋을 한 덩어리로 합친다(3 → 1 드로우콜)
+  g.add(merged([[-0.42, -0.1, 0.11], [-0.28, 0.08, 0.09], [-0.46, 0.14, 0.075]].map(([x, z, r]) =>
+    new THREE.IcosahedronGeometry(r, 0).rotateX(0.4).rotateY(0.8).translate(x, y + r * 0.7, z)),
+    clayMat(0x2f2b28)));
+  // 🌾 밀가루 포대 — **눕혀 쌓는다**.
+  //    세워 놓으면 잘록한 목이 도자기로, 접힌 입구가 등대로 읽혔다(2026-09-20 시안 2회 실패).
+  //    눕힌 캡슐은 저폴리에서도 "담겨 묶인 포대"로 바로 읽히고, 둘을 엇갈리게 쌓으면 더 분명해진다
+  g.add(merged([
+    //    세그먼트를 깎아(2,5) 주변 flat shading 과 결을 맞춘다 — 매끈한 캡슐은 베개로 보였다
+    new THREE.CapsuleGeometry(0.1, 0.18, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).translate(0.3, y + 0.085, 0.02),
+    new THREE.CapsuleGeometry(0.088, 0.14, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).rotateY(0.42).translate(0.315, y + 0.23, -0.015),
+  ], clayMat(0xf2ead6)));
+  return g;
+}
+
+// ── 크기 비교 ────────────────────────────────────────────────
+// 기존 화로(js/game.js:10049)를 그대로 옮겨 세운다 — 스케일 감각의 기준점
+function brazierRef() {
+  const g = new THREE.Group();
+  const legMat = clayMat(0x5a5148);
+  for (const a of [0, 2.1, 4.2]) {
+    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 5), legMat);
+    l.position.set(Math.cos(a) * 0.18, 0.25, Math.sin(a) * 0.18); g.add(l);
+  }
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.2, 0.22, 10), clayMat(0x4a4844, false));
+  bowl.position.y = 0.55; g.add(bowl);
+  const fire = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), fireMat());
+  fire.position.y = 0.68; g.add(fire);
+  return g;
+}
+// 캐릭터 대역 — 정확한 모델이 아니라 키(1.25) 기준만
+function humanRef() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.62, 3, 8), clayMat(0xb9c0c4));
+  body.position.y = 0.61; g.add(body);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1), clayMat(0xf3e2c8));
+  head.position.y = 1.12; g.add(head);
+  return g;
+}
+
+// =============================================================
+// A(kilnDome)·B(kilnTower) 는 2026-09-20 비교에서 탈락 — 선택 근거로 함수만 남긴다.
+// 이제 비교 대상은 채택안 C 의 세 가지 상태다.
+const CANDIDATES = [
+  { make: () => kilnHearth('empty'),  name: '① 빈 화덕',   desc: '아무것도 걸지 않음' },
+  { make: () => kilnHearth('firing'), name: '② 굽는 중',   desc: '걸어둔 하룻밤' },
+  { make: () => kilnHearth('done'),   name: '③ 다 됐다',   desc: '상판에 ⚫숯 · 🌾밀가루' },
+];
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe4ee);
+scene.fog = new THREE.Fog(0xcfe4ee, 18, 74);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(30, 40), new THREE.MeshStandardMaterial({ color: 0x9dbd7a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const sun = new THREE.DirectionalLight(0xfff0dd, 1.3);
+sun.position.set(6, 12, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -10; sun.shadow.camera.right = 10;
+sun.shadow.camera.top = 10; sun.shadow.camera.bottom = -10;
+scene.add(sun, sun.target);
+const hemi = new THREE.HemisphereLight(0xdff0ff, 0x6a7a5a, 0.95); scene.add(hemi);
+const amb = new THREE.AmbientLight(0xfff0dd, 0.2); scene.add(amb);
+
+const SPACING = 3.2;
+const anchors = [];
+CANDIDATES.forEach((c, i) => {
+  const g = c.make();
+  g.position.x = (i - 1) * SPACING;
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g);
+  anchors.push({ obj: g, ...c });
+});
+
+const refGroup = new THREE.Group();
+const bz = brazierRef(); bz.position.set(SPACING + 1.6, 0, 0); refGroup.add(bz);
+const hm = humanRef();   hm.position.set(SPACING + 2.5, 0, 0); refGroup.add(hm);
+refGroup.traverse(o => { if (o.isMesh) o.castShadow = true; });
+scene.add(refGroup);
+
+const labelBox = document.getElementById('labels');
+const tags = anchors.map(a => {
+  const el = document.createElement('div'); el.className = 'tag';
+  el.innerHTML = `${a.name}<small>${a.desc}</small>`;
+  labelBox.appendChild(el); return el;
+});
+const refTag = document.createElement('div'); refTag.className = 'tag';
+refTag.innerHTML = `크기 비교<small>기존 🔥화로 · 캐릭터(키 1.25)</small>`;
+labelBox.appendChild(refTag);
+
+const $ = id => document.getElementById(id);
+// 📸 캡처 재현용 — ?dist=13.5&hgt=2.6&ang=18&night=1&ui=0 로 같은 그림을 다시 찍는다
+const Q = new URLSearchParams(location.search);
+const qNum = (k, d) => (Q.has(k) ? +Q.get(k) : d);
+const st = { dist: qNum('dist', 7.4), ang: qNum('ang', 22), hgt: qNum('hgt', 2.4), spin: false, night: Q.get('night') === '1', ref: Q.get('ref') !== '0' };
+for (const k of ['dist', 'ang', 'hgt']) {
+  $(k).addEventListener('input', e => { st[k] = +e.target.value; $(k + 'V').textContent = st[k]; });
+}
+$('spin').addEventListener('change', e => st.spin = e.target.checked);
+$('ref').addEventListener('change', e => { st.ref = e.target.checked; refGroup.visible = st.ref; });
+$('night').addEventListener('change', e => {
+  st.night = e.target.checked;
+  const n = st.night;
+  scene.background.setHex(n ? 0x2b3358 : 0xcfe4ee);
+  scene.fog.color.setHex(n ? 0x2b3358 : 0xcfe4ee);
+  sun.intensity = n ? 0.12 : 1.3;
+  hemi.intensity = n ? 0.22 : 0.95;
+  amb.color.setHex(n ? 0x33406e : 0xfff0dd); amb.intensity = n ? 0.32 : 0.2;
+  ground.material.color.setHex(n ? 0x4a5c46 : 0x9dbd7a);
+  for (const m of emissives) m.emissiveIntensity = n ? 2.1 : 0;
+  for (const l of fireLights) l.intensity = n ? 3.4 : 0;
+});
+
+// URL 로 들어온 초기값을 UI·씬에 실제로 반영한다(슬라이더 표시까지 맞춰야 캡처가 설명된다)
+for (const k of ['dist', 'ang', 'hgt']) { $(k).value = st[k]; $(k + 'V').textContent = st[k]; }
+$('ref').checked = st.ref; refGroup.visible = st.ref;
+if (st.night) { $('night').checked = true; $('night').dispatchEvent(new Event('change')); }
+if (Q.get('ui') === '0') $('ui').style.display = 'none';   // 캡처용 — 조작 바를 뺀다
+
+const _v = new THREE.Vector3();
+function project(obj, yOff) {
+  obj.getWorldPosition(_v); _v.y += yOff;
+  _v.project(camera);
+  return [(_v.x * 0.5 + 0.5) * innerWidth, (-_v.y * 0.5 + 0.5) * innerHeight];
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let t = 0;
+renderer.setAnimationLoop(() => {
+  t += 0.016;
+  if (st.spin) { st.ang = (st.ang + 0.35 + 180) % 360 - 180; $('ang').value = st.ang; $('angV').textContent = Math.round(st.ang); }
+  const a = st.ang * Math.PI / 180;
+  camera.position.set(Math.sin(a) * st.dist, st.hgt, Math.cos(a) * st.dist);
+  camera.lookAt(0, 0.7, 0);
+  sun.target.position.set(0, 0, 0);
+  if (st.night) for (const m of emissives) m.emissiveIntensity = 1.7 + Math.sin(t * 5.5) * 0.45;
+  // 🔥 불꽃 — 세로로 늘었다 줄고, 가로는 반대로 눌린다. 동시에 천천히 비틀려 일렁인다
+  for (const f of flames) {
+    const k2 = Math.sin(t * f.sp + f.ph), k3 = Math.sin(t * f.sp * 0.37 + f.ph * 1.7);
+    f.mesh.scale.set(1 - k2 * 0.16, 1 + k2 * 0.3, 1 - k2 * 0.16);
+    f.mesh.rotation.y = t * f.spin;
+    f.mesh.rotation.z = k3 * 0.16;
+    f.mesh.position.x = k3 * 0.02;
+  }
+  for (const l of fireLights) if (l.intensity) l.intensity = 3.0 + Math.sin(t * 6.3) * 0.9;
+  anchors.forEach((an, i) => {
+    const [x, y] = project(an.obj, 2.15);
+    tags[i].style.left = x + 'px'; tags[i].style.top = y + 'px';
+  });
+  const [rx, ry] = project(refGroup, 1.45);
+  refTag.style.left = rx + 'px'; refTag.style.top = ry + 'px';
+  refTag.style.display = st.ref ? '' : 'none';
+  renderer.render(scene, camera);
+  // ⚡ 드로우콜 — 가마 3채(빈·굽는중·완성) + 바닥 1 기준
+  if ((t * 60 | 0) % 30 === 0) {
+    const c = renderer.info.render.calls;
+    document.getElementById('dc').innerHTML =
+      `⚡ 드로우콜 <b>${c}</b><br><small style="opacity:.7">화덕 3채 + 바닥 1</small>`;
+  }
+});
+</script>
