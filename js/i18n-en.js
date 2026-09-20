@@ -35,8 +35,8 @@ export const EN = {
   // ── 🫙 발효통(2단계 가공) ────────────────────────────────────
   '🫙 발효통': '🫙 Vat',
   '발효통': 'Vat',
-  '🍇포도를 밟아 걸어두면 다음 날 🍷포도주스가 돼요 · 한 채에 2칸': 'Tread 🍇grapes and leave them — 🍷juice the next day · 2 slots each',
-  '🍇포도를 밟아 걸어두면 다음 날 🍷포도주스가 돼요': 'Tread 🍇grapes — 🍷juice the next day',
+  '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요 · 한 채에 2칸': 'Tread 🍇grapes and leave them — 🍷juice the next day · 2 slots each',
+  '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요': 'Tread 🍇grapes — 🍷juice the next day',
   '다 익었어요': 'Ready',
   '익는 중': 'Aging',
   '무엇을 익힐까요': 'What to age',
@@ -46,7 +46,8 @@ export const EN = {
   '텃밭 발효통에 가서 받아 가세요': 'Go to the vat in your garden and collect it',
   '밤사이 가공이 다 됐어요': 'Ready overnight',
   '시설에 가서 받아 가세요': 'Go collect them',
-  '포도주스': 'Grape Juice', '🍷포도주스': '🍷Grape Juice',
+  '포도즙': 'Grape Juice', '🍷포도즙': '🍷Grape Juice',   // 발효통 산출물(원액)
+  '포도주스': 'Grape Cooler',                                 // 카페에서 잔에 따라 내는 것
   '🍷 포도 밟기': '🍷 Tread the Grapes',
   '퍼지는 링에 맞춰': 'Match the spreading ring —',
   '같은 박자로': 'same beat',
@@ -863,7 +864,6 @@ export const EN = {
   '60초 희귀 물고기 확률↑': 'Rare fish odds↑ for 60s',
   '숲의 한상차림': 'Forest Feast',
   '갓 구운 빵': 'Fresh Bread',
-  '포도 에이드': 'Grape Ade',
   '90초 이동속도 +40%': '+40% move speed for 90s',
   '60초 벌목 시 목재 +1': '+1 Wood per felled tree for 60s',
   '60초 채굴 시 광석 추가 확률↑': 'Bonus ore chance↑ for 60s',
