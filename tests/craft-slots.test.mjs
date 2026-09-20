@@ -1,0 +1,72 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  SLOTS_PER_KILN, MAX_KILNS, capacityOf, isReady, setSlot, readySlots, claimAll, waitedDays,
+} from '../js/craft/slots.js';
+
+test('용량: 화덕 1채 2칸 · 최대 3채 6칸', () => {
+  assert.equal(SLOTS_PER_KILN, 2);
+  assert.equal(MAX_KILNS, 3);
+  assert.deepEqual([0, 1, 2, 3, 4].map(capacityOf), [0, 2, 4, 6, 6], '3채를 넘겨도 6칸에서 멈춘다');
+});
+
+test('isReady: 날짜가 바뀌어야 완성 — 같은 날은 아직', () => {
+  assert.equal(isReady({ day: '20260920' }, '20260920'), false);
+  assert.equal(isReady({ day: '20260920' }, '20260921'), true);
+  assert.equal(isReady({ day: '20260920' }, '20261115'), true, '며칠이 지나도 그대로 기다린다');
+  assert.equal(isReady({ day: '20260921' }, '20260920'), false, '시계가 거꾸로여도 완성 처리하지 않는다');
+  assert.equal(isReady({}, '20260921'), false, 'day 가 없으면 완성이 아니다');
+});
+
+test('setSlot: 새 배열을 돌려주고 원본을 건드리지 않는다', () => {
+  const before = [];
+  const after = setSlot(before, { st: 'kiln_1', item: 'charcoal', grade: 2, day: '20260920' });
+  assert.equal(before.length, 0, '원본 불변');
+  assert.equal(after.length, 1);
+  assert.deepEqual(after[0], { st: 'kiln_1', item: 'charcoal', qty: 4, grade: 2, day: '20260920' });
+});
+
+test('setSlot: 등급이 수량으로 굳는다 — 나중에 표가 바뀌어도 받는 양은 그대로', () => {
+  const s = setSlot([], { st: 'kiln_1', item: 'flour', grade: 0, day: '20260920' });
+  assert.equal(s[0].qty, 2);
+});
+
+test('readySlots / claimAll: 다 된 것만 거두고 나머지는 남긴다', () => {
+  const slots = [
+    { st: 'kiln_1', item: 'charcoal', qty: 4, grade: 2, day: '20260920' },
+    { st: 'kiln_1', item: 'flour',    qty: 3, grade: 1, day: '20260920' },
+    { st: 'kiln_2', item: 'brick',    qty: 2, grade: 0, day: '20260921' },
+  ];
+  assert.equal(readySlots(slots, '20260921').length, 2);
+
+  const { rest, gained, claimed } = claimAll(slots, '20260921');
+  assert.equal(rest.length, 1);
+  assert.equal(rest[0].item, 'brick', '오늘 건 것은 남는다');
+  assert.deepEqual(gained, { charcoal: 4, flour: 3 });
+  assert.deepEqual(claimed.map(c => c.item), ['charcoal', 'flour']);
+  assert.equal(claimed[0].waitedDays, 1);
+});
+
+test('claimAll: 같은 품목이 여러 칸이면 합산한다', () => {
+  const slots = [
+    { st: 'kiln_1', item: 'charcoal', qty: 4, grade: 2, day: '20260920' },
+    { st: 'kiln_2', item: 'charcoal', qty: 2, grade: 0, day: '20260919' },
+  ];
+  const { gained } = claimAll(slots, '20260921');
+  assert.deepEqual(gained, { charcoal: 6 });
+});
+
+test('claimAll: 받을 게 없으면 원본을 그대로 돌려준다', () => {
+  const slots = [{ st: 'kiln_1', item: 'brick', qty: 2, grade: 0, day: '20260921' }];
+  const { rest, gained, claimed } = claimAll(slots, '20260921');
+  assert.deepEqual(rest, slots);
+  assert.deepEqual(gained, {});
+  assert.equal(claimed.length, 0);
+});
+
+test('waitedDays: 며칠 만에 받으러 왔는가 — 핵심 지표', () => {
+  assert.equal(waitedDays('20260920', '20260921'), 1);
+  assert.equal(waitedDays('20260920', '20260927'), 7);
+  assert.equal(waitedDays('20260228', '20260301'), 1, '달을 넘어도 하루다(2026년은 평년)');
+  assert.equal(waitedDays('20261231', '20270101'), 1, '해를 넘어도 하루다');
+});
