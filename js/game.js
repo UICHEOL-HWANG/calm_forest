@@ -723,6 +723,9 @@ function clearTreesForKiln(x, z) {
       scene.remove(t); trees.splice(i, 1);
       const oi = obstacles.findIndex(o => Math.abs(o.x - t.position.x) < 0.01 && Math.abs(o.z - t.position.z) < 0.01);
       if (oi >= 0) obstacles.splice(oi, 1);      // 밭 금지 원도 같이 치운다
+      // 🚧 충돌체도 반드시 같이 —— 안 치우면 **안 보이는 나무**가 그대로 서서
+      //    화덕 앞을 지날 때마다 걸린다(사용자 지적 2026-09-21). spawnTree 가 userData.collider 에 달아 둔다.
+      if (t.userData?.collider) removeSolid(t.userData.collider);
     }
   }
 }
@@ -10777,10 +10780,15 @@ function makeSurveyOffice(H) {
     const t = [];
     const tb = (w, h, d, x, y, z) => t.push(new THREE.BoxGeometry(w, h, d).translate(o.x + x, y, o.z + z));
     tb(0.1, 1.25, 0.08, OD / 2 + 0.05, 0.82, -0.14); tb(0.1, 1.25, 0.08, OD / 2 + 0.05, 0.82, 0.74); tb(0.1, 0.1, 0.96, OD / 2 + 0.05, 1.42, 0.3);
-    for (const [tx, tz] of [[-OD / 2 + 0.06, -OW / 2 + 0.06], [-OD / 2 + 0.06, OW / 2 - 0.06], [OD / 2 - 0.06, -OW / 2 + 0.06], [OD / 2 - 0.06, OW / 2 - 0.06]]) tb(0.12, OE, 0.12, tx, 0.22 + OE / 2, tz);
+    // 모서리 기둥은 벽보다 **밖으로** 내민다. 반두께(0.06)만 안쪽에 두면 기둥 바깥면과 벽면의
+    //   좌표가 정확히 같아져 매 프레임 앞뒤로 다툰다 — 빨간 벽에 흰 줄무늬가 어른거렸다(2026-09-21).
+    const TP = 0.045;   // 0.06 이면 면이 겹친다. 0.015 만 내밀어도 다툼이 사라지고 눈엔 안 띈다
+    for (const [tx, tz] of [[-OD / 2 + TP, -OW / 2 + TP], [-OD / 2 + TP, OW / 2 - TP], [OD / 2 - TP, -OW / 2 + TP], [OD / 2 - TP, OW / 2 - TP]]) tb(0.12, OE, 0.12, tx, 0.22 + OE / 2, tz);
     const trim = new THREE.Mesh(mergeGeos(t), clayMat(BARN.trim, false)); trim.castShadow = true; g.add(trim);
   }
-  const sign = makeSignBoard('📐 측량소'); sign.scale.setScalar(0.52); sign.position.set(o.x + 0.2, 1.62, o.z + OW / 2 + 0.06); g.add(sign);   // 남쪽 벽 간판
+  // 남쪽 벽 간판 — 1.62 는 처마 그늘에 묻혀 글씨가 안 읽혔다(사용자 지적 2026-09-21).
+  //   벽 가운데로 내리고 키우고, 벽에서 더 띄워 판이 벽에 파묻힌 것처럼 보이지 않게 한다.
+  const sign = makeSignBoard('📐 측량소'); sign.scale.setScalar(0.62); sign.position.set(o.x + 0.15, 1.16, o.z + OW / 2 + 0.12); g.add(sign);
   // 제도 탁자 — 여기 서면 다음 단계 비용이 프롬프트에 뜬다
   box(1.6, 0.1, 1.1, woodMat(2, 1, 0xc9a071), d.x, 0.8, d.z);
   box(1.1, 0.75, 0.7, woodMat(1, 1), d.x, 0.38, d.z);
