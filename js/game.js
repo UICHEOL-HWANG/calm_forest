@@ -2030,6 +2030,7 @@ export const Input = {
     return knead2Score(input.heldMs, input.targetMs, input.tol);
   },
   craftGrade(score) { return gradeOfScore(score); },
+  craftFocus(on) { return craftFocus(on); },            // 🔥 걸 때 화면을 화덕으로 옮긴다
   craftYield(itemId, grade) { return yieldOf(itemId, grade); },
   craftClaim() { return craftClaim(); },                // 🔥 다 구워진 것 받기
   craftData() { return craftPanelData(); },
@@ -9060,10 +9061,33 @@ function mgSeasonDone(judge) {
 //   냄비·그릇·팬이 화면 폭을 꽉 채우고 소금통·불꽃이 잘렸다. 가로 화각이 좁아진 만큼 뒤로 뺀다.
 //   기준 aspect 1.55(데스크톱)에서 k=1 이라 가로 화면 그림은 예전 그대로다.
 function applyMgCamera() {
+  if (mgView?.type === 'kiln' && nearKiln) return applyKilnCamera(nearKiln);   // 🔥 화덕 클로즈업 유지
   const k = Math.min(1.75, Math.max(1, 1.55 / (camera.aspect || 1.55)));
   camera.position.set(KSET.x + 0.15 * k, KSET.y + 1.15 + 1.4 * k, KSET.z + 3.55 * k);
   camera.lookAt(KSET.x, KSET.y + 1.15, KSET.z - 0.3);
 }
+// 🔥 화덕 클로즈업 — 걸 때 화면을 화덕으로 옮긴다(요리·조각과 같은 문법).
+//    부엌 무대(KSET)를 쓰지 않고 마을에 선 그 화덕을 그대로 비춘다.
+//    세로 화면은 가로 화각만 좁아지므로 그만큼 뒤로 뺀다(applyMgCamera 와 같은 보정).
+function applyKilnCamera(rec) {
+  const k = Math.min(1.75, Math.max(1, 1.55 / (camera.aspect || 1.55)));
+  // 멀찍이 물러서 화덕을 화면 **위쪽**에 두고 아래를 조작대 자리로 비운다.
+  //   실측 3회로 잡은 값 — 2.35 는 상판이 화면을 덮었고, 5.2 는 앞의 나무가 화덕을 가렸다.
+  //   3.8 에서 나무를 넘지 않고, lookAt 을 1.25 로 올려 화덕을 화면 위쪽에 두고 아래를 조작대 자리로 비운다.
+  camera.position.set(rec.x + 0.1 * k, 1.95 + 0.35 * k, rec.z + 3.8 * k);
+  camera.lookAt(rec.x, 1.25, rec.z);
+}
+function craftFocus(on) {
+  if (on && nearKiln) {
+    mgView = { type: 'kiln' };
+    player.visible = false;      // 마을에 선 화덕이라 캐릭터가 카메라와 화덕 사이를 가린다(요리 무대엔 없던 문제)
+    applyKilnCamera(nearKiln);
+  } else if (!on) {
+    mgView = null; player.visible = true; snapCamera();
+  }
+  return !!mgView;
+}
+
 function mgSceneEnd() {
   if (kset) kset.group.visible = false;
   mgView = null;
@@ -9114,6 +9138,7 @@ function mgPotHit(step, judge, ico) {
 function updateMgScene(dt, t) {
   if (!mgView) return;
   if (mgView.type === 'carve') { updateCarveScene(dt, t); return; }  // 🗿 조각 공방 무대는 전용 루프
+  if (mgView.type === 'kiln') return;                                // 🔥 화덕은 마을에 선 그대로를 비춘다(부엌 소품 없음)
   if (!kset) return;
   applyMgCamera();                                          // 다른 카메라 로직이 못 뺏게 매 프레임 고정
   // 김/거품/불/재료 — 냄비가 계속 "요리 중"으로 보이게
