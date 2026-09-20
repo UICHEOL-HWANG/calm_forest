@@ -1,5 +1,6 @@
 // 🔥 화덕 슬롯 — 걸기·완성 판정·수령. 순수 함수만.
-//    날짜 키는 게임의 todayStr()(js/game.js:152)가 주는 'YYYYMMDD' 문자열을 그대로 받는다.
+//    날짜 키는 게임의 todayStr()(js/game.js:152)가 주는 'YYYY-MM-DD' 문자열을 그대로 받는다.
+//    이 형식은 사전순 = 시간순이라 문자열 비교로 완성을 판정할 수 있다.
 import { recipeOf, yieldOf } from './recipes.js';
 
 export const SLOTS_PER_KILN = 2;
@@ -39,9 +40,9 @@ export function readySlots(slots = [], today) {
   return slots.filter(s => isReady(s, today));
 }
 
-/** 'YYYYMMDD' 두 개의 날짜 차 — UTC 자정 기준이라 월·해를 넘어도 맞는다 */
+/** 'YYYY-MM-DD' 두 개의 날짜 차 — UTC 자정 기준이라 월·해를 넘어도 맞는다 */
 export function waitedDays(day, today) {
-  const at = s => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8));
+  const at = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
   return Math.round((at(today) - at(day)) / 86400000);
 }
 
@@ -62,7 +63,7 @@ export function sanitizeSlots(raw) {
   return raw.filter(s => {
     if (!s || typeof s !== 'object') return false;
     if (!recipeOf(s.item)) return false;                        // 표에 없는 품목
-    return typeof s.day === 'string' && /^\d{8}$/.test(s.day);  // 완성 판정이 문자열 비교라 형식이 깨지면 위험
+    return typeof s.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.day);  // dayStr(:149) 형식. 완성 판정이 문자열 비교라 형식이 깨지면 위험
   }).map(s => {
     const grade = Math.max(0, Math.min(3, Number.isFinite(s.grade) ? Math.floor(s.grade) : 0));
     const min = yieldOf(s.item, 0), max = yieldOf(s.item, 3);

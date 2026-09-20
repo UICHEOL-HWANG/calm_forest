@@ -130,7 +130,7 @@
       item: 'charcoal',    // 'charcoal' | 'flour' | 'brick' — 키값, 라벨 아님
       qty: 4,              // 미니게임 등급으로 확정된 산출량
       grade: 2,            // 0~3 (😅🙂😋💫)
-      day: '20260920',     // 건 날짜. todayStr() 이 돌려주는 로컬 날짜 키
+      day: '2026-09-20',     // 건 날짜. todayStr() 이 돌려주는 로컬 날짜 키
       done: false }        // 수령 완료
   ]
 }

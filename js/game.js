@@ -63,8 +63,8 @@ import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/ind
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
-import { CRAFT_RECIPES, recipeOf as craftRecipeOf, yieldOf, lackOf } from './craft/recipes.js';   // 🔥 화덕 레시피 표(순수 모듈) — recipeOf 는 요리(:9813)가 이미 쓰는 이름이라 별칭
-import { SLOTS_PER_KILN, MAX_KILNS, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, slotsOfKiln, kilnState } from './craft/slots.js';   // 🔥 화덕 슬롯 규칙(순수 모듈)
+import { CRAFT_RECIPES, recipeOf as craftRecipeOf, yieldOf, lackOf, canAfford } from './craft/recipes.js';   // 🔥 화덕 레시피 표(순수 모듈) — recipeOf 는 요리(:9813)가 이미 쓰는 이름이라 별칭
+import { SLOTS_PER_KILN, MAX_KILNS, capacityOf, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, slotsOfKiln, kilnState } from './craft/slots.js';   // 🔥 화덕 슬롯 규칙(순수 모듈)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -308,6 +308,7 @@ const buffs = { speed: 0, luck: 0, chop: 0, mine: 0 };   // 각 버프 만료 �
 function buffOn(k) { return clock.elapsedTime < buffs[k]; }
 const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(도구·장식·선물 제작) 위치
 let nearBench = false;
+let nearKiln = null;              // 🔥 가까운 화덕 레코드(배치형이라 좌표가 여럿 — 가장 가까운 것)
 // 🍳 자유주방 — 작업대에서 요리를 분리한 새 작업장. 요리는 이제 미니게임(타이밍·리듬)으로 만든다
 const KITCHEN = new THREE.Vector3(7.4, 0, -6.4);  // 작업대 동쪽 옆(상점·시세판과 안 겹치는 빈터)
 let nearKitchen = false;
@@ -1921,6 +1922,55 @@ function updateToolPageAuto() {
 // =============================================================
 //  입력 API (키보드 + 모바일 터치 컨트롤이 함께 사용)
 // =============================================================
+// 🔥 가공 창에 넘길 데이터. 표시용 문자열은 여기서 만들고 index.html 은 그리기만 한다.
+function craftPanelData() {
+  const today = todayStr(), inv = gameState.inventory;
+  return {
+    cap: capacityOf(kilnCount()),
+    slots: gameState.craft.slots.map(s => {
+      const r = craftRecipeOf(s.item);
+      return { item: s.item, ico: r.ico, name: r.name, qty: s.qty, ready: isReady(s, today) };
+    }),
+    recipes: CRAFT_RECIPES.map(r => ({
+      id: r.id, ico: r.ico, name: r.name,
+      lack: lackOf(r.id, inv),
+      cost: Object.entries(r.cost).map(([k, v]) => ({
+        k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, need: v, have: inv[k] || 0,
+      })),
+    })),
+  };
+}
+
+// 걸기 — Task 6 에서 이 앞에 미니게임이 들어간다(등급이 수율을 정한다). 지금은 보통 등급으로 건다.
+function craftSet(itemId, grade = 1) {
+  const r = craftRecipeOf(itemId); if (!r) return null;
+  if (gameState.craft.slots.length >= capacityOf(kilnCount())) {
+    trackEvent('craft_blocked', { reason: 'full', item: itemId }); return null;
+  }
+  if (!canAfford(itemId, gameState.inventory)) {
+    trackEvent('craft_blocked', { reason: 'no_material', item: itemId }); return null;
+  }
+  for (const [k, v] of Object.entries(r.cost)) gameState.inventory[k] -= v;
+  gameState.craft.slots = setSlot(gameState.craft.slots, { item: itemId, grade, day: todayStr() });
+  trackEvent('craft_set', { item: itemId, grade, qty: yieldOf(itemId, grade),
+                            slot_idx: gameState.craft.slots.length - 1, station_seq: kilnCount() });
+  requestSave(); refreshKilns(); refreshInventoryUI();
+  return craftPanelData();
+}
+
+// 받기 — 다 구워진 칸만 거둔다. waited_days 가 이 기능의 핵심 지표다.
+function craftClaim() {
+  const today = todayStr();
+  const { rest, gained, claimed } = claimAll(gameState.craft.slots, today);
+  if (!claimed.length) return craftPanelData();
+  gameState.craft.slots = rest;
+  for (const [k, v] of Object.entries(gained)) gameState.inventory[k] = (gameState.inventory[k] || 0) + v;
+  for (const c of claimed) trackEvent('craft_claim', { item: c.item, qty: c.qty, grade: c.grade, waited_days: c.waitedDays });
+  requestSave(); refreshKilns(); refreshInventoryUI();
+  ui.toast?.('🔥 ' + claimed.map(c => `${craftRecipeOf(c.item).ico}${craftRecipeOf(c.item).name} ${c.qty}`).join(' · '));
+  return craftPanelData();
+}
+
 export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
   doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space (도구질)
@@ -1971,6 +2021,9 @@ export const Input = {
   cookResolve(how) { return cookResolve(how); },        // 🍽️ 결과 화면: 'eat' 먹기 | 'store' 🧺 찬장 보관
   getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
   pantryEat(i) { return pantryEat(i); },                // 🍱 찬장에서 꺼내 먹기(버프 발동)
+  craftSet(itemId) { return craftSet(itemId); },        // 🔥 화덕에 걸기(다음 날 완성)
+  craftClaim() { return craftClaim(); },                // 🔥 다 구워진 것 받기
+  craftData() { return craftPanelData(); },
   cafeCookDone(res) { return cafeCookDone(res); },      // ☕ 카페 조리 완료 → 그 손님에게 바로 서빙
   getWorkshop() { return workshopView(); },             // 🗿 조각 공방 주문판(오늘의 주문 + 기록)
   carveStart(id) { return carveStart(id); },            // 🗿 조각 시작(재료 소비, 클로즈업 무대 입장)
@@ -2435,6 +2488,14 @@ export async function enterGame() {
       up: (id, lv = 1) => { if (id in gameState.boat.up) gameState.boat.up[id] = lv; return { ...gameState.boat.up }; },
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
+    };
+    // 🔥 __craftAge(days) — 걸어 둔 것을 days 일 전에 건 셈 친다(완성·정산 검증용, 로컬 전용).
+    //    시스템 시계를 못 바꾸니 슬롯의 날짜를 뒤로 민다.
+    window.__craftAge = (days = 1) => {
+      const key = dayStr(Date.now() - days * 86400000);   // 형식을 손으로 조립하면 어긋난다(2026-09-20 사고)
+      gameState.craft.slots = gameState.craft.slots.map(s => ({ ...s, day: key }));
+      refreshKilns(); requestSave();
+      return gameState.craft.slots.map(s => `${s.item}:${s.day}`);
     };
     // 🌫️ __mistTest() — 오늘 정화를 무른 셈 치고 다시(코스 아님이라 리롤 유인 없음)
     window.__mistTest = () => { gameState.mist.date = null; gameState.mist.purified = false; return mistDaily(); };
@@ -11064,8 +11125,13 @@ function updateDoorInteract() {
   nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
   nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
+  // 🔥 화덕 — 고정 시설과 달리 플레이어가 놓는다. 가장 가까운 한 채를 잡는다(몸집이 커서 반경 2.6)
+  nearKiln = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop)
+    ? (gameState.outdoor.find(r => r.id === 'kiln' && Math.hypot(r.x - player.position.x, r.z - player.position.z) < 2.6) || null)
+    : null;
   if (nearKitchen) prompt = '🍳 요리하기 (자유주방)';
   else if (nearBench) prompt = '🔧 만들기 (작업대)';
+  else if (nearKiln) prompt = '🔥 화덕';
   else if (nearShop) prompt = '🛒 상점';
   else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문, 매주 리셋'); }
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }
@@ -11114,6 +11180,7 @@ function updateDoorInteract() {
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
   else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물·🗿조각 만들기');
+  else if (nearKiln) firstHintBanner('kiln', '🔥', '화덕', '재료를 걸어두면 다음 날 구워져 있어요');
   else if (nearShop) firstHintBanner('shop', '🛒', '상점', '수확물을 팔고 씨앗을 사는 곳');
   else if (nd === 'farm') firstHintBanner('farmGate', '🌾', '내 텃밭 입구', '마음껏 농사짓는 나만의 넓은 밭');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)
@@ -12510,6 +12577,7 @@ function handleAction() {
     return placeOutdoor(ax, az);
   }
   if (nearKitchen) { trackEvent('kitchen_open'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
+  if (nearKiln) return ui.openCraft?.(craftPanelData());   // 🔥 화덕 근처 → 가공 창
   if (nearBench) return ui.openCook?.();   // 작업대 근처 → 제작 메뉴(도구·야외·선물)
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
