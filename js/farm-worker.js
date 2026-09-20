@@ -168,3 +168,16 @@ export function candidatesFor(hash, n = CANDIDATE_N) {
   }
   return out;
 }
+
+/**
+ * 📋 내보낸 일꾼의 자리를 게시판에 되돌린다 — taken(고용해 간 후보 번호)에서 그 사람 한 칸만 뺀 **새 배열**.
+ *   안 풀면 후보가 '고용함'으로 잠긴 채 남아 그날은 다시 데려올 수 없다(해고 후 재고용 불가).
+ *   자리는 이름+직군으로 찾는다 — 같은 사람이 두 칸이면 앞 칸을 푼다(둘이 같은 사람이라 결과가 같다).
+ *   ⚠️ 오늘 데려온 일꾼일 때만 부를 것 — 어제 명단의 번호는 오늘 후보와 아무 관계가 없다.
+ */
+export function releaseCandidate(taken = [], rec = {}, candidates = []) {
+  const list = (taken || []).filter(n => Number.isInteger(n));
+  const idx = candidates.findIndex((c, i) => list.includes(i) && c.name === rec.name && c.job === rec.job);
+  const at = list.indexOf(idx);
+  return at < 0 ? list : list.filter((_, k) => k !== at);
+}
