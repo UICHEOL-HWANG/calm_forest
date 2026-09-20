@@ -1,0 +1,257 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>📐 측량소 다듬기 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:130px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:600;
+       background:rgba(255,255,255,.82);padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.35}
+  .tag small{display:block;font-weight:400;opacity:.65;font-size:10.5px}
+  @media (max-width:700px){ .tag{font-size:10.5px;padding:2px 6px} .tag small{display:none} }
+</style>
+<div id="labels"></div>
+<div id="ui">
+  <div class="row">
+    <b>카메라</b>
+    <label>거리 <input id="dist" type="range" min="4" max="26" step="0.1" value="15"><span id="distV">15</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="18"><span id="angV">18</span>°</label>
+    <label>높이 <input id="hgt" type="range" min="0.5" max="9" step="0.1" value="3"><span id="hgtV">3</span></label>
+    <label><input id="spin" type="checkbox"> 자동 회전</label>
+    <label><input id="night" type="checkbox"> 밤 조명</label>
+    <label><input id="ref" type="checkbox" checked> 캐릭터(키 1.25)</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ── 게임과 같은 재질 문법(js/game.js:2943 clayMat · 2965 paintGeo · 2971 vtxMat) ──
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0, flatShading: flat });
+const vtxMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
+function paintGeo(geo, hex) {
+  const c = new THREE.Color(hex), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return geo;
+}
+const ni = g => (g.index ? g.toNonIndexed() : g);
+const merge = (geos) => mergeGeometries(geos.map(ni));
+
+// 🚩 게임의 빨간 헛간 세트 색(js/game.js:3937 BARN) — 측량소는 이 세트의 막내다
+const BARN = { wall: 0xb5462f, roof: 0x8a8f96, trim: 0xf2ece0, dark: 0x6f3a2a, base: 0x9a9086, wood: 0xa9773f, straw: 0xe0c05a };
+
+// 갬브럴 단면(폭 w, 처마 e, 꺾임 k, 용마루 r) → 깊이 d 로 뽑은 입체
+function gambrelSolid(w, e, k, r, d) {
+  const hw = w / 2, sh = new THREE.Shape();
+  sh.moveTo(-hw, 0); sh.lineTo(-hw, e); sh.lineTo(-hw * 0.62, k); sh.lineTo(0, r); sh.lineTo(hw * 0.62, k); sh.lineTo(hw, e); sh.lineTo(hw, 0); sh.closePath();
+  return new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false }).translate(0, 0, -d / 2);
+}
+function gambrelRoofSlabs(w, e, k, r, d, t = 0.14) {
+  const hw = w / 2, out = [];
+  for (const sgn of [1, -1]) {
+    const x0 = sgn * (hw + 0.15), y0 = e - 0.07, x1 = sgn * hw * 0.62, y1 = k, x2 = 0, y2 = r + 0.07;
+    for (const [ax, ay, bx, by] of [[x0, y0, x1, y1], [x1, y1, x2, y2]]) {
+      const len = Math.hypot(bx - ax, by - ay), ang = Math.atan2(by - ay, bx - ax);
+      out.push(new THREE.BoxGeometry(len, t, d).rotateZ(ang).translate((ax + bx) / 2, (ay + by) / 2, 0));
+    }
+  }
+  return out;
+}
+
+const OW = 2.6, OD = 2.3, OE = 1.5, OK2 = 2.0, OR = 2.4;
+const TP = 0.045;        // 트림이 벽 밖으로 나오는 여유(같은 평면이면 두 면이 다툰다)
+
+/** 공통 뼈대 — 지금 게임에 서 있는 그대로. 정면은 +x(밭 문 쪽) */
+function baseOffice({ plank = false, shingle = false } = {}) {
+  const g = new THREE.Group();
+  const geos = [];
+
+  geos.push(paintGeo(gambrelSolid(OW, OE, OK2, OR, OD).rotateY(Math.PI / 2).translate(0, 0.22, 0), BARN.wall));
+  const roof = gambrelRoofSlabs(OW, OE, OK2, OR, OD + 0.25).map(q => q.rotateY(Math.PI / 2).translate(0, 0.22, 0));
+  for (const q of roof) geos.push(paintGeo(q, BARN.roof));
+  geos.push(paintGeo(new THREE.BoxGeometry(3.0, 0.22, 2.7).translate(0, 0.11, 0), BARN.base));
+
+  // 판자 결 — 벽에 세로 홈을 얕게 낸다. 있으면 벽이 '판자'로 읽힌다
+  if (plank) {
+    for (const sx of [1, -1]) {
+      for (let i = -3; i <= 3; i++) {
+        const z = i * 0.34;
+        if (Math.abs(z) > OW / 2 - 0.22) continue;
+        geos.push(paintGeo(new THREE.BoxGeometry(0.03, OE - 0.12, 0.05).translate(sx * (OD / 2 + 0.005), 0.22 + (OE - 0.12) / 2, z), BARN.dark));
+      }
+    }
+    for (const sz of [1, -1]) {   // 박공 쪽도 같이 — 한 면만 결이 있으면 더 이상하다
+      for (let i = -2; i <= 2; i++) {
+        const x = i * 0.38;
+        if (Math.abs(x) > OD / 2 - 0.2) continue;
+        geos.push(paintGeo(new THREE.BoxGeometry(0.05, OE - 0.12, 0.03).translate(x, 0.22 + (OE - 0.12) / 2, sz * (OW / 2 + 0.005)), BARN.dark));
+      }
+    }
+  }
+
+  // 지붕 널 — 경사면에 가로 단을 얹어 '널을 이었다' 로 읽히게
+  if (shingle) {
+    const hw = OW / 2;
+    for (const sgn of [1, -1]) {
+      const ax = sgn * (hw + 0.15), ay = OE - 0.07, bx = sgn * hw * 0.62, by = OK2, cx = 0, cy = OR + 0.07;
+      for (const t of [0.2, 0.42, 0.68, 0.88]) {
+        const [px, py] = t < 0.55 ? [ax + (bx - ax) * (t / 0.55), ay + (by - ay) * (t / 0.55)]
+                                  : [bx + (cx - bx) * ((t - 0.55) / 0.45), by + (cy - by) * ((t - 0.55) / 0.45)];
+        geos.push(paintGeo(new THREE.BoxGeometry(OD + 0.32, 0.06, 0.13).translate(0, py + 0.095, px), 0x6f757c));
+      }
+    }
+  }
+  g.add(new THREE.Mesh(merge(geos), vtxMat()));
+
+  // 문 · 창 · 흰 트림
+  const parts = [];
+  parts.push(paintGeo(new THREE.BoxGeometry(0.08, 1.15, 0.8).translate(OD / 2 + 0.02, 0.8, 0.3), BARN.dark));
+  parts.push(paintGeo(new THREE.BoxGeometry(0.08, 0.5, 0.6).translate(OD / 2 + 0.02, 1.15, -0.55), 0xffe3a4));
+  const tb = (w, h, d, x, y, z) => parts.push(paintGeo(new THREE.BoxGeometry(w, h, d).translate(x, y, z), BARN.trim));
+  tb(0.1, 1.25, 0.08, OD / 2 + 0.05, 0.82, -0.14); tb(0.1, 1.25, 0.08, OD / 2 + 0.05, 0.82, 0.74); tb(0.1, 0.1, 0.96, OD / 2 + 0.05, 1.42, 0.3);
+  // 창틀 — 틀이 없으면 창이 벽에 붙인 판때기로 읽힌다. 둘레 + 가운데 살 하나
+  for (const [wy, wz] of [[1.42, -0.55], [0.88, -0.55]]) tb(0.09, 0.07, 0.74, OD / 2 + 0.05, wy, wz);
+  for (const wz of [-0.89, -0.21]) tb(0.09, 0.61, 0.07, OD / 2 + 0.05, 1.15, wz);
+  tb(0.09, 0.54, 0.05, OD / 2 + 0.05, 1.15, -0.55);
+  for (const [tx, tz] of [[-OD / 2 + TP, -OW / 2 + TP], [-OD / 2 + TP, OW / 2 - TP], [OD / 2 - TP, -OW / 2 + TP], [OD / 2 - TP, OW / 2 - TP]])
+    tb(0.12, OE, 0.12, tx, 0.22 + OE / 2, tz);
+  g.add(new THREE.Mesh(merge(parts), vtxMat()));
+  return g;
+}
+
+/** 부속 — 차양 · 굴뚝 · 남쪽 창 · 처마 등불 · 도면 통 */
+function addTrappings(g) {
+  const geos = [];
+  // 🏕️ 문 위 줄무늬 차양 — 정면에 그늘이 생겨 입구가 어디인지 바로 읽힌다
+  for (let i = 0; i < 5; i++) {
+    geos.push(paintGeo(new THREE.BoxGeometry(0.78, 0.06, 0.21).rotateZ(-0.3)
+      .translate(OD / 2 + 0.34, 1.66, 0.3 + (i - 2) * 0.21), i % 2 ? BARN.trim : BARN.wall));
+  }
+  for (const sz of [-0.42, 1.02]) {
+    geos.push(paintGeo(new THREE.BoxGeometry(0.05, 0.52, 0.05).rotateZ(0.52).translate(OD / 2 + 0.26, 1.42, sz), BARN.wood));
+  }
+  // 🧱 굴뚝 — 지붕선에 수직 요소가 하나 있어야 실루엣이 산다
+  geos.push(paintGeo(new THREE.BoxGeometry(0.34, 1.1, 0.34).translate(-0.5, 2.5, -0.62), BARN.base));
+  geos.push(paintGeo(new THREE.BoxGeometry(0.44, 0.1, 0.44).translate(-0.5, 3.08, -0.62), 0x7d7469));
+  // 🪟 남쪽 창 — 간판만 있던 벽에 빛이 하나 더 든다
+  geos.push(paintGeo(new THREE.BoxGeometry(0.62, 0.5, 0.08).translate(-0.62, 1.12, OW / 2 + 0.02), 0xffe3a4));
+  geos.push(paintGeo(new THREE.BoxGeometry(0.74, 0.08, 0.06).translate(-0.62, 0.84, OW / 2 + 0.03), BARN.trim));
+  // 🏮 처마 등불 — 밤에 문 앞이 밝다
+  geos.push(paintGeo(new THREE.BoxGeometry(0.06, 0.18, 0.06).translate(OD / 2 + 0.16, 1.76, -0.2), BARN.wood));
+  geos.push(paintGeo(new THREE.BoxGeometry(0.18, 0.2, 0.18).translate(OD / 2 + 0.16, 1.58, -0.2), 0xffd98a));
+  // 📜 벽에 기대 둔 도면 통 — '여기서 측량한다' 는 이야기를 붙인다
+  for (const [dz, h, tilt] of [[-1.12, 0.78, 0.2], [-0.99, 0.66, -0.14]]) {
+    geos.push(paintGeo(new THREE.CylinderGeometry(0.065, 0.065, h, 7).rotateX(tilt).translate(OD / 2 + 0.16, h / 2 + 0.12, dz), 0xdcd2bb));
+  }
+  g.add(new THREE.Mesh(merge(geos), vtxMat()));
+  return g;
+}
+
+// =============================================================
+const CANDIDATES = [
+  { name: '지금',        desc: '단색 벽 + 단색 지붕',    make: () => baseOffice() },
+  { name: 'A · 결',      desc: '판자 결 + 지붕 널',      make: () => baseOffice({ plank: true, shingle: true }) },
+  { name: 'B · 부속',    desc: '차양·굴뚝·창·등불·도면', make: () => addTrappings(baseOffice()) },
+  { name: 'C · 결+부속', desc: 'A + B 전부',             make: () => addTrappings(baseOffice({ plank: true, shingle: true })) },
+];
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdceaf2);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), clayMat(0xbda476, false));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const hemi = new THREE.HemisphereLight(0xdcefff, 0x9db08a, 0.85); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3dd, 1.35);
+sun.position.set(6, 12, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -18; sun.shadow.camera.right = 18; sun.shadow.camera.top = 18; sun.shadow.camera.bottom = -18;
+scene.add(sun);
+
+const SPACING = 4.6;
+const groups = CANDIDATES.map((c, i) => {
+  const g = c.make();
+  g.rotation.y = -Math.PI / 2;        // 정면(+x)을 카메라 쪽(+z)으로 돌린다 — 나란히 놓고 정면끼리 비교해야 한다
+  g.position.x = (i - (CANDIDATES.length - 1) / 2) * SPACING;
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g);
+  return g;
+});
+
+// 크기 비교 — 캐릭터(키 1.25)
+const ref = new THREE.Group();
+{
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), clayMat(0xd08a4e));
+  body.scale.set(1, 1.12, 1); body.position.y = 0.52; ref.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), clayMat(0xd08a4e));
+  head.position.y = 1.02; ref.add(head);
+}
+ref.position.set(-SPACING * 1.5 - 1.9, 0, 1.6);
+scene.add(ref);
+
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const qNum = (k, d) => { const v = parseFloat(Q.get(k)); return Number.isFinite(v) ? v : d; };
+const st = { dist: qNum('dist', 15), ang: qNum('ang', 18), hgt: qNum('hgt', 3), spin: false, night: Q.get('night') === '1', ref: Q.get('ref') !== '0' };
+if (Q.get('ui') === '0') $('ui').style.display = 'none';
+ref.visible = st.ref;
+
+for (const k of ['dist', 'ang', 'hgt']) {
+  $(k).value = st[k]; $(k + 'V').textContent = st[k];
+  $(k).addEventListener('input', e => { st[k] = +e.target.value; $(k + 'V').textContent = e.target.value; });
+}
+$('spin').addEventListener('change', e => st.spin = e.target.checked);
+$('ref').addEventListener('change', e => ref.visible = e.target.checked);
+$('night').addEventListener('change', e => {
+  const n = st.night = e.target.checked;
+  scene.background = new THREE.Color(n ? 0x2b3346 : 0xdceaf2);
+  hemi.intensity = n ? 0.34 : 0.85; sun.intensity = n ? 0.26 : 1.35;
+  hemi.color.set(n ? 0x9fb2d6 : 0xdcefff);
+});
+if (st.night) { $('night').checked = true; $('night').dispatchEvent(new Event('change')); }
+
+const labels = $('labels');
+const tags = CANDIDATES.map(c => {
+  const el = document.createElement('div');
+  el.className = 'tag'; el.innerHTML = `${c.name}<small>${c.desc}</small>`;
+  labels.appendChild(el); return el;
+});
+
+const v = new THREE.Vector3();
+function tick() {
+  if (st.spin) st.ang = (st.ang + 0.25) % 360;
+  const a = st.ang * Math.PI / 180;
+  camera.position.set(Math.sin(a) * st.dist, st.hgt, Math.cos(a) * st.dist);
+  camera.lookAt(0, 1.2, 0);
+  groups.forEach((g, i) => {
+    v.set(g.position.x, 3.1, 0).project(camera);
+    tags[i].style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
+    tags[i].style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+    tags[i].style.display = v.z > 1 ? 'none' : '';
+  });
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>

@@ -41,7 +41,7 @@ const MENU = [
   { id: 'lunchbox',      name: '모둠 도시락',    name_en: 'Picnic Lunchbox',        hint: '작물과 물고기를 담은 도시락',  hint_en: 'lunchbox of crops and fish' },
   { id: 'forest_feast',  name: '숲의 한상차림',  name_en: 'Forest Feast',           hint: '숲 재료를 모아 차린 한상',     hint_en: 'a full spread gathered from the forest' },
   { id: 'bread',         name: '갓 구운 빵',     name_en: 'Fresh Bread',            hint: '화덕에서 빻은 밀가루로 구운 빵', hint_en: 'bread baked from kiln-milled flour' },
-  { id: 'grape_ade',     name: '포도 에이드',    name_en: 'Grape Ade',              hint: '발효통에서 밤새 익은 포도주스', hint_en: 'grape juice aged overnight in the vat' },
+  { id: 'grape_juice',   name: '포도주스',       name_en: 'Grape Cooler',           hint: '발효통에서 밤새 익은 포도즙', hint_en: 'grape must aged overnight in the vat' },
 ];
 // 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
 //   사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로, 3칸으로만 받는다.

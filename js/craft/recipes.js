@@ -23,8 +23,9 @@ export const CRAFT_RECIPES = [
   { id: 'charcoal', ico: '⚫', name: '숯',     station: 'kiln', cost: { wood: 8 },            yields: [2, 3, 4, 5], sell: 9,  mg: 'grill'  },
   { id: 'flour',    ico: '🌾', name: '밀가루', station: 'kiln', cost: { wheat: 4 },           yields: [2, 3, 4, 5], sell: 18, mg: 'mill'   },
   { id: 'brick',    ico: '🧱', name: '벽돌',   station: 'kiln', cost: { stone: 6, coal: 2 },  yields: [2, 3, 4, 5], sell: 12, mg: 'season' },
-  // 🍷 포도주스 — 포도(30)가 드디어 판매 말고 쓸 데가 생긴다. 포도 4(120) → 평균 3.5개.
-  { id: 'juice',    ico: '🍷', name: '포도주스', station: 'vat', cost: { grape: 4 },          yields: [2, 3, 4, 5], sell: 40, mg: 'crush'  },
+  // 🍷 포도즙 — 포도(30)가 드디어 판매 말고 쓸 데가 생긴다. 포도 4(120) → 평균 3.5개.
+  //    즙은 원액이고, 카페에서 잔에 따라 내면 🍹포도주스(js/game.js DISHES)가 된다.
+  { id: 'juice',    ico: '🍷', name: '포도즙', station: 'vat', cost: { grape: 4 },            yields: [2, 3, 4, 5], sell: 40, mg: 'crush'  },
 ];
 
 /** 그 시설에서 만들 수 있는 것 */
