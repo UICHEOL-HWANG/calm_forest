@@ -3915,6 +3915,7 @@
       // 가공 창을 접고 화면을 화덕으로 옮긴다 — 걸 때만 잠깐 클로즈업(요리·조각과 같은 문법)
       $('craft-menu').classList.remove('show');
       Input.craftFocus(true);
+      document.body.classList.add('menu-open', 'mg-open');   // 마을 UI 를 걷고 무대에 몰입(요리·조각과 같은 문법)
       $('craft-mg').classList.add('show');
 
       const finish = (score) => {
@@ -3926,6 +3927,7 @@
         $('cmg-after').style.display = '';
         $('cmg-ok').onclick = () => {
           $('craft-mg').classList.remove('show');
+          document.body.classList.remove('mg-open');
           Input.craftFocus(false);                       // 마을 카메라로 복귀
           $('craft-menu').classList.add('show');         // 가공 창을 다시 편다
           onDone(grade);
