@@ -747,132 +747,31 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-## Task 6: 미니게임 3종
+## Task 6: 미니게임 3종 ✅ (구현 완료 · 계획 정정)
+
+> **계획 정정(2026-09-20 실행 중):** 원래 `mgView.type` 분기(부엌 3D 무대)에 얹으려 했으나
+> 그 무대는 부엌(`KSET`)에 고정돼 있어 화덕 앞인데 조리대가 보인다. 무대를 3벌 새로 지으려면
+> 작업량도 크고 성격도 안 맞는다 — **요리·조각은 그 자체가 목적인 활동**이라 무대 전환이 값을 하지만,
+> **화덕은 '걸어두는 것' 이 목적**이고 조작은 길목에서 잠깐 치르는 것이다. 매일 반복할 때 전환이 거추장스럽다.
+> → **가공 창 위 오버레이**(`#craft-mg`)로 구현했다. 3D 무대 전환 없음.
 
 **Files:**
-- Create: `js/craft/mill.js`
-- Test: `tests/craft-mill.test.mjs`
-- Modify: `js/game.js` — `mgView.type` 분기(`:9004` 부근)에 `'mill'` 추가, `grill`·`season` 재사용 연결
+- Create: `js/craft/minigame.js` (판정 3종, 순수) · `tests/craft-minigame.test.mjs`
+- Modify: `index.html` — 오버레이 CSS·마크업·조작 · `js/game.js` — `Input.craftScore/craftGrade/craftYield`
 
-**Interfaces:**
-- Consumes: `CRAFT_RECIPES[].mg`, `yieldOf` (Task 1) · `setSlot` (Task 2) · `renderCraftWindow` (Task 5)
-- Produces: `millScore(samples: Array<{t:number,a:number}>) => number` (0~1) · `gradeOfScore(score: number) => 0|1|2|3` · `startCraftMinigame(recId, itemId)` · `finishCraftMinigame(recId, itemId, grade, score)`
+**판정(순수 함수)**
 
-**난이도는 판정창 배율로만 조절한다.** 기존 `COURSE_MULT` 와 같은 규칙이다.
+| 품목 | 조작 | 판정 |
+|---|---|---|
+| ⚫ 숯 | 오가는 바늘을 초록 구간에서 멈춘다 | `fireScore(pos, target, half)` — 한가운데 1, 경계 0 |
+| 🌾 밀가루 | 원을 따라 **고르게** 돌린다(한 바퀴 반) | `millScore(samples)` — 각속도의 변동계수 |
+| 🧱 벽돌 | 꾹 눌렀다 목표 시간에 뗀다 | `knead2Score(heldMs, targetMs, tol)` |
 
-- [ ] **Step 1: 맷돌 판정 테스트를 쓴다**
+세 판정 모두 **난이도를 경계값 하나로만** 조절한다(`half`·`tol`) — `COURSE_MULT` 와 같은 규칙.
+밀가루는 '빠르기가 아니라 고르기' 라 서두른다고 유리하지 않다(테스트로 잠갔다).
 
-```javascript
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { millScore, gradeOfScore } from '../js/craft/mill.js';
-
-test('millScore: 일정한 속도로 돌리면 만점에 가깝다', () => {
-  const even = Array.from({ length: 30 }, (_, i) => ({ t: i * 100, a: i * 0.4 }));
-  assert.ok(millScore(even) > 0.9, `고른 회전은 높은 점수 — 실제 ${millScore(even)}`);
-});
-
-test('millScore: 속도가 들쭉날쭉하면 깎인다', () => {
-  const jerky = Array.from({ length: 30 }, (_, i) => ({ t: i * 100, a: i % 2 ? i * 0.1 : i * 0.9 }));
-  assert.ok(millScore(jerky) < 0.6, `불규칙한 회전은 낮은 점수 — 실제 ${millScore(jerky)}`);
-});
-
-test('millScore: 표본이 모자라면 0', () => {
-  assert.equal(millScore([]), 0);
-  assert.equal(millScore([{ t: 0, a: 0 }]), 0);
-});
-
-test('gradeOfScore: 0~3 등급 — 경계값', () => {
-  assert.equal(gradeOfScore(0.0), 0);
-  assert.equal(gradeOfScore(0.49), 0);
-  assert.equal(gradeOfScore(0.5), 1);
-  assert.equal(gradeOfScore(0.74), 1);
-  assert.equal(gradeOfScore(0.75), 2);
-  assert.equal(gradeOfScore(0.9), 3);
-  assert.equal(gradeOfScore(1.0), 3);
-});
-```
-
-- [ ] **Step 2: 테스트를 돌려 실패를 확인한다**
-
-Run: `node --test tests/craft-mill.test.mjs`
-Expected: FAIL — `Cannot find module '../js/craft/mill.js'`
-
-- [ ] **Step 3: 구현한다**
-
-`js/craft/mill.js`:
-
-```javascript
-// 🌾 맷돌 — 원을 따라 일정한 속도로 돌린다. 점수는 '고르기'다(빠르기가 아니라).
-//    기존 넷(pot·chop·grill·season) 중 회전 드래그가 없어 이것만 신규로 만든다.
-
-/** samples: [{ t: ms, a: 라디안 누적각 }] — 각속도의 변동계수가 작을수록 높은 점수 */
-export function millScore(samples = []) {
-  if (samples.length < 3) return 0;
-  const v = [];
-  for (let i = 1; i < samples.length; i++) {
-    const dt = samples[i].t - samples[i - 1].t;
-    if (dt > 0) v.push(Math.abs(samples[i].a - samples[i - 1].a) / dt);
-  }
-  if (v.length < 2) return 0;
-  const mean = v.reduce((a, b) => a + b, 0) / v.length;
-  if (mean <= 0) return 0;
-  const sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length);
-  return Math.max(0, Math.min(1, 1 - sd / mean));      // 변동계수 0 → 1점
-}
-
-/** 요리와 같은 4단(😅🙂😋💫). 경계는 판정창 배율로만 조절한다 */
-export function gradeOfScore(score) {
-  if (score >= 0.9) return 3;
-  if (score >= 0.75) return 2;
-  if (score >= 0.5) return 1;
-  return 0;
-}
-```
-
-- [ ] **Step 4: 테스트를 돌려 통과를 확인한다**
-
-Run: `node --test tests/craft-mill.test.mjs`
-Expected: PASS (4 tests)
-
-- [ ] **Step 5: 무대를 `mgView.type` 분기에 얹는다**
-
-`js/game.js` 의 미니게임 루프(`:9004`)에 `mill` 분기를 추가하고, `grill`·`season` 은 기존 판정을 그대로 쓰되 무대 소품만 바꾼다(숯 = 공기구멍, 벽돌 = 반죽 판). 끝나면:
-
-```javascript
-function finishCraftMinigame(recId, itemId, grade, score) {
-  gameState.craft.slots = setSlot(gameState.craft.slots, { st: recId, item: itemId, grade, day: todayStr() });
-  trackEvent('craft_set', {
-    item: itemId, grade, score: Math.round(score * 100), qty: yieldOf(itemId, grade),
-    slot_idx: gameState.craft.slots.filter(s => s.st === recId).length - 1,
-    station_seq: gameState.outdoor.filter(r => r.id === 'kiln').length,
-  });
-  requestSave(); rebuildOutdoor(); renderCraftWindow(recId);
-}
-```
-
-- [ ] **Step 6: 세 미니게임을 실제로 쳐 본다**
-
-Run: 브라우저에서 숯·밀가루·벽돌을 각각 걸어 본다.
-Expected: 세 개가 서로 다른 조작으로 읽히고, 등급이 수율로 이어지고(💫이면 5개), 슬롯이 「굽는 중」으로 바뀐다.
-
-- [ ] **Step 7: 커밋한다**
-
-```bash
-git add js/craft/mill.js tests/craft-mill.test.mjs js/game.js
-git commit -m "feat: 🔥 화덕 미니게임 3종을 붙인다 — 걸 때 치르고 수율이 갈린다
-
-밀가루는 맷돌(신규 mill) — 원을 따라 '고르게' 돌리는 게 점수다. 각속도의
-변동계수를 쓴다. 빠르기가 아니라 고르기라 서두른다고 유리하지 않다.
-
-숯은 grill, 벽돌은 season 판정을 재사용하고 무대·연출만 바꾼다. 신규 판정
-로직은 맷돌 하나뿐이다.
-
-조작은 걸 때만 치른다. 완성은 여전히 다음 날이라 기다림이 사라지지 않는다 —
-그 자리에서 결과가 나오면 리텐션 레버가 아니라 다섯 번째 미니게임이 된다.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
-```
+**검증 완료** — 10 pass(전체 840) · 브라우저 실측: 불 조절 한가운데 💫 5개 · 맷돌 고르게 😋 4개 ·
+반죽 1200ms 💫 5개 · 슬롯이 차면 걸기 비활성.
 
 ---
 

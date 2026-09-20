@@ -64,6 +64,7 @@ import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 �
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
 import { CRAFT_RECIPES, recipeOf as craftRecipeOf, yieldOf, lackOf, canAfford } from './craft/recipes.js';   // 🔥 화덕 레시피 표(순수 모듈) — recipeOf 는 요리(:9813)가 이미 쓰는 이름이라 별칭
+import { millScore, fireScore, knead2Score, gradeOfScore } from './craft/minigame.js';   // 🔥 화덕 미니게임 판정(순수 모듈)
 import { SLOTS_PER_KILN, MAX_KILNS, capacityOf, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, slotsOfKiln, kilnState } from './craft/slots.js';   // 🔥 화덕 슬롯 규칙(순수 모듈)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
@@ -1941,7 +1942,7 @@ function craftPanelData() {
   };
 }
 
-// 걸기 — Task 6 에서 이 앞에 미니게임이 들어간다(등급이 수율을 정한다). 지금은 보통 등급으로 건다.
+// 걸기 — 등급은 미니게임(가공 창 오버레이)이 정한다. 완성 여부는 등급과 무관하다.
 function craftSet(itemId, grade = 1) {
   const r = craftRecipeOf(itemId); if (!r) return null;
   if (gameState.craft.slots.length >= capacityOf(kilnCount())) {
@@ -2021,7 +2022,15 @@ export const Input = {
   cookResolve(how) { return cookResolve(how); },        // 🍽️ 결과 화면: 'eat' 먹기 | 'store' 🧺 찬장 보관
   getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
   pantryEat(i) { return pantryEat(i); },                // 🍱 찬장에서 꺼내 먹기(버프 발동)
-  craftSet(itemId) { return craftSet(itemId); },        // 🔥 화덕에 걸기(다음 날 완성)
+  craftSet(itemId, grade) { return craftSet(itemId, grade); },   // 🔥 화덕에 걸기(다음 날 완성)
+  // 🔥 미니게임 판정 — 조작은 index.html 이 받고 판정은 순수 모듈이 한다
+  craftScore(itemId, input) {
+    if (itemId === 'flour') return millScore(input);
+    if (itemId === 'charcoal') return fireScore(input.pos, input.target, input.half);
+    return knead2Score(input.heldMs, input.targetMs, input.tol);
+  },
+  craftGrade(score) { return gradeOfScore(score); },
+  craftYield(itemId, grade) { return yieldOf(itemId, grade); },
   craftClaim() { return craftClaim(); },                // 🔥 다 구워진 것 받기
   craftData() { return craftPanelData(); },
   cafeCookDone(res) { return cafeCookDone(res); },      // ☕ 카페 조리 완료 → 그 손님에게 바로 서빙
