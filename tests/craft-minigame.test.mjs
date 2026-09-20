@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { millScore, fireScore, knead2Score, gradeOfScore } from '../js/craft/minigame.js';
+import { millScore, fireScore, knead2Score, gradeOfScore, crushScore } from '../js/craft/minigame.js';
 
 test('millScore: 일정한 속도로 돌리면 만점에 가깝다', () => {
   const even = Array.from({ length: 30 }, (_, i) => ({ t: i * 100, a: i * 0.4 }));
@@ -65,4 +65,27 @@ test('knead2Score: 목표 시간에 떼면 만점', () => {
 
 test('knead2Score: 누르지 않으면 0', () => {
   assert.equal(knead2Score(0, 1200, 400), 0);
+});
+
+// 🍷 포도 밟기 — 박자를 맞춘다. 빠르기가 아니라 **목표 간격에 얼마나 붙느냐** 다
+test('crushScore: 목표 박자에 딱 맞으면 만점', () => {
+  const taps = [0, 520, 1040, 1560, 2080];
+  assert.equal(crushScore(taps), 1);
+});
+
+test('crushScore: 박자가 흔들릴수록 깎인다', () => {
+  const steady = crushScore([0, 520, 1040, 1560, 2080]);
+  const wobbly = crushScore([0, 380, 980, 1400, 2100]);
+  assert.ok(wobbly < steady, '들쭉날쭉하면 낮다');
+  assert.ok(wobbly > 0, '그래도 밟기는 했으니 0 은 아니다');
+});
+
+test('crushScore: 너무 적게 밟으면 0 — 한두 번 눌러 통과할 수 없다', () => {
+  assert.equal(crushScore([]), 0);
+  assert.equal(crushScore([0, 520]), 0);
+  assert.equal(crushScore([0, 520, 1040]), 0);
+});
+
+test('crushScore: 목표에서 절반 넘게 벗어나면 0', () => {
+  assert.equal(crushScore([0, 60, 120, 180, 240]), 0, '연타로 뭉개도 점수가 없다');
 });
