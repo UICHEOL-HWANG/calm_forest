@@ -680,17 +680,27 @@ const OUTDOOR = [
 // 🔥 첫 화덕 자리 — ⛏️채굴장 입구(-14,3) 아래 빈터. 마을 서쪽 동선 위라 오가며 눈에 들어온다.
 //    (-6,4) 는 목수 아저씨와 겹쳐 캐릭터 뒤에 가렸다(2026-09-20 실측).
 //    한 점에 박으면 그 자리에 나무가 서 있을 때 화덕이 파묻힌다 — 후보 중 **가장 트인 곳**을 고른다.
-const KILN_SPOTS = [[-13, 8], [-11.5, 9.5], [-15, 9], [-12, 6.4], [-16, 7.5]];
+const KILN_SPOTS = [[-9.5, 12.5], [-11.5, 9.5], [-13, 8], [-7.5, 14], [-12, 6.4]];   // 채굴장(-14,3)에 붙지 않게 남동쪽 빈터를 앞에 둔다
 const KILN_HOME = KILN_SPOTS[0];                 // 기본값(후보를 못 고를 때)
 const KILN_CLEAR_R = 2.4;                        // 이 반경 안엔 나무가 없어야 한다(화덕 폭 2.03 + 여유)
 
-/** 후보 중 가장 가까운 나무가 멀리 있는 자리 */
+/** 후보 점수 — 나무에서 멀고 **기존 시설·주민에서도 떨어진** 자리.
+ *  나무만 보고 고르니 화덕이 ⛏️채굴장 옆에 붙었다(2026-09-20 실측).
+ *  나무는 일정 거리만 벌면 충분하지만(3 에서 포화), 시설은 멀수록 좋으므로 가중치를 크게 둔다. */
+function kilnAvoidPoints() {
+  return [MINE_GATE, CAFE_GATE, MUSEUM_GATE, FARM_GATE, KITCHEN, BENCH, SHOP, MARKET, RANK, COOP]
+    .filter(Boolean)
+    .concat(NPCS.map(n => ({ x: n.pos[0], z: n.pos[2] })));   // 주민 자리도 피한다
+}
 function pickKilnSpot() {
-  let best = KILN_HOME, bestD = -1;
+  const avoid = kilnAvoidPoints();
+  let best = KILN_HOME, bestScore = -1;
   for (const [x, z] of KILN_SPOTS) {
-    let d = 99;
-    for (const t of trees) d = Math.min(d, Math.hypot(t.position.x - x, t.position.z - z));
-    if (d > bestD) { bestD = d; best = [x, z]; }
+    let treeD = 99, lmD = 99;
+    for (const t of trees) treeD = Math.min(treeD, Math.hypot(t.position.x - x, t.position.z - z));
+    for (const a of avoid) lmD = Math.min(lmD, Math.hypot(a.x - x, a.z - z));
+    const score = Math.min(treeD, 3) * 0.8 + lmD;      // 나무는 3 이면 충분, 시설 거리가 주도한다
+    if (score > bestScore) { bestScore = score; best = [x, z]; }
   }
   return best;
 }
