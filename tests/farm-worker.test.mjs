@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   JOBS, GRADES, HIRE_COST, WORK_SEC, MOVE_SEC, STEP_SEC, MAX_CATCHUP_H, HAUL_N,
   gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages,
-  pickTask, storageLeft, catchUpSteps, worksPerStep, candidatesFor, NAME_POOL,
+  pickTask, storageLeft, catchUpSteps, worksPerStep, candidatesFor, releaseCandidate, NAME_POOL,
 } from '../js/farm-worker.js';
 
 test('표: 직군 3종 · 등급 3단 — 스펙 §3 수치 그대로', () => {
@@ -146,4 +146,17 @@ test('candidatesFor: 같은 시드 = 같은 명단(전원 동일) · 이름 풀 
     assert.ok(NAME_POOL.some(n => c.name.startsWith(n)), `이름 풀 안 (${c.name})`);
   }
   assert.notDeepEqual(candidatesFor(1), candidatesFor(2), '날짜가 바뀌면 명단도 바뀐다');
+});
+
+test('releaseCandidate: 내보낸 일꾼의 자리를 게시판에 되돌린다(재고용)', () => {
+  const cands = [{ job: 'mole', name: '이삭3' }, { job: 'hamster', name: '보리1' }, { job: 'squirrel', name: '알밤7' }];
+  assert.deepEqual(releaseCandidate([0, 2], { name: '이삭3', job: 'mole' }, cands), [2], '내보낸 사람 자리만 열린다');
+  assert.deepEqual(releaseCandidate([0, 2], { name: '보리1', job: 'hamster' }, cands), [0, 2], '고용한 적 없는 후보는 그대로');
+  assert.deepEqual(releaseCandidate([0], { name: '이삭3', job: 'hamster' }, cands), [0], '이름이 같아도 직군이 다르면 남의 자리');
+  assert.deepEqual(releaseCandidate([0, 1], { name: '이삭3', job: 'mole' }, [cands[0], cands[0], cands[2]]), [1], '같은 사람이 둘이면 한 칸만');
+  const taken = [0, 2];
+  releaseCandidate(taken, { name: '이삭3', job: 'mole' }, cands);
+  assert.deepEqual(taken, [0, 2], '원본 배열은 건드리지 않는다');
+  assert.deepEqual(releaseCandidate(undefined, {}, cands), [], '세이브에 없으면 빈 명단');
+  assert.deepEqual(releaseCandidate([0, 'x', null], { name: '이삭3', job: 'mole' }, cands), [], '조작 세이브의 이상값은 버린다');
 });

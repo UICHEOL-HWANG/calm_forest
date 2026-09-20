@@ -49,7 +49,7 @@ import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 �
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
 import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees, YARD_D, YARD_HZ, surveyOfficePos, surveyDeskPos, surveyBenchPos, surveyYard, clampFarmPos } from './farm-stage.js';   // 🌾 밭 단계 증축 규칙(텃밭 6 → 넓은 밭 9 → 대농장 11)
 import { ADV_CROPS, MATURE, isAdv, growthPerWater, stageIndex, renderStage, wiltTimeFor, weedRoll, pestChance, harvestYield, nextSeedSel, seedKeyOf } from './farm-crops.js';   // 🌾 고급 작물 공정(밀·옥수수·포도 · 비료/잡초/해충)
-import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, jobOf, gradeInfo, gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages, pickTask, catchUpSteps, worksPerStep, candidatesFor } from './farm-worker.js';   // 🧑‍🌾 노동자 규칙(직군·등급·우선순위·월급·오프라인 스텝)
+import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, jobOf, gradeInfo, gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages, pickTask, catchUpSteps, worksPerStep, candidatesFor, releaseCandidate } from './farm-worker.js';   // 🧑‍🌾 노동자 규칙(직군·등급·우선순위·월급·오프라인 스텝)
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
@@ -145,10 +145,11 @@ const WET_TIME = 9;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(�
 const WILT_TIME = 60;  // 물 없이 목마른 채 방치되면 시드는 시간(초)
 
 // ── 날짜 유틸(출석·데일리 퀘스트·날씨 — 로컬 날짜 기준) ─────────
-function todayStr(offsetDays = 0) {
-  const d = new Date(Date.now() + offsetDays * 86400000);
+function dayStr(ms) {   // 에포크 ms → 로컬 날짜 키(고용일 비교에도 쓴다)
+  const d = new Date(ms);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function todayStr(offsetDays = 0) { return dayStr(Date.now() + offsetDays * 86400000); }
 function dateHash(salt, offsetDays = 0) {   // offsetDays: 0=오늘, 1=내일(예보용)
   const s = todayStr(offsetDays) + ':' + salt;
   let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
@@ -13852,10 +13853,19 @@ function hireWorker(idx) {
   requestSave(); ui.openHire?.(hireView());
   return true;
 }
+// 📋 내보낸 사람이 오늘 게시판에서 온 사람이면 그 자리를 다시 연다 —
+//    안 풀면 후보가 '고용함'으로 잠긴 채 남아 그날은 다시 데려올 수 없다.
+function releaseHireSlot(rec) {
+  const today = todayStr();
+  if (gameState.farm.hireDate !== today) return;            // 게시판 명단이 이미 어제 것 → 곧 새로 뽑힌다
+  if (dayStr(rec.hiredAt || 0) !== today) return;           // 어제 데려온 사람은 오늘 명단에 자리가 없다
+  gameState.farm.hireTaken = releaseCandidate(gameState.farm.hireTaken, rec, candidatesFor(dateHash('hire')));
+}
 function fireWorker(id) {
   const i = gameState.workers.findIndex(w => w.id === id);
   if (i < 0) return false;
   const [rec] = gameState.workers.splice(i, 1);
+  releaseHireSlot(rec);
   spawnWorkers(); setWorkersVisible(atFarm);
   ui.toast?.(`${jobOf(rec.job).ico} ${rec.name} 떠났어요`, 2600);
   trackEvent('worker_fire', { job: rec.job, works: rec.works || 0, grade: rec.grade });   // [GA4] 이탈
