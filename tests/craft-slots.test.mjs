@@ -70,3 +70,45 @@ test('waitedDays: 며칠 만에 받으러 왔는가 — 핵심 지표', () => {
   assert.equal(waitedDays('20260228', '20260301'), 1, '달을 넘어도 하루다(2026년은 평년)');
   assert.equal(waitedDays('20261231', '20270101'), 1, '해를 넘어도 하루다');
 });
+
+// ── 세이브 복원 정제 (Task 3) ──
+import { sanitizeSlots } from '../js/craft/slots.js';
+
+test('sanitizeSlots: 배열이 아니면 빈 배열 — 옛 세이브를 신규로 오인하지 않는다', () => {
+  assert.deepEqual(sanitizeSlots(undefined), []);
+  assert.deepEqual(sanitizeSlots(null), []);
+  assert.deepEqual(sanitizeSlots({}), []);
+  assert.deepEqual(sanitizeSlots('x'), []);
+});
+
+test('sanitizeSlots: 표에 없는 품목은 버린다', () => {
+  const raw = [
+    { st: 'kiln_1', item: 'charcoal', qty: 4, grade: 2, day: '20260920' },
+    { st: 'kiln_1', item: 'plutonium', qty: 99, grade: 3, day: '20260920' },
+  ];
+  assert.deepEqual(sanitizeSlots(raw).map(s => s.item), ['charcoal']);
+});
+
+test('sanitizeSlots: 수량·등급을 범위 안으로 물린다', () => {
+  const raw = [{ st: 'kiln_1', item: 'flour', qty: 9999, grade: 77, day: '20260920' }];
+  const out = sanitizeSlots(raw);
+  assert.equal(out[0].qty, 5, '표의 최대 산출을 넘길 수 없다');
+  assert.equal(out[0].grade, 3);
+});
+
+test('sanitizeSlots: 음수·비숫자 수량은 최소로', () => {
+  const raw = [
+    { st: 'kiln_1', item: 'flour', qty: -3, grade: 0, day: '20260920' },
+    { st: 'kiln_1', item: 'flour', qty: 'many', grade: 0, day: '20260920' },
+  ];
+  assert.deepEqual(sanitizeSlots(raw).map(s => s.qty), [2, 2]);
+});
+
+test('sanitizeSlots: 날짜 꼴이 아니면 버린다 — 완성 판정이 문자열 비교라 형식이 깨지면 위험하다', () => {
+  const raw = [
+    { st: 'kiln_1', item: 'flour', qty: 2, grade: 0, day: '2026-09-20' },
+    { st: 'kiln_1', item: 'flour', qty: 2, grade: 0 },
+    { st: 'kiln_1', item: 'flour', qty: 2, grade: 0, day: '20260920' },
+  ];
+  assert.equal(sanitizeSlots(raw).length, 1);
+});

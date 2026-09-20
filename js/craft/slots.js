@@ -1,6 +1,6 @@
 // 🔥 화덕 슬롯 — 걸기·완성 판정·수령. 순수 함수만.
 //    날짜 키는 게임의 todayStr()(js/game.js:152)가 주는 'YYYYMMDD' 문자열을 그대로 받는다.
-import { yieldOf } from './recipes.js';
+import { recipeOf, yieldOf } from './recipes.js';
 
 export const SLOTS_PER_KILN = 2;
 export const MAX_KILNS = 3;
@@ -38,4 +38,20 @@ export function claimAll(slots = [], today) {
     claimed.push({ item: s.item, qty: s.qty, grade: s.grade, waitedDays: waitedDays(s.day, today) });
   }
   return { rest, gained, claimed };
+}
+
+/** 세이브에서 온 슬롯 배열을 믿지 않고 정제한다.
+ *  기존 복원 코드와 같은 문법 — 카탈로그에 있는 것만, 숫자는 범위 안으로. */
+export function sanitizeSlots(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(s => {
+    if (!s || typeof s !== 'object') return false;
+    if (!recipeOf(s.item)) return false;                        // 표에 없는 품목
+    return typeof s.day === 'string' && /^\d{8}$/.test(s.day);  // 완성 판정이 문자열 비교라 형식이 깨지면 위험
+  }).map(s => {
+    const grade = Math.max(0, Math.min(3, Number.isFinite(s.grade) ? Math.floor(s.grade) : 0));
+    const min = yieldOf(s.item, 0), max = yieldOf(s.item, 3);
+    const qty = Number.isFinite(s.qty) ? Math.max(min, Math.min(max, Math.floor(s.qty))) : min;
+    return { st: String(s.st || ''), item: s.item, qty, grade, day: s.day };
+  });
 }
