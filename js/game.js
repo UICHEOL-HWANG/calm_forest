@@ -64,7 +64,7 @@ import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 �
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
 import { CRAFT_RECIPES, recipeOf as craftRecipeOf, yieldOf, lackOf } from './craft/recipes.js';   // 🔥 화덕 레시피 표(순수 모듈) — recipeOf 는 요리(:9813)가 이미 쓰는 이름이라 별칭
-import { SLOTS_PER_KILN, MAX_KILNS, isReady, setSlot, claimAll, waitedDays, sanitizeSlots } from './craft/slots.js';   // 🔥 화덕 슬롯 규칙(순수 모듈)
+import { SLOTS_PER_KILN, MAX_KILNS, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, slotsOfKiln, kilnState } from './craft/slots.js';   // 🔥 화덕 슬롯 규칙(순수 모듈)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -666,8 +666,37 @@ const OUTDOOR = [
   { id: 'stonewall', name: '돌담',    ico: '🧱', cost: { stone: 3 }, desc: '튼튼한 돌담(채굴)' },
   { id: 'brazier',   name: '화로',    ico: '🔥', cost: { stone: 2, coal: 2 }, desc: '밤에 빛나는 화로(채굴)' },
   { id: 'spiritlamp', name: '정령 등불', ico: '✨', cost: { glow: 8, coins: 60 }, desc: '정령빛이 깃든 등불 — 밤에 청록빛(안개 숲)' },
+  { id: 'kiln',      name: '화덕',    ico: '🔥', cost: { stone: 20, wood: 15, coins: 150 }, desc: '재료를 걸어두면 다음 날 구워져 있어요 · 한 채에 2칸' },
   ...FARM_BUILDINGS,   // 🏗️ 밭 시설 7종(farm:true, fp:[가로칸,세로칸]) — 같은 배치 문법, 텃밭 안에서만(js/farm-building.js)
 ];
+// 🔥 첫 화덕 자리 — ⛏️채굴장 입구(-14,3) 아래 빈터. 마을 서쪽 동선 위라 오가며 눈에 들어온다.
+//    (-6,4) 는 목수 아저씨와 겹쳐 캐릭터 뒤에 가렸다(2026-09-20 실측).
+const KILN_HOME = [-13, 8];
+const KILN_SCALE = 1.35;        // 마을 기준 체감 크기(1.0 은 벤치보다 작게 읽혔다)
+function kilnCount() { return gameState.outdoor.filter(r => r.id === 'kiln').length; }
+// 화덕은 3채까지 — 마을이 화덕으로 뒤덮이지 않게. 슬롯 상한 6칸도 여기서 나온다
+function canBuildKiln() { return kilnCount() < MAX_KILNS; }
+
+// 🔥 화덕 불꽃 — 서로 다른 박자로 늘었다 줄고 비틀린다. updateDayNight 가 매 프레임 돌린다
+const kilnFlames = [];
+
+// 화덕의 겉모습을 슬롯 상태에 맞춘다. 슬롯은 특정 화덕에 묶여 있지 않고
+// 'i 번째 화덕 = 슬롯 2i·2i+1' 로 파생한다(배치 장식엔 고유 id 가 없다 — js/craft/slots.js 참고).
+// 안 보이는 부분은 드로우콜도 잡히지 않으므로 visible 토글로 끝낸다.
+function refreshKilns() {
+  const today = todayStr();
+  let idx = 0;
+  for (const m of outdoorMeshes) {
+    if (m.userData.rec?.id !== 'kiln') continue;
+    const k = m.userData.kiln; if (!k) { idx++; continue; }
+    const st = kilnState(gameState.craft.slots, idx, today);
+    k.fire.visible = st === 'firing';
+    k.load.visible = st === 'done';
+    k.logs.visible = st !== 'done';        // 다 구우면 장작을 썼다
+    idx++;
+  }
+}
+
 const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안이나 📐측량소 마당에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
 function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 function farmBuildingRecs(except = null) { return gameState.outdoor.filter(r => r !== except && isFarmBuilding(r.id)); }   // 시설 레코드만(옮기는 중인 자기 자신 제외)
@@ -2338,6 +2367,11 @@ export async function enterGame() {
     })();
   }
   if (load.state) applySave(load.state);
+  // 🔥 첫 화덕 — 세이브가 있든 없든 한 채는 서 있어야 한다. applySave 안에 두면 신규 유저가 못 받는다.
+  //    스토리 보상으로 주려던 원안은 1장 완료가 25명(진입 109명의 23%)뿐이라 폐기했다.
+  //    이미 지어 두거나 옮겨 둔 사람의 자리는 건드리지 않는다.
+  if (!kilnCount()) placeOutdoor(KILN_HOME[0], KILN_HOME[1], true, 'kiln', 0);
+  refreshKilns();
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -10066,6 +10100,55 @@ function outdoorMesh(id) {
     houseWindows.push(headMat);
     const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), headMat); head.position.set(0.16, 1.36, 0); g.add(head);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 5, 12), clayMat(0x4a5a58)); ring.position.set(0.16, 1.36, 0); g.add(ring);
+  } else if (id === 'kiln') {
+    // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
+    //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
+    //    상태별 부분을 미리 만들어 두고 visible 로 토글한다(refreshKilns) — 안 보이면 드로우콜도 안 잡힌다.
+    const KC = { body: 0x9a7358, ledge: 0x7d5c46, top: 0xcfc7b0, hole: 0x4a4844 };   // 시안 확정색. body 를 0x5a5148 로 두면 낮에 검게 읽힌다
+    // 마을에서 너무 작게 읽혔다 — 시안 비례는 그대로 두고 안쪽 그룹만 키운다.
+    // 바깥 g 에 걸면 설치 애니메이션(m.scale.setScalar(0.01))이 덮어쓴다.
+    const kg = new THREE.Group(); kg.scale.setScalar(KILN_SCALE); g.add(kg);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.98, 0.86), clayMat(KC.body)); body.position.y = 0.49; kg.add(body);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.14, 1.0), clayMat(KC.top)); top.position.y = 1.05; kg.add(top);
+    // 아궁이 입은 **하나**. 둘이면 눈이 되어 얼굴로 읽힌다(시안 1차 실패)
+    const mouth = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.5, 10, 1, false, 0, Math.PI), clayMat(KC.hole, false));
+    mouth.rotation.z = Math.PI / 2; mouth.rotation.y = Math.PI / 2; mouth.position.set(-0.3, 0.42, 0.26); kg.add(mouth);
+    const ledge = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.22, 0.34), clayMat(KC.ledge)); ledge.position.set(0.44, 0.25, 0.58); kg.add(ledge);
+
+    // 장작 — 빈 화덕·굽는 중에만. 2개를 한 덩어리로(1 드로우콜)
+    const logs = new THREE.Mesh(mergeGeos([[0.42, 0.42, 0.04], [0.46, 0.51, -0.05]].map(([lx, ly, rz]) =>
+      new THREE.CylinderGeometry(0.055, 0.055, 0.44, 6).rotateZ(Math.PI / 2 + rz).rotateY(0.22).translate(lx, ly, 0.58))), clayMat(0x6b4a34));
+    kg.add(logs);
+
+    // 불꽃 — 원뿔은 "고깔"로 읽혔다(시안 1차 실패). 옆모습 프로필을 LatheGeometry 로 돌린다.
+    //    밑동이 불룩하고 중간이 잘록해지다 끝이 가늘게 빠진다. 떠오르는 불똥은 쓰지 않는다.
+    const fire = new THREE.Group(); fire.position.set(-0.3, 0.3, 0.52); kg.add(fire);
+    const flameProfile = (sc, tall) => [[0.002, 0], [0.085, 0.035], [0.108, 0.10], [0.088, 0.185], [0.048, 0.278], [0.013, 0.355], [0.001, 0.44]]
+      .map(([x, yy]) => new THREE.Vector2(x * sc, yy * tall));
+    for (const f of [{ c: 0xff7320, e: 0xff3d00, sc: 1.0, t: 1.0, sp: 6.8, ph: 0, spin: 0.9 },
+                     { c: 0xffd44e, e: 0xffab10, sc: 0.52, t: 0.66, sp: 10.6, ph: 2.3, spin: -1.5 }]) {
+      const m = new THREE.MeshStandardMaterial({ color: f.c, emissive: f.e, emissiveIntensity: 0.95, roughness: 0.55 });
+      houseWindows.push(m);                                   // 밤에 더 밝게
+      const mesh = new THREE.Mesh(new THREE.LatheGeometry(flameProfile(f.sc, f.t), 6), m);
+      fire.add(mesh); kilnFlames.push({ mesh, sp: f.sp, ph: f.ph, spin: f.spin });
+    }
+
+    // 상판 산출물 — 다 구워졌을 때만. 숯 3덩이·포대 2개가 각각 1 드로우콜
+    const load = new THREE.Group(); kg.add(load);
+    const ly0 = 1.12;
+    load.add(new THREE.Mesh(mergeGeos([[-0.42, -0.1, 0.11], [-0.28, 0.08, 0.09], [-0.46, 0.14, 0.075]].map(([x, z, r]) =>
+      new THREE.IcosahedronGeometry(r, 0).rotateX(0.4).rotateY(0.8).translate(x, ly0 + r * 0.7, z))), clayMat(0x2f2b28)));
+    // 포대는 **눕혀 쌓는다**. 세우면 목·매듭이 생겨 도자기·등대로 읽혔다(시안 2회 실패)
+    load.add(new THREE.Mesh(mergeGeos([
+      new THREE.CapsuleGeometry(0.1, 0.18, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).translate(0.3, ly0 + 0.085, 0.02),
+      new THREE.CapsuleGeometry(0.088, 0.14, 2, 5).scale(1, 0.82, 1).rotateZ(Math.PI / 2).rotateY(0.42).translate(0.315, ly0 + 0.23, -0.015),
+    ]), clayMat(0xf2ead6)));
+
+    // 🪧 팻말 — 채굴장·측량소와 같은 문법. kg(1.35배) 밖에 둬야 다른 팻말과 크기가 같다.
+    //    makeSignpost 가 기둥 충돌체까지 등록한다.
+    g.add(makeSignpost('🔥 화덕', 1.5, 0.35));
+
+    g.userData.kiln = { fire, load, logs };
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
@@ -10106,9 +10189,16 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   } else {
     ob = { x: wx, z: wz, r: 0.8 }; obstacles.push(ob);   // 그 위엔 밭 금지
     // 🚧 울타리·돌담·정원등·화로·허수아비는 막고, 디딤돌·꽃밭은 밟고 지나갈 수 있게
-    solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
+    if (id === 'kiln') {
+      // 🔥 화덕 — 목록에 없어서 캐릭터가 통과했다(2026-09-20 실측). 옆으로 긴 덩어리라 원이 아니라 박스,
+      //    회전(ry 0~3)에 따라 가로·세로를 바꾼다. 반치수는 몸통 1.5×0.86 에 KILN_SCALE 을 곱한 값.
+      const [hw, hd] = (ry % 2) ? [0.58, 1.01] : [1.01, 0.58];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+      obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);   // 밭·나무 금지 반경도 몸집에 맞춘다
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
+  if (id === 'kiln') refreshKilns();   // 🔥 방금 놓은 화덕의 겉모습(불·상판)을 슬롯 상태에 맞춘다
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(wx, 1.0, wz, def.ico + ' 설치!', '#2fa564');
@@ -11979,6 +12069,12 @@ function updateDayNight(dt) {
   // 집 창문 따뜻한 불빛
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
   for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
+  // 🔥 화덕 불꽃 — 세로로 늘 때 가로가 눌리고(부피 보존 인상), 두 겹이 반대로 비틀린다
+  for (const f of kilnFlames) {
+    const k = Math.sin(t * f.sp + f.ph), k2 = Math.sin(t * f.sp * 0.37 + f.ph * 1.7);
+    f.mesh.scale.set(1 - k * 0.16, 1 + k * 0.3, 1 - k * 0.16);
+    f.mesh.rotation.y = t * f.spin; f.mesh.rotation.z = k2 * 0.16; f.mesh.position.x = k2 * 0.02;
+  }
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
   // ☀️ 루프탑엔 벽도 천장도 없다 — 실내용 따뜻한 점광이 허공에 뜬 것처럼 보여 끈다.
   //   밤엔 대신 파이어핏·자쿠지 같은 층 전용 가구(houseWindows 점등)와 기본 밤 앰비언트로 밝힌다.

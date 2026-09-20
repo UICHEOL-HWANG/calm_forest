@@ -15,9 +15,24 @@ export function isReady(slot, today) {
   return slot.day < today;
 }
 
-/** 걸기 — 등급이 그 자리에서 수량으로 굳는다(나중에 표가 바뀌어도 약속한 양을 준다) */
-export function setSlot(slots = [], { st, item, grade, day }) {
-  return [...slots, { st, item, qty: yieldOf(item, grade), grade: grade | 0, day }];
+/** 걸기 — 등급이 그 자리에서 수량으로 굳는다(나중에 표가 바뀌어도 약속한 양을 준다).
+ *  슬롯은 특정 화덕에 묶지 않는다. 배치된 야외 장식은 고유 id 가 없어(세이브가 {id,x,z,rot} 만
+ *  복원한다) 화덕을 옮기거나 보관하면 연결이 끊긴다. 화덕 수는 용량(capacityOf)만 정하고,
+ *  조형 상태는 'i 번째 화덕 = 슬롯 2i·2i+1' 로 파생한다. */
+export function setSlot(slots = [], { item, grade, day }) {
+  return [...slots, { item, qty: yieldOf(item, grade), grade: grade | 0, day }];
+}
+
+/** i 번째 화덕이 맡는 슬롯 — 조형(불·상판)이 이걸로 상태를 정한다 */
+export function slotsOfKiln(slots = [], kilnIdx = 0) {
+  return slots.slice(kilnIdx * SLOTS_PER_KILN, (kilnIdx + 1) * SLOTS_PER_KILN);
+}
+
+/** 그 화덕의 겉모습 — 'empty' | 'firing' | 'done' */
+export function kilnState(slots = [], kilnIdx, today) {
+  const mine = slotsOfKiln(slots, kilnIdx);
+  if (!mine.length) return 'empty';
+  return mine.some(s => isReady(s, today)) ? 'done' : 'firing';
 }
 
 export function readySlots(slots = [], today) {
@@ -52,6 +67,6 @@ export function sanitizeSlots(raw) {
     const grade = Math.max(0, Math.min(3, Number.isFinite(s.grade) ? Math.floor(s.grade) : 0));
     const min = yieldOf(s.item, 0), max = yieldOf(s.item, 3);
     const qty = Number.isFinite(s.qty) ? Math.max(min, Math.min(max, Math.floor(s.qty))) : min;
-    return { st: String(s.st || ''), item: s.item, qty, grade, day: s.day };
+    return { item: s.item, qty, grade, day: s.day };
   });
 }
