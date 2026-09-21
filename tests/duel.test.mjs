@@ -5,6 +5,7 @@ import { HANDS, RPS_WIN, rollHand, judge,
 import { SHELL_COUNT, SHELL_ROUNDS, makeSwaps, finalPos,
          initMatch as shellInit, applyRound as shellRound } from '../js/duel/shells.js';
 import { TRUCE_NIGHTS, DUEL_ANIMALS, addDays, truceUntil, truceActive, blockedAnimals } from '../js/duel/truce.js';
+import { pickAnimal } from '../functions/api/night-visit.js';
 
 // ── 🐗 가위바위보 ───────────────────────────────────────────
 test('rollHand: 0~1 을 세 손에 고르게 가른다', () => {
@@ -211,4 +212,25 @@ test('truceUntil: 무효한 입력은 null', () => {
   assert.equal(truceUntil('2026-09-32'), null);
   assert.equal(truceUntil('2026-02-30'), null);
   assert.equal(truceUntil('2026-09-21'), '2026-09-23', '유효한 입력은 여전히 맞다');
+});
+
+// ── 🌙 서버 판정의 동물 선택 ────────────────────────────────
+test('pickAnimal: 아무도 안 막혔으면 난수대로', () => {
+  assert.equal(pickAnimal(0.2, []), 'raccoon');
+  assert.equal(pickAnimal(0.8, []), 'boar');
+});
+
+test('pickAnimal: 막힌 동물이 뽑히면 남은 쪽으로 넘긴다', () => {
+  assert.equal(pickAnimal(0.8, ['boar']), 'raccoon', '멧돼지가 쉬면 너구리가 온다');
+  assert.equal(pickAnimal(0.2, ['raccoon']), 'boar');
+});
+
+test('pickAnimal: 안 막힌 쪽이 뽑히면 그대로 둔다', () => {
+  assert.equal(pickAnimal(0.2, ['boar']), 'raccoon');
+  assert.equal(pickAnimal(0.8, ['raccoon']), 'boar');
+});
+
+test('pickAnimal: 둘 다 막히면 null — 그 밤은 아무도 안 온다', () => {
+  assert.equal(pickAnimal(0.2, ['boar', 'raccoon']), null);
+  assert.equal(pickAnimal(0.8, ['boar', 'raccoon']), null);
 });
