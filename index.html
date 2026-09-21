@@ -1011,11 +1011,48 @@
   body.mg-open #catch-banner,
   body.mg-open #door-prompt, body.mg-open #npc-prompt, body.mg-open #zone-prompt, body.mg-open #hotbar,
   body.mg-open #minimap, body.mg-open #dex-tab, body.mg-open #feedback-tab, body.mg-open #quest-panel,
-  body.mg-open #talk-btn, body.mg-open #mobile-controls, body.mg-open #floor-choice { display: none !important; }
+  body.mg-open #talk-btn, body.mg-open #mobile-controls, body.mg-open #floor-choice,
+  /* 🐗🦝 대결 중에도 같은 이유로 마을 조작 UI를 걷는다 */
+  body.duel-open #catch-banner,
+  body.duel-open #door-prompt, body.duel-open #npc-prompt, body.duel-open #zone-prompt, body.duel-open #hotbar,
+  body.duel-open #minimap, body.duel-open #dex-tab, body.duel-open #feedback-tab, body.duel-open #quest-panel,
+  body.duel-open #talk-btn, body.duel-open #mobile-controls, body.duel-open #floor-choice,
+  /* 🐗🦝 상단 패널·스토리 칩도 걷는다 — 🍳 요리는 부엌 안이라 안 걷어도 됐지만,
+     승부는 마을 한복판이라 남겨두면 화면 위쪽이 그대로 마을 HUD 다(실측). */
+  body.duel-open #topleft, body.duel-open #topright, body.duel-open #story-chip,
+  /* 🐗🦝 토스트·배너도 걷는다 — 흔적 조사 보상(도감·씨앗)이 승부 시작과 겹쳐
+     화면 위를 덮었다(실측). 승부가 끝나면 다시 보인다. */
+  body.duel-open #toast, body.duel-open #hint-banner { display: none !important; }
   /* 🍳 미니게임 오버레이 — 3D 조리 무대 위에 얹는 투명 풀스크린. 화면 어디를 탭해도 입력 */
   #mg-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
     background: linear-gradient(rgba(20,40,30,0) 55%, rgba(20,40,30,0.42)); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
   #mg-layer.show { display: flex; }
+  /* 🐗🦝 밤손님 대결 — 3D 클로즈업 위에 얹는 오버레이. #mg-layer 와 같은 문법(z-index 40) */
+  #duel-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
+                padding: 0 12px calc(18px + env(safe-area-inset-bottom)); pointer-events: none; }
+  #duel-layer.show { display: flex; }
+  #duel-card { width: min(480px, 94vw); background: rgba(255,252,244,0.93); border-radius: 22px 22px 16px 16px;
+               box-shadow: var(--shadow); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px;
+               pointer-events: auto; }
+  #duel-banner { font-weight: 800; font-size: 15px; text-align: center; min-height: 20px; }
+  /* 그만두기 — 이 경로가 없으면 중간 이탈을 셀 수가 없다(스펙 §9 의 이탈률) */
+  #duel-quit { position: absolute; top: 8px; right: 10px; border: none; background: none;
+               font-size: 12px; color: #9b9086; padding: 4px 6px; cursor: pointer; }
+  #duel-card { position: relative; }
+  #duel-round { font-size: 12px; opacity: .6; text-align: center; font-variant-numeric: tabular-nums; }
+  #duel-hands { display: flex; gap: 10px; justify-content: center; }
+  /* 🥣 그릇은 무대에서 **깊이**로 늘어선다 — 버튼도 세로로 쌓아야 눈과 손이 같은 방향을 가리킨다 */
+  #duel-shells { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  #duel-hands.hide, #duel-shells.hide { display: none; }
+  #duel-hands button, #duel-shells button {
+    flex: 1; border: none; border-radius: 14px; padding: 14px 0; font-size: 28px; cursor: pointer;
+    background: #f0ead8; box-shadow: 0 2px 0 rgba(0,0,0,.06); }
+  #duel-shells button { transition: transform .3s ease; padding: 10px 0; font-size: 22px; }   /* 섞을 때 자리를 옮긴다 */
+               filter: drop-shadow(0 3px 5px rgba(0,0,0,.28));
+               pointer-events: none; transition: transform .36s cubic-bezier(.5,.05,.7,.4), opacity .3s .06s; }
+  #duel-hands button:active { transform: translateY(1px); }
+  #duel-hands button:disabled, #duel-shells button:disabled { cursor: default; }
+  #duel-hands button:disabled { opacity: .45; }
   #mg-card { width: min(480px, 94vw); background: rgba(255,252,244,0.93); border-radius: 22px 22px 16px 16px; box-shadow: var(--shadow);
     padding: 13px 15px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 9px; margin-bottom: 10px; }
   #mg-head { display: flex; align-items: center; justify-content: space-between; }
@@ -1720,6 +1757,18 @@
     </div>
   </div>
 
+  <!-- 🐗🦝 밤손님 대결 오버레이 — js/duel/ui.js 가 조작. 버튼은 JS 가 만든다
+       (마크업에 한국어를 박아두면 translateDom 이 대결 중에 건드린다) -->
+  <div id="duel-layer">
+    <div id="duel-card">
+      <button id="duel-quit" type="button"></button>
+      <div id="duel-banner"></div>
+      <div id="duel-round"></div>
+      <div id="duel-hands" class="hide"></div>
+      <div id="duel-shells" class="hide"></div>
+    </div>
+  </div>
+
   <!-- 🗿 조각 공방 HUD — 3D 무대 위 최소 오버레이(캔버스 탭이 곧 조작이라 판은 안 가림) -->
   <div id="cv-layer">
     <div id="cv-top"><span id="cv-title">🗿 조각</span><button id="cv-quit">그만두기</button></div>
@@ -2152,6 +2201,7 @@
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
+    import { initDuel } from './js/duel/index.js';   // 🐗🦝 밤손님 승부(흔적 조사 → 추격)
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
 
@@ -5382,6 +5432,7 @@
     (async () => {
       initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
       initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
+      initDuel();                                    // 🐗🦝 승부 등록(흔적을 조사하면 도둑과 마주 선다)
       await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
       $('loading').style.display = 'none';
 

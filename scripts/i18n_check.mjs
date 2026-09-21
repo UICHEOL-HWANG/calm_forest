@@ -109,6 +109,8 @@ function htmlStrings(src) {
 const targets = [
   ['index.html', htmlStrings],
   ['js/game.js', s => jsStrings(stripJsComments(s))],
+  // 🏠 집 단계 이름(BUILD_STAGES/EXPANSIONS)이 간판 제목·토스트로 그대로 나간다
+  ['js/house-cost.js', s => jsStrings(stripJsComments(s))],
   ['js/night-visit.js', s => jsStrings(stripJsComments(s))],
   ['js/cafe-guests.js', s => jsStrings(stripJsComments(s))],
   ['js/supabase-client.js', s => jsStrings(stripJsComments(s))],
@@ -116,6 +118,8 @@ const targets = [
   // 🌿 배너 문구를 만드는 모듈. 목록에 없던 탓에 "영어 모드에서 한국어가 그대로 뜬다"를
   //    이 도구가 못 잡았다(2026-09-19). UI 문자열을 내보내는 모듈은 여기 꼭 추가할 것.
   ['js/retention-guidance.js', s => jsStrings(stripJsComments(s))],
+  // 🐗🦝 승부 — COPY 가 화면에 그대로 나간다. 목록에 없으면 문구를 더해도 이 도구가 못 잡는다
+  ['js/duel/ui.js', s => jsStrings(stripJsComments(s))],
   // 🔥 화덕 — 레시피 이름이 UI 에 그대로 나간다(가공 창·슬롯 칩·미니게임 결과)
   ['js/craft/recipes.js', s => jsStrings(stripJsComments(s))],
 ];

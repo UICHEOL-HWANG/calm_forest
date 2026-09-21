@@ -11,9 +11,13 @@ export const TUNING = {
   // 관대 판정 — 미니게임별 첫 tries회 시도는 판정 계수 ×mult
   firstTryEase: { tries: 3, mult: 1.3 },
   // A군 튜토리얼 순서 — 재미(낚시·집짓기·꾸미기) 전진. 스텝 내용은 index.html TUT_STEPS 그대로.
-  TUT_ORDER_A: ['move', 'toolpage', 'chop', 'fish', 'build', 'enter', 'decor',
-                'till', 'seed', 'water', 'harvest', 'sell', 'market', 'quest',
-                'mine', 'carve', 'dex'],
+  //   ⚠️ build 는 **sell·mine 보다 뒤**여야 한다(tests/house-cost.test.mjs 가 잠근다).
+  //      2026-09-21 건축 리밸런스로 3단계(지붕)가 🪨돌15·🪙코인80 을 요구하게 됐는데,
+  //      튜토리얼 build 달성 조건이 3단계 완성이라 sell·mine 을 안 배운 상태면 진행이 막힌다.
+  //      그래서 '재미 전진' 을 유지하되 sell·mine 만 build 앞으로 당겼다.
+  TUT_ORDER_A: ['move', 'toolpage', 'chop', 'fish', 'sell', 'mine', 'build', 'enter', 'decor',
+                'till', 'seed', 'water', 'harvest', 'market', 'quest',
+                'carve', 'dex'],
   // 🎯 이탈 예측 개입 — 임계값·on/off 는 서버(coef.json)에 있다. 여기는 클라이언트 값만.
   churn: {
     endpoint: 'https://lab.calmforest.cloud/predict',

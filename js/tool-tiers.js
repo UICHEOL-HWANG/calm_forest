@@ -63,16 +63,10 @@ export function paletteOf(tier) {
 
 /** 🌰 넉넉한 씨앗 주머니 — 기본 씨앗을 아낄 확률 */
 export const SEED_SAVE = 0.30;
-/** 🔨 묵직한 망치 — 건축 단계당 목재 */
-export const HAMMER_BUILD_COST = 7;
-
 /** ⛏️ 무쇠 괭이 — 광맥 hp 를 한 번에 얼마나 깎는가(🪓강철 도끼와 같은 패턴). */
 export function mineHitPower(state = {}) { return state.upgrades?.hoe ? 2 : 1; }
 
-/** 🔨 묵직한 망치 — 0→3단계 건축에 드는 목재. 없으면 기본값 그대로. */
-export function buildCostOf(state = {}, base) { return state.upgrades?.hammer ? HAMMER_BUILD_COST : base; }
-
-/** 🏗️ 증축 목재 비율 — 건축(10→7)과 같은 30% 절감. */
+/** 🏗️ 목재 절감 비율 — 건축(js/house-cost.js buildNeed)과 증축이 같은 30% 를 쓴다. */
 export const HAMMER_EXPAND_RATE = 0.7;
 
 /**
