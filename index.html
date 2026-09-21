@@ -1039,6 +1039,11 @@
     flex: 1; border: none; border-radius: 14px; padding: 14px 0; font-size: 28px; cursor: pointer;
     background: #f0ead8; box-shadow: 0 2px 0 rgba(0,0,0,.06); }
   #duel-shells button { transition: transform .3s ease; }   /* 섞을 때 자리를 옮긴다 */
+  /* 🥕 작물이 그릇으로 들어가는 연출 — 무엇을 좇는지 보여주지 않으면 그릇만 섞인다 */
+  .duel-drop { position: fixed; z-index: 41; transform: translate(-50%, 0); font-size: 26px;
+               pointer-events: none; transition: transform .36s cubic-bezier(.5,.05,.7,.4), opacity .3s .06s; }
+  .duel-drop.in { transform: translate(-50%, 38px) scale(.45); opacity: 0; }
+  #duel-shells button.shut { transform: translateY(4px) scaleY(.9); }   /* 덮이는 반동 */
   #duel-hands button:active { transform: translateY(1px); }
   #duel-hands button:disabled, #duel-shells button:disabled { cursor: default; }
   #duel-hands button:disabled { opacity: .45; }

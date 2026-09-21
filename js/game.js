@@ -12846,7 +12846,10 @@ function maybeDuel(t) {
   const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
   requestSave();
   duelActive = true;                                     // 카메라를 무대에 넘긴다(위 주석 참고)
-  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, stage: { THREE, scene, camera, player } })
+  // 🥕 그릇에 넣어 보여줄 작물 아이콘 — 고급 작물만 제 아이콘이 있고 나머지는 🥕(tryHarvest 와 같은 규칙)
+  const firstId = crops.find(c => c) || '';
+  const cropIco = (firstId && ADV_CROPS.find(c => c.id === firstId)?.ico) || '🥕';
+  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player } })
     .then(won => { if (won) winDuel(t.animal, crops); requestSave(); })
     .catch(e => console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e))
     .finally(() => { duelActive = false; });

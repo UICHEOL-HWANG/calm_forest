@@ -92,13 +92,14 @@ export function enterDuelStage(stage, { animal, x, z }) {
   //   이 표식을 쓴다) 로 고른다. farmGroup·mineGroup 같은 구조적 그룹은 이 표식이 없어 안전하다.
   const hidden = hideOccludersBetween(scene, camera.position, midX, midZ);
 
-  return { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden };
+  return { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden, throws: [] };
 }
 
 /** exitDuelStage(handle) — 카메라와 가려둔 오브젝트를 전부 되돌린다 */
 export function exitDuelStage(handle) {
   if (!handle) return;
   const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden } = handle;
+  clearThrow(handle);
   for (const o of hidden) o.visible = true;
   scene.remove(animalMesh);
   camera.position.copy(savedCamPos);
@@ -135,3 +136,42 @@ function hideOccludersBetween(scene, camPos, midX, midZ) {
 }
 
 export { DUEL_ART_H };
+
+
+// ═══════════ ✊✌️🖐️ 낸 손 — 둘의 머리 위에 띄운다 ═══════════
+//   ▶ DOM 카드에만 결과를 적으면 "내가 뭘 냈고 쟤가 뭘 냈는지"가 무대에서 안 보인다.
+//     승부는 마주 선 둘 사이에서 벌어져야 하므로, 낸 손을 머리 위에 올린다.
+//   ▶ 이모지를 캔버스에 그려 스프라이트로 쓴다 — 외부 이미지 없이(저장소 규칙) 또렷하다.
+function handSprite(THREE, ico) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 128;
+  const c = cv.getContext('2d');
+  c.font = '96px "Apple Color Emoji", sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(ico, 64, 70);
+  const tex = new THREE.CanvasTexture(cv);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+  sp.scale.set(0.62, 0.62, 1);
+  return sp;
+}
+
+/** 둘이 낸 손을 머리 위에 띄운다. 다음 판에 다시 부르면 이전 것을 치운다 */
+export function showThrow(handle, mineIco, theirsIco) {
+  if (!handle) return;
+  clearThrow(handle);
+  const { THREE, scene, player, animalMesh } = handle;
+  for (const [ico, at, up] of [[mineIco, player.position, 2.05], [theirsIco, animalMesh.position, 1.25]]) {
+    const sp = handSprite(THREE, ico);
+    sp.position.set(at.x, up, at.z);
+    sp.userData.t = 0;
+    scene.add(sp);
+    handle.throws.push(sp);
+  }
+}
+
+export function clearThrow(handle) {
+  if (!handle?.throws) return;
+  for (const sp of handle.throws) { handle.scene.remove(sp); sp.material.map?.dispose(); sp.material.dispose(); }
+  handle.throws.length = 0;
+}

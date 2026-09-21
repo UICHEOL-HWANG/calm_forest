@@ -12,11 +12,11 @@ import { trackEvent } from '../analytics.js';
 import { rollHand, judge, initMatch as rpsInit, applyRound as rpsRound } from './rps.js';
 import { SHELL_ROUNDS, makeSwaps, finalPos,
          initMatch as shellInit, applyRound as shellRound } from './shells.js';
-import { enterDuelStage, exitDuelStage } from './stage.js';
+import { enterDuelStage, exitDuelStage, showThrow, clearThrow } from './stage.js';
 import * as ui from './ui.js';
 
 // 🐗 가위바위보 2선승 — 비기면 판 번호를 올리지 않고 다시 낸다
-async function playRps(onRound) {
+async function playRps(onRound, handle) {
   let m = rpsInit();
   while (!m.done) {
     onRound(m.rounds + 1);
@@ -25,14 +25,16 @@ async function playRps(onRound) {
     const mine = await ui.askHand();
     const theirs = rollHand(Math.random());
     const result = judge(mine, theirs);
+    showThrow(handle, ui.HAND_ICO[mine], ui.HAND_ICO[theirs]);   // 🖐️ 낸 손을 둘의 머리 위에 — 무대에서 승부가 보이게
     await ui.showHands(mine, theirs, result);
+    clearThrow(handle);
     m = rpsRound(m, result);
   }
   return m;
 }
 
 // 🦝 그릇 섞기 3판 전승 — 한 판이라도 틀리면 그 자리에서 끝
-async function playShells(onRound) {
+async function playShells(onRound, cropIco) {
   let m = shellInit();
   for (const r of SHELL_ROUNDS) {
     onRound(m.round + 1);
@@ -41,7 +43,7 @@ async function playShells(onRound) {
     const rolls = Array.from({ length: r.swaps }, () => Math.random());   // ⚠️ r.swaps 만큼 채운다 — 짧으면 makeSwaps 가 조용히 결정적 패턴으로 샌다
     const swaps = makeSwaps(r.swaps, rolls);
     const start = Math.floor(Math.random() * 3);
-    const picked = await ui.askShell(swaps, start, r.ms);
+    const picked = await ui.askShell(swaps, start, r.ms, cropIco);
     m = shellRound(m, picked === finalPos(start, swaps));
     if (m.done) break;
   }
@@ -59,7 +61,7 @@ export function initDuel() {
       handle = enterDuelStage(ctx.stage, { animal: ctx.animal, x: ctx.x, z: ctx.z });
       ui.openDuel();
       ui.setBanner(ctx.animal === 'boar' ? ui.COPY.boarOpen : ui.COPY.raccoonOpen);
-      const m = game === 'rps' ? await playRps(onRound) : await playShells(onRound);
+      const m = game === 'rps' ? await playRps(onRound, handle) : await playShells(onRound, ctx.cropIco);
       const won = !!m.won;
       ui.setBanner(won ? ui.COPY.matchWin : ui.COPY.matchLose);
       trackEvent('duel_result', {                                                      // [GA4] 실제 승률
