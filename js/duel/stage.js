@@ -33,9 +33,9 @@ const FACE_OFFSET = 1.8;   // 흔적 좌표에서 플레이어 반대편으로 �
 //     대결은 **두 피사체가 1.8 떨어져 옆으로 늘어선** 구도라 가로로 담아야 할 각폭이 훨씬
 //     넓다. k 상한(1.75)이 375×812 가 실제로 필요한 보정 배수(1.55/0.4618 ≈ 3.36)에
 //     못 미치므로, 세로 화면에서 안 잘리려면 이 거리가 데스크톱 기준으로는 사실상 강제된다.
-const CAM_DIST = 10.5;
-const CAM_HEIGHT = 3.7;
-const CAM_AIM_Y = 0.2;
+const CAM_DIST = 6.2;
+const CAM_HEIGHT = 2.2;
+const CAM_AIM_Y = 0.55;
 
 /**
  * enterDuelStage(stage, { animal, x, z }) → handle
