@@ -248,7 +248,7 @@ Task 1 이 쓴 테스트 본문에서 `initMatch()` → `rpsInit()`, `applyRound
 
 ```js
 // ── 🦝 그릇 섞기 ───────────────────────────────────────────
-test('그릇는 3개 · 3판이고 판이 갈수록 빨라진다', () => {
+test('그릇은 3개 · 3판이고 판이 갈수록 빨라진다', () => {
   assert.equal(SHELL_COUNT, 3);
   assert.equal(SHELL_ROUNDS.length, 3);
   assert.deepEqual(SHELL_ROUNDS.map(r => r.swaps), [4, 6, 8]);
@@ -1025,8 +1025,11 @@ git commit -m "feat: 🐗🦝 밤손님 조형 2종 — 시안 3안 비교 후 �
 | 최종 승 | `matchWin` | 되찾았어요! 당분간 안 올 거예요 |
 | 최종 패 | `matchLose` | 놓쳤어요… 내일 다시 만나요 |
 | 휴전 밤 토스트 | (game.js) | 🤝 어제 승부에서 진 친구가 오지 않았어요 |
+| 그릇 자리 이름(첫 번째) | `shell1` | 첫 번째 그릇 |
+| 그릇 자리 이름(가운데) | `shell2` | 가운데 그릇 |
+| 그릇 자리 이름(마지막) | `shell3` | 마지막 그릇 |
 
-**버튼은 이모지만 둔다** — ✊ ✌️ 🖐️. 라벨을 붙이면 모바일에서 버튼 3개가 좁아지고, 가위바위보는 이모지만으로 설명이 필요 없다. 다만 `aria-label` 에는 "바위"·"가위"·"보"를 넣는다(`COPY.rock`·`COPY.scissors`·`COPY.paper`).
+**버튼은 이모지만 둔다** — ✊ ✌️ 🖐️. 라벨을 붙이면 모바일에서 버튼 3개가 좁아지고, 가위바위보는 이모지만으로 설명이 필요 없다. 다만 `aria-label` 에는 "바위"·"가위"·"보"를 넣는다(`COPY.rock`·`COPY.scissors`·`COPY.paper`). 그릇 버튼의 `aria-label` 에는 `COPY.shell1`·`COPY.shell2`·`COPY.shell3` 를 **화면 자리 기준**으로 붙인다(자리가 섞이면 라벨도 같이 옮겨간다).
 
 ⚠️ **game.js 의 휴전 토스트도 이 표에 맞춰야 한다.** Task 5 가 `'🤝 어제 이긴 숲 친구가 약속을 지켜 오지 않았어요'` 로 넣어뒀다 — Task 10 에서 위 확정 문구로 바꾸고 i18n 에도 그 문장을 등재한다.
 
@@ -1403,7 +1406,7 @@ export function initDuel() {
 ```js
   // ── 🐗🦝 밤손님 대결 ────────────────────────────────────────
   '멧돼지가 길을 막아섰어요': 'The boar blocks your path',
-  '너구리가 작물을 훔쳐서 그릇에 숨겼어요!': 'The raccoon lines up three bowls',
+  '너구리가 작물을 훔쳐서 그릇에 숨겼어요!': 'The raccoon stole a crop and hid it under a bowl!',
   '무엇을 낼까요?': 'What will you throw?',
   '어느 그릇에 있을까요?': 'Which bowl is it under?',
   '이겼어요!': 'You win!',
@@ -1412,6 +1415,7 @@ export function initDuel() {
   '되찾았어요! 당분간 안 올 거예요': 'You got it back! They will stay away for a while',
   '놓쳤어요… 내일 다시 만나요': 'It got away… try again tomorrow',
   '바위': 'Rock', '가위': 'Scissors', '보': 'Paper',
+  '첫 번째 그릇': 'First bowl', '가운데 그릇': 'Middle bowl', '마지막 그릇': 'Last bowl',
   '🤝 어제 이긴 숲 친구가 약속을 지켜 오지 않았어요': '🤝 Yesterday\'s loser kept their word and stayed away',
 ```
 

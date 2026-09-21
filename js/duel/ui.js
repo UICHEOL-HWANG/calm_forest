@@ -25,10 +25,42 @@ export const COPY = {
   matchWin:   '되찾았어요! 당분간 안 올 거예요',
   matchLose:  '놓쳤어요… 내일 다시 만나요',
   rock: '바위', scissors: '가위', paper: '보',
+  // 🦝 그릇 자리 이름 — 화면 자리 기준(섞이면 따라 옮긴다). "{n}번 그릇" 같은 조합 대신
+  //    완성된 문장 셋을 둔다(이 저장소는 통문장을 i18n 키로 쓴다).
+  shell1: '첫 번째 그릇', shell2: '가운데 그릇', shell3: '마지막 그릇',
 };
 const HAND_LABEL = { rock: COPY.rock, scissors: COPY.scissors, paper: COPY.paper };
+const SHELL_LABEL = [COPY.shell1, COPY.shell2, COPY.shell3];   // 화면 자리(slot) → 이름
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+// ⏳ askHand/askShell 이 클릭을 기다리는 동안 closeDuel() 이 불리면, 그 대기를
+//    "조용히 끝내지 않고" reject 해야 한다 — Task 10 이 이걸 catch 로 받아
+//    duel_quit 으로 집계한다(조용히 resolve 되면 승률 지표가 진 것으로 틀어진다).
+//    AbortController 하나로 "리스너 정리"와 "reject" 를 같이 해결한다:
+//    addEventListener(..., { signal }) 로 건 리스너는 abort() 한 번에 전부 떨어져
+//    나가므로, 다음 판이 새 버튼을 만들 때 옛 리스너가 남을 일이 없다.
+let pending = null;   // { controller } — 지금 클릭을 기다리는 판이 있으면 채워진다
+
+/** 지금 대기 중인 판이 있으면 'duel-closed' 로 reject 하고 리스너를 정리한다 */
+function cancelPending() {
+  if (!pending) return;
+  const { controller } = pending;
+  pending = null;
+  controller.abort();
+}
+
+/** ms 만큼 기다리되, signal 이 중간에 abort 되면 즉시 reject 한다 */
+function cancelableWait(ms, signal) {
+  if (signal.aborted) return Promise.reject(new Error('duel-closed'));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(new Error('duel-closed'));
+    }, { once: true });
+  });
+}
 
 export function openDuel() {
   document.body.classList.add('duel-open');
@@ -36,6 +68,7 @@ export function openDuel() {
 }
 
 export function closeDuel() {
+  cancelPending();
   document.body.classList.remove('duel-open');
   $('duel-layer').classList.remove('show');
   $('duel-hands').classList.add('hide');
@@ -45,21 +78,28 @@ export function closeDuel() {
 export function setBanner(text) { $('duel-banner').textContent = t(text); }
 export function setRound(n, total) { $('duel-round').textContent = `${n} / ${total}`; }
 
-/** 세 손 중 하나를 누를 때까지 기다린다 */
+/** 세 손 중 하나를 누를 때까지 기다린다. closeDuel() 로 끊기면 reject 한다 */
 export function askHand() {
   const box = $('duel-hands');
   box.innerHTML = '';
   box.classList.remove('hide');
   $('duel-shells').classList.add('hide');
-  return new Promise(resolve => {
+
+  const controller = new AbortController();
+  pending = { controller };
+  const signal = controller.signal;
+
+  return new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(new Error('duel-closed')), { once: true });
     for (const h of HANDS) {
       const b = document.createElement('button');
       b.textContent = HAND_ICO[h];
       b.setAttribute('aria-label', t(HAND_LABEL[h]));
       b.addEventListener('click', () => {
         [...box.children].forEach(c => { c.disabled = true; });
+        pending = null;
         resolve(h);
-      }, { once: true });
+      }, { once: true, signal });
       box.appendChild(b);
     }
   });
@@ -95,6 +135,10 @@ export async function askShell(swaps, startPos, ms) {
   box.classList.remove('hide');
   $('duel-hands').classList.add('hide');
 
+  const controller = new AbortController();
+  pending = { controller };
+  const signal = controller.signal;
+
   const buttons = [];
   for (let i = 0; i < SHELL_COUNT; i++) {
     const b = document.createElement('button');
@@ -108,13 +152,18 @@ export async function askShell(swaps, startPos, ms) {
   const slotStep = () => buttons[0].getBoundingClientRect().width + 10; // 버튼 폭 + gap(10px)
   const render = () => {
     const step = slotStep();
-    buttons.forEach((b, i) => { b.style.transform = `translateX(${(domPos[i] - i) * step}px)`; });
+    buttons.forEach((b, i) => {
+      b.style.transform = `translateX(${(domPos[i] - i) * step}px)`;
+      // ⚠️ 라벨은 "지금 있는 화면 자리" 기준 — 섞일 때마다 다시 붙여야
+      //    스크린리더가 실제로 움직인 그릇을 따라갈 수 있다(DOM 순서 기준이면 안 맞는다)
+      b.setAttribute('aria-label', t(SHELL_LABEL[domPos[i]]));
+    });
   };
   render();
 
   // 섞기 전, 시작 자리에 있는 걸 잠깐 보여준다 — 플레이어가 무엇을 좇을지 알게
   buttons[domPos.indexOf(startPos)].textContent = '🌱';
-  await wait(700);
+  await cancelableWait(700, signal);
   buttons.forEach(b => { b.textContent = ''; });
 
   for (const [a, b] of swaps) {
@@ -122,16 +171,19 @@ export async function askShell(swaps, startPos, ms) {
     const i2 = domPos.indexOf(b);
     [domPos[i1], domPos[i2]] = [domPos[i2], domPos[i1]];
     render();
-    await wait(ms);
+    await cancelableWait(ms, signal);
   }
 
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(new Error('duel-closed')); return; }
+    signal.addEventListener('abort', () => reject(new Error('duel-closed')), { once: true });
     buttons.forEach((btn, i) => {
       btn.disabled = false;
       btn.addEventListener('click', () => {
         buttons.forEach(c => { c.disabled = true; });
+        pending = null;
         resolve(domPos[i]);   // 클릭한 버튼이 "지금 있는" 화면 자리
-      }, { once: true });
+      }, { once: true, signal });
     });
   });
 }
