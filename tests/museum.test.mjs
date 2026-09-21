@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed } from '../js/museum.js';
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame } from '../js/museum.js';
 import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
@@ -371,4 +371,62 @@ test('게이트 없는 종은 어떤 날씨에도 집을 수 있다 — 게이�
   for (const w of ['clear', 'rain', 'snow', 'fog']) {
     assert.equal(pickMissingDex(owned, PLAIN, 11, { weather: w })?.id, 'carrot', `${w} 에서 막혔다`);
   }
+});
+
+// ── 🔍 확대 관람 프레이밍 (viewFrame) ────────────────────────────────
+//   폰 세로에서 전시물 윗부분이 화면 밖으로 잘리던 제보(2026-09-21)를 고친 식.
+//   위(상단 HUD·🔵토스 ···✕ 여백)와 아래(명판·돌아가기)를 뺀 빈 영역 한복판에 놓는다.
+const FOV = 42, PHONE = { h: 812, top: 130, bot: 280, fov: FOV, aspect: 375 / 812 };
+const tanHalf = (fov) => Math.tan(fov * Math.PI / 360);
+
+// 전시물이 화면 세로에서 차지하는 비율(0~1) — 지름 기준
+const screenFrac = (f, halfH) => (halfH / (f.dist * tanHalf(FOV)));
+// 전시물 중심이 화면 위에서 몇 할 지점에 놓이는가(0=맨 위, 1=맨 아래)
+const screenCenter = (f) => 0.5 + (f.dy / f.dist) / tanHalf(FOV) / 2;
+
+test('viewFrame: 전시물이 빈 영역의 한복판에 온다', () => {
+  const f = viewFrame({ ...PHONE, halfH: 0.3, halfW: 0.3 });
+  const band = (PHONE.top + (PHONE.h - PHONE.bot)) / 2 / PHONE.h;
+  assert.ok(Math.abs(screenCenter(f) - band) < 0.01, `중심 ${screenCenter(f)} ≠ 밴드 ${band}`);
+});
+
+test('viewFrame: 아래 UI 가 더 두꺼우면 전시물은 화면 중앙보다 위로 간다', () => {
+  const f = viewFrame({ ...PHONE, halfH: 0.3, halfW: 0.3 });
+  assert.ok(f.dy < 0, 'dy 가 음수여야 시선이 내려가 전시물이 위로 온다');
+  assert.ok(screenCenter(f) < 0.5);
+});
+
+test('viewFrame: 크기가 달라도 화면 점유는 같다 — 돌도 포도송이도', () => {
+  const small = viewFrame({ ...PHONE, halfH: 0.3, halfW: 0.3 });   // ⚠️ 둘 다 거리 clamp(1.6~5) 안쪽이어야 비교가 성립한다
+  const big = viewFrame({ ...PHONE, halfH: 0.6, halfW: 0.6 });
+  assert.ok(big.dist > small.dist, '큰 전시물일수록 멀리서 본다');
+  assert.ok(Math.abs(screenFrac(small, 0.3) - screenFrac(big, 0.6)) < 0.01);
+});
+
+// ⚠️ 바운딩 **구**(대각선의 절반)를 넘기면 네모난 전시물이 √3 배로 부풀어
+//    "빈 영역의 76%" 라는 약속이 조용히 깨진다 — 반치수를 받는다는 계약을 못 박는다.
+test('viewFrame: 세로는 빈 영역의 fill 만큼을 채운다', () => {
+  const halfH = 0.3, f = viewFrame({ ...PHONE, halfH, halfW: 0.1, fill: 0.76 });
+  const usable = (PHONE.h - PHONE.top - PHONE.bot) / PHONE.h;
+  assert.ok(Math.abs(screenFrac(f, halfH) - usable * 0.76) < 0.01);
+});
+
+test('viewFrame: 폰 세로에선 가로가 먼저 조인다 — 넓적한 전시물', () => {
+  const wide = viewFrame({ ...PHONE, halfH: 0.2, halfW: 0.68 });   // 🐟 물고기처럼 옆으로 긴 것
+  const halfW = 0.68 / (wide.dist * tanHalf(FOV) * PHONE.aspect);
+  assert.ok(halfW <= 0.81, `가로 점유 ${halfW} 가 폭의 80% 를 넘었다`);
+});
+
+test('viewFrame: 밴드가 최소치로 벌어져도 중심이 밖으로 나가지 않는다', () => {
+  // 폰 가로 + 🔵토스 여백 — 위아래 UI 가 화면의 78% 를 덮는 최악의 경우
+  const f = viewFrame({ h: 375, top: 112, bot: 180, fov: FOV, aspect: 812 / 375, halfH: 0.3, halfW: 0.3 });
+  const c = screenCenter(f), frac = screenFrac(f, 0.3);
+  assert.ok(c - frac > 0 && c + frac < 1, `전시물(${c}±${frac})이 화면 밖으로 샌다`);
+});
+
+test('viewFrame: 거리는 min·max 안에 머문다', () => {
+  const tiny = viewFrame({ ...PHONE, halfH: 0.001, halfW: 0.001 });
+  const huge = viewFrame({ ...PHONE, halfH: 9, halfW: 9 });
+  assert.equal(tiny.dist, 1.6);
+  assert.equal(huge.dist, 5);
 });
