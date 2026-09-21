@@ -92,7 +92,8 @@ export function enterDuelStage(stage, { animal, x, z }) {
   //   이 표식을 쓴다) 로 고른다. farmGroup·mineGroup 같은 구조적 그룹은 이 표식이 없어 안전하다.
   const hidden = hideOccludersBetween(scene, camera.position, midX, midZ);
 
-  return { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden, throws: [] };
+  return { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden, throws: [],
+           mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null };
 }
 
 /** exitDuelStage(handle) — 카메라와 가려둔 오브젝트를 전부 되돌린다 */
@@ -174,4 +175,158 @@ export function clearThrow(handle) {
   if (!handle?.throws) return;
   for (const sp of handle.throws) { handle.scene.remove(sp); sp.material.map?.dispose(); sp.material.dispose(); }
   handle.throws.length = 0;
+}
+
+
+// ═══════════ 🥣 3D 그릇 — 카메라가 훅 들어갔다 나온다 ═══════════
+//   ▶ DOM 버튼만 움직이면 "미니게임"이 아니라 그냥 카드다. 그릇을 무대에 실제로 놓고
+//     카메라를 밀어 넣어 섞는 걸 보여준 뒤, 고를 때 1:1 구도로 뺀다.
+//   ▶ 선택 입력은 DOM 버튼이 맡는다 — 모바일에서 작은 3D 오브젝트 탭은 빗나간다.
+//     화면 자리만 3D 와 맞춰두면 눈과 손이 같은 곳을 가리킨다.
+
+const BOWL_GAP = 0.62;      // 그릇 사이 간격
+const BOWL_R = 0.26;        // 그릇 반지름
+
+function makeBowl(THREE) {
+  const g = new THREE.Group();
+  const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0, flatShading: true });
+  // ⚠️ 엎어놓은 **반구 + 꼭지** 는 정확히 🌰밤 이다(실측 반려). 이 저장소가 여러 번 겪은 함정 —
+  //    둥근 갈색 덩어리에 꼭지가 붙으면 무엇이든 밤으로 읽힌다.
+  //    그래서 ① 옆면이 **직선**인 원뿔대(위가 좁고 아래가 넓은 컵을 엎은 모양)
+  //          ② 윗면이 **평평**하다(밤은 꼭지가 뾰족하다)
+  //          ③ 따뜻한 갈색이 아니라 **흰 도자기**색 — 밤에 없는 색이다.
+  const top = BOWL_R * 0.62, bot = BOWL_R, h = BOWL_R * 1.15;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(top, bot, h, 10), mat(0xf2efe6));
+  body.position.y = h / 2;
+  body.castShadow = true;
+  g.add(body);
+  // 굽 — 바닥에 닿는 테두리. 청록 띠 하나로 도자기라는 걸 못 박는다(밤엔 띠가 없다)
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(bot * 1.03, bot * 1.05, h * 0.14, 10), mat(0x8fb9b0));
+  rim.position.y = h * 0.07;
+  g.add(rim);
+  // 윗면 — 평평하게 덮어 꼭지 없는 실루엣을 만든다
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(top * 1.06, top * 1.06, h * 0.10, 10), mat(0xe4dfd2));
+  lid.position.y = h;
+  g.add(lid);
+  return g;
+}
+
+/** 🥕 작물 — 이모지를 캔버스에 그려 스프라이트로(외부 이미지 없이, 손 스프라이트와 같은 문법) */
+function cropSprite(THREE, ico) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 96;
+  const c = cv.getContext('2d');
+  c.font = '72px "Apple Color Emoji", sans-serif';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(ico, 48, 54);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+  sp.scale.set(0.34, 0.34, 1);
+  return sp;
+}
+
+/** 부드러운 보간 한 번 — 그릇을 들었다 놓거나 작물을 내리는 데 쓴다 */
+function tween(ms, fn) {
+  const t0 = performance.now();
+  return new Promise(res => {
+    const step = () => {
+      const u = Math.min(1, (performance.now() - t0) / ms);
+      fn(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      if (u < 1) requestAnimationFrame(step); else res();
+    };
+    step();
+  });
+}
+
+/** 그릇 3개를 무대에 놓고 작물을 하나에 넣는다. slotPos[i] = i 번 그릇이 지금 서 있는 자리 */
+export function showBowls(handle, cropIco, startPos) {
+  if (!handle) return;
+  const { THREE, scene, mid, perp } = handle;
+  const group = new THREE.Group();
+  // 그릇 줄은 카메라(perp 방향)에 **수직**으로 — 그래야 셋이 나란히 보인다
+  const ax = -perp.z, az = perp.x;
+  const bowls = [];
+  for (let i = 0; i < 3; i++) {
+    const b = makeBowl(THREE);
+    const o = (i - 1) * BOWL_GAP;
+    b.position.set(mid.x + ax * o, 0.02, mid.z + az * o);
+    scene.add(b);
+    bowls.push(b);
+  }
+  handle.bowls = { group, meshes: bowls, axis: { x: ax, z: az }, slotPos: [0, 1, 2], startPos, crop: null };
+  return handle.bowls;
+}
+
+/** 🥕 작물을 시작 그릇에 넣는다 — 그릇을 들고, 작물을 내려놓고, 다시 덮는다 */
+export async function putCrop(handle, cropIco) {
+  const st = handle?.bowls;
+  if (!st) return;
+  const { THREE, scene } = handle;
+  const bowl = st.meshes[st.slotPos.indexOf(st.startPos)];
+  const crop = cropSprite(THREE, cropIco);
+  crop.position.set(bowl.position.x, 0.62, bowl.position.z);
+  scene.add(crop);
+  st.crop = crop;
+  await tween(300, u => { bowl.position.y = 0.02 + u * 0.44; });      // 그릇을 든다
+  await tween(320, u => { crop.position.y = 0.62 - u * 0.44; });      // 작물을 내려놓는다
+  await tween(280, u => { bowl.position.y = 0.46 - u * 0.44; });      // 다시 덮는다
+  crop.visible = false;                                               // 덮였으니 안 보인다
+}
+
+/** 고른 그릇을 열어 정답을 보여준다 — 맞았는지 그릇으로 확인시킨다 */
+export async function openBowl(handle, slot) {
+  const st = handle?.bowls;
+  if (!st) return;
+  const bowl = st.meshes[st.slotPos.indexOf(slot)];
+  if (st.crop) {
+    const at = st.meshes[st.slotPos.indexOf(st.startPos)];
+    st.crop.position.set(at.position.x, 0.18, at.position.z);
+    st.crop.visible = true;
+  }
+  await tween(280, u => { bowl.position.y = 0.02 + u * 0.46; });
+  await new Promise(r => setTimeout(r, 620));
+}
+
+/** 그릇 두 자리를 바꾼다 — 화면 자리 기준(ui.js 의 domPos 와 같은 규약) */
+export function swapBowls(handle, a, b) {
+  const st = handle?.bowls;
+  if (!st) return;
+  const i1 = st.slotPos.indexOf(a), i2 = st.slotPos.indexOf(b);
+  if (i1 < 0 || i2 < 0) return;
+  [st.slotPos[i1], st.slotPos[i2]] = [st.slotPos[i2], st.slotPos[i1]];
+  const { mid, axis } = { mid: handle.mid, axis: st.axis };
+  st.meshes.forEach((m, i) => {
+    const o = (st.slotPos[i] - 1) * BOWL_GAP;
+    m.position.set(mid.x + axis.x * o, 0.02, mid.z + axis.z * o);
+  });
+}
+
+export function hideBowls(handle) {
+  const st = handle?.bowls;
+  if (!st) return;
+  for (const m of st.meshes) handle.scene.remove(m);
+  if (st.crop) { handle.scene.remove(st.crop); st.crop.material.map?.dispose(); st.crop.material.dispose(); }
+  handle.bowls = null;
+}
+
+/** 카메라를 그릇 쪽으로 훅 밀어 넣거나(in) 1:1 구도로 뺀다(out). ms 동안 보간 */
+export function zoomBowls(handle, inward, ms = 520) {
+  if (!handle) return Promise.resolve();
+  const { camera, mid, perp, k } = handle;
+  const from = { p: camera.position.clone(), q: camera.quaternion.clone() };
+  // 목표 구도 — 들어갈 땐 낮고 가깝게(그릇이 화면을 채운다), 나올 땐 원래 1:1 구도
+  const t = camera.clone();
+  if (inward) { t.position.set(mid.x + perp.x * 3.4 * k, 2.0 * k, mid.z + perp.z * 3.4 * k); t.lookAt(mid.x, 0.10, mid.z); }
+  else { t.position.set(mid.x + perp.x * CAM_DIST * k, CAM_HEIGHT * k, mid.z + perp.z * CAM_DIST * k); t.lookAt(mid.x, CAM_AIM_Y, mid.z); }
+  const to = { p: t.position.clone(), q: t.quaternion.clone() };
+  const t0 = performance.now();
+  return new Promise(res => {
+    const step = () => {
+      const u = Math.min(1, (performance.now() - t0) / ms);
+      const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;   // ease-in-out
+      camera.position.lerpVectors(from.p, to.p, e);
+      camera.quaternion.slerpQuaternions(from.q, to.q, e);
+      if (u < 1) requestAnimationFrame(step); else res();
+    };
+    step();
+  });
 }

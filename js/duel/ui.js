@@ -129,7 +129,11 @@ export async function showHands(mine, theirs, result) {
  *    자리(position) 기준으로 판정하므로, index 를 돌려주면 눈으로는 멀쩡해 보여도
  *    판정이 전부 어긋난다.
  */
-export async function askShell(swaps, startPos, ms, cropIco = '🥕') {
+/**
+ * @param {{onSwap?:(a:number,b:number)=>void, onReady?:()=>Promise<void>, onPick?:()=>Promise<void>}} [hooks]
+ *   무대(3D 그릇)를 같이 움직이는 훅. 없으면 DOM 만으로 돈다(무대 없이도 동작해야 한다).
+ */
+export async function askShell(swaps, startPos, ms, cropIco = '🥕', hooks = {}) {
   const box = $('duel-shells');
   box.innerHTML = '';
   box.classList.remove('hide');
@@ -139,6 +143,7 @@ export async function askShell(swaps, startPos, ms, cropIco = '🥕') {
   pending = { controller };
   const signal = controller.signal;
 
+  const numbered = !!hooks.onSwap;   // 무대가 있으면 버튼은 자리 번호만 가리킨다(3D 그릇이 진짜다)
   const buttons = [];
   for (let i = 0; i < SHELL_COUNT; i++) {
     const b = document.createElement('button');
@@ -157,39 +162,46 @@ export async function askShell(swaps, startPos, ms, cropIco = '🥕') {
       // ⚠️ 라벨은 "지금 있는 화면 자리" 기준 — 섞일 때마다 다시 붙여야
       //    스크린리더가 실제로 움직인 그릇을 따라갈 수 있다(DOM 순서 기준이면 안 맞는다)
       b.setAttribute('aria-label', t(SHELL_LABEL[domPos[i]]));
+      // ⚠️ 번호는 **자리**에 고정이다. DOM 순서로 한 번만 박으면 버튼과 같이 움직여
+      //    "작물이 든 그릇"을 번호가 따라다니며 정답을 알려준다(실측으로 잡은 버그).
+      if (numbered) b.textContent = ['①', '②', '③'][domPos[i]];
     });
   };
   render();
 
-  // 🥣 그릇은 **늘 보인다**. 빈 버튼이면 "그릇"이라는 말이 화면 어디에도 없다(실측 지적).
-  buttons.forEach(b => { b.textContent = '🥣'; });
+  // 🥣 버튼은 **자리만** 가리킨다 — 진짜 그릇은 무대에 있다(stage.js). 무대가 없을 때만
+  //   이모지로 대신한다(무대 없이도 게임이 돌아야 한다).
+  if (hooks.onReady) await hooks.onReady();      // 카메라가 그릇으로 훅 들어간다
   await cancelableWait(400, signal);
 
-  // 🥕 훔친 작물이 그릇으로 **들어가는 걸 보여준다**. 이게 없으면 무엇을 좇는지 모른 채
-  //    그릇만 섞인다 — "어느 그릇에 있을까요?" 가 뜬금없어진다.
-  const target = buttons[domPos.indexOf(startPos)];
-  const r = target.getBoundingClientRect();
-  const drop = document.createElement('div');
-  drop.className = 'duel-drop';
-  drop.textContent = cropIco;
-  drop.style.left = `${r.left + r.width / 2}px`;
-  drop.style.top = `${r.top - 34}px`;
-  document.body.appendChild(drop);
-  await cancelableWait(620, signal);        // 눈에 담을 틈 — 짧으면 무엇을 좇는지 모른 채 섞인다
-  drop.classList.add('in');                 // 그릇 안으로 쏙
-  await cancelableWait(380, signal);
-  drop.remove();
-  target.classList.add('shut');             // 그릇이 덮이는 반동
-  await cancelableWait(260, signal);
-  target.classList.remove('shut');
+  // 🥕 작물을 시작 그릇에 넣는다. 무대가 있으면 3D 로(그릇을 들었다 덮는다),
+  //   없으면 DOM 이모지로 — 무대 없이도 무엇을 좇는지는 보여야 한다.
+  if (hooks.onPut) {
+    await hooks.onPut();
+  } else {
+    const target = buttons[domPos.indexOf(startPos)];
+    const r = target.getBoundingClientRect();
+    const drop = document.createElement('div');
+    drop.className = 'duel-drop';
+    drop.textContent = cropIco;
+    drop.style.left = `${r.left + r.width / 2}px`;
+    drop.style.top = `${r.top - 34}px`;
+    document.body.appendChild(drop);
+    await cancelableWait(620, signal);
+    drop.classList.add('in');
+    await cancelableWait(380, signal);
+    drop.remove();
+  }
 
   for (const [a, b] of swaps) {
     const i1 = domPos.indexOf(a);
     const i2 = domPos.indexOf(b);
     [domPos[i1], domPos[i2]] = [domPos[i2], domPos[i1]];
     render();
+    hooks.onSwap?.(a, b);                        // 무대의 그릇도 같은 자리로 옮긴다
     await cancelableWait(ms, signal);
   }
+  if (hooks.onPick) await hooks.onPick();        // 고를 땐 1:1 구도로 뺀다
 
   return new Promise((resolve, reject) => {
     if (signal.aborted) { reject(new Error('duel-closed')); return; }
@@ -199,7 +211,8 @@ export async function askShell(swaps, startPos, ms, cropIco = '🥕') {
       btn.addEventListener('click', () => {
         buttons.forEach(c => { c.disabled = true; });
         pending = null;
-        resolve(domPos[i]);   // 클릭한 버튼이 "지금 있는" 화면 자리
+        const slot = domPos[i];   // 클릭한 버튼이 "지금 있는" 화면 자리
+        (hooks.onReveal ? hooks.onReveal(slot) : Promise.resolve()).then(() => resolve(slot));
       }, { once: true, signal });
     });
   });
