@@ -23,6 +23,7 @@
     <label>높이 <input id="hgt" type="range" min="-1" max="8" step="0.1" value="0.9"><span id="hgtV">0.9</span></label>
     <label>좌우 <input id="panx" type="range" min="-8" max="8" step="0.2" value="0"><span id="panxV">0</span></label>
     <label>앞뒤 <input id="panz" type="range" min="-8" max="8" step="0.2" value="0"><span id="panzV">0</span></label>
+    <label>모델돌리기 <input id="spin" type="range" min="0" max="360" step="5" value="0"><span id="spinV">0</span>°</label>
   </div>
   <div class="row">
     <label>보기
@@ -36,7 +37,7 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { makeBoar, makeRaccoon, BOAR_OPT, RACC_OPT } from '../js/duel/art.js';
 
 // =============================================================
 //  🐗🦝 밤손님 조형 시안 3안씩 — 비교 전용(승인 게이트).
@@ -64,126 +65,9 @@ function paintGeo(geo, hex) {
   return geo;
 }
 
-// ── 기본 조형 헬퍼 ──
-const B = (w, h, d, x, y, z, rz = 0, ry = 0, rx = 0) => { const q = new THREE.BoxGeometry(w, h, d); if (rx) q.rotateX(rx); if (ry) q.rotateY(ry); if (rz) q.rotateZ(rz); return q.translate(x, y, z); };
-const SP = (r, x, y, z, sx = 1, sy = 1, sz = 1) => { const q = new THREE.SphereGeometry(r, 14, 12); if (sx !== 1 || sy !== 1 || sz !== 1) q.scale(sx, sy, sz); return q.translate(x, y, z); };
-const CO = (r, h, seg, x, y, z, rx = 0, ry = 0, rz = 0) => { const q = new THREE.ConeGeometry(r, h, seg); if (rx) q.rotateX(rx); if (ry) q.rotateY(ry); if (rz) q.rotateZ(rz); return q.translate(x, y, z); };
-// 웨지 통 — 앞(rf, −Z)과 뒤(rr, +Z) 반지름이 다른 테이퍼 원통.
-//   🦔 spikyShell 의 교훈("껍질 자체가 형태가 되어야 한다")을 그대로 따른다 —
-//   이 테이퍼 통이 🐗 는 머리+주둥이를 대신하는 "형태 자체"다(구를 안 쓴다).
-const WBODY = (rf, rr, len, seg, x, y, z) => new THREE.CylinderGeometry(rf, rr, len, seg).rotateX(-Math.PI / 2).translate(x, y, z);
-
-// 팔레트 — 🐗 는 형태가 웨지라 밤 함정에서 이미 벗어났으므로 면이 읽히게 한 단계 밝힌 두 톤(🦔 quill/snout 문법과 같다).
-//   🦝 는 차가운 회색 + 검은 눈가띠·꼬리(필수).
-const BOAR = { skull: 0x6e5c48, snout: 0x8c7962, dark: 0x453a2e, tusk: 0xe6dcc6 };
-const RACC = { body: 0x93958e, pale: 0xe4e0d4, mask: 0x1e1b19 };
-const EYE_WHITE = 0xffffff, EYE_BLACK = 0x1b1b1b;
-
-// visitor-art.js 비례를 참고값으로만 쓴다(전체 스케일 기준) — 이번 안은 공통 얼굴(makeHead)을 쓰지 않는다.
-const SCALE = 1.75;
-const HEAD_R = 0.34 * SCALE;   // 0.595
-const HEAD_Y = 0.42 * SCALE;   // 0.735
-
-// 모델 하나 = 그림자 O(VS) / X(VN) 두 덩어리로 합쳐 드로우콜 최대 2 로 끝낸다.
-function buildModel(fn) {
-  const g = new THREE.Group();
-  const VS = [], VN = [];
-  const P = (geos, hex, shadow = true) => { const a = shadow ? VS : VN; for (const q of geos) a.push(paintGeo(ni(q), hex)); };
-  fn(P);
-  let calls = 0;
-  if (VS.length) { const m = new THREE.Mesh(mergeGeometries(VS), vtxMat()); m.castShadow = true; m.receiveShadow = true; g.add(m); calls++; }
-  if (VN.length) { const m = new THREE.Mesh(mergeGeometries(VN), vtxMat()); g.add(m); calls++; }
-  g.userData.drawCalls = calls;
-  g.userData.anchorY = 0.20;   // 라벨을 이 높이(머리 아래)에 붙인다
-  return g;
-}
-
-// 🦔 dark 눈 문법 그대로: 흰자 없이 작고 어두운 눈 + 작은 반짝임 하나(그렇지 않으면 검은 구멍으로 보인다).
-//   튀어나온 큰 흰 눈(bulge)을 쓰면 무조건 개구리로 읽힌다는 게 이번 반려의 핵심이었다 — 그래서 여기서만 쓴다.
-function darkEyes(P, ex, ey, ez, r) {
-  P([SP(r, -ex, ey, ez, 1, 1, 0.7), SP(r, ex, ey, ez, 1, 1, 0.7)], EYE_BLACK, false);
-  const hr = r * 0.3;
-  P([SP(hr, -ex + r * 0.3, ey + r * 0.34, ez - r * 0.4), SP(hr, ex + r * 0.3, ey + r * 0.34, ez - r * 0.4)], EYE_WHITE, false);
-}
-
-// ═══════════════ 🐗 멧돼지 — 구를 쓰지 않는다. 쐐기 하나가 머리이자 주둥이다 ═══════════════
-//   3안은 부속이 아니라 "쐐기의 비례"로 가른다: 짧고 뭉툭(순함) ↔ 길고 날카로움(야생).
-function boarBuild(P, o) {
-  const HY = 0.66;                          // 이 안의 머리(쐐기) 중심 높이 — 세 안 공통
-  const { rf, rr, len } = o;                // rf=코끝(작음,−Z) rr=뒤통수(큼,+Z) — 반지름 차이 자체가 "뒤가 높고 앞이 낮은" 옆선을 만든다
-  const splitT = 0.35;                      // 코~뒤통수 35% 지점에서 색을 가른다(🦔 snout/quill 처럼 두 톤, 이음매 없이 반지름만 이어받는다)
-  const rSplit = rf + (rr - rf) * splitT;
-  const zFront = -len / 2, zBack = len / 2, zSplit = zFront + len * splitT;
-  P([WBODY(rf, rSplit, zSplit - zFront, 8, 0, HY, (zFront + zSplit) / 2)], BOAR.snout);   // 주둥이 쪽 — 밝은 톤
-  P([WBODY(rSplit, rr, zBack - zSplit, 10, 0, HY, (zSplit + zBack) / 2)], BOAR.skull);    // 뒤통수 쪽 — 어두운 톤
-  const rAt = z => rf + (rr - rf) * ((z - zFront) / len);   // 그 z 위치의 웨지 반지름(선형 보간)
-
-  // 눈 — 뒤통수 쪽(뒤로 55%) 옆면에 작고 어둡게(구 없이 웨지 옆면에 바로 박는다)
-  //   ⚠️ 웨지는 그 z 위치의 반지름만큼 "차 있다" — 오프셋 벡터 길이가 그 반지름을 넘지 않으면
-  //      눈이 통 속에 완전히 파묻혀 안 보인다(디버그로 확인한 함정). 표면 반지름 + 살짝만 더 벌린다.
-  const eyeZ = zBack - rr * 0.55, rLocal = rAt(eyeZ);
-  const eyeSize = HEAD_R * 0.085, eyeDist = rLocal + eyeSize * 0.35, eyeAng = 0.9;
-  const eyeExX = Math.sin(eyeAng) * eyeDist, eyeExY = Math.cos(eyeAng) * eyeDist;
-  darkEyes(P, eyeExX, HY + eyeExY, eyeZ, eyeSize);
-
-  // 콧구멍 — 코끝 두 점만(입선·볼터치 없음)
-  const tipZ = zFront - 0.015;
-  P([SP(HEAD_R * 0.045, -rf * 0.4, HY, tipZ), SP(HEAD_R * 0.045, rf * 0.4, HY, tipZ)], EYE_BLACK, false);
-
-  if (o.tusk) {                             // 엄니 — 코끝 바로 뒤 옆에서 위로 솟는다(입 안 이빨처럼 안 보이게 확실히 옆으로 뺀다)
-    const tz = zFront + len * 0.12, tr = rAt(tz);
-    P([CO(o.tuskR, o.tuskLen, 4, -tr * 0.85, HY - tr * 0.1, tz, -0.12, 0, 0.22),
-       CO(o.tuskR, o.tuskLen, 4, tr * 0.85, HY - tr * 0.1, tz, -0.12, 0, -0.22)], BOAR.tusk, false);
-  }
-  if (o.ear) {                              // 귀 — 뒤통수 맨 위
-    const ez = zBack - rr * 0.35, ey = HY + rr * 0.95;
-    P([CO(o.earSize * 0.62, o.earSize, 4, -rr * 0.42, ey, ez, -0.3, 0, 0.3), CO(o.earSize * 0.62, o.earSize, 4, rr * 0.42, ey, ez, -0.3, 0, -0.3)], BOAR.dark);
-  }
-  for (let i = 0; i < o.mane; i++) {        // 갈기 — 등줄기 위 각진 판 2~3개(털 뭉치 아님, 촘촘한 반복 아님)
-    const t = o.mane > 1 ? i / (o.mane - 1) : 0;
-    const z = zBack - rr * 0.5 - t * len * 0.42, r = rAt(z), h = o.maneH * (1 - 0.25 * t);
-    P([B(0.045, h, len * 0.10, 0, HY + r * 1.05 + h * 0.5, z, 0, 0, -0.15)], BOAR.dark);
-  }
-}
-const BOAR_A = { rf: .17, rr: .34, len: .62, tusk: false, ear: false, mane: 0 };                                                    // 짧고 뭉툭 — 순한 인상
-const BOAR_B = { rf: .13, rr: .36, len: .88, tusk: true, tuskR: .035, tuskLen: .15, ear: true, earSize: .14, mane: 2, maneH: .13 };  // 중간
-const BOAR_C = { rf: .095, rr: .38, len: 1.14, tusk: true, tuskR: .05, tuskLen: .21, ear: true, earSize: .18, mane: 3, maneH: .17 }; // 길고 날카로움 — 야생 인상
-
-// ═══════════════ 🦝 너구리 — 머리는 두되 주둥이와 이어 누른 한 덩어리. 눈가 띠가 주인, 눈은 작다 ═══════════════
-//   3안은 주둥이 길이(짧고 뭉툭 ↔ 길고 날카로움)로 가른다.
-function raccoonBuild(P, o) {
-  // 머리 — 앞뒤로 눌러 주둥이 쪽으로 길쭉하게(공을 그대로 놓지 않는다)
-  P([SP(HEAD_R * 0.80, 0, HEAD_Y, HEAD_R * 0.10, 1, 0.9, 1.15)], RACC.body);
-  const eyeX = HEAD_R * 0.30, eyeY = HEAD_Y + HEAD_R * 0.20, eyeZ = -HEAD_R * 0.60, eyeR = HEAD_R * 0.10;
-  // 눈가 띠 — 먼저 놓아 "주인"이 되게 하고, 눈보다 뚜렷이 크게 겹친다(작은 눈 위에 큰 띠 = 테두리로 읽힌다)
-  P([SP(o.maskR, -eyeX, eyeY, eyeZ + o.maskR * 0.12, 1.05, 0.95, 0.55),
-     SP(o.maskR, eyeX, eyeY, eyeZ + o.maskR * 0.12, 1.05, 0.95, 0.55)], RACC.mask, false);
-  darkEyes(P, eyeX, eyeY, eyeZ, eyeR);   // 눈 — 작고 어두운 문법(🦔 와 같다), 띠 안에 작게 박힌다
-  // 주둥이 — 머리와 이어진 한 덩어리로 뾰족하게(코 반지름 거의 0)
-  const snoutZ = -HEAD_R * 0.80 - o.snoutLen / 2, snoutY = HEAD_Y - HEAD_R * 0.10;
-  P([WBODY(HEAD_R * 0.02, o.snoutR, o.snoutLen, 8, 0, snoutY, snoutZ)], RACC.pale);
-  const tipZ = snoutZ - o.snoutLen / 2 - 0.015;
-  P([SP(HEAD_R * 0.06, 0, snoutY, tipZ, 1, .85, .8)], EYE_BLACK, false);   // 코끝 — 검게
-  P([SP(o.earR, -HEAD_R * 0.48, HEAD_Y + HEAD_R * 0.85, HEAD_R * 0.20, 1, .85, .65),
-     SP(o.earR, HEAD_R * 0.48, HEAD_Y + HEAD_R * 0.85, HEAD_R * 0.20, 1, .85, .65)], RACC.body);   // 귀 — 작고 둥글게
-  // 꼬리 — 머리 위(뿔처럼)가 아니라 뒤 아래쪽으로, 옆에서 보이도록 눕혀 세운다
-  const colors = [RACC.body, RACC.mask, RACC.body, RACC.mask];
-  let py = HEAD_Y - HEAD_R * 0.05, pz = HEAD_R * 0.55, ang = 0.32;   // 낮은 각도 — 정면에서 뿔처럼 안 솟게
-  const n = o.tailSegR.length;
-  for (let i = 0; i < n; i++) {
-    const segLen = o.tailLen / n, dy = Math.sin(ang) * segLen, dz = Math.cos(ang) * segLen;
-    const cy = py + dy / 2, cz = pz + dz / 2;
-    const rTop = o.tailSegR[i], rBot = i === 0 ? o.tailSegR[i] * 1.05 : o.tailSegR[i - 1];
-    const q = new THREE.CylinderGeometry(rTop, rBot, segLen, 7);
-    q.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, dy, dz).normalize()));
-    q.translate(0, cy, cz);
-    P([q], colors[i % colors.length]);
-    py += dy; pz += dz; ang += 0.16;   // 끝으로 갈수록 살짝 들리는 정도만
-  }
-}
-const RACC_A = { maskR: HEAD_R * 0.19, snoutR: .15, snoutLen: .20, earR: .08, tailLen: .48, tailSegR: [.085, .06] };                     // 짧고 뭉툭
-const RACC_B = { maskR: HEAD_R * 0.22, snoutR: .13, snoutLen: .30, earR: .09, tailLen: .60, tailSegR: [.10, .08, .055] };                // 중간
-const RACC_C = { maskR: HEAD_R * 0.25, snoutR: .11, snoutLen: .42, earR: .10, tailLen: .74, tailSegR: [.10, .085, .065, .045] };         // 길고 날카로움
+// ── 조형은 js/duel/art.js 가 단일 출처다 ──
+//   ⚠️ 여기에 사본을 두지 않는다. 사본이 갈리면 시뮬에서 본 것과 게임이 달라진다.
+const SCALE = 1.75, HEAD_R = 0.34 * SCALE, HEAD_Y = 0.42 * SCALE;   // 카메라 높이 기준(조형은 art.js 소관)
 
 // ── 씬(farm-barn-sim 과 같은 조명·카메라·배경) ──
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0xcfe4ee); scene.fog = new THREE.Fog(0xdce9e2, 18, 60);
@@ -201,36 +85,37 @@ ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
 
 const GAPX = 1.9, rows = { boar: [], raccoon: [] };
 const SPECS = [
-  ['boar', 'A · 짧고 뭉툭', P => boarBuild(P, BOAR_A), '쐐기 짧음(0.62) · 부속 없음 — 순한 인상'],
-  ['boar', 'B · 중간', P => boarBuild(P, BOAR_B), '쐐기 중간(0.88) · 엄니·귀·갈기 2판'],
-  ['boar', 'C · 길고 날카로움', P => boarBuild(P, BOAR_C), '쐐기 김(1.14) · 큰 엄니·귀·갈기 3판 — 야생 인상'],
-  ['raccoon', 'A · 짧고 뭉툭', P => raccoonBuild(P, RACC_A), '주둥이 짧음(0.20) — 순한 인상'],
-  ['raccoon', 'B · 중간', P => raccoonBuild(P, RACC_B), '주둥이 중간(0.30)'],
-  ['raccoon', 'C · 길고 날카로움', P => raccoonBuild(P, RACC_C), '주둥이 김(0.42) — 야생 인상'],
+  ['boar', 'A · 코 크고 쐐기 짧음', () => makeBoar(THREE, BOAR_OPT.A), '들창코 ×1.28 · 쐐기 0.74'],
+  ['boar', 'B · 중간 ✅확정', () => makeBoar(THREE, BOAR_OPT.B), '들창코 ×1.18 · 쐐기 0.88 — 2026-09-21 채택'],
+  ['boar', 'C · 쐐기 김', () => makeBoar(THREE, BOAR_OPT.C), '들창코 ×1.10 · 쐐기 1.02 — 말에 가까워진다'],
+  ['raccoon', 'A · 가면 작음', () => makeRaccoon(THREE, RACC_OPT.A), '가면 0.58×0.70'],
+  ['raccoon', 'B · 중간 ✅확정', () => makeRaccoon(THREE, RACC_OPT.B), '가면 0.72×0.84 — 2026-09-21 채택'],
+  ['raccoon', 'C · 가면 큼', () => makeRaccoon(THREE, RACC_OPT.C), '가면 0.86×0.98'],
 ];
 const tags = [];
 SPECS.forEach(([row, name, fn, note], i) => {
-  const k = i % 3, g = buildModel(fn);
+  const k = i % 3, g = fn();
   g.position.set((k - 1) * GAPX, 0, row === 'boar' ? -1.7 : 1.7);
+  g.userData.anchorY = 0.20;
   scene.add(g); rows[row].push(g);
   const t = document.createElement('div'); t.className = 'tag';
-  t.innerHTML = (row === 'boar' ? '🐗 ' : '🦝 ') + name + '<small>' + note + ' · 드로우콜 ' + g.userData.drawCalls + '</small>';
+  t.innerHTML = (row === 'boar' ? '🐗 ' : '🦝 ') + name + '<small>' + note + ' · 드로우콜 ' + g.children.length + '</small>';
   document.getElementById('labels').appendChild(t); tags.push({ el: t, g });
-  console.log(`[duel-sim] ${row} ${name}: drawCalls=${g.userData.drawCalls}`);
+  console.log(`[duel-sim] ${row} ${name}: drawCalls=${g.children.length}`);
 });
 
 const el = id => document.getElementById(id);
-const P0 = { dist: 6, ang: 0, hgt: .9, panx: 0, panz: 0 };
-for (const k of ['dist', 'ang', 'hgt', 'panx', 'panz']) el(k).oninput = e => { P0[k] = +e.target.value; el(k + 'V').textContent = e.target.value; };
+const P0 = { dist: 6, ang: 0, hgt: .9, panx: 0, panz: 0, spin: 0 };
+for (const k of ['dist', 'ang', 'hgt', 'panx', 'panz', 'spin']) el(k).oninput = e => { P0[k] = +e.target.value; el(k + 'V').textContent = e.target.value; };
 el('row').onchange = e => {
   const v = e.target.value;
   rows.boar.forEach(g => g.visible = (v !== 'raccoon')); rows.raccoon.forEach(g => g.visible = (v !== 'boar'));
   tags.forEach(t => t.el.style.display = (v === 'both' || (v === 'boar' && t.g.position.z < 0) || (v === 'raccoon' && t.g.position.z > 0)) ? '' : 'none');
 };
-// URL 파라미터로 뷰 고정(캡처용) — ?dist=&hgt=&ang=&panx=&panz=&row=&ui=0
+// URL 파라미터로 뷰 고정(캡처용) — ?dist=&hgt=&ang=&panx=&panz=&spin=&row=&ui=0
 {
   const U = new URLSearchParams(location.search);
-  for (const k of ['dist', 'hgt', 'ang', 'panx', 'panz']) if (U.has(k)) { const e = el(k); e.value = U.get(k); e.dispatchEvent(new Event('input')); }
+  for (const k of ['dist', 'hgt', 'ang', 'panx', 'panz', 'spin']) if (U.has(k)) { const e = el(k); e.value = U.get(k); e.dispatchEvent(new Event('input')); }
   if (U.has('row')) { el('row').value = U.get('row'); el('row').dispatchEvent(new Event('change')); }
   if (U.get('ui') === '0') el('ui').style.display = 'none';
 }
@@ -240,6 +125,10 @@ const _v = new THREE.Vector3();
 function tick() {
   const a = P0.ang * Math.PI / 180, tx = P0.panx, tz = P0.panz;
   camera.position.set(tx + Math.sin(a) * P0.dist, P0.hgt + HEAD_Y, tz + Math.cos(a) * P0.dist);
+  // 🔄 모델 자체를 돌린다 — 세 마리가 한 줄이라 카메라를 옆으로 돌리면 서로 가린다.
+  //    옆 실루엣은 모델을 90° 돌려 정면 카메라로 봐야 세 안을 나란히 비교할 수 있다.
+  const spinR = (P0.spin || 0) * Math.PI / 180;
+  for (const k in rows) for (const g of rows[k]) g.rotation.y = spinR;
   camera.lookAt(tx, HEAD_Y, tz);
   for (const t of tags) {
     if (t.el.style.display === 'none') continue;
