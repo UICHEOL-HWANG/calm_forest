@@ -15,7 +15,9 @@ import { makeBoar, makeRaccoon, DUEL_ART_H } from './art.js';
 
 const ART_FN = { boar: makeBoar, raccoon: makeRaccoon };
 
-const FACE_OFFSET = 1.8;   // 흔적 좌표에서 플레이어 반대편으로 두는 거리(스펙 고정값)
+const FACE_OFFSET = 2.7;   // 흔적에서 플레이어 반대편으로 두는 거리.
+                           // ⚠️ 1.8 이었다 — 둘이 붙어 서서 그릇 놓을 자리가 밭뿐이었다(실측).
+                           //    띄워야 밭을 벗어난 빈 땅이 생긴다.
 
 // 카메라 — 실측(2026-09-21, 콘솔에서 camera.project 로 플레이어·동물 바운딩박스 8꼭짓점을
 //   전부 투영해 NDC 를 직접 쟀다. 눈대중 스크린샷보다 이 쪽이 "잘렸는지"를 정확히 잡는다):
@@ -93,7 +95,10 @@ export function enterDuelStage(stage, { animal, x, z }) {
   const hidden = hideOccludersBetween(scene, camera.position, midX, midZ);
 
   return { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden, throws: [],
-           mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null };
+           mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null,
+           bowlMid: { x: midX + dirX * 0.5, z: midZ + dirZ * 0.5 } };
+  // ⚠️ 0.9 는 동물 발치까지 밀려 그릇을 깔고 앉은 꼴이었다(실측). 0.5 면 밭(반폭 1)을
+  //    갓 벗어나면서 동물과도 떨어진다.
 }
 
 /** exitDuelStage(handle) — 카메라와 가려둔 오브젝트를 전부 되돌린다 */
@@ -184,7 +189,7 @@ export function clearThrow(handle) {
 //   ▶ 선택 입력은 DOM 버튼이 맡는다 — 모바일에서 작은 3D 오브젝트 탭은 빗나간다.
 //     화면 자리만 3D 와 맞춰두면 눈과 손이 같은 곳을 가리킨다.
 
-const BOWL_GAP = 0.62;      // 그릇 사이 간격
+const BOWL_GAP = 0.50;      // 그릇 사이 간격 — 폰 세로에서 셋이 다 들어와야 한다
 const BOWL_R = 0.26;        // 그릇 반지름
 
 function makeBowl(THREE) {
@@ -240,7 +245,10 @@ function tween(ms, fn) {
 /** 그릇 3개를 무대에 놓고 작물을 하나에 넣는다. slotPos[i] = i 번 그릇이 지금 서 있는 자리 */
 export function showBowls(handle, cropIco, startPos) {
   if (!handle) return;
-  const { THREE, scene, mid, perp } = handle;
+  const { THREE, scene, perp } = handle;
+  // ⚠️ 두 사람의 중점은 **털린 밭 위**다 — 거기 그릇을 놓으면 흙과 겹쳐 지저분하다(실측).
+  //    동물 쪽으로 밀어 빈 땅에 차린다.
+  const mid = handle.bowlMid;
   const group = new THREE.Group();
   // 그릇 줄은 카메라(perp 방향)에 **수직**으로 — 그래야 셋이 나란히 보인다
   const ax = -perp.z, az = perp.x;
@@ -293,7 +301,7 @@ export function swapBowls(handle, a, b) {
   const i1 = st.slotPos.indexOf(a), i2 = st.slotPos.indexOf(b);
   if (i1 < 0 || i2 < 0) return;
   [st.slotPos[i1], st.slotPos[i2]] = [st.slotPos[i2], st.slotPos[i1]];
-  const { mid, axis } = { mid: handle.mid, axis: st.axis };
+  const { mid, axis } = { mid: handle.bowlMid, axis: st.axis };
   st.meshes.forEach((m, i) => {
     const o = (st.slotPos[i] - 1) * BOWL_GAP;
     m.position.set(mid.x + axis.x * o, 0.02, mid.z + axis.z * o);
@@ -315,7 +323,11 @@ export function zoomBowls(handle, inward, ms = 520) {
   const from = { p: camera.position.clone(), q: camera.quaternion.clone() };
   // 목표 구도 — 들어갈 땐 낮고 가깝게(그릇이 화면을 채운다), 나올 땐 원래 1:1 구도
   const t = camera.clone();
-  if (inward) { t.position.set(mid.x + perp.x * 3.4 * k, 2.0 * k, mid.z + perp.z * 3.4 * k); t.lookAt(mid.x, 0.10, mid.z); }
+  if (inward) {
+    const b = handle.bowlMid;
+    t.position.set(b.x + perp.x * 3.6 * k, 2.1 * k, b.z + perp.z * 3.6 * k);
+    t.lookAt(b.x, 0.12, b.z);
+  }
   else { t.position.set(mid.x + perp.x * CAM_DIST * k, CAM_HEIGHT * k, mid.z + perp.z * CAM_DIST * k); t.lookAt(mid.x, CAM_AIM_Y, mid.z); }
   const to = { p: t.position.clone(), q: t.quaternion.clone() };
   const t0 = performance.now();
