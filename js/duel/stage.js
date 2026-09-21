@@ -189,7 +189,7 @@ export function clearThrow(handle) {
 //   ▶ 선택 입력은 DOM 버튼이 맡는다 — 모바일에서 작은 3D 오브젝트 탭은 빗나간다.
 //     화면 자리만 3D 와 맞춰두면 눈과 손이 같은 곳을 가리킨다.
 
-const BOWL_GAP = 0.50;      // 그릇 사이 간격 — 폰 세로에서 셋이 다 들어와야 한다
+const BOWL_GAP = 0.78;      // 깊이로 늘어서므로 넉넉히 — 좁으면 앞뒤 그릇이 겹쳐 보인다
 const BOWL_R = 0.26;        // 그릇 반지름
 
 function makeBowl(THREE) {
@@ -250,8 +250,9 @@ export function showBowls(handle, cropIco, startPos) {
   //    동물 쪽으로 밀어 빈 땅에 차린다.
   const mid = handle.bowlMid;
   const group = new THREE.Group();
-  // 그릇 줄은 카메라(perp 방향)에 **수직**으로 — 그래야 셋이 나란히 보인다
-  const ax = -perp.z, az = perp.x;
+  // 그릇 줄을 **깊이(카메라 축)** 방향으로 둔다(사용자 지시 2026-09-21).
+  //   ⚠️ 원근 탓에 앞 그릇이 더 크게 보이므로, 카메라를 높여 내려다보게 해 크기 차를 줄인다.
+  const ax = perp.x, az = perp.z;
   const bowls = [];
   for (let i = 0; i < 3; i++) {
     const b = makeBowl(THREE);
@@ -325,7 +326,7 @@ export function zoomBowls(handle, inward, ms = 520) {
   const t = camera.clone();
   if (inward) {
     const b = handle.bowlMid;
-    t.position.set(b.x + perp.x * 3.6 * k, 2.1 * k, b.z + perp.z * 3.6 * k);
+    t.position.set(b.x + perp.x * 3.0 * k, 4.2 * k, b.z + perp.z * 3.0 * k);   // 높이↑↑ — 깊이 줄은 위에서 내려다봐야 셋이 갈린다
     t.lookAt(b.x, 0.12, b.z);
   }
   else { t.position.set(mid.x + perp.x * CAM_DIST * k, CAM_HEIGHT * k, mid.z + perp.z * CAM_DIST * k); t.lookAt(mid.x, CAM_AIM_Y, mid.z); }

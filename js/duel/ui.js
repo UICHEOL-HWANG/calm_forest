@@ -154,11 +154,11 @@ export async function askShell(swaps, startPos, ms, cropIco = '🥕', hooks = {}
 
   // domPos[도메인 index] = 그 버튼이 지금 보이는 화면 자리. 처음엔 DOM 순서 = 화면 순서(항등)
   const domPos = buttons.map((_, i) => i);
-  const slotStep = () => buttons[0].getBoundingClientRect().width + 10; // 버튼 폭 + gap(10px)
+  const slotStep = () => buttons[0].getBoundingClientRect().height + 8;  // 버튼 높이 + gap(8px) — 세로 배치
   const render = () => {
     const step = slotStep();
     buttons.forEach((b, i) => {
-      b.style.transform = `translateX(${(domPos[i] - i) * step}px)`;
+      b.style.transform = `translateY(${(domPos[i] - i) * step}px)`;   // 세로로 쌓이므로 Y 로 옮긴다
       // ⚠️ 라벨은 "지금 있는 화면 자리" 기준 — 섞일 때마다 다시 붙여야
       //    스크린리더가 실제로 움직인 그릇을 따라갈 수 있다(DOM 순서 기준이면 안 맞는다)
       b.setAttribute('aria-label', t(SHELL_LABEL[domPos[i]]));

@@ -1036,12 +1036,14 @@
                pointer-events: auto; }
   #duel-banner { font-weight: 800; font-size: 15px; text-align: center; min-height: 20px; }
   #duel-round { font-size: 12px; opacity: .6; text-align: center; font-variant-numeric: tabular-nums; }
-  #duel-hands, #duel-shells { display: flex; gap: 10px; justify-content: center; }
+  #duel-hands { display: flex; gap: 10px; justify-content: center; }
+  /* 🥣 그릇은 무대에서 **깊이**로 늘어선다 — 버튼도 세로로 쌓아야 눈과 손이 같은 방향을 가리킨다 */
+  #duel-shells { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
   #duel-hands.hide, #duel-shells.hide { display: none; }
   #duel-hands button, #duel-shells button {
     flex: 1; border: none; border-radius: 14px; padding: 14px 0; font-size: 28px; cursor: pointer;
     background: #f0ead8; box-shadow: 0 2px 0 rgba(0,0,0,.06); }
-  #duel-shells button { transition: transform .3s ease; }   /* 섞을 때 자리를 옮긴다 */
+  #duel-shells button { transition: transform .3s ease; padding: 10px 0; font-size: 22px; }   /* 섞을 때 자리를 옮긴다 */
   /* 🥕 작물이 그릇으로 들어가는 연출 — 무엇을 좇는지 보여주지 않으면 그릇만 섞인다 */
   .duel-drop { position: fixed; z-index: 41; transform: translate(-50%, 0); font-size: 40px;
                filter: drop-shadow(0 3px 5px rgba(0,0,0,.28));
