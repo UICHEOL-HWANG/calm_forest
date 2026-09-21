@@ -37,6 +37,7 @@ import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo,
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
+import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -1303,7 +1304,9 @@ const gameState = {
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   farm: { stage: 1, seedSel: 'basic', pestDate: null, storage: {}, pending: {}, compostDate: null, compostN: 0, lastSettleAt: 0, wageDate: null, hireDate: null, hireTaken: [] },   // 🌾 밭 { 단계(1 텃밭 · 2 넓은 밭 · 3 대농장, js/farm-stage.js) · 고른 씨앗(basic|wheat|corn|grape) · 해충·꿀 정산일(YYYY-MM-DD) · 🧺창고 내용물(일꾼 수확분) · 🌱퇴비통 오늘 만든 비료 }
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
-  night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
+  // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot,crop}],
+  //            🤝 발길 끊기 만료일, 오늘 대결한 동물 }
+  night: { lastDate: null, traces: [], truce: { boar: null, raccoon: null }, duelDate: null, duelDone: [] },
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
@@ -2580,6 +2583,17 @@ export async function enterGame() {
   // ?give 와 같은 로컬 전용(실서비스에서 임의 습격 유발·경제 오염 방지)
   if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
     window.__nightTest = () => { gameState.night.lastDate = todayStr(-1); return resolveNightVisit(); };
+    // 🐗🦝 대결 검수 — 서버 판정을 건너뛰고 흔적을 직접 심는다.
+    //   판정이 HMAC(uid:date) 결정값이라 __nightTest 를 반복해도 오늘 결과는 안 바뀐다.
+    //   animal: 'boar' | 'raccoon'
+    window.__nightForce = (animal = 'boar') => {
+      const p = plots.find(x => x.state === 'growing' || x.state === 'mature') || plots[0];
+      if (!p) return '밭이 없다';
+      const t = { x: p.x, z: p.z, animal, loot: animal === 'boar' ? 'acorn_drop' : 'fur_tuft', crop: p.cropType?.id || '' };
+      gameState.night.traces.push(t); spawnTrace(t);
+      gameState.night.duelDate = null; gameState.night.duelDone = [];   // 오늘 이미 붙었어도 다시 볼 수 있게
+      return `${animal} 흔적을 (${p.x}, ${p.z}) 에 심었다 — 가서 조사하세요`;
+    };
     // ?severe=frost 와 조합: 어제 정산한 셈 치고 오늘의 궂은 날씨를 다시 정산
     window.__frostTest = () => { gameState.frost.lastDate = todayStr(-1); return resolveWeatherEvent(); };
     // 🛶 __boatTest() — 오늘 탄 횟수를 초기화(코스 반복 테스트용). 코스 시드는 그대로라 같은 물길이 나온다
@@ -2829,7 +2843,10 @@ function applySave(saved) {
     gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {}, ...saved.dex }; // 📖 도감 복원
     refreshMuseumGate();   // 🏛️ 열어 둔 층만큼 건물을 세운다 — 안 하면 접속할 때마다 1층으로 보인다
   }
-  if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
+  if (saved.night) {
+    gameState.night = { lastDate: null, traces: [], duelDate: null, duelDone: [], ...saved.night,
+                        truce: { boar: null, raccoon: null, ...(saved.night.truce || {}) } };
+  } // 🦝 밤손님 판정일·미조사 흔적·🤝 발길 끊기 복원(truce 는 중첩 객체라 전개만으로는 안 채워진다)
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
@@ -12731,6 +12748,10 @@ let nightNoteFetcher = null;  // async ({date,animal,crop}) => {author,text}
 export function setNightVisitSource(fn) { nightFetcher = fn || null; }
 export function setNightNoteSource(fn) { nightNoteFetcher = fn || null; }
 
+let duelFetcher = null;   // async (ctx) => boolean — js/duel/index.js 가 등록. true 면 이겼다
+/** 🐗🦝 대결 등록 — 안 끼우면 흔적 조사는 지금까지처럼 조사 보상만 주고 끝난다(기능 플래그 겸용) */
+export function setDuelSource(fn) { duelFetcher = fn || null; }
+
 const NIGHT_ANIMAL = {
   raccoon: { ico: '🦝', name: '너구리' },
   boar:    { ico: '🐗', name: '멧돼지' },
@@ -12797,7 +12818,43 @@ function investigateTrace(tr) {
   ui.toast?.(`🔍 ${NIGHT_ANIMAL[t.animal]?.ico || '🐾'} 흔적에서 ${entry?.ico || ''} ${entry?.name || '수집품'}을 찾았어요!`, 2600);
   dexDiscover('track', t.loot);                          // 📖 도감 신규 카테고리 '흔적'
   trackEvent('night_trace', { animal: t.animal });       // [GA4] 조사 전환율
+  requestSave();       // ← 대결 전에 저장한다(리롤 방지의 핵심: 흔적은 이미 지워졌고 보상은 이미 줬다)
+  maybeDuel(t);
+}
+
+// 🐗🦝 대결 — 하루에 동물당 한 번. 이기면 그 동물이 가져간 작물을 전부 되찾는다.
+//   ▶ 흔적 보상을 먼저 주고 흔적을 지운 **뒤**에 연다. 새로고침해도 흔적이 없어
+//     다시 못 하고(리롤 방지), 중간에 창을 닫아도 손해가 없다.
+function maybeDuel(t) {
+  if (!duelFetcher) return;                              // 등록 전이면 지금까지 동작 그대로
+  const st = gameState.night, today = todayStr();
+  if (st.duelDate !== today) { st.duelDate = today; st.duelDone = []; }   // 날이 바뀌면 비운다
+  if (st.duelDone.includes(t.animal)) return;            // 오늘 이 동물과는 이미 붙었다
+  st.duelDone = [...st.duelDone, t.animal];
+  // 그 동물이 오늘 가져간 작물 전부 — 방금 조사한 것 + 아직 조사 안 한 흔적
+  const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
   requestSave();
+  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, stage: { THREE, scene, camera, player } })
+    .then(won => { if (won) winDuel(t.animal, crops); requestSave(); })
+    .catch(e => console.warn('[대결] 진행 실패 — 오늘은 넘어간다', e?.message || e));
+}
+
+// 승리 — 작물 회수(tryHarvest 와 같은 지급 규칙) + 🤝 발길 끊기
+//   밭은 되살리지 않는다: 성장 단계까지 복원하면 도난이 없던 일이 되고 다시 심을 이유가 사라진다.
+function winDuel(animal, crops) {
+  for (const id of crops) {
+    // 🌾 고급 작물(밀·옥수수·포도)은 종류별 인벤 키, 나머지는 crop — tryHarvest 와 같은 규칙.
+    //    씨앗은 주지 않는다: 수확이 아니라 회수다. 옛 세이브의 빈 crop('')은 일반 작물로 본다.
+    if (id && ADV_CROPS.some(c => c.id === id)) gameState.inventory[id] = (gameState.inventory[id] || 0) + 1;
+    else gameState.inventory.crop = (gameState.inventory.crop || 0) + 1;
+  }
+  // ⚠️ 편차: truceUntil 은 잘못된 날짜에 null 을 돌려준다(하드닝됨) — null 을 세이브에 그대로 쓰면
+  //   "영구 휴전"으로 읽혀 더 나쁘다. 못 받았으면 기존 휴전값을 그대로 둔다.
+  const nextTruce = truceUntil(todayStr());
+  if (nextTruce) gameState.night.truce = { ...gameState.night.truce, [animal]: nextTruce };
+  refreshInventoryUI();
+  const a = NIGHT_ANIMAL[animal] || NIGHT_ANIMAL.raccoon;
+  ui.toast?.(`${a.ico} ${a.name}에게서 작물 ${crops.length}개를 되찾았어요! 당분간 안 올 거예요`, 3600);
 }
 
 // 방어 판정 입력 — 심어둔 밭 9칸 안의 허수아비·울타리(4개 이상)만 인정
@@ -12826,14 +12883,16 @@ async function resolveNightVisit() {
       date: today, nights,
       plots: cands.map(c => ({ crop: c.p.cropType?.id || '' })),
       defense: computeNightDefense(cands),
+      truce: st.truce,                       // 🤝 대결에서 이긴 동물은 며칠 쉰다(상한은 서버가 잰다)
     });
   } catch (e) { console.warn('[밤손님] 판정 실패 — 다음 접속에 재시도', e?.message || e); }
   if (!v) return;                                         // 서버 실패 → lastDate 유지(재시도)
   st.lastDate = today;
 
   if (!v.visited) {
-    // 방어 성공은 조용히 넘기지 않는다 — "세워두길 잘했다"는 피드백이 다음 방어를 만든다
-    if (v.defended) setTimeout(() => ui.toast?.('🎃 허수아비와 울타리가 밤새 밭을 지켰어요!', 2800), 900);
+    // 🤝 휴전으로 조용한 밤은 방어 성공과 다르게 말한다 — 어제 이긴 보람이 보여야 한다
+    if (v.truce) setTimeout(() => ui.toast?.('🤝 어제 이긴 숲 친구가 약속을 지켜 오지 않았어요', 2800), 900);
+    else if (v.defended) setTimeout(() => ui.toast?.('🎃 허수아비와 울타리가 밤새 밭을 지켰어요!', 2800), 900);
     requestSave();
     return;
   }
@@ -12841,11 +12900,12 @@ async function resolveNightVisit() {
   const stolen = [];   // 훔쳐간 작물 이름들(안내용)
   for (const i of (v.stolenIdx || [])) {
     const c = cands[i]; if (!c) continue;
+    const cropId = c.p.cropType?.id || '';        // ⚠️ clearCrop 전에 잡아둔다 — 되찾을 때 이게 없으면 뭘 줄지 모른다
     stolen.push(c.p.cropType?.name || '작물');
     clearCrop(c.p);
     c.p.state = 'empty'; c.p.growth = 0; c.p.stage = -1; c.p.watered = false;
     updatePlotVisual(c.p);
-    const t = { x: c.p.x, z: c.p.z, animal: v.animal, loot: v.loot };
+    const t = { x: c.p.x, z: c.p.z, animal: v.animal, loot: v.loot, crop: cropId };
     st.traces.push(t); spawnTrace(t);
   }
   if (!stolen.length) return;
