@@ -1016,7 +1016,10 @@
   body.duel-open #catch-banner,
   body.duel-open #door-prompt, body.duel-open #npc-prompt, body.duel-open #zone-prompt, body.duel-open #hotbar,
   body.duel-open #minimap, body.duel-open #dex-tab, body.duel-open #feedback-tab, body.duel-open #quest-panel,
-  body.duel-open #talk-btn, body.duel-open #mobile-controls, body.duel-open #floor-choice { display: none !important; }
+  body.duel-open #talk-btn, body.duel-open #mobile-controls, body.duel-open #floor-choice,
+  /* 🐗🦝 상단 패널·스토리 칩도 걷는다 — 🍳 요리는 부엌 안이라 안 걷어도 됐지만,
+     승부는 마을 한복판이라 남겨두면 화면 위쪽이 그대로 마을 HUD 다(실측). */
+  body.duel-open #topleft, body.duel-open #topright, body.duel-open #story-chip { display: none !important; }
   /* 🍳 미니게임 오버레이 — 3D 조리 무대 위에 얹는 투명 풀스크린. 화면 어디를 탭해도 입력 */
   #mg-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
     background: linear-gradient(rgba(20,40,30,0) 55%, rgba(20,40,30,0.42)); touch-action: manipulation; -webkit-user-select: none; user-select: none; }

@@ -11887,11 +11887,11 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (!mgView) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); updateCameraFade(); }
+    else if (!mgView && !duelActive) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
-    } else if (!mgView && !intro) {
+    } else if (!mgView && !duelActive && !intro) {
       handleAction();
       updateNPCInteract();
       updateDoorInteract();
@@ -12756,6 +12756,10 @@ export function setNightVisitSource(fn) { nightFetcher = fn || null; }
 export function setNightNoteSource(fn) { nightNoteFetcher = fn || null; }
 
 let duelFetcher = null;   // async (ctx) => boolean — js/duel/index.js 가 등록. true 면 이겼다
+// 🐗🦝 승부 중 — 카메라·조작을 무대(js/duel/stage.js)에 넘긴다.
+//   ⚠️ 이 플래그가 없으면 updateCamera 가 **매 프레임 카메라를 되돌려** 클로즈업이 안 걸린다
+//      (🍳 요리가 mgView 로 막는 것과 같은 자리). 무대만 만들고 이걸 빠뜨려 한 번 겪었다.
+let duelActive = false;
 /** 🐗🦝 대결 등록 — 안 끼우면 흔적 조사는 지금까지처럼 조사 보상만 주고 끝난다(기능 플래그 겸용) */
 export function setDuelSource(fn) { duelFetcher = fn || null; }
 
@@ -12841,9 +12845,11 @@ function maybeDuel(t) {
   // 그 동물이 오늘 가져간 작물 전부 — 방금 조사한 것 + 아직 조사 안 한 흔적
   const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
   requestSave();
+  duelActive = true;                                     // 카메라를 무대에 넘긴다(위 주석 참고)
   duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, stage: { THREE, scene, camera, player } })
     .then(won => { if (won) winDuel(t.animal, crops); requestSave(); })
-    .catch(e => console.warn('[대결] 진행 실패 — 오늘은 넘어간다', e?.message || e));
+    .catch(e => console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e))
+    .finally(() => { duelActive = false; });
 }
 
 // 승리 — 작물 회수(tryHarvest 와 같은 지급 규칙) + 🤝 발길 끊기
