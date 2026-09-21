@@ -12847,11 +12847,21 @@ async function maybeDuel(t) {
   // ⚠️ 리롤 방지의 핵심은 "흔적이 지워진 상태가 **저장됐다**"는 것이다. fire-and-forget 으로
   //    두면 오프라인·저장 실패 때 흔적과 duelDone 이 안 남아 새로고침 재도전이 열린다.
   //    저장이 실패하면 승부를 **열지 않는다** — 흔적이 남아 다음에 다시 조사하면 된다.
+  //    ⚠️ saveGame 은 실패를 **던지지 않고** { ok:false } 로 돌려준다(supabase-client.js:310).
+  //       try/catch 만으로는 실패가 절대 안 잡힌다 — 반환값을 봐야 한다.
+  //    ⚠️ offline:true 는 막지 않는다. 게스트·오프라인은 세이브 자체가 없어 새로고침하면
+  //       밭도 작물도 다 사라진다 — 리롤을 걱정할 진행이 애초에 남지 않는다.
+  let saved = null;
   try {
-    await requestSave();
+    saved = await requestSave();
   } catch (e) {
+    saved = { ok: false, error: e };
+  }
+  if (saved && saved.ok === false) {
     st.duelDone = st.duelDone.filter(a => a !== t.animal);   // 되돌린다(다음 기회를 뺏지 않게)
-    console.warn('[승부] 저장 실패 — 이번엔 열지 않는다(흔적은 다음에 다시)', e?.message || e);
+    st.traces = [...st.traces, t];                           // 흔적도 되살린다 — 다음에 다시 조사하면 된다
+    spawnTrace(t);
+    console.warn('[승부] 저장 실패 — 이번엔 열지 않는다(흔적은 다시 살려둔다)', saved.error?.message || saved.locked || '');
     return;
   }
   duelActive = true;                                     // 카메라를 무대에 넘긴다(위 주석 참고)
