@@ -1011,11 +1011,34 @@
   body.mg-open #catch-banner,
   body.mg-open #door-prompt, body.mg-open #npc-prompt, body.mg-open #zone-prompt, body.mg-open #hotbar,
   body.mg-open #minimap, body.mg-open #dex-tab, body.mg-open #feedback-tab, body.mg-open #quest-panel,
-  body.mg-open #talk-btn, body.mg-open #mobile-controls, body.mg-open #floor-choice { display: none !important; }
+  body.mg-open #talk-btn, body.mg-open #mobile-controls, body.mg-open #floor-choice,
+  /* 🐗🦝 대결 중에도 같은 이유로 마을 조작 UI를 걷는다 */
+  body.duel-open #catch-banner,
+  body.duel-open #door-prompt, body.duel-open #npc-prompt, body.duel-open #zone-prompt, body.duel-open #hotbar,
+  body.duel-open #minimap, body.duel-open #dex-tab, body.duel-open #feedback-tab, body.duel-open #quest-panel,
+  body.duel-open #talk-btn, body.duel-open #mobile-controls, body.duel-open #floor-choice { display: none !important; }
   /* 🍳 미니게임 오버레이 — 3D 조리 무대 위에 얹는 투명 풀스크린. 화면 어디를 탭해도 입력 */
   #mg-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
     background: linear-gradient(rgba(20,40,30,0) 55%, rgba(20,40,30,0.42)); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
   #mg-layer.show { display: flex; }
+  /* 🐗🦝 밤손님 대결 — 3D 클로즈업 위에 얹는 오버레이. #mg-layer 와 같은 문법(z-index 40) */
+  #duel-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
+                padding: 0 12px calc(18px + env(safe-area-inset-bottom)); pointer-events: none; }
+  #duel-layer.show { display: flex; }
+  #duel-card { width: min(480px, 94vw); background: rgba(255,252,244,0.93); border-radius: 22px 22px 16px 16px;
+               box-shadow: var(--shadow); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px;
+               pointer-events: auto; }
+  #duel-banner { font-weight: 800; font-size: 15px; text-align: center; min-height: 20px; }
+  #duel-round { font-size: 12px; opacity: .6; text-align: center; font-variant-numeric: tabular-nums; }
+  #duel-hands, #duel-shells { display: flex; gap: 10px; justify-content: center; }
+  #duel-hands.hide, #duel-shells.hide { display: none; }
+  #duel-hands button, #duel-shells button {
+    flex: 1; border: none; border-radius: 14px; padding: 14px 0; font-size: 28px; cursor: pointer;
+    background: #f0ead8; box-shadow: 0 2px 0 rgba(0,0,0,.06); }
+  #duel-shells button { transition: transform .3s ease; }   /* 섞을 때 자리를 옮긴다 */
+  #duel-hands button:active { transform: translateY(1px); }
+  #duel-hands button:disabled, #duel-shells button:disabled { cursor: default; }
+  #duel-hands button:disabled { opacity: .45; }
   #mg-card { width: min(480px, 94vw); background: rgba(255,252,244,0.93); border-radius: 22px 22px 16px 16px; box-shadow: var(--shadow);
     padding: 13px 15px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 9px; margin-bottom: 10px; }
   #mg-head { display: flex; align-items: center; justify-content: space-between; }
@@ -1717,6 +1740,17 @@
         <div id="mgr-choice" class="dm-actions" style="justify-content:center"><button id="mgr-eat">🍽️ 지금 먹기</button><button id="mgr-store">🧺 보관하기</button></div>
         <div class="dm-actions" style="justify-content:center"><button id="mgr-again">🍳 한 번 더</button><button id="mgr-close">닫기</button></div>
       </div>
+    </div>
+  </div>
+
+  <!-- 🐗🦝 밤손님 대결 오버레이 — js/duel/ui.js 가 조작. 버튼은 JS 가 만든다
+       (마크업에 한국어를 박아두면 translateDom 이 대결 중에 건드린다) -->
+  <div id="duel-layer">
+    <div id="duel-card">
+      <div id="duel-banner"></div>
+      <div id="duel-round"></div>
+      <div id="duel-hands" class="hide"></div>
+      <div id="duel-shells" class="hide"></div>
     </div>
   </div>
 
