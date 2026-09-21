@@ -187,3 +187,28 @@ test('blockedAnimals: 유효한 것만 막고, 두 동물은 서로 독립이다
   assert.deepEqual(blockedAnimals(null, today), [], '아예 없는 세이브(옛 판)');
   assert.deepEqual(blockedAnimals({ bear: '2026-09-23' }, today), [], '모르는 동물은 무시');
 });
+
+test('달력 검증: 13월·32일·00일은 던지지 않고 false', () => {
+  // 핵심: 13월 입력이 RangeError 를 던지지 않고, false 를 돌려야 한다
+  assert.doesNotThrow(() => truceActive('2026-13-02', '2026-13-01'), '13월도 던지지 않는다');
+  assert.equal(truceActive('2026-13-02', '2026-13-01'), false);
+  assert.equal(truceActive('2026-13-01', '2026-09-21'), false, '13월 until');
+  assert.equal(truceActive('2026-09-21', '2026-13-01'), false, '13월 today');
+  assert.equal(truceActive('2026-09-32', '2026-09-21'), false, '32일');
+  assert.equal(truceActive('2026-09-00', '2026-09-21'), false, '00일');
+  assert.equal(truceActive('2026-02-30', '2026-02-28'), false, '2월 30일');
+});
+
+test('addDays: 달력상 무효한 입력은 null', () => {
+  assert.equal(addDays('2026-13-01', 1), null, '13월');
+  assert.equal(addDays('2026-09-32', 0), null, '32일');
+  assert.equal(addDays('2026-02-30', 0), null, '2월 30일 — 굴러가지 않는다');
+  assert.equal(addDays('2026-02-28', 1), '2026-03-01', '평년 2월 경계는 맞다');
+});
+
+test('truceUntil: 무효한 입력은 null', () => {
+  assert.equal(truceUntil('2026-13-01'), null);
+  assert.equal(truceUntil('2026-09-32'), null);
+  assert.equal(truceUntil('2026-02-30'), null);
+  assert.equal(truceUntil('2026-09-21'), '2026-09-23', '유효한 입력은 여전히 맞다');
+});
