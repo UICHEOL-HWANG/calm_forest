@@ -175,7 +175,7 @@ export async function askShell(swaps, startPos, ms, cropIco = '🥕') {
   drop.style.left = `${r.left + r.width / 2}px`;
   drop.style.top = `${r.top - 34}px`;
   document.body.appendChild(drop);
-  await cancelableWait(420, signal);        // 잠깐 떠 있어 눈에 담긴다
+  await cancelableWait(620, signal);        // 눈에 담을 틈 — 짧으면 무엇을 좇는지 모른 채 섞인다
   drop.classList.add('in');                 // 그릇 안으로 쏙
   await cancelableWait(380, signal);
   drop.remove();

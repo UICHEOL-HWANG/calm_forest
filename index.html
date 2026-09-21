@@ -1019,7 +1019,10 @@
   body.duel-open #talk-btn, body.duel-open #mobile-controls, body.duel-open #floor-choice,
   /* 🐗🦝 상단 패널·스토리 칩도 걷는다 — 🍳 요리는 부엌 안이라 안 걷어도 됐지만,
      승부는 마을 한복판이라 남겨두면 화면 위쪽이 그대로 마을 HUD 다(실측). */
-  body.duel-open #topleft, body.duel-open #topright, body.duel-open #story-chip { display: none !important; }
+  body.duel-open #topleft, body.duel-open #topright, body.duel-open #story-chip,
+  /* 🐗🦝 토스트·배너도 걷는다 — 흔적 조사 보상(도감·씨앗)이 승부 시작과 겹쳐
+     화면 위를 덮었다(실측). 승부가 끝나면 다시 보인다. */
+  body.duel-open #toast, body.duel-open #hint-banner { display: none !important; }
   /* 🍳 미니게임 오버레이 — 3D 조리 무대 위에 얹는 투명 풀스크린. 화면 어디를 탭해도 입력 */
   #mg-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
     background: linear-gradient(rgba(20,40,30,0) 55%, rgba(20,40,30,0.42)); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
@@ -1040,7 +1043,8 @@
     background: #f0ead8; box-shadow: 0 2px 0 rgba(0,0,0,.06); }
   #duel-shells button { transition: transform .3s ease; }   /* 섞을 때 자리를 옮긴다 */
   /* 🥕 작물이 그릇으로 들어가는 연출 — 무엇을 좇는지 보여주지 않으면 그릇만 섞인다 */
-  .duel-drop { position: fixed; z-index: 41; transform: translate(-50%, 0); font-size: 26px;
+  .duel-drop { position: fixed; z-index: 41; transform: translate(-50%, 0); font-size: 40px;
+               filter: drop-shadow(0 3px 5px rgba(0,0,0,.28));
                pointer-events: none; transition: transform .36s cubic-bezier(.5,.05,.7,.4), opacity .3s .06s; }
   .duel-drop.in { transform: translate(-50%, 38px) scale(.45); opacity: 0; }
   #duel-shells button.shut { transform: translateY(4px) scaleY(.9); }   /* 덮이는 반동 */
