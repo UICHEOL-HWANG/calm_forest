@@ -867,7 +867,29 @@ function winDuel(animal, crops) {
 
 `ADV_CROPS` 는 game.js 가 이미 import 하고 있으므로(51행) 따로 들여올 것이 없다.
 
-- [ ] **Step 6: import 를 추가한다**
+- [ ] **Step 6: 검수용 dev 훅을 만든다 (Task 8·9·11 이 이것 없이는 막힌다)**
+
+⚠️ **왜 필요한가** — 밤손님 판정은 `HMAC(시크릿, uid:date)` 결정값이라 **같은 날 같은 유저면 몇 번을 불러도 결과가 같다.** 그게 리롤 방지의 근거지만, 동시에 `__nightTest()` 를 반복해도 흔적이 새로 생기지 않는다는 뜻이다. 오늘 안 털리는 계정으로는 대결을 한 번도 볼 수 없어 실측 태스크가 전부 막힌다.
+
+`__nightTest` 를 등록하는 자리(2579~2582 부근, `?dbg` 전용 블록)에 한 훅을 더 단다.
+
+```js
+    // 🐗🦝 대결 검수 — 서버 판정을 건너뛰고 흔적을 직접 심는다.
+    //   판정이 HMAC(uid:date) 결정값이라 __nightTest 를 반복해도 오늘 결과는 안 바뀐다.
+    //   animal: 'boar' | 'raccoon'
+    window.__nightForce = (animal = 'boar') => {
+      const p = plots.find(x => x.state === 'growing' || x.state === 'mature') || plots[0];
+      if (!p) return '밭이 없다';
+      const t = { x: p.x, z: p.z, animal, loot: animal === 'boar' ? 'acorn_drop' : 'fur_tuft', crop: p.cropType?.id || '' };
+      gameState.night.traces.push(t); spawnTrace(t);
+      gameState.night.duelDate = null; gameState.night.duelDone = [];   // 오늘 이미 붙었어도 다시 볼 수 있게
+      return `${animal} 흔적을 (${p.x}, ${p.z}) 에 심었다 — 가서 조사하세요`;
+    };
+```
+
+이 훅은 **세이브를 건드린다**(흔적 추가·`duelDone` 비움). `?dbg=1` 전용 블록 안에 두어 일반 유저 경로에 노출되지 않게 한다.
+
+- [ ] **Step 7: import 를 추가한다**
 
 `js/game.js` 상단 import 블록(39행 `visitor-art.js` 부근)에 추가한다.
 
@@ -875,7 +897,7 @@ function winDuel(animal, crops) {
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 ```
 
-- [ ] **Step 7: 문법·회귀 확인**
+- [ ] **Step 8: 문법·회귀 확인**
 
 ```bash
 node --check js/game.js && npm test
@@ -883,7 +905,7 @@ node --check js/game.js && npm test
 
 Expected: 문법 오류 없음 · 기존 테스트 전부 통과
 
-- [ ] **Step 8: 브라우저에서 확인한다**
+- [ ] **Step 9: 브라우저에서 확인한다**
 
 `.claude/launch.json` 에 이 프로젝트 항목이 있는지 본다. 없으면 `scripts/serve.py` 가 쓰는 포트로 만든다.
 
@@ -905,7 +927,7 @@ getGameState().night   // duelDate 가 오늘, duelDone 에 동물이 들어있�
 
 `duelFetcher` 가 아직 없으므로 대결은 안 열린다 — **이게 정상이다.** 콘솔 오류가 없어야 한다.
 
-- [ ] **Step 9: 커밋**
+- [ ] **Step 10: 커밋**
 
 ```bash
 git add js/game.js
@@ -1094,7 +1116,23 @@ import { HANDS } from './rps.js';
 import { SHELL_COUNT } from './shells.js';
 
 const HAND_ICO = { rock: '✊', scissors: '✌️', paper: '🖐️' };
-const HAND_LABEL = { rock: '바위', scissors: '가위', paper: '보' };   // Task 7 확정안으로 맞춘다
+
+// ⚠️ 표시 문구는 **전부 여기 모은다.** ui.js 와 index.js 에 흩어지면 한쪽만 고쳐
+//    영어가 한국어로 새는 사고가 난다. Task 10 은 이 값들을 그대로 i18n 키로 등재한다.
+//    값은 Task 7 에서 확정한 문구로 맞춘다.
+export const COPY = {
+  boarOpen:   '멧돼지가 길을 막아섰어요',
+  raccoonOpen:'너구리가 바가지 셋을 늘어놨어요',
+  askHand:    '무엇을 낼까요?',
+  askShell:   '어느 바가지에 있을까요?',
+  win:        '이겼어요!',
+  lose:       '졌어요…',
+  draw:       '비겼어요! 다시',
+  matchWin:   '되찾았어요! 당분간 안 올 거예요',
+  matchLose:  '놓쳤어요… 내일 다시 만나요',
+  rock: '바위', scissors: '가위', paper: '보',
+};
+const HAND_LABEL = { rock: COPY.rock, scissors: COPY.scissors, paper: COPY.paper };
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -1135,7 +1173,7 @@ export function askHand() {
 
 /** 낸 손과 상대 손을 잠깐 보여준다 */
 export async function showHands(mine, theirs, result) {
-  setBanner(result === 'win' ? '이겼어요!' : result === 'lose' ? '졌어요…' : '비겼어요! 다시');
+  setBanner(result === 'win' ? COPY.win : result === 'lose' ? COPY.lose : COPY.draw);
   const box = $('duel-hands');
   box.innerHTML = '';
   for (const h of [mine, theirs]) {
@@ -1292,7 +1330,7 @@ async function playRps(onRound) {
   while (!m.done) {
     onRound(m.rounds + 1);
     ui.setRound(m.rounds + 1, 3);
-    ui.setBanner('무엇을 낼까요?');
+    ui.setBanner(ui.COPY.askHand);
     const mine = await ui.askHand();
     const theirs = rollHand(Math.random());
     const result = judge(mine, theirs);
@@ -1308,7 +1346,7 @@ async function playShells(onRound) {
   for (const r of SHELL_ROUNDS) {
     onRound(m.round + 1);
     ui.setRound(m.round + 1, SHELL_ROUNDS.length);
-    ui.setBanner('어느 바가지에 있을까요?');
+    ui.setBanner(ui.COPY.askShell);
     const rolls = Array.from({ length: r.swaps }, () => Math.random());
     const swaps = makeSwaps(r.swaps, rolls);
     const start = Math.floor(Math.random() * 3);
@@ -1329,10 +1367,10 @@ export function initDuel() {
     try {
       handle = enterDuelStage(ctx.stage, { animal: ctx.animal, x: ctx.x, z: ctx.z });
       ui.openDuel();
-      ui.setBanner(ctx.animal === 'boar' ? '멧돼지가 길을 막아섰어요' : '너구리가 바가지 셋을 늘어놨어요');
+      ui.setBanner(ctx.animal === 'boar' ? ui.COPY.boarOpen : ui.COPY.raccoonOpen);
       const m = game === 'rps' ? await playRps(onRound) : await playShells(onRound);
       const won = !!m.won;
-      ui.setBanner(won ? '되찾았어요! 당분간 안 올 거예요' : '놓쳤어요… 내일 다시 만나요');
+      ui.setBanner(won ? ui.COPY.matchWin : ui.COPY.matchLose);
       trackEvent('duel_result', {                                                      // [GA4] 실제 승률
         animal: ctx.animal, game, win: won ? 1 : 0,
         rounds: game === 'rps' ? m.rounds : m.round,
@@ -1416,13 +1454,15 @@ git commit -m "feat: 🐗🦝 흔적을 조사하면 도둑과 마주 선다 —
 
 - [ ] **Step 1: 🐗 한 판을 끝까지 돌린다**
 
-preview 에서 게임에 **실제로 입장**한 뒤(`body.playing` 을 손으로 씌우면 미니맵이 빈 채로 찍힌다) 콘솔에서:
+preview 를 **`?dbg=1` 로** 띄우고 게임에 **실제로 입장**한 뒤(`body.playing` 을 손으로 씌우면 미니맵이 빈 채로 찍힌다) 콘솔에서:
 
 ```js
-__nightTest()
+__nightForce('boar')
 ```
 
-흔적이 생길 때까지 반복한다(습격 확률 60%라 몇 번 걸릴 수 있다 — `lastDate` 를 어제로 되돌릴 뿐이라 안전하다). 멧돼지가 나오면 끝까지 둔다.
+⚠️ **`__nightTest()` 를 반복하지 않는다.** 서버 판정은 `HMAC(uid:date)` 결정값이라 같은 날 같은 유저면 몇 번을 불러도 결과가 같다 — 오늘 안 털리는 계정은 아무리 반복해도 흔적이 안 생긴다. `__nightForce` 는 Task 5 Step 6 에서 만든 dbg 훅으로, 흔적을 직접 심고 `duelDone` 을 비워 몇 번이고 다시 볼 수 있게 한다.
+
+심어진 좌표로 걸어가 조사하고, 멧돼지와 끝까지 둔다.
 
 확인할 것:
 - 카드가 뜨고 버튼이 눌린다
@@ -1432,7 +1472,11 @@ __nightTest()
 
 - [ ] **Step 2: 🦝 도 같은 방식으로 돌린다**
 
-너구리가 나올 때까지 반복한다. **섞기가 눈으로 따라갈 수 있는 속도인지** 본다 — 1판부터 어렵다면 `SHELL_ROUNDS[0].ms` 를 올린다(횟수는 건드리지 않는다).
+```js
+__nightForce('raccoon')
+```
+
+**섞기가 눈으로 따라갈 수 있는 속도인지** 본다 — 1판부터 어렵다면 `SHELL_ROUNDS[0].ms` 를 올린다(횟수는 건드리지 않는다).
 
 - [ ] **Step 3: 휴전이 실제로 먹는지 본다**
 
