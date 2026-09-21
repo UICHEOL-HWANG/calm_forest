@@ -29,12 +29,20 @@ const EYE_WHITE = 0xffffff, EYE_DARK = 0x07060a;
 
 // visitor-art.js 비례를 스케일 기준으로만 빌려온다(공통 얼굴은 쓰지 않는다).
 //   밤손님은 플레이어와 마주 서는 상대라 방문객보다 크다.
-const SCALE = 1.75;
+const SCALE = 0.72;                    // ⚠️ 1.75 였다 — 머리만 있던 시절의 값이다.
+                                       //    몸을 붙이면서 플레이어(키 ≈1.6, 머리반지름 0.37)와
+                                       //    나란히 섰을 때의 비례로 다시 잡았다.
 export const HEAD_R = 0.34 * SCALE;
-const HY = 0.66;                       // 머리 중심 높이 — 두 종 공통
 
-/** 모델 높이(무대 카메라 프레이밍용) */
-export const DUEL_ART_H = { boar: 1.06, raccoon: 1.08 };
+// 네발짐승 골격 — 다리로 몸을 띄우고, 그 위에 몸통, 그 앞에 머리.
+const LEG_H = 0.26;                    // 다리 길이
+// ⚠️ 몸통 중심을 상수로 두면 bodyR 이 클 때 몸통이 다리를 삼킨다(실측 2회).
+//    다리 위에 **얹히는** 높이로 bodyR 에서 파생시켜, 몸통 아래로 늘 틈이 보이게 한다.
+const bodyCY = (bodyR) => LEG_H + bodyR * 0.72;
+const headY = (bodyR) => bodyCY(bodyR) + bodyR * 0.30;
+
+/** 모델 높이(무대 카메라 프레이밍용) — 등까지의 높이 */
+export const DUEL_ART_H = { boar: 0.72, raccoon: 0.60 };   // 다리+몸통 반지름 기준 등 높이
 
 // ── 지오메트리 헬퍼 (THREE 를 인자로 받으므로 전역 THREE 를 참조하지 않는다) ──
 const B = (T, w, h, d, x, y, z, rz = 0, ry = 0, rx = 0) => {
@@ -52,6 +60,17 @@ const CO = (T, r, h, seg, x, y, z, rx = 0, ry = 0, rz = 0) => {
   if (rx) q.rotateX(rx); if (ry) q.rotateY(ry); if (rz) q.rotateZ(rz);
   return q.translate(x, y, z);
 };
+/** 세로 기둥 — 다리 전용(위 rt, 아래 rb).
+ *  ⚠️ WBODY(...).rotateX(...) 로 세우려 하지 말 것 — WBODY 는 이미 회전·이동을 마친 상태라
+ *     거기에 회전을 덧걸면 **원점 기준으로 다시 돌아** 다리가 엉뚱한 곳으로 간다(실측 버그). */
+const LEG = (T, rt, rb, h, x, z) => new T.CylinderGeometry(rt, rb, h, 6).translate(x, h / 2, z);
+
+/** 다리를 **몸통 중심까지** 세운다 — 보이는 길이는 몸통 바닥~땅이고, 위는 몸통 안에 묻힌다.
+ *  ⚠️ 다리 길이를 LEG_H 로 끊으면 발이 떠 보인다(실측): 구는 가장자리로 갈수록 바닥이 위로
+ *     올라가므로, 다리를 몸통 바깥쪽에 둘수록 그 지점 몸통 바닥이 다리 꼭대기보다 높아진다.
+ *     중심까지 밀어 넣으면 다리를 어디에 두든 반드시 몸통에 박힌다. */
+const legTo = (bodyR) => bodyCY(bodyR) + bodyR * 0.25;
+
 /** 웨지 통 — 앞(rf, −Z)과 뒤(rr, +Z) 반지름이 다른 테이퍼 원통. 🐗 는 이게 머리이자 주둥이다 */
 const WBODY = (T, rf, rr, len, seg, x, y, z) =>
   new T.CylinderGeometry(rf, rr, len, seg).rotateX(-Math.PI / 2).translate(x, y, z);
@@ -108,9 +127,29 @@ function darkEyes(T, P, ex, ey, ez, r) {
 // ═══════════════ 🐗 멧돼지 ═══════════════
 function boarBuild(T, P, o) {
   const { rf, rr, len } = o;
+  const BY = bodyCY(o.bodyR), HY = headY(o.bodyR);
   const splitT = 0.40, rSplit = rf + (rr - rf) * splitT;
-  const zFront = -len / 2, zBack = len / 2, zSplit = zFront + len * splitT;
-  const rAt = z => rf + (rr - rf) * ((z - zFront) / len);
+  // 머리를 통째로 앞(−Z)으로 밀어 몸통 자리를 비운다. HZ 만큼 앞이 머리, 그 뒤가 몸.
+  const HZ = -o.bodyLen * 0.52;
+  const zFront = HZ - len / 2, zBack = HZ + len / 2, zSplit = zFront + len * splitT;
+  const rAt = z => rf + (rr - rf) * ((z - zFront) / len);   // 그 z 위치의 머리 웨지 반지름
+
+  // ── 몸통 — 플레이어 캐릭터와 같은 **둥근 덩어리** 문법(구를 눌러 쓴다).
+  //   ⚠️ 테이퍼 통은 소시지, 구 3개를 일렬로 두면 애벌레가 된다(실측 2회).
+  //   어깨(큰 구)와 엉덩이(작은 구) **둘**로 끝낸다 — 그 둘이 겹치는 허리가 곧 이어짐이다.
+  const bz0 = zBack + o.bodyR * 0.30;
+  const bz1 = bz0 + o.bodyLen;
+  P([SP(T, o.bodyR, 0, BY + o.bodyR * 0.10, bz0, 0.94, 1.00, 1.02)], BOAR_COL.skull);        // 어깨 — 크고 높게
+  P([SP(T, o.bodyR * 0.86, 0, BY, bz1, 0.92, 0.96, 1.00)], BOAR_COL.skull);                  // 엉덩이 — 작고 낮게
+  P([WBODY(T, 0.02, 0.045, 0.18, 6, 0, BY + o.bodyR * 0.52, bz1 + o.bodyR * 0.80)], BOAR_COL.dark);   // 꼬리
+
+  // ── 다리 4개 — 몸통 아래로 **확실히 내려와야** 짐승이 된다(묻히면 덩어리다) ──
+  for (const [lx, lz] of [[-1, bz0 + o.bodyR * 0.05], [1, bz0 + o.bodyR * 0.05],
+                          [-1, bz1 - o.bodyR * 0.02], [1, bz1 - o.bodyR * 0.02]]) {
+    const w = lx * o.bodyR * 0.60;   // 다리가 몸통 중심까지 박히므로 안쪽에 둬도 드러난다
+    P([LEG(T, o.legR, o.legR * 1.3, legTo(o.bodyR), w, lz)], BOAR_COL.skull);
+    P([SP(T, o.legR * 1.2, w, o.legR * 0.5, lz, 1, 0.6, 1.2)], BOAR_COL.dark);   // 발굽
+  }
 
   // 머리+주둥이 — 한 형태. 테이퍼가 "뒤 높고 앞 낮은" 옆선을 만든다
   P([WBODY(T, rf, rSplit, zSplit - zFront, 8, 0, HY, (zFront + zSplit) / 2)], BOAR_COL.snout);
@@ -152,7 +191,23 @@ function boarBuild(T, P, o) {
 // ═══════════════ 🦝 너구리 ═══════════════
 function raccoonBuild(T, P, o) {
   const { rf, rr, len } = o;
-  const zFront = -len / 2, zBack = len / 2;
+  const BY = bodyCY(o.bodyR), HY = headY(o.bodyR);
+  const HZ = -o.bodyLen * 0.52;
+  const zFront = HZ - len / 2, zBack = HZ + len / 2;
+
+  // ── 몸통 — 🐗 과 같은 둥근 덩어리 문법이되 **낮고 납작하게**. 너구리는 땅에 붙어 다닌다.
+  const bz0 = zBack + o.bodyR * 0.32;
+  const bz1 = bz0 + o.bodyLen;
+  P([SP(T, o.bodyR * 0.96, 0, BY, bz0, 1.04, 0.90, 1.02)], RACC_COL.body);
+  P([SP(T, o.bodyR * 0.90, 0, BY - o.bodyR * 0.04, bz1, 1.00, 0.86, 0.98)], RACC_COL.body);
+
+  // ── 다리 4개 — 짧게(너구리는 다리가 몸에 거의 묻힌다) ──
+  for (const [lx, lz] of [[-1, bz0], [1, bz0], [-1, bz1 - o.bodyR * 0.06], [1, bz1 - o.bodyR * 0.06]]) {
+    const w = lx * o.bodyR * 0.62;   // 다리가 몸통 중심까지 박히므로 안쪽에 둬도 드러난다
+    P([LEG(T, o.legR, o.legR * 1.1, legTo(o.bodyR), w, lz)], RACC_COL.body);
+    P([SP(T, o.legR * 1.15, w, o.legR * 0.42, lz, 1, 0.62, 1.15)], RACC_COL.mask);   // 발끝만 검게
+  }
+
   // 사각뿔대를 가로로 넓히고 세로를 살려 "넓은 뺨 → 좁은 주둥이" 실루엣을 만든다.
   //   🐗 이 옆에서 긴 쐐기라면 🦝 는 **정면에서 넓은 사다리꼴** — 축을 갈라 두 종이 안 겹치게 한다.
   const head = new T.CylinderGeometry(rf, rr, len, 4).rotateY(Math.PI / 4).rotateX(-Math.PI / 2);
@@ -190,7 +245,7 @@ function raccoonBuild(T, P, o) {
   // 꼬리 — 뒤 아래로 눕혀 세운다(머리 위로 세우면 정면에서 유니콘 뿔이 된다).
   //   줄무늬는 굵게 4마디 — 가늘게 여러 개면 환공포증이다.
   const colors = [RACC_COL.body, RACC_COL.mask, RACC_COL.body, RACC_COL.mask];
-  let py = HY - halfH(zBack) * 0.35, pz = zBack + 0.02, ang = 0.26;
+  let py = BY + o.bodyR * 0.45, pz = bz1 + o.bodyR * 0.70, ang = 0.34;   // 몸통 엉덩이에서 시작
   const n = o.tailSegR.length;
   for (let i = 0; i < n; i++) {
     const segLen = o.tailLen / n, dy = Math.sin(ang) * segLen, dz = Math.cos(ang) * segLen;
@@ -203,20 +258,20 @@ function raccoonBuild(T, P, o) {
   }
 }
 
-// ── 확정 수치 (2026-09-21 사용자 승인: 둘 다 B안) ──
+// ── 확정 수치 (2026-09-21 사용자 승인: 🐗 = B · 🦝 = A) ──
 //   A/C 는 sims/duel-sim.html 의 3안 비교용으로만 남긴다.
 export const BOAR_OPT = {
-  A: { rf: .155, rr: .40, len: .74, discMul: 1.28, tuskR: .042, tuskLen: .17, earSize: .15, mane: 3, maneH: .15 },
-  B: { rf: .140, rr: .39, len: .88, discMul: 1.18, tuskR: .046, tuskLen: .19, earSize: .16, mane: 3, maneH: .16 },
-  C: { rf: .125, rr: .38, len: 1.02, discMul: 1.10, tuskR: .050, tuskLen: .21, earSize: .17, mane: 3, maneH: .17 },
+  A: { rf: .155, rr: .40, len: .74, discMul: 1.28, tuskR: .042, tuskLen: .17, earSize: .15, mane: 3, maneH: .15, bodyLen: .34, bodyR: .30, legR: .062 },
+  B: { rf: .140, rr: .39, len: .88, discMul: 1.18, tuskR: .046, tuskLen: .19, earSize: .16, mane: 3, maneH: .16, bodyLen: .38, bodyR: .32, legR: .066 },
+  C: { rf: .125, rr: .38, len: 1.02, discMul: 1.10, tuskR: .050, tuskLen: .21, earSize: .17, mane: 3, maneH: .17, bodyLen: .42, bodyR: .33, legR: .052 },
 };
 export const RACC_OPT = {
-  A: { rf: .20, rr: .40, len: .64, wide: 1.22, tall: 1.02, maskT: .30, maskW: .58, maskH: .70, snoutLen: .20, earR: .13, tailLen: .62, tailSegR: [.10, .085, .065, .05] },
-  B: { rf: .19, rr: .41, len: .68, wide: 1.26, tall: 1.00, maskT: .32, maskW: .72, maskH: .84, snoutLen: .22, earR: .14, tailLen: .66, tailSegR: [.105, .09, .07, .05] },
-  C: { rf: .18, rr: .42, len: .72, wide: 1.30, tall: .98, maskT: .34, maskW: .86, maskH: .98, snoutLen: .24, earR: .15, tailLen: .70, tailSegR: [.11, .095, .075, .055] },
+  A: { rf: .13, rr: .25, len: .44, wide: 1.12, tall: 1.00, maskT: .30, maskW: .58, maskH: .70, snoutLen: .20, earR: .13, tailLen: .62, tailSegR: [.10, .085, .065, .05], bodyLen: .34, bodyR: .27, legR: .052 },
+  B: { rf: .12, rr: .26, len: .46, wide: 1.14, tall: 0.98, maskT: .32, maskW: .72, maskH: .84, snoutLen: .22, earR: .14, tailLen: .66, tailSegR: [.105, .09, .07, .05], bodyLen: .38, bodyR: .29, legR: .056 },
+  C: { rf: .12, rr: .27, len: .48, wide: 1.16, tall: 0.96, maskT: .34, maskW: .86, maskH: .98, snoutLen: .24, earR: .15, tailLen: .70, tailSegR: [.11, .095, .075, .055], bodyLen: .42, bodyR: .30, legR: .060 },
 };
 
 /** 🐗 멧돼지 — 발치 y=0, 앞면 −Z. 드로우콜 2 */
 export function makeBoar(THREE, opt = BOAR_OPT.B) { return buildModel(THREE, P => boarBuild(THREE, P, opt)); }
 /** 🦝 너구리 — 같은 규약 */
-export function makeRaccoon(THREE, opt = RACC_OPT.B) { return buildModel(THREE, P => raccoonBuild(THREE, P, opt)); }
+export function makeRaccoon(THREE, opt = RACC_OPT.A) { return buildModel(THREE, P => raccoonBuild(THREE, P, opt)); }
