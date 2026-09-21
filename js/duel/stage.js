@@ -55,7 +55,11 @@ export function enterDuelStage(stage, { animal, x, z }) {
 
   const animalMesh = make(THREE);
   animalMesh.position.set(animalX, 0, animalZ);
-  animalMesh.lookAt(player.position.x, 0, player.position.z);   // art.js 규약대로 −Z 가 정면이라 lookAt 이 그대로 플레이어를 향한다
+  // ⚠️ lookAt 을 쓰지 않는다. Object3D.lookAt 은 **카메라·조명만** −Z 를 타겟으로 향하고
+  //    일반 메시는 +Z 를 향한다(three 내부에서 인자가 뒤집힌다). art.js 모델은 −Z 가 정면이라
+  //    lookAt 을 쓰면 정확히 **등을 돌린다** — 나란히 선 것처럼 보였던 원인이다(실측).
+  //    −Z 정면 모델이 (dx,dz) 를 보려면 rotation.y = atan2(−dx, −dz) 다.
+  animalMesh.rotation.y = Math.atan2(player.position.x - animalX, player.position.z - animalZ) + Math.PI;
   scene.add(animalMesh);
 
   // 플레이어도 동물을 본다 — 캐릭터 모델은 +Z 가 정면(game.js 의 atan2 관용구, lookAt 과 반대축)
