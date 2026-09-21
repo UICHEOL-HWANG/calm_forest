@@ -1035,6 +1035,10 @@
                box-shadow: var(--shadow); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px;
                pointer-events: auto; }
   #duel-banner { font-weight: 800; font-size: 15px; text-align: center; min-height: 20px; }
+  /* 그만두기 — 이 경로가 없으면 중간 이탈을 셀 수가 없다(스펙 §9 의 이탈률) */
+  #duel-quit { position: absolute; top: 8px; right: 10px; border: none; background: none;
+               font-size: 12px; color: #9b9086; padding: 4px 6px; cursor: pointer; }
+  #duel-card { position: relative; }
   #duel-round { font-size: 12px; opacity: .6; text-align: center; font-variant-numeric: tabular-nums; }
   #duel-hands { display: flex; gap: 10px; justify-content: center; }
   /* 🥣 그릇은 무대에서 **깊이**로 늘어선다 — 버튼도 세로로 쌓아야 눈과 손이 같은 방향을 가리킨다 */
@@ -1044,12 +1048,8 @@
     flex: 1; border: none; border-radius: 14px; padding: 14px 0; font-size: 28px; cursor: pointer;
     background: #f0ead8; box-shadow: 0 2px 0 rgba(0,0,0,.06); }
   #duel-shells button { transition: transform .3s ease; padding: 10px 0; font-size: 22px; }   /* 섞을 때 자리를 옮긴다 */
-  /* 🥕 작물이 그릇으로 들어가는 연출 — 무엇을 좇는지 보여주지 않으면 그릇만 섞인다 */
-  .duel-drop { position: fixed; z-index: 41; transform: translate(-50%, 0); font-size: 40px;
                filter: drop-shadow(0 3px 5px rgba(0,0,0,.28));
                pointer-events: none; transition: transform .36s cubic-bezier(.5,.05,.7,.4), opacity .3s .06s; }
-  .duel-drop.in { transform: translate(-50%, 38px) scale(.45); opacity: 0; }
-  #duel-shells button.shut { transform: translateY(4px) scaleY(.9); }   /* 덮이는 반동 */
   #duel-hands button:active { transform: translateY(1px); }
   #duel-hands button:disabled, #duel-shells button:disabled { cursor: default; }
   #duel-hands button:disabled { opacity: .45; }
@@ -1761,6 +1761,7 @@
        (마크업에 한국어를 박아두면 translateDom 이 대결 중에 건드린다) -->
   <div id="duel-layer">
     <div id="duel-card">
+      <button id="duel-quit" type="button"></button>
       <div id="duel-banner"></div>
       <div id="duel-round"></div>
       <div id="duel-hands" class="hide"></div>

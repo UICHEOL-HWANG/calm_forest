@@ -19,24 +19,18 @@ const FACE_OFFSET = 2.7;   // 흔적에서 플레이어 반대편으로 두는 �
                            // ⚠️ 1.8 이었다 — 둘이 붙어 서서 그릇 놓을 자리가 밭뿐이었다(실측).
                            //    띄워야 밭을 벗어난 빈 땅이 생긴다.
 
-// 카메라 — 실측(2026-09-21, 콘솔에서 camera.project 로 플레이어·동물 바운딩박스 8꼭짓점을
-//   전부 투영해 NDC 를 직접 쟀다. 눈대중 스크린샷보다 이 쪽이 "잘렸는지"를 정확히 잡는다):
-//   · dist 4.0, height 2.35, aimY 0.55 : 데스크톱(aspect 1.55)에선 맞지만 세로 화면에선
-//     플레이어·동물이 NDC x ±1.2~1.3 으로 화면 밖까지 튀어나갔다 — 흔적 간격(1.8)만큼
-//     떨어뜨린 대상을 세로의 좁은 가로 화각(42°/0.46 ⇒ 실제 가로각 ≈22°)이 못 담는다.
-//   · dist 9.0, height 3.7, aimY 0.62 : 708×1408(aspect 0.50)에선 NDC x [-0.93, 0.79] 로
-//     들어오지만, **375×812(aspect 0.4618)는 그보다 더 좁아** NDC x −1.00 으로 왼쪽이 걸쳤다
-//     (k 상한 1.75 는 두 폭이 같아도, 상한 안에서는 aspect 가 작을수록 가로 화각 자체가
-//     더 좁아 여유가 줄어든다 — 실측 전엔 몰랐던 함정).
-//   · dist 10.5, height 3.7, aimY 0.2 : 채택 — 375×812 기준 NDC x [-0.86, 0.74],
-//     y [-0.05, 0.24] 로 카드(하단 ~40%, NDC y < −0.2) 위쪽·화면 안쪽에 여유 있게 든다.
-//     데스크톱(aspect 1.55)에서는 NDC x [-0.47, 0.40] 로 더 작게 보인다. applyStationCamera 도
-//     같은 k 로 보정하지만 거긴 피사체가 시설 하나뿐이라 이 문제를 실제로 겪지 않는다 —
-//     대결은 **두 피사체가 1.8 떨어져 옆으로 늘어선** 구도라 가로로 담아야 할 각폭이 훨씬
-//     넓다. k 상한(1.75)이 375×812 가 실제로 필요한 보정 배수(1.55/0.4618 ≈ 3.36)에
-//     못 미치므로, 세로 화면에서 안 잘리려면 이 거리가 데스크톱 기준으로는 사실상 강제된다.
-const CAM_DIST = 6.2;
-const CAM_HEIGHT = 2.2;
+// 카메라 — 실측(2026-09-21). **375×812 에서 잘리지 않는 것**이 하한을 정한다.
+//   ⚠️ 이 값들은 조건이 바뀌면 다시 재야 한다. 한 번 어겼다 — 데스크톱 구도만 보고
+//      10.5 → 6.2 로 당겼더니 폰에서 멧돼지 뒷다리가 오른쪽으로 잘렸다(회귀).
+//      그 사이 마주 서는 간격도 1.8 → 2.7 로 늘어서, 옛 실측값으로 되돌릴 수도 없었다.
+//   측정한 값들(375×812, 간격 2.7, 몸통 붙은 모델 기준):
+//     · 6.2 / 2.2 : 멧돼지 뒷다리가 오른쪽 가장자리에 걸림 — 기각
+//     · 7.4 / 2.6 : 채택 — 둘 다 여유 있게 들고, 카드(하단 ~35%) 위로 뜬다
+//     · 8.2 / 2.6 : 안 잘리지만 데스크톱에서 너무 작아진다 — 기각
+//   세로 화면은 k(≤1.75)가 거리를 늘려 보정하지만, 375×812 가 실제로 필요한 배수
+//   (1.55/0.4618 ≈ 3.36)에는 못 미친다. 그래서 기준 거리 자체가 폰에 맞춰 정해진다.
+const CAM_DIST = 7.4;
+const CAM_HEIGHT = 2.6;
 const CAM_AIM_Y = 0.55;
 
 /**
@@ -102,12 +96,23 @@ export function enterDuelStage(stage, { animal, x, z }) {
 }
 
 /** exitDuelStage(handle) — 카메라와 가려둔 오브젝트를 전부 되돌린다 */
+/** 하위 메시의 geometry·material 을 전부 버린다 — 판마다 새로 만들므로 안 버리면 쌓인다 */
+function disposeTree(obj) {
+  obj.traverse?.(o => {
+    o.geometry?.dispose?.();
+    if (Array.isArray(o.material)) o.material.forEach(m => m.dispose?.());
+    else o.material?.dispose?.();
+  });
+}
+
 export function exitDuelStage(handle) {
   if (!handle) return;
+  hideBowls(handle);                                   // 중단해도 그릇·작물이 씬에 남지 않게
   const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden } = handle;
   clearThrow(handle);
   for (const o of hidden) o.visible = true;
   scene.remove(animalMesh);
+  disposeTree(animalMesh);
   camera.position.copy(savedCamPos);
   camera.quaternion.copy(savedCamQuat);
   player.rotation.y = savedPlayerRotY;
@@ -261,7 +266,7 @@ export function showBowls(handle, cropIco, startPos) {
     scene.add(b);
     bowls.push(b);
   }
-  handle.bowls = { group, meshes: bowls, axis: { x: ax, z: az }, slotPos: [0, 1, 2], startPos, crop: null };
+  handle.bowls = { group, meshes: bowls, axis: { x: ax, z: az }, slotPos: [0, 1, 2], startPos, crop: null, cropBowl: null };
   return handle.bowls;
 }
 
@@ -270,7 +275,9 @@ export async function putCrop(handle, cropIco) {
   const st = handle?.bowls;
   if (!st) return;
   const { THREE, scene } = handle;
-  const bowl = st.meshes[st.slotPos.indexOf(st.startPos)];
+  const bowlIdx = st.slotPos.indexOf(st.startPos);
+  st.cropBowl = bowlIdx;          // ⚠️ **그릇**을 기억한다. 자리를 기억하면 섞인 뒤 옆 그릇이 열린다
+  const bowl = st.meshes[bowlIdx];
   const crop = cropSprite(THREE, cropIco);
   crop.position.set(bowl.position.x, 0.62, bowl.position.z);
   scene.add(crop);
@@ -286,8 +293,8 @@ export async function openBowl(handle, slot) {
   const st = handle?.bowls;
   if (!st) return;
   const bowl = st.meshes[st.slotPos.indexOf(slot)];
-  if (st.crop) {
-    const at = st.meshes[st.slotPos.indexOf(st.startPos)];
+  if (st.crop && st.cropBowl != null) {
+    const at = st.meshes[st.cropBowl];        // 작물을 든 그 그릇(자리가 아니라)
     st.crop.position.set(at.position.x, 0.18, at.position.z);
     st.crop.visible = true;
   }
@@ -312,7 +319,7 @@ export function swapBowls(handle, a, b) {
 export function hideBowls(handle) {
   const st = handle?.bowls;
   if (!st) return;
-  for (const m of st.meshes) handle.scene.remove(m);
+  for (const m of st.meshes) { handle.scene.remove(m); disposeTree(m); }
   if (st.crop) { handle.scene.remove(st.crop); st.crop.material.map?.dispose(); st.crop.material.dispose(); }
   handle.bowls = null;
 }

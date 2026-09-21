@@ -28,10 +28,12 @@ export const COPY = {
   // 🦝 그릇 자리 이름 — 화면 자리 기준(섞이면 따라 옮긴다). "{n}번 그릇" 같은 조합 대신
   //    완성된 문장 셋을 둔다(이 저장소는 통문장을 i18n 키로 쓴다).
   shell1: '첫 번째 그릇', shell2: '가운데 그릇', shell3: '마지막 그릇',
+  quit: '그만두기',
 };
 const HAND_LABEL = { rock: COPY.rock, scissors: COPY.scissors, paper: COPY.paper };
 const SHELL_LABEL = [COPY.shell1, COPY.shell2, COPY.shell3];   // 화면 자리(slot) → 이름
 const $ = (id) => document.getElementById(id);
+let onKey = null, onHide = null;   // 그만두기 경로(ESC·탭 전환) — closeDuel 에서 떼어낸다
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ⏳ askHand/askShell 이 클릭을 기다리는 동안 closeDuel() 이 불리면, 그 대기를
@@ -51,23 +53,33 @@ function cancelPending() {
 }
 
 /** ms 만큼 기다리되, signal 이 중간에 abort 되면 즉시 reject 한다 */
+/** 대기 — 중단되면 즉시 reject 한다. ⚠️ 정상 resolve 때도 리스너를 떼어야 판마다 쌓이지 않는다 */
 function cancelableWait(ms, signal) {
   if (signal.aborted) return Promise.reject(new Error('duel-closed'));
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener('abort', () => {
-      clearTimeout(timer);
-      reject(new Error('duel-closed'));
-    }, { once: true });
+    const onAbort = () => { clearTimeout(timer); reject(new Error('duel-closed')); };
+    const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(); }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 }
 
 export function openDuel() {
   document.body.classList.add('duel-open');
   $('duel-layer').classList.add('show');
+  const q = $('duel-quit');
+  q.textContent = t(COPY.quit);
+  q.onclick = () => closeDuel();
+  // ⌨️ ESC 와 탭 전환도 그만두기로 — 중간 이탈 경로가 하나뿐이면 대부분의 이탈이 안 잡힌다
+  onKey = (e) => { if (e.key === 'Escape') closeDuel(); };
+  onHide = () => { if (document.hidden) closeDuel(); };
+  window.addEventListener('keydown', onKey);
+  document.addEventListener('visibilitychange', onHide);
 }
 
+
 export function closeDuel() {
+  if (onKey) { window.removeEventListener('keydown', onKey); onKey = null; }
+  if (onHide) { document.removeEventListener('visibilitychange', onHide); onHide = null; }
   cancelPending();
   document.body.classList.remove('duel-open');
   $('duel-layer').classList.remove('show');
@@ -176,22 +188,8 @@ export async function askShell(swaps, startPos, ms, cropIco = '🥕', hooks = {}
 
   // 🥕 작물을 시작 그릇에 넣는다. 무대가 있으면 3D 로(그릇을 들었다 덮는다),
   //   없으면 DOM 이모지로 — 무대 없이도 무엇을 좇는지는 보여야 한다.
-  if (hooks.onPut) {
-    await hooks.onPut();
-  } else {
-    const target = buttons[domPos.indexOf(startPos)];
-    const r = target.getBoundingClientRect();
-    const drop = document.createElement('div');
-    drop.className = 'duel-drop';
-    drop.textContent = cropIco;
-    drop.style.left = `${r.left + r.width / 2}px`;
-    drop.style.top = `${r.top - 34}px`;
-    document.body.appendChild(drop);
-    await cancelableWait(620, signal);
-    drop.classList.add('in');
-    await cancelableWait(380, signal);
-    drop.remove();
-  }
+  // 🥕 작물을 시작 그릇에 넣는다 — 무대(3D 그릇)가 연출을 맡는다
+  await hooks.onPut?.();
 
   for (const [a, b] of swaps) {
     const i1 = domPos.indexOf(a);
@@ -212,7 +210,8 @@ export async function askShell(swaps, startPos, ms, cropIco = '🥕', hooks = {}
         buttons.forEach(c => { c.disabled = true; });
         pending = null;
         const slot = domPos[i];   // 클릭한 버튼이 "지금 있는" 화면 자리
-        (hooks.onReveal ? hooks.onReveal(slot) : Promise.resolve()).then(() => resolve(slot));
+        // ⚠️ 공개 연출이 실패해도 판정은 진행해야 한다 — 여기서 던지면 duelActive 가 걸린 채 화면이 멈춘다
+        Promise.resolve(hooks.onReveal?.(slot)).catch(() => {}).then(() => resolve(slot));
       }, { once: true, signal });
     });
   });

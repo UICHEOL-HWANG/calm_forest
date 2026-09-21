@@ -1854,6 +1854,8 @@ export const EN = {
   '졌어요…': 'You lose…',
   '비겼어요! 다시': 'A draw — again!',
   '되찾았어요! 당분간 안 올 거예요': 'You got it back! They will stay away for a while',
+  '{0} {1}에게서 작물 {2}개를 되찾았어요! 당분간 안 올 거예요': '{0} You got {2} crop(s) back from the {1}! They will stay away for a while',
+  '그만두기': 'Quit',
   '놓쳤어요… 내일 다시 만나요': 'It got away… try again tomorrow',
   '바위': 'Rock', '가위': 'Scissors', '보': 'Paper',
   '첫 번째 그릇': 'First bowl', '가운데 그릇': 'Middle bowl', '마지막 그릇': 'Last bowl',
