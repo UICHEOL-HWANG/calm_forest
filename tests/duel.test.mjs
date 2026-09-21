@@ -4,6 +4,7 @@ import { HANDS, RPS_WIN, rollHand, judge,
          initMatch as rpsInit, applyRound as rpsRound } from '../js/duel/rps.js';
 import { SHELL_COUNT, SHELL_ROUNDS, makeSwaps, finalPos,
          initMatch as shellInit, applyRound as shellRound } from '../js/duel/shells.js';
+import { TRUCE_NIGHTS, DUEL_ANIMALS, addDays, truceUntil, truceActive, blockedAnimals } from '../js/duel/truce.js';
 
 // ── 🐗 가위바위보 ───────────────────────────────────────────
 test('rollHand: 0~1 을 세 손에 고르게 가른다', () => {
@@ -134,4 +135,55 @@ test('shells: applyRound 는 인자를 변형하지 않는다', () => {
   const m1 = shellRound(m0, true);
   assert.equal(m0.round, 0);
   assert.notEqual(m0, m1);
+});
+
+// ── 🤝 발길 끊기 ───────────────────────────────────────────
+test('휴전은 2밤 — 서버가 재는 상한과 같은 값', () => {
+  assert.equal(TRUCE_NIGHTS, 2);
+  assert.deepEqual(DUEL_ANIMALS, ['boar', 'raccoon']);
+});
+
+test('addDays: 달·해를 넘는다', () => {
+  assert.equal(addDays('2026-09-21', 2), '2026-09-23');
+  assert.equal(addDays('2026-09-30', 1), '2026-10-01');
+  assert.equal(addDays('2026-12-31', 1), '2027-01-01');
+  assert.equal(addDays('2026-09-21', 0), '2026-09-21');
+});
+
+test('truceUntil: 오늘 이긴 값은 오늘+2', () => {
+  assert.equal(truceUntil('2026-09-21'), '2026-09-23');
+});
+
+test('오늘 이하로 만료된 휴전은 무효', () => {
+  assert.equal(truceActive('2026-09-21', '2026-09-21'), false, '오늘까지면 오늘 밤은 이미 지났다');
+  assert.equal(truceActive('2026-09-20', '2026-09-21'), false);
+  assert.equal(truceActive('', '2026-09-21'), false, '빈 값');
+  assert.equal(truceActive(null, '2026-09-21'), false, 'null');
+});
+
+test('내일·모레는 유효', () => {
+  assert.equal(truceActive('2026-09-22', '2026-09-21'), true);
+  assert.equal(truceActive('2026-09-23', '2026-09-21'), true);
+});
+
+test('상한 초과는 무효 — 세이브를 고쳐 1년 휴전을 만들 수 없다', () => {
+  assert.equal(truceActive('2026-09-24', '2026-09-21'), false, '오늘+3');
+  assert.equal(truceActive('2027-09-21', '2026-09-21'), false, '1년 뒤');
+});
+
+test('형식이 깨진 값은 무효 — 서버가 받는 입력이라 믿지 않는다', () => {
+  assert.equal(truceActive('2026-9-22', '2026-09-21'), false, '0 채움 없음');
+  assert.equal(truceActive('나중에', '2026-09-21'), false);
+  assert.equal(truceActive('2026-09-22T00:00', '2026-09-21'), false);
+});
+
+test('blockedAnimals: 유효한 것만 막고, 두 동물은 서로 독립이다', () => {
+  const today = '2026-09-21';
+  assert.deepEqual(blockedAnimals({ boar: '2026-09-23', raccoon: null }, today), ['boar']);
+  assert.deepEqual(blockedAnimals({ boar: '2026-09-20', raccoon: '2026-09-22' }, today), ['raccoon'],
+    '만료된 멧돼지는 풀리고 너구리만 남는다');
+  assert.deepEqual(blockedAnimals({ boar: '2026-09-22', raccoon: '2026-09-23' }, today), ['boar', 'raccoon']);
+  assert.deepEqual(blockedAnimals({}, today), []);
+  assert.deepEqual(blockedAnimals(null, today), [], '아예 없는 세이브(옛 판)');
+  assert.deepEqual(blockedAnimals({ bear: '2026-09-23' }, today), [], '모르는 동물은 무시');
 });
