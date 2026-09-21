@@ -248,7 +248,7 @@ Task 1 이 쓴 테스트 본문에서 `initMatch()` → `rpsInit()`, `applyRound
 
 ```js
 // ── 🦝 그릇 섞기 ───────────────────────────────────────────
-test('바가지는 3개 · 3판이고 판이 갈수록 빨라진다', () => {
+test('그릇는 3개 · 3판이고 판이 갈수록 빨라진다', () => {
   assert.equal(SHELL_COUNT, 3);
   assert.equal(SHELL_ROUNDS.length, 3);
   assert.deepEqual(SHELL_ROUNDS.map(r => r.swaps), [4, 6, 8]);
@@ -338,7 +338,7 @@ Expected: FAIL — `Cannot find module '../js/duel/shells.js'`
 //  ▶ 테스트: node --test tests/duel.test.mjs
 // =============================================================
 
-/** 바가지 개수 */
+/** 그릇 개수 */
 export const SHELL_COUNT = 3;
 
 /** 판별 섞기 횟수·한 번에 걸리는 시간(ms). 3판 전승이어야 이긴다 */
@@ -1016,9 +1016,9 @@ git commit -m "feat: 🐗🦝 밤손님 조형 2종 — 시안 3안 비교 후 �
 | 자리 | COPY 키 | 확정 문구 |
 |---|---|---|
 | 🐗 시작 배너 | `boarOpen` | 멧돼지가 길을 막아섰어요 |
-| 🦝 시작 배너 | `raccoonOpen` | 너구리가 바가지 셋을 늘어놨어요 |
+| 🦝 시작 배너 | `raccoonOpen` | 너구리가 작물을 훔쳐서 그릇에 숨겼어요! |
 | 손 고르기 | `askHand` | 무엇을 낼까요? |
-| 그릇 고르기 | `askShell` | 어느 바가지에 있을까요? |
+| 그릇 고르기 | `askShell` | 어느 그릇에 있을까요? |
 | 한 판 승 | `win` | 이겼어요! |
 | 한 판 패 | `lose` | 졌어요… |
 | 비김 | `draw` | 비겼어요! 다시 |
@@ -1045,7 +1045,7 @@ git commit -m "feat: 🐗🦝 밤손님 조형 2종 — 시안 3안 비교 후 �
   - `setBanner(text: string) → void` · `setRound(n: number, total: number) → void`
   - `askHand() → Promise<'rock'|'scissors'|'paper'>`
   - `showHands(mine: string, theirs: string, result: string) → Promise<void>` — 결과를 1.2초 보여준다
-  - `askShell(swaps: [number,number][], startPos: number, ms: number) → Promise<number>` — 섞은 뒤 고른 바가지 index
+  - `askShell(swaps: [number,number][], startPos: number, ms: number) → Promise<number>` — 섞은 뒤 고른 그릇 index
 
 - [ ] **Step 1: CSS 를 추가한다**
 
@@ -1114,9 +1114,9 @@ const HAND_ICO = { rock: '✊', scissors: '✌️', paper: '🖐️' };
 //    값은 Task 7 에서 확정한 문구로 맞춘다.
 export const COPY = {
   boarOpen:   '멧돼지가 길을 막아섰어요',
-  raccoonOpen:'너구리가 바가지 셋을 늘어놨어요',
+  raccoonOpen:'너구리가 작물을 훔쳐서 그릇에 숨겼어요!',
   askHand:    '무엇을 낼까요?',
-  askShell:   '어느 바가지에 있을까요?',
+  askShell:   '어느 그릇에 있을까요?',
   win:        '이겼어요!',
   lose:       '졌어요…',
   draw:       '비겼어요! 다시',
@@ -1180,7 +1180,7 @@ export async function showHands(mine, theirs, result) {
 
 `askShell(swaps, startPos, ms)` 는 이렇게 만든다:
 
-1. 바가지 버튼 `SHELL_COUNT` 개를 만들고 전부 `disabled` 로 둔다.
+1. 그릇 버튼 `SHELL_COUNT` 개를 만들고 전부 `disabled` 로 둔다.
 2. 시작 자리(`startPos`)를 잠깐 열어 보여준다(작물 이모지를 띄운다).
 3. `swaps` 를 `ms` 간격으로 하나씩 적용하며, 두 버튼의 `transform: translateX()` 를 서로 바꾼다.
 4. 섞기가 끝나면 `disabled` 를 풀고 클릭을 기다려 **자리 index** 를 돌려준다.
@@ -1206,7 +1206,7 @@ console.log(await d.askHand());
 그리고 그릇도 돌려본다.
 
 ```js
-d.setBanner('어느 바가지에 있을까요?');
+d.setBanner('어느 그릇에 있을까요?');
 console.log('고른 자리', await d.askShell([[0,1],[1,2],[0,2],[1,2]], 0, 450));
 ```
 
@@ -1216,7 +1216,7 @@ console.log('고른 자리', await d.askShell([[0,1],[1,2],[0,2],[1,2]], 0, 450)
 
 ```bash
 git add index.html js/duel/ui.js
-git commit -m "feat: 🐗🦝 대결 오버레이 — 손·바가지 선택 카드"
+git commit -m "feat: 🐗🦝 대결 오버레이 — 손·그릇 선택 카드"
 ```
 
 ---
@@ -1403,9 +1403,9 @@ export function initDuel() {
 ```js
   // ── 🐗🦝 밤손님 대결 ────────────────────────────────────────
   '멧돼지가 길을 막아섰어요': 'The boar blocks your path',
-  '너구리가 바가지 셋을 늘어놨어요': 'The raccoon lines up three bowls',
+  '너구리가 작물을 훔쳐서 그릇에 숨겼어요!': 'The raccoon lines up three bowls',
   '무엇을 낼까요?': 'What will you throw?',
-  '어느 바가지에 있을까요?': 'Which bowl is it under?',
+  '어느 그릇에 있을까요?': 'Which bowl is it under?',
   '이겼어요!': 'You win!',
   '졌어요…': 'You lose…',
   '비겼어요! 다시': 'A draw — again!',
@@ -1489,7 +1489,7 @@ getGameState().night.truce
 
 `resize_window` 로 mobile 프리셋(375×812) 후 **새로고침**한다(로드 시점 기기 판정이 다시 돌아야 한다). 한 판 돌리고 확인한다:
 - 배너가 두 줄로 넘치지 않는다
-- 손·바가지 버튼이 엄지에 닿는 높이다
+- 손·그릇 버튼이 엄지에 닿는 높이다
 - 동물이 오버레이 카드에 가리지 않는다
 - 조이스틱·액션 버튼·미니맵이 대결 중에 숨는다(`body.duel-open` 규칙)
 
