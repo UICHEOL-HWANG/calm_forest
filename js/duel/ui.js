@@ -9,7 +9,7 @@ import { t } from '../i18n.js';
 import { HANDS } from './rps.js';
 import { SHELL_COUNT } from './shells.js';
 
-const HAND_ICO = { rock: '✊', scissors: '✌️', paper: '🖐️' };
+export const HAND_ICO = { rock: '✊', scissors: '✌️', paper: '🖐️' };   // 무대(stage.js)도 같은 아이콘을 쓴다
 
 // ⚠️ 표시 문구는 **전부 여기 모은다.** ui.js 와 index.js 에 흩어지면 한쪽만 고쳐
 //    영어가 한국어로 새는 사고가 난다. Task 10 은 이 값들을 그대로 i18n 키로 등재한다.
@@ -129,7 +129,7 @@ export async function showHands(mine, theirs, result) {
  *    자리(position) 기준으로 판정하므로, index 를 돌려주면 눈으로는 멀쩡해 보여도
  *    판정이 전부 어긋난다.
  */
-export async function askShell(swaps, startPos, ms) {
+export async function askShell(swaps, startPos, ms, cropIco = '🥕') {
   const box = $('duel-shells');
   box.innerHTML = '';
   box.classList.remove('hide');
@@ -161,10 +161,27 @@ export async function askShell(swaps, startPos, ms) {
   };
   render();
 
-  // 섞기 전, 시작 자리에 있는 걸 잠깐 보여준다 — 플레이어가 무엇을 좇을지 알게
-  buttons[domPos.indexOf(startPos)].textContent = '🌱';
-  await cancelableWait(700, signal);
-  buttons.forEach(b => { b.textContent = ''; });
+  // 🥣 그릇은 **늘 보인다**. 빈 버튼이면 "그릇"이라는 말이 화면 어디에도 없다(실측 지적).
+  buttons.forEach(b => { b.textContent = '🥣'; });
+  await cancelableWait(400, signal);
+
+  // 🥕 훔친 작물이 그릇으로 **들어가는 걸 보여준다**. 이게 없으면 무엇을 좇는지 모른 채
+  //    그릇만 섞인다 — "어느 그릇에 있을까요?" 가 뜬금없어진다.
+  const target = buttons[domPos.indexOf(startPos)];
+  const r = target.getBoundingClientRect();
+  const drop = document.createElement('div');
+  drop.className = 'duel-drop';
+  drop.textContent = cropIco;
+  drop.style.left = `${r.left + r.width / 2}px`;
+  drop.style.top = `${r.top - 34}px`;
+  document.body.appendChild(drop);
+  await cancelableWait(420, signal);        // 잠깐 떠 있어 눈에 담긴다
+  drop.classList.add('in');                 // 그릇 안으로 쏙
+  await cancelableWait(380, signal);
+  drop.remove();
+  target.classList.add('shut');             // 그릇이 덮이는 반동
+  await cancelableWait(260, signal);
+  target.classList.remove('shut');
 
   for (const [a, b] of swaps) {
     const i1 = domPos.indexOf(a);
