@@ -141,7 +141,12 @@ function boarBuild(T, P, o) {
   const bz1 = bz0 + o.bodyLen;
   P([SP(T, o.bodyR, 0, BY + o.bodyR * 0.10, bz0, 0.94, 1.00, 1.02)], BOAR_COL.skull);        // 어깨 — 크고 높게
   P([SP(T, o.bodyR * 0.86, 0, BY, bz1, 0.92, 0.96, 1.00)], BOAR_COL.skull);                  // 엉덩이 — 작고 낮게
-  P([WBODY(T, 0.02, 0.045, 0.18, 6, 0, BY + o.bodyR * 0.52, bz1 + o.bodyR * 0.80)], BOAR_COL.dark);   // 꼬리
+  // 꼬리 — ⚠️ 수평 막대는 옆으로 뻗은 작대기로 보였다(실측). 아래로 처지게 눕히고 끝에 술을 단다.
+  const tailZ = bz1 + o.bodyR * 0.72, tailY = BY + o.bodyR * 0.30;
+  const tail = new T.CylinderGeometry(0.018, 0.032, 0.22, 6);
+  tail.rotateX(-1.05);                                   // 뒤아래로 처진다
+  P([tail.translate(0, tailY - 0.05, tailZ + 0.04)], BOAR_COL.dark);
+  P([SP(T, 0.042, 0, tailY - 0.16, tailZ + 0.10, 1, 1.15, 1)], BOAR_COL.dark);   // 끝 술
 
   // ── 다리 4개 — 몸통 아래로 **확실히 내려와야** 짐승이 된다(묻히면 덩어리다) ──
   for (const [lx, lz] of [[-1, bz0 + o.bodyR * 0.05], [1, bz0 + o.bodyR * 0.05],
@@ -210,7 +215,9 @@ function raccoonBuild(T, P, o) {
 
   // 사각뿔대를 가로로 넓히고 세로를 살려 "넓은 뺨 → 좁은 주둥이" 실루엣을 만든다.
   //   🐗 이 옆에서 긴 쐐기라면 🦝 는 **정면에서 넓은 사다리꼴** — 축을 갈라 두 종이 안 겹치게 한다.
-  const head = new T.CylinderGeometry(rf, rr, len, 4).rotateY(Math.PI / 4).rotateX(-Math.PI / 2);
+  // ⚠️ 4각(사각뿔대)은 몸통의 둥근 덩어리와 따로 논다 — 머리만 각져 보였다(실측).
+  //    7각이면 "넓은 뺨 → 좁은 주둥이" 사다리꼴은 남기면서 둥근 몸통과 한 몸으로 읽힌다.
+  const head = new T.CylinderGeometry(rf, rr, len, 7).rotateY(Math.PI / 7).rotateX(-Math.PI / 2);
   head.scale(o.wide, o.tall, 1);
   P([head.translate(0, HY, 0)], RACC_COL.body);
   const halfW = z => (rf + (rr - rf) * ((z - zFront) / len)) * o.wide;
@@ -230,7 +237,7 @@ function raccoonBuild(T, P, o) {
 
   // 주둥이 — 머리 앞면에서 이어 나온 사각뿔대(폭을 이어받아 별도 조각으로 안 보이게)
   const sh = halfH(zFront);
-  const sn = new T.CylinderGeometry(rf * 0.30, rf * 0.92, o.snoutLen, 4).rotateY(Math.PI / 4).rotateX(-Math.PI / 2);
+  const sn = new T.CylinderGeometry(rf * 0.30, rf * 0.92, o.snoutLen, 7).rotateY(Math.PI / 7).rotateX(-Math.PI / 2);
   sn.scale(o.wide * 0.92, o.tall * 0.86, 1);
   P([sn.translate(0, HY - sh * 0.30, zFront - o.snoutLen / 2)], RACC_COL.pale);
   P([SP(T, rf * 0.30, 0, HY - sh * 0.34, zFront - o.snoutLen - 0.01, 1.25, .85, .7)], EYE_DARK, false);
@@ -238,8 +245,8 @@ function raccoonBuild(T, P, o) {
   // 귀 — 머리 윗면 모서리에 **박힌 삼각형**(떠 있는 공은 더듬이로 보인다)
   const ez = zBack - len * 0.20, ew = halfW(ez), eh = halfH(ez);
   for (const s of [-1, 1]) {
-    P([CO(T, o.earR, o.earR * 1.5, 3, s * ew * 0.72, HY + eh * 0.86, ez, 0, s > 0 ? -0.3 : 0.3, s * -0.30)], RACC_COL.body);
-    P([CO(T, o.earR * 0.52, o.earR * 1.0, 3, s * ew * 0.76, HY + eh * 0.84, ez - 0.012, 0, s > 0 ? -0.3 : 0.3, s * -0.30)], RACC_COL.mask, false);
+    P([CO(T, o.earR, o.earR * 1.35, 5, s * ew * 0.72, HY + eh * 0.86, ez, 0, s > 0 ? -0.3 : 0.3, s * -0.30)], RACC_COL.body);
+    P([CO(T, o.earR * 0.52, o.earR * 0.9, 5, s * ew * 0.76, HY + eh * 0.84, ez - 0.012, 0, s > 0 ? -0.3 : 0.3, s * -0.30)], RACC_COL.mask, false);
   }
 
   // 꼬리 — 뒤 아래로 눕혀 세운다(머리 위로 세우면 정면에서 유니콘 뿔이 된다).
