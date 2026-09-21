@@ -19,14 +19,36 @@ export const DUEL_ANIMALS = ['boar', 'raccoon'];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** 'YYYY-MM-DD' + n일. UTC 로 계산해 서머타임·시간대에 흔들리지 않게 한다 */
-export function addDays(date, n) {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
+/**
+ * 내부 헬퍼: 'YYYY-MM-DD' 문자열이 달력상 유효한가.
+ * 정규식만으로는 2월 30일이나 13월을 못 잡으므로, round-trip 검증한다:
+ * 파싱 후 다시 문자열로 만들어 원본과 같은지 본다.
+ * 유효하면 'YYYY-MM-DD', 무효하면 null.
+ */
+function isValidDate(dateStr) {
+  if (typeof dateStr !== 'string' || !DATE_RE.test(dateStr)) return null;
+  try {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    // 유효한 날짜면 round-trip 이 같다. 2월 30일·13월 등은 다르다.
+    if (d.toISOString().slice(0, 10) !== dateStr) return null;
+    return dateStr;
+  } catch {
+    return null;
+  }
 }
 
-/** 오늘 이겼을 때 찍을 만료일 */
+/** 'YYYY-MM-DD' + n일. UTC 로 계산해 서머타임·시간대에 흔들리지 않게 한다. 무효하면 null. */
+export function addDays(date, n) {
+  const validated = isValidDate(date);
+  if (!validated) return null;
+  const d = new Date(`${validated}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  const result = d.toISOString().slice(0, 10);
+  // 덧셈 후에도 달력상 유효한지 재검증한다 (예: 음수 날짜 등)
+  return isValidDate(result);
+}
+
+/** 오늘 이겼을 때 찍을 만료일. 무효하면 null. */
 export function truceUntil(today, nights = TRUCE_NIGHTS) {
   return addDays(today, nights);
 }
@@ -34,12 +56,15 @@ export function truceUntil(today, nights = TRUCE_NIGHTS) {
 /**
  * 이 만료일이 오늘 밤에 유효한가.
  * 오늘 이하면 이미 지났고, 오늘+TRUCE_NIGHTS 를 넘으면 상한 초과다.
- * 형식이 깨진 값은 전부 무효 — 서버가 받는 입력이라 믿지 않는다.
+ * 달력상 무효한 날짜(13월·2월 30일 등)는 round-trip 검증으로 걸러낸다.
+ * 무효하거나 형식이 깨진 모든 값은 false. 어떤 입력에도 절대 던지지 않는다.
  */
 export function truceActive(until, today) {
-  if (typeof until !== 'string' || !DATE_RE.test(until)) return false;
-  if (typeof today !== 'string' || !DATE_RE.test(today)) return false;
-  return until > today && until <= addDays(today, TRUCE_NIGHTS);
+  if (isValidDate(until) === null) return false;
+  if (isValidDate(today) === null) return false;
+  const maxDate = addDays(today, TRUCE_NIGHTS);
+  if (!maxDate) return false;
+  return until > today && until <= maxDate;
 }
 
 /** 오늘 밤 오지 않는 동물들 */
