@@ -32,7 +32,8 @@ import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
-import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } from './house-cost.js';   // 🏠 집 수치(건축·증축)는 전부 거기 한 곳
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
@@ -130,18 +131,8 @@ let lastAutoZone = null;                  // 자동 전환을 이미 적용한 �
 let pageBeforeAuto = null;                // 자동으로 맨손이 되기 직전 페이지(구역을 벗어나면 되돌린다)
 let toolBeforeAuto = null;                // 구역이 도구를 정해 주기 직전에 들고 있던 도구(⛏️광산 — 나가면 되돌린다)
 let lastOpenPage = 'farm';                // 마지막으로 펼쳐 둔 세트(맨손에서 숫자키를 누르면 여기로 돌아온다)
-const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
 const CHOP_WOOD = 3;                                    // 🪵 나무 한 그루를 쓰러뜨릴 때 목재(타격마다는 0)
 const TREE_RESPAWN_SEC = 30;                            // 🌳 쓰러진 나무 재생 시간(초)
-const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
-// ── 🏗️ 증축(집 완성 후) — 단계마다 집이 커지고 지붕·문 모양이 바뀜. 후반 자원·코인 싱크 ──
-const EXPANSIONS = [
-  // 2026-09-10 리디자인: 코인 비중↑(베타: "코인 쓸 데가 없다") — 80/200/450 → 120/350/800
-  { stage: 4, name: '브릭 로프트', ico: '🧱', cost: { wood: 30, stone: 15, coins: 120 } },
-  { stage: 5, name: '펜트하우스', ico: '🏢', cost: { wood: 50, stone: 30, coal: 10, coins: 350 } },
-  { stage: 6, name: '루프탑 빌라', ico: '🏝️', cost: { wood: 80, stone: 50, gem: 3, coins: 800 } },
-];
-const MAX_HOUSE_STAGE = 6;
 // 🌾 작물 속도 — 베타 피드백 "너무 빨리 자라고 빨리 시든다"(2026-09-11)
 //   자라는 속도 = 물 주는 간격(WET_TIME). 물 1회 +0.4 에 수확 기준이 growth>=0.8 이라 물 2번이면 끝 —
 //   5초일 땐 심고 5초 뒤에 벌써 수확이었다(지금은 9초). 더 늦추려면 tryWater 의 성장량을 낮춘다.
@@ -2324,10 +2315,10 @@ let churnPredictor = null;
 let retentionGuidance = null;
 let retentionGuidanceHooked = false;
 
-// 다음 집 단계를 지금 지을 수 있는가 — 0~2단계는 🔨망치(목재), 3단계부터는 증축(EXPANSIONS 비용).
+// 다음 집 단계를 지금 지을 수 있는가 — 0~2단계는 🔨망치(건축 비용표), 3단계부터는 증축(EXPANSIONS 비용).
 //   tryBuild()/expandInfo() 가 쓰는 판정과 같은 기준을 읽기 전용으로 다시 물어본 것.
 function churnHouseReady() {
-  if (gameState.houseStage < 3) return (gameState.inventory.wood || 0) >= buildCostOf(gameState, BUILD_COST);
+  if (gameState.houseStage < 3) return buildInfo(gameState).affordable;
   const info = expandInfo();
   return !info.maxed && !!info.affordable;
 }
@@ -2637,6 +2628,16 @@ export async function enterGame() {
     // 🎬 __introTest() — 프롤로그 강제 재생(이미 본 세이브에서도) / __introJump(s) — 타임라인 점프(검증용)
     window.__introTest = () => introStart(true);
     window.__introJump = (s) => { if (intro) intro.t = s; return !!intro; };
+    // 🏠 __buildTest(n) — 집 터로 순간이동해 재료를 채우고 n 단계까지 지어 본다(간판·토스트·원장 검수용).
+    //   비용표(js/house-cost.js)를 만질 때마다 3단계 간판과 부족 토스트를 눈으로 확인하려고 둔다. 로컬 전용.
+    window.__buildTest = (n = 1, fill = true) => {
+      if (fill && !IS_DEV_SESSION) return '자원 주입은 dev 세션에서만 — ?dbg 로 여세요';   // econ_logs 에 999 잔액이 남지 않게
+      window.__tp(HOUSE_POS.x, HOUSE_POS.z + 2.5);
+      if (fill) for (const k of ['wood', 'stone', 'coins']) gameState.inventory[k] = 999;
+      refreshInventoryUI();
+      for (let i = 0; i < n; i++) tryBuild();
+      return { stage: gameState.houseStage, inv: { wood: gameState.inventory.wood, stone: gameState.inventory.stone, coins: gameState.inventory.coins } };
+    };
     // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
@@ -7348,10 +7349,16 @@ function updateHouseSign() {
   c.beginPath(); c.moveTo(462, 274); c.lineTo(562, 274); c.lineTo(512, 356); c.closePath(); c.fill();
   c.lineWidth = 10; c.strokeStyle = '#6fae82'; roundRect(c, 30, 26, 964, 248, 60); c.stroke();
   c.textAlign = 'center'; c.textBaseline = 'middle';
+  // 🪧 2줄 — ① 이번에 짓는 단계 ② 재료 전부. 재료가 3종(🪵🪨🪙)이라 한 줄엔 안 들어간다.
+  //    폭 실측(2026-09-21, 실제 브라우저 canvas measureText — 헤드리스는 한글 폰트 대체로 2배가 나와 못 믿는다):
+  //    92px 제목 '🏠 나무 바닥(데크)' 681 · '🏠 Wooden Deck' 684, 66px 재료줄 '🪵25 · 🪨15 · 🪙80' 517.
+  //    간판 안쪽 안전선 880px — 한·영 모두 여유가 있다.
+  const bi = buildInfo(gameState, RES_LABEL);
   c.fillStyle = '#204a2c'; c.font = 'bold 92px sans-serif';
-  c.fillText(t('🏠 여기에 집 짓기'), 512, 108);
+  c.fillText(bi.next ? `🏠 ${t(bi.next.name)}` : t('🏠 여기에 집 짓기'), 512, 104);
   c.fillStyle = '#33503c'; c.font = 'bold 66px sans-serif';
-  c.fillText(t(`🔨 망치 · 🪵 ${buildCostOf(gameState, BUILD_COST)}`), 512, 210);   // 🔨 묵직한 망치를 사면 간판 숫자도 바뀐다
+  // 🔨 묵직한 망치를 사면 목재 숫자도 따라 바뀐다(buildInfo 가 이미 깎아서 준다)
+  c.fillText(bi.items.map(i => `${RES_ICON[i.k] || ''}${i.need}`).join(' · '), 512, 212);
   houseSignTex.needsUpdate = true;
 }
 
@@ -12891,7 +12898,7 @@ async function resolveNightVisit() {
 
   if (!v.visited) {
     // 🤝 휴전으로 조용한 밤은 방어 성공과 다르게 말한다 — 어제 이긴 보람이 보여야 한다
-    if (v.truce) setTimeout(() => ui.toast?.('🤝 어제 이긴 숲 친구가 약속을 지켜 오지 않았어요', 2800), 900);
+    if (v.truce) setTimeout(() => ui.toast?.('🤝 어제 승부에서 진 친구가 오지 않았어요', 2800), 900);
     else if (v.defended) setTimeout(() => ui.toast?.('🎃 허수아비와 울타리가 밤새 밭을 지켰어요!', 2800), 900);
     requestSave();
     return;
@@ -14823,13 +14830,21 @@ function tryBuild() {
   if (dist2D(HOUSE_POS, player.position) > 3.2) { ui.toast?.('집 터(반투명 자리)로 가세요 🏠'); return; }
   if (gameState.houseStage >= 3) { const r = doExpand(); ui.toast?.(r.msg, 3200); return; }   // 🏗️ 완성 후엔 망치=증축
   const next = gameState.houseStage + 1;
-  const cost = buildCostOf(gameState, BUILD_COST);   // 🔨 묵직한 망치: 10 → 7
-  if (gameState.inventory.wood < cost) { ui.toast?.(`${STAGE_NAMES[next]}엔 목재 ${cost}개가 필요해요 🪵`); return; }
-  gameState.inventory.wood -= cost;
+  // 🏠 2026-09-21: 목재 단일에서 목재·돌·코인으로 — 부족분은 증축(doExpand)과 같은 문구로 알린다
+  const info = buildInfo(gameState, RES_LABEL);
+  if (!info.affordable) {
+    const lack = info.items.filter(i => i.have < i.need).map(i => `${i.label} ${i.have}/${i.need}`).join(' · ');
+    ui.toast?.(`🔨 ${STAGE_NAMES[next]} 재료 부족 — ${lack}`, 3200); return;
+  }
+  for (const it of info.items) gameState.inventory[it.k] -= it.need;   // buildInfo 가 계산한 그 값으로 소비
+  const coinCost = info.items.find(i => i.k === 'coins')?.need || 0;
+  if (coinCost) logEcon('house_build', 'stage' + next, -coinCost, gameState.inventory.coins);   // [원장] 증축 'house_expand' 와 같은 축
   doPlayerAction(HOUSE_POS.x, HOUSE_POS.z); // 건축 제스처
   buildHouseStage(next);
-  if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성! (-${cost} 목재)`);
+  trackEvent('house_build', { stage: next, ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
+  if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성!`);
   refreshInventoryUI();
+  if (coinCost) requestSave();   // 🪙 코인을 쓴 자리는 바로 저장(새로고침으로 잃지 않게) — 구성품 구매와 같은 규칙
 }
 
 // =============================================================
@@ -15014,6 +15029,8 @@ function updateParticles(dt) {
 // =============================================================
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
+// 🪧 간판·좁은 자리용 아이콘만(라벨 없이). RES_LABEL 은 이모지가 붙은 것과 안 붙은 것이 섞여 있어 따로 둔다.
+const RES_ICON = { wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', coins: '🪙' };
 const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
