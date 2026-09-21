@@ -28,8 +28,11 @@ const FACE_OFFSET = 1.8;   // 흔적 좌표에서 플레이어 반대편으로 �
 //     더 좁아 여유가 줄어든다 — 실측 전엔 몰랐던 함정).
 //   · dist 10.5, height 3.7, aimY 0.2 : 채택 — 375×812 기준 NDC x [-0.86, 0.74],
 //     y [-0.05, 0.24] 로 카드(하단 ~40%, NDC y < −0.2) 위쪽·화면 안쪽에 여유 있게 든다.
-//     데스크톱(aspect 1.55)에서는 NDC x [-0.47, 0.40] 로 더 작게 보이지만(같은 상수를
-//     aspect 로만 보정하는 applyStationCamera 와 같은 한계), 세로 화면에서 잘리는 쪽보다 낫다.
+//     데스크톱(aspect 1.55)에서는 NDC x [-0.47, 0.40] 로 더 작게 보인다. applyStationCamera 도
+//     같은 k 로 보정하지만 거긴 피사체가 시설 하나뿐이라 이 문제를 실제로 겪지 않는다 —
+//     대결은 **두 피사체가 1.8 떨어져 옆으로 늘어선** 구도라 가로로 담아야 할 각폭이 훨씬
+//     넓다. k 상한(1.75)이 375×812 가 실제로 필요한 보정 배수(1.55/0.4618 ≈ 3.36)에
+//     못 미치므로, 세로 화면에서 안 잘리려면 이 거리가 데스크톱 기준으로는 사실상 강제된다.
 const CAM_DIST = 10.5;
 const CAM_HEIGHT = 3.7;
 const CAM_AIM_Y = 0.2;
@@ -74,12 +77,16 @@ export function enterDuelStage(stage, { animal, x, z }) {
   camera.position.set(midX + perpX * CAM_DIST * k, CAM_HEIGHT * k, midZ + perpZ * CAM_DIST * k);
   camera.lookAt(midX, CAM_AIM_Y, midZ);
 
-  // 가림 처리 — 카메라와 중점 사이에 선 나무를 잠깐 숨긴다(hideKilnOccluders 와 같은 이유:
-  //   안개로는 못 지운다. 가리는 게 대상보다 카메라 쪽에 있어 더 가깝기 때문이다).
-  //   stage 가 trees 배열을 안 넘기므로 scene 을 훑어 나무만 골라낸다(spawnTree 의 userData 로 식별).
-  //   ⚠️ 장식·건물은 여기서 건드리지 않는다 — 범용 traverse 로 장식을 가려내려면 마을 시설 그룹
-  //   (farmGroup 등)까지 통째로 끌 위험이 있어, 식별 가능한 나무만으로 범위를 좁힌다.
-  const hidden = hideTreesBetween(scene, camera.position, midX, midZ);
+  // 가림 처리 — 카메라와 중점 사이에 선 나무·야외 장식을 잠깐 숨긴다(hideKilnOccluders 와
+  //   같은 이유: 안개로는 못 지운다. 가리는 게 대상보다 카메라 쪽에 있어 더 가깝기 때문이다).
+  //   🎃허수아비·🪵울타리는 "밭 근처에 두면 밤손님을 막는다"는 용도로 설계된 물건이라
+  //   (js/game.js 의 OUTDOOR 설명), 대결이 열리는 바로 그 밭 근처에 서 있을 확률이 가장 높다 —
+  //   빠뜨리면 가장 잘 가릴 것들이 안 가려진다.
+  //   stage 가 outdoorMeshes 배열을 안 넘기므로 scene 최상위 자식을 훑어 식별한다:
+  //   나무는 spawnTree 의 userData(canopy·trunk), 야외 장식은 placeOutdoor 가 예외 없이 붙이는
+  //   userData.rec(js/game.js:10616, hideKilnOccluders 자신이 "시설 자기 자신"을 가릴 때도
+  //   이 표식을 쓴다) 로 고른다. farmGroup·mineGroup 같은 구조적 그룹은 이 표식이 없어 안전하다.
+  const hidden = hideOccludersBetween(scene, camera.position, midX, midZ);
 
   return { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden };
 }
@@ -98,14 +105,21 @@ export function exitDuelStage(handle) {
 /** updateDuelStage(handle, dt) — 지금은 정적 구도라 비워 둔다(호출 안 해도 무방). */
 export function updateDuelStage(_handle, _dt) {}
 
-/** 카메라→중점 선분 위, 반경 1.1 안에 있는 나무만 잠깐 끈다 */
-function hideTreesBetween(scene, camPos, midX, midZ) {
+/** 나무이거나(spawnTree 의 userData) 야외 장식(placeOutdoor 가 붙이는 userData.rec) 인가 */
+function isOccluderCandidate(o) {
+  if (!o.userData) return false;
+  if (o.userData.canopy && o.userData.trunk) return true;   // 나무
+  return !!o.userData.rec;                                  // 울타리·허수아비 등 야외 장식(시설 포함)
+}
+
+/** 카메라→중점 선분 위, 반경 1.1 안에 있는 나무·야외 장식만 잠깐 끈다 */
+function hideOccludersBetween(scene, camPos, midX, midZ) {
   const hidden = [];
   const corridorR = 1.1;
   const dx = midX - camPos.x, dz = midZ - camPos.z;
   const len2 = dx * dx + dz * dz || 1;
   for (const o of scene.children) {
-    if (!o.visible || !o.userData || !o.userData.canopy || !o.userData.trunk) continue;   // 나무만(spawnTree 의 userData 형태)
+    if (!o.visible || !isOccluderCandidate(o)) continue;
     const px = o.position.x - camPos.x, pz = o.position.z - camPos.z;
     const t = (px * dx + pz * dz) / len2;
     if (t <= 0.05 || t >= 0.95) continue;   // 카메라 바로 앞·중점 너머는 가리는 게 아니다
