@@ -32,11 +32,13 @@ import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 
 import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
-import { tierOf, paletteOf, GEM_COLOR, mineHitPower, buildCostOf, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } from './house-cost.js';   // 🏠 집 수치(건축·증축)는 전부 거기 한 곳
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
+import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -129,18 +131,8 @@ let lastAutoZone = null;                  // 자동 전환을 이미 적용한 �
 let pageBeforeAuto = null;                // 자동으로 맨손이 되기 직전 페이지(구역을 벗어나면 되돌린다)
 let toolBeforeAuto = null;                // 구역이 도구를 정해 주기 직전에 들고 있던 도구(⛏️광산 — 나가면 되돌린다)
 let lastOpenPage = 'farm';                // 마지막으로 펼쳐 둔 세트(맨손에서 숫자키를 누르면 여기로 돌아온다)
-const BUILD_COST = 10;                                  // 건축 단계당 목재 소비량
 const CHOP_WOOD = 3;                                    // 🪵 나무 한 그루를 쓰러뜨릴 때 목재(타격마다는 0)
 const TREE_RESPAWN_SEC = 30;                            // 🌳 쓰러진 나무 재생 시간(초)
-const STAGE_NAMES = ['', '나무 바닥(데크)', '통나무 벽', '지붕']; // 1→2→3 순서
-// ── 🏗️ 증축(집 완성 후) — 단계마다 집이 커지고 지붕·문 모양이 바뀜. 후반 자원·코인 싱크 ──
-const EXPANSIONS = [
-  // 2026-09-10 리디자인: 코인 비중↑(베타: "코인 쓸 데가 없다") — 80/200/450 → 120/350/800
-  { stage: 4, name: '브릭 로프트', ico: '🧱', cost: { wood: 30, stone: 15, coins: 120 } },
-  { stage: 5, name: '펜트하우스', ico: '🏢', cost: { wood: 50, stone: 30, coal: 10, coins: 350 } },
-  { stage: 6, name: '루프탑 빌라', ico: '🏝️', cost: { wood: 80, stone: 50, gem: 3, coins: 800 } },
-];
-const MAX_HOUSE_STAGE = 6;
 // 🌾 작물 속도 — 베타 피드백 "너무 빨리 자라고 빨리 시든다"(2026-09-11)
 //   자라는 속도 = 물 주는 간격(WET_TIME). 물 1회 +0.4 에 수확 기준이 growth>=0.8 이라 물 2번이면 끝 —
 //   5초일 땐 심고 5초 뒤에 벌써 수확이었다(지금은 9초). 더 늦추려면 tryWater 의 성장량을 낮춘다.
@@ -1303,7 +1295,9 @@ const gameState = {
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   farm: { stage: 1, seedSel: 'basic', pestDate: null, storage: {}, pending: {}, compostDate: null, compostN: 0, lastSettleAt: 0, wageDate: null, hireDate: null, hireTaken: [] },   // 🌾 밭 { 단계(1 텃밭 · 2 넓은 밭 · 3 대농장, js/farm-stage.js) · 고른 씨앗(basic|wheat|corn|grape) · 해충·꿀 정산일(YYYY-MM-DD) · 🧺창고 내용물(일꾼 수확분) · 🌱퇴비통 오늘 만든 비료 }
   cafe: { date: null, done: [], bonus: false, served: 0 }, // ☕ 카페 { 주문 날짜, 완료 주문 index, 완주 보너스 수령, 누적 서빙 }
-  night: { lastDate: null, traces: [] },    // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot}] }
+  // 🦝 밤손님 { 마지막 판정일(YYYY-MM-DD), 조사 안 한 흔적 [{x,z,animal,loot,crop}],
+  //            🤝 발길 끊기 만료일, 오늘 대결한 동물 }
+  night: { lastDate: null, traces: [], truce: { boar: null, raccoon: null }, duelDate: null, duelDone: [] },
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
@@ -2321,10 +2315,10 @@ let churnPredictor = null;
 let retentionGuidance = null;
 let retentionGuidanceHooked = false;
 
-// 다음 집 단계를 지금 지을 수 있는가 — 0~2단계는 🔨망치(목재), 3단계부터는 증축(EXPANSIONS 비용).
+// 다음 집 단계를 지금 지을 수 있는가 — 0~2단계는 🔨망치(건축 비용표), 3단계부터는 증축(EXPANSIONS 비용).
 //   tryBuild()/expandInfo() 가 쓰는 판정과 같은 기준을 읽기 전용으로 다시 물어본 것.
 function churnHouseReady() {
-  if (gameState.houseStage < 3) return (gameState.inventory.wood || 0) >= buildCostOf(gameState, BUILD_COST);
+  if (gameState.houseStage < 3) return buildInfo(gameState).affordable;
   const info = expandInfo();
   return !info.maxed && !!info.affordable;
 }
@@ -2580,6 +2574,17 @@ export async function enterGame() {
   // ?give 와 같은 로컬 전용(실서비스에서 임의 습격 유발·경제 오염 방지)
   if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
     window.__nightTest = () => { gameState.night.lastDate = todayStr(-1); return resolveNightVisit(); };
+    // 🐗🦝 대결 검수 — 서버 판정을 건너뛰고 흔적을 직접 심는다.
+    //   판정이 HMAC(uid:date) 결정값이라 __nightTest 를 반복해도 오늘 결과는 안 바뀐다.
+    //   animal: 'boar' | 'raccoon'
+    window.__nightForce = (animal = 'boar') => {
+      const p = plots.find(x => x.state === 'growing' || x.state === 'mature') || plots[0];
+      if (!p) return '밭이 없다';
+      const t = { x: p.x, z: p.z, animal, loot: animal === 'boar' ? 'acorn_drop' : 'fur_tuft', crop: p.cropType?.id || '' };
+      gameState.night.traces.push(t); spawnTrace(t);
+      gameState.night.duelDate = null; gameState.night.duelDone = [];   // 오늘 이미 붙었어도 다시 볼 수 있게
+      return `${animal} 흔적을 (${p.x}, ${p.z}) 에 심었다 — 가서 조사하세요`;
+    };
     // ?severe=frost 와 조합: 어제 정산한 셈 치고 오늘의 궂은 날씨를 다시 정산
     window.__frostTest = () => { gameState.frost.lastDate = todayStr(-1); return resolveWeatherEvent(); };
     // 🛶 __boatTest() — 오늘 탄 횟수를 초기화(코스 반복 테스트용). 코스 시드는 그대로라 같은 물길이 나온다
@@ -2623,6 +2628,16 @@ export async function enterGame() {
     // 🎬 __introTest() — 프롤로그 강제 재생(이미 본 세이브에서도) / __introJump(s) — 타임라인 점프(검증용)
     window.__introTest = () => introStart(true);
     window.__introJump = (s) => { if (intro) intro.t = s; return !!intro; };
+    // 🏠 __buildTest(n) — 집 터로 순간이동해 재료를 채우고 n 단계까지 지어 본다(간판·토스트·원장 검수용).
+    //   비용표(js/house-cost.js)를 만질 때마다 3단계 간판과 부족 토스트를 눈으로 확인하려고 둔다. 로컬 전용.
+    window.__buildTest = (n = 1, fill = true) => {
+      if (fill && !IS_DEV_SESSION) return '자원 주입은 dev 세션에서만 — ?dbg 로 여세요';   // econ_logs 에 999 잔액이 남지 않게
+      window.__tp(HOUSE_POS.x, HOUSE_POS.z + 2.5);
+      if (fill) for (const k of ['wood', 'stone', 'coins']) gameState.inventory[k] = 999;
+      refreshInventoryUI();
+      for (let i = 0; i < n; i++) tryBuild();
+      return { stage: gameState.houseStage, inv: { wood: gameState.inventory.wood, stone: gameState.inventory.stone, coins: gameState.inventory.coins } };
+    };
     // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
@@ -2829,7 +2844,10 @@ function applySave(saved) {
     gameState.dex = { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {}, ...saved.dex }; // 📖 도감 복원
     refreshMuseumGate();   // 🏛️ 열어 둔 층만큼 건물을 세운다 — 안 하면 접속할 때마다 1층으로 보인다
   }
-  if (saved.night) gameState.night = { lastDate: null, traces: [], ...saved.night }; // 🦝 밤손님 판정일·미조사 흔적 복원
+  if (saved.night) {
+    gameState.night = { lastDate: null, traces: [], duelDate: null, duelDone: [], ...saved.night,
+                        truce: { boar: null, raccoon: null, ...(saved.night.truce || {}) } };
+  } // 🦝 밤손님 판정일·미조사 흔적·🤝 발길 끊기 복원(truce 는 중첩 객체라 전개만으로는 안 채워진다)
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
@@ -7331,10 +7349,16 @@ function updateHouseSign() {
   c.beginPath(); c.moveTo(462, 274); c.lineTo(562, 274); c.lineTo(512, 356); c.closePath(); c.fill();
   c.lineWidth = 10; c.strokeStyle = '#6fae82'; roundRect(c, 30, 26, 964, 248, 60); c.stroke();
   c.textAlign = 'center'; c.textBaseline = 'middle';
+  // 🪧 2줄 — ① 이번에 짓는 단계 ② 재료 전부. 재료가 3종(🪵🪨🪙)이라 한 줄엔 안 들어간다.
+  //    폭 실측(2026-09-21, 실제 브라우저 canvas measureText — 헤드리스는 한글 폰트 대체로 2배가 나와 못 믿는다):
+  //    92px 제목 '🏠 나무 바닥(데크)' 681 · '🏠 Wooden Deck' 684, 66px 재료줄 '🪵25 · 🪨15 · 🪙80' 517.
+  //    간판 안쪽 안전선 880px — 한·영 모두 여유가 있다.
+  const bi = buildInfo(gameState, RES_LABEL);
   c.fillStyle = '#204a2c'; c.font = 'bold 92px sans-serif';
-  c.fillText(t('🏠 여기에 집 짓기'), 512, 108);
+  c.fillText(bi.next ? `🏠 ${t(bi.next.name)}` : t('🏠 여기에 집 짓기'), 512, 104);
   c.fillStyle = '#33503c'; c.font = 'bold 66px sans-serif';
-  c.fillText(t(`🔨 망치 · 🪵 ${buildCostOf(gameState, BUILD_COST)}`), 512, 210);   // 🔨 묵직한 망치를 사면 간판 숫자도 바뀐다
+  // 🔨 묵직한 망치를 사면 목재 숫자도 따라 바뀐다(buildInfo 가 이미 깎아서 준다)
+  c.fillText(bi.items.map(i => `${RES_ICON[i.k] || ''}${i.need}`).join(' · '), 512, 212);
   houseSignTex.needsUpdate = true;
 }
 
@@ -11863,11 +11887,11 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (!mgView) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); updateCameraFade(); }
+    else if (!mgView && !duelActive) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
-    } else if (!mgView && !intro) {
+    } else if (!mgView && !duelActive && !intro) {
       handleAction();
       updateNPCInteract();
       updateDoorInteract();
@@ -12731,6 +12755,14 @@ let nightNoteFetcher = null;  // async ({date,animal,crop}) => {author,text}
 export function setNightVisitSource(fn) { nightFetcher = fn || null; }
 export function setNightNoteSource(fn) { nightNoteFetcher = fn || null; }
 
+let duelFetcher = null;   // async (ctx) => boolean — js/duel/index.js 가 등록. true 면 이겼다
+// 🐗🦝 승부 중 — 카메라·조작을 무대(js/duel/stage.js)에 넘긴다.
+//   ⚠️ 이 플래그가 없으면 updateCamera 가 **매 프레임 카메라를 되돌려** 클로즈업이 안 걸린다
+//      (🍳 요리가 mgView 로 막는 것과 같은 자리). 무대만 만들고 이걸 빠뜨려 한 번 겪었다.
+let duelActive = false;
+/** 🐗🦝 대결 등록 — 안 끼우면 흔적 조사는 지금까지처럼 조사 보상만 주고 끝난다(기능 플래그 겸용) */
+export function setDuelSource(fn) { duelFetcher = fn || null; }
+
 const NIGHT_ANIMAL = {
   raccoon: { ico: '🦝', name: '너구리' },
   boar:    { ico: '🐗', name: '멧돼지' },
@@ -12797,7 +12829,63 @@ function investigateTrace(tr) {
   ui.toast?.(`🔍 ${NIGHT_ANIMAL[t.animal]?.ico || '🐾'} 흔적에서 ${entry?.ico || ''} ${entry?.name || '수집품'}을 찾았어요!`, 2600);
   dexDiscover('track', t.loot);                          // 📖 도감 신규 카테고리 '흔적'
   trackEvent('night_trace', { animal: t.animal });       // [GA4] 조사 전환율
-  requestSave();
+  requestSave();       // ← 대결 전에 저장한다(리롤 방지의 핵심: 흔적은 이미 지워졌고 보상은 이미 줬다)
+  maybeDuel(t);
+}
+
+// 🐗🦝 대결 — 하루에 동물당 한 번. 이기면 그 동물이 가져간 작물을 전부 되찾는다.
+//   ▶ 흔적 보상을 먼저 주고 흔적을 지운 **뒤**에 연다. 새로고침해도 흔적이 없어
+//     다시 못 하고(리롤 방지), 중간에 창을 닫아도 손해가 없다.
+async function maybeDuel(t) {
+  if (!duelFetcher) return;                              // 등록 전이면 지금까지 동작 그대로
+  const st = gameState.night, today = todayStr();
+  if (st.duelDate !== today) { st.duelDate = today; st.duelDone = []; }   // 날이 바뀌면 비운다
+  if (st.duelDone.includes(t.animal)) return;            // 오늘 이 동물과는 이미 붙었다
+  st.duelDone = [...st.duelDone, t.animal];
+  // 그 동물이 오늘 가져간 작물 전부 — 방금 조사한 것 + 아직 조사 안 한 흔적
+  const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
+  // ⚠️ 리롤 방지의 핵심은 "흔적이 지워진 상태가 **저장됐다**"는 것이다. fire-and-forget 으로
+  //    두면 오프라인·저장 실패 때 흔적과 duelDone 이 안 남아 새로고침 재도전이 열린다.
+  //    저장이 실패하면 승부를 **열지 않는다** — 흔적이 남아 다음에 다시 조사하면 된다.
+  try {
+    await requestSave();
+  } catch (e) {
+    st.duelDone = st.duelDone.filter(a => a !== t.animal);   // 되돌린다(다음 기회를 뺏지 않게)
+    console.warn('[승부] 저장 실패 — 이번엔 열지 않는다(흔적은 다음에 다시)', e?.message || e);
+    return;
+  }
+  duelActive = true;                                     // 카메라를 무대에 넘긴다(위 주석 참고)
+  // 흔적 보상(+씨앗)이 **승부 직전에** 띄운 월드 텍스트를 치운다 — spawnFloatText 의 duelActive
+  //   가드는 이후 호출만 막는다. 이미 떠 있는 건 무대 위에 남아 화면을 덮는다(실측).
+  for (const sp of floatTexts) scene.remove(sp);
+  floatTexts.length = 0;
+  // 🥕 그릇에 넣어 보여줄 작물 아이콘 — 고급 작물만 제 아이콘이 있고 나머지는 🥕(tryHarvest 와 같은 규칙)
+  const firstId = crops.find(c => c) || '';
+  const cropIco = (firstId && ADV_CROPS.find(c => c.id === firstId)?.ico) || '🥕';
+  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player } })
+    .then(won => { if (won) winDuel(t.animal, crops); requestSave(); })
+    .catch(e => console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e))
+    .finally(() => { duelActive = false; });
+}
+
+// 승리 — 작물 회수(tryHarvest 와 같은 지급 규칙) + 🤝 발길 끊기
+//   밭은 되살리지 않는다: 성장 단계까지 복원하면 도난이 없던 일이 되고 다시 심을 이유가 사라진다.
+function winDuel(animal, crops) {
+  for (const id of crops) {
+    // 🌾 고급 작물(밀·옥수수·포도)은 종류별 인벤 키, 나머지는 crop — tryHarvest 와 같은 규칙.
+    //    씨앗은 주지 않는다: 수확이 아니라 회수다. 옛 세이브의 빈 crop('')은 일반 작물로 본다.
+    if (id && ADV_CROPS.some(c => c.id === id)) gameState.inventory[id] = (gameState.inventory[id] || 0) + 1;
+    else gameState.inventory.crop = (gameState.inventory.crop || 0) + 1;
+  }
+  // ⚠️ 편차: truceUntil 은 잘못된 날짜에 null 을 돌려준다(하드닝됨) — null 을 세이브에 그대로 쓰면
+  //   "영구 휴전"으로 읽혀 더 나쁘다. 못 받았으면 기존 휴전값을 그대로 둔다.
+  const nextTruce = truceUntil(todayStr());
+  if (nextTruce) gameState.night.truce = { ...gameState.night.truce, [animal]: nextTruce };
+  refreshInventoryUI();
+  const a = NIGHT_ANIMAL[animal] || NIGHT_ANIMAL.raccoon;
+  // [i18n] 통문장 키 + 슬롯 — 조각을 이어 붙이면 영어에서 어순이 깨진다(저장소 규칙)
+  ui.toast?.(t('{0} {1}에게서 작물 {2}개를 되찾았어요! 당분간 안 올 거예요')
+    .replace('{0}', a.ico).replace('{1}', t(a.name)).replace('{2}', crops.length), 3600);
 }
 
 // 방어 판정 입력 — 심어둔 밭 9칸 안의 허수아비·울타리(4개 이상)만 인정
@@ -12826,14 +12914,16 @@ async function resolveNightVisit() {
       date: today, nights,
       plots: cands.map(c => ({ crop: c.p.cropType?.id || '' })),
       defense: computeNightDefense(cands),
+      truce: st.truce,                       // 🤝 대결에서 이긴 동물은 며칠 쉰다(상한은 서버가 잰다)
     });
   } catch (e) { console.warn('[밤손님] 판정 실패 — 다음 접속에 재시도', e?.message || e); }
   if (!v) return;                                         // 서버 실패 → lastDate 유지(재시도)
   st.lastDate = today;
 
   if (!v.visited) {
-    // 방어 성공은 조용히 넘기지 않는다 — "세워두길 잘했다"는 피드백이 다음 방어를 만든다
-    if (v.defended) setTimeout(() => ui.toast?.('🎃 허수아비와 울타리가 밤새 밭을 지켰어요!', 2800), 900);
+    // 🤝 휴전으로 조용한 밤은 방어 성공과 다르게 말한다 — 어제 이긴 보람이 보여야 한다
+    if (v.truce) setTimeout(() => ui.toast?.('🤝 어제 승부에서 진 친구가 오지 않았어요', 2800), 900);
+    else if (v.defended) setTimeout(() => ui.toast?.('🎃 허수아비와 울타리가 밤새 밭을 지켰어요!', 2800), 900);
     requestSave();
     return;
   }
@@ -12841,11 +12931,12 @@ async function resolveNightVisit() {
   const stolen = [];   // 훔쳐간 작물 이름들(안내용)
   for (const i of (v.stolenIdx || [])) {
     const c = cands[i]; if (!c) continue;
+    const cropId = c.p.cropType?.id || '';        // ⚠️ clearCrop 전에 잡아둔다 — 되찾을 때 이게 없으면 뭘 줄지 모른다
     stolen.push(c.p.cropType?.name || '작물');
     clearCrop(c.p);
     c.p.state = 'empty'; c.p.growth = 0; c.p.stage = -1; c.p.watered = false;
     updatePlotVisual(c.p);
-    const t = { x: c.p.x, z: c.p.z, animal: v.animal, loot: v.loot };
+    const t = { x: c.p.x, z: c.p.z, animal: v.animal, loot: v.loot, crop: cropId };
     st.traces.push(t); spawnTrace(t);
   }
   if (!stolen.length) return;
@@ -14763,13 +14854,21 @@ function tryBuild() {
   if (dist2D(HOUSE_POS, player.position) > 3.2) { ui.toast?.('집 터(반투명 자리)로 가세요 🏠'); return; }
   if (gameState.houseStage >= 3) { const r = doExpand(); ui.toast?.(r.msg, 3200); return; }   // 🏗️ 완성 후엔 망치=증축
   const next = gameState.houseStage + 1;
-  const cost = buildCostOf(gameState, BUILD_COST);   // 🔨 묵직한 망치: 10 → 7
-  if (gameState.inventory.wood < cost) { ui.toast?.(`${STAGE_NAMES[next]}엔 목재 ${cost}개가 필요해요 🪵`); return; }
-  gameState.inventory.wood -= cost;
+  // 🏠 2026-09-21: 목재 단일에서 목재·돌·코인으로 — 부족분은 증축(doExpand)과 같은 문구로 알린다
+  const info = buildInfo(gameState, RES_LABEL);
+  if (!info.affordable) {
+    const lack = info.items.filter(i => i.have < i.need).map(i => `${i.label} ${i.have}/${i.need}`).join(' · ');
+    ui.toast?.(`🔨 ${STAGE_NAMES[next]} 재료 부족 — ${lack}`, 3200); return;
+  }
+  for (const it of info.items) gameState.inventory[it.k] -= it.need;   // buildInfo 가 계산한 그 값으로 소비
+  const coinCost = info.items.find(i => i.k === 'coins')?.need || 0;
+  if (coinCost) logEcon('house_build', 'stage' + next, -coinCost, gameState.inventory.coins);   // [원장] 증축 'house_expand' 와 같은 축
   doPlayerAction(HOUSE_POS.x, HOUSE_POS.z); // 건축 제스처
   buildHouseStage(next);
-  if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성! (-${cost} 목재)`);
+  trackEvent('house_build', { stage: next, ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
+  if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성!`);
   refreshInventoryUI();
+  if (coinCost) requestSave();   // 🪙 코인을 쓴 자리는 바로 저장(새로고침으로 잃지 않게) — 구성품 구매와 같은 규칙
 }
 
 // =============================================================
@@ -14779,6 +14878,9 @@ function tryBuild() {
 const floatTexts = [];
 // scale: 좁은 화면·가까운 카메라(🛶 뱃놀이 등)에서 줄여 그리기 위한 배율(기본 1)
 function spawnFloatText(x, y, z, text, color = '#3a4a40', scale = 1) {
+  // 🐗🦝 승부 중엔 띄우지 않는다 — 흔적 조사 보상(+씨앗)이 승부 시작과 겹쳐 무대를 덮었다.
+  //   토스트·배너는 CSS(body.duel-open)로 걷었지만 이건 3D 월드 스프라이트라 CSS 가 못 닿는다.
+  if (duelActive) return;
   const cv = document.createElement('canvas');
   text = t(text);   // [i18n] 캔버스 스프라이트는 옵저버 밖 — 폭 측정 전에 번역
   let c = cv.getContext('2d');
@@ -14954,6 +15056,8 @@ function updateParticles(dt) {
 // =============================================================
 //  NPC (마을 주민 다중) + 퀘스트 체인
 // =============================================================
+// 🪧 간판·좁은 자리용 아이콘만(라벨 없이). RES_LABEL 은 이모지가 붙은 것과 안 붙은 것이 섞여 있어 따로 둔다.
+const RES_ICON = { wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', coins: '🪙' };
 const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',

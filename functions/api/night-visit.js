@@ -13,6 +13,8 @@
 //  ▶ 실패하면 { visited: false } — 밤손님이 안 온 것뿐, 게임은 그대로 진행.
 // =============================================================
 
+import { blockedAnimals } from '../../js/duel/truce.js';
+
 const MAX_PLOTS = 64;          // 비정상 입력 상한(연산 보호용)
 const BASE_CHANCE = 0.6;       // 방어 없을 때 습격 확률
 const SCARECROW_CUT = 0.25;    // 허수아비: 확률 -25%p, 도난 개수 -1
@@ -24,6 +26,19 @@ const ANIMALS = {
   raccoon: { name: '너구리', loot: 'fur_tuft' },   // 털뭉치
   boar:    { name: '멧돼지', loot: 'acorn_drop' }, // 주운 도토리(물고 가다 흘림)
 };
+
+/**
+ * 오늘 밤 올 동물을 고른다.
+ * 🤝 휴전 중인 동물이 뽑히면 남은 쪽으로 넘기고, 둘 다 쉬면 아무도 안 온다.
+ * (테스트: node --test tests/duel.test.mjs)
+ */
+export function pickAnimal(roll, blocked = []) {
+  const first = roll < 0.5 ? 'raccoon' : 'boar';
+  const other = first === 'raccoon' ? 'boar' : 'raccoon';
+  if (!blocked.includes(first)) return first;
+  if (!blocked.includes(other)) return other;
+  return null;
+}
 
 // ── HMAC-SHA256(시크릿, uid:date) → 결정적 난수열(0~1) ──────────
 async function seededRolls(env, uid, date, n) {
@@ -55,6 +70,8 @@ export async function onRequestPost({ request, env }) {
   const plots = Array.isArray(body?.plots) ? body.plots.slice(0, MAX_PLOTS) : [];
   const scarecrow = body?.defense?.scarecrow === true;
   const fence = body?.defense?.fence === true;
+  // 🤝 발길 끊기 — 대결에서 이긴 동물은 며칠 쉰다. 상한은 truce.js 가 강제한다.
+  const blocked = blockedAnimals(body?.truce, date);
 
   if (!uid || nights < 1 || plots.length === 0) return none('no-night');
 
@@ -70,7 +87,11 @@ export async function onRequestPost({ request, env }) {
     return new Response(JSON.stringify({ visited: false, defended: scarecrow || fence }), { headers });
   }
 
-  const animal = rollAnimal < 0.5 ? 'raccoon' : 'boar';
+  const animal = pickAnimal(rollAnimal, blocked);
+  if (!animal) {
+    // 두 동물 다 휴전 — 방어 성공과 구분해 내려준다(클라이언트가 "약속을 지켰어요" 라고 말할 수 있게)
+    return new Response(JSON.stringify({ visited: false, reason: 'truce', truce: true }), { headers });
+  }
 
   // 도난 개수: 1~3 기본, 방어 하나당 -1 (최소 1) — 소중한 밭을 쓸어가지 않는 상한
   let count = 1 + Math.floor(rollCount * 3);               // 1~3

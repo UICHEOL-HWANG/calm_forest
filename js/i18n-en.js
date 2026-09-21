@@ -1393,6 +1393,9 @@ export const EN = {
   '🌳 숲 정화 시작하기': '🌳 Start Forest Purification',
   '🏠 여기에 집 짓기': '🏠 Build Your House Here',
   '🔨 망치 · 🪵 {0}': '🔨 Hammer · 🪵 {0}',
+  // 🏠 건축 2026-09-21 — 재료가 목재·돌·코인 3종이 되면서 간판은 2줄, 토스트는 증축과 같은 문형으로 바뀌었다
+  '🔨 {0} 재료 부족 — {1}': '🔨 Not enough materials for the {0} — {1}',
+  '🪵 {0} 완성!': '🪵 {0} complete!',
   '🎉 집 완성! 축하해요': '🎉 House complete! Congrats',
   '먼저 🔨망치로 집을 완성해요': 'Finish your house with the 🔨Hammer first',
   '🏙️ 이미 모던 하우스까지 완성했어요!': '🏙️ You\'ve already upgraded all the way to the Modern House!',
@@ -1839,6 +1842,24 @@ export const EN = {
   '🍎 일꾼이 고급 작물을 거둬 마을 동쪽 과수원이 열렸어요!': '🍎 A worker harvested an advanced crop — the Orchard hill east of town has opened!',
   '🍎 해금 — 마을 동쪽': '🍎 Unlocked — east side of town',
   '(__tp 로 이동)': '(move with __tp)',
+
+  // ── 🐗🦝 밤손님 승부 ────────────────────────────────────────
+  //   ▶ 통문장을 키로 쓴다 — ui.js COPY 값과 한 글자도 다르지 않게 맞춘다(어긋나면 영어 빌드에서
+  //     한국어로 조용히 새는데, 이 스크립트는 그걸 못 잡는다).
+  '멧돼지가 길을 막아섰어요': 'The boar blocks your path',
+  '너구리가 작물을 훔쳐서 그릇에 숨겼어요!': 'The raccoon stole a crop and hid it under a bowl!',
+  '무엇을 낼까요?': 'What will you throw?',
+  '어느 그릇에 있을까요?': 'Which bowl is it under?',
+  '이겼어요!': 'You win!',
+  '졌어요…': 'You lose…',
+  '비겼어요! 다시': 'A draw — again!',
+  '되찾았어요! 당분간 안 올 거예요': 'You got it back! They will stay away for a while',
+  '{0} {1}에게서 작물 {2}개를 되찾았어요! 당분간 안 올 거예요': '{0} You got {2} crop(s) back from the {1}! They will stay away for a while',
+  '그만두기': 'Quit',
+  '놓쳤어요… 내일 다시 만나요': 'It got away… try again tomorrow',
+  '바위': 'Rock', '가위': 'Scissors', '보': 'Paper',
+  '첫 번째 그릇': 'First bowl', '가운데 그릇': 'Middle bowl', '마지막 그릇': 'Last bowl',
+  '🤝 어제 승부에서 진 친구가 오지 않았어요': "🤝 Yesterday's loser stayed away",
 
   // ── ⚠️ 캐치올 꼬리 패턴 — 반드시 사전 맨 끝에 둔다 ──────────────
   //    PATTERNS 는 삽입 순서로 첫 매치를 쓴다. 이 셋을 위쪽에 두면

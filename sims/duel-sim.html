@@ -1,0 +1,143 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🐗🦝 밤손님 조형 시안 3안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:9px 14px 12px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:120px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12.5px;font-weight:700;
+       background:rgba(255,255,255,.90);padding:4px 9px;border-radius:7px;white-space:normal;line-height:1.4;width:150px}
+  .tag small{display:block;font-weight:400;opacity:.72;font-size:10.5px;margin-top:2px}
+</style>
+<div id="labels"></div>
+<div id="ui">
+  <div class="row">
+    <b>카메라</b>
+    <label>거리 <input id="dist" type="range" min="2" max="20" step="0.2" value="6"><span id="distV">6</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="0"><span id="angV">0</span>°</label>
+    <label>높이 <input id="hgt" type="range" min="-1" max="8" step="0.1" value="0.9"><span id="hgtV">0.9</span></label>
+    <label>좌우 <input id="panx" type="range" min="-8" max="8" step="0.2" value="0"><span id="panxV">0</span></label>
+    <label>앞뒤 <input id="panz" type="range" min="-8" max="8" step="0.2" value="0"><span id="panzV">0</span></label>
+    <label>모델돌리기 <input id="spin" type="range" min="0" max="360" step="5" value="0"><span id="spinV">0</span>°</label>
+  </div>
+  <div class="row">
+    <label>보기
+      <select id="row"><option value="both">둘 다</option><option value="boar">🐗 멧돼지만</option><option value="raccoon">🦝 너구리만</option></select>
+    </label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { makeBoar, makeRaccoon, BOAR_OPT, RACC_OPT } from '../js/duel/art.js';
+
+// =============================================================
+//  🐗🦝 밤손님 조형 시안 3안씩 — 비교 전용(승인 게이트).
+//  ------------------------------------------------------------
+//  문법 출처: js/visitor-art.js 의 공통 얼굴 문법을 그대로 가져온다 —
+//   · 몸통 없이 둥근 머리 하나(가로로 약간 넓은 타원, 앞뒤로 눌러 옆 실루엣도 읽히게)
+//   · 윤곽 위로 튀어나온 흰 눈 2개(흰자의 약 40% 검은 동공, 정면 고정)
+//   · 아래로 볼록한 굵은 입선 · 연분홍 볼터치 · 단색(검정은 눈·코·입에만)
+//   · HEAD_R·HEAD_Y·EYE_R·PUPIL_R 비례는 원본 그대로, 전체만 1.75배로 키운다
+//     (밤손님은 플레이어와 마주 서는 상대라 텃밭 방문객보다 커야 한다).
+//   · 종 차이는 부속(주둥이·엄니·귀·갈기 / 눈가띠·꼬리)으로만 준다 — 부속 "강도"로 3안을 가른다.
+//   · 🌰밤 함정 회피(visitor-art.js hedgehog 주석과 같은 이유): 따뜻한 밝은 갈색·크림 계열이면
+//     무엇을 얹어도 밤이다. 그래서 🐗 는 어둡고 차가운 회갈색, 🦝 는 차가운 회색을 쓴다.
+//  드로우콜: js/game.js paintGeo+mergeGeos 문법(P()/VS/VN)으로 그림자 O/X 두 덩어리로 합친다.
+//  이 파일은 js/duel/art.js 가 아니다 — 사용자가 A/B/C 중 고른 뒤 별도 스텝에서 최종 모듈을 쓴다.
+// =============================================================
+
+const ni = g => (g.index ? g.toNonIndexed() : g);
+const vtxMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, metalness: 0, flatShading: true });
+
+function paintGeo(geo, hex) {
+  const c = new THREE.Color(hex), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return geo;
+}
+
+// ── 조형은 js/duel/art.js 가 단일 출처다 ──
+//   ⚠️ 여기에 사본을 두지 않는다. 사본이 갈리면 시뮬에서 본 것과 게임이 달라진다.
+const SCALE = 1.75, HEAD_R = 0.34 * SCALE, HEAD_Y = 0.42 * SCALE;   // 카메라 높이 기준(조형은 art.js 소관)
+
+// ── 씬(farm-barn-sim 과 같은 조명·카메라·배경) ──
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xcfe4ee); scene.fog = new THREE.Fog(0xdce9e2, 18, 60);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, .1, 300);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const hemi = new THREE.HemisphereLight(0xdff0ff, 0x9ab07f, .85); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3d8, 1.15); sun.position.set(5, 8, 4); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.left = -10; sun.shadow.camera.right = 10; sun.shadow.camera.top = 10; sun.shadow.camera.bottom = -10; sun.shadow.camera.far = 30;
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshStandardMaterial({ color: 0x89a86a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const GAPX = 1.9, rows = { boar: [], raccoon: [] };
+const SPECS = [
+  ['boar', 'A · 코 크고 쐐기 짧음', () => makeBoar(THREE, BOAR_OPT.A), '들창코 ×1.28 · 쐐기 0.74'],
+  ['boar', 'B · 중간 ✅확정', () => makeBoar(THREE, BOAR_OPT.B), '들창코 ×1.18 · 쐐기 0.88 — 2026-09-21 채택'],
+  ['boar', 'C · 쐐기 김', () => makeBoar(THREE, BOAR_OPT.C), '들창코 ×1.10 · 쐐기 1.02 — 말에 가까워진다'],
+  ['raccoon', 'A · 가면 작음 ✅확정', () => makeRaccoon(THREE, RACC_OPT.A), '가면 0.58×0.70 — 2026-09-21 채택'],
+  ['raccoon', 'B · 중간', () => makeRaccoon(THREE, RACC_OPT.B), '가면 0.72×0.84'],
+  ['raccoon', 'C · 가면 큼', () => makeRaccoon(THREE, RACC_OPT.C), '가면 0.86×0.98'],
+];
+const tags = [];
+SPECS.forEach(([row, name, fn, note], i) => {
+  const k = i % 3, g = fn();
+  g.position.set((k - 1) * GAPX, 0, row === 'boar' ? -1.7 : 1.7);
+  g.userData.anchorY = 0.20;
+  scene.add(g); rows[row].push(g);
+  const t = document.createElement('div'); t.className = 'tag';
+  t.innerHTML = (row === 'boar' ? '🐗 ' : '🦝 ') + name + '<small>' + note + ' · 드로우콜 ' + g.children.length + '</small>';
+  document.getElementById('labels').appendChild(t); tags.push({ el: t, g });
+  console.log(`[duel-sim] ${row} ${name}: drawCalls=${g.children.length}`);
+});
+
+const el = id => document.getElementById(id);
+const P0 = { dist: 6, ang: 0, hgt: .9, panx: 0, panz: 0, spin: 0 };
+for (const k of ['dist', 'ang', 'hgt', 'panx', 'panz', 'spin']) el(k).oninput = e => { P0[k] = +e.target.value; el(k + 'V').textContent = e.target.value; };
+el('row').onchange = e => {
+  const v = e.target.value;
+  rows.boar.forEach(g => g.visible = (v !== 'raccoon')); rows.raccoon.forEach(g => g.visible = (v !== 'boar'));
+  tags.forEach(t => t.el.style.display = (v === 'both' || (v === 'boar' && t.g.position.z < 0) || (v === 'raccoon' && t.g.position.z > 0)) ? '' : 'none');
+};
+// URL 파라미터로 뷰 고정(캡처용) — ?dist=&hgt=&ang=&panx=&panz=&spin=&row=&ui=0
+{
+  const U = new URLSearchParams(location.search);
+  for (const k of ['dist', 'hgt', 'ang', 'panx', 'panz', 'spin']) if (U.has(k)) { const e = el(k); e.value = U.get(k); e.dispatchEvent(new Event('input')); }
+  if (U.has('row')) { el('row').value = U.get('row'); el('row').dispatchEvent(new Event('change')); }
+  if (U.get('ui') === '0') el('ui').style.display = 'none';
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const _v = new THREE.Vector3();
+function tick() {
+  const a = P0.ang * Math.PI / 180, tx = P0.panx, tz = P0.panz;
+  camera.position.set(tx + Math.sin(a) * P0.dist, P0.hgt + HEAD_Y, tz + Math.cos(a) * P0.dist);
+  // 🔄 모델 자체를 돌린다 — 세 마리가 한 줄이라 카메라를 옆으로 돌리면 서로 가린다.
+  //    옆 실루엣은 모델을 90° 돌려 정면 카메라로 봐야 세 안을 나란히 비교할 수 있다.
+  const spinR = (P0.spin || 0) * Math.PI / 180;
+  for (const k in rows) for (const g of rows[k]) g.rotation.y = spinR;
+  camera.lookAt(tx, HEAD_Y, tz);
+  for (const t of tags) {
+    if (t.el.style.display === 'none') continue;
+    _v.set(t.g.position.x, t.g.userData.anchorY, t.g.position.z).project(camera);
+    t.el.style.left = ((_v.x * .5 + .5) * innerWidth) + 'px'; t.el.style.top = ((-_v.y * .5 + .5) * innerHeight) + 'px';
+    t.el.style.opacity = _v.z < 1 ? 1 : 0;
+  }
+  renderer.render(scene, camera); requestAnimationFrame(tick);
+}
+tick();
+window.__ready = true;
+</script>
