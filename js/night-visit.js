@@ -27,6 +27,7 @@ function normalizeVerdict(v) {
   return {
     visited: v.visited === true,
     defended: v.defended === true,
+    truce: v.truce === true,
     animal: v.animal === 'boar' ? 'boar' : 'raccoon',
     loot: v.loot === 'acorn_drop' ? 'acorn_drop' : 'fur_tuft',
     stolenIdx: Array.isArray(v.stolenIdx)
@@ -46,7 +47,8 @@ export function initNightVisit() {
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
         signal: AbortSignal.timeout(VISIT_TIMEOUT_MS),
-        body: JSON.stringify({ uid, date: ctx.date, nights: ctx.nights, plots: ctx.plots, defense: ctx.defense }),
+        body: JSON.stringify({ uid, date: ctx.date, nights: ctx.nights, plots: ctx.plots,
+                               defense: ctx.defense, truce: ctx.truce }),
       });
       if (!res.ok) throw new Error(`night-visit ${res.status}`);
       return normalizeVerdict(await res.json());
