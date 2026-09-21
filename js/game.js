@@ -3934,7 +3934,7 @@ function toolMesh(id, tier = 0) {
 // 🏗️ 밭 시설 조형 — 🚜 빨간 헛간 세트(사용자 레퍼런스 2026-09-13: 갬브럴 지붕 + 빨간 판자 + 흰 트림 + X 브레이스).
 //   ▶ 지붕은 슬레이트 회색, 벽은 헛간 빨강, 문·모서리·창은 흰 트림 — 일곱 채가 한 세트로 읽히게 색을 공유한다.
 //   ▶ **재질별로 지오메트리를 합쳐** 동당 4~5콜. 갬브럴 옆면은 ExtrudeGeometry 로 한 번에 뽑는다(계단식 박스보다 깔끔).
-const BARN = { wall: 0xb5462f, roof: 0x8a8f96, trim: 0xf2ece0, dark: 0x6f3a2a, base: 0x9a9086, wood: 0xa9773f, straw: 0xe0c05a };
+const BARN = { wall: 0xb5462f, roof: 0x8a8f96, trim: 0xf2ece0, dark: 0x6f3a2a, base: 0x9a9086, wood: 0xa9773f, straw: 0xe0c05a, stone: 0x8d8578, crate: 0xb98a4e, iron: 0x5d5b57 };
 // 갬브럴 단면(폭 w, 처마 e, 꺾임 k, 용마루 r) → 깊이 d 로 뽑은 입체. 옆면(박공)이 그대로 생긴다
 function gambrelSolid(w, e, k, r, d) {
   const hw = w / 2, sh = new THREE.Shape();
@@ -3953,12 +3953,34 @@ function gambrelRoofSlabs(w, e, k, r, d, t = 0.14) {
   }
   return out;
 }
+// 갬브럴 박공판 — 보(capY) 위쪽 삼각만 메운다. 아래를 트면 쉼터가 쉼터로 읽힌다
+function gambrelGable(w, capY, k, r, t = 0.1) {
+  const hw = w / 2, sh = new THREE.Shape();
+  sh.moveTo(-hw, capY); sh.lineTo(-hw * 0.62, k); sh.lineTo(0, r); sh.lineTo(hw * 0.62, k); sh.lineTo(hw, capY); sh.closePath();
+  return new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false }).translate(0, 0, -t / 2);
+}
+// 한쪽으로 기운 외쪽지붕 널 — 부속채처럼 본채와 다른 방향으로 흐르는 지붕
+function shedSlab(w, d, x, y, z, ang, t = 0.13) { return new THREE.BoxGeometry(w, t, d).rotateZ(ang).translate(x, y, z); }
+// 세로 판자 결 — 벽면에서 살짝 띄운다(면이 겹치면 줄무늬가 생긴다)
+function plankRibs(n, spanW, h, y, z, w = 0.07, t = 0.035) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(new THREE.BoxGeometry(w, h, t).translate(-spanW / 2 + spanW * (i / (n - 1)), y, z));
+  return out;
+}
 function farmBuildingMesh(id, g) {
   const M = (geos, mat, shadow = true) => { const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], mat); m.castShadow = shadow; g.add(m); return m; };
-  const B = (w, h, d, x, y, z, rz = 0) => { const q = new THREE.BoxGeometry(w, h, d); if (rz) q.rotateZ(rz); return q.translate(x, y, z); };
+  const B = (w, h, d, x, y, z, rz = 0, ry = 0) => { const q = new THREE.BoxGeometry(w, h, d); if (rz) q.rotateZ(rz); if (ry) q.rotateY(ry); return q.translate(x, y, z); };
   const CY = (rt, rb, h, seg, x, y, z, rot = null) => { const q = new THREE.CylinderGeometry(rt, rb, h, seg); if (rot === 'x') q.rotateX(Math.PI / 2); if (rot === 'z') q.rotateZ(Math.PI / 2); return q.translate(x, y, z); };
   const SP = (r, x, y, z, sy = 1) => { const q = new THREE.SphereGeometry(r, 8, 7); if (sy !== 1) q.scale(1, sy, 1); return q.translate(x, y, z); };
   const CO = (r, h, seg, x, y, z) => new THREE.ConeGeometry(r, h, seg).rotateY(Math.PI / 4).translate(x, y, z);
+  // 🎨 색을 정점에 실어 두 덩어리(그림자 O/X)로만 그린다 — 조형이 복잡해져도 채당 2~3 콜
+  const VS = [], VN = [];
+  const P = (geos, hex, shadow = true) => { const a = shadow ? VS : VN; for (const q of geos) a.push(paintGeo(q.index ? q.toNonIndexed() : q, hex)); };
+  const flushP = () => {
+    const mat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+    if (VS.length) { const m = new THREE.Mesh(mergeGeos(VS), mat()); m.castShadow = true; m.receiveShadow = true; g.add(m); }
+    if (VN.length) g.add(new THREE.Mesh(mergeGeos(VN), mat()));
+  };
 
   if (id === 'board') {                    // 📋 일꾼 게시판 — 흰 기둥 + 회색 차양 + 빨간 판 + 쪽지
     M([CY(0.08, 0.09, 1.75, 6, -0.45, 0.87, 0), CY(0.08, 0.09, 1.75, 6, 0.45, 0.87, 0), B(1.2, 0.1, 0.12, 0, 1.66, 0),
@@ -3966,17 +3988,29 @@ function farmBuildingMesh(id, g) {
     M([B(1.26, 0.82, 0.09, 0, 1.08, 0)], clayMat(BARN.wall, false));
     M([B(1.6, 0.08, 0.5, 0, 1.82, 0.14, -0.3)], clayMat(BARN.roof));                                  // 비 가리개
     M([B(0.34, 0.26, 0.02, -0.28, 1.2, 0.07), B(0.3, 0.22, 0.02, 0.26, 1.02, 0.07), B(0.26, 0.2, 0.02, 0.2, 1.32, 0.07)], clayMat(0xfff6e0, false), false);
-  } else if (id === 'warehouse') {         // 🧺 작물 창고 — 레퍼런스 그대로의 빨간 헛간(2×2)
-    const W = 3.5, E = 1.85, K = 2.7, R = 3.2, D = 3.4;
-    M([gambrelSolid(W, E, K, R, D)], clayMat(BARN.wall, false));                                      // 빨간 벽 + 박공
-    M([...gambrelRoofSlabs(W, E, K, R, D + 0.3), B(3.9, 0.28, 3.9, 0, 0.14, 0)], clayMat(BARN.roof));  // 회색 지붕널 + 콘크리트 기초
-    M([B(1.44, 1.62, 0.06, 0, 0.81, D / 2 + 0.02)], clayMat(BARN.dark), false);                        // 문짝(안쪽)
-    M([B(0.12, 1.7, 0.1, -0.74, 0.85, D / 2 + 0.05), B(0.12, 1.7, 0.1, 0.74, 0.85, D / 2 + 0.05), B(1.6, 0.12, 0.1, 0, 1.66, D / 2 + 0.05),   // 문틀
-       B(1.5, 0.1, 0.06, 0, 0.81, D / 2 + 0.06, 0.83), B(1.5, 0.1, 0.06, 0, 0.81, D / 2 + 0.06, -0.83),                                        // ✕ 브레이스
-       B(0.14, E, 0.14, -W / 2 + 0.07, E / 2, D / 2 - 0.07), B(0.14, E, 0.14, W / 2 - 0.07, E / 2, D / 2 - 0.07),                              // 모서리 트림
-       B(0.14, E, 0.14, -W / 2 + 0.07, E / 2, -D / 2 + 0.07), B(0.14, E, 0.14, W / 2 - 0.07, E / 2, -D / 2 + 0.07),
-       B(0.62, 0.62, 0.08, 0, 2.62, D / 2 - 0.05)], clayMat(BARN.trim, false), false);   // 트림은 벽에 붙어 있어 그림자 기여가 없다 — castShadow 생략(드로우콜)                                                                // 다락 창틀
-    M([SP(0.36, -2.25, 0.34, 1.0, 0.86), CY(0.34, 0.34, 0.62, 10, -2.25, 0.34, 0.1, 'z'), CY(0.32, 0.32, 0.58, 10, -2.2, 0.98, 0.1, 'z')], clayMat(BARN.straw, false), false);   // 건초 더미
+  } else if (id === 'warehouse') {         // 🧺 작물 창고 2×2 — 빨간 헛간 본채 + 나무 부속채가 붙은 ㄱ자
+    //   본채와 부속채는 **재료도 지붕 방향도 다르다** — 한 덩어리로 안 읽히게 형태로 갈라 놓는다
+    const W = 2.6, E = 1.9, K = 2.75, R = 3.25, D = 3.1, f = D / 2, bx = -0.65;
+    P([gambrelSolid(W, E, K, R, D).translate(bx, 0, 0)], BARN.wall);
+    P(gambrelRoofSlabs(W, E, K, R, D + 0.3).map(q => q.translate(bx, 0, 0)), BARN.roof);
+    P([B(3.0, 0.3, 3.5, bx, 0.15, 0)], BARN.stone);                                            // 돌 기초
+    P(plankRibs(7, W - 0.3, E - 0.14, (E - 0.14) / 2 + 0.07, f + 0.02).map(q => q.translate(bx, 0, 0)), BARN.dark, false);   // 정면 판자 결
+    P([B(1.4, 1.3, 2.5, 1.25, 0.65, -0.2)], BARN.wood);                                        // 부속채 — 연장·사료 칸
+    P([shedSlab(1.66, 2.75, 1.3, 1.62, -0.2, -0.3)], BARN.roof);                               // 본채 쪽이 높아 물이 바깥으로 흐른다
+    P([B(0.62, 1.0, 0.06, 1.25, 0.5, 1.02)], BARN.dark, false);                                // 부속채 쪽문
+    P([B(0.05, 0.4, 0.44, 1.96, 1.0, -0.5)], BARN.iron, false);                                // 부속채 옆창
+    P([B(1.3, 1.62, 0.06, bx, 0.81, f - 0.02)], BARN.dark, false);                             // 본채 대문
+    P([B(0.09, 1.1, 0.09, 0.9, 0.55, 1.06), B(0.09, 1.1, 0.09, 1.6, 0.55, 1.06), B(0.8, 0.09, 0.09, 1.25, 1.1, 1.06),       // 부속채 문틀
+       B(0.07, 0.5, 0.08, 1.98, 1.0, -0.74), B(0.07, 0.5, 0.08, 1.98, 1.0, -0.26), B(0.07, 0.08, 0.54, 1.98, 1.22, -0.5),   // 옆창 틀
+       B(0.12, 1.7, 0.1, bx - 0.69, 0.85, f + 0.04), B(0.12, 1.7, 0.1, bx + 0.69, 0.85, f + 0.04), B(1.5, 0.12, 0.1, bx, 1.68, f + 0.04),
+       B(1.36, 0.1, 0.06, bx, 0.81, f + 0.05, 0.85), B(1.36, 0.1, 0.06, bx, 0.81, f + 0.05, -0.85),                          // ✕ 브레이스
+       B(0.14, E, 0.14, bx - W / 2 + 0.07, E / 2, f - 0.07), B(0.14, E, 0.14, bx + W / 2 - 0.07, E / 2, f - 0.07),           // 모서리 트림
+       B(0.14, E, 0.14, bx - W / 2 + 0.07, E / 2, -f + 0.07), B(0.14, E, 0.14, bx + W / 2 - 0.07, E / 2, -f + 0.07),
+       B(0.58, 0.62, 0.08, bx, 2.6, f - 0.04)], BARN.trim, false);                             // 다락 창틀
+    P([B(0.24, 0.54, 0.05, bx - 0.13, 2.6, f + 0.02), B(0.24, 0.54, 0.05, bx + 0.13, 2.6, f + 0.02)], BARN.dark, false);     // 다락 양여닫이 문짝
+    P([B(0.44, 0.28, 0.06, bx, 3.0, f - 0.02)], BARN.iron, false);                             // 지붕 환기창
+    P([B(0.5, 0.42, 0.42, 0.4, 0.51, 1.72), B(0.48, 0.4, 0.4, 0.42, 0.92, 1.74, 0, 0.45)], BARN.crate);                      // 앞 궤짝
+    P([SP(0.32, -1.7, 0.34, 1.5, 0.9), CY(0.3, 0.3, 0.56, 10, -1.7, 0.34, 1.5, 'z')], BARN.straw, false);                    // 건초 더미
   } else if (id === 'trellis') {           // 🍇 포도 지지대 1×3 — 흰 기둥 + 덩굴 + 포도
     M([CY(0.07, 0.08, 1.75, 6, 0, 0.87, -2), CY(0.07, 0.08, 1.75, 6, 0, 0.87, 0), CY(0.07, 0.08, 1.75, 6, 0, 0.87, 2),
        B(0.09, 0.09, 5.4, 0, 1.66, 0), B(0.09, 0.09, 5.4, 0, 1.12, 0)], clayMat(BARN.trim, false));
@@ -3995,21 +4029,40 @@ function farmBuildingMesh(id, g) {
        B(1.34, 0.08, 0.4, 0, 0.86, -0.74)], clayMat(BARN.trim, false), false);                                // 테두리 + 열린 뚜껑
     M([SP(0.5, 0, 0.6, 0, 0.4)], clayMat(0x4a3526, false), false);
     M([CO(0.1, 0.26, 5, 0.2, 0.84, -0.12), CO(0.08, 0.2, 5, -0.16, 0.8, 0.14)], clayMat(0x7fce7f, false), false);
-  } else if (id === 'shelter') {           // 🏚️ 일꾼 쉼터 2×2 — 빨간 헛간 지붕의 열린 쉼터
-    const W = 3.3, D = 3.3;
-    M([B(3.4, 0.24, 3.4, 0, 0.12, 0), B(1.7, 0.18, 0.75, 0, 0.6, -0.95), B(0.14, 0.36, 0.14, -0.66, 0.4, -0.95), B(0.14, 0.36, 0.14, 0.66, 0.4, -0.95)], clayMat(BARN.wood));   // 마루 + 평상
-    M([CY(0.11, 0.12, 1.95, 6, -1.5, 1.22, -1.5), CY(0.11, 0.12, 1.95, 6, 1.5, 1.22, -1.5), CY(0.11, 0.12, 1.95, 6, -1.5, 1.22, 1.5), CY(0.11, 0.12, 1.95, 6, 1.5, 1.22, 1.5),
-       B(3.4, 0.12, 0.12, 0, 2.2, -1.5), B(3.4, 0.12, 0.12, 0, 2.2, 1.5)], clayMat(BARN.trim, false), false);
-    M([...gambrelRoofSlabs(W, 2.26, 2.9, 3.25, D + 0.3)], clayMat(BARN.roof));
-    M([B(0.8, 0.62, 0.1, 0, 2.62, -D / 2 + 0.06), B(0.8, 0.62, 0.1, 0, 2.62, D / 2 - 0.06)], clayMat(BARN.wall, false), false);   // 박공 가림판
+  } else if (id === 'shelter') {           // 🏚️ 일꾼 쉼터 2×2 — 주춧돌 위로 들어올린 원두막
+    //   마루를 F 만큼 띄워 옆의 🧺창고와 실루엣이 갈린다. 사방이 트여 일꾼이 드나드는 게 보인다
+    const W = 3.2, D = 3.2, F = 0.72;
+    P([CY(0.24, 0.28, F, 7, -1.3, F / 2, -1.3), CY(0.24, 0.28, F, 7, 1.3, F / 2, -1.3),
+       CY(0.24, 0.28, F, 7, -1.3, F / 2, 1.3), CY(0.24, 0.28, F, 7, 1.3, F / 2, 1.3)], BARN.stone);                          // 주춧돌
+    P([B(3.2, 0.2, 3.0, 0, F + 0.1, -0.1), B(3.3, 0.1, 0.14, 0, F + 0.2, 1.44)], BARN.wood);                                 // 들린 마루 + 앞 귀틀
+    P([B(1.2, 0.18, 0.36, 0, 0.18, 1.78), B(1.2, 0.16, 0.34, 0, 0.46, 1.5)], BARN.wood);                                     // 오름 계단
+    { const deck = [];
+      for (let i = 0; i < 6; i++) deck.push(B(3.1, 0.04, 0.05, 0, F + 0.2, -1.3 + i * 0.5));
+      P(deck, 0x94693c, false); }                                                              // 마루널 결
+    { const rail = [];
+      for (const [x, z] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.3], [1.5, 1.3], [-1.5, -0.1], [1.5, -0.1], [0, -1.5]])
+        rail.push(CY(0.07, 0.07, 0.62, 5, x, F + 0.52, z));
+      rail.push(B(3.1, 0.1, 0.1, 0, F + 0.82, -1.5), B(0.1, 0.1, 2.9, -1.5, F + 0.82, -0.1), B(0.1, 0.1, 2.9, 1.5, F + 0.82, -0.1));
+      rail.push(CY(0.11, 0.12, 1.9, 6, -1.4, F + 1.15, -1.4), CY(0.11, 0.12, 1.9, 6, 1.4, F + 1.15, -1.4),
+                CY(0.11, 0.12, 1.9, 6, -1.4, F + 1.15, 1.25), CY(0.11, 0.12, 1.9, 6, 1.4, F + 1.15, 1.25),
+                B(3.3, 0.12, 0.12, 0, F + 2.1, -1.4), B(3.3, 0.12, 0.12, 0, F + 2.1, 1.25));
+      P(rail, BARN.trim, false); }                                                             // 난간 + 기둥 + 보
+    P(gambrelRoofSlabs(W, 2.16, 2.76, 3.1, D + 0.4).map(q => q.translate(0, F, -0.08)), BARN.roof);
+    P([gambrelGable(W - 0.08, 2.06, 2.72, 3.06).translate(0, F, -D / 2 - 0.13),
+       gambrelGable(W - 0.08, 2.06, 2.72, 3.06).translate(0, F, D / 2 - 0.03)], BARN.wall, false);                           // 박공판(보 위쪽만)
+    P([B(0.86, 0.12, 0.86, 0, F + 0.52, -0.35), CY(0.06, 0.06, 0.32, 5, -0.3, F + 0.32, -0.62), CY(0.06, 0.06, 0.32, 5, 0.3, F + 0.32, -0.62),
+       CY(0.06, 0.06, 0.32, 5, -0.3, F + 0.32, -0.08), CY(0.06, 0.06, 0.32, 5, 0.3, F + 0.32, -0.08)], BARN.wood);           // 낮은 탁자
+    P([B(0.42, 0.1, 0.42, -0.85, F + 0.25, 0.45), B(0.42, 0.1, 0.42, 0.85, F + 0.25, 0.45)], BARN.wall, false);              // 방석
+    P([CY(0.02, 0.02, 0.42, 4, 0, F + 2.06, -0.1), B(0.26, 0.1, 0.26, 0, F + 1.84, -0.1)], BARN.iron, false);                // 매단 줄 + 갓
     { const lampMat = clayMat(0xffd98a, false); houseWindows.push(lampMat);
-      M([SP(0.15, 1.24, 1.9, 1.24)], lampMat, false); }                                                // 🏮 밤에 켜지는 등불
+      g.add(new THREE.Mesh(SP(0.16, 0, F + 1.72, -0.1, 1.1), lampMat)); }                      // 🏮 밤에 켜지는 램프
   } else if (id === 'beehive') {           // 🐝 벌통 — 흰 상자 3단 + 회색 뚜껑 + 벌
     M([B(0.8, 0.32, 0.68, 0, 0.36, 0), B(0.8, 0.32, 0.68, 0, 0.68, 0), B(0.8, 0.32, 0.68, 0, 1.0, 0), B(0.74, 0.05, 0.26, 0, 0.2, 0.44)], clayMat(BARN.trim, false));
     M([B(0.92, 0.11, 0.8, 0, 1.21, 0)], clayMat(BARN.roof));
     M([B(0.58, 0.2, 0.58, 0, 0.1, 0)], clayMat(BARN.wood));
     M([SP(0.05, 0.5, 0.95, 0.4), SP(0.045, -0.42, 1.12, 0.3), SP(0.04, 0.26, 1.3, -0.42)], clayMat(0xf5c44a, false), false);
   }
+  flushP();
 }
 
 // 🎒 손에 든 도구 자세 — 손 옆(rest) ↔ 등 뒤(stow) 보간.
