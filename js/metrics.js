@@ -10,7 +10,7 @@
 //  ▶ 오프라인이면 supabase-client 가 콘솔 폴백 — 게임 진행 영향 없음
 // =============================================================
 
-import { sendEconBatch, upsertSessionRow } from './supabase-client.js';
+import { sendEconBatch, sendDuelBatch, upsertSessionRow } from './supabase-client.js';
 import { trackEvent, onTrack } from './analytics.js';
 import { IS_DEV_SESSION } from './config.js';
 
@@ -30,6 +30,25 @@ function flushEcon() {
   if (!econBuffer.length) return;
   const batch = econBuffer; econBuffer = [];   // 즉시 스왑(전송 중 유실 방지)
   sendEconBatch(batch);
+}
+
+// ── 🐗🦝 승부 판별 로그 ──────────────────────────────────────
+//   GA4 → BigQuery 에도 같은 값이 가지만 **하루 뒤**에 온다. 난이도(섞기 속도)를 만지려면
+//   오늘 쌓인 걸 오늘 봐야 해서 따로 쌓는다. 경제 원장과 같은 5초 배치.
+let duelBuffer = [];
+let duelTimer = null;
+
+/** 판 하나를 기록한다. row 는 duel_logs 컬럼과 같은 모양(sql/migrations/migrate_duel_logs.sql) */
+export function logDuel(row) {
+  if (IS_DEV_SESSION) return;                                 // 🧪 dev 세션 — 기록 없음
+  duelBuffer.push(row);
+  if (!duelTimer) duelTimer = setInterval(flushDuel, 5000);
+}
+
+function flushDuel() {
+  if (!duelBuffer.length) return;
+  const batch = duelBuffer; duelBuffer = [];   // 즉시 스왑(전송 중 유실 방지)
+  sendDuelBatch(batch);
 }
 
 // ── 세션 카운터 — GA4 이벤트 이름별 발생 횟수(자동 집계) ─────────

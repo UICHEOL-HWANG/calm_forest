@@ -9,6 +9,7 @@
 // =============================================================
 import { setDuelSource } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { logDuel } from '../metrics.js';   // 🗄️ 판 단위 로그(Supabase) — BQ 는 하루 뒤라 오늘 보려면 이쪽
 import { rollHand, judge, initMatch as rpsInit, applyRound as rpsRound } from './rps.js';
 import { SHELL_ROUNDS, makeSwaps, finalPos,
          initMatch as shellInit, applyRound as shellRound } from './shells.js';
@@ -32,6 +33,7 @@ async function playRps(onRound, handle, animal) {
     // [GA4] 판 단위 — 승부 전체만 보면 **어느 판에서 무너지는지**가 안 보인다.
     //   낸 손까지 남겨야 "사람이 바위를 편중해서 내는가" 같은 것도 뒤에서 볼 수 있다.
     trackEvent('duel_round', { animal, game: 'rps', round: m.rounds + 1, result, rt, mine, theirs });
+    logDuel({ animal, game: 'rps', round: m.rounds + 1, result, rt_ms: rt, mine, theirs });
     showThrow(handle, ui.HAND_ICO[mine], ui.HAND_ICO[theirs]);   // 🖐️ 낸 손을 둘의 머리 위에 — 무대에서 승부가 보이게
     await ui.showHands(mine, theirs, result);
     clearThrow(handle);
@@ -65,11 +67,15 @@ async function playShells(onRound, cropIco, animal, handle) {
     // [GA4] 판 단위 — 그 판의 **난이도**(섞기 횟수·속도)를 같이 남겨야 어느 속도부터
     //   무너지는지 볼 수 있다. off 는 정답과 몇 자리 떨어졌나 — 0 은 정답, 1 은 옆 그릇,
     //   2 는 반대쪽이다. 눈으로 좇다 놓친 건지 아예 못 좇은 건지가 갈린다.
+    const rt = Date.now() - t0 - (r.swaps * r.ms + 1500);   // 섞기가 끝난 뒤 고민한 시간(연출 시간을 뺀다)
+    const off = Math.abs(picked - answer);
     trackEvent('duel_round', {
       animal, game: 'shells', round: m.round + 1, result: ok ? 'win' : 'lose',
-      rt: Date.now() - t0 - (r.swaps * r.ms + 1500),   // 섞기가 끝난 뒤 고민한 시간(연출 시간을 뺀다)
-      swaps: r.swaps, ms: r.ms, picked, answer, off: Math.abs(picked - answer),
+      rt, swaps: r.swaps, ms: r.ms, picked, answer, off,
     });
+    // ⚠️ DB 컬럼은 miss — off 는 SQL 예약어라 쓸 수 없다(같은 값)
+    logDuel({ animal, game: 'shells', round: m.round + 1, result: ok ? 'win' : 'lose',
+              rt_ms: rt, swaps: r.swaps, ms: r.ms, picked, answer, miss: off });
     m = shellRound(m, ok);
     if (m.done) break;
   }
