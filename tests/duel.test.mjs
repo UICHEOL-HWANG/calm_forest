@@ -72,7 +72,7 @@ test('상대 수가 한쪽으로 치우치지 않는다', () => {
 test('RPS_WIN 은 2 — 2선승제', () => assert.equal(RPS_WIN, 2));
 
 // ── 🦝 그릇 섞기 ───────────────────────────────────────────
-test('바가지는 3개 · 3판이고 판이 갈수록 빨라진다', () => {
+test('그릇는 3개 · 3판이고 판이 갈수록 빨라진다', () => {
   assert.equal(SHELL_COUNT, 3);
   assert.equal(SHELL_ROUNDS.length, 3);
   assert.deepEqual(SHELL_ROUNDS.map(r => r.swaps), [4, 6, 8]);

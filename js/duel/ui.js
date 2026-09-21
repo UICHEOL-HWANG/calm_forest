@@ -16,9 +16,9 @@ const HAND_ICO = { rock: '✊', scissors: '✌️', paper: '🖐️' };
 //    값은 Task 7 에서 확정한 문구로 맞춘다.
 export const COPY = {
   boarOpen:   '멧돼지가 길을 막아섰어요',
-  raccoonOpen:'너구리가 바가지 셋을 늘어놨어요',
+  raccoonOpen:'너구리가 작물을 훔쳐서 그릇에 숨겼어요!',
   askHand:    '무엇을 낼까요?',
-  askShell:   '어느 바가지에 있을까요?',
+  askShell:   '어느 그릇에 있을까요?',
   win:        '이겼어요!',
   lose:       '졌어요…',
   draw:       '비겼어요! 다시',
@@ -80,7 +80,7 @@ export async function showHands(mine, theirs, result) {
 }
 
 /**
- * 바가지 섞기 — swaps 를 ms 간격으로 적용하고, 고른 "화면 자리" 를 돌려준다.
+ * 그릇 섞기 — swaps 를 ms 간격으로 적용하고, 고른 "화면 자리" 를 돌려준다.
  *
  * ⚠️ 화면 자리 ≠ DOM index. 버튼은 DOM 순서를 그대로 유지하고 translateX 로만
  *    자리를 옮긴다(마크업을 흔들면 클릭 리스너가 꼬인다). domPos[도메인 인덱스] 에
