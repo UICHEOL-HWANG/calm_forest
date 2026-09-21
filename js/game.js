@@ -12836,7 +12836,7 @@ function investigateTrace(tr) {
 // 🐗🦝 대결 — 하루에 동물당 한 번. 이기면 그 동물이 가져간 작물을 전부 되찾는다.
 //   ▶ 흔적 보상을 먼저 주고 흔적을 지운 **뒤**에 연다. 새로고침해도 흔적이 없어
 //     다시 못 하고(리롤 방지), 중간에 창을 닫아도 손해가 없다.
-function maybeDuel(t) {
+async function maybeDuel(t) {
   if (!duelFetcher) return;                              // 등록 전이면 지금까지 동작 그대로
   const st = gameState.night, today = todayStr();
   if (st.duelDate !== today) { st.duelDate = today; st.duelDone = []; }   // 날이 바뀌면 비운다
@@ -12844,7 +12844,16 @@ function maybeDuel(t) {
   st.duelDone = [...st.duelDone, t.animal];
   // 그 동물이 오늘 가져간 작물 전부 — 방금 조사한 것 + 아직 조사 안 한 흔적
   const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
-  requestSave();
+  // ⚠️ 리롤 방지의 핵심은 "흔적이 지워진 상태가 **저장됐다**"는 것이다. fire-and-forget 으로
+  //    두면 오프라인·저장 실패 때 흔적과 duelDone 이 안 남아 새로고침 재도전이 열린다.
+  //    저장이 실패하면 승부를 **열지 않는다** — 흔적이 남아 다음에 다시 조사하면 된다.
+  try {
+    await requestSave();
+  } catch (e) {
+    st.duelDone = st.duelDone.filter(a => a !== t.animal);   // 되돌린다(다음 기회를 뺏지 않게)
+    console.warn('[승부] 저장 실패 — 이번엔 열지 않는다(흔적은 다음에 다시)', e?.message || e);
+    return;
+  }
   duelActive = true;                                     // 카메라를 무대에 넘긴다(위 주석 참고)
   // 흔적 보상(+씨앗)이 **승부 직전에** 띄운 월드 텍스트를 치운다 — spawnFloatText 의 duelActive
   //   가드는 이후 호출만 막는다. 이미 떠 있는 건 무대 위에 남아 화면을 덮는다(실측).
@@ -12874,7 +12883,9 @@ function winDuel(animal, crops) {
   if (nextTruce) gameState.night.truce = { ...gameState.night.truce, [animal]: nextTruce };
   refreshInventoryUI();
   const a = NIGHT_ANIMAL[animal] || NIGHT_ANIMAL.raccoon;
-  ui.toast?.(`${a.ico} ${a.name}에게서 작물 ${crops.length}개를 되찾았어요! 당분간 안 올 거예요`, 3600);
+  // [i18n] 통문장 키 + 슬롯 — 조각을 이어 붙이면 영어에서 어순이 깨진다(저장소 규칙)
+  ui.toast?.(t('{0} {1}에게서 작물 {2}개를 되찾았어요! 당분간 안 올 거예요')
+    .replace('{0}', a.ico).replace('{1}', t(a.name)).replace('{2}', crops.length), 3600);
 }
 
 // 방어 판정 입력 — 심어둔 밭 9칸 안의 허수아비·울타리(4개 이상)만 인정
