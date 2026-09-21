@@ -1,0 +1,239 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🐗🦝 밤손님 조형 시안 3안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:9px 14px 12px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:120px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12.5px;font-weight:700;
+       background:rgba(255,255,255,.90);padding:4px 9px;border-radius:7px;white-space:normal;line-height:1.4;width:150px}
+  .tag small{display:block;font-weight:400;opacity:.72;font-size:10.5px;margin-top:2px}
+</style>
+<div id="labels"></div>
+<div id="ui">
+  <div class="row">
+    <b>카메라</b>
+    <label>거리 <input id="dist" type="range" min="2" max="20" step="0.2" value="6"><span id="distV">6</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="0"><span id="angV">0</span>°</label>
+    <label>높이 <input id="hgt" type="range" min="-1" max="8" step="0.1" value="0.9"><span id="hgtV">0.9</span></label>
+    <label>좌우 <input id="panx" type="range" min="-8" max="8" step="0.2" value="0"><span id="panxV">0</span></label>
+    <label>앞뒤 <input id="panz" type="range" min="-8" max="8" step="0.2" value="0"><span id="panzV">0</span></label>
+  </div>
+  <div class="row">
+    <label>보기
+      <select id="row"><option value="both">둘 다</option><option value="boar">🐗 멧돼지만</option><option value="raccoon">🦝 너구리만</option></select>
+    </label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// =============================================================
+//  🐗🦝 밤손님 조형 시안 3안씩 — 비교 전용(승인 게이트).
+//  ------------------------------------------------------------
+//  문법 출처: js/visitor-art.js 의 공통 얼굴 문법을 그대로 가져온다 —
+//   · 몸통 없이 둥근 머리 하나(가로로 약간 넓은 타원, 앞뒤로 눌러 옆 실루엣도 읽히게)
+//   · 윤곽 위로 튀어나온 흰 눈 2개(흰자의 약 40% 검은 동공, 정면 고정)
+//   · 아래로 볼록한 굵은 입선 · 연분홍 볼터치 · 단색(검정은 눈·코·입에만)
+//   · HEAD_R·HEAD_Y·EYE_R·PUPIL_R 비례는 원본 그대로, 전체만 1.75배로 키운다
+//     (밤손님은 플레이어와 마주 서는 상대라 텃밭 방문객보다 커야 한다).
+//   · 종 차이는 부속(주둥이·엄니·귀·갈기 / 눈가띠·꼬리)으로만 준다 — 부속 "강도"로 3안을 가른다.
+//   · 🌰밤 함정 회피(visitor-art.js hedgehog 주석과 같은 이유): 따뜻한 밝은 갈색·크림 계열이면
+//     무엇을 얹어도 밤이다. 그래서 🐗 는 어둡고 차가운 회갈색, 🦝 는 차가운 회색을 쓴다.
+//  드로우콜: js/game.js paintGeo+mergeGeos 문법(P()/VS/VN)으로 그림자 O/X 두 덩어리로 합친다.
+//  이 파일은 js/duel/art.js 가 아니다 — 사용자가 A/B/C 중 고른 뒤 별도 스텝에서 최종 모듈을 쓴다.
+// =============================================================
+
+const ni = g => (g.index ? g.toNonIndexed() : g);
+const vtxMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, metalness: 0, flatShading: true });
+
+function paintGeo(geo, hex) {
+  const c = new THREE.Color(hex), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return geo;
+}
+
+// ── 기본 조형 헬퍼 ──
+const B = (w, h, d, x, y, z, rz = 0, ry = 0, rx = 0) => { const q = new THREE.BoxGeometry(w, h, d); if (rx) q.rotateX(rx); if (ry) q.rotateY(ry); if (rz) q.rotateZ(rz); return q.translate(x, y, z); };
+const SP = (r, x, y, z, sx = 1, sy = 1, sz = 1) => { const q = new THREE.SphereGeometry(r, 14, 12); if (sx !== 1 || sy !== 1 || sz !== 1) q.scale(sx, sy, sz); return q.translate(x, y, z); };
+const CO = (r, h, seg, x, y, z, rx = 0, ry = 0, rz = 0) => { const q = new THREE.ConeGeometry(r, h, seg); if (rx) q.rotateX(rx); if (ry) q.rotateY(ry); if (rz) q.rotateZ(rz); return q.translate(x, y, z); };
+// 웨지 통 — 앞(rf, −Z)과 뒤(rr, +Z) 반지름이 다른 테이퍼 원통. 주둥이(뭉툭~뾰족)에 쓴다.
+const WBODY = (rf, rr, len, seg, x, y, z) => new THREE.CylinderGeometry(rf, rr, len, seg).rotateX(-Math.PI / 2).translate(x, y, z);
+
+// 팔레트 — 🐗 어둡고 차가운 회갈색(밝은 갈색 금지=밤 함정). 🦝 차가운 회색 + 검은 눈가띠·꼬리(필수).
+const BOAR = { body: 0x453f38, dark: 0x2c2823, tusk: 0xe6dcc6 };
+const RACC = { body: 0x93958e, pale: 0xe4e0d4, mask: 0x1e1b19 };
+const EYE_WHITE = 0xffffff, EYE_BLACK = 0x1b1b1b, BLUSH = 0xf0b9c2;
+
+// visitor-art.js 비례 그대로, 전체만 1.75배
+const SCALE = 1.75;
+const HEAD_R = 0.34 * SCALE;   // 0.595
+const HEAD_Y = 0.42 * SCALE;   // 0.735
+const EYE_R = HEAD_R * 0.44;
+
+// 모델 하나 = 그림자 O(VS) / X(VN) 두 덩어리로 합쳐 드로우콜 최대 2 로 끝낸다.
+function buildModel(fn) {
+  const g = new THREE.Group();
+  const VS = [], VN = [];
+  const P = (geos, hex, shadow = true) => { const a = shadow ? VS : VN; for (const q of geos) a.push(paintGeo(ni(q), hex)); };
+  fn(P);
+  let calls = 0;
+  if (VS.length) { const m = new THREE.Mesh(mergeGeometries(VS), vtxMat()); m.castShadow = true; m.receiveShadow = true; g.add(m); calls++; }
+  if (VN.length) { const m = new THREE.Mesh(mergeGeometries(VN), vtxMat()); g.add(m); calls++; }
+  g.userData.drawCalls = calls;
+  g.userData.anchorY = HEAD_Y - HEAD_R * 1.05;   // 라벨을 이 높이(머리 아래)에 붙인다
+  return g;
+}
+
+// 공통 얼굴 — visitor-art.js makeHead 의 'bulge' 눈 문법 그대로(비례 재사용). 얼굴은 −Z 를 본다.
+function faceCore(P, color) {
+  P([SP(HEAD_R, 0, HEAD_Y, 0, 1, 0.9, 0.92)], color);
+  const eyeX = HEAD_R * 0.50, eyeY = HEAD_Y + HEAD_R * 0.70, eyeZ = -HEAD_R * 0.26, R = EYE_R;
+  P([SP(R, -eyeX, eyeY, eyeZ), SP(R, eyeX, eyeY, eyeZ)], EYE_WHITE, false);
+  P([SP(R * 0.42, -eyeX, eyeY, eyeZ - R * 0.68), SP(R * 0.42, eyeX, eyeY, eyeZ - R * 0.68)], EYE_BLACK, false);
+  const m = new THREE.TorusGeometry(HEAD_R * 0.46, HEAD_R * 0.065, 8, 20, Math.PI);
+  m.rotateZ(Math.PI); m.translate(0, HEAD_Y - HEAD_R * 0.02, -HEAD_R * 0.80);
+  P([m], EYE_BLACK, false);
+  P([SP(HEAD_R * 0.17, -HEAD_R * 0.62, HEAD_Y - HEAD_R * 0.10, -HEAD_R * 0.68, 1, 0.75, 0.35),
+     SP(HEAD_R * 0.17, HEAD_R * 0.62, HEAD_Y - HEAD_R * 0.10, -HEAD_R * 0.68, 1, 0.75, 0.35)], BLUSH, false);
+}
+
+// ═══════════════ 🐗 멧돼지 — 부속 "강도"로 3안을 가른다(형태·색은 공통) ═══════════════
+function boarBuild(P, o) {
+  faceCore(P, BOAR.body);
+  const frontZ = -(HEAD_R * 0.92 - HEAD_R * 0.06);              // 머리 앞면 — 주둥이가 여기서 뻗어 나온다
+  const snoutZ = frontZ - o.snoutLen / 2, snoutY = HEAD_Y - HEAD_R * 0.06;
+  P([WBODY(o.snoutR * 0.86, o.snoutR, o.snoutLen, 8, 0, snoutY, snoutZ)], BOAR.body);   // 앞으로 뻗은 쐐기 — 끝이 뭉툭
+  const tipZ = snoutZ - o.snoutLen / 2 - 0.01;
+  P([SP(HEAD_R * 0.05, -o.snoutR * 0.4, snoutY, tipZ), SP(HEAD_R * 0.05, o.snoutR * 0.4, snoutY, tipZ)], EYE_BLACK, false);  // 콧구멍 — 주둥이 끝
+  if (o.tusk) {
+    const tz = snoutZ + o.snoutLen * 0.10, ty = snoutY - o.snoutR * 0.55;
+    P([CO(o.tuskR, o.tuskLen, 4, -o.snoutR * 0.75, ty, tz, -0.4), CO(o.tuskR, o.tuskLen, 4, o.snoutR * 0.75, ty, tz, -0.4)], BOAR.tusk, false);  // 엄니 — 위로 솟는다
+  }
+  if (o.ear) {
+    const ez = HEAD_R * 0.18, ey = HEAD_Y + HEAD_R * 0.78;
+    P([CO(o.earSize * 0.62, o.earSize, 4, -HEAD_R * 0.42, ey, ez, -0.3, 0, 0.3), CO(o.earSize * 0.62, o.earSize, 4, HEAD_R * 0.42, ey, ez, -0.3, 0, -0.3)], BOAR.dark);
+  }
+  for (let i = 0; i < o.mane; i++) {                              // 이마 위 갈기 판 — 각진 판(털 뭉치 아님), 촘촘한 반복 아님
+    const t = o.mane > 1 ? i / (o.mane - 1) : 0;
+    const z = HEAD_R * 0.10 - t * HEAD_R * 0.55, h = o.maneH * (1 - 0.28 * t);
+    P([B(0.045, h, HEAD_R * 0.16, 0, HEAD_Y + HEAD_R * 0.88 + h * 0.5, z, 0, 0, -0.2)], BOAR.dark);
+  }
+}
+const BOAR_A = { snoutR: .16, snoutLen: .30, tusk: false, ear: false, mane: 0 };
+const BOAR_B = { snoutR: .19, snoutLen: .38, tusk: true, tuskR: .035, tuskLen: .14, ear: true, earSize: .13, mane: 1, maneH: .12 };
+const BOAR_C = { snoutR: .22, snoutLen: .46, tusk: true, tuskR: .05, tuskLen: .20, ear: true, earSize: .17, mane: 3, maneH: .16 };
+
+// ═══════════════ 🦝 너구리 — 눈가 띠 + 꼬리는 셋 다 필수, 크기(강도)만 다르다 ═══════════════
+function raccoonBuild(P, o) {
+  faceCore(P, RACC.body);
+  // 눈가 띠 — 흰 눈알보다 큰 어두운 패치를 눈 자리에 겹쳐, 가장자리가 테두리처럼 남도록 한다
+  //   (판을 눈 뒤에 두면 큰 흰자에 완전히 가려진다 — 눈 위치·눈보다 큰 반지름이 핵심)
+  const eyeX = HEAD_R * 0.50, eyeY = HEAD_Y + HEAD_R * 0.70, eyeZ = -HEAD_R * 0.26;
+  P([SP(o.maskR, -eyeX, eyeY - o.maskR * 0.22, eyeZ + o.maskR * 0.10, 1.15, 1.05, 0.6),
+     SP(o.maskR, eyeX, eyeY - o.maskR * 0.22, eyeZ + o.maskR * 0.10, 1.15, 1.05, 0.6)], RACC.mask, false);
+  const frontZ = -(HEAD_R * 0.92 - HEAD_R * 0.06);
+  const snoutZ = frontZ - o.snoutLen / 2, snoutY = HEAD_Y - HEAD_R * 0.10;
+  P([WBODY(HEAD_R * 0.02, o.snoutR, o.snoutLen, 8, 0, snoutY, snoutZ)], RACC.pale);      // 주둥이 — 뾰족(끝 반지름 거의 0)
+  const tipZ = snoutZ - o.snoutLen / 2 - 0.015;
+  P([SP(HEAD_R * 0.07, 0, snoutY, tipZ, 1, .85, .8)], EYE_BLACK, false);                  // 코끝 — 검게
+  // 귀 — 머리 윤곽 밖으로 확실히 포갠다(같은 색이라 살짝만 걸치면 안 보인다)
+  P([SP(o.earR, -HEAD_R * 0.54, HEAD_Y + HEAD_R * 0.98, HEAD_R * 0.12, 1, .85, .65),
+     SP(o.earR, HEAD_R * 0.54, HEAD_Y + HEAD_R * 0.98, HEAD_R * 0.12, 1, .85, .65)], RACC.body);  // 귀 — 작고 둥글게
+  // 꼬리 — 머리 뒤로 다람쥐처럼 세운다. 굵은 마디 2~4 개, 색을 번갈아 굵은 줄무늬로(가는 반복 금지)
+  const colors = [RACC.body, RACC.mask, RACC.body, RACC.mask];
+  let py = HEAD_Y + HEAD_R * 0.78, pz = HEAD_R * 0.58, ang = 0.95;   // 머리 뒤통수 표면 근처에서 시작(속에 묻히지 않게)
+  const n = o.tailSegR.length;
+  for (let i = 0; i < n; i++) {
+    const segLen = o.tailLen / n, dy = Math.sin(ang) * segLen, dz = Math.cos(ang) * segLen;
+    const cy = py + dy / 2, cz = pz + dz / 2;
+    const rTop = o.tailSegR[i], rBot = i === 0 ? o.tailSegR[i] * 1.05 : o.tailSegR[i - 1];
+    const q = new THREE.CylinderGeometry(rTop, rBot, segLen, 7);
+    q.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, dy, dz).normalize()));
+    q.translate(0, cy, cz);
+    P([q], colors[i % colors.length]);
+    py += dy; pz += dz; ang += 0.05;
+  }
+}
+const RACC_A = { maskR: EYE_R * 0.95, snoutR: .13, snoutLen: .24, earR: .085, tailLen: .50, tailSegR: [.085, .06] };
+const RACC_B = { maskR: EYE_R * 1.15, snoutR: .15, snoutLen: .30, earR: .10, tailLen: .62, tailSegR: [.10, .08, .055] };
+const RACC_C = { maskR: EYE_R * 1.40, snoutR: .17, snoutLen: .36, earR: .12, tailLen: .75, tailSegR: [.115, .095, .07, .045] };
+
+// ── 씬(farm-barn-sim 과 같은 조명·카메라·배경) ──
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xcfe4ee); scene.fog = new THREE.Fog(0xdce9e2, 18, 60);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, .1, 300);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const hemi = new THREE.HemisphereLight(0xdff0ff, 0x9ab07f, .85); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3d8, 1.15); sun.position.set(5, 8, 4); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.left = -10; sun.shadow.camera.right = 10; sun.shadow.camera.top = 10; sun.shadow.camera.bottom = -10; sun.shadow.camera.far = 30;
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshStandardMaterial({ color: 0x89a86a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const GAPX = 1.9, rows = { boar: [], raccoon: [] };
+const SPECS = [
+  ['boar', 'A · 부속 절제', P => boarBuild(P, BOAR_A), '주둥이만 — 엄니·귀·갈기 없음'],
+  ['boar', 'B · 중간', P => boarBuild(P, BOAR_B), '주둥이+작은 엄니·귀+갈기 1판'],
+  ['boar', 'C · 부속 강조', P => boarBuild(P, BOAR_C), '큰 주둥이+큰 엄니·귀+갈기 3판'],
+  ['raccoon', 'A · 부속 절제', P => raccoonBuild(P, RACC_A), '얇은 눈가띠 · 짧은 꼬리(마디 2)'],
+  ['raccoon', 'B · 중간', P => raccoonBuild(P, RACC_B), '중간 눈가띠 · 중간 꼬리(마디 3)'],
+  ['raccoon', 'C · 부속 강조', P => raccoonBuild(P, RACC_C), '굵은 눈가띠 · 긴 꼬리(마디 4, 위로)'],
+];
+const tags = [];
+SPECS.forEach(([row, name, fn, note], i) => {
+  const k = i % 3, g = buildModel(fn);
+  g.position.set((k - 1) * GAPX, 0, row === 'boar' ? -1.7 : 1.7);
+  scene.add(g); rows[row].push(g);
+  const t = document.createElement('div'); t.className = 'tag';
+  t.innerHTML = (row === 'boar' ? '🐗 ' : '🦝 ') + name + '<small>' + note + ' · 드로우콜 ' + g.userData.drawCalls + '</small>';
+  document.getElementById('labels').appendChild(t); tags.push({ el: t, g });
+  console.log(`[duel-sim] ${row} ${name}: drawCalls=${g.userData.drawCalls}`);
+});
+
+const el = id => document.getElementById(id);
+const P0 = { dist: 6, ang: 0, hgt: .9, panx: 0, panz: 0 };
+for (const k of ['dist', 'ang', 'hgt', 'panx', 'panz']) el(k).oninput = e => { P0[k] = +e.target.value; el(k + 'V').textContent = e.target.value; };
+el('row').onchange = e => {
+  const v = e.target.value;
+  rows.boar.forEach(g => g.visible = (v !== 'raccoon')); rows.raccoon.forEach(g => g.visible = (v !== 'boar'));
+  tags.forEach(t => t.el.style.display = (v === 'both' || (v === 'boar' && t.g.position.z < 0) || (v === 'raccoon' && t.g.position.z > 0)) ? '' : 'none');
+};
+// URL 파라미터로 뷰 고정(캡처용) — ?dist=&hgt=&ang=&panx=&panz=&row=&ui=0
+{
+  const U = new URLSearchParams(location.search);
+  for (const k of ['dist', 'hgt', 'ang', 'panx', 'panz']) if (U.has(k)) { const e = el(k); e.value = U.get(k); e.dispatchEvent(new Event('input')); }
+  if (U.has('row')) { el('row').value = U.get('row'); el('row').dispatchEvent(new Event('change')); }
+  if (U.get('ui') === '0') el('ui').style.display = 'none';
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const _v = new THREE.Vector3();
+function tick() {
+  const a = P0.ang * Math.PI / 180, tx = P0.panx, tz = P0.panz;
+  camera.position.set(tx + Math.sin(a) * P0.dist, P0.hgt + HEAD_Y, tz + Math.cos(a) * P0.dist);
+  camera.lookAt(tx, HEAD_Y, tz);
+  for (const t of tags) {
+    if (t.el.style.display === 'none') continue;
+    _v.set(t.g.position.x, t.g.userData.anchorY, t.g.position.z).project(camera);
+    t.el.style.left = ((_v.x * .5 + .5) * innerWidth) + 'px'; t.el.style.top = ((-_v.y * .5 + .5) * innerHeight) + 'px';
+    t.el.style.opacity = _v.z < 1 ? 1 : 0;
+  }
+  renderer.render(scene, camera); requestAnimationFrame(tick);
+}
+tick();
+window.__ready = true;
+</script>
