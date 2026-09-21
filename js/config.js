@@ -37,6 +37,8 @@ export const CONFIG = {
   // ── 계측 테이블(경제 원장 / 세션 요약) ───────────────────────
   //    sql/migrations/migrate_metrics_tables.sql 실행으로 생성 (ML 피처의 원천)
   ECON_TABLE: 'econ_logs',       // 코인 증감 원장 {source,item,amount,balance}
+
+  DUEL_TABLE: 'duel_logs',              // 🐗🦝 승부 판별 로그(난이도 분석)
   SESSION_TABLE: 'session_logs', // 세션 요약(세션당 1행 upsert)
   RETENTION_GUIDANCE_SCORE_TABLE: 'retention_guidance_scores', // 리텐션 안내 모델 점수/피처 스냅샷
   //    🛶 나룻배 런 기록 — sql/migrations/migrate_boat_runs.sql 실행으로 생성

@@ -408,6 +408,24 @@ export async function sendLogBatch(rows) {
 
 // ── [계측] 경제 원장 배치 전송(econ_logs) — 코인 증감 {source,item,amount,balance} ──
 //    metrics.js 가 버퍼링해 호출. 오프라인이면 콘솔 폴백(게임 진행 영향 없음).
+/**
+ * 🐗🦝 승부 판별 로그 — econ_logs 와 같은 배치 문법.
+ *   ⚠️ 실패해도 조용히 넘긴다. 분석용 기록이 게임을 막으면 안 된다(경제 원장과 같은 원칙).
+ */
+export async function sendDuelBatch(rows) {
+  if (!rows || rows.length === 0) return;
+  const enriched = rows.map(r => ({
+    user_id: state.userId, session_id: state.sessionId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
+    ...r,
+  }));
+  if (!state.online || !supabase) { console.log(`[Supabase 폴백] 승부 로그 ${enriched.length}건 (오프라인)`, enriched); return; }
+  try {
+    const { error } = await supabase.from(CONFIG.DUEL_TABLE).insert(enriched);
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 승부 로그 전송 실패:', err?.message || err); }
+}
+
 export async function sendEconBatch(rows) {
   if (!rows || rows.length === 0) return;
   const enriched = rows.map(r => ({
