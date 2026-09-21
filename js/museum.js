@@ -105,3 +105,35 @@ export function pickMissingDex(dex = {}, DEX = {}, seed = 0, ctx = {}) {
   const h = nextSeed(seed & 0x7fffffff);
   return pool[h % pool.length];
 }
+
+/**
+ * 🔍 확대 관람 프레이밍 — 전시물 크기와 **UI 가 덮지 않는 빈 영역**에서 카메라 거리·시선 높이를 낸다.
+ * 순수 함수(픽셀·각도·월드 길이만 받는다). DOM 측정과 THREE 는 game.js 몫.
+ *
+ * 화면 세로 절반 = dist·tan(fov/2) 이므로
+ *   · dist  : 전시물이 빈 영역의 fill 만큼 차지하는 거리(가로도 같이 보고 더 먼 쪽을 고른다)
+ *   · dy    : 시선을 이만큼 **올리면** 전시물이 그만큼 화면 아래로 내려온다(핀홀 투영 그대로)
+ *
+ * ⚠️ 크기는 바운딩 **구**가 아니라 상자의 반치수로 받는다 — 구 반지름은 대각선의 절반이라
+ *    정육면체에 가까운 전시물을 √3 배로 부풀려, 맞춘다고 한 것보다 한참 작게 그린다.
+ * ⚠️ 밴드가 최소치(0.3)로 벌어지면 중심도 그 밴드 안으로 되민다 — 안 그러면 두 값이
+ *    서로 다른 레이아웃을 가리켜 전시물이 명판 줄과 겹친다(폰 가로 + 토스 여백).
+ *
+ * @param {number} h      화면 높이(px)
+ * @param {number} top    위에서 UI 가 덮는 높이(px)
+ * @param {number} bot    아래에서 UI 가 덮는 높이(px)
+ * @param {number} fov    카메라 **수직** 화각(도)
+ * @param {number} aspect 가로/세로 비
+ * @param {number} halfH  전시물 세로 반높이(월드)
+ * @param {number} halfW  전시물 가로 반폭(월드) — Y 축으로 도니 max(x, z)
+ */
+export function viewFrame({ h, top, bot, fov, aspect, halfH, halfW, fill = 0.76, wide = 0.8, min = 1.6, max = 5 }) {
+  const t = Math.tan(fov * Math.PI / 360);
+  const usable = Math.min(1, Math.max(0.3, (h - top - bot) / h));
+  const raw = (top + (h - bot)) / 2 / h;
+  const center = Math.min(1 - usable / 2, Math.max(usable / 2, raw));   // 밴드 밖으로 나가지 않게
+  const dist = Math.min(max, Math.max(min,
+    halfH / (t * usable * fill),        // 세로: 빈 영역의 fill 만큼
+    halfW / (t * aspect * wide)));      // 가로: 폭의 wide 만큼(폰 세로는 여기가 조인다)
+  return { dist, dy: (center - 0.5) * 2 * t * dist };
+}

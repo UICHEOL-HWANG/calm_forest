@@ -37,7 +37,7 @@ import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo,
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -5048,27 +5048,33 @@ const MUSEUM_VIEW_FILL = 0.76;   // 🔍 빈 영역 세로의 몇 할을 전시�
 // 🏛️ 전시실 조명 — 한 곳에서 (updateDayNight 이 시간대를 덮어쓴다). 검수는 window.__museumLight 로 값을 바꿔 가며 비교.
 const MUSEUM_LIGHT = { hemi: 0.7, amb: 0.55, sun: 0.95, tint: 0xfff2e2, sunTint: 0xfff4e4, player: 0.4, fog: 0xefe3ce, near: 26, far: 72 };
 
-// 🔍 확대 프레이밍 — 전시물 크기와 **UI 가 덮지 않는 빈 영역**으로 카메라 거리·시선 높이를 낸다.
+// 🔍 확대 프레이밍 — 화면에서 UI 를 뺀 빈 영역을 재어 museum.js 의 viewFrame 에 넘긴다(계산은 거기 순수 함수).
 //   ⚠️ 거리 2.0 · 시선 -0.55 로 고정돼 있었는데, 폰 세로(특히 🔵 앱인토스: 위에 네이티브 ···✕
 //      여백 52px 이 더 붙는다)에서는 그 자리가 상단 HUD 뒤였다 — 포도처럼 큰 전시물은 머리가
-//      화면 밖으로 잘렸다(제보 2026-09-21). 위는 상단 바 아래, 아래는 설명 줄 위까지를 무대로 보고
-//      그 한복판에 놓는다. 전시물마다 크기가 제각각(돌 ↔ 포도송이)이라 거리도 크기에서 낸다.
-function museumViewFrame(radius) {
+//      화면 밖으로 잘렸다(제보 2026-09-21).
+const _mvBox = new THREE.Box3(), _mvSize = new THREE.Vector3(), _mvCenter = new THREE.Vector3();
+function museumViewFrame(mesh) {
   const H = renderer.domElement.clientHeight || window.innerHeight || 1;
   const bottomOf = (id, def) => { const el = document.getElementById(id); const r = el && el.getBoundingClientRect(); return r && r.height ? r.bottom : def; };
-  const topOf = (id, def) => { const el = document.getElementById(id); const r = el && el.getBoundingClientRect(); return r && r.height ? r.top : def; };
-  // 위: 화면 폭을 가로지르는 상단 바 아래(토스 ···✕ 여백은 --top-inset 으로 이미 이 바에 반영돼 있다).
-  //     미니맵·도감 버튼은 좌우 가장자리라 가운데 무대를 가리지 않는다.
+  // 위: 화면 폭을 가로지르는 상단 두 패널(🎒자원 HUD 가 있는 #topright 가 보통 더 깊다) 아래.
+  //     토스 ···✕ 여백은 --top-inset 으로 이미 이 패널들에 반영돼 있다.
   const top = Math.max(bottomOf('topleft', H * 0.12), bottomOf('topright', H * 0.12)) + 10;
-  // 아래: 명판(설명)·돌아가기 줄 위까지. 조이스틱은 가장자리라 걸쳐도 읽힌다.
-  const bot = H - Math.min(topOf('zone-prompt', H * 0.74), topOf('door-prompt', H * 0.78)) + 10;
-  const usable = Math.max(0.3, (H - top - bot) / H);        // 아주 납작한 화면에서도 최소치 보장
-  const center = (top + (H - bot)) / 2 / H;                 // 빈 영역의 한복판(0=화면 위, 1=아래)
-  const tv = Math.tan(camera.fov * Math.PI / 360);          // 화면 세로 절반 = dist * tv
-  const dist = THREE.MathUtils.clamp(Math.max(
-    radius / (tv * usable * MUSEUM_VIEW_FILL),               // 세로: 빈 영역의 FILL 만큼
-    radius / (tv * camera.aspect * 0.8)), 1.6, 5.0);         // 가로: 폭의 80% 까지(폰 세로는 여기가 조인다)
-  return { dist, dy: (center - 0.5) * 2 * tv * dist };       // dy: 시선을 이만큼 올리면 전시물이 그만큼 내려온다
+  // 아래: 명판(설명)·돌아가기 줄 위까지. 조이스틱은 좌우 구석이라 걸쳐도 읽힌다.
+  //   ⚠️ #zone-prompt 는 bottom 이 .15s 트랜지션이라 rect 가 한 박자 늦다 — layoutPrompts 가 넣은
+  //      **목표값**(인라인 style.bottom)이 있으면 그걸 쓴다. 없으면(혼자 뜬 경우) CSS 기본 자리.
+  const promptTop = (id, def) => {
+    const el = document.getElementById(id); if (!el || !el.offsetHeight) return def;
+    const b = parseFloat(el.style.bottom);
+    return Number.isFinite(b) ? H - b - el.offsetHeight : el.getBoundingClientRect().top;
+  };
+  const bot = H - Math.min(promptTop('zone-prompt', H * 0.74), promptTop('door-prompt', H * 0.78)) + 10;
+  // 크기는 상자의 반치수로 — 바운딩 구(대각선의 절반)를 쓰면 네모난 전시물이 √3 배로 부풀어
+  // 맞춘다고 한 것보다 한참 작게 그려진다. Y 축으로 도니 가로는 x·z 중 긴 쪽.
+  _mvBox.setFromObject(mesh); _mvBox.getSize(_mvSize); _mvBox.getCenter(_mvCenter);
+  const f = viewFrame({ h: H, top, bot, fov: camera.fov, aspect: camera.aspect,
+    halfH: _mvSize.y / 2, halfW: Math.max(_mvSize.x, _mvSize.z) / 2, fill: MUSEUM_VIEW_FILL });
+  f.cy = _mvCenter.y;   // 원점이 시각 중심이 아닌 메시(잎이 위로 솟은 작물 등) 보정
+  return f;
 }
 
 function openMuseumView(i) {
@@ -5089,12 +5095,12 @@ function openMuseumView(i) {
   group.position.set(MUSEUM.x + sx + inward[0] * 1.25, 1.75, MUSEUM.z + sz + inward[1] * 1.25);   // 명판(화면 중앙) 위로 띄운다
   scene.add(group);
   player.visible = false;   // 🔍 관람 중엔 캐릭터를 숨긴다 — 몸이 화면 절반을 가린다(1인칭처럼 물건만)
-  const radius = new THREE.Box3().setFromObject(mesh).getBoundingSphere(new THREE.Sphere()).radius;
-  museumView = { group, mesh, idx: i, spin: 0, inward, radius, frame: null };
+  museumView = { group, mesh, idx: i, spin: 0, inward, frame: null };
   const at = gameState.dex[item.cat][item.id], d = new Date(at);
   ui.setZoneHint?.(`${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일에 처음 발견`);
   ui.setDoorPrompt?.('🔙 돌아가기');
-  museumView.frame = museumViewFrame(radius);   // ⚠️ 프롬프트를 띄운 **뒤에** 재야 아래 여백이 실제 자리로 잡힌다
+  museumView.frame = museumViewFrame(mesh);     // ⚠️ 프롬프트를 띄운 **뒤에** 재야 아래 여백이 실제 자리로 잡힌다
+  setTimeout(() => { if (museumView && museumView.mesh === mesh) museumView.frame = museumViewFrame(mesh); }, 220);   // 프롬프트 줄이 앉은 뒤 한 번 더(트랜지션 .15s)
   Sound.blip();
   trackEvent('museum_view_open', { item: item.id, cat: item.cat });   // [GA4] 실제로 들여다보는가
 }
@@ -12413,11 +12419,12 @@ function updateCamera(dt) {
   if (boat.active) return updateBoatCamera(dt);   // 🛶 런 중: 1인칭 뱃머리 시점
   if (museumView) {                               // 🔍 전시물 관람: 띄워 둔 것을 정면 가까이서
     const p = museumView.group.position, iw = museumView.inward;
-    const f = museumView.frame || (museumView.frame = museumViewFrame(museumView.radius || 0.5));
-    _camTarget.set(p.x + iw[0] * f.dist, p.y, p.z + iw[1] * f.dist);   // 거리는 전시물 크기에서 — 돌도 포도송이도 같은 크기로 보인다
+    const f = museumView.frame || (museumView.frame = museumViewFrame(museumView.mesh));
+    const oy = p.y + f.cy;                                             // 전시물의 **시각** 중심 높이(메시 원점이 아니라)
+    _camTarget.set(p.x + iw[0] * f.dist, oy, p.z + iw[1] * f.dist);    // 거리는 전시물 크기에서 — 돌도 포도송이도 같은 크기로 보인다
     camera.position.lerp(_camTarget, 1 - Math.pow(0.002, dt));
     // 빈 영역 한복판에 오도록 시선을 올린다(전시물은 그만큼 내려온다) — 그 아래가 명판 자리
-    _camLook.lerp(_camAux.set(p.x, p.y + f.dy, p.z), 1 - Math.pow(0.002, dt));
+    _camLook.lerp(_camAux.set(p.x, oy + f.dy, p.z), 1 - Math.pow(0.002, dt));
     camera.lookAt(_camLook);
     return;
   }
@@ -12608,6 +12615,11 @@ function updateDayNight(dt) {
     hemiLight.intensity = MUSEUM_LIGHT.hemi; ambient.intensity = MUSEUM_LIGHT.amb; sunLight.intensity = MUSEUM_LIGHT.sun;
     ambient.color.setHex(MUSEUM_LIGHT.tint);       // 전시 조명색(ambient 는 매 프레임 리셋되므로 안전)
     sunLight.color.setHex(MUSEUM_LIGHT.sunTint);   // ⚠️ 색도 같이 — 세기만 올리면 밤의 남색 햇빛이 전시물을 파랗게 물들인다
+    // ⚠️ **자리도** 고정한다. 세기만 잡으면 헛일이다 — 광원은 시간대를 따라 도느라 저녁엔 바닥
+    //    아래(y<0)로 내려가, 같은 0.95 인데도 전시물 윗면이 캄캄해진다(시간대별 밝기 출렁임).
+    sunLight.position.set(MUSEUM.x + 7, 15, MUSEUM.z + 11);
+    sunLight.target.position.set(MUSEUM.x, 1.6, MUSEUM.z);
+    sunLight.target.updateMatrixWorld();
     if (playerLight) playerLight.intensity = MUSEUM_LIGHT.player;
     scene.fog.color.setHex(MUSEUM_LIGHT.fog); scene.fog.near = MUSEUM_LIGHT.near; scene.fog.far = MUSEUM_LIGHT.far;
   }
@@ -15885,5 +15897,5 @@ function onResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer.setSize(window.innerWidth, window.innerHeight);
-  if (museumView) museumView.frame = museumViewFrame(museumView.radius);   // 🔍 관람 중 화면이 돌면 무대도 다시 잰다
+  if (museumView) museumView.frame = museumViewFrame(museumView.mesh);   // 🔍 관람 중 화면이 돌면 무대도 다시 잰다
 }
