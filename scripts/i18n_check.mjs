@@ -109,6 +109,8 @@ function htmlStrings(src) {
 const targets = [
   ['index.html', htmlStrings],
   ['js/game.js', s => jsStrings(stripJsComments(s))],
+  // 🏠 집 단계 이름(BUILD_STAGES/EXPANSIONS)이 간판 제목·토스트로 그대로 나간다
+  ['js/house-cost.js', s => jsStrings(stripJsComments(s))],
   ['js/night-visit.js', s => jsStrings(stripJsComments(s))],
   ['js/cafe-guests.js', s => jsStrings(stripJsComments(s))],
   ['js/supabase-client.js', s => jsStrings(stripJsComments(s))],

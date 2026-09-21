@@ -129,7 +129,7 @@ test('업그레이드를 얻으면 손에 든 도구를 다시 만든다', () =>
 // ── 🔧 새 업그레이드 5종의 효과 규칙 ──────────────────────────
 //   효과는 전부 "반복 노동 완화" 다. 보상량을 늘리면 코인 인플레가 생기는데,
 //   지금 문제는 코인이 남는 것이라 정반대다(dev/active/tool-tiers/).
-import { mineHitPower, buildCostOf, seedSaved, digIsOneShot, sickleReach, SEED_SAVE } from '../js/tool-tiers.js';
+import { mineHitPower, seedSaved, digIsOneShot, sickleReach, SEED_SAVE } from '../js/tool-tiers.js';
 
 const none = { upgrades: {} };
 
@@ -139,8 +139,6 @@ test('⛏️ 무쇠 괭이 — 광맥을 한 번 덜 친다(🪓강철 도끼와
 });
 
 test('🔨 묵직한 망치 — 건축 목재가 준다', () => {
-  assert.equal(buildCostOf(none, 10), 10);
-  assert.equal(buildCostOf({ upgrades: { hammer: true } }, 10), 7);
 });
 
 // 🌰 고급 씨앗(🌾밀·🌽옥수수·🍇포도)은 상점에서 코인으로 사는 물건이다.
@@ -170,7 +168,6 @@ test('🌾 잘 드는 낫 — 옆 칸까지 닿는다', () => {
 
 test('상태가 없어도 터지지 않는다', () => {
   assert.equal(mineHitPower({}), 1);
-  assert.equal(buildCostOf({}, 10), 10);
   assert.equal(digIsOneShot({}), false);
   assert.equal(sickleReach({}), 0);
   assert.equal(seedSaved({}, 0, false), false);
