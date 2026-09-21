@@ -12846,6 +12846,10 @@ function maybeDuel(t) {
   const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
   requestSave();
   duelActive = true;                                     // 카메라를 무대에 넘긴다(위 주석 참고)
+  // 흔적 보상(+씨앗)이 **승부 직전에** 띄운 월드 텍스트를 치운다 — spawnFloatText 의 duelActive
+  //   가드는 이후 호출만 막는다. 이미 떠 있는 건 무대 위에 남아 화면을 덮는다(실측).
+  for (const sp of floatTexts) scene.remove(sp);
+  floatTexts.length = 0;
   // 🥕 그릇에 넣어 보여줄 작물 아이콘 — 고급 작물만 제 아이콘이 있고 나머지는 🥕(tryHarvest 와 같은 규칙)
   const firstId = crops.find(c => c) || '';
   const cropIco = (firstId && ADV_CROPS.find(c => c.id === firstId)?.ico) || '🥕';
@@ -14863,6 +14867,9 @@ function tryBuild() {
 const floatTexts = [];
 // scale: 좁은 화면·가까운 카메라(🛶 뱃놀이 등)에서 줄여 그리기 위한 배율(기본 1)
 function spawnFloatText(x, y, z, text, color = '#3a4a40', scale = 1) {
+  // 🐗🦝 승부 중엔 띄우지 않는다 — 흔적 조사 보상(+씨앗)이 승부 시작과 겹쳐 무대를 덮었다.
+  //   토스트·배너는 CSS(body.duel-open)로 걷었지만 이건 3D 월드 스프라이트라 CSS 가 못 닿는다.
+  if (duelActive) return;
   const cv = document.createElement('canvas');
   text = t(text);   // [i18n] 캔버스 스프라이트는 옵저버 밖 — 폭 측정 전에 번역
   let c = cv.getContext('2d');
