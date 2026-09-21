@@ -12,7 +12,8 @@ import { trackEvent } from '../analytics.js';
 import { rollHand, judge, initMatch as rpsInit, applyRound as rpsRound } from './rps.js';
 import { SHELL_ROUNDS, makeSwaps, finalPos,
          initMatch as shellInit, applyRound as shellRound } from './shells.js';
-import { enterDuelStage, exitDuelStage, showThrow, clearThrow } from './stage.js';
+import { enterDuelStage, exitDuelStage, showThrow, clearThrow,
+         showBowls, swapBowls, hideBowls, zoomBowls, putCrop, openBowl } from './stage.js';
 import * as ui from './ui.js';
 
 // 🐗 가위바위보 2선승 — 비기면 판 번호를 올리지 않고 다시 낸다
@@ -40,7 +41,7 @@ async function playRps(onRound, handle, animal) {
 }
 
 // 🦝 그릇 섞기 3판 전승 — 한 판이라도 틀리면 그 자리에서 끝
-async function playShells(onRound, cropIco, animal) {
+async function playShells(onRound, cropIco, animal, handle) {
   let m = shellInit();
   for (const r of SHELL_ROUNDS) {
     onRound(m.round + 1);
@@ -50,7 +51,15 @@ async function playShells(onRound, cropIco, animal) {
     const swaps = makeSwaps(r.swaps, rolls);
     const start = Math.floor(Math.random() * 3);
     const t0 = Date.now();
-    const picked = await ui.askShell(swaps, start, r.ms, cropIco);
+    // 🥣 무대의 3D 그릇과 같이 움직인다 — 카메라가 훅 들어갔다가 고를 때 1:1 로 빠진다
+    const picked = await ui.askShell(swaps, start, r.ms, cropIco, {
+      onReady: async () => { showBowls(handle, cropIco, start); await zoomBowls(handle, true); },
+      onPut: () => putCrop(handle, cropIco),                 // 🥕 그릇을 들어 작물을 넣고 덮는다
+      onSwap: (a, b) => swapBowls(handle, a, b),
+      onPick: async () => { await zoomBowls(handle, false); },
+      onReveal: (slot) => openBowl(handle, slot),            // 고른 그릇을 열어 정답을 보여준다
+    });
+    hideBowls(handle);
     const answer = finalPos(start, swaps);
     const ok = picked === answer;
     // [GA4] 판 단위 — 그 판의 **난이도**(섞기 횟수·속도)를 같이 남겨야 어느 속도부터
@@ -80,7 +89,7 @@ export function initDuel() {
       handle = enterDuelStage(ctx.stage, { animal: ctx.animal, x: ctx.x, z: ctx.z });
       ui.openDuel();
       ui.setBanner(ctx.animal === 'boar' ? ui.COPY.boarOpen : ui.COPY.raccoonOpen);
-      const m = game === 'rps' ? await playRps(onRound, handle, ctx.animal) : await playShells(onRound, ctx.cropIco, ctx.animal);
+      const m = game === 'rps' ? await playRps(onRound, handle, ctx.animal) : await playShells(onRound, ctx.cropIco, ctx.animal, handle);
       const won = !!m.won;
       ui.setBanner(won ? ui.COPY.matchWin : ui.COPY.matchLose);
       // [GA4] 실제 승률. 설계는 🐗 50% · 🦝 60~75% — 벗어나면 난수나 판정에 버그다.
