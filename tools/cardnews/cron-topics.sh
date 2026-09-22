@@ -60,8 +60,15 @@ cat "$OUT" >> "$LOG"
 if [ "$STATUS" = "성공" ]; then
   ENVFILE="$HOME/.config/calmforest/cardnews.env"
   if [ -f "$ENVFILE" ]; then
+    # ⚠️ set -u 아래에서 외부 파일을 source 하면, 그 파일이 정의되지 않은 변수를
+    #    참조하는 순간 **스크립트 전체가 즉시 죽는다**(-e 가 없어도 그렇다).
+    #    메일 블록까지 못 가고 로그에 흔적도 안 남는다 — 이 크론이 일주일을
+    #    잃었던 그 조용한 죽음이다. 사람이 손으로 편집하는 파일이라 오타 하나면
+    #    재현된다. 그래서 -u 를 잠시 끄고, stderr 까지 로그로 받는다.
+    set +u
     # shellcheck disable=SC1090
-    . "$ENVFILE"
+    . "$ENVFILE" 2>> "$LOG" || echo "⚠️ 환경파일을 읽지 못했다: $ENVFILE" >> "$LOG"
+    set -u
     INBOX="decks/_inbox/$(date '+%Y-%m-%d')-community.json"
     if [ -f "$INBOX" ]; then
       if node ingest-upload.mjs "$INBOX" >> "$LOG" 2>&1; then
