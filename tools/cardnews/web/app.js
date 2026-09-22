@@ -31,6 +31,13 @@ function cssEscape(id) {
   return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : String(id).replace(/["\\]/g, '\\$&');
 }
 
+/** 긁어온 데이터라 렌더 직전에 한 번 더 막는다 — escapeHtml 은 속성 탈출만
+ *  막지 javascript: 스킴은 막지 못한다. 수집 단계(cleanUrl)에도 같은 규칙이
+ *  있지만, 안전을 상류 한 겹에만 기대지 않는다. */
+export function safeHref(u) {
+  return typeof u === 'string' && /^https?:\/\//i.test(u) ? u : null;
+}
+
 export function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -80,8 +87,9 @@ export function renderTopicCardHtml(topic, inTray) {
   const category = topic.category ? escapeHtml(topic.category) : '';
   const source = topic.source || 'news';
   const sourceLabel = escapeHtml(SOURCE_LABELS[source] || source);
-  const urlLink = topic.url
-    ? `<a class="src-link" href="${escapeHtml(topic.url)}" target="_blank" rel="noopener noreferrer">원문 보기 ↗</a>`
+  const href = safeHref(topic.url);
+  const urlLink = href
+    ? `<a class="src-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">원문 보기 ↗</a>`
     : '';
   return `
     <article class="topic-card${topic.dismissed ? ' is-dismissed' : ''}" data-id="${escapeHtml(topic.id)}">
