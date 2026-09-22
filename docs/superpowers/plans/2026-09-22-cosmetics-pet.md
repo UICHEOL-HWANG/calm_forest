@@ -1330,7 +1330,7 @@ git commit -m "feat: 🐾 펫 규칙 — 잡일만·반경 제한·쿨다운·�
 
 ⚠️ **조형은 아직 없다.** Task 12 까지 `spawnPet` 은 **자리표시 구(球)** 를 돌려준다. 종이 안 정해져도 이 태스크가 끝난다 — 그게 이 순서를 고른 이유다.
 
-- [ ] **Step 1: 움직임을 만든다**
+- [x] **Step 1: 움직임을 만든다**
 
 ```js
 // js/pet/render.js
@@ -1375,7 +1375,7 @@ export function walkTo(pet3d, x, z, dt) {
 }
 ```
 
-- [ ] **Step 2: 맡기기 한 번의 흐름을 잇는다**
+- [x] **Step 2: 맡기기 한 번의 흐름을 잇는다**
 
 ```js
 // 🐾 맡기기 — 반경 안 잡일을 최대 CHAIN_MAX 칸. 끝나면 따라오기로 돌아간다
@@ -1469,11 +1469,11 @@ function petApply(task) {
 
 프레임 루프에서 `updatePet(dt)`.
 
-- [ ] **Step 3: 프롬프트를 건다**
+- [x] **Step 3: 프롬프트를 건다**
 
 밭 근처 + `canCommand` 일 때만 `🐾 맡기기` 를 띄운다. ⚠️ **프롬프트 줄에만** 넣는다.
 
-- [ ] **Step 4: i18n**
+- [x] **Step 4: i18n**
 
 ```js
   // ── 🐾 펫 ──────────────────────────────────────────────────
@@ -1481,7 +1481,7 @@ function petApply(task) {
   '조금 쉬고 있어요': 'Resting for a bit',
 ```
 
-- [ ] **Step 5: 인게임에서 확인한다**
+- [x] **Step 5: 인게임에서 확인한다**
 
 ```js
 gameState.pet = { kind: 'spirit', name: '', works: 0, restUntil: 0 };
@@ -1495,7 +1495,7 @@ respawnPet();
 - 5칸을 넘기지 않고 끝나면 쿨다운이 걸린다
 - **접속을 끊었다 켜도 아무 일도 안 일어난다**(오프라인 정산 없음)
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add js/pet/render.js js/game.js js/i18n-en.js
