@@ -71,7 +71,8 @@ import { SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, claimAll, w
 import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js';   // 🫙 발효통 조형(sims/vat-sim.html B안)
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
 import { buildCosmetic } from './cosmetics/art.js';
-import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.js';
+import { itemsOf } from './cosmetics/catalog.js';
+import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 
@@ -501,6 +502,10 @@ const boat = {
 //    정면은 +Z 라 회전하지 않는다(카메라 시선이 늘 −Z).
 const SHOP_POS = new THREE.Vector3(-17.5, 0, -4);
 let cosmeticShop = null;          // buildShop 이 돌려준 { group, owner, lamp } — 프레임 루프가 주인을 움직인다
+//  🎀 가게 앞(정면 +Z) 판정점 — 콜라이더가 2.4 라 중심 기준으론 가까이 갈 수가 없다.
+//     문 쪽으로 2.0 내밀어 **앞에 섰을 때만** 잡히게 한다(옆·뒤는 2.8 밖).
+const SHOP_DOOR = new THREE.Vector3(SHOP_POS.x, 0, SHOP_POS.z + 2.0);
+let nearCosShop = false;
 
 // ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
 //    처음부터 있는 장소(카페·채굴장 문법). 게이트 → 별도 인스턴스, 숲 안은 항상 어둑+짙은 안개.
@@ -2219,6 +2224,9 @@ export const Input = {
   genNickname(animal) { return genNickname(animal); },
   setNickname(name, source) { return setNickname(name, source); },
   createCharacterPreview(canvas) { return makeCharacterPreview(canvas); }, // 선택화면 3D 프리뷰
+  // 🎀 꾸미기 상점 — 패널 내용·프리뷰는 게임 쪽이 그린다(show/hide 만 UI 가 한다)
+  openCosMenu(canvas) { openCosPreview(canvas); },
+  closeCosMenu() { closeCosPreview(); },
   hasCharacter() { return !!gameState.character; },
   getCharacter() { return gameState.character; },        // 🐾 바꾸기 모달에서 현재 캐릭터 미리 선택용
   // change=true 면 플레이 도중 교체(진행 상황은 그대로) — 첫 선택과 이벤트를 구분해 기록
@@ -3732,9 +3740,11 @@ function updateTrail(dt) {
 }
 
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
-function buildCharacterMesh(id) {
+//   cos 는 **가상 장착**을 받기 위한 인자다(🎀 꾸미기 상점의 "입어보기"). 기본값은 실제 장착이라
+//   캐릭터 선택 화면은 예전과 똑같이 동작한다.
+function buildCharacterMesh(id, cos = gameState.cosmetics) {
   const built = buildAnimalMesh(id);
-  for (const it of equippedItems(gameState.cosmetics)) {
+  for (const it of equippedItems(cos)) {
     if (it.slot === 'trail') continue;
     const m = buildCosmetic(THREE, it.id, built.k);
     if (m) built.anchors[it.anchor || it.slot].add(m);
@@ -3754,8 +3764,31 @@ function makeCharacterPreview(canvas) {
   const rim = new THREE.DirectionalLight(0xbfe8ff, 0.45); rim.position.set(-3, 2, -2); sc.add(rim);
   const pivot = new THREE.Group(); sc.add(pivot);
   let mesh = null, rotY = 0.5, rotX = 0, dragging = false, lx = 0, ly = 0, autoSpin = true, raf = 0;
+  let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  function setAnimal(id) { if (mesh) pivot.remove(mesh); mesh = buildCharacterMesh(id); pivot.add(mesh); autoSpin = true; }
+  //  ⚠️ **disposeTree 를 부르지 않는다.** 꾸미기 재질·plushMat 은 월드의 내 캐릭터와 **공유**라
+  //     여기서 버리면 플레이어가 입고 있는 것까지 검게 된다(§14). 인스턴스만 떼어 낸다.
+  function rebuild() {
+    const cos = cosView || gameState.cosmetics;
+    if (mesh) pivot.remove(mesh);
+    mesh = buildCharacterMesh(animal, cos); pivot.add(mesh);
+    if (marks) { pivot.remove(marks); marks = null; }
+    const tid = cos?.equipped?.trail;      // 👣 발자국은 앵커가 아니라 월드 이펙트 — 발밑에 두 개만 깔아 보여 준다
+    if (tid) {
+      marks = new THREE.Group();
+      for (const s of [-1, 1]) {
+        const m = buildTrailMark(THREE, tid, 1, animal);
+        m.position.set(s * 0.26, 0.012, s * 0.20 + 0.1); m.rotation.y = s * 0.2;
+        marks.add(m);
+      }
+      pivot.add(marks);
+    }
+  }
+  function setAnimal(id) { animal = id; rebuild(); autoSpin = true; }
+  /** 🎀 가상 장착으로 다시 그린다(회전·자동스핀은 그대로). cos 없으면 실제 장착으로 되돌린다 */
+  function refresh(cos = null) { cosView = cos; if (animal) rebuild(); }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }   // 패널을 닫으면 두 번째 렌더러를 세운다
+  function start() { if (!raf) loop(); }
   function resize() {
     const w = canvas.clientWidth || 220, h = canvas.clientHeight || 240;
     rend.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
@@ -3767,7 +3800,7 @@ function makeCharacterPreview(canvas) {
   const end = () => { dragging = false; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   resize(); loop();
-  return { setAnimal, resize };
+  return { setAnimal, resize, refresh, stop, start };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
@@ -5631,6 +5664,92 @@ function spawnCosmeticShop() {
   cosmeticShop = shopObj;
   solidCircle(SHOP_POS.x, SHOP_POS.z, 2.4);                          // 🚧 통과 못 함
   obstacles.push({ x: SHOP_POS.x, z: SHOP_POS.z, r: 2.4 });          // 밭 금지 + 주민이 가게를 뚫고 배회하지 않게
+}
+
+// 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
+const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '👣 발자국']];
+let cosTab = 'head';
+
+// ── 🪞 입어보기(미리보기 전용) ───────────────────────────────
+//  ▶ 줄을 누르면 **안 사고** 입어만 본다. 사는 건 줄 끝의 버튼이다.
+//  ▶ 패널을 닫으면 버린다 — 실제 장착(gameState.cosmetics)은 한 글자도 안 건드린다.
+//  ▶ 프리뷰는 두 번째 WebGLRenderer 다. 컨텍스트를 아끼려고 **한 번 만들고 재사용**하되,
+//    닫을 땐 rAF 를 세운다(stop) — 안 세우면 패널 뒤에서 계속 그린다.
+let cosPreview = null, cosTryOn = null;
+const cosView = () => cosTryOn || gameState.cosmetics;
+
+function tryOnCos(it) {
+  const cur = cosView();
+  const on = cur.equipped[it.slot] === it.id;
+  cosTryOn = {                                    // 안 산 것도 입어 볼 수 있게 owned 에 얹는다(미리보기 한정)
+    owned: [...new Set([...gameState.cosmetics.owned, it.id])],
+    equipped: { ...cur.equipped, [it.slot]: on ? null : it.id },
+  };
+  cosPreview?.refresh(cosTryOn);
+  drawCosMenu();
+}
+
+function openCosPreview(canvas) {
+  cosTryOn = null;
+  try {
+    if (!cosPreview) cosPreview = makeCharacterPreview(canvas);
+    cosPreview.start();
+    cosPreview.resize();
+    cosPreview.setAnimal(gameState.character || ANIMALS[0].id);
+    cosPreview.refresh(null);
+  } catch (err) { console.error('[cos-preview]', err); cosPreview = null; }
+  drawCosMenu();
+}
+
+function closeCosPreview() {
+  cosTryOn = null;                 // 입어보던 건 버린다 — 실제로 장착한 모습으로 돌아간다
+  cosPreview?.refresh(null);
+  cosPreview?.stop();
+}
+
+function drawCosMenu() {
+  document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
+  const tabs = document.getElementById('cos-tabs');
+  tabs.innerHTML = '';
+  for (const [id, label] of COS_TABS) {
+    const b = document.createElement('button');
+    b.className = 'sh-tab' + (cosTab === id ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => { cosTab = id; drawCosMenu(); };
+    tabs.appendChild(b);
+  }
+  const box = document.getElementById('cos-items');
+  box.innerHTML = '';
+  for (const it of itemsOf(cosTab)) {
+    const owned = gameState.cosmetics.owned.includes(it.id);
+    const on = gameState.cosmetics.equipped[it.slot] === it.id;
+    const row = document.createElement('div');
+    row.className = 'sh-row' + (cosView().equipped[it.slot] === it.id ? ' try' : '');
+    row.innerHTML = `<span>${it.ico} ${it.name}</span>`;
+    row.onclick = () => tryOnCos(it);                  // 🪞 줄 = 입어보기(구매 아님)
+    const btn = document.createElement('button');
+    btn.textContent = on ? '벗기' : owned ? '착용' : `${it.price.coins.toLocaleString()}🪙`;
+    btn.onclick = (ev) => {
+      ev.stopPropagation();                            // 버튼은 사고/입고, 줄은 입어보기 — 겹치지 않게
+      if (on) gameState.cosmetics = unequipCos(gameState.cosmetics, it.slot);
+      else if (owned) gameState.cosmetics = equipCos(gameState.cosmetics, it.id);
+      else {
+        const r = buyCos(gameState.cosmetics, gameState.inventory.coins, it.id);
+        if (!r.bought) { ui.toast?.('코인이 모자라요', 2000); return; }
+        gameState.cosmetics = equipCos(r.cos, it.id);      // 사면 바로 입힌다
+        gameState.inventory.coins = r.coins;
+        trackEvent('cosmetic_buy', { item_id: it.id, slot: it.slot, price_coins: it.price.coins, coins_after: r.coins });
+      }
+      trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: on ? 'off' : 'on' });
+      applyCosmetics(gameState.cosmetics);
+      cosTryOn = null;                                 // 실제 장착이 바뀌었으니 입어보기는 버린다
+      cosPreview?.refresh(null);
+      drawCosMenu();
+      requestSave();
+    };
+    row.appendChild(btn);
+    box.appendChild(row);
+  }
 }
 
 // ── 카페 홀(별도 공간) — 넓은 실내. 카운터 + 테이블 4세트 + 주문판 ──
@@ -11671,6 +11790,7 @@ function updateDoorInteract() {
   nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
   nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
+  nearCosShop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && dist2D(SHOP_DOOR, player.position) < 2.8; // 🏪 꾸미기 가게(마을 서쪽)
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
   //   가장 가까운 한 채를 잡는다(몸집이 커서 반경 2.6). 텃밭에선 밭일이 먼저다(허수아비와 같은 규칙).
   const stationZone = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop)
@@ -11687,6 +11807,10 @@ function updateDoorInteract() {
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
+  }
+  else if (nearCosShop) {   // ⚠️ 안내는 프롬프트 줄에만 — 월드 라벨로 띄우면 다른 라벨을 가린다
+    prompt = '🎀 꾸미기 가게';
+    firstHintBanner('cosShop', '🎀', '꾸미기 가게', '모자·목도리·가방·발자국으로 내 캐릭터를 꾸며요');
   }
   if (!prompt) {   // 🪏 반쯤 판 밭 앞: 남은 유예를 프롬프트 줄로(모바일 규칙 — 안내는 컨텍스트 슬롯에만)
     const dp = plots.find(p => p.digAt && dist2D(p.group.position, player.position) < 1.6);
@@ -13269,6 +13393,11 @@ function handleAction() {
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
+  if (nearCosShop) {                       // 🏪 꾸미기 가게 → 🎀 꾸미기 패널
+    trackEvent('shop_enter', { from: 'walk' });
+    trackEvent('shop_open', { tab: 'cosmetics' });
+    return ui.openCosShop?.();
+  }
   // 🍄 채집 — 도구가 필요 없는 "줍기". 단, 도끼를 들고 더 가까운 나무가 있으면 벌목에 양보
   const fg = forageTarget();
   if (fg) {
@@ -14209,7 +14338,7 @@ function farmActionFirst() {
   if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
-  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop) return false;
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
   if (forageTarget() || traceTarget()) return false;
