@@ -25,7 +25,9 @@
 //    와 같은 수법으로 **재질별로 지오메트리를 합친다** — 색은 정점에 실어(paintGeo) 색이 달라도
 //    한 재질로 묶인다. 묶는 키는 `flatShading · castShadow · receiveShadow` 셋뿐이고,
 //    좌표·회전·색은 **한 글자도 안 바뀐다**(메시의 행렬을 지오메트리에 구워 넣을 뿐).
-//    병합 제외 둘 — 움직이는 **주인**, 정점색 양면 재질인 **차양**(+ 등불 발광구).
+//    병합 제외는 정점색 양면 재질인 **차양**(+ 등불 발광구) 뿐이다.
+//    움직이는 **주인**은 건물 병합에선 빠지지만(그룹이라 mergeStatics 가 안 집는다) 따로 합친다 —
+//    mergeOwnerParts 가 `buildAnimalHead` 가 세워 준 **그 인스턴스만** 재질별로 묶는다(34메시 → 7).
 //
 //  ▶ 정면은 **+Z** 다(zF = +D/2). 마을 카메라는 camOffset(0,14,16) 고정이라
 //    시선이 늘 −Z — 정면을 +Z 로 둬야 플레이어가 어디 있든 안이 보인다.
@@ -102,8 +104,10 @@ function makeTables(THREE) {
     }
     return out;
   };
-  /** 정점색 재질 — clay 와 같은 값이되 색만 정점에서 온다(clay 의 color × 흰색 = 같은 색) */
-  const vtxClay = (flat) => new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.95, metalness: 0, flatShading: flat });
+  /** 정점색 재질 — 원본과 같은 값이되 색만 정점에서 온다(color 흰색 × 정점색 = 같은 색) */
+  const vtxOf = (src, flat) => new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: src.roughness, metalness: src.metalness, flatShading: flat });
+  /** 정점색 clay — 건물 정적 파츠는 전부 clay(0.95 / metalness 0)라 거칠기를 물어볼 필요가 없다 */
+  const vtxClay = (flat) => vtxOf({ roughness: 0.95, metalness: 0 }, flat);
   /** g 의 정적 파츠를 `flat|cast|recv` 키로 합친다. 차양(정점색·양면)·등불(발광)·주인(Group)은 건너뛴다. */
   function mergeStatics(g) {
     const buckets = new Map();
@@ -126,6 +130,63 @@ function makeTables(THREE) {
       g.add(mesh);
     }
     return buckets.size;
+  }
+
+  /** 🧑 주인 **한 마리(이 인스턴스)** 만 재질별로 합친다 — 34메시(=+42콜) → 7메시(=+9콜).
+   *  ▶ 왜 여기서 후처리하나: 머리는 js/animal-faces.js `buildAnimalHead` 가 만든다. 그 함수는
+   *    주민 9명과 플레이어가 같이 쓰므로 **안쪽을 고치면 마을 전체가 바뀐다**. 그래서 공용 조립기는
+   *    한 글자도 안 건드리고, 그것이 **세워 준 결과물**만 여기서 합친다.
+   *  ▶ mergeStatics(건물)와 다른 점 둘:
+   *    · 머리는 Group 안에 Group(수염 피벗 6개)이 또 있어 **재귀**로 모으고, 행렬은 주인 기준으로 굽는다.
+   *    · 얼굴엔 plush(0.88)·눈동자(0.35)·하이라이트(0.30)·입/수염(0.60)·몸 clay(0.95) 다섯 거칠기가 섞였다.
+   *      건물 키(flat|cast|recv)로 묶으면 **얼굴이 한 거칠기로 뭉개진다** — js/pet/art.js 처럼
+   *      roughness·metalness 를 키에 넣는다.
+   *  ▶ ⚠️ `updateShopOwner` 는 **그룹 하나만** 움직인다(position·rotation.y) — 따로 움직이는 파츠가
+   *    없어서 전부 병합해도 된다. 눈 깜빡임·귀 쫑긋처럼 **파츠가 따로 움직이게 되면 이 호출 뒤에 달아라**
+   *    (병합에 걸린 파츠는 얼어붙는다).
+   *  ▶ 혼자인 버킷(몸·앞치마)은 그대로 둔다 — 합칠 상대가 없는데 인덱스를 풀면 정점만 늘어난다. */
+  function mergeOwnerParts(owner) {
+    const found = [];
+    (function walk(node, mat) {
+      for (const child of node.children) {
+        child.updateMatrix();
+        const m = new THREE.Matrix4().multiplyMatrices(mat, child.matrix);
+        if (child.isMesh) found.push({ child, m });
+        else walk(child, m);
+      }
+    })(owner, new THREE.Matrix4());
+
+    const buckets = new Map();
+    for (const it of found) {
+      const m = it.child.material;
+      if (m.vertexColors || m.side !== THREE.FrontSide) continue;
+      if (m.emissive && m.emissive.getHex() !== 0) continue;
+      if (m.transparent || m.opacity < 1) continue;
+      const key = `${!!m.flatShading}|${m.roughness}|${m.metalness}|${it.child.castShadow}|${it.child.receiveShadow}`;
+      const b = buckets.get(key) || { items: [], src: m, flat: !!m.flatShading, cast: it.child.castShadow, recv: it.child.receiveShadow };
+      b.items.push(it);
+      buckets.set(key, b);
+    }
+    let merged = 0;
+    for (const b of buckets.values()) {
+      if (b.items.length < 2) continue;
+      const geos = b.items.map(({ child, m }) =>
+        paintGeo((child.geometry.index ? child.geometry.toNonIndexed() : child.geometry.clone()).applyMatrix4(m), child.material.color));
+      const mesh = new THREE.Mesh(mergeGeos(geos), vtxOf(b.src, b.flat));
+      mesh.castShadow = b.cast; mesh.receiveShadow = b.recv;
+      b.items.forEach(({ child }) => child.parent.remove(child));
+      owner.add(mesh);
+      merged++;
+    }
+    // 메시를 다 내준 빈 그룹(수염 피벗 6개·머리)은 지운다 — 매 프레임 scene.traverse 를 도는 값이다
+    (function prune(node) {
+      for (const child of [...node.children]) {
+        if (child.isMesh) continue;
+        prune(child);
+        if (!child.children.length) node.remove(child);
+      }
+    })(owner);
+    return merged;
   }
 
   // =============================================================
@@ -182,6 +243,8 @@ function makeTables(THREE) {
     // 앞치마 — 상점 주인이라는 표식. 몸보다 살짝 크게 둘러야 면이 안 겹친다
     const ap = put(g, new THREE.Mesh(new THREE.SphereGeometry(0.505, 14, 10), clay(0xe8eeea, false)), 0, 0.50, 0.08, false);
     ap.scale.set(0.86, 0.92, 0.62);
+    //  ⚡ 주인은 **이 한 마리만** 합친다(34메시 → 7). 공용 buildAnimalHead 는 그대로 — 주민 9명이 같이 쓴다.
+    mergeOwnerParts(g);
     return g;
   }
 
