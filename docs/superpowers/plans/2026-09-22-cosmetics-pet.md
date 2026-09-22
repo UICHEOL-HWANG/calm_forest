@@ -695,7 +695,7 @@ git commit -m "refactor: 🎀 꾸미기 조형을 시뮬에서 js/cosmetics 로 
   - `buildAnimalMesh(id)` 반환에 `anchors: { head, neck, back, side }`(전부 `THREE.Group`)와 `k: { R, HR, HY, bs, bodyY, side, neckR }` 추가
   - `applyCosmetics(cos): void` — 앵커의 자식만 교체한다
 
-- [ ] **Step 1: import 를 넣는다**
+- [x] **Step 1: import 를 넣는다**
 
 ```js
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
@@ -703,7 +703,7 @@ import { buildCosmetic } from './cosmetics/art.js';
 import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.js';
 ```
 
-- [ ] **Step 2: `buildAnimalMesh` 끝에 앵커를 단다**
+- [x] **Step 2: `buildAnimalMesh` 끝에 앵커를 단다**
 
 `return { group: g, tail, armR, armL };` **직전**에 넣는다. 기존 키는 그대로 두고 추가만 한다 — `applyCharacter`·`buildCharacterMesh`·선택 프리뷰가 이미 쓰고 있다.
 
@@ -724,7 +724,7 @@ import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.
   return { group: g, tail, armR, armL, anchors, k: kk };
 ```
 
-- [ ] **Step 3: 브라우저에서 앵커가 달렸는지 본다**
+- [x] **Step 3: 브라우저에서 앵커가 달렸는지 본다**
 
 `applyCharacter` 안에 임시로 `window.__dbgAnchors = built.anchors;` 를 넣고 게임을 띄운 뒤 콘솔에서:
 
@@ -734,7 +734,7 @@ Object.keys(window.__dbgAnchors)   // Expected: ['head','neck','back','side']
 
 확인 후 임시 줄을 지운다.
 
-- [ ] **Step 4: `applyCosmetics` 를 쓴다**
+- [x] **Step 4: `applyCosmetics` 를 쓴다**
 
 `applyCharacter` 바로 아래에 둔다.
 
@@ -761,7 +761,7 @@ function applyCosmetics(cos) {
   applyCosmetics(gameState.cosmetics);
 ```
 
-- [ ] **Step 5: 콘솔로 장착을 눈으로 확인한다**
+- [x] **Step 5: 콘솔로 장착을 눈으로 확인한다**
 
 ```js
 gameState.cosmetics.owned.push('straw_hat');
@@ -771,7 +771,7 @@ applyCosmetics(gameState.cosmetics);
 
 확인: 모자가 머리에 나타난다. 캐릭터를 🐰토끼·🐤병아리로 바꿔도 **귀·볏이 모자 밖으로 빠져나온다.**
 
-- [ ] **Step 6: 캐릭터 선택 프리뷰에도 반영한다**
+- [x] **Step 6: 캐릭터 선택 프리뷰에도 반영한다**
 
 `buildCharacterMesh` 는 `.group` 만 쓴다. 프리뷰에도 장착이 보이게 고친다:
 
@@ -787,7 +787,7 @@ function buildCharacterMesh(id) {
 }
 ```
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add js/game.js

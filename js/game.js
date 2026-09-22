@@ -69,6 +69,9 @@ import { STATIONS, stationDef, CRAFT_RECIPES, recipesOf, recipeOf as craftRecipe
 import { millScore, fireScore, knead2Score, crushScore, gradeOfScore } from './craft/minigame.js';   // 🔥🫙 가공 미니게임 판정(순수 모듈)
 import { SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, stationOf, slotsOf, unitState } from './craft/slots.js';   // 🔥🫙 가공 슬롯 규칙(순수 모듈)
 import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js';   // 🫙 발효통 조형(sims/vat-sim.html B안)
+import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
+import { buildCosmetic } from './cosmetics/art.js';
+import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.js';
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -3616,7 +3619,20 @@ export function buildAnimalMesh(id) {
     g.add(armR.pivot, armL.pivot);
   }
 
-  return { group: g, tail, armR, armL };
+  // ── 🎀 꾸미기 앵커 ── (스펙 §3)
+  //  ⚠️ 장식을 여기서 만들지 않는다. **빈 Group 만** 달아 두고 js/cosmetics 가 자식을 갈아끼운다.
+  //     그래야 장착을 바꿀 때 캐릭터를 통째로 다시 만들지 않는다.
+  const kk = { R, HR, HY, bs, bodyY, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
+  const anchors = {};
+  for (const [name, p] of Object.entries({
+    head: headAnchor(HY), neck: neckAnchor(HR, HY),
+    back: backAnchor(bs, R, bodyY), side: kk.side,
+  })) {
+    const a = new THREE.Group();
+    a.position.set(p.x, p.y, p.z);
+    g.add(a); anchors[name] = a;
+  }
+  return { group: g, tail, armR, armL, anchors, k: kk };
 }
 
 // 선택한 동물로 캐릭터 외형 적용 — 체형이 다르므로 몸체를 통째로 교체
@@ -3630,13 +3646,37 @@ function applyCharacter(id) {
   toolQRest = (a.extras || []).includes('wings') ? TOOL_QREST_WING : TOOL_QREST;
   armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
+  charAnchors = built.anchors; charK = built.k;
+  applyCosmetics(gameState.cosmetics);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
   curAnimal = a; updateStowPose();        // 등 수납 위치도 몸 크기에 맞춰 갱신
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
 }
 
+// ── 🎀 장착 반영 — 앵커의 **자식만** 교체한다 ──
+//   ⚠️ 공유 재질/지오메트리를 dispose 하지 않는다. 다른 곳에서 쓰던 것까지 검게 만든다(§14).
+//      인스턴스만 버린다.
+let charAnchors = null, charK = null;
+function applyCosmetics(cos) {
+  if (!charAnchors) return;
+  for (const a of Object.values(charAnchors)) a.clear();
+  for (const it of equippedItems(cos)) {
+    if (it.slot === 'trail') continue;                 // 발자국은 월드 이펙트라 앵커가 아니다
+    const m = buildCosmetic(THREE, it.id, charK);
+    if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
+  }
+}
+
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
-function buildCharacterMesh(id) { return buildAnimalMesh(id).group; }
+function buildCharacterMesh(id) {
+  const built = buildAnimalMesh(id);
+  for (const it of equippedItems(gameState.cosmetics)) {
+    if (it.slot === 'trail') continue;
+    const m = buildCosmetic(THREE, it.id, built.k);
+    if (m) built.anchors[it.anchor || it.slot].add(m);
+  }
+  return built.group;
+}
 
 // ── 선택 화면 3D 프리뷰(드래그로 회전 + 살짝 자동 스핀) ──
 function makeCharacterPreview(canvas) {
