@@ -805,7 +805,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
 - Consumes: `equip.js` 의 `sanitize`(Task 5 에서 `sanitizeCosmetics` 로 import 완료)
 - Produces: `gameState.cosmetics` · `gameState.pet`
 
-- [ ] **Step 1: 기본값을 넣는다**
+- [x] **Step 1: 기본값을 넣는다**
 
 `gameState` 선언부의 `badges: {},` 다음 줄에:
 
@@ -817,7 +817,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
   pet: null,
 ```
 
-- [ ] **Step 2: 로드 시 병합을 넣는다**
+- [x] **Step 2: 로드 시 병합을 넣는다**
 
 세이브 로드부, `if (saved.inventory) Object.assign(...)` 근처에. **기존 선택 병합 패턴을 따른다.**
 
@@ -836,7 +836,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
   }
 ```
 
-- [ ] **Step 3: 기존 세이브가 멀쩡한지 확인한다**
+- [x] **Step 3: 기존 세이브가 멀쩡한지 확인한다**
 
 게임을 새로고침해 **기존 마을이 그대로 뜨는지** 본다. 그리고 콘솔에서:
 
@@ -845,7 +845,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
 sanitizeCosmetics({ owned: [], equipped: { head: 'beanie' } }).equipped.head
 ```
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add js/game.js

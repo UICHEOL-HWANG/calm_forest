@@ -1294,6 +1294,11 @@ const gameState = {
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
   dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
+  // 🎀 꾸미기 — 산 것(영구) + 슬롯별 장착. 규칙은 js/cosmetics/equip.js
+  cosmetics: { owned: [], equipped: { head: null, neck: null, back: null, trail: null } },
+  // 🐾 펫 — null 이면 아직 안 샀다. 규칙은 js/pet/rules.js
+  //    works 누적 작업 횟수(→ 성장 단계) · restUntil 쿨다운 종료(epoch ms)
+  pet: null,
   workers: [],                              // 🧑‍🌾 고용한 일꾼 [{id, job, grade, works, name, hiredAt, restingSince}] — 규칙은 js/farm-worker.js
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   farm: { stage: 1, seedSel: 'basic', pestDate: null, storage: {}, pending: {}, compostDate: null, compostN: 0, lastSettleAt: 0, wageDate: null, hireDate: null, hireTaken: [] },   // 🌾 밭 { 단계(1 텃밭 · 2 넓은 밭 · 3 대농장, js/farm-stage.js) · 고른 씨앗(basic|wheat|corn|grape) · 해충·꿀 정산일(YYYY-MM-DD) · 🧺창고 내용물(일꾼 수확분) · 🌱퇴비통 오늘 만든 비료 }
@@ -2776,6 +2781,18 @@ function applySave(saved) {
   }
   if (!saved || typeof saved !== 'object') return;   // 빈 세이브를 덮어쓰지 않는다
   if (saved.inventory) Object.assign(gameState.inventory, saved.inventory);
+  // 🎀 꾸미기 — 낯선 id·안 산 것의 장착을 걸러 낸다(세이브는 클라이언트 권위다)
+  if (saved.cosmetics) gameState.cosmetics = sanitizeCosmetics(saved.cosmetics);
+  // 🐾 펫 — saved 가 왔다는 것 자체가 읽기 성공이라는 뜻이므로, 필드가 없으면 신규가 맞다.
+  //    (읽기 실패를 신규로 오인해 마을을 덮어쓴 사고는 js/save-guard.js 가 앞단에서 막는다)
+  if (saved.pet && typeof saved.pet === 'object' && typeof saved.pet.kind === 'string') {
+    gameState.pet = {
+      kind: saved.pet.kind,
+      name: typeof saved.pet.name === 'string' ? saved.pet.name : '',
+      works: Number.isFinite(saved.pet.works) ? Math.max(0, Math.floor(saved.pet.works)) : 0,
+      restUntil: Number.isFinite(saved.pet.restUntil) ? saved.pet.restUntil : 0,
+    };
+  }
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
