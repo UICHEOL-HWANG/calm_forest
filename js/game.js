@@ -69,6 +69,15 @@ import { STATIONS, stationDef, CRAFT_RECIPES, recipesOf, recipeOf as craftRecipe
 import { millScore, fireScore, knead2Score, crushScore, gradeOfScore } from './craft/minigame.js';   // 🔥🫙 가공 미니게임 판정(순수 모듈)
 import { SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, stationOf, slotsOf, unitState } from './craft/slots.js';   // 🔥🫙 가공 슬롯 규칙(순수 모듈)
 import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js';   // 🫙 발효통 조형(sims/vat-sim.html B안)
+import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
+import { buildCosmetic } from './cosmetics/art.js';
+import { itemsOf } from './cosmetics/catalog.js';
+import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
+import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
+import { PET_RADIUS, CHAIN_MAX, PET_PRICE, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
+import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
+import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -490,6 +499,16 @@ const boat = {
   hits: 0, hitLog: [], picks: {}, boostUntil: 0, boostReadyAt: 0, boostUsed: 0,
   invUntil: 0, stunUntil: 0, wreckAt: 0, shake: 0, next: 0, runNo: 0, seed: 0, startedAt: 0, night: false, t: 0,
 };
+
+// 🏪 꾸미기 가게 — 마을 서쪽, 집터(-8,-8)와 ⛏️동굴 입구(-14,3) 사이 빈터.
+//    중심에서 18.0 이라 나무 링(r8~30) 한복판이다 — 나무·꽃 산포 제외 목록에 **반드시** 들어가야 한다.
+//    정면은 +Z 라 회전하지 않는다(카메라 시선이 늘 −Z).
+const SHOP_POS = new THREE.Vector3(-17.5, 0, -4);
+let cosmeticShop = null;          // buildShop 이 돌려준 { group, owner, lamp } — 프레임 루프가 주인을 움직인다
+//  🎀 가게 앞(정면 +Z) 판정점 — 콜라이더가 2.4 라 중심 기준으론 가까이 갈 수가 없다.
+//     문 쪽으로 2.0 내밀어 **앞에 섰을 때만** 잡히게 한다(옆·뒤는 2.8 밖).
+const SHOP_DOOR = new THREE.Vector3(SHOP_POS.x, 0, SHOP_POS.z + 2.0);
+let nearCosShop = false;
 
 // ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
 //    처음부터 있는 장소(카페·채굴장 문법). 게이트 → 별도 인스턴스, 숲 안은 항상 어둑+짙은 안개.
@@ -1291,6 +1310,11 @@ const gameState = {
   daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
   dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
+  // 🎀 꾸미기 — 산 것(영구) + 슬롯별 장착. 규칙은 js/cosmetics/equip.js
+  cosmetics: { owned: [], equipped: { head: null, neck: null, back: null, trail: null } },
+  // 🐾 펫 — null 이면 아직 안 샀다. 규칙은 js/pet/rules.js
+  //    works 누적 작업 횟수(→ 성장 단계) · restUntil 쿨다운 종료(epoch ms)
+  pet: null,
   workers: [],                              // 🧑‍🌾 고용한 일꾼 [{id, job, grade, works, name, hiredAt, restingSince}] — 규칙은 js/farm-worker.js
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   farm: { stage: 1, seedSel: 'basic', pestDate: null, storage: {}, pending: {}, compostDate: null, compostN: 0, lastSettleAt: 0, wageDate: null, hireDate: null, hireTaken: [] },   // 🌾 밭 { 단계(1 텃밭 · 2 넓은 밭 · 3 대농장, js/farm-stage.js) · 고른 씨앗(basic|wheat|corn|grape) · 해충·꿀 정산일(YYYY-MM-DD) · 🧺창고 내용물(일꾼 수확분) · 🌱퇴비통 오늘 만든 비료 }
@@ -2203,6 +2227,9 @@ export const Input = {
   genNickname(animal) { return genNickname(animal); },
   setNickname(name, source) { return setNickname(name, source); },
   createCharacterPreview(canvas) { return makeCharacterPreview(canvas); }, // 선택화면 3D 프리뷰
+  // 🎀 꾸미기 상점 — 패널 내용·프리뷰는 게임 쪽이 그린다(show/hide 만 UI 가 한다)
+  openCosMenu(canvas) { openCosPreview(canvas); },
+  closeCosMenu() { closeCosPreview(); },
   hasCharacter() { return !!gameState.character; },
   getCharacter() { return gameState.character; },        // 🐾 바꾸기 모달에서 현재 캐릭터 미리 선택용
   // change=true 면 플레이 도중 교체(진행 상황은 그대로) — 첫 선택과 이벤트를 구분해 기록
@@ -2687,6 +2714,19 @@ export async function enterGame() {
     window.__orchardCalls = () => __perf().calls;   // 블룸 컴포저 탓에 renderer.info 를 그냥 읽으면 마지막 패스(1)만 보인다
     window.__workSteps = (n = 1) => { const t = {}; workerSteps(n, t); return t; };   // 🧑‍🌾 오프라인 스텝 강제 실행(검수용 — 접속 중 60초 스텝과 같은 함수)
     window.__workers = () => workerObjs.map(o => ({ name: o.rec.name, job: o.rec.job, works: o.rec.works, phase: o.phase, t: +o.t.toFixed(2), task: o.task?.type || null, vis: o.group.visible, x: +o.group.position.x.toFixed(1), z: +o.group.position.z.toFixed(1) }));   // 🧑‍🌾 일꾼 상태 열람(검수용)
+    // 🐾 펫 검수용 — 성장 단계 실루엣 비교(works 를 바꾸고 respawn)·맡기기 강제·상태 열람
+    window.__pet = {
+      give: (kind = 'leaf') => { gameState.pet = { kind, name: '', works: 0, restUntil: 0 }; respawnPet(); return gameState.pet; },
+      works: (n) => { if (gameState.pet) gameState.pet.works = n; respawnPet(); return stageOf(gameState.pet?.works || 0); },
+      respawn: respawnPet,
+      cmd: commandPet,
+      state: () => gameState.pet && { ...gameState.pet, stage: stageOf(gameState.pet.works), rest: Math.max(0, gameState.pet.restUntil - Date.now()) },
+      job: () => petJob && { done: petJob.done, task: petJob.task?.type || null, i: petJob.task?.i ?? null },
+      obj: () => pet3d && { vis: pet3d.visible, x: +pet3d.position.x.toFixed(2), z: +pet3d.position.z.toFixed(2) },
+      box: () => pet3d && { pet: new THREE.Box3().setFromObject(pet3d).max.y, player: new THREE.Box3().setFromObject(player).max.y },   // 무릎 높이 실측
+      world: () => petWorld(),
+      remove: () => { if (pet3d) { scene.remove(pet3d); pet3d = null; } gameState.pet = null; return null; },
+    };
     // 📜 의뢰 패널 검수용 — __gs().npcs 를 손으로 고친 뒤 이걸 부르면 패널·말풍선·지도가 같이 갱신된다
     window.__questPanel = () => { refreshCollectQuests(); npcObjs.forEach(updateNPCGlyph); refreshQuestPanel(); return npcObjs.map(questView).filter(Boolean); };
     window.__solids = () => colliders.map(c => c.r != null ? ['c', +c.x.toFixed(1), +c.z.toFixed(1), c.r] : ['b', +c.x1.toFixed(1), +c.z1.toFixed(1), +c.x2.toFixed(1), +c.z2.toFixed(1)]);   // 🚧 충돌체 목록 — 재빌드 뒤 고아 벽이 남았는지 세는 용(밭 증축 검수)
@@ -2752,6 +2792,7 @@ export async function enterGame() {
   resolveFarmPests();                   // 🐛 고급 작물 해충 — 하루 1회, 비 온 다음 날 확률↑(서버 불필요)
   spawnWorkers();                       // 🧑‍🌾 고용한 일꾼 3D — 세이브 복원 뒤(밭 단계가 정해진 다음)
   catchUpWorkers();                     // 🧑‍🌾 오프라인 정산 — 월급 + 60초 스텝(최대 12시간) + 요약 모달
+  respawnPet();                         // 🐾 펫 3D — 세이브 복원 뒤. ⚠️ 여기에 정산은 없다(펫은 오프라인에 아무것도 안 한다)
   if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
     const s = SEVERE_INFO[SEVERE_TOMORROW];
     setTimeout(() => ui.toast?.(`${s.ico} 내일 ${s.name} 예보! 오늘 수확하거나 작업대에서 🛡️ 덮개를 준비하세요`, 3600), 3000);
@@ -2773,6 +2814,18 @@ function applySave(saved) {
   }
   if (!saved || typeof saved !== 'object') return;   // 빈 세이브를 덮어쓰지 않는다
   if (saved.inventory) Object.assign(gameState.inventory, saved.inventory);
+  // 🎀 꾸미기 — 낯선 id·안 산 것의 장착을 걸러 낸다(세이브는 클라이언트 권위다)
+  if (saved.cosmetics) gameState.cosmetics = sanitizeCosmetics(saved.cosmetics);
+  // 🐾 펫 — saved 가 왔다는 것 자체가 읽기 성공이라는 뜻이므로, 필드가 없으면 신규가 맞다.
+  //    (읽기 실패를 신규로 오인해 마을을 덮어쓴 사고는 js/save-guard.js 가 앞단에서 막는다)
+  if (saved.pet && typeof saved.pet === 'object' && typeof saved.pet.kind === 'string') {
+    gameState.pet = {
+      kind: saved.pet.kind,
+      name: typeof saved.pet.name === 'string' ? saved.pet.name : '',
+      works: Number.isFinite(saved.pet.works) ? Math.max(0, Math.floor(saved.pet.works)) : 0,
+      restUntil: Number.isFinite(saved.pet.restUntil) ? saved.pet.restUntil : 0,
+    };
+  }
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
@@ -3109,6 +3162,7 @@ function buildWorld() {
       ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 4.6 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
+      || dist2D({ x, z }, SHOP_POS) < 4   // 🏪 꾸미기 가게 — 반치수 2.56 + 걸어다닐 틈. 없으면 나무가 가게 안에 박힌다
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
@@ -3144,6 +3198,7 @@ function buildWorld() {
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
+    if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
     grassBuckets[i % 3].push({ x, y: 0.35, z, ph: Math.random() * Math.PI * 2 });
   }
   grassBuckets.forEach((items, k) => {
@@ -3616,7 +3671,20 @@ export function buildAnimalMesh(id) {
     g.add(armR.pivot, armL.pivot);
   }
 
-  return { group: g, tail, armR, armL };
+  // ── 🎀 꾸미기 앵커 ── (스펙 §3)
+  //  ⚠️ 장식을 여기서 만들지 않는다. **빈 Group 만** 달아 두고 js/cosmetics 가 자식을 갈아끼운다.
+  //     그래야 장착을 바꿀 때 캐릭터를 통째로 다시 만들지 않는다.
+  const kk = { R, HR, HY, bs, bodyY, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
+  const anchors = {};
+  for (const [name, p] of Object.entries({
+    head: headAnchor(HY), neck: neckAnchor(HR, HY),
+    back: backAnchor(bs, R, bodyY), side: kk.side,
+  })) {
+    const a = new THREE.Group();
+    a.position.set(p.x, p.y, p.z);
+    g.add(a); anchors[name] = a;
+  }
+  return { group: g, tail, armR, armL, anchors, k: kk };
 }
 
 // 선택한 동물로 캐릭터 외형 적용 — 체형이 다르므로 몸체를 통째로 교체
@@ -3630,13 +3698,76 @@ function applyCharacter(id) {
   toolQRest = (a.extras || []).includes('wings') ? TOOL_QREST_WING : TOOL_QREST;
   armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
+  charAnchors = built.anchors; charK = built.k;
+  applyCosmetics(gameState.cosmetics);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
   curAnimal = a; updateStowPose();        // 등 수납 위치도 몸 크기에 맞춰 갱신
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
 }
 
+// ── 🎀 장착 반영 — 앵커의 **자식만** 교체한다 ──
+//   ⚠️ 공유 재질/지오메트리를 dispose 하지 않는다. 다른 곳에서 쓰던 것까지 검게 만든다(§14).
+//      인스턴스만 버린다.
+let charAnchors = null, charK = null;
+function applyCosmetics(cos) {
+  if (!charAnchors) return;
+  for (const a of Object.values(charAnchors)) a.clear();
+  for (const it of equippedItems(cos)) {
+    if (it.slot === 'trail') continue;                 // 발자국은 월드 이펙트라 앵커가 아니다
+    const m = buildCosmetic(THREE, it.id, charK);
+    if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
+  }
+}
+
+// ── 👣 발자국 ── (스펙 §4-4)
+//  ⚠️ 매번 생성·파괴하면 드로우콜과 GC 가 튄다. 풀에서 재사용한다.
+//  ⚠️ 실내·클로즈업·미니게임에서는 끈다 — 바닥이 없거나 카메라가 붙는다.
+const trailPool = [], trailLive = [];
+const trailLastPos = new THREE.Vector3();
+let trailItem = null, trailSide = 1;
+
+function clearTrail() {
+  for (const e of trailLive) { scene.remove(e.mesh); trailPool.push(e.mesh); }
+  trailLive.length = 0;
+}
+
+function updateTrail(dt) {
+  const id = gameState.cosmetics.equipped.trail;
+  if (id !== trailItem) { clearTrail(); trailPool.length = 0; trailItem = id; }
+  const off = indoor || atCafe || atMuseum || atMine;
+  if (!id || off) { if (trailLive.length) clearTrail(); return; }
+
+  if (player.position.distanceTo(trailLastPos) >= TRAIL_STEP) {
+    trailLastPos.copy(player.position);
+    trailSide = -trailSide;                               // 좌우 번갈아 — 한 줄이면 점선이다
+    const m = trailPool.pop() || buildTrailMark(THREE, id, 1, gameState.character);
+    m.position.set(player.position.x + trailSide * TRAIL_SIDE, 0, player.position.z);
+    m.rotation.y = trailSide * 0.2;
+    scene.add(m); trailLive.push({ mesh: m, t: 0 });
+    while (trailLive.length > TRAIL_CAP) {
+      const old = trailLive.shift(); scene.remove(old.mesh); trailPool.push(old.mesh);
+    }
+  }
+  for (let i = trailLive.length - 1; i >= 0; i--) {
+    const e = trailLive[i]; e.t += dt;
+    const k = Math.max(0, 1 - e.t / TRAIL_FADE);
+    e.mesh.traverse(o => { if (o.material) o.material.opacity = k; });
+    if (k <= 0) { scene.remove(e.mesh); trailPool.push(e.mesh); trailLive.splice(i, 1); }
+  }
+}
+
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
-function buildCharacterMesh(id) { return buildAnimalMesh(id).group; }
+//   cos 는 **가상 장착**을 받기 위한 인자다(🎀 꾸미기 상점의 "입어보기"). 기본값은 실제 장착이라
+//   캐릭터 선택 화면은 예전과 똑같이 동작한다.
+function buildCharacterMesh(id, cos = gameState.cosmetics) {
+  const built = buildAnimalMesh(id);
+  for (const it of equippedItems(cos)) {
+    if (it.slot === 'trail') continue;
+    const m = buildCosmetic(THREE, it.id, built.k);
+    if (m) built.anchors[it.anchor || it.slot].add(m);
+  }
+  return built.group;
+}
 
 // ── 선택 화면 3D 프리뷰(드래그로 회전 + 살짝 자동 스핀) ──
 function makeCharacterPreview(canvas) {
@@ -3650,8 +3781,52 @@ function makeCharacterPreview(canvas) {
   const rim = new THREE.DirectionalLight(0xbfe8ff, 0.45); rim.position.set(-3, 2, -2); sc.add(rim);
   const pivot = new THREE.Group(); sc.add(pivot);
   let mesh = null, rotY = 0.5, rotX = 0, dragging = false, lx = 0, ly = 0, autoSpin = true, raf = 0;
+  let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
+  let petStage = null;                               // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  function setAnimal(id) { if (mesh) pivot.remove(mesh); mesh = buildCharacterMesh(id); pivot.add(mesh); autoSpin = true; }
+  //  ⚠️ **disposeTree 를 부르지 않는다.** 꾸미기 재질·plushMat 은 월드의 내 캐릭터와 **공유**라
+  //     여기서 버리면 플레이어가 입고 있는 것까지 검게 된다(§14). 인스턴스만 떼어 낸다.
+  //     🐾 펫 재질도 같다 — 월드의 펫과 공유라 여기서 버리면 따라다니는 펫이 검게 된다.
+  function rebuild() {
+    const cos = cosView || gameState.cosmetics;
+    if (mesh) pivot.remove(mesh);
+    if (marks) { pivot.remove(marks); marks = null; }
+    if (petStage !== null) {
+      //  🐾 펫은 무릎 높이라(캐릭터의 1/3) 캐릭터 프레임에 그냥 놓으면 바닥에 점처럼 남는다.
+      //     조형 수치를 여기 베껴 두면 js/pet/art.js 가 바뀔 때 같이 틀어지니 **실측 바운딩**으로
+      //     키를 맞추고(1.4) 카메라가 보는 높이(0.95)에 중심을 둔다.
+      mesh = spawnPet(THREE, PET_KIND, petStage);
+      if (!mesh) return;
+      const b = new THREE.Box3().setFromObject(mesh), sz = b.getSize(new THREE.Vector3());
+      const k = 1.4 / Math.max(0.2, sz.y);
+      mesh.scale.setScalar(k);
+      mesh.position.y = 0.95 - (b.min.y + sz.y / 2) * k;
+      pivot.add(mesh);
+      return;
+    }
+    mesh = buildCharacterMesh(animal, cos); pivot.add(mesh);
+    const tid = cos?.equipped?.trail;      // 👣 발자국은 앵커가 아니라 월드 이펙트 — 발밑에 두 개만 깔아 보여 준다
+    if (tid) {
+      marks = new THREE.Group();
+      for (const s of [-1, 1]) {
+        const m = buildTrailMark(THREE, tid, 1, animal);
+        m.position.set(s * 0.26, 0.012, s * 0.20 + 0.1); m.rotation.y = s * 0.2;
+        marks.add(m);
+      }
+      pivot.add(marks);
+    }
+  }
+  function setAnimal(id) { animal = id; rebuild(); autoSpin = true; }
+  /** 🎀 가상 장착으로 다시 그린다(회전·자동스핀은 그대로). cos 없으면 실제 장착으로 되돌린다 */
+  function refresh(cos = null) { cosView = cos; if (animal) rebuild(); }
+  /** 🐾 펫 탭 — 단계(0·1·2)를 주면 펫을, null 이면 캐릭터를 본다 */
+  function showPet(stage = null) {
+    const next = stage === null ? null : (stage | 0);
+    if (next === petStage) return;                    // 같은 단계면 다시 짓지 않는다(탭 안 재그리기마다 호출된다)
+    petStage = next; if (animal) rebuild();
+  }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }   // 패널을 닫으면 두 번째 렌더러를 세운다
+  function start() { if (!raf) loop(); }
   function resize() {
     const w = canvas.clientWidth || 220, h = canvas.clientHeight || 240;
     rend.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
@@ -3663,7 +3838,7 @@ function makeCharacterPreview(canvas) {
   const end = () => { dragging = false; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   resize(); loop();
-  return { setAnimal, resize };
+  return { setAnimal, resize, refresh, showPet, stop, start };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
@@ -4301,11 +4476,13 @@ function buildEnvironment() {
     if (dist2D({ x, z }, COOP) < 2.8) continue;       // 🐔 닭장 터 제외
     if (dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 0.5) continue;   // 🛶 나루터 연못 위 제외
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
+    if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;                  // 🏪 꾸미기 가게 터 제외(반치수 2.56 + 여유)
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
   buildGlade();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
   spawnCafeGate();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
   buildCafeHall();   // ☕ 카페 홀(별도 공간)
   buildForest();     // 🍄 채집 숲(남서쪽) — 줍기
@@ -5513,6 +5690,141 @@ function spawnCafeGate() {
   solidBox(CAFE_GATE.x + 2.2, CAFE_GATE.z + 0.1, CAFE_GATE.x + 3.9, CAFE_GATE.z + 1.8);   // 석재 화단
   solidCircle(CAFE_GATE.x - 2.6, CAFE_GATE.z + 1.25, 0.34);                                // 문 왼쪽 화분
   solidCircle(CAFE_GATE.x - 1.32, CAFE_GATE.z + 1.58, 0.3);                                // 세움 칠판
+}
+
+// 🏪 꾸미기 가게 — 조형은 js/shop/building.js(시뮬 검수값). 여기는 배치·충돌만 한다.
+//   ⚠️ 정면이 +Z 라 **회전하지 않는다** — camOffset(0,14,16) 고정이라 시선이 늘 −Z 고,
+//      돌리는 순간 플레이어에게 뒤통수나 옆구리를 보이게 된다(카페·안개숲 입구와 같은 규칙).
+function spawnCosmeticShop() {
+  const shopObj = buildShop(THREE, buildAnimalHead);
+  shopObj.group.position.set(SHOP_POS.x, 0, SHOP_POS.z);
+  scene.add(shopObj.group);
+  cosmeticShop = shopObj;
+  solidCircle(SHOP_POS.x, SHOP_POS.z, 2.4);                          // 🚧 통과 못 함
+  obstacles.push({ x: SHOP_POS.x, z: SHOP_POS.z, r: 2.4 });          // 밭 금지 + 주민이 가게를 뚫고 배회하지 않게
+}
+
+// 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
+const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '👣 발자국'], ['pet', '🐾 펫']];
+let cosTab = 'head';
+
+// ── 🪞 입어보기(미리보기 전용) ───────────────────────────────
+//  ▶ 줄을 누르면 **안 사고** 입어만 본다. 사는 건 줄 끝의 버튼이다.
+//  ▶ 패널을 닫으면 버린다 — 실제 장착(gameState.cosmetics)은 한 글자도 안 건드린다.
+//  ▶ 프리뷰는 두 번째 WebGLRenderer 다. 컨텍스트를 아끼려고 **한 번 만들고 재사용**하되,
+//    닫을 땐 rAF 를 세운다(stop) — 안 세우면 패널 뒤에서 계속 그린다.
+let cosPreview = null, cosTryOn = null;
+const cosView = () => cosTryOn || gameState.cosmetics;
+
+function tryOnCos(it) {
+  const cur = cosView();
+  const on = cur.equipped[it.slot] === it.id;
+  cosTryOn = {                                    // 안 산 것도 입어 볼 수 있게 owned 에 얹는다(미리보기 한정)
+    owned: [...new Set([...gameState.cosmetics.owned, it.id])],
+    equipped: { ...cur.equipped, [it.slot]: on ? null : it.id },
+  };
+  cosPreview?.refresh(cosTryOn);
+  drawCosMenu();
+}
+
+function openCosPreview(canvas) {
+  cosTryOn = null;
+  try {
+    if (!cosPreview) cosPreview = makeCharacterPreview(canvas);
+    cosPreview.start();
+    cosPreview.resize();
+    cosPreview.setAnimal(gameState.character || ANIMALS[0].id);
+    cosPreview.refresh(null);
+  } catch (err) { console.error('[cos-preview]', err); cosPreview = null; }
+  drawCosMenu();
+}
+
+function closeCosPreview() {
+  cosTryOn = null;                 // 입어보던 건 버린다 — 실제로 장착한 모습으로 돌아간다
+  cosPreview?.refresh(null);
+  cosPreview?.stop();
+}
+
+// 🐾 펫 탭 — 파는 건 한 마리뿐이라 목록이 아니라 한 줄이다.
+//   샀으면 그 줄이 **성장 진행**으로 바뀐다(단계는 외형만 바꾼다 — js/pet/rules.js 머리말).
+function drawPetTab(box) {
+  if (!gameState.pet) {
+    const row = document.createElement('div');
+    row.className = 'sh-row';
+    //  ⚠️ 계획서는 innerHTML 로 꽂았지만, 그러면 한국어가 `<span>…</span>` 안에 갇혀
+    //     사전 키(= 화면에 보이는 한국어 그대로)와 어긋난다. 노드로 만들어 넣는다.
+    const name = document.createElement('span');
+    name.textContent = '🐾 함께 다녀요';
+    row.appendChild(name);
+    const btn = document.createElement('button');
+    btn.textContent = `${PET_PRICE.toLocaleString()}🪙`;
+    btn.onclick = () => {
+      if (gameState.inventory.coins < PET_PRICE) { ui.toast?.('코인이 모자라요', 2000); return; }
+      gameState.inventory.coins -= PET_PRICE;
+      gameState.pet = emptyPet(PET_KIND);          // js/pet/art.js 가 내보내는 확정 종
+      trackEvent('pet_buy', { pet_kind: PET_KIND, price_coins: PET_PRICE });
+      respawnPet(); drawCosMenu(); requestSave();
+    };
+    row.appendChild(btn); box.appendChild(row);
+    return;
+  }
+  const left = toNextStage(gameState.pet.works);
+  const row = document.createElement('div');
+  row.className = 'sh-row';
+  const name = document.createElement('span');
+  name.textContent = `🐾 ${stageOf(gameState.pet.works) + 1}단계`;
+  const prog = document.createElement('span');
+  prog.textContent = left === null ? '다 자랐어요' : `다음까지 ${left}번`;
+  row.append(name, prog);
+  box.appendChild(row);
+}
+
+function drawCosMenu() {
+  document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
+  const tabs = document.getElementById('cos-tabs');
+  tabs.innerHTML = '';
+  for (const [id, label] of COS_TABS) {
+    const b = document.createElement('button');
+    b.className = 'sh-tab' + (cosTab === id ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => { cosTab = id; drawCosMenu(); };
+    tabs.appendChild(b);
+  }
+  const box = document.getElementById('cos-items');
+  box.innerHTML = '';
+  //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 지금 단계의 펫을, 나머지 탭이면 내 캐릭터를 본다
+  cosPreview?.showPet(cosTab === 'pet' ? stageOf(gameState.pet?.works || 0) : null);
+  if (cosTab === 'pet') { drawPetTab(box); return; }
+  for (const it of itemsOf(cosTab)) {
+    const owned = gameState.cosmetics.owned.includes(it.id);
+    const on = gameState.cosmetics.equipped[it.slot] === it.id;
+    const row = document.createElement('div');
+    row.className = 'sh-row' + (cosView().equipped[it.slot] === it.id ? ' try' : '');
+    row.innerHTML = `<span>${it.ico} ${it.name}</span>`;
+    row.onclick = () => tryOnCos(it);                  // 🪞 줄 = 입어보기(구매 아님)
+    const btn = document.createElement('button');
+    btn.textContent = on ? '벗기' : owned ? '착용' : `${it.price.coins.toLocaleString()}🪙`;
+    btn.onclick = (ev) => {
+      ev.stopPropagation();                            // 버튼은 사고/입고, 줄은 입어보기 — 겹치지 않게
+      if (on) gameState.cosmetics = unequipCos(gameState.cosmetics, it.slot);
+      else if (owned) gameState.cosmetics = equipCos(gameState.cosmetics, it.id);
+      else {
+        const r = buyCos(gameState.cosmetics, gameState.inventory.coins, it.id);
+        if (!r.bought) { ui.toast?.('코인이 모자라요', 2000); return; }
+        gameState.cosmetics = equipCos(r.cos, it.id);      // 사면 바로 입힌다
+        gameState.inventory.coins = r.coins;
+        trackEvent('cosmetic_buy', { item_id: it.id, slot: it.slot, price_coins: it.price.coins, coins_after: r.coins });
+      }
+      trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: on ? 'off' : 'on' });
+      applyCosmetics(gameState.cosmetics);
+      cosTryOn = null;                                 // 실제 장착이 바뀌었으니 입어보기는 버린다
+      cosPreview?.refresh(null);
+      drawCosMenu();
+      requestSave();
+    };
+    row.appendChild(btn);
+    box.appendChild(row);
+  }
 }
 
 // ── 카페 홀(별도 공간) — 넓은 실내. 카운터 + 테이블 4세트 + 주문판 ──
@@ -11553,6 +11865,7 @@ function updateDoorInteract() {
   nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
   nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
+  nearCosShop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && dist2D(SHOP_DOOR, player.position) < 2.8; // 🏪 꾸미기 가게(마을 서쪽)
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
   //   가장 가까운 한 채를 잡는다(몸집이 커서 반경 2.6). 텃밭에선 밭일이 먼저다(허수아비와 같은 규칙).
   const stationZone = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop)
@@ -11569,6 +11882,10 @@ function updateDoorInteract() {
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
+  }
+  else if (nearCosShop) {   // ⚠️ 안내는 프롬프트 줄에만 — 월드 라벨로 띄우면 다른 라벨을 가린다
+    prompt = '🎀 꾸미기 가게';
+    firstHintBanner('cosShop', '🎀', '꾸미기 가게', '모자·목도리·가방·발자국으로 내 캐릭터를 꾸며요');
   }
   if (!prompt) {   // 🪏 반쯤 판 밭 앞: 남은 유예를 프롬프트 줄로(모바일 규칙 — 안내는 컨텍스트 슬롯에만)
     const dp = plots.find(p => p.digAt && dist2D(p.group.position, player.position) < 1.6);
@@ -11600,6 +11917,9 @@ function updateDoorInteract() {
     else { nearDoor = 'outdoor'; prompt = `${def.ico} ${def.name} · 옮기기`; }
     const ring = ensureNearRing(); ring.position.set(outdoorNear.mesh.position.x, 0.04, outdoorNear.mesh.position.z); ring.visible = true;
   }
+  // 🐾 맡기기 — 밭 근처 + 쿨다운이 끝났을 때만. 맨 마지막 순위다(시설·밭일·옮기기에 전부 양보).
+  //   ⚠️ 안내는 **프롬프트 줄에만** — 월드 라벨로 띄우면 다른 라벨을 가린다(🎀가게와 같은 규칙).
+  if (!prompt && !farmActionFirst() && petChoresNear()) { nearDoor = 'pet'; prompt = '🐾 맡기기'; }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 🪜 양방향 선택 UI(6단계 2층 전용) — door-prompt 와 같은 중복 갱신 방지 패턴.
   //   opts 가 바뀔 때만 버튼을 다시 그린다(매 프레임 onclick 재바인딩 낭비 방지).
@@ -11949,8 +12269,11 @@ function animate() {
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
   updateWorkers(dt);        // 🧑‍🌾 일꾼 — 밭 안이면 걸어서, 밖이면 60초 스텝으로
+  updatePet(dt, t);         // 🐾 펫 — 따라다니기 / 맡긴 잡일 연쇄(접속 중에만 — 오프라인 정산 없음)
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
+  updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
+  if (cosmeticShop) updateShopOwner(cosmeticShop, t);   // 🏪 가게 주인 배회(가게 안을 못 벗어난다)
   updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
@@ -13087,6 +13410,7 @@ function handleAction() {
   if (nearDoor === 'farmbench') return ui.openCook?.('out');   // 🔧 자재 작업대 → 제작 메뉴(🌷야외 탭 = 밭 시설)
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
+  if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
   if (nearDoor === 'mineexit') return exitMine();
   if (nearDoor === 'orchard') return enterOrchard();
@@ -13149,6 +13473,11 @@ function handleAction() {
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
+  if (nearCosShop) {                       // 🏪 꾸미기 가게 → 🎀 꾸미기 패널
+    trackEvent('shop_enter', { from: 'walk' });
+    trackEvent('shop_open', { tab: 'cosmetics' });
+    return ui.openCosShop?.();
+  }
   // 🍄 채집 — 도구가 필요 없는 "줍기". 단, 도끼를 들고 더 가까운 나무가 있으면 벌목에 양보
   const fg = forageTarget();
   if (fg) {
@@ -14089,7 +14418,7 @@ function farmActionFirst() {
   if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
-  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop) return false;
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
   if (forageTarget() || traceTarget()) return false;
@@ -14573,6 +14902,121 @@ function updateWorkers(dt) {
         o.plot = null; o.task = null; o.phase = 'idle'; o.t = 0.35;
       }
     }
+  }
+}
+
+// ── 🐾 펫 — 따라다니기 · 맡기기 ──────────────────────────────
+//  🐾 맡기기 — 반경 안 잡일을 최대 CHAIN_MAX 칸. 끝나면 따라오기로 돌아간다.
+//  ⚠️ 오프라인 정산이 **없다**. 펫은 지시받아야 움직이고, updatePet 은 접속 중에만 돈다 —
+//     그게 🧑‍🌾일꾼(접속을 끊어도 12시간 일한다)과 갈라서는 경계다(js/pet/rules.js 머리말).
+let pet3d = null, petJob = null;
+
+function respawnPet() {
+  if (pet3d) { scene.remove(pet3d); pet3d = null; }
+  if (!gameState.pet) return;
+  pet3d = spawnPet(THREE, gameState.pet.kind, stageOf(gameState.pet.works));
+  if (!pet3d) return;                                   // 모르는 종이면 아무것도 안 세운다
+  pet3d.position.set(player.position.x, 0, player.position.z);
+  scene.add(pet3d);
+}
+
+// 🐾 프롬프트 조건 — 반경 안에 **실제로 할 잡일이 있을 때만** 띄운다.
+//   없을 때도 띄우면, 눌러 봐야 0칸으로 끝나면서 20초 쿨다운만 먹는다(한 일이 없는데 쉰다).
+//   ⚠️ 먼저 좌표만으로 거른다 — petWorld() 는 밭 121칸을 매 프레임 새로 만든다.
+function petChoresNear() {
+  if (!pet3d || !pet3d.visible || petJob || !canCommand(gameState.pet, Date.now())) return false;
+  const r2 = PET_RADIUS * PET_RADIUS, c = player.position;
+  let near = false;
+  for (const p of plots) { const dx = p.x - c.x, dz = p.z - c.z; if (dx * dx + dz * dz <= r2) { near = true; break; } }
+  return near && !!pickPetTask(petWorld(), c, PET_RADIUS);
+}
+
+function commandPet() {
+  if (!canCommand(gameState.pet, Date.now())) {
+    spawnFloatText(player.position.x, 1.6, player.position.z, '조금 쉬고 있어요');
+    return;
+  }
+  petJob = { done: 0, task: null, before: stageOf(gameState.pet.works) };
+}
+
+function finishPetJob() {
+  gameState.pet = afterWork(gameState.pet, petJob.done, Date.now());
+  trackEvent('pet_command', {
+    pet_kind: gameState.pet.kind, stage: stageOf(gameState.pet.works),
+    task: 'chores', plots_done: petJob.done,
+  });
+  const after = stageOf(gameState.pet.works);
+  if (after > petJob.before) {
+    trackEvent('pet_stage_up', { pet_kind: gameState.pet.kind, stage: after, works: gameState.pet.works });
+    respawnPet();                      // 실루엣이 바뀐다
+  }
+  petJob = null;
+  requestSave();
+}
+
+function updatePet(dt, t) {
+  if (!pet3d) return;
+  // 👣 발자국과 같은 규칙 — 바닥이 없거나 카메라가 붙는 공간에선 끈다.
+  //    다시 보일 땐 플레이어 발밑에서 시작한다(따라오느라 벽을 뚫지 않게).
+  const off = indoor || atCafe || atMuseum || atMine;
+  if (off) {
+    if (pet3d.visible) { pet3d.visible = false; petJob = null; }
+    return;
+  }
+  if (!pet3d.visible) { pet3d.visible = true; pet3d.position.set(player.position.x, 0, player.position.z); }
+  // 🚪 공간을 옮겼거나 플레이어가 멀리 달아났다 — 발밑으로 붙고, 하던 일은 **한 만큼 쳐서** 끝낸다
+  //    (그냥 버리면 이미 물을 준 칸이 works 에도 쿨다운에도 안 남는다)
+  if (snapIfFar(pet3d, player.position) && petJob) finishPetJob();
+  updatePetAnim(pet3d, t);
+  if (!petJob) { followPlayer(pet3d, player.position, dt); return; }
+  if (!petJob.task) {
+    if (petJob.done >= CHAIN_MAX) return finishPetJob();
+    petJob.task = pickPetTask(petWorld(), player.position, PET_RADIUS);
+    if (!petJob.task) return finishPetJob();
+  }
+  const p = plots[petJob.task.i];
+  if (!p) { petJob.task = null; return; }              // 밭이 사라졌으면 다시 고른다
+  if (walkTo(pet3d, p.x, p.z, dt)) {
+    if (petApply(petJob.task)) { petJob.done++; spawnDust(p.x, p.z, 4); }
+    petJob.task = null;
+  }
+}
+
+// 🐾 펫이 보는 밭 — workerWorld 는 좌표를 안 담는다(일꾼은 밭 전체를 보니까).
+//    펫은 반경 판정이 필요하므로 x·z 를 얹는다.
+function petWorld() {
+  const now = clock.elapsedTime;
+  return plots.map((p, i) => ({
+    i, x: p.x, z: p.z,
+    state: p.state === 'growing' ? 'growing' : p.state === 'mature' ? 'mature' : 'tilled',
+    weed: !!p.weed, pest: !!p.pest,
+    wet: now < (p.wetUntil || 0),
+    wiltAt: (p.needSince || now) + wiltTimeFor(p.cropType, WILT_TIME),
+  }));
+}
+
+// 🐾 펫의 작업 적용 — **물·잡초·해충 셋만**. 수확·파종은 일부러 없다(스펙 §7-1).
+//    ⚠️ workerApply(rec, task, tally) 를 그대로 못 쓴다 — 일꾼 레코드를 받고 수확·운반까지 안다.
+//       물주기 본문은 workerApply 의 case 'water' 를 **그대로 옮긴다**(벌통·우물 보정 포함).
+//       그래야 펫이 준 물과 일꾼이 준 물이 다르게 자라는 일이 없다.
+function petApply(task) {
+  const p = plots[task.i];
+  if (!p) return false;
+  switch (task.type) {
+    case 'water': {
+      if (p.state !== 'growing') return false;
+      const recs = farmBuildingRecs();
+      const hive = inRadiusOf(recs, 'beehive', p.x, p.z), well = inRadiusOf(recs, 'well', p.x, p.z);
+      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert) * (hive ? HIVE_GROWTH_MUL : 1));
+      p.wetUntil = clock.elapsedTime + WET_TIME * (well ? WELL_WET_MUL : 1);
+      p.watered = true; p.needSince = 0;
+      if (p.growth < MATURE && weedRoll(p.cropType, Math.random())) p.weed = true;
+      refreshCropStage(p);
+      return true;
+    }
+    case 'weed': if (!p.weed) return false; p.weed = false; syncFarmSoil(true); return true;
+    case 'pest': if (!p.pest) return false; p.pest = false; syncFarmCrops(true); return true;
+    default: return false;
   }
 }
 

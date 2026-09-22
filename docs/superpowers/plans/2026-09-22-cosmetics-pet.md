@@ -22,6 +22,11 @@
 - 새 세이브 필드는 `gameState` 선언부에 기본값을 두고, 로드 시 `if (saved.X) ...` 로 **선택 병합**한다(기존 패턴).
 - **알림은 두 갈래다** — 패널 안에서는 `ui.toast?.(문구, ms)`, 월드에서는
   `spawnFloatText(x, y, z, 문구)`(3D 스프라이트라 패널에 가린다). 둘 다 `js/game.js` 에 이미 있다.
+- **저장은 `requestSave()` 다 — `saveGame(gameState)` 를 직접 부르지 않는다.**
+  `saveGame` 은 `supabase-client.js` 것이고, `js/game.js` 안에서 직접 부르는 곳은
+  `export async function requestSave() { return await saveGame(getGameState()); }`(`js/game.js:2961`) 한 줄뿐이다 — 나머지 37곳은 전부 `requestSave()` 를 쓴다.
+  `getGameState()` 를 건너뛰면 ① `orchard.trees` 의 런타임 전용 `hp` 가 그대로 저장되고
+  (그 함수 주석이 "저장용 스냅샷에서만 걸러낸다"고 못 박았다) ② 저장 직전에만 찍는 `gameState.timeOfDay` 동기화가 빠진다.
 - 커밋 메시지는 `<type>: <설명>` (feat/fix/refactor/test/docs).
 
 ---
@@ -68,7 +73,7 @@
   - `itemsOf(slot: string): Item[]`
   - `findItem(id: string): Item | null`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/cosmetics-catalog.test.mjs
@@ -126,12 +131,12 @@ test('findItem: 없는 id 는 null', () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/cosmetics/catalog.js'`
 
-- [ ] **Step 3: 카탈로그를 쓴다**
+- [x] **Step 3: 카탈로그를 쓴다**
 
 ```js
 // js/cosmetics/catalog.js
@@ -188,12 +193,12 @@ export function findItem(id) {
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 8 tests
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/catalog.js tests/cosmetics-catalog.test.mjs
@@ -218,7 +223,7 @@ git commit -m "feat: 🎀 꾸미기 카탈로그 18종 — 슬롯·가격·earSa
   - `equippedItems(cos): Item[]`
   - `sanitize(raw): cos`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/cosmetics-equip.test.mjs
@@ -307,12 +312,12 @@ test('sanitize: null·잘못된 타입이면 빈 상태', () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/cosmetics/equip.js'`
 
-- [ ] **Step 3: 규칙을 쓴다**
+- [x] **Step 3: 규칙을 쓴다**
 
 ```js
 // js/cosmetics/equip.js
@@ -386,12 +391,12 @@ export function sanitize(raw) {
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 누적 18개
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/equip.js tests/cosmetics-equip.test.mjs
@@ -414,7 +419,7 @@ git commit -m "feat: 🎀 꾸미기 장착 규칙 — 구매·장착·세이브 
   - `ringR(HR, h): number` · `domeTheta(HR, rk): number`
   - `sideAnchor(bs, R, bodyY)` · `backAnchor(bs, R, bodyY)` · `headAnchor(HY)` · `neckAnchor(HR, HY)` · `neckR(HR)`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/cosmetics-anchors.test.mjs
@@ -497,12 +502,12 @@ test('체형 7종 전부에서 옆구리 앵커가 몸 밖이다', () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/cosmetics/anchors.js'`
 
-- [ ] **Step 3: 계산을 쓴다**
+- [x] **Step 3: 계산을 쓴다**
 
 ```js
 // js/cosmetics/anchors.js
@@ -567,12 +572,12 @@ export function neckAnchor(HR, HY) { return { x: 0, y: HY - HR * 0.55, z: 0 }; }
 export function neckR(HR) { return HR * 0.92; }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 누적 28개
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/anchors.js tests/cosmetics-anchors.test.mjs
@@ -596,7 +601,7 @@ git commit -m "feat: 🎀 앵커 계산 — 타원체 표면점·머리 둘레·
 
 **왜 `THREE` 를 인자로 받는가:** 이 모듈은 `sims/*.html`(CDN import map)과 게임 번들 양쪽에서 쓰인다. 각자 자기 THREE 를 넘기면 번들이 갈리지 않는다.
 
-- [ ] **Step 1: `js/cosmetics/art.js` 를 만든다**
+- [x] **Step 1: `js/cosmetics/art.js` 를 만든다**
 
 `sims/cosmetic-sim.html` 의 `P`(팔레트) · `clay`/`soft`/`film` · `petalMesh` · `domeCap`/`domeRim` · `HEAD`/`NECK`/`BACK` 블록을 옮긴다. **시뮬은 검수를 통과한 값이므로 수치를 바꾸지 않는다.**
 
@@ -639,7 +644,7 @@ export function buildCosmetic(THREE, itemId, k) {
 }
 ```
 
-- [ ] **Step 2: `js/cosmetics/trail.js` 를 만든다 — 자국 하나를 **단일 메시로 병합** 한다**
+- [x] **Step 2: `js/cosmetics/trail.js` 를 만든다 — 자국 하나를 **단일 메시로 병합** 한다**
 
 ⚠️ 스펙 §14: 자국 하나가 메시 여러 개면 12개 상한에서 **최대 84 드로우콜**이 된다(반짝이 7개 × 12). 마을 기준선 567에서 15%가 늘어난다. `BufferGeometryUtils.mergeGeometries` 로 굽고, 2색 이상(꽃잎 2색·별 2색)은 **정점색**으로 처리한다 — 🦊여우 꼬리가 쓰는 방식.
 
@@ -658,7 +663,7 @@ export const TRAIL_SIDE = 0.075;  // 좌우 번갈아 — 한 줄이면 자국�
 export function buildTrailMark(THREE, itemId, opacity, animalId) { /* 옮긴 조형 + 병합 */ }
 ```
 
-- [ ] **Step 3: 시뮬이 모듈을 import 하게 바꾼다**
+- [x] **Step 3: 시뮬이 모듈을 import 하게 바꾼다**
 
 `sims/cosmetic-sim.html` 상단에 추가하고, 파일 안의 `P`·`HEAD`·`NECK`·`BACK`·`TRAIL` 정의와 `domeCap`/`domeRim`/`strapOf` 헬퍼를 지운다:
 
@@ -667,7 +672,7 @@ import { PALETTE as P, buildCosmetic } from '../js/cosmetics/art.js';
 import { buildTrailMark, TRAIL_S, TRAIL_CAP } from '../js/cosmetics/trail.js';
 ```
 
-- [ ] **Step 4: 시뮬을 열어 눈으로 확인한다**
+- [x] **Step 4: 시뮬을 열어 눈으로 확인한다**
 
 ```bash
 open http://localhost:8000/sims/cosmetic-sim.html
@@ -675,7 +680,7 @@ open http://localhost:8000/sims/cosmetic-sim.html
 
 확인: 머리 7 · 목 3 · 가방 3 · 발자국 5가 **옮기기 전과 똑같이** 보이고, HUD 블룸 검산이 "전 색 통과" 이며, 「동물 호환」에서 7종 전부 귀·꼬리가 멀쩡하다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/art.js js/cosmetics/trail.js sims/cosmetic-sim.html
@@ -695,7 +700,7 @@ git commit -m "refactor: 🎀 꾸미기 조형을 시뮬에서 js/cosmetics 로 
   - `buildAnimalMesh(id)` 반환에 `anchors: { head, neck, back, side }`(전부 `THREE.Group`)와 `k: { R, HR, HY, bs, bodyY, side, neckR }` 추가
   - `applyCosmetics(cos): void` — 앵커의 자식만 교체한다
 
-- [ ] **Step 1: import 를 넣는다**
+- [x] **Step 1: import 를 넣는다**
 
 ```js
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
@@ -703,7 +708,7 @@ import { buildCosmetic } from './cosmetics/art.js';
 import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.js';
 ```
 
-- [ ] **Step 2: `buildAnimalMesh` 끝에 앵커를 단다**
+- [x] **Step 2: `buildAnimalMesh` 끝에 앵커를 단다**
 
 `return { group: g, tail, armR, armL };` **직전**에 넣는다. 기존 키는 그대로 두고 추가만 한다 — `applyCharacter`·`buildCharacterMesh`·선택 프리뷰가 이미 쓰고 있다.
 
@@ -724,7 +729,7 @@ import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.
   return { group: g, tail, armR, armL, anchors, k: kk };
 ```
 
-- [ ] **Step 3: 브라우저에서 앵커가 달렸는지 본다**
+- [x] **Step 3: 브라우저에서 앵커가 달렸는지 본다**
 
 `applyCharacter` 안에 임시로 `window.__dbgAnchors = built.anchors;` 를 넣고 게임을 띄운 뒤 콘솔에서:
 
@@ -734,7 +739,7 @@ Object.keys(window.__dbgAnchors)   // Expected: ['head','neck','back','side']
 
 확인 후 임시 줄을 지운다.
 
-- [ ] **Step 4: `applyCosmetics` 를 쓴다**
+- [x] **Step 4: `applyCosmetics` 를 쓴다**
 
 `applyCharacter` 바로 아래에 둔다.
 
@@ -761,7 +766,7 @@ function applyCosmetics(cos) {
   applyCosmetics(gameState.cosmetics);
 ```
 
-- [ ] **Step 5: 콘솔로 장착을 눈으로 확인한다**
+- [x] **Step 5: 콘솔로 장착을 눈으로 확인한다**
 
 ```js
 gameState.cosmetics.owned.push('straw_hat');
@@ -771,7 +776,7 @@ applyCosmetics(gameState.cosmetics);
 
 확인: 모자가 머리에 나타난다. 캐릭터를 🐰토끼·🐤병아리로 바꿔도 **귀·볏이 모자 밖으로 빠져나온다.**
 
-- [ ] **Step 6: 캐릭터 선택 프리뷰에도 반영한다**
+- [x] **Step 6: 캐릭터 선택 프리뷰에도 반영한다**
 
 `buildCharacterMesh` 는 `.group` 만 쓴다. 프리뷰에도 장착이 보이게 고친다:
 
@@ -787,7 +792,7 @@ function buildCharacterMesh(id) {
 }
 ```
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add js/game.js
@@ -805,7 +810,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
 - Consumes: `equip.js` 의 `sanitize`(Task 5 에서 `sanitizeCosmetics` 로 import 완료)
 - Produces: `gameState.cosmetics` · `gameState.pet`
 
-- [ ] **Step 1: 기본값을 넣는다**
+- [x] **Step 1: 기본값을 넣는다**
 
 `gameState` 선언부의 `badges: {},` 다음 줄에:
 
@@ -817,7 +822,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
   pet: null,
 ```
 
-- [ ] **Step 2: 로드 시 병합을 넣는다**
+- [x] **Step 2: 로드 시 병합을 넣는다**
 
 세이브 로드부, `if (saved.inventory) Object.assign(...)` 근처에. **기존 선택 병합 패턴을 따른다.**
 
@@ -836,7 +841,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
   }
 ```
 
-- [ ] **Step 3: 기존 세이브가 멀쩡한지 확인한다**
+- [x] **Step 3: 기존 세이브가 멀쩡한지 확인한다**
 
 게임을 새로고침해 **기존 마을이 그대로 뜨는지** 본다. 그리고 콘솔에서:
 
@@ -845,7 +850,7 @@ git commit -m "feat: 🎀 buildAnimalMesh 가 꾸미기 앵커를 반환 — 장
 sanitizeCosmetics({ owned: [], equipped: { head: 'beanie' } }).equipped.head
 ```
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add js/game.js
@@ -863,7 +868,7 @@ git commit -m "feat: 🎀🐾 세이브 필드 추가 — 기존 세이브 무�
 - Consumes: `trail.js` 의 `buildTrailMark`·`TRAIL_CAP`·`TRAIL_STEP`·`TRAIL_FADE`·`TRAIL_SIDE`
   (`TRAIL_S` 는 조형 안에서만 쓴다)
 
-- [ ] **Step 1: 풀을 만든다**
+- [x] **Step 1: 풀을 만든다**
 
 ```js
 // ── 👣 발자국 ── (스펙 §4-4)
@@ -906,7 +911,7 @@ function updateTrail(dt) {
 
 프레임 루프에서 `updateTrail(dt)` 를 부른다.
 
-- [ ] **Step 2: 눈으로 확인한다**
+- [x] **Step 2: 눈으로 확인한다**
 
 ```js
 gameState.cosmetics.owned.push('paw');
@@ -915,14 +920,14 @@ gameState.cosmetics.equipped.trail = 'paw';
 
 확인: 걸을 때 자국이 **좌우 번갈아** 남고 1.2초 뒤 사라지며, 동시에 12개를 안 넘는다. 집에 들어가면 꺼진다. 캐릭터를 🐤병아리로 바꾸면 **세 갈래 새발자국**이 된다.
 
-- [ ] **Step 3: 드로우콜을 잰다**
+- [x] **Step 3: 드로우콜을 잰다**
 
 ```js
 renderer.info.render.calls
 ```
 Expected: 자국이 최대로 깔렸을 때도 **+12 안쪽** — 자국 하나가 단일 메시로 병합돼 있어야 한다
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add js/game.js
@@ -941,7 +946,7 @@ git commit -m "feat: 👣 발자국 이펙트 — 풀 재사용·12개 상한·�
 - Consumes: `js/animal-faces.js` 의 `buildAnimalHead`(인자로 받는다)
 - Produces: `SHOP_W`·`SHOP_H`·`SHOP_D`·`SHOP_T` · `buildShop(THREE, buildAnimalHead): { group, owner, lamp }` · `updateShopOwner(shop, t): void`
 
-- [ ] **Step 1: 조형을 `sims/shop-sim.html` 에서 모듈로 옮긴다**
+- [x] **Step 1: 조형을 `sims/shop-sim.html` 에서 모듈로 옮긴다**
 
 시뮬은 41.2° 검수를 통과했다. **수치를 바꾸지 않는다.** 확정된 것:
 
@@ -956,13 +961,13 @@ git commit -m "feat: 👣 발자국 이펙트 — 풀 재사용·12개 상한·�
 | 벽 두께 | `0.09` | |
 | 벽 색 | `0xf2e4cf` | 카페 회벽(0.973)에 노란기를 더해 따뜻하게 |
 
-- [ ] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
+- [x] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
 
 ```js
 import { buildShop, updateShopOwner } from '../js/shop/building.js';
 ```
 
-- [ ] **Step 3: 시뮬로 확인한다 — 41.2° 에서 주인이 보이는가**
+- [x] **Step 3: 시뮬로 확인한다 — 41.2° 에서 주인이 보이는가**
 
 ```bash
 open http://localhost:8000/sims/shop-sim.html
@@ -970,7 +975,7 @@ open http://localhost:8000/sims/shop-sim.html
 
 확인: `📐 마을 41°` 를 누른 상태에서 **주인이 문 베이에서 몸 전체로 보이고**, 배회해도 가게를 안 벗어난다. 밤 조명에서도 등불로 보인다.
 
-- [ ] **Step 4: 마을에 세운다**
+- [x] **Step 4: 마을에 세운다**
 
 `js/game.js` 에서 다른 건물과 같은 방식으로 배치한다. ⚠️ **정면을 +Z 로** 둔다 — 카메라 시선이 늘 −Z 라 그래야 안이 보인다.
 
@@ -984,7 +989,7 @@ solidCircle(SHOP_POS.x, SHOP_POS.z, 2.4);   // 통과 못 함
 
 프레임 루프에서 `updateShopOwner(shopObj, clock.getElapsedTime())`.
 
-- [ ] **Step 5: 인게임에서 확인한다**
+- [x] **Step 5: 인게임에서 확인한다**
 
 확인: 마을을 걸어 가게 앞에 섰을 때 **주인이 안에서 움직이는 게 보이고**, 벽이 블룸으로 하얗게 뜨지 않는다.
 
@@ -992,7 +997,7 @@ solidCircle(SHOP_POS.x, SHOP_POS.z, 2.4);   // 통과 못 함
 renderer.info.render.calls   // Expected: 카페(병합 후 24)와 비슷한 수준
 ```
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add js/shop/building.js sims/shop-sim.html js/game.js
@@ -1008,7 +1013,7 @@ git commit -m "feat: 🏪 꾸미기 가게 — 41.2°에서 안이 보이는 디
 
 ⚠️ 스펙 §5-7 — 풍성한 미리보기 UI 는 **열린 결정**이다. 이 태스크는 **바닥**만 만든다: 기존 `.panel`/`dm-head`/`ck-tabs` 를 재사용한 슬롯 탭 + 목록 + 구매/장착. 미리보기는 "사면 바로 입혀진다"로 대신한다(월드의 내 캐릭터가 곧 미리보기다).
 
-- [ ] **Step 1: 마크업을 넣는다**
+- [x] **Step 1: 마크업을 넣는다**
 
 `index.html` 의 `#shop-menu` 블록 다음에:
 
@@ -1022,7 +1027,7 @@ git commit -m "feat: 🏪 꾸미기 가게 — 41.2°에서 안이 보이는 디
   </div>
 ```
 
-- [ ] **Step 2: 탭과 목록을 그린다**
+- [x] **Step 2: 탭과 목록을 그린다**
 
 ```js
 // 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
@@ -1063,7 +1068,7 @@ function drawCosMenu() {
       trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: on ? 'off' : 'on' });
       applyCosmetics(gameState.cosmetics);
       drawCosMenu();
-      saveGame(gameState);
+      requestSave();
     };
     row.appendChild(btn);
     box.appendChild(row);
@@ -1078,7 +1083,7 @@ import { itemsOf } from './cosmetics/catalog.js';
 import { buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 ```
 
-- [ ] **Step 3: 가게 앞에서 열리게 한다**
+- [x] **Step 3: 가게 앞에서 열리게 한다**
 
 가게 근처에 서면 프롬프트 줄에 안내를 띄우고, 누르면 `#cos-menu` 에 `show` 를 건다. ⚠️ 안내는 **프롬프트 줄에만** — 월드 라벨로 띄우면 다른 라벨을 가린다.
 
@@ -1087,7 +1092,7 @@ trackEvent('shop_enter', { from: 'walk' });
 trackEvent('shop_open', { tab: 'cosmetics' });
 ```
 
-- [ ] **Step 4: i18n 을 등재한다**
+- [x] **Step 4: i18n 을 등재한다**
 
 `js/i18n-en.js` 의 `EN` 에 추가한다. ⚠️ 조합 문장의 글루와 `{0}` 를 통문장으로 넣지 않는다.
 
@@ -1104,16 +1109,16 @@ trackEvent('shop_open', { tab: 'cosmetics' });
   '발바닥': 'Paw Print', '물방울': 'Droplet', '반짝이': 'Sparkle',
 ```
 
-- [ ] **Step 5: 커버리지를 점검한다**
+- [x] **Step 5: 커버리지를 점검한다**
 
 Run: `node scripts/i18n_check.mjs`
 Expected: 새로 넣은 한국어 문자열이 미등재 목록에 없다
 
-- [ ] **Step 6: 인게임에서 사 보고 모바일 폭을 잰다**
+- [x] **Step 6: 인게임에서 사 보고 모바일 폭을 잰다**
 
 확인: 사면 바로 입혀지고 새로고침해도 유지된다. **모바일 폭(375px)에서 버튼이 안 넘친다.**
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add index.html js/game.js js/i18n-en.js
@@ -1134,7 +1139,7 @@ git commit -m "feat: 🎀 꾸미기 상점 패널 — 슬롯 탭·구매·즉시
   - `PET_PRICE = 3000` · `PET_RADIUS = 4.5` · `PET_TASKS` · `GROW_NEED = [0, 40, 140]` · `WORK_SEC = 2.5` · `REST_SEC = 20` · `CHAIN_MAX = 5`
   - `emptyPet(kind)` · `stageOf(works)` · `toNextStage(works)` · `canCommand(pet, now)` · `pickPetTask(plots, center, radius)` · `afterWork(pet, done, now)`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/pet-rules.test.mjs
@@ -1212,12 +1217,12 @@ test('PET_PRICE 는 꾸미기 최고가(2,600)보다 비싸다 — 펫이 가장
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/pet/rules.js'`
 
-- [ ] **Step 3: 규칙을 쓴다**
+- [x] **Step 3: 규칙을 쓴다**
 
 ```js
 // js/pet/rules.js
@@ -1289,12 +1294,12 @@ export function afterWork(pet, done, now) {
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 누적 39개
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/pet/rules.js tests/pet-rules.test.mjs
@@ -1325,7 +1330,7 @@ git commit -m "feat: 🐾 펫 규칙 — 잡일만·반경 제한·쿨다운·�
 
 ⚠️ **조형은 아직 없다.** Task 12 까지 `spawnPet` 은 **자리표시 구(球)** 를 돌려준다. 종이 안 정해져도 이 태스크가 끝난다 — 그게 이 순서를 고른 이유다.
 
-- [ ] **Step 1: 움직임을 만든다**
+- [x] **Step 1: 움직임을 만든다**
 
 ```js
 // js/pet/render.js
@@ -1370,7 +1375,7 @@ export function walkTo(pet3d, x, z, dt) {
 }
 ```
 
-- [ ] **Step 2: 맡기기 한 번의 흐름을 잇는다**
+- [x] **Step 2: 맡기기 한 번의 흐름을 잇는다**
 
 ```js
 // 🐾 맡기기 — 반경 안 잡일을 최대 CHAIN_MAX 칸. 끝나면 따라오기로 돌아간다
@@ -1404,7 +1409,7 @@ function finishPetJob() {
     respawnPet();                      // 실루엣이 바뀐다
   }
   petJob = null;
-  saveGame(gameState);
+  requestSave();
 }
 
 function updatePet(dt) {
@@ -1464,11 +1469,11 @@ function petApply(task) {
 
 프레임 루프에서 `updatePet(dt)`.
 
-- [ ] **Step 3: 프롬프트를 건다**
+- [x] **Step 3: 프롬프트를 건다**
 
 밭 근처 + `canCommand` 일 때만 `🐾 맡기기` 를 띄운다. ⚠️ **프롬프트 줄에만** 넣는다.
 
-- [ ] **Step 4: i18n**
+- [x] **Step 4: i18n**
 
 ```js
   // ── 🐾 펫 ──────────────────────────────────────────────────
@@ -1476,7 +1481,7 @@ function petApply(task) {
   '조금 쉬고 있어요': 'Resting for a bit',
 ```
 
-- [ ] **Step 5: 인게임에서 확인한다**
+- [x] **Step 5: 인게임에서 확인한다**
 
 ```js
 gameState.pet = { kind: 'spirit', name: '', works: 0, restUntil: 0 };
@@ -1490,7 +1495,7 @@ respawnPet();
 - 5칸을 넘기지 않고 끝나면 쿨다운이 걸린다
 - **접속을 끊었다 켜도 아무 일도 안 일어난다**(오프라인 정산 없음)
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add js/pet/render.js js/game.js js/i18n-en.js
@@ -1519,7 +1524,7 @@ git commit -m "feat: 🐾 펫 따라다니기·맡기기 — 잡일 연쇄와 �
   - `PET_KIND: 'spirit'|'bird'|'golem'|'leaf'` — **고른 종 하나.** Task 13 의 구매가 이 값을 쓴다
   - `PET_PALETTE: Record<string, number>` · `buildPet(THREE, kind, stage): THREE.Group` · `updatePetAnim(pet3d, t): void`
 
-- [ ] **Step 1: 고른 종의 조형을 `sims/pet-sim.html` 에서 옮긴다**
+- [x] **Step 1: 고른 종의 조형을 `sims/pet-sim.html` 에서 옮긴다**
 
 시뮬은 2차 수정까지 검수를 통과했다. **수치를 바꾸지 않는다.** 조형 규칙(스펙 §10):
 - 부속을 꽂지 말고 **형태로 승격**한다
@@ -1528,13 +1533,13 @@ git commit -m "feat: 🐾 펫 따라다니기·맡기기 — 잡일 연쇄와 �
 - 파편·깃털·꽃잎은 **6을 넘기지 않는다**
 - ⚠️ **블룸 임계 0.85** — 빛나는 종(정령·별)이 특히 걸린다. `starLit`·`sparkLit` 이 실제로 두 번 초과했다
 
-- [ ] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
+- [x] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
 
 ```js
 import { PET_KIND, PET_PALETTE, buildPet, updatePetAnim } from '../js/pet/art.js';
 ```
 
-- [ ] **Step 3: 시뮬로 성장 3단계를 확인한다**
+- [x] **Step 3: 시뮬로 성장 3단계를 확인한다**
 
 ```bash
 open http://localhost:8000/sims/pet-sim.html
@@ -1542,7 +1547,7 @@ open http://localhost:8000/sims/pet-sim.html
 
 확인: 1→3단계가 **멀리서도 실루엣으로** 구분되고, HUD 블룸 검산이 "전 색 통과" 이며, 「캐릭터 대비」 실루엣 기준으로 **무릎 높이** 다.
 
-- [ ] **Step 4: 게임에 연결한다**
+- [x] **Step 4: 게임에 연결한다**
 
 `js/pet/render.js` 의 자리표시 구를 진짜 조형으로 바꾼다:
 
@@ -1556,7 +1561,7 @@ export function spawnPet(THREE, kind, stage) {
 
 `updatePet` 에 `updatePetAnim(pet3d, clock.getElapsedTime())` 를 더한다(정령 계열은 공전·맥동이 없으면 구슬로 보인다).
 
-- [ ] **Step 5: 인게임에서 성장을 확인한다**
+- [x] **Step 5: 인게임에서 성장을 확인한다**
 
 ```js
 gameState.pet.works = 40; respawnPet();    // 2단계
@@ -1565,7 +1570,7 @@ gameState.pet.works = 140; respawnPet();   // 3단계
 
 확인: 실루엣이 단계마다 바뀌고, 드로우콜 증가가 **+12 안쪽**이다.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add js/pet/art.js sims/pet-sim.html js/pet/render.js
@@ -1579,7 +1584,7 @@ git commit -m "feat: 🐾 펫 조형 — 성장 3단계 실루엣"
 **Files:**
 - Modify: `js/game.js`, `js/i18n-en.js`
 
-- [ ] **Step 1: 펫 탭을 붙인다**
+- [x] **Step 1: 펫 탭을 붙인다**
 
 `COS_TABS` 에 `['pet', '🐾 펫']` 을 더하고, `drawCosMenu` 에서 `cosTab === 'pet'` 이면 목록 대신 펫 칸을 그린다.
 
@@ -1596,7 +1601,7 @@ function drawPetTab(box) {
       gameState.inventory.coins -= PET_PRICE;
       gameState.pet = emptyPet(PET_KIND);          // js/pet/art.js 가 내보내는 확정 종
       trackEvent('pet_buy', { pet_kind: PET_KIND, price_coins: PET_PRICE });
-      respawnPet(); drawCosMenu(); saveGame(gameState);
+      respawnPet(); drawCosMenu(); requestSave();
     };
     row.appendChild(btn); box.appendChild(row);
     return;
@@ -1610,7 +1615,7 @@ function drawPetTab(box) {
 }
 ```
 
-- [ ] **Step 2: i18n**
+- [x] **Step 2: i18n**
 
 ⚠️ `다음까지 {0}번` 은 숫자가 끼어드는 **패턴 슬롯**이다. 통문장으로 넣지 않는다.
 
@@ -1622,15 +1627,15 @@ function drawPetTab(box) {
   '🐾 {0}단계': '🐾 Stage {0}',
 ```
 
-- [ ] **Step 3: 커버리지를 점검한다**
+- [x] **Step 3: 커버리지를 점검한다**
 
 Run: `node scripts/i18n_check.mjs`
 
-- [ ] **Step 4: 인게임에서 사 보고 저장을 확인한다**
+- [x] **Step 4: 인게임에서 사 보고 저장을 확인한다**
 
 확인: 3,000🪙 로 사면 펫이 따라오기 시작하고, 새로고침해도 유지된다. 코인이 모자라면 안 사진다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/game.js js/i18n-en.js
