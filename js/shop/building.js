@@ -16,7 +16,8 @@
 //    · 주인 몸 R 0.50(y 0.55) · 머리 R 0.38(y 1.15) — 게임 주민과 같은 크기.
 //      작으면 카운터 상판(1.05)에 가린다
 //    · 차양은 **창 위에만**, 정점색 한 덩어리 — 정면 전체면 문 베이까지 덮는다
-//    · 주인 배회 x −1.67~−1.03 — 창 허리벽을 넘으면 몸통이 잘린다
+//    · 주인 배회 **중심** x −1.33~−1.03 — 벽 판정은 중심이 아니라 **몸통 가장자리**로 한다.
+//      왼쪽 옆벽 안쪽면(−1.91)을 넘으면 갈색 덩어리가 벽 밖 잔디로 나온다(updateShopOwner 주석)
 //    · 간판은 건물 **옆으로** 돌출 — 벽에 붙이면 뜨고, 앞으로 내면 묻힌다
 //    · 문짝 높이 2.05 — 2.6 은 간판을 스친다
 //
@@ -41,6 +42,9 @@
 
 /** 폭·높이·깊이·벽 두께 — 0.14 는 두꺼워 보였다 */
 export const SHOP_W = 4.0, SHOP_H = 2.9, SHOP_D = 3.2, SHOP_T = 0.09;
+
+/** 정면 왼쪽 문 개구부의 폭 — 주인 배회 범위(updateShopOwner)가 이 값에서 파생한다 */
+export const SHOP_DOOR_W = 1.25;
 
 /** 확정 지붕안 — 뒤 60%만 덮어 41.2°에서 내부가 보이게 */
 export const SHOP_VARIANT = 'B';
@@ -265,7 +269,7 @@ function makeTables(THREE) {
 
     // ── 정면 ── 왼쪽: 문 개구부 · 오른쪽: 큰 창
     const zF = D / 2 - T / 2;
-    const doorW = 1.25, winW = W - doorW - T * 3;
+    const doorW = SHOP_DOOR_W, winW = W - doorW - T * 3;
     const winX = W / 2 - T - winW / 2;
     put(g, box(T, H, T, P.wall), -W / 2 + T / 2, H / 2, zF);                       // 문 옆 기둥
     put(g, box(T, H, T, P.wall), -W / 2 + doorW, H / 2, zF);
@@ -328,7 +332,7 @@ function makeTables(THREE) {
     put(g, new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), clay(P.awnA)), armX, sy - 0.10, sz + 0.06, false);
 
     // ── 🚪 문 베이 채우기 ──
-    //  주인이 오가는 자리(x −1.67~−1.03)는 비우고, 그 **뒤·옆**만 채운다
+    //  주인이 오가는 자리(중심 x −1.33~−1.03 · updateShopOwner)는 비우고, 그 **뒤·옆**만 채운다
     const doorX = -W / 2 + doorW / 2;
     // 젖혀진 문짝 — 왼쪽 벽에 붙여 연다
     const DOORH = 2.05;   // 주민 키 1.53 에 맞춘 문 높이(H-0.30=2.6 은 너무 높아 간판을 스쳤다)
@@ -385,9 +389,47 @@ export function buildShop(THREE, buildAnimalHead, variant = SHOP_VARIANT) {
   return { group, owner: group.userData.owner, lamp };
 }
 
+// =============================================================
+//  주인 배회 범위 — ⚠️ **몸통 가장자리 vs 벽 안쪽면** 으로 잡는다
+//  ------------------------------------------------------------
+//  ▶ 🚫 중심 좌표를 가게 경계(±SHOP_W/2)와 비교하면 **통과해 버린다.**
+//    Task 8 검증이 그 방식이었고(중심 −1.67 은 ±2.0 안이니 "통과"), 그래서
+//    주인이 왼쪽 옆벽을 뚫고 잔디로 나오는 걸 못 잡았다 — 실제 몸 왼쪽 끝은
+//    −2.247 로 옆벽 **바깥면**(−2.00)보다 0.247 밖이었다(실기기 제보).
+//    판정은 언제나 `중심 ± 발자국 반경` vs **벽 안쪽면** 이다. 중심끼리 비교하지 마라.
+//
+//  ▶ 발자국 반경은 몸 R 0.50 이 **아니다.** rotation.y 가 x 와 같은 sin(p) 라
+//    x 가 가장 왼쪽일 때 고개는 항상 −OWNER_TURN 으로 틀어져 있고, 그때 코·귀가
+//    회전축 밖으로 돌아 xz 발자국이 0.577 까지 넓어진다(주인 전 정점 실측).
+//    **주인 조형(shopkeeper/buildAnimalHead)을 고치면 이 값을 다시 재라.**
+//
+//  ▶ 네 방향 벽 **안쪽면** — 전부 치수 상수에서 파생한다.
+//      옆벽 ∓(SHOP_W/2 − SHOP_T) = ∓1.91 · 뒷벽 −SHOP_D/2 + SHOP_T = −1.51
+//      정면 SHOP_D/2 − SHOP_T = 1.51 (문 베이는 뚫려 있지만 몸이 문턱을 넘으면 안 된다)
+//
+//  ▶ 문 개구부는 폭 SHOP_DOOR_W − 1.5·SHOP_T = 1.115 인데 회전한 발자국은 1.154 다 —
+//    **애초에 몸 전체를 담을 수 없다.** 그래서 하드 조건은 "왼쪽 옆벽 안쪽" 하나뿐이고,
+//    문 베이 가시성은 **중심이 문 개구부 안** 에 있는 것으로 잡는다(X_MAX 의 Math.min).
+//    ※ 창 허리벽(sillH 1.05)은 조건이 아니다 — 주인은 그 벽보다 1.06 이상 뒤에 있고
+//      마을 카메라는 41.2° 로 **내려다보므로** 허리벽 너머가 오히려 다 보인다.
+//
+//  ▶ 한 주기(p 0~10π) 실측 여유 — 네 면 전부 ≥ 0 이어야 한다.
+//      왼쪽 0.003 · 오른쪽 2.36 · 뒤 0.77 · 앞 0.42
+// =============================================================
+const OWNER_TURN = 0.5;                                  // rotation.y 진폭 — 손님(마을 카메라) 쪽을 본다
+const OWNER_HALF = 0.58;                                 // |rotation.y| = OWNER_TURN 에서의 xz 발자국 반경(실측 0.577 올림)
+const WALL_L = -SHOP_W / 2 + SHOP_T;                     // 왼쪽 옆벽 안쪽면 −1.91
+const DOOR_R = -SHOP_W / 2 + SHOP_DOOR_W - SHOP_T / 2;   // 문 개구부 오른쪽(문틀 기둥 안쪽면) −0.795
+const HOME_X = -1.35, SWING_X = 0.32;                    // 41.2° 검수 당시 배회 — 오른쪽 끝만 그대로 쓴다
+const X_MIN = WALL_L + OWNER_HALF;                       // −1.33 · 왼쪽 옆벽이 정하는 한계
+const X_MAX = Math.min(HOME_X + SWING_X, DOOR_R);        // −1.03 · 중심이 문 개구부를 안 벗어난다
+const OWNER_CX = (X_MIN + X_MAX) / 2;                    // −1.18
+const OWNER_AX = (X_MAX - X_MIN) / 2;                    // 0.15 (좌우 0.30 — 앞뒤 0.70 과 함께 걷는 게 보인다)
+
 /**
  * 주인 배회 — 게임의 주민(wanderTimer)과 같은 결이되, **가게 안을 못 벗어난다**.
- *   x −1.67~−1.03 · z −0.25~0.45 — 창 허리벽(sillH 1.05)을 넘으면 몸통이 잘린다.
+ *   중심 x −1.33~−1.03 · z −0.25~0.45. 범위는 위 블록에서 **몸통 가장자리 vs 벽 안쪽면**
+ *   으로 파생한다 — 중심을 가게 경계와 비교하면 벽 뚫림을 못 잡는다.
  * @param {{owner: object}} shop  buildShop 이 돌려준 것
  * @param {number} t              경과 시간(초)
  * @param {number} [phase]        같은 무대에 여러 채가 설 때 박자를 어긋내는 위상(시뮬 전용)
@@ -395,11 +437,11 @@ export function buildShop(THREE, buildAnimalHead, variant = SHOP_VARIANT) {
 export function updateShopOwner(shop, t, phase = 0) {
   const o = shop && shop.owner; if (!o) return;
   const p = t * 0.55 + phase;
-  o.position.x = -1.35 + Math.sin(p) * 0.32;                 // 문 베이 안에서만 (가게를 안 벗어난다)
-  o.position.z = 0.10 + Math.sin(p * 0.6) * 0.35;
+  o.position.x = OWNER_CX + Math.sin(p) * OWNER_AX;          // 문 베이 안에서만 (몸 끝이 옆벽을 안 넘는다)
+  o.position.z = 0.10 + Math.sin(p * 0.6) * 0.35;            // −0.25~0.45 — 뒷벽·정면 안쪽면까지 여유 0.77 / 0.42
   //  ⚠️ 예전엔 `+ Math.PI` 가 붙어 있었다 — 그러면 주석과 **반대로** 등을 보인다.
   //     animal-faces.js 는 얼굴을 +Z 에 만들고(코 z 1.30·눈 z 0.86), 마을 카메라는 늘 −Z 를 본다.
   //     41.2° 검수는 배회를 끈 채(회전 0) 봤기 때문에 이 방향이 검수된 적이 없었다.
-  o.rotation.y = Math.sin(p) * 0.5;                          // 손님(카메라) 쪽을 본다
+  o.rotation.y = Math.sin(p) * OWNER_TURN;                   // 손님(카메라) 쪽을 본다 — 발자국을 넓히는 장본인이다
   o.position.y = SHOP_T + Math.abs(Math.sin(p * 3.2)) * 0.035;    // 걸음 들썩임
 }
