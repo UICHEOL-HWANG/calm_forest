@@ -15,14 +15,19 @@ const secret = process.env.CARDNEWS_INGEST_SECRET;
 if (!file) { console.error('사용: node ingest-upload.mjs <수집 json>'); process.exit(1); }
 if (!base || !secret) { console.error('CARDNEWS_API_BASE / CARDNEWS_INGEST_SECRET 이 없다'); process.exit(1); }
 
-const raw = JSON.parse(await readFile(file, 'utf8'));
-
-const res = await fetch(`${base}/api/cards-ingest`, {
-  method: 'POST',
-  headers: { 'content-type': 'application/json', 'x-cardnews-secret': secret },
-  body: JSON.stringify({ date: raw.date, sources: raw.sources }),
-});
-
-const text = await res.text();
-if (!res.ok) { console.error(`업로드 실패 ${res.status}: ${text}`); process.exit(1); }
-console.log(`업로드 완료: ${text}`);
+try {
+  const raw = JSON.parse(await readFile(file, 'utf8'));
+  const res = await fetch(`${base}/api/cards-ingest`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-cardnews-secret': secret },
+    body: JSON.stringify({ date: raw.date, sources: raw.sources }),
+  });
+  const text = await res.text();
+  if (!res.ok) { console.error(`업로드 실패 ${res.status}: ${text}`); process.exit(1); }
+  console.log(`업로드 완료: ${text}`);
+} catch (e) {
+  // 네트워크 끊김·깨진 JSON 등. 스택을 통째로 뱉지 않고 한 줄로 남긴다 —
+  // 이 출력은 크론 로그로 들어간다.
+  console.error(`업로드 중 오류: ${e?.message || e}`);
+  process.exit(1);
+}
