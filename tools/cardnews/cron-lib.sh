@@ -91,6 +91,28 @@ cf_ensure_aside() {
   return 1
 }
 
+# ── 메일 발송 ────────────────────────────────────────────────
+#  aside 에이전트에게 발송을 맡긴다(Gmail 스킬). 여기선 aside 가 정상 동작한다 —
+#  자기 자신을 자식으로 부르는 구조가 아니기 때문이다.
+#
+#  ⚠️ exit code 를 **반드시** 본다. 안 보면 발송이 죽어도 로그엔 "성공" 이 남아
+#     조용히 넘어간다(2026-09-22 실행에서도 중간에 Invalid parameters 가 났다.
+#     그땐 aside 가 스스로 재시도해 겨우 보냈다).
+#  ⚠️ 발송이 실패하면 **메일로는 알릴 수가 없다**. 화면 알림으로 띄운다 —
+#     크론이 도는 시각은 사람이 맥 앞에 있는 시각이다.
+cf_send_mail() {
+  local subject="$1" body="$2"
+  if aside "cheorish.hw@gmail.com 으로 메일을 보내줘. 제목은 '$subject'. 본문은 아래 내용을 그대로(형식 유지) 넣어줘. 다른 말은 덧붙이지 말고 메일만 보내.
+
+$body" >> "$LOG" 2>&1; then
+    cf_log "메일 발송 완료: $subject"
+    return 0
+  fi
+  cf_log "⚠️ 메일 발송 실패: $subject"
+  osascript -e "display notification \"$subject\" with title \"카드뉴스 크론\" subtitle \"메일 발송 실패 — 로그를 볼 것\"" >/dev/null 2>&1 || true
+  return 1
+}
+
 # ── 준비 일괄 ────────────────────────────────────────────────
 #  네트워크 → 락 → Aside 순서. 락을 Aside 보다 **먼저** 잡아야
 #  둘이 동시에 앱을 띄우려 들지 않는다.
