@@ -414,7 +414,7 @@ git commit -m "feat: 🎀 꾸미기 장착 규칙 — 구매·장착·세이브 
   - `ringR(HR, h): number` · `domeTheta(HR, rk): number`
   - `sideAnchor(bs, R, bodyY)` · `backAnchor(bs, R, bodyY)` · `headAnchor(HY)` · `neckAnchor(HR, HY)` · `neckR(HR)`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/cosmetics-anchors.test.mjs
@@ -497,12 +497,12 @@ test('체형 7종 전부에서 옆구리 앵커가 몸 밖이다', () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/cosmetics/anchors.js'`
 
-- [ ] **Step 3: 계산을 쓴다**
+- [x] **Step 3: 계산을 쓴다**
 
 ```js
 // js/cosmetics/anchors.js
@@ -567,12 +567,12 @@ export function neckAnchor(HR, HY) { return { x: 0, y: HY - HR * 0.55, z: 0 }; }
 export function neckR(HR) { return HR * 0.92; }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 누적 28개
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/anchors.js tests/cosmetics-anchors.test.mjs
