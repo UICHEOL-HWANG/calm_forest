@@ -75,9 +75,9 @@ import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
-import { PET_RADIUS, CHAIN_MAX, stageOf, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
+import { PET_RADIUS, CHAIN_MAX, PET_PRICE, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
-import { updatePetAnim } from './pet/art.js';                       // 🐾 펫 조형 애니메이션 규약
+import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -3782,14 +3782,29 @@ function makeCharacterPreview(canvas) {
   const pivot = new THREE.Group(); sc.add(pivot);
   let mesh = null, rotY = 0.5, rotX = 0, dragging = false, lx = 0, ly = 0, autoSpin = true, raf = 0;
   let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
+  let petStage = null;                               // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   //  ⚠️ **disposeTree 를 부르지 않는다.** 꾸미기 재질·plushMat 은 월드의 내 캐릭터와 **공유**라
   //     여기서 버리면 플레이어가 입고 있는 것까지 검게 된다(§14). 인스턴스만 떼어 낸다.
+  //     🐾 펫 재질도 같다 — 월드의 펫과 공유라 여기서 버리면 따라다니는 펫이 검게 된다.
   function rebuild() {
     const cos = cosView || gameState.cosmetics;
     if (mesh) pivot.remove(mesh);
-    mesh = buildCharacterMesh(animal, cos); pivot.add(mesh);
     if (marks) { pivot.remove(marks); marks = null; }
+    if (petStage !== null) {
+      //  🐾 펫은 무릎 높이라(캐릭터의 1/3) 캐릭터 프레임에 그냥 놓으면 바닥에 점처럼 남는다.
+      //     조형 수치를 여기 베껴 두면 js/pet/art.js 가 바뀔 때 같이 틀어지니 **실측 바운딩**으로
+      //     키를 맞추고(1.4) 카메라가 보는 높이(0.95)에 중심을 둔다.
+      mesh = spawnPet(THREE, PET_KIND, petStage);
+      if (!mesh) return;
+      const b = new THREE.Box3().setFromObject(mesh), sz = b.getSize(new THREE.Vector3());
+      const k = 1.4 / Math.max(0.2, sz.y);
+      mesh.scale.setScalar(k);
+      mesh.position.y = 0.95 - (b.min.y + sz.y / 2) * k;
+      pivot.add(mesh);
+      return;
+    }
+    mesh = buildCharacterMesh(animal, cos); pivot.add(mesh);
     const tid = cos?.equipped?.trail;      // 👣 발자국은 앵커가 아니라 월드 이펙트 — 발밑에 두 개만 깔아 보여 준다
     if (tid) {
       marks = new THREE.Group();
@@ -3804,6 +3819,12 @@ function makeCharacterPreview(canvas) {
   function setAnimal(id) { animal = id; rebuild(); autoSpin = true; }
   /** 🎀 가상 장착으로 다시 그린다(회전·자동스핀은 그대로). cos 없으면 실제 장착으로 되돌린다 */
   function refresh(cos = null) { cosView = cos; if (animal) rebuild(); }
+  /** 🐾 펫 탭 — 단계(0·1·2)를 주면 펫을, null 이면 캐릭터를 본다 */
+  function showPet(stage = null) {
+    const next = stage === null ? null : (stage | 0);
+    if (next === petStage) return;                    // 같은 단계면 다시 짓지 않는다(탭 안 재그리기마다 호출된다)
+    petStage = next; if (animal) rebuild();
+  }
   function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }   // 패널을 닫으면 두 번째 렌더러를 세운다
   function start() { if (!raf) loop(); }
   function resize() {
@@ -3817,7 +3838,7 @@ function makeCharacterPreview(canvas) {
   const end = () => { dragging = false; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   resize(); loop();
-  return { setAnimal, resize, refresh, stop, start };
+  return { setAnimal, resize, refresh, showPet, stop, start };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
@@ -5684,7 +5705,7 @@ function spawnCosmeticShop() {
 }
 
 // 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
-const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '👣 발자국']];
+const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '👣 발자국'], ['pet', '🐾 펫']];
 let cosTab = 'head';
 
 // ── 🪞 입어보기(미리보기 전용) ───────────────────────────────
@@ -5724,6 +5745,40 @@ function closeCosPreview() {
   cosPreview?.stop();
 }
 
+// 🐾 펫 탭 — 파는 건 한 마리뿐이라 목록이 아니라 한 줄이다.
+//   샀으면 그 줄이 **성장 진행**으로 바뀐다(단계는 외형만 바꾼다 — js/pet/rules.js 머리말).
+function drawPetTab(box) {
+  if (!gameState.pet) {
+    const row = document.createElement('div');
+    row.className = 'sh-row';
+    //  ⚠️ 계획서는 innerHTML 로 꽂았지만, 그러면 한국어가 `<span>…</span>` 안에 갇혀
+    //     사전 키(= 화면에 보이는 한국어 그대로)와 어긋난다. 노드로 만들어 넣는다.
+    const name = document.createElement('span');
+    name.textContent = '🐾 함께 다녀요';
+    row.appendChild(name);
+    const btn = document.createElement('button');
+    btn.textContent = `${PET_PRICE.toLocaleString()}🪙`;
+    btn.onclick = () => {
+      if (gameState.inventory.coins < PET_PRICE) { ui.toast?.('코인이 모자라요', 2000); return; }
+      gameState.inventory.coins -= PET_PRICE;
+      gameState.pet = emptyPet(PET_KIND);          // js/pet/art.js 가 내보내는 확정 종
+      trackEvent('pet_buy', { pet_kind: PET_KIND, price_coins: PET_PRICE });
+      respawnPet(); drawCosMenu(); requestSave();
+    };
+    row.appendChild(btn); box.appendChild(row);
+    return;
+  }
+  const left = toNextStage(gameState.pet.works);
+  const row = document.createElement('div');
+  row.className = 'sh-row';
+  const name = document.createElement('span');
+  name.textContent = `🐾 ${stageOf(gameState.pet.works) + 1}단계`;
+  const prog = document.createElement('span');
+  prog.textContent = left === null ? '다 자랐어요' : `다음까지 ${left}번`;
+  row.append(name, prog);
+  box.appendChild(row);
+}
+
 function drawCosMenu() {
   document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
   const tabs = document.getElementById('cos-tabs');
@@ -5737,6 +5792,9 @@ function drawCosMenu() {
   }
   const box = document.getElementById('cos-items');
   box.innerHTML = '';
+  //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 지금 단계의 펫을, 나머지 탭이면 내 캐릭터를 본다
+  cosPreview?.showPet(cosTab === 'pet' ? stageOf(gameState.pet?.works || 0) : null);
+  if (cosTab === 'pet') { drawPetTab(box); return; }
   for (const it of itemsOf(cosTab)) {
     const owned = gameState.cosmetics.owned.includes(it.id);
     const on = gameState.cosmetics.equipped[it.slot] === it.id;
