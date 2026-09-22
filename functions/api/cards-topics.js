@@ -6,7 +6,7 @@
 //
 //  ⚠️ 사람이 부른다. owner 는 JWT 에서 꺼낸다 — 클라이언트가 보낸 owner 는 믿지 않는다.
 // =============================================================
-import { readBearer, getUserId, json } from './_cards-auth.js';
+import { readBearer, getUserId, json, isUuid } from './_cards-auth.js';
 
 const COLS = 'id,source,category,title,excerpt,url,bundle_id,dismissed';
 
@@ -39,7 +39,7 @@ export async function onRequestPatch({ request, env }) {
   if (!uid) return json({ error: 'unauthorized' }, 401);
 
   const body = await request.json().catch(() => null);
-  if (!body?.id || typeof body.dismissed !== 'boolean') return json({ error: 'bad body' }, 400);
+  if (!isUuid(body?.id) || typeof body.dismissed !== 'boolean') return json({ error: 'bad body' }, 400);
 
   // owner=eq.<uid> 를 조건에 함께 건다 — 남의 행 id 를 보내도 0건이 걸린다
   const res = await fetch(
