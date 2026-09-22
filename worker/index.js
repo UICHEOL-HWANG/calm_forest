@@ -24,6 +24,7 @@ import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
+import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
@@ -163,6 +164,14 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/cards-topics') {
     if (request.method === 'GET')   return await cardsTopicsGet({ request, env });
     if (request.method === 'PATCH') return await cardsTopicsPatch({ request, env });
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  // 📦 카드뉴스 묶음 — status='ready' 가 초안 요청 신호
+  if (pathname === '/api/cards-bundles') {
+    if (request.method === 'GET')   return await cardsBundlesGet({ request, env });
+    if (request.method === 'POST')  return await cardsBundlesPost({ request, env });
+    if (request.method === 'PATCH') return await cardsBundlesPatch({ request, env });
     return new Response('Method Not Allowed', { status: 405 });
   }
 
