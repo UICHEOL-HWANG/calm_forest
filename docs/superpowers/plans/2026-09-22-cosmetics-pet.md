@@ -596,7 +596,7 @@ git commit -m "feat: 🎀 앵커 계산 — 타원체 표면점·머리 둘레·
 
 **왜 `THREE` 를 인자로 받는가:** 이 모듈은 `sims/*.html`(CDN import map)과 게임 번들 양쪽에서 쓰인다. 각자 자기 THREE 를 넘기면 번들이 갈리지 않는다.
 
-- [ ] **Step 1: `js/cosmetics/art.js` 를 만든다**
+- [x] **Step 1: `js/cosmetics/art.js` 를 만든다**
 
 `sims/cosmetic-sim.html` 의 `P`(팔레트) · `clay`/`soft`/`film` · `petalMesh` · `domeCap`/`domeRim` · `HEAD`/`NECK`/`BACK` 블록을 옮긴다. **시뮬은 검수를 통과한 값이므로 수치를 바꾸지 않는다.**
 
@@ -639,7 +639,7 @@ export function buildCosmetic(THREE, itemId, k) {
 }
 ```
 
-- [ ] **Step 2: `js/cosmetics/trail.js` 를 만든다 — 자국 하나를 **단일 메시로 병합** 한다**
+- [x] **Step 2: `js/cosmetics/trail.js` 를 만든다 — 자국 하나를 **단일 메시로 병합** 한다**
 
 ⚠️ 스펙 §14: 자국 하나가 메시 여러 개면 12개 상한에서 **최대 84 드로우콜**이 된다(반짝이 7개 × 12). 마을 기준선 567에서 15%가 늘어난다. `BufferGeometryUtils.mergeGeometries` 로 굽고, 2색 이상(꽃잎 2색·별 2색)은 **정점색**으로 처리한다 — 🦊여우 꼬리가 쓰는 방식.
 
@@ -658,7 +658,7 @@ export const TRAIL_SIDE = 0.075;  // 좌우 번갈아 — 한 줄이면 자국�
 export function buildTrailMark(THREE, itemId, opacity, animalId) { /* 옮긴 조형 + 병합 */ }
 ```
 
-- [ ] **Step 3: 시뮬이 모듈을 import 하게 바꾼다**
+- [x] **Step 3: 시뮬이 모듈을 import 하게 바꾼다**
 
 `sims/cosmetic-sim.html` 상단에 추가하고, 파일 안의 `P`·`HEAD`·`NECK`·`BACK`·`TRAIL` 정의와 `domeCap`/`domeRim`/`strapOf` 헬퍼를 지운다:
 
@@ -667,7 +667,7 @@ import { PALETTE as P, buildCosmetic } from '../js/cosmetics/art.js';
 import { buildTrailMark, TRAIL_S, TRAIL_CAP } from '../js/cosmetics/trail.js';
 ```
 
-- [ ] **Step 4: 시뮬을 열어 눈으로 확인한다**
+- [x] **Step 4: 시뮬을 열어 눈으로 확인한다**
 
 ```bash
 open http://localhost:8000/sims/cosmetic-sim.html
@@ -675,7 +675,7 @@ open http://localhost:8000/sims/cosmetic-sim.html
 
 확인: 머리 7 · 목 3 · 가방 3 · 발자국 5가 **옮기기 전과 똑같이** 보이고, HUD 블룸 검산이 "전 색 통과" 이며, 「동물 호환」에서 7종 전부 귀·꼬리가 멀쩡하다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/art.js js/cosmetics/trail.js sims/cosmetic-sim.html
