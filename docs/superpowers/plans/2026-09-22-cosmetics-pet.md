@@ -1584,7 +1584,7 @@ git commit -m "feat: 🐾 펫 조형 — 성장 3단계 실루엣"
 **Files:**
 - Modify: `js/game.js`, `js/i18n-en.js`
 
-- [ ] **Step 1: 펫 탭을 붙인다**
+- [x] **Step 1: 펫 탭을 붙인다**
 
 `COS_TABS` 에 `['pet', '🐾 펫']` 을 더하고, `drawCosMenu` 에서 `cosTab === 'pet'` 이면 목록 대신 펫 칸을 그린다.
 
@@ -1615,7 +1615,7 @@ function drawPetTab(box) {
 }
 ```
 
-- [ ] **Step 2: i18n**
+- [x] **Step 2: i18n**
 
 ⚠️ `다음까지 {0}번` 은 숫자가 끼어드는 **패턴 슬롯**이다. 통문장으로 넣지 않는다.
 
@@ -1627,15 +1627,15 @@ function drawPetTab(box) {
   '🐾 {0}단계': '🐾 Stage {0}',
 ```
 
-- [ ] **Step 3: 커버리지를 점검한다**
+- [x] **Step 3: 커버리지를 점검한다**
 
 Run: `node scripts/i18n_check.mjs`
 
-- [ ] **Step 4: 인게임에서 사 보고 저장을 확인한다**
+- [x] **Step 4: 인게임에서 사 보고 저장을 확인한다**
 
 확인: 3,000🪙 로 사면 펫이 따라오기 시작하고, 새로고침해도 유지된다. 코인이 모자라면 안 사진다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/game.js js/i18n-en.js
