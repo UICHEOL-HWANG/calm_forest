@@ -2983,7 +2983,42 @@ export function getGameState() {
   //   저장할 때마다 사라지므로, 살아 있는 배열은 그대로 두고 반환값만 사본을 준다.
   return { ...gameState, orchard: { ...gameState.orchard, trees: (gameState.orchard?.trees || []).map(({ hp, ...rest }) => rest) } };
 }
-export async function requestSave() { return await saveGame(getGameState()); }
+//  🔌 저장이 실패하면 스스로 다시 시도한다 — 읽기 실패와 같은 backoff(js/save-guard.js).
+//    딸꾹질이면 조용히 낫는다. 낫지 않으면(세션 만료·RLS 사고) 화면을 덮어 알린다:
+//    저장이 죽은 채로 계속 놀게 두면 그 시간이 통째로 날아가기 때문이다(입장 때 지키는 빗장의 뒷면).
+let saveRetrying = false;
+export async function requestSave() {
+  //  🔌 세션이 죽었다 — 빗장은 새로고침 전엔 안 풀린다. 더 두드려 봐야 서버도 GA4 도 때릴 뿐이다.
+  if (authState.lost) { ui.setSaveStuck?.(true); return { ok: false, locked: true }; }
+  //  재시도가 도는 동안엔 새 쓰기를 내보내지 않는다. 불안정한 네트워크에서 두 요청이 역순으로
+  //  도착하면 **오래된 스냅샷이 새 스냅샷을 덮는다** — 이 저장소가 두 번 겪은 사고의 모양이다.
+  if (saveRetrying) return { ok: false, retrying: true };
+  const r = await saveGame(getGameState());
+  if (r.ok) { ui.setSaveStuck?.(false); return r; }
+  retrySaveUntilOk().catch(() => {});   // 기다리지 않는다 — 호출부는 저장을 기다리며 멈출 이유가 없다
+  return r;
+}
+
+async function retrySaveUntilOk() {
+  if (saveRetrying) return;    // 재시도는 한 줄기만. 액션마다 루프가 늘면 서버를 때린다
+  saveRetrying = true;
+  //  ⚠️ finally 가 없으면 trackEvent·DOM 이 한 번 던졌을 때 깃발이 선 채로 굳어
+  //     이후 모든 저장 실패가 재시도 없이 버려진다(= 고치기 전의 조용한 실패로 되돌아간다).
+  try {
+    for (let tries = 0; ; tries++) {
+      if (authState.lost) { ui.setSaveStuck?.(true); return; }   // 스스로 낫지 않는다 — 출구는 새로고침뿐
+      // [GA4] 저장이 끊긴 사람을 셀 분모. 매번 보내면 한 세션이 지표를 삼키므로 1회차 + 매 10회차만.
+      if (tries === 0 || (tries + 1) % 10 === 0) trackEvent('save_failed', { attempt: tries + 1 });
+      if (offerReload(tries)) ui.setSaveStuck?.(true);   // 오래 끌면 "다시 들어가기" — 유일한 출구
+      await new Promise(r => setTimeout(r, retryDelay(tries)));
+      if ((await saveGame(getGameState())).ok) {
+        ui.setSaveStuck?.(false);
+        trackEvent('save_recovered', { tries: tries + 1 });   // [GA4] 몇 번 만에 되살아났나
+        return;
+      }
+    }
+  } finally { saveRetrying = false; }
+}
 
 // =============================================================
 //  렌더러 / 씬 / 조명
