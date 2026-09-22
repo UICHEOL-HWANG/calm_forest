@@ -29,6 +29,10 @@
   // ⚠️ wrangler deploy 는 대시보드에서 손으로 넣은 "일반(텍스트) 변수"를 지웁니다(Secret 은 보존).
   //    그래서 공개값은 코드로 선언하고, 비밀키 2개(OCI_ACCESS_KEY·OCI_SECRET_KEY)는
   //    `npx wrangler secret put <이름>` 으로 Secret 등록합니다(GEMINI_API_KEY 와 같은 방식).
+  // 🗂️ 카드뉴스 인박스(functions/api/cards-ingest.js)도 변수 2개가 더 필요합니다:
+  //    CARDNEWS_INGEST_SECRET(크론 인증)과 CARDNEWS_OWNER_UID(크론이 쓸 소유자 uuid).
+  //    이 둘도 반드시 Secret 으로 등록합니다 — uuid 라 저장소에 커밋하고 싶지 않은 값이고,
+  //    일반 변수로 넣으면 배포 때 지워져 ingest 가 조용히 500 을 뱉기 시작합니다.
   "vars": {
     "OCI_NAMESPACE": "id8g5usnkx1c",
     "OCI_REGION": "us-ashburn-1",

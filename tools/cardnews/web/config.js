@@ -6,3 +6,8 @@
 // =============================================================
 export const SUPABASE_URL = 'https://zuyxgjfihxtfdpolljzw.supabase.co';
 export const SUPABASE_ANON_KEY = 'sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t';
+
+// ⚠️ 이 저장소는 Pages 가 아니라 Workers 배포다(wrangler.jsonc). API 라우트는
+//    게임 도메인에만 뜬다 — 프론트가 cards 서브도메인에 있어도 여기를 불러야 한다.
+//    상대경로를 쓰면 cards 도메인에 functions/ 가 없어 전부 404 가 된다.
+export const API_BASE = 'https://calmforest.cloud';

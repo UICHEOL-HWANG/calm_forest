@@ -9,7 +9,7 @@
 //     순수 렌더 함수는 export 해서 눈으로 검증할 때 목데이터로 재사용한다.
 // =============================================================
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, API_BASE } from './config.js';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -136,7 +136,7 @@ async function token() {
 async function api(path, init = {}) {
   const t = await token();
   if (!t) { showLogin(); throw new Error('no session'); }
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: { ...(init.headers || {}), 'content-type': 'application/json', Authorization: `Bearer ${t}` },
   });
