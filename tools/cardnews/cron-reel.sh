@@ -74,9 +74,7 @@ fi
 cat "$OUT" >> "$LOG"
 
 BODY="$(cat "$OUT")"
-aside "cheorish.hw@gmail.com 으로 메일을 보내줘. 제목은 '$SUBJECT'. 본문은 아래 내용을 그대로 넣어줘. 다른 말은 덧붙이지 말고 메일만 보내.
+if cf_send_mail "$SUBJECT" "$BODY"; then MAIL="발송 완료"; else MAIL="발송 실패"; fi
 
-$BODY" >> "$LOG" 2>&1
-
-echo "=== $(date '+%H:%M:%S') $SUBJECT ===" >> "$LOG"
+echo "=== $(date '+%H:%M:%S') $SUBJECT · 메일 $MAIL ===" >> "$LOG"
 rm -f "$OUT"

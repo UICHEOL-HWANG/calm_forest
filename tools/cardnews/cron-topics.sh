@@ -55,15 +55,11 @@ fi
 cat "$OUT" >> "$LOG"
 
 # ── 메일 ─────────────────────────────────────────────────────
-#  aside 에이전트에게 발송을 맡긴다(Gmail 스킬). 여기선 aside 가 정상 동작한다 —
-#  자기 자신을 자식으로 부르는 구조가 아니기 때문이다.
 BODY="$(cat "$OUT")"
 SUBJECT="오늘의 카드뉴스 소재"
 [ "$STATUS" = "실패" ] && SUBJECT="⚠️ 카드뉴스 소재 수집 실패"
 
-aside "cheorish.hw@gmail.com 으로 메일을 보내줘. 제목은 '$SUBJECT'. 본문은 아래 내용을 그대로(형식 유지) 넣어줘. 다른 말은 덧붙이지 말고 메일만 보내.
+if cf_send_mail "$SUBJECT" "$BODY"; then MAIL="발송 완료"; else MAIL="발송 실패"; fi
 
-$BODY" >> "$LOG" 2>&1
-
-echo "=== $(date '+%H:%M:%S') $STATUS · 메일 발송 시도 완료 ===" >> "$LOG"
+echo "=== $(date '+%H:%M:%S') 수집 $STATUS · 메일 $MAIL ===" >> "$LOG"
 rm -f "$OUT"
