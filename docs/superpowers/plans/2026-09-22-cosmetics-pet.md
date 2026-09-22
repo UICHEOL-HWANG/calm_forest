@@ -1519,7 +1519,7 @@ git commit -m "feat: 🐾 펫 따라다니기·맡기기 — 잡일 연쇄와 �
   - `PET_KIND: 'spirit'|'bird'|'golem'|'leaf'` — **고른 종 하나.** Task 13 의 구매가 이 값을 쓴다
   - `PET_PALETTE: Record<string, number>` · `buildPet(THREE, kind, stage): THREE.Group` · `updatePetAnim(pet3d, t): void`
 
-- [ ] **Step 1: 고른 종의 조형을 `sims/pet-sim.html` 에서 옮긴다**
+- [x] **Step 1: 고른 종의 조형을 `sims/pet-sim.html` 에서 옮긴다**
 
 시뮬은 2차 수정까지 검수를 통과했다. **수치를 바꾸지 않는다.** 조형 규칙(스펙 §10):
 - 부속을 꽂지 말고 **형태로 승격**한다
@@ -1528,13 +1528,13 @@ git commit -m "feat: 🐾 펫 따라다니기·맡기기 — 잡일 연쇄와 �
 - 파편·깃털·꽃잎은 **6을 넘기지 않는다**
 - ⚠️ **블룸 임계 0.85** — 빛나는 종(정령·별)이 특히 걸린다. `starLit`·`sparkLit` 이 실제로 두 번 초과했다
 
-- [ ] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
+- [x] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
 
 ```js
 import { PET_KIND, PET_PALETTE, buildPet, updatePetAnim } from '../js/pet/art.js';
 ```
 
-- [ ] **Step 3: 시뮬로 성장 3단계를 확인한다**
+- [x] **Step 3: 시뮬로 성장 3단계를 확인한다**
 
 ```bash
 open http://localhost:8000/sims/pet-sim.html
@@ -1542,7 +1542,7 @@ open http://localhost:8000/sims/pet-sim.html
 
 확인: 1→3단계가 **멀리서도 실루엣으로** 구분되고, HUD 블룸 검산이 "전 색 통과" 이며, 「캐릭터 대비」 실루엣 기준으로 **무릎 높이** 다.
 
-- [ ] **Step 4: 게임에 연결한다**
+- [x] **Step 4: 게임에 연결한다**
 
 `js/pet/render.js` 의 자리표시 구를 진짜 조형으로 바꾼다:
 
@@ -1556,7 +1556,7 @@ export function spawnPet(THREE, kind, stage) {
 
 `updatePet` 에 `updatePetAnim(pet3d, clock.getElapsedTime())` 를 더한다(정령 계열은 공전·맥동이 없으면 구슬로 보인다).
 
-- [ ] **Step 5: 인게임에서 성장을 확인한다**
+- [x] **Step 5: 인게임에서 성장을 확인한다**
 
 ```js
 gameState.pet.works = 40; respawnPet();    // 2단계
@@ -1565,7 +1565,7 @@ gameState.pet.works = 140; respawnPet();   // 3단계
 
 확인: 실루엣이 단계마다 바뀌고, 드로우콜 증가가 **+12 안쪽**이다.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add js/pet/art.js sims/pet-sim.html js/pet/render.js
