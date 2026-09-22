@@ -863,7 +863,7 @@ git commit -m "feat: 🎀🐾 세이브 필드 추가 — 기존 세이브 무�
 - Consumes: `trail.js` 의 `buildTrailMark`·`TRAIL_CAP`·`TRAIL_STEP`·`TRAIL_FADE`·`TRAIL_SIDE`
   (`TRAIL_S` 는 조형 안에서만 쓴다)
 
-- [ ] **Step 1: 풀을 만든다**
+- [x] **Step 1: 풀을 만든다**
 
 ```js
 // ── 👣 발자국 ── (스펙 §4-4)
@@ -906,7 +906,7 @@ function updateTrail(dt) {
 
 프레임 루프에서 `updateTrail(dt)` 를 부른다.
 
-- [ ] **Step 2: 눈으로 확인한다**
+- [x] **Step 2: 눈으로 확인한다**
 
 ```js
 gameState.cosmetics.owned.push('paw');
@@ -915,14 +915,14 @@ gameState.cosmetics.equipped.trail = 'paw';
 
 확인: 걸을 때 자국이 **좌우 번갈아** 남고 1.2초 뒤 사라지며, 동시에 12개를 안 넘는다. 집에 들어가면 꺼진다. 캐릭터를 🐤병아리로 바꾸면 **세 갈래 새발자국**이 된다.
 
-- [ ] **Step 3: 드로우콜을 잰다**
+- [x] **Step 3: 드로우콜을 잰다**
 
 ```js
 renderer.info.render.calls
 ```
 Expected: 자국이 최대로 깔렸을 때도 **+12 안쪽** — 자국 하나가 단일 메시로 병합돼 있어야 한다
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add js/game.js

@@ -72,6 +72,7 @@ import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
 import { buildCosmetic } from './cosmetics/art.js';
 import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.js';
+import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -3681,6 +3682,43 @@ function applyCosmetics(cos) {
     if (it.slot === 'trail') continue;                 // 발자국은 월드 이펙트라 앵커가 아니다
     const m = buildCosmetic(THREE, it.id, charK);
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
+  }
+}
+
+// ── 👣 발자국 ── (스펙 §4-4)
+//  ⚠️ 매번 생성·파괴하면 드로우콜과 GC 가 튄다. 풀에서 재사용한다.
+//  ⚠️ 실내·클로즈업·미니게임에서는 끈다 — 바닥이 없거나 카메라가 붙는다.
+const trailPool = [], trailLive = [];
+const trailLastPos = new THREE.Vector3();
+let trailItem = null, trailSide = 1;
+
+function clearTrail() {
+  for (const e of trailLive) { scene.remove(e.mesh); trailPool.push(e.mesh); }
+  trailLive.length = 0;
+}
+
+function updateTrail(dt) {
+  const id = gameState.cosmetics.equipped.trail;
+  if (id !== trailItem) { clearTrail(); trailPool.length = 0; trailItem = id; }
+  const off = indoor || atCafe || atMuseum || atMine;
+  if (!id || off) { if (trailLive.length) clearTrail(); return; }
+
+  if (player.position.distanceTo(trailLastPos) >= TRAIL_STEP) {
+    trailLastPos.copy(player.position);
+    trailSide = -trailSide;                               // 좌우 번갈아 — 한 줄이면 점선이다
+    const m = trailPool.pop() || buildTrailMark(THREE, id, 1, gameState.character);
+    m.position.set(player.position.x + trailSide * TRAIL_SIDE, 0, player.position.z);
+    m.rotation.y = trailSide * 0.2;
+    scene.add(m); trailLive.push({ mesh: m, t: 0 });
+    while (trailLive.length > TRAIL_CAP) {
+      const old = trailLive.shift(); scene.remove(old.mesh); trailPool.push(old.mesh);
+    }
+  }
+  for (let i = trailLive.length - 1; i >= 0; i--) {
+    const e = trailLive[i]; e.t += dt;
+    const k = Math.max(0, 1 - e.t / TRAIL_FADE);
+    e.mesh.traverse(o => { if (o.material) o.material.opacity = k; });
+    if (k <= 0) { scene.remove(e.mesh); trailPool.push(e.mesh); trailLive.splice(i, 1); }
   }
 }
 
@@ -12008,6 +12046,7 @@ function animate() {
   updateWorkers(dt);        // 🧑‍🌾 일꾼 — 밭 안이면 걸어서, 밖이면 60초 스텝으로
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
+  updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
   updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
