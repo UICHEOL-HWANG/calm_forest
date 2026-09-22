@@ -23,6 +23,7 @@ import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
+import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
@@ -156,6 +157,13 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/cards-ingest') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await cardsIngest({ request, env });
+  }
+
+  // 🗂️ 카드뉴스 소재 목록·숨김 — 사람이 부른다(Supabase Auth JWT)
+  if (pathname === '/api/cards-topics') {
+    if (request.method === 'GET')   return await cardsTopicsGet({ request, env });
+    if (request.method === 'PATCH') return await cardsTopicsPatch({ request, env });
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
   return null;
