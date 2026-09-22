@@ -364,6 +364,7 @@ export const EN = {
   'calm forest 불러오는 중… 🌿': 'Loading calm forest… 🌿',
   '🌙 잠시만요, 마을을 찾는 중이에요': '🌙 One moment — finding your Village',
   '🌙 연결이 오래 걸리네요. 마을은 그대로 있으니 다시 들어와 주세요': '🌙 This is taking a while. Your Village is safe — please come back in.',
+  '🌙 연결이 끊겨 저장이 멈췄어요. 다시 들어오면 이어서 놀 수 있어요': '🌙 The connection dropped, so saving has stopped. Come back in to pick up where you left off.',
   '🔄 다시 들어가기': '🔄 Enter again',
 
   // ── HTML UI 스크립트 ──

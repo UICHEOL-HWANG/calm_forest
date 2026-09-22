@@ -12,7 +12,7 @@
 import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 🧪 dev 세션 — 리더보드 원천 기록 차단용
 import { PLATFORM, IS_ITCH, IS_TOSS } from './platform.js'; // 'web' | 'toss' | 'itch' — 로그 세그먼트 · itch 는 구글 팝업 로그인 · toss 는 게스트 이관
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
-import { loadOutcome } from './save-guard.js';                 // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지
+import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지 · 🔌 노는 중 세션 죽음 판정
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant, trackEvent } from './analytics.js';
 
@@ -25,6 +25,7 @@ export const state = {
   sessionId: randId(), // 이번 플레이 세션 식별자(로그 그룹핑)
   clientId: clientId(),// 분석용 영구 기기 식별자(localStorage, 게스트 재방문 추적)
   isGuest: null,       // 게스트(익명/오프라인) 여부 — 세그먼트 분석용
+  lost: false,         // 🔌 놀던 중 세션이 죽었나(refresh 실패·다른 기기 로그아웃) — 저장이 조용히 실패하는 상태
   variant: 'control',  // A/B 변형(실험 off면 control)
   createdAt: null,     // 계정 생성 시각(ISO) — 보상 부스트(가입 3일) 기준
   mapOrder: null,      // 🧪 베타 2차 — 맵 여는 순서('sea_first'|'mist_first'), 명단 테이블에서
@@ -86,6 +87,40 @@ async function resolveBetaGroup(session) {
   emit();
 }
 
+// ── 🔌 세션 죽음 ────────────────────────────────────────────────
+//   우리가 **일부러** 부르는 signOut(남은 익명 세션 정리·게스트 재시작·로그아웃 버튼)까지
+//   사고로 세면 부팅하자마자 만료 안내가 뜬다. 그래서 우리 호출은 표시를 달고 나간다.
+let intentionalSignOut = false;
+async function signOutQuietly() {
+  intentionalSignOut = true;
+  try { await supabase.auth.signOut(); }
+  finally { await new Promise(r => setTimeout(r, 0)); intentionalSignOut = false; }   // 이벤트가 온 뒤에 내린다
+}
+
+//  더는 서버에 쓸 수 없는 세션이다. 저장을 잠가 조용한 실패를 막고(빗장은 writeSave 가 본다),
+//  화면이 알 수 있게 알린다. 되살리는 길은 새로고침뿐 — 세션 갱신부터 다시 타야 한다.
+//
+//  ⚠️ state.online 은 그대로 둔다. 내리면 saveGame 이 "오프라인이라 저장할 게 없다"며
+//     { ok:true } 를 돌려주고(위 saveGame 첫 줄), 재시도 루프가 그걸 성공으로 읽어 안내를 지운다.
+let lostPending = false;
+function markSessionLost() {
+  if (state.lost || lostPending) return;
+  lostPending = true;
+  //  ⚠️ onAuthStateChange 콜백 **안에서** auth 를 다시 부르면 supabase-js 내부 락에 걸린다.
+  //     한 틱 물러나 "정말 세션이 없는지" 사실로 확인한다 — 게스트 재시작처럼 곧바로 새 세션이
+  //     붙는 경우, 뒤늦게 도착한 SIGNED_OUT 에 속아 멀쩡한 세션을 잠그면 입구가 통째로 막힌다.
+  //     (intentionalSignOut 은 1차 방어, 이 확인이 2차 — 부동 버전 esm.sh 라 타이밍에만 기대지 않는다)
+  setTimeout(async () => {
+    lostPending = false;
+    if (state.lost) return;
+    try { const { data } = await supabase.auth.getSession(); if (data?.session) return; } catch (e) {}
+    state.lost = true;
+    saveLocked = true;
+    console.warn('[Supabase] 세션이 끊겼습니다 — 저장을 잠급니다(다시 들어가야 이어집니다)');
+    emit();
+  }, 0);
+}
+
 // =============================================================
 //  초기화 — 페이지 로드시 호출.
 //  반환: { needLogin } → true면 로그인 화면을 띄워야 함.
@@ -110,8 +145,11 @@ export async function initAuth(onStatusChange) {
     // 로그인 상태 변화 감지(구글 리다이렉트 복귀 포함).
     //   ※ 익명(게스트) 세션은 여기서 자동 적용하지 않음 → 게스트는 휘발성.
     //     게스트 로그인은 signInAsGuest 가 직접 applySession 으로 처리.
-    supabase.auth.onAuthStateChange((_event, session) => {
-      if (session && !isAnon(session)) applySession(session);
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session && !isAnon(session)) { applySession(session); return; }
+      // 🔌 놀던 중 세션이 죽었다 — 여기서 안 잡으면 state.online 이 true 로 남아
+      //   저장이 끝까지 조용히 실패한다(saveGame 은 던지지 않는다). 판정은 save-guard.js.
+      if (sessionLoss({ event, session, wasOnline: state.online, intentional: intentionalSignOut })) markSessionLost();
     });
 
     // 기존 세션 확인: 구글 계정만 자동 복원. 게스트(익명)는 복원하지 않고 정리.
@@ -126,7 +164,7 @@ export async function initAuth(onStatusChange) {
       //    익명 세션을 정리하면 그 계정의 저장을 더는 읽을 수 없으므로(RLS) 로그아웃 전에 읽어야 한다.
       //    정식 계정으로 붙은 뒤 loadGame() 이 pickSave 로 어느 쪽을 남길지 정한다.
       if (IS_TOSS) pendingGuest = await readGuestSave(s.user.id);
-      await supabase.auth.signOut();          // 게스트 재방문 → 이전 익명 세션 정리(매번 새로 시작)
+      await signOutQuietly();                 // 게스트 재방문 → 이전 익명 세션 정리(매번 새로 시작)
     }
     return { needLogin: true, offline: false };
   } catch (err) {
@@ -255,7 +293,7 @@ export async function signInAsGuest() {
     try {
       // 혹시 남아있는 익명 세션이 있으면 정리 → 항상 새 게스트로 시작(A안)
       const { data: cur } = await supabase.auth.getSession();
-      if (cur?.session && isAnon(cur.session)) await supabase.auth.signOut();
+      if (cur?.session && isAnon(cur.session)) await signOutQuietly();
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) throw error;
       applySession(data.session);          // state.online = true → DB 저장 활성화
@@ -285,7 +323,7 @@ export async function signInAsGuest() {
 
 // ── 로그아웃 ──
 export async function signOut() {
-  if (supabase) { try { await supabase.auth.signOut(); } catch (e) {} }
+  if (supabase) { try { intentionalSignOut = true; await supabase.auth.signOut(); } catch (e) {} }
   state.online = false; state.userId = null; state.email = null; state.provider = null;
   location.reload();
 }
@@ -332,7 +370,8 @@ export async function loadGame() {
     } catch (err) { error = err; console.warn('[Supabase] 불러오기 실패(신규로 보지 않고 다시 시도):', err?.message || err); }
   }
   const out = loadOutcome({ online, error, row, freshGuest });
-  saveLocked = !out.canSave;   // 성공하면 풀리고, 실패한 동안은 걸려 있다
+  //  세션이 죽었으면 읽기가 우연히 성공해도 빗장은 그대로다 — 새로고침 전엔 쓸 수 없는 세션이다.
+  saveLocked = !out.canSave || state.lost;   // 성공하면 풀리고, 실패한 동안은 걸려 있다
   //  실패 원인을 호출부가 GA4 로 보낼 수 있게 넘긴다 — 갇힌 사람을 셀 분모가 여기서 나온다
   if (error) out.code = String(error?.code || error?.status || error?.name || 'unknown');
   return out;

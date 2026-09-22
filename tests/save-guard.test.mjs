@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { loadOutcome, retryDelay, offerReload } from '../js/save-guard.js';
+import { loadOutcome, retryDelay, offerReload, sessionLoss } from '../js/save-guard.js';
 
 const GAME_SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
 
@@ -130,4 +130,77 @@ test('retryDelay — 점점 뜸하게, 상한에서 멈춘다(무한 대기라�
   assert.ok(retryDelay(5) > retryDelay(2));
   assert.equal(retryDelay(99), 5000);              // 상한
   assert.ok(retryDelay(99) >= retryDelay(10));     // 단조 증가(줄어들지 않는다)
+});
+
+// ── 🔌 세션이 중간에 죽는 경우 ────────────────────────────────────
+//   로드 시점 보호(위 loadOutcome)는 "들어올 때" 만 지킨다. 몇 시간 놀던 중에
+//   refresh token 이 폐기되면(다른 기기 로그아웃·프로젝트 정지·토큰 회전 실패)
+//   supabase 는 SIGNED_OUT 을 쏘지만, 게임은 그걸 안 듣고 계속 저장을 시도했다.
+//   저장은 전부 조용히 실패하고(saveGame 은 던지지 않는다) 진행도는 통째로 날아간다.
+
+test('sessionLoss — 놀던 중 로그아웃 이벤트가 오면 세션이 죽은 것이다', () => {
+  assert.equal(sessionLoss({ event: 'SIGNED_OUT', session: null, wasOnline: true }), true);
+});
+
+test('sessionLoss — 세션이 null 로 오면 이벤트 이름과 무관하게 죽은 것이다', () => {
+  assert.equal(sessionLoss({ event: 'TOKEN_REFRESHED', session: null, wasOnline: true }), true);
+});
+
+//  내가 부른 로그아웃까지 "사고" 로 세면 안 된다. initAuth 는 남은 익명 세션을,
+//  signInAsGuest 는 직전 게스트를 스스로 signOut 한다 — 부팅하자마자 만료 화면이 뜬다.
+test('sessionLoss — 우리가 일부러 부른 로그아웃은 사고가 아니다', () => {
+  assert.equal(sessionLoss({ event: 'SIGNED_OUT', session: null, wasOnline: true, intentional: true }), false);
+});
+
+//  아직 아무 세션도 못 붙은 상태(로그인 화면)에서 오는 SIGNED_OUT·INITIAL_SESSION(null) 은 일상이다.
+test('sessionLoss — 붙은 적 없는 세션은 잃을 것도 없다', () => {
+  assert.equal(sessionLoss({ event: 'INITIAL_SESSION', session: null, wasOnline: false }), false);
+  assert.equal(sessionLoss({ event: 'SIGNED_OUT', session: null, wasOnline: false }), false);
+});
+
+test('sessionLoss — 살아 있는 세션이 오면 정상이다', () => {
+  assert.equal(sessionLoss({ event: 'TOKEN_REFRESHED', session: { user: { id: 'u1' } }, wasOnline: true }), false);
+  assert.equal(sessionLoss({ event: 'SIGNED_IN', session: { user: { id: 'u1' } }, wasOnline: false }), false);
+});
+
+//  🔒 회귀 잠금 — 이벤트를 듣기만 하고 저장을 잠그지 않으면 이 수정은 무의미하다.
+test('supabase-client 는 인증 이벤트로 세션 죽음을 판정한다', () => {
+  const src = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
+  assert.match(src, /sessionLoss\(/, 'onAuthStateChange 가 sessionLoss 로 판정해야 한다');
+  assert.match(src, /saveLocked = true/, '세션이 죽으면 저장을 잠가야 한다(조용한 실패 방지)');
+});
+
+//  🔒 회귀 잠금 — requestSave 가 실패를 그냥 버리면 유저는 끝까지 모른다.
+test('game.js 는 저장 실패를 재시도하고 낫지 않으면 화면으로 알린다', () => {
+  assert.match(GAME_CODE, /setSaveStuck/, '저장이 낫지 않으면 안내를 띄워야 한다');
+});
+
+//  🔒 세션이 죽은 뒤에는 재시도가 무의미하다 — 빗장(saveLocked)은 새로고침 전엔 안 풀린다.
+//    멈추지 않으면 5초마다 영원히 upsert 를 던지고 GA4 로 save_failed 가 50초마다 새어 나간다.
+test('game.js 는 세션이 죽으면 저장 재시도를 멈춘다', () => {
+  assert.match(GAME_CODE, /authState\.lost/, '재시도 루프가 세션 죽음을 보고 빠져나와야 한다');
+});
+
+//  🔒 재시도가 도는 동안 일반 저장이 끼어들면 오래된 스냅샷이 새 것을 덮는다(덮어쓰기 사고의 모양).
+test('game.js 는 재시도 중에 새 쓰기를 내보내지 않는다', () => {
+  assert.match(GAME_CODE, /if \(saveRetrying\) return \{ ok: false, retrying: true \}/,
+    '쓰기는 한 줄기로 직렬화해야 한다');
+});
+
+//  🔒 세션이 죽었으면 읽기가 우연히 성공해도 빗장은 그대로여야 한다(failed_fresh 복구 루프와 겹칠 때).
+test('supabase-client 는 세션이 죽은 뒤 빗장을 풀지 않는다', () => {
+  const src = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
+  assert.match(src, /saveLocked = !out\.canSave \|\| state\.lost/);
+});
+
+//  🔒 저장이 끊겼다는 안내가 모달·미니게임 밑에 깔리면 정작 필요한 순간에 안 보인다.
+//    (#loading 은 입장 전용이라 z-index 31 로 충분했지만, 이 안내는 플레이 도중에 뜬다)
+test('저장 끊김 안내는 화면의 어떤 층보다 위에 선다', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const stuck = html.match(/#loading\.save-stuck\s*\{[^}]*z-index:\s*(\d+)/);
+  assert.ok(stuck, '#loading.save-stuck 에 z-index 가 있어야 한다');
+  const others = [...html.matchAll(/z-index:\s*(\d+)/g)]
+    .map(m => Number(m[1])).filter(n => n !== Number(stuck[1]));
+  assert.ok(Number(stuck[1]) > Math.max(...others),
+    `안내(${stuck[1]})가 가장 높은 층(${Math.max(...others)})보다 위여야 한다`);
 });
