@@ -530,7 +530,9 @@ Expected: 2 이상. **0이면 배포해도 404다.**
 
 - [ ] **Step 4: Cloudflare 환경변수 추가**
 
-Worker 설정에 넣는다(값은 이 문서에 적지 않는다): `CARDNEWS_INGEST_SECRET`(새 랜덤 문자열), `CARDNEWS_OWNER_UID`(Supabase Auth의 본인 계정 uuid), `SUPABASE_URL`·`SUPABASE_SERVICE_KEY`(기존 것이 있으면 재사용).
+Worker 설정에 넣는다(값은 이 문서에 적지 않는다): `CARDNEWS_INGEST_SECRET`(새 랜덤 문자열), `CARDNEWS_OWNER_UID`(Supabase Auth의 본인 계정 uuid), `SUPABASE_URL`·`SUPABASE_SERVICE_KEY`·`SUPABASE_ANON_KEY`(기존 것이 있으면 재사용).
+
+⚠️ **`SUPABASE_ANON_KEY`를 빠뜨리면 Task 5·6이 배포 후 모든 요청을 401로 떨어뜨린다** — `getUserId()`가 이 값을 `apikey` 헤더에 쓰는데, 없으면 항상 `null`을 반환한다. Task 10 Step 4의 "401 기대" 검증이 이 실패를 정상으로 오인하므로 여기서 확실히 넣는다. anon key는 원래 공개되는 값이라 "프론트에 service key를 두지 않는다"는 제약과 무관하다.
 
 - [ ] **Step 5: 커밋**
 
