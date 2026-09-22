@@ -19,6 +19,9 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 LOG="$HOME/Library/Logs/calmforest-reel.log"
 OUT="$(mktemp -t cardnews-reel)"
 
+# 준비 과정(PATH·네트워크·Aside·락)은 cron-topics.sh 와 같은 것을 쓴다
+source "$HERE/cron-lib.sh"
+
 mkdir -p "$(dirname "$LOG")"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') 쇼츠 생성 시작 ===" >> "$LOG"
 
@@ -30,9 +33,8 @@ cd "$HERE" || { echo "cd 실패: $HERE" >> "$LOG"; exit 1; }
 #     "나흘 지났나" 를 여기서 판단한다 — cardnews-cron.js 와 같은 방식이다.
 #     날짜식(*/4)을 쓰면 월말에 간격이 하루로 줄어든다.
 EVERY_DAYS=4
-STAMP_DIR="$HOME/Library/Application Support/calmforest"
-STAMP="$STAMP_DIR/reel-last-run"
-mkdir -p "$STAMP_DIR"
+STAMP="$CF_STAMP_DIR/reel-last-run"
+mkdir -p "$CF_STAMP_DIR"
 TODAY="$(date '+%Y-%m-%d')"
 if [ -f "$STAMP" ]; then
   LAST="$(cat "$STAMP")"
@@ -44,17 +46,14 @@ if [ -f "$STAMP" ]; then
     rm -f "$OUT"; exit 0
   fi
 fi
+
+# 준비가 안 되면 스탬프를 찍지 않고 물러난다 — 다음 로그인 때 다시 시도한다.
+# ⚠️ 스탬프를 준비 **뒤에** 찍는다. 앞에 찍으면 Aside 가 안 떠서 못 돈 날에도
+#    "돌았다" 로 남아 나흘을 통째로 건너뛴다.
+cf_prepare || { rm -f "$OUT"; exit 0; }
+
 # 돌리기로 했으면 먼저 찍는다 — 중간에 죽어도 같은 날 또 돌지 않게
 echo "$TODAY" > "$STAMP"
-
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
-if ! command -v node >/dev/null; then
-  NVM_NODE="$(ls -d "$HOME"/.nvm/versions/node/*/bin 2>/dev/null | tail -1)"
-  [ -n "$NVM_NODE" ] && export PATH="$NVM_NODE:$PATH"
-fi
-if ! command -v node >/dev/null; then
-  echo "node 를 못 찾았다 (PATH=$PATH)" >> "$LOG"; exit 1
-fi
 
 # ⚠️ 게임 녹화 컷이 있으면 로컬 서버가 떠 있어야 한다(record.mjs 가 localhost:8000 을 연다)
 if ! curl -s -o /dev/null -m 3 "http://localhost:8000/index.html"; then
@@ -75,9 +74,7 @@ fi
 cat "$OUT" >> "$LOG"
 
 BODY="$(cat "$OUT")"
-aside "cheorish.hw@gmail.com 으로 메일을 보내줘. 제목은 '$SUBJECT'. 본문은 아래 내용을 그대로 넣어줘. 다른 말은 덧붙이지 말고 메일만 보내.
+if cf_send_mail "$SUBJECT" "$BODY"; then MAIL="발송 완료"; else MAIL="발송 실패"; fi
 
-$BODY" >> "$LOG" 2>&1
-
-echo "=== $(date '+%H:%M:%S') $SUBJECT ===" >> "$LOG"
+echo "=== $(date '+%H:%M:%S') $SUBJECT · 메일 $MAIL ===" >> "$LOG"
 rm -f "$OUT"
