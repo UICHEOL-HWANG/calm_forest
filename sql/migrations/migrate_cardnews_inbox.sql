@@ -46,3 +46,16 @@ create policy topics_own on cardnews.topics
 drop policy if exists bundles_own on cardnews.bundles;
 create policy bundles_own on cardnews.bundles
   for all using (owner = (select auth.uid())) with check (owner = (select auth.uid()));
+
+-- ⚠️ 새 스키마는 아래 두 가지를 **따로** 해 줘야 REST 로 닿는다. public 은 Supabase 가
+--    미리 해 두기 때문에 잊기 쉽다 — 2026-09-22 배포 때 둘 다 걸렸다.
+--    ① 대시보드 Integrations → Data API → Settings → Exposed schemas 에 cardnews 추가
+--       (빠지면 PGRST106 "Invalid schema: cardnews")
+--    ② 아래 grant (빠지면 42501 "permission denied for schema cardnews")
+--    권한을 열어도 데이터는 RLS 가 막는다 — grant 는 "문을 연다", RLS 가 "누구 행인지" 를 본다.
+grant usage on schema cardnews to anon, authenticated, service_role;
+grant all on all tables in schema cardnews to anon, authenticated, service_role;
+grant all on all sequences in schema cardnews to anon, authenticated, service_role;
+-- 2단계에서 테이블이 늘어도 다시 grant 하지 않게 기본 권한을 걸어 둔다
+alter default privileges in schema cardnews grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema cardnews grant all on sequences to anon, authenticated, service_role;
