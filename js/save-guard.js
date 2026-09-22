@@ -65,3 +65,23 @@ const RELOAD_AFTER = 6;   // 6회 실패 ≈ 30초(600+1200+2400+4800+5000+5000m
 export function offerReload(attempt) {
   return (Math.max(0, Math.floor(attempt) || 0)) >= RELOAD_AFTER;
 }
+
+// ── 🔌 세션이 노는 도중에 죽는 경우 ───────────────────────────────
+//   위 loadOutcome 은 "들어올 때" 만 지킨다. 몇 시간 놀던 중 refresh token 이 폐기되면
+//   (다른 기기 로그아웃·프로젝트 정지·토큰 회전 실패) supabase 가 SIGNED_OUT 을 쏘는데,
+//   그걸 안 들으면 state.online 이 true 로 남아 저장이 전부 조용히 실패한다.
+//   saveGame 은 던지지 않고 { ok:false } 만 돌려주므로(supabase-client.js) 아무도 눈치채지 못한다.
+//
+//   ⚠️ 우리가 **일부러** 부른 로그아웃과 구분해야 한다. initAuth 는 남은 익명 세션을,
+//      signInAsGuest 는 직전 게스트를 스스로 signOut 한다 — 이걸 사고로 세면 부팅하자마자 만료 화면이 뜬다.
+
+/**
+ * 인증 이벤트가 "세션을 잃었다" 는 뜻인가.
+ * @param {{ event: string, session: object|null, wasOnline: boolean, intentional?: boolean }} r
+ *   wasOnline    — 지금까지 서버에 쓰던 세션이었나(아직 안 붙었으면 잃을 것도 없다)
+ *   intentional  — 우리가 부른 signOut 인가
+ */
+export function sessionLoss({ event, session, wasOnline, intentional = false }) {
+  if (intentional || !wasOnline) return false;
+  return event === 'SIGNED_OUT' || !session;
+}
