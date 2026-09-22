@@ -1134,7 +1134,7 @@ git commit -m "feat: 🎀 꾸미기 상점 패널 — 슬롯 탭·구매·즉시
   - `PET_PRICE = 3000` · `PET_RADIUS = 4.5` · `PET_TASKS` · `GROW_NEED = [0, 40, 140]` · `WORK_SEC = 2.5` · `REST_SEC = 20` · `CHAIN_MAX = 5`
   - `emptyPet(kind)` · `stageOf(works)` · `toNextStage(works)` · `canCommand(pet, now)` · `pickPetTask(plots, center, radius)` · `afterWork(pet, done, now)`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/pet-rules.test.mjs
@@ -1212,12 +1212,12 @@ test('PET_PRICE 는 꾸미기 최고가(2,600)보다 비싸다 — 펫이 가장
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/pet/rules.js'`
 
-- [ ] **Step 3: 규칙을 쓴다**
+- [x] **Step 3: 규칙을 쓴다**
 
 ```js
 // js/pet/rules.js
@@ -1289,12 +1289,12 @@ export function afterWork(pet, done, now) {
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 누적 39개
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/pet/rules.js tests/pet-rules.test.mjs
