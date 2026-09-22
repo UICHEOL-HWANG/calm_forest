@@ -1,0 +1,592 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>펫 조형 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  button{font:inherit;padding:5px 11px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:120px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:600;
+       background:rgba(255,255,255,.82);padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.35}
+  .tag small{display:block;font-weight:400;opacity:.65;font-size:10.5px}
+  @media (max-width:760px){ .tag{font-size:10.5px;padding:2px 6px} .tag small{display:none} }
+  #hud{position:fixed;top:10px;right:12px;background:rgba(255,255,255,.85);padding:8px 12px;border-radius:9px;font-size:12px;line-height:1.7;max-width:280px}
+  #hud .warn{color:#b4553a;font-weight:600}
+</style>
+<div id="labels"></div>
+<div id="hud"></div>
+<div id="ui">
+  <div class="row">
+    <b>방향</b> <span id="dirs"></span>
+  </div>
+  <div class="row">
+    <label>카메라 거리 <input id="dist" type="range" min="2" max="14" step="0.1" value="7.4"><span id="distV">7.4</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="16"><span id="angV">16°</span></label>
+    <label>높이 <input id="elev" type="range" min="4" max="45" step="1" value="17"><span id="elevV">17°</span></label>
+    <label><input id="spin" type="checkbox"> 자동 회전</label>
+    <label><input id="night" type="checkbox"> 밤 조명</label>
+    <label><input id="ghost" type="checkbox" checked> 캐릭터 대비</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// =============================================================
+//  🐾 펫 조형 시안 — 방향 4종 × 성장 3단계
+//  ------------------------------------------------------------
+//  ▶ 왜 이 4종인가: 게임에 이미 도는 동물이 많다(플레이어 7종 · 일꾼 3종 ·
+//    주민 · 닭 · 방문객 도감 · 밤손님). 네발 포유류/설치류 자리는 다 찼고,
+//    베타에서 "누가 누군지 모르겠다"를 이미 맞았다. 그래서 후보는 전부
+//    **지상 네발 실루엣을 피한 것**들이다 — 뜨거나(정령·새), 돌덩이거나(흙꼬마).
+//
+//  ▶ 성장은 색이 아니라 **실루엣**으로 읽혀야 한다. 멀리서 봐도 1→3단계가
+//    구분되게 "윤곽이 바뀌는 축"을 방향마다 하나씩 못박았다:
+//      ✨정령   = 주위를 도는 파편 수 + 후광
+//      🐦새     = 꽁지깃 길이 + 볏
+//      🫘흙꼬마 = 몸을 덮는 식생(민둥돌 → 이끼 → 꽃·버섯)
+//      🍃잎사귀 = 잎 장수 + 망토
+//
+//  ▶ 조형 규칙(이 저장소에서 비싸게 배운 것들):
+//    · 부속을 꽂지 말고 **형태로 승격**한다 — 이끼는 붙이는 게 아니라 몸 윗면을 덮는다.
+//    · 눈은 **작고 어둡게**. 크고 흰 눈은 인형이 아니라 캐릭터가 된다.
+//    · 면이 겹치면 줄무늬(z-fighting)가 인다 — 덮는 조각은 확실히 띄운다.
+//    · 촘촘한 반복은 환공포증으로 읽힌다 — 파편·깃털·꽃잎은 6을 넘기지 않는다.
+//
+//  ▶ ⚠️ 블룸 임계 0.85(js/tool-tiers.js BLOOM_LUMA) — 휘도가 이 값을 넘는 색을
+//    넓은 면에 칠하면 UnrealBloomPass 후광이 형태를 통째로 삼킨다(🛶나룻배 등불 사고).
+//    정령은 빛나는 물체라 여기 제일 걸리기 쉽다. 아래 PALETTE 의 모든 색을
+//    부팅 시 luma() 로 검산해 HUD 에 띄운다 — 넘는 색이 있으면 빨갛게 경고한다.
+//
+//  ▶ ⚠️ 확정 뒤 할 일: 팔레트와 조형 수치를 js/pet/art.js 로 옮기고 이 파일이
+//    그걸 import 하게 바꾼다. 시안이 복제본으로 남으면 게임과 갈린다
+//    (tool-tier-sim 에서 낚싯대 0단계 값이 갈려 역이식된 사고가 있었다).
+// =============================================================
+
+// ── 블룸 검산 (js/tool-tiers.js 와 같은 식 — Rec.709) ──
+const BLOOM_LUMA = 0.85;
+const luma = hex => (0.2126 * ((hex >> 16) & 255) + 0.7152 * ((hex >> 8) & 255) + 0.0722 * (hex & 255)) / 255;
+
+// ── 팔레트 — 넓은 면에 쓰는 색은 전부 0.85 아래로 맞췄다 ──
+const P = {
+  // ✨ 정령
+  core:   0x8fe0d0,   // 코어(작다 — 살짝 밝아도 반짝임으로 읽힌다)
+  halo:   0xa8d8f0,   // 후광·껍질(반투명)
+  shard:  0xa8e2d4,   // 공전 파편 — 0xbfeee2 는 luma 0.891 로 임계를 넘어 후광이 번졌다
+  // 🐦 새
+  bird:   0x6f9ecb, birdBelly: 0xdcd0bc, beak: 0xe0a84e, birdTip: 0x4a6f96, crest: 0xe8896a,
+  // 🫘 흙꼬마 — 회갈색. 잎사귀 정령(따뜻한 베이지)과 멀리서도 갈리게 톤을 떨어뜨렸다
+  soil:   0x7d6552, soilDark: 0x5f4b3c, moss: 0x6f9b52, mossLit: 0x8fbb68,
+  // 🍃 잎사귀 정령 — 몸은 밝은 곡물색(흙꼬마와 대비)
+  seed:   0xe6cf9a, leaf: 0x7fb857, leafLit: 0xa8d478, stem: 0x6e9b4a, bloom: 0xf0b8c8,
+  // 공용
+  eye:    0x2e241c,
+  pollen: 0xe8c85e,
+  shroom: 0xc9705e,
+};
+
+// ── 재질 ─────────────────────────────────────────────────────
+//   clay = 저폴리 각진 면(돌·잎·부리) · plush = 봉제인형 톤(몸통, 캐릭터와 같은 결)
+const clay  = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const plush = c => new THREE.MeshStandardMaterial({ color: c, roughness: 1.0, metalness: 0 });
+const glow  = (c, e = 0.55) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0, emissive: c, emissiveIntensity: e });
+const film  = (c, o) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, metalness: 0, transparent: true, opacity: o, depthWrite: false });
+
+const put = (parent, mesh, x, y, z, shadow = true) => { mesh.position.set(x, y, z); mesh.castShadow = shadow; parent.add(mesh); return mesh; };
+
+/** 작고 어두운 눈 — 모든 방향이 이 하나를 공유한다(생김새가 갈리지 않게) */
+function eyes(g, { r = 0.022, x = 0.055, y = 0.0, z = 0.10 }) {
+  const m = new THREE.MeshStandardMaterial({ color: P.eye, roughness: 0.5 });
+  [-1, 1].forEach(s => put(g, new THREE.Mesh(new THREE.SphereGeometry(r, 8, 8), m), s * x, y, z, false));
+}
+
+/** 납작한 잎 한 장 — 구를 눌러 만든다(전용 지오메트리 없이 실루엣이 잎으로 읽히게) */
+function leafMesh(len, wide, mat) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(len, 7, 5), mat);
+  m.scale.set(wide, 0.13, 1.0);
+  return m;
+}
+
+// =============================================================
+//  ✨ ① 정령 — 성장축: 공전 파편 수 + 후광
+// =============================================================
+function buildSpirit(st) {
+  const g = new THREE.Group();
+  // 둥둥 뜨는 건 air 안에만 담는다. 바닥 빛무리까지 같이 흔들면 땅을 뚫고 줄무늬가 인다
+  const air = new THREE.Group(); g.add(air);
+  const orbit = [];
+  //  ⚠️ 1차 렌더에서 정령이 "거의 안 보였다" — 코어가 작고 껍질이 너무 옅어
+  //     멀리서는 빈 공중으로 읽혔다. 코어를 키우고 껍질 불투명도를 올렸다.
+  const R     = [0.125, 0.160, 0.195][st];
+  const shell = [0.200, 0.265, 0.325][st];
+  const nSh   = [0, 3, 6][st];
+  const Y     = [0.42, 0.50, 0.58][st];              // 단계가 오를수록 조금 더 높이 뜬다
+
+  // 코어 — 구를 쓰지 않는다. 팔면체라야 "빛 결정"으로 읽힌다(구는 그냥 공이다)
+  const core = put(air, new THREE.Mesh(new THREE.OctahedronGeometry(R, 0), glow(P.core, 0.7)), 0, Y, 0, false);
+  core.scale.set(1, 1.25, 1);
+  g.userData.pulse = core;
+  g.userData.air = air;
+
+  // 껍질 — 반투명 한 겹. depthWrite:false 라 코어와 면이 겹쳐도 줄무늬가 안 인다
+  put(air, new THREE.Mesh(new THREE.IcosahedronGeometry(shell, 0), film(P.halo, 0.26)), 0, Y, 0, false);
+
+  // 바닥 빛무리 — 정령만 그림자를 못 드리워 공중에 붕 떠 보였다. 발밑에 옅은 빛을 깔아 자리를 만든다
+  const pool = put(g, new THREE.Mesh(new THREE.CircleGeometry(shell * 1.5, 20), film(P.core, 0.16)), 0, 0.012, 0, false);
+  pool.rotation.x = -Math.PI / 2;
+
+  eyes(air, { r: 0.017, x: R * 0.40, y: Y + R * 0.10, z: shell * 0.62 });
+
+  // 공전 파편 — 3단계는 두 고도로 나눠 한 줄 링이 되지 않게(반복 티를 줄인다)
+  for (let i = 0; i < nSh; i++) {
+    const hi  = st === 2 && i % 2 === 1;
+    const rad = hi ? shell * 1.55 : shell * 1.30;
+    const a   = (i / nSh) * Math.PI * 2;
+    const s   = put(air, new THREE.Mesh(new THREE.OctahedronGeometry(0.038 + 0.014 * (st - 1), 0), glow(P.shard, 0.5)),
+                    Math.cos(a) * rad, Y + (hi ? 0.13 : -0.05), Math.sin(a) * rad, false);
+    orbit.push({ mesh: s, rad, a, y: s.position.y, spd: hi ? -0.7 : 1.0 });
+  }
+
+  // 후광 링 — 3단계에만. 기울여 두면 정면에서 타원으로 보여 납작해 보이지 않는다
+  if (st === 2) {
+    // 1.85 배는 토성 고리처럼 퍼져 몸보다 링이 주인공이 됐다 — 몸에 가깝게 줄인다
+    const ring = put(air, new THREE.Mesh(new THREE.TorusGeometry(shell * 1.38, 0.012, 3, 28), glow(P.halo, 0.4)), 0, Y + 0.04, 0, false);
+    ring.rotation.set(1.28, 0, 0.26);
+    g.userData.ring = ring;
+  }
+
+  // 꼬리 — 뒤로 갈수록 작아지고 옅어지는 조각. 길이가 단계를 말한다
+  const tailN = [2, 3, 5][st];
+  for (let i = 0; i < tailN; i++) {
+    const k = (i + 1) / tailN;
+    put(air, new THREE.Mesh(new THREE.OctahedronGeometry(R * (0.50 - 0.30 * k), 0), film(P.core, 0.62 - 0.34 * k)),
+        0, Y - 0.05 - 0.05 * i, -shell - 0.09 * i, false);
+  }
+
+  g.userData.orbit = orbit;
+  return g;
+}
+
+// =============================================================
+//  🐦 ② 새 — 성장축: 꽁지깃 길이 + 볏
+//    ⚠️ 🐤병아리(플레이어 선택지)와 겹치면 안 된다 — 병아리는 노랗고 동그랗다.
+//       그래서 이 새는 **푸르고 길쭉하며 꽁지가 길다**. 색과 비례를 둘 다 어긋나게 잡았다.
+// =============================================================
+function buildBird(st) {
+  const g = new THREE.Group();
+  const R  = [0.150, 0.175, 0.195][st];
+  const HR = [0.108, 0.118, 0.126][st];
+  const bodyY = R * 0.98 + 0.055;
+  const headY = bodyY + R * 0.88;
+
+  // 다리 — 짧게. 새끼는 거의 앉은 자세
+  [-1, 1].forEach(s => {
+    put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.075 + 0.02 * st, 5), clay(P.beak)), s * R * 0.32, 0.038 + 0.01 * st, R * 0.10);
+    put(g, new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.016, 0.075), clay(P.beak)), s * R * 0.32, 0.008, R * 0.16, false);
+  });
+
+  // 몸 — 뒤로 길쭉하게 눌러 "병아리 공"이 되지 않게. 1차 렌더에서 아직 동글어 보여 더 늘렸다
+  const body = put(g, new THREE.Mesh(new THREE.SphereGeometry(R, 20, 14), plush(P.bird)), 0, bodyY, 0);
+  body.scale.set(0.88, 0.94, 1.26);
+
+  // 배 — 몸 표면 밖으로 확실히 내밀어 면이 겹치지 않게 한다
+  const belly = put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.66, 16, 12), plush(P.birdBelly)), 0, bodyY - R * 0.20, R * 0.52, false);
+  belly.scale.set(1, 1.05, 0.62);
+
+  // 머리 + 부리
+  put(g, new THREE.Mesh(new THREE.SphereGeometry(HR, 18, 14), plush(P.bird)), 0, headY, R * 0.14);
+  const beak = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.078 + 0.012 * st, 4), clay(P.beak)), 0, headY - HR * 0.10, R * 0.14 + HR * 0.92, false);
+  beak.rotation.set(Math.PI / 2, Math.PI / 4, 0);
+  eyes(g, { r: 0.021, x: HR * 0.52, y: headY + HR * 0.12, z: R * 0.14 + HR * 0.74 });
+
+  // 솜털 / 볏 — 1단계는 삐친 털 한 가닥, 3단계는 볏 3장.
+  //  ⚠️ 1차 렌더에서 볏이 "빨간 뿔"로 보였다 — 길고 뾰족한 원뿔을 세우면 뿔이 된다.
+  //     납작한 깃(leafMesh)을 뒤로 눕혀 부채로 깔면 볏으로 읽힌다.
+  //  ⚠️ 2차에서도 깃 3장이 뭉쳐 **갈색 베레모**로 보였다. 겹치지 않는 긴 깃 2가닥이
+  //     뒤로 흐르게 하면 훨씬 우아하고, 멀리서도 "볏이 생겼다"가 한눈에 읽힌다.
+  if (st < 2) {
+    const c = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.017, 0.070, 4), clay(P.bird)), 0, headY + HR * 0.94, R * 0.14);
+    c.rotation.set(-0.50, 0, 0.12);
+  } else {
+    [[0.135, -0.95, 0.0], [0.095, -0.72, 0.30]].forEach(([len, rx, rz], i) => {
+      const f = leafMesh(len, 0.30, clay(P.crest));
+      put(g, f, i * 0.028, headY + HR * (0.74 + i * 0.10), R * 0.14 - 0.02 - i * 0.03, false);
+      f.rotation.set(rx, 0, rz);
+    });
+  }
+
+  // 날개 — 몸에 붙인 납작한 깃. 1차 렌더에서 원뿔 날개가 "마름모 깃발"로 떠 보여서 바꿨다.
+  //   몸 표면에 얹히게 안쪽으로 당기고(0.62R), 뒤로 살짝 눕혀 접힌 날개로 읽히게 한다.
+  const wingL = [0.120, 0.180, 0.235][st];
+  [-1, 1].forEach(s => {
+    const w = leafMesh(wingL, 0.60, clay(P.bird));
+    put(g, w, s * R * 0.66, bodyY + R * 0.06, -R * 0.02, true);
+    w.rotation.set(0.16, s * 0.30, s * (Math.PI / 2 - 0.22));
+    // 날개 끝 색 조각은 뺐다 — 2차 렌더에서 날개에서 떨어져 나가 허공에 회색 판으로 떴다.
+    // 색을 나누려면 깃을 두 장으로 겹쳐야 하는데, 그러면 면이 겹쳐 줄무늬가 인다.
+  });
+
+  // 꽁지깃 — 성장의 주축. 장수와 길이가 같이 자란다(1장 → 3장 → 5장 부채).
+  //  ⚠️ 2차 렌더에서도 꽁지가 거의 안 보였다. 원인은 장수가 아니라 **각도** —
+  //     거의 수평으로 뒤로 뻗어 몸통에 가렸다. 실루엣에 걸리려면 **위로 들려야** 한다.
+  //     (진짜 새의 꽁지도 뒤로 곧게가 아니라 비스듬히 위로 뻗는다.)
+  const tailN = [1, 3, 5][st];
+  const tailL = [0.115, 0.250, 0.380][st];
+  for (let i = 0; i < tailN; i++) {
+    const t = i - (tailN - 1) / 2;
+    const f = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.038, tailL * (1 - 0.13 * Math.abs(t)), 3),
+                  clay(st === 2 && Math.abs(t) === 2 ? P.birdTip : P.bird)),
+                  t * 0.040, bodyY + R * 0.34 + tailL * 0.26 + Math.abs(t) * 0.016, -R * 0.94 - tailL * 0.24);
+    f.rotation.set(Math.PI / 2 - 0.92, 0, t * 0.24);   // 수평(π/2)에서 53° 들어 올린다
+  }
+  return g;
+}
+
+// =============================================================
+//  🫘 ③ 흙꼬마 — 성장축: 몸을 덮는 식생(민둥돌 → 이끼 → 꽃·버섯)
+//    이끼를 **붙이지 않는다**. 몸과 같은 형태를 한 겹 키워 윗부분만 드러내
+//    "덮인" 것으로 읽히게 한다(부속을 꽂지 말고 형태로 승격).
+// =============================================================
+function buildGolem(st) {
+  const g = new THREE.Group();
+  const R = [0.150, 0.185, 0.220][st];
+
+  if (st === 0) {
+    // 1단계는 그냥 돌멩이 하나다. 팔도 다리도 없다 — 이 "아무것도 아님"이 성장을 만든다
+    const b = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R, 0), clay(P.soil)), 0, R * 0.80, 0);
+    b.scale.set(1.06, 0.84, 1.0); b.rotation.y = 0.5;
+    eyes(g, { r: 0.020, x: R * 0.34, y: R * 0.86, z: R * 0.80 });
+    return g;
+  }
+
+  const bodyY = R * 0.92 + 0.045;
+  const headR = R * 0.62;
+  const headY = bodyY + R * 0.86;
+
+  // 다리 — 작은 돌 두 개. 몸에서 떨어뜨려 실루엣에 틈을 준다
+  [-1, 1].forEach(s => put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.28, 0), clay(P.soilDark)), s * R * 0.42, R * 0.26, 0));
+
+  const body = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R, 0), clay(P.soil)), 0, bodyY, 0);
+  body.rotation.set(0.2, 0.7, 0);
+
+  // 🌿 이끼 — 어깨 위 패치로 얹는다.
+  //    ⚠️ 1차 렌더에서 "몸을 통째로 덮는 한 겹"을 눌러 씌웠더니 허리를 가로지르는 **초록 벨트**가 됐다.
+  //       그렇다고 누르지 않고 키우면 머리까지 삼킨다(머리가 몸 위에 얹혀 있어서).
+  //       그래서 껍질을 포기하고 **패치 3장**으로 간다 — 불규칙해서 오히려 이끼답다.
+  //       각 패치는 몸 반지름 위에 얹히므로(R*0.86) 표면이 나란히 겹치지 않아 줄무늬도 안 인다.
+  //  ⚠️ 1차엔 패치가 얼굴 옆으로 튀어나와 **초록 날개**로 보였다. 몸은 정12면체라 면이
+  //     평평해서, 구 반지름으로 계산하면 모서리 사이에서 밖으로 삐져나온다.
+  //     계수를 0.68 로 당기고 패치를 줄였으며, 자리도 앞이 아니라 **등·어깨 뒤**로 옮겼다.
+  const mossMat = clay(st === 2 ? P.moss : P.mossLit);
+  [[-2.4, 0.60], [-0.7, 0.74], [3.05, 0.52]].forEach(([a, up]) => {
+    const rr = Math.sqrt(Math.max(0, 1 - up * up)) * R * 0.68;
+    const p = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.30, 0), mossMat),
+                  Math.cos(a) * rr, bodyY + R * up, Math.sin(a) * rr, false);
+    p.scale.set(1, 0.40, 1); p.rotation.y = a;
+  });
+
+  // 머리 — 몸보다 작은 돌. 목이 없어야 "돌덩이"로 읽힌다
+  const head = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(headR, 0), clay(P.soil)), 0, headY, 0);
+  head.rotation.y = -0.4;
+  eyes(g, { r: 0.020, x: headR * 0.40, y: headY + headR * 0.06, z: headR * 0.84 });
+
+  // 팔 — 2단계는 돌 하나, 3단계는 두 마디(길어진 실루엣).
+  //   ⚠️ 1차 렌더에서 팔이 몸과 안 닿아 공중에 떠 있었다. 몸 표면에 물리게 안쪽으로 당긴다.
+  [-1, 1].forEach(s => {
+    put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.28, 0), clay(P.soilDark)), s * R * 0.86, bodyY + R * 0.12, 0);
+    if (st === 2) put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.22, 0), clay(P.soilDark)), s * R * 1.14, bodyY - R * 0.20, 0);
+  });
+
+  // 머리 위 식생 — 2단계는 새싹 하나, 3단계는 꽃 + 어깨 버섯.
+  //   줄기는 머리에 확실히 박히게 아래로 내려 잡는다(1차엔 가늘고 짧아 꽃이 떠 보였다).
+  put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, R * 0.62, 5), clay(P.stem)), 0, headY + headR * 0.78, 0, false);
+  if (st === 1) {
+    [-1, 1].forEach(s => {
+      const lf = leafMesh(R * 0.30, 0.52, clay(P.leafLit));
+      put(g, lf, s * R * 0.16, headY + headR * 1.18, 0, false);
+      lf.rotation.set(0, s * 0.5, s * 0.55);
+    });
+  } else {
+    // 🌸 꽃 — 꽃잎 5장(그 이상은 촘촘해져 환공포증으로 읽힌다)
+    const cy = headY + headR * 1.26;
+    put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(0.030, 0), clay(P.pollen)), 0, cy, 0, false);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const pt = leafMesh(0.054, 0.68, clay(P.bloom));
+      put(g, pt, Math.cos(a) * 0.052, cy - 0.004, Math.sin(a) * 0.052, false);
+      pt.rotation.set(0, -a, 0.30);
+    }
+    // 🍄 어깨 버섯 — 이끼 패치 위에 앉힌다. 패치보다 확실히 위라 면이 겹치지 않는다
+    const mx = -R * 0.62, my = bodyY + R * 0.74;
+    put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.055, 5), clay(P.birdBelly)), mx, my, R * 0.20, false);
+    const cap = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.046, 0.045, 7), clay(P.shroom)), mx, my + 0.046, R * 0.20, false);
+    cap.rotation.y = 0.3;
+  }
+  return g;
+}
+
+// =============================================================
+//  🍃 ④ 잎사귀 정령 — 성장축: 잎 장수 + 망토
+//    정령의 신비로움에 "쓰다듬을 형태"를 더한 절충안. 몸은 씨앗이고 옷이 잎이다.
+// =============================================================
+function buildLeafling(st) {
+  const g = new THREE.Group();
+  const R = [0.125, 0.150, 0.172][st];
+  const bodyY = R * 1.12 + 0.03;
+
+  // 뿌리발 — 짧은 줄기 두 가닥. 지면에 닿는 점이 있어야 떠 보이지 않는다
+  [-1, 1].forEach(s => {
+    const l = put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.07 + 0.015 * st, 5), clay(P.stem)), s * R * 0.34, 0.035 + 0.008 * st, 0);
+    l.rotation.z = s * 0.10;
+  });
+
+  // 몸 — 씨앗. 세로로 늘려 "서 있는 것"으로 읽히게
+  const body = put(g, new THREE.Mesh(new THREE.SphereGeometry(R, 18, 14), plush(P.seed)), 0, bodyY, 0);
+  body.scale.set(0.86, 1.16, 0.86);
+  eyes(g, { r: 0.020, x: R * 0.34, y: bodyY + R * 0.34, z: R * 0.80 });
+
+  // ── 잎 ────────────────────────────────────────────────────
+  //  ⚠️ leafMesh 의 장축은 **Z(수평)** 다. 1차 렌더에서 rotation.x 에 -0.42 를 줘
+  //     잎을 세운 게 아니라 거의 눕혀 버렸고, 그래서 머리 위에 잎이 붕 떠 보였다.
+  //     위로 세우려면 -π/2 쪽으로 가야 한다(-1.15 면 위로 66°, 바깥으로 살짝 벌어진다).
+  //  ▶ 그리고 잎은 **몸 안에서 자라 나와야** 한다 — 안쪽 끝이 몸 표면 아래 묻히게
+  //     중심을 잡는다. 그래야 "꽂은 것"이 아니라 "난 것"으로 읽힌다.
+  const TOP = bodyY + R * 1.16;                 // 몸(세로 1.16 배) 꼭대기
+  const crown = [1, 3, 5][st];
+  for (let i = 0; i < crown; i++) {
+    const t = i - (crown - 1) / 2;
+    const len = R * (0.86 + 0.14 * st) * (1 - 0.13 * Math.abs(t));
+    const lf = leafMesh(len, 0.44, clay(i % 2 ? P.leaf : P.leafLit));
+    // 위로 0.42·len 만 올린다 → 안쪽 끝(−0.91·len)이 몸 속에 묻힌다
+    put(g, lf, t * R * 0.22, TOP + len * 0.42 - Math.abs(t) * R * 0.06, -R * 0.06, false);
+    lf.rotation.set(-1.15 + Math.abs(t) * 0.16, t * 0.52, t * 0.22);
+  }
+
+  // 팔 — 2단계부터. 줄기를 위로 벌려야 축 처진 인형이 되지 않는다
+  if (st >= 1) {
+    [-1, 1].forEach(s => {
+      const arm = put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.013, R * 0.78, 5), clay(P.stem)), s * R * 0.72, bodyY + R * 0.30, 0, false);
+      arm.rotation.z = s * 0.78;
+      const hand = leafMesh(R * 0.30, 0.56, clay(P.leafLit));
+      put(g, hand, s * R * 1.04, bodyY + R * 0.56, 0, false);
+      hand.rotation.set(-0.5, 0, s * 0.8);
+    });
+  }
+
+  // 겉껍질(husk) — 3단계만. 씨앗을 감싸던 껍질이 벌어진 모양.
+  //   등에 판을 대는 게 아니라 **몸 아래를 감싸 올린다** — 이래야 망토가 몸에서 자란 것으로 보인다.
+  if (st === 2) {
+    //  ⚠️ 앞쪽(z+) 껍질은 얼굴을 덮어 버렸다 — 옆과 뒤에만 세운다
+    [[-1, -0.62], [1, -0.62], [-1, -0.05], [1, -0.05]].forEach(([s, zk]) => {
+      const husk = leafMesh(R * 1.02, 0.52, clay(P.leaf));
+      put(g, husk, s * R * 0.62, bodyY - R * 0.30, zk * R, false);
+      husk.rotation.set(-1.05 + zk * 0.5, 0, s * 1.05);
+    });
+    // 🌸 꽃 한 송이 — 1차엔 가슴 한가운데라 **분홍 코**로 읽혔다. 왕관 옆으로 옮긴다
+    put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(0.032, 0), clay(P.bloom)), R * 0.46, TOP + R * 0.34, R * 0.10, false);
+    put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, R * 0.34, 5), clay(P.stem)), R * 0.40, TOP + R * 0.14, R * 0.08, false);
+  }
+  return g;
+}
+
+// =============================================================
+//  구성 표 — 방향 4종 × 3단계. 이름/설명이 캡처의 라벨이 된다
+// =============================================================
+const DIRS = [
+  { id: 'spirit', ico: '✨', name: '정령',        build: buildSpirit,
+    stages: ['씨눈 — 코어 하나', '어린 정령 — 파편 3', '정령 — 파편 6 + 후광'],
+    note: '지상 실루엣과 0 충돌 · 색만 바꿔도 새 상품' },
+  { id: 'bird',   ico: '🐦', name: '새',          build: buildBird,
+    stages: ['새끼 — 솜털 한 가닥', '어린 새 — 꽁지 3장', '어른 새 — 꽁지 5장 + 볏'],
+    note: '쓰다듬는 맛 · 낚시 보조가 자연스럽다' },
+  { id: 'golem',  ico: '🫘', name: '흙꼬마',      build: buildGolem,
+    stages: ['돌멩이 — 팔도 다리도 없다', '이끼가 덮인다', '꽃과 버섯이 핀다'],
+    note: '로스터와 100% 무충돌 · 밭일 서사' },
+  { id: 'leaf',   ico: '🍃', name: '잎사귀 정령', build: buildLeafling,
+    stages: ['씨앗 — 잎 1장', '잎 3장 + 줄기 팔', '잎 왕관 5장 + 망토'],
+    note: '정령의 신비 + 만질 형태' },
+];
+
+// =============================================================
+//  무대
+// =============================================================
+const scene = new THREE.Scene();
+// ⚠️ background 를 안 주면 지평선 위가 검게 남는다(캔버스가 body 그라데이션을 덮는다).
+scene.background = new THREE.Color(0xdbe9ee);
+scene.fog = new THREE.Fog(0xdbe9ee, 16, 38);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 100);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const hemi = new THREE.HemisphereLight(0xdfefff, 0x6f7f68, 0.85); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3df, 1.15);
+sun.position.set(4, 8, 5); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 0.5, far: 24 });
+sun.shadow.camera.updateProjectionMatrix();
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0xbfd8e8, 0.35); rim.position.set(-5, 3, -4); scene.add(rim);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(14, 48), new THREE.MeshStandardMaterial({ color: 0x9fc08a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+// ── 그리드 배치 — X 가 성장(왼→오), Z 가 방향(앞→뒤) ──
+const GX = 1.30, GZ = 1.35;
+const cells = [];
+const root = new THREE.Group(); scene.add(root);
+
+// 👤 캐릭터 대비 — 플레이어 체형(몸 R 0.52 · 머리 Y 1.26)을 흐린 실루엣으로 세운다.
+//    펫이 "무릎 높이"인지 눈으로 확인하지 않으면 인게임에서 크기가 어긋난다.
+const ghost = new THREE.Group();
+{
+  const gm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.30, depthWrite: false });
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 12), gm); b.position.y = 0.56; b.scale.set(0.9, 1.08, 0.9); ghost.add(b);
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.37, 16, 12), gm); h.position.y = 1.26; ghost.add(h);
+}
+root.add(ghost);
+
+let listNow = DIRS;
+function layout(filter) {
+  cells.length = 0;
+  [...root.children].forEach(c => { if (c !== ghost) root.remove(c); });
+  listNow = filter ? DIRS.filter(d => d.id === filter) : DIRS;
+  const z0 = -((listNow.length - 1) / 2) * GZ;
+  listNow.forEach((d, di) => {
+    for (let st = 0; st < 3; st++) {
+      const g = d.build(st);
+      const x = (st - 1) * GX, z = z0 + di * GZ;
+      g.position.set(x, 0, z);
+      root.add(g);
+      cells.push({ dir: d, st, group: g, x, z, y0: 0 });
+    }
+  });
+  ghost.position.set(-2 * GX - 0.40, 0, z0 + (listNow.length - 1) * GZ * 0.5);
+  buildTags(z0);
+}
+
+// ── 라벨(DOM) ─────────────────────────────────────────────────
+const labels = document.getElementById('labels');
+let tags = [];
+function buildTags(z0) {
+  labels.innerHTML = ''; tags = [];
+  cells.forEach(c => {
+    const el = document.createElement('div'); el.className = 'tag';
+    el.innerHTML = `${c.st + 1}단계<small>${c.dir.stages[c.st]}</small>`;
+    labels.appendChild(el);
+    tags.push({ el, x: c.x, z: c.z, y: [0.78, 0.92, 1.06][c.st] });
+  });
+  listNow.forEach((d, di) => {
+    const el = document.createElement('div'); el.className = 'tag';
+    el.innerHTML = `${d.ico} <b>${d.name}</b><small>${d.note}</small>`;
+    labels.appendChild(el);
+    tags.push({ el, x: -2 * GX - 0.40, z: z0 + di * GZ, y: 1.72 });
+  });
+}
+
+const v = new THREE.Vector3();
+function placeTags() {
+  tags.forEach(t => {
+    v.set(t.x, t.y, t.z);
+    root.localToWorld(v); v.project(camera);
+    t.el.style.left = ((v.x * 0.5 + 0.5) * innerWidth) + 'px';
+    t.el.style.top  = ((-v.y * 0.5 + 0.5) * innerHeight) + 'px';
+    t.el.style.display = v.z > 1 ? 'none' : '';
+  });
+}
+
+// ── 조작 ─────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+let filter = null, dist = 7.4, angle = 16, elev = 17;
+
+const dirsBox = $('dirs');
+function renderBtns() {
+  dirsBox.innerHTML = '';
+  const mk = (label, on, fn) => {
+    const b = document.createElement('button'); b.textContent = label; if (on) b.className = 'on';
+    b.onclick = () => { fn(); renderBtns(); }; dirsBox.appendChild(b);
+  };
+  mk('전체', filter === null, () => { filter = null; layout(null); dist = 7.4; $('dist').value = 7.4; $('distV').textContent = '7.4'; });
+  DIRS.forEach(d => mk(`${d.ico} ${d.name}`, filter === d.id, () => { filter = d.id; layout(d.id); dist = 3.8; $('dist').value = 3.8; $('distV').textContent = '3.8'; }));
+}
+
+$('dist').oninput = e => { dist = +e.target.value; $('distV').textContent = dist.toFixed(1); };
+$('ang').oninput  = e => { angle = +e.target.value; $('angV').textContent = angle + '°'; };
+$('elev').oninput = e => { elev = +e.target.value; $('elevV').textContent = elev + '°'; };
+$('ghost').onchange = e => { ghost.visible = e.target.checked; };
+$('night').onchange = e => {
+  const n = e.target.checked;
+  hemi.intensity = n ? 0.30 : 0.85; sun.intensity = n ? 0.22 : 1.15;
+  hemi.color.set(n ? 0x9fb4d8 : 0xdfefff); rim.intensity = n ? 0.16 : 0.35;
+  document.body.style.background = n ? 'linear-gradient(#2b3a52,#3d4f52)' : 'linear-gradient(#cfe4ee,#eaf2e6)';
+  ground.material.color.set(n ? 0x4a6350 : 0x9fc08a);
+  scene.fog.color.set(n ? 0x36485c : 0xdbe9ee);
+  scene.background.set(n ? 0x36485c : 0xdbe9ee);
+};
+
+// ── HUD — 블룸 검산 결과를 띄운다(넘는 색이 있으면 빨갛게) ──
+{
+  const nums = Object.entries(P).filter(([, c]) => typeof c === 'number');
+  const over = nums.filter(([, c]) => luma(c) > BLOOM_LUMA);
+  $('hud').innerHTML =
+    `🐾 <b>펫 조형 시안</b><br>방향 4종 × 성장 3단계<br>` +
+    `<span style="opacity:.6">X축 = 성장 · Z축 = 방향</span><br>` +
+    (over.length
+      ? `<span class="warn">⚠️ 블룸 초과 ${over.length}색: ${over.map(([k]) => k).join(', ')}</span>`
+      : `<span style="color:#3f7a4a">✓ 블룸 임계 0.85 — ${nums.length}색 전부 통과</span>`);
+  console.log('[pet-sim] 블룸 검산', Object.fromEntries(nums.map(([k, c]) => [k, +luma(c).toFixed(3)])));
+}
+
+// ── 루프 ─────────────────────────────────────────────────────
+layout(null); renderBtns();
+const clock = new THREE.Clock();
+function tick() {
+  requestAnimationFrame(tick);
+  const t = clock.getElapsedTime();
+  if ($('spin').checked) {
+    angle = (angle + 0.28) % 360;
+    $('ang').value = angle > 180 ? angle - 360 : angle;
+    $('angV').textContent = Math.round(angle) + '°';
+  }
+
+  // 정령 계열 — 공전·맥동·둥둥. 멈춰 있으면 "빛덩이"가 아니라 "구슬"로 보인다
+  cells.forEach(c => {
+    const u = c.group.userData;
+    if (!u.orbit) return;
+    u.orbit.forEach(o => {
+      const a = o.a + t * o.spd;
+      o.mesh.position.set(Math.cos(a) * o.rad, o.y + Math.sin(t * 1.6 + o.a) * 0.018, Math.sin(a) * o.rad);
+    });
+    const s = 1 + Math.sin(t * 2.1 + c.z) * 0.05;
+    u.pulse.scale.set(s, 1.25 * s, s);
+    u.air.position.y = Math.sin(t * 1.1 + c.x) * 0.035;   // 바닥 빛무리는 g 에 있어 안 흔들린다
+    if (u.ring) u.ring.rotation.z += 0.004;
+  });
+
+  const r = THREE.MathUtils.degToRad(angle), e = THREE.MathUtils.degToRad(elev);
+  camera.position.set(Math.sin(r) * Math.cos(e) * dist, Math.sin(e) * dist + 0.55, Math.cos(r) * Math.cos(e) * dist);
+  camera.lookAt(0, 0.55, 0);
+  placeTags();
+  renderer.render(scene, camera);
+}
+tick();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// 헤드리스 캡처용 — 밖에서 방향을 고르고 애니메이션을 고정할 수 있게 열어 둔다
+window.__petSim = { DIRS, setFilter: id => { filter = id; layout(id); renderBtns(); } };
+</script>
