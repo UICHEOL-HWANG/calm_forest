@@ -1402,6 +1402,9 @@
   /* z-index 31 — HUD(30) 위. 🛡️ 세이브를 못 읽어 다시 띄울 때(setLoadWait) HUD 아래로 깔리면
      빈 마을이 비쳐 보여 "시작됐다"고 오해한다. 모달(32)보다는 아래에 둔다. */
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--cream); color: var(--ink); font-size: 20px; z-index: 31; }
+  /* 🔌 저장이 끊겼다는 안내만은 모달(32~35)·미니게임(40)·승부(40)·인트로(55) 위에 선다.
+     31 로 두면 요리·조각 미니게임 중에 세션이 죽었을 때 화면 뒤에 깔려, 정작 필요한 순간에 안 보인다. */
+  #loading.save-stuck { z-index: 60; }
 
   /* ── 모바일(좁은 화면) 전용: HUD를 더 작고 촘촘하게 ── */
   @media (max-width: 640px) {
@@ -2548,6 +2551,25 @@
     $('map-btn').addEventListener('click', openWorldMap);
     window.addEventListener('resize', () => { if ($('worldmap').classList.contains('show')) drawWorldMap(); });
 
+    //  🔄 "다시 들어가기" 안내 화면 — 새로고침은 세션 갱신부터 다시 타므로,
+    //     토큰이 살아 있으면 그대로 이어지고 죽었으면 로그인 화면으로 이어진다.
+    //     세이브를 못 읽을 때(setLoadWait)와 저장이 끊겼을 때(setSaveStuck)가 같은 모양을 쓴다.
+    function fillReloadPrompt(el, text, gaEvent) {
+      el.textContent = '';
+      const box = document.createElement('div');
+      box.style.cssText = 'display:grid; gap:14px; place-items:center; text-align:center; padding:0 24px;';
+      const msg = document.createElement('div');
+      msg.textContent = text;
+      msg.style.cssText = 'line-height:1.5; max-width:30ch;';
+      const btn = document.createElement('button');
+      btn.className = 'primary';
+      btn.textContent = t('🔄 다시 들어가기');
+      btn.style.cssText = 'padding:12px 22px; font-size:15px; font-weight:700; border:none; border-radius:14px; cursor:pointer; background:var(--mint); color:var(--ink); box-shadow:var(--shadow);';
+      btn.onclick = () => { trackEvent(gaEvent); location.reload(); };   // [GA4] 몇 명이 여기까지 왔나
+      box.append(msg, btn);
+      el.appendChild(box);
+    }
+
     let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
     const ui = {
       // 🛡️ 세이브를 아직 못 읽었다 — 읽을 때까지 화면을 덮어 게임이 시작되지 않게 한다.
@@ -2563,19 +2585,27 @@
         if (!stuck) { el.textContent = t('🌙 잠시만요, 마을을 찾는 중이에요'); return; }
         if (el.dataset.stuck === '1') return;          // 이미 띄웠으면 5초마다 다시 그리지 않는다
         el.dataset.stuck = '1';
-        el.textContent = '';
-        const box = document.createElement('div');
-        box.style.cssText = 'display:grid; gap:14px; place-items:center; text-align:center; padding:0 24px;';
-        const msg = document.createElement('div');
-        msg.textContent = t('🌙 연결이 오래 걸리네요. 마을은 그대로 있으니 다시 들어와 주세요');
-        msg.style.cssText = 'line-height:1.5; max-width:30ch;';
-        const btn = document.createElement('button');
-        btn.className = 'primary';
-        btn.textContent = t('🔄 다시 들어가기');
-        btn.style.cssText = 'padding:12px 22px; font-size:15px; font-weight:700; border:none; border-radius:14px; cursor:pointer; background:var(--mint); color:var(--ink); box-shadow:var(--shadow);';
-        btn.onclick = () => { trackEvent('save_load_reload'); location.reload(); };   // [GA4] 몇 명이 갇혀 이 버튼까지 왔나
-        box.append(msg, btn);
-        el.appendChild(box);
+        fillReloadPrompt(el, t('🌙 연결이 오래 걸리네요. 마을은 그대로 있으니 다시 들어와 주세요'), 'save_load_reload');
+      },
+      // 🔌 놀던 중 저장이 끊겼다 — 세션 만료(토큰 폐기·다른 기기 로그아웃)나 서버 장애.
+      //   계속 놀게 두면 그 시간이 통째로 사라지므로 화면을 덮어 세운다(입장 때 지키는 빗장의 뒷면).
+      //   되살아나면 스스로 걷힌다 — game.js 의 재시도 루프가 false 로 다시 부른다.
+      setSaveStuck(on) {
+        const el = $('loading');
+        if (!el) return;
+        if (!on) {
+          if (el.dataset.saveStuck !== '1') return;   // 내가 띄운 화면이 아니면 건드리지 않는다
+          delete el.dataset.saveStuck;
+          el.classList.remove('save-stuck');
+          el.textContent = '';
+          el.style.display = 'none';
+          return;
+        }
+        if (el.dataset.saveStuck === '1') return;     // 이미 떠 있으면 5초마다 다시 그리지 않는다
+        el.dataset.saveStuck = '1';
+        el.classList.add('save-stuck');
+        el.style.display = '';
+        fillReloadPrompt(el, t('🌙 연결이 끊겨 저장이 멈췄어요. 다시 들어오면 이어서 놀 수 있어요'), 'save_stuck_reload');
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
@@ -3609,7 +3639,7 @@
     function showLoginStatus(s) {
       const dot = $('login-dot');
       dot.classList.remove('online', 'offline');
-      dot.classList.add(s.online ? 'online' : 'offline');
+      dot.classList.add(s.online && !s.lost ? 'online' : 'offline');   // 🔌 끊긴 세션에 초록 점을 찍지 않는다
       const label = s.provider === 'google' ? (s.email || '구글') : s.online ? '익명' : '게스트(오프라인)';
       $('login-status').textContent = label;
     }
@@ -5484,10 +5514,17 @@
       $('loading').style.display = 'none';
 
       // ② 인증 — 세션 잡히면 즉시 플레이 진입(구글 리다이렉트 복귀 포함)
+      let sessionExpiredSent = false;   // 🔌 만료는 세션당 한 번만 센다(emit 은 여러 번 온다)
       const res = await initAuth((s) => {
         showLoginStatus(s);
         if (s.userId) setGaUser(s.userId);          // [④] GA4에 user_id 연결
         if (s.online && !started) enterPlay();
+        // 🔌 세션이 죽었다 — 저장은 이미 잠겼다(supabase-client.js). 스스로 낫지 않으니
+        //   재시도 19초를 기다리지 않고 바로 세운다. 안내는 멱등이지만 GA4 는 아니라 1회만 쏜다.
+        if (s.lost && started) {
+          if (!sessionExpiredSent) { sessionExpiredSent = true; trackEvent('session_expired', { provider: s.provider || 'unknown' }); }
+          ui.setSaveStuck(true);
+        }
       });
       if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작(토스 재방문도 여기 — SDK 호출 없음)
       else if (IS_TOSS && !res.offline) {
