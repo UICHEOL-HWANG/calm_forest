@@ -54,6 +54,29 @@ else
 fi
 cat "$OUT" >> "$LOG"
 
+# ── 인박스 업로드 ────────────────────────────────────────────
+#  ⚠️ 실패해도 메일은 나가야 한다. 메일이 아직 주 통로다 — 여기서 exit 하지 않는다.
+#  ⚠️ 시크릿은 리포에 없다. ~/.config/calmforest/cardnews.env 에서 읽는다.
+if [ "$STATUS" = "성공" ]; then
+  ENVFILE="$HOME/.config/calmforest/cardnews.env"
+  if [ -f "$ENVFILE" ]; then
+    # shellcheck disable=SC1090
+    . "$ENVFILE"
+    INBOX="decks/_inbox/$(date '+%Y-%m-%d')-community.json"
+    if [ -f "$INBOX" ]; then
+      if node ingest-upload.mjs "$INBOX" >> "$LOG" 2>&1; then
+        echo "인박스 업로드 완료" >> "$LOG"
+      else
+        echo "⚠️ 인박스 업로드 실패 — 메일은 계속 보낸다" >> "$LOG"
+      fi
+    else
+      echo "⚠️ 수집 파일이 없다: $INBOX" >> "$LOG"
+    fi
+  else
+    echo "인박스 업로드 건너뜀 — $ENVFILE 이 없다" >> "$LOG"
+  fi
+fi
+
 # ── 메일 ─────────────────────────────────────────────────────
 BODY="$(cat "$OUT")"
 SUBJECT="오늘의 카드뉴스 소재"
