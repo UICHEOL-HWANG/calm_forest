@@ -68,7 +68,7 @@
   - `itemsOf(slot: string): Item[]`
   - `findItem(id: string): Item | null`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/cosmetics-catalog.test.mjs
@@ -126,12 +126,12 @@ test('findItem: 없는 id 는 null', () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/cosmetics/catalog.js'`
 
-- [ ] **Step 3: 카탈로그를 쓴다**
+- [x] **Step 3: 카탈로그를 쓴다**
 
 ```js
 // js/cosmetics/catalog.js
@@ -188,12 +188,12 @@ export function findItem(id) {
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 8 tests
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/catalog.js tests/cosmetics-catalog.test.mjs
