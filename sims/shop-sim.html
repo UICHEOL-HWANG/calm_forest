@@ -37,6 +37,9 @@
 <script type="module">
 import * as THREE from 'three';
 import { buildAnimalHead } from '../js/animal-faces.js';
+//  조형은 js/shop/building.js 가 단일 출처다 — 이 시뮬은 **복제본을 두지 않고** import 한다.
+//  확정안은 B(뒤 60% 지붕). A·C·D 는 설계 기록이라 variant 인자로만 남긴다.
+import { buildShop, updateShopOwner, SHOP_H } from '../js/shop/building.js';
 
 // =============================================================
 //  🏪 꾸미기 가게 시안 — 밖에서 안이 보이는 디오라마
@@ -58,189 +61,6 @@ import { buildAnimalHead } from '../js/animal-faces.js';
 //  ▶ ⚠️ 차양 줄무늬를 조각마다 메시로 만들면 드로우콜이 튄다(카페가 병합 후 24).
 //    **정점색 한 덩어리**로 굽는다 — 🦊여우 꼬리가 쓰는 방식과 같다.
 // =============================================================
-
-const clay = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
-const put = (p, m, x, y, z, shadow = true) => { m.position.set(x, y, z); m.castShadow = shadow; m.receiveShadow = true; p.add(m); return m; };
-const box = (w, h, d, c, flat = false) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), clay(c, flat));
-
-// ── 팔레트 — 전부 게임에 이미 있는 색 ──────────────────────────
-const P = {
-  //  ⚠️ 카페 회벽 0xfaf8f4 은 휘도 0.973 — 거의 순백이라 중성적이다.
-  //     레퍼런스의 따뜻한 크림을 내려면 노란기를 더 넣어야 한다(0.900).
-  //     둘 다 블룸 임계 0.85 를 넘지만, 이건 **카페가 이미 그렇게 서 있는** 게임의 기존 톤이다.
-  wall:   0xf2e4cf,   // 따뜻한 크림
-  wallSh: 0xddc9ac,   // 그늘진 면·몰딩
-  wood:   0xc08c52,   // 창틀·카운터
-  woodDk: 0x92653a,
-  awnA:   0xe0b0b0,   // WALL_COLORS 의 핑크
-  awnB:   0xfaf0e4,
-  floor:  0xd6bfa0,
-  shelf:  0xb8894f,
-  jar:    0xe4e0d2,
-  sign:   0x7e9c6f,
-};
-
-// =============================================================
-//  차양 — 정점색 한 덩어리. 아래 가장자리를 물결로 깎아 레퍼런스의 결을 살린다
-// =============================================================
-function awning(W, drop, depth, stripes = 7) {
-  const pos = [], col = [], idx = [];
-  const A = new THREE.Color(P.awnA), B = new THREE.Color(P.awnB);
-  const ARC = 10;                       // 물결 한 칸의 분할
-  let v = 0;
-  for (let s = 0; s < stripes; s++) {
-    const c = s % 2 ? B : A;
-    const x0 = -W / 2 + (W / stripes) * s, x1 = x0 + W / stripes;
-    const top0 = v++, top1 = v++;
-    pos.push(x0, 0, 0, x1, 0, 0);
-    col.push(c.r, c.g, c.b, c.r, c.g, c.b);
-    const bot = [];
-    for (let i = 0; i <= ARC; i++) {
-      const t = i / ARC, x = x0 + (x1 - x0) * t;
-      const sag = Math.sin(Math.PI * t) * drop * 0.16;      // 물결 처짐
-      pos.push(x, -drop - sag, depth);
-      col.push(c.r, c.g, c.b);
-      bot.push(v++);
-    }
-    for (let i = 0; i < ARC; i++) {
-      idx.push(top0, bot[i], bot[i + 1]);
-      if (i === ARC - 1) idx.push(top0, bot[ARC], top1);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.setIndex(idx); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.95, side: THREE.DoubleSide }));
-  m.castShadow = true;
-  return m;
-}
-
-// =============================================================
-//  상점 주인 — 주민 조형(game.js buildNPCs)과 같은 결.
-//  머리는 animal-faces.js 원본을 쓴다(복제하면 게임과 갈린다)
-// =============================================================
-//  ⚠️ 처음엔 몸 0.34 · 머리 y0.80 으로 **작게** 만들었다가 주인이 안 보였다.
-//     키가 1.06 인데 카운터 상판이 1.05 — 딱 가려진 것이다.
-//     게임 주민(game.js:15378)은 몸 R 0.50(y 0.55) · 머리 R 0.38(y 1.15) = 키 ≈ 1.53 이다.
-//     **같은 크기로 맞춰야** 상반신 0.48 이 카운터 위로 나온다.
-function shopkeeper() {
-  const g = new THREE.Group();
-  const body = put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(0.50, 1), clay(0xa86f52, false)), 0, 0.55, 0);
-  body.scale.set(1, 1.05, 1);
-  g.add(buildAnimalHead('cat', { HR: 0.38, HY: 1.15, body: 0xc9a38c, belly: 0xf2ece4 }));
-  // 앞치마 — 상점 주인이라는 표식. 몸보다 살짝 크게 둘러야 면이 안 겹친다
-  const ap = put(g, new THREE.Mesh(new THREE.SphereGeometry(0.505, 14, 10), clay(0xe8eeea, false)), 0, 0.50, 0.08, false);
-  ap.scale.set(0.86, 0.92, 0.62);
-  return g;
-}
-
-// =============================================================
-//  가게 — 지붕안 4가지
-//    A 레퍼런스 그대로   : 평지붕 전체 + 차양
-//    B 앞 처마 물림      : 지붕을 뒤쪽 60% 만
-//    C 정면 천장까지 개방 : 앞 상인방을 없애고 창틀만
-//    D 지붕 없음         : 차양만 (열린 가판)
-// =============================================================
-const W = 4.0, H = 2.9, D = 3.2, T = 0.09;    // 폭·높이·깊이·벽 두께(0.14 는 두꺼워 보였다)
-
-function shop(variant) {
-  const g = new THREE.Group();
-  const owner = shopkeeper();
-
-  put(g, box(W, T, D, P.floor), 0, T / 2, 0);                                    // 바닥
-  put(g, box(W, H, T, P.wallSh), 0, H / 2, -D / 2 + T / 2);                      // 뒷벽
-  [-1, 1].forEach(s => put(g, box(T, H, D, P.wall), s * (W / 2 - T / 2), H / 2, 0));   // 옆벽
-
-  // ── 정면 ── 왼쪽: 문 개구부 · 오른쪽: 큰 창
-  const zF = D / 2 - T / 2;
-  const doorW = 1.25, winW = W - doorW - T * 3;
-  const winX = W / 2 - T - winW / 2;
-  put(g, box(T, H, T, P.wall), -W / 2 + T / 2, H / 2, zF);                       // 문 옆 기둥
-  put(g, box(T, H, T, P.wall), -W / 2 + doorW, H / 2, zF);
-  const sillH = 1.05;
-  put(g, box(winW + T * 2, sillH, T, P.wall), winX, sillH / 2, zF);              // 허리벽
-  put(g, box(winW + T * 2.4, 0.13, T * 2.2, P.wood), winX, sillH + 0.05, zF + 0.04);   // 창턱
-  const winTop = variant === 'C' ? H : H - 0.55;
-  [-1, 1].forEach(s => put(g, box(0.10, winTop - sillH, 0.14, P.wood), winX + s * (winW / 2), (sillH + winTop) / 2, zF));
-  if (variant !== 'C') {
-    put(g, box(winW + T * 2, 0.12, 0.14, P.wood), winX, winTop, zF);             // 창 윗틀
-    put(g, box(winW + T * 2, H - winTop, T, P.wall), winX, (H + winTop) / 2, zF);// 상인방
-  }
-
-  // ── 지붕 ──
-  if (variant === 'A' || variant === 'C') {                 // 평지붕 전체 + 파라펫(레퍼런스의 쟁반 모양)
-    put(g, box(W + 0.34, 0.16, D + 0.34, P.wall), 0, H + 0.08, 0);
-    put(g, box(W + 0.5, 0.26, D + 0.5, P.wallSh), 0, H + 0.24, 0);
-    put(g, box(W + 0.14, 0.20, D + 0.14, P.floor), 0, H + 0.30, 0);
-  } else if (variant === 'B') {                              // 앞 처마를 물려 시야를 연다
-    const rd = D * 0.60;
-    put(g, box(W + 0.34, 0.16, rd, P.wall), 0, H + 0.08, -D / 2 + rd / 2);
-    put(g, box(W + 0.5, 0.26, rd + 0.16, P.wallSh), 0, H + 0.24, -D / 2 + rd / 2);
-  }
-  // D 는 지붕 없음
-
-  // ── 차양 ──
-  //  ⚠️ 차양을 정면 전체에 두면 **문 베이 위까지 덮어** 그 아래 주인이 가린다.
-  //     창 위에만 둔다 — 실제 가게도 그렇고, 문 쪽이 트여야 안이 보인다.
-  const aw = awning(winW + T * 3, 0.36, 0.50, 5);
-  aw.position.set(winX, (variant === 'C' ? H - 0.04 : H - 0.24), zF + 0.06);
-  aw.rotation.x = -0.10;
-  g.add(aw);
-
-  // ── 내부 ──
-  //  ⚠️ 작은 소품에 그림자를 켜면 저폴리에서 지글거린다 — 전부 끈다.
-  const back = -D / 2 + T + 0.12;
-  put(g, box(W - 0.9, 0.10, 0.34, P.shelf), 0, 1.72, back, false);
-  put(g, box(W - 0.9, 0.10, 0.34, P.shelf), 0, 2.22, back, false);
-  for (let i = 0; i < 7; i++) {
-    const x = -1.3 + i * 0.44, h = 0.20 + (i % 3) * 0.06;
-    put(g, box(0.15, h, 0.15, P.jar), x, 1.77 + h / 2, back, false);
-    if (i % 2) put(g, box(0.14, 0.17, 0.14, P.jar), x, 2.355, back, false);
-  }
-  // 카운터 — 창 쪽(오른쪽)으로 몬다. 왼쪽 문 베이는 주인이 오가는 자리로 비운다
-  put(g, box(1.85, 0.78, 0.46, P.wood), 1.02, 0.39 + T, 0.62, false);
-  put(g, box(2.0, 0.10, 0.60, P.woodDk), 1.02, 0.83 + T, 0.62, false);
-
-  // ── 🪧 돌출 간판 ──
-  //  ⚠️ 벽에 납작하게 붙였더니 41°에서 **지붕 안쪽 공간과 겹쳐 떠 보였다**.
-  //     벽에서 앞으로 팔을 내고 판을 매다는 돌출 간판이면 실루엣이 확실히 분리된다.
-  //     y 2.0~2.4 는 주인 시선(z 1.6~2.1 에서 2.84~3.28)보다 아래라 주인을 안 가린다.
-  //  ⚠️ 2차엔 팔을 **앞으로** 냈더니 간판이 문 베이 안쪽에 묻혀 안 보였다.
-  //     돌출 간판은 건물 **옆으로** 나와야 하늘을 배경으로 실루엣이 분리된다.
-  const armX = -W / 2 - 0.30, sy = 2.40, sz = zF - 0.45;
-  put(g, box(0.62, 0.08, 0.08, P.woodDk), armX, sy + 0.34, sz, false);                 // 팔(옆으로)
-  [-0.20, 0.20].forEach(dx => put(g, box(0.05, 0.26, 0.05, P.woodDk), armX + dx, sy + 0.20, sz, false));   // 고리 2
-  put(g, box(0.74, 0.52, 0.07, P.sign), armX, sy - 0.06, sz, true);                     // 매달린 판
-  //  가게가 뭘 파는지 — 판 위에 모자 부조 하나. 글자는 i18n 이 필요하니 **심볼**로 간다
-  put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.05, 12), clay(P.awnB)), armX, sy - 0.13, sz + 0.06, false);
-  put(g, new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), clay(P.awnA)), armX, sy - 0.10, sz + 0.06, false);
-
-  // ── 🚪 문 베이 채우기 ──
-  //  주인이 오가는 자리(x −1.67~−1.03)는 비우고, 그 **뒤·옆**만 채운다
-  const doorX = -W / 2 + doorW / 2;
-  // 젖혀진 문짝 — 왼쪽 벽에 붙여 연다
-  const DOORH = 2.05;   // 주민 키 1.53 에 맞춘 문 높이(H-0.30=2.6 은 너무 높아 간판을 스쳤다)
-  const leaf = put(g, box(0.06, DOORH, 0.80, P.wood), -W / 2 + 0.12, DOORH / 2 + T, zF - 0.40, false);
-  leaf.rotation.y = 0.26;
-  // 문턱 발판
-  put(g, box(doorW + 0.24, 0.10, 0.52, P.floor), doorX, 0.05, zF + 0.30, false);
-  // 🎩 모자걸이 — 꾸미기 가게라는 걸 한눈에. 주인 뒤(뒷벽)라 시야를 안 막는다
-  const hy = 1.62, hz = -D / 2 + T + 0.10;
-  put(g, box(doorW - 0.16, 0.07, 0.10, P.woodDk), doorX, hy, hz, false);
-  [-0.34, 0, 0.34].forEach((dx, i) => {
-    put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.16 - i * 0.02, 0.16 - i * 0.02, 0.04, 10), clay(i % 2 ? P.awnB : P.awnA)), doorX + dx, hy - 0.10, hz + 0.05, false);
-    put(g, new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2), clay(i % 2 ? P.awnA : P.jar)), doorX + dx, hy - 0.08, hz + 0.05, false);
-  });
-  // 문 옆 화분 — 바깥. 실루엣에 숨통을 튼다
-  put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.13, 0.26, 9), clay(P.woodDk)), -W / 2 - 0.26, 0.13, zF + 0.34, true);
-  put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), clay(0x7fb857)), -W / 2 - 0.26, 0.40, zF + 0.34, true);
-
-  owner.position.set(-1.35, T, 0.10);                                            // 문 베이 — 카운터 왼쪽
-  g.add(owner);
-  g.userData.owner = owner;
-  return g;
-}
 
 const VARIANTS = [
   { id: 'A', name: '레퍼런스 그대로', desc: '평지붕 전체 + 차양' },
@@ -279,16 +99,6 @@ const root = new THREE.Group(); scene.add(root);
 const labels = document.getElementById('labels');
 let tags = [], shops = [];
 
-//  ⚠️ 가게 안은 지붕·벽이 빛을 막아 어둡다. 전시실에서 이미 겪은 문제 —
-//     세기만 올리면 안 되고 **세기·색·광원 자리** 3종 세트를 같이 잡아야 한다.
-function innerLamp(g) {
-  const l = new THREE.PointLight(0xffd9a8, 0.85, 6.5, 1.6);
-  l.position.set(0, 2.05, 0.2); g.add(l);
-  put(g, new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0xf0d8a8, emissive: 0xe8c88a, emissiveIntensity: 0.8, roughness: 0.6 })), 0, 2.12, 0.2, false);
-  g.userData.lamp = l;
-}
-
 let single = null;
 function layout() {
   [...root.children].forEach(c => root.remove(c));
@@ -296,14 +106,13 @@ function layout() {
   const list = single ? VARIANTS.filter(v => v.id === single) : VARIANTS;
   const GX = 6.2;
   list.forEach((v, i) => {
-    const s = shop(v.id);
+    const s = buildShop(THREE, buildAnimalHead, v.id);   // { group, owner, lamp }
     const x = (i - (list.length - 1) / 2) * GX;
-    s.position.set(x, 0, 0);
-    innerLamp(s);
-    root.add(s); shops.push(s);
+    s.group.position.set(x, 0, 0);
+    root.add(s.group); shops.push(s);
     const el = document.createElement('div'); el.className = 'tag';
     el.innerHTML = `<b>${v.id}. ${v.name}</b><small>${v.desc}</small>`;
-    labels.appendChild(el); tags.push({ el, x, y: H + 1.25, z: 0 });
+    labels.appendChild(el); tags.push({ el, x, y: SHOP_H + 1.25, z: 0 });
   });
 }
 
@@ -342,7 +151,7 @@ $('night').onchange = e => {
   hemi.color.set(n ? 0x9fb4d8 : 0xffffff); rim.intensity = n ? 0.12 : 0.30;
   ground.material.color.set(n ? 0x4a6350 : 0x9fc08a);
   scene.fog.color.set(n ? 0x36485c : 0xdbe9ee); scene.background.set(n ? 0x36485c : 0xdbe9ee);
-  shops.forEach(s => { if (s.userData.lamp) s.userData.lamp.intensity = n ? 1.5 : 0.85; });
+  shops.forEach(s => { if (s.lamp) s.lamp.intensity = n ? 1.5 : 0.85; });
 };
 
 $('hud').innerHTML =
@@ -356,15 +165,8 @@ const clock = new THREE.Clock();
 function tick() {
   requestAnimationFrame(tick);
   const t = clock.getElapsedTime();
-  // 주인 배회 — 게임의 주민(wanderTimer)과 같은 결이되, **가게 안을 못 벗어난다**
-  if ($('walk').checked) shops.forEach((s, i) => {
-    const o = s.userData.owner; if (!o) return;
-    const p = t * 0.55 + i * 1.7;
-    o.position.x = -1.35 + Math.sin(p) * 0.32;                 // 문 베이 안에서만 (가게를 안 벗어난다)
-    o.position.z = 0.10 + Math.sin(p * 0.6) * 0.35;
-    o.rotation.y = Math.sin(p) * 0.5 + Math.PI;                // 손님(카메라) 쪽을 본다
-    o.position.y = T + Math.abs(Math.sin(p * 3.2)) * 0.035;    // 걸음 들썩임
-  });
+  // 주인 배회 — 규칙은 모듈(js/shop/building.js)에 있다. 위상만 채마다 어긋낸다
+  if ($('walk').checked) shops.forEach((s, i) => updateShopOwner(s, t, i * 1.7));
 
   const r = THREE.MathUtils.degToRad(angle), e = THREE.MathUtils.degToRad(elev);
   camera.position.set(Math.sin(r) * Math.cos(e) * dist, Math.sin(e) * dist + 0.6, Math.cos(r) * Math.cos(e) * dist);

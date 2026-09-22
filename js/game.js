@@ -73,6 +73,7 @@ import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmeti
 import { buildCosmetic } from './cosmetics/art.js';
 import { equippedItems, sanitize as sanitizeCosmetics } from './cosmetics/equip.js';
 import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -494,6 +495,12 @@ const boat = {
   hits: 0, hitLog: [], picks: {}, boostUntil: 0, boostReadyAt: 0, boostUsed: 0,
   invUntil: 0, stunUntil: 0, wreckAt: 0, shake: 0, next: 0, runNo: 0, seed: 0, startedAt: 0, night: false, t: 0,
 };
+
+// 🏪 꾸미기 가게 — 마을 서쪽, 집터(-8,-8)와 ⛏️동굴 입구(-14,3) 사이 빈터.
+//    중심에서 18.0 이라 나무 링(r8~30) 한복판이다 — 나무·꽃 산포 제외 목록에 **반드시** 들어가야 한다.
+//    정면은 +Z 라 회전하지 않는다(카메라 시선이 늘 −Z).
+const SHOP_POS = new THREE.Vector3(-17.5, 0, -4);
+let cosmeticShop = null;          // buildShop 이 돌려준 { group, owner, lamp } — 프레임 루프가 주인을 움직인다
 
 // ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
 //    처음부터 있는 장소(카페·채굴장 문법). 게이트 → 별도 인스턴스, 숲 안은 항상 어둑+짙은 안개.
@@ -3130,6 +3137,7 @@ function buildWorld() {
       ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 4.6 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
+      || dist2D({ x, z }, SHOP_POS) < 4   // 🏪 꾸미기 가게 — 반치수 2.56 + 걸어다닐 틈. 없으면 나무가 가게 안에 박힌다
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
@@ -3165,6 +3173,7 @@ function buildWorld() {
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
+    if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
     grassBuckets[i % 3].push({ x, y: 0.35, z, ph: Math.random() * Math.PI * 2 });
   }
   grassBuckets.forEach((items, k) => {
@@ -4396,11 +4405,13 @@ function buildEnvironment() {
     if (dist2D({ x, z }, COOP) < 2.8) continue;       // 🐔 닭장 터 제외
     if (dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 0.5) continue;   // 🛶 나루터 연못 위 제외
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
+    if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;                  // 🏪 꾸미기 가게 터 제외(반치수 2.56 + 여유)
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
   buildGlade();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
   spawnCafeGate();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
   buildCafeHall();   // ☕ 카페 홀(별도 공간)
   buildForest();     // 🍄 채집 숲(남서쪽) — 줍기
@@ -5608,6 +5619,18 @@ function spawnCafeGate() {
   solidBox(CAFE_GATE.x + 2.2, CAFE_GATE.z + 0.1, CAFE_GATE.x + 3.9, CAFE_GATE.z + 1.8);   // 석재 화단
   solidCircle(CAFE_GATE.x - 2.6, CAFE_GATE.z + 1.25, 0.34);                                // 문 왼쪽 화분
   solidCircle(CAFE_GATE.x - 1.32, CAFE_GATE.z + 1.58, 0.3);                                // 세움 칠판
+}
+
+// 🏪 꾸미기 가게 — 조형은 js/shop/building.js(시뮬 검수값). 여기는 배치·충돌만 한다.
+//   ⚠️ 정면이 +Z 라 **회전하지 않는다** — camOffset(0,14,16) 고정이라 시선이 늘 −Z 고,
+//      돌리는 순간 플레이어에게 뒤통수나 옆구리를 보이게 된다(카페·안개숲 입구와 같은 규칙).
+function spawnCosmeticShop() {
+  const shopObj = buildShop(THREE, buildAnimalHead);
+  shopObj.group.position.set(SHOP_POS.x, 0, SHOP_POS.z);
+  scene.add(shopObj.group);
+  cosmeticShop = shopObj;
+  solidCircle(SHOP_POS.x, SHOP_POS.z, 2.4);                          // 🚧 통과 못 함
+  obstacles.push({ x: SHOP_POS.x, z: SHOP_POS.z, r: 2.4 });          // 밭 금지 + 주민이 가게를 뚫고 배회하지 않게
 }
 
 // ── 카페 홀(별도 공간) — 넓은 실내. 카운터 + 테이블 4세트 + 주문판 ──
@@ -12047,6 +12070,7 @@ function animate() {
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
+  if (cosmeticShop) updateShopOwner(cosmeticShop, t);   // 🏪 가게 주인 배회(가게 안을 못 벗어난다)
   updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
