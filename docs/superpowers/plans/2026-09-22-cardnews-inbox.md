@@ -868,7 +868,7 @@ fi
 
 ```bash
 mkdir -p ~/.config/calmforest
-printf 'export CARDNEWS_API_BASE=https://cards.calmforest.cloud\nexport CARDNEWS_INGEST_SECRET=REPLACE_WITH_TASK4_VALUE\n' > ~/.config/calmforest/cardnews.env
+printf 'export CARDNEWS_API_BASE=https://calmforest.cloud\nexport CARDNEWS_INGEST_SECRET=REPLACE_WITH_TASK4_VALUE\n' > ~/.config/calmforest/cardnews.env
 chmod 600 ~/.config/calmforest/cardnews.env
 ```
 

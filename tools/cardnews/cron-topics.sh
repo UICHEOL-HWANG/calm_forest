@@ -69,8 +69,14 @@ if [ "$STATUS" = "성공" ]; then
     # shellcheck disable=SC1090
     . "$ENVFILE" 2>> "$LOG" || echo "⚠️ 환경파일을 읽지 못했다: $ENVFILE" >> "$LOG"
     set -u
-    INBOX="decks/_inbox/$(date '+%Y-%m-%d')-community.json"
-    if [ -f "$INBOX" ]; then
+    # ⚠️ 날짜를 짐작하지 않는다. topics.mjs 가 UTC 로 파일명을 짓고 이 셸은 KST 를
+    #    쓰기 때문에, 이른 아침 부팅(RunAtLoad)이면 두 날짜가 갈라져 하루치가
+    #    통째로 증발한다 — 스탬프는 이미 찍혀 재시도도 안 하고 메일은 정상으로
+    #    나가서 아무도 모른다. 그래서 수집기가 직접 찍은 경로를 그대로 쓴다.
+    INBOX="$(sed -n 's|^저장: ||p' "$OUT" | tail -1)"
+    if [ -z "$INBOX" ]; then
+      echo "⚠️ 수집 출력에서 저장 경로를 못 찾았다 — topics.mjs 출력 형식이 바뀌었나?" >> "$LOG"
+    elif [ -f "$INBOX" ]; then
       if node ingest-upload.mjs "$INBOX" >> "$LOG" 2>&1; then
         echo "인박스 업로드 완료" >> "$LOG"
       else
