@@ -846,10 +846,23 @@ console.log(`업로드 완료: ${text}`);
 if [ "$STATUS" = "성공" ]; then
   ENVFILE="$HOME/.config/calmforest/cardnews.env"
   if [ -f "$ENVFILE" ]; then
+    # ⚠️ set -u 아래에서 외부 파일을 source 하면, 그 파일이 정의되지 않은 변수를
+    #    참조하는 순간 **스크립트 전체가 즉시 죽는다**(-e 가 없어도 그렇다).
+    #    메일 블록까지 못 가고 로그에 흔적도 안 남는다 — 이 크론이 일주일을
+    #    잃었던 그 조용한 죽음이다. 사람이 손으로 편집하는 파일이라 오타 하나면
+    #    재현된다. 그래서 -u 를 잠시 끄고, stderr 까지 로그로 받는다.
+    set +u
     # shellcheck disable=SC1090
-    . "$ENVFILE"
-    INBOX="decks/_inbox/$(date '+%Y-%m-%d')-community.json"
-    if [ -f "$INBOX" ]; then
+    . "$ENVFILE" 2>> "$LOG" || echo "⚠️ 환경파일을 읽지 못했다: $ENVFILE" >> "$LOG"
+    set -u
+    # ⚠️ 날짜를 짐작하지 않는다. topics.mjs 가 UTC 로 파일명을 짓고 이 셸은 KST 를
+    #    쓰기 때문에, 이른 아침 부팅(RunAtLoad)이면 두 날짜가 갈라져 하루치가
+    #    통째로 증발한다 — 스탬프는 이미 찍혀 재시도도 안 하고 메일은 정상으로
+    #    나가서 아무도 모른다. 그래서 수집기가 직접 찍은 경로를 그대로 쓴다.
+    INBOX="$(sed -n 's|^저장: ||p' "$OUT" | tail -1)"
+    if [ -z "$INBOX" ]; then
+      echo "⚠️ 수집 출력에서 저장 경로를 못 찾았다 — topics.mjs 출력 형식이 바뀌었나?" >> "$LOG"
+    elif [ -f "$INBOX" ]; then
       if node ingest-upload.mjs "$INBOX" >> "$LOG" 2>&1; then
         echo "인박스 업로드 완료" >> "$LOG"
       else
