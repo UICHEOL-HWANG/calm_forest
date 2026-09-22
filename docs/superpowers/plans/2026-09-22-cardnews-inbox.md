@@ -267,7 +267,7 @@ export function normalizeTopics(raw, { collectedOn }) {
       const title = typeof it?.title === 'string' ? it.title.trim() : '';
       if (!title) continue;                      // 제목 없는 건 소재가 아니다
 
-      const key = `${source} ${title}`;
+      const key = JSON.stringify([source, title]);
       if (seen.has(key)) continue;
       seen.add(key);
 
