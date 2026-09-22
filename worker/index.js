@@ -22,6 +22,7 @@ import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
+import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
@@ -149,6 +150,12 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/orchard-events') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await orchardEvents({ request, env });
+  }
+
+  // 📥 카드뉴스 소재 업로드 — 크론이 부른다(사람 JWT 아님, 시크릿 헤더)
+  if (pathname === '/api/cards-ingest') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await cardsIngest({ request, env });
   }
 
   return null;
