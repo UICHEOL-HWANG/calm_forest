@@ -946,7 +946,7 @@ git commit -m "feat: 👣 발자국 이펙트 — 풀 재사용·12개 상한·�
 - Consumes: `js/animal-faces.js` 의 `buildAnimalHead`(인자로 받는다)
 - Produces: `SHOP_W`·`SHOP_H`·`SHOP_D`·`SHOP_T` · `buildShop(THREE, buildAnimalHead): { group, owner, lamp }` · `updateShopOwner(shop, t): void`
 
-- [ ] **Step 1: 조형을 `sims/shop-sim.html` 에서 모듈로 옮긴다**
+- [x] **Step 1: 조형을 `sims/shop-sim.html` 에서 모듈로 옮긴다**
 
 시뮬은 41.2° 검수를 통과했다. **수치를 바꾸지 않는다.** 확정된 것:
 
@@ -961,13 +961,13 @@ git commit -m "feat: 👣 발자국 이펙트 — 풀 재사용·12개 상한·�
 | 벽 두께 | `0.09` | |
 | 벽 색 | `0xf2e4cf` | 카페 회벽(0.973)에 노란기를 더해 따뜻하게 |
 
-- [ ] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
+- [x] **Step 2: 시뮬이 모듈을 import 하게 바꾼다**
 
 ```js
 import { buildShop, updateShopOwner } from '../js/shop/building.js';
 ```
 
-- [ ] **Step 3: 시뮬로 확인한다 — 41.2° 에서 주인이 보이는가**
+- [x] **Step 3: 시뮬로 확인한다 — 41.2° 에서 주인이 보이는가**
 
 ```bash
 open http://localhost:8000/sims/shop-sim.html
@@ -975,7 +975,7 @@ open http://localhost:8000/sims/shop-sim.html
 
 확인: `📐 마을 41°` 를 누른 상태에서 **주인이 문 베이에서 몸 전체로 보이고**, 배회해도 가게를 안 벗어난다. 밤 조명에서도 등불로 보인다.
 
-- [ ] **Step 4: 마을에 세운다**
+- [x] **Step 4: 마을에 세운다**
 
 `js/game.js` 에서 다른 건물과 같은 방식으로 배치한다. ⚠️ **정면을 +Z 로** 둔다 — 카메라 시선이 늘 −Z 라 그래야 안이 보인다.
 
@@ -989,7 +989,7 @@ solidCircle(SHOP_POS.x, SHOP_POS.z, 2.4);   // 통과 못 함
 
 프레임 루프에서 `updateShopOwner(shopObj, clock.getElapsedTime())`.
 
-- [ ] **Step 5: 인게임에서 확인한다**
+- [x] **Step 5: 인게임에서 확인한다**
 
 확인: 마을을 걸어 가게 앞에 섰을 때 **주인이 안에서 움직이는 게 보이고**, 벽이 블룸으로 하얗게 뜨지 않는다.
 
@@ -997,7 +997,7 @@ solidCircle(SHOP_POS.x, SHOP_POS.z, 2.4);   // 통과 못 함
 renderer.info.render.calls   // Expected: 카페(병합 후 24)와 비슷한 수준
 ```
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add js/shop/building.js sims/shop-sim.html js/game.js
