@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>calm forest · 소재 인박스 🗂️</title>
+<meta name="description" content="calm forest 카드뉴스 — 매일 수집된 소재를 훑어 묶음으로 담는 작업 도구" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>🗂️ 소재 인박스</h1>
+    <nav class="tabs">
+      <button type="button" id="tab-inbox" class="tab on">인박스</button>
+      <button type="button" id="tab-bundles" class="tab">묶음</button>
+    </nav>
+  </header>
+
+  <div id="login" class="login-screen hide">
+    <div class="login-card">
+      <h2>로그인이 필요합니다</h2>
+      <p>구글 계정으로 로그인하면 오늘 수집된 소재를 볼 수 있어요.</p>
+      <button type="button" id="btn-login" class="btn pri">구글로 로그인</button>
+    </div>
+  </div>
+
+  <main id="app" class="hide">
+    <section id="screen-inbox" class="screen">
+      <div class="toolbar">
+        <label class="field" for="date-picker">
+          날짜
+          <input type="date" id="date-picker" />
+        </label>
+        <label class="check">
+          <input type="checkbox" id="show-dismissed" />
+          숨긴 것 보기
+        </label>
+        <span id="inbox-status" class="status"></span>
+      </div>
+
+      <div class="inbox-layout">
+        <div class="topic-col">
+          <div id="topic-list" class="topic-list"></div>
+          <div id="topic-empty" class="empty" style="display:none">이 날짜에는 소재가 없어요</div>
+        </div>
+
+        <aside class="tray" id="tray">
+          <div class="tray-inner">
+            <h2>담은 소재 <span id="tray-count" class="count">0</span></h2>
+            <ul id="tray-list" class="tray-list"></ul>
+            <div id="tray-empty" class="empty small">아직 담은 소재가 없어요 — 왼쪽에서 담기를 눌러보세요</div>
+            <div class="tray-form">
+              <label class="field" for="bundle-title">
+                제목 *
+                <input type="text" id="bundle-title" placeholder="예: 잡플래닛 연봉 불만 모음" maxlength="120" />
+              </label>
+              <label class="field" for="bundle-memo">
+                메모
+                <textarea id="bundle-memo" placeholder="선택 — 카드뉴스 방향 메모"></textarea>
+              </label>
+              <button type="button" id="btn-save-bundle" class="btn pri" disabled>묶음으로 저장</button>
+              <div id="tray-msg" class="tray-msg"></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="screen-bundles" class="screen hide">
+      <div id="bundle-list" class="bundle-list"></div>
+      <div id="bundle-empty" class="empty" style="display:none">아직 묶음이 없어요</div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
