@@ -5789,7 +5789,7 @@ function drawPetTab(box) {
     //  ⚠️ 계획서는 innerHTML 로 꽂았지만, 그러면 한국어가 `<span>…</span>` 안에 갇혀
     //     사전 키(= 화면에 보이는 한국어 그대로)와 어긋난다. 노드로 만들어 넣는다.
     const name = document.createElement('span');
-    name.textContent = '🐾 함께 다녀요';
+    name.textContent = '🐾 동행하기';
     row.appendChild(name);
     const btn = document.createElement('button');
     btn.textContent = `${PET_PRICE.toLocaleString()}🪙`;
@@ -5827,8 +5827,12 @@ function drawCosMenu() {
   }
   const box = document.getElementById('cos-items');
   box.innerHTML = '';
-  //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 지금 단계의 펫을, 나머지 탭이면 내 캐릭터를 본다
-  cosPreview?.showPet(cosTab === 'pet' ? stageOf(gameState.pet?.works || 0) : null);
+  //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 펫을, 나머지 탭이면 내 캐릭터를 본다.
+  //  ⚠️ 아직 안 샀으면 **다 자란 모습**을 건다(stageOf(Infinity) = 마지막 단계).
+  //     1단계는 "씨앗 — 잎 1장" 이라 잎 하나 꽂힌 씨앗으로 읽히는데, 그걸 3,000🪙 짜리
+  //     판매 화면에 걸어 두면 무엇을 사는지가 안 보인다. 사면 실제 내 펫 단계로 바뀐다.
+  cosPreview?.showPet(cosTab !== 'pet' ? null
+    : stageOf(gameState.pet ? gameState.pet.works : Infinity));
   if (cosTab === 'pet') { drawPetTab(box); return; }
   for (const it of itemsOf(cosTab)) {
     const owned = gameState.cosmetics.owned.includes(it.id);
