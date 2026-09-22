@@ -57,6 +57,74 @@ function makeTables(THREE) {
   const soft = c => new THREE.MeshStandardMaterial({ color: c, roughness: 1.0, metalness: 0 });
   const petalMesh = (len, wide, mat) => petalOf(THREE, len, wide, mat);
 
+  // ── ⚡ 재질별 병합 — js/pet/art.js(펫 20메시→4)·js/shop/building.js(가게 47→6) 와 같은 구현 ──
+  //  ⚠️ 파츠를 메시 하나씩 두면 세 슬롯을 다 입었을 때 **+40 콜**이다(💐화관 혼자 +21).
+  //     계획 예산은 +12 라 **재질별로 지오메트리를 합친다** — 색은 정점에 실어(paintGeo)
+  //     색이 달라도 한 재질로 묶인다. **좌표·회전·색은 한 글자도 안 바뀐다**
+  //     (메시의 행렬을 지오메트리에 구워 넣을 뿐이다 — 삼각형 덤프로 검증했다).
+  //  ▶ 가게와 다른 점: 가게는 병합 대상이 전부 clay(0.95)라 키가 `flat|cast|recv` 로 충분했다.
+  //     꾸미기는 clay(0.95)·soft(1.0) 두 거칠기가 섞여 있어 **roughness·metalness 도 키에 넣는다** —
+  //     안 넣으면 조형은 그대로인데 털모자(soft)와 점토(clay)의 음영이 갈린다.
+  //  ▶ **꾸미기는 파츠가 따로 움직이지 않는다** — game.js applyCosmetics 는 앵커의 자식을
+  //     통째로 갈아끼울 뿐 자식 하나를 매 프레임 건드리지 않는다(👣 발자국만 opacity 를 흔드는데
+  //     그건 trail.js 의 월드 이펙트라 이 경로가 아니다). 흔들 파츠가 생기면 병합 **뒤에** 달아라.
+  /** 색을 정점에 실어 둔다. 재질의 color 는 **이미 작업 색공간**이라 다시 변환하지 않는다
+   *  (new Color(hex) 로 다시 만들면 sRGB→Linear 가 한 번 더 걸려 색이 바뀐다). */
+  const paintGeo = (geo, col) => {
+    const n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { arr[i * 3] = col.r; arr[i * 3 + 1] = col.g; arr[i * 3 + 2] = col.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+    return geo;
+  };
+  const mergeGeos = (geos) => {
+    const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
+    const out = new THREE.BufferGeometry();
+    for (const name of ['position', 'normal', 'color']) {
+      if (!flat[0].attributes[name]) continue;
+      const size = flat[0].attributes[name].itemSize;
+      let total = 0;
+      for (const g of flat) total += g.attributes[name].count;
+      const arr = new Float32Array(total * size);
+      let off = 0;
+      for (const g of flat) { arr.set(g.attributes[name].array, off); off += g.attributes[name].count * size; }
+      out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+    }
+    return out;
+  };
+  /** 정점색 재질 — 원본과 같은 값이되 색만 정점에서 온다(color 흰색 × 정점색 = 같은 색) */
+  const vtxOf = (src, flat) => new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: src.roughness, metalness: src.metalness, flatShading: flat });
+  /** g 의 정적 파츠를 `flat|rough|metal|cast|recv` 키로 합친다.
+   *  ▶ 정점색·양면·발광·**반투명** 재질은 건너뛴다 — 반투명을 합치면 블렌드 순서가 바뀐다.
+   *  ▶ 혼자인 버킷은 그대로 둔다 — 합칠 상대가 없는데 인덱스를 풀면 정점만 늘어난다. */
+  function mergeStatics(g) {
+    const buckets = new Map();
+    for (const child of g.children) {
+      if (!child.isMesh) continue;
+      const m = child.material;
+      if (m.vertexColors || m.transparent || m.side !== THREE.FrontSide) continue;
+      if (m.emissive && m.emissive.getHex() !== 0) continue;
+      const key = `${!!m.flatShading}|${m.roughness}|${m.metalness}|${child.castShadow}|${child.receiveShadow}`;
+      const b = buckets.get(key) || { meshes: [], flat: !!m.flatShading, cast: child.castShadow, recv: child.receiveShadow };
+      b.meshes.push(child);
+      buckets.set(key, b);
+    }
+    let merged = 0;
+    for (const b of buckets.values()) {
+      if (b.meshes.length < 2) continue;
+      const geos = b.meshes.map(child => {
+        child.updateMatrix();
+        const geo = (child.geometry.index ? child.geometry.toNonIndexed() : child.geometry.clone()).applyMatrix4(child.matrix);
+        return paintGeo(geo, child.material.color);
+      });
+      const mesh = new THREE.Mesh(mergeGeos(geos), vtxOf(b.meshes[0].material, b.flat));
+      mesh.castShadow = b.cast; mesh.receiveShadow = b.recv;
+      b.meshes.forEach(child => g.remove(child));
+      g.add(mesh);
+      merged++;
+    }
+    return merged;
+  }
+
   /** 테이퍼 튜브 — 곡선을 따라 굵기가 변하는 관. 🎒 어깨끈이 몸 표면을 따라 휘게 만든다.
    *  (js/game.js buildAnimalMesh 의 꼬리와 같은 방식 — 근사가 아니라 같은 기하다.) */
   function taperedTube(pts, radiusFn, colorFn = null, segs = 40, radial = 9) {
@@ -163,10 +231,21 @@ function makeTables(THREE) {
     },
     // ── earSafe: 'dome' — 머리를 덮는 모자 3종 ──────────────────
     beanie: (g, k) => {         // 털모자 — 접힌 테두리 + 꼭대기 방울
+      //  ⚠️ 방울은 크라운에 **얹는** 것이지 크라운 **위에 띄우는** 것이 아니다.
+      //     1차 값 HR*1.12 는 크라운 꼭대기(1.06·HR)보다 0.06·HR **위**에 중심을 둔 유일한
+      //     꼭대기 장식이었다(캡의 단추는 1.02·HR — 제 크라운 1.05·HR **안**에 파묻혀 있다).
+      //     그래서 0.20·HR 짜리 공이 🐤병아리 볏 끝(0, 1.14, 0.05 ·HR)을 **안에 품어** 삼켰다 —
+      //     볏 끝 ↔ 방울 중심 거리 0.054·HR < 반지름 0.20·HR, 통째로 방울 속이었다.
+      //     DOME_BOT·domeTheta 가 잡아 주는 건 **아래 테두리**뿐이라 꼭대기는 이 줄이 혼자 정한다.
+      //  ▶ 0.92·HR 로 내려 크라운에 파묻으면 볏 끝이 방울 밖(거리 0.226·HR)으로 나오고,
+      //     모자 최고점이 1.32·HR → 1.12·HR 이 돼 캡(1.11)·밀짚(1.04)과 같은 자리에 선다.
+      //     🐤볏 노출률(14시점 픽셀 실측) 22.4% → 48.9% (캡 59.3 · 버섯 79.7 · 밀짚 63.6).
+      //     더 내리면(0.90) 53% 까지 오르지만 **방울이 크라운에 완전히 먹혀** 털모자가
+      //     민무늬 돔이 된다 — 조형을 잃는 지점 바로 앞에서 멈춘다.
       const HR = k.HR;
       g.add(domeCap(HR, 1.06, soft(P.wool)));
       g.add(domeRim(HR, 1.06, HR * 0.10, soft(P.woolDark)));
-      put(g, new THREE.Mesh(new THREE.SphereGeometry(HR * 0.20, 10, 8), soft(P.woolDark)), 0, HR * 1.12, 0);
+      put(g, new THREE.Mesh(new THREE.SphereGeometry(HR * 0.20, 10, 8), soft(P.woolDark)), 0, HR * 0.92, 0);
     },
     cap: (g, k) => {            // 캡 — 앞챙이 달린 모자. 챙은 눌러 만든다
       const HR = k.HR;
@@ -354,16 +433,19 @@ function makeTables(THREE) {
     },
   };
 
-  return { HEAD, NECK, BACK };
+  return { HEAD, NECK, BACK, mergeStatics };
 }
 
 /** itemId → 앵커에 꽂을 Group. 모르는 id 면 null
  *  k = { R, HR, HY, bs, bodyY, side: {x,y,z}, neckR } — sims/cosmetic-sim.html anchorsOf 와 같은 모양 */
 export function buildCosmetic(THREE, itemId, k) {
-  const { HEAD, NECK, BACK } = tablesFor(THREE);
+  const { HEAD, NECK, BACK, mergeStatics } = tablesFor(THREE);
   const fn = HEAD[itemId] || NECK[itemId] || BACK[itemId];
   if (!fn) return null;
   const g = new THREE.Group();
   fn(g, k);
+  //  ⚡ 여기서 한 번만 합친다 — 조형 함수 13개를 각자 고치면 새 아이템에서 빼먹는다.
+  //     조형 함수가 끝난 뒤라 좌표·회전이 다 정해져 있고, 꾸미기엔 흔들 파츠가 없다.
+  mergeStatics(g);
   return g;
 }
