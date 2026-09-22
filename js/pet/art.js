@@ -74,6 +74,74 @@ function makeTables(THREE) {
   const leafMesh = (len, wide, mat) => leafOf(THREE, len, wide, mat);
   const eyes = (g, o) => eyesOf(THREE, g, o);
 
+  // ── ⚡ 재질별 병합 — js/shop/building.js(가게 47메시→6)·js/duel/art.js·js/cosmetics/trail.js 와 같은 구현 ──
+  //  ⚠️ 파츠를 메시 하나씩 두면 3단계 펫 한 마리가 20메시(=+22콜)다. 계획 Task 12 Step 5·Task 14 Step 4 의
+  //     예산은 **+12** 다. 그래서 가게와 같은 수법으로 **재질별로 지오메트리를 합친다** —
+  //     색은 정점에 실어(paintGeo) 색이 달라도 한 재질로 묶인다.
+  //     좌표·회전·색은 **한 글자도 안 바뀐다**(메시의 행렬을 지오메트리에 구워 넣을 뿐).
+  //  ▶ 가게와 다른 점 하나: 가게는 병합 대상이 전부 clay(거칠기 0.95)라 키가 `flat|cast|recv` 셋이면 됐다.
+  //     펫은 clay(0.95)·plush(1.0)·눈(0.5) 세 거칠기가 섞여 있어 **roughness·metalness 도 키에 넣는다** —
+  //     안 넣으면 조형은 그대로인데 눈·몸의 음영이 갈린다.
+  /** 색을 정점에 실어 둔다. 재질의 color 는 **이미 작업 색공간**이라 다시 변환하지 않는다
+   *  (new Color(hex) 로 다시 만들면 sRGB→Linear 가 한 번 더 걸려 색이 바뀐다). */
+  const paintGeo = (geo, col) => {
+    const n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { arr[i * 3] = col.r; arr[i * 3 + 1] = col.g; arr[i * 3 + 2] = col.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+    return geo;
+  };
+  const mergeGeos = (geos) => {
+    const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
+    const out = new THREE.BufferGeometry();
+    for (const name of ['position', 'normal', 'color']) {
+      if (!flat[0].attributes[name]) continue;
+      const size = flat[0].attributes[name].itemSize;
+      let total = 0;
+      for (const g of flat) total += g.attributes[name].count;
+      const arr = new Float32Array(total * size);
+      let off = 0;
+      for (const g of flat) { arr.set(g.attributes[name].array, off); off += g.attributes[name].count * size; }
+      out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+    }
+    return out;
+  };
+  /** 정점색 재질 — 원본과 같은 값이되 색만 정점에서 온다(color 흰색 × 정점색 = 같은 색) */
+  const vtxOf = (src, flat) => new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: src.roughness, metalness: src.metalness, flatShading: flat });
+  /** g 의 정적 파츠를 `flat|rough|metal|cast|recv` 키로 합친다. 합친 버킷 수를 돌려준다.
+   *  ▶ 정점색·양면·발광 재질은 건너뛴다(그런 재질을 쓰는 종을 나중에 붙여도 안 깨지게).
+   *  ▶ **따로 움직이는 파츠는 병합에 걸리면 안 된다** — 🍃잎사귀 정령은 updatePetAnim 규약
+   *    (orbit·pulse·air·ring)을 하나도 안 쓴다(userData 가 비어 첫 줄에서 빠져나온다).
+   *    ✨정령처럼 공전·맥동하는 종을 붙이면 그 파츠는 이 함수 **뒤에** 달아라.
+   *  ▶ 혼자인 버킷은 그대로 둔다 — 합칠 상대가 없는데 인덱스를 풀면 정점만 늘어난다. */
+  function mergeStatics(g) {
+    const buckets = new Map();
+    for (const child of g.children) {
+      if (!child.isMesh) continue;
+      const m = child.material;
+      if (m.vertexColors || m.side !== THREE.FrontSide) continue;
+      if (m.emissive && m.emissive.getHex() !== 0) continue;
+      const key = `${!!m.flatShading}|${m.roughness}|${m.metalness}|${child.castShadow}|${child.receiveShadow}`;
+      const b = buckets.get(key) || { meshes: [], flat: !!m.flatShading, cast: child.castShadow, recv: child.receiveShadow };
+      b.meshes.push(child);
+      buckets.set(key, b);
+    }
+    let merged = 0;
+    for (const b of buckets.values()) {
+      if (b.meshes.length < 2) continue;
+      const geos = b.meshes.map(child => {
+        child.updateMatrix();
+        const geo = (child.geometry.index ? child.geometry.toNonIndexed() : child.geometry.clone()).applyMatrix4(child.matrix);
+        return paintGeo(geo, child.material.color);
+      });
+      const mesh = new THREE.Mesh(mergeGeos(geos), vtxOf(b.meshes[0].material, b.flat));
+      mesh.castShadow = b.cast; mesh.receiveShadow = b.recv;
+      b.meshes.forEach(child => g.remove(child));
+      g.add(mesh);
+      merged++;
+    }
+    return merged;
+  }
+
   // =============================================================
   //  🍃 ④ 잎사귀 정령 — 성장축: 잎 장수 + 망토
   //    정령의 신비로움에 "쓰다듬을 형태"를 더한 절충안. 몸은 씨앗이고 옷이 잎이다.
@@ -135,6 +203,10 @@ function makeTables(THREE) {
       put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(0.032, 0), clay(P.bloom)), R * 0.46, TOP + R * 0.34, R * 0.10, false);
       put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, R * 0.34, 5), clay(P.stem)), R * 0.40, TOP + R * 0.14, R * 0.08, false);
     }
+
+    //  ⚡ 여기까지가 한 번 세우면 안 움직이는 파츠 전부 — 재질별로 합친다(3단계 20메시 → 4).
+    //     흔들 파츠가 생기면 **이 줄 뒤에** 달아야 병합에 안 걸린다.
+    mergeStatics(g);
     return g;
   }
 
