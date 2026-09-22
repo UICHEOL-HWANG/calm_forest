@@ -22,6 +22,11 @@
 - 새 세이브 필드는 `gameState` 선언부에 기본값을 두고, 로드 시 `if (saved.X) ...` 로 **선택 병합**한다(기존 패턴).
 - **알림은 두 갈래다** — 패널 안에서는 `ui.toast?.(문구, ms)`, 월드에서는
   `spawnFloatText(x, y, z, 문구)`(3D 스프라이트라 패널에 가린다). 둘 다 `js/game.js` 에 이미 있다.
+- **저장은 `requestSave()` 다 — `saveGame(gameState)` 를 직접 부르지 않는다.**
+  `saveGame` 은 `supabase-client.js` 것이고, `js/game.js` 안에서 직접 부르는 곳은
+  `export async function requestSave() { return await saveGame(getGameState()); }`(`js/game.js:2961`) 한 줄뿐이다 — 나머지 37곳은 전부 `requestSave()` 를 쓴다.
+  `getGameState()` 를 건너뛰면 ① `orchard.trees` 의 런타임 전용 `hp` 가 그대로 저장되고
+  (그 함수 주석이 "저장용 스냅샷에서만 걸러낸다"고 못 박았다) ② 저장 직전에만 찍는 `gameState.timeOfDay` 동기화가 빠진다.
 - 커밋 메시지는 `<type>: <설명>` (feat/fix/refactor/test/docs).
 
 ---
@@ -1063,7 +1068,7 @@ function drawCosMenu() {
       trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: on ? 'off' : 'on' });
       applyCosmetics(gameState.cosmetics);
       drawCosMenu();
-      saveGame(gameState);
+      requestSave();
     };
     row.appendChild(btn);
     box.appendChild(row);
@@ -1404,7 +1409,7 @@ function finishPetJob() {
     respawnPet();                      // 실루엣이 바뀐다
   }
   petJob = null;
-  saveGame(gameState);
+  requestSave();
 }
 
 function updatePet(dt) {
@@ -1596,7 +1601,7 @@ function drawPetTab(box) {
       gameState.inventory.coins -= PET_PRICE;
       gameState.pet = emptyPet(PET_KIND);          // js/pet/art.js 가 내보내는 확정 종
       trackEvent('pet_buy', { pet_kind: PET_KIND, price_coins: PET_PRICE });
-      respawnPet(); drawCosMenu(); saveGame(gameState);
+      respawnPet(); drawCosMenu(); requestSave();
     };
     row.appendChild(btn); box.appendChild(row);
     return;
