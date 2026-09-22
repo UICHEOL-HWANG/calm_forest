@@ -7,7 +7,7 @@
 //
 //  묶음 하나 = 카드뉴스 한 편의 씨앗. status='ready' 가 "초안 만들어 달라" 신호다.
 // =============================================================
-import { readBearer, getUserId, json } from './_cards-auth.js';
+import { readBearer, getUserId, json, isUuid } from './_cards-auth.js';
 
 const H = (env) => ({
   apikey: env.SUPABASE_SERVICE_KEY,
@@ -43,12 +43,12 @@ export async function onRequestPost({ request, env }) {
   const body = await request.json().catch(() => null);
   const title = typeof body?.title === 'string' ? body.title.trim() : '';
   if (!title) return json({ error: 'title required' }, 400);
-  const ids = Array.isArray(body?.topic_ids) ? body.topic_ids.filter(x => typeof x === 'string') : [];
+  const ids = Array.isArray(body?.topic_ids) ? body.topic_ids.filter(isUuid) : [];
 
   const made = await fetch(`${env.SUPABASE_URL}/rest/v1/bundles`, {
     method: 'POST',
     headers: { ...H(env), Prefer: 'return=representation' },
-    body: JSON.stringify([{ owner: uid, title, memo: (body?.memo || '').trim() }]),
+    body: JSON.stringify([{ owner: uid, title, memo: typeof body?.memo === 'string' ? body.memo.trim() : '' }]),
   });
   if (!made.ok) return json({ error: 'insert failed' }, 502);
   const bundle = (await made.json())[0];
@@ -72,7 +72,7 @@ export async function onRequestPatch({ request, env }) {
   if (!uid) return json({ error: 'unauthorized' }, 401);
 
   const body = await request.json().catch(() => null);
-  if (!body?.id) return json({ error: 'id required' }, 400);
+  if (!isUuid(body?.id)) return json({ error: 'id required' }, 400);
 
   const patch = {};
   if (typeof body.title === 'string') patch.title = body.title.trim();

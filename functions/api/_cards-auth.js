@@ -29,6 +29,15 @@ export function safeEqual(a, b) {
   return diff === 0;
 }
 
+/** PostgREST 필터에 끼워 넣기 전에 형식을 확인한다 —
+ *  검증 없이 보간하면 `&` 가 섞인 값이 쿼리 파라미터를 덧붙일 수 있다.
+ *  지금은 PostgREST 가 중복 필터를 AND 해서 우회가 안 되지만,
+ *  안전이 상류 동작에 의존하게 두지 않는다. */
+export function isUuid(v) {
+  return typeof v === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
 export function isIngestAuthorized(request, env) {
   // ⚠️ 서버에 시크릿이 없으면 무조건 거부한다. 환경변수를 빠뜨린 채 배포했을 때
   //    아무나 쓰기가 되는 게 제일 나쁜 실패다.

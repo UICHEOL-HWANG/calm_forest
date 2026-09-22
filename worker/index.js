@@ -183,7 +183,8 @@ async function routeApi(pathname, { request, env, ctx }) {
 //  쿠키를 쓰지 않으므로 Allow-Origin: * 와 충돌하지 않는다.
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  // PATCH — 카드뉴스 소재 숨김·묶음 수정 라우트(cards-topics·cards-bundles)가 쓴다
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 };
