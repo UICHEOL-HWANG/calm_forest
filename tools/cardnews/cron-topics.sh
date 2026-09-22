@@ -17,23 +17,34 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 LOG="$HOME/Library/Logs/calmforest-topics.log"
 OUT="$(mktemp -t cardnews-topics)"
 
+# 준비 과정(PATH·네트워크·Aside·락)은 cron-reel.sh 와 같은 것을 쓴다
+source "$HERE/cron-lib.sh"
+
 mkdir -p "$(dirname "$LOG")"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') 소재 수집 시작 ===" >> "$LOG"
 
 cd "$HERE" || { echo "cd 실패: $HERE" >> "$LOG"; exit 1; }
 
-# ⚠️ launchd 의 PATH 는 최소한이다. node 와 aside 를 명시적으로 얹는다.
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
-if ! command -v node >/dev/null; then
-  # nvm 으로 깔았으면 PATH 에 없다 — 가장 최근 버전을 찾아 얹는다
-  NVM_NODE="$(ls -d "$HOME"/.nvm/versions/node/*/bin 2>/dev/null | tail -1)"
-  [ -n "$NVM_NODE" ] && export PATH="$NVM_NODE:$PATH"
+# ── 하루 한 번 가드 ──────────────────────────────────────────
+#  ⚠️ 시각 하나(StartCalendarInterval)만 믿으면 그 시각에 맥이 **꺼져 있는** 날은
+#     그날치를 통째로 잃는다. 잠든 맥은 깨어나서 따라잡지만, 전원이 꺼진 동안
+#     지나간 시각은 launchd 가 그냥 버린다 — 2026-09-15~22 일주일을 그렇게 잃었다
+#     (runs=0, 로그 0줄. 그 주 부팅은 전부 10시 이후였다).
+#     그래서 plist 에 RunAtLoad 를 켜 두고(부팅·로그인마다 깨어난다) 여기서
+#     "오늘 이미 돌았나" 를 본다. 늦게 켜도 그날 안에 한 번은 돈다.
+STAMP="$CF_STAMP_DIR/topics-last-run"
+mkdir -p "$CF_STAMP_DIR"
+TODAY="$(date '+%Y-%m-%d')"
+if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$TODAY" ]; then
+  echo "오늘 이미 돌았다 ($TODAY) — 건너뜀" >> "$LOG"
+  rm -f "$OUT"; exit 0
 fi
 
-if ! command -v node >/dev/null; then
-  echo "node 를 못 찾았다 (PATH=$PATH)" >> "$LOG"
-  exit 1
-fi
+# 준비가 안 되면 스탬프를 찍지 않고 물러난다 — 다음 로그인 때 다시 시도한다
+cf_prepare || { rm -f "$OUT"; exit 0; }
+
+# 여기까지 왔으면 오늘치를 시작한다 — 중간에 죽어도 같은 날 두 번 돌지 않게 먼저 찍는다
+echo "$TODAY" > "$STAMP"
 
 # ── 수집 ─────────────────────────────────────────────────────
 if node topics.mjs --top 5 > "$OUT" 2>&1; then
@@ -43,16 +54,48 @@ else
 fi
 cat "$OUT" >> "$LOG"
 
+# ── 인박스 업로드 ────────────────────────────────────────────
+#  ⚠️ 실패해도 메일은 나가야 한다. 메일이 아직 주 통로다 — 여기서 exit 하지 않는다.
+#  ⚠️ 시크릿은 리포에 없다. ~/.config/calmforest/cardnews.env 에서 읽는다.
+if [ "$STATUS" = "성공" ]; then
+  ENVFILE="$HOME/.config/calmforest/cardnews.env"
+  if [ -f "$ENVFILE" ]; then
+    # ⚠️ set -u 아래에서 외부 파일을 source 하면, 그 파일이 정의되지 않은 변수를
+    #    참조하는 순간 **스크립트 전체가 즉시 죽는다**(-e 가 없어도 그렇다).
+    #    메일 블록까지 못 가고 로그에 흔적도 안 남는다 — 이 크론이 일주일을
+    #    잃었던 그 조용한 죽음이다. 사람이 손으로 편집하는 파일이라 오타 하나면
+    #    재현된다. 그래서 -u 를 잠시 끄고, stderr 까지 로그로 받는다.
+    set +u
+    # shellcheck disable=SC1090
+    . "$ENVFILE" 2>> "$LOG" || echo "⚠️ 환경파일을 읽지 못했다: $ENVFILE" >> "$LOG"
+    set -u
+    # ⚠️ 날짜를 짐작하지 않는다. topics.mjs 가 UTC 로 파일명을 짓고 이 셸은 KST 를
+    #    쓰기 때문에, 이른 아침 부팅(RunAtLoad)이면 두 날짜가 갈라져 하루치가
+    #    통째로 증발한다 — 스탬프는 이미 찍혀 재시도도 안 하고 메일은 정상으로
+    #    나가서 아무도 모른다. 그래서 수집기가 직접 찍은 경로를 그대로 쓴다.
+    INBOX="$(sed -n 's|^저장: ||p' "$OUT" | tail -1)"
+    if [ -z "$INBOX" ]; then
+      echo "⚠️ 수집 출력에서 저장 경로를 못 찾았다 — topics.mjs 출력 형식이 바뀌었나?" >> "$LOG"
+    elif [ -f "$INBOX" ]; then
+      if node ingest-upload.mjs "$INBOX" >> "$LOG" 2>&1; then
+        echo "인박스 업로드 완료" >> "$LOG"
+      else
+        echo "⚠️ 인박스 업로드 실패 — 메일은 계속 보낸다" >> "$LOG"
+      fi
+    else
+      echo "⚠️ 수집 파일이 없다: $INBOX" >> "$LOG"
+    fi
+  else
+    echo "인박스 업로드 건너뜀 — $ENVFILE 이 없다" >> "$LOG"
+  fi
+fi
+
 # ── 메일 ─────────────────────────────────────────────────────
-#  aside 에이전트에게 발송을 맡긴다(Gmail 스킬). 여기선 aside 가 정상 동작한다 —
-#  자기 자신을 자식으로 부르는 구조가 아니기 때문이다.
 BODY="$(cat "$OUT")"
 SUBJECT="오늘의 카드뉴스 소재"
 [ "$STATUS" = "실패" ] && SUBJECT="⚠️ 카드뉴스 소재 수집 실패"
 
-aside "cheorish.hw@gmail.com 으로 메일을 보내줘. 제목은 '$SUBJECT'. 본문은 아래 내용을 그대로(형식 유지) 넣어줘. 다른 말은 덧붙이지 말고 메일만 보내.
+if cf_send_mail "$SUBJECT" "$BODY"; then MAIL="발송 완료"; else MAIL="발송 실패"; fi
 
-$BODY" >> "$LOG" 2>&1
-
-echo "=== $(date '+%H:%M:%S') $STATUS · 메일 발송 시도 완료 ===" >> "$LOG"
+echo "=== $(date '+%H:%M:%S') 수집 $STATUS · 메일 $MAIL ===" >> "$LOG"
 rm -f "$OUT"

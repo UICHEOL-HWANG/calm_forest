@@ -22,6 +22,9 @@ import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
+import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
+import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
+import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
@@ -151,6 +154,27 @@ async function routeApi(pathname, { request, env, ctx }) {
     return await orchardEvents({ request, env });
   }
 
+  // 📥 카드뉴스 소재 업로드 — 크론이 부른다(사람 JWT 아님, 시크릿 헤더)
+  if (pathname === '/api/cards-ingest') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await cardsIngest({ request, env });
+  }
+
+  // 🗂️ 카드뉴스 소재 목록·숨김 — 사람이 부른다(Supabase Auth JWT)
+  if (pathname === '/api/cards-topics') {
+    if (request.method === 'GET')   return await cardsTopicsGet({ request, env });
+    if (request.method === 'PATCH') return await cardsTopicsPatch({ request, env });
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  // 📦 카드뉴스 묶음 — status='ready' 가 초안 요청 신호
+  if (pathname === '/api/cards-bundles') {
+    if (request.method === 'GET')   return await cardsBundlesGet({ request, env });
+    if (request.method === 'POST')  return await cardsBundlesPost({ request, env });
+    if (request.method === 'PATCH') return await cardsBundlesPatch({ request, env });
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
   return null;
 }
 
@@ -159,7 +183,8 @@ async function routeApi(pathname, { request, env, ctx }) {
 //  쿠키를 쓰지 않으므로 Allow-Origin: * 와 충돌하지 않는다.
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  // PATCH — 카드뉴스 소재 숨김·묶음 수정 라우트(cards-topics·cards-bundles)가 쓴다
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 };
