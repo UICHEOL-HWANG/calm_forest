@@ -218,7 +218,7 @@ git commit -m "feat: 🎀 꾸미기 카탈로그 18종 — 슬롯·가격·earSa
   - `equippedItems(cos): Item[]`
   - `sanitize(raw): cos`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 // tests/cosmetics-equip.test.mjs
@@ -307,12 +307,12 @@ test('sanitize: null·잘못된 타입이면 빈 상태', () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npm test`
 Expected: FAIL — `Cannot find module '../js/cosmetics/equip.js'`
 
-- [ ] **Step 3: 규칙을 쓴다**
+- [x] **Step 3: 규칙을 쓴다**
 
 ```js
 // js/cosmetics/equip.js
@@ -386,12 +386,12 @@ export function sanitize(raw) {
 }
 ```
 
-- [ ] **Step 4: 테스트가 통과하는지 본다**
+- [x] **Step 4: 테스트가 통과하는지 본다**
 
 Run: `npm test`
 Expected: PASS — 누적 18개
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add js/cosmetics/equip.js tests/cosmetics-equip.test.mjs
