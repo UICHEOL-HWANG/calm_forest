@@ -75,6 +75,9 @@ import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
+import { PET_RADIUS, CHAIN_MAX, stageOf, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
+import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
+import { updatePetAnim } from './pet/art.js';                       // 🐾 펫 조형 애니메이션 규약
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
@@ -2711,6 +2714,19 @@ export async function enterGame() {
     window.__orchardCalls = () => __perf().calls;   // 블룸 컴포저 탓에 renderer.info 를 그냥 읽으면 마지막 패스(1)만 보인다
     window.__workSteps = (n = 1) => { const t = {}; workerSteps(n, t); return t; };   // 🧑‍🌾 오프라인 스텝 강제 실행(검수용 — 접속 중 60초 스텝과 같은 함수)
     window.__workers = () => workerObjs.map(o => ({ name: o.rec.name, job: o.rec.job, works: o.rec.works, phase: o.phase, t: +o.t.toFixed(2), task: o.task?.type || null, vis: o.group.visible, x: +o.group.position.x.toFixed(1), z: +o.group.position.z.toFixed(1) }));   // 🧑‍🌾 일꾼 상태 열람(검수용)
+    // 🐾 펫 검수용 — 성장 단계 실루엣 비교(works 를 바꾸고 respawn)·맡기기 강제·상태 열람
+    window.__pet = {
+      give: (kind = 'leaf') => { gameState.pet = { kind, name: '', works: 0, restUntil: 0 }; respawnPet(); return gameState.pet; },
+      works: (n) => { if (gameState.pet) gameState.pet.works = n; respawnPet(); return stageOf(gameState.pet?.works || 0); },
+      respawn: respawnPet,
+      cmd: commandPet,
+      state: () => gameState.pet && { ...gameState.pet, stage: stageOf(gameState.pet.works), rest: Math.max(0, gameState.pet.restUntil - Date.now()) },
+      job: () => petJob && { done: petJob.done, task: petJob.task?.type || null, i: petJob.task?.i ?? null },
+      obj: () => pet3d && { vis: pet3d.visible, x: +pet3d.position.x.toFixed(2), z: +pet3d.position.z.toFixed(2) },
+      box: () => pet3d && { pet: new THREE.Box3().setFromObject(pet3d).max.y, player: new THREE.Box3().setFromObject(player).max.y },   // 무릎 높이 실측
+      world: () => petWorld(),
+      remove: () => { if (pet3d) { scene.remove(pet3d); pet3d = null; } gameState.pet = null; return null; },
+    };
     // 📜 의뢰 패널 검수용 — __gs().npcs 를 손으로 고친 뒤 이걸 부르면 패널·말풍선·지도가 같이 갱신된다
     window.__questPanel = () => { refreshCollectQuests(); npcObjs.forEach(updateNPCGlyph); refreshQuestPanel(); return npcObjs.map(questView).filter(Boolean); };
     window.__solids = () => colliders.map(c => c.r != null ? ['c', +c.x.toFixed(1), +c.z.toFixed(1), c.r] : ['b', +c.x1.toFixed(1), +c.z1.toFixed(1), +c.x2.toFixed(1), +c.z2.toFixed(1)]);   // 🚧 충돌체 목록 — 재빌드 뒤 고아 벽이 남았는지 세는 용(밭 증축 검수)
@@ -2776,6 +2792,7 @@ export async function enterGame() {
   resolveFarmPests();                   // 🐛 고급 작물 해충 — 하루 1회, 비 온 다음 날 확률↑(서버 불필요)
   spawnWorkers();                       // 🧑‍🌾 고용한 일꾼 3D — 세이브 복원 뒤(밭 단계가 정해진 다음)
   catchUpWorkers();                     // 🧑‍🌾 오프라인 정산 — 월급 + 60초 스텝(최대 12시간) + 요약 모달
+  respawnPet();                         // 🐾 펫 3D — 세이브 복원 뒤. ⚠️ 여기에 정산은 없다(펫은 오프라인에 아무것도 안 한다)
   if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
     const s = SEVERE_INFO[SEVERE_TOMORROW];
     setTimeout(() => ui.toast?.(`${s.ico} 내일 ${s.name} 예보! 오늘 수확하거나 작업대에서 🛡️ 덮개를 준비하세요`, 3600), 3000);
@@ -11842,6 +11859,9 @@ function updateDoorInteract() {
     else { nearDoor = 'outdoor'; prompt = `${def.ico} ${def.name} · 옮기기`; }
     const ring = ensureNearRing(); ring.position.set(outdoorNear.mesh.position.x, 0.04, outdoorNear.mesh.position.z); ring.visible = true;
   }
+  // 🐾 맡기기 — 밭 근처 + 쿨다운이 끝났을 때만. 맨 마지막 순위다(시설·밭일·옮기기에 전부 양보).
+  //   ⚠️ 안내는 **프롬프트 줄에만** — 월드 라벨로 띄우면 다른 라벨을 가린다(🎀가게와 같은 규칙).
+  if (!prompt && !farmActionFirst() && petChoresNear()) { nearDoor = 'pet'; prompt = '🐾 맡기기'; }
   if (prompt !== lastDoorPrompt) { lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 🪜 양방향 선택 UI(6단계 2층 전용) — door-prompt 와 같은 중복 갱신 방지 패턴.
   //   opts 가 바뀔 때만 버튼을 다시 그린다(매 프레임 onclick 재바인딩 낭비 방지).
@@ -12191,6 +12211,7 @@ function animate() {
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
   updateWorkers(dt);        // 🧑‍🌾 일꾼 — 밭 안이면 걸어서, 밖이면 60초 스텝으로
+  updatePet(dt, t);         // 🐾 펫 — 따라다니기 / 맡긴 잡일 연쇄(접속 중에만 — 오프라인 정산 없음)
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
@@ -13331,6 +13352,7 @@ function handleAction() {
   if (nearDoor === 'farmbench') return ui.openCook?.('out');   // 🔧 자재 작업대 → 제작 메뉴(🌷야외 탭 = 밭 시설)
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
+  if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
   if (nearDoor === 'mineexit') return exitMine();
   if (nearDoor === 'orchard') return enterOrchard();
@@ -14822,6 +14844,121 @@ function updateWorkers(dt) {
         o.plot = null; o.task = null; o.phase = 'idle'; o.t = 0.35;
       }
     }
+  }
+}
+
+// ── 🐾 펫 — 따라다니기 · 맡기기 ──────────────────────────────
+//  🐾 맡기기 — 반경 안 잡일을 최대 CHAIN_MAX 칸. 끝나면 따라오기로 돌아간다.
+//  ⚠️ 오프라인 정산이 **없다**. 펫은 지시받아야 움직이고, updatePet 은 접속 중에만 돈다 —
+//     그게 🧑‍🌾일꾼(접속을 끊어도 12시간 일한다)과 갈라서는 경계다(js/pet/rules.js 머리말).
+let pet3d = null, petJob = null;
+
+function respawnPet() {
+  if (pet3d) { scene.remove(pet3d); pet3d = null; }
+  if (!gameState.pet) return;
+  pet3d = spawnPet(THREE, gameState.pet.kind, stageOf(gameState.pet.works));
+  if (!pet3d) return;                                   // 모르는 종이면 아무것도 안 세운다
+  pet3d.position.set(player.position.x, 0, player.position.z);
+  scene.add(pet3d);
+}
+
+// 🐾 프롬프트 조건 — 반경 안에 **실제로 할 잡일이 있을 때만** 띄운다.
+//   없을 때도 띄우면, 눌러 봐야 0칸으로 끝나면서 20초 쿨다운만 먹는다(한 일이 없는데 쉰다).
+//   ⚠️ 먼저 좌표만으로 거른다 — petWorld() 는 밭 121칸을 매 프레임 새로 만든다.
+function petChoresNear() {
+  if (!pet3d || !pet3d.visible || petJob || !canCommand(gameState.pet, Date.now())) return false;
+  const r2 = PET_RADIUS * PET_RADIUS, c = player.position;
+  let near = false;
+  for (const p of plots) { const dx = p.x - c.x, dz = p.z - c.z; if (dx * dx + dz * dz <= r2) { near = true; break; } }
+  return near && !!pickPetTask(petWorld(), c, PET_RADIUS);
+}
+
+function commandPet() {
+  if (!canCommand(gameState.pet, Date.now())) {
+    spawnFloatText(player.position.x, 1.6, player.position.z, '조금 쉬고 있어요');
+    return;
+  }
+  petJob = { done: 0, task: null, before: stageOf(gameState.pet.works) };
+}
+
+function finishPetJob() {
+  gameState.pet = afterWork(gameState.pet, petJob.done, Date.now());
+  trackEvent('pet_command', {
+    pet_kind: gameState.pet.kind, stage: stageOf(gameState.pet.works),
+    task: 'chores', plots_done: petJob.done,
+  });
+  const after = stageOf(gameState.pet.works);
+  if (after > petJob.before) {
+    trackEvent('pet_stage_up', { pet_kind: gameState.pet.kind, stage: after, works: gameState.pet.works });
+    respawnPet();                      // 실루엣이 바뀐다
+  }
+  petJob = null;
+  requestSave();
+}
+
+function updatePet(dt, t) {
+  if (!pet3d) return;
+  // 👣 발자국과 같은 규칙 — 바닥이 없거나 카메라가 붙는 공간에선 끈다.
+  //    다시 보일 땐 플레이어 발밑에서 시작한다(따라오느라 벽을 뚫지 않게).
+  const off = indoor || atCafe || atMuseum || atMine;
+  if (off) {
+    if (pet3d.visible) { pet3d.visible = false; petJob = null; }
+    return;
+  }
+  if (!pet3d.visible) { pet3d.visible = true; pet3d.position.set(player.position.x, 0, player.position.z); }
+  // 🚪 공간을 옮겼거나 플레이어가 멀리 달아났다 — 발밑으로 붙고, 하던 일은 **한 만큼 쳐서** 끝낸다
+  //    (그냥 버리면 이미 물을 준 칸이 works 에도 쿨다운에도 안 남는다)
+  if (snapIfFar(pet3d, player.position) && petJob) finishPetJob();
+  updatePetAnim(pet3d, t);
+  if (!petJob) { followPlayer(pet3d, player.position, dt); return; }
+  if (!petJob.task) {
+    if (petJob.done >= CHAIN_MAX) return finishPetJob();
+    petJob.task = pickPetTask(petWorld(), player.position, PET_RADIUS);
+    if (!petJob.task) return finishPetJob();
+  }
+  const p = plots[petJob.task.i];
+  if (!p) { petJob.task = null; return; }              // 밭이 사라졌으면 다시 고른다
+  if (walkTo(pet3d, p.x, p.z, dt)) {
+    if (petApply(petJob.task)) { petJob.done++; spawnDust(p.x, p.z, 4); }
+    petJob.task = null;
+  }
+}
+
+// 🐾 펫이 보는 밭 — workerWorld 는 좌표를 안 담는다(일꾼은 밭 전체를 보니까).
+//    펫은 반경 판정이 필요하므로 x·z 를 얹는다.
+function petWorld() {
+  const now = clock.elapsedTime;
+  return plots.map((p, i) => ({
+    i, x: p.x, z: p.z,
+    state: p.state === 'growing' ? 'growing' : p.state === 'mature' ? 'mature' : 'tilled',
+    weed: !!p.weed, pest: !!p.pest,
+    wet: now < (p.wetUntil || 0),
+    wiltAt: (p.needSince || now) + wiltTimeFor(p.cropType, WILT_TIME),
+  }));
+}
+
+// 🐾 펫의 작업 적용 — **물·잡초·해충 셋만**. 수확·파종은 일부러 없다(스펙 §7-1).
+//    ⚠️ workerApply(rec, task, tally) 를 그대로 못 쓴다 — 일꾼 레코드를 받고 수확·운반까지 안다.
+//       물주기 본문은 workerApply 의 case 'water' 를 **그대로 옮긴다**(벌통·우물 보정 포함).
+//       그래야 펫이 준 물과 일꾼이 준 물이 다르게 자라는 일이 없다.
+function petApply(task) {
+  const p = plots[task.i];
+  if (!p) return false;
+  switch (task.type) {
+    case 'water': {
+      if (p.state !== 'growing') return false;
+      const recs = farmBuildingRecs();
+      const hive = inRadiusOf(recs, 'beehive', p.x, p.z), well = inRadiusOf(recs, 'well', p.x, p.z);
+      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert) * (hive ? HIVE_GROWTH_MUL : 1));
+      p.wetUntil = clock.elapsedTime + WET_TIME * (well ? WELL_WET_MUL : 1);
+      p.watered = true; p.needSince = 0;
+      if (p.growth < MATURE && weedRoll(p.cropType, Math.random())) p.weed = true;
+      refreshCropStage(p);
+      return true;
+    }
+    case 'weed': if (!p.weed) return false; p.weed = false; syncFarmSoil(true); return true;
+    case 'pest': if (!p.pest) return false; p.pest = false; syncFarmCrops(true); return true;
+    default: return false;
   }
 }
 
