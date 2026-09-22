@@ -1013,7 +1013,7 @@ git commit -m "feat: 🏪 꾸미기 가게 — 41.2°에서 안이 보이는 디
 
 ⚠️ 스펙 §5-7 — 풍성한 미리보기 UI 는 **열린 결정**이다. 이 태스크는 **바닥**만 만든다: 기존 `.panel`/`dm-head`/`ck-tabs` 를 재사용한 슬롯 탭 + 목록 + 구매/장착. 미리보기는 "사면 바로 입혀진다"로 대신한다(월드의 내 캐릭터가 곧 미리보기다).
 
-- [ ] **Step 1: 마크업을 넣는다**
+- [x] **Step 1: 마크업을 넣는다**
 
 `index.html` 의 `#shop-menu` 블록 다음에:
 
@@ -1027,7 +1027,7 @@ git commit -m "feat: 🏪 꾸미기 가게 — 41.2°에서 안이 보이는 디
   </div>
 ```
 
-- [ ] **Step 2: 탭과 목록을 그린다**
+- [x] **Step 2: 탭과 목록을 그린다**
 
 ```js
 // 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
@@ -1083,7 +1083,7 @@ import { itemsOf } from './cosmetics/catalog.js';
 import { buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 ```
 
-- [ ] **Step 3: 가게 앞에서 열리게 한다**
+- [x] **Step 3: 가게 앞에서 열리게 한다**
 
 가게 근처에 서면 프롬프트 줄에 안내를 띄우고, 누르면 `#cos-menu` 에 `show` 를 건다. ⚠️ 안내는 **프롬프트 줄에만** — 월드 라벨로 띄우면 다른 라벨을 가린다.
 
@@ -1092,7 +1092,7 @@ trackEvent('shop_enter', { from: 'walk' });
 trackEvent('shop_open', { tab: 'cosmetics' });
 ```
 
-- [ ] **Step 4: i18n 을 등재한다**
+- [x] **Step 4: i18n 을 등재한다**
 
 `js/i18n-en.js` 의 `EN` 에 추가한다. ⚠️ 조합 문장의 글루와 `{0}` 를 통문장으로 넣지 않는다.
 
@@ -1109,16 +1109,16 @@ trackEvent('shop_open', { tab: 'cosmetics' });
   '발바닥': 'Paw Print', '물방울': 'Droplet', '반짝이': 'Sparkle',
 ```
 
-- [ ] **Step 5: 커버리지를 점검한다**
+- [x] **Step 5: 커버리지를 점검한다**
 
 Run: `node scripts/i18n_check.mjs`
 Expected: 새로 넣은 한국어 문자열이 미등재 목록에 없다
 
-- [ ] **Step 6: 인게임에서 사 보고 모바일 폭을 잰다**
+- [x] **Step 6: 인게임에서 사 보고 모바일 폭을 잰다**
 
 확인: 사면 바로 입혀지고 새로고침해도 유지된다. **모바일 폭(375px)에서 버튼이 안 넘친다.**
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add index.html js/game.js js/i18n-en.js

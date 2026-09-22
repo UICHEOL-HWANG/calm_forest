@@ -46,7 +46,7 @@
   /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
   #app { position: fixed; inset: 0; touch-action: none; }
   /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 (도감·NPC·피드백·로그인 카드 포함) */
-  #bag-content, #shop-menu, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, #craft-menu, .tut-card, .fb-card, .npc-card, #login-card {
+  #bag-content, #shop-menu, #cos-items, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, #craft-menu, .tut-card, .fb-card, .npc-card, #login-card {
     touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   }
 
@@ -190,6 +190,7 @@
   body:not(.playing) #cook-menu,
   body:not(.playing) #cafe-menu,
   body:not(.playing) #shop-menu,
+  body:not(.playing) #cos-menu,
   body:not(.playing) #bag-menu,
   body:not(.playing) #ext-menu,
   body:not(.playing) #buffs,
@@ -1229,6 +1230,22 @@
   .sh-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .sh-tab.active { background: var(--mint); }
   #sell-items, #buy-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  /* 🎀 꾸미기 상점 — #shop-menu 와 같은 자리·같은 폭. 목록 옆에 🪞입어보기 프리뷰를 세운다.
+     ⚠️ 프리뷰를 목록 **위**에 얹지 않는다 — 목록이 스크롤되면 프리뷰가 같이 밀려 올라간다.
+        옆에 두고 목록만 스크롤해야 입어보는 내내 보인다. */
+  #cos-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; }
+  #cos-menu.show { display: flex; }
+  #cos-body { display: flex; gap: 10px; align-items: flex-start; }
+  #cos-preview-box { flex: 0 0 136px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; border-radius: 14px; background: linear-gradient(160deg, #eef7f0, #dcebe0); box-shadow: inset 0 2px 10px rgba(90,120,100,0.12); }
+  #cos-preview { width: 120px; height: 146px; cursor: grab; touch-action: none; }
+  #cos-preview:active { cursor: grabbing; }
+  #cos-preview-hint { font-size: 10px; opacity: .6; text-align: center; line-height: 1.3; }
+  #cos-items { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; max-height: 42dvh; overflow-y: auto; }
+  .sh-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #f4faf5; box-shadow: var(--shadow); cursor: pointer; outline: 2px solid transparent; transition: outline-color .12s; }
+  .sh-row.try { outline-color: #7ec99a; background: #e8f6ec; }   /* 🪞 지금 입어보고 있는 줄 */
+  .sh-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
+  .sh-row button { flex: 0 0 auto; border: none; border-radius: 10px; padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; background: var(--mint); color: var(--ink); }
+  .sh-row button:active { transform: scale(0.95); }
   /* 📊 오늘의 시세 배너 + 등락 표시 */
   .market-banner { width: 100%; text-align: center; font-size: 12px; background: rgba(255,232,176,0.55); border-radius: 10px; padding: 7px 10px; color: var(--ink); }
   .ck-buff .up { color: #2fa564; font-weight: 700; }
@@ -1453,6 +1470,15 @@
     /* 런 중에는 도구 하트바가 없으므로 조이스틱·액션버튼이 그대로 노출된다(조향+노 젓기) */
     /* 작업대/상점/자유주방 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
     #shop-menu, #kitchen-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
+    /* 🎀 꾸미기: 375px 에서 패널 94vw=352 — 프리뷰 108 + 간격 8 + 목록 ≈220. 버튼이 안 넘친다 */
+    #cos-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); padding: 10px 12px; gap: 8px; }
+    #cos-body { gap: 8px; }
+    #cos-preview-box { flex: 0 0 108px; padding: 6px 4px; }
+    #cos-preview { width: 98px; height: 120px; }
+    #cos-items { max-height: 38dvh; }
+    .sh-row { padding: 7px 9px; gap: 6px; }
+    .sh-row > span { font-size: 12px; }
+    .sh-row button { padding: 6px 9px; font-size: 11.5px; }
     /* 작업대는 바닥값만 낮춘다 — 최대 높이는 --menu-bottom 을 물고 자동으로 다시 계산된다 */
     #cook-menu { --menu-bottom: calc(78px + env(safe-area-inset-bottom)); width: 94vw; }
     /* 🍳 미니게임: 좁은 화면 — 카드 폭 확장, 큰 탭 버튼 유지(엄지 존) */
@@ -1827,6 +1853,20 @@
     <div id="sell-items"></div>
     <div id="buy-items" style="display:none"></div>
     <div class="dm-actions"><button id="shop-close">닫기</button></div>
+  </div>
+
+  <!-- 🎀 꾸미기 상점 — shop-menu 스타일 재사용 + 🪞 입어보기 프리뷰(캐릭터 선택 화면과 같은 빌더) -->
+  <div id="cos-menu" class="panel">
+    <div class="dm-head">🎀 꾸미기 <span id="cos-coin" class="ck-inv"></span></div>
+    <div class="ck-tabs" id="cos-tabs"></div>
+    <div id="cos-body">
+      <div id="cos-preview-box">
+        <canvas id="cos-preview"></canvas>
+        <div id="cos-preview-hint">🖐️ 드래그해서 돌려보기</div>
+      </div>
+      <div id="cos-items"></div>
+    </div>
+    <div class="dm-actions"><button id="cos-close">닫기</button></div>
   </div>
 
   <!-- 📖 도감 모달 -->
@@ -3078,6 +3118,11 @@
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
       openShop(tab = 'sell') { showShopTab(tab); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
+      // 🎀 꾸미기 상점 — 내용·프리뷰는 게임 쪽이 그린다. 프리뷰는 **패널이 보인 뒤에** 만든다(캔버스 크기 확보)
+      openCosShop() {
+        Input.setAnalog(0, 0); $('cos-menu').classList.add('show'); document.body.classList.add('menu-open');
+        requestAnimationFrame(() => Input.openCosMenu?.($('cos-preview')));
+      },
       // ☕ 카페 주문판 열기
       openCafe(d) { renderCafe(d); Input.setAnalog(0, 0); $('cafe-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🛶 나룻배 런 시작/종료 — 마을 UI를 걷어내고 배 HUD로 전환
@@ -4743,6 +4788,8 @@
     }
     document.querySelectorAll('.sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));
     $('shop-close').addEventListener('click', () => { $('shop-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
+    // 🎀 꾸미기 닫기 — 입어보던 건 버리고(실제 장착으로 복귀) 프리뷰 렌더러도 세운다
+    $('cos-close').addEventListener('click', () => { $('cos-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.closeCosMenu?.(); });
     $('craft-close').addEventListener('click', () => { $('craft-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
 
     // ── ☕ 주문판 — 오늘 손님들의 주문 현황(서빙은 홀에서 손님에게 직접) ──
