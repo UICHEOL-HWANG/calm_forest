@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calm Forest Early Inconclusive Findings</title>
+  <style>
+    :root {
+      --ink: #17201c;
+      --muted: #657167;
+      --line: #dce5dd;
+      --paper: #fbfcf8;
+      --green: #28745c;
+      --brown: #746552;
+      --red: #c9584d;
+      --gold: #b87525;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 1080px;
+      height: 1350px;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      letter-spacing: 0;
+    }
+    .page {
+      width: 1080px;
+      height: 1350px;
+      padding: 46px 54px 40px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 22px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr 250px;
+      gap: 26px;
+      align-items: start;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 22px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 48px;
+      line-height: 1.08;
+      font-weight: 850;
+    }
+    .subtitle {
+      margin-top: 12px;
+      font-size: 22px;
+      line-height: 1.38;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .period {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 17px 18px;
+      text-align: right;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.35;
+      font-weight: 750;
+    }
+    .period strong {
+      display: block;
+      color: var(--green);
+      font-size: 32px;
+      line-height: 1.05;
+      margin-bottom: 8px;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .kpi {
+      min-height: 112px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 16px 14px;
+    }
+    .kpi b {
+      display: block;
+      font-size: 31px;
+      line-height: 1;
+      color: var(--green);
+      margin-bottom: 8px;
+      font-weight: 850;
+    }
+    .kpi:nth-child(2) b { color: var(--red); }
+    .kpi:nth-child(3) b { color: var(--gold); }
+    .kpi:nth-child(4) b { color: var(--brown); }
+    .kpi span {
+      display: block;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.28;
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 16px;
+      min-height: 0;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 8px;
+      min-height: 0;
+    }
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: baseline;
+      font-size: 21px;
+      line-height: 1.2;
+      font-weight: 850;
+    }
+    .card-title em {
+      color: var(--green);
+      font-style: normal;
+    }
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .chart {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcfb 100%);
+      overflow: hidden;
+      border-radius: 6px;
+    }
+    .chart img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .caption {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.28;
+      font-weight: 700;
+      padding: 0 2px 2px;
+    }
+    .takeaway {
+      background: #11161a;
+      color: #fff;
+      border-radius: 8px;
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 20px;
+      align-items: center;
+    }
+    .takeaway strong {
+      font-size: 28px;
+      line-height: 1.08;
+      white-space: nowrap;
+    }
+    .takeaway p {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.38;
+      color: #e7ece8;
+      font-weight: 650;
+    }
+    footer {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>처음엔 결론이 잘 안 나왔습니다</h1>
+        <div class="subtitle">게임 개시부터 8월 말까지의 초기 데이터에서 배운 한계들</div>
+      </div>
+      <div class="period">
+        <strong>초기 분석</strong>
+        2026-07-26~08월 말<br />신호보다 노이즈가 컸던 구간
+      </div>
+    </header>
+
+    <section class="kpis" aria-label="초기 분석의 한계">
+      <div class="kpi"><b>D1 9.1%</b><span>낮은 복귀율의 원인을 바로 특정하기엔 분모가 작았습니다.</span></div>
+      <div class="kpi"><b>59%</b><span>기기 248대 중 147대는 게임 행동을 만들지 않았습니다.</span></div>
+      <div class="kpi"><b>83%</b><span>무행동 147대 중 122대는 해외 트래픽이었습니다.</span></div>
+      <div class="kpi"><b>0 클릭</b><span>로그인 넛지는 노출 자체가 적어 문구 판단이 어려웠습니다.</span></div>
+    </section>
+
+    <section class="grid" aria-label="초기 분석 그래프">
+      <article class="card">
+        <div class="card-title"><span>1. <em>무행동의 정체</em></span><span class="note">트래픽 혼합</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g_country_noaction.png" /></div>
+        <div class="caption">“아무것도 안 했다”는 제품 문제와 잘못 들어온 트래픽이 섞인 값이었습니다.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-title"><span>2. <em>체류 시간이 너무 짧음</em></span><span class="note">원인 불명</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g_dwell_noaction.png" /></div>
+        <div class="caption">5초 안에 떠난 기기는 로딩, 기기 문제, 유입 오류를 구분할 수 없었습니다.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-title"><span>3. <em>전환 경로가 약함</em></span><span class="note">게스트 해석</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g_conversion_path.png" /></div>
+        <div class="caption">“게스트로 해보고 로그인”은 5대뿐이라 전환 가설을 강하게 말하기 어려웠습니다.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-title"><span>4. <em>넛지가 거의 안 뜸</em></span><span class="note">계측 조건</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g_nudge_funnel.png" /></div>
+        <div class="caption">클릭 0건은 문구 실패라기보다, 조건이 너무 좁았다는 신호에 가까웠습니다.</div>
+      </article>
+    </section>
+
+    <section class="takeaway">
+      <strong>한 줄 결론</strong>
+      <p>초기 분석의 수확은 정답이 아니라, 다음부터 무엇을 빼고 무엇을 따로 기록해야 하는지였습니다.</p>
+    </section>
+
+    <footer>
+      <span>Calm Forest 초기 분석 요약 · 2026-09-16</span>
+      <span>자료: GA4 events, game_logs, session_logs, guest/login funnel, 01~03 EDA notebooks</span>
+    </footer>
+  </main>
+</body>
+</html>

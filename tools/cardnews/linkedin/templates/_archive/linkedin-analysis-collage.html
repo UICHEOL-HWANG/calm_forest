@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calm Forest Analysis Collage</title>
+  <style>
+    :root {
+      --ink: #17201c;
+      --muted: #647067;
+      --line: #dce5dd;
+      --paper: #fbfcf8;
+      --soft: #eef6ee;
+      --green: #28745c;
+      --amber: #b87525;
+      --rose: #a94c54;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 1080px;
+      height: 1350px;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      letter-spacing: 0;
+    }
+    .page {
+      width: 1080px;
+      height: 1350px;
+      padding: 46px 54px 40px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 22px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: start;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 22px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 48px;
+      line-height: 1.08;
+      font-weight: 850;
+    }
+    .subtitle {
+      margin-top: 12px;
+      font-size: 22px;
+      line-height: 1.38;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .badge {
+      min-width: 190px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      text-align: right;
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .badge strong {
+      display: block;
+      color: var(--green);
+      font-size: 34px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .kpi {
+      min-height: 110px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 16px 14px;
+    }
+    .kpi b {
+      display: block;
+      font-size: 31px;
+      line-height: 1;
+      color: var(--green);
+      margin-bottom: 8px;
+      font-weight: 850;
+    }
+    .kpi:nth-child(2) b { color: var(--amber); }
+    .kpi:nth-child(3) b { color: var(--rose); }
+    .kpi span {
+      display: block;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.28;
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 16px;
+      min-height: 0;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      min-height: 0;
+    }
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: baseline;
+      font-size: 21px;
+      line-height: 1.2;
+      font-weight: 850;
+    }
+    .card-title em {
+      color: var(--green);
+      font-style: normal;
+    }
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .chart {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcfb 100%);
+      overflow: hidden;
+      border-radius: 6px;
+    }
+    .chart img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .takeaway {
+      background: #11161a;
+      color: #fff;
+      border-radius: 8px;
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 20px;
+      align-items: center;
+    }
+    .takeaway strong {
+      font-size: 28px;
+      line-height: 1.08;
+      white-space: nowrap;
+    }
+    .takeaway p {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.38;
+      color: #e7ece8;
+      font-weight: 650;
+    }
+    footer {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>고요한 숲을 데이터로 읽어본 기록</h1>
+        <div class="subtitle">이탈, 게스트 전환, 첫날 행동, ML 후보, 베타 A/B까지 한 장에 압축</div>
+      </div>
+      <div class="badge">
+        <strong>운영 질문</strong>
+        사람들이 왜 멈추고<br />무엇 때문에 다시 올까?
+      </div>
+    </header>
+
+    <section class="kpis" aria-label="핵심 수치">
+      <div class="kpi"><b>89 → 26</b><span>튜토리얼 화면을 본 기기 중 실제 단계를 밟은 기기</span></div>
+      <div class="kpi"><b>17.2% → 36.4%</b><span>첫날 2개 이상 영역을 경험한 국내 기기 비율</span></div>
+      <div class="kpi"><b>34.5% vs 3.0%</b><span>초반 행동 고밀도/저밀도 그룹의 후속 행동률</span></div>
+      <div class="kpi"><b>n=10</b><span>베타 A/B는 결론보다 다음 실험 후보를 찾는 용도</span></div>
+    </section>
+
+    <section class="grid" aria-label="분석 그래프">
+      <article class="card">
+        <div class="card-title"><span>1. <em>게스트와 튜토리얼</em></span><span class="note">입구 문제</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g_tutorial_funnel.png" /></div>
+      </article>
+      <article class="card">
+        <div class="card-title"><span>2. <em>첫날 행동 폭</em></span><span class="note">탐색 깊이</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g2_domestic_two_plus_rate.png" /></div>
+      </article>
+      <article class="card">
+        <div class="card-title"><span>3. <em>초반 행동 밀도</em></span><span class="note">재방문 후보</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g5_event_density_threshold_split.png" /></div>
+      </article>
+      <article class="card">
+        <div class="card-title"><span>4. <em>모델 후보 비교</em></span><span class="note">해석 보조</span></div>
+        <div class="chart"><img src="file:///Users/uicheol_hwang/calm_forest/ml/reports/figs/g5_model_family_auc.png" /></div>
+      </article>
+    </section>
+
+    <section class="takeaway">
+      <strong>한 줄 결론</strong>
+      <p>좋은 지표는 사람을 숫자로 줄이는 게 아니라, 다음에 더 잘 대할 방법을 알려준다.</p>
+    </section>
+
+    <footer>
+      <span>Calm Forest 분석 요약 · 2026-09-16</span>
+      <span>자료: GA4/Supabase 로그, 베타 일지, beta_testers, econ/session/tutorial logs</span>
+    </footer>
+  </main>
+</body>
+</html>
