@@ -3844,8 +3844,18 @@
       if (w) { try { w.opener = null; } catch {} }
       else location.href = url;                      // 팝업 차단·웹뷰 폴백
     };
-    $('privacy-btn').addEventListener('click', () => openPolicyPage('/privacy', 'privacy_open'));
-    $('delacc-btn').addEventListener('click', () => openPolicyPage('/delete-account', 'delete_account_open'));
+    //    · 🔵 토스는 두 항목을 아예 내린다 — 웹뷰에 새 탭이 없어 window.open 이 null 을 주고,
+    //      폴백 location.href 가 게임 문서째 웹 오리진으로 나가버린다. 그 페이지의
+    //      '게임으로 돌아가기'(→ '/')는 웹 게임이라 구글 로그인 화면이 뜨고, 토스 번들로
+    //      돌아올 길이 없다(편도 티켓). 버튼은 DOM 에서 제거한다 — 숨기기만 하면 나중에
+    //      다른 경로로 눌릴 여지가 남는다.
+    if (IS_TOSS) {
+      $('privacy-btn').remove();
+      $('delacc-btn').remove();
+    } else {
+      $('privacy-btn').addEventListener('click', () => openPolicyPage('/privacy', 'privacy_open'));
+      $('delacc-btn').addEventListener('click', () => openPolicyPage('/delete-account', 'delete_account_open'));
+    }
     // 📮 소식함 — 메뉴에서 열면 최근 소식 전부(읽은 것 포함). 닫을 때 가장 큰 id 를 읽음으로 기록
     $('inbox-btn').addEventListener('click', async () => {
       $('topleft').classList.remove('open');
