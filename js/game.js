@@ -1799,6 +1799,25 @@ const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
   .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
 let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
+let wingArms = false;         // 🐤 날개-팔 캐릭터 — 쥐는 점 보정을 적용하지 않는다(원본 유지)
+let toolGripFade = 0;         // 0 = 새 쥐는 점 · 1 = 원본 쥐는 점. 옆베기 동안만 올라간다(스윙 궤적을 원본과 똑같이)
+// ✊ 쥐는 점 — 팔 있는 캐릭터가 도구를 든 자세(sims/tool-grip-sim.html ④ 검수값).
+//   발바닥 중심에서 자루를 세우면 자루가 팔뚝 속을 뚫고 올라왔다(물조리개·씨앗은 발바닥에 박힘).
+//   · 긴 도구: 자루를 발바닥 앞쪽(z)으로 옮기고 끝 혹이 주먹 아래로 나오게 내린다(y)
+//   · 물조리개·씨앗: 통 윗단·주머니 목을 쥐고 몸통을 매단다(주둥이는 바깥-앞 대각선)
+//   p 는 쥐는 자세 회전 뒤의 도구 로컬 오프셋. 표에 없는 것(🌊릴대·꾸미기 가구)은 기존 자세 그대로.
+//   ⚠️ 휘두르는 모션은 바꾸지 않는다(사용자 결정). 옆베기 중엔 toolGripFade 로 원본 쥐는 점에 돌아간다 —
+//      새 쥐는 점 그대로 원본 스윙을 하면 자루가 앞으로 나온 만큼 몸에 더 박힌다(베기 끝 관통 26%→58%).
+const TOOL_QREST_HOLD = ARM_AIM_R.clone().invert()
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, .12))
+  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.05));
+const mkGrip = (x, y, z, ry = 0) => ({ p: new THREE.Vector3(x, y, z), q: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry) });
+const GRIP_LONG = mkGrip(0, -0.07, 0.075);
+const TOOL_GRIP = {
+  axe: GRIP_LONG, hoe: GRIP_LONG, sickle: GRIP_LONG, shovel: GRIP_LONG, hammer: GRIP_LONG, rod: GRIP_LONG, net: GRIP_LONG,
+  water: mkGrip(0.08, -0.30, 0.08, -0.8),
+  seed: mkGrip(0.08, -0.20, 0.08),
+};
 let curAnimal = ANIMALS[0];   // 현재 캐릭터 정의 — 등 수납 위치 계산(updateStowPose)에 사용
 // 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
 function slashPhase(p, B, S) {
@@ -3776,7 +3795,8 @@ function applyCharacter(id) {
   const built = buildAnimalMesh(a.id);
   charGroup = built.group; tailPivot = built.tail;
   playerArms = (built.armR && built.armL) ? { R: built.armR, L: built.armL } : null;
-  toolQRest = (a.extras || []).includes('wings') ? TOOL_QREST_WING : TOOL_QREST;
+  wingArms = (a.extras || []).includes('wings');
+  toolQRest = wingArms ? TOOL_QREST_WING : TOOL_QREST;
   armWristK = 0; toolPourTilt = 0;
   playerAnchor.add(charGroup);
   charAnchors = built.anchors; charK = built.k;
@@ -4349,7 +4369,7 @@ function farmBuildingMesh(id, g) {
 const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
 const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선(회전·레거시 무팔 경로용)
 const _hfM = new THREE.Matrix4(), _hfP = new THREE.Vector3(), _hfQ = new THREE.Quaternion(), _hfS = new THREE.Vector3();
-const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion();
+const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion(), _hfGQ = new THREE.Quaternion(), _hfRQ = new THREE.Quaternion();
 const _stowP = new THREE.Vector3(HELD_STOW.px, HELD_STOW.py, HELD_STOW.pz);
 const _stowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(HELD_STOW.rx, 0, HELD_STOW.rz));
 // 등 수납 위치 — 고정 상수(z=-.46)는 몸 큰 곰(등 표면 ≈ -.67)에서 도구가 파묻혔다.
@@ -4382,7 +4402,9 @@ function poseHeldTool(stow, swingX, swingZ) {
     heldGroup.position.lerpVectors(_hfP, _stowP, k);
     heldGroup.quaternion.slerpQuaternions(_hfQ, _stowQ, k);
     // 손목: 자루 세워 쥠 ↔ 스윙 중 팔의 연장 · 등에 멜 땐 예전 그대로(identity)
-    _hfTQ.slerpQuaternions(toolQRest, TOOL_QSWING, armWristK);
+    const grip = wingArms ? null : TOOL_GRIP[heldToolMesh?.userData.toolId];
+    if (grip) _hfRQ.slerpQuaternions(TOOL_QREST_HOLD, toolQRest, toolGripFade);
+    _hfTQ.slerpQuaternions(grip ? _hfRQ : toolQRest, TOOL_QSWING, armWristK);
     if (toolPourTilt) _hfTQ.multiply(_hfTilt.setFromAxisAngle(_axX, toolPourTilt));
     if (toolDigK > 0) {
       // 🪏 목표 = player(yaw) 기준 toolDigDir 로 자루(+y)를 세운 월드 회전. 손 월드 회전을 상쇄해 도구 로컬로 옮긴다
@@ -4391,7 +4413,16 @@ function poseHeldTool(stow, swingX, swingZ) {
       _dgQ.setFromUnitVectors(_dgUp, toolDigDir).premultiply(_dgPQ).premultiply(_dgW.invert());
       _hfTQ.slerp(_dgQ, toolDigK);
     }
-    if (heldToolMesh) heldToolMesh.quaternion.slerpQuaternions(_hfTQ, _idQ, k);
+    if (heldToolMesh) {
+      if (grip) {
+        // 쥐는 점은 손목 회전을 따라 돈다 · 등에 멜수록(k→1) 0 으로 — 수납 위치는 도구 원점 기준
+        heldToolMesh.position.copy(grip.p).applyQuaternion(_hfTQ).multiplyScalar((1 - k) * (1 - toolGripFade));
+        _hfTQ.multiply(_hfGQ.slerpQuaternions(grip.q, _idQ, toolGripFade));
+      } else if (TOOL_GRIP[heldToolMesh.userData.toolId]) {
+        heldToolMesh.position.set(0, 0, 0);   // 도구를 든 채 🐤로 바꾸면 이전 쥐는 점이 남는다
+      }
+      heldToolMesh.quaternion.slerpQuaternions(_hfTQ, _idQ, k);
+    }
     return;
   }
   const rx = (swingX === undefined ? HELD_REST.rx : swingX);
@@ -12606,6 +12637,7 @@ function updatePlayer(dt, t) {
       playerAnchor.rotation.y = 0;
       playerAnchor.position.y -= s * 0.12;
       playerAnchor.scale.set(1 + s * 0.04, 1 - s * 0.05, 1 + s * 0.04);
+      toolGripFade = 0;
       poseHeldTool(toolStow);                    // 도구는 등에 멘 채 몸을 따라 기울 뿐
     } else if (playerArms && actKind === 'dig') {
       // ── 🪏 삽질(sims/shovel-sim.html ① "밟아 꽂고 퍼 던지기" 검수) ──
@@ -12626,7 +12658,7 @@ function updatePlayer(dt, t) {
       playerAnchor.scale.set(1 + stomp * .08, 1 - stomp * .10, 1 + stomp * .08);
       // 자루(손→날): 세워 꽂기(아래·살짝 앞) → 젖혀 퍼 올리기(앞으로 눕힘) → 왼쪽 앞으로 던지기
       toolDigDir.set(lp(lp(0, 0, lv), -.75, th), lp(lp(-.92, -.30, lv), .05, th), lp(lp(.40, .95, lv), .66, th)).normalize();
-      toolDigK = a * k; armWristK = 0; toolPourTilt = 0;
+      toolDigK = a * k; armWristK = 0; toolPourTilt = 0; toolGripFade = 0;
       poseHeldTool(toolStow);
     } else if (playerArms) {
       // ── 옆베기(sims/arm-sim.html 검증) — 몸을 감았다 풀며 팔이 가로로 쓸고 지나감 ──
@@ -12636,13 +12668,13 @@ function updatePlayer(dt, t) {
       if (toolId === 'water' || toolId === 'seed') {
         // 💧🌰 붓기/뿌리기: 휘두르지 않고 팔을 앞으로 들어 자루만 기울인다
         Rp.rotation.set(-0.9 * s, 0, 0);
-        k = 0; armWristK = 0; toolPourTilt = s * 1.1;
+        k = 0; armWristK = 0; toolPourTilt = s * 1.1; toolGripFade = 0;
       } else {
         const yaw = slashPhase(p, SLASH.back, SLASH.strike);
         Rp.rotation.set(SLASH.lift * s, yaw, 0);
         k = yaw / SLASH.back;
         armWristK = Math.min(1, Math.abs(k) * 1.25) * WRIST_MAX;
-        toolPourTilt = 0;
+        toolPourTilt = 0; toolGripFade = s;
       }
       // 왼팔 카운터 — 오른팔 정규화 각에서 유도(타이밍이 저절로 맞음)
       Lp.rotation.set(-Math.abs(k) * 0.35, -k * 0.50, Math.max(0, -k) * 0.40);
@@ -12681,7 +12713,7 @@ function updatePlayer(dt, t) {
     if (playerArms) {
       playerArms.R.pivot.rotation.set(0, 0, 0);
       playerArms.L.pivot.rotation.set(0, 0, 0);
-      armWristK = 0; toolPourTilt = 0; toolDigK = 0;
+      armWristK = 0; toolPourTilt = 0; toolDigK = 0; toolGripFade = 0;
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신
   }
