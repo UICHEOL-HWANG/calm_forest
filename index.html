@@ -4106,7 +4106,7 @@
         cmgCleanup = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
       } else if (itemId === 'charcoal') {
         // ⚫ 불 조절 — 바늘이 오간다. 초록 구간에서 멈춘다.
-        const half = 0.12, target = 0.5;
+        const { half } = Input.craftDiff('charcoal'), target = 0.5;   // 🎚️ 초록 구간 반폭만 흔든다
         stage.innerHTML = `<div class="cmg-bar"><div class="zone"></div><div class="needle"></div></div>
                            <button class="cf-btn go cmg-press">멈추기</button>`;
         const zone = stage.querySelector('.zone'), needle = stage.querySelector('.needle');
@@ -4132,6 +4132,7 @@
         stage.innerHTML = '<div class="cmg-stomp"><div class="pulse"></div><div class="cnt"></div></div>';
         const pad = stage.querySelector('.cmg-stomp'), cnt = stage.querySelector('.cnt');
         pad.querySelector('.pulse').style.animationDuration = TARGET + 'ms';
+        Input.craftDiff('juice');   // 🎚️ 팔만 돌린다 — 허용 오차는 채점할 때 game.js 가 먹인다
         const taps = [];
         cnt.textContent = NEED;
         const down = (e) => {
@@ -4146,7 +4147,7 @@
         cmgCleanup = () => pad.removeEventListener('pointerdown', down);
       } else {
         // 🧱 반죽 — 꾹 눌렀다 목표 구간에서 뗀다
-        const targetMs = 1200, tol = 400, MAX = 2200;
+        const { targetMs, tol } = Input.craftDiff('brick'), MAX = 2200;   // 🎚️ 허용 오차만 흔든다
         stage.innerHTML = `<div class="cmg-hold"><div class="fill"></div><div class="goal"></div></div>
                            <button class="cf-btn go cmg-press">꾹 누르기</button>`;
         const fill = stage.querySelector('.fill'), goal = stage.querySelector('.goal');

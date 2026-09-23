@@ -8,8 +8,6 @@
 export const TUNING = {
   // 보상 부스트 — 가입(created_at) 후 N일간, 출석·퀘스트·판매 코인 ×mult
   rewardBoost: { days: 3, mult: 1.5, sources: ['daily_bonus', 'quest_reward', 'lucky_box'] },
-  // 관대 판정 — 미니게임별 첫 tries회 시도는 판정 계수 ×mult
-  firstTryEase: { tries: 3, mult: 1.3 },
   // A군 튜토리얼 순서 — 재미(낚시·집짓기·꾸미기) 전진. 스텝 내용은 index.html TUT_STEPS 그대로.
   //   ⚠️ build 는 **sell·mine 보다 뒤**여야 한다(tests/house-cost.test.mjs 가 잠근다).
   //      2026-09-21 건축 리밸런스로 3단계(지붕)가 🪨돌15·🪙코인80 을 요구하게 됐는데,
@@ -49,12 +47,6 @@ export function rewardBoostMult(variant, createdAtIso) {
   if (!isBetaA(variant) || !createdAtIso) return 1;
   const days = (Date.now() - Date.parse(createdAtIso)) / 86400000;
   return (days >= 0 && days < TUNING.rewardBoost.days) ? TUNING.rewardBoost.mult : 1;
-}
-
-// 해당 미니게임 시도 횟수가 tries 미만인 A군이면 1.3, 아니면 1
-export function easeMult(variant, tries) {
-  return (isBetaA(variant) && (tries || 0) < TUNING.firstTryEase.tries)
-    ? TUNING.firstTryEase.mult : 1;
 }
 
 // =============================================================
@@ -130,3 +122,23 @@ export function openLine(map) { return BETA_COPY.open[map]; }
 export function isFinalDay(createdAtIso, nowMs = Date.now()) {
   return betaDay(createdAtIso, nowMs) >= 7 || kstDate(nowMs) >= BETA.endDate;
 }
+
+// =============================================================
+//  🎚️ 미니게임 난이도 — probe 팔 · DDA 목표
+//  (docs/superpowers/specs/2026-09-22-difficulty-probe-design.md)
+//  계수 e 는 클수록 쉽다 — easeMult 의 의미를 그대로 물려받는다. 판정은 js/difficulty.js 가 한다.
+//   · arms   — 판마다 돌아가며 쓰는 probe 지터. 관측 성적이 한쪽으로 기운 게임은 그쪽으로만 흔든다.
+//              반대쪽 팔은 이미 답을 아는 구간이라 표본 낭비다.
+//   · target — DDA 가 끌고 갈 결과값(0~1). 이진 게임은 성공률, 점수 게임은 점수/만점.
+//   · ddaOn  — false 면 probe 만 돌고 dda 는 1.0 에 멈춘다(점수 분포를 모르는 게임의 1주 차).
+// =============================================================
+export const DIFFICULTY = {
+  fish:  { arms: [0.45, 0.65, 1.0], target: 0.88, ddaOn: true  },  // 30일 성공률 96%(24/25) — 어려운 쪽만
+  sea:   { arms: [1.0,  1.5,  2.2], target: 0.55, ddaOn: true  },  // 30일 성공률 40%(14/35) — 쉬운 쪽만
+  mist:  { arms: [0.7,  1.0,  1.3], target: 0.80, ddaOn: true  },  // 30일 성공률 80%(36/45) — 적정, 양방향
+  cook:  { arms: [0.7,  1.0,  1.4], target: 0.65, ddaOn: false },  // 점수 분포 미측정 — 1주 차엔 probe 만
+  craft: { arms: [0.7,  1.0,  1.4], target: 0.65, ddaOn: false },  // 점수 분포 미측정 — 1주 차엔 probe 만
+};
+export const DIFF_K = 0.10;                 // DDA 한 판당 이동량 계수 — probe 보다 느리게 움직여야 한다
+export const DIFF_DDA_CLAMP = [0.7, 1.5];   // DDA 는 꼬리만 잡는다(목표값이 아직 잠정치라 좁게)
+export const DIFF_EASE_CLAMP = [0.35, 2.5]; // 최종 계수 안전 범위
