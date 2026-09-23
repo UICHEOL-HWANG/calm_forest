@@ -29,7 +29,8 @@ import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이�
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
-import { TUNING, rewardBoostMult, easeMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트·관대 판정 튜닝(easeMult는 Task 4용) + 2차 맵 계단식
+import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
+import { easeFor, nextDda, defaultDifficulty, mergeDifficulty } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
@@ -866,7 +867,7 @@ const GIFTS = [
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
 let baitActive = false;   // 🪱 이번 캐스트에 미끼 사용 중(회당 소모, 희귀 확률 이중 굴림)
 let biteAt = 0, biteEnd = 0;
-let fishEase = 1;   // 🧪 첫 3회 관대 판정용 입질 여유 배율
+let fishDiff = { ease: 1, arm: null, dda: 1 };   // 🎚️ 이번 캐스트의 난이도 — 입질 여유 배율 + 로깅용 팔·DDA
 let bobber = null;        // 찌(3D)
 const castPos = new THREE.Vector3();
 const _v = new THREE.Vector3(); // 임시 벡터
@@ -1328,7 +1329,8 @@ const gameState = {
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
   boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
-  beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 { fish, sea, mist } — 첫 3회 관대 판정용
+  beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 — 관대 판정은 js/difficulty.js 로 옮겼다(이 카운터는 옛 세이브 호환용)
+  difficulty: defaultDifficulty(),   // 🎚️ 미니게임별 난이도 상태 { dda: 유저 보정, n: probe 순회용 누적 시도 }
   sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
   orchard: { trees: [], sapSel: 'apple', settleDate: null },   // 🍎 과수원(js/orchard.js)
   progress: { advHarvest: 0 },   // 🔒 진행도 해금 카운터 — 고급 작물 수확 횟수(js/tuning.js PROGRESS_GATE)
@@ -2053,8 +2055,10 @@ function craftSet(itemId, grade = 1) {
   }
   for (const [k, v] of Object.entries(r.cost)) gameState.inventory[k] -= v;
   gameState.craft.slots = setSlot(gameState.craft.slots, { item: itemId, grade, day: todayStr() });
+  settleDifficulty('craft', (grade || 0) / 3);   // 🎚️ 등급 0~3 → 0~1. 1주 차엔 ddaOn:false 라 값이 안 움직인다
   trackEvent('craft_set', { item: itemId, grade, qty: yieldOf(itemId, grade), station,
-                            slot_idx: slotsOf(gameState.craft.slots, station).length - 1, station_seq: stationCount(station) });
+                            slot_idx: slotsOf(gameState.craft.slots, station).length - 1, station_seq: stationCount(station),
+                            ...diffParams(craftDiffCur) });   // [GA4] 🎚️ 난이도 동봉 (맷돌은 craftDiffCur 가 null → ease 1 / arm null)
   requestSave(); refreshStations(); refreshInventoryUI();
   return craftPanelData(station);
 }
@@ -2072,6 +2076,8 @@ function craftClaim(station = 'kiln') {
   ui.toast?.(ico + ' ' + claimed.map(c => `${craftRecipeOf(c.item).ico}${craftRecipeOf(c.item).name} ${c.qty}`).join(' · '));
   return craftPanelData(station);
 }
+
+let craftDiffCur = null;   // 🎚️ 이번 가공 판의 난이도 — craftDiff 가 채우고 craftScore·craftSet 이 읽는다
 
 export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
@@ -2124,11 +2130,20 @@ export const Input = {
   getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
   pantryEat(i) { return pantryEat(i); },                // 🍱 찬장에서 꺼내 먹기(버프 발동)
   craftSet(itemId, grade) { return craftSet(itemId, grade); },   // 🔥 화덕에 걸기(다음 날 완성)
+  // 🎚️ 가공 미니게임 난이도 — index.html 이 오버레이를 열 때 부른다. 판정 경계만 흔든다(조작·길이는 고정).
+  //    🌾 맷돌(flour)은 변동계수 기반이라 흔들 상수가 없다 — 팔을 돌리지 않고 기본값을 준다.
+  craftDiff(itemId) {
+    if (itemId === 'flour') { craftDiffCur = null; return { half: 0.12, targetMs: 1200, tol: 400, tolRatio: 0.5 }; }
+    craftDiffCur = rollDifficulty('craft');
+    const e = craftDiffCur.ease;
+    return { half: 0.12 * e, targetMs: 1200, tol: 400 * e, tolRatio: 0.5 * e };
+  },
   // 🔥 미니게임 판정 — 조작은 index.html 이 받고 판정은 순수 모듈이 한다
   craftScore(itemId, input) {
     if (itemId === 'flour') return millScore(input);
     if (itemId === 'charcoal') return fireScore(input.pos, input.target, input.half);
-    if (itemId === 'juice') return crushScore(input);
+    // 🍷 포도는 index.html 이 박자만 모으고 허용 오차를 안 넘긴다 — 여기서 먹인다
+    if (itemId === 'juice') return crushScore(input, 520, 0.5 * (craftDiffCur?.ease ?? 1));
     return knead2Score(input.heldMs, input.targetMs, input.tol);
   },
   craftGrade(score) { return gradeOfScore(score); },
@@ -2929,6 +2944,7 @@ function applySave(saved) {
                         truce: { boar: null, raccoon: null, ...(saved.night.truce || {}) } };
   } // 🦝 밤손님 판정일·미조사 흔적·🤝 발길 끊기 복원(truce 는 중첩 객체라 전개만으로는 안 채워진다)
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
+  gameState.difficulty = mergeDifficulty(saved.difficulty);   // 🎚️ 난이도 상태 복원 — 필드가 없는 옛 세이브는 기본값으로 뜬다
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
@@ -7548,7 +7564,8 @@ function startSoothe(sp) {
   c.fillStyle = '#aef3e2'; c.fillText('♪', 48, 50);
   const note = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
   mistGroup.add(note);
-  mist.soothe = { sp, step: 0, phase: 0, note, ease: betaEase('mist') };   // 🧪 첫 3회 관대 판정
+  const md = rollDifficulty('mist');   // 🎚️ 정령 하나당 한 번 — 탭마다 뽑으면 한 마리 안에서 판정창이 요동친다
+  mist.soothe = { sp, step: 0, phase: 0, note, ease: md.ease, diff: md };
   Sound.blip();
   practiceAdvance(2);                                   // 🎓 연습: 등불을 건너뛰고 바로 정령을 찾아도 ③으로
 }
@@ -7573,7 +7590,7 @@ function clampMist(x, z) {
 }
 function sootheTap() {
   const so = mist.soothe; if (!so) return;
-  const lo = 1 - 0.38 * (so.ease || 1);                 // 기본 0.62 — 🧪첫 3회 0.506(창 ×1.3)
+  const lo = 1 - 0.38 * (so.ease || 1);                 // 기본 0.62 — 🎚️ 팔 0.7 / 1.0 / 1.3 → 0.734 / 0.62 / 0.506
   if (so.phase >= lo && so.phase <= 0.99) {             // 🎯 ♪가 작아진 순간
     so.step += 1; so.phase = 0;
     Sound.blip();
@@ -7588,12 +7605,14 @@ function sootheTap() {
       gameState.mist.soothedTotal = (gameState.mist.soothedTotal || 0) + 1;
       dexDiscover('spirit', sp.def.id);
       Sound.harvest(); triggerMoment();
-      trackEvent('mist_soothe', { kind: sp.def.id, wave: mist.wave });   // [GA4] 달래기 성공 분포
+      settleDifficulty('mist', 1);   // 🎚️ 성공 (연습은 위 practice 분기에서 이미 return 했다)
+      trackEvent('mist_soothe', { kind: sp.def.id, wave: mist.wave, ...diffParams(so.diff) });   // [GA4] 달래기 성공 분포 · 🎚️ 난이도 동봉
       syncBadges();
     }
   } else {
     cancelSoothe(true);                                 // 엇박 — 부드러운 실패
-    trackEvent(mist.practice ? 'mist_practice_miss' : 'mist_soothe_miss', { wave: mist.wave });   // [GA4] 리듬 난이도 튜닝(연습은 분리)
+    if (!mist.practice) settleDifficulty('mist', 0);   // 🎚️ 실패 — 연습 성적은 DDA 를 안 움직인다
+    trackEvent(mist.practice ? 'mist_practice_miss' : 'mist_soothe_miss', { wave: mist.wave, ...diffParams(so.diff) });   // [GA4] 리듬 난이도 튜닝(연습은 분리)
   }
 }
 
@@ -8320,7 +8339,7 @@ function seaAction() {
     )?.f;
     if (!best) return;
     seaMG.sp = best.sp; seaMG.st = 'cast'; seaMG.t = 0; seaMG.landed = false;
-    seaMG.ease = betaEase('sea');   // 🧪 첫 3회 관대 판정
+    seaMG.diff = rollDifficulty('sea'); seaMG.ease = seaMG.diff.ease;   // 🎚️ 연타 효율 ×ease · 끌림 ÷ease (아래 두 줄이 그대로 쓴다)
     seaMG.good = 0; seaMG.bad = 0; seaMG.progress = 0; seaMG.t0 = clock.elapsedTime;
     seaMG.phaseLen = SEA_CAST_DUR + seaRnd(1.1, 2.2);
     seaHoldRod(true);
@@ -8376,7 +8395,8 @@ function seaCatch() {
   ui.toast?.(`${sp.ico} ${sp.name} ${w}kg — 무게를 기록하고 바다로 돌려보냈어요! (+🐟${sp.give.fish} +🪙${sp.give.coins})`
     + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : ''), 4200);
   questEvent('seafish');                            // 🦉 의뢰(바다 물고기)
-  trackEvent('sea_catch', { species: sp.id, weight: w, duration: dur, good: seaMG.good, bad: seaMG.bad });   // [GA4] 코어 KPI
+  settleDifficulty('sea', 1);   // 🎚️ 성공
+  trackEvent('sea_catch', { species: sp.id, weight: w, duration: dur, good: seaMG.good, bad: seaMG.bad, ...diffParams(seaMG.diff) });   // [GA4] 코어 KPI · 🎚️ 난이도 동봉
   sendSeaRecord({ species: sp.id, weight: w });   // [Supabase] 무게 기록 → 리더보드('sea'는 참치만 집계)
   requestSave();
 }
@@ -8385,7 +8405,8 @@ function seaMiss() {
   seaBuoy.visible = false; seaLine.visible = false;
   Sound.water(); spawnSparkle(seaMG.fmesh ? SEA.x + seaMG.fmesh.position.x : player.position.x, 0.4, player.position.z - 3, 16);
   spawnFloatText(player.position.x, 1.8, player.position.z - 1, '놓쳤다…!', '#c86a5a', 1.1);
-  trackEvent('sea_miss', { species: seaMG.sp?.id, progress: Math.round(seaMG.progress * 100) });   // [GA4] 난이도 튜닝 데이터
+  settleDifficulty('sea', 0);   // 🎚️ 실패
+  trackEvent('sea_miss', { species: seaMG.sp?.id, progress: Math.round(seaMG.progress * 100), ...diffParams(seaMG.diff) });   // [GA4] 난이도 튜닝 데이터 — 이제 정말 난이도가 들어 있다
 }
 
 // 매 프레임 — 배회 AI + 상태 머신 + 연출(animate 에서 호출)
@@ -10701,12 +10722,17 @@ function kitchenStart(id, where = 'kitchen') {
   }
   for (const k in r.cost) gameState.inventory[k] -= r.cost[k];
   refreshInventoryUI();
-  const course = courseOf(r);
+  // 🎚️ 스테이지마다 팔이 갈린다 — 한 판(★3이면 3스테이지)에서 표본이 세 개 나온다.
+  //    courseOf 는 메뉴판(kitchenView)도 부르므로 여기서만 뽑는다. 거기서 뽑으면 메뉴를 열 때마다 순회가 돈다.
+  const base = courseOf(r);
+  cookDiffs = base.map(() => rollDifficulty('cook'));
+  const course = base.map((s, i) => ({ ...s, mult: s.mult * cookDiffs[i].ease }));
   trackEvent('cooking_start', { recipe: id, mg_type: course.map(s => s.mg).join('>'), diff: recipeDiff(r), where });   // [GA4] 미니게임 퍼널: 시작
   return { ok: true, id, where, name: r.name, ico: r.ico, diff: recipeDiff(r), course,
     icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') };   // icos: 조리 장면 연출용 재료 아이콘
 }
 
+let cookDiffs = [];   // 🎚️ 이번 코스의 스테이지별 난이도 — kitchenStart 가 채우고 kitchenFinish 가 로깅한다
 let pendingDish = null;   // 🍽️ 결과 화면에서 "먹기/보관"을 고르기 전의 요리 { id, tier, score }
 
 // 요리 완성 — 코스 결과를 받아 등급 판정 + 기록/트래킹. **버프는 여기서 걸지 않는다**
@@ -10732,6 +10758,7 @@ function kitchenFinish(id, res = {}) {
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
+  settleDifficulty('cook', score / 100);   // 🎚️ 점수 게임 — 0~1 로 정규화. 1주 차엔 ddaOn:false 라 값이 안 움직인다
   trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
     recipe: id, mg_type: r.stages.join('>'), diff: recipeDiff(r), quality: tier.id, score,
     stage_scores: (res.stageScores || []).map(v => Math.round(v)).join(','),   // 단계별 점수(어느 판에서 무너지는지)
@@ -10742,6 +10769,10 @@ function kitchenFinish(id, res = {}) {
     duration_ms: Math.round(res.durationMs || 0),
     step: res.step ?? null,                                  // 포기 시 어느 단계까지 갔는지(퍼널 이탈 지점)
     is_best: isBest ? 1 : 0, total_cooked: st.cooked,        // 유저 진행도(누적 요리 수)
+    // 🎚️ 스테이지마다 팔이 다르므로 배열로 싣는다. 탭별 offsets 와 맞물려 탭 단위 분석이 된다.
+    arms:  cookDiffs.map(d => d.arm).join(','),
+    eases: cookDiffs.map(d => Math.round(d.ease * 100) / 100).join(','),
+    dda:   Math.round((cookDiffs[0]?.dda ?? 1) * 100) / 100,
   });
   pendingDish = { id, tier: tier.id, score };
   return {
@@ -13637,7 +13668,7 @@ function tryFish() {
   if (!bobber) buildBobber();
   bobber.position.copy(castPos); bobber.visible = true;
   doPlayerAction(castPos.x, castPos.z); // 낚싯대 던지기 제스처
-  fishEase = betaEase('fish');   // 🧪 첫 3회 관대 판정
+  fishDiff = rollDifficulty('fish');   // 🎚️ 이번 캐스트의 입질 여유 — probe 팔 × 유저 DDA
   fishState = 'wait'; biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
   Sound.water(); spawnWater(castPos.x, castPos.z);
   if ((gameState.inventory.bait || 0) > 0) {                     // 🪱 미끼 — 캐스트마다 1개 자동 소모
@@ -13675,7 +13706,8 @@ function catchFish() {
   catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
   showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
   tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : kind.rarity === 'uncommon' ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
-  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity }); // [GA4]
+  settleDifficulty('fish', 1);   // 🎚️ 성공 → DDA 가 조금 어려워진다
+  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity, rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) }); // [GA4] 🎚️ 난이도 동봉
   resetFishing();
 }
 
@@ -13697,13 +13729,18 @@ function updateFishing() {
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
     if (now >= biteAt) {
-      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4) * fishEase; // 튼튼한 낚싯대: 입질 여유↑ · 🧪첫 3회 관대
+      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4) * fishDiff.ease; // 튼튼한 낚싯대: 입질 여유↑ · 🎚️ probe × DDA
       ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
       Sound.blip(); spawnWater(castPos.x, castPos.z);
     }
   } else if (fishState === 'bite') {
     bobber.position.y = 0.15 + Math.sin(now * 30) * 0.08; // 격하게 요동
-    if (now > biteEnd) { ui.toast?.('놓쳤어요 🐟💨'); trackEvent('fishing_miss'); resetFishing(); }
+    if (now > biteEnd) {
+      ui.toast?.('놓쳤어요 🐟💨');
+      settleDifficulty('fish', 0);   // 🎚️ 실패 → DDA 가 조금 쉬워진다
+      trackEvent('fishing_miss', { rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) });   // [GA4] 🎚️ 난이도 동봉
+      resetFishing();
+    }
   }
 }
 
@@ -16523,13 +16560,28 @@ function refreshQuestPanel() {
 }
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
-// 🧪 [베타 A군] 미니게임 첫 3회 관대 판정 — 시도 카운트를 올리고 현재 ease 배율을 돌려준다
-function betaEase(game) {
-  const t = gameState.beta.tries;
-  const m = easeMult(authState.variant, t[game]);
-  t[game] = (t[game] || 0) + 1;
-  return m;
+// 🎚️ 이 판의 난이도를 뽑고 순회 카운터를 올린다. 돌려준 { ease, arm, dda } 를 그대로 결과 이벤트에 싣는다.
+//    id 는 clientId(기기 영구 식별자) — 게스트도 세션을 넘어 같은 팔 순서를 이어 간다.
+function rollDifficulty(game) {
+  const st = gameState.difficulty[game] || (gameState.difficulty[game] = { dda: 1, n: 0 });
+  const r = easeFor(game, authState.clientId || authState.userId || '', st.n, st.dda);
+  st.n += 1;
+  return r;
 }
+
+// 🎚️ 판이 끝나면 결과를 먹인다. outcome 은 0~1 — 이진은 성공 1 / 실패 0, 점수 게임은 점수/만점.
+//    ddaOn:false 인 게임에선 nextDda 가 그대로 돌려주므로 호출해도 안전하다(1주 차 요리·가공).
+function settleDifficulty(game, outcome) {
+  const st = gameState.difficulty[game]; if (!st) return;
+  st.dda = nextDda(game, st.dda, outcome);
+}
+
+// 🎚️ 결과 이벤트에 펼칠 세 필드. GA4 예약 파라미터(source·medium·campaign·term·content)와 겹치지 않는다.
+const diffParams = r => ({
+  ease: Math.round((r?.ease ?? 1) * 100) / 100,
+  dda:  Math.round((r?.dda  ?? 1) * 100) / 100,
+  arm:  r?.arm ?? null,
+});
 
 function giveReward(r, source = 'reward', item = null) {
   // 🧪 [베타 A군] 가입 3일 부스트 — 출석·퀘스트·럭키박스 코인 ×1.5, 원장 item에 |boost 마커(원값=÷1.5 복원 가능)
