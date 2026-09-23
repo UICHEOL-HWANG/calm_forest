@@ -18,10 +18,10 @@
  *  ⚠️ 여기와 BUILD 가 갈리면 상점엔 뜨는데 안 그려지는 종이 생긴다 — tests/pet-rules 가 맞물림을 못 보므로
  *     새 종을 넣을 땐 두 곳을 같이 고쳐라(art.js 는 THREE 가 필요해 순수 테스트에서 못 부른다). */
 export const PET_KINDS = Object.freeze([
-  { id: 'leaf',   ico: '🍃', name: '씨앗이', blurb: '잎이 자라 왕관이 된다' },
-  { id: 'spirit', ico: '✨', name: '빛정령', blurb: '파편이 늘고 후광이 선다' },
-  { id: 'bird',   ico: '🐦', name: '피앙새', blurb: '꽁지가 자라고 볏이 난다' },
-  { id: 'golem',  ico: '🫘', name: '꼬마돌', blurb: '이끼가 덮이고 꽃이 핀다' },
+  { id: 'leaf',   ico: '🍃', name: '씨앗이', blurb: '바람이 데려온 씨앗' },
+  { id: 'spirit', ico: '✨', name: '빛정령', blurb: '빛나라에서 온 조각' },
+  { id: 'bird',   ico: '🐦', name: '피앙새', blurb: '노래를 잃고 온 새' },
+  { id: 'golem',  ico: '🫘', name: '꼬마돌', blurb: '개울에서 굴러온 돌' },
 ]);
 
 /** id → 종 정의. 모르는 id 면 null(세이브가 낯선 값을 들고 와도 화면이 안 깨지게) */

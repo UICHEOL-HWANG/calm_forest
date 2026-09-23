@@ -103,7 +103,7 @@ export const REPEAT_POOL = {
   stargazer: [
     { type: 'catch', target: 4, title: '밤 마중',     desc: '🌟 반딧불이 4마리 잡기(밤)', reward: { crop: 2, coins: 6 } },
     { type: 'decor', target: 1, title: '등 하나 더',  desc: '🪵 야외 장식 1개 놓기',      reward: { wood: 4, coins: 5 } },
-    { type: 'gift',  target: 1, title: '마음 전하기', desc: '🎁 주민에게 선물 1번 주기',  reward: { crop: 2, coins: 6 } },
+    { type: 'gift',  target: 1, title: '이웃에게 선물', desc: '🎁 주민에게 선물 1번 주기',  reward: { crop: 2, coins: 6 } },
   ],
   ferryman: [
     { type: 'boat',   target: 1, title: '뱃길 점검',  desc: '🛶 강 한 번 완주하기', reward: { coins: 8 } },
