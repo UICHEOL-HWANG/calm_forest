@@ -14,7 +14,20 @@
 //  ▶ 테스트: npm test (tests/pet-rules.test.mjs) — 밸런스 수치를 여기 못박는다.
 // =============================================================
 
-export const PET_PRICE = 3000;      // 🪙 — 꾸미기 최고가(2,600)보다 비싸다
+/** 🐾 파는 종 — 조형은 js/pet/art.js 의 BUILD 가 **같은 id** 로 갖고 있다.
+ *  ⚠️ 여기와 BUILD 가 갈리면 상점엔 뜨는데 안 그려지는 종이 생긴다 — tests/pet-rules 가 맞물림을 못 보므로
+ *     새 종을 넣을 땐 두 곳을 같이 고쳐라(art.js 는 THREE 가 필요해 순수 테스트에서 못 부른다). */
+export const PET_KINDS = Object.freeze([
+  { id: 'leaf',   ico: '🍃', name: '씨앗이', blurb: '잎이 자라 왕관이 된다' },
+  { id: 'spirit', ico: '✨', name: '빛정령', blurb: '파편이 늘고 후광이 선다' },
+  { id: 'bird',   ico: '🐦', name: '피앙새', blurb: '꽁지가 자라고 볏이 난다' },
+  { id: 'golem',  ico: '🫘', name: '꼬마돌', blurb: '이끼가 덮이고 꽃이 핀다' },
+]);
+
+/** id → 종 정의. 모르는 id 면 null(세이브가 낯선 값을 들고 와도 화면이 안 깨지게) */
+export function petKindOf(id) { return PET_KINDS.find(k => k.id === id) || null; }
+
+export const PET_PRICE = 3000;      // 🪙 한 마리당 — 꾸미기 최고가(2,600)보다 비싸다. 종마다 따로 산다
 export const PET_RADIUS = 4.5;      // 플레이어 기준 반경. 밭 전체는 일꾼의 몫
 export const PET_TASKS = Object.freeze(['water', 'weed', 'pest']);
 export const GROW_NEED = Object.freeze([0, 40, 140]);   // 일꾼(0/120/400)보다 낮다

@@ -1243,6 +1243,11 @@
   #cos-items { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; max-height: 42dvh; overflow-y: auto; }
   .sh-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #f4faf5; box-shadow: var(--shadow); cursor: pointer; outline: 2px solid transparent; transition: outline-color .12s; }
   .sh-row.try { outline-color: #7ec99a; background: #e8f6ec; }   /* 🪞 지금 입어보고 있는 줄 */
+  /* 🐾 펫 줄 — 이름 위, 설명·진행 아래. 한 줄로 넣으면 폰에서 진행 숫자가 먼저 잘린다 */
+  .sh-row .sh-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+  .sh-row .sh-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
+  .sh-row .sh-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 11px; opacity: .6; }
+  .sh-row button:disabled { background: #dfe6e0; color: #8a9a8f; cursor: default; }        /* 이미 함께 있는 종 */
   .sh-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
   .sh-row button { flex: 0 0 auto; border: none; border-radius: 10px; padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; background: var(--mint); color: var(--ink); }
   .sh-row button:active { transform: scale(0.95); }

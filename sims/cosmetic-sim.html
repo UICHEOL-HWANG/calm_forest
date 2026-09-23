@@ -139,7 +139,7 @@ function anchorsOf(a) {
   //      ⚠️ 좌표를 손으로 정하지 않는다 — 방향(BAG_DIR)만 정하고 **타원체 표면까지의 거리**를 푼다.
   //         어깨끈도 같은 점에서 출발하므로 가방과 끈이 저절로 맞물린다.
   return {
-    R, HR, HY, bs, bodyY,
+    R, HR, HY, bs, bodyY, tail: a.tail,
     head: headAnchor(HY),                       // 머리 중심
     neck: neckAnchor(HR, HY),
     neckR: neckRadius(HR),

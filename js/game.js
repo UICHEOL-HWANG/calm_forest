@@ -75,7 +75,7 @@ import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
-import { PET_RADIUS, CHAIN_MAX, PET_PRICE, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
+import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
 import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
 
@@ -1312,8 +1312,11 @@ const gameState = {
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   // 🎀 꾸미기 — 산 것(영구) + 슬롯별 장착. 규칙은 js/cosmetics/equip.js
   cosmetics: { owned: [], equipped: { head: null, neck: null, back: null, trail: null } },
-  // 🐾 펫 — null 이면 아직 안 샀다. 규칙은 js/pet/rules.js
-  //    works 누적 작업 횟수(→ 성장 단계) · restUntil 쿨다운 종료(epoch ms)
+  // 🐾 펫 — 규칙은 js/pet/rules.js. **종마다 따로 산다**(2026-09-23, 4종 확장).
+  //    pets  : 산 종 { kind: {kind, name, works, restUntil} } — works 누적 작업 횟수(→ 성장 단계)
+  //    pet   : 그중 **지금 데리고 다니는 한 마리**. pets[kind] 와 **같은 객체**를 가리킨다(usePet 이 유지).
+  //            null 이면 아직 아무것도 안 샀거나 아무도 안 데리고 나왔다.
+  pets: {},
   pet: null,
   workers: [],                              // 🧑‍🌾 고용한 일꾼 [{id, job, grade, works, name, hiredAt, restingSince}] — 규칙은 js/farm-worker.js
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
@@ -2716,7 +2719,20 @@ export async function enterGame() {
     window.__workers = () => workerObjs.map(o => ({ name: o.rec.name, job: o.rec.job, works: o.rec.works, phase: o.phase, t: +o.t.toFixed(2), task: o.task?.type || null, vis: o.group.visible, x: +o.group.position.x.toFixed(1), z: +o.group.position.z.toFixed(1) }));   // 🧑‍🌾 일꾼 상태 열람(검수용)
     // 🐾 펫 검수용 — 성장 단계 실루엣 비교(works 를 바꾸고 respawn)·맡기기 강제·상태 열람
     window.__pet = {
-      give: (kind = 'leaf') => { gameState.pet = { kind, name: '', works: 0, restUntil: 0 }; respawnPet(); return gameState.pet; },
+      give: (kind = 'leaf') => { gameState.pets[kind] = emptyPet(kind); usePet(kind); respawnPet(); return gameState.pet; },
+      use: (kind) => { usePet(kind); respawnPet(); return gameState.pet; },
+      owned: () => Object.keys(gameState.pets),
+      //  🔁 세이브 왕복 검사 — pets(소유)와 pet(동행)이 **같은 객체**로 다시 물리는지 본다.
+      //     JSON 을 거치면 참조가 끊긴다. 끊긴 채로 두면 일을 시켜도 소유 쪽 works 가 안 자라
+      //     불러오기 직후 성장이 되돌아간 것처럼 보인다(usePet 머리주석).
+      roundTrip: () => {
+        const before = gameState.pet && { kind: gameState.pet.kind, works: gameState.pet.works };
+        applySave(JSON.parse(JSON.stringify(getGameState())));
+        respawnPet();
+        return { before, after: gameState.pet && { kind: gameState.pet.kind, works: gameState.pet.works },
+                 linked: !!gameState.pet && gameState.pet === gameState.pets[gameState.pet.kind],
+                 owned: Object.keys(gameState.pets) };
+      },
       works: (n) => { if (gameState.pet) gameState.pet.works = n; respawnPet(); return stageOf(gameState.pet?.works || 0); },
       respawn: respawnPet,
       cmd: commandPet,
@@ -2725,7 +2741,7 @@ export async function enterGame() {
       obj: () => pet3d && { vis: pet3d.visible, x: +pet3d.position.x.toFixed(2), z: +pet3d.position.z.toFixed(2) },
       box: () => pet3d && { pet: new THREE.Box3().setFromObject(pet3d).max.y, player: new THREE.Box3().setFromObject(player).max.y },   // 무릎 높이 실측
       world: () => petWorld(),
-      remove: () => { if (pet3d) { scene.remove(pet3d); pet3d = null; } gameState.pet = null; return null; },
+      remove: () => { if (pet3d) { scene.remove(pet3d); pet3d = null; } gameState.pets = {}; gameState.pet = null; return null; },
     };
     // 📜 의뢰 패널 검수용 — __gs().npcs 를 손으로 고친 뒤 이걸 부르면 패널·말풍선·지도가 같이 갱신된다
     window.__questPanel = () => { refreshCollectQuests(); npcObjs.forEach(updateNPCGlyph); refreshQuestPanel(); return npcObjs.map(questView).filter(Boolean); };
@@ -2818,14 +2834,25 @@ function applySave(saved) {
   if (saved.cosmetics) gameState.cosmetics = sanitizeCosmetics(saved.cosmetics);
   // 🐾 펫 — saved 가 왔다는 것 자체가 읽기 성공이라는 뜻이므로, 필드가 없으면 신규가 맞다.
   //    (읽기 실패를 신규로 오인해 마을을 덮어쓴 사고는 js/save-guard.js 가 앞단에서 막는다)
-  if (saved.pet && typeof saved.pet === 'object' && typeof saved.pet.kind === 'string') {
-    gameState.pet = {
-      kind: saved.pet.kind,
-      name: typeof saved.pet.name === 'string' ? saved.pet.name : '',
-      works: Number.isFinite(saved.pet.works) ? Math.max(0, Math.floor(saved.pet.works)) : 0,
-      restUntil: Number.isFinite(saved.pet.restUntil) ? saved.pet.restUntil : 0,
-    };
+  //    ⚠️ 낯선 kind 는 버린다 — 조형이 없으면 상점엔 뜨는데 안 그려지는 종이 생긴다.
+  const cleanPet = (v) => (v && typeof v === 'object' && petKindOf(v.kind)) ? {
+    kind: v.kind,
+    name: typeof v.name === 'string' ? v.name : '',
+    works: Number.isFinite(v.works) ? Math.max(0, Math.floor(v.works)) : 0,
+    restUntil: Number.isFinite(v.restUntil) ? v.restUntil : 0,
+  } : null;
+  gameState.pets = {};
+  if (saved.pets && typeof saved.pets === 'object') {
+    for (const v of Object.values(saved.pets)) { const p = cleanPet(v); if (p) gameState.pets[p.kind] = p; }
   }
+  //    ⬆️ 옛 세이브 — pets 가 없던 시절엔 pet 한 마리가 전부였다. 그 한 마리를 소유 목록으로 옮긴다.
+  const activeSaved = cleanPet(saved.pet);
+  if (activeSaved && !gameState.pets[activeSaved.kind]) gameState.pets[activeSaved.kind] = activeSaved;
+  //    ⚠️ JSON 왕복에서 pet↔pets[kind] 참조가 끊긴다 — 반드시 usePet 으로 **다시 물린다**.
+  //    ⚠️ pets 가 있는(= 새 포맷) 세이브에서 pet 이 null 이면 **일부러** 아무도 안 데리고 나간 것이다.
+  //       무조건 첫 종을 꺼내면 그 상태가 왕복에서 사라진다. 옛 세이브에서만 한 마리를 꺼낸다.
+  const hadPetsField = !!(saved.pets && typeof saved.pets === 'object');
+  usePet(activeSaved ? activeSaved.kind : (hadPetsField ? null : Object.keys(gameState.pets)[0] || null));
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
@@ -3709,7 +3736,10 @@ export function buildAnimalMesh(id) {
   // ── 🎀 꾸미기 앵커 ── (스펙 §3)
   //  ⚠️ 장식을 여기서 만들지 않는다. **빈 Group 만** 달아 두고 js/cosmetics 가 자식을 갈아끼운다.
   //     그래야 장착을 바꿀 때 캐릭터를 통째로 다시 만들지 않는다.
-  const kk = { R, HR, HY, bs, bodyY, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
+  //  tail — 🦸 망토가 등 한가운데 **뒤트임을 얼마나 열지**를 정하는 데 쓴다.
+  //  🦊bushy·🐱long 은 등 한가운데를 크게 차지해 트임이 없으면 천을 뚫고, 꼬리가 작은 종에
+  //  같은 폭을 열면 등이 통째로 드러난다(실측: 곰에서 커튼 두 장이 됐다).
+  const kk = { R, HR, HY, bs, bodyY, tail: a.tail, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
   const anchors = {};
   for (const [name, p] of Object.entries({
     head: headAnchor(HY), neck: neckAnchor(HR, HY),
@@ -3817,7 +3847,7 @@ function makeCharacterPreview(canvas) {
   const pivot = new THREE.Group(); sc.add(pivot);
   let mesh = null, rotY = 0.5, rotX = 0, dragging = false, lx = 0, ly = 0, autoSpin = true, raf = 0;
   let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
-  let petStage = null;                               // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다
+  let petStage = null, petKind = PET_KIND;           // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다(petKind = 어느 종을)
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   //  ⚠️ **disposeTree 를 부르지 않는다.** 꾸미기 재질·plushMat 은 월드의 내 캐릭터와 **공유**라
   //     여기서 버리면 플레이어가 입고 있는 것까지 검게 된다(§14). 인스턴스만 떼어 낸다.
@@ -3830,7 +3860,7 @@ function makeCharacterPreview(canvas) {
       //  🐾 펫은 무릎 높이라(캐릭터의 1/3) 캐릭터 프레임에 그냥 놓으면 바닥에 점처럼 남는다.
       //     조형 수치를 여기 베껴 두면 js/pet/art.js 가 바뀔 때 같이 틀어지니 **실측 바운딩**으로
       //     키를 맞추고(1.4) 카메라가 보는 높이(0.95)에 중심을 둔다.
-      mesh = spawnPet(THREE, PET_KIND, petStage);
+      mesh = spawnPet(THREE, petKind, petStage);
       if (!mesh) return;
       const b = new THREE.Box3().setFromObject(mesh), sz = b.getSize(new THREE.Vector3());
       const k = 1.4 / Math.max(0.2, sz.y);
@@ -3854,11 +3884,11 @@ function makeCharacterPreview(canvas) {
   function setAnimal(id) { animal = id; rebuild(); autoSpin = true; }
   /** 🎀 가상 장착으로 다시 그린다(회전·자동스핀은 그대로). cos 없으면 실제 장착으로 되돌린다 */
   function refresh(cos = null) { cosView = cos; if (animal) rebuild(); }
-  /** 🐾 펫 탭 — 단계(0·1·2)를 주면 펫을, null 이면 캐릭터를 본다 */
-  function showPet(stage = null) {
+  /** 🐾 펫 탭 — 단계(0·1·2)를 주면 펫을, null 이면 캐릭터를 본다. kind 로 종을 고른다 */
+  function showPet(stage = null, kind = petKind) {
     const next = stage === null ? null : (stage | 0);
-    if (next === petStage) return;                    // 같은 단계면 다시 짓지 않는다(탭 안 재그리기마다 호출된다)
-    petStage = next; if (animal) rebuild();
+    if (next === petStage && kind === petKind) return;   // 같은 종·단계면 다시 짓지 않는다(재그리기마다 호출된다)
+    petStage = next; petKind = kind; if (animal) rebuild();
   }
   function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }   // 패널을 닫으면 두 번째 렌더러를 세운다
   function start() { if (!raf) loop(); }
@@ -5740,8 +5770,10 @@ function spawnCosmeticShop() {
 }
 
 // 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
-const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '👣 발자국'], ['pet', '🐾 펫']];
+const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['pet', '🐾 펫']];
 let cosTab = 'head';
+//  🐾 펫 탭에서 **지금 보고 있는 종**. 실제 동행(gameState.pet)과 별개다 — 줄을 누르면 여기만 바뀐다.
+let petView = PET_KINDS[0].id;
 
 // ── 🪞 입어보기(미리보기 전용) ───────────────────────────────
 //  ▶ 줄을 누르면 **안 사고** 입어만 본다. 사는 건 줄 끝의 버튼이다.
@@ -5764,6 +5796,7 @@ function tryOnCos(it) {
 
 function openCosPreview(canvas) {
   cosTryOn = null;
+  petView = gameState.pet ? gameState.pet.kind : PET_KINDS[0].id;   // 🐾 열 때마다 데리고 다니는 종부터 보여 준다
   try {
     if (!cosPreview) cosPreview = makeCharacterPreview(canvas);
     cosPreview.start();
@@ -5780,38 +5813,61 @@ function closeCosPreview() {
   cosPreview?.stop();
 }
 
-// 🐾 펫 탭 — 파는 건 한 마리뿐이라 목록이 아니라 한 줄이다.
-//   샀으면 그 줄이 **성장 진행**으로 바뀐다(단계는 외형만 바꾼다 — js/pet/rules.js 머리말).
+// 🐾 펫 탭 — **종마다 따로 산다**(2026-09-23). 이름이 곧 선택지다 — 줄을 누르면 프리뷰가 그 종으로 바뀐다.
+//   ⚠️ 한 줄만 깔면 "나머지는 해금이냐"는 오해가 난다(4종 확장의 이유다).
+//   ⚠️ 문구를 `<span>…</span>` 안에 innerHTML 로 꽂지 않는다 — 한국어가 태그 안에 갇혀
+//      사전 키(= 화면에 보이는 한국어 그대로)와 어긋난다. 노드로 만들어 넣는다.
 function drawPetTab(box) {
-  if (!gameState.pet) {
+  const active = gameState.pet ? gameState.pet.kind : null;
+  for (const k of PET_KINDS) {
+    const mine = gameState.pets[k.id];
+    const on = active === k.id;
     const row = document.createElement('div');
-    row.className = 'sh-row';
-    //  ⚠️ 계획서는 innerHTML 로 꽂았지만, 그러면 한국어가 `<span>…</span>` 안에 갇혀
-    //     사전 키(= 화면에 보이는 한국어 그대로)와 어긋난다. 노드로 만들어 넣는다.
+    row.className = 'sh-row' + (petView === k.id ? ' try' : '');
+    row.onclick = () => { petView = k.id; drawCosMenu(); };      // 줄 = 미리보기(구매 아님 — 꾸미기의 "입어보기"와 같은 결)
+
+    //  ⚠️ 한 줄에 이름+설명+버튼을 다 넣으면 폰(390px)에서 "1단계 · 다음까…" 로 잘린다 —
+    //     잘리는 게 하필 제일 중요한 진행 숫자다. 이름과 설명을 **두 줄로 쌓는다**.
+    const col = document.createElement('div');
+    col.className = 'sh-col';
     const name = document.createElement('span');
-    name.textContent = '🐾 동행하기';
-    row.appendChild(name);
+    name.className = 'sh-name';
+    name.textContent = `${k.ico} ${k.name}`;
+    const info = document.createElement('span');
+    info.className = 'sh-sub';
+    if (mine) {
+      const left = toNextStage(mine.works);
+      info.textContent = left === null ? `${stageOf(mine.works) + 1}단계 · 다 자랐어요` : `${stageOf(mine.works) + 1}단계 · 다음까지 ${left}번`;
+    } else {
+      info.textContent = k.blurb;
+    }
+    col.append(name, info);
+    row.appendChild(col);
+
     const btn = document.createElement('button');
-    btn.textContent = `${PET_PRICE.toLocaleString()}🪙`;
-    btn.onclick = () => {
-      if (gameState.inventory.coins < PET_PRICE) { ui.toast?.('코인이 모자라요', 2000); return; }
-      gameState.inventory.coins -= PET_PRICE;
-      gameState.pet = emptyPet(PET_KIND);          // js/pet/art.js 가 내보내는 확정 종
-      trackEvent('pet_buy', { pet_kind: PET_KIND, price_coins: PET_PRICE });
+    btn.textContent = on ? '함께 있음' : mine ? '데려가기' : `${PET_PRICE.toLocaleString()}🪙`;
+    btn.disabled = on;
+    btn.onclick = (ev) => {
+      ev.stopPropagation();                                       // 버튼은 사고/바꾸고, 줄은 미리보기 — 겹치지 않게
+      if (on) return;
+      //  ⚠️ 가게 패널은 오버레이라 **루프가 계속 돈다** — 맡긴 일이 끝나기 전에 종을 바꾸면
+      //     finishPetJob 이 새로 데려온 펫에게 works 를 적립하고 쿨다운까지 건다(원래 일한 펫은 헛일).
+      //     바꾸기 전에 지금까지 한 만큼을 **옛 펫에게** 정산하고 넘어간다.
+      if (petJob) finishPetJob();
+      if (!mine) {
+        if (gameState.inventory.coins < PET_PRICE) { ui.toast?.('코인이 모자라요', 2000); return; }
+        gameState.inventory.coins -= PET_PRICE;
+        gameState.pets[k.id] = emptyPet(k.id);
+        trackEvent('pet_buy', { pet_kind: k.id, price_coins: PET_PRICE, owned_n: Object.keys(gameState.pets).length });
+      } else {
+        trackEvent('pet_switch', { pet_kind: k.id, from_kind: active || 'none', stage: stageOf(mine.works) });
+      }
+      usePet(k.id); petView = k.id;
       respawnPet(); drawCosMenu(); requestSave();
     };
-    row.appendChild(btn); box.appendChild(row);
-    return;
+    row.appendChild(btn);
+    box.appendChild(row);
   }
-  const left = toNextStage(gameState.pet.works);
-  const row = document.createElement('div');
-  row.className = 'sh-row';
-  const name = document.createElement('span');
-  name.textContent = `🐾 ${stageOf(gameState.pet.works) + 1}단계`;
-  const prog = document.createElement('span');
-  prog.textContent = left === null ? '다 자랐어요' : `다음까지 ${left}번`;
-  row.append(name, prog);
-  box.appendChild(row);
 }
 
 function drawCosMenu() {
@@ -5831,8 +5887,13 @@ function drawCosMenu() {
   //  ⚠️ 아직 안 샀으면 **다 자란 모습**을 건다(stageOf(Infinity) = 마지막 단계).
   //     1단계는 "씨앗 — 잎 1장" 이라 잎 하나 꽂힌 씨앗으로 읽히는데, 그걸 3,000🪙 짜리
   //     판매 화면에 걸어 두면 무엇을 사는지가 안 보인다. 사면 실제 내 펫 단계로 바뀐다.
-  cosPreview?.showPet(cosTab !== 'pet' ? null
-    : stageOf(gameState.pet ? gameState.pet.works : Infinity));
+  //  ⚠️ 안 산 종은 **다 자란 모습**을 건다(stageOf(Infinity) = 마지막 단계).
+  //     1단계는 "씨앗 — 잎 1장" 이라, 그걸 3,000🪙 짜리 판매 화면에 걸어 두면 무엇을 사는지가 안 보인다.
+  //     산 종이면 내 실제 단계를 건다.
+  if (cosTab === 'pet') {
+    const mine = gameState.pets[petView];
+    cosPreview?.showPet(stageOf(mine ? mine.works : Infinity), petView);
+  } else cosPreview?.showPet(null);
   if (cosTab === 'pet') { drawPetTab(box); return; }
   for (const it of itemsOf(cosTab)) {
     const owned = gameState.cosmetics.owned.includes(it.id);
@@ -11924,7 +11985,7 @@ function updateDoorInteract() {
   }
   else if (nearCosShop) {   // ⚠️ 안내는 프롬프트 줄에만 — 월드 라벨로 띄우면 다른 라벨을 가린다
     prompt = '🎀 꾸미기 가게';
-    firstHintBanner('cosShop', '🎀', '꾸미기 가게', '모자·목도리·가방·발자국으로 내 캐릭터를 꾸며요');
+    firstHintBanner('cosShop', '🎀', '꾸미기 가게', '모자·목도리·가방·이펙트로 내 캐릭터를 꾸며요');
   }
   if (!prompt) {   // 🪏 반쯤 판 밭 앞: 남은 유예를 프롬프트 줄로(모바일 규칙 — 안내는 컨텍스트 슬롯에만)
     const dp = plots.find(p => p.digAt && dist2D(p.group.position, player.position) < 1.6);
@@ -14950,6 +15011,15 @@ function updateWorkers(dt) {
 //     그게 🧑‍🌾일꾼(접속을 끊어도 12시간 일한다)과 갈라서는 경계다(js/pet/rules.js 머리말).
 let pet3d = null, petJob = null;
 
+/** 🐾 데리고 나갈 종을 바꿔 끼운다 — pets(소유)와 pet(동행)이 **한 객체**를 가리키게 유지한다.
+ *  ⚠️ `gameState.pet = ...` 를 직접 쓰지 마라. 세이브는 둘 다 직렬화하는데 JSON 왕복에서
+ *     참조가 끊겨, 한쪽만 자라는 유령 펫이 생긴다(불러오기 직후 성장이 되돌아간 것처럼 보인다).
+ *  kind 가 null 이거나 안 산 종이면 아무도 안 데리고 나간 상태가 된다. */
+function usePet(kind) {
+  gameState.pet = (kind && gameState.pets[kind]) || null;
+  return gameState.pet;
+}
+
 function respawnPet() {
   if (pet3d) { scene.remove(pet3d); pet3d = null; }
   if (!gameState.pet) return;
@@ -14979,7 +15049,8 @@ function commandPet() {
 }
 
 function finishPetJob() {
-  gameState.pet = afterWork(gameState.pet, petJob.done, Date.now());
+  //  ⚠️ afterWork 는 **새 객체**를 준다(불변) — pets 에도 같이 물려야 참조가 안 갈린다
+  gameState.pets[gameState.pet.kind] = gameState.pet = afterWork(gameState.pet, petJob.done, Date.now());
   trackEvent('pet_command', {
     pet_kind: gameState.pet.kind, stage: stageOf(gameState.pet.works),
     task: 'chores', plots_done: petJob.done,

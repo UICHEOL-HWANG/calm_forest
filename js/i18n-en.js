@@ -1869,10 +1869,11 @@ export const EN = {
   '🎀 꾸미기': '🎀 Dress Up',
   '🎀 꾸미기 가게': '🎀 Dress-Up Shop',
   '꾸미기 가게': 'Dress-Up Shop',
-  '모자·목도리·가방·발자국으로 내 캐릭터를 꾸며요': 'Hats, scarves, bags and trails to make your friend your own',
+  '모자·목도리·가방·이펙트로 내 캐릭터를 꾸며요': 'Hats, scarves, bags and effects to make your friend your own',
   '착용': 'Wear', '벗기': 'Take off',
   '코인이 모자라요': 'Not enough coins',
-  '🎩 머리': '🎩 Head', '🧣 목': '🧣 Neck', '👣 발자국': '👣 Trail',
+  //   👣 발자국 → ✨ 이펙트 (2026-09-23) — 상품은 그대로고 **분류 이름만** 바뀌었다
+  '🎩 머리': '🎩 Head', '🧣 목': '🧣 Neck', '✨ 이펙트': '✨ Effects',
   '털모자': 'Wool Hat', '캡': 'Cap', '버섯 모자': 'Mushroom Hat', '밀짚모자': 'Straw Hat',
   '화관': 'Flower Crown', '나뭇잎 머리띠': 'Leaf Band', '별 머리핀': 'Star Pin',
   '목도리': 'Scarf', '방울 목걸이': 'Bell Collar', '나비 넥타이': 'Bow Tie',
@@ -1886,10 +1887,20 @@ export const EN = {
   //   ⚠️ '다음까지 {0}번'·'🐾 {0}단계' 는 숫자가 끼어드는 **패턴 슬롯**이다.
   //      통문장('다음까지 40번')으로 박으면 40 이외의 진행이 한국어로 남는다.
   '🐾 펫': '🐾 Pet',
-  '🐾 동행하기': '🐾 Take one along',
   '다 자랐어요': 'Fully grown',
   '다음까지 {0}번': '{0} more to grow',
   '🐾 {0}단계': '🐾 Stage {0}',
+  //   🐾 4종 확장(2026-09-23) — 종 이름·설명·버튼
+  //   ⚠️ 상점 줄의 진행 문구는 ' · ' 로 이어 붙인 **조합 문장**이다. 조각만 등재하면
+  //      글루 패턴이 반만 번역한 결과를 물고 늘어진다 — 통문장 패턴으로 박는다.
+  '씨앗이': 'Sprout', '빛정령': 'Wisp', '피앙새': 'Bluebird', '꼬마돌': 'Pebble',
+  '잎이 자라 왕관이 된다': 'Leaves grow into a crown',
+  '파편이 늘고 후광이 선다': 'Shards gather and a halo rises',
+  '꽁지가 자라고 볏이 난다': 'A long tail and a crest appear',
+  '이끼가 덮이고 꽃이 핀다': 'Moss spreads and flowers bloom',
+  '{0}단계 · 다 자랐어요': 'Stage {0} · Fully grown',
+  '{0}단계 · 다음까지 {1}번': 'Stage {0} · {1} more to grow',
+  '데려가기': 'Take along', '함께 있음': 'With you',
 
   // ── ⚠️ 캐치올 꼬리 패턴 — 반드시 사전 맨 끝에 둔다 ──────────────
   //    PATTERNS 는 삽입 순서로 첫 매치를 쓴다. 이 셋을 위쪽에 두면
