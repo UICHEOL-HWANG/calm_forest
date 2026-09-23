@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees, YARD_D, YARD_HZ, surveyYard, surveyOfficePos, surveyDeskPos, surveyBenchPos, clampFarmPos, GATE_HZ } from '../js/farm-stage.js';
 
 test('FARM_STAGES: 스펙 §1 표 그대로 — half 6/9/11 · 비용 · 노동자 상한', () => {
@@ -101,3 +102,39 @@ test('clampFarmPos: 문을 지나야만 마당 — 울타리를 따라 밀어도
   }
   assert.equal(GATE_HZ, 1.6);
 });
+
+// ── 🚧 측량소 세트 충돌 — 조형을 덮는가 ─────────────────────────────────
+//   2026-09-23 토스 -72 테스트에서 캐릭터가 🔧자재 작업대에 파묻혀 보였다. 충돌체는 제자리에
+//   있었지만 **원(r0.8)이 조형 발자국(1.8×0.95, 대각 1.02)보다 작아서** 좌우 끝·모서리가
+//   무방비였다. 원으로 덮으려면 앞뒤까지 같이 두꺼워져 통로가 막히니 사각으로 간다
+//   (🫙발효통이 VAT_BOX 로 이미 쓰는 방식. 마을 작업대는 조형 1.5×0.9 에 r1.0 이라 문제없다).
+//   ⚠️ 상호작용 판정은 둘 다 중심에서 1.9 다 — 박스가 커지면 그 안에 못 들어가 기능이 죽는다.
+const GSRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const PLAYER_R = 0.42;
+
+function surveySolid(varName) {
+  const m = GSRC.match(new RegExp(varName + '\\.userData\\.solid = (\\w+)\\(([^;]*)\\);'));
+  assert.ok(m, `${varName}.userData.solid 등록을 js/game.js 에서 못 찾음`);
+  //  FARM.x/d.x 같은 식별자는 빼고 리터럴 반치수만 — solidSpan(cx, cz, hw, z1, z2)
+  const nums = [...m[2].matchAll(/-?\d*\.\d+|\b\d+\b/g)].map(x => +x[0]).filter(n => Math.abs(n) <= 3);
+  return { fn: m[1], nums };
+}
+
+//   z 범위는 비대칭이다 — 작업대는 뒤판(-0.52 에 두께 0.08)이 상판(±0.475)보다 뒤로 더 나간다.
+//   그래서 '반깊이'가 아니라 **조형이 차지하는 z 구간을 덮는지**로 본다.
+for (const [name, halfW, zMin, zMax, what] of [
+  ['plan', 0.80, -0.55, 0.55, '📐 제도 탁자(상판 1.6×1.1)'],
+  ['btop', 0.90, -0.56, 0.475, '🔧 자재 작업대(뒤판 폭 1.8 · 상판 깊이 0.95)'],
+]) {
+  test(`${what} 충돌체가 조형을 덮는다`, () => {
+    const s = surveySolid(name);
+    assert.ok(!/Circle/.test(s.fn), `${what} 는 사각 조형이다 — 원으로 막으면 좌우 끝이 뚫린다`);
+    const [hw, z1, z2] = s.nums;
+    assert.ok(hw >= halfW - 1e-6, `${what} x 반폭 ${hw} < 필요 ${halfW}`);
+    assert.ok(z1 <= zMin + 1e-6, `${what} 뒤쪽이 덜 막힘 — 박스 z1 ${z1} > 조형 ${zMin}`);
+    assert.ok(z2 >= zMax - 1e-6, `${what} 앞쪽이 덜 막힘 — 박스 z2 ${z2} < 조형 ${zMax}`);
+    // 상호작용(1.9) 이 살아 있어야 한다 — 박스 모서리 + 플레이어 반경이 한계 거리
+    const reach = Math.hypot(hw + PLAYER_R, Math.max(-z1, z2) + PLAYER_R);
+    assert.ok(reach < 1.9, `${what} 에 다가갈 수 없다 — 최소 접근 ${reach.toFixed(2)} ≥ 판정 1.9`);
+  });
+}

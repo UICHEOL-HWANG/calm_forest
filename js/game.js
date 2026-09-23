@@ -11454,8 +11454,13 @@ function makeSurveyOffice(H) {
   g.add(makeSignpost('🔧 자재 작업대', b.x + 1.5, b.z - 0.1));   // 마을 작업대와 같이 옆 팻말(기둥 콜라이더는 rAF 에서 등록)
   // 🚧 건물·탁자·작업대 충돌 — 뚫고 지나가지 못하게(월드 좌표. farmGroup 정리에서 removeSolid 된다)
   yard.userData.solid = solidBox(FARM.x + o.x - 1.35, FARM.z + o.z - 1.4, FARM.x + o.x + 1.35, FARM.z + o.z + 1.4);   // 🚧 작아진 오두막 발자국
-  plan.userData.solid = solidCircle(FARM.x + d.x, FARM.z + d.z, 0.65);
-  btop.userData.solid = solidCircle(FARM.x + b.x, FARM.z + b.z, 0.8);   // 상호작용 1.9 는 확보(마을 작업대와 같은 여유)
+  //  ⚠️ 탁자·작업대는 **가로로 긴 사각**이다. 원으로 막으면 반지름이 조형의 대각(탁자 0.97 · 작업대 1.02)보다
+  //     작아 좌우 끝과 모서리가 원 밖에 남고, 그 틈으로 캐릭터가 조형에 파고든다(2026-09-23 토스 -72 스샷).
+  //     원을 대각까지 키우면 앞뒤로도 같이 두꺼워져 마당 통로가 좁아진다 — 🫙발효통(VAT_BOX)처럼 발자국 사각으로 막는다.
+  //     ⚠️ 상호작용 판정은 둘 다 중심에서 1.9 다. 박스를 키울 땐 tests/farm-stage 가 접근 가능 여부까지 본다.
+  const solidSpan = (cx, cz, hw, z1, z2) => solidBox(cx - hw, cz + z1, cx + hw, cz + z2);
+  plan.userData.solid = solidSpan(FARM.x + d.x, FARM.z + d.z, 0.80, -0.55, 0.55);   // 제도 탁자 상판 1.6×1.1
+  btop.userData.solid = solidSpan(FARM.x + b.x, FARM.z + b.z, 0.90, -0.56, 0.48);   // 작업대 뒤판 폭 1.8 · 상판 깊이 0.95
   return g;
 }
 
