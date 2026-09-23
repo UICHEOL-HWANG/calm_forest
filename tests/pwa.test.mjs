@@ -1,7 +1,7 @@
 // =============================================================
 //  📱 PWA 구성 검증 — 매니페스트·아이콘 치수·index.html 연결·배포 포함 여부
-//  구글 플레이 TWA(PWABuilder/Bubblewrap)는 manifest 를 읽어 앱을 만들므로
-//  여기서 깨지면 스토어 빌드가 조용히 실패한다.
+//  브라우저 "홈 화면에 추가" 설치가 manifest 를 읽으므로 여기서 깨지면 설치가 조용히 막힌다.
+//  (구글 플레이 앱은 TWA 가 아니라 Capacitor — scripts/build-cap.mjs · tests/build-cap.test.mjs)
 // =============================================================
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,17 +50,6 @@ test('manifest 아이콘 — 192·512·maskable 512 가 실제 파일·치수와
   }
 });
 
-test('assetlinks.json — 구조는 갖추고 지문은 콘솔 키 생성 후 채운다', () => {
-  const links = JSON.parse(read(PWA_DIR + 'assetlinks.json'));
-  assert.ok(Array.isArray(links) && links.length === 1);
-  const [{ relation, target }] = links;
-  assert.deepEqual(relation, ['delegate_permission/common.handle_all_urls']);
-  assert.equal(target.namespace, 'android_app');
-  assert.match(target.package_name, /^[a-z]+(\.[a-z][a-z0-9_]*)+$/);
-  assert.ok(Array.isArray(target.sha256_cert_fingerprints));
-  for (const fp of target.sha256_cert_fingerprints) assert.match(fp, /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
-});
-
 test('index.html — manifest 링크 + web 플랫폼에서만 SW 등록', () => {
   const html = read('index.html');
   assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest" \/>/);
@@ -85,7 +74,6 @@ test('build-web INCLUDE — PWA 파일이 공개 URL 로 배포된다', () => {
     ['assets/pwa/icon-192.png', 'icon-192.png'],
     ['assets/pwa/icon-512.png', 'icon-512.png'],
     ['assets/pwa/icon-maskable-512.png', 'icon-maskable-512.png'],
-    ['assets/pwa/assetlinks.json', '.well-known/assetlinks.json'],
   ]) assert.ok(src.includes(`['${from}', '${to}']`), `INCLUDE 에 ${from} → ${to} 없음`);
   assert.ok(src.includes("'sw.js'"), 'INCLUDE 에 sw.js 없음');
   assert.ok(src.includes("'offline.html'"), 'INCLUDE 에 offline.html 없음');

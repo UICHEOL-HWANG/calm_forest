@@ -45,12 +45,11 @@ const INCLUDE = [
   ['assets/favicon/favicon.svg', 'favicon.svg'],                // 파비콘 — 모던 브라우저용 벡터
   ['assets/favicon/favicon-96.png', 'favicon-96.png'],          // 파비콘 — SVG 를 못 읽는 크롤러용 래스터
   ['assets/favicon/apple-touch-icon.png', 'apple-touch-icon.png'], // iOS 홈화면 아이콘
-  // 📱 PWA(구글 플레이 TWA) — 원본은 assets/pwa/, 공개 URL 은 루트. sw.js 는 스코프 때문에 루트에 둔다.
+  // 📱 PWA(웹 설치) — 원본은 assets/pwa/, 공개 URL 은 루트. sw.js 는 스코프 때문에 루트에 둔다.
   ['assets/pwa/manifest.webmanifest', 'manifest.webmanifest'],
   ['assets/pwa/icon-192.png', 'icon-192.png'],
   ['assets/pwa/icon-512.png', 'icon-512.png'],
   ['assets/pwa/icon-maskable-512.png', 'icon-maskable-512.png'],
-  ['assets/pwa/assetlinks.json', '.well-known/assetlinks.json'],   // TWA 도메인 소유 확인(지문은 콘솔 키 생성 후)
   'sw.js',           // service worker — 오프라인 안내 페이지만 캐시
   'offline.html',    // 오프라인 안내 페이지
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
