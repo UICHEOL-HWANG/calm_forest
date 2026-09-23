@@ -8262,7 +8262,7 @@ function seaAction() {
     )?.f;
     if (!best) return;
     seaMG.sp = best.sp; seaMG.st = 'cast'; seaMG.t = 0; seaMG.landed = false;
-    seaMG.ease = betaEase('sea');   // 🧪 첫 3회 관대 판정
+    seaMG.diff = rollDifficulty('sea'); seaMG.ease = seaMG.diff.ease;   // 🎚️ 연타 효율 ×ease · 끌림 ÷ease (아래 두 줄이 그대로 쓴다)
     seaMG.good = 0; seaMG.bad = 0; seaMG.progress = 0; seaMG.t0 = clock.elapsedTime;
     seaMG.phaseLen = SEA_CAST_DUR + seaRnd(1.1, 2.2);
     seaHoldRod(true);
@@ -8318,7 +8318,8 @@ function seaCatch() {
   ui.toast?.(`${sp.ico} ${sp.name} ${w}kg — 무게를 기록하고 바다로 돌려보냈어요! (+🐟${sp.give.fish} +🪙${sp.give.coins})`
     + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : ''), 4200);
   questEvent('seafish');                            // 🦉 의뢰(바다 물고기)
-  trackEvent('sea_catch', { species: sp.id, weight: w, duration: dur, good: seaMG.good, bad: seaMG.bad });   // [GA4] 코어 KPI
+  settleDifficulty('sea', 1);   // 🎚️ 성공
+  trackEvent('sea_catch', { species: sp.id, weight: w, duration: dur, good: seaMG.good, bad: seaMG.bad, ...diffParams(seaMG.diff) });   // [GA4] 코어 KPI · 🎚️ 난이도 동봉
   sendSeaRecord({ species: sp.id, weight: w });   // [Supabase] 무게 기록 → 리더보드('sea'는 참치만 집계)
   requestSave();
 }
@@ -8327,7 +8328,8 @@ function seaMiss() {
   seaBuoy.visible = false; seaLine.visible = false;
   Sound.water(); spawnSparkle(seaMG.fmesh ? SEA.x + seaMG.fmesh.position.x : player.position.x, 0.4, player.position.z - 3, 16);
   spawnFloatText(player.position.x, 1.8, player.position.z - 1, '놓쳤다…!', '#c86a5a', 1.1);
-  trackEvent('sea_miss', { species: seaMG.sp?.id, progress: Math.round(seaMG.progress * 100) });   // [GA4] 난이도 튜닝 데이터
+  settleDifficulty('sea', 0);   // 🎚️ 실패
+  trackEvent('sea_miss', { species: seaMG.sp?.id, progress: Math.round(seaMG.progress * 100), ...diffParams(seaMG.diff) });   // [GA4] 난이도 튜닝 데이터 — 이제 정말 난이도가 들어 있다
 }
 
 // 매 프레임 — 배회 AI + 상태 머신 + 연출(animate 에서 호출)
