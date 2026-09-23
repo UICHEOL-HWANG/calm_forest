@@ -22,6 +22,7 @@ export const PALETTE = Object.freeze({
   bow: 0xa8505f, bowDark: 0x7e3a48,
   canvas: 0xc2a882, canvasDark: 0x9c8462,
   cape: 0x7a8fc0, capeLine: 0xdcd0bc,
+  capeIn: 0x5d6f9e,                                      // 망토 안감 — 자락이 뒤집힌 곳에서 두께가 읽힌다(luma 0.43)
   star: 0xe8d06a, starLit: 0xe6ce78,
   spark: 0xd8c4f0, sparkLit: 0xdcccee,
   drop: 0x9fd0e0, dropLit: 0xb4d8e6,
@@ -40,6 +41,58 @@ export const petalOf = (THREE, len, wide, mat) => {
   m.scale.set(wide, 0.14, 1.0);
   return m;
 };
+
+const smoothK = (a, b, t) => { const x = Math.min(1, Math.max(0, (t - a) / (b - a))); return x * x * (3 - 2 * x); };
+
+/** 면 하나를 **두께 있는 천**으로 굽는다 — 🦸 망토가 쓴다.
+ *  fn(u,v) → {x,y,z}. 겉면·안면·테두리까지 닫는다: 한 겹 면은 뒤에서 보면 사라지고 자락이 종이로 읽힌다.
+ *  겉감/안감 색은 정점에 싣는다 — 두 색이 한 메시 안에서 갈려 **드로우콜 1**이다
+ *  (정점색이라 mergeStatics 가 건너뛴다 — 합칠 상대도 없다).
+ *  시안·수치 근거: sims/cape-concepts/
+ */
+export function clothShell(THREE, fn, { segU = 44, segV = 16, thick = 0.02, out, inn }) {
+  const nu = segU + 1, nv = segV + 1;
+  const P = [];
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+    const p = fn(i / segU, j / segV);
+    P.push(new THREE.Vector3(p.x, p.y, p.z));
+  }
+  const at = (i, j) => P[j * nu + i];
+  const N = [];                                   // 법선 — 이웃 차분의 외적
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+    const du = at(Math.min(i + 1, segU), j).clone().sub(at(Math.max(i - 1, 0), j));
+    const dv = at(i, Math.min(j + 1, segV)).clone().sub(at(i, Math.max(j - 1, 0)));
+    N.push(du.cross(dv).normalize());
+  }
+  const pos = [], col = [], idx = [];
+  const cOut = new THREE.Color(out), cIn = new THREE.Color(inn);
+  const push = (v, c) => { pos.push(v.x, v.y, v.z); col.push(c.r, c.g, c.b); };
+  const h = thick / 2;
+  for (let i = 0; i < P.length; i++) push(P[i].clone().addScaledVector(N[i], h), cOut);   // 겉면
+  for (let i = 0; i < P.length; i++) push(P[i].clone().addScaledVector(N[i], -h), cIn);   // 안면
+  const base = nu * nv;
+  for (let j = 0; j < segV; j++) for (let i = 0; i < segU; i++) {
+    const a = j * nu + i, b = a + 1, c = a + nu, d = c + 1;
+    idx.push(a, c, b, b, c, d);
+    idx.push(base + a, base + b, base + c, base + b, base + d, base + c);                 // 감김 반대
+  }
+  const rim = (i0, j0, i1, j1, n) => {            // 테두리 — 자락·앞단·윗단
+    for (let s = 0; s < n; s++) {
+      const t0 = s / n, t1 = (s + 1) / n;
+      const A = Math.round(i0 + (i1 - i0) * t0) + Math.round(j0 + (j1 - j0) * t0) * nu;
+      const B = Math.round(i0 + (i1 - i0) * t1) + Math.round(j0 + (j1 - j0) * t1) * nu;
+      idx.push(A, base + A, B, B, base + A, base + B);
+    }
+  };
+  rim(0, segV, segU, segV, segU); rim(0, 0, 0, segV, segV);
+  rim(segU, segV, segU, 0, segV); rim(segU, 0, 0, 0, segU);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return geo;
+}
 
 // =============================================================
 //  조형 표 — THREE 마다 한 번만 굽는다(재질 헬퍼가 THREE 를 클로저로 잡는다)
@@ -424,12 +477,64 @@ function makeTables(THREE) {
       strapLoop(g, r * 0.19, r * 0.065, clay(P.strawDark));
       strapOf(g, k, R * 0.070, clay(P.strawDark));
     },
-    cape: (g, k) => {           // 망토 — 등을 덮어 내려온다. 실루엣이 제일 크게 바뀐다
-      const R = k.R;
-      const c = put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.92, 18, 14, 0, Math.PI), soft(P.cape)), 0, -R * 0.22, R * 0.10);
-      c.scale.set(1.02, 1.16, 0.42); c.rotation.y = Math.PI / 2;
-      const col = put(g, new THREE.Mesh(new THREE.TorusGeometry(R * 0.44, R * 0.07, 4, 16, Math.PI * 1.25), clay(P.capeLine)), 0, R * 0.52, R * 0.06, false);
-      col.rotation.set(Math.PI / 2, 0, -Math.PI * 0.62);
+    //  🦸 망토 — **목에서 여며 등을 덮고 자락까지 떨어진다.** 실루엣이 제일 크게 바뀐다.
+    //  ⚠️ 1차는 반구를 납작하게 눌러 등에 붙였다가 "망토가 아니라 덩어리"로 반려됐다. 이유가 셋이었다:
+    //     ① 목에서 여며지지 않았다 — 여밈(깃·끈·브로치)이 없으면 담요지 망토가 아니다.
+    //     ② 한 겹이라 두께가 없었다 — 자락 단면이 안 보이면 종이다. → clothShell(겉감·안감)
+    //     ③ **폭을 손으로 정해** 몸보다 좁았다 — 몸 속에서 솟아난 치마로 읽혔다.
+    //        → anchors.js 가 네 번 틀렸던 그 실수다. **몸 타원체에서 푼다.**
+    //  ⚠️ 등 한가운데엔 **뒤트임**을 낸다 — 🦊여우 꼬리(등 한가운데 자리)가 천을 뚫고 나온다.
+    //     다른 동물에겐 그냥 뒤트임으로 읽힌다.
+    //  ▶ 시안 4종 렌더·비교: sims/cape-concepts/ (B 주름 채택, 2026-09-23)
+    cape: (g, k) => {
+      const R = k.R, bs = k.bs;
+      const FOLDS = 8, FOLD_AMT = 0.075;
+      const zc = R * bs[2] * 0.98;                        // 등 앵커 → 몸 축
+      //  ⚠️ 두르는 각은 **팔 앞에서 끊는다**. 1.50π 로 두르면 팔이 천에 먹히고, 도구를 휘두를 때
+      //     팔이 망토를 뚫고 나온다(sims/cape-concepts 에 팔을 넣고 실측했다).
+      //     팔 어깨는 game.js mkArm 기준 등에서 ±102~104° — 1.06π(±95°) 면 팔 뒤에서 끝난다.
+      const ARC = Math.PI * 1.06, VENT = 0.50;
+
+      const anchorY = k.bodyY + R * 0.30;                 // anchors.backAnchor 와 같은 값
+      const yTop = (k.HY - k.HR * 0.58) - anchorY;        // 깃은 목에서 — 목줄이 이미 쓰는 높이
+      const yBot = -R * 1.05;                             // 자락 — 무릎께
+
+      const rNeck = k.HR * 0.92 * 1.02;                   // anchors.neckR 보다 한 겹 밖
+      //  ⚠️ 어깨 높이의 몸 폭으로만 잡으면 **배가 제일 굵은 데서 천이 몸을 뚫는다**(주름 골은 더 얕다).
+      const dy = (yTop - R * 0.45 + anchorY - k.bodyY) / (R * bs[1]);
+      const hShoulder = R * bs[0] * Math.sqrt(Math.max(0.02, 1 - dy * dy));
+      const rShoulder = Math.max(hShoulder, R * Math.max(bs[0], bs[2])) * (1.10 + FOLD_AMT);
+      const rHem = rShoulder * 1.22;
+
+      const surf = (u, v) => {
+        // 뒤트임 — 깃 밑은 거의 붙이고, 꼬리가 지나는 아래에서 크게 벌린다
+        const vent = VENT * (0.16 + 0.84 * smoothK(0.04, 0.42, v));
+        const s = u < 0.5 ? -1 : 1;                            // 왼폭 / 오른폭
+        const t = u < 0.5 ? (0.5 - u) * 2 : (u - 0.5) * 2;     // 0(트임) → 1(앞단)
+        const th = s * (vent + (ARC / 2 - vent) * t);
+        const r = (rNeck + (rShoulder - rNeck) * smoothK(0, 0.30, v)
+                         + (rHem - rShoulder) * smoothK(0.30, 1, v))
+                * (1 + FOLD_AMT * smoothK(0.12, 1, v) * Math.cos(FOLDS * th));
+        // 자락은 주름 사이가 처진다 — 일직선 밑단이면 천이 아니라 판때기다
+        const y = yTop + (yBot - yTop) * v + 0.09 * R * v * v * Math.cos(FOLDS * th + Math.PI);
+        return { x: Math.sin(th) * r, y, z: zc - Math.cos(th) * r - 0.10 * R * v * v };
+      };
+      const cloth = put(g, new THREE.Mesh(
+        clothShell(THREE, surf, { segU: 40, segV: 13, thick: R * 0.035, out: P.cape, inn: P.capeIn }),
+        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 }),
+      ), 0, 0, 0);
+      cloth.frustumCulled = true;
+
+      //  여밈 — 깃 · 목 앞을 잇는 끈 · 브로치. 셋 다 clay 라 mergeStatics 가 하나로 합친다
+      //  ⚠️ castShadow 가 다르면 병합 버킷이 갈린다 — 셋을 같게 둔다
+      const band = put(g, new THREE.Mesh(new THREE.TorusGeometry(rNeck, R * 0.062, 5, 30, ARC), clay(P.capeLine)), 0, yTop + R * 0.04, zc);
+      band.rotation.x = Math.PI / 2;
+      band.rotation.z = -Math.PI / 2 - ARC / 2;   // 토러스는 +x 에서 시작한다 — 호의 가운데를 등(−z)으로
+      const cord = put(g, new THREE.Mesh(new THREE.TorusGeometry(rNeck * 0.82, R * 0.026, 4, 16, Math.PI * 2 - ARC), clay(P.capeLine)), 0, yTop + R * 0.02, zc);
+      cord.rotation.x = Math.PI / 2;
+      cord.rotation.z = -Math.PI / 2 + ARC / 2;
+      const brooch = put(g, new THREE.Mesh(new THREE.CylinderGeometry(R * 0.085, R * 0.085, R * 0.05, 10), clay(P.bell)), 0, yTop + R * 0.02, zc + rNeck * 0.84);
+      brooch.rotation.x = Math.PI / 2;
     },
   };
 

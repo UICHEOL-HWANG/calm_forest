@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>🦸 망토 시안 비교</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#dbe9ee;
+    font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+  #lab{position:fixed;inset:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);font-size:15px;font-weight:700;
+    color:#2c3a44;background:#ffffffcc;border-radius:7px;padding:2px 9px;white-space:nowrap}
+  #hud{position:fixed;left:10px;top:8px;font-size:12px;color:#33454f;background:#ffffffcc;
+    border-radius:8px;padding:5px 9px;white-space:pre}
+</style>
+</head>
+<body>
+<div id="lab"></div>
+<div id="hud"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildAnimalHead, plushMat } from '../../js/animal-faces.js';
+import { backAnchor } from '../../js/cosmetics/anchors.js';
+import { CAPES } from './capes.js';
+
+const Q = new URLSearchParams(location.search);
+const VIEW = Q.get('view') || 'back34';            // back34 | front34 | side | back
+const ONLY = Q.get('only');                        // 시안 하나만
+const ANI  = Q.get('animal') || 'fox';
+
+//  체형은 sims/cosmetic-sim.html 과 같은 값(js/game.js ANIMALS 에서 옮겨 적은 것)
+const ANIMALS = {
+  fox:   { id:'fox',   body:0xf0883a, belly:0xf9ecd8, bodyR:0.52, bodyScale:[0.90,1.08,0.90], headR:0.37, headY:1.26, tail:'bushy' },
+  bear:  { id:'bear',  body:0x936a44, belly:0xd2b38a, bodyR:0.63, bodyScale:[1.08,1.00,1.06], headR:0.44, headY:1.34, tail:'stub' },
+  rabbit:{ id:'rabbit',body:0xf3eeea, belly:0xffffff, bodyR:0.46, bodyScale:[1.00,0.96,1.00], headR:0.39, headY:1.12, tail:'puff' },
+  cat:   { id:'cat',   body:0x9fa0c2, belly:0xf2f2f8, bodyR:0.50, bodyScale:[0.88,1.10,0.88], headR:0.36, headY:1.25, tail:'long' },
+  dog:   { id:'dog',   body:0xf0913a, belly:0xfaf3e8, bodyR:0.56, bodyScale:[1.03,0.99,1.00], headR:0.40, headY:1.24, tail:'curl' },
+  panda: { id:'panda', body:0xf6f6f6, belly:0xffffff, bodyR:0.63, bodyScale:[1.08,1.00,1.06], headR:0.45, headY:1.34, tail:'stub' },
+  chick: { id:'chick', body:0xffe05a, belly:0xfff0a0, bodyR:0.50, bodyScale:[1.02,0.94,1.02], headR:0.35, headY:1.06, tail:'feather' },
+};
+
+//  동물 전부를 한 줄에 — 체형이 갈리는 곳(곰·병아리·토끼)에서 천이 몸을 뚫는지 본다
+const ALL = Q.get('all');
+
+const put = (p, m, x, y, z, shadow = true) => { m.position.set(x, y, z); m.castShadow = shadow; p.add(m); return m; };
+
+function taperedTube(pts, radiusFn, colorFn = null, segs = 40, radial = 9) {
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], col = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs;
+    const P = curve.getPointAt(u), N = frames.normals[i], B = frames.binormals[i];
+    const r = radiusFn(u), c = colorFn && colorFn(u);
+    for (let j = 0; j < radial; j++) {
+      const A = (j / radial) * Math.PI * 2, ca = Math.cos(A), sa = Math.sin(A);
+      pos.push(P.x + (N.x*ca + B.x*sa)*r, P.y + (N.y*ca + B.y*sa)*r, P.z + (N.z*ca + B.z*sa)*r);
+      if (c) col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i*radial + j, b = i*radial + (j+1)%radial;
+    const c2 = (i+1)*radial + j, d = (i+1)*radial + (j+1)%radial;
+    idx.push(a, c2, b, b, c2, d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  if (col.length) geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return { geo, end: curve.getPointAt(1) };
+}
+
+//  팔 — js/game.js mkArm 과 같은 자리(어깨 ±R*0.85*bs[0], y=bodyY+R*0.54, z=R*0.20).
+//  ⚠️ 이게 없으면 **망토가 팔을 덮는지**를 못 본다 — 덮으면 도구를 휘두를 때 천을 뚫는다.
+function arms(g, a, bodyY) {
+  const R = a.bodyR, bs = a.bodyScale, ar = R*0.23, al = R*0.32;
+  [-1, 1].forEach(sd => {
+    const pivot = new THREE.Group();
+    pivot.position.set(sd*R*0.85*bs[0], bodyY + R*0.54, R*0.20);
+    pivot.rotation.z = -sd * 0.18;
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), plushMat(a.body));
+    upper.position.y = -(al/2 + ar*0.4); upper.castShadow = true; pivot.add(upper);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(ar*1.06, 10, 8), plushMat(a.belly));
+    paw.position.y = -(al + ar*0.9); paw.castShadow = true; pivot.add(paw);
+    g.add(pivot);
+  });
+}
+
+//  다리 — 시뮬 본체엔 없지만 **자락 길이를 판정하려면 필요하다**(무릎 높이 기준)
+function legs(g, a, bodyY) {
+  const R = a.bodyR, m = plushMat(a.body);
+  [-1, 1].forEach(s => {
+    put(g, new THREE.Mesh(new THREE.CapsuleGeometry(R*0.17, R*0.34, 4, 8), m), s*R*0.36, bodyY - R*0.92, R*0.10);
+  });
+}
+
+function buildAnimal(a) {
+  const g = new THREE.Group();
+  const R = a.bodyR, bs = a.bodyScale, bodyY = R*bs[1] + 0.02;
+  const body = put(g, new THREE.Mesh(new THREE.SphereGeometry(R, 28, 20), plushMat(a.body)), 0, bodyY, 0);
+  body.scale.set(bs[0], bs[1], bs[2]);
+  const belly = put(g, new THREE.Mesh(new THREE.SphereGeometry(R*0.62, 20, 14), plushMat(a.belly)), 0, bodyY - R*0.16, R*0.55, false);
+  belly.scale.set(1, 1.1, 0.6);
+  g.add(buildAnimalHead(a.id, { HR: a.headR, HY: a.headY, body: a.body, belly: a.belly }));
+  legs(g, a, bodyY);
+  arms(g, a, bodyY);
+
+  const tm = plushMat(a.body);
+  const tail = new THREE.Group();
+  tail.position.set(0, bodyY + R*0.10, -R*bs[2]*0.86);
+  g.add(tail);
+  const V = (x,y,z) => new THREE.Vector3(R*x, R*y, R*z);
+  if (a.tail === 'bushy') {   // 🦊 등 장식과 부딪히는 유일한 꼬리 — 망토 판정의 핵심
+    const pts = [V(0,-0.05,0.10), V(0,0.06,-0.30), V(0,0.30,-0.50), V(0,0.60,-0.58), V(0,0.88,-0.54)];
+    const rad = u => R*(0.29 + 0.05*Math.sin(Math.PI*u))*(1 - 0.38*Math.max(0,u-0.70)/0.30);
+    const c0 = new THREE.Color(a.body), c1 = new THREE.Color(a.belly);
+    const { geo, end } = taperedTube(pts, rad, u => u<0.60 ? c0 : u<0.68 ? c0.clone().lerp(c1,(u-0.60)/0.08) : c1);
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.95 }));
+    m.castShadow = true; tail.add(m);
+    put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1)*0.98, 12, 9), plushMat(a.belly)), end.x, end.y, end.z);
+  } else if (a.tail === 'puff') {
+    put(g, new THREE.Mesh(new THREE.SphereGeometry(R*0.30, 12, 10), plushMat(a.belly)), 0, tail.position.y + R*0.04, tail.position.z - R*0.06);
+  } else {
+    put(g, new THREE.Mesh(new THREE.SphereGeometry(R*0.16, 10, 8), tm), 0, tail.position.y, tail.position.z);
+  }
+  return g;
+}
+
+function dressed(a, key) {
+  const g = new THREE.Group();
+  g.add(buildAnimal(a));
+  const R = a.bodyR, bs = a.bodyScale, bodyY = R*bs[1] + 0.02;
+  const k = { R, HR: a.headR, HY: a.headY, bs, bodyY };
+  const holder = new THREE.Group();
+  const bk = backAnchor(bs, R, bodyY);
+  holder.position.set(bk.x, bk.y, bk.z);
+  CAPES[key].build(THREE, holder, k);
+  g.add(holder);
+  return g;
+}
+
+// ── 무대 ─────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdbe9ee);
+const camera = new THREE.PerspectiveCamera(34, innerWidth/innerHeight, 0.1, 100);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xdfefff, 0x6f7f68, 0.88));
+const sun = new THREE.DirectionalLight(0xfff3df, 1.12);
+sun.position.set(4, 8, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left:-10, right:10, top:8, bottom:-8, near:0.5, far:30 });
+sun.shadow.camera.updateProjectionMatrix(); scene.add(sun);
+const rimL = new THREE.DirectionalLight(0xbfd8e8, 0.34); rimL.position.set(-5, 3, -4); scene.add(rimL);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(24, 48), new THREE.MeshStandardMaterial({ color: 0x9fc08a, roughness: 1 }));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+
+const keys = ALL ? Object.keys(ANIMALS) : (ONLY ? ONLY.split(',') : Object.keys(CAPES));
+const a = ANIMALS[ANI];
+const GAP = (ALL ? 0.63 : a.bodyR) * 3.5;    // 체구가 큰 동물이 겹치지 않게
+const tags = [];
+keys.forEach((key, i) => {
+  const g = ALL ? dressed(ANIMALS[key], ALL === '1' ? 'real' : ALL) : dressed(a, key);
+  g.position.x = (i - (keys.length - 1)/2) * GAP;
+  scene.add(g);
+  const el = document.createElement('div');
+  el.className = 'tag'; el.textContent = ALL ? key : CAPES[key].name;
+  document.getElementById('lab').appendChild(el);
+  tags.push({ el, x: g.position.x });
+});
+
+const VIEWS = {
+  back34: { rot: Math.PI * 0.82, ele: 0.15, look: 0.72 },
+  back:   { rot: Math.PI,        ele: 0.10, look: 0.72 },
+  front34:{ rot: Math.PI * 0.18, ele: 0.15, look: 0.78 },
+  side:   { rot: Math.PI * 0.50, ele: 0.10, look: 0.72 },
+};
+const V = VIEWS[VIEW] || VIEWS.back34;
+//  줄 전체가 화면에 딱 차게 — 거리를 눈대중으로 잡으면 시안이 콩알만 하게 나온다
+const halfW = (keys.length - 1) * GAP / 2 + 0.95;
+const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
+const dist = Math.max(3.2, (halfW / Math.tan(hfov / 2)) * 1.34);
+camera.position.set(Math.sin(V.rot)*Math.cos(V.ele)*dist, Math.sin(V.ele)*dist + 0.85, Math.cos(V.rot)*Math.cos(V.ele)*dist);
+camera.lookAt(0, V.look, 0);
+
+const tmp = new THREE.Vector3();
+function frame() {
+  renderer.render(scene, camera);
+  tags.forEach(t => {
+    tmp.set(t.x, 0.02, 0).project(camera);
+    t.el.style.left = ((tmp.x*0.5 + 0.5) * innerWidth) + 'px';
+    t.el.style.top  = ((-tmp.y*0.5 + 0.5) * innerHeight + 6) + 'px';
+  });
+}
+frame();
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); frame();
+});
+document.getElementById('hud').textContent =
+  `${VIEW} · ${ANI} · 드로우콜 ${renderer.info.render.calls} · 삼각형 ${renderer.info.render.triangles}`;
+window.__ready = true;
+</script>
+</body>
+</html>
