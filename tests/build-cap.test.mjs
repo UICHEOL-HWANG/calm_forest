@@ -47,3 +47,17 @@ test('웹 원본은 CDN 그대로 — 앱 치환이 공통 경로에 새지 않�
   assert.match(html, /"three": "https:\/\/unpkg\.com\/three@0\.160\.0\/build\/three\.module\.js"/);
   assert.doesNotMatch(html, /__ANDROID__ = true/);
 });
+
+// Capacitor 기본 오리진은 https://localhost — 게임 곳곳의 "localhost = 개발자" 판정
+// (?give 치트·__nightForce·carveDebug·?betaDay·?forceVariant)이 정식 앱에서 열린다.
+// server.hostname 을 실서비스처럼 보이는 이름으로 고정해 한 곳에서 막는다.
+test('capacitor.config: 앱 오리진이 localhost 가 아니다(개발 훅 차단)', () => {
+  const cfg = JSON.parse(readFileSync('capacitor.config.json', 'utf8'));
+  assert.equal(cfg.appId, 'com.cheorish.lab.calmforest');
+  assert.equal(cfg.webDir, 'dist-cap');
+  const host = cfg.server?.hostname;
+  assert.ok(host, 'server.hostname 미설정 → 기본값 localhost');
+  assert.doesNotMatch(host, /^(localhost|127\.0\.0\.1|\[::1\])$/);
+  // API 오리진과 같으면 WebView 가 /api/* 요청까지 가로채 앱 번들에서 찾는다
+  assert.notEqual(host, 'calmforest.cloud');
+});
