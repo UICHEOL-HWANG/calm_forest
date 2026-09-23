@@ -7490,7 +7490,8 @@ function startSoothe(sp) {
   c.fillStyle = '#aef3e2'; c.fillText('♪', 48, 50);
   const note = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
   mistGroup.add(note);
-  mist.soothe = { sp, step: 0, phase: 0, note, ease: betaEase('mist') };   // 🧪 첫 3회 관대 판정
+  const md = rollDifficulty('mist');   // 🎚️ 정령 하나당 한 번 — 탭마다 뽑으면 한 마리 안에서 판정창이 요동친다
+  mist.soothe = { sp, step: 0, phase: 0, note, ease: md.ease, diff: md };
   Sound.blip();
   practiceAdvance(2);                                   // 🎓 연습: 등불을 건너뛰고 바로 정령을 찾아도 ③으로
 }
@@ -7515,7 +7516,7 @@ function clampMist(x, z) {
 }
 function sootheTap() {
   const so = mist.soothe; if (!so) return;
-  const lo = 1 - 0.38 * (so.ease || 1);                 // 기본 0.62 — 🧪첫 3회 0.506(창 ×1.3)
+  const lo = 1 - 0.38 * (so.ease || 1);                 // 기본 0.62 — 🎚️ 팔 0.7 / 1.0 / 1.3 → 0.734 / 0.62 / 0.506
   if (so.phase >= lo && so.phase <= 0.99) {             // 🎯 ♪가 작아진 순간
     so.step += 1; so.phase = 0;
     Sound.blip();
@@ -7530,12 +7531,14 @@ function sootheTap() {
       gameState.mist.soothedTotal = (gameState.mist.soothedTotal || 0) + 1;
       dexDiscover('spirit', sp.def.id);
       Sound.harvest(); triggerMoment();
-      trackEvent('mist_soothe', { kind: sp.def.id, wave: mist.wave });   // [GA4] 달래기 성공 분포
+      settleDifficulty('mist', 1);   // 🎚️ 성공 (연습은 위 practice 분기에서 이미 return 했다)
+      trackEvent('mist_soothe', { kind: sp.def.id, wave: mist.wave, ...diffParams(so.diff) });   // [GA4] 달래기 성공 분포 · 🎚️ 난이도 동봉
       syncBadges();
     }
   } else {
     cancelSoothe(true);                                 // 엇박 — 부드러운 실패
-    trackEvent(mist.practice ? 'mist_practice_miss' : 'mist_soothe_miss', { wave: mist.wave });   // [GA4] 리듬 난이도 튜닝(연습은 분리)
+    if (!mist.practice) settleDifficulty('mist', 0);   // 🎚️ 실패 — 연습 성적은 DDA 를 안 움직인다
+    trackEvent(mist.practice ? 'mist_practice_miss' : 'mist_soothe_miss', { wave: mist.wave, ...diffParams(so.diff) });   // [GA4] 리듬 난이도 튜닝(연습은 분리)
   }
 }
 
