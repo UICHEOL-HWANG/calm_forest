@@ -544,3 +544,33 @@ test('target 이 0 이어도 나누기로 터지지 않는다', () => {
   assert.equal(r.items.length, 1);
   assert.equal(Number.isFinite(r.items[0].pct), true);
 });
+
+// ── 📊 quest_type — 일일 의뢰의 "종류" 가 GA4 에 남는지 ────────────────────
+//   quest_id 는 `courier:<슬롯번호>` 라 매일 다른 종류가 같은 id 로 들어오고,
+//   제목은 서버 AI 가 매일 새로 짓는다(2026-09-23 실측: 슬롯당 30일 27~41종).
+//   그래서 종류를 싣는 축은 quest_type 하나뿐이다 — 빠지면 "어떤 의뢰가 잘 완료되나" 를 못 본다.
+test('퀘스트 이벤트 네 곳에 quest_type 이 실린다', () => {
+  for (const ev of ['quest_offered', 'quest_accept', 'quest_complete', 'owl_special_deliver']) {
+    const i = SRC.indexOf(`trackEvent('${ev}'`);
+    assert.ok(i >= 0, `${ev} 호출을 js/game.js 에서 못 찾음`);
+    const call = SRC.slice(i, SRC.indexOf('\n', i));
+    assert.match(call, /quest_type:/, `${ev} 에 quest_type 이 없다 — 종류 축이 사라진다`);
+  }
+});
+
+test('DAILY_POOL 전 항목에 type 이 있다(quest_type 이 undefined 로 찍히지 않게)', () => {
+  const pool = block(/^const DAILY_POOL = \[/m, '\n];');
+  const rows = pool.split('\n').filter(l => l.includes('title:'));
+  assert.ok(rows.length >= 10, `DAILY_POOL 항목을 못 읽음(${rows.length}줄)`);
+  for (const r of rows) assert.match(r, /type:\s*'[a-z_]+'/, `type 없는 일일 의뢰: ${r.trim()}`);
+});
+
+test('REPEAT_POOL 전 항목에 type 이 있다', () => {
+  for (const [npc, list] of Object.entries(REPEAT_POOL))
+    for (const q of list)
+      assert.equal(typeof q.type, 'string', `${npc} 반복 의뢰에 type 이 없다`);
+});
+
+test('뷰 객체가 qtype 을 싣는다(quest_offered 가 읽는 자리)', () => {
+  assert.match(SRC, /const base = \{[^}]*qtype: q\.type/, 'npcDialogState 의 base 에 qtype 이 없다');
+});

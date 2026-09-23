@@ -16176,7 +16176,7 @@ function deliverOwlSpecial(o) {
   updateNPCGlyph(o); refreshQuestPanel(); syncBadges();
   Sound.complete?.();
   ui.toast?.('✨ 의뢰 올빼미가 특별 의뢰를 물고 날아왔어요!', 3200);
-  trackEvent('owl_special_deliver', { quest: sp.title, target: sp.target, quest_id: questIdFor({ npcId: def.id, specialType: sp.type }) });   // [GA4] 수락·완료의 quest_id 와 같은 값
+  trackEvent('owl_special_deliver', { quest: sp.title, target: sp.target, quest_id: questIdFor({ npcId: def.id, specialType: sp.type }), quest_type: sp.type });   // [GA4] 수락·완료의 quest_id 와 같은 값
 }
 
 // 조건이 맞으면 올빼미를 플레이어 앞으로 날려 보낸다.
@@ -16423,7 +16423,7 @@ function talkToNPC() {
     trackEvent('npc_talk', { npc: view.npc.id, mode: view.mode });
     churnTrigger('quest');   // [🎯 이탈 예측] await 안 함 — 게임 흐름을 막지 않는다
     // [퍼널①] 퀘스트 노출 — offer 화면을 봤다 = 퍼널의 시작점(노출→수락 전환율 측정)
-    if (view.mode === 'offer') trackEvent('quest_offered', { quest_id: view.qid, npc: view.npc.id, quest: view.title });
+    if (view.mode === 'offer') trackEvent('quest_offered', { quest_id: view.qid, npc: view.npc.id, quest: view.title, quest_type: view.qtype });
   }
 }
 
@@ -16434,7 +16434,7 @@ export function npcDialogState() {
   const st = npcState(o.def.id);
   const q = currentQuest(o.def, st);
   if (!q) return { npc: o.def, mode: 'done', line: o.def.doneLine || '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
-  const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward: rewardText(q.reward), qid: questId(o.def, st) }; // qid: 퍼널 분석용 표준 퀘스트 ID
+  const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward: rewardText(q.reward), qid: questId(o.def, st), qtype: q.type }; // qid: 퍼널 분석용 표준 퀘스트 ID · qtype: 종류(GA4 축)
   if (!st.given) return { ...base, mode: 'offer', line: q.line, progress: 0 };
   if (st.progress < q.target) return { ...base, mode: 'progress', line: '조금만 더 부탁해요!', progress: st.progress };
   return { ...base, mode: 'claim', line: '다 해냈네요! 보상을 받아요 🎁', progress: st.progress };
@@ -16452,7 +16452,7 @@ export function npcAccept() {
     const qid = questId(o.def, st);
     if (q.grant) giveReward(q.grant, 'quest_grant', qid);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
     refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
-    trackEvent('quest_accept', { quest: q.title, npc: o.def.id, quest_id: qid }); // [GA4]
+    trackEvent('quest_accept', { quest: q.title, npc: o.def.id, quest_id: qid, quest_type: q.type }); // [GA4]
     churnTrigger('quest');   // [🎯 이탈 예측] 대화·수락·완료는 신뢰구간이 겹쳐 한 트리거로 묶었다
   }
   return npcDialogState();
@@ -16476,7 +16476,7 @@ export function npcClaim() {
     tryUnlockDrop(0.5);                                              // 🎨 랜덤 색(퀘스트 보상, 높은 확률)
     // [퍼널③] 완료 — 수락→완료 소요시간(초). acceptedAt 없는 옛 세이브는 null.
     const elapsed = st.acceptedAt ? Math.round((Date.now() - st.acceptedAt) / 1000) : null;
-    trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0 }); // [GA4]
+    trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0, quest_type: q.type }); // [GA4]
     churnTrigger('quest');   // [🎯 이탈 예측]
     // ⚠️ 반복 의뢰에서는 st.idx 를 올리지 않는다 — 체인 길이를 넘어가면 그 주민 대화가 깨진다
     if (repeating) st.repeat.done = true; else st.idx++;
