@@ -81,3 +81,10 @@ android/*.idsig
 # 🧩 외부에서 설치한 스킬 — skills-lock.json 이 출처·해시를 들고 있어 언제든 다시 받는다.
 #   직접 쓴 프로젝트 스킬(analysis-step·gated-analysis·analysis-plain-korean)은 추적한다.
 .agents/skills/design-taste-frontend/
+
+# 📱 구글 플레이 TWA 빌드 산출물 — 서명된 패키지는 재생성 가능하고 용량이 크다(약 5MB).
+#   키스토어는 저장소 밖(~/.calmforest-android/)에 있고 twa-manifest.json 엔 **경로만** 적힌다.
+android/.gradle/
+android/*.apk
+android/*.aab
+android/*.idsig
