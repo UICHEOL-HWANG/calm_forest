@@ -89,6 +89,6 @@ begin
                    and conrelid = 'public.retention_guidance_scores'::regclass) then
     alter table public.retention_guidance_scores
       add constraint retention_guidance_scores_platform_chk
-      check (platform is null or platform in ('web','toss','itch'));
+      check (platform is null or platform in ('web','toss','itch','android'));
   end if;
 end $$;
