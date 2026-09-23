@@ -34,5 +34,8 @@
     "@supabase/supabase-js": "^2.116.0",
     "esbuild": "^0.28.2"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@capgo/capacitor-social-login": "^8.5.10"
+  }
 }
