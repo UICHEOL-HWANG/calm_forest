@@ -22,7 +22,7 @@ export const CONFIG = {
   SUPABASE_ANON_KEY: 'sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t',  // publishable key(브라우저 안전, RLS로 보호)
   // 📱 구글 플레이 앱 네이티브 로그인 audience — GCP(agriquant) '웹 애플리케이션' 클라이언트 ID(공개값).
   //    Supabase Google 공급자와 같은 값이어야 signInWithIdToken 이 통과한다.
-  GOOGLE_WEB_CLIENT_ID: '',
+  GOOGLE_WEB_CLIENT_ID: '1003103780622-8l7nop9bgedmhc8eds1mlc3bv9v96chv.apps.googleusercontent.com',
 
   // ── GA4 / GTM 트래킹 값 ──────────────────────────────────────
   GA4_MEASUREMENT_ID: 'G-ELBTR8BXBF',           // calm forest 웹 스트림
