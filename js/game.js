@@ -2052,8 +2052,10 @@ function craftSet(itemId, grade = 1) {
   }
   for (const [k, v] of Object.entries(r.cost)) gameState.inventory[k] -= v;
   gameState.craft.slots = setSlot(gameState.craft.slots, { item: itemId, grade, day: todayStr() });
+  settleDifficulty('craft', (grade || 0) / 3);   // 🎚️ 등급 0~3 → 0~1. 1주 차엔 ddaOn:false 라 값이 안 움직인다
   trackEvent('craft_set', { item: itemId, grade, qty: yieldOf(itemId, grade), station,
-                            slot_idx: slotsOf(gameState.craft.slots, station).length - 1, station_seq: stationCount(station) });
+                            slot_idx: slotsOf(gameState.craft.slots, station).length - 1, station_seq: stationCount(station),
+                            ...diffParams(craftDiffCur) });   // [GA4] 🎚️ 난이도 동봉 (맷돌은 craftDiffCur 가 null → ease 1 / arm null)
   requestSave(); refreshStations(); refreshInventoryUI();
   return craftPanelData(station);
 }
@@ -2071,6 +2073,8 @@ function craftClaim(station = 'kiln') {
   ui.toast?.(ico + ' ' + claimed.map(c => `${craftRecipeOf(c.item).ico}${craftRecipeOf(c.item).name} ${c.qty}`).join(' · '));
   return craftPanelData(station);
 }
+
+let craftDiffCur = null;   // 🎚️ 이번 가공 판의 난이도 — craftDiff 가 채우고 craftScore·craftSet 이 읽는다
 
 export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
@@ -2123,11 +2127,20 @@ export const Input = {
   getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
   pantryEat(i) { return pantryEat(i); },                // 🍱 찬장에서 꺼내 먹기(버프 발동)
   craftSet(itemId, grade) { return craftSet(itemId, grade); },   // 🔥 화덕에 걸기(다음 날 완성)
+  // 🎚️ 가공 미니게임 난이도 — index.html 이 오버레이를 열 때 부른다. 판정 경계만 흔든다(조작·길이는 고정).
+  //    🌾 맷돌(flour)은 변동계수 기반이라 흔들 상수가 없다 — 팔을 돌리지 않고 기본값을 준다.
+  craftDiff(itemId) {
+    if (itemId === 'flour') { craftDiffCur = null; return { half: 0.12, targetMs: 1200, tol: 400, tolRatio: 0.5 }; }
+    craftDiffCur = rollDifficulty('craft');
+    const e = craftDiffCur.ease;
+    return { half: 0.12 * e, targetMs: 1200, tol: 400 * e, tolRatio: 0.5 * e };
+  },
   // 🔥 미니게임 판정 — 조작은 index.html 이 받고 판정은 순수 모듈이 한다
   craftScore(itemId, input) {
     if (itemId === 'flour') return millScore(input);
     if (itemId === 'charcoal') return fireScore(input.pos, input.target, input.half);
-    if (itemId === 'juice') return crushScore(input);
+    // 🍷 포도는 index.html 이 박자만 모으고 허용 오차를 안 넘긴다 — 여기서 먹인다
+    if (itemId === 'juice') return crushScore(input, 520, 0.5 * (craftDiffCur?.ease ?? 1));
     return knead2Score(input.heldMs, input.targetMs, input.tol);
   },
   craftGrade(score) { return gradeOfScore(score); },
