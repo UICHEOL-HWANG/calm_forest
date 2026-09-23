@@ -32,6 +32,8 @@ import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
 import { easeFor, nextDda, defaultDifficulty, mergeDifficulty } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
+import { IS_ANDROID } from './platform.js';
+import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
 import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } from './house-cost.js';   // 🏠 집 수치(건축·증축)는 전부 거기 한 곳
@@ -12356,6 +12358,7 @@ function minimapMarks(place) {
   return marks;
 }
 
+const perfSampler = IS_ANDROID ? createPerfSampler() : null;   // 📱 플레이 중 60초분 프레임 → perf_sample 1회
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -12454,6 +12457,7 @@ function animate() {
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
   if (houseGhost) { houseGhost.visible = showHouseCue; if (showHouseCue) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); }
   composer.render();
+  if (perfSampler && mode === 'play') { const ps = perfSampler.frame(performance.now()); if (ps) trackEvent('perf_sample', { ...ps, ...perfContext(renderer) }); }
 
   // 📷 액션샷 정점 캡처 — 렌더 직후 캡처해 항상 온전한 프레임을 얻음
   if (photoResolve && photoT >= photoPeakT) {
