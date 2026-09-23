@@ -28,7 +28,8 @@ const NOTES = arg('notes', '');
 if (!['internal', 'alpha', 'beta'].includes(TRACK)) throw new Error(`테스트 트랙만 허용: ${TRACK}`);
 
 const token = execFileSync('gcloud', ['auth', 'print-access-token',
-  `--impersonate-service-account=${SA}`,   // 위임 토큰은 cloud-platform 범위 — Play API 가 받아 준다(--scopes 는 무시됨)
+  `--impersonate-service-account=${SA}`, '--scopes=https://www.googleapis.com/auth/androidpublisher',
+  // ⚠️ gcloud 가 "--scopes 는 무시된다" 고 경고하지만 실제로는 적용된다 — 빼면 403 insufficient scopes
   `--account=${GCLOUD_ACCOUNT}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }).trim();
 const auth = { Authorization: `Bearer ${token}` };
 
