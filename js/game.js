@@ -10648,12 +10648,17 @@ function kitchenStart(id, where = 'kitchen') {
   }
   for (const k in r.cost) gameState.inventory[k] -= r.cost[k];
   refreshInventoryUI();
-  const course = courseOf(r);
+  // 🎚️ 스테이지마다 팔이 갈린다 — 한 판(★3이면 3스테이지)에서 표본이 세 개 나온다.
+  //    courseOf 는 메뉴판(kitchenView)도 부르므로 여기서만 뽑는다. 거기서 뽑으면 메뉴를 열 때마다 순회가 돈다.
+  const base = courseOf(r);
+  cookDiffs = base.map(() => rollDifficulty('cook'));
+  const course = base.map((s, i) => ({ ...s, mult: s.mult * cookDiffs[i].ease }));
   trackEvent('cooking_start', { recipe: id, mg_type: course.map(s => s.mg).join('>'), diff: recipeDiff(r), where });   // [GA4] 미니게임 퍼널: 시작
   return { ok: true, id, where, name: r.name, ico: r.ico, diff: recipeDiff(r), course,
     icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') };   // icos: 조리 장면 연출용 재료 아이콘
 }
 
+let cookDiffs = [];   // 🎚️ 이번 코스의 스테이지별 난이도 — kitchenStart 가 채우고 kitchenFinish 가 로깅한다
 let pendingDish = null;   // 🍽️ 결과 화면에서 "먹기/보관"을 고르기 전의 요리 { id, tier, score }
 
 // 요리 완성 — 코스 결과를 받아 등급 판정 + 기록/트래킹. **버프는 여기서 걸지 않는다**
@@ -10679,6 +10684,7 @@ function kitchenFinish(id, res = {}) {
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
+  settleDifficulty('cook', score / 100);   // 🎚️ 점수 게임 — 0~1 로 정규화. 1주 차엔 ddaOn:false 라 값이 안 움직인다
   trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
     recipe: id, mg_type: r.stages.join('>'), diff: recipeDiff(r), quality: tier.id, score,
     stage_scores: (res.stageScores || []).map(v => Math.round(v)).join(','),   // 단계별 점수(어느 판에서 무너지는지)
@@ -10689,6 +10695,10 @@ function kitchenFinish(id, res = {}) {
     duration_ms: Math.round(res.durationMs || 0),
     step: res.step ?? null,                                  // 포기 시 어느 단계까지 갔는지(퍼널 이탈 지점)
     is_best: isBest ? 1 : 0, total_cooked: st.cooked,        // 유저 진행도(누적 요리 수)
+    // 🎚️ 스테이지마다 팔이 다르므로 배열로 싣는다. 탭별 offsets 와 맞물려 탭 단위 분석이 된다.
+    arms:  cookDiffs.map(d => d.arm).join(','),
+    eases: cookDiffs.map(d => Math.round(d.ease * 100) / 100).join(','),
+    dda:   Math.round((cookDiffs[0]?.dda ?? 1) * 100) / 100,
   });
   pendingDish = { id, tier: tier.id, score };
   return {
