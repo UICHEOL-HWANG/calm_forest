@@ -1,5 +1,5 @@
 // =============================================================
-//  calm forest · 플랫폼 어댑터 — 'web'(기본) | 'toss'(앱인토스 웹뷰) | 'itch'(itch.io iframe)
+//  calm forest · 플랫폼 어댑터 — 'web'(기본) | 'toss'(앱인토스 웹뷰) | 'itch'(itch.io iframe) | 'android'(구글 플레이 앱)
 //  ------------------------------------------------------------
 //  단일 코드베이스 전략: 기능 코드는 플랫폼을 모른 채 개발하고,
 //  로그인·트래킹·정책 분기만 이 모듈의 값 하나로 갈라집니다.
@@ -8,7 +8,8 @@
 //   ① URL ?platform=toss — 앱인토스 배포 진입점이 명시(테스트에도 사용)
 //   ② 앱인토스 SDK 전역 — @apps-in-toss/web-framework 통합 후 자동 감지
 //   ③ itch.io — scripts/build-itch.mjs 가 주입한 window.__ITCH__ 플래그, 또는 *.itch.zone 호스트
-//   ④ 기본 'web'
+//   ④ 구글 플레이 앱 — scripts/build-cap.mjs 가 주입한 window.__ANDROID__ 플래그(Capacitor WebView)
+//   ⑤ 기본 'web'
 //
 //  ▶ itch 메모: itch 는 게임을 html-classic.itch.zone 오리진의 iframe 안에서 서빙한다.
 //    · '/api/*' 상대경로는 전부 404 → 빌드가 API_BASE 를 웹 오리진으로 치환(토스와 동일)
@@ -31,11 +32,12 @@ function detect() {
     // SDK 통합 후 웹뷰 전역이 있으면 자동 인식(전역 이름은 SDK 도입 시점에 확정)
     if (window.AppsInToss || window.__APPS_IN_TOSS__) return 'toss';
     if (window.__ITCH__ || /(^|\.)itch\.zone$/.test(location.hostname)) return 'itch';
+    if (window.__ANDROID__) return 'android';
   } catch (e) { /* 접근 불가 환경 무시 */ }
   return 'web';
 }
 
-export const PLATFORM = detect();          // 'web' | 'toss' | 'itch'
+export const PLATFORM = detect();          // 'web' | 'toss' | 'itch' | 'android'
 export const IS_TOSS = PLATFORM === 'toss';
 export const IS_ITCH = PLATFORM === 'itch';
 console.log('[platform]', PLATFORM);

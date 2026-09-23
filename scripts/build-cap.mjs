@@ -4,7 +4,7 @@
 //  ------------------------------------------------------------
 //  Capacitor 는 이 폴더를 APK 안에 넣고 https://localhost 오리진의 WebView 로 띄운다.
 //  itch 번들(build-itch.mjs)과 같은 문제가 생기고, 여기에 "오프라인에서도 떠야 한다"가 더해진다:
-//   ① index.html 에 window.__PLAY_APP__ 플래그 주입(모든 모듈보다 먼저)
+//   ① index.html 에 window.__ANDROID__ 플래그 주입(모든 모듈보다 먼저)
 //   ② importmap 을 unpkg → ./vendor/ 로, supabase-js 동적 import 를 esm.sh → vendor 로 치환
 //      (웹·토스·itch 는 CDN 그대로 — 라이브 3곳은 건드리지 않는다)
 //   ③ js/config.js 의 API_BASE 를 웹 오리진 절대 URL 로 치환('/api/*' 상대경로는 localhost 로 간다)
@@ -36,7 +36,7 @@ mkdirSync(OUT, { recursive: true });
 
 // ── index.html ──
 let html = readFileSync('index.html', 'utf8');
-html = replaceOnce(html, '<head>', '<head>\n  <script>window.__PLAY_APP__ = true;</script>', 'index.html');   // ①
+html = replaceOnce(html, '<head>', '<head>\n  <script>window.__ANDROID__ = true;</script>', 'index.html');   // ①
 html = replaceOnce(html, IMPORTMAP_THREE, '"three": "./vendor/three/three.module.js"', 'index.html');     // ②
 html = replaceOnce(html, IMPORTMAP_ADDONS, '"three/addons/": "./vendor/three/addons/"', 'index.html');
 html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n/gm, '');                                              // ④ 설명 주석

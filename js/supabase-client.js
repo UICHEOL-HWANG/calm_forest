@@ -10,7 +10,7 @@
 // =============================================================
 
 import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 🧪 dev 세션 — 리더보드 원천 기록 차단용
-import { PLATFORM, IS_ITCH, IS_TOSS } from './platform.js'; // 'web' | 'toss' | 'itch' — 로그 세그먼트 · itch 는 구글 팝업 로그인 · toss 는 게스트 이관
+import { PLATFORM, IS_ITCH, IS_TOSS } from './platform.js'; // 'web' | 'toss' | 'itch' | 'android' — 로그 세그먼트 · itch 는 구글 팝업 로그인 · toss 는 게스트 이관
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
 import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지 · 🔌 노는 중 세션 죽음 판정
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
