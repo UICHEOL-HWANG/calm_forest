@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "305000814570",
+    "project_id": "calmforest-app",
+    "storage_bucket": "calmforest-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:305000814570:android:ca4f7b717a341a16e48493",
+        "android_client_info": {
+          "package_name": "com.cheorish.lab.calmforest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCecf5Eu6UhLvZYadax5xk5QaamWpJiSzI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
