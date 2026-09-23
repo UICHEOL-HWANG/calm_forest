@@ -40,6 +40,7 @@ function detect() {
 export const PLATFORM = detect();          // 'web' | 'toss' | 'itch' | 'android'
 export const IS_TOSS = PLATFORM === 'toss';
 export const IS_ITCH = PLATFORM === 'itch';
+export const IS_ANDROID = PLATFORM === 'android';   // 구글 플레이 앱 — 구글 로그인은 네이티브(google-native.js)
 console.log('[platform]', PLATFORM);
 
 // ── 앱인토스 웹뷰 SDK 지연 로더 — esm.sh CDN(ESM·CORS 허용, 무번들 검증 완료) ──
