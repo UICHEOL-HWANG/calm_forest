@@ -9,11 +9,11 @@
 export const STATIONS = [
   { id: 'kiln', ico: '🔥', name: '화덕',
     ask: '무엇을 구울까요', claim: '다 구워진 것 모두 받기',
-    hint: '걸어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요<br>서두르지 않아도 돼요 — 언제 와도 그대로예요',
+    hint: '걸어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요',
     notice: '화덕에서 다 구워졌어요', go: '화덕에 가서 받아 가세요' },
   { id: 'vat',  ico: '🫙', name: '발효통',
     ask: '무엇을 익힐까요', claim: '다 익은 것 모두 받기',
-    hint: '걸어둔 것은 <b>다음 날</b> 찾아가면 다 익어 있어요<br>서두르지 않아도 돼요 — 언제 와도 그대로예요',
+    hint: '걸어둔 것은 <b>다음 날</b> 찾아가면 숙성이 완료되어 있을겁니다',
     notice: '발효통에서 다 익었어요', go: '텃밭 발효통에 가서 받아 가세요' },
 ];
 export function stationDef(id) { return STATIONS.find(s => s.id === id) || STATIONS[0]; }

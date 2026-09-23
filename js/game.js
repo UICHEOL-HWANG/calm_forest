@@ -1063,7 +1063,7 @@ const QUEST_TYPES = new Set([
 const DAILY_POOL = [
   { type: 'chop',    target: 5, title: '오늘의 벌목',  desc: '나무 5번 베기' },
   { type: 'harvest', target: 3, title: '오늘의 수확',  desc: '작물 3개 수확하기' },
-  { type: 'water',   target: 5, title: '촉촉한 하루',  desc: '물 5번 주기' },
+  { type: 'water',   target: 5, title: '오늘의 물주기',  desc: '물 5번 주기' },
   { type: 'plant',   target: 3, title: '씨앗 심는 날', desc: '씨앗 3번 심기' },
   { type: 'fish',    target: 3, title: '오늘의 조황',  desc: '물고기 3마리 낚기' },
   { type: 'mine',    target: 4, title: '광산 의뢰',    desc: '광석 4개 캐기' },
@@ -1075,7 +1075,7 @@ const DAILY_POOL = [
   //   js/quests.js 의 QUEST_GATES 가 거른다 — 닭장을 안 지었으면 🥚는 아예 안 뽑힌다.
   //   target 은 QUEST_LIMITS 를 넘지 않는다(하루 1회 제한 콘텐츠는 그날 못 깨는 의뢰가 된다).
   { type: 'carve',   target: 1, title: '오늘의 주문',  desc: '🗿 조각 1개 완성하기' },
-  { type: 'gift',    target: 1, title: '마음 전하기',  desc: '🎁 주민에게 선물 1번 주기' },
+  { type: 'gift',    target: 1, title: '이웃에게 선물',  desc: '🎁 주민에게 선물 1번 주기' },
   { type: 'decor',   target: 2, title: '마당 가꾸기',  desc: '🪵 야외 장식 2개 놓기' },
   { type: 'egg',     target: 1, title: '아침 달걀',    desc: '🥚 달걀 걷기' },
   { type: 'boat',    target: 1, title: '뱃길 따라',    desc: '🛶 강 한 번 완주하기' },
@@ -1513,25 +1513,25 @@ const STORY = [
   {
     id: 'home', ico: '🏠', title: '나의 첫 집', goal: '내 집 짓기',
     start: '떠돌이 생활은 오늘로 끝. 마을 한켠의 빈터에 내 집을 지어보자. 나무를 베면 목재를 얻을 수 있어요.',
-    done: '지붕 아래에서 맞는 첫 밤. 이제 이 숲이 진짜 집이 되었어요.',
+    done: '지붕이 올라갔어요. 오늘부터 여기서 잠들 수 있어요.',
     reward: { coins: 40 },
   },
   {
     id: 'friends', ico: '💬', title: '숲의 이웃들', goal: '주민 의뢰 3번',
     start: '이 숲엔 먼저 자리 잡은 이웃들이 있어요. ❕ 말풍선이 뜬 주민을 도와주며 얼굴을 익혀보자.',
-    done: '이제 길에서 마주치면 반갑게 인사를 건네는 사이가 되었어요.',
+    done: '이웃 셋의 부탁을 들어줬어요. 이제 서로 얼굴을 알아요.',
     reward: { seed: 5, coins: 30 },
   },
   {
-    id: 'taste', ico: '🍳', title: '따뜻한 한 끼', goal: '요리하고 서빙하기',
-    start: '숲에서 거둔 재료로 요리를 해보자. 정성껏 만든 음식은 나눌 때 더 맛있는 법이에요.',
-    done: '내가 만든 요리가 누군가의 하루를 데웠어요. 마을에 맛있는 소문이 돌기 시작해요.',
+    id: 'taste', ico: '🍳', title: '첫 요리', goal: '요리하고 서빙하기',
+    start: '숲에서 거둔 재료로 요리를 해보자. 주방에서 만들어 카페 손님에게 내면 돼요.',
+    done: '첫 요리를 손님상에 냈어요. 카페에 소문이 돌기 시작해요.',
     reward: { coins: 50 },
   },
   {
     id: 'secret', ico: '🌿', title: '잎사귀의 주인', goal: '안개 걷어내기',
     start: '북서쪽 숲엔 걷히지 않는 안개가 있대요. 문득, 그날 바람에 실려 온 잎사귀가 떠올라요.',
-    done: '수호목이 나직이 속삭였어요. "그 잎사귀, 내가 보낸 거란다. 먼 길 오느라 고생했어." 당신의 이야기는 이제 이 숲과 함께 흘러갑니다.',
+    done: '안개가 걷히고 수호목이 말했어요. "그 잎사귀, 내가 보낸 거란다. 먼 길 오느라 고생했어."',
     reward: { coins: 80 },
   },
 ];
@@ -4752,7 +4752,7 @@ function coopInteract() {
     gameState.inventory.seed -= COOP_FEED; refreshInventoryUI();
     c.fed = today;
     Sound.blip(); spawnFloatText(COOP.x, 1.6, COOP.z, '🐔 냠냠!', '#c9682a');
-    ui.toast?.('🌰 모이를 줬어요! 내일 🥚 달걀을 낳을 거예요. 내일 또 만나요', 3000);
+    ui.toast?.('🌰 모이를 줬어요! 내일 🥚 달걀을 낳을 거예요', 3000);
     trackEvent('coop_feed');                                                      // [GA4] 데일리 루프 KPI
     return;
   }
@@ -7461,7 +7461,7 @@ function mistEnd(result) {
     if (!st.practiced) setTimeout(() => {
       if (!atMist || mist.active || ui.anyModalOpen?.()) return;
       trackEvent('mist_practice_offer');   // [GA4]
-      ui.showHintModal?.({ ico: '🌫️', title: '조금 어려웠나요?', body: '정령 1마리로 천천히 연습해 볼 수 있어요. 켜둔 등불은 그대로 남아요.',
+      ui.showHintModal?.({ ico: '🌫️', title: '연습 모드가 있어요', body: '정령 1마리로 연습할 수 있어요. 켜둔 등불은 그대로 남아요.',
         ok: { label: '🎓 연습해 보기', onClick: startPractice }, alt: { label: '다음에요' } });
     }, 1200);
   }
@@ -10391,7 +10391,7 @@ function makeIntroLeaf() {
 const INTRO_CAPTIONS = [
   { at: 0.6, until: 5.2, text: '매일이 시끄럽고, 매일이 똑같았다.' },
   { at: 6.0, until: 10.2, text: '그날, 바람이 잎사귀 하나를 데려왔다.' },
-  { at: 12.6, until: 15.2, text: '…여기라면, 조금 쉬어가도 되지 않을까.' },
+  { at: 12.6, until: 15.2, text: '…여기서 한번 살아볼까.' },
   { at: 15.9, until: 18.3, text: '그런데 이 잎사귀… 누가 보낸 걸까?' },
 ];
 
