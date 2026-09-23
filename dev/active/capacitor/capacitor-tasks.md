@@ -1,6 +1,10 @@
 # 체크리스트 — TWA → Capacitor 전환
 
-**상태**: 계획 수립 완료 · 구현 미착수 (사용자가 "계획만 먼저" 선택, 2026-09-16)
+**상태**: 2단계 진행 중 — 브랜치 `feat/capacitor-app`(워크트리 `../calm_forest-capacitor`), 디버그 APK 빌드 성공 · 실기기 대기 (2026-09-23)
+
+> ⚠️ 구 브랜치 `feat/capacitor` 는 다른 세션 커밋(박물관·집 다층화)이 섞여 폐기. vendor 커밋 2개만 cherry-pick 했다.
+> ⚠️ `android/` 는 Capacitor 로 **교체**(사용자 결정 2026-09-23, `android-cap/` 안 씀). TWA 복구: `git checkout main -- android`
+> ⚠️ DB 에 `platform in ('web','toss','itch')` CHECK 제약(sql/migrations/migrate_struct_04_checks.sql·retention_guidance_scores) — 앱 전용 platform 값을 넣으려면 마이그레이션 먼저. 지금은 앱도 'web' 으로 기록된다.
 
 ## 0. 착수 전
 - [ ] 업체에 구체적 구성 확인 (Capacitor 버전 · OAuth 처리 방식 · 제출 전 점검 항목)
@@ -9,12 +13,12 @@
 ## 1. CDN 자체 호스팅 ⭐ 선행 (실현성 실증 완료 2026-09-16)
 - [x] `three/addons/` 실제 import 전수 조사 — postprocessing 5개 + 의존 5개 = 10개 파일
 - [x] supabase-js 자체 호스팅 방법 확정 — esm.sh 는 531B 스텁이라 불가, **esbuild 번들 217KB** 로 해결(로드·signInWithIdToken 검증)
-- [ ] `vendor/three/` 에 three.module.js(1.2MB) + addons 10개 배치 (디렉터리 구조 유지)
-- [ ] `npm i -D esbuild` + `build:vendor` 스크립트, `vendor/supabase.js` 산출물 커밋
-- [ ] `index.html` importmap 을 상대경로로 (⚠️ build-ait 치환 앵커 확인)
-- [ ] `js/supabase-client.js:101` 동적 import 경로 교체
-- [ ] `scripts/build-web.mjs` INCLUDE 에 `vendor` 추가
-- [ ] 검증: 웹·토스·itch 3종 빌드 + 테스트 615건 + 네트워크 탭에 외부 CDN 요청 0건
+- [x] `vendor/three/` 에 three.module.js(1.2MB) + addons 10개 배치 (디렉터리 구조 유지)
+- [x] `npm i -D esbuild` + `build:vendor` 스크립트, `vendor/supabase.js` 산출물 커밋
+- [x] `index.html` importmap 을 상대경로로 (⚠️ build-ait 치환 앵커 확인)
+- [x] `js/supabase-client.js:101` 동적 import 경로 교체
+- [x] `scripts/build-web.mjs` INCLUDE 에 `vendor` 추가
+- [x] 검증(앱 번들 한정): dist-cap 로컬 서빙 → three·supabase 가 vendor 12파일에서 로드, 외부는 GA 만, 콘솔 에러 0 · 웹·토스·itch 3종 빌드 + 테스트 615건 + 네트워크 탭에 외부 CDN 요청 0건
 
 ## 2. Capacitor 최소 프로토타입 ★ 성능 판단 게이트
 - [ ] OAuth·빌드 정리 없이 그냥 감싸서 실기기 설치
@@ -28,14 +32,14 @@
       · 대상 5키: `DEX_NOTE_KEY`(도감 메모·사용자 작성) `cf_client_id`(분석 연속성) `cf_lang` `cf_music` `PAGE_HINT_KEY`
       · 웹은 localStorage 폴백이라 웹·토스·itch 동작 불변
       · 기존 값 1회 마이그레이션 필요(앱 첫 실행 시 localStorage 에 있으면 옮기고 지운다)
-- [ ] minSdk 21 → 23 확인 (Android 5 탈락 — 실질 영향 없음)
-- [ ] Capacitor **8.x** 고정 (targetSdk 36, 우리 TWA 와 일치)
-- [ ] `@capacitor/cli` · `core` · `android` 설치
-- [ ] `capacitor.config.json` — appId `com.cheorish.lab.calmforest`, webDir `dist`
-- [ ] `npx cap add android` → `android-cap/` (기존 `android/` 는 남긴다)
+- [x] minSdk 21 → 23 확인 (Android 5 탈락 — 실질 영향 없음)
+- [x] Capacitor **8.x** 고정 (targetSdk 36, 우리 TWA 와 일치)
+- [x] `@capacitor/cli` · `core` · `android` 설치
+- [x] `capacitor.config.json` — appId `com.cheorish.lab.calmforest`, webDir `dist`
+- [x] `npx cap add android` → `android/` 교체 · versionCode 2 · TWA 아이콘·스플래시 이식
 - [ ] 기존 업로드 키로 서명 설정
 - [ ] 앱 번들 화이트리스트 결정 — `dashboards/`·`beta/` 제외 여부, 안내서는 웹 오리진 유지
-- [ ] `.gitignore` 정리 (`android-cap/` 산출물)
+- [x] `.gitignore` 정리 (`android-cap/` 산출물)
 
 ## 4. 구글 OAuth — 네이티브 로그인
 - [ ] `@capgo/capacitor-social-login` 설치 (대안: `@codetrix-studio/capacitor-google-auth`)
