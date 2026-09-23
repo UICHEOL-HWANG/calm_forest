@@ -1,6 +1,6 @@
 # 컨텍스트 — TWA → Capacitor 전환
 
-**Last Updated**: 2026-09-16
+**Last Updated**: 2026-09-23
 
 ## 핵심 파일
 
