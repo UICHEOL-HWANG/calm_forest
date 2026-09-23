@@ -2,6 +2,10 @@
   "appId": "com.cheorish.lab.calmforest",
   "appName": "calm forest",
   "webDir": "dist-cap",
+  "server": {
+    "hostname": "app.calmforest.cloud",
+    "androidScheme": "https"
+  },
   "android": {
     "backgroundColor": "#1b2a1f"
   }
