@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame } from '../js/museum.js';
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY } from '../js/museum.js';
 import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
@@ -383,6 +383,23 @@ const tanHalf = (fov) => Math.tan(fov * Math.PI / 360);
 const screenFrac = (f, halfH) => (halfH / (f.dist * tanHalf(FOV)));
 // 전시물 중심이 화면 위에서 몇 할 지점에 놓이는가(0=맨 위, 1=맨 아래)
 const screenCenter = (f) => 0.5 + (f.dy / f.dist) / tanHalf(FOV) / 2;
+
+// ── 🔍 전시물 시각 중심 높이 — 받침(그룹) 기준 상대값이어야 한다 ─────────
+//   2026-09-24 제보: 확대하면 전시물이 사라지고 벽만 보였다(웹·모바일 모두).
+//   Box3.setFromObject 는 **월드** 좌표를 돌려주는데 카메라는 그 값을 그룹 높이(1.75)에 또 더했다.
+//   열자마자 한 번은 월드 행렬이 갱신 전이라 우연히 맞았고, 220ms 뒤 재측정에서 1.7 위를 보게 됐다.
+test('exhibitCenterY: 월드 중심에서 받침 높이를 빼 상대값을 돌려준다', () => {
+  assert.equal(exhibitCenterY(1.85, 1.75).toFixed(2), '0.10');
+  assert.equal(exhibitCenterY(0.1, 0), 0.1);
+});
+
+test('museumViewFrame 은 월드 행렬을 갱신하고 받침 높이를 뺀다(첫 측정·재측정이 같게)', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const fn = src.slice(src.indexOf('function museumViewFrame('), src.indexOf('function openMuseumView('));
+  assert.match(fn, /updateWorldMatrix\(true, true\)/, '재기 전에 월드 행렬을 갱신해야 첫 측정과 재측정이 같다');
+  assert.match(fn, /f\.cy = exhibitCenterY\(/, 'cy 는 받침 기준 상대값이어야 한다');
+  assert.doesNotMatch(fn, /f\.cy = _mvCenter\.y;/, '월드 중심을 그대로 쓰면 그룹 높이가 두 번 더해진다');
+});
 
 test('viewFrame: 전시물이 빈 영역의 한복판에 온다', () => {
   const f = viewFrame({ ...PHONE, halfH: 0.3, halfW: 0.3 });
