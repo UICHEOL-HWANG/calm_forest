@@ -12,7 +12,8 @@
     "build:itch": "node scripts/build-itch.mjs",
     "build:vendor": "node scripts/fetch-vendor.mjs",
     "test": "node --test tests/*.test.mjs",
-    "build:cap": "node scripts/build-cap.mjs && npx cap sync android"
+    "build:cap": "node scripts/build-cap.mjs && npx cap sync android",
+    "upload:play": "node scripts/play-upload.mjs"
   },
   "repository": {
     "type": "git",
