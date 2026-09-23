@@ -7,3 +7,6 @@ _dbg*.mjs
 
 # 뉴스 후보(매번 재수집 가능) — 기록으로 남길 이유가 없다
 decks/_inbox/
+
+# 카드뉴스 HTML 조판 산출물 — 소스(decks·templates·render)에서 매번 다시 만든다
+build/
