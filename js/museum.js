@@ -107,6 +107,17 @@ export function pickMissingDex(dex = {}, DEX = {}, seed = 0, ctx = {}) {
 }
 
 /**
+ * 전시물의 **시각 중심 높이**를 받침(그룹) 기준 상대값으로.
+ * Box3.setFromObject 는 월드 좌표를 주므로 그룹의 월드 높이를 빼야 한다 — 그대로 쓰면 카메라가
+ * 그룹 높이를 두 번 더해 전시물 위 허공(벽)을 본다(2026-09-24 제보).
+ * @param {number} worldCenterY  메시 바운딩 상자 중심의 월드 Y
+ * @param {number} originY       받침(그룹)의 월드 Y
+ */
+export function exhibitCenterY(worldCenterY, originY) {
+  return worldCenterY - originY;
+}
+
+/**
  * 🔍 확대 관람 프레이밍 — 전시물 크기와 **UI 가 덮지 않는 빈 영역**에서 카메라 거리·시선 높이를 낸다.
  * 순수 함수(픽셀·각도·월드 길이만 받는다). DOM 측정과 THREE 는 game.js 몫.
  *
