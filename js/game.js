@@ -40,7 +40,7 @@ import { createVisitors } from './farm-visitors.js';                            
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame, exhibitCenterY } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -2796,7 +2796,7 @@ export async function enterGame() {
       mist: [enterMist, exitMist], sea: [enterSea, exitSea], house: [enterHouse, exitHouse], mine: [enterMine, exitMine],
       museum: [enterMuseum, exitMuseum] };
     // 🏛️ 전시 관람 검수용 — 진열장 앞까지 걸어가지 않고 바로 확대 화면을 띄운다(프레이밍 비교)
-    window.__museumView = { open: openMuseumView, close: closeMuseumView, state: () => museumView && { r: +museumView.radius.toFixed(3), ...museumView.frame, pos: museumView.group.position.toArray().map(v => +v.toFixed(2)), cam: camera.position.toArray().map(v => +v.toFixed(2)) }, items: () => museumFloorItems().map((it, i) => ({ i, ico: it.ico, name: it.name, cat: it.cat, id: it.id, has: !!gameState.dex[it.cat]?.[it.id] })) };
+    window.__museumView = { open: openMuseumView, close: closeMuseumView, state: () => museumView && { ...museumView.frame, visible: museumView.group.visible, meshChildren: museumView.mesh.children.length, look: _camLook.toArray().map(v => +v.toFixed(2)), pos: museumView.group.position.toArray().map(v => +v.toFixed(2)), cam: camera.position.toArray().map(v => +v.toFixed(2)) }, items: () => museumFloorItems().map((it, i) => ({ i, ico: it.ico, name: it.name, cat: it.cat, id: it.id, has: !!gameState.dex[it.cat]?.[it.id] })) };
     window.__museumLight = MUSEUM_LIGHT;              // 🏛️ 전시실 조명 검수(값을 바꿔 보며 비교)
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
@@ -5359,7 +5359,7 @@ const MUSEUM_LIGHT = { hemi: 0.7, amb: 0.55, sun: 0.95, tint: 0xfff2e2, sunTint:
 //   ⚠️ 거리 2.0 · 시선 -0.55 로 고정돼 있었는데, 폰 세로(특히 🔵 앱인토스: 위에 네이티브 ···✕
 //      여백 52px 이 더 붙는다)에서는 그 자리가 상단 HUD 뒤였다 — 포도처럼 큰 전시물은 머리가
 //      화면 밖으로 잘렸다(제보 2026-09-21).
-const _mvBox = new THREE.Box3(), _mvSize = new THREE.Vector3(), _mvCenter = new THREE.Vector3();
+const _mvBox = new THREE.Box3(), _mvSize = new THREE.Vector3(), _mvCenter = new THREE.Vector3(), _mvOrigin = new THREE.Vector3();
 function museumViewFrame(mesh) {
   const H = renderer.domElement.clientHeight || window.innerHeight || 1;
   const bottomOf = (id, def) => { const el = document.getElementById(id); const r = el && el.getBoundingClientRect(); return r && r.height ? r.bottom : def; };
@@ -5377,10 +5377,13 @@ function museumViewFrame(mesh) {
   const bot = H - Math.min(promptTop('zone-prompt', H * 0.74), promptTop('door-prompt', H * 0.78)) + 10;
   // 크기는 상자의 반치수로 — 바운딩 구(대각선의 절반)를 쓰면 네모난 전시물이 √3 배로 부풀어
   // 맞춘다고 한 것보다 한참 작게 그려진다. Y 축으로 도니 가로는 x·z 중 긴 쪽.
+  //   ⚠️ 연 직후엔 월드 행렬이 갱신 전이라 로컬처럼, 220ms 뒤 재측정 땐 월드로 재져 값이 갈렸다 →
+  //      먼저 갱신하고 받침(그룹) 높이를 빼 늘 상대값으로 쓴다(exhibitCenterY).
+  mesh.updateWorldMatrix(true, true);
   _mvBox.setFromObject(mesh); _mvBox.getSize(_mvSize); _mvBox.getCenter(_mvCenter);
   const f = viewFrame({ h: H, top, bot, fov: camera.fov, aspect: camera.aspect,
     halfH: _mvSize.y / 2, halfW: Math.max(_mvSize.x, _mvSize.z) / 2, fill: MUSEUM_VIEW_FILL });
-  f.cy = _mvCenter.y;   // 원점이 시각 중심이 아닌 메시(잎이 위로 솟은 작물 등) 보정
+  f.cy = exhibitCenterY(_mvCenter.y, mesh.parent ? mesh.parent.getWorldPosition(_mvOrigin).y : 0);   // 원점이 시각 중심이 아닌 메시(잎이 위로 솟은 작물 등) 보정
   return f;
 }
 
