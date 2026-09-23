@@ -640,7 +640,6 @@ ROOT_ASSET_ALIASES = {
     '/icon-192.png': 'assets/pwa/icon-192.png',
     '/icon-512.png': 'assets/pwa/icon-512.png',
     '/icon-maskable-512.png': 'assets/pwa/icon-maskable-512.png',
-    '/.well-known/assetlinks.json': 'assets/pwa/assetlinks.json',
     # ⚖️ 정책 페이지 — 운영은 Workers 정적 자산이 확장자 없는 경로를 .html 로 알아서 넘겨주지만
     #    로컬 http.server 는 그대로 404 라, ☰ 메뉴의 두 링크를 여기서도 열리게 해 둔다.
     '/privacy': 'privacy.html',
