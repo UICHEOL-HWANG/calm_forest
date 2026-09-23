@@ -11,8 +11,10 @@ ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.method === 'Runtime.
 const send = (method, params = {}) => new Promise(res => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params })); });
 const ev = async (expr) => (await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value;
 await send('Page.enable'); await send('Runtime.enable');
+//  ⚠️ 모듈이 디스크 캐시에서 나오면 **고친 코드를 안 찍는다**(망토 트임 수정이 캡처에 안 나타났다)
+await send('Network.enable'); await send('Network.setCacheDisabled', { cacheDisabled: true });
 await send('Emulation.setDeviceMetricsOverride', { width: +W, height: +H, deviceScaleFactor: 1, mobile: false });
-await send('Page.reload');
+await send('Page.reload', { ignoreCache: true });
 for (let i = 0; i < 30; i++) { if (await ev('!!window.__ready')) break; await sleep(500); }
 await sleep(1200);
 const shot = await send('Page.captureScreenshot', { format: 'png' });

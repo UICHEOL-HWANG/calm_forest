@@ -132,7 +132,7 @@ function dressed(a, key) {
   const g = new THREE.Group();
   g.add(buildAnimal(a));
   const R = a.bodyR, bs = a.bodyScale, bodyY = R*bs[1] + 0.02;
-  const k = { R, HR: a.headR, HY: a.headY, bs, bodyY };
+  const k = { R, HR: a.headR, HY: a.headY, bs, bodyY, tail: a.tail };
   const holder = new THREE.Group();
   const bk = backAnchor(bs, R, bodyY);
   holder.position.set(bk.x, bk.y, bk.z);

@@ -50,8 +50,14 @@ const smoothK = (a, b, t) => { const x = Math.min(1, Math.max(0, (t - a) / (b - 
  *  (정점색이라 mergeStatics 가 건너뛴다 — 합칠 상대도 없다).
  *  시안·수치 근거: sims/cape-concepts/
  */
-export function clothShell(THREE, fn, { segU = 44, segV = 16, thick = 0.02, out, inn }) {
+export function clothShell(THREE, fn, { segU = 44, segV = 16, thick = 0.02, out, inn, split = -1 }) {
+  //  split — **천을 두 폭으로 가르는 열 번호**. 그 열과 앞 열 사이를 잇지 않고, 양쪽에 단면을 낸다.
+  //  ⚠️ 이게 없으면 fn 이 그 자리에서 각도를 건너뛰어도 면 루프가 **한 장으로 메워 버린다** —
+  //     🦸 망토의 뒤트임이 트임이 아니라 등을 가로지르는 넓은 판이 됐다(x=0 관통 삼각형 56개로 실측).
   const nu = segU + 1, nv = segV + 1;
+  const gap = i => split > 0 && i === split - 1;          // i ↔ i+1 을 잇지 않는다
+  const nx = i => (split > 0 && i < split) ? Math.min(i + 1, split - 1) : Math.min(i + 1, segU);
+  const pv = i => (split > 0 && i >= split) ? Math.max(i - 1, split) : Math.max(i - 1, 0);
   const P = [];
   for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
     const p = fn(i / segU, j / segV);
@@ -60,7 +66,8 @@ export function clothShell(THREE, fn, { segU = 44, segV = 16, thick = 0.02, out,
   const at = (i, j) => P[j * nu + i];
   const N = [];                                   // 법선 — 이웃 차분의 외적
   for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
-    const du = at(Math.min(i + 1, segU), j).clone().sub(at(Math.max(i - 1, 0), j));
+    //  ⚠️ 이웃 차분이 **트임을 가로지르면** 그 두 열의 두께 방향이 틀어진다 — 폭 안에서만 본다
+    const du = at(nx(i), j).clone().sub(at(pv(i), j));
     const dv = at(i, Math.min(j + 1, segV)).clone().sub(at(i, Math.max(j - 1, 0)));
     N.push(du.cross(dv).normalize());
   }
@@ -72,6 +79,7 @@ export function clothShell(THREE, fn, { segU = 44, segV = 16, thick = 0.02, out,
   for (let i = 0; i < P.length; i++) push(P[i].clone().addScaledVector(N[i], -h), cIn);   // 안면
   const base = nu * nv;
   for (let j = 0; j < segV; j++) for (let i = 0; i < segU; i++) {
+    if (gap(i)) continue;                                                                 // 트임 — 잇지 않는다
     const a = j * nu + i, b = a + 1, c = a + nu, d = c + 1;
     idx.push(a, c, b, b, c, d);
     idx.push(base + a, base + b, base + c, base + b, base + d, base + c);                 // 감김 반대
@@ -84,8 +92,17 @@ export function clothShell(THREE, fn, { segU = 44, segV = 16, thick = 0.02, out,
       idx.push(A, base + A, B, B, base + A, base + B);
     }
   };
-  rim(0, segV, segU, segV, segU); rim(0, 0, 0, segV, segV);
-  rim(segU, segV, segU, 0, segV); rim(segU, 0, 0, 0, segU);
+  //  ⚠️ 위·아래 테두리도 **트임에서 끊어야** 한다. 한 번에 훑으면 자락·윗단이 트임을 가로질러
+  //     다시 판이 된다(트임을 뚫고도 x=0 관통 삼각형이 4개 남아 있던 원인).
+  if (split > 0) {
+    rim(0, segV, split - 1, segV, split - 1); rim(split, segV, segU, segV, segU - split);   // 아랫자락 두 폭
+    rim(split - 1, 0, 0, 0, split - 1); rim(segU, 0, split, 0, segU - split);                // 윗단 두 폭
+    //  트임 양쪽 단면 — 왼폭의 끝(split-1)은 segU 와 같은 감김, 오른폭의 시작(split)은 0 과 같은 감김
+    rim(split - 1, segV, split - 1, 0, segV); rim(split, 0, split, segV, segV);
+  } else {
+    rim(0, segV, segU, segV, segU); rim(segU, 0, 0, 0, segU);
+  }
+  rim(0, 0, 0, segV, segV); rim(segU, segV, segU, 0, segV);                                  // 좌우 앞단
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -493,7 +510,14 @@ function makeTables(THREE) {
       //  ⚠️ 두르는 각은 **팔 앞에서 끊는다**. 1.50π 로 두르면 팔이 천에 먹히고, 도구를 휘두를 때
       //     팔이 망토를 뚫고 나온다(sims/cape-concepts 에 팔을 넣고 실측했다).
       //     팔 어깨는 game.js mkArm 기준 등에서 ±102~104° — 1.06π(±95°) 면 팔 뒤에서 끝난다.
-      const ARC = Math.PI * 1.06, VENT = 0.50;
+      const ARC = Math.PI * 1.06;
+      //  ⚠️ 뒤트임 폭은 **꼬리 종류가 정한다.** 한 값으로 고정했다가 두 번 틀렸다:
+      //     0.50 고정 → 곰·판다에서 등이 통째로 열려 망토가 커튼 두 장이 됐다.
+      //     0 고정   → 🦊여우 꼬리가 천 한가운데를 뚫고 나왔다.
+      //     큰 꼬리(bushy·long)만 지나갈 만큼 열고, 나머지는 장식 트임만 남긴다.
+      const BIG_TAIL = k.tail === 'bushy' || k.tail === 'long';
+      const VENT = BIG_TAIL ? 0.26 : 0.06;
+      const VENT_TOP = BIG_TAIL ? 0.45 : 0.30;   // 깃 밑에서의 폭 비율(자락으로 갈수록 1 에 수렴)
 
       const anchorY = k.bodyY + R * 0.30;                 // anchors.backAnchor 와 같은 값
       const yTop = (k.HY - k.HR * 0.58) - anchorY;        // 깃은 목에서 — 목줄이 이미 쓰는 높이
@@ -508,7 +532,7 @@ function makeTables(THREE) {
 
       const surf = (u, v) => {
         // 뒤트임 — 깃 밑은 거의 붙이고, 꼬리가 지나는 아래에서 크게 벌린다
-        const vent = VENT * (0.16 + 0.84 * smoothK(0.04, 0.42, v));
+        const vent = VENT * (VENT_TOP + (1 - VENT_TOP) * smoothK(0.04, 0.42, v));
         const s = u < 0.5 ? -1 : 1;                            // 왼폭 / 오른폭
         const t = u < 0.5 ? (0.5 - u) * 2 : (u - 0.5) * 2;     // 0(트임) → 1(앞단)
         const th = s * (vent + (ARC / 2 - vent) * t);
@@ -520,7 +544,8 @@ function makeTables(THREE) {
         return { x: Math.sin(th) * r, y, z: zc - Math.cos(th) * r - 0.10 * R * v * v };
       };
       const cloth = put(g, new THREE.Mesh(
-        clothShell(THREE, surf, { segU: 40, segV: 13, thick: R * 0.035, out: P.cape, inn: P.capeIn }),
+        //  ⚠️ segU 는 **짝수** 여야 u=0.5(좌·우 폭의 경계)가 정확히 열 경계에 온다 — split = segU/2
+        clothShell(THREE, surf, { segU: 40, segV: 13, split: 20, thick: R * 0.035, out: P.cape, inn: P.capeIn }),
         new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 }),
       ), 0, 0, 0);
       cloth.frustumCulled = true;

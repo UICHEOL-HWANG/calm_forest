@@ -26,14 +26,22 @@
 //    Rec.709 luma 최고값은 seed 0.816 이다. 색을 고치면 luma 를 다시 재라.
 // =============================================================
 
-/** 고른 종 — Task 13 의 구매가 이 값을 쓴다 */
+/** 기본 종 — dev 콘솔의 pet.give() 기본값. 상점은 PET_KINDS 에서 고른다 */
 export const PET_KIND = 'leaf';
 
 export const PET_PALETTE = Object.freeze({
   // 🍃 잎사귀 정령 — 몸은 밝은 곡물색(흙꼬마의 회갈색과 대비)
   seed: 0xe6cf9a, leaf: 0x7fb857, leafLit: 0xa8d478, stem: 0x6e9b4a, bloom: 0xf0b8c8,
+  // ✨ 정령 — **블룸에 제일 걸리기 쉬운 종**이다(빛나는 물체라 emissive 가 붙는다).
+  //    shard 는 한때 0xbfeee2(luma 0.891)라 후광이 형태를 삼켰다 — 0.834 로 낮춘 값이다.
+  core: 0x8fe0d0, halo: 0xa8d8f0, shard: 0xa8e2d4,
+  // 🐦 새 — 🐤병아리(플레이어 선택지)와 겹치면 안 된다. 병아리는 노랗고 동그랗다 →
+  //    이 새는 **푸르고 길쭉하며 꽁지가 길다**. 색과 비례를 둘 다 어긋나게 잡았다.
+  bird: 0x6f9ecb, birdBelly: 0xdcd0bc, beak: 0xe0a84e, birdTip: 0x4a6f96, crest: 0xe8896a,
+  // 🫘 흙꼬마 — 회갈색. 🍃잎사귀 정령(따뜻한 베이지)과 멀리서도 갈리게 톤을 떨어뜨렸다
+  soil: 0x7d6552, soilDark: 0x5f4b3c, moss: 0x6f9b52, mossLit: 0x8fbb68,
   // 공용
-  eye: 0x2e241c,
+  eye: 0x2e241c, pollen: 0xe8c85e, shroom: 0xc9705e,
 });
 
 const P = PET_PALETTE;
@@ -71,6 +79,10 @@ function makeTables(THREE) {
   // ── 재질 ───────────────────────────────────────────────────
   const clay  = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
   const plush = c => new THREE.MeshStandardMaterial({ color: c, roughness: 1.0, metalness: 0 });
+  //  ✨정령 전용 — 발광(glow)·반투명 한 겹(film). film 은 depthWrite:false 라 면이 겹쳐도 줄무늬가 안 인다.
+  //  ⚠️ 둘 다 mergeStatics 가 건너뛴다(발광·반투명) — 합치면 후광과 블렌드 순서가 무너진다.
+  const glow  = (c, e = 0.55) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0, emissive: c, emissiveIntensity: e });
+  const film  = (c, o) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, metalness: 0, transparent: true, opacity: o, depthWrite: false });
   const leafMesh = (len, wide, mat) => leafOf(THREE, len, wide, mat);
   const eyes = (g, o) => eyesOf(THREE, g, o);
 
@@ -118,7 +130,10 @@ function makeTables(THREE) {
     for (const child of g.children) {
       if (!child.isMesh) continue;
       const m = child.material;
-      if (m.vertexColors || m.side !== THREE.FrontSide) continue;
+      //  ⚠️ **반투명을 빼먹으면 안 된다.** vtxOf 는 transparent·opacity·depthWrite 를 안 옮기므로
+      //     합치는 순간 ✨정령의 껍질·꼬리가 **불투명 덩어리**가 된다(4종 확장 때 실측으로 잡았다).
+      //     js/cosmetics/art.js 의 같은 함수엔 처음부터 있던 가드다.
+      if (m.vertexColors || m.transparent || m.side !== THREE.FrontSide) continue;
       if (m.emissive && m.emissive.getHex() !== 0) continue;
       const key = `${!!m.flatShading}|${m.roughness}|${m.metalness}|${child.castShadow}|${child.receiveShadow}`;
       const b = buckets.get(key) || { meshes: [], flat: !!m.flatShading, cast: child.castShadow, recv: child.receiveShadow };
@@ -140,6 +155,221 @@ function makeTables(THREE) {
       merged++;
     }
     return merged;
+  }
+
+  // =============================================================
+  //  ✨ ① 정령 — 성장축: 공전 파편 수 + 후광
+  //    ⚠️ 이 종만 updatePetAnim 규약(orbit·pulse·air·ring)을 쓴다.
+  //       **움직이는 파츠는 병합에 걸리면 안 된다** — glow(발광)·film(반투명)이라
+  //       mergeStatics 가 저절로 건너뛴다. 새 파츠를 추가하면 그 성질을 유지해라.
+  // =============================================================
+  function buildSpirit(st) {
+    const g = new THREE.Group();
+    // 둥둥 뜨는 건 air 안에만 담는다. 바닥 빛무리까지 같이 흔들면 땅을 뚫고 줄무늬가 인다
+    const air = new THREE.Group(); g.add(air);
+    const orbit = [];
+    //  ⚠️ 1차 렌더에서 정령이 "거의 안 보였다" — 코어가 작고 껍질이 너무 옅어
+    //     멀리서는 빈 공중으로 읽혔다. 코어를 키우고 껍질 불투명도를 올렸다.
+    const R     = [0.125, 0.160, 0.195][st];
+    const shell = [0.200, 0.265, 0.325][st];
+    const nSh   = [0, 3, 6][st];
+    const Y     = [0.42, 0.50, 0.58][st];              // 단계가 오를수록 조금 더 높이 뜬다
+
+    // 코어 — 구를 쓰지 않는다. 팔면체라야 "빛 결정"으로 읽힌다(구는 그냥 공이다)
+    const core = put(air, new THREE.Mesh(new THREE.OctahedronGeometry(R, 0), glow(P.core, 0.7)), 0, Y, 0, false);
+    core.scale.set(1, 1.25, 1);
+    g.userData.pulse = core;
+    g.userData.air = air;
+
+    // 껍질 — 반투명 한 겹. depthWrite:false 라 코어와 면이 겹쳐도 줄무늬가 안 인다
+    put(air, new THREE.Mesh(new THREE.IcosahedronGeometry(shell, 0), film(P.halo, 0.26)), 0, Y, 0, false);
+
+    // 바닥 빛무리 — 정령만 그림자를 못 드리워 공중에 붕 떠 보였다. 발밑에 옅은 빛을 깔아 자리를 만든다
+    const pool = put(g, new THREE.Mesh(new THREE.CircleGeometry(shell * 1.5, 20), film(P.core, 0.16)), 0, 0.012, 0, false);
+    pool.rotation.x = -Math.PI / 2;
+
+    eyes(air, { r: 0.017, x: R * 0.40, y: Y + R * 0.10, z: shell * 0.62 });
+
+    // 공전 파편 — 3단계는 두 고도로 나눠 한 줄 링이 되지 않게(반복 티를 줄인다)
+    for (let i = 0; i < nSh; i++) {
+      const hi  = st === 2 && i % 2 === 1;
+      const rad = hi ? shell * 1.55 : shell * 1.30;
+      const a   = (i / nSh) * Math.PI * 2;
+      const s   = put(air, new THREE.Mesh(new THREE.OctahedronGeometry(0.038 + 0.014 * (st - 1), 0), glow(P.shard, 0.5)),
+                      Math.cos(a) * rad, Y + (hi ? 0.13 : -0.05), Math.sin(a) * rad, false);
+      orbit.push({ mesh: s, rad, a, y: s.position.y, spd: hi ? -0.7 : 1.0 });
+    }
+
+    // 후광 링 — 3단계에만. 기울여 두면 정면에서 타원으로 보여 납작해 보이지 않는다
+    if (st === 2) {
+      // 1.85 배는 토성 고리처럼 퍼져 몸보다 링이 주인공이 됐다 — 몸에 가깝게 줄인다
+      const ring = put(air, new THREE.Mesh(new THREE.TorusGeometry(shell * 1.38, 0.012, 3, 28), glow(P.halo, 0.4)), 0, Y + 0.04, 0, false);
+      ring.rotation.set(1.28, 0, 0.26);
+      g.userData.ring = ring;
+    }
+
+    // 꼬리 — 뒤로 갈수록 작아지고 옅어지는 조각. 길이가 단계를 말한다
+    const tailN = [2, 3, 5][st];
+    for (let i = 0; i < tailN; i++) {
+      const k = (i + 1) / tailN;
+      put(air, new THREE.Mesh(new THREE.OctahedronGeometry(R * (0.50 - 0.30 * k), 0), film(P.core, 0.62 - 0.34 * k)),
+          0, Y - 0.05 - 0.05 * i, -shell - 0.09 * i, false);
+    }
+
+    g.userData.orbit = orbit;
+    //  ⚡ 병합할 게 눈 두 개뿐이다 — 코어·파편은 발광, 껍질·꼬리는 반투명이라 mergeStatics 가
+    //     전부 건너뛴다(합치면 후광과 블렌드 순서가 무너진다). 그래서 이 종만 3단계 16콜로
+    //     제일 비싸다(🍃4 · 🐦5 · 🫘3). 공전 파편은 각자 움직여야 해서 애초에 못 합친다.
+    mergeStatics(air);
+    return g;
+  }
+
+  // =============================================================
+  //  🐦 ② 새 — 성장축: 꽁지깃 길이 + 볏
+  // =============================================================
+  function buildBird(st) {
+    const g = new THREE.Group();
+    const R  = [0.150, 0.175, 0.195][st];
+    const HR = [0.108, 0.118, 0.126][st];
+    const bodyY = R * 0.98 + 0.055;
+    const headY = bodyY + R * 0.88;
+
+    // 다리 — 짧게. 새끼는 거의 앉은 자세
+    [-1, 1].forEach(s => {
+      put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.075 + 0.02 * st, 5), clay(P.beak)), s * R * 0.32, 0.038 + 0.01 * st, R * 0.10);
+      put(g, new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.016, 0.075), clay(P.beak)), s * R * 0.32, 0.008, R * 0.16, false);
+    });
+
+    // 몸 — 뒤로 길쭉하게 눌러 "병아리 공"이 되지 않게
+    const body = put(g, new THREE.Mesh(new THREE.SphereGeometry(R, 20, 14), plush(P.bird)), 0, bodyY, 0);
+    body.scale.set(0.88, 0.94, 1.26);
+
+    // 배 — 몸 표면 밖으로 확실히 내밀어 면이 겹치지 않게 한다
+    const belly = put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.66, 16, 12), plush(P.birdBelly)), 0, bodyY - R * 0.20, R * 0.52, false);
+    belly.scale.set(1, 1.05, 0.62);
+
+    // 머리 + 부리
+    put(g, new THREE.Mesh(new THREE.SphereGeometry(HR, 18, 14), plush(P.bird)), 0, headY, R * 0.14);
+    const beak = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.078 + 0.012 * st, 4), clay(P.beak)), 0, headY - HR * 0.10, R * 0.14 + HR * 0.92, false);
+    beak.rotation.set(Math.PI / 2, Math.PI / 4, 0);
+    eyes(g, { r: 0.021, x: HR * 0.52, y: headY + HR * 0.12, z: R * 0.14 + HR * 0.74 });
+
+    // 솜털 / 볏 — 1·2단계는 삐친 털 한 가닥, 3단계는 뒤로 흐르는 긴 깃 2가닥.
+    //  ⚠️ 길고 뾰족한 원뿔을 세우면 볏이 아니라 **뿔**이 된다. 깃 3장을 모으면 **베레모**가 된다.
+    //     겹치지 않는 긴 깃 2가닥이 뒤로 흘러야 멀리서도 "볏이 생겼다"가 읽힌다.
+    if (st < 2) {
+      const c = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.017, 0.070, 4), clay(P.bird)), 0, headY + HR * 0.94, R * 0.14);
+      c.rotation.set(-0.50, 0, 0.12);
+    } else {
+      [[0.135, -0.95, 0.0], [0.095, -0.72, 0.30]].forEach(([len, rx, rz], i) => {
+        const f = leafMesh(len, 0.30, clay(P.crest));
+        put(g, f, i * 0.028, headY + HR * (0.74 + i * 0.10), R * 0.14 - 0.02 - i * 0.03, false);
+        f.rotation.set(rx, 0, rz);
+      });
+    }
+
+    // 날개 — 몸에 붙인 납작한 깃. 몸 표면에 얹히게 안쪽으로 당기고 뒤로 살짝 눕혀 접힌 날개로 읽히게 한다
+    const wingL = [0.120, 0.180, 0.235][st];
+    [-1, 1].forEach(s => {
+      const w = leafMesh(wingL, 0.60, clay(P.bird));
+      put(g, w, s * R * 0.66, bodyY + R * 0.06, -R * 0.02, true);
+      w.rotation.set(0.16, s * 0.30, s * (Math.PI / 2 - 0.22));
+    });
+
+    // 꽁지깃 — 성장의 주축. 장수와 길이가 같이 자란다(1장 → 3장 → 5장 부채).
+    //  ⚠️ 거의 수평으로 뒤로 뻗으면 몸통에 가려 안 보인다. 실루엣에 걸리려면 **위로 들려야** 한다.
+    const tailN = [1, 3, 5][st];
+    const tailL = [0.115, 0.250, 0.380][st];
+    for (let i = 0; i < tailN; i++) {
+      const t = i - (tailN - 1) / 2;
+      const f = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.038, tailL * (1 - 0.13 * Math.abs(t)), 3),
+                    clay(st === 2 && Math.abs(t) === 2 ? P.birdTip : P.bird)),
+                    t * 0.040, bodyY + R * 0.34 + tailL * 0.26 + Math.abs(t) * 0.016, -R * 0.94 - tailL * 0.24);
+      f.rotation.set(Math.PI / 2 - 0.92, 0, t * 0.24);   // 수평(π/2)에서 53° 들어 올린다
+    }
+
+    mergeStatics(g);
+    return g;
+  }
+
+  // =============================================================
+  //  🫘 ③ 흙꼬마 — 성장축: 몸을 덮는 식생(민둥돌 → 이끼 → 꽃·버섯)
+  //    이끼를 **붙이지 않는다**. 형태로 승격한다.
+  // =============================================================
+  function buildGolem(st) {
+    const g = new THREE.Group();
+    const R = [0.150, 0.185, 0.220][st];
+
+    if (st === 0) {
+      // 1단계는 그냥 돌멩이 하나다. 팔도 다리도 없다 — 이 "아무것도 아님"이 성장을 만든다
+      const b = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R, 0), clay(P.soil)), 0, R * 0.80, 0);
+      b.scale.set(1.06, 0.84, 1.0); b.rotation.y = 0.5;
+      eyes(g, { r: 0.020, x: R * 0.34, y: R * 0.86, z: R * 0.80 });
+      mergeStatics(g);
+      return g;
+    }
+
+    const bodyY = R * 0.92 + 0.045;
+    const headR = R * 0.62;
+    const headY = bodyY + R * 0.86;
+
+    // 다리 — 작은 돌 두 개. 몸에서 떨어뜨려 실루엣에 틈을 준다
+    [-1, 1].forEach(s => put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.28, 0), clay(P.soilDark)), s * R * 0.42, R * 0.26, 0));
+
+    const body = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R, 0), clay(P.soil)), 0, bodyY, 0);
+    body.rotation.set(0.2, 0.7, 0);
+
+    // 🌿 이끼 — 어깨 위 패치 3장.
+    //  ⚠️ 한 겹으로 통째로 덮으면 허리를 가로지르는 **초록 벨트**가 되고, 누르지 않으면 머리까지 삼킨다.
+    //  ⚠️ 몸이 정12면체라 면이 평평하다 — 구 반지름으로 계산하면 모서리 사이에서 밖으로 삐져나와
+    //     **초록 날개**가 된다. 계수를 0.68 로 당기고 자리도 등·어깨 뒤로 옮겼다.
+    const mossMat = clay(st === 2 ? P.moss : P.mossLit);
+    [[-2.4, 0.60], [-0.7, 0.74], [3.05, 0.52]].forEach(([a, up]) => {
+      const rr = Math.sqrt(Math.max(0, 1 - up * up)) * R * 0.68;
+      const p = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.30, 0), mossMat),
+                    Math.cos(a) * rr, bodyY + R * up, Math.sin(a) * rr, false);
+      p.scale.set(1, 0.40, 1); p.rotation.y = a;
+    });
+
+    // 머리 — 몸보다 작은 돌. 목이 없어야 "돌덩이"로 읽힌다
+    const head = put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(headR, 0), clay(P.soil)), 0, headY, 0);
+    head.rotation.y = -0.4;
+    eyes(g, { r: 0.020, x: headR * 0.40, y: headY + headR * 0.06, z: headR * 0.84 });
+
+    // 팔 — 2단계는 돌 하나, 3단계는 두 마디(길어진 실루엣). 몸 표면에 물리게 안쪽으로 당긴다
+    [-1, 1].forEach(s => {
+      put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.28, 0), clay(P.soilDark)), s * R * 0.86, bodyY + R * 0.12, 0);
+      if (st === 2) put(g, new THREE.Mesh(new THREE.DodecahedronGeometry(R * 0.22, 0), clay(P.soilDark)), s * R * 1.14, bodyY - R * 0.20, 0);
+    });
+
+    // 머리 위 식생 — 2단계는 새싹 하나, 3단계는 꽃 + 어깨 버섯.
+    //   줄기는 머리에 확실히 박히게 아래로 내려 잡는다(가늘고 짧으면 꽃이 떠 보인다).
+    put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, R * 0.62, 5), clay(P.stem)), 0, headY + headR * 0.78, 0, false);
+    if (st === 1) {
+      [-1, 1].forEach(s => {
+        const lf = leafMesh(R * 0.30, 0.52, clay(P.leafLit));
+        put(g, lf, s * R * 0.16, headY + headR * 1.18, 0, false);
+        lf.rotation.set(0, s * 0.5, s * 0.55);
+      });
+    } else {
+      // 🌸 꽃 — 꽃잎 5장(그 이상은 촘촘해져 환공포증으로 읽힌다)
+      const cy = headY + headR * 1.26;
+      put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(0.030, 0), clay(P.pollen)), 0, cy, 0, false);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const pt = leafMesh(0.054, 0.68, clay(P.bloom));
+        put(g, pt, Math.cos(a) * 0.052, cy - 0.004, Math.sin(a) * 0.052, false);
+        pt.rotation.set(0, -a, 0.30);
+      }
+      // 🍄 어깨 버섯 — 이끼 패치 위에 앉힌다. 패치보다 확실히 위라 면이 겹치지 않는다
+      const mx = -R * 0.62, my = bodyY + R * 0.74;
+      put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.055, 5), clay(P.birdBelly)), mx, my, R * 0.20, false);
+      const cap = put(g, new THREE.Mesh(new THREE.ConeGeometry(0.046, 0.045, 7), clay(P.shroom)), mx, my + 0.046, R * 0.20, false);
+      cap.rotation.y = 0.3;
+    }
+
+    mergeStatics(g);
+    return g;
   }
 
   // =============================================================
@@ -210,7 +440,7 @@ function makeTables(THREE) {
     return g;
   }
 
-  return { mats: { clay, plush }, BUILD: { [PET_KIND]: buildLeafling } };
+  return { mats: { clay, plush, glow, film }, BUILD: { leaf: buildLeafling, spirit: buildSpirit, bird: buildBird, golem: buildGolem } };
 }
 
 /** kind → 성장 단계(0·1·2) 조형 Group. 모르는 kind 면 null */

@@ -7,7 +7,7 @@
 //    좌표계는 **등 앵커(back)** 로컬 — 원점이 등 표면이라, 몸 축으로 돌아오려면 +z 만큼 민다.
 // =============================================================
 
-import { buildCosmetic } from '../../js/cosmetics/art.js';
+import { buildCosmetic, clothShell } from '../../js/cosmetics/art.js';
 
 export const CAPE_P = Object.freeze({
   cloth: 0x7a8fc0,        // 겉감 — 블룸 임계 0.85 아래(현 PALETTE.cape 그대로)
@@ -16,60 +16,7 @@ export const CAPE_P = Object.freeze({
   clasp: 0xc9a227,        // 브로치 — 놋쇠(PALETTE.bell)
 });
 
-/** 면 하나를 두께 있는 천으로 굽는다.
- *  fn(u,v) → {x,y,z}. 겉면·안면·테두리까지 닫아 **자락 단면이 보이는** 껍데기를 만든다
- *  (한 겹 면은 뒤에서 보면 사라지거나 종이처럼 읽힌다).
- *  색은 정점에 싣는다 — 겉감/안감이 한 메시 안에서 갈린다(드로우콜 1).
- */
-export function clothShell(THREE, fn, { segU = 44, segV = 16, thick = 0.02, out, inn }) {
-  const nu = segU + 1, nv = segV + 1;
-  const P = [];
-  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
-    const p = fn(i / segU, j / segV);
-    P.push(new THREE.Vector3(p.x, p.y, p.z));
-  }
-  const at = (i, j) => P[j * nu + i];
-  // 법선 — 이웃 차분의 외적
-  const N = [];
-  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
-    const du = at(Math.min(i + 1, segU), j).clone().sub(at(Math.max(i - 1, 0), j));
-    const dv = at(i, Math.min(j + 1, segV)).clone().sub(at(i, Math.max(j - 1, 0)));
-    N.push(du.cross(dv).normalize());
-  }
-  const pos = [], col = [], idx = [];
-  const cOut = new THREE.Color(out), cIn = new THREE.Color(inn);
-  const push = (v, c) => { pos.push(v.x, v.y, v.z); col.push(c.r, c.g, c.b); };
-  const h = thick / 2;
-  // 0 .. nu*nv-1 : 겉면 / nu*nv .. : 안면
-  for (let k = 0; k < P.length; k++) push(P[k].clone().addScaledVector(N[k], h), cOut);
-  for (let k = 0; k < P.length; k++) push(P[k].clone().addScaledVector(N[k], -h), cIn);
-  const base = nu * nv;
-  for (let j = 0; j < segV; j++) for (let i = 0; i < segU; i++) {
-    const a = j * nu + i, b = a + 1, c = a + nu, d = c + 1;
-    idx.push(a, c, b, b, c, d);                                            // 겉면
-    idx.push(base + a, base + b, base + c, base + b, base + d, base + c);  // 안면(감김 반대)
-  }
-  // 테두리 — 아래 자락 · 좌우 앞단 · 윗단. 안 닫으면 자락이 종이처럼 읽힌다
-  const rim = (i0, j0, i1, j1, n) => {
-    for (let s = 0; s < n; s++) {
-      const t0 = s / n, t1 = (s + 1) / n;
-      const A = Math.round(i0 + (i1 - i0) * t0) + Math.round(j0 + (j1 - j0) * t0) * nu;
-      const B = Math.round(i0 + (i1 - i0) * t1) + Math.round(j0 + (j1 - j0) * t1) * nu;
-      idx.push(A, base + A, B, B, base + A, base + B);
-    }
-  };
-  rim(0, segV, segU, segV, segU);         // 아랫자락
-  rim(0, 0, 0, segV, segV);               // 왼쪽 앞단
-  rim(segU, segV, segU, 0, segV);         // 오른쪽 앞단
-  rim(segU, 0, 0, 0, segU);               // 윗단(깃이 덮지만 닫아 둔다)
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  geo.setIndex(idx); geo.computeVertexNormals();
-  return geo;
-}
-
+//  ⚠️ clothShell 복제본은 **두지 않는다**. 시안에만 트임 버그가 남아 실물과 갈렸다(2026-09-23).
 /** 깃 + 여밈끈 + 브로치 — 망토는 **목에서 여며야** 망토로 읽힌다(그냥 천이면 담요다) */
 function collar(THREE, g, { R, arc, rTop, yTop, trimMat, claspMat, zc }) {
   const tube = R * 0.062;
@@ -137,7 +84,8 @@ function buildCape(THREE, g, k, opt) {
   const surf = (u, v) => {
     //  뒤트임 — 아래로 갈수록 벌어진다. u 는 [0,1] 을 좌/우 두 폭으로 나눠 쓴다
     //  위(깃 밑)는 거의 붙이고, 꼬리가 지나는 아래에서 크게 벌린다
-    const vent = opt.vent * (0.16 + 0.84 * smooth(0.04, 0.42, v));
+    const vTop = opt.vTop ?? 0.16;
+    const vent = opt.vent * (vTop + (1 - vTop) * smooth(0.04, 0.42, v));
     const half = (arc / 2 - vent);
     const s = u < 0.5 ? -1 : 1;                           // 왼폭 / 오른폭
     const t = u < 0.5 ? (0.5 - u) * 2 : (u - 0.5) * 2;    // 0(트임) → 1(앞단)
@@ -151,8 +99,9 @@ function buildCape(THREE, g, k, opt) {
     const back = -opt.trail * R * v * v;                  // 자락이 뒤로 흐른다(옆에서 봤을 때)
     return { x: Math.sin(th) * r, y, z: zc - Math.cos(th) * r + back };
   };
+  const segU = opt.segU || 40;                       // 짝수 — u=0.5 가 열 경계에 와야 split 이 맞는다
   const m = new THREE.Mesh(clothShell(THREE, surf, {
-    segU: opt.segU || 52, segV: 18, thick: R * 0.035, out: CAPE_P.cloth, inn: CAPE_P.lining,
+    segU, segV: 13, split: segU / 2, thick: R * 0.035, out: CAPE_P.cloth, inn: CAPE_P.lining,
   }), cloth);
   m.castShadow = true; g.add(m);
 
@@ -199,6 +148,15 @@ export const CAPES = {
       g.add(col);
     },
   },
+
+  // ── 뒤트임 폭 시안 — 뚫고 보니 0.50 은 등이 통째로 열려 커튼 두 장이 된다 ──
+  v0:  { name: '트임 0',    build: (T,g,k) => buildCape(T,g,k, { arc: Math.PI*1.06, bot:-1.05, flare:1.22, vent:0.001, folds:8, foldAmt:0.075, hem:0.09, trail:0.10 }) },
+  v14: { name: '트임 .14',  build: (T,g,k) => buildCape(T,g,k, { arc: Math.PI*1.06, bot:-1.05, flare:1.22, vent:0.14,  folds:8, foldAmt:0.075, hem:0.09, trail:0.10 }) },
+  v24: { name: '트임 .24',  build: (T,g,k) => buildCape(T,g,k, { arc: Math.PI*1.06, bot:-1.05, flare:1.22, vent:0.24,  folds:8, foldAmt:0.075, hem:0.09, trail:0.10 }) },
+  a24: { name: 'A .24/윗0.16', build: (T,g,k) => buildCape(T,g,k, { arc: Math.PI*1.06, bot:-1.05, flare:1.22, vent:0.24, vTop:0.16, folds:8, foldAmt:0.075, hem:0.09, trail:0.10 }) },
+  b26: { name: 'B .26/윗0.45', build: (T,g,k) => buildCape(T,g,k, { arc: Math.PI*1.06, bot:-1.05, flare:1.22, vent:0.26, vTop:0.45, folds:8, foldAmt:0.075, hem:0.09, trail:0.10 }) },
+  c20: { name: 'C .20/윗0.60', build: (T,g,k) => buildCape(T,g,k, { arc: Math.PI*1.06, bot:-1.05, flare:1.22, vent:0.20, vTop:0.60, folds:8, foldAmt:0.075, hem:0.09, trail:0.10 }) },
+  v50: { name: '트임 .50',  build: (T,g,k) => buildCape(T,g,k, { arc: Math.PI*1.06, bot:-1.05, flare:1.22, vent:0.50,  folds:8, foldAmt:0.075, hem:0.09, trail:0.10 }) },
 
   // A) 매끈 — 주름 없이 떨어지는 긴 망토. 제일 얌전하다
   cone: {

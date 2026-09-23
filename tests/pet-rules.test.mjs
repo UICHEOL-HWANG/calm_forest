@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   PET_PRICE, PET_RADIUS, PET_TASKS, GROW_NEED, REST_SEC, CHAIN_MAX,
   emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork,
+  PET_KINDS, petKindOf,
 } from '../js/pet/rules.js';
 
 test('표: 펫은 잡일만 한다 — 수확·파종은 없다(스펙 §7-1)', () => {
@@ -70,4 +71,23 @@ test('afterWork: 한 번에 CHAIN_MAX 를 넘겨 세지 않는다', () => {
 
 test('PET_PRICE 는 꾸미기 최고가(2,600)보다 비싸다 — 펫이 가장 큰 상품이다', () => {
   assert.ok(PET_PRICE > 2600);
+});
+
+//  🐾 4종 확장(2026-09-23) — 상점 목록과 조형 표(js/pet/art.js BUILD)의 id 가 갈리면
+//     상점엔 뜨는데 안 그려지는 종이 생긴다. art.js 는 THREE 가 필요해 여기서 못 부르므로,
+//     **id 집합을 못박아** 한쪽만 바뀌면 이 테스트가 먼저 깨지게 한다.
+test('PET_KINDS: 네 종의 id 가 조형 표와 같아야 한다 (js/pet/art.js BUILD)', () => {
+  assert.deepEqual(PET_KINDS.map(k => k.id), ['leaf', 'spirit', 'bird', 'golem']);
+});
+
+test('PET_KINDS: 이름·설명·아이콘이 빠진 종이 없다 — 상점 줄이 빈칸으로 뜬다', () => {
+  for (const k of PET_KINDS) {
+    assert.ok(k.ico && k.name && k.blurb, `${k.id} 에 빠진 항목이 있다`);
+  }
+});
+
+test('petKindOf: 낯선 id 는 null — 세이브가 들고 온 값을 그대로 믿지 않는다', () => {
+  assert.equal(petKindOf('leaf').name, PET_KINDS[0].name);
+  assert.equal(petKindOf('dragon'), null);
+  assert.equal(petKindOf(undefined), null);
 });
