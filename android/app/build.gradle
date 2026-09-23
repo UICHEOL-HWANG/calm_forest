@@ -16,8 +16,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // 🔑 업로드 키 — 저장소 밖 ~/.calmforest-android/keystore.properties 에서 읽는다(비밀번호 커밋 금지).
+    //    파일이 없으면 release 는 서명 없이 빌드된다 → Play 업로드 불가이니 파일부터 만들 것.
+    def keystoreProps = new Properties()
+    def keystoreFile = new File(System.getProperty('user.home'), '.calmforest-android/keystore.properties')
+    if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile new File(System.getProperty('user.home'), '.calmforest-android/android.keystore')
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps.getProperty('keyAlias', 'android')
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystoreFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
