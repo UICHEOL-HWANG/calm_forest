@@ -67,6 +67,18 @@
 - [ ] **포그라운드 사용 시간이 우리 앱에 기록되는지** ← 이번 전환의 목적
 - [ ] 웹·토스·itch 무영향 재확인
 
+## 5.5 Play 콘솔 (2026-09-23 저녁 기준) — ⏭️ 다음 세션은 여기부터
+- [x] 새 앱 `com.cheorish.lab.calmforest` (오타 앱 camforest 는 사용자가 삭제)
+- [x] internal 트랙 versionCode 2 업로드(`npm run upload:play`) — 하지만 **앱 미게시라 링크 비활성**
+- [x] 앱 설정 11개 + 광고 ID(아니요) + 스토어 등록정보(ko-KR, 스크린샷 8·아이콘·피처) — Aside 로 저장
+- [ ] 🔴 **"검토를 위해 앱 전송" 잠김** — 대시보드 필수 단계가 **비공개 테스트 5단계**(국가·테스터·버전·확인·전송). 신규 개인 계정은 이걸 해야 첫 게시가 풀린다
+- [ ] 사용자 결정 대기: 테스터 모집 방식(이메일 목록 12명+ vs Google 그룹 — 대행 업체면 보통 그룹)
+- [ ] 그다음: `npm run upload:play -- --track alpha` → Aside 로 국가(대한민국)·테스터 연결 → **전송은 사용자 확인 후**
+- [ ] OAuth: agriquant `android.calmforest.play` → SHA-1 `2F:7E:FB:…:5F:69:1F`, `play17` → `06:1B:8A:…:B7:F4` 로 교체했는지 사용자 확인 필요
+- [ ] (선택) 태블릿 스크린샷·고해상도 폰 스크린샷 — `dashboards/screenshots/` 2880×1620 원본 사용. 현재 폰샷은 PC 화면(WASD 안내 보임)
+- [ ] (선택) 런처 이름이 "calm forest" — 콘솔 이름 "고요한숲"과 맞출지 결정(android strings app_name)
+- [ ] FCM 푸시 · Remote Config+A/B — 계획 문서 먼저
+
 ## 6. 출시
 - [ ] AAB 빌드 · 내부 테스트 업로드
 - [ ] 비공개 테스트 12명 · 연속 14일
