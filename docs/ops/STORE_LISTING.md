@@ -107,30 +107,21 @@ A cozy 3D village to farm, fish and build. Nothing to rush for.
 | 지원 이메일 | `cheorish.hw@gmail.com` |
 | 콘텐츠 등급 | IARC 설문 — 폭력·성적 내용·도박 전부 '없음', 사용자 간 상호작용은 **리더보드 닉네임 노출**을 체크 |
 
-## 그래픽 자산
+## 그래픽 자산 (2026-09-23 최신화 — Play·토스 등록 완료)
 
-| 자산 | 규격 | 상태 |
+| 자산 | 규격 | 원본 |
 |---|---|---|
-| 앱 아이콘 | 512×512 PNG | ✅ `android/store_icon.png` |
-| 피처 그래픽 | 1024×500 PNG | ✅ `assets/social/play-feature.png` — `node scripts/make-play-feature.mjs` 로 재생성 |
-| 폰 스크린샷 | 2~8장 | ✅ 아래 목록 (안내서 캡처 재활용, 1400×787 = 16:9) |
-| 태블릿 스크린샷 | 선택 | 폰과 같은 것을 써도 된다 |
+| 앱 아이콘(Play) | 512×512 PNG, **꽉 찬 정사각**(Play 가 마스크를 씌운다) | `assets/brand/bear-25deg-1024.png` → `scripts/lib/icon-art.mjs` (`round:false, pad:0.86`) |
+| 앱 로고(토스) | 600×600 PNG | `assets/brand/icon-600.png` — `node scripts/make-icon.mjs` |
+| 피처 그래픽 | 1024×500 PNG | `assets/social/play-feature.png` — `node scripts/make-play-feature.mjs` |
+| 폰 스크린샷 | 1080×1920 × 5 | `node tools/store-shots/shots.mjs phone` |
+| 7인치 태블릿 | 1920×1080 × 5 | `node tools/store-shots/shots.mjs tab7` |
+| 10인치 태블릿 | 2560×1440 × 5 | `node tools/store-shots/shots.mjs tab10` |
+| 토스 가로 미리보기 | **정확히** 1504×741 × 5 | `node tools/store-shots/shots.mjs toss` |
 
-### 폰 스크린샷 — 이 8장을 순서대로 올린다
+장면 5개(마을 · 집 6단계 · 텃밭 · 바다 · 밤)는 `tools/store-shots/shots.mjs` 의 `SCENES` 가 단일 출처다.
+게임 캐릭터·UI 가 바뀌면 브랜드 곰(`sims/bear-export.html` 로 25° 재렌더)과 스크린샷을 같이 다시 찍는다 —
+2026-09-23 전까지는 9/4 곰 아이콘과 안내서 캡처(1400×787, PC 화면)를 쓰고 있어 게임과 달라져 있었다.
 
-Play 는 각 변 320~3840px, 비율 2:1 이내를 요구한다. 안내서 캡처가 **1400×787(16:9)** 이라
-그대로 통과한다. 게임이 가로 플레이도 지원하므로 가로 스크린샷이 어색하지 않다.
-
-| 순서 | 파일 | 보여주는 것 |
-|---|---|---|
-| 1 | `docs/beginner-guide/img/03_village_start.jpg` | 마을 전경 — 첫인상 |
-| 2 | `docs/beginner-guide/img/06_farm_harvest.jpg` | 밭에서 거두기 |
-| 3 | `docs/beginner-guide/img/08_fish_catch.jpg` | 낚시 |
-| 4 | `docs/beginner-guide/img/07_interior.jpg` | 집 안 꾸미기 |
-| 5 | `docs/beginner-guide/img/16_kitchen_mg.jpg` | 요리 미니게임 |
-| 6 | `docs/beginner-guide/img/26_sea_fight.jpg` | 바다 대형 낚시 |
-| 7 | `docs/beginner-guide/img/23_night.jpg` | 밤의 마을 |
-| 8 | `docs/beginner-guide/img/29_house6.jpg` | 증축을 마친 집 |
-
-⚠️ `30_mobile_*.jpg`(647×1400)는 **비율 2.16:1 로 상한을 넘어 거부된다.** 세로 스크린샷을
-쓰려면 9:16(예: 1080×1920)으로 다시 찍어야 한다 — 급하지 않으면 위 가로 8장으로 충분하다.
+⚠️ 스크린샷은 **실기기 화면 밀도**(폰 3배·태블릿 2배)로 찍어야 버튼·글씨가 실제 크기로 나온다.
+⚠️ AI 애셋 선언: 사용자 결정으로 **"라벨 지정 안 함"**(2026-09-23).
