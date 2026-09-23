@@ -1,0 +1,8 @@
+{
+  "appId": "com.cheorish.lab.calmforest",
+  "appName": "calm forest",
+  "webDir": "dist-cap",
+  "android": {
+    "backgroundColor": "#1b2a1f"
+  }
+}
