@@ -8,8 +8,6 @@
 export const TUNING = {
   // 보상 부스트 — 가입(created_at) 후 N일간, 출석·퀘스트·판매 코인 ×mult
   rewardBoost: { days: 3, mult: 1.5, sources: ['daily_bonus', 'quest_reward', 'lucky_box'] },
-  // 관대 판정 — 미니게임별 첫 tries회 시도는 판정 계수 ×mult
-  firstTryEase: { tries: 3, mult: 1.3 },
   // A군 튜토리얼 순서 — 재미(낚시·집짓기·꾸미기) 전진. 스텝 내용은 index.html TUT_STEPS 그대로.
   //   ⚠️ build 는 **sell·mine 보다 뒤**여야 한다(tests/house-cost.test.mjs 가 잠근다).
   //      2026-09-21 건축 리밸런스로 3단계(지붕)가 🪨돌15·🪙코인80 을 요구하게 됐는데,
@@ -49,12 +47,6 @@ export function rewardBoostMult(variant, createdAtIso) {
   if (!isBetaA(variant) || !createdAtIso) return 1;
   const days = (Date.now() - Date.parse(createdAtIso)) / 86400000;
   return (days >= 0 && days < TUNING.rewardBoost.days) ? TUNING.rewardBoost.mult : 1;
-}
-
-// 해당 미니게임 시도 횟수가 tries 미만인 A군이면 1.3, 아니면 1
-export function easeMult(variant, tries) {
-  return (isBetaA(variant) && (tries || 0) < TUNING.firstTryEase.tries)
-    ? TUNING.firstTryEase.mult : 1;
 }
 
 // =============================================================
