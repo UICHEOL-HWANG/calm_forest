@@ -12,12 +12,14 @@
 // =============================================================
 
 import { makeBoar, makeRaccoon, DUEL_ART_H } from './art.js';
+import { makeRaidScar } from './raid-art.js';
 
 const ART_FN = { boar: makeBoar, raccoon: makeRaccoon };
 
-const FACE_OFFSET = 2.7;   // 흔적에서 플레이어 반대편으로 두는 거리.
-                           // ⚠️ 1.8 이었다 — 둘이 붙어 서서 그릇 놓을 자리가 밭뿐이었다(실측).
-                           //    띄워야 밭을 벗어난 빈 땅이 생긴다.
+const FACE_OFFSET = 1.5;   // 털린 밭 중심에서 양쪽으로 서는 거리(밭 반폭 1 + 여유).
+                           // 🥊 일대일 구도(2026-09-24): 플레이어도 밭 밖으로 옮겨 **플레이어 — 털린 밭 — 동물**
+                           //    한 줄로 세운다. 예전엔 플레이어가 조사한 자리(밭 한가운데)에 앉은 채였고
+                           //    동물만 2.7 떨어져 서서, 털린 밭이 화면에 안 잡혔다.
 
 // 카메라 — 실측(2026-09-21). **375×812 에서 잘리지 않는 것**이 하한을 정한다.
 //   ⚠️ 이 값들은 조건이 바뀌면 다시 재야 한다. 한 번 어겼다 — 데스크톱 구도만 보고
@@ -29,7 +31,7 @@ const FACE_OFFSET = 2.7;   // 흔적에서 플레이어 반대편으로 두는 �
 //     · 8.2 / 2.6 : 안 잘리지만 데스크톱에서 너무 작아진다 — 기각
 //   세로 화면은 k(≤1.75)가 거리를 늘려 보정하지만, 375×812 가 실제로 필요한 배수
 //   (1.55/0.4618 ≈ 3.36)에는 못 미친다. 그래서 기준 거리 자체가 폰에 맞춰 정해진다.
-const CAM_DIST = 7.4;
+const CAM_DIST = 8.2;
 const CAM_HEIGHT = 2.6;
 const CAM_AIM_Y = 0.55;
 
@@ -48,6 +50,8 @@ export function enterDuelStage(stage, { animal, x, z }) {
   const toLen = Math.hypot(toX, toZ);
   const dirX = toLen > 0.001 ? toX / toLen : 0, dirZ = toLen > 0.001 ? toZ / toLen : -1;
   const animalX = x + dirX * FACE_OFFSET, animalZ = z + dirZ * FACE_OFFSET;
+  const savedPlayerPos = player.position.clone();
+  player.position.set(x - dirX * FACE_OFFSET, player.position.y, z - dirZ * FACE_OFFSET);
 
   const animalMesh = make(THREE);
   animalMesh.position.set(animalX, 0, animalZ);
@@ -88,7 +92,32 @@ export function enterDuelStage(stage, { animal, x, z }) {
   //   이 표식을 쓴다) 로 고른다. farmGroup·mineGroup 같은 구조적 그룹은 이 표식이 없어 안전하다.
   const hidden = hideOccludersBetween(scene, camera.position, midX, midZ);
 
-  return { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden, throws: [],
+  // 🥊 일대일 — 둘과 털린 밭만 남긴다(사용자 요청 2026-09-24: "일기토처럼 둘이만").
+  //   가림 판정으로는 부족했다: 🧙방랑 상인이 카메라 바로 앞에 서고, 주민 "!"·이름표·
+  //   밭 배지("씨앗을 넣어요")가 무대를 덮었다(실측). 남길 것(땅·밭 흙·작물)은 game.js 가
+  //   stage.keep 으로 넘긴다 — 조명은 절대 끄지 않는다(끄면 화면이 새까매진다).
+  const keep = new Set([player, animalMesh, ...(stage.keep || [])]);
+  for (const o of scene.children) {
+    if (!o.visible || o.isLight || keep.has(o) || hidden.includes(o)) continue;
+    o.visible = false; hidden.push(o);
+  }
+  // ⚠️ 한 번 끄는 것으론 부족하다 — 게임 루프가 매 프레임 visible 을 다시 쓰는 것들이 있다
+  //    (🏠집터 안내판·고리, 시설 표지 등. 실측: "나무 바닥(데크)" 표지가 결투 하늘에 떴다).
+  //    렌더 직전마다 다시 끈다 — 누가 무엇을 켜든 대결 중엔 안 나온다. 끝나면 훅을 원래대로.
+  const ownHook = Object.prototype.hasOwnProperty.call(scene, 'onBeforeRender');
+  const prevHook = scene.onBeforeRender;
+  scene.onBeforeRender = function (...args) {
+    for (const o of hidden) o.visible = false;
+    return prevHook.apply(this, args);
+  };
+  const restoreHook = () => { if (ownHook) scene.onBeforeRender = prevHook; else delete scene.onBeforeRender; };
+
+  // 🐾 발밑 — 털린 밭. 밭 위 흔적과 같은 조형(raid-art.js)이라 "그 밭에서 붙는다"가 읽힌다.
+  const scar = makeRaidScar(THREE, { animal, seed: x * 31 + z * 17, away: [dirX, dirZ] });
+  scar.position.set(x, 0, z);
+  scene.add(scar);
+
+  return { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, throws: [],
            mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null,
            bowlMid: { x: midX + dirX * 0.5, z: midZ + dirZ * 0.5 } };
   // ⚠️ 0.9 는 동물 발치까지 밀려 그릇을 깔고 앉은 꼴이었다(실측). 0.5 면 밭(반폭 1)을
@@ -108,11 +137,14 @@ function disposeTree(obj) {
 export function exitDuelStage(handle) {
   if (!handle) return;
   hideBowls(handle);                                   // 중단해도 그릇·작물이 씬에 남지 않게
-  const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, animalMesh, hidden } = handle;
+  const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook } = handle;
   clearThrow(handle);
+  restoreHook?.();                                     // ⚠️ 되살리기 **전에** 풀어야 다음 프레임에 다시 꺼지지 않는다
   for (const o of hidden) o.visible = true;
   scene.remove(animalMesh);
   disposeTree(animalMesh);
+  if (scar) { scene.remove(scar); disposeTree(scar); }
+  if (savedPlayerPos) player.position.copy(savedPlayerPos);
   camera.position.copy(savedCamPos);
   camera.quaternion.copy(savedCamQuat);
   player.rotation.y = savedPlayerRotY;

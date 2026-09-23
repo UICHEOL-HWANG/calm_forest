@@ -1390,6 +1390,11 @@
   #joy-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: var(--shadow); }
   #action-btn { position: fixed; right: 28px; bottom: calc(96px + env(safe-area-inset-bottom)); width: 88px; height: 88px; border-radius: 50%; background: var(--mint); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; font-size: 30px; touch-action: none; }
   #action-btn.press { transform: scale(0.9); }
+  /* 📱 터치 태블릿(폭 641+): 폰은 아래 @media 640 에서 문의하기를 우상단으로 옮기지만, 태블릿은 PC 배치
+     (우하단 bottom 74px)를 그대로 받아 액션 버튼(우하단 96~184px)에 덮였다 → 액션 버튼 위로 올린다. */
+  @media (min-width: 641px) {
+    body.is-touch #feedback-tab { bottom: calc(196px + env(safe-area-inset-bottom)); }
+  }
   #action-btn.placing { background: #ffe0a8; box-shadow: 0 0 0 4px rgba(255,180,74,0.45), var(--shadow); } /* 설치 버튼 강조 */
   #action-btn.talk { background: #bfe3ff; box-shadow: 0 0 0 4px rgba(90,170,255,0.5), var(--shadow); animation: actpulse 1.1s ease-in-out infinite; } /* 대화 버튼 */
   #action-btn.door { background: #d9c9ff; box-shadow: 0 0 0 4px rgba(150,120,255,0.45), var(--shadow); } /* 문 버튼 */
