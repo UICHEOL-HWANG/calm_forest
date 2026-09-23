@@ -37,23 +37,30 @@
 - [x] `@capacitor/cli` · `core` · `android` 설치
 - [x] `capacitor.config.json` — appId `com.cheorish.lab.calmforest`, webDir `dist`
 - [x] `npx cap add android` → `android/` 교체 · versionCode 2 · TWA 아이콘·스플래시 이식
-- [ ] 기존 업로드 키로 서명 설정 — ⚠️ 지금 release 에 signingConfig 없음(리뷰 MEDIUM). minifyEnabled 는 Capacitor 기본 false(TWA 는 true) — Java 코드가 거의 없어 false 유지 예정
+- [x] 기존 업로드 키로 서명 설정 — ⚠️ 지금 release 에 signingConfig 없음(리뷰 MEDIUM). minifyEnabled 는 Capacitor 기본 false(TWA 는 true) — Java 코드가 거의 없어 false 유지 예정
 - [ ] 앱 번들 화이트리스트 결정 — `dashboards/`·`beta/` 제외 여부, 안내서는 웹 오리진 유지
 - [x] `.gitignore` 정리 (`android-cap/` 산출물)
 
 - [x] 🛡️ `server.hostname = app.calmforest.cloud` — 기본 오리진 localhost 면 게임의 localhost 전용 개발 훅 6곳(?give·__nightForce·carveDebug·?betaDay·?forceVariant·index.html 미니게임 훅)이 정식 앱에서 열린다(리뷰 HIGH). 테스트로 고정
 
 ## 4. 구글 OAuth — 네이티브 로그인
-- [ ] `@capgo/capacitor-social-login` 설치 (대안: `@codetrix-studio/capacitor-google-auth`)
-- [ ] Google Cloud Console — Android 클라이언트 생성, SHA-1 **3개** 등록
+- [x] `@capgo/capacitor-social-login` 설치 (대안: `@codetrix-studio/capacitor-google-auth`)
+- [x] Google Cloud Console — Android 클라이언트 생성, SHA-1 **3개** 등록
       · 업로드 `39:9F:88…E3:0C` · deployment `CB:AD:D7…9A:4F` · hybrid `EF:CD:D5…A3:A0`
-- [ ] 웹 클라이언트 ID 를 `signInWithIdToken` audience 로 전달
-- [ ] ⚠️ nonce — 구글에 SHA-256 해시본 / Supabase 에 원본
-- [ ] 🔴 **출시 차단** — 지금 앱에서 구글 버튼을 누르면 WebView 안에서 OAuth 리다이렉트 → `disallowed_useragent`(리뷰 HIGH). `supabase-client.js` signInWithGoogle 에 IS_ANDROID 분기 필요
-- [ ] `js/platform.js` 패턴으로 앱 경로 분기 추가 (웹·토스·itch·앱 4경로)
+- [x] 웹 클라이언트 ID 를 `signInWithIdToken` audience 로 전달
+- [x] ⚠️ nonce — 구글에 SHA-256 해시본 / Supabase 에 원본
+- [x] 🔴 **출시 차단** — 지금 앱에서 구글 버튼을 누르면 WebView 안에서 OAuth 리다이렉트 → `disallowed_useragent`(리뷰 HIGH). `supabase-client.js` signInWithGoogle 에 IS_ANDROID 분기 필요
+- [x] `js/platform.js` 패턴으로 앱 경로 분기 추가 (웹·토스·itch·앱 4경로)
 - [ ] 게스트 로그인 동작 확인(영향 없을 것으로 예상)
 
+## 4.5 (2026-09-23 추가)
+- [x] 📱 perf_sample — android 앱 기기별 FPS(USB 측정 대체). 다음 날 BQ 에서 재검증할 것
+- [x] 🔥 Firebase `calmforest-app` Android 앱 등록(google-services.json 커밋)
+- [ ] FCM 푸시 · Remote Config+A/B — 계획 먼저(서버·DB·웹 GA ID 전환 수반)
+- ⚠️ Android OAuth 클라이언트 3개는 **GCP agriquant**(웹 클라이언트 calm_forest 가 있는 곳)에 만들었다. calm-forest GCP 프로젝트엔 OAuth 없음
+
 ## 5. 검증
+- [ ] 🏠 사용자 집에서: 내부 테스트 설치 → 구글 로그인 → 마을 이어짐 (AAB ~/Downloads/calmforest-v2-capacitor.aab)
 - [ ] 실기기 설치 — `npx cap run android`
 - [ ] **비행기 모드에서 게임이 뜨는지** (CDN 자체 호스팅 효과 확인)
 - [ ] 구글 로그인 → 저장 → 재실행 이어짐
