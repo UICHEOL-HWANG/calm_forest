@@ -18,11 +18,17 @@ const load = (l) => JSON.parse(readFileSync(path.join(DIR, `${l}.json`), 'utf8')
 const baseLabels = readdirSync(DIR).filter(f => f.startsWith(prefix) && f.endsWith('.json')).map(f => f.slice(0, -5)).sort();
 if (baseLabels.length < 2) { console.error(`기준이 ${baseLabels.length}개 — 2개 이상 필요`); process.exit(1); }
 const flat = (o, p = '', m = new Map()) => { if (o && typeof o === 'object' && !Array.isArray(o)) { for (const k of Object.keys(o)) flat(o[k], p ? `${p}.${k}` : k, m); } else m.set(p, JSON.stringify(o)); return m; };
-const pick = (r) => ({ stops: Object.fromEntries(Object.entries(r.stops).map(([k, v]) => [k, { ...v, errors: undefined }])), night: { ...r.night, errors: undefined }, state: r.state });
+// 판정 대상: 공간별 메시 종류 집계(kinds) · 메시 수 · 세이브 상태. 성능 카운터는 로딩 타이밍에 흔들려 참고로만 찍는다.
+const PERF = ['calls', 'tris', 'geoms', 'tex'];
+const strip = (v) => Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'errors' && !PERF.includes(k)));
+const pick = (r) => ({ stops: Object.fromEntries(Object.entries(r.stops).map(([k, v]) => [k, strip(v)])), night: strip(r.night), state: r.state });
 const errs = (r) => [...r.boot.errors, ...Object.values(r.stops).flatMap(s => s.errors), ...(r.night.errors || [])];
 
+// 알려진 잡음 — 원본 코드만 돌려도 흔들린다는 근거가 있는 것만 여기 적는다(근거 없이 늘리지 말 것)
+//   · 밤 반딧불이(MeshBasic 구) 수: 시간 따라 생겨난다. 원본 밤 메시 1605~1619(1단계 seed-base, 2026-09-25 sp-b3)
+const NOISE = [/^night\.(meshes|visible)$/, /^night\.kinds\.SphereGeometry\|MeshBasicMaterial\|1$/];
 const bases = baseLabels.map(load), B = bases.map(b => flat(pick(b)));
-const fixed = [...B[0].keys()].filter(k => B.every(m => m.get(k) === B[0].get(k)));
+const fixed = [...B[0].keys()].filter(k => !NOISE.some(re => re.test(k)) && B.every(m => m.get(k) === B[0].get(k)));
 const knownErr = new Set(bases.flatMap(errs));
 let bad = 0;
 for (const c of cands) {
