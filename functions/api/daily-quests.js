@@ -38,9 +38,9 @@ const QUEST_SPEC = {
 //   캐시 키가 갈라져 Gemini 호출이 폭증한다. 그런 목표는 게임 쪽 DAILY_POOL 에만 두고
 //   js/quests.js 의 QUEST_GATES 가 거른다.
 const TYPES = Object.keys(QUEST_SPEC);
-const NEED = 3;   // ⚠️ js/game.js 의 DAILY_COUNT · scripts/serve.py 의 QUEST_NEED 와 반드시 같아야 한다.
+const NEED = 5;   // ⚠️ js/game.js 의 DAILY_COUNT · scripts/serve.py 의 QUEST_NEED 와 반드시 같아야 한다.
                   //    어긋나면 클라이언트가 validDailyQuests 검증에서 AI 의뢰를 통째로 버린다.
-                  //    🧪베타(~2026-09-15) 종료 후 셋을 함께 5 로 올린다.
+                  //    2026-09-24 셋을 함께 3→5 로 올렸다.
 
 // 🪣 플레이어 상태 버킷 — js/game.js 의 playerPhase() 와 값이 일치해야 한다.
 //   사람마다 다른 값을 그대로 받으면 캐시 키가 갈라져 호출이 폭증하므로, 3칸으로만 받는다.
