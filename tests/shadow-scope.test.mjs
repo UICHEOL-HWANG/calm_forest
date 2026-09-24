@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 import {
   VILLAGE_CLAMP, BOX_HALF, SHADOW_FAR, MAX_REACH, shadowReaches,
   SUBSPACE_FLAGS, OUT_OF_REACH_FLAGS, MEASURED_SHADOWLESS_FLAGS, shadowActiveFor,
 } from '../js/shadow-scope.js';
 
-const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const src = gameSource();
 
 // game.js 의 `const NAME = new THREE.Vector3(x, y, z)` 에서 좌표를 꺼낸다.
 // 좌표를 이 테스트에 베껴 두면 game.js 가 공간을 옮겨도 통과해 버리므로 반드시 소스에서 읽는다.
@@ -146,7 +147,7 @@ test('기하 분류의 근거는 중심이 아니라 최근접 수신면이다',
 //   실제로 한 번 그렇게 됐다: 반경 20 으로 적어 둔 뒤 "언덕 끝에서 허공이 보인다" 를 고치며 36 이 됐고,
 //   122m 라는 숫자는 아무도 모르게 틀린 채 남아 있었다(결론만 우연히 같았다).
 test('🍎 과수원의 최근접 수신면 106m 는 game.js 의 지면 반경·중심에서 실제로 나오는 값이다', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const half = /const ORCHARD_HALF = (\d+)/.exec(src);
   const center = /const ORCHARD = new THREE\.Vector3\(\s*0,\s*0,\s*(\d+)\s*\)/.exec(src);
   const radius = /shared\('orchard\.ground\.geo',[\s\S]{0,80}?CircleGeometry\(ORCHARD_HALF \+ (\d+)/.exec(src);

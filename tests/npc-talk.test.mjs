@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 import {
   NPC_IDS, POOL_CAP, WEEKLY_PER_COMBO, TURNS, CHOICES, WEATHERS,
   planGeneration, validateSets, buildPrompt,
@@ -231,7 +232,7 @@ test('주민 명단 4벌이 모두 같다 (game.js · index.html · serve.py · 
   const want = [...NPC_IDS].sort();
 
   // js/game.js 의 NPCS 배열 — `id: 'farmer',` 꼴
-  const gameSrc = src('js/game.js');
+  const gameSrc = gameSource();
   const npcsBlock = gameSrc.slice(gameSrc.indexOf('const NPCS = ['));
   const game = [...npcsBlock.slice(0, npcsBlock.indexOf('\n];')).matchAll(/\bid: '([a-z_]+)'/g)].map(m => m[1]).sort();
   assert.deepEqual(game, want, 'js/game.js 의 NPCS 가 어긋났다');
@@ -255,7 +256,7 @@ test('하루 세트 수 3벌이 모두 같다 (game.js TALK_PER_DAY · npc-talk.
     assert.ok(m, `${label} 에서 값을 못 찾았다`);
     return Number(m[1]);
   };
-  const game = pick(src('js/game.js'), /const TALK_PER_DAY = (\d+)/, 'js/game.js');
+  const game = pick(gameSource(), /const TALK_PER_DAY = (\d+)/, 'js/game.js');
   const api = pick(src('functions/api/npc-talk.js'), /const SETS_PER_DAY = (\d+)/, 'functions/api/npc-talk.js');
   const serve = pick(src('scripts/serve.py'), /^\s*SETS_PER_DAY = (\d+)/m, 'scripts/serve.py');
   assert.equal(game, api, 'game.js 와 npc-talk.js 가 어긋났다');
@@ -295,7 +296,7 @@ test('잡담 트래킹은 npc_chat_* 를 쓴다 — 퀘스트 npc_talk 과 접�
 });
 
 test('퀘스트 말걸기는 npc_talk 그대로 — 과거 데이터와 끊기면 안 된다', () => {
-  const game = src('js/game.js');
+  const game = gameSource();
   assert.ok(
     /trackEvent\('npc_talk', \{ npc:/.test(game),
     'js/game.js 의 npc_talk(퀘스트 대화창)이 사라졌다 — 7월부터의 시계열이 끊긴다',

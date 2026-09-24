@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, STREAM_SLOTS, STREAM_R, YIELD_PER_DAY, CAP_DAYS,
          ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, ORCHARD_CHOP_HP, ORCHARD_CHOP_WOOD,
          chopWoodOf, chopDamage, chopHit, freeSlots, daysBetween,
@@ -260,7 +261,7 @@ test('daysBetween: 값이 없거나 깨졌으면 1일로 안전하게 떨어진�
 });
 
 test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만 고치면 여기서 터진다', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const line = src.split('\n').find(l => l.includes('const SELL_PRICE'));
   assert.ok(line, 'SELL_PRICE 선언을 못 찾았다 — 변수명이 바뀌었으면 이 테스트를 같이 고친다');
   for (const f of FRUITS) {
@@ -274,7 +275,7 @@ test('SELL_PRICE 의 과일 값이 FRUITS[].price 와 일치한다 — 한쪽만
 //   상점 묘목값과 "N일이면 자라요" 문구가 FRUITS[] 를 손으로 베낀 두 번째 사본이라
 //   한쪽만 고치면 상점에서 90🪙 를 받고 3일이라 써 놓고 실제로는 다른 값으로 자란다.
 test('SHOP_BUY 묘목의 값·자람일 문구가 FRUITS[] 와 일치한다 — 한쪽만 고치면 여기서 터진다', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const lines = src.split('\n');
   for (const f of FRUITS) {
     const line = lines.find(l => l.includes(`{ id: '${sapKeyOf(f.id)}'`));
@@ -309,7 +310,7 @@ function literalKeys(src, name) {
 //   화면에 문자 그대로 "undefined" 가 찍힌다 — 과일 5종이 정확히 그 상태였다.
 //   "과일이 들어있나"가 아니라 "두 표가 같은 키 집합인가"가 진짜 불변식이다.
 test('SELL_ICO_G 가 SELL_PRICE 의 모든 키를 덮는다 — 빠지면 화면에 "undefined" 가 찍힌다', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const priceKeys = literalKeys(src, 'SELL_PRICE');
   const icoKeys = literalKeys(src, 'SELL_ICO_G');
   assert.ok(priceKeys?.length, 'SELL_PRICE 선언을 못 찾았다 — 변수명·형태가 바뀌었으면 이 테스트를 같이 고친다');
@@ -325,7 +326,7 @@ test('SELL_ICO_G 가 SELL_PRICE 의 모든 키를 덮는다 — 빠지면 화면
 //   반대로 지오메트리·재질은 shared() 캐시라 dispose 하면 다음 rebuild 가 해제된 자원을 쓰고,
 //   줄기·잎은 마을 숲 나무와도 공유해서 마을 나무까지 같이 사라진다. 둘 다 잠근다.
 test('rebuildOrchard: 인스턴스 버퍼만 dispose 하고 shared() 지오메트리·재질은 건드리지 않는다', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const start = src.search(/^function rebuildOrchard\(/m);
   assert.ok(start >= 0, 'game.js 에서 rebuildOrchard 를 찾지 못했다');
   // 주석에 "geometry.dispose() 를 부르면 안 된다" 같은 설명이 들어 있으므로 코드만 남긴다
@@ -345,7 +346,7 @@ test('rebuildOrchard: 인스턴스 버퍼만 dispose 하고 shared() 지오메�
 //   'orchard' 만 빠져 있어서 과수원이 유일하게 페이지가 안 열리는 구역이었다(M4).
 //   ZONE_PAGE 에 없으면 조용히 아무 일도 안 일어나므로, 새 구역을 넣을 때 또 빠뜨리기 쉽다.
 test("toolZoneKey() 가 돌려주는 구역 이름은 전부 ZONE_PAGE 에 있다", () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const body = src.slice(src.search(/^function toolZoneKey\(/m));
   const zoneBody = body.slice(0, body.indexOf('\n}'));
   const zones = [...zoneBody.matchAll(/return '([a-z]+)'/g)].map(m => m[1]);
@@ -362,7 +363,7 @@ test("toolZoneKey() 가 돌려주는 구역 이름은 전부 ZONE_PAGE 에 있�
 //   나무 14그루 중 하나가 그 자리를 막을 확률이 생긴다(다른 게이트 7곳은 전부 이 목록에 있다).
 //   Task 6 에서 이 줄을 추가했다 — 나중에 buildWorld() 를 리팩터링하다 이 줄이 빠지면 여기서 잡는다.
 test('buildWorld 의 배경 나무 회피 목록에 ORCHARD_GATE 가 다른 게이트들과 같은 패턴으로 들어있다', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   // 반경은 조형이 커지면 바뀐다(문 앞 5 + 몸통 6.5). 숫자를 박지 말고 "조건이 있는가"만 본다
   assert.match(
     src,
@@ -413,7 +414,7 @@ test('자리 배치: 시냇가 자리는 경계에서 최소 0.5 안쪽, 먼 자
 // (ORCHARD_GATE 회피 테스트와 같은 이유) 소스 텍스트로 "지우는 코드가 있고, 새로 등록하는 코드보다
 // 앞에 있다"만 확인한다 — push 존재만 확인하면 이번에 고친 회귀를 못 잡는다.
 test('syncOrchardTrees: obstacles 재등록 전에 지난 과수원 나무 항목을 먼저 지운다(중복 누적 방지)', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const start = src.search(/^function syncOrchardTrees\(/m);
   assert.ok(start >= 0, 'game.js 에서 syncOrchardTrees 를 찾지 못했다 — 함수명이 바뀌었으면 이 테스트도 같이 고친다');
   const rest = src.slice(start + 1);
@@ -435,7 +436,7 @@ test('syncOrchardTrees: obstacles 재등록 전에 지난 과수원 나무 항�
 //  js/game.js 는 THREE·document 전역에 의존해 이 파일에서 import 해 실행할 수 없다(위와 같은 이유).
 //  그래서 소스 텍스트로 "규칙이 지켜지는 형태로 쓰여 있다"만 확인한다 — 실제 동작은 수동 추적으로 검증했다.
 // =============================================================
-const GAME_SRC = () => readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const GAME_SRC = () => gameSource();
 
 // 함수 하나의 본문만 잘라낸다(다음 최상위 function 선언 전까지) — 위 syncOrchardTrees 테스트와 같은 절단 방식.
 function sliceFunctionBody(src, headerRe) {

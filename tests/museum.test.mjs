@@ -6,7 +6,7 @@ import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
 //   층별 전시 목록도 여기서 정한다(game.js 의 DEX 를 인자로 받아 순수하게 유지).
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 const listLen = (start, re) => {
   const i = SRC.indexOf(start);
   return (SRC.slice(i, SRC.indexOf('\n];', i)).match(re) || []).length;
@@ -150,6 +150,7 @@ test('주민 도감은 NPCS 에서 파생한다(손으로 적지 않는다)', ()
 // ── 🧑‍🦳 "아직 🌈무지개 물고기가 없군요" — 남은 종을 콕 집는 의뢰 ─────
 //   베타 피드백 "미션이 없어지는 지점에서 뭘 해야 할지 모르겠다" 를 직접 푸는 자리다.
 import { pickMissingDex } from '../js/museum.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 const OPEN = { locked: { river: false, sea: false, mist: false } };
 
@@ -394,7 +395,7 @@ test('exhibitCenterY: 월드 중심에서 받침 높이를 빼 상대값을 돌�
 });
 
 test('museumViewFrame 은 월드 행렬을 갱신하고 받침 높이를 뺀다(첫 측정·재측정이 같게)', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const fn = src.slice(src.indexOf('function museumViewFrame('), src.indexOf('function openMuseumView('));
   assert.match(fn, /updateWorldMatrix\(true, true\)/, '재기 전에 월드 행렬을 갱신해야 첫 측정과 재측정이 같다');
   assert.match(fn, /f\.cy = exhibitCenterY\(/, 'cy 는 받침 기준 상대값이어야 한다');

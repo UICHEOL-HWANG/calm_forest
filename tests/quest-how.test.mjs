@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 // 📜 퀘스트 수행 방법(QUEST_HOW) 은 퀘스트 유형(QUEST_TYPES) 과 짝이 맞아야 한다.
 //   빠지면 `QUEST_HOW[q.type] || ''` 가 조용히 빈 문자열을 돌려주고 :empty 가 흔적 없이 감춰서
 //   "어쩌라는 건지 모르겠다"(베타 피드백) 상태로 되돌아간다 — 실패가 눈에 안 보이는 함정이라 테스트로 잠근다.
 //   game.js 는 브라우저 전역(THREE·document)에 의존해 import 할 수 없어 원문을 파싱한다.
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 
 function block(startRe, endMark) {
   const i = SRC.search(startRe);

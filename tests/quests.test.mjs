@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 import {
   QUEST_GATES, QUEST_LIMITS, REPEAT_POOL, REPEAT_OPEN,
   questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, skipSatisfied, pickCurrent, activeQuestList,
@@ -10,7 +11,7 @@ import {
 //   닭장을 안 지은 사람에게 🥚달걀 의뢰가 가면 진행도가 영원히 0 이고,
 //   그러면 st.idx 가 못 올라가 그날 의뢰 전체가 잠긴다(베타에서 실제로 겪은 사고 유형).
 //   game.js 는 브라우저 전역에 의존해 import 할 수 없어 짝 검증만 원문 파싱으로 한다.
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 
 function block(startRe, endMark) {
   const i = SRC.search(startRe);
