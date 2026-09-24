@@ -583,15 +583,29 @@ test('뷰 객체가 qtype 을 싣는다(quest_offered 가 읽는 자리)', () =>
 const Q = (type, target = 3) => ({ type, target, title: 't', desc: 'd', reward: { coins: 10 }, line: `[오늘의 의뢰 1/3] ${type}` });
 const valid = (q) => !!q && typeof q.type === 'string';
 
-test('dailyExtendPlan — 모자라면 extend, 개수가 맞으면 null(기존 경로)', () => {
-  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid }), 'extend');
+test('dailyExtendPlan — 진행을 시작했는데 모자라면 extend, 개수가 맞으면 null(기존 경로)', () => {
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid, started: true }), 'extend');
   assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell'), Q('mine'), Q('water')], 5, { valid }), null);
 });
 
 test('dailyExtendPlan — 오늘 ✨특별 의뢰를 이미 받았으면 오늘은 그대로 둔다(keep)', () => {
   //   특별 의뢰는 일일 목록 뒤(= idx 3)에 붙어 있다. 덧붙이면 그 포인터가 새 일일 의뢰를 가리켜
   //   특별 의뢰의 진행도가 엉뚱한 의뢰로 옮겨 간다.
-  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid, hasSpecial: true }), 'keep');
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid, started: true, hasSpecial: true }), 'keep');
+});
+
+test('dailyExtendPlan — 아직 한 건도 시작 안 했으면 null(새로 5건) — 잃을 진행도가 없다', () => {
+  //   덧붙이면 옛 보상표(10·15·20)가 남아 그날만 80🪙이 되고, 영어 AI 목록 뒤에 한국어 로컬 의뢰가 붙는다(리뷰 2026-09-24).
+  //   시작 전이면 다시 뽑아도 아무것도 잃지 않으니 새 규칙(70🪙·AI 5건)으로 간다.
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid, started: false }), null);
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid }), null, 'started 기본값은 false');
+});
+
+test('questId — ✨특별 의뢰 판정은 상수가 아니라 오늘 목록의 실제 길이로 한다', () => {
+  //   배포 전에 특별 의뢰를 받은 사람('keep')은 목록이 3건인데 DAILY_COUNT 는 5 — 상수와 비교하면
+  //   특별 의뢰가 courier:3 으로 찍혀 4번째 일일 의뢰 id 와 겹친다.
+  const body = fnBody('questId');
+  assert.ok(!/st\.idx >= DAILY_COUNT/.test(body), 'questId 가 아직 DAILY_COUNT 와 비교한다');
 });
 
 test('dailyExtendPlan — 목록이 없거나 깨졌거나 넘치면 null(다시 뽑는 기존 경로)', () => {
