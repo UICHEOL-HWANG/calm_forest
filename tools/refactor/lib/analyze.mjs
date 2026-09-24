@@ -10,6 +10,11 @@ export const TIME_GLOBALS = new Set(['window', 'document', 'localStorage', 'sess
   'Date', 'performance', 'fetch', 'setTimeout', 'setInterval', 'requestAnimationFrame', 'console', 'Math']);
 // Math 는 Math.random 때문에 넣었다 — 순수 Math.PI/Math.min 은 아래 PURE_MATH 로 푼다
 const PURE_MATH = new Set(['PI', 'min', 'max', 'abs', 'floor', 'ceil', 'round', 'sqrt', 'sin', 'cos', 'tan', 'atan2', 'hypot', 'sign', 'pow', 'exp', 'log', 'trunc', 'SQRT2', 'SQRT1_2', 'asin', 'acos', 'atan']);
+// ⚠️ "mutated" 는 안전 조건이 아니라 "값만 옮긴다"는 1단계 설계 판단용 분류다.
+//    ES 모듈의 const 는 같은 객체를 가리키므로, 값이 바뀌는 const 를 옮겨도 동작은 같다(안전 조건은
+//    재대입·실행 시점 전역·참조 닫힘 셋). 그래서 이 목록은 불완전하다 — THREE 의 sub/multiplyScalar/
+//    normalize/applyQuaternion 등은 없다. "movable = 불변"으로 읽지 말 것. 목록을 늘리면 이미 옮긴
+//    선언이 재분류되어 verify-move (d) 가 깨지니, 늘릴 땐 옮긴 선언을 먼저 확인한다(2026-09-24 리뷰).
 const MUTATORS = new Set(['push', 'pop', 'splice', 'shift', 'unshift', 'sort', 'reverse', 'set', 'add', 'delete', 'clear', 'fill', 'copy']);
 
 export function parse(code) { return parser.parse(code, { sourceType: 'module', ranges: true }); }
