@@ -167,12 +167,12 @@ export const NPCS = [
   },
 ];
 
-export const DAILY_COUNT = 3;   // 하루 일일 의뢰 개수 — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
+export const DAILY_COUNT = 5;   // 하루 일일 의뢰 개수(2026-09-24 3→5 — 베타 건의 1위 "할 일이 없다") — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
 
 // 의뢰 하나당 코인. 앞이 가볍고 뒤가 무겁다.
-export const QUEST_COINS = [10, 15, 20];
+export const QUEST_COINS = [10, 10, 15, 15, 20];
 
-export const QUEST_LUCKY = 3;   // 🎁럭키박스가 붙는 건수(앞에서부터). 5건으로 올릴 땐 3 을 유지한다(전부 붙이면 발행이 두 배)
+export const QUEST_LUCKY = 3;   // 🎁럭키박스가 붙는 건수(앞에서부터). 5건이 돼도 3 을 유지한다(전부 붙이면 발행이 두 배)
 
 // 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 상태형(refreshCollectQuests).
 //   이 목록에 없는 type 을 가진 의뢰는 아무리 플레이해도 영원히 완료되지 않는다.

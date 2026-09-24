@@ -47,7 +47,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
-import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
+import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
 import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
@@ -471,19 +471,13 @@ const _v = new THREE.Vector3(); // 임시 벡터
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
 
 
-//   ⏸️ 베타 건의 1위가 "일일 퀘스트가 없어서 할 일이 없다" 라 5로 올릴 준비를 해 뒀지만,
-//      🧪베타(~2026-09-15) 중에는 3으로 둔다. 개수를 바꾸면 validDailyQuests 의 개수 검증에 걸려
-//      그날 진행 중이던 사람의 목록이 통째로 다시 뽑히고(포인터도 리셋),
-//      이미 3건을 다 깬 사람은 새 목록으로 보상을 한 번 더 받는다 — 베타 경제 지표가 흔들린다.
-//      베타가 끝나면 아래 셋을 함께 5로 올린다:
-//        · 여기 DAILY_COUNT 와 QUEST_COINS(= [10, 10, 15, 15, 20])
-//        · functions/api/daily-quests.js 의 NEED
-//        · scripts/serve.py 의 QUEST_NEED
-//      (셋이 어긋나면 AI 의뢰가 개수 검증에 걸려 통째로 버려진다 — tests/quests.test.mjs 가 잠근다)
-//      i18n 사전에는 /3 · /5 문구가 둘 다 들어 있어 개수만 바꾸면 된다.
+//   📜 일일 의뢰 개수(DAILY_COUNT·QUEST_COINS 는 js/data/npcs.js) — 2026-09-24 3→5.
+//      바꿀 땐 셋을 함께: DAILY_COUNT · functions/api/daily-quests.js 의 NEED · scripts/serve.py 의 QUEST_NEED
+//      (어긋나면 AI 의뢰가 개수 검증에 걸려 통째로 버려진다 — tests/quests.test.mjs 가 잠근다)
+//      배포한 날 진행 중인 목록은 다시 뽑지 않고 뒤에 덧붙인다 — refreshDailyQuests 의 dailyExtendPlan.
 
 
-// ── 데일리 퀘스트 풀 — 매일 3개 뽑기(완료 시 코인 + 🎁럭키박스 확률 보상) ──
+// ── 데일리 퀘스트 풀 — 매일 DAILY_COUNT(5)개 뽑기(완료 시 코인 + 앞 3건은 🎁럭키박스 확률 보상) ──
 
 // 🔒 지금 이 세이브에서 깰 수 있는 의뢰인지 판정하는 데 필요한 상태 — js/quests.js 의 게이트가 본다.
 //   ⚠️ 베타 A/B 가 끝나 맵 잠금이 항상 false 가 되어도 닭장·집 단계 조건은 계속 일한다.
@@ -557,7 +551,10 @@ function onRepeatQuest(def, st) {
 // 퍼널 분석용 표준 퀘스트 id. 반복 의뢰는 순번이 없으니 목표 종류로 구분한다
 //   (날짜를 넣으면 GA4 에서 매일 다른 id 가 되어 집계가 갈린다).
 function questId(def, st) {
-  const special = def.daily && st.special && st.idx >= DAILY_COUNT && !onRepeatQuest(def, st) ? st.special.type : undefined;
+  //   ✨특별 의뢰는 오늘 일일 목록 바로 뒤에 붙는다 — 판정은 상수(DAILY_COUNT)가 아니라 **오늘 목록의 실제 길이**로.
+  //   3→5 배포 날 특별 의뢰를 이미 받은 사람은 목록이 3건이라, 상수와 비교하면 courier:3 으로 찍혀 4번째 일일 의뢰와 겹친다.
+  const dailyLen = Array.isArray(st.quests) ? st.quests.length : DAILY_COUNT;
+  const special = def.daily && st.special && st.idx >= dailyLen && !onRepeatQuest(def, st) ? st.special.type : undefined;
   return questIdFor({ npcId: def.id, idx: st.idx, repeat: onRepeatQuest(def, st), repeatType: st.repeat?.q?.type, specialType: special });
 }
 
@@ -585,6 +582,27 @@ function refreshDailyQuests() {
   const withSpecial = (daily) => (st.special ? [...daily, st.special] : daily);
   if (validDailyQuests(st.quests)) { def.quests = withSpecial(st.quests); return; }   // 오늘 의뢰는 이미 확정됨
 
+  // 📜 개수를 늘린 날(3→5 배포 등) — 오늘 받은 목록과 포인터는 그대로 두고 모자란 만큼만 붙인다.
+  //    다시 뽑으면 다 깬 사람이 보상을 또 받고 진행 중이던 사람은 진행도를 잃는다(js/quests.js).
+  const started = st.idx > 0 || st.progress > 0 || !!st.given;   // 잃을 진행도가 있는가
+  const plan = dailyExtendPlan(st.quests, DAILY_COUNT, { valid: validQuest, started, hasSpecial: !!st.special });
+  if (plan === 'keep') { def.quests = withSpecial(st.quests); return; }   // ✨특별 의뢰를 받은 날 — 오늘은 그대로, 내일부터 새 개수
+  if (plan === 'extend') {
+    //   덧붙인 날은 앞 건들이 옛 보상표(10·15·20)를 그대로 가져 합계가 80🪙 — 하루뿐이고, 이미 받은 보상을
+    //   되돌릴 수는 없으니 그대로 둔다(시작 전인 사람은 위 판정에서 새로 뽑혀 70🪙).
+    const base = st.quests.length;
+    const extra = pickDailyExtra(DAILY_POOL, st.quests, DAILY_COUNT - base, dateHash('daily-extra'), questCtx());
+    //   못 채우면(게이트에 다 막힘) 다시 뽑지 않고 오늘은 있는 만큼만 — 진행도를 지키는 쪽이 낫다
+    if (extra.length === DAILY_COUNT - base) {
+      st.quests = [
+        ...st.quests.map(q => ({ ...q, line: renumberDailyLine(q.line, DAILY_COUNT) })),
+        ...extra.map((q, k) => dailyEntry(q, base + k)),
+      ];
+    }
+    def.quests = st.quests;
+    return;
+  }
+
   // ⚠️ 여기까지 왔다는 건 오늘 목록을 새로 뽑는다는 뜻이다. 그런데 st.date 가 오늘이면
   //    위쪽 리셋을 건너뛰어 포인터(idx·progress·given)가 옛 목록 기준으로 남아 있다.
   //    DAILY_COUNT 를 3→5 로 바꾼 배포처럼 개수가 달라지면 validDailyQuests 가 false 가 되어
@@ -599,12 +617,17 @@ function refreshDailyQuests() {
   // 풀 17종 중 전제조건이 걸린 건 5종뿐이라 실제로는 도달하지 않는다.
   //   그래도 남겨 둔다 — 풀이 줄거나 게이트가 늘면 조용히 어긋나느니 오늘 건너뛰는 편이 낫다.
   if (picked.length < DAILY_COUNT) return;
-  def.quests = picked.map((q, i) => ({
-    ...q, reward: { coins: QUEST_COINS[i] ?? 10 }, lucky: i < QUEST_LUCKY,
-    line: `[오늘의 의뢰 ${i + 1}/${DAILY_COUNT}] ${q.desc}!` + (i < QUEST_LUCKY ? ' 완료하면 🎁럭키박스도 준다구.' : ''),
-  }));
+  def.quests = picked.map((q, i) => dailyEntry(q, i));
   st.quests = def.quests;    // 세이브에 고정 — 오늘은 이 다섯으로 간다
   def.quests = withSpecial(def.quests);
+}
+
+// i 번째 일일 의뢰 한 건 — 보상·럭키박스·대사 접두사가 순번에서 정해진다(새로 뽑을 때·덧붙일 때 같은 규칙)
+function dailyEntry(q, i) {
+  return {
+    ...q, reward: { coins: QUEST_COINS[i] ?? 10 }, lucky: i < QUEST_LUCKY,
+    line: `[오늘의 의뢰 ${i + 1}/${DAILY_COUNT}] ${q.desc}!` + (i < QUEST_LUCKY ? ' 완료하면 🎁럭키박스도 준다구.' : ''),
+  };
 }
 
 // ── 🦉 AI 의뢰 — 서버(/api/daily-quests)가 만든 오늘의 의뢰로 조용히 갈아끼운다 ──
@@ -1765,6 +1788,15 @@ export async function enterGame() {
   const _fs = parseInt(_wq.get('farmstage') || '', 10);
   if (_fs >= 1 && _fs <= MAX_FARM_STAGE && _fs !== gameState.farm.stage) { gameState.farm.stage = _fs; rebuildFarm(true); }
   if (_wq.get('farmmax') === '1') { gameState.farm.stage = MAX_FARM_STAGE; rebuildFarm(true); setTimeout(() => window.__farmMax?.(), 120); }
+  // 테스트: ?daily3=1 — "오늘 3건을 받아 다 끝낸 사람"(3→5 배포 당일)을 흉내 낸다 → 아래 refresh 가 5건으로 덧붙이는지 본다
+  //        ?daily3=fresh — 3건을 받았지만 아직 시작 전 → 잃을 게 없으니 새로 5건을 뽑는지 본다
+  if (_wq.has('daily3')) {
+    const _d = NPCS.find(n => n.daily), _s = _d && npcState(_d.id);
+    if (_s) {
+      _s.date = todayStr(); _s.idx = _wq.get('daily3') === 'fresh' ? 0 : 3; _s.progress = 0; _s.given = false; _s.special = null; _s.qsrc = null;
+      _s.quests = pickGated(DAILY_POOL, 3, dateHash('daily'), questCtx()).map((q, i) => { const e = dailyEntry(q, i); return { ...e, line: renumberDailyLine(e.line, 3) }; });
+    }
+  }
   refreshDailyQuests();                // [데일리] 오늘 의뢰 준비 — 글리프 갱신 전에(빈 quests 접근 방지)
   refreshRepeatQuests();               // [반복] 체인을 다 깬 주민 중 오늘 열리는 3명
   // 테스트: ?owl=1 — 오늘 일일 의뢰를 전부 끝낸 상태로 만들어 ✨특별 의뢰 배달을 바로 본다
@@ -15350,7 +15382,7 @@ function updateOwlFly(o, dt, t) {
 }
 
 // ── ✨ 올빼미 특별 의뢰 ─────────────────────────────────────────
-//   오늘 일일 의뢰 3건을 다 끝내면 올빼미가 특별 의뢰를 물고 날아온다.
+//   오늘 일일 의뢰(DAILY_COUNT건)를 다 끝내면 올빼미가 특별 의뢰를 물고 날아온다.
 //   기존 일일 루프는 그대로 두고 오늘의 의뢰 목록에 4번째를 얹는 방식이라,
 //   수락·진행·보상 코드는 손대지 않아도 그대로 굴러간다.
 const OWL_SPECIAL_POOL = [

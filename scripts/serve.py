@@ -314,7 +314,7 @@ QUEST_SPEC = {
 #   🥚달걀(닭장 필요)·🪵장식(집 필요)·🛶강·🌊바다·🌫️안개(맵 잠금)는 사람마다 가능 여부가 다른데
 #   서버는 그 세이브를 모른다. 상태를 파라미터로 받으면 캐시 키가 갈라져 호출이 폭증한다.
 #   그런 목표는 게임 쪽 DAILY_POOL 에만 두고 js/quests.js 의 QUEST_GATES 가 거른다.
-QUEST_NEED = 3   # ⚠️ js/game.js 의 DAILY_COUNT · functions/api/daily-quests.js 의 NEED 와 같아야 한다
+QUEST_NEED = 5   # ⚠️ js/game.js 의 DAILY_COUNT · functions/api/daily-quests.js 의 NEED 와 같아야 한다
 #   🧪베타(~2026-09-15) 종료 후 셋을 함께 5 로 올린다
 QTITLE_MAX, QLINE_MAX = 12, 48
 
