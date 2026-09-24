@@ -1001,6 +1001,27 @@ export const EN = {
   // 🏠 house-floors: 이 글루는 원래 박물관(항상 위층행) 전용이었으나 이 브랜치부터 집 계단이 위/아래
   //   양방향으로 재사용한다 — "Up to"는 내려갈 때 오역이라 방향 중립 문구로 바꾼다(museum 쪽도 문제 없음).
   '🪜 {0}으로': '🪜 To the {0}',
+  // 🔨 도구 2단계 — 📜 도면 · 히든 의뢰 · 금빛 도구(2026-09-24)
+  '금빛 낫': 'Golden Sickle', '금빛 망치': 'Golden Hammer', '금빛 낚싯대': 'Golden Rod', '금빛 포충망': 'Golden Net',
+  '금빛 물조리개': 'Golden Watering Can', '금빛 도끼': 'Golden Axe', '금빛 괭이': 'Golden Hoe',
+  '금빛 씨앗 주머니': 'Golden Seed Pouch', '금빛 삽': 'Golden Shovel',
+  '{0}의 도면': 'Blueprint: {0}',
+  '우리 사이니까 말인데… {0} 도면이 하나 있어요. {1}, 해 줄 수 있어요?':
+    'Between you and me… I have a blueprint for the {0}. {1} — could you do that for me?',
+  '{0} + 📜 {1} 도면': '{0} + 📜 {1} blueprint',
+  '📜 {0} 도면을 받았어요! 작업대 🔧 도구 탭에서 만들 수 있어요': '📜 Got the {0} blueprint! Craft it in the 🔧 Tools tab at the workbench',
+  '금빛 도구': 'Golden Tools',
+  '주민과 친해지면(❤️6) 도면을 줘요': 'Befriend a neighbour (❤️6) to get a blueprint',
+  '먼저 {0}을(를) 만들어요': 'Make the {0} first',
+  '금·흑단·보석 — 모습이 바뀌어요': 'Gold, ebony and a gem — a whole new look',
+  '✨ {0}': '✨ {0}', '✨ {0}!': '✨ {0}!',
+  '✨ {0} 제작 완료!': '✨ {0} crafted!',
+  '이미 만든 도구예요': 'You already made this tool',
+  '아직 도면이 없어요': 'No blueprint yet',
+  '작물 20개 수확하기': 'Harvest 20 crops', '나무 20번 베기': 'Chop trees 20 times', '물고기 12마리 낚기': 'Catch 12 fish',
+  '🌟 반딧불이 10마리 잡기(밤)': 'Catch 10 🌟 fireflies (night)', '물 25번 주기': 'Water 25 times',
+  '🍄 채집물 15개 줍기': 'Forage 15 🍄 finds', '광석 15개 캐기': 'Mine 15 ores', '상점에서 25개 팔기': 'Sell 25 items at the shop',
+  '씨앗 20번 심기': 'Plant seeds 20 times',
   // ✨ 조건부 전시 · 🌊 최대어 경신(2026-09-24)
   '비 오는 날 낚은 물고기': 'A fish caught in the rain',
   '눈 오는 날 수확한 작물': 'A crop harvested in the snow',

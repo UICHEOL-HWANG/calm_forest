@@ -3931,7 +3931,8 @@
 
     // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
     let cookTab = 'tool';
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙' })[k] || '🪵';
+    // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
+    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟' })[k] || '🪵';
     function updateCookInv() { $('cook-inv').textContent = `🪵 ${lastInv.wood}  🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}  🪨 ${lastInv.stone || 0}  ⚫ ${lastInv.coal || 0}  💎 ${lastInv.gem || 0}`; }
     function renderTools() {
       updateCookInv();
@@ -3963,6 +3964,29 @@
           const res = Input.craftUpgrade(u.id);
           if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
           ui.toast(`${u.ico} ${res.name} 제작 완료!`);
+          renderTools();
+        });
+        box.appendChild(el);
+      });
+      // 🔨 금빛 도구(2단계) — 📜 도면을 받은 것만 보인다. 하나도 없으면 어디서 얻는지 한 줄로만 알린다
+      const t2 = Input.getTier2?.() || [];
+      const known = t2.filter(x => x.state !== 'noBlueprint');
+      if (!known.length) {
+        const el = document.createElement('div');
+        el.className = 'ck-item off';
+        el.innerHTML = `<span class="ck-ico">📜</span><span class="ck-name">금빛 도구</span><span class="ck-buff">주민과 친해지면(❤️6) 도면을 줘요</span><span class="ck-cost">🔒</span>`;
+        box.appendChild(el);
+      }
+      known.forEach(x => {
+        const costStr = Object.entries(x.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const buff = x.state === 'needTier1' ? `먼저 ${x.tier1}을(를) 만들어요` : '금·흑단·보석 — 모습이 바뀌어요';
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (x.state === 'owned' ? ' owned' : (x.state === 'ready' ? '' : ' off'));
+        el.innerHTML = `<span class="ck-ico">${x.ico}</span><span class="ck-name">✨ ${x.name}</span><span class="ck-buff">${buff}</span><span class="ck-cost">${x.state === 'owned' ? '✅ 보유중' : costStr}</span>`;
+        if (x.state !== 'owned') el.addEventListener('click', () => {
+          const res = Input.craftTier2(x.tool);
+          if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+          ui.toast(`✨ ${res.name} 제작 완료!`);
           renderTools();
         });
         box.appendChild(el);
