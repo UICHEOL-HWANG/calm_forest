@@ -551,7 +551,10 @@ function onRepeatQuest(def, st) {
 // 퍼널 분석용 표준 퀘스트 id. 반복 의뢰는 순번이 없으니 목표 종류로 구분한다
 //   (날짜를 넣으면 GA4 에서 매일 다른 id 가 되어 집계가 갈린다).
 function questId(def, st) {
-  const special = def.daily && st.special && st.idx >= DAILY_COUNT && !onRepeatQuest(def, st) ? st.special.type : undefined;
+  //   ✨특별 의뢰는 오늘 일일 목록 바로 뒤에 붙는다 — 판정은 상수(DAILY_COUNT)가 아니라 **오늘 목록의 실제 길이**로.
+  //   3→5 배포 날 특별 의뢰를 이미 받은 사람은 목록이 3건이라, 상수와 비교하면 courier:3 으로 찍혀 4번째 일일 의뢰와 겹친다.
+  const dailyLen = Array.isArray(st.quests) ? st.quests.length : DAILY_COUNT;
+  const special = def.daily && st.special && st.idx >= dailyLen && !onRepeatQuest(def, st) ? st.special.type : undefined;
   return questIdFor({ npcId: def.id, idx: st.idx, repeat: onRepeatQuest(def, st), repeatType: st.repeat?.q?.type, specialType: special });
 }
 
@@ -581,9 +584,12 @@ function refreshDailyQuests() {
 
   // 📜 개수를 늘린 날(3→5 배포 등) — 오늘 받은 목록과 포인터는 그대로 두고 모자란 만큼만 붙인다.
   //    다시 뽑으면 다 깬 사람이 보상을 또 받고 진행 중이던 사람은 진행도를 잃는다(js/quests.js).
-  const plan = dailyExtendPlan(st.quests, DAILY_COUNT, { valid: validQuest, hasSpecial: !!st.special });
+  const started = st.idx > 0 || st.progress > 0 || !!st.given;   // 잃을 진행도가 있는가
+  const plan = dailyExtendPlan(st.quests, DAILY_COUNT, { valid: validQuest, started, hasSpecial: !!st.special });
   if (plan === 'keep') { def.quests = withSpecial(st.quests); return; }   // ✨특별 의뢰를 받은 날 — 오늘은 그대로, 내일부터 새 개수
   if (plan === 'extend') {
+    //   덧붙인 날은 앞 건들이 옛 보상표(10·15·20)를 그대로 가져 합계가 80🪙 — 하루뿐이고, 이미 받은 보상을
+    //   되돌릴 수는 없으니 그대로 둔다(시작 전인 사람은 위 판정에서 새로 뽑혀 70🪙).
     const base = st.quests.length;
     const extra = pickDailyExtra(DAILY_POOL, st.quests, DAILY_COUNT - base, dateHash('daily-extra'), questCtx());
     //   못 채우면(게이트에 다 막힘) 다시 뽑지 않고 오늘은 있는 만큼만 — 진행도를 지키는 쪽이 낫다
@@ -1783,10 +1789,11 @@ export async function enterGame() {
   if (_fs >= 1 && _fs <= MAX_FARM_STAGE && _fs !== gameState.farm.stage) { gameState.farm.stage = _fs; rebuildFarm(true); }
   if (_wq.get('farmmax') === '1') { gameState.farm.stage = MAX_FARM_STAGE; rebuildFarm(true); setTimeout(() => window.__farmMax?.(), 120); }
   // 테스트: ?daily3=1 — "오늘 3건을 받아 다 끝낸 사람"(3→5 배포 당일)을 흉내 낸다 → 아래 refresh 가 5건으로 덧붙이는지 본다
-  if (_wq.get('daily3') === '1') {
+  //        ?daily3=fresh — 3건을 받았지만 아직 시작 전 → 잃을 게 없으니 새로 5건을 뽑는지 본다
+  if (_wq.has('daily3')) {
     const _d = NPCS.find(n => n.daily), _s = _d && npcState(_d.id);
     if (_s) {
-      _s.date = todayStr(); _s.idx = 3; _s.progress = 0; _s.given = false; _s.special = null; _s.qsrc = null;
+      _s.date = todayStr(); _s.idx = _wq.get('daily3') === 'fresh' ? 0 : 3; _s.progress = 0; _s.given = false; _s.special = null; _s.qsrc = null;
       _s.quests = pickGated(DAILY_POOL, 3, dateHash('daily'), questCtx()).map((q, i) => { const e = dailyEntry(q, i); return { ...e, line: renumberDailyLine(e.line, 3) }; });
     }
   }
