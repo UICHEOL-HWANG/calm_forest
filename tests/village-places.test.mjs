@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 // 🌟반딧불이 계곡과 🍄채집 숲이 겹쳐 보이던 걸 떼어 놓고, 다시 붙지 않게 잠근다.
 //   좌표는 js/game.js 전역 상수라 모듈로 뺄 수 없다 — 소스에서 읽어 산술로 검증한다.
-const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const src = gameSource();
 
 function vec3(name) {
   const m = new RegExp(`const ${name} = new THREE\\.Vector3\\(\\s*(-?[\\d.]+)\\s*,\\s*-?[\\d.]+\\s*,\\s*(-?[\\d.]+)\\s*\\)`).exec(src);

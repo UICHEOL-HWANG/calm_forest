@@ -80,76 +80,60 @@ import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸�
 import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
 import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
+// 📦 데이터 표 — 원문 그대로 옮겼다(분리 1단계, 2026-09-24). 값만 있고 상태는 없다
+import {
+  CROP_TYPES, BASIC_CROPS, TOOLS, TOOL_PAGES, CHOP_WOOD, TREE_RESPAWN_SEC, WET_TIME, WILT_TIME, ZONE_PAGE, ZONE_TOOL,
+} from './data/tools.js';
+import {
+  FORECAST_MSG, SEVERE_INFO, WEATHER_MSG, DAY_SPEED, PAL,
+} from './data/world.js';
+import {
+  DECOR_SCALE, DECOR, FISH_KINDS, COOK_MG, COURSE_MULT, COURSE_WEIGHT, RECIPES, recipeDiff, CAFE_PAY, BUFF_META, stationLabel,
+  SELL_PRICE, SHOP_BUY, UPGRADES, OUTDOOR, KILN_SPOTS, KILN_HOME, KILN_CLEAR_R, kilnAvoidPoints, KILN_SCALE, STATION_IDS,
+  VAT_HOME_LOCAL, FARM_PLACE_MSG, isFarmBuilding, OUTDOOR_REACH,
+} from './data/catalog.js';
+import {
+  INT, ROOF_Y, LAKE_R, BENCH, KITCHEN, SHOP, MARKET, RANK, SELL_ICO_G, FARM, FARM_GATE, MINE, MINE_HALF, MINE_GATE,
+  PIER, onPier, COOP_STREAK, COOP, PARK_BENCHES, COOP_COST, COOP_FEED, GLADE, GLADE_R, BUG_KINDS, CAFE_GATE, MUSEUM_GATE,
+  MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
+  FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
+  RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_LAMPS, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
+  BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
+  PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, ORCHARD_GATE,
+  ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
+  WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS,
+} from './data/places.js';
+import {
+  GIFTS, QUEST_HOW, TALK_PER_DAY, NPCS, DAILY_COUNT, QUEST_COINS, QUEST_LUCKY, DAILY_POOL, validDailyQuests, validQuest,
+  AI_QUEST_TIMEOUT,
+} from './data/npcs.js';
+import {
+  DEX, DEX_TOTAL, BADGES, STORY, NICK_ADJS, DAILY_COINS,
+} from './data/dex.js';
+import {
+  _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
+  TOOL_QREST_HOLD, TOOL_GRIP, slashPhase, PLAYER_R, NPC_R,
+} from './data/character.js';
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
 
 // ── 작물 종류(다양화) — 심을 때 랜덤 배정, 열매 색이 달라짐 ─────
-const CROP_TYPES = [
-  { id: 'carrot',    name: '당근',   fruit: 0xff9e5e },
-  { id: 'tomato',    name: '토마토', fruit: 0xff7b7b },
-  { id: 'blueberry', name: '블루베리', fruit: 0x8aa8ff },
-  { id: 'pumpkin',   name: '호박',   fruit: 0xffc36e },
-  ...ADV_CROPS,   // 🌾 고급 3종(adv:true) — 표는 js/farm-crops.js. 랜덤 심기는 BASIC_CROPS 에서만 뽑는다
-];
-const BASIC_CROPS = CROP_TYPES.filter(c => !c.adv);
 
 // ── 도구 하트바 (선택 도구에 따라 상호작용이 달라짐) ─────────────
 //   grp = 하단바 페이지. 🌾농사(밭에서 연달아 쓰는 4종) / 🏕️야외도구(장소마다 단독으로 쓰는 4종).
 //   ⛏️괭이는 밭갈기 겸 채굴이라 농사 쪽 — 동굴에서도 농사 페이지가 뜬다.
 // ── ✍️ 도구 아이콘(인라인 SVG) — 낫·포충망 ─────────────────────
-//   낫·포충망은 유니코드 이모지가 없어서 예전엔 🌾(벼이삭)·🦋(나비)로 대신했는데
-//   도구가 아니라 "수확물/잡을 대상"으로 읽혀서 진짜 도구 실루엣으로 바꿨다.
-//   · 원본은 트레이스(potrace) 실루엣. 잡티 path 를 걷어내고(낫 43→2, 포충망 34→1)
-//     내용에 딱 맞는 정사각 viewBox 로 재단한 것 — 원본 캔버스는 여백이 30~40퍼센트였다.
-//   · fill=currentColor — 슬롯 글자색(--ink)을 그대로 따라가서 흰/민트 슬롯 어디서나 같은 잉크색.
-//   · stroke + vector-effect=non-scaling-stroke — 어떤 크기로 그려도 같은 px 만큼 도톰해진다.
-//     14~20px 슬롯에서 얇은 테·자루가 끊기지 않게 하는 장치(큰 크기에선 티 안 남).
-//   · width/height 1.15em — 하단바(20/16/14px)·모바일 액션버튼(30px) 글자 크기를 따라간다.
-//     1em 이면 옆 이모지(🪓·🎣)보다 작아 보인다.
-//   · 포충망 망(그물): 원본 실루엣은 테만 있어서 테 안쪽 구멍 윤곽을 그대로 떠서 반투명 채움 + 대각 격자선(구멍으로 clip).
-//   ⚠️ innerHTML 로 꽂히는 값이다 — ico 를 textContent 로 넣는 곳이 생기면 마크업이 그대로 노출된다.
-const ICO_SICKLE = '<svg viewBox="233 182 784 784" aria-hidden="true" style="width:1.15em;height:1.15em;display:block"><g transform="translate(0 1182) scale(.1 -.1)" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6584 6860 c-9 -22 -24 -46 -33 -53 -9 -6 -22 -24 -30 -39 -28 -55 -208 -274 -237 -287 -54 -27 -85 -19 -187 47 -52 34 -101 62 -107 62 -13 0 -132 51 -140 60 -3 3 -12 7 -20 9 -8 2 -37 10 -63 17 -64 17 -134 8 -164 -22 -19 -19 -23 -34 -23 -81 l0 -57 40 39 c38 37 44 40 98 39 38 -1 81 -11 127 -29 67 -27 246 -136 292 -178 l22 -20 -25 -20 -25 -20 37 -38 37 -38 -34 -53 c-38 -59 -41 -65 -481 -694 -493 -704 -722 -1056 -1003 -1539 -302 -520 -472 -789 -547 -866 -62 -65 -147 -104 -219 -102 -68 1 -81 8 -196 96 -92 70 -259 162 -352 192 -29 10 -81 18 -115 18 -108 -1 -156 -42 -156 -136 0 -124 79 -264 232 -413 138 -134 270 -221 423 -280 102 -39 215 -39 305 0 107 46 242 155 303 246 96 141 194 307 652 1100 113 195 430 729 585 985 114 189 501 791 668 1043 74 111 75 112 114 112 86 0 102 16 421 449 110 148 126 216 79 336 -15 40 -78 125 -91 125 -4 0 -14 -14 -22 -32 l-15 -31 -25 25 c-23 24 -90 68 -103 68 -3 0 -13 -18 -22 -40z" vector-effect="non-scaling-stroke"/><path d="M8465 9694 c-600 -59 -1099 -259 -1492 -596 -384 -330 -648 -864 -793 -1608 -23 -118 -43 -251 -38 -254 1 -1 26 -7 53 -14 53 -14 71 -22 201 -94 158 -87 315 -204 297 -221 -3 -4 -1 -7 5 -7 15 0 15 5 1 28 -9 15 -5 41 20 128 229 778 585 1302 1039 1528 291 146 736 197 1212 141 63 -8 140 -17 171 -21 l56 -6 35 53 c35 53 200 361 195 365 -1 1 -38 15 -82 30 -101 35 -272 122 -325 164 -22 18 -48 46 -56 62 -14 27 -14 32 1 55 9 13 14 27 11 31 -12 12 -510 7 -596 -6 -216 -32 -397 -79 -572 -148 -60 -23 -108 -41 -108 -39 0 8 261 138 338 169 79 31 180 66 189 66 2 0 1 -6 -2 -12 -4 -7 -1 -6 7 2 17 20 47 32 193 74 185 53 237 65 389 92 228 39 221 37 156 45 -89 11 -354 8 -505 -7z" vector-effect="non-scaling-stroke"/></g></svg>';
-const ICO_NET = '<svg viewBox="199 105 915 915" aria-hidden="true" style="width:1.15em;height:1.15em;display:block"><g transform="translate(0 1180) scale(.1 -.1)" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><clipPath id="cfNetMesh"><path d="M9963 9995c121 -32 212 -99 239 -177c21 -60 41 -200 34 -236c-3 -15 -8 -52 -11 -83c-8 -84 -47 -231 -95 -352c-23 -59 -38 -112 -34 -118c4 -7 3 -9 -2 -6c-5 3 -29 -34 -54 -81c-51 -102 -114 -206 -187 -314c-55 -81 -62 -94 -40 -82c7 4 9 3 4 -2c-5 -5 -12 -9 -15 -9c-13 0 -32 -16 -32 -27c0 -6 7 -5 18 3c15 13 16 12 3 -3c-7 -10 -17 -16 -21 -13c-4 2 -40 -37 -80 -88c-170 -211 -380 -418 -615 -602c-300 -236 -649 -432 -920 -518c-97 -30 -258 -66 -328 -72c-29 -3 -68 -7 -87 -10c-81 -13 -307 31 -376 74c-46 28 -99 98 -124 166c-55 146 -30 408 62 640c235 599 819 1231 1493 1617c279 159 601 279 828 308c96 12 268 4 340 -15z"/></clipPath><path d="M9963 9995c121 -32 212 -99 239 -177c21 -60 41 -200 34 -236c-3 -15 -8 -52 -11 -83c-8 -84 -47 -231 -95 -352c-23 -59 -38 -112 -34 -118c4 -7 3 -9 -2 -6c-5 3 -29 -34 -54 -81c-51 -102 -114 -206 -187 -314c-55 -81 -62 -94 -40 -82c7 4 9 3 4 -2c-5 -5 -12 -9 -15 -9c-13 0 -32 -16 -32 -27c0 -6 7 -5 18 3c15 13 16 12 3 -3c-7 -10 -17 -16 -21 -13c-4 2 -40 -37 -80 -88c-170 -211 -380 -418 -615 -602c-300 -236 -649 -432 -920 -518c-97 -30 -258 -66 -328 -72c-29 -3 -68 -7 -87 -10c-81 -13 -307 31 -376 74c-46 28 -99 98 -124 166c-55 146 -30 408 62 640c235 599 819 1231 1493 1617c279 159 601 279 828 308c96 12 268 4 340 -15z" fill="currentColor" fill-opacity=".28" stroke="none"/><path d="M5564 6210L10364 11010M5564 11010L10364 6210M6324 6210L11124 11010M6324 11010L11124 6210M7084 6210L11884 11010M7084 11010L11884 6210" fill="none" stroke="currentColor" stroke-width=".8" stroke-opacity=".8" vector-effect="non-scaling-stroke" clip-path="url(#cfNetMesh)"/><path d="M9655 10403 c-305 -36 -564 -117 -875 -274 -173 -87 -366 -203 -362 -219 1 -6 -2 -9 -8 -5 -25 15 -464 -325 -455 -352 2 -7 0 -12 -4 -10 -15 4 -72 -44 -65 -55 4 -7 2 -8 -5 -4 -14 9 -143 -115 -289 -277 -94 -105 -120 -139 -91 -121 12 7 12 5 0 -9 -16 -20 -25 -22 -16 -4 4 6 -5 -1 -19 -16 -15 -16 -23 -34 -20 -40 4 -7 4 -9 -1 -5 -9 9 -35 -9 -35 -24 0 -5 6 -6 13 -2 7 4 9 3 4 -2 -5 -5 -14 -9 -20 -9 -16 0 -97 -108 -92 -123 3 -7 1 -11 -4 -8 -10 6 -112 -143 -184 -270 -110 -191 -209 -430 -251 -605 -55 -228 -44 -490 28 -670 14 -36 26 -68 26 -71 0 -2 -30 -36 -67 -74 -480 -493 -488 -503 -464 -584 l12 -42 28 26 c23 22 32 25 66 19 53 -8 121 -44 168 -87 36 -34 37 -37 23 -63 -8 -16 -79 -98 -158 -184 -78 -85 -181 -198 -228 -250 -46 -51 -120 -132 -165 -179 -44 -47 -175 -188 -290 -315 -116 -126 -293 -320 -395 -430 -262 -283 -482 -524 -655 -715 -82 -91 -203 -223 -270 -295 -66 -71 -167 -182 -225 -245 -58 -63 -161 -176 -231 -250 -131 -141 -576 -631 -954 -1051 -305 -338 -273 -309 -336 -309 -42 0 -62 6 -101 31 -67 44 -113 58 -155 49 -31 -8 -33 -7 -27 13 4 12 13 34 21 50 7 15 11 27 8 27 -13 0 -45 -87 -45 -121 -1 -143 173 -313 320 -313 30 0 67 6 81 14 14 8 140 141 279 295 452 500 824 908 886 975 34 36 106 115 160 176 54 60 189 209 299 330 110 120 340 372 510 559 489 538 611 671 740 810 66 72 318 347 560 613 l440 483 51 -7 c68 -8 106 11 164 83 25 31 101 120 170 197 68 78 157 178 197 223 58 65 73 89 73 114 0 29 2 31 28 25 15 -3 77 -11 139 -18 787 -82 1983 643 2607 1582 125 188 188 299 256 448 137 306 182 484 183 737 2 171 -19 260 -92 410 -73 148 -177 252 -326 328 -141 71 -389 111 -560 90z m280 -41 c131 -29 343 -141 332 -175 -2 -7 -17 -13 -33 -15 -16 -2 -34 -10 -41 -18 -15 -20 -69 -21 -91 -1 -20 18 -72 12 -72 -8 0 -16 27 -27 35 -15 4 6 10 10 15 10 8 0 -4 -40 -16 -59 -2 -2 -17 7 -34 19 -18 13 -27 25 -22 29 6 3 12 15 14 26 1 11 9 25 17 31 11 8 6 15 -25 30 -35 17 -46 18 -97 8 -31 -7 -63 -16 -70 -22 -9 -8 -45 -7 -122 0 -70 7 -102 14 -90 19 14 5 8 8 -23 8 -24 1 -41 -3 -38 -8 9 -13 -65 -24 -116 -16 -23 3 -56 1 -73 -4 -22 -7 -25 -10 -10 -11 11 -1 0 -8 -25 -15 -27 -9 -46 -11 -48 -5 -2 6 -8 10 -13 10 -6 0 -7 -4 -4 -10 3 -5 1 -10 -6 -10 -6 0 -9 8 -6 20 4 17 2 19 -21 14 -40 -10 -79 -31 -85 -47 -4 -11 1 -14 16 -11 12 3 2 -4 -23 -15 -50 -22 -80 -26 -80 -11 0 5 6 8 13 6 6 -1 8 -1 3 2 -4 2 -2 9 5 14 48 33 -302 -121 -358 -158 -28 -18 -30 -38 -3 -31 28 7 25 0 -9 -17 -32 -17 -47 -11 -28 12 12 16 -91 -36 -127 -63 -16 -12 -17 -17 -6 -30 11 -13 7 -15 -28 -13 -32 1 -50 -6 -91 -37 -46 -33 -50 -39 -35 -50 17 -12 16 -13 -2 -22 -23 -12 -47 -6 -37 10 4 7 -15 -4 -42 -24 -35 -25 -50 -42 -49 -58 0 -14 -13 -33 -37 -52 l-37 -29 2 24 c3 22 1 24 -16 15 -31 -17 -98 -80 -98 -93 0 -8 2 -8 8 0 4 6 15 11 25 11 16 0 16 -2 1 -18 -9 -10 -21 -16 -27 -12 -5 3 -7 2 -4 -4 4 -6 -13 -25 -36 -43 l-42 -33 29 31 c29 31 42 62 27 62 -14 0 -109 -89 -262 -245 -157 -161 -193 -200 -263 -288 -42 -51 -45 -73 -5 -34 13 13 38 32 54 43 l30 19 -29 -40 c-39 -53 -136 -176 -154 -195 -8 -8 2 9 22 39 20 29 36 63 36 74 0 20 -1 20 -26 -4 -23 -21 -97 -119 -118 -157 -11 -19 29 -9 55 14 l22 19 -19 -33 c-10 -19 -30 -46 -44 -61 -14 -15 -22 -22 -17 -17 10 14 9 56 -3 56 -10 0 -52 -59 -122 -170 -22 -36 -48 -76 -58 -90 -9 -14 -21 -37 -25 -50 -11 -40 -57 -130 -65 -130 -4 0 -7 -17 -8 -37 -1 -20 -13 -60 -28 -89 -15 -31 -24 -62 -21 -73 3 -12 1 -21 -4 -21 -5 0 -9 -11 -9 -25 0 -14 -4 -25 -10 -25 -5 0 -10 -13 -10 -30 0 -40 37 -62 57 -34 13 17 14 11 9 -46 -3 -36 -5 -78 -5 -93 -1 -16 -5 -26 -10 -23 -19 12 -29 -21 -24 -85 5 -60 8 -66 32 -76 19 -7 33 -25 48 -61 14 -33 17 -51 10 -49 -13 2 -14 -4 -2 -51 5 -22 12 -31 21 -28 18 7 30 -14 14 -24 -9 -6 -8 -12 5 -28 17 -20 43 -19 56 1 9 13 46 -12 58 -40 6 -13 15 -24 21 -24 19 -3 25 -5 85 -36 33 -18 56 -32 52 -33 -5 0 -1 -10 7 -22 13 -19 26 -22 86 -24 38 -1 70 2 70 7 0 5 7 9 15 9 8 0 15 -4 15 -8 0 -5 34 -7 76 -4 56 3 75 2 70 -7 -4 -6 -2 -11 3 -11 13 0 15 -27 2 -32 -5 -1 -11 -10 -13 -18 -5 -24 -25 -40 -50 -39 -23 1 -23 1 2 9 19 6 10 8 -36 9 -42 1 -65 -4 -73 -13 -7 -8 -28 -17 -48 -21 -20 -4 -46 -13 -57 -21 -23 -16 -50 -19 -41 -5 3 5 1 12 -5 16 -6 4 -8 11 -5 16 4 5 1 9 -4 9 -6 0 -19 8 -29 18 -18 18 -50 33 -115 52 -24 8 -28 7 -23 -6 3 -9 -17 5 -46 31 -28 25 -68 55 -87 65 -20 11 -31 19 -24 20 8 0 8 7 0 30 -11 29 -37 42 -37 19 0 -7 -15 -10 -40 -7 -22 2 -41 -1 -43 -7 -7 -19 -65 86 -90 163 -14 42 -30 115 -36 161 -21 163 -11 217 37 204 19 -4 21 -1 20 36 0 26 -5 41 -13 41 -17 0 -23 80 -10 121 6 16 14 27 17 23 9 -9 22 42 13 55 -3 6 -2 11 4 11 6 0 7 7 4 17 -4 10 -2 14 4 10 5 -4 15 5 21 18 7 14 16 25 22 25 5 0 17 11 26 25 12 19 14 28 5 39 -9 10 -8 15 4 20 9 3 15 18 15 41 0 40 25 85 46 85 8 0 14 8 15 18 2 55 8 71 41 114 20 26 40 58 44 70 3 13 21 43 39 68 53 73 83 142 54 124 -8 -5 -8 -1 0 14 6 12 17 24 24 28 8 5 7 2 -2 -9 -24 -29 -6 -29 23 0 30 30 140 171 168 215 16 24 90 108 158 179 93 96 147 167 110 144 -18 -11 -11 1 12 21 19 15 20 16 9 2 -10 -14 -10 -18 -1 -18 18 0 151 132 146 146 -6 16 13 34 30 27 17 -6 139 95 139 116 0 20 37 51 62 51 24 0 89 45 103 70 6 11 40 34 75 51 49 23 69 38 81 64 18 39 38 51 89 54 25 1 68 38 59 52 -6 11 67 48 84 42 32 -12 130 46 117 68 -4 5 1 6 10 3 10 -4 15 -2 13 6 -2 7 21 23 50 36 29 13 51 20 47 14 -4 -6 6 -7 27 -3 36 7 101 46 92 55 -8 8 83 41 94 34 9 -5 106 25 177 54 17 7 38 12 49 11 10 -2 15 2 12 8 -8 12 69 35 90 27 17 -6 136 12 147 23 12 12 303 6 362 -7z m-982 -321 c-12 -10 -63 -31 -63 -26 0 13 44 43 57 38 8 -3 11 -9 6 -12z m1437 -25 c0 -12 -5 -7 -19 24 -11 24 -11 24 3 6 9 -11 16 -24 16 -30z m-427 -21 c121 -32 212 -99 239 -177 21 -60 41 -200 34 -236 -3 -15 -8 -52 -11 -83 -8 -84 -47 -231 -95 -352 -23 -59 -38 -112 -34 -118 4 -7 3 -9 -2 -6 -5 3 -29 -34 -54 -81 -51 -102 -114 -206 -187 -314 -55 -81 -62 -94 -40 -82 7 4 9 3 4 -2 -5 -5 -12 -9 -15 -9 -13 0 -32 -16 -32 -27 0 -6 7 -5 18 3 15 13 16 12 3 -3 -7 -10 -17 -16 -21 -13 -4 2 -40 -37 -80 -88 -170 -211 -380 -418 -615 -602 -300 -236 -649 -432 -920 -518 -97 -30 -258 -66 -328 -72 -29 -3 -68 -7 -87 -10 -81 -13 -307 31 -376 74 -46 28 -99 98 -124 166 -55 146 -30 408 62 640 235 599 819 1231 1493 1617 279 159 601 279 828 308 96 12 268 4 340 -15z m345 -10 c0 -20 -4 -25 -17 -20 -12 5 -13 4 -4 -6 10 -10 15 -9 28 1 10 8 15 9 15 1 0 -6 -11 -13 -25 -17 -13 -3 -29 -12 -36 -20 -14 -17 2 -19 19 -2 20 20 25 1 5 -20 -10 -11 -26 -32 -36 -46 -17 -25 -19 -25 -36 -8 -24 22 -36 76 -22 99 6 10 11 14 11 10 0 -5 12 1 26 12 15 12 33 21 40 21 8 0 13 3 13 8 -3 15 1 23 10 18 5 -3 9 -17 9 -31z m-38 -202 c0 -20 -24 -11 -28 10 -2 12 1 15 12 11 9 -3 16 -13 16 -21z m103 -125 c2 -7 -5 -18 -17 -25 -18 -10 -18 -12 -3 -13 9 0 17 -5 17 -11 0 -6 -9 -9 -20 -6 -10 3 -19 2 -18 -2 5 -17 -23 -49 -40 -44 -32 8 -45 40 -30 79 11 32 15 34 59 34 29 0 49 -5 52 -12z m-2173 -91 c0 -2 -10 -12 -22 -23 l-23 -19 19 23 c18 21 26 27 26 19z m2149 -88 c10 -29 -20 -187 -59 -308 -56 -174 -227 -491 -370 -686 -29 -40 -230 -302 -262 -342 -8 -10 -4 -10 21 -2 31 11 104 86 96 98 -2 4 0 13 6 21 7 12 9 12 9 1 0 -7 18 6 41 30 57 61 16 1 -53 -77 -175 -200 -305 -326 -503 -490 -72 -60 -191 -146 -152 -110 57 53 20 64 -42 12 -31 -26 -37 -35 -25 -40 9 -3 21 -3 27 1 7 3 4 -2 -5 -13 -9 -10 -31 -28 -49 -38 l-32 -19 5 26 5 26 -56 -36 c-123 -79 -190 -118 -320 -185 -153 -79 -157 -81 -117 -74 24 4 26 3 14 -11 -11 -14 -9 -14 20 1 19 10 36 16 38 13 2 -2 -33 -21 -78 -41 -142 -65 -155 -69 -155 -50 0 7 4 11 9 8 11 -7 68 15 68 27 0 19 -22 17 -81 -5 -56 -21 -64 -27 -63 -50 1 -33 -49 -54 -73 -31 -8 8 -24 13 -36 11 -12 -2 -42 -7 -67 -11 -25 -4 -54 -13 -66 -20 -21 -14 -178 -24 -190 -13 -3 4 -4 18 0 31 6 25 66 57 107 57 11 0 30 6 42 14 12 8 56 22 97 32 41 9 81 21 88 26 8 7 12 7 12 0 0 -15 35 -3 59 19 12 11 21 17 21 14 0 -3 14 2 30 10 17 9 28 20 26 24 -9 14 71 43 121 44 54 0 116 25 109 43 -7 17 39 45 80 48 55 5 88 34 83 72 -2 13 27 24 61 24 47 0 96 32 114 73 17 41 31 52 68 49 18 -2 39 8 62 29 20 17 35 34 35 37 -4 27 4 42 21 42 25 0 90 31 90 43 0 6 40 48 90 95 49 46 88 87 86 91 -3 4 4 8 16 8 11 1 30 13 43 27 12 14 26 22 29 19 3 -4 6 0 6 8 0 8 32 45 70 84 39 38 69 74 66 81 -3 7 5 20 17 31 l22 18 -20 -25 c-11 -14 -2 -8 20 12 22 21 54 51 72 67 17 16 29 31 27 34 -3 2 3 10 13 18 15 12 16 12 8 -1 -5 -10 -5 -12 2 -5 6 6 18 30 27 55 22 56 34 70 51 64 15 -6 35 25 35 53 0 10 11 35 25 55 28 41 31 53 13 42 -10 -5 -10 -3 0 7 13 14 17 15 46 18 23 2 58 71 54 107 -2 18 0 30 5 27 4 -3 7 3 5 13 -2 15 2 18 23 16 32 -4 48 27 44 89 -3 58 1 67 31 61 21 -4 27 2 50 52 27 58 28 69 21 128 -4 33 -3 36 10 23 8 -8 17 -15 20 -15 4 0 3 3 0 6 -3 4 0 16 8 27 10 14 11 25 5 33 -12 14 5 108 26 141 8 12 15 30 15 40 1 10 5 2 9 -17 7 -34 7 -34 9 12 1 38 4 46 16 42 9 -4 15 0 15 10 0 24 29 20 39 -5z m-2389 -122 c0 -2 -14 -16 -32 -33 -17 -16 -28 -23 -24 -16 4 6 2 12 -5 12 -8 0 -8 4 1 15 7 9 19 14 26 11 7 -3 16 -1 19 4 6 10 15 14 15 7z m-260 -60 c0 -1 -24 -25 -52 -52 l-53 -50 50 53 c46 48 55 57 55 49z m150 -50 c0 -2 -17 -19 -37 -38 l-38 -34 34 38 c33 34 41 42 41 34z m2144 -757 c-10 -16 -20 -28 -22 -26 -4 5 28 56 35 56 2 0 -4 -13 -13 -30z m-2872 -337 c-6 -3 -10 -9 -6 -14 3 -5 -2 -9 -10 -9 -9 0 -16 4 -16 10 0 11 33 31 40 23 3 -3 -1 -8 -8 -10z m1763 -709 c-26 -20 -55 -36 -55 -30 0 5 63 46 70 46 3 -1 -4 -8 -15 -16z m-798 -200 c-3 -3 -12 -4 -19 -1 -8 3 -5 6 6 6 11 1 17 -2 13 -5z m-40 -10 c-3 -3 -12 -4 -19 -1 -8 3 -5 6 6 6 11 1 17 -2 13 -5z m-972 -58 c57 -24 47 -45 -87 -190 -68 -72 -168 -182 -223 -244 -55 -61 -106 -112 -113 -112 -7 0 -35 13 -62 28 l-49 28 19 30 c28 43 453 475 468 474 7 0 28 -7 47 -14z m863 -93 c-10 -2 -26 -2 -35 0 -10 3 -2 5 17 5 19 0 27 -2 18 -5z m-558 -23 c0 -5 -7 -10 -16 -10 -8 0 -12 5 -9 10 3 6 10 10 16 10 5 0 9 -4 9 -10z" vector-effect="non-scaling-stroke"/></g></svg>';
 
-const TOOLS = [
-  { id: 'axe',    name: '도끼',     ico: '🪓', grp: 'out'  }, // 벌목
-  { id: 'hoe',    name: '괭이',     ico: '⛏️', grp: 'farm' }, // 밭 갈기 · 채굴
-  { id: 'seed',   name: '씨앗',     ico: '🌰', grp: 'farm' }, // 씨앗 심기
-  { id: 'water',  name: '물조리개', ico: '💧', grp: 'farm' }, // 물주기
-  { id: 'sickle', name: '낫',       ico: ICO_SICKLE, grp: 'farm' }, // 수확
-  { id: 'shovel', name: '삽',       ico: '🪏', grp: 'farm' }, // 빈 밭 메우기(두 번 파기) — 농사 세트 5번째 칸. 🪏 는 Emoji 16.0(2024)이라 구형 기기에선 □ 로 보일 수 있음
-  { id: 'hammer', name: '망치',     ico: '🔨', grp: 'out'  }, // 건축
-  { id: 'rod',    name: '낚싯대',   ico: '🎣', grp: 'out'  }, // 낚시(호수)
-  { id: 'net',    name: '포충망',   ico: ICO_NET, grp: 'out'  }, // 🌟 반딧불이 잡기(밤·남쪽 숲)
-];
 let currentTool = 1;   // ⛏️괭이 — 시작 페이지(🌾농사)에 있는 도구여야 한다(아래 toolPage 와 짝)
 
 // ── 🎒 도구 페이지 ────────────────────────────────────────────
-//   8칸을 늘 펼쳐두니 하단이 답답해서, 4칸씩 두 벌로 나누고 ✋맨손(접기)을 하나 더 뒀다.
-//   · 자동   — 구역에 들어가면 알아서 넘어간다(숲·실내는 맨손). 마을은 자동 없음.
-//   · 수동   — 하단바 왼쪽 칩을 눌러 순환. 자동을 덮어쓴다.
-//   · 숫자키 — 1 = 세트 전환, 2~5 = 지금 펼친 세트의 도구 4개.
-//     화면 슬롯에 적힌 번호와 정확히 같다(예전엔 절대 번호라 🏕️세트가 1·6·7·8 로 튀었다).
-const TOOL_PAGES = [
-  { id: 'farm', name: '농사',     ico: '🌾' },
-  { id: 'out',  name: '야외도구', ico: '🏕️' },
-  { id: 'none', name: '맨손',     ico: '✋' },
-];
 let toolPage = 'farm';                    // 현재 페이지(첫 시작 = 농사)
 let lastPageTool = { farm: 1, out: 0 };   // 페이지별 마지막으로 들었던 도구(돌아올 때 복원)
 let lastAutoZone = null;                  // 자동 전환을 이미 적용한 구역(같은 구역에선 수동 선택 유지)
 let pageBeforeAuto = null;                // 자동으로 맨손이 되기 직전 페이지(구역을 벗어나면 되돌린다)
 let toolBeforeAuto = null;                // 구역이 도구를 정해 주기 직전에 들고 있던 도구(⛏️광산 — 나가면 되돌린다)
 let lastOpenPage = 'farm';                // 마지막으로 펼쳐 둔 세트(맨손에서 숫자키를 누르면 여기로 돌아온다)
-const CHOP_WOOD = 3;                                    // 🪵 나무 한 그루를 쓰러뜨릴 때 목재(타격마다는 0)
-const TREE_RESPAWN_SEC = 30;                            // 🌳 쓰러진 나무 재생 시간(초)
-// 🌾 작물 속도 — 베타 피드백 "너무 빨리 자라고 빨리 시든다"(2026-09-11)
-//   자라는 속도 = 물 주는 간격(WET_TIME). 물 1회 +0.4 에 수확 기준이 growth>=0.8 이라 물 2번이면 끝 —
-//   5초일 땐 심고 5초 뒤에 벌써 수확이었다(지금은 9초). 더 늦추려면 tryWater 의 성장량을 낮춘다.
-//   시드는 시간은 흙이 마른 뒤부터 세므로, 한 번 자리를 비우면 22초 만에 밭이 전멸했다.
-const WET_TIME = 9;    // 물 준 뒤 흙이 촉촉하게 유지되는 시간(초) — 마르면 다시 물 필요
-const WILT_TIME = 60;  // 물 없이 목마른 채 방치되면 시드는 시간(초)
 
 // ── 날짜 유틸(출석·데일리 퀘스트·날씨 — 로컬 날짜 기준) ─────────
 function dayStr(ms) {   // 에포크 ms → 로컬 날짜 키(고용일 비교에도 쓴다)
@@ -174,12 +158,6 @@ const WEATHER = ['rain', 'snow', 'fog', 'clear'].includes(_wq.get('weather')) ? 
   : weatherOf(0);
 // 🔮 내일 예보 — 재방문 유도(출석 모달·데일리 올빼미 대사에 노출)
 const FORECAST = weatherOf(1);
-const FORECAST_MSG = {
-  clear: '내일은 ☀️ 맑을 예정이에요!',
-  rain:  '내일은 🌧️ 비 소식 — 밭이 저절로 자라는 날!',
-  snow:  '내일은 ❄️ 눈 소식 — 목재가 잘 나오는 날!',
-  fog:   '내일은 🌫️ 안개 예보 — 보석 캐기 좋은 날!',
-};
 // 🌡️ 궂은 날씨 이벤트(서리·태풍) — 날짜 시드라 전 유저 동일. 약 14%의 날에 발생.
 //    예보(내일)를 보고 "오늘 수확하거나 덮개를 설치"하게 만드는 재방문 훅.
 //    ※ 밤손님과 달리 서버 판정이 없다: 예보가 공개 결정값이라 리롤할 유인이 없기 때문.
@@ -188,10 +166,6 @@ function severeOf(offsetDays = 0) {
   const r = dateHash('severe', offsetDays) % 100;
   return r < 7 ? 'frost' : r < 14 ? 'storm' : null;
 }
-const SEVERE_INFO = {
-  frost: { ico: '❄️', name: '서리',  hit: '서리가 내려' },
-  storm: { ico: '🌀', name: '태풍',  hit: '거센 바람이 지나가' },
-};
 const SEVERE_TODAY = ['frost', 'storm'].includes(_wq?.get?.('severe')) ? _wq.get('severe') : severeOf(0);
 const SEVERE_TOMORROW = ['frost', 'storm'].includes(_wq?.get?.('severe2')) ? _wq.get('severe2') : severeOf(1); // ?severe2= 내일 예보 강제(테스트)
 // 내일 예보 한 줄 — 궂은 이벤트가 있으면 일반 날씨 예보를 덮어쓴다(우선 안내)
@@ -203,163 +177,28 @@ function forecastLine() {
   return FORECAST_MSG[FORECAST];
 }
 const RAIN_DAY = WEATHER === 'rain';   // 비 전용 효과(밭 자동 성장·낚시 행운·빗소리)에 사용
-const WEATHER_MSG = {
-  rain: '🌧️ 오늘은 비 오는 날! 밭이 저절로 자라고 물고기가 잘 물어요',
-  snow: '❄️ 오늘은 눈 오는 날! 나뭇가지가 잘 부러져 목재가 더 나와요',
-  fog:  '🌫️ 오늘은 안개 낀 날… 동굴에서 보석이 더 자주 반짝여요',
-};
 let rainLines = null;  // 날씨 파티클(빗줄기/눈송이 LineSegments)
 
 // ── 집 꾸미기 가구 카탈로그 (작물 💰 로 구매해 실내에 배치) ──────
-// 🛋️ 가구 배율 — 14×14 방에 비해 가구가 너무 작아 꾸미기가 허전하다는 베타 피드백(2026-09-09).
-//    decorMesh() 안쪽 그룹에만 곱하고 바깥 그룹은 1 로 둔다(등장 팝 애니메이션이 바깥 scale 을 0.01→1 로 쓴다).
-const DECOR_SCALE = 1.5;
-//   foot: [가로, 세로] — 밟고 못 지나가는 발자국(배율 전, decorMesh 치수 기준). 러그류는 밟고 지나가므로 없음.
-//   "가구를 그냥 통과한다"는 베타 피드백 → 배치 시 solidBox 로 막는다(놓은 방향에 따라 가로·세로를 바꿈).
-const DECOR = [
-  { id: 'rug',      name: '러그',   ico: '🎨', cost: 2, pay: 'crop' },
-  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop', foot: [0.45, 0.45] },
-  { id: 'chair',    name: '의자',   ico: '🪑', cost: 3, pay: 'crop', foot: [0.55, 0.55] },
-  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop', foot: [1.1, 0.7] },
-  { id: 'lamp',     name: '램프',   ico: '🕯️', cost: 4, pay: 'crop', foot: [0.4, 0.4] },
-  { id: 'sofa',     name: '소파',   ico: '🛋️', cost: 5, pay: 'crop', foot: [1.6, 0.75] },
-  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish', foot: [0.66, 0.42] }, // 물고기로 구매
-  // ── 큰 가구(사이즈 大) ──
-  { id: 'bed',       name: '침대',    ico: '🛏️', cost: 8,  pay: 'crop', big: true, foot: [1.5, 2.2] },
-  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true, foot: [1.8, 1.0] },
-  { id: 'bigsofa',   name: '큰 소파', ico: '🛋️', cost: 10, pay: 'crop', big: true, foot: [2.4, 0.95] },
-  { id: 'bookshelf', name: '책장',    ico: '📚', cost: 9,  pay: 'crop', big: true, foot: [1.3, 0.45] },
-  { id: 'bigrug',    name: '큰 러그', ico: '🟪', cost: 6,  pay: 'crop', big: true },
-  // ── 2026-09-09 추가 9종(베타: "가구 종류가 적다") ──
-  { id: 'stool',       name: '스툴',     ico: '🟤', cost: 2,  pay: 'crop', foot: [0.45, 0.45] },
-  { id: 'vase',        name: '꽃병',     ico: '🌷', cost: 2,  pay: 'crop', foot: [0.3, 0.3] },
-  { id: 'nightstand',  name: '협탁',     ico: '🗄️', cost: 3,  pay: 'crop', foot: [0.5, 0.45] },
-  { id: 'cushion',     name: '바닥 쿠션', ico: '🟠', cost: 3,  pay: 'crop' },                       // 밟고 지나감
-  { id: 'radio',       name: '라디오',   ico: '📻', cost: 4,  pay: 'crop', foot: [0.5, 0.25] },
-  { id: 'wardrobe',    name: '옷장',     ico: '🧥', cost: 9,  pay: 'crop', big: true, foot: [1.2, 0.5] },
-  { id: 'fireplace',   name: '벽난로',   ico: '🔥', cost: 12, pay: 'crop', big: true, foot: [1.4, 0.6] },
-  { id: 'piano',       name: '피아노',   ico: '🎹', cost: 12, pay: 'crop', big: true, foot: [1.4, 1.1] },
-  { id: 'bigaquarium', name: '큰 어항',  ico: '🐠', cost: 5,  pay: 'fish', big: true, foot: [1.3, 0.6] },
-  // 🏠 층별 해금 고급 가구 — 코인 전용(후반 싱크). stage = 증축 단계 해금, outdoorOnly = 루프탑에만.
-  { id: 'rocker',    name: '흔들의자',   ico: '🪑', cost: 120, pay: 'coins', stage: 4, foot: [0.7, 0.8] },
-  { id: 'telescope', name: '망원경',     ico: '🔭', cost: 150, pay: 'coins', stage: 4, foot: [0.6, 0.6] },
-  { id: 'trunk',     name: '여행 트렁크', ico: '🧳', cost: 180, pay: 'coins', stage: 4, foot: [0.9, 0.55] },
-  { id: 'bathtub',   name: '욕조',       ico: '🛁', cost: 250, pay: 'coins', stage: 5, big: true, foot: [1.6, 0.8] },
-  { id: 'bigart',    name: '큰 그림',    ico: '🖼️', cost: 280, pay: 'coins', stage: 5, foot: [1.2, 0.2] },
-  { id: 'chandelier', name: '샹들리에',  ico: '💠', cost: 300, pay: 'coins', stage: 5 },
-  { id: 'grandpiano', name: '그랜드 피아노', ico: '🎹', cost: 400, pay: 'coins', stage: 5, big: true, foot: [2.0, 1.6] },
-  { id: 'firepit',   name: '파이어핏',   ico: '🔥', cost: 500, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.9, 0.9] },
-  { id: 'planttree', name: '큰 화분나무', ico: '🌿', cost: 700, pay: 'coins', stage: 6, outdoorOnly: true, foot: [0.8, 0.8] },
-  { id: 'jacuzzi',   name: '자쿠지',     ico: '♨️', cost: 900, pay: 'coins', stage: 6, outdoorOnly: true, big: true, foot: [2.0, 1.6] },
-  // 🏖️ 옥상 파라솔 세트 승계(§8.2) — 구성품(js/house/addons.js rooftop_set, 900🪙)을 이미 산 사람에게
-  // 루프탑에 실물로 놓아 준다. 상점엔 안 뜬다(hidden) · 값은 이미 치렀으므로 cost: 0.
-  { id: 'parasol_set', name: '파라솔 세트', ico: '🏖️', cost: 0, pay: 'coins', stage: 6, outdoorOnly: true, hidden: true, foot: [1.8, 1.2] },
-];
-const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
-const ROOF_Y = 3.4;   // ☀️ 루프탑만 집 한 층 높이만큼 띄운다 — "지붕 위에서 마을을 내려다보는" 높이감(2026-09-17 사용자 피드백).
 //   다른 실내 층(1층·다락·2층)은 전부 y=0 그대로 — 벽으로 막힌 방이라 높이가 안 보여도 상관없다.
 
 // ── 낚시 ─────────────────────────────────────────────────────
-const LAKE_R = 6;   // 호수 반경(환경 호수와 동일)
-const FISH_KINDS = [
-  { rarity: 'rare',     name: '무지개 물고기', p: 0.07 },
-  { rarity: 'uncommon', name: '붉은 물고기',   p: 0.28 },
-  { rarity: 'common',   name: '피라미',        p: 1.00 },
-];
 // ── 🍳 요리 미니게임 4종 ─────────────────────────────────────────────
-//    "다양성이 적다"는 피드백에 종류를 늘리되, 넷이 서로 **다른 실패의 모습**을 갖게 갈랐다.
-//    같은 탭이라도 무엇을 망쳤는지가 눈에 달라 보여야 다른 게임으로 느껴진다.
-const COOK_MG = {
-  pot:    { ico: '🍲', name: '끓이기',    tip: '바늘이 초록 구간에 올 때 누르세요' },
-  chop:   { ico: '🔪', name: '썰기',      tip: '재료가 칼 아래 올 때 박자에 맞춰 누르세요' },
-  grill:  { ico: '🔥', name: '굽기',      tip: '노릇해졌을 때 눌러 뒤집으세요 — 지나치면 탑니다' },
-  season: { ico: '🧂', name: '간 맞추기', tip: '꾹 누르고 있다가 목표선에서 손을 떼세요' },
-};
-// 코스 난이도(★) → 단계별 판정창 배율. **난이도는 오직 이 배율로만** 조절한다
-//   (속도·단계 수까지 같이 흔들면 어느 쪽이 어려웠는지 지표로 가를 수 없다).
-//   ★1 은 개편 전(1.0)보다 넉넉한 1.35 — "너무 어렵다"는 피드백의 직접적인 답.
-//   코스 뒤로 갈수록 좁아지는 것이 곧 "단계별로 난이도가 올라간다".
-const COURSE_MULT = { 1: [1.35], 2: [1.15, 1.0], 3: [1.05, 0.95, 0.85] };
-// 코스 점수 가중치 — 뒤 단계일수록 무겁게(마지막 한 판을 잘해야 최고 등급)
-const COURSE_WEIGHT = { 1: [1], 2: [0.85, 1.15], 3: [0.8, 1.0, 1.2] };
 // ── 요리 레시피(자유주방) — 작물/물고기 → 일시 버프 ──
-//    stages: 순서대로 치르는 미니게임(길이 = 난이도 ★). diff 는 stages.length 와 항상 같다.
-const RECIPES = [
-  // ★1 — 한 판짜리 입문. 네 미니게임을 하나씩 맡아 처음 만나는 자리가 된다
-  { id: 'veg_stew',      name: '든든한 채소죽',   ico: '🥘', cost: { crop: 3 },                      buff: 'speed', dur: 60,  desc: '60초 이동속도 +40%',        stages: ['pot'] },
-  { id: 'mushroom_soup', name: '숲의 버섯 스프',  ico: '🍄', cost: { forage: 3 },                    buff: 'speed', dur: 90,  desc: '90초 이동속도 +40%',        stages: ['pot'] },      // 🍄 채집 숲 재료
-  { id: 'rice_ball',     name: '소금 주먹밥',     ico: '🍙', cost: { crop: 2 },                      buff: 'chop',  dur: 60,  desc: '60초 벌목 시 목재 +1',      stages: ['season'] },   // 🧂 간 맞추기 입문
-  { id: 'baked_yam',     name: '군고구마',        ico: '🍠', cost: { forage: 2, crop: 1 },           buff: 'mine',  dur: 60,  desc: '60초 채굴 시 광석 추가 확률↑', stages: ['grill'] },   // 🔥 굽기 입문
-  { id: 'herb_salad',    name: '들나물 무침',     ico: '🥗', cost: { forage: 2, crop: 1 },           buff: 'luck',  dur: 60,  desc: '60초 희귀 물고기 확률↑',    stages: ['chop'] },     // 🔪 썰기 입문
-  // ★2 — 두 판. 손질 → 조리처럼 "차례가 있는" 요리
-  { id: 'grilled_fish',  name: '생선 구이',       ico: '🐟', cost: { fish: 2 },                      buff: 'luck',  dur: 90,  desc: '90초 희귀 물고기 확률↑',    stages: ['chop', 'grill'] },
-  { id: 'omelette',      name: '푸짐한 오믈렛',   ico: '🍳', cost: { egg: 2, crop: 1 },              buff: 'mine',  dur: 90,  desc: '90초 채굴 시 광석 추가 확률↑', stages: ['pot', 'season'] }, // 🥚 닭장 달걀 요리
-  // 🥐 화덕에서 밤새 빻은 밀가루가 있어야 만든다 — 화덕이 요리를 대체하지 않고 **입구**가 된다.
-  //    ★2 인데 지속이 ★3급(150초)인 건 하룻밤을 기다린 값을 여기서 돌려주는 것이다.
-  { id: 'bread',         name: '갓 구운 빵',      ico: '🥐', cost: { flour: 2 },                     buff: 'speed', dur: 150, desc: '150초 이동속도 +40%',       stages: ['pot', 'grill'] },
-  // 🍹 발효통에서 밤새 익은 🍷포도즙을 잔에 따라 낸다 — 🫙 가 요리를 대체하지 않고 **입구**가 된다(빵과 같은 규칙).
-  //    ★2 인데 재료가 한 개뿐인 건 하룻밤을 기다린 값을 여기서 돌려주는 것이다.
-  { id: 'grape_juice',   name: '포도주스',        ico: '🍹', cost: { juice: 1 },                     buff: 'luck',  dur: 120, desc: '120초 희귀 물고기 확률↑',   stages: ['chop', 'season'] },
-  // ★3 — 세 판 풀코스. 재료도 버프도 가장 크다
-  { id: 'lunchbox',      name: '모둠 도시락',     ico: '🍱', cost: { crop: 2, fish: 1, forage: 1 },  buff: 'chop',  dur: 150, desc: '150초 벌목 시 목재 +1',     stages: ['chop', 'pot', 'season'] },
-  { id: 'forest_feast',  name: '숲의 한상차림',   ico: '🍲', cost: { forage: 2, crop: 2, fish: 1 },  buff: 'luck',  dur: 180, desc: '180초 희귀 물고기 확률↑',   stages: ['chop', 'grill', 'pot'] },
-];
-function recipeDiff(r) { return Math.min(3, Math.max(1, r.stages.length)); }   // ★ 등급 = 코스 길이
-// ☕ 카페 서빙 단가 — 재료 원가(시세 기준)보다 넉넉해 "요리해서 파는" 동선이 이득이 되게.
-//    ★ 가 오를수록 판을 더 치르니 단가도 같이 오른다(★1 ~30 · ★2 ~46 · ★3 ~74)
-const CAFE_PAY = { bread: 56, grape_juice: 62, veg_stew: 30, mushroom_soup: 32, rice_ball: 28, baked_yam: 30, herb_salad: 31, grilled_fish: 46, omelette: 48, lunchbox: 74, forest_feast: 78 };
-// 버프 메타 — desc는 초보자용 설명(첫 획득 모달·칩 클릭 모달에 표시)
-const BUFF_META = {
-  speed: { ico: '👟', name: '빠른 발',     desc: '이동 속도가 40% 빨라져요. 넓은 마을과 텃밭·동굴을 오갈 때 시간을 아껴줘요.' },
-  luck:  { ico: '🍀', name: '낚시 행운',   desc: '낚시할 때 희귀 물고기(🐠 붉은 물고기·🌈 무지개 물고기)가 잡힐 확률이 올라가요. 호수 부두에서 낚싯대(7번)로 낚아보세요!' },
-  chop:  { ico: '🪓', name: '벌목 보너스', desc: '나무를 쓰러뜨릴 때마다 목재를 1개 더 받아요. 건축·작업대 재료를 모을 때 딱이에요.' },
-  mine:  { ico: '⛏️', name: '광부의 힘',   desc: '동굴에서 채굴할 때 광석(돌·석탄·💎보석)을 더 얻을 확률이 올라가요. 마을 서쪽 동굴 입구로!' },
-};
 const buffs = { speed: 0, luck: 0, chop: 0, mine: 0 };   // 각 버프 만료 시각(clock.elapsedTime 기준)
 function buffOn(k) { return clock.elapsedTime < buffs[k]; }
-const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(도구·장식·선물 제작) 위치
 let nearBench = false;
 let nearStation = null;           // 🔥🫙 가까운 가공 시설 레코드(배치형이라 좌표가 여럿 — 가장 가까운 것)
-const stationLabel = (rec) => { const d = OUTDOOR.find(o => o.id === rec.id); return `${d.ico} ${d.name}`; };
-// 🍳 자유주방 — 작업대에서 요리를 분리한 새 작업장. 요리는 이제 미니게임(타이밍·리듬)으로 만든다
-const KITCHEN = new THREE.Vector3(7.4, 0, -6.4);  // 작업대 동쪽 옆(상점·시세판과 안 겹치는 빈터)
 let nearKitchen = false;
-const SHOP = new THREE.Vector3(9, 0, 0);        // 상점 좌판(집터 -8,-8 에서 멀리 동쪽)
 let nearShop = false;
-const MARKET = new THREE.Vector3(10, 0, 5.5);  // 📊 시세판 — 호수 서쪽 가로등 잔디. 상점 옆에 붙어 있던 걸 떼어 냄(베타: 상점·시세판·상인이 3유닛 안에 몰려 NPC 를 가림)
 let nearMarket = false;
-// 🏆 랭킹 게시판 — 마을 완전 중앙(사용자 지정). 스폰(0,0) 1.9 거리라 시작 시 밀리지 않고
-//    (콜라이더 1.57 밖) 프롬프트도 안 뜨게 상호작용 반경은 1.8로 타이트하게.
-//    여백: 농부(5,4) 4.4 · 공원벤치(-2.2,4.6) 4.6 · 텃밭 게이트(0,7) 5.6 · 랜덤 나무 밴드(r≥8) 밖
-//    ⚠️ 스폰보다 남쪽(z+)에 두면 카메라(남→북)와 캐릭터 사이에 끼어 캐릭터를 가림 — 같은 z선상 동쪽으로.
-const RANK = new THREE.Vector3(13.5, 0, 1.5);  // 🏆 랭킹 게시판 — 호수 북쪽 가로등(15,3) 잔디. 한복판(2.4,0.2)에서 옮김(NPC 안 가림·활동 구역 밖·호수 가는 길에 보임). 부두 옆(8.5,9.5)·텃밭 입구 앞(-0.5,10.5)은 비좁아 제외
 let nearRank = false;
-// 품목 아이콘 — **SELL_PRICE 의 모든 키를 덮어야 한다**(tests/orchard.test.mjs 가 강제).
-//   빠진 키가 있으면 📊시세판 월드 텍스처·상인 말풍선·시세판 모달이 문자 그대로 "undefined" 를 그린다.
-//   🍎 과수원 과일 아이콘은 js/orchard.js FRUITS[].ico 와 같은 값.
-const SELL_ICO_G = { charcoal: '⚫', flour: '🌾', brick: '🧱', bread: '🥐', juice: '🍷', grape_juice: '🍹', crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯',
-                     apple: '🍎', pear: '🍐', peach: '🍑', persimmon: '🍊', chestnut: '🌰' };
-const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 function farmHalf() { return farmHalfOf(gameState.farm?.stage || 1); }
 let playerInYard = false;   // 📐 측량소 마당(울타리 밖)에 있나 — 문을 지날 때만 바뀐다(clampFarmPos)   // 텃밭 반경(정사각 한 변의 절반) — 단계 표는 js/farm-stage.js
-const FARM_GATE = new THREE.Vector3(0, 0, 7);   // 마을 안 텃밭 입구 게이트
 let atFarm = false;                             // 텃밭 안에 있는지
 let lastMini = 0;                               // 미니맵 갱신 throttle
-const MINE = new THREE.Vector3(0, 0, 250);      // 채굴 동굴(다른 공간과 멀찍이)
-const MINE_HALF = 12;                           // 넓은 동굴
-const MINE_GATE = new THREE.Vector3(-14, 0, 3); // 마을 서쪽 동굴 입구
 let atMine = false;
 let atOrchard = false;                          // 🍎 과수원 언덕 안에 있는지
-// 🌉 낚시 부두 — 호수 서쪽 물가에서 안쪽으로 뻗음. 물은 못 들어가고 부두 위만 걸을 수 있음
-const PIER = { x1: 9.6, x2: 13.4, z1: 8.25, z2: 9.75 };
-function onPier(p) { return p.x > PIER.x1 - 0.5 && p.x < PIER.x2 && p.z > PIER.z1 && p.z < PIER.z2; }
-// 🐔 닭장(남쪽 필드) — 🔥 2일 연속 출석으로 해금(신규 유저도 이틀째에 도달, 초반 리텐션 훅). 매일 모이(씨앗 2) → 다음날 🥚 달걀 2개
-const COOP_STREAK = 2;                          // 해금에 필요한 연속 출석 일수
-const COOP = new THREE.Vector3(-4.5, 0, 11.5); // 텃밭 입구 남서쪽 트인 목 — 나무에 안 가리는 자리(초보 발견성)
-// 공원 벤치 [x, z, 회전] — 마을 중심부 트인 자리(랜덤 나무 밴드 r8~30을 피하거나 나무 회피 목록으로 보호)
-const PARK_BENCHES = [[-2.2, 4.6, 0.3], [6.5, 6.5, -1.1]];
-const COOP_COST = { wood: 25, stone: 10, coins: 60 };
-const COOP_FEED = 2;                            // 모이(씨앗) 소비량
 let nearCoop = false, coopGroup = null, coopSign = null;
 const chickens = [];                            // 닭 메시
 const chickenStates = [];                       // 같은 순서의 행동 상태(js/coop-chickens.js)
@@ -368,18 +207,7 @@ const mineTorches = [];                         // 동굴 벽 횃불(깜빡임)
 let farmGroup, mineGroup;                        // 텃밭/동굴 그룹(가시성 토글용)
 
 // ── 🌟 반딧불이 계곡(남쪽 숲) — 🌙 밤에만 나타나고 🦋포충망으로 잡는 "새 동사" ──
-//    마을 불빛에서 떨어뜨려 배치(어두울수록 잘 보임). 낮에만 하던 플레이에 "밤에 다시 올 이유"를 만듦.
-const GLADE = new THREE.Vector3(7, 0, 26);      // 계곡 중심(남동쪽 숲) — ☕카페·🍄채집 숲과 안 겹치게
-const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
 const GLADE_MAX = IS_MOBILE ? 5 : 7;            // 동시 개체 수
-//   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
-// 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
-const BUG_KINDS = [
-  { id: 'rainbow', name: '무지개반디', ico: '🌈', color: 0xffc0f0, p: 0.06 },
-  { id: 'green',   name: '초록반디',   ico: '🟢', color: 0xa8ffb0, p: 0.22 },
-  { id: 'blue',    name: '푸른반디',   ico: '🔵', color: 0x9ad8ff, p: 0.48 },
-  { id: 'yellow',  name: '노랑반디',   ico: '🟡', color: 0xfff2a8, p: 1.00 },
-];
 const gladeBugs = [];                           // 살아있는 반딧불이 개체
 let gladeGroup = null, nearGlade = false;
 let bugRespawnAt = 0;                           // 다음 개체 보충 시각(clock.elapsedTime)
@@ -387,107 +215,19 @@ let nightLevel = 0;                             // updateDayNight 이 매 프레
 function isNight() { return isNightAt(timeOfDay); }   // 판정은 js/daynight.js 가 단일 출처(테스트가 잠근다)
 
 // ── ☕ 카페 — 채굴장처럼 처음부터 마을에 있는 장소. 새 동사: 접객/서빙 ──
-//    마을 남쪽 건물로 들어가면 별도의 넓은 홀이 열리고, 그 안에 손님 NPC가 앉아 있다.
-//    손님에게 직접 걸어가 요리를 가져다주는 "공간 기반" 의뢰.
-//    농사(작물)·낚시(물고기)·닭장(달걀)·채집(버섯)이 전부 "쓸 곳"을 얻어 하나로 엮임.
-const CAFE_GATE = new THREE.Vector3(4, 0, 14);  // 마을 안 카페 건물(입구) — 주민 자리·호수·계곡과 안 겹치는 빈터
-const MUSEUM_GATE = new THREE.Vector3(-26, 0, 5);   // 🏛️ 박물관 — 마을 서쪽 끝, ⛏️채굴 동굴 너머.
-//   사용자가 고른 자리다(전체 지도의 "현위치"). 반경 3.4 안에 나무·바위가 없어 지형을 안 깎는다.
-//   ⛏️채굴 동굴(-14,3) 에서 12 — 서쪽 벨트의 끝점이라 가는 길에 자연히 지나친다.
-const MUSEUM = new THREE.Vector3(0, 0, 360);    // 🏛️ 전시실(다른 인스턴스 공간과 멀찍이)
-const CAFE = new THREE.Vector3(0, 0, 320);      // 카페 홀(다른 인스턴스 공간과 멀찍이)
-const CAFE_HALF = 11;                           // 넓은 홀 반경
-const CAFE_ORDERS = 4;                          // 하루 손님 수
-const CAFE_BONUS = 60;                          // 손님 전원 서빙 시 보너스 코인
-const CAFE_SEATS = [[-6, -3.5], [6, -3.5], [-6, 4.5], [6, 4.5]];   // 홀 안 테이블 좌석(홀 로컬 좌표)
-const CAFE_BOARD = [6.6, -7.9];                 // 📋 주문판(칠판) — 카운터 옆(동선상 눈에 띄게)
 let atCafe = false, nearCafeBoard = false;
 let atMuseum = false, museumGroup = null;   // 🏛️ 박물관 전시실
 let cafeInGroup = null, cafeGuestObjs = [];     // 홀 그룹 / 앉은 손님 런타임 { order, group, sprite, phase }
 let nearCafeGuest = null;
 
 // ── ☕ 카페 손님 캐스트 — **마을 주민이 아닌 "이웃 마을에서 찾아오는 손님들"** ──
-//    왜 따로 만들었나: 예전엔 손님을 마을 주민에서 뽑았는데, 주민 6명 중 5명이 후보이고
-//    하루 손님은 4명이라 마을 인구의 80%가 매일 카페에 복제됐다. 밖에 서 있는 🧙방랑 상인이
-//    카페에도 앉아 있는 게 눈에 띈 게 그 증상이다. 주민을 마을에서 빼는 방식은 퀘스트·상점
-//    NPC 가 사라져 진행이 막히므로, 손님을 아예 별도 캐스트로 갈랐다.
-//    acc(소품) + ear(귀 모양) + color 세 가지로 실루엣을 가른다 — 이름표를 못 읽는 거리에서도 구분되게.
-//    ⚠️ 플레이어가 고르는 동물(여우·강아지·토끼·고양이·곰·판다·병아리)과 마을 주민은 **피해서** 뽑았다 —
-//       내가 여우인데 손님도 여우면 "또 겹쳤다"는 똑같은 인상을 준다.
-const CAFE_GUESTS = [
-  { id: 'guest_deer',     name: '숲길 사슴',       emoji: '🦌', color: 0xd9a86a, hat: 0x7a5f3c, ear: 'round', acc: 'antler' },
-  { id: 'guest_otter',    name: '강가 수달',       emoji: '🦦', color: 0x6fa8c9, hat: 0xf0e0c0, ear: 'tiny',  acc: 'ribbon' },
-  { id: 'guest_hedgehog', name: '가시 고슴도치',   emoji: '🦔', color: 0xa08fb8, hat: 0x5a4d6a, ear: 'tiny',  acc: 'spike' },
-  { id: 'guest_squirrel', name: '부지런한 다람쥐', emoji: '🐿️', color: 0xe08a4a, hat: 0xf0c86a, ear: 'round', acc: 'flower' },
-  { id: 'guest_raccoon',  name: '야행성 너구리',   emoji: '🦝', color: 0x7d8794, hat: 0xc96a5a, ear: 'point', acc: 'scarf' },
-  { id: 'guest_frog',     name: '빗소리 개구리',   emoji: '🐸', color: 0x7ec96a, hat: 0x3a4a3a, ear: 'tiny',  acc: 'glasses' },
-  { id: 'guest_turtle',   name: '느긋한 거북',     emoji: '🐢', color: 0x4fa890, hat: 0xe8a07a, ear: 'tiny',  acc: 'beanie' },
-  { id: 'guest_beaver',   name: '댐 짓는 비버',    emoji: '🦫', color: 0xb06a4a, hat: 0x8a9ab0, ear: 'round', acc: 'cap' },
-];
-const cafeGuestDef = (id) => CAFE_GUESTS.find(g => g.id === id) || null;
 
 // ── 🍄 채집 숲(남서쪽) — 새 동사: 채집(심지 않고 줍기). 시간이 지나면 다시 돋아남 ──
-//    씨앗·물주기 없이 "돌아다니며 발견"하는 재미. 🌧️ 비 온 날엔 버섯이 유독 잘 나옴(날씨 연동)
-const FOREST = new THREE.Vector3(-18, 0, 23);   // 남서쪽 — 🌟계곡과 중심거리 25.2(나무 링까지 4.0 여유)
-const FOREST_R = 9;
-// 🪵 바닥에 누운 통나무 [숲 기준 x, z, 회전] — 굵기 0.34, 길이 2.6
-const FOREST_LOGS = [[-3.2, -1.4, 0.6], [2.8, 2.2, -0.9], [0.4, -4.2, 1.9]];
-const FOREST_LOG_R = 0.45;                      // 🚧 통나무 충돌 반경(굵기 + 캐릭터가 파묻히지 않을 여유)
-// 누운 통나무는 회전이 제각각이라 축정렬 사각으로 못 막는다 — 축을 따라 원을 늘어놓아 캡슐처럼 막는다.
-//   rotation(0, ry, π/2) 이면 통나무 축은 월드 XZ 에서 (-cos ry, sin ry).
-const FOREST_LOG_SPOTS = FOREST_LOGS.flatMap(([lx, lz, ry]) =>
-  [-0.85, -0.425, 0, 0.425, 0.85].map(t => ({ x: FOREST.x + lx - Math.cos(ry) * t, z: FOREST.z + lz + Math.sin(ry) * t })));
 const FORAGE_NODES = IS_MOBILE ? 8 : 11;        // 동시에 돋아 있는 채집물 수
-const FORAGE_RESPAWN = [55, 110];               // 채집 후 다시 돋기까지(초) 최소~최대
-// p는 누적 확률(FISH_KINDS 규칙과 동일). give 는 획득 자원
-const FORAGE_KINDS = [
-  { id: 'herb',     name: '숲 약초',   ico: '🌿', p: 0.12, give: { forage: 2 },          color: 0x7fd6a0 },
-  { id: 'acorn',    name: '도토리',    ico: '🌰', p: 0.38, give: { forage: 1, seed: 2 }, color: 0xc99a5a },
-  { id: 'berry',    name: '산딸기',    ico: '🫐', p: 0.66, give: { forage: 1, crop: 1 }, color: 0x8a7ad0 },
-  { id: 'mushroom', name: '숲 버섯',   ico: '🍄', p: 1.00, give: { forage: 1 },          color: 0xe0705a },
-];
 const forageNodes = [];                          // { mesh, kind, x, z, ready, respawnAt, phase }
 let forestGroup = null, nearForest = false;
 
 // ── 🛶 나루터 & 강 내려가기(마을 북쪽 12시) — 새 동사: 노 젓기 ──────────
-//    마을 북쪽 선착장에서 강 공간(별도 인스턴스)으로 이동 → 나룻배 1인칭.
-//    배는 자동으로 하류(-z)로 흘러가고 플레이어는 좌우 조향 + 노 젓기(스퍼트)만 한다.
-//    ※ 코스는 "날짜+회차" 시드로 결정 — 새로고침 리롤이 안 되고, 그날 모두가 같은 코스라
-//      로그에서 유저 간 실력 비교가 가능하다(난이도 튜닝·이탈 지점 분석의 전제).
-const DOCK_GATE = new THREE.Vector3(0, 0, -15);   // 마을 12시 방향 선착장(빈 땅)
-const DOCK_POND = new THREE.Vector3(0, 0, -21.5); // 나루터 앞 물가 — 마을 호수처럼 둥근 모양
-const DOCK_POND_R = 7;                            // 연못 반경(나무·꽃 배치와 물 진입 차단의 기준)
-const RIVER = new THREE.Vector3(0, 0, -400);      // 강 공간(다른 인스턴스와 멀찍이)
-const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸어 다니는 데크) 반경
-const RIVER_W = 6.4;                              // 강폭 절반 — 배 좌우 이동 한계
-const RIVER_LEN = 620;                            // 코스 길이(월드 단위) ≈ 60초
-const BOAT_RUNS_PER_DAY = 3;                      // 하루 무료 횟수(리텐션 훅 + 보상 인플레 방지)
-const BOAT_LAMPS = 3;                             // 기본 램프(충돌 허용 횟수) — 선체 업그레이드로 +1씩
-const BOAT_BASE_SPEED = 9.5;                      // 시작 속도(구간이 진행될수록 가속)
-const BOAT_BOOST_CD = 3.2;                        // 노 젓기(스퍼트) 재사용 대기(초)
-// 장애물 — r: 좌우 반폭(충돌 판정), hit: 램프를 깎는지(소용돌이는 안 깎고 밀기만)
-const RIVER_OBS = {
-  rock:  { r: 1.15, hit: true },   // 🪨 바위
-  log:   { r: 2.0,  hit: true },   // 🪵 떠내려온 통나무(넓음, 좌우로 천천히 흐름)
-  pile:  { r: 0.75, hit: true },   // 🪧 다리 기둥(좁은 문을 만듦 — 쌍으로 배치)
-  whirl: { r: 1.7,  hit: false },  // 🌀 소용돌이 — 안 아프지만 배를 끌어당김
-};
-// 강에서만 나오는 수집물(📖 도감 river 4종) — ⭐별조각은 화폐라 도감에 없음
-const RIVER_PICKS = [
-  { id: 'lotus',     name: '물 위 연꽃',    ico: '🪷', give: { seed: 2 },          color: 0xffb6d5 },
-  { id: 'driftwood', name: '떠내려온 나무', ico: '🪵', give: { wood: 2 },          color: 0xc09068 },
-  { id: 'shell',     name: '강 조개',       ico: '🐚', give: { star: 2 },          color: 0xffe6c0 },
-  { id: 'moon_fish', name: '달빛 물고기',   ico: '🌕', give: { fish: 2, star: 3 }, color: 0xdfe9ff, night: true },  // 🌙 밤에만
-];
-// 🧰 뱃사공의 창고 — ⭐별조각 + 🪙코인으로 배를 강화(후반 코인 싱크)
-const BOAT_UPGRADES = [
-  { id: 'oar',  name: '튼튼한 노',   ico: '🚣', max: 2, desc: '좌우로 더 빠르게 피할 수 있어요',
-    cost: [{ star: 8, coins: 80 }, { star: 16, coins: 180 }] },
-  { id: 'hull', name: '단단한 선체', ico: '🛶', max: 2, desc: '💡램프 +1 (충돌을 한 번 더 버텨요)',
-    cost: [{ star: 12, coins: 120 }, { star: 22, coins: 260 }] },
-  { id: 'lamp', name: '뱃머리 등불', ico: '🏮', max: 1, desc: '🌙밤에도 앞이 환하고 밤 보상 +20%',
-    cost: [{ star: 10, coins: 100 }] },
-];
 let riverGroup = null, dockGroup = null;          // 강 공간 / 마을 선착장 그룹
 let atRiver = false;                              // 강 공간에 있는지(나루터 데크 포함)
 let nearBoat = false, nearBoatShop = false;       // 데크 위 근접 대상
@@ -502,45 +242,10 @@ const boat = {
   invUntil: 0, stunUntil: 0, wreckAt: 0, shake: 0, next: 0, runNo: 0, seed: 0, startedAt: 0, night: false, t: 0,
 };
 
-// 🏪 꾸미기 가게 — 마을 서쪽, 집터(-8,-8)와 ⛏️동굴 입구(-14,3) 사이 빈터.
-//    중심에서 18.0 이라 나무 링(r8~30) 한복판이다 — 나무·꽃 산포 제외 목록에 **반드시** 들어가야 한다.
-//    정면은 +Z 라 회전하지 않는다(카메라 시선이 늘 −Z).
-const SHOP_POS = new THREE.Vector3(-17.5, 0, -4);
 let cosmeticShop = null;          // buildShop 이 돌려준 { group, owner, lamp } — 프레임 루프가 주인을 움직인다
-//  🎀 가게 앞(정면 +Z) 판정점 — 콜라이더가 2.4 라 중심 기준으론 가까이 갈 수가 없다.
-//     문 쪽으로 2.0 내밀어 **앞에 섰을 때만** 잡히게 한다(옆·뒤는 2.8 밖).
-const SHOP_DOOR = new THREE.Vector3(SHOP_POS.x, 0, SHOP_POS.z + 2.0);
 let nearCosShop = false;
 
 // ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
-//    처음부터 있는 장소(카페·채굴장 문법). 게이트 → 별도 인스턴스, 숲 안은 항상 어둑+짙은 안개.
-//    그림자 정령이 수호목의 빛을 갉아먹으러 다가오고, 플레이어는 등불을 켜(감속) ♪리듬 탭으로
-//    달랜다(성불). 웨이브 3회를 버티면 그날 하루 정화 — 매일 리셋되는 데일리 루프.
-const MIST_GATE = new THREE.Vector3(-17, 0, -17);   // 마을 북서(집 뒤편 어두운 숲) — 집터(-8,-8)와 7→12.7 로 띄움(베타: 집 바로 옆이라 답답)
-const MIST = new THREE.Vector3(0, 0, -250);         // 숲 인스턴스(다른 공간과 멀찍이)
-const MIST_HALF = 13;
-const MIST_WAVES = [3, 4, 5];                       // 웨이브별 정령 수(🌫️안개 날 +1)
-const TREE_LIGHT_MAX = 100;                         // 수호목 빛 — 0이 되면 부드러운 실패
-const MIST_DRAIN = 4;                               // 수호목에 붙은 정령 1마리당 빛 감소량(/초)
-const SOOTHE_GLOW = 2;                              // 달래기 성공 보상 ✨(황금 정령은 2배)
-const PURIFY_GLOW = 6;                              // 정화 완료 보너스 ✨
-// 그림자 정령 종류 — 📖 도감 spirit 카테고리와 1:1. golden 은 🌫️안개 날에만
-const SPIRITS = [
-  { id: 'shy',      name: '수줍은 정령',   ico: '🟣', color: 0x8a6cc9, speed: 0.5,  size: 0.3 },
-  { id: 'sleepy',   name: '졸린 정령',     ico: '🔵', color: 0x5a6cc0, speed: 0.38, size: 0.36 },
-  { id: 'mischief', name: '장난꾸러기 정령', ico: '🟠', color: 0xc06a9a, speed: 0.72, size: 0.26 },
-  { id: 'golden',   name: '황금 정령',     ico: '🌟', color: 0xe0b34a, speed: 0.62, size: 0.32, fog: true },
-];
-// 둘레 등불 6개(숲 로컬 좌표) — 수호목(중앙)으로 오는 길목마다 하나씩
-const MIST_LANTERN_POS = [[-7, -7], [7, -7], [-9.5, 1], [9.5, 1], [-5.5, 8], [5.5, 8]];
-const LANTERN_CALM_R = 4.5;                         // 켜진 등불 주변: 정령 감속 반경
-// 🎓 연습 모드 4단계(컨텍스트 슬롯) — "웨이브가 뭐예요?"(2026-09-07) 후속. 정령 1마리·빛 안 줄어듦·보상/도감/일일 기록 없음
-const MIST_PRACTICE_STEPS = [
-  '① 🏮 꺼진 등불 앞에서 버튼 — 켜진 등불 근처에선 정령이 느려져요',
-  '② 🟣 정령 곁으로 걸어가 버튼 — ♪가 나타나요',
-  '③ ♪가 가장 작아지는 순간 탭 ×3 — 놓쳐도 괜찮아요, 엇박만 조심',
-  '④ 잘했어요! 이제 정령 세 무리에 도전해요',
-];
 let mistGroup = null, atMist = false;
 let mistTree = null;                                 // 수호목 { group, foliage[], light }
 const mistLanterns = [];                             // { group, headMat, light, lit }
@@ -549,34 +254,12 @@ const mist = { active: false, wave: 0, spirits: [], treeLight: TREE_LIGHT_MAX, s
                practice: false, step: -1, choiceOpen: false };   // practice=연습 중 · step=연습 단계(3=완료 카드 표시 중) · choiceOpen=갈림길 카드
 
 // ── 🌊 바다터(대형 낚시) — 기획: docs/design/SEA_FISHING_PLAN.md ──────────────
-const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
-const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
-const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 
 // ── 🍎 과수원 언덕 — 기획: docs/superpowers/specs/2026-09-17-orchard-design.md ──────────────
-const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
-// 🔒 문 앞 프롬프트 반경 — **잠금 충돌체를 넘어서야 한다**. 잠겼을 때 문을 막는 원은
-//   (문 앞 0.45, 반경 1.5)라 남쪽에서 다가설 수 있는 한계가 0.45+1.5+PLAYER_R(0.42)=2.37 이다.
-//   예전 값 2.2 는 그 한계보다 작아, 잠긴 동안에는 해금 안내("🌾고급 작물을 한 번 거두면 열려요")가
-//   한 번도 뜨지 못했다 — 유저는 무엇을 하면 열리는지 알 길이 없었다(🏛️ 박물관 계단 STAIR_PROMPT_R 과 같은 교훈).
-const ORCHARD_PROMPT_R = 2.8;
-//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다. 동쪽은 x>18 에 고정물이 없다.
-const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
-const ORCHARD_HALF = 20;                            // 언덕 반경
 let orchardGroup = null;                            // 과수원 그룹(가시성 토글용) — rebuildOrchard() 가 채운다
 let orchardTreeObstacles = [];   // 밭 금지 표시 — syncOrchardTrees() 가 obstacles 에 등록한 항목. 다시 부르기 전에 지운다(시설 obstacle 정리와 같은 방식)
 let orchardTreeSolids = [];      // 나무 몸 충돌체 — 다시 그릴 때 removeSolid 로 치운다
 let orchardStreamSolids = [];    // 시냇물 충돌체 — 물 위를 걸을 수 없게
-const SEA_DECK_W = 3.4, SEA_DECK_Z0 = 4, SEA_DECK_Z1 = -10;   // 부두(로컬 z): 뭍(+z) → 끝(-z)
-const SEA_EDGE = SEA_DECK_Z1 + 0.55;                  // 이 선을 넘게 끌려가면 놓침
-// 어종 티어 = 난이도(선택 UI 없음 — 뭘 노리느냐가 난이도).
-//   drag(끌려가는 속도)·win(당길 기회 배율)·tap(연타 1회 진행)·w(무게 kg)·give(보상)
-const SEA_SPECIES = [
-  { id: 'aji',  name: '전갱이', ico: '🐟', scale: 0.62, color: 0x6f8fa8, drag: 0.45, win: 1.35, tap: 0.060, w: [1, 3],    give: { fish: 1, coins: 4 },  daylight: true },
-  { id: 'buri', name: '방어',   ico: '🐠', scale: 0.92, color: 0x4a6f8f, drag: 0.72, win: 1.05, tap: 0.042, w: [6, 14],   give: { fish: 2, coins: 8 } },
-  { id: 'mola', name: '개복치', ico: '🐡', scale: 1.35, color: 0x7a8896, drag: 0.50, win: 1.10, tap: 0.020, w: [40, 90],  give: { fish: 2, coins: 14 }, night: true, sunfish: true },
-  { id: 'tuna', name: '참치',   ico: '⚔️', scale: 1.15, color: 0x33628f, drag: 0.95, win: 0.90, tap: 0.032, w: [60, 120], give: { fish: 3, coins: 24 }, daily: true },
-];
 let seaGroup = null, atSea = false;
 let seaFishes = [];                                   // 배회 물고기 { g, sp, ang, des, spd, tTurn } (seaGroup 로컬 좌표)
 let seaBuoy = null, seaLine = null, seaRodMesh = null, _seaPrevTool = null;
@@ -625,92 +308,18 @@ function setSpaceVisible() {
   if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum) startRainSound();
   else stopRainSound();
 }
-// 🔥 가공물(charcoal·flour·brick·bread) — **파는 건 출구 중 가장 나쁜 선택**이 되게 잡았다.
-//   밀 4개(60)로 밀가루 평균 3.5개(63)라 팔면 본전이고, 빵으로 구우면 카페에서 56을 받는다.
-//   ⚠️ 이 표는 한 줄로 유지한다 — tests/orchard.test.mjs 가 한 줄 정규식으로 파싱한다.
-const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 5, pear: 6, peach: 8, persimmon: 10, chestnut: 12 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
 //    팔 타이밍 전략이 생기고, econ_logs 에 시세 반응 데이터가 쌓임(분석용)
 function priceRate(k) { return 0.7 + (dateHash('price:' + k) % 61) / 100; }     // 0.70 ~ 1.30
 function priceOf(k) { return Math.max(1, Math.round(SELL_PRICE[k] * priceRate(k))); }
-const SHOP_BUY = [
-  // 🪙 코인 전용 소모품 — 재료로는 못 얻는 "시간·운"을 판다(첫 구매처, 20~25🪙)
-  { id: 'fert1', name: '비료 1개',    ico: '🌱', coin: 20, give: { fert: 1 }, desc: '자라는 작물을 바로 수확 가능하게' },
-  { id: 'bait5', name: '미끼 5회분',  ico: '🪱', coin: 25, give: { bait: 5 }, desc: '5번 동안 희귀 물고기 확률↑' },
-  // 소모품·재료 번들
-  { id: 'seed5',   name: '씨앗 5개',   ico: '🌰', coin: 15,  give: { seed: 5 } },
-  { id: 'seed20',  name: '씨앗 20개',  ico: '🌰', coin: 50,  give: { seed: 20 }, desc: '대량 할인' },
-  // 🌾 고급 작물 씨앗 — 코인으로만(코인 싱크). 🌰씨앗 도구를 다시 누르면 종류를 고른다. 수확해도 씨앗은 안 돌아온다
-  { id: 'seedw3', name: '밀 씨앗 3개',    ico: '🌾', coin: 18, give: { seed_wheat: 3 }, desc: '물 2번 · 잡초가 잦아요 · 🪙15에 팔려요' },
-  { id: 'seedc3', name: '옥수수 씨앗 3개', ico: '🌽', coin: 24, give: { seed_corn: 3 },  desc: '물 3번 · 해충이 잘 붙어요 · 🪙20에 팔려요' },
-  { id: 'seedg3', name: '포도 씨앗 3개',   ico: '🍇', coin: 36, give: { seed_grape: 3 }, desc: '🍇지지대 옆에만 · 물 3번 · 🪙30에 팔려요' },
-  // 🍎 과수원 묘목 — 코인 전용(최대 코인 싱크). 한 번 심으면 영구 자산이라 씨앗보다 훨씬 비싸다
-  { id: 'sap_apple',     name: '사과나무 묘목',   ico: '🍎', coin: 90,  give: { sap_apple: 1 },     desc: '3일이면 자라요 · 매일 🍎2개' },
-  { id: 'sap_pear',      name: '배나무 묘목',     ico: '🍐', coin: 130, give: { sap_pear: 1 },      desc: '3일이면 자라요 · 매일 🍐2개' },
-  { id: 'sap_peach',     name: '복숭아나무 묘목', ico: '🍑', coin: 180, give: { sap_peach: 1 },     desc: '4일이면 자라요 · 매일 🍑2개' },
-  { id: 'sap_persimmon', name: '감나무 묘목',     ico: '🍊', coin: 240, give: { sap_persimmon: 1 }, desc: '4일이면 자라요 · 매일 🍊2개' },
-  { id: 'sap_chestnut',  name: '밤나무 묘목',     ico: '🌰', coin: 300, give: { sap_chestnut: 1 },  desc: '5일이면 자라요 · 매일 🌰2개' },
-  { id: 'wood10',  name: '목재 10개',  ico: '🪵', coin: 24,  give: { wood: 10 }, desc: '건축·제작용' },
-  { id: 'stone8',  name: '돌 8개',     ico: '🪨', coin: 30,  give: { stone: 8 }, desc: '돌담·화로용' },
-  { id: 'coal4',   name: '석탄 4개',   ico: '⚫', coin: 28,  give: { coal: 4 } },
-  // 도구 업그레이드(영구) — 코인으로 바로 구매
-  { id: 'buy_axe',   name: '강철 도끼',    ico: '🪓', coin: 120, upgrade: 'axe',   desc: '나무를 2번에 벌목' },
-  { id: 'buy_rod',   name: '튼튼한 낚싯대', ico: '🎣', coin: 100, upgrade: 'rod',   desc: '입질 시간 여유↑' },
-  { id: 'buy_water', name: '큰 물조리개',   ico: '💧', coin: 90,  upgrade: 'water', desc: '물 한 번에 성장↑' },
-  { id: 'buy_hoe',    name: '무쇠 괭이',        ico: '⛏️', coin: 110, upgrade: 'hoe',    desc: '광맥을 한 번 덜 캐도 돼요' },
-  { id: 'buy_seed',   name: '넉넉한 씨앗 주머니', ico: '🌰', coin: 80,  upgrade: 'seed',   desc: '기본 씨앗이 가끔 안 줄어요' },
-  { id: 'buy_sickle', name: '잘 드는 낫',       ico: '🌾', coin: 150, upgrade: 'sickle', desc: '옆 칸 작물도 함께 거둬요' },   // 효과 대비 싸서 130 → 150
-  { id: 'buy_shovel', name: '넓은 삽',          ico: '🪏', coin: 100, upgrade: 'shovel', desc: '빈 밭을 한 번에 메워요' },
-  { id: 'buy_hammer', name: '묵직한 망치',      ico: '🔨', coin: 140, upgrade: 'hammer', desc: '건축·증축 목재가 줄어요' },
-];
 
 // ── 도구 업그레이드(작업대) — 영구 강화, 재료 소비 ──
-const UPGRADES = [
-  { id: 'axe',   name: '강철 도끼',    ico: '🪓', cost: { wood: 20, crop: 3 }, desc: '나무를 2번에 벌목' },
-  { id: 'water', name: '큰 물조리개',  ico: '💧', cost: { wood: 10, crop: 5 }, desc: '물 한 번에 성장↑' },
-  { id: 'rod',   name: '튼튼한 낚싯대', ico: '🎣', cost: { wood: 10, fish: 3 }, desc: '입질 시간 여유↑' },
-  { id: 'pot',   name: '큰 냄비',      ico: '🍲', cost: { stone: 5, coal: 3 }, desc: '요리 버프 시간 1.5배(채굴)' },
-  { id: 'net',   name: '촘촘한 포충망', ico: '🦋', cost: { wood: 12, bug: 2 }, desc: '반딧불이 포획 성공률↑' },   // 🌟 밤 콘텐츠 강화
-  // 🔧 신설 5종 — 도구 9종이 전부 같은 3단계 규칙을 따르게(dev/active/tool-tiers/).
-  //    효과는 전부 "반복 노동 완화" 다 — 보상량을 늘리면 코인 인플레가 생기는데, 지금은 코인이 남는 게 문제다.
-  //   ⚠️ 재료에 ⚫석탄·💎보석을 섞는다 — 목재·돌만으로 만들 수 있으면 후반 플레이어는
-  //      코인을 한 푼도 안 내고, 이 기획의 목표인 코인 싱크가 실현되지 않는다(리뷰 지적).
-  { id: 'hoe',    name: '무쇠 괭이',        ico: '⛏️', cost: { wood: 15, stone: 8, coal: 2 },  desc: '광맥을 한 번 덜 캐도 돼요' },
-  { id: 'seed',   name: '넉넉한 씨앗 주머니', ico: '🌰', cost: { crop: 8, wood: 6, coal: 1 },   desc: '기본 씨앗이 가끔 안 줄어요' },
-  { id: 'sickle', name: '잘 드는 낫',       ico: '🌾', cost: { stone: 10, crop: 8, gem: 1 },   desc: '옆 칸 작물도 함께 거둬요' },
-  { id: 'shovel', name: '넓은 삽',          ico: '🪏', cost: { wood: 12, stone: 6, coal: 2 },  desc: '빈 밭을 한 번에 메워요' },
-  { id: 'hammer', name: '묵직한 망치',      ico: '🔨', cost: { stone: 14, coal: 3, gem: 1 },   desc: '건축·증축 목재가 줄어요' },
-];
 
 // ── 야외 장식(작업대) — 마당에 설치, 재료 소비 ──
-const OUTDOOR = [
-  { id: 'fence',     name: '울타리',  ico: '🪵', cost: { wood: 3 }, desc: '마당 울타리 · 밭 근처 4개면 밤손님 방어' },
-  { id: 'scarecrow', name: '허수아비', ico: '🎃', cost: { wood: 5 }, desc: '밭 근처에 세우면 밤손님을 쫓아요' },
-  { id: 'path',      name: '디딤돌',  ico: '🪨', cost: { wood: 1 }, desc: '돌 디딤돌' },
-  { id: 'flowerbed', name: '꽃밭',    ico: '🌷', cost: { crop: 2 }, desc: '알록달록 꽃밭' },
-  { id: 'postlamp',  name: '정원등',  ico: '🏮', cost: { wood: 4 }, desc: '밤에 빛나는 등' },
-  { id: 'stonewall', name: '돌담',    ico: '🧱', cost: { stone: 3 }, desc: '튼튼한 돌담(채굴)' },
-  { id: 'brazier',   name: '화로',    ico: '🔥', cost: { stone: 2, coal: 2 }, desc: '밤에 빛나는 화로(채굴)' },
-  { id: 'spiritlamp', name: '정령 등불', ico: '✨', cost: { glow: 8, coins: 60 }, desc: '정령빛이 깃든 등불 — 밤에 청록빛(안개 숲)' },
-  { id: 'kiln',      name: '화덕',    ico: '🔥', cost: { stone: 20, wood: 15, coins: 150 }, desc: '재료를 걸어두면 다음 날 구워져 있어요 · 한 채에 2칸' },
-  { id: 'vat',       name: '발효통',  ico: '🫙', cost: { wood: 25, stone: 10, coins: 200 }, desc: '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요 · 한 채에 2칸' },
-  ...FARM_BUILDINGS,   // 🏗️ 밭 시설 7종(farm:true, fp:[가로칸,세로칸]) — 같은 배치 문법, 텃밭 안에서만(js/farm-building.js)
-];
-// 🔥 첫 화덕 자리 — ⛏️채굴장 입구(-14,3) 아래 빈터. 마을 서쪽 동선 위라 오가며 눈에 들어온다.
-//    (-6,4) 는 목수 아저씨와 겹쳐 캐릭터 뒤에 가렸다(2026-09-20 실측).
-//    한 점에 박으면 그 자리에 나무가 서 있을 때 화덕이 파묻힌다 — 후보 중 **가장 트인 곳**을 고른다.
-const KILN_SPOTS = [[-9.5, 12.5], [-11.5, 9.5], [-13, 8], [-7.5, 14], [-12, 6.4]];   // 채굴장(-14,3)에 붙지 않게 남동쪽 빈터를 앞에 둔다
-const KILN_HOME = KILN_SPOTS[0];                 // 기본값(후보를 못 고를 때)
-const KILN_CLEAR_R = 2.4;                        // 이 반경 안엔 나무가 없어야 한다(화덕 폭 2.03 + 여유)
 
 /** 후보 점수 — 나무에서 멀고 **기존 시설·주민에서도 떨어진** 자리.
  *  나무만 보고 고르니 화덕이 ⛏️채굴장 옆에 붙었다(2026-09-20 실측).
  *  나무는 일정 거리만 벌면 충분하지만(3 에서 포화), 시설은 멀수록 좋으므로 가중치를 크게 둔다. */
-function kilnAvoidPoints() {
-  return [MINE_GATE, CAFE_GATE, MUSEUM_GATE, FARM_GATE, KITCHEN, BENCH, SHOP, MARKET, RANK, COOP]
-    .filter(Boolean)
-    .concat(NPCS.map(n => ({ x: n.pos[0], z: n.pos[2] })));   // 주민 자리도 피한다
-}
 function pickKilnSpot() {
   const avoid = kilnAvoidPoints();
   let best = KILN_HOME, bestScore = -1;
@@ -742,17 +351,10 @@ function clearTreesForKiln(x, z) {
     }
   }
 }
-const KILN_SCALE = 1.35;        // 마을 기준 체감 크기(1.0 은 벤치보다 작게 읽혔다)
-// 🔥 화덕·🫙 발효통은 같은 규칙을 쓴다 — 한 채에 2칸, 종류마다 3채까지.
-//    마을·텃밭이 가공 시설로 뒤덮이지 않게. 슬롯 상한 6칸도 여기서 나온다
-const STATION_IDS = STATIONS.map(s => s.id);
 function stationCount(id) { return gameState.outdoor.filter(r => r.id === id).length; }
 function canBuildStation(id) { return stationCount(id) < MAX_UNITS; }
 function kilnCount() { return stationCount('kiln'); }
 
-// 🫙 첫 발효통 자리 — 텃밭 마당 북서쪽(밭 로컬). 밭 위가 아니라 마당이라 파종·물주기를 가로채지 않고,
-//    x -12.5 는 밭이 3단계(half 11)까지 커져도 마당 안에 남는다. 🔧자재 작업대(z 2.6)와도 2.6 이상 벌어진다.
-const VAT_HOME_LOCAL = [-12.5, 5.0];
 
 // 🔥 화덕 불꽃 — 서로 다른 박자로 늘었다 줄고 비틀린다. updateDayNight 가 매 프레임 돌린다
 const kilnFlames = [];
@@ -781,8 +383,6 @@ function refreshStations() {
   }
 }
 
-const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안 밭에 놓아요', yard: '🏗️ 시설 마당은 이미 꽉 찼어요. 울타리 안 밭에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
-function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 function farmBuildingRecs(except = null) { return gameState.outdoor.filter(r => r !== except && isFarmBuilding(r.id)); }   // 시설 레코드만(옮기는 중인 자기 자신 제외)
 
 // ── 🦋 텃밭 방문객 — 환경 점수 입력 ──────────────────────────────
@@ -857,13 +457,6 @@ let pickedOutdoor = null;       // 🪵 들어 올린 기존 야외 장식 {id, 
 let nearOutdoorMesh = null;     // 🪵 근접 프롬프트 대상 야외 장식(옮기기)
 
 // ── 주민 선물(작업대) — 제작해서 주민에게 주면 친밀도↑ ──
-const GIFTS = [
-  { id: 'bouquet', name: '꽃다발',      ico: '💐', cost: { crop: 2 } },
-  { id: 'fruit',   name: '과일 바구니', ico: '🧺', cost: { crop: 4 } },
-  { id: 'fishset', name: '생선 묶음',   ico: '🐟', cost: { fish: 3 } },
-  { id: 'woodtoy', name: '목각 인형',   ico: '🪆', cost: { wood: 6 } },
-  { id: 'necklace', name: '보석 목걸이', ico: '📿', cost: { gem: 1 }, love: 2 },   // 💎 최상급 선물 — 친밀도 +2(채굴)
-];
 
 let fishState = 'idle';   // 'idle' | 'wait' | 'bite'
 let baitActive = false;   // 🪱 이번 캐스트에 미끼 사용 중(회당 소모, 희귀 확률 이중 굴림)
@@ -874,162 +467,10 @@ const castPos = new THREE.Vector3();
 const _v = new THREE.Vector3(); // 임시 벡터
 
 // ── 📜 퀘스트 "어떻게 하나요" 한 줄 — 유형별 단일 출처 ───────────────
-//   베타 피드백: "방랑 상인이 씨앗뿌리기 0/3 이라는데 어쩌라는 건지 모르겠어요."
-//   제목·목표(무엇을)만 있고 수행 방법(어디서·무슨 도구로)이 없어서 생긴 막힘 →
-//   퀘스트 패널과 주민 대화창에 이 줄을 함께 띄운다. 지명은 VILLAGE_PLACES 와 같은 이름을 쓴다.
-const QUEST_HOW = {
-  plant:        '🌾 텃밭에서 🌰씨앗을 들고 일군 밭에 심어요 (밭이 없으면 ⛏️괭이로 먼저 갈아요)',
-  water:        '🌾 텃밭에서 💧물조리개를 들고 씨앗 심은 밭에 물을 줘요',
-  harvest:      '🌾 텃밭에서 다 자란 작물 앞에 서서 낫으로 거둬요',
-  collect_crop: '🌾 텃밭에서 씨앗을 심고 물을 주면 자라요. 거두면 가방에 쌓여요',
-  collect_wood: '🪓 도끼를 들고 마을 나무 앞에서 액션을 눌러요',
-  chop:         '🪓 도끼를 들고 마을 나무 앞에서 액션을 눌러요',
-  fish:         '🏞️ 호수에서 🎣낚싯대를 던지고, "물었어요!" 가 뜨면 바로 액션!',
-  fish_rare:    '🏞️ 호수에서 계속 낚아요. 🪱미끼를 쓰면 희귀 물고기 확률이 올라가요',
-  house:        '🔨 망치를 들고 내 집 앞에서 액션 — 목재를 넣으면 한 단계씩 올라가요',
-  collect_dex:  '📖 처음 보는 것을 잡거나 캐거나 거두면 도감에 등록돼요 — ☰ 메뉴 → 📖 에서 확인',
-  dex_one:      '📖 큐레이터가 집어 준 것을 찾아 도감에 등록해요 — ☰ 메뉴 → 📖 에서 어디서 나오는지 확인',
-  expand:       '🎨 완성된 집 근처에서 [집 외관 꾸미기] 버튼을 열면 맨 위에 🏗️ 증축이 있어요',
-  sell:         '🏪 상점이나 찾아온 🧙방랑 상인에게 가방 속 물건을 팔아요',
-  catch:        '🌟 밤에 반딧불이 계곡으로 가서, 밝게 반짝일 때 포충망을 휘둘러요',
-  forage:       '🍄 채집 숲에서 열매·버섯 앞에 서서 맨손으로 주워요',
-  mine:         '⛏️ 채굴 동굴에서 괭이를 들고 광석 앞에서 액션을 눌러요',
-  cook:         '🍳 자유주방에 들어가 재료가 있는 요리를 골라 만들어요',
-  serve:        '☕ 카페에 들어가 손님이 말한 요리를 만들어 내드려요',
-  carve:        '🗿 작업대에서 조각 탭을 열고, 오늘의 주문 하나를 골라 깎아요',
-  egg:          '🥚 닭장에 가서 달걀을 걷어요. 하루에 한 번 나와요',
-  gift:         '🎁 작업대에서 선물을 만들어, 주민 앞에서 가방을 열고 건네요',
-  decor:        '🪵 작업대에서 야외 장식을 만들어 마당에 놓아요',
-  boat:         '🛶 나루터에서 배를 타고 강을 끝까지 내려가요',
-  seafish:      '🌊 바다터에서 낚싯대를 던지고, 물면 힘겨루기를 버텨요',
-  mist:         '🌫️ 안개 숲에 들어가 등불을 밝히고 숲을 정화해요',
-};
 
 // ── 마을 주민(NPC) 정의 — 각자 이름/색/퀘스트 체인 ───────────────
-//   퀘스트 type: chop(벌목) harvest(수확) water(물주기) plant(심기)
-//               house(집완성) collect_wood/collect_crop(보유량 달성)
-// 💬 하루에 주민 한 명과 나눌 수 있는 대화 횟수.
-//    ⚠️ functions/api/npc-talk.js 의 SETS_PER_DAY 와 반드시 같아야 한다 —
-//    서버가 2세트만 내려주는데 여기가 3이면 세 번째에 빈 대화가 열린다.
-const TALK_PER_DAY = 2;
 
-const NPCS = [
-  {
-    id: 'farmer', name: '농부 삼촌', emoji: '🧑‍🌾', color: 0x5fbf62, hat: 0xf0cd6a, pos: [5, 0, 4], look: 'farmer',   // 🟢 초록 + 넓은 밀짚모자
-    quests: [
-      { type: 'chop',    target: 3, title: '장작 모으기', desc: '나무 3번 베기',   reward: { seed: 3, coins: 5 },  line: '겨울 대비 장작이 필요해. 나무 3번만 베어줄래?' },
-      { type: 'harvest', target: 2, title: '수확의 기쁨', desc: '작물 2개 수확',   reward: { wood: 6, coins: 8 },  line: '밭에서 작물 두 개만 거둬다 주면 목재로 보답하지!' },
-      { type: 'water',   target: 4, title: '촉촉하게',   desc: '물 4번 주기',     reward: { seed: 5, coins: 8 },  line: '모종이 목말라 해. 물 네 번만 부탁할게.' },
-      { type: 'harvest', target: 6, title: '대풍년',     desc: '작물 6개 수확',   reward: { seed: 6, coins: 15 }, line: '올해는 대풍년을 만들어보자! 여섯 개만 더 거둬줘.' },
-    ],
-  },
-  {
-    id: 'builder', name: '목수 아저씨', emoji: '👷', color: 0xe0663c, hat: 0xffd23f, pos: [-5, 0, 6], look: 'builder',  // 🟠 테라코타 + 노란 안전모·각목
-    quests: [
-      { type: 'collect_wood', target: 10, title: '목재 납품', desc: '목재 10개 모으기', reward: { crop: 3, coins: 10 },          line: '집 지으려면 목재 10개가 필요해. 모아올 수 있겠어?' },
-      { type: 'house',        target: 1,  title: '보금자리',  desc: '집 완성하기',      reward: { seed: 6, crop: 3, coins: 30 }, line: '이제 근사한 집을 완성해보자고!' },
-      { type: 'collect_wood', target: 20, title: '큰 창고 짓기', desc: '목재 20개 모으기', reward: { coins: 25 }, line: '마을 창고를 지으려면 목재가 많이 필요해. 스무 개 부탁해!' },
-      // 🏗️ 증축 안내 — 증축은 [🎨 집 외관 꾸미기] 버튼 안에 숨어 있어 아무도 찾지 못했다.
-      //    목수가 그 위치를 직접 말해 주는 게 이 세 의뢰의 존재 이유다.
-      //    ⚠️ 되돌릴 수 없는 1회성 목표 — 진행도는 상태형(houseStage)으로 읽고,
-      //       이미 지어 둔 기존 유저에게는 pickCurrent(js/quests.js)가 읽는 자리에서 조용히 건너뛴다.
-      { type: 'expand', stage: 4, target: 1, title: '한 층 더', desc: '🧱 브릭 로프트로 증축', reward: { stone: 6, coins: 20 }, line: '집이 좁지 않아? 집 앞에서 🎨집 외관 꾸미기를 열면 🏗️증축이 있어. 벽돌 한 층 올려보자고!' },
-      { type: 'expand', stage: 5, target: 1, title: '펜트하우스', desc: '🏢 펜트하우스로 증축', reward: { wood: 10, coal: 3, coins: 25 }, line: '한 층 더 올릴 수 있어. 목재랑 돌, 석탄까지 모아야 하니 만만치 않을 거야.' },
-      { type: 'expand', stage: 6, target: 1, title: '옥상 정원', desc: '🏝️ 루프탑 빌라로 증축', reward: { coins: 30, gem: 1 }, line: '마지막이야 — 옥상 정원까지 얹으면 마을에서 제일 근사한 집이 돼.' },
-    ],
-  },
-  {
-    // 좌판 바로 뒤(북쪽) 상주 — 좌판 장애물 반경 1.6 + NPC 여유 0.35 = 1.95 밖이어야 npcBlocked 에 안 걸린다
-    id: 'merchant', name: '방랑 상인', emoji: '🧙', color: 0x8a5cd0, hat: 0xf0c04a, pos: [10.5, 0, -3.5], roam: 0.6, look: 'peddler',   // 🟣 보라 보따리 장수(hat 색은 허리띠)
-    quests: [
-      { type: 'plant',        target: 3, title: '씨앗 뿌리기', desc: '씨앗 3번 심기',   reward: { wood: 4, coins: 6 }, grant: { seed: 3 }, line: '여기 씨앗 3개를 줄 테니, 세 번 심어보겠소?' },
-      { type: 'collect_crop', target: 5, title: '풍년',       desc: '작물 5개 보유',   reward: { seed: 8, coins: 12 }, line: '작물 다섯 개만 모으면 큰 선물을 주겠소!' },
-      { type: 'sell',         target: 10, title: '장사의 신',  desc: '상점에서 10개 팔기', reward: { coins: 30 }, line: '장사꾼의 자질이 보이는군! 상점에서 열 개를 팔아보시오.' },
-    ],
-  },
-  {
-    id: 'angler', name: '낚시꾼 할아버지', emoji: '🎣', color: 0x3f8fd6, hat: 0x27506f, pos: [9, 0, 14], look: 'angler',   // 🔵 파랑 + 버킷햇·낚싯대·흰 수염
-    quests: [
-      { type: 'fish',      target: 2, title: '첫 낚시',   desc: '물고기 2마리 낚기', reward: { crop: 3, coins: 8 }, line: '호수에서 🎣낚싯대로 물고기 두 마리만 낚아보게!' },
-      { type: 'fish',      target: 5, title: '월척 도전', desc: '물고기 5마리 낚기', reward: { seed: 5, coins: 12 }, line: '이번엔 다섯 마리! 물면 바로 낚아채야 하네.' },
-      { type: 'fish_rare', target: 1, title: '무지개를 낚아', desc: '희귀 물고기 1마리', reward: { crop: 6, seed: 4, coins: 40 }, line: '전설의 무지개 물고기를 낚아오면 큰 상을 주지!' },
-      { type: 'fish',      target: 8, title: '만선의 꿈',   desc: '물고기 8마리 낚기', reward: { crop: 5, coins: 20 }, line: '마지막 도전일세 — 만선의 꿈을 이뤄보게나!' },
-    ],
-  },
-  {
-    id: 'chef', name: '요리사 판다', emoji: '🐼', color: 0xf7f4ee, hat: 0xffffff, pos: [0, 0, -8], look: 'chef',   // ⚫⚪ 판다(검은 귀·눈 패치) + 요리사 토크
-    quests: [
-      { type: 'collect_crop', target: 3, title: '신선한 재료', desc: '작물 3개 보유',  reward: { coins: 8 },            line: '요리는 재료가 절반! 신선한 작물 세 개를 모아와 줘.' },
-      { type: 'cook',         target: 2, title: '오늘의 요리', desc: '요리 2번 하기',  reward: { coins: 12 },           line: '자유주방에서 요리 두 번! 타이밍을 잘 맞추면 버프도 오래가.' },
-      { type: 'cook',         target: 3, title: '풀코스 도전', desc: '요리 3번 하기',  reward: { coins: 20, gem: 1 },   line: '마지막 시험이야 — 풀코스 세 접시를 완성해 봐! 💎 특별 보상이 있어.' },
-    ],
-  },
-  {
-    // 🦡 채집 숲지기 — 마을 외곽이 텅 비었다는 베타 건의에 맞춰 숲 입구에 상주.
-    //    🐿️다람쥐·🦦수달은 ☕카페 손님 캐스트에 이미 있다(같은 동물이 밖과 카페에 동시에 있으면 헷갈린다)
-    id: 'forager', name: '숲지기 오소리', emoji: '🦡', color: 0x6b6157, hat: 0xf2efe8, skin: 0xe8e4dc, pos: [-16.5, 0, 15.5], roam: 0.5, look: 'badger',   // ⬛⬜ 잿빛 몸 + 흰 줄무늬 얼굴
-    quests: [
-      { type: 'forage', target: 5,  title: '숲 첫걸음',   desc: '🍄 채집물 5개 줍기',      reward: { seed: 4, coins: 8 },  line: '숲에 들어온 김에 다섯 개만 주워다 줄래? 어디에 뭐가 나는지 알려줄게.' },
-      { type: 'forage', target: 12, title: '바구니 가득', desc: '🍄 채집물 12개 줍기',     reward: { crop: 4, coins: 14 }, line: '겨울 준비를 해야 해. 열두 개면 바구니가 그득해질 거야!' },
-      { type: 'gift',   target: 1,  title: '이웃의 몫',   desc: '🎁 주민에게 선물 1번 주기', reward: { seed: 6, coins: 12 }, line: '주운 걸 혼자 쌓아두면 재미없잖아. 누구든 하나 나눠줘 봐.' },
-      { type: 'carve',  target: 1,  title: '나뭇결 읽기', desc: '🗿 조각 1개 완성하기',    reward: { coins: 20, gem: 1 },   line: '마지막은 손재주야 — 작업대에서 조각 하나만 완성해 보렴. 💎 값진 걸 줄게.' },
-    ],
-  },
-  {
-    // ⭐ 밤 콘텐츠 안내역 — 반딧불이 계곡 입구(밤에만 의미가 생기는 구역의 길잡이)
-    id: 'stargazer', name: '별 보는 아이', emoji: '⭐', color: 0x5b6fd0, hat: 0xffd86b, skin: 0xfde3c8, pos: [6, 0, 20.5], roam: 0.5, look: 'stargazer',   // 🔵 남색 + 별 머리핀·포충망
-    quests: [
-      { type: 'catch', target: 3, title: '첫 반딧불이', desc: '🌟 반딧불이 3마리 잡기(밤)', reward: { crop: 3, coins: 10 }, line: '밤이 되면 여기 반딧불이가 떠올라요. 세 마리만 같이 잡아요!' },
-      { type: 'gift',  target: 1, title: '나눠 주기',   desc: '🎁 주민에게 선물 1번 주기',  reward: { seed: 5, coins: 10 }, line: '예쁜 걸 보면 누구 주고 싶어져요. 선물 하나만 건네 보실래요?' },
-      { type: 'catch', target: 8, title: '별이 내린 밤', desc: '🌟 반딧불이 8마리 잡기(밤)', reward: { coins: 24, gem: 1 },  line: '여덟 마리가 모이면 계곡이 하늘처럼 보인대요. 보고 싶어요!' },
-    ],
-  },
-  {
-    // 🦆 나루터지기 — 🛶강·🌊바다는 잠길 수 있어 체인엔 넣지 않는다(일일·반복 풀에서만 나온다)
-    id: 'ferryman', name: '사공 오리', emoji: '🦆', color: 0xf0ede4, hat: 0xe8a33c, skin: 0xf5f2ea, pos: [2.5, 0, -13.5], roam: 0.5, look: 'duck',   // ⚪ 흰 몸 + 주황 부리·밀짚 삿갓·노
-    quests: [
-      { type: 'fish',         target: 4,  title: '나루 조황',   desc: '물고기 4마리 낚기',  reward: { wood: 5, coins: 10 }, line: '물때가 좋구먼. 네 마리만 낚아 보시게 — 뱃길 이야기를 들려주지.' },
-      { type: 'collect_wood', target: 15, title: '나루 손보기', desc: '목재 15개 모으기',   reward: { crop: 4, coins: 16 }, line: '선착장 널이 삭았어. 목재 열다섯이면 든든하게 고치겠군.' },
-      { type: 'fish',         target: 8,  title: '한나절 낚시', desc: '물고기 8마리 낚기',  reward: { coins: 22, gem: 1 },  line: '마지막일세 — 여덟 마리를 채우면 진짜 물가 사람이 되는 게야.' },
-    ],
-  },
-  {
-    // 🐔 목장터 — 🥚달걀은 닭장을 지어야 가능하므로 체인엔 넣지 않는다(일일·반복 풀에서만 나온다)
-    id: 'rancher', name: '목장 아주머니', emoji: '🐔', color: 0xd9694f, hat: 0xfaf3e2, skin: 0xfbe0c4, pos: [-6.5, 0, 12.8], roam: 0.5, look: 'rancher',   // 🔴 벽돌빛 저고리 + 쪽진 머리에 비녀 · 달걀 바구니
-    quests: [
-      { type: 'cook',         target: 2, title: '아침상 차리기', desc: '요리 2번 하기',            reward: { seed: 5, coins: 10 }, line: '아침은 든든해야지! 부엌에서 두 번만 만들어 봐요.' },
-      { type: 'serve',        target: 3, title: '손님맞이',     desc: '☕ 카페 손님 3명 서빙하기', reward: { crop: 4, coins: 16 }, line: '카페가 바쁘대요. 손님 세 분만 봐주면 큰 도움이 될 거예요.' },
-      { type: 'collect_crop', target: 8, title: '곳간 채우기',   desc: '작물 8개 보유',            reward: { coins: 22, gem: 1 },  line: '마지막 부탁이에요 — 작물 여덟 개면 겨울이 무섭지 않아요.' },
-    ],
-  },
-  {
-    // 🧑‍🦳 박물관 큐레이터 — 🏛️ 입구 옆 상주. 마을에서 유일하게 차려입은 사람이라 실루엣으로 구분된다.
-    //   개관 체인이 박물관 자체를 소개한다(🔨목수 체인이 숨어 있던 증축을 소개했듯).
-    //   ⚠️ 목표는 전부 도감 등록(collect_dex)이다 — 무엇을 가져오든 "처음 보는 것" 이면 된다.
-    id: 'curator', name: '큐레이터 할아버지', emoji: '🧑‍🦳', color: 0x4a5a7a, hat: 0x8a2f3a, skin: 0xf0ddc8,
-    //  ⚠️ 자리는 계단 오른쪽 **앞마당**(벽에서 2유닛 앞)이다. 벽에 바싹 붙이면 몸이 벽을 파고든다 —
-    //     npcBlocked 가 보는 obstacles 의 박물관은 **원 r3.2** 인데 건물은 7.2×5.4 사각이라
-    //     네 모서리(중심에서 4.5)가 원 밖으로 삐져나온다. 즉 정면 모서리는 막히지 않아 걸어 들어간다.
-    //     roam 도 다른 상주 주민과 같은 0.5 로 묶는다(기본 1.6 이면 배회 중에 벽까지 간다).
-    pos: [-23.9, 0, 9.9], roam: 0.5, look: 'curator',   // 🔵 남색 정장 + 🔴 자주 나비넥타이
-    quests: [
-      { type: 'collect_dex', target: 3,  title: '개관 준비',   desc: '📖 도감 3종 등록하기',  reward: { coins: 20 },
-        line: '박물관이 텅 비어 있답니다… 무엇이든 세 가지만 찾아다 주시겠어요? 첫 전시를 열고 싶군요.' },
-      { type: 'collect_dex', target: 8,  title: '첫 전시실',   desc: '📖 도감 8종 등록하기',  reward: { seed: 6, coins: 26 },
-        line: '진열장이 아직 헐렁하군요. 여덟 가지가 모이면 1층이 제법 박물관다워질 겁니다.' },
-      { type: 'collect_dex', target: 13, title: '2층을 향해',  desc: '📖 도감 13종 등록하기', reward: { coins: 40, gem: 1 },
-        line: '아홉 가지가 모이면 위층을 열 수 있어요. 조금만 더 부탁드립니다. 💎값진 걸로 보답하지요.' },
-    ],
-  },
-  {
-    // 📋 데일리 의뢰 담당 — quests 는 매일 refreshDailyQuests() 가 날짜 시드로 채움(전원 동일)
-    id: 'courier', name: '의뢰 올빼미', emoji: '🦉', color: 0xe0a52e, hat: 0x8a5c28, skin: 0xfdfaf3, pos: [-3, 0, -3], look: 'owl',   // 🦉 원숭이올빼미(크림 얼굴 + 황금 등·날개)
-    daily: true, doneLine: '오늘 의뢰는 전부 끝! 내일 새 의뢰를 가져올게요 🦉',
-    quests: [],
-  },
-];
 
-const DAILY_COUNT = 3;   // 하루 일일 의뢰 개수 — refreshDailyQuests·validDailyQuests·특별 의뢰 판정이 함께 쓴다
 //   ⏸️ 베타 건의 1위가 "일일 퀘스트가 없어서 할 일이 없다" 라 5로 올릴 준비를 해 뒀지만,
 //      🧪베타(~2026-09-15) 중에는 3으로 둔다. 개수를 바꾸면 validDailyQuests 의 개수 검증에 걸려
 //      그날 진행 중이던 사람의 목록이 통째로 다시 뽑히고(포인터도 리셋),
@@ -1041,48 +482,8 @@ const DAILY_COUNT = 3;   // 하루 일일 의뢰 개수 — refreshDailyQuests·
 //      (셋이 어긋나면 AI 의뢰가 개수 검증에 걸려 통째로 버려진다 — tests/quests.test.mjs 가 잠근다)
 //      i18n 사전에는 /3 · /5 문구가 둘 다 들어 있어 개수만 바꾸면 된다.
 
-// 의뢰 하나당 코인. 앞이 가볍고 뒤가 무겁다.
-const QUEST_COINS = [10, 15, 20];
-const QUEST_LUCKY = 3;   // 🎁럭키박스가 붙는 건수(앞에서부터). 5건으로 올릴 땐 3 을 유지한다(전부 붙이면 발행이 두 배)
-
-// 진행도가 실제로 추적되는 목표 종류 — questEvent() 가 쏘는 이벤트 + 상태형(refreshCollectQuests).
-//   이 목록에 없는 type 을 가진 의뢰는 아무리 플레이해도 영원히 완료되지 않는다.
-//   되돌릴 수 없는 1회성 목표(house 등)는 이벤트가 아니라 상태형으로 넣는다 —
-//   이벤트는 수락 전에 이미 끝내버린 사람에게 두 번 다시 쏘이지 않는다.
-const QUEST_TYPES = new Set([
-  'chop', 'plant', 'water', 'harvest', 'fish', 'fish_rare', 'mine',
-  'sell', 'cook', 'serve', 'catch', 'forage', 'house', 'expand',
-  'collect_wood', 'collect_crop',
-  // 🦉 의뢰가 "베고·심고·낚고" 로만 돌던 것을 넓힌다(베타: "컨텐츠가 부족하다").
-  //   이 중 일부는 전제조건이 있다 — js/quests.js 의 QUEST_GATES 가 거른다.
-  'carve', 'egg', 'gift', 'decor', 'boat', 'seafish', 'mist',
-  'collect_dex',   // 🏛️ 도감 등록 종수 — 상태형(dexCount 에서 읽는다)
-  'dex_one',       // 🏛️ 콕 집은 한 종 — 상태형(그 종이 도감에 있는가)
-]);
 
 // ── 데일리 퀘스트 풀 — 매일 3개 뽑기(완료 시 코인 + 🎁럭키박스 확률 보상) ──
-const DAILY_POOL = [
-  { type: 'chop',    target: 5, title: '오늘의 벌목',  desc: '나무 5번 베기' },
-  { type: 'harvest', target: 3, title: '오늘의 수확',  desc: '작물 3개 수확하기' },
-  { type: 'water',   target: 5, title: '오늘의 물주기',  desc: '물 5번 주기' },
-  { type: 'plant',   target: 3, title: '씨앗 심는 날', desc: '씨앗 3번 심기' },
-  { type: 'fish',    target: 3, title: '오늘의 조황',  desc: '물고기 3마리 낚기' },
-  { type: 'mine',    target: 4, title: '광산 의뢰',    desc: '광석 4개 캐기' },
-  { type: 'sell',    target: 5, title: '장사의 날',    desc: '상점에서 아무거나 5개 팔기' },
-  { type: 'catch',   target: 3, title: '밤의 산책',    desc: '🌟 반딧불이 3마리 잡기(밤)' },
-  { type: 'serve',   target: 2, title: '오늘의 접객',  desc: '☕ 카페 손님 2명 서빙하기' },
-  { type: 'forage',  target: 5, title: '숲의 아침',    desc: '🍄 채집물 5개 줍기' },
-  // ↓ 게임에 있는데 의뢰로는 한 번도 안 쓰이던 것들(2026-09-12). 일부는 전제조건이 있어
-  //   js/quests.js 의 QUEST_GATES 가 거른다 — 닭장을 안 지었으면 🥚는 아예 안 뽑힌다.
-  //   target 은 QUEST_LIMITS 를 넘지 않는다(하루 1회 제한 콘텐츠는 그날 못 깨는 의뢰가 된다).
-  { type: 'carve',   target: 1, title: '오늘의 주문',  desc: '🗿 조각 1개 완성하기' },
-  { type: 'gift',    target: 1, title: '이웃에게 선물',  desc: '🎁 주민에게 선물 1번 주기' },
-  { type: 'decor',   target: 2, title: '마당 가꾸기',  desc: '🪵 야외 장식 2개 놓기' },
-  { type: 'egg',     target: 1, title: '아침 달걀',    desc: '🥚 달걀 걷기' },
-  { type: 'boat',    target: 1, title: '뱃길 따라',    desc: '🛶 강 한 번 완주하기' },
-  { type: 'seafish', target: 2, title: '먼바다까지',   desc: '🌊 바다 물고기 2마리 낚기' },
-  { type: 'mist',    target: 1, title: '안개 걷기',    desc: '🌫️ 안개 숲 정화하기' },
-];
 
 // 🔒 지금 이 세이브에서 깰 수 있는 의뢰인지 판정하는 데 필요한 상태 — js/quests.js 의 게이트가 본다.
 //   ⚠️ 베타 A/B 가 끝나 맵 잠금이 항상 false 가 되어도 닭장·집 단계 조건은 계속 일한다.
@@ -1097,20 +498,6 @@ function questCtx() {
   };
 }
 
-// 세이브에 박아둔 오늘 의뢰가 그대로 쓸 만한지 — 형태와 목표 종류까지 확인한다.
-//   type 이 목록 밖이면(옛 세이브·삭제된 목표) 완료가 불가능하므로 통째로 새로 뽑는다.
-function validDailyQuests(qs) {
-  return Array.isArray(qs) && qs.length === DAILY_COUNT && qs.every(validQuest);
-}
-
-// 의뢰 하나가 "실제로 완료 가능한" 형태인지 — 목록 검증(validDailyQuests)과 같은 기준.
-//   ✨특별 의뢰(st.special)도 반드시 이걸 통과해야 한다. 안 그러면 type 이 목록 밖일 때
-//   진행도가 영원히 0 이라 st.idx 가 못 올라가고 그날 올빼미 의뢰 전체가 잠긴다.
-function validQuest(q) {
-  if (!q || !QUEST_TYPES.has(q.type) || !Number.isFinite(q.target) || q.target <= 0 || !q.desc) return false;
-  if (q.type === 'expand' && !Number.isFinite(q.stage)) return false;   // 목표 단계가 없으면 진행도가 영원히 0
-  return true;
-}
 
 // ── 🔁 주민 반복 의뢰 ─────────────────────────────────────────
 //   베타 건의: "올빼미 의뢰랑 미션들 깨다보면 미션이 없어지는 지점이 있는데 그때는 뭘 해야할지 모르겠어요".
@@ -1221,11 +608,6 @@ function refreshDailyQuests() {
 }
 
 // ── 🦉 AI 의뢰 — 서버(/api/daily-quests)가 만든 오늘의 의뢰로 조용히 갈아끼운다 ──
-//   로컬 DAILY_POOL 로 이미 채워 둔 뒤 백그라운드로 받아오므로, 느리거나 실패해도
-//   플레이가 멈추지 않는다(카페 손님과 같은 방식).
-//   ⚠️ 아직 의뢰를 받지 않았을 때만 교체한다 — 진행 중에 목록이 바뀌면 st.idx 포인터가
-//      엉뚱한 의뢰를 가리켜, 손도 안 댄 의뢰가 절반 차 있고 하던 진행도는 증발한다.
-const AI_QUEST_TIMEOUT = 15000;   // 서버가 Gemini 생성을 기다린다 — 엣지 캐시가 비면 실측
 //   8~10초(2026-09-14: fog 8.63s · rain 10.10s)라 6초로는 그날 첫 접속이 거의 다 놓쳤다.
 //   upgradeDailyQuestsAI() 는 로컬 의뢰를 채운 뒤 백그라운드로 도는 데다, 진행이 시작됐으면
 //   교체를 포기하므로 오래 기다려도 플레이가 밀리지 않는다.
@@ -1343,91 +725,6 @@ const gameState = {
 };
 
 // ── 📖 도감 — 물고기·작물·광물 첫 발견을 수집. 완성 시 보상 ──
-//    게스트에겐 마일스톤마다 "로그인하면 영구 보존" 넛지(회원 유치 훅)
-const DEX = {
-  fish: [
-    { id: 'common',   name: '피라미',        ico: '🐟' },
-    { id: 'uncommon', name: '붉은 물고기',   ico: '🐠' },
-    { id: 'rare',     name: '무지개 물고기', ico: '🌈' },
-  ],
-  crop: [
-    { id: 'carrot',    name: '당근',     ico: '🥕' },
-    { id: 'tomato',    name: '토마토',   ico: '🍅' },
-    { id: 'blueberry', name: '블루베리', ico: '🫐' },
-    { id: 'pumpkin',   name: '호박',     ico: '🎃' },
-    { id: 'wheat',     name: '밀',       ico: '🌾' },   // 🌾 고급 작물 3종(js/farm-crops.js)
-    { id: 'corn',      name: '옥수수',   ico: '🌽' },
-    { id: 'grape',     name: '포도',     ico: '🍇' },
-  ],
-  ore: [
-    { id: 'stone', name: '돌',   ico: '🪨' },
-    { id: 'coal',  name: '석탄', ico: '⚫' },
-    { id: 'gem',   name: '보석', ico: '💎' },
-  ],
-  // 🍳 요리 — RECIPES 에서 파생. 레시피를 늘릴 때 도감을 따로 고치는 걸 잊어 빈칸이 생기던 걸 막는다
-  cook: RECIPES.map(r => ({ id: r.id, name: r.name, ico: r.ico })),
-  // ⚠️ **NPCS 에서 파생한다.** 손으로 적어 두면 주민을 추가할 때마다 빠뜨린다 —
-  //    실제로 🦡숲지기·⭐별 보는 아이·🦆사공·🐔목장 아주머니가 빠져 있었고,
-  //    도감 토스트에 이름 대신 id 가 그대로 떴다(🧑‍🦳큐레이터를 넣다 발견).
-  npc: [
-    ...NPCS.map(n => ({ id: n.id, name: n.name, ico: n.emoji })),
-    // ☕ 카페 손님 — 마을에 살지 않는 이웃들(서빙하면 채워짐). CAFE_GUESTS 에서 파생
-    ...CAFE_GUESTS.map(g => ({ id: g.id, name: g.name, ico: g.emoji })),
-  ],
-  // 🍄 채집물 — 남서쪽 채집 숲을 돌아다니며 주워야 채워짐
-  forage: [
-    { id: 'mushroom', name: '숲 버섯',  ico: '🍄' },   // 🌧️ 비 온 날 잘 나옴
-    { id: 'berry',    name: '산딸기',   ico: '🫐' },
-    { id: 'acorn',    name: '도토리',   ico: '🌰' },
-    { id: 'herb',     name: '숲 약초',  ico: '🌿' },
-  ],
-  // 🌟 반딧불이 — 밤에 남쪽 계곡에서 🦋포충망으로 잡아야 채워짐(밤 재방문 훅)
-  bug: [
-    { id: 'yellow',  name: '노랑반디',   ico: '🟡' },
-    { id: 'blue',    name: '푸른반디',   ico: '🔵' },
-    { id: 'green',   name: '초록반디',   ico: '🟢' },   // 🌧️ 비 온 날 잘 나옴
-    { id: 'rainbow', name: '무지개반디', ico: '🌈' },   // 🌫️ 안개 낀 날 잘 나옴
-  ],
-  // 🐾 밤손님 흔적 — 밤사이 다녀간 흔적을 조사해야 채워짐(다음날 재방문 훅)
-  track: [
-    { id: 'fur_tuft',   name: '털뭉치',     ico: '🧶' },   // 🦝 너구리가 흘리고 감
-    { id: 'acorn_drop', name: '주운 도토리', ico: '🌰' },   // 🐗 멧돼지가 물고 가다 떨어뜨림
-  ],
-  // 🪏 땅속에서 — 삽으로 빈 밭을 완전히 메운 순간(2타) 낮은 확률로 나옴(DIG_DEX). 재료·코인은 없고 도감만
-  dig: [
-    { id: 'worm',     name: '지렁이',   ico: '🪱' },   // 10%
-    { id: 'shard',    name: '사금파리', ico: '🏺' },   // 5%
-    { id: 'old_coin', name: '옛 동전',  ico: '🪙' },   // 2% — 이름만 동전, 코인 지급 없음
-  ],
-  // 🛶 강 — 나룻배를 타고 내려가며 주워야 채워짐(하루 3번 제한 → 여러 날에 걸쳐 완성)
-  river: [
-    { id: 'lotus',     name: '물 위 연꽃',    ico: '🪷' },
-    { id: 'driftwood', name: '떠내려온 나무', ico: '🪵' },
-    { id: 'shell',     name: '강 조개',       ico: '🐚' },
-    { id: 'moon_fish', name: '달빛 물고기',   ico: '🌕' },   // 🌙 밤에 탄 날에만 나옴
-  ],
-  // 🌫️ 정령 — 안개 낀 숲에서 ♪로 달래야 채워짐. golden 은 🌫️안개 날에만(날씨 재방문 훅)
-  spirit: [
-    { id: 'shy',      name: '수줍은 정령',     ico: '🟣' },
-    { id: 'sleepy',   name: '졸린 정령',       ico: '🔵' },
-    { id: 'mischief', name: '장난꾸러기 정령', ico: '🟠' },
-    { id: 'golden',   name: '황금 정령',       ico: '🌟' },
-  ],
-  // 🌦️ 날씨 — 그 날씨인 날 접속해야 채워짐(예보와 묶어 재방문 유도)
-  weather: [
-    { id: 'clear', name: '맑은 날',     ico: '☀️' },
-    { id: 'rain',  name: '비 오는 날',  ico: '🌧️' },
-    { id: 'snow',  name: '눈 오는 날',  ico: '❄️' },
-    { id: 'fog',   name: '안개 낀 날',  ico: '🌫️' },
-  ],
-  // 🦋 방문객 — 텃밭 환경을 만들면 스스로 찾아온다. 조건·판정의 단일 출처는 js/habitat.js 다.
-  //   여기서 표를 다시 적지 않는다(주민 도감을 손으로 적어 4명이 빠졌던 사고와 같은 유형).
-  visitor: VISITORS.map(v => ({ id: v.id, name: v.name, ico: v.ico })),
-};
-// 전 카테고리 합. ⚠️ 여기에 숫자를 적어두지 않는다 — npc·cook 이 NPCS/CAFE_GUESTS/RECIPES 에서
-//    파생하므로 주민·레시피를 늘릴 때마다 조용히 낡는다(실제로 "33종" 주석이 오래 남아 70종인 걸 가렸다).
-//    지금 값이 궁금하면 도감 제목(📖 도감 n/m)이나 dexCount() 를 본다.
-const DEX_TOTAL = Object.values(DEX).reduce((n, list) => n + list.length, 0);
 function dexCount() { return Object.keys(DEX).reduce((n, cat) => n + Object.keys(gameState.dex[cat] || {}).length, 0); }
 
 // 첫 발견 시 도감 등록 — 낚시/수확/채굴 성공 지점에서 호출
@@ -1454,23 +751,6 @@ function dexDiscover(cat, id) {
 }
 
 // ── 🏅 업적 배지 — 도감 모달 하단에 전시. 달성 시 1회 기념 보상 ──
-//    조건은 syncBadges()가 판정(옛 세이브도 접속 시 소급 지급)
-const BADGES = [
-  { id: 'house',       name: '내 집 마련',     ico: '🏠', desc: '집 완성하기',            reward: { coins: 20 } },
-  { id: 'modern',      name: '드림 하우스',    ico: '🏙️', desc: '루프탑 빌라까지 증축',    reward: { coins: 100 } },
-  { id: 'first_chain', name: '첫 의뢰 완수',   ico: '🎖️', desc: '주민 의뢰 체인 1개 완료', reward: { coins: 20 } },
-  { id: 'all_chains',  name: '마을의 영웅',    ico: '👑', desc: '모든 주민 의뢰 완료',     reward: { coins: 50 } },
-  { id: 'streak7',     name: '일주일 개근',    ico: '🔥', desc: '7일 연속 출석',          reward: { coins: 30 } },
-  { id: 'weather_all', name: '전천후 탐험가',  ico: '🌈', desc: '날씨 4종 모두 경험',      reward: { coins: 30 } },
-  { id: 'night_owl',   name: '밤의 수집가',    ico: '🌟', desc: '반딧불이 4종 모두 잡기',   reward: { coins: 40 } },
-  { id: 'barista',     name: '마을 바리스타',  ico: '☕', desc: '카페에서 15잔 서빙',       reward: { coins: 60 } },
-  { id: 'forager',     name: '숲의 안내인',    ico: '🍄', desc: '채집물 4종 모두 줍기',     reward: { coins: 40 } },
-  { id: 'ferryman',    name: '첫 뱃길',        ico: '🛶', desc: '강을 끝까지 내려가기',     reward: { coins: 30 } },
-  { id: 'river_master', name: '잔잔한 물살',   ico: '🌊', desc: '한 번도 부딪히지 않고 완주', reward: { coins: 80 } },
-  { id: 'purifier',    name: '숲의 정화자',    ico: '🌫️', desc: '안개 낀 숲을 정화하기',      reward: { coins: 30 } },
-  { id: 'spirit_friend', name: '정령의 친구',  ico: '✨', desc: '정령 20마리 달래기',         reward: { coins: 60 } },
-  { id: 'dex_master',  name: '도감 마스터',    ico: '📖', desc: '도감 전부 채우기',        reward: { coins: 50 } },
-];
 function badgeCount() { return Object.keys(gameState.badges).length; }
 
 function awardBadge(id) {
@@ -1507,35 +787,6 @@ function syncBadges() {
 }
 
 // ═══════════════ 📖 메인 퀘스트(이야기) — 기존 콘텐츠를 챕터로 묶는 서사 축 ═══════════════
-//  프롤로그 컷신에서 이어지는 4개의 장. 새 시스템이 아니라 "이미 하게 될 일"에 서사와 순서를 얹는다.
-//  강제 없음(코지 문법): HUD 칩이 "다음에 하면 좋은 것"을 알려주고, 조건이 차면 어디서든 완료된다.
-//  안내자는 🦉 의뢰 올빼미 — 완료 모달의 기록자 화자.
-const STORY = [
-  {
-    id: 'home', ico: '🏠', title: '나의 첫 집', goal: '내 집 짓기',
-    start: '떠돌이 생활은 오늘로 끝. 마을 한켠의 빈터에 내 집을 지어보자. 나무를 베면 목재를 얻을 수 있어요.',
-    done: '지붕이 올라갔어요. 오늘부터 여기서 잠들 수 있어요.',
-    reward: { coins: 40 },
-  },
-  {
-    id: 'friends', ico: '💬', title: '숲의 이웃들', goal: '주민 의뢰 3번',
-    start: '이 숲엔 먼저 자리 잡은 이웃들이 있어요. ❕ 말풍선이 뜬 주민을 도와주며 얼굴을 익혀보자.',
-    done: '이웃 셋의 부탁을 들어줬어요. 이제 서로 얼굴을 알아요.',
-    reward: { seed: 5, coins: 30 },
-  },
-  {
-    id: 'taste', ico: '🍳', title: '첫 요리', goal: '요리하고 서빙하기',
-    start: '숲에서 거둔 재료로 요리를 해보자. 주방에서 만들어 카페 손님에게 내면 돼요.',
-    done: '첫 요리를 손님상에 냈어요. 카페에 소문이 돌기 시작해요.',
-    reward: { coins: 50 },
-  },
-  {
-    id: 'secret', ico: '🌿', title: '잎사귀의 주인', goal: '안개 걷어내기',
-    start: '북서쪽 숲엔 걷히지 않는 안개가 있대요. 문득, 그날 바람에 실려 온 잎사귀가 떠올라요.',
-    done: '안개가 걷히고 수호목이 말했어요. "그 잎사귀, 내가 보낸 거란다. 먼 길 오느라 고생했어."',
-    reward: { coins: 80 },
-  },
-];
 
 let storyBooted = false;   // 첫 syncStory(세이브 소급)는 조용히, 이후엔 축하 연출
 
@@ -1601,8 +852,6 @@ function syncStory() {
 }
 
 // ── 🏷️ 닉네임 — 리더보드 표시명. 게임 톤의 "형용사+동물 #태그" 자동 생성 ──
-//    유일성은 #태그(4자리)로 충돌을 낮추고, 진짜 유니크 보장은 리더보드 profiles 테이블에서(다음 단계).
-const NICK_ADJS = ['조용한', '포근한', '느긋한', '반짝이는', '부지런한', '졸린', '씩씩한', '다정한', '호기심 많은', '바람 같은', '노래하는', '새벽의', '별 헤는', '숲속의'];
 function genNickname(animal) {
   const adj = NICK_ADJS[Math.floor(Math.random() * NICK_ADJS.length)];
   const a = ANIMALS.find(x => x.id === (animal || gameState.character));
@@ -1622,7 +871,6 @@ function setNickname(name, source = 'change') {
 function forecastDexNudge() { return gameState.dex.weather?.[FORECAST] ? '' : ' 아직 도감에 없는 날씨예요! 📖'; }
 
 // ── 출석 보상 — 하루 1회, 연속 출석(streak)일수록 커짐. 7일마다 보석 보너스 ──
-const DAILY_COINS = [5, 8, 12, 16, 20, 25, 30];   // 1~7일차(이후 30 고정)
 function checkDailyBonus() {
   const d = gameState.daily;
   const today = todayStr();
@@ -1705,7 +953,6 @@ let decorTarget = { x: 0, z: 0, pinned: false }; // 놓일 자리. pinned=false 
 // 🪵🏗️ 야외(울타리·밭 시설)도 실내 가구와 같은 손맛으로 — 바닥을 탭/클릭한 자리에 고스트가 서고, 한 번 더 누르면 놓인다
 //   (사용자 지시 2026-09-13: "집에서 배치하는 것처럼"). pinned=false 면 예전처럼 발밑을 따라간다.
 let outdoorTarget = { x: 0, z: 0, pinned: false };
-const OUTDOOR_REACH = 7;   // 조준 가능한 최대 거리 — 화면 끝을 눌러 멀리 놓지 못하게(근접 상호작용 원칙)
 let pickedDecor = null;    // 들어 올린 기존 가구 {id, wx, wz, rot, f} — 취소·퇴장 시 제자리(원래 층)로
 let decorTapHintShown = false; // "여기 놓을까요?" 안내는 배치 1회당 한 번만
 let interiorGroup, interiorFloor, interiorLamp;
@@ -1776,56 +1023,12 @@ let toolPourTilt = 0;     // 💧🌰 붓기/뿌리기 전용 자루 기울임(r
 //   toolDigK 0 이면 평소 쥔 자세, 1 이면 toolDigDir 그대로. updatePlayer 의 'dig' 제스처가 매 프레임 갱신한다.
 let toolDigK = 0;
 const toolDigDir = new THREE.Vector3(0, -0.92, 0.40);
-const _dgUp = new THREE.Vector3(0, 1, 0), _dgQ = new THREE.Quaternion(), _dgW = new THREE.Quaternion(), _dgPQ = new THREE.Quaternion(), _dgP = new THREE.Vector3(), _dgS = new THREE.Vector3();
 
 // ── 팔 상수 — sims/arm-sim.html 시뮬레이션으로 검증한 값 ──
-//   팔은 몸 반지름 R 비례(굵기 .23R·길이 .22R), 평상시엔 아래 방향벡터로 조준 고정.
-const _axX = new THREE.Vector3(1, 0, 0), _axZ = new THREE.Vector3(0, 0, 1);
-//   방향은 sims/tool-visibility-sim.html 검수값 — 이전 (.44,-.85,.28)은 벌림이 좁아
-//   몸 큰 곰·판다에서 도구가 몸에 파묻혔다. 좌우 대칭.
-const ARM_AIM_R = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(.29, -.90, .32).normalize());
-const ARM_AIM_L = new THREE.Quaternion().setFromUnitVectors(
-  new THREE.Vector3(0, -1, 0), new THREE.Vector3(-.29, -.90, .32).normalize());
-// 옆베기: 몸을 감았다 풀며 팔이 가로로 쓸고 감 — 와인드업 63° → 반대편 86°
-const SLASH = { back: 1.10, strike: -1.50, lift: -1.20 };
-const WRIST_MAX = 0.55;   // 1.0이면 팔+도구가 한 줄 막대가 돼 어색(시뮬에서 확인)
-// 도구 쥐는 자세: 팔 조준 회전을 상쇄해 자루를 세움 / 스윙 땐 팔의 연장(180°)
-const TOOL_QREST = ARM_AIM_R.clone().invert()
-  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
-  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
-const TOOL_QSWING = new THREE.Quaternion().setFromAxisAngle(_axX, Math.PI);
-// 🐤 날개-팔은 조준 회전이 팔(ARM_AIM)과 달라 쥐는 자세 상쇄값도 다르다(sims/chick-wing-sim.html 검증)
-const TOOL_QREST_WING = new THREE.Quaternion().setFromAxisAngle(_axZ, 0.20)
-  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, -.12))
-  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.16));
 let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
 let wingArms = false;         // 🐤 날개-팔 캐릭터 — 쥐는 점 보정을 적용하지 않는다(원본 유지)
 let toolGripFade = 0;         // 0 = 새 쥐는 점 · 1 = 원본 쥐는 점. 옆베기 동안만 올라간다(스윙 궤적을 원본과 똑같이)
-// ✊ 쥐는 점 — 팔 있는 캐릭터가 도구를 든 자세(sims/tool-grip-sim.html ④ 검수값).
-//   발바닥 중심에서 자루를 세우면 자루가 팔뚝 속을 뚫고 올라왔다(물조리개·씨앗은 발바닥에 박힘).
-//   · 긴 도구: 자루를 발바닥 앞쪽(z)으로 옮기고 끝 혹이 주먹 아래로 나오게 내린다(y)
-//   · 물조리개·씨앗: 통 윗단·주머니 목을 쥐고 몸통을 매단다(주둥이는 바깥-앞 대각선)
-//   p 는 쥐는 자세 회전 뒤의 도구 로컬 오프셋. 표에 없는 것(🌊릴대·꾸미기 가구)은 기존 자세 그대로.
-//   ⚠️ 휘두르는 모션은 바꾸지 않는다(사용자 결정). 옆베기 중엔 toolGripFade 로 원본 쥐는 점에 돌아간다 —
-//      새 쥐는 점 그대로 원본 스윙을 하면 자루가 앞으로 나온 만큼 몸에 더 박힌다(베기 끝 관통 26%→58%).
-const TOOL_QREST_HOLD = ARM_AIM_R.clone().invert()
-  .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, .12))
-  .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, -.05));
-const mkGrip = (x, y, z, ry = 0) => ({ p: new THREE.Vector3(x, y, z), q: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry) });
-const GRIP_LONG = mkGrip(0, -0.07, 0.075);
-const TOOL_GRIP = {
-  axe: GRIP_LONG, hoe: GRIP_LONG, sickle: GRIP_LONG, shovel: GRIP_LONG, hammer: GRIP_LONG, rod: GRIP_LONG, net: GRIP_LONG,
-  water: mkGrip(0.08, -0.30, 0.08, -0.8),
-  seed: mkGrip(0.08, -0.20, 0.08),
-};
 let curAnimal = ANIMALS[0];   // 현재 캐릭터 정의 — 등 수납 위치 계산(updateStowPose)에 사용
-// 3단 완급(감기 ease-out → 휙 ease-in → 복귀) — 원본 도구 곡선에서 물려받은 뼈대
-function slashPhase(p, B, S) {
-  if (p < .32) { const q = p / .32;        return B * (1 - (1-q)*(1-q)); }
-  if (p < .58) { const q = (p - .32)/.26;  return B + (S - B) * q * q; }
-  const q = (p - .58) / .42;               return S + (0 - S) * (1 - (1-q)*(1-q));
-}
 let restArmX = 0.78;      // 손에 들었을 때의 좌우 위치(캐릭터 몸집마다 다름 — applyCharacter 가 갱신)
 let toolStow = 0;         // 🎒 도구 수납 진행 0(손 옆)~1(등 뒤). ✋맨손이면 1로 보간된다
 let sunLight, hemiLight, ambient;
@@ -1842,13 +1045,11 @@ const obstacles = [];             // 밭 만들기 금지 구역 {x,z,r} (나무
 //   형태 두 가지 — 원기둥 {x,z,r} / 축정렬 사각 {x1,z1,x2,z2}(월드 XZ).
 //   문이 있는 건물은 원으로 막으면 문 앞에 설 수 없어 사각을 쓴다.
 const colliders = [];
-const PLAYER_R = 0.42;            // 캐릭터 몸통 반경(대략)
 //   off=true 면 잠시 통과 가능(베어진 나무·캔 광맥처럼 안 보이는 동안)
 function solidCircle(x, z, r) { const c = { x, z, r, off: false }; colliders.push(c); return c; }
 function solidBox(x1, z1, x2, z2) { const c = { x1, z1, x2, z2, off: false }; colliders.push(c); return c; }
 //   손님처럼 사라지는 대상은 콜라이더도 같이 치운다(안 그러면 안 보이는 벽이 남음)
 function removeSolid(c) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
-const NPC_R = 0.45;               // 주민·손님 몸통 반경(대화 2.6 / 서빙 2.4 사거리엔 영향 없음)
 
 // 이동 후 밀어내기 — "가장 얕게 빠져나가는 방향"으로만 밀어 벽을 따라 미끄러지게 한다
 function resolveColliders(p) {
@@ -1879,10 +1080,6 @@ let houseCollider = null;         // 🚧 집 충돌(짓는 동안 off, 완성�
 let houseSign, houseSignTex, houseSignCtx; // 집 터 안내판(멀리서도 보임)
 
 // ── 집 외관 커스터마이징 팔레트(지붕/벽/문 색) ──
-const ROOF_COLORS = [0xb5734a, 0xd05a5a, 0x5a86d0, 0x5aa86a, 0x9a6ad0];  // 갈색·빨강·파랑·초록·보라
-const WALL_COLORS = [0xd2a068, 0xe8c99a, 0xa9805a, 0xc9c0aa, 0xe0b0b0];  // 기본·밝은나무·진한나무·회벽·핑크
-const DOOR_COLORS = [0xa9743f, 0x8a5a3a, 0x5a6a8a, 0x5a8a6a, 0xd0a050];  // 갈색·진갈·파랑·초록·황금
-const PART_NAME = { roof: '지붕', wall: '벽', door: '문' };
 // 0번 스와치 = 지금 집 모델의 기본색(모델마다 다르다: 코티지 샌드 지붕, 빌라 흰 슬래브…), 1~4 = 공용 팔레트
 function houseBaseColor(role, fallback) {
   let hex = null;
@@ -1922,7 +1119,6 @@ function applyHouseStyle() {
     o.material.color.setHex(list[gameState.houseStyle[role] % list.length]);
   });
 }
-const HOUSE_POS = new THREE.Vector3(-8, 0, -8); // 정해진 집 터 위치
 const clock = new THREE.Clock();
 
 // 입력 상태
@@ -1930,22 +1126,8 @@ const keys = createKeyState();   // ⌨️ js/keys.js — 입력칸에서 친 �
 const analog = { x: 0, z: 0 };    // 모바일 조이스틱 아날로그 이동(-1~1)
 let wantAction = false;
 let timeOfDay = 0.30;
-const DAY_SPEED = 0.002;   // 전체 낮/밤 주기 ≈ 8분(기존 ~2분에서 완만하게)
 let ui = {};
 
-// 파스텔 팔레트
-const PAL = {
-  ground: 0xbfe8c9, groundDark: 0xa9dcb6,
-  trunk: 0xd8a679, leaf1: 0x8fd6a0, leaf2: 0xb7e6a8, leaf3: 0xa0e0d0,
-  body: 0xfff2d6, belly: 0xffd9a8, hat: 0xff9e9e,
-  wood: 0xd9a066, sky: 0xdff3ff,
-  soil: 0x9c6b4a, soilWet: 0x7c5236,
-  //  🌾 밭 얼룩의 양 끝 — soilDark < soil < soilLight 순서를 지켜야 한다.
-  //     soilLight 를 soil 과 같게 두면 얼룩의 밝은 쪽 보간이 통째로 무효가 된다.
-  soilDark: 0x6f4128, soilLight: 0xc08a5f,
-  sprout: 0x7fce7f, crop: 0xff9e5e, cropLeaf: 0x86d18a,
-  wall: 0xffe3c4, roof: 0xff9e9e, window: 0xfff2a8,
-};
 
 // 🎒 도구 페이지 전환. auto=true 면 구역 이동이 부른 것(효과음 없이 조용히 바뀜)
 //   'none'(✋맨손)으로 갈 땐 currentTool 을 그대로 둔다 → 들고 있던 그 도구를 등에 멘다.
@@ -1963,19 +1145,6 @@ function setToolPage(id, auto = false) {
   if (!auto) Sound.blip();
 }
 
-// 구역별 기본 페이지. 마을은 일부러 비워 뒀다 —
-// 밭일·벌목·건축이 한곳에 뒤섞이는 곳이라, 자동으로 넘기면 방금 고른 도구를 뺏는 꼴이 된다.
-const ZONE_PAGE = {
-  indoor: 'none', cafe: 'none', forest: 'none', river: 'none', mist: 'none', museum: 'none',  // 도구를 쓰지 않는 곳
-  farm: 'farm', mine: 'farm',        // ⛏️괭이 — 밭갈기·채굴 둘 다 농사 페이지에 있다
-  orchard: 'farm',                   // 🍎 심기·물주기·수확(🌰💧🌾)이 전부 농사 페이지다. 이 줄이 없어서
-                                     //    과수원만 페이지가 안 열렸고, 묘목 종류를 바꾸려면(🌰 다시 누르기)
-                                     //    페이지 넘기기를 한 번 더 눌러야 했다. 🪓베기는 'out' 이라 명시적으로 넘긴다(의도대로)
-  glade: 'out',                      // 🦋포충망(밤 반딧불이)
-};
-// 세트만으론 부족한 구역 — 들 도구까지 정해 준다. 광산은 ⛏️괭이 말고 할 일이 없는데
-// 세트만 펴 주면 마지막에 쓰던 🌰씨앗·낫이 손에 남아 "눌러도 안 캐진다"가 됐다(베타 피드백).
-const ZONE_TOOL = { mine: 'hoe' };
 function toolZoneKey() {
   if (indoor) return 'indoor';
   if (atCafe) return 'cafe';

@@ -6,7 +6,7 @@ import { TOOL_UPGRADE, TIER_PALETTE, BLOOM_LUMA, luma, tierOf } from '../js/tool
 // 🪓 도구 등급 — 0 기본 / 1 업그레이드(코인·제작) / 2 히든(친밀도)
 //   업그레이드는 이미 게임에 있었지만 toolMesh 가 upgrades 를 안 읽어 "모습이 그대로" 였다.
 //   이 모듈은 "어떤 등급인가" 와 "그 등급의 색" 만 정한다(THREE 비의존 — 그래서 노드에서 잠글 수 있다).
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 
 // ── 등급 판정 ─────────────────────────────────────────────────
 test('업그레이드가 없으면 0단계', () => {
@@ -226,6 +226,7 @@ test('딸려 온 칸은 제스처·토스트를 되풀이하지 않는다', () =
 
 // ── 🏗️ 묵직한 망치가 증축까지 닿는가 ──────────────────────────
 import { expandWoodOf, HAMMER_EXPAND_RATE } from '../js/tool-tiers.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 test('🔨 묵직한 망치는 증축 목재도 줄인다', () => {
   assert.equal(expandWoodOf({ upgrades: {} }, 30), 30);

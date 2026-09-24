@@ -6,7 +6,7 @@
 //  ▶ 정적 분석 한계로 오탐(주석 파편·비노출 문자열)이 섞일 수 있음 —
 //    "빠짐 후보" 리포트이지 실패 게이트가 아니다.
 // =============================================================
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -122,6 +122,9 @@ const targets = [
   ['js/duel/ui.js', s => jsStrings(stripJsComments(s))],
   // 🔥 화덕 — 레시피 이름이 UI 에 그대로 나간다(가공 창·슬롯 칩·미니게임 결과)
   ['js/craft/recipes.js', s => jsStrings(stripJsComments(s))],
+  // 📦 game.js 에서 원문 그대로 옮겨 온 데이터 표(분리 1단계, 2026-09-24) — 주민·도감·상점 문구가 여기 있다
+  ...readdirSync(join(ROOT, 'js/data')).filter(f => f.endsWith('.js')).sort()
+    .map(f => [`js/data/${f}`, s => jsStrings(stripJsComments(s))]),
 ];
 
 let totalMiss = 0, totalHit = 0;
