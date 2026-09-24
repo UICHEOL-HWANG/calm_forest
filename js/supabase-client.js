@@ -15,6 +15,7 @@ import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트
 import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지 · 🔌 노는 중 세션 죽음 판정
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant, trackEvent } from './analytics.js';
+import { kstDate } from './kst-date.js';   // 🕛 run_date 는 KST 날짜
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -563,7 +564,7 @@ export async function sendBoatRun(row) {
   const full = {
     user_id: state.userId, session_id: state.sessionId,
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
-    run_date: new Date().toISOString().slice(0, 10),   // YYYY-MM-DD
+    run_date: kstDate(),   // YYYY-MM-DD · KST(UTC 면 새벽 기록이 어제로 샌다 — js/kst-date.js)
     ...row,
   };
   if (!state.online || !supabase) { console.log('[Supabase 폴백] 🛶 런 기록(오프라인):', full); return; }
@@ -581,7 +582,7 @@ export async function sendSeaRecord(row) {
   const full = {
     user_id: state.userId, session_id: state.sessionId,
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
-    run_date: new Date().toISOString().slice(0, 10),   // YYYY-MM-DD (boat_runs 와 동일 규약)
+    run_date: kstDate(),   // YYYY-MM-DD · KST(보드가 KST 하루로 센다 — js/kst-date.js)
     ...row,   // { species, weight }
   };
   if (!state.online || !supabase) { console.log('[Supabase 폴백] 🌊 대어 기록(오프라인):', full); return; }
