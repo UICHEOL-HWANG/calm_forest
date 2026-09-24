@@ -46,9 +46,10 @@ export const GEM_COLOR = 0x4fb8c8;
  * @returns {0|1|2}
  */
 export function tierOf(toolId, state = {}) {
+  if (state.tier2 && state.tier2[toolId]) return 2;   // 🔨 금빛(히든) — 도면 제작은 js/tool-blueprints.js
   const key = TOOL_UPGRADE[toolId];
   if (key && state.upgrades && state.upgrades[key]) return 1;
-  return 0;   // 2단계(히든)는 친밀도 도면 제작이 붙을 때 여기서 갈린다
+  return 0;
 }
 
 /** 등급 팔레트 한 벌. 범위를 벗어나면 0단계로 떨어진다. */
