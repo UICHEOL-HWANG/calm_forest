@@ -183,22 +183,15 @@ export function sanitizeSpecial(raw) {
   return out;
 }
 
-// ── 🌊 최대어 명판 — 어종별 개인 최고 무게 ─────────────────────────────────
-//   무게는 원래 sea_records(Supabase)에만 남았다. 이제 세이브에도 최댓값을 두고,
-//   이 기능 전의 기록은 박물관에 처음 들어갈 때 sea_records 에서 한 번 합친다(mergeBest).
+// ── 🌊 나의 최대어 — 어종별 개인 최고 무게 ─────────────────────────────────
+//   무게는 원래 sea_records(Supabase)에만 남았다. 이제 세이브에도 최댓값을 두고 경신하면 토스트로 알린다.
+//   (박물관 기록판은 시안까지 만들었다가 뺐다 — js/museum/extras.js 머리말)
 
 /** 이번 어획으로 최고 기록이 바뀌면 새 객체, 아니면 같은 객체. */
 export function bestAfterCatch(best, species, weight) {
   if (!Number.isFinite(weight) || weight <= 0) return best;
   if ((best?.[species] ?? 0) >= weight) return best;
   return { ...best, [species]: weight };
-}
-
-/** sea_records 행 [{species, weight}] 를 합쳐 어종별 최댓값. */
-export function mergeBest(best, rows = []) {
-  let out = best || {};
-  for (const r of rows) out = bestAfterCatch(out, String(r?.species || ''), Number(r?.weight));
-  return out;
 }
 
 /** 세이브에서 온 최고 기록 정제 — 아는 어종의 양수만. */
