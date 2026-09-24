@@ -591,6 +591,7 @@ export async function sendSeaRecord(row) {
   } catch (err) { console.warn('[Supabase 폴백] 대어 기록 전송 실패:', err?.message || err); }
 }
 
+
 // ── [계측] 세션 요약 upsert(session_logs) — 세션당 1행, 주기/이탈 시 갱신 ──
 export async function upsertSessionRow(row) {
   const full = {
