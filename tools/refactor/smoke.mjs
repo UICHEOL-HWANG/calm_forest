@@ -58,7 +58,11 @@ async function enterGame(b, params) {
 }
 
 const run = (b, expr) => b.evaluate(`(()=>{ try { const r = ${expr}; return r === undefined ? null : (typeof r === 'object' ? 'obj' : r); } catch (e) { return 'ERR ' + e.message } })()`);
-const perf = (b) => b.evaluate(`(()=>{ const p = window.__perf(); return { calls: p.calls, tris: p.tris, geoms: p.geoms, tex: p.tex, meshes: p.objs[0], visible: p.objs[1] }; })()`);
+// 성능 카운터(calls·tris·geoms·tex)는 로딩 타이밍에 흔들린다 — 같은 원본 코드도 흐름에 따라 635/647 이 나온다(2026-09-25).
+//   그래서 "월드가 똑같이 지어졌나" 는 kinds(지오메트리|재질|보임 별 메시 수)로 본다. 위치는 걷는 주민 때문에 안 본다.
+const perf = (b) => b.evaluate(`(()=>{ const p = window.__perf(); const kinds = {};
+  window.__scene?.traverse(o => { if (!o.isMesh) return; const k = (o.geometry?.type || '?') + '|' + (Array.isArray(o.material) ? o.material.map(m => m.type).join('+') : o.material?.type || '?') + '|' + (o.visible ? 1 : 0); kinds[k] = (kinds[k] || 0) + 1; });
+  return { calls: p.calls, tris: p.tris, geoms: p.geoms, tex: p.tex, meshes: p.objs[0], visible: p.objs[1], kinds }; })()`);
 
 mkdirSync(OUT, { recursive: true });
 const b = await launch(+cdpPort);
