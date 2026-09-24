@@ -34,6 +34,7 @@ import { easeFor, nextDda, defaultDifficulty, mergeDifficulty } from './difficul
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
+import { BLUEPRINTS, blueprintOfTool, hiddenQuestFor, tier2Status, sanitizeToolFlags } from './tool-blueprints.js';   // 🔨 도구 2단계(도면·히든 의뢰·제작)
 import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } from './house-cost.js';   // 🏠 집 수치(건축·증축)는 전부 거기 한 곳
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
@@ -535,7 +536,25 @@ function refreshRepeatQuests() {
 //      "idx >= quests.length" 로 반복 의뢰를 가려내면, 체인이 길어지는 순간 수행 중이던
 //      반복 의뢰가 새 체인 의뢰로 바꿔치기된다(진행도·보상 증발 + 이미 만족된 의뢰 공짜 수령).
 //   🦉 올빼미의 idx 는 체인 포인터가 아니라 그날 일일 의뢰 포인터라 스킵 대상이 아니다.
+// 🔨 히든 의뢰(📜 도면) — 친밀도 문턱을 넘은 주민이 전문 도구 도면을 건다(js/tool-blueprints.js).
+//   ⚠️ 체인 의뢰가 남아 있으면 그걸 먼저 — 비밀 의뢰가 이야기 진행을 가로막으면 원치 않는 사람이 멈춘다.
+//      수락해 둔 히든 의뢰는 언제나 최우선(진행도 포인터를 이 의뢰가 쥐고 있다). 반복 의뢰보다는 앞선다.
+function hiddenCurrent(def, st) {
+  if (def.daily) return null;
+  const q = hiddenQuestFor(def.id, { affinity: gameState.affinity[def.id] || 0, blueprints: gameState.blueprints });
+  if (!q) {   // 도면을 이미 받았거나 표가 바뀌었다 — 수락 표시가 남아 있으면 포인터째 정리
+    if (st.hidden) { st.hidden = false; st.given = false; st.progress = 0; }
+    return null;
+  }
+  if (st.hidden) return q;
+  if (st.given) return null;                       // 다른 의뢰 수행 중 — 끝나면 연다
+  const r = pickCurrent(def.quests, st, questCtx(), todayStr(), { skip: !def.daily });
+  if (r.q && !r.repeat) return null;               // 체인이 남아 있다 — 먼저
+  return q;
+}
+
 function currentQuest(def, st) {
+  const h = hiddenCurrent(def, st); if (h) return h;
   const r = pickCurrent(def.quests, st, questCtx(), todayStr(), { skip: !def.daily });
   if (r.idx !== st.idx) {
     // [GA4] 마이그레이션으로 건너뛴 의뢰 — 없으면 "아직 도달 못 함" 과 구분되지 않아 체인 퍼널이 왜곡된다
@@ -547,12 +566,15 @@ function currentQuest(def, st) {
 
 // 지금 진행 중인 게 반복 의뢰인가 — 보상 처리(친밀도·포인터)가 갈린다
 function onRepeatQuest(def, st) {
+  if (hiddenCurrent(def, st)) return false;
   return pickCurrent(def.quests, st, questCtx(), todayStr(), { skip: !def.daily }).repeat;
 }
 
 // 퍼널 분석용 표준 퀘스트 id. 반복 의뢰는 순번이 없으니 목표 종류로 구분한다
 //   (날짜를 넣으면 GA4 에서 매일 다른 id 가 되어 집계가 갈린다).
 function questId(def, st) {
+  const h = hiddenCurrent(def, st);
+  if (h) return questIdFor({ npcId: def.id, hiddenTool: h.tool });   // 🔨 npc:hidden:도구
   //   ✨특별 의뢰는 오늘 일일 목록 바로 뒤에 붙는다 — 판정은 상수(DAILY_COUNT)가 아니라 **오늘 목록의 실제 길이**로.
   //   3→5 배포 날 특별 의뢰를 이미 받은 사람은 목록이 3건이라, 상수와 비교하면 courier:3 으로 찍혀 4번째 일일 의뢰와 겹친다.
   const dailyLen = Array.isArray(st.quests) ? st.quests.length : DAILY_COUNT;
@@ -703,6 +725,8 @@ const gameState = {
   house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
+  blueprints: {},                           // 🔨 히든 의뢰로 받은 📜 도면 { sickle: true } — js/tool-blueprints.js
+  tier2: {},                                // 🔨 제작한 금빛 도구(2단계) { sickle: true } — tierOf 가 2 를 준다
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   outdoorStored: {},                        // 🧺 보관한 야외 장식 { id: 개수 } — 작업대에서 값 없이 다시 꺼냄
   gifts: {},                                // 보유 선물 { id: count }
@@ -1403,6 +1427,8 @@ export const Input = {
   getSeaSpecies() { return SEA_SPECIES.map(s => ({ id: s.id, name: s.name, ico: s.ico })); },   // 🌊 리더보드 행의 어종 표시(sp → 아이콘·이름)
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
+  getTier2() { return tier2List(); },                   // 🔨 금빛 도구(2단계) 목록 — 도면 상태·비용
+  craftTier2(tool) { return craftTier2(tool); },        // 🔨 금빛 도구 제작
   getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록(+🏗️ 밭 시설 farm:true — UI 가 텃밭 안에서만 보여 준다)
   isAtFarm() { return atFarm; },
   selectOutdoor(id) { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기). 들고 있던 장식은 제자리로(안 그러면 새 장식이 "옮김"으로 공짜 설치됨)
@@ -2207,6 +2233,9 @@ function applySave(saved) {
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원
   if (saved.coop) { gameState.coop = { ...gameState.coop, ...saved.coop }; if (gameState.coop.built) buildCoop(true); } // 🐔 닭장 복원
   if (saved.cafe) { gameState.cafe = { ...gameState.cafe, ...saved.cafe }; refreshCafeGuests(); } // ☕ 카페 진행(오늘 서빙한 손님) 복원
+  // 🔨 도면·금빛 도구 — 아래 upgrades 복원이 손에 든 도구를 다시 만들기(refreshHeldTool) **전에** 채워야 금빛으로 나온다
+  gameState.blueprints = sanitizeToolFlags(saved.blueprints);
+  gameState.tier2 = sanitizeToolFlags(saved.tier2);
   if (saved.upgrades) {
     gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
     // 🪓 ⚠️ buildPlayer() → setHeldTool() 은 bootWorld 안에서 이미 돌았다(세이브를 읽기 전).
@@ -10144,6 +10173,37 @@ function craftUpgrade(id) {
   return { ok: true, name: u.name };
 }
 
+// 🔨 금빛 도구(2단계) — 도면이 있어야 보이고, 1단계를 먼저 가져야 만든다(js/tool-blueprints.js)
+function tier2List() {
+  return BLUEPRINTS.map(b => {
+    const st = tier2Status(b.tool, gameState);
+    const up = UPGRADES.find(u => u.id === b.tool);
+    const npc = NPCS.find(n => n.id === b.npc);
+    return { tool: b.tool, name: b.name, ico: TOOLS.find(t => t.id === b.tool)?.ico || '🔨', cost: b.cost,
+      state: st.state, missing: st.missing, tier1: up?.name || '', npc: npc?.name || '' };
+  });
+}
+function craftTier2(tool) {
+  const b = blueprintOfTool(tool); if (!b) return { ok: false };
+  const st = tier2Status(tool, gameState);
+  if (st.state === 'owned') return { ok: false, msg: '이미 만든 도구예요' };
+  if (st.state === 'noBlueprint') return { ok: false, msg: '아직 도면이 없어요' };
+  if (st.state === 'needTier1') return { ok: false, msg: `먼저 ${UPGRADES.find(u => u.id === tool)?.name || '1단계 도구'}을(를) 만들어요` };
+  if (st.state === 'short') return { ok: false, msg: `${RES_LABEL[st.missing[0]] || st.missing[0]}이(가) 부족해요` };
+  const inv = { ...gameState.inventory };
+  for (const k in b.cost) inv[k] = (inv[k] || 0) - b.cost[k];
+  gameState.inventory = inv;
+  gameState.tier2 = { ...gameState.tier2, [tool]: true };
+  refreshHeldTool();                                  // 손에 든 게 이 도구면 그 자리에서 금빛이 된다
+  refreshInventoryUI();
+  Sound.complete();
+  spawnFloatText(player.position.x, 1.5, player.position.z, `✨ ${b.name}!`, '#9a7a1c');
+  spawnSparkle(player.position.x, 1.0, player.position.z, 30);
+  trackEvent('tool_tier2_craft', { tool, coins: b.cost.coins });   // [GA4] 도면 → 제작 전환(코인 싱크)
+  requestSave();
+  return { ok: true, name: b.name };
+}
+
 // 활성 버프 목록을 UI로 전달(정수 초 바뀔 때만)
 let lastBuffKey = '';
 function emitBuffs() {
@@ -15730,7 +15790,13 @@ export function npcDialogState() {
   const st = npcState(o.def.id);
   const q = currentQuest(o.def, st);
   if (!q) return { npc: o.def, mode: 'done', line: o.def.doneLine || '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
-  const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward: rewardText(q.reward), qid: questId(o.def, st), qtype: q.type }; // qid: 퍼널 분석용 표준 퀘스트 ID · qtype: 종류(GA4 축)
+  const bp = q.hidden ? blueprintOfTool(q.tool) : null;   // 🔨 히든 의뢰 — 보상에 📜 도면을 붙여 보인다
+  const reward = rewardText(q.reward) + (bp ? ` + 📜 ${bp.name} 도면` : '');
+  const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward, qid: questId(o.def, st), qtype: q.type }; // qid: 퍼널 분석용 표준 퀘스트 ID · qtype: 종류(GA4 축)
+  if (bp && !st.given && !st.hiddenOpened) {   // [GA4] 히든 의뢰가 처음 눈앞에 뜬 순간(친밀도 문턱 도달 대비 실제 발견)
+    st.hiddenOpened = true;
+    trackEvent('hidden_quest_open', { npc: o.def.id, tool: q.tool, affinity: gameState.affinity[o.def.id] || 0 });
+  }
   if (!st.given) return { ...base, mode: 'offer', line: q.line, progress: 0 };
   if (st.progress < q.target) return { ...base, mode: 'progress', line: '조금만 더 부탁해요!', progress: st.progress };
   return { ...base, mode: 'claim', line: '다 해냈네요! 보상을 받아요 🎁', progress: st.progress };
@@ -15747,6 +15813,7 @@ export function npcAccept() {
     const q = pending;
     const qid = questId(o.def, st);
     if (q.grant) giveReward(q.grant, 'quest_grant', qid);   // 수행에 필요한 자원 지급(예: 씨앗 3개)
+    if (q.hidden) st.hidden = true;                         // 🔨 히든 의뢰가 진행도 포인터를 쥔다
     refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
     trackEvent('quest_accept', { quest: q.title, npc: o.def.id, quest_id: qid, quest_type: q.type }); // [GA4]
     churnTrigger('quest');   // [🎯 이탈 예측] 대화·수락·완료는 신뢰구간이 겹쳐 한 트리거로 묶었다
@@ -15775,7 +15842,13 @@ export function npcClaim() {
     trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0, quest_type: q.type }); // [GA4]
     churnTrigger('quest');   // [🎯 이탈 예측]
     // ⚠️ 반복 의뢰에서는 st.idx 를 올리지 않는다 — 체인 길이를 넘어가면 그 주민 대화가 깨진다
-    if (repeating) st.repeat.done = true; else st.idx++;
+    if (q.hidden) {   // 🔨 📜 도면 — 체인 포인터는 건드리지 않는다
+      const bp = blueprintOfTool(q.tool);
+      gameState.blueprints = { ...gameState.blueprints, [q.tool]: true };
+      st.hidden = false;
+      ui.toast?.(`📜 ${bp.name} 도면을 받았어요! 작업대 🔧 도구 탭에서 만들 수 있어요`, 3200);
+      trackEvent('hidden_quest_clear', { npc: o.def.id, tool: q.tool });   // [GA4] 문턱 도달 → 발견 → 완료 퍼널
+    } else if (repeating) st.repeat.done = true; else st.idx++;
     st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     gameState.story.q = (gameState.story.q || 0) + 1; syncStory();   // 📖 2장(이웃들) 진행
     if (!currentQuest(o.def, st)) { st.allDone = true; syncBadges(); } // 🏅 체인 완료 배지(패널은 아래 refreshQuestPanel 이 다시 그린다)
