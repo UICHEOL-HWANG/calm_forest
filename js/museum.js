@@ -148,3 +148,56 @@ export function viewFrame({ h, top, bot, fov, aspect, halfH, halfW, fill = 0.76,
     halfW / (t * aspect * wide)));      // 가로: 폭의 wide 만큼(폰 세로는 여기가 조인다)
   return { dist, dy: (center - 0.5) * 2 * t * dist };
 }
+
+// ── ✨ 조건부 전시 — "비 오는 날 낚은 물고기" (2026-09-24) ─────────────────────────
+//   같은 물고기라도 **그날의 조건**이 전시 사유가 된다. 처음 그 조건에서 얻은 것 하나만 남긴다.
+//   ▶ 동사를 셋으로 나눴다(낚시·수확·채집) — 같은 동사가 둘이면 한 번에 둘이 열려 '발견'이 약해진다.
+//   ▶ 맑은 날(55%)은 조건이 아니다. 비 20% · 눈 12% · 안개 13% → 한 주 안에 비를 만날 확률 약 79%.
+//   ▶ 플레이어가 직접 한 것만 — 일꾼이 거둔 작물은 game.js 호출부에서 빠진다.
+export const SPECIAL_EXHIBITS = [
+  { id: 'rain_fish',  cat: 'fish',   weather: 'rain', ico: '🌧️', name: '비 오는 날 낚은 물고기' },
+  { id: 'snow_crop',  cat: 'crop',   weather: 'snow', ico: '❄️', name: '눈 오는 날 수확한 작물' },
+  { id: 'fog_forage', cat: 'forage', weather: 'fog',  ico: '🌫️', name: '안개 낀 날 주운 채집물' },
+];
+
+/** 이 카테고리를 이 날씨에 얻으면 열리는 전시 — 없으면 null. */
+export function specialFor(cat, weather) {
+  return SPECIAL_EXHIBITS.find(s => s.cat === cat && s.weather === weather) || null;
+}
+
+/** 조건에 맞고 아직 없으면 새 객체로 기록해 돌려준다. 아니면 **같은 객체**(호출부가 === 로 변화를 안다). */
+export function noteSpecial(records, cat, id, weather, at) {
+  const def = specialFor(cat, weather);
+  if (!def || records?.[def.id]) return records;
+  return { ...records, [def.id]: { id, at } };
+}
+
+/** 세이브에서 온 기록 정제 — 모르는 전시·깨진 값은 버린다. */
+export function sanitizeSpecial(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const s of SPECIAL_EXHIBITS) {
+    const r = raw[s.id];
+    if (r && typeof r.id === 'string' && Number.isFinite(r.at)) out[s.id] = { id: r.id, at: r.at };
+  }
+  return out;
+}
+
+// ── 🌊 나의 최대어 — 어종별 개인 최고 무게 ─────────────────────────────────
+//   무게는 원래 sea_records(Supabase)에만 남았다. 이제 세이브에도 최댓값을 두고 경신하면 토스트로 알린다.
+//   (박물관 기록판은 시안까지 만들었다가 뺐다 — js/museum/extras.js 머리말)
+
+/** 이번 어획으로 최고 기록이 바뀌면 새 객체, 아니면 같은 객체. */
+export function bestAfterCatch(best, species, weight) {
+  if (!Number.isFinite(weight) || weight <= 0) return best;
+  if ((best?.[species] ?? 0) >= weight) return best;
+  return { ...best, [species]: weight };
+}
+
+/** 세이브에서 온 최고 기록 정제 — 아는 어종의 양수만. */
+export function sanitizeBest(raw, speciesIds = []) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const id of speciesIds) if (Number.isFinite(raw[id]) && raw[id] > 0) out[id] = raw[id];
+  return out;
+}

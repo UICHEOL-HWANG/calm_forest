@@ -61,6 +61,40 @@ export function pickGated(pool, count, seed, ctx = {}) {
   return out;
 }
 
+// ── 📜 일일 의뢰 개수를 늘린 날 — 오늘 받은 목록은 버리지 않고 뒤에 덧붙인다 ──────────
+//   진행도는 "몇 번째(st.idx)를 몇 개(st.progress)" 라는 포인터라, 목록을 통째로 다시 뽑으면
+//   ① 이미 다 깬 사람이 새 목록으로 보상을 또 받고 ② 진행 중이던 사람은 하던 진행도를 잃는다.
+//   앞의 N건과 포인터를 그대로 두고 모자란 만큼만 붙이면 둘 다 생기지 않는다(2026-09-24, 3→5).
+
+/**
+ * 오늘 목록을 어떻게 다룰지.
+ *  'extend' — 멀쩡한데 개수만 모자라고 **이미 진행을 시작했다** → 뒤에 덧붙인다
+ *  'keep'   — 모자라지만 오늘 ✨특별 의뢰를 이미 받았다 → 오늘은 그대로(특별 의뢰가 목록 바로 뒤라
+ *             덧붙이면 그 포인터가 새 일일 의뢰를 가리킨다). 내일부터 새 개수
+ *  null     — 해당 없음(개수가 맞거나, 없거나, 깨졌다) → 호출부의 기존 경로
+ */
+export function dailyExtendPlan(quests, count, { valid, started = false, hasSpecial = false } = {}) {
+  if (!Array.isArray(quests) || !quests.length || quests.length >= count) return null;
+  if (!quests.every(q => valid(q))) return null;
+  //   아직 한 건도 시작 안 했으면 다시 뽑아도 잃는 게 없다 → null(새 개수로 새로 뽑는다).
+  //   덧붙이면 옛 보상표가 남고(그날만 합계가 달라진다) 영어 AI 목록 뒤에 한국어 로컬 의뢰가 붙는다.
+  if (!started) return null;
+  return hasSpecial ? 'keep' : 'extend';
+}
+
+/** 덧붙일 의뢰 — 이미 있는 목표 종류는 빼고 게이트를 통과한 것 중 n 개(시드 고정). */
+export function pickDailyExtra(pool, existing, n, seed, ctx = {}) {
+  const have = new Set(existing.map(q => q.type));
+  return pickGated(pool.filter(q => !have.has(q.type)), n, seed, ctx);
+}
+
+/** "[오늘의 의뢰 2/3]" · "[Request 2/3]" 의 분모만 바꾼다. 접두사가 없으면 그대로.
+ *  ⚠️ 접두사 모양은 game.js 의 dailyEntry(로컬)·upgradeDailyQuestsAI(AI) 두 곳이 만든다 — 바꾸면 여기도. */
+export function renumberDailyLine(line, count) {
+  if (typeof line !== 'string') return line;
+  return line.replace(/^\[(오늘의 의뢰|Request) (\d+)\/\d+\]/, `[$1 $2/${count}]`);
+}
+
 // ── 주민 반복 의뢰 ────────────────────────────────────────────
 //   체인을 다 깬 주민이 영원히 "고마워요" 만 하던 것을 없앤다.
 //   ⚠️ 주민 전원이 매일 의뢰를 내면 코인 발행이 3배가 된다 → 하루 REPEAT_OPEN 명만 열린다.
@@ -157,7 +191,8 @@ export function repeatQuestFor(npcId, seed, ctx = {}) {
  *   반복 의뢰:  `farmer:repeat:plant`  (순번이 없으니 목표 종류. 날짜를 넣으면 GA4 집계가 갈린다)
  *   ✨특별 의뢰: `courier:special:chop`     (예전엔 순번 `courier:3` 이라 종류를 알 수 없었다)
  */
-export function questIdFor({ npcId, idx, repeat = false, repeatType, specialType }) {
+export function questIdFor({ npcId, idx, repeat = false, repeatType, specialType, hiddenTool }) {
+  if (hiddenTool) return `${npcId}:hidden:${hiddenTool}`;   // 🔨 히든 의뢰(도면) — js/tool-blueprints.js
   if (specialType) return `${npcId}:special:${specialType}`;
   if (repeat) return `${npcId}:repeat:${repeatType || '?'}`;
   return `${npcId}:${idx}`;
