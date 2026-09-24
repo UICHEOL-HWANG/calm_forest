@@ -41,7 +41,9 @@ import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { makeRaidScar } from './duel/raid-art.js';                                                   // 🐾 털린 밭 조형(흔적·대결 무대 공용)
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame, exhibitCenterY } from './museum.js';   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame, exhibitCenterY,
+  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, sanitizeBest } from './museum.js';
+import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조건부 전시(조형)   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
@@ -737,7 +739,8 @@ const gameState = {
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 — 관대 판정은 js/difficulty.js 로 옮겼다(이 카운터는 옛 세이브 호환용)
   difficulty: defaultDifficulty(),   // 🎚️ 미니게임별 난이도 상태 { dda: 유저 보정, n: probe 순회용 누적 시도 }
-  sea: { tunaDay: null, caught: 0 },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획 }
+  sea: { tunaDay: null, caught: 0, best: {} },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획, 어종별 최고 무게(kg) — 경신 토스트 }
+  museum: { special: {} },             // 🏛️ ✨조건부 전시 { rain_fish: { id, at } } — 규칙은 js/museum.js SPECIAL_EXHIBITS
   orchard: { trees: [], sapSel: 'apple', settleDate: null },   // 🍎 과수원(js/orchard.js)
   progress: { advHarvest: 0 },   // 🔒 진행도 해금 카운터 — 고급 작물 수확 횟수(js/tuning.js PROGRESS_GATE)
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
@@ -771,6 +774,18 @@ function dexDiscover(cat, id) {
     ui.loginNudge?.('dex' + total);   // 게스트면 "로그인하면 영구 보존" 넛지(index.html 이 판단)
   }
   syncBadges();   // 🏅 날씨 4종·도감 완성 배지 즉시 반영
+}
+
+// 🏛️ ✨조건부 전시 — 그날 날씨에서 처음 얻은 것 하나를 박물관 1층 특별 진열대에 남긴다(js/museum.js).
+//   ⚠️ 플레이어가 직접 한 경로(낚시·수확·채집)에서만 부른다. dexDiscover 안에 두면 일꾼 수확까지 센다.
+function noteSpecialExhibit(cat, id) {
+  const next = noteSpecial(gameState.museum.special, cat, id, WEATHER, Date.now());
+  if (next === gameState.museum.special) return;   // 조건이 아니거나 이미 있다
+  gameState.museum.special = next;
+  const def = specialFor(cat, WEATHER);
+  ui.toast?.(`🏛️ 박물관 특별 전시! ${def.ico} ${def.name}`, 2800);
+  trackEvent('museum_special', { exhibit: def.id, cat, entry: id });   // [GA4] 조건부 전시 획득(날씨별 도달)
+  requestSave();
 }
 
 // ── 🏅 업적 배지 — 도감 모달 하단에 전시. 달성 시 1회 기념 보상 ──
@@ -1385,6 +1400,7 @@ export const Input = {
   mgSeasonPour(on) { mgSeasonPour(on); },                     // 🧂 누르는 동안 소금 쏟기
   mgSeasonDone(judge) { mgSeasonDone(judge); },               // 🧂 손 뗐을 때 마무리 연출
   getUpgrades() { return UPGRADES; },                   // 도구 업그레이드 목록
+  getSeaSpecies() { return SEA_SPECIES.map(s => ({ id: s.id, name: s.name, ico: s.ico })); },   // 🌊 리더보드 행의 어종 표시(sp → 아이콘·이름)
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록(+🏗️ 밭 시설 farm:true — UI 가 텃밭 안에서만 보여 준다)
@@ -2172,6 +2188,9 @@ function applySave(saved) {
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
   if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
+  //   🏛️ 최고 무게·조건부 전시는 세이브를 믿지 않고 정제한다(모르는 어종·깨진 값은 버린다). 필드가 없는 옛 세이브는 빈 값.
+  gameState.sea.best = sanitizeBest(saved.sea?.best, SEA_SPECIES.map(sp => sp.id));
+  gameState.museum = { special: sanitizeSpecial(saved.museum?.special) };
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
   // 🍱 찬장 복원 — 세이브가 손상되거나 레시피/등급이 개편으로 사라졌으면 그 칸만 버린다(전체를 날리지 않게)
   //   등급은 저장하지 않고 score 로 다시 계산한다 — 두 벌로 들고 있으면 등급 컷을 손볼 때 어긋난다
@@ -4312,6 +4331,7 @@ function tryForage(node) {
   spawnSparkle(node.x, 0.55, node.z, kind.id === 'herb' ? 18 : 10);   // 발밑에서 반짝(잎 파티클은 나무 높이라 안 맞음)
   questEvent('forage');                                       // 🦉 데일리 의뢰(채집)
   dexDiscover('forage', kind.id);                             // 📖 채집 도감
+  noteSpecialExhibit('forage', kind.id);                      // 🏛️ ✨안개 낀 날이면 특별 전시
   trackGateBlocked('forage', 'herb');     // [GA4] 📖
   trackEvent('forage_pick', { kind: kind.id, weather: WEATHER });   // [GA4] 채집 루프 KPI
 }
@@ -4530,6 +4550,7 @@ function museumSlots(count = 13) {
 let museumCases = [];        // 명판 근접 판정용 { x, z, i }
 let museumColliders = [];    // 진열장·계단 충돌체 — 다시 지을 때 걷어낸다
 let museumStairs = [];      // { x, z, up } — 층 이동 지점
+let museumExtraSpots = [];  // 🏛️ 1층 특별 진열대 근접 판정 { x, z, kind, id } — js/museum/extras.js 가 돌려준다
 
 // 🏛️ 진열장 앞에 서면 뜨는 명판. dex 의 **첫 발견 시각**을 쓴다 —
 //   그래야 남의 도감이 아니라 "내 기록" 이 된다(지금 그 값은 아무 데도 안 쓰이고 있었다).
@@ -4541,6 +4562,14 @@ function museumPlateText() {
     if (d < best) { best = d; hit = c.i; }
   }
   if (best > 1.9) hit = -1;
+  // ✨ 특별 진열대가 더 가까우면 그쪽 명판(확대 관람은 벽 진열장만 — _museumNear 를 비운다)
+  let bestX = 9e9, spot = null;
+  for (const sp of museumExtraSpots) {
+    const d = dist2D({ x: MUSEUM.x + sp.x, z: MUSEUM.z + sp.z }, player.position);
+    if (d < bestX) { bestX = d; spot = sp; }
+  }
+  if (spot && bestX <= 1.6 && bestX < best) { _museumNear = -1; return museumExtraPlate(spot); }
+  _museumNearExtra = null;
   if (hit < 0) { _museumNear = -1; return null; }
   const item = museumFloorItems()[hit]; if (!item) return null;
   const zone = DEX_CAT_LABEL[item.cat] || '';
@@ -4552,6 +4581,18 @@ function museumPlateText() {
   if (!at) return `🎀 ${zone} — 아직 덮여 있어요. 찾아오면 천을 걷을게요`;
   const d = new Date(at);
   return `${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일, 당신이 처음 발견했어요`;
+}
+
+// ✨ 특별 진열대 명판
+let _museumNearExtra = null;
+function museumExtraPlate(spot) {
+  const key = spot.kind + ':' + spot.id;
+  if (key !== _museumNearExtra) { _museumNearExtra = key; trackEvent('museum_exhibit_view', { item: spot.id, cat: 'special', got: gameState.museum.special[spot.id] ? 1 : 0 }); }
+  const def = SPECIAL_EXHIBITS.find(d => d.id === spot.id); if (!def) return null;
+  const rec = gameState.museum.special[def.id];
+  if (!rec) return `🎀 ${def.ico} ${def.name} — 그런 날을 기다려 보세요`;   // 🌐 글루 패턴은 js/i18n-en.js 박물관 블록
+  const e = DEX[def.cat]?.find(x => x.id === rec.id), d = new Date(rec.at);
+  return `${def.ico} ${def.name} — ${e?.ico || ''} ${e?.name || rec.id}, ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
 // 🔍 전시물 관람 — 진열장 앞에서 액션을 누르면 크게 띄워 돌려 본다.
@@ -4738,6 +4779,13 @@ function buildMuseumHall() {
   };
   if (museumFloor < opened) stair(1, true);
   if (museumFloor > 1) stair(-1, false);
+
+  // ✨ 1층 가운데 — 조건부 전시 3칸. 조형은 js/museum/extras.js(규칙은 js/museum.js)
+  museumExtraSpots = [];
+  if (museumFloor === 1) {
+    const ex = buildMuseumExtras({ clayMat, exhibitMesh: museumExhibitMesh, solidBox }, { origin: MUSEUM, special: gameState.museum.special });
+    g.add(ex.group); museumExtraSpots = ex.spots; museumColliders.push(...ex.colliders);   // 충돌체는 다시 지을 때 같이 걷힌다
+  }
 
   const lamp = new THREE.PointLight(0xfff3dc, 0.8, 26); lamp.position.set(0, H - 0.7, 0); g.add(lamp);
   scene.add(g);
@@ -7630,11 +7678,14 @@ function seaCatch() {
   giveReward({ ...sp.give }, 'sea_catch', sp.id);   // [원장] 어종별 보상 유입
   gameState.sea.caught = (gameState.sea.caught || 0) + 1;
   if (sp.daily) gameState.sea.tunaDay = todayStr();
+  const _prevBest = gameState.sea.best?.[sp.id];
+  gameState.sea.best = bestAfterCatch(gameState.sea.best, sp.id, w);   // 🌊 어종별 최고 무게
+  const newBest = _prevBest != null && gameState.sea.best[sp.id] !== _prevBest;   // 첫 어획은 '기록 경신' 이 아니다
   Sound.harvest(); spawnConfetti(player.position.x, 2.2, player.position.z - 1.5);
   triggerMoment(true);                              // 🎉 캐치 세리머니(밀착 + 폴짝) — 호수 낚시·수확과 같은 연출(세리머니 카메라는 바다 줌 분기보다 먼저 적용됨)
   spawnFloatText(player.position.x, 2.0, player.position.z - 1, `${sp.ico} ${sp.name} ${w}kg!`, '#2e6a9d', 1.25);
   ui.toast?.(`${sp.ico} ${sp.name} ${w}kg — 무게를 기록하고 바다로 돌려보냈어요! (+🐟${sp.give.fish} +🪙${sp.give.coins})`
-    + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : ''), 4200);
+    + (sp.daily ? ' 🏆 오늘의 대어 랭킹에 올라갔어요!' : '') + (newBest ? ' 🌊 나의 최대어 경신!' : ''), 4200);
   questEvent('seafish');                            // 🦉 의뢰(바다 물고기)
   settleDifficulty('sea', 1);   // 🎚️ 성공
   trackEvent('sea_catch', { species: sp.id, weight: w, duration: dur, good: seaMG.good, bad: seaMG.bad, ...diffParams(seaMG.diff) });   // [GA4] 코어 KPI · 🎚️ 난이도 동봉
@@ -12944,6 +12995,7 @@ function catchFish() {
   Sound.harvest();
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   dexDiscover('fish', kind.rarity);                                     // 📖 도감(어종 첫 발견)
+  noteSpecialExhibit('fish', kind.rarity);                              // 🏛️ ✨비 오는 날이면 특별 전시
   trackGateBlocked('fish', 'rare');       // [GA4] 📖 게이트가 닫혀 못 얻은 날
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
   catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
@@ -13894,6 +13946,7 @@ function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D(p.grou
   refreshInventoryUI();
   questEvent('harvest');                                          // 퀘스트 진행
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
+  if (plot.cropType?.id) noteSpecialExhibit('crop', plot.cropType.id);   // 🏛️ ✨눈 오는 날이면 특별 전시(일꾼이 거둔 건 안 센다 — 직접 한 것만)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
   if (!viaSickle) {
     catchCeremony('harvestZoom');                                 // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
