@@ -24,7 +24,7 @@ const EXCLUDE = new Set(['clock', 'keys']);     // 런타임 객체는 데이터
 const PLACE = [
   { name: 'ZONE_PAGE', file: 'tools' }, { name: 'ZONE_TOOL', file: 'tools' },
   { name: 'INT', file: 'places' }, { name: 'ROOF_Y', file: 'places' }, { name: 'LAKE_R', file: 'places' },
-  { name: 'HOUSE_POS', file: 'places' }, { name: 'OUTDOOR_REACH', file: 'catalog' },
+  { name: 'HOUSE_POS', file: 'places' }, { name: 'OUTDOOR_REACH', file: 'catalog' }, { name: 'stationLabel', file: 'catalog' },
   { name: 'DAY_SPEED', file: 'world' }, { name: 'PAL', file: 'world' },
   { lo: 18, hi: 160, file: 'tools' },         // 작물 종류·도구 표·도구 페이지·벌목/물 타이머
   { lo: 161, hi: 212, file: 'world' },        // 날씨 예보·경보 문구
