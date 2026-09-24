@@ -3931,7 +3931,8 @@
 
     // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
     let cookTab = 'tool';
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙' })[k] || '🪵';
+    // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
+    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟' })[k] || '🪵';
     function updateCookInv() { $('cook-inv').textContent = `🪵 ${lastInv.wood}  🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}  🪨 ${lastInv.stone || 0}  ⚫ ${lastInv.coal || 0}  💎 ${lastInv.gem || 0}`; }
     function renderTools() {
       updateCookInv();
