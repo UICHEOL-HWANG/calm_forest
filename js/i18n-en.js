@@ -1001,6 +1001,17 @@ export const EN = {
   // 🏠 house-floors: 이 글루는 원래 박물관(항상 위층행) 전용이었으나 이 브랜치부터 집 계단이 위/아래
   //   양방향으로 재사용한다 — "Up to"는 내려갈 때 오역이라 방향 중립 문구로 바꾼다(museum 쪽도 문제 없음).
   '🪜 {0}으로': '🪜 To the {0}',
+  // ✨ 조건부 전시 · 🌊 나의 최대어(2026-09-24)
+  '비 오는 날 낚은 물고기': 'A fish caught in the rain',
+  '눈 오는 날 수확한 작물': 'A crop harvested in the snow',
+  '안개 낀 날 주운 채집물': 'A find foraged in the fog',
+  '🏛️ 박물관 특별 전시! {0} {1}': '🏛️ New special exhibit at the Museum! {0} {1}',
+  '🎀 {0} {1} — 그런 날을 기다려 보세요': '🎀 {0} {1} — wait for the right weather',
+  '{0} {1} — {2} {3}, {4}년 {5}월 {6}일': '{0} {1} — {2} {3}, {5}/{6}/{4}',
+  '나의 최대어': 'My Best Catches',
+  '🌊 나의 최대어 — {0}': '🌊 My best catches — {0}',
+  '🌊 나의 최대어 — 아직 바다에서 낚은 기록이 없어요': '🌊 My best catches — nothing caught at sea yet',
+  ' 🏛️ 나의 최대어 경신!': ' 🏛️ New personal best!',
   '🏛️ {0} — {1}/{2}': '🏛️ {0} — {1}/{2}',
   '🏛️ 박물관이 {0}까지 늘었어요! 가서 보세요':
     '🏛️ The Museum has grown to the {0}! Go and see',

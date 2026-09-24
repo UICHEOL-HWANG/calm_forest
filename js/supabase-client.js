@@ -591,6 +591,17 @@ export async function sendSeaRecord(row) {
   } catch (err) { console.warn('[Supabase 폴백] 대어 기록 전송 실패:', err?.message || err); }
 }
 
+// 🏛️ 내 바다 기록(최대어 명판) — 이 기능(2026-09-24) 전의 무게는 세이브에 없고 여기에만 있다.
+//   RLS 'own sea select'(auth.uid() = user_id)라 내 행만 온다. 실패·오프라인이면 빈 배열(명판은 세이브 값으로 그린다).
+export async function fetchMySeaRecords() {
+  if (!state.online || !supabase || !state.userId) return [];
+  try {
+    const { data, error } = await supabase.from(CONFIG.SEA_TABLE).select('species, weight').eq('user_id', state.userId).limit(1000);
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  } catch (err) { console.warn('[Supabase] 바다 기록 읽기 실패(명판은 세이브 값으로):', err?.message || err); return []; }
+}
+
 // ── [계측] 세션 요약 upsert(session_logs) — 세션당 1행, 주기/이탈 시 갱신 ──
 export async function upsertSessionRow(row) {
   const full = {

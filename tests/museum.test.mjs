@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY } from '../js/museum.js';
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY,
+  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, mergeBest, sanitizeBest } from '../js/museum.js';
 import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
@@ -447,4 +448,57 @@ test('viewFrame: 거리는 min·max 안에 머문다', () => {
   const huge = viewFrame({ ...PHONE, halfH: 9, halfW: 9 });
   assert.equal(tiny.dist, 1.6);
   assert.equal(huge.dist, 5);
+});
+
+// ── ✨ 조건부 전시 — "비 오는 날 낚은 물고기" 처럼 그날의 조건이 곧 전시 사유 ──────────
+test('조건부 전시는 3종이고, 각자 다른 동사(낚시·수확·채집)와 다른 날씨에 걸린다', () => {
+  assert.equal(SPECIAL_EXHIBITS.length, 3);
+  assert.equal(new Set(SPECIAL_EXHIBITS.map(s => s.cat)).size, 3, '같은 동사가 둘이면 한 번에 둘이 열린다');
+  assert.equal(new Set(SPECIAL_EXHIBITS.map(s => s.weather)).size, 3);
+  for (const s of SPECIAL_EXHIBITS) assert.ok(['rain', 'snow', 'fog'].includes(s.weather), `${s.id}: 맑은 날 조건은 '특별' 이 아니다`);
+});
+
+test('specialFor — 그 날씨·카테고리에 걸린 전시만', () => {
+  assert.equal(specialFor('fish', 'rain')?.id, 'rain_fish');
+  assert.equal(specialFor('fish', 'clear'), null);
+  assert.equal(specialFor('ore', 'rain'), null);
+});
+
+test('noteSpecial — 처음 한 번만 기록하고, 원본은 건드리지 않는다', () => {
+  const r0 = {};
+  const r1 = noteSpecial(r0, 'fish', 'rare', 'rain', 1000);
+  assert.deepEqual(r1, { rain_fish: { id: 'rare', at: 1000 } });
+  assert.deepEqual(r0, {}, '원본을 바꿨다');
+  //   두 번째(더 좋은 걸 낚아도)는 바꾸지 않는다 — "처음 그날" 이 전시 사유다
+  assert.equal(noteSpecial(r1, 'fish', 'common', 'rain', 2000), r1);
+  //   조건이 안 맞으면 그대로
+  assert.equal(noteSpecial(r1, 'crop', 'carrot', 'rain', 3000), r1);
+});
+
+test('sanitizeSpecial — 모르는 전시·깨진 값은 버린다(세이브를 믿지 않는다)', () => {
+  const got = sanitizeSpecial({ rain_fish: { id: 'rare', at: 5 }, nope: { id: 'x', at: 1 }, snow_crop: { id: 3, at: 'x' }, fog_forage: null });
+  assert.deepEqual(got, { rain_fish: { id: 'rare', at: 5 } });
+  assert.deepEqual(sanitizeSpecial(undefined), {});
+  assert.deepEqual(sanitizeSpecial('junk'), {});
+});
+
+// ── 🌊 최대어 명판 — 어종별 개인 최고 무게 ──────────────────────────────
+test('bestAfterCatch — 더 무거울 때만 갱신, 원본 불변', () => {
+  const b0 = { aji: 2.1 };
+  const b1 = bestAfterCatch(b0, 'aji', 2.8);
+  assert.deepEqual(b1, { aji: 2.8 }); assert.deepEqual(b0, { aji: 2.1 });
+  assert.equal(bestAfterCatch(b1, 'aji', 1.0), b1, '가벼운 걸로 덮었다');
+  assert.deepEqual(bestAfterCatch(b1, 'tuna', 88.4), { aji: 2.8, tuna: 88.4 });
+  assert.equal(bestAfterCatch(b1, 'tuna', NaN), b1);
+});
+
+test('mergeBest — sea_records 행(기존 기록)을 합쳐 어종별 최댓값', () => {
+  const rows = [{ species: 'aji', weight: 2.4 }, { species: 'aji', weight: 1.1 }, { species: 'mola', weight: 71.2 }, { species: 'x', weight: 'bad' }];
+  assert.deepEqual(mergeBest({ aji: 2.0, tuna: 90 }, rows), { aji: 2.4, tuna: 90, mola: 71.2 });
+  assert.deepEqual(mergeBest({ aji: 3 }, []), { aji: 3 });
+});
+
+test('sanitizeBest — 양수 숫자만, 어종 id 는 알려준 목록 안에서만', () => {
+  assert.deepEqual(sanitizeBest({ aji: 2.4, tuna: -1, mola: 'x', hack: 999 }, ['aji', 'tuna', 'mola']), { aji: 2.4 });
+  assert.deepEqual(sanitizeBest(null, ['aji']), {});
 });
