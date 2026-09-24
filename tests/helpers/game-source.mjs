@@ -7,10 +7,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 
 const JS = new URL('../../js/', import.meta.url);
 
+//    2026-09-25 분리 2단계부터는 js/spaces/*.js(구역별 모듈)도 같은 식으로 잇는다.
+//    ⚠️ spaces 의 `$w.x = …`(game.js 에 남은 let 에 쓰기)는 원문의 `x = …` 로 되돌린다.
+const readDir = (sub, fix = (t) => t) => {
+  const dir = new URL(sub, JS);
+  try {
+    return readdirSync(dir).filter(f => f.endsWith('.js')).sort()
+      .map(f => fix(readFileSync(new URL(f, dir), 'utf8').replace(/^(\s*)export /gm, '$1')));
+  } catch { return []; }   // 디렉터리가 아직 없다
+};
 export function gameSource() {
   const game = readFileSync(new URL('game.js', JS), 'utf8');
-  const dir = new URL('data/', JS);
-  const data = readdirSync(dir).filter(f => f.endsWith('.js')).sort()
-    .map(f => readFileSync(new URL(f, dir), 'utf8').replace(/^(\s*)export /gm, '$1'));
-  return [game, ...data].join('\n');
+  return [game, ...readDir('data/'), ...readDir('spaces/', t => t.replace(/\$w\.(?=[A-Za-z_$])/g, ''))].join('\n');
 }
