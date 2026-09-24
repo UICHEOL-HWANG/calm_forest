@@ -1377,6 +1377,7 @@ export const Input = {
   mgSeasonPour(on) { mgSeasonPour(on); },                     // 🧂 누르는 동안 소금 쏟기
   mgSeasonDone(judge) { mgSeasonDone(judge); },               // 🧂 손 뗐을 때 마무리 연출
   getUpgrades() { return UPGRADES; },                   // 도구 업그레이드 목록
+  getSeaSpecies() { return SEA_SPECIES.map(s => ({ id: s.id, name: s.name, ico: s.ico })); },   // 🌊 리더보드 행의 어종 표시(sp → 아이콘·이름)
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록(+🏗️ 밭 시설 farm:true — UI 가 텃밭 안에서만 보여 준다)
