@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NIGHT_MIN, WAKE_TIME, daylightAt, nightLevelAt, isNightAt } from '../js/daynight.js';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 test('daylightAt — 자정 0, 정오 1, 일출·노을 0.5', () => {
   assert.ok(Math.abs(daylightAt(0) - 0) < 1e-9);
@@ -56,7 +57,7 @@ test('WAKE_TIME — 자고 일어난 아침은 밤이 아니어야 한다', () =
 // 이 모듈이 "단일 출처" 라는 약속을 game.js 쪽에서 강제한다.
 //   식을 베껴 비교하는 위 테스트만으로는 game.js 가 자기 식을 따로 갖고 있어도 통과한다.
 test('game.js 는 햇빛·밤 판정을 직접 계산하지 않고 이 모듈에 위임한다', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   assert.ok(src.includes("from './daynight.js'"), 'daynight.js 를 import 해야 한다');
   assert.ok(/const daylight = daylightAt\(timeOfDay\)/.test(src), 'updateDayNight 이 daylightAt 을 써야 한다');
   assert.ok(/function isNight\(\) \{ return isNightAt\(timeOfDay\)/.test(src), 'isNight 이 isNightAt 에 위임해야 한다');

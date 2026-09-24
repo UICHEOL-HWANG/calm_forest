@@ -1,16 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 import {
   QUEST_GATES, QUEST_LIMITS, REPEAT_POOL, REPEAT_OPEN,
   questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, skipSatisfied, pickCurrent, activeQuestList,
+  dailyExtendPlan, pickDailyExtra, renumberDailyLine,
 } from '../js/quests.js';
 
 // 🦉 의뢰 공급 규칙 — "영원히 못 깨는 의뢰" 를 막는 게 이 모듈의 존재 이유다.
 //   닭장을 안 지은 사람에게 🥚달걀 의뢰가 가면 진행도가 영원히 0 이고,
 //   그러면 st.idx 가 못 올라가 그날 의뢰 전체가 잠긴다(베타에서 실제로 겪은 사고 유형).
 //   game.js 는 브라우저 전역에 의존해 import 할 수 없어 짝 검증만 원문 파싱으로 한다.
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 
 function block(startRe, endMark) {
   const i = SRC.search(startRe);
@@ -573,4 +575,73 @@ test('REPEAT_POOL 전 항목에 type 이 있다', () => {
 
 test('뷰 객체가 qtype 을 싣는다(quest_offered 가 읽는 자리)', () => {
   assert.match(SRC, /const base = \{[^}]*qtype: q\.type/, 'npcDialogState 의 base 에 qtype 이 없다');
+});
+
+// ── 📜 일일 의뢰 개수를 늘릴 때 — 오늘 받은 목록을 버리지 않고 뒤에 덧붙인다 ──────────
+//   3→5 배포 날 목록을 통째로 다시 뽑으면 ① 3건을 다 깬 사람이 새 목록으로 보상을 또 받고
+//   ② 진행 중이던 사람은 하던 진행도를 잃는다. 기존 3건·포인터는 그대로 두고 2건만 붙인다.
+const Q = (type, target = 3) => ({ type, target, title: 't', desc: 'd', reward: { coins: 10 }, line: `[오늘의 의뢰 1/3] ${type}` });
+const valid = (q) => !!q && typeof q.type === 'string';
+
+test('dailyExtendPlan — 진행을 시작했는데 모자라면 extend, 개수가 맞으면 null(기존 경로)', () => {
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid, started: true }), 'extend');
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell'), Q('mine'), Q('water')], 5, { valid }), null);
+});
+
+test('dailyExtendPlan — 오늘 ✨특별 의뢰를 이미 받았으면 오늘은 그대로 둔다(keep)', () => {
+  //   특별 의뢰는 일일 목록 뒤(= idx 3)에 붙어 있다. 덧붙이면 그 포인터가 새 일일 의뢰를 가리켜
+  //   특별 의뢰의 진행도가 엉뚱한 의뢰로 옮겨 간다.
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid, started: true, hasSpecial: true }), 'keep');
+});
+
+test('dailyExtendPlan — 아직 한 건도 시작 안 했으면 null(새로 5건) — 잃을 진행도가 없다', () => {
+  //   덧붙이면 옛 보상표(10·15·20)가 남아 그날만 80🪙이 되고, 영어 AI 목록 뒤에 한국어 로컬 의뢰가 붙는다(리뷰 2026-09-24).
+  //   시작 전이면 다시 뽑아도 아무것도 잃지 않으니 새 규칙(70🪙·AI 5건)으로 간다.
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid, started: false }), null);
+  assert.equal(dailyExtendPlan([Q('chop'), Q('fish'), Q('sell')], 5, { valid }), null, 'started 기본값은 false');
+});
+
+test('questId — ✨특별 의뢰 판정은 상수가 아니라 오늘 목록의 실제 길이로 한다', () => {
+  //   배포 전에 특별 의뢰를 받은 사람('keep')은 목록이 3건인데 DAILY_COUNT 는 5 — 상수와 비교하면
+  //   특별 의뢰가 courier:3 으로 찍혀 4번째 일일 의뢰 id 와 겹친다.
+  const body = fnBody('questId');
+  assert.ok(!/st\.idx >= DAILY_COUNT/.test(body), 'questId 가 아직 DAILY_COUNT 와 비교한다');
+});
+
+test('dailyExtendPlan — 목록이 없거나 깨졌거나 넘치면 null(다시 뽑는 기존 경로)', () => {
+  assert.equal(dailyExtendPlan(null, 5, { valid }), null);
+  assert.equal(dailyExtendPlan([], 5, { valid }), null);
+  assert.equal(dailyExtendPlan([Q('chop'), null, Q('sell')], 5, { valid }), null);
+  assert.equal(dailyExtendPlan([Q('a'), Q('b'), Q('c'), Q('d'), Q('e'), Q('f')], 5, { valid }), null);
+});
+
+test('pickDailyExtra — 이미 있는 목표 종류는 빼고, 모자란 수만큼 뽑는다', () => {
+  const pool = ['chop', 'fish', 'sell', 'mine', 'water', 'forage'].map(t => Q(t));
+  const got = pickDailyExtra(pool, [Q('chop'), Q('fish'), Q('sell')], 2, 12345, {});
+  assert.equal(got.length, 2);
+  for (const q of got) assert.ok(!['chop', 'fish', 'sell'].includes(q.type), `이미 있는 ${q.type} 를 또 뽑았다`);
+  assert.notEqual(got[0].type, got[1].type);
+  //   같은 날(같은 시드)엔 같은 결과 — 새로고침마다 바뀌면 진행도가 증발한다
+  assert.deepEqual(pickDailyExtra(pool, [Q('chop'), Q('fish'), Q('sell')], 2, 12345, {}).map(q => q.type), got.map(q => q.type));
+});
+
+test('pickDailyExtra — 게이트에 막힌 목표는 뽑지 않는다(닭장 없는 사람의 🥚)', () => {
+  const pool = [Q('egg'), Q('mine')];
+  const got = pickDailyExtra(pool, [Q('chop')], 2, 1, { coopBuilt: false });
+  assert.deepEqual(got.map(q => q.type), ['mine']);
+});
+
+test('renumberDailyLine — "i/3" 을 "i/5" 로(한국어·영어), 접두사 없으면 그대로', () => {
+  assert.equal(renumberDailyLine('[오늘의 의뢰 2/3] 나무 베기!', 5), '[오늘의 의뢰 2/5] 나무 베기!');
+  assert.equal(renumberDailyLine('[Request 1/3] Chop trees', 5), '[Request 1/5] Chop trees');
+  assert.equal(renumberDailyLine('그냥 문장', 5), '그냥 문장');
+  assert.equal(renumberDailyLine(undefined, 5), undefined);
+});
+
+test('refreshDailyQuests 는 개수가 모자란 오늘 목록을 다시 뽑기 전에 덧붙이기를 먼저 시도한다', () => {
+  const body = fnBody('refreshDailyQuests');
+  const e = body.indexOf('dailyExtendPlan');
+  const r = body.indexOf('st.idx = 0; st.progress = 0; st.given = false; st.readyToasted = false');   // 재추첨 직전 리셋(새 날 리셋과 구분)
+  assert.ok(e >= 0, 'refreshDailyQuests 가 dailyExtendPlan 을 안 쓴다');
+  assert.ok(r > e, '덧붙이기 판정이 포인터 리셋보다 뒤에 있다 — 리셋된 뒤라 의미가 없다');
 });

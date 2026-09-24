@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY } from '../js/museum.js';
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY,
+  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, sanitizeBest } from '../js/museum.js';
 import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
 //   층별 전시 목록도 여기서 정한다(game.js 의 DEX 를 인자로 받아 순수하게 유지).
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 const listLen = (start, re) => {
   const i = SRC.indexOf(start);
   return (SRC.slice(i, SRC.indexOf('\n];', i)).match(re) || []).length;
@@ -150,6 +151,7 @@ test('주민 도감은 NPCS 에서 파생한다(손으로 적지 않는다)', ()
 // ── 🧑‍🦳 "아직 🌈무지개 물고기가 없군요" — 남은 종을 콕 집는 의뢰 ─────
 //   베타 피드백 "미션이 없어지는 지점에서 뭘 해야 할지 모르겠다" 를 직접 푸는 자리다.
 import { pickMissingDex } from '../js/museum.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 const OPEN = { locked: { river: false, sea: false, mist: false } };
 
@@ -394,7 +396,7 @@ test('exhibitCenterY: 월드 중심에서 받침 높이를 빼 상대값을 돌�
 });
 
 test('museumViewFrame 은 월드 행렬을 갱신하고 받침 높이를 뺀다(첫 측정·재측정이 같게)', () => {
-  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const src = gameSource();
   const fn = src.slice(src.indexOf('function museumViewFrame('), src.indexOf('function openMuseumView('));
   assert.match(fn, /updateWorldMatrix\(true, true\)/, '재기 전에 월드 행렬을 갱신해야 첫 측정과 재측정이 같다');
   assert.match(fn, /f\.cy = exhibitCenterY\(/, 'cy 는 받침 기준 상대값이어야 한다');
@@ -446,4 +448,51 @@ test('viewFrame: 거리는 min·max 안에 머문다', () => {
   const huge = viewFrame({ ...PHONE, halfH: 9, halfW: 9 });
   assert.equal(tiny.dist, 1.6);
   assert.equal(huge.dist, 5);
+});
+
+// ── ✨ 조건부 전시 — "비 오는 날 낚은 물고기" 처럼 그날의 조건이 곧 전시 사유 ──────────
+test('조건부 전시는 3종이고, 각자 다른 동사(낚시·수확·채집)와 다른 날씨에 걸린다', () => {
+  assert.equal(SPECIAL_EXHIBITS.length, 3);
+  assert.equal(new Set(SPECIAL_EXHIBITS.map(s => s.cat)).size, 3, '같은 동사가 둘이면 한 번에 둘이 열린다');
+  assert.equal(new Set(SPECIAL_EXHIBITS.map(s => s.weather)).size, 3);
+  for (const s of SPECIAL_EXHIBITS) assert.ok(['rain', 'snow', 'fog'].includes(s.weather), `${s.id}: 맑은 날 조건은 '특별' 이 아니다`);
+});
+
+test('specialFor — 그 날씨·카테고리에 걸린 전시만', () => {
+  assert.equal(specialFor('fish', 'rain')?.id, 'rain_fish');
+  assert.equal(specialFor('fish', 'clear'), null);
+  assert.equal(specialFor('ore', 'rain'), null);
+});
+
+test('noteSpecial — 처음 한 번만 기록하고, 원본은 건드리지 않는다', () => {
+  const r0 = {};
+  const r1 = noteSpecial(r0, 'fish', 'rare', 'rain', 1000);
+  assert.deepEqual(r1, { rain_fish: { id: 'rare', at: 1000 } });
+  assert.deepEqual(r0, {}, '원본을 바꿨다');
+  //   두 번째(더 좋은 걸 낚아도)는 바꾸지 않는다 — "처음 그날" 이 전시 사유다
+  assert.equal(noteSpecial(r1, 'fish', 'common', 'rain', 2000), r1);
+  //   조건이 안 맞으면 그대로
+  assert.equal(noteSpecial(r1, 'crop', 'carrot', 'rain', 3000), r1);
+});
+
+test('sanitizeSpecial — 모르는 전시·깨진 값은 버린다(세이브를 믿지 않는다)', () => {
+  const got = sanitizeSpecial({ rain_fish: { id: 'rare', at: 5 }, nope: { id: 'x', at: 1 }, snow_crop: { id: 3, at: 'x' }, fog_forage: null });
+  assert.deepEqual(got, { rain_fish: { id: 'rare', at: 5 } });
+  assert.deepEqual(sanitizeSpecial(undefined), {});
+  assert.deepEqual(sanitizeSpecial('junk'), {});
+});
+
+// ── 🌊 나의 최대어 — 어종별 개인 최고 무게 ──────────────────────────────
+test('bestAfterCatch — 더 무거울 때만 갱신, 원본 불변', () => {
+  const b0 = { aji: 2.1 };
+  const b1 = bestAfterCatch(b0, 'aji', 2.8);
+  assert.deepEqual(b1, { aji: 2.8 }); assert.deepEqual(b0, { aji: 2.1 });
+  assert.equal(bestAfterCatch(b1, 'aji', 1.0), b1, '가벼운 걸로 덮었다');
+  assert.deepEqual(bestAfterCatch(b1, 'tuna', 88.4), { aji: 2.8, tuna: 88.4 });
+  assert.equal(bestAfterCatch(b1, 'tuna', NaN), b1);
+});
+
+test('sanitizeBest — 양수 숫자만, 어종 id 는 알려준 목록 안에서만', () => {
+  assert.deepEqual(sanitizeBest({ aji: 2.4, tuna: -1, mola: 'x', hack: 999 }, ['aji', 'tuna', 'mola']), { aji: 2.4 });
+  assert.deepEqual(sanitizeBest(null, ['aji']), {});
 });

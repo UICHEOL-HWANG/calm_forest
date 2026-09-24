@@ -964,6 +964,7 @@
   .lb-rank { flex: 0 0 34px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
   .lb-nick { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lb-score { flex: 0 0 auto; font-weight: 800; font-variant-numeric: tabular-nums; color: #2f6b45; }
+  .lb-sp { flex: 0 0 auto; font-size: 12px; opacity: .8; white-space: nowrap; }   /* 🌊 그 무게를 낸 어종 */
   .lb-empty { text-align: center; padding: 26px 8px; font-size: 13px; opacity: .65; line-height: 1.6; }
   #lb-me { margin-top: 8px; }
   #lb-me .lb-row { background: #e3f4e6; box-shadow: inset 0 0 0 2px var(--mint); }
@@ -3930,7 +3931,8 @@
 
     // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
     let cookTab = 'tool';
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙' })[k] || '🪵';
+    // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
+    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟' })[k] || '🪵';
     function updateCookInv() { $('cook-inv').textContent = `🪵 ${lastInv.wood}  🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}  🪨 ${lastInv.stone || 0}  ⚫ ${lastInv.coal || 0}  💎 ${lastInv.gem || 0}`; }
     function renderTools() {
       updateCookInv();
@@ -3962,6 +3964,29 @@
           const res = Input.craftUpgrade(u.id);
           if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
           ui.toast(`${u.ico} ${res.name} 제작 완료!`);
+          renderTools();
+        });
+        box.appendChild(el);
+      });
+      // 🔨 금빛 도구(2단계) — 📜 도면을 받은 것만 보인다. 하나도 없으면 어디서 얻는지 한 줄로만 알린다
+      const t2 = Input.getTier2?.() || [];
+      const known = t2.filter(x => x.state !== 'noBlueprint');
+      if (!known.length) {
+        const el = document.createElement('div');
+        el.className = 'ck-item off';
+        el.innerHTML = `<span class="ck-ico">📜</span><span class="ck-name">금빛 도구</span><span class="ck-buff">주민과 친해지면(❤️6) 도면을 줘요</span><span class="ck-cost">🔒</span>`;
+        box.appendChild(el);
+      }
+      known.forEach(x => {
+        const costStr = Object.entries(x.cost).map(([k, n]) => ico(k) + n).join(' ');
+        const buff = x.state === 'needTier1' ? `먼저 ${x.tier1}을(를) 만들어요` : '금·흑단·보석 — 모습이 바뀌어요';
+        const el = document.createElement('div');
+        el.className = 'ck-item' + (x.state === 'owned' ? ' owned' : (x.state === 'ready' ? '' : ' off'));
+        el.innerHTML = `<span class="ck-ico">${x.ico}</span><span class="ck-name">✨ ${x.name}</span><span class="ck-buff">${buff}</span><span class="ck-cost">${x.state === 'owned' ? '✅ 보유중' : costStr}</span>`;
+        if (x.state !== 'owned') el.addEventListener('click', () => {
+          const res = Input.craftTier2(x.tool);
+          if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+          ui.toast(`✨ ${res.name} 제작 완료!`);
           renderTools();
         });
         box.appendChild(el);
@@ -4972,6 +4997,13 @@
     let lbBoard = 'boat';
     const lbCache = {};   // 모달 열려있는 동안 보드별 응답 캐시(탭 왕복 시 재요청 방지)
     function lbMedal(r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; }
+    // 🌊 오늘의 대어 — 그 무게를 낸 어종(서버가 sp 로 준다. 없으면 예전처럼 비움 — SQL 적용 전에도 안전)
+    //   이름은 별도 span — 옵저버가 '참치' 같은 사전 단어로 번역한다(아이콘과 붙이면 못 찾는다)
+    function lbSpecies(sp) {
+      if (!sp) return '';
+      const s = (Input.getSeaSpecies?.() || []).find(x => x.id === sp);
+      return s ? `<span class="lb-sp">${s.ico} <span>${s.name}</span></span>` : '';
+    }
     async function renderLb(board) {
       lbBoard = board;
       const meta = LB_BOARDS.find(b => b.id === board);
@@ -4996,12 +5028,12 @@
         list.innerHTML = top.map(r =>
           `<div class="lb-row${r.rank <= 3 ? ' top3' : ''}${d.me && r.rank === d.me.rank && r.nick === myNick ? ' me-row' : ''}">
             <span class="lb-rank">${lbMedal(r.rank)}</span>
-            <span class="lb-nick">${escapeHtml(r.nick)}</span>
+            <span class="lb-nick">${escapeHtml(r.nick)}</span>${lbSpecies(r.sp)}
             <span class="lb-score">${meta.fmt ? meta.fmt(r.score) : Number(r.score).toLocaleString()}${meta.unit}</span>
           </div>`).join('');
         // 내 순위 — 상위 목록에 안 보이면 하단에 고정 표시
         if (d.me && !(top.some(r => r.rank === d.me.rank && r.nick === myNick))) {
-          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${escapeHtml(myNick || '나')} (나)</span><span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
+          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${escapeHtml(myNick || '나')} (나)</span>${lbSpecies(d.me.sp)}<span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
         } else if (!d.me && authState.userId) {
           meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요. 지금 만들어봐요!</div>`;
         }

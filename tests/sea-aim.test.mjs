@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { pickSeaTarget, AIM_DIST_WEIGHT } from '../js/sea-aim.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
-const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const src = gameSource();
 
 // 바다터 좌표계: 뭍(+z) → 부두 끝(-z). 부두 폭 3.4 라 플레이어 x 는 SEA.x ±1.7.
 // 아래 좌표는 2026-09-17 로컬 실측에서 그대로 읽은 값이다(참치 0마리 사고의 재현 조건).
