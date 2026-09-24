@@ -992,14 +992,16 @@ function firstHint(key, ico, title, body) {
 
 // 근접(지나가기) 안내 — 이동을 끊지 않는 비차단 배너(1회). 상세 규칙은 입장 후 모달/존 힌트 담당.
 // 튜토리얼(코치) 진행 중엔 억제하고 '본 것' 처리도 안 함 — 코치 지시와 겹치지 않게, 졸업 후 첫 접근 때 보여준다.
+/** 띄웠으면 true — 호출부가 "처음 도달"을 계측할 수 있게(🌊 sea_gate_hint). */
 function firstHintBanner(key, ico, title, line) {
-  if (gameState.hintsSeen[key]) return;
-  if (ui.coachActive?.()) return;
+  if (gameState.hintsSeen[key]) return false;
+  if (ui.coachActive?.()) return false;
   gameState.hintsSeen[key] = true;
   // 발동 지점을 기억해 "표시 차례가 왔을 때 아직 그 앞에 있는지"를 UI 가 판정할 수 있게 —
   // 여러 시설을 연달아 지나치면 이미 떠난 곳의 배너는 짧게 흘려보낸다(큐 적체 방지)
   const at = { x: player.position.x, z: player.position.z };
   ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5 });
+  return true;
 }
 
 let indoor = false;        // 실내(집 안) 여부
@@ -11328,7 +11330,9 @@ function updateDoorInteract() {
     nd = 'sea';
     const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     prompt = locked ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';
-    if (!locked) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시');
+    // [GA4] 입구 첫 도달(세이브당 1회) — sea_enter 와 짝지어 "왔는데 안 들어갔나"를 본다
+    if (!locked && firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시'))
+      trackEvent('sea_gate_hint', { night: isNight(), weather: WEATHER });
   } else if (!indoor && dist2D(player.position, ORCHARD_GATE) < ORCHARD_PROMPT_R) {
     nd = 'orchard';
     const locked = mapLocked('orchard');
