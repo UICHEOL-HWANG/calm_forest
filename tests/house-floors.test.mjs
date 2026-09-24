@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { floorsFor, floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from '../js/house-floors.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 test('3단계는 1층뿐', () => {
   const fs = floorsFor(3);
@@ -56,7 +57,7 @@ test('옥상 파라솔 세트를 샀으면 루프탑에 값 없이 놓인다', (
 });
 
 // ── Task 2: 고급 가구 10종 데이터 + 코인 결제 ─────────────────────
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 const DECOR_SRC = SRC.slice(SRC.indexOf('const DECOR = ['), SRC.indexOf('\n];', SRC.indexOf('const DECOR = [')));
 // 🏖️ Task 6 가 hidden: true 인 parasol_set(승계 전용, 상점에 안 뜸)을 DECOR 에 추가했다.
 // 아래 세 카운트는 "상점에 보이는 고급 가구"만 세도록 hidden 줄을 뺀다 — 그래야 누가 실수로

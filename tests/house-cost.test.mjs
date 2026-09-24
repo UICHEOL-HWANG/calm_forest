@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { BUILD_STAGES, buildInfo, MAX_BUILD_STAGE, EXPANSIONS, STAGE_NAMES } from '../js/house-cost.js';
 import { TUNING } from '../js/tuning.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 // 🏠 집 건축(0→3) 비용 — 2026-09-21 리밸런스.
 //   베타 피드백 "만들고 집 업데이트 하는 게 너무 쉽다". 재료를 목재 단일(10×3)에서
 //   목재·돌·코인으로 넓혀, 반복을 늘리는 대신 다른 콘텐츠를 거치게 만든다.
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 const none = { inventory: {}, upgrades: {} };
