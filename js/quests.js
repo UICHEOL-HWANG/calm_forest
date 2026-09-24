@@ -61,6 +61,36 @@ export function pickGated(pool, count, seed, ctx = {}) {
   return out;
 }
 
+// ── 📜 일일 의뢰 개수를 늘린 날 — 오늘 받은 목록은 버리지 않고 뒤에 덧붙인다 ──────────
+//   진행도는 "몇 번째(st.idx)를 몇 개(st.progress)" 라는 포인터라, 목록을 통째로 다시 뽑으면
+//   ① 이미 다 깬 사람이 새 목록으로 보상을 또 받고 ② 진행 중이던 사람은 하던 진행도를 잃는다.
+//   앞의 N건과 포인터를 그대로 두고 모자란 만큼만 붙이면 둘 다 생기지 않는다(2026-09-24, 3→5).
+
+/**
+ * 오늘 목록을 어떻게 다룰지.
+ *  'extend' — 멀쩡한데 개수만 모자람 → 뒤에 덧붙인다
+ *  'keep'   — 모자라지만 오늘 ✨특별 의뢰를 이미 받았다 → 오늘은 그대로(특별 의뢰가 목록 바로 뒤라
+ *             덧붙이면 그 포인터가 새 일일 의뢰를 가리킨다). 내일부터 새 개수
+ *  null     — 해당 없음(개수가 맞거나, 없거나, 깨졌다) → 호출부의 기존 경로
+ */
+export function dailyExtendPlan(quests, count, { valid, hasSpecial = false } = {}) {
+  if (!Array.isArray(quests) || !quests.length || quests.length >= count) return null;
+  if (!quests.every(q => valid(q))) return null;
+  return hasSpecial ? 'keep' : 'extend';
+}
+
+/** 덧붙일 의뢰 — 이미 있는 목표 종류는 빼고 게이트를 통과한 것 중 n 개(시드 고정). */
+export function pickDailyExtra(pool, existing, n, seed, ctx = {}) {
+  const have = new Set(existing.map(q => q.type));
+  return pickGated(pool.filter(q => !have.has(q.type)), n, seed, ctx);
+}
+
+/** "[오늘의 의뢰 2/3]" · "[Request 2/3]" 의 분모만 바꾼다. 접두사가 없으면 그대로. */
+export function renumberDailyLine(line, count) {
+  if (typeof line !== 'string') return line;
+  return line.replace(/^\[(오늘의 의뢰|Request) (\d+)\/\d+\]/, `[$1 $2/${count}]`);
+}
+
 // ── 주민 반복 의뢰 ────────────────────────────────────────────
 //   체인을 다 깬 주민이 영원히 "고마워요" 만 하던 것을 없앤다.
 //   ⚠️ 주민 전원이 매일 의뢰를 내면 코인 발행이 3배가 된다 → 하루 REPEAT_OPEN 명만 열린다.
