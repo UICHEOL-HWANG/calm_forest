@@ -191,7 +191,8 @@ export function repeatQuestFor(npcId, seed, ctx = {}) {
  *   반복 의뢰:  `farmer:repeat:plant`  (순번이 없으니 목표 종류. 날짜를 넣으면 GA4 집계가 갈린다)
  *   ✨특별 의뢰: `courier:special:chop`     (예전엔 순번 `courier:3` 이라 종류를 알 수 없었다)
  */
-export function questIdFor({ npcId, idx, repeat = false, repeatType, specialType }) {
+export function questIdFor({ npcId, idx, repeat = false, repeatType, specialType, hiddenTool }) {
+  if (hiddenTool) return `${npcId}:hidden:${hiddenTool}`;   // 🔨 히든 의뢰(도면) — js/tool-blueprints.js
   if (specialType) return `${npcId}:special:${specialType}`;
   if (repeat) return `${npcId}:repeat:${repeatType || '?'}`;
   return `${npcId}:${idx}`;
