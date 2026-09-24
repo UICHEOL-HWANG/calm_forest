@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY,
-  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, mergeBest, sanitizeBest } from '../js/museum.js';
+  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, sanitizeBest } from '../js/museum.js';
 import { VISITORS } from '../js/habitat.js';
 
 // 🏛️ 증축은 **코인이 아니라 수집률**로 열린다 — 돈으로 건너뛰면 수집이 의미를 잃는다.
@@ -482,7 +482,7 @@ test('sanitizeSpecial — 모르는 전시·깨진 값은 버린다(세이브를
   assert.deepEqual(sanitizeSpecial('junk'), {});
 });
 
-// ── 🌊 최대어 명판 — 어종별 개인 최고 무게 ──────────────────────────────
+// ── 🌊 나의 최대어 — 어종별 개인 최고 무게 ──────────────────────────────
 test('bestAfterCatch — 더 무거울 때만 갱신, 원본 불변', () => {
   const b0 = { aji: 2.1 };
   const b1 = bestAfterCatch(b0, 'aji', 2.8);
@@ -490,12 +490,6 @@ test('bestAfterCatch — 더 무거울 때만 갱신, 원본 불변', () => {
   assert.equal(bestAfterCatch(b1, 'aji', 1.0), b1, '가벼운 걸로 덮었다');
   assert.deepEqual(bestAfterCatch(b1, 'tuna', 88.4), { aji: 2.8, tuna: 88.4 });
   assert.equal(bestAfterCatch(b1, 'tuna', NaN), b1);
-});
-
-test('mergeBest — sea_records 행(기존 기록)을 합쳐 어종별 최댓값', () => {
-  const rows = [{ species: 'aji', weight: 2.4 }, { species: 'aji', weight: 1.1 }, { species: 'mola', weight: 71.2 }, { species: 'x', weight: 'bad' }];
-  assert.deepEqual(mergeBest({ aji: 2.0, tuna: 90 }, rows), { aji: 2.4, tuna: 90, mola: 71.2 });
-  assert.deepEqual(mergeBest({ aji: 3 }, []), { aji: 3 });
 });
 
 test('sanitizeBest — 양수 숫자만, 어종 id 는 알려준 목록 안에서만', () => {
