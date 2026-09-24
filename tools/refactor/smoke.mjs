@@ -64,6 +64,9 @@ mkdirSync(OUT, { recursive: true });
 const b = await launch(+cdpPort);
 await b.send('Network.enable');
 await b.send('Network.setBlockedURLs', { urls: ['*supabase.co*', '*googletagmanager*', '*google-analytics*'] });
+// 🎲 고정 시드 난수 — 월드 배치(나무·돌·손님)가 매번 같아야 드로우콜·메시 수를 비교할 수 있다.
+//    문서마다 처음부터 다시 시작한다(페이지를 새로 열 때마다 같은 수열).
+await b.send('Page.addScriptToEvaluateOnNewDocument', { source: '(()=>{let s=0x2545F491;Math.random=function(){s^=s<<13;s^=s>>>17;s^=s<<5;return (s>>>0)/4294967296;};})()' });
 await b.viewport(1280, 720);
 
 const result = { label, at: new Date().toISOString(), boot: {}, stops: {}, night: {}, state: null };
