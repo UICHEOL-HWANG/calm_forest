@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { loadOutcome, retryDelay, offerReload, sessionLoss } from '../js/save-guard.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
-const GAME_SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const GAME_SRC = gameSource();
 
 //  옛 패턴 검사는 **실제 코드**만 봐야 한다. 주석에 그 패턴을 설명해 둔 곳(방어 코드의 근거 주석)까지
 //  잡으면, 왜 막는지 적어 둔 글 때문에 테스트가 깨진다.

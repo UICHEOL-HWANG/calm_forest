@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 // 🍳 요리 코스 개편의 불변식을 잠근다.
 //   레시피·미니게임·카페 손님은 세 군데(RECIPES / COOK_MG / CAFE_GUESTS)에 흩어져 있고
 //   한쪽만 고쳐도 조용히 깨진다 — stages 에 없는 미니게임을 적으면 코스가 멈추고,
 //   CAFE_PAY 에 빠뜨리면 서빙 단가가 조용히 30원으로 떨어진다. 눈에 안 보이는 실패라 테스트로 막는다.
 //   game.js 는 브라우저 전역(THREE·document)에 의존해 import 할 수 없어 원문을 파싱한다.
-const SRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const SRC = gameSource();
 const EN_SRC = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
 
 function block(startRe, endMark) {

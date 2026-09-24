@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { FARM_STAGES, MAX_FARM_STAGE, farmHalfOf, farmStageInfo, fencePosts, perimeterTrees, YARD_D, YARD_HZ, surveyYard, surveyOfficePos, surveyDeskPos, surveyBenchPos, clampFarmPos, GATE_HZ } from '../js/farm-stage.js';
+import { gameSource } from './helpers/game-source.mjs';   // game.js + js/data (분리 1단계)
 
 test('FARM_STAGES: 스펙 §1 표 그대로 — half 6/9/11 · 비용 · 노동자 상한', () => {
   assert.equal(FARM_STAGES.length, 3); assert.equal(MAX_FARM_STAGE, 3);
@@ -109,7 +110,7 @@ test('clampFarmPos: 문을 지나야만 마당 — 울타리를 따라 밀어도
 //   무방비였다. 원으로 덮으려면 앞뒤까지 같이 두꺼워져 통로가 막히니 사각으로 간다
 //   (🫙발효통이 VAT_BOX 로 이미 쓰는 방식. 마을 작업대는 조형 1.5×0.9 에 r1.0 이라 문제없다).
 //   ⚠️ 상호작용 판정은 둘 다 중심에서 1.9 다 — 박스가 커지면 그 안에 못 들어가 기능이 죽는다.
-const GSRC = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const GSRC = gameSource();
 const PLAYER_R = 0.42;
 
 function surveySolid(varName) {
