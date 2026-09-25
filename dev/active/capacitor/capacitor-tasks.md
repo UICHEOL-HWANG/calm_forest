@@ -98,3 +98,11 @@
 - [~] 🧑 시크릿 3종 등록(✅ Worker 배포·PGS_USER_SECRET 2026-09-25, SUPABASE_SERVICE_KEY 사용자 입력 중, PGS_CLIENT_SECRET 콘솔 대기)(`-c wrangler.toml`) → `wrangler deploy` → config.js PGS_AUTH_ENDPOINT → 가짜 코드 curl 401
 - [ ] 📝 새 문구 검수(넛지 '🎮 플레이 게임즈…' 4종 + 실패 토스트)
 - [ ] versionCode 5 → build:cap → bundleRelease → upload:play internal → 실기기: 무화면 입장 · 재시작 이어짐 · 나가기→바로 플레이하기 · 비행기 모드 게스트
+
+## 7. 🧪 비공개 테스트(도플리·크몽) — 2026-09-25 시작
+- [x] alpha 1.3.5(v9) 첫 검토 승인·게시 2026-09-25 23:06 · 국가 대한민국 · 테스터 '도플리 테스터' 44명 · PGS 출시 트랙 alpha 연결 · PC 폼 팩터 제외
+- [x] 업데이트 ①: alpha v13(1.3.9) 2026-09-25 — 사진 저장·공유·음악 정지·글꼴 배율(노트는 사용자용 문장)
+- [ ] 🧑 참여 링크를 크몽 메신저로 업체에 전달: https://play.google.com/store/apps/details?id=com.cheorish.lab.calmforest
+- [ ] 업데이트 ② — 14일 안에 한 번 더(목표 ~2026-10-02). 기능 없으면 versionCode 만 올려도 됨
+- [ ] 대시보드 '참여 테스터 12명+' · 14일 카운트 확인 → 종료 후 '프로덕션 신청' 설문(업체 안내 6·7단계)
+- [ ] 다음 날 GA4(BQ) android 이벤트·perf_sample 재검증
