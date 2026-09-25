@@ -89,8 +89,10 @@ export async function fetchPlayerId({ fetch, accessToken }) {
   const res = await fetch(PLAYER_URL, { headers: { Authorization: 'Bearer ' + accessToken }, signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new HttpError('플레이어 조회 실패 HTTP ' + res.status + ' ' + await peek(res), 502, '플레이어 조회 실패');
   const data = await res.json();
-  if (!data.id) throw new HttpError('플레이어 id 없음', 502, '플레이어 조회 실패');
-  return data.id;
+  //  ⚠️ Games API Player 리소스의 필드는 playerId 다(id 아님 — 2026-09-25 실기기에서 '플레이어 id 없음'으로 실패)
+  const playerId = data.playerId || data.id;
+  if (!playerId) throw new HttpError('플레이어 id 없음 keys=' + Object.keys(data).join(','), 502, '플레이어 조회 실패');
+  return playerId;
 }
 
 // playerId → 합성 이메일 + 파생 비밀번호. 원본 playerId 는 Supabase 에 남기지 않는다(해시만)
