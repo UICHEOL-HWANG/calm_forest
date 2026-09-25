@@ -14,7 +14,7 @@
 // =============================================================
 
 import { weatherForDate, slotOfHour, kstHour, parseBucket, CAFE_SLOTS } from './_game-day.js';
-import { readVariants, pickVariant, insertRows } from './_ai-store.js';
+import { readVariants, pickVariant, insertRows, variantsFor, rpdOf } from './_ai-store.js';
 
 // 게임의 CAFE_GUESTS / RECIPES 와 id 가 일치해야 합니다(js/game.js).
 // 이름·색·모자 같은 외형은 게임이 id 로 채우므로 여기선 id 와 표시용 이름만 둡니다.
@@ -263,7 +263,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   };
 
   // ① 크론이 전날 밤 만들어 둔 변형(functions/ai-pregen-cron.js) — 평소엔 여기서 끝난다
-  const stored = pickVariant(await readVariants(env, { kind: 'cafe', date, lang, phase, slot }), bucket);
+  const stored = pickVariant(await readVariants(env, { kind: 'cafe', date, lang, phase, slot }), bucket, variantsFor(rpdOf(env)));
   if (Array.isArray(stored) && stored.length >= count) return serve(stored.slice(0, count));
 
   // ② 폴백: 아직 없으면 즉석 생성. 크론과 같은 인원으로 만들어 변형 0 에 적재 → 다음 요청·다른 PoP 가 재사용.

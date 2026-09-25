@@ -260,3 +260,38 @@ test('로컬 폴백 손님도 시간대마다 메뉴가 실제로 바뀐다', ()
   }
   assert.ok(same / total < 0.25, `아침·저녁 메뉴가 ${same}/${total} 같다`);
 });
+
+// ── 코드 리뷰 반영(2026-09-25) ─────────────────────────────────
+import { pickVariant } from '../functions/api/_ai-store.js';
+const rowsOf = (...vs) => vs.map(v => ({ variant: v, payload: [`v${v}`] }));
+
+test('변형은 배열 위치가 아니라 variant 번호로 고른다 — 크론이 변형을 더 채워도 받던 게 안 바뀐다', () => {
+  // 버킷 3: 배열 위치로 고르면 [0,1,2]→v0, [0..3]→v3, [0..4]→v3, [0..5]→v3 … 이지만
+  //   [0,1,2,4] 처럼 빈칸이 있으면 위치가 밀려 v4 를 받는 식으로 계속 바뀐다.
+  assert.deepEqual(pickVariant(rowsOf(0, 1, 2), 3, 8), ['v0'], '아직 없으면 변형 0');
+  assert.deepEqual(pickVariant(rowsOf(0, 1, 2, 3), 3, 8), ['v3']);
+  assert.deepEqual(pickVariant(rowsOf(0, 1, 2, 3, 4, 5), 3, 8), ['v3'], '더 채워져도 그대로');
+  assert.deepEqual(pickVariant(rowsOf(0, 1, 2, 4), 3, 8), ['v0'], '빈칸이 있어도 남의 변형으로 새지 않는다');
+});
+
+test('변형 수가 버킷보다 적으면 버킷을 변형 수로 접는다 — 변형 0 에 몰리지 않게', () => {
+  assert.deepEqual(pickVariant(rowsOf(0, 1, 2, 3), 5, 4), ['v1']);
+  assert.deepEqual(pickVariant(rowsOf(0, 1, 2, 3), 7, 4), ['v3']);
+});
+
+test('변형 0 도 없으면 있는 것 중 첫 번째, 아무것도 없으면 null', () => {
+  assert.deepEqual(pickVariant(rowsOf(2, 5), 3, 8), ['v2']);
+  assert.equal(pickVariant([], 3, 8), null);
+});
+
+test('크론의 Supabase 조회에는 타임아웃이 걸린다 — 멈춘 저장소가 실행 전체를 붙잡지 않게', async () => {
+  const w = mockWorld();
+  const seen = [];
+  const fetch = (url, init = {}) => {
+    if (String(url).includes('/rest/v1/') && (init.method || 'GET') === 'GET') seen.push(init.signal);
+    return w.fetch(url, init);
+  };
+  await runAiPregen(w.env, { fetch, sleep: w.sleep, now: NOW, notify: w.notify });
+  assert.equal(seen.length, 2);
+  assert.ok(seen.every(s => s instanceof AbortSignal), '조회에 AbortSignal 이 없다');
+});
