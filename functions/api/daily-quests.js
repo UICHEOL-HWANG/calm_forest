@@ -88,10 +88,10 @@ const RESPONSE_SCHEMA = {
   },
 };
 
-const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 세 가지 의뢰로 전한다.
+const SYSTEM = `너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 ${NEED}가지 의뢰로 전한다.
 규칙:
 - 한국어. 다정하고 담백한 말투. 과장·이모지·따옴표 금지.
-- 세 의뢰가 하나의 하루로 이어지게 짠다. 아래는 '결'의 예시일 뿐이니, 매일 다른 결을 고른다:
+- ${NEED}개의 의뢰가 하나의 하루로 이어지게 짠다. 아래는 '결'의 예시일 뿐이니, 매일 다른 결을 고른다:
   · 숲에서 재료를 모으고 → 요리하고 → 카페 손님에게 낸다
   · 밭을 갈아 심고 → 물을 주고 → 거둔다
   · 나무를 베고 → 광석을 캐고 → 상점에 내다 판다
@@ -106,10 +106,10 @@ ${PHASE_RULE_KO}
 - 마을에 있는 것만 언급한다: 밭 · 집 · 카페 · 상점 · 작업대 · 자유주방 · 동굴 · 호수 · 채집 숲 · 닭장 · 나루터 · 안개 숲.
   게임에 없는 시설이나 물건(비닐하우스·시장 좌판 같은 것)을 지어내지 않는다.`;
 
-const SYSTEM_EN = `You are the Owl who hands out requests in "calm forest", a cozy healing game. You gather what the villagers need today and pass it to the player as three requests.
+const SYSTEM_EN = `You are the Owl who hands out requests in "calm forest", a cozy healing game. You gather what the villagers need today and pass it to the player as ${NEED} requests.
 Rules:
 - English. Warm and understated. No exaggeration, no emoji, no quotation marks.
-- The three requests should read as one connected day. These are only examples of a "shape" — pick a different one each day:
+- The ${NEED} requests should read as one connected day. These are only examples of a "shape" — pick a different one each day:
   · forage in the woods → cook → serve it to café guests
   · till and sow → water → harvest
   · chop wood → mine ore → sell it at the shop
@@ -127,7 +127,7 @@ ${PHASE_RULE_EN}
 
 // 날짜로 '오늘 문을 여는 일감' 을 하나 정해 프롬프트에 넣는다.
 //   예시만 주면 모델이 그중 한 결에 고착된다 — 실제로 며칠을 뽑아 보니 전부 chop 으로 시작했다.
-//   시작점을 날짜로 돌려 주면 결이 매일 확실히 갈리고, 나머지 둘은 모델이 이어 붙인다.
+//   시작점을 날짜로 돌려 주면 결이 매일 확실히 갈리고, 나머지는 모델이 이어 붙인다.
 // 🔒 날짜 범위 제한 — 임의의 날짜를 받으면 (날짜 × 나머지 조합)이 무한해져
 //   캐시 미스마다 Gemini 가 실제로 호출된다. 인증도 레이트리밋도 없는 엔드포인트라
 //   날짜만 바꿔가며 부르면 그대로 할당량 고갈·요금 통로가 된다.
@@ -157,7 +157,7 @@ function buildPrompt(date, weather, lang, phase) {
       `Date: ${date} (weather: ${WEATHER_EN[weather] || 'sunny'})`,
       `The player ${PHASES[phase].en}.`,
       '', 'Goal types (id: what it means @ where it happens … allowed target range):', ...list,
-      '', `Open today with "${opener}"; the other two are yours to choose so the day connects.`,
+      '', `Open today with "${opener}"; the rest are yours to choose so the day connects.`,
       `Write today's ${NEED} requests.`,
     ].join('\n');
   }
@@ -165,7 +165,7 @@ function buildPrompt(date, weather, lang, phase) {
     `날짜: ${date} (날씨: ${WEATHER_KO[weather] || '맑음'})`,
     `플레이어는 ${PHASES[phase].ko}.`,
     '', '목표 종류 (id: 무슨 일인지 @ 어디서 … 허용 범위):', ...list,
-    '', `오늘은 '${opener}' 로 문을 여는 하루야. 이어지는 나머지 둘은 네가 골라서 하루가 이어지게 해.`,
+    '', `오늘은 '${opener}' 로 문을 여는 하루야. 이어지는 나머지는 네가 골라서 하루가 이어지게 해.`,
     `오늘의 의뢰 ${NEED}개를 만들어줘.`,
   ].join('\n');
 }
