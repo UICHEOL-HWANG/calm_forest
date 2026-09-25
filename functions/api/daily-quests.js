@@ -15,6 +15,9 @@
 //  ⚠️ scripts/serve.py 에 같은 규칙의 로컬 미러가 있다. 한쪽만 고치지 마세요.
 // =============================================================
 
+import { weatherForDate, parseBucket } from './_game-day.js';
+import { readVariants, pickVariant, insertRows } from './_ai-store.js';
+
 // 의뢰로 낼 수 있는 목표 — id 는 js/game.js 의 questEvent() 가 쏘는 이벤트와 일치해야 한다.
 // min/max 는 기존 DAILY_POOL 의 값을 가운데 두고 잡은 안전 범위(난이도 폭주 방지).
 const QUEST_SPEC = {
@@ -146,8 +149,10 @@ function openerFor(date) {
   return TYPES[h % TYPES.length];
 }
 
-function buildPrompt(date, weather, lang, phase) {
-  const opener = openerFor(date);
+// 🎲 변형마다 시작 일감을 갈라 준다 — 날짜만 쓰면 변형 8벌이 전부 같은 일감으로 시작한다(2026-09-25 실측).
+//   변형 0 은 예전 시드 그대로(배포 전후로 같은 날 의뢰가 바뀌지 않게).
+export function buildQuestPrompt(date, weather, lang, phase, variant = 0) {
+  const opener = openerFor(variant ? `${date}#${variant}` : date);
   const list = TYPES.map(t => {
     const s = QUEST_SPEC[t];
     return `- ${t}: ${(lang === 'en' ? s.en : s.ko)(s.min)} @ ${lang === 'en' ? s.whereEn : s.where} … (${s.min}~${s.max})`;
@@ -194,7 +199,9 @@ function sanitize(raw, lang) {
   return out;
 }
 
-async function generate(env, date, weather, lang, phase) {
+// 🗓️ 크론(functions/ai-pregen-cron.js)과 이 API 폴백이 함께 쓰는 단일 생성 경로.
+//   fetch 를 주입받는 건 테스트용 — 기본은 전역 fetch.
+export async function generateQuests(env, { date, weather, lang, phase, variant = 0 }, { fetch = globalThis.fetch } = {}) {
   const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -203,7 +210,7 @@ async function generate(env, date, weather, lang, phase) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: lang === 'en' ? SYSTEM_EN : SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, lang, phase) }] }],
+        contents: [{ role: 'user', parts: [{ text: buildQuestPrompt(date, weather, lang, phase, variant) }] }],
         generationConfig: {
           temperature: 1.1,                    // 매일 다른 조합이 나오게
           responseMimeType: 'application/json',
@@ -218,50 +225,59 @@ async function generate(env, date, weather, lang, phase) {
   return sanitize(JSON.parse(text), lang);
 }
 
+export { NEED };
+
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
   // 입력 정규화 — 프롬프트에 들어가므로 형식을 엄격히 제한(클라이언트발 인젝션 차단)
   const date = clampDate(url.searchParams.get('date') || '');   // 🔒 어제·오늘·내일만
-  const rawWeather = url.searchParams.get('weather') || '';
-  const weather = ['clear', 'rain', 'snow', 'fog'].includes(rawWeather) ? rawWeather : 'clear';
+  // 🌦️ 날씨는 클라이언트 값을 받지 않고 날짜로 계산한다 — 게임과 같은 해시(_game-day.js)라 값이 같고,
+  //    조합에서 날씨 축이 빠져 크론이 미리 만들 조합이 24 → 6 으로 준다. (?weather= 디버그는 영향 없음)
+  const weather = weatherForDate(date);
   const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
   const rawPhase = url.searchParams.get('phase') || '';
   const phase = PHASES[rawPhase] ? rawPhase : 'settled';             // 화이트리스트(그 외 값은 settled)
+  const bucket = parseBucket(url.searchParams.get('v'));             // 🎲 기기 고정 버킷 → 사람마다 다른 변형
 
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',        // 비밀·개인정보가 없는 응답(앱인토스 번들 등 타 오리진 대응)
     'Cache-Control': `public, max-age=${CACHE_TTL}`,
   };
-  if (!env.GEMINI_API_KEY) {
-    // 미설정 = 기능 끔(게임은 로컬 의뢰로 진행). 캐시하면 안 된다 —
-    // 키를 나중에 넣어도 12시간 동안 빈 응답이 계속 나가기 때문.
-    return new Response('[]', { headers: { ...headers, 'Cache-Control': 'no-store' } });
-  }
+  const empty = () => new Response('[]', { headers: { ...headers, 'Cache-Control': 'no-store' } });
 
-  // 날짜·날씨·언어가 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번(엣지 PoP당)
   const cache = caches.default;
   // ⚠️ 키에 NEED 를 넣는다 — 개수를 바꿔 배포해도 옛 개수로 캐시된 응답이 TTL 동안 계속 나가면
   //    클라이언트가 validDailyQuests 에서 통째로 버려 그날 AI 의뢰가 전원 미적용된다.
-  const cacheKey = new Request(`${url.origin}/api/daily-quests?date=${date}&weather=${weather}&lang=${lang}&phase=${phase}&n=${NEED}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.origin}/api/daily-quests?date=${date}&lang=${lang}&phase=${phase}&n=${NEED}&v=${bucket}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
-
-  try {
-    // 중복 type·목록 밖 값이 걸러지면 3개가 안 될 수 있다 → 한 번만 다시 물어본다.
-    let quests = await generate(env, date, weather, lang, phase);
-    if (quests.length < NEED) quests = await generate(env, date, weather, lang, phase);
-    if (quests.length < NEED) throw new Error(`sanitize 후 ${quests.length}개만 남음`);
+  const serve = (quests) => {
     const out = new Response(JSON.stringify(quests), { headers });
     waitUntil(cache.put(cacheKey, out.clone()));
     return out;
+  };
+
+  // ① 크론이 전날 밤 만들어 둔 변형(functions/ai-pregen-cron.js) — 평소엔 여기서 끝난다
+  const stored = pickVariant(await readVariants(env, { kind: 'quests', date, lang, phase, slot: 'day' }), bucket);
+  if (Array.isArray(stored) && stored.length === NEED) return serve(stored);
+
+  // ② 폴백: 아직 없으면 즉석 생성(배포 첫날·크론 실패). 만든 건 변형 0 으로 적재해 다음 요청·다른 PoP 가 재사용한다.
+  if (!env.GEMINI_API_KEY) return empty();   // 미설정 = 기능 끔. 캐시하면 키를 넣어도 12시간 빈 응답이 나간다
+  try {
+    // 중복 type·목록 밖 값이 걸러지면 개수가 모자랄 수 있다 → 한 번만 다시 물어본다.
+    let quests = await generateQuests(env, { date, weather, lang, phase });
+    if (quests.length < NEED) quests = await generateQuests(env, { date, weather, lang, phase });
+    if (quests.length < NEED) throw new Error(`sanitize 후 ${quests.length}개만 남음`);
+    waitUntil(insertRows(env, [{ kind: 'quests', date, lang, phase, slot: 'day', variant: 0, weather, payload: quests,
+      model: env.GEMINI_MODEL || 'gemini-flash-lite-latest' }]).catch(e =>
+      console.error(JSON.stringify({ message: 'daily-quests store failed', date, lang, phase, error: e.message }))));
+    return serve(quests);
   } catch (e) {
     // 구조화 로그 — Cloudflare 대시보드에서 필터링·집계가 되게(유저에겐 조용히 폴백되므로 여기서만 보임)
     console.error(JSON.stringify({ message: 'daily-quests failed', date, weather, lang, phase, error: e.message }));
     // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 DAILY_POOL 을 쓴다.
     // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
-    return new Response('[]', {
-      headers: { ...headers, 'Cache-Control': 'no-store' },
-    });
+    return empty();
   }
 }
