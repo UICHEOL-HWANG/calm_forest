@@ -430,6 +430,10 @@
   body.platform-toss #stats-btn { display: none; }   /* 활동 기록은 구글 계정 전용 — 토스에선 열 수 없는 버튼을 노출하지 않음 */
   /* 🎮 itch(iframe): 구글은 팝업 로그인으로 되지만 활동 기록 대시보드는 다른 오리진(웹) 새 탭이라 세션이 안 넘어감 → 숨김 */
   body.platform-itch #stats-btn { display: none; }
+  /* 📱 구글 플레이 앱: 토스와 같은 한 버튼 — '바로 플레이하기' = Play Games 로그인 재시도 → 안 되면 게스트.
+     활동 기록 대시보드는 구글 계정 전용이라 숨긴다 */
+  body.platform-android #google-btn, body.platform-android #guest-btn, body.platform-android #stats-btn { display: none; }
+  body.platform-android #toss-btn { display: inline-flex; }
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
@@ -2245,10 +2249,10 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithToss, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
-    import { consumeExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스 자동 연결을 건너뛴다
+    import { initAuth, signInWithGoogle, signInWithToss, signInWithPlayGames, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { consumeExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다
     import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
-    import { IS_TOSS, IS_ITCH } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부
+    import { IS_TOSS, IS_ITCH, IS_ANDROID } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen } from './js/game.js';
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
@@ -3657,13 +3661,13 @@
     }
 
     // 로그인 화면 표시/숨김
-    // why: 'no_session' | 'toss_fail'(토스 자동 연결 실패) | 'offline' — [GA4] 입구 이탈 분해용
+    // why: 'no_session' | 'toss_fail'(토스 자동 연결 실패) | 'pgs_fail'(플레이 게임즈 자동 연결 실패) | 'pgs_unconfigured'(설정 전) | 'offline' — [GA4] 입구 이탈 분해용
     function showLoginScreen(offline, why = offline ? 'offline' : 'no_session') {
       $('login-screen').classList.add('show');
       $('loading').style.display = 'none';
       $('login-note').textContent = offline
         ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
-        : why === 'toss_fail'
+        : (why === 'toss_fail' || why === 'pgs_fail')
           ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 할 수 있어요.'
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
       trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
@@ -3712,13 +3716,15 @@
     // 🔵 앱인토스 웹뷰: 구글 OAuth 불가(disallowed_useragent) → 토스 시작 버튼으로 교체
     if (IS_TOSS) document.body.classList.add('platform-toss');
     if (IS_ITCH) document.body.classList.add('platform-itch');
+    if (IS_ANDROID) document.body.classList.add('platform-android');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
     // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
     //    또 실패하면 유저에게 결정을 떠넘기지 않고 게스트로 바로 시작한다(토스트로만 알림).
+    //    📱 플레이 앱도 같은 버튼 — 플레이 게임즈 로그인 창을 한 번 띄워(interactive) 재시도한다.
     $('toss-btn').addEventListener('click', async () => {
-      const r = await signInWithToss({ silent: true });
-      // login{method:'toss'} 는 enterPlay 가 쏘므로 여기선 시도 결과만 기록(이중 집계 방지)
-      trackEvent('toss_connect', { mode: 'button', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+      const r = IS_ANDROID ? await signInWithPlayGames({ interactive: true }) : await signInWithToss({ silent: true });
+      // login{method} 는 enterPlay 가 쏘므로 여기선 시도 결과만 기록(이중 집계 방지)
+      trackEvent(IS_ANDROID ? 'pgs_connect' : 'toss_connect', { mode: 'button', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
       if (r.ok) return;                                  // 세션 반영 → authState 콜백이 enterPlay
       const g = await signInAsGuest(); await enterPlay();
       // 토스트는 한 칸짜리(덮어쓰기)라 진입 직후 도감 토스트에 묻힌다 → 한 박자 뒤에 길게 띄운다
@@ -5069,7 +5075,7 @@
     // ⚠️ js/game.js 에도 같은 이름의 표가 있다(박물관 명판용). 문구가 서로 달라 **둘 다** 고쳐야 한다 —
     //    한쪽만 고치면 도감 모달 제목에 카테고리 키가 날것으로 뜬다('visitor' 가 그대로 보였다).
     const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서', visitor: '🦋 텃밭 방문객' };
-    const isGuestNow = () => !['google', 'toss'].includes(authState.provider);   // 구글 로그인·토스 계정 = 영구 계정
+    const isGuestNow = () => !['google', 'toss', 'pgs'].includes(authState.provider);   // 구글 로그인·토스·플레이 게임즈 계정 = 영구 계정
     // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
     //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
     //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.
@@ -5142,14 +5148,29 @@
     $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
     // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다
     //    (안 바꾸면 게스트가 "구글로 로그인하세요"라는 실행 불가능한 안내에 갇힌다)
-    const NUDGE_TARGET = IS_TOSS ? 'toss' : 'google';
-    const nudgeConnect = IS_TOSS ? () => signInWithToss() : () => signInWithGoogle();
+    //    📱 플레이 앱도 같은 이유(WebView 구글 OAuth 차단)로 출구를 플레이 게임즈 연결로 바꾼다.
+    const NUDGE_TARGET = IS_TOSS ? 'toss' : IS_ANDROID ? 'pgs' : 'google';
+    const nudgeConnect = IS_TOSS ? () => signInWithToss()
+      : IS_ANDROID ? async () => {
+          const r = await signInWithPlayGames({ interactive: true });
+          trackEvent('pgs_connect', { mode: 'nudge', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+          if (r.ok) $('nudge-modal').classList.remove('show');
+          else ui.toast('플레이 게임즈에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.');
+        }
+      : () => signInWithGoogle();
     if (IS_TOSS) {
       const banner = $('dex-guest'), bannerBtn = $('dex-google');
       banner.innerHTML = '🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>토스 계정을 연결하면 <b>영구 보존</b>!';
       banner.appendChild(bannerBtn);                 // 같은 버튼 노드를 되돌려 붙임(아래 리스너 그대로 유효)
       bannerBtn.textContent = '🔵 토스로 도감 지키기';
       $('nudge-google').textContent = '🔵 토스 계정 연결하고 영구 보존';
+    }
+    if (IS_ANDROID) {
+      const banner = $('dex-guest'), bannerBtn = $('dex-google');
+      banner.innerHTML = '🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>플레이 게임즈를 연결하면 <b>영구 보존</b>!';
+      banner.appendChild(bannerBtn);
+      bannerBtn.textContent = '🎮 플레이 게임즈로 도감 지키기';
+      $('nudge-google').textContent = '🎮 플레이 게임즈 연결하고 영구 보존';
     }
     $('dex-google').addEventListener('click', () => {
       trackEvent('login_nudge_click', { from: 'dex', target: NUDGE_TARGET });   // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
@@ -5165,6 +5186,8 @@
       $('nudge-title').textContent = `도감 ${d.count}종 수집 중!`;
       $('nudge-body').textContent = IS_TOSS
         ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 토스 계정 연결 한 번이면 영구 보존돼요.'
+        : IS_ANDROID
+        ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 플레이 게임즈 연결 한 번이면 영구 보존돼요.'
         : '게스트로 나가면 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
       $('nudge-modal').classList.add('show');
       Input.setAnalog(0, 0);
@@ -5589,6 +5612,14 @@
         const r = await signInWithToss({ silent: true });
         trackEvent('toss_connect', { mode: 'auto', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
         if (!r.ok) showLoginScreen(false, 'toss_fail');   // 성공 시 enterPlay 는 authState 콜백이 처리
+      }
+      else if (IS_ANDROID && !res.offline && !justExited) {
+        // 📱 플레이 앱: 토스와 같은 자리 — Play Games 자동 로그인 결과로 조용히 연결(창 없음).
+        //    안 되면(미로그인·서버 실패) '바로 플레이하기' 화면 → 버튼이 로그인 창을 한 번 띄운다.
+        const r = await signInWithPlayGames();
+        trackEvent('pgs_connect', { mode: 'auto', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+        //  설정 전(엔드포인트 비어 있음)은 장애가 아니다 — GA4 에서 실제 연결 실패와 섞이지 않게 사유를 가른다
+        if (!r.ok) showLoginScreen(false, r.reason === 'endpoint_not_configured' ? 'pgs_unconfigured' : 'pgs_fail');
       }
       else showLoginScreen(res.offline);             // 세션 없음 → 로그인 화면(씬 위에)
     })();

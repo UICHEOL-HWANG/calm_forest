@@ -12,6 +12,7 @@
 import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 🧪 dev 세션 — 리더보드 원천 기록 차단용
 import { PLATFORM, IS_ITCH, IS_TOSS, IS_ANDROID } from './platform.js'; // 'web' | 'toss' | 'itch' | 'android' — 로그 세그먼트 · itch 는 구글 팝업 로그인 · toss 는 게스트 이관 · android 는 네이티브 로그인
 import { getGoogleIdToken } from './google-native.js';   // 📱 앱: WebView OAuth 는 구글이 막아 네이티브 계정 시트로
+import { getPgsAuthCode } from './pgs-native.js';         // 📱 앱: Play Games 자동 로그인 → authCode → pgs-auth Worker
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
 import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지 · 🔌 노는 중 세션 죽음 판정
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
@@ -24,7 +25,7 @@ export const state = {
   online: false,       // Supabase 세션 보유 여부
   userId: null,        // 로그인된 유저 UUID (오프라인이면 로컬 ID)
   email: null,         // 구글 계정 이메일/이름
-  provider: null,      // 'google' | 'anonymous' | 'offline'
+  provider: null,      // 'google' | 'toss' | 'pgs' | 'anonymous' | 'offline'
   sessionId: randId(), // 이번 플레이 세션 식별자(로그 그룹핑)
   clientId: clientId(),// 분석용 영구 기기 식별자(localStorage, 게스트 재방문 추적)
   isGuest: null,       // 게스트(익명/오프라인) 여부 — 세그먼트 분석용
@@ -49,17 +50,18 @@ function isAnon(session) {
     || session?.user?.app_metadata?.provider === 'anonymous';
 }
 
-// 세션 객체 → state 반영 (🔵 토스 유저는 user_metadata.toss 로 식별 — 영구 계정 취급)
+// 세션 객체 → state 반영 (🔵 토스 유저는 user_metadata.toss · 📱 플레이 게임즈 유저는 user_metadata.pgs 로 식별 — 영구 계정 취급)
 function applySession(session) {
   const isToss = session?.user?.user_metadata?.toss === true;
+  const isPgs = session?.user?.user_metadata?.pgs === true;
   state.online = true;
   state.userId = session.user.id;
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
   //  🚪 정식 계정으로 바뀌면 "잃을 세이브가 없다"는 전제가 깨진다 — 빗장을 원래대로.
   //    (signInAsGuest 는 이 함수를 부른 뒤에 다시 true 로 세운다)
   if (!isAnon(session)) freshGuest = false;
-  state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : (session.user.email || session.user.user_metadata?.name || '유저');
-  state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : (session.user.app_metadata?.provider || 'google');
+  state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : isPgs ? '플레이 게임즈' : (session.user.email || session.user.user_metadata?.name || '유저');
+  state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : isPgs ? 'pgs' : (session.user.app_metadata?.provider || 'google');
   state.betaReady = resolveBetaGroup(session);
   emit();
 }
@@ -166,10 +168,10 @@ export async function initAuth(onStatusChange) {
       return { needLogin: false, offline: false };
     }
     if (s && isAnon(s)) {
-      // 🔵 토스: 식별키 연결이 안 돼 게스트로 플레이했던 진행도를 잠시 들고 있는다.
+      // 🔵 토스·📱 플레이 앱: 자동 연결이 안 돼 게스트로 플레이했던 진행도를 잠시 들고 있는다.
       //    익명 세션을 정리하면 그 계정의 저장을 더는 읽을 수 없으므로(RLS) 로그아웃 전에 읽어야 한다.
       //    정식 계정으로 붙은 뒤 loadGame() 이 pickSave 로 어느 쪽을 남길지 정한다.
-      if (IS_TOSS) pendingGuest = await readGuestSave(s.user.id);
+      if (IS_TOSS || IS_ANDROID) pendingGuest = await readGuestSave(s.user.id);
       await signOutQuietly();                 // 게스트 재방문 → 이전 익명 세션 정리(매번 새로 시작)
     }
     return { needLogin: true, offline: false };
@@ -308,6 +310,50 @@ export async function signInWithToss({ silent = false } = {}) {
   }
 }
 
+// ── 📱 Play Games 자동 로그인 (구글 플레이 앱 전용) ─────────────────
+//   토스 식별키와 같은 자리: 앱이 켜지면 PGS v2 가 조용히 인증 → 1회용 authCode →
+//   pgs-auth Worker(PGS_AUTH_ENDPOINT)가 구글과 교환해 playerId 를 확정하고 Supabase 세션을 돌려준다.
+//
+//   반환 { ok, reason } — reason 은 GA4 pgs_connect 이벤트의 실패 분류 키:
+//     plugin(앱 빌드 누락·설정 누락) · not_signed_in(자동 로그인 안 됨/거절) · auth_code
+//     · endpoint_not_configured · server(Worker/구글 교환 실패) · session(Supabase 세션 실패)
+//   opts.interactive: '바로 플레이하기' 버튼 — 자동 로그인이 안 됐으면 PGS 로그인 창을 한 번 띄운다.
+//   alert 는 띄우지 않는다 — 실패는 호출부가 로그인 화면·게스트 폴백으로 안내한다.
+export async function signInWithPlayGames({ interactive = false } = {}) {
+  const fail = (reason, message) => Object.assign(new Error(message), { reason });
+  try {
+    if (!CONFIG.PGS_AUTH_ENDPOINT) return { ok: false, reason: 'endpoint_not_configured' };
+    let got;
+    try {
+      got = await getPgsAuthCode({ plugin: window.Capacitor?.Plugins?.PlayGames,
+                                   serverClientId: CONFIG.PGS_SERVER_CLIENT_ID, interactive });
+    } catch (e) {
+      throw fail(/plugin|serverClientId/.test(e?.message) ? 'plugin' : 'auth_code', e?.message || String(e));
+    }
+    if (got.notSignedIn) return { ok: false, reason: 'not_signed_in' };
+    let data;
+    try {
+      const res = await fetch(CONFIG.PGS_AUTH_ENDPOINT, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authCode: got.authCode }),
+      });
+      data = await res.json();
+      if (!res.ok || !data.access_token || !data.refresh_token) throw new Error(data.error || 'HTTP ' + res.status);
+    } catch (netErr) {
+      throw fail('server', netErr?.message || String(netErr));
+    }
+    const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (error) throw fail('session', error.message);
+    applySession(s.session);
+    console.log('[플레이 게임즈] Supabase 세션 연결 완료', state.userId);
+    return { ok: true };
+  } catch (err) {
+    const reason = err?.reason || 'unknown';
+    console.warn('[플레이 게임즈 연결 실패]', reason, err?.message || err);
+    return { ok: false, reason, error: err };
+  }
+}
+
 // ── 게스트로 플레이 (매번 새 익명계정 → 휘발성, 재방문 시 새 마을) ──
 //   익명 로그인이 성공해야 game_logs/game_saves 에 실제로 쌓임(RLS·FK 때문).
 //   실패하면 순수 오프라인(콘솔 폴백)으로만 동작.
@@ -415,7 +461,7 @@ async function readGuestSave(userId) {
 }
 
 async function migrateGuestSave(tossSave) {
-  if (!pendingGuest || state.provider !== 'toss') return tossSave;   // 토스 정식 계정으로 붙었을 때만 소비(다시 게스트면 다음 기회에)
+  if (!pendingGuest || !['toss', 'pgs'].includes(state.provider)) return tossSave;   // 토스·플레이 정식 계정으로 붙었을 때만 소비(다시 게스트면 다음 기회에)
   const guest = pendingGuest;
   const pick = pickSave(tossSave, guest.state);
   trackEvent('guest_migrate', { kept: pick.keep, guest_score: progressScore(guest.state), toss_score: progressScore(tossSave) }); // [GA4] 사고 복구 추적

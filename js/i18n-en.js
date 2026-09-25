@@ -275,6 +275,12 @@ export const EN = {
   // 🔵 앱인토스(토스 식별키) 전용 — 게스트 넛지의 출구가 구글 → 토스로 바뀐 문구
   '🔵 토스로 도감 지키기': '🔵 Keep my Collection with Toss',
   '🔵 토스 계정 연결하고 영구 보존': '🔵 Connect Toss to save forever',
+  // 📱 구글 플레이 앱(플레이 게임즈) 전용 — 게스트 넛지의 출구
+  '🎮 플레이 게임즈로 도감 지키기': '🎮 Keep my Collection with Play Games',
+  '🎮 플레이 게임즈 연결하고 영구 보존': '🎮 Connect Play Games to save forever',
+  '플레이 게임즈를 연결하면': 'Connect Play Games for',
+  '게스트로 나가면 모은 도감·코인·마을이 사라져요. 플레이 게임즈 연결 한 번이면 영구 보존돼요.': 'Leave as a guest and your Collection, Coins, and Village disappear. One Play Games connection keeps them safe forever.',
+  '플레이 게임즈에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.': "Couldn't connect to Play Games. Please try again in a moment.",
   '토스 계정을 연결하면': 'Connect your Toss account for',
   '영구 보존': 'permanent saving',
   '바로 플레이하기': 'Play now',
