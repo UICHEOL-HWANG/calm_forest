@@ -68,17 +68,25 @@ export function playerPhase() {
        : 'thriving';                               // 증축까지 마친 후반
 }
 
+// ☕ 카페 시간대 — 기기 로컬 시각(날짜 dayStr 과 같은 기준). 아침(~11시) · 낮(~17시) · 저녁.
+//   ⚠️ 경계는 functions/api/_game-day.js 의 slotOfHour 와 같아야 한다(tests/ai-pregen.test.mjs 가 대조).
+//   시간대가 바뀌면 **아직 서빙 안 한 자리만** 새 손님으로 바뀐다. 하루 자리 수·보상은 그대로(경제 변화 0).
+export function cafeSlot(h = new Date().getHours()) {
+  return h < 11 ? 'morning' : h < 17 ? 'noon' : 'evening';
+}
+
 export async function ensureCafeGuests() {
   const today = todayStr();
-  if (!cafeGuestFetcher || cafeGuestCache?.date === today) return;
+  const slot = cafeSlot();
+  if (!cafeGuestFetcher || (cafeGuestCache?.date === today && cafeGuestCache.slot === slot)) return;
   try {
     const guests = await cafeGuestFetcher({
-      date: today, count: CAFE_ORDERS, weather: WEATHER, phase: playerPhase(),
+      date: today, slot, count: CAFE_ORDERS, weather: WEATHER, phase: playerPhase(),
       recipes: cafeMenu().map(r => ({ id: r.id, name: r.name, ico: r.ico, cost: { ...r.cost } })),
       npcs: CAFE_GUESTS.map(n => ({ id: n.id, name: n.name, emoji: n.emoji })),   // ☕ 손님은 마을 주민이 아니라 별도 캐스트
     });
     if (Array.isArray(guests) && guests.length) {
-      $w.cafeGuestCache = { date: today, guests };
+      $w.cafeGuestCache = { date: today, slot, guests };
       refreshCafeGuests();
       trackEvent('cafe_guests_generated', { count: guests.length });   // [GA4] 외부 생성 성공률
     }
@@ -90,19 +98,27 @@ export async function ensureCafeGuests() {
 // 🥚 달걀 요리는 닭장을 지어야 만들 수 있으므로, 미보유 시 메뉴에서 제외(막히는 주문 방지)
 export function cafeMenu() { return RECIPES.filter(r => !r.cost.egg || gameState.coop.built); }
 
-// 로컬 기본 손님 — 날짜 시드라 하루 종일 고정, 자정에 새 손님.
+// 로컬 기본 손님 — 날짜·시간대 시드라 시간대 안에서는 고정, 시간대가 바뀌면 새 손님.
 //   캐스트 8명 > 하루 손님 4명이라 splice 만으로 **같은 손님이 두 자리에 앉는 일이 없다**.
-export function localCafeGuests() {
+// 🎲 시간대 해시 — dateHash 에 slot 을 그냥 끼우면 31진 해시 특성상 차이가 항목마다 같은 크기로 밀려
+//    메뉴 10종 기준 아침·저녁이 95% 같은 요리가 됐다(2026-09-25 실측). 끝에서 비트를 한 번 섞는다(murmur3 finalizer).
+function slotHash(salt, slot) {
+  let h = dateHash(`${salt}:${slot}`);
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  return h >>> 0;
+}
+
+export function localCafeGuests(slot = cafeSlot()) {
   const menu = cafeMenu();
   const avail = [...CAFE_GUESTS];
   return Array.from({ length: CAFE_ORDERS }, (_, i) => {
     // 주문마다 독립된 날짜 해시 — LCG를 이어 돌리면 하위 비트 주기가 짧아 전부 같은 요리가 뽑혔었음
-    const n = avail.splice(dateHash('cafe:npc:' + i) % avail.length, 1)[0];
-    const r = menu[dateHash('cafe:menu:' + i) % menu.length];
+    const n = avail.splice(slotHash(`cafe:npc:${i}`, slot) % avail.length, 1)[0];
+    const r = menu[slotHash(`cafe:menu:${i}`, slot) % menu.length];
     return {
       id: n.id, name: n.name, emoji: n.emoji, color: n.color, hat: n.hat, recipeId: r.id,
-      line: CAFE_LINES[dateHash('cafe:line:' + i) % CAFE_LINES.length](r.name),
-      thanks: CAFE_THANKS[dateHash('cafe:thx:' + i) % CAFE_THANKS.length],
+      line: CAFE_LINES[slotHash(`cafe:line:${i}`, slot) % CAFE_LINES.length](r.name),
+      thanks: CAFE_THANKS[slotHash(`cafe:thx:${i}`, slot) % CAFE_THANKS.length],
     };
   });
 }
@@ -111,17 +127,24 @@ export function localCafeGuests() {
 export function cafeOrders() {
   const st = gameState.cafe;
   const today = todayStr();
-  if (st.date !== today) { st.date = today; st.done = []; st.bonus = false; }   // 새 날 → 주문 리셋
+  const slot = cafeSlot();
+  if (st.date !== today) { st.date = today; st.done = []; st.bonus = false; st.doneOrders = {}; }   // 새 날 → 주문 리셋
   const menu = cafeMenu();
-  const raw = (cafeGuestCache?.date === today ? cafeGuestCache.guests : localCafeGuests()).slice(0, CAFE_ORDERS);
-  const used = new Set();                                   // 같은 손님이 두 자리에 앉지 않게(외부 생성기가 중복을 줄 수 있다)
+  const fresh = (cafeGuestCache?.date === today && cafeGuestCache.slot === slot ? cafeGuestCache.guests : localCafeGuests(slot)).slice(0, CAFE_ORDERS);
+  // ☕ 서빙한 자리는 서빙 시점 손님으로 고정 — 시간대가 바뀌어도 주문판의 완료 줄이 다른 손님으로 바뀌지 않게.
+  //    스냅숏이 없는 옛 세이브(오늘 이미 서빙)는 지금 손님을 그대로 쓴다.
+  const snaps = st.doneOrders || {};
+  const raw = fresh.map((g, i) => (st.done.includes(i) && snaps[i]) ? snaps[i] : g);
+  // 같은 손님이 두 자리에 앉지 않게 — 고정된 자리의 손님을 먼저 자리 잡게 한다(새 시간대 손님과 겹칠 수 있다)
+  const used = new Set(raw.filter((_, i) => st.done.includes(i) && snaps[i]).map(g => g.id));
   return raw.map((g, i) => {
     // 🥚 오믈렛처럼 아직 못 만드는 메뉴를 주문했으면 만들 수 있는 메뉴로 대체
     const recipe = menu.find(r => r.id === g.recipeId) || menu[i % menu.length];
     // 외형(이름·이모지·색·귀·소품)은 항상 게임의 손님 캐스트가 기준.
     // 외부 생성기(Gemini)는 id·주문·대사만 주면 되고, 나머지는 여기서 채운다.
+    const pinned = st.done.includes(i) && snaps[i];
     let base = cafeGuestDef(g.id);
-    if (!base || used.has(base.id)) base = CAFE_GUESTS.find(c => !used.has(c.id)) || CAFE_GUESTS[i % CAFE_GUESTS.length];
+    if (!base || (!pinned && used.has(base.id))) base = CAFE_GUESTS.find(c => !used.has(c.id)) || CAFE_GUESTS[i % CAFE_GUESTS.length];
     used.add(base.id);
     return {
       i, id: base.id, name: base.name, emoji: base.emoji,
@@ -1285,6 +1308,8 @@ export function finishCafeServe(guest, tier, { fromPantry = false, score = null 
   const pay = Math.round(base * tier.mult);                        // 💫 최고의 맛이면 1.5배 — "잘 만들면 더 받는다"
   giveReward({ coins: pay }, 'cafe_serve', o.recipe.id);           // [원장] 서빙 수입
   st.done.push(o.i);
+  // ☕ 서빙한 자리 스냅숏 — 시간대가 바뀌어도 이 자리는 이 손님으로 남는다(cafeOrders)
+  st.doneOrders = { ...(st.doneOrders || {}), [o.i]: { id: o.id, recipeId: o.recipe.id, line: o.line, thanks: o.thanks } };
   st.served = (st.served || 0) + 1;
   const aff = gameState.affinity[o.id] = (gameState.affinity[o.id] || 0) + (tier.id === 'perfect' ? 2 : 1);   // ❤️ 접객으로도 친해짐
   refreshInventoryUI();

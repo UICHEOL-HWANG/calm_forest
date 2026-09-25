@@ -26,6 +26,7 @@ import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
 import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
+import { runAiPregen } from '../functions/ai-pregen-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
 
@@ -73,7 +74,7 @@ export default {
 
   // ⏰ Cron Trigger — 매일 깨어나 "사흘 지났나"를 판단한다.
   //    날짜식(*/3)으로 주기를 잡으면 월말에 간격이 어긋나므로 판단을 코드가 한다.
-  //    ⚠️ 크론이 둘이므로 event.cron 으로 갈라야 한다. 분기 없이 두면
+  //    ⚠️ 크론이 셋이므로 event.cron 으로 갈라야 한다. 분기 없이 두면
   //       일요일마다 카드뉴스가 한 번 더 도는 꼴이 된다.
   //    ⚠️ 매칭 방향에 이유가 있다 — **카드뉴스를 명시 매칭하고 나머지를 npc-gen 으로** 보낸다.
   //       반대로 하면(npc 크론을 명시 매칭) wrangler.jsonc 의 npc 크론 시각만 바꾸고
@@ -84,6 +85,13 @@ export default {
     if (event.cron === '0 2 * * *') {
       ctx.waitUntil(runCardnewsCron(env).then(r => {
         console.log(JSON.stringify({ message: 'cardnews cron', cron: event.cron, ...r }));
+      }));
+      return;
+    }
+    // 🦉☕ 의뢰·카페 손님 사전 생성 — KST 20:00~22:40, 20분 간격(wrangler.jsonc "0,20,40 11-13 * * *")
+    if (event.cron === '0,20,40 11-13 * * *') {
+      ctx.waitUntil(runAiPregen(env).then(r => {
+        console.log(JSON.stringify({ message: 'ai-pregen cron', cron: event.cron, ...r }));
       }));
       return;
     }

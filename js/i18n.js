@@ -44,6 +44,18 @@ export function assignVariant() {
   return (h & 1) ? 'B' : 'A';
 }
 
+// ── 🎲 AI 콘텐츠 변형 버킷 — client_id 해시로 기기마다 고정(0~7) ──
+//   서버는 (날짜·조건)마다 여러 벌을 미리 만들어 두고 이 버킷으로 하나를 고른다(functions/api/_ai-store.js).
+//   → 같은 날이라도 사람마다 다른 의뢰·카페 대사를 받고, 한 사람은 하루 종일 같은 걸 받는다.
+//   ⚠️ A/B 배정(assignVariant 의 h&1)과 상관이 생기지 않게 salt 를 붙여 따로 해시한다.
+//   ⚠️ 범위(8)는 functions/api/_game-day.js 의 VARIANT_BUCKETS 와 같아야 한다.
+export const AI_BUCKETS = 8;
+export function aiBucket() {
+  let h = 0; const s = 'ai:' + clientId();
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
+  return h % AI_BUCKETS;
+}
+
 // ── 언어 결정(모듈 로드 시 1회 — 토글은 reload 로 반영) ─────────
 function detectLang() {
   try {
