@@ -1,0 +1,16 @@
+# Tasks
+- [x] 원인 1: 프롬프트 개수 하드코딩 수정 + 회귀 테스트 (커밋 9098d9a)
+- [x] 원인 2: 429 quota 상세 실측 (RPM 15, gemini-3.5-flash-lite) · RPD 500(대시보드)
+- [x] 결정: 카페 시간대 교체 O, 자리 4개 유지(경제 변화 0) · 예산 용처 = 플레이어별 변형
+- [x] SQL: sql/migrations/migrate_ai_daily_content.sql (ai_daily_content + ai_pregen_runs)
+- [x] 서버 weatherForDate/slotOfHour/kstDate/lastPacificMidnight (_game-day.js) + 게임 원문 대조 테스트
+- [x] generateQuests / generateCafe export (단일 출처) + 변형 시드(시작 일감·목록 순서)
+- [x] functions/ai-pregen-cron.js + 단위 테스트(예산·페이싱·429·서브리퀘스트)
+- [x] worker scheduled 분기 + wrangler 크론 + GEMINI_RPD var + 표현식 일치 테스트
+- [x] API 읽기 경로: 캐시 → Supabase 변형 → 즉석 폴백(변형0 적재)
+- [x] 클라이언트: cafeSlot·캐시 키 date+slot·doneOrders 스냅숏·로컬 폴백 salt·aiBucket(&v=)
+- [x] 실제 Gemini 스모크: 시간대·변형별 다른 결과 확인
+- [ ] 코드 리뷰 반영
+- [ ] SQL 적용(사용자, SQL Editor) → 커밋 → wrangler deploy → 크론 수동 1회 → 라이브 확인
+- [ ] 토스 번들(bundle_upload memo) · itch zip · 안드로이드 versionCode+1
+- [ ] 메모리 업데이트
