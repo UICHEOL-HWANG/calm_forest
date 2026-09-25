@@ -77,3 +77,6 @@ docs/beginner-guide/img/
 
 # 📱 구글 플레이(Capacitor) 웹 번들 — scripts/build-cap.mjs 산출물. android/ 쪽 복사본은 android/.gitignore 가 막는다.
 dist-cap/
+
+# 🔑 Firebase 설정(API 키 포함) — 공개 저장소에 올리지 않는다(2026-09-25 노출 사고). 로컬에만 두고 빌드한다.
+android/app/google-services.json
