@@ -13,6 +13,7 @@ import { CONFIG, isSupabaseConfigured, IS_DEV_SESSION } from './config.js';  // 
 import { PLATFORM, IS_ITCH, IS_TOSS, IS_ANDROID } from './platform.js'; // 'web' | 'toss' | 'itch' | 'android' — 로그 세그먼트 · itch 는 구글 팝업 로그인 · toss 는 게스트 이관 · android 는 네이티브 로그인
 import { getGoogleIdToken } from './google-native.js';   // 📱 앱: WebView OAuth 는 구글이 막아 네이티브 계정 시트로
 import { getPgsAuthCode } from './pgs-native.js';         // 📱 앱: Play Games 자동 로그인 → authCode → pgs-auth Worker
+import { capPlugin } from './cap-bridge.js';               // 📱 앱: Capacitor.Plugins 는 비어 있다(@capacitor/core 미사용) → nativePromise 로 직접
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
 import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지 · 🔌 노는 중 세션 죽음 판정
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
@@ -201,7 +202,7 @@ async function signInWithGoogleNative() {
   const fail = (msg) => { console.warn('[구글 네이티브 로그인 실패]', msg); alert(t('구글 로그인 실패: {0}').replace('{0}', msg)); };
   let got;
   try {
-    got = await getGoogleIdToken({ plugin: window.Capacitor?.Plugins?.SocialLogin, webClientId: CONFIG.GOOGLE_WEB_CLIENT_ID });
+    got = await getGoogleIdToken({ plugin: capPlugin('SocialLogin'), webClientId: CONFIG.GOOGLE_WEB_CLIENT_ID });
   } catch (e) { return fail(e?.message || String(e)); }
   if (got.cancelled) return;
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: got.idToken, nonce: got.rawNonce });
@@ -325,7 +326,7 @@ export async function signInWithPlayGames({ interactive = false } = {}) {
     if (!CONFIG.PGS_AUTH_ENDPOINT) return { ok: false, reason: 'endpoint_not_configured' };
     let got;
     try {
-      got = await getPgsAuthCode({ plugin: window.Capacitor?.Plugins?.PlayGames,
+      got = await getPgsAuthCode({ plugin: capPlugin('PlayGames'),
                                    serverClientId: CONFIG.PGS_SERVER_CLIENT_ID, interactive });
     } catch (e) {
       throw fail(/plugin|serverClientId/.test(e?.message) ? 'plugin' : 'auth_code', e?.message || String(e));

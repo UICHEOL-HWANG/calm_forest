@@ -3,7 +3,7 @@
 //  ------------------------------------------------------------
 //  토스 식별키(signInWithToss)와 같은 자리다: 앱이 켜지면 Play Games v2 SDK 가 조용히 인증하고,
 //  우리는 1회용 authCode 만 받아 pgs-auth Worker 로 넘긴다(Worker 가 구글과 교환해 playerId 를 확정).
-//  네이티브 쪽은 android/.../PlayGamesPlugin.java (window.Capacitor.Plugins.PlayGames).
+//  네이티브 쪽은 android/.../PlayGamesPlugin.java — JS 에서는 js/cap-bridge.js capPlugin("PlayGames") 로 부른다.
 //
 //  ⚠️ serverClientId 는 Play Games 설정의 **게임 서버(웹 애플리케이션)** 클라이언트 ID.
 //     Android 클라이언트 ID 를 넣으면 교환이 실패한다.

@@ -3,7 +3,7 @@
 //  ------------------------------------------------------------
 //  WebView 안에서 구글 OAuth 페이지를 열면 구글이 막는다(disallowed_useragent).
 //  대신 안드로이드 Credential Manager 가 계정 선택 시트를 띄우고 ID 토큰을 돌려준다
-//  (@capgo/capacitor-social-login — 네이티브가 window.Capacitor.Plugins.SocialLogin 으로 주입).
+//  (@capgo/capacitor-social-login — JS 에서는 js/cap-bridge.js capPlugin("SocialLogin") 로 부른다).
 //  받은 토큰은 supabase-client 가 signInWithIdToken 으로 세션으로 바꾼다.
 //
 //  ⚠️ nonce 는 양쪽에 다르게 준다: 구글에는 SHA-256 해시본, Supabase 에는 원본.
