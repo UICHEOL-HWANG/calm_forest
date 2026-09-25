@@ -39,7 +39,10 @@
     "OCI_BUCKET": "calm-forest",
     "SUPABASE_URL": "https://zuyxgjfihxtfdpolljzw.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t",
-    "NOTIFY_TO": "cheorish.hw@gmail.com"
+    "NOTIFY_TO": "cheorish.hw@gmail.com",
+    // 🦉☕ Gemini 무료 하루 한도(gemini-3.5-flash-lite, AI Studio 대시보드 2026-09-25) — 크론이 이 절반만 쓴다.
+    //    한도가 바뀌면 이 숫자만 고친다(functions/ai-pregen-cron.js 가 변형 수를 다시 계산).
+    "GEMINI_RPD": "500"
   },
 
   // Gemini 무료 티어는 국가 제한이 있어, 홍콩(HKG) 엣지에서 호출하면 거부되는 것으로 보인다.
@@ -66,7 +69,12 @@
   //    ⚠️ 요일에 0 을 쓰지 말 것. Cloudflare 의 cron 은 요일이 **1~7(1=월 … 7=일)** 이라
   //       흔한 `* * 0`(일요일) 표기가 `invalid cron string` 으로 거부된다.
   //       배포는 성공하고 크론 등록만 조용히 실패하므로 눈치채기 어렵다(실제로 겪음).
-  "triggers": { "crons": ["0 2 * * *", "0 19 * * SUN"] },
+  // 🦉☕ 세 번째 크론 — 의뢰·카페 손님 사전 생성(functions/ai-pregen-cron.js).
+  //    "0,20,40 11-13 * * *" = UTC 11:00~13:40 = **KST 20:00~22:40**, 20분 간격 9회.
+  //    ⚠️ UTC 표기다. KST 로 착각해 "20-22" 로 쓰면 KST 새벽 5~7시에 돌아 그날 콘텐츠가 늦는다.
+  //    Gemini 하루 한도가 태평양 자정(KST 16~17시)에 초기화된 뒤라 새 한도로 만든다.
+  //    한 표현식이라 트리거 슬롯은 1개만 쓴다(무료 계정 5개).
+  "triggers": { "crons": ["0 2 * * *", "0 19 * * SUN", "0,20,40 11-13 * * *"] },
 
   // 📧 운영 알림 메일 — Email Routing 의 send_email 바인딩.
   //    API 키도 웹훅 URL 도 없다(시크릿 0개 유지). 대신 destination_address 는

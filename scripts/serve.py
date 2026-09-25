@@ -318,10 +318,10 @@ QUEST_NEED = 5   # ⚠️ js/game.js 의 DAILY_COUNT · functions/api/daily-ques
 #   🧪베타(~2026-09-15) 종료 후 셋을 함께 5 로 올린다
 QTITLE_MAX, QLINE_MAX = 12, 48
 
-QUEST_SYSTEM = f"""너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 세 가지 의뢰로 전한다.
+QUEST_SYSTEM = f"""너는 코지 힐링 게임 "calm forest"의 의뢰 담당 올빼미야. 마을 사람들이 오늘 필요한 일을 모아 플레이어에게 {QUEST_NEED}가지 의뢰로 전한다.
 규칙:
 - 한국어. 다정하고 담백한 말투. 과장·이모지·따옴표 금지.
-- 세 의뢰가 하나의 하루로 이어지게 짠다. 아래는 '결'의 예시일 뿐이니, 매일 다른 결을 고른다:
+- {QUEST_NEED}개의 의뢰가 하나의 하루로 이어지게 짠다. 아래는 '결'의 예시일 뿐이니, 매일 다른 결을 고른다:
   · 숲에서 재료를 모으고 → 요리하고 → 카페 손님에게 낸다
   · 밭을 갈아 심고 → 물을 주고 → 거둔다
   · 나무를 베고 → 광석을 캐고 → 상점에 내다 판다
@@ -364,7 +364,7 @@ def build_quest_prompt(date, weather, phase):
     lines = [f'날짜: {date} (날씨: {WEATHER_KO.get(weather, "맑음")})',
              f'플레이어는 {PHASES[phase]}.', '', '목표 종류 (id: 무슨 일인지 @ 어디서 … 허용 범위):']
     lines += [f'- {t}: {fn(lo)} @ {where} … ({lo}~{hi})' for t, (lo, hi, fn, where) in QUEST_SPEC.items()]
-    lines += ['', f"오늘은 '{opener_for(date)}' 로 문을 여는 하루야. 이어지는 나머지 둘은 네가 골라서 하루가 이어지게 해.",
+    lines += ['', f"오늘은 '{opener_for(date)}' 로 문을 여는 하루야. 이어지는 나머지는 네가 골라서 하루가 이어지게 해.",
               f'오늘의 의뢰 {QUEST_NEED}개를 만들어줘.']
     return '\n'.join(lines)
 

@@ -8,10 +8,13 @@
 //    키는 Cloudflare Pages 환경변수(GEMINI_API_KEY)에만 두고, 이 함수가 대신 호출합니다.
 //  ▶ 프롬프트에 들어가는 주민/메뉴 목록은 여기(서버)에 고정합니다.
 //    클라이언트가 보낸 값을 그대로 프롬프트에 넣으면 프롬프트 인젝션 통로가 되기 때문.
-//  ▶ 손님은 "날짜 시드"라 하루 종일 같아야 하므로 날짜별로 캐시합니다.
-//    → 접속자가 몇 명이든 Gemini 호출은 하루 한 번(엣지 PoP당). 무료 티어에서도 안전.
+//  ▶ 손님은 크론이 전날 밤 (날짜·시간대·언어·단계) × 변형으로 미리 만들어 Supabase 에 둡니다.
+//    이 API 는 읽기만 하고, 없을 때만 즉석 생성합니다(functions/ai-pregen-cron.js).
 //  ▶ 실패하면 빈 배열을 주고, 게임은 로컬 기본 손님으로 조용히 진행합니다.
 // =============================================================
+
+import { weatherForDate, slotOfHour, kstHour, parseBucket, CAFE_SLOTS } from './_game-day.js';
+import { readVariants, pickVariant, insertRows, variantsFor, rpdOf } from './_ai-store.js';
 
 // 게임의 CAFE_GUESTS / RECIPES 와 id 가 일치해야 합니다(js/game.js).
 // 이름·색·모자 같은 외형은 게임이 id 로 채우므로 여기선 id 와 표시용 이름만 둡니다.
@@ -58,6 +61,9 @@ const PHASE_RULE_EN = '- You know where the player stands, but do not bring it u
 
 const WEATHER_KO = { clear: '맑음', rain: '비', snow: '눈', fog: '안개' };
 const WEATHER_EN = { clear: 'sunny', rain: 'rainy', snow: 'snowy', fog: 'foggy' };
+// ☕ 시간대 — 아침 손님은 아침 이야기를, 저녁 손님은 하루를 마친 이야기를 한다(_game-day.js CAFE_SLOTS)
+const SLOT_KO = { morning: '아침', noon: '한낮', evening: '저녁' };
+const SLOT_EN = { morning: 'morning', noon: 'midday', evening: 'evening' };
 
 const MAX_COUNT = 6;
 const LINE_MAX = 48;      // 주문판·근접 프롬프트 한 줄에 들어가는 길이(하드 캡 — 넘으면 …로 잘림)
@@ -128,30 +134,46 @@ function clampDate(raw) {
   return new Date(now).toISOString().slice(0, 10);
 }
 
-function buildPrompt(date, weather, count, lang, phase) {
+// 🎲 목록 순서를 (날짜·시간대·변형)으로 섞는다 — 모델이 목록 앞쪽을 고르는 편향이 있어
+//   순서가 고정이면 시간대·변형이 달라도 첫 손님이 늘 사슴+버섯스프였다(2026-09-25 실측).
+function seededOrder(list, seed) {
+  // ⚠️ `${seed}/${i}` 처럼 공통 접두사 뒤에 번호만 다르면 31진 해시는 접두사 몫이 전 항목에 똑같이 더해져
+  //    원래 순서 그대로 정렬된다(실제로 그랬다). 번호를 앞에 두고 끝에 비트를 한 번 섞는다(murmur3 finalizer).
+  const keyed = list.map((item, i) => {
+    let h = 0; const s = `${i}:${seed}`;
+    for (let k = 0; k < s.length; k++) h = (Math.imul(h, 31) + s.charCodeAt(k)) | 0;
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+    return { item, h: h >>> 0 };
+  });
+  return keyed.sort((a, b) => a.h - b.h).map(x => x.item);
+}
+
+export function buildCafePrompt(date, weather, count, lang, phase, slot, variant = 0) {
+  const guests = seededOrder(GUESTS, `g:${date}:${slot}:${variant}`);
+  const menu = seededOrder(MENU, `m:${date}:${slot}:${variant}`);
   if (lang === 'en') {
     return [
-      `Date: ${date} (weather: ${WEATHER_EN[weather] || 'sunny'})`,
+      `Date: ${date} (weather: ${WEATHER_EN[weather] || 'sunny'}, time: ${SLOT_EN[slot] || 'daytime'})`,
       `The player ${PHASES[phase].en}.`,
       '',
       'Guests:',
-      ...GUESTS.map(g => `- ${g.id}: ${g.name_en}`),
+      ...guests.map(g => `- ${g.id}: ${g.name_en}`),
       '',
       'Menu:',
-      ...MENU.map(m => `- ${m.id}: ${m.name_en} (${m.hint_en})`),
+      ...menu.map(m => `- ${m.id}: ${m.name_en} (${m.hint_en})`),
       '',
       `Write today's ${count} café guests.`,
     ].join('\n');
   }
   return [
-    `날짜: ${date} (날씨: ${WEATHER_KO[weather] || '맑음'})`,
+    `날짜: ${date} (날씨: ${WEATHER_KO[weather] || '맑음'}, 시간대: ${SLOT_KO[slot] || '한낮'})`,
     `플레이어는 ${PHASES[phase].ko}.`,
     '',
     '손님 목록:',
-    ...GUESTS.map(g => `- ${g.id}: ${g.name}`),
+    ...guests.map(g => `- ${g.id}: ${g.name}`),
     '',
     '메뉴 목록:',
-    ...MENU.map(m => `- ${m.id}: ${m.name} (${m.hint})`),
+    ...menu.map(m => `- ${m.id}: ${m.name} (${m.hint})`),
     '',
     `오늘 카페에 올 손님 ${count}명을 만들어줘.`,
   ].join('\n');
@@ -179,7 +201,9 @@ function sanitize(raw, count, lang) {
   return out;
 }
 
-async function generate(env, date, weather, count, lang, phase) {
+// 🗓️ 크론(functions/ai-pregen-cron.js)과 이 API 폴백이 함께 쓰는 단일 생성 경로.
+//   fetch 를 주입받는 건 테스트용 — 기본은 전역 fetch.
+export async function generateCafe(env, { date, weather, count, lang, phase, slot, variant = 0 }, { fetch = globalThis.fetch } = {}) {
   const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -188,7 +212,7 @@ async function generate(env, date, weather, count, lang, phase) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: lang === 'en' ? SYSTEM_EN : SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(date, weather, count, lang, phase) }] }],
+        contents: [{ role: 'user', parts: [{ text: buildCafePrompt(date, weather, count, lang, phase, slot, variant) }] }],
         generationConfig: {
           temperature: 1.1,                    // 매일 다른 조합이 나오게
           responseMimeType: 'application/json',
@@ -203,49 +227,62 @@ async function generate(env, date, weather, count, lang, phase) {
   return sanitize(JSON.parse(text), count, lang);
 }
 
+// 크론이 미리 만드는 인원 — 게임의 CAFE_ORDERS(js/data/places.js)와 같아야 한다
+export const PREGEN_COUNT = 4;
+
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
   // 입력 정규화 — 프롬프트에 들어가므로 형식을 엄격히 제한(클라이언트발 인젝션 차단)
   const date = clampDate(url.searchParams.get('date') || '');   // 🔒 어제·오늘·내일만
-  const rawWeather = url.searchParams.get('weather') || '';
-  const weather = ['clear', 'rain', 'snow', 'fog'].includes(rawWeather) ? rawWeather : 'clear';
+  // 🌦️ 날씨는 날짜로 계산(_game-day.js) — 게임과 같은 해시라 값이 같고 조합 축이 하나 빠진다
+  const weather = weatherForDate(date);
   const count = Math.min(MAX_COUNT, Math.max(1, parseInt(url.searchParams.get('count') || '4', 10) || 4));
   const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
   const rawPhase = url.searchParams.get('phase') || '';
   const phase = PHASES[rawPhase] ? rawPhase : 'settled';             // 화이트리스트(그 외 값은 settled)
+  // ☕ 시간대 — 옛 클라이언트(파라미터 없음)는 KST 지금 시각의 시간대를 받는다(토스 심사 기간에도 안 깨짐)
+  const rawSlot = url.searchParams.get('slot') || '';
+  const slot = CAFE_SLOTS.includes(rawSlot) ? rawSlot : slotOfHour(kstHour());
+  const bucket = parseBucket(url.searchParams.get('v'));             // 🎲 기기 고정 버킷 → 사람마다 다른 변형
 
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',        // 비밀·개인정보가 없는 응답(앱인토스 번들 등 타 오리진 대응)
     'Cache-Control': `public, max-age=${CACHE_TTL}`,
   };
-  if (!env.GEMINI_API_KEY) {
-    // 미설정 = 기능 끔(게임은 기본 손님으로 진행). 캐시하면 안 된다 —
-    // 키를 나중에 넣어도 12시간 동안 빈 응답이 계속 나가기 때문.
-    return new Response('[]', { headers: { ...headers, 'Cache-Control': 'no-store' } });
-  }
+  const empty = () => new Response('[]', { headers: { ...headers, 'Cache-Control': 'no-store' } });
 
-  // 날짜·날씨·인원이 같으면 엣지 캐시 재사용 → Gemini 호출은 하루 한 번
   const cache = caches.default;
-  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&weather=${weather}&count=${count}&lang=${lang}&phase=${phase}&cast=${CAST_REV}`, { method: 'GET' });
+  const cacheKey = new Request(`${url.origin}/api/cafe-guests?date=${date}&slot=${slot}&count=${count}&lang=${lang}&phase=${phase}&v=${bucket}&cast=${CAST_REV}`, { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
-
-  try {
-    const guests = await generate(env, date, weather, count, lang, phase);
-    if (!guests.length) throw new Error('sanitize 후 남은 손님이 없음');
+  const serve = (guests) => {
     const out = new Response(JSON.stringify(guests), { headers });
     waitUntil(cache.put(cacheKey, out.clone()));
     return out;
+  };
+
+  // ① 크론이 전날 밤 만들어 둔 변형(functions/ai-pregen-cron.js) — 평소엔 여기서 끝난다
+  const stored = pickVariant(await readVariants(env, { kind: 'cafe', date, lang, phase, slot }), bucket, variantsFor(rpdOf(env)));
+  if (Array.isArray(stored) && stored.length >= count) return serve(stored.slice(0, count));
+
+  // ② 폴백: 아직 없으면 즉석 생성. 크론과 같은 인원으로 만들어 변형 0 에 적재 → 다음 요청·다른 PoP 가 재사용.
+  if (!env.GEMINI_API_KEY) return empty();   // 미설정 = 기능 끔. 캐시하면 키를 넣어도 12시간 빈 응답이 나간다
+  try {
+    const n = Math.max(count, PREGEN_COUNT);
+    const guests = await generateCafe(env, { date, weather, count: n, lang, phase, slot });
+    if (guests.length < count) throw new Error(`sanitize 후 손님 ${guests.length}명`);
+    if (guests.length >= PREGEN_COUNT) {
+      waitUntil(insertRows(env, [{ kind: 'cafe', date, lang, phase, slot, variant: 0, weather, payload: guests,
+        model: env.GEMINI_MODEL || 'gemini-flash-lite-latest' }]).catch(e =>
+        console.error(JSON.stringify({ message: 'cafe-guests store failed', date, slot, lang, phase, error: e.message }))));
+    }
+    return serve(guests.slice(0, count));
   } catch (e) {
     // 구조화 로그 — Cloudflare 대시보드에서 필터링·집계가 되게(유저에겐 조용히 폴백되므로 여기서만 보임)
-    console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, count, lang, phase, error: e.message }));
-    // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 기본 손님을 쓴다.
-    // 캐시하지 않으므로 다음 요청에서 다시 시도한다.
-    // 실패 사유는 구조화 로그(console.error → 대시보드)로만 남긴다.
     //   헤더로 노출하면 무인증·CORS * 엔드포인트라 상류(Gemini) 오류 문구가 공개된다.
-    return new Response('[]', {
-      headers: { ...headers, 'Cache-Control': 'no-store' },
-    });
+    console.error(JSON.stringify({ message: 'cafe-guests failed', date, weather, slot, count, lang, phase, error: e.message }));
+    // 실패는 게임을 막지 않는다 — 빈 배열이면 클라이언트가 로컬 기본 손님을 쓴다. 캐시하지 않는다.
+    return empty();
   }
 }
