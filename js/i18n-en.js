@@ -276,9 +276,11 @@ export const EN = {
   '🔵 토스로 도감 지키기': '🔵 Keep my Collection with Toss',
   '🔵 토스 계정 연결하고 영구 보존': '🔵 Connect Toss to save forever',
   // 📱 구글 플레이 앱 — 사진 저장·공유(네이티브)
-  '🖼️ 갤러리에 저장했어요': '🖼️ Saved to your gallery',
+  '🖼️ 갤러리 calmforest 앨범에 저장했어요': '🖼️ Saved to the calmforest album in your gallery',
+  "📷 사진 저장 권한을 물어보면 '허용'을 눌러 주세요": "📷 If asked for photo access, tap 'Allow'",
+  '✅ 저장됨': '✅ Saved',
+  '사진을 저장하지 못했어요 — 사진 권한을 허용했는지 확인해 주세요': "Couldn't save the photo — check that photo access is allowed",
   '이 기기는 바로 저장이 안 돼요 — 📤공유로 보내 주세요': "This device can't save directly — send it with 📤 Share",
-  '사진을 저장하지 못했어요': "Couldn't save the photo",
   '공유하지 못했어요': "Couldn't share",
   // 📱 구글 플레이 앱(플레이 게임즈) 전용 — 게스트 넛지의 출구
   '🎮 플레이 게임즈로 도감 지키기': '🎮 Keep my Collection with Play Games',
