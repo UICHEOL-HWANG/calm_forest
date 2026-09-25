@@ -17,6 +17,7 @@ import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant, trackEvent } from './analytics.js';
 import { kstDate } from './kst-date.js';   // 🕛 run_date 는 KST 날짜
+import { markExit } from './exit-flag.js';   // 🚪 나가기 → 새로고침 뒤 로그인 화면
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -347,6 +348,7 @@ export async function signInAsGuest() {
 export async function signOut() {
   if (supabase) { try { intentionalSignOut = true; await supabase.auth.signOut(); } catch (e) {} }
   state.online = false; state.userId = null; state.email = null; state.provider = null;
+  markExit(globalThis.sessionStorage);   // 🚪 새로고침 직후 토스 자동 연결을 한 번 건너뛴다(js/exit-flag.js) — 안 하면 나가기가 다시 들어오는 루프
   location.reload();
 }
 
