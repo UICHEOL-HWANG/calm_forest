@@ -275,6 +275,11 @@ export const EN = {
   // 🔵 앱인토스(토스 식별키) 전용 — 게스트 넛지의 출구가 구글 → 토스로 바뀐 문구
   '🔵 토스로 도감 지키기': '🔵 Keep my Collection with Toss',
   '🔵 토스 계정 연결하고 영구 보존': '🔵 Connect Toss to save forever',
+  // 📱 구글 플레이 앱 — 사진 저장·공유(네이티브)
+  '🖼️ 갤러리에 저장했어요': '🖼️ Saved to your gallery',
+  '이 기기는 바로 저장이 안 돼요 — 📤공유로 보내 주세요': "This device can't save directly — send it with 📤 Share",
+  '사진을 저장하지 못했어요': "Couldn't save the photo",
+  '공유하지 못했어요': "Couldn't share",
   // 📱 구글 플레이 앱(플레이 게임즈) 전용 — 게스트 넛지의 출구
   '🎮 플레이 게임즈로 도감 지키기': '🎮 Keep my Collection with Play Games',
   '🎮 플레이 게임즈 연결하고 영구 보존': '🎮 Connect Play Games to save forever',

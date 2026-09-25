@@ -25,6 +25,11 @@ export function initSound() {
   window.addEventListener('pointerdown', resume, { once: false });
   window.addEventListener('keydown', resume, { once: false });
   window.addEventListener('touchstart', resume, { once: false });
+  // 🔇 화면이 가려지면(앱 백그라운드·탭 전환) 소리를 멈춘다 — 안 그러면 홈으로 나가도 BGM 이 계속 흐른다(2026-09-25 실기기)
+  document.addEventListener('visibilitychange', () => {
+    if (!ctx) return;
+    if (document.hidden) ctx.suspend(); else ctx.resume();
+  });
 }
 
 export function toggleSound(on) {
