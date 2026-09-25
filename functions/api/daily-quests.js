@@ -16,7 +16,7 @@
 // =============================================================
 
 import { weatherForDate, parseBucket } from './_game-day.js';
-import { readVariants, pickVariant, insertRows } from './_ai-store.js';
+import { readVariants, pickVariant, insertRows, variantsFor, rpdOf } from './_ai-store.js';
 
 // 의뢰로 낼 수 있는 목표 — id 는 js/game.js 의 questEvent() 가 쏘는 이벤트와 일치해야 한다.
 // min/max 는 기존 DAILY_POOL 의 값을 가운데 두고 잡은 안전 범위(난이도 폭주 방지).
@@ -259,7 +259,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   };
 
   // ① 크론이 전날 밤 만들어 둔 변형(functions/ai-pregen-cron.js) — 평소엔 여기서 끝난다
-  const stored = pickVariant(await readVariants(env, { kind: 'quests', date, lang, phase, slot: 'day' }), bucket);
+  const stored = pickVariant(await readVariants(env, { kind: 'quests', date, lang, phase, slot: 'day' }), bucket, variantsFor(rpdOf(env)));
   if (Array.isArray(stored) && stored.length === NEED) return serve(stored);
 
   // ② 폴백: 아직 없으면 즉석 생성(배포 첫날·크론 실패). 만든 건 변형 0 으로 적재해 다음 요청·다른 PoP 가 재사용한다.

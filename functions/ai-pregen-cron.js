@@ -21,29 +21,23 @@
 import { generateQuests, NEED } from './api/daily-quests.js';
 import { generateCafe, PREGEN_COUNT } from './api/cafe-guests.js';
 import {
-  LANGS, PHASE_IDS, CAFE_SLOTS, VARIANT_BUCKETS,
+  LANGS, PHASE_IDS, CAFE_SLOTS,
   weatherForDate, kstDate, lastPacificMidnight,
 } from './api/_game-day.js';
-import { insertRows, storeHeaders, storeReady, STORE_TABLE } from './api/_ai-store.js';
+import {
+  insertRows, storeHeaders, storeReady, STORE_TABLE,
+  CRON_SHARE, MAX_VARIANTS, cronBudget, variantsFor, rpdOf,
+} from './api/_ai-store.js';
 // 📧 notify.js 는 Workers 전용 모듈(cloudflare:email)을 import 해 Node 테스트에서 못 읽는다 →
 //    필요할 때만 불러오고, 테스트는 notify 를 주입한다.
 const defaultNotify = async (...args) => (await import('./notify.js')).notify(...args);
 
 export const MAX_CALLS = 38;          // 실행당 Gemini 상한(서브리퀘스트 예산, 위 주석)
 export const PACE_MS = 6500;          // 호출 간격 — 분당 약 9회
-export const CRON_SHARE = 0.5;        // 하루 한도 중 크론 몫
-export const MAX_VARIANTS = VARIANT_BUCKETS;   // 클라이언트 버킷 수보다 많이 만들어 봐야 아무도 못 받는다
 export const KEEP_DAYS = 30;          // 지난 콘텐츠 보관 기간
-const DEFAULT_RPD = 500;              // gemini-3.5-flash-lite 무료 등급(AI Studio 대시보드, 2026-09-25)
-const COMBOS_PER_DAY = LANGS.length * PHASE_IDS.length * (1 + CAFE_SLOTS.length);   // 6 + 18 = 24
-const FAIL_MARGIN = 1.2;              // 거절·실패로 다시 부를 여유
-
-export const cronBudget = (rpd) => Math.floor(rpd * CRON_SHARE);
-
-// 크론 몫 안에서 하루에 채울 수 있는 변형 수(최소 1, 최대 버킷 수)
-export function variantsFor(rpd) {
-  return Math.max(1, Math.min(MAX_VARIANTS, Math.floor(cronBudget(rpd) / COMBOS_PER_DAY / FAIL_MARGIN)));
-}
+const READ_TIMEOUT_MS = 10000;        // 조회가 멈추면 이번 실행을 포기 — 20분 뒤 다음 실행이 이어 받는다
+// 변형 정책은 API 도 써야 해서 _ai-store.js 에 있다(순환 import 방지). 테스트·호출부 편의로 다시 내보낸다.
+export { CRON_SHARE, MAX_VARIANTS, cronBudget, variantsFor };
 
 const keyOf = (r) => `${r.kind}|${r.date}|${r.lang}|${r.phase}|${r.slot}|${r.variant ?? 0}`;
 
@@ -86,13 +80,13 @@ export async function runAiPregen(env, {
   if (!env.GEMINI_API_KEY) return { skipped: 'GEMINI_API_KEY 없음' };
 
   const t0 = Date.now();
-  const rpd = Number.parseInt(env.GEMINI_RPD, 10) || DEFAULT_RPD;
+  const rpd = rpdOf(env);
   const budget = cronBudget(rpd);
   const variants = variantsFor(rpd);
   const today = kstDate(now), tomorrow = kstDate(now, 1);
   const base = `${env.SUPABASE_URL}/rest/v1`;
   const get = async (path) => {
-    const res = await fetch(`${base}/${path}`, { headers: storeHeaders(env) });
+    const res = await fetch(`${base}/${path}`, { headers: storeHeaders(env), signal: AbortSignal.timeout(READ_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`supabase ${res.status} ${path.split('?')[0]}: ${(await res.text()).slice(0, 200)}`);
     return res.json();
   };
