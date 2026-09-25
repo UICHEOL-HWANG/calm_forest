@@ -43,8 +43,8 @@ test('플러그인이 없거나 data URL 이 아니면 던진다(호출부가 �
   await assert.rejects(savePhotoNative({ plugin: fakePlugin(), dataUrl: 'blob:x' }), /dataUrl/);
 });
 
-test('토스에서는 💾 저장 버튼을 숨긴다(웹뷰가 download 를 무시 — 공유는 됨)', async () => {
+test('토스·플레이 앱에서는 💾 저장 버튼을 숨긴다(실기기에서 동작 안 함 — 공유는 됨)', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /body\.platform-toss #photo-save \{ display: none; \}/);
+  assert.match(html, /body\.platform-toss #photo-save, body\.platform-android #photo-save \{ display: none; \}/);
 });
