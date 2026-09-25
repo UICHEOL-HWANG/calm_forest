@@ -428,8 +428,9 @@
   body.platform-toss #toss-btn { display: inline-flex; }
   body.platform-toss #guest-btn { display: none; }   /* 게스트는 선택지가 아니라 폴백 — 버튼 하나만 */
   body.platform-toss #stats-btn { display: none; }   /* 활동 기록은 구글 계정 전용 — 토스에선 열 수 없는 버튼을 노출하지 않음 */
-  /* 📷 토스·플레이 앱 웹뷰에선 💾저장이 실기기에서 동작하지 않았다(2026-09-25) — 📤공유·☁️사진첩만 남긴다 */
-  body.platform-toss #photo-save, body.platform-android #photo-save { display: none; }
+  /* 📷 토스 웹뷰는 <a download> 를 무시한다(공유는 됨, 2026-09-25 실기기) — 누르면 아무 일 없는 버튼을 숨긴다.
+     플레이 앱은 네이티브(PhotoPlugin)로 저장된다 — 처음 한 번 시스템 사진 권한 창이 뜬다 */
+  body.platform-toss #photo-save { display: none; }
   /* 🎮 itch(iframe): 구글은 팝업 로그인으로 되지만 활동 기록 대시보드는 다른 오리진(웹) 새 탭이라 세션이 안 넘어감 → 숨김 */
   body.platform-itch #stats-btn { display: none; }
   /* 📱 구글 플레이 앱: 토스와 같은 한 버튼 — '바로 플레이하기' = Play Games 로그인 재시도 → 안 되면 게스트.
@@ -5263,6 +5264,7 @@
       data = await frameActionShot(data);   // 📸 공유 카드 합성(프레임+타이틀+도감 진행도)
       lastPhoto = data; $('photo-img').src = data;
       const pc = $('photo-cloud'); pc.disabled = false; pc.textContent = '☁️ 사진첩';   // 새 사진 → 저장 버튼 초기화
+      const ps = $('photo-save'); ps.disabled = false; ps.textContent = '💾 저장';        // 📱 앱의 '✅ 저장됨' 되돌리기
       $('photo-modal').classList.add('show');
       trackEvent('photo_capture');   // [GA4]
     });
@@ -5557,8 +5559,19 @@
     $('photo-save').addEventListener('click', async () => {
       if (!lastPhoto) return;
       if (IS_ANDROID) {                                  // 📱 앱: 갤러리(사진/calmforest)에 바로 저장
-        try { await savePhotoNative({ plugin: capPlugin('Photo'), dataUrl: lastPhoto }); ui.toast('🖼️ 갤러리에 저장했어요'); }
-        catch (e) { ui.toast(/legacy/.test(e?.message) ? '이 기기는 바로 저장이 안 돼요 — 📤공유로 보내 주세요' : '사진을 저장하지 못했어요'); }
+        const btn = $('photo-save');
+        //  처음 한 번은 시스템 "사진 접근 허용" 창이 뜬다 — 놓치지 않게 먼저 알려 준다(2026-09-25 실기기: 창을 못 보고 안 되는 줄 앎)
+        let first = false; try { first = !localStorage.getItem('cf_photo_saved'); } catch {}
+        if (first) ui.toast('📷 사진 저장 권한을 물어보면 \'허용\'을 눌러 주세요', 4000);
+        try {
+          await savePhotoNative({ plugin: capPlugin('Photo'), dataUrl: lastPhoto });
+          try { localStorage.setItem('cf_photo_saved', '1'); } catch {}
+          btn.textContent = '✅ 저장됨'; btn.disabled = true;   // 새 사진을 찍으면 되돌린다(photo-btn)
+          ui.toast('🖼️ 갤러리 calmforest 앨범에 저장했어요');
+        } catch (e) {
+          ui.toast(/legacy/.test(e?.message) ? '이 기기는 바로 저장이 안 돼요 — 📤공유로 보내 주세요'
+                                             : '사진을 저장하지 못했어요 — 사진 권한을 허용했는지 확인해 주세요', 4000);
+        }
         return;
       }
       const a = document.createElement('a'); a.href = lastPhoto; a.download = 'calmforest-' + Date.now() + '.png'; a.click();
