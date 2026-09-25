@@ -428,7 +428,8 @@
   body.platform-toss #toss-btn { display: inline-flex; }
   body.platform-toss #guest-btn { display: none; }   /* 게스트는 선택지가 아니라 폴백 — 버튼 하나만 */
   body.platform-toss #stats-btn { display: none; }   /* 활동 기록은 구글 계정 전용 — 토스에선 열 수 없는 버튼을 노출하지 않음 */
-  body.platform-toss #photo-save { display: none; }  /* 📷 토스 웹뷰는 <a download> 를 무시한다(공유는 됨, 2026-09-25 실기기) — 누르면 아무 일 없는 버튼을 숨긴다 */
+  /* 📷 토스·플레이 앱 웹뷰에선 💾저장이 실기기에서 동작하지 않았다(2026-09-25) — 📤공유·☁️사진첩만 남긴다 */
+  body.platform-toss #photo-save, body.platform-android #photo-save { display: none; }
   /* 🎮 itch(iframe): 구글은 팝업 로그인으로 되지만 활동 기록 대시보드는 다른 오리진(웹) 새 탭이라 세션이 안 넘어감 → 숨김 */
   body.platform-itch #stats-btn { display: none; }
   /* 📱 구글 플레이 앱: 토스와 같은 한 버튼 — '바로 플레이하기' = Play Games 로그인 재시도 → 안 되면 게스트.
