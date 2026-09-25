@@ -38,6 +38,11 @@ test('exchangeCode — 구글이 거절하면 401', async () => {
   await assert.rejects(exchangeCode({ fetch: f, clientId: 'c', clientSecret: 's', code: 'bad' }), (e) => e.status === 401);
 });
 
+test('fetchPlayerId — Games API 실제 응답 필드 playerId', async () => {
+  const f = fakeFetch([['https://games.googleapis.com/games/v1/players/me', () => res(200, { kind: 'games#player', playerId: 'G123', displayName: 'x' })]]);
+  assert.equal(await fetchPlayerId({ fetch: f, accessToken: 'at' }), 'G123');
+});
+
 test('fetchPlayerId — players/me 의 id', async () => {
   const f = fakeFetch([['https://games.googleapis.com/games/v1/players/me', (init) => {
     assert.equal(init.headers.Authorization, 'Bearer at');
