@@ -492,7 +492,9 @@
   }
 
   /* 토스트(피드백 메시지) */
-  #toast { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
+  /* z-index 33 — 일반 모달(32, 📷사진 창 등) 위. 없으면 사진 창 뒤에 가려 '갤러리에 저장했어요'가 안 보였다(2026-09-25 실기기).
+     미니게임·가방(40+)·안내 모달(45)보다는 아래 — 그쪽 겹침은 예전 그대로 */
+  #toast { z-index: 33; top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity .3s, top .2s; pointer-events: none; }
   #toast.show { opacity: 1; }
   /* 🦋 환경 미터 — 배치 모드에서만 뜬다.
      ⚠️ 하단 기준은 env(safe-area-inset-bottom) 이다. --toss-reserve 는 **상단** 여백이라

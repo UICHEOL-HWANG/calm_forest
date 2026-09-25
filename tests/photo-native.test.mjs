@@ -49,3 +49,12 @@ test('토스에서만 💾 저장 버튼을 숨긴다 — 플레이 앱은 네�
   assert.match(html, /body\.platform-toss #photo-save \{ display: none; \}/);
   assert.doesNotMatch(html, /body\.platform-android #photo-save/);
 });
+
+test('토스트는 사진 창(z 32) 위, 미니게임 층(40) 아래 — 저장 완료 알림이 가려지지 않게', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const z = Number(/#toast \{ z-index: (\d+);/.exec(html)?.[1]);
+  const modal = Number(/#photo-modal[^{]*\{[^}]*z-index: (\d+)/.exec(html)?.[1]);
+  assert.ok(z > modal, `toast ${z} <= modal ${modal}`);
+  assert.ok(z < 40, `toast ${z} >= 40`);
+});
