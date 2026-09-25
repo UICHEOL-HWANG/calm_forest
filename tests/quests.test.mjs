@@ -214,6 +214,15 @@ test('일일 의뢰 개수가 게임·API·로컬 미러에서 같다', () => {
   assert.equal(serve, game, `serve.py QUEST_NEED ${serve} ≠ 게임 DAILY_COUNT ${game}`);
 });
 
+test('의뢰 프롬프트에 개수를 박아 두지 않는다', () => {
+  // 3→5 로 올린 날 프롬프트는 "세 가지 의뢰 / 나머지 둘" 그대로라 모델이 3개만 주고,
+  //   sanitize 후 3개 < NEED 로 그날 조합 절반이 [] 로 폴백했다(2026-09-25 로그).
+  //   개수는 NEED/QUEST_NEED 에서만 파생해야 한다.
+  const banned = /세 가지|세 의뢰|나머지 둘|three requests|The three|the other two/;
+  assert.doesNotMatch(API, banned, 'daily-quests.js 프롬프트에 하드코딩된 개수가 있다');
+  assert.doesNotMatch(SERVE, banned, 'serve.py 프롬프트에 하드코딩된 개수가 있다');
+});
+
 test('서버가 내는 목표는 전제조건이 없는 것뿐이다', () => {
   // 서버는 이 세이브의 닭장·집 단계·맵 잠금을 모른다. 상태를 파라미터로 받으면
   // 캐시 키가 (날짜 × 날씨 × 언어 × 단계 × 잠금)으로 갈라져 호출이 폭증한다.
