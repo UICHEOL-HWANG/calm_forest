@@ -11,6 +11,8 @@
 //
 //  사용: npm run upload:play [-- --track internal --notes "메모"]
 //        (먼저 npm run build:cap && cd android && ./gradlew bundleRelease)
+//        이미 올린 버전을 다른 트랙에 지정: npm run upload:play -- --track alpha --version-code 12
+//        (같은 versionCode 를 다시 업로드하면 Play 가 거부한다 — 업로드 없이 트랙만 바꾼다)
 // =============================================================
 import { readFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -25,6 +27,7 @@ const UPLOAD = `https://androidpublisher.googleapis.com/upload/androidpublisher/
 const arg = (name, def) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : def; };
 const TRACK = arg('track', 'internal');
 const NOTES = arg('notes', '');
+const EXISTING = arg('version-code', null);   // 있으면 AAB 업로드를 건너뛴다
 if (!['internal', 'alpha', 'beta'].includes(TRACK)) throw new Error(`테스트 트랙만 허용: ${TRACK}`);
 
 const token = execFileSync('gcloud', ['auth', 'print-access-token',
@@ -41,13 +44,19 @@ async function call(method, url, body, headers = {}) {
 }
 const json = (o) => [JSON.stringify(o), { 'Content-Type': 'application/json' }];
 
-const mb = (statSync(AAB).size / 1024 / 1024).toFixed(2);
-console.log(`[play-upload] ${PKG} → ${TRACK} · ${AAB} (${mb} MB)`);
-
 const edit = await call('POST', `${API}/edits`, ...json({}));
-const bundle = await call('POST', `${UPLOAD}/edits/${edit.id}/bundles?uploadType=media`,
-  readFileSync(AAB), { 'Content-Type': 'application/octet-stream' });
-console.log(`[play-upload] 업로드 완료 — versionCode ${bundle.versionCode}`);
+let bundle;
+if (EXISTING) {
+  if (!/^\d+$/.test(EXISTING)) throw new Error(`--version-code 는 숫자: ${EXISTING}`);
+  bundle = { versionCode: Number(EXISTING) };
+  console.log(`[play-upload] ${PKG} → ${TRACK} · 이미 올린 versionCode ${EXISTING} 지정(업로드 없음)`);
+} else {
+  const mb = (statSync(AAB).size / 1024 / 1024).toFixed(2);
+  console.log(`[play-upload] ${PKG} → ${TRACK} · ${AAB} (${mb} MB)`);
+  bundle = await call('POST', `${UPLOAD}/edits/${edit.id}/bundles?uploadType=media`,
+    readFileSync(AAB), { 'Content-Type': 'application/octet-stream' });
+  console.log(`[play-upload] 업로드 완료 — versionCode ${bundle.versionCode}`);
+}
 
 async function setTrack(status) {
   const release = { versionCodes: [String(bundle.versionCode)], status };
