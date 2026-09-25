@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 📱 Play Games Services 프로젝트 ID (Play Console → Play Games Services → 설정 및 관리 → 구성).
+     비어 있으면 MainActivity 가 SDK 를 초기화하지 않고 앱은 '바로 플레이하기' → 게스트로 폴백한다. -->
+<resources>
+    <string name="game_services_project_id" translatable="false">1003103780622</string>
+</resources>
