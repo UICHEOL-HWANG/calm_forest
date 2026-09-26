@@ -26,7 +26,9 @@ const errs = (r) => [...r.boot.errors, ...Object.values(r.stops).flatMap(s => s.
 
 // 알려진 잡음 — 원본 코드만 돌려도 흔들린다는 근거가 있는 것만 여기 적는다(근거 없이 늘리지 말 것)
 //   · 밤 반딧불이(MeshBasic 구) 수: 시간 따라 생겨난다. 원본 밤 메시 1605~1619(1단계 seed-base, 2026-09-25 sp-b3)
-const NOISE = [/^night\.(meshes|visible)$/, /^night\.kinds\.SphereGeometry\|MeshBasicMaterial\|1$/];
+//   · 자동 닉네임: 고정 시드 Math.random 수열에서 몇 번째 값을 받느냐가 로딩 타이밍에 달렸다.
+//     원본(21453dd)만 4회 돌려도 '별 헤는 곰 #3823' ×2 / '새벽의 곰 #9684' ×2 로 갈렸다(old-21453dd/k-base-*)
+const NOISE = [/^night\.(meshes|visible)$/, /^night\.kinds\.SphereGeometry\|MeshBasicMaterial\|1$/, /^state\.nickname$/];
 const bases = baseLabels.map(load), B = bases.map(b => flat(pick(b)));
 const fixed = [...B[0].keys()].filter(k => !NOISE.some(re => re.test(k)) && B.every(m => m.get(k) === B[0].get(k)));
 const knownErr = new Set(bases.flatMap(errs));
