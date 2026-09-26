@@ -22,40 +22,10 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from calm_ml.retention_features import FEATURE_ORDER, _derive_features  # noqa: F401 — 테스트·학습이 이 경로로도 집는다
+
 log = logging.getLogger("retention_guidance")
 router = APIRouter(prefix="/retention-guidance")
-
-FEATURE_ORDER = [
-    "log_early_tracked_events",
-    "log_early_actions",
-    "deliberate_share",
-    "log_early_action_kinds",
-    "log_early_area_count",
-    "log_early_event_name_count",
-    "log_early_ga_auto_events",
-    "log_early_entry_auth_events",
-    "log_early_connect_ok_events",
-    "log_early_connect_fail_events",
-    "log_early_other_tracking_events",
-    "ga_auto_share",
-    "entry_auth_share",
-    "other_tracking_share",
-    "log_early_nature_events",
-    "log_early_fishing_sea_events",
-    "log_early_quest_social_events",
-    "log_early_craft_home_events",
-    "log_early_advanced_events",
-    "log_early_chop_tree_events",
-    "log_early_mine_ore_events",
-    "log_early_npc_talk_events",
-    "log_early_tutorial_step_events",
-    "log_early_quest_offered_events",
-    "log_early_churn_score_events",
-    "log_early_session_summary_events",
-    "log_early_session_time_events",
-    "log_early_econ_tx_events",
-    "log_early_zone_enter_events",
-]
 
 MODEL_PATH = Path(os.environ.get("RETENTION_GUIDANCE_MODEL_PATH", "/opt/calm-api/model/retention_guidance.json"))
 LOG_DIR = Path(os.environ.get("RETENTION_GUIDANCE_LOG_DIR", "/opt/calm-api/data"))
@@ -144,48 +114,6 @@ class PredictOut(BaseModel):
     model_version: str
     threshold: float | None
     score_band: str
-
-
-def _safe_ratio(num: float, den: float) -> float:
-    den = float(den or 0)
-    if den <= 0:
-        return 0.0
-    return max(0.0, float(num or 0) / den)
-
-
-def _derive_features(raw: dict) -> dict:
-    total = float(raw.get("early_tracked_events") or 0)
-    return {
-        "log_early_tracked_events": math.log1p(max(0.0, total)),
-        "log_early_actions": math.log1p(max(0.0, float(raw.get("early_actions") or 0))),
-        "deliberate_share": _safe_ratio(raw.get("early_actions", 0), total),
-        "log_early_action_kinds": math.log1p(max(0.0, float(raw.get("early_action_kinds") or 0))),
-        "log_early_area_count": math.log1p(max(0.0, float(raw.get("early_area_count") or 0))),
-        "log_early_event_name_count": math.log1p(max(0.0, float(raw.get("early_event_name_count") or 0))),
-        "log_early_ga_auto_events": math.log1p(max(0.0, float(raw.get("early_ga_auto_events") or 0))),
-        "log_early_entry_auth_events": math.log1p(max(0.0, float(raw.get("early_entry_auth_events") or 0))),
-        "log_early_connect_ok_events": math.log1p(max(0.0, float(raw.get("early_connect_ok_events") or 0))),
-        "log_early_connect_fail_events": math.log1p(max(0.0, float(raw.get("early_connect_fail_events") or 0))),
-        "log_early_other_tracking_events": math.log1p(max(0.0, float(raw.get("early_other_tracking_events") or 0))),
-        "ga_auto_share": _safe_ratio(raw.get("early_ga_auto_events", 0), total),
-        "entry_auth_share": _safe_ratio(raw.get("early_entry_auth_events", 0), total),
-        "other_tracking_share": _safe_ratio(raw.get("early_other_tracking_events", 0), total),
-        "log_early_nature_events": math.log1p(max(0.0, float(raw.get("early_nature_events") or 0))),
-        "log_early_fishing_sea_events": math.log1p(max(0.0, float(raw.get("early_fishing_sea_events") or 0))),
-        "log_early_quest_social_events": math.log1p(max(0.0, float(raw.get("early_quest_social_events") or 0))),
-        "log_early_craft_home_events": math.log1p(max(0.0, float(raw.get("early_craft_home_events") or 0))),
-        "log_early_advanced_events": math.log1p(max(0.0, float(raw.get("early_advanced_events") or 0))),
-        "log_early_chop_tree_events": math.log1p(max(0.0, float(raw.get("early_chop_tree_events") or 0))),
-        "log_early_mine_ore_events": math.log1p(max(0.0, float(raw.get("early_mine_ore_events") or 0))),
-        "log_early_npc_talk_events": math.log1p(max(0.0, float(raw.get("early_npc_talk_events") or 0))),
-        "log_early_tutorial_step_events": math.log1p(max(0.0, float(raw.get("early_tutorial_step_events") or 0))),
-        "log_early_quest_offered_events": math.log1p(max(0.0, float(raw.get("early_quest_offered_events") or 0))),
-        "log_early_churn_score_events": math.log1p(max(0.0, float(raw.get("early_churn_score_events") or 0))),
-        "log_early_session_summary_events": math.log1p(max(0.0, float(raw.get("early_session_summary_events") or 0))),
-        "log_early_session_time_events": math.log1p(max(0.0, float(raw.get("early_session_time_events") or 0))),
-        "log_early_econ_tx_events": math.log1p(max(0.0, float(raw.get("early_econ_tx_events") or 0))),
-        "log_early_zone_enter_events": math.log1p(max(0.0, float(raw.get("early_zone_enter_events") or 0))),
-    }
 
 
 def _threshold(model: dict) -> float | None:

@@ -21,6 +21,8 @@ Airflow 와 **별도 스택**이다. 서로의 재시작에 영향받지 않는�
 - `model/coef.json` — 기존 이탈 예측 `/predict`
 - `model/retention_guidance.json` — 리텐션 안내 `/retention-guidance/predict`
 
-기존 이탈 예측 계수는 Airflow DAG 가 쓴다. 리텐션 안내 모델은 먼저
-`cd ml && uv run python train_retention_guidance.py --out /tmp/retention_guidance.json`
-로 export 한 뒤 VM 의 `/opt/calm-api/model/retention_guidance.json` 에 둔다.
+둘 다 Airflow DAG 가 쓴다 — 이탈 예측은 `churn_train`(월 04:00), 리텐션 안내는
+`retention_guidance_train`(월 04:30, W&B 아티팩트 `retention-guidance-model`).
+표본이 게이트(95행·양성 12)를 못 넘으면 DAG 가 실패하고 기존 파일을 그대로 둔다.
+손으로 돌릴 땐 `cd ml && uv run python train_retention_guidance.py --out /tmp/retention_guidance.json`.
+API 코드는 `calm_ml.retention_features` 를 import 하므로 배포 때 `ml/calm_ml` 도 같이 올린다.
