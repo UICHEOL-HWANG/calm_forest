@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hashId, probeArm, easeFor, nextDda, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from '../js/difficulty.js';
+import { hashId, probeArm, easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from '../js/difficulty.js';
 import { gameSource } from './helpers/game-source.mjs';
 
 test('probe 팔은 블록 단위로 고르게 — 3판 블록마다 세 팔이 한 번씩 나온다', () => {
@@ -77,10 +77,37 @@ test('DDA 는 꼬리만 잡는다 — 0.7 ~ 1.5 를 벗어나지 않는다', () 
   assert.equal(hi, 1.5);
 });
 
-test('1주 차 요리·가공은 DDA 가 안 움직인다 — probe 만 돈다', () => {
-  assert.equal(nextDda('cook', 1, 0), 1);
-  assert.equal(nextDda('craft', 1, 1), 1);
+// 🍳🔥 요리·가공 DDA 켬(2026-09-27) — 목표는 실측 중앙값 78점(요리 6판·3명, 9/23~25). 65점이면 대부분이 넘겨
+//    DDA 가 요리를 계속 어렵게만 만든다. 표본이 쌓이면 다시 맞춘다.
+test('요리·가공도 DDA 가 움직인다 — 목표 78점 아래면 쉬워지고 위면 어려워진다', () => {
+  assert.ok(nextDda('cook', 1, 0.4) > 1, '40점 → 쉬워짐');
+  assert.ok(nextDda('cook', 1, 1) < 1, '100점 → 어려워짐');
+  assert.ok(Math.abs(nextDda('cook', 1, 0.78) - 1) < 1e-9, '목표 점수면 그대로');
+  assert.ok(nextDda('craft', 1, 1 / 3) > 1, '가공 등급 1/3 → 쉬워짐');
+  assert.ok(nextDda('craft', 1, 1) < 1, '가공 최고 등급 → 어려워짐');
   assert.notEqual(probeArm('cook', 'u', 0), probeArm('cook', 'u', 1));
+});
+
+// 포기·미니게임 없는 판은 DDA 를 안 움직인다 — 낚시·안개(trackDiffAbandon)와 같은 규칙(리뷰 2026-09-27)
+test('요리를 중간에 포기하면 DDA 를 안 움직인다 — 나쁜 판마다 그만둬 쉬워지는 길을 막는다', () => {
+  assert.equal(ddaOutcome('cook', { abandoned: true, score: 0 }), null);
+  assert.equal(ddaOutcome('cook', { abandoned: false, score: 64 }), 0.64);
+});
+
+test('미니게임이 없는 가공(맷돌)은 DDA 를 안 움직인다', () => {
+  assert.equal(ddaOutcome('craft', { played: false, grade: 1 }), null);
+  assert.equal(ddaOutcome('craft', { played: true, grade: 2 }), 2 / 3);
+});
+
+test('가공 목표는 2등급 — 네 단계뿐이라 0.78 이면 3등급 말고는 전부 미달이 된다', () => {
+  assert.ok(Math.abs(nextDda('craft', 1, 2 / 3) - 1) < 0.005, '2등급이면 거의 그대로');
+  assert.ok(nextDda('craft', 1, 1) < 1 && nextDda('craft', 1, 1 / 3) > 1);
+});
+
+test('요리·가공 DDA 도 한 판에 0.1 넘게 움직이지 않는다', () => {
+  for (const g of ['cook', 'craft']) for (const o of [0, 0.5, 1]) {
+    assert.ok(Math.abs(nextDda(g, 1, o) - 1) <= 0.1 + 1e-9, `${g} ${o}`);
+  }
 });
 
 test('최종 계수에도 상한이 있다 — 바다 최대 팔 × DDA 최대가 2.5 를 안 넘는다', () => {

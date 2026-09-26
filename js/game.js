@@ -30,7 +30,7 @@ import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
-import { easeFor, nextDda, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
+import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
@@ -1510,10 +1510,12 @@ function craftSet(itemId, grade = 1) {
   }
   for (const [k, v] of Object.entries(r.cost)) gameState.inventory[k] -= v;
   gameState.craft.slots = setSlot(gameState.craft.slots, { item: itemId, grade, day: todayStr() });
-  settleDifficulty('craft', (grade || 0) / 3);   // 🎚️ 등급 0~3 → 0~1. 1주 차엔 ddaOn:false 라 값이 안 움직인다
+  const craftO = ddaOutcome('craft', { played: !!craftDiffCur, grade });   // 🎚️ 등급/3 — 미니게임 없는 맷돌(craftDiffCur null)은 안 움직인다
+  if (craftO != null) settleDifficulty('craft', craftO);
   trackEvent('craft_set', { item: itemId, grade, qty: yieldOf(itemId, grade), station,
                             slot_idx: slotsOf(gameState.craft.slots, station).length - 1, station_seq: stationCount(station),
                             ...diffParams(craftDiffCur) });   // [GA4] 🎚️ 난이도 동봉 (맷돌은 craftDiffCur 가 null → ease 1 / arm null)
+  craftDiffCur = null;   // 🎚️ 한 판 값 — 비워 두지 않으면 미니게임 없이 거는 다음 판이 앞 판 난이도로 DDA 를 움직인다
   requestSave(); refreshStations(); refreshInventoryUI();
   return craftPanelData(station);
 }
@@ -4554,7 +4556,8 @@ function kitchenFinish(id, res = {}) {
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
-  settleDifficulty('cook', score / 100);   // 🎚️ 점수 게임 — 0~1 로 정규화. 1주 차엔 ddaOn:false 라 값이 안 움직인다
+  const cookO = ddaOutcome('cook', { abandoned: res.abandoned, score });   // 🎚️ 점수/100 — 포기한 판은 DDA 를 안 움직인다(DDA 켬 2026-09-27)
+  if (cookO != null) settleDifficulty('cook', cookO);
   trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
     recipe: id, mg_type: r.stages.join('>'), diff: recipeDiff(r), quality: tier.id, score,
     stage_scores: (res.stageScores || []).map(v => Math.round(v)).join(','),   // 단계별 점수(어느 판에서 무너지는지)
@@ -6846,7 +6849,7 @@ function rollDifficulty(game) {
 }
 
 // 🎚️ 판이 끝나면 결과를 먹인다. outcome 은 0~1 — 이진은 성공 1 / 실패 0, 점수 게임은 점수/만점.
-//    ddaOn:false 인 게임에선 nextDda 가 그대로 돌려주므로 호출해도 안전하다(1주 차 요리·가공).
+//    ddaOn:false 인 게임에선 nextDda 가 그대로 돌려주므로 호출해도 안전하다(지금은 다섯 게임 모두 켜져 있다).
 function settleDifficulty(game, outcome) {
   const st = gameState.difficulty[game]; if (!st) return;
   st.dda = nextDda(game, st.dda, outcome);
