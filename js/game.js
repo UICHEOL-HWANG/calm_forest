@@ -191,6 +191,9 @@ import {
 import {
   duelActive, investigateTrace, resolveNightVisit, spawnTrace, traceObjs,
 } from './spaces/night-visit.js';   // 📦 🦝 밤손님 — 자리를 비운 밤사이 너구리·멧돼지가 작물을 훔쳐간다
+import {
+  craftCover, refreshCovers, resolveWeatherEvent, weatherPrepView,
+} from './spaces/weather.js';   // 📦 🌡️ 날씨 이벤트 — 서리·태풍 예고를 보고 하루 안에 대비하는 재방문 훅
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _seaPrevTool() { return _seaPrevTool; }, set _seaPrevTool(v) { _seaPrevTool = v; },
@@ -5971,92 +5974,7 @@ export function setDuelSource(fn) { duelFetcher = fn || null; }
 //  ▶ 정산: 밤손님과 같은 "접속 시 정산" 패턴 — 미보호 작물은 시들 뿐(wilted),
 //    괭이로 다시 갈면 복구되는 부드러운 손실.
 // =============================================================
-const COVER_COST = { wood: 3 };
 
-// 밭 위 덮개(나무 틀 + 천) — 밭 단위 표시, 보호는 밭 전체(coveredFor 날짜) 단위
-function setPlotCover(plot, show) {
-  if (show && !plot.cover) {
-    const g = new THREE.Group();
-    for (const [x, z] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 5), clayMat(0x8a6a3a));
-      leg.position.set(x, 0.35, z); g.add(leg);
-    }
-    const cloth = new THREE.Mesh(
-      new THREE.BoxGeometry(1.8, 0.06, 1.8),
-      new THREE.MeshStandardMaterial({ color: 0xf3ead4, roughness: 0.9, transparent: true, opacity: 0.92 }),
-    );
-    cloth.position.y = 0.74; g.add(cloth);
-    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    plot.cover = g; plot.group.add(g);
-  }
-  if (plot.cover) plot.cover.visible = show;
-}
-function refreshCovers() {
-  const active = gameState.frost.coveredFor
-    && (gameState.frost.coveredFor === todayStr() || gameState.frost.coveredFor === todayStr(1));
-  for (const p of plots) setPlotCover(p, !!active && (p.state === 'growing' || p.state === 'mature'));
-}
-
-// 작업대 덮개 뷰/제작 — 예고일(내일 궂음)에만 의미가 있다
-function weatherPrepView() {
-  return {
-    severe: SEVERE_TOMORROW,
-    info: SEVERE_TOMORROW ? SEVERE_INFO[SEVERE_TOMORROW] : null,
-    planted: plots.filter(p => p.state === 'growing' || p.state === 'mature').length,
-    cost: { ...COVER_COST },
-    covered: gameState.frost.coveredFor === todayStr(1),
-  };
-}
-function craftCover() {
-  if (!SEVERE_TOMORROW) return { ok: false, msg: '내일은 날씨가 온화해요' };
-  if (gameState.frost.coveredFor === todayStr(1)) return { ok: false, msg: '이미 덮개를 설치했어요' };
-  for (const k in COVER_COST) {
-    if ((gameState.inventory[k] || 0) < COVER_COST[k]) return { ok: false, msg: '목재가 부족해요' };
-  }
-  for (const k in COVER_COST) gameState.inventory[k] -= COVER_COST[k];
-  gameState.frost.coveredFor = todayStr(1);
-  refreshInventoryUI(); refreshCovers();
-  Sound.blip();
-  trackEvent('craft_item', { category: 'weather', item: 'cover' });   // [GA4] 대비 전환율
-  requestSave();
-  return { ok: true };
-}
-
-// 접속 시 1회 — 지난 궂은 날을 정산(밤손님과 같은 패턴, 동기라 서버 불필요)
-function resolveWeatherEvent() {
-  const st = gameState.frost;
-  const today = todayStr();
-  if (!st.lastDate) { st.lastDate = today; refreshCovers(); return; }
-  if (st.lastDate === today) { refreshCovers(); return; }
-  // 마지막 정산 다음날~오늘 중 가장 최근의 궂은 날 하나만 정산(밤손님과 동일한 단순화)
-  const gap = Math.round((new Date(today) - new Date(st.lastDate)) / 86400000);
-  let hitDate = null, kind = null;
-  for (let off = 0; off < gap; off++) {              // off=0 → 오늘, 1 → 어제 …
-    const k = off === 0 ? SEVERE_TODAY : severeOf(-off);
-    if (k) { hitDate = todayStr(-off); kind = k; break; }
-  }
-  st.lastDate = today;
-  const exposed = plots.filter(p => p.state === 'growing' || p.state === 'mature');
-  if (!kind || !exposed.length) { st.coveredFor = null; refreshCovers(); requestSave(); return; }
-
-  const s = SEVERE_INFO[kind];
-  if (st.coveredFor === hitDate) {
-    // 대비가 통했다는 피드백 — "준비하길 잘했다"가 다음 대비를 만든다
-    setTimeout(() => ui.toast?.(`${s.ico} ${s.name}가 지나갔지만 🛡️ 덮개 덕분에 밭이 무사해요!`, 3200), 900);
-    trackEvent('weather_event', { kind, protected: true, plots: exposed.length });   // [GA4]
-  } else {
-    exposed.forEach(wiltPlot);
-    setTimeout(() => {
-      ui.toast?.(`${s.ico} ${s.hit} 작물 ${exposed.length}개가 시들었어요… ⛏️ 괭이로 갈면 다시 심을 수 있어요`, 3800);
-      firstHint('severe', s.ico, `${s.name}가 지나갔어요`,
-        '예보가 뜬 날엔 미리 수확하거나 🛡️덮개를\n시든 밭은 ⛏️괭이로 갈면 다시 심어요');
-    }, 900);
-    trackEvent('weather_event', { kind, protected: false, plots: exposed.length });  // [GA4]
-  }
-  st.coveredFor = null;
-  refreshCovers();
-  requestSave();
-}
 
 // =============================================================
 //  상호작용: 선택 도구에 따라 분기
@@ -9177,32 +9095,33 @@ function onResize() {
 
 // 🔁 js/spaces/* 가 가져다 쓰는 이름 — 선언 원문은 그대로 두고 여기서만 내보낸다(tools/refactor/extract-module.mjs)
 export {
-  BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, IS_MOBILE, ORES, RAIN_DAY, RES_ICON, RES_LABEL, WEATHER, _camLook,
-  _camTarget, _seaPrevTool, analog, applyCosmetics, applyHouseStyle, armWristK, atCafe, atFarm, atMine, atMist,
-  atMuseum, atOrchard, atRiver, atSea, awardBadge, blockIfLocked, boat, boatView, buffOn, buffs, bugJarMesh,
-  bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, catchCeremony, clayMat,
-  clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop, cropMini, currentTool, dateHash, decorGhost,
-  decorMeshes, decorNearRing, decorRot, decorTapHintShown, decorTarget, dexDiscover, diffParams, disposeTree,
-  dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack, farmActionFirst, farmBuildingRecs, farmCropMeshes,
-  farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob, firstHint, firstHintBanner, fishMesh, floatTexts,
-  forageNodes, forecastLine, forestGroup, gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward,
-  gladeBugs, gladeGroup, habitatCells, habitatCtx, habitatEnvAt, handAnchor, heldGroup, heldToolMesh, houseCollider,
-  houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor,
-  interiorFloors, interiorGroup, interiorLamp, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt,
-  lastFloorChoiceKey, lastNearHouse, lastNearMiss, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard,
-  makeSignpost, mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView, mineGroup, mineTorches, mist,
-  mistGroup, mistLanterns, mistTree, museumGroup, nearBench, nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest,
-  nearCoop, nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket,
-  nearNPC, nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher, nightLevel, nightNoteFetcher,
-  noteSpecialExhibit, obstacles, oreRocks, outdoorMesh, outdoorMeshes, outdoorTarget, paintGeo, pantryHas,
-  pantryTake, pendingDish, pestTarget, petChoresNear, petJob, pickedDecor, pickedOutdoor, placeOutdoor, placingDecor,
-  placingOutdoor, player, playerAnchor, playerArms, playerInYard, plots, pointer, poseHeldTool, priceOf,
-  priceRate, questEvent, raycaster, rebuildInteriorFinish, refreshCollectQuests, refreshHeldTool, refreshInventoryUI,
-  refreshStations, removeSolid, renderer, respawnPet, rewardText, riverActive, riverCourse, riverGroup, riverPool,
-  rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG, seaRodMesh, setFogExempt,
-  setHeldDecor, setHeldTool, setSpaceVisible, settleDifficulty, settleOrchard, shared, showCatchItem, sitting,
-  situation, snapCamera, solidBox, solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnSparkle, spawnSplash,
-  spawnTree, stopOutdoorPlacing, swayables, syncBadges, syncStory, todayStr, toolMesh, toolPage, trackGateBlocked,
-  trees, triggerFarmReveal, triggerMoment, tryUnlockDrop, ui, updateCarveScene, updatePlotVisual, updateStowPose,
-  updateToolPageAuto, usePet, vtxMat, wantAction, woodMat, workerCap, worldGround, worldGroundPatches,
+  BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, IS_MOBILE, ORES, RAIN_DAY, RES_ICON, RES_LABEL, SEVERE_TODAY,
+  SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _seaPrevTool, analog, applyCosmetics, applyHouseStyle,
+  armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atOrchard, atRiver, atSea, awardBadge, blockIfLocked,
+  boat, boatView, buffOn, buffs, bugJarMesh, bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs,
+  cafeInGroup, camera, catchCeremony, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop,
+  cropMini, currentTool, dateHash, decorGhost, decorMeshes, decorNearRing, decorRot, decorTapHintShown, decorTarget,
+  dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack, farmActionFirst,
+  farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob, firstHint,
+  firstHintBanner, fishMesh, floatTexts, forageNodes, forecastLine, forestGroup, gambrelRoofSlabs, gambrelSolid,
+  gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCells, habitatCtx, habitatEnvAt, handAnchor,
+  heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex,
+  houseWindows, indoor, interiorFloor, interiorFloors, interiorGroup, interiorLamp, isNight, keys, kitchenFinish,
+  kitchenStart, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastNearMiss, lastZoneHint, makeCharacterPreview,
+  makeNameTag, makeSignBoard, makeSignpost, mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView,
+  mineGroup, mineTorches, mist, mistGroup, mistLanterns, mistTree, museumGroup, nearBench, nearBoat, nearBoatShop,
+  nearCafeBoard, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest,
+  nearGlade, nearKitchen, nearMarket, nearNPC, nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher,
+  nightLevel, nightNoteFetcher, noteSpecialExhibit, obstacles, oreRocks, outdoorMesh, outdoorMeshes, outdoorTarget,
+  paintGeo, pantryHas, pantryTake, pendingDish, pestTarget, petChoresNear, petJob, pickedDecor, pickedOutdoor,
+  placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor, playerArms, playerInYard, plots, pointer,
+  poseHeldTool, priceOf, priceRate, questEvent, raycaster, rebuildInteriorFinish, refreshCollectQuests, refreshHeldTool,
+  refreshInventoryUI, refreshStations, removeSolid, renderer, respawnPet, rewardText, riverActive, riverCourse,
+  riverGroup, riverPool, rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG,
+  seaRodMesh, setFogExempt, setHeldDecor, setHeldTool, setSpaceVisible, settleDifficulty, settleOrchard,
+  severeOf, shared, showCatchItem, sitting, situation, snapCamera, solidBox, solidCircle, spawnConfetti,
+  spawnDust, spawnFloatText, spawnSparkle, spawnSplash, spawnTree, stopOutdoorPlacing, swayables, syncBadges,
+  syncStory, todayStr, toolMesh, toolPage, trackGateBlocked, trees, triggerFarmReveal, triggerMoment, tryUnlockDrop,
+  ui, updateCarveScene, updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wantAction,
+  wiltPlot, woodMat, workerCap, worldGround, worldGroundPatches,
 };
