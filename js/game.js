@@ -30,7 +30,7 @@ import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
-import { easeFor, nextDda, defaultDifficulty, mergeDifficulty } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
+import { easeFor, nextDda, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
@@ -5206,7 +5206,10 @@ function makeSpirit(def, lx, lz) {
   return { group: g, body, def, phase: Math.random() * 6, gone: 0, atTree: false };
 }
 function clearMistSpirits() {
-  if (mist.soothe) mistGroup.remove(mist.soothe.note);   // ♪ 진행 중이던 리듬 표식도 정리
+  if (mist.soothe) {
+    trackDiffAbandon('mist', mist.soothe.diff, 'end', { step: mist.soothe.step, practice: mist.practice ? 1 : 0 });   // 🎚️ 정화가 끝나 달래기가 끊김
+    mistGroup.remove(mist.soothe.note);                  // ♪ 진행 중이던 리듬 표식도 정리
+  }
   mist.spirits.forEach(s => mistGroup.remove(s.group));
   mist.spirits.length = 0;
   mist.soothe = null;
@@ -5342,6 +5345,7 @@ function startSoothe(sp) {
 }
 function cancelSoothe(scared = false) {
   const so = mist.soothe; if (!so) return;
+  if (!scared) trackDiffAbandon('mist', so.diff, 'walk_away', { step: so.step, practice: mist.practice ? 1 : 0 });   // 🎚️ 엇박(scared)은 miss 로 이미 남는다
   mistGroup.remove(so.note);
   if (scared) {                                         // 엇박: 정령이 놀라 가장자리 쪽으로 물러남
     const g = so.sp.group;
@@ -8547,6 +8551,7 @@ function kitchenFinish(id, res = {}) {
     arms:  cookDiffs.map(d => d.arm).join(','),
     eases: cookDiffs.map(d => Math.round(d.ease * 100) / 100).join(','),
     dda:   Math.round((cookDiffs[0]?.dda ?? 1) * 100) / 100,
+    probe_v: PROBE_SCHEME,
   });
   pendingDish = { id, tier: tier.id, score };
   return {
@@ -11462,7 +11467,7 @@ function handleAction() {
 // =============================================================
 function tryFish() {
   if (fishState === 'bite') { catchFish(); return; }        // 지금! 낚아채기
-  if (fishState === 'wait') { resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
+  if (fishState === 'wait') { trackDiffAbandon('fish', fishDiff, 'wait'); resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
   // idle → 캐스팅. 물가 근처여야 함
   const distLake = dist2D(LAKE, player.position);
   if (distLake > LAKE_R + 2.8) {
@@ -11536,7 +11541,7 @@ function buildBobber() {
 
 function updateFishing() {
   if (fishState === 'idle') return;
-  if (TOOLS[currentTool].id !== 'rod' || indoor) { resetFishing(); return; } // 도구 바꾸면 취소
+  if (TOOLS[currentTool].id !== 'rod' || indoor) { trackDiffAbandon('fish', fishDiff, fishState); resetFishing(); return; } // 도구 바꾸면 취소 · 🎚️ bite 중이면 팔을 겪은 포기
   const now = clock.elapsedTime;
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
@@ -14407,7 +14412,16 @@ const diffParams = r => ({
   ease: Math.round((r?.ease ?? 1) * 100) / 100,
   dda:  Math.round((r?.dda  ?? 1) * 100) / 100,
   arm:  r?.arm ?? null,
+  probe_v: PROBE_SCHEME,   // 팔 배정 방식 — 토스 검수 기간엔 옛 순회(1) 판이 섞여 들어온다
 });
+
+// 🎚️ 결과 없이 끝난 판 — 팔 순번은 이미 소모됐다. 안 남기면 어려운 팔의 포기가 통째로 빠져
+//    기록된 판만으로 낸 성공률이 부풀어 보인다. stage 로 "팔을 겪기 전(wait·cast)" 인지 가른다.
+//    DDA 는 안 움직인다 — 실력 결과가 아니다.
+function trackDiffAbandon(game, r, stage, extra = {}) {
+  if (!r) return;
+  trackEvent('minigame_abandon', { game, stage, ...extra, ...diffParams(r) });   // [GA4] 🎚️ 포기도 표본
+}
 
 function giveReward(r, source = 'reward', item = null) {
   // 🧪 [베타 A군] 가입 3일 부스트 — 출석·퀘스트·럭키박스 코인 ×1.5, 원장 item에 |boost 마커(원값=÷1.5 복원 가능)

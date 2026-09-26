@@ -15,6 +15,16 @@
 --     통째로 null 이 되어 팔 하나가 통계에서 사라진다.
 --
 --  ⚠️ 날짜는 probe 배포일부터. 그 이전에는 파라미터 자체가 없다.
+--
+--  ⚠️ probe_v — 팔 배정 방식. 없음/1 = 고정 순회(~2026-09-26), 2 = 블록 셔플.
+--     고정 순회는 "어려운 팔 다음엔 늘 같은 팔" 이라 직전 실패로 오른 dda 가 특정 팔에 몰린다.
+--     팔 비교는 probe_v = 2 로 거르거나, 최소한 dda 를 공변량으로 넣을 것.
+--     토스는 검수 기간 동안 옛 번들(probe_v 없음)이 섞여 들어온다.
+--
+--  ⚠️ 결과 없이 끝난 판은 minigame_abandon{game, stage} 로 따로 온다(2026-09-26~).
+--     성공률의 분모에서 빠진 판이므로 7번으로 팔별 포기율을 먼저 볼 것.
+--     stage 가 wait(낚시)면 팔을 겪기 전 포기라 난이도와 무관하다.
+--     바다는 판 도중 나갈 길이 없어(출구는 idle 에서만) 포기 이벤트가 없다 — 앱 종료만 빠진다.
 -- =============================================================
 
 
@@ -211,3 +221,56 @@ from ev
 where dda is not null and game is not null
 group by day, game
 order by day, game;
+
+
+-- =============================================================
+--  7. 🚪 팔별 포기율 — 기록된 판만의 성공률이 부풀었나
+-- =============================================================
+--  어려운 팔에서만 포기가 많으면 2~4번 곡선의 어려운 쪽이 실제보다 쉬워 보인다.
+--  exposed = 팔을 겪은 뒤의 포기(낚시 bite · 안개 walk_away/end).
+--  안개 연습(practice = 1)은 제외한다 — 성공/실패 쪽도 연습을 뺐다.
+with ab as (
+  select
+    (select value.string_value from unnest(event_params) where key = 'game')  as game,
+    (select value.string_value from unnest(event_params) where key = 'stage') as stage,
+    (select value.int_value    from unnest(event_params) where key = 'arm')   as arm,
+    (select value.int_value    from unnest(event_params) where key = 'practice') as practice
+  from `calm-forest.analytics_547127440.events_*`
+  where _TABLE_SUFFIX between '20260926' and format_date('%Y%m%d', current_date())
+    and event_name = 'minigame_abandon'
+),
+done as (
+  select
+    case
+      when event_name like 'fishing_%'    then 'fish'
+      when event_name like 'sea_%'        then 'sea'
+      when event_name like 'mist_soothe%' then 'mist'
+    end as game,
+    (select value.int_value from unnest(event_params) where key = 'arm') as arm
+  from `calm-forest.analytics_547127440.events_*`
+  where _TABLE_SUFFIX between '20260926' and format_date('%Y%m%d', current_date())
+    and event_name in ('fishing_catch', 'fishing_miss', 'sea_catch', 'sea_miss',
+                       'mist_soothe', 'mist_soothe_miss')
+    and (select value.int_value from unnest(event_params) where key = 'probe_v') = 2
+),
+ab_n as (
+  select game, arm,
+    countif(stage != 'wait')              as exposed_abandons,
+    countif(stage = 'wait')               as pre_abandons
+  from ab
+  where coalesce(practice, 0) = 0 and arm is not null
+  group by game, arm
+),
+done_n as (
+  select game, arm, count(*) as finished from done where arm is not null group by game, arm
+)
+select
+  coalesce(d.game, a.game) as game, coalesce(d.arm, a.arm) as arm,
+  coalesce(d.finished, 0)          as finished,
+  coalesce(a.exposed_abandons, 0)  as exposed_abandons,
+  coalesce(a.pre_abandons, 0)      as pre_abandons,
+  round(100 * coalesce(a.exposed_abandons, 0)
+        / nullif(coalesce(d.finished, 0) + coalesce(a.exposed_abandons, 0), 0), 1) as abandon_pct
+from done_n d
+full outer join ab_n a on a.game = d.game and a.arm = d.arm
+order by game, arm;
