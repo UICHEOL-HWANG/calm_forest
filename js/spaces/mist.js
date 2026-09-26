@@ -10,7 +10,7 @@ import {
   firstHint, gameState, giveReward, houseWindows, lastZoneHint, makeSignpost, mapLocked, mergeGeos, mist,
   mistGroup, mistLanterns, mistTree, nearDoor, obstacles, player, rollDifficulty, scene, setSpaceVisible,
   settleDifficulty, settleOrchard, shared, snapCamera, solidCircle, spawnConfetti, spawnFloatText, spawnSparkle,
-  swayables, syncBadges, syncStory, todayStr, triggerMoment, ui, woodMat,
+  swayables, syncBadges, syncStory, todayStr, trackDiffAbandon, triggerMoment, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { LANTERN_CALM_R, MIST, MIST_DRAIN, MIST_GATE, MIST_HALF, MIST_LANTERN_POS, MIST_PRACTICE_STEPS, MIST_WAVES, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, PURIFY_GLOW, SOOTHE_GLOW, SPIRITS, TREE_LIGHT_MAX } from '../data/places.js';
@@ -427,7 +427,10 @@ export function makeSpirit(def, lx, lz) {
 }
 
 export function clearMistSpirits() {
-  if (mist.soothe) mistGroup.remove(mist.soothe.note);   // ♪ 진행 중이던 리듬 표식도 정리
+  if (mist.soothe) {
+    trackDiffAbandon('mist', mist.soothe.diff, 'end', { step: mist.soothe.step, practice: mist.practice ? 1 : 0 });   // 🎚️ 정화가 끝나 달래기가 끊김
+    mistGroup.remove(mist.soothe.note);                  // ♪ 진행 중이던 리듬 표식도 정리
+  }
   mist.spirits.forEach(s => mistGroup.remove(s.group));
   mist.spirits.length = 0;
   mist.soothe = null;
@@ -562,6 +565,7 @@ export function startSoothe(sp) {
 
 export function cancelSoothe(scared = false) {
   const so = mist.soothe; if (!so) return;
+  if (!scared) trackDiffAbandon('mist', so.diff, 'walk_away', { step: so.step, practice: mist.practice ? 1 : 0 });   // 🎚️ 엇박(scared)은 miss 로 이미 남는다
   mistGroup.remove(so.note);
   if (scared) {                                         // 엇박: 정령이 놀라 가장자리 쪽으로 물러남
     const g = so.sp.group;

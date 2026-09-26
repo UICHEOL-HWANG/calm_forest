@@ -10,7 +10,7 @@ import {
   clock, currentTool, dexDiscover, diffParams, dist2D, doPlayerAction, fishDiff, fishMesh, fishState, gameState,
   indoor, noteSpecialExhibit, player, questEvent, refreshInventoryUI, rollDifficulty, scene, settleDifficulty,
   showCatchItem, situation, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnWater, spawnWoodChips, trackGateBlocked,
-  trees, tryUnlockDrop, ui,
+  trackDiffAbandon, trees, tryUnlockDrop, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackChop, trackEvent } from '../analytics.js';
 import { FISH_KINDS } from '../data/catalog.js';
@@ -22,7 +22,7 @@ import * as THREE from 'three';
 
 export function tryFish() {
   if (fishState === 'bite') { catchFish(); return; }        // 지금! 낚아채기
-  if (fishState === 'wait') { resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
+  if (fishState === 'wait') { trackDiffAbandon('fish', fishDiff, 'wait'); resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
   // idle → 캐스팅. 물가 근처여야 함
   const distLake = dist2D(LAKE, player.position);
   if (distLake > LAKE_R + 2.8) {
@@ -96,7 +96,7 @@ export function buildBobber() {
 
 export function updateFishing() {
   if (fishState === 'idle') return;
-  if (TOOLS[currentTool].id !== 'rod' || indoor) { resetFishing(); return; } // 도구 바꾸면 취소
+  if (TOOLS[currentTool].id !== 'rod' || indoor) { trackDiffAbandon('fish', fishDiff, fishState); resetFishing(); return; } // 도구 바꾸면 취소 · 🎚️ bite 중이면 팔을 겪은 포기
   const now = clock.elapsedTime;
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
