@@ -12,7 +12,7 @@
 //   · let 은 대입하는 문장이 전부 옮기는 쪽에 있을 때만 함께 간다
 //  옮긴 코드의 변화는 딱 둘: 선언 앞 `export ` · game.js 에 남은 let 에 대한 **쓰기**를 `$w.x` 로
 // =============================================================
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyze } from './lib/analyze.mjs';
@@ -85,6 +85,12 @@ function writeSites(s) {
 const S = new Set(A.stmts.filter(s => isDecl(s) && !s.exported && s.line >= lo && s.line < hi));
 const skipped = new Map();
 const drop = (s, why) => { if (S.delete(s)) skipped.set(s.names.join(','), why); };
+// 이미 옮긴 모듈이 game.js 에서 가져다 쓰는 이름은 남긴다 — 옮기면 그 import 가 끊긴다(예: 공용 woodMat)
+const usedBySpaces = new Map();
+if (existsSync(SPACES)) for (const f of readdirSync(SPACES).filter(f => f.endsWith('.js') && f !== `${name}.js`)) {
+  for (const [local, im] of analyze(readFileSync(path.join(SPACES, f), 'utf8')).imports) if (im.source === '../game.js') usedBySpaces.set(im.imported, f);
+}
+for (const s of [...S]) { const n = s.names.find(n => usedBySpaces.has(n)); if (n) drop(s, `spaces/${usedBySpaces.get(n)} 가 game.js 에서 가져다 씀`); }
 for (let changed = true; changed;) {
   changed = false;
   const inS = new Set([...S].flatMap(s => s.names));
