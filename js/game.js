@@ -30,7 +30,7 @@ import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
-import { easeFor, nextDda, defaultDifficulty, mergeDifficulty } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
+import { easeFor, nextDda, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
@@ -4568,6 +4568,7 @@ function kitchenFinish(id, res = {}) {
     arms:  cookDiffs.map(d => d.arm).join(','),
     eases: cookDiffs.map(d => Math.round(d.ease * 100) / 100).join(','),
     dda:   Math.round((cookDiffs[0]?.dda ?? 1) * 100) / 100,
+    probe_v: PROBE_SCHEME,
   });
   pendingDish = { id, tier: tier.id, score };
   return {
@@ -6855,7 +6856,16 @@ const diffParams = r => ({
   ease: Math.round((r?.ease ?? 1) * 100) / 100,
   dda:  Math.round((r?.dda  ?? 1) * 100) / 100,
   arm:  r?.arm ?? null,
+  probe_v: PROBE_SCHEME,   // 팔 배정 방식 — 토스 검수 기간엔 옛 순회(1) 판이 섞여 들어온다
 });
+
+// 🎚️ 결과 없이 끝난 판 — 팔 순번은 이미 소모됐다. 안 남기면 어려운 팔의 포기가 통째로 빠져
+//    기록된 판만으로 낸 성공률이 부풀어 보인다. stage 로 "팔을 겪기 전(wait·cast)" 인지 가른다.
+//    DDA 는 안 움직인다 — 실력 결과가 아니다.
+function trackDiffAbandon(game, r, stage, extra = {}) {
+  if (!r) return;
+  trackEvent('minigame_abandon', { game, stage, ...extra, ...diffParams(r) });   // [GA4] 🎚️ 포기도 표본
+}
 
 function giveReward(r, source = 'reward', item = null) {
   // 🧪 [베타 A군] 가입 3일 부스트 — 출석·퀘스트·럭키박스 코인 ×1.5, 원장 item에 |boost 마커(원값=÷1.5 복원 가능)
@@ -6897,37 +6907,36 @@ function onResize() {
 // 🔁 js/spaces/* 가 가져다 쓰는 이름 — 선언 원문은 그대로 두고 여기서만 내보낸다(tools/refactor/extract-module.mjs)
 export {
   BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, HINT_H, HINT_W, IS_MOBILE, LAKE, ORES, RAIN_DAY, RES_ICON, RES_LABEL,
-  SEVERE_TODAY, SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _hintAnyPrev, _seaPrevTool, _v, actAnim,
-  analog, applyCosmetics, applyHouseStyle, armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atOrchard,
-  atRiver, atSea, awardBadge, baitActive, biteAt, biteEnd, blockIfLocked, boat, boatView, bobber, buffOn,
-  buffs, bugJarMesh, bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera,
-  castPos, catchCeremony, churnTrigger, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop,
-  cropMini, currentQuest, currentTool, cycleSapSel, dateHash, dayStr, decorGhost, decorMeshes, decorNearRing,
-  decorRot, decorTapHintShown, decorTarget, dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction,
-  dockGroup, duelFetcher, easeOutBack, farmActionFirst, farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf,
-  farmSoilMesh, fertTarget, finishPetJob, firstHint, firstHintBanner, fishDiff, fishMesh, fishState, floatTexts,
-  forageNodes, forecastLine, forestGroup, gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward,
-  gladeBugs, gladeGroup, habitatCells, habitatCtx, habitatEnvAt, handAnchor, harvestTexture, heldGroup, heldToolMesh,
-  houseCollider, houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex, houseWindows,
-  indoor, interiorFloor, interiorFloors, interiorGroup, interiorLamp, isBlocked, isNight, keys, kitchenFinish,
-  kitchenStart, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastNearMiss, lastZoneHint, lerpAngle,
-  makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost, mapLocked, markHabitatDirty, measureStowLen,
-  mergeGeos, mgView, mineGroup, mineTorches, mist, mistGroup, mistLanterns, mistTree, mode, museumGroup,
-  nearBench, nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh,
-  nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC, nearOutdoorMesh, nearRank,
-  nearShop, nearStation, nightFetcher, nightLevel, nightNoteFetcher, noteSpecialExhibit, npcObjs, obstacles,
-  onPlotArea, orchardSlotsWorld, orchardStreamWorld, oreRocks, outdoorMesh, outdoorMeshes, outdoorTarget,
-  paintGeo, pantryHas, pantryTake, particles, pendingDig, pendingDish, pestTarget, pestTexture, pet3d, petChoresNear,
-  petJob, pickedDecor, pickedOutdoor, placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor, playerArms,
-  playerInYard, plots, pointer, poseHeldTool, priceOf, priceRate, questCtx, questEvent, raycaster, rebuildInteriorFinish,
-  rebuildOrchard, refreshCollectQuests, refreshCropStage, refreshHeldTool, refreshInventoryUI, refreshStations,
-  removeSolid, renderer, respawnPet, rewardText, riverActive, riverCourse, riverGroup, riverPool, rollDifficulty,
-  roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG, seaRodMesh, seedHintTexture, setFogExempt,
-  setHeldDecor, setHeldTool, setPlotHarvest, setPlotSeedHint, setPlotWarn, setSpaceVisible, settleDifficulty,
-  settleOrchard, severeOf, shared, showCatchItem, sitting, situation, snapCamera, solidBox, solidCircle,
-  spawnConfetti, spawnDust, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnSplash, spawnTree, spawnWater,
-  spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges, syncFarmHints, syncStory, todayStr, toolMesh,
-  toolPage, trackGateBlocked, trees, triggerFarmReveal, triggerMoment, tryUnlockDrop, ui, updateCarveScene,
-  updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wantAction, warnTexture, weatherOf,
-  weedTexture, wiltPlot, woodMat, workerCap, worldGround, worldGroundPatches,
+  SEVERE_TODAY, SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _hintAnyPrev, _seaPrevTool, _v, actAnim, analog,
+  applyCosmetics, applyHouseStyle, armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atOrchard, atRiver, atSea,
+  awardBadge, baitActive, biteAt, biteEnd, blockIfLocked, boat, boatView, bobber, buffOn, buffs, bugJarMesh,
+  bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, castPos, catchCeremony,
+  churnTrigger, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop, cropMini, currentQuest,
+  currentTool, cycleSapSel, dateHash, dayStr, decorGhost, decorMeshes, decorNearRing, decorRot, decorTapHintShown,
+  decorTarget, dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack,
+  farmActionFirst, farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob,
+  firstHint, firstHintBanner, fishDiff, fishMesh, fishState, floatTexts, forageNodes, forecastLine, forestGroup,
+  gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCells, habitatCtx,
+  habitatEnvAt, handAnchor, harvestTexture, heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup,
+  houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor, interiorFloors, interiorGroup,
+  interiorLamp, isBlocked, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt, lastFloorChoiceKey,
+  lastNearHouse, lastNearMiss, lastZoneHint, lerpAngle, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
+  mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView, mineGroup, mineTorches, mist, mistGroup,
+  mistLanterns, mistTree, mode, museumGroup, nearBench, nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest, nearCoop,
+  nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC,
+  nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher, nightLevel, nightNoteFetcher, noteSpecialExhibit,
+  npcObjs, obstacles, onPlotArea, orchardSlotsWorld, orchardStreamWorld, oreRocks, outdoorMesh, outdoorMeshes,
+  outdoorTarget, paintGeo, pantryHas, pantryTake, particles, pendingDig, pendingDish, pestTarget, pestTexture, pet3d,
+  petChoresNear, petJob, pickedDecor, pickedOutdoor, placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor,
+  playerArms, playerInYard, plots, pointer, poseHeldTool, priceOf, priceRate, questCtx, questEvent, raycaster,
+  rebuildInteriorFinish, rebuildOrchard, refreshCollectQuests, refreshCropStage, refreshHeldTool, refreshInventoryUI,
+  refreshStations, removeSolid, renderer, respawnPet, rewardText, riverActive, riverCourse, riverGroup, riverPool,
+  rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG, seaRodMesh, seedHintTexture,
+  setFogExempt, setHeldDecor, setHeldTool, setPlotHarvest, setPlotSeedHint, setPlotWarn, setSpaceVisible,
+  settleDifficulty, settleOrchard, severeOf, shared, showCatchItem, sitting, situation, snapCamera, solidBox,
+  solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnSplash, spawnTree,
+  spawnWater, spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges, syncFarmHints, syncStory, todayStr, toolMesh,
+  toolPage, trackDiffAbandon, trackGateBlocked, trees, triggerFarmReveal, triggerMoment, tryUnlockDrop, ui,
+  updateCarveScene, updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wantAction, warnTexture,
+  weatherOf, weedTexture, wiltPlot, woodMat, workerCap, worldGround, worldGroundPatches,
 };
