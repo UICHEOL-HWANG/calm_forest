@@ -168,6 +168,10 @@ import {
 import {
   buyShop, marketData, sellItem, spawnMarketBoard, spawnShop,
 } from './spaces/shop.js';   // 📦 🛒 상점 좌판·시세판·사고팔기 (구역 머리말 — 분리 2단계)
+import {
+  COOK_TIERS, PANTRY_MAX, buffDur, cookResolve, courseOf, craftTier2, craftUpgrade, emitBuffs, kitchenView,
+  pantryEat, pantryView, recipeOf, tier2List,
+} from './spaces/cooking.js';   // 📦 🍳 요리 코스·찬장·도구 제작·버프 (구역 머리말 — 분리 2단계)
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _seaPrevTool() { return _seaPrevTool; }, set _seaPrevTool(v) { _seaPrevTool = v; },
@@ -4411,56 +4415,10 @@ function updateCarveScene(dt, t) {
 // =============================================================
 
 // ── 🍳 자유주방 — 요리 미니게임(코스). 결과 점수(0~100)가 요리 등급 → 버프 지속 배율을 정한다 ──
-//    게임업계식 등급 컷: 점수 구간 → 등급/배율. 잘할수록 같은 재료로 더 오래 가는 버프.
-const COOK_TIERS = [
-  { id: 'perfect', min: 88, ico: '💫', name: '최고의 맛', mult: 1.5 },
-  { id: 'great',   min: 65, ico: '😋', name: '훌륭한 맛', mult: 1.25 },
-  { id: 'good',    min: 35, ico: '🙂', name: '무난한 맛', mult: 1.0 },
-  { id: 'plain',   min: 0,  ico: '😅', name: '아쉬운 맛', mult: 0.7 },
-];
-const PANTRY_MAX = 6;                       // 🍱 찬장 칸 수 — 무제한이면 카페를 미리 다 채워두고 미니게임을 안 하게 된다
 function cookTier(score) { return COOK_TIERS.find(t => score >= t.min) || COOK_TIERS[COOK_TIERS.length - 1]; }
-function recipeOf(id) { return RECIPES.find(r => r.id === id) || null; }
 
-// 레시피 → 미니게임 코스. 단계마다 판정창 배율(mult)이 실려 뒤로 갈수록 좁아진다
-function courseOf(r) {
-  const d = recipeDiff(r);
-  const mults = COURSE_MULT[d] || COURSE_MULT[1];
-  return r.stages.map((mg, i) => ({
-    mg, mult: mults[i] ?? mults[mults.length - 1], weight: (COURSE_WEIGHT[d] || [1])[i] ?? 1,
-    ico: COOK_MG[mg].ico, name: COOK_MG[mg].name, tip: COOK_MG[mg].tip,
-  }));
-}
 
-// 주방 메뉴판 데이터 — index.html(ui.openKitchen)이 렌더
-function kitchenView() {
-  const inv = gameState.inventory;
-  return {
-    recipes: RECIPES.map(r => ({
-      id: r.id, name: r.name, ico: r.ico, desc: r.desc, diff: recipeDiff(r),
-      course: courseOf(r).map(s => ({ ico: s.ico, name: s.name })),
-      cost: Object.entries(r.cost).map(([k, v]) => ({ k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, need: v, have: inv[k] || 0 })),
-      ready: Object.entries(r.cost).every(([k, v]) => (inv[k] || 0) >= v),
-      best: gameState.kitchen.best[r.id] || 0,           // 레시피별 최고 점수(진행도 표시)
-    })),
-    cooked: gameState.kitchen.cooked || 0,
-    pantry: pantryView(),
-  };
-}
-
-// 🍱 찬장 목록 — 가방·카페·주방이 함께 쓴다
-function pantryView() {
-  return {
-    max: PANTRY_MAX,
-    items: (gameState.pantry || []).map((f, i) => {
-      const r = recipeOf(f.id), t = cookTier(f.score);
-      return { i, id: f.id, name: r.name, ico: r.ico, score: f.score, tier: { id: t.id, ico: t.ico, name: t.name, mult: t.mult },
-        buff: { ...BUFF_META[r.buff], dur: buffDur(r, t) } };
-    }),
-  };
-}
 function pantryHas(recipeId) { return (gameState.pantry || []).findIndex(f => f.id === recipeId); }   // 없으면 -1
-function buffDur(r, tier) { return Math.round(r.dur * tier.mult * (gameState.upgrades.pot ? 1.5 : 1)); }   // 등급 배율 × 🍲 큰 냄비 1.5배
 
 // 요리 시작 — 재료를 먼저 소비(중도 포기해도 요리는 낮은 등급으로 완성 → 재시도 악용 방지)
 //   where: 'kitchen'(자유주방) | 'cafe'(카페에서 손님 앞 조리)
@@ -4533,45 +4491,6 @@ function kitchenFinish(id, res = {}) {
   };
 }
 
-// 🍽️ 완성한 요리를 어떻게 할지 — 'eat'(바로 먹어 버프) | 'store'(🧺 찬장에 보관)
-//    결과 화면을 그냥 닫아도 'eat' 으로 마무리된다(만든 음식을 잃지 않게).
-function cookResolve(how = 'eat') {
-  const d = pendingDish; if (!d) return { ok: false };
-  pendingDish = null;
-  const r = recipeOf(d.id); if (!r) return { ok: false };
-  if (how === 'store') {
-    if ((gameState.pantry || []).length >= PANTRY_MAX) return eatDish(r, d, true);   // 찬장이 꽉 찼으면 먹는 쪽으로 안전 착지
-    gameState.pantry.push({ id: d.id, score: d.score });   // 등급은 score 에서 파생(cookTier)
-    Sound.blip();
-    trackEvent('cook_store', { recipe: d.id, quality: d.tier, pantry_n: gameState.pantry.length });   // [GA4] 보관 선택률
-    return { ok: true, how: 'store', ico: r.ico, name: r.name, left: PANTRY_MAX - gameState.pantry.length };
-  }
-  return eatDish(r, d, false);
-}
-
-// 음식을 먹어 버프 발동 — 요리 직후(cookResolve)와 찬장에서 꺼내 먹을 때(pantryEat)가 함께 쓴다
-function eatDish(r, d, fallback = false) {
-  const tier = cookTier(d.score);
-  const dur = buffDur(r, tier);
-  buffs[r.buff] = clock.elapsedTime + dur;
-  emitBuffs();
-  const bm = BUFF_META[r.buff];
-  // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
-  setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
-    `${bm.desc}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요`), 800);
-  trackEvent('cook_eat', { recipe: r.id, quality: tier.id, dur });   // [GA4]
-  return { ok: true, how: 'eat', fallback, ico: r.ico, name: r.name, buff: { ...bm, dur } };
-}
-
-// 🍱 찬장에서 꺼내 먹기 — 가방 찬장 칸을 누르면
-function pantryEat(i) {
-  const f = (gameState.pantry || [])[i]; if (!f) return { ok: false };
-  const r = recipeOf(f.id); if (!r) { gameState.pantry.splice(i, 1); return { ok: false }; }
-  gameState.pantry.splice(i, 1);
-  Sound.harvest();
-  spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} 잘 먹었습니다!`, '#c9682a');
-  return eatDish(r, f, false);
-}
 
 // 🍱 찬장에서 한 칸 빼기(카페 서빙용) — 있으면 그 음식을, 없으면 null
 function pantryTake(recipeId) {
@@ -4579,68 +4498,6 @@ function pantryTake(recipeId) {
   return gameState.pantry.splice(i, 1)[0];
 }
 
-
-// 도구 업그레이드 제작(영구) — 이미 보유면 거절
-function craftUpgrade(id) {
-  const u = UPGRADES.find(x => x.id === id); if (!u) return { ok: false };
-  if (gameState.upgrades[id]) return { ok: false, msg: '이미 보유한 업그레이드예요' };
-  for (const k in u.cost) {
-    if ((gameState.inventory[k] || 0) < u.cost[k]) {
-      return { ok: false, msg: `${RES_LABEL[k] || k}이(가) 부족해요` };   // 돌·석탄 등 광물 재료도 안내
-    }
-  }
-  for (const k in u.cost) gameState.inventory[k] -= u.cost[k];
-  gameState.upgrades[id] = true;
-  refreshHeldTool();                                  // 🪓 만든 즉시 손에 든 도구가 달라진다
-  if (id === 'hammer') updateHouseSign();             // 🔨 집 간판의 🪵 숫자도 같이 내려간다
-  refreshInventoryUI();
-  Sound.complete();
-  spawnFloatText(player.position.x, 1.5, player.position.z, `${u.ico} ${u.name}!`, '#2f7a44');
-  spawnSparkle(player.position.x, 1.0, player.position.z, 22);
-  trackEvent('craft_item', { category: 'tool', item: id });  // [GA4]
-  return { ok: true, name: u.name };
-}
-
-// 🔨 금빛 도구(2단계) — 도면이 있어야 보이고, 1단계를 먼저 가져야 만든다(js/tool-blueprints.js)
-function tier2List() {
-  return BLUEPRINTS.map(b => {
-    const st = tier2Status(b.tool, gameState);
-    const up = UPGRADES.find(u => u.id === b.tool);
-    const npc = NPCS.find(n => n.id === b.npc);
-    return { tool: b.tool, name: b.name, ico: TOOLS.find(t => t.id === b.tool)?.ico || '🔨', cost: b.cost,
-      state: st.state, missing: st.missing, tier1: up?.name || '', npc: npc?.name || '' };
-  });
-}
-function craftTier2(tool) {
-  const b = blueprintOfTool(tool); if (!b) return { ok: false };
-  const st = tier2Status(tool, gameState);
-  if (st.state === 'owned') return { ok: false, msg: '이미 만든 도구예요' };
-  if (st.state === 'noBlueprint') return { ok: false, msg: '아직 도면이 없어요' };
-  if (st.state === 'needTier1') return { ok: false, msg: `먼저 ${UPGRADES.find(u => u.id === tool)?.name || '1단계 도구'}을(를) 만들어요` };
-  if (st.state === 'short') return { ok: false, msg: `${RES_LABEL[st.missing[0]] || st.missing[0]}이(가) 부족해요` };
-  const inv = { ...gameState.inventory };
-  for (const k in b.cost) inv[k] = (inv[k] || 0) - b.cost[k];
-  gameState.inventory = inv;
-  gameState.tier2 = { ...gameState.tier2, [tool]: true };
-  refreshHeldTool();                                  // 손에 든 게 이 도구면 그 자리에서 금빛이 된다
-  refreshInventoryUI();
-  Sound.complete();
-  spawnFloatText(player.position.x, 1.5, player.position.z, `✨ ${b.name}!`, '#9a7a1c');
-  spawnSparkle(player.position.x, 1.0, player.position.z, 30);
-  trackEvent('tool_tier2_craft', { tool, coins: b.cost.coins });   // [GA4] 도면 → 제작 전환(코인 싱크)
-  requestSave();
-  return { ok: true, name: b.name };
-}
-
-// 활성 버프 목록을 UI로 전달(정수 초 바뀔 때만)
-let lastBuffKey = '';
-function emitBuffs() {
-  const now = clock.elapsedTime;
-  const list = Object.keys(buffs).filter(k => now < buffs[k])
-    .map(k => ({ k, ico: BUFF_META[k].ico, name: BUFF_META[k].name, desc: BUFF_META[k].desc, remain: Math.ceil(buffs[k] - now) })); // desc: 칩 클릭 설명 모달용
-  const key = list.map(b => b.ico + b.remain).join('|');
-  if (key !== lastBuffKey) { lastBuffKey = key; ui.setBuffs?.(list); }
-}
 
 // =============================================================
 //  🪵 야외 장식·창고·선물 (구역 머리말 — 분리 2단계)
@@ -10445,24 +10302,25 @@ function onResize() {
 export {
   FORAGE_NODES, GLADE_MAX, IS_MOBILE, ORES, RAIN_DAY, RES_ICON, RES_LABEL, WEATHER, _camLook, _camTarget,
   _seaPrevTool, analog, applyCosmetics, applyHouseStyle, armWristK, atCafe, atFarm, atMine, atMist, atMuseum,
-  atOrchard, atRiver, atSea, awardBadge, blockIfLocked, boat, boatView, bugJarMesh, bugRespawnAt, cafeGuestCache,
-  cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, catchCeremony, clayMat, clearPest, clock, colliders,
-  cookTier, cosmeticShop, cropMini, currentTool, dateHash, decorGhost, decorMeshes, decorRot, decorTapHintShown,
-  decorTarget, dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction, dockGroup, easeOutBack, farmBuildingRecs,
-  farmHalf, finishPetJob, firstHint, fishMesh, forageNodes, forecastLine, forestGroup, gameState, ghostOutdoor,
-  giveReward, gladeBugs, gladeGroup, habitatCtx, habitatEnvAt, handAnchor, heldGroup, heldToolMesh, houseCollider,
-  houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor,
-  interiorFloors, interiorGroup, interiorLamp, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt,
-  lastNearMiss, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost, mapLocked,
-  measureStowLen, mergeGeos, mgView, mist, mistGroup, mistLanterns, mistTree, museumGroup, nearBoat, nearBoatShop,
-  nearCafeBoard, nearCafeGuest, nearDoor, nearStation, nightLevel, noteSpecialExhibit, obstacles, outdoorMesh,
-  outdoorMeshes, outdoorTarget, pantryHas, pantryTake, pendingDish, pestTarget, petJob, pickedDecor, pickedOutdoor,
-  placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor, playerArms, plots, pointer, poseHeldTool,
-  priceOf, priceRate, questEvent, raycaster, rebuildInteriorFinish, refreshCollectQuests, refreshHeldTool,
-  refreshInventoryUI, refreshStations, removeSolid, renderer, respawnPet, riverActive, riverCourse, riverGroup,
-  riverPool, rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG, seaRodMesh,
-  setFogExempt, setHeldDecor, setHeldTool, setSpaceVisible, settleDifficulty, settleOrchard, shared, showCatchItem,
-  sitting, situation, snapCamera, solidBox, solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnSparkle,
-  spawnSplash, spawnTree, stopOutdoorPlacing, swayables, syncBadges, syncStory, todayStr, toolMesh, trackGateBlocked,
-  trees, triggerMoment, tryUnlockDrop, ui, updateCarveScene, updateStowPose, usePet, wantAction, woodMat,
+  atOrchard, atRiver, atSea, awardBadge, blockIfLocked, boat, boatView, buffs, bugJarMesh, bugRespawnAt,
+  cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, catchCeremony, clayMat, clearPest,
+  clock, colliders, cookTier, cosmeticShop, cropMini, currentTool, dateHash, decorGhost, decorMeshes, decorRot,
+  decorTapHintShown, decorTarget, dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction, dockGroup,
+  easeOutBack, farmBuildingRecs, farmHalf, finishPetJob, firstHint, fishMesh, forageNodes, forecastLine,
+  forestGroup, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCtx, habitatEnvAt, handAnchor,
+  heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex,
+  houseWindows, indoor, interiorFloor, interiorFloors, interiorGroup, interiorLamp, isNight, keys, kitchenFinish,
+  kitchenStart, lastDoorPrompt, lastNearMiss, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard,
+  makeSignpost, mapLocked, measureStowLen, mergeGeos, mgView, mist, mistGroup, mistLanterns, mistTree, museumGroup,
+  nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest, nearDoor, nearStation, nightLevel, noteSpecialExhibit,
+  obstacles, outdoorMesh, outdoorMeshes, outdoorTarget, pantryHas, pantryTake, pendingDish, pestTarget, petJob,
+  pickedDecor, pickedOutdoor, placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor, playerArms,
+  plots, pointer, poseHeldTool, priceOf, priceRate, questEvent, raycaster, rebuildInteriorFinish, refreshCollectQuests,
+  refreshHeldTool, refreshInventoryUI, refreshStations, removeSolid, renderer, respawnPet, riverActive, riverCourse,
+  riverGroup, riverPool, rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG,
+  seaRodMesh, setFogExempt, setHeldDecor, setHeldTool, setSpaceVisible, settleDifficulty, settleOrchard,
+  shared, showCatchItem, sitting, situation, snapCamera, solidBox, solidCircle, spawnConfetti, spawnDust,
+  spawnFloatText, spawnSparkle, spawnSplash, spawnTree, stopOutdoorPlacing, swayables, syncBadges, syncStory,
+  todayStr, toolMesh, trackGateBlocked, trees, triggerMoment, tryUnlockDrop, ui, updateCarveScene, updateStowPose,
+  usePet, wantAction, woodMat,
 };
