@@ -58,12 +58,25 @@ def test_sample_size_near_measured():
        'cap 이 안 먹어 폭발' 같은 자릿수 사고다.
     """
     df = bq.read_sql_file(SQL, cap=CAP)
-    # 2026-09-06 자동 테스트 제외 후 656건(제외 전 724). 400 미만이면 조인이 망가진 것, 1200 초과면 제외가 풀린 것.
-    assert 400 <= len(df) <= 1200, (
-        f"표본이 400~1200건 범위를 벗어났다: {len(df)}건 "
-        f"(실측 2026-09-04 507건 · 2026-09-06 724건)")
+    # 2026-09-06 자동 테스트 제외 후 656건(제외 전 724). 400 미만이면 조인이 망가진 것.
+    # ⚠️ 상한은 건수로 걸지 않는다 — quest 트리거는 이벤트마다 한 행이라 npc_talk·의뢰가 늘면
+    #    세션 수보다 훨씬 빨리 자란다(2026-09-26: 429세션 → 2,121행, quest 1,723). 폭발은 아래
+    #    구조 검사(cap·중복)로, 자동 테스트 재유입은 time15 기저율 테스트로 잡는다.
+    assert len(df) >= 400, (
+        f"표본이 400건 미만이다: {len(df)}건 (실측 2026-09-04 507건 · 2026-09-06 724건)")
     n = df.groupby("trigger_kind").size()
     assert n["time15"] > 150 and n["quest"] > 150, f"트리거별 표본이 무너졌다: {dict(n)}"
+
+
+def test_sample_structure_bounds_growth():
+    """표본 폭발의 원인이 될 구조 사고를 직접 본다 — cap 이 안 먹거나, 조인이 행을 복제하거나."""
+    df = bq.read_sql_file(SQL, cap=CAP)
+    per_client = df.groupby("client_id")["session_id"].nunique().max()
+    assert per_client <= CAP, f"클라이언트당 세션 {per_client}개 — cap({CAP})이 안 먹었다"
+    time15_per_session = df[df.trigger_kind == "time15"].groupby("session_id").size().max()
+    assert time15_per_session == 1, f"time15 는 세션당 1행이어야 한다: 최대 {time15_per_session}"
+    dup = df.duplicated(["session_id", "trigger_kind", "trigger_rn"]).sum()
+    assert dup == 0, f"(session, trigger_kind, trigger_rn) 중복 {dup}행 — 조인이 행을 복제한다"
 
 
 def test_time15_base_rate_is_not_inflated_by_test_sessions():
