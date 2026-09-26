@@ -179,11 +179,15 @@ import {
 import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
+import {
+  HABITAT_BLOCK_LINE, enterFarm, exitFarm, visitors,
+} from './spaces/visitors.js';   // 📦 🦋 텃밭 방문객 안내 (구역 머리말 — 분리 2단계)
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _seaPrevTool() { return _seaPrevTool; }, set _seaPrevTool(v) { _seaPrevTool = v; },
   get armWristK() { return armWristK; }, set armWristK(v) { armWristK = v; },
   get atCafe() { return atCafe; }, set atCafe(v) { atCafe = v; },
+  get atFarm() { return atFarm; }, set atFarm(v) { atFarm = v; },
   get atMist() { return atMist; }, set atMist(v) { atMist = v; },
   get atMuseum() { return atMuseum; }, set atMuseum(v) { atMuseum = v; },
   get atOrchard() { return atOrchard; }, set atOrchard(v) { atOrchard = v; },
@@ -4800,64 +4804,9 @@ function makeSignpost(text, x = 0, z = 1.3) {
 // =============================================================
 
 // ── 🦋 텃밭 방문객 — 스폰·등록은 js/farm-visitors.js, 판정은 js/habitat.js ──
-let visitors = null;   // 텃밭 안에서만 살아 있다
 
-// 막는 요인별 안내 — 앞에 동물 아이콘이 붙는다("🦋 허수아비를 무서워해요").
-// ⚠️ 은유를 쓰지 않는다. "무언가 맴돌다 갔어요" 는 무슨 말인지 모르겠다는 지적을 받았다(2026-09-18).
-//    원인이 되는 **오브젝트 이름**을 그대로 쓴다.
-// ⚠️ 여기 문구가 i18n 키다. 조각을 이어 붙이지 말고 통째로 사전에 넣는다(" · " 글루 함정).
-// ⚠️ **한 줄을 넘기지 말 것.** 두 줄이 되면 미터가 높아져 소형폰+토스에서 #door-prompt 와 겹친다
-//    (320×568 실측: 여유 93px, 두 줄이면 103px). "어디서 찾나"는 도감의 hint 가 말한다.
-const HABITAT_BLOCK_LINE = {
-  fear:    '허수아비를 무서워해요',
-  nectar:  '꽃이 더 필요해요',
-  food:    '다 자란 작물이 더 필요해요',
-  shelter: '숨을 데가 더 필요해요',
-  shade:   '그늘이 더 필요해요',
-  damp:    '물기가 더 필요해요',
-  light:   '빛이 더 필요해요',
-};
 let lastNearMiss = {};   // 🦋 이번 배치 세션에 이미 쏜 근접 신호 { 종id: 1 } — 폭주 방지(updateHabitatMeter 주석)
 
-function makeVisitorMesh(id) { return makeVisitor(THREE, id); }   // 조형은 js/visitor-art.js (높이도 거기서 정한다)
-
-function startVisitors() {
-  visitors = createVisitors({
-    group: farmGroup,
-    origin: FARM,   // ⚠️ farmGroup 은 FARM(0,0,84) 에 놓여 있다 — 월드 좌표를 그대로 넣으면 z=168 허공에 뜬다
-    makeMesh: makeVisitorMesh,
-    cells: habitatCells,
-    envAt: habitatEnvAt,
-    matchVisitors,
-    ctx: habitatCtx,
-    playerPos: () => player.position,
-    onSpawn: (id) => trackEvent('visitor_spawn', { visitor: id, farm_stage: gameState.farm.stage }),   // [GA4] 퍼널 3단
-    onDiscover: (id) => {
-      if (!gameState.dex.visitor?.[id]) {
-        dexDiscover('visitor', id);   // 📖 등록 + 토스트 + 박물관 게이트 + 퀘스트 + GA4 를 한 번에
-      } else {
-        const v = visitorOf(id);      // 재방문 — "정원이 살아있다" 는 신호. 보상은 없다.
-        ui.toast?.(`${v.ico} ${v.name}가 다시 찾아왔어요`, 1800);
-      }
-    },
-  });
-}
-
-function enterFarm() {
-  atFarm = true; playerInYard = false;
-  player.position.set(FARM.x, 0, FARM.z + farmHalf() - 1.5); player.rotation.y = Math.PI;
-  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요. 나갈 땐 남쪽 문');
-  startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다
-  Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
-}
-function exitFarm() {
-  visitors?.clear(); visitors = null;   // 🦋 ⚠️ setSpaceVisible 이 farmGroup 을 정리하기 전에 메시를 빼야 한다
-  atFarm = false;
-  player.position.set(FARM_GATE.x, 0, FARM_GATE.z + 2);
-  nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  Sound.blip(); trackEvent('exit_farm'); // [GA4]
-}
 
 // =============================================================
 //  ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
@@ -9921,14 +9870,14 @@ export {
   decorRot, decorTapHintShown, decorTarget, dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction,
   dockGroup, easeOutBack, farmBuildingRecs, farmGroup, farmHalf, finishPetJob, firstHint, fishMesh, forageNodes,
   forecastLine, forestGroup, gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs,
-  gladeGroup, habitatCtx, habitatEnvAt, handAnchor, heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost,
-  houseGroup, houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor, interiorFloors,
-  interiorGroup, interiorLamp, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt, lastNearMiss,
-  lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost, mapLocked, markHabitatDirty,
-  measureStowLen, mergeGeos, mgView, mist, mistGroup, mistLanterns, mistTree, museumGroup, nearBoat, nearBoatShop,
-  nearCafeBoard, nearCafeGuest, nearDoor, nearNPC, nearStation, nightLevel, noteSpecialExhibit, obstacles,
-  outdoorMesh, outdoorMeshes, outdoorTarget, paintGeo, pantryHas, pantryTake, pendingDish, pestTarget, petJob,
-  pickedDecor, pickedOutdoor, placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor, playerArms,
+  gladeGroup, habitatCells, habitatCtx, habitatEnvAt, handAnchor, heldGroup, heldToolMesh, houseCollider,
+  houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor,
+  interiorFloors, interiorGroup, interiorLamp, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt,
+  lastNearMiss, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost, mapLocked,
+  markHabitatDirty, measureStowLen, mergeGeos, mgView, mist, mistGroup, mistLanterns, mistTree, museumGroup,
+  nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest, nearDoor, nearNPC, nearStation, nightLevel, noteSpecialExhibit,
+  obstacles, outdoorMesh, outdoorMeshes, outdoorTarget, paintGeo, pantryHas, pantryTake, pendingDish, pestTarget,
+  petJob, pickedDecor, pickedOutdoor, placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor, playerArms,
   playerInYard, plots, pointer, poseHeldTool, priceOf, priceRate, questEvent, raycaster, rebuildInteriorFinish,
   refreshCollectQuests, refreshHeldTool, refreshInventoryUI, refreshStations, removeSolid, renderer, respawnPet,
   rewardText, riverActive, riverCourse, riverGroup, riverPool, rollDifficulty, roundRect, scene, seaBuoy,
