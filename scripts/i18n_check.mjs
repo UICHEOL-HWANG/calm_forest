@@ -125,6 +125,9 @@ const targets = [
   // 📦 game.js 에서 원문 그대로 옮겨 온 데이터 표(분리 1단계, 2026-09-24) — 주민·도감·상점 문구가 여기 있다
   ...readdirSync(join(ROOT, 'js/data')).filter(f => f.endsWith('.js')).sort()
     .map(f => [`js/data/${f}`, s => jsStrings(stripJsComments(s))]),
+  // 📦 game.js 에서 공간·시스템 단위로 옮긴 코드(분리 2단계, 2026-09-25~) — 게임 문구 절반이 여기 있다
+  ...readdirSync(join(ROOT, 'js/spaces')).filter(f => f.endsWith('.js')).sort()
+    .map(f => [`js/spaces/${f}`, s => jsStrings(stripJsComments(s))]),
 ];
 
 let totalMiss = 0, totalHit = 0;
