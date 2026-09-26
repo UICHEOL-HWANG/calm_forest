@@ -43,6 +43,22 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
 //    addEventListener(..., { signal }) 로 건 리스너는 abort() 한 번에 전부 떨어져
 //    나가므로, 다음 판이 새 버튼을 만들 때 옛 리스너가 남을 일이 없다.
 let pending = null;   // { controller } — 지금 클릭을 기다리는 판이 있으면 채워진다
+// 🎬 대결 한 판 전체의 그만두기 신호 — 클릭 대기(pending) 밖의 연출(✊·반응·도망)도 ESC·탭 전환에 바로 끊긴다.
+//    없으면 그만둬도 연출이 끝날 때까지 빈 화면이 1~2.5초 남는다(리뷰 2026-09-27).
+let session = null;
+
+/** 연출 대기를 감싼다 — 대결이 닫히면 즉시 'duel-closed' 로 reject */
+export function guard(promise) {
+  const signal = session?.signal;
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new Error('duel-closed'));
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(new Error('duel-closed'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(v => { signal.removeEventListener('abort', onAbort); resolve(v); },
+                 e => { signal.removeEventListener('abort', onAbort); reject(e); });
+  });
+}
 
 /** 지금 대기 중인 판이 있으면 'duel-closed' 로 reject 하고 리스너를 정리한다 */
 function cancelPending() {
@@ -64,6 +80,7 @@ function cancelableWait(ms, signal) {
 }
 
 export function openDuel() {
+  session = new AbortController();
   document.body.classList.add('duel-open');
   $('duel-layer').classList.add('show');
   const q = $('duel-quit');
@@ -81,6 +98,7 @@ export function closeDuel() {
   if (onKey) { window.removeEventListener('keydown', onKey); onKey = null; }
   if (onHide) { document.removeEventListener('visibilitychange', onHide); onHide = null; }
   cancelPending();
+  session?.abort(); session = null;
   document.body.classList.remove('duel-open');
   $('duel-layer').classList.remove('show');
   $('duel-hands').classList.add('hide');

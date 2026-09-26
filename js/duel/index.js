@@ -14,7 +14,8 @@ import { rollHand, judge, initMatch as rpsInit, applyRound as rpsRound } from '.
 import { SHELL_ROUNDS, makeSwaps, finalPos,
          initMatch as shellInit, applyRound as shellRound } from './shells.js';
 import { enterDuelStage, exitDuelStage, showThrow, clearThrow,
-         showBowls, swapBowls, hideBowls, zoomBowls, putCrop, openBowl } from './stage.js';
+         showBowls, swapBowls, hideBowls, zoomBowls, putCrop, openBowl,
+         roundZoom, pumpFists, reactRound, endMatch } from './stage.js';   // 🎬 연출(C안, 2026-09-27)
 import * as ui from './ui.js';
 
 // 🐗 가위바위보 2선승 — 비기면 판 번호를 올리지 않고 다시 낸다
@@ -24,6 +25,7 @@ async function playRps(onRound, handle, animal) {
     onRound(m.rounds + 1);
     ui.setRound(m.rounds + 1, 3);
     ui.setBanner(ui.COPY.askHand);
+    roundZoom(handle, true);                    // 🎥 판 시작 — 살짝 다가간다
     const t0 = Date.now();
     const mine = await ui.askHand();
     const rt = Date.now() - t0;                 // 고민한 시간 — 아주 짧으면 찍은 것이다
@@ -34,10 +36,13 @@ async function playRps(onRound, handle, animal) {
     //   낸 손까지 남겨야 "사람이 바위를 편중해서 내는가" 같은 것도 뒤에서 볼 수 있다.
     trackEvent('duel_round', { animal, game: 'rps', round: m.rounds + 1, result, rt, mine, theirs });
     logDuel({ animal, game: 'rps', round: m.rounds + 1, result, rt_ms: rt, mine, theirs });
+    await ui.guard(pumpFists(handle));          // ✊ 가위·바위·보! — 둘 다 주먹을 세 번 흔든 뒤 낸다(그만두면 즉시 끊김)
     showThrow(handle, ui.HAND_ICO[mine], ui.HAND_ICO[theirs]);   // 🖐️ 낸 손을 둘의 머리 위에 — 무대에서 승부가 보이게
-    await ui.showHands(mine, theirs, result);
+    const next = rpsRound(m, result);
+    await ui.guard(Promise.all([ui.showHands(mine, theirs, result), reactRound(handle, result, { final: next.done })]));
     clearThrow(handle);
-    m = rpsRound(m, result);
+    roundZoom(handle, false);
+    m = next;
   }
   return { ...m, draws };
 }
@@ -77,6 +82,7 @@ async function playShells(onRound, cropIco, animal, handle) {
     logDuel({ animal, game: 'shells', round: m.round + 1, result: ok ? 'win' : 'lose',
               rt_ms: rt, swaps: r.swaps, ms: r.ms, picked, answer, miss: off });
     m = shellRound(m, ok);
+    await ui.guard(reactRound(handle, ok ? 'win' : 'lose', { final: m.done }));   // 🎬 맞히면 너구리가 움찔, 틀리면 우리가
     if (m.done) break;
   }
   return m;
@@ -108,7 +114,12 @@ export function initDuel() {
         secs: Math.round((Date.now() - started) / 1000),
         recovered: won ? ctx.crops.length : 0,
       });
-      await new Promise(r => setTimeout(r, 1400));   // 결과를 읽을 틈
+      // 🎬 이기면 동물이 후다닥 도망, 지면 신나서 폴짝 — 결과는 위에서 이미 기록했다.
+      //   여기서 그만둬도 승부는 끝난 것이다 → 끊기면 연출만 건너뛰고 결과(won)는 그대로 돌려준다.
+      try {
+        await ui.guard(endMatch(handle, won));
+        await ui.guard(new Promise(r => setTimeout(r, 1400)));   // 결과를 읽을 틈
+      } catch { /* 결과 뒤 그만두기 — 승부는 유효 */ }
       return won;
     } catch (e) {
       // ⚠️ askHand/askShell 은 closeDuel() 로 끊기면 Error('duel-closed') 로 reject 한다.

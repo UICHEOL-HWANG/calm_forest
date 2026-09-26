@@ -1183,7 +1183,8 @@ function firstHint(key, ico, title, body) {
   // 🍳 미니게임(조리·조각) 무대 위에 모달을 띄우면 판을 통째로 덮어 버린다 —
   //   버프 안내는 요리를 끝내고 먹은 뒤에 오는데, 바로 "🍳 한 번 더" 로 다음 판을 시작하면
   //   800ms 뒤 도착한 안내가 새 판을 가렸다. 소진하지 말고 미룬다(announceMapOpens 와 같은 규칙).
-  if (mgView || ui.coachActive?.()) {
+  //   🐗🦝 밤손님 대결도 같다 — '밤손님이 다녀갔어요' 안내가 가위바위보를 덮었다(2026-09-26).
+  if (mgView || duelActive || ui.coachActive?.()) {
     if ((firstHintRetries[key] = (firstHintRetries[key] || 0) + 1) <= 20) setTimeout(() => firstHint(key, ico, title, body), 2500);
     return;
   }
