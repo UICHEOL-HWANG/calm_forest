@@ -12,6 +12,7 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { DEX } from '../data/dex.js';
+import { initNoteQueue, noteArrived, showIfIdle, beforeDuel } from '../duel/note-queue.js';
 import { makeRaidScar } from '../duel/raid-art.js';
 import { truceUntil } from '../duel/truce.js';
 import { ADV_CROPS } from '../farm-crops.js';
@@ -23,6 +24,17 @@ import * as THREE from 'three';
 //   ⚠️ 이 플래그가 없으면 updateCamera 가 **매 프레임 카메라를 되돌려** 클로즈업이 안 걸린다
 //      (🍳 요리가 mgView 로 막는 것과 같은 자리). 무대만 만들고 이걸 빠뜨려 한 번 겪었다.
 export let duelActive = false;
+
+// 📜 주민 쪽지 — 대결을 덮지 않게 순서는 js/duel/note-queue.js 가 정한다(쪽지 → 대결, 대결 중 도착은 끝난 뒤로)
+let noteQ = initNoteQueue();
+function showNote(n, onClose) {
+  ui.showHintModal?.({ ico: '📜', title: n.author || '주민 쪽지', body: n.text, ok: onClose ? { onClick: onClose } : undefined });
+}
+function showNoteIfIdle() {
+  const r = showIfIdle(noteQ, { duelActive });
+  noteQ = r.state;
+  if (r.show) showNote(r.show);
+}
 
 export const NIGHT_ANIMAL = {
   raccoon: { ico: '🦝', name: '너구리' },
@@ -93,6 +105,13 @@ export async function maybeDuel(t) {
   const st = gameState.night, today = todayStr();
   if (st.duelDate !== today) { st.duelDate = today; st.duelDone = []; }   // 날이 바뀌면 비운다
   if (st.duelDone.includes(t.animal)) return;            // 오늘 이 동물과는 이미 붙었다
+  // 📜 안 본 쪽지가 있으면 먼저 — 닫아야 대결이 열린다(가위바위보 한가운데 쪽지가 뜨던 문제, 2026-09-26).
+  //   duelDone 을 적고 저장하기 **전에** 기다린다 — 쪽지가 떠 있는 동안 창을 닫아도 "오늘 붙었다"가 남지 않게.
+  //   안내 창이 없으면(연결 전) 기다리지 않는다 — 콜백이 영영 안 불려 대결이 멈추면 안 된다.
+  const pre = beforeDuel(noteQ);
+  noteQ = pre.state;
+  if (pre.show && ui.showHintModal) await new Promise(res => showNote(pre.show, res));
+  if (st.duelDone.includes(t.animal)) return;            // 쪽지를 읽는 사이 같은 동물 흔적을 또 조사해 먼저 열렸다
   st.duelDone = [...st.duelDone, t.animal];
   // 그 동물이 오늘 가져간 작물 전부 — 방금 조사한 것 + 아직 조사 안 한 흔적
   const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
@@ -127,7 +146,7 @@ export async function maybeDuel(t) {
   duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player, keep: duelKeep() } })
     .then(won => { if (won) winDuel(t.animal, crops); requestSave(); })
     .catch(e => console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e))
-    .finally(() => { duelActive = false; });
+    .finally(() => { duelActive = false; setTimeout(showNoteIfIdle, 800); });   // 대결 중 도착한 쪽지는 이제
 }
 
 // 🥊 일대일 무대에 남길 것 — 땅과 밭(흙·작물)만. 나머지(주민·건물·나무·이름표·밭 배지)는
@@ -221,7 +240,7 @@ export async function resolveNightVisit() {
   if (nightNoteFetcher) {
     const firstCrop = cands[(v.stolenIdx || [])[0]]?.p?.cropType?.id || '';
     nightNoteFetcher({ date: today, animal: v.animal, crop: firstCrop })
-      .then(n => { if (n?.text) setTimeout(() => ui.showHintModal?.({ ico: '📜', title: n.author || '주민 쪽지', body: n.text }), 4600); })
+      .then(n => { noteQ = noteArrived(noteQ, n); setTimeout(showNoteIfIdle, 4600); })   // 대결 중이면 끝난 뒤로 미룬다
       .catch(() => {});
   }
   requestSave();
