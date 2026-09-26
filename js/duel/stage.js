@@ -13,6 +13,7 @@
 
 import { makeBoar, makeRaccoon, DUEL_ART_H } from './art.js';
 import { makeRaidScar } from './raid-art.js';
+import { nearIndices } from './clearance.js';
 import { idle, hop, recoil, pump, pop, zoomPunch, flee, shake, decayTrauma, ZOOM_IN } from './motion.js';
 
 const ART_FN = { boar: makeBoar, raccoon: makeRaccoon };
@@ -121,6 +122,8 @@ export function enterDuelStage(stage, { animal, x, z }) {
   const handle = { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, throws: [],
            mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null,
            bowlMid: { x: midX + dirX * 0.5, z: midZ + dirZ * 0.5 } };
+  handle.feet = { meshes: stage.crops || [], points: [player.position.clone(), animalMesh.position.clone()] };
+  handle.clearedCrops = clearFeet(THREE, handle.feet.meshes, handle.feet.points);
   startMotion(handle, { dirX, dirZ });
   return handle;
   // ⚠️ 0.9 는 동물 발치까지 밀려 그릇을 깔고 앉은 꼴이었다(실측). 0.5 면 밭(반폭 1)을
@@ -146,7 +149,7 @@ function startMotion(handle, { dirX, dirZ }) {
   const { THREE, camera, player, animalMesh, mid } = handle;
   handle.cam = { pos: camera.position.clone(), quat: camera.quaternion.clone(), aim: new THREE.Vector3(mid.x, CAM_AIM_Y, mid.z) };
   handle.fx = {
-    t: 0, last: performance.now(), trauma: 0, zoom: 1, zoomTarget: 1, punch: null, slowUntil: 0, raf: 0, fists: [],
+    t: 0, frame: 0, last: performance.now(), trauma: 0, zoom: 1, zoomTarget: 1, punch: null, slowUntil: 0, raf: 0, fists: [],
     // 📱 세로 화면(k>1)에선 줌을 안 쓴다 — 6% 만 당겨도 375×812 에서 멧돼지 엉덩이가 잘렸다(실측 2026-09-27,
     //    CAM_DIST 주석의 회귀와 같은 것). 대신 결정타 흔들림을 조금 더 준다.
     zoomOK: handle.k <= 1.05,
@@ -159,6 +162,7 @@ function startMotion(handle, { dirX, dirZ }) {
     const dt = now < fx.slowUntil ? real * 0.35 : real;    // 결정타 — 잠깐 느리게
     fx.t += dt;
     for (const a of Object.values(fx.actors)) applyActor(a, fx.t, dt);
+    if (++fx.frame % 6 === 0) keepFeetClear(handle);        // 🌱 밭 동기화가 행렬을 다시 쓰면 발밑 작물이 되살아난다 — 다시 비운다
     for (const sp of handle.throws) {                        // 🖐️ 낸 손이 톡 튀어나온다
       sp.userData.t = (sp.userData.t || 0) + dt;
       sp.scale.setScalar(0.62 * pop(sp.userData.t / 0.35));
@@ -267,6 +271,56 @@ export async function endMatch(handle, won) {
   else { await play(handle, 'animal', 'hop', 420); await play(handle, 'animal', 'hop', 420); }
 }
 
+// 🌱 발밑 작물 비우기 — 밭이 꽉 차 있으면 곰·동물이 흔적 옆 칸 위에 서서 작물이 몸을 뚫고 나왔다(제보 2026-09-27).
+//   작물은 종류별 InstancedMesh 라 메시를 끄면 밭 전체가 사라진다 → 반경 안 인스턴스만 크기 0 으로.
+//   흙(farmSoilMesh)은 넘겨받지 않는다 — 바닥은 몸을 뚫지 않고, 지우면 구멍이 난다.
+const _ZERO = { m: null };
+function clearFeet(THREE, meshes, points) {
+  const saved = [];
+  const M = new THREE.Matrix4(), P = new THREE.Vector3();
+  _ZERO.m = _ZERO.m || new THREE.Matrix4().makeScale(0, 0, 0);
+  for (const mesh of meshes) {
+    if (!mesh?.isInstancedMesh) continue;
+    mesh.updateMatrixWorld(true);
+    const pos = [];
+    for (let i = 0; i < mesh.count; i++) {                // 인스턴스 좌표는 메시 기준 — farmGroup 오프셋까지 월드로 푼다
+      mesh.getMatrixAt(i, M); P.setFromMatrixPosition(M.premultiply(mesh.matrixWorld)); pos.push({ x: P.x, z: P.z });
+    }
+    for (const i of nearIndices(pos, points)) {
+      const orig = new THREE.Matrix4(); mesh.getMatrixAt(i, orig);
+      saved.push({ mesh, i, orig });
+      mesh.setMatrixAt(i, _ZERO.m);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+  return saved;
+}
+
+// 밭 동기화(syncFarmCrops)는 밭 상태가 바뀌면 인스턴스 행렬을 통째로 다시 쓴다 — 흔적 조사 직후 한 번,
+//   대결 중 작물이 자라면 또. 그러면 숨긴 칸이 되살아나고 인덱스도 바뀔 수 있다 → 되살아난 게 보이면 처음부터 다시 비운다.
+//   (헤드리스 실측: 프레임이 느리면 조사 뒤 동기화가 무대가 열린 **뒤에** 와서 숨김이 통째로 풀렸다)
+function keepFeetClear(handle) {
+  const saved = handle.clearedCrops, feet = handle.feet;
+  if (!feet?.meshes.length) return;
+  const M = new handle.THREE.Matrix4();
+  const revived = !saved || saved.some(({ mesh, i }) => i >= mesh.count || (mesh.getMatrixAt(i, M), !M.equals(_ZERO.m)));
+  if (revived) handle.clearedCrops = clearFeet(handle.THREE, feet.meshes, feet.points);
+}
+
+// 되돌리기 — 대결 중에 작물이 자라 밭 동기화가 행렬을 새로 썼으면 그 칸은 이미 맞는 값이다. 우리가 0 으로 둔 칸만 되돌린다.
+function restoreFeet(handle) {
+  const saved = handle?.clearedCrops; if (!saved?.length) return;
+  const M = new handle.THREE.Matrix4();
+  const touched = new Set();
+  for (const { mesh, i, orig } of saved) {
+    if (i >= mesh.count) continue;
+    mesh.getMatrixAt(i, M);
+    if (M.equals(_ZERO.m)) { mesh.setMatrixAt(i, orig); touched.add(mesh); }
+  }
+  for (const m of touched) m.instanceMatrix.needsUpdate = true;
+  handle.clearedCrops = null;
+}
+
 /** exitDuelStage(handle) — 카메라와 가려둔 오브젝트를 전부 되돌린다 */
 /** 하위 메시의 geometry·material 을 전부 버린다 — 판마다 새로 만들므로 안 버리면 쌓인다 */
 function disposeTree(obj) {
@@ -280,6 +334,7 @@ function disposeTree(obj) {
 export function exitDuelStage(handle) {
   if (!handle) return;
   stopMotion(handle);                                  // 🎬 연출 루프를 먼저 멈춘다 — 안 멈추면 되돌린 카메라를 다음 프레임에 다시 덮어쓴다
+  restoreFeet(handle);
   hideBowls(handle);                                   // 중단해도 그릇·작물이 씬에 남지 않게
   const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook } = handle;
   clearThrow(handle);
