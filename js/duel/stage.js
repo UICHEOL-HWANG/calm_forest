@@ -13,6 +13,8 @@
 
 import { makeBoar, makeRaccoon, DUEL_ART_H } from './art.js';
 import { makeRaidScar } from './raid-art.js';
+import { nearIndices } from './clearance.js';
+import { idle, hop, recoil, pump, pop, zoomPunch, flee, shake, decayTrauma, ZOOM_IN } from './motion.js';
 
 const ART_FN = { boar: makeBoar, raccoon: makeRaccoon };
 
@@ -117,11 +119,206 @@ export function enterDuelStage(stage, { animal, x, z }) {
   scar.position.set(x, 0, z);
   scene.add(scar);
 
-  return { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, throws: [],
+  const handle = { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, throws: [],
            mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null,
            bowlMid: { x: midX + dirX * 0.5, z: midZ + dirZ * 0.5 } };
+  handle.feet = { meshes: stage.crops || [], points: [player.position.clone(), animalMesh.position.clone()] };
+  handle.clearedCrops = clearFeet(THREE, handle.feet.meshes, handle.feet.points);
+  startMotion(handle, { dirX, dirZ });
+  return handle;
   // ⚠️ 0.9 는 동물 발치까지 밀려 그릇을 깔고 앉은 꼴이었다(실측). 0.5 면 밭(반폭 1)을
   //    갓 벗어나면서 동물과도 떨어진다.
+}
+
+
+// ═══════════ 🎬 연출 루프 — 무대가 떠 있는 동안만 돈다(C안, 2026-09-27) ═══════════
+//   사용자: "대결 때 화면이 아예 멈춰 있어 어색하다". game.js 메인 루프는 duelActive 동안
+//   플레이어·카메라 갱신을 건너뛰므로(game.js 의 `!duelActive` 가드) 무대가 스스로 돌린다.
+//   ▶ 카메라는 **기준 자세(handle.cam) + 줌·흔들림**을 매 프레임 합성한다. 그릇 줌(zoomBowls)도
+//     카메라가 아니라 기준 자세를 움직인다 — 둘이 카메라를 따로 쓰면 서로 덮어쓴다.
+//   ▶ 곡선·크기 상한은 motion.js(테스트 있음). 여기는 그걸 무대 오브젝트에 입히기만 한다.
+const ACT_MS = { hop: 520, recoil: 560, pump: 900, tilt: 520, flee: 1500 };
+
+function actorOf(obj, phase, away) {
+  return { obj, phase, away, act: null, hidden: false,
+           base: { x: obj.position.x, y: obj.position.y, z: obj.position.z, ry: obj.rotation.y, rz: obj.rotation.z,
+                   sx: obj.scale.x, sy: obj.scale.y, sz: obj.scale.z } };
+}
+
+function startMotion(handle, { dirX, dirZ }) {
+  const { THREE, camera, player, animalMesh, mid } = handle;
+  handle.cam = { pos: camera.position.clone(), quat: camera.quaternion.clone(), aim: new THREE.Vector3(mid.x, CAM_AIM_Y, mid.z) };
+  handle.fx = {
+    t: 0, frame: 0, last: performance.now(), trauma: 0, zoom: 1, zoomTarget: 1, punch: null, slowUntil: 0, raf: 0, fists: [],
+    // 📱 세로 화면(k>1)에선 줌을 안 쓴다 — 6% 만 당겨도 375×812 에서 멧돼지 엉덩이가 잘렸다(실측 2026-09-27,
+    //    CAM_DIST 주석의 회귀와 같은 것). 대신 결정타 흔들림을 조금 더 준다.
+    zoomOK: handle.k <= 1.05,
+    actors: { player: actorOf(player, 0, { x: -dirX, z: -dirZ }), animal: actorOf(animalMesh, 0.5, { x: dirX, z: dirZ }) },
+  };
+  const step = (now) => {
+    const fx = handle.fx; if (!fx) return;
+    // 실제 시간으로 흐른다 — 0.05 로 자르면 느린 폰(20fps 미만)에서 ✊ 박자가 늘어진다. 탭 복귀 같은 긴 공백만 자른다
+    const real = Math.min(0.25, (now - fx.last) / 1000); fx.last = now;
+    const dt = now < fx.slowUntil ? real * 0.35 : real;    // 결정타 — 잠깐 느리게
+    fx.t += dt;
+    for (const a of Object.values(fx.actors)) applyActor(a, fx.t, dt);
+    if (++fx.frame % 6 === 0) keepFeetClear(handle);        // 🌱 밭 동기화가 행렬을 다시 쓰면 발밑 작물이 되살아난다 — 다시 비운다
+    for (const sp of handle.throws) {                        // 🖐️ 낸 손이 톡 튀어나온다
+      sp.userData.t = (sp.userData.t || 0) + dt;
+      sp.scale.setScalar(0.62 * pop(sp.userData.t / 0.35));
+    }
+    fx.trauma = decayTrauma(fx.trauma, real);
+    fx.zoom += (fx.zoomTarget - fx.zoom) * Math.min(1, real * 4);
+    let k = fx.zoom;
+    if (fx.punch) { const u = (now - fx.punch) / 700; if (u >= 1) fx.punch = null; else k *= zoomPunch(u); }
+    applyCamera(handle, k, shake(fx.trauma, fx.t));
+    fx.raf = requestAnimationFrame(step);
+  };
+  handle.fx.raf = requestAnimationFrame(step);
+}
+
+function applyActor(a, t, dt) {
+  const { obj, base } = a;
+  if (a.hidden) return;
+  const i = idle(t, a.phase);
+  let dy = i.dy, sy = i.sy, sx = i.sx, push = 0, turn = 0, tilt = 0;
+  const act = a.act;
+  if (act) {
+    act.t += dt * 1000;
+    const u = Math.min(1, act.t / act.ms);
+    if (act.kind === 'hop') { const h = hop(u); dy += h.dy; sy *= h.sy; sx *= 2 - h.sy; }
+    else if (act.kind === 'recoil') { push = recoil(u); tilt = -push * 0.6; }
+    else if (act.kind === 'pump') dy += pump(u) * 0.5;
+    else if (act.kind === 'tilt') tilt = Math.sin(u * Math.PI * 2) * 0.12;
+    else if (act.kind === 'flee') { const f = flee(u); turn = f.turn; push = f.dist; dy += f.dy; if (u >= 1) { a.hidden = true; obj.visible = false; } }
+    if (u >= 1) { a.act = null; act.done(); }
+  }
+  obj.position.set(base.x + a.away.x * push, base.y + dy, base.z + a.away.z * push);
+  obj.rotation.y = base.ry + turn;
+  obj.rotation.z = base.rz + tilt;
+  obj.scale.set(base.sx * sx, base.sy * sy, base.sz * sx);
+}
+
+function applyCamera(handle, k, sh) {
+  const { camera, cam } = handle;
+  const v = cam.scratch || (cam.scratch = { d: new handle.THREE.Vector3(), r: new handle.THREE.Vector3(), u: new handle.THREE.Vector3() });
+  camera.quaternion.copy(cam.quat);
+  camera.position.copy(cam.aim).addScaledVector(v.d.copy(cam.pos).sub(cam.aim), k);
+  // 흔들림은 화면 기준 좌우·위아래로 — 카메라 방향은 그대로 두고 자리만 턴다
+  v.r.set(1, 0, 0).applyQuaternion(cam.quat);
+  v.u.set(0, 1, 0).applyQuaternion(cam.quat);
+  camera.position.addScaledVector(v.r, sh.x).addScaledVector(v.u, sh.y);
+}
+
+function stopMotion(handle) {
+  const fx = handle?.fx; if (!fx) return;
+  cancelAnimationFrame(fx.raf);
+  for (const sp of fx.fists) { handle.scene.remove(sp); sp.material.map?.dispose(); sp.material.dispose(); }
+  for (const a of Object.values(fx.actors)) {           // 자세를 원래대로(위치는 exitDuelStage 가 되돌린다)
+    a.act?.done();
+    const { obj, base } = a;
+    obj.position.y = base.y; obj.rotation.z = base.rz; obj.scale.set(base.sx, base.sy, base.sz); obj.visible = true;
+  }
+  handle.fx = null;
+}
+
+const play = (handle, who, kind, ms = ACT_MS[kind]) => new Promise(res => {
+  const a = handle?.fx?.actors[who]; if (!a || a.hidden) return res();
+  a.act?.done();
+  a.act = { kind, ms, t: 0, done: res };
+});
+
+/** 🎥 판 시작 — 살짝 줌인(on) / 원래 거리(off). 그릇 게임은 그릇 줌이 따로 있어 쓰지 않는다 */
+export function roundZoom(handle, on) {
+  if (handle?.fx) handle.fx.zoomTarget = on && handle.fx.zoomOK ? ZOOM_IN : 1;
+}
+
+/** ✊ 가위·바위·보! — 둘 다 머리 위 주먹을 세 번 흔든다 */
+export async function pumpFists(handle) {
+  const fx = handle?.fx; if (!fx) return;
+  const { THREE, scene, player, animalMesh } = handle;
+  const fists = [[player, 2.05], [animalMesh, 1.25]].map(([o, up]) => {
+    const sp = handSprite(THREE, '✊'); sp.userData.o = o; sp.userData.up = up; scene.add(sp); fx.fists.push(sp); return sp;
+  });
+  const t0 = performance.now();
+  const follow = () => {
+    const u = Math.min(1, (performance.now() - t0) / ACT_MS.pump);
+    for (const sp of fists) sp.position.set(sp.userData.o.position.x, sp.userData.up + pump(u), sp.userData.o.position.z);
+    if (u < 1 && handle.fx) requestAnimationFrame(follow);
+  };
+  follow();
+  await Promise.all([play(handle, 'player', 'pump'), play(handle, 'animal', 'pump')]);
+  if (!handle.fx) return;                               // 그만두기로 이미 stopMotion 이 치웠다
+  for (const sp of fists) { scene.remove(sp); sp.material.map?.dispose(); sp.material.dispose(); }
+  handle.fx.fists = handle.fx.fists.filter(f => !fists.includes(f));
+}
+
+/** 판 결과 — 이긴 쪽 폴짝, 진 쪽 움찔 + 화면 흔들림. final 이면 줌 펀치 + 잠깐 느리게 */
+export async function reactRound(handle, result, { final = false } = {}) {
+  const fx = handle?.fx; if (!fx) return;
+  if (result === 'draw') { await Promise.all([play(handle, 'player', 'tilt'), play(handle, 'animal', 'tilt')]); return; }
+  const [winner, loser] = result === 'win' ? ['player', 'animal'] : ['animal', 'player'];
+  fx.trauma = Math.max(fx.trauma, final ? (fx.zoomOK ? 0.85 : 1) : 0.55);
+  if (final) { if (fx.zoomOK) fx.punch = performance.now(); fx.slowUntil = performance.now() + 500; }
+  await Promise.all([play(handle, winner, 'hop'), play(handle, loser, 'recoil')]);
+}
+
+/** 승부 끝 — 이기면 동물이 뒤돌아 후다닥 도망, 지면 동물이 신나서 두 번 폴짝 */
+export async function endMatch(handle, won) {
+  if (!handle?.fx) return;
+  roundZoom(handle, false);
+  if (won) await Promise.all([play(handle, 'animal', 'flee'), play(handle, 'player', 'hop')]);
+  else { await play(handle, 'animal', 'hop', 420); await play(handle, 'animal', 'hop', 420); }
+}
+
+// 🌱 발밑 작물 비우기 — 밭이 꽉 차 있으면 곰·동물이 흔적 옆 칸 위에 서서 작물이 몸을 뚫고 나왔다(제보 2026-09-27).
+//   작물은 종류별 InstancedMesh 라 메시를 끄면 밭 전체가 사라진다 → 반경 안 인스턴스만 크기 0 으로.
+//   흙(farmSoilMesh)은 넘겨받지 않는다 — 바닥은 몸을 뚫지 않고, 지우면 구멍이 난다.
+const _ZERO = { m: null };
+function clearFeet(THREE, meshes, points) {
+  const saved = [];
+  const M = new THREE.Matrix4(), P = new THREE.Vector3();
+  _ZERO.m = _ZERO.m || new THREE.Matrix4().makeScale(0, 0, 0);
+  for (const mesh of meshes) {
+    if (!mesh?.isInstancedMesh) continue;
+    mesh.updateMatrixWorld(true);
+    const pos = [];
+    for (let i = 0; i < mesh.count; i++) {                // 인스턴스 좌표는 메시 기준 — farmGroup 오프셋까지 월드로 푼다
+      mesh.getMatrixAt(i, M); P.setFromMatrixPosition(M.premultiply(mesh.matrixWorld)); pos.push({ x: P.x, z: P.z });
+    }
+    for (const i of nearIndices(pos, points)) {
+      const orig = new THREE.Matrix4(); mesh.getMatrixAt(i, orig);
+      saved.push({ mesh, i, orig });
+      mesh.setMatrixAt(i, _ZERO.m);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+  return saved;
+}
+
+// 밭 동기화(syncFarmCrops)는 밭 상태가 바뀌면 인스턴스 행렬을 통째로 다시 쓴다 — 흔적 조사 직후 한 번,
+//   대결 중 작물이 자라면 또. 그러면 숨긴 칸이 되살아나고 인덱스도 바뀔 수 있다 → 되살아난 게 보이면 처음부터 다시 비운다.
+//   (헤드리스 실측: 프레임이 느리면 조사 뒤 동기화가 무대가 열린 **뒤에** 와서 숨김이 통째로 풀렸다)
+function keepFeetClear(handle) {
+  const saved = handle.clearedCrops, feet = handle.feet;
+  if (!feet?.meshes.length) return;
+  const M = new handle.THREE.Matrix4();
+  const revived = !saved || saved.some(({ mesh, i }) => i >= mesh.count || (mesh.getMatrixAt(i, M), !M.equals(_ZERO.m)));
+  if (revived) handle.clearedCrops = clearFeet(handle.THREE, feet.meshes, feet.points);
+}
+
+// 되돌리기 — 대결 중에 작물이 자라 밭 동기화가 행렬을 새로 썼으면 그 칸은 이미 맞는 값이다. 우리가 0 으로 둔 칸만 되돌린다.
+function restoreFeet(handle) {
+  const saved = handle?.clearedCrops; if (!saved?.length) return;
+  const M = new handle.THREE.Matrix4();
+  const touched = new Set();
+  for (const { mesh, i, orig } of saved) {
+    if (i >= mesh.count) continue;
+    mesh.getMatrixAt(i, M);
+    if (M.equals(_ZERO.m)) { mesh.setMatrixAt(i, orig); touched.add(mesh); }
+  }
+  for (const m of touched) m.instanceMatrix.needsUpdate = true;
+  handle.clearedCrops = null;
 }
 
 /** exitDuelStage(handle) — 카메라와 가려둔 오브젝트를 전부 되돌린다 */
@@ -136,6 +333,8 @@ function disposeTree(obj) {
 
 export function exitDuelStage(handle) {
   if (!handle) return;
+  stopMotion(handle);                                  // 🎬 연출 루프를 먼저 멈춘다 — 안 멈추면 되돌린 카메라를 다음 프레임에 다시 덮어쓴다
+  restoreFeet(handle);
   hideBowls(handle);                                   // 중단해도 그릇·작물이 씬에 남지 않게
   const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook } = handle;
   clearThrow(handle);
@@ -150,7 +349,7 @@ export function exitDuelStage(handle) {
   player.rotation.y = savedPlayerRotY;
 }
 
-/** updateDuelStage(handle, dt) — 지금은 정적 구도라 비워 둔다(호출 안 해도 무방). */
+/** updateDuelStage(handle, dt) — 연출은 무대가 스스로 돌린다(startMotion). 옛 호출 자리 호환용으로만 남긴다. */
 export function updateDuelStage(_handle, _dt) {}
 
 /** 나무이거나(spawnTree 의 userData) 야외 장식(placeOutdoor 가 붙이는 userData.rec) 인가 */
@@ -360,7 +559,9 @@ export function hideBowls(handle) {
 export function zoomBowls(handle, inward, ms = 520) {
   if (!handle) return Promise.resolve();
   const { camera, mid, perp, k } = handle;
-  const from = { p: camera.position.clone(), q: camera.quaternion.clone() };
+  // 🎬 연출 루프가 있으면 카메라가 아니라 기준 자세(handle.cam)를 움직인다 — 루프가 매 프레임 합성한다
+  const cam = handle.cam;
+  const from = cam ? { p: cam.pos.clone(), q: cam.quat.clone(), a: cam.aim.clone() } : { p: camera.position.clone(), q: camera.quaternion.clone() };
   // 목표 구도 — 들어갈 땐 낮고 가깝게(그릇이 화면을 채운다), 나올 땐 원래 1:1 구도
   const t = camera.clone();
   if (inward) {
@@ -369,14 +570,16 @@ export function zoomBowls(handle, inward, ms = 520) {
     t.lookAt(b.x, 0.12, b.z);
   }
   else { t.position.set(mid.x + perp.x * CAM_DIST * k, CAM_HEIGHT * k, mid.z + perp.z * CAM_DIST * k); t.lookAt(mid.x, CAM_AIM_Y, mid.z); }
-  const to = { p: t.position.clone(), q: t.quaternion.clone() };
+  const b0 = handle.bowlMid;
+  const to = { p: t.position.clone(), q: t.quaternion.clone(),
+               a: inward ? new handle.THREE.Vector3(b0.x, 0.12, b0.z) : new handle.THREE.Vector3(mid.x, CAM_AIM_Y, mid.z) };
   const t0 = performance.now();
   return new Promise(res => {
     const step = () => {
       const u = Math.min(1, (performance.now() - t0) / ms);
       const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;   // ease-in-out
-      camera.position.lerpVectors(from.p, to.p, e);
-      camera.quaternion.slerpQuaternions(from.q, to.q, e);
+      if (cam) { cam.pos.lerpVectors(from.p, to.p, e); cam.quat.slerpQuaternions(from.q, to.q, e); cam.aim.lerpVectors(from.a, to.a, e); }
+      else { camera.position.lerpVectors(from.p, to.p, e); camera.quaternion.slerpQuaternions(from.q, to.q, e); }
       if (u < 1) requestAnimationFrame(step); else res();
     };
     step();
