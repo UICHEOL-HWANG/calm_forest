@@ -194,6 +194,9 @@ import {
 import {
   craftCover, refreshCovers, resolveWeatherEvent, weatherPrepView,
 } from './spaces/weather.js';   // 📦 🌡️ 날씨 이벤트 — 서리·태풍 예고를 보고 하루 안에 대비하는 재방문 훅
+import {
+  tryChop, tryFish, updateFishing,
+} from './spaces/fishing.js';   // 📦 낚시: 호수 물가에서 던지기 → 물면 낚아채기(반응 미니게임)
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _seaPrevTool() { return _seaPrevTool; }, set _seaPrevTool(v) { _seaPrevTool = v; },
@@ -206,6 +209,10 @@ export const $w = {
   get atOrchard() { return atOrchard; }, set atOrchard(v) { atOrchard = v; },
   get atRiver() { return atRiver; }, set atRiver(v) { atRiver = v; },
   get atSea() { return atSea; }, set atSea(v) { atSea = v; },
+  get baitActive() { return baitActive; }, set baitActive(v) { baitActive = v; },
+  get biteAt() { return biteAt; }, set biteAt(v) { biteAt = v; },
+  get biteEnd() { return biteEnd; }, set biteEnd(v) { biteEnd = v; },
+  get bobber() { return bobber; }, set bobber(v) { bobber = v; },
   get bugRespawnAt() { return bugRespawnAt; }, set bugRespawnAt(v) { bugRespawnAt = v; },
   get cafeGuestCache() { return cafeGuestCache; }, set cafeGuestCache(v) { cafeGuestCache = v; },
   get cafeInGroup() { return cafeInGroup; }, set cafeInGroup(v) { cafeInGroup = v; },
@@ -217,6 +224,8 @@ export const $w = {
   get decorTarget() { return decorTarget; }, set decorTarget(v) { decorTarget = v; },
   get dockGroup() { return dockGroup; }, set dockGroup(v) { dockGroup = v; },
   get farmGroup() { return farmGroup; }, set farmGroup(v) { farmGroup = v; },
+  get fishDiff() { return fishDiff; }, set fishDiff(v) { fishDiff = v; },
+  get fishState() { return fishState; }, set fishState(v) { fishState = v; },
   get forestGroup() { return forestGroup; }, set forestGroup(v) { forestGroup = v; },
   get ghostOutdoor() { return ghostOutdoor; }, set ghostOutdoor(v) { ghostOutdoor = v; },
   get gladeGroup() { return gladeGroup; }, set gladeGroup(v) { gladeGroup = v; },
@@ -6107,130 +6116,9 @@ function handleAction() {
 // =============================================================
 //  낚시: 호수 물가에서 던지기 → 물면 낚아채기(반응 미니게임)
 // =============================================================
-function tryFish() {
-  if (fishState === 'bite') { catchFish(); return; }        // 지금! 낚아채기
-  if (fishState === 'wait') { resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
-  // idle → 캐스팅. 물가 근처여야 함
-  const distLake = dist2D(LAKE, player.position);
-  if (distLake > LAKE_R + 2.8) {
-    // 🛶 나루터 연못은 호수와 생김새가 같아 낚시터로 오해한다(베타) — "여긴 아니다"를 분명히
-    if (dist2D(DOCK_POND, player.position) < DOCK_POND_R + 3) ui.toast?.('🛶 나루터 연못에선 낚시가 안 돼요 — 🎣 낚시는 마을 호수에서', 2600);
-    else ui.toast?.('🎣 낚시는 마을 호수 물가에서만 할 수 있어요', 2200);
-    return;
-  }
-  const dir = _v.set(LAKE.x - player.position.x, 0, LAKE.z - player.position.z).normalize();
-  castPos.set(player.position.x + dir.x * 2.6, 0.35, player.position.z + dir.z * 2.6);
-  // 물 위로 클램프
-  const dc = Math.hypot(castPos.x - LAKE.x, castPos.z - LAKE.z);
-  if (dc > LAKE_R - 0.4) { const k = (LAKE_R - 0.6) / dc; castPos.set(LAKE.x + (castPos.x - LAKE.x) * k, 0.35, LAKE.z + (castPos.z - LAKE.z) * k); }
-  if (!bobber) buildBobber();
-  bobber.position.copy(castPos); bobber.visible = true;
-  doPlayerAction(castPos.x, castPos.z); // 낚싯대 던지기 제스처
-  fishDiff = rollDifficulty('fish');   // 🎚️ 이번 캐스트의 입질 여유 — probe 팔 × 유저 DDA
-  fishState = 'wait'; biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
-  Sound.water(); spawnWater(castPos.x, castPos.z);
-  if ((gameState.inventory.bait || 0) > 0) {                     // 🪱 미끼 — 캐스트마다 1개 자동 소모
-    gameState.inventory.bait -= 1; baitActive = true; refreshInventoryUI();
-    trackEvent('use_bait', { left: gameState.inventory.bait });   // [GA4] 소모품 사용
-    ui.setFishPrompt?.(`🎣 던졌어요… 물 때까지 기다려요 · 🪱 미끼 (남은 ${gameState.inventory.bait}회)`);
-  } else {
-    ui.setFishPrompt?.('🎣 던졌어요… 물 때까지 기다려요');
-  }
-  trackEvent('fishing_cast'); // [GA4]
-}
 
-function catchFish() {
-  // 🐟 🌈무지개 물고기는 🌧️비 오는 날에만(게이트 안에서 22%). 표는 js/dex-gates.js
-  //   ⚠️ 생선구이 버프(luck)·비·미끼의 "두 번 굴려 작은 값" 보정은 **유지**한다.
-  //      게이트가 후보를 먼저 제한하고, 보정은 남은 후보 안에서 앞쪽(희귀)을 밀어준다.
-  const fishRnd = (buffOn('luck') || RAIN_DAY || baitActive)
-    ? () => Math.min(Math.random(), Math.random())
-    : Math.random;
-  const kind = rollKind(FISH_KINDS, 'fish', situation(), fishRnd);
-  doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
-  gameState.inventory.fish += 1; refreshInventoryUI();
-  // 🎣 무엇을 낚았는지는 캐치 배너로(월드 플로트 텍스트는 밀착 줌에서 화면을 덮었다 — 베타 피드백).
-  //    서브 문구는 📖도감 토스트와 겹치지 않게 '희소성'만 말한다(둘이 동시에 뜬다).
-  ui.catchBanner?.(`🐟 ${kind.name} +1`,
-    kind.rarity === 'rare' ? '✨ 아주 귀한 물고기예요!'
-    : kind.rarity === 'uncommon' ? '💫 조금 귀한 물고기예요'
-    : '가방에 담았어요. 상점에서 팔 수 있어요');
-  if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
-  Sound.harvest();
-  questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
-  dexDiscover('fish', kind.rarity);                                     // 📖 도감(어종 첫 발견)
-  noteSpecialExhibit('fish', kind.rarity);                              // 🏛️ ✨비 오는 날이면 특별 전시
-  trackGateBlocked('fish', 'rare');       // [GA4] 📖 게이트가 닫혀 못 얻은 날
-  ui.act?.('fish');                                                     // 튜토리얼: 낚시
-  catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
-  showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
-  tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : kind.rarity === 'uncommon' ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
-  settleDifficulty('fish', 1);   // 🎚️ 성공 → DDA 가 조금 어려워진다
-  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity, rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) }); // [GA4] 🎚️ 난이도 동봉
-  resetFishing();
-}
-
-function resetFishing() {
-  fishState = 'idle'; baitActive = false; if (bobber) bobber.visible = false; ui.setFishPrompt?.(null);
-}
-
-function buildBobber() {
-  bobber = new THREE.Group();
-  const top = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), clayMat(0xff7b7b, false)); top.position.y = 0.08; bobber.add(top);
-  const bot = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), clayMat(0xffffff, false)); bot.position.y = -0.05; bobber.add(bot);
-  bobber.visible = false; scene.add(bobber);
-}
-
-function updateFishing() {
-  if (fishState === 'idle') return;
-  if (TOOLS[currentTool].id !== 'rod' || indoor) { resetFishing(); return; } // 도구 바꾸면 취소
-  const now = clock.elapsedTime;
-  if (fishState === 'wait') {
-    bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
-    if (now >= biteAt) {
-      fishState = 'bite'; biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4) * fishDiff.ease; // 튼튼한 낚싯대: 입질 여유↑ · 🎚️ probe × DDA
-      ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
-      Sound.blip(); spawnWater(castPos.x, castPos.z);
-    }
-  } else if (fishState === 'bite') {
-    bobber.position.y = 0.15 + Math.sin(now * 30) * 0.08; // 격하게 요동
-    if (now > biteEnd) {
-      ui.toast?.('놓쳤어요 🐟💨');
-      settleDifficulty('fish', 0);   // 🎚️ 실패 → DDA 가 조금 쉬워진다
-      trackEvent('fishing_miss', { rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) });   // [GA4] 🎚️ 난이도 동봉
-      resetFishing();
-    }
-  }
-}
 
 // ── 벌목 ─────────────────────────────────────────────────────
-function tryChop() {
-  let nearest = null, nd = 2.6;
-  for (const tree of trees) {
-    if (tree.userData.fallen) continue;
-    const d = dist2D(tree.position, player.position);
-    if (d < nd) { nd = d; nearest = tree; }
-  }
-  if (!nearest) { ui.toast?.('가까운 나무가 없어요'); return; }
-  const ud = nearest.userData;
-  ud.squash = 1;
-  doPlayerAction(nearest.position.x, nearest.position.z); // 벌목 제스처
-  Sound.chop();
-  spawnLeafBurst(nearest); spawnWoodChips(nearest);
-  ud.hp -= gameState.upgrades.axe ? 2 : 1;                     // 강철 도끼: 2번에 벌목
-  if (ud.hp <= 0) {                                             // 🪵 목재는 쓰러뜨릴 때만(타격마다 주던 부스러기 제거 · 인플레 억제, 2026-09-13)
-    const bonus = (buffOn('chop') ? 1 : 0)
-      + (WEATHER === 'snow' && Math.random() < 0.5 ? 1 : 0);   // 🪓 도시락 버프 / ❄️ 눈: 가지가 잘 부러져 +1 확률
-    const gain = CHOP_WOOD + bonus;
-    gameState.inventory.wood += gain; ud.fallen = true; ud.respawnAt = clock.elapsedTime + TREE_RESPAWN_SEC;
-    nearest.visible = false; spawnLeafBurst(nearest, 26);
-    spawnFloatText(nearest.position.x, 2.4, nearest.position.z, `+${gain} 🪵`, '#7a5230'); // 획득 표시
-  }
-  refreshInventoryUI();
-  questEvent('chop');                                          // 퀘스트 진행
-  ui.act?.('chop');                                            // 튜토리얼
-  trackChop(trees.indexOf(nearest), gameState.inventory.wood); // [GA4]
-}
 
 // =============================================================
 //  🌾 밭 인스턴싱 — 흙 121칸이 121드로우콜이던 걸 1콜로
@@ -9095,32 +8983,33 @@ function onResize() {
 
 // 🔁 js/spaces/* 가 가져다 쓰는 이름 — 선언 원문은 그대로 두고 여기서만 내보낸다(tools/refactor/extract-module.mjs)
 export {
-  BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, IS_MOBILE, ORES, RAIN_DAY, RES_ICON, RES_LABEL, SEVERE_TODAY,
-  SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _seaPrevTool, analog, applyCosmetics, applyHouseStyle,
-  armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atOrchard, atRiver, atSea, awardBadge, blockIfLocked,
-  boat, boatView, buffOn, buffs, bugJarMesh, bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs,
-  cafeInGroup, camera, catchCeremony, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop,
-  cropMini, currentTool, dateHash, decorGhost, decorMeshes, decorNearRing, decorRot, decorTapHintShown, decorTarget,
-  dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack, farmActionFirst,
-  farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob, firstHint,
-  firstHintBanner, fishMesh, floatTexts, forageNodes, forecastLine, forestGroup, gambrelRoofSlabs, gambrelSolid,
-  gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCells, habitatCtx, habitatEnvAt, handAnchor,
-  heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex,
-  houseWindows, indoor, interiorFloor, interiorFloors, interiorGroup, interiorLamp, isNight, keys, kitchenFinish,
-  kitchenStart, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastNearMiss, lastZoneHint, makeCharacterPreview,
-  makeNameTag, makeSignBoard, makeSignpost, mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView,
-  mineGroup, mineTorches, mist, mistGroup, mistLanterns, mistTree, museumGroup, nearBench, nearBoat, nearBoatShop,
-  nearCafeBoard, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest,
-  nearGlade, nearKitchen, nearMarket, nearNPC, nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher,
-  nightLevel, nightNoteFetcher, noteSpecialExhibit, obstacles, oreRocks, outdoorMesh, outdoorMeshes, outdoorTarget,
-  paintGeo, pantryHas, pantryTake, pendingDish, pestTarget, petChoresNear, petJob, pickedDecor, pickedOutdoor,
-  placeOutdoor, placingDecor, placingOutdoor, player, playerAnchor, playerArms, playerInYard, plots, pointer,
-  poseHeldTool, priceOf, priceRate, questEvent, raycaster, rebuildInteriorFinish, refreshCollectQuests, refreshHeldTool,
-  refreshInventoryUI, refreshStations, removeSolid, renderer, respawnPet, rewardText, riverActive, riverCourse,
-  riverGroup, riverPool, rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG,
-  seaRodMesh, setFogExempt, setHeldDecor, setHeldTool, setSpaceVisible, settleDifficulty, settleOrchard,
-  severeOf, shared, showCatchItem, sitting, situation, snapCamera, solidBox, solidCircle, spawnConfetti,
-  spawnDust, spawnFloatText, spawnSparkle, spawnSplash, spawnTree, stopOutdoorPlacing, swayables, syncBadges,
+  BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, IS_MOBILE, LAKE, ORES, RAIN_DAY, RES_ICON, RES_LABEL, SEVERE_TODAY,
+  SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _seaPrevTool, _v, analog, applyCosmetics, applyHouseStyle,
+  armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atOrchard, atRiver, atSea, awardBadge, baitActive,
+  biteAt, biteEnd, blockIfLocked, boat, boatView, bobber, buffOn, buffs, bugJarMesh, bugRespawnAt, cafeGuestCache,
+  cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, castPos, catchCeremony, clayMat, clearCrop, clearPest,
+  clock, colliders, cookTier, cosmeticShop, cropMini, currentTool, dateHash, decorGhost, decorMeshes, decorNearRing,
+  decorRot, decorTapHintShown, decorTarget, dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction,
+  dockGroup, duelFetcher, easeOutBack, farmActionFirst, farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf,
+  farmSoilMesh, fertTarget, finishPetJob, firstHint, firstHintBanner, fishDiff, fishMesh, fishState, floatTexts,
+  forageNodes, forecastLine, forestGroup, gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward,
+  gladeBugs, gladeGroup, habitatCells, habitatCtx, habitatEnvAt, handAnchor, heldGroup, heldToolMesh, houseCollider,
+  houseFloor, houseGhost, houseGroup, houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor,
+  interiorFloors, interiorGroup, interiorLamp, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt,
+  lastFloorChoiceKey, lastNearHouse, lastNearMiss, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard,
+  makeSignpost, mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView, mineGroup, mineTorches, mist,
+  mistGroup, mistLanterns, mistTree, museumGroup, nearBench, nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest,
+  nearCoop, nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket,
+  nearNPC, nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher, nightLevel, nightNoteFetcher,
+  noteSpecialExhibit, obstacles, oreRocks, outdoorMesh, outdoorMeshes, outdoorTarget, paintGeo, pantryHas,
+  pantryTake, pendingDish, pestTarget, petChoresNear, petJob, pickedDecor, pickedOutdoor, placeOutdoor, placingDecor,
+  placingOutdoor, player, playerAnchor, playerArms, playerInYard, plots, pointer, poseHeldTool, priceOf,
+  priceRate, questEvent, raycaster, rebuildInteriorFinish, refreshCollectQuests, refreshHeldTool, refreshInventoryUI,
+  refreshStations, removeSolid, renderer, respawnPet, rewardText, riverActive, riverCourse, riverGroup, riverPool,
+  rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG, seaRodMesh, setFogExempt,
+  setHeldDecor, setHeldTool, setSpaceVisible, settleDifficulty, settleOrchard, severeOf, shared, showCatchItem,
+  sitting, situation, snapCamera, solidBox, solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnLeafBurst,
+  spawnSparkle, spawnSplash, spawnTree, spawnWater, spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges,
   syncStory, todayStr, toolMesh, toolPage, trackGateBlocked, trees, triggerFarmReveal, triggerMoment, tryUnlockDrop,
   ui, updateCarveScene, updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wantAction,
   wiltPlot, woodMat, workerCap, worldGround, worldGroundPatches,
