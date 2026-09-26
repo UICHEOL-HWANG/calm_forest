@@ -13,6 +13,7 @@
 //   (f) $w 는 get x(){return x} set x(v){x=v} 쌍만 갖고, x 는 game.js 의 let. 모듈은 import 한 바인딩에 직접 대입하지 않는다
 //   (g) base game.js 의 export 이름은 전부 그대로 export
 //   (h) 바인딩 없는 전역 참조가 새로 생기지 않는다
+//  기준 커밋에 이미 js/spaces 가 있으면(이전 구역을 옮긴 뒤) 기준 = game.js + 그 모듈들 — 기준 쪽도 같은 정규화로 모은다
 // =============================================================
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -32,6 +33,9 @@ const gen = (node) => generate(node, { comments: false, compact: true }).code;
 
 const baseCode = execFileSync('git', ['show', `${BASE}:js/game.js`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
 const B = analyze(baseCode);
+const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
+const baseSpFiles = git('ls-tree', '--name-only', `${BASE}:js/spaces`, '--').split('\n').filter(f => f.endsWith('.js')).sort();
+const BSP = new Map(baseSpFiles.map(f => [f, analyze(git('show', `${BASE}:js/spaces/${f}`))]));
 const N = analyze(readFileSync(path.join(ROOT, 'js/game.js'), 'utf8'));
 const spDir = path.join(ROOT, 'js/spaces');
 const spFiles = existsSync(spDir) ? readdirSync(spDir).filter(f => f.endsWith('.js')).sort() : [];
@@ -42,6 +46,8 @@ const isW = (s) => s.names.length === 1 && s.names[0] === '$w';
 const isExList = (s) => s.node.type === 'ExportNamedDeclaration' && !s.node.declaration && !s.node.source;
 
 // ── (f 준비) $w 속성 ──
+const wPropsOf = (A) => new Set((declOf(A.byName.get('$w') || { node: {} }).declarations?.[0]?.init?.properties || []).map(p => p.key?.name));
+const baseWProps = B.byName.get('$w') ? wPropsOf(B) : new Set();
 const wStmt = N.byName.get('$w');
 const wProps = new Set();
 if (wStmt) {
@@ -67,7 +73,7 @@ if (wStmt) {
 }
 
 // ── (a) 선언별 정규화 코드 ──
-function normSpace(A, s) {
+function normSpace(A, s, props = wProps) {
   const ast = parse(A.code.slice(s.start, s.end));   // 정규화 전용 사본 — $w.x 쓰기 → x
   traverse(ast, {
     MemberExpression(p) {
@@ -76,7 +82,7 @@ function normSpace(A, s) {
         const par = p.parentPath;
         const isWrite = (par.isAssignmentExpression() && par.node.left === n) || par.isUpdateExpression();
         if (!isWrite) fail('f', `${s.names}: $w.${n.property.name} 를 쓰기 아닌 곳에서 쓴다(읽기는 import 로)`);
-        if (!wProps.has(n.property.name)) fail('f', `${s.names}: $w.${n.property.name} 가 $w 에 없다`);
+        if (!props.has(n.property.name)) fail('f', `${s.names}: $w.${n.property.name} 가 $w 에 없다`);
         p.replaceWith({ type: 'Identifier', name: n.property.name });
       }
     },
@@ -85,7 +91,9 @@ function normSpace(A, s) {
   return gen(st.declaration || st);
 }
 const baseDecl = new Map();
-for (const s of B.stmts) if (!s.isImport && s.names.length) baseDecl.set(s.names.join(','), gen(declOf(s)));
+for (const s of B.stmts) if (!s.isImport && s.names.length && !isW(s)) baseDecl.set(s.names.join(','), gen(declOf(s)));
+for (const [, A] of BSP) for (const s of A.stmts) if (!s.isImport && s.names.length) baseDecl.set(s.names.join(','), normSpace(A, s, baseWProps));
+for (const k of baseWProps) if (!wProps.has(k)) fail('f', `기준의 $w.${k} 가 사라졌다`);
 const newDecl = new Map(), where = new Map();
 const put = (key, codeStr, file) => {
   if (newDecl.has(key)) fail('a', `${key} 가 두 곳(${where.get(key)}, ${file})`);
@@ -101,13 +109,12 @@ for (const k of newDecl.keys()) if (!baseDecl.has(k)) fail('a', `${k} (${where.g
 
 // ── (b) game.js 남은 문장의 순서·내용 ──
 const movedKeys = new Set([...newDecl.keys()].filter(k => where.get(k) !== 'game.js'));
-const seqBase = B.stmts.filter(s => !s.isImport && !movedKeys.has(s.names.join(','))).map(s => gen(declOf(s)));
+const seqBase = B.stmts.filter(s => !s.isImport && !isW(s) && !isExList(s) && !movedKeys.has(s.names.join(','))).map(s => gen(declOf(s)));
 const seqNew = N.stmts.filter(s => !s.isImport && !isW(s) && !isExList(s)).map(s => gen(declOf(s)));
 for (const s of N.stmts.filter(isExList)) for (const sp of s.node.specifiers) {
   if (sp.local.name !== sp.exported.name) fail('b', `export 목록이 ${sp.local.name} 를 다른 이름(${sp.exported.name})으로 내보낸다`);
   if (!N.byName.get(sp.local.name)) fail('b', `export 목록의 ${sp.local.name} 가 game.js 선언이 아니다`);
 }
-if (B.stmts.some(isExList)) fail('b', 'base 에 export 목록이 있다 — 비교 규칙을 다시 볼 것');
 if (seqBase.length !== seqNew.length) fail('b', `game.js 문장 수 ${seqBase.length} → ${seqNew.length}`);
 for (let i = 0; i < Math.min(seqBase.length, seqNew.length); i++) if (seqBase[i] !== seqNew[i]) { fail('b', `game.js ${i}번째 문장이 다르다: ${seqNew[i].slice(0, 90)}…`); break; }
 for (const [local, im] of B.imports) {
@@ -118,15 +125,18 @@ for (const [local, im] of B.imports) {
 // ── (c)(d)(f) 모듈 구조 ──
 const exportsOf = (A) => new Set(A.stmts.filter(s => s.exported).flatMap(s => s.names.length ? s.names
   : (s.node.specifiers || []).map(sp => sp.exported.name)));
+// 기준 모듈에 원문 그대로 있던 문장은 이번 추출이 만든 게 아니다 — (c)(d) 는 새로 옮긴 문장에만 묻는다
+//   (예: 추출 뒤 다른 커밋이 cafe.js 에 넣은 export 없는 도우미 slotHash)
+const inBase = (f, s) => BSP.has(f) && BSP.get(f).stmts.some(b => gen(b.node) === gen(s.node));
 for (const [f, A] of SP) {
   const fromGame = new Set();
   for (const s of A.stmts) {
     if (s.isImport) { if (s.node.source.value === '../game.js') s.node.specifiers.forEach(sp => fromGame.add(sp.local.name)); continue; }
-    if (!(s.node.type === 'ExportNamedDeclaration' && s.node.declaration)) fail('c', `spaces/${f}:${s.line} 에 import/export 선언이 아닌 코드`);
+    if (!(s.node.type === 'ExportNamedDeclaration' && s.node.declaration) && !inBase(f, s)) fail('c', `spaces/${f}:${s.line} 에 import/export 선언이 아닌 코드`);
   }
   for (const s of A.stmts) {
     if (s.isImport) continue;
-    s.path.traverse({
+    if (!inBase(f, s)) s.path.traverse({
       Function(p) { p.skip(); },
       ReferencedIdentifier(p) { const b = p.scope.getBinding(p.node.name); if (b && b.kind === 'module' && fromGame.has(p.node.name)) fail('d', `spaces/${f}:${s.line} 이 로딩 시점에 game.js 의 ${p.node.name} 를 읽는다`); },
     });
@@ -159,8 +169,10 @@ for (const [rel, A] of files) {
         if (!ex) fail('e', `${rel}: ${src} 가 없다`);
         else if (!ex.has(imported)) fail('e', `${rel}: ${target} 가 ${imported} 를 export 하지 않는다`);
       } else if (rel !== 'js/game.js') {
-        const orig = B.imports.get(sp.local.name);
-        const origT = orig && (orig.source.startsWith('.') ? path.normalize(path.join('js', orig.source)) : orig.source);
+        // 기준에서 같은 이름을 가져오던 곳 — game.js 또는 기준 js/spaces 모듈(상대 경로는 그 파일 자리에서 푼다)
+        const origAt = [['js', B], ...[...BSP.values()].map(X => ['js/spaces', X])].find(([, X]) => X.imports.has(sp.local.name));
+        const orig = origAt && origAt[1].imports.get(sp.local.name);
+        const origT = orig && (orig.source.startsWith('.') ? path.normalize(path.join(origAt[0], orig.source)) : orig.source);
         if (!orig || origT !== target || orig.imported !== imported) fail('e', `${rel}: ${sp.local.name} 가 base 와 다른 대상(${src})`);
       }
     }
@@ -172,10 +184,10 @@ const newEx = exportsOf(N);
 for (const n of exportsOf(B)) if (!newEx.has(n)) fail('g', `game.js 가 ${n} 를 더는 export 하지 않는다`);
 
 // ── (h) 새 전역 참조 ──
-const baseGlobals = unboundNames(B.ast);
+const baseGlobals = new Set([B, ...BSP.values()].flatMap(A => [...unboundNames(A.ast)]));
 for (const [rel, A] of files) for (const n of unboundNames(A.ast)) if (!baseGlobals.has(n)) fail('h', `${rel} 에 바인딩 없는 이름 ${n}`);
 
 const lc = (c) => c.split('\n').length;
-console.log(`기준 ${BASE}: game.js ${lc(baseCode)} → ${lc(N.code)}줄 · spaces ${spFiles.length}개(${[...SP.values()].reduce((a, A) => a + lc(A.code), 0)}줄) · 옮긴 선언 ${movedKeys.size} · $w ${wProps.size}`);
+console.log(`기준 ${BASE}(spaces ${baseSpFiles.length}개): game.js ${lc(baseCode)} → ${lc(N.code)}줄 · spaces ${spFiles.length}개(${[...SP.values()].reduce((a, A) => a + lc(A.code), 0)}줄) · 옮긴 선언 ${movedKeys.size} · $w ${wProps.size}`);
 if (fails.length) { console.log(`❌ ${fails.length}건`); fails.slice(0, 40).forEach(x => console.log('  ' + x)); process.exit(1); }
 console.log('✅ 옮기기 + 기계적 치환만 — 증명 통과 (a~h)');
