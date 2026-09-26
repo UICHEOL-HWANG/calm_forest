@@ -1,6 +1,6 @@
 # 📦 game.js 분리 — 핵심 파일·결정·함정
 
-**Last Updated** 2026-09-24
+**Last Updated** 2026-09-26
 
 ## 결과
 - game.js 16,664 → 15,833줄, 순수 선언 169개 → `js/data/{tools,world,catalog,places,npcs,dex,character}.js`
@@ -34,3 +34,10 @@
 - 알려진 잡음(근거 명시): 밤 반딧불이 수(원본 1605~1619)
 - game.js 선언 앞에 export 를 붙이면 `^let indoor = false` 같은 텍스트 테스트가 깨진다 → 끝 export 목록으로
 - 원본 스냅샷: `git archive 21453dd | tar -x -C <스크래치>/base-main` 후 그 폴더에서 serve.py
+
+## 2단계 이어서(2026-09-26) 함정
+- ⚠️ 앞 구역이 main 에 병합되면 기준 = game.js 만으로는 증명이 안 된다 → verify-extract 가 기준 커밋의 js/spaces 도 읽게 고침
+- ⚠️ 추출 뒤 다른 커밋이 모듈에 export 없는 도우미를 넣을 수 있다(cafe.js slotHash, a8d119c) → (c)(d) 는 기준에 원문 그대로 있던 문장을 건너뜀
+- ⚠️ 공용 선언(woodMat)이 구역 안에 있으면 딸려 가서 이미 옮긴 모듈의 import 가 끊긴다 → extract-module 이 그런 이름을 남김
+- ⚠️ 자동 닉네임은 스모크 잡음(시드 난수 수열의 위치가 타이밍에 따름) — 기준 4회가 우연히 같아도 후보에서 갈릴 수 있다
+- zsh 는 `set -- $r` 로 단어를 안 나눈다 — 스모크 라벨이 'k-base-1 2' 로 깨졌다. 함수 인자로 넘길 것
