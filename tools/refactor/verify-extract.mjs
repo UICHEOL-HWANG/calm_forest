@@ -34,7 +34,7 @@ const gen = (node) => generate(node, { comments: false, compact: true }).code;
 const baseCode = execFileSync('git', ['show', `${BASE}:js/game.js`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
 const B = analyze(baseCode);
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
-const baseSpFiles = git('ls-tree', '--name-only', `${BASE}:js/spaces`, '--').split('\n').filter(f => f.endsWith('.js')).sort();
+const baseSpFiles = git('ls-tree', '--name-only', BASE, 'js/spaces/').split('\n').filter(f => f.endsWith('.js')).map(f => path.basename(f)).sort();   // 없으면 빈 목록(21453dd 같은 분리 전 기준)
 const BSP = new Map(baseSpFiles.map(f => [f, analyze(git('show', `${BASE}:js/spaces/${f}`))]));
 const N = analyze(readFileSync(path.join(ROOT, 'js/game.js'), 'utf8'));
 const spDir = path.join(ROOT, 'js/spaces');
@@ -127,7 +127,17 @@ const exportsOf = (A) => new Set(A.stmts.filter(s => s.exported).flatMap(s => s.
   : (s.node.specifiers || []).map(sp => sp.exported.name)));
 // 기준 모듈에 원문 그대로 있던 문장은 이번 추출이 만든 게 아니다 — (c)(d) 는 새로 옮긴 문장에만 묻는다
 //   (예: 추출 뒤 다른 커밋이 cafe.js 에 넣은 export 없는 도우미 slotHash)
-const inBase = (f, s) => BSP.has(f) && BSP.get(f).stmts.some(b => gen(b.node) === gen(s.node));
+//   같은 코드가 여러 번이면 기준에 있던 횟수만큼만 건너뛴다(복붙으로 늘어난 문장은 검사 대상)
+const baseLeft = new Map([...BSP].map(([f, X]) => [f, X.stmts.filter(b => !b.isImport).map(b => gen(b.node))]));
+const inBaseCache = new Map();
+const inBase = (f, s) => {
+  if (!inBaseCache.has(s)) {
+    const left = baseLeft.get(f), i = left ? left.indexOf(gen(s.node)) : -1;
+    if (i >= 0) left.splice(i, 1);
+    inBaseCache.set(s, i >= 0);
+  }
+  return inBaseCache.get(s);
+};
 for (const [f, A] of SP) {
   const fromGame = new Set();
   for (const s of A.stmts) {
