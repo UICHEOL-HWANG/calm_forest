@@ -3,14 +3,15 @@
 //  🌾 수확제 광장 — 게임 연결 진입점. game.js 는 여기 함수만 부른다(연결 줄 ≤14).
 //  스펙: docs/superpowers/specs/2026-09-27-harvest-plaza-design.md
 // =============================================================
-import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave } from '../game.js';
+import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R } from '../data/plaza.js';
 import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
 import { interpretDonate } from './donate.js';
-import { toastText } from './copy.js';
+import { toastText, fill, PLAZA_COPY } from './copy.js';
+import { buyPlan, claimPlan, convertPlan } from './rewards.js';
 import { buildPlaza } from './build.js';
 import { buildPath } from './path.js';
 
@@ -82,12 +83,13 @@ function applyStage(stage) {
 export async function refresh(force = false) {
   const p = await progress.get(SEASON, { force });
   if (p && !fake) lastProg = p;
-  if (DEBUG_STAGE === null) applyStage(visualStage(lastProg, gameState.plaza.lastStage));
+  if (DEBUG_STAGE === null) { applyStage(visualStage(lastProg, gameState.plaza.lastStage)); maybeConvert(); }
 }
 export { refresh as refreshPlaza };   // ⚠️ applySave 가 initPlaza() 보다 뒤에 세이브를 복원한다 — applySave 끝에서 재조회
 
 export function initPlaza() {
   applyStage(DEBUG_STAGE ?? visualStage(null, gameState.plaza.lastStage));
+  if (DEBUG_STAGE === null) maybeConvert();   // ?plaza= 검수 중엔 🍂 이 증발하지 않게 부르지 않는다
   refresh();
 }
 
@@ -115,11 +117,57 @@ export function plazaSpotNow() { return spotNow; }
 let mineNow = null, mineReason = null, busy = false, modalKind = null;
 let fake = null;   // localhost 전용 __plazaFake 로 넣은 가짜 진행률(시안 검수용) — 켜져 있으면 서버 값으로 덮지 않는다
 
-// onBuy·onClaim 은 Task 9 에서 채운다
-const onBuy = () => {};
-const onClaim = () => {};
+// 🧺 보관함에 1개 — 작업대 장식 탭에서 값 없이 꺼내 놓는다(index.html renderOutdoor 가 hidden 품목을 보관분 있을 때만 보인다)
+function addStored(id) {
+  const stored = gameState.outdoorStored || {};
+  gameState.outdoorStored = { ...stored, [id]: (stored[id] || 0) + 1 };
+}
+
+// 🍂 좌판 구매 — 단풍잎을 빼고 보관함에 넣는다(서버 없이 로컬 세이브)
+//   ⚠️ 인벤토리는 다른 모듈이 객체째 캐시한다 → 새 객체로 갈아끼우지 않고 필드 대입(onDonate 와 같은 규칙)
+function onBuy(id) {
+  const plan = buyPlan(gameState.inventory, id);
+  if (!plan.ok) { ui.toast?.(PLAZA_COPY.stall[plan.reason]); return; }
+  gameState.inventory.leaf -= plan.price;
+  addStored(id);
+  refreshInventoryUI(); requestSave();
+  trackEvent('plaza_stall_buy', { season: SEASON, item: id, price: plan.price, leaf_left: gameState.inventory.leaf });
+  ui.toast?.(PLAZA_COPY.stall.bought);
+  renderPlazaModal(ctx());
+}
+
+// 🎁 명판 보상 — 서버가 준 내 등급(plaza_mine)까지 누적(🥉 배지 · 🥈 호박 등불 · 🥇 수확제 허수아비), 시즌마다 한 번
+function onClaim() {
+  const tier = mineNow?.tier || null;
+  const plan = claimPlan(gameState.plaza, SEASON, tier);
+  if (plan.already || plan.none) return;
+  if (plan.badge) awardBadge(plan.badge);
+  for (const id of plan.decor) addStored(id);
+  gameState.plaza = { ...gameState.plaza, claimed: { ...gameState.plaza.claimed, [SEASON]: tier } };
+  requestSave();
+  trackEvent('plaza_reward_claim', { season: SEASON, tier, my_total: mineNow?.my_total ?? null });
+  ui.toast?.(PLAZA_COPY.plaque.claimed);
+  renderPlazaModal(ctx());
+}
+
+// 🪙 시즌이 끝나면(after) 남은 🍂 을 한 번만 코인으로 — refresh()·initPlaza() 끝에서 부른다
+function maybeConvert() {
+  if (phaseNow() !== 'after') return;
+  const leaves = gameState.inventory.leaf || 0;
+  const plan = convertPlan(gameState.plaza, SEASON, leaves, 'after');
+  if (plan.already) return;
+  gameState.plaza = { ...gameState.plaza, converted: { ...gameState.plaza.converted, [SEASON]: true } };
+  if (plan.coins > 0) {
+    gameState.inventory.leaf = 0;
+    giveReward({ coins: plan.coins }, 'plaza_leaf', 'leaf');   // 코인 → econ_logs source plaza_leaf 자동 기록
+    trackEvent('plaza_leaf_convert', { season: SEASON, leaves, coins: plan.coins });
+    ui.toast?.(fill(PLAZA_COPY.convert.done, leaves, plan.coins));
+  }
+  requestSave();
+}
 
 const ctx = () => ({ kind: modalKind, prog: lastProg, mine: mineNow, mineReason, inv: fake?.inv || gameState.inventory, busy,
+                     claim: claimPlan(gameState.plaza, SEASON, mineNow?.tier || null),
                      onDonate, onBuy, onClaim });
 
 export async function openPlaza() {
@@ -161,11 +209,16 @@ async function onDonate(item, qty) {
 // 🎨 검수용: localhost 에서만 가짜 진행률·내 기록(·가방)을 넣고 기부함 모달을 연다
 //   예) __plazaFake({ stage: 2, items: [{ stage: 2, item: 'stone', have: 180, need: 400 }] }, { my_total: 34, today_left: 18, tier: 'bronze' }, { stone: 50 })
 if (IS_LOCAL && typeof window !== 'undefined') {
-  window.__plazaFake = (prog, mine, inv) => {
+  //   mine === 'real' 이면 서버의 내 기록(plaza_mine)을 그대로 쓴다 · kind 로 명판(plaque)·좌판(stall)도 연다
+  //   ends_at 을 과거로 주면 국면이 after → 다음 refresh() 가 환전(maybeConvert)까지 탄다
+  window.__plazaFake = async (prog, mine, inv, kind = 'box') => {
     fake = { inv: inv || null };
-    lastProg = prog; mineNow = mine || null; mineReason = mine ? null : 'auth';
-    modalKind = 'box';
-    openPlazaModal('box', ctx());
+    lastProg = prog;
+    if (mine === 'real') { const m = await fetchMine(SEASON); mineNow = m && m.ok ? m : null; mineReason = m && !m.ok ? m.reason : null; }
+    else { mineNow = mine || null; mineReason = mine ? null : 'auth'; }
+    modalKind = kind;
+    openPlazaModal(kind, ctx());
+    return { mine: mineNow, phase: phaseNow() };
   };
 }
 

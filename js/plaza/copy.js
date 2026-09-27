@@ -22,6 +22,25 @@ export const PLAZA_COPY = {
     auth: '로그인하면 함께 지을 수 있어요',
   },
   nextTier: '{0} {1}까지 {2}개',
+  // 🍂 좌판·명판·환전 — 게이트 D(2026-09-27 사용자 확정: 전부 A안). 토큰 이름은 '단풍잎' 하나로 통일
+  stall: {
+    title: '🍂 수확제 좌판',
+    sub: '가진 단풍잎 🍂{0}',
+    buy: '🍂{0} 사기',
+    bought: '보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺',
+    leaf: '단풍잎이 모자라요 — 광장에 보태면 🍂 을 받아요',
+    item: '지금은 팔지 않아요',
+  },
+  plaque: {
+    title: '🌾 광장 명판',
+    sub: '광장을 함께 지은 이웃 {0}명',
+    mine: '내 등급 {0}',
+    claim: '🎁 보상 받기',
+    claimed: '받았어요 — 🧺 보관함을 확인해 보세요',
+    claimedBtn: '받았어요',
+    none: '10개 이상 보탠 분께 드려요',
+  },
+  convert: { done: '수확제가 끝났어요 🍂{0} → 🪙{1}' },
 };
 
 export const fill = (s, ...a) => a.reduce((acc, v, i) => acc.replaceAll(`{${i}}`, String(v)), s);

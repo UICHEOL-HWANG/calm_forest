@@ -6653,7 +6653,7 @@ const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽�
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
   sap_apple: '🍎사과나무 묘목', sap_pear: '🍐배나무 묘목', sap_peach: '🍑복숭아나무 묘목',
-  sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목', leaf: '🍂수확제 잎사귀' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
+  sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목', leaf: '🍂단풍잎' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
 
 
 function makeNameTag(def) {
