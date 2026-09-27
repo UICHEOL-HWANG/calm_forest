@@ -3,11 +3,14 @@
 //  🌾 수확제 광장 — 게임 연결 진입점. game.js 는 여기 함수만 부른다(연결 줄 ≤14).
 //  스펙: docs/superpowers/specs/2026-09-27-harvest-plaza-design.md
 // =============================================================
-import { gameState, player, dist2D, scene, solidCircle, removeSolid, obstacles } from '../game.js';
+import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave } from '../game.js';
+import { trackEvent } from '../analytics.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R } from '../data/plaza.js';
-import { plazaBlocks, siteOpen, seasonPhase, visualStage } from './rules.js';
-import { progress, mine as fetchMine } from './net.js';
-import { openPlazaModal } from './ui.js';
+import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf } from './rules.js';
+import { progress, donate, mine as fetchMine } from './net.js';
+import { openPlazaModal, renderPlazaModal } from './ui.js';
+import { interpretDonate } from './donate.js';
+import { toastText } from './copy.js';
 import { buildPlaza } from './build.js';
 import { buildPath } from './path.js';
 
@@ -111,8 +114,7 @@ export function plazaSpotNow() { return spotNow; }
 let mineNow = null, mineReason = null, busy = false, modalKind = null;
 let fake = null;   // localhost 전용 __plazaFake 로 넣은 가짜 진행률(시안 검수용) — 켜져 있으면 서버 값으로 덮지 않는다
 
-// Task 8 Step 8(디자인 게이트 C 이후)에서 기부 흐름을 연결한다. onBuy·onClaim 은 Task 9
-const onDonate = () => {};
+// onBuy·onClaim 은 Task 9 에서 채운다
 const onBuy = () => {};
 const onClaim = () => {};
 
@@ -128,6 +130,31 @@ export async function openPlaza() {
     mineReason = m && !m.ok ? m.reason : null;
   }
   openPlazaModal(modalKind, ctx());
+  if (modalKind === 'box') trackEvent('plaza_modal_open', { season: SEASON, stage: shownStage, today_left: mineNow?.today_left ?? null });
+}
+
+// 🌾 기부 — 서버가 받은 만큼(accepted)만 가방에서 빼고 🍂 도 그만큼. 실패·거절이면 가방은 그대로
+//   ⚠️ 인벤토리는 다른 모듈이 객체째 캐시한다(cooking·carving·river·cafe) → 새 객체로 갈아끼우지 않고 필드 대입
+async function onDonate(item, qty) {
+  if (busy || qty <= 0) return;
+  busy = true; renderPlazaModal(ctx());
+  try {
+    const r = interpretDonate(qty, await donate(SEASON, item, qty));
+    trackEvent(r.event, { season: SEASON, item, ...r.params });
+    if (r.spend > 0) {
+      gameState.inventory[item] = Math.max(0, (gameState.inventory[item] || 0) - r.spend);
+      giveReward({ leaf: r.leaf }, 'plaza_donate', item);   // 🍂 — 코인이 아니라 econ 원장엔 안 남는다
+      mineNow = { ...mineNow, my_total: r.params.my_total, today_left: r.params.today_left, tier: tierOf(r.params.my_total | 0) };
+      refreshInventoryUI(); requestSave();
+      await refresh(true);                                  // 단계 넘김 반영(떠 있던 조회를 기다린 뒤 새로 받는다)
+    } else if (r.params.today_left === 0 || r.params.reason === 'cap') {
+      mineNow = mineNow && { ...mineNow, today_left: 0 };
+    }
+    ui.toast?.(toastText(r.toastKey, item, r.spend));
+  } finally {
+    busy = false;
+    if (modalKind) renderPlazaModal(ctx());
+  }
 }
 
 // 🎨 검수용: localhost 에서만 가짜 진행률·내 기록(·가방)을 넣고 기부함 모달을 연다

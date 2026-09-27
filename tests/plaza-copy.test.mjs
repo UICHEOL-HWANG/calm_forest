@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PLAZA_COPY, toastText, subtitleText, nextTierText, tierLabel, stagePct } from '../js/plaza/copy.js';
+import { PLAZA_COPY, toastText, subtitleText, nextTierText, tierLabel, stagePct, giveText } from '../js/plaza/copy.js';
 import { nextTier } from '../js/plaza/rules.js';
 import { PLAZA_STAGE_NAMES, PLAZA_TIERS } from '../js/data/plaza.js';
 
@@ -24,6 +24,15 @@ test('확정 문구 조합', () => {
   assert.equal(nextTierText(nextTier(34)), '🥈 은빛 일꾼까지 26개');
   assert.equal(nextTierText(null), '');
   assert.equal(tierLabel('bronze'), '🥉 동빛 일꾼');
+  assert.equal(giveText(18), '18개 보태기');     // 게이트 C: 누르면 실제로 낼 개수를 버튼에 적는다
+  assert.equal(giveText(0), '보태기');
+  assert.deepEqual(PLAZA_COPY.buttons, ['+1', '+5']);
+});
+
+test('옛 문구 있는 만큼 은 광장 코드·사전에서 사라졌다', () => {
+  for (const f of ['js/plaza/copy.js', 'js/plaza/ui.js', 'js/i18n-en.js']) {
+    assert.ok(!readFileSync(new URL(`../${f}`, import.meta.url), 'utf8').includes("'있는 만큼'"), f);
+  }
 });
 
 test('copy.js 에 자리표시 <확정 이 남지 않는다', () => {
@@ -36,7 +45,7 @@ test('doors.js 프롬프트가 확정 문구와 같다', () => {
 });
 
 const SHOWN = [
-  ...Object.values(PLAZA_COPY.prompt), PLAZA_COPY.title, ...PLAZA_COPY.buttons,
+  ...Object.values(PLAZA_COPY.prompt), PLAZA_COPY.title, ...PLAZA_COPY.buttons, giveText(18), giveText(3), giveText(0),
   ...Object.keys(PLAZA_COPY.toast).map(k => toastText(k, 'wood', 3)), toastText('ok', 'coal', 1), toastText('ok', 'stone', 12),
   ...[1, 2, 3].map(s => subtitleText(s, STAGE2)), PLAZA_STAGE_NAMES[4],
   '오늘 7개 더 보탤 수 있어요', '오늘 18개 더 보탤 수 있어요',
