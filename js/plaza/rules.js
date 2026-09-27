@@ -2,7 +2,7 @@
 // =============================================================
 //  🌾 수확제 광장 — 순수 계산(게임 상태·DOM·네트워크 없음). tests/plaza-rules.test.mjs
 // =============================================================
-import { PLAZA_TIERS, PLAZA_OPENS_KST, PLAZA_LEAF_COINS, PLAZA, PLAZA_R, PLAZA_PATH } from '../data/plaza.js';
+import { PLAZA_TIERS, PLAZA_OPENS_KST, PLAZA_LEAF_COINS, PLAZA, PLAZA_R, PLAZA_PATH, PLAZA_ARCH } from '../data/plaza.js';
 
 const MAX_VISUAL = 4;   // 0 = 없음, 1~3 = 공사 단계, 4 = 완공
 const TIER_IDS = new Set(PLAZA_TIERS.map(t => t.id));
@@ -72,5 +72,6 @@ export function siteOpen(nowMs) {
 
 export function plazaBlocks(x, z, pad = 2) {
   if (Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA_R + pad) return true;
+  if (Math.hypot(x - PLAZA_ARCH.x, z - PLAZA_ARCH.z) < 2.0) return true;   // 🌾 입구 아치
   return PLAZA_PATH.some(([px, pz]) => Math.hypot(x - px, z - pz) < 1.4);
 }

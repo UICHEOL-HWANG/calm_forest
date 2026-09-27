@@ -4,7 +4,7 @@
 //  스펙: docs/superpowers/specs/2026-09-27-harvest-plaza-design.md
 // =============================================================
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles } from '../game.js';
-import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_PATH, PLAZA_SEASON, PLAZA_VIEW_R } from '../data/plaza.js';
+import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R } from '../data/plaza.js';
 import { plazaBlocks, siteOpen, seasonPhase, visualStage } from './rules.js';
 import { progress } from './net.js';
 import { buildPlaza } from './build.js';
@@ -16,9 +16,10 @@ const DEBUG_STAGE = (() => {                       // ?plaza=0|1|2|3|4 — 검�
   const v = new URLSearchParams(location.search).get('plaza');
   return v !== null && /^[0-4]$/.test(v) ? Number(v) : null;
 })();
-const POLE_H = Number(new URLSearchParams(location.search).get('plazaPole')) || 9;   // 디자인 게이트 B 용(확정 후 상수로)
-// 디자인 게이트 B 추가 시안: ?plazaPathAlt=1 — 돌길 첫 구간을 스폰 정면(−Z)으로 한 번 꺾는다(모바일 세로에서 첫 돌이 보이게)
-const PATH = new URLSearchParams(location.search).get('plazaPathAlt') === '1' ? [[1.5, -1.0], [2.4, 0.2], ...PLAZA_PATH] : PLAZA_PATH;
+const ARCH_VAR = (() => {                          // 🎨 디자인 게이트 B2: ?plazaArch=a|b|c(확정 후 상수로)
+  const v = new URLSearchParams(location.search).get('plazaArch');
+  return /^[abc]$/.test(v || '') ? v : 'a';
+})();
 const BOX_R = 2.0;
 const STALL_R = 2.0;
 // 시즌 id — localhost 에서만 ?plazaSeason= 으로 바꿀 수 있다(Task 8 의 dev-plaza 시즌 검증용). 모든 서버 호출·트래킹은 SEASON 을 쓴다
@@ -31,12 +32,13 @@ let shownPhase = null;
 let lastProg = null;
 
 let built = null, solids = [], obstacle = null;
-let pathBuilt = null, poleSolid = null;
+let pathBuilt = null, pathSolids = [];
 
 function clearBuilt() {
   if (built) { scene.remove(built.group); built.dispose(); built = null; }
   if (pathBuilt) { scene.remove(pathBuilt.group); pathBuilt.dispose(); pathBuilt = null; }
-  if (poleSolid) { removeSolid(poleSolid); poleSolid = null; }
+  for (const c of pathSolids) removeSolid(c);
+  pathSolids = [];
   for (const c of solids) removeSolid(c);
   solids = [];
   if (obstacle) { const i = obstacles.indexOf(obstacle); if (i >= 0) obstacles.splice(i, 1); obstacle = null; }
@@ -47,9 +49,10 @@ function rebuild(stage, phase) {
   if (stage === 0) return;
   built = buildPlaza(stage, phase);
   scene.add(built.group);
-  pathBuilt = buildPath(stage, phase, POLE_H, PATH);
+  pathBuilt = buildPath(stage, phase, ARCH_VAR);
   scene.add(pathBuilt.group);
-  if (phase === 'active' && stage < 4) poleSolid = solidCircle(PLAZA_POLE.x, PLAZA_POLE.z, 0.3);
+  for (const s of [-1, 1]) pathSolids.push(solidCircle(PLAZA_ARCH.x + s * PLAZA_ARCH_HALF, PLAZA_ARCH.z, 0.3));   // 아치 기둥(가운데는 지나갈 수 있게)
+  if (phase === 'active' && stage < 4) pathSolids.push(solidCircle(PLAZA_POLE.x, PLAZA_POLE.z, 0.3));
   obstacle = { x: PLAZA.x, z: PLAZA.z, r: PLAZA_R }; obstacles.push(obstacle);   // 야외 장식을 광장 위에 못 놓게
   solids.push(solidCircle(PLAZA_BOX.x, PLAZA_BOX.z, 0.6));
   if (phase === 'active') solids.push(solidCircle(PLAZA_STALL_POS.x, PLAZA_STALL_POS.z, 0.9));
