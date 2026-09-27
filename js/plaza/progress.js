@@ -5,12 +5,13 @@ export function createProgressFetcher({ fetchFn, url, now = () => Date.now(), ga
   async function load(season) {
     try {
       const r = await fetchFn(url ? url(season) : season);
+      lastAt = now();   // 실패도 시도로 친다 — 안 그러면 실패가 계속될 때 매초 재조회한다(60초 스로틀 무력화)
       if (!r.ok) return lastVal;
       const v = await r.json();
       if (!v || v.error) return lastVal;
-      lastVal = v; lastAt = now();
+      lastVal = v;
       return v;
-    } catch { return lastVal; }
+    } catch { lastAt = now(); return lastVal; }
   }
   function start(season, after) {
     const p = (after ? after.then(() => load(season)) : load(season))
@@ -20,7 +21,7 @@ export function createProgressFetcher({ fetchFn, url, now = () => Date.now(), ga
   }
   return {
     get(season, { force = false } = {}) {
-      if (!force && lastVal && now() - lastAt < gapMs) return Promise.resolve(lastVal);
+      if (!force && now() - lastAt < gapMs) return Promise.resolve(lastVal);   // 실패해도 lastAt 이 갱신되니 값이 없어도 스로틀된다
       if (inflight && !force) return inflight;
       return start(season, inflight);
     },

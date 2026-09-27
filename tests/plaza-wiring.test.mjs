@@ -21,6 +21,12 @@ test('game.js 연결 지점이 전부 있다', () => {
   assert.ok(read('js/spaces/doors.js').includes('plazaSpot('), 'doors.js 근접 프롬프트 연결이 없다');
 });
 
+test('시즌 전엔 지도에서 완전히 숨긴다(plazaMapVisible)', () => {
+  const game = read('js/game.js');
+  assert.ok(game.includes("need: 'plaza'"), 'VILLAGE_PLACES 광장 항목에 need: \'plaza\' 가 없다');
+  assert.ok(game.includes('plazaMapVisible'), 'villagePlaces() 가 plazaMapVisible 을 안 쓴다');
+});
+
 test('지도 지명 좌표가 PLAZA 와 같다', () => {
   const place = read('js/game.js').match(/name: '수확제 광장', x: (-?[\d.]+), z: (-?[\d.]+)/);
   const def = read('js/data/plaza.js').match(/PLAZA = \{ x: (-?[\d.]+), z: (-?[\d.]+) \}/);

@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tierOf, nextTier, seasonPhase, donateMax, currentItems, visualStage, leafToCoins,
-         restorePlaza, plazaDefault, siteOpen, plazaBlocks, stageSeenPlan, gateOpens } from '../js/plaza/rules.js';
+         restorePlaza, plazaDefault, siteOpen, plazaBlocks, stageSeenPlan, gateOpens,
+         economyAllowed, nearPollDue } from '../js/plaza/rules.js';
 
 const P = (o = {}) => ({ starts_at: '2026-10-09T00:00:00+09:00', ends_at: '2026-10-23T00:00:00+09:00',
   started: true, stage: 1, max_stage: 3, completed: false, items: [
@@ -109,6 +110,22 @@ test('gateOpens: 복원 전이고 play 모드일 때만 연다', () => {
   assert.equal(gateOpens(false, 'attract'), false);   // 로그인 배경 — 아직 안 연다
   assert.equal(gateOpens(true, 'play'), false);       // 이미 열렸으면 다시 안 연다
   assert.equal(gateOpens(true, 'attract'), false);
+});
+
+test('economyAllowed: ?plaza= 로 단계 고정 중엔 경제 동작 금지', () => {
+  assert.equal(economyAllowed(null), true);
+  assert.equal(economyAllowed(0), false);
+  assert.equal(economyAllowed(4), false);
+});
+
+test('nearPollDue: 시작 전엔 10분에 한 번만, 시작했으면·값이 없으면 항상 허용', () => {
+  const before = { started: false, starts_at: '2026-10-09T00:00:00+09:00' };
+  const now = Date.parse('2026-10-08T12:00:00+09:00');
+  assert.equal(nearPollDue(before, now, now), false);
+  assert.equal(nearPollDue(before, now, now - 600_000), true);
+  assert.equal(nearPollDue(before, now, -Infinity), true);
+  assert.equal(nearPollDue({ started: true }, now, now), true);
+  assert.equal(nearPollDue(null, now, now), true);
 });
 
 test('깃발 줄 기둥: 🏆게시판·📊시세판 동쪽, 기부함·좌판·광장 원과 떨어져 있다', async () => {
