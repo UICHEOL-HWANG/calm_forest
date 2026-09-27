@@ -78,3 +78,13 @@ test('plazaBlocks: 광장 반경·돌길 위는 산포 금지', () => {
   assert.equal(plazaBlocks(1.9, 2.3), true);       // 🌾 입구 아치
   assert.equal(plazaBlocks(0, -20), false);
 });
+
+test('깃발 줄 기둥: 🏆게시판·📊시세판 동쪽, 기부함·좌판·광장 원과 떨어져 있다', async () => {
+  const { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_BUNTING_POSTS } = await import('../js/data/plaza.js');
+  for (const [x, z] of PLAZA_BUNTING_POSTS) {
+    assert.ok(x > 15.5, `x ${x} > 15.5`);
+    assert.ok(Math.hypot(x - PLAZA.x, z - PLAZA.z) > PLAZA_R, `(${x},${z}) 광장 밖`);
+    assert.ok(Math.hypot(x - PLAZA_BOX.x, z - PLAZA_BOX.z) > 1.5, `(${x},${z}) 기부함과 떨어짐`);
+    assert.ok(Math.hypot(x - PLAZA_STALL_POS.x, z - PLAZA_STALL_POS.z) > 1.5, `(${x},${z}) 좌판과 떨어짐`);
+  }
+});
