@@ -90,6 +90,7 @@ declare
   v_total int;
 begin
   if v_uid is null then return jsonb_build_object('ok', false, 'reason', 'auth'); end if;
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then return jsonb_build_object('ok', false, 'reason', 'login'); end if;
   if p_qty is null or p_qty < 1 then return jsonb_build_object('ok', false, 'reason', 'qty'); end if;
   select * into v_s from plaza_seasons where season = p_season;
   if not found or now() < v_s.starts_at or now() >= v_s.ends_at then
@@ -183,6 +184,7 @@ declare
   v_used  int;
 begin
   if v_uid is null then return jsonb_build_object('ok', false, 'reason', 'auth'); end if;
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then return jsonb_build_object('ok', false, 'reason', 'login'); end if;
   select * into v_s from plaza_seasons where season = p_season;
   if not found then return jsonb_build_object('ok', false, 'reason', 'season'); end if;
   select coalesce(sum(qty), 0) into v_total from plaza_donations where season = p_season and user_id = v_uid;

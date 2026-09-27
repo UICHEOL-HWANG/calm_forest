@@ -110,9 +110,9 @@
 | 이벤트 이름 | 발생 시점 | 매개변수 |
 |-------------|-----------|----------|
 | `plaza_view` | 🌾 광장을 봄(세션·단계당 1회, 반경 12) | `season`, `stage`(1~4), `pct`(현재 단계 %), `from`(quest/path/other) |
-| `plaza_modal_open` | 기부 모달 열기 | `season`, `stage`, `today_left` |
+| `plaza_modal_open` | 기부 모달 열기 | `season`, `stage`, `today_left`, `guest`(게스트일 때만 true) |
 | `plaza_donate` | 기부 시도 결과(규칙 거절 포함) | `season`, `item`, `stage`, `requested`, `accepted`, `reason`(ok/cap/need/full), `today_left`, `my_total` |
-| `plaza_donate_fail` | 기부 통신·권한·기간 실패(인벤토리 무변경) | `season`, `item`, `reason`(offline/upstream/auth/season/qty) |
+| `plaza_donate_fail` | 기부 통신·권한·기간 실패(인벤토리 무변경) | `season`, `item`, `reason`(offline/upstream/auth/season/qty/login) |
 | `plaza_stage_seen` | 새 단계를 처음 봄 | `season`, `stage`, `day_n`(시즌 N일차) |
 | `plaza_stall_buy` | 수확제 좌판 구매(🍂) | `season`, `item`, `price`, `leaf_left` |
 | `plaza_reward_claim` | 완공 등급 보상 수령 | `season`, `tier`(bronze/silver/gold), `my_total` |
@@ -205,3 +205,4 @@ GA4는 이벤트 카운트·퍼널·유입에 강하고, 좌표처럼 촘촘한 
 ## 6. 변경 이력
 - 2026-09-05 — 🪙 코인 첫 루프(상인 방문·비료/미끼) 계측 추가. 원장 출처는 `shop_sell` + 품목 `|welcome`. dev 파라미터(`?house=` 등) 세션은 모든 기록 제외. 배포일은 배포 후 여기에 기입 — 초반 세션 이동 분포가 바뀌므로 이탈 모델 전후 세그먼트 구분에 사용.
 - 2026-09-27 🌾 수확제 광장 이벤트 10종. 정답은 서버 원장 plaza_donations(GA4 는 퍼널). 초대는 퀘스트 목록이 아닌 별도 칸이라 quest_accept/complete 대신 plaza_invite_*. plaza_view.from 의 map 값은 미구현(other 로 집계).
+- 2026-09-27 🔐 기부는 로그인 계정만(사용자 결정). 익명(게스트)은 광장 구경은 되지만 plaza_donate/plaza_mine 이 서버에서 reason 'login' 으로 거절 — plaza_donate_fail 에 login 사유 추가, plaza_modal_open 에 guest=true 파라미터 추가. 토스·구글·플레이 게임즈 계정은 auth.users.is_anonymous=false 라 영향 없음.

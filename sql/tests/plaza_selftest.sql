@@ -78,6 +78,23 @@ begin
   raise notice 'season checks pass';
 end $$;
 
+-- 🔐 익명(게스트) 계정은 기부·내 기록에서 reason login 으로 거절된다(2026-09-27)
+--    is_anonymous 클레임이 없는 기존 호출(위 블록들)은 여전히 비익명으로 통과해야 한다
+do $$
+declare u1 uuid; r jsonb; before_total int; after_total int;
+begin
+  select id into u1 from auth.users order by created_at limit 1;
+  perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated', 'is_anonymous', true)::text, true);
+  select coalesce(sum(qty), 0) into before_total from public.plaza_donations where season = 'selftest' and user_id = u1;
+  r := public.plaza_donate('selftest', 'stone', 1);
+  if r->>'reason' <> 'login' then raise exception 'FAIL anon donate: %', r; end if;
+  select coalesce(sum(qty), 0) into after_total from public.plaza_donations where season = 'selftest' and user_id = u1;
+  if after_total <> before_total then raise exception 'FAIL anon donate inserted a row: before % after %', before_total, after_total; end if;
+  r := public.plaza_mine('selftest');
+  if r->>'reason' <> 'login' then raise exception 'FAIL anon mine: %', r; end if;
+  raise notice 'login-only checks pass';
+end $$;
+
 -- 직접 insert 차단(authenticated 역할로)
 do $$
 declare u1 uuid; blocked boolean := false;
