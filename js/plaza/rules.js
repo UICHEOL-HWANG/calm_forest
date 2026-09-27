@@ -28,6 +28,13 @@ export function donateMax(have, todayLeft, itemLeft) {
   return Math.max(0, Math.min(have | 0, todayLeft | 0, itemLeft | 0));
 }
 
+// 🔐 plaza_mine 실패 사유 → UI 안내문 갈래. ui.js 는 'auth' 한 갈래만 안다(로그인 안내),
+//   나머지(offline 포함 season 등)는 전부 offline 문구로 뭉뚱그린다 — 'login'(게스트 거절)도
+//   같은 로그인 안내를 보여야 하므로 여기서 'auth' 로 합친다(review fix round 1, 2026-09-27).
+export function normalizeMineReason(reason) {
+  return reason === 'login' ? 'auth' : reason;
+}
+
 export function currentItems(p) {
   if (!p || p.completed) return [];
   return p.items.filter(i => i.stage === p.stage)

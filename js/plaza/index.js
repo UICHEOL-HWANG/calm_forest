@@ -7,7 +7,7 @@ import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacl
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';   // 🔐 게스트(익명)는 기부 불가 — plaza_mine 호출 자체를 건너뛴다
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
-import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens, economyAllowed, nearPollDue } from './rules.js';
+import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens, economyAllowed, nearPollDue, normalizeMineReason } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
 import { interpretDonate } from './donate.js';
@@ -228,7 +228,7 @@ export async function openPlaza() {
     } else {
       const m = await fetchMine(SEASON);
       mineNow = m && m.ok ? m : null;
-      mineReason = m && !m.ok ? m.reason : null;
+      mineReason = m && !m.ok ? normalizeMineReason(m.reason) : null;
     }
   }
   openPlazaModal(modalKind, ctx());
@@ -271,7 +271,7 @@ if (IS_LOCAL && typeof window !== 'undefined') {
   window.__plazaFake = async (prog, mine, inv, kind = 'box') => {
     fake = { inv: inv || null };
     lastProg = prog;
-    if (mine === 'real') { const m = await fetchMine(SEASON); mineNow = m && m.ok ? m : null; mineReason = m && !m.ok ? m.reason : null; }
+    if (mine === 'real') { const m = await fetchMine(SEASON); mineNow = m && m.ok ? m : null; mineReason = m && !m.ok ? normalizeMineReason(m.reason) : null; }
     else { mineNow = mine || null; mineReason = mine ? null : 'auth'; }
     modalKind = kind;
     openPlazaModal(kind, ctx());
