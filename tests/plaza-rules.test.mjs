@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tierOf, nextTier, seasonPhase, donateMax, currentItems, visualStage, leafToCoins,
-         restorePlaza, plazaDefault, siteOpen, plazaBlocks } from '../js/plaza/rules.js';
+         restorePlaza, plazaDefault, siteOpen, plazaBlocks, stageSeenPlan } from '../js/plaza/rules.js';
 
 const P = (o = {}) => ({ starts_at: '2026-10-09T00:00:00+09:00', ends_at: '2026-10-23T00:00:00+09:00',
   started: true, stage: 1, max_stage: 3, completed: false, items: [
@@ -77,6 +77,31 @@ test('plazaBlocks: 광장 반경·돌길 위는 산포 금지', () => {
   assert.equal(plazaBlocks(17.0, -0.1), true);     // 돌길 위
   assert.equal(plazaBlocks(1.9, 2.3), true);       // 🌾 입구 아치
   assert.equal(plazaBlocks(0, -20), false);
+});
+
+test('stageSeenPlan: 세이브 복원 전엔 절대 emit 하지 않는다(부팅 순서 함정)', () => {
+  const p = { seen: {} };
+  assert.deepEqual(stageSeenPlan(p, 2, 'harvest-2026', { saveRestored: false }), { emit: false, key: 'stage2:harvest-2026' });
+});
+
+test('stageSeenPlan: 복원됐고 처음 보는 단계면 emit', () => {
+  const p = { seen: {} };
+  assert.deepEqual(stageSeenPlan(p, 2, 'harvest-2026', { saveRestored: true }), { emit: true, key: 'stage2:harvest-2026' });
+});
+
+test('stageSeenPlan: 복원됐지만 이미 본 단계면 emit 안 함', () => {
+  const p = { seen: { 'stage2:harvest-2026': true } };
+  assert.deepEqual(stageSeenPlan(p, 2, 'harvest-2026', { saveRestored: true }), { emit: false, key: 'stage2:harvest-2026' });
+});
+
+test('stageSeenPlan: 검수(?plaza=) 중엔 emit 안 함', () => {
+  const p = { seen: {} };
+  assert.deepEqual(stageSeenPlan(p, 2, 'harvest-2026', { saveRestored: true, debug: true }), { emit: false, key: 'stage2:harvest-2026' });
+});
+
+test('stageSeenPlan: 0단계(광장 없음)는 emit 안 함', () => {
+  const p = { seen: {} };
+  assert.deepEqual(stageSeenPlan(p, 0, 'harvest-2026', { saveRestored: true }), { emit: false, key: 'stage0:harvest-2026' });
 });
 
 test('깃발 줄 기둥: 🏆게시판·📊시세판 동쪽, 기부함·좌판·광장 원과 떨어져 있다', async () => {
