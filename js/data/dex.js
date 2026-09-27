@@ -112,6 +112,7 @@ export const BADGES = [
   { id: 'river_master', name: '잔잔한 물살',   ico: '🌊', desc: '한 번도 부딪히지 않고 완주', reward: { coins: 80 } },
   { id: 'purifier',    name: '숲의 정화자',    ico: '🌫️', desc: '안개 낀 숲을 정화하기',      reward: { coins: 30 } },
   { id: 'spirit_friend', name: '정령의 친구',  ico: '✨', desc: '정령 20마리 달래기',         reward: { coins: 60 } },
+  { id: 'harvest_helper', name: '수확제 일꾼', ico: '🌾', desc: '수확제 광장에 10개 이상 보태기', reward: { coins: 20 } },   // 🌾 syncBadges 가 아니라 광장 명판 보상 받기에서 지급
   { id: 'dex_master',  name: '도감 마스터',    ico: '📖', desc: '도감 전부 채우기',        reward: { coins: 50 } },
 ];
 

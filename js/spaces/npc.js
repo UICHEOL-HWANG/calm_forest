@@ -442,9 +442,10 @@ export function updateOwlFly(o, dt, t) {
       g.position.y = 0; f.st = 'perch'; f.t = 0; f.next = OWL_REST_MIN + Math.random() * OWL_REST_VAR;
       o.collider.x = g.position.x; o.collider.z = g.position.z; o.collider.off = false;
       if (f.deliver) {
+        const kind = f.deliver === true ? 'special' : f.deliver;   // true = 예전 호출(특별 의뢰)
         f.deliver = false;
         o.home.set(g.position.x, 0, g.position.z);   // 내려앉은 곳이 새 홈 — 맵 반대편에서 0.5u/s 로 걸어 돌아오지 않게
-        deliverOwlSpecial(o);
+        owlLandHooks[kind]?.(o);
       }
     }
   }
@@ -489,6 +490,22 @@ export function deliverOwlSpecial(o) {
   Sound.complete?.();
   ui.toast?.('✨ 의뢰 올빼미가 특별 의뢰를 물고 날아왔어요!', 3200);
   trackEvent('owl_special_deliver', { quest: sp.title, target: sp.target, quest_id: questIdFor({ npcId: def.id, specialType: sp.type }), quest_type: sp.type });   // [GA4] 수락·완료의 quest_id 와 같은 값
+}
+
+// 🦉 착지 훅 — 무엇을 물고 왔는지(kind)별 처리. 특별 의뢰가 기본이고, 다른 기능은 onOwlLand 로 등록한다.
+//    등록하는 쪽이 자기 상태 칸을 쓴다(st.special 은 특별 의뢰 전용 — 같은 날 서로 막지 않게)
+const owlLandHooks = { special: (o) => deliverOwlSpecial(o) };
+export function onOwlLand(kind, fn) { owlLandHooks[kind] = fn; }
+
+// 올빼미를 플레이어 앞으로 날려 보낸다. 이미 날고 있거나 착지 자리가 없으면 false(다음 틱에 다시)
+export function sendOwlToPlayer(kind) {
+  const o = npcObjs.find(n => n.def.daily); if (!o || !o.fly) return false;
+  if (o.fly.st !== 'perch' || o.fly.deliver) return false;
+  if (dist2D(o.group.position, player.position) < 2.2) { owlLandHooks[kind]?.(o); return true; }
+  const spot = owlLandingSpot(o, player.position.x, player.position.z, 1.6, 2.4);
+  if (!spot) return false;
+  startOwlFlight(o, spot.x, spot.z, kind);
+  return true;
 }
 
 // 조건이 맞으면 올빼미를 플레이어 앞으로 날려 보낸다.

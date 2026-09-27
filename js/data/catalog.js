@@ -182,6 +182,12 @@ export const OUTDOOR = [
   { id: 'spiritlamp', name: '정령 등불', ico: '✨', cost: { glow: 8, coins: 60 }, desc: '정령빛이 깃든 등불 — 밤에 청록빛(안개 숲)' },
   { id: 'kiln',      name: '화덕',    ico: '🔥', cost: { stone: 20, wood: 15, coins: 150 }, desc: '재료를 걸어두면 다음 날 구워져 있어요 · 한 채에 2칸' },
   { id: 'vat',       name: '발효통',  ico: '🫙', cost: { wood: 25, stone: 10, coins: 200 }, desc: '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요 · 한 채에 2칸' },
+  // 🌾 수확제 광장(2026 가을) — 작업대 목록에선 숨기고 🧺 보관함으로만 꺼낸다. 좌판 구매·완공 보상이 보관함에 넣어 준다
+  //    cost 는 표시용이 아니라 "직접 구매 불가" 표시 — hidden 이라 작업대에서 살 수 없다(보관분만 꺼냄)
+  { id: 'haybale',          name: '볏단',          ico: '🌾', cost: { leaf: 40 }, desc: '수확제 좌판에서 산 볏단', hidden: true },
+  { id: 'pumpkins',         name: '호박 더미',      ico: '🎃', cost: { leaf: 60 }, desc: '수확제 좌판에서 산 호박 더미', hidden: true },
+  { id: 'pumpkinlamp',      name: '호박 등불',      ico: '🏮', cost: { leaf: 9999 }, desc: '수확제 광장 🥈 보상 — 밤에 은은히', hidden: true },
+  { id: 'harvestscarecrow', name: '수확제 허수아비', ico: '🧑‍🌾', cost: { leaf: 9999 }, desc: '수확제 광장 🥇 보상', hidden: true },
   ...FARM_BUILDINGS,   // 🏗️ 밭 시설 7종(farm:true, fp:[가로칸,세로칸]) — 같은 배치 문법, 텃밭 안에서만(js/farm-building.js)
 ];
 
