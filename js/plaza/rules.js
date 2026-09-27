@@ -85,3 +85,11 @@ export function stageSeenPlan(plazaState, stage, season, { saveRestored = false,
   const emit = saveRestored && !debug && stage > 0 && !already;
   return { emit, key };
 }
+
+// 🚪 세이브 복원 게이트 — 첫 play 프레임에 연다. applySave() 가 저장이 있을 때만 호출되므로
+//   (오프라인·신규 게스트·failed_fresh 는 load.state 가 null 이라 applySave 자체가 안 돈다) 그 호출을
+//   신호로 못 쓴다. 대신 mode('attract'→'play')로 게이트를 열면 저장이 있든 없든(없으면 최초 선언된
+//   plazaDefault() 가 이미 정답이다) 모든 부팅 경로에서 정확히 한 번만 열린다.
+export function gateOpens(saveRestored, mode) {
+  return !saveRestored && mode === 'play';
+}

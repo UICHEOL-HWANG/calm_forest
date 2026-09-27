@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tierOf, nextTier, seasonPhase, donateMax, currentItems, visualStage, leafToCoins,
-         restorePlaza, plazaDefault, siteOpen, plazaBlocks, stageSeenPlan } from '../js/plaza/rules.js';
+         restorePlaza, plazaDefault, siteOpen, plazaBlocks, stageSeenPlan, gateOpens } from '../js/plaza/rules.js';
 
 const P = (o = {}) => ({ starts_at: '2026-10-09T00:00:00+09:00', ends_at: '2026-10-23T00:00:00+09:00',
   started: true, stage: 1, max_stage: 3, completed: false, items: [
@@ -102,6 +102,13 @@ test('stageSeenPlan: 검수(?plaza=) 중엔 emit 안 함', () => {
 test('stageSeenPlan: 0단계(광장 없음)는 emit 안 함', () => {
   const p = { seen: {} };
   assert.deepEqual(stageSeenPlan(p, 0, 'harvest-2026', { saveRestored: true }), { emit: false, key: 'stage0:harvest-2026' });
+});
+
+test('gateOpens: 복원 전이고 play 모드일 때만 연다', () => {
+  assert.equal(gateOpens(false, 'play'), true);
+  assert.equal(gateOpens(false, 'attract'), false);   // 로그인 배경 — 아직 안 연다
+  assert.equal(gateOpens(true, 'play'), false);       // 이미 열렸으면 다시 안 연다
+  assert.equal(gateOpens(true, 'attract'), false);
 });
 
 test('깃발 줄 기둥: 🏆게시판·📊시세판 동쪽, 기부함·좌판·광장 원과 떨어져 있다', async () => {
