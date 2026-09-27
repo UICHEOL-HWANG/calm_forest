@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tierOf, nextTier, seasonPhase, donateMax, currentItems, visualStage, leafToCoins,
          restorePlaza, plazaDefault, siteOpen, plazaBlocks, stageSeenPlan, gateOpens,
-         economyAllowed, nearPollDue } from '../js/plaza/rules.js';
+         economyAllowed, nearPollDue, normalizeMineReason } from '../js/plaza/rules.js';
 
 const P = (o = {}) => ({ starts_at: '2026-10-09T00:00:00+09:00', ends_at: '2026-10-23T00:00:00+09:00',
   started: true, stage: 1, max_stage: 3, completed: false, items: [
@@ -28,6 +28,12 @@ test('seasonPhase: KST 경계', () => {
   assert.equal(seasonPhase(p, Date.parse('2026-10-22T23:59:59+09:00')), 'active');
   assert.equal(seasonPhase(p, Date.parse('2026-10-23T00:00:00+09:00')), 'after');
   assert.equal(seasonPhase(null, Date.now()), 'before');
+});
+
+test('normalizeMineReason: login 도 auth 와 같은 로그인 안내로 합쳐진다(review fix round 1)', () => {
+  assert.equal(normalizeMineReason('login'), 'auth');
+  assert.equal(normalizeMineReason('auth'), 'auth');
+  for (const r of ['offline', 'season', null, undefined]) assert.equal(normalizeMineReason(r), r);
 });
 
 test('donateMax: 보유·오늘 남은 상한·품목 남은 필요량 중 최소, 음수 없음', () => {
