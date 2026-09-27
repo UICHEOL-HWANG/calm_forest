@@ -550,6 +550,22 @@ export async function sendEconBatch(rows) {
   } catch (err) { console.warn('[Supabase 폴백] 경제 원장 전송 실패:', err?.message || err); }
 }
 
+// ── 🌾 수확제 광장 RPC — 규칙 판정은 전부 서버(migrate_plaza.sql). 여기선 호출만 ──
+//    오프라인·에러는 { ok:false, reason } 로 통일 → 클라는 인벤토리를 건드리지 않는다
+async function plazaCall(fn, args) {
+  if (!state.online || !supabase) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await supabase.rpc(fn, args);
+    if (error) { console.warn(`[plaza] ${fn} 실패:`, error.message); return { ok: false, reason: 'upstream' }; }
+    return data || { ok: false, reason: 'upstream' };
+  } catch (e) {
+    console.warn(`[plaza] ${fn} 예외:`, e?.message || e);
+    return { ok: false, reason: 'offline' };
+  }
+}
+export function plazaDonate(season, item, qty) { return plazaCall('plaza_donate', { p_season: season, p_item: item, p_qty: qty }); }
+export function plazaMine(season) { return plazaCall('plaza_mine', { p_season: season }); }
+
 // ── [계측] ☕ 그날의 카페 손님 보관(cafe_guests) — Gemini 생성 콘텐츠 아카이브 ──
 //    손님은 날짜 시드라 그날 접속한 전원이 똑같은 4명을 봅니다. 그래서 유저별이 아니라
 //    (날짜, 날씨, 인원)당 1행만 남깁니다 — 먼저 들어온 한 명이 기록하고 나머지는

@@ -30,7 +30,7 @@ import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
-import { easeFor, nextDda, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
+import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
@@ -50,6 +50,7 @@ import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
 import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
@@ -972,6 +973,7 @@ const gameState = {
   pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, score }]. 등급은 score 에서 파생. 최대 PANTRY_MAX 칸
   workshop: { carved: 0, carvedToday: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 오늘 완성 수(의뢰 판정용), 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
   story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
+  plaza: plazaDefault(),               // 🌾 수확제 광장 { lastStage, claimed, invited, converted, seen }
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
 };
 
@@ -1510,10 +1512,12 @@ function craftSet(itemId, grade = 1) {
   }
   for (const [k, v] of Object.entries(r.cost)) gameState.inventory[k] -= v;
   gameState.craft.slots = setSlot(gameState.craft.slots, { item: itemId, grade, day: todayStr() });
-  settleDifficulty('craft', (grade || 0) / 3);   // 🎚️ 등급 0~3 → 0~1. 1주 차엔 ddaOn:false 라 값이 안 움직인다
+  const craftO = ddaOutcome('craft', { played: !!craftDiffCur, grade });   // 🎚️ 등급/3 — 미니게임 없는 맷돌(craftDiffCur null)은 안 움직인다
+  if (craftO != null) settleDifficulty('craft', craftO);
   trackEvent('craft_set', { item: itemId, grade, qty: yieldOf(itemId, grade), station,
                             slot_idx: slotsOf(gameState.craft.slots, station).length - 1, station_seq: stationCount(station),
                             ...diffParams(craftDiffCur) });   // [GA4] 🎚️ 난이도 동봉 (맷돌은 craftDiffCur 가 null → ease 1 / arm null)
+  craftDiffCur = null;   // 🎚️ 한 판 값 — 비워 두지 않으면 미니게임 없이 거는 다음 판이 앞 판 난이도로 DDA 를 움직인다
   requestSave(); refreshStations(); refreshInventoryUI();
   return craftPanelData(station);
 }
@@ -2458,6 +2462,7 @@ function applySave(saved) {
     for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
   }
   if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
+  gameState.plaza = restorePlaza(saved.plaza);   // 🌾 광장(옛 세이브=기본값)
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   // 💬 대화 횟수 복원 — 날짜가 오늘이 아니면 버린다(어제 소진이 오늘까지 남지 않게).
   //    ⚠️ 없으면 기본값 그대로 둔다. 옛 세이브에 이 필드가 없다고 새 세이브로 취급하면 안 된다.
@@ -2489,6 +2494,7 @@ function applySave(saved) {
     syncFarmSoil(true);    // 🌾 복원된 밭을 인스턴스 버퍼에 반영
     syncFarmCrops(true);   // 🌱 복원된 작물을 인스턴스 버퍼에 반영
   }
+  refreshPlaza();   // 🌾 initPlaza() 가 세이브 복원보다 먼저 돌아 기본값을 봤으므로 여기서 다시 맞춘다
 }
 
 export function getGameState() {
@@ -2728,6 +2734,7 @@ function buildWorld() {
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
+      || plazaScatterBlocks(x, z)
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
     }
     if (ok) spawnTree(x, z);   // 빈 자리를 못 찾으면 그 나무는 생략 — 시설을 가리며 억지로 심지 않는다
@@ -2737,6 +2744,7 @@ function buildWorld() {
   spawnKitchen();     // 🍳 자유주방(요리 미니게임)
   spawnShop();        // 상점 좌판
   spawnRankBoard();   // 🏆 랭킹 게시판(리더보드)
+  initPlaza();                // 🌾 수확제 광장(시즌 터·돌길)
   spawnMarketBoard(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   rebuildFarm(true);  // 개인 텃밭 필드(1단계) — 세이브에 단계가 있으면 applySave 가 다시 짓는다
@@ -2755,6 +2763,7 @@ function buildWorld() {
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
+    if (plazaScatterBlocks(x, z, 0.5)) continue;
     grassBuckets[i % 3].push({ x, y: 0.35, z, ph: Math.random() * Math.PI * 2 });
   }
   grassBuckets.forEach((items, k) => {
@@ -4048,6 +4057,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 0.5) continue;   // 🛶 나루터 연못 위 제외
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;                  // 🏪 꾸미기 가게 터 제외(반치수 2.56 + 여유)
+    if (plazaScatterBlocks(x, z, 1)) continue;
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
@@ -4554,7 +4564,8 @@ function kitchenFinish(id, res = {}) {
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
-  settleDifficulty('cook', score / 100);   // 🎚️ 점수 게임 — 0~1 로 정규화. 1주 차엔 ddaOn:false 라 값이 안 움직인다
+  const cookO = ddaOutcome('cook', { abandoned: res.abandoned, score });   // 🎚️ 점수/100 — 포기한 판은 DDA 를 안 움직인다(DDA 켬 2026-09-27)
+  if (cookO != null) settleDifficulty('cook', cookO);
   trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
     recipe: id, mg_type: r.stages.join('>'), diff: recipeDiff(r), quality: tier.id, score,
     stage_scores: (res.stageScores || []).map(v => Math.round(v)).join(','),   // 단계별 점수(어느 판에서 무너지는지)
@@ -4595,6 +4606,7 @@ function pantryTake(recipeId) {
 
 // 야외 장식 메시(절차적)
 function outdoorMesh(id) {
+  { const m = plazaDecorMesh(id); if (m) return m; }   // 🌾 광장 장식 4종(js/plaza/decor.js)
   const g = new THREE.Group();
   if (isFarmBuilding(id)) {   // 🏗️ 밭 시설 7종 — 배치·고스트 둘 다 이 함수를 쓴다(여기 없으면 투명하게 놓인다)
     farmBuildingMesh(id, g);
@@ -5030,6 +5042,7 @@ const VILLAGE_PLACES = [
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
+  { ico: '🌾', name: '수확제 광장', x: 23, z: -4, pri: 1, need: 'plaza' },
   { ico: '🍎', name: '과수원',        x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];
 
@@ -5041,7 +5054,7 @@ function villagePlaces() {
   const now = performance.now();
   if (_placesCache && now - _placesAt < 5000) return _placesCache;
   _placesAt = now;
-  _placesCache = VILLAGE_PLACES.map(p => ({
+  _placesCache = VILLAGE_PLACES.filter(p => p.need !== 'plaza' || plazaMapVisible()).map(p => ({
     ico: p.ico, name: p.name, x: p.x, z: p.z, pri: p.pri,
     locked: p.need === 'coop' ? !gameState.coop.built : p.map ? mapLocked(p.map) : false,
   }));
@@ -5204,6 +5217,7 @@ function animate() {
   updateNPC(dt, t);
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
   updateOwlVisit(dt);        // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
+  updatePlaza(dt, inVillage2());   // 🌾 광장 근처면 진행률 재조회
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
@@ -6104,6 +6118,7 @@ function handleAction() {
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴
   if (nearMarket) { ui.act?.('market'); return ui.openMarket?.(marketData()); } // 📊 전광판 → 시세판 모달(튜토리얼: 시세 확인)
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
+  if (plazaSpotNow()) return openPlaza();   // 🌾 기부함·좌판·명판
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
   if (nearCosShop) {                       // 🏪 꾸미기 가게 → 🎀 꾸미기 패널
     trackEvent('shop_enter', { from: 'walk' });
@@ -6252,7 +6267,7 @@ function farmActionFirst() {
   if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
-  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop) return false;
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || !!plazaSpotNow()) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
   if (forageTarget() || traceTarget()) return false;
@@ -6638,7 +6653,7 @@ const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽�
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
   sap_apple: '🍎사과나무 묘목', sap_pear: '🍐배나무 묘목', sap_peach: '🍑복숭아나무 묘목',
-  sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
+  sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목', leaf: '🍂단풍잎' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
 
 
 function makeNameTag(def) {
@@ -6846,7 +6861,7 @@ function rollDifficulty(game) {
 }
 
 // 🎚️ 판이 끝나면 결과를 먹인다. outcome 은 0~1 — 이진은 성공 1 / 실패 0, 점수 게임은 점수/만점.
-//    ddaOn:false 인 게임에선 nextDda 가 그대로 돌려주므로 호출해도 안전하다(1주 차 요리·가공).
+//    ddaOn:false 인 게임에선 nextDda 가 그대로 돌려주므로 호출해도 안전하다(지금은 다섯 게임 모두 켜져 있다).
 function settleDifficulty(game, outcome) {
   const st = gameState.difficulty[game]; if (!st) return;
   st.dda = nextDda(game, st.dda, outcome);

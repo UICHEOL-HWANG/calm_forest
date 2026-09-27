@@ -3141,7 +3141,8 @@
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
           : t.includes('리듬') || t.includes('달래기') ? '♪' : t.includes('등불 켜기') ? '🏮' : t.includes('정화') ? '🌳'
           : t.includes('던지기') || t.includes('기다리는') ? '🎣' : t.includes('당기세요') ? '🎣' : t.includes('버텨') ? '💪'
-          : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : t.includes('· 자기') ? '🛏️' : t.includes('옮기기') ? '✋' : t.includes('맡기기') ? '🐾' : '🚪';
+          : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : t.includes('· 자기') ? '🛏️' : t.includes('옮기기') ? '✋' : t.includes('맡기기') ? '🐾'
+          : t.includes('광장') ? '🌾' : t.includes('수확제 좌판') ? '🍂' : '🚪';
         refreshActionIcon();
         if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
@@ -4012,6 +4013,7 @@
       const atFarm = !!Input.isAtFarm?.();
       Input.getOutdoor().forEach(o => {
         if (o.farm && !atFarm) return;   // 🏗️ 밭 시설은 텃밭 안 작업대 목록에서만(마을에선 놓을 수 없으니 보여 주지 않는다)
+        if (o.hidden && !((Input.getOutdoorStored?.() || {})[o.id] > 0)) return;   // 🌾 좌판·보상 장식은 보관분이 있을 때만
         const costStr = Object.entries(o.cost).map(([k, n]) => ico(k) + n).join(' ');
         const stored = (Input.getOutdoorStored?.() || {})[o.id] || 0;   // 🧺 보관분 — 값 없이 꺼내 놓는다
         const enough = stored > 0 || Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
