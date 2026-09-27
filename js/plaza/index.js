@@ -16,10 +16,6 @@ const DEBUG_STAGE = (() => {                       // ?plaza=0|1|2|3|4 — 검�
   const v = new URLSearchParams(location.search).get('plaza');
   return v !== null && /^[0-4]$/.test(v) ? Number(v) : null;
 })();
-const ARCH_VAR = (() => {                          // 🎨 디자인 게이트 B2: ?plazaArch=a|b|c(확정 후 상수로)
-  const v = new URLSearchParams(location.search).get('plazaArch');
-  return /^[abc]$/.test(v || '') ? v : 'a';
-})();
 const BOX_R = 2.0;
 const STALL_R = 2.0;
 // 시즌 id — localhost 에서만 ?plazaSeason= 으로 바꿀 수 있다(Task 8 의 dev-plaza 시즌 검증용). 모든 서버 호출·트래킹은 SEASON 을 쓴다
@@ -49,7 +45,7 @@ function rebuild(stage, phase) {
   if (stage === 0) return;
   built = buildPlaza(stage, phase);
   scene.add(built.group);
-  pathBuilt = buildPath(stage, phase, ARCH_VAR);
+  pathBuilt = buildPath(stage, phase);
   scene.add(pathBuilt.group);
   for (const s of [-1, 1]) pathSolids.push(solidCircle(PLAZA_ARCH.x + s * PLAZA_ARCH_HALF, PLAZA_ARCH.z, 0.3));   // 아치 기둥(가운데는 지나갈 수 있게)
   if (phase === 'active' && stage < 4) pathSolids.push(solidCircle(PLAZA_POLE.x, PLAZA_POLE.z, 0.3));
