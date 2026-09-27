@@ -284,7 +284,7 @@ export function updateDoorInteract() {
   else if (nearStation) prompt = stationLabel(nearStation);
   else if (nearShop) prompt = '🛒 상점';
   else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문, 매주 리셋'); }
-  else if (plazaHere === 'box') prompt = '🌾 광장에 기부하기';
+  else if (plazaHere === 'box') prompt = '🌾 광장에 보태기';
   else if (plazaHere === 'stall') prompt = '🍂 수확제 좌판';
   else if (plazaHere === 'plaque') prompt = '🌾 광장 명판 보기';
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }

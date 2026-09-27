@@ -14,9 +14,9 @@ export const PLAZA_SEASON = 'harvest-2026';
 export const PLAZA_OPENS_KST = '2026-10-09';
 export const PLAZA_DAILY_CAP = 30;
 export const PLAZA_TIERS = [
-  { id: 'gold', min: 150, ico: '🥇' },
-  { id: 'silver', min: 60, ico: '🥈' },
-  { id: 'bronze', min: 10, ico: '🥉' },
+  { id: 'gold', min: 150, ico: '🥇', name: '금빛 일꾼' },
+  { id: 'silver', min: 60, ico: '🥈', name: '은빛 일꾼' },
+  { id: 'bronze', min: 10, ico: '🥉', name: '동빛 일꾼' },
 ];
 export const PLAZA_ITEMS = {
   wood: { ico: '🪵', name: '목재' }, stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' },

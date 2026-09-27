@@ -34,6 +34,23 @@ test('진행률: 동시 호출은 한 번만 나간다', async () => {
   assert.equal(n, 1);
 });
 
+test('진행률: 요청이 떠 있는 동안의 force 는 그걸 기다렸다가 새로 한 번 더 받아 새 값을 준다', async () => {
+  let n = 0; const gates = [];
+  const f = createProgressFetcher({ now: () => 0, fetchFn: () => { n++; const k = n;
+    return new Promise(res1 => gates.push(() => res1(res({ stage: k })))); } });
+  const first = f.get('s');                       // 1번째 요청(떠 있음)
+  const forced = f.get('s', { force: true });     // 기부 직후 강제 재조회 — 낡은 1번째를 그대로 받으면 안 된다
+  await Promise.resolve(); gates[0]();
+  assert.equal((await first).stage, 1);
+  for (let i = 0; i < 5 && gates.length < 2; i++) await new Promise(r => setTimeout(r, 0));
+  assert.equal(gates.length, 2, 'force 가 두 번째 요청을 내지 않았다');
+  gates[1]();
+  assert.equal((await forced).stage, 2);
+  assert.equal(n, 2);
+  assert.equal((await f.get('s')).stage, 2);      // 이후 일반 호출은 새 값 캐시
+  assert.equal(n, 2);
+});
+
 test('RPC 는 supabase-client.js 안에서만 — 클라이언트 객체를 밖으로 내보내지 않는다', () => {
   const sc = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
   assert.ok(/plazaCall\('plaza_donate'/.test(sc));
