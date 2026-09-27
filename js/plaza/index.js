@@ -3,10 +3,11 @@
 //  🌾 수확제 광장 — 게임 연결 진입점. game.js 는 여기 함수만 부른다(연결 줄 ≤14).
 //  스펙: docs/superpowers/specs/2026-09-27-harvest-plaza-design.md
 // =============================================================
-import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles } from '../game.js';
+import { gameState, player, dist2D, scene, solidCircle, removeSolid, obstacles } from '../game.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R } from '../data/plaza.js';
 import { plazaBlocks, siteOpen, seasonPhase, visualStage } from './rules.js';
-import { progress } from './net.js';
+import { progress, mine as fetchMine } from './net.js';
+import { openPlazaModal } from './ui.js';
 import { buildPlaza } from './build.js';
 import { buildPath } from './path.js';
 
@@ -76,7 +77,7 @@ function applyStage(stage) {
 
 export async function refresh(force = false) {
   const p = await progress.get(SEASON, { force });
-  if (p) lastProg = p;
+  if (p && !fake) lastProg = p;
   if (DEBUG_STAGE === null) applyStage(visualStage(lastProg, gameState.plaza.lastStage));
 }
 export { refresh as refreshPlaza };   // ⚠️ applySave 가 initPlaza() 보다 뒤에 세이브를 복원한다 — applySave 끝에서 재조회
@@ -106,9 +107,38 @@ export function plazaSpot(pos) {
 
 export function plazaSpotNow() { return spotNow; }
 
-export function openPlaza() {
-  // Task 8·9: 모달
-  ui.toast?.('🌾 준비 중이에요');
+// 🧾 모달 상태 — 내 기록(plaza_mine)은 열 때마다 새로 받는다(오늘 남은 수가 날마다 바뀐다)
+let mineNow = null, mineReason = null, busy = false, modalKind = null;
+let fake = null;   // localhost 전용 __plazaFake 로 넣은 가짜 진행률(시안 검수용) — 켜져 있으면 서버 값으로 덮지 않는다
+
+// Task 8 Step 8(디자인 게이트 C 이후)에서 기부 흐름을 연결한다. onBuy·onClaim 은 Task 9
+const onDonate = () => {};
+const onBuy = () => {};
+const onClaim = () => {};
+
+const ctx = () => ({ kind: modalKind, prog: lastProg, mine: mineNow, mineReason, inv: fake?.inv || gameState.inventory, busy,
+                     onDonate, onBuy, onClaim });
+
+export async function openPlaza() {
+  modalKind = plazaSpotNow();
+  if (!modalKind) return;
+  if (!fake && (modalKind === 'box' || modalKind === 'plaque')) {
+    const m = await fetchMine(SEASON);
+    mineNow = m && m.ok ? m : null;
+    mineReason = m && !m.ok ? m.reason : null;
+  }
+  openPlazaModal(modalKind, ctx());
+}
+
+// 🎨 검수용: localhost 에서만 가짜 진행률·내 기록(·가방)을 넣고 기부함 모달을 연다
+//   예) __plazaFake({ stage: 2, items: [{ stage: 2, item: 'stone', have: 180, need: 400 }] }, { my_total: 34, today_left: 18, tier: 'bronze' }, { stone: 50 })
+if (IS_LOCAL && typeof window !== 'undefined') {
+  window.__plazaFake = (prog, mine, inv) => {
+    fake = { inv: inv || null };
+    lastProg = prog; mineNow = mine || null; mineReason = mine ? null : 'auth';
+    modalKind = 'box';
+    openPlazaModal('box', ctx());
+  };
 }
 
 export const plazaView = { stage: () => shownStage, progress: () => lastProg };
