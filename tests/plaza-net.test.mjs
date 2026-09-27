@@ -22,6 +22,18 @@ test('진행률: 실패하면 마지막 값을 유지한다', async () => {
   assert.equal(f.last().stage, 2);
 });
 
+test('진행률: 실패해도 시도 시각을 남겨 60초는 재조회 안 하고, 지나면 다시 조회한다', async () => {
+  let t = 0, n = 0;
+  const f = createProgressFetcher({ fetchFn: async () => { n++; return res({}, false); }, now: () => t });
+  assert.equal(await f.get('s'), null);
+  t = 30_000;
+  assert.equal(await f.get('s'), null);
+  assert.equal(n, 1, '30초 안 재조회는 실패 뒤에도 스로틀돼야 한다');
+  t = 61_000;
+  assert.equal(await f.get('s'), null);
+  assert.equal(n, 2, '61초 뒤엔 다시 조회한다');
+});
+
 test('진행률: 에러 응답 본문({error})은 값으로 받지 않는다', async () => {
   const f = createProgressFetcher({ fetchFn: async () => res({ error: 'unknown season' }), now: () => 0 });
   assert.equal(await f.get('s'), null);

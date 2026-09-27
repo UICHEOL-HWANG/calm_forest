@@ -6,7 +6,7 @@
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge, mode } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
-import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens } from './rules.js';
+import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens, economyAllowed, nearPollDue } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
 import { interpretDonate } from './donate.js';
@@ -122,6 +122,7 @@ export function initPlaza() {
 }
 
 let viewCheck = 0;
+let lastNearPollAt = -Infinity;   // 🚪 시즌 시작 전엔 매초 대신 10분에 한 번만 확인(nearPollDue)
 export function updatePlaza(dt, inVillage) {
   // 🚪 부팅 게이트 — 첫 play 프레임에 딱 한 번. applySave() 는 저장이 있을 때만 도는데(오프라인·신규
   //   게스트·failed_fresh 는 load.state 가 null 이라 아예 안 불림) mode 는 모든 부팅 경로에서 결국 'play' 가
@@ -132,14 +133,17 @@ export function updatePlaza(dt, inVillage) {
     maybeConvert();
     refresh();
   }
-  updateInvite(dt, inVillage, phaseNow(), SEASON);
+  updateInvite(dt, inVillage, phaseNow(), SEASON, DEBUG_STAGE !== null);
   if (!inVillage) { spotNow = null; return; }   // 마을을 나가면 근접 판정도 비운다(낡은 값이 밭일을 막지 않게)
   viewCheck -= dt;
   if (viewCheck > 0) return;
   viewCheck = 1;
   if (plazaBlocks(player.position.x, player.position.z, -PLAZA_R)) lastPathAt = performance.now();
   trackView();
-  if (dist2D(PLAZA, player.position) < PLAZA_VIEW_R) refresh();
+  if (dist2D(PLAZA, player.position) < PLAZA_VIEW_R && nearPollDue(lastProg, Date.now(), lastNearPollAt)) {
+    lastNearPollAt = Date.now();
+    refresh();
+  }
 }
 
 export function plazaSpot(pos) {
@@ -166,6 +170,7 @@ function addStored(id) {
 // 🍂 좌판 구매 — 단풍잎을 빼고 보관함에 넣는다(서버 없이 로컬 세이브)
 //   ⚠️ 인벤토리는 다른 모듈이 객체째 캐시한다 → 새 객체로 갈아끼우지 않고 필드 대입(onDonate 와 같은 규칙)
 function onBuy(id) {
+  if (!economyAllowed(DEBUG_STAGE)) return;   // 🔒 검수 중엔 좌판 구매도 no-op
   const plan = buyPlan(gameState.inventory, id);
   if (!plan.ok) { ui.toast?.(PLAZA_COPY.stall[plan.reason]); return; }
   gameState.inventory.leaf -= plan.price;
@@ -178,6 +183,7 @@ function onBuy(id) {
 
 // 🎁 명판 보상 — 서버가 준 내 등급(plaza_mine)까지 누적(🥉 배지 · 🥈 호박 등불 · 🥇 수확제 허수아비), 시즌마다 한 번
 function onClaim() {
+  if (!economyAllowed(DEBUG_STAGE)) return;   // 🔒 검수 중엔 명판 보상도 no-op
   const tier = mineNow?.tier || null;
   const plan = claimPlan(gameState.plaza, SEASON, tier);
   if (plan.already || plan.none) return;
@@ -192,6 +198,7 @@ function onClaim() {
 
 // 🪙 시즌이 끝나면(after) 남은 🍂 을 한 번만 코인으로 — refresh()·initPlaza() 끝에서 부른다
 function maybeConvert() {
+  if (!economyAllowed(DEBUG_STAGE)) return;   // 🔒 검수 중엔 환전도 no-op
   if (!saveRestored) return;   // 세이브 복원 전(가짜 gameState.plaza.converted 기본값) 판정 금지 — 부팅 순서 함정
   if (phaseNow() !== 'after') return;
   const leaves = gameState.inventory.leaf || 0;
@@ -209,7 +216,7 @@ function maybeConvert() {
 
 const ctx = () => ({ kind: modalKind, prog: lastProg, mine: mineNow, mineReason, inv: fake?.inv || gameState.inventory, busy,
                      claim: claimPlan(gameState.plaza, SEASON, mineNow?.tier || null),
-                     onDonate, onBuy, onClaim });
+                     onDonate, onBuy, onClaim, onClose: () => { modalKind = null; } });
 
 export async function openPlaza() {
   modalKind = plazaSpotNow();
@@ -226,6 +233,7 @@ export async function openPlaza() {
 // 🌾 기부 — 서버가 받은 만큼(accepted)만 가방에서 빼고 🍂 도 그만큼. 실패·거절이면 가방은 그대로
 //   ⚠️ 인벤토리는 다른 모듈이 객체째 캐시한다(cooking·carving·river·cafe) → 새 객체로 갈아끼우지 않고 필드 대입
 async function onDonate(item, qty) {
+  if (!economyAllowed(DEBUG_STAGE)) return;   // 🔒 검수 중엔 기부(서버 호출)도 no-op
   if (busy || qty <= 0) return;
   busy = true; renderPlazaModal(ctx());
   try {
@@ -264,3 +272,4 @@ if (IS_LOCAL && typeof window !== 'undefined') {
 }
 
 export const plazaView = { stage: () => shownStage, progress: () => lastProg };
+export const plazaMapVisible = () => shownStage > 0;   // 🗺️ 시즌 전(0단계)엔 지도에서 완전히 숨긴다

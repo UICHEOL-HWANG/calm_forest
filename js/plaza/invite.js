@@ -36,12 +36,12 @@ function checkArrive() {
   requestSave();
 }
 
-export function updateInvite(dt, inVillage, phase, seasonId) {
+export function updateInvite(dt, inVillage, phase, seasonId, debug = false) {
   season = seasonId;
   villageSec = inVillage && mode === 'play' ? villageSec + dt : 0;
   cooldown -= dt; if (cooldown > 0) return;
   cooldown = 0.5;
-  if (inviteDue({ phase, invited: gameState.plaza.invited, season, tutorialBusy, villageSec, modal: !!ui.anyModalOpen?.() })) {
+  if (inviteDue({ phase, invited: gameState.plaza.invited, season, tutorialBusy, villageSec, modal: !!ui.anyModalOpen?.(), debug })) {
     sendOwlToPlayer('plaza');
   }
   if (inVillage) checkArrive();

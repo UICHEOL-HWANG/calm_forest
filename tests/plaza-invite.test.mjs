@@ -16,6 +16,11 @@ test('inviteDue: 시즌 중·아직 안 받음·마을 20초·튜토리얼/모�
   assert.equal(inviteDue({ ...base, modal: true }), false);
 });
 
+test('inviteDue: 검수(?plaza=) 중엔 조건이 다 맞아도 절대 안 보낸다', async () => {
+  const { inviteDue } = await import('../js/plaza/invite-rule.js');
+  assert.equal(inviteDue({ ...base, debug: true }), false);
+});
+
 test('올빼미 착지 훅: 특별 의뢰 경로는 그대로, 광장은 별도 칸', () => {
   const npc = src('js/spaces/npc.js');
   assert.ok(/export function onOwlLand\(/.test(npc));

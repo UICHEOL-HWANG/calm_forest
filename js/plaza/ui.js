@@ -65,7 +65,7 @@ const CSS = `
 }
 `;
 
-let root = null, card = null;
+let root = null, card = null, lastCtx = null;
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -196,6 +196,7 @@ const TITLE = { box: () => PLAZA_COPY.title, stall: () => PLAZA_COPY.stall.title
 
 export function renderPlazaModal(ctx) {
   if (!card || !ctx) return;
+  lastCtx = ctx;
   card.replaceChildren(el('h2', '', (TITLE[ctx.kind] || TITLE.box)()));
   if (ctx.kind === 'box') renderBox(ctx);
   else if (ctx.kind === 'stall') renderStall(ctx);
@@ -215,4 +216,5 @@ export function openPlazaModal(kind, ctx) {
 
 export function closePlazaModal() {
   root?.classList.remove('show');
+  lastCtx?.onClose?.();   // 🔒 index.js 의 modalKind 를 비운다 — 닫은 뒤 끝난 기부가 숨은 모달을 다시 그리지 않게
 }

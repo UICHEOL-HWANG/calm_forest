@@ -93,3 +93,16 @@ export function stageSeenPlan(plazaState, stage, season, { saveRestored = false,
 export function gateOpens(saveRestored, mode) {
   return !saveRestored && mode === 'play';
 }
+
+// 🔒 검수용 ?plaza= 로 단계를 고정한 동안엔 실제 경제 동작(환전·보상·구매·기부)을 전부 막는다
+export function economyAllowed(debugStage) {
+  return debugStage === null;
+}
+
+// 🚪 근접 폴링 — 시즌 시작 전(started === false)이면 60초 스로틀과 별개로 10분에 한 번만 확인한다
+//   (매초 refresh() 를 부르던 것 — 어차피 시작 전엔 값이 안 바뀐다). 부팅 조회·gateOpens 재조회는 이 판정 밖
+export function nearPollDue(lastProg, nowMs, lastNearPollAt, longGapMs = 600_000) {
+  if (!lastProg || lastProg.started !== false) return true;
+  if (nowMs < Date.parse(lastProg.starts_at)) return nowMs - lastNearPollAt >= longGapMs;
+  return true;
+}
