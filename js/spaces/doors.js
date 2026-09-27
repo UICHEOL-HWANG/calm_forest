@@ -14,6 +14,7 @@ import {
   petChoresNear, pickedOutdoor, placingDecor, placingOutdoor, player, plots, requestSave, scene, seaMG, setFogExempt,
   setSpaceVisible, snapCamera, stopOutdoorPlacing, toolPage, ui, updateToolPageAuto, workerCap,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
+import { plazaSpot } from '../plaza/index.js';
 import { trackEvent } from '../analytics.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
 import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MUSEUM, MUSEUM_GATE, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
@@ -269,9 +270,11 @@ export function updateDoorInteract() {
   $w.nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   $w.nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
   $w.nearCosShop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && dist2D(SHOP_DOOR, player.position) < 2.8; // 🏪 꾸미기 가게(마을 서쪽)
+  // 🌾 수확제 광장 — 기부함·좌판·명판(마을 동쪽 멀리라 다른 시설과 겹치지 않는다)
+  const plazaHere = inVillage && !nearRank ? plazaSpot(player.position) : null;
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
   //   가장 가까운 한 채를 잡는다(몸집이 커서 반경 2.6). 텃밭에선 밭일이 먼저다(허수아비와 같은 규칙).
-  const stationZone = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop)
+  const stationZone = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && !plazaHere)
     || (atFarm && !farmActionFirst());
   $w.nearStation = stationZone
     ? (gameState.outdoor.find(r => STATION_IDS.includes(r.id) && Math.hypot(r.x - player.position.x, r.z - player.position.z) < 2.6) || null)
@@ -281,6 +284,9 @@ export function updateDoorInteract() {
   else if (nearStation) prompt = stationLabel(nearStation);
   else if (nearShop) prompt = '🛒 상점';
   else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문, 매주 리셋'); }
+  else if (plazaHere === 'box') prompt = '🌾 광장에 기부하기';
+  else if (plazaHere === 'stall') prompt = '🍂 수확제 좌판';
+  else if (plazaHere === 'plaque') prompt = '🌾 광장 명판 보기';
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
