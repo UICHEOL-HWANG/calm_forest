@@ -23,9 +23,9 @@ export const SEASON = (IS_LOCAL && new URLSearchParams(location.search).get('pla
 
 let spotNow = null;
 let shownStage = -1;
+let shownPhase = null;
 let lastProg = null;
 
-const VARIANT = new URLSearchParams(location.search).get('plazaVar') || 'a';   // 디자인 게이트 A 용(확정 후 삭제)
 let built = null, solids = [], obstacle = null;
 
 function clearBuilt() {
@@ -35,11 +35,10 @@ function clearBuilt() {
   if (obstacle) { const i = obstacles.indexOf(obstacle); if (i >= 0) obstacles.splice(i, 1); obstacle = null; }
 }
 
-function rebuild(stage) {
+function rebuild(stage, phase) {
   clearBuilt();
   if (stage === 0) return;
-  const phase = phaseNow();
-  built = buildPlaza(stage, phase, VARIANT);
+  built = buildPlaza(stage, phase);
   scene.add(built.group);
   obstacle = { x: PLAZA.x, z: PLAZA.z, r: PLAZA_R }; obstacles.push(obstacle);   // 야외 장식을 광장 위에 못 놓게
   solids.push(solidCircle(PLAZA_BOX.x, PLAZA_BOX.z, 0.6));
@@ -57,11 +56,13 @@ export function phaseNow() {
   return seasonPhase(lastProg, Date.now());
 }
 
+// 단계뿐 아니라 국면(active→after)이 바뀌어도 다시 짓는다 — 좌판·기부함·명판이 국면을 따른다
 function applyStage(stage) {
-  if (stage === shownStage) return;
-  shownStage = stage;
-  gameState.plaza = { ...gameState.plaza, lastStage: stage };
-  rebuild(stage);
+  const phase = phaseNow();
+  if (stage === shownStage && phase === shownPhase) return;
+  if (stage !== shownStage) gameState.plaza = { ...gameState.plaza, lastStage: stage };
+  shownStage = stage; shownPhase = phase;
+  rebuild(stage, phase);
 }
 
 export async function refresh(force = false) {
