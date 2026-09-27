@@ -60,6 +60,9 @@ export const EN = {
   '수확제 광장 🥇 보상': 'Harvest Plaza 🥇 reward',
   '수확제 일꾼': 'Harvest Helper',
   '수확제 광장에 10개 이상 보태기': 'Give 10 or more to the Harvest Plaza',
+  // 🦉 광장 초대(Task 10)
+  '🦉 의뢰 올빼미가 수확제 초대장을 물고 왔어요! 동쪽 돌길을 따라가 보세요': '🦉 The quest owl brought a harvest festival invitation! Follow the stone path east',
+  '🌾 수확제 광장에 왔어요! 🍂5 🪙10 — 기부함에 재료를 보태 보세요': '🌾 You made it to the Harvest Plaza! 🍂5 🪙10 — chip materials into the donation box',
   // ── 🔥 화덕(밤사이 가공) ─────────────────────────────────────
   //   ⚠️ 안내줄은 <b> 강조 때문에 텍스트 노드가 쪼개진다 — 조각째 등재한다.
   '🔥 화덕': '🔥 Kiln',

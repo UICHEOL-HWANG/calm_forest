@@ -14,6 +14,7 @@ import { toastText, fill, PLAZA_COPY } from './copy.js';
 import { buyPlan, claimPlan, convertPlan } from './rewards.js';
 import { buildPlaza } from './build.js';
 import { buildPath } from './path.js';
+import { updateInvite } from './invite.js';
 
 export { plazaDefault, restorePlaza } from './rules.js';
 export { plazaDecorMesh } from './decor.js';
@@ -95,6 +96,7 @@ export function initPlaza() {
 
 let viewCheck = 0;
 export function updatePlaza(dt, inVillage) {
+  updateInvite(dt, inVillage, phaseNow(), SEASON);
   if (!inVillage) { spotNow = null; return; }   // 마을을 나가면 근접 판정도 비운다(낡은 값이 밭일을 막지 않게)
   viewCheck -= dt;
   if (viewCheck > 0) return;

@@ -69,6 +69,13 @@ test('copy.js 에 자리표시 <확정 이 남지 않는다', () => {
   assert.ok(!readFileSync(new URL('../js/plaza/copy.js', import.meta.url), 'utf8').includes('<확정'));
 });
 
+test('🦉 광장 초대 문구(Task 10 사용자 확정)', () => {
+  assert.deepEqual(PLAZA_COPY.invite, {
+    land: '🦉 의뢰 올빼미가 수확제 초대장을 물고 왔어요! 동쪽 돌길을 따라가 보세요',
+    arrive: '🌾 수확제 광장에 왔어요! 🍂5 🪙10 — 기부함에 재료를 보태 보세요',
+  });
+});
+
 test('doors.js 프롬프트가 확정 문구와 같다', () => {
   const doors = readFileSync(new URL('../js/spaces/doors.js', import.meta.url), 'utf8');
   for (const s of Object.values(PLAZA_COPY.prompt)) assert.ok(doors.includes(`'${s}'`), `doors.js 에 ${s} 없음`);
@@ -84,6 +91,7 @@ const SHOWN = [
   fill(PLAZA_COPY.plaque.mine, tierLabel('gold')), fill(PLAZA_COPY.convert.done, 12, 24), '🍂단풍잎',
   '볏단', '수확제 좌판에서 산 볏단', '호박 더미', '수확제 좌판에서 산 호박 더미', '호박 등불', '수확제 광장 🥈 보상 — 밤에 은은히',
   '수확제 허수아비', '수확제 광장 🥇 보상', '수확제 일꾼', '수확제 광장에 10개 이상 보태기',
+  PLAZA_COPY.invite.land, PLAZA_COPY.invite.arrive,
 ];
 for (const ko of SHOWN) {
   test(`영어 모드에서 한국어가 안 남는다: ${ko}`, () => {
