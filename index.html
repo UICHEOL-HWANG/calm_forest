@@ -4012,6 +4012,7 @@
       const atFarm = !!Input.isAtFarm?.();
       Input.getOutdoor().forEach(o => {
         if (o.farm && !atFarm) return;   // 🏗️ 밭 시설은 텃밭 안 작업대 목록에서만(마을에선 놓을 수 없으니 보여 주지 않는다)
+        if (o.hidden && !((Input.getOutdoorStored?.() || {})[o.id] > 0)) return;   // 🌾 좌판·보상 장식은 보관분이 있을 때만
         const costStr = Object.entries(o.cost).map(([k, n]) => ico(k) + n).join(' ');
         const stored = (Input.getOutdoorStored?.() || {})[o.id] || 0;   // 🧺 보관분 — 값 없이 꺼내 놓는다
         const enough = stored > 0 || Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
