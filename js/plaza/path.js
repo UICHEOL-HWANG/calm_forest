@@ -12,7 +12,7 @@ import { PLAZA_PATH, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF as HALF, PLAZA_BUNT
 
 const PAL = {
   stone: 0xe4dcc8, post: 0x7a5230, banner: 0xe0873a,
-  wood: 0xa8683c, woodDark: 0x5e3b22, leaf: 0xc8452e, leafOrange: 0xe0873a,
+  wood: 0xa8683c, woodDark: 0x5e3b22, leaf: 0xc8452e, leafDeep: 0xa8322a, leafOrange: 0xe0873a,
   lamp: 0xffd98a, flag0: 0xe26d5a, flag1: 0xf2c14e, flag2: 0x6bb5a6,
 };
 const FLAGS = ['flag0', 'flag1', 'flag2'];
@@ -20,7 +20,6 @@ const POLE_H = 9;                                      // 🎨 게이트 B(2026-
 
 const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
 const ball = (r, x, y, z, sy = 1) => new THREE.IcosahedronGeometry(r, 0).scale(1, sy, 1).translate(x, y, z);
-const round = (r, x, y, z, sy = 1) => new THREE.IcosahedronGeometry(r, 1).scale(1, sy, 1).translate(x, y, z);   // 둥근 잎 덩이(면 80개)
 
 function tri(points, uv) {
   const g = new THREE.BufferGeometry();
@@ -33,22 +32,64 @@ function tri(points, uv) {
 const pennant = (w = 0.28, h = 0.32) => tri([-w / 2, 0, 0, w / 2, 0, 0, 0, -h, 0], [0, 1, 1, 1, 0.5, 0]);
 
 // ---------- 🍁 입구 단풍 아치(로컬: 아치 중심 기준, 기둥 x ±HALF, 정면 +Z, 돌길이 z 축으로 지나간다) ----------
-//   🎨 게이트 B2(2026-09-27): 시안 c 확정. B3: 작은 덩이를 촘촘히 붙이면 울퉁불퉁하고 환공포증처럼 읽혀서
-//   기둥 위를 잇는 반원 잎 띠 하나 + 큰 덩이 5개(어깨 2·꼭대기 1·기둥 중간 2)로 줄였다
-const LEAF_Y = 2.2;                                   // 반원 띠 중심 높이(기둥 끝)
-function mapleArch(add) {
+//   🎨 게이트 B2(2026-09-27): 곧은 기둥 + 가로대 + 각진 단풍 덩이(ball, 면 20개) 틀 확정.
+//   B3 에서 반원 띠로 매끈하게 바꿨더니 "빨간 관에 호박"처럼 읽혀 되돌렸다(사용자 반려).
+//   B4(2026-09-27, 사용자 선택 3안): 틀은 B2 그대로 다듬고 발밑에 떨어진 단풍잎 — 위에서 내려다보는 카메라라 누운 잎이 가장 잘 읽힌다.
+//   ⚠️ 해 보고 버린 것: 잎 덩이를 세로로 늘이면 초롱, 평평한 큰 덩이는 버섯 갓, 검붉은 색은 탁함, 갈래가 깊은 잎은 표창처럼 읽혔다.
+
+function archFrame(add) {                              // 기둥·받침·가로대·양옆 등불(세 안 공통)
   for (const s of [-1, 1]) {
-    add('wood', box(0.16, LEAF_Y + 0.05, 0.16, s * HALF, (LEAF_Y + 0.05) / 2, 0));
-    add('woodDark', box(0.26, 0.1, 0.26, s * HALF, 0.05, 0));                       // 받침
-    add('leaf', round(0.34, s * HALF, LEAF_Y, 0.02));                               // 어깨 덩이
-    add('leafOrange', round(0.24, s * HALF + s * 0.04, 1.15, 0.08, 1.25));          // 기둥 중간 덩이(길쭉하게 감싼 모양)
-    add('woodDark', box(0.28, 0.06, 0.06, s * (HALF + 0.16), 2.05 - 0.25, 0.05));    // 바깥 팔 + 매단 등불
-    add('woodDark', box(0.02, 0.2, 0.02, s * (HALF + 0.27), 1.69, 0.05));
-    add('woodDark', box(0.2, 0.05, 0.2, s * (HALF + 0.27), 1.57, 0.05));
-    add('lamp', ball(0.12, s * (HALF + 0.27), 1.43, 0.05, 1.2));
+    add('wood', box(0.16, 2.5, 0.16, s * HALF, 1.25, 0));
+    add('woodDark', box(0.26, 0.1, 0.26, s * HALF, 0.05, 0));
+    add('woodDark', box(0.28, 0.06, 0.06, s * (HALF + 0.16), 2.05, 0.05));   // 바깥 팔
+    add('woodDark', box(0.02, 0.22, 0.02, s * (HALF + 0.27), 1.93, 0.05));
+    add('woodDark', box(0.2, 0.05, 0.2, s * (HALF + 0.27), 1.8, 0.05));       // 등불 지붕
+    add('lamp', ball(0.12, s * (HALF + 0.27), 1.66, 0.05, 1.2));
   }
-  add('leaf', new THREE.TorusGeometry(HALF, 0.19, 6, 9, Math.PI).translate(0, LEAF_Y, 0.02));   // 잎 띠
-  add('leafOrange', round(0.34, 0, LEAF_Y + HALF + 0.05, 0.05));                   // 꼭대기 덩이
+  add('wood', box(HALF * 2 + 0.3, 0.14, 0.18, 0, 2.45, 0));
+}
+
+// 단풍잎 한 장(손바닥 5갈래) — 판 한 장, props 묶음이 양면이라 뒤에서도 보인다
+//   극좌표로 잎 끝 5개(위·좌우 위·좌우 아래)와 그 사이 오목점, 맨 아래 짧은 꼭지를 시계 방향으로 잇는다
+const MAPLE_OUTLINE = [
+  [90, 1], [62, 0.5], [28, 0.95], [0, 0.5], [-38, 0.72], [-70, 0.3], [-90, 0.42],   // 꼭지는 -90°
+  [-110, 0.3], [218, 0.72], [180, 0.5], [152, 0.95], [118, 0.5],
+];
+function mapleLeaf(size) {
+  const shape = new THREE.Shape();
+  MAPLE_OUTLINE.forEach(([deg, r], i) => {
+    const a = (deg * Math.PI) / 180, px = Math.cos(a) * r * size, py = Math.sin(a) * r * size;
+    i === 0 ? shape.moveTo(px, py) : shape.lineTo(px, py);
+  });
+  return new THREE.ShapeGeometry(shape);
+}
+
+// 단풍 덩이: B2 틀 그대로 다듬기 — 기둥 잎은 늘이지 않고(늘이면 초롱처럼 읽힘) 앞뒤로 엇갈려 3개,
+//      가로대 덩이는 크기·깊이를 섞어 한 줄로 늘어선 느낌을 없앤다(평평한 큰 덩이는 버섯 갓처럼 읽힘)
+function archCanopyCalm(add) {
+  for (const s of [-1, 1]) {
+    for (const [y, dz, r, k] of [[0.55, 0.1, 0.25, s > 0 ? 'leaf' : 'leafOrange'], [1.2, -0.08, 0.23, s > 0 ? 'leafOrange' : 'leaf'], [1.85, 0.1, 0.26, 'leaf']]) {
+      add(k, ball(r, s * HALF + s * 0.06, y, dz));
+    }
+  }
+  // 빨강·주황을 번갈아(검붉은 색을 섞으면 덩이가 탁해진다 — B4 캡처에서 확인)
+  for (const [x, y, z, r, k] of [[-0.95, 2.55, 0.02, 0.34, 'leaf'], [-0.5, 2.78, -0.08, 0.37, 'leafOrange'], [-0.05, 2.62, 0.14, 0.33, 'leaf'],
+                                  [0.4, 2.8, -0.04, 0.37, 'leafOrange'], [0.92, 2.56, 0.06, 0.33, 'leaf'], [0.02, 3.0, -0.02, 0.3, 'leaf']]) {
+    add(k, ball(r, x, y, z));
+  }
+}
+
+// 덩이 + 발밑에 떨어진 단풍잎 — 카메라가 위에서 내려다봐서 서 있는 잎보다 누운 잎이 훨씬 잘 보인다
+function archCanopyLeaves(add) {
+  archCanopyCalm(add);
+  const fallen = [[-1.3, 0.6, 0.3, 'leaf'], [-0.7, 1.2, 1.9, 'leafOrange'], [0.5, 1.0, 4.2, 'leafDeep'], [1.2, 0.5, 2.6, 'leaf'],
+                  [1.5, -0.6, 5.1, 'leafOrange'], [-1.5, -0.4, 3.4, 'leafDeep'], [0.2, 1.7, 0.9, 'leaf'], [-0.2, -1.1, 2.2, 'leafOrange']];
+  for (const [x, z, rot, k] of fallen) add(k, mapleLeaf(0.34).rotateZ(rot).rotateX(-Math.PI / 2).translate(x, 0.035, z));
+}
+
+function mapleArch(add) {
+  archFrame(add);
+  archCanopyLeaves(add);
 }
 
 // ---------- 깃발 줄·깃대 ----------
