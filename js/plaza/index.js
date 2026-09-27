@@ -15,6 +15,7 @@ import { buildPlaza } from './build.js';
 import { buildPath } from './path.js';
 
 export { plazaDefault, restorePlaza } from './rules.js';
+export { plazaDecorMesh } from './decor.js';
 
 const DEBUG_STAGE = (() => {                       // ?plaza=0|1|2|3|4 — 검수용 단계 고정(DEV_PARAMS: 기록 안 됨)
   const v = new URLSearchParams(location.search).get('plaza');
