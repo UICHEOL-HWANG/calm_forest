@@ -5,8 +5,8 @@
 // =============================================================
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge } from '../game.js';
 import { trackEvent } from '../analytics.js';
-import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R } from '../data/plaza.js';
-import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf } from './rules.js';
+import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
+import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
 import { interpretDonate } from './donate.js';
@@ -33,6 +33,21 @@ let spotNow = null;
 let shownStage = -1;
 let shownPhase = null;
 let lastProg = null;
+
+const viewedStages = new Set();          // 세션·단계당 1회
+let lastPathAt = -1e9;                    // 돌길 위를 마지막으로 밟은 시각
+const OPENS_MS = Date.parse(`${PLAZA_OPENS_KST}T00:00:00+09:00`);
+
+function trackView() {
+  if (shownStage <= 0 || viewedStages.has(shownStage)) return;
+  if (dist2D(PLAZA, player.position) > 12) return;
+  viewedStages.add(shownStage);
+  const items = currentItems(lastProg);
+  const have = items.reduce((s, i) => s + i.have, 0), need = items.reduce((s, i) => s + i.need, 0);
+  const invitedNow = gameState.plaza.invited === SEASON && !gameState.plaza.seen[`arrived:${SEASON}`];
+  const from = invitedNow ? 'quest' : performance.now() - lastPathAt < 30_000 ? 'path' : 'other';
+  trackEvent('plaza_view', { season: SEASON, stage: shownStage, pct: need ? Math.round(have / need * 100) : 100, from });
+}
 
 let built = null, solids = [], obstacle = null;
 let pathBuilt = null, pathSolids = [];
@@ -76,9 +91,14 @@ export function phaseNow() {
 function applyStage(stage) {
   const phase = phaseNow();
   if (stage === shownStage && phase === shownPhase) return;
-  if (stage !== shownStage) gameState.plaza = { ...gameState.plaza, lastStage: stage };
+  const isNewStage = stage !== shownStage;
+  if (isNewStage) gameState.plaza = { ...gameState.plaza, lastStage: stage };
   shownStage = stage; shownPhase = phase;
   rebuild(stage, phase);
+  if (isNewStage && stage > 0 && !gameState.plaza.seen[`stage${stage}:${SEASON}`] && DEBUG_STAGE === null) {
+    gameState.plaza = { ...gameState.plaza, seen: { ...gameState.plaza.seen, [`stage${stage}:${SEASON}`]: true } };
+    trackEvent('plaza_stage_seen', { season: SEASON, stage, day_n: Math.floor((Date.now() - OPENS_MS) / 86_400_000) + 1 });
+  }
 }
 
 export async function refresh(force = false) {
@@ -101,6 +121,8 @@ export function updatePlaza(dt, inVillage) {
   viewCheck -= dt;
   if (viewCheck > 0) return;
   viewCheck = 1;
+  if (plazaBlocks(player.position.x, player.position.z, -PLAZA_R)) lastPathAt = performance.now();
+  trackView();
   if (dist2D(PLAZA, player.position) < PLAZA_VIEW_R) refresh();
 }
 

@@ -105,6 +105,21 @@
 | `cafe_guests_generated` | 외부 손님 생성기(예: Gemini) 응답 성공 | `count` — 생성 성공률 모니터링 |
 | `forage_pick` | 🍄 채집물 줍기 | `kind`(mushroom/berry/acorn/herb), `weather` — 날씨별 산출 검증 |
 
+### 🌾 수확제 광장 (발견 → 초대 → 기부 → 진행 → 소비 → 보상)
+
+| 이벤트 이름 | 발생 시점 | 매개변수 |
+|-------------|-----------|----------|
+| `plaza_view` | 🌾 광장을 봄(세션·단계당 1회, 반경 12) | `season`, `stage`(1~4), `pct`(현재 단계 %), `from`(quest/path/other) |
+| `plaza_modal_open` | 기부 모달 열기 | `season`, `stage`, `today_left` |
+| `plaza_donate` | 기부 시도 결과(규칙 거절 포함) | `season`, `item`, `stage`, `requested`, `accepted`, `reason`(ok/cap/need/full), `today_left`, `my_total` |
+| `plaza_donate_fail` | 기부 통신·권한·기간 실패(인벤토리 무변경) | `season`, `item`, `reason`(offline/upstream/auth/season/qty) |
+| `plaza_stage_seen` | 새 단계를 처음 봄 | `season`, `stage`, `day_n`(시즌 N일차) |
+| `plaza_stall_buy` | 수확제 좌판 구매(🍂) | `season`, `item`, `price`, `leaf_left` |
+| `plaza_reward_claim` | 완공 등급 보상 수령 | `season`, `tier`(bronze/silver/gold), `my_total` |
+| `plaza_leaf_convert` | 시즌 후 남은 🍂 → 🪙 환전 | `season`, `leaves`, `coins` |
+| `plaza_invite_deliver` | 🦉 올빼미가 광장 초대를 전함(시즌당 1회) | `season`, `quest_id`(courier:plaza:<season>) |
+| `plaza_invite_arrive` | 초대 받고 광장 도착 | `season`, `quest_id` |
+
 > 세션 요약(`metrics.js`)은 이벤트 이름별 횟수를 **자동 집계**하므로, 위 이벤트는 별도 등록 없이
 > `session_logs.counts` jsonb 에 `{"firefly_catch": 4, "cafe_serve": 3, "forage_pick": 7}` 형태로 그대로 쌓입니다.
 > 코인이 오가는 `cafe_serve`/`cafe_bonus` 는 `econ_logs` 원장에도 `source` 로 남습니다.
@@ -189,3 +204,4 @@ GA4는 이벤트 카운트·퍼널·유입에 강하고, 좌표처럼 촘촘한 
 
 ## 6. 변경 이력
 - 2026-09-05 — 🪙 코인 첫 루프(상인 방문·비료/미끼) 계측 추가. 원장 출처는 `shop_sell` + 품목 `|welcome`. dev 파라미터(`?house=` 등) 세션은 모든 기록 제외. 배포일은 배포 후 여기에 기입 — 초반 세션 이동 분포가 바뀌므로 이탈 모델 전후 세그먼트 구분에 사용.
+- 2026-09-27 🌾 수확제 광장 이벤트 10종. 정답은 서버 원장 plaza_donations(GA4 는 퍼널). 초대는 퀘스트 목록이 아닌 별도 칸이라 quest_accept/complete 대신 plaza_invite_*. plaza_view.from 의 map 값은 미구현(other 로 집계).
