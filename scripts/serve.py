@@ -675,6 +675,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.split('?')[0] == '/api/leaderboard':
             self.serve_leaderboard()
             return
+        if self.path.split('?')[0] == '/api/plaza':
+            self.serve_plaza()
+            return
         if self.path.split('?')[0] == '/api/npc-talk':
             self.serve_npc_talk()
             return
@@ -756,6 +759,32 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                     payload = res.read(); code = 200
             except Exception as e:
                 print(f'[leaderboard] RPC 실패: {type(e).__name__}: {e}')
+                payload = json.dumps({'error': 'upstream'}).encode(); code = 502
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    # ── 🌾 수확제 광장 (functions/api/plaza.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+    #    Supabase RPC(public.plaza_progress) 프록시. 로컬은 캐시 없이 매번 조회(개발 편의).
+    def serve_plaza(self):
+        import urllib.parse as _up
+        q = _up.parse_qs(_up.urlparse(self.path).query)
+        season = (q.get('season') or [''])[0]
+        if not re.match(r'^[a-z0-9-]{3,32}$', season):
+            payload = json.dumps({'error': 'bad season'}).encode(); code = 400
+        else:
+            url = os.environ.get('SUPABASE_URL'); anon = os.environ.get('SUPABASE_ANON_KEY')
+            body = json.dumps({'p_season': season}).encode()
+            req = urllib.request.Request(url + '/rest/v1/rpc/plaza_progress', data=body, method='POST',
+                                         headers={'Content-Type': 'application/json', 'apikey': anon,
+                                                  'Authorization': 'Bearer ' + anon})
+            try:
+                with urllib.request.urlopen(req, timeout=15, context=ssl_context()) as res:
+                    payload = res.read(); code = 200
+            except Exception as e:
+                print(f'[plaza] RPC 실패: {type(e).__name__}: {e}')
                 payload = json.dumps({'error': 'upstream'}).encode(); code = 502
         self.send_response(code)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
