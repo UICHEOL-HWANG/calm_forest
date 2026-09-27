@@ -72,6 +72,18 @@ export function nextDda(game, dda = 1, outcome = 0) {
   return clamp(dda + DIFF_K * (d.target - o), ...DIFF_DDA_CLAMP);
 }
 
+/**
+ * 이 판의 결과가 DDA 를 움직일 값(0~1) — 움직이면 안 되는 판이면 null.
+ *  · 요리: 중간에 포기한 판은 null. 점수 0 으로 넣으면 나쁜 판마다 그만둬 요리를 쉽게 만들 수 있다
+ *    (낚시·안개의 trackDiffAbandon 과 같은 규칙 — 포기는 표본으로만 남기고 DDA 는 그대로).
+ *  · 가공: 미니게임이 없는 시설(맷돌, 난이도 값 없음)은 null — 겪지 않은 난이도를 보정하면 안 된다.
+ */
+export function ddaOutcome(game, res = {}) {
+  if (game === 'cook') return res.abandoned ? null : Math.max(0, Math.min(100, res.score || 0)) / 100;
+  if (game === 'craft') return res.played ? Math.max(0, Math.min(3, res.grade || 0)) / 3 : null;
+  return null;
+}
+
 /** 신규 세이브의 기본값 */
 export function defaultDifficulty() {
   return Object.fromEntries(Object.keys(DIFFICULTY).map(g => [g, { dda: 1, n: 0 }]));
