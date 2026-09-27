@@ -184,7 +184,6 @@ export const OUTDOOR = [
   { id: 'vat',       name: '발효통',  ico: '🫙', cost: { wood: 25, stone: 10, coins: 200 }, desc: '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요 · 한 채에 2칸' },
   // 🌾 수확제 광장(2026 가을) — 작업대 목록에선 숨기고 🧺 보관함으로만 꺼낸다. 좌판 구매·완공 보상이 보관함에 넣어 준다
   //    cost 는 표시용이 아니라 "직접 구매 불가" 표시 — hidden 이라 작업대에서 살 수 없다(보관분만 꺼냄)
-  //    <확정> 이름·설명은 후보(.superpowers/sdd/2026-09-27-harvest-plaza/task-9-copy-candidates.md) — 사용자 선택 뒤 바꾼다
   { id: 'haybale',          name: '볏단',          ico: '🌾', cost: { leaf: 40 }, desc: '수확제 좌판에서 산 볏단', hidden: true },
   { id: 'pumpkins',         name: '호박 더미',      ico: '🎃', cost: { leaf: 60 }, desc: '수확제 좌판에서 산 호박 더미', hidden: true },
   { id: 'pumpkinlamp',      name: '호박 등불',      ico: '🏮', cost: { leaf: 9999 }, desc: '수확제 광장 🥈 보상 — 밤에 은은히', hidden: true },
