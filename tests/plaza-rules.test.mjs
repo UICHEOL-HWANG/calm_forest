@@ -74,6 +74,7 @@ test('plazaBlocks: 광장 반경·돌길 위는 산포 금지', () => {
   assert.equal(plazaBlocks(23, -4), true);
   assert.equal(plazaBlocks(23 + 6.5, -4), true);   // PLAZA_R 5 + pad 2 안
   assert.equal(plazaBlocks(23 + 7.5, -4), false);
-  assert.equal(plazaBlocks(17.3, 2.2), true);      // 돌길 위
+  assert.equal(plazaBlocks(17.0, -0.1), true);     // 돌길 위
+  assert.equal(plazaBlocks(1.9, 2.3), true);       // 🌾 입구 아치
   assert.equal(plazaBlocks(0, -20), false);
 });
