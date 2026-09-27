@@ -29,6 +29,11 @@ test('확정 문구 조합', () => {
   assert.deepEqual(PLAZA_COPY.buttons, ['+1', '+5']);
 });
 
+test('익명(게스트) 기부 거절 문구 login — auth 와 같은 안내', () => {
+  assert.equal(PLAZA_COPY.toast.login, PLAZA_COPY.toast.auth);
+  assert.equal(PLAZA_COPY.toast.login, '로그인하면 함께 지을 수 있어요');
+});
+
 test('게이트 D 확정 문구 — 좌판·명판·환전(전부 A안)', () => {
   assert.deepEqual(PLAZA_COPY.stall, {
     title: '🍂 수확제 좌판', sub: '가진 단풍잎 🍂{0}', buy: '🍂{0} 사기',

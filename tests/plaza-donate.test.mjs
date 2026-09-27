@@ -26,11 +26,17 @@ test('규칙 거절(cap·need·full)은 plaza_donate 로, 차감 0', () => {
 });
 
 test('통신·권한·기간 실패는 plaza_donate_fail, 차감 0', () => {
-  for (const reason of ['offline', 'upstream', 'auth', 'season', 'qty']) {
+  for (const reason of ['offline', 'upstream', 'auth', 'season', 'qty', 'login']) {
     const r = interpretDonate(5, { ok: false, reason });
     assert.equal(r.event, 'plaza_donate_fail'); assert.equal(r.spend, 0); assert.equal(r.params.reason, reason);
   }
   assert.equal(interpretDonate(5, null).params.reason, 'offline');
+});
+
+test('익명(게스트) 거절 login — plaza_donate_fail 로, toastKey 도 login', () => {
+  const r = interpretDonate(5, { ok: false, reason: 'login' });
+  assert.equal(r.event, 'plaza_donate_fail'); assert.equal(r.spend, 0); assert.equal(r.leaf, 0);
+  assert.equal(r.toastKey, 'login'); assert.equal(r.params.reason, 'login');
 });
 
 test('버튼: +5 · N개 보태기(N = 지금 낼 수 있는 수), 0 이면 보태기 꺼짐', async () => {

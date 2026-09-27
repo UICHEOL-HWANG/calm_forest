@@ -5,6 +5,7 @@
 // =============================================================
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge, mode } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { state as authState } from '../supabase-client.js';   // 🔐 게스트(익명)는 기부 불가 — plaza_mine 호출 자체를 건너뛴다
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
 import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens, economyAllowed, nearPollDue } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
@@ -222,12 +223,19 @@ export async function openPlaza() {
   modalKind = plazaSpotNow();
   if (!modalKind) return;
   if (!fake && (modalKind === 'box' || modalKind === 'plaque')) {
-    const m = await fetchMine(SEASON);
-    mineNow = m && m.ok ? m : null;
-    mineReason = m && !m.ok ? m.reason : null;
+    if (authState.isGuest) {                        // 🔐 게스트는 어차피 서버가 reason 'login' 을 줄 것 — 호출 자체를 생략
+      mineNow = null; mineReason = 'auth';
+    } else {
+      const m = await fetchMine(SEASON);
+      mineNow = m && m.ok ? m : null;
+      mineReason = m && !m.ok ? m.reason : null;
+    }
   }
   openPlazaModal(modalKind, ctx());
-  if (modalKind === 'box') trackEvent('plaza_modal_open', { season: SEASON, stage: shownStage, today_left: mineNow?.today_left ?? null });
+  if (modalKind === 'box') {
+    trackEvent('plaza_modal_open', { season: SEASON, stage: shownStage, today_left: mineNow?.today_left ?? null,
+      ...(authState.isGuest ? { guest: true } : {}) });
+  }
 }
 
 // 🌾 기부 — 서버가 받은 만큼(accepted)만 가방에서 빼고 🍂 도 그만큼. 실패·거절이면 가방은 그대로
