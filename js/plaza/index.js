@@ -3,10 +3,10 @@
 //  🌾 수확제 광장 — 게임 연결 진입점. game.js 는 여기 함수만 부른다(연결 줄 ≤14).
 //  스펙: docs/superpowers/specs/2026-09-27-harvest-plaza-design.md
 // =============================================================
-import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge } from '../game.js';
+import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge, mode } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
-import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan } from './rules.js';
+import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
 import { interpretDonate } from './donate.js';
@@ -113,14 +113,7 @@ export async function refresh(force = false) {
   if (DEBUG_STAGE === null) { applyStage(visualStage(lastProg, gameState.plaza.lastStage)); maybeConvert(); }
 }
 
-// ⚠️ applySave 가 initPlaza() 보다 뒤에 세이브를 복원한다 — applySave 끝에서 이 이름으로 재조회한다(game.js 는 이 한 줄만 안다).
-//   여기서만 saveRestored 를 세운다: 그 전엔(initPlaza 시점) gameState.plaza 가 기본값이라 stage_seen·환전을 절대 emit 하지 않고,
-//   이 호출로 복원된 세이브를 본 뒤 현재 단계를 한 번 재평가한다(단계가 안 바뀌어도 applyStage 의 이른 return 을 우회).
-export async function refreshPlaza(force = false) {
-  saveRestored = true;
-  await refresh(force);
-  maybeEmitStageSeen(shownStage);
-}
+export { refresh as refreshPlaza };   // ⚠️ applySave 끝에서 재조회용으로 부른다(game.js 는 이 한 줄만 안다) — 게이트는 아니다, updatePlaza 가 연다
 
 export function initPlaza() {
   applyStage(DEBUG_STAGE ?? visualStage(null, gameState.plaza.lastStage));
@@ -130,6 +123,15 @@ export function initPlaza() {
 
 let viewCheck = 0;
 export function updatePlaza(dt, inVillage) {
+  // 🚪 부팅 게이트 — 첫 play 프레임에 딱 한 번. applySave() 는 저장이 있을 때만 도는데(오프라인·신규
+  //   게스트·failed_fresh 는 load.state 가 null 이라 아예 안 불림) mode 는 모든 부팅 경로에서 결국 'play' 가
+  //   된다. 그때까지 gameState.plaza 는 최종 상태다(복원됐거나, 애초에 plazaDefault() 가 정답이었거나).
+  if (gateOpens(saveRestored, mode)) {
+    saveRestored = true;
+    maybeEmitStageSeen(shownStage);
+    maybeConvert();
+    refresh();
+  }
   updateInvite(dt, inVillage, phaseNow(), SEASON);
   if (!inVillage) { spotNow = null; return; }   // 마을을 나가면 근접 판정도 비운다(낡은 값이 밭일을 막지 않게)
   viewCheck -= dt;
