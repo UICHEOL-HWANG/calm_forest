@@ -41,6 +41,11 @@ export const PLAZA_COPY = {
     none: '10개 이상 보탠 분께 드려요',
   },
   convert: { done: '수확제가 끝났어요 🍂{0} → 🪙{1}' },
+  // 🦉 광장 초대(Task 10 사용자 확정, 2026-09-27)
+  invite: {
+    land: '🦉 의뢰 올빼미가 수확제 초대장을 물고 왔어요! 동쪽 돌길을 따라가 보세요',
+    arrive: '🌾 수확제 광장에 왔어요! 🍂5 🪙10 — 기부함에 재료를 보태 보세요',
+  },
 };
 
 export const fill = (s, ...a) => a.reduce((acc, v, i) => acc.replaceAll(`{${i}}`, String(v)), s);
