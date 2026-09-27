@@ -1,30 +1,22 @@
 // js/plaza/ui.js
 // =============================================================
 //  🌾 광장 모달(기부함·좌판·명판). DOM 은 전부 textContent — 영어는 i18n 옵저버가 번역한다.
-//  🎨 디자인 게이트 C(검수 대기): ?plazaUi=a|b|c 로 레이아웃 3안 전환
-//    a: 세로 목록(한 줄 = 아이콘·이름·진행 바·보유·버튼 3개)
-//    b: 품목 카드 2열 그리드(큰 진행 바 + 버튼)
-//    c: 위에 단계 전체 진행 바 + 아래 간소화 목록(버튼 +5 · 있는 만큼)
+//  🎨 디자인 게이트 C(2026-09-27 확정: 시안 c) — 위에 단계 전체 진행 바 + 아래 간소화 목록.
+//     품목마다 버튼 2개: +5 · 'N개 보태기'(N = 지금 실제로 낼 수 있는 수, 0 이면 '보태기' 꺼짐)
 //  모달 루트 id 가 '-modal' 로 끝나야 index.html anyModalOpen() 이 잡는다.
 // =============================================================
 import { Input } from '../game.js';
 import { PLAZA_ITEMS } from '../data/plaza.js';
-import { currentItems, donateMax, nextTier } from './rules.js';
+import { currentItems, nextTier } from './rules.js';
+import { donateButtons } from './donate.js';
 import { PLAZA_COPY, fill, subtitleText, nextTierText, tierLabel, stagePct } from './copy.js';
 
-const LAYOUT = (() => {
-  const v = new URLSearchParams(location.search).get('plazaUi');
-  return v && /^[abc]$/.test(v) ? v : 'a';
-})();
-const STEPS = LAYOUT === 'c' ? [5, 0] : [1, 5, 0];   // 0 = 있는 만큼
-const BTN_LABEL = { 1: PLAZA_COPY.buttons[0], 5: PLAZA_COPY.buttons[1], 0: PLAZA_COPY.buttons[2] };
 
 const CSS = `
 #plaza-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
 #plaza-modal.show { display: grid; }
 #plaza-modal .tut-card { display: flex; flex-direction: column; text-align: left; width: min(440px, 92vw); box-sizing: border-box;
   max-height: calc(100dvh - 24px - var(--top-inset, 0px)); overflow: hidden; padding: 20px 18px 16px; }
-#plaza-modal[data-layout="b"] .tut-card { width: min(520px, 94vw); }
 #plaza-modal .tut-card > * { flex: 0 0 auto; }
 #plaza-modal h2 { text-align: center; margin: 2px 0 4px; font-size: 19px; }
 .pz-sub { text-align: center; font-size: 13px; opacity: .75; margin: 0 0 10px; }
@@ -43,28 +35,7 @@ const CSS = `
 .pz-btns button.max { background: #7fc98a; color: #15321f; }
 .pz-btns button[disabled] { background: #e4e7e3; color: #a3aaa2; cursor: default; }
 .pz-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* a — 세로 목록 */
-.pz-a { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; grid-template-areas: "ico info btns"; align-items: center; gap: 4px 8px; padding: 8px 10px; border-radius: 12px; background: #f2f6f0; }
-.pz-a .pz-ico { grid-area: ico; font-size: 22px; text-align: center; }
-.pz-a .pz-info { grid-area: info; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.pz-a .pz-top { display: flex; justify-content: space-between; gap: 6px; align-items: center; }
-.pz-a .pz-top > .pz-bar { flex: 1 1 auto; }
-.pz-a .pz-btns { grid-area: btns; }
-@media (max-width: 460px) {
-  .pz-a { grid-template-areas: "ico info" "btns btns"; grid-template-columns: 30px minmax(0, 1fr); }
-  .pz-a .pz-btns button { flex: 1 1 0; }
-}
-/* b — 카드 2열 */
-.pz-list.pz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; }
-.pz-b { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 14px; background: #f2f6f0; min-width: 0; }
-.pz-b .pz-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.pz-b .pz-ico { font-size: 26px; }
-.pz-b .pz-bar { height: 14px; }
-.pz-b .pz-foot { display: flex; justify-content: space-between; gap: 4px; }
-.pz-b .pz-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.pz-b .pz-btns button { padding: 7px 4px; }
-.pz-b .pz-btns button.max { grid-column: 1 / -1; }
-/* c — 단계 바 + 간소화 목록 */
+/* 단계 바 + 간소화 목록 */
 .pz-stage { padding: 10px 12px; border-radius: 14px; background: #fdf6e3; margin-bottom: 10px; }
 .pz-stage .pz-bar { height: 18px; }
 .pz-stage .pz-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-weight: 800; }
@@ -96,7 +67,7 @@ function ensureRoot() {
   if (!document.getElementById('plaza-style')) {
     const s = el('style'); s.id = 'plaza-style'; s.textContent = CSS; document.head.appendChild(s);
   }
-  root = el('div'); root.id = 'plaza-modal'; root.dataset.layout = LAYOUT;
+  root = el('div'); root.id = 'plaza-modal';
   card = el('div', 'tut-card');
   root.appendChild(card);
   root.addEventListener('click', (e) => { if (e.target === root) closePlazaModal(); });
@@ -110,14 +81,12 @@ function bar(have, need) {
   return b;
 }
 
-// 버튼 활성 = donateMax(보유, 오늘 남은 수, 품목 남은 수) ≥ 수량('있는 만큼'은 ≥1). busy·내 기록 없음이면 전부 비활성
 function buttons(ctx, row) {
   const wrap = el('div', 'pz-btns');
-  const max = ctx.mine ? donateMax(ctx.inv?.[row.item] || 0, ctx.mine.today_left ?? 0, row.need - row.have) : 0;
-  for (const q of STEPS) {
-    const b = el('button', q === 0 ? 'max' : '', BTN_LABEL[q]);
-    b.disabled = !!ctx.busy || max < (q || 1);
-    b.onclick = () => ctx.onDonate?.(row.item, q || max);
+  for (const d of donateButtons(ctx.inv, ctx.mine, row)) {
+    const b = el('button', d.cls, d.label);
+    b.disabled = !!ctx.busy || !d.on;
+    b.onclick = () => ctx.onDonate?.(row.item, d.qty);
     wrap.appendChild(b);
   }
   return wrap;
@@ -126,26 +95,7 @@ function buttons(ctx, row) {
 const haveText = (ctx, item) => `🎒 ${ctx.inv?.[item] || 0}`;
 const rowClass = (base, row) => base + (row.have >= row.need ? ' pz-done' : '');
 
-function rowA(ctx, row, it) {
-  const r = el('div', rowClass('pz-a', row));
-  const info = el('div', 'pz-info'), top = el('div', 'pz-top'), bottom = el('div', 'pz-top');
-  top.append(el('span', 'pz-name', it.name), el('span', 'pz-num', `${row.have}/${row.need}`));
-  bottom.append(bar(row.have, row.need), el('span', 'pz-have', haveText(ctx, row.item)));
-  info.append(top, bottom);
-  r.append(el('div', 'pz-ico', it.ico), info, buttons(ctx, row));
-  return r;
-}
-
-function rowB(ctx, row, it) {
-  const r = el('div', rowClass('pz-b', row));
-  const head = el('div', 'pz-head'), foot = el('div', 'pz-foot');
-  head.append(el('span', 'pz-ico', it.ico), el('span', 'pz-name', it.name));
-  foot.append(el('span', 'pz-num', `${row.have}/${row.need}`), el('span', 'pz-have', haveText(ctx, row.item)));
-  r.append(head, bar(row.have, row.need), foot, buttons(ctx, row));
-  return r;
-}
-
-function rowC(ctx, row, it) {
+function itemRow(ctx, row, it) {
   const r = el('div', rowClass('pz-c', row));
   const info = el('div', 'pz-info'), top = el('div', 'pz-top');
   top.append(el('span', 'pz-name', it.name), el('span', 'pz-num', `${row.have}/${row.need} · ${haveText(ctx, row.item)}`));
@@ -176,14 +126,12 @@ function meLine(ctx) {
 
 function renderBox(ctx) {
   const items = currentItems(ctx.prog);
-  if (items.length) card.appendChild(el('p', 'pz-sub', subtitleText(ctx.prog.stage, items)));
-  if (LAYOUT === 'c' && items.length) card.appendChild(stageBlock(items));
+  if (items.length) card.append(el('p', 'pz-sub', subtitleText(ctx.prog.stage, items)), stageBlock(items));
   card.appendChild(meLine(ctx));
-  const list = el('div', 'pz-list' + (LAYOUT === 'b' ? ' pz-grid' : ''));
-  const row = LAYOUT === 'b' ? rowB : LAYOUT === 'c' ? rowC : rowA;
+  const list = el('div', 'pz-list');
   for (const r of items) {
     const it = PLAZA_ITEMS[r.item];
-    if (it) list.appendChild(row(ctx, r, it));
+    if (it) list.appendChild(itemRow(ctx, r, it));
   }
   card.appendChild(list);
 }

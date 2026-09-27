@@ -7,7 +7,9 @@ export const PLAZA_COPY = {
   title: '🌾 수확제 광장 짓기',
   subtitle: '{0}단계 · {1} — 다 같이 {2}%',
   todayLeft: '오늘 {0}개 더 보탤 수 있어요',
-  buttons: ['+1', '+5', '있는 만큼'],
+  buttons: ['+1', '+5'],
+  give: '{0}개 보태기',   // 게이트 C(2026-09-27): 세 번째 버튼은 실제로 낼 개수 = donateMax(...)
+  giveNone: '보태기',     // 낼 수 있는 게 0 이면(버튼 꺼짐)
   toast: {
     ok: '{0} {1}개를 보탰어요! 🍂+{1}',
     cap: '오늘은 여기까지! 내일 또 보태 주세요 🌙',
@@ -23,6 +25,8 @@ export const PLAZA_COPY = {
 };
 
 export const fill = (s, ...a) => a.reduce((acc, v, i) => acc.replaceAll(`{${i}}`, String(v)), s);
+
+export const giveText = (n) => (n > 0 ? fill(PLAZA_COPY.give, n) : PLAZA_COPY.giveNone);
 
 export function toastText(key, item, n) {
   const it = PLAZA_ITEMS[item];

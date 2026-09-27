@@ -32,3 +32,14 @@ test('통신·권한·기간 실패는 plaza_donate_fail, 차감 0', () => {
   }
   assert.equal(interpretDonate(5, null).params.reason, 'offline');
 });
+
+test('버튼: +5 · N개 보태기(N = 지금 낼 수 있는 수), 0 이면 보태기 꺼짐', async () => {
+  const { donateButtons } = await import('../js/plaza/donate.js');
+  const mine = { today_left: 18 };
+  const stone = { item: 'stone', have: 180, need: 400 };
+  assert.deepEqual(donateButtons({ stone: 50 }, mine, stone).map(b => [b.label, b.qty, b.on]), [['+5', 5, true], ['18개 보태기', 18, true]]);
+  assert.deepEqual(donateButtons({ wood: 3 }, mine, { item: 'wood', have: 60, need: 200 }).map(b => [b.label, b.qty, b.on]), [['+5', 5, false], ['3개 보태기', 3, true]]);
+  assert.deepEqual(donateButtons({ coal: 0 }, mine, { item: 'coal', have: 10, need: 100 }).map(b => [b.label, b.on]), [['+5', false], ['보태기', false]]);
+  assert.equal(donateButtons({ stone: 50 }, mine, { item: 'stone', have: 398, need: 400 })[1].qty, 2);   // 품목 남은 수로 잘림
+  assert.equal(donateButtons({ stone: 50 }, null, stone).every(b => !b.on), true);                    // 내 기록 없음(비로그인·오프라인)
+});
