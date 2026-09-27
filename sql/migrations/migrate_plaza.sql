@@ -161,6 +161,7 @@ begin
     left join game_saves gs on gs.user_id = d.user_id
     where d.season = p_season
     group by d.user_id, gs.state->>'nickname'
+    order by min(d.created_at)
     limit 500
   ) x;
 

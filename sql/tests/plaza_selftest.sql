@@ -18,8 +18,16 @@ begin
   select id into u2 from auth.users order by created_at offset 1 limit 1;
   if u1 is null or u2 is null then raise exception 'FAIL: auth.users 에 2명 이상 필요'; end if;
 
-  -- 비로그인
+  -- 비로그인(anon 역할) — 실행 권한 자체가 없어야 한다(revoke from anon)
   perform set_config('request.jwt.claims', '', true);
+  execute 'set local role anon';
+  begin
+    r := public.plaza_donate('selftest', 'wood', 1);
+    raise exception 'FAIL: anon 이 plaza_donate 를 실행했다';
+  exception when insufficient_privilege then null;
+  end;
+  execute 'reset role';
+  -- 토큰에 sub 가 없는 호출 → reason auth(함수 안 방어)
   r := public.plaza_donate('selftest', 'wood', 1);
   if r->>'reason' <> 'auth' then raise exception 'FAIL auth: %', r; end if;
 
