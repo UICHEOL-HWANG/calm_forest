@@ -6,7 +6,7 @@
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
-import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems } from './rules.js';
+import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
 import { interpretDonate } from './donate.js';
@@ -33,6 +33,7 @@ let spotNow = null;
 let shownStage = -1;
 let shownPhase = null;
 let lastProg = null;
+let saveRestored = false;   // ⚠️ initPlaza() 가 applySave() 보다 먼저 돈다 — 복원 전엔 stage_seen·환전 금지(부팅 순서 함정)
 
 const viewedStages = new Set();          // 세션·단계당 1회
 let lastPathAt = -1e9;                    // 돌길 위를 마지막으로 밟은 시각
@@ -87,6 +88,14 @@ export function phaseNow() {
   return seasonPhase(lastProg, Date.now());
 }
 
+// 세이브 복원 전엔 절대 emit 하지 않는다(stageSeenPlan 이 판단, 여긴 결과만 반영) — 판정은 순수함수 tests/plaza-rules.test.mjs
+function maybeEmitStageSeen(stage) {
+  const plan = stageSeenPlan(gameState.plaza, stage, SEASON, { saveRestored, debug: DEBUG_STAGE !== null });
+  if (!plan.emit) return;
+  gameState.plaza = { ...gameState.plaza, seen: { ...gameState.plaza.seen, [plan.key]: true } };
+  trackEvent('plaza_stage_seen', { season: SEASON, stage, day_n: Math.floor((Date.now() - OPENS_MS) / 86_400_000) + 1 });
+}
+
 // 단계뿐 아니라 국면(active→after)이 바뀌어도 다시 짓는다 — 좌판·기부함·명판이 국면을 따른다
 function applyStage(stage) {
   const phase = phaseNow();
@@ -95,10 +104,7 @@ function applyStage(stage) {
   if (isNewStage) gameState.plaza = { ...gameState.plaza, lastStage: stage };
   shownStage = stage; shownPhase = phase;
   rebuild(stage, phase);
-  if (isNewStage && stage > 0 && !gameState.plaza.seen[`stage${stage}:${SEASON}`] && DEBUG_STAGE === null) {
-    gameState.plaza = { ...gameState.plaza, seen: { ...gameState.plaza.seen, [`stage${stage}:${SEASON}`]: true } };
-    trackEvent('plaza_stage_seen', { season: SEASON, stage, day_n: Math.floor((Date.now() - OPENS_MS) / 86_400_000) + 1 });
-  }
+  if (isNewStage) maybeEmitStageSeen(stage);
 }
 
 export async function refresh(force = false) {
@@ -106,11 +112,19 @@ export async function refresh(force = false) {
   if (p && !fake) lastProg = p;
   if (DEBUG_STAGE === null) { applyStage(visualStage(lastProg, gameState.plaza.lastStage)); maybeConvert(); }
 }
-export { refresh as refreshPlaza };   // ⚠️ applySave 가 initPlaza() 보다 뒤에 세이브를 복원한다 — applySave 끝에서 재조회
+
+// ⚠️ applySave 가 initPlaza() 보다 뒤에 세이브를 복원한다 — applySave 끝에서 이 이름으로 재조회한다(game.js 는 이 한 줄만 안다).
+//   여기서만 saveRestored 를 세운다: 그 전엔(initPlaza 시점) gameState.plaza 가 기본값이라 stage_seen·환전을 절대 emit 하지 않고,
+//   이 호출로 복원된 세이브를 본 뒤 현재 단계를 한 번 재평가한다(단계가 안 바뀌어도 applyStage 의 이른 return 을 우회).
+export async function refreshPlaza(force = false) {
+  saveRestored = true;
+  await refresh(force);
+  maybeEmitStageSeen(shownStage);
+}
 
 export function initPlaza() {
   applyStage(DEBUG_STAGE ?? visualStage(null, gameState.plaza.lastStage));
-  if (DEBUG_STAGE === null) maybeConvert();   // ?plaza= 검수 중엔 🍂 이 증발하지 않게 부르지 않는다
+  maybeConvert();   // saveRestored 가 false 라 내부에서 no-op(?plaza= 검수 중에도 안전)
   refresh();
 }
 
@@ -176,6 +190,7 @@ function onClaim() {
 
 // 🪙 시즌이 끝나면(after) 남은 🍂 을 한 번만 코인으로 — refresh()·initPlaza() 끝에서 부른다
 function maybeConvert() {
+  if (!saveRestored) return;   // 세이브 복원 전(가짜 gameState.plaza.converted 기본값) 판정 금지 — 부팅 순서 함정
   if (phaseNow() !== 'after') return;
   const leaves = gameState.inventory.leaf || 0;
   const plan = convertPlan(gameState.plaza, SEASON, leaves, 'after');

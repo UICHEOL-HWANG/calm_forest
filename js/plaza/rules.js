@@ -75,3 +75,13 @@ export function plazaBlocks(x, z, pad = 2) {
   if (Math.hypot(x - PLAZA_ARCH.x, z - PLAZA_ARCH.z) < 2.0) return true;   // 🌾 입구 아치
   return PLAZA_PATH.some(([px, pz]) => Math.hypot(x - px, z - pz) < 1.4);
 }
+
+// 🌾 plaza_stage_seen 발사 여부 — 세이브 복원 전엔 절대 emit 하지 않는다(부팅 순서 함정: initPlaza() 가
+//   applySave() 보다 먼저 돌아 gameState.plaza 가 기본값(seen {})일 때 판정하면, 복원된 세이브가 그 판정을
+//   덮어써 매번 재발송된다). 순수 함수라 부팅 순서·트래킹 호출은 index.js 가 이 결과만 보고 판단한다.
+export function stageSeenPlan(plazaState, stage, season, { saveRestored = false, debug = false } = {}) {
+  const key = `stage${stage}:${season}`;
+  const already = !!(plazaState && plazaState.seen && plazaState.seen[key]);
+  const emit = saveRestored && !debug && stage > 0 && !already;
+  return { emit, key };
+}
