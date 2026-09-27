@@ -9,7 +9,8 @@ import { mergeGeos, houseWindows, paintGeo, vtxMat } from '../game.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS } from '../data/plaza.js';
 
 // 🎨 디자인 게이트 A(2026-09-27): 시안 c — 붉은 단풍·짙은 나무(가을 강조) 확정
-const PAL = { dirt: 0xc49a60, stone: 0xdcd5c3, stoneDark: 0xb3a994, wood: 0xa8683c, woodDark: 0x5e3b22, straw: 0xe8bf4a, pumpkin: 0xe8742a, leaf: 0xc8452e, lamp: 0xffd98a };
+//   dirt 는 마을 길(0xded0b4)보다 한 톤 어두운 낮은 채도 흙 — 주황이면 화면에서 가장 튀어 자재 더미를 묻는다(A2 피드백)
+const PAL = { dirt: 0xbca783, stone: 0xdcd5c3, stoneDark: 0xb3a994, wood: 0xa8683c, woodDark: 0x5e3b22, straw: 0xe8bf4a, pumpkin: 0xe8742a, leaf: 0xc8452e, lamp: 0xffd98a };
 
 const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
 const cyl = (rt, rb, h, x, y, z, seg = 10) => new THREE.CylinderGeometry(rt, rb, h, seg).translate(x, y, z);
@@ -28,7 +29,7 @@ function stage1(add) {
     add('woodDark', box(0.14, 0.7, 0.14, Math.cos(a) * (PLAZA_R - 0.3), 0.35, Math.sin(a) * (PLAZA_R - 0.3)));
   }
   for (let i = 0; i < 3; i++) add('wood', box(1.8, 0.18, 0.3, -2.2, 0.12 + i * 0.19, 1.6 + (i % 2) * 0.1));   // 목재 더미
-  add('stoneDark', ball(0.35, 2.4, 0.25, 0.2)); add('stone', ball(0.28, 2.9, 0.2, 0.5)); add('stoneDark', ball(0.25, 2.6, 0.45, 0.35));   // 돌 무더기(좌판 뒤에 가리지 않게)
+  add('stone', ball(0.35, 2.4, 0.25, 0.2)); add('stoneDark', ball(0.28, 2.9, 0.2, 0.5)); add('stone', ball(0.25, 2.6, 0.45, 0.35));   // 돌 무더기(좌판 뒤에 가리지 않게) — 밝은 stone 위주: stoneDark 는 흙색과 명도가 비슷해 묻힌다
 }
 
 function stage2(add) {
