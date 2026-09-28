@@ -215,12 +215,36 @@ const WING_ALT = {   // 검토했지만 채택 안 함: 날개 끝 바깥·앞�
 // 기각된 스윙 수정안(2026-09-23) — 비교용으로만 남긴다: 팔은 몸 앞까지만 쓸고 몸 비틀기로 폭 보충
 const SWING_ALT = { ...PROP, wristEnv: true, slash: { back: 1.10, strike: -.45, lift: -1.20 }, twist: .90 };
 const FADE = { ...PROP, gripFade: true };
+// 2026-09-27 감싸 쥐기 후보 — 모두 ④(스윙 원본) 위에 얹는다
+const WRAP_A = { ...FADE, wrap: 'knuckle' };
+const WRAP_B = { ...FADE, wrap: 'fist' };
+const WRAP_C = { ...FADE, wrap: 'fistThumb' };
+const WRAP_B2 = { ...FADE, wrap: 'fistLines' };
+const WRAP_B3 = { ...FADE, wrap: 'fistThumbWrap' };
+const WRAP_B4 = { ...FADE, wrap: 'fistFull' };
+const WRAP_H1 = { ...FADE, wrap: 'hole' };
+const WRAP_H2 = { ...FADE, wrap: 'holeLines' };
+const HOLE_RIM = { ...FADE, hole: 'rim', gripZk: .49 };
+const SOFTHOLE_1 = { ...FADE, gripZk: .49, dimple: { mode: 'hole', r1: 1.08, r2: 2.4, ao: 0 } };
+const SOFTHOLE_2 = { ...FADE, gripZk: .49, dimple: { mode: 'hole', r1: 1.05, r2: 1.7, ao: 0 } };
+const SOFTHOLE_3 = { ...FADE, gripZk: .49, dimple: { mode: 'hole', r1: 1.05, r2: 1.7, ao: .35 } };
+const DIMPLE_1 = { ...FADE, gripZk: .49, dimple: { depth: .22, inf: 2.3, ao: .35, lip: 0 } };
+const DIMPLE_2 = { ...FADE, gripZk: .49, dimple: { depth: .38, inf: 2.8, ao: .55, lip: 0 } };
+const DIMPLE_3 = { ...FADE, gripZk: .49, dimple: { depth: .38, inf: 2.8, ao: .55, lip: .06 } };
+const HOLE_DARK = { ...FADE, hole: 'dark', gripZk: .49 };
+const HOLE_DEEP = { ...FADE, hole: 'deep', gripZk: .49 };
+const CENTER = { ...FADE, restX: .35, grip: { ...gripAll({ z:0, y:.07 }), ...HANG } };
+// 2026-09-28 게임 적용안 — ④ + 자루 앞 오프셋을 발바닥 반지름 × 0.67(토끼 비율)로 (js/data/grip.js)
+const APPLIED = { ...FADE, gripZk: .67 };
 const VARIANTS = [
-  { key:'now',  title:'① 원본',               sub:'게임 원본 값', P: BASE },
-  { key:'prop', title:'② 쥐는 위치만',        sub:'스윙은 원본 그대로', P: PROP },
-  { key:'fade', title:'④ 평상시만 쥐는 위치', sub:'휘두를 땐 원본으로 복귀', P: FADE },
-  { key:'alt',  title:'③ 쥐는 위치 + 바꾼 스윙', sub:'베기 폭 축소 · 몸 비틀기 확대 (기각)', P: SWING_ALT },
+  { key:'applied', title:'⑤ 적용(토끼 비율)', sub:'자루가 발바닥 앞 가장자리에 걸림', P: APPLIED },
+  { key:'fade', title:'④ 이전 게임',     sub:'자루가 발바닥 가장자리를 꿰뚫음', P: FADE },
+  { key:'a',    title:'A 손가락 마디',   sub:'자루 앞쪽에 마디 4개', P: WRAP_A },
+  { key:'b',    title:'B 주먹',          sub:'자루를 따라 쥔 주먹 하나', P: WRAP_B },
+  { key:'c',    title:'C 주먹+엄지',     sub:'B + 엄지', P: WRAP_C },
+  { key:'d',    title:'D 가운데 쥐기',   sub:'메시 추가 없이 발바닥 한가운데', P: CENTER },
 ];
+// 이전 비교(①원본·②·③스윙 수정안)는 BASE·PROP·SWING_ALT 로 남아 있다
 
 // ══════════════════════════════════════════════════════════════
 //  리그 조립 — buildAnimalMesh(몸·배·머리·팔) 발췌
@@ -268,7 +292,16 @@ function buildRig(P) {
       const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), a.armColor ? clayMat(a.armColor,false) : plushMat(a.body));
       upper.position.y = -(al/2 + ar*.4); upper.castShadow = true; aim.add(upper);
       cols.push({ m: upper, k: 'capsule', r: ar, h: al, tag: side > 0 ? 'armR' : 'armL' });
-      const paw = new THREE.Mesh(new THREE.SphereGeometry(ar*1.06,10,8), clayMat(a.ear,false));
+      // 🫳 V안(자루 자리 파기): 오른손 발바닥만 세분화를 올리고 정점색을 켠다 — placeDimple 이 매 프레임 변형
+      const dimple = side > 0 && P.dimple && !a.wings;
+      const pawGeo = new THREE.SphereGeometry(ar*1.06, dimple ? 28 : 10, dimple ? 22 : 8);
+      const pawMat = clayMat(a.ear, false);
+      if (dimple) {
+        pawGeo.userData.base = pawGeo.attributes.position.array.slice();
+        pawGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(pawGeo.attributes.position.count * 3).fill(1), 3));
+        pawMat.vertexColors = true;
+      }
+      const paw = new THREE.Mesh(pawGeo, pawMat);
       paw.position.y = -(al + ar*.9); paw.castShadow = true; aim.add(paw);
       if (side < 0) cols.push({ m: paw, k: 'sphere', r: ar*1.06, tag: 'armL' });   // 오른손 발바닥은 쥐는 자리 — 제외
       const hand = new THREE.Group(); hand.position.y = -(al + ar*.9); aim.add(hand);
@@ -283,8 +316,23 @@ function buildRig(P) {
   const off = new THREE.Group(); gripG.add(off);
   const tool = toolMesh(TOOL); off.add(tool);
   const gp = ((a.wings && P.gripWing) || P.grip)[TOOL] || {};
-  off.position.set(gp.x || 0, -(gp.y || 0), gp.z || 0);
+  // gripZk: 긴 도구의 앞 오프셋을 발바닥 반지름 비례로(작은 발에서 자루가 가장자리를 스치면 구멍 입·출구가 겹친다)
+  const gz = (P.gripZk && !a.wings && LONG.includes(TOOL)) ? P.gripZk * armR.gripR : (gp.z || 0);
+  off.position.set(gp.x || 0, -(gp.y || 0), gz);
   off.rotation.set(gp.rx || 0, gp.ry || 0, gp.rz || 0);
+  // 🕳️ 관통 구멍 — 자루가 발바닥 구를 드나드는 두 지점에 구멍 입구(applyPose 가 매 프레임 자루 선에 맞춤)
+  let holes = null;
+  if (!a.wings && P.hole && LONG.includes(TOOL)) {
+    holes = [0, 1].map(() => buildHole(a, P.hole));
+    holes.forEach(h => armR.hand.add(h));
+  }
+  // ✊ 감싸 쥐기 — 자루를 따라 붙는 발바닥색 조형(off 의 자식이라 자루와 같이 움직인다)
+  let wrap = null;
+  if (!a.wings && P.wrap && LONG.includes(TOOL)) {
+    wrap = buildWrap(P.wrap, armR.gripR, a);
+    wrap.position.y = gp.y || 0;          // 발바닥 중심과 같은 높이의 자루 지점
+    off.add(wrap);
+  }
   const qRestOrig = (a.wings ? new THREE.Quaternion().setFromAxisAngle(_axZ, BASE.wing.restZ) : ARM_AIM_R.clone().invert())
     .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, BASE.restX))
     .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, BASE.restZ));
@@ -293,7 +341,99 @@ function buildRig(P) {
     : ARM_AIM_R.clone().invert())
     .multiply(new THREE.Quaternion().setFromAxisAngle(_axX, P.restX))
     .multiply(new THREE.Quaternion().setFromAxisAngle(_axZ, P.restZ));
-  return { root, anchor, R: armR, L: armL, gripG, off, tool, P, qRest, qRestOrig, offP: off.position.clone(), bodyY, cols };
+  return { root, anchor, R: armR, L: armL, gripG, off, tool, wrap, holes, P, qRest, qRestOrig, offP: off.position.clone(), bodyY, cols };
+}
+
+// 구멍 입구 한 개 — 자루(원기둥)와 발바닥(구)의 실제 교선 위에 그린다(평평한 원판은 가장자리에서 떴다).
+//   dark: 자루 둘레 틈(어둡게) · lip: 그 바깥 테두리 띠(밝게). 정점은 placeHoles 가 매 프레임 구 표면에 찍는다
+const HOLE_N = 24;
+function buildHole(a, style) {
+  const g = new THREE.Group();
+  const base = new THREE.Color(a.armColor || a.ear);
+  const mk = (count, idx, mat) => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    geo.setIndex(idx);
+    const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; g.add(m); return m;
+  };
+  // 틈: 중심 1 + 테두리 N 부채꼴
+  const fan = []; for (let k = 0; k < HOLE_N; k++) fan.push(0, 1 + k, 1 + (k + 1) % HOLE_N);
+  g.userData.dark = mk(HOLE_N + 1, fan, new THREE.MeshStandardMaterial({ color: base.clone().multiplyScalar(style === 'deep' ? .22 : .38), roughness: 1,
+    side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  if (style !== 'dark') {
+    const band = []; for (let k = 0; k < HOLE_N; k++) { const a0 = k, a1 = (k + 1) % HOLE_N; band.push(a0, HOLE_N + a0, a1, a1, HOLE_N + a0, HOLE_N + a1); }
+    g.userData.lip = mk(HOLE_N * 2, band, new THREE.MeshStandardMaterial({ color: base.clone().multiplyScalar(1.15), roughness: .95,
+      side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+  }
+  g.userData.gap = style === 'deep' ? 1.55 : 1.35;
+  return g;
+}
+
+// 감싸 쥐기 조형 — pr = 발바닥 반지름. 자루 축 = 로컬 y, 발바닥 중심은 -z 쪽(자루가 발바닥 앞에 있으므로)
+function buildWrap(kind, pr, a) {
+  const g = new THREE.Group();
+  const mat = clayMat(a.armColor || a.ear, false);
+  const HR = .042;                       // 자루+그립 밴드 바깥 반지름(도구 배율 1.18 반영)
+  const put = (geo, x, y, z, sx = 1, sy = 1, sz = 1) => {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz);
+    m.castShadow = true; g.add(m); return m;
+  };
+  if (kind === 'hole' || kind === 'holeLines') {
+    // 구멍 주먹 — 가운데가 뚫린 회전체(Lathe). 위아래 입구 테두리가 자루 쪽으로 말려 들어가
+    //   "자루가 표면을 뚫는" 대신 "주먹 구멍을 지나가는" 그림이 된다. 자루와 같은 축(z 이동 없음)
+    const rO = pr * .68, H = pr * .95, ri = HR + .006, lip = pr * .16;
+    const prof = [
+      [ri, H - lip], [ri + .004, H], [rO * .55, H * .985], [rO * .88, H * .80], [rO, H * .42],
+      [rO, -H * .42], [rO * .88, -H * .80], [rO * .55, -H * .985], [ri + .004, -H], [ri, -H + lip], [ri, H - lip],
+    ].map(([x, y]) => new THREE.Vector2(x, y)).reverse();   // 아래→위 순서여야 면이 바깥을 향한다(반대면 뒤집힌 컵처럼 보임)
+    put(new THREE.LatheGeometry(prof, 20), 0, 0, 0);
+    // 입구 안쪽 그늘 — 자루와 구멍 벽 사이 틈이 어둡게 보여야 "구멍"으로 읽힌다
+    const dark = new THREE.MeshStandardMaterial({ color: new THREE.Color(a.armColor || a.ear).multiplyScalar(.35), roughness: 1, side: THREE.DoubleSide });
+    const inner = new THREE.Mesh(new THREE.CylinderGeometry(ri - .001, ri - .001, 2 * (H - lip * .4), 14, 1, true), dark);
+    g.add(inner);
+    if (kind === 'holeLines') {
+      const c = new THREE.Color(a.armColor || a.ear).multiplyScalar(.55);
+      const lm = clayMat(c.getHex(), false), ARC = Math.PI * .45;
+      for (let i = 0; i < 3; i++) {
+        const t = new THREE.Mesh(new THREE.TorusGeometry(rO * .995, rO * .028, 4, 12, ARC), lm);
+        t.rotation.set(Math.PI / 2, 0, Math.PI / 2 - ARC / 2);
+        t.position.set(0, (i - 1) * H * .30, 0);
+        g.add(t);
+      }
+    }
+  } else if (kind === 'knuckle') {
+    const fr = pr * .30;
+    for (let i = 0; i < 4; i++) put(new THREE.SphereGeometry(fr, 10, 8), 0, (i - 1.5) * fr * 1.25, HR + fr * .45, 1.25, .8, .9);
+  } else {
+    const r = pr * .62, len = pr * .55;
+    const flat = kind === 'fistFull';
+    const fist = put(new THREE.CapsuleGeometry(r, len, 4, 12), 0, 0, -pr * .12, flat ? 1.12 : 1, 1, flat ? .84 : 1);
+    if (kind === 'fistThumb') put(new THREE.SphereGeometry(pr * .30, 10, 8), pr * .30, len / 2 + r * .55, r * .35, 1, .8, 1.2);
+    // 마디선 — 주먹 앞 반쪽을 두르는 가는 호 3줄(살짝 어두운 색). 구슬(A)과 달리 덩어리를 더하지 않는다
+    if (kind === 'fistLines' || kind === 'fistFull') {
+      // v2: 앞쪽 80°만 · 더 가늘고 어둡게 — 길게 두르면 자루에 감은 끈처럼 읽혔다(1차 시안)
+      const c = new THREE.Color(a.armColor || a.ear).multiplyScalar(.55);
+      const lm = clayMat(c.getHex(), false);
+      const zc = -pr * .12, rz = flat ? .84 : 1, rx = flat ? 1.12 : 1;
+      const ARC = Math.PI * .45;
+      for (let i = 0; i < 3; i++) {
+        const t = new THREE.Mesh(new THREE.TorusGeometry(r * .995, r * .028, 4, 12, ARC), lm);
+        t.rotation.set(Math.PI / 2, 0, Math.PI / 2 - ARC / 2);
+        t.scale.set(rx, 1, rz);   // 납작 주먹이면 호도 같이 눌러 표면에 붙인다(회전 후 x·z)
+        t.position.set(0, (i - 1) * len * .62, zc);
+        g.add(t);
+      }
+    }
+    // 감싼 엄지 — 자루 앞을 비스듬히 덮는 짧은 캡슐(위에 얹은 혹이 아니라 자루를 가로지른다)
+    if (kind === 'fistThumbWrap' || kind === 'fistFull') {
+      // v2: 짧고 통통하게 · 더 파묻기 — 가늘고 길면 소시지를 붙인 것처럼 보였다(1차 시안)
+      const th = put(new THREE.CapsuleGeometry(pr * .25, pr * .20, 4, 10), pr * .04, len * .50, (flat ? r * .84 : r) * .62 - pr * .12);
+      th.rotation.z = .85;
+    }
+    void fist;
+  }
+  return g;
 }
 
 // ── 제스처 — game.js updatePlayer 의 도구질 분기 발췌 ──
@@ -344,6 +484,8 @@ function applyPose(rig, p, active) {
   // gripFade: 베기 동안(s) 쥐는 점·자세를 원본으로 되돌림 — 스윙 궤적을 원본과 똑같이 유지
   const fade = P.gripFade && active && !pour && digK === 0 ? s : 0;
   rig.off.position.copy(rig.offP).multiplyScalar(1 - fade);
+  // ✊ 휘두르는 동안 주먹은 발바닥 속으로 줄어든다 — 스윙 중 손은 지금과 똑같이(혹 방지). 2/3 지점에서 완전히 숨음
+  if (rig.wrap) { const w = Math.max(0, 1 - fade * 1.5); rig.wrap.scale.setScalar(w); rig.wrap.visible = w > .01; }
   _q3.slerpQuaternions(rig.qRest, rig.qRestOrig, fade);
   _q.slerpQuaternions(_q3, TOOL_QSWING, wristK);
   if (pour) _q.multiply(_q2.setFromAxisAngle(_axX, pour));
@@ -354,6 +496,97 @@ function applyPose(rig, p, active) {
     _q.slerp(dq, digK);
   }
   rig.gripG.quaternion.copy(_q);
+  if (rig.holes) placeHoles(rig);
+  if (rig.P.dimple && rig.R.paw && rig.R.paw.geometry.userData.base) placeDimple(rig);
+}
+
+// 자루 축(off 원점 + gripG 의 y 축)과 발바닥 구(손 원점, 반지름 pr)의 두 교점 둘레에 구멍 교선을 그린다
+const _hP = new THREE.Vector3(), _hD = new THREE.Vector3(), _hU = new THREE.Vector3(), _hV = new THREE.Vector3(), _hO = new THREE.Vector3(), _hX = new THREE.Vector3();
+const HANDLE_R = .036;   // 발바닥 표면 높이에서의 자루 반지름(도구 배율 1.18 반영 근사)
+// 자루와 평행한 선(원점 o)이 구와 만나는 점 — sgn +1 위쪽 입구 / -1 아래쪽 출구. 못 만나면 null
+function hitSphere(o, D, pr, sgn, out) {
+  const b = o.dot(D), c = o.lengthSq() - pr * pr, disc = b * b - c;
+  if (disc < 0) return null;
+  return out.copy(D).multiplyScalar(-b + sgn * Math.sqrt(disc)).add(o);
+}
+function placeHoles(rig) {
+  const pr = rig.R.gripR;
+  _hP.copy(rig.off.position).applyQuaternion(rig.gripG.quaternion);
+  _hD.set(0, 1, 0).applyQuaternion(rig.gripG.quaternion);
+  _hU.set(1, 0, 0); if (Math.abs(_hU.dot(_hD)) > .9) _hU.set(0, 0, 1);
+  _hU.addScaledVector(_hD, -_hU.dot(_hD)).normalize(); _hV.crossVectors(_hD, _hU);
+  rig.holes.forEach((h, i) => {
+    const sgn = i ? -1 : 1, gap = h.userData.gap;
+    const put = (attr, nrm, idx, r, ang) => {   // 자루 축에서 r 떨어진 평행선의 교점을 표면에 찍는다
+      // 발바닥이 작아 테두리가 가장자리 밖으로 나가면 그 방향만 반지름을 줄여 가장자리에 붙인다(입구 전체를 숨기지 않게)
+      let hit = false;
+      for (let tries = 0; tries < 12 && !hit; tries++, r *= .9) {
+        _hO.copy(_hP);
+        if (r > 0) _hO.addScaledVector(_hU, Math.cos(ang) * r).addScaledVector(_hV, Math.sin(ang) * r);
+        hit = !!hitSphere(_hO, _hD, pr * .995, sgn, _hX);
+        if (r === 0) break;
+      }
+      if (!hit) return false;
+      const n = _hX.length();
+      attr.setXYZ(idx, _hX.x / n * pr * 1.003, _hX.y / n * pr * 1.003, _hX.z / n * pr * 1.003);
+      nrm.setXYZ(idx, _hX.x / n, _hX.y / n, _hX.z / n);
+      return true;
+    };
+    const dark = h.userData.dark, dp = dark.geometry.attributes.position, dn = dark.geometry.attributes.normal;
+    let ok = put(dp, dn, 0, 0, 0);
+    for (let k = 0; ok && k < HOLE_N; k++) ok = put(dp, dn, 1 + k, HANDLE_R * gap, k / HOLE_N * Math.PI * 2);
+    const lip = h.userData.lip;
+    if (ok && lip) {
+      const lp = lip.geometry.attributes.position, ln = lip.geometry.attributes.normal;
+      for (let k = 0; ok && k < HOLE_N; k++) {
+        const ang = k / HOLE_N * Math.PI * 2;
+        ok = put(lp, ln, k, HANDLE_R * gap, ang) && put(lp, ln, HOLE_N + k, HANDLE_R * gap * 1.28, ang);
+      }
+      lp.needsUpdate = ln.needsUpdate = true;
+    }
+    dp.needsUpdate = dn.needsUpdate = true;
+    h.visible = ok;   // 자루가 표면을 스치듯 지나 교선이 끊기면 그 입구는 숨긴다
+  });
+}
+
+// 🫳 자루 자리 파기 — 발바닥 정점 중 자루 축에 가까운 것을 안쪽으로 부드럽게 눌러 넣는다(찰흙에 막대를 꽂은 모양).
+//   거리 d(정점↔자루 축)가 자루 반지름 근처면 깊게, inf 까지 매끄럽게 0. 깊이에 비례해 정점색을 어둡게(틈 그늘).
+//   lip>0 이면 파인 둘레를 살짝 도톰하게 올린다
+function placeDimple(rig) {
+  const P = rig.P.dimple, paw = rig.R.paw, geo = paw.geometry, base = geo.userData.base;
+  const pos = geo.attributes.position, col = geo.attributes.color;
+  _hP.copy(rig.off.position).applyQuaternion(rig.gripG.quaternion);
+  _hD.set(0, 1, 0).applyQuaternion(rig.gripG.quaternion);
+  const hr = HANDLE_R, inf = hr * P.inf;
+  for (let i = 0; i < pos.count; i++) {
+    _hO.set(base[i*3], base[i*3+1], base[i*3+2]);
+    _hX.copy(_hO).sub(_hP);
+    const d = _hX.addScaledVector(_hD, -_hX.dot(_hD)).length();   // 정점에서 자루 축까지 거리
+    if (P.mode === 'hole') {
+      // ⭕ 자루 자리만 구멍 — 축에서 R2 안쪽 정점을 축 바깥으로 밀어 [0,R2] → [R1,R2] 로 옮긴다.
+      //   자루를 두른 매끈한 원형 입구(반지름 R1)가 생기고, 원래 들쭉날쭉하던 교선이 사라진다
+      const R1 = hr * P.r1, R2 = hr * P.r2;
+      let nd = d, shade = 1;
+      if (d < R2 && d > 1e-6) {
+        nd = R1 + d * (R2 - R1) / R2;
+        _hX.multiplyScalar((nd - d) / d);                  // _hX = 축에 수직인 성분 → 바깥으로 밀 만큼
+        if (P.ao) shade = 1 - P.ao * (1 - (nd - R1) / (R2 - R1));
+      } else _hX.set(0, 0, 0);
+      pos.setXYZ(i, _hO.x + (d < R2 ? _hX.x : 0), _hO.y + (d < R2 ? _hX.y : 0), _hO.z + (d < R2 ? _hX.z : 0));
+      col.setXYZ(i, shade, shade, shade);
+      continue;
+    }
+    let k = 0;
+    if (d < inf) { const q = Math.max(0, (d - hr * .6) / (inf - hr * .6)); k = 1 - q*q*(3 - 2*q); }
+    let rim = 0;
+    if (P.lip && d >= inf * .75 && d < inf * 1.35) rim = Math.sin((d - inf * .75) / (inf * .6) * Math.PI);
+    const scale = 1 - k * P.depth + rim * P.lip;
+    pos.setXYZ(i, _hO.x * scale, _hO.y * scale, _hO.z * scale);
+    const shade = 1 - k * P.ao;
+    col.setXYZ(i, shade, shade, shade);
+  }
+  pos.needsUpdate = col.needsUpdate = true;
+  geo.computeVertexNormals();
 }
 
 // ── 관통 측정 — 도구 정점이 몸·머리 타원체(0.96 축소) 안에 든 비율 ──
@@ -476,6 +709,15 @@ const SHEET = [
   { a:'chick', t:'water',  p:0,   d:3.0, label:'🐤 병아리 · 물조리개\n평상시' },
 ];
 const SHEET3 = [.12, .32, .45, .58, .70, .85].map(p => ({ a:'bear', t:'axe', p, d:3.6, dx:0, label:`🐻 곰 · 도끼\n진행 ${p.toFixed(2)}` }));
+const SHEET4 = [
+  { a:'bear',   t:'axe',    p:0,   hand:true, d:1.25, az:.55, el:18, label:'🐻 곰 · 도끼\n손 클로즈업' },
+  { a:'fox',    t:'hoe',    p:0,   hand:true, d:1.15, az:.55, el:18, label:'🦊 여우 · 괭이\n손 클로즈업' },
+  { a:'rabbit', t:'sickle', p:0,   hand:true, d:1.05, az:.55, el:18, label:'🐰 토끼 · 낫\n손 클로즈업' },
+  { a:'panda',  t:'hammer', p:0,   hand:true, d:1.25, az:.55, el:18, label:'🐼 판다 · 망치\n손 클로즈업' },
+  { a:'bear',   t:'axe',    p:0,   d:3.4, label:'🐻 곰 · 도끼\n게임 시점(평상시)' },
+  { a:'dog',    t:'shovel', p:0,   d:3.4, label:'🐶 강아지 · 삽\n게임 시점(평상시)' },
+  { a:'bear',   t:'axe',    p:.45, d:3.6, dx:0, label:'🐻 곰 · 도끼\n스윙 중(p .45)' },
+];
 const SHEET2 = [
   { a:'bear',  t:'water',  p:0,   d:3.4, label:'🐻 곰 · 물조리개\n평상시' },
   { a:'bear',  t:'water',  p:.5,  d:3.4, label:'🐻 곰 · 물조리개\n붓기(p .50)' },
@@ -592,9 +834,10 @@ function drawSheet(cases, cw = 300, ch = 230) {
       r.root.updateWorldMatrix(true, true);
       const R = ANIMAL.bodyR, cx = r.root.position.x;
       const az = c.az ?? .35, el = (c.el ?? 34) * Math.PI/180, d = c.d ?? 4.4;
-      const ty = .8, tx = cx + (c.dx ?? R*.2);
-      camera.position.set(tx + Math.sin(az)*d*Math.cos(el), ty + d*Math.sin(el), Math.cos(az)*d*Math.cos(el));
-      camera.lookAt(tx, ty, 0);
+      let ty = .8, tx = cx + (c.dx ?? R*.2), tz = 0;
+      if (c.hand) { r.R.hand.getWorldPosition(_v); tx = _v.x; ty = _v.y + .08; tz = _v.z; }
+      camera.position.set(tx + Math.sin(az)*d*Math.cos(el), ty + d*Math.sin(el), tz + Math.cos(az)*d*Math.cos(el));
+      camera.lookAt(tx, ty, tz);
       renderer.render(scene, camera);
       g.drawImage(renderer.domElement, side + i*cw, head + row*ch, cw, ch);
       const pr = clipNow(r);
@@ -615,7 +858,7 @@ function drawSheet(cases, cw = 300, ch = 230) {
   cv.style.cssText = 'display:block;margin:0 auto;max-width:100%;max-height:100%'; ov.appendChild(cv);
   return cv;
 }
-window.__sim = { drawSheet, SHEET, SHEET2, SHEET3, BASE, clipProfile, buildRig, ANIMALS, setA: id => ANIMAL = ANIMALS.find(a => a.id === id), setT: t => TOOL = t, rebuild, get rigs() { return rigs; }, get profiles() { return profiles; }, runMatrix, VARIANTS, clipNow, applyPose,
+window.__sim = { SOFTHOLE_1, SOFTHOLE_2, SOFTHOLE_3, DIMPLE_1, DIMPLE_2, DIMPLE_3, HOLE_RIM, HOLE_DARK, HOLE_DEEP, WRAP_B, WRAP_B2, WRAP_B3, WRAP_B4, WRAP_H1, WRAP_H2, FADE, drawSheet, SHEET, SHEET2, SHEET3, SHEET4, BASE, clipProfile, buildRig, ANIMALS, setA: id => ANIMAL = ANIMALS.find(a => a.id === id), setT: t => TOOL = t, rebuild, get rigs() { return rigs; }, get profiles() { return profiles; }, runMatrix, VARIANTS, clipNow, applyPose,
   set(o) { if (o.animal) ANIMAL = ANIMALS.find(a => a.id === o.animal); if (o.tool) TOOL = o.tool;
     if ('p' in o) p = o.p; if ('focus' in o) focus = o.focus; if ('close' in o) closeUp = o.close; if ('az' in o) camAz = o.az; if ('el' in o) camEl = o.el; rebuild(); } };
 rebuild(); runMatrix(); showValues(); requestAnimationFrame(loop);

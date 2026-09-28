@@ -120,6 +120,7 @@ import {
   _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
   TOOL_QREST_HOLD, TOOL_GRIP, slashPhase, PLAYER_R, NPC_R,
 } from './data/character.js';
+import { pawRadius, gripForwardZ } from './data/grip.js';   // ✊ 긴 도구 자루 앞 오프셋 = 발바닥 반지름 비례
 import {
   buildGlade, tryNet, updateFireflyBugs,
 } from './spaces/glade.js';   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
@@ -1296,6 +1297,7 @@ const toolDigDir = new THREE.Vector3(0, -0.92, 0.40);
 let toolQRest = TOOL_QREST;   // 현재 캐릭터의 쥐는 자세 — applyCharacter 가 갱신
 let wingArms = false;         // 🐤 날개-팔 캐릭터 — 쥐는 점 보정을 적용하지 않는다(원본 유지)
 let toolGripFade = 0;         // 0 = 새 쥐는 점 · 1 = 원본 쥐는 점. 옆베기 동안만 올라간다(스윙 궤적을 원본과 똑같이)
+let gripZ = gripForwardZ(ANIMALS[0].bodyR);   // 긴 도구 자루 앞 오프셋 — applyCharacter 가 캐릭터 발바닥 크기로 갱신
 let curAnimal = ANIMALS[0];   // 현재 캐릭터 정의 — 등 수납 위치 계산(updateStowPose)에 사용
 let restArmX = 0.78;      // 손에 들었을 때의 좌우 위치(캐릭터 몸집마다 다름 — applyCharacter 가 갱신)
 let toolStow = 0;         // 🎒 도구 수납 진행 0(손 옆)~1(등 뒤). ✋맨손이면 1로 보간된다
@@ -3227,7 +3229,7 @@ export function buildAnimalMesh(id) {
       const ar = R * 0.23, al = R * 0.32;
       const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), a.armColor ? clayMat(a.armColor, false) : skin());
       upper.position.y = -(al / 2 + ar * 0.4); upper.castShadow = true; aim.add(upper);
-      const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), clayMat(a.ear, false));
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(pawRadius(R), 10, 8), clayMat(a.ear, false));   // = ar × 1.06(js/data/grip.js 가 단일 출처)
       paw.position.y = -(al + ar * 0.9); paw.castShadow = true; aim.add(paw);
       const hand = new THREE.Group(); hand.position.y = -(al + ar * 0.9); aim.add(hand);
       return { pivot, hand };
@@ -3271,6 +3273,7 @@ function applyCharacter(id) {
   applyCosmetics(gameState.cosmetics);
   restArmX = a.armX ?? 0.78;              // 몸집에 맞춰 도구 위치 보정(poseHeldTool 이 매 프레임 적용)
   curAnimal = a; updateStowPose();        // 등 수납 위치도 몸 크기에 맞춰 갱신
+  gripZ = gripForwardZ(a.bodyR ?? 0.55);   // ✊ 발 큰 곰·판다도 토끼처럼 자루가 발바닥 앞 가장자리에 걸리게
   poseHeldTool(toolStow);                 // 캐릭터를 바꾼 즉시 반영(다음 프레임까지 기다리지 않게)
 }
 
@@ -3837,7 +3840,7 @@ function farmBuildingMesh(id, g) {
 const HELD_REST = { py: 0.9,  pz: 0.06,  rx: -0.1, rz: -0.55 };
 const HELD_STOW = { px: 0.06, py: 1.02, pz: -0.46, rx: 0.28, rz: 2.25 };  // 등 한가운데 대각선(회전·레거시 무팔 경로용)
 const _hfM = new THREE.Matrix4(), _hfP = new THREE.Vector3(), _hfQ = new THREE.Quaternion(), _hfS = new THREE.Vector3();
-const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion(), _hfGQ = new THREE.Quaternion(), _hfRQ = new THREE.Quaternion();
+const _hfOff = new THREE.Vector3(), _hfTQ = new THREE.Quaternion(), _hfTilt = new THREE.Quaternion(), _hfGQ = new THREE.Quaternion(), _hfRQ = new THREE.Quaternion(), _hfGP = new THREE.Vector3();
 const _stowP = new THREE.Vector3(HELD_STOW.px, HELD_STOW.py, HELD_STOW.pz);
 const _stowQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(HELD_STOW.rx, 0, HELD_STOW.rz));
 // 등 수납 위치 — 고정 상수(z=-.46)는 몸 큰 곰(등 표면 ≈ -.67)에서 도구가 파묻혔다.
@@ -3884,7 +3887,8 @@ function poseHeldTool(stow, swingX, swingZ) {
     if (heldToolMesh) {
       if (grip) {
         // 쥐는 점은 손목 회전을 따라 돈다 · 등에 멜수록(k→1) 0 으로 — 수납 위치는 도구 원점 기준
-        heldToolMesh.position.copy(grip.p).applyQuaternion(_hfTQ).multiplyScalar((1 - k) * (1 - toolGripFade));
+        _hfGP.copy(grip.p); if (grip.pawRel) _hfGP.z = gripZ;   // 긴 도구는 앞 오프셋을 발바닥 크기로
+        heldToolMesh.position.copy(_hfGP).applyQuaternion(_hfTQ).multiplyScalar((1 - k) * (1 - toolGripFade));
         _hfTQ.multiply(_hfGQ.slerpQuaternions(grip.q, _idQ, toolGripFade));
       } else if (TOOL_GRIP[heldToolMesh.userData.toolId]) {
         heldToolMesh.position.set(0, 0, 0);   // 도구를 든 채 🐤로 바꾸면 이전 쥐는 점이 남는다
