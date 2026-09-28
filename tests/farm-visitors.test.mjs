@@ -88,25 +88,64 @@ test('떠나기 직전에는 다시 투명해진다', () => {
   assert.ok(op > 0 && op < 1, `페이드아웃 중이어야 한다(지금 ${op})`);
 });
 
-test('다가가면 등록된다', () => {
-  const h = harness({ player: { x: 0, z: 0 } });
-  h.v.update(0.016); h.v.update(SPAWN_DELAY_MIN);
-  h.v.update(0.016);
-  assert.deepEqual(h.discovered, ['butterfly']);
-});
-
-test('멀면 등록되지 않는다', () => {
-  const h = harness({ player: { x: 0, z: CATCH_R + 0.5 } });
-  h.v.update(0.016); h.v.update(SPAWN_DELAY_MIN);
-  h.v.update(0.016);
-  assert.deepEqual(h.discovered, []);
-});
-
-test('한 마리를 두 번 등록하지 않는다 — 옆에 서 있어도 한 번뿐', () => {
+// 🔍 등록은 **액션(Space·탭)** 으로 한다 — 걸어 들어가기만 하면 저절로 등록되던 시절엔
+//   "스페이스바를 눌러도 마우스로 눌러도 안 되던데, 어떻게 해요?" 가 나왔다(2026-09-28 베타 피드백).
+test('다가가기만 해서는 등록되지 않는다 — 액션을 눌러야 한다', () => {
   const h = harness({ player: { x: 0, z: 0 } });
   h.v.update(0.016); h.v.update(SPAWN_DELAY_MIN);
   for (let i = 0; i < 10; i++) h.v.update(0.1);
-  assert.deepEqual(h.discovered, ['butterfly'], '프레임마다 등록이 불렸다');
+  assert.deepEqual(h.discovered, []);
+});
+
+test('가까이서 observe 하면 등록된다', () => {
+  const h = harness({ player: { x: 0, z: 0 } });
+  h.v.update(0.016); h.v.update(SPAWN_DELAY_MIN);
+  assert.ok(h.v.target(), '가까이 있으면 대상이 잡혀야 한다');
+  assert.equal(h.v.observe(), 'butterfly');
+  assert.deepEqual(h.discovered, ['butterfly']);
+});
+
+test('멀면 대상이 없고 observe 도 아무것도 안 한다', () => {
+  const h = harness({ player: { x: 0, z: CATCH_R + 0.5 } });
+  h.v.update(0.016); h.v.update(SPAWN_DELAY_MIN);
+  assert.equal(h.v.target(), null);
+  assert.equal(h.v.observe(), null);
+  assert.deepEqual(h.discovered, []);
+});
+
+test('한 마리를 두 번 등록하지 않는다 — 연타해도 한 번뿐', () => {
+  const h = harness({ player: { x: 0, z: 0 } });
+  h.v.update(0.016); h.v.update(SPAWN_DELAY_MIN);
+  for (let i = 0; i < 5; i++) h.v.observe();
+  assert.deepEqual(h.discovered, ['butterfly'], '연타마다 등록이 불렸다');
+  assert.equal(h.v.target(), null, '이미 살펴본 손님은 더 이상 액션을 가로채면 안 된다');
+});
+
+test('observe 는 메시를 함께 넘긴다 — 호출부가 🔍 말풍선을 끈다', () => {
+  const got = [];
+  const v = createVisitors({
+    group: fakeGroup(), makeMesh: () => fakeMesh(),
+    cells: () => [{ x: 0, z: 0 }], envAt: () => ({}), matchVisitors: () => [VISITORS[0]],
+    ctx: () => ({ night: false, rain: false }), playerPos: () => ({ x: 0, z: 0 }),
+    onSpawn: () => {}, onDiscover: (id, mesh) => got.push([id, !!mesh]), random: () => 0,
+  });
+  v.update(0.016); v.update(SPAWN_DELAY_MIN); v.observe();
+  assert.deepEqual(got, [['butterfly', true]]);
+});
+
+test('여러 마리면 가장 가까운 손님을 고른다', () => {
+  // 종마다 자리를 하나씩 못 박는다 — 🦋 는 x=2, 🐦 는 x=1
+  const v = createVisitors({
+    group: fakeGroup(), makeMesh: () => fakeMesh(),
+    cells: () => [{ x: 2, z: 0 }, { x: 1, z: 0 }],
+    envAt: (x) => ({ x }),
+    matchVisitors: (env) => [env.x === 2 ? VISITORS[0] : VISITORS[1]],
+    ctx: () => ({ night: false, rain: false }), playerPos: () => ({ x: 0, z: 0 }),
+    onSpawn: () => {}, onDiscover: () => {}, random: () => 0,
+  });
+  for (let i = 0; i < 400 && v.alive.length < 2; i++) v.update(0.1);   // 두 마리가 모일 때까지(체류 25초 안)
+  assert.equal(v.alive.length, 2, '전제: 두 마리가 떠 있어야 한다');
+  assert.equal(v.target().wx, 1, '가까운 쪽(x=1)이어야 한다');
 });
 
 test('동시에 2마리를 넘지 않는다', () => {
@@ -210,7 +249,7 @@ test('근접 등록은 월드 좌표로 판정한다 — 오프셋 그룹에서�
     onSpawn: () => {}, onDiscover: (id) => discovered.push(id),
     random: () => 0,
   });
-  v.update(0.016); v.update(SPAWN_DELAY_MIN); v.update(0.016);
+  v.update(0.016); v.update(SPAWN_DELAY_MIN); v.observe();
   assert.deepEqual(discovered, ['butterfly'],
     '로컬(0,0) 과 플레이어 월드(0,85) 를 비교하면 거리 85 로 나와 영영 등록되지 않는다');
 });
