@@ -155,7 +155,7 @@ order by 1, 2;
 --     격자 2단위 — 원본 좌표는 내보내지 않습니다.
 --
 --     ★ 왜 Supabase 가 아니라 BigQuery 인가 (2026-09-02 정정)
---       scripts/export_to_bq.py 가 적재 후 RETENTION_DAYS(7일) 지난 game_logs 를
+--       ml/scripts/export_to_bq.py 가 적재 후 RETENTION_DAYS(7일) 지난 game_logs 를
 --       Supabase 에서 지웁니다. 즉 Supabase 는 최근 7일 창(15,471행·120기기)만
 --       갖고 있고, 전체 이력은 BigQuery 미러에 있습니다(77,425행·204기기).
 --       Supabase 로 뽑으면 히트맵이 조용히 1/7 로 잘립니다.

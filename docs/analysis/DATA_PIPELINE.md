@@ -21,7 +21,7 @@ Supabase ─(이 파이프라인)▶ BigQuery(calm_forest_raw)      # 좌표·�
 
 ## 파일
 - `.github/workflows/supabase-to-bq.yml` — 매일 03:00 KST 실행(수동 실행도 가능)
-- `scripts/export_to_bq.py` — 증분 적재 + prune 로직
+- `ml/scripts/export_to_bq.py` — 증분 적재 + prune 로직
 
 ## 필요한 설정 (GitHub → Settings → Secrets and variables → Actions)
 
