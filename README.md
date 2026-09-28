@@ -35,6 +35,7 @@ calm_forest/
 │  ├─ metrics.js         #   📐 계측: 경제 원장(econ_logs) + 세션 요약(session_logs)
 │  ├─ controls.js        #   📱 모바일 가상 조이스틱 + 액션 버튼
 │  └─ sound.js           #   🔊 절차적 효과음(WebAudio)
+├─ pages/                # 📄 단독 페이지(privacy·delete-account·auth-popup·offline) — 배포 시 루트 URL 로 편다
 ├─ dashboards/           # 📊 분석 대시보드 (브라우저에서 열기)
 │  ├─ analytics.html     #   본인 데이터: 이동 히트맵·세션·시선
 │  └─ admin_analytics.html #  관리자: 전체 유저 합산 통계

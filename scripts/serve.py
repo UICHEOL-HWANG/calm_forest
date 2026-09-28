@@ -635,15 +635,20 @@ ROOT_ASSET_ALIASES = {
     '/favicon-96.png': 'assets/favicon/favicon-96.png',
     '/apple-touch-icon.png': 'assets/favicon/apple-touch-icon.png',
     '/preview.jpg': 'assets/social/preview.jpg',
-    # 📱 PWA(assets/pwa/ → 루트) — sw.js·offline.html 은 저장소 루트라 매핑 불필요
+    # 📱 PWA(assets/pwa/ → 루트) — sw.js 는 스코프 때문에 저장소 루트에 그대로 둔다
     '/manifest.webmanifest': 'assets/pwa/manifest.webmanifest',
     '/icon-192.png': 'assets/pwa/icon-192.png',
     '/icon-512.png': 'assets/pwa/icon-512.png',
     '/icon-maskable-512.png': 'assets/pwa/icon-maskable-512.png',
     # ⚖️ 정책 페이지 — 운영은 Workers 정적 자산이 확장자 없는 경로를 .html 로 알아서 넘겨주지만
     #    로컬 http.server 는 그대로 404 라, ☰ 메뉴의 두 링크를 여기서도 열리게 해 둔다.
-    '/privacy': 'privacy.html',
-    '/delete-account': 'delete-account.html',
+    '/privacy': 'pages/privacy.html',
+    '/delete-account': 'pages/delete-account.html',
+    # 📄 단독 페이지(pages/ → 루트) — 공개 URL 은 옮기기 전과 같다
+    '/privacy.html': 'pages/privacy.html',
+    '/delete-account.html': 'pages/delete-account.html',
+    '/auth-popup.html': 'pages/auth-popup.html',
+    '/offline.html': 'pages/offline.html',
 }
 
 
