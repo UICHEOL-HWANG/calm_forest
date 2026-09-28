@@ -1,0 +1,320 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🌳 나무 쓰러짐 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#dff3ff;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  .lbl{position:fixed;background:rgba(255,255,255,.9);padding:5px 9px;border-radius:8px;font-size:12px;line-height:1.45;pointer-events:none;max-width:44vw}
+  .lbl b{font-size:13px;color:#2f5e2f}
+  #ui{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:rgba(255,255,255,.92);padding:7px 12px;border-radius:12px;font-size:13px;max-width:calc(100vw - 32px);box-sizing:border-box}
+  button{font:inherit;padding:5px 11px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  button.big{font-weight:700;background:#f4d7a0;border-color:#c9a25b}
+  input[type=range]{width:130px}
+  .div{position:fixed;background:rgba(60,90,60,.35)}
+</style>
+<div id="labels"></div>
+<div class="div" style="top:0;bottom:0;width:2px;left:50%"></div>
+<div class="div" style="left:0;right:0;height:2px;top:50%"></div>
+<div id="ui">
+  <button id="play" class="big">🪓 다시 쓰러뜨리기</button>
+  <button data-speed="1" class="on">1×</button>
+  <button data-speed="0.25">¼×</button>
+  <label>시각 <input id="scrub" type="range" min="0" max="1.8" step="0.01" value="0"> <span id="tv">0.00s</span></label>
+  <label><input id="loop" type="checkbox" checked> 반복</label>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ══════════════════════════════════════════════════════════════
+//  게임 원본 발췌 — spawnTree(js/game.js)·PAL(js/data/world.js)·입자(js/spaces/fx.js)
+// ══════════════════════════════════════════════════════════════
+const PAL = { ground: 0xbfe8c9, trunk: 0xd8a679, leaf1: 0x8fd6a0, wood: 0xd9a066, dust: 0xc9a988 };
+const clayMat = (color, flat = true) =>
+  new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0, flatShading: flat });
+const TRUNK_GEO = new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7);
+const CANOPY_BLOBS = [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]];
+const LEAF_GEO = new THREE.PlaneGeometry(0.22, 0.22);
+const CHIP_GEO = new THREE.TetrahedronGeometry(0.12);
+
+function buildTree() {
+  const root = new THREE.Group();          // 월드 자리(= 게임의 tree)
+  const pivot = new THREE.Group();         // 🌳 쓰러질 때 도는 축(밑동 가장자리)
+  const body = new THREE.Group();          // 줄기+잎 — pivot 기준으로 되돌려 놓는다
+  root.add(pivot); pivot.add(body);
+  const trunk = new THREE.Mesh(TRUNK_GEO, clayMat(PAL.trunk));
+  trunk.position.y = 0.8; trunk.castShadow = true; body.add(trunk);
+  const canopy = new THREE.Group();
+  for (const [x, y, z, s] of CANOPY_BLOBS) {
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), clayMat(PAL.leaf1));
+    m.position.set(x, y, z); m.castShadow = true; canopy.add(m);
+  }
+  canopy.position.y = 2.0; body.add(canopy);
+  // 🪵 그루터기(시안 C 전용) — 줄기 아랫부분만 남는다
+  const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.5, 0.36, 7), clayMat(PAL.trunk));
+  stump.position.y = 0.18; stump.castShadow = true; stump.visible = false; root.add(stump);
+  const cut = new THREE.Mesh(new THREE.CircleGeometry(0.42, 7), clayMat(0xf0d2a8));
+  cut.rotation.x = -Math.PI / 2; cut.position.y = 0.185; stump.add(cut);
+  return { root, pivot, body, trunk, canopy, stump };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  이징
+// ══════════════════════════════════════════════════════════════
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const seg = (t, a, b) => clamp01((t - a) / (b - a));
+const easeInCubic = (x) => x * x * x;
+const easeInQuad = (x) => x * x;
+const easeInBack = (x) => { const c = 1.6; return (c + 1) * x * x * x - c * x * x; };
+
+// ══════════════════════════════════════════════════════════════
+//  시안 — pose(t) 는 t(마지막 도끼질 이후 초)의 순수 함수 → 스크럽해도 결과가 같다
+//  angle: 쓰러진 각(0=서 있음) · sink: 땅속으로 · scale: 전체 크기 · squash: 잎 눌림
+// ══════════════════════════════════════════════════════════════
+const LIE = THREE.MathUtils.degToRad(80);
+const VARIANTS = [
+  {
+    id: 'now', title: '현재', desc: '마지막 도끼질에 바로 사라짐 · 잎 26장',
+    pose: (t) => ({ hidden: t >= 0, angle: 0, sink: 0, scale: 1, squash: 0 }),
+    events: [{ at: 0, kind: 'leafTop', n: 26 }],
+  },
+  {
+    id: 'A', title: 'A · 톡 쓰러짐', desc: '0.38초 가속 낙하 → 쿵 잎·먼지 → 0.3초 쪼그라들며 사라짐 (총 1.0초, 벤치마크 템포)',
+    pose(t) {
+      const fall = easeInCubic(seg(t, 0, 0.38));
+      const hit = seg(t, 0.38, 0.5);
+      const out = seg(t, 0.7, 1.0);
+      return { hidden: t >= 1.0, angle: LIE * fall, sink: 0, scale: 1 - easeInBack(out), squash: Math.sin(hit * Math.PI) * 0.12 };
+    },
+    events: [{ at: 0, kind: 'leafTop', n: 10 }, { at: 0.38, kind: 'impact', n: 18 }],
+  },
+  {
+    id: 'B', title: 'B · 기우뚱 쿵 바운스', desc: '0.15초 기우뚱(뜸) → 0.45초 낙하 → 한 번 튕김 → 0.4초 땅속으로 가라앉음 (총 1.6초, 묵직함)',
+    pose(t) {
+      const pre = seg(t, 0, 0.15);
+      const preAng = -THREE.MathUtils.degToRad(4) * Math.sin(pre * Math.PI);   // 뜸: 반대쪽으로 살짝
+      const fall = easeInQuad(seg(t, 0.15, 0.6));
+      const b = t > 0.6 ? Math.exp(-(t - 0.6) * 7) * Math.sin((t - 0.6) * 18) : 0;   // 착지 후 감쇠 튕김
+      const bounce = THREE.MathUtils.degToRad(9) * Math.max(0, b);
+      const out = seg(t, 1.2, 1.6);
+      return {
+        hidden: t >= 1.6, angle: (t < 0.15 ? preAng : LIE * fall) - bounce,
+        sink: easeInQuad(out) * 1.3, scale: 1 - out * 0.35,
+        squash: t > 0.6 ? Math.exp(-(t - 0.6) * 8) * 0.22 : 0,
+      };
+    },
+    events: [{ at: 0, kind: 'leafTop', n: 10 }, { at: 0.6, kind: 'impact', n: 26, dust: 18 }],
+  },
+  {
+    id: 'C', title: 'C · 그루터기 남김', desc: '밑동 위에서 꺾여 쓰러짐 → 통나무는 사라지고 그루터기가 재생(30초)까지 남음',
+    stump: true,
+    pose(t) {
+      const fall = easeInCubic(seg(t, 0, 0.42));
+      const b = t > 0.42 ? Math.exp(-(t - 0.42) * 9) * Math.sin((t - 0.42) * 20) : 0;
+      const bounce = THREE.MathUtils.degToRad(5) * Math.max(0, b);
+      const out = seg(t, 0.8, 1.1);
+      return { hidden: t >= 1.1, angle: LIE * fall - bounce, sink: 0, scale: 1 - easeInBack(out), squash: t > 0.42 ? Math.exp(-(t - 0.42) * 9) * 0.15 : 0 };
+    },
+    events: [{ at: 0, kind: 'leafTop', n: 10 }, { at: 0.42, kind: 'impact', n: 18 }],
+  },
+];
+
+// ══════════════════════════════════════════════════════════════
+//  장면 4개(한 렌더러 · 가위 뷰포트)
+// ══════════════════════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setScissorTest(true);
+document.body.prepend(renderer.domElement);
+
+const FAR = new URLSearchParams(location.search).has('far');   // 게임 실제 카메라 거리(camOffset 그대로)
+const PLAYER_POS = new THREE.Vector3(-1.7, 0, 0.9);
+const FALL_DIR = new THREE.Vector3().sub(PLAYER_POS).setY(0).normalize();        // 플레이어 반대쪽으로 쓰러진다
+const FALL_AXIS = new THREE.Vector3(0, 1, 0).cross(FALL_DIR).normalize();       // 이 축으로 돌면 FALL_DIR 쪽으로 눕는다
+const PIVOT_OFF = 0.45;                                                          // 밑동 반지름 ≈0.5 — 넘어지는 쪽 가장자리
+
+function makePlayer() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), clayMat(0x8a6038, false));
+  body.scale.set(1.05, 1, 1.03); body.position.y = 0.6; body.castShadow = true; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), clayMat(0x8a6038, false));
+  head.position.y = 1.3; head.castShadow = true; g.add(head);
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), clayMat(0x6a4828, false));
+    ear.position.set(0.26 * s, 1.66, 0); g.add(ear);
+  }
+  g.position.copy(PLAYER_POS);
+  g.lookAt(0, 0, 0);
+  return g;
+}
+
+const scenes = VARIANTS.map((v) => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xdff3ff);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xa9dcb6, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff2dc, 1.6);
+  sun.position.set(6, 12, 5); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 });
+  scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), clayMat(PAL.ground));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const tree = buildTree(); scene.add(tree.root);
+  // 축: 줄기 중심으로 돌면 반대편 밑동이 땅을 파고든다 → 넘어지는 쪽 가장자리로
+  tree.pivot.position.copy(FALL_DIR).multiplyScalar(PIVOT_OFF);
+  tree.body.position.copy(FALL_DIR).multiplyScalar(-PIVOT_OFF);
+  scene.add(makePlayer());
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  camera.position.set(0, 14, 16).multiplyScalar(FAR ? 1 : 0.55).add(new THREE.Vector3(0.8, 0, 0));   // 게임 camOffset 과 같은 각(41°) · 가까이
+  camera.lookAt(0.8, 0.9, 0);
+  const parts = new THREE.Group(); scene.add(parts);
+  return { v, scene, camera, tree, parts, particles: [] };
+});
+
+// ── 입자: 시드 난수로 미리 만들어 두고 t 로 위치를 계산(스크럽 가능) ───────────
+function rng(seed) { return () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646; }
+function crownWorldAt(v, t) {
+  const q = new THREE.Quaternion().setFromAxisAngle(FALL_AXIS, v.pose(t).angle);
+  const pivot = FALL_DIR.clone().multiplyScalar(PIVOT_OFF);
+  return new THREE.Vector3(0, 2.2, 0).sub(pivot).applyQuaternion(q).add(pivot);
+}
+function addParticle(s, geo, color, spec) {
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: .9, side: THREE.DoubleSide, transparent: true }));
+  s.particles.push({ m, ...spec }); s.parts.add(m);
+}
+for (const s of scenes) {
+  const r = rng(s.v.id.charCodeAt(0) * 97 + 13);
+  for (const ev of s.v.events) {
+    const impact = ev.kind === 'impact';
+    const origin = impact ? crownWorldAt(s.v, ev.at).setY(0.4) : new THREE.Vector3(0, 2.4, 0);
+    for (let i = 0; i < ev.n; i++) {                       // 🍃 게임 spawnLeafBurst 와 같은 물리
+      addParticle(s, LEAF_GEO, PAL.leaf1, { at: ev.at, life: 1.4, g: -4, flutter: true,
+        p0: origin.clone().add(new THREE.Vector3((r() - .5) * 1.4, r() * 0.8, (r() - .5) * 1.4)),
+        v: new THREE.Vector3((r() - .5) * 3, impact ? 1.5 + r() * 1.8 : 2 + r() * 2, (r() - .5) * 3),
+        spin: new THREE.Vector3(r() * 6, r() * 6, r() * 6) });
+    }
+    if (!impact) {                                          // 🪵 게임 spawnWoodChips(8개)
+      for (let i = 0; i < 8; i++) {
+        addParticle(s, CHIP_GEO, PAL.wood, { at: ev.at, life: 1.0, g: -9, flutter: false,
+          p0: new THREE.Vector3((r() - .5) * .4, .9, (r() - .5) * .4),
+          v: new THREE.Vector3((r() - .5) * 4, 2.5 + r() * 2, (r() - .5) * 4), spin: new THREE.Vector3(r() * 10, r() * 10, r() * 10) });
+      }
+    }
+    const dustN = impact ? (ev.dust ?? 10) : 0;
+    for (let i = 0; i < dustN; i++) {                       // 💨 게임 spawnDust — 쓰러진 줄기를 따라 깔린다
+      const along = 0.4 + r() * 2.6;
+      addParticle(s, CHIP_GEO, PAL.dust, { at: ev.at, life: 0.9, g: -1.2, flutter: false, grow: 2,
+        p0: FALL_DIR.clone().multiplyScalar(along).add(new THREE.Vector3((r() - .5) * .8, 0.15, (r() - .5) * .8)),
+        v: new THREE.Vector3((r() - .5) * 1.4, 0.6 + r(), (r() - .5) * 1.4), spin: new THREE.Vector3(r() * 4, r() * 4, r() * 4) });
+    }
+  }
+}
+
+function applyTime(s, t) {
+  const { tree, v } = s;
+  const p = v.pose(t);
+  tree.body.visible = !p.hidden;
+  tree.stump.visible = !!v.stump && t >= 0;
+  tree.trunk.position.y = v.stump && t >= 0 ? 0.98 : 0.8;          // C: 그루터기 위로 올라탄 줄기가 꺾여 넘어간다
+  tree.trunk.scale.y = v.stump && t >= 0 ? 0.78 : 1;
+  tree.pivot.position.set(FALL_DIR.x * PIVOT_OFF, (v.stump && t >= 0 ? 0.36 : 0) - p.sink, FALL_DIR.z * PIVOT_OFF);
+  tree.pivot.quaternion.setFromAxisAngle(FALL_AXIS, p.angle);
+  tree.body.scale.setScalar(Math.max(0.001, p.scale));
+  tree.body.position.set(-FALL_DIR.x * PIVOT_OFF * p.scale, v.stump && t >= 0 ? -0.36 : 0, -FALL_DIR.z * PIVOT_OFF * p.scale);
+  tree.canopy.scale.set(1 + p.squash * 0.6, 1 - p.squash, 1 + p.squash * 0.6);
+  for (const q of s.particles) {
+    const a = t - q.at;
+    const on = a >= 0 && a < q.life;
+    q.m.visible = on;
+    if (!on) continue;
+    const drag = q.flutter ? 0.55 : 1;
+    q.m.position.set(q.p0.x + q.v.x * a * drag, q.p0.y + q.v.y * a + 0.5 * q.g * a * a, q.p0.z + q.v.z * a * drag);
+    if (q.flutter) q.m.position.x += Math.sin(a * 9 + q.p0.z * 5) * 0.12;
+    q.m.position.y = Math.max(0.03, q.m.position.y);
+    q.m.rotation.set(q.spin.x * a, q.spin.y * a, q.spin.z * a);
+    q.m.material.opacity = 1 - a / q.life;
+    q.m.scale.setScalar(q.grow ? 1 + a * q.grow : 1);
+  }
+}
+
+// ── 레이아웃: 2×2 · ?sheet 면 시안(행)×시각(열) 한 장짜리 비교표 ──────────────
+const SHEET = new URLSearchParams(location.search).has('sheet');
+const SHEET_T = [0, 0.15, 0.3, 0.42, 0.6, 0.8, 1.0, 1.4];
+const labels = document.getElementById('labels');
+if (SHEET) { document.getElementById('ui').remove(); document.querySelectorAll('.div').forEach((d) => d.remove()); }
+scenes.forEach((s) => {
+  const d = document.createElement('div'); d.className = 'lbl';
+  d.innerHTML = SHEET ? `<b>${s.v.title}</b>` : `<b>${s.v.title}</b><br>${s.v.desc}`; labels.appendChild(d); s.label = d;
+});
+let cells = [];
+function layout() {
+  const W = innerWidth, H = innerHeight;
+  renderer.setSize(W, H);
+  if (SHEET) {
+    const top = 22, cw = W / SHEET_T.length, ch = (H - top) / scenes.length;
+    cells = [];
+    labels.querySelectorAll('.tl').forEach((e) => e.remove());
+    SHEET_T.forEach((tt, j) => {
+      const d = document.createElement('div'); d.className = 'lbl tl';
+      d.textContent = `${tt.toFixed(2)}s`; Object.assign(d.style, { left: `${j * cw + 4}px`, top: '2px', padding: '1px 6px' });
+      labels.appendChild(d);
+    });
+    scenes.forEach((s, i) => {
+      SHEET_T.forEach((tt, j) => cells.push({ s, t: tt, rect: { x: j * cw, y: top + i * ch, w: cw, h: ch } }));
+      s.camera.aspect = cw / ch; s.camera.updateProjectionMatrix();
+      Object.assign(s.label.style, { left: '4px', top: `${top + i * ch + 4}px` });
+    });
+    return;
+  }
+  scenes.forEach((s, i) => {
+    const col = i % 2, row = Math.floor(i / 2);
+    s.rect = { x: col * W / 2, y: row * H / 2, w: W / 2, h: H / 2 };
+    s.camera.aspect = s.rect.w / s.rect.h; s.camera.updateProjectionMatrix();
+    Object.assign(s.label.style, { left: `${s.rect.x + 8}px`, top: `${s.rect.y + 8}px` });
+  });
+  cells = scenes.map((s) => ({ s, t: null, rect: s.rect }));
+}
+addEventListener('resize', layout); layout();
+
+// ── 재생 ───────────────────────────────────────────────────
+const END = 1.8, HOLD = 0.9;
+let t = -0.3, speed = 1, playing = !SHEET, last = performance.now();
+const scrub = document.getElementById('scrub'), tv = document.getElementById('tv'), loopEl = document.getElementById('loop');
+if (!SHEET) {
+  document.getElementById('play').onclick = () => { t = -0.3; playing = true; };
+  document.querySelectorAll('[data-speed]').forEach((b) => b.onclick = () => {
+    speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach((x) => x.classList.toggle('on', x === b));
+  });
+  scrub.oninput = () => { t = +scrub.value; playing = false; };
+}
+if (new URLSearchParams(location.search).has('t')) { t = +new URLSearchParams(location.search).get('t'); playing = false; }
+window.setT = (x) => { t = x; playing = false; render(); };   // 캡처용
+
+function render() {
+  const H = innerHeight;
+  for (const { s, t: ct, rect: r } of cells) {
+    applyTime(s, ct ?? t);
+    renderer.setViewport(r.x, H - r.y - r.h, r.w, r.h);
+    renderer.setScissor(r.x, H - r.y - r.h, r.w, r.h);
+    renderer.render(s.scene, s.camera);
+  }
+  if (SHEET) return;
+  scrub.value = Math.max(0, t); tv.textContent = `${Math.max(0, t).toFixed(2)}s`;
+}
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (playing) {
+    t += dt * speed;
+    if (t > END + HOLD) { if (loopEl.checked) t = -0.3; else { t = END; playing = false; } }
+  }
+  render();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+</script>
