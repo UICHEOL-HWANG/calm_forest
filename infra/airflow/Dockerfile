@@ -6,7 +6,7 @@
 # apache-airflow-providers-google 대신 순수 클라이언트를 쓰는 이유:
 #   provider 는 Airflow Connection(스코프 URL 인코딩)을 따로 설정해야 하는데,
 #   이 스택은 서비스계정 키 파일 하나로 끝내는 편이 단순하고,
-#   scripts/export_to_bq.py 가 이미 같은 방식(google-cloud-bigquery)이라 일관됩니다.
+#   ml/scripts/export_to_bq.py 가 이미 같은 방식(google-cloud-bigquery)이라 일관됩니다.
 FROM apache/airflow:2.10.5
 
 # 🎯 이탈 예측 — churn_train DAG 가 GroupKFold 학습·부트스트랩 CI·W&B 로깅에 쓴다.

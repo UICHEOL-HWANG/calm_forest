@@ -75,7 +75,7 @@
 - [ ] 사용자 결정 대기: 테스터 모집 방식(이메일 목록 12명+ vs Google 그룹 — 대행 업체면 보통 그룹)
 - [ ] 그다음: `npm run upload:play -- --track alpha` → Aside 로 국가(대한민국)·테스터 연결 → **전송은 사용자 확인 후**
 - [ ] OAuth: agriquant `android.calmforest.play` → SHA-1 `2F:7E:FB:…:5F:69:1F`, `play17` → `06:1B:8A:…:B7:F4` 로 교체했는지 사용자 확인 필요
-- [ ] (선택) 태블릿 스크린샷·고해상도 폰 스크린샷 — `dashboards/screenshots/` 2880×1620 원본 사용. 현재 폰샷은 PC 화면(WASD 안내 보임)
+- [ ] (선택) 태블릿 스크린샷·고해상도 폰 스크린샷 — `assets/store/screenshots/` 2880×1620 원본 사용. 현재 폰샷은 PC 화면(WASD 안내 보임)
 - [ ] (선택) 런처 이름이 "calm forest" — 콘솔 이름 "고요한숲"과 맞출지 결정(android strings app_name)
 - [ ] FCM 푸시 · Remote Config+A/B — 계획 문서 먼저
 

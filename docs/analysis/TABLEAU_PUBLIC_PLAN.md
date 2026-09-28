@@ -313,7 +313,7 @@ twbx 손 조립은 중단(§ 메모리 참고). Desktop에서 직접 그린다. 
 제목·설명(보인 것/그래서) 전문과 시트 레시피는 가이드 페이지 v2 블록에 있음:
 https://claude.ai/code/artifact/cffbe451-5601-4324-b1fe-f35b3c71d898
 
-**캡처(2026-09-04 완료)**: `dashboards/screenshots/` 6장. 로컬 dev 서버를 Playwright 로 몰아서 촬영 —
+**캡처(2026-09-04 완료)**: `assets/store/screenshots/` 6장. 로컬 dev 서버를 Playwright 로 몰아서 촬영 —
 게스트 진입 → 곰 선택 → 인트로·튜토리얼 스킵 → `window.__tp(9.5, 9)` 로 호수 → 낚싯대 → 캐스팅 → 입질 대기 → 낚아채기.
 함정 둘: ⑴ 오늘 날씨가 `weatherOf(0)`=비라 쿼리로 맑음을 못 준다 → 로드 시 `: weatherOf(0);` → `: 'clear';` 로 라우트 패치.
 ⑵ 캐치 세리머니의 3D 글자(`spawnFloatText`, 수명 1.4초)가 캐스팅 지점에 떠서 밀착 카메라와 겹쳐 화면을 덮는다 —

@@ -2,7 +2,7 @@
 #  calm forest · BigQuery 조회 모듈 — 분석/학습 데이터의 유일한 원천
 #  ------------------------------------------------------------
 #  ▶ 왜 db.py(Supabase)가 아니라 여기인가:
-#    Supabase 는 최근 7일만 보관한다(scripts/export_to_bq.py 가 적재 후 prune).
+#    Supabase 는 최근 7일만 보관한다(ml/scripts/export_to_bq.py 가 적재 후 prune).
 #    실측 차이 — Supabase 15,471행/120기기 vs BQ 77,425행/204기기(07-27~09-01).
 #    Supabase 로 리텐션·이탈을 재면 조용히 1/5 표본으로 계산된다. 분석은 무조건 BQ.
 #
