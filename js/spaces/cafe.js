@@ -922,6 +922,11 @@ export function drawCosMenu() {
     const mine = gameState.pets[petView];
     cosPreview?.showPet(stageOf(mine ? mine.works : Infinity), petView);
   } else cosPreview?.showPet(null);
+  cosPreview?.showTrail(cosTab === 'trail');           // ✨ 이펙트 탭 — 캐릭터 대신 자국이 걸어온다
+  //  걷는 자국은 돌리지 않는다(방향이 돌면 걸어오는 게 안 읽힌다) → "드래그해서 돌려보기" 도 감춘다.
+  //  visibility 로 감춰 자리는 남긴다 — 탭을 오갈 때 미리보기 상자 높이가 튀지 않게.
+  const hint = document.getElementById('cos-preview-hint');
+  if (hint) hint.style.visibility = cosTab === 'trail' ? 'hidden' : '';
   if (cosTab === 'pet') { drawPetTab(box); return; }
   for (const it of itemsOf(cosTab)) {
     const owned = gameState.cosmetics.owned.includes(it.id);
