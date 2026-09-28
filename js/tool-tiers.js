@@ -3,7 +3,7 @@
 //  ------------------------------------------------------------
 //  ▶ 어떤 등급인가(tierOf) + 그 등급의 색(TIER_PALETTE) 만 정한다.
 //    조형은 game.js 의 toolMesh() 가, 검수는 sims/tool-tier-sim.html 이 이 팔레트를 함께 쓴다.
-//  ▶ 테스트: npm test   (dev/active/tool-tiers/)
+//  ▶ 테스트: npm test   (dev/archive/tool-tiers/)
 //
 //  ⚠️ 이 모듈이 생긴 이유: 업그레이드(강철 도끼·큰 물조리개·튼튼한 낚싯대·촘촘한 포충망)는
 //     이미 게임에 있었는데 toolMesh 가 upgrades 를 읽지 않아 모습이 그대로였다.

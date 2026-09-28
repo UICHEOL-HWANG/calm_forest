@@ -38,22 +38,20 @@ calm_forest/
 ├─ dashboards/           # 📊 분석 대시보드 (브라우저에서 열기)
 │  ├─ analytics.html     #   본인 데이터: 이동 히트맵·세션·시선
 │  └─ admin_analytics.html #  관리자: 전체 유저 합산 통계
-├─ sql/                  # 🗄️ Supabase / BigQuery SQL
-│  ├─ supabase_setup.sql #   테이블·RLS·분석 뷰 생성 (한 번 실행)
-│  ├─ admin_analytics.sql#   관리자 집계 보안함수 (+ 임시 공개 링크 검사)
-│  ├─ analytics_queries.sql # 전체 유저 집계 쿼리 팩 (E: 세그먼트·A/B·pre/post)
-│  ├─ bigquery_queries.sql  # BigQuery 쿼리 팩 (GA4 + 행동로그 세그먼트/AB)
-│  ├─ quality_checks.sql #   🩺 계측 품질 체크(체험단 전 검증용)
-│  ├─ migrate_ab_fields.sql    # (기존 DB) client_id·is_guest·variant 추가+백필
-│  ├─ migrate_ab_fields_bq.sql # (BigQuery) 동 컬럼 추가+variant 백필
-│  └─ migrate_metrics_tables.sql # 📐 계측 테이블(econ_logs·session_logs) 생성+RLS
+├─ sql/                  # 🗄️ 운영 SQL (Supabase SQL Editor·BigQuery 에 사람이 돌리는 것)
+│  ├─ setup/             #   최초 1회 — 테이블·RLS·분석 뷰 (supabase_setup.sql)
+│  ├─ migrations/        #   스키마 변경 migrate_*.sql (적용 순서대로 1회씩)
+│  ├─ analytics/         #   운영 집계·대시보드·Tableau·계측 품질 체크 쿼리
+│  ├─ notices/           #   소식함 공지 입력용
+│  └─ tests/             #   마이그레이션 자가 테스트(트랜잭션 → ROLLBACK)
+│                        #   ※ 분석 게이트(g1~g6)·모델 학습 샘플 SQL 은 ml/sql/ 에 둔다
 ├─ scripts/              # 🛠️ 빌드·데이터 스크립트
 │  ├─ build-web.mjs      #   dist/ 화이트리스트 번들(파비콘·OG 를 루트 URL 로 펴 준다)
 │  ├─ build-itch.mjs     #   🎮 itch.io 번들 dist-itch/ + zip(플래그 주입·API_BASE 치환) — docs/ops/ITCH_DEPLOY.md
 │  ├─ make-favicon.mjs   #   파비콘 생성 → assets/favicon/
 │  ├─ i18n_check.mjs     #   번역 키 누락 검사
-│  ├─ serve.py           #   로컬 개발 서버(no-store + API 미러 + 루트 에셋 별칭)
-│  └─ export_to_bq.py    #   Supabase→BigQuery 일일 적재+경량화 (익명계정 정리는 ANON_CLEANUP=1 일 때만)
+│  └─ serve.py           #   로컬 개발 서버(no-store + API 미러 + 루트 에셋 별칭)
+│                        #   ※ Supabase→BigQuery 일일 적재는 ml/scripts/export_to_bq.py
 ├─ .github/workflows/    # ⚙️ GitHub Actions
 │  ├─ ci.yml             #   dev/PR 구문 검사(배포 아님)
 │  ├─ supabase-to-bq.yml #   매일 cron 데이터 파이프라인
@@ -73,7 +71,7 @@ calm_forest/
    ├─ metrics.js ── econ_logs(코인 원장) + session_logs(세션 요약: 행동 카운트·플레이 시간)
    │        ▼
    │   Supabase(Postgres, RLS "본인만")  ──일일 파이프라인(GitHub Actions)──▶  BigQuery
-   │        · 7일치만 보관(hot) · 익명계정 정리 기본 OFF        scripts/export_to_bq.py   (전체 이력, cold)
+   │        · 7일치만 보관(hot) · 익명계정 정리 기본 OFF     ml/scripts/export_to_bq.py(전체 이력, cold)
    │        ▼
    │   dashboards/ (본인·관리자 대시보드)
    │

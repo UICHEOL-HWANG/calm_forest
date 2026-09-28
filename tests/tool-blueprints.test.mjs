@@ -6,7 +6,7 @@ import { QUEST_TYPES } from '../js/data/npcs.js';
 import { QUEST_LIMITS, questIdFor } from '../js/quests.js';
 
 // 🔨 도구 2단계 — 주민별 전문 도구 도면(친밀도) → 작업대 제작(코인+재료) → 금·흑단·보석 외형
-//   dev/active/tool-tiers/ · 사용자 결정(2026-09-24): 주민별 전문 도구 · 친밀도 문턱 6
+//   dev/archive/tool-tiers/ · 사용자 결정(2026-09-24): 주민별 전문 도구 · 친밀도 문턱 6
 
 test('도면은 도구 9종에 하나씩, 주민도 한 명에 하나씩', () => {
   const tools = BLUEPRINTS.map(b => b.tool), npcs = BLUEPRINTS.map(b => b.npc);

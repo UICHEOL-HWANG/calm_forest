@@ -2,7 +2,7 @@
 --  calm forest · 💬 feedback.user_id 를 계정 삭제 후에도 보존
 --  ------------------------------------------------------------
 --  배경(2026-09-13): feedback.user_id 가 auth.users 를 참조하며 on delete set null 이라
---  게스트(익명) 계정이 7일 뒤 정리(scripts/export_to_bq.py)될 때 피드백의 작성자 id 가
+--  게스트(익명) 계정이 7일 뒤 정리(ml/scripts/export_to_bq.py)될 때 피드백의 작성자 id 가
 --  null 로 바뀌었다(id=2, 토스 Android 게스트). 피드백은 운영 기록이라 작성자 id 를
 --  계정 수명과 무관하게 남겨야 세션/원장(BigQuery 사본)과 다시 이을 수 있다.
 --
