@@ -31,6 +31,7 @@ import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
 import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
+import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
@@ -5986,10 +5987,38 @@ function updateSway(t) {
   }
 }
 
+// 🌳 쓰러지는 나무 — 밑동 가장자리(넘어지는 쪽)를 축으로 돈다. 줄기 중심을 축으로 하면 반대편 밑동이 땅을 판다.
+//    그룹 원점(밑동 중심)에서 돌린 뒤 위치를 보정: pos = base + P − R·(P·s), P = 축까지의 오프셋.
+const _fallQ = new THREE.Quaternion(), _fallAxis = new THREE.Vector3(), _fallP = new THREE.Vector3(), _fallV = new THREE.Vector3();
+function updateFelling(tree, ud, now) {
+  const f = ud.felling;
+  const p = treeFallPose(now - f.t0);
+  if (p.done) {
+    tree.visible = false; tree.quaternion.identity(); tree.position.copy(f.base); tree.scale.set(1, 1, 1);
+    ud.canopy.scale.set(1, 1, 1); ud.felling = null;
+    return;
+  }
+  _fallAxis.set(f.dir.z, 0, -f.dir.x);                       // up × dir — 이 축으로 +각 돌면 dir 쪽으로 눕는다
+  _fallQ.setFromAxisAngle(_fallAxis, p.angle);
+  _fallP.set(f.dir.x * TREE_FALL_PIVOT, 0, f.dir.z * TREE_FALL_PIVOT);
+  _fallV.copy(_fallP).multiplyScalar(p.scale).applyQuaternion(_fallQ);
+  tree.quaternion.copy(_fallQ); tree.scale.setScalar(p.scale);
+  tree.position.copy(f.base).add(_fallP).sub(_fallV); tree.position.y -= p.sink;
+  ud.canopy.scale.set(1 + p.squash * 0.6, 1 - p.squash, 1 + p.squash * 0.6);   // 쿵 — 잎 덩이가 눌렸다 펴진다
+  if (!f.impacted && now - f.t0 >= TREE_FALL_IMPACT) {
+    f.impacted = true;
+    _fallV.set(0, 2.2, 0).sub(_fallP).applyQuaternion(_fallQ).add(_fallP).add(f.base);   // 잎 덩이가 닿은 자리
+    spawnLeafBurst(tree, 26, { x: _fallV.x, y: 0.3, z: _fallV.z });
+    for (const k of [0.9, 1.7, 2.5]) spawnDust(f.base.x + f.dir.x * k, f.base.z + f.dir.z * k, 6);   // 누운 줄기를 따라 흙먼지
+    Sound.build();                                            // "쿵"
+  }
+}
+
 function updateTrees(dt) {
   const now = clock.elapsedTime;
   for (const tree of trees) {
     const ud = tree.userData;
+    if (ud.felling) updateFelling(tree, ud, now);
     if (ud.squash > 0) {
       ud.squash = Math.max(0, ud.squash - dt * 4);
       const sq = ud.squash;
@@ -5997,7 +6026,8 @@ function updateTrees(dt) {
       tree.rotation.z = Math.sin(sq * 22) * 0.06 * sq;
     }
     if (ud.fallen && now > ud.respawnAt) { ud.fallen = false; ud.hp = 3; tree.visible = true; tree.scale.set(0.01, 0.01, 0.01); ud.growing = true; }
-    if (ud.collider) ud.collider.off = ud.fallen;   // 🚧 안 보이는 그루터기에 막히지 않게
+    // 🚧 안 보이는 그루터기에 막히지 않게 — 단, 쓰러지는 중엔 땅에 닿을 때까지 막는다(아직 선 나무를 뚫지 않게)
+    if (ud.collider) ud.collider.off = ud.fallen && !(ud.felling && now - ud.felling.t0 < TREE_FALL_IMPACT);
     if (ud.growing) {
       const s = THREE.MathUtils.lerp(tree.scale.x, 1, dt * 5);
       tree.scale.set(s, s, s);
@@ -6564,11 +6594,12 @@ function easeOutBack(t) { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.
 // =============================================================
 
 
-function spawnLeafBurst(tree, count = 14) {
+function spawnLeafBurst(tree, count = 14, at = null) {   // at: 터질 자리(쓰러진 잎 덩이) — 없으면 선 나무 머리
   const c = new THREE.Color(tree.userData.leafColor);
+  const ox = at?.x ?? tree.position.x, oy = at?.y ?? 2, oz = at?.z ?? tree.position.z;
   for (let i = 0; i < count; i++) {
     const p = makeParticle(_leafGeo, c);
-    p.position.set(tree.position.x + (Math.random() - 0.5), 2 + Math.random() * 1.2, tree.position.z + (Math.random() - 0.5));
+    p.position.set(ox + (Math.random() - 0.5), oy + Math.random() * 1.2, oz + (Math.random() - 0.5));
     p.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * 3, 2 + Math.random() * 2, (Math.random() - 0.5) * 3), spin: rndSpin(6), life: 1.4, gravity: -4, flutter: true };
     particles.push(p);
   }
