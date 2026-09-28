@@ -39,7 +39,7 @@ const INCLUDE = [
   'dashboards',      // 관리자·분석 페이지(index.html 에서 링크)
   'beta',            // 🧪 베타 일지 페이지(/beta/diary.html) — 대시보드와 분리
   'guide',           // 📖 초보자 안내서(fragment+이미지) — index.html 의 #guide-panel 이 fetch 로 주입
-  'auth-popup.html', // 🎮 itch(iframe) 구글 팝업 로그인 복귀 페이지 — 토큰을 게임 창에 postMessage
+  ['pages/auth-popup.html', 'auth-popup.html'], // 🎮 itch(iframe) 구글 팝업 로그인 복귀 페이지 — 토큰을 게임 창에 postMessage
   ['assets/social/preview.jpg', 'preview.jpg'],                 // og:image (사진성 렌더 — JPEG q90)
   ['assets/favicon/favicon.ico', 'favicon.ico'],                // 파비콘 — 구글 검색결과 아이콘의 기본 fallback
   ['assets/favicon/favicon.svg', 'favicon.svg'],                // 파비콘 — 모던 브라우저용 벡터
@@ -51,11 +51,11 @@ const INCLUDE = [
   ['assets/pwa/icon-512.png', 'icon-512.png'],
   ['assets/pwa/icon-maskable-512.png', 'icon-maskable-512.png'],
   'sw.js',           // service worker — 오프라인 안내 페이지만 캐시
-  'offline.html',    // 오프라인 안내 페이지
+  ['pages/offline.html', 'offline.html'],       // 오프라인 안내 페이지 — sw.js 가 /offline.html 로 프리캐시
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
   //    빼면 링크가 404 가 되어 심사에서 반려된다.
-  'privacy.html',        // → /privacy
-  'delete-account.html', // → /delete-account
+  ['pages/privacy.html', 'privacy.html'],               // → /privacy
+  ['pages/delete-account.html', 'delete-account.html'], // → /delete-account
   '_headers',        // 캐시 헤더
 ];
 // assets/brand 는 아이콘 "원본"(빌드 입력)이라 배포에 넣지 않는다 — 런타임 참조 없음.
