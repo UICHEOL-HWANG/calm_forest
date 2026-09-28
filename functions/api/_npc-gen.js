@@ -76,6 +76,46 @@ export function planGeneration(counts, { cap = POOL_CAP, per = WEEKLY_PER_COMBO 
   return plan;
 }
 
+// ── 첫인사 계획 — 어느 npc×lang×weather 가 비었나 ─────────────
+//  rows: npc_openers 의 [{npc_id, lang, weather}] (한 줄 = 한 행)
+//  ⚠️ 크론이 이걸 안 돌리던 시절엔 시딩 뒤 주민이 늘거나 행이 지워지면
+//     그 조합이 영원히 비어 있었다(npc-talk 리뷰 H1). 모자란 줄 수만 채운다.
+export const OPENERS_PER_COMBO = 3;
+
+export function planOpeners(rows, { per = OPENERS_PER_COMBO } = {}) {
+  const have = new Map();
+  for (const r of Array.isArray(rows) ? rows : []) {
+    if (!NPC_SHEET[r?.npc_id] || !LANGS.includes(r?.lang) || !WEATHERS.includes(r?.weather)) continue;
+    const k = `${r.npc_id}/${r.lang}/${r.weather}`;
+    have.set(k, (have.get(k) || 0) + 1);
+  }
+
+  const plan = [];
+  for (const npc_id of NPC_IDS)
+    for (const lang of LANGS)
+      for (const weather of WEATHERS) {
+        const want = per - (have.get(`${npc_id}/${lang}/${weather}`) || 0);
+        if (want > 0) plan.push({ npc_id, lang, weather, want });
+      }
+  return plan;
+}
+
+// ── 크론 1회분 — 서브리퀘스트 예산(max 조합) 안에서 첫인사 먼저 ──
+//  빈 첫인사는 유저 화면에 바로 드러나고, 본문은 이미 풀에 있어 한 주 쉬어도 된다.
+//  본문은 세트가 적은 조합부터 — 매주 돌아가며 채우면 분포가 고르게 수렴한다.
+export function planCronWork({ dialogueCounts, openerRows, max }) {
+  const openers = planOpeners(openerRows).slice(0, max);
+
+  const have = new Map();
+  for (const c of Array.isArray(dialogueCounts) ? dialogueCounts : [])
+    have.set(`${c?.npc_id}/${c?.lang}`, Number(c?.n) || 0);
+  const dialogues = planGeneration(dialogueCounts)
+    .sort((a, b) => (have.get(`${a.npc_id}/${a.lang}`) || 0) - (have.get(`${b.npc_id}/${b.lang}`) || 0))
+    .slice(0, max - openers.length);
+
+  return { openers, dialogues };
+}
+
 // ── 검증 — 모델이 준 걸 게임에 넣어도 되는가 ──────────────────
 //  ⚠️ 언어 가드. 프롬프트를 영어로 고쳐도 모델은 가끔 미끄러진다.
 //     여기서 못 막으면 영어 유저 화면에 한국어가 그대로 뜬다 —
