@@ -43,4 +43,4 @@ jobs:
           BQ_DATASET: ${{ vars.BQ_DATASET }}
           BQ_LOCATION: ${{ vars.BQ_LOCATION }}
           RETENTION_DAYS: '7'
-        run: python scripts/export_to_bq.py
+        run: python ml/scripts/export_to_bq.py

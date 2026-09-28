@@ -37,4 +37,4 @@ jobs:
           node --check /tmp/mod.mjs
 
       - name: 파이프라인(Python) 구문 검사
-        run: python3 -m py_compile scripts/export_to_bq.py
+        run: python3 -m py_compile ml/scripts/export_to_bq.py

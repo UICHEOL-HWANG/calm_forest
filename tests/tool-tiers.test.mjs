@@ -128,7 +128,7 @@ test('업그레이드를 얻으면 손에 든 도구를 다시 만든다', () =>
 
 // ── 🔧 새 업그레이드 5종의 효과 규칙 ──────────────────────────
 //   효과는 전부 "반복 노동 완화" 다. 보상량을 늘리면 코인 인플레가 생기는데,
-//   지금 문제는 코인이 남는 것이라 정반대다(dev/active/tool-tiers/).
+//   지금 문제는 코인이 남는 것이라 정반대다(dev/archive/tool-tiers/).
 import { mineHitPower, seedSaved, digIsOneShot, sickleReach, SEED_SAVE } from '../js/tool-tiers.js';
 
 const none = { upgrades: {} };

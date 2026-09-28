@@ -19,7 +19,7 @@
 
 ## 2단계 — 배포 밖 디렉토리 구조화
 - [x] `sql/` 33개 → migrations·notices·analytics·setup (72222d5)
-- [ ] `dev/active` 완료 태스크 → `dev/archive/` — **보류**(어느 게 끝났는지 사용자 판단 필요)
+- [x] `dev/active` 완료 태스크 11개 → `dev/archive/` (2026-09-28, 병합·배포 확인분)
 - [x] `docs/` → analysis·ops·beta·design (2e64d01)
 - [x] 검증 · 커밋
 
