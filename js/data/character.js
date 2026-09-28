@@ -50,7 +50,8 @@ export const TOOL_QREST_HOLD = ARM_AIM_R.clone().invert()
 
 export const mkGrip = (x, y, z, ry = 0) => ({ p: new THREE.Vector3(x, y, z), q: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry) });
 
-export const GRIP_LONG = mkGrip(0, -0.07, 0.075);
+// pawRel: z(앞 오프셋)는 캐릭터마다 발바닥 반지름 비례로 바꿔 쓴다 — js/data/grip.js gripForwardZ (0.075 는 토끼 기준값)
+export const GRIP_LONG = { ...mkGrip(0, -0.07, 0.075), pawRel: true };
 
 export const TOOL_GRIP = {
   axe: GRIP_LONG, hoe: GRIP_LONG, sickle: GRIP_LONG, shovel: GRIP_LONG, hammer: GRIP_LONG, rod: GRIP_LONG, net: GRIP_LONG,
