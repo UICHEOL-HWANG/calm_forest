@@ -1,0 +1,139 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>이펙트 미리보기 시안 — calm forest</title>
+<style>
+  body{margin:0;background:#f4f1ea;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;padding:16px}
+  h1{font-size:16px;margin:0 0 4px}
+  p.note{font-size:12px;opacity:.7;margin:0 0 12px}
+  .bar{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+  button{font:inherit;font-size:13px;padding:5px 10px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  .grid{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}
+  .opt{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);min-width:280px}
+  .opt h2{font-size:14px;margin:0 0 2px}
+  .opt small{display:block;font-size:11px;opacity:.65;margin-bottom:8px}
+  .sizes{display:flex;gap:14px;align-items:flex-end}
+  .box{display:flex;flex-direction:column;align-items:center;gap:4px;border-radius:14px;
+       background:linear-gradient(160deg,#eef7f0,#dcebe0);box-shadow:inset 0 2px 10px rgba(90,120,100,.12)}
+  .box.pc{padding:8px 6px;width:124px}
+  .box.mo{padding:6px 4px;width:100px}
+  .pc canvas{width:120px;height:146px}
+  .mo canvas{width:98px;height:120px}
+  .cap{font-size:10px;opacity:.6}
+  .zoom canvas{width:240px;height:292px}
+  .zoom{padding:8px}
+</style>
+<h1>✨ 이펙트 탭 미리보기 — 캐릭터 없이 자국이 걸어간다</h1>
+<p class="note">상점 실제 크기(PC 120×146 · 폰 98×120) + 확대본. 자국 조형은 게임의 js/cosmetics/trail.js 를 그대로 import.</p>
+<div class="bar" id="items"></div>
+<div class="bar" id="animals"></div>
+<div class="grid" id="grid"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildTrailMark, TRAIL_SIDE } from '../js/cosmetics/trail.js';
+
+const ITEMS = [['paw','🐾 발바닥'],['drop','💧 물방울'],['flower','🌸 꽃'],['star','⭐ 별'],['sparkle','✨ 반짝이']];
+const ANIMALS = [['rabbit','🐰'],['fox','🦊'],['bear','🐻'],['chick','🐤']];
+const q = new URLSearchParams(location.search);
+let item = q.get('item') || 'paw', animal = q.get('animal') || 'rabbit';
+
+const STEP = 0.26, FADE = 1.6, SPEED = 0.75;
+
+// 경로: t(초) → {x, z, h(진행 방향 각), loop(바퀴 번호 — 바뀌면 처음부터)}
+const OPTS = [
+  { name: 'A · 동그라미 산책', sub: '보이지 않는 발이 제자리에서 원을 돈다 — 끊김 없이 계속',
+    elev: 52, dist: 2.1, look: [0, 0, 0],
+    path: t => { const R = 0.34, a = t * SPEED / R; return { x: Math.cos(a) * R, z: Math.sin(a) * R, h: Math.atan2(-Math.sin(a), Math.cos(a)) + Math.PI, loop: 0 }; } },
+  { name: 'B · 앞으로 걸어온다', sub: '안쪽에서 화면 쪽으로 똑바로 — 끝나면 다시 안쪽부터',
+    elev: 36, dist: 2.2, look: [0, 0, -0.1],
+    path: t => { const L = 1.4, d = (t * SPEED) % L; return { x: 0, z: -0.8 + d, h: 0, loop: Math.floor(t * SPEED / L) }; } },
+  { name: 'C · 옆으로 지나간다', sub: '왼쪽에서 오른쪽으로 가로질러 — 발자국 줄이 옆모습으로',
+    elev: 32, dist: 2.1, look: [0, 0, 0],
+    path: t => { const L = 1.6, d = (t * SPEED) % L; return { x: -0.8 + d, z: 0, h: Math.PI / 2, loop: Math.floor(t * SPEED / L) }; } },
+];
+
+function makeView(canvas, opt) {
+  const rend = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  rend.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  rend.setSize(w, h, false);
+  const sc = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, w / h, 0.1, 100);
+  const e = opt.elev * Math.PI / 180;
+  cam.position.set(opt.look[0], Math.sin(e) * opt.dist, opt.look[2] + Math.cos(e) * opt.dist);
+  cam.lookAt(...opt.look);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.05));
+  const key = new THREE.DirectionalLight(0xfff2d8, 1.15); key.position.set(2.5, 4, 3); sc.add(key);
+  const rim = new THREE.DirectionalLight(0xbfe8ff, 0.45); rim.position.set(-3, 2, -2); sc.add(rim);
+  return { rend, sc, cam, opt, live: [], pool: [], last: null, side: 1, key: '' };
+}
+
+function tick(v, t, dt) {
+  const k = item + '|' + animal;
+  if (v.key !== k) { for (const m of v.live) v.sc.remove(m.mesh); v.live = []; v.pool = []; v.key = k; v.last = null; }
+  const p = v.opt.path(t);
+  if (!v.last || p.loop !== v.last.loop) v.last = { x: p.x, z: p.z, loop: p.loop, acc: STEP };
+  v.last.acc += Math.hypot(p.x - v.last.x, p.z - v.last.z);
+  v.last.x = p.x; v.last.z = p.z;
+  if (v.last.acc >= STEP) {
+    v.last.acc = 0; v.side = -v.side;
+    const m = v.pool.pop() || buildTrailMark(THREE, item, 1, animal);
+    // 진행 방향에 수직으로 좌우 번갈아 — 발끝이 진행 방향(+z 로컬)을 향한다
+    m.position.set(p.x + Math.cos(p.h) * v.side * TRAIL_SIDE, 0.01, p.z - Math.sin(p.h) * v.side * TRAIL_SIDE);
+    m.rotation.y = p.h;
+    v.sc.add(m); v.live.push({ mesh: m, t: 0 });
+  }
+  for (let i = v.live.length - 1; i >= 0; i--) {
+    const e = v.live[i]; e.t += dt;
+    const a = Math.max(0, 1 - e.t / FADE);
+    e.mesh.traverse(o => { if (o.material) o.material.opacity = a; });
+    if (a <= 0) { v.sc.remove(e.mesh); v.pool.push(e.mesh); v.live.splice(i, 1); }
+  }
+  v.rend.render(v.sc, v.cam);
+}
+
+const grid = document.getElementById('grid');
+const views = [];
+for (const opt of OPTS) {
+  const d = document.createElement('div'); d.className = 'opt';
+  d.innerHTML = `<h2>${opt.name}</h2><small>${opt.sub}</small>
+    <div class="sizes">
+      <div class="box pc"><canvas></canvas><div class="cap">PC 실제 크기</div></div>
+      <div class="box mo"><canvas></canvas><div class="cap">폰 실제 크기</div></div>
+    </div>
+    <div class="box zoom" style="margin-top:10px"><canvas></canvas><div class="cap">확대 2×</div></div>`;
+  grid.appendChild(d);
+  d.querySelectorAll('canvas').forEach(c => views.push(makeView(c, opt)));
+}
+
+function btns(id, list, get, set) {
+  const el = document.getElementById(id); el.innerHTML = '';
+  for (const [k, label] of list) {
+    const b = document.createElement('button'); b.textContent = label;
+    b.className = get() === k ? 'on' : '';
+    b.onclick = () => { set(k); btns(id, list, get, set); };
+    el.appendChild(b);
+  }
+}
+btns('items', ITEMS, () => item, k => item = k);
+btns('animals', ANIMALS, () => animal, k => animal = k);
+
+// 캡처용 고정 스텝 시계(?t=초) — 없으면 실시간
+const fixed = q.get('t');
+let t = 0, prev = performance.now();
+if (fixed) {
+  for (let s = 0; s < +fixed; s += 1 / 60) views.forEach(v => tick(v, s, 1 / 60));
+  window.__ready = true;
+} else {
+  (function loop(now) {
+    const dt = Math.min(0.05, (now - prev) / 1000); prev = now; t += dt;
+    views.forEach(v => tick(v, t, dt));
+    requestAnimationFrame(loop);
+  })(prev);
+}
+</script>

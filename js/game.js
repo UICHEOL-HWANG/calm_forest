@@ -83,6 +83,7 @@ import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
@@ -3356,7 +3357,16 @@ function makeCharacterPreview(canvas) {
   let mesh = null, rotY = 0.5, rotX = 0, dragging = false, lx = 0, ly = 0, autoSpin = true, raf = 0;
   let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
   let petStage = null, petKind = PET_KIND;           // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다(petKind = 어느 종을)
+  let trailView = false, walk = null, lastT = 0;     // trailView = ✨이펙트 탭 — 캐릭터 대신 자국이 걸어온다
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  //  카메라 두 벌 — 캐릭터는 몸통 높이, 걷는 자국은 바닥을 비스듬히 내려다본다(trail-walk.js WALK_CAM)
+  function aimCamera() {
+    if (walk) {
+      const e = WALK_CAM.elev * Math.PI / 180;
+      cam.position.set(0, Math.sin(e) * WALK_CAM.dist, WALK_CAM.lookZ + Math.cos(e) * WALK_CAM.dist);
+      cam.lookAt(0, 0, WALK_CAM.lookZ);
+    } else { cam.position.set(0, 1.05, 4.6); cam.lookAt(0, 0.95, 0); }
+  }
   //  ⚠️ **disposeTree 를 부르지 않는다.** 꾸미기 재질·plushMat 은 월드의 내 캐릭터와 **공유**라
   //     여기서 버리면 플레이어가 입고 있는 것까지 검게 된다(§14). 인스턴스만 떼어 낸다.
   //     🐾 펫 재질도 같다 — 월드의 펫과 공유라 여기서 버리면 따라다니는 펫이 검게 된다.
@@ -3364,6 +3374,18 @@ function makeCharacterPreview(canvas) {
     const cos = cosView || gameState.cosmetics;
     if (mesh) pivot.remove(mesh);
     if (marks) { pivot.remove(marks); marks = null; }
+    if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
+    const tid = cos?.equipped?.trail;
+    //  ✨ 이펙트 탭 — 캐릭터 발밑에 깔면 몸에 가려 뭐가 뭔지 모른다. 캐릭터를 빼고 자국만 걸어오게 한다.
+    //     입어 본 게 없으면 🐾 발바닥(가장 싼 기본형)이 걷는다 — 탭을 열자마자 "이 탭은 이런 것" 이 보이게.
+    if (trailView && petStage === null) {
+      mesh = null;
+      walk = makeTrailWalk(THREE, tid || TRAIL_DEMO, animal);
+      pivot.add(walk.group);
+      aimCamera();
+      return;
+    }
+    aimCamera();
     if (petStage !== null) {
       //  🐾 펫은 무릎 높이라(캐릭터의 1/3) 캐릭터 프레임에 그냥 놓으면 바닥에 점처럼 남는다.
       //     조형 수치를 여기 베껴 두면 js/pet/art.js 가 바뀔 때 같이 틀어지니 **실측 바운딩**으로
@@ -3378,7 +3400,7 @@ function makeCharacterPreview(canvas) {
       return;
     }
     mesh = buildCharacterMesh(animal, cos); pivot.add(mesh);
-    const tid = cos?.equipped?.trail;      // 👣 발자국은 앵커가 아니라 월드 이펙트 — 발밑에 두 개만 깔아 보여 준다
+    //  👣 발자국은 앵커가 아니라 월드 이펙트 — 이펙트 탭 밖(캐릭터 선택 등)에선 발밑에 두 개만 깔아 보여 준다
     if (tid) {
       marks = new THREE.Group();
       for (const s of [-1, 1]) {
@@ -3398,20 +3420,35 @@ function makeCharacterPreview(canvas) {
     if (next === petStage && kind === petKind) return;   // 같은 종·단계면 다시 짓지 않는다(재그리기마다 호출된다)
     petStage = next; petKind = kind; if (animal) rebuild();
   }
-  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }   // 패널을 닫으면 두 번째 렌더러를 세운다
+  /** ✨ 이펙트 탭이면 true — 캐릭터 대신 입어 본 자국이 걸어온다 */
+  function showTrail(on) {
+    if (!!on === trailView) return;                       // 재그리기마다 호출된다 — 같으면 다시 짓지 않는다
+    trailView = !!on; if (animal) rebuild();
+  }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } lastT = 0; }   // 패널을 닫으면 두 번째 렌더러를 세운다
   function start() { if (!raf) loop(); }
   function resize() {
     const w = canvas.clientWidth || 220, h = canvas.clientHeight || 240;
     rend.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
   }
-  function loop() { raf = requestAnimationFrame(loop); if (autoSpin && !dragging) rotY += 0.006; pivot.rotation.y = rotY; pivot.rotation.x = rotX; rend.render(sc, cam); }
+  function loop(now = performance.now()) {
+    raf = requestAnimationFrame(loop);
+    const dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 0; lastT = now;
+    if (walk) {                                           // 걷는 방향이 늘 화면 쪽이어야 읽힌다 — 돌리지 않는다
+      walk.update(dt); pivot.rotation.set(0, 0, 0);
+    } else {
+      if (autoSpin && !dragging) rotY += 0.006;
+      pivot.rotation.y = rotY; pivot.rotation.x = rotX;
+    }
+    rend.render(sc, cam);
+  }
   canvas.style.touchAction = 'none';
   canvas.addEventListener('pointerdown', e => { dragging = true; autoSpin = false; lx = e.clientX; ly = e.clientY; try { canvas.setPointerCapture(e.pointerId); } catch (_) {} });
   canvas.addEventListener('pointermove', e => { if (!dragging) return; rotY += (e.clientX - lx) * 0.011; rotX = clamp(rotX + (e.clientY - ly) * 0.008, -0.5, 0.5); lx = e.clientX; ly = e.clientY; });
   const end = () => { dragging = false; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   resize(); loop();
-  return { setAnimal, resize, refresh, showPet, stop, start };
+  return { setAnimal, resize, refresh, showPet, showTrail, stop, start };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
