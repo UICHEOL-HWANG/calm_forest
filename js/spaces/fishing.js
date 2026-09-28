@@ -17,6 +17,7 @@ import { FISH_KINDS } from '../data/catalog.js';
 import { DOCK_POND, DOCK_POND_R, LAKE_R } from '../data/places.js';
 import { CHOP_WOOD, TOOLS, TREE_RESPAWN_SEC } from '../data/tools.js';
 import { rollKind } from '../dex-gates.js';
+import { fallDirAway } from '../tree-fall.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
 
@@ -135,7 +136,10 @@ export function tryChop() {
       + (WEATHER === 'snow' && Math.random() < 0.5 ? 1 : 0);   // 🪓 도시락 버프 / ❄️ 눈: 가지가 잘 부러져 +1 확률
     const gain = CHOP_WOOD + bonus;
     gameState.inventory.wood += gain; ud.fallen = true; ud.respawnAt = clock.elapsedTime + TREE_RESPAWN_SEC;
-    nearest.visible = false; spawnLeafBurst(nearest, 26);
+    // 🌳 바로 숨기지 않고 쓰러뜨린다(기우뚱 → 쿵·튕김 → 가라앉음) — 그리기·숨기기는 updateTrees
+    ud.squash = 0; nearest.scale.set(1, 1, 1); nearest.rotation.set(0, 0, 0);
+    ud.felling = { t0: clock.elapsedTime, dir: fallDirAway(nearest.position, player.position),
+      base: nearest.position.clone(), impacted: false };
     spawnFloatText(nearest.position.x, 2.4, nearest.position.z, `+${gain} 🪵`, '#7a5230'); // 획득 표시
   }
   refreshInventoryUI();
