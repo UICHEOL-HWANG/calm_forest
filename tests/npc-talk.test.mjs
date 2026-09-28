@@ -9,6 +9,7 @@ import {
   NPC_IDS, POOL_CAP, WEEKLY_PER_COMBO, TURNS, CHOICES, WEATHERS,
   planGeneration, validateSets, buildPrompt,
   buildOpenerPrompt, validateOpeners,
+  LANGS, OPENERS_PER_COMBO, planOpeners, planCronWork,
 } from '../functions/api/_npc-gen.js';
 
 // ── 한 세트 만들기 헬퍼 ──
@@ -329,4 +330,69 @@ test('잡담 API 경로 3벌이 같다 (index.html fetch · worker 라우트 · 
     src('scripts/serve.py').includes(`== '${route[1]}'`),
     `scripts/serve.py 로컬 미러가 ${route[1]} 와 어긋났다`,
   );
+});
+
+// ═══ planOpeners — 첫인사 자가 치유 ═══
+//  주 1회 크론이 첫인사를 한 번도 채우지 않던 버그(npc-talk 리뷰 H1).
+//  시딩 뒤 주민이 늘거나 행이 지워지면 그 조합은 영원히 비어 있었다.
+const fullOpenerRows = () => {
+  const rows = [];
+  for (const npc_id of NPC_IDS) for (const lang of LANGS) for (const weather of WEATHERS)
+    for (let i = 0; i < OPENERS_PER_COMBO; i++) rows.push({ npc_id, lang, weather });
+  return rows;
+};
+
+test('첫인사가 하나도 없으면 모든 npc×lang×weather 조합을 요청한다', () => {
+  const plan = planOpeners([]);
+  assert.equal(plan.length, NPC_IDS.length * LANGS.length * WEATHERS.length);
+  assert.ok(plan.every(p => p.want === OPENERS_PER_COMBO));
+});
+
+test('첫인사가 다 차 있으면 계획이 빈다', () => {
+  assert.equal(planOpeners(fullOpenerRows()).length, 0);
+});
+
+test('일부만 지워진 조합은 모자란 줄 수만 요청한다', () => {
+  const rows = fullOpenerRows();
+  const i = rows.findIndex(r => r.npc_id === 'farmer' && r.lang === 'en' && r.weather === 'fog');
+  rows.splice(i, 2);   // 3줄 중 2줄 삭제
+  assert.deepEqual(planOpeners(rows), [{ npc_id: 'farmer', lang: 'en', weather: 'fog', want: 2 }]);
+});
+
+test('모르는 주민·날씨 행은 무시한다 — 계획을 오염시키지 않는다', () => {
+  const rows = [...fullOpenerRows(), { npc_id: '없는주민', lang: 'ko', weather: 'rain' },
+                { npc_id: 'farmer', lang: 'ko', weather: 'acid' }];
+  assert.equal(planOpeners(rows).length, 0);
+});
+
+// ═══ planCronWork — 서브리퀘스트 예산 안에서 첫인사 먼저 ═══
+test('첫인사 빈칸이 본문 보충보다 먼저 예산을 받는다', () => {
+  const rows = fullOpenerRows().filter(r => r.npc_id !== 'courier');   // 새 주민처럼 통째로 비움
+  const { openers, dialogues } = planCronWork({ dialogueCounts: [], openerRows: rows, max: 15 });
+  assert.equal(openers.length, LANGS.length * WEATHERS.length);        // 8조합 전부
+  assert.ok(openers.every(o => o.npc_id === 'courier'));
+  assert.equal(dialogues.length, 15 - openers.length);                  // 남은 예산만
+});
+
+test('첫인사 빈칸이 예산보다 많으면 본문은 이번 주에 쉰다', () => {
+  const { openers, dialogues } = planCronWork({ dialogueCounts: [], openerRows: [], max: 15 });
+  assert.equal(openers.length, 15);
+  assert.equal(dialogues.length, 0);
+});
+
+test('첫인사가 다 차 있으면 예전과 똑같이 본문만 세트가 적은 순으로 채운다', () => {
+  const counts = NPC_IDS.flatMap(npc_id => LANGS.map(lang => ({ npc_id, lang, n: 50 })));
+  counts.find(c => c.npc_id === 'chef' && c.lang === 'en').n = 10;
+  const { openers, dialogues } = planCronWork({ dialogueCounts: counts, openerRows: fullOpenerRows(), max: 15 });
+  assert.equal(openers.length, 0);
+  assert.equal(dialogues.length, 15);
+  assert.deepEqual(dialogues[0], { npc_id: 'chef', lang: 'en', want: WEEKLY_PER_COMBO });
+});
+
+test('크론이 첫인사 계획을 실제로 실행한다 — 배선 확인', () => {
+  const src = readFileSync(new URL('../functions/npc-gen-cron.js', import.meta.url), 'utf8');
+  assert.match(src, /planCronWork\(/);
+  assert.match(src, /generateOpeners\(/);
+  assert.match(src, /npc_openers\?select=npc_id,lang,weather/);
+  assert.match(src, /'npc_openers'/);
 });
