@@ -61,7 +61,7 @@ test('index.html — manifest 링크 + web 플랫폼에서만 SW 등록', () => 
 
 test('sw.js — 게임 자산은 캐시하지 않고 오프라인 페이지만 미리 담는다', () => {
   const sw = read('sw.js');
-  assert.ok(existsSync(new URL('offline.html', ROOT)), 'offline.html 없음');
+  assert.ok(existsSync(new URL('pages/offline.html', ROOT)), 'pages/offline.html 없음');
   assert.match(sw, /\/offline\.html/);
   assert.doesNotMatch(sw, /['"]\/js\//, 'js/ 를 프리캐시하면 배포 후 옛 코드가 남는다');
   assert.doesNotMatch(sw, /['"]\/index\.html['"]/, 'index.html 을 캐시하지 말 것');
@@ -76,7 +76,7 @@ test('build-web INCLUDE — PWA 파일이 공개 URL 로 배포된다', () => {
     ['assets/pwa/icon-maskable-512.png', 'icon-maskable-512.png'],
   ]) assert.ok(src.includes(`['${from}', '${to}']`), `INCLUDE 에 ${from} → ${to} 없음`);
   assert.ok(src.includes("'sw.js'"), 'INCLUDE 에 sw.js 없음');
-  assert.ok(src.includes("'offline.html'"), 'INCLUDE 에 offline.html 없음');
+  assert.ok(src.includes("['pages/offline.html', 'offline.html']"), 'INCLUDE 에 pages/offline.html → offline.html 없음');
 });
 
 test('toss·itch 번들은 manifest 링크(와 설명 주석)를 제거한다 — 실제 빌드 산출물 검사', () => {
