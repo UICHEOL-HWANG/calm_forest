@@ -1,0 +1,204 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔪 당근·칼질 시안 — calm forest</title>
+<style>
+  html,body{margin:0;background:#d8e8e0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a}
+  canvas{display:block}
+  #wrap{position:relative;display:inline-block}
+  #labels{position:absolute;inset:0;pointer-events:none}
+  #labels span{position:absolute;transform:translateX(-50%);background:rgba(255,255,255,.92);border-radius:8px;padding:2px 8px;font-size:13px;font-weight:700;white-space:nowrap}
+  #labels b{position:absolute;left:10px;background:#3a5a48;color:#fff;border-radius:8px;padding:3px 10px;font-size:14px}
+  #frames{display:none}
+</style>
+<div id="wrap"><div id="labels"></div></div>
+<pre id="frames"></pre>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// =============================================================
+//  🔪 썰기 무대 시안 — 사용자 "당근이 너무 날카롭다 / 칼로 자를 때 모션은 추가 안 돼?"(2026-09-29)
+//  ------------------------------------------------------------
+//  지금 문제: 칼(z 0.55)과 재료 줄(z 0.75)이 어긋나 칼이 허공을 찍고, 튀는 건 '반쪽'이 아니라 작은 통재료.
+//  당근: 현재(원뿔) vs A 통통 · B 짧고 굵게+홈 · C 날씬+잎 풍성 — LatheGeometry 로 끝을 둥글게.
+//  칼질: M1 수직 내려찍기+반갈 · M2 통통통 3번 썰어 동전 조각 · M3 손잡이 축 내려찍기+반쪽 튀어오름.
+//  반쪽 = 같은 모형을 클리핑 평면으로 자르고 단면 원판(연한 색)을 덮는다 → 재료 17종 공통으로 쓸 수 있다.
+//  쿼리: ?gif=1|2|3&kind=A → 한 칸 프레임을 #frames 에 dataURL 로 떨군다(헤드리스 --dump-dom 으로 GIF 추출)
+// =============================================================
+const Q = new URLSearchParams(location.search);
+const GIF = +Q.get('gif') || 0;
+const MK = Q.get('kind') || 'A';
+const clay = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+
+// ── 당근 ────────────────────────────────────────────────
+function carrot(kind) {
+  const g = new THREE.Group();
+  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s) => {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); if (s) m.scale.set(...s); g.add(m); return m; };
+  const leaf = clay(0x6fb06a), orange = clay(0xf08a3a);
+  const lathe = (pts, seg) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+  if (kind === 'now') {                                      // 현재 게임 — 원뿔 + 잎 세 가닥
+    add(new THREE.ConeGeometry(0.1, 0.46, 7), orange, 0, 0.23, 0, Math.PI, 0, 0);
+    for (const r of [-0.35, 0, 0.35]) add(new THREE.ConeGeometry(0.035, 0.2, 4), leaf, Math.sin(r) * 0.06, 0.55, 0, 0, 0, r);
+  } else if (kind === 'A') {                                 // 통통 — 어깨 둥글고 끝이 뭉툭
+    add(lathe([[0, 0], [0.04, 0.03], [0.075, 0.12], [0.105, 0.27], [0.12, 0.39], [0.1, 0.46], [0, 0.475]], 8), orange);
+    for (const r of [-0.4, 0, 0.4]) add(new THREE.ConeGeometry(0.045, 0.22, 4), leaf, Math.sin(r) * 0.07, 0.56, 0, 0, 0, r, [1, 1, 0.55]);
+  } else if (kind === 'B') {                                 // 짧고 굵게 + 가로 홈 두 줄
+    add(lathe([[0, 0], [0.05, 0.03], [0.1, 0.11], [0.13, 0.24], [0.125, 0.33], [0.095, 0.37], [0, 0.38]], 9), orange);
+    const groove = clay(0xd9722a);
+    for (const [y, r] of [[0.13, 0.103], [0.22, 0.123]]) add(new THREE.TorusGeometry(r, 0.012, 4, 10), groove, 0, y, 0, Math.PI / 2);
+    for (const r of [-0.35, 0.35]) add(new THREE.ConeGeometry(0.05, 0.24, 4), leaf, Math.sin(r) * 0.07, 0.49, 0, 0, 0, r, [1, 1, 0.55]);
+  } else {                                                   // C 날씬 + 잎 다섯 가닥 부채꼴
+    add(lathe([[0, 0], [0.03, 0.04], [0.06, 0.15], [0.085, 0.32], [0.092, 0.42], [0.07, 0.465], [0, 0.47]], 8), orange);
+    add(new THREE.CylinderGeometry(0.03, 0.04, 0.06, 6), clay(0x5d9a58), 0, 0.49, 0);
+    for (const r of [-0.6, -0.3, 0, 0.3, 0.6]) add(new THREE.ConeGeometry(0.04, 0.26, 4), leaf, Math.sin(r) * 0.1, 0.62, 0, 0, 0, r, [1, 1, 0.5]);
+  }
+  g.rotation.z = -Math.PI / 2; g.position.y = PROFILE[kind].rmax;   // 눕혀서 끝(y=0)이 -x — 칼 쪽을 본다
+  const w = new THREE.Group(); w.add(g); w.scale.setScalar(SCALE);   // 게임 ingredientModel 과 같은 눈금(0.44×2.1)
+  return w;
+}
+// 몸통 옆모습(반지름 r, 끝에서 거리 y) — 동전 크기를 자른 자리 굵기에서 잡는다
+const SCALE = 0.44 * 2.1;
+const PROFILE = {
+  now: { pts: [[0, 0], [0.1, 0.46]], rmax: 0.1 },
+  A: { pts: [[0, 0], [0.04, 0.03], [0.075, 0.12], [0.105, 0.27], [0.12, 0.39], [0.1, 0.46]], rmax: 0.12 },
+  B: { pts: [[0, 0], [0.05, 0.03], [0.1, 0.11], [0.13, 0.24], [0.125, 0.33], [0.095, 0.37]], rmax: 0.13 },
+  C: { pts: [[0, 0], [0.03, 0.04], [0.06, 0.15], [0.085, 0.32], [0.092, 0.42], [0.07, 0.465]], rmax: 0.092 },
+};
+function radiusAt(kind, y) {
+  const P = PROFILE[kind].pts;
+  for (let i = 1; i < P.length; i++) if (y <= P[i][1]) { const [r0, y0] = P[i - 1], [r1, y1] = P[i]; return r0 + (r1 - r0) * (y - y0) / (y1 - y0); }
+  return P[P.length - 1][0];
+}
+
+// ── 무대(게임 kitchen-stage.js 썰기 무대 치수 그대로) ────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.localClippingEnabled = true;
+renderer.setPixelRatio(GIF ? 1 : Math.min(2, devicePixelRatio));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xd8cbb4);
+scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a7a66, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(2, 4, 3); scene.add(sun);
+const counterTop = new THREE.Mesh(new THREE.BoxGeometry(9, 0.07, 3.5), clay(0xf7ecd8, false)); counterTop.position.set(0, 1.03, 0); scene.add(counterTop);
+const board = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.08, 1.15), clay(0xc99a64)); board.position.set(0, 1.10, 0.15); scene.add(board);
+const BOARD_Y = 1.14, CUT_X = -0.35, CUT_Z = 0.45;
+const cutLine = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+cutLine.rotation.x = -Math.PI / 2; cutLine.position.set(CUT_X, 1.155, CUT_Z); scene.add(cutLine);
+
+const knife = new THREE.Group();
+{
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.025), new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: 0.3, metalness: 0.6 }));
+  blade.position.set(-0.27, -0.03, 0); knife.add(blade);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.028), new THREE.MeshStandardMaterial({ color: 0xf4f6f9, roughness: 0.2, metalness: 0.7 }));
+  edge.position.set(-0.27, -0.105, 0); knife.add(edge);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 0.055), clay(0x5a4632)); handle.position.set(0.1, 0.02, 0); knife.add(handle);
+  scene.add(knife);
+}
+
+// ── 자른 몸통: 같은 모형을 클리핑 평면(몸통 기준 x ≥ cut)으로 자른다 + 단면 원판 ──
+function makeBody(kind) {
+  const w = carrot(kind);
+  const plane = new THREE.Plane(new THREE.Vector3(1, 0, 0), 1e3);          // 처음엔 안 자름
+  w.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.clippingPlanes = [plane]; o.material.side = THREE.DoubleSide; } });
+  const cap = new THREE.Mesh(new THREE.CircleGeometry(1, 10), clay(0xffc38a));
+  cap.rotation.y = -Math.PI / 2; cap.visible = false; w.add(cap);          // 단면 — 연한 주황, -x 를 본다
+  w.userData = { plane, cap };
+  return w;
+}
+function cutBody(w, kind, cutLocal) {                                       // cutLocal: 몸통 틀 기준 x(끝에서 거리)
+  const { plane, cap } = w.userData;
+  if (cutLocal <= 0) { plane.set(new THREE.Vector3(1, 0, 0), 1e3); cap.visible = false; return; }
+  w.updateMatrixWorld(true);
+  plane.set(new THREE.Vector3(1, 0, 0), -cutLocal).applyMatrix4(w.matrixWorld);
+  const r = radiusAt(kind, cutLocal) * 0.92;
+  cap.visible = r > 0.01; cap.scale.setScalar(r); cap.position.set(cutLocal + 0.001, PROFILE[kind].rmax, 0);
+}
+function coin(r) {                                                          // 동전 조각 — 테두리 주황 + 연한 단면(축 = y)
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.04, 10), clay(0xf08a3a)));
+  for (const s of [1, -1]) { const f = new THREE.Mesh(new THREE.CircleGeometry(r * 0.8, 10), clay(0xffc38a)); f.rotation.x = -s * Math.PI / 2; f.position.y = s * 0.0205; g.add(f); }
+  return g;
+}
+function fade(o, a) { o.traverse(m => { if (m.isMesh) { m.material.transparent = true; m.material.opacity = a; } }); }
+
+// ── 카메라 — 게임 applyMgCamera 를 도마 쪽으로 당긴 클로즈업 ──
+const camera = new THREE.PerspectiveCamera(40, 4 / 3, 0.05, 50);
+function aimCam() { camera.position.set(CUT_X + 0.2, 2.05, CUT_Z + 1.45); camera.lookAt(CUT_X - 0.02, 1.2, CUT_Z - 0.05); }
+
+// ── M2 통통통: 탭 한 번 = 0.1초 간격 칼질 3번. 칼은 흰 선에 서 있고 당근이 한 칸씩 밀려 들어와 끝이 동전으로 떨어진다 ──
+const dyn = new THREE.Group(); scene.add(dyn);
+const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+const KNIFE_UP = 1.62, KNIFE_MID = 1.4, KNIFE_DOWN = BOARD_Y + 0.105;
+const P = 0.1, N = 3, STEP = 0.07, HIT = 0.3;                              // 칼날이 도마에 닿는 순간 = 각 칼질의 30%
+function knifeAt(y) { knife.rotation.set(0, -Math.PI / 2, 0); knife.position.set(CUT_X, y, CUT_Z + 0.27); }
+function knifeY(t) {
+  if (t < 0) return KNIFE_UP;
+  if (t >= N * P) return KNIFE_DOWN + (KNIFE_UP - KNIFE_DOWN) * ease((t - N * P) / 0.2) * (t < N * P + HIT * P ? 0 : 1) + 0;
+  const k = Math.floor(t / P), ph = t / P - k, top = k ? KNIFE_MID : KNIFE_UP;
+  return ph < HIT ? top - (top - KNIFE_DOWN) * ease(ph / HIT) : KNIFE_DOWN + (KNIFE_MID - KNIFE_DOWN) * ease((ph - HIT) / (1 - HIT));
+}
+function pose(kind, t, still = false) {
+  dyn.clear();
+  if (still) { knife.visible = false; const c = carrot(kind); c.position.set(CUT_X - 0.1, BOARD_Y, CUT_Z); dyn.add(c); return; }
+  knife.visible = true; knifeAt(knifeY(t));
+  const hits = t < 0 ? 0 : Math.min(N, Math.floor(t / P - HIT) + 1);      // 지금까지 떨어진 동전 수
+  // 몸통: 끝이 흰 선을 STEP 만큼 넘은 채 도착 → 칼질 사이마다 STEP 씩 밀려 들어온다
+  let push = 0;
+  for (let k = 0; k < N - 1; k++) push += ease((t - (k + HIT) * P) / ((1 - HIT) * P));
+  const body = makeBody(kind); dyn.add(body);
+  body.position.set(CUT_X - STEP - STEP * push, BOARD_Y, CUT_Z);
+  cutBody(body, kind, hits * STEP / SCALE);                                // 몸통 틀 = 모형 틀 × SCALE
+  const out = Math.max(0, t - 0.6) / 0.3;                                  // 다음 노트가 올 즈음 사라진다
+  for (let i = 0; i < hits; i++) {
+    const born = (i + HIT) * P, fall = ease((t - born) / 0.12);
+    const r = radiusAt(kind, (i + 0.5) * STEP / SCALE) * SCALE * 0.95;
+    const later = Math.min(hits, N) - 1 - i;                               // 뒤에 떨어진 동전이 앞 동전을 밀어낸다
+    const c = coin(Math.max(0.02, r)); dyn.add(c);
+    c.position.set(CUT_X - STEP * 0.5 - 0.1 * fall - 0.06 * later, BOARD_Y + r * (1 - fall) + 0.02 * fall, CUT_Z);
+    c.rotation.z = (Math.PI / 2) * (1 - fall);                             // 선 단면 → 옆으로 툭 쓰러짐
+    if (out > 0) fade(c, 1 - ease(out));
+  }
+  if (out > 0) fade(body, 1 - ease(out));
+}
+
+// ── 필름스트립(당근 4 + 당근 A·B·C × M2 6프레임) / GIF 한 칸 ──
+const KINDS = [['now', '현재(원뿔)'], ['A', 'A 통통·끝 뭉툭'], ['B', 'B 짧고 굵게+홈'], ['C', 'C 날씬+잎 풍성']];
+const ROWS = [['A', 'A 통통·끝 뭉툭'], ['B', 'B 짧고 굵게+홈'], ['C', 'C 날씬+잎 풍성']];
+const TIMES = [-0.01, 0.04, 0.14, 0.24, 0.4, 0.6];
+
+if (GIF) {
+  const W = 480, H = 360; renderer.setSize(W, H); document.getElementById('wrap').appendChild(renderer.domElement);
+  camera.aspect = W / H; camera.updateProjectionMatrix(); aimCam();
+  const out = [], FPS = 30, T0 = -0.25, T1 = 1.0;
+  for (let f = 0; f <= Math.round((T1 - T0) * FPS); f++) {                // 고정 스텝 시계 — 헤드리스 프레임 누락 없이
+    pose(MK, T0 + f / FPS); camera.updateMatrixWorld(); renderer.render(scene, camera);
+    out.push(renderer.domElement.toDataURL('image/png'));
+  }
+  document.getElementById('frames').textContent = out.join('\n');
+} else {
+  const CW = 230, CH = 172, PAD = 34, GAP = 8;
+  const W = 6 * CW + 7 * GAP, H = (CH + PAD) * 4 + GAP;
+  renderer.setSize(W, H); renderer.setScissorTest(true);
+  document.getElementById('wrap').prepend(renderer.domElement);
+  const labels = document.getElementById('labels');
+  const lab = (html, x, y, tag = 'span') => { const e = document.createElement(tag); e.innerHTML = html; e.style.left = x + 'px'; e.style.top = y + 'px'; labels.appendChild(e); };
+  const cell = (col, row, fn, w = CW) => {
+    const x = GAP + col * (w + GAP), yTop = row * (CH + PAD) + PAD;
+    renderer.setViewport(x, H - yTop - CH, w, CH); renderer.setScissor(x, H - yTop - CH, w, CH);
+    camera.aspect = w / CH; camera.updateProjectionMatrix(); aimCam(); fn(); camera.updateMatrixWorld(); renderer.render(scene, camera);
+    return { x, yTop };
+  };
+  renderer.setClearColor(0xd8e8e0); renderer.setScissor(0, 0, W, H); renderer.setViewport(0, 0, W, H); renderer.clear();
+  lab('🥕 당근 — 도마 위에 눕힌 모습', 0, 6, 'b');
+  const KW = (W - 5 * GAP) / 4;
+  KINDS.forEach(([k, name], i) => { const c = cell(i, 0, () => pose(k, 0, true), KW); lab(name, c.x + KW / 2, c.yTop + CH - 26); });
+  ROWS.forEach(([k, name], r) => {
+    lab(`🔪 M2 통통통 · 당근 ${name}`, 0, (r + 1) * (CH + PAD) + 6, 'b');
+    TIMES.forEach((t, i) => { const c = cell(i, r + 1, () => pose(k, t)); lab(t < 0 ? '탭 직전' : `+${Math.round(t * 1000)}ms`, c.x + CW / 2, c.yTop + CH - 24); });
+  });
+  document.getElementById('wrap').style.width = W + 'px';
+}
+document.body.dataset.ready = '1';
+</script>
