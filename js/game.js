@@ -65,7 +65,8 @@ import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
-import { restoreStage } from './orchard-onboard.js';   // 🌾→🍎 과수원 가는 길 의뢰(세이브 복원 검증)
+import { restoreStage } from './orchard-onboard.js';
+import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
 import { logOrchardEvent } from './orchard-log.js';   // 🍎 과수원 이벤트 원장(Supabase, fire-and-forget) — GA4 유실·지연 대비
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
@@ -2739,8 +2740,7 @@ function buildWorld() {
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
       || dist2D({ x, z }, { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 5 }) < 3.5   //    계단 앞 진입로도 틔운다
-      || dist2D({ x, z }, ORCHARD_GATE) < 5   // 🍎 과수원 문 앞은 비워 둔다
-      || dist2D({ x, z }, { x: ORCHARD_GATE.x, z: ORCHARD_GATE.z - 4 }) < 6.5   //    온실 몸통(북쪽으로 뻗음)에 나무가 박히지 않게
+      || orchardGateBlocks(x, z)   // 🍎 과수원 입구 잔디 판·울타리 위엔 벌목 나무 금지
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
       || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
@@ -2831,15 +2831,7 @@ function orchardSlotsWorld()  { return ORCHARD_SLOTS_LOCAL.map(([x, z]) => ({ x:
 
 // 단계별 크기 — 묘목은 작고 다 자라면 1
 const ORCHARD_SCALE = { sapling: 0.35, growing: 0.7, mature: 1 };
-// 열매가 달리는 자리(나무 국소 좌표) — 최대 6개
-// 열매 자리 — **캐노피 표면**에 건다. 전에는 잎 덩어리 안쪽 좌표라 통째로 파묻혀 안 보였다.
-//   캐노피는 y≈2.0 에 반경 약 1.2 이므로, 중심에서 1.25 만큼 바깥으로 밀어 표면에 걸친다.
-const CANOPY_Y = 2.0, FRUIT_R = 1.25;
-const FRUIT_SPOTS = [[-0.75, 0.15, 0.45], [0.8, -0.05, -0.3], [0.2, 0.5, 0.75], [-0.35, -0.3, -0.8], [0.65, 0.45, 0.2], [-0.85, 0.35, -0.35]]
-  .map(([dx, dy, dz]) => {
-    const L = Math.hypot(dx, dy, dz) || 1;
-    return [dx / L * FRUIT_R, CANOPY_Y + dy / L * FRUIT_R, dz / L * FRUIT_R];
-  });
+// 열매 자리는 js/orchard-art.js fruitSpots() — 우산 머리 캐노피 표면에 건다
 
 // 언덕 지면 + 시냇물 — 둘 다 정적. 시냇물은 점 5개를 한 지오메트리로 합쳐 드로우콜 1
 function buildOrchardGround() {
@@ -2903,13 +2895,16 @@ function syncOrchardTrees() {
   const trees = gameState.orchard?.trees || [];
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3();
   const put = (im, i, x, y, z, s) => { m.compose(v.set(x, y, z), q, new THREE.Vector3(s, s, s)); im.setMatrixAt(i, m); };
+  // 🍎 우산 머리 과일나무 + 나무 밑 흙 원판(js/orchard-art.js) — 숲 나무와 같은 캐노피라 과일나무로 안 읽혔다
+  const tl = ORCHARD_TREE, spotsAll = fruitSpots(tl);
+  const soil = buildTreeSoil(trees, orchardStreamWorld()); if (soil) orchardGroup.add(soil);
 
   // 1) 줄기 — 전부 같은 재질이라 한 덩이
   if (trees.length) {
     const im = new THREE.InstancedMesh(
-      shared('tree.trunk.geo', () => new THREE.CylinderGeometry(0.35, 0.5, 1.6, 7)),
+      shared('orchard.trunk.geo', tl.trunk),
       shared('tree.trunk.mat', () => clayMat(PAL.trunk)), trees.length);
-    trees.forEach((t, i) => { const s = ORCHARD_SCALE[t.stage] ?? 1; put(im, i, t.x, 0.8 * s, t.z, s); });
+    trees.forEach((t, i) => { const s = ORCHARD_SCALE[t.stage] ?? 1; put(im, i, t.x, tl.trunkY * s, t.z, s); });
     im.instanceMatrix.needsUpdate = true; im.castShadow = true; orchardGroup.add(im);
   }
 
@@ -2918,11 +2913,9 @@ function syncOrchardTrees() {
     const mine = trees.filter(t => t.kind === def.id);
     if (!mine.length) continue;
     const im = new THREE.InstancedMesh(
-      shared('tree.canopy.geo', () => mergeGeos(
-        [[0, 0.4, 0, 1.2], [0.7, 0, 0.2, 0.85], [-0.6, 0.05, -0.3, 0.9], [0.1, 0.9, -0.2, 0.7]]
-          .map(([bx, by, bz, cs]) => new THREE.IcosahedronGeometry(cs, 0).translate(bx, by, bz)))),
+      shared('orchard.canopy.geo', tl.canopy),
       shared(`orchard.leaf.mat.${def.leafColor}`, () => clayMat(def.leafColor)), mine.length);
-    mine.forEach((t, i) => { const s = ORCHARD_SCALE[t.stage] ?? 1; put(im, i, t.x, 2.0 * s, t.z, s); });
+    mine.forEach((t, i) => { const s = ORCHARD_SCALE[t.stage] ?? 1; put(im, i, t.x, tl.canopyY * s, t.z, s); });
     im.instanceMatrix.needsUpdate = true; im.castShadow = true; orchardGroup.add(im);
   }
 
@@ -2931,13 +2924,13 @@ function syncOrchardTrees() {
     const spots = [];
     for (const t of trees) {
       if (t.kind !== def.id || t.stage !== 'mature') continue;
-      for (let i = 0; i < Math.min(t.fruit || 0, FRUIT_SPOTS.length); i++) {
-        spots.push([t.x + FRUIT_SPOTS[i][0], FRUIT_SPOTS[i][1], t.z + FRUIT_SPOTS[i][2]]);
+      for (let i = 0; i < Math.min(t.fruit || 0, spotsAll.length); i++) {
+        spots.push([t.x + spotsAll[i][0], spotsAll[i][1], t.z + spotsAll[i][2]]);
       }
     }
     if (!spots.length) continue;
     const im = new THREE.InstancedMesh(
-      shared('orchard.fruit.geo', () => new THREE.IcosahedronGeometry(0.23, 0)),
+      shared('orchard.fruit.geo', tl.fruit),
       shared(`orchard.fruit.mat.${def.fruitColor}`, () => clayMat(def.fruitColor)), spots.length);
     spots.forEach(([x, y, z], i) => put(im, i, x, y, z, 1));
     im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
@@ -3008,12 +3001,30 @@ function buildOrchardRim() {
   canopies.instanceMatrix.needsUpdate = true; canopies.castShadow = true; orchardGroup.add(canopies);
 }
 
+// 🍎 입구 잔디 판(국소 → 월드: x=GATE.x+lz, z=GATE.z-lx) 타원 + 여유 1.5 — 벌목 나무가 판·울타리에 박히지 않게
+function orchardGateBlocks(x, z) {
+  const P = GATE_PATCH, cx = ORCHARD_GATE.x + P.cz, cz = ORCHARD_GATE.z - P.cx;
+  return ((x - cx) / (P.rz + 1.5)) ** 2 + ((z - cz) / (P.rx + 1.5)) ** 2 < 1;
+}
+
+const ORCHARD_PATH_WAY = [[-1.5, 30], [0, 19], [2.2, 12], [-0.6, 5], [1.4, -2], [-0.8, -9], [2.4, -14], [1.2, -19], [2.6, -30]];   // 양 끝은 걸을 수 있는 범위 밖
+
+// 🍎 안쪽 소품(돌담·나무다리·돗자리·깃발 줄) — 정적이라 한 번만 만들고, rebuild 때마다 그룹에 다시 붙인다(드로우콜 2)
+let orchardDecor = null;
+function orchardDecorGroup() {
+  if (orchardDecor) return orchardDecor;
+  const { group, solids } = buildOrchardDecor({ half: ORCHARD_HALF, stream: ORCHARD_STREAM_LOCAL, path: ORCHARD_PATH_WAY });
+  group.position.set(ORCHARD.x, 0, ORCHARD.z);
+  for (const [x, z, r] of solids) solidCircle(ORCHARD.x + x, ORCHARD.z + z, r);
+  return (orchardDecor = group);
+}
+
 // 🍎 오솔길 — 입구(남쪽)에서 자리들을 훑고 지나가는 흙길. 띠 1 + 잔모래 1 로 드로우콜 2.
 //   자리를 잇는 게 아니라 '자리 옆을 스쳐 가게' 둔다 — 길 위에 나무가 서면 이상하다.
 function buildOrchardPaths() {
   // 참고: 실제 흙길은 ① 꺾이지 않고 완만한 S 자로 휘고 ② 양 가장자리가 제각각이고 ③ 모래빛으로 밝다.
   //   직선 보간은 웨이포인트마다 각이 지므로 Catmull-Rom 곡선으로 샘플링한다.
-  const way = [[-1.5, 30], [0, 19], [2.2, 12], [-0.6, 5], [1.4, -2], [-0.8, -9], [2.4, -14], [1.2, -19], [2.6, -30]];   // 양 끝은 걸을 수 있는 범위 밖
+  const way = ORCHARD_PATH_WAY;
   const curve = new THREE.CatmullRomCurve3(way.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'catmullrom', 0.5);
   const N = 70, path = [];
   for (let i = 0; i <= N; i++) { const t = i / N, v = curve.getPoint(t); path.push([v.x, v.z, t]); }
@@ -3069,12 +3080,14 @@ function rebuildOrchard() {
     const c = orchardGroup.children[0];
     orchardGroup.remove(c);
     if (c.isInstancedMesh) c.dispose();
+    disposeOwned(c);   // 🍎 시안 흙 원판 — shared() 가 아니라 rebuild 마다 새로 굽는 것만 푼다(표식 ownGeo)
   }
   buildOrchardGround();     // 지면 1 + 시냇물 1(합침)
   buildOrchardPaths();      // 오솔길 1 + 잔모래 1
   buildOrchardRim();        // 경계 나무(줄기 1 + 잎 1)
   syncOrchardTrees();       // 줄기 1 + 잎 ≤5 + 열매 ≤5
   syncOrchardSlotHints();   // 빈 자리 1(인스턴스)
+  orchardGroup.add(orchardDecorGroup());   // 🍎 안쪽 소품(드로우콜 2)
 }
 
 function buildPlayer() {
