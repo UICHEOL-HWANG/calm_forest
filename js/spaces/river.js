@@ -655,8 +655,9 @@ export function updateRiverObjects(dt, t, seg) {
         boat.chestTaken = true; boat.chest = rollChest(boat.seed);
         gameState.boat.chestDate = todayStr();                   // 오늘은 끝 — 다음 판부터 안 나온다
         // 내용물은 개봉 화면(결과 전)에서 공개 — 여기선 건졌다는 것만. 이모지 없이(로우폴리 화면에서 튄다)
-        Sound.harvest(); spawnFloatText(player.position.x, 1.9, player.position.z - 10, '보물상자를 건졌어요!', '#c98a1e', 0.9);
-        spawnSparkle(player.position.x, 1.1, player.position.z - 4, 14);
+        const portrait = innerWidth < innerHeight;                  // 📱 세로 화면에선 0.9 로 폭을 넘어 양옆이 잘렸다(390px 실측)
+        Sound.harvest(); spawnFloatText(player.position.x, 1.9, player.position.z - 10, '보물상자를 건졌어요!', '#c98a1e', portrait ? 0.5 : 0.9);
+        spawnSparkle(player.position.x, 1.1, player.position.z - 4, 8);   // 수집물과 같은 개수 — 14개는 카메라 앞에서 요란했다(실측)
         trackEvent('boat_chest_take', { run_no: boat.runNo, loot: boat.chest.id, seg, dist_m: Math.round(boat.dist),
           dx: Math.round(dx * 100) / 100, speed: Math.round(boat.speed * 10) / 10, lamps_left: boat.lamps, night: boat.night, weather: WEATHER });
       } else if (rel < -1.4 && !boat.chestMissed) {              // 지나쳤다 — 1회만
