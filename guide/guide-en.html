@@ -1,6 +1,7 @@
 <!-- 📖 calm forest Beginner's Guide — English fragment. index.html #guide-panel fetches this when LANG === 'en'.
-     Mirror of guide.html (same 20 sections · same ids · same images). No document shell and no scripts.
-     ⚠️ Screenshots are still the Korean UI — captions describe what to look for. When guide.html changes, update this file too. -->
+     Mirror of guide.html (same 26 sections · same ids · same images). No document shell and no scripts.
+     ⚠️ Screenshots are still the Korean UI — captions describe what to look for. When guide.html changes, update this file too.
+     Names follow js/i18n-en.js so the guide matches the English UI. -->
 
 <section class="gd-sec" id="sec-01">
   <div class="gd-eyebrow">CALM FOREST · BEGINNER'S GUIDE</div>
@@ -18,8 +19,8 @@
   <div class="cards">
     <div class="card"><h3>1 🪓 Chop three trees</h3><p>Pick the axe from the outdoor tool set and press <span class="kbd">Space</span> 3 times. Felling a tree gives +3 wood.</p></div>
     <div class="card"><h3>2 🧙 Sell to the visiting merchant</h3><p>Once you hold 5 wood, the merchant walks over to you. +30🪙, three times the usual price, one time only.</p></div>
-    <div class="card"><h3>3 🌰 One plot, seed to harvest</h3><p>Till with the hoe → plant a seed → water 3 times → harvest with the sickle.</p></div>
-    <div class="card"><h3>4 🎣 One fish from the lake</h3><p>Cast from the pier. When "Bite!" appears, press <span class="kbd">Space</span> again within 1.4 seconds.</p></div>
+    <div class="card"><h3>3 🌰 One plot, seed to harvest</h3><p>Till with the hoe → plant a seed → water 2 times → harvest with the sickle.</p></div>
+    <div class="card"><h3>4 🎣 One fish from the lake</h3><p>Cast from the pier. When "A bite!" appears, press <span class="kbd">Space</span> again right away.</p></div>
     <div class="card"><h3>5 🔨 Build a house and step inside</h3><p>Hammer inside the circle three times. 60 wood · 25 stone · 80🪙 gets you to the roof.</p></div>
     <div class="card"><h3>6 🎨 Place one piece of furniture</h3><p>Furniture costs crops, not coins. A rug is 2 crops.</p></div>
   </div>
@@ -38,7 +39,7 @@
           <p><span class="kbd">W</span> <span class="kbd">A</span> <span class="kbd">S</span> <span class="kbd">D</span> move (arrow keys work too)<br>
           <span class="kbd">Space</span> act · dismiss a hint<br>
           <span class="kbd">1</span> switch tool set<br>
-          <span class="kbd">2</span>~<span class="kbd">5</span> pick a tool in the current set<br>
+          <span class="kbd">2</span>~<span class="kbd">6</span> pick a tool in the current set<br>
           <span class="kbd">C</span> sit · <span class="kbd">R</span> rotate furniture</p>
         </div>
         <div class="card">
@@ -65,7 +66,7 @@
     <div>
       <p class="lead">Chrome is recommended. On a phone, portrait is the most comfortable.</p>
       <ol class="steps">
-        <li><span class="n">1</span><span>Open <b>calmforest.cloud</b> (or this page). Choose Google sign-in or "Look around as a guest".</span></li>
+        <li><span class="n">1</span><span>Open <b>calmforest.cloud</b>. Choose <b>Start with Google</b> or <b>Look around as a guest</b>. In the Toss and Play Store apps you'll only see one button, <b>Play now</b>.</span></li>
         <li><span class="n">2</span><span>Seven characters: fox, dog, rabbit, cat, bear, panda, chick. Names are 2 to 16 characters, or tap 🎲 for a random one.</span></li>
         <li><span class="n">3</span><span>A short prologue plays. You can skip it with <b>Skip ›</b> at the top right.</span></li>
         <li><span class="n">4</span><span>Once you arrive in the village, press <b>Start tutorial 🌱</b> and learn one step at a time.</span></li>
@@ -73,7 +74,7 @@
       <div class="warn"><b>Guest progress is not kept.</b> Next visit you get a fresh village. If you plan to stay a while, sign in with Google from the start. You can change your character later from the ☰ menu; your house, fields, and collection stay as they are.</div>
     </div>
     <div>
-      <img class="shot" src="img/00_title.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Title screen: Google sign-in / look around as a guest</p>
+      <img class="shot" src="img/00_title.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Title screen: Start with Google / Look around as a guest</p>
       <img class="shot" src="img/01_charselect.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Seven characters and the name field</p>
       <img class="shot" src="img/02_intro_b.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Prologue cutscene, skippable</p>
       <img class="shot" src="img/14_help.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Welcome card: start the tutorial</p>
@@ -93,9 +94,9 @@
         <li><span class="n">3</span><span><b>Story chip</b>: your current goal. Tap for details</span></li>
         <li><span class="n">4</span><span><b>Inventory</b>: 🪵 wood · 🌰 seeds · 🥕 crops · 🪙 coins. Tap 🎒 to see everything</span></li>
         <li><span class="n">5</span><span><b>Day/night clock</b>: a day passes on its own every 8 minutes</span></li>
-        <li><span class="n">6</span><span><b>📖 Collection</b> and <b>💬 Feedback</b></span></li>
+        <li><span class="n">6</span><span><b>📖 Collection</b> and <b>💬 Feedback</b> (top right on phone)</span></li>
         <li><span class="n">7</span><span><b>Hint bubble</b>: shows what you can do right now</span></li>
-        <li><span class="n">8</span><span><b>Toolbar</b>: the front chip switches sets (<span class="kbd">1</span>), the four slots behind it are tools (<span class="kbd">2</span>~<span class="kbd">5</span>)</span></li>
+        <li><span class="n">8</span><span><b>Toolbar</b>: the front chip switches sets (<span class="kbd">1</span>), the slots behind it are tools (<span class="kbd">2</span>~<span class="kbd">6</span>)</span></li>
       </ol>
     </div>
     <div>
@@ -108,25 +109,25 @@
 
 <section class="gd-sec" id="sec-06">
   <div class="gd-eyebrow">03 · TOOL SETS</div>
-  <h2 data-chip="Tool sets">Eight tools, three sets</h2>
+  <h2 data-chip="Tool sets">Nine tools, three sets</h2>
   <div class="cols">
     <div>
-      <p class="lead">You own all eight from the start. The toolbar shows one set at a time, so if a tool seems to be missing, press <span class="kbd">1</span> (🎒 on phone) to flip sets.</p>
+      <p class="lead">You own all nine from the start. The toolbar shows one set at a time, so if a tool seems to be missing, press <span class="kbd">1</span> (🎒 on phone) to flip sets.</p>
       <div class="tbl"><table>
         <thead><tr><th>Set</th><th>Tools (slot)</th><th>What they do</th></tr></thead>
         <tbody>
           <tr><td rowspan="2">🌾 Farming<br><small>starting set</small></td><td>⛏️ Hoe <span class="kbd">2</span> · 🌰 Seeds <span class="kbd">3</span></td><td>Till soil (also mines in the cave) · plant seeds</td></tr>
           <tr><td>💧 Watering can <span class="kbd">4</span> · 🌾 Sickle <span class="kbd">5</span> · 🪏 Shovel <span class="kbd">6</span></td><td>Water (crops only grow when watered) · harvest · dig an empty plot twice to turn it back to grass</td></tr>
-          <tr><td rowspan="2">🏕️ Outdoor</td><td>🪓 Axe <span class="kbd">2</span> · 🔨 Hammer <span class="kbd">3</span></td><td>Chop trees · build and expand your house</td></tr>
-          <tr><td>🎣 Fishing rod <span class="kbd">4</span> · 🦋 Net <span class="kbd">5</span></td><td>Lake fishing · catch fireflies at night</td></tr>
-          <tr><td>✋ Bare hands</td><td>-</td><td>Switches on automatically in the foraging woods, indoors, and at the café</td></tr>
+          <tr><td rowspan="2">🏕️ Outdoors</td><td>🪓 Axe <span class="kbd">2</span> · 🔨 Hammer <span class="kbd">3</span></td><td>Chop trees · build and expand your house</td></tr>
+          <tr><td>🎣 Fishing rod <span class="kbd">4</span> · 🦋 Bug net <span class="kbd">5</span></td><td>Lake fishing · catch fireflies at night</td></tr>
+          <tr><td>✋ Bare hands</td><td>-</td><td>Switches on automatically in the Foraging Woods, indoors, and at the Café</td></tr>
         </tbody>
       </table></div>
-      <div class="tip"><b>Sets switch on their own when you enter an area.</b> The cave opens the farming set, the lakeside opens the outdoor set. Spend materials at the workbench for permanent upgrades: steel axe, big watering can, sturdy rod.</div>
+      <div class="tip"><b>Sets switch on their own when you enter an area.</b> The cave opens the farming set, the lakeside opens the outdoor set. Spend materials in the workbench 🔧 Tools tab for one permanent upgrade per tool: Steel Axe, Big Watering Can, Sturdy Fishing Rod, and so on. No materials? You can also buy them with coins (80 to 150🪙) at the 🛒 Shop. Golden tools, which only change the look, are in chapter 20.</div>
     </div>
     <div>
       <img class="shot" src="img/12_bag.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🎒 Bag: resources, farming/fishing materials, minerals, and foraged items at a glance</p>
-      <img class="shot" src="img/10_bench.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🔧 Workbench tools tab: steel axe = 20 wood + 3 crops</p>
+      <img class="shot" src="img/10_bench.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🔧 Workbench Tools tab: Steel Axe = 20 wood + 3 crops</p>
     </div>
   </div>
 </section>
@@ -158,15 +159,15 @@
       <ol class="steps">
         <li><span class="n">1</span><span>Press <span class="kbd">1</span> to open the 🏕️ outdoor set and <span class="kbd">2</span> to take the axe.</span></li>
         <li><span class="n">2</span><span>Stand right next to a tree and press <span class="kbd">Space</span> 3 times. Wood drops only when it falls: <b>+3 wood</b>. It regrows after 30 seconds.</span></li>
-        <li><span class="n">3</span><span>Once you hold 5 wood, the 🧙 wandering merchant walks over. "Sell 5 wood for <b>+30🪙</b>", three times the usual price.</span></li>
+        <li><span class="n">3</span><span>Once you hold 5 wood, the 🧙 Wandering Merchant walks over. "Sell 5 wood for <b>+30🪙</b>", three times the usual price.</span></li>
         <li><span class="n">4</span><span>Now you have 30 coins. Buy 🌰 seeds or 🌱 fertilizer at the east stall, or just save up.</span></li>
       </ol>
-      <div class="warn"><b>Weather and food make it pay better.</b> On ❄️ snowy days branches snap easily and drop more wood, and a 🍱 lunch box gives +1 wood per felled tree.</div>
+      <div class="warn"><b>Weather and food make it pay better.</b> On ❄️ snowy days branches snap easily and drop more wood, and a 🍱 Picnic Lunchbox gives +1 wood per felled tree.</div>
     </div>
     <div>
       <img class="shot" src="img/05_chop.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Axe in hand, next to a tree, press Space</p>
       <img class="shot" src="img/05_chop_fall.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">The third hit fells it: +3 wood</p>
-      <img class="shot" src="img/05b_merchant.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">The wandering merchant's welcome deal, a one-time offer</p>
+      <img class="shot" src="img/05b_merchant.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">The Wandering Merchant's welcome deal, a one-time offer</p>
     </div>
   </div>
 </section>
@@ -180,34 +181,34 @@
       <ol class="steps">
         <li><span class="n">1</span><span><b>⛏️ Hoe</b>: <span class="kbd">Space</span> on empty ground. You can't make plots near trees, the lake, or the house site. Move a little.</span></li>
         <li><span class="n">2</span><span><b>🌰 Seeds</b>: <span class="kbd">Space</span> on a tilled plot. One of carrot, tomato, blueberry, or pumpkin grows at random.</span></li>
-        <li><span class="n">3</span><span><b>💧 Watering can</b>: wet soil won't take water for 5 seconds. Water 3 times, 5 seconds apart.</span></li>
+        <li><span class="n">3</span><span><b>💧 Watering can</b>: wet soil won't take water for 9 seconds. When the soil dries, water once more, 2 times in all.</span></li>
         <li><span class="n">4</span><span><b>🌾 Sickle</b>: when the "Harvest!" marker shows, press <span class="kbd">Space</span>.</span></li>
       </ol>
-      <div class="warn"><b>Go 22 seconds without watering and the crop wilts (🥀).</b> Re-till a wilted plot with the hoe. On 🌧️ rainy days crops grow without watering, and 🌱 fertilizer (20🪙) makes them harvestable right away.</div>
-      <div class="tip"><b>🪏 Removing a plot</b>: if you tilled the wrong spot or the village is covered in plots, take the <b>shovel</b> (<span class="kbd">6</span>) from the 🌾 farming set and press <span class="kbd">Space</span> <b>twice</b> in front of an <b>empty plot</b>. The first dig roughs up the furrows and shows "Dig once more to remove"; you have <b>6 seconds</b> to dig again (after that it goes back to normal). Plots with crops must be harvested or cleared with the hoe first. Filled-in spots sometimes drop 📖 collection items from "Underground".</div>
+      <div class="warn"><b>Leave the soil dry for 1 minute and the crop wilts (🥀).</b> Re-till a wilted plot with the hoe. On 🌧️ rainy days crops grow without watering, and 🌱 fertilizer (20🪙) makes them harvestable right away.</div>
+      <div class="tip"><b>🪏 Removing a plot</b>: if you tilled the wrong spot or the village is covered in plots, take the <b>shovel</b> (<span class="kbd">6</span>) from the 🌾 farming set and press <span class="kbd">Space</span> <b>twice</b> in front of an <b>empty plot</b>. The first dig roughs up the furrows and shows "Dig once more to remove the plot"; you have <b>6 seconds</b> to dig again (after that it goes back to normal). Plots with crops must be harvested or cleared with the hoe first. Filled-in spots sometimes drop 📖 collection items from "Underground".</div>
     </div>
     <div>
       <img class="shot" src="img/06_farm_till.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">① Till with the hoe: "Plant a seed"</p>
       <img class="shot" src="img/06_farm_water.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">② Plant a seed and ③ water</p>
-      <img class="shot" src="img/06_farm_mature.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">After three waterings, the "Harvest!" marker</p>
+      <img class="shot" src="img/06_farm_mature.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">After two waterings, the "Harvest!" marker</p>
       <img class="shot" src="img/06_farm_harvest.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">④ Harvest with the sickle; it's added to your collection too</p>
-      <img class="shot" src="img/06_farm_dig1.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🪏 One shovel dig: furrows roughed up, "Dig once more to remove"</p>
+      <img class="shot" src="img/06_farm_dig1.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🪏 One shovel dig: furrows roughed up, "Dig once more to remove the plot"</p>
       <img class="shot" src="img/06_farm_dig2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Dig again within 6 seconds: the plot returns to grass</p>
     </div>
   </div>
 </section>
 
 <section class="gd-sec" id="sec-10">
-  <div class="gd-eyebrow">07 · MY FIELD · SHOP · PRICES</div>
-  <h2 data-chip="Field·Shop">Plant wide in your field, sell at the stall</h2>
+  <div class="gd-eyebrow">07 · MY FARM · SHOP · PRICES</div>
+  <h2 data-chip="Farm·Shop">Plant wide on your farm, sell at the stall</h2>
   <div class="cols">
     <div>
-      <p class="lead">Walk through the 🌾 My Field arch at the south of the village and you get a big field of your own. Planted crops are saved as they are; leave through the south gate.</p>
-      <img class="shot" src="img/20_farmfield_plot.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">My Field: six plots at once</p>
+      <p class="lead">Walk through the 🌾 My Farm arch at the south of the village and you reach a fenced field of your own. You can till and plant anywhere inside the fence, and planted crops are saved as they are. Leave through the south gate. Expanding the field and hiring workers is in chapter 18.</p>
+      <img class="shot" src="img/20_farmfield_plot.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">My Farm: 25 plots at first, up to 121 once expanded</p>
       <div class="tip"><b>🛒 How to sell</b>: <span class="kbd">Space</span> in front of the stall. Tap a slot to sell 1, hold to sell all.</div>
     </div>
     <div>
-      <img class="shot" src="img/09_shop_buy.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Shop buy tab: 5 seeds (15🪙) · 🌱 fertilizer (20) · 🪱 bait (25) · wood · stone · coal. Items you can't afford are dimmed</p>
+      <img class="shot" src="img/09_shop_buy.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Shop buy tab: 5 seeds (15🪙) · 🌱 fertilizer (20) · 🪱 bait (25) · wood · stone · coal, plus premium crop seeds, fruit saplings, and even tool upgrades. Items you can't afford are dimmed</p>
       <img class="shot" src="img/09_market.jpg" width="1200" height="674" loading="lazy" decoding="async" alt="">
       <div class="warn"><b>📊 Prices shift by up to ±30% every midnight.</b> Selling on a red arrow (expensive) is the win. The merchant's stall bubble also tells you today's priciest item.</div>
     </div>
@@ -219,20 +220,20 @@
   <h2 data-chip="House">From deck to roof with a hammer</h2>
   <div class="cols">
     <div>
-      <p class="lead">It's the "🏠 Build your house here" spot with the green circle, northwest of the village.</p>
+      <p class="lead">It's the "🏠 Build Your House Here" spot with the green circle, northwest of the village.</p>
       <ol class="steps">
-        <li><span class="n">1</span><span>Take the 🔨 hammer (<span class="kbd">3</span>) from the 🏕️ set and press <span class="kbd">Space</span> inside the circle. Deck (15 wood) → log walls (20 wood · 10 stone) → roof (25 wood · 15 stone · 80🪙). Stone comes from the ⛏️ cave to the west; coins from selling wood and crops.</span></li>
-        <li><span class="n">2</span><span>Roof on means done! You earn the 🏠 "Home Owner" badge (<b>+20🪙</b>) and the story chapter 1 reward (<b>+40🪙</b>).</span></li>
+        <li><span class="n">1</span><span>Take the 🔨 hammer (<span class="kbd">3</span>) from the 🏕️ set and press <span class="kbd">Space</span> inside the circle. Deck (15 wood) → log walls (20 wood · 10 stone) → roof (25 wood · 15 stone · 80🪙), three stages. Stone comes from the ⛏️ cave to the west; coins from selling wood and crops.</span></li>
+        <li><span class="n">2</span><span>Roof on means done! You earn the 🏠 "Home Sweet Home" badge (<b>+20🪙</b>) and the story chapter 1 reward (<b>+40🪙</b>).</span></li>
         <li><span class="n">3</span><span><span class="kbd">Space</span> at the door → inside. Use 🎨 Decorate to place furniture. Furniture costs 🥕 crops, not coins (only the fish tank costs 🐟 fish). <span class="kbd">R</span> rotates.</span></li>
-        <li><span class="n">4</span><span>Outside the house you can change roof, wall, and door colors and expand. Stage 4 🧱 Brick Loft (45 wood · 15 stone · 120🪙) → stage 5 🏢 Penthouse → stage 6 🏝️ Rooftop Villa.</span></li>
+        <li><span class="n">4</span><span>Outside the house you can change roof, wall, and door colors and expand. Stage 4 🧱 Brick Loft (45 wood · 15 stone · 120🪙) → stage 5 🏢 Penthouse (75 wood · 30 stone · 10 coal · 350🪙) → stage 6 🏝️ Rooftop Villa (120 wood · 50 stone · 3 gems · 800🪙). As it grows you get an attic, a second floor, and a rooftop, and big furniture bought with coins opens up.</span></li>
       </ol>
-      <div class="tip"><b>Colors unlock as you play.</b> Fishing and harvesting have a chance to unlock new roof, wall, and door colors.</div>
+      <div class="tip"><b>Colors unlock as you play.</b> Finishing or expanding the house, and now and then fishing, harvesting, or requests, unlock new roof, wall, and door colors. Exterior decor and 🧩 add-ons are in chapter 22.</div>
     </div>
     <div>
       <img class="shot" src="img/07_build2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Stage 2 log walls: one more hit for the roof</p>
-      <img class="shot" src="img/07_house_done.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Done! "🚪 Enter house" at the door</p>
+      <img class="shot" src="img/07_house_done.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Done! "🚪 Enter the house" at the door</p>
       <img class="shot" src="img/07_decor.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Indoor 🎨 Decorate: from a 2🥕 rug to a 10🥕 big sofa</p>
-      <img class="shot" src="img/29_house6.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Stage 6 modern house, rooftop terrace included</p>
+      <img class="shot" src="img/29_house6.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Stage 6 Rooftop Villa, rooftop terrace included</p>
     </div>
   </div>
 </section>
@@ -245,22 +246,22 @@
       <p class="lead">At the lake southeast of the village, from the wooden pier. You can't walk into the water.</p>
       <ol class="steps">
         <li><span class="n">1</span><span>Take the 🎣 rod (<span class="kbd">4</span>) and press <span class="kbd">Space</span> at the water's edge → the bobber flies out.</span></li>
-        <li><span class="n">2</span><span>After 1.5 to 4 seconds, "❗ Bite! Reel it in now!" appears.</span></li>
-        <li><span class="n">3</span><span><b>Press <span class="kbd">Space</span> again within 1.4 seconds.</b> Too late and it gets away 🐟💨.</span></li>
+        <li><span class="n">2</span><span>After a few seconds, "❗ A bite! Reel it in now!" appears. On rainy days they bite sooner.</span></li>
+        <li><span class="n">3</span><span><b>Press <span class="kbd">Space</span> again right away.</b> Even a little late and it gets away 🐟💨. The time you get to reel in varies a little with every cast.</span></li>
         <li><span class="n">4</span><span>Pressing again while waiting reels the line back in. Switching tools or walking away also cancels.</span></li>
       </ol>
       <div class="tbl"><table>
-        <thead><tr><th>Fish</th><th>Chance</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Fish</th><th>How often</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td>🐟 Minnow</td><td>72%</td><td>The most common</td></tr>
-          <tr><td>🐠 Red fish</td><td>21%</td><td>Sells well</td></tr>
-          <tr><td>🌈 Rainbow fish</td><td>7%</td><td>Better odds on 🌧️ rainy days and with 🪱 bait</td></tr>
+          <tr><td>🐟 Minnow</td><td>Most of the time</td><td>The most common</td></tr>
+          <tr><td>🐠 Red Fish</td><td>About one in four</td><td>Sells well</td></tr>
+          <tr><td>🌈 Rainbow Fish</td><td>Only on 🌧️ rainy days</td><td>Use 🪱 bait that day for better odds</td></tr>
         </tbody>
       </table></div>
-      <div class="tip"><b>Keep missing? Upgrade the rod.</b> Craft the sturdy rod at the workbench (10 wood + 3 fish) and the reel-in window grows to 2.6 seconds.</div>
+      <div class="tip"><b>Keep missing? Upgrade the rod.</b> Craft the Sturdy Fishing Rod at the workbench (10 wood + 3 fish) and the reel-in window nearly doubles.</div>
     </div>
     <div>
-      <img class="shot" src="img/08_fish_bite.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">"❗ Bite!": press Space at this moment</p>
+      <img class="shot" src="img/08_fish_bite.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">"❗ A bite!": press Space at this moment</p>
       <img class="shot" src="img/08_fish_catch2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">A big one! The catch screen</p>
     </div>
   </div>
@@ -275,19 +276,24 @@
       <div class="tbl"><table>
         <thead><tr><th>Villager</th><th>Where</th><th>Requests</th><th>First request</th></tr></thead>
         <tbody>
-          <tr><td>🧑‍🌾 Farmer Uncle</td><td>Southeast of the center</td><td>4 farming</td><td>Chop 3 times → 3 seeds + 5🪙</td></tr>
-          <tr><td>👷 Carpenter</td><td>South of the house site</td><td>3 building</td><td>10 wood → 3 crops + 10🪙</td></tr>
-          <tr><td>🧙 Wandering Merchant</td><td>East stall</td><td>3 trading</td><td>Plant 3 seeds (he gives you the seeds)</td></tr>
+          <tr><td>🧑‍🌾 Farmer</td><td>Southeast of the center</td><td>4 farming</td><td>Chop 3 times → 3 seeds + 5🪙</td></tr>
+          <tr><td>👷 Carpenter</td><td>Near the farm entrance</td><td>6 building</td><td>10 wood → 3 crops + 10🪙</td></tr>
+          <tr><td>🧙 Wandering Merchant</td><td>East stall</td><td>3 trading</td><td>Plant 3 seeds → 4 wood + 6🪙 (he gives you the seeds first)</td></tr>
           <tr><td>🎣 Old Fisherman</td><td>South of the lake</td><td>4 fishing</td><td>2 fish → 3 crops + 8🪙</td></tr>
-          <tr><td>🐼 Chef Panda</td><td>Next to the free kitchen</td><td>3 cooking</td><td>3 crops → 8🪙</td></tr>
-          <tr><td>🦉 Request Owl</td><td>Near the house site</td><td>5 daily</td><td>10 · 10 · 15 · 15 · 20🪙 + 🎁 lucky box (first 3)</td></tr>
+          <tr><td>🐼 Chef Panda</td><td>North of the village, west of the workbench</td><td>3 cooking</td><td>3 crops → 8🪙</td></tr>
+          <tr><td>🦡 Badger the Forest Keeper</td><td>Foraging Woods entrance</td><td>4 foraging</td><td>5 foraged items → 4 seeds + 8🪙</td></tr>
+          <tr><td>🐔 Ranch Auntie</td><td>Next to the chicken coop</td><td>3 ranch</td><td>Cook 2 times → 5 seeds + 10🪙</td></tr>
+          <tr><td>⭐ Stargazing Kid</td><td>Firefly Valley entrance</td><td>3 night</td><td>3 fireflies → 3 crops + 10🪙</td></tr>
+          <tr><td>🦆 Duck the Ferryman</td><td>In front of the Boat Dock</td><td>3 river</td><td>4 fish → 5 wood + 10🪙</td></tr>
+          <tr><td>🧑‍🦳 The Curator</td><td>In front of the 🏛️ Museum</td><td>3 museum</td><td>Register 3 collection entries → 20🪙</td></tr>
+          <tr><td>🦉 Errand Owl</td><td>Near the house site</td><td>5 daily</td><td>10 · 10 · 15 · 15 · 20🪙 + 🎁 Lucky Box (first 3)</td></tr>
         </tbody>
       </table></div>
-      <div class="tip"><b>❤️ Friendship</b> grows when you craft gifts in the workbench 🎁 tab, like a bouquet (2 crops), fruit basket, or wooden doll. Every 3 levels they send a thank-you (3 seeds + 1 crop), and finishing all five villagers' requests earns the 👑 "Village Hero" badge.</div>
+      <div class="tip"><b>❤️ Friendship</b> grows when you craft gifts in the workbench 🎁 Gifts tab, like a bouquet (2 crops), fruit basket, or wooden doll. Every 3 levels they send a thank-you (3 seeds + 1 crop), and finishing all 10 villagers' requests earns the 👑 "Hero of the Village" badge. What happens once you're close is in chapter 20.</div>
     </div>
     <div>
-      <img class="shot" src="img/11_npc.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Farmer Uncle's first request: accept</p>
-      <img class="shot" src="img/11_owl.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🦉 Today's requests: everyone gets the same five</p>
+      <img class="shot" src="img/11_npc.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">The Farmer's first request: accept</p>
+      <img class="shot" src="img/11_owl.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🦉 Today's requests: everyone gets the same ones</p>
     </div>
   </div>
 </section>
@@ -297,9 +303,9 @@
   <h2 data-chip="Mine·Cooking">Dig materials, craft, and cook</h2>
   <div class="cols">
     <div>
-      <div class="card"><h3>⛏️ Mining cave <small>black rock entrance, west of the village</small></h3><p>Hit a glittering vein 3 times with the hoe. Stone 55% · coal 35% · 💎 gem 10% (20% on 🌫️ foggy days). Veins respawn after 14 seconds. Stone and coal go into house expansions and the big pot; gems sell for 40🪙. Leave with Space at the "Exit" sign.</p></div>
-      <div class="card" style="margin-top:10px"><h3>🔧 Workbench <small>4 tabs</small></h3><p>Permanent tool upgrades · outdoor decorations (scarecrow, fence, flower bed) · gifts for villagers · 🗿 carving. Carving orders change daily, 3 a day. Tap and drag to chip away the bright pieces and leave only the dark outline; the cleaner the cut, the bigger the reward (22 to 26🪙 × grade).</p></div>
-      <div class="card" style="margin-top:10px"><h3>🍳 Free kitchen <small>east of the workbench</small></h3><p>5 recipes. Hand over ingredients and play a minigame. Boiling: tap 3 times when the needle is in the green zone. Chopping: tap to an 8-beat rhythm. Do well and the buff lasts longer.<br>Vegetable porridge (3 crops) = +40% speed for 60s · grilled fish (2 fish) = fishing luck · lunch box = +1 wood per felled tree · omelet = mining bonus.</p></div>
+      <div class="card"><h3>⛏️ Mining cave <small>black rock entrance, west of the village</small></h3><p>Hit a glittering vein 3 times with the hoe. Normally you get stone and coal; 💎 gems only turn up on 🌫️ foggy days. Veins respawn after 14 seconds. Stone and coal go into house expansions and the big pot; gems sell for 40🪙. Leave with Space at the "Exit" sign.</p></div>
+      <div class="card" style="margin-top:10px"><h3>🔧 Workbench <small>4 tabs</small></h3><p>Permanent tool upgrades · outdoor decorations (scarecrow, fence, flower bed) · gifts for villagers · 🗿 carving. Carving orders change daily, 3 a day. Tap and drag to chip away the bright pieces and leave only the dark outline; the cleaner the cut, the bigger the reward (22 to 30🪙 × grade).</p></div>
+      <div class="card" style="margin-top:10px"><h3>🍳 Free Kitchen <small>east of the workbench</small></h3><p>11 recipes. Hand over ingredients and play a minigame (boiling · chopping · grilling · seasoning). Dishes with more ★ chain several rounds, and the better you do, the longer the buff lasts.<br>Start with vegetable porridge (3 crops) = +40% speed for 60s. The full table and the 🧺 pantry are in chapter 19.</p></div>
     </div>
     <div>
       <div class="cards two">
@@ -308,20 +314,20 @@
         <div><img class="shot" src="img/16_kitchen_mg.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Boiling minigame: tap in the green zone</p></div>
         <div><img class="shot" src="img/17_carve_mid.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Mid-carve: leave only the outline</p></div>
       </div>
-      <div class="warn"><b>Short on coins? Start here.</b> Three carving orders plus a few gems add up to 100🪙 a day fast. Failing a minigame only costs the ingredients; you lose nothing else.</div>
+      <div class="warn"><b>Short on coins? Start here.</b> Three carving orders plus café serving add up to 100🪙 a day fast. Failing a minigame only costs the ingredients; you lose nothing else.</div>
     </div>
   </div>
 </section>
 
 <section class="gd-sec" id="sec-15">
   <div class="gd-eyebrow">12 · FOUR PLACES TO THE SOUTH</div>
-  <h2 data-chip="South">Café · coop · foraging woods · firefly glade</h2>
+  <h2 data-chip="South">Café · coop · Foraging Woods · Firefly Valley</h2>
   <p class="lead">South of the village are four spots where coins and materials pile up. Many need no tools at all.</p>
   <div class="cards four">
-    <div class="card"><img class="shot" src="img/22_cafe_serve.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>☕ Café <small>red-roofed building to the south</small></h3><p>Four guests order through bubbles over their heads. Hold the item and press Space beside them to serve. 30 to 46🪙 a cup, and a 60🪙 bonus for serving all four.</p></div>
-    <div class="card"><img class="shot" src="img/18_coop_modal.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🐔 Chicken coop <small>southwest of the field entrance</small></h3><p>Unlocks after visiting 2 days in a row (25 wood · 10 stone · 60🪙). Feed 2 seeds and get 2 🥚 eggs the next day. Sell for 6🪙 each or use them in an omelet.</p></div>
-    <div class="card"><img class="shot" src="img/19_forest_pick.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🍄 Foraging woods <small>signpost to the southwest</small></h3><p>No tools needed. Press Space next to mushrooms, wild berries, acorns, or herbs to pick them. They regrow in 1 to 2 minutes. Three foraged items make 🍄 mushroom soup (150s of fast feet).</p></div>
-    <div class="card"><img class="shot" src="img/24_glade.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🌟 Firefly glade <small>south of the café · night only</small></h3><p>Swing the 🦋 net at the moment a firefly flashes brightest for a 90% catch, otherwise 35%. Collect all 4 kinds for the 🌟 "Night Collector" badge (+40🪙).</p></div>
+    <div class="card"><img class="shot" src="img/22_cafe_serve.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>☕ Café <small>red-roofed building to the south</small></h3><p>Four guests order through bubbles over their heads. Press Space beside them: a dish from your pantry goes out right away, and if you have the ingredients it's cooked on the spot. 28 to 78🪙 a dish (tastier pays more), and a 60🪙 bonus for serving all four.</p></div>
+    <div class="card"><img class="shot" src="img/18_coop_modal.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🐔 Chicken Coop <small>southwest of the farm entrance</small></h3><p>Unlocks after visiting 2 days in a row (25 wood · 10 stone · 60🪙). Feed 2 seeds and get 2 🥚 eggs the next day. Sell for 6🪙 each or use them in an omelette.</p></div>
+    <div class="card"><img class="shot" src="img/19_forest_pick.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🍄 Foraging Woods <small>signpost to the southwest</small></h3><p>No tools needed. Press Space next to mushrooms, wild berries, acorns, or herbs to pick them. They regrow in 1 to 2 minutes. Three foraged items make 🍄 mushroom soup (90s of fast feet).</p></div>
+    <div class="card"><img class="shot" src="img/24_glade.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🌟 Firefly Valley <small>south of the café · night only</small></h3><p>Swing the 🦋 bug net at the moment a firefly flashes brightest for a 90% catch, otherwise 35%. Collect all 4 kinds for the 🌟 "Night Collector" badge (+40🪙).</p></div>
   </div>
 </section>
 
@@ -330,9 +336,9 @@
   <h2 data-chip="Adventure">Three places beyond the village, once you've settled in</h2>
   <p class="lead">All three are open from the start. Press Space at the signposts on the village edge to enter.</p>
   <div class="cards">
-    <div class="card"><img class="shot" src="img/26_sea_fight.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🌊 Sea pier <small>lighthouse to the northeast</small></h3><p>A tug of war with big fish. On 🔴 <b>Hold on…!</b> press nothing; on 🟢 <b>Pull!!</b> mash. If you're dragged to the red plank at the end of the pier, it escapes. Horse mackerel (day) · yellowtail · sunfish (night) · ⚔️ tuna (one a day). You weigh them and let them go.</p></div>
-    <div class="card"><img class="shot" src="img/27_river_run2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🛶 Ferry landing <small>due north, 12 o'clock</small></h3><p>Ride the ferryboat down the river for about 60 seconds. The boat moves on its own; you steer left and right, Space is a sprint. Dodge rocks and logs, collect ⭐ star shards. 💡 3 lamps are your lives. Three runs a day, and the course is the same for everyone that day.</p></div>
-    <div class="card"><img class="shot" src="img/28_mist_wave2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🌫️ Misty forest <small>old-tree arch to the northwest</small></h3><p>Start at the 🌳 guardian tree (a practice round first if it's your first time). When shadow spirits approach, slow them with the 🏮 lantern and tap when the ♪ mark is at its smallest to soothe them. It's music, not a fight, so failing costs nothing.</p></div>
+    <div class="card"><img class="shot" src="img/26_sea_fight.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🌊 Seaside Pier <small>lighthouse to the northeast</small></h3><p>A tug of war with big fish. On 🔴 <b>Hold on…!</b> press nothing; on 🟢 <b>Reel it in!!</b> mash. If you're dragged to the red plank at the end of the pier, it escapes. Mackerel (day) · yellowtail · sunfish (night) · ⚔️ tuna (one a day). You weigh them and let them go.</p></div>
+    <div class="card"><img class="shot" src="img/27_river_run2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🛶 Boat Dock <small>due north, 12 o'clock</small></h3><p>Ride the rowboat down the river for about 60 seconds. The boat moves on its own; you steer left and right, Space is a sprint. Dodge rocks and logs, collect ⭐ star shards. 💡 3 lamps are your lives. Three runs a day, and the course is the same for everyone that day. Spend your star shards at the 🧰 Boatman's Shed on the dock to upgrade the oars, hull, and lantern.</p></div>
+    <div class="card"><img class="shot" src="img/28_mist_wave2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><h3>🌫️ Misty Forest <small>old-tree arch to the northwest</small></h3><p>Start at the 🌳 Guardian Tree (a practice round first if it's your first time). When shadow spirits approach, slow them with the 🏮 lantern and tap when the ♪ mark is at its smallest to soothe them. It's music, not a fight, so failing costs nothing.</p></div>
   </div>
 </section>
 
@@ -346,13 +352,13 @@
         <thead><tr><th>Weather</th><th>Chance</th><th>On these days</th></tr></thead>
         <tbody>
           <tr><td>☀️ Clear</td><td>55%</td><td>Business as usual</td></tr>
-          <tr><td>🌧️ Rain</td><td>20%</td><td>Crops grow on their own · faster bites and more rare fish · more mushrooms</td></tr>
+          <tr><td>🌧️ Rain</td><td>20%</td><td>Crops grow on their own · faster bites · 🌈 rainbow fish only on these days · more mushrooms</td></tr>
           <tr><td>❄️ Snow</td><td>12%</td><td>Chopping drops extra wood</td></tr>
-          <tr><td>🌫️ Fog</td><td>13%</td><td>Double gem odds in the cave · fireflies by day · 🌟 golden spirit</td></tr>
+          <tr><td>🌫️ Fog</td><td>13%</td><td>💎 cave gems only on these days · fireflies by day · 🌟 Golden Spirit</td></tr>
         </tbody>
       </table></div>
-      <div class="tip"><b>🦝 Night visitors</b>: while you're away overnight, raccoons and boars may steal crops from your plots. One 🎃 scarecrow (5 wood) or four 🪵 fences (3 wood each) near the plots keeps them out. Inspect the spot they visited for a collection item.</div>
-      <div class="warn"><b>On days with a ❄️ frost or 🌀 typhoon forecast,</b> harvest early or craft a 🛡️ field cover (3 wood) at the workbench. Wilted crops can be restored with the hoe.</div>
+      <div class="tip"><b>🦝 Night Visitors</b>: while you're away overnight, raccoons and boars may steal crops from your plots. One 🎃 scarecrow (5 wood) or four 🪵 fences (3 wood each) near the plots keeps them out. If you were robbed, look over the spot marked 🐾 Check!. You'll find a collection item, and a match to win your crops back opens up (chapter 20).</div>
+      <div class="warn"><b>On days with a ❄️ frost or 🌀 typhoon forecast,</b> harvest early or craft a 🛡️ Field Cover (3 wood) at the workbench. Wilted crops can be restored with the hoe.</div>
     </div>
     <div>
       <img class="shot" src="img/23_night.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">The village at night: torches, window lights, drifting fireflies</p>
@@ -366,9 +372,9 @@
   <h2 data-chip="Collection">Collect, get recognized, and the story goes on</h2>
   <div class="cols">
     <div>
-      <div class="card"><h3>📖 Collection: 46 entries</h3><p>Fish 3 · crops 4 · minerals 3 · dishes 5 · neighbors 6 · foraged 4 · fireflies 4 · night visitor traces 2 · underground 3 · river 4 · spirits 4 · weather 4.<br>Entries register automatically on first encounter, and completing it all pays 150🪙. Open it any time with the 📖 button on the right.</p></div>
-      <div class="card" style="margin-top:10px"><h3>🏅 14 badges <small>displayed below the collection</small></h3><p>🏠 Home Owner (+20) · 🎖️ First Request Done (+20) · 🔥 Full Week (+30) · 🌈 All-Weather Explorer · ☕ Village Barista (15 cups) · 🛶 First Voyage · 🌫️ Forest Purifier · 👑 Village Hero (+50) · 📖 Collection Master · 🏙️ Dream House (+100) …</p></div>
-      <div class="card" style="margin-top:10px"><h3>📖 My Story: 4 chapters</h3><p>Tap the story chip at the top left to see it.<br>Ch. 1 My First House (finish the house, +40🪙) → Ch. 2 Forest Neighbors (3 requests) → Ch. 3 The First Dish (cook once + serve once) → Ch. 4 Keeper of the Leaf (purify the misty forest, +80🪙).<br>No need to force it. It moves along on its own as you play.</p></div>
+      <div class="card"><h3>📖 Collection: 72 entries</h3><p>Fish 3 · crops 7 · minerals 3 · dishes 11 · neighbours 19 · foraged 4 · fireflies 4 · night visitor tracks 2 · underground 3 · river 4 · spirits 4 · weather 4 · garden visitors 4.<br>Entries register automatically on first encounter, and completing it all pays 150🪙. Open it any time with the 📖 button on the right, and what you collect is also displayed in the 🏛️ Museum (chapter 21).</p></div>
+      <div class="card" style="margin-top:10px"><h3>🏅 15 badges <small>displayed below the collection</small></h3><p>🏠 Home Sweet Home (+20) · 🎖️ First Errand Done (+20) · 🔥 Perfect Week (+30) · 🌈 All-Weather Explorer (+30) · 🌟 Night Collector (+40) · 🍄 Forest Guide (+40) · ☕ Village Barista (15 dishes, +60) · 🛶 Maiden Voyage (+30) · 🌊 Smooth Sailing (+80) · 🌫️ Forest Purifier (+30) · ✨ Friend of the Spirits (+60) · 👑 Hero of the Village (+50) · 📖 Collection Master (+50) · 🏙️ Dream House (+100) …</p></div>
+      <div class="card" style="margin-top:10px"><h3>📖 My Story: 4 chapters</h3><p>Tap the story chip at the top left to see it.<br>Ch. 1 My First Home (finish the house, +40🪙) → Ch. 2 Neighbors of the Forest (3 requests, 5 seeds + 30🪙) → Ch. 3 The First Dish (cook once + serve once, +50🪙) → Ch. 4 The Leaf's Keeper (purify the Misty Forest, +80🪙).<br>No need to force it. It moves along on its own as you play.</p></div>
     </div>
     <div>
       <img class="shot" src="img/13_dex.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">📖 Collection: entries you haven't met yet show as ???</p>
@@ -385,25 +391,26 @@
       <ul class="list">
         <li>Saves every 30 seconds and when you close the page. There is no save button.</li>
         <li>With Google sign-in you continue on any device. Guest progress lasts only for this visit.</li>
-        <li>📸 Photo album (100 shots) and 📊 activity stats are Google sign-in only. 📷 Taking photos works for everyone.</li>
-        <li>🏆 Leaderboards, 6 boards: river run · big catch · weekly rich · mining king · cooking king · quests. Weekly boards reset on Monday.</li>
+        <li>📸 Photo Album (100 shots) and 📊 Activity Log are Google sign-in only. 📷 Taking photos works for everyone.</li>
+        <li>🏆 Leaderboard, 6 boards: River Run · Catch of the Day · Weekly Riches · Master Miner · Star Chef · Quests. Weekly boards reset on Monday.</li>
+        <li>📮 Inbox: announcements and replies to the feedback you sent arrive here. If there's anything unread, you'll be told when you log in.</li>
         <li>🌐 To switch to Korean, choose Language in the ☰ menu.</li>
       </ul>
-      <img class="shot" src="img/14_menu.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">☰ Menu: change character/name, leaderboards, photo album, beginner's guide, music, language</p>
+      <img class="shot" src="img/14_menu.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">☰ Menu: change character/name, village map, leaderboard, photo album, beginner's guide, inbox, music, language</p>
     </div>
     <div>
       <h3>Frequently asked questions</h3>
       <div class="tbl"><table class="faq">
         <tbody>
           <tr><td>My tools disappeared</td><td>In the woods, indoors, and at the café you switch to ✋ bare hands automatically. Press <span class="kbd">1</span> (🎒 on phone) to bring them back.</td></tr>
-          <tr><td>I can't make a plot</td><td>Not near trees, the lake, the house site, or the workbench. Move a step or two, or go to My Field.</td></tr>
+          <tr><td>I can't make a plot</td><td>Not near trees, the lake, the house site, or the workbench. Move a step or two, or go to My Farm.</td></tr>
           <tr><td>I want to remove a plot</td><td>Take the 🪏 shovel (<span class="kbd">6</span>) from the 🌾 farming set and dig an <b>empty plot</b> <b>twice within 6 seconds</b>. If it has a crop, harvest it or clear it with the hoe first.</td></tr>
-          <tr><td>My crops won't grow</td><td>They only grow when watered. 3 times, 5 seconds apart. If wilted, re-till with the hoe.</td></tr>
-          <tr><td>I keep losing fish</td><td>You must press within 1.4 seconds of "Bite!". Craft the sturdy rod to stretch it to 2.6 seconds.</td></tr>
+          <tr><td>My crops won't grow</td><td>They only grow when watered. Each time the soil dries, 2 times in all. If wilted, re-till with the hoe. Premium crops also need 🌱 fertilizer to grow at full speed.</td></tr>
+          <tr><td>I keep losing fish</td><td>You have to press the moment "A bite!" appears. The Sturdy Fishing Rod nearly doubles your window.</td></tr>
           <tr><td>The merchant won't come</td><td>He comes exactly once, when you're outdoors in the village holding 5 wood. If he already came, use the east stall.</td></tr>
-          <tr><td>I'm short on coins</td><td>The 🦉 owl's 5 requests (70🪙 + lucky box), café serving, and selling on a good-price day are the fastest.</td></tr>
-          <tr><td>The sea pier is hard</td><td>Pressing on 🔴 drags you in. Hold on, and mash only on 🟢. Start with horse mackerel (daytime).</td></tr>
-          <tr><td>Where do I report bugs or ideas</td><td>The 💬 Feedback button at the bottom right sends it straight to us.</td></tr>
+          <tr><td>I'm short on coins</td><td>The 🦉 owl's 5 requests (70🪙 + Lucky Box) and the special request (30🪙 + 💎), café serving, and selling on a good-price day are the fastest.</td></tr>
+          <tr><td>The Seaside Pier is hard</td><td>Pressing on 🔴 drags you in. Hold on, and mash only on 🟢. Start with mackerel (daytime).</td></tr>
+          <tr><td>Where do I report bugs or ideas</td><td>Send them with 💬 Feedback (bottom right on PC, top right on phone). Replies arrive in ☰ 📮 Inbox.</td></tr>
         </tbody>
       </table></div>
     </div>
@@ -418,7 +425,7 @@
       <p class="lead">20 to 30 minutes is plenty. Finish these and you've learned all the basics of this forest.</p>
       <ul class="check">
         <li>🪓 Chop 3 trees (9 wood)</li>
-        <li>🧑‍🌾 Take Farmer Uncle's request and collect the reward</li>
+        <li>🧑‍🌾 Take the Farmer's request and collect the reward</li>
         <li>🧙 Sell wood to the visiting merchant</li>
         <li>🦉 One of the owl's daily requests</li>
         <li>🌰 Till one plot and take it to harvest</li>
@@ -428,13 +435,218 @@
         <li>🔨 Finish the house and 🚪 step inside</li>
         <li>📖 Open the collection and see how many entries there are</li>
         <li>🎨 Place one piece of furniture (rug = 2 crops)</li>
-        <li>🌙 When night falls, visit the firefly glade</li>
+        <li>🌙 When night falls, visit Firefly Valley</li>
       </ul>
-      <div class="tip"><b>Come back tomorrow</b> and the attendance reward, the owl's new requests, new café guests, new carving orders, and a new river course will be waiting. Two days in a row unlocks the chicken coop. The forest is in no hurry 🌲</div>
+      <div class="tip"><b>Come back tomorrow</b> and the attendance reward, the owl's new requests, new café guests, new carving orders, and a new river course will be waiting. Two days in a row unlocks the chicken coop. The forest is in no hurry 🌲 Once you've settled in a bit, open Part 2 below.</div>
     </div>
     <div>
       <img class="shot" src="img/08_fish_catch2.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">A big one! The catch screen</p>
       <img class="shot" src="img/22_cafe_serve.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Café serving: coins and friendship from dishes you cooked</p>
+    </div>
+  </div>
+</section>
+
+<section class="gd-sec" id="sec-21">
+  <div class="gd-eyebrow">PART 2 · ONCE THE VILLAGE FEELS LIKE HOME</div>
+  <h2 data-chip="Part 2">Got through your first day? Now branch out, slowly</h2>
+  <p class="lead">If you've done most of the Part 1 checklist, you know the basics. Part 2 gathers things you enjoy bit by bit over several days. No need to read it all up front; open it whenever something makes you curious.</p>
+  <div class="cards">
+    <div class="card"><h3>18 🚜 Expanding the farm</h3><p>Grow your farm to 121 plots and hand the field work to workers. Harvest premium crops and the orchard opens.</p></div>
+    <div class="card"><h3>19 🔥 Crafting · more cooking</h3><p>Leave materials in the kiln or vat and they're ready the next day. There are 11 dishes, and leftovers go in the pantry.</p></div>
+    <div class="card"><h3>20 💞 Closer to your neighbors</h3><p>Chat with villagers, and once you're close, a hidden request earns a golden tool blueprint. Matches against night visitors are here too.</p></div>
+    <div class="card"><h3>21 🏛️ Museum · visitors</h3><p>What you collect goes on display in the museum, and tending your farm brings animal guests.</p></div>
+    <div class="card"><h3>22 🎀 Dressing up</h3><p>Hats and capes, tracks you leave as you walk, pets that help in the field, and add-ons for your house.</p></div>
+  </div>
+</section>
+
+<section class="gd-sec" id="sec-22">
+  <div class="gd-eyebrow">18 · EXPANDING THE FARM · WORKERS · ORCHARD</div>
+  <h2 data-chip="Farm Expansion">Widen your farm and let workers help</h2>
+  <div class="cols">
+    <div>
+      <p class="lead">🌾 My Farm starts at 25 plots. Hand over materials at the 📐 Survey Office desk outside the farm's west gate and the fence moves outward. Plots you've planted and buildings stay where they are.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Stage</th><th>Cost to expand</th><th>Plots · workers</th></tr></thead>
+        <tbody>
+          <tr><td>🌱 My Farm</td><td>From the start</td><td>25 plots · 2</td></tr>
+          <tr><td>🌾 Wide Field</td><td>🪵40 · 🪨20 · 🪙150</td><td>81 plots · 4</td></tr>
+          <tr><td>🚜 Grand Farm</td><td>🪵90 · 🪨60 · 🪙450</td><td>121 plots · 6</td></tr>
+        </tbody>
+      </table></div>
+      <h3>🔧 Farm facilities <small>Supply Bench next to the Survey Office</small></h3>
+      <p>Build them from "🔧 Build farm facilities" and place them on empty ground inside the fence. They all look like red-roofed barns.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Facility</th><th>Materials</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>📋 Hiring Board</td><td>🪵25 · 🪙80</td><td>You need this before you can hire workers</td></tr>
+          <tr><td>🧺 Crop Warehouse</td><td>🪵30 · 🪨10</td><td>Holds up to 60 crops your workers harvest</td></tr>
+          <tr><td>🍇 Grape Trellis</td><td>🪵20</td><td>Grapes can only be planted in plots right beside it</td></tr>
+          <tr><td>💧 Well</td><td>🪵20 · 🪨25 · 🪙100</td><td>Nearby plots stay moist longer</td></tr>
+          <tr><td>🌱 Compost Bin</td><td>🪵25</td><td>Pulling weeds gives fertilizer (3 a day)</td></tr>
+          <tr><td>🏚️ Worker Shelter</td><td>🪵40 · 🪨15 · 🪙150</td><td>Workers nearby work faster</td></tr>
+          <tr><td>🐝 Beehive</td><td>🪵30 · 🪙60</td><td>Nearby crops grow a little faster, plus 2 🍯 honey every day</td></tr>
+        </tbody>
+      </table></div>
+      <img class="shot" src="img/22_farm_stage3.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🚜 Big Farm - all 121 plots planted</p>
+    </div>
+    <div>
+      <div class="card"><h3>🧑‍🌾 Workers <small>from the 📋 board</small></h3><p>Pick from 3 new candidates each day (hiring fee 🪙120). They all water; the 🦫 mole also tills, fertilizes, and weeds, the 🐹 hamster harvests and sows, and the 🐿️ squirrel hauls and chases pests. Wages are paid once a day. They start as Apprentice at 🪙15 and, the more work they do, rise to Skilled at 🪙30 and Master at 🪙55. If you're short on coins the priciest workers rest first, and you never go into debt. They keep working for up to 12 hours while you're offline.</p></div>
+      <div class="warn"><b>With no warehouse, or a full one, workers stop harvesting.</b> Empty it often with "🧺 Take from warehouse" in front of it.</div>
+      <div class="card" style="margin-top:10px"><h3>🌾 Premium crops <small>seeds at the 🛒 Shop</small></h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Crop</th><th>3 seeds</th><th>Water</th><th>Traits</th><th>Sells</th></tr></thead>
+          <tbody>
+            <tr><td>🌾 Wheat</td><td>🪙18</td><td>2 times</td><td>Weeds often · 🔥 flour ingredient</td><td>15</td></tr>
+            <tr><td>🌽 Corn</td><td>🪙24</td><td>3 times</td><td>Attracts pests</td><td>20</td></tr>
+            <tr><td>🍇 Grapes</td><td>🪙36</td><td>3 times</td><td>Only beside a trellis · 🫙 grape juice ingredient</td><td>30</td></tr>
+          </tbody>
+        </table></div>
+        <p>Press the 🌰 Seed tool again to cycle basic → wheat → corn → grapes. They need 🌱 fertilizer to grow at full speed; pull 🌿 weeds bare-handed and chase 🐛 pests with the 🦋 bug net. You don't get seeds back, but each harvest gives 2 at once.</p>
+      </div>
+      <div class="card" style="margin-top:10px"><h3>🍎 Orchard <small>hill east of the village</small></h3><p>It opens the first time you harvest a premium crop, and you get 2 🍎 Apple Saplings. Saplings are sold at the 🛒 Shop (Apple 🪙90 to Chestnut 🪙300). You can plant up to 10 trees, and the four spots by the stream never need watering. They're fully grown in 3 to 5 days; after that, every day you water them they bear 2 fruit. Fruit piles up to 6, so you can pick it all at once with the 🌾 sickle every few days.</p></div>
+      <div class="tip"><b>No need to pick each tool by hand.</b> On your farm and in the orchard, hold any farming tool and just press action; it switches to the right one. Only the 🪏 shovel and 🪓 axe have to be taken out separately.</div>
+    </div>
+  </div>
+</section>
+
+<section class="gd-sec" id="sec-23">
+  <div class="gd-eyebrow">19 · OVERNIGHT CRAFTING · MORE COOKING</div>
+  <h2 data-chip="Crafting">Set it up, sleep, and it's ready the next day</h2>
+  <div class="cols">
+    <div>
+      <p class="lead">There's one 🔥 Kiln below the cave entrance west of the village and one 🫙 Vat in the Survey Office yard on your farm, both from the start. Load the materials, play a short minigame, and once the date changes, go back and collect.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Makes</th><th>Materials</th><th>Minigame</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td>⚫ Charcoal</td><td>🪵8</td><td>Fire control: stop when the needle is in the green</td><td>Selling</td></tr>
+          <tr><td>🌾 Flour</td><td>🌾 wheat 4</td><td>Millstone: one and a half turns at an even pace</td><td>🥐 bread ingredient</td></tr>
+          <tr><td>🧱 Brick</td><td>🪨6 · ⚫coal 2</td><td>Tamping clay: press and hold, release in the green</td><td>Selling</td></tr>
+          <tr><td>🍷 Grape Juice <small>Vat</small></td><td>🍇 grapes 4</td><td>Tread the Grapes: 6 times, in time with the spreading rings</td><td>🍹 Grape Cooler ingredient</td></tr>
+        </tbody>
+      </table></div>
+      <div class="tip"><b>The minigame sets the amount, not pass or fail.</b> Depending on the 😅 🙂 😋 💫 grade you get 2 to 5. Each one has two slots, and if you need more you can build extras in the workbench 🌷 Outdoor tab (Kiln 🪨20 · 🪵15 · 🪙150, Vat 🪵25 · 🪨10 · 🪙200).</div>
+      <div class="warn"><b>It isn't collected automatically.</b> When you log in, a notice like "Ready at the kiln" pops up. Go there and press collect.</div>
+      <img class="shot" src="img/23_kitchen_menu.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🍳 Kitchen menu - stars, course steps and 🧺 cupboard slots</p>
+    </div>
+    <div>
+      <div class="card"><h3>🍳 11 dishes <small>★ = number of minigames</small></h3>
+        <div class="tbl"><table>
+          <thead><tr><th>★</th><th>Dish</th><th>Ingredients</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td>★</td><td>🥘 Hearty Veggie Porridge</td><td>3 crops</td><td>60s fast feet</td></tr>
+            <tr><td>★</td><td>🍄 Forest Mushroom Soup</td><td>3 foraged</td><td>90s fast feet</td></tr>
+            <tr><td>★</td><td>🍙 Salted Rice Ball</td><td>2 crops</td><td>60s chopping +1</td></tr>
+            <tr><td>★</td><td>🍠 Roasted Sweet Potato</td><td>2 foraged · 1 crop</td><td>60s more ore</td></tr>
+            <tr><td>★</td><td>🥗 Wild Herb Salad</td><td>2 foraged · 1 crop</td><td>60s fishing luck</td></tr>
+            <tr><td>★★</td><td>🐟 Grilled Fish</td><td>2 fish</td><td>90s fishing luck</td></tr>
+            <tr><td>★★</td><td>🍳 Fluffy Omelette</td><td>2 eggs · 1 crop</td><td>90s more ore</td></tr>
+            <tr><td>★★</td><td>🥐 Fresh Bread</td><td>2 flour</td><td>150s fast feet</td></tr>
+            <tr><td>★★</td><td>🍹 Grape Cooler</td><td>1 grape juice</td><td>120s fishing luck</td></tr>
+            <tr><td>★★★</td><td>🍱 Picnic Lunchbox</td><td>2 crops · 1 fish · 1 foraged</td><td>150s chopping +1</td></tr>
+            <tr><td>★★★</td><td>🍲 Forest Feast</td><td>2 foraged · 2 crops · 1 fish</td><td>180s fishing luck</td></tr>
+          </tbody>
+        </table></div>
+        <p>There are four minigames. 🍲 Boiling: tap in the green zone. 🔪 Chopping: tap to the beat. 🔥 Grilling: flip in the gold zone (miss it and it burns). 🧂 Seasoning: press and hold, release on the line. Get 💫 Perfect Taste and the effect lasts 1.5 times longer. If you stop partway you still get the dish, but it tastes worse.</p>
+      </div>
+      <div class="card" style="margin-top:10px"><h3>🧺 Pantry <small>6 slots in your bag</small></h3><p>When a dish is done, choose "🍽️ Eat it now" or "🧺 Store it". Tap a stored dish in your 🎒 bag to eat it whenever you like. When a ☕ café guest orders a dish that's in your pantry, you can serve it right away with no minigame. Even if it's not in the pantry, you can cook it in front of the guest as long as you have the ingredients.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="gd-sec" id="sec-24">
+  <div class="gd-eyebrow">20 · CLOSER TO YOUR NEIGHBORS</div>
+  <h2 data-chip="Neighbors">Chat, grow close, and earn blueprints</h2>
+  <div class="cols">
+    <div>
+      <p class="lead">Talking to a villager opens their villager window first. Press 💬 Talk there for a chat that starts with a weather greeting and goes back and forth three times. You pick each reply from three choices. You can chat with each villager up to twice a day.</p>
+      <div class="tip"><b>Chatting has no reward.</b> It's just time to hear your neighbors' stories. The day's lines are the same for everyone, so you can ask a friend, "What did the Farmer say today?"</div>
+      <div class="card"><h3>❤️ Raising friendship</h3><p>Make a gift in the workbench 🎁 Gifts tab and hand it over with 🎁 Give a Gift in the villager window. 💐 Bouquet (2 crops) · 🧺 Fruit Basket (4 crops) · 🐟 Fish Bundle (3 fish) · 🪆 Wooden Doll (6 wood) give ❤️+1, and a 📿 Gem Necklace (💎1) gives ❤️+2. Finishing a 🔁 repeat request, which villagers who've finished their story requests sometimes offer, is also ❤️+1. Every time ❤️ reaches 3, 6, 9… they send a thank-you (3 seeds + 1 crop).</p></div>
+      <div class="card" style="margin-top:10px"><h3>✨ The owl's special request</h3><p>Finish all 5 of 🦉 today's requests and the owl flies in with one more. The reward is 🪙30 + 💎1.</p></div>
+      <img class="shot" src="img/24_npc_window.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">Villager window - accept a request or 💬 chat</p>
+    </div>
+    <div>
+      <div class="card"><h3>📜 ❤️6 hidden request → golden tool</h3><p>Once ❤️ hits 6 and you've finished that villager's story requests, they bring out a hidden request: "Between you and me…". Finish it for 🪙20 and a 📜 blueprint, then craft the golden tool in the workbench 🔧 Tools tab.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Villager</th><th>Hidden request</th><th>Golden tool</th></tr></thead>
+          <tbody>
+            <tr><td>🧑‍🌾 Farmer</td><td>Harvest 20 crops</td><td>Sickle</td></tr>
+            <tr><td>👷 Carpenter</td><td>Chop trees 20 times</td><td>Hammer</td></tr>
+            <tr><td>🎣 Old Fisherman</td><td>12 fish</td><td>Rod</td></tr>
+            <tr><td>⭐ Stargazing Kid</td><td>10 fireflies</td><td>Net</td></tr>
+            <tr><td>🦆 Duck the Ferryman</td><td>Water 25 times</td><td>Watering Can</td></tr>
+            <tr><td>🦡 Badger the Forest Keeper</td><td>15 foraged items</td><td>Axe</td></tr>
+            <tr><td>🧑‍🦳 The Curator</td><td>15 ores</td><td>Hoe</td></tr>
+            <tr><td>🧙 Wandering Merchant</td><td>Sell 25 items at the Shop</td><td>Seed Pouch</td></tr>
+            <tr><td>🐔 Ranch Auntie</td><td>Plant seeds 20 times</td><td>Shovel</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="warn"><b>Golden tools only change the look.</b> They perform the same as a first-level upgraded tool. To make one, you first need that tool's first upgrade (like the Steel Axe).</div>
+      <div class="card" style="margin-top:10px"><h3>🐗🦝 A match with the night visitors</h3><p>If crops were stolen overnight, look over the spot marked 🐾 Check!. You get +2 seeds and a collection track, and a match starts right away. Against the 🐗 boar it's rock-paper-scissors (first to win twice); against the 🦝 raccoon it's the three-bowl shuffle (guess right in all three rounds). Win and you get back every crop taken that day, and that visitor stays away for two nights. Lose and you lose nothing more.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="gd-sec" id="sec-25">
+  <div class="gd-eyebrow">21 · MUSEUM · GARDEN VISITORS</div>
+  <h2 data-chip="Museum">Your finds go on display, and guests drop by</h2>
+  <div class="cols">
+    <div>
+      <div class="card"><h3>🏛️ Museum <small>far west of the village, past the cave</small></h3><p>Entry is free. Whatever you register in the 📖 collection is placed in the display cases on its own, and spots you haven't found yet are covered with 🎀 cloth. Fill enough of a lower floor and the next one up opens.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Floor</th><th>On display</th><th>Opens</th></tr></thead>
+          <tbody>
+            <tr><td>Ground Floor</td><td>Crops · fish · minerals (13)</td><td>From the start</td></tr>
+            <tr><td>Second Floor</td><td>Foraged · fireflies · underground · tracks · visitors (17)</td><td>9 on the ground floor</td></tr>
+            <tr><td>Third Floor</td><td>River · spirits · weather · neighbours (31)</td><td>9 on the second floor</td></tr>
+            <tr><td>Special Exhibition</td><td>Dishes (11)</td><td>12 on the third floor</td></tr>
+          </tbody>
+        </table></div>
+        <p>Press 🔍 Take a closer look in front of an exhibit you've found to turn it around up close. The plaque shows the date you first found it.</p>
+      </div>
+      <div class="tip"><b>✨ Special exhibits</b>: the three pedestals in the middle of the ground floor are for weather keepsakes. A fish caught on a 🌧️ rainy day, a crop you harvested yourself on a ❄️ snowy day, a foraged item picked up on a 🌫️ foggy day. The first one you get on such a day is placed under the glass cover.</div>
+      <img class="shot" src="img/25_museum.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🏛️ Museum 1F - your collection in the display cases</p>
+    </div>
+    <div>
+      <div class="card"><h3>🦋 Garden Visitors <small>only inside My Farm</small></h3><p>Tend the area around your farm and animal guests come by on their own. They stay about 25 seconds, so when one shows a 🔍 bubble, walk up and press Action (Space or tap). That registers it in the 📖 collection.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Guest</th><th>Favorite spot</th><th>When</th></tr></thead>
+          <tbody>
+            <tr><td>🦋 Swallowtail</td><td>Lots of 🌷 flower beds and no scarecrow</td><td>Day</td></tr>
+            <tr><td>🐦 Sparrow</td><td>Fully grown crops and no scarecrow</td><td>Day</td></tr>
+            <tr><td>🦔 Hedgehog</td><td>Hiding spots behind 🧱 stone walls or fences, in the shade of a tree</td><td>Night</td></tr>
+            <tr><td>🐸 Tree Frog</td><td>Damp, shady spots, like beside a 💧 well</td><td>Rainy days</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="tip"><b>A scoreboard pops up while you place decorations.</b> When you place or move an outdoor decoration on your farm, it shows which guests would come to that spot. When "✅ They'll come to a spot like this" appears, put it there. A scarecrow scares off butterflies and sparrows right beside it but protects plots from a little farther away, so set it a bit apart at the edge of your plots.</div>
+    </div>
+  </div>
+</section>
+
+<section class="gd-sec" id="sec-26">
+  <div class="gd-eyebrow">22 · DRESSING UP · PETS · HOUSE EXTERIOR</div>
+  <h2 data-chip="Customize">Dress up yourself and your house, little by little</h2>
+  <div class="cols">
+    <div>
+      <div class="card"><h3>🎀 Dress-Up Shop <small>west of the village, between the house site and the cave</small></h3><p>Press action at the door to open the shop. Tapping a row only lets you 🪞 try it on; press the price button on the right to buy. You can switch anything you own between Wear and Take off at any time. Everything is bought with coins only.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Tab</th><th>What's there</th><th>Price</th></tr></thead>
+          <tbody>
+            <tr><td>🎩 Head</td><td>Wool Hat · Cap · Mushroom Hat · Straw Hat · Flower Crown · Leaf Band · Star Pin</td><td>600 to 1,800🪙</td></tr>
+            <tr><td>🧣 Neck</td><td>Scarf · Bell Collar · Bow Tie</td><td>700 to 900🪙</td></tr>
+            <tr><td>🎒 Bag</td><td>Messenger Bag · Basket · 🦸 Cape</td><td>1,200 to 1,800🪙</td></tr>
+            <tr><td>✨ Effects</td><td>Tracks you leave as you walk: 🐾 Paw Print · 💧 Droplet · 🌸 Flower · ⭐ Star · ✨ Sparkle</td><td>700 to 2,600🪙</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="tip"><b>✨ Effects: the tracks walk toward you first.</b> In the preview, footprints walk toward the screen instead of your character. 🐾 Paw prints are shaped differently for each animal. No tracks are left indoors, at the café, in the museum, or in the cave.</div>
+      <img class="shot" src="img/26_shop.jpg" width="1200" height="674" loading="lazy" decoding="async" alt=""><p class="cap">🎀 Dress-up shop - tap a row to try it on first</p>
+    </div>
+    <div>
+      <div class="card"><h3>🐾 Pets <small>3,000🪙 each</small></h3><p>🍃 Sprout · ✨ Wisp · 🐦 Bluebird · 🫘 Pebble, four in all. Buy them in the Dress-Up Shop 🐾 Pet tab, and switch between the pets you own any time with "Take along". Only one follows you at a time. Press 🐾 Ask for help near your plots and it tends up to 5 plots (watering, weeds, and bugs), then rests for 20 seconds after each job. It doesn't harvest or sow. The more it works, the more it grows and changes its look.</p></div>
+      <div class="card" style="margin-top:10px"><h3>🏠 House exterior <small>after the roof is on, in front of the house</small></h3><p>In 🎨 House Exterior Decor, choose roof, wall, and door colors, and buy and attach 🧩 add-ons. There are 12, from Chimney Smoke (🪙40) to the Rooftop Parasol Set (🪙900), and more open up as you expand the house. 🔒 Locked colors come one at a time when you finish or expand the house, and now and then from fishing, harvesting, and requests.</p></div>
+      <div class="card" style="margin-top:10px"><h3>🪵 Moving outdoor decorations</h3><p>Stand next to an outdoor decoration like a scarecrow, fence, or flower bed and "Move" appears (you can also tap the decoration itself). Carry it and set it down with action wherever you like. If you 🧺 store it, you can take it out again any time from the workbench 🌷 Outdoor tab. Moving costs nothing.</p></div>
     </div>
   </div>
 </section>
