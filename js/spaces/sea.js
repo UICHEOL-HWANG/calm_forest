@@ -101,14 +101,15 @@ export function spawnSeaGate() {
   coveWater = makeWavyWater(SEA_COVE.r, IS_MOBILE ? 36 : 48, IS_MOBILE ? 7 : 10,
     0x3b8fbe, 0x6fd0e2, 0.92,
     (x, z, d) => Math.min(1, Math.max(0, (SEA_COVE.r - d) / (SEA_COVE.r * 0.35))));  // 물가에선 잔잔하게
-  coveWater.mesh.position.set(CX, 0.08, CZ); g.add(coveWater.mesh);
+  //   수면은 0.18 — 물결 골(±amp×1.5≈0.13)이 모래판(0.03) 밑으로 꺼지면 모래가 노란 구멍처럼 뚫려 보였다
+  coveWater.mesh.position.set(CX, 0.18, CZ); g.add(coveWater.mesh);
   // 물가 거품 — 마을 쪽 물가를 따라 하얀 방울
   const shoreAng = Math.atan2(-CZ, -CX);          // 후미 중심 → 게이트(마을) 방향
   for (let i = 0; i < 7; i++) {
     const a = shoreAng + (i - 3) * 0.34;
     const foam = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.05, 7, 5), clayMat(0xf6f2e4, false));
     foam.scale.y = 0.3;
-    foam.position.set(CX + Math.cos(a) * (SEA_COVE.r - 0.5), 0.13, CZ + Math.sin(a) * (SEA_COVE.r - 0.5));
+    foam.position.set(CX + Math.cos(a) * (SEA_COVE.r - 0.5), 0.2, CZ + Math.sin(a) * (SEA_COVE.r - 0.5));
     g.add(foam);
   }
   // ── 등대 — 물속 바위섬 위(빨간 줄무늬 2단, 마을에서 잘 보이는 랜드마크)
@@ -137,10 +138,14 @@ export function spawnSeaGate() {
   [0, Math.PI].forEach(dir => {
     const arm = new THREE.Group(); arm.rotation.y = dir; seaBeacon.add(arm);
     [[0.85, 7.5, 0.13], [0.38, 6.2, 0.22]].forEach(([r, len, op]) => {
-      const geo = new THREE.ConeGeometry(r, len, 12, 1, true);
+      const geo = new THREE.ConeGeometry(r, len, 12, 6, true);
       geo.translate(0, -len / 2, 0);              // 꼭짓점을 램프에 붙이고 바깥으로 퍼지게
+      // 끝으로 갈수록 어둡게(가산 블렌딩이라 검정=투명) — 뚝 잘린 원뿔 입구가 노란 타원 구멍처럼 보였다
+      const p = geo.attributes.position, fade = new Float32Array(p.count * 3);
+      for (let i = 0; i < p.count; i++) fade.fill((1 + p.getY(i) / len) ** 1.6, i * 3, i * 3 + 3);
+      geo.setAttribute('color', new THREE.BufferAttribute(fade, 3));
       const mat = new THREE.MeshBasicMaterial({
-        color: 0xffe9a8, transparent: true, opacity: op, depthWrite: false,
+        color: 0xffe9a8, transparent: true, opacity: op, depthWrite: false, vertexColors: true,
         blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
       mat.userData.base = op;                     // 밤/낮 밝기 보간 기준(updateSeaVisuals)
       seaBeamMats.push(mat);
@@ -160,7 +165,7 @@ export function spawnSeaGate() {
   // 부표 — 물 위 주황 부표(바다터 부표와 같은 문법)
   [[CX - 1, CZ + 6.5], [CX + 4.5, CZ + 2]].forEach(([bx, bz]) => {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
-    b.scale.y = 1.25; b.position.set(bx, 0.2, bz); g.add(b);
+    b.scale.y = 1.25; b.position.set(bx, 0.28, bz); g.add(b);
   });
   g.add(makeSignpost('🌊 바다터', -1.6, 1.2));    // 다른 게이트와 같은 문법의 표지판
   obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
