@@ -64,7 +64,7 @@ export function playChestReveal(canvas, { lootId, night = false } = {}) {
     const ki = ease((t - 0.6) / 0.3);
     item.visible = t > 0.6;
     item.position.set(0, u.H - 0.25 + 0.4 * ki, 0.05);
-    item.scale.setScalar(1.25 * (0.4 + 0.6 * ki));
+    item.scale.setScalar(1.05 * (0.4 + 0.6 * ki));   // 1.25 는 비료 자루가 뚜껑을 덮었다(실측)
     item.rotation.y = t * 1.6;
     const kr = clamp01((t - 0.45) / 0.4);
     rays.visible = kr > 0; rays.rotation.z = t * 0.5; rays.scale.setScalar(0.6 + 1.0 * ease(kr));

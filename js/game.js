@@ -2127,6 +2127,7 @@ export async function enterGame() {
       up: (id, lv = 1) => { if (id in gameState.boat.up) gameState.boat.up[id] = lv; return { ...gameState.boat.up }; },
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
+      chestReset: () => { gameState.boat.chestDate = null; return 'ok'; },   // 🧰 오늘 건진 기록을 지워 다시 떠내려오게
     };
     // 🔥 __craftNotice() — 완성 알림을 다시 띄운다(하루 1회 제한을 풀고 재실행, 검증용)
     window.__craftNotice = () => { gameState.craft.noticedDay = null; catchUpCraft(); return gameState.craft.slots.length; };
