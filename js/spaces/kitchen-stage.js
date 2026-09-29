@@ -14,6 +14,7 @@ import { t } from '../i18n.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
 import { greyFood, ingredientModel, releaseFood, setFoodOpacity, setFoodTint } from '../cook-ingredient-art.js';   // 🍲 재료는 이모지 대신 3D 모형(2026-09-29)
+import { BOARD_TOP, CUT_X, CUT_Z, KNIFE_UP, chopNote, clearChops, startChop, updateChops } from './kitchen-chop.js';   // 🔪 M2 통통통
 
 export function spawnWorkbench() {
   const g = new THREE.Group(); g.position.copy(BENCH);
@@ -148,11 +149,11 @@ export function buildKitchenSet() {
   const edge = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.028), new THREE.MeshStandardMaterial({ color: 0xf4f6f9, roughness: 0.2, metalness: 0.7 }));
   edge.position.set(-0.27, -0.105, 0); knife.add(edge);   // 반짝이는 칼날 라인
   const handle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 0.055), clayMat(0x5a4632)); handle.position.set(0.1, 0.02, 0); knife.add(handle);
-  knife.position.set(-0.28, 1.5, 0.55); knife.rotation.z = 0.42;   // 손잡이를 축으로 들려 있음
+  knife.rotation.y = -Math.PI / 2; knife.position.set(CHOP_X1, KNIFE_UP, CUT_Z + 0.27);   // 칼날을 흰 선 위에 세움(손잡이는 앞쪽) — 칼질은 kitchen-chop.js
   boardGroup.add(knife);
   // ✂️ 썰기 지점 표시 — 노트가 이 흰 선에 올 때 탭
   const cutLine = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
-  cutLine.rotation.x = -Math.PI / 2; cutLine.position.set(-0.35, 1.155, 0.45); boardGroup.add(cutLine);
+  cutLine.rotation.x = -Math.PI / 2; cutLine.position.set(CUT_X, 1.155, CUT_Z); boardGroup.add(cutLine);
   g.add(boardGroup);
   // 🍲 화덕 + 냄비 (끓이기 무대)
   const potGroup = new THREE.Group();
@@ -240,7 +241,7 @@ export function buildKitchenSet() {
   scene.add(g);
   kset = { group: g, boardGroup, knife, potGroup, soup, flames, bubbles, steam, ladle, foods, light,
     grillGroup, grillFlames, grillFood, seasonGroup, shaker, saltBits,
-    notes: [], fx: [], knifeT: -1, ladleT: -1, flareT: -1, drop: null, dropT: -1,
+    notes: [], fx: [], chops: [], ladleT: -1, flareT: -1, drop: null, dropT: -1,
     flipT: -1, burn: 0, pouring: false, saltT: 0 };
 }
 
@@ -259,7 +260,7 @@ export function mgSceneStart(type, keys = [], noteN = 0, grillKey = '') {
   kset.notes.forEach(releaseFood); kset.notes = [];
   kset.fx.forEach(f => releaseFood(f.sp)); kset.fx = [];
   [...kset.foods.children, ...kset.grillFood.children].forEach(releaseFood);
-  kset.knifeT = -1; kset.ladleT = -1; kset.flareT = -1; kset.dropT = -1;
+  clearChops(kset); kset.ladleT = -1; kset.flareT = -1; kset.dropT = -1;
   kset.flipT = -1; kset.burn = 0; kset.pouring = false; kset.saltT = 0;
   kset.saltBits.forEach(b => { b.visible = false; });
   if (kset.drop) { releaseFood(kset.drop); kset.drop = null; }
@@ -272,8 +273,8 @@ export function mgSceneStart(type, keys = [], noteN = 0, grillKey = '') {
     kset.grillFood.add(ingredientModel(grillKey || keys[0] || 'crop', 0.56));
   } else if (type === 'chop') {                             // 리듬 노트(도마 앞을 흘러감)
     for (let i = 0; i < noteN; i++) {
-      const m = ingredientModel(keys[i % Math.max(1, keys.length)] || 'crop', 0.44);
-      m.position.set(3.4, 1.24, 0.75); m.visible = false;
+      const m = chopNote(keys[i % Math.max(1, keys.length)] || 'crop');   // 앞끝이 원점 — 칼과 같은 줄(흰 선)을 지난다
+      m.position.set(CHOP_X0, BOARD_TOP, CUT_Z); m.visible = false;
       kset.group.add(m); kset.notes.push(m);
     }
   }
@@ -405,33 +406,24 @@ export function mgSceneEnd() {
 }
 
 // 리듬 노트 위치 동기화 — ps[i] = { p: 진행도(0=출발 1=칼 아래), s: 0진행 1처리됨 2미스 }
-export const CHOP_X0 = 3.4, CHOP_X1 = -0.35;
+export const CHOP_X0 = 3.4, CHOP_X1 = CUT_X;
 
 export function mgChopFrame(ps) {
   if (!kset || !mgView) return;
   ps.forEach((st, i) => {
     const sp = kset.notes[i]; if (!sp) return;
-    if (st.s === 1) { sp.visible = false; return; }         // 썰린 노트는 조각 연출로 대체
+    if (st.s === 1) return;                                // 썰린 노트는 칼질 연출(kitchen-chop.js)이 움직이고 치운다
     sp.visible = st.p > 0;
     sp.position.x = CHOP_X0 + (CHOP_X1 - CHOP_X0) * st.p;
     if (st.s === 2 && !sp.userData.missed) { sp.userData.missed = true; greyFood(sp); setFoodOpacity(sp, 0.28); }
   });
 }
 
-// 칼질 명중 — 칼 내려찍기 + 재료 반쪽 두 개가 튀어오름 + 반짝이
+// 칼질 명중 — 통통통 3번 썰기(kitchen-chop.js) + 반짝이
 export function mgChopHit(i, judge) {
   if (!kset) return;
-  kset.knifeT = 0;
-  const sp = kset.notes[i];
-  const px = sp ? sp.position.x : CHOP_X1;
-  for (const dir of [-1, 1]) {
-    const half = ingredientModel(sp?.userData.ingredient || 'crop', 0.34);   // 썰린 반쪽 — 같은 재료를 작게
-    half.rotation.z = dir * 0.6;
-    half.position.set(px, 1.24, 0.75);
-    kset.group.add(half);
-    kset.fx.push({ sp: half, vx: dir * (0.9 + Math.random() * 0.4), vy: 1.6 + Math.random() * 0.6, life: 0.55 });
-  }
-  spawnSparkle(KSET.x + px, KSET.y + 1.3, KSET.z + 0.75, judge === 'perfect' ? 14 : 7);
+  startChop(kset, i);
+  spawnSparkle(KSET.x + CUT_X, KSET.y + 1.55, KSET.z + CUT_Z, judge === 'perfect' ? 6 : 3);   // 칼 위로 적게 — 많으면 블룸이 잘리는 순간을 덮는다
 }
 
 // 끓이기 탭 연출 — 단계별(재료 퐁당 / 국자 젓기 / 불길 활활)
@@ -472,13 +464,7 @@ export function updateMgScene(dt, t) {
   if (kset.flareT > 0) kset.flareT -= dt;
   kset.light.intensity = 1.15 + (kset.flareT > 0 ? 0.6 : 0) + 0.05 * Math.sin(t * 11);
   kset.foods.children.forEach((f, i) => { f.position.y = 0.02 + 0.02 * Math.sin(t * 2.4 + f.userData.ph); });
-  // 🔪 칼 내려찍기 트윈(0~0.1 내려감 → 0.35 복귀)
-  if (kset.knifeT >= 0) {
-    kset.knifeT += dt;
-    const k = kset.knifeT;
-    kset.knife.rotation.z = k < 0.1 ? 0.42 - (k / 0.1) * 0.47 : k < 0.35 ? -0.05 + ((k - 0.1) / 0.25) * 0.47 : 0.42;
-    if (k >= 0.35) kset.knifeT = -1;
-  }
+  updateChops(kset, dt);                                   // 🔪 칼질·조각·사라짐
   // 🥄 국자 젓기(원 궤적)
   if (kset.ladleT >= 0) {
     kset.ladleT += dt;
