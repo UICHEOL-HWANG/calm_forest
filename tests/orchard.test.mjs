@@ -366,12 +366,10 @@ test("toolZoneKey() 가 돌려주는 구역 이름은 전부 ZONE_PAGE 에 있�
 //   Task 6 에서 이 줄을 추가했다 — 나중에 buildWorld() 를 리팩터링하다 이 줄이 빠지면 여기서 잡는다.
 test('buildWorld 의 배경 나무 회피 목록에 ORCHARD_GATE 가 다른 게이트들과 같은 패턴으로 들어있다', () => {
   const src = gameSource();
-  // 반경은 조형이 커지면 바뀐다(문 앞 5 + 몸통 6.5). 숫자를 박지 말고 "조건이 있는가"만 본다
-  assert.match(
-    src,
-    /dist2D\(\{ x, z \}, ORCHARD_GATE\) < [\d.]+/,
-    'ORCHARD_GATE 회피 조건을 못 찾았다 — 배경 나무가 과수원 입구를 가릴 수 있다'
-  );
+  // 2026-09-29 입구가 잔디 판(타원)이 되면서 원 두 개 → orchardGateBlocks(판 타원 + 여유)로 바뀌었다.
+  //   숫자를 박지 말고 "조건이 있고, 판 크기(GATE_PATCH)에서 파생되는가"만 본다
+  assert.match(src, /\|\| orchardGateBlocks\(x, z\)/, 'ORCHARD_GATE 회피 조건을 못 찾았다 — 배경 나무가 과수원 입구를 가릴 수 있다');
+  assert.match(src, /function orchardGateBlocks\(x, z\) \{\s*const P = GATE_PATCH, cx = ORCHARD_GATE\.x/, '회피 타원이 잔디 판(GATE_PATCH)·ORCHARD_GATE 에서 파생돼야 판을 키워도 따라간다');
 });
 
 test('자리 배치: 앞 4자리는 시냇가 면제, 뒤 6자리는 매일 물이 필요하다', () => {
