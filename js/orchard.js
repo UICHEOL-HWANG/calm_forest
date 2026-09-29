@@ -14,13 +14,15 @@ export const STREAM_R = 5;        // 시냇물 중심선에서의 면제 반경 
 export const YIELD_PER_DAY = 2;   // 하루에 달리는 열매 수
 export const CAP_DAYS = 3;        // 안 따면 3일치까지 쌓이고 멈춘다
 
-/** 과일 표 — 스펙 §5. fruitColor/leafColor 는 인스턴스 색(새 메시 없이 색만 다르게) */
+/** 과일 표 — 스펙 §5. fruitColor/leafColor 는 인스턴스 색(새 메시 없이 색만 다르게)
+ *  💰 2026-09-29 재조정: 묘목값↓·판매가↑ — 전엔 본전까지 12~18일이라 해금한 유저도 안 심었다.
+ *     지금은 다 자란 뒤 2.5~3.3일이면 본전(팔기만 해도). 가공(🥫🍡🌰)하면 1.3배. */
 export const FRUITS = [
-  { id: 'apple',     name: '사과',   ico: '🍎', sapCoin: 90,  growDays: 3, price: 5,  fruitColor: 0xd64a42, leafColor: 0x5f9e52 },
-  { id: 'pear',      name: '배',     ico: '🍐', sapCoin: 130, growDays: 3, price: 6,  fruitColor: 0xd9cf7a, leafColor: 0x6aa85a },
-  { id: 'peach',     name: '복숭아', ico: '🍑', sapCoin: 180, growDays: 4, price: 8,  fruitColor: 0xef9aad, leafColor: 0x7ab069 },
-  { id: 'persimmon', name: '감',     ico: '🍊', sapCoin: 240, growDays: 4, price: 10, fruitColor: 0xe08a30, leafColor: 0x55924a },
-  { id: 'chestnut',  name: '밤',     ico: '🌰', sapCoin: 300, growDays: 5, price: 12, fruitColor: 0x7a5433, leafColor: 0x4a833f },
+  { id: 'apple',     name: '사과',   ico: '🍎', sapCoin: 40,  growDays: 3, price: 8,  fruitColor: 0xd64a42, leafColor: 0x5f9e52 },
+  { id: 'pear',      name: '배',     ico: '🍐', sapCoin: 55, growDays: 3, price: 10,  fruitColor: 0xd9cf7a, leafColor: 0x6aa85a },
+  { id: 'peach',     name: '복숭아', ico: '🍑', sapCoin: 80, growDays: 4, price: 13,  fruitColor: 0xef9aad, leafColor: 0x7ab069 },
+  { id: 'persimmon', name: '감',     ico: '🍊', sapCoin: 100, growDays: 4, price: 16, fruitColor: 0xe08a30, leafColor: 0x55924a },
+  { id: 'chestnut',  name: '밤',     ico: '🌰', sapCoin: 130, growDays: 5, price: 20, fruitColor: 0x7a5433, leafColor: 0x4a833f },
 ];
 
 // 🍎 시냇물 중심선 — 과수원을 세로로 가로지른다(ORCHARD 기준 국소 좌표)

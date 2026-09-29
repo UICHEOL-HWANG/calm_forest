@@ -108,6 +108,19 @@ export const EN = {
   // 가공물
   '숯': 'Charcoal', '밀가루': 'Flour', '벽돌': 'Brick',
   '⚫숯': '⚫Charcoal', '🌾밀가루': '🌾Flour', '🧱벽돌': '🧱Brick',
+  // 🍎 과수원 과일 가공(js/craft/recipes.js)
+  '사과잼': 'Apple Jam', '군밤': 'Roast Chestnuts', '곶감': 'Dried Persimmons',
+  '🥫사과잼': '🥫Apple Jam', '🌰군밤': '🌰Roast Chestnuts', '🍡곶감': '🍡Dried Persimmons',
+  '🥫 사과잼 졸이기': '🥫 Simmer the Jam', '🌰 밤 굽기': '🌰 Roast the Chestnuts', '🍡 곶감 주무르기': '🍡 Knead the Persimmons',
+  '여섯 번 주무르세요': 'six times',
+  '빠르게 연타하면 감이 뭉개져요': 'Mashing too fast bruises the persimmons',
+  // 🌾→🍎 과수원 가는 길 의뢰(js/orchard-onboard.js)
+  '🍎 과수원 가는 길': '🍎 The Way to the Orchard',
+  '🌾 밀 씨앗 심기': '🌾 Plant wheat seeds', '🌾 밀 거두기': '🌾 Harvest the wheat',
+  '🌰 씨앗 도구로 빈 밭에 심어요': 'Plant with the 🌰 seed tool on an empty plot',
+  '물 주고 다 자라면 🌾 낫으로 거둬요': 'Water it, then harvest with the 🌾 sickle when grown',
+  '동쪽 언덕에 과수원이 있어요 — 🌾 밀을 한 번 길러 거두면 열려요! 씨앗 3개 줄게요': "There's an orchard on the east hill — grow and harvest 🌾 wheat once to open it! Here are 3 seeds",
+  '🌾 밀 씨앗이 없네요 — 3개 더 줄게요. 빈 밭에 심어요': 'Out of 🌾 wheat seeds? Here are 3 more — plant them on an empty plot',
   // 미니게임
   '⚫ 불 조절': '⚫ Tend the Fire',
   '🌾 맷돌 돌리기': '🌾 Turn the Millstone',
