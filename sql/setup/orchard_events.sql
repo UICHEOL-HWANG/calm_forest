@@ -16,7 +16,7 @@ create table if not exists public.orchard_events (
   id          bigserial primary key,
   user_id     uuid not null references auth.users(id) on delete cascade,
   at          timestamptz not null default now(),
-  event       text not null,      -- sapling_plant | tree_water | fruit_ready | fruit_harvest | fruit_capped | tree_chop
+  event       text not null,      -- sapling_plant | tree_water | fruit_ready | fruit_harvest | fruit_capped | tree_chop | orchard_quest(method=step)
   kind        text,               -- apple | pear | peach | persimmon | chestnut
   n           int,
   near_stream boolean,
