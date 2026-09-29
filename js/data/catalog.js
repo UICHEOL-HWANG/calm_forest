@@ -121,7 +121,7 @@ export const stationLabel = (rec) => { const d = OUTDOOR.find(o => o.id === rec.
 // 🔥 가공물(charcoal·flour·brick·bread) — **파는 건 출구 중 가장 나쁜 선택**이 되게 잡았다.
 //   밀 4개(60)로 밀가루 평균 3.5개(63)라 팔면 본전이고, 빵으로 구우면 카페에서 56을 받는다.
 //   ⚠️ 이 표는 한 줄로 유지한다 — tests/orchard.test.mjs 가 한 줄 정규식으로 파싱한다.
-export const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 5, pear: 6, peach: 8, persimmon: 10, chestnut: 12 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
+export const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, apple_jam: 12, roast_chestnut: 30, gotgam: 24, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 8, pear: 10, peach: 13, persimmon: 16, chestnut: 20 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
 
 export const SHOP_BUY = [
   // 🪙 코인 전용 소모품 — 재료로는 못 얻는 "시간·운"을 판다(첫 구매처, 20~25🪙)
@@ -135,11 +135,11 @@ export const SHOP_BUY = [
   { id: 'seedc3', name: '옥수수 씨앗 3개', ico: '🌽', coin: 24, give: { seed_corn: 3 },  desc: '물 3번 · 해충이 잘 붙어요 · 🪙20에 팔려요' },
   { id: 'seedg3', name: '포도 씨앗 3개',   ico: '🍇', coin: 36, give: { seed_grape: 3 }, desc: '🍇지지대 옆에만 · 물 3번 · 🪙30에 팔려요' },
   // 🍎 과수원 묘목 — 코인 전용(최대 코인 싱크). 한 번 심으면 영구 자산이라 씨앗보다 훨씬 비싸다
-  { id: 'sap_apple',     name: '사과나무 묘목',   ico: '🍎', coin: 90,  give: { sap_apple: 1 },     desc: '3일이면 자라요 · 매일 🍎2개' },
-  { id: 'sap_pear',      name: '배나무 묘목',     ico: '🍐', coin: 130, give: { sap_pear: 1 },      desc: '3일이면 자라요 · 매일 🍐2개' },
-  { id: 'sap_peach',     name: '복숭아나무 묘목', ico: '🍑', coin: 180, give: { sap_peach: 1 },     desc: '4일이면 자라요 · 매일 🍑2개' },
-  { id: 'sap_persimmon', name: '감나무 묘목',     ico: '🍊', coin: 240, give: { sap_persimmon: 1 }, desc: '4일이면 자라요 · 매일 🍊2개' },
-  { id: 'sap_chestnut',  name: '밤나무 묘목',     ico: '🌰', coin: 300, give: { sap_chestnut: 1 },  desc: '5일이면 자라요 · 매일 🌰2개' },
+  { id: 'sap_apple',     name: '사과나무 묘목',   ico: '🍎', coin: 40,  give: { sap_apple: 1 },     desc: '3일이면 자라요 · 매일 🍎2개' },
+  { id: 'sap_pear',      name: '배나무 묘목',     ico: '🍐', coin: 55, give: { sap_pear: 1 },      desc: '3일이면 자라요 · 매일 🍐2개' },
+  { id: 'sap_peach',     name: '복숭아나무 묘목', ico: '🍑', coin: 80, give: { sap_peach: 1 },     desc: '4일이면 자라요 · 매일 🍑2개' },
+  { id: 'sap_persimmon', name: '감나무 묘목',     ico: '🍊', coin: 100, give: { sap_persimmon: 1 }, desc: '4일이면 자라요 · 매일 🍊2개' },
+  { id: 'sap_chestnut',  name: '밤나무 묘목',     ico: '🌰', coin: 130, give: { sap_chestnut: 1 },  desc: '5일이면 자라요 · 매일 🌰2개' },
   { id: 'wood10',  name: '목재 10개',  ico: '🪵', coin: 24,  give: { wood: 10 }, desc: '건축·제작용' },
   { id: 'stone8',  name: '돌 8개',     ico: '🪨', coin: 30,  give: { stone: 8 }, desc: '돌담·화로용' },
   { id: 'coal4',   name: '석탄 4개',   ico: '⚫', coin: 28,  give: { coal: 4 } },

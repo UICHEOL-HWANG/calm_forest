@@ -29,7 +29,7 @@ import { CHAIN_MAX, PET_RADIUS, canCommand, pickPetTask, stageOf } from '../pet/
 import { Sound } from '../sound.js';
 import { createPlot, syncFarmCrops, syncFarmSoil, updateFarmPops } from '../spaces/farm.js';
 import { syncOrchardGateLock } from '../spaces/mist.js';
-import { tryHoe } from '../spaces/orchard-actions.js';
+import { finishOrchardQuest, maybeOfferOrchardQuest, tryHoe } from '../spaces/orchard-actions.js';
 import { DIG_HIT_AT, DIG_RESTORE, digHit, expireDig, setPlotDug, trySeed, tryWater, updateDigFx } from '../spaces/shovel.js';
 import { refreshCovers } from '../spaces/weather.js';
 import { sickleReach } from '../tool-tiers.js';
@@ -91,6 +91,7 @@ export function bumpAdvHarvest(via) {
   trackEvent('orchard_unlock', { via });                      // [GA4] 어떤 고급 작물이 열었나
   giveReward({ sap_apple: 2 }, 'orchard_unlock', 'apple');    // 빈 언덕 방지 — 사과 묘목 2그루
   syncOrchardGateLock();                                      // 🔓 가로대를 즉시 치운다(다음 접속까지 기다리지 않게)
+  finishOrchardQuest();                                       // 🌾→🍎 과수원 가는 길 의뢰 끝(받은 유저만)
   return true;
 }
 
@@ -128,6 +129,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   if (plot.cropType?.id) noteSpecialExhibit('crop', plot.cropType.id);   // 🏛️ ✨눈 오는 날이면 특별 전시(일꾼이 거둔 건 안 센다 — 직접 한 것만)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
+  if (!adv) maybeOfferOrchardQuest();                              // 🌾→🍎 기본 작물을 거두면 과수원 가는 길 의뢰(한 번)
   if (!viaSickle) {
     catchCeremony('harvestZoom');                                 // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
     showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);  // 🥕 열매를 머리 위로 번쩍! (두 번 부르면 첫 열매가 즉시 지워진다)

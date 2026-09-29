@@ -3657,6 +3657,7 @@
       }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
       nudgeGuideOnce();   // 📖 졸업·중간 건너뛰기 직후 안내서 배너(1회)
+      Input.orchardQuestAfterTutorial?.();   // 🌾→🍎 튜토리얼 중 첫 수확으로 미뤄 둔 과수원 가는 길 의뢰
     }
 
     // 좌측 상단 로그인 상태 표시(로그인 후)
@@ -4100,12 +4101,17 @@
       flour:    { title: '🌾 맷돌 돌리기', tip: '손잡이를 원을 따라 <b>일정한 속도로</b> 돌리세요<br>빠르기가 아니라 고르기가 점수예요' },
       brick:    { title: '🧱 반죽 다지기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
       juice:    { title: '🍷 포도 밟기', tip: '퍼지는 링에 맞춰 <b>같은 박자로</b> 여섯 번 밟으세요<br>빠르게 연타하면 즙이 뭉개져요' },
+      // 🍎 과수원 과일 가공 — 조작은 원조 품목 것을 빌린다(js/craft/recipes.js mgBaseOf)
+      apple_jam:      { title: '🥫 사과잼 졸이기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
+      roast_chestnut: { title: '🌰 밤 굽기', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
+      gotgam:         { title: '🍡 곶감 주무르기', tip: '퍼지는 링에 맞춰 <b>같은 박자로</b> 여섯 번 주무르세요<br>빠르게 연타하면 감이 뭉개져요' },
     };
     const GRADE_FACE = ['😅', '🙂', '😋', '💫'];
     let cmgRaf = 0, cmgCleanup = null;
 
     function craftMinigame(itemId, onDone) {
       const meta = CMG[itemId]; if (!meta) { onDone(1); return; }
+      const kind = Input.craftMgBase(itemId);   // 조작 종류 = 원조 품목 id(charcoal·flour·brick·juice) — 과일 가공은 빌려 쓴다
       $('cmg-title').innerHTML = meta.title;
       $('cmg-tip').innerHTML = meta.tip;
       $('cmg-after').style.display = 'none';
@@ -4132,7 +4138,7 @@
         };
       };
 
-      if (itemId === 'flour') {
+      if (kind === 'flour') {
         // 🌾 맷돌 — 원을 따라 끈 각을 쌓는다. 한 바퀴 반이면 끝.
         stage.innerHTML = '<div class="cmg-wheel"><div class="hub"></div><div class="grip"></div></div>';
         const wheel = stage.querySelector('.cmg-wheel'), grip = stage.querySelector('.grip');
@@ -4160,7 +4166,7 @@
         const up = () => { dragging = false; };
         wheel.addEventListener('pointerdown', down); window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
         cmgCleanup = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-      } else if (itemId === 'charcoal') {
+      } else if (kind === 'charcoal') {
         // ⚫ 불 조절 — 바늘이 오간다. 초록 구간에서 멈춘다.
         const { half } = Input.craftDiff('charcoal'), target = 0.5;   // 🎚️ 초록 구간 반폭만 흔든다
         stage.innerHTML = `<div class="cmg-bar"><div class="zone"></div><div class="needle"></div></div>
@@ -4182,7 +4188,7 @@
           Input.craftFlameBurst(score > 0);                     // 맞으면 확 타오르고 불티, 빗나가면 사그라듦
           finish(score);
         };
-      } else if (itemId === 'juice') {
+      } else if (kind === 'juice') {
         // 🍷 포도 밟기 — 링이 퍼지는 박자에 맞춰 여섯 번. 판정은 간격이라 첫 탭은 기준점이다.
         const TARGET = 520, NEED = 6;
         stage.innerHTML = '<div class="cmg-stomp"><div class="pulse"></div><div class="cnt"></div></div>';

@@ -18,6 +18,7 @@ import { SHOP } from '../data/places.js';
 import { welcomeOffer } from '../first-loop.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
+import { onboardView } from '../orchard-onboard.js';
 import { Sound } from '../sound.js';
 import { inVillage2 } from '../spaces/doors.js';
 import * as THREE from 'three';
@@ -776,6 +777,6 @@ export function questPanelTop() {
 //    살아 있는 의뢰가 화면에서 사라진다(규칙·회귀 테스트는 js/quests.js activeQuestList).
 //    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
 export function refreshQuestPanel() {
-  const views = npcObjs.map(questView).filter(Boolean);
+  const views = [...npcObjs.map(questView), onboardView(gameState.progress?.orchardQuest)].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
   ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: nearNPC?.def.id || null }));
 }
