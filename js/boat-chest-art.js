@@ -160,7 +160,7 @@ export function makeLootMesh(id) {
       placed(new THREE.CircleGeometry(0.07, 8), 0, 0.2, 0.162),                                    // 앞면 새싹 문양
     ]);
     g.add(new THREE.Mesh(sprout, clay(0x6fb06a)));
-  } else if (id === 'gem') {
+  } else if (id === 'gem' || id === 'color_gem') {                // color_gem = 🎨 집 색이 다 열려 보석으로 대체
     const m = new THREE.MeshStandardMaterial({ color: 0x7fd6e8, roughness: 0.25, metalness: 0.1, flatShading: true, emissive: 0x2f8fa3, emissiveIntensity: 0.25 });
     add(new THREE.OctahedronGeometry(0.2, 0), m, 0, 0.26, 0).scale.set(1, 1.3, 1);               // 깎은 보석
   } else if (id === 'color') {

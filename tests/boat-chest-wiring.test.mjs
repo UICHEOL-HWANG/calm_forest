@@ -44,16 +44,20 @@ test('생명주기 트래킹: seen·take·miss 가 run_no·seg·speed 를 싣는
   for (const p of ['dx_min', 'lamps_left']) assert.match(miss, new RegExp(`${p}:`), `miss.${p}`);
 });
 
-test('건지면 오늘 날짜를 남기고, 떠오르는 글자엔 내용물·이모지를 쓰지 않는다(개봉 화면에서 공개)', () => {
-  const u = fn('updateRiverObjects');
-  assert.match(u, /gameState\.boat\.chestDate = todayStr\(\)/);
-  assert.match(u, /spawnFloatText\([^)]*'보물상자를 건졌어요!'/);
+test('떠오르는 글자엔 내용물·이모지를 쓰지 않는다(개봉 화면에서 공개)', () => {
+  assert.match(fn('updateRiverObjects'), /spawnFloatText\([^)]*'보물상자를 건졌어요!'/);
+});
+
+test('오늘 건졌다는 기록은 **지급할 때** 남긴다 — 건진 뒤 창을 닫아도 상자를 잃지 않는다', () => {
+  assert.doesNotMatch(fn('updateRiverObjects'), /chestDate = /);
+  assert.match(fn('endBoatRun'), /if \(chestPaidNow\) \{[\s\S]{0,300}gameState\.boat\.chestDate = todayStr\(\)/);
 });
 
 test('정산: 지급은 boat_chest 출처로 따로, boat_end·boat_runs 에 chest 코드·loot·paid, 코인 없음', () => {
   const e = fn('endBoatRun');
-  assert.match(e, /chestOutcome\(\{ offered: boat\.chestOffered, taken: boat\.chestTaken \}\)/);
-  assert.match(e, /giveReward\(chestG, 'boat_chest', boat\.chest\.id\)/);
+  assert.match(e, /chestOutcome\(\{ offered: boat\.chestOffered, seen: boat\.chestSeen, taken: boat\.chestTaken \}\)/);
+  assert.match(e, /giveReward\(chestG\.give, 'boat_chest', chestG\.id\)/);
+  assert.match(e, /chest_loot: chestLootId/);   // 실제 지급 기준(color_gem 구분)
   const end = call(e, 'boat_end');
   for (const p of ['chest', 'chest_loot', 'chest_paid']) assert.match(end, new RegExp(`${p}:`), `boat_end.${p}`);
   assert.match(e, /chest: chestCode, chest_loot: [^\n]*chest_paid: [^\n]*chest_d:/);   // sendBoatRun payload(boat_runs 컬럼)
@@ -62,6 +66,12 @@ test('정산: 지급은 boat_chest 출처로 따로, boat_end·boat_runs 에 che
 
 test('세이브 기본값에 chestDate', () => {
   assert.match(src, /boat: \{ date: null, count: 0,[^\n]*chestDate: null/);
+});
+
+test('개봉 화면은 실제 지급 기준 이름·모형을 보여 준다(색이 다 열렸으면 보석)', () => {
+  assert.match(fn('endBoatRun'), /chestView: \{[^}]*id: chestLootId[^}]*name: chestG\?\.name/);
+  assert.match(ART, /'color_gem'/);
+  assert.match(REVEAL, /\.map\b[\s\S]{0,120}dispose\(\)/);   // 나뭇결 텍스처까지 해제(열 때마다 새로 복제된다)
 });
 
 test('3D 모형: 보상표의 모든 id 에 모형이 있다(이모지 스프라이트 금지)', () => {
@@ -78,6 +88,10 @@ test('개봉 화면(R3): 결과 카드 전에 뜨고, 닫으면 결과 카드로
   assert.match(HTML, /d\.chestView\?\.paid[\s\S]{0,400}chest-reveal/);
   assert.match(REVEAL, /export function playChestReveal/);
   assert.match(REVEAL, /export function stopChestReveal/);
+});
+
+test('놓침 줄은 상자를 **보고** 지나쳤을 때만(3 거기까지 못 감엔 안 띄운다)', () => {
+  assert.match(fn('endBoatRun'), /missed: chestCode === 1/);
 });
 
 test('결과 카드: 건졌으면 보물상자 줄, 놓쳤으면 회색 안내 줄', () => {

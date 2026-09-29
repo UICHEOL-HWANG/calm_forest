@@ -32,12 +32,12 @@ test('CHEST_LOOT: 인벤 키가 게임과 같다(묘목 sap_<과일> · fert · 
   assert.equal(byId.color, null);   // 🎨 집 색 — tryUnlockDrop 로 연다
 });
 
-test('chestGive: 집 색은 해금되면 빈 보상, 다 열려 있으면 보석 1로 대체', () => {
+test('chestGive: 실제 지급 기준 {id,name,give} — 집 색이 다 열렸으면 color_gem(보석 1)으로 기록·표시', () => {
   const color = CHEST_LOOT.find(l => l.id === 'color');
-  assert.deepEqual(chestGive(color, { unlocked: true }), {});
-  assert.deepEqual(chestGive(color, { unlocked: false }), { gem: 1 });
+  assert.deepEqual(chestGive(color, { unlocked: true }), { id: 'color', name: '집 색 하나', give: {} });
+  assert.deepEqual(chestGive(color, { unlocked: false }), { id: 'color_gem', name: '보석 1개', give: { gem: 1 } });   // 화면·원장이 진짜 보석과 구분된다
   const fert = CHEST_LOOT.find(l => l.id === 'fert');
-  assert.deepEqual(chestGive(fert, {}), { fert: 3 });
+  assert.deepEqual(chestGive(fert, {}), { id: 'fert', name: '비료 3개', give: { fert: 3 } });
 });
 
 test('chestToday: 오늘 건졌으면 false, 날이 바뀌면 다시 true', () => {
@@ -63,10 +63,11 @@ test('rollChest: 같은 시드 같은 결과, 분포가 확률을 따른다', ()
   for (const l of CHEST_LOOT) assert.ok(Math.abs((n[l.id] || 0) / N - l.w / 100) < 0.015, `${l.id}: ${(n[l.id] / N).toFixed(3)}`);
 });
 
-test('chestOutcome: 트래킹 코드 0 없음 · 1 놓침 · 2 건짐', () => {
-  assert.equal(chestOutcome({ offered: false, taken: false }), 0);
-  assert.equal(chestOutcome({ offered: true, taken: false }), 1);
-  assert.equal(chestOutcome({ offered: true, taken: true }), 2);
+test('chestOutcome: 0 없음 · 1 보고 놓침 · 2 건짐 · 3 거기까지 못 감(건짐률 분모에서 뺀다)', () => {
+  assert.equal(chestOutcome({ offered: false, seen: false, taken: false }), 0);
+  assert.equal(chestOutcome({ offered: true, seen: true, taken: false }), 1);
+  assert.equal(chestOutcome({ offered: true, seen: true, taken: true }), 2);
+  assert.equal(chestOutcome({ offered: true, seen: false, taken: false }), 3);   // 난파·그만두기가 상자 전에 — 놓친 게 아니다
 });
 
 test('chestPaid: 확정 규칙은 always — 난파·그만두기에도 지급', () => {

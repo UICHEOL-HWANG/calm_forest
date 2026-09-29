@@ -29,13 +29,22 @@ function ensure(canvas) {
   camera.position.set(0, 1.5, 4.3); camera.lookAt(0, 0.75, 0);
 }
 
-function disposeTree(o) {
-  o.traverse(m => { if (m.isMesh) { m.geometry.dispose(); (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => x.dispose()); } });
+// woodMat 은 부를 때마다 나뭇결 텍스처를 복제한다 → 재질만 버리면 텍스처가 GPU 에 남는다(열 때마다 2장).
+//   물빛(_haloTex)은 강 상자와 공유하는 모듈 텍스처라 남긴다(버려도 다시 올라갈 뿐이지만 굳이).
+function disposeTree(o, keep) {
+  o.traverse(m => {
+    if (!m.isMesh) return;
+    m.geometry.dispose();
+    for (const x of (Array.isArray(m.material) ? m.material : [m.material])) {
+      if (x.map && x.map !== keep) x.map.dispose();
+      x.dispose();
+    }
+  });
 }
 
 function clearRig() {
   if (!rig) return;
-  scene.remove(rig.root); disposeTree(rig.root); rig = null;
+  scene.remove(rig.root); disposeTree(rig.root, rig.chest.userData.halo.material.map); rig = null;
 }
 
 /** 개봉 연출 재생 — stopChestReveal() 전까지 대기 동작(보상 회전·빛줄기)을 이어 간다 */
