@@ -1,0 +1,540 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🧰 나룻배 보물상자 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#cfe9f5;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #labels{position:absolute;left:0;top:0;right:0;height:100%;display:flex;pointer-events:none}
+  #labels div{flex:1;display:flex;justify-content:center;align-items:flex-start;padding-top:10px}
+  #labels span{background:rgba(255,255,255,.88);border-radius:9px;padding:5px 10px;font-size:14px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  body.stack #labels{flex-direction:column}
+  body.stack #labels div{padding-top:6px}
+</style>
+<div id="labels"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// =============================================================
+//  🧰 나룻배 보물상자 외형 시안 — 비교 전용(승인 게이트). 게임 코드는 건드리지 않는다.
+//  ------------------------------------------------------------
+//  게임 값을 그대로 옮긴 것: 강물 색(0x7ec4e8)·강둑(0x9ed7a8)·배 색(BOAT_TEAL/TRIM/RED)·
+//  조명(Hemi 0.9 + Ambient 0.25 + Sun 1.1)·ACES 톤매핑 1.05·카메라 fov 42·
+//  1인칭 나룻배 카메라(배 위 1.5, 14 앞을 봄 — js/spaces/river.js updateBoatCamera).
+//  ▶ 세 안(공통: 반쯤 잠겨 까딱 흔들림 + 물결 고리 + 반짝임 1개)
+//     A 나무 궤짝 + 금테   — 가장 "보물상자"답다
+//     B 부표 달린 작은 궤짝 — 강에 떠내려온 이유가 보인다(빨강·흰 부표 + 밧줄)
+//     C 바구니 + 병 속 쪽지 — 금속 없는 동화 톤
+//  쿼리: ?view=game|third|close  ?time=day|night  ?t=1.2(시간 고정 — 캡처용)  ?layout=row|stack  ?d=11(상자 거리)
+// =============================================================
+const Q = new URLSearchParams(location.search);
+const VIEW = Q.get('view') || 'game';
+const NIGHT = Q.get('time') === 'night';
+const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
+const STACK = (Q.get('layout') || (innerWidth < innerHeight ? 'stack' : 'row')) === 'stack';
+const DIST = Number(Q.get('d') || 11);
+const SCALE = Number(Q.get('s') || 1.25);   // 공통 크기 — 1인칭 11 거리에서 별조각보다 작아 안 읽혀서 세 안 모두 같은 배율
+if (STACK && Q.get('mode') !== 'pickup') document.body.classList.add('stack');
+if (Q.get('h')) { document.documentElement.style.height = document.body.style.height = Q.get('h') + 'px'; document.documentElement.style.overflow = 'visible'; document.body.style.overflow = 'visible'; }
+
+const BOAT_TEAL = 0x3fb3c2, BOAT_TRIM = 0xd9a066, BOAT_RED = 0xb2453e;
+const clay = (c, flat = true, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat, ...extra });
+
+// 게임 woodTexture 와 같은 결(세로 나뭇결 줄무늬) — 절차 생성
+function woodTex() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d');
+  x.fillStyle = '#c89560'; x.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 9; i++) { x.fillStyle = `rgba(110,70,35,${0.10 + (i % 3) * 0.05})`; x.fillRect(i * 7 + (i % 2) * 2, 0, 2 + (i % 3), 64); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const WOOD = woodTex();
+const wood = (tint = 0xffffff, rx = 1, ry = 1) => { const t = WOOD.clone(); t.needsUpdate = true; t.repeat.set(rx, ry);
+  return new THREE.MeshStandardMaterial({ map: t, color: tint, roughness: 0.82, metalness: 0 }); };
+
+// ── 게임 makeBoatHull 사본(js/spaces/river.js:76) ──
+function makeBoatHull() {
+  const g = new THREE.Group();
+  const teal = clay(BOAT_TEAL, false), trim = clay(BOAT_TRIM, false), red = clay(BOAT_RED, false);
+  const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 3, 12), teal);
+  hull.rotation.x = Math.PI / 2; hull.scale.set(1, 1, 0.5); hull.position.y = 0.32; g.add(hull);
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.3, 12), trim);
+  bow.rotation.x = -Math.PI / 2; bow.scale.set(1, 1, 0.5); bow.position.set(0, 0.32, -2.15); g.add(bow);
+  const stern = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1, 12), trim);
+  stern.rotation.x = Math.PI / 2; stern.scale.set(1, 1, 0.5); stern.position.set(0, 0.32, 2); g.add(stern);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.57, 0.065, 6, 20), trim);
+  rim.rotation.x = -Math.PI / 2; rim.scale.set(1, 2.7, 1); rim.position.y = 0.6; g.add(rim);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(0.48, 14), clay(0x2e93a3, false));
+  floor.geometry.rotateX(-Math.PI / 2); floor.scale.set(1, 1, 2.7); floor.position.y = 0.3; g.add(floor);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.2, 0.62), red); seat.position.set(0, 0.42, 0.3); g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.44, 0.18), red); back.position.set(0, 0.66, 0.66); g.add(back);
+  return g;
+}
+
+// ── 공통 부속: 물결 고리 + 반짝임 ──
+function addRippleAndGlint(g, r, glintY) {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.09, 28),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
+  const glint = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0),
+    new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xffd35a, emissiveIntensity: NIGHT ? 0.8 : 0.6 }));
+  glint.scale.set(1, 1.8, 1); glint.position.y = glintY; g.add(glint);
+  g.userData.ring = ring; g.userData.glint = glint;
+}
+
+// ── A 나무 궤짝 + 금테 ──
+function chestA({ buoy = 'none' } = {}) {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const W = 1.0, D = 0.66, H = 0.52;
+  // 🌙 밤 발광 — 금테·자물쇠만 은은하게(게임 블룸 임계 0.85 를 넘지 않는 세기: 나룻배 시인성 규칙)
+  const gold = new THREE.MeshStandardMaterial({ color: 0xf0c04a, roughness: 0.45, metalness: 0.35, flatShading: true,
+    emissive: 0xffb830, emissiveIntensity: NIGHT ? 0.55 : 0 });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), wood(0xa9743f, 2, 1)); box.position.y = H / 2; body.add(box);
+  // 둥근 뚜껑 — 위 반원통(θ 0~π 를 z축 회전하면 윗반원). 뒤 모서리 경첩(pivot)으로 열린다
+  const lidPivot = new THREE.Group(); lidPivot.position.set(0, H, -D / 2); body.add(lidPivot);
+  const lidGeo = new THREE.CylinderGeometry(D / 2, D / 2, W, 10, 1, false, 0, Math.PI); lidGeo.rotateZ(Math.PI / 2);
+  const lidMat = wood(0x9a6636, 2, 1); lidMat.side = THREE.DoubleSide;             // 열리면 안쪽 면이 보인다
+  const lid = new THREE.Mesh(lidGeo, lidMat); lid.position.z = D / 2; lidPivot.add(lid);
+  const inside = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.1, D - 0.1), clay(0x3a2412));   // 열렸을 때 보이는 안쪽
+  inside.rotation.x = -Math.PI / 2; inside.position.y = H + 0.002; body.add(inside);
+  for (const x of [-W * 0.3, W * 0.3]) {                          // 금테 두 줄(몸통 + 뚜껑)
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.09, H + 0.02, D + 0.03), gold); band.position.set(x, H / 2, 0); body.add(band);
+    const arcGeo = new THREE.TorusGeometry(D / 2 + 0.015, 0.045, 5, 10, Math.PI); arcGeo.rotateY(Math.PI / 2);
+    const arc = new THREE.Mesh(arcGeo, gold); arc.position.set(x, 0, D / 2); lidPivot.add(arc);
+  }
+  g.userData.lid = lidPivot; g.userData.H = H;
+  const lock = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.07), gold); lock.position.set(0, H * 0.92, D / 2 + 0.03); body.add(lock);
+  if (NIGHT) {                                                     // 궤짝 둘레 물빛 — 더하기 혼합 원판(라이트 없이)
+    const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4),
+      new THREE.MeshBasicMaterial({ map: haloTex(), color: 0xffc860, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.rotation.x = -Math.PI / 2; halo.position.y = 0.03; g.add(halo);
+  }
+  if (buoy !== 'none') body.add(smallBuoy(buoy));
+  body.position.y = -0.2;                                          // 반쯤 잠김
+  addRippleAndGlint(g, 0.72, 1.25);
+  return g;
+}
+
+// 가장자리가 부드럽게 사라지는 물빛(방사형 그라데이션) — 납작한 원판처럼 보이지 않게
+let _halo = null;
+function haloTex() {
+  if (_halo) return _halo;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  return (_halo = new THREE.CanvasTexture(c));
+}
+
+// ── 작은 부표(A 전용) — B안에서 부표가 궤짝보다 먼저 보였다 → 0.75배, 채도 낮춘 빨강, 깃발 없음 ──
+function smallBuoy(where) {
+  const grp = new THREE.Group();
+  const red = clay(0xd4574c), white = clay(0xf6f1e6), ropeMat = clay(0xd9c49a);
+  const b = new THREE.Group(); b.scale.setScalar(0.75);
+  const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), red); b1.scale.set(1, 1.15, 1); b1.position.y = 0.1; b.add(b1);
+  const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.305, 0.14, 12), white); b2.position.y = 0.1; b.add(b2);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.4, 5), white); pole.position.y = 0.5; b.add(pole);
+  grp.add(b);
+  // side: 궤짝 오른쪽 옆(카메라에 보임) / back: 궤짝 뒤 오른쪽(궤짝이 앞을 가림)
+  const at = where === 'side' ? new THREE.Vector3(1.0, 0.12, 0.05) : new THREE.Vector3(0.85, 0.12, -0.6);
+  b.position.copy(at);
+  const from = new THREE.Vector3(0.5, 0.3, where === 'side' ? 0.05 : -0.25);   // 궤짝 옆 모서리
+  const len = from.distanceTo(at);
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, len, 5), ropeMat);
+  rope.position.copy(from).add(at).multiplyScalar(0.5);
+  rope.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), at.clone().sub(from).normalize());
+  grp.add(rope);
+  grp.userData.isBuoy = true;
+  return grp;
+}
+
+// ── B 부표 달린 작은 궤짝 ──
+function chestB() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const W = 0.8, D = 0.54, H = 0.42;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), wood(0xa9743f, 2, 1)); box.position.y = H / 2; body.add(box);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(W + 0.06, 0.14, D + 0.06), wood(0x8a5c36, 2, 1)); lid.position.y = H + 0.07; body.add(lid);
+  const iron = clay(0x5d5b57);
+  for (const x of [-W * 0.32, W * 0.32]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.07, H + 0.16, D + 0.04), iron); s.position.set(x, H / 2 + 0.04, 0); body.add(s); }
+  // 부표(빨강·흰 줄) — 궤짝 옆에서 밧줄로 이어짐
+  const buoy = new THREE.Group(); buoy.position.set(0.95, 0, 0.25);
+  const red = clay(0xe0473e), white = clay(0xf6f1e6);
+  const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), red); b1.scale.set(1, 1.15, 1); b1.position.y = 0.1; buoy.add(b1);
+  const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.305, 0.14, 12), white); b2.position.y = 0.1; buoy.add(b2);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.55, 5), white); pole.position.y = 0.6; buoy.add(pole);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.02), red); flag.position.set(0.14, 0.8, 0); buoy.add(flag);
+  body.add(buoy);
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.62, 5), clay(0xd9c49a));
+  rope.rotation.z = Math.PI / 2 - 0.25; rope.position.set(0.63, 0.24, 0.12); body.add(rope);
+  body.position.y = -0.16;
+  addRippleAndGlint(g, 0.95, 1.05);
+  return g;
+}
+
+// ── C 바구니 + 병 속 쪽지 ──
+function chestC() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const straw = clay(0xd9b27a), strawDark = clay(0xb88b4f);
+  const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.42, 0.45, 12, 1, true), straw); basket.position.y = 0.22; body.add(basket);
+  const bottom = new THREE.Mesh(new THREE.CircleGeometry(0.42, 12), strawDark); bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.01; body.add(bottom);
+  for (const y of [0.1, 0.26, 0.42]) { const r = 0.43 + (y / 0.45) * 0.12;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.035, 4, 16), strawDark); band.rotation.x = Math.PI / 2; band.position.y = y; body.add(band); }
+  const cloth = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), clay(0xe86a5a));
+  cloth.scale.set(1, 0.35, 1); cloth.position.y = 0.44; cloth.rotation.z = 0.15; body.add(cloth);
+  const glass = new THREE.MeshStandardMaterial({ color: 0x9fe0d0, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.7 });
+  const bottle = new THREE.Group(); bottle.position.set(0.12, 0.62, -0.05); bottle.rotation.z = -0.55;
+  const bb = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.42, 10), glass); bottle.add(bb);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, 0.16, 8), glass); neck.position.y = 0.29; bottle.add(neck);
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.08, 6), clay(0xb07a44)); cork.position.y = 0.41; bottle.add(cork);
+  const paper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 6), clay(0xfbf3dc)); bottle.add(paper);
+  body.add(bottle);
+  body.position.y = -0.14;
+  addRippleAndGlint(g, 0.7, 1.35);
+  return g;
+}
+
+const OPTS = Q.get('set') === 'A' ? [                     // 2차: A 확정 → 부표 위치 비교(밤 발광 공통)
+  { id: 'A1', label: 'A1 · 부표 없음', make: () => chestA() },
+  { id: 'A2', label: 'A2 · 작은 부표 옆', make: () => chestA({ buoy: 'side' }) },
+  { id: 'A3', label: 'A3 · 작은 부표 뒤', make: () => chestA({ buoy: 'back' }) },
+] : [
+  { id: 'A', label: 'A · 나무 궤짝 + 금테', make: chestA },
+  { id: 'B', label: 'B · 부표 달린 궤짝', make: chestB },
+  { id: 'C', label: 'C · 바구니 + 병 속 쪽지', make: chestC },
+];
+
+// ── 강 한 구간(게임 buildRiverSpace 축약) ──
+function buildScene(chestMaker) {
+  const sc = new THREE.Scene();
+  const sky = NIGHT ? 0x1f2d4f : 0xcfe9f5;
+  sc.background = new THREE.Color(sky); sc.fog = new THREE.Fog(sky, 30, NIGHT ? 70 : 110);
+  sc.add(new THREE.HemisphereLight(NIGHT ? 0x8aa0d8 : 0xffffff, NIGHT ? 0x33405a : 0xbfe8c9, NIGHT ? 0.55 : 0.9));
+  sc.add(new THREE.AmbientLight(NIGHT ? 0x9fb0e0 : 0xfff0dd, NIGHT ? 0.18 : 0.25));
+  const sun = new THREE.DirectionalLight(NIGHT ? 0xbfd0ff : 0xffe9c4, NIGHT ? 0.45 : 1.1); sun.position.set(10, 18, 8); sc.add(sun);
+  const RW = 6.4;
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(RW * 2 + 4, 200),
+    new THREE.MeshStandardMaterial({ color: NIGHT ? 0x3f6f9a : 0x7ec4e8, roughness: 0.22, metalness: 0.2, transparent: true, opacity: 0.94 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(0, 0.08, -80); sc.add(water);
+  for (const s of [-1, 1]) {
+    const bank = new THREE.Mesh(new THREE.BoxGeometry(7, 0.9, 200), clay(NIGHT ? 0x5d8a6a : 0x9ed7a8, false)); bank.position.set(s * (RW + 5), 0.2, -80); sc.add(bank);
+    for (let d = 4; d < 120; d += 9) {
+      if ((d * 7 + s) % 3 === 0) continue;
+      const h = 2.2 + ((d * 13) % 7) * 0.28;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, h, 5), clay(0x8a6a4a)); trunk.position.set(s * (RW + 2.6 + ((d * 3) % 5) * 0.5), 0.65 + h / 2, -d); sc.add(trunk);
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.15, 2.4, 6), clay(d % 2 ? 0x6fb06a : 0x82c07a)); leaf.position.set(trunk.position.x, 0.65 + h + 0.9, -d); sc.add(leaf);
+    }
+  }
+  // 비교 기준: 비슷한 거리의 ⭐별조각(게임 값 그대로)
+  const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.36, 0),
+    new THREE.MeshStandardMaterial({ color: 0xffe07a, emissive: 0xffc94a, emissiveIntensity: 0.85, roughness: 0.4 }));
+  star.position.set(-2.2, 0.75, -DIST + 1); sc.add(star);
+  const boat = makeBoatHull(); boat.position.set(0, 0.2, 0); sc.add(boat);
+  const chest = chestMaker(); chest.position.set(1.4, 0.08, -DIST); chest.rotation.y = 0.5; chest.scale.setScalar(SCALE); sc.add(chest);
+  return { sc, chest, star };
+}
+
+// =============================================================
+//  ✨ 건지는 연출 시안(?mode=pickup) — 가로 = 연출 3안, 세로 = 시간(필름 스트립). 상자는 확정안 A2.
+//     ① 글자+반짝임(기존 🪷 수집물과 같은 문법 — 상자는 사라지고 배 앞 10에 글자)
+//     ② 포물선+뚜껑 열림(상자가 뱃머리 위로 날아와 열리고 내용물이 튀어나온다 → 오른쪽 아래로 쏙)
+//     ③ ②+강조(열리는 순간 금빛 빛줄기 + 짧은 화면 반짝임 + 꽃가루) — 효과음 '짠!'(시안엔 소리 없음)
+//  모든 움직임은 t 의 순수 함수(캡처용 고정 시계).
+// =============================================================
+const PICK_FRAMES = (Q.get('frames') || '0,0.25,0.5,0.75,1.0,1.3').split(',').map(Number);
+const LOOT = Q.get('loot') || 'sap_apple';
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const ease = (x) => 1 - Math.pow(1 - clamp01(x), 3);
+function textSprite(text, color = '#c98a1e', size = 64) {
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  const font = `bold ${size}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+  x.font = font;
+  const w = Math.ceil(x.measureText(text).width) + 40; c.width = w; c.height = size + 36;
+  x.font = font; x.textBaseline = 'middle'; x.textAlign = 'center';
+  x.lineWidth = 10; x.strokeStyle = 'rgba(255,255,255,0.95)'; x.strokeText(text, w / 2, c.height / 2);
+  x.fillStyle = color; x.fillText(text, w / 2, c.height / 2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
+  sp.scale.set(w / c.height * 0.5, 0.5, 1); sp.renderOrder = 10; return sp;
+}
+function burst(n, color) {                                     // 반짝이 파편(방향 고정 — 결정론)
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), new THREE.MeshBasicMaterial({ color, transparent: true }));
+    const a = (i / n) * Math.PI * 2, up = 0.6 + ((i * 37) % 10) / 10;
+    m.userData.dir = new THREE.Vector3(Math.cos(a), up, Math.sin(a)).normalize(); g.add(m);
+  }
+  return g;
+}
+function setBurst(g, k, dist) {
+  g.visible = k > 0 && k < 1;
+  g.children.forEach(m => { m.position.copy(m.userData.dir).multiplyScalar(dist * ease(k)); m.position.y -= k * k * 0.6; m.material.opacity = 1 - k; });
+}
+function rays() {                                              // 금빛 빛줄기(더하기 혼합 쐐기 8개)
+  const g = new THREE.Group();
+  for (let i = 0; i < 8; i++) {
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, -0.12, 1.4, 0, 0.12, 1.4, 0], 3));
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffd35a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.z = (i / 8) * Math.PI * 2; g.add(m);
+  }
+  return g;
+}
+
+// =============================================================
+//  🎁 보상 3D 모형 — 이모지 스프라이트 대신(로우폴리 화면에서 평면 이모지가 튄다).
+//  게임 cropMini(js/game.js — 로우폴리 열매 + 원뿔 잎, clayMat)와 같은 문법. 높이 ≈ 0.5.
+// =============================================================
+const LOOT_NAMES = { sap_apple: '사과 묘목', sap_pear: '배 묘목', bait: '미끼 3개', fert: '비료 2개', star: '별조각 8', color: '집 색 하나' };
+function itemMesh(id) {
+  const g = new THREE.Group();
+  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); g.add(m); return m; };
+  if (id === 'sap_apple' || id === 'sap_pear') {
+    const fruit = id === 'sap_apple' ? 0xe0473e : 0xc8d65a;
+    add(new THREE.IcosahedronGeometry(0.16, 0), clay(0xa8784a), 0, 0.1, 0).scale.set(1, 0.75, 1);      // 삼베로 싼 뿌리 흙덩이
+    add(new THREE.TorusGeometry(0.12, 0.025, 4, 10), clay(0xd9c49a), 0, 0.17, 0, Math.PI / 2);        // 묶은 끈
+    add(new THREE.CylinderGeometry(0.025, 0.035, 0.34, 5), clay(0x8a6a4a), 0, 0.36, 0);               // 줄기
+    for (const [x, y, z, s] of [[0, 0.58, 0, 0.17], [0.11, 0.5, 0.04, 0.12], [-0.1, 0.52, -0.03, 0.12]])
+      add(new THREE.IcosahedronGeometry(s, 0), clay(0x6fb06a), x, y, z);                               // 잎 뭉치
+    add(new THREE.IcosahedronGeometry(0.07, 0), clay(fruit, false), 0.1, 0.43, 0.1);                  // 열매 하나
+  } else if (id === 'bait') {
+    add(new THREE.CylinderGeometry(0.15, 0.15, 0.22, 10), clay(0x9aa6ad), 0, 0.11, 0);               // 깡통
+    add(new THREE.CylinderGeometry(0.152, 0.152, 0.08, 10), clay(0x4f8fbf), 0, 0.12, 0);             // 띠 라벨
+    const worm = add(new THREE.TorusGeometry(0.08, 0.03, 5, 10, Math.PI * 1.3), clay(0xe99aa6), 0.02, 0.26, 0, 0, 0, 0.4);
+    worm.scale.set(1, 1.2, 1);                                                                         // 고개 내민 지렁이
+  } else if (id === 'fert') {
+    add(new THREE.SphereGeometry(0.2, 8, 6), clay(0xd8b98a), 0, 0.18, 0).scale.set(1, 1.1, 0.8);     // 자루
+    add(new THREE.CylinderGeometry(0.05, 0.09, 0.1, 6), clay(0xc2a070), 0, 0.4, 0);                  // 묶은 목
+    add(new THREE.ConeGeometry(0.05, 0.12, 5), clay(0x6fb06a), -0.04, 0.5, 0, 0, 0, 0.5);           // 새싹 두 잎
+    add(new THREE.ConeGeometry(0.05, 0.12, 5), clay(0x6fb06a), 0.04, 0.5, 0, 0, 0, -0.5);
+    add(new THREE.CircleGeometry(0.07, 8), clay(0x6fb06a), 0, 0.2, 0.162);                            // 앞면 새싹 문양
+  } else if (id === 'star') {
+    const m = new THREE.MeshStandardMaterial({ color: 0xffe07a, emissive: 0xffc94a, emissiveIntensity: 0.85, roughness: 0.4 });   // 게임 ⭐별조각과 같은 재질
+    add(new THREE.OctahedronGeometry(0.14, 0), m, 0, 0.3, 0);
+    add(new THREE.OctahedronGeometry(0.1, 0), m, -0.15, 0.14, 0.03);
+    add(new THREE.OctahedronGeometry(0.1, 0), m, 0.15, 0.16, -0.02);
+  } else if (id === 'color') {
+    add(new THREE.CylinderGeometry(0.16, 0.15, 0.24, 10), clay(0xeceae4), 0, 0.12, 0);               // 페인트 통
+    add(new THREE.CylinderGeometry(0.14, 0.14, 0.02, 10), clay(0x7ec4e8), 0, 0.245, 0);             // 물감 면
+    add(new THREE.SphereGeometry(0.035, 6, 4), clay(0x7ec4e8), 0.15, 0.2, 0.03).scale.set(0.7, 1.6, 0.7);   // 흘러내린 방울
+    add(new THREE.TorusGeometry(0.15, 0.012, 4, 12, Math.PI), clay(0x5d5b57), 0, 0.24, 0, 0, Math.PI / 2);   // 손잡이
+    add(new THREE.BoxGeometry(0.05, 0.3, 0.03), clay(0xc89560), -0.06, 0.36, 0, 0, 0, 0.35);          // 붓 자루
+    add(new THREE.BoxGeometry(0.07, 0.08, 0.04), clay(0xe86a5a), -0.11, 0.21, 0, 0, 0, 0.35);         // 붓 끝(빨강)
+  }
+  return g;
+}
+
+// 상자가 배 옆에 닿은 순간(t=0)부터. 1인칭 카메라 (0,1.5,0.55) 기준 뱃머리 위가 화면 가운데 아래쪽
+const P0 = new THREE.Vector3(1.3, 0.08, -2.6), P1 = new THREE.Vector3(0.0, 0.45, -4.6), PEXIT = new THREE.Vector3(1.9, 0.4, -2.4);
+function setupPickup(p, variant) {
+  const ch = p.chest, u = ch.userData;
+  ch.position.copy(P0); ch.rotation.y = 0.5;
+  p.star.visible = false; ch.userData.glint.visible = false;
+  // 부표는 물에 남는다 — 상자만 건져 올린다(월드 좌표 유지한 채 장면으로 옮김)
+  ch.updateMatrixWorld(true);
+  const buoy = ch.children[0].children.find(c => c.userData.isBuoy);
+  if (buoy) p.sc.attach(buoy);
+  u.item = itemMesh(LOOT); u.item.scale.setScalar(1.1); u.item.userData.opacityless = true; ch.add(u.item);   // 3D 모형(상자 좌표 기준)
+  u.label = textSprite(LOOT_NAMES[LOOT], '#c98a1e', 56); p.sc.add(u.label);   // 이모지 없이 — 평면 이모지가 로우폴리 화면에서 튄다
+  if (variant === 1) u.label.scale.multiplyScalar(2.2);   // 배 앞 10 — 게임 떠오르는 글자 크기에 맞춤
+  u.sparks = burst(14, 0xffe07a); p.sc.add(u.sparks);
+  if (variant === 3) {
+    u.rays = rays(); p.sc.add(u.rays); u.confetti = burst(18, 0xff8fb1); p.sc.add(u.confetti);
+    u.flash = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0, depthTest: false }));
+    u.flash.renderOrder = 20; p.sc.add(u.flash);
+  }
+  p.anim = (t) => animPickup(p, variant, t);
+}
+function animPickup(p, v, t) {
+  const ch = p.chest, u = ch.userData, lid = u.lid, H = u.H * SCALE;
+  const body = ch.children[0];
+  if (v === 1) {                                               // ① 글자+반짝임 — 상자는 0.15초 만에 쏙
+    const k = clamp01(t / 0.15);
+    ch.scale.setScalar(SCALE * (1 - k)); ch.visible = k < 1;
+    u.item.visible = false; lid.rotation.x = 0;
+    u.sparks.position.copy(P0).setY(0.5); setBurst(u.sparks, clamp01(t / 0.6), 1.1);
+    // 기존 pick 규칙: 배 앞 10, 높이 1.9 에서 떠오르며 사라진다(0.9초)
+    const kt = clamp01(t / 0.9);
+    u.label.position.set(0, 1.9 + kt * 0.8, -10 + 0.55); u.label.material.opacity = 1 - Math.max(0, (kt - 0.6) / 0.4); u.label.visible = t < 0.9;
+    return;
+  }
+  // ②③ 포물선(0~0.45) → 열림(0.45~0.75) → 내용물 튀어나옴(0.6~0.9) → 보여 줌 → 오른쪽 아래로 쏙(1.05~1.3)
+  const kf = ease(t / 0.45);
+  const pos = P0.clone().lerp(P1, kf); pos.y += Math.sin(Math.PI * clamp01(t / 0.45)) * 0.9;
+  const kx = clamp01((t - 1.05) / 0.25);
+  if (kx > 0) pos.lerp(PEXIT, ease(kx));
+  ch.position.copy(pos);
+  ch.rotation.y = 0.5 * (1 - kf);                              // 날아오며 정면을 향한다
+  ch.rotation.x = 0.45 * kf;                                   // 윗면을 카메라 쪽으로 기울여 열리는 안쪽이 보이게
+  ch.scale.setScalar(SCALE * (1 - ease(kx)));
+  body.position.y = 0; body.rotation.z = 0;
+  lid.rotation.x = -1.9 * ease((t - 0.45) / 0.3);
+  const ki = ease((t - 0.6) / 0.3);
+  u.item.visible = t > 0.6; u.item.position.set(0, u.H - 0.25 + 0.4 * ki, 0.05); u.item.rotation.y = t * 2.2;
+  u.item.scale.setScalar(1.1 * (0.4 + 0.6 * ki));             // 튀어나오며 커진다(불투명 모형이라 페이드 대신 크기)
+  u.label.visible = t > 0.75 && kx < 1; u.label.position.copy(pos).add(new THREE.Vector3(0.95, 1.05, 0.2));   // 상자 오른쪽 위 — 모형과 겹치지 않게
+  u.label.material.opacity = clamp01((t - 0.75) / 0.15) * (1 - kx);
+  u.sparks.position.copy(P0).setY(0.4); setBurst(u.sparks, clamp01(t / 0.5), 0.9);
+  u.ring.visible = t < 0.02; u.glint.visible = false;           // 물결 고리는 물에 두고 온다
+  if (v === 3) {
+    const kr = clamp01((t - 0.5) / 0.7);
+    u.rays.visible = kr > 0 && kr < 1; u.rays.position.copy(pos).add(new THREE.Vector3(0, H + 0.3, -0.3));
+    u.rays.rotation.z = t * 1.2; u.rays.scale.setScalar(0.4 + ease(kr) * 1.1);
+    u.rays.children.forEach(m => { m.material.opacity = 0.55 * (1 - kr); });
+    u.confetti.position.copy(pos).add(new THREE.Vector3(0, H + 0.4, 0)); setBurst(u.confetti, clamp01((t - 0.5) / 0.8), 1.4);
+    u.flash.position.set(0, 1.5, -0.2); u.flash.material.opacity = 0.55 * Math.max(0, 1 - Math.abs(t - 0.55) / 0.12);
+  }
+}
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+if (Q.get('mode') === 'result') {                              // 🧾 결과 카드 시안 3안(게임 #boat-result CSS 사본)
+  const css = document.createElement('style');
+  css.textContent = `
+    :root { --mint:#bfe8c9; --ink:#4a5a4f; }
+    *{box-sizing:border-box}   /* 게임 index.html 전역 규칙과 같게 */
+    html,body{overflow:visible;height:auto;min-height:0;background:#2f4a3c}
+    body.stack #labels{display:none}
+    #wrap{position:absolute;left:0;top:0;right:0;display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:flex-start;padding:22px 12px;font-family:'Segoe UI',system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif}
+    .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .tag{color:#fff;font-weight:700;font-size:14px;background:rgba(255,255,255,.14);padding:4px 12px;border-radius:9px}
+    .tut-card{width:min(440px,92vw);background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(30,50,40,.4);padding:28px 26px 22px;color:var(--ink);text-align:center}
+    .tut-emoji{font-size:40px}
+    .tut-card h2{margin:4px 0 16px;font-size:20px}
+    .sub{font-size:13px;opacity:.75;margin:-8px 0 14px}
+    .boat-row{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:12px;background:#f4faf5;font-size:13px;margin-bottom:6px;text-align:left}
+    .boat-row b{font-variant-numeric:tabular-nums}
+    .dm-actions{display:flex;gap:8px;justify-content:center;margin-top:14px}
+    .dm-actions button{border:none;border-radius:10px;padding:8px 14px;font-weight:600;font-size:13px;background:#eef2ee;color:var(--ink);font-family:inherit}
+    .dm-actions .primary{background:var(--mint)}
+    .stage{width:100%;height:150px;border-radius:16px;background:linear-gradient(#e6f4fb,#cfe9f5);margin:-8px 0 10px;display:block}
+    .found{font-size:14px;font-weight:700;color:#9a6a12;background:#fff6dc;border-radius:12px;padding:8px 12px;margin:0 0 12px}
+    .chest-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:14px;background:#fffaf0;border:2px solid #f0c04a;margin-bottom:6px;text-align:left}
+    .chest-row canvas{width:64px;height:64px;border-radius:10px;background:#e6f4fb;flex:none}
+    .chest-row .t1{font-size:12px;opacity:.7}
+    .chest-row .t2{font-size:15px;font-weight:800;color:#9a6a12}
+    .miss-row{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:12px;background:#f2f2f0;font-size:13px;margin-bottom:6px;color:#7b857e;text-align:left}
+    .reveal{width:min(440px,92vw);height:420px;border-radius:24px;background:radial-gradient(circle at 50% 45%,#fff3c4 0,#f7d98a 30%,#3a5a48 75%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:22px;box-shadow:0 20px 60px rgba(30,50,40,.4)}
+    .reveal canvas{width:100%;height:300px;display:block}
+    .reveal h2{color:#fff;margin:0 0 4px;font-size:22px;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+    .reveal p{color:#fff8e0;margin:0 0 12px;font-size:15px;font-weight:700}
+    .reveal button{border:none;border-radius:12px;padding:10px 22px;font-weight:700;font-size:14px;background:#fff;color:#6b4a10}
+  `;
+  if (Q.get('w')) {                                            // 📱 폰 폭 강제 — 헤드리스 창 최소 폭(~500px) 때문에 vw 가 폰 폭이 안 된다
+    const w = Number(Q.get('w'));
+    css.textContent += `#wrap{width:${w}px;right:auto} .tut-card,.reveal{width:${Math.round(w * 0.92)}px}`;
+  }
+  document.head.appendChild(css);
+  document.getElementById('labels').remove();
+  const NAME = LOOT_NAMES[LOOT];
+  const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28) ? a : b; };   // 받침 있으면 a
+  const rowsHTML = (extra = '') => [
+    ['거리', '620m'], ['시간', '58.4초'], ['점수', '1,012'], ['충돌', '1회'], ['⭐ 별조각', '+34 (보유 86)'],
+  ].map(([k, v]) => `<div class="boat-row"><span>${k}</span><b>${v}</b></div>`).join('') + extra
+    + `<div class="boat-row"><span>오늘 남은 횟수</span><b>2/3회</b></div>`;
+  const buttons = `<div class="dm-actions"><button class="primary">🛶 한 번 더 (2회 남음)</button><button>그만하기</button></div>`;
+  const missRow = `<div class="miss-row"><span>보물상자</span><b>다음 뱃길에 또 떠내려와요</b></div>`;
+  document.body.insertAdjacentHTML('beforeend', `<div id="wrap">
+    <div class="col"><div class="tag">R1 · 상단 무대</div><div class="tut-card">
+      <canvas class="stage" data-v="stage"></canvas>
+      <h2>무사히 도착!</h2><p class="sub">한 번 부딪혔지만 끝까지 내려왔어요</p>
+      <div class="found">보물상자에서 ${NAME}${josa(NAME, '을', '를')} 찾았어요!</div>${rowsHTML()}${buttons}</div></div>
+    <div class="col"><div class="tag">R2 · 줄 안 타일</div><div class="tut-card">
+      <div class="tut-emoji">🎉</div><h2>무사히 도착!</h2><p class="sub">한 번 부딪혔지만 끝까지 내려왔어요</p>
+      ${rowsHTML(`<div class="chest-row"><canvas data-v="thumb"></canvas><div><div class="t1">보물상자</div><div class="t2">${NAME}</div></div></div>`)}${buttons}</div></div>
+    <div class="col"><div class="tag">R3 · 먼저 열고 → 카드</div><div class="reveal">
+      <canvas data-v="big"></canvas><h2>보물상자를 열었어요!</h2><p>${NAME}</p><button>좋아요</button></div></div>
+    <div class="col"><div class="tag">놓쳤을 때(공통)</div><div class="tut-card">
+      <div class="tut-emoji">🎉</div><h2>무사히 도착!</h2><p class="sub">한 번 부딪혔지만 끝까지 내려왔어요</p>${rowsHTML(missRow)}${buttons}</div></div>
+  </div>`);
+  // 카드 속 3D — 열린 상자 + 보상 모형(연출 ②의 마지막 모습)
+  for (const cv of document.querySelectorAll('canvas[data-v]')) {
+    const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
+    r.setPixelRatio(2); r.setSize(cv.clientWidth, cv.clientHeight, false);
+    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.outputColorSpace = THREE.SRGBColorSpace;
+    const sc = new THREE.Scene();
+    sc.add(new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.9)); sc.add(new THREE.AmbientLight(0xfff0dd, 0.3));
+    const sun = new THREE.DirectionalLight(0xffe9c4, 1.1); sun.position.set(3, 6, 5); sc.add(sun);
+    const ch = chestA(); ch.userData.ring.visible = false; ch.userData.glint.visible = false;
+    ch.children[0].position.y = 0; ch.userData.lid.rotation.x = -1.9; ch.rotation.set(0.35, -0.35, 0);
+    const it = itemMesh(LOOT); it.scale.setScalar(1.25); it.position.set(0, ch.userData.H + 0.12, 0.05); it.rotation.y = 0.6; ch.add(it);
+    sc.add(ch);
+    const cam = new THREE.PerspectiveCamera(30, cv.clientWidth / cv.clientHeight, 0.1, 50);
+    const v = cv.dataset.v;
+    if (v === 'thumb') { cam.position.set(0, 1.2, 3.6); cam.lookAt(0, 0.55, 0); }
+    else if (v === 'big') { cam.position.set(0, 1.5, 4.3); cam.lookAt(0, 0.75, 0); }
+    else { cam.position.set(0, 1.25, 4.2); cam.lookAt(0, 0.72, 0); }
+    if (v === 'big') {                                            // 빛줄기 + 반짝이(연출 ③ 문법)
+      const rs = rays(); rs.position.set(0, 0.9, -0.4); rs.scale.setScalar(1.6); sc.add(rs);
+    }
+    r.render(sc, cam);
+  }
+  throw new Error('result mode — 카드만 그리고 멈춤');
+}
+const PICKUP = Q.get('mode') === 'pickup';
+if (Q.get('mode') === 'items') {                              // 🎁 보상 모형 라인업(검수용)
+  const sc = new THREE.Scene(); sc.background = new THREE.Color(0xcfe9f5);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.9)); sc.add(new THREE.AmbientLight(0xfff0dd, 0.25));
+  const sun = new THREE.DirectionalLight(0xffe9c4, 1.1); sun.position.set(4, 8, 6); sc.add(sun);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(13, 0.1, 2), wood(0xffffff, 6, 2)); deck.position.y = -0.05; sc.add(deck);
+  const ids = Object.keys(LOOT_NAMES);
+  ids.forEach((id, i) => { const m = itemMesh(id); m.scale.setScalar(2.2); m.position.set((i - (ids.length - 1) / 2) * 1.9, 0, 0); m.rotation.y = -0.4; sc.add(m); });
+  const cam = new THREE.PerspectiveCamera(32, innerWidth / (Number(Q.get('h')) || innerHeight), 0.1, 50); cam.position.set(0, 1.7, 9.5); cam.lookAt(0, 0.55, 0);
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.outputColorSpace = THREE.SRGBColorSpace;
+  r.setSize(innerWidth, Number(Q.get('h')) || innerHeight); document.body.appendChild(r.domElement); r.render(sc, cam);
+  const HH = Number(Q.get('h')) || innerHeight;
+  document.getElementById('labels').innerHTML = ids.map((id, i) => {        // 이름표를 모형의 화면 위치에 맞춘다
+    const v = new THREE.Vector3((i - (ids.length - 1) / 2) * 1.9, -0.15, 0.6).project(cam);
+    return `<div style="position:absolute;left:${(v.x + 1) / 2 * innerWidth - 60}px;top:${(1 - v.y) / 2 * HH}px;width:120px;justify-content:center;padding:0"><span>${LOOT_NAMES[id]}</span></div>`;
+  }).join('');
+  throw new Error('items mode — 라인업만 그리고 멈춤');
+}
+const PICK_OPTS = [{ v: 1, label: '① 글자 + 반짝임' }, { v: 2, label: '② 날아와서 열림' }, { v: 3, label: '③ ② + 빛줄기·반짝' }];
+const panes = PICKUP
+  ? PICK_FRAMES.flatMap(ft => PICK_OPTS.map(o => {
+      const p = { ...o, tFixed: ft, ...buildScene(() => chestA({ buoy: 'side' })), cam: new THREE.PerspectiveCamera(42, 1, 0.1, 200) };
+      setupPickup(p, o.v); return p;
+    }))
+  : OPTS.map(o => ({ ...o, ...buildScene(o.make), cam: new THREE.PerspectiveCamera(42, 1, 0.1, 200) }));
+const COLS = PICKUP ? PICK_OPTS.length : panes.length, ROWS = PICKUP ? PICK_FRAMES.length : 1;
+document.getElementById('labels').innerHTML = PICKUP
+  ? panes.map(p => `<div style="position:absolute;left:${PICK_OPTS.findIndex(o => o.v === p.v) * 100 / COLS}%;top:${PICK_FRAMES.indexOf(p.tFixed) * 100 / ROWS}%;width:${100 / COLS}%;display:flex;justify-content:center;padding-top:6px"><span>${p.label} · ${p.tFixed.toFixed(2)}초</span></div>`).join('')
+  : panes.map(p => `<div><span>${p.label}</span></div>`).join('');
+
+function placeCamera(p) {
+  const c = p.cam, ch = p.chest.position;
+  if (VIEW === 'close') { c.position.set(ch.x + 2.2, 1.9, ch.z + 3.6); c.lookAt(ch.x + 0.35, 0.4, ch.z); return; }
+  if (VIEW === 'third') { c.position.set(0, 5.2, 9); c.lookAt(0, 0.9, -6); return; }
+  c.position.set(0, 1.5, 0.55); c.lookAt(0, 1.05, -14);             // 1인칭(게임 기본)
+}
+
+function frame(ms) {
+  const t = FIXED_T ?? ms / 1000;
+  const W = innerWidth, H = Number(Q.get('h')) || innerHeight, n = panes.length;   // ?h= 헤드리스 캡처는 창보다 뷰포트가 작다
+  renderer.setSize(W, H); renderer.setScissorTest(true);
+  panes.forEach((p, i) => {
+    let vw, vh, vx, vy;
+    if (PICKUP) { const c = i % COLS, r = Math.floor(i / COLS); vw = Math.floor(W / COLS); vh = Math.floor(H / ROWS); vx = c * vw; vy = H - (r + 1) * vh; }
+    else { vw = STACK ? W : Math.floor(W / n); vh = STACK ? Math.floor(H / n) : H; vx = STACK ? 0 : i * vw; vy = STACK ? H - (i + 1) * vh : 0; }
+    p.cam.aspect = vw / vh; p.cam.updateProjectionMatrix(); placeCamera(p);
+    if (p.anim) { p.anim(p.tFixed ?? t); renderer.setViewport(vx, vy, vw, vh); renderer.setScissor(vx, vy, vw, vh); renderer.render(p.sc, p.cam); return; }
+    const u = p.chest.userData, body = p.chest.children[0];
+    if (body.userData.y0 == null) body.userData.y0 = body.position.y;
+    body.position.y = body.userData.y0 + Math.sin(t * 2.2 + i) * 0.05;          // 까딱
+    body.rotation.z = Math.sin(t * 1.6 + i) * 0.06;
+    const k = (t * 0.7) % 1; u.ring.scale.setScalar(1 + k * 0.5); u.ring.material.opacity = 0.55 * (1 - k);
+    u.glint.rotation.y = t * 2.4; u.glint.scale.set(1, 1.8, 1).multiplyScalar(0.8 + 0.25 * Math.sin(t * 5));
+    p.star.rotation.y = t * 2;
+    renderer.setViewport(vx, vy, vw, vh); renderer.setScissor(vx, vy, vw, vh);
+    renderer.render(p.sc, p.cam);
+  });
+  if (FIXED_T == null) requestAnimationFrame(frame); else window.__ready = true;
+}
+requestAnimationFrame(frame);
+</script>

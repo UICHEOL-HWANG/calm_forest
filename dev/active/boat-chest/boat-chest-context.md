@@ -1,0 +1,47 @@
+# 🧰 나룻배 보물상자 — Context
+
+**Last Updated:** 2026-09-29 (구현 완료)
+
+## 결정
+- 세 기능(보물상자·요리 심사·사공 퀴즈) 중 가장 가벼워 **첫 번째**. 디자인은 사용자 검토 필수, 트래킹은 체크리스트 전 항목.
+- 코인 금지 — 나룻배는 원래 코인을 안 준다(`endBoatRun` 주석: 인플레 방지).
+- 하루 1개, 건질 때까지 그날 런마다(최대 `BOAT_RUNS_PER_DAY = 3`). `gameState.boat.chestDate` 로 판정.
+- 상자 삽입은 `buildCourse` 루프 **뒤**에서만 난수 소비 → 상자 없는 날 코스는 기존과 동일.
+
+## 디자인 결정 (Task 1 완료 — 2026-09-29 전부 승인)
+- 외형: ✅ **A2 확정(2026-09-29)** — 나무 궤짝+금테, 크기 1.25배, 🌙 밤엔 금테·자물쇠 발광(emissive 0.55)+부드러운 물빛(방사형 그라데이션, 블룸 임계 이하), 작은 부표(0.75배·채도 낮춘 빨강·깃발 없음)를 옆에 밧줄로. 시안 `sims/boat-chest-sim.html?set=A`
+  - 기각: B(부표가 궤짝보다 먼저 보임), C(멀리서 소풍 바구니로 읽힘), A3(게임 시점에서 부표가 가려 안 보임)
+- 건지는 연출: ✅ **확정(2026-09-29)** — 달리는 중엔 ①(상자 쏙 + 반짝이 + 배 앞 10 글자, 시야 방해 없음), **결과 카드에서** 상자를 열어 보상 3D 모형을 보여 준다. ②③을 달리는 중에 쓰면 3구간(최고 속도)에서 1.3초간 시야 가림 → 충돌 유발이라 기각
+- 보상 표시: ✅ **이모지 대신 로우폴리 3D 모형 6종**(`itemMesh` in 시안) — 로우폴리 화면에서 평면 이모지가 튄다(사용자). 떠오르는 글자에도 이모지 없음
+- 결과 카드: ✅ **R3 확정(2026-09-29)** — 결과 카드 전에 개봉 화면(빛줄기 속 큰 상자 + 보상 3D 모형 + "보물상자를 열었어요!" + [좋아요]) → 누르면 기존 결과 카드. 놓쳤을 땐 카드에 회색 줄 "보물상자 · 다음 뱃길에 또 떠내려와요". 시안 `?mode=result`
+  - 기각: R1 상단 무대(추천했으나 사용자 R3 선택), R2 줄 안 타일(순간이 약함)
+- 보상표: ✅ **확정(2026-09-29)** — 🍎사과 묘목 20% · 🍑복숭아 묘목 10% · 🌰밤 묘목 5% · 🌱비료 3 20% · 🪱미끼 5 20% · 💎보석 1 10% · 🎨집 색 1종 15%(다 열렸으면 💎보석 1). 기대가치 ≈ 50코인어치/일
+  - ⭐별조각 제외: 쓰는 곳이 뱃사공 창고뿐이고 전부 사도 68개(한 판 평균 57개, 중앙 66 — boat_runs 30일 64판·22명 실측) → 강화 후 쓸모 없음. 배 묘목은 사과와 겹쳐 제외
+- 지급 규칙: ✅ **always**(난파·그만두기에도 지급 — 기존 수집물과 같음)
+- 위치: ✅ **3구간 70~85%** — 실측 77%의 판이 70% 지점(434m)까지 간다
+
+## 핵심 파일 (조사 결과)
+- `js/spaces/river.js` — `startBoatRun` 332, `buildCourse` 249, `makeRiverMesh` 283, `endBoatRun` 407, `updateRiverObjects` 585(줍기 612)
+- `js/data/places.js` — `RIVER`(157) `RIVER_LEN 620`(163) `BOAT_RUNS_PER_DAY 3`(165) `RIVER_PICKS`(182) `BOAT_UPGRADES`(190)
+- `js/game.js` — 런 상태 `boat`(450), 세이브 기본값(970), `giveReward`(코인만 econ_logs), `tryUnlockDrop`(1370), `showCatchItem`(5696), `spawnFloatText`(6630)
+- `js/supabase-client.js:644` `sendBoatRun` → `boat_runs` **고정 컬럼 insert**(모르는 필드 = 행 실패)
+- `index.html` `showBoatResult`, 재도전 버튼 5020
+
+## 함정
+- `econ_logs` 는 코인 전용 → 상자 지급 원장은 `boat_runs.chest_loot/chest_paid`.
+- 마이그레이션을 클라이언트보다 **먼저** 적용. Supabase MCP 는 읽기 전용.
+- `boat_runs` 는 dev 세션에서 안 쓴다(`IS_DEV_SESSION`) → 트래킹 실측은 trackEvent 가로채기로.
+- 맨 localhost 는 dev 세션이 아니다(프로덕션 기록됨) — 검증 땐 dev 파라미터를 붙인다.
+
+## 구현 결과 (2026-09-29)
+- 파일: `js/boat-chest.js`(규칙) · `js/boat-chest-art.js`(상자·보상 3D·빛줄기) · `js/boat-chest-reveal.js`(개봉 화면, 렌더러 재사용) · `js/spaces/river.js`(배선) · `index.html`(#chest-reveal·결과 카드 줄) · `js/i18n-en.js` · `sql/migrations/migrate_boat_runs_chest.sql`
+- 트래킹 실측(dev 파라미터 없이·외부 요청 차단, dataLayer): 건짐 `boat_start(has_chest=1)→seen(chest_d=461)→take(loot=fert,dx=0)→boat_end(chest=2,paid=1)` · 같은 날 두 번째 `has_chest=0`·`chest=0` · 놓침 `miss(dx_min=4.5)→chest=1` · 도달 못 함 `chest=3`
+- 리뷰 반영: chestDate 는 **지급 시점**에 · chest 3(못 감) 분리 · `color_gem` · 개봉 텍스처 해제
+- 남은 LOW(미반영, 의도): 개봉 화면 회전 시 리사이즈·WebGL 컨텍스트 손실 처리 없음(하루 1회·몇 초라 보류) · buildCourse 불변 보장은 소스 검사 테스트뿐
+
+## 검증 함정 (다음에도)
+- `?weather=`·`?time=`·`?river=` 도 DEV_PARAMS — 붙이면 trackEvent 가 꺼진다. 트래킹 실측은 **쿼리 없이** + Playwright `page.route` 로 supabase·GA 차단(익명 계정 안 생김) → `window.dataLayer` 에서 읽는다
+- `__boat.start()` 를 마을에서 부르면 강 공간이 안 켜져 빈 화면 — 화면 확인은 `?river=1`
+- 새 게스트는 캐릭터 선택·환영 튜토리얼·나루터 안내 창이 계속 떠서 클릭을 가로챈다 → 테스트에서만 classList 제거
+- 헤드리스 창 최소 폭 ~500px — 폰 폭은 viewport(Playwright) 또는 시안의 `?w=` 로
+- 미리보기는 루트 launch.json 만 읽는다 → 워크트리용 설정을 임시로 넣고 **끝나면 되돌린다**
