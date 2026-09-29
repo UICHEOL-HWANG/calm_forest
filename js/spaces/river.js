@@ -463,12 +463,15 @@ export function endBoatRun(result) {
   if (stars > 0 || rareCount > 0) giveReward(give, 'boat_run', result);
   // 🧰 보물상자 — 규칙 always(난파·그만두기에도 지급). 출처를 나눠 따로 준다(boat_run 과 섞이지 않게).
   //    econ_logs 는 코인 전용이라 여기 안 남는다 → 지급 원장은 boat_runs.chest_loot·chest_paid.
-  const chestCode = chestOutcome({ offered: boat.chestOffered, taken: boat.chestTaken });
+  const chestCode = chestOutcome({ offered: boat.chestOffered, seen: boat.chestSeen, taken: boat.chestTaken });
   const chestPaidNow = !!(boat.chest && chestPaid(result));
+  let chestG = null;                                                   // 실제 지급 기준 { id, name, give } — 🎨 다 열렸으면 color_gem
   if (chestPaidNow) {
-    const chestG = chestGive(boat.chest, { unlocked: boat.chest.give ? false : tryUnlockDrop(1) });   // 🎨 다 열렸으면 보석 1
-    if (Object.keys(chestG).length) giveReward(chestG, 'boat_chest', boat.chest.id);
+    gameState.boat.chestDate = todayStr();                             // 오늘은 끝 — 지급과 같은 순간에 남긴다(건진 뒤 창을 닫아도 안 잃게)
+    chestG = chestGive(boat.chest, { unlocked: boat.chest.give ? false : tryUnlockDrop(1) });
+    if (Object.keys(chestG.give).length) giveReward(chestG.give, 'boat_chest', chestG.id);
   }
+  const chestLootId = chestG?.id ?? boat.chest?.id ?? null;
   const chestD = boat.chestPos?.d ?? riverCourse.find(k => k.kind === 'chest')?.d ?? null;
   for (const id in boat.picks) dexDiscover('river', id);               // 📖 강 도감
   if (result === 'clear') awardBadge('ferryman');
@@ -482,18 +485,18 @@ export function endBoatRun(result) {
     dist_m: distM, time_sec: timeSec, score, best, hits: boat.hits, hit_points: boat.hitLog,
     picks: { ...boat.picks }, stars, lamps_left: boat.lamps, boost_used: boat.boostUsed,
     upgrades: { ...up },
-    chest: chestCode, chest_loot: boat.chest?.id ?? null, chest_paid: chestPaidNow ? 1 : 0, chest_d: chestD == null ? null : Math.round(chestD),   // 🧰 boat_runs 4컬럼(마이그레이션 먼저!)
+    chest: chestCode, chest_loot: chestLootId, chest_paid: chestPaidNow ? 1 : 0, chest_d: chestD == null ? null : Math.round(chestD),   // 🧰 boat_runs 4컬럼(마이그레이션 먼저!)
   };
   trackEvent('boat_end', {                                             // [GA4] 완주율·이탈 지점 KPI
     result, run_no: boat.runNo, dist_m: distM, time_sec: timeSec, score, hits: boat.hits,
     stars, rare: rareCount, boost_used: boat.boostUsed, night: boat.night, weather: WEATHER, best,
-    chest: chestCode, chest_loot: boat.chest?.id ?? null, chest_paid: chestPaidNow ? 1 : 0,   // 🧰 0 없음·1 놓침·2 건짐
+    chest: chestCode, chest_loot: chestLootId, chest_paid: chestPaidNow ? 1 : 0,   // 🧰 0 없음·1 보고 놓침·2 건짐·3 못 감
   });
   sendBoatRun(payload);                                                // [분석] 런 단위 1행(boat_runs)
   ui.showBoatResult?.({
     ...payload, rare: rareCount, runsLeft: boatRunsLeft(), runsMax: BOAT_RUNS_PER_DAY,
     // 🧰 개봉 화면(R3)·결과 카드용 — payload.chest 는 트래킹 코드(0/1/2)라 화면 정보는 따로
-    chestView: { paid: chestPaidNow, missed: chestCode === 1, id: boat.chest?.id ?? null, name: boat.chest?.name ?? null, night: boat.night },
+    chestView: { paid: chestPaidNow, missed: chestCode === 1, id: chestLootId, name: chestG?.name ?? null, night: boat.night },
     picksView: Object.entries(boat.picks).map(([id, n]) => {
       const k = RIVER_PICKS.find(x => x.id === id); return { ico: k?.ico || '❔', name: k?.name || id, n };
     }),
@@ -652,8 +655,7 @@ export function updateRiverObjects(dt, t, seg) {
       if (rel > -2) boat.chestDxMin = Math.min(boat.chestDxMin, dx);   // 놓쳤을 때 "얼마나 아깝게"
       if ((Math.abs(rel) < 1.4 || passed) && dx < 1.7) {         // 상자가 1.25배라 수집물(1.5)보다 조금 넉넉하게
         a.taken = true; a.mesh.visible = false;
-        boat.chestTaken = true; boat.chest = rollChest(boat.seed);
-        gameState.boat.chestDate = todayStr();                   // 오늘은 끝 — 다음 판부터 안 나온다
+        boat.chestTaken = true; boat.chest = rollChest(boat.seed);   // 오늘 끝 기록(chestDate)은 지급할 때 — 여기서 남기면 창을 닫았을 때 상자를 잃는다
         // 내용물은 개봉 화면(결과 전)에서 공개 — 여기선 건졌다는 것만. 이모지 없이(로우폴리 화면에서 튄다)
         const portrait = innerWidth < innerHeight;                  // 📱 세로 화면에선 0.9 로 폭을 넘어 양옆이 잘렸다(390px 실측)
         Sound.harvest(); spawnFloatText(player.position.x, 1.9, player.position.z - 10, '보물상자를 건졌어요!', '#c98a1e', portrait ? 0.5 : 0.9);

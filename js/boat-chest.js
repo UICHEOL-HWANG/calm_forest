@@ -40,12 +40,15 @@ export function rollChest(seed) {
   return CHEST_LOOT[CHEST_LOOT.length - 1];
 }
 
-// 실제로 인벤에 더할 것 — 🎨 집 색은 해금에 성공하면 빈 보상, 이미 다 열렸으면 보석 1
+// 실제 지급 기준 { id, name, give } — 화면(개봉·결과 카드)과 원장(boat_end·boat_runs.chest_loot)이 이걸 쓴다.
+//   🎨 집 색은 해금에 성공하면 give 없음, 이미 다 열렸으면 보석 1 — 이때 id 를 color_gem 으로 둬서
+//   진짜 보석(gem)과 구분하고, 화면에도 "집 색 하나"가 아니라 받은 그대로("보석 1개")를 보여 준다.
 export function chestGive(loot, { unlocked } = {}) {
-  if (loot.give) return { ...loot.give };
-  return unlocked ? {} : { gem: 1 };
+  if (loot.give) return { id: loot.id, name: loot.name, give: { ...loot.give } };
+  return unlocked ? { id: loot.id, name: loot.name, give: {} } : { id: 'color_gem', name: '보석 1개', give: { gem: 1 } };
 }
 
-// boat_end.chest / boat_runs.chest — 0 없음 · 1 놓침 · 2 건짐
-export const chestOutcome = ({ offered, taken }) => (!offered ? 0 : taken ? 2 : 1);
+// boat_end.chest / boat_runs.chest — 0 없음 · 1 보고 놓침 · 2 건짐 · 3 거기까지 못 감
+//   3 을 1 과 나누는 이유: 상자 전에 난파·그만두기한 판을 "놓침"에 넣으면 건짐률(2/(1+2))이 부풀려진다
+export const chestOutcome = ({ offered, seen, taken }) => (!offered ? 0 : taken ? 2 : seen ? 1 : 3);
 export const chestPaid = (result, rule = CHEST_RULE) => rule === 'always' || result === 'clear';
