@@ -1,6 +1,6 @@
 # 🧰 나룻배 보물상자 — Context
 
-**Last Updated:** 2026-09-29
+**Last Updated:** 2026-09-29 (구현 완료)
 
 ## 결정
 - 세 기능(보물상자·요리 심사·사공 퀴즈) 중 가장 가벼워 **첫 번째**. 디자인은 사용자 검토 필수, 트래킹은 체크리스트 전 항목.
@@ -32,3 +32,16 @@
 - 마이그레이션을 클라이언트보다 **먼저** 적용. Supabase MCP 는 읽기 전용.
 - `boat_runs` 는 dev 세션에서 안 쓴다(`IS_DEV_SESSION`) → 트래킹 실측은 trackEvent 가로채기로.
 - 맨 localhost 는 dev 세션이 아니다(프로덕션 기록됨) — 검증 땐 dev 파라미터를 붙인다.
+
+## 구현 결과 (2026-09-29)
+- 파일: `js/boat-chest.js`(규칙) · `js/boat-chest-art.js`(상자·보상 3D·빛줄기) · `js/boat-chest-reveal.js`(개봉 화면, 렌더러 재사용) · `js/spaces/river.js`(배선) · `index.html`(#chest-reveal·결과 카드 줄) · `js/i18n-en.js` · `sql/migrations/migrate_boat_runs_chest.sql`
+- 트래킹 실측(dev 파라미터 없이·외부 요청 차단, dataLayer): 건짐 `boat_start(has_chest=1)→seen(chest_d=461)→take(loot=fert,dx=0)→boat_end(chest=2,paid=1)` · 같은 날 두 번째 `has_chest=0`·`chest=0` · 놓침 `miss(dx_min=4.5)→chest=1` · 도달 못 함 `chest=3`
+- 리뷰 반영: chestDate 는 **지급 시점**에 · chest 3(못 감) 분리 · `color_gem` · 개봉 텍스처 해제
+- 남은 LOW(미반영, 의도): 개봉 화면 회전 시 리사이즈·WebGL 컨텍스트 손실 처리 없음(하루 1회·몇 초라 보류) · buildCourse 불변 보장은 소스 검사 테스트뿐
+
+## 검증 함정 (다음에도)
+- `?weather=`·`?time=`·`?river=` 도 DEV_PARAMS — 붙이면 trackEvent 가 꺼진다. 트래킹 실측은 **쿼리 없이** + Playwright `page.route` 로 supabase·GA 차단(익명 계정 안 생김) → `window.dataLayer` 에서 읽는다
+- `__boat.start()` 를 마을에서 부르면 강 공간이 안 켜져 빈 화면 — 화면 확인은 `?river=1`
+- 새 게스트는 캐릭터 선택·환영 튜토리얼·나루터 안내 창이 계속 떠서 클릭을 가로챈다 → 테스트에서만 classList 제거
+- 헤드리스 창 최소 폭 ~500px — 폰 폭은 viewport(Playwright) 또는 시안의 `?w=` 로
+- 미리보기는 루트 launch.json 만 읽는다 → 워크트리용 설정을 임시로 넣고 **끝나면 되돌린다**
