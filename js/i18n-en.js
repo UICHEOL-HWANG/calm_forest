@@ -10,6 +10,16 @@
 // =============================================================
 
 export const EN = {
+  // ── 🍲 보글보글 냄비(자유 요리) ─────────────────────────────
+  //    요리 이름·한 줄 평은 조합 표(js/free-pot/table.js)의 _en 을 index.html 이 직접 쓴다
+  '📖 레시피': '📖 Recipes',
+  '🍲 보글보글 냄비': '🍲 Bubbling Pot',
+  '재료를 1~3개 넣고 보글보글 끓여 봐요': 'Toss in 1–3 ingredients and let it bubble',
+  '🔥 보글보글 끓이기': '🔥 Let It Bubble',
+  '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요': 'That one has a recipe — cook it from the menu',
+  '재료를 1~3개 골라 주세요': 'Pick 1–3 ingredients',
+  '✨ 처음 끓여 본 요리예요!': '✨ A dish you cooked for the first time!',
+  '끓여 본 요리 {0}/{1}': 'Dishes found {0}/{1}',
   // ── 🧰 나룻배 보물상자 ────────────────────────────────────────
   //    보상 이름 중 묘목(사과나무·복숭아나무·밤나무 묘목)은 과수원 쪽에 이미 있다
   '보물상자를 건졌어요!': 'You fished up a treasure chest!',

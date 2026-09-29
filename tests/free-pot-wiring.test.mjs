@@ -28,3 +28,39 @@ test('세이브 복원: 찬장의 자유 요리(free:<조합>)를 버리지 않�
   assert.match(blk, /isFreeId\(f\.id\) && freeDishOf\(f\.id\)/);   // 레시피 목록에 없어도 형식이 맞는 자유 요리는 살린다
   assert.match(blk, /loadFreePot\(\)/);
 });
+
+import { readFileSync } from 'node:fs';
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+test('주방에 자유 냄비 탭이 있고 표를 지연 로드한다', () => {
+  assert.match(html, /id="kt-tab-free"/);
+  assert.match(html, /Input\.loadFreePot\(\)/);
+  assert.match(html, /function renderFreePot\(/);
+});
+test('결과 카드가 자유 요리의 맛·평·새 발견을 보여 준다', () => {
+  assert.match(html, /res\.free/);
+  assert.match(html, /id="mgr-taste"/);
+});
+test('영어일 때 생성된 이름·평은 _en 을 직접 쓴다', () => {
+  assert.match(html, /LANG === 'en' \? res\.free\.judge_en : res\.free\.judge/);
+});
+test('free_pot_open·free_pot_blocked 트래킹', () => {
+  assert.match(src, /trackEvent\('free_pot_open', \{ found[\s\S]{0,80}total[\s\S]{0,80}kinds_have/);
+  assert.match(src, /trackEvent\('free_pot_blocked', \{ combo_key: c\.key, recipe_ids:/);
+});
+test('freePotStart 는 freePotCheck 를 거쳐 kitchenStart 로 들어간다', () => {
+  assert.match(src, /freePotStart[\s\S]{0,200}freePotCheck\(ids\)[\s\S]{0,400}kitchenStart\(FREE_PREFIX \+ c\.key\)/);
+});
+
+test('확정 문구(🍲 보글보글 냄비) — 탭·버튼·안내·새 발견·발견 수', () => {
+  for (const s of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '✨ 처음 끓여 본 요리예요!']) assert.ok(html.includes(s), s);
+  assert.match(html, /끓여 본 요리 \$\{/);
+  const EN = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
+  for (const k of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '✨ 처음 끓여 본 요리예요!', '📖 레시피',
+    '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요', '재료를 1~3개 골라 주세요']) assert.ok(EN.includes(`'${k}':`), `i18n ${k}`);
+});
+
+test('굽기 판 석쇠엔 조합 표 아이콘이 아니라 굽는 재료(🐟) — 꿀 생선구이에 꿀단지가 올라가던 문제', () => {
+  assert.match(fn('kitchenStart'), /sceneIco: r\.free \? /);                      // 자유 요리는 규칙으로 정한 재료 아이콘
+  assert.match(html, /MG\.dishIco = st\.sceneIco \|\| st\.ico/);
+});

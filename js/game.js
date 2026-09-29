@@ -4618,6 +4618,9 @@ function kitchenStart(id, where = 'kitchen') {
   trackEvent('cooking_start', { recipe: id, mg_type: course.map(s => s.mg).join('>'), diff: recipeDiff(r), where,   // [GA4] 미니게임 퍼널: 시작
     combo_key: r.free?.key ?? null, n_ing: r.free ? r.free.key.split('+').length : null, stage: r.free ? r.stages[0] : null });   // 🍲 자유 냄비 축
   return { ok: true, id, where, name: r.name, ico: r.ico, diff: recipeDiff(r), course,
+    // 🍲 조리 무대(석쇠)에 올릴 것 — 자유 요리는 조합 표 아이콘(요리 대표 이모지, 예: 꿀 생선구이=🍯)이 아니라
+    //    굽는 재료. 굽기 판은 생선이 든 조합에서만 열린다(rules.js stageOf) → 🐟
+    sceneIco: r.free ? (r.stages[0] === 'grill' ? SELL_ICO_G.fish : null) : null,
     icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') };   // icos: 조리 장면 연출용 재료 아이콘
 }
 
