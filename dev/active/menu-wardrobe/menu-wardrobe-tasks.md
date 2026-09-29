@@ -1,0 +1,8 @@
+- [x] 1 순수 모듈 + 테스트(RED→GREEN)
+- [x] 2 옷장·펫 DOM 모듈
+- [x] 3 가게 구매 완료
+- [x] 4 index.html 메뉴·설정 창·캐릭터 탭
+- [x] 5 i18n
+- [x] 6 검증(모바일 375·PC 1280 · ko/en) · 코드 리뷰(MEDIUM 1·LOW 2 반영, 안내서 스샷만 남음)
+- [ ] 7 안내서 14_menu.jpg 재캡처(guide/img + docs/beginner-guide/img)
+- [ ] 8 사용자 확인 → main 병합 → 배포 4곳

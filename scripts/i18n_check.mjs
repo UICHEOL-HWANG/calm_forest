@@ -120,6 +120,8 @@ const targets = [
   ['js/retention-guidance.js', s => jsStrings(stripJsComments(s))],
   // 🐗🦝 승부 — COPY 가 화면에 그대로 나간다. 목록에 없으면 문구를 더해도 이 도구가 못 잡는다
   ['js/duel/ui.js', s => jsStrings(stripJsComments(s))],
+  // 🧥 가게 버튼 '구매 완료' 가 여기서 나간다(옷장 규칙, 2026-09-29)
+  ['js/cosmetics/wardrobe.js', s => jsStrings(stripJsComments(s))],
   // 🔥 화덕 — 레시피 이름이 UI 에 그대로 나간다(가공 창·슬롯 칩·미니게임 결과)
   ['js/craft/recipes.js', s => jsStrings(stripJsComments(s))],
   // 📦 game.js 에서 원문 그대로 옮겨 온 데이터 표(분리 1단계, 2026-09-24) — 주민·도감·상점 문구가 여기 있다
