@@ -38,7 +38,7 @@ const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
 const STACK = (Q.get('layout') || (innerWidth < innerHeight ? 'stack' : 'row')) === 'stack';
 const DIST = Number(Q.get('d') || 11);
 const SCALE = Number(Q.get('s') || 1.25);   // 공통 크기 — 1인칭 11 거리에서 별조각보다 작아 안 읽혀서 세 안 모두 같은 배율
-if (STACK) document.body.classList.add('stack');
+if (STACK && Q.get('mode') !== 'pickup') document.body.classList.add('stack');
 if (Q.get('h')) { document.documentElement.style.height = document.body.style.height = Q.get('h') + 'px'; document.documentElement.style.overflow = 'visible'; document.body.style.overflow = 'visible'; }
 
 const BOAT_TEAL = 0x3fb3c2, BOAT_TRIM = 0xd9a066, BOAT_RED = 0xb2453e;
@@ -93,14 +93,19 @@ function chestA({ buoy = 'none' } = {}) {
   const gold = new THREE.MeshStandardMaterial({ color: 0xf0c04a, roughness: 0.45, metalness: 0.35, flatShading: true,
     emissive: 0xffb830, emissiveIntensity: NIGHT ? 0.55 : 0 });
   const box = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), wood(0xa9743f, 2, 1)); box.position.y = H / 2; body.add(box);
-  // 둥근 뚜껑 — 가로(x) 축 원기둥의 아래 절반은 몸통 안에 묻혀 위 반원만 보인다
-  const lidGeo = new THREE.CylinderGeometry(D / 2, D / 2, W, 10); lidGeo.rotateZ(Math.PI / 2);
-  const lid = new THREE.Mesh(lidGeo, wood(0x9a6636, 2, 1)); lid.position.y = H; body.add(lid);
+  // 둥근 뚜껑 — 위 반원통(θ 0~π 를 z축 회전하면 윗반원). 뒤 모서리 경첩(pivot)으로 열린다
+  const lidPivot = new THREE.Group(); lidPivot.position.set(0, H, -D / 2); body.add(lidPivot);
+  const lidGeo = new THREE.CylinderGeometry(D / 2, D / 2, W, 10, 1, false, 0, Math.PI); lidGeo.rotateZ(Math.PI / 2);
+  const lidMat = wood(0x9a6636, 2, 1); lidMat.side = THREE.DoubleSide;             // 열리면 안쪽 면이 보인다
+  const lid = new THREE.Mesh(lidGeo, lidMat); lid.position.z = D / 2; lidPivot.add(lid);
+  const inside = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.1, D - 0.1), clay(0x3a2412));   // 열렸을 때 보이는 안쪽
+  inside.rotation.x = -Math.PI / 2; inside.position.y = H + 0.002; body.add(inside);
   for (const x of [-W * 0.3, W * 0.3]) {                          // 금테 두 줄(몸통 + 뚜껑)
     const band = new THREE.Mesh(new THREE.BoxGeometry(0.09, H + 0.02, D + 0.03), gold); band.position.set(x, H / 2, 0); body.add(band);
     const arcGeo = new THREE.TorusGeometry(D / 2 + 0.015, 0.045, 5, 10, Math.PI); arcGeo.rotateY(Math.PI / 2);
-    const arc = new THREE.Mesh(arcGeo, gold); arc.position.set(x, H, 0); body.add(arc);
+    const arc = new THREE.Mesh(arcGeo, gold); arc.position.set(x, 0, D / 2); lidPivot.add(arc);
   }
+  g.userData.lid = lidPivot; g.userData.H = H;
   const lock = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.07), gold); lock.position.set(0, H * 0.92, D / 2 + 0.03); body.add(lock);
   if (NIGHT) {                                                     // 궤짝 둘레 물빛 — 더하기 혼합 원판(라이트 없이)
     const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4),
@@ -142,6 +147,7 @@ function smallBuoy(where) {
   rope.position.copy(from).add(at).multiplyScalar(0.5);
   rope.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), at.clone().sub(from).normalize());
   grp.add(rope);
+  grp.userData.isBuoy = true;
   return grp;
 }
 
@@ -230,14 +236,131 @@ function buildScene(chestMaker) {
   return { sc, chest, star };
 }
 
+// =============================================================
+//  ✨ 건지는 연출 시안(?mode=pickup) — 가로 = 연출 3안, 세로 = 시간(필름 스트립). 상자는 확정안 A2.
+//     ① 글자+반짝임(기존 🪷 수집물과 같은 문법 — 상자는 사라지고 배 앞 10에 글자)
+//     ② 포물선+뚜껑 열림(상자가 뱃머리 위로 날아와 열리고 내용물이 튀어나온다 → 오른쪽 아래로 쏙)
+//     ③ ②+강조(열리는 순간 금빛 빛줄기 + 짧은 화면 반짝임 + 꽃가루) — 효과음 '짠!'(시안엔 소리 없음)
+//  모든 움직임은 t 의 순수 함수(캡처용 고정 시계).
+// =============================================================
+const PICK_FRAMES = (Q.get('frames') || '0,0.25,0.5,0.75,1.0,1.3').split(',').map(Number);
+const ITEM = { ico: '🍎', name: '사과 묘목' };
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const ease = (x) => 1 - Math.pow(1 - clamp01(x), 3);
+function textSprite(text, color = '#c98a1e', size = 64) {
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  const font = `bold ${size}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+  x.font = font;
+  const w = Math.ceil(x.measureText(text).width) + 40; c.width = w; c.height = size + 36;
+  x.font = font; x.textBaseline = 'middle'; x.textAlign = 'center';
+  x.lineWidth = 10; x.strokeStyle = 'rgba(255,255,255,0.95)'; x.strokeText(text, w / 2, c.height / 2);
+  x.fillStyle = color; x.fillText(text, w / 2, c.height / 2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
+  sp.scale.set(w / c.height * 0.5, 0.5, 1); sp.renderOrder = 10; return sp;
+}
+function burst(n, color) {                                     // 반짝이 파편(방향 고정 — 결정론)
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), new THREE.MeshBasicMaterial({ color, transparent: true }));
+    const a = (i / n) * Math.PI * 2, up = 0.6 + ((i * 37) % 10) / 10;
+    m.userData.dir = new THREE.Vector3(Math.cos(a), up, Math.sin(a)).normalize(); g.add(m);
+  }
+  return g;
+}
+function setBurst(g, k, dist) {
+  g.visible = k > 0 && k < 1;
+  g.children.forEach(m => { m.position.copy(m.userData.dir).multiplyScalar(dist * ease(k)); m.position.y -= k * k * 0.6; m.material.opacity = 1 - k; });
+}
+function rays() {                                              // 금빛 빛줄기(더하기 혼합 쐐기 8개)
+  const g = new THREE.Group();
+  for (let i = 0; i < 8; i++) {
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, -0.12, 1.4, 0, 0.12, 1.4, 0], 3));
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffd35a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.z = (i / 8) * Math.PI * 2; g.add(m);
+  }
+  return g;
+}
+
+// 상자가 배 옆에 닿은 순간(t=0)부터. 1인칭 카메라 (0,1.5,0.55) 기준 뱃머리 위가 화면 가운데 아래쪽
+const P0 = new THREE.Vector3(1.3, 0.08, -2.6), P1 = new THREE.Vector3(0.0, 0.8, -4.2), PEXIT = new THREE.Vector3(1.9, 0.4, -2.4);
+function setupPickup(p, variant) {
+  const ch = p.chest, u = ch.userData;
+  ch.position.copy(P0); ch.rotation.y = 0.5;
+  p.star.visible = false; ch.userData.glint.visible = false;
+  // 부표는 물에 남는다 — 상자만 건져 올린다(월드 좌표 유지한 채 장면으로 옮김)
+  ch.updateMatrixWorld(true);
+  const buoy = ch.children[0].children.find(c => c.userData.isBuoy);
+  if (buoy) p.sc.attach(buoy);
+  u.item = textSprite(ITEM.ico, '#000', 96); u.item.scale.multiplyScalar(0.9); ch.add(u.item);      // 이모지(상자 좌표 기준)
+  u.label = textSprite(`${ITEM.ico} ${ITEM.name}`, '#c98a1e', 56); p.sc.add(u.label);
+  if (variant === 1) u.label.scale.multiplyScalar(2.2);   // 배 앞 10 — 게임 떠오르는 글자 크기에 맞춤
+  u.sparks = burst(14, 0xffe07a); p.sc.add(u.sparks);
+  if (variant === 3) {
+    u.rays = rays(); p.sc.add(u.rays); u.confetti = burst(18, 0xff8fb1); p.sc.add(u.confetti);
+    u.flash = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0, depthTest: false }));
+    u.flash.renderOrder = 20; p.sc.add(u.flash);
+  }
+  p.anim = (t) => animPickup(p, variant, t);
+}
+function animPickup(p, v, t) {
+  const ch = p.chest, u = ch.userData, lid = u.lid, H = u.H * SCALE;
+  const body = ch.children[0];
+  if (v === 1) {                                               // ① 글자+반짝임 — 상자는 0.15초 만에 쏙
+    const k = clamp01(t / 0.15);
+    ch.scale.setScalar(SCALE * (1 - k)); ch.visible = k < 1;
+    u.item.visible = false; lid.rotation.x = 0;
+    u.sparks.position.copy(P0).setY(0.5); setBurst(u.sparks, clamp01(t / 0.6), 1.1);
+    // 기존 pick 규칙: 배 앞 10, 높이 1.9 에서 떠오르며 사라진다(0.9초)
+    const kt = clamp01(t / 0.9);
+    u.label.position.set(0, 1.9 + kt * 0.8, -10 + 0.55); u.label.material.opacity = 1 - Math.max(0, (kt - 0.6) / 0.4); u.label.visible = t < 0.9;
+    return;
+  }
+  // ②③ 포물선(0~0.45) → 열림(0.45~0.75) → 내용물 튀어나옴(0.6~0.9) → 보여 줌 → 오른쪽 아래로 쏙(1.05~1.3)
+  const kf = ease(t / 0.45);
+  const pos = P0.clone().lerp(P1, kf); pos.y += Math.sin(Math.PI * clamp01(t / 0.45)) * 0.9;
+  const kx = clamp01((t - 1.05) / 0.25);
+  if (kx > 0) pos.lerp(PEXIT, ease(kx));
+  ch.position.copy(pos);
+  ch.rotation.y = 0.5 * (1 - kf);                              // 날아오며 정면을 향한다
+  ch.rotation.x = 0.45 * kf;                                   // 윗면을 카메라 쪽으로 기울여 열리는 안쪽이 보이게
+  ch.scale.setScalar(SCALE * (1 - ease(kx)));
+  body.position.y = 0; body.rotation.z = 0;
+  lid.rotation.x = -1.9 * ease((t - 0.45) / 0.3);
+  const ki = ease((t - 0.6) / 0.3);
+  u.item.visible = t > 0.6; u.item.position.set(0, (u.H + 0.1 + 0.4 * ki), 0); u.item.material.opacity = ki;
+  u.label.visible = t > 0.75 && kx < 1; u.label.position.copy(pos).add(new THREE.Vector3(0.95, 1.05, 0.2));   // 상자 오른쪽 위 — 🍎 와 겹치지 않게
+  u.label.material.opacity = clamp01((t - 0.75) / 0.15) * (1 - kx);
+  u.sparks.position.copy(P0).setY(0.4); setBurst(u.sparks, clamp01(t / 0.5), 0.9);
+  u.ring.visible = t < 0.02; u.glint.visible = false;           // 물결 고리는 물에 두고 온다
+  if (v === 3) {
+    const kr = clamp01((t - 0.5) / 0.7);
+    u.rays.visible = kr > 0 && kr < 1; u.rays.position.copy(pos).add(new THREE.Vector3(0, H + 0.3, -0.3));
+    u.rays.rotation.z = t * 1.2; u.rays.scale.setScalar(0.4 + ease(kr) * 1.1);
+    u.rays.children.forEach(m => { m.material.opacity = 0.55 * (1 - kr); });
+    u.confetti.position.copy(pos).add(new THREE.Vector3(0, H + 0.4, 0)); setBurst(u.confetti, clamp01((t - 0.5) / 0.8), 1.4);
+    u.flash.position.set(0, 1.5, -0.2); u.flash.material.opacity = 0.55 * Math.max(0, 1 - Math.abs(t - 0.55) / 0.12);
+  }
+}
+
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
-const panes = OPTS.map(o => ({ ...o, ...buildScene(o.make), cam: new THREE.PerspectiveCamera(42, 1, 0.1, 200) }));
-document.getElementById('labels').innerHTML = panes.map(p => `<div><span>${p.label}</span></div>`).join('');
+const PICKUP = Q.get('mode') === 'pickup';
+const PICK_OPTS = [{ v: 1, label: '① 글자 + 반짝임' }, { v: 2, label: '② 날아와서 열림' }, { v: 3, label: '③ ② + 빛줄기·반짝' }];
+const panes = PICKUP
+  ? PICK_FRAMES.flatMap(ft => PICK_OPTS.map(o => {
+      const p = { ...o, tFixed: ft, ...buildScene(() => chestA({ buoy: 'side' })), cam: new THREE.PerspectiveCamera(42, 1, 0.1, 200) };
+      setupPickup(p, o.v); return p;
+    }))
+  : OPTS.map(o => ({ ...o, ...buildScene(o.make), cam: new THREE.PerspectiveCamera(42, 1, 0.1, 200) }));
+const COLS = PICKUP ? PICK_OPTS.length : panes.length, ROWS = PICKUP ? PICK_FRAMES.length : 1;
+document.getElementById('labels').innerHTML = PICKUP
+  ? panes.map(p => `<div style="position:absolute;left:${PICK_OPTS.findIndex(o => o.v === p.v) * 100 / COLS}%;top:${PICK_FRAMES.indexOf(p.tFixed) * 100 / ROWS}%;width:${100 / COLS}%;display:flex;justify-content:center;padding-top:6px"><span>${p.label} · ${p.tFixed.toFixed(2)}초</span></div>`).join('')
+  : panes.map(p => `<div><span>${p.label}</span></div>`).join('');
 
 function placeCamera(p) {
   const c = p.cam, ch = p.chest.position;
@@ -251,9 +374,11 @@ function frame(ms) {
   const W = innerWidth, H = Number(Q.get('h')) || innerHeight, n = panes.length;   // ?h= 헤드리스 캡처는 창보다 뷰포트가 작다
   renderer.setSize(W, H); renderer.setScissorTest(true);
   panes.forEach((p, i) => {
-    const vw = STACK ? W : Math.floor(W / n), vh = STACK ? Math.floor(H / n) : H;
-    const vx = STACK ? 0 : i * vw, vy = STACK ? H - (i + 1) * vh : 0;
+    let vw, vh, vx, vy;
+    if (PICKUP) { const c = i % COLS, r = Math.floor(i / COLS); vw = Math.floor(W / COLS); vh = Math.floor(H / ROWS); vx = c * vw; vy = H - (r + 1) * vh; }
+    else { vw = STACK ? W : Math.floor(W / n); vh = STACK ? Math.floor(H / n) : H; vx = STACK ? 0 : i * vw; vy = STACK ? H - (i + 1) * vh : 0; }
     p.cam.aspect = vw / vh; p.cam.updateProjectionMatrix(); placeCamera(p);
+    if (p.anim) { p.anim(p.tFixed ?? t); renderer.setViewport(vx, vy, vw, vh); renderer.setScissor(vx, vy, vw, vh); renderer.render(p.sc, p.cam); return; }
     const u = p.chest.userData, body = p.chest.children[0];
     if (body.userData.y0 == null) body.userData.y0 = body.position.y;
     body.position.y = body.userData.y0 + Math.sin(t * 2.2 + i) * 0.05;          // 까딱
