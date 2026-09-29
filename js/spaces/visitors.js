@@ -7,10 +7,11 @@
 // =============================================================
 import {
   $w, atFarm, dexDiscover, farmGroup, farmHalf, firstHint, gameState, habitatCells, habitatCtx, habitatEnvAt,
-  nearDoor, player, playerInYard, roundRect, setSpaceVisible, snapCamera, ui,
+  nearDoor, player, playerInYard, plots, roundRect, setSpaceVisible, snapCamera, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { FARM, FARM_GATE } from '../data/places.js';
+import { CELL as FARM_CELL } from '../farm-building.js';
 import { createVisitors } from '../farm-visitors.js';
 import { matchVisitors, visitorOf } from '../habitat.js';
 import { Sound } from '../sound.js';
@@ -66,6 +67,13 @@ export function makeVisitorMesh(id) {
 export function visitorTarget() { return atFarm ? visitors?.target() || null : null; }
 export function observeVisitor() { return visitors?.observe() || null; }
 
+// 🌱 방문객 발밑 높이 — 밭 칸 위면 흙 윗면(≈0.2, js/duel/raid-art.js 실측), 아니면 텃밭 마당 윗면(0.15, 실측).
+//   ⚠️ 2차 조형은 원점이 발바닥이라 이게 없으면 바닥에 묻힌다 — 날개를 눕힌 🦋 는 더듬이만 남았다(2026-09-29).
+export function visitorGroundY(x, z) {
+  const SOIL_TOP = 0.2, YARD_TOP = 0.15;
+  return plots.some(p => Math.abs(p.x - x) < FARM_CELL / 2 && Math.abs(p.z - z) < FARM_CELL / 2) ? SOIL_TOP : YARD_TOP;
+}
+
 export function startVisitors() {
   visitors = createVisitors({
     group: farmGroup,
@@ -76,6 +84,7 @@ export function startVisitors() {
     matchVisitors,
     ctx: habitatCtx,
     playerPos: () => player.position,
+    groundAt: visitorGroundY,
     onSpawn: (id) => trackEvent('visitor_spawn', { visitor: id, farm_stage: gameState.farm.stage }),   // [GA4] 퍼널 3단
     onDiscover: (id, mesh) => {
       if (mesh?.userData.lookBubble) mesh.userData.lookBubble.visible = false;   // 살펴봤다 — 말풍선을 거둔다

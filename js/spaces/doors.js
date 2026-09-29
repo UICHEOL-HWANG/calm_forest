@@ -276,7 +276,7 @@ export function updateDoorInteract() {
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
   //   가장 가까운 한 채를 잡는다(몸집이 커서 반경 2.6). 텃밭에선 밭일이 먼저다(허수아비와 같은 규칙).
   const stationZone = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && !plazaHere)
-    || (atFarm && !farmActionFirst());
+    || (atFarm && !farmActionFirst() && !visitorTarget());   // 🔍 방문객 살펴보기가 먼저 — 발효통 옆에 뜬 손님(리뷰 2026-09-28)
   $w.nearStation = stationZone
     ? (gameState.outdoor.find(r => STATION_IDS.includes(r.id) && Math.hypot(r.x - player.position.x, r.z - player.position.z) < 2.6) || null)
     : null;

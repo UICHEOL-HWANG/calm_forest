@@ -271,3 +271,52 @@ test('origin 이 없으면 월드 = 로컬로 동작한다(하위 호환)', () =
   assert.equal(group.children[0].position.x, 3);
   assert.equal(group.children[0].position.z, 7);
 });
+
+// 🌱 원점이 발바닥인 조형(2026-09-29 2차)은 흙 칸(윗면 0.2) 위에 뜨면 발이 묻힌다 — 바닥 높이를 호출부가 준다
+test('groundAt 이 있으면 그 높이에 앉힌다(월드 좌표로 묻는다)', () => {
+  const group = fakeGroup(), asked = [];
+  const v = createVisitors({
+    group, origin: { x: 0, z: 84 },
+    makeMesh: () => fakeMesh(),
+    cells: () => [{ x: 1, z: 85 }], envAt: () => ({}), matchVisitors: () => [VISITORS[0]],
+    ctx: () => ({ night: false, rain: false }), playerPos: () => ({ x: 999, z: 999 }),
+    groundAt: (x, z) => { asked.push([x, z]); return 0.2; },
+    onSpawn: () => {}, onDiscover: () => {}, random: () => 0,
+  });
+  v.update(0.016); v.update(SPAWN_DELAY_MIN);
+  assert.deepEqual(asked, [[1, 85]], '로컬 좌표로 물으면 밭 판정이 엇나간다');
+  assert.equal(group.children[0].position.y, 0.2);
+});
+
+test('groundAt 이 없으면 조형이 정한 y 를 건드리지 않는다', () => {
+  const h = harness();
+  h.v.update(0.016); h.v.update(SPAWN_DELAY_MIN);
+  assert.equal(h.group.children[0].position.y, 0.4);
+});
+
+// ⚡ 굽힌 조형(bake)은 스폰마다 새 버퍼·재질을 만든다 — remove 만 하면 GPU 메모리가 쌓인다(리뷰 2026-09-29)
+function disposableMesh(log) {
+  const self = {
+    position: { x: 0, y: 0, z: 0 },
+    geometry: { dispose: () => log.push('geo') },
+    material: { transparent: false, opacity: 1, dispose: () => log.push('mat') },
+    traverse(fn) { fn(self); },
+  };
+  return self;
+}
+for (const [label, run] of [
+  ['떠날 때', (v) => { v.update(0.016); v.update(SPAWN_DELAY_MIN); v.update(STAY); }],
+  ['텃밭을 나갈 때(clear)', (v) => { v.update(0.016); v.update(SPAWN_DELAY_MIN); v.clear(); }],
+]) {
+  test(`${label} 지오메트리·재질을 해제한다`, () => {
+    const log = [];
+    const v = createVisitors({
+      group: fakeGroup(), makeMesh: () => disposableMesh(log),
+      cells: () => [{ x: 0, z: 0 }], envAt: () => ({}), matchVisitors: () => [VISITORS[0]],
+      ctx: () => ({ night: false, rain: false }), playerPos: () => ({ x: 999, z: 999 }),
+      onSpawn: () => {}, onDiscover: () => {}, random: () => 0,
+    });
+    run(v);
+    assert.deepEqual(log, ['geo', 'mat']);
+  });
+}
