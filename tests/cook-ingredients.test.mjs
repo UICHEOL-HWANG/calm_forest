@@ -55,3 +55,24 @@ test('겹침: 포도즙 라벨은 병보다 확실히 두껍고, 옥수수 윗�
   const [cornHead] = r(/SphereGeometry\(([\d.]+), 8, 6\), clay\(0xf5d340\)/);
   assert.ok(cornHead - cornTop >= 0.008, `corn top ${cornTop} head ${cornHead}`);
 });
+
+// 🔪 M2 통통통 + 🥕 당근 A(2026-09-29 사용자 선택 "A로 가고 게임에 넣어")
+const STAGE = readFileSync(new URL('../js/spaces/kitchen-stage.js', import.meta.url), 'utf8');
+const CHOP = readFileSync(new URL('../js/spaces/kitchen-chop.js', import.meta.url), 'utf8');
+test('당근 A: 원뿔(뾰족) 대신 LatheGeometry 로 어깨 둥글고 끝이 뭉툭', () => {
+  const crop = ART.match(/case 'crop':[\s\S]*?break;/)[0];
+  assert.match(crop, /LatheGeometry/);
+  assert.doesNotMatch(crop, /ConeGeometry\(0\.1, 0\.46/);
+});
+test('썰기 M2: 칼은 흰 선 위에 세우고 탭 한 번 = 칼질 3번 · 재료는 클리핑으로 잘리고 동전 조각이 떨어진다', () => {
+  assert.match(CHOP, /const STROKES = 3/);
+  assert.match(CHOP, /localClippingEnabled = true/);
+  assert.match(CHOP, /clippingPlanes = \[/);
+  assert.match(CHOP, /sliceModel\(/);
+  assert.match(ART, /export function sliceModel\(/);
+  // 노트는 칼과 같은 줄(흰 선 z)을 지난다 — 예전엔 칼 z 0.55 / 노트 z 0.75 로 어긋나 허공을 찍었다
+  assert.match(STAGE, /m\.position\.set\(CHOP_X0, BOARD_TOP, CUT_Z\)/);
+  assert.match(STAGE, /knife\.position\.set\(CHOP_X1, KNIFE_UP, CUT_Z \+ 0\.27\)/);
+  // 조각은 재질만 반환(형상 공유)
+  assert.match(CHOP, /coins\.forEach\(releaseFood\)/);
+});

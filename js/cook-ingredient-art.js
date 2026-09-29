@@ -12,6 +12,9 @@ import { mergeGeos } from './game.js';
 
 const clay = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat, transparent: true });
 
+// 🥕 당근 옆모습 [반지름, 끝에서 거리] — 썰기 동전·단면 크기도 이 굵기에서 잡는다
+export const CARROT_PROFILE = [[0, 0], [0.04, 0.03], [0.075, 0.12], [0.105, 0.27], [0.12, 0.39], [0.1, 0.46], [0, 0.475]];
+
 function buildModel(id) {
   const g = new THREE.Group();
   const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s) => {
@@ -29,9 +32,9 @@ function buildModel(id) {
       [0.14, -0.14].forEach(z => add(new THREE.SphereGeometry(0.045, 6, 6), eye, 0.3, 0.27, z));
       g.scale.setScalar(0.75); break;
     }
-    case 'crop':                                     // 🥕 당근 — 원뿔 몸통 + 잎 세 가닥
-      add(new THREE.ConeGeometry(0.1, 0.46, 7), clay(0xf08a3a), 0, 0.23, 0, Math.PI, 0, 0);
-      for (const r of [-0.35, 0, 0.35]) add(new THREE.ConeGeometry(0.035, 0.2, 4), leaf, Math.sin(r) * 0.06, 0.55, 0, 0, 0, r);
+    case 'crop':                                     // 🥕 당근 A — 어깨 둥글고 끝이 뭉툭(원뿔은 "너무 날카롭다", 시안 sims/cook-chop-sim.html)
+      add(new THREE.LatheGeometry(CARROT_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 8), clay(0xf08a3a));
+      for (const r of [-0.4, 0, 0.4]) add(new THREE.ConeGeometry(0.045, 0.22, 4), leaf, Math.sin(r) * 0.07, 0.56, 0, 0, 0, r, [1, 1, 0.55]);
       g.rotation.z = 1.1; g.position.y = 0.1; break;
     case 'forage':                                   // 🍄 버섯 — 반구 갓 + 흰 점 + 대
       add(new THREE.CylinderGeometry(0.06, 0.08, 0.2, 7), clay(0xf3ead8), 0, 0.1, 0);
@@ -87,14 +90,17 @@ function buildModel(id) {
 }
 
 // 재료마다 한 번 — 부속을 재질 종류(평면 음영·거칠기·금속감)별로 모아 정점색을 입혀 합친다
-const BAKED = new Map();
+const BAKED = new Map(), MAIN = new Map();       // MAIN: 가장 큰 부속의 색 — 썰린 조각·단면 색
 function baked(key) {
   if (BAKED.has(key)) return BAKED.get(key);
   const root = buildModel(key);
   root.updateMatrixWorld(true);
   const kinds = new Map();
+  let biggest = 0;
   root.traverse(o => {
     if (!o.isMesh) return;
+    const vc = o.geometry.attributes.position.count;
+    if (vc > biggest) { biggest = vc; MAIN.set(key, o.material.color.clone()); }
     const m = o.material, id = `${m.flatShading}|${m.roughness}|${m.metalness}`;
     const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
     const n = geo.attributes.position.count, col = new Float32Array(n * 3);
@@ -121,6 +127,25 @@ export function ingredientModel(key, size = 0.4) {
   g.scale.setScalar(size * 2.1);
   g.rotation.y = -0.4;                                  // 3/4 로 — 정면이면 납작해 보인다
   g.userData.ingredient = key;
+  return g;
+}
+
+// 🔪 썰린 조각(동전) — 테두리는 재료 색, 두 단면은 밝게. 반지름 1·두께 1(축 y) → 쓰는 쪽에서 scale 로 크기
+const SLICE_GEO = new Map();
+export function sliceModel(key) {
+  if (!BAKED.has(key)) baked(key);
+  let geo = SLICE_GEO.get(key);
+  if (!geo) {
+    geo = new THREE.CylinderGeometry(1, 1, 1, 10).toNonIndexed();
+    const main = MAIN.get(key) || new THREE.Color(0xf08a3a), face = main.clone().lerp(new THREE.Color(0xffffff), 0.45);
+    const col = new Float32Array(geo.attributes.position.count * 3);
+    for (const gr of geo.groups) for (let i = gr.start; i < gr.start + gr.count; i++) (gr.materialIndex === 0 ? main : face).toArray(col, i * 3);
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.clearGroups();
+    SLICE_GEO.set(key, geo);
+  }
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0, transparent: true }));
+  const g = new THREE.Group(); g.add(m);
   return g;
 }
 
