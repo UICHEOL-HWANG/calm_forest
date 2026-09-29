@@ -138,10 +138,14 @@ export function spawnSeaGate() {
   [0, Math.PI].forEach(dir => {
     const arm = new THREE.Group(); arm.rotation.y = dir; seaBeacon.add(arm);
     [[0.85, 7.5, 0.13], [0.38, 6.2, 0.22]].forEach(([r, len, op]) => {
-      const geo = new THREE.ConeGeometry(r, len, 12, 1, true);
+      const geo = new THREE.ConeGeometry(r, len, 12, 6, true);
       geo.translate(0, -len / 2, 0);              // 꼭짓점을 램프에 붙이고 바깥으로 퍼지게
+      // 끝으로 갈수록 어둡게(가산 블렌딩이라 검정=투명) — 뚝 잘린 원뿔 입구가 노란 타원 구멍처럼 보였다
+      const p = geo.attributes.position, fade = new Float32Array(p.count * 3);
+      for (let i = 0; i < p.count; i++) fade.fill((1 + p.getY(i) / len) ** 1.6, i * 3, i * 3 + 3);
+      geo.setAttribute('color', new THREE.BufferAttribute(fade, 3));
       const mat = new THREE.MeshBasicMaterial({
-        color: 0xffe9a8, transparent: true, opacity: op, depthWrite: false,
+        color: 0xffe9a8, transparent: true, opacity: op, depthWrite: false, vertexColors: true,
         blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
       mat.userData.base = op;                     // 밤/낮 밝기 보간 기준(updateSeaVisuals)
       seaBeamMats.push(mat);
