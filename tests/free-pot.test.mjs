@@ -89,3 +89,17 @@ test('validateEntry: 시큰둥 금지어·길이·이모지·이름 충돌·괴�
   const c = ctx(); validateEntry('honey+pear', ok, c);
   assert.ok(validateEntry('honey+apple', ok, c).some(m => m.includes('중복')));
 });
+
+import { buildPrompt, renderTableModule } from '../tools/free-pot/generate.mjs';
+
+test('buildPrompt: 규칙(재료 제한·분포·반복 상한·금지어·띄어쓰기)이 프롬프트에 들어간다', () => {
+  const p = buildPrompt(['fish+honey', 'apple+pear']);
+  for (const s of ['밀가루', '★5 약 10%', '최대 ★3', '"그냥"', '띄어쓰기', 'key=fish+honey', 'key=apple+pear']) assert.ok(p.includes(s), s);
+});
+
+test('renderTableModule: 키 정렬된 export 모듈을 만든다', () => {
+  const src = renderTableModule({ 'honey+pear': { name: 'b' }, 'fish+honey': { name: 'a' } });
+  assert.match(src, /^\/\/ ⚠️ 생성물/);
+  assert.ok(src.indexOf('"fish+honey"') < src.indexOf('"honey+pear"'));
+  assert.match(src, /export const FREE_POT_TABLE = /);
+});
