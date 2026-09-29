@@ -11,7 +11,8 @@ export const isFreeId = (id) => typeof id === 'string' && id.startsWith(FREE_PRE
 let TABLE = null, loading = null;
 export function loadFreePot() {
   if (TABLE) return Promise.resolve();
-  return (loading ||= import('./table.js').then(m => { TABLE = m.FREE_POT_TABLE; }));
+  // 실패는 캐시하지 않는다 — 끊긴 뒤 탭을 다시 누르면 새로 받는다
+  return (loading ||= import('./table.js').then(m => { TABLE = m.FREE_POT_TABLE; }, e => { loading = null; throw e; }));
 }
 export const freePotReady = () => !!TABLE;
 export const freePotTotal = () => (TABLE ? Object.keys(TABLE).length : 0);

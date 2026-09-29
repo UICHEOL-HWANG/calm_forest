@@ -85,3 +85,14 @@ test('조리 무대는 재료 모형 — 국물 위·석쇠·노트·퐁당·썰
   assert.match(fn('kitchenStart'), /keys: stageKeys\(r\)/);
   assert.match(fn('kitchenStart'), /grillKey: grillKeyOf\(r\)/);
 });
+
+// 🛟 표 불러오기 실패(모바일 끊김·배포 사이 404) — 실패를 캐시하면 새로고침 전까지 냄비 탭이 죽는다(리뷰 2026-09-29)
+test('loadFreePot: 실패하면 다시 시도할 수 있게 비우고, 탭은 안내를 띄우며, 표 없이는 요리를 시작하지 않는다', () => {
+  const DISH = readFileSync(new URL('../js/free-pot/dish.js', import.meta.url), 'utf8');
+  assert.match(DISH, /loading = null; throw e;/);
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(HTML, /try \{ await Input\.loadFreePot\(\); \} catch/);
+  const GAME = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(GAME, /loadFreePot\(\)\.catch\(/);
+  assert.match(GAME, /if \(!freePotReady\(\)\) return \{ ok: false/);
+});

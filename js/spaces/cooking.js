@@ -17,7 +17,7 @@ import { TOOLS } from '../data/tools.js';
 import { Sound } from '../sound.js';
 import { updateHouseSign } from '../spaces/house.js';
 import { BLUEPRINTS, blueprintOfTool, tier2Status } from '../tool-blueprints.js';
-import { FREE_PREFIX, freeDishOf, freePotCheck, freePotTotal, isFreeId, loadFreePot } from '../free-pot/dish.js';
+import { FREE_PREFIX, freeDishOf, freePotCheck, freePotReady, freePotTotal, isFreeId, loadFreePot } from '../free-pot/dish.js';
 import { INGREDIENTS } from '../free-pot/rules.js';
 
 //    게임업계식 등급 컷: 점수 구간 → 등급/배율. 잘할수록 같은 재료로 더 오래 가는 버프.
@@ -44,7 +44,7 @@ export function freePotView() {
     total: freePotTotal(),
   };
 }
-export { FREE_PREFIX, freeDishOf, freePotCheck, freePotTotal, isFreeId, loadFreePot };
+export { FREE_PREFIX, freeDishOf, freePotCheck, freePotReady, freePotTotal, isFreeId, loadFreePot };
 
 // 레시피 → 미니게임 코스. 단계마다 판정창 배율(mult)이 실려 뒤로 갈수록 좁아진다
 export function courseOf(r) {

@@ -17,6 +17,8 @@ export const EN = {
   '재료를 1~3개 넣고 보글보글 끓여 봐요': 'Toss in 1–3 ingredients and let it bubble',
   '🔥 보글보글 끓이기': '🔥 Let It Bubble',
   '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요': 'That one has a recipe — cook it from the menu',
+  '냄비 요리표를 못 불러왔어요 — 탭을 다시 눌러 주세요': "Couldn't load the pot recipes — tap the tab again",
+  '냄비 요리표를 아직 못 불러왔어요': "The pot recipes haven't loaded yet",
   '재료를 1~3개 골라 주세요': 'Pick 1–3 ingredients',
   '최고의 솜씨': 'Perfect Skill', '훌륭한 솜씨': 'Great Skill', '무난한 솜씨': 'Decent Skill', '아쉬운 솜씨': 'So-so Skill',
   '최고의 솜씨!': 'Perfect Skill!', '훌륭한 솜씨!': 'Great Skill!', '무난한 솜씨!': 'Decent Skill!', '아쉬운 솜씨!': 'So-so Skill!',
