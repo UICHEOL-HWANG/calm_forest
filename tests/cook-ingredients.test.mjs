@@ -36,3 +36,22 @@ test('stageKeys: 재료 키 목록(중복 그대로, 최대 3) — 끓이기 국
   assert.deepEqual(stageKeys({ cost: { forage: 2, crop: 2, fish: 1 } }), ['forage', 'forage', 'crop']);
   assert.deepEqual(stageKeys({ cost: { fish: 1, honey: 1 } }), ['fish', 'honey']);
 });
+
+// ⚡ 드로우콜 — 모형 하나 = 메시 1~2개(정점색으로 색을 합친다). 썰기 노트 8개 × 부속 4~10개가 그대로 콜이 되던 문제(2026-09-29)
+test('ingredientModel: 부속을 재질 종류별로 합치고(mergeGeos+정점색) 형상은 재료마다 한 번만 굽는다', () => {
+  assert.match(ART, /mergeGeos\(/);
+  assert.match(ART, /vertexColors: true/);
+  assert.match(ART, /const BAKED = new Map\(\)/);
+  assert.match(ART, /BAKED\.get\(key\)/);
+});
+
+// 🪵 면 겹침 — 거의 같은 면(간격 < 0.005)은 멀리서 줄무늬로 깜빡인다(lowpoly-surface-pitfalls)
+test('겹침: 포도즙 라벨은 병보다 확실히 두껍고, 옥수수 윗면은 머리 구 안으로 숨는다', () => {
+  const r = (re) => ART.match(re).slice(1).map(Number);
+  const [body] = r(/case 'juice':[\s\S]*?CylinderGeometry\(([\d.]+), [\d.]+, 0\.3,/);
+  const [label] = r(/CylinderGeometry\(([\d.]+), [\d.]+, 0\.1, 10\), clay\(0xf1e6cf\)/);
+  assert.ok(label - body >= 0.008, `label ${label} body ${body}`);
+  const [cornTop] = r(/case 'corn':[\s\S]*?CylinderGeometry\(([\d.]+),/);
+  const [cornHead] = r(/SphereGeometry\(([\d.]+), 8, 6\), clay\(0xf5d340\)/);
+  assert.ok(cornHead - cornTop >= 0.008, `corn top ${cornTop} head ${cornHead}`);
+});

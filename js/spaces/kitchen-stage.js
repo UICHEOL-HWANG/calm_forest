@@ -13,7 +13,7 @@ import { BENCH, KITCHEN, RANK } from '../data/places.js';
 import { t } from '../i18n.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
-import { greyFood, ingredientModel, setFoodOpacity, setFoodTint } from '../cook-ingredient-art.js';   // 🍲 재료는 이모지 대신 3D 모형(2026-09-29)
+import { greyFood, ingredientModel, releaseFood, setFoodOpacity, setFoodTint } from '../cook-ingredient-art.js';   // 🍲 재료는 이모지 대신 3D 모형(2026-09-29)
 
 export function spawnWorkbench() {
   const g = new THREE.Group(); g.position.copy(BENCH);
@@ -256,13 +256,13 @@ export function mgSceneStart(type, keys = [], noteN = 0, grillKey = '') {
   kset.grillGroup.visible = type === 'grill';
   kset.seasonGroup.visible = type === 'season';
   // 이전 판 소품 정리
-  kset.notes.forEach(n => n.parent?.remove(n)); kset.notes = [];
-  kset.fx.forEach(f => f.sp.parent?.remove(f.sp)); kset.fx = [];
-  kset.foods.clear(); kset.grillFood.clear();
+  kset.notes.forEach(releaseFood); kset.notes = [];
+  kset.fx.forEach(f => releaseFood(f.sp)); kset.fx = [];
+  [...kset.foods.children, ...kset.grillFood.children].forEach(releaseFood);
   kset.knifeT = -1; kset.ladleT = -1; kset.flareT = -1; kset.dropT = -1;
   kset.flipT = -1; kset.burn = 0; kset.pouring = false; kset.saltT = 0;
   kset.saltBits.forEach(b => { b.visible = false; });
-  if (kset.drop) { kset.drop.parent?.remove(kset.drop); kset.drop = null; }
+  if (kset.drop) { releaseFood(kset.drop); kset.drop = null; }
   if (type === 'pot') {                                     // 국물 위 재료
     keys.slice(0, 3).forEach((k, i) => {
       const m = ingredientModel(k, 0.3); m.position.set(-0.18 + i * 0.18, 0.02, 0); m.userData.ph = i * 1.7;
@@ -438,7 +438,7 @@ export function mgChopHit(i, judge) {
 export function mgPotHit(step, judge, key) {
   if (!kset) return;
   if (step === 0) {
-    if (kset.drop) kset.drop.parent?.remove(kset.drop);
+    if (kset.drop) releaseFood(kset.drop);
     kset.drop = ingredientModel(key || 'crop', 0.34);
     kset.drop.position.set(0, 2.6, 0.05);
     kset.potGroup.add(kset.drop); kset.dropT = 0;
@@ -492,7 +492,7 @@ export function updateMgScene(dt, t) {
     kset.dropT += dt;
     kset.drop.position.y = 2.6 - (kset.dropT / 0.45) * 0.95;
     if (kset.dropT >= 0.45) {
-      kset.drop.parent?.remove(kset.drop); kset.drop = null; kset.dropT = -1;
+      releaseFood(kset.drop); kset.drop = null; kset.dropT = -1;
       spawnSparkle(KSET.x, KSET.y + 1.72, KSET.z + 0.3, 8);
     }
   }
@@ -502,7 +502,7 @@ export function updateMgScene(dt, t) {
     f.sp.position.x += f.vx * dt; f.sp.position.y += f.vy * dt;
     f.vy -= 6 * dt; f.life -= dt;
     if (f.sp.isSprite) f.sp.material.opacity = Math.max(0, f.life / 0.55); else setFoodOpacity(f.sp, Math.max(0, f.life / 0.55));
-    if (f.life <= 0) { f.sp.parent?.remove(f.sp); kset.fx.splice(i, 1); }
+    if (f.life <= 0) { releaseFood(f.sp); kset.fx.splice(i, 1); }
   }
   // 🔥 굽기 — 불꽃 일렁임 + 뒤집기 포물선 + "타는 정도" 를 색으로. 실패가 눈에 남아야 다음 판에 조심한다
   if (mgView.type === 'grill') {
