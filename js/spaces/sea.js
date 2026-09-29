@@ -101,14 +101,15 @@ export function spawnSeaGate() {
   coveWater = makeWavyWater(SEA_COVE.r, IS_MOBILE ? 36 : 48, IS_MOBILE ? 7 : 10,
     0x3b8fbe, 0x6fd0e2, 0.92,
     (x, z, d) => Math.min(1, Math.max(0, (SEA_COVE.r - d) / (SEA_COVE.r * 0.35))));  // 물가에선 잔잔하게
-  coveWater.mesh.position.set(CX, 0.08, CZ); g.add(coveWater.mesh);
+  //   수면은 0.18 — 물결 골(±amp×1.5≈0.13)이 모래판(0.03) 밑으로 꺼지면 모래가 노란 구멍처럼 뚫려 보였다
+  coveWater.mesh.position.set(CX, 0.18, CZ); g.add(coveWater.mesh);
   // 물가 거품 — 마을 쪽 물가를 따라 하얀 방울
   const shoreAng = Math.atan2(-CZ, -CX);          // 후미 중심 → 게이트(마을) 방향
   for (let i = 0; i < 7; i++) {
     const a = shoreAng + (i - 3) * 0.34;
     const foam = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.05, 7, 5), clayMat(0xf6f2e4, false));
     foam.scale.y = 0.3;
-    foam.position.set(CX + Math.cos(a) * (SEA_COVE.r - 0.5), 0.13, CZ + Math.sin(a) * (SEA_COVE.r - 0.5));
+    foam.position.set(CX + Math.cos(a) * (SEA_COVE.r - 0.5), 0.2, CZ + Math.sin(a) * (SEA_COVE.r - 0.5));
     g.add(foam);
   }
   // ── 등대 — 물속 바위섬 위(빨간 줄무늬 2단, 마을에서 잘 보이는 랜드마크)
@@ -160,7 +161,7 @@ export function spawnSeaGate() {
   // 부표 — 물 위 주황 부표(바다터 부표와 같은 문법)
   [[CX - 1, CZ + 6.5], [CX + 4.5, CZ + 2]].forEach(([bx, bz]) => {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
-    b.scale.y = 1.25; b.position.set(bx, 0.2, bz); g.add(b);
+    b.scale.y = 1.25; b.position.set(bx, 0.28, bz); g.add(b);
   });
   g.add(makeSignpost('🌊 바다터', -1.6, 1.2));    // 다른 게이트와 같은 문법의 표지판
   obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
