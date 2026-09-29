@@ -244,7 +244,7 @@ function buildScene(chestMaker) {
 //  모든 움직임은 t 의 순수 함수(캡처용 고정 시계).
 // =============================================================
 const PICK_FRAMES = (Q.get('frames') || '0,0.25,0.5,0.75,1.0,1.3').split(',').map(Number);
-const ITEM = { ico: '🍎', name: '사과 묘목' };
+const LOOT = Q.get('loot') || 'sap_apple';
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const ease = (x) => 1 - Math.pow(1 - clamp01(x), 3);
 function textSprite(text, color = '#c98a1e', size = 64) {
@@ -282,8 +282,51 @@ function rays() {                                              // 금빛 빛줄�
   return g;
 }
 
+// =============================================================
+//  🎁 보상 3D 모형 — 이모지 스프라이트 대신(로우폴리 화면에서 평면 이모지가 튄다).
+//  게임 cropMini(js/game.js — 로우폴리 열매 + 원뿔 잎, clayMat)와 같은 문법. 높이 ≈ 0.5.
+// =============================================================
+const LOOT_NAMES = { sap_apple: '사과 묘목', sap_pear: '배 묘목', bait: '미끼 3개', fert: '비료 2개', star: '별조각 8', color: '집 색 하나' };
+function itemMesh(id) {
+  const g = new THREE.Group();
+  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); g.add(m); return m; };
+  if (id === 'sap_apple' || id === 'sap_pear') {
+    const fruit = id === 'sap_apple' ? 0xe0473e : 0xc8d65a;
+    add(new THREE.IcosahedronGeometry(0.16, 0), clay(0xa8784a), 0, 0.1, 0).scale.set(1, 0.75, 1);      // 삼베로 싼 뿌리 흙덩이
+    add(new THREE.TorusGeometry(0.12, 0.025, 4, 10), clay(0xd9c49a), 0, 0.17, 0, Math.PI / 2);        // 묶은 끈
+    add(new THREE.CylinderGeometry(0.025, 0.035, 0.34, 5), clay(0x8a6a4a), 0, 0.36, 0);               // 줄기
+    for (const [x, y, z, s] of [[0, 0.58, 0, 0.17], [0.11, 0.5, 0.04, 0.12], [-0.1, 0.52, -0.03, 0.12]])
+      add(new THREE.IcosahedronGeometry(s, 0), clay(0x6fb06a), x, y, z);                               // 잎 뭉치
+    add(new THREE.IcosahedronGeometry(0.07, 0), clay(fruit, false), 0.1, 0.43, 0.1);                  // 열매 하나
+  } else if (id === 'bait') {
+    add(new THREE.CylinderGeometry(0.15, 0.15, 0.22, 10), clay(0x9aa6ad), 0, 0.11, 0);               // 깡통
+    add(new THREE.CylinderGeometry(0.152, 0.152, 0.08, 10), clay(0x4f8fbf), 0, 0.12, 0);             // 띠 라벨
+    const worm = add(new THREE.TorusGeometry(0.08, 0.03, 5, 10, Math.PI * 1.3), clay(0xe99aa6), 0.02, 0.26, 0, 0, 0, 0.4);
+    worm.scale.set(1, 1.2, 1);                                                                         // 고개 내민 지렁이
+  } else if (id === 'fert') {
+    add(new THREE.SphereGeometry(0.2, 8, 6), clay(0xd8b98a), 0, 0.18, 0).scale.set(1, 1.1, 0.8);     // 자루
+    add(new THREE.CylinderGeometry(0.05, 0.09, 0.1, 6), clay(0xc2a070), 0, 0.4, 0);                  // 묶은 목
+    add(new THREE.ConeGeometry(0.05, 0.12, 5), clay(0x6fb06a), -0.04, 0.5, 0, 0, 0, 0.5);           // 새싹 두 잎
+    add(new THREE.ConeGeometry(0.05, 0.12, 5), clay(0x6fb06a), 0.04, 0.5, 0, 0, 0, -0.5);
+    add(new THREE.CircleGeometry(0.07, 8), clay(0x6fb06a), 0, 0.2, 0.162);                            // 앞면 새싹 문양
+  } else if (id === 'star') {
+    const m = new THREE.MeshStandardMaterial({ color: 0xffe07a, emissive: 0xffc94a, emissiveIntensity: 0.85, roughness: 0.4 });   // 게임 ⭐별조각과 같은 재질
+    add(new THREE.OctahedronGeometry(0.14, 0), m, 0, 0.3, 0);
+    add(new THREE.OctahedronGeometry(0.1, 0), m, -0.15, 0.14, 0.03);
+    add(new THREE.OctahedronGeometry(0.1, 0), m, 0.15, 0.16, -0.02);
+  } else if (id === 'color') {
+    add(new THREE.CylinderGeometry(0.16, 0.15, 0.24, 10), clay(0xeceae4), 0, 0.12, 0);               // 페인트 통
+    add(new THREE.CylinderGeometry(0.14, 0.14, 0.02, 10), clay(0x7ec4e8), 0, 0.245, 0);             // 물감 면
+    add(new THREE.SphereGeometry(0.035, 6, 4), clay(0x7ec4e8), 0.15, 0.2, 0.03).scale.set(0.7, 1.6, 0.7);   // 흘러내린 방울
+    add(new THREE.TorusGeometry(0.15, 0.012, 4, 12, Math.PI), clay(0x5d5b57), 0, 0.24, 0, 0, Math.PI / 2);   // 손잡이
+    add(new THREE.BoxGeometry(0.05, 0.3, 0.03), clay(0xc89560), -0.06, 0.36, 0, 0, 0, 0.35);          // 붓 자루
+    add(new THREE.BoxGeometry(0.07, 0.08, 0.04), clay(0xe86a5a), -0.11, 0.21, 0, 0, 0, 0.35);         // 붓 끝(빨강)
+  }
+  return g;
+}
+
 // 상자가 배 옆에 닿은 순간(t=0)부터. 1인칭 카메라 (0,1.5,0.55) 기준 뱃머리 위가 화면 가운데 아래쪽
-const P0 = new THREE.Vector3(1.3, 0.08, -2.6), P1 = new THREE.Vector3(0.0, 0.8, -4.2), PEXIT = new THREE.Vector3(1.9, 0.4, -2.4);
+const P0 = new THREE.Vector3(1.3, 0.08, -2.6), P1 = new THREE.Vector3(0.0, 0.45, -4.6), PEXIT = new THREE.Vector3(1.9, 0.4, -2.4);
 function setupPickup(p, variant) {
   const ch = p.chest, u = ch.userData;
   ch.position.copy(P0); ch.rotation.y = 0.5;
@@ -292,8 +335,8 @@ function setupPickup(p, variant) {
   ch.updateMatrixWorld(true);
   const buoy = ch.children[0].children.find(c => c.userData.isBuoy);
   if (buoy) p.sc.attach(buoy);
-  u.item = textSprite(ITEM.ico, '#000', 96); u.item.scale.multiplyScalar(0.9); ch.add(u.item);      // 이모지(상자 좌표 기준)
-  u.label = textSprite(`${ITEM.ico} ${ITEM.name}`, '#c98a1e', 56); p.sc.add(u.label);
+  u.item = itemMesh(LOOT); u.item.scale.setScalar(1.1); u.item.userData.opacityless = true; ch.add(u.item);   // 3D 모형(상자 좌표 기준)
+  u.label = textSprite(LOOT_NAMES[LOOT], '#c98a1e', 56); p.sc.add(u.label);   // 이모지 없이 — 평면 이모지가 로우폴리 화면에서 튄다
   if (variant === 1) u.label.scale.multiplyScalar(2.2);   // 배 앞 10 — 게임 떠오르는 글자 크기에 맞춤
   u.sparks = burst(14, 0xffe07a); p.sc.add(u.sparks);
   if (variant === 3) {
@@ -328,8 +371,9 @@ function animPickup(p, v, t) {
   body.position.y = 0; body.rotation.z = 0;
   lid.rotation.x = -1.9 * ease((t - 0.45) / 0.3);
   const ki = ease((t - 0.6) / 0.3);
-  u.item.visible = t > 0.6; u.item.position.set(0, (u.H + 0.1 + 0.4 * ki), 0); u.item.material.opacity = ki;
-  u.label.visible = t > 0.75 && kx < 1; u.label.position.copy(pos).add(new THREE.Vector3(0.95, 1.05, 0.2));   // 상자 오른쪽 위 — 🍎 와 겹치지 않게
+  u.item.visible = t > 0.6; u.item.position.set(0, u.H - 0.25 + 0.4 * ki, 0.05); u.item.rotation.y = t * 2.2;
+  u.item.scale.setScalar(1.1 * (0.4 + 0.6 * ki));             // 튀어나오며 커진다(불투명 모형이라 페이드 대신 크기)
+  u.label.visible = t > 0.75 && kx < 1; u.label.position.copy(pos).add(new THREE.Vector3(0.95, 1.05, 0.2));   // 상자 오른쪽 위 — 모형과 겹치지 않게
   u.label.material.opacity = clamp01((t - 0.75) / 0.15) * (1 - kx);
   u.sparks.position.copy(P0).setY(0.4); setBurst(u.sparks, clamp01(t / 0.5), 0.9);
   u.ring.visible = t < 0.02; u.glint.visible = false;           // 물결 고리는 물에 두고 온다
@@ -350,6 +394,24 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 const PICKUP = Q.get('mode') === 'pickup';
+if (Q.get('mode') === 'items') {                              // 🎁 보상 모형 라인업(검수용)
+  const sc = new THREE.Scene(); sc.background = new THREE.Color(0xcfe9f5);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.9)); sc.add(new THREE.AmbientLight(0xfff0dd, 0.25));
+  const sun = new THREE.DirectionalLight(0xffe9c4, 1.1); sun.position.set(4, 8, 6); sc.add(sun);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(13, 0.1, 2), wood(0xffffff, 6, 2)); deck.position.y = -0.05; sc.add(deck);
+  const ids = Object.keys(LOOT_NAMES);
+  ids.forEach((id, i) => { const m = itemMesh(id); m.scale.setScalar(2.2); m.position.set((i - (ids.length - 1) / 2) * 1.9, 0, 0); m.rotation.y = -0.4; sc.add(m); });
+  const cam = new THREE.PerspectiveCamera(32, innerWidth / (Number(Q.get('h')) || innerHeight), 0.1, 50); cam.position.set(0, 1.7, 9.5); cam.lookAt(0, 0.55, 0);
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.outputColorSpace = THREE.SRGBColorSpace;
+  r.setSize(innerWidth, Number(Q.get('h')) || innerHeight); document.body.appendChild(r.domElement); r.render(sc, cam);
+  const HH = Number(Q.get('h')) || innerHeight;
+  document.getElementById('labels').innerHTML = ids.map((id, i) => {        // 이름표를 모형의 화면 위치에 맞춘다
+    const v = new THREE.Vector3((i - (ids.length - 1) / 2) * 1.9, -0.15, 0.6).project(cam);
+    return `<div style="position:absolute;left:${(v.x + 1) / 2 * innerWidth - 60}px;top:${(1 - v.y) / 2 * HH}px;width:120px;justify-content:center;padding:0"><span>${LOOT_NAMES[id]}</span></div>`;
+  }).join('');
+  throw new Error('items mode — 라인업만 그리고 멈춤');
+}
 const PICK_OPTS = [{ v: 1, label: '① 글자 + 반짝임' }, { v: 2, label: '② 날아와서 열림' }, { v: 3, label: '③ ② + 빛줄기·반짝' }];
 const panes = PICKUP
   ? PICK_FRAMES.flatMap(ft => PICK_OPTS.map(o => {
