@@ -10,6 +10,17 @@
 // =============================================================
 
 export const EN = {
+  // ── 🧰 나룻배 보물상자 ────────────────────────────────────────
+  //    보상 이름 중 묘목(사과나무·복숭아나무·밤나무 묘목)은 과수원 쪽에 이미 있다
+  '보물상자를 건졌어요!': 'You fished up a treasure chest!',
+  '보물상자를 열었어요!': 'You opened the treasure chest!',
+  '보물상자': 'Treasure Chest',
+  '다음 뱃길에 또 떠내려와요': 'It will float by again on your next ride',
+  '좋아요': 'Nice!',
+  '비료 3개': '3 Fertilizer',
+  '미끼 5개': '5 Bait',
+  '보석 1개': '1 Gem',
+  '집 색 하나': 'A new house color',
   // ── 🌾 수확제 광장 ───────────────────────────────────────────
   '수확제 광장': 'Harvest Plaza',
   '🍂단풍잎': '🍂Maple Leaf',
