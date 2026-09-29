@@ -162,6 +162,7 @@ import {
   stopDecorPlacing, storeDecor, tryPickDecor, updateDecorGhost,
 } from './spaces/indoor.js';   // 📦 🏠 집 실내 — 방·계단·가구 배치 (구역 머리말 — 분리 2단계)
 import {
+  KSET, STAGE_LIGHT, STAGE_TYPES,
   craftFlame, craftFlameBurst, craftFocus, craftStomp, emojiSprite, mgChopFrame, mgChopHit, mgGrillFlip,
   mgPotHit, mgSceneEnd, mgSceneStart, mgSeasonDone, mgSeasonPour, spawnKitchen, spawnRankBoard, spawnWorkbench,
   stationCamDist, updateMgScene,
@@ -6035,6 +6036,19 @@ function updateDayNight(dt) {
     const tt = clock.elapsedTime;
     for (const t of mineTorches) { const f = 0.85 + Math.sin(tt * 7 + t.phase) * 0.15; t.light.intensity = t.base * f; t.fm.emissiveIntensity = 1.4 * f + 0.4; }
   }
+  // 🍳 조리 무대(썰기·끓이기·굽기·간 맞추기): 시간대 무관 밝게 — 저녁엔 냄비·그릇이 검게 뭉개져 미니게임을
+  //    할 수 없었다(제보 2026-09-29). 카페 홀·박물관 안에서 시작해도 무대가 이기도록 공간 블록 **뒤**에 둔다.
+  //    ⚠️ 해 **자리**도 고정 — 저녁엔 광원이 지평선 아래로 내려가 세기를 올려도 윗면이 캄캄하다(🏛️ 와 같은 함정).
+  if (mgView && STAGE_TYPES.has(mgView.type)) {
+    hemiLight.intensity = STAGE_LIGHT.hemi; ambient.intensity = STAGE_LIGHT.amb; sunLight.intensity = STAGE_LIGHT.sun;
+    ambient.color.setHex(STAGE_LIGHT.tint);
+    sunLight.color.setHex(STAGE_LIGHT.sunTint);   // 밤의 남색 햇빛이 국물을 파랗게 물들이지 않게 색도 같이
+    sunLight.position.set(KSET.x + 3, KSET.y + 12, KSET.z + 8);
+    sunLight.target.position.set(KSET.x, KSET.y + 1.2, KSET.z);
+    sunLight.target.updateMatrixWorld();
+    scene.fog.color.setHex(STAGE_LIGHT.fog); scene.fog.near = STAGE_LIGHT.near; scene.fog.far = STAGE_LIGHT.far;
+    scene.background = scene.fog.color;   // 벽 밖으로 보이는 밤하늘도 크림색으로 — 무대만 환한 섬처럼 떠 보이지 않게
+  }
   // 집 안내판: 낮엔 매트(후광X), 밤엔 주변에 맞춰 감광 — 밝기를 키우면 밤 블룸(0.85 임계)에
   // 걸려 판 전체가 형광등처럼 번지므로, 닭장 터 배너처럼 어둡게 가라앉힌다
   if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 - nightAmt * 0.35);
@@ -6042,7 +6056,7 @@ function updateDayNight(dt) {
   //   (피드백: "물보라 발광이 과해 계속 보면 눈이 피로해요") 주행 중엔 절반 아래로 낮춘다.
   if (bloomPass) bloomPass.strength = (0.5 + nightAmt * 0.5) * (boat.active && boatView === 'first' ? 0.4 : 1);
   // 밤 푸른 톤 그레이딩
-  if (gradePass) gradePass.uniforms.uNight.value = nightAmt;
+  if (gradePass) gradePass.uniforms.uNight.value = mgView && STAGE_TYPES.has(mgView.type) ? 0 : nightAmt;   // 🍳 무대는 밤 톤(남색·30% 감광)도 끈다
 
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
   //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
