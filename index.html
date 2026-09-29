@@ -948,7 +948,8 @@
   .fp-boil:disabled { opacity: .45; cursor: default; }
   #mgr-taste { font-size: 13px; margin-top: 6px; }
   #mgr-taste .star { color: #e8a33c; letter-spacing: -1px; }
-  #mgr-taste .new { display: block; font-weight: 800; color: #9a6a12; margin-top: 3px; }
+  #mgr-taste .new { font-size: 11px; font-weight: 800; color: #fff; background: #e8a33c; border-radius: 6px; padding: 1px 5px; margin-left: 3px; }
+  #mgr-taste .cnt { display: block; font-size: 10.5px; opacity: .6; margin-top: 2px; font-variant-numeric: tabular-nums; }
   .kt-best { font-size: 10.5px; opacity: .7; margin-top: 3px; font-variant-numeric: tabular-nums; }
   /* 📖 메인 퀘스트 칩 — 미니맵 아래, 현재 장 목표(코지 톤: 안내지 강요 아님) */
   #story-chip { position: fixed; top: calc(212px + var(--top-inset)); left: 16px; display: none; align-items: center; gap: 8px;
@@ -4919,10 +4920,10 @@
       $('mgr-sub').innerHTML = `${res.ico} ${dishName} 완성 — 먹으면 ${res.buff.ico} <b>${res.buff.name}</b> 버프 <b>${res.buff.dur}초</b>`;
       const tasteEl = $('mgr-taste');
       if (res.free) {
+        // 짧게 — 별 + 한 줄 평(16자) + ✨NEW 배지, 발견 수는 작게(사용자 "짧고 컴팩트하게")
         const t = res.free.taste, stars = `<span class="star">${'★'.repeat(t)}${'☆'.repeat(5 - t)}</span>`;
         const judge = LANG === 'en' ? res.free.judge_en : res.free.judge;
-        tasteEl.innerHTML = `${LANG === 'en' ? 'Taste' : '맛'} ${stars} — ${judge}`
-          + (res.free.isNew ? `<span class="new">${LANG === 'en' ? '✨ A dish you cooked for the first time!' : '✨ 처음 끓여 본 요리예요!'} · ${LANG === 'en' ? `Dishes found ${res.free.found}/${res.free.total}` : `끓여 본 요리 ${res.free.found}/${res.free.total}`}</span>` : '');
+        tasteEl.innerHTML = `${stars} ${judge}${res.free.isNew ? ' <span class="new">✨NEW</span>' : ''}<span class="cnt">${res.free.found}/${res.free.total}</span>`;
         tasteEl.style.display = '';
       } else tasteEl.style.display = 'none';
       $('mgr-cafe').style.display = 'none';

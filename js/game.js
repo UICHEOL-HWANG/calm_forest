@@ -4634,6 +4634,8 @@ function kitchenFinish(id, res = {}) {
   const r = dishOf(id); if (!r) return { ok: false };
   const score = Math.max(0, Math.min(100, Math.round(res.score || 0)));
   const tier = cookTier(score);
+  // 🍲 자유 요리는 맛(★)을 조합 표가 정한다 → 미니게임 등급은 '솜씨'로 불러 "아쉬운 맛!" + 맛 ★★★★ 가 겹치지 않게
+  const tierName = r.free ? tier.name.replace('맛', '솜씨') : tier.name;
   const st = gameState.kitchen;
   st.cooked = (st.cooked || 0) + 1;
   st.tiers[tier.id] = (st.tiers[tier.id] || 0) + 1;
@@ -4642,7 +4644,7 @@ function kitchenFinish(id, res = {}) {
   if (isBest || isNew) st.best[id] = Math.max(score, st.best[id] || 0);
   Sound.harvest();
   if (tier.id === 'perfect') { Sound.complete(); spawnConfetti(player.position.x, 2.2, player.position.z); }
-  spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${tier.ico} ${tier.name}!`, '#c9682a');
+  spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${tier.ico} ${tierName}!`, '#c9682a');
   spawnSparkle(player.position.x, 0.9, player.position.z, tier.id === 'perfect' ? 26 : 14);
   if (!isFreeId(id)) dexDiscover('cook', id);                // 📖 도감(첫 요리) — 자유 요리 조합은 도감이 아니라 발견 수로 센다
   questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
@@ -4677,7 +4679,7 @@ function kitchenFinish(id, res = {}) {
   pendingDish = { id, tier: tier.id, score };
   return {
     ok: true, name: r.name, ico: r.ico, score, isBest, cooked: st.cooked,
-    tier: { id: tier.id, ico: tier.ico, name: tier.name, mult: tier.mult },
+    tier: { id: tier.id, ico: tier.ico, name: tierName, mult: tier.mult },
     buff: { ...BUFF_META[r.buff], dur: buffDur(r, tier) },
     canStore: (gameState.pantry || []).length < PANTRY_MAX,
     pantryFull: (gameState.pantry || []).length >= PANTRY_MAX,
