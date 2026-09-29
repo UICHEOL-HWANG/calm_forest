@@ -28,6 +28,7 @@ import { OUTDOOR_MOVE_REACH, canPromptOutdoorMove } from '../outdoor-move.js';
 import { Sound } from '../sound.js';
 import { MUSEUM_HALF_D, _museumNear, museumFloor, museumFloorItems, museumPlateText, museumStairs, updateCafeInteract } from '../spaces/cafe.js';
 import { surveyBenchWorld, surveyDeskWorld } from '../spaces/farm-field.js';
+import { visitorTarget } from '../spaces/visitors.js';
 import { forageTarget } from '../spaces/forest.js';
 import { houseSolidR } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
@@ -275,7 +276,7 @@ export function updateDoorInteract() {
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
   //   가장 가까운 한 채를 잡는다(몸집이 커서 반경 2.6). 텃밭에선 밭일이 먼저다(허수아비와 같은 규칙).
   const stationZone = (inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && !plazaHere)
-    || (atFarm && !farmActionFirst());
+    || (atFarm && !farmActionFirst() && !visitorTarget());   // 🔍 방문객 살펴보기가 먼저 — 발효통 옆에 뜬 손님(리뷰 2026-09-28)
   $w.nearStation = stationZone
     ? (gameState.outdoor.find(r => STATION_IDS.includes(r.id) && Math.hypot(r.x - player.position.x, r.z - player.position.z) < 2.6) || null)
     : null;
@@ -312,7 +313,9 @@ export function updateDoorInteract() {
   //      🧺창고 꺼내기·📋게시판 고용도 같이 양보한다 — 밭 위에서 농사 도구를 들었으면 밭일이라는 한 가지 규칙으로 두는 게 맞고,
   //      밭일이 없으면(farmActionFirst 가 noop 을 양보) 그 자리에서 곧바로 다시 뜬다.
   //      farmActionFirst 는 밭·채집을 훑으므로(매 프레임) 근처에 장식이 있을 때만 본다.
-  const outdoorNear = (!prompt && !placingOutdoor && !nearNPC && outdoorZone()) ? nearestOutdoor(OUTDOOR_MOVE_REACH) : null;
+  //   🔍 텃밭 방문객을 살펴볼 수 있으면 그게 먼저 — 🦋는 꽃밭, 🦔는 돌담 옆에 뜨므로 안 비키면
+  //      Space 가 손님 대신 장식을 들어 올린다(2026-09-28 실측). 장식은 탭으로 여전히 옮길 수 있다.
+  const outdoorNear = (!prompt && !placingOutdoor && !nearNPC && !visitorTarget() && outdoorZone()) ? nearestOutdoor(OUTDOOR_MOVE_REACH) : null;
   const outdoorDef = outdoorNear && OUTDOOR.find(d => d.id === outdoorNear.mesh.userData.rec.id);
   const outdoorStock = outdoorDef?.id === 'warehouse' ? storageTotal(gameState.farm.storage) : 0;
   const outdoorFacility = outdoorStock > 0 || outdoorDef?.id === 'board';   // 🧺꺼내기·📋고용은 밭일에 양보하지 않는다

@@ -7,10 +7,11 @@
 // =============================================================
 import {
   $w, atFarm, dexDiscover, farmGroup, farmHalf, firstHint, gameState, habitatCells, habitatCtx, habitatEnvAt,
-  nearDoor, player, playerInYard, setSpaceVisible, snapCamera, ui,
+  nearDoor, player, playerInYard, plots, roundRect, setSpaceVisible, snapCamera, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { FARM, FARM_GATE } from '../data/places.js';
+import { CELL as FARM_CELL } from '../farm-building.js';
 import { createVisitors } from '../farm-visitors.js';
 import { matchVisitors, visitorOf } from '../habitat.js';
 import { Sound } from '../sound.js';
@@ -35,7 +36,43 @@ export const HABITAT_BLOCK_LINE = {
   light:   '빛이 더 필요해요',
 };
 
-export function makeVisitorMesh(id) { return makeVisitor(THREE, id); }
+// 🔍 "살펴볼 수 있어요" 말풍선 — 글자 없이 이모지 하나(사용자 결정 2026-09-28). 흔적의 '🐾 조사!' 와 같은 말풍선 문법.
+//   바탕은 흔적 말풍선과 같은 베이지 — 🔍 는 회색 이모지라 흰 바탕에선 거의 안 보였다(실측).
+//   안개·톤매핑(ACES)은 끄고 텍스처는 sRGB 로 지정 — 셋이 겹쳐 작은 말풍선이 하얗게 날아가 🔍 가 안 보였다(실측).
+//   텍스처는 공유하고 재질은 마리마다 복제한다 — createVisitors 의 페이드가 재질 opacity 를 직접 쓰므로
+//   공유하면 한 마리가 떠날 때 다른 마리 말풍선까지 같이 흐려진다.
+let _lookTex = null;
+function lookTexture() {
+  if (_lookTex) return _lookTex;
+  const cv = document.createElement('canvas'); cv.width = 104; cv.height = 104;
+  const c = cv.getContext('2d');
+  c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 88, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(42, 72); c.lineTo(62, 72); c.lineTo(48, 94); c.closePath(); c.fill();
+  c.font = '50px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('🔍', 52, 41);
+  _lookTex = new THREE.CanvasTexture(cv);
+  _lookTex.colorSpace = THREE.SRGBColorSpace;
+  return _lookTex;
+}
+
+export function makeVisitorMesh(id) {
+  const g = makeVisitor(THREE, id);
+  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: lookTexture(), transparent: true, depthWrite: false, fog: false, toneMapped: false }));
+  bubble.scale.set(0.85, 0.85, 1); bubble.position.set(0, 1.35, 0);
+  g.add(bubble); g.userData.lookBubble = bubble;
+  return g;
+}
+
+// 🔍 액션(Space·모바일 액션 버튼) 대상 — 텃밭에서 CATCH_R 안의 아직 안 살펴본 손님
+export function visitorTarget() { return atFarm ? visitors?.target() || null : null; }
+export function observeVisitor() { return visitors?.observe() || null; }
+
+// 🌱 방문객 발밑 높이 — 밭 칸 위면 흙 윗면(≈0.2, js/duel/raid-art.js 실측), 아니면 텃밭 마당 윗면(0.15, 실측).
+//   ⚠️ 2차 조형은 원점이 발바닥이라 이게 없으면 바닥에 묻힌다 — 날개를 눕힌 🦋 는 더듬이만 남았다(2026-09-29).
+export function visitorGroundY(x, z) {
+  const SOIL_TOP = 0.2, YARD_TOP = 0.15;
+  return plots.some(p => Math.abs(p.x - x) < FARM_CELL / 2 && Math.abs(p.z - z) < FARM_CELL / 2) ? SOIL_TOP : YARD_TOP;
+}
 
 export function startVisitors() {
   visitors = createVisitors({
@@ -47,8 +84,11 @@ export function startVisitors() {
     matchVisitors,
     ctx: habitatCtx,
     playerPos: () => player.position,
+    groundAt: visitorGroundY,
     onSpawn: (id) => trackEvent('visitor_spawn', { visitor: id, farm_stage: gameState.farm.stage }),   // [GA4] 퍼널 3단
-    onDiscover: (id) => {
+    onDiscover: (id, mesh) => {
+      if (mesh?.userData.lookBubble) mesh.userData.lookBubble.visible = false;   // 살펴봤다 — 말풍선을 거둔다
+      Sound.blip();
       if (!gameState.dex.visitor?.[id]) {
         dexDiscover('visitor', id);   // 📖 등록 + 토스트 + 박물관 게이트 + 퀘스트 + GA4 를 한 번에
       } else {

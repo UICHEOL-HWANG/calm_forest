@@ -184,7 +184,7 @@ import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
 import {
-  HABITAT_BLOCK_LINE, enterFarm, exitFarm, visitors,
+  HABITAT_BLOCK_LINE, enterFarm, exitFarm, observeVisitor, visitorTarget, visitors,
 } from './spaces/visitors.js';   // 📦 🦋 텃밭 방문객 안내 (구역 머리말 — 분리 2단계)
 import {
   buildMine, enterMine, exitMine, spawnMineGate, tryMine, updateOreRocks,
@@ -6208,6 +6208,9 @@ function handleAction() {
   // 🐾 밤손님 흔적 조사 — 도구가 필요 없는 "줍기"류. 모바일 액션 버튼으로도 동일 동작
   const tr = traceTarget();
   if (tr) return investigateTrace(tr);
+  // 🔍 텃밭 방문객 살펴보기 — 도구가 필요 없는 "줍기"류. 걸어 들어가기만 하면 저절로 등록되던 시절엔
+  //   조작을 알 길이 없어 "스페이스바·마우스로 눌러도 안 되던데" 가 나왔다(2026-09-28)
+  if (visitorTarget()) return observeVisitor();
   // 🌿 김매기 — 도구가 필요 없는 "줍기"류(🍄채집과 같은 문법). 어떤 도구를 들었든 잡초 밭 앞이면 뽑는다
   const wd = weedTarget();
   if (wd) return pullWeed(wd);
@@ -6341,7 +6344,7 @@ function farmActionFirst() {
   if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || !!plazaSpotNow()) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
-  if (forageTarget() || traceTarget()) return false;
+  if (forageTarget() || traceTarget() || visitorTarget()) return false;   // 🔍 방문객 살펴보기도 먼저 처리된다
   const held = TOOLS[currentTool].id;
   if (FARM_AUTO_TOOLS.includes(held)) {
     const plot = farmAutoPlot(held);

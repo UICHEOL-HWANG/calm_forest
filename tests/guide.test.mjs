@@ -18,6 +18,8 @@ export const GUIDE_IMAGES = [
   '22_cafe_serve.jpg', '18_coop_modal.jpg', '19_forest_pick.jpg', '24_glade.jpg',
   '26_sea_fight.jpg', '27_river_run2.jpg', '28_mist_wave2.jpg',
   '23_night.jpg', '25_rain.jpg', '13_dex.jpg', '15_story.jpg', '14_menu.jpg',
+  // 2부(2026-09-28)
+  '22_farm_stage3.jpg', '23_kitchen_menu.jpg', '24_npc_window.jpg', '25_museum.jpg', '26_shop.jpg',
 ];
 
 test('guide/img 에 필요한 이미지가 전부 있다', () => {
@@ -25,14 +27,15 @@ test('guide/img 에 필요한 이미지가 전부 있다', () => {
   for (const name of GUIDE_IMAGES) assert.ok(existsSync(new URL(name, IMG_DIR)), `${name} 없음`);
 });
 
-test('이미지 장당 160KB 이하 · 총량 3MB 이하', () => {
+// 2부 사진 5장을 더하며 총량 한도 3MB → 4MB(2026-09-28, 사용자 승인)
+test('이미지 장당 160KB 이하 · 총량 4MB 이하', () => {
   let total = 0;
   for (const name of readdirSync(IMG_DIR)) {
     const size = statSync(new URL(name, IMG_DIR)).size;
     total += size;
     assert.ok(size <= 160 * 1024, `${name} 가 ${Math.round(size / 1024)}KB — 160KB 초과`);
   }
-  assert.ok(total <= 3 * 1024 * 1024, `총량 ${Math.round(total / 1024)}KB — 3MB 초과`);
+  assert.ok(total <= 4 * 1024 * 1024, `총량 ${Math.round(total / 1024)}KB — 4MB 초과`);
 });
 
 const HTML = () => readFileSync(new URL('guide/guide.html', ROOT), 'utf8');
@@ -45,14 +48,16 @@ for (const [lang, read] of BOTH) test(`[${lang}] fragment 에 문서 껍데기·
   assert.doesNotMatch(h, /<(!doctype|html|head|body|script|style|link)\b/i);
 });
 
-for (const [lang, read] of BOTH) test(`[${lang}] 섹션 20개 · id sec-01..sec-20 · 각각 eyebrow + h2[data-chip]`, () => {
+// 1부(sec-01..20) + 2부 간지(sec-21) + 2부 5장(sec-22..26) — docs: dev/active/guide-refresh
+const SECTION_COUNT = 26;
+for (const [lang, read] of BOTH) test(`[${lang}] 섹션 ${SECTION_COUNT}개 · id sec-01..sec-${SECTION_COUNT} · 각각 eyebrow + h2[data-chip]`, () => {
   const h = read();
   const secs = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">/g)].map(m => m[1]);
-  assert.equal(secs.length, 20);
+  assert.equal(secs.length, SECTION_COUNT);
   secs.forEach((id, i) => assert.equal(id, `sec-${String(i + 1).padStart(2, '0')}`));
   const chips = [...h.matchAll(/<h2 data-chip="([^"]+)">/g)];
-  assert.equal(chips.length, 20, 'h2[data-chip] 가 20개여야 한다');
-  assert.equal((h.match(/class="gd-eyebrow"/g) || []).length, 20);
+  assert.equal(chips.length, SECTION_COUNT, `h2[data-chip] 가 ${SECTION_COUNT}개여야 한다`);
+  assert.equal((h.match(/class="gd-eyebrow"/g) || []).length, SECTION_COUNT);
 });
 
 for (const [lang, read] of BOTH) test(`[${lang}] img 는 상대경로 · 존재 · lazy · width/height`, () => {
@@ -89,6 +94,6 @@ test('삽 안내 — 도구 표·밭 없애기 단락·FAQ·도감 종수', () =
   assert.match(h, /<b>🪏 밭 없애기<\/b>/, '농사 섹션에 "밭 없애기" 단락이 없다');
   assert.match(h, /6초 안에/, '6초 유예 안내가 없다');
   assert.match(h, /<td>밭을 없애고 싶어요<\/td>/, 'FAQ 에 "밭을 없애고 싶어요" 가 없다');
-  assert.match(h, /📖 도감 - 46종/, '도감 종수가 46 이 아니다');
+  assert.match(h, /📖 도감 - 72종/, '도감 종수가 72 가 아니다 — js/data/dex.js DEX 합계와 맞춘다');
   assert.match(h, /땅속에서 3/, '도감 카드에 「땅속에서」 3종이 없다');
 });

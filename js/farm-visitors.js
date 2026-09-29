@@ -14,8 +14,17 @@ export const MAX_ALIVE = 2;
 export const SPAWN_DELAY_MIN = 6;    // 조건 충족 즉시 뜨면 싸구려가 된다
 export const SPAWN_DELAY_MAX = 14;
 export const STAY = 25;              // 등록 여부와 무관하게 이만큼 머물고 떠난다
-export const CATCH_R = 2.5;          // 다가가면 등록되는 거리
+export const CATCH_R = 2.5;          // 이 안에서 액션(Space·탭)을 누르면 등록되는 거리
 export const FADE = 1.2;             // 페이드 인/아웃 시간
+
+/**
+ * 무대에서 빼고 GPU 자원까지 놓는다 — 조형은 스폰마다 새 버퍼·재질을 굽는다(js/visitor-art.js bake).
+ *   ⚠️ remove 만 하면 GPU 메모리가 쌓인다(리뷰 2026-09-29). 텍스처는 건드리지 않는다 — 🔍 말풍선이 공유한다.
+ */
+function drop(group, mesh) {
+  group?.remove(mesh);
+  mesh.traverse?.(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
+}
 
 /** 메시와 자식들의 불투명도 — 재질을 공유하는 조형이면 호출부가 clone 해서 넘겨야 한다 */
 function setOpacity(obj, v) {
@@ -37,8 +46,9 @@ function setOpacity(obj, v) {
  *   matchVisitors  (env, ctx) => Visitor[]
  *   ctx            () => {night, rain}
  *   playerPos      () => {x,z}
+ *   groundAt       (x,z) => y              선택 — 월드 좌표의 바닥 높이(흙 칸 0.2). 없으면 조형의 y 그대로
  *   onSpawn        (id) => void
- *   onDiscover     (id) => void            이미 등록된 종이면 호출부가 재방문으로 처리한다
+ *   onDiscover     (id, mesh) => void      observe 로 살펴봤을 때. 이미 등록된 종이면 호출부가 재방문으로 처리한다
  *   random         () => number            테스트에서 고정 가능(기본 Math.random)
  */
 export function createVisitors(deps) {
@@ -55,7 +65,7 @@ export function createVisitors(deps) {
   let nextTry = nextDelay();
 
   function clear() {
-    for (const a of alive) deps.group?.remove(a.mesh);
+    for (const a of alive) drop(deps.group, a.mesh);
     alive = [];
     nextTry = nextDelay();   // 다시 들어와도 즉시 스폰되지 않게
   }
@@ -76,22 +86,15 @@ export function createVisitors(deps) {
   function update(dt) {
     nextTry -= dt;
 
-    // ── 살아 있는 것들 — 수명·페이드·근접 등록 ──
+    // ── 살아 있는 것들 — 수명·페이드 (등록은 observe 가 한다) ──
     for (const a of alive) {
       a.life += dt;
       const fadeIn = Math.min(1, a.life / FADE);
       const fadeOut = Math.min(1, Math.max(0, (STAY - a.life) / FADE));
       setOpacity(a.mesh, Math.min(fadeIn, fadeOut));
-      if (!a.caught) {
-        const p = deps.playerPos();
-        if (Math.hypot(a.wx - p.x, a.wz - p.z) <= CATCH_R) {
-          a.caught = true;
-          deps.onDiscover(a.id);
-        }
-      }
     }
     const leaving = alive.filter(a => a.life >= STAY);
-    for (const a of leaving) deps.group?.remove(a.mesh);
+    for (const a of leaving) drop(deps.group, a.mesh);
     alive = alive.filter(a => a.life < STAY);
     // ⚠️ 떠난 자리를 같은 프레임에 채우지 않는다 — 한 마리가 사라지자마자 다른 마리가 뜨면
     //    "정원이 불러들였다" 가 아니라 "계속 뭔가 깜빡인다" 로 읽힌다.
@@ -106,11 +109,34 @@ export function createVisitors(deps) {
     if (!pick) return;
     const mesh = deps.makeMesh(pick.id);
     mesh.position.x = pick.c.x - ox; mesh.position.z = pick.c.z - oz;   // 부모 오프셋만큼 뺀다
+    if (deps.groundAt) mesh.position.y = deps.groundAt(pick.c.x, pick.c.z);   // 🌱 흙 칸 위면 흙 윗면에(발바닥 원점 조형)
     setOpacity(mesh, 0);
     deps.group?.add(mesh);
     alive.push({ id: pick.id, mesh, life: 0, caught: false, wx: pick.c.x, wz: pick.c.z });
     deps.onSpawn(pick.id);
   }
 
-  return { update, clear, get alive() { return alive.map(a => a.id); } };
+  // 🔍 액션 대상 — 아직 안 살펴본 손님 중 CATCH_R 안에서 가장 가까운 하나(근접 판정은 **월드 좌표**).
+  //   ⚠️ 예전엔 다가가기만 하면 저절로 등록됐다. 조작을 알려주는 곳이 없어 베타 테스터가
+  //      Space·클릭을 눌러 보다 "어떻게 해요?" 를 물었다(2026-09-28) → 액션으로 등록한다.
+  function target() {
+    const p = deps.playerPos();
+    let best = null, bd = CATCH_R;
+    for (const a of alive) {
+      if (a.caught) continue;
+      const d = Math.hypot(a.wx - p.x, a.wz - p.z);
+      if (d <= bd) { best = a; bd = d; }
+    }
+    return best;
+  }
+
+  function observe() {
+    const a = target();
+    if (!a) return null;
+    a.caught = true;
+    deps.onDiscover(a.id, a.mesh);
+    return a.id;
+  }
+
+  return { update, clear, target, observe, get alive() { return alive.map(a => a.id); } };
 }
