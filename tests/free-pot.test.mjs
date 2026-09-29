@@ -103,3 +103,49 @@ test('renderTableModule: 키 정렬된 export 모듈을 만든다', () => {
   assert.ok(src.indexOf('"fish+honey"') < src.indexOf('"honey+pear"'));
   assert.match(src, /export const FREE_POT_TABLE = /);
 });
+
+import { FREE_POT_TABLE } from '../js/free-pot/table.js';
+
+test('FREE_POT_TABLE: 막히지 않은 모든 조합이 있고 항목이 전부 검증을 통과한다', () => {
+  const recipeNames = new Set(RECIPES.map(r => r.name)), seenNames = new Set();
+  for (const k of freeCombos()) {
+    const e = FREE_POT_TABLE[k];
+    assert.ok(e, `빠진 조합 ${k}`);
+    assert.deepEqual(validateEntry(k, e, { recipeNames, seenNames }), [], k);
+    assert.equal(e.taste, capTaste(k, e.taste), `${k}: 반복 상한`);
+  }
+  for (const k of Object.keys(FREE_POT_TABLE)) assert.ok(!BLOCKED[k], `막힌 조합이 표에 있다 ${k}`);
+});
+
+test('FREE_POT_TABLE: ★5 는 15% 이하, ★1~2 는 20% 이상', () => {
+  const v = Object.values(FREE_POT_TABLE), n = v.length;
+  assert.ok(v.filter(e => e.taste === 5).length / n <= 0.15);
+  assert.ok(v.filter(e => e.taste <= 2).length / n >= 0.20);
+});
+
+import { FREE_PREFIX, isFreeId, freeDishOf, freePotCheck, loadFreePot } from '../js/free-pot/dish.js';
+
+test('freeDishOf: 표 → 레시피 모양(버프·지속·판은 규칙에서)', async () => {
+  await loadFreePot();
+  const k = freeCombos().find(x => x.startsWith('fish+'));
+  const d = freeDishOf(FREE_PREFIX + k);
+  assert.equal(d.id, FREE_PREFIX + k);
+  assert.equal(d.name, FREE_POT_TABLE[k].name);
+  assert.deepEqual(d.cost, costOf(k));
+  assert.equal(d.buff, buffOf(k));
+  assert.equal(d.dur, durOf(FREE_POT_TABLE[k].taste));
+  assert.deepEqual(d.stages, [stageOf(k)]);
+  assert.equal(d.free.taste, FREE_POT_TABLE[k].taste);
+  assert.ok(isFreeId(d.id) && !isFreeId('veg_stew'));
+  assert.equal(freeDishOf('free:nope'), null);
+  assert.equal(freeDishOf('free:crop+crop+crop'), null);   // 막힌 조합
+});
+
+test('freePotCheck: 1~3개만, 막힌 조합은 레시피 안내', () => {
+  assert.equal(freePotCheck([]).ok, false);
+  assert.equal(freePotCheck(['egg', 'egg', 'egg', 'egg']).ok, false);
+  const b = freePotCheck(['crop', 'crop', 'crop']);
+  assert.equal(b.ok, false); assert.deepEqual(b.blocked, ['veg_stew']);
+  const ok = freePotCheck(['pear', 'honey']);
+  assert.equal(ok.ok, true); assert.equal(ok.key, 'honey+pear');
+});

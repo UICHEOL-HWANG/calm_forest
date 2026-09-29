@@ -176,7 +176,7 @@ import {
 } from './spaces/shop.js';   // 📦 🛒 상점 좌판·시세판·사고팔기 (구역 머리말 — 분리 2단계)
 import {
   COOK_TIERS, PANTRY_MAX, buffDur, cookResolve, courseOf, craftTier2, craftUpgrade, emitBuffs, kitchenView,
-  pantryEat, pantryView, recipeOf, tier2List,
+  pantryEat, pantryView, recipeOf, tier2List, dishOf, isFreeId, freePotTotal, freePotView, freePotCheck, loadFreePot, FREE_PREFIX, freeDishOf,
 } from './spaces/cooking.js';   // 📦 🍳 요리 코스·찬장·도구 제작·버프 (구역 머리말 — 분리 2단계)
 import {
   addAffinity, craftGift, giveGift, nearestOutdoor, outdoorZone, pickOutdoor, storeOutdoor, tryPickOutdoor,
@@ -1593,6 +1593,18 @@ export const Input = {
   },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
   kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
+  // 🍲 자유 냄비 — 표는 탭을 열 때 불러온다(약 130KB, 첫 로딩에 얹지 않음)
+  loadFreePot() { return loadFreePot(); },
+  getFreePot() {
+    const v = freePotView();
+    trackEvent('free_pot_open', { found: v.found, total: v.total, kinds_have: v.ingredients.filter(x => x.have > 0).length });   // [GA4] 노출
+    return v;
+  },
+  freePotStart(ids) {
+    const c = freePotCheck(ids);
+    if (!c.ok) { if (c.blocked) trackEvent('free_pot_blocked', { combo_key: c.key, recipe_ids: c.blocked.join(',') }); return c; }   // [GA4] 레시피와 같은 조합
+    return kitchenStart(FREE_PREFIX + c.key);
+  },
   kitchenFinish(id, res) { return kitchenFinish(id, res); },    // 🍳 코스 결과 → 등급·기록·트래킹(버프는 아직)
   cookResolve(how) { return cookResolve(how); },        // 🍽️ 결과 화면: 'eat' 먹기 | 'store' 🧺 찬장 보관
   getPantry() { return pantryView(); },                 // 🍱 찬장(보관한 음식) 목록
@@ -2448,9 +2460,11 @@ function applySave(saved) {
   //   등급은 저장하지 않고 score 로 다시 계산한다 — 두 벌로 들고 있으면 등급 컷을 손볼 때 어긋난다
   if (Array.isArray(saved.pantry)) {
     gameState.pantry = saved.pantry
-      .filter(f => f && RECIPES.some(r => r.id === f.id) && Number.isFinite(+f.score))
+      // 🍲 자유 냄비 요리('free:<조합>')는 RECIPES 에 없다 — 형식이 맞으면 살린다(안 그러면 보관한 요리가 다시 켜면 사라진다)
+      .filter(f => f && (RECIPES.some(r => r.id === f.id) || (isFreeId(f.id) && freeDishOf(f.id))) && Number.isFinite(+f.score))
       .slice(0, PANTRY_MAX)
       .map(f => ({ id: f.id, score: Math.max(0, Math.min(100, Math.round(+f.score) || 0)) }));
+    if (gameState.pantry.some(f => isFreeId(f.id))) loadFreePot();   // 찬장 이름·버프가 '냄비 요리' 대체값으로 보이지 않게 표를 미리
   }
   if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, carvedToday: saved.workshop.carvedToday || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
@@ -4590,7 +4604,7 @@ function pantryHas(recipeId) { return (gameState.pantry || []).findIndex(f => f.
 // 요리 시작 — 재료를 먼저 소비(중도 포기해도 요리는 낮은 등급으로 완성 → 재시도 악용 방지)
 //   where: 'kitchen'(자유주방) | 'cafe'(카페에서 손님 앞 조리)
 function kitchenStart(id, where = 'kitchen') {
-  const r = recipeOf(id); if (!r) return { ok: false };
+  const r = dishOf(id); if (!r) return { ok: false };                  // 🍲 자유 냄비('free:<조합>')도 같은 길
   for (const k in r.cost) {
     if ((gameState.inventory[k] || 0) < r.cost[k]) return { ok: false, msg: `${RES_LABEL[k] || k}이(가) 부족해요` };
   }
@@ -4601,7 +4615,8 @@ function kitchenStart(id, where = 'kitchen') {
   const base = courseOf(r);
   cookDiffs = base.map(() => rollDifficulty('cook'));
   const course = base.map((s, i) => ({ ...s, mult: s.mult * cookDiffs[i].ease }));
-  trackEvent('cooking_start', { recipe: id, mg_type: course.map(s => s.mg).join('>'), diff: recipeDiff(r), where });   // [GA4] 미니게임 퍼널: 시작
+  trackEvent('cooking_start', { recipe: id, mg_type: course.map(s => s.mg).join('>'), diff: recipeDiff(r), where,   // [GA4] 미니게임 퍼널: 시작
+    combo_key: r.free?.key ?? null, n_ing: r.free ? r.free.key.split('+').length : null, stage: r.free ? r.stages[0] : null });   // 🍲 자유 냄비 축
   return { ok: true, id, where, name: r.name, ico: r.ico, diff: recipeDiff(r), course,
     icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') };   // icos: 조리 장면 연출용 재료 아이콘
 }
@@ -4613,19 +4628,20 @@ let pendingDish = null;   // 🍽️ 결과 화면에서 "먹기/보관"을 고�
 //   (음식이 아이템이 된 뒤로 "만들기"와 "먹기"가 분리됐다 → cookResolve 가 마무리)
 // res: { score(0~100), offsets[], maxCombo, judges:{perfect,good,miss}, durationMs, abandoned, step, stageScores[] }
 function kitchenFinish(id, res = {}) {
-  const r = recipeOf(id); if (!r) return { ok: false };
+  const r = dishOf(id); if (!r) return { ok: false };
   const score = Math.max(0, Math.min(100, Math.round(res.score || 0)));
   const tier = cookTier(score);
   const st = gameState.kitchen;
   st.cooked = (st.cooked || 0) + 1;
   st.tiers[tier.id] = (st.tiers[tier.id] || 0) + 1;
+  const isNew = isFreeId(id) && !(id in st.best);            // 🍲 처음 발견한 조합(기록 전에 본다) — 발견 기록 = best 의 free: 키
   const isBest = score > (st.best[id] || 0);
-  if (isBest) st.best[id] = score;
+  if (isBest || isNew) st.best[id] = Math.max(score, st.best[id] || 0);
   Sound.harvest();
   if (tier.id === 'perfect') { Sound.complete(); spawnConfetti(player.position.x, 2.2, player.position.z); }
   spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} ${tier.ico} ${tier.name}!`, '#c9682a');
   spawnSparkle(player.position.x, 0.9, player.position.z, tier.id === 'perfect' ? 26 : 14);
-  dexDiscover('cook', id);                                   // 📖 도감(첫 요리)
+  if (!isFreeId(id)) dexDiscover('cook', id);                // 📖 도감(첫 요리) — 자유 요리 조합은 도감이 아니라 발견 수로 센다
   questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
   triggerMoment();                                           // 📷 순간 줌인
   syncStory();                                               // 📖 3장(마을의 맛) 진행
@@ -4649,6 +4665,11 @@ function kitchenFinish(id, res = {}) {
     eases: cookDiffs.map(d => Math.round(d.ease * 100) / 100).join(','),
     dda:   Math.round((cookDiffs[0]?.dda ?? 1) * 100) / 100,
     probe_v: PROBE_SCHEME,
+    combo_key: r.free ? r.free.key : null,                   // 🍲 조합(접두사 없는 키) — recipe 와 같은 대상
+    taste: r.free ? r.free.taste : null,                     // 🍲 자유 요리 맛 ★(레시피 요리는 null)
+    is_new: r.free ? (isNew ? 1 : 0) : null,                 // 🍲 처음 발견한 조합인지
+    found: r.free ? Object.keys(st.best).filter(isFreeId).length : null,   // 🍲 누적 발견 수(이 판 포함)
+    buff: r.buff, dur_base: r.dur,                           // 제어 파라미터 — 버프 종류·기본 지속
   });
   pendingDish = { id, tier: tier.id, score };
   return {
@@ -4657,6 +4678,8 @@ function kitchenFinish(id, res = {}) {
     buff: { ...BUFF_META[r.buff], dur: buffDur(r, tier) },
     canStore: (gameState.pantry || []).length < PANTRY_MAX,
     pantryFull: (gameState.pantry || []).length >= PANTRY_MAX,
+    free: r.free ? { taste: r.free.taste, judge: r.free.judge, judge_en: r.free.judge_en, name_en: r.name_en,
+                     isNew, found: Object.keys(st.best).filter(isFreeId).length, total: freePotTotal() } : null,
   };
 }
 
