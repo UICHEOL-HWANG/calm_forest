@@ -177,7 +177,7 @@ import {
 } from './spaces/shop.js';   // 📦 🛒 상점 좌판·시세판·사고팔기 (구역 머리말 — 분리 2단계)
 import {
   COOK_TIERS, PANTRY_MAX, buffDur, cookResolve, courseOf, craftTier2, craftUpgrade, emitBuffs, kitchenView,
-  pantryEat, pantryView, recipeOf, tier2List, dishOf, isFreeId, freePotTotal, freePotView, freePotCheck, loadFreePot, FREE_PREFIX, freeDishOf,
+  pantryEat, pantryView, recipeOf, tier2List, dishOf, isFreeId, freePotTotal, freePotView, freePotCheck, freePotReady, loadFreePot, FREE_PREFIX, freeDishOf,
 } from './spaces/cooking.js';   // 📦 🍳 요리 코스·찬장·도구 제작·버프 (구역 머리말 — 분리 2단계)
 import {
   addAffinity, craftGift, giveGift, nearestOutdoor, outdoorZone, pickOutdoor, storeOutdoor, tryPickOutdoor,
@@ -1602,6 +1602,7 @@ export const Input = {
     return v;
   },
   freePotStart(ids) {
+    if (!freePotReady()) return { ok: false, msg: '냄비 요리표를 아직 못 불러왔어요' };   // 대체값으로 요리·발견 기록이 남지 않게
     const c = freePotCheck(ids);
     if (!c.ok) { if (c.blocked) trackEvent('free_pot_blocked', { combo_key: c.key, recipe_ids: c.blocked.join(',') }); return c; }   // [GA4] 레시피와 같은 조합
     return kitchenStart(FREE_PREFIX + c.key);
@@ -2465,7 +2466,7 @@ function applySave(saved) {
       .filter(f => f && (RECIPES.some(r => r.id === f.id) || (isFreeId(f.id) && freeDishOf(f.id))) && Number.isFinite(+f.score))
       .slice(0, PANTRY_MAX)
       .map(f => ({ id: f.id, score: Math.max(0, Math.min(100, Math.round(+f.score) || 0)) }));
-    if (gameState.pantry.some(f => isFreeId(f.id))) loadFreePot();   // 찬장 이름·버프가 '냄비 요리' 대체값으로 보이지 않게 표를 미리
+    if (gameState.pantry.some(f => isFreeId(f.id))) loadFreePot().catch(e => console.warn('[free-pot] 표 불러오기 실패', e));   // 찬장 이름·버프가 '냄비 요리' 대체값으로 보이지 않게 표를 미리
   }
   if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, carvedToday: saved.workshop.carvedToday || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
   if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원

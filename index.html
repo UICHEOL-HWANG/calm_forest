@@ -4462,7 +4462,8 @@
     $('kt-tab-free').addEventListener('click', async () => {
       setKitchenTab('free');
       fpPot = [];
-      await Input.loadFreePot();                              // 표(약 180KB)는 이 탭을 처음 열 때만 불러온다
+      // 표(약 180KB)는 이 탭을 처음 열 때만 불러온다 — 실패하면 안내만 띄우고 다시 누르면 재시도
+      try { await Input.loadFreePot(); } catch (e) { console.warn('[free-pot] 표 불러오기 실패', e); $('fp-found').textContent = t('냄비 요리표를 못 불러왔어요 — 탭을 다시 눌러 주세요'); return; }
       renderFreePot(Input.getFreePot());
     });
     function renderFreePot(d) {
