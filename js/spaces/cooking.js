@@ -17,6 +17,8 @@ import { TOOLS } from '../data/tools.js';
 import { Sound } from '../sound.js';
 import { updateHouseSign } from '../spaces/house.js';
 import { BLUEPRINTS, blueprintOfTool, tier2Status } from '../tool-blueprints.js';
+import { FREE_PREFIX, freeDishOf, freePotCheck, freePotTotal, isFreeId, loadFreePot } from '../free-pot/dish.js';
+import { INGREDIENTS } from '../free-pot/rules.js';
 
 //    게임업계식 등급 컷: 점수 구간 → 등급/배율. 잘할수록 같은 재료로 더 오래 가는 버프.
 export const COOK_TIERS = [
@@ -29,6 +31,20 @@ export const COOK_TIERS = [
 export const PANTRY_MAX = 6;
 
 export function recipeOf(id) { return RECIPES.find(r => r.id === id) || null; }
+
+// 🍲 레시피 요리든 자유 냄비 요리('free:<조합>')든 같은 모양으로 — 코스·찬장·먹기가 이걸 쓴다
+export function dishOf(id) { return isFreeId(id) ? freeDishOf(id) : recipeOf(id); }
+
+// 🍲 자유 냄비 재료판 — index.html 이 렌더. found = 발견한 조합 수(kitchen.best 의 free: 키)
+export function freePotView() {
+  const inv = gameState.inventory;
+  return {
+    ingredients: INGREDIENTS.map(k => ({ k, ico: SELL_ICO_G[k] || '📦', label: RES_LABEL[k] || k, have: inv[k] || 0 })),
+    found: Object.keys(gameState.kitchen.best || {}).filter(isFreeId).length,
+    total: freePotTotal(),
+  };
+}
+export { FREE_PREFIX, freeDishOf, freePotCheck, freePotTotal, isFreeId, loadFreePot };
 
 // 레시피 → 미니게임 코스. 단계마다 판정창 배율(mult)이 실려 뒤로 갈수록 좁아진다
 export function courseOf(r) {
@@ -61,10 +77,11 @@ export function pantryView() {
   return {
     max: PANTRY_MAX,
     items: (gameState.pantry || []).map((f, i) => {
-      const r = recipeOf(f.id), t = cookTier(f.score);
+      const r = dishOf(f.id); if (!r) return null;                 // 🍲 자유 요리도 같은 칸에 — 모르는 id 는 건너뛴다
+      const t = cookTier(f.score);
       return { i, id: f.id, name: r.name, ico: r.ico, score: f.score, tier: { id: t.id, ico: t.ico, name: t.name, mult: t.mult },
         buff: { ...BUFF_META[r.buff], dur: buffDur(r, t) } };
-    }),
+    }).filter(Boolean),
   };
 }
 
@@ -75,12 +92,13 @@ export function buffDur(r, tier) { return Math.round(r.dur * tier.mult * (gameSt
 export function cookResolve(how = 'eat') {
   const d = pendingDish; if (!d) return { ok: false };
   $w.pendingDish = null;
-  const r = recipeOf(d.id); if (!r) return { ok: false };
+  const r = dishOf(d.id); if (!r) return { ok: false };
   if (how === 'store') {
     if ((gameState.pantry || []).length >= PANTRY_MAX) return eatDish(r, d, true);   // 찬장이 꽉 찼으면 먹는 쪽으로 안전 착지
     gameState.pantry.push({ id: d.id, score: d.score });   // 등급은 score 에서 파생(cookTier)
     Sound.blip();
-    trackEvent('cook_store', { recipe: d.id, quality: d.tier, pantry_n: gameState.pantry.length });   // [GA4] 보관 선택률
+    trackEvent('cook_store', { recipe: d.id, quality: d.tier, pantry_n: gameState.pantry.length,
+      taste: r.free?.taste ?? null });                     // [GA4] 보관 선택률 · 🍲 자유 요리 맛 ★
     return { ok: true, how: 'store', ico: r.ico, name: r.name, left: PANTRY_MAX - gameState.pantry.length };
   }
   return eatDish(r, d, false);
@@ -96,14 +114,14 @@ export function eatDish(r, d, fallback = false) {
   // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
   setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
     `${bm.desc}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요`), 800);
-  trackEvent('cook_eat', { recipe: r.id, quality: tier.id, dur });   // [GA4]
+  trackEvent('cook_eat', { recipe: r.id, quality: tier.id, dur, taste: r.free?.taste ?? null });   // [GA4] · 🍲 자유 요리 맛 ★
   return { ok: true, how: 'eat', fallback, ico: r.ico, name: r.name, buff: { ...bm, dur } };
 }
 
 // 🍱 찬장에서 꺼내 먹기 — 가방 찬장 칸을 누르면
 export function pantryEat(i) {
   const f = (gameState.pantry || [])[i]; if (!f) return { ok: false };
-  const r = recipeOf(f.id); if (!r) { gameState.pantry.splice(i, 1); return { ok: false }; }
+  const r = dishOf(f.id); if (!r) { gameState.pantry.splice(i, 1); return { ok: false }; }
   gameState.pantry.splice(i, 1);
   Sound.harvest();
   spawnFloatText(player.position.x, 1.4, player.position.z, `${r.ico} 잘 먹었습니다!`, '#c9682a');
