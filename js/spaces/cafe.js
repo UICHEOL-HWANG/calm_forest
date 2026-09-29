@@ -8,17 +8,19 @@
 import {
   $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, cafeGuestCache, cafeGuestFetcher,
   cafeGuestObjs, cafeInGroup, camera, clayMat, colliders, cookTier, cosmeticShop, cropMini, dateHash, dexDiscover,
-  disposeTree, dist2D, doPlayerAction, finishPetJob, firstHint, fishMesh, gameState, giveReward, houseWindows,
+  disposeTree, dist2D, doPlayerAction, firstHint, fishMesh, gameState, giveReward, houseWindows,
   keys, kitchenFinish, kitchenStart, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
   mergeGeos, museumGroup, nearCafeBoard, nearCafeGuest, nearDoor, obstacles, pantryHas, pantryTake, pendingDish,
-  petJob, player, refreshCollectQuests, refreshInventoryUI, removeSolid, renderer, requestSave, respawnPet,
+  player, refreshCollectQuests, refreshInventoryUI, removeSolid, renderer, requestSave,
   roundRect, scene, setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnConfetti, spawnFloatText,
-  spawnSparkle, syncBadges, syncStory, todayStr, triggerMoment, ui, usePet, woodMat,
+  spawnSparkle, syncBadges, syncStory, todayStr, triggerMoment, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { buildAnimalHead } from '../animal-faces.js';
 import { itemsOf } from '../cosmetics/catalog.js';
-import { buy as buyCos, equip as equipCos, unequip as unequipCos } from '../cosmetics/equip.js';
+import { buy as buyCos, equip as equipCos } from '../cosmetics/equip.js';
+import { shopButton } from '../cosmetics/wardrobe.js';
+import { switchPet } from './wardrobe.js';
 import { CAFE_PAY, RECIPES } from '../data/catalog.js';
 import { NPC_R } from '../data/character.js';
 import { DEX } from '../data/dex.js';
@@ -846,10 +848,8 @@ export function closeCosPreview() {
 //   ⚠️ 문구를 `<span>…</span>` 안에 innerHTML 로 꽂지 않는다 — 한국어가 태그 안에 갇혀
 //      사전 키(= 화면에 보이는 한국어 그대로)와 어긋난다. 노드로 만들어 넣는다.
 export function drawPetTab(box) {
-  const active = gameState.pet ? gameState.pet.kind : null;
   for (const k of PET_KINDS) {
     const mine = gameState.pets[k.id];
-    const on = active === k.id;
     const row = document.createElement('div');
     row.className = 'sh-row' + (petView === k.id ? ' try' : '');
     row.onclick = () => { petView = k.id; drawCosMenu(); };      // 줄 = 미리보기(구매 아님 — 꾸미기의 "입어보기"와 같은 결)
@@ -872,26 +872,20 @@ export function drawPetTab(box) {
     col.append(name, info);
     row.appendChild(col);
 
+    //  🧥 데려가기(종 바꾸기)는 ☰ 🐾 캐릭터·꾸미기 › 펫 탭으로 옮겼다(2026-09-29) — 가게는 사기만.
     const btn = document.createElement('button');
-    btn.textContent = on ? '함께 있음' : mine ? '데려가기' : `${PET_PRICE.toLocaleString()}🪙`;
-    btn.disabled = on;
+    btn.textContent = mine ? '구매 완료' : `${PET_PRICE.toLocaleString()}🪙`;
+    btn.disabled = !!mine;
     btn.onclick = (ev) => {
-      ev.stopPropagation();                                       // 버튼은 사고/바꾸고, 줄은 미리보기 — 겹치지 않게
-      if (on) return;
-      //  ⚠️ 가게 패널은 오버레이라 **루프가 계속 돈다** — 맡긴 일이 끝나기 전에 종을 바꾸면
-      //     finishPetJob 이 새로 데려온 펫에게 works 를 적립하고 쿨다운까지 건다(원래 일한 펫은 헛일).
-      //     바꾸기 전에 지금까지 한 만큼을 **옛 펫에게** 정산하고 넘어간다.
-      if (petJob) finishPetJob();
-      if (!mine) {
-        if (gameState.inventory.coins < PET_PRICE) { ui.toast?.('코인이 모자라요', 2000); return; }
-        gameState.inventory.coins -= PET_PRICE;
-        gameState.pets[k.id] = emptyPet(k.id);
-        trackEvent('pet_buy', { pet_kind: k.id, price_coins: PET_PRICE, owned_n: Object.keys(gameState.pets).length });
-      } else {
-        trackEvent('pet_switch', { pet_kind: k.id, from_kind: active || 'none', stage: stageOf(mine.works) });
-      }
-      usePet(k.id); petView = k.id;
-      respawnPet(); drawCosMenu(); requestSave();
+      ev.stopPropagation();                                       // 버튼은 사고, 줄은 미리보기 — 겹치지 않게
+      if (mine) return;
+      if (gameState.inventory.coins < PET_PRICE) { ui.toast?.('코인이 모자라요', 2000); return; }
+      gameState.inventory.coins -= PET_PRICE;
+      gameState.pets[k.id] = emptyPet(k.id);
+      trackEvent('pet_buy', { pet_kind: k.id, price_coins: PET_PRICE, owned_n: Object.keys(gameState.pets).length });
+      switchPet(k.id);                                            // 사면 바로 데려간다(꾸미기의 "사면 바로 입기"와 같은 결)
+      petView = k.id;
+      drawCosMenu();
     };
     row.appendChild(btn);
     box.appendChild(row);
@@ -929,26 +923,24 @@ export function drawCosMenu() {
   if (hint) hint.style.visibility = cosTab === 'trail' ? 'hidden' : '';
   if (cosTab === 'pet') { drawPetTab(box); return; }
   for (const it of itemsOf(cosTab)) {
-    const owned = gameState.cosmetics.owned.includes(it.id);
-    const on = gameState.cosmetics.equipped[it.slot] === it.id;
     const row = document.createElement('div');
     row.className = 'sh-row' + (cosView().equipped[it.slot] === it.id ? ' try' : '');
     row.innerHTML = `<span>${it.ico} ${it.name}</span>`;
     row.onclick = () => tryOnCos(it);                  // 🪞 줄 = 입어보기(구매 아님)
+    //  🧥 입기·벗기는 ☰ 🐾 캐릭터·꾸미기 › 옷장으로 옮겼다(2026-09-29) — 산 건 "구매 완료" 로 막는다.
+    const sb = shopButton(it, gameState.cosmetics);
     const btn = document.createElement('button');
-    btn.textContent = on ? '벗기' : owned ? '착용' : `${it.price.coins.toLocaleString()}🪙`;
+    btn.textContent = sb.label;
+    btn.disabled = sb.disabled;
     btn.onclick = (ev) => {
-      ev.stopPropagation();                            // 버튼은 사고/입고, 줄은 입어보기 — 겹치지 않게
-      if (on) gameState.cosmetics = unequipCos(gameState.cosmetics, it.slot);
-      else if (owned) gameState.cosmetics = equipCos(gameState.cosmetics, it.id);
-      else {
-        const r = buyCos(gameState.cosmetics, gameState.inventory.coins, it.id);
-        if (!r.bought) { ui.toast?.('코인이 모자라요', 2000); return; }
-        gameState.cosmetics = equipCos(r.cos, it.id);      // 사면 바로 입힌다
-        gameState.inventory.coins = r.coins;
-        trackEvent('cosmetic_buy', { item_id: it.id, slot: it.slot, price_coins: it.price.coins, coins_after: r.coins });
-      }
-      trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: on ? 'off' : 'on' });
+      ev.stopPropagation();                            // 버튼은 사고, 줄은 입어보기 — 겹치지 않게
+      if (sb.disabled) return;
+      const r = buyCos(gameState.cosmetics, gameState.inventory.coins, it.id);
+      if (!r.bought) { ui.toast?.('코인이 모자라요', 2000); return; }
+      gameState.cosmetics = equipCos(r.cos, it.id);      // 사면 바로 입힌다
+      gameState.inventory.coins = r.coins;
+      trackEvent('cosmetic_buy', { item_id: it.id, slot: it.slot, price_coins: it.price.coins, coins_after: r.coins });
+      trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: 'on', via: 'shop' });
       applyCosmetics(gameState.cosmetics);
       cosTryOn = null;                                 // 실제 장착이 바뀌었으니 입어보기는 버린다
       cosPreview?.refresh(null);
