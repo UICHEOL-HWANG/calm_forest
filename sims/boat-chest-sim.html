@@ -393,6 +393,89 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
+if (Q.get('mode') === 'result') {                              // 🧾 결과 카드 시안 3안(게임 #boat-result CSS 사본)
+  const css = document.createElement('style');
+  css.textContent = `
+    :root { --mint:#bfe8c9; --ink:#4a5a4f; }
+    *{box-sizing:border-box}   /* 게임 index.html 전역 규칙과 같게 */
+    html,body{overflow:visible;height:auto;min-height:0;background:#2f4a3c}
+    body.stack #labels{display:none}
+    #wrap{position:absolute;left:0;top:0;right:0;display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:flex-start;padding:22px 12px;font-family:'Segoe UI',system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif}
+    .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .tag{color:#fff;font-weight:700;font-size:14px;background:rgba(255,255,255,.14);padding:4px 12px;border-radius:9px}
+    .tut-card{width:min(440px,92vw);background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(30,50,40,.4);padding:28px 26px 22px;color:var(--ink);text-align:center}
+    .tut-emoji{font-size:40px}
+    .tut-card h2{margin:4px 0 16px;font-size:20px}
+    .sub{font-size:13px;opacity:.75;margin:-8px 0 14px}
+    .boat-row{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:12px;background:#f4faf5;font-size:13px;margin-bottom:6px;text-align:left}
+    .boat-row b{font-variant-numeric:tabular-nums}
+    .dm-actions{display:flex;gap:8px;justify-content:center;margin-top:14px}
+    .dm-actions button{border:none;border-radius:10px;padding:8px 14px;font-weight:600;font-size:13px;background:#eef2ee;color:var(--ink);font-family:inherit}
+    .dm-actions .primary{background:var(--mint)}
+    .stage{width:100%;height:150px;border-radius:16px;background:linear-gradient(#e6f4fb,#cfe9f5);margin:-8px 0 10px;display:block}
+    .found{font-size:14px;font-weight:700;color:#9a6a12;background:#fff6dc;border-radius:12px;padding:8px 12px;margin:0 0 12px}
+    .chest-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:14px;background:#fffaf0;border:2px solid #f0c04a;margin-bottom:6px;text-align:left}
+    .chest-row canvas{width:64px;height:64px;border-radius:10px;background:#e6f4fb;flex:none}
+    .chest-row .t1{font-size:12px;opacity:.7}
+    .chest-row .t2{font-size:15px;font-weight:800;color:#9a6a12}
+    .miss-row{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:12px;background:#f2f2f0;font-size:13px;margin-bottom:6px;color:#7b857e;text-align:left}
+    .reveal{width:min(440px,92vw);height:420px;border-radius:24px;background:radial-gradient(circle at 50% 45%,#fff3c4 0,#f7d98a 30%,#3a5a48 75%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:22px;box-shadow:0 20px 60px rgba(30,50,40,.4)}
+    .reveal canvas{width:100%;height:300px;display:block}
+    .reveal h2{color:#fff;margin:0 0 4px;font-size:22px;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+    .reveal p{color:#fff8e0;margin:0 0 12px;font-size:15px;font-weight:700}
+    .reveal button{border:none;border-radius:12px;padding:10px 22px;font-weight:700;font-size:14px;background:#fff;color:#6b4a10}
+  `;
+  if (Q.get('w')) {                                            // 📱 폰 폭 강제 — 헤드리스 창 최소 폭(~500px) 때문에 vw 가 폰 폭이 안 된다
+    const w = Number(Q.get('w'));
+    css.textContent += `#wrap{width:${w}px;right:auto} .tut-card,.reveal{width:${Math.round(w * 0.92)}px}`;
+  }
+  document.head.appendChild(css);
+  document.getElementById('labels').remove();
+  const NAME = LOOT_NAMES[LOOT];
+  const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28) ? a : b; };   // 받침 있으면 a
+  const rowsHTML = (extra = '') => [
+    ['거리', '620m'], ['시간', '58.4초'], ['점수', '1,012'], ['충돌', '1회'], ['⭐ 별조각', '+34 (보유 86)'],
+  ].map(([k, v]) => `<div class="boat-row"><span>${k}</span><b>${v}</b></div>`).join('') + extra
+    + `<div class="boat-row"><span>오늘 남은 횟수</span><b>2/3회</b></div>`;
+  const buttons = `<div class="dm-actions"><button class="primary">🛶 한 번 더 (2회 남음)</button><button>그만하기</button></div>`;
+  const missRow = `<div class="miss-row"><span>보물상자</span><b>다음 뱃길에 또 떠내려와요</b></div>`;
+  document.body.insertAdjacentHTML('beforeend', `<div id="wrap">
+    <div class="col"><div class="tag">R1 · 상단 무대</div><div class="tut-card">
+      <canvas class="stage" data-v="stage"></canvas>
+      <h2>무사히 도착!</h2><p class="sub">한 번 부딪혔지만 끝까지 내려왔어요</p>
+      <div class="found">보물상자에서 ${NAME}${josa(NAME, '을', '를')} 찾았어요!</div>${rowsHTML()}${buttons}</div></div>
+    <div class="col"><div class="tag">R2 · 줄 안 타일</div><div class="tut-card">
+      <div class="tut-emoji">🎉</div><h2>무사히 도착!</h2><p class="sub">한 번 부딪혔지만 끝까지 내려왔어요</p>
+      ${rowsHTML(`<div class="chest-row"><canvas data-v="thumb"></canvas><div><div class="t1">보물상자</div><div class="t2">${NAME}</div></div></div>`)}${buttons}</div></div>
+    <div class="col"><div class="tag">R3 · 먼저 열고 → 카드</div><div class="reveal">
+      <canvas data-v="big"></canvas><h2>보물상자를 열었어요!</h2><p>${NAME}</p><button>좋아요</button></div></div>
+    <div class="col"><div class="tag">놓쳤을 때(공통)</div><div class="tut-card">
+      <div class="tut-emoji">🎉</div><h2>무사히 도착!</h2><p class="sub">한 번 부딪혔지만 끝까지 내려왔어요</p>${rowsHTML(missRow)}${buttons}</div></div>
+  </div>`);
+  // 카드 속 3D — 열린 상자 + 보상 모형(연출 ②의 마지막 모습)
+  for (const cv of document.querySelectorAll('canvas[data-v]')) {
+    const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
+    r.setPixelRatio(2); r.setSize(cv.clientWidth, cv.clientHeight, false);
+    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.outputColorSpace = THREE.SRGBColorSpace;
+    const sc = new THREE.Scene();
+    sc.add(new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.9)); sc.add(new THREE.AmbientLight(0xfff0dd, 0.3));
+    const sun = new THREE.DirectionalLight(0xffe9c4, 1.1); sun.position.set(3, 6, 5); sc.add(sun);
+    const ch = chestA(); ch.userData.ring.visible = false; ch.userData.glint.visible = false;
+    ch.children[0].position.y = 0; ch.userData.lid.rotation.x = -1.9; ch.rotation.set(0.35, -0.35, 0);
+    const it = itemMesh(LOOT); it.scale.setScalar(1.25); it.position.set(0, ch.userData.H + 0.12, 0.05); it.rotation.y = 0.6; ch.add(it);
+    sc.add(ch);
+    const cam = new THREE.PerspectiveCamera(30, cv.clientWidth / cv.clientHeight, 0.1, 50);
+    const v = cv.dataset.v;
+    if (v === 'thumb') { cam.position.set(0, 1.2, 3.6); cam.lookAt(0, 0.55, 0); }
+    else if (v === 'big') { cam.position.set(0, 1.5, 4.3); cam.lookAt(0, 0.75, 0); }
+    else { cam.position.set(0, 1.25, 4.2); cam.lookAt(0, 0.72, 0); }
+    if (v === 'big') {                                            // 빛줄기 + 반짝이(연출 ③ 문법)
+      const rs = rays(); rs.position.set(0, 0.9, -0.4); rs.scale.setScalar(1.6); sc.add(rs);
+    }
+    r.render(sc, cam);
+  }
+  throw new Error('result mode — 카드만 그리고 멈춤');
+}
 const PICKUP = Q.get('mode') === 'pickup';
 if (Q.get('mode') === 'items') {                              // 🎁 보상 모형 라인업(검수용)
   const sc = new THREE.Scene(); sc.background = new THREE.Color(0xcfe9f5);
