@@ -1,0 +1,613 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🦋🐦🦔🐸 방문객 몸통 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#cfe4ee;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #bar{position:fixed;left:8px;top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;
+       background:rgba(255,255,255,.85);padding:6px 8px;border-radius:9px}
+  #bar button{font:inherit;padding:4px 10px;border-radius:7px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  #bar button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  body.clean #bar{display:none}
+</style>
+<div id="bar"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as VA from '../js/visitor-art.js';
+// ⚠️ 2026-09-29 게임 조형이 2차(확정안)로 바뀌며 1차 상수가 사라졌다 — 1차 시안(A~C) 비교용 값만 여기 둔다
+const { makeVisitor } = VA, HEAD_R = VA.HEAD_R ?? 0.34, HEAD_Y = VA.HEAD_Y ?? 0.42, VISITOR_BODY = VA.VISITOR_BODY ?? { frog: 0xa8d586 };
+import { buildAnimalMesh } from '../js/game.js';   // 🐤 플레이어 — 인게임과 같은 빌더(sims/bear-export.html 과 같은 방식)
+
+// =============================================================
+//  🦋🐦🦔🐸 텃밭 방문객 몸통 시안 — 비교 전용(승인 게이트). js/visitor-art.js 는 건드리지 않는다.
+//  ------------------------------------------------------------
+//  문제: 방문객 4종이 전부 머리만 있어 게임 카메라(마을 시점 camOffset (0,14,16) · fov 42)에서
+//        "밭 위를 굴러다니는 공" 으로 읽힌다(사용자: "개밤티"). 밤손님에서 이미 배운 것 —
+//        머리만 있는 방문객 문법은 대가리만 둥둥 뜬다.
+//
+//  ▶ 공통 몸 문법(4종이 공유하는 것 = 비율·톤·자세, 해부학은 종별):
+//     · 머리는 **승인된 것 그대로** — makeVisitor(THREE,id) 를 import 해서 머리 쪽만 쓴다(숫자 사본 없음).
+//       머리에 붙어 있던 몸 부속(🐦 옆머리 날개·꼬리, 🦋 머리 옆 날개)만 떼어 몸으로 옮긴다.
+//     · 몸은 공이 아니라 **뒤로 가늘어지는 물방울**(teardrop) — 🌰밤 함정 회피.
+//     · 등은 종의 몸색 계열, 배는 한 톤 밝게. 아웃라인 없음(기존 문법 그대로).
+//     · 다리는 몸통 중심 쪽으로 밀어 넣어 발이 안 뜨게. 흙 윗면(SOIL_Y=0.2)에 앉는다.
+//     · 자세 3안은 4종 공통:
+//         A 정면  — 지금처럼 카메라를 본다(회전 없음). 몸은 머리 뒤·옆으로 드러난다.
+//         B 3/4  — 몸을 비스듬히 돌려 옆모습 실루엣(머리→몸→꼬리/날개)이 한 줄로 읽힌다.
+//         C 3/4 + 머리 0.8배 + 동작 자세 — 머리:몸 비를 실제 동물 쪽으로. 얼굴 비율은 그대로, 머리만 균일 축소.
+//  ▶ 종별 해부학(lesson #5 — 한 종의 특징을 복사하지 않는다):
+//     🐦 물방울 몸 + 접은 날개 + 치켜든 부채꼬리 + 가는 주황 다리
+//     🦋 작은 가슴 + 가는 배(곤충) + 위 큰/아래 작은 얇은 날개 4장 — 날개가 몸의 주인공
+//     🦔 가시 껍질을 **몸까지 늘린 하나의 가시 덩어리**(spikyShell 우세 유지, lesson #2) + 짧은 발
+//     🐸 앉은 배 + 접은 뒷다리(허벅지 혹 + 앞을 향한 발) + 짧은 앞다리
+//  ⚠️ 밭 흙 윗면은 y≈0.2 (raid-art 실측) · 잔디 0.15. 방문객은 칸 중심(=흙)에 뜬다.
+//     (현재 머리만 있는 조형은 y=0 이라 흙에 0.1 가량 묻혀 있다 — "굴러다니는 공" 인상의 한 원인)
+// =============================================================
+
+const Q = new URLSearchParams(location.search);
+const OPT = (Q.get('opt') || 'A').toUpperCase();          // CUR | A | B | C
+const VIEW = Q.get('view') || 'game';                      // game | close | side
+const FOCUS = Q.get('focus') || 'sparrow';                 // close/side 에서 볼 종
+if (Q.get('clean')) document.body.classList.add('clean');
+
+const SOIL_Y = 0.20;
+const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0, ...extra });
+
+// ── 공통 자세 3안 ──
+const POSE = {
+  A: { yaw: 0,     headScale: 1.0 },
+  B: { yaw: 0.80,  headScale: 1.0 },
+  C: { yaw: -0.72, headScale: 0.80 },
+};
+
+/** visitor-art.js cluster() 와 같은 꼴(+회전 순서 옵션) — 이식 시에는 원본 cluster 를 쓴다 */
+function cluster(geo, material, at, shadow = false, order = 'XYZ') {
+  const m = new THREE.InstancedMesh(geo, material, at.length);
+  const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3(), eul = new THREE.Euler();
+  at.forEach((a, i) => {
+    pos.set(...a.p); eul.set(...(a.r || [0, 0, 0]), a.o || order); quat.setFromEuler(eul); scl.set(...(a.s || [1, 1, 1]));
+    m.setMatrixAt(i, new THREE.Matrix4().compose(pos, quat, scl));
+  });
+  m.instanceMatrix.needsUpdate = true; m.castShadow = shadow;
+  return m;
+}
+
+/** visitor-art.js spikyShell() 사본 — ⚠️ 시뮬 전용. 이식 시에는 원본을 쓴다(export 되어 있지 않아 여기 옮김) */
+function spikyShell(radius, spikeLen, keep) {
+  const base = new THREE.IcosahedronGeometry(radius, 0).toNonIndexed();
+  const pos = base.attributes.position, out = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i += 3) {
+    a.fromBufferAttribute(pos, i); b.fromBufferAttribute(pos, i + 1); c.fromBufferAttribute(pos, i + 2);
+    const cen = a.clone().add(b).add(c).multiplyScalar(1 / 3);
+    if (!keep(cen)) continue;
+    const apex = cen.clone().normalize().multiplyScalar(radius + spikeLen);
+    for (const [p, q] of [[a, b], [b, c], [c, a]]) out.push(p.x, p.y, p.z, q.x, q.y, q.z, apex.x, apex.y, apex.z);
+  }
+  base.dispose();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+/** 뒤(−z)로 가늘어지는 물방울 — 공이 아니라 "몸 → 꼬리" 가 하나로 이어진 형태 */
+function teardrop(r, len, tip = 0.25, flatBottom = 0.35) {
+  const g = new THREE.SphereGeometry(r, 18, 14);
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const zN = v.z / r, back = Math.max(0, -zN);
+    const k = 1 - (1 - tip) * Math.pow(back, 1.4);
+    v.x *= k; v.y *= k;
+    if (v.y < 0) v.y *= 1 - flatBottom;
+    v.z = zN * len / 2;
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+/** 승인된 머리 — 게임 조형 그대로에서 drop(child, index) 가 참인 자식만 뗀다 */
+function approvedHead(id, drop = () => false) {
+  const g = makeVisitor(THREE, id);
+  [...g.children].forEach((c, i, all) => { if (drop(c, i, all.length)) g.remove(c); });
+  return g;
+}
+
+/** 머리를 목 자리로 — 머리는 HEAD_Y 기준으로 만들어져 있으므로 −HEAD_Y 를 먼저 뺀다 */
+function mountHead(parent, head, neck, tilt, scale) {
+  const pivot = new THREE.Group();
+  pivot.position.set(...neck);
+  pivot.rotation.x = tilt;
+  pivot.scale.setScalar(scale);
+  head.position.y = -HEAD_Y;
+  pivot.add(head);
+  parent.add(pivot);
+  return pivot;
+}
+
+/** 공통 뼈대: root(흙 윗면) → bird(yaw) */
+function rig(P) {
+  const root = new THREE.Group(), bird = new THREE.Group();
+  bird.rotation.y = P.yaw;
+  root.add(bird);
+  root.position.y = SOIL_Y;
+  return { root, bird };
+}
+
+// =============================================================
+//  🐦 참새
+// =============================================================
+const SPARROW = {
+  K: { BACK: 0x9c7552, BELLY: 0xd6c9b2, WING_DK: 0x6b4e36, LEG: 0xd98f5c, TAIL: 0x6b4e36 },
+  A: { pitch: -0.10, bodyR: 0.34, bodyW: 1.30, bodyLen: 1.00, tip: 0.24, bodyY: 0.32, bodyZ: -0.24,
+       neck: [0, 0.46, 0.24], headTilt: 0.08, tailLen: 0.34, tailUp: 0.05, wingLen: 0.70, legX: 0.12 },
+  B: { pitch: -0.10, bodyR: 0.37, bodyW: 1.00, bodyLen: 1.16, tip: 0.20, bodyY: 0.36, bodyZ: -0.26,
+       neck: [0, 0.50, 0.24], headTilt: 0,    tailLen: 0.46, tailUp: 0.35, wingLen: 0.78, legX: 0.09 },
+  C: { pitch: 0.26, bodyR: 0.35, bodyW: 1.00, bodyLen: 1.10, tip: 0.20, bodyY: 0.34, bodyZ: -0.20,
+       neck: [0, 0.42, 0.30], headTilt: 0.22, tailLen: 0.44, tailUp: 0.55, wingLen: 0.74, legX: 0.08 },
+};
+function buildSparrow(opt) {
+  const P = POSE[opt], S = SPARROW[opt], K = SPARROW.K;
+  const { root, bird } = rig(P);
+  const bp = new THREE.Group();                     // 몸(숙임 pitch)
+  bp.position.set(0, S.bodyY, S.bodyZ); bp.rotation.x = S.pitch; bird.add(bp);
+
+  const body = new THREE.Mesh(teardrop(S.bodyR, S.bodyLen, S.tip), mat(K.BACK));
+  body.scale.x = S.bodyW; body.castShadow = true; bp.add(body);
+  const belly = new THREE.Mesh(teardrop(S.bodyR * 0.93, S.bodyLen * 0.80, 0.4), mat(K.BELLY));
+  belly.position.set(0, -S.bodyR * 0.16, S.bodyLen * 0.08); belly.scale.set(0.96 * S.bodyW, 0.92, 1); bp.add(belly);
+  // 접은 날개 — 몸 옆면을 덮고 뒤끝이 꼬리 위로 모인다
+  bp.add(cluster(teardrop(S.bodyR * 0.62, S.wingLen, 0.12, 0), mat(K.WING_DK), [-1, 1].map(s => ({
+    p: [S.bodyR * 0.70 * S.bodyW * s, S.bodyR * 0.30, -S.bodyLen * 0.10], r: [-0.22, -0.16 * s, 0.30 * s], s: [0.40, 0.72, 1],
+  })), true));
+  // 부채꼬리 — 뿌리는 좁고 끝이 넓은 납작한 사각뿔
+  const tg = new THREE.ConeGeometry(S.bodyR * 0.55, S.tailLen, 4, 1); tg.rotateY(Math.PI / 4); tg.translate(0, -S.tailLen / 2, 0);
+  const tail = new THREE.Mesh(tg, mat(K.TAIL));
+  tail.scale.set(1, 1, 0.28); tail.rotation.x = Math.PI / 2 + S.tailUp;
+  tail.position.set(0, S.bodyR * 0.10, -S.bodyLen * 0.44); tail.castShadow = true; bp.add(tail);
+  // 다리 + 발
+  const legH = S.bodyY - S.bodyR * 0.45;
+  bird.add(cluster(new THREE.CylinderGeometry(0.028, 0.024, legH, 6), mat(K.LEG), [-1, 1].map(s => ({ p: [S.legX * s, legH / 2, S.bodyZ + 0.04] }))));
+  bird.add(cluster(new THREE.ConeGeometry(0.075, 0.16, 3), mat(K.LEG), [-1, 1].map(s => ({
+    p: [S.legX * s, 0.015, S.bodyZ + 0.10], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.25] }))));
+  // 머리 — 옆머리 날개·꼬리(마지막 두 자식, visitor-art.js 255~268행)만 뗀다
+  mountHead(bird, approvedHead('sparrow', (c, i, n) => i >= n - 2), S.neck, S.headTilt, P.headScale);
+  return root;
+}
+
+// =============================================================
+//  🦋 나비 — 머리 옆 날개를 떼고, 작은 가슴 + 가는 배 + 날개 4장(가슴에 붙는다)
+//    날개 각도 open: 0 = 등 위로 접어 세움, π/2 = 옆으로 활짝 편 수평
+// =============================================================
+const BFLY = {
+  K: { BODY: 0x6a3f5c, UP: 0xdf7fae, LOW: 0xf0bcd5, EDGE: 0x8e4a78 },   // 날개는 머리(분홍)와 갈리게 한 톤 진하게 — 같은 색이면 머리와 한 덩어리로 뭉친다
+  // A 정면 — 흙에 내려앉아 날개를 거의 편다(위에서 보면 날개 4장이 다 보인다)
+  A: { y: 0.10, open: 1.20, wingMul: 1.25, neck: [0, 0.30, 0.20], tilt: 0.10, flower: false },
+  // B 3/4 — 살짝 떠서 날개를 반쯤(그림자가 땅에 떨어져 "날고 있다")
+  B: { y: 0.45, open: 1.00, wingMul: 1.25, neck: [0, 0.28, 0.20], tilt: 0.05, flower: false },
+  // C 3/4 + 머리 0.8 — 꽃 위에 앉아 날개를 편다
+  C: { y: 0.46, open: 0.62, wingMul: 1.30, neck: [0, 0.26, 0.17], tilt: 0.15, flower: true },
+};
+function buildButterfly(opt) {
+  const P = POSE[opt], S = BFLY[opt], K = BFLY.K;
+  const { root, bird } = rig(P);
+  const body = new THREE.Group(); body.position.y = S.y; bird.add(body);
+  // 가슴 + 배(가는 물방울, 뒤로)
+  const thorax = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), mat(K.BODY)); thorax.castShadow = true; body.add(thorax);
+  const abd = new THREE.Mesh(teardrop(0.10, 0.66, 0.30, 0), mat(K.BODY));
+  abd.position.set(0, -0.02, -0.36); abd.rotation.x = -0.12; abd.castShadow = true; body.add(abd);
+  // 날개 — 위 날개 크고 앞쪽, 아래 날개 작고 뒤쪽. 가슴에서 뻗는다(날개 면은 몸 축을 품는다)
+  const wingMat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+  const R_UP = HEAD_R * 1.05 * S.wingMul, R_LOW = HEAD_R * 0.62 * S.wingMul;   // 기존 날개 반지름(191~192행) × 배율
+  const wingAt = (r, dz, sAlong, sSpan) => [-1, 1].map(s => {
+    const a = S.open, d = [s * Math.sin(a), Math.cos(a)];
+    return { p: [d[0] * r * sSpan * 0.95, d[1] * r * sSpan * 0.95 + 0.02, dz],
+             r: [0, Math.PI / 2, -s * a], o: 'ZYX', s: [sAlong, sSpan, 1] };
+  });
+  body.add(cluster(new THREE.CircleGeometry(R_UP, 16), wingMat(K.UP), wingAt(R_UP, 0.06, 0.80, 1.05), true, 'ZYX'));
+  body.add(cluster(new THREE.CircleGeometry(R_LOW, 16), wingMat(K.LOW), wingAt(R_LOW, -0.20, 0.85, 0.95), true, 'ZYX'));
+  // 날개 가장자리 무늬 — 위 날개 끝에 진한 원반 하나(단색 덩어리 회피). 촘촘한 반복 없음.
+  body.add(cluster(new THREE.CircleGeometry(R_UP * 0.36, 12), wingMat(K.EDGE), [-1, 1].map(s => {
+    const a = S.open, d = [s * Math.sin(a), Math.cos(a)], k = R_UP * 1.05 * 1.45;
+    const lift = 0.004;   // 날개 면 위로 살짝(깜빡임 방지) — 양면이라 방향 무관
+    return { p: [d[0] * k + s * Math.cos(a) * lift, d[1] * k + 0.02 - Math.sin(a) * lift, 0.10], r: [0, Math.PI / 2, -s * a], o: 'ZYX' };
+  }), false, 'ZYX'));
+  // 꽃(C) — 줄기 + 꽃잎 원반 + 꽃술. 나비가 "꽃에 앉은 곤충" 으로 읽히게
+  if (S.flower) {
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, S.y - 0.06, 6), mat(0x5f9a45));
+    stem.position.y = (S.y - 0.06) / 2; root.add(stem);
+    root.add(cluster(new THREE.SphereGeometry(0.15, 10, 8), mat(0xfff3a8), [0, 1, 2, 3, 4].map(i => ({
+      p: [Math.cos(i * 1.2566) * 0.19, S.y - 0.10, Math.sin(i * 1.2566) * 0.19], s: [1, 0.3, 1] }))));
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), mat(0xf0a640)); eye.position.y = S.y - 0.08; eye.scale.y = 0.6; root.add(eye);
+  }
+  // 머리 — 날개 두 쌍(CircleGeometry)만 떼고 더듬이는 머리에 남긴다
+  mountHead(body, approvedHead('butterfly', (c) => c.geometry?.type === 'CircleGeometry'), S.neck, S.tilt, P.headScale);
+  return root;
+}
+
+// =============================================================
+//  🦔 고슴도치 — 가시 껍질을 몸까지 늘려 **하나의 가시 덩어리**(머리 껍질 + 몸 껍질이 이어진다)
+//    얼굴·주둥이·귀는 머리 그대로. 몸 껍질도 detail 0(환공포증 금지).
+// =============================================================
+const HOG = {
+  K: { QUILL: 0x8d867c, BELLY: 0xc4bbaf, FOOT: 0x5e544b },
+  // ⚠️ 몸 껍질은 머리 껍질과 **같은 반지름·가시 길이**(HEAD_R*0.96 · 0.52R) — 크게 만들면 면이 커져 바위·솔방울이 된다(1차 시안).
+  //    대신 앞뒤로 늘려(stretch) 가시가 뒤로 누운 결을 만든다(실제 고슴도치 가시 방향).
+  A: { bodyR: HEAD_R * 0.96, spike: HEAD_R * 0.52, stretch: 1.25, bodyY: 0.30, bodyZ: -0.30, neck: [0, 0.36, 0.10], tilt: 0.12 },
+  B: { bodyR: HEAD_R * 0.96, spike: HEAD_R * 0.52, stretch: 1.25, bodyY: 0.30, bodyZ: -0.30, neck: [0, 0.36, 0.12], tilt: 0.10 },
+  C: { bodyR: HEAD_R * 1.05, spike: HEAD_R * 0.52, stretch: 1.25, bodyY: 0.32, bodyZ: -0.28, neck: [0, 0.30, 0.22], tilt: 0.16 },
+};
+function buildHedgehog(opt) {
+  const P = POSE[opt], S = HOG[opt], K = HOG.K;
+  const { root, bird } = rig(P);
+  // 몸 껍질 — 배(아래)는 비운다. 앞으로 늘려(stretch) 머리 껍질과 맞붙는다
+  const shell = new THREE.Mesh(spikyShell(S.bodyR, S.spike, (c) => c.y > -S.bodyR * 0.25),
+    new THREE.MeshStandardMaterial({ color: K.QUILL, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }));
+  shell.scale.set(1, 0.82, S.stretch); shell.position.set(0, S.bodyY, S.bodyZ); shell.castShadow = true; bird.add(shell);
+  // 배 — 껍질 아래를 막는 연한 타원(틈으로 하늘이 보이지 않게)
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(S.bodyR * 0.92, 14, 10), mat(K.BELLY));
+  belly.scale.set(1, 0.42, S.stretch * 0.95); belly.position.set(0, S.bodyY - S.bodyR * 0.12, S.bodyZ); bird.add(belly);
+  // 짧은 발 4개 — 껍질 아래 안쪽으로 밀어 넣는다
+  bird.add(cluster(new THREE.SphereGeometry(0.07, 8, 6), mat(K.FOOT), [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sz]) => ({
+    p: [sx * S.bodyR * 0.55, 0.04, S.bodyZ + sz * S.bodyR * 0.70], s: [1, 0.6, 1.3] }))));
+  mountHead(bird, approvedHead('hedgehog'), S.neck, S.tilt, P.headScale);
+  return root;
+}
+
+// =============================================================
+//  🐸 개구리 — 앉은 배 + 접은 뒷다리(허벅지 혹 + 앞을 향한 발) + 짧은 앞다리
+// =============================================================
+const FROG = {
+  K: { BODY: VISITOR_BODY.frog, THIGH: 0x8fc06e, BELLY: 0xe6f0c6, FOOT: 0x9ccc7a },
+  // A 정면 — 곧게 앉음(이모지 🐸 자세)
+  A: { bodyR: 0.30, bodyLen: 0.70, pitch: -0.55, bodyY: 0.26, bodyZ: -0.12, neck: [0, 0.60, 0.06], tilt: 0,
+       thigh: 0.22, thighX: 0.28, footX: 0.30, armZ: 0.16 },
+  // B 3/4 — 같은 앉은 자세를 비스듬히
+  B: { bodyR: 0.31, bodyLen: 0.74, pitch: -0.45, bodyY: 0.26, bodyZ: -0.14, neck: [0, 0.58, 0.08], tilt: 0,
+       thigh: 0.23, thighX: 0.29, footX: 0.32, armZ: 0.18 },
+  // C 3/4 + 머리 0.8 — 낮게 웅크려 뛸 준비(뒷다리가 크게 옆으로)
+  C: { bodyR: 0.32, bodyLen: 0.82, pitch: -0.22, bodyY: 0.24, bodyZ: -0.16, neck: [0, 0.44, 0.16], tilt: 0.05,
+       thigh: 0.26, thighX: 0.34, footX: 0.38, armZ: 0.22 },
+};
+function buildFrog(opt) {
+  const P = POSE[opt], S = FROG[opt], K = FROG.K;
+  const { root, bird } = rig(P);
+  const bp = new THREE.Group(); bp.position.set(0, S.bodyY, S.bodyZ); bp.rotation.x = S.pitch; bird.add(bp);
+  const body = new THREE.Mesh(teardrop(S.bodyR, S.bodyLen, 0.55, 0.2), mat(K.BODY)); body.castShadow = true; bp.add(body);
+  const belly = new THREE.Mesh(teardrop(S.bodyR * 0.88, S.bodyLen * 0.78, 0.6, 0.2), mat(K.BELLY));
+  belly.position.set(0, -S.bodyR * 0.12, S.bodyLen * 0.10); belly.scale.set(0.9, 0.9, 1); bp.add(belly);
+  // 접은 허벅지 — 몸 뒤 양옆의 큰 혹(앞으로 비스듬히)
+  bird.add(cluster(new THREE.SphereGeometry(S.thigh, 12, 10), mat(K.THIGH), [-1, 1].map(s => ({
+    p: [S.thighX * s, S.thigh * 0.62, S.bodyZ - 0.10], r: [0, 0.45 * s, 0], s: [0.62, 0.62, 1.15] })), true));
+  // 뒷발 — 허벅지 앞 바닥에 납작하게, 바깥 앞으로 벌린다
+  bird.add(cluster(new THREE.SphereGeometry(0.10, 10, 8), mat(K.FOOT), [-1, 1].map(s => ({
+    p: [S.footX * s, 0.03, S.bodyZ + 0.16], r: [0, -0.5 * s, 0], s: [0.8, 0.28, 1.5] }))));
+  // 앞다리 — 턱 아래 짧은 기둥 + 둥근 발끝
+  const armH = 0.26;
+  bird.add(cluster(new THREE.CylinderGeometry(0.045, 0.05, armH, 8), mat(K.BODY), [-1, 1].map(s => ({
+    p: [0.15 * s, armH / 2, S.armZ], r: [0.15, 0, 0.12 * s] }))));
+  bird.add(cluster(new THREE.SphereGeometry(0.065, 8, 6), mat(K.FOOT), [-1, 1].map(s => ({
+    p: [0.17 * s, 0.025, S.armZ + 0.05], s: [1.2, 0.45, 1.2] }))));
+  mountHead(bird, approvedHead('frog'), S.neck, S.tilt, P.headScale);
+  return root;
+}
+
+// =============================================================
+//  🦋 나비 2차(N1~N3) — 사용자: "나비가 개밤티였어"(2026-09-29). 1차(A~C)는 승인 머리를 그대로 쓰고
+//    날개를 둘레에 꽂아 **분홍 공 + 귀**로 읽혔다(lesson #2 — 부속을 꽂으면 본체가 먼저 읽힌다).
+//  ▶ 날개가 형태의 주인공, 머리는 몸 앞에 작게(승인 머리 × 0.42 — 얼굴 비율은 그대로).
+//  ▶ 날개는 원판이 아니라 **나비 날개 윤곽**(앞날개 삼각형 · 뒷날개 둥근 + 꼬리) + 검은 테두리.
+//  ▶ 도감 이름이 '호랑나비' — N1·N2 는 노랑·검정 호랑무늬, N3 은 지금 분홍을 유지한 비교안.
+// =============================================================
+const BFLY2 = {
+  TIGER: { WING: 0xf4cf4e, LOW: 0xf4cf4e, EDGE: 0x2b2522, SPOT1: 0xe8733a, SPOT2: 0x5f86c9, BODY: 0x2b2522, stripes: true },
+  PINK:  { WING: 0xe486b4, LOW: 0xf2bdd6, EDGE: 0x7c3f66, SPOT1: 0xffffff, SPOT2: 0xffffff, BODY: 0x4a2f40, stripes: false },
+  // 사용자(2026-09-29): "처음에 쥐인 줄 알았어 — 눈 땡그랄 필요 없으니 진짜 나비처럼". 승인 머리를 **뺀다**.
+  N1: { pal: 'TIGER', y: 0.05, lift: 0.14, yaw: 0.35, flower: false },   // 흙에 앉아 날개를 편다
+  N2: { pal: 'TIGER', y: 0.10, lift: 0.75, yaw: -0.40, flower: false },  // 날개를 V 로 세운다
+  N3: { pal: 'TIGER', y: 0.46, lift: 0.20, yaw: 0.30, flower: true },    // 흰 꽃 위에서 날개를 편다
+};
+function wingShapes() {
+  const fore = new THREE.Shape();                         // x 바깥 · y 앞
+  fore.moveTo(0.02, 0.02); fore.bezierCurveTo(0.18, 0.26, 0.40, 0.36, 0.58, 0.34);
+  fore.bezierCurveTo(0.62, 0.24, 0.58, 0.10, 0.50, 0.00); fore.bezierCurveTo(0.34, -0.06, 0.16, -0.08, 0.02, -0.04);
+  const hind = new THREE.Shape();
+  hind.moveTo(0.02, -0.04); hind.bezierCurveTo(0.22, -0.02, 0.40, -0.08, 0.40, -0.22);
+  hind.bezierCurveTo(0.40, -0.34, 0.32, -0.40, 0.27, -0.42);
+  hind.lineTo(0.25, -0.58); hind.lineTo(0.20, -0.44);      // 호랑나비 꼬리
+  hind.bezierCurveTo(0.12, -0.42, 0.05, -0.30, 0.02, -0.10);
+  return { fore, hind };
+}
+const flatGeo = (shape, k = 1, lift = 0) => { const g = new THREE.ShapeGeometry(shape, 14); g.scale(k, k, 1); g.translate(0, 0, lift); g.rotateX(Math.PI / 2); return g; };
+function buildButterfly2(opt) {
+  const S = BFLY2[opt], K = BFLY2[S.pal];
+  const root = new THREE.Group(), bug = new THREE.Group();
+  root.position.y = SOIL_Y; bug.rotation.y = S.yaw; bug.position.y = S.y; bug.scale.setScalar(1.2); root.add(bug);   // 1.2 — 폰 세로에서 손톱만 해지지 않게
+  const wm = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+  const { fore, hind } = wingShapes();
+  // 테두리 = 같은 윤곽을 1.10 배로 키워 밑에 깐다(선 두께가 일정하게 보인다)
+  const cx = (g) => { g.translate(-0.02, 0, 0); return g; };
+  for (const side of [-1, 1]) {
+    const w = new THREE.Group(); w.scale.x = side; w.rotation.z = side * S.lift; bug.add(w);
+    const add = (geo, c, y = 0) => { const m = new THREE.Mesh(geo, wm(c)); m.position.y = y; m.castShadow = true; w.add(m); };
+    add(cx(flatGeo(fore, 1.10)), K.EDGE, -0.004); add(cx(flatGeo(hind, 1.10)), K.EDGE, -0.004);
+    add(flatGeo(fore), K.WING); add(flatGeo(hind), K.LOW);
+    if (K.stripes) for (const [x0, w0] of [[0.14, 0.05], [0.30, 0.045]]) {   // 앞날개 호랑 줄무늬 두 줄(촘촘한 반복 금지)
+      const st = new THREE.Shape(); st.moveTo(x0, 0.0); st.lineTo(x0 + w0, 0.0); st.lineTo(x0 + w0 + 0.06, 0.28); st.lineTo(x0 + 0.06, 0.30);
+      add(flatGeo(st), K.EDGE, 0.004);
+    }
+    const spot = (c, x, z, r) => { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 12), wm(c)); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.006, z); w.add(m); };
+    spot(K.SPOT1, 0.24, -0.36, 0.04); spot(K.SPOT2, 0.33, -0.25, 0.035);   // 뒷날개 끝 무늬 한 쌍(윤곽 y → 월드 z)
+  }
+  // 몸 — 가슴 + 가는 배. 날개 뿌리 사이에 눕는다
+  const thorax = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), mat(K.BODY)); thorax.scale.z = 1.3; thorax.position.y = 0.03; thorax.castShadow = true; bug.add(thorax);
+  const abd = new THREE.Mesh(teardrop(0.055, 0.40, 0.30, 0), mat(K.BODY)); abd.position.set(0, 0.03, -0.22); abd.castShadow = true; bug.add(abd);
+  // 머리 — 작은 검은 구 + 옆으로 붙은 겹눈 두 알(흰자·동공 없음). 캐릭터 얼굴을 붙이면 쥐·공이 된다.
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), mat(K.BODY)); head.position.set(0, 0.04, 0.13); head.castShadow = true; bug.add(head);
+  bug.add(cluster(new THREE.SphereGeometry(0.028, 8, 6), mat(0x4a3b2a), [-1, 1].map(s => ({ p: [0.042 * s, 0.05, 0.15] }))));
+  // 더듬이 — 가는 대 + 끝이 뭉툭한 곤봉(나비의 표지). 앞·바깥으로 뻗는다
+  //   방향 = Rz(−0.45s) 다음 Rx(0.7) 로 돌린 +Y ≈ (0.43s, 0.69, 0.58). 대 중심·곤봉 끝을 그 방향으로 계산한다.
+  const ANT = 0.36, AD = [0.43, 0.69, 0.58], AB = [0.03, 0.07, 0.16];
+  bug.add(cluster(new THREE.CylinderGeometry(0.009, 0.009, ANT, 5), mat(K.BODY), [-1, 1].map(s => ({
+    p: [(AB[0] + AD[0] * ANT / 2) * s, AB[1] + AD[1] * ANT / 2, AB[2] + AD[2] * ANT / 2], r: [0.7, 0, -0.45 * s] }))));
+  bug.add(cluster(new THREE.SphereGeometry(0.026, 8, 6), mat(K.BODY), [-1, 1].map(s => ({
+    p: [(AB[0] + AD[0] * ANT) * s, AB[1] + AD[1] * ANT, AB[2] + AD[2] * ANT] }))));
+  if (S.flower) {
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, S.y - 0.04, 6), mat(0x5f9a45));
+    stem.position.y = (S.y - 0.04) / 2; root.add(stem);
+    root.add(cluster(new THREE.SphereGeometry(0.13, 10, 8), mat(0xffffff), [0, 1, 2, 3, 4].map(i => ({
+      p: [Math.cos(i * 1.2566) * 0.16, S.y - 0.06, Math.sin(i * 1.2566) * 0.16], s: [1, 0.3, 1] }))));
+    const ctr = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), mat(0xf0a640)); ctr.position.y = S.y - 0.05; ctr.scale.y = 0.6; root.add(ctr);
+  }
+  return root;
+}
+// =============================================================
+//  🐦 참새 2차(P1~P3) — 사용자(2026-09-29): "개구리처럼 안 만들어도 좋으니 나비처럼 예쁘게".
+//    🦋 N1 과 같은 결론 — 캐릭터 얼굴(흰 왕눈·빨간 관모·눈썹)을 **빼고** 진짜 참새 무늬로 읽히게.
+//  ▶ 몸이 주인공, 머리는 몸 반지름의 약 0.7 로 앞 위에 파묻는다(목이 안 보이게).
+//  ▶ 참새 표지 5가지: 밤색 머리 · 흰 뺨의 검은 점 · 부리 밑 검은 턱받이 · 갈색 등 + 흰 날개띠 · 짧고 굵은 부리
+// =============================================================
+const SP2 = {
+  K: { CAP: 0x8a4a2a, CHEEK: 0xf3eee4, SPOT: 0x221c18, BACK: 0x9a6b45, STREAK: 0x4e3524, BELLY: 0xd8cfc0,
+       WING: 0x7a5236, BAR: 0xf3ecdf, BEAK: 0x3b3431, LEG: 0xc99a74 },
+  //   yaw 몸 방향 · pitch 앞 숙임(+ 가 머리 쪽 아래) · head 머리 자리 · tilt 머리 숙임 · tailUp 꼬리 들림
+  P1: { yaw: 0.65,  pitch: -0.05, head: [0, 0.40, 0.19], tilt: 0.05, tailUp: 0.25, len: 0.62 },   // 동그랗게 앉음
+  P2: { yaw: -0.60, pitch: 0.38,  head: [0, 0.24, 0.29], tilt: 0.70, tailUp: 0.10, len: 0.62 },   // 몸이 숙인 만큼 꼬리는 덜 든다(0.6 이면 가시처럼 곧게 섰다)   // 땅을 쪼는 중
+  P3: { yaw: 0.50,  pitch: -0.40, head: [0, 0.50, 0.12], tilt: -0.15, tailUp: 0.05, len: 0.58 },  // 고개 들고 두리번
+};
+function buildSparrow2(opt) {
+  const S = SP2[opt], K = SP2.K;
+  const root = new THREE.Group(), bird = new THREE.Group();
+  root.position.y = SOIL_Y; bird.rotation.y = S.yaw; bird.scale.setScalar(1.2); root.add(bird);
+  const R = 0.22;
+  const bp = new THREE.Group(); bp.position.set(0, 0.25, -0.02); bp.rotation.x = S.pitch; bird.add(bp);
+  const body = new THREE.Mesh(teardrop(R, S.len, 0.28), mat(K.BACK)); body.scale.x = 0.95; body.castShadow = true; bp.add(body);
+  const belly = new THREE.Mesh(teardrop(R * 0.94, S.len * 0.78, 0.45), mat(K.BELLY));
+  belly.position.set(0, -R * 0.20, S.len * 0.06); belly.scale.x = 0.92; bp.add(belly);
+  // (등 줄무늬는 뺐다 — 물방울 등이 뒤로 낮아져 막대가 몸 위로 떠 보였다)
+  // 접은 날개 + 흰 날개띠
+  bp.add(cluster(teardrop(R * 0.62, S.len * 0.72, 0.15, 0), mat(K.WING), [-1, 1].map(s => ({
+    p: [R * 0.78 * s, R * 0.18, -S.len * 0.10], r: [-0.18, -0.14 * s, 0.30 * s], s: [0.42, 0.78, 1] })), true));
+  bp.add(cluster(new THREE.BoxGeometry(0.02, 0.028, 0.14), mat(K.BAR), [-1, 1].map(s => ({
+    p: [R * 0.86 * s, R * 0.30, -S.len * 0.04], r: [-0.18, -0.14 * s, 0.30 * s], s: [0.6, 0.7, 1] }))));   // 날개 면 안쪽으로 붙인다
+  // 꼬리 — 좁은 뿌리 · 넓은 끝의 납작한 사각뿔
+  const TL = 0.30, tg = new THREE.ConeGeometry(R * 0.50, TL, 4, 1); tg.rotateY(Math.PI / 4); tg.translate(0, -TL / 2, 0);
+  const tail = new THREE.Mesh(tg, mat(K.STREAK)); tail.scale.set(1, 1, 0.28);
+  tail.rotation.x = Math.PI / 2 + S.tailUp; tail.position.set(0, R * 0.15, -S.len * 0.42); tail.castShadow = true; bp.add(tail);
+  // 다리 — 몸 밑 중심 쪽으로(발이 뜨지 않게)
+  bird.add(cluster(new THREE.CylinderGeometry(0.018, 0.016, 0.14, 5), mat(K.LEG), [-1, 1].map(s => ({ p: [0.07 * s, 0.07, 0.0] }))));
+  bird.add(cluster(new THREE.ConeGeometry(0.05, 0.12, 3), mat(K.LEG), [-1, 1].map(s => ({ p: [0.07 * s, 0.012, 0.05], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.25] }))));
+  // 머리 — 흰 바탕 + 밤색 모자(정수리~뒷목) + 검은 뺨 점 + 턱받이 + 작은 검은 눈 + 짧은 부리
+  const HR = 0.155, hg = new THREE.Group(); hg.position.set(...S.head); hg.rotation.x = S.tilt; bird.add(hg);
+  const face = new THREE.Mesh(new THREE.SphereGeometry(HR, 16, 12), mat(K.CHEEK)); face.castShadow = true; hg.add(face);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(HR * 1.04, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), mat(K.CAP));
+  cap.rotation.x = -0.45; hg.add(cap);                                  // 앞이마보다 뒷목을 더 덮는다
+  hg.add(cluster(new THREE.SphereGeometry(HR * 0.26, 10, 8), mat(K.SPOT), [-1, 1].map(s => ({
+    p: [HR * 0.86 * s, -HR * 0.10, -HR * 0.05], s: [0.35, 1, 1] }))));    // 뺨 점
+  const bib = new THREE.Mesh(new THREE.SphereGeometry(HR * 0.42, 10, 8), mat(K.SPOT));
+  bib.position.set(0, -HR * 0.62, HR * 0.60); bib.scale.set(0.9, 0.55, 0.5); hg.add(bib);
+  hg.add(cluster(new THREE.SphereGeometry(HR * 0.14, 8, 6), mat(K.SPOT), [-1, 1].map(s => ({ p: [HR * 0.62 * s, HR * 0.18, HR * 0.72] }))));
+  hg.add(cluster(new THREE.SphereGeometry(HR * 0.05, 6, 4), mat(0xffffff), [-1, 1].map(s => ({ p: [HR * 0.66 * s, HR * 0.24, HR * 0.84] }))));
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(HR * 0.26, HR * 0.52, 6), mat(K.BEAK));
+  beak.rotation.x = Math.PI / 2; beak.position.set(0, -HR * 0.08, HR * 1.12); hg.add(beak);
+  return root;
+}
+// =============================================================
+//  🦔🐸 2차(Q1~Q3) — 사용자(2026-09-29): 🦋 N1·🐦 P1 확정 → "고슴도치 개구리도 그렇게".
+//    캐릭터 얼굴(흰 왕눈·입 곡선·볼터치)을 빼고 실제 동물 표지로 읽히게. Q 는 두 종을 같은 번호로 묶어 본다.
+//  🦔 표지: 몸 전체를 덮는 가시 덩어리(spikyShell — lesson #2 유지) · 베이지 얼굴 · 뾰족 주둥이 + 검은 코끝 · 작은 귀
+//  🐸 표지(청개구리): 매끈한 연두 · 머리 위 양옆 눈(금색 홍채 + 가로 동공) · 콧등→눈→옆구리 짙은 줄 · 흰 배 · 접은 뒷다리
+// =============================================================
+const HOG2 = {
+  K: { QUILL: 0x7a6d62, FACE: 0xdcc6a6, DARK: 0x1d1815, EAR: 0xc4ab8a, FOOT: 0x8a6f5a },
+  Q1: { yaw: 0.55,  tilt: 0.10 },    // 걸어가는 3/4
+  Q2: { yaw: -0.55, tilt: -0.35 },   // 주둥이를 들고 킁킁
+  Q3: { yaw: 0.12,  tilt: 0.05 },    // 거의 정면(얼굴이 카메라로)
+};
+function buildHedgehog2(opt) {
+  const S = HOG2[opt], K = HOG2.K;
+  const root = new THREE.Group(), hog = new THREE.Group();
+  root.position.y = SOIL_Y; hog.rotation.y = S.yaw; hog.scale.setScalar(1.2); root.add(hog);
+  const BR = 0.26;   // 가시 0.75R — 0.52R 은 몸이 커지자 가시 대신 '지붕' 으로 읽혔다(2026-09-29)
+  // 가시 덩어리 — 큰 껍질 한 장을 늘리면 면이 커져 '지붕·솔방울' 이 된다(1차 캡처).
+  //   detail 을 올리면 촘촘해져 환공포증(lesson #4). → **작은 껍질 3개를 앞→뒤로 겹쳐** 가시가 뒤로 누운 결을 만든다.
+  const quillMat = new THREE.MeshStandardMaterial({ color: K.QUILL, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+  const QR = 0.19, qGeo = spikyShell(QR, QR * 0.75, (c) => c.y > -QR * 0.2);
+  hog.add(cluster(qGeo, quillMat, [
+    { p: [0, 0.24, 0.10], r: [-0.35, 0.3, 0], s: [1.05, 0.78, 1.0] },
+    { p: [0, 0.27, -0.08], r: [-0.30, -0.5, 0.1], s: [1.2, 0.85, 1.05] },
+    { p: [0, 0.22, -0.26], r: [-0.45, 0.9, 0], s: [1.0, 0.75, 1.0] },
+  ], true));
+  const under = new THREE.Mesh(new THREE.SphereGeometry(BR * 0.92, 14, 10), mat(K.FACE));
+  under.scale.set(1, 0.45, 1.25); under.position.set(0, 0.17, -0.04); hog.add(under);
+  hog.add(cluster(new THREE.SphereGeometry(0.06, 8, 6), mat(K.FOOT), [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sz]) => ({
+    p: [sx * 0.15, 0.03, -0.04 + sz * 0.18], s: [1, 0.6, 1.3] }))));
+  // 얼굴 — 베이지 머리 + 앞으로 뾰족한 주둥이 + 검은 코끝 + 작은 검은 눈 + 둥근 귀
+  const hg = new THREE.Group(); hg.position.set(0, 0.19, 0.30); hg.rotation.x = S.tilt; hog.add(hg);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 10), mat(K.FACE)); head.scale.set(1, 0.9, 1); head.castShadow = true; hg.add(head);
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.16, 10), mat(K.FACE));   // 0.22 는 쥐 주둥이였다
+  snout.rotation.x = Math.PI / 2; snout.position.set(0, -0.02, 0.15); hg.add(snout);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 6), mat(K.DARK)); nose.position.set(0, -0.02, 0.23); hg.add(nose);
+  hg.add(cluster(new THREE.SphereGeometry(0.024, 8, 6), mat(K.DARK), [-1, 1].map(s => ({ p: [0.075 * s, 0.045, 0.095] }))));
+  hg.add(cluster(new THREE.SphereGeometry(0.008, 6, 4), mat(0xffffff), [-1, 1].map(s => ({ p: [0.08 * s, 0.055, 0.115] }))));
+  hg.add(cluster(new THREE.SphereGeometry(0.04, 8, 6), mat(K.EAR), [-1, 1].map(s => ({ p: [0.10 * s, 0.10, -0.02], s: [1, 1, 0.5] }))));
+  return root;
+}
+
+const FROG2 = {
+  K: { GREEN: 0x7cc24a, DARK: 0x3e6a2b, BELLY: 0xf0f3dc, IRIS: 0xd8a83a, PUPIL: 0x141210, PAD: 0x9fd46a },
+  Q1: { yaw: 0.55,  pitch: -0.50, headY: 0.36 },   // 곧게 앉음 3/4
+  Q2: { yaw: -0.50, pitch: -0.22, headY: 0.28 },   // 낮게 웅크림
+  Q3: { yaw: 0.12,  pitch: -0.45, headY: 0.35 },   // 거의 정면
+};
+function buildFrog2(opt) {
+  const S = FROG2[opt], K = FROG2.K;
+  const root = new THREE.Group(), fr = new THREE.Group();
+  root.position.y = SOIL_Y; fr.rotation.y = S.yaw; fr.scale.setScalar(1.2); root.add(fr);
+  // 몸 — 뒤로 가늘어지는 물방울을 앞이 들리게(앉은 자세)
+  const bp = new THREE.Group(); bp.position.set(0, 0.20, -0.06); bp.rotation.x = S.pitch; fr.add(bp);
+  const body = new THREE.Mesh(teardrop(0.22, 0.52, 0.45), mat(K.GREEN)); body.scale.x = 1.05; body.castShadow = true; bp.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), mat(K.BELLY));
+  belly.position.set(0, -0.08, 0.06); belly.scale.set(1, 0.6, 1.1); bp.add(belly);
+  // 머리 — 넓고 납작. 몸 앞 위에 파묻는다
+  const hg = new THREE.Group(); hg.position.set(0, S.headY, 0.12); fr.add(hg);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 12), mat(K.GREEN)); head.scale.set(1.15, 0.62, 1.0); head.castShadow = true; hg.add(head);
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), mat(K.BELLY)); jaw.scale.set(1.1, 0.45, 0.95); jaw.position.set(0, -0.05, 0.02); hg.add(jaw);
+  // 짙은 줄 — 콧등에서 눈을 지나 옆구리로(청개구리 표지). 눈 앞뒤로 한 가닥씩
+  //   ⚠️ 머리 밖으로 길게 빼면 검은 칼날처럼 튀어나온다 — 머리 옆면 안에서만, 짧게
+  hg.add(cluster(new THREE.SphereGeometry(0.1, 10, 8), mat(K.DARK), [-1, 1].map(s => ({ p: [0.15 * s, 0.045, 0.06], r: [0, 0.25 * s, 0], s: [0.10, 0.10, 1.05] }))));   // 머리 윗옆 — 위에서 보이게
+  // 눈 — 머리 위 양옆의 연두 눈두덩 + 금색 홍채 + 가로 동공(흰 왕눈 금지)
+  const EY = 0.115, EX = 0.12, EZ = 0.05, ER = 0.07;   // 머리 윤곽 위로 솟게
+  hg.add(cluster(new THREE.SphereGeometry(ER, 12, 10), mat(K.GREEN), [-1, 1].map(s => ({ p: [EX * s, EY, EZ] })), true));
+  hg.add(cluster(new THREE.SphereGeometry(ER * 0.78, 12, 10), mat(K.IRIS), [-1, 1].map(s => ({ p: [(EX + ER * 0.30) * s, EY + ER * 0.22, EZ + ER * 0.30] }))));
+  hg.add(cluster(new THREE.SphereGeometry(ER * 0.40, 10, 8), mat(K.PUPIL), [-1, 1].map(s => ({ p: [(EX + ER * 0.52) * s, EY + ER * 0.36, EZ + ER * 0.52], s: [1.3, 0.55, 0.6] }))));
+  // 뒷다리 — 옆에 접힌 허벅지 + 앞으로 향한 발
+  fr.add(cluster(teardrop(0.10, 0.34, 0.5), mat(K.GREEN), [-1, 1].map(s => ({ p: [0.20 * s, 0.10, -0.08], r: [0.3, 0.25 * s, 0], s: [0.9, 0.85, 1] })), true));
+  fr.add(cluster(new THREE.SphereGeometry(0.07, 10, 8), mat(K.PAD), [-1, 1].map(s => ({ p: [0.26 * s, 0.02, 0.10], s: [1, 0.3, 1.6] }))));
+  // 앞다리 — 짧게 짚는다 + 발가락 끝 둥근 흡반
+  fr.add(cluster(new THREE.SphereGeometry(0.05, 10, 8), mat(K.GREEN), [-1, 1].map(s => ({ p: [0.13 * s, 0.08, 0.19], r: [0.25, 0, 0.2 * s], s: [0.75, 1.6, 0.75] }))));   // 막대 대신 통통한 팔
+  fr.add(cluster(new THREE.SphereGeometry(0.045, 8, 6), mat(K.PAD), [-1, 1].map(s => ({ p: [0.13 * s, 0.01, 0.23], s: [1.3, 0.35, 1] }))));
+  return root;
+}
+const BUILD = { sparrow: buildSparrow, butterfly: buildButterfly, hedgehog: buildHedgehog, frog: buildFrog };
+function buildVisitor(id, opt) {
+  if (opt === 'CUR') { const v = makeVisitor(THREE, id); v.position.y = SOIL_Y; return v; }   // 게임 그대로(2차 조형은 원점 = 발바닥 → 흙 윗면에)
+  if (opt[0] === 'N') return id === 'butterfly' ? buildButterfly2(opt) : makeVisitor(THREE, id);   // 🦋 2차 — 나머지 종은 현재 그대로
+  if (opt[0] === 'Q') return ({ butterfly: () => buildButterfly2('N1'), sparrow: () => buildSparrow2('P1'), hedgehog: () => buildHedgehog2(opt), frog: () => buildFrog2(opt) })[id]();   // 🦔🐸 2차 + 🦋🐦 확정안
+  if (opt[0] === 'P') return id === 'sparrow' ? buildSparrow2(opt) : id === 'butterfly' ? buildButterfly2('N1') : makeVisitor(THREE, id);   // 🐦 2차 — 🦋 는 확정안 N1
+  return BUILD[id](opt);
+}
+
+// ── 씬 — 게임과 같은 조명·톤매핑 (js/game.js 2561~2590) ──
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xbfe0ef);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.9));
+scene.add(new THREE.AmbientLight(0xfff0dd, 0.25));
+const sun = new THREE.DirectionalLight(0xffe9c4, 1.1);
+sun.position.set(9, 18, 7); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.radius = 6;
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 60 });
+scene.add(sun);
+
+// 잔디(윗면 0.15) + 흙 칸(윗면 0.2, CELL 2.0 · 칸 1.7) + 작물
+const grass = new THREE.Mesh(new THREE.BoxGeometry(80, 0.2, 80), mat(0x8fce7e));
+grass.position.y = 0.05; grass.receiveShadow = true; scene.add(grass);
+const soilMat = mat(0x9c6b4a), leafMat = mat(0x6fa84a), leaf2 = mat(0x86c05f), fruitMat = mat(0xff9e5e);
+function crop(x, z, kind) {
+  const g = new THREE.Group(); g.position.set(x, SOIL_Y, z);
+  if (kind === 'sprout') {
+    for (let i = 0; i < 3; i++) {
+      const l = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 5), i % 2 ? leafMat : leaf2);
+      l.position.set(Math.cos(i * 2.1) * 0.07, 0.2, Math.sin(i * 2.1) * 0.07);
+      l.rotation.set(Math.sin(i * 2.1) * 0.4, 0, -Math.cos(i * 2.1) * 0.4);
+      l.castShadow = true; g.add(l);
+    }
+  } else {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 0), leaf2); b.position.y = 0.32; b.castShadow = true; g.add(b);
+    for (const [dx, dz] of [[0.18, 0.12], [-0.16, 0.16], [0.02, -0.2]]) {
+      const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), fruitMat); f.position.set(dx, 0.36, dz); g.add(f);
+    }
+  }
+  scene.add(g);
+}
+// 방문객 자리 — 플레이어(0,1) 둘레 칸 4곳(칸 중심). 게임은 동시 2마리지만 비교를 위해 4종을 한 화면에.
+const SPOTS = { sparrow: [2, 0.1], hedgehog: [-2, 0.1], frog: [2, -1.9], butterfly: [-2, -1.9] };
+const free = new Set(Object.values(SPOTS).map(([x, z]) => `${Math.round(x / 2)},${Math.round(z / 2)}`));
+for (let cx = -5; cx <= 5; cx++) for (let cz = -9; cz <= 5; cz++) {
+  const x = cx * 2, z = cz * 2;
+  const s = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), soilMat);
+  s.position.set(x, 0.1, z); s.receiveShadow = true; scene.add(s);
+  if (cx === 0 && (cz === 0 || cz === 1)) continue;             // 플레이어 앞 빈 칸
+  const kind = (cx + cz) % 2 ? 'bush' : 'sprout';
+  if (free.has(`${cx},${cz}`)) {                               // 방문객 칸 — 뒤쪽에 새싹 두 포기만
+    crop(x - 0.5, z - 0.6, 'sprout'); crop(x + 0.55, z - 0.55, 'sprout');
+    continue;
+  }
+  const spots = kind === 'bush' ? [[0, 0]] : [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]];
+  for (const [dx, dz] of spots) crop(x + dx, z + dz, kind);
+}
+
+// 🐤 플레이어 — 칸 사이 고랑(잔디)에 선다
+const player = new THREE.Group();
+player.add(buildAnimalMesh('chick').group);
+player.position.set(0.0, 0.15, 1.0);
+scene.add(player);
+
+let visitors = [];
+function setOpt(o) {
+  visitors.forEach(v => scene.remove(v)); visitors = [];
+  const calls = {};
+  for (const [id, [x, z]] of Object.entries(SPOTS)) {
+    const v = buildVisitor(id, o);
+    v.position.x = x; v.position.z = z;
+    scene.add(v); visitors.push(v);
+    let n = 0; v.traverse(m => { if (m.isMesh) n++; }); calls[id] = n;
+  }
+  window.__calls = calls;
+  document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.o === o));
+}
+
+// ── 카메라 — js/game.js camOffset (0,14,16) · lookAt 플레이어 +1.2 · fov 42 (텃밭 zoom 1) ──
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+function placeCam() {
+  const p = player.position, [fx, fz] = SPOTS[FOCUS] || SPOTS.sparrow;
+  if (VIEW === 'side') {          // 옆모습 검수용(게임엔 없는 시점)
+    camera.position.set(fx + 3.2, 0.9, fz); camera.lookAt(fx, 0.5, fz);
+  } else if (VIEW === 'close') {  // 근접 검수용 — 게임과 같은 피치(≈41°)로 가까이
+    camera.position.set(fx, 0.5 + 2.1, fz + 2.4); camera.lookAt(fx, 0.5, fz);
+  } else {
+    camera.position.set(p.x, p.y + 14, p.z + 16); camera.lookAt(p.x, p.y + 1.2, p.z);
+  }
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const bar = document.getElementById('bar');
+for (const o of ['CUR', 'A', 'B', 'C', 'N1', 'N2', 'N3', 'P1', 'P2', 'P3', 'Q1', 'Q2', 'Q3']) {
+  const b = document.createElement('button'); b.dataset.o = o; b.textContent = o === 'CUR' ? '현재' : o;
+  b.onclick = () => setOpt(o); bar.appendChild(b);
+}
+setOpt(OPT);
+
+function loop() { placeCam(); renderer.render(scene, camera); requestAnimationFrame(loop); }
+loop();
+
+// 캡처 스크립트용 — 플레이어의 화면 좌표(크롭 중심)
+window.__screen = () => {
+  const v = player.position.clone().add(new THREE.Vector3(0, 0.3, -0.9)); v.project(camera);
+  return [Math.round((v.x + 1) / 2 * innerWidth), Math.round((1 - v.y) / 2 * innerHeight)];
+};
+window.__ready = true;
+</script>
