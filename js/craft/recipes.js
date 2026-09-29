@@ -26,12 +26,23 @@ export const CRAFT_RECIPES = [
   // 🍷 포도즙 — 포도(30)가 드디어 판매 말고 쓸 데가 생긴다. 포도 4(120) → 평균 3.5개.
   //    즙은 원액이고, 카페에서 잔에 따라 내면 🍹포도주스(js/game.js DISHES)가 된다.
   { id: 'juice',    ico: '🍷', name: '포도즙', station: 'vat', cost: { grape: 4 },            yields: [2, 3, 4, 5], sell: 40, mg: 'crush'  },
+  // 🍎 과수원 과일 가공(2026-09-29) — 과일이 팔기 말고 쓸 데가 생긴다. 심고 → 따고 → 밤새 가공 → 다음 날 판다.
+  //    과일 4 → 평균 3.5개, 그냥 파는 값의 1.3배(tests/craft-recipes.test.mjs 가 1.2~1.5배로 묶는다).
+  //    조작은 기존 미니게임을 빌린다(mg) — 사과잼은 🧱반죽(꾹 눌러 졸이기), 군밤은 ⚫불 조절, 곶감은 🍷박자(주무르기).
+  { id: 'apple_jam',      ico: '🥫', name: '사과잼', station: 'kiln', cost: { apple: 4 },     yields: [2, 3, 4, 5], sell: 12, mg: 'season', fruit: true },
+  { id: 'roast_chestnut', ico: '🌰', name: '군밤',   station: 'kiln', cost: { chestnut: 4 },  yields: [2, 3, 4, 5], sell: 30, mg: 'grill',  fruit: true },
+  { id: 'gotgam',         ico: '🍡', name: '곶감',   station: 'vat',  cost: { persimmon: 4 }, yields: [2, 3, 4, 5], sell: 24, mg: 'crush',  fruit: true },
 ];
 
 /** 그 시설에서 만들 수 있는 것 */
 export function recipesOf(station) { return CRAFT_RECIPES.filter(r => r.station === station); }
 
 export function recipeOf(id) { return CRAFT_RECIPES.find(r => r.id === id); }
+
+/** 미니게임 조작 종류 → 그 조작의 원조 품목 id. index.html 조작 분기와 game.js 판정이 이 키로 갈린다.
+ *  과일 가공처럼 조작을 빌려 쓰는 품목도 여기서 원조로 모인다(분기를 품목마다 늘리지 않는다). */
+const MG_BASE = { grill: 'charcoal', mill: 'flour', season: 'brick', crush: 'juice' };
+export function mgBaseOf(id) { return MG_BASE[recipeOf(id)?.mg] || id; }
 
 export function yieldOf(id, grade) {
   const r = recipeOf(id); if (!r) return 0;

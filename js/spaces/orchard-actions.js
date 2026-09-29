@@ -14,9 +14,11 @@ import { trackEvent } from '../analytics.js';
 import { BASIC_CROPS, TOOLS } from '../data/tools.js';
 import { seedKeyOf } from '../farm-crops.js';
 import { logOrchardEvent } from '../orchard-log.js';
+import { ONBOARD_LINES, ONBOARD_SEEDS, afterAdvPlant, afterUnlock, needsRefill, shouldOffer } from '../orchard-onboard.js';
 import { ORCHARD_AUTO_TOOLS, TREE_SLOTS, YIELD_PER_DAY, chopHit, freeSlots, fruitKeyOf, fruitOf, harvestable, nearStream, orchardToolFor, sapKeyOf } from '../orchard.js';
 import { Sound } from '../sound.js';
 import { createPlot, seedSelCrop, syncSeedToolIcon, trellisAdjacent } from '../spaces/farm.js';
+import { refreshQuestPanel } from '../spaces/npc.js';
 import { refreshCovers } from '../spaces/weather.js';
 import { seedSaved } from '../tool-tiers.js';
 
@@ -133,6 +135,53 @@ export function orchardAction() {
   ui.toast?.('🌰 씨앗으로 심고 💧 물 주고 🌾 낫으로 따요 · 🪓 도끼로 베요', 2600);
 }
 
+// ── 🌾→🍎 과수원 가는 길 의뢰 (규칙은 js/orchard-onboard.js) ──────────────
+//   기본 작물을 처음 거두면 농부 삼촌이 밀 씨앗을 쥐여 준다 → 심기 → 거두기 → 기존 해금.
+//   말을 걸어야 시작하는 주민 의뢰는 도달률이 1~3% 라 자동으로 건다.
+function onboardStep(step) {
+  trackEvent('orchard_quest', { step });                       // [GA4] 퍼널: offer → plant → done (+refill)
+  logOrchardEvent('orchard_quest', { method: step });          // [원장] step 은 method 열에 싣는다
+}
+
+// 기본 작물 수확 직후(js/spaces/farm-auto.js tryHarvest)와 튜토리얼이 끝날 때(index.html endCoach) 부른다.
+//   튜토리얼 코치가 떠 있으면 미룬다 — 첫 수확이 튜토리얼 8단계라 신규 유저는 대부분 여기서 미뤄지고,
+//   코치가 끝나는 순간 needHarvested 로 다시 불린다(중간에 건너뛴 유저는 아직 안 거뒀을 수 있다).
+export function maybeOfferOrchardQuest({ needHarvested = false } = {}) {
+  const p = gameState.progress;
+  if (ui.coachActive?.()) return;
+  if (needHarvested && !Object.keys(gameState.dex?.crop || {}).length) return;   // 📖 도감에 작물이 하나도 없다 = 아직 안 거뒀다
+  if (shouldOffer(p)) {
+    p.orchardQuest = 'plant';
+    giveReward({ ...ONBOARD_SEEDS }, 'orchard_quest', 'wheat');
+    gameState.farm.seedSel = 'wheat'; syncSeedToolIcon();     // 🌰 도구를 밀로 — 고르는 법을 몰라도 바로 심는다
+    ui.showHintBanner?.({ ico: '🧑‍🌾', title: ONBOARD_LINES.title, line: ONBOARD_LINES.offer, near: () => true, attention: true });
+    onboardStep('offer');
+  } else if (needsRefill(p, gameState.inventory)) {
+    p.orchardRefill = true;
+    giveReward({ ...ONBOARD_SEEDS }, 'orchard_quest', 'wheat');
+    gameState.farm.seedSel = 'wheat'; syncSeedToolIcon();
+    ui.toast?.(ONBOARD_LINES.refill, 3000);
+    onboardStep('refill');
+  } else return;
+  refreshQuestPanel(); requestSave();
+}
+
+// 고급 씨앗을 심었을 때(plantSeed)
+function noteOrchardQuestPlant() {
+  const p = gameState.progress, next = afterAdvPlant(p.orchardQuest);
+  if (next === p.orchardQuest) return;
+  p.orchardQuest = next;
+  onboardStep('plant'); refreshQuestPanel();
+}
+
+// 과수원이 열린 순간(js/spaces/farm-auto.js bumpAdvHarvest) — 일꾼이 거둬도 같은 길
+export function finishOrchardQuest() {
+  const p = gameState.progress, next = afterUnlock(p.orchardQuest);
+  if (next === p.orchardQuest) return;
+  p.orchardQuest = next;
+  onboardStep('done'); refreshQuestPanel();
+}
+
 export function plantSeed(plot) {
   const adv = seedSelCrop();
   const key = adv ? seedKeyOf(adv.id) : 'seed';
@@ -155,6 +204,7 @@ export function plantSeed(plot) {
   refreshInventoryUI(); updatePlotVisual(plot);
   if (saved) spawnFloatText(plot.x, 1.2, plot.z, '🌰 아꼈어요!', '#2f7a44');   // 눈에 보여야 업그레이드가 일한 걸 안다
   questEvent('plant');      // 퀘스트 진행
+  if (adv) noteOrchardQuestPlant();   // 🌾→🍎 과수원 가는 길: 심기 단계
   ui.act?.('seed');         // 튜토리얼
   if (adv) firstHintBanner('advCrop', adv.ico, '고급 작물', '🌱비료를 줘야 제 속도 · 🌿잡초는 맨손 액션 · 🐛해충은 포충망');
   trackEvent('plant_seed', { kind: plot.cropType.id, adv: !!adv, saved: saved ? 1 : 0 }); // [GA4] 종류별 파종 분포 + 🌰 주머니 절약 발동

@@ -9,9 +9,11 @@ import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, STREAM_SLOTS, S
 
 test('FRUITS: 스펙 §5 표 — 5종의 id·묘목값·자람일·판매가가 정확히 일치한다', () => {
   assert.deepEqual(FRUITS.map(f => f.id), ['apple', 'pear', 'peach', 'persimmon', 'chestnut']);
-  assert.deepEqual(FRUITS.map(f => f.sapCoin), [90, 130, 180, 240, 300]);
+  assert.deepEqual(FRUITS.map(f => f.sapCoin), [40, 55, 80, 100, 130]);
   assert.deepEqual(FRUITS.map(f => f.growDays), [3, 3, 4, 4, 5]);
-  assert.deepEqual(FRUITS.map(f => f.price), [5, 6, 8, 10, 12]);
+  assert.deepEqual(FRUITS.map(f => f.price), [8, 10, 13, 16, 20]);
+  // 2026-09-29 재조정 — 팔기만 해도 다 자란 뒤 4일 안에 묘목값이 돌아온다(전엔 12~18일이라 아무도 안 심었다)
+  for (const f of FRUITS) assert.ok(f.sapCoin / (f.price * YIELD_PER_DAY) <= 4, `${f.id}: 본전까지 4일 넘게 걸린다`);
   for (const f of FRUITS) {
     assert.ok(f.fruitColor > 0 && f.leafColor > 0, `${f.id}: 색이 있어야 인스턴스로 그린다`);
     assert.ok(typeof f.name === 'string' && f.name.length > 0, `${f.id}: 한국어 이름`);
@@ -28,7 +30,7 @@ test('상한 상수: 나무 자리 10 · 시냇가 4 · 반경 5 · 하루 2개 
 });
 
 test('fruitOf: id 로 찾고, 모르는 값은 null', () => {
-  assert.equal(fruitOf('apple').price, 5);
+  assert.equal(fruitOf('apple').price, 8);
   assert.equal(fruitOf('bogus'), null);
   assert.equal(fruitOf(null), null);
 });

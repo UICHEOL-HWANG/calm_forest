@@ -21,7 +21,7 @@
 // =============================================================
 
 // js/game.js 가 실제로 쏘는 이벤트만 허용한다(sql/setup/orchard_events.sql 의 열 주석과 짝).
-const EVENTS = new Set(['sapling_plant', 'tree_water', 'fruit_ready', 'fruit_harvest', 'fruit_capped', 'tree_chop']);
+const EVENTS = new Set(['sapling_plant', 'tree_water', 'fruit_ready', 'fruit_harvest', 'fruit_capped', 'tree_chop', 'orchard_quest']);   // orchard_quest: 🌾→🍎 과수원 가는 길 의뢰 — step 은 method 열(offer·refill·plant·done)
 const KINDS = new Set(['apple', 'pear', 'peach', 'persimmon', 'chestnut']);
 
 const json = (obj, status = 200) =>
