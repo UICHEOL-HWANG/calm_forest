@@ -967,7 +967,7 @@ const gameState = {
   //            🤝 발길 끊기 만료일, 오늘 대결한 동물 }
   night: { lastDate: null, traces: [], truce: { boar: null, raccoon: null }, duelDate: null, duelDone: [] },
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
-  boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 } }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드 }
+  boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 }, chestDate: null }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드, 🧰 보물상자 건진 날 }
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 — 관대 판정은 js/difficulty.js 로 옮겼다(이 카운터는 옛 세이브 호환용)
   difficulty: defaultDifficulty(),   // 🎚️ 미니게임별 난이도 상태 { dda: 유저 보정, n: probe 순회용 누적 시도 }
@@ -1367,11 +1367,12 @@ const PART_COLORS = () => ({
   door: [houseBaseColor('door', DOOR_COLORS[0]), ...DOOR_COLORS.slice(1)],
 });
 // 확률(chance)로 잠긴 외관 색 하나를 랜덤 언락 → "오늘 뭐 나올까" 리텐션 훅
+//   반환: 새 색을 열었으면 true — 🧰 보물상자가 "다 열렸으면 보석으로 대체"에 쓴다(다른 호출부는 반환값을 안 본다)
 function tryUnlockDrop(chance) {
-  if (Math.random() > chance) return;
+  if (Math.random() > chance) return false;
   const cols = PART_COLORS(); const pool = [];
   for (const p in cols) for (let i = 0; i < cols[p].length; i++) if (!gameState.unlocked[p].includes(i)) pool.push([p, i]);
-  if (!pool.length) return;                       // 이미 다 열림
+  if (!pool.length) return false;                 // 이미 다 열림
   const [part, idx] = pool[(Math.random() * pool.length) | 0];
   gameState.unlocked[part].push(idx);
   Sound.harvest();
@@ -1383,6 +1384,7 @@ function tryUnlockDrop(chance) {
     ui.toast?.(`🎨 새 ${PART_NAME[part]} 색을 얻었어요! 집 앞 🎨 버튼에서 적용해보세요`, 4200);
   }
   trackEvent('color_unlock', { part, idx });      // [GA4]
+  return true;
 }
 function applyHouseStyle() {
   if (!houseGroup) return;

@@ -11,7 +11,7 @@ import {
   lastZoneHint, makeSignpost, nearBoat, nearBoatShop, nearDoor, obstacles, player, playerAnchor, refreshCollectQuests,
   refreshInventoryUI, riverActive, riverCourse, riverGroup, riverPool, scene, setSpaceVisible, snapCamera,
   solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnSparkle, spawnSplash, syncBadges, todayStr,
-  ui, wantAction, woodMat,
+  tryUnlockDrop, ui, wantAction, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from '../boat-lamp.js';
@@ -20,6 +20,8 @@ import { PAL } from '../data/world.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
 import { sendBoatRun } from '../supabase-client.js';
+import { chestGive, chestOutcome, chestPaid, chestToday, placeChest, rollChest } from '../boat-chest.js';
+import { animateChest, makeChestMesh, setChestNight } from '../boat-chest-art.js';
 import * as THREE from 'three';
 
 export function buildDockGate() {
@@ -246,7 +248,7 @@ export function mulberry32(a) {
 
 export function clampW(x, pad = 1.1) { return Math.max(-RIVER_W + pad, Math.min(RIVER_W - pad, x)); }
 
-export function buildCourse(seed, night) {
+export function buildCourse(seed, night, opts = {}) {
   riverCourse.length = 0;
   const rnd = mulberry32(seed);
   let d = 46;                                     // 첫 장애물까지 여유(가속·조작 적응 구간)
@@ -279,10 +281,21 @@ export function buildCourse(seed, night) {
     }
     d += gap;
   }
+  // 🧰 보물상자 — 오늘 아직 안 건졌을 때만 한 개. ⚠️ 루프가 끝난 **뒤에만** 난수를 더 쓴다
+  //    (루프 안에서 뽑으면 상자 없는 날의 코스까지 통째로 바뀐다 — 그날 전원 같은 코스 규칙)
+  if (opts.chest) {
+    const c = placeChest(rnd, { len: RIVER_LEN, width: RIVER_W });
+    // 같은 거리대의 장애물과 겹치면 반대편으로 — 상자를 건지려다 바위에 박는 억울함 방지
+    const near = riverCourse.filter(o => RIVER_OBS[o.kind] && Math.abs(o.d - c.d) < 4);
+    const clash = (x) => near.some(o => Math.abs(o.x - x) < RIVER_OBS[o.kind].r + 1.6);
+    if (clash(c.x)) c.x = clash(-c.x) ? clampW(c.x + (c.x > 0 ? -3.2 : 3.2), 1.3) : -c.x;
+    riverCourse.push({ d: c.d, kind: 'chest', x: c.x });
+  }
   riverCourse.sort((a, b) => a.d - b.d);
 }
 
 export function makeRiverMesh(kind, pickId) {
+  if (kind === 'chest') return makeChestMesh({ wood: woodMat });   // 🧰 풀에 한 개만 — 밤낮은 꺼낼 때 맞춘다(acquireRiverMesh)
   if (kind === 'rock') {
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), clayMat(0xb0b8bd));
     m.castShadow = true; return m;
@@ -315,6 +328,7 @@ export function acquireRiverMesh(item) {
   const key = item.kind === 'pick' ? 'pick:' + item.pick : item.kind;
   const pool = riverPool[key] || (riverPool[key] = []);
   const m = pool.pop() || makeRiverMesh(item.kind, item.pick);
+  if (item.kind === 'chest') setChestNight(m, boat.night);
   m.visible = true; riverGroup.add(m);
   return m;
 }
@@ -340,11 +354,14 @@ export function startBoatRun() {
   boat.night = isNight();
   // 날짜+회차 시드 — 새로고침해도 같은 코스(리롤 불가) + 그날 전원 동일 코스(실력 비교 가능)
   boat.seed = dateHash('river:' + boat.runNo);
-  buildCourse(boat.seed, boat.night);
+  const offered = chestToday(gameState.boat, todayStr());   // 🧰 오늘 아직 안 건졌으면 이 판에도 떠내려온다
+  buildCourse(boat.seed, boat.night, { chest: offered });
   Object.assign(boat, {
     active: true, dist: 0, speed: BOAT_BASE_SPEED, vx: 0, lamps: boatLampMax(), stars: 0,
     hits: 0, hitLog: [], picks: {}, boostUntil: 0, boostReadyAt: 0, boostUsed: 0,
     invUntil: 0, stunUntil: 0, wreckAt: 0, shake: 0, next: 0, startedAt: performance.now(), t: 0,
+    // 🧰 보물상자 한 판 상태 — 생명주기 트래킹(seen→take|miss→end)이 같은 run_no 로 묶인다
+    chestOffered: offered, chestTaken: false, chestSeen: false, chestMissed: false, chestDxMin: Infinity, chestPos: null, chest: null,
   });
   clearRiverObjects();
   if (!boat.group) { boat.group = makeBoatRideable(); scene.add(boat.group); }
@@ -365,6 +382,7 @@ export function startBoatRun() {
   trackEvent('boat_start', {                                   // [GA4] 런 시작(코스 시드까지 남김)
     run_no: boat.runNo, seed: boat.seed, night: boat.night, weather: WEATHER,
     lamps: boat.lamps, up_oar: up.oar, up_hull: up.hull, up_lamp: up.lamp,
+    has_chest: offered ? 1 : 0,                                // 🧰 이 판에 보물상자가 나오는지(노출 퍼널 분모)
   });
 }
 
@@ -443,6 +461,15 @@ export function endBoatRun(result) {
   ui.setBoatRun?.(false); ui.setBoatHud?.(null);
 
   if (stars > 0 || rareCount > 0) giveReward(give, 'boat_run', result);
+  // 🧰 보물상자 — 규칙 always(난파·그만두기에도 지급). 출처를 나눠 따로 준다(boat_run 과 섞이지 않게).
+  //    econ_logs 는 코인 전용이라 여기 안 남는다 → 지급 원장은 boat_runs.chest_loot·chest_paid.
+  const chestCode = chestOutcome({ offered: boat.chestOffered, taken: boat.chestTaken });
+  const chestPaidNow = !!(boat.chest && chestPaid(result));
+  if (chestPaidNow) {
+    const chestG = chestGive(boat.chest, { unlocked: boat.chest.give ? false : tryUnlockDrop(1) });   // 🎨 다 열렸으면 보석 1
+    if (Object.keys(chestG).length) giveReward(chestG, 'boat_chest', boat.chest.id);
+  }
+  const chestD = boat.chestPos?.d ?? riverCourse.find(k => k.kind === 'chest')?.d ?? null;
   for (const id in boat.picks) dexDiscover('river', id);               // 📖 강 도감
   if (result === 'clear') awardBadge('ferryman');
   if (result === 'clear' && boat.hits === 0) awardBadge('river_master');
@@ -455,14 +482,18 @@ export function endBoatRun(result) {
     dist_m: distM, time_sec: timeSec, score, best, hits: boat.hits, hit_points: boat.hitLog,
     picks: { ...boat.picks }, stars, lamps_left: boat.lamps, boost_used: boat.boostUsed,
     upgrades: { ...up },
+    chest: chestCode, chest_loot: boat.chest?.id ?? null, chest_paid: chestPaidNow ? 1 : 0, chest_d: chestD == null ? null : Math.round(chestD),   // 🧰 boat_runs 4컬럼(마이그레이션 먼저!)
   };
   trackEvent('boat_end', {                                             // [GA4] 완주율·이탈 지점 KPI
     result, run_no: boat.runNo, dist_m: distM, time_sec: timeSec, score, hits: boat.hits,
     stars, rare: rareCount, boost_used: boat.boostUsed, night: boat.night, weather: WEATHER, best,
+    chest: chestCode, chest_loot: boat.chest?.id ?? null, chest_paid: chestPaidNow ? 1 : 0,   // 🧰 0 없음·1 놓침·2 건짐
   });
   sendBoatRun(payload);                                                // [분석] 런 단위 1행(boat_runs)
   ui.showBoatResult?.({
     ...payload, rare: rareCount, runsLeft: boatRunsLeft(), runsMax: BOAT_RUNS_PER_DAY,
+    // 🧰 개봉 화면(R3)·결과 카드용 — payload.chest 는 트래킹 코드(0/1/2)라 화면 정보는 따로
+    chestView: { paid: chestPaidNow, missed: chestCode === 1, id: boat.chest?.id ?? null, name: boat.chest?.name ?? null, night: boat.night },
     picksView: Object.entries(boat.picks).map(([id, n]) => {
       const k = RIVER_PICKS.find(x => x.id === id); return { ico: k?.ico || '❔', name: k?.name || id, n };
     }),
@@ -588,9 +619,15 @@ export function updateRiverObjects(dt, t, seg) {
   while (boat.next < riverCourse.length && riverCourse[boat.next].d - boat.dist < spawnAhead) {
     const item = riverCourse[boat.next++];
     const mesh = acquireRiverMesh(item);
-    const y = item.kind === 'whirl' ? 0.12 : item.kind === 'star' || item.kind === 'pick' ? 0.85 : item.kind === 'pile' ? 1.3 : 0.35;
+    const y = item.kind === 'whirl' ? 0.12 : item.kind === 'star' || item.kind === 'pick' ? 0.85 : item.kind === 'pile' ? 1.3 : item.kind === 'chest' ? 0.08 : 0.35;
     mesh.position.set(item.x, y, -RIVER_DOCK_HALF - 2 - item.d);
+    if (item.kind === 'chest') mesh.rotation.y = 0.5;               // 비스듬히 — 금테·자물쇠·부표가 한 번에 보이게
     riverActive.push({ mesh, item, x: item.x, taken: false, prevRel: Infinity });
+    if (item.kind === 'chest' && !boat.chestSeen) {               // 🧰 화면에 들어온 순간 1회(노출)
+      boat.chestSeen = true; boat.chestPos = { d: item.d, x: item.x };
+      trackEvent('boat_chest_seen', { run_no: boat.runNo, seg, chest_d: Math.round(item.d),
+        chest_x: Math.round(item.x * 10) / 10, speed: Math.round(boat.speed * 10) / 10 });
+    }
   }
   const bx = player.position.x - RIVER.x;
   for (let i = riverActive.length - 1; i >= 0; i--) {
@@ -608,8 +645,27 @@ export function updateRiverObjects(dt, t, seg) {
     }
     if (it.kind === 'whirl') a.mesh.rotation.z += dt * 2.2;
     if (it.kind === 'star' || it.kind === 'pick') { a.mesh.rotation.y += dt * 2.6; a.mesh.position.y = 0.85 + Math.sin(t * 3 + it.d) * 0.12; }
+    if (it.kind === 'chest') animateChest(a.mesh, t, it.d);
     if (a.taken) continue;
     const dx = Math.abs(a.x - bx);
+    if (it.kind === 'chest') {                                    // 🧰 보물상자 — 건지기(①: 시야를 가리지 않게 가볍게)
+      if (rel > -2) boat.chestDxMin = Math.min(boat.chestDxMin, dx);   // 놓쳤을 때 "얼마나 아깝게"
+      if ((Math.abs(rel) < 1.4 || passed) && dx < 1.7) {         // 상자가 1.25배라 수집물(1.5)보다 조금 넉넉하게
+        a.taken = true; a.mesh.visible = false;
+        boat.chestTaken = true; boat.chest = rollChest(boat.seed);
+        gameState.boat.chestDate = todayStr();                   // 오늘은 끝 — 다음 판부터 안 나온다
+        // 내용물은 개봉 화면(결과 전)에서 공개 — 여기선 건졌다는 것만. 이모지 없이(로우폴리 화면에서 튄다)
+        Sound.harvest(); spawnFloatText(player.position.x, 1.9, player.position.z - 10, '보물상자를 건졌어요!', '#c98a1e', 0.9);
+        spawnSparkle(player.position.x, 1.1, player.position.z - 4, 14);
+        trackEvent('boat_chest_take', { run_no: boat.runNo, loot: boat.chest.id, seg, dist_m: Math.round(boat.dist),
+          dx: Math.round(dx * 100) / 100, speed: Math.round(boat.speed * 10) / 10, lamps_left: boat.lamps, night: boat.night, weather: WEATHER });
+      } else if (rel < -1.4 && !boat.chestMissed) {              // 지나쳤다 — 1회만
+        boat.chestMissed = true;
+        trackEvent('boat_chest_miss', { run_no: boat.runNo, seg, dx_min: Math.round(boat.chestDxMin * 100) / 100,
+          speed: Math.round(boat.speed * 10) / 10, lamps_left: boat.lamps });
+      }
+      continue;
+    }
     if (it.kind === 'star' || it.kind === 'pick') {              // 획득
       if ((Math.abs(rel) < 1.4 || passed) && dx < 1.5) {
         a.taken = true; a.mesh.visible = false;

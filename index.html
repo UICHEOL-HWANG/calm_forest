@@ -246,6 +246,16 @@
   /* 🛶 결과 / 창고 모달 */
   #boat-result, #boat-shop { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #boat-result.show, #boat-shop.show { display: grid; }
+  /* 🧰 보물상자 개봉 화면(R3) — 결과 카드 전에 한 번. 시안 sims/boat-chest-sim.html?mode=result */
+  #chest-reveal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #chest-reveal.show { display: grid; }
+  #chest-reveal .cr-card { width: min(440px, 92vw); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(30,50,40,0.4);
+    background: radial-gradient(circle at 50% 42%, #fff3c4 0, #f7d98a 30%, #3a5a48 75%); display: flex; flex-direction: column; align-items: center; padding-bottom: 22px; animation: floatUp .4s ease both; }
+  #chest-reveal canvas { width: 100%; height: min(300px, 42dvh); display: block; }
+  #chest-reveal h2 { color: #fff; margin: 0 0 4px; font-size: 22px; text-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+  #chest-reveal p { color: #fff8e0; margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+  #chest-reveal button { border: none; border-radius: 12px; padding: 10px 22px; font-weight: 700; font-size: 14px; background: #fff; color: #6b4a10; cursor: pointer; font-family: inherit; }
+  .boat-row.miss { background: #f2f2f0; color: #7b857e; }
   /* 📸 사진첩(그리드) + 크게 보기(그 위에 겹침) */
   #album-modal, #album-view { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #album-view { z-index: 34; }
@@ -2018,6 +2028,16 @@
   </div>
   <button id="boat-view">👁️ 시점</button>
 
+  <!-- 🧰 보물상자 개봉(결과 카드 전에 한 번) -->
+  <div id="chest-reveal">
+    <div class="cr-card">
+      <canvas id="cr-canvas"></canvas>
+      <h2>보물상자를 열었어요!</h2>
+      <p id="cr-name"></p>
+      <button id="cr-ok">좋아요</button>
+    </div>
+  </div>
+
   <!-- 🛶 런 결과 -->
   <div id="boat-result">
     <div class="tut-card">
@@ -2312,6 +2332,7 @@
     import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { IS_TOSS, IS_ITCH, IS_ANDROID } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen } from './js/game.js';
+    import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
     import { initControls } from './js/controls.js';
@@ -3282,6 +3303,18 @@
       },
       // 🛶 런 결과 모달 — 여기서 바로 "한 번 더"가 되게(남은 횟수 표시)
       showBoatResult(d) {
+        // 🧰 보물상자를 건졌으면 개봉 화면(R3)이 먼저 — [좋아요]를 누르면 결과 카드로 이어진다
+        if (d.chestView?.paid && !d.chestRevealed) {
+          $('cr-name').textContent = d.chestView.name;
+          Input.setAnalog(0, 0);
+          $('chest-reveal').classList.add('show');
+          playChestReveal($('cr-canvas'), { lootId: d.chestView.id, night: d.chestView.night });
+          $('cr-ok').onclick = () => {
+            stopChestReveal(); $('chest-reveal').classList.remove('show');
+            ui.showBoatResult({ ...d, chestRevealed: true });
+          };
+          return;
+        }
         const clear = d.result === 'clear', wreck = d.result === 'wreck';
         $('br-emoji').textContent = clear ? '🎉' : wreck ? '🌊' : '🛶';
         $('br-title').textContent = clear ? '무사히 도착!' : wreck ? '배가 가라앉았어요' : '뱃길을 멈췄어요';
@@ -3295,8 +3328,11 @@
           ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
         ];
         if (d.picksView.length) rows.push(['수집물', d.picksView.map(p => `${p.ico}${p.name}×${p.n}`).join(' · ')]);
+        // 🧰 건졌으면 받은 것, 지나쳤으면 회색 안내(오늘 남은 판에 또 떠내려온다)
+        if (d.chestView?.paid) rows.push(['보물상자', d.chestView.name]);
+        else if (d.chestView?.missed) rows.push(['보물상자', '다음 뱃길에 또 떠내려와요', 'miss']);
         rows.push(['오늘 남은 횟수', `${d.runsLeft}/${d.runsMax}회`]);
-        $('br-rows').innerHTML = rows.map(([k, v]) => `<div class="boat-row"><span>${k}</span><b>${v}</b></div>`).join('');
+        $('br-rows').innerHTML = rows.map(([k, v, cls]) => `<div class="boat-row${cls ? ' ' + cls : ''}"><span>${k}</span><b>${v}</b></div>`).join('');
         const again = $('br-again');
         again.disabled = d.runsLeft <= 0;
         again.textContent = d.runsLeft > 0 ? `🛶 한 번 더 (${d.runsLeft}회 남음)` : '🛶 내일 또 만나요';
