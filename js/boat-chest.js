@@ -5,14 +5,15 @@
 //    전부 사도 68개라 한 판 평균(57개, boat_runs 30일 실측)과 비슷해 보물 느낌이 없다.
 //    → 과수원 묘목·비료·미끼·보석·집 색. 기대가치 ≈ 50코인어치/일(2026-09-29 확정안).
 //  ▶ 코스가 날짜 시드라 상자 위치·내용물도 시드에서 파생 — 그날은 모두 같다.
+//  ▶ name 은 게임 인벤 표기(RES_LABEL)와 같게 — i18n 사전이 이미 번역을 갖고 있다.
 //  ▶ id 는 GA4(loot·chest_loot)·boat_runs.chest_loot 에 같은 문자열로 쓴다.
 //    (econ_logs 는 코인 전용이라 상자 지급은 거기 안 남는다 — 원장은 boat_runs.)
 //  ▶ 순수 모듈(Three·game.js 의존 없음) — 테스트가 Node 에서 읽는다.
 // =============================================================
 export const CHEST_LOOT = [
-  { id: 'sap_apple',    name: '사과 묘목', w: 20, give: { sap_apple: 1 } },
-  { id: 'sap_peach',    name: '복숭아 묘목', w: 10, give: { sap_peach: 1 } },
-  { id: 'sap_chestnut', name: '밤 묘목',   w: 5,  give: { sap_chestnut: 1 } },   // 가장 귀한 묘목 — "대박" 몫
+  { id: 'sap_apple',    name: '사과나무 묘목', w: 20, give: { sap_apple: 1 } },
+  { id: 'sap_peach',    name: '복숭아나무 묘목', w: 10, give: { sap_peach: 1 } },
+  { id: 'sap_chestnut', name: '밤나무 묘목', w: 5,  give: { sap_chestnut: 1 } },   // 가장 귀한 묘목 — "대박" 몫
   { id: 'fert',         name: '비료 3개',  w: 20, give: { fert: 3 } },
   { id: 'bait',         name: '미끼 5개',  w: 20, give: { bait: 5 } },
   { id: 'gem',          name: '보석 1개',  w: 10, give: { gem: 1 } },
