@@ -18,7 +18,8 @@ export const EN = {
   '🔥 보글보글 끓이기': '🔥 Let It Bubble',
   '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요': 'That one has a recipe — cook it from the menu',
   '재료를 1~3개 골라 주세요': 'Pick 1–3 ingredients',
-  '✨ 처음 끓여 본 요리예요!': '✨ A dish you cooked for the first time!',
+  '최고의 솜씨': 'Perfect Skill', '훌륭한 솜씨': 'Great Skill', '무난한 솜씨': 'Decent Skill', '아쉬운 솜씨': 'So-so Skill',
+  '최고의 솜씨!': 'Perfect Skill!', '훌륭한 솜씨!': 'Great Skill!', '무난한 솜씨!': 'Decent Skill!', '아쉬운 솜씨!': 'So-so Skill!',
   '끓여 본 요리 {0}/{1}': 'Dishes found {0}/{1}',
   // ── 🧰 나룻배 보물상자 ────────────────────────────────────────
   //    보상 이름 중 묘목(사과나무·복숭아나무·밤나무 묘목)은 과수원 쪽에 이미 있다

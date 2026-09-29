@@ -78,13 +78,14 @@ test('costOf: 키 → 재료 개수', () => {
 test('validateEntry: 시큰둥 금지어·길이·이모지·이름 충돌·괴요리 태그·중복', () => {
   const ctx = () => ({ recipeNames: new Set(RECIPES.map(r => r.name)), seenNames: new Set() });
   const ok = { name: '꿀 배숙', name_en: 'Honey Poached Pear', ico: '🍐', taste: 4,
-               judge: '목을 따뜻하게 감싸주는 보약 같아요.', judge_en: 'A soothing sweet remedy.', tags: ['sweet', 'fruity'] };
+               judge: '목이 따뜻해지는 보약 같아요', judge_en: 'A soothing sweet remedy.', tags: ['sweet', 'fruity'] };
   assert.deepEqual(validateEntry('honey+pear', ok, ctx()), []);
   assert.ok(validateEntry('peach+peach', { ...ok, judge: '그냥 복숭아 맛이에요.' }, ctx()).some(m => m.includes('금지어')));
   assert.ok(validateEntry('honey+pear', { ...ok, ico: 'persimmon' }, ctx()).some(m => m.includes('이모지')));
   assert.ok(validateEntry('honey+pear', { ...ok, name: '포도주스' }, ctx()).some(m => m.includes('레시피')));
   assert.ok(validateEntry('honey+pear', { ...ok, name: '수상한포도밀생선범벅' }, ctx()).some(m => m.includes('이름 길이')));
-  assert.ok(validateEntry('honey+pear', { ...ok, judge: '가'.repeat(29) }, ctx()).some(m => m.includes('평 길이')));
+  assert.ok(validateEntry('honey+pear', { ...ok, judge: '가'.repeat(17) }, ctx()).some(m => m.includes('평 길이')));   // 결과 카드 한 줄 — 16자(사용자 "짧고 컴팩트하게")
+  assert.ok(validateEntry('honey+pear', { ...ok, judge_en: 'x'.repeat(49) }, ctx()).some(m => m.includes('en 길이')));
   assert.ok(validateEntry('honey+pear', { ...ok, taste: 2 }, ctx()).some(m => m.includes('weird')));
   const c = ctx(); validateEntry('honey+pear', ok, c);
   assert.ok(validateEntry('honey+apple', ok, c).some(m => m.includes('중복')));
@@ -148,4 +149,13 @@ test('freePotCheck: 1~3개만, 막힌 조합은 레시피 안내', () => {
   assert.equal(b.ok, false); assert.deepEqual(b.blocked, ['veg_stew']);
   const ok = freePotCheck(['pear', 'honey']);
   assert.equal(ok.ok, true); assert.equal(ok.key, 'honey+pear');
+});
+
+import { buildShortenPrompt, needsShorten } from '../tools/free-pot/shorten.mjs';
+test('shorten: 16자·48자 넘는 평만 골라, 뜻·톤 유지·금지어 금지 프롬프트', () => {
+  assert.equal(needsShorten({ judge: '가'.repeat(16), judge_en: 'x'.repeat(48) }), false);
+  assert.equal(needsShorten({ judge: '가'.repeat(17), judge_en: 'x' }), true);
+  assert.equal(needsShorten({ judge: '가', judge_en: 'x'.repeat(49) }), true);
+  const p = buildShortenPrompt([['fish+honey', { name: '꿀 생선구이', judge: '달콤한 꿀을 발라 구워내어 단짠의 정석을 보여줘요.', judge_en: 'x' }]]);
+  for (const s of ['16자', '48자', '해요체', '"그냥"', 'key=fish+honey', '꿀 생선구이']) assert.ok(p.includes(s), s);
 });

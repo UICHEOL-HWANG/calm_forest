@@ -9,7 +9,7 @@ export const INGREDIENTS = ['crop', 'forage', 'fish', 'egg', 'flour', 'wheat', '
   'apple', 'pear', 'peach', 'persimmon', 'chestnut'];
 export const TAGS = ['sweet', 'salty', 'savory', 'fresh', 'hearty', 'fruity', 'fishy', 'veggie', 'weird'];
 export const BANNED_JUDGE = ['그냥', '별로', '평범', '단순', '그저', '밋밋', '그럭저럭'];
-export const NAME_MAX = 9, JUDGE_MAX = 28;
+export const NAME_MAX = 9, JUDGE_MAX = 16, JUDGE_EN_MAX = 48;   // 평은 결과 카드 한 줄 — 사용자 "짧고 컴팩트하게"(2026-09-29)
 
 const ORDER = Object.fromEntries(INGREDIENTS.map((k, i) => [k, i]));
 export const comboKey = (ids) => [...ids].sort((a, b) => ORDER[a] - ORDER[b]).join('+');
@@ -86,6 +86,7 @@ export function validateEntry(key, e, { recipeNames, seenNames }) {
   const hit = BANNED_JUDGE.find(w => judge.includes(w));
   if (hit) bad.push(`금지어: ${hit}`);
   if (!e.judge_en || /[가-힣]/.test(e.judge_en)) bad.push('judge_en 없음/한글 섞임');
+  else if (e.judge_en.length > JUDGE_EN_MAX) bad.push(`en 길이 ${e.judge_en.length}`);
   if (!Array.isArray(e.tags) || !e.tags.length || e.tags.some(t => !TAGS.includes(t))) bad.push('tags 형식');
   if (e.taste <= 2 && !e.tags?.includes('weird')) bad.push('괴요리(★1~2)는 weird 태그 필요');
   if (!bad.length) seenNames.add(name);

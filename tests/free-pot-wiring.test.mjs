@@ -53,14 +53,25 @@ test('freePotStart 는 freePotCheck 를 거쳐 kitchenStart 로 들어간다', (
 });
 
 test('확정 문구(🍲 보글보글 냄비) — 탭·버튼·안내·새 발견·발견 수', () => {
-  for (const s of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '✨ 처음 끓여 본 요리예요!']) assert.ok(html.includes(s), s);
+  for (const s of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '✨NEW']) assert.ok(html.includes(s), s);
   assert.match(html, /끓여 본 요리 \$\{/);
   const EN = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
-  for (const k of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '✨ 처음 끓여 본 요리예요!', '📖 레시피',
+  for (const k of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '📖 레시피', '최고의 솜씨', '훌륭한 솜씨', '무난한 솜씨', '아쉬운 솜씨',
     '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요', '재료를 1~3개 골라 주세요']) assert.ok(EN.includes(`'${k}':`), `i18n ${k}`);
 });
 
 test('굽기 판 석쇠엔 조합 표 아이콘이 아니라 굽는 재료(🐟) — 꿀 생선구이에 꿀단지가 올라가던 문제', () => {
   assert.match(fn('kitchenStart'), /sceneIco: r\.free \? /);                      // 자유 요리는 규칙으로 정한 재료 아이콘
   assert.match(html, /MG\.dishIco = st\.sceneIco \|\| st\.ico/);
+});
+
+test('결과 카드는 짧게 — 별 + 한 줄 평 + ✨NEW 배지 + 작은 발견 수(문장 "처음 끓여 본…" 없음)', () => {
+  const i = html.indexOf('function showCookResult('), body = html.slice(i, html.indexOf('\n    }\n', i));
+  assert.match(body, /✨NEW/);
+  assert.doesNotMatch(body, /처음 끓여 본 요리예요/);
+  assert.doesNotMatch(body, /'Taste'|'맛'/);                          // "맛" 글자 없이 별만
+});
+test('자유 요리의 등급 이름은 솜씨 — "아쉬운 맛!"과 맛 ★이 겹치지 않게', () => {
+  assert.match(fn('kitchenFinish'), /const tierName = r\.free \? tier\.name\.replace\('맛', '솜씨'\) : tier\.name/);
+  assert.match(fn('kitchenFinish'), /tier: \{ id: tier\.id, ico: tier\.ico, name: tierName/);
 });
