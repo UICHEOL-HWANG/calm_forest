@@ -1,0 +1,226 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🧰 나룻배 보물상자 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#cfe9f5;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #labels{position:absolute;left:0;top:0;right:0;height:100%;display:flex;pointer-events:none}
+  #labels div{flex:1;display:flex;justify-content:center;align-items:flex-start;padding-top:10px}
+  #labels span{background:rgba(255,255,255,.88);border-radius:9px;padding:5px 10px;font-size:14px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  body.stack #labels{flex-direction:column}
+  body.stack #labels div{padding-top:6px}
+</style>
+<div id="labels"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// =============================================================
+//  🧰 나룻배 보물상자 외형 시안 — 비교 전용(승인 게이트). 게임 코드는 건드리지 않는다.
+//  ------------------------------------------------------------
+//  게임 값을 그대로 옮긴 것: 강물 색(0x7ec4e8)·강둑(0x9ed7a8)·배 색(BOAT_TEAL/TRIM/RED)·
+//  조명(Hemi 0.9 + Ambient 0.25 + Sun 1.1)·ACES 톤매핑 1.05·카메라 fov 42·
+//  1인칭 나룻배 카메라(배 위 1.5, 14 앞을 봄 — js/spaces/river.js updateBoatCamera).
+//  ▶ 세 안(공통: 반쯤 잠겨 까딱 흔들림 + 물결 고리 + 반짝임 1개)
+//     A 나무 궤짝 + 금테   — 가장 "보물상자"답다
+//     B 부표 달린 작은 궤짝 — 강에 떠내려온 이유가 보인다(빨강·흰 부표 + 밧줄)
+//     C 바구니 + 병 속 쪽지 — 금속 없는 동화 톤
+//  쿼리: ?view=game|third|close  ?time=day|night  ?t=1.2(시간 고정 — 캡처용)  ?layout=row|stack  ?d=11(상자 거리)
+// =============================================================
+const Q = new URLSearchParams(location.search);
+const VIEW = Q.get('view') || 'game';
+const NIGHT = Q.get('time') === 'night';
+const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
+const STACK = (Q.get('layout') || (innerWidth < innerHeight ? 'stack' : 'row')) === 'stack';
+const DIST = Number(Q.get('d') || 11);
+const SCALE = Number(Q.get('s') || 1.25);   // 공통 크기 — 1인칭 11 거리에서 별조각보다 작아 안 읽혀서 세 안 모두 같은 배율
+if (STACK) document.body.classList.add('stack');
+if (Q.get('h')) { document.documentElement.style.height = document.body.style.height = Q.get('h') + 'px'; document.documentElement.style.overflow = 'visible'; document.body.style.overflow = 'visible'; }
+
+const BOAT_TEAL = 0x3fb3c2, BOAT_TRIM = 0xd9a066, BOAT_RED = 0xb2453e;
+const clay = (c, flat = true, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat, ...extra });
+
+// 게임 woodTexture 와 같은 결(세로 나뭇결 줄무늬) — 절차 생성
+function woodTex() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d');
+  x.fillStyle = '#c89560'; x.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 9; i++) { x.fillStyle = `rgba(110,70,35,${0.10 + (i % 3) * 0.05})`; x.fillRect(i * 7 + (i % 2) * 2, 0, 2 + (i % 3), 64); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const WOOD = woodTex();
+const wood = (tint = 0xffffff, rx = 1, ry = 1) => { const t = WOOD.clone(); t.needsUpdate = true; t.repeat.set(rx, ry);
+  return new THREE.MeshStandardMaterial({ map: t, color: tint, roughness: 0.82, metalness: 0 }); };
+
+// ── 게임 makeBoatHull 사본(js/spaces/river.js:76) ──
+function makeBoatHull() {
+  const g = new THREE.Group();
+  const teal = clay(BOAT_TEAL, false), trim = clay(BOAT_TRIM, false), red = clay(BOAT_RED, false);
+  const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 3, 12), teal);
+  hull.rotation.x = Math.PI / 2; hull.scale.set(1, 1, 0.5); hull.position.y = 0.32; g.add(hull);
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.3, 12), trim);
+  bow.rotation.x = -Math.PI / 2; bow.scale.set(1, 1, 0.5); bow.position.set(0, 0.32, -2.15); g.add(bow);
+  const stern = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1, 12), trim);
+  stern.rotation.x = Math.PI / 2; stern.scale.set(1, 1, 0.5); stern.position.set(0, 0.32, 2); g.add(stern);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.57, 0.065, 6, 20), trim);
+  rim.rotation.x = -Math.PI / 2; rim.scale.set(1, 2.7, 1); rim.position.y = 0.6; g.add(rim);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(0.48, 14), clay(0x2e93a3, false));
+  floor.geometry.rotateX(-Math.PI / 2); floor.scale.set(1, 1, 2.7); floor.position.y = 0.3; g.add(floor);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.2, 0.62), red); seat.position.set(0, 0.42, 0.3); g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.44, 0.18), red); back.position.set(0, 0.66, 0.66); g.add(back);
+  return g;
+}
+
+// ── 공통 부속: 물결 고리 + 반짝임 ──
+function addRippleAndGlint(g, r, glintY) {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.09, 28),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
+  const glint = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0),
+    new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xffd35a, emissiveIntensity: NIGHT ? 0.8 : 0.6 }));
+  glint.scale.set(1, 1.8, 1); glint.position.y = glintY; g.add(glint);
+  g.userData.ring = ring; g.userData.glint = glint;
+}
+
+// ── A 나무 궤짝 + 금테 ──
+function chestA() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const W = 1.0, D = 0.66, H = 0.52;
+  const gold = new THREE.MeshStandardMaterial({ color: 0xf0c04a, roughness: 0.45, metalness: 0.35, flatShading: true });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), wood(0xa9743f, 2, 1)); box.position.y = H / 2; body.add(box);
+  // 둥근 뚜껑 — 가로(x) 축 원기둥의 아래 절반은 몸통 안에 묻혀 위 반원만 보인다
+  const lidGeo = new THREE.CylinderGeometry(D / 2, D / 2, W, 10); lidGeo.rotateZ(Math.PI / 2);
+  const lid = new THREE.Mesh(lidGeo, wood(0x9a6636, 2, 1)); lid.position.y = H; body.add(lid);
+  for (const x of [-W * 0.3, W * 0.3]) {                          // 금테 두 줄(몸통 + 뚜껑)
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.09, H + 0.02, D + 0.03), gold); band.position.set(x, H / 2, 0); body.add(band);
+    const arcGeo = new THREE.TorusGeometry(D / 2 + 0.015, 0.045, 5, 10, Math.PI); arcGeo.rotateY(Math.PI / 2);
+    const arc = new THREE.Mesh(arcGeo, gold); arc.position.set(x, H, 0); body.add(arc);
+  }
+  const lock = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.07), gold); lock.position.set(0, H * 0.92, D / 2 + 0.03); body.add(lock);
+  body.position.y = -0.2;                                          // 반쯤 잠김
+  addRippleAndGlint(g, 0.72, 1.25);
+  return g;
+}
+
+// ── B 부표 달린 작은 궤짝 ──
+function chestB() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const W = 0.8, D = 0.54, H = 0.42;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), wood(0xa9743f, 2, 1)); box.position.y = H / 2; body.add(box);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(W + 0.06, 0.14, D + 0.06), wood(0x8a5c36, 2, 1)); lid.position.y = H + 0.07; body.add(lid);
+  const iron = clay(0x5d5b57);
+  for (const x of [-W * 0.32, W * 0.32]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.07, H + 0.16, D + 0.04), iron); s.position.set(x, H / 2 + 0.04, 0); body.add(s); }
+  // 부표(빨강·흰 줄) — 궤짝 옆에서 밧줄로 이어짐
+  const buoy = new THREE.Group(); buoy.position.set(0.95, 0, 0.25);
+  const red = clay(0xe0473e), white = clay(0xf6f1e6);
+  const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), red); b1.scale.set(1, 1.15, 1); b1.position.y = 0.1; buoy.add(b1);
+  const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.305, 0.14, 12), white); b2.position.y = 0.1; buoy.add(b2);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.55, 5), white); pole.position.y = 0.6; buoy.add(pole);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.02), red); flag.position.set(0.14, 0.8, 0); buoy.add(flag);
+  body.add(buoy);
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.62, 5), clay(0xd9c49a));
+  rope.rotation.z = Math.PI / 2 - 0.25; rope.position.set(0.63, 0.24, 0.12); body.add(rope);
+  body.position.y = -0.16;
+  addRippleAndGlint(g, 0.95, 1.05);
+  return g;
+}
+
+// ── C 바구니 + 병 속 쪽지 ──
+function chestC() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const straw = clay(0xd9b27a), strawDark = clay(0xb88b4f);
+  const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.42, 0.45, 12, 1, true), straw); basket.position.y = 0.22; body.add(basket);
+  const bottom = new THREE.Mesh(new THREE.CircleGeometry(0.42, 12), strawDark); bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.01; body.add(bottom);
+  for (const y of [0.1, 0.26, 0.42]) { const r = 0.43 + (y / 0.45) * 0.12;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.035, 4, 16), strawDark); band.rotation.x = Math.PI / 2; band.position.y = y; body.add(band); }
+  const cloth = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), clay(0xe86a5a));
+  cloth.scale.set(1, 0.35, 1); cloth.position.y = 0.44; cloth.rotation.z = 0.15; body.add(cloth);
+  const glass = new THREE.MeshStandardMaterial({ color: 0x9fe0d0, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.7 });
+  const bottle = new THREE.Group(); bottle.position.set(0.12, 0.62, -0.05); bottle.rotation.z = -0.55;
+  const bb = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.42, 10), glass); bottle.add(bb);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, 0.16, 8), glass); neck.position.y = 0.29; bottle.add(neck);
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.08, 6), clay(0xb07a44)); cork.position.y = 0.41; bottle.add(cork);
+  const paper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 6), clay(0xfbf3dc)); bottle.add(paper);
+  body.add(bottle);
+  body.position.y = -0.14;
+  addRippleAndGlint(g, 0.7, 1.35);
+  return g;
+}
+
+const OPTS = [
+  { id: 'A', label: 'A · 나무 궤짝 + 금테', make: chestA },
+  { id: 'B', label: 'B · 부표 달린 궤짝', make: chestB },
+  { id: 'C', label: 'C · 바구니 + 병 속 쪽지', make: chestC },
+];
+
+// ── 강 한 구간(게임 buildRiverSpace 축약) ──
+function buildScene(chestMaker) {
+  const sc = new THREE.Scene();
+  const sky = NIGHT ? 0x1f2d4f : 0xcfe9f5;
+  sc.background = new THREE.Color(sky); sc.fog = new THREE.Fog(sky, 30, NIGHT ? 70 : 110);
+  sc.add(new THREE.HemisphereLight(NIGHT ? 0x8aa0d8 : 0xffffff, NIGHT ? 0x33405a : 0xbfe8c9, NIGHT ? 0.55 : 0.9));
+  sc.add(new THREE.AmbientLight(NIGHT ? 0x9fb0e0 : 0xfff0dd, NIGHT ? 0.18 : 0.25));
+  const sun = new THREE.DirectionalLight(NIGHT ? 0xbfd0ff : 0xffe9c4, NIGHT ? 0.45 : 1.1); sun.position.set(10, 18, 8); sc.add(sun);
+  const RW = 6.4;
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(RW * 2 + 4, 200),
+    new THREE.MeshStandardMaterial({ color: NIGHT ? 0x3f6f9a : 0x7ec4e8, roughness: 0.22, metalness: 0.2, transparent: true, opacity: 0.94 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(0, 0.08, -80); sc.add(water);
+  for (const s of [-1, 1]) {
+    const bank = new THREE.Mesh(new THREE.BoxGeometry(7, 0.9, 200), clay(NIGHT ? 0x5d8a6a : 0x9ed7a8, false)); bank.position.set(s * (RW + 5), 0.2, -80); sc.add(bank);
+    for (let d = 4; d < 120; d += 9) {
+      if ((d * 7 + s) % 3 === 0) continue;
+      const h = 2.2 + ((d * 13) % 7) * 0.28;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, h, 5), clay(0x8a6a4a)); trunk.position.set(s * (RW + 2.6 + ((d * 3) % 5) * 0.5), 0.65 + h / 2, -d); sc.add(trunk);
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.15, 2.4, 6), clay(d % 2 ? 0x6fb06a : 0x82c07a)); leaf.position.set(trunk.position.x, 0.65 + h + 0.9, -d); sc.add(leaf);
+    }
+  }
+  // 비교 기준: 비슷한 거리의 ⭐별조각(게임 값 그대로)
+  const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.36, 0),
+    new THREE.MeshStandardMaterial({ color: 0xffe07a, emissive: 0xffc94a, emissiveIntensity: 0.85, roughness: 0.4 }));
+  star.position.set(-2.2, 0.75, -DIST + 1); sc.add(star);
+  const boat = makeBoatHull(); boat.position.set(0, 0.2, 0); sc.add(boat);
+  const chest = chestMaker(); chest.position.set(1.4, 0.08, -DIST); chest.rotation.y = 0.5; chest.scale.setScalar(SCALE); sc.add(chest);
+  return { sc, chest, star };
+}
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const panes = OPTS.map(o => ({ ...o, ...buildScene(o.make), cam: new THREE.PerspectiveCamera(42, 1, 0.1, 200) }));
+document.getElementById('labels').innerHTML = panes.map(p => `<div><span>${p.label}</span></div>`).join('');
+
+function placeCamera(p) {
+  const c = p.cam, ch = p.chest.position;
+  if (VIEW === 'close') { c.position.set(ch.x + 2.2, 1.9, ch.z + 3.6); c.lookAt(ch.x + 0.35, 0.4, ch.z); return; }
+  if (VIEW === 'third') { c.position.set(0, 5.2, 9); c.lookAt(0, 0.9, -6); return; }
+  c.position.set(0, 1.5, 0.55); c.lookAt(0, 1.05, -14);             // 1인칭(게임 기본)
+}
+
+function frame(ms) {
+  const t = FIXED_T ?? ms / 1000;
+  const W = innerWidth, H = Number(Q.get('h')) || innerHeight, n = panes.length;   // ?h= 헤드리스 캡처는 창보다 뷰포트가 작다
+  renderer.setSize(W, H); renderer.setScissorTest(true);
+  panes.forEach((p, i) => {
+    const vw = STACK ? W : Math.floor(W / n), vh = STACK ? Math.floor(H / n) : H;
+    const vx = STACK ? 0 : i * vw, vy = STACK ? H - (i + 1) * vh : 0;
+    p.cam.aspect = vw / vh; p.cam.updateProjectionMatrix(); placeCamera(p);
+    const u = p.chest.userData, body = p.chest.children[0];
+    if (body.userData.y0 == null) body.userData.y0 = body.position.y;
+    body.position.y = body.userData.y0 + Math.sin(t * 2.2 + i) * 0.05;          // 까딱
+    body.rotation.z = Math.sin(t * 1.6 + i) * 0.06;
+    const k = (t * 0.7) % 1; u.ring.scale.setScalar(1 + k * 0.5); u.ring.material.opacity = 0.55 * (1 - k);
+    u.glint.rotation.y = t * 2.4; u.glint.scale.set(1, 1.8, 1).multiplyScalar(0.8 + 0.25 * Math.sin(t * 5));
+    p.star.rotation.y = t * 2;
+    renderer.setViewport(vx, vy, vw, vh); renderer.setScissor(vx, vy, vw, vh);
+    renderer.render(p.sc, p.cam);
+  });
+  if (FIXED_T == null) requestAnimationFrame(frame); else window.__ready = true;
+}
+requestAnimationFrame(frame);
+</script>
