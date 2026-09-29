@@ -34,6 +34,6 @@ export function freeDishOf(id) {
 export function freePotCheck(ids) {
   if (!Array.isArray(ids) || ids.length < 1 || ids.length > 3) return { ok: false, msg: '재료를 1~3개 골라 주세요' };
   const key = comboKey(ids);
-  if (BLOCKED[key]) return { ok: false, key, blocked: BLOCKED[key], msg: '레시피가 있는 요리예요 — 메뉴에서 만들어 주세요' };
+  if (BLOCKED[key]) return { ok: false, key, blocked: BLOCKED[key], msg: '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요' };
   return { ok: true, key };
 }
