@@ -124,7 +124,8 @@ import {
   _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
   TOOL_QREST_HOLD, TOOL_GRIP, slashPhase, PLAYER_R, NPC_R,
 } from './data/character.js';
-import { pawRadius, gripForwardZ } from './data/grip.js';   // ✊ 긴 도구 자루 앞 오프셋 = 발바닥 반지름 비례
+import { pawRadius, gripForwardZ } from './data/grip.js';
+import { grillKeyOf, stageKeys } from './cook-ingredients.js';   // 🍲 조리 무대 재료 모형 규칙   // ✊ 긴 도구 자루 앞 오프셋 = 발바닥 반지름 비례
 import {
   buildGlade, tryNet, updateFireflyBugs,
 } from './spaces/glade.js';   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
@@ -1650,7 +1651,7 @@ export const Input = {
   introActive() { return !!intro; },
   mgChopFrame(ps) { mgChopFrame(ps); },                 // 🔪 리듬 노트 위치 동기화(매 프레임)
   mgChopHit(i, judge) { mgChopHit(i, judge); },         // 🔪 칼질 명중 연출
-  mgPotHit(step, judge, ico) { mgPotHit(step, judge, ico); }, // 🍲 끓이기 탭 연출
+  mgPotHit(step, judge, key) { mgPotHit(step, judge, key); }, // 🍲 끓이기 탭 연출(재료 모형 키)
   mgGrillFlip(judge, over) { mgGrillFlip(judge, over); },     // 🔥 뒤집기 연출(over=태움)
   mgSeasonPour(on) { mgSeasonPour(on); },                     // 🧂 누르는 동안 소금 쏟기
   mgSeasonDone(judge) { mgSeasonDone(judge); },               // 🧂 손 뗐을 때 마무리 연출
@@ -4618,9 +4619,9 @@ function kitchenStart(id, where = 'kitchen') {
   trackEvent('cooking_start', { recipe: id, mg_type: course.map(s => s.mg).join('>'), diff: recipeDiff(r), where,   // [GA4] 미니게임 퍼널: 시작
     combo_key: r.free?.key ?? null, n_ing: r.free ? r.free.key.split('+').length : null, stage: r.free ? r.stages[0] : null });   // 🍲 자유 냄비 축
   return { ok: true, id, where, name: r.name, ico: r.ico, diff: recipeDiff(r), course,
-    // 🍲 조리 무대(석쇠)에 올릴 것 — 자유 요리는 조합 표 아이콘(요리 대표 이모지, 예: 꿀 생선구이=🍯)이 아니라
-    //    굽는 재료. 굽기 판은 생선이 든 조합에서만 열린다(rules.js stageOf) → 🐟
-    sceneIco: r.free ? (r.stages[0] === 'grill' ? SELL_ICO_G.fish : null) : null,
+    // 🍲 조리 무대에 올릴 재료 모형 — 키 목록(국물 위·썰기 노트)과 석쇠 재료(요리 아이콘이 아니라 굽는 재료:
+    //    꿀 생선구이에 꿀단지가 올라가던 문제). 규칙은 js/cook-ingredients.js
+    keys: stageKeys(r), grillKey: grillKeyOf(r),
     icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦') };   // icos: 조리 장면 연출용 재료 아이콘
 }
 

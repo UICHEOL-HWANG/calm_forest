@@ -949,7 +949,6 @@
   #mgr-taste { font-size: 13px; margin-top: 6px; }
   #mgr-taste .star { color: #e8a33c; letter-spacing: -1px; }
   #mgr-taste .new { font-size: 11px; font-weight: 800; color: #fff; background: #e8a33c; border-radius: 6px; padding: 1px 5px; margin-left: 3px; }
-  #mgr-taste .cnt { display: block; font-size: 10.5px; opacity: .6; margin-top: 2px; font-variant-numeric: tabular-nums; }
   .kt-best { font-size: 10.5px; opacity: .7; margin-top: 3px; font-variant-numeric: tabular-nums; }
   /* 📖 메인 퀘스트 칩 — 미니맵 아래, 현재 장 목표(코지 톤: 안내지 강요 아님) */
   #story-chip { position: fixed; top: calc(212px + var(--top-inset)); left: 16px; display: none; align-items: center; gap: 8px;
@@ -4605,7 +4604,7 @@
           else if (dist <= this.half)  { pts = Math.round(95 - (dist / this.half) * 40); kind = 'good'; mgJudge('good', '👍 좋아요'); Sound.blip(); }
           else { pts = Math.max(0, Math.round(45 - (dist - this.half) * 2)); kind = 'miss'; mgJudge('miss', '😅 아쉬워요'); }
           mgCount(kind);
-          Input.mgPotHit(this.step, kind, (MG.costIcos || [])[0]);   // 🎥 3D 무대 연출(재료 퐁당/국자 젓기/불길)
+          Input.mgPotHit(this.step, kind, (MG.costKeys || [])[0]);   // 🎥 3D 무대 연출(재료 퐁당/국자 젓기/불길)
         }
         this.pts.push(pts);
         if (this.step + 1 < POT_STEPS.length) mgT(650, () => { if (MG.stage === this) this.next(this.step + 1); });
@@ -4794,7 +4793,7 @@
     // ── 코스 러너 ─────────────────────────────────────────────
     function startCookCourse(st) {
       MG.active = true; MG.id = st.id; MG.where = st.where || 'kitchen';
-      MG.name = `${st.ico} ${st.name}`; MG.costIcos = st.icos || []; MG.dishIco = st.sceneIco || st.ico;
+      MG.name = `${st.ico} ${st.name}`; MG.costIcos = st.icos || []; MG.dishIco = st.ico; MG.costKeys = st.keys || []; MG.grillKey = st.grillKey || '';   // 🍲 무대 재료 모형(키)
       MG.course = st.course; MG.si = -1; MG.stageScores = [];
       MG.offsets = []; MG.judges = { perfect: 0, good: 0, miss: 0 }; MG.pts = [];
       MG.combo = 0; MG.maxCombo = 0; MG.holding = false; MG.holdPid = null; MG.timers = [];
@@ -4817,7 +4816,7 @@
       $('mg-title').innerHTML = `${MG.name} <span class="mg-stage">${c.ico} ${c.name}</span>`;
       $('mg-tap').textContent = c.mg === 'season' ? '👇 꾹 눌러주세요!' : '👆 눌러주세요!';
       $('mg-tip').textContent = c.tip;
-      Input.mgSceneStart(c.mg, MG.costIcos, CHOP_N, MG.dishIco);   // 🎥 3D 클로즈업 무대를 이 단계로 전환
+      Input.mgSceneStart(c.mg, MG.costKeys, CHOP_N, MG.grillKey);   // 🎥 3D 클로즈업 무대를 이 단계로 전환
       stage.start({ mult: c.mult, done: (pts) => finishStage(pts) });
       // ⏱️ rAF 가 멈춰도(백그라운드 탭) 판이 영원히 안 끝나지 않게 — 스테이지가 정한 상한
       mgT(stage.timeout(), () => { if (MG.stage === stage) finishStage(stage.settle()); });
@@ -4923,8 +4922,10 @@
         // 짧게 — 별 + 한 줄 평(16자) + ✨NEW 배지, 발견 수는 작게(사용자 "짧고 컴팩트하게")
         const t = res.free.taste, stars = `<span class="star">${'★'.repeat(t)}${'☆'.repeat(5 - t)}</span>`;
         const judge = LANG === 'en' ? res.free.judge_en : res.free.judge;
-        tasteEl.innerHTML = `${stars} ${judge}${res.free.isNew ? ' <span class="new">✨NEW</span>' : ''}<span class="cnt">${res.free.found}/${res.free.total}</span>`;
+        tasteEl.innerHTML = `${stars} ${judge}${res.free.isNew ? ' <span class="new">✨NEW</span>' : ''}`;
         tasteEl.style.display = '';
+        // 발견 수는 따로 줄을 차지하지 않게 점수 줄 끝 칸으로(사용자 "1/672도 칸 차지한다", 2026-09-29)
+        if (res.free.total) $('mgr-stats').insertAdjacentHTML('beforeend', `<span class="cnt">🍲 <b>${res.free.found}</b>/${res.free.total}</span>`);
       } else tasteEl.style.display = 'none';
       $('mgr-cafe').style.display = 'none';
       $('mgr-choice').style.display = '';

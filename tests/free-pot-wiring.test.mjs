@@ -60,10 +60,6 @@ test('확정 문구(🍲 보글보글 냄비) — 탭·버튼·안내·새 발�
     '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요', '재료를 1~3개 골라 주세요']) assert.ok(EN.includes(`'${k}':`), `i18n ${k}`);
 });
 
-test('굽기 판 석쇠엔 조합 표 아이콘이 아니라 굽는 재료(🐟) — 꿀 생선구이에 꿀단지가 올라가던 문제', () => {
-  assert.match(fn('kitchenStart'), /sceneIco: r\.free \? /);                      // 자유 요리는 규칙으로 정한 재료 아이콘
-  assert.match(html, /MG\.dishIco = st\.sceneIco \|\| st\.ico/);
-});
 
 test('결과 카드는 짧게 — 별 + 한 줄 평 + ✨NEW 배지 + 작은 발견 수(문장 "처음 끓여 본…" 없음)', () => {
   const i = html.indexOf('function showCookResult('), body = html.slice(i, html.indexOf('\n    }\n', i));
@@ -74,4 +70,18 @@ test('결과 카드는 짧게 — 별 + 한 줄 평 + ✨NEW 배지 + 작은 발
 test('자유 요리의 등급 이름은 솜씨 — "아쉬운 맛!"과 맛 ★이 겹치지 않게', () => {
   assert.match(fn('kitchenFinish'), /const tierName = r\.free \? tier\.name\.replace\('맛', '솜씨'\) : tier\.name/);
   assert.match(fn('kitchenFinish'), /tier: \{ id: tier\.id, ico: tier\.ico, name: tierName/);
+});
+
+const STAGE = readFileSync(new URL('../js/spaces/kitchen-stage.js', import.meta.url), 'utf8');
+test('조리 무대는 재료 모형 — 국물 위·석쇠·노트·퐁당·썰린 반쪽에 이모지 스프라이트를 쓰지 않는다', () => {
+  const i = STAGE.indexOf('export function mgSceneStart('), start = STAGE.slice(i, STAGE.indexOf('\n}\n', i));
+  assert.match(start, /ingredientModel\(/);
+  assert.doesNotMatch(start, /emojiSprite\(/);
+  const hit = STAGE.slice(STAGE.indexOf('export function mgChopHit('), STAGE.indexOf('export function mgPotHit('));
+  assert.doesNotMatch(hit, /emojiSprite\(/);
+  const pot = STAGE.slice(STAGE.indexOf('export function mgPotHit('), STAGE.indexOf('export function updateMgScene('));
+  assert.doesNotMatch(pot, /emojiSprite\(/);
+  assert.match(html, /Input\.mgSceneStart\(c\.mg, MG\.costKeys, CHOP_N, MG\.grillKey\)/);
+  assert.match(fn('kitchenStart'), /keys: stageKeys\(r\)/);
+  assert.match(fn('kitchenStart'), /grillKey: grillKeyOf\(r\)/);
 });

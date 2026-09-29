@@ -13,6 +13,7 @@ import { BENCH, KITCHEN, RANK } from '../data/places.js';
 import { t } from '../i18n.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
+import { greyFood, ingredientModel, setFoodOpacity, setFoodTint } from '../cook-ingredient-art.js';   // 🍲 재료는 이모지 대신 3D 모형(2026-09-29)
 
 export function spawnWorkbench() {
   const g = new THREE.Group(); g.position.copy(BENCH);
@@ -246,7 +247,8 @@ export function buildKitchenSet() {
 // 미니게임 무대 입장 — 종류별 소품 토글 + 카메라 클로즈업 고정.
 //   코스 요리라 한 판 안에서 여러 번 불린다(썰기 → 굽기 → 끓이기). 매번 이전 판 소품을 치우고
 //   그 단계의 소품만 켠다. 세트 자체는 한 번만 짓는다.
-export function mgSceneStart(type, icos = [], noteN = 0, dishIco = '') {
+// keys: 재료 키 목록(js/cook-ingredients.js stageKeys) · grillKey: 석쇠에 올릴 재료(grillKeyOf)
+export function mgSceneStart(type, keys = [], noteN = 0, grillKey = '') {
   buildKitchenSet();
   kset.group.visible = true;
   kset.boardGroup.visible = type === 'chop';
@@ -262,18 +264,17 @@ export function mgSceneStart(type, icos = [], noteN = 0, dishIco = '') {
   kset.saltBits.forEach(b => { b.visible = false; });
   if (kset.drop) { kset.drop.parent?.remove(kset.drop); kset.drop = null; }
   if (type === 'pot') {                                     // 국물 위 재료
-    icos.slice(0, 3).forEach((ico, i) => {
-      const sp = emojiSprite(ico, 0.3); sp.position.set(-0.18 + i * 0.18, 0.02, 0); sp.userData.ph = i * 1.7;
-      kset.foods.add(sp);
+    keys.slice(0, 3).forEach((k, i) => {
+      const m = ingredientModel(k, 0.3); m.position.set(-0.18 + i * 0.18, 0.02, 0); m.userData.ph = i * 1.7;
+      kset.foods.add(m);
     });
   } else if (type === 'grill') {                            // 석쇠 위 한 덩이(뒤집을 대상) — 만들고 있는 요리를 보여준다
-    const sp = emojiSprite(dishIco || icos[0] || '🥕', 0.56);
-    kset.grillFood.add(sp);
+    kset.grillFood.add(ingredientModel(grillKey || keys[0] || 'crop', 0.56));
   } else if (type === 'chop') {                             // 리듬 노트(도마 앞을 흘러감)
     for (let i = 0; i < noteN; i++) {
-      const sp = emojiSprite(icos[i % Math.max(1, icos.length)] || '🥕', 0.44);
-      sp.position.set(3.4, 1.24, 0.75); sp.visible = false;
-      kset.group.add(sp); kset.notes.push(sp);
+      const m = ingredientModel(keys[i % Math.max(1, keys.length)] || 'crop', 0.44);
+      m.position.set(3.4, 1.24, 0.75); m.visible = false;
+      kset.group.add(m); kset.notes.push(m);
     }
   }
   $w.mgView = { type };
@@ -413,7 +414,7 @@ export function mgChopFrame(ps) {
     if (st.s === 1) { sp.visible = false; return; }         // 썰린 노트는 조각 연출로 대체
     sp.visible = st.p > 0;
     sp.position.x = CHOP_X0 + (CHOP_X1 - CHOP_X0) * st.p;
-    if (st.s === 2) { sp.material.opacity = 0.28; sp.material.color?.set?.(0x777777); }
+    if (st.s === 2 && !sp.userData.missed) { sp.userData.missed = true; greyFood(sp); setFoodOpacity(sp, 0.28); }
   });
 }
 
@@ -424,8 +425,8 @@ export function mgChopHit(i, judge) {
   const sp = kset.notes[i];
   const px = sp ? sp.position.x : CHOP_X1;
   for (const dir of [-1, 1]) {
-    const half = emojiSprite(sp?.material.map ? '' : '🥕', 0.34);
-    if (sp) { half.material.map = sp.material.map; half.material.needsUpdate = true; }
+    const half = ingredientModel(sp?.userData.ingredient || 'crop', 0.34);   // 썰린 반쪽 — 같은 재료를 작게
+    half.rotation.z = dir * 0.6;
     half.position.set(px, 1.24, 0.75);
     kset.group.add(half);
     kset.fx.push({ sp: half, vx: dir * (0.9 + Math.random() * 0.4), vy: 1.6 + Math.random() * 0.6, life: 0.55 });
@@ -434,11 +435,11 @@ export function mgChopHit(i, judge) {
 }
 
 // 끓이기 탭 연출 — 단계별(재료 퐁당 / 국자 젓기 / 불길 활활)
-export function mgPotHit(step, judge, ico) {
+export function mgPotHit(step, judge, key) {
   if (!kset) return;
   if (step === 0) {
     if (kset.drop) kset.drop.parent?.remove(kset.drop);
-    kset.drop = emojiSprite(ico || '🥕', 0.34);
+    kset.drop = ingredientModel(key || 'crop', 0.34);
     kset.drop.position.set(0, 2.6, 0.05);
     kset.potGroup.add(kset.drop); kset.dropT = 0;
   } else if (step === 1) kset.ladleT = 0;
@@ -500,7 +501,7 @@ export function updateMgScene(dt, t) {
     const f = kset.fx[i];
     f.sp.position.x += f.vx * dt; f.sp.position.y += f.vy * dt;
     f.vy -= 6 * dt; f.life -= dt;
-    f.sp.material.opacity = Math.max(0, f.life / 0.55);
+    if (f.sp.isSprite) f.sp.material.opacity = Math.max(0, f.life / 0.55); else setFoodOpacity(f.sp, Math.max(0, f.life / 0.55));
     if (f.life <= 0) { f.sp.parent?.remove(f.sp); kset.fx.splice(i, 1); }
   }
   // 🔥 굽기 — 불꽃 일렁임 + 뒤집기 포물선 + "타는 정도" 를 색으로. 실패가 눈에 남아야 다음 판에 조심한다
@@ -515,13 +516,13 @@ export function updateMgScene(dt, t) {
         kset.flipT += dt;
         const k = Math.min(1, kset.flipT / 0.42);
         food.position.y = Math.sin(k * Math.PI) * 0.5;                      // 공중으로 떴다 내려앉음
-        food.material.rotation = k * Math.PI;                               // 스프라이트를 반 바퀴
-        if (k >= 1) { kset.flipT = -1; food.position.y = 0; food.material.rotation = 0; }
+        food.rotation.x = k * Math.PI * 2;                                  // 모형을 한 바퀴 뒤집어 내려앉음
+        if (k >= 1) { kset.flipT = -1; food.position.y = 0; food.rotation.x = 0; }
       } else {
         food.position.y = 0.02 * Math.sin(t * 3);
       }
       const b = 1 - kset.burn * 0.75;                                       // 탈수록 어두워짐
-      food.material.color.setRGB(b, b * 0.94, b * 0.88);
+      setFoodTint(food, b, b * 0.94, b * 0.88);
     }
   }
   // 🧂 간 맞추기 — 누르는 동안 소금통이 기울고 소금이 떨어진다(떼면 곧 멎음)
