@@ -9,7 +9,7 @@
 //
 //  사용: node scripts/build-web.mjs   (npx wrangler deploy 전에 실행)
 // =============================================================
-import { copyFile, rm, mkdir, readdir, stat } from 'node:fs/promises';
+import { copyFile, rm, mkdir, readdir, stat, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,6 +55,9 @@ const INCLUDE = [
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
   //    빼면 링크가 404 가 되어 심사에서 반려된다.
   ['pages/privacy.html', 'privacy.html'],               // → /privacy
+  // 💳 Paddle 도메인 심사 필수 — 약관·환불·가격이 사이트 안에서 닿아야 한다. 빼면 심사 반려.
+  ['pages/terms.html', 'terms.html'],     // → /terms
+  ['pages/refund.html', 'refund.html'],   // → /refund
   ['pages/delete-account.html', 'delete-account.html'], // → /delete-account
   '_headers',        // 캐시 헤더
 ];
@@ -83,6 +86,20 @@ for (const item of INCLUDE) {
   const src = path.join(ROOT, from);
   if (!existsSync(src)) { missing.push(from); continue; }
   await copyInto(src, path.join(DIST, to));
+}
+
+// 💳 /shop — 가격표를 카탈로그에서 생성한다(가격 단일 출처). pages/shop.template.html 의 <!--ROWS--> 자리.
+{
+  const { ITEMS } = await import('../js/cosmetics/catalog.js');
+  const { PET_KINDS, PET_PRICE } = await import('../js/pet/rules.js');
+  const SLOT_KO = { head: '🎩 머리', neck: '🧣 목', back: '🎒 등', trail: '👣 발자국' };
+  const row = (grp, name, coins, cash) => `    <tr><td>${grp}</td><td>${name}</td><td>${coins.toLocaleString('ko-KR')}🪙</td><td>${cash ? cash.label : '—'}</td></tr>`;
+  const rows = [
+    ...ITEMS.map(it => row(SLOT_KO[it.slot], `${it.ico} ${it.name}`, it.price.coins, it.price.cash)),
+    ...PET_KINDS.map(k => row('🐾 펫', `${k.ico} ${k.name}`, PET_PRICE, k.cash)),
+  ].join('\n');
+  const tpl = await readFile(path.join(ROOT, 'pages/shop.template.html'), 'utf8');
+  await writeFile(path.join(DIST, 'shop.html'), tpl.replace('<!--ROWS-->', rows));
 }
 
 // 결과 검증 — 금지 패턴이 하나라도 들어갔으면 배포 전에 멈춘다

@@ -448,6 +448,8 @@
     background: rgba(255,255,255,0.16); backdrop-filter: blur(16px) saturate(1.2);
     border: 1px solid rgba(255,255,255,0.35); border-radius: 28px;
     box-shadow: 0 20px 60px rgba(30,50,40,0.35); color: #fff; animation: floatUp .9s ease both; }
+  #login-links { margin-top: 18px; font-size: 11px; color: rgba(255,255,255,.7); }
+  #login-links a { color: inherit; text-decoration: underline; }
   #login-card .leaf { font-size: 40px; filter: drop-shadow(0 2px 8px rgba(0,0,0,.25)); }
   #login-card h1 { margin: 6px 0 2px; font-size: 40px; font-weight: 800; letter-spacing: -0.5px;
     color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.3); }
@@ -2201,6 +2203,10 @@
       <div id="login-note"></div>
       <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
       <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
+      <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. 토스에서는 JS 가 제거 -->
+      <nav id="login-links">
+        <a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
+      </nav>
     </div>
   </div>
 
@@ -2356,6 +2362,8 @@
         <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
         <button id="lang-btn"><span class="uico">🌐</span><span class="ulbl">언어</span></button>
         <button id="privacy-btn"><span class="uico">🔒</span><span class="ulbl">개인정보 처리방침</span></button>
+        <button id="terms-btn"><span class="uico">📜</span><span class="ulbl">이용약관</span></button>
+        <button id="refund-btn"><span class="uico">↩️</span><span class="ulbl">환불 정책</span></button>
         <button id="logout-btn" style="display:none;"><span class="uico">🚪</span><span class="ulbl">나가기</span></button>
         <button id="delacc-btn"><span class="uico">🗑️</span><span class="ulbl">계정 삭제</span></button>
       </div>
@@ -4133,11 +4141,14 @@
     //      돌아올 길이 없다(편도 티켓). 버튼은 DOM 에서 제거한다 — 숨기기만 하면 나중에
     //      다른 경로로 눌릴 여지가 남는다.
     if (IS_TOSS) {
-      $('privacy-btn').remove();
-      $('delacc-btn').remove();
+      $('privacy-btn').remove(); $('delacc-btn').remove();
+      $('terms-btn').remove(); $('refund-btn').remove();   // 💳 같은 편도 티켓 문제 — 토스는 자체 IAP 라 약관 링크도 필요 없다
+      $('login-links')?.remove();
     } else {
       $('privacy-btn').addEventListener('click', () => openPolicyPage('/privacy', 'privacy_open'));
       $('delacc-btn').addEventListener('click', () => openPolicyPage('/delete-account', 'delete_account_open'));
+      $('terms-btn').addEventListener('click', () => openPolicyPage('/terms', 'terms_open'));
+      $('refund-btn').addEventListener('click', () => openPolicyPage('/refund', 'refund_open'));
     }
     // 📮 소식함 — 메뉴에서 열면 최근 소식 전부(읽은 것 포함). 닫을 때 가장 큰 id 를 읽음으로 기록
     $('inbox-btn').addEventListener('click', async () => {
