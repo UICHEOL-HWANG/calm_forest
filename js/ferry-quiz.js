@@ -20,6 +20,17 @@ function mkQuestion(rnd, tpl, entity, q, answer, wrongs, hint) {
 const num = (n, unitKo, unitEn) => ({ id: String(n), ko: `${n}${unitKo}`, en: `${n} ${unitEn}` });
 const item = (d) => (x) => ({ id: x.id, ko: `${x.ico} ${x.name}`, en: `${x.ico} ${d.en(x.name)}` });
 
+// 밭 시설을 쉬운 말로 — 새 시설을 만들면 여기도 한 줄(테스트가 빠진 걸 잡는다)
+export const FARM_PLAIN = {
+  board:     { ko: '일꾼을 고용하는 곳은 어디겠나?', en: 'Where do you hire farm workers?' },
+  warehouse: { ko: '일꾼이 거둔 작물을 모아 두는 곳은 어디겠나?', en: 'Where are the crops your workers harvest kept?' },
+  trellis:   { ko: '옆 밭에 포도를 심을 수 있게 해 주는 건 무엇이겠나?', en: 'Which one lets you plant grapes in the next plot?' },
+  well:      { ko: '근처 밭의 흙을 오래 촉촉하게 해 주는 건 무엇이겠나?', en: 'Which one keeps nearby soil moist for longer?' },
+  compost:   { ko: '뽑은 잡초로 비료를 만들어 주는 건 무엇이겠나?', en: 'Which one turns pulled weeds into fertilizer?' },
+  shelter:   { ko: '일꾼이 쉬면서 기운을 되찾는 곳은 어디겠나?', en: 'Where do workers rest and get their energy back?' },
+  beehive:   { ko: '근처 작물을 잘 자라게 하고 꿀도 주는 건 무엇이겠나?', en: 'Which one helps nearby crops grow and gives honey?' },
+};
+
 export const QUIZ_TEMPLATES = [
   { id: 'fruit_days', make(d, rnd) {
     const f = one(rnd, d.fruits);
@@ -38,13 +49,19 @@ export const QUIZ_TEMPLATES = [
       item(d)(one(rnd, right)), pickN(rnd, wrongPool, 3).map(item(d)),
       { ko: '자유주방 메뉴판에 버프가 적혀 있지.', en: 'The kitchen menu lists each buff.' });
   } },
-  { id: 'npc_name', make(d, rnd) {
-    const n = one(rnd, d.npcs);
-    const c = (x) => ({ id: x.id, ko: x.name, en: d.en(x.name) });
-    return mkQuestion(rnd, 'npc_name', n.id,
-      { ko: `${n.emoji} 이 이웃의 이름은 무엇이겠나?`, en: `What is this neighbor ${n.emoji} called?` },
-      c(n), pickN(rnd, d.npcs.filter(x => x.id !== n.id), 3).map(c),
-      { ko: '지도에서 이웃을 누르면 이름이 보인다네.', en: 'Tap a neighbor on the map to see their name.' });
+  // 🦉 주민 — 이모지로 물으면 이름에 동물이 들어 있어 답이 보였다(🐼→요리사 판다, 검수 2026-09-30).
+  //    퀘스트 제목으로 묻고 보기는 이름만. 여러 이웃이 같은 제목을 쓰면 답이 둘이라 뺀다.
+  { id: 'npc_quest', make(d, rnd) {
+    const count = new Map();
+    d.npcs.forEach(n => (n.quests || []).forEach(t => count.set(t, (count.get(t) || 0) + 1)));
+    const pool = d.npcs.flatMap(n => (n.quests || []).map((t, i) => ({ n, t, i }))).filter(x => count.get(x.t) === 1);
+    if (!pool.length || d.npcs.length < 4) return null;
+    const x = one(rnd, pool);
+    const c = (n) => ({ id: n.id, ko: n.name, en: d.en(n.name) });
+    return mkQuestion(rnd, 'npc_quest', `${x.n.id}-${x.i}`,
+      { ko: `'${x.t}' 부탁을 하는 이웃은 누구겠나?`, en: `Who asks you for "${d.en(x.t)}"?` },
+      c(x.n), pickN(rnd, d.npcs.filter(o => o.id !== x.n.id), 3).map(c),
+      { ko: '이웃에게 말을 걸면 부탁을 들을 수 있다네.', en: 'Talk to your neighbors to hear their requests.' });
   } },
   { id: 'river_night', make(d, rnd) {
     const night = d.riverPicks.filter(p => p.night), day = d.riverPicks.filter(p => !p.night);
@@ -62,13 +79,13 @@ export const QUIZ_TEMPLATES = [
       num(n, '번', 'times'), pickN(rnd, [1, 2, 4, 5, 6].filter(x => x !== n), 3).map(x => num(x, '번', 'times')),
       { ko: '나루터에서 남은 횟수를 알려 준다네.', en: 'The dock shows how many rides are left.' });
   } },
+  // 🐝 밭 시설 — 게임 설명("반경 5 · 물주기 −40%")을 그대로 인용하면 딱딱했다(검수 2026-09-30) → 쉬운 말 질문
   { id: 'farm_building', make(d, rnd) {
-    const withDesc = d.farmBuildings.filter(b => b.desc);
-    if (withDesc.length < 4) return null;
-    const b = one(rnd, withDesc);
-    return mkQuestion(rnd, 'farm_building', b.id,
-      { ko: `"${b.desc}" — 이건 어느 시설 이야기겠나?`, en: `"${d.en(b.desc)}" — which building is this?` },
-      item(d)(b), pickN(rnd, withDesc.filter(x => x.id !== b.id), 3).map(item(d)),
+    const known = d.farmBuildings.filter(b => FARM_PLAIN[b.id]);
+    if (known.length < 4) return null;
+    const b = one(rnd, known);
+    return mkQuestion(rnd, 'farm_building', b.id, FARM_PLAIN[b.id],
+      item(d)(b), pickN(rnd, known.filter(x => x.id !== b.id), 3).map(item(d)),
       { ko: '논밭 건설 메뉴에 설명이 있다네.', en: 'The farm build menu describes each one.' });
   } },
 ];
