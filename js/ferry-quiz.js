@@ -13,6 +13,8 @@ function pickN(rnd, arr, n) {
   return a.slice(0, n);
 }
 const one = (rnd, arr) => arr[Math.floor(rnd() * arr.length)];
+// 짧은 문자열 해시(FNV-1a, base36) — qid 를 순서가 아니라 내용에 묶는다(퀘스트를 끼워 넣어도 GA4 축이 안 섞이게)
+const hash36 = (s) => { let h = 0x811c9dc5; for (const ch of s) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); };
 function mkQuestion(rnd, tpl, entity, q, answer, wrongs, hint) {
   const choices = pickN(rnd, [answer, ...wrongs], 4);
   return { qid: `${tpl}:${entity}`, tpl, q, choices, answer: choices.findIndex(c => c.id === answer.id), hint };
@@ -54,11 +56,11 @@ export const QUIZ_TEMPLATES = [
   { id: 'npc_quest', make(d, rnd) {
     const count = new Map();
     d.npcs.forEach(n => (n.quests || []).forEach(t => count.set(t, (count.get(t) || 0) + 1)));
-    const pool = d.npcs.flatMap(n => (n.quests || []).map((t, i) => ({ n, t, i }))).filter(x => count.get(x.t) === 1);
+    const pool = d.npcs.flatMap(n => (n.quests || []).map(t => ({ n, t }))).filter(x => count.get(x.t) === 1);
     if (!pool.length || d.npcs.length < 4) return null;
     const x = one(rnd, pool);
     const c = (n) => ({ id: n.id, ko: n.name, en: d.en(n.name) });
-    return mkQuestion(rnd, 'npc_quest', `${x.n.id}-${x.i}`,
+    return mkQuestion(rnd, 'npc_quest', `${x.n.id}-${hash36(x.t)}`,
       { ko: `'${x.t}' 부탁을 하는 이웃은 누구겠나?`, en: `Who asks you for "${d.en(x.t)}"?` },
       c(x.n), pickN(rnd, d.npcs.filter(o => o.id !== x.n.id), 3).map(c),
       { ko: '이웃에게 말을 걸면 부탁을 들을 수 있다네.', en: 'Talk to your neighbors to hear their requests.' });
