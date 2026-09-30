@@ -18,6 +18,7 @@ import { SHOP } from '../data/places.js';
 import { welcomeOffer } from '../first-loop.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
+import { quizOffer } from './ferry-quiz-run.js';   // 🦆 사공 퀴즈
 import { onboardView } from '../orchard-onboard.js';
 import { Sound } from '../sound.js';
 import { inVillage2 } from '../spaces/doors.js';
@@ -747,6 +748,11 @@ export function updateNPCInteract() {
 export function talkToNPC() {
   const view = npcDialogState();
   if (view) {
+    // 🦆 사공 퀴즈 — 사공 창에만 오늘 풀 수 있는지 싣는다(열 때 노출 트래킹)
+    if (view.npc.id === 'ferryman') {
+      view.quiz = quizOffer();
+      trackEvent('ferry_quiz_offer', { quiz_date: todayStr(), available: view.quiz.available ? 1 : 0, reason: view.quiz.available ? 'ok' : 'done' });   // [GA4] 노출
+    }
     Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); // 튜토리얼
     dexDiscover('npc', view.npc.id);                         // 📖 도감(이웃 첫 대화)
     // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.
