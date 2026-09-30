@@ -1922,7 +1922,7 @@ function retentionGuidanceSuppressed() {
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
     if (b.classList.contains('intro-open')) return 'intro';
-    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
+    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
     // ⚠️ 아래는 **CSS 가 #hint-banner 를 display:none 으로 숨기는 상태**다(index.html 524·580·595·937·1005).
     //    JS 가 이걸 모르면 안 보이는 배너를 "띄웠다"고 치고 세션당 1회 예산을 날린 뒤,
     //    shown 이벤트까지 찍어 10분 성과창이 아무도 못 본 배너를 잰다.
