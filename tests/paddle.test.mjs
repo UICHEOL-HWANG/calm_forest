@@ -100,7 +100,7 @@ test('ledgerRows — transaction.completed → 항목당 1행, event_id = ntf:pr
   assert.deepEqual(skipped, []);
   assert.equal(rows.length, 1);
   const r = rows[0];
-  assert.equal(r.event_id, 'ntf_1:pri_hat');
+  assert.equal(r.event_id, 'txn_1:pri_hat');
   assert.equal(r.transaction_id, 'txn_1');
   assert.equal(r.user_id, UID);
   assert.equal(r.item_id, 'straw_hat');
@@ -132,9 +132,11 @@ test('ledgerRows — 다른 이벤트는 빈 결과', () => {
   assert.deepEqual(ledgerRows({ event_type: 'transaction.paid', data: {} }, idx), { rows: [], skipped: [] });
 });
 
-test('ledgerRows — notification_id 없으면 no_ids', () => {
-  assert.deepEqual(ledgerRows({ event_type: 'transaction.completed', notification_id: undefined, occurred_at: '2026-09-30T01:02:03.000Z', data: { id: 'txn_1', currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '2500' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx), { rows: [], skipped: ['no_ids'] });
-  assert.deepEqual(ledgerRows({ event_type: 'transaction.completed', notification_id: '', occurred_at: '2026-09-30T01:02:03.000Z', data: { id: 'txn_1', currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '2500' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx), { rows: [], skipped: ['no_ids'] });
+test('ledgerRows — 멱등 키는 transaction id 기준 — notification_id 가 달라도(재전송·다중 엔드포인트) 같은 event_id', () => {
+  const mk = (nid) => ledgerRows({ event_type: 'transaction.completed', notification_id: nid, occurred_at: '2026-09-30T01:02:03.000Z', data: { id: 'txn_1', currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '2500' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx).rows[0].event_id;
+  assert.equal(mk('ntf_1'), 'txn_1:pri_hat');
+  assert.equal(mk('ntf_2'), 'txn_1:pri_hat');
+  assert.equal(mk(undefined), 'txn_1:pri_hat');
 });
 
 test('ledgerRows — d.id 없으면 no_ids', () => {
@@ -146,7 +148,7 @@ test('ledgerRows — 같은 price_id 항목 여러 개 → 1행만 (dedupe)', ()
   const { rows, skipped } = ledgerRows(txnEvt({ items: [{ price: { id: 'pri_hat' }, quantity: 2 }, { price: { id: 'pri_hat' }, quantity: 1 }] }), idx);
   assert.deepEqual(skipped, []);
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].event_id, 'ntf_1:pri_hat');
+  assert.equal(rows[0].event_id, 'txn_1:pri_hat');
 });
 
 test('ledgerRows — details 없으면 amount null', () => {

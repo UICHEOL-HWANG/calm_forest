@@ -66,7 +66,6 @@ export function ledgerRows(evt, index = priceIndex()) {
   const d = evt.data || {};
   const uid = d.custom_data?.user_id;
   if (typeof uid !== 'string' || !UUID_RE.test(uid)) return { rows: [], skipped: ['no_user'] };
-  if (typeof evt.notification_id !== 'string' || !evt.notification_id) return { rows: [], skipped: ['no_ids'] };
   if (typeof d.id !== 'string' || !d.id) return { rows: [], skipped: ['no_ids'] };
   const t = d.details?.totals?.total;
   const total = (t == null || t === '') ? NaN : Number(t);
@@ -79,7 +78,7 @@ export function ledgerRows(evt, index = priceIndex()) {
     if (seenPriceIds.has(pid)) continue;
     seenPriceIds.add(pid);
     rows.push({
-      event_id: `${evt.notification_id}:${pid}`,
+      event_id: `${d.id}:${pid}`,          // 멱등 키 = 거래 id + 가격 id — 알림 id 를 쓰면 재전송·다중 엔드포인트가 매출을 이중 기록한다
       transaction_id: d.id,
       user_id: uid,
       item_id: hit.itemId,

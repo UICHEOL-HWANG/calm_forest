@@ -57,8 +57,14 @@ test('알려진 price_id → purchases POST(ignore-duplicates), 200 + inserted:1
   assert.equal(f.calls[0].init.method, 'POST');
   assert.equal(f.calls[0].init.headers.Prefer, 'resolution=ignore-duplicates,return=minimal');
   const rows = JSON.parse(f.calls[0].init.body);
-  assert.equal(rows[0].event_id, 'ntf_1:pri_unknown');
+  assert.equal(rows[0].event_id, 'txn_1:pri_unknown');
   assert.equal(rows[0].item_id, 'straw_hat');
+});
+
+test('알려진 price_id 인데 원장 insert 가 실패하면 500 — 돈은 받았는데 지급 기록이 없는 상태를 200 으로 삼키지 않는다', async () => {
+  const idx = new Map([['pri_unknown', { itemId: 'straw_hat', kind: 'cosmetic' }]]);
+  const r = await onRequestPost({ request: await req(txn), env: { ...env, __PRICE_INDEX: idx }, fetchImpl: fakeFetch(500), now: NOW });
+  assert.equal(r.status, 500);
 });
 
 test('환불 승인 → purchases PATCH(revoked_at), 200', async () => {
