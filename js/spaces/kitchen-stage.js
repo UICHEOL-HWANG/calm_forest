@@ -98,6 +98,11 @@ export function spawnRankBoard() {
 
 //    (카페 홀처럼 마을과 떨어진 별도 공간. 도마·칼·냄비를 크게 보여주는 "요리 게임 화면")
 export const KSET = new THREE.Vector3(0, 0, 420);
+// 🍳 무대 조명 — 시간대와 무관하게 고정한다(🏛️ MUSEUM_LIGHT 와 같은 규칙, game.js updateDayNight 가 매 프레임 적용).
+//   저녁엔 야외 조명(hemi 0.2·sun 0.1, 해는 지평선 아래)이 그대로라 냄비·그릇이 검게 뭉개졌다(제보 2026-09-29).
+//   세트의 PointLight(1.15) 는 r155+ 물리 감쇠라 손끝 거리에서도 거의 안 닿는다 — 전역 조명을 잡아야 한다.
+export const STAGE_LIGHT = { hemi: 0.8, amb: 0.5, sun: 1.05, tint: 0xfff0dd, sunTint: 0xffe9c4, fog: 0xf3e2c8, near: 18, far: 74 };
+export const STAGE_TYPES = new Set(['chop', 'pot', 'grill', 'season']);   // KSET 부엌 무대를 쓰는 mgView 종류(carve·station 은 제 자리를 비춘다)
 
 export let kset = null;
 

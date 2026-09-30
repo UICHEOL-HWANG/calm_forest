@@ -162,6 +162,7 @@ import {
   stopDecorPlacing, storeDecor, tryPickDecor, updateDecorGhost,
 } from './spaces/indoor.js';   // 📦 🏠 집 실내 — 방·계단·가구 배치 (구역 머리말 — 분리 2단계)
 import {
+  KSET, STAGE_LIGHT, STAGE_TYPES,
   craftFlame, craftFlameBurst, craftFocus, craftStomp, emojiSprite, mgChopFrame, mgChopHit, mgGrillFlip,
   mgPotHit, mgSceneEnd, mgSceneStart, mgSeasonDone, mgSeasonPour, spawnKitchen, spawnRankBoard, spawnWorkbench,
   stationCamDist, updateMgScene,
@@ -179,6 +180,7 @@ import {
   COOK_TIERS, PANTRY_MAX, buffDur, cookResolve, courseOf, craftTier2, craftUpgrade, emitBuffs, kitchenView,
   pantryEat, pantryView, recipeOf, tier2List, dishOf, isFreeId, freePotTotal, freePotView, freePotCheck, freePotReady, loadFreePot, FREE_PREFIX, freeDishOf,
 } from './spaces/cooking.js';   // 📦 🍳 요리 코스·찬장·도구 제작·버프 (구역 머리말 — 분리 2단계)
+import { quizAnswer, quizEnd, quizStart } from './spaces/ferry-quiz-run.js';   // 🦆 사공 퀴즈 진행·보상·트래킹
 import {
   addAffinity, craftGift, giveGift, nearestOutdoor, outdoorZone, pickOutdoor, storeOutdoor, tryPickOutdoor,
   withdrawWarehouse,
@@ -944,6 +946,7 @@ const gameState = {
   //    ⚠️ 서버에 두지 않는다 — 대화는 보상이 0이라 조작해도 얻을 게 없고,
   //    유저 테이블을 만들면 RLS·인증·동기화 비용만 는다.
   talk: { date: '', used: {} },
+  quiz: { date: '', done: false, correct: 0 },   // 🦆 사공 퀴즈 — 오늘 풀었는지(시작하면 done). 날짜가 오늘이 아니면 다시 풀 수 있다
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
   noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
   character: null,                          // 선택한 동물 캐릭터 id
@@ -1596,6 +1599,9 @@ export const Input = {
   kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
   // 🍲 자유 냄비 — 표는 탭을 열 때 불러온다(약 130KB, 첫 로딩에 얹지 않음)
   loadFreePot() { return loadFreePot(); },
+  quizStart() { return quizStart(); },                  // 🦆 사공 퀴즈(js/spaces/ferry-quiz-run.js)
+  quizAnswer(qNo, idx, ms) { return quizAnswer(qNo, idx, ms); },
+  quizEnd(o) { return quizEnd(o); },
   getFreePot() {
     const v = freePotView();
     trackEvent('free_pot_open', { found: v.found, total: v.total, kinds_have: v.ingredients.filter(x => x.have > 0).length });   // [GA4] 노출
@@ -1917,7 +1923,7 @@ function retentionGuidanceSuppressed() {
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
     if (b.classList.contains('intro-open')) return 'intro';
-    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
+    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
     // ⚠️ 아래는 **CSS 가 #hint-banner 를 display:none 으로 숨기는 상태**다(index.html 524·580·595·937·1005).
     //    JS 가 이걸 모르면 안 보이는 배너를 "띄웠다"고 치고 세션당 1회 예산을 날린 뒤,
     //    shown 이벤트까지 찍어 10분 성과창이 아무도 못 본 배너를 잰다.
@@ -2504,6 +2510,10 @@ function applySave(saved) {
     gameState.talk = saved.talk.date === todayStr()
       ? { date: saved.talk.date, used: { ...(saved.talk.used || {}) } }
       : { date: todayStr(), used: {} };
+  }
+  // 🦆 사공 퀴즈 — 오늘 것만 살린다(어제 done 이 오늘을 막지 않게). 없으면 기본값 그대로
+  if (saved.quiz && typeof saved.quiz === 'object' && saved.quiz.date === todayStr()) {
+    gameState.quiz = { date: saved.quiz.date, done: !!saved.quiz.done, correct: +saved.quiz.correct || 0 };
   }
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
@@ -6035,6 +6045,19 @@ function updateDayNight(dt) {
     const tt = clock.elapsedTime;
     for (const t of mineTorches) { const f = 0.85 + Math.sin(tt * 7 + t.phase) * 0.15; t.light.intensity = t.base * f; t.fm.emissiveIntensity = 1.4 * f + 0.4; }
   }
+  // 🍳 조리 무대(썰기·끓이기·굽기·간 맞추기): 시간대 무관 밝게 — 저녁엔 냄비·그릇이 검게 뭉개져 미니게임을
+  //    할 수 없었다(제보 2026-09-29). 카페 홀·박물관 안에서 시작해도 무대가 이기도록 공간 블록 **뒤**에 둔다.
+  //    ⚠️ 해 **자리**도 고정 — 저녁엔 광원이 지평선 아래로 내려가 세기를 올려도 윗면이 캄캄하다(🏛️ 와 같은 함정).
+  if (mgView && STAGE_TYPES.has(mgView.type)) {
+    hemiLight.intensity = STAGE_LIGHT.hemi; ambient.intensity = STAGE_LIGHT.amb; sunLight.intensity = STAGE_LIGHT.sun;
+    ambient.color.setHex(STAGE_LIGHT.tint);
+    sunLight.color.setHex(STAGE_LIGHT.sunTint);   // 밤의 남색 햇빛이 국물을 파랗게 물들이지 않게 색도 같이
+    sunLight.position.set(KSET.x + 3, KSET.y + 12, KSET.z + 8);
+    sunLight.target.position.set(KSET.x, KSET.y + 1.2, KSET.z);
+    sunLight.target.updateMatrixWorld();
+    scene.fog.color.setHex(STAGE_LIGHT.fog); scene.fog.near = STAGE_LIGHT.near; scene.fog.far = STAGE_LIGHT.far;
+    scene.background = scene.fog.color;   // 벽 밖으로 보이는 밤하늘도 크림색으로 — 무대만 환한 섬처럼 떠 보이지 않게
+  }
   // 집 안내판: 낮엔 매트(후광X), 밤엔 주변에 맞춰 감광 — 밝기를 키우면 밤 블룸(0.85 임계)에
   // 걸려 판 전체가 형광등처럼 번지므로, 닭장 터 배너처럼 어둡게 가라앉힌다
   if (houseSign && houseSign.visible) houseSign.material.color.setScalar(1 - nightAmt * 0.35);
@@ -6042,7 +6065,7 @@ function updateDayNight(dt) {
   //   (피드백: "물보라 발광이 과해 계속 보면 눈이 피로해요") 주행 중엔 절반 아래로 낮춘다.
   if (bloomPass) bloomPass.strength = (0.5 + nightAmt * 0.5) * (boat.active && boatView === 'first' ? 0.4 : 1);
   // 밤 푸른 톤 그레이딩
-  if (gradePass) gradePass.uniforms.uNight.value = nightAmt;
+  if (gradePass) gradePass.uniforms.uNight.value = mgView && STAGE_TYPES.has(mgView.type) ? 0 : nightAmt;   // 🍳 무대는 밤 톤(남색·30% 감광)도 끈다
 
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
   //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
