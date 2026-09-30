@@ -624,7 +624,10 @@ export async function fetchNotices(sinceId = 0, { limit = 20, ascending = false 
 export async function fetchPurchases() {
   if (!state.online || !supabase || state.isGuest) return null;
   try {
-    const { data, error } = await supabase.from('purchases').select('item_id, kind, revoked_at');
+    // enterGame 이 이 결과를 기다린다 — 연결이 멈춰도 부팅이 안 막히게 4초에서 끊고 null(세이브대로)로 간다
+    const query = supabase.from('purchases').select('item_id, kind, revoked_at');
+    const timeout = new Promise(r => setTimeout(() => r({ data: null, error: new Error('timeout') }), 4000));
+    const { data, error } = await Promise.race([query, timeout]);
     if (error) throw error;
     return data || [];
   } catch (err) { console.warn('[Supabase 폴백] 구매 원장 조회 실패(세이브대로 진행):', err?.message || err); return null; }
