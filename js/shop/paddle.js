@@ -58,17 +58,16 @@ function init() {
 
 function loadPaddle() {
   if (ready) return ready;
-  ready = (async () => {
-    try {
-      if (!window.Paddle) await injectScript();
-      init();
-      return window.Paddle;
-    } catch (e) {
-      ready = null;            // async 함수 안이라 바깥 대입보다 뒤에 실행된다 — 실패한 프로미스가 캐시에 남지 않는다
-      throw e;
-    }
+  const p = (async () => {
+    if (!window.Paddle) await injectScript();
+    init();
+    return window.Paddle;
   })();
-  return ready;
+  ready = p;
+  //  실패하면 캐시를 비운다 — 바깥 대입(ready = p) 뒤에 붙이므로 init() 이 동기적으로 던져도 덮어써지지 않는다.
+  //  ready === p 검사: 그 사이 다른 호출이 새 프로미스를 넣었으면 건드리지 않는다.
+  p.catch(() => { if (ready === p) ready = null; });
+  return p;
 }
 
 export async function openCheckout({ priceId, itemId, kind, userId, email }) {
