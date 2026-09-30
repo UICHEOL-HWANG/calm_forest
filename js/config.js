@@ -24,6 +24,11 @@ export const CONFIG = {
   //    Supabase Google 공급자와 같은 값이어야 signInWithIdToken 이 통과한다.
   GOOGLE_WEB_CLIENT_ID: '1003103780622-8l7nop9bgedmhc8eds1mlc3bv9v96chv.apps.googleusercontent.com',
 
+  // ── 💳 Paddle(현금 결제, 웹 전용) — 클라이언트 토큰은 공개값. 서버 시크릿은 wrangler secret ──
+  //    env 'sandbox' 면 Paddle.Environment.set('sandbox'). 승인 후 라이브 토큰 + 'production' 으로 교체.
+  //    token 이 비어 있으면 현금 버튼을 눌러도 결제창이 안 열리고 토스트만(js/spaces/cafe.js).
+  PADDLE: { token: '', env: 'sandbox' },
+
   // ── GA4 / GTM 트래킹 값 ──────────────────────────────────────
   GA4_MEASUREMENT_ID: 'G-ELBTR8BXBF',           // calm forest 웹 스트림
   GTM_CONTAINER_ID: 'YOUR_GTM_ID',              // 예: GTM-XXXXXXX (선택)
