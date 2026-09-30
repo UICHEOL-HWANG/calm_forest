@@ -108,12 +108,18 @@ drop policy if exists beta_diary_self_rw     on public.beta_diary;
 
 create policy beta_testers_select_own on public.beta_testers
   for select to authenticated
-  using (email = lower(coalesce((select auth.jwt()) ->> 'email', '')));
+  using (email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+         and not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false)
+         and ((select auth.jwt()) -> 'app_metadata' ->> 'provider') in ('google', 'email'));
 
 create policy beta_diary_all_own on public.beta_diary
   for all to authenticated
-  using      (email = lower(coalesce((select auth.jwt()) ->> 'email', '')))
-  with check (email = lower(coalesce((select auth.jwt()) ->> 'email', '')));
+  using      (email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+         and not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false)
+         and ((select auth.jwt()) -> 'app_metadata' ->> 'provider') in ('google', 'email'))
+  with check (email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+         and not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false)
+         and ((select auth.jwt()) -> 'app_metadata' ->> 'provider') in ('google', 'email'));
 
 -- ── cafe_guests ───────────────────────────────────────────────
 --  auth 함수를 안 쓰므로 성능 문제 없음. 명명만 통일.

@@ -126,7 +126,7 @@ async function passwordSignIn(fetch, env, email, password) {
   return await res.json();
 }
 
-// 관리자 API 로 플레이 유저 생성(이메일 확인 완료) — user_metadata.pgs 로 클라이언트가 식별
+// 관리자 API 로 플레이 유저 생성(이메일 확인 완료) — 클라이언트는 합성 이메일 도메인으로 식별(js/auth/account-kind.js · user_metadata.pgs 는 유저가 바꿀 수 있어 표시용)
 async function adminCreateUser(fetch, env, email, password, uid) {
   const res = await fetch(env.SUPABASE_URL + '/auth/v1/admin/users', {
     method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS),

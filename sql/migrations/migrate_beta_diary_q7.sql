@@ -16,12 +16,13 @@ as $$
 declare
   caller_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   admins text[] := array['icuchoel@gmail.com', 'cheorish.hw@gmail.com'];  -- ★ 관리자 이메일(소문자) — cf_admin_overview와 동일하게 유지
+  admin_ids uuid[] := array['17bb08c7-c4bc-4870-b464-1b131e67aff8', '4cab8ea4-c27f-4ef5-b350-cf55f0f993b5']::uuid[];  -- ★ 관리자 UUID(auth.users) — 이메일과 함께 맞출 것
   tz constant text := 'Asia/Seoul';
   allowed boolean := false;
   since timestamptz;
   result jsonb;
 begin
-  if caller_email = any (admins) then
+  if caller_email = any (admins) and coalesce(auth.uid() = any (admin_ids), false) then   -- 🔐 이메일 + UUID 이중 확인(migrate_admin_uid_guard.sql)
     allowed := true;
   elsif coalesce(token, '') <> '' then
     update public.cf_share_links s

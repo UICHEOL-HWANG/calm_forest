@@ -108,7 +108,7 @@ async function passwordSignIn(env, email, password) {
   return await res.json();
 }
 
-// 관리자 API 로 토스 유저 생성(이메일 확인 완료 상태) — user_metadata.toss 로 클라이언트가 식별
+// 관리자 API 로 토스 유저 생성(이메일 확인 완료 상태) — 클라이언트는 합성 이메일 도메인으로 식별(js/auth/account-kind.js · user_metadata.toss 는 유저가 바꿀 수 있어 표시용)
 async function adminCreateUser(env, email, password, uid) {
   const res = await fetch(env.SUPABASE_URL + '/auth/v1/admin/users', {
     method: 'POST',
