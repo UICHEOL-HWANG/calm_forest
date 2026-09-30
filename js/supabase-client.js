@@ -20,6 +20,7 @@ import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식�
 import { setAbVariant, trackEvent } from './analytics.js';
 import { kstDate } from './kst-date.js';   // 🕛 run_date 는 KST 날짜
 import { markExit } from './exit-flag.js';   // 🚪 나가기 → 새로고침 뒤 로그인 화면
+import { accountKind } from './auth/account-kind.js';   // 🔵📱 토스·PGS 판정(합성 이메일 도메인 — user_metadata 는 유저가 바꿀 수 있다)
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -51,10 +52,11 @@ function isAnon(session) {
     || session?.user?.app_metadata?.provider === 'anonymous';
 }
 
-// 세션 객체 → state 반영 (🔵 토스 유저는 user_metadata.toss · 📱 플레이 게임즈 유저는 user_metadata.pgs 로 식별 — 영구 계정 취급)
+// 세션 객체 → state 반영 (🔵 토스·📱 플레이 게임즈 유저는 Worker 가 만든 합성 이메일 도메인으로 식별 — 영구 계정 취급)
 function applySession(session) {
-  const isToss = session?.user?.user_metadata?.toss === true;
-  const isPgs = session?.user?.user_metadata?.pgs === true;
+  const kind = accountKind(session.user);
+  const isToss = kind === 'toss';
+  const isPgs = kind === 'pgs';
   state.online = true;
   state.userId = session.user.id;
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
