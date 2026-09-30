@@ -17,6 +17,12 @@ export const EN = {
   '재료를 1~3개 넣고 보글보글 끓여 봐요': 'Toss in 1–3 ingredients and let it bubble',
   '🔥 보글보글 끓이기': '🔥 Let It Bubble',
   '이건 레시피가 있는 요리예요 — 메뉴에서 만들어 주세요': 'That one has a recipe — cook it from the menu',
+  // 🦆 사공 퀴즈(나루터 팻말) — 문제·보기·사공 대사는 js/ferry-quiz.js 가 ko/en 을 함께 만든다
+  '🦆 나루터 수수께끼': '🦆 Dock Riddles',
+  '나루터 수수께끼': 'Dock Riddles',
+  '다음 ›': 'Next ›',
+  '결과 보기 ›': 'See results ›',
+  '오늘 수수께끼는 끝났다네. 내일 물때에 또 오시게.': "That's all the riddles for today. Come back with tomorrow's tide.",
   '냄비 요리표를 못 불러왔어요 — 탭을 다시 눌러 주세요': "Couldn't load the pot recipes — tap the tab again",
   '냄비 요리표를 아직 못 불러왔어요': "The pot recipes haven't loaded yet",
   '재료를 1~3개 골라 주세요': 'Pick 1–3 ingredients',
