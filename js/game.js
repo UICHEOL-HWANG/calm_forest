@@ -23,7 +23,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
-import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, upsertRetentionGuidanceScore, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식
+import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, fetchPurchases, upsertRetentionGuidanceScore, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식 + 💳 구매 원장
+import { syncPurchases } from './shop/purchases.js';   // 💳 원장 → 소유 병합(부팅)
 import { pickSeaTarget } from './sea-aim.js';   // 🎣 바다터 조준 — 바라보는 쪽의 물고기가 걸린다
 import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격 + 오래 끌 때 탈출구
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
@@ -963,6 +964,7 @@ const gameState = {
   //            null 이면 아직 아무것도 안 샀거나 아무도 안 데리고 나왔다.
   pets: {},
   pet: null,
+  cashOwned: [],                            // 💳 현금으로 산 항목 id — 원장(purchases)의 마지막 사본. 규칙은 js/shop/entitlements.js
   workers: [],                              // 🧑‍🌾 고용한 일꾼 [{id, job, grade, works, name, hiredAt, restingSince}] — 규칙은 js/farm-worker.js
   coop: { built: false, fed: null, collected: null }, // 🐔 닭장 { 건설 여부, 모이 준 날, 달걀 걷은 날(YYYY-MM-DD) }
   farm: { stage: 1, seedSel: 'basic', pestDate: null, storage: {}, pending: {}, compostDate: null, compostN: 0, lastSettleAt: 0, wageDate: null, hireDate: null, hireTaken: [] },   // 🌾 밭 { 단계(1 텃밭 · 2 넓은 밭 · 3 대농장, js/farm-stage.js) · 고른 씨앗(basic|wheat|corn|grape) · 해충·꿀 정산일(YYYY-MM-DD) · 🧺창고 내용물(일꾼 수확분) · 🌱퇴비통 오늘 만든 비료 }
@@ -2049,6 +2051,8 @@ export async function enterGame() {
     })();
   }
   if (load.state) applySave(load.state);
+  // 💳 현금 구매 원장과 맞춘다 — 웹에서 산 걸 앱·토스에서도 보이게 하는 경로. 못 읽으면 세이브대로.
+  await syncPurchases({ gameState, fetchPurchases, via: 'boot', hooks: purchaseHooks() });
   // 🔥 첫 화덕 — 세이브가 있든 없든 한 채는 서 있어야 한다. applySave 안에 두면 신규 유저가 못 받는다.
   //    스토리 보상으로 주려던 원안은 1장 완료가 25명(진입 109명의 23%)뿐이라 폐기했다.
   //    이미 지어 두거나 옮겨 둔 사람의 자리는 건드리지 않는다.
@@ -2355,6 +2359,7 @@ function applySave(saved) {
   if (saved.inventory) Object.assign(gameState.inventory, saved.inventory);
   // 🎀 꾸미기 — 낯선 id·안 산 것의 장착을 걸러 낸다(세이브는 클라이언트 권위다)
   if (saved.cosmetics) gameState.cosmetics = sanitizeCosmetics(saved.cosmetics);
+  gameState.cashOwned = Array.isArray(saved.cashOwned) ? saved.cashOwned.filter(s => typeof s === 'string') : [];   // 💳 없으면 빈 배열(옛 세이브)
   // 🐾 펫 — saved 가 왔다는 것 자체가 읽기 성공이라는 뜻이므로, 필드가 없으면 신규가 맞다.
   //    (읽기 실패를 신규로 오인해 마을을 덮어쓴 사고는 js/save-guard.js 가 앞단에서 막는다)
   //    ⚠️ 낯선 kind 는 버린다 — 조형이 없으면 상점엔 뜨는데 안 그려지는 종이 생긴다.
@@ -6474,6 +6479,17 @@ function respawnPet() {
   if (!pet3d) return;                                   // 모르는 종이면 아무것도 안 세운다
   pet3d.position.set(player.position.x, 0, player.position.z);
   scene.add(pet3d);
+}
+
+// 💳 원장 동기화가 화면에 손대는 통로 — js/shop/purchases.js 는 game.js 를 import 하지 않는다
+export function purchaseHooks() {
+  return {
+    applyCosmetics: (cos) => applyCosmetics(cos),
+    refreshPet: () => { usePet(gameState.pet?.kind || null); respawnPet(); },
+    toast: (m) => ui.toast?.(m, 2500),
+    track: trackEvent,
+    requestSave,
+  };
 }
 
 // 🐾 프롬프트 조건 — 반경 안에 **실제로 할 잡일이 있을 때만** 띄운다.
