@@ -33,6 +33,9 @@
   //    CARDNEWS_INGEST_SECRET(크론 인증)과 CARDNEWS_OWNER_UID(크론이 쓸 소유자 uuid).
   //    이 둘도 반드시 Secret 으로 등록합니다 — uuid 라 저장소에 커밋하고 싶지 않은 값이고,
   //    일반 변수로 넣으면 배포 때 지워져 ingest 가 조용히 500 을 뱉기 시작합니다.
+  // 💳 Paddle 웹훅(functions/api/paddle-webhook.js): PADDLE_WEBHOOK_SECRET 을 Secret 으로 등록합니다.
+  //    없으면 엔드포인트가 503 을 돌려주고 Paddle 이 재시도합니다(조용히 200 으로 삼키지 않음).
+  //    샌드박스와 라이브의 시크릿이 다릅니다 — 승인 후 교체.
   "vars": {
     "OCI_NAMESPACE": "id8g5usnkx1c",
     "OCI_REGION": "us-ashburn-1",

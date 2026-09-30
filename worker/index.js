@@ -19,6 +19,7 @@ import { onRequestPost as photoUpload, onRequestDelete as photoDelete } from '..
 import { onRequestPost as photoUrls } from '../functions/api/photo-urls.js';
 import { onRequestGet as leaderboard } from '../functions/api/leaderboard.js';
 import { onRequestGet as plaza } from '../functions/api/plaza.js';
+import { onRequestPost as paddleWebhook } from '../functions/api/paddle-webhook.js';
 import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
@@ -130,6 +131,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/photo-urls') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await photoUrls({ request, env });
+  }
+
+  // 💳 Paddle 웹훅 — 서명 검증 후 purchases 원장 기록. GET 은 없다(Paddle 만 부른다).
+  if (pathname === '/api/paddle-webhook') {
+    return await paddleWebhook({ request, env });
   }
 
   // 📖 도감 설명문 — 카테고리·언어 조합당 1회 생성 후 엣지 캐시(실패 시 {} 폴백)
