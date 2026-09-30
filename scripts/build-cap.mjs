@@ -43,6 +43,10 @@ html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n/gm, '');                 
 html = html.replace(/^\s*<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="\/[^"]*"[^>]*>\s*\n/gm, '');
 html = html.replace(/^\s*<script>\s*if \('serviceWorker' in navigator[\s\S]*?<\/script>\s*\n/m, '');
 if (html.includes('serviceWorker.register')) throw new Error('[build-cap] service worker 등록 스크립트 제거 실패');
+// 💳 로그인 카드의 약관·환불·가격 링크(#login-links) — 웹은 루트 상대경로지만 앱은 오리진이 달라 404 → 웹 오리진 절대 URL 로
+const LINKS_RE = /(<nav id="login-links">[\s\S]*?<\/nav>)/;
+if (!LINKS_RE.test(html)) throw new Error('[build-cap] index.html 에서 #login-links 를 못 찾음 — 약관 링크가 앱 오리진 404 가 됩니다.');
+html = html.replace(LINKS_RE, nav => nav.replace(/href="\/([a-z]+)"/g, `href="${API_ORIGIN}/$1"`));
 writeFileSync(`${OUT}/index.html`, html);
 
 // ── 게임 모듈 + 자체 호스팅 라이브러리 ──
