@@ -11,13 +11,13 @@ import {
   disposeTree, dist2D, doPlayerAction, firstHint, fishMesh, gameState, giveReward, houseWindows,
   keys, kitchenFinish, kitchenStart, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
   mergeGeos, museumGroup, nearCafeBoard, nearCafeGuest, nearDoor, obstacles, pantryHas, pantryTake, pendingDish,
-  player, refreshCollectQuests, refreshInventoryUI, removeSolid, renderer, requestSave,
+  player, purchaseHooks, refreshCollectQuests, refreshInventoryUI, removeSolid, renderer, requestSave,
   roundRect, scene, setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnConfetti, spawnFloatText,
   spawnSparkle, syncBadges, syncStory, todayStr, triggerMoment, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { buildAnimalHead } from '../animal-faces.js';
-import { itemsOf } from '../cosmetics/catalog.js';
+import { itemsOf, findItem } from '../cosmetics/catalog.js';
 import { buy as buyCos, equip as equipCos } from '../cosmetics/equip.js';
 import { shopButton } from '../cosmetics/wardrobe.js';
 import { switchPet } from './wardrobe.js';
@@ -32,7 +32,10 @@ import { MUSEUM_FLOORS, SPECIAL_EXHIBITS, exhibitCenterY, floorEntries, floorPro
 import { buildMuseumExtras } from '../museum/extras.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
+import { cashAvailable, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
+import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
 import { Sound } from '../sound.js';
+import { state as authState, fetchPurchases } from '../supabase-client.js';
 import * as THREE from 'three';
 
 //   기본은 날짜 시드 로컬 생성. setCafeGuestSource() 로 외부 생성기
@@ -887,10 +890,60 @@ export function drawPetTab(box) {
       petView = k.id;
       drawCosMenu();
     };
-    row.appendChild(btn);
+    const buys = document.createElement('div');
+    buys.className = 'sh-buys';
+    buys.appendChild(btn);
+    if (cashAvailable(authState) && k.cash) buys.appendChild(cashButton(k.cash, k.id, 'pet', !!mine));
+    row.appendChild(buys);
     box.appendChild(row);
   }
 }
+
+// 💳 현금 결제 — 결제창이 닫히면 버튼을 되살리고, 완료면 원장을 폴링해 지급한다(지급은 원장이 결정).
+const CASH_FAIL_MSG = '결제를 지금은 열 수 없어요';   // Task 9 검수 문구
+let cashBusy = null;   // 결제창이 열린 항목 id — 그 버튼만 비활성
+function cashButton(cash, itemId, kind, mine) {
+  const btn = document.createElement('button');
+  btn.className = 'sh-cash';
+  btn.textContent = mine ? '구매 완료' : cash.label;
+  btn.disabled = !!mine || cashBusy === itemId;
+  btn.onclick = async (ev) => {
+    ev.stopPropagation();
+    if (btn.disabled) return;
+    trackEvent('cash_checkout_open', { item_id: itemId, kind, price_id: cash.priceId });
+    cashBusy = itemId; drawCosMenu();
+    try {
+      const opened = await openCheckout({ priceId: cash.priceId, itemId, kind, userId: authState.userId, email: authState.email });
+      if (!opened) { cashBusy = null; drawCosMenu(); }   // 이미 열려 있어 무시됨(재진입) — 토스트 없이 버튼만 되살린다
+    } catch (e) {
+      console.warn('[paddle] 결제창 열기 실패:', e?.message || e);
+      cashBusy = null; drawCosMenu();
+      ui.toast?.(CASH_FAIL_MSG, 2500);
+    }
+  };
+  return btn;
+}
+setCheckoutHandlers({
+  onClosed: (c) => { trackEvent('cash_checkout_close', { item_id: c.itemId, kind: c.kind }); cashBusy = null; drawCosMenu(); },
+  onCompleted: async (c) => {
+    trackEvent('cash_checkout_done', { item_id: c.itemId, kind: c.kind, price_id: c.priceId });
+    const t0 = Date.now();
+    const ok = await awaitGrant({ itemId: c.itemId, gameState, fetchPurchases, hooks: purchaseHooks() });
+    cashBusy = null;
+    if (ok) {
+      // 사면 바로 입힌다 / 데려간다 — 코인 구매와 같은 결
+      if (c.kind === 'cosmetic') {
+        gameState.cosmetics = equipCos(gameState.cosmetics, c.itemId);
+        applyCosmetics(gameState.cosmetics);
+        cosTryOn = null; cosPreview?.refresh(null);
+        trackEvent('cosmetic_equip', { item_id: c.itemId, slot: findItem(c.itemId)?.slot, action: 'on', via: 'cash' });
+      } else { switchPet(c.itemId); petView = c.itemId; }
+      trackEvent('cash_grant_wait', { item_id: c.itemId, wait_ms: Date.now() - t0 });
+      requestSave();
+    } else ui.toast?.(LATER_MSG, 3000);
+    drawCosMenu();
+  },
+});
 
 export function drawCosMenu() {
   document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
@@ -947,7 +1000,11 @@ export function drawCosMenu() {
       drawCosMenu();
       requestSave();
     };
-    row.appendChild(btn);
+    const buys = document.createElement('div');
+    buys.className = 'sh-buys';
+    buys.appendChild(btn);
+    if (cashAvailable(authState) && it.price.cash) buys.appendChild(cashButton(it.price.cash, it.id, 'cosmetic', gameState.cosmetics.owned.includes(it.id)));
+    row.appendChild(buys);
     box.appendChild(row);
   }
 }
