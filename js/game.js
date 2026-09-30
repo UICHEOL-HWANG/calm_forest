@@ -180,6 +180,7 @@ import {
   COOK_TIERS, PANTRY_MAX, buffDur, cookResolve, courseOf, craftTier2, craftUpgrade, emitBuffs, kitchenView,
   pantryEat, pantryView, recipeOf, tier2List, dishOf, isFreeId, freePotTotal, freePotView, freePotCheck, freePotReady, loadFreePot, FREE_PREFIX, freeDishOf,
 } from './spaces/cooking.js';   // 📦 🍳 요리 코스·찬장·도구 제작·버프 (구역 머리말 — 분리 2단계)
+import { quizAnswer, quizEnd, quizStart } from './spaces/ferry-quiz-run.js';   // 🦆 사공 퀴즈 진행·보상·트래킹
 import {
   addAffinity, craftGift, giveGift, nearestOutdoor, outdoorZone, pickOutdoor, storeOutdoor, tryPickOutdoor,
   withdrawWarehouse,
@@ -945,6 +946,7 @@ const gameState = {
   //    ⚠️ 서버에 두지 않는다 — 대화는 보상이 0이라 조작해도 얻을 게 없고,
   //    유저 테이블을 만들면 RLS·인증·동기화 비용만 는다.
   talk: { date: '', used: {} },
+  quiz: { date: '', done: false, correct: 0 },   // 🦆 사공 퀴즈 — 오늘 풀었는지(시작하면 done). 날짜가 오늘이 아니면 다시 풀 수 있다
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
   noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
   character: null,                          // 선택한 동물 캐릭터 id
@@ -1597,6 +1599,9 @@ export const Input = {
   kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
   // 🍲 자유 냄비 — 표는 탭을 열 때 불러온다(약 130KB, 첫 로딩에 얹지 않음)
   loadFreePot() { return loadFreePot(); },
+  quizStart() { return quizStart(); },                  // 🦆 사공 퀴즈(js/spaces/ferry-quiz-run.js)
+  quizAnswer(qNo, idx, ms) { return quizAnswer(qNo, idx, ms); },
+  quizEnd(o) { return quizEnd(o); },
   getFreePot() {
     const v = freePotView();
     trackEvent('free_pot_open', { found: v.found, total: v.total, kinds_have: v.ingredients.filter(x => x.have > 0).length });   // [GA4] 노출
@@ -1918,7 +1923,7 @@ function retentionGuidanceSuppressed() {
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
     if (b.classList.contains('intro-open')) return 'intro';
-    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
+    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
     // ⚠️ 아래는 **CSS 가 #hint-banner 를 display:none 으로 숨기는 상태**다(index.html 524·580·595·937·1005).
     //    JS 가 이걸 모르면 안 보이는 배너를 "띄웠다"고 치고 세션당 1회 예산을 날린 뒤,
     //    shown 이벤트까지 찍어 10분 성과창이 아무도 못 본 배너를 잰다.
@@ -2505,6 +2510,10 @@ function applySave(saved) {
     gameState.talk = saved.talk.date === todayStr()
       ? { date: saved.talk.date, used: { ...(saved.talk.used || {}) } }
       : { date: todayStr(), used: {} };
+  }
+  // 🦆 사공 퀴즈 — 오늘 것만 살린다(어제 done 이 오늘을 막지 않게). 없으면 기본값 그대로
+  if (saved.quiz && typeof saved.quiz === 'object' && saved.quiz.date === todayStr()) {
+    gameState.quiz = { date: saved.quiz.date, done: !!saved.quiz.done, correct: +saved.quiz.correct || 0 };
   }
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
