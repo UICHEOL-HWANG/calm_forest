@@ -11,7 +11,7 @@
 
 create table if not exists public.purchases (
   id              bigint generated always as identity primary key,
-  event_id        text not null unique,        -- '<notification_id>:<price_id>' — 항목당 1행
+  event_id        text not null unique,        -- '<transaction_id>:<price_id>' — 항목당 1행
   transaction_id  text not null,               -- txn_… — 환불이 이 값으로 찾아온다
   user_id         uuid not null references auth.users(id) on delete cascade,
   item_id         text not null,               -- 카탈로그/펫 id ('straw_hat', 'leaf')

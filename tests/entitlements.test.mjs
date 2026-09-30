@@ -32,9 +32,29 @@ test('환불 — owned 에서 빼고 장착도 푼다', () => {
   assert.deepEqual(r.patch.cashOwned, []);
 });
 
-test('원장에서 사라진 것도 환불로 본다', () => {
-  const r = applyPurchases(gs({ cosmetics: { owned: ['straw_hat'], equipped: { head: null, neck: null, back: null, trail: null } }, cashOwned: ['straw_hat'] }), []);
-  assert.deepEqual(r.revoked.map(x => x.item_id), ['straw_hat']);
+test('원장에 흔적 없이 사라진 항목은 그대로 둔다(빈 조회로 펫 성장을 잃지 않는다)', () => {
+  const leaf = { kind: 'leaf', name: '콩', works: 30, restUntil: 0 };
+  const g = gs({
+    cosmetics: { owned: ['scarf', 'straw_hat'], equipped: { head: 'straw_hat', neck: 'scarf', back: null, trail: null } },
+    pets: { leaf }, pet: leaf, cashOwned: ['straw_hat', 'leaf'],
+  });
+  const r = applyPurchases(g, []);
+  assert.deepEqual(r.revoked, []);
+  assert.deepEqual(r.granted, []);
+  assert.deepEqual(r.patch.cosmetics.owned, ['scarf', 'straw_hat']);
+  assert.equal(r.patch.cosmetics.equipped.head, 'straw_hat');
+  assert.equal(r.patch.pets.leaf.works, 30, '펫 works 를 잃지 않는다');
+  assert.equal(r.patch.pet, leaf);
+  assert.deepEqual(r.patch.cashOwned, ['straw_hat', 'leaf']);
+});
+
+test('환불 뒤 재구매 — revoked 행과 새 live 행이 같이 오면 live 가 이긴다', () => {
+  const g = gs({ cosmetics: { owned: ['scarf', 'straw_hat'], equipped: { head: 'straw_hat', neck: 'scarf', back: null, trail: null } }, cashOwned: ['straw_hat'] });
+  const r = applyPurchases(g, [row('straw_hat', '2026-10-01T00:00:00Z'), row('straw_hat')]);
+  assert.deepEqual(r.revoked, []);
+  assert.deepEqual(r.granted, []);
+  assert.deepEqual(r.patch.cosmetics.owned, ['scarf', 'straw_hat']);
+  assert.deepEqual(r.patch.cashOwned, ['straw_hat']);
 });
 
 test('펫 — 결제로 추가(emptyPet), 환불로 제거 + 데리고 있던 펫이면 pet=null', () => {

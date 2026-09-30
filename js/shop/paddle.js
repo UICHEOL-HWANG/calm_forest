@@ -22,8 +22,10 @@ let current = null;        // 열려 있는 결제 { priceId, itemId, kind } —
 let opening = false;       // openCheckout 진입~Checkout.open 반환 사이(동기 가드 — await 구간도 막는다)
 let handlers = { onCompleted: () => {}, onClosed: () => {} };
 
+//  현금 버튼이 보이는 조건: 웹 + 온라인 + 로그인 계정 + Paddle 클라이언트 토큰이 설정돼 있을 것
+//  (토큰이 없으면 눌러도 열 수 없으니 버튼 자체를 내놓지 않는다).
 export function cashAvailable(state) {
-  return PLATFORM === 'web' && !!state?.online && !state?.isGuest;
+  return PLATFORM === 'web' && !!state?.online && !state?.isGuest && !!CONFIG.PADDLE.token;
 }
 
 export function setCheckoutHandlers(h) {
@@ -36,7 +38,7 @@ export function setCheckoutHandlers(h) {
 function onPaddleEvent(ev) {
   if (!current) return;
   if (ev?.name === 'checkout.completed') { const c = current; current = null; handlers.onCompleted(c); }
-  else if (ev?.name === 'checkout.closed') { const c = current; current = null; handlers.onClosed(c); }
+  else if (ev?.name === 'checkout.closed' || ev?.name === 'checkout.error') { const c = current; current = null; handlers.onClosed(c); }
 }
 
 function injectScript() {
@@ -81,7 +83,7 @@ export async function openCheckout({ priceId, itemId, kind, userId, email }) {
       Paddle.Checkout.open({
         items: [{ priceId, quantity: 1 }],
         customData: { user_id: userId, item_id: itemId, kind },
-        customer: email ? { email } : undefined,
+        customer: typeof email === 'string' && email.includes('@') ? { email } : undefined,
         settings: { displayMode: 'overlay', locale: getLang() === 'en' ? 'en' : 'ko' },
       });
     } catch (e) { current = null; throw e; }   // 동기 throw 면 잠기지 않게 비운다

@@ -2203,7 +2203,7 @@
       <div id="login-note"></div>
       <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
       <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
-      <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. 토스에서는 JS 가 제거 -->
+      <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. 토스·안드로이드에서는 JS 가 제거(앱 번들은 빌드 때도 제거) -->
       <nav id="login-links">
         <a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
       </nav>
@@ -4142,11 +4142,16 @@
     //      다른 경로로 눌릴 여지가 남는다.
     if (IS_TOSS) {
       $('privacy-btn').remove(); $('delacc-btn').remove();
-      $('terms-btn').remove(); $('refund-btn').remove();   // 💳 같은 편도 티켓 문제 — 토스는 자체 IAP 라 약관 링크도 필요 없다
-      $('login-links')?.remove();
     } else {
       $('privacy-btn').addEventListener('click', () => openPolicyPage('/privacy', 'privacy_open'));
       $('delacc-btn').addEventListener('click', () => openPolicyPage('/delete-account', 'delete_account_open'));
+    }
+    //  💳 약관·환불 링크(설정 메뉴 + 로그인 카드)는 토스·안드로이드에서 내린다 —
+    //     토스는 위와 같은 편도 티켓 문제(자체 IAP 라 필요도 없다), 안드로이드는 구글 플레이 정책상 외부 결제 안내 링크 금지.
+    if (IS_TOSS || IS_ANDROID) {
+      $('terms-btn').remove(); $('refund-btn').remove();
+      $('login-links')?.remove();
+    } else {
       $('terms-btn').addEventListener('click', () => openPolicyPage('/terms', 'terms_open'));
       $('refund-btn').addEventListener('click', () => openPolicyPage('/refund', 'refund_open'));
     }
