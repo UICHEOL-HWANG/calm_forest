@@ -29,3 +29,10 @@
 ## 함정
 - 결과·퀴즈 화면을 닫는 **모든 길**이 `quizEnd` 를 거쳐야 한다(요리 결과 카드의 `cookResolve` 함정과 같은 구조).
 - 트래킹에 문제 문장·이름(표시 문자열) 금지 — `qid`·엔티티 id 만.
+
+## 구현·검증 (2026-09-30, feat/ferry-quiz 8f22e2f, 미병합)
+- 검수 반영: npc_name → **npc_quest**(퀘스트 제목으로 묻고 보기는 이름만, qid = npcId-제목해시) · farm_building → FARM_PLAIN 쉬운 말 질문. 문제 54개(과일 5·버프 4·퀘스트 36·강 1·뱃길 1·시설 7)
+- 보상은 **맞힐 때마다 바로 지급**(리뷰 MEDIUM: quizEnd 에서만 주면 결과 전 앱 종료 시 증발) — 8·8·8+15
+- 트래킹 실측(Playwright, dev 파라미터 없이 GA 차단·dataLayer): offer(ok)→start→answer×3→end(coins 39) · 도중 닫기 end quit=1 reached=1 · 같은 날 재방문 offer reason=done·버튼 비활성
+- 함정: data-node 의 en() 이 큰따옴표 값("A Neighbour's Share")을 못 읽어 영어 검사 실패 → 두 따옴표 모두 파싱
+- 남은 것: 사용자 최종 확인(캡처) → 병합·4곳 배포 → 다음 날 BQ(quiz_date 조인·qid 정답률·econ_logs ferry_quiz)
