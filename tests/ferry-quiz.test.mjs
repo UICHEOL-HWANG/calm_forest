@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { QUIZ_TEMPLATES, buildDailyQuiz, quizAvailable, quizReward } from '../js/ferry-quiz.js';
+import { FARM_PLAIN, QUIZ_TEMPLATES, buildDailyQuiz, quizAvailable, quizReward } from '../js/ferry-quiz.js';
 import { nodeQuizData } from '../tools/ferry-quiz/data-node.mjs';
 import { FRUITS } from '../js/orchard.js';
 
@@ -41,7 +41,7 @@ test('정답이 게임 데이터와 일치한다', () => {
       const ans = q.choices[q.answer].id, ent = q.qid.split(':')[1];
       if (t.id === 'fruit_days') assert.equal(ans, String(FRUITS.find(f => f.id === ent).growDays));
       if (t.id === 'recipe_buff') assert.equal(DATA.recipes.find(r => r.id === ans).buff, ent);
-      if (t.id === 'npc_name') assert.equal(ans, ent);
+      if (t.id === 'npc_quest') assert.equal(ans, ent.split('-')[0]);   // 부탁한 이웃
       if (t.id === 'river_night') assert.ok(DATA.riverPicks.find(p => p.id === ans).night);
       if (t.id === 'boat_runs') assert.equal(ans, String(DATA.boatRunsPerDay));
       if (t.id === 'farm_building') assert.equal(ans, ent);
@@ -71,4 +71,25 @@ test('quizReward: 0 은 빈 보상, 정답당 코인 8, 3/3 은 15 더', () => {
   assert.deepEqual(quizReward(1), { coins: 8 });
   assert.deepEqual(quizReward(2), { coins: 16 });
   assert.deepEqual(quizReward(3), { coins: 39 });
+});
+
+// 검수 반영(2026-09-30 "추천대로 고치고 진행해"):
+//  · 주민 이름 → 이모지만 봐도 답이 보여(🐼→요리사 판다) 쉬웠다 → 퀘스트 제목으로 묻고 보기는 이름만
+//  · 밭 시설 → 게임 수치 문장("반경 5 · 물주기 −40%")을 그대로 인용해 딱딱했다 → 쉬운 말 질문
+test('npc_quest: 보기에 이모지가 없고, 제목이 여러 이웃에 겹치는 퀘스트는 내지 않는다', () => {
+  assert.ok(!QUIZ_TEMPLATES.some(t => t.id === 'npc_name'));
+  const seen = new Set();
+  for (let s = 1; s <= 300; s++) {
+    const q = QUIZ_TEMPLATES.find(t => t.id === 'npc_quest').make(DATA, mulberry(s));
+    seen.add(q.qid);
+    for (const c of q.choices) assert.doesNotMatch(c.ko, /\p{Extended_Pictographic}/u, `${q.qid}: 보기에 이모지 "${c.ko}"`);
+  }
+  assert.ok(seen.size >= 15, `퀘스트 문제 ${seen.size}종`);
+});
+test('farm_building: 시설마다 쉬운 말 질문이 있고 게임 수치 문장을 인용하지 않는다', () => {
+  for (const b of DATA.farmBuildings) assert.ok(FARM_PLAIN[b.id], `${b.id}: 쉬운 말 질문 없음 — 새 시설이면 FARM_PLAIN 에 추가`);
+  for (let s = 1; s <= 100; s++) {
+    const q = QUIZ_TEMPLATES.find(t => t.id === 'farm_building').make(DATA, mulberry(s));
+    assert.doesNotMatch(q.q.ko, /반경|%|·/, q.qid);
+  }
 });
