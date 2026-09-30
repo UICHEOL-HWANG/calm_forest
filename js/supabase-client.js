@@ -620,6 +620,16 @@ export async function fetchNotices(sinceId = 0, { limit = 20, ascending = false 
   } catch (err) { console.warn('[Supabase 폴백] 소식 조회 실패:', err?.message || err); return []; }
 }
 
+// ── 💳 현금 구매 원장 읽기 — RLS 로 본인 행만. null = 못 읽음(게스트·오프라인·실패) → 호출부는 세이브대로 간다 ──
+export async function fetchPurchases() {
+  if (!state.online || !supabase || state.isGuest) return null;
+  try {
+    const { data, error } = await supabase.from('purchases').select('item_id, kind, revoked_at');
+    if (error) throw error;
+    return data || [];
+  } catch (err) { console.warn('[Supabase 폴백] 구매 원장 조회 실패(세이브대로 진행):', err?.message || err); return null; }
+}
+
 export async function insertPhotoRow(objectKey, weather) {
   if (!state.online || !supabase) return;
   try {
