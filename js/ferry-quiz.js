@@ -112,3 +112,30 @@ export function quizReward(correctN) {
   if (!correctN) return {};
   return { coins: correctN * QUIZ_COIN_PER + (correctN >= 3 ? QUIZ_COIN_PERFECT : 0) };
 }
+
+// 💬 사공 대사 — 승인안(시안 sims/ferry-quiz/quiz-options.html 표, 2026-09-30). 하게체, 틀려도 나무라지 않는다.
+//    {a} 정답 · {h} 힌트 · {n} 맞힌 수. 같은 날 같은 자리는 같은 줄(시드).
+export const QUIZ_LINES = {
+  start: [
+    { ko: '물때 기다리는 동안 문제 셋 내 보겠네.', en: 'While we wait for the tide, here are three riddles.' },
+    { ko: '강 건너는 셈 치고 머리 좀 써 보시게.', en: 'Think of it as crossing the river — give it a try.' },
+    { ko: '오늘도 왔구먼! 수수께끼 셋일세.', en: 'Back again! Three riddles today.' },
+  ],
+  right: [
+    { ko: '옳거니! 제법이구먼.', en: 'Right you are! Not bad at all.' },
+    { ko: '허, 훤하구먼!', en: 'Ha, you know this place well!' },
+    { ko: '맞았네, 역시 이 마을 사람일세.', en: 'Correct — a true villager.' },
+  ],
+  wrong: [
+    { ko: '허허, 아깝구먼. 답은 {a}일세 — {h}', en: "Ah, so close. It's {a} — {h}" },
+    { ko: '괜찮네, 나도 처음엔 헷갈렸다네. 답은 {a}일세 — {h}', en: "No worries, it fooled me too at first. It's {a} — {h}" },
+  ],
+  perfect: [{ ko: '셋 다 맞혔구먼! 이 강 물길을 다 아는 사람일세.', en: 'All three! You know every bend of this river.' }],
+  endSome: [{ ko: '오늘은 {n}개일세. 내일 물때에 또 오시게.', en: "{n} today. Come back with tomorrow's tide." }],
+  endZero: [{ ko: '허허, 오늘은 물살이 셌구먼. 내일은 맞힐 걸세.', en: "Rough waters today. You'll get them tomorrow." }],
+  done: [{ ko: '오늘 수수께끼는 끝났다네. 내일 물때에 또 오시게.', en: "That's all the riddles for today. Come back with tomorrow's tide." }],
+};
+export function quizLine(key, seed, lang, vars = {}) {
+  const arr = QUIZ_LINES[key], l = arr[Math.abs(seed | 0) % arr.length];
+  return (lang === 'en' ? l.en : l.ko).replace(/\{(\w)\}/g, (_, k) => vars[k] ?? '');
+}

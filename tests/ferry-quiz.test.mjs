@@ -93,3 +93,46 @@ test('farm_building: 시설마다 쉬운 말 질문이 있고 게임 수치 문�
     assert.doesNotMatch(q.q.ko, /반경|%|·/, q.qid);
   }
 });
+
+// ── Task 3: 상태·진행·트래킹 (js/spaces/ferry-quiz-run.js) ──
+import { gameSource } from './helpers/game-source.mjs';
+import { QUIZ_LINES, quizLine } from '../js/ferry-quiz.js';
+const src = gameSource();
+const body = (name) => { const i = src.indexOf(`function ${name}(`); assert.ok(i >= 0, name); return src.slice(i, src.indexOf('\n}\n', i)); };
+const call = (b, ev) => { const i = b.indexOf(`trackEvent('${ev}'`); assert.ok(i > 0, ev); return b.slice(i, b.indexOf('});', i)); };
+
+test('세이브 기본값에 quiz, 복원은 오늘 것만(어제 done 이 오늘을 막지 않게)', () => {
+  assert.match(src, /quiz: \{ date: '', done: false, correct: 0 \}/);
+  assert.match(body('applySave'), /saved\.quiz[\s\S]{0,200}todayStr\(\)/);
+});
+test('offer: 사공 창을 열 때 available·reason', () => {
+  const c = call(body('talkToNPC'), 'ferry_quiz_offer');
+  for (const p of ['quiz_date', 'available', 'reason']) assert.match(c, new RegExp(`${p}:`));
+});
+test('start·answer·end 가 같은 quiz_date 와 qid 축을 싣는다', () => {
+  const s = call(body('quizStart'), 'ferry_quiz_start');
+  for (const p of ['quiz_date', 'qids', 'tpls']) assert.match(s, new RegExp(`${p}:`));
+  const a = call(body('quizAnswer'), 'ferry_quiz_answer');
+  for (const p of ['quiz_date', 'q_no', 'qid', 'tpl', 'picked_id', 'answer_id', 'picked_idx', 'answer_idx', 'correct', 'ms']) assert.match(a, new RegExp(`${p}:`));
+  const e = call(body('quizEnd'), 'ferry_quiz_end');
+  for (const p of ['quiz_date', 'correct_n', 'total', 'reached', 'quit', 'ms_total', 'reward_id', 'coins']) assert.match(e, new RegExp(`${p}:`));
+});
+test('시작하면 그날은 끝난 것으로 기록(닫아도 재시도 불가), 보상은 ferry_quiz 출처', () => {
+  assert.match(body('quizStart'), /gameState\.quiz = \{ date: today, done: true, correct: 0 \}/);
+  assert.match(body('quizEnd'), /giveReward\([^)]*'ferry_quiz', 'ferry_quiz:' \+ /);
+});
+test('트래킹에 표시 문자열(문제 문장·이름)을 싣지 않는다', () => {
+  assert.doesNotMatch(call(body('quizAnswer'), 'ferry_quiz_answer'), /\.ko\b|\.en\b|q\.q\b/);
+});
+test('quizEnd 는 한 번만 정산된다', () => {
+  assert.match(body('quizEnd'), /if \(!run\) return/);
+});
+test('사공 대사(승인안): 자리마다 ko/en, 오답은 답·힌트 자리, 날마다 같은 줄', () => {
+  for (const k of ['start', 'right', 'wrong', 'perfect', 'endSome', 'endZero', 'done']) {
+    assert.ok(QUIZ_LINES[k]?.length, k);
+    for (const l of QUIZ_LINES[k]) assert.ok(l.ko && l.en && !/[가-힣]/.test(l.en), `${k}: ${l.ko}`);
+  }
+  for (const l of QUIZ_LINES.wrong) assert.ok(l.ko.includes('{a}') && l.ko.includes('{h}') && l.en.includes('{a}') && l.en.includes('{h}'));
+  assert.equal(quizLine('right', 7, 'ko'), quizLine('right', 7, 'ko'));
+  assert.match(quizLine('wrong', 1, 'ko', { a: '4일', h: '힌트' }), /4일[\s\S]*힌트/);
+});
