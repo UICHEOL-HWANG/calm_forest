@@ -17,9 +17,10 @@ test('id 는 중복되지 않는다 — 세이브 키이자 트래킹 축이다'
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test('현금 칸은 전부 null — 이번엔 결제를 안 붙인다(스펙 §0)', () => {
+test('현금 칸 — null 이거나 {priceId,label} 둘 다 있는 객체(스펙 2026-09-30 §2-1)', () => {
   for (const it of ITEMS) {
-    assert.equal(it.price.cash, null, `${it.id} 의 cash 가 null 이 아니다`);
+    const c = it.price.cash;
+    assert.ok(c === null || (typeof c.priceId === 'string' && typeof c.label === 'string'), `${it.id} 의 cash 형태`);
     assert.ok(Number.isInteger(it.price.coins) && it.price.coins > 0, `${it.id} 코인 가격`);
   }
 });

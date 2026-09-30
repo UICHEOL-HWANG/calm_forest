@@ -14,6 +14,8 @@
 //  ▶ 테스트: npm test (tests/pet-rules.test.mjs) — 밸런스 수치를 여기 못박는다.
 // =============================================================
 
+import { cashFor } from '../shop/cash.js';
+
 /** 🐾 파는 종 — 조형은 js/pet/art.js 의 BUILD 가 **같은 id** 로 갖고 있다.
  *  ⚠️ 여기와 BUILD 가 갈리면 상점엔 뜨는데 안 그려지는 종이 생긴다 — tests/pet-rules 가 맞물림을 못 보므로
  *     새 종을 넣을 땐 두 곳을 같이 고쳐라(art.js 는 THREE 가 필요해 순수 테스트에서 못 부른다). */
@@ -22,7 +24,7 @@ export const PET_KINDS = Object.freeze([
   { id: 'spirit', ico: '✨', name: '빛정령', blurb: '빛나라에서 온 조각' },
   { id: 'bird',   ico: '🐦', name: '피앙새', blurb: '노래를 잃고 온 새' },
   { id: 'golem',  ico: '🫘', name: '꼬마돌', blurb: '개울에서 굴러온 돌' },
-]);
+].map(k => Object.freeze({ ...k, cash: cashFor(k.id, null) })));   // 💳 현금 칸 — priceId 없으면 null(스펙 2026-09-30 §2-1)
 
 /** id → 종 정의. 모르는 id 면 null(세이브가 낯선 값을 들고 와도 화면이 안 깨지게) */
 export function petKindOf(id) { return PET_KINDS.find(k => k.id === id) || null; }
