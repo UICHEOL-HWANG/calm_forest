@@ -37,6 +37,51 @@ test('verifySignature — 헤더 없음/깨짐은 bad_header', async () => {
   assert.equal((await verifySignature({ header: null, rawBody: '{}', secret: SECRET, now: NOW })).reason, 'bad_header');
 });
 
+test('verifySignature — 빈 secret / 비문자 secret → bad_sig(throw 안 함)', async () => {
+  assert.deepEqual(await verifySignature({ header: 'ts=1;h1=' + 'a'.repeat(64), rawBody: '{}', secret: '', now: NOW }), { ok: false, reason: 'bad_sig' });
+  assert.deepEqual(await verifySignature({ header: 'ts=1;h1=' + 'a'.repeat(64), rawBody: '{}', secret: undefined, now: NOW }), { ok: false, reason: 'bad_sig' });
+  assert.deepEqual(await verifySignature({ header: 'ts=1;h1=' + 'a'.repeat(64), rawBody: '{}', secret: null, now: NOW }), { ok: false, reason: 'bad_sig' });
+});
+
+test('verifySignature — 비문자 rawBody → bad_sig(throw 안 함)', async () => {
+  const body = '{}';
+  assert.deepEqual(await verifySignature({ header: await sign(body), rawBody: undefined, secret: SECRET, now: NOW }), { ok: false, reason: 'bad_sig' });
+  assert.deepEqual(await verifySignature({ header: await sign(body), rawBody: null, secret: SECRET, now: NOW }), { ok: false, reason: 'bad_sig' });
+});
+
+test('verifySignature — 두 h1 중 두 번째만 유효(키 교체) → ok', async () => {
+  const body = '{}';
+  const garbage = 'f'.repeat(64);
+  const valid = await hmacHex(SECRET, `${NOW}:${body}`);
+  const header = `ts=${NOW};h1=${garbage};h1=${valid}`;
+  assert.deepEqual(await verifySignature({ header, rawBody: body, secret: SECRET, now: NOW }), { ok: true });
+});
+
+test('verifySignature — ts 경계: NOW - 300 정확히 → ok, NOW - 301 → stale, NOW + 301 → stale', async () => {
+  const body = '{}';
+  assert.equal((await verifySignature({ header: await sign(body, NOW - 300), rawBody: body, secret: SECRET, now: NOW })).ok, true);
+  assert.equal((await verifySignature({ header: await sign(body, NOW + 300), rawBody: body, secret: SECRET, now: NOW })).ok, true);
+  assert.equal((await verifySignature({ header: await sign(body, NOW - 301), rawBody: body, secret: SECRET, now: NOW })).reason, 'stale');
+  assert.equal((await verifySignature({ header: await sign(body, NOW + 301), rawBody: body, secret: SECRET, now: NOW })).reason, 'stale');
+});
+
+test('verifySignature — 틀린 secret → bad_sig', async () => {
+  const body = '{}';
+  const header = await sign(body);
+  assert.deepEqual(await verifySignature({ header, rawBody: body, secret: 'wrong_secret', now: NOW }), { ok: false, reason: 'bad_sig' });
+});
+
+test('parseSignature — 63자 h1 / 비hex h1 → null (2/2 규칙)', () => {
+  assert.equal(parseSignature('ts=123;h1=' + 'a'.repeat(63)), null);
+  assert.equal(parseSignature('ts=123;h1=' + 'g'.repeat(64)), null);
+});
+
+test('verifySignature — 63자 h1 / 비hex h1 → bad_header', async () => {
+  const body = '{}';
+  assert.equal((await verifySignature({ header: 'ts=123;h1=' + 'a'.repeat(63), rawBody: body, secret: SECRET, now: NOW })).reason, 'bad_header');
+  assert.equal((await verifySignature({ header: 'ts=123;h1=' + 'g'.repeat(64), rawBody: body, secret: SECRET, now: NOW })).reason, 'bad_header');
+});
+
 test('priceIndex — cash 가 있는 항목만 priceId → {itemId, kind}', () => {
   const idx = priceIndex();
   for (const [pid, v] of idx) { assert.match(pid, /^pri_/); assert.ok(['cosmetic', 'pet'].includes(v.kind)); assert.equal(typeof v.itemId, 'string'); }
@@ -85,6 +130,33 @@ test('ledgerRows — user_id 가 없거나 uuid 가 아니면 행 없음(no_user
 
 test('ledgerRows — 다른 이벤트는 빈 결과', () => {
   assert.deepEqual(ledgerRows({ event_type: 'transaction.paid', data: {} }, idx), { rows: [], skipped: [] });
+});
+
+test('ledgerRows — notification_id 없으면 no_ids', () => {
+  assert.deepEqual(ledgerRows({ event_type: 'transaction.completed', notification_id: undefined, occurred_at: '2026-09-30T01:02:03.000Z', data: { id: 'txn_1', currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '2500' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx), { rows: [], skipped: ['no_ids'] });
+  assert.deepEqual(ledgerRows({ event_type: 'transaction.completed', notification_id: '', occurred_at: '2026-09-30T01:02:03.000Z', data: { id: 'txn_1', currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '2500' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx), { rows: [], skipped: ['no_ids'] });
+});
+
+test('ledgerRows — d.id 없으면 no_ids', () => {
+  assert.deepEqual(ledgerRows({ event_type: 'transaction.completed', notification_id: 'ntf_1', occurred_at: '2026-09-30T01:02:03.000Z', data: { id: undefined, currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '2500' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx), { rows: [], skipped: ['no_ids'] });
+  assert.deepEqual(ledgerRows({ event_type: 'transaction.completed', notification_id: 'ntf_1', occurred_at: '2026-09-30T01:02:03.000Z', data: { id: '', currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '2500' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx), { rows: [], skipped: ['no_ids'] });
+});
+
+test('ledgerRows — 같은 price_id 항목 여러 개 → 1행만 (dedupe)', () => {
+  const { rows, skipped } = ledgerRows(txnEvt({ items: [{ price: { id: 'pri_hat' }, quantity: 2 }, { price: { id: 'pri_hat' }, quantity: 1 }] }), idx);
+  assert.deepEqual(skipped, []);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].event_id, 'ntf_1:pri_hat');
+});
+
+test('ledgerRows — details 없으면 amount null', () => {
+  const { rows } = ledgerRows({ event_type: 'transaction.completed', notification_id: 'ntf_1', occurred_at: '2026-09-30T01:02:03.000Z', data: { id: 'txn_1', currency_code: 'KRW', custom_data: { user_id: UID }, details: {}, items: [{ price: { id: 'pri_hat' } }] } }, idx);
+  assert.equal(rows[0].amount, null);
+});
+
+test('ledgerRows — total 빈 문자열이면 amount null', () => {
+  const { rows } = ledgerRows({ event_type: 'transaction.completed', notification_id: 'ntf_1', occurred_at: '2026-09-30T01:02:03.000Z', data: { id: 'txn_1', currency_code: 'KRW', custom_data: { user_id: UID }, details: { totals: { total: '' } }, items: [{ price: { id: 'pri_hat' } }] } }, idx);
+  assert.equal(rows[0].amount, null);
 });
 
 test('revokeTarget — refund/chargeback 이 approved 일 때만', () => {

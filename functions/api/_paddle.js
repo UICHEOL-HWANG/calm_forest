@@ -43,6 +43,8 @@ function equalHex(a, b) {   // 상수 시간 비교 — 둘 다 64자일 때만 
 }
 
 export async function verifySignature({ header, rawBody, secret, now = Date.now() / 1000, toleranceSec = TOLERANCE_SEC }) {
+  if (typeof secret !== 'string' || !secret) return { ok: false, reason: 'bad_sig' };
+  if (typeof rawBody !== 'string') return { ok: false, reason: 'bad_sig' };
   const p = parseSignature(header);
   if (!p) return { ok: false, reason: 'bad_header' };
   if (Math.abs(now - p.ts) > toleranceSec) return { ok: false, reason: 'stale' };
@@ -64,12 +66,18 @@ export function ledgerRows(evt, index = priceIndex()) {
   const d = evt.data || {};
   const uid = d.custom_data?.user_id;
   if (typeof uid !== 'string' || !UUID_RE.test(uid)) return { rows: [], skipped: ['no_user'] };
-  const total = Number(d.details?.totals?.total);
+  if (typeof evt.notification_id !== 'string' || !evt.notification_id) return { rows: [], skipped: ['no_ids'] };
+  if (typeof d.id !== 'string' || !d.id) return { rows: [], skipped: ['no_ids'] };
+  const t = d.details?.totals?.total;
+  const total = (t == null || t === '') ? NaN : Number(t);
   const rows = [], skipped = [];
+  const seenPriceIds = new Set();
   for (const it of Array.isArray(d.items) ? d.items : []) {
     const pid = it?.price?.id;
     const hit = pid && index.get(pid);
     if (!hit) { skipped.push(String(pid)); continue; }
+    if (seenPriceIds.has(pid)) continue;
+    seenPriceIds.add(pid);
     rows.push({
       event_id: `${evt.notification_id}:${pid}`,
       transaction_id: d.id,
