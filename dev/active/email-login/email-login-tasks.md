@@ -1,0 +1,18 @@
+# Email login — tasks
+- [x] 1. UI copy candidates reviewed
+- [x] 2. Login card mockups ×3 (PC+mobile) picked → A (card swap)
+- [x] 3. Tests for requestEmailCode / verifyEmailCode
+- [x] 4. Implement supabase-client functions
+- [x] 5. Implement js/auth/email-login.js UI + wiring
+- [x] 6. i18n entries
+- [x] 7. GA4 email_login tracking
+- [x] 8. Real code receipt with default SMTP
+- [x] 9. Code review
+- [x] 10. Resend hookup (user) → re-verify
+- [ ] 11. Deploy web + itch
+- [x] 9b. Review fixes: isGuestNow +email, back-during-send, resend/verify split locks, same-email cooldown reuse, retry copy
+- [x] 9c. Security review (no CRITICAL) — dashboard settings list handed to user
+- [x] 10b. Real login OK (naver, 2026-09-30) · codes accepted 6–10 digits (OTP length setting mismatch rejected a code)
+- [x] 10c. Mail template A (card) → Magic Link + Confirm signup (user pastes)
+- [x] 10d. OTP digit boxes A (white tiles): transparent input over 6 cells, verified PC/375px, paste/backspace/filter
+- [ ] 11. Commit → deploy web + itch
