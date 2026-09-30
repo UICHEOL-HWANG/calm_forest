@@ -9,15 +9,17 @@
 //  ▶ ⚠️ 동작 계약: checkout.completed 후 current 를 null 로 처리해 trailing checkout.closed 를 의도적으로
 //    swallow 한다. 따라서 onClosed 는 완료된 구매에서는 발화하지 않는다. Task 8 의 onCompleted 핸들러는
 //    자신의 busy state 를 직접 리셋해야 한다 (onClosed 를 기다리면 안 됨).
+//  ▶ openCheckout 은 boolean 을 반환한다: 결제창이 열렸으면 true, 재진입으로 무시되면 false.
 // =============================================================
 import { CONFIG } from '../config.js';
 import { PLATFORM } from '../platform.js';
 import { getLang } from '../i18n.js';
 
 const PADDLE_JS = 'https://cdn.paddle.com/paddle/v2/paddle.js';
-let ready = null;          // Promise<Paddle>
-let initialized = false;   // Initialize 가 성공한 적 있는지 추적
-let current = null;        // 지금 열린 결제 { priceId, itemId, kind }
+let ready = null;          // Promise<Paddle> — 실패하면 null 로 되돌려 다음 클릭이 다시 시도한다
+let initialized = false;
+let current = null;        // 열려 있는 결제 { priceId, itemId, kind } — Paddle 이벤트가 닫을 때 비운다
+let opening = false;       // openCheckout 진입~Checkout.open 반환 사이(동기 가드 — await 구간도 막는다)
 let handlers = { onCompleted: () => {}, onClosed: () => {} };
 
 export function cashAvailable(state) {
@@ -27,7 +29,7 @@ export function cashAvailable(state) {
 export function setCheckoutHandlers(h) {
   const merged = {};
   for (const [k, v] of Object.entries(handlers)) merged[k] = v;
-  for (const [k, v] of Object.entries(h)) if (typeof v === 'function') merged[k] = v;
+  for (const [k, v] of Object.entries(h || {})) if (typeof v === 'function') merged[k] = v;
   handlers = merged;
 }
 
@@ -35,6 +37,16 @@ function onPaddleEvent(ev) {
   if (!current) return;
   if (ev?.name === 'checkout.completed') { const c = current; current = null; handlers.onCompleted(c); }
   else if (ev?.name === 'checkout.closed') { const c = current; current = null; handlers.onClosed(c); }
+}
+
+function injectScript() {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = PADDLE_JS; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('paddle.js load failed'));
+    document.head.appendChild(s);
+  });
 }
 
 function init() {
@@ -46,40 +58,34 @@ function init() {
 
 function loadPaddle() {
   if (ready) return ready;
-  ready = new Promise((resolve, reject) => {
-    if (window.Paddle) {
-      try {
-        init();
-        return resolve(window.Paddle);
-      } catch (e) {
-        initialized = false;
-        ready = null;
-        return reject(e);
-      }
+  ready = (async () => {
+    try {
+      if (!window.Paddle) await injectScript();
+      init();
+      return window.Paddle;
+    } catch (e) {
+      ready = null;            // async 함수 안이라 바깥 대입보다 뒤에 실행된다 — 실패한 프로미스가 캐시에 남지 않는다
+      throw e;
     }
-    const s = document.createElement('script');
-    s.src = PADDLE_JS; s.async = true;
-    s.onload = () => {
-      try {
-        init();
-        resolve(window.Paddle);
-      } catch (e) { initialized = false; ready = null; reject(e); }
-    };
-    s.onerror = () => { ready = null; reject(new Error('paddle.js load failed')); };
-    document.head.appendChild(s);
-  });
+  })();
   return ready;
 }
 
 export async function openCheckout({ priceId, itemId, kind, userId, email }) {
   if (!CONFIG.PADDLE.token) throw new Error('paddle token missing');
-  if (current) return;
-  const Paddle = await loadPaddle();
-  current = { priceId, itemId, kind };
-  Paddle.Checkout.open({
-    items: [{ priceId, quantity: 1 }],
-    customData: { user_id: userId, item_id: itemId, kind },
-    customer: email ? { email } : undefined,
-    settings: { displayMode: 'overlay', locale: getLang() === 'en' ? 'en' : 'ko' },
-  });
+  if (opening || current) return false;      // 재진입 — 로딩 중이든 결제창이 떠 있든 두 번째 클릭은 무시
+  opening = true;
+  try {
+    const Paddle = await loadPaddle();
+    current = { priceId, itemId, kind };
+    try {
+      Paddle.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        customData: { user_id: userId, item_id: itemId, kind },
+        customer: email ? { email } : undefined,
+        settings: { displayMode: 'overlay', locale: getLang() === 'en' ? 'en' : 'ko' },
+      });
+    } catch (e) { current = null; throw e; }   // 동기 throw 면 잠기지 않게 비운다
+    return true;
+  } finally { opening = false; }
 }
