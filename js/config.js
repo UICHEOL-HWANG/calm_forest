@@ -20,9 +20,9 @@ export const CONFIG = {
   //    Supabase 프로젝트 > Settings > API 에서 확인
   SUPABASE_URL: 'https://zuyxgjfihxtfdpolljzw.supabase.co', // 프로젝트 URL(공개, 안전)
   SUPABASE_ANON_KEY: 'sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t',  // publishable key(브라우저 안전, RLS로 보호)
-  // 📱 구글 플레이 앱 네이티브 로그인 audience — GCP(agriquant) '웹 애플리케이션' 클라이언트 ID(공개값).
+  // 📱 구글 플레이 앱 네이티브 로그인 audience — GCP(calm-forest) '웹 애플리케이션' 클라이언트 ID(calmforest-web)(공개값).
   //    Supabase Google 공급자와 같은 값이어야 signInWithIdToken 이 통과한다.
-  GOOGLE_WEB_CLIENT_ID: '1003103780622-8l7nop9bgedmhc8eds1mlc3bv9v96chv.apps.googleusercontent.com',
+  GOOGLE_WEB_CLIENT_ID: '536929088498-qo1v15ribu6hfbovbt6eoqgi5magcd6q.apps.googleusercontent.com',
 
   // ── GA4 / GTM 트래킹 값 ──────────────────────────────────────
   GA4_MEASUREMENT_ID: 'G-ELBTR8BXBF',           // calm forest 웹 스트림
@@ -61,7 +61,7 @@ export const CONFIG = {
   //    서버 클라이언트 ID 는 Play Games '게임 서버' OAuth 클라이언트(공개값) — Worker 의 PGS_CLIENT_ID 와 같은 값.
   //    둘 중 하나라도 비어 있으면 자동 연결을 건너뛰고 '바로 플레이하기' → 게스트로 폴백한다.
   PGS_AUTH_ENDPOINT: 'https://calmforest-pgs-auth.icuchoel.workers.dev',
-  PGS_SERVER_CLIENT_ID: '1003103780622-8l7nop9bgedmhc8eds1mlc3bv9v96chv.apps.googleusercontent.com',   // agriquant 웹 클라이언트 calm_forest(Supabase 구글 공급자와 같은 클라이언트)
+  PGS_SERVER_CLIENT_ID: '536929088498-qo1v15ribu6hfbovbt6eoqgi5magcd6q.apps.googleusercontent.com',   // calm-forest 웹 클라이언트 calmforest-web(Supabase 구글 공급자와 같은 클라이언트)
 
   // ── ☕ 카페 손님 동적 생성 엔드포인트 ─────────────────────────
   //    같은 오리진의 서버 함수(functions/api/cafe-guests.js)가 Gemini 를 대신 호출합니다.
