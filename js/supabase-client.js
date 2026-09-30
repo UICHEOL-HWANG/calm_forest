@@ -195,6 +195,33 @@ export async function signInWithGoogle() {
   if (error) { console.warn('[구글 로그인 실패]', error.message); alert(t('구글 로그인 실패: {0}').replace('{0}', error.message)); }
 }
 
+// ── ✉️ 이메일 6자리 코드 로그인 (웹·itch 전용 — 토스·플레이 앱은 전용 로그인이 있다) ──
+//   화면·검증·오류 분류는 js/auth/email-login.js. 여기선 Supabase 호출만 하고 { ok, error } 로 돌려준다.
+//   ⚠️ Supabase Auth 메일 템플릿(Magic Link)이 {{ .Token }} 을 보여 줘야 코드가 메일에 찍힌다.
+//   ⚠️ 기본 SMTP 는 시간당 몇 통뿐 — 운영은 커스텀 SMTP(Resend) 필수.
+export async function requestEmailCode(email) {
+  if (!supabase || IS_TOSS || IS_ANDROID) return { ok: false, error: { code: 'unavailable' } };
+  try {
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    if (error) { console.warn('[이메일 코드 요청 실패]', error.code || error.status, error.message); return { ok: false, error }; }
+    return { ok: true };
+  } catch (e) { console.warn('[이메일 코드 요청 실패]', e?.message || e); return { ok: false, error: e }; }
+}
+
+export async function verifyEmailCode(email, token) {
+  if (!supabase || IS_TOSS || IS_ANDROID) return { ok: false, error: { code: 'unavailable' } };
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+    if (error || !data?.session) {
+      console.warn('[이메일 코드 확인 실패]', error?.code || error?.status, error?.message || 'no session');
+      return { ok: false, error: error || { message: 'no session' } };
+    }
+    applySession(data.session);
+    console.log('[이메일] 세션 연결 완료', state.userId);
+    return { ok: true };
+  } catch (e) { console.warn('[이메일 코드 확인 실패]', e?.message || e); return { ok: false, error: e }; }
+}
+
 // ── 📱 구글 네이티브 로그인 (구글 플레이 앱 전용) ────────────────────
 //   Credential Manager 계정 시트 → ID 토큰 → signInWithIdToken. 브라우저 왕복·리다이렉트 URL 이 없다.
 //   사용자가 시트를 닫으면 조용히 끝낸다(오류 아님).
