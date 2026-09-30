@@ -119,7 +119,15 @@ test('start·answer·end 가 같은 quiz_date 와 qid 축을 싣는다', () => {
 });
 test('시작하면 그날은 끝난 것으로 기록(닫아도 재시도 불가), 보상은 ferry_quiz 출처', () => {
   assert.match(body('quizStart'), /gameState\.quiz = \{ date: today, done: true, correct: 0 \}/);
-  assert.match(body('quizEnd'), /giveReward\([^)]*'ferry_quiz', 'ferry_quiz:' \+ /);
+  // 리뷰(2026-09-30): quizEnd 에서만 주면 결과 화면 전에 앱이 꺼질 때(모바일 백그라운드) 맞힌 보상이 사라진다
+  //   → 맞힐 때마다 바로 지급, 3/3 보너스는 마지막 정답에서. quizEnd 는 트래킹·대사만.
+  assert.match(body('quizAnswer'), /giveReward\([^)]*'ferry_quiz', 'ferry_quiz:' \+ /);
+  assert.doesNotMatch(body('quizEnd'), /giveReward\(/);
+  assert.match(body('quizStart'), /if \(run\) quizEnd\(\{ quit: true \}\)/);   // 남은 판은 먼저 정산
+});
+test('npc_quest qid 는 퀘스트 순서가 바뀌어도 그대로(제목 해시)', () => {
+  const q = QUIZ_TEMPLATES.find(t => t.id === 'npc_quest').make(DATA, mulberry(3));
+  assert.match(q.qid, /^npc_quest:[a-z]+-[0-9a-z]{4,}$/);
 });
 test('트래킹에 표시 문자열(문제 문장·이름)을 싣지 않는다', () => {
   assert.doesNotMatch(call(body('quizAnswer'), 'ferry_quiz_answer'), /\.ko\b|\.en\b|q\.q\b/);
