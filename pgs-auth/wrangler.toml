@@ -20,7 +20,7 @@ workers_dev = true          # https://calmforest-pgs-auth.<서브도메인>.work
 # 공개값(브라우저·앱에도 그대로 나가는 값 — 시크릿 아님)
 SUPABASE_URL = "https://zuyxgjfihxtfdpolljzw.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_4ii948uQwLP2_W9eIW7Qcg_hWuFON9t"
-PGS_CLIENT_ID = "1003103780622-8l7nop9bgedmhc8eds1mlc3bv9v96chv.apps.googleusercontent.com"   # agriquant 웹 클라이언트 calm_forest — Play Games '게임 서버' 인증 정보로 연결(2026-09-25)
+PGS_CLIENT_ID = "536929088498-qo1v15ribu6hfbovbt6eoqgi5magcd6q.apps.googleusercontent.com"   # calm-forest 웹 클라이언트 calmforest-web — Play Games '게임 서버' 인증 정보로 연결(2026-09-30 agriquant→calm-forest 이관)
 
 # ── 속도 제한 — IP 당 분당 20회(계정 대량 생성·구글 쿼터 소진 방지, 보안 리뷰 2026-09-25) ──
 #   namespace_id 는 계정 안에서 고유한 임의 정수. 바인딩이 없으면 코드는 제한 없이 통과한다.
