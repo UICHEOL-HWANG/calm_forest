@@ -2052,7 +2052,8 @@ export async function enterGame() {
   }
   if (load.state) applySave(load.state);
   // 💳 현금 구매 원장과 맞춘다 — 웹에서 산 걸 앱·토스에서도 보이게 하는 경로. 못 읽으면 세이브대로.
-  await syncPurchases({ gameState, fetchPurchases, via: 'boot', hooks: purchaseHooks() });
+  try { await syncPurchases({ gameState, fetchPurchases, via: 'boot', hooks: purchaseHooks() }); }
+  catch (e) { console.warn('[purchases] 부팅 병합 실패(세이브대로 진행):', e?.message || e); }
   // 🔥 첫 화덕 — 세이브가 있든 없든 한 채는 서 있어야 한다. applySave 안에 두면 신규 유저가 못 받는다.
   //    스토리 보상으로 주려던 원안은 1장 완료가 25명(진입 109명의 23%)뿐이라 폐기했다.
   //    이미 지어 두거나 옮겨 둔 사람의 자리는 건드리지 않는다.
