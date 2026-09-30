@@ -91,3 +91,10 @@ test('petKindOf: 낯선 id 는 null — 세이브가 들고 온 값을 그대로
   assert.equal(petKindOf('dragon'), null);
   assert.equal(petKindOf(undefined), null);
 });
+
+test('펫 cash 칸 — null 이거나 {priceId,label}(스펙 2026-09-30 §2-1)', () => {
+  for (const k of PET_KINDS) {
+    assert.ok('cash' in k, k.id);
+    assert.ok(k.cash === null || (typeof k.cash.priceId === 'string' && typeof k.cash.label === 'string'), k.id);
+  }
+});
