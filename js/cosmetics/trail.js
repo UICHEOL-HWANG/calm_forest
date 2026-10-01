@@ -121,7 +121,7 @@ function makeMarks(THREE) {
     //  💎 반딧불 — 바닥엔 짙은 풀잎 하나(작게). 주인공은 위로 떠오르는 반딧불(trail-fx.js)이다.
     firefly: (g, s, o) => {
       const leaf = petalMesh(s * 1.1, s * 0.55, film(0x5f8f4a, o * 0.8));
-      leaf.rotation.x = -Math.PI / 2; leaf.position.y = 0.006;
+      leaf.position.y = 0.006;
       g.add(leaf);
     },
     //  💎 무지개 — 🐾 발바닥 모양을 그대로 쓰고(동물마다 다르다) 흰색으로 굽는다.
