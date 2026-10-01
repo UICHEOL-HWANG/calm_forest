@@ -15,7 +15,7 @@
 
 import { cashFor } from '../shop/cash.js';
 
-export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail']);
+export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin']);
 
 const RAW = [
   // 🎩 머리 — dome 4 · low 3
@@ -37,6 +37,9 @@ const RAW = [
   // 💎 프리미엄 — 현금 전용(won). 코인으로 못 산다(2026-10-01 스펙 §2)
   { id: 'firefly', slot: 'trail', ico: '🌟', name: '반딧불', won: 4000, tier: '프리미엄' },
   { id: 'rainbow', slot: 'trail', ico: '🌈', name: '무지개', won: 3000, tier: '프리미엄' },
+  // 🧥 전신 스킨 — 현금 전용(2026-10-01 2단계 스펙). 동물 체형은 그대로, 재질·장식만 바뀐다(js/cosmetics/skin.js)
+  { id: 'forest_spirit', slot: 'skin', ico: '🌿', name: '숲의 정령',   won: 10000, tier: '프리미엄' },
+  { id: 'plush_doll',    slot: 'skin', ico: '🧸', name: '플러시 인형', won: 9000,  tier: '프리미엄' },
   // 👣 발자국 — 값이 오를수록 바닥에 있던 게 공중으로 올라온다
   { id: 'paw',     slot: 'trail', ico: '🐾', name: '발바닥', coins: 700,  tier: '기본' },
   { id: 'drop',    slot: 'trail', ico: '💧', name: '물방울', coins: 900,  tier: '기본' },
