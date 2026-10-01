@@ -80,3 +80,7 @@ dist-cap/
 
 # 🔑 Firebase 설정(API 키 포함) — 공개 저장소에 올리지 않는다(2026-09-25 노출 사고). 로컬에만 두고 빌드한다.
 android/app/google-services.json
+
+# 💎 프리미엄 레퍼런스 — 타 게임 스크린샷(저작권), 로컬 전용. README.md 만 추적
+dev/active/premium-cosmetics/refs/*
+!dev/active/premium-cosmetics/refs/README.md

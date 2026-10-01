@@ -35,6 +35,7 @@ as $$
 declare
   caller_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   admins text[] := array['icuchoel@gmail.com', 'cheorish.hw@gmail.com'];  -- ★ 관리자 이메일(소문자)
+  admin_ids uuid[] := array['17bb08c7-c4bc-4870-b464-1b131e67aff8', '4cab8ea4-c27f-4ef5-b350-cf55f0f993b5']::uuid[];  -- ★ 관리자 UUID(auth.users) — 이메일과 함께 맞출 것
   tz constant text := 'Asia/Seoul';
   allowed boolean := false;
   today date;
@@ -44,7 +45,7 @@ begin
   -- ── 접근 권한: 관리자 계정 OR 유효한 임시 공유 토큰 ──────────
   --  공유 토큰은 cf_share_links 표에서 발급합니다(생성/발급 SQL 은 docs/ops/DEPLOY.md).
   --  만료(expires_at)가 지나면 자동으로 막히고, 행을 지우면 즉시 회수됩니다.
-  if caller_email = any (admins) then
+  if caller_email = any (admins) and coalesce(auth.uid() = any (admin_ids), false) then   -- 🔐 이메일 + UUID 이중 확인(migrate_admin_uid_guard.sql)
     allowed := true;
   elsif coalesce(token, '') <> '' then
     update public.cf_share_links s
@@ -433,7 +434,9 @@ alter table public.beta_testers enable row level security;
 drop policy if exists beta_testers_self_read on public.beta_testers;
 create policy beta_testers_self_read on public.beta_testers
   for select to authenticated
-  using (email = lower(coalesce(auth.jwt() ->> 'email', '')));
+  using (email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+         and not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false)
+         and ((select auth.jwt()) -> 'app_metadata' ->> 'provider') in ('google', 'email'));
 -- 쓰기 정책 없음 → service role(SQL 편집기)로만 등록/변경
 -- 명단 등록 예시(운영자가 SQL 편집기에서 실행):
 -- insert into public.beta_testers (email, grp, note) values
@@ -463,8 +466,12 @@ alter table public.beta_diary enable row level security;
 drop policy if exists beta_diary_self_rw on public.beta_diary;
 create policy beta_diary_self_rw on public.beta_diary
   for all to authenticated
-  using (email = lower(coalesce(auth.jwt() ->> 'email', '')))
-  with check (email = lower(coalesce(auth.jwt() ->> 'email', '')));
+  using (email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+         and not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false)
+         and ((select auth.jwt()) -> 'app_metadata' ->> 'provider') in ('google', 'email'))
+  with check (email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+         and not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false)
+         and ((select auth.jwt()) -> 'app_metadata' ->> 'provider') in ('google', 'email'));
 
 drop function if exists public.cf_beta_overview(int, text);
 create or replace function public.cf_beta_overview(days int default 7, token text default null)
@@ -476,12 +483,13 @@ as $$
 declare
   caller_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   admins text[] := array['icuchoel@gmail.com', 'cheorish.hw@gmail.com'];  -- ★ 관리자 이메일(소문자) — cf_admin_overview와 동일하게 유지
+  admin_ids uuid[] := array['17bb08c7-c4bc-4870-b464-1b131e67aff8', '4cab8ea4-c27f-4ef5-b350-cf55f0f993b5']::uuid[];  -- ★ 관리자 UUID(auth.users) — 이메일과 함께 맞출 것
   tz constant text := 'Asia/Seoul';
   allowed boolean := false;
   since timestamptz;
   result jsonb;
 begin
-  if caller_email = any (admins) then
+  if caller_email = any (admins) and coalesce(auth.uid() = any (admin_ids), false) then   -- 🔐 이메일 + UUID 이중 확인(migrate_admin_uid_guard.sql)
     allowed := true;
   elsif coalesce(token, '') <> '' then
     update public.cf_share_links s
