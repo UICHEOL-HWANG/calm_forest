@@ -34,3 +34,9 @@ test('빛줄기는 진열물(root)에 달지 않는다 — 달면 회전을 따�
   assert.match(rev, /disposeTree\(rig\.rays\)/);
   assert.match(html, /#buy-reveal canvas \{[^}]*mask-image: radial-gradient/);
 });
+
+test('연출은 가게가 열려 있을 때만 · [바로 걸어보기] 도 열린 가게만 닫는다 · 시작 중 예외면 오버레이를 걷는다', () => {
+  assert.match(cafe, /premium && cosShopOpen\(\)\) \{\s*try \{\s*playPurchaseReveal/);
+  assert.match(cafe, /function closeCosShopForWalk\(\) \{ if \(cosShopOpen\(\)\)/);
+  assert.match(rev, /try \{ start\([^)]*\); \}\s*catch \(e\) \{ stopPurchaseReveal\(\); throw e; \}/);
+});

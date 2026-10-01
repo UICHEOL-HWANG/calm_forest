@@ -87,6 +87,11 @@ export function playPurchaseReveal({ itemId, animalId = null, onWalk = () => {},
   document.getElementById('br-name').textContent = copy.name;
   document.getElementById('br-desc').textContent = copy.desc;
   wrap.classList.add('show');
+  try { start(wrap, canvas, itemId, animalId, onWalk, onClose); }
+  catch (e) { stopPurchaseReveal(); throw e; }   // 중간에 터지면 투명한 전면 오버레이가 클릭을 다 먹는다
+}
+
+function start(wrap, canvas, itemId, animalId, onWalk, onClose) {
   const w = canvas.clientWidth || 360, h = canvas.clientHeight || 280;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   const { root, fx } = showcase(itemId, animalId);
@@ -105,8 +110,8 @@ export function playPurchaseReveal({ itemId, animalId = null, onWalk = () => {},
     rays.material.opacity = p.rays * 0.9; rays.rotation.z = t * 0.15;   // 빛줄기는 늘 카메라 쪽(+z)을 본 채 제자리에서 돈다
     if (t - rig.lastPuff > 0.8) {                     // 진열물에선 입자가 계속 피어오르게 — 무지개 색은 처음 칠한 그대로
       rig.lastPuff = t;
-      const [x, z] = SPOTS[Math.floor(t) % SPOTS.length];
-      fx.onStamp(itemId, { x, y: 0, z }, { nightLevel: 1 });
+      const i = Math.floor(t) % SPOTS.length, [x, z] = SPOTS[i];
+      fx.onStamp(itemId, { x, y: 0, z }, { nightLevel: 1, step: i });   // 무지개 반짝이는 그 자리 자국 색(showcase 가 0,1,2 로 칠했다)
     }
     fx.update(dt, { nightLevel: 1 });
     if (p.card) wrap.classList.add('card');
