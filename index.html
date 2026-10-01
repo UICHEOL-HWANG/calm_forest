@@ -531,6 +531,7 @@
   #bag-btn .bag-emo { font-size: 18px; }
   /* 🌤️ 날씨·밤낮 표시 — 조절 기능이 없어진 뒤로 진행 바는 뺐다(아이콘 하나면 충분) */
   #time-indicator { display: flex; align-items: center; justify-content: center; }
+  #season-emoji { cursor: pointer; margin-right: 2px; }   /* 🍂 계절 — 누르면 남은 날·한정 어종 */
 
   /* 하단 중앙: 도구 하트바 */
   /* 🎒 페이지당 4칸 + 칩 1개 = 가장 좁은 화면에서도 한 줄에 들어간다.
@@ -1751,7 +1752,7 @@
       <span class="inv-item"><span class="inv-ico">🪙</span><b id="inv-coin">0</b></span>
       <button id="bag-btn" title="가방 열기"><span class="bag-emo">🎒</span><span class="bag-lbl">가방</span></button>
     </div>
-    <div id="time-indicator"><span id="time-emoji">🌤️</span></div>
+    <div id="time-indicator"><span id="season-emoji" title="계절">🍂</span><span id="time-emoji">🌤️</span></div>
   </div>
 
   <!-- 이모트 팝업 (이모트 버튼 누르면) -->
@@ -5592,6 +5593,9 @@
       fetchDexNotes(Object.keys(d.cats).filter(c => d.cats[c].some(e => e.found)));
     }
     $('dex-tab').addEventListener('click', openDex);
+    // 🍂 계절 아이콘 — 지금 계절·남은 날·이번 계절 한정 어종
+    $('season-emoji').textContent = Input.seasonIco();
+    $('season-emoji').addEventListener('click', () => ui.toast(Input.seasonStatus(), 2600));
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
     $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
     // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다

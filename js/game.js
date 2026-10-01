@@ -43,6 +43,7 @@ import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } fro
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
+import { SEASON_IDS, seasonById, seasonInfo, seasonOf, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { makeRaidScar } from './duel/raid-art.js';                                                   // 🐾 털린 밭 조형(흔적·대결 무대 공용)
@@ -364,13 +365,16 @@ function dateHash(salt, offsetDays = 0) {   // offsetDays: 0=오늘, 1=내일(�
   let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
   return h;
 }
-// 🌦️ 오늘의 날씨 — 날짜 시드라 모든 유저에게 동일. 맑음 55% / 비 20% / 눈 12% / 안개 13%
+// 🌦️ 오늘의 날씨 — 날짜 시드라 모든 유저에게 동일. 🍂 계절마다 확률이 다르다(표는 js/season.js)
 //    테스트: ?weather=rain|snow|fog (?rain=1 도 호환)
 function weatherOf(offsetDays = 0) {
-  const r = dateHash('weather', offsetDays) % 100;
-  return r < 20 ? 'rain' : r < 32 ? 'snow' : r < 45 ? 'fog' : 'clear';
+  return weatherFromRoll(dateHash('weather', offsetDays) % 100, seasonOf(todayStr(offsetDays)));
 }
 const _wq = new URLSearchParams(location.search);
+// 🍂 오늘의 계절 — 날짜로만 정한다(전 유저 동일). 테스트: ?season=spring|summer|autumn|winter
+//   ⚠️ ?season 은 계절 표시·한정 어종만 바꾼다. 날씨는 실제 날짜의 계절을 따른다.
+const SEASON_INFO = seasonInfo(todayStr());
+const SEASON = SEASON_IDS.includes(_wq.get('season')) ? _wq.get('season') : SEASON_INFO.season.id;
 const WEATHER = ['rain', 'snow', 'fog', 'clear'].includes(_wq.get('weather')) ? _wq.get('weather')
   : _wq.has('rain') ? 'rain'
   : weatherOf(0);
@@ -630,7 +634,7 @@ function habitatCtx() { return { night: isNight(), rain: RAIN_DAY }; }
 // 📖 게이트 판정 입력 — 획득 판정은 날씨와 밤낮을 **둘 다** 본다.
 //   ⚠️ 🧑‍🦳큐레이터 의뢰는 weatherOpen(날씨만) 을 쓴다. 의뢰는 하루치 시드로 고정되는데
 //      밤낮은 하루 안에 바뀌므로, 밤 종을 낮에 걸러내면 그날 의뢰가 사라진다(스펙 참고).
-function situation() { return { weather: WEATHER, night: isNight() }; }
+function situation() { return { weather: WEATHER, season: SEASON, night: isNight() }; }
 
 // 📖 [GA4] 게이트가 닫혀 못 얻은 순간 — 게이트가 너무 조이는지 보는 축.
 //   예: 🌈무지개 물고기 획득률이 한 달 뒤에도 안 오르면 확률 22%를 올린다.
@@ -707,6 +711,7 @@ function questCtx() {
     // 📖 오늘 날씨에 닫힌 희귀종은 의뢰로 나오지 않게(js/dex-gates.js).
     //   ⚠️ 밤낮은 안 넘긴다 — 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다.
     weather: WEATHER,
+    season: SEASON,   // 🍂 철 지난 계절 한정 어종도 의뢰로 나오지 않게
   };
 }
 
@@ -956,7 +961,7 @@ const gameState = {
   character: null,                          // 선택한 동물 캐릭터 id
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
   unlocked: { roof: [0], wall: [0], door: [0] }, // 획득한 외관 색(0=기본 항상 보유)
-  daily: { lastDate: null, streak: 0 },     // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수 }
+  daily: { lastDate: null, streak: 0, season: null },   // 출석 보상 { 마지막 수령일(YYYY-MM-DD), 연속 일수, 🍂 마지막으로 본 계절 }
   dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   // 🎀 꾸미기 — 산 것(영구) + 슬롯별 장착. 규칙은 js/cosmetics/equip.js
@@ -1150,6 +1155,28 @@ function setNickname(name, source = 'change') {
 // 예보 날씨가 아직 도감에 없으면 재방문 훅 문구 — 출석 모달·올빼미 대사에 붙임
 function forecastDexNudge() { return gameState.dex.weather?.[FORECAST] ? '' : ' 아직 도감에 없는 날씨예요! 📖'; }
 
+// 🍂 계절 안내 한 줄 — 출석 모달에 붙인다. 할 말이 없으면 ''.
+//   · 새 계절 첫 접속: "왔어요" + 이번 계절 한정 어종
+//   · 끝나기 3일 전부터: 한정 어종을 아직 못 낚았으면 "곧 끝나요"(놓치기 싫어서 돌아오는 훅)
+//   ⚠️ 실제 날짜의 계절만 본다(?season 강제값은 표시 테스트용이라 저장에 남기지 않는다).
+function seasonFish(id) { return FISH_KINDS.find(k => k.season === id); }
+function seasonLine(isNew) {
+  const { season, left } = SEASON_INFO;
+  const fish = seasonFish(season.id);
+  const fishIco = DEX.fish.find(f => f.id === fish?.rarity)?.ico || '🐟';
+  if (isNew) return `${season.ico} ${season.name}이 왔어요! ${left}일 동안 호수에서 ${fishIco} ${fish.name}${josa(fish.name, '이', '가')} 낚여요.`;
+  if (left <= 3 && fish && !gameState.dex.fish?.[fish.rarity]) return `⏳ ${season.name}이 ${left}일 남았어요 — ${fishIco} ${fish.name}${josa(fish.name, '은', '는')} 지금만 낚여요!`;
+  return '';
+}
+// HUD 계절 아이콘을 눌렀을 때 — 지금 계절·남은 날·한정 어종(낚았는지)
+function seasonStatus() {
+  const s = seasonById(SEASON);
+  const fish = seasonFish(SEASON);
+  const got = fish && gameState.dex.fish?.[fish.rarity];
+  return got ? `${s.ico} ${s.name} · ${SEASON_INFO.left}일 남음 — 이번 계절 한정 ${fish.name}도 낚았어요 ✅`
+             : `${s.ico} ${s.name} · ${SEASON_INFO.left}일 남음 — 이번 계절 한정: ${fish.name}`;
+}
+
 // ── 출석 보상 — 하루 1회, 연속 출석(streak)일수록 커짐. 7일마다 보석 보너스 ──
 function checkDailyBonus() {
   const d = gameState.daily;
@@ -1157,6 +1184,8 @@ function checkDailyBonus() {
   if (d.lastDate === today) return;                              // 오늘 이미 받음
   d.streak = (d.lastDate === todayStr(-1)) ? d.streak + 1 : 1;   // 어제 접속했으면 연속, 아니면 1일차
   d.lastDate = today;
+  const seasonNew = d.season !== SEASON_INFO.season.id;          // 🍂 이 계절 첫 접속(신규 유저 포함)
+  d.season = SEASON_INFO.season.id;
   const coins = DAILY_COINS[Math.min(d.streak, 7) - 1];
   const reward = { coins };
   if (d.streak > 0 && d.streak % 7 === 0) reward.gem = 1;        // 7일 연속마다 💎
@@ -1165,6 +1194,9 @@ function checkDailyBonus() {
   // 한 줄에 하나씩(#hint-body 는 pre-line) — 베타 피드백 "한 문단으로 붙어 있어 안 읽힌다"
   let body = `연속 ${d.streak}일째 방문! ${rewardText(reward)} 받았어요.` +
     (reward.gem ? '\n7일 연속 보너스 💎!' : '\n내일 또 오면 보상이 더 커져요!');
+  const sLine = seasonLine(seasonNew);
+  if (sLine) body += '\n' + sLine;                              // 🍂 새 계절 · 끝나기 직전 안내
+  if (seasonNew) trackEvent('season_start_seen', { season: d.season });   // [GA4] 계절 넘어가고 첫 접속
   if (WEATHER !== 'clear') body += '\n' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
   body += '\n🔮 ' + forecastLine() + forecastDexNudge(); // 내일 예보 — 재방문 유도(+날씨 도감 훅)
   if (gameState.character && gameState.tutorialSeen) {
@@ -1733,6 +1765,8 @@ export const Input = {
     return used + 1;
   },
   talkWeather() { return WEATHER; },             // 첫인사를 고를 때 쓴다
+  seasonStatus() { return seasonStatus(); },     // 🍂 HUD 계절 아이콘 탭
+  seasonIco() { return seasonById(SEASON).ico; },
   capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(현재 화면 그대로)
   captureActionShot() { return startActionShot(); },  // 📷 밀착 액션샷(포즈 정점 캡처, Promise<dataURL>)
   toggleSit() { if (intro) return; sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글(컷신 중엔 포즈 보호)
@@ -5735,7 +5769,8 @@ const CATCH_ARC = 0.4;            // 포물선 비행 시간(초)
 // 로우폴리 물고기(등급별 색, 무지개는 은은한 발광) — 머리 위에서 파닥파닥
 function fishMesh(rarity) {
   const g = new THREE.Group();
-  const col = rarity === 'rare' ? 0x7ae0ff : rarity === 'uncommon' ? 0xe06a5a : 0x9fb4c8;
+  const col = FISH_KINDS.find(k => k.rarity === rarity)?.col   // 🍂 계절 한정 어종은 표에 색이 있다
+    ?? (rarity === 'rare' ? 0x7ae0ff : rarity === 'uncommon' ? 0xe06a5a : 0x9fb4c8);
   const mat = rarity === 'rare'
     ? new THREE.MeshStandardMaterial({ color: col, emissive: 0x3ac0e0, emissiveIntensity: 0.4, roughness: 0.4 })
     : clayMat(col, false);
@@ -7126,7 +7161,7 @@ function onResize() {
 // 🔁 js/spaces/* 가 가져다 쓰는 이름 — 선언 원문은 그대로 두고 여기서만 내보낸다(tools/refactor/extract-module.mjs)
 export {
   BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, HINT_H, HINT_W, IS_MOBILE, LAKE, ORES, RAIN_DAY, RES_ICON, RES_LABEL,
-  SEVERE_TODAY, SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _hintAnyPrev, _seaPrevTool, _v, actAnim, analog,
+  SEASON, SEVERE_TODAY, SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _hintAnyPrev, _seaPrevTool, _v, actAnim, analog,
   applyCosmetics, applyHouseStyle, armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atOrchard, atRiver, atSea,
   awardBadge, baitActive, biteAt, biteEnd, blockIfLocked, boat, boatView, bobber, buffOn, buffs, bugJarMesh,
   bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, castPos, catchCeremony,

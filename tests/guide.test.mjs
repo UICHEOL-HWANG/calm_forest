@@ -94,6 +94,6 @@ test('삽 안내 — 도구 표·밭 없애기 단락·FAQ·도감 종수', () =
   assert.match(h, /<b>🪏 밭 없애기<\/b>/, '농사 섹션에 "밭 없애기" 단락이 없다');
   assert.match(h, /6초 안에/, '6초 유예 안내가 없다');
   assert.match(h, /<td>밭을 없애고 싶어요<\/td>/, 'FAQ 에 "밭을 없애고 싶어요" 가 없다');
-  assert.match(h, /📖 도감 - 72종/, '도감 종수가 72 가 아니다 — js/data/dex.js DEX 합계와 맞춘다');
+  assert.match(h, /📖 도감 - 76종/, '도감 종수가 76 이 아니다 — js/data/dex.js DEX 합계와 맞춘다');
   assert.match(h, /땅속에서 3/, '도감 카드에 「땅속에서」 3종이 없다');
 });

@@ -7,6 +7,7 @@ const sit = (weather, night = false) => ({ weather, night });
 test('게이트 표 — 스펙 확정값 4종이 정확히 일치한다', () => {
   assert.deepEqual(Object.keys(DEX_GATES).sort(), ['bug', 'fish', 'forage', 'ore']);
   assert.deepEqual(DEX_GATES.fish.rare,     { weather: ['rain'], p: 0.22 });
+  assert.deepEqual(DEX_GATES.fish.maple_carp, { season: ['autumn'], p: 0.12 });   // 🍂 계절 한정(js/season.js)
   assert.deepEqual(DEX_GATES.ore.gem,       { weather: ['fog'], p: 0.28 });
   assert.deepEqual(DEX_GATES.bug.rainbow,   { weather: ['rain', 'fog'], night: true, p: 0.18 });
   assert.deepEqual(DEX_GATES.forage.herb,   { night: true, p: 0.30 });
@@ -125,7 +126,7 @@ test('rollKind: 목록이 한 종뿐이고 그게 닫혀 있어도 터지지 않
 // ⚠️ 회귀 잠금 — 이 기능의 가장 큰 위험
 test('게이트는 도감 종을 늘리거나 줄이지 않는다 — DEX_TOTAL 불변', () => {
   const known = {
-    fish:   ['common', 'uncommon', 'rare'],
+    fish:   ['common', 'uncommon', 'rare', 'sakura_trout', 'puffer', 'maple_carp', 'ice_smelt'],
     ore:    ['stone', 'coal', 'gem'],
     bug:    ['rainbow', 'green', 'blue', 'yellow'],
     forage: ['herb', 'acorn', 'berry', 'mushroom'],

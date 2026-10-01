@@ -1,0 +1,52 @@
+// =============================================================
+//  calm forest · 🍂 4계절 순환 (순수 함수 — DOM/Three 의존 없음)
+//  ------------------------------------------------------------
+//  스펙: docs/superpowers/specs/2026-10-01-seasons-design.md
+//  ▶ 계절은 날짜로만 정한다 — 날씨처럼 모든 유저에게 같고, 서버도 같은 식으로 안다.
+//  ▶ 한 계절 14일 · 한 바퀴 56일. 한 번 만들고 계속 돈다(매 시즌 새로 만들지 않는다).
+//  ▶ 기준일: 🍂가을 1일 = 2026-10-09 = 🌾수확제 광장 시즌 시작(sql/migrations/migrate_plaza.sql).
+//  ▶ ⚠️ functions/api/_game-day.js 에 서버 사본이 있다. 여기를 고치면 거기도 고친다
+//     (tests/season.test.mjs 가 두 쪽을 대조한다).
+//  ▶ 테스트: npm test (tests/season.test.mjs) · 강제: ?season=spring|summer|autumn|winter
+// =============================================================
+
+export const SEASON_DAYS = 14;
+export const SEASON_EPOCH = '2026-09-11';   // 🌸봄 1일 — 여기서 28일 뒤가 🍂가을 1일(10/9)
+
+/**
+ * 계절 표. weather 는 날씨 굴림(0~99)의 경계 — rain 미만 비 · snow 미만 눈 · fog 미만 안개 · 나머지 맑음.
+ *   계절 전 평균이 예전 고정값(비 20 · 눈 12 · 안개 13 · 맑음 55)에서 크게 벗어나지 않게 잡았다.
+ */
+export const SEASONS = [
+  { id: 'spring', name: '봄',   ico: '🌸', weather: { rain: 22, snow: 22, fog: 37 } },   // 비 22 · 눈 0  · 안개 15 · 맑음 63
+  { id: 'summer', name: '여름', ico: '☀️', weather: { rain: 30, snow: 30, fog: 38 } },   // 비 30 · 눈 0  · 안개 8  · 맑음 62
+  { id: 'autumn', name: '가을', ico: '🍂', weather: { rain: 18, snow: 24, fog: 42 } },   // 비 18 · 눈 6  · 안개 18 · 맑음 58
+  { id: 'winter', name: '겨울', ico: '❄️', weather: { rain: 8,  snow: 43, fog: 53 } },   // 비 8  · 눈 35 · 안개 10 · 맑음 47
+];
+export const SEASON_IDS = SEASONS.map(s => s.id);
+
+// 'YYYY-MM-DD' → 에포크 이후 날 수. UTC 로 읽어 기기 시간대·서머타임과 무관하게 정수가 된다
+function dayIndex(date) {
+  return Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(SEASON_EPOCH + 'T00:00:00Z')) / 86400000);
+}
+
+/** 그 날짜의 계절 정보 — { season, day(1~14), left(오늘 포함 남은 날), cycle } */
+export function seasonInfo(date) {
+  const d = dayIndex(date);
+  const span = SEASON_DAYS * SEASONS.length;
+  const inCycle = ((d % span) + span) % span;   // 기준일 이전 날짜도 음수 없이 돈다
+  const idx = Math.floor(inCycle / SEASON_DAYS);
+  const day = inCycle % SEASON_DAYS + 1;
+  return { season: SEASONS[idx], day, left: SEASON_DAYS - day + 1, cycle: Math.floor(d / span) };
+}
+
+/** 그 날짜의 계절 id */
+export function seasonOf(date) { return seasonInfo(date).season.id; }
+
+export function seasonById(id) { return SEASONS.find(s => s.id === id) || null; }
+
+/** 날씨 굴림(0~99) → 날씨. 계절마다 경계만 다르다 */
+export function weatherFromRoll(r, seasonId) {
+  const w = (seasonById(seasonId) || SEASONS[2]).weather;
+  return r < w.rain ? 'rain' : r < w.snow ? 'snow' : r < w.fog ? 'fog' : 'clear';
+}
