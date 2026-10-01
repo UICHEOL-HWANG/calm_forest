@@ -10,9 +10,9 @@ test('fireflyCount — 밤엔 2개, 낮엔 30% 확률로 1개', () => {
   assert.equal(fireflyCount(0, 0.3), 0);
 });
 
-test('hueAt — 걸음마다 0.09 씩 돌고 [0,1) 로 감긴다', () => {
+test('hueAt — 걸음마다 1/7 씩 돌고 [0,1) 로 감긴다', () => {
   assert.equal(hueAt(0), 0);
-  assert.ok(Math.abs(hueAt(1) - 0.09) < 1e-9);
+  assert.ok(Math.abs(hueAt(1) - 1 / 7) < 1e-9);
   for (let s = 0; s < 50; s++) { const h = hueAt(s); assert.ok(h >= 0 && h < 1, `${s}: ${h}`); }
   assert.notEqual(rainbowHex(0), rainbowHex(1));
   assert.ok(rainbowHex(0) >= 0 && rainbowHex(0) <= 0xffffff);

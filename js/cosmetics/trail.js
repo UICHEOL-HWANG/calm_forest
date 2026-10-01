@@ -120,7 +120,7 @@ function makeMarks(THREE) {
     },
     //  💎 반딧불 — 바닥엔 짙은 풀잎 하나(작게). 주인공은 위로 떠오르는 반딧불(trail-fx.js)이다.
     firefly: (g, s, o) => {
-      const leaf = petalMesh(s * 1.1, s * 0.55, film(0x5f8f4a, o * 0.8));
+      const leaf = petalMesh(s * 1.0, 0.6, film(0x5f8f4a, o * 0.8));
       leaf.position.y = 0.006;
       g.add(leaf);
     },
