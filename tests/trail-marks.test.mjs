@@ -19,3 +19,10 @@ test('tintTrailMark — 그 자국 메시들의 재질 color 만 바꾼다', () 
   tintTrailMark(mark, 0xff0000);
   assert.deepEqual(hexes, [0xff0000]);
 });
+
+test('firefly 빌더 — 반딧불 잎은 petalOf 기본 평평함을 쓴다(rotation.x 없음)', () => {
+  const match = src.match(/firefly: \(g, s, o\) =>[\s\S]*?(?=\n\s+rainbow:)/);
+  assert(match, 'firefly builder found');
+  const body = match[0];
+  assert.doesNotMatch(body, /rotation\.x/, 'firefly builder should not contain rotation.x');
+});
