@@ -82,3 +82,7 @@ test('sanitize: null·잘못된 타입이면 빈 상태', () => {
   assert.deepEqual(sanitize('x'), emptyCosmetics());
   assert.deepEqual(sanitize(undefined), emptyCosmetics());
 });
+
+test('canBuy: 현금 전용은 코인으로 못 산다', () => {
+  assert.deepEqual(canBuy(emptyCosmetics(), 1e9, 'firefly'), { ok: false, why: 'cash-only' });
+});

@@ -24,8 +24,9 @@ export function toggleWear(cos, id) {
   return { cos: equip(cos, id), action: 'on' };
 }
 
-/** 🎀 가게 줄 끝 버튼 — 산 건 다시 못 산다. 입기·벗기는 옷장에서 */
+/** 🎀 가게 줄 끝 버튼 — 산 건 다시 못 산다. 입기·벗기는 옷장에서. 💎 현금 전용이면 코인 버튼이 없다(null) */
 export function shopButton(it, cos) {
+  if (it.price.coins == null) return null;
   if (cos.owned.includes(it.id)) return { label: '구매 완료', disabled: true };
   return { label: `${it.price.coins.toLocaleString()}🪙`, disabled: false };
 }
