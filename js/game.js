@@ -86,8 +86,8 @@ import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
-import { applySkin, disposeSkin } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
-import { effectiveTrail, squashOf, skinSquashes } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
+import { applySkin, disposeSkin, showSprout } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
+import { effectiveTrail, squashOf, skinSquashes, sproutVisible } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
 import { createTrailFx, rainbowHex } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
 import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
@@ -3356,6 +3356,7 @@ function applyCosmetics(cos) {
     const m = buildCosmetic(THREE, it.id, charK);
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
+  showSprout(charGroup, sproutVisible(cos));   // 🌱 모자를 쓰면 정령 새싹을 숨긴다
 }
 
 // ── 👣 발자국 ── (스펙 §4-4)
@@ -3416,6 +3417,7 @@ export function buildCharacterMesh(id, cos = gameState.cosmetics) {
     const m = buildCosmetic(THREE, it.id, built.k);
     if (m) built.anchors[it.anchor || it.slot].add(m);
   }
+  showSprout(built.group, sproutVisible(cos));   // 🌱 입어보기 모자도 새싹을 가린다
   return built.group;
 }
 

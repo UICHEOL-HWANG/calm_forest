@@ -41,3 +41,11 @@ test('bellyPatchZ — 여우처럼 배가 더 나오면 배 앞면 + 0.004', () 
   const R = 0.52;
   assert.ok(Math.abs(bellyPatchZ(R, [0.90, 1.08, 0.90]) - (R * 0.922 + 0.004)) < 1e-9);
 });
+
+test('sproutVisible — 머리 칸에 뭔가 쓰면 정령 새싹을 숨긴다(모자를 뚫고 솟지 않게)', async () => {
+  const { sproutVisible } = await import('../js/cosmetics/skin-rules.js');
+  assert.equal(sproutVisible(cos(null, 'forest_spirit')), true);
+  assert.equal(sproutVisible({ equipped: { head: 'cap', skin: 'forest_spirit' } }), false);
+  assert.equal(sproutVisible({ equipped: { head: 'flower_crown' } }), false);
+  assert.equal(sproutVisible(null), true);
+});
