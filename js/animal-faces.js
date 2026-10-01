@@ -50,9 +50,9 @@ function eyes(g, { x, y, z, r, color, ring = false }) {
   const ringMat = ring ? plushMat(0xffffff) : null;
   [-1, 1].forEach(s => {
     if (ring) noShadow(put(g, S(r * 1.10), ringMat, s * x, y, z - r * 0.40));
-    noShadow(put(g, S(r), pupil, s * x, y, z));
-    noShadow(put(g, S(r * 0.36), hi, s * x + r * 0.34, y + r * 0.42, z + r * 0.78));
-    noShadow(put(g, S(r * 0.16), hi, s * x - r * 0.30, y - r * 0.30, z + r * 0.86));
+    noShadow(put(g, S(r), pupil, s * x, y, z)).userData.part = 'pupil';
+    noShadow(put(g, S(r * 0.36), hi, s * x + r * 0.34, y + r * 0.42, z + r * 0.78)).userData.part = 'highlight';
+    noShadow(put(g, S(r * 0.16), hi, s * x - r * 0.30, y - r * 0.30, z + r * 0.86)).userData.part = 'highlight';
   });
 }
 // 귀: 납작 타원(바깥색) + 안쪽 색 한 겹(살짝 앞으로)
@@ -155,6 +155,8 @@ export function buildAnimalHead(id, { HR, HY, body, belly }) {
   const build = HEADS[id] || HEADS.fox;
   const g = new THREE.Group();
   build(g, body, belly);
+  g.userData.part = 'head';
+  g.children[0].userData.part = 'skull';
   g.scale.setScalar(HR); g.position.y = HY;
   return g;
 }

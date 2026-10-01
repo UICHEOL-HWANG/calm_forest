@@ -5,6 +5,7 @@
 //  스펙: docs/superpowers/specs/2026-09-21-cosmetics-pet-design.md §4
 //  ▶ price.cash 는 js/shop/cash.js 가 채운다 — priceId(js/shop/price-ids.js)가 있는 항목만 { priceId, label }.
 //    null 이면 UI 는 현금 버튼을 안 그린다. 라벨은 코인 등급표(스펙 2026-09-30 §2-2).
+//  ▶ won 이 있으면 💎 프리미엄(현금 전용) — price.coins 는 null, 라벨은 won 그대로(₩4,000).
 //  ▶ earSafe: 머리 장식이 귀를 어떻게 다루는가(§3-3)
 //      'low'  위가 트여 귀가 지나간다 · 'dome' 머리를 덮되 테두리가 귀 밑동보다 위
 //  ▶ anchor: 슬롯 안에서 **붙을 면**을 아이템이 고른다. 가방류는 옆구리(side),
@@ -14,7 +15,7 @@
 
 import { cashFor } from '../shop/cash.js';
 
-export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail']);
+export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin']);
 
 const RAW = [
   // 🎩 머리 — dome 4 · low 3
@@ -33,6 +34,12 @@ const RAW = [
   { id: 'pack',   slot: 'back', ico: '🎒', name: '메신저 가방', coins: 1500, anchor: 'side' },
   { id: 'basket', slot: 'back', ico: '🧺', name: '바구니',      coins: 1200, anchor: 'side' },
   { id: 'cape',   slot: 'back', ico: '🦸', name: '망토',        coins: 1800, anchor: 'back' },
+  // 💎 프리미엄 — 현금 전용(won). 코인으로 못 산다(2026-10-01 스펙 §2)
+  { id: 'firefly', slot: 'trail', ico: '🌟', name: '반딧불', won: 4000, tier: '프리미엄' },
+  { id: 'rainbow', slot: 'trail', ico: '🌈', name: '무지개', won: 3000, tier: '프리미엄' },
+  // 🧥 전신 스킨 — 현금 전용(2026-10-01 2단계 스펙). 동물 체형은 그대로, 재질·장식만 바뀐다(js/cosmetics/skin.js)
+  { id: 'forest_spirit', slot: 'skin', ico: '🌿', name: '숲의 정령',   won: 10000, tier: '프리미엄' },
+  { id: 'plush_doll',    slot: 'skin', ico: '🧸', name: '플러시 인형', won: 9000,  tier: '프리미엄' },
   // 👣 발자국 — 값이 오를수록 바닥에 있던 게 공중으로 올라온다
   { id: 'paw',     slot: 'trail', ico: '🐾', name: '발바닥', coins: 700,  tier: '기본' },
   { id: 'drop',    slot: 'trail', ico: '💧', name: '물방울', coins: 900,  tier: '기본' },
@@ -41,7 +48,9 @@ const RAW = [
   { id: 'sparkle', slot: 'trail', ico: '✨', name: '반짝이', coins: 2600, tier: '특별' },
 ];
 
-export const ITEMS = Object.freeze(RAW.map(({ coins, ...it }) => Object.freeze({ ...it, price: { coins, cash: cashFor(it.id, coins) } })));
+export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(won != null
+  ? { ...it, premium: true, price: { coins: null, won, cash: cashFor(it.id, null, won) } }
+  : { ...it, price: { coins, cash: cashFor(it.id, coins) } })));
 
 /** 그 슬롯의 품목 — 카탈로그 순서 그대로(UI 정렬의 단일 출처) */
 export function itemsOf(slot) {

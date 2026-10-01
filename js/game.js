@@ -85,7 +85,10 @@ import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmeti
 import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
-import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { applySkin, disposeSkin, showSprout } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
+import { effectiveTrail, squashOf, skinSquashes, sproutVisible } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
+import { createTrailFx, rainbowHex } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
 import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
@@ -957,7 +960,7 @@ const gameState = {
   dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   // 🎀 꾸미기 — 산 것(영구) + 슬롯별 장착. 규칙은 js/cosmetics/equip.js
-  cosmetics: { owned: [], equipped: { head: null, neck: null, back: null, trail: null } },
+  cosmetics: { owned: [], equipped: { head: null, neck: null, back: null, trail: null, skin: null } },
   // 🐾 펫 — 규칙은 js/pet/rules.js. **종마다 따로 산다**(2026-09-23, 4종 확장).
   //    pets  : 산 종 { kind: {kind, name, works, restUntil} } — works 누적 작업 횟수(→ 성장 단계)
   //    pet   : 그중 **지금 데리고 다니는 한 마리**. pets[kind] 와 **같은 객체**를 가리킨다(usePet 이 유지).
@@ -3174,11 +3177,11 @@ export function buildAnimalMesh(id) {
   //   Icosahedron(R,1) 의 각진 면 → 매끈한 구(머리와 같은 세분화). 정점 수는 늘지만 드로우콜은 동일.
   const bodyY = R * bs[1] + 0.02;
   const body = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), skin());
-  body.position.y = bodyY; body.scale.set(bs[0], bs[1], bs[2]); body.castShadow = true; g.add(body);
+  body.position.y = bodyY; body.scale.set(bs[0], bs[1], bs[2]); body.castShadow = true; body.userData.part = 'body'; g.add(body);
 
   // 배(밝은 색)
   const belly = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 24, 18), plushMat(a.belly));
-  belly.position.set(0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  belly.position.set(0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); belly.userData.part = 'belly'; g.add(belly);
 
   // ── 머리 — 🎭 얼굴 생김새는 animal-faces.js 가 전담(눈·코·입·귀·무늬 전부) ──
   //   체형 수치(HR/HY)와 몸·배 색만 넘긴다. 예전엔 여기서 눈·주둥이·귀·부리·볏을 종별로 분기했지만
@@ -3304,7 +3307,7 @@ export function buildAnimalMesh(id) {
   //  tail — 🦸 망토가 등 한가운데 **뒤트임을 얼마나 열지**를 정하는 데 쓴다.
   //  🦊bushy·🐱long 은 등 한가운데를 크게 차지해 트임이 없으면 천을 뚫고, 꼬리가 작은 종에
   //  같은 폭을 열면 등이 통째로 드러난다(실측: 곰에서 커튼 두 장이 됐다).
-  const kk = { R, HR, HY, bs, bodyY, tail: a.tail, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
+  const kk = { id: a.id, R, HR, HY, bs, bodyY, tail: a.tail, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
   const anchors = {};
   for (const [name, p] of Object.entries({
     head: headAnchor(HY), neck: neckAnchor(HR, HY),
@@ -3321,8 +3324,10 @@ export function buildAnimalMesh(id) {
 function applyCharacter(id) {
   const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
   if (!playerAnchor) return;
-  if (charGroup) { playerAnchor.remove(charGroup); charGroup = null; tailPivot = null; }
+  if (charGroup) { playerAnchor.remove(charGroup); disposeSkin(charGroup); charGroup = null; tailPivot = null; }
   const built = buildAnimalMesh(a.id);
+  charSkin = gameState.cosmetics?.equipped?.skin || null;
+  applySkin(THREE, built, charSkin);   // 🧥 재질·장식만 바꾼다(체형 그대로) — 꾸미기 앵커는 아래 applyCosmetics 가 채운다
   charGroup = built.group; tailPivot = built.tail;
   playerArms = (built.armR && built.armL) ? { R: built.armR, L: built.armL } : null;
   wingArms = (a.extras || []).includes('wings');
@@ -3340,15 +3345,18 @@ function applyCharacter(id) {
 // ── 🎀 장착 반영 — 앵커의 **자식만** 교체한다 ──
 //   ⚠️ 공유 재질/지오메트리를 dispose 하지 않는다. 다른 곳에서 쓰던 것까지 검게 만든다(§14).
 //      인스턴스만 버린다.
-let charAnchors = null, charK = null;
+let charAnchors = null, charK = null, charSkin = null;
 function applyCosmetics(cos) {
   if (!charAnchors) return;
+  //  🧥 스킨은 몸 재질을 바꾼다 — 앵커 자식만 갈아서는 안 되고 캐릭터를 다시 조립해야 한다
+  if ((cos?.equipped?.skin || null) !== charSkin) { applyCharacter(curAnimal?.id || gameState.character); return; }
   for (const a of Object.values(charAnchors)) a.clear();
   for (const it of equippedItems(cos)) {
-    if (it.slot === 'trail') continue;                 // 발자국은 월드 이펙트라 앵커가 아니다
+    if (it.slot === 'trail' || it.slot === 'skin') continue;   // 자국은 월드 이펙트, 스킨은 몸 재질 — 둘 다 앵커가 아니다
     const m = buildCosmetic(THREE, it.id, charK);
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
+  showSprout(charGroup, sproutVisible(cos));   // 🌱 모자를 쓰면 정령 새싹을 숨긴다
 }
 
 // ── 👣 발자국 ── (스펙 §4-4)
@@ -3357,17 +3365,24 @@ function applyCosmetics(cos) {
 const trailPool = [], trailLive = [];
 const trailLastPos = new THREE.Vector3();
 let trailItem = null, trailSide = 1;
+const trailFx = createTrailFx(THREE);   // 💎 입자 — 장면에 한 번만 올린다(드로우콜 +1). 첫 updateTrail 때 scene 에 붙인다
 
 function clearTrail() {
   for (const e of trailLive) { scene.remove(e.mesh); trailPool.push(e.mesh); }
   trailLive.length = 0;
+  trailFx.clear();
 }
 
 function updateTrail(dt) {
-  const id = gameState.cosmetics.equipped.trail;
-  if (id !== trailItem) { clearTrail(); trailPool.length = 0; trailItem = id; }
+  if (!trailFx.points.parent) scene.add(trailFx.points);
+  const id = effectiveTrail(gameState.cosmetics);   // 🌱 자국 칸이 비었고 정령이면 새싹
+  if (id !== trailItem) {   // 자국 종류가 바뀌면 풀을 버린다 — 자국마다 재질이 따로라 dispose 해야 GPU 버퍼가 안 샌다
+    clearTrail();
+    for (const m of trailPool) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    trailPool.length = 0; trailItem = id;
+  }
   const off = indoor || atCafe || atMuseum || atMine;
-  if (!id || off) { if (trailLive.length) clearTrail(); return; }
+  if (!id || off) { if (trailLive.length) clearTrail(); else trailFx.clear(); return; }
 
   if (player.position.distanceTo(trailLastPos) >= TRAIL_STEP) {
     trailLastPos.copy(player.position);
@@ -3376,6 +3391,8 @@ function updateTrail(dt) {
     m.position.set(player.position.x + trailSide * TRAIL_SIDE, 0, player.position.z);
     m.rotation.y = trailSide * 0.2;
     scene.add(m); trailLive.push({ mesh: m, t: 0 });
+    const { tint } = trailFx.onStamp(id, m.position, { nightLevel });   // 💎 반딧불·무지개
+    if (tint != null) tintTrailMark(m, tint);
     while (trailLive.length > TRAIL_CAP) {
       const old = trailLive.shift(); scene.remove(old.mesh); trailPool.push(old.mesh);
     }
@@ -3386,18 +3403,21 @@ function updateTrail(dt) {
     e.mesh.traverse(o => { if (o.material) o.material.opacity = k; });
     if (k <= 0) { scene.remove(e.mesh); trailPool.push(e.mesh); trailLive.splice(i, 1); }
   }
+  trailFx.update(dt, { nightLevel });
 }
 
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
 //   cos 는 **가상 장착**을 받기 위한 인자다(🎀 꾸미기 상점의 "입어보기"). 기본값은 실제 장착이라
 //   캐릭터 선택 화면은 예전과 똑같이 동작한다.
-function buildCharacterMesh(id, cos = gameState.cosmetics) {
+export function buildCharacterMesh(id, cos = gameState.cosmetics) {
   const built = buildAnimalMesh(id);
+  applySkin(THREE, built, cos?.equipped?.skin);   // 🧥 입어보기 포함 — 꾸미기보다 먼저(몸 재질을 바꾼다)
   for (const it of equippedItems(cos)) {
-    if (it.slot === 'trail') continue;
+    if (it.slot === 'trail' || it.slot === 'skin') continue;
     const m = buildCosmetic(THREE, it.id, built.k);
     if (m) built.anchors[it.anchor || it.slot].add(m);
   }
+  showSprout(built.group, sproutVisible(cos));   // 🌱 입어보기 모자도 새싹을 가린다
   return built.group;
 }
 
@@ -3430,10 +3450,10 @@ function makeCharacterPreview(canvas) {
   //     🐾 펫 재질도 같다 — 월드의 펫과 공유라 여기서 버리면 따라다니는 펫이 검게 된다.
   function rebuild() {
     const cos = cosView || gameState.cosmetics;
-    if (mesh) pivot.remove(mesh);
+    if (mesh) { pivot.remove(mesh); disposeSkin(mesh); }
     if (marks) { pivot.remove(marks); marks = null; }
     if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
-    const tid = cos?.equipped?.trail;
+    const tid = effectiveTrail(cos);   // 🌱 자국 칸이 비었고 정령이면 새싹
     //  ✨ 이펙트 탭 — 캐릭터 발밑에 깔면 몸에 가려 뭐가 뭔지 모른다. 캐릭터를 빼고 자국만 걸어오게 한다.
     //     입어 본 게 없으면 🐾 발바닥(가장 싼 기본형)이 걷는다 — 탭을 열자마자 "이 탭은 이런 것" 이 보이게.
     if (trailView && petStage === null) {
@@ -3463,6 +3483,7 @@ function makeCharacterPreview(canvas) {
       marks = new THREE.Group();
       for (const s of [-1, 1]) {
         const m = buildTrailMark(THREE, tid, 1, animal);
+        if (tid === 'rainbow') tintTrailMark(m, rainbowHex(s + 1));   // 💎 흰 발자국으로 보이지 않게 — 걸음 색을 입힌다
         m.position.set(s * 0.26, 0.012, s * 0.20 + 0.1); m.rotation.y = s * 0.2;
         marks.add(m);
       }
@@ -3498,6 +3519,7 @@ function makeCharacterPreview(canvas) {
       if (autoSpin && !dragging) rotY += 0.006;
       pivot.rotation.y = rotY; pivot.rotation.x = rotX;
     }
+    mesh?.userData?.skinTick?.(now / 1000);   // 🌿 정령 빛 알갱이
     rend.render(sc, cam);
   }
   canvas.style.touchAction = 'none';
@@ -5409,7 +5431,11 @@ function doPlayerAction(tx, tz, kind) {
   actAnim = 1; actKind = kind || 'swing';
 }
 function updatePlayer(dt, t) {
-  if (boat.active) return updateBoatRun(dt, t);    // 🛶 런 중엔 걷기 대신 배 물리
+  if (boat.active) {                               // 🛶 런 중엔 걷기 대신 배 물리
+    charGroup?.scale.setScalar(1);                 // 🧸 말랑 스킨이 걷다 멈춘 채 눌려 있지 않게
+    charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
+    return updateBoatRun(dt, t);
+  }
   const speed = 6 * (buffOn('speed') ? 1.4 : 1);   // 🥘 채소죽 버프: 이동속도 +40%
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
@@ -5448,6 +5474,12 @@ function updatePlayer(dt, t) {
     tailPivot.rotation.y = Math.sin(tailPhase) * u.wagAmp * (moving ? 1.6 : 1);
     tailPivot.rotation.x = Math.sin(tailPhase * 0.5) * u.wagAmp * 0.3;
   }
+  //  🧸 플러시 인형 — 발이 닿을 때 살짝 눌린다(부피 보존). charGroup 배율만 — 도구 휘두르기와 무관
+  if (charGroup) {
+    const s = squashOf(walkPhase, moving && skinSquashes(charSkin));
+    charGroup.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
+  }
+  charGroup?.userData.skinTick?.(t);   // 🌿 정령 빛 알갱이
 
   if (indoor) { // 실내: 지금 층의 방 벽 안쪽으로 제한(층마다 반경이 다르다)
     const h = curHalf();

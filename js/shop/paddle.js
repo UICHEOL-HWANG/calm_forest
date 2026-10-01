@@ -11,7 +11,7 @@
 //    자신의 busy state 를 직접 리셋해야 한다 (onClosed 를 기다리면 안 됨).
 //  ▶ openCheckout 은 boolean 을 반환한다: 결제창이 열렸으면 true, 재진입으로 무시되면 false.
 // =============================================================
-import { CONFIG } from '../config.js';
+import { CONFIG, IS_DEV_SESSION } from '../config.js';
 import { PLATFORM } from '../platform.js';
 import { getLang } from '../i18n.js';
 
@@ -22,10 +22,11 @@ let current = null;        // 열려 있는 결제 { priceId, itemId, kind } —
 let opening = false;       // openCheckout 진입~Checkout.open 반환 사이(동기 가드 — await 구간도 막는다)
 let handlers = { onCompleted: () => {}, onClosed: () => {} };
 
-//  현금 버튼이 보이는 조건: 웹 + 온라인 + 로그인 계정 + Paddle 클라이언트 토큰이 설정돼 있을 것
-//  (토큰이 없으면 눌러도 열 수 없으니 버튼 자체를 내놓지 않는다).
+//  현금 버튼이 보이는 조건: 웹 + 온라인 + 로그인 계정 + Paddle 클라이언트 토큰 + **상점이 열렸거나 개발 세션**
+//  (샌드박스 토큰으로 검증하는 동안 실유저에게 버튼이 보이면 안 된다 — 개발 세션(?dbg 등)에서만 결제한다).
 export function cashAvailable(state) {
-  return PLATFORM === 'web' && !!state?.online && !state?.isGuest && !!CONFIG.PADDLE.token;
+  return PLATFORM === 'web' && !!state?.online && !state?.isGuest && !!CONFIG.PADDLE.token
+    && (!!CONFIG.PADDLE.storeOpen || IS_DEV_SESSION);
 }
 
 export function setCheckoutHandlers(h) {
