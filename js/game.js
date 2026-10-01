@@ -85,7 +85,8 @@ import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmeti
 import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
-import { buildTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { createTrailFx } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
 import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
@@ -3357,13 +3358,16 @@ function applyCosmetics(cos) {
 const trailPool = [], trailLive = [];
 const trailLastPos = new THREE.Vector3();
 let trailItem = null, trailSide = 1;
+const trailFx = createTrailFx(THREE);   // 💎 입자 — 장면에 한 번만 올린다(드로우콜 +1). 첫 updateTrail 때 scene 에 붙인다
 
 function clearTrail() {
   for (const e of trailLive) { scene.remove(e.mesh); trailPool.push(e.mesh); }
   trailLive.length = 0;
+  trailFx.clear();
 }
 
 function updateTrail(dt) {
+  if (!trailFx.points.parent) scene.add(trailFx.points);
   const id = gameState.cosmetics.equipped.trail;
   if (id !== trailItem) { clearTrail(); trailPool.length = 0; trailItem = id; }
   const off = indoor || atCafe || atMuseum || atMine;
@@ -3376,6 +3380,8 @@ function updateTrail(dt) {
     m.position.set(player.position.x + trailSide * TRAIL_SIDE, 0, player.position.z);
     m.rotation.y = trailSide * 0.2;
     scene.add(m); trailLive.push({ mesh: m, t: 0 });
+    const { tint } = trailFx.onStamp(id, m.position, { nightLevel });   // 💎 반딧불·무지개
+    if (tint != null) tintTrailMark(m, tint);
     while (trailLive.length > TRAIL_CAP) {
       const old = trailLive.shift(); scene.remove(old.mesh); trailPool.push(old.mesh);
     }
@@ -3386,6 +3392,7 @@ function updateTrail(dt) {
     e.mesh.traverse(o => { if (o.material) o.material.opacity = k; });
     if (k <= 0) { scene.remove(e.mesh); trailPool.push(e.mesh); trailLive.splice(i, 1); }
   }
+  trailFx.update(dt, { nightLevel });
 }
 
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
