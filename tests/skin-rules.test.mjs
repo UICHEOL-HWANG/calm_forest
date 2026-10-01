@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { effectiveTrail, SKIN_TRAIL, squashOf, skinSquashes, SQUASH } from '../js/cosmetics/skin-rules.js';
+import { effectiveTrail, SKIN_TRAIL, squashOf, skinSquashes, SQUASH, bellyPatchZ } from '../js/cosmetics/skin-rules.js';
 
 const cos = (trail, skin) => ({ owned: [], equipped: { head: null, neck: null, back: null, trail, skin } });
 
@@ -31,4 +31,13 @@ test('skinSquashes — 플러시 인형만', () => {
   assert.equal(skinSquashes('plush_doll'), true);
   assert.equal(skinSquashes('forest_spirit'), false);
   assert.equal(skinSquashes(null), false);
+});
+
+test('bellyPatchZ — 몸통이 배보다 튀어나온 동물(곰·판다)은 몸통 표면 위에 놓인다', () => {
+  const R = 0.63, bs = [1.08, 1.00, 1.06];
+  assert.ok(bellyPatchZ(R, bs) > R * bs[2] * 0.98);
+});
+test('bellyPatchZ — 여우처럼 배가 더 나오면 배 앞면 + 0.004', () => {
+  const R = 0.52;
+  assert.ok(Math.abs(bellyPatchZ(R, [0.90, 1.08, 0.90]) - (R * 0.922 + 0.004)) < 1e-9);
 });

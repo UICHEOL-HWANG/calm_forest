@@ -11,6 +11,7 @@
 //  ▶ 드로우콜: 정령 ≤ +4(껍질 2·알갱이 1·새싹 1) · 인형 ≤ +6(땀·단추·테·구멍·패치판, 재질별 병합)
 // =============================================================
 import { mergeGeos } from './trail.js';
+import { bellyPatchZ } from './skin-rules.js';
 
 export const SKIN_IDS = Object.freeze(['forest_spirit', 'plush_doll']);
 
@@ -159,7 +160,7 @@ function applyPlush(THREE, built) {
   stitches(THREE, bodyStage, arcOn(THREE, c, ax, 'z', -2.5, -0.4, 21), thread, 0.016);
   const w = R * 0.62, h = R * 0.52;
   const patch = new THREE.Group();
-  patch.position.set(0, bodyY - R * 0.16, R * 0.55 + R * 0.62 * 0.6 + 0.004);
+  patch.position.set(0, bodyY - R * 0.16, bellyPatchZ(R, bs));
   patch.rotation.z = 0.08;
   const shape = new THREE.Shape(); const r = Math.min(w, h) * 0.28, x = -w / 2, y = -h / 2;
   shape.moveTo(x + r, y); shape.lineTo(x + w - r, y); shape.quadraticCurveTo(x + w, y, x + w, y + r);
