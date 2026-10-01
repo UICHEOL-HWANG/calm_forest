@@ -12,6 +12,7 @@
 // =============================================================
 
 import { buildTrailMark, TRAIL_SIDE } from './trail.js';
+import { createTrailFx } from './trail-fx.js';
 
 export const WALK_STEP = 0.26;   // 한 걸음
 export const WALK_FADE = 1.6;    // 초
@@ -46,6 +47,8 @@ export function walkMarks(t) {
 export function makeTrailWalk(THREE, itemId, animalId) {
   const group = new THREE.Group();
   const meshes = [];
+  const fx = createTrailFx(THREE, { cap: 32 });   // 💎 미리보기는 늘 밤 값 — 반딧불이 보여야 무엇을 사는지 안다
+  group.add(fx.points);
   let t = WALK_FADE;                                   // 열자마자 자국이 몇 개 깔려 있게
   function update(dt) {
     t += dt;
@@ -59,12 +62,19 @@ export function makeTrailWalk(THREE, itemId, animalId) {
       m.visible = !!k;
       if (!k) return;
       m.position.set(k.side * TRAIL_SIDE, 0.01, k.z);
+      if (!m.userData.tinted || k.age <= dt + 1e-6) {
+        m.userData.tinted = true;
+        const { tint } = fx.onStamp(itemId, m.position, { nightLevel: 1 });
+        if (tint != null) m.traverse(o => { if (o.isMesh) o.material.color.setHex(tint); });
+      }
       const a = 1 - k.age / WALK_FADE;
       m.traverse(o => { if (o.material) o.material.opacity = a; });
     });
+    fx.update(dt, { nightLevel: 1 });
   }
   function dispose() {
     for (const m of meshes) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    fx.points.geometry.dispose(); fx.points.material.map.dispose(); fx.points.material.dispose();
   }
   update(0);
   return { group, update, dispose };
