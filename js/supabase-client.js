@@ -649,6 +649,23 @@ export async function fetchNotices(sinceId = 0, { limit = 20, ascending = false 
   } catch (err) { console.warn('[Supabase 폴백] 소식 조회 실패:', err?.message || err); return []; }
 }
 
+// ── 💳 현금 구매 원장 읽기 — RLS 로 본인 행만. null = 못 읽음(게스트·오프라인·실패) → 호출부는 세이브대로 간다 ──
+export async function fetchPurchases() {
+  if (!state.online || !supabase || state.isGuest) return null;
+  try {
+    // enterGame 이 이 결과를 기다린다 — 연결이 멈춰도 부팅이 안 막히게 4초에서 끊고 null(세이브대로)로 간다
+    const query = supabase.from('purchases').select('item_id, kind, revoked_at');
+    let tid;
+    const timeout = new Promise(r => { tid = setTimeout(() => r({ data: null, error: new Error('timeout') }), 4000); });
+    let res;
+    try { res = await Promise.race([query, timeout]); }
+    finally { clearTimeout(tid); }                       // 조회가 이기면 남은 타이머를 걷는다
+    const { data, error } = res;
+    if (error) throw error;
+    return data || [];
+  } catch (err) { console.warn('[Supabase 폴백] 구매 원장 조회 실패(세이브대로 진행):', err?.message || err); return null; }
+}
+
 export async function insertPhotoRow(objectKey, weather) {
   if (!state.online || !supabase) return;
   try {

@@ -32,6 +32,10 @@ const before = html;
 html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n/m, '');   // 📱 manifest 링크 위 설명 주석(링크는 아래에서 제거)
 html = html.replace(/^\s*<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="\/[^"]*"[^>]*>\s*\n/gm, '');   // 📱 PWA manifest 링크도 제거
 const stripped = (before.match(/<link rel="(?:icon|apple-touch-icon|manifest)"/g) || []).length;
+// 💳 로그인 카드의 약관·환불·가격 링크(#login-links) — 웹은 루트 상대경로지만 itch 는 오리진이 달라 404 → 웹 오리진 절대 URL 로
+const LINKS_RE = /(<nav id="login-links">[\s\S]*?<\/nav>)/;
+if (!LINKS_RE.test(html)) throw new Error('[build-itch] index.html 에서 #login-links 를 못 찾음 — 약관 링크가 itch.zone 루트 404 가 됩니다.');
+html = html.replace(LINKS_RE, nav => nav.replace(/href="\/([a-z]+)"/g, `href="${API_ORIGIN}/$1"`));
 writeFileSync(`${OUT}/index.html`, html);
 
 // 게임 모듈(전부 절차 생성이라 정적 자산은 js/ 뿐 — 안내서는 웹 오리진에서 fetch)

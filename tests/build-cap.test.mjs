@@ -34,6 +34,8 @@ test('build-cap: 플래그 주입 · vendor 치환 · API_BASE 절대 URL · SW 
     assert.match(html, /"three": "\.\/vendor\/three\/three\.module\.js"/);
     assert.doesNotMatch(html, /unpkg\.com/);
     assert.doesNotMatch(html, /serviceWorker\.register/);
+    assert.doesNotMatch(html, /id="login-links"/, '구글 플레이 정책 — 외부 결제 안내 링크(#login-links)는 앱 번들에 없어야 한다');
+    assert.doesNotMatch(html, /href="https:\/\/calmforest\.cloud\/(?:terms|refund|shop)"/);
     assert.match(readFileSync('dist-cap/js/supabase-client.js', 'utf8'), /import\('\.\.\/vendor\/supabase\.js'\)/);
     assert.match(readFileSync('dist-cap/js/config.js', 'utf8'), /const API_BASE = 'https:\/\/calmforest\.cloud';/);
     assert.ok(existsSync('dist-cap/vendor/three/three.module.js'));
