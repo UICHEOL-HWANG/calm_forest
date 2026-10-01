@@ -86,7 +86,7 @@ import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
-import { createTrailFx } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
+import { createTrailFx, rainbowHex } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
 import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
@@ -3369,7 +3369,11 @@ function clearTrail() {
 function updateTrail(dt) {
   if (!trailFx.points.parent) scene.add(trailFx.points);
   const id = gameState.cosmetics.equipped.trail;
-  if (id !== trailItem) { clearTrail(); trailPool.length = 0; trailItem = id; }
+  if (id !== trailItem) {   // 자국 종류가 바뀌면 풀을 버린다 — 자국마다 재질이 따로라 dispose 해야 GPU 버퍼가 안 샌다
+    clearTrail();
+    for (const m of trailPool) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    trailPool.length = 0; trailItem = id;
+  }
   const off = indoor || atCafe || atMuseum || atMine;
   if (!id || off) { if (trailLive.length) clearTrail(); else trailFx.clear(); return; }
 
@@ -3470,6 +3474,7 @@ function makeCharacterPreview(canvas) {
       marks = new THREE.Group();
       for (const s of [-1, 1]) {
         const m = buildTrailMark(THREE, tid, 1, animal);
+        if (tid === 'rainbow') tintTrailMark(m, rainbowHex(s + 1));   // 💎 흰 발자국으로 보이지 않게 — 걸음 색을 입힌다
         m.position.set(s * 0.26, 0.012, s * 0.20 + 0.1); m.rotation.y = s * 0.2;
         marks.add(m);
       }

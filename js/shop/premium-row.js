@@ -11,7 +11,8 @@
 export function premiumRowMode(item, { owned, platform, online, isGuest, tokenSet, storeOpen }) {
   if (owned) return 'owned';
   if (platform !== 'web') return 'hidden';
+  if (!tokenSet || !storeOpen || !item.price.cash) return 'unavailable';   // 상점이 닫혔으면 게스트에게도 "로그인하면" 이라 하지 않는다
   if (isGuest) return 'login';
-  if (!online || !tokenSet || !storeOpen || !item.price.cash) return 'unavailable';
+  if (!online) return 'unavailable';
   return 'buy';
 }

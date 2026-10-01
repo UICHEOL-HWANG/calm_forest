@@ -16,3 +16,9 @@ test('미리보기도 같은 fx 를 밤 값으로 쓴다', () => {
   assert.match(src, /createTrailFx\(THREE/);
   assert.match(src, /nightLevel: 1/);
 });
+
+test('자국 종류가 바뀌면 풀 메시를 dispose 한 뒤 비운다 · 캐릭터 미리보기 무지개 자국은 색을 입힌다', () => {
+  const src = gameSource();
+  assert.match(src, /for \(const m of trailPool\) m\.traverse\([^\n]*dispose\(\)[^\n]*\n\s*trailPool\.length = 0/);
+  assert.match(src, /if \(tid === 'rainbow'\) tintTrailMark\(m, rainbowHex\(/);
+});

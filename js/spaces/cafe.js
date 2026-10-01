@@ -946,7 +946,8 @@ setCheckoutHandlers({
 });
 
 //  💎 [바로 걸어보기] — 이미 장착됐으니 가게 패널만 닫고 마을로 돌려보낸다(#cos-close 가 미리보기 정리까지 처리)
-function closeCosShopForWalk() { document.getElementById('cos-close')?.click(); }
+const cosShopOpen = () => !!document.getElementById('cos-menu')?.classList.contains('show');
+function closeCosShopForWalk() { if (cosShopOpen()) document.getElementById('cos-close')?.click(); }
 
 // 💳 지급이 확인됐을 때 — 사면 바로 입힌다 / 데려간다(코인 구매와 같은 결). 빠른 경로·느린 경로 공용.
 function onGranted(c, t0) {
@@ -959,7 +960,8 @@ function onGranted(c, t0) {
   trackEvent('cash_grant_wait', { item_id: c.itemId, wait_ms: Date.now() - t0 });
   requestSave();
   // 연출은 장식 — 실패해도 저장·트래킹(위)을 막지 않도록 맨 끝에서, 예외는 삼킨다
-  if (c.kind === 'cosmetic' && findItem(c.itemId)?.premium) {
+  //  가게를 닫은 뒤(10초 대기 중·느린 폴링) 잡힌 지급은 연출 없이 — 보트·다른 메뉴 위로 전면 오버레이가 뜨지 않게
+  if (c.kind === 'cosmetic' && findItem(c.itemId)?.premium && cosShopOpen()) {
     try {
       playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character,
         onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'walk', ms }); closeCosShopForWalk(); },
