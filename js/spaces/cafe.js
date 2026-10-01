@@ -955,14 +955,17 @@ function onGranted(c, t0) {
     applyCosmetics(gameState.cosmetics);
     cosTryOn = null; cosPreview?.refresh(null);
     trackEvent('cosmetic_equip', { item_id: c.itemId, slot: findItem(c.itemId)?.slot, action: 'on', via: 'cash' });
-    if (findItem(c.itemId)?.premium) {
-      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character,
-        onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'walk', ms }); closeCosShopForWalk(); },
-        onClose: (ms) => trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'close', ms }) });
-    }
   } else { switchPet(c.itemId); petView = c.itemId; }
   trackEvent('cash_grant_wait', { item_id: c.itemId, wait_ms: Date.now() - t0 });
   requestSave();
+  // 연출은 장식 — 실패해도 저장·트래킹(위)을 막지 않도록 맨 끝에서, 예외는 삼킨다
+  if (c.kind === 'cosmetic' && findItem(c.itemId)?.premium) {
+    try {
+      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character,
+        onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'walk', ms }); closeCosShopForWalk(); },
+        onClose: (ms) => trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'close', ms }) });
+    } catch (e) { console.warn('[reveal]', e?.message || e); }
+  }
 }
 
 // 💳 10초 폴링에 못 잡힌 결제 — 15초 간격으로 최대 8번 더 본다(웹훅 지연 대비). 잡히면 잠금 해제.
