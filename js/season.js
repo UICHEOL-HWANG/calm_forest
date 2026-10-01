@@ -50,3 +50,28 @@ export function weatherFromRoll(r, seasonId) {
   const w = (seasonById(seasonId) || SEASONS[2]).weather;
   return r < w.rain ? 'rain' : r < w.snow ? 'snow' : r < w.fog ? 'fog' : 'clear';
 }
+
+// ── 안내 문구 — game.js 는 상태만 넘기고 여기서 문장을 만든다(테스트 가능하게) ──
+//   fish = { id, name, ico } 그 계절 한정 어종 · owned = 이미 도감에 있나
+//   ⚠️ 문장 틀을 바꾸면 js/i18n-en.js 의 패턴 키도 같이 바꾼다.
+
+// 받침 유무로 조사 고르기 — js/spaces/cafe.js josa 와 같은 규칙(그쪽은 three 를 끌고 와서 import 하지 않는다)
+function josa(word, withJong, noJong) {
+  const c = word.charCodeAt(word.length - 1) - 0xac00;
+  return c >= 0 && c <= 11171 && c % 28 ? withJong : noJong;
+}
+
+/** 출석 모달 한 줄 — 새 계절 첫 접속 · 끝나기 3일 전(아직 못 낚았을 때). 할 말이 없으면 '' */
+export function seasonNotice({ season, left }, fish, owned, isNew) {
+  if (!fish) return '';
+  if (isNew) return `${season.ico} ${season.name}${josa(season.name, '이', '가')} 왔어요! ${left}일 동안 호수에서 ${fish.ico} ${fish.name}${josa(fish.name, '이', '가')} 낚여요.`;
+  if (left <= 3 && !owned) return `⏳ ${season.name}${josa(season.name, '이', '가')} ${left}일 남았어요 — ${fish.ico} ${fish.name}${josa(fish.name, '은', '는')} 지금만 낚여요!`;
+  return '';
+}
+
+/** HUD 계절 아이콘을 눌렀을 때 — 지금 계절·남은 날·한정 어종(낚았는지) */
+export function seasonStatusLine({ season, left }, fish, owned) {
+  const head = `${season.ico} ${season.name} · ${left}일 남음`;
+  if (!fish) return head;
+  return owned ? `${head} — 이번 계절 한정 ${fish.name}도 낚았어요 ✅` : `${head} — 이번 계절 한정: ${fish.name}`;
+}

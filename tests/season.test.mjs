@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SEASONS, SEASON_DAYS, seasonInfo, seasonOf, weatherFromRoll } from '../js/season.js';
+import { SEASONS, SEASON_DAYS, seasonById, seasonInfo, seasonNotice, seasonOf, seasonStatusLine, weatherFromRoll } from '../js/season.js';
 import { DEX_GATES, gateOpen, weatherOpen, rollKind } from '../js/dex-gates.js';
 import { pickMissingDex } from '../js/museum.js';
 import { readFileSync } from 'node:fs';
@@ -92,5 +92,32 @@ test('큐레이터 의뢰: 철 지난 한정 어종은 고르지 않는다', () 
   for (let seed = 0; seed < 50; seed++) {
     const pick = pickMissingDex(owned, D, seed, { weather: 'clear', season: 'autumn' });
     assert.equal(pick?.id, 'maple_carp', '가을엔 단풍 잉어만 남은 후보');
+  }
+});
+
+test('안내 문구 — 새 계절 · 끝나기 3일 전(못 낚았을 때만) · 평소엔 빈 문자열', () => {
+  const carp = { id: 'maple_carp', name: '단풍 잉어', ico: '🍁' };
+  const at = (day) => seasonInfo(addDays('2026-10-09', day - 1));
+  assert.equal(seasonNotice(at(1), carp, false, true), '🍂 가을이 왔어요! 14일 동안 호수에서 🍁 단풍 잉어가 낚여요.');
+  assert.equal(seasonNotice(at(5), carp, false, false), '', '중간엔 조용히');
+  assert.equal(seasonNotice(at(12), carp, false, false), '⏳ 가을이 3일 남았어요 — 🍁 단풍 잉어는 지금만 낚여요!');
+  assert.equal(seasonNotice(at(14), carp, true, false), '', '이미 낚았으면 재촉하지 않는다');
+  assert.equal(seasonNotice(at(1), null, false, true), '', '한정 어종이 없으면 아무 말도 안 한다');
+  assert.equal(seasonNotice(seasonInfo('2026-09-25'), { name: '동글 복어', ico: '🐡' }, false, true),
+    '☀️ 여름이 왔어요! 14일 동안 호수에서 🐡 동글 복어가 낚여요.');
+});
+
+test('HUD 상태 문구 — 낚았으면 ✅', () => {
+  const s = { season: seasonById('winter'), left: 2 };
+  const smelt = { id: 'ice_smelt', name: '얼음 빙어', ico: '❄️' };
+  assert.equal(seasonStatusLine(s, smelt, false), '❄️ 겨울 · 2일 남음 — 이번 계절 한정: 얼음 빙어');
+  assert.equal(seasonStatusLine(s, smelt, true), '❄️ 겨울 · 2일 남음 — 이번 계절 한정 얼음 빙어도 낚았어요 ✅');
+});
+
+test('안내 문구는 영어 사전 패턴으로 덮인다', () => {
+  const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
+  for (const key of ['{0} {1}이 왔어요! {2}일 동안 호수에서 {3} {4}가 낚여요.', '⏳ {0}이 {1}일 남았어요 — {2} {3}는 지금만 낚여요!',
+                     '{0} {1} · {2}일 남음 — 이번 계절 한정: {3}', '{0} {1} · {2}일 남음 — 이번 계절 한정 {3}도 낚았어요 ✅']) {
+    assert.ok(en.includes(`'${key}'`), key);
   }
 });
