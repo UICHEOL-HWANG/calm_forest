@@ -1,10 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { buildPlan, labelToAmount, patchPriceIds } from '../scripts/lib/paddle-seed.mjs';
 import { ITEMS } from '../js/cosmetics/catalog.js';
 import { PET_KINDS } from '../js/pet/rules.js';
 import { PRICE_IDS } from '../js/shop/price-ids.js';
+
+// 실제 price-ids.js 는 채워지면 null 이 없어진다 — 같은 모양의 고정 원문으로 검사한다
+const FIXTURE = `export const PRICE_IDS = Object.freeze({
+  cap: null, star_pin: null, leaf_band: null,
+  cape: null,
+  star: null, leaf: null,
+});
+`;
 
 test('labelToAmount — 원화 라벨을 Paddle 최소 단위 문자열로(KRW 는 소수 없음)', () => {
   assert.equal(labelToAmount('₩1,500'), '1500');
@@ -32,7 +39,7 @@ test('buildPlan — 금액은 cash.js 등급표, 이름은 한국어', () => {
 });
 
 test('patchPriceIds — 지정한 id 만 바꾸고 접두가 같은 id(star/star_pin, cap/cape)는 건드리지 않는다', () => {
-  const src = readFileSync(new URL('../js/shop/price-ids.js', import.meta.url), 'utf8');
+  const src = FIXTURE;
   const out = patchPriceIds(src, { star: 'pri_01aaa', cap: 'pri_01bbb', leaf: 'pri_01ccc' });
   assert.match(out, /\bstar: 'pri_01aaa'/);
   assert.match(out, /\bstar_pin: null/);
@@ -46,7 +53,7 @@ test('patchPriceIds — 지정한 id 만 바꾸고 접두가 같은 id(star/star
 });
 
 test('patchPriceIds — 표에 없는 id 나 잘못된 priceId 는 거부', () => {
-  const src = readFileSync(new URL('../js/shop/price-ids.js', import.meta.url), 'utf8');
+  const src = FIXTURE;
   assert.throws(() => patchPriceIds(src, { nope: 'pri_01aaa' }));
   assert.throws(() => patchPriceIds(src, { star: 'abc' }));
 });
