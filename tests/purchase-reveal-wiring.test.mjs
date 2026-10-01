@@ -55,5 +55,12 @@ test('onGranted — 스킨은 내 캐릭터(스킨 입은)를 진열한다 · �
 test('stop — B+C 진열 캐릭터는 재질 공유라 disposeTree 하지 않는다 · 카메라를 A 값으로 되돌린다', () => {
   const s = rev.slice(rev.indexOf('export function stopPurchaseReveal('));
   assert.match(s, /if \(!rig\.extra\) disposeTree\(rig\.root\)/);
+  assert.match(s, /disposeSkin\(rig\.root\)/);
   assert.match(s, /camera\?\.position\.set\(0, 1\.1, 1\.9\)/);
+});
+test('startBox — 발 원점 오프셋 상수 사용 · 진열 캐릭터를 무대보다 먼저 만든다', () => {
+  const b = rev.slice(rev.indexOf('function startBox('));
+  assert.match(b, /p\.riseY \+ HERO_FEET_OFFSET/);
+  assert.match(b, /p\.rise \* HERO_SCALE/);
+  assert.ok(b.indexOf('buildShowcase()') < b.indexOf('boxStage()'));
 });

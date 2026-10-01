@@ -9,6 +9,7 @@
 // =============================================================
 import * as THREE from 'three';
 import { buildTrailMark, tintTrailMark } from '../cosmetics/trail.js';
+import { disposeSkin } from '../cosmetics/skin.js';
 import { createTrailFx } from '../cosmetics/trail-fx.js';
 import { revealPose, boxburstPose, REVEAL_COPY, REVEAL_CARD } from './reveal-pose.js';
 
@@ -100,7 +101,8 @@ export function stopPurchaseReveal() {
   cancelAnimationFrame(raf); raf = 0;
   if (rig) {
     scene.remove(rig.root, rig.rays, ...(rig.extra || []));
-    if (!rig.extra) disposeTree(rig.root);          // A 진열물(자국)은 연출 전용이라 버린다 · B+C 의 캐릭터는 월드와 재질 공유라 떼기만
+    if (!rig.extra) disposeTree(rig.root);          // A 진열물(자국)은 연출 전용이라 버린다
+    else disposeSkin(rig.root);                     // B+C 캐릭터는 월드와 재질 공유 → 스킨이 새로 만든 지오메트리만 버린다
     disposeTree(rig.rays); (rig.extra || []).forEach(disposeTree);
     rig = null;
   }
@@ -165,13 +167,16 @@ function start(wrap, canvas, itemId, animalId, onWalk, onClose) {
   document.getElementById('br-close').onclick = done(onClose);
 }
 
+// buildCharacterMesh origin is the feet — the sim item was center-origin
+const HERO_FEET_OFFSET = -1.3, HERO_SCALE = 0.85;
+
 function startBox(wrap, canvas, onWalk, onClose, buildShowcase) {
   const w = canvas.clientWidth || 360, h = canvas.clientHeight || 280;
   renderer.setSize(w, h, false); camera.aspect = w / h;
   camera.position.set(0, 0.4, 6); camera.lookAt(0, 0, 0); camera.updateProjectionMatrix();   // 상자 무대는 시안 카메라
+  const hero = buildShowcase ? buildShowcase() : new THREE.Group();   // 🧥 스킨 입은 내 캐릭터(cafe.js 가 만든다) — 던져도 무대가 새지 않게 먼저
   const st = boxStage();
   const root = new THREE.Group();
-  const hero = buildShowcase ? buildShowcase() : new THREE.Group();   // 🧥 스킨 입은 내 캐릭터(cafe.js 가 만든다)
   hero.scale.setScalar(0.001); root.add(hero);
   const rays = raysMesh(); rays.position.set(0, 0.3, -1); rays.scale.setScalar(2.1);
   scene.add(root, rays, st.box, st.ring, st.burst);
@@ -194,7 +199,7 @@ function startBox(wrap, canvas, onWalk, onClose, buildShowcase) {
       st.burst.geometry.attributes.position.needsUpdate = true;
       st.burst.material.opacity = Math.max(0, 1 - (t - 1.4) / 1.8);
     }
-    hero.scale.setScalar(Math.max(0.001, p.rise * 0.95)); hero.position.y = p.riseY; hero.rotation.y = t * 0.8;
+    hero.scale.setScalar(Math.max(0.001, p.rise * HERO_SCALE)); hero.position.y = p.riseY + HERO_FEET_OFFSET; hero.rotation.y = t * 0.8;
     hero.userData.skinTick?.(t);
     rays.material.opacity = p.rays * 0.4; rays.rotation.z = t * 0.15;
     if (p.card) wrap.classList.add('card');
