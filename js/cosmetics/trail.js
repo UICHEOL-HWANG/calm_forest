@@ -130,6 +130,17 @@ function makeMarks(THREE) {
       TRAIL.paw(g, s, o, id);
       g.traverse(m => { if (m.isMesh) m.material = film(0xffffff, o); });
     },
+    //  🌱 새싹 — 🌿 숲의 정령을 입고 자국 칸이 비었을 때만(js/cosmetics/skin-rules.js effectiveTrail).
+    //     살 수 있는 상품이 아니다. 잎 2장(V자) + 은은한 초록 원판. 색은 시안 sims/skin-trail-rule-sim.html.
+    sprout: (g, s, o) => {
+      put(g, new THREE.Mesh(new THREE.CircleGeometry(s * 0.8, 14), film(0x3f9a50, o * 0.45)), 0, 0.004, 0, false)
+        .rotation.x = -Math.PI / 2;
+      [-1, 1].forEach(k => {
+        const leaf = petalMesh(s * 0.62, 0.55, film(0x8fe08a, o));
+        leaf.position.set(k * s * 0.22, 0.02, 0); leaf.rotation.set(0, 0, k * 0.5);
+        g.add(leaf);
+      });
+    },
   };
 
   return TRAIL;
@@ -144,7 +155,7 @@ function paintRGBA(THREE, geo, color, alpha) {
 }
 
 /** js/duel/art.js 의 mergeGeos 와 같은 구현 — three/addons 없이 정점색까지 합친다 */
-function mergeGeos(THREE, geos) {
+export function mergeGeos(THREE, geos) {
   const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
   const out = new THREE.BufferGeometry();
   for (const name of ['position', 'normal', 'color']) {

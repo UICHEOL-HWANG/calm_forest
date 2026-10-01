@@ -33,3 +33,14 @@ test('firefly 빌더 — petalMesh 두 번째 인자는 비율이다(s 를 곱�
   assert(m, 'petalMesh call found');
   assert.doesNotMatch(m[1], /\bs\b/, `wide arg "${m[1]}" must be a ratio`);
 });
+
+test('🌱 sprout 자국 — 정령 자취(카탈로그엔 없다) · 잎 2장 + 초록 원판', () => {
+  const m = src.match(/sprout: \(g, s, o\) =>[\s\S]*?\n\s{4}\},/);
+  assert(m, 'sprout builder');
+  assert.match(m[0], /petalMesh\(/);
+  assert.match(m[0], /forEach\(k =>/);
+  assert.match(m[0], /CircleGeometry/);
+});
+test('mergeGeos 는 공개 — 🧥 스킨이 바늘땀을 한 메시로 굽는 데 같이 쓴다', () => {
+  assert.match(src, /export function mergeGeos\(THREE, geos\)/);
+});
