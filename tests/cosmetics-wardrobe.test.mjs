@@ -46,3 +46,7 @@ test('shopButton: 안 산 건 가격, 산 건 입었든 안 입었든 "구매 �
   assert.deepEqual(shopButton(beanie, c), { label: '구매 완료', disabled: true });
   assert.deepEqual(shopButton(beanie, equip(c, 'beanie')), { label: '구매 완료', disabled: true });
 });
+
+test('shopButton: 현금 전용이면 코인 버튼이 없다(null)', () => {
+  assert.equal(shopButton({ id: 'firefly', premium: true, price: { coins: null, won: 4000 } }, own()), null);
+});

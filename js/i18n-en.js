@@ -307,6 +307,10 @@ export const EN = {
   '🎁 산 아이템이 도착했어요': '🎁 Your purchase has arrived',
   '잠시 후 다시 들어오면 도착해 있어요': 'It will be there next time you come in',
   '결제를 지금은 열 수 없어요': 'Checkout is unavailable right now',
+  '로그인하면 살 수 있어요': 'Log in to buy',
+  '지금은 살 수 없어요': 'Not available right now',
+  '반딧불': 'Fireflies',
+  '무지개': 'Rainbow',
   '이용약관': 'Terms of Service',
   '환불 정책': 'Refund Policy',
   '가격 안내': 'Pricing',
@@ -2052,6 +2056,11 @@ export const EN = {
   '코인이 모자라요': 'Not enough coins',
   //   👣 발자국 → ✨ 이펙트 (2026-09-23) — 상품은 그대로고 **분류 이름만** 바뀌었다
   '🎩 머리': '🎩 Head', '🧣 목': '🧣 Neck', '✨ 이펙트': '✨ Effects',
+  //   🧥 전신 스킨(2026-10-01 2단계) — 상품명·설명·연출 카드는 통문장
+  '🧥 스킨': '🧥 Skins', '숲의 정령': 'Forest Spirit', '플러시 인형': 'Plush Doll',
+  '밤이면 몸속에서 반딧불이 떠다녀요': 'At night, fireflies drift inside you',
+  '꿰맨 자국과 단추 눈, 걸을 때마다 말랑말랑': 'Stitched seams, button eyes, and a squishy step',
+  'PREMIUM · 전신 스킨': 'PREMIUM · Full-body skin', '바로 입어보기': 'Wear it now',
   '털모자': 'Wool Hat', '캡': 'Cap', '버섯 모자': 'Mushroom Hat', '밀짚모자': 'Straw Hat',
   '화관': 'Flower Crown', '나뭇잎 머리띠': 'Leaf Band', '별 머리핀': 'Star Pin',
   '목도리': 'Scarf', '방울 목걸이': 'Bell Collar', '나비 넥타이': 'Bow Tie',
@@ -2086,4 +2095,10 @@ export const EN = {
   '{0#}초': '{0}s',
   '{0#}회': '{0}x',
   '{0#}점': '{0} pts',
+  '반딧불 자국': 'Firefly Trail',
+  '무지개 자국': 'Rainbow Trail',
+  '밤이 되면 발자국마다 반딧불이 떠올라요': 'Fireflies rise from your footprints at night',
+  '걸음마다 일곱 빛깔이 차례로 남아요': 'Each step leaves the next color of the rainbow',
+  'PREMIUM · 걷는 자국': 'PREMIUM · Trail',
+  '바로 걸어보기': 'Walk now',
 };
