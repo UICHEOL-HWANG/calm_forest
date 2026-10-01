@@ -36,6 +36,7 @@ import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rul
 import { buildShop } from '../shop/building.js';
 import { cashAvailable, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
 import { premiumRowMode } from '../shop/premium-row.js';
+import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
 import { Sound } from '../sound.js';
 import { state as authState, fetchPurchases } from '../supabase-client.js';
@@ -944,6 +945,9 @@ setCheckoutHandlers({
   },
 });
 
+//  💎 [바로 걸어보기] — 이미 장착됐으니 가게 패널만 닫고 마을로 돌려보낸다(#cos-close 가 미리보기 정리까지 처리)
+function closeCosShopForWalk() { document.getElementById('cos-close')?.click(); }
+
 // 💳 지급이 확인됐을 때 — 사면 바로 입힌다 / 데려간다(코인 구매와 같은 결). 빠른 경로·느린 경로 공용.
 function onGranted(c, t0) {
   if (c.kind === 'cosmetic') {
@@ -951,6 +955,11 @@ function onGranted(c, t0) {
     applyCosmetics(gameState.cosmetics);
     cosTryOn = null; cosPreview?.refresh(null);
     trackEvent('cosmetic_equip', { item_id: c.itemId, slot: findItem(c.itemId)?.slot, action: 'on', via: 'cash' });
+    if (findItem(c.itemId)?.premium) {
+      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character,
+        onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'walk', ms }); closeCosShopForWalk(); },
+        onClose: (ms) => trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'close', ms }) });
+    }
   } else { switchPet(c.itemId); petView = c.itemId; }
   trackEvent('cash_grant_wait', { item_id: c.itemId, wait_ms: Date.now() - t0 });
   requestSave();
