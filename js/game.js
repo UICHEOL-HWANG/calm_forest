@@ -43,7 +43,7 @@ import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } fro
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
-import { SEASON_IDS, seasonById, seasonInfo, seasonOf, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
+import { SEASON_IDS, seasonById, seasonInfo, seasonNotice, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { makeRaidScar } from './duel/raid-art.js';                                                   // 🐾 털린 밭 조형(흔적·대결 무대 공용)
@@ -1155,27 +1155,13 @@ function setNickname(name, source = 'change') {
 // 예보 날씨가 아직 도감에 없으면 재방문 훅 문구 — 출석 모달·올빼미 대사에 붙임
 function forecastDexNudge() { return gameState.dex.weather?.[FORECAST] ? '' : ' 아직 도감에 없는 날씨예요! 📖'; }
 
-// 🍂 계절 안내 한 줄 — 출석 모달에 붙인다. 할 말이 없으면 ''.
-//   · 새 계절 첫 접속: "왔어요" + 이번 계절 한정 어종
-//   · 끝나기 3일 전부터: 한정 어종을 아직 못 낚았으면 "곧 끝나요"(놓치기 싫어서 돌아오는 훅)
-//   ⚠️ 실제 날짜의 계절만 본다(?season 강제값은 표시 테스트용이라 저장에 남기지 않는다).
-function seasonFish(id) { return FISH_KINDS.find(k => k.season === id); }
-function seasonLine(isNew) {
-  const { season, left } = SEASON_INFO;
-  const fish = seasonFish(season.id);
-  const fishIco = DEX.fish.find(f => f.id === fish?.rarity)?.ico || '🐟';
-  if (isNew) return `${season.ico} ${season.name}이 왔어요! ${left}일 동안 호수에서 ${fishIco} ${fish.name}${josa(fish.name, '이', '가')} 낚여요.`;
-  if (left <= 3 && fish && !gameState.dex.fish?.[fish.rarity]) return `⏳ ${season.name}이 ${left}일 남았어요 — ${fishIco} ${fish.name}${josa(fish.name, '은', '는')} 지금만 낚여요!`;
-  return '';
+// 🍂 계절 안내 — 문장은 js/season.js(seasonNotice·seasonStatusLine), 여기선 상태만 모아 넘긴다.
+//   ⚠️ 출석 모달은 실제 날짜의 계절만 본다(?season 강제값은 표시 테스트용이라 저장에 남기지 않는다).
+function seasonFish(id) {
+  const k = FISH_KINDS.find(f => f.season === id);
+  return k ? { id: k.rarity, name: k.name, ico: DEX.fish.find(f => f.id === k.rarity)?.ico || '🐟' } : null;
 }
-// HUD 계절 아이콘을 눌렀을 때 — 지금 계절·남은 날·한정 어종(낚았는지)
-function seasonStatus() {
-  const s = seasonById(SEASON);
-  const fish = seasonFish(SEASON);
-  const got = fish && gameState.dex.fish?.[fish.rarity];
-  return got ? `${s.ico} ${s.name} · ${SEASON_INFO.left}일 남음 — 이번 계절 한정 ${fish.name}도 낚았어요 ✅`
-             : `${s.ico} ${s.name} · ${SEASON_INFO.left}일 남음 — 이번 계절 한정: ${fish.name}`;
-}
+function seasonOwned(fish) { return !!(fish && gameState.dex.fish?.[fish.id]); }
 
 // ── 출석 보상 — 하루 1회, 연속 출석(streak)일수록 커짐. 7일마다 보석 보너스 ──
 function checkDailyBonus() {
@@ -1194,7 +1180,8 @@ function checkDailyBonus() {
   // 한 줄에 하나씩(#hint-body 는 pre-line) — 베타 피드백 "한 문단으로 붙어 있어 안 읽힌다"
   let body = `연속 ${d.streak}일째 방문! ${rewardText(reward)} 받았어요.` +
     (reward.gem ? '\n7일 연속 보너스 💎!' : '\n내일 또 오면 보상이 더 커져요!');
-  const sLine = seasonLine(seasonNew);
+  const sFish = seasonFish(SEASON_INFO.season.id);
+  const sLine = seasonNotice(SEASON_INFO, sFish, seasonOwned(sFish), seasonNew);
   if (sLine) body += '\n' + sLine;                              // 🍂 새 계절 · 끝나기 직전 안내
   if (seasonNew) trackEvent('season_start_seen', { season: d.season });   // [GA4] 계절 넘어가고 첫 접속
   if (WEATHER !== 'clear') body += '\n' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
@@ -1765,7 +1752,7 @@ export const Input = {
     return used + 1;
   },
   talkWeather() { return WEATHER; },             // 첫인사를 고를 때 쓴다
-  seasonStatus() { return seasonStatus(); },     // 🍂 HUD 계절 아이콘 탭
+  seasonStatus() { const f = seasonFish(SEASON); return seasonStatusLine({ season: seasonById(SEASON), left: SEASON_INFO.left }, f, seasonOwned(f)); },   // 🍂 HUD 계절 아이콘 탭
   seasonIco() { return seasonById(SEASON).ico; },
   capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(현재 화면 그대로)
   captureActionShot() { return startActionShot(); },  // 📷 밀착 액션샷(포즈 정점 캡처, Promise<dataURL>)
@@ -5767,19 +5754,26 @@ let catchItem = null;             // { mesh, t, from }
 const CATCH_ARC = 0.4;            // 포물선 비행 시간(초)
 
 // 로우폴리 물고기(등급별 색, 무지개는 은은한 발광) — 머리 위에서 파닥파닥
+//   🎨 드로우콜: 몸통·꼬리·눈을 정점색으로 한 덩어리(메시 1개). 예전엔 4개였다 —
+//      🏛️박물관 1층에 7종이 서면 28 → 7(+무지개 눈 1). 파닥임은 그룹을 돌리므로 합쳐도 같다.
+//   ⚠️ 공유 캐시(shared)에 넣지 않는다 — 박물관이 나갈 때 disposeTree 로 지오메트리를 버린다.
 function fishMesh(rarity) {
   const g = new THREE.Group();
   const col = FISH_KINDS.find(k => k.rarity === rarity)?.col   // 🍂 계절 한정 어종은 표에 색이 있다
     ?? (rarity === 'rare' ? 0x7ae0ff : rarity === 'uncommon' ? 0xe06a5a : 0x9fb4c8);
-  const mat = rarity === 'rare'
-    ? new THREE.MeshStandardMaterial({ color: col, emissive: 0x3ac0e0, emissiveIntensity: 0.4, roughness: 0.4 })
-    : clayMat(col, false);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), mat);
-  body.scale.set(1.6, 0.9, 0.7); body.castShadow = true; g.add(body);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 6), mat);
-  tail.rotation.z = Math.PI / 2; tail.position.x = -0.52; g.add(tail);
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x2a2624, roughness: 0.5 });
-  [0.14, -0.14].forEach(ez => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eyeMat); e.position.set(0.3, 0.07, ez); g.add(e); });
+  const body = new THREE.SphereGeometry(0.26, 8, 6).scale(1.6, 0.9, 0.7);
+  const tail = new THREE.ConeGeometry(0.16, 0.3, 6).rotateZ(Math.PI / 2).translate(-0.52, 0, 0);
+  const eyes = [0.14, -0.14].map(ez => paintGeo(new THREE.SphereGeometry(0.045, 6, 6).translate(0.3, 0.07, ez), 0x2a2624));
+  if (rarity === 'rare') {
+    // 🌈 발광 재질은 눈까지 빛나게 하므로 눈만 따로(메시 2개)
+    const glow = new THREE.MeshStandardMaterial({ color: col, emissive: 0x3ac0e0, emissiveIntensity: 0.4, roughness: 0.4 });
+    const m = new THREE.Mesh(mergeGeos([body, tail]), glow); m.castShadow = true; g.add(m);
+    g.add(new THREE.Mesh(mergeGeos(eyes), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 })));
+  } else {
+    const m = new THREE.Mesh(mergeGeos([paintGeo(body, col), paintGeo(tail, col), ...eyes]),
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }));
+    m.castShadow = true; g.add(m);
+  }
   g.userData.flap = true;         // 살아있는 물고기 — 파닥임
   return g;
 }
