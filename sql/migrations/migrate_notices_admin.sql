@@ -4,7 +4,7 @@
 --  페이지가 API 없이 브라우저에서 supabase-js 로 notices 를 직접 insert/update/delete 한다.
 --  그래서 "누가 써도 되는가"는 전적으로 RLS 가 정한다 — 관리자 이메일 허용목록 하나로 잠근다.
 --
---  · cf_is_admin(): 호출자 JWT 의 이메일이 허용목록에 있으면 true.
+--  · cf_is_admin(): 호출자 JWT 의 이메일 AND auth.uid() 가 허용목록에 있고 익명이 아니면 true.
 --      admin_analytics.sql / migrate_beta_diary_q7.sql 의 admins 배열과 같은 명단을 유지할 것.
 --  · notices: 관리자는 전체 읽기(답장 포함)·쓰기·수정·삭제. 일반 유저는 기존 select 정책 그대로.
 --  · feedback: 관리자는 전체 읽기(답장 대상 고르기용). 일반 유저는 기존 정책(본인 insert/select) 그대로.
@@ -22,8 +22,12 @@ stable
 security invoker
 set search_path = public
 as $$
-  select lower(coalesce(auth.jwt() ->> 'email', ''))
-         = any (array['icuchoel@gmail.com', 'cheorish.hw@gmail.com']);   -- ★ 관리자 이메일(소문자)
+  select lower(coalesce((select auth.jwt()) ->> 'email', ''))
+           = any (array['icuchoel@gmail.com', 'cheorish.hw@gmail.com'])        -- ★ 관리자 이메일(소문자)
+     and coalesce((select auth.uid()) = any (array[
+           '17bb08c7-c4bc-4870-b464-1b131e67aff8',
+           '4cab8ea4-c27f-4ef5-b350-cf55f0f993b5']::uuid[]), false)              -- ★ 관리자 UUID — 🔐 migrate_admin_uid_guard.sql(2026-09-30)
+     and not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false);
 $$;
 grant execute on function public.cf_is_admin() to authenticated;
 

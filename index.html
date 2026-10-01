@@ -443,7 +443,7 @@
   #login-screen.show { display: grid; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes floatUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-  #login-card { position: relative; text-align: center; padding: 40px 40px 34px; max-width: 380px;
+  #login-card { position: relative; text-align: center; padding: 40px 40px 34px; max-width: min(380px, calc(100vw - 24px));
     max-height: calc(100dvh - 24px); overflow-y: auto;
     background: rgba(255,255,255,0.16); backdrop-filter: blur(16px) saturate(1.2);
     border: 1px solid rgba(255,255,255,0.35); border-radius: 28px;
@@ -475,6 +475,32 @@
   body.platform-android #google-btn, body.platform-android #guest-btn, body.platform-android #stats-btn { display: none; }
   body.platform-android #toss-btn { display: inline-flex; }
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
+  /* ✉️ 이메일 코드 로그인 — 구글 아래 보조 버튼(반투명 테두리) + 단계 카드 */
+  #email-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 0; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 24px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: transform .12s; }
+  #email-btn:active { transform: scale(0.96); }
+  body.platform-toss #email-btn, body.platform-android #email-btn { display: none; }   /* 토스·플레이 앱은 전용 로그인 */
+  #login-main[hidden], .login-step[hidden] { display: none !important; }
+  .login-step .step-title { font-size: 19px; font-weight: 800; margin: 4px 0 6px; text-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  .login-step .step-hint { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.9); margin: 0 0 14px; word-break: keep-all; overflow-wrap: anywhere; }
+  .login-step .step-field { display: block; width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,.55); background: rgba(255,255,255,.92); border-radius: 14px; padding: 12px 14px; font-size: 16px; color: #3a4a40; font-family: inherit; outline: none; }
+  .login-step .step-field:focus { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.35); }
+  /* 🔢 코드 칸(A안 흰 타일) — 투명 input 이 칸 전체를 덮어 어디를 눌러도 입력된다 */
+  .login-step .otp { position: relative; width: 316px; max-width: 100%; margin: 0 auto; }   /* 칸 6×46+간격 — 카드가 글자 폭으로 줄어도 칸이 쪼그라들지 않게 */
+  .login-step .otp-cells { display: flex; justify-content: center; gap: 8px; }
+  .login-step .otp-cell { flex: 1 1 0; max-width: 46px; height: 54px; box-sizing: border-box; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.92); border: 1px solid rgba(255,255,255,.55); box-shadow: 0 4px 12px rgba(0,0,0,.12); font-size: 26px; font-weight: 800; color: #3a4a40; }
+  .login-step .otp-cell.on { border: 2px solid #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.35); }
+  .login-step .otp-cell.on:empty::after { content: ''; width: 2px; height: 26px; background: #3a4a40; animation: otpBlink 1s steps(1) infinite; }
+  @keyframes otpBlink { 50% { opacity: 0; } }
+  .login-step .otp-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; outline: none; background: transparent; color: transparent; caret-color: transparent; font-size: 16px; cursor: text; }
+  .login-step .otp-input::selection { background: transparent; }
+  .login-step .step-primary { display: block; width: 100%; margin-top: 10px; border: none; background: #fff; border-radius: 14px; padding: 12px; font-size: 15px; font-weight: 800; color: #3a4a40; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-family: inherit; }
+  .login-step .step-primary:disabled { opacity: .7; cursor: default; }
+  .login-step .step-err { min-height: 0; margin: 8px 0 0; font-size: 13px; font-weight: 700; color: #ffe1d6; text-shadow: 0 1px 6px rgba(0,0,0,.35); word-break: keep-all; }
+  .login-step .step-err:empty { display: none; }
+  .login-step .step-link { margin-top: 14px; background: none; border: none; padding: 0; color: rgba(255,255,255,.85); font-size: 13px; text-decoration: underline; cursor: pointer; font-family: inherit; }
+  .login-step .step-link:disabled { text-decoration: none; opacity: .75; cursor: default; }
+  .login-step .step-links { display: flex; justify-content: space-between; gap: 8px; }
+  .login-step .step-links .step-link { margin-top: 12px; font-size: 12px; }
 
   /* 우측 상단: 인벤토리 + 낮/밤 */
   #topright { top: calc(16px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
@@ -2197,16 +2223,43 @@
       <div class="leaf">🌿</div>
       <h1>calm forest</h1>
       <div class="tagline">a cozy little forest</div>
-      <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
-      <button id="toss-btn">바로 플레이하기</button>
-      <button id="guest-btn">게스트로 둘러보기</button>
-      <div id="login-note"></div>
-      <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
-      <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
-      <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. 토스·안드로이드에서는 JS 가 제거(앱 번들은 빌드 때도 제거) -->
-      <nav id="login-links">
-        <a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
-      </nav>
+      <div id="login-main">
+        <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
+        <button id="toss-btn">바로 플레이하기</button>
+        <button id="email-btn">✉️ 이메일로 시작하기</button>
+        <button id="guest-btn">게스트로 둘러보기</button>
+        <div id="login-note"></div>
+        <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
+        <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
+        <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. CONFIG.PADDLE.storeOpen 이 false 거나 토스·안드로이드면 JS 가 제거(앱 번들은 빌드 때도 제거) -->
+        <nav id="login-links">
+          <a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
+        </nav>
+      </div>
+      <!-- ✉️ 이메일 코드 로그인 — 카드 내용이 단계별로 통째로 바뀐다(A안, js/auth/email-login.js) -->
+      <form id="email-step" class="login-step" hidden novalidate>
+        <div class="step-title">이메일로 시작하기</div>
+        <p class="step-hint">메일로 6자리 코드를 보내 드려요. 비밀번호는 필요 없어요.</p>
+        <input id="email-input" class="step-field" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="이메일 주소">
+        <button id="email-send" class="step-primary" type="submit">코드 받기</button>
+        <p id="email-err" class="step-err" role="alert"></p>
+        <button id="email-back" class="step-link" type="button">← 다른 방법으로 시작하기</button>
+      </form>
+      <form id="code-step" class="login-step" hidden novalidate>
+        <div class="step-title">코드 입력</div>
+        <p class="step-hint"><span id="code-sent-to"></span><br><span>메일함에 없으면 스팸함도 확인해 주세요.</span></p>
+        <!-- 🔢 보이는 건 칸 6개(장식), 입력은 위에 겹친 투명 input 하나 — 붙여넣기·iOS 코드 자동 채우기·백스페이스가 그대로 돈다 -->
+        <div class="otp">
+          <div id="code-cells" class="otp-cells" aria-hidden="true"></div>
+          <input id="code-input" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="6자리 코드" maxlength="24">
+        </div>
+        <button id="code-verify" class="step-primary" type="submit">시작하기</button>
+        <p id="code-err" class="step-err" role="alert"></p>
+        <div class="step-links">
+          <button id="code-back" class="step-link" type="button">← 이메일 바꾸기</button>
+          <button id="code-resend" class="step-link" type="button">코드 다시 받기</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2420,7 +2473,8 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithToss, signInWithPlayGames, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { consumeExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다
@@ -3934,7 +3988,7 @@
       const dot = $('login-dot');
       dot.classList.remove('online', 'offline');
       dot.classList.add(s.online && !s.lost ? 'online' : 'offline');   // 🔌 끊긴 세션에 초록 점을 찍지 않는다
-      const label = s.provider === 'google' ? (s.email || '구글') : s.online ? '익명' : '게스트(오프라인)';
+      const label = (s.provider === 'google' || s.provider === 'email') ? (s.email || (s.provider === 'email' ? '이메일' : '구글')) : s.online ? '익명' : '게스트(오프라인)';
       $('login-status').textContent = label;
     }
 
@@ -3982,7 +4036,7 @@
       try { if ((localStorage.getItem('cf_music') || 'on') !== 'off') startBGM(); } catch (e) { startBGM(); } // 배경음악
       // 구글=로그아웃 / 게스트=나가기 (둘 다 메인 화면으로 복귀)
       const exitBtn = $('logout-btn'); exitBtn.style.display = '';
-      exitBtn.innerHTML = '<span class="uico">🚪</span><span class="ulbl">' + ((authState.provider === 'google') ? '로그아웃' : '나가기') + '</span>';
+      exitBtn.innerHTML = '<span class="uico">🚪</span><span class="ulbl">' + ((authState.provider === 'google' || authState.provider === 'email') ? '로그아웃' : '나가기') + '</span>';
 
       // 진행상황 자동 저장 — 30초 주기 + 탭 숨김/종료 시 (창 닫았다 열어도 이어짐)
       setInterval(() => requestSave(), 30000);
@@ -3996,6 +4050,8 @@
     if (IS_ITCH) document.body.classList.add('platform-itch');
     if (IS_ANDROID) document.body.classList.add('platform-android');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    //  ✉️ 이메일 코드 — 세션이 잡히면 initAuth 콜백이 enterPlay (토스·앱은 CSS 로 버튼이 숨고 함수도 막혀 있다)
+    mountEmailLogin({ $, requestCode: requestEmailCode, verifyCode: verifyEmailCode, track: trackEvent });
     // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
     //    또 실패하면 유저에게 결정을 떠넘기지 않고 게스트로 바로 시작한다(토스트로만 알림).
     //    📱 플레이 앱도 같은 버튼 — 플레이 게임즈 로그인 창을 한 번 띄워(interactive) 재시도한다.
@@ -4148,7 +4204,8 @@
     }
     //  💳 약관·환불 링크(설정 메뉴 + 로그인 카드)는 토스·안드로이드에서 내린다 —
     //     토스는 위와 같은 편도 티켓 문제(자체 IAP 라 필요도 없다), 안드로이드는 구글 플레이 정책상 외부 결제 안내 링크 금지.
-    if (IS_TOSS || IS_ANDROID) {
+    //     storeOpen 이 false 면 웹에서도 내린다 — 팔 현금 상품이 아직 없다(프리미엄 아이템과 함께 공개).
+    if (IS_TOSS || IS_ANDROID || !CONFIG.PADDLE.storeOpen) {
       $('terms-btn').remove(); $('refund-btn').remove();
       $('login-links')?.remove();
     } else {
@@ -5296,7 +5353,7 @@
 
     // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
     $('stats-btn').addEventListener('click', () => {
-      if (authState.provider !== 'google') {
+      if (authState.provider !== 'google' && authState.provider !== 'email') {
         ui.toast('📊 로그인하면 내 활동 기록을 볼 수 있어요 (게스트는 안 이어져요)');
         return;
       }
@@ -5434,7 +5491,7 @@
     // ⚠️ js/game.js 에도 같은 이름의 표가 있다(박물관 명판용). 문구가 서로 달라 **둘 다** 고쳐야 한다 —
     //    한쪽만 고치면 도감 모달 제목에 카테고리 키가 날것으로 뜬다('visitor' 가 그대로 보였다).
     const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서', visitor: '🦋 텃밭 방문객' };
-    const isGuestNow = () => !['google', 'toss', 'pgs'].includes(authState.provider);   // 구글 로그인·토스·플레이 게임즈 계정 = 영구 계정
+    const isGuestNow = () => !['google', 'email', 'toss', 'pgs'].includes(authState.provider);   // 구글·이메일·토스·플레이 게임즈 계정 = 영구 계정
     // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
     //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
     //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.

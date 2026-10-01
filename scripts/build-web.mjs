@@ -55,9 +55,7 @@ const INCLUDE = [
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
   //    빼면 링크가 404 가 되어 심사에서 반려된다.
   ['pages/privacy.html', 'privacy.html'],               // → /privacy
-  // 💳 Paddle 도메인 심사 필수 — 약관·환불·가격이 사이트 안에서 닿아야 한다. 빼면 심사 반려.
-  ['pages/terms.html', 'terms.html'],     // → /terms
-  ['pages/refund.html', 'refund.html'],   // → /refund
+  // 💳 /terms /refund (/shop 은 아래에서 생성) — CONFIG.PADDLE.storeOpen 일 때만 넣는다(STORE_PAGES)
   ['pages/delete-account.html', 'delete-account.html'], // → /delete-account
   '_headers',        // 캐시 헤더
 ];
@@ -88,8 +86,16 @@ for (const item of INCLUDE) {
   await copyInto(src, path.join(DIST, to));
 }
 
+// 💳 Paddle 도메인 심사 필수 — 약관·환불·가격이 사이트 안에서 닿아야 한다(빼면 심사 반려).
+//    단 팔 현금 상품이 없는 동안(storeOpen=false)은 통째로 뺀다 — 약관 초안([법적 이름])이 공개되지 않게.
+const { CONFIG } = await import('../js/config.js');
+const STORE_PAGES = [['pages/terms.html', 'terms.html'], ['pages/refund.html', 'refund.html']];   // → /terms /refund
+if (CONFIG.PADDLE.storeOpen) {
+  for (const [from, to] of STORE_PAGES) await copyInto(path.join(ROOT, from), path.join(DIST, to));
+}
+
 // 💳 /shop — 가격표를 카탈로그에서 생성한다(가격 단일 출처). pages/shop.template.html 의 <!--ROWS--> 자리.
-{
+if (CONFIG.PADDLE.storeOpen) {
   const { ITEMS } = await import('../js/cosmetics/catalog.js');
   const { PET_KINDS, PET_PRICE } = await import('../js/pet/rules.js');
   const { cashLabel, PET_CASH_LABEL } = await import('../js/shop/cash.js');
