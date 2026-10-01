@@ -67,3 +67,9 @@ test('자국 n 은 살아 있는 동안 안정적이고 걸음 순서대로 늘�
   const sorted = a.sort((x, y) => x.z - y.z).map(k => k.n);
   for (let i = 1; i < sorted.length; i++) assert.ok(sorted[i] > sorted[i - 1]);
 });
+
+test('💎 미리보기 반짝이 색은 자국 id(k.n) 에서 — 첫 자국이 n=1 이라 내부 카운터면 한 색 어긋난다', () => {
+  assert.equal(walkMarks(WALK_FADE)[0].n, 1);
+  const src = readFileSync(new URL('../js/cosmetics/trail-walk.js', import.meta.url), 'utf8');
+  assert.match(src, /fx\.onStamp\([^)]*step:\s*k\.n/);
+});

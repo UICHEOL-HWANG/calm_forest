@@ -86,14 +86,14 @@ export function createTrailFx(THREE, { cap = 64, rnd = Math.random, blending = '
 
   const push = (p) => { live = [...live, p].slice(-cap); };
 
-  /** 자국을 찍을 때 — rainbow 면 그 자국에 입힐 색을 돌려준다 */
-  function onStamp(id, at, { nightLevel = 0 } = {}) {
+  /** 자국을 찍을 때 — rainbow 면 그 자국에 입힐 색을 돌려준다. step 을 주면 내부 카운터 대신 그 걸음 색 */
+  function onStamp(id, at, { nightLevel = 0, step: stepAt } = {}) {
     if (id === 'firefly') {
       for (let i = fireflyCount(nightLevel, rnd()); i > 0; i--) push(spawnFirefly(at, rnd));
       return { tint: null };
     }
     if (id === 'rainbow') {
-      const hex = rainbowHex(step++);
+      const hex = rainbowHex(stepAt ?? step++);
       for (let i = 0; i < 3; i++) push(spawnSpark(at, hex, rnd));
       return { tint: hex };
     }
