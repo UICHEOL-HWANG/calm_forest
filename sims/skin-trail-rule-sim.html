@@ -1,0 +1,237 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>정령 자취 규칙 비교 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#0f1a17;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#e8efe6;overflow:hidden}
+  canvas{display:block;width:100%;height:100%}
+  #cols{position:fixed;inset:0 0 60px 0;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:1fr 1fr;pointer-events:none}
+  #cols div{padding:10px 12px;font-size:13px;line-height:1.45;border-right:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12)}
+  #cols b{display:block;font-size:15px;color:#fff}
+  #cols small{display:block;opacity:.7}
+  #cols .rec{color:#ffd77a}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 14px 14px;background:rgba(10,18,15,.88);border-top:1px solid #2a3a33;font-size:13px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;padding:6px 11px;border-radius:8px;border:1px solid #4a5f55;background:#1d2a25;color:#e8efe6;cursor:pointer}
+  button.on{background:#5b8f5b;border-color:#6fa86f;color:#fff}
+  @media (max-width:760px){
+    #cols{grid-template-columns:repeat(2,1fr);grid-template-rows:1fr 1fr;inset:0 0 96px 0}
+    #cols div{font-size:11px;padding:6px 8px;height:max-content} #cols b{font-size:12.5px} #cols small{display:none}
+    #ui{font-size:12px;padding:8px 10px 10px} button{padding:5px 8px}
+  }
+</style>
+<canvas id="c"></canvas>
+<div id="cols">
+  <div><b>A. 자국 칸이 비었을 때만 <span class="rec">★추천</span></b><span class="st"></span><small>산 자국이 늘 우선 · 겹침 없음</small></div>
+  <div><b>B. 스킨 자취 항상 우선</b><span class="st"></span><small>정령 입으면 자국 칸 무시</small></div>
+  <div><b>C. 둘 다 표시</b><span class="st"></span><small>자국 + 새싹이 함께 · 붐빔</small></div>
+  <div><b>D. 자취 없음</b><span class="st"></span><small>몸만 빛남</small></div>
+</div>
+<div id="ui">
+  <span>자국 칸</span><span id="trailBtns"></span>
+  <span>시간</span><span id="timeBtns"></span>
+  <span style="opacity:.6;font-size:12px">정령 몸·새싹은 <b>대역</b>(규칙 비교용)</span>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+// 머리·자국·반딧불은 게임과 같은 소스 — 비교가 실제 화면과 어긋나지 않게
+import { buildAnimalHead } from '../js/animal-faces.js';
+import { buildTrailMark, TRAIL_SIDE, TRAIL_FADE } from '../js/cosmetics/trail.js';
+import { createTrailFx } from '../js/cosmetics/trail-fx.js';
+
+// =============================================================
+//  🌿 숲의 정령 자취 × 자국 칸 — 규칙 4가지를 나란히 걷게 한다
+//  ▶ 여우 체형은 js/game.js ANIMALS 에서 옮겨 적음(몸은 근사, 머리는 원본)
+//  ▶ 정령 몸(반투명 초록 발광)·새싹은 대역. 블룸 임계 0.85 아래 색만 쓴다.
+// =============================================================
+
+const FOX = { body: 0xf0883a, belly: 0xf9ecd8, R: 0.52, bs: [0.90, 1.08, 0.90], HR: 0.37, HY: 1.26 };
+const SPIRIT = { body: 0x7fd88a, emissive: 0x2f8a4a, opacity: 0.78 };   // luma ≈ 0.75
+const SPROUT = { leaf: 0x8fe08a, glow: 0x3f9a50 };
+const SPEED = 1.8, RADIUS = 7, STEP = 0.6;   // 자국 간격은 게임 TRAIL_STEP 과 같게
+const SPROUT_LIFE = 1.6;
+
+const rules = ['A', 'B', 'C', 'D'];
+let trailId = 'firefly', night = 0.92;
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setScissorTest(true);
+
+function buildFox() {
+  const g = new THREE.Group();
+  const bodyY = FOX.R * FOX.bs[1] + 0.02;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(FOX.R, 32, 24));
+  body.position.y = bodyY; body.scale.set(...FOX.bs); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(FOX.R * 0.62, 24, 18));
+  belly.position.set(0, bodyY - FOX.R * 0.16, FOX.R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  g.add(buildAnimalHead('fox', { HR: FOX.HR, HY: FOX.HY, body: FOX.body, belly: FOX.belly }));
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12));
+  tail.position.set(0, bodyY + 0.1, -FOX.R * 0.95); tail.scale.set(0.8, 1.5, 0.8); tail.rotation.x = -0.6; g.add(tail);
+  //  정령 스킨 대역 — 눈(어두운 재질)만 남기고 몸 재질을 갈아 끼운다
+  const mat = new THREE.MeshStandardMaterial({ color: SPIRIT.body, emissive: SPIRIT.emissive, emissiveIntensity: 0.9,
+    roughness: 0.55, transparent: true, opacity: SPIRIT.opacity });
+  g.traverse(o => {
+    if (!o.isMesh) return;
+    const c = o.material?.color;
+    if (!(c && (c.r + c.g + c.b) < 0.5)) o.material = mat;
+  });
+  return g;
+}
+
+function buildSprout() {
+  const g = new THREE.Group();
+  const leafMat = new THREE.MeshStandardMaterial({ color: SPROUT.leaf, emissive: SPROUT.glow, emissiveIntensity: 0.8, transparent: true });
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.09, 5), leafMat);
+  stem.position.y = 0.045; g.add(stem);
+  for (const s of [-1, 1]) {
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), leafMat);
+    l.scale.set(1, 0.35, 0.55); l.position.set(s * 0.04, 0.095, 0); l.rotation.z = s * 0.5; g.add(l);
+  }
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(0.09, 20),
+    new THREE.MeshBasicMaterial({ color: SPROUT.glow, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
+  glow.rotation.x = -Math.PI / 2; glow.position.y = 0.006; g.add(glow);
+  g.userData.mats = [leafMat, glow.material];
+  return g;
+}
+
+function makeLane(rule) {
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  cam.position.set(0, 4.6, 4.8); cam.lookAt(0, 0.2, 0);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x445544, 1); scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xfff2d8, 1); key.position.set(2.5, 4, 3); scene.add(key);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(12, 48), new THREE.MeshStandardMaterial({ color: 0x5c8a4e, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; scene.add(ground);
+  const fox = buildFox(); scene.add(fox);
+  const fx = createTrailFx(THREE); scene.add(fx.points);
+  return { rule, scene, cam, hemi, key, ground, fox, fx, marks: [], sprouts: [], dist: 0, lastStamp: 0, side: 1, step: 0 };
+}
+const lanes = rules.map(makeLane);
+
+const showsTrail = (rule) => !!trailId && rule !== 'B';
+const showsSprout = (rule) => rule === 'B' || rule === 'C' || (rule === 'A' && !trailId);
+
+function stamp(L, pos, yaw) {
+  L.side = -L.side; L.step++;
+  const off = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(L.side * TRAIL_SIDE);
+  const at = pos.clone().add(off);
+  if (showsTrail(L.rule)) {
+    const m = buildTrailMark(THREE, trailId, 1, 'fox');
+    const r = L.fx.onStamp(trailId, at, { nightLevel: night, step: L.step });
+    if (r.tint != null) m.traverse(o => { if (o.isMesh) o.material.color.setHex(r.tint); });
+    m.position.copy(at).setY(0.012); m.rotation.y = yaw;
+    L.scene.add(m); L.marks.push({ m, t: 0 });
+  }
+  if (showsSprout(L.rule)) {
+    const s = buildSprout();
+    //  C 는 자국과 같은 자리면 하나로 보인다 — 반대편 발에 둬서 "둘 다" 가 보이게
+    const sAt = L.rule === 'C' ? pos.clone().sub(off.clone().multiplyScalar(2.2)) : at;
+    s.position.copy(sAt); s.rotation.y = yaw; s.scale.setScalar(0.01);
+    L.scene.add(s); L.sprouts.push({ s, t: 0 });
+  }
+}
+
+function tick(L, dt, t) {
+  L.dist += SPEED * dt;
+  const a = L.dist / RADIUS;
+  const pos = new THREE.Vector3(Math.cos(a) * RADIUS, 0, Math.sin(a) * RADIUS);
+  const yaw = -a;   // 진행 방향(접선) — 모델 앞(+z)이 (−sin a, cos a) 를 보게
+  L.fox.position.copy(pos).setY(Math.abs(Math.sin(t * 9)) * 0.06);
+  L.fox.rotation.y = yaw;
+  //  따라가는 카메라 — 큰 원(거의 직선)의 바깥 옆에서, 캐릭터와 뒤에 남는 자취를 같이 담는다
+  const fwd = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)), out = pos.clone().normalize();
+  const look = pos.clone().addScaledVector(fwd, -1.0).setY(0.3);
+  L.cam.position.copy(look).addScaledVector(out, 3.3).setY(2.7);
+  L.cam.lookAt(look);
+  if (L.dist - L.lastStamp >= STEP) { L.lastStamp = L.dist; stamp(L, pos, yaw); }
+  L.marks = L.marks.filter(e => {
+    e.t += dt; const k = Math.max(0, 1 - e.t / TRAIL_FADE);
+    e.m.traverse(o => { if (o.material) o.material.opacity = k; });
+    if (k <= 0) { L.scene.remove(e.m); return false; } return true;
+  });
+  L.sprouts = L.sprouts.filter(e => {
+    e.t += dt;
+    const grow = Math.min(1, e.t / 0.25);
+    const fade = Math.max(0, 1 - Math.max(0, e.t - SPROUT_LIFE * 0.5) / (SPROUT_LIFE * 0.5));
+    e.s.scale.setScalar(Math.max(0.01, grow * (0.6 + 0.4 * fade)));
+    e.s.userData.mats[0].opacity = fade; e.s.userData.mats[1].opacity = 0.5 * fade;
+    if (fade <= 0) { L.scene.remove(e.s); return false; } return true;
+  });
+  L.fx.update(dt, { nightLevel: night });
+  const isNight = night >= 0.5;
+  L.scene.background = new THREE.Color(isNight ? 0x0d1622 : 0xbfd8e6);
+  L.hemi.intensity = isNight ? 0.55 : 1.0; L.key.intensity = isNight ? 0.35 : 1.0;
+  L.ground.material.color.setHex(isNight ? 0x36573c : 0x6f9a58);
+}
+
+// ── 컬럼 라벨: 지금 무엇이 보이는지 ──
+const st = [...document.querySelectorAll('#cols .st')];
+const TRAIL_LABEL = { firefly: '🌟 반딧불', rainbow: '🌈 무지개', paw: '🐾 발바닥' };
+function refreshLabels() {
+  lanes.forEach((L, i) => {
+    const parts = [];
+    if (showsTrail(L.rule)) parts.push(TRAIL_LABEL[trailId]);
+    if (showsSprout(L.rule)) parts.push('🌱 정령 새싹');
+    st[i].textContent = '→ ' + (parts.join(' + ') || '자취 없음');
+  });
+}
+
+function resetAll() {
+  lanes.forEach(L => {
+    L.marks.forEach(e => L.scene.remove(e.m)); L.sprouts.forEach(e => L.scene.remove(e.s));
+    L.marks = []; L.sprouts = []; L.fx.clear();
+  });
+}
+function btnRow(el, items, get, set) {
+  const draw = () => {
+    el.innerHTML = '';
+    items.forEach(([v, label]) => {
+      const b = document.createElement('button'); b.textContent = label; if (get() === v) b.className = 'on';
+      b.onclick = () => { set(v); draw(); resetAll(); refreshLabels(); };
+      el.append(b, ' ');
+    });
+  };
+  draw();
+}
+btnRow(document.getElementById('trailBtns'),
+  [['firefly', '🌟 반딧불'], ['rainbow', '🌈 무지개'], ['paw', '🐾 발바닥'], [null, '비어 있음']],
+  () => trailId, v => { trailId = v; });
+btnRow(document.getElementById('timeBtns'), [[0.92, '🌙 밤'], [0.3, '☀️ 낮']], () => night, v => { night = v; });
+refreshLabels();
+
+//  좁은 칸에서도 걷는 원(반지름 RADIUS + 여유)이 가로로 다 들어오게 카메라를 물린다
+function fitCam(cam, aspect) {
+  cam.aspect = aspect; cam.updateProjectionMatrix();
+  const half = RADIUS + 0.9, vfov = cam.fov * Math.PI / 180;
+  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+  const d = Math.max(half / Math.tan(vfov / 2), half / Math.tan(hfov / 2)) * 1.05;
+  const e = 52 * Math.PI / 180;
+  cam.position.set(0, Math.sin(e) * d, Math.cos(e) * d); cam.lookAt(0, 0.3, 0);
+}
+
+// ── 렌더: 한 캔버스를 2×2 로 자른다 ──
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  const ui = document.getElementById('ui').offsetHeight;
+  const grid = [2, 2];
+  const cw = w / grid[0], ch = (h - ui) / grid[1];
+  lanes.forEach((L, i) => {
+    tick(L, dt, now / 1000);
+    const cx = (i % grid[0]) * cw, cy = ui + (grid[1] - 1 - Math.floor(i / grid[0])) * ch;
+    renderer.setViewport(cx, cy, cw, ch); renderer.setScissor(cx, cy, cw, ch);
+    L.cam.aspect = cw / ch; L.cam.updateProjectionMatrix();
+    renderer.render(L.scene, L.cam);
+  });
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__lanes = lanes;
+</script>
