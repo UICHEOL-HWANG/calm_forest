@@ -42,12 +42,16 @@
 스펙 docs/superpowers/specs/2026-10-01-premium-skins-design.md · 계획 docs/superpowers/plans/2026-10-01-premium-skins.md
 결정: 덧입히기(A) · 다른 꾸미기와 같이 입음 · 정령 자취는 자국 칸 비었을 때만(A) · 🌿 S3 반딧불 정령 ₩10,000 · 🧸 P1 솔기·단추 눈 ₩9,000 · B+C 상자 폭발
 
-- [ ] T1 카탈로그 skin 칸 + 2상품
-- [ ] T2 skin-rules(effectiveTrail·squashOf)
-- [ ] T3 부위 표식(pupil·highlight·head·skull·body·belly) + kk.id
-- [ ] T4 sprout 자국 + mergeGeos export
-- [ ] T5 skin.js(applySkin·disposeSkin)
-- [ ] T6 게임 배선
-- [ ] T7 가게·옷장 스킨 탭 + i18n
-- [ ] T8 연출 B+C
-- [ ] T9 화면 검증·드로우콜·리뷰·문서·푸시
+- [x] T1 카탈로그 skin 칸 + 2상품 (60ff461)
+- [x] T2 skin-rules(effectiveTrail·squashOf) (2ccdfc2)
+- [x] T3 부위 표식(pupil·highlight·head·skull·body·belly) + kk.id (5b9187a)
+- [x] T4 sprout 자국 + mergeGeos export (4e8ba90)
+- [x] T5 skin.js(applySkin·disposeSkin) (f02ace4)
+- [x] T6 게임 배선 (d6f1f39)
+- [x] T7 가게·옷장 스킨 탭 + i18n (46d41f1, f867959 탭 6개 글자 쪼개짐 수정)
+- [x] T8 연출 B+C (c0f81c1, 11eec56 재질 공유 지오메트리 정리·발 원점 오프셋)
+- [~] T9 화면 검증·드로우콜·리뷰 — 2991e82 인형 배 패치가 곰·판다·강아지·병아리 몸속에 묻히던 것 수정 · 최종 리뷰 진행
+  - 드로우콜(캐릭터 1마리): 없음 24 · 정령 +4 · 인형 ±0(구운 6 − 숨긴 눈 6)
+  - 화면: 7종×2스킨 낮 · 정령+모자+망토 밤 · 가게 스킨 탭 PC 한 줄/375px 두 줄 · 연출 B+C 0.97/1.5/2.0/2.9s · A 연출 회귀 없음
+  - **판단 대기(사용자)**: 정령 새싹이 모자를 뚫고 솟는다(그대로 vs 모자 쓰면 새싹 숨김)
+- [ ] 결제 실검증·시드(1단계 T10 과 같이) — 스킨 priceId 2개는 paddle-seed 가 premium 을 자동 등록

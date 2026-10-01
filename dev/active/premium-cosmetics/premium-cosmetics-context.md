@@ -36,3 +36,7 @@ Last Updated: 2026-10-01
 - 브랜치 feat/premium-skins(feat/premium-trails daf269a 위). 1단계는 따로 병합 가능.
 - 시안: sims/skin-look-sim.html(S1~3·P1~3) · sims/skin-trail-rule-sim.html(A~D)
 - 함정: 시뮬에서 Color 선형값으로 밝기 판정해 갈색 발바닥이 "어두움"으로 잡힘 → getHex(sRGB) · 미리보기 서버는 루트 launch.json 의 premium-* 설정(워크트리 --directory)
+- 함정(2026-10-01 밤): python http.server 정적 서버는 브라우저가 휴리스틱 캐시로 옛 js 를 계속 준다 → 커밋 뒤 확인 전 `fetch(url,{cache:'reload'})` 로 로드된 /js/ 전부 갱신 후 새로고침
+- 함정: buildCharacterMesh 원점은 **발** — 시안 진열물(중심 원점)과 달라 연출에서 머리가 잘렸다(HERO_FEET_OFFSET)
+- 함정: 배 패치를 배 구 앞면에 두면 몸이 더 앞으로 나온 동물(곰·판다·강아지·병아리)에서 묻힌다 → bellyPatchZ
+- 연출 특정 시점 캡처: performance.now·requestAnimationFrame 을 고정 시계로 감싸 t 를 밀어 가며 찍었다
