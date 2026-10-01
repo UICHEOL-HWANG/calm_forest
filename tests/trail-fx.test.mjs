@@ -1,0 +1,30 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { fireflyCount, hueAt, rainbowHex, spawnFirefly, spawnSpark, particleStep } from '../js/cosmetics/trail-fx.js';
+import { NIGHT_MIN } from '../js/daynight.js';
+
+test('fireflyCount — 밤엔 2개, 낮엔 30% 확률로 1개', () => {
+  assert.equal(fireflyCount(NIGHT_MIN, 0.99), 2);
+  assert.equal(fireflyCount(1, 0), 2);
+  assert.equal(fireflyCount(0, 0.29), 1);
+  assert.equal(fireflyCount(0, 0.3), 0);
+});
+
+test('hueAt — 걸음마다 0.09 씩 돌고 [0,1) 로 감긴다', () => {
+  assert.equal(hueAt(0), 0);
+  assert.ok(Math.abs(hueAt(1) - 0.09) < 1e-9);
+  for (let s = 0; s < 50; s++) { const h = hueAt(s); assert.ok(h >= 0 && h < 1, `${s}: ${h}`); }
+  assert.notEqual(rainbowHex(0), rainbowHex(1));
+  assert.ok(rainbowHex(0) >= 0 && rainbowHex(0) <= 0xffffff);
+});
+
+test('particleStep — 위로 오르고, 입력을 바꾸지 않고, 수명이 끝나면 null', () => {
+  const p = spawnFirefly({ x: 0, y: 0, z: 0 }, () => 0.5);
+  const q = particleStep(p, 0.1);
+  assert.ok(q.y > p.y, '떠오른다');
+  assert.equal(p.age, 0, '원본 불변');
+  assert.equal(particleStep({ ...p, age: p.life - 0.01 }, 0.1), null);
+  const s = spawnSpark({ x: 0, y: 0, z: 0 }, 0xff0000, () => 0.5);
+  assert.equal(s.kind, 'spark');
+  assert.ok(s.life < 1.5);
+});
