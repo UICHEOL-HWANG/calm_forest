@@ -22,7 +22,10 @@
   - 관찰: 월드 반딧불은 작고 은은하다(size 0.22) — 의도 범위인지 실기기에서 판단
 - [ ] T10 샌드박스 결제 실검증(사용자 준비물: 클라이언트 토큰·웹훅 시크릿·API 키)
 - [ ] T11 상점 열기·4곳 배포·라이브 심사
+  - ⚠️ 라이브 priceId 로 바꾸기 **전에** 샌드박스 구매 행 삭제: `delete from purchases where price_id in (<샌드박스 firefly·rainbow pri_ id>)` — T10 테스트 결제(그리고 공개 dev 파라미터로 누가 했을지 모를 결제)가 라이브에서 영구 지급되지 않게
+  - build-web `/shop` 프리미엄 전용 재작성(Step 2) 전엔 storeOpen=true 로 빌드하지 말 것(coins null 에서 터짐)
 - [ ] 문구 검수(스펙 §8) — 사용자 답 대기
+- [ ] 2단계(별도 스펙) — 🧥 스킨 칸 + 숲의 정령·플러시 인형 + B+C 상자 폭발 연출. **결정(2026-10-01): 1단계 T10·T11 을 끝낸 뒤 시작**
 
 ## 검증 요령(로컬)
 - 워크트리에서 `python3 scripts/serve.py 8021` → `http://localhost:8021/?dbg&time=0.92&weather=clear` (time=밤 고정)
