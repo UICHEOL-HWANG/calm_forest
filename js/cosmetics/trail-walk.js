@@ -49,8 +49,8 @@ export function makeTrailWalk(THREE, itemId, animalId) {
   const meshes = [];
   const isFx = FX_IDS.includes(itemId);
   let ground = null;
-  if (isFx) {   // 💎 밝은 패널 위에선 가산 글로우가 안 보인다 → 밤 바닥 원판 + 일반 혼합
-    ground = new THREE.Mesh(new THREE.CircleGeometry(1.1, 40), new THREE.MeshBasicMaterial({ color: 0x1f2a3a }));
+  if (isFx) {   // 💎 밝은 패널 위에선 가산 글로우가 안 보인다 → 밤 바닥 원판 + 일반 혼합. 반지름은 375px 의 세로로 긴 미리보기 아래까지 덮게(1.1 이면 아래 1/3 이 비었다)
+    ground = new THREE.Mesh(new THREE.CircleGeometry(2.4, 48), new THREE.MeshBasicMaterial({ color: 0x1f2a3a }));
     ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0.002, WALK_Z0 + WALK_LEN / 2);
     group.add(ground);
   }
