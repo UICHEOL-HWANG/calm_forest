@@ -97,9 +97,10 @@ export function applySkin(THREE, built, skinId) // built = buildAnimalMesh 반�
 
 - `playPurchaseReveal({ itemId, animalId, mode, buildShowcase, onWalk, onClose })` — `mode` 생략 시 `revealModeOf(item)`: slot 'skin' → `'boxburst'`, 나머지 → `'spot'`.
 - `buildShowcase()` = 호출부(cafe.js)가 넘기는 **스킨 입은 내 캐릭터 메시** 팩토리(purchase-reveal 은 game.js 를 import 하지 않는다).
-- 시간축(순수, 테스트): `boxburstPose(t)` —
-  - 0~0.9 상자 덜컹(흔들림 진폭 점증) · 0.9 뚜껑 날아감 + 섬광(0.9~1.15) + 버스트 입자 · 링(0.9~1.5 확장·페이드)
-  - 1.0~1.7 캐릭터 솟음(easeOutBack) · 1.7~ 천천히 회전 · **2.3 카드**
+- 시간축(순수, 테스트) `boxburstPose(t)` — 승인 시안 mode D 와 같은 값:
+  - 0~0.4 상자 등장(easeOutBack) · 0.5~1.4 덜컹(가운데 0.95 에서 가장 셈)
+  - 1.4 뚜껑 날아감 + 섬광(1.4~1.68 페이드) + 무지개 버스트 · 링(1.4~2.6 확장·페이드)
+  - 1.4~2.2 캐릭터 솟음(easeOutBack) · 계속 천천히 회전 · **2.3 카드**
 - 시안 `sims/premium-reveal-sim.html` mode D 의 상자·버스트·링 조형을 옮긴다. 입자는 Points 1개.
 - 카드 버튼: 스킨은 **[바로 입어보기]**(이미 장착됨 → 가게 닫고 마을로) · [닫기]. 자국은 기존 [바로 걸어보기].
 

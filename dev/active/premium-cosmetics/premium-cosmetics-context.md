@@ -31,3 +31,8 @@ Last Updated: 2026-10-01
   - T7: 기존 보트 결과 버튼 id `br-close` → `boat-result-close` (새 연출 오버레이와 중복)
   - T9: 무지개 색 간격 1/7·입자 RGBA·미리보기 밤 바닥(normal 블렌딩)·잎 비율 — 스펙 §3 의도("일곱 빛깔", "미리보기는 늘 밤") 우선
 - 미뤄 둔 minor: price-ids 헤더 "22개" 문구 · paddle-seed 사용 예시 `--only straw_hat` → firefly · particle size 필드 미사용(Points 균일 크기) · premiumViewed 리셋이 closeCosPreview 에만 · 미리보기/월드 무지개 색 순서 다름
+
+## 2단계 스킨 (Last Updated: 2026-10-01 밤)
+- 브랜치 feat/premium-skins(feat/premium-trails daf269a 위). 1단계는 따로 병합 가능.
+- 시안: sims/skin-look-sim.html(S1~3·P1~3) · sims/skin-trail-rule-sim.html(A~D)
+- 함정: 시뮬에서 Color 선형값으로 밝기 판정해 갈색 발바닥이 "어두움"으로 잡힘 → getHex(sRGB) · 미리보기 서버는 루트 launch.json 의 premium-* 설정(워크트리 --directory)
