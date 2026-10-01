@@ -86,6 +86,8 @@ import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
 import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
+import { applySkin, disposeSkin } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
+import { effectiveTrail, squashOf, skinSquashes } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
 import { createTrailFx, rainbowHex } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
 import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
@@ -3322,8 +3324,10 @@ export function buildAnimalMesh(id) {
 function applyCharacter(id) {
   const a = ANIMALS.find(x => x.id === id) || ANIMALS[0];
   if (!playerAnchor) return;
-  if (charGroup) { playerAnchor.remove(charGroup); charGroup = null; tailPivot = null; }
+  if (charGroup) { playerAnchor.remove(charGroup); disposeSkin(charGroup); charGroup = null; tailPivot = null; }
   const built = buildAnimalMesh(a.id);
+  charSkin = gameState.cosmetics?.equipped?.skin || null;
+  applySkin(THREE, built, charSkin);   // 🧥 재질·장식만 바꾼다(체형 그대로) — 꾸미기 앵커는 아래 applyCosmetics 가 채운다
   charGroup = built.group; tailPivot = built.tail;
   playerArms = (built.armR && built.armL) ? { R: built.armR, L: built.armL } : null;
   wingArms = (a.extras || []).includes('wings');
@@ -3341,12 +3345,14 @@ function applyCharacter(id) {
 // ── 🎀 장착 반영 — 앵커의 **자식만** 교체한다 ──
 //   ⚠️ 공유 재질/지오메트리를 dispose 하지 않는다. 다른 곳에서 쓰던 것까지 검게 만든다(§14).
 //      인스턴스만 버린다.
-let charAnchors = null, charK = null;
+let charAnchors = null, charK = null, charSkin = null;
 function applyCosmetics(cos) {
   if (!charAnchors) return;
+  //  🧥 스킨은 몸 재질을 바꾼다 — 앵커 자식만 갈아서는 안 되고 캐릭터를 다시 조립해야 한다
+  if ((cos?.equipped?.skin || null) !== charSkin) { applyCharacter(curAnimal?.id || gameState.character); return; }
   for (const a of Object.values(charAnchors)) a.clear();
   for (const it of equippedItems(cos)) {
-    if (it.slot === 'trail') continue;                 // 발자국은 월드 이펙트라 앵커가 아니다
+    if (it.slot === 'trail' || it.slot === 'skin') continue;   // 자국은 월드 이펙트, 스킨은 몸 재질 — 둘 다 앵커가 아니다
     const m = buildCosmetic(THREE, it.id, charK);
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
@@ -3368,7 +3374,7 @@ function clearTrail() {
 
 function updateTrail(dt) {
   if (!trailFx.points.parent) scene.add(trailFx.points);
-  const id = gameState.cosmetics.equipped.trail;
+  const id = effectiveTrail(gameState.cosmetics);   // 🌱 자국 칸이 비었고 정령이면 새싹
   if (id !== trailItem) {   // 자국 종류가 바뀌면 풀을 버린다 — 자국마다 재질이 따로라 dispose 해야 GPU 버퍼가 안 샌다
     clearTrail();
     for (const m of trailPool) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
@@ -3402,10 +3408,11 @@ function updateTrail(dt) {
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
 //   cos 는 **가상 장착**을 받기 위한 인자다(🎀 꾸미기 상점의 "입어보기"). 기본값은 실제 장착이라
 //   캐릭터 선택 화면은 예전과 똑같이 동작한다.
-function buildCharacterMesh(id, cos = gameState.cosmetics) {
+export function buildCharacterMesh(id, cos = gameState.cosmetics) {
   const built = buildAnimalMesh(id);
+  applySkin(THREE, built, cos?.equipped?.skin);   // 🧥 입어보기 포함 — 꾸미기보다 먼저(몸 재질을 바꾼다)
   for (const it of equippedItems(cos)) {
-    if (it.slot === 'trail') continue;
+    if (it.slot === 'trail' || it.slot === 'skin') continue;
     const m = buildCosmetic(THREE, it.id, built.k);
     if (m) built.anchors[it.anchor || it.slot].add(m);
   }
@@ -3441,7 +3448,7 @@ function makeCharacterPreview(canvas) {
   //     🐾 펫 재질도 같다 — 월드의 펫과 공유라 여기서 버리면 따라다니는 펫이 검게 된다.
   function rebuild() {
     const cos = cosView || gameState.cosmetics;
-    if (mesh) pivot.remove(mesh);
+    if (mesh) { pivot.remove(mesh); disposeSkin(mesh); }
     if (marks) { pivot.remove(marks); marks = null; }
     if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
     const tid = cos?.equipped?.trail;
@@ -3510,6 +3517,7 @@ function makeCharacterPreview(canvas) {
       if (autoSpin && !dragging) rotY += 0.006;
       pivot.rotation.y = rotY; pivot.rotation.x = rotX;
     }
+    mesh?.userData?.skinTick?.(now / 1000);   // 🌿 정령 빛 알갱이
     rend.render(sc, cam);
   }
   canvas.style.touchAction = 'none';
@@ -5460,6 +5468,12 @@ function updatePlayer(dt, t) {
     tailPivot.rotation.y = Math.sin(tailPhase) * u.wagAmp * (moving ? 1.6 : 1);
     tailPivot.rotation.x = Math.sin(tailPhase * 0.5) * u.wagAmp * 0.3;
   }
+  //  🧸 플러시 인형 — 발이 닿을 때 살짝 눌린다(부피 보존). charGroup 배율만 — 도구 휘두르기와 무관
+  if (charGroup) {
+    const s = squashOf(walkPhase, moving && skinSquashes(charSkin));
+    charGroup.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
+  }
+  charGroup?.userData.skinTick?.(t);   // 🌿 정령 빛 알갱이
 
   if (indoor) { // 실내: 지금 층의 방 벽 안쪽으로 제한(층마다 반경이 다르다)
     const h = curHalf();
