@@ -1376,6 +1376,9 @@
   #shop-menu.show { display: flex; }
   .sh-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .sh-tab.active { background: var(--mint); }
+  /* 🧥 가게·옷장 탭이 6·5개 — 한 글자씩 꺾이지 않게 nowrap, 넘치면 줄 단위로 감싼다 */
+  #cos-tabs, #wd-slots { flex-wrap: wrap; }
+  #cos-tabs .sh-tab, #wd-slots .sh-tab { white-space: nowrap; padding: 6px 12px; }
   #sell-items, #buy-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   /* 🎀 꾸미기 상점 — #shop-menu 와 같은 자리·같은 폭. 목록 옆에 🪞입어보기 프리뷰를 세운다.
      ⚠️ 프리뷰를 목록 **위**에 얹지 않는다 — 목록이 스크롤되면 프리뷰가 같이 밀려 올라간다.
@@ -1648,7 +1651,7 @@
     #mg-title { font-size: 14px; }
     #mg-tap { padding: 15px; font-size: 16px; }
     .ck-tabs { flex-wrap: wrap; }
-    .ck-tab, .sh-tab { padding: 6px 11px; font-size: 12px; }
+    .ck-tab, .sh-tab, #cos-tabs .sh-tab, #wd-slots .sh-tab { padding: 6px 11px; font-size: 12px; }   /* id 규칙(데스크톱 12px)보다 이기도록 같이 적는다 */
     .ck-item { width: 84px; }
     /* NPC 모달 선물 버튼이 많아도 줄바꿈 */
     .npc-actions { flex-wrap: wrap; }

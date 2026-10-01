@@ -25,3 +25,9 @@ test('i18n — 스킨 문구 통문장 등재', () => {
   for (const k of ['🧥 스킨', '숲의 정령', '플러시 인형', '밤이면 몸속에서 반딧불이 떠다녀요', '꿰맨 자국과 단추 눈, 걸을 때마다 말랑말랑', 'PREMIUM · 전신 스킨', '바로 입어보기'])
     assert.ok(en.includes(`'${k}'`), k);
 });
+
+test('🧥 6탭 — 가게·옷장 탭 줄이 nowrap + wrap 규칙을 가진다', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /#cos-tabs \.sh-tab, #wd-slots \.sh-tab \{[^}]*white-space: nowrap/);
+  assert.match(html, /#cos-tabs, #wd-slots \{ flex-wrap: wrap; \}/);
+});
