@@ -23,6 +23,7 @@ const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const onlyIdx = args.indexOf('--only');
 const only = onlyIdx >= 0 ? args[onlyIdx + 1] : null;
+if (onlyIdx >= 0 && (!only || only.startsWith('--'))) fail('--only 뒤에 아이템 id 가 필요하다 (예: --only straw_hat)');
 
 const env = process.env.PADDLE_ENV || 'sandbox';
 const base = BASES[env];
@@ -55,7 +56,8 @@ async function api(method, path, body) {
   return json;
 }
 
-/** item_id → 상품(prices 포함) — 활성 상품 전부를 페이지 넘기며 읽는다 */
+/** item_id → 상품(prices 포함) — 활성 상품 전부를 페이지 넘기며 읽는다.
+ *  보관(archived)한 상품은 안 본다 → 대시보드에서 보관하면 다음 실행이 새로 만든다(의도: 보관=버림) */
 async function loadExisting() {
   const byItem = new Map();
   let path = '/products?status=active&include=prices&per_page=200';
@@ -83,7 +85,9 @@ async function ensure(p, existing) {
     prod.prices = [];
     console.log(`  + 상품 ${p.itemId} (${p.name}) ${prod.id}`);
   }
-  const active = (prod.prices || []).find(pr => pr.status === 'active');
+  const actives = (prod.prices || []).filter(pr => pr.status === 'active');
+  const active = actives[0];
+  if (actives.length > 1) console.warn(`  ⚠ ${p.itemId}: 활성 가격 ${actives.length}개 — 첫 번째(${active.id})를 쓴다. 나머지는 대시보드에서 보관할 것`);
   if (active) {
     const { amount, currency_code } = active.unit_price;
     if (amount !== p.amount || currency_code !== p.currency) {
@@ -110,8 +114,15 @@ try {
   for (const p of plan) ids[p.itemId] = await ensure(p, existing);
 } finally {
   // 중간에 실패해도 만들어진 것까지는 기록한다(재실행 시 재사용되므로 중복 없음)
+  // 기록 실패가 원래 API 오류를 덮지 않도록 따로 잡는다
   if (Object.keys(ids).length) {
-    writeFileSync(PRICE_IDS_PATH, patchPriceIds(readFileSync(PRICE_IDS_PATH, 'utf8'), ids));
-    console.log(`✓ price-ids.js 에 ${Object.keys(ids).length}개 기록`);
+    try {
+      writeFileSync(PRICE_IDS_PATH, patchPriceIds(readFileSync(PRICE_IDS_PATH, 'utf8'), ids));
+      console.log(`✓ price-ids.js 에 ${Object.keys(ids).length}개 기록`);
+    } catch (e) {
+      console.error(`✗ price-ids.js 기록 실패: ${e.message}`);
+      console.error(JSON.stringify(ids, null, 2));
+      process.exitCode = 1;
+    }
   }
 }
