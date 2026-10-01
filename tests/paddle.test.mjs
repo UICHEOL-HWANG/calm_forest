@@ -169,3 +169,17 @@ test('revokeTarget — refund/chargeback 이 approved 일 때만', () => {
   assert.equal(revokeTarget(adj('credit', 'approved')), null);
   assert.equal(revokeTarget({ event_type: 'transaction.completed', data: {} }), null);
 });
+
+test('closeCheckout — Paddle 이 없거나(로드 전·node) close 가 던져도 조용히 넘어간다', async () => {
+  //  paddle.js → config.js 가 부팅 때 location 을 읽는다(개발 세션 판정) — node 에선 가짜 주소를 준다
+  globalThis.location ??= new URL('http://localhost/');
+  const { closeCheckout } = await import('../js/shop/paddle.js');
+  assert.doesNotThrow(() => closeCheckout());
+  globalThis.window = { Paddle: { Checkout: { close() { throw new Error('boom'); } } } };
+  assert.doesNotThrow(() => closeCheckout());
+  let closed = 0;
+  globalThis.window = { Paddle: { Checkout: { close() { closed++; } } } };
+  closeCheckout();
+  assert.equal(closed, 1);
+  delete globalThis.window;
+});
