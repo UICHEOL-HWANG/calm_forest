@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, cafeGuestCache, cafeGuestFetcher,
+  $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, buildCharacterMesh, cafeGuestCache, cafeGuestFetcher,
   cafeGuestObjs, cafeInGroup, camera, clayMat, colliders, cookTier, cosmeticShop, cropMini, dateHash, dexDiscover,
   disposeTree, dist2D, doPlayerAction, firstHint, fishMesh, gameState, giveReward, houseWindows,
   keys, kitchenFinish, kitchenStart, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
@@ -37,6 +37,7 @@ import { buildShop } from '../shop/building.js';
 import { cashAvailable, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
 import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
+import { revealModeOf } from '../shop/reveal-pose.js';
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
 import { Sound } from '../sound.js';
 import { state as authState, fetchPurchases } from '../supabase-client.js';
@@ -963,8 +964,11 @@ function onGranted(c, t0) {
   //  가게를 닫은 뒤(10초 대기 중·느린 폴링) 잡힌 지급은 연출 없이 — 보트·다른 메뉴 위로 전면 오버레이가 뜨지 않게
   if (c.kind === 'cosmetic' && findItem(c.itemId)?.premium && cosShopOpen()) {
     try {
-      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character,
-        onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'walk', ms }); closeCosShopForWalk(); },
+      const mode = revealModeOf(findItem(c.itemId));
+      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character, mode,
+        //  🧥 스킨은 "입은 내 캐릭터"를 진열한다 — 이미 장착했으니 실제 장착 그대로 만든다
+        buildShowcase: mode === 'boxburst' ? () => buildCharacterMesh(gameState.character, gameState.cosmetics) : null,
+        onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: mode === 'boxburst' ? 'wear' : 'walk', ms }); closeCosShopForWalk(); },
         onClose: (ms) => trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'close', ms }) });
     } catch (e) { console.warn('[reveal]', e?.message || e); }
   }
