@@ -27,12 +27,15 @@ import { DEX } from '../data/dex.js';
 import { CAFE, CAFE_BOARD, CAFE_BONUS, CAFE_GATE, CAFE_GUESTS, CAFE_HALF, CAFE_ORDERS, CAFE_SEATS, MUSEUM, MUSEUM_GATE, SELL_ICO_G, SHOP_POS, cafeGuestDef } from '../data/places.js';
 import { CROP_TYPES } from '../data/tools.js';
 import { PAL } from '../data/world.js';
+import { CONFIG } from '../config.js';
 import { MAX_HOUSE_STAGE } from '../house-cost.js';
 import { MUSEUM_FLOORS, SPECIAL_EXHIBITS, exhibitCenterY, floorEntries, floorProgress, openFloors, viewFrame } from '../museum.js';
 import { buildMuseumExtras } from '../museum/extras.js';
+import { PLATFORM } from '../platform.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
 import { cashAvailable, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
+import { premiumRowMode } from '../shop/premium-row.js';
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
 import { Sound } from '../sound.js';
 import { state as authState, fetchPurchases } from '../supabase-client.js';
@@ -844,6 +847,7 @@ export function closeCosPreview() {
   cosTryOn = null;                 // 입어보던 건 버린다 — 실제로 장착한 모습으로 돌아간다
   cosPreview?.refresh(null);
   cosPreview?.stop();
+  premiumViewed = new Set();
 }
 
 // 🐾 펫 탭 — **종마다 따로 산다**(2026-09-23). 이름이 곧 선택지다 — 줄을 누르면 프리뷰가 그 종으로 바뀐다.
@@ -965,6 +969,11 @@ function pollSlowGrant(c, t0, n = 0) {
   }, SLOW_POLL_MS);
 }
 
+//  💎 프리미엄(현금 전용) 행 — 문구는 스펙 2026-10-01 §8 검수 문구
+const PREMIUM_LOGIN_MSG = '로그인하면 살 수 있어요';
+const PREMIUM_NA_MSG = '지금은 살 수 없어요';
+let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 항목당 한 번(닫으면 비운다)
+
 export function drawCosMenu() {
   document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
   const tabs = document.getElementById('cos-tabs');
@@ -996,35 +1005,54 @@ export function drawCosMenu() {
   if (hint) hint.style.visibility = cosTab === 'trail' ? 'hidden' : '';
   if (cosTab === 'pet') { drawPetTab(box); return; }
   for (const it of itemsOf(cosTab)) {
+    let mode = null;
+    if (it.premium) {
+      mode = premiumRowMode(it, { owned: gameState.cosmetics.owned.includes(it.id), platform: PLATFORM,
+        online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token,
+        storeOpen: cashAvailable(authState) });   // cashAvailable = 상점 열림 또는 개발 세션(+웹·로그인·토큰)
+      if (mode === 'hidden') continue;
+      if (!premiumViewed.has(it.id)) { premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode }); }
+    }
     const row = document.createElement('div');
     row.className = 'sh-row' + (cosView().equipped[it.slot] === it.id ? ' try' : '');
-    row.innerHTML = `<span>${it.ico} ${it.name}</span>`;
+    row.innerHTML = `<span>${it.premium ? '💎 ' : ''}${it.ico} ${it.name}</span>`;
     row.onclick = () => tryOnCos(it);                  // 🪞 줄 = 입어보기(구매 아님)
-    //  🧥 입기·벗기는 ☰ 🐾 캐릭터·꾸미기 › 옷장으로 옮겼다(2026-09-29) — 산 건 "구매 완료" 로 막는다.
-    const sb = shopButton(it, gameState.cosmetics);
-    const btn = document.createElement('button');
-    btn.textContent = sb.label;
-    const blocked = sb.disabled || pendingCash.has(it.id);   // 💳 결제 확인 대기 중이면 코인 구매도 막는다
-    btn.disabled = blocked;
-    btn.onclick = (ev) => {
-      ev.stopPropagation();                            // 버튼은 사고, 줄은 입어보기 — 겹치지 않게
-      if (blocked) return;
-      const r = buyCos(gameState.cosmetics, gameState.inventory.coins, it.id);
-      if (!r.bought) { ui.toast?.('코인이 모자라요', 2000); return; }
-      gameState.cosmetics = equipCos(r.cos, it.id);      // 사면 바로 입힌다
-      gameState.inventory.coins = r.coins;
-      trackEvent('cosmetic_buy', { item_id: it.id, slot: it.slot, price_coins: it.price.coins, coins_after: r.coins });
-      trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: 'on', via: 'shop' });
-      applyCosmetics(gameState.cosmetics);
-      cosTryOn = null;                                 // 실제 장착이 바뀌었으니 입어보기는 버린다
-      cosPreview?.refresh(null);
-      drawCosMenu();
-      requestSave();
-    };
     const buys = document.createElement('div');
     buys.className = 'sh-buys';
-    buys.appendChild(btn);
-    if (cashAvailable(authState) && it.price.cash) buys.appendChild(cashButton(it.price.cash, it.id, 'cosmetic', gameState.cosmetics.owned.includes(it.id)));
+    const sb = shopButton(it, gameState.cosmetics);
+    if (sb) {
+      const btn = document.createElement('button');
+      btn.textContent = sb.label;
+      const blocked = sb.disabled || pendingCash.has(it.id);   // 💳 결제 확인 대기 중이면 코인 구매도 막는다
+      btn.disabled = blocked;
+      btn.onclick = (ev) => {
+        ev.stopPropagation();                            // 버튼은 사고, 줄은 입어보기 — 겹치지 않게
+        if (blocked) return;
+        const r = buyCos(gameState.cosmetics, gameState.inventory.coins, it.id);
+        if (!r.bought) { ui.toast?.('코인이 모자라요', 2000); return; }
+        gameState.cosmetics = equipCos(r.cos, it.id);      // 사면 바로 입힌다
+        gameState.inventory.coins = r.coins;
+        trackEvent('cosmetic_buy', { item_id: it.id, slot: it.slot, price_coins: it.price.coins, coins_after: r.coins });
+        trackEvent('cosmetic_equip', { item_id: it.id, slot: it.slot, action: 'on', via: 'shop' });
+        applyCosmetics(gameState.cosmetics);
+        cosTryOn = null;                                 // 실제 장착이 바뀌었으니 입어보기는 버린다
+        cosPreview?.refresh(null);
+        drawCosMenu();
+        requestSave();
+      };
+      buys.appendChild(btn);
+    }
+    if (it.premium) {
+      if (mode === 'buy' || mode === 'owned') buys.appendChild(cashButton(it.price.cash || { label: '', priceId: '' }, it.id, 'cosmetic', mode === 'owned'));
+      else {
+        const off = document.createElement('button');
+        off.className = 'sh-cash'; off.disabled = true;
+        off.textContent = mode === 'login' ? PREMIUM_LOGIN_MSG : PREMIUM_NA_MSG;
+        buys.appendChild(off);
+      }
+    } else if (cashAvailable(authState) && it.price.cash) {
+      buys.appendChild(cashButton(it.price.cash, it.id, 'cosmetic', gameState.cosmetics.owned.includes(it.id)));
+    }
     row.appendChild(buys);
     box.appendChild(row);
   }
