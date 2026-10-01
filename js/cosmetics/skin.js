@@ -92,6 +92,7 @@ function applySpirit(THREE, built) {
     if (!o.isMesh || o.userData.skin) return;
     if (part(o) === 'pupil' || part(o) === 'highlight' || isDark(o)) return;   // 눈·검은 무늬(판다 팔·귀)는 남긴다 — 무슨 동물인지 읽히게
     o.material = bodyMat;
+    o.castShadow = false;   // 반투명 몸이 단단한 그림자를 드리우지 않게
     if (part(o) === 'body' || part(o) === 'skull') shells.push(o);
   });
   //  빛 테두리 — 몸통·두개에만 뒤집힌 껍질 한 겹(가장자리가 번진다). 지오메트리는 원본 공유(새로 안 만든다)

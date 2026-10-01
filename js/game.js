@@ -960,7 +960,7 @@ const gameState = {
   dex: { fish: {}, crop: {}, ore: {}, cook: {}, npc: {}, weather: {}, bug: {}, forage: {}, track: {}, river: {}, spirit: {}, dig: {}, visitor: {} }, // 📖 도감 — 카테고리별 { 종id: 첫발견시각(ms) }
   badges: {},                               // 🏅 업적 배지 { id: 획득시각(ms) }
   // 🎀 꾸미기 — 산 것(영구) + 슬롯별 장착. 규칙은 js/cosmetics/equip.js
-  cosmetics: { owned: [], equipped: { head: null, neck: null, back: null, trail: null } },
+  cosmetics: { owned: [], equipped: { head: null, neck: null, back: null, trail: null, skin: null } },
   // 🐾 펫 — 규칙은 js/pet/rules.js. **종마다 따로 산다**(2026-09-23, 4종 확장).
   //    pets  : 산 종 { kind: {kind, name, works, restUntil} } — works 누적 작업 횟수(→ 성장 단계)
   //    pet   : 그중 **지금 데리고 다니는 한 마리**. pets[kind] 와 **같은 객체**를 가리킨다(usePet 이 유지).
@@ -3451,7 +3451,7 @@ function makeCharacterPreview(canvas) {
     if (mesh) { pivot.remove(mesh); disposeSkin(mesh); }
     if (marks) { pivot.remove(marks); marks = null; }
     if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
-    const tid = cos?.equipped?.trail;
+    const tid = effectiveTrail(cos);   // 🌱 자국 칸이 비었고 정령이면 새싹
     //  ✨ 이펙트 탭 — 캐릭터 발밑에 깔면 몸에 가려 뭐가 뭔지 모른다. 캐릭터를 빼고 자국만 걸어오게 한다.
     //     입어 본 게 없으면 🐾 발바닥(가장 싼 기본형)이 걷는다 — 탭을 열자마자 "이 탭은 이런 것" 이 보이게.
     if (trailView && petStage === null) {
@@ -5429,7 +5429,11 @@ function doPlayerAction(tx, tz, kind) {
   actAnim = 1; actKind = kind || 'swing';
 }
 function updatePlayer(dt, t) {
-  if (boat.active) return updateBoatRun(dt, t);    // 🛶 런 중엔 걷기 대신 배 물리
+  if (boat.active) {                               // 🛶 런 중엔 걷기 대신 배 물리
+    charGroup?.scale.setScalar(1);                 // 🧸 말랑 스킨이 걷다 멈춘 채 눌려 있지 않게
+    charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
+    return updateBoatRun(dt, t);
+  }
   const speed = 6 * (buffOn('speed') ? 1.4 : 1);   // 🥘 채소죽 버프: 이동속도 +40%
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
