@@ -118,6 +118,18 @@ function makeMarks(THREE) {
       const ring = put(g, new THREE.Mesh(new THREE.TorusGeometry(s * 0.88, s * 0.07, 4, 18), film(P.dropLit, o * 0.7)), 0, 0.004, 0, false);
       ring.rotation.x = Math.PI / 2;
     },
+    //  💎 반딧불 — 바닥엔 짙은 풀잎 하나(작게). 주인공은 위로 떠오르는 반딧불(trail-fx.js)이다.
+    firefly: (g, s, o) => {
+      const leaf = petalMesh(s * 1.1, s * 0.55, film(0x5f8f4a, o * 0.8));
+      leaf.rotation.x = -Math.PI / 2; leaf.position.y = 0.006;
+      g.add(leaf);
+    },
+    //  💎 무지개 — 🐾 발바닥 모양을 그대로 쓰고(동물마다 다르다) 흰색으로 굽는다.
+    //     색은 자국마다 tintTrailMark 로 입힌다 — 정점색 흰색 × 재질 color = 그 색.
+    rainbow: (g, s, o, id) => {
+      TRAIL.paw(g, s, o, id);
+      g.traverse(m => { if (m.isMesh) m.material = film(0xffffff, o); });
+    },
   };
 
   return TRAIL;
@@ -180,4 +192,9 @@ export function buildTrailMark(THREE, itemId, opacity, animalId) {
   fn(src, TRAIL_S, opacity, animalId);
   g.add(bake(THREE, src, opacity));
   return g;
+}
+
+/** 💎 무지개 자국 — 재질 color 로 색을 입힌다. buildTrailMark 는 자국마다 재질을 새로 굽는다(공유 아님) */
+export function tintTrailMark(mark, hex) {
+  mark.traverse(o => { if (o.isMesh) o.material.color.setHex(hex); });
 }
