@@ -16,3 +16,8 @@ export function premiumRowMode(item, { owned, platform, online, isGuest, tokenSe
   if (!online) return 'unavailable';
   return 'buy';
 }
+
+/** 가게 탭을 보일까 — 그 칸이 전부 hidden(웹 밖 + 안 산 프리미엄)이면 빈 탭이 되므로 숨긴다 */
+export function slotVisible(items, ctxOf) {
+  return items.some(it => !it.premium || premiumRowMode(it, ctxOf(it)) !== 'hidden');
+}

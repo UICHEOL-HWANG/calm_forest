@@ -35,7 +35,7 @@ import { PLATFORM } from '../platform.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
 import { cashAvailable, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
-import { premiumRowMode } from '../shop/premium-row.js';
+import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
 import { Sound } from '../sound.js';
@@ -805,7 +805,7 @@ export function spawnCosmeticShop() {
 }
 
 // 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
-export const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['pet', '🐾 펫']];
+export const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨'], ['pet', '🐾 펫']];
 
 export let cosTab = 'head';
 
@@ -990,9 +990,15 @@ let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 �
 
 export function drawCosMenu() {
   document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
+  const rowCtx = (it) => ({ owned: gameState.cosmetics.owned.includes(it.id), platform: PLATFORM,
+    online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token,
+    storeOpen: cashAvailable(authState) });   // cashAvailable = 상점 열림 또는 개발 세션(+웹·로그인·토큰)
+  //  🧥 토스·안드로이드·itch 에서 안 산 스킨만 있는 칸 = 빈 탭 → 탭 자체를 숨긴다(외부 결제 안내 금지)
+  if (cosTab !== 'pet' && !slotVisible(itemsOf(cosTab), rowCtx)) cosTab = 'head';
   const tabs = document.getElementById('cos-tabs');
   tabs.innerHTML = '';
   for (const [id, label] of COS_TABS) {
+    if (id !== 'pet' && !slotVisible(itemsOf(id), rowCtx)) continue;
     const b = document.createElement('button');
     b.className = 'sh-tab' + (cosTab === id ? ' active' : '');
     b.textContent = label;
@@ -1021,9 +1027,7 @@ export function drawCosMenu() {
   for (const it of itemsOf(cosTab)) {
     let mode = null;
     if (it.premium) {
-      mode = premiumRowMode(it, { owned: gameState.cosmetics.owned.includes(it.id), platform: PLATFORM,
-        online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token,
-        storeOpen: cashAvailable(authState) });   // cashAvailable = 상점 열림 또는 개발 세션(+웹·로그인·토큰)
+      mode = premiumRowMode(it, rowCtx(it));
       if (mode === 'hidden') continue;
       if (!premiumViewed.has(it.id)) { premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode }); }
     }
