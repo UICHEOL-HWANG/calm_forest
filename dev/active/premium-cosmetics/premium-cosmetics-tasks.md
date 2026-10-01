@@ -20,7 +20,11 @@
   - 브랜치 전체 리뷰 → d01a418: 상점 닫힘이면 게스트도 unavailable · 연출은 가게 열렸을 때만 · 연출 시작 중 예외 시 오버레이 정리 · 연출 반짝이 색 · 캐릭터 미리보기 무지개 색 · 자국 풀 dispose
   - **남긴 것(사용자 판단)**: ① 개발 세션 게이트가 공개 URL 파라미터(?weather= 등)라 T10 동안 누구나 샌드박스 결제로 실제 purchases 행을 만들 수 있다 → 허용 목록(userId) 게이트 또는 라이브 전 샌드박스 행 삭제 단계 ② checkout.completed 때 Paddle 성공 화면이 떠 있어 연출 A 가 그 아래서 재생될 수 있다 → T10 실결제에서 확인, 필요하면 Checkout.close() ③ build-web `/shop` 행이 coins null 에서 터진다 → T11 Step 2 에서 프리미엄만으로 재작성(계획에 있음)
   - 관찰: 월드 반딧불은 작고 은은하다(size 0.22) — 의도 범위인지 실기기에서 판단
-- [ ] T10 샌드박스 결제 실검증(사용자 준비물: 클라이언트 토큰·웹훅 시크릿·API 키)
+- [x] T10 샌드박스 결제 실검증(2026-10-01) — 시드 4개 pri_ 기입(8bdd102) · 웹훅 시크릿 등록(서명 없음/가짜 401) · Default payment link 미설정이면 `transaction_default_checkout_url_not_set`
+  - 결제 ₩9,000 플러시 인형·₩10,000 숲의 정령: 웹훅 진서명 통과 → purchases 기록 → 지급·자동 장착 → B+C 연출 ✓
+  - 🐛 Paddle 성공 창이 연출을 덮음 → 연출 직전 closeCheckout()(558681d, 웹 미배포 — 로컬 config.js 에 토큰이 있어 배포 금지)
+  - 환불: 대시보드 Refund → "Full refund requested"(대기, 회수 안 함 = 의도) → 승인 시 adjustment.updated → revoked_at 기록 → 새로고침 시 보유·장착 해제 ✓
+  - 테스트 계정 3rdcat 에 sandbox 구매 2건(정령 회수됨·인형 유지) — 라이브 전 삭제 대상
 - [ ] T11 상점 열기·4곳 배포·라이브 심사
   - ⚠️ 라이브 priceId 로 바꾸기 **전에** 샌드박스 구매 행 삭제: `delete from purchases where price_id in (<샌드박스 firefly·rainbow pri_ id>)` — T10 테스트 결제(그리고 공개 dev 파라미터로 누가 했을지 모를 결제)가 라이브에서 영구 지급되지 않게
   - build-web `/shop` 프리미엄 전용 재작성(Step 2) 전엔 storeOpen=true 로 빌드하지 말 것(coins null 에서 터짐)
