@@ -43,7 +43,8 @@ import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } fro
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
-import { SEASON_IDS, seasonById, seasonInfo, seasonNotice, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
+import { SEASON_IDS, applySeasonPalette, seasonById, seasonInfo, seasonNotice, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
+import { createSeasonDrift } from './season-fx.js';                                                        // 🌸🍂 꽃잎·낙엽 흩날림(InstancedMesh 1개)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { makeRaidScar } from './duel/raid-art.js';                                                   // 🐾 털린 밭 조형(흔적·대결 무대 공용)
@@ -375,6 +376,8 @@ const _wq = new URLSearchParams(location.search);
 //   ⚠️ ?season 은 계절 표시·한정 어종만 바꾼다. 날씨는 실제 날짜의 계절을 따른다.
 const SEASON_INFO = seasonInfo(todayStr());
 const SEASON = SEASON_IDS.includes(_wq.get('season')) ? _wq.get('season') : SEASON_INFO.season.id;
+// 🎨 계절 풍경 — 땅·잎 색만 바꾼다(드로우콜 0). 월드를 짓기 전(모듈 로딩 때) 한 번. 표는 js/season.js
+applySeasonPalette(PAL, SEASON);
 const WEATHER = ['rain', 'snow', 'fog', 'clear'].includes(_wq.get('weather')) ? _wq.get('weather')
   : _wq.has('rain') ? 'rain'
   : weatherOf(0);
@@ -2854,6 +2857,7 @@ function buildWorld() {
   buildFireflies();
   buildStars();
   buildRain();              // 🌧️ 빗줄기(비 오는 날에만 표시)
+  buildSeasonDrift();       // 🌸🍂 봄 꽃잎·가을 낙엽(여름·겨울엔 없음)
   buildEnvironment();
 }
 
@@ -4107,6 +4111,18 @@ function buildRain() {
   scene.add(rainLines);
 }
 
+// 🌸🍂 계절 흩날림 — 조각 전부 InstancedMesh 하나(드로우콜 +1, 그림자 없음). 표는 js/season.js SEASON_DRIFT
+let seasonDrift = null;
+function buildSeasonDrift() {
+  seasonDrift = createSeasonDrift(THREE, SEASON, { count: IS_MOBILE ? 30 : 60 });
+  if (seasonDrift) scene.add(seasonDrift.mesh);
+}
+function updateSeasonDrift(dt, t) {
+  if (!seasonDrift) return;
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum;   // 빗줄기와 같은 조건(실내·동굴·카페·박물관 숨김)
+  seasonDrift.update(dt, t, player.position.x, player.position.z, show);
+}
+
 function updateRain(dt) {
   if (!rainLines) return;
   const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum;   // 실내·동굴·카페 홀·박물관에선 숨김(텃밭은 야외)
@@ -5351,6 +5367,7 @@ function animate() {
 
   updateDayNight(dt);
   updateRain(dt);       // 🌧️ 빗줄기(비 오는 날 + 야외에서만)
+  updateSeasonDrift(dt, t);   // 🌸🍂 꽃잎·낙엽
   updateSway(t);
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
   updateTrees(dt);
