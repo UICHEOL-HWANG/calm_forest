@@ -3175,11 +3175,11 @@ export function buildAnimalMesh(id) {
   //   Icosahedron(R,1) 의 각진 면 → 매끈한 구(머리와 같은 세분화). 정점 수는 늘지만 드로우콜은 동일.
   const bodyY = R * bs[1] + 0.02;
   const body = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), skin());
-  body.position.y = bodyY; body.scale.set(bs[0], bs[1], bs[2]); body.castShadow = true; g.add(body);
+  body.position.y = bodyY; body.scale.set(bs[0], bs[1], bs[2]); body.castShadow = true; body.userData.part = 'body'; g.add(body);
 
   // 배(밝은 색)
   const belly = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 24, 18), plushMat(a.belly));
-  belly.position.set(0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  belly.position.set(0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); belly.userData.part = 'belly'; g.add(belly);
 
   // ── 머리 — 🎭 얼굴 생김새는 animal-faces.js 가 전담(눈·코·입·귀·무늬 전부) ──
   //   체형 수치(HR/HY)와 몸·배 색만 넘긴다. 예전엔 여기서 눈·주둥이·귀·부리·볏을 종별로 분기했지만
@@ -3305,7 +3305,7 @@ export function buildAnimalMesh(id) {
   //  tail — 🦸 망토가 등 한가운데 **뒤트임을 얼마나 열지**를 정하는 데 쓴다.
   //  🦊bushy·🐱long 은 등 한가운데를 크게 차지해 트임이 없으면 천을 뚫고, 꼬리가 작은 종에
   //  같은 폭을 열면 등이 통째로 드러난다(실측: 곰에서 커튼 두 장이 됐다).
-  const kk = { R, HR, HY, bs, bodyY, tail: a.tail, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
+  const kk = { id: a.id, R, HR, HY, bs, bodyY, tail: a.tail, side: sideAnchor(bs, R, bodyY), neckR: neckR(HR) };
   const anchors = {};
   for (const [name, p] of Object.entries({
     head: headAnchor(HY), neck: neckAnchor(HR, HY),
