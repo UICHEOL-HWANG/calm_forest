@@ -20,7 +20,7 @@ test('labelToAmount — 원화 라벨을 Paddle 최소 단위 문자열로(KRW �
 
 test('buildPlan — 프리미엄(현금 전용)만, PRICE_IDS 에 칸이 있다', () => {
   const plan = buildPlan(ITEMS);
-  assert.deepEqual(plan.map(p => p.itemId), ['firefly', 'rainbow']);
+  assert.deepEqual(plan.map(p => p.itemId), ['firefly', 'rainbow', 'forest_spirit', 'plush_doll']);
   for (const p of plan) assert.ok(p.itemId in PRICE_IDS, p.itemId);
 });
 
@@ -31,6 +31,9 @@ test('buildPlan — 금액은 won, 이름은 "○○ 자국"', () => {
   assert.equal(by.firefly.name, '반딧불 자국');
   assert.equal(by.firefly.kind, 'cosmetic');
   assert.equal(by.firefly.currency, 'KRW');
+  assert.equal(by.forest_spirit.amount, '10000');
+  assert.equal(by.plush_doll.amount, '9000');
+  assert.equal(by.forest_spirit.name, '숲의 정령');   // 스킨은 "○○ 자국" 이 붙지 않는다
 });
 
 test('patchPriceIds — 지정한 id 만 바꾸고 접두가 같은 id(star/star_pin, cap/cape)는 건드리지 않는다', () => {

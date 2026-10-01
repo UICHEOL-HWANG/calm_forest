@@ -3,10 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { emptyCosmetics, canBuy, buy, equip, unequip, equippedItems, sanitize } from '../js/cosmetics/equip.js';
 
-test('emptyCosmetics: 아무것도 없고 네 슬롯이 비어 있다', () => {
+test('emptyCosmetics: 아무것도 없고 다섯 슬롯이 비어 있다', () => {
   const c = emptyCosmetics();
   assert.deepEqual(c.owned, []);
-  assert.deepEqual(c.equipped, { head: null, neck: null, back: null, trail: null });
+  assert.deepEqual(c.equipped, { head: null, neck: null, back: null, trail: null, skin: null });
 });
 
 test('canBuy: 모르는 id · 이미 보유 · 코인 부족', () => {
@@ -85,4 +85,22 @@ test('sanitize: null·잘못된 타입이면 빈 상태', () => {
 
 test('canBuy: 현금 전용은 코인으로 못 산다', () => {
   assert.deepEqual(canBuy(emptyCosmetics(), 1e9, 'firefly'), { ok: false, why: 'cash-only' });
+});
+
+test('sanitize — 옛 세이브(equipped.skin 없음)는 skin=null 로 채운다', () => {
+  const out = sanitize({ owned: ['cap'], equipped: { head: 'cap' } });
+  assert.equal(out.equipped.skin, null);
+  assert.equal(out.equipped.head, 'cap');
+});
+
+test('sanitize — 안 산 스킨이 장착돼 있으면 벗긴다 · 산 스킨은 남긴다', () => {
+  assert.equal(sanitize({ owned: [], equipped: { skin: 'plush_doll' } }).equipped.skin, null);
+  assert.equal(sanitize({ owned: ['plush_doll'], equipped: { skin: 'plush_doll' } }).equipped.skin, 'plush_doll');
+});
+
+test('equip — 스킨은 다른 칸과 함께 입는다(모자를 벗기지 않는다)', () => {
+  const cos = { owned: ['cap', 'forest_spirit'], equipped: { head: 'cap', neck: null, back: null, trail: null, skin: null } };
+  const out = equip(cos, 'forest_spirit');
+  assert.equal(out.equipped.skin, 'forest_spirit');
+  assert.equal(out.equipped.head, 'cap');
 });

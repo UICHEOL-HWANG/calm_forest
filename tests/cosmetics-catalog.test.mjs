@@ -3,13 +3,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 4개 · 품목 20종(코인 18 + 프리미엄 2)', () => {
-  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail']);
-  assert.equal(ITEMS.length, 20);
+test('슬롯 5개 · 품목 22종(코인 18 + 프리미엄 자국 2 + 프리미엄 스킨 2)', () => {
+  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin']);
+  assert.equal(ITEMS.length, 22);
   assert.equal(itemsOf('head').length, 7);
   assert.equal(itemsOf('neck').length, 3);
   assert.equal(itemsOf('back').length, 3);
   assert.equal(itemsOf('trail').length, 7);
+  assert.equal(itemsOf('skin').length, 2);
+});
+
+test('🧥 스킨 2종 — 현금 전용(won), 정령 ₩10,000 · 인형 ₩9,000', () => {
+  const s = findItem('forest_spirit'), p = findItem('plush_doll');
+  assert.equal(s.slot, 'skin'); assert.equal(s.name, '숲의 정령'); assert.equal(s.ico, '🌿');
+  assert.equal(s.price.won, 10000); assert.equal(s.price.coins, null); assert.equal(s.premium, true);
+  assert.equal(p.slot, 'skin'); assert.equal(p.name, '플러시 인형'); assert.equal(p.ico, '🧸');
+  assert.equal(p.price.won, 9000); assert.equal(p.price.coins, null); assert.equal(p.premium, true);
 });
 
 test('id 는 중복되지 않는다 — 세이브 키이자 트래킹 축이다', () => {
