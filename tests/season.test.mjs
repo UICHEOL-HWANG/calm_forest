@@ -121,3 +121,47 @@ test('안내 문구는 영어 사전 패턴으로 덮인다', () => {
     assert.ok(en.includes(`'${key}'`), key);
   }
 });
+
+// ── 🎨 풍경 · 🌸🍂 흩날림 ─────────────────────────────────────
+import { SEASON_PALETTE, SEASON_DRIFT, applySeasonPalette } from '../js/season.js';
+import { createSeasonDrift, DRIFT_BOX, DRIFT_TOP } from '../js/season-fx.js';
+import * as THREE from '../vendor/three/three.module.js';
+
+test('계절 팔레트는 땅·잎 다섯 색만 바꾼다 — 여름은 기본 그대로', () => {
+  const base = { ground: 1, groundDark: 2, leaf1: 3, leaf2: 4, leaf3: 5, trunk: 6, sky: 7 };
+  assert.deepEqual(applySeasonPalette({ ...base }, 'summer'), base);
+  for (const id of ['spring', 'autumn', 'winter']) {
+    assert.deepEqual(Object.keys(SEASON_PALETTE[id]).sort(), ['ground', 'groundDark', 'leaf1', 'leaf2', 'leaf3']);
+    const out = applySeasonPalette({ ...base }, id);
+    assert.equal(out.trunk, 6); assert.equal(out.sky, 7);
+    assert.equal(out.leaf2, SEASON_PALETTE[id].leaf2);
+  }
+});
+
+test('흩날림은 봄·가을만 · InstancedMesh 하나 · 그림자 없음(드로우콜 +1)', () => {
+  assert.equal(createSeasonDrift(THREE, 'summer'), null);
+  assert.equal(createSeasonDrift(THREE, 'winter'), null);
+  for (const id of Object.keys(SEASON_DRIFT)) {
+    const d = createSeasonDrift(THREE, id, { count: 12 });
+    assert.ok(d.mesh.isInstancedMesh);
+    assert.equal(d.mesh.count, 12);
+    assert.equal(d.mesh.castShadow, false);
+    assert.ok(d.mesh.instanceColor, '색은 인스턴스 색 — 재질은 하나');
+    assert.ok(!Array.isArray(d.mesh.material));
+  }
+});
+
+test('흩날림: 숨김이면 안 움직이고, 보이면 조각이 플레이어 주변 상자 안에 머문다', () => {
+  let s = 1; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const d = createSeasonDrift(THREE, 'autumn', { count: 40, rnd });
+  d.update(0.016, 0, 100, -50, false);
+  assert.equal(d.mesh.visible, false);
+  const p = new THREE.Vector3(), m = new THREE.Matrix4();
+  for (let f = 0; f < 600; f++) d.update(0.05, f * 0.05, 100, -50, true);   // 30초
+  assert.equal(d.mesh.visible, true);
+  for (let i = 0; i < 40; i++) {
+    d.mesh.getMatrixAt(i, m); p.setFromMatrixPosition(m);
+    assert.ok(Math.abs(p.x - 100) <= DRIFT_BOX / 2 + 0.1 && Math.abs(p.z + 50) <= DRIFT_BOX / 2 + 0.1, `조각 ${i} 가 상자 밖 (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`);
+    assert.ok(p.y >= -0.1 && p.y <= DRIFT_TOP + 0.1, `조각 ${i} 높이 ${p.y}`);
+  }
+});

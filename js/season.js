@@ -51,6 +51,32 @@ export function weatherFromRoll(r, seasonId) {
   return r < w.rain ? 'rain' : r < w.snow ? 'snow' : r < w.fog ? 'fog' : 'clear';
 }
 
+// ── 🎨 풍경 — 색만 바꾼다(메시·재질 수는 그대로 → 드로우콜 0) ──
+//   PAL(js/data/world.js)의 땅·잎 색을 부팅 때 한 번 덮어쓴다. 이 색을 쓰는 곳은 전부 야외다
+//   (마을 땅·얼룩·나무·풀 · 텃밭 둘레 나무 · 강가 나무 · 카페 앞마당). 실내 화분은 PAL 을 안 쓴다.
+//   여름은 기본 PAL 그대로(null) — 예전 화면이 곧 여름이다.
+export const SEASON_PALETTE = {
+  spring: { ground: 0xc4ebc6, groundDark: 0xaedfb4, leaf1: 0x9edca8, leaf2: 0xf7c5d5, leaf3: 0xb8e6b0 },   // 연두 + 벚꽃
+  summer: null,
+  autumn: { ground: 0xd3e2b0, groundDark: 0xc3d29a, leaf1: 0xf2a65e, leaf2: 0xf5cc6c, leaf3: 0xe08060 },   // 주황·노랑·붉은 잎, 마른 풀빛 땅
+  winter: { ground: 0xf4f9f8, groundDark: 0xe0ecee, leaf1: 0x7fbf9e, leaf2: 0xf6faf9, leaf3: 0x9fd0b6 },   // 눈 쌓인 땅 · 상록 초록 + 눈 덮인 흰 잎
+  //   ⚠️ 겨울 잎을 서리색(회녹색)으로만 두면 조명을 받아 회색으로 죽어 보였다(2026-10-01 캡처) — 초록을 남긴다
+};
+
+/** PAL 의 땅·잎 색을 계절 색으로 덮어쓴다. ⚠️ 월드를 짓기 **전에** 한 번만 부른다(지은 재질은 안 바뀐다) */
+export function applySeasonPalette(pal, id) {
+  const p = SEASON_PALETTE[id];
+  if (p) Object.assign(pal, p);
+  return pal;
+}
+
+// 🌸🍂 흩날림 — 봄 꽃잎 · 가을 낙엽. 여름·겨울은 없다(겨울은 ❄️눈 날씨가 맡는다).
+//   colors: 인스턴스 색 · fall: 낙하 속도 범위(m/s) · size: 조각 가로·세로(m)
+export const SEASON_DRIFT = {
+  spring: { colors: [0xf7c5d5, 0xfbe0e8, 0xf2a9c0], fall: [0.45, 0.8], size: [0.14, 0.1] },
+  autumn: { colors: [0xf2a65e, 0xe08060, 0xf5cc6c], fall: [0.7, 1.15], size: [0.18, 0.12] },
+};
+
 // ── 안내 문구 — game.js 는 상태만 넘기고 여기서 문장을 만든다(테스트 가능하게) ──
 //   fish = { id, name, ico } 그 계절 한정 어종 · owned = 이미 도감에 있나
 //   ⚠️ 문장 틀을 바꾸면 js/i18n-en.js 의 패턴 키도 같이 바꾼다.
