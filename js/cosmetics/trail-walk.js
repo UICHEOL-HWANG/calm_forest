@@ -12,7 +12,7 @@
 // =============================================================
 
 import { buildTrailMark, TRAIL_SIDE } from './trail.js';
-import { createTrailFx } from './trail-fx.js';
+import { createTrailFx, rainbowHex } from './trail-fx.js';
 
 export const WALK_STEP = 0.26;   // 한 걸음
 export const WALK_FADE = 1.6;    // 초
@@ -24,7 +24,7 @@ export const WALK_CAM ={ elev: 36, dist: 2.2, lookZ: -0.1 };   // 바닥을 비�
 
 const PER_LAP = Math.ceil(WALK_LEN / WALK_STEP);
 
-/** t 초에 보이는 자국들 — {z, side(±1), age(초)} */
+/** t 초에 보이는 자국들 — {z, side(±1), age(초), n(안정 id)} */
 export function walkMarks(t) {
   const out = [];
   const lapT = WALK_LEN / WALK_SPEED;
@@ -34,7 +34,7 @@ export function walkMarks(t) {
     for (let k = 0; k < PER_LAP; k++) {
       const age = t - (lap * lapT + k * WALK_STEP / WALK_SPEED);
       if (age < 0 || age >= WALK_FADE) continue;
-      out.push({ z: WALK_Z0 + k * WALK_STEP, side: k % 2 ? 1 : -1, age });
+      out.push({ z: WALK_Z0 + k * WALK_STEP, side: k % 2 ? 1 : -1, age, n: lap * PER_LAP + k });
     }
   }
   return out;
@@ -49,6 +49,7 @@ export function makeTrailWalk(THREE, itemId, animalId) {
   const meshes = [];
   const fx = createTrailFx(THREE, { cap: 32 });   // 💎 미리보기는 늘 밤 값 — 반딧불이 보여야 무엇을 사는지 안다
   group.add(fx.points);
+  const seen = new Set();                              // 이미 입자를 뿌린 자국 id(n)
   let t = WALK_FADE;                                   // 열자마자 자국이 몇 개 깔려 있게
   function update(dt) {
     t += dt;
@@ -62,14 +63,16 @@ export function makeTrailWalk(THREE, itemId, animalId) {
       m.visible = !!k;
       if (!k) return;
       m.position.set(k.side * TRAIL_SIDE, 0.01, k.z);
-      if (!m.userData.tinted || k.age <= dt + 1e-6) {
-        m.userData.tinted = true;
-        const { tint } = fx.onStamp(itemId, m.position, { nightLevel: 1 });
-        if (tint != null) m.traverse(o => { if (o.isMesh) o.material.color.setHex(tint); });
+      if (!seen.has(k.n)) { seen.add(k.n); fx.onStamp(itemId, m.position, { nightLevel: 1 }); }   // 처음 나타날 때만
+      if (itemId === 'rainbow') {                       // 색은 자국 id 에서 — 메시가 밀려도 색이 기어다니지 않는다
+        const hex = rainbowHex(k.n);
+        m.traverse(o => { if (o.isMesh) o.material.color.setHex(hex); });
       }
       const a = 1 - k.age / WALK_FADE;
       m.traverse(o => { if (o.material) o.material.opacity = a; });
     });
+    const live = new Set(marks.map(x => x.n));
+    for (const n of seen) if (!live.has(n)) seen.delete(n);
     fx.update(dt, { nightLevel: 1 });
   }
   function dispose() {

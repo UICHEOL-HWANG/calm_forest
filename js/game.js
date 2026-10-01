@@ -3371,7 +3371,7 @@ function updateTrail(dt) {
   const id = gameState.cosmetics.equipped.trail;
   if (id !== trailItem) { clearTrail(); trailPool.length = 0; trailItem = id; }
   const off = indoor || atCafe || atMuseum || atMine;
-  if (!id || off) { if (trailLive.length) clearTrail(); return; }
+  if (!id || off) { if (trailLive.length) clearTrail(); else trailFx.clear(); return; }
 
   if (player.position.distanceTo(trailLastPos) >= TRAIL_STEP) {
     trailLastPos.copy(player.position);
