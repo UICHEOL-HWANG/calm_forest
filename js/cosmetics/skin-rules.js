@@ -24,3 +24,10 @@ export function skinSquashes(skinId) { return skinId === 'plush_doll'; }
 export function squashOf(phase, on) {
   return on ? 1 - SQUASH * (1 - Math.abs(Math.sin(phase))) : 1;
 }
+
+/** 배 천 패치 z — 몸통 타원체가 배 구보다 앞으로 튀어나올 수 있다(곰·판다·개·병아리): 둘 중 큰 쪽 + 0.004 */
+export function bellyPatchZ(R, bs) {
+  const bellyFront = R * 0.55 + R * 0.62 * 0.6;
+  const bodyFront = R * bs[2] * Math.sqrt(Math.max(0, 1 - (0.16 / bs[1]) ** 2));
+  return Math.max(bellyFront, bodyFront) + 0.004;
+}
