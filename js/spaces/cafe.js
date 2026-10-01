@@ -34,7 +34,7 @@ import { buildMuseumExtras } from '../museum/extras.js';
 import { PLATFORM } from '../platform.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
-import { cashAvailable, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
+import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
 import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf } from '../shop/reveal-pose.js';
@@ -964,6 +964,7 @@ function onGranted(c, t0) {
   //  가게를 닫은 뒤(10초 대기 중·느린 폴링) 잡힌 지급은 연출 없이 — 보트·다른 메뉴 위로 전면 오버레이가 뜨지 않게
   if (c.kind === 'cosmetic' && findItem(c.itemId)?.premium && cosShopOpen()) {
     try {
+      closeCheckout();   // 💳 Paddle 성공 창이 연출을 덮지 않게 먼저 닫는다
       const mode = revealModeOf(findItem(c.itemId));
       playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character, mode,
         //  🧥 스킨은 "입은 내 캐릭터"를 진열한다 — 이미 장착했으니 실제 장착 그대로 만든다

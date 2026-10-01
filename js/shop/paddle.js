@@ -36,6 +36,14 @@ export function setCheckoutHandlers(h) {
   handlers = merged;
 }
 
+/** Paddle 결제창 닫기 — 지급이 확인돼 획득 연출을 띄우기 직전에 부른다.
+ *  안 닫으면 Paddle 성공 화면이 연출을 덮는다(2026-10-01 샌드박스 실결제에서 확인).
+ *  completed 뒤라 current 가 비어 있어 뒤따르는 checkout.closed 는 onPaddleEvent 가 무시한다.
+ *  Paddle 이 아직 없거나(로드 전) close 가 던져도 연출을 막지 않게 조용히 넘어간다. */
+export function closeCheckout() {
+  try { globalThis.window?.Paddle?.Checkout?.close(); } catch (_) { /* 장식 경로 — 무시 */ }
+}
+
 function onPaddleEvent(ev) {
   if (!current) return;
   if (ev?.name === 'checkout.completed') { const c = current; current = null; handlers.onCompleted(c); }

@@ -22,7 +22,7 @@ test('onGranted — 연출은 저장 뒤, try 안에서(장식이 지급 저장�
   const body = cafe.slice(cafe.indexOf('function onGranted('));
   const save = body.indexOf('requestSave()'), play = body.indexOf('playPurchaseReveal(');
   assert.ok(save > 0 && play > save, 'requestSave 가 먼저');
-  assert.match(body.slice(save, play), /try \{\s*(const mode[^\n]*\n\s*)?$/);
+  assert.match(body.slice(save, play), /try \{\s*(closeCheckout\(\);[^\n]*\n\s*)?(const mode[^\n]*\n\s*)?$/);
 });
 test('stopPurchaseReveal 이 --br-dim 을 0 으로 되돌린다', () => {
   assert.match(rev, /setProperty\('--br-dim', '0'\)/);
@@ -63,4 +63,11 @@ test('startBox — 발 원점 오프셋 상수 사용 · 진열 캐릭터를 무
   assert.match(b, /p\.riseY \+ HERO_FEET_OFFSET/);
   assert.match(b, /p\.rise \* HERO_SCALE/);
   assert.ok(b.indexOf('buildShowcase()') < b.indexOf('boxStage()'));
+});
+
+test('연출 직전에 Paddle 성공 창을 닫는다 — 안 닫으면 연출이 그 뒤에 가려진다(샌드박스 실결제 2026-10-01)', () => {
+  const body = cafe.slice(cafe.indexOf('function onGranted('));
+  const close = body.indexOf('closeCheckout()'), play = body.indexOf('playPurchaseReveal(');
+  assert.ok(close > 0 && close < play, 'closeCheckout 이 playPurchaseReveal 보다 먼저');
+  assert.match(cafe, /import \{[^}]*closeCheckout[^}]*\} from '\.\.\/shop\/paddle\.js'/);
 });
