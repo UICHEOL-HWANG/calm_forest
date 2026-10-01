@@ -53,7 +53,7 @@ function arcOn(THREE, c, ax, axis, t0, t1, n, lift = 1.012) {
  *  ⚠️ stage 는 **부모 없이** 만든 그룹 — 그래야 matrixWorld 가 곧 parent 좌표계다. */
 function bakeInto(THREE, parent, stage) {
   stage.updateMatrixWorld(true);
-  const byMat = new Map();
+  const byMat = new Map(), out = [];
   stage.traverse(o => {
     if (!o.isMesh) return;
     const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
@@ -66,7 +66,9 @@ function bakeInto(THREE, parent, stage) {
     m.castShadow = false;
     parent.add(m);
     geos.forEach(g => g.dispose());
+    out.push(m);
   }
+  return out;
 }
 
 /** 바늘땀 — 점열을 둘씩 짝지어 짧은 캡슐(간격이 생겨 점선이 된다) */
@@ -114,7 +116,7 @@ function applySpirit(THREE, built) {
       l.position.set(k * 0.17, 0.33, 0); l.scale.set(1, 0.32, 0.6); l.rotation.z = k * 0.45; stage.add(l);
     });
     wrap.add(stage);
-    bakeInto(THREE, head, wrap);
+    bakeInto(THREE, head, wrap).forEach(m => { m.userData.part = 'sprout'; });   // 모자를 쓰면 showSprout 가 숨긴다
   }
   //  몸속 빛 알갱이 — Points 1개. 궤도는 skinTick 이 돌린다(시드는 결정적 — 미리보기와 월드가 같게)
   const n = SPIRIT.motes, pos = new Float32Array(n * 3), seed = [];
@@ -209,6 +211,11 @@ export function applySkin(THREE, built, skinId) {
   if (skinId === 'forest_spirit') applySpirit(THREE, built);
   else if (skinId === 'plush_doll') applyPlush(THREE, built);
   return built.group;
+}
+
+/** 🌱 정령 머리 새싹 켜고 끄기 — 표식(part='sprout')만 건드린다. 판정은 skin-rules.js sproutVisible */
+export function showSprout(group, on) {
+  group?.traverse(o => { if (o.userData?.part === 'sprout') o.visible = on; });
 }
 
 /** 스킨이 새로 만든 지오메트리만 버린다(재질은 캐시 공유, 캐릭터 원본은 손대지 않는다) */

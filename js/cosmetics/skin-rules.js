@@ -31,3 +31,6 @@ export function bellyPatchZ(R, bs) {
   const bodyFront = R * bs[2] * Math.sqrt(Math.max(0, 1 - (0.16 / bs[1]) ** 2));
   return Math.max(bellyFront, bodyFront) + 0.004;
 }
+
+/** 🌱 정령 머리 새싹 — 머리 칸에 뭔가 쓰면 숨긴다(모자를 뚫고 솟아 보였다, 2026-10-01 사용자 결정) */
+export function sproutVisible(cos) { return !cos?.equipped?.head; }

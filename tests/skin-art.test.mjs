@@ -28,3 +28,10 @@ test('색 상수 — 블룸 임계 0.85 아래(넓은 면: 정령 몸·새싹). 
   for (const hex of [0x5fc4a8, 0x9be07a]) assert.ok(luma(hex) < 0.85, hex.toString(16));
   for (const hex of [0x5fc4a8, 0x9be07a, 0xf6e6c8]) assert.match(src, new RegExp('0x' + hex.toString(16)));
 });
+
+test('새싹은 part=sprout 표식 · showSprout 가 그 표식만 켜고 끈다', () => {
+  assert.match(src, /userData\.part = 'sprout'/);
+  const b = src.slice(src.indexOf('export function showSprout('));
+  assert.match(b, /=== 'sprout'/);
+  assert.match(b, /\.visible = on/);
+});
