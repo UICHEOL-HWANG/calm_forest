@@ -11,7 +11,8 @@ import {
   applyCosmetics, finishPetJob, gameState, petJob, requestSave, respawnPet, usePet,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
-import { ownedIn, toggleWear } from '../cosmetics/wardrobe.js';
+import { PLATFORM } from '../platform.js';
+import { ownedIn, toggleWear, wardrobeTabVisible } from '../cosmetics/wardrobe.js';
 import { PET_KINDS, stageOf, toNextStage } from '../pet/rules.js';
 
 //  가게 탭 이름과 같은 말을 쓴다 — 가게에서 본 칸 이름이 옷장에서도 그대로 보이게
@@ -62,7 +63,9 @@ function empty(box, text) {
 export function drawWardrobe(tabsEl, box, preview, hintEl) {
   const redraw = () => drawWardrobe(tabsEl, box, preview, hintEl);
   tabsEl.innerHTML = '';
-  for (const [id, label] of SLOT_TABS) {
+  const tabs = SLOT_TABS.filter(([id]) => wardrobeTabVisible(id, gameState.cosmetics, PLATFORM));
+  if (!tabs.some(([id]) => id === slot)) slot = 'head';   // 숨겨진 칸에 머물러 있었다면 머리로
+  for (const [id, label] of tabs) {
     const b = document.createElement('button');
     b.className = 'sh-tab' + (slot === id ? ' active' : '');
     b.textContent = label;
