@@ -22,6 +22,7 @@ export function canBuy(cos, coins, id) {
   const it = findItem(id);
   if (!it) return { ok: false, why: 'unknown' };
   if (cos.owned.includes(id)) return { ok: false, why: 'owned' };
+  if (it.price.coins == null) return { ok: false, why: 'cash-only' };   // 💎 현금 전용 — 코인 경로로는 못 산다
   if ((coins | 0) < it.price.coins) return { ok: false, why: 'poor' };
   return { ok: true, why: '' };
 }
