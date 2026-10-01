@@ -27,3 +27,10 @@ test('onGranted — 연출은 저장 뒤, try 안에서(장식이 지급 저장�
 test('stopPurchaseReveal 이 --br-dim 을 0 으로 되돌린다', () => {
   assert.match(rev, /setProperty\('--br-dim', '0'\)/);
 });
+
+test('빛줄기는 진열물(root)에 달지 않는다 — 달면 회전을 따라 중심이 맴돈다 · 캔버스 가장자리는 마스크로 흐린다', () => {
+  assert.doesNotMatch(rev, /root\.add\(rays\)/);
+  assert.match(rev, /scene\.add\(root,\s*rays\)/);
+  assert.match(rev, /disposeTree\(rig\.rays\)/);
+  assert.match(html, /#buy-reveal canvas \{[^}]*mask-image: radial-gradient/);
+});

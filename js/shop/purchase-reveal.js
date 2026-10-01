@@ -70,7 +70,7 @@ function disposeTree(o) {
 
 export function stopPurchaseReveal() {
   cancelAnimationFrame(raf); raf = 0;
-  if (rig) { scene.remove(rig.root); disposeTree(rig.root); rig = null; }
+  if (rig) { scene.remove(rig.root, rig.rays); disposeTree(rig.root); disposeTree(rig.rays); rig = null; }
   const wrap = document.getElementById('buy-reveal');
   wrap?.classList.remove('show', 'card');
   wrap?.style.setProperty('--br-dim', '0');   // 다시 틀 때 이전 어둠이 한 프레임 비치지 않게
@@ -90,10 +90,10 @@ export function playPurchaseReveal({ itemId, animalId = null, onWalk = () => {},
   const w = canvas.clientWidth || 360, h = canvas.clientHeight || 280;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   const { root, fx } = showcase(itemId, animalId);
-  const rays = raysMesh(); root.add(rays);
-  scene.add(root);
+  const rays = raysMesh();   // 진열물(root)과 따로 — root 에 달면 회전·커짐을 따라 빛줄기 중심이 진열물 뒤를 맴돈다
+  scene.add(root, rays);
   const t0 = performance.now();
-  rig = { root, lastPuff: 0 };
+  rig = { root, rays, lastPuff: 0 };
   let last = t0;
   const frame = (now) => {
     if (!rig) return;
@@ -102,7 +102,7 @@ export function playPurchaseReveal({ itemId, animalId = null, onWalk = () => {},
     wrap.style.setProperty('--br-dim', String(p.dim));
     root.scale.setScalar(Math.max(0.001, p.scale));
     root.rotation.y = t * 0.6;
-    rays.material.opacity = p.rays * 0.9; rays.rotation.set(0, -root.rotation.y, t * 0.15);   // 빛줄기는 늘 카메라를 본다
+    rays.material.opacity = p.rays * 0.9; rays.rotation.z = t * 0.15;   // 빛줄기는 늘 카메라 쪽(+z)을 본 채 제자리에서 돈다
     if (t - rig.lastPuff > 0.8) {                     // 진열물에선 입자가 계속 피어오르게 — 무지개 색은 처음 칠한 그대로
       rig.lastPuff = t;
       const [x, z] = SPOTS[Math.floor(t) % SPOTS.length];

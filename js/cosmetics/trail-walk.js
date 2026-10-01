@@ -70,7 +70,7 @@ export function makeTrailWalk(THREE, itemId, animalId) {
       m.visible = !!k;
       if (!k) return;
       m.position.set(k.side * TRAIL_SIDE, 0.01, k.z);
-      if (!seen.has(k.n)) { seen.add(k.n); fx.onStamp(itemId, m.position, { nightLevel: 1 }); }   // 처음 나타날 때만
+      if (!seen.has(k.n)) { seen.add(k.n); fx.onStamp(itemId, m.position, { nightLevel: 1, step: k.n }); }   // 처음 나타날 때만 · 반짝이 색도 자국 id 에서
       if (itemId === 'rainbow') {                       // 색은 자국 id 에서 — 메시가 밀려도 색이 기어다니지 않는다
         const hex = rainbowHex(k.n);
         m.traverse(o => { if (o.isMesh) o.material.color.setHex(hex); });

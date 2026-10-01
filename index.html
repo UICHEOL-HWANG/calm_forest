@@ -258,7 +258,8 @@
   #buy-reveal { position: fixed; inset: 0; z-index: 34; display: none; place-items: center; background: rgba(8,6,20, calc(0.85 * var(--br-dim, 0))); }
   #buy-reveal.show { display: grid; }
   #buy-reveal .br-wrap { width: min(420px, 92vw); display: flex; flex-direction: column; align-items: center; }
-  #buy-reveal canvas { width: 100%; height: min(320px, 46dvh); display: block; }
+  #buy-reveal canvas { width: 100%; height: min(320px, 46dvh); display: block;
+    -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent); mask-image: radial-gradient(closest-side, #000 70%, transparent); }   /* 빛줄기가 캔버스 네모 테두리에서 잘려 보이지 않게 */
   #buy-reveal .br-card { text-align: center; color: #fff; opacity: 0; transform: translateY(14px); transition: opacity .4s, transform .4s; }
   #buy-reveal.card .br-card { opacity: 1; transform: none; }
   #buy-reveal .br-tag { display: inline-block; font-size: 12px; letter-spacing: .08em; padding: 3px 10px; border-radius: 99px; background: rgba(255,215,120,.18); color: #ffd98a; margin-bottom: 8px; }

@@ -28,3 +28,16 @@ test('particleStep — 위로 오르고, 입력을 바꾸지 않고, 수명이 �
   assert.equal(s.kind, 'spark');
   assert.ok(s.life < 1.5);
 });
+
+test('onStamp — step 을 주면 그 걸음 색(미리보기: 자국 id 와 반짝이 색이 어긋나지 않게)', async () => {
+  const { createTrailFx } = await import('../js/cosmetics/trail-fx.js');
+  globalThis.document ??= { createElement: () => ({ getContext: () => ({ createRadialGradient: () => ({ addColorStop() {} }), fillRect() {} }) }) };
+  class Attr { constructor(a, n) { this.array = a; this.itemSize = n; } }
+  const THREE = { BufferGeometry: class { constructor() { this.attributes = {}; } setAttribute(k, v) { this.attributes[k] = v; } setDrawRange() {} },
+    BufferAttribute: Attr, PointsMaterial: class {}, Points: class { constructor(g) { this.geometry = g; } },
+    CanvasTexture: class {}, Color: class { setHex() { return this; } }, AdditiveBlending: 2, NormalBlending: 1 };
+  const fx = createTrailFx(THREE, { rnd: () => 0.5 });
+  assert.equal(fx.onStamp('rainbow', { x: 0, y: 0, z: 0 }, { step: 5 }).tint, rainbowHex(5));
+  assert.equal(fx.onStamp('rainbow', { x: 0, y: 0, z: 0 }).tint, rainbowHex(0), '없으면 내부 카운터(월드)');
+  assert.equal(fx.points.geometry.attributes.color.itemSize, 4, 'RGBA');
+});
