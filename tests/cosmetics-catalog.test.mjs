@@ -3,13 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 4개 · 품목 18종 — 스펙 §4 수치 그대로', () => {
+test('슬롯 4개 · 품목 20종(코인 18 + 프리미엄 2)', () => {
   assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail']);
-  assert.equal(ITEMS.length, 18);
+  assert.equal(ITEMS.length, 20);
   assert.equal(itemsOf('head').length, 7);
   assert.equal(itemsOf('neck').length, 3);
   assert.equal(itemsOf('back').length, 3);
-  assert.equal(itemsOf('trail').length, 5);
+  assert.equal(itemsOf('trail').length, 7);
 });
 
 test('id 는 중복되지 않는다 — 세이브 키이자 트래킹 축이다', () => {
@@ -17,16 +17,19 @@ test('id 는 중복되지 않는다 — 세이브 키이자 트래킹 축이다'
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test('현금 칸 — null 이거나 {priceId,label} 둘 다 있는 객체(스펙 2026-09-30 §2-1)', () => {
+test('가격 — coins 와 won 중 정확히 하나. 현금 칸은 null 이거나 {priceId,label}', () => {
   for (const it of ITEMS) {
     const c = it.price.cash;
     assert.ok(c === null || (typeof c.priceId === 'string' && typeof c.label === 'string'), `${it.id} 의 cash 형태`);
-    assert.ok(Number.isInteger(it.price.coins) && it.price.coins > 0, `${it.id} 코인 가격`);
+    const hasCoins = Number.isInteger(it.price.coins) && it.price.coins > 0;
+    const hasWon = Number.isInteger(it.price.won) && it.price.won > 0;
+    assert.ok(hasCoins !== hasWon, `${it.id}: coins/won 중 하나만`);
+    assert.equal(!!it.premium, hasWon, `${it.id}: premium ⇔ won`);
   }
 });
 
 test('꾸미기 최저가가 일꾼 초빙료(120🪙)보다 훨씬 비싸다 — 집 증축을 밀어내면 안 된다(§2-2)', () => {
-  assert.ok(Math.min(...ITEMS.map(i => i.price.coins)) >= 600);
+  assert.ok(Math.min(...ITEMS.filter(i => !i.premium).map(i => i.price.coins)) >= 600);
 });
 
 test('머리 장식은 earSafe 를 반드시 갖는다 — 귀 처리 규칙(§3-3)', () => {
@@ -40,11 +43,18 @@ test('가방류는 side 앵커, 망토만 back — 🦊여우 꼬리 회피(§3-
   assert.equal(findItem('cape').anchor, 'back');
 });
 
-test('발자국은 등급이 오를수록 비싸다(§4-4)', () => {
+test('발자국 — 프리미엄 2개가 맨 앞, 코인 자국은 등급이 오를수록 비싸다(§4-4)', () => {
   const t = itemsOf('trail');
-  assert.deepEqual(t.map(i => i.id), ['paw', 'drop', 'flower', 'star', 'sparkle']);
-  assert.deepEqual(t.map(i => i.tier), ['기본', '기본', '고급', '특별', '특별']);
-  for (let i = 1; i < t.length; i++) assert.ok(t[i].price.coins > t[i - 1].price.coins);
+  assert.deepEqual(t.map(i => i.id), ['firefly', 'rainbow', 'paw', 'drop', 'flower', 'star', 'sparkle']);
+  const coin = t.filter(i => !i.premium);
+  assert.deepEqual(coin.map(i => i.tier), ['기본', '기본', '고급', '특별', '특별']);
+  for (let i = 1; i < coin.length; i++) assert.ok(coin[i].price.coins > coin[i - 1].price.coins);
+});
+
+test('프리미엄 자국 — 원화 가격, 코인 없음(2026-10-01 스펙 §2-1)', () => {
+  assert.deepEqual([findItem('firefly').price.won, findItem('rainbow').price.won], [4000, 3000]);
+  assert.equal(findItem('firefly').price.coins, null);
+  assert.equal(findItem('firefly').tier, '프리미엄');
 });
 
 test('findItem: 없는 id 는 null', () => {
