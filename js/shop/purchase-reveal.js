@@ -71,7 +71,9 @@ function disposeTree(o) {
 export function stopPurchaseReveal() {
   cancelAnimationFrame(raf); raf = 0;
   if (rig) { scene.remove(rig.root); disposeTree(rig.root); rig = null; }
-  document.getElementById('buy-reveal')?.classList.remove('show', 'card');
+  const wrap = document.getElementById('buy-reveal');
+  wrap?.classList.remove('show', 'card');
+  wrap?.style.setProperty('--br-dim', '0');   // 다시 틀 때 이전 어둠이 한 프레임 비치지 않게
 }
 
 /** onWalk: [바로 걸어보기] · onClose: [닫기] — 연출을 닫은 뒤 부른다. 인자 = 열려 있던 ms */
