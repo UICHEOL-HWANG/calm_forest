@@ -19,9 +19,9 @@ test('labelToAmount — 원화 라벨을 Paddle 최소 단위 문자열로(KRW �
   assert.throws(() => labelToAmount('$1.99'));
 });
 
-test('buildPlan — 카탈로그 18 + 펫 4 = 22, PRICE_IDS 키와 정확히 일치', () => {
+test('buildPlan — 카탈로그 20(코인 18 + 프리미엄 2) + 펫 4 = 24, PRICE_IDS 키와 정확히 일치', () => {
   const plan = buildPlan(ITEMS, PET_KINDS);
-  assert.equal(plan.length, 22);
+  assert.equal(plan.length, 24);
   assert.deepEqual(plan.map(p => p.itemId).sort(), Object.keys(PRICE_IDS).sort());
 });
 

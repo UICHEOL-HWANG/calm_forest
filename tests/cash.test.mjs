@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cashLabel, cashFor, PET_CASH_LABEL } from '../js/shop/cash.js';
+import { cashLabel, cashFor, PET_CASH_LABEL, wonLabel } from '../js/shop/cash.js';
 import { PRICE_IDS } from '../js/shop/price-ids.js';
 import { ITEMS } from '../js/cosmetics/catalog.js';
 import { PET_KINDS } from '../js/pet/rules.js';
@@ -19,9 +19,19 @@ test('priceId 가 없으면 cash 는 null — 현금 버튼이 안 그려진다'
   assert.equal(cashFor('nope', 1000), null);
 });
 
-test('PRICE_IDS 는 꾸미기 18 + 펫 4 = 22칸, 값은 null 이거나 pri_ 로 시작', () => {
+test('wonLabel — 원화 천 단위', () => {
+  assert.equal(wonLabel(4000), '₩4,000');
+  assert.equal(wonLabel(3000), '₩3,000');
+  assert.equal(wonLabel(12500), '₩12,500');
+});
+
+test('cashFor — priceId 없으면 won 이 있어도 null', () => {
+  assert.equal(cashFor('nope', null, 4000), null);
+});
+
+test('PRICE_IDS 는 꾸미기 20(코인 18 + 프리미엄 2) + 펫 4 = 24칸, 값은 null 이거나 pri_ 로 시작', () => {
   const keys = Object.keys(PRICE_IDS);
-  assert.equal(keys.length, 22);
+  assert.equal(keys.length, 24);
   for (const it of ITEMS) assert.ok(keys.includes(it.id), it.id);
   for (const k of PET_KINDS) assert.ok(keys.includes(k.id), k.id);
   for (const [k, v] of Object.entries(PRICE_IDS)) assert.ok(v === null || /^pri_[a-z0-9]+$/.test(v), `${k}: ${v}`);
@@ -33,7 +43,7 @@ test('카탈로그 cash 칸 — priceId 가 있는 항목만 {priceId,label}, �
   for (const it of ITEMS) {
     const pid = PRICE_IDS[it.id];
     if (!pid) { assert.equal(it.price.cash, null, it.id); continue; }
-    assert.deepEqual(it.price.cash, { priceId: pid, label: cashLabel(it.price.coins) }, it.id);
+    assert.deepEqual(it.price.cash, { priceId: pid, label: it.premium ? wonLabel(it.price.won) : cashLabel(it.price.coins) }, it.id);
   }
   for (const k of PET_KINDS) {
     const pid = PRICE_IDS[k.id];
