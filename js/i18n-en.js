@@ -2090,4 +2090,10 @@ export const EN = {
   '{0#}초': '{0}s',
   '{0#}회': '{0}x',
   '{0#}점': '{0} pts',
+  '반딧불 자국': 'Firefly Trail',
+  '무지개 자국': 'Rainbow Trail',
+  '밤이 되면 발자국마다 반딧불이 떠올라요': 'Fireflies rise from your footprints at night',
+  '걸음마다 일곱 빛깔이 차례로 남아요': 'Each step leaves the next color of the rainbow',
+  'PREMIUM · 걷는 자국': 'PREMIUM · Trail',
+  '바로 걸어보기': 'Walk now',
 };
