@@ -25,7 +25,7 @@
   - ⚠️ 라이브 priceId 로 바꾸기 **전에** 샌드박스 구매 행 삭제: `delete from purchases where price_id in (<샌드박스 firefly·rainbow pri_ id>)` — T10 테스트 결제(그리고 공개 dev 파라미터로 누가 했을지 모를 결제)가 라이브에서 영구 지급되지 않게
   - build-web `/shop` 프리미엄 전용 재작성(Step 2) 전엔 storeOpen=true 로 빌드하지 말 것(coins null 에서 터짐)
 - [ ] 문구 검수(스펙 §8) — 사용자 답 대기
-- [ ] 2단계(별도 스펙) — 🧥 스킨 칸 + 숲의 정령·플러시 인형 + B+C 상자 폭발 연출. **결정(2026-10-01): 1단계 T10·T11 을 끝낸 뒤 시작**
+- [~] 2단계 — 아래 섹션(사용자가 2026-10-01 1단계 T10·T11 보다 먼저 착수 지시)
 
 ## 검증 요령(로컬)
 - 워크트리에서 `python3 scripts/serve.py 8021` → `http://localhost:8021/?dbg&time=0.92&weather=clear` (time=밤 고정)
@@ -34,3 +34,20 @@
 - 가게 열기: `const g=await import('/js/game.js'); cos-menu.classList.add('show'); g.Input.openCosMenu(document.getElementById('cos-preview'))` → 이펙트 탭
 - ⚠️ 합성 키 이벤트로는 플레이어 이동이 잘 안 됨(월드 자국 캡처는 실제 입력/조이스틱 필요)
 - ⚠️ 브라우저 패널이 가려지면 rAF 정지 → tabs_select 후 캡처
+
+---
+
+# 2단계 — 🧥 전신 스킨 (브랜치 `feat/premium-skins`, 워크트리 .claude/worktrees/premium-skins)
+
+스펙 docs/superpowers/specs/2026-10-01-premium-skins-design.md · 계획 docs/superpowers/plans/2026-10-01-premium-skins.md
+결정: 덧입히기(A) · 다른 꾸미기와 같이 입음 · 정령 자취는 자국 칸 비었을 때만(A) · 🌿 S3 반딧불 정령 ₩10,000 · 🧸 P1 솔기·단추 눈 ₩9,000 · B+C 상자 폭발
+
+- [ ] T1 카탈로그 skin 칸 + 2상품
+- [ ] T2 skin-rules(effectiveTrail·squashOf)
+- [ ] T3 부위 표식(pupil·highlight·head·skull·body·belly) + kk.id
+- [ ] T4 sprout 자국 + mergeGeos export
+- [ ] T5 skin.js(applySkin·disposeSkin)
+- [ ] T6 게임 배선
+- [ ] T7 가게·옷장 스킨 탭 + i18n
+- [ ] T8 연출 B+C
+- [ ] T9 화면 검증·드로우콜·리뷰·문서·푸시
