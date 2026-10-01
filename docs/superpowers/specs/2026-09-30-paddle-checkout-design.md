@@ -84,7 +84,7 @@ Paddle Price 의 기본 통화는 KRW 로 등록한다. 대시보드가 KRW 를 
 ```sql
 create table if not exists public.purchases (
   id              bigint generated always as identity primary key,
-  event_id        text not null unique,        -- Paddle notification id — 멱등 키
+  event_id        text not null unique,        -- '<transaction_id>:<price_id>' — 멱등 키(알림 id 가 아니라 거래 id: 재전송·다중 엔드포인트에도 1행)
   transaction_id  text not null,               -- txn_… — 환불이 이 값으로 찾아온다
   user_id         uuid not null references auth.users(id) on delete cascade,
   item_id         text not null,               -- 카탈로그/펫 id ('straw_hat', 'leaf')
@@ -107,7 +107,7 @@ create policy "own purchases select" on public.purchases
 -- insert/update 정책은 두지 않는다 → 클라이언트는 쓸 수 없고, Worker 의 service key 만 쓴다
 ```
 
-- 한 결제에 항목이 여러 개면(장바구니) **항목당 1행**, `event_id` 는 `<notification_id>:<price_id>` 로 만든다. 체크아웃은 항목 1개만 열지만 원장은 여러 개도 받는다.
+- 한 결제에 항목이 여러 개면(장바구니) **항목당 1행**, `event_id` 는 `<transaction_id>:<price_id>` 로 만든다(알림 id 를 쓰면 재전송·다중 엔드포인트가 매출을 이중 기록한다). 체크아웃은 항목 1개만 열지만 원장은 여러 개도 받는다.
 - RLS 는 `(select auth.uid())` 형태 — 저장소 규칙(supabase-schema-structuring).
 
 ---
@@ -186,12 +186,13 @@ PLATFORM === 'web' && state.online && !state.isGuest && item.price.cash
 ```
 applyPurchases(gameState, rows) → { gameState', granted:[…], revoked:[…] }
   live     = rows.filter(r => !r.revoked_at)
-  gone     = cashOwned − live.ids            // 환불됨
+  revoked  = ids with a revoked_at row AND not in live.ids   // 환불 뒤 재구매(live 행 있음)는 제외
+  gone     = cashOwned ∩ revoked             // 환불됨 — 원장에 흔적이 아예 없는 id 는 gone 이 아니다(빈 조회 방어)
   fresh    = live.ids − cashOwned            // 새 결제
   cosmetics.owned  = owned − gone(코인으로도 산 적 없는 것만) ∪ fresh(cosmetic)
   pets             = gone(pet) 삭제 · fresh(pet) 는 emptyPet(kind) 로 추가
   equipped 슬롯이 gone 이면 unequip · 현재 펫이 gone 이면 pet = null
-  cashOwned        = live.ids
+  cashOwned        = (cashOwned − gone) ∪ live.ids
 ```
 - "코인으로도 산 적 없는 것만" — `owned` 에 있는데 `cashOwned` 에도 있으면 현금 구매로 본다. 코인 구매 후 같은 걸 현금으로 또 사는 경로는 UI 가 막는다('구매 완료').
 - 불변: 입력을 바꾸지 않고 새 객체를 돌려준다.
@@ -210,7 +211,7 @@ applyPurchases(gameState, rows) → { gameState', granted:[…], revoked:[…] }
 | 결제창 열었다 닫음 | 아무 변화 없음. `cash_checkout_close` 만 기록 |
 | 결제 성공했는데 창을 바로 닫음 | 웹훅은 오고 원장에 남는다 → 다음 부팅 병합에서 지급 |
 | 같은 웹훅 재배달 | event_id 충돌 무시 → 이중 지급 없음 |
-| 환불 | revoked_at → 부팅 병합에서 제거·해제. 이미 코인으로도 샀던 항목이면 유지 |
+| 환불 | revoked_at → 부팅 병합에서 제거·해제(revoked_at 만 회수 — 원장에서 흔적 없이 사라진 항목·빈 조회는 회수하지 않는다). 이미 코인으로도 샀던 항목이면 유지 |
 | 모르는 price_id | 로그 + 200. 대시보드에서 상품을 잘못 만든 경우라 사람이 본다 |
 | custom_data 없음(대시보드에서 수동 결제 등) | 로그 + 200, 지급 없음 |
 | 세이브 왕복 | `cashOwned` 는 세이브에 실리므로 save-guard 의 덮어쓰기 방지 규칙을 그대로 탄다 |

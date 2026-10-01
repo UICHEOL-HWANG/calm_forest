@@ -43,6 +43,10 @@ html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n/gm, '');                 
 html = html.replace(/^\s*<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="\/[^"]*"[^>]*>\s*\n/gm, '');
 html = html.replace(/^\s*<script>\s*if \('serviceWorker' in navigator[\s\S]*?<\/script>\s*\n/m, '');
 if (html.includes('serviceWorker.register')) throw new Error('[build-cap] service worker 등록 스크립트 제거 실패');
+// 💳 로그인 카드의 약관·환불·가격 링크(#login-links) — 구글 플레이 정책상 외부 결제 안내 링크 금지라 앱 번들에서는 통째로 뺀다
+const LINKS_RE = /[ \t]*<nav id="login-links">[\s\S]*?<\/nav>[ \t]*\n?/;
+if (!LINKS_RE.test(html)) throw new Error('[build-cap] index.html 에서 #login-links 를 못 찾음 — 앱 번들에서 약관 링크를 못 뺍니다.');
+html = html.replace(LINKS_RE, '');
 writeFileSync(`${OUT}/index.html`, html);
 
 // ── 게임 모듈 + 자체 호스팅 라이브러리 ──

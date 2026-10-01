@@ -302,6 +302,14 @@ export const EN = {
   '배경음악': 'Music',
   // ⚖️ 스토어 정책 항목(☰ 메뉴)
   '개인정보 처리방침': 'Privacy Policy',
+  '개인정보처리방침': 'Privacy Policy',
+  // 💳 Paddle 결제 — 토스트·심사용 페이지 링크
+  '🎁 산 아이템이 도착했어요': '🎁 Your purchase has arrived',
+  '잠시 후 다시 들어오면 도착해 있어요': 'It will be there next time you come in',
+  '결제를 지금은 열 수 없어요': 'Checkout is unavailable right now',
+  '이용약관': 'Terms of Service',
+  '환불 정책': 'Refund Policy',
+  '가격 안내': 'Pricing',
   '계정 삭제': 'Delete account',
   '나가기': 'Log out',
   '문의하기': 'Feedback',
