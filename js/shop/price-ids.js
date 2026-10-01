@@ -10,13 +10,13 @@
 // =============================================================
 export const PRICE_IDS = Object.freeze({
   // 🎩 머리
-  beanie: null, cap: null, mushroom: null, straw_hat: null, flower_crown: null, leaf_band: null, star_pin: null,
+  beanie: 'pri_01m3tmg83ew6a9gdyhqxq5ecf9', cap: 'pri_01m3tmg8m9g5xpv5svxxp3dm1f', mushroom: 'pri_01m3tmg97fm7xvdnfcxqqc5t07', straw_hat: 'pri_01m3tkeb0t899g7jz1j8e3h36s', flower_crown: 'pri_01m3tmg9qxf3twq3x44w1pvmbb', leaf_band: 'pri_01m3tmga8qk4amkcps94t66fm8', star_pin: 'pri_01m3tmgas1pv6bpsgq1fyct8sk',
   // 🧣 목
-  scarf: null, bell: null, bowtie: null,
+  scarf: 'pri_01m3tmgb8p4xqtjfbexvsr9td1', bell: 'pri_01m3tmgbsafv9kqpaxcwmxkfv2', bowtie: 'pri_01m3tmgcb3662cahcgw2t8tgvs',
   // 🎒 등
-  pack: null, basket: null, cape: null,
+  pack: 'pri_01m3tmgcvgen4209jbp01q772v', basket: 'pri_01m3tmge0teh3fay6xq6a5nqpy', cape: 'pri_01m3tmgehcrheb6j5djwgkds1g',
   // 👣 발자국
-  paw: null, drop: null, flower: null, star: null, sparkle: null,
+  paw: 'pri_01m3tmgf2kq7x612ewn3kwjedf', drop: 'pri_01m3tmgfjy4g0ak58zjbfxywga', flower: 'pri_01m3tmgg38qh6av1ckewydaf9y', star: 'pri_01m3tmggmefrekr6p2st1ee7cz', sparkle: 'pri_01m3tmgh528hx6vrk0fj255fm7',
   // 🐾 펫
-  leaf: null, spirit: null, bird: null, golem: null,
+  leaf: 'pri_01m3tmghnh87mycmrzp4acg5bv', spirit: 'pri_01m3tmgj6fz0t5bm7gs2m2fxxb', bird: 'pri_01m3tmgjp7vaqhcmsxskxka5z4', golem: 'pri_01m3tmgk67fgtabnmz5aeafd9x',
 });
