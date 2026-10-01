@@ -12,7 +12,7 @@
 // =============================================================
 
 import { buildTrailMark, TRAIL_SIDE } from './trail.js';
-import { createTrailFx, rainbowHex } from './trail-fx.js';
+import { createTrailFx, rainbowHex, FX_IDS } from './trail-fx.js';
 
 export const WALK_STEP = 0.26;   // 한 걸음
 export const WALK_FADE = 1.6;    // 초
@@ -47,7 +47,14 @@ export function walkMarks(t) {
 export function makeTrailWalk(THREE, itemId, animalId) {
   const group = new THREE.Group();
   const meshes = [];
-  const fx = createTrailFx(THREE, { cap: 32 });   // 💎 미리보기는 늘 밤 값 — 반딧불이 보여야 무엇을 사는지 안다
+  const isFx = FX_IDS.includes(itemId);
+  let ground = null;
+  if (isFx) {   // 💎 밝은 패널 위에선 가산 글로우가 안 보인다 → 밤 바닥 원판 + 일반 혼합
+    ground = new THREE.Mesh(new THREE.CircleGeometry(1.1, 40), new THREE.MeshBasicMaterial({ color: 0x1f2a3a }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0.002, WALK_Z0 + WALK_LEN / 2);
+    group.add(ground);
+  }
+  const fx = createTrailFx(THREE, isFx ? { cap: 32, blending: 'normal' } : { cap: 32 });   // 미리보기는 늘 밤 값
   group.add(fx.points);
   const seen = new Set();                              // 이미 입자를 뿌린 자국 id(n)
   let t = WALK_FADE;                                   // 열자마자 자국이 몇 개 깔려 있게
@@ -77,6 +84,7 @@ export function makeTrailWalk(THREE, itemId, animalId) {
   }
   function dispose() {
     for (const m of meshes) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    if (ground) { ground.geometry.dispose(); ground.material.dispose(); }
     fx.points.geometry.dispose(); fx.points.material.map.dispose(); fx.points.material.dispose();
   }
   update(0);

@@ -10,7 +10,7 @@ import { NIGHT_MIN } from '../daynight.js';
 
 export const FX_IDS = Object.freeze(['firefly', 'rainbow']);
 const FLY_HEX = 0xc8e65a;          // 연두빛 — 블룸 임계 아래
-const HUE_STEP = 0.09;
+const HUE_STEP = 1 / 7;       // 일곱 빛깔 — 한 걸음에 한 색
 
 export function fireflyCount(nightLevel, rnd) {
   if (nightLevel >= NIGHT_MIN) return 2;
@@ -71,14 +71,14 @@ function glowTexture(THREE) {
   return new THREE.CanvasTexture(c);
 }
 
-export function createTrailFx(THREE, { cap = 64, rnd = Math.random } = {}) {
-  const pos = new Float32Array(cap * 3), col = new Float32Array(cap * 3);
+export function createTrailFx(THREE, { cap = 64, rnd = Math.random, blending = 'additive' } = {}) {
+  const pos = new Float32Array(cap * 3), col = new Float32Array(cap * 4);   // RGBA — 알파로 흐려진다(가산·일반 혼합 모두)
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 4));
   geo.setDrawRange(0, 0);
   const mat = new THREE.PointsMaterial({ size: 0.22, map: glowTexture(THREE), vertexColors: true, transparent: true,
-    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true });
+    depthWrite: false, blending: blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending, sizeAttenuation: true });
   const points = new THREE.Points(geo, mat);
   points.frustumCulled = false;
   let live = [], step = 0;
@@ -87,7 +87,7 @@ export function createTrailFx(THREE, { cap = 64, rnd = Math.random } = {}) {
   const push = (p) => { live = [...live, p].slice(-cap); };
 
   /** 자국을 찍을 때 — rainbow 면 그 자국에 입힐 색을 돌려준다 */
-  function onStamp(id, at, { nightLevel }) {
+  function onStamp(id, at, { nightLevel = 0 } = {}) {
     if (id === 'firefly') {
       for (let i = fireflyCount(nightLevel, rnd()); i > 0; i--) push(spawnFirefly(at, rnd));
       return { tint: null };
@@ -100,12 +100,12 @@ export function createTrailFx(THREE, { cap = 64, rnd = Math.random } = {}) {
     return { tint: null };
   }
 
-  function update(dt, { nightLevel }) {
+  function update(dt, { nightLevel = 0 } = {}) {
     live = live.map(p => particleStep(p, dt)).filter(Boolean);
     live.forEach((p, i) => {
       pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
-      tmp.setHex(p.hex).multiplyScalar(alphaOf(p, nightLevel));   // 가산 혼합 — 색 × 밝기 = 투명도처럼 보인다
-      col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
+      tmp.setHex(p.hex);
+      col[i * 4] = tmp.r; col[i * 4 + 1] = tmp.g; col[i * 4 + 2] = tmp.b; col[i * 4 + 3] = alphaOf(p, nightLevel);
     });
     geo.setDrawRange(0, live.length);
     geo.attributes.position.needsUpdate = true;

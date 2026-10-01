@@ -26,3 +26,10 @@ test('firefly 빌더 — 반딧불 잎은 petalOf 기본 평평함을 쓴다(rot
   const body = match[0];
   assert.doesNotMatch(body, /rotation\.x/, 'firefly builder should not contain rotation.x');
 });
+
+test('firefly 빌더 — petalMesh 두 번째 인자는 비율이다(s 를 곱하지 않는다)', () => {
+  const body = src.match(/firefly: \(g, s, o\) =>[\s\S]*?(?=\n\s+rainbow:)/)[0];
+  const m = body.match(/petalMesh\([^,]+,\s*([^,]+),/);
+  assert(m, 'petalMesh call found');
+  assert.doesNotMatch(m[1], /\bs\b/, `wide arg "${m[1]}" must be a ratio`);
+});
