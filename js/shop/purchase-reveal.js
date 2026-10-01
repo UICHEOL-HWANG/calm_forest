@@ -167,7 +167,7 @@ function start(wrap, canvas, itemId, animalId, onWalk, onClose) {
   document.getElementById('br-close').onclick = done(onClose);
 }
 
-// buildCharacterMesh origin is the feet — the sim item was center-origin
+// buildCharacterMesh 의 원점은 발바닥 — 시뮬 아이템은 중심 원점이었다(그래서 아래로 내리고 줄인다)
 const HERO_FEET_OFFSET = -1.3, HERO_SCALE = 0.85;
 
 function startBox(wrap, canvas, onWalk, onClose, buildShowcase) {
