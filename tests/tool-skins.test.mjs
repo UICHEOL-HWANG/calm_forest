@@ -117,5 +117,7 @@ test('☂️ 우산은 왼손에 쥔다 — 쉬는 자세의 왼팔만 들어 �
   const src = gameSource();
   assert.match(src, /if \(umbrellaHeld\(\)\) playerArms\.L\.pivot\.rotation\.set\(\.\.\.UMBRELLA_ARM\)/);
   assert.match(src, /playerArms\?\.L\?\.hand/);
-  assert.match(src, /umbrellaTop \+ 0\.12 - _uHand\.y/);   // 갓 꼭지가 귀·모자 끝보다 위
+  assert.match(src, /if \(shaftClears\(hand, _uApex, HY, HR\)\) break;/);   // 대각선은 살리되 대가 머리·귀를 관통하지 않는다
+  assert.match(src, /umbrellaTop \+ 0\.06 \+ drop - hand\.y/);   // 갓 표면이 머리 반대편 끝에서도 귀·모자 끝 위
+  assert.match(src, /if \(actAnim > 0\) umbrellaRestHold = UMBRELLA_REST_HOLD/);   // 동작 중엔 어깨로 넘긴다(갓이 동작을 가리지 않게)
 });
