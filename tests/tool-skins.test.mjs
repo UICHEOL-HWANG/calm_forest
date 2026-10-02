@@ -122,3 +122,10 @@ test('☂️ 우산은 왼손에 쥔다 — 쉬는 자세의 왼팔만 들어 �
   assert.match(src, /umbrellaTop \+ 0\.06 \+ drop - hand\.y/);   // 갓 표면이 머리 반대편 끝에서도 귀·모자 끝 위
   assert.match(src, /if \(actAnim > 0\) umbrellaRestHold = UMBRELLA_REST_HOLD/);   // 동작 중엔 어깨로 넘긴다(갓이 동작을 가리지 않게)
 });
+
+test('☂️ 동작 중 — 우산을 쥔 왼팔은 고정(스윙 반동 무시), 우산은 손에 쥔 채 갓만 젖힌다(어깨로 옮기면 요동쳤다)', () => {
+  const src = gameSource();
+  assert.match(src, /if \(playerArms\) playerArms\.L\.pivot\.rotation\.set\(\.\.\.gripOf\(\)\.arm\);\n  poseUmbrella\(\);/);
+  assert.match(src, /_uDir\.z -= UMBRELLA_ACT_TILT \* r/);
+  assert.doesNotMatch(src, /_uRestPos/);
+});
