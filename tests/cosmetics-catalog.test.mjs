@@ -3,14 +3,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 5개 · 품목 22종(코인 18 + 프리미엄 자국 2 + 프리미엄 스킨 2)', () => {
-  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin']);
-  assert.equal(ITEMS.length, 22);
+test('슬롯 6개 · 품목 25종(코인 18 + 프리미엄 자국 2 + 프리미엄 스킨 2 + 도구 세트 3)', () => {
+  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools']);
+  assert.equal(ITEMS.length, 25);
   assert.equal(itemsOf('head').length, 7);
   assert.equal(itemsOf('neck').length, 3);
   assert.equal(itemsOf('back').length, 3);
   assert.equal(itemsOf('trail').length, 7);
   assert.equal(itemsOf('skin').length, 2);
+  assert.equal(itemsOf('tools').length, 3);
 });
 
 test('🧥 스킨 2종 — 현금 전용(won), 정령 ₩10,000 · 인형 ₩9,000', () => {

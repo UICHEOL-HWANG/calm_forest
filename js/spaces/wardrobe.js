@@ -16,7 +16,7 @@ import { ownedIn, toggleWear, wardrobeTabVisible } from '../cosmetics/wardrobe.j
 import { PET_KINDS, stageOf, toNextStage } from '../pet/rules.js';
 
 //  가게 탭 이름과 같은 말을 쓴다 — 가게에서 본 칸 이름이 옷장에서도 그대로 보이게
-const SLOT_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨']];
+const SLOT_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨'], ['tools', '🪓 도구']];
 let slot = 'head';
 
 /** 🐾 데리고 다닐 종을 바꾼다 — 가게에서 새로 산 직후에도 쓴다.
@@ -74,6 +74,7 @@ export function drawWardrobe(tabsEl, box, preview, hintEl) {
   }
   preview?.showPet(null);
   preview?.showTrail(slot === 'trail');                  // ✨ 이펙트 칸 — 캐릭터 대신 자국이 걸어온다(가게와 같다)
+  preview?.showTools(slot === 'tools');                  // 🪓 도구 칸 — 입은 도구 세트를 진열(가게와 같다)
   preview?.refresh(null);                                // 옷장엔 가상 장착이 없다 — 늘 실제 모습
   //  걷는 자국은 돌리지 않는다 → 안내를 감춘다. visibility 라 자리는 남는다(칸을 오갈 때 상자 높이가 안 튄다)
   if (hintEl) hintEl.style.visibility = slot === 'trail' ? 'hidden' : '';
@@ -98,6 +99,7 @@ export function drawWardrobe(tabsEl, box, preview, hintEl) {
 export function drawPets(box, preview) {
   const redraw = () => drawPets(box, preview);
   preview?.showTrail(false);
+  preview?.showTools(false);
   box.innerHTML = '';
   const mine = PET_KINDS.filter(k => gameState.pets[k.id]);
   const active = gameState.pet ? gameState.pet.kind : null;

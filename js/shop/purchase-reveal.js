@@ -102,7 +102,10 @@ export function stopPurchaseReveal() {
   if (rig) {
     scene.remove(rig.root, rig.rays, ...(rig.extra || []));
     if (!rig.extra) disposeTree(rig.root);          // A 진열물(자국)은 연출 전용이라 버린다
-    else disposeSkin(rig.root);                     // B+C 캐릭터는 월드와 재질 공유 → 스킨이 새로 만든 지오메트리만 버린다
+    else {
+      disposeSkin(rig.root);                        // B+C 캐릭터는 월드와 재질 공유 → 스킨이 새로 만든 지오메트리만 버린다
+      rig.root.traverse(o => { if (o.userData.ownsGpu) disposeTree(o); });   // 🪓 도구 세트 진열은 공유 재질이 없다 — 통째로 버린다(buildToolShowcase)
+    }
     disposeTree(rig.rays); (rig.extra || []).forEach(disposeTree);
     rig = null;
   }
@@ -115,14 +118,14 @@ export function stopPurchaseReveal() {
 
 /** mode: 'spot'(A 스포트라이트, 자국) | 'boxburst'(B+C 상자 폭발, 스킨) · buildShowcase: boxburst 진열 캐릭터 팩토리
  *  onWalk: [바로 걸어보기/입어보기] · onClose: [닫기] — 연출을 닫은 뒤 부른다. 인자 = 열려 있던 ms */
-export function playPurchaseReveal({ itemId, animalId = null, mode = 'spot', buildShowcase = null, onWalk = () => {}, onClose = () => {} }) {
+export function playPurchaseReveal({ itemId, animalId = null, mode = 'spot', card: cardIn = null, buildShowcase = null, onWalk = () => {}, onClose = () => {} }) {
   const wrap = document.getElementById('buy-reveal');
   const canvas = document.getElementById('br-canvas');
   if (!wrap || !canvas) return;
   stopPurchaseReveal();
   ensure(canvas);
   const copy = REVEAL_COPY[itemId] || { name: itemId, desc: '' };
-  const card = REVEAL_CARD[mode] || REVEAL_CARD.spot;
+  const card = cardIn || REVEAL_CARD[mode] || REVEAL_CARD.spot;   // 🪓 도구 세트는 상자 연출 + 자기 카드(revealCardOf)
   document.getElementById('br-name').textContent = copy.name;
   document.getElementById('br-desc').textContent = copy.desc;
   document.getElementById('br-tag').textContent = card.tag;

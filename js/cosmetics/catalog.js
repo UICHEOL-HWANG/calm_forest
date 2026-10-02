@@ -15,7 +15,7 @@
 
 import { cashFor } from '../shop/cash.js';
 
-export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin']);
+export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin', 'tools']);
 
 const RAW = [
   // 🎩 머리 — dome 4 · low 3
@@ -40,6 +40,11 @@ const RAW = [
   // 🧥 전신 스킨 — 현금 전용(2026-10-01 2단계 스펙). 동물 체형은 그대로, 재질·장식만 바뀐다(js/cosmetics/skin.js)
   { id: 'forest_spirit', slot: 'skin', ico: '🌿', name: '숲의 정령',   won: 10000, tier: '프리미엄' },
   { id: 'plush_doll',    slot: 'skin', ico: '🧸', name: '플러시 인형', won: 9000,  tier: '프리미엄' },
+  // 🪓 도구 테마 세트 — 현금 전용(2026-10-02). 손에 드는 도구 9종 외형 + 비 오는 날 우산(js/cosmetics/tool-skins.js)
+  //   외형만 바뀐다 — 성능·휘두르는 모션·금빛 도구 규칙은 그대로
+  { id: 'tools_shroom', slot: 'tools', ico: '🍄', name: '버섯 숲 세트', won: 5000, tier: '프리미엄' },
+  { id: 'tools_moon',   slot: 'tools', ico: '🌙', name: '달밤 세트',    won: 5000, tier: '프리미엄' },
+  { id: 'tools_bloom',  slot: 'tools', ico: '🌸', name: '꽃정원 세트',  won: 5000, tier: '프리미엄' },
   // 👣 발자국 — 값이 오를수록 바닥에 있던 게 공중으로 올라온다
   { id: 'paw',     slot: 'trail', ico: '🐾', name: '발바닥', coins: 700,  tier: '기본' },
   { id: 'drop',    slot: 'trail', ico: '💧', name: '물방울', coins: 900,  tier: '기본' },

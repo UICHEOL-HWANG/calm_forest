@@ -81,7 +81,7 @@ test('등급이 오를수록 금속이 달라진다(같은 색이면 구분이 �
 
 // ── 짝 검증: game.js 연결 ─────────────────────────────────────
 test('toolMesh 가 등급을 받는다', () => {
-  assert.match(SRC, /function toolMesh\(id, tier = 0\)/, 'toolMesh 가 tier 를 안 받거나 기본값이 0 이 아니다');
+  assert.match(SRC, /function toolMesh\(id, tier = 0(, skin = null)?\)/, 'toolMesh 가 tier 를 안 받거나 기본값이 0 이 아니다');
 });
 
 // ⚠️ 🧑‍🌾일꾼(makeWorkerMesh)도 같은 toolMesh 를 쓴다. 등급을 넘기면 고용한 일꾼까지 금빛 도구를 든다.

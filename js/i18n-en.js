@@ -2061,6 +2061,12 @@ export const EN = {
   '밤이면 몸속에서 반딧불이 떠다녀요': 'At night, fireflies drift inside you',
   '꿰맨 자국과 단추 눈, 걸을 때마다 말랑말랑': 'Stitched seams, button eyes, and a squishy step',
   'PREMIUM · 전신 스킨': 'PREMIUM · Full-body skin', '바로 입어보기': 'Wear it now',
+  //   🪓 도구 테마 세트(2026-10-02) — 도구 9종 외형 + 비 오는 날 우산
+  '🪓 도구': '🪓 Tools', '버섯 숲 세트': 'Mushroom Grove Set', '달밤 세트': 'Moonlit Set', '꽃정원 세트': 'Blossom Garden Set',
+  '도구 9종이 빨간 갓·흰 점으로, 비 오는 날엔 버섯 우산': 'All 9 tools in red caps and white spots — and a mushroom umbrella on rainy days',
+  '초승달 날과 금별 — 밤이면 은은하게 빛나요, 비 오는 날엔 밤하늘 우산': 'Crescent blades and golden stars that glow softly at night — and a night-sky umbrella on rainy days',
+  '꽃잎 날과 덩굴 자루, 비 오는 날엔 꽃잎 우산': 'Petal blades and vine handles — and a petal umbrella on rainy days',
+  'PREMIUM · 도구 세트': 'PREMIUM · Tool set', '바로 들어보기': 'Try it now',
   '털모자': 'Wool Hat', '캡': 'Cap', '버섯 모자': 'Mushroom Hat', '밀짚모자': 'Straw Hat',
   '화관': 'Flower Crown', '나뭇잎 머리띠': 'Leaf Band', '별 머리핀': 'Star Pin',
   '목도리': 'Scarf', '방울 목걸이': 'Bell Collar', '나비 넥타이': 'Bow Tie',
