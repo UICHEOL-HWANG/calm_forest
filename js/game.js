@@ -3492,7 +3492,29 @@ function updateUmbrella(dt) {
   //     updatePlayer(스윙) 다음에 불리므로 이번 프레임의 왼팔만 덮어쓴다. 오른팔·도구 스윙은 그대로.
   if (playerArms) playerArms.L.pivot.rotation.set(...gripOf().arm);
   poseUmbrella();
+  fadeUmbrella(dt);
   setToolSkinNight(umbrellaMesh, nightLevel);
+}
+//  👻 카메라를 등지면 갓이 위에서 내려다보는 카메라와 캐릭터 사이에 끼어 몸을 통째로 가린다(2026-10-02 실측) →
+//     등질수록 반투명하게. 정면·옆에선 불투명 그대로.
+const UMBRELLA_FADE_MIN = 0.4;   // 완전히 등졌을 때 불투명도
+const _uFwd = new THREE.Vector3(), _uCam = new THREE.Vector3();
+let umbrellaAlpha = 1;
+function fadeUmbrella(dt) {
+  charGroup.getWorldDirection(_uFwd); _uFwd.y = 0;
+  camera.getWorldDirection(_uCam); _uCam.y = 0;
+  const away = _uFwd.lengthSq() && _uCam.lengthSq() ? _uFwd.normalize().dot(_uCam.normalize()) : 0;   // 1 = 카메라와 같은 쪽을 봄(등짐)
+  const target = 1 - (1 - UMBRELLA_FADE_MIN) * Math.min(1, Math.max(0, (away - 0.1) / 0.6));
+  umbrellaAlpha += (target - umbrellaAlpha) * Math.min(1, dt * 6);
+  const see = umbrellaAlpha < 0.98;
+  umbrellaMesh.traverse(o => {
+    if (!o.isMesh) return;
+    const m = o.material;
+    if (m.userData.baseOpacity == null) m.userData.baseOpacity = m.opacity;
+    if (m.transparent !== see) { m.transparent = see; m.needsUpdate = true; }
+    m.opacity = m.userData.baseOpacity * umbrellaAlpha;
+    m.depthWrite = !see;
+  });
 }
 //  ☂️ 들고 있는 자세 — 손에서 **머리 위(살짝 등 쪽)로 비스듬히** 세운다(사용자가 고른 대각선, 2026-10-02).
 //     단 대가 머리·귀를 **관통하면 안 된다** — 대를 따라 점을 찍어 머리 구(HR)·귀/모자 기둥(UMB_EAR_R)에
