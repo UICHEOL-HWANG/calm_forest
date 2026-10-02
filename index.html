@@ -1617,7 +1617,7 @@
     body:has(#hint-banner.show) #quest-panel { --qp-top: calc(255px + var(--top-inset)); }
     /* 🪧 시설 안내 배너: 좁은 화면에선 상단 HUD 와 같은 높이라 겹치고, 화면 중앙에 두면 캐릭터·대화 버튼을
        가린다(실기기 피드백) → 우측 컬럼(문의하기·도감) 바로 아래에 우측 정렬로 붙인다. 좌측 컬럼과는 폭으로 분리. */
-    #hint-banner { top: calc(162px + var(--top-inset)); left: auto; right: 10px;
+    #hint-banner { top: max(calc(162px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: 10px;
       transform: none; max-width: min(300px, 58vw); }
     #hint-banner .hb-title { font-size: 13px; }
     #hint-banner .hb-line { font-size: 12px; }
@@ -4753,6 +4753,28 @@
       if (y) box.style.top = Math.round(y + 8) + 'px';
     }
     window.addEventListener('resize', layoutBuffs);
+
+    // 📱 폰 오른쪽 열(문의하기·도감·시설 배너)을 자원 패널 **실제 높이** 아래에 붙인다.
+    //   고정 top(82/126px)이었더니 자원 칩이 늘거나(🪨 돌 추가) iOS 이모지·글꼴이 넓어 패널이 두 줄로 늘어나면
+    //   '문의하기'가 패널 밑으로 깔렸다(2026-10-02 토스 실기기). 간격을 더 줄여 한 줄에 넣는 건 기기마다 또 터진다.
+    //   ResizeObserver 라 코인 자릿수·자원 칩 수가 바뀌어도 따라온다. 태블릿·PC(641+)는 CSS 배치 그대로.
+    const _phone = window.matchMedia('(max-width: 640px)');
+    function layoutRightColumn() {
+      const fb = $('feedback-tab'), dx = $('dex-tab'), tr = $('topright');
+      if (!fb || !dx || !tr) return;
+      if (!_phone.matches) { fb.style.top = dx.style.top = ''; document.documentElement.style.removeProperty('--rcol-bottom'); return; }
+      const top = tr.getBoundingClientRect();
+      if (!top.height) return;                                  // 패널이 숨겨진 화면(로그인·클로즈업)
+      fb.style.top = Math.round(top.bottom + 8) + 'px';
+      const f = fb.getBoundingClientRect();
+      dx.style.top = Math.round((f.height ? f.bottom : top.bottom) + 16) + 'px';
+      const d = dx.getBoundingClientRect();
+      document.documentElement.style.setProperty('--rcol-bottom', Math.round((d.height ? d.bottom : top.bottom) + 8) + 'px');
+      layoutBuffs();
+    }
+    if (window.ResizeObserver) new ResizeObserver(layoutRightColumn).observe($('topright'));
+    window.addEventListener('resize', layoutRightColumn);
+    _phone.addEventListener?.('change', layoutRightColumn);
 
     // 퀘스트 패널을 스토리 칩 바로 아래로(칩이 없으면 CSS 기본 위치) — 칩 높이 실측
     //   ⚠️ .show 클래스만 보면 안 된다 — 칩은 CSS 로도 내려간다(짧은 화면·코치·배너·미니게임 중).
