@@ -55,15 +55,16 @@ export async function onRequestPost({ request, env, fetchImpl = fetch, now }) {
 
   //  📊 결제 퍼널(서버 기준) — 실패해도 로그만 남긴다. 분석용 표가 원장 지급·Paddle 재시도를 좌우하면 안 된다
   //     (SQL 을 아직 안 돌렸으면 404 가 나는데, 그걸 500 으로 돌려주면 Paddle 이 같은 알림을 60번 다시 보낸다).
-  const fr = checkoutEventRow(evt, env.__PRICE_INDEX || priceIndex());
-  if (fr) {
-    try {
+  let fr = null;
+  try {
+    fr = checkoutEventRow(evt, env.__PRICE_INDEX || priceIndex());   // 행 만들기도 try 안 — 이상한 알림이 500(재시도 폭풍)이 되지 않게
+    if (fr) {
       const r = await fetchImpl(`${env.SUPABASE_URL}/rest/v1/checkout_events?on_conflict=event_id`, {
         method: 'POST', headers: { ...H, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify([fr]),
       });
       if (!r.ok) log({ type: evt.event_type, txn: fr.transaction_id, status: 'funnel_insert_fail', code: r.status });
-    } catch (e) { log({ type: evt.event_type, txn: fr.transaction_id, status: 'funnel_insert_fail', error: String(e?.message || e) }); }
-  }
+    }
+  } catch (e) { log({ type: evt.event_type, txn: fr?.transaction_id ?? null, status: 'funnel_insert_fail', error: String(e?.message || e) }); }
 
   log({ type: evt.event_type, txn: evt.data?.id || rv?.transaction_id || null, user: rows[0]?.user_id || null,
         items: rows.map(r => r.item_id), skipped, revoked: !!rv, status: 'ok' });
