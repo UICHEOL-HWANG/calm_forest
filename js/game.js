@@ -3435,7 +3435,7 @@ function updateTrail(dt) {
 }
 
 // ── ☂️ 💎 도구 테마 세트의 우산 — 비 오는 날 바깥에서만 **왼손에 쥐고** 머리 위에 펼친다 ──
-//  ▶ 우산을 펼친 동안 쉬는 자세의 왼팔을 앞으로 들어 올린다(UMBRELLA_ARM). 휘두르는 동작 중엔 스윙 코드가
+//  ▶ 우산을 펼친 동안 쉬는 자세의 왼팔을 들어 올린다(UMBRELLA_GRIP — 팔/날개별). 휘두르는 동작 중엔 스윙 코드가
 //    왼팔을 그대로 움직이고(스윙 모션 불변), 우산은 그 손을 매 프레임 따라간다.
 //  ▶ 우산은 charGroup 에 달아 두고, 손 위치에서 머리 위 한 점(UMBRELLA_BACK 만큼 등 쪽)을 향하게 세운다 —
 //    손이 움직여도 대는 거의 곧게 서고, 갓 중심은 늘 머리 위에 온다.
@@ -3445,7 +3445,15 @@ function updateTrail(dt) {
 //  ⚠️ 우산은 구운 메시 하나(≤ 5콜)라 살을 접었다 펴지 않는다 — 배율로 '펴지는' 느낌만.
 let umbrellaMesh = null, umbrellaTheme = null, umbrellaPop = 0, umbrellaTop = 0;
 let umbrellaRest = 0, umbrellaRestHold = 0;   // 동작 중 어깨로 넘긴 정도(0 = 머리 위, 1 = 어깨) · 동작이 끝난 뒤 다시 들기까지 남은 초
-const UMBRELLA_ARM = [-1.1, 0, -0.6];    // 왼팔을 앞·바깥으로 들어 대를 쥔 자세(pivot 'YXZ' 회전) — 손이 머리에서 떨어져야 대각선 대가 머리를 비켜 간다(🐤 실측 0.25→0.6)
+//  ☂️ 쥐는 법은 몸 구조마다 다르다(2026-10-02 실측, 사용자 판단: "팔 있는 애들과 병아리는 따로").
+//   · 팔 있는 동물 — 팔을 몸 앞·안쪽으로 모아 **세워 든다**. 곰처럼 손이 몸 바깥에 붙은 체형은 머리 쪽으로 기울이면
+//     대가 머리를 지나가고, 피하면 갓이 옆으로 밀려 머리를 못 덮었다 → 대는 거의 곧게, 갓을 머리 덮을 만큼 키운다.
+//   · 🐤 날개 — 날개를 바깥으로 벌려 **대각선**으로 든다(날개 끝이 머리에 붙어 있어 벌려야 대가 머리를 비켜 간다).
+const UMBRELLA_GRIP = {
+  arm:  { arm: [-0.9, 0, 0.15], lean: 0.85, back: 0.15 },   // lean = 꼭지 x 를 손 x 의 몇 배에서 시작할지(1 = 수직, 0 = 머리 중앙 위)
+  wing: { arm: [-1.1, 0, -0.6], lean: 0,    back: 0.12 },
+};
+const gripOf = () => (charK?.id === 'chick' ? UMBRELLA_GRIP.wing : UMBRELLA_GRIP.arm);
 const UMBRELLA_REST_HOLD = 0.6;           // 연속 밭일 중 우산이 오르내리며 펄럭이지 않게 — 마지막 동작 뒤 이만큼 어깨에 둔다
 const _uHand = new THREE.Vector3(), _uDir = new THREE.Vector3(), _uY = new THREE.Vector3(0, 1, 0), _uBox = new THREE.Box3();
 const _uRestPos = new THREE.Vector3(), _uRestDir = new THREE.Vector3();
@@ -3486,7 +3494,7 @@ function updateUmbrella(dt) {
 //     단 대가 머리·귀를 **관통하면 안 된다** — 대를 따라 점을 찍어 머리 구(HR)·귀/모자 기둥(UMB_EAR_R)에
 //     닿으면 꼭지를 손 쪽으로 조금씩 옮긴다. 닿지 않는 한 대각선은 그대로다.
 //  ▶ 높이: 갓 표면이 **머리 반대편 끝**에서도 귀·모자 끝보다 위 — 낮으면 갓이 모자처럼 얹힌다(🐤 실측).
-const UMB_BACK = 0.12, UMB_EAR_R = 0.2, UMB_MARGIN = 0.06;
+const UMB_EAR_R = 0.2, UMB_MARGIN = 0.06;
 const _uApex = new THREE.Vector3(), _uP = new THREE.Vector3();
 function shaftClears(hand, apex, HY, HR) {
   for (let i = 1; i <= 12; i++) {
@@ -3498,15 +3506,17 @@ function shaftClears(hand, apex, HY, HR) {
   return true;
 }
 function heldPose(hand, R, depth) {
-  const { HY, HR } = charK;
-  let tx = 0, k = 1;
+  const { HY, HR } = charK, grip = gripOf();
+  let tx = hand.x * grip.lean, k = 1;
   for (let i = 0; i < 12; i++) {
+    const off = Math.hypot(tx, grip.back);                          // 꼭지(=갓 중심)가 머리 중심에서 벗어난 거리
+    const kCover = (off + HR * 0.7) / R;                            // 갓이 머리 대부분을 덮을 만큼은 크게
     for (let j = 0; j < 3; j++) {   // 꼭지 높이 ↔ 배율이 서로 물려 있어 몇 번 되풀이하면 수렴한다
-      const reach = Math.abs(tx) + HR + 0.05;                       // 꼭지에서 머리 반대편 끝까지 가로 거리
+      const reach = off + HR + 0.05;                                // 꼭지에서 머리 반대편 끝까지 가로 거리
       const drop = depth * k * Math.min(1, (reach / (R * k)) ** 2); // 그 자리에서 갓 표면이 꼭지보다 내려온 높이(구면 근사)
-      k = Math.min(1.45, Math.max(0.8, (umbrellaTop + 0.06 + drop - hand.y) / UMBRELLA_SHAFT));
+      k = Math.min(1.6, Math.max(0.8, kCover, (umbrellaTop + 0.06 + drop - hand.y) / UMBRELLA_SHAFT));
     }
-    _uApex.set(tx, hand.y + UMBRELLA_SHAFT * k, -UMB_BACK);
+    _uApex.set(tx, hand.y + UMBRELLA_SHAFT * k, -grip.back);
     if (shaftClears(hand, _uApex, HY, HR)) break;
     tx += hand.x * 0.1;                                              // 손 쪽으로 한 칸 — 대각선을 조금만 세운다
   }
@@ -5818,7 +5828,7 @@ function updatePlayer(dt, t) {
     }
     if (playerArms) {
       playerArms.R.pivot.rotation.set(0, 0, 0);
-      if (umbrellaHeld()) playerArms.L.pivot.rotation.set(...UMBRELLA_ARM);   // ☂️ 우산을 쥔 왼팔(쉬는 자세만 — 스윙 중엔 스윙 코드가 움직인다)
+      if (umbrellaHeld()) playerArms.L.pivot.rotation.set(...gripOf().arm);   // ☂️ 우산을 쥔 왼팔(쉬는 자세만 — 스윙 중엔 스윙 코드가 움직인다)
       else playerArms.L.pivot.rotation.set(0, 0, 0);
       armWristK = 0; toolPourTilt = 0; toolDigK = 0; toolGripFade = 0;
     }
