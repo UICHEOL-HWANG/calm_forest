@@ -2242,6 +2242,7 @@ export async function enterGame() {
       syncFarmSoil(true); syncFarmCrops(true);
       return plots.length;
     };
+    window.__umb = (tilt = UMBRELLA_TILT, held = UMBRELLA_HELD) => { UMBRELLA_TILT = tilt; UMBRELLA_HELD = held; return [tilt, held]; };   // ☂️ 우산 각도·크기 실측(dev 세션 전용)
     window.__gs = () => gameState; window.__plots = () => plots;   // 🌾 검수용 상태 열람(dev 세션 전용)
     window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
     // 🍎 과수원 검수용 — 해금·자리 채우기·비우기·드로우콜 측정(__spawnWorkers 와 같은 용도)
@@ -3439,6 +3440,7 @@ function updateTrail(dt) {
 //     쥐는 곳을 왼손 옆에 두고 꼭지가 머리 위로 오게 기울인다.
 //  ⚠️ 우산은 구운 메시 하나(≤ 5콜)라 살을 접었다 펴지 않는다 — 배율로 '펴지는' 느낌만.
 let umbrellaMesh = null, umbrellaTheme = null, umbrellaPop = 0;
+let UMBRELLA_TILT = 0.3, UMBRELLA_HELD = 1.0;   // 등 쪽으로 눕히는 각(rad)·쥐었을 때 크기 — 게임 카메라 실측(2026-10-02: 0.75 는 귀 뒤로 숨고, 0.45 는 반쯤 가림, 0.3 이 얼굴·우산 둘 다 읽힘)
 function dropUmbrella() {
   if (!umbrellaMesh) return;
   umbrellaMesh.parent?.remove(umbrellaMesh); disposeToolSkin(umbrellaMesh);
@@ -3466,11 +3468,12 @@ function updateUmbrella(dt) {
 }
 function poseUmbrella() {
   const { R, bs, bodyY, HY, HR } = charK;
-  const gx = -R * 0.95 * bs[0], gy = bodyY * 0.9, gz = R * 0.35;            // 쥐는 곳 = 왼손 옆
-  const k = Math.min(1.35, Math.max(0.85, (HY + HR + 0.55 - gy) / UMBRELLA_SHAFT));   // 큰 머리(곰·판다)도 갓 밑에 들어오게
-  const L = UMBRELLA_SHAFT * k;
+  const gx = -R * 0.95 * bs[0], gy = bodyY * 0.9, gz = R * 0.2;             // 쥐는 곳 = 왼손 옆
+  //  ⚠️ 머리 바로 위로 세우면 게임 카메라(위쪽 41°)에서 갓이 머리·얼굴을 통째로 가린다(2026-10-02 실측).
+  //     어깨에 걸치듯 **등 쪽으로 눕히고** 조금 작게 — 얼굴 쪽이 트인다. 시뮬은 정면 카메라라 이게 안 보였다.
+  const k = Math.min(1.1, Math.max(0.75, (HY + HR + 0.3 - gy) / UMBRELLA_SHAFT)) * UMBRELLA_HELD;
   umbrellaMesh.position.set(gx, gy, gz);
-  umbrellaMesh.rotation.set(-Math.asin(gz / L), 0, -Math.asin(-gx / L));      // 꼭지가 머리 바로 위로
+  umbrellaMesh.rotation.set(-UMBRELLA_TILT, 0, -Math.asin(-gx / (UMBRELLA_SHAFT * k)) * 0.6);
   const q = umbrellaPop, e = q < 1 ? 1 + 2.2 * Math.pow(q - 1, 3) + 1.2 * Math.pow(q - 1, 2) : 1;   // 살짝 넘쳤다 자리 잡는 펼침
   const w = Math.max(0.2, 0.2 + 0.8 * e);
   umbrellaMesh.scale.set(k * w, k * (0.75 + 0.25 * e), k * w);
