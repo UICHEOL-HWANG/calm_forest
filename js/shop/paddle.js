@@ -14,13 +14,14 @@
 import { CONFIG, IS_DEV_SESSION } from '../config.js';
 import { PLATFORM } from '../platform.js';
 import { getLang } from '../i18n.js';
+import { startFunnel, advance, stepOf, stepProps } from './checkout-funnel.js';   // 📊 결제창 안 퍼널
 
 const PADDLE_JS = 'https://cdn.paddle.com/paddle/v2/paddle.js';
 let ready = null;          // Promise<Paddle> — 실패하면 null 로 되돌려 다음 클릭이 다시 시도한다
 let initialized = false;
-let current = null;        // 열려 있는 결제 { priceId, itemId, kind } — Paddle 이벤트가 닫을 때 비운다
+let current = null;        // 열려 있는 결제 { priceId, itemId, kind, funnel, errorCode } — Paddle 이벤트가 닫을 때 비운다
 let opening = false;       // openCheckout 진입~Checkout.open 반환 사이(동기 가드 — await 구간도 막는다)
-let handlers = { onCompleted: () => {}, onClosed: () => {} };
+let handlers = { onCompleted: () => {}, onClosed: () => {}, onStep: () => {} };
 
 //  현금 버튼이 보이는 조건: 웹 + 온라인 + 로그인 계정 + Paddle 클라이언트 토큰 + **상점이 열렸거나 개발 세션**
 //  (샌드박스 토큰으로 검증하는 동안 실유저에게 버튼이 보이면 안 된다 — 개발 세션(?dbg 등)에서만 결제한다).
@@ -46,6 +47,12 @@ export function closeCheckout() {
 
 function onPaddleEvent(ev) {
   if (!current) return;
+  //  📊 퍼널 — 단계 이벤트면 상태를 갱신하고 알린다(장식 경로: 던져도 결제 흐름을 막지 않는다)
+  if (stepOf(ev?.name)) {
+    current = { ...current, funnel: advance(current.funnel, ev.name, Date.now()) };
+    try { handlers.onStep(current, stepProps(ev, current.funnel)); } catch (_) { /* 트래킹 실패 무시 */ }
+  }
+  if (ev?.name === 'checkout.error' && typeof ev.error?.code === 'string') current = { ...current, errorCode: ev.error.code.slice(0, 40) };
   if (ev?.name === 'checkout.completed') { const c = current; current = null; handlers.onCompleted(c); }
   else if (ev?.name === 'checkout.closed' || ev?.name === 'checkout.error') { const c = current; current = null; handlers.onClosed(c); }
 }
@@ -87,7 +94,7 @@ export async function openCheckout({ priceId, itemId, kind, userId, email }) {
   opening = true;
   try {
     const Paddle = await loadPaddle();
-    current = { priceId, itemId, kind };
+    current = { priceId, itemId, kind, funnel: startFunnel(Date.now()), errorCode: null };
     try {
       Paddle.Checkout.open({
         items: [{ priceId, quantity: 1 }],

@@ -101,3 +101,39 @@ export function revokeTarget(evt) {
   if (typeof d.transaction_id !== 'string') return null;
   return { transaction_id: d.transaction_id, revoked_at: evt.occurred_at };
 }
+
+// ── 💳 결제 퍼널(서버 기준) — 거래가 생기고·실패하고·취소되고·끝나는 흐름을 checkout_events 에 쌓는다 ──
+//  ▶ 브라우저 이벤트(GA4 paddle_step)는 탭을 그냥 닫거나 광고 차단기가 있으면 빠진다. 이쪽이 실제 거래 기준이다.
+//  ▶ 🔒 이메일·고객 id·주소는 담지 않는다(raw 도 안 남긴다). user_id 는 우리가 customData 로 실은 값만, UUID 일 때만.
+//  ▶ Paddle 대시보드 알림 구독에 아래 이벤트가 켜져 있어야 들어온다.
+export const FUNNEL_EVENTS = Object.freeze([
+  'transaction.created', 'transaction.ready', 'transaction.updated', 'transaction.billed', 'transaction.paid',
+  'transaction.completed', 'transaction.payment_failed', 'transaction.canceled', 'transaction.past_due',
+]);
+
+/** transaction.* 알림 → checkout_events 행 하나(퍼널 이벤트가 아니면 null) */
+export function checkoutEventRow(evt, index = priceIndex()) {
+  if (!FUNNEL_EVENTS.includes(evt?.event_type)) return null;
+  const d = evt.data || {};
+  const uid = d.custom_data?.user_id;
+  const items = [...new Set((Array.isArray(d.items) ? d.items : []).map(it => index.get(it?.price?.id)?.itemId).filter(Boolean))];
+  const pays = Array.isArray(d.payments) ? d.payments : [];
+  const last = pays[pays.length - 1] || {};          // 가장 최근 결제 시도
+  const t = d.details?.totals?.total;
+  const total = (t == null || t === '') ? NaN : Number(t);
+  return {
+    event_id: typeof evt.event_id === 'string' ? evt.event_id : `${d.id}:${evt.event_type}:${evt.occurred_at}`,
+    event_type: evt.event_type,
+    transaction_id: typeof d.id === 'string' ? d.id : null,
+    status: typeof d.status === 'string' ? d.status : null,
+    user_id: typeof uid === 'string' && UUID_RE.test(uid) ? uid : null,
+    item_ids: items,
+    origin: typeof d.origin === 'string' ? d.origin : null,
+    amount: Number.isFinite(total) ? total : null,
+    currency: d.currency_code || null,
+    method: last.method_details?.type || null,
+    error_code: last.error_code || null,
+    occurred_at: evt.occurred_at,
+  };
+}
+
