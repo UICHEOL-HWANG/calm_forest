@@ -2242,7 +2242,6 @@ export async function enterGame() {
       syncFarmSoil(true); syncFarmCrops(true);
       return plots.length;
     };
-    window.__umb = (tilt = UMBRELLA_TILT, held = UMBRELLA_HELD) => { UMBRELLA_TILT = tilt; UMBRELLA_HELD = held; return [tilt, held]; };   // ☂️ 우산 각도·크기 실측(dev 세션 전용)
     window.__gs = () => gameState; window.__plots = () => plots;   // 🌾 검수용 상태 열람(dev 세션 전용)
     window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
     // 🍎 과수원 검수용 — 해금·자리 채우기·비우기·드로우콜 측정(__spawnWorkers 와 같은 용도)
@@ -3435,29 +3434,41 @@ function updateTrail(dt) {
   trailFx.update(dt, { nightLevel });
 }
 
-// ── ☂️ 💎 도구 테마 세트의 우산 — 비 오는 날 바깥에서만 머리 위에 펼친다 ──
-//  ⚠️ 손이 아니라 몸(charGroup)에 붙인다 — 왼팔은 도구 스윙 카운터로 움직이고, 스윙 모션은 바꾸지 않는다.
-//     쥐는 곳을 왼손 옆에 두고 꼭지가 머리 위로 오게 기울인다.
+// ── ☂️ 💎 도구 테마 세트의 우산 — 비 오는 날 바깥에서만 **왼손에 쥐고** 머리 위에 펼친다 ──
+//  ▶ 우산을 펼친 동안 쉬는 자세의 왼팔을 앞으로 들어 올린다(UMBRELLA_ARM). 휘두르는 동작 중엔 스윙 코드가
+//    왼팔을 그대로 움직이고(스윙 모션 불변), 우산은 그 손을 매 프레임 따라간다.
+//  ▶ 우산은 charGroup 에 달아 두고, 손 위치에서 머리 위 한 점(UMBRELLA_BACK 만큼 등 쪽)을 향하게 세운다 —
+//    손이 움직여도 대는 거의 곧게 서고, 갓 중심은 늘 머리 위에 온다.
+//  ▶ 높이는 동물마다 다르다(🐰 귀 끝 2.1 vs 🐤 1.4) → 만들 때 몸 바운딩 꼭대기를 재서 갓 꼭지가 그보다 위로 오게 배율을 정한다.
+//  ⚠️ 2026-10-02 실측: 몸에 비스듬히 붙였더니 손은 축 늘어지고 대가 허공에 떠 있었고, 갓이 낮아 귀가 뚫고 나왔다.
+//     머리 바로 위에 세운 1차안은 41° 게임 카메라에서 얼굴을 통째로 가렸다 — 등 쪽 0.12 로 살짝 뺀다.
 //  ⚠️ 우산은 구운 메시 하나(≤ 5콜)라 살을 접었다 펴지 않는다 — 배율로 '펴지는' 느낌만.
-let umbrellaMesh = null, umbrellaTheme = null, umbrellaPop = 0;
-let UMBRELLA_TILT = 0.3, UMBRELLA_HELD = 1.0;   // 등 쪽으로 눕히는 각(rad)·쥐었을 때 크기 — 게임 카메라 실측(2026-10-02: 0.75 는 귀 뒤로 숨고, 0.45 는 반쯤 가림, 0.3 이 얼굴·우산 둘 다 읽힘)
+let umbrellaMesh = null, umbrellaTheme = null, umbrellaPop = 0, umbrellaTop = 0;
+const UMBRELLA_ARM = [-1.25, 0, -0.25];   // 왼팔을 앞으로 들어 대를 쥔 자세(pivot 'YXZ' 회전) — 게임 화면 실측
+const UMBRELLA_BACK = 0.12;               // 갓 중심을 머리 위에서 등 쪽으로 뺄 거리 — 얼굴이 트인다
+const _uHand = new THREE.Vector3(), _uDir = new THREE.Vector3(), _uY = new THREE.Vector3(0, 1, 0), _uBox = new THREE.Box3();
 function dropUmbrella() {
   if (!umbrellaMesh) return;
   umbrellaMesh.parent?.remove(umbrellaMesh); disposeToolSkin(umbrellaMesh);
   umbrellaMesh = null; umbrellaTheme = null; umbrellaPop = 0;
 }
+/** 왼팔이 우산을 쥐고 있어야 하나 — 쉬는 자세의 왼팔 각도를 정하는 쪽(updatePlayerAction)이 묻는다 */
+function umbrellaHeld() { return !!umbrellaMesh && umbrellaMesh.visible && umbrellaPop > 0; }
 function updateUmbrella(dt) {
   const theme = toolSkinOf(gameState.cosmetics);
-  const outdoors = !(indoor || atCafe || atMuseum || atMine || mgView || duelActive);   // 클로즈업(요리·밤손님 대결)에선 카메라가 붙어 우산이 화면을 가린다
+  //  🌊 바다터는 양팔로 릴대를 잡는다 · 클로즈업(요리·밤손님 대결)은 카메라가 붙어 우산이 화면을 가린다
+  const outdoors = !(indoor || atCafe || atMuseum || atMine || atSea || mgView || duelActive);
   const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
   if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
   if (!show) {
-    if (umbrellaMesh) { umbrellaPop = Math.max(0, umbrellaPop - dt * 4); umbrellaMesh.visible = umbrellaPop > 0; poseUmbrella(); }
+    if (umbrellaMesh) { umbrellaPop = Math.max(0, umbrellaPop - dt * 4); umbrellaMesh.visible = umbrellaPop > 0; if (umbrellaMesh.visible) poseUmbrella(); }
     return;
   }
   if (!umbrellaMesh) {
     umbrellaMesh = buildUmbrella(THREE, theme);
     if (!umbrellaMesh) return;
+    charGroup.updateMatrixWorld(true);
+    umbrellaTop = _uBox.setFromObject(charGroup).max.y - charGroup.getWorldPosition(_uHand).y;   // 귀·모자 끝(우산을 달기 전에 잰다)
     umbrellaTheme = theme; umbrellaPop = 0;
     charGroup.add(umbrellaMesh);
   }
@@ -3467,13 +3478,15 @@ function updateUmbrella(dt) {
   setToolSkinNight(umbrellaMesh, nightLevel);
 }
 function poseUmbrella() {
-  const { R, bs, bodyY, HY, HR } = charK;
-  const gx = -R * 0.95 * bs[0], gy = bodyY * 0.9, gz = R * 0.2;             // 쥐는 곳 = 왼손 옆
-  //  ⚠️ 머리 바로 위로 세우면 게임 카메라(위쪽 41°)에서 갓이 머리·얼굴을 통째로 가린다(2026-10-02 실측).
-  //     어깨에 걸치듯 **등 쪽으로 눕히고** 조금 작게 — 얼굴 쪽이 트인다. 시뮬은 정면 카메라라 이게 안 보였다.
-  const k = Math.min(1.1, Math.max(0.75, (HY + HR + 0.3 - gy) / UMBRELLA_SHAFT)) * UMBRELLA_HELD;
-  umbrellaMesh.position.set(gx, gy, gz);
-  umbrellaMesh.rotation.set(-UMBRELLA_TILT, 0, -Math.asin(-gx / (UMBRELLA_SHAFT * k)) * 0.6);
+  const hand = playerArms?.L?.hand;
+  charGroup.updateMatrixWorld(true);
+  if (hand) { hand.getWorldPosition(_uHand); charGroup.worldToLocal(_uHand); }
+  else _uHand.set(-charK.R * 0.95 * charK.bs[0], charK.bodyY * 0.9, charK.R * 0.2);   // 팔 없는 캐릭터 폴백
+  //  갓 꼭지가 귀·모자 끝보다 위 — 대 길이(배율)로 맞춘다. 갓 테두리 깊이만큼은 머리 둘레로 내려와도 된다
+  const k = Math.min(1.4, Math.max(0.85, (umbrellaTop + 0.12 - _uHand.y) / UMBRELLA_SHAFT));
+  _uDir.set(0, _uHand.y + UMBRELLA_SHAFT * k, -UMBRELLA_BACK).sub(_uHand).normalize();
+  umbrellaMesh.position.copy(_uHand);
+  umbrellaMesh.quaternion.setFromUnitVectors(_uY, _uDir);
   const q = umbrellaPop, e = q < 1 ? 1 + 2.2 * Math.pow(q - 1, 3) + 1.2 * Math.pow(q - 1, 2) : 1;   // 살짝 넘쳤다 자리 잡는 펼침
   const w = Math.max(0.2, 0.2 + 0.8 * e);
   umbrellaMesh.scale.set(k * w, k * (0.75 + 0.25 * e), k * w);
@@ -5765,7 +5778,8 @@ function updatePlayer(dt, t) {
     }
     if (playerArms) {
       playerArms.R.pivot.rotation.set(0, 0, 0);
-      playerArms.L.pivot.rotation.set(0, 0, 0);
+      if (umbrellaHeld()) playerArms.L.pivot.rotation.set(...UMBRELLA_ARM);   // ☂️ 우산을 쥔 왼팔(쉬는 자세만 — 스윙 중엔 스윙 코드가 움직인다)
+      else playerArms.L.pivot.rotation.set(0, 0, 0);
       armWristK = 0; toolPourTilt = 0; toolDigK = 0; toolGripFade = 0;
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신

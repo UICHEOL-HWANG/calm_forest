@@ -85,7 +85,7 @@ test('게임 배선 — toolMesh 는 테마 인자를 받고(기본 null: 일꾼
   assert.match(src, /function toolMesh\(id, tier = 0, skin = null\)/);
   assert.match(src, /toolMesh\(id, tierOf\(id, gameState\), toolSkinOf\(gameState\.cosmetics\)\)/);
   assert.match(src, /userData\.skin !== toolSkinOf\(cos\)/);   // refreshHeldTool 이 테마 변경도 본다(applyCosmetics 의 cos 기준)
-  assert.match(src, /atMine \|\| mgView \|\| duelActive/);   // 클로즈업에선 우산을 접는다
+  assert.match(src, /atMine \|\| atSea \|\| mgView \|\| duelActive/);   // 바다터(양팔 릴대)·클로즈업에선 우산을 접는다
   assert.match(src, /umbrellaShown\(/);
 });
 
@@ -111,4 +111,11 @@ test('i18n — 도구 세트 문구 통문장 등재', () => {
 test('구매 연출 — 도구 세트 진열은 통째로 버린다(공유 재질 없음 → GPU 누수 방지)', () => {
   assert.match(gameSource(), /g\.userData\.ownsGpu = true/);
   assert.match(read('../js/shop/purchase-reveal.js'), /userData\.ownsGpu\) disposeTree\(o\)/);
+});
+
+test('☂️ 우산은 왼손에 쥔다 — 쉬는 자세의 왼팔만 들어 올리고(스윙 코드는 그대로), 손 위치를 따라간다', () => {
+  const src = gameSource();
+  assert.match(src, /if \(umbrellaHeld\(\)\) playerArms\.L\.pivot\.rotation\.set\(\.\.\.UMBRELLA_ARM\)/);
+  assert.match(src, /playerArms\?\.L\?\.hand/);
+  assert.match(src, /umbrellaTop \+ 0\.12 - _uHand\.y/);   // 갓 꼭지가 귀·모자 끝보다 위
 });
