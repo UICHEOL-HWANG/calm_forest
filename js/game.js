@@ -92,6 +92,8 @@ import { applySkin, disposeSkin, showSprout } from './cosmetics/skin.js';   // �
 import { effectiveTrail, squashOf, skinSquashes, sproutVisible } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
 import { createTrailFx, rainbowHex } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
 import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
+import { buildToolSkin, buildUmbrella, setToolSkinNight, disposeToolSkin, UMBRELLA_SHAFT } from './cosmetics/tool-skins.js';   // 🪓☂️ 💎 도구 테마 세트 조형
+import { SKIN_TOOLS, toolSkinOf, umbrellaShown } from './cosmetics/tool-skin-rules.js';   // 🪓☂️ 어떤 테마를 입었나 · 우산을 펼칠까
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
@@ -3382,6 +3384,7 @@ function applyCosmetics(cos) {
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
   showSprout(charGroup, sproutVisible(cos));   // 🌱 모자를 쓰면 정령 새싹을 숨긴다
+  refreshHeldTool();                           // 🪓 💎 도구 테마 세트를 입고 벗으면 손에 든 도구도 바로 바뀐다(우산은 updateUmbrella 가 따라온다)
 }
 
 // ── 👣 발자국 ── (스펙 §4-4)
@@ -3431,6 +3434,48 @@ function updateTrail(dt) {
   trailFx.update(dt, { nightLevel });
 }
 
+// ── ☂️ 💎 도구 테마 세트의 우산 — 비 오는 날 바깥에서만 머리 위에 펼친다 ──
+//  ⚠️ 손이 아니라 몸(charGroup)에 붙인다 — 왼팔은 도구 스윙 카운터로 움직이고, 스윙 모션은 바꾸지 않는다.
+//     쥐는 곳을 왼손 옆에 두고 꼭지가 머리 위로 오게 기울인다.
+//  ⚠️ 우산은 구운 메시 하나(≤ 5콜)라 살을 접었다 펴지 않는다 — 배율로 '펴지는' 느낌만.
+let umbrellaMesh = null, umbrellaTheme = null, umbrellaPop = 0;
+function dropUmbrella() {
+  if (!umbrellaMesh) return;
+  umbrellaMesh.parent?.remove(umbrellaMesh); disposeToolSkin(umbrellaMesh);
+  umbrellaMesh = null; umbrellaTheme = null; umbrellaPop = 0;
+}
+function updateUmbrella(dt) {
+  const theme = toolSkinOf(gameState.cosmetics);
+  const outdoors = !(indoor || atCafe || atMuseum || atMine);
+  const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
+  if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
+  if (!show) {
+    if (umbrellaMesh) { umbrellaPop = Math.max(0, umbrellaPop - dt * 4); umbrellaMesh.visible = umbrellaPop > 0; poseUmbrella(); }
+    return;
+  }
+  if (!umbrellaMesh) {
+    umbrellaMesh = buildUmbrella(THREE, theme);
+    if (!umbrellaMesh) return;
+    umbrellaTheme = theme; umbrellaPop = 0;
+    charGroup.add(umbrellaMesh);
+  }
+  umbrellaMesh.visible = true;
+  umbrellaPop = Math.min(1, umbrellaPop + dt * 2.2);
+  poseUmbrella();
+  setToolSkinNight(umbrellaMesh, nightLevel);
+}
+function poseUmbrella() {
+  const { R, bs, bodyY, HY, HR } = charK;
+  const gx = -R * 0.95 * bs[0], gy = bodyY * 0.9, gz = R * 0.35;            // 쥐는 곳 = 왼손 옆
+  const k = Math.min(1.35, Math.max(0.85, (HY + HR + 0.55 - gy) / UMBRELLA_SHAFT));   // 큰 머리(곰·판다)도 갓 밑에 들어오게
+  const L = UMBRELLA_SHAFT * k;
+  umbrellaMesh.position.set(gx, gy, gz);
+  umbrellaMesh.rotation.set(-Math.asin(gz / L), 0, -Math.asin(-gx / L));      // 꼭지가 머리 바로 위로
+  const q = umbrellaPop, e = q < 1 ? 1 + 2.2 * Math.pow(q - 1, 3) + 1.2 * Math.pow(q - 1, 2) : 1;   // 살짝 넘쳤다 자리 잡는 펼침
+  const w = Math.max(0.2, 0.2 + 0.8 * e);
+  umbrellaMesh.scale.set(k * w, k * (0.75 + 0.25 * e), k * w);
+}
+
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
 //   cos 는 **가상 장착**을 받기 위한 인자다(🎀 꾸미기 상점의 "입어보기"). 기본값은 실제 장착이라
 //   캐릭터 선택 화면은 예전과 똑같이 동작한다.
@@ -3444,6 +3489,27 @@ export function buildCharacterMesh(id, cos = gameState.cosmetics) {
   }
   showSprout(built.group, sproutVisible(cos));   // 🌱 입어보기 모자도 새싹을 가린다
   return built.group;
+}
+
+// ── 🪓 💎 도구 세트 진열 — 가게 🪓 도구 탭 미리보기·구매 연출 공용. 원점 = 바닥(캐릭터 진열과 같은 기준) ──
+//   테마가 없으면 지금 쓰는 기본 도구를 건다 — "입어 보면 이렇게 바뀐다" 를 줄을 누르기 전에도 비교할 수 있게.
+//   ⚠️ 진열물은 전부 이 함수가 새로 만든 것(공유 재질 없음) — 버릴 때 disposeTree 해도 된다.
+const SHOWCASE_TOOLS = ['axe', 'shovel', 'water', 'rod'];
+export function buildToolShowcase(theme) {
+  const g = new THREE.Group();
+  SHOWCASE_TOOLS.forEach((id, i) => {
+    const t = toolMesh(id, 0, theme);
+    t.scale.multiplyScalar(1.5);
+    t.position.set((i - 1.5) * 0.46, id === 'water' ? 0.35 : 0.2, 0.3);
+    t.rotation.set(0, 0.25, (1.5 - i) * 0.1);
+    g.add(t);
+  });
+  if (theme) {
+    const u = buildUmbrella(THREE, theme);
+    if (u) { u.scale.setScalar(0.8); u.position.set(0.05, 0.05, -0.55); u.rotation.set(-0.18, 0, 0.08); g.add(u); }
+  }
+  if (theme === 'moon') setToolSkinNight(g, 0.6);   // 🌙 진열대에선 별이 켜진 모습을 보여 준다
+  return g;
 }
 
 // ── 선택 화면 3D 프리뷰(드래그로 회전 + 살짝 자동 스핀) ──
@@ -3461,6 +3527,7 @@ function makeCharacterPreview(canvas) {
   let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
   let petStage = null, petKind = PET_KIND;           // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다(petKind = 어느 종을)
   let trailView = false, walk = null, lastT = 0;     // trailView = ✨이펙트 탭 — 캐릭터 대신 자국이 걸어온다
+  let toolsView = false, shelf = null;               // toolsView = 🪓 도구 탭 — 캐릭터 대신 입어 본 도구 세트를 진열
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   //  카메라 두 벌 — 캐릭터는 몸통 높이, 걷는 자국은 바닥을 비스듬히 내려다본다(trail-walk.js WALK_CAM)
   function aimCamera() {
@@ -3478,6 +3545,14 @@ function makeCharacterPreview(canvas) {
     if (mesh) { pivot.remove(mesh); disposeSkin(mesh); }
     if (marks) { pivot.remove(marks); marks = null; }
     if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
+    if (shelf) { pivot.remove(shelf); disposeTree(shelf); shelf = null; }   // 진열물은 공유 재질이 없다(buildToolShowcase)
+    if (toolsView && petStage === null) {
+      mesh = null;
+      shelf = buildToolShowcase(toolSkinOf(cos));
+      pivot.add(shelf);
+      aimCamera();
+      return;
+    }
     const tid = effectiveTrail(cos);   // 🌱 자국 칸이 비었고 정령이면 새싹
     //  ✨ 이펙트 탭 — 캐릭터 발밑에 깔면 몸에 가려 뭐가 뭔지 모른다. 캐릭터를 빼고 자국만 걸어오게 한다.
     //     입어 본 게 없으면 🐾 발바닥(가장 싼 기본형)이 걷는다 — 탭을 열자마자 "이 탭은 이런 것" 이 보이게.
@@ -3529,6 +3604,11 @@ function makeCharacterPreview(canvas) {
     if (!!on === trailView) return;                       // 재그리기마다 호출된다 — 같으면 다시 짓지 않는다
     trailView = !!on; if (animal) rebuild();
   }
+  /** 🪓 도구 탭이면 true — 캐릭터 대신 입어 본 도구 세트(없으면 기본 도구)를 진열한다 */
+  function showTools(on) {
+    if (!!on === toolsView) return;
+    toolsView = !!on; if (animal) rebuild();
+  }
   function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } lastT = 0; }   // 패널을 닫으면 두 번째 렌더러를 세운다
   function start() { if (!raf) loop(); }
   function resize() {
@@ -3553,7 +3633,7 @@ function makeCharacterPreview(canvas) {
   const end = () => { dragging = false; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   resize(); loop();
-  return { setAnimal, resize, refresh, showPet, showTrail, stop, start };
+  return { setAnimal, resize, refresh, showPet, showTrail, showTools, stop, start };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
@@ -3572,7 +3652,17 @@ function disposeTree(root) {
   });
 }
 
-function toolMesh(id, tier = 0) {
+function toolMesh(id, tier = 0, skin = null) {
+  //  🪓 💎 도구 테마 세트(js/cosmetics/tool-skins.js) — 외형만. 성능·스윙·등급 판정은 그대로이고, 입으면 등급 외형보다 테마가 우선.
+  //     skin 기본값 null — 🧑‍🌾일꾼·🌊릴대는 테마를 입지 않는다.
+  if (skin && SKIN_TOOLS.includes(id)) {
+    const s = buildToolSkin(THREE, skin, id);
+    if (s) {
+      s.traverse(o => { if (o.isMesh && !o.material.transparent) o.castShadow = true; });
+      s.userData.toolId = id; s.userData.tier = tier; s.userData.skin = skin;
+      return s;
+    }
+  }
   const g = new THREE.Group();
   const T = paletteOf(tier);
   const up = tier >= 1;                   // 업그레이드 이상 — 크기·부품이 붙는다
@@ -3840,7 +3930,7 @@ function toolMesh(id, tier = 0) {
     g.scale.setScalar(1.25);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  g.userData.toolId = id; g.userData.tier = tier;   // refreshHeldTool 이 "지금 든 게 이 도구의 이 등급인가" 를 본다
+  g.userData.toolId = id; g.userData.tier = tier; g.userData.skin = null;   // refreshHeldTool 이 "지금 든 게 이 도구의 이 등급·테마인가" 를 본다
   return g;
 }
 // 🏗️ 밭 시설 조형 — 🚜 빨간 헛간 세트(사용자 레퍼런스 2026-09-13: 갬브럴 지붕 + 빨간 판자 + 흰 트림 + X 브레이스).
@@ -4057,7 +4147,8 @@ function poseHeldTool(stow, swingX, swingZ) {
 function refreshHeldTool() {
   if (!heldToolId || !heldToolMesh) return;
   if (heldToolMesh.userData.toolId !== heldToolId) return;
-  if (heldToolMesh.userData.tier === tierOf(heldToolId, gameState)) return;
+  const skinChanged = heldToolMesh.userData.skin !== toolSkinOf(gameState.cosmetics);   // 🪓 💎 테마 세트를 입고 벗을 때도
+  if (heldToolMesh.userData.tier === tierOf(heldToolId, gameState) && !skinChanged) return;
   setHeldTool(heldToolId);
 }
 
@@ -4066,7 +4157,7 @@ function setHeldTool(id) {
   if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) { handAnchor.remove(heldToolMesh); disposeTree(heldToolMesh); }   // clayMat 은 캐시가 없다 — 안 버리면 도구를 바꿀 때마다 샌다
   heldToolId = id;
-  heldToolMesh = toolMesh(id, tierOf(id, gameState));   // 지금 등급으로 — 업그레이드를 샀으면 모습이 다르다
+  heldToolMesh = toolMesh(id, tierOf(id, gameState), toolSkinOf(gameState.cosmetics));   // 지금 등급·테마로 — 업그레이드를 샀거나 세트를 입었으면 모습이 다르다
   measureStowLen(heldToolMesh); updateStowPose();
   handAnchor.add(heldToolMesh);
   if (indoor || atCafe) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
@@ -5383,6 +5474,8 @@ function animate() {
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
+  updateUmbrella(dt);   // ☂️ 💎 도구 테마 세트 — 비 오는 날 바깥에서 우산
+  if (heldToolMesh?.userData.skin === 'moon') setToolSkinNight(heldToolMesh, nightLevel);   // 🌙 달밤 도구는 밤에만 은은히
   if (cosmeticShop) updateShopOwner(cosmeticShop, t);   // 🏪 가게 주인 배회(가게 안을 못 벗어난다)
   updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);

@@ -3,10 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { emptyCosmetics, canBuy, buy, equip, unequip, equippedItems, sanitize } from '../js/cosmetics/equip.js';
 
-test('emptyCosmetics: 아무것도 없고 다섯 슬롯이 비어 있다', () => {
+test('emptyCosmetics: 아무것도 없고 여섯 슬롯이 비어 있다', () => {
   const c = emptyCosmetics();
   assert.deepEqual(c.owned, []);
-  assert.deepEqual(c.equipped, { head: null, neck: null, back: null, trail: null, skin: null });
+  assert.deepEqual(c.equipped, { head: null, neck: null, back: null, trail: null, skin: null, tools: null });
 });
 
 test('canBuy: 모르는 id · 이미 보유 · 코인 부족', () => {
