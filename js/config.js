@@ -29,7 +29,7 @@ export const CONFIG = {
   //    token 이 비어 있으면 현금 버튼을 눌러도 결제창이 안 열리고 토스트만(js/spaces/cafe.js).
   //    storeOpen: 가격·약관·환불 페이지(/shop /terms /refund)와 그 입구 링크(로그인 카드·⚙️ 설정)를 공개할지.
   //    현금 상품(프리미엄 아이템)이 나오고 Paddle 심사를 받을 때 true. false 면 빌드가 페이지를 빼고 JS 가 링크를 내린다.
-  PADDLE: { token: '', env: 'sandbox', storeOpen: true },
+  PADDLE: { token: 'live_bbd31fec91b61832f4ef1de2a6d', env: 'production', storeOpen: true },
 
   // ── GA4 / GTM 트래킹 값 ──────────────────────────────────────
   GA4_MEASUREMENT_ID: 'G-ELBTR8BXBF',           // calm forest 웹 스트림

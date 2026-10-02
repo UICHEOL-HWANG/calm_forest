@@ -10,6 +10,9 @@ export const REVEAL_COPY = Object.freeze({
   rainbow: Object.freeze({ name: '무지개 자국', desc: '걸음마다 일곱 빛깔이 차례로 남아요' }),
   forest_spirit: Object.freeze({ name: '숲의 정령', desc: '밤이면 몸속에서 반딧불이 떠다녀요' }),
   plush_doll: Object.freeze({ name: '플러시 인형', desc: '꿰맨 자국과 단추 눈, 걸을 때마다 말랑말랑' }),
+  tools_shroom: Object.freeze({ name: '버섯 숲 세트', desc: '도구 9종이 빨간 갓·흰 점으로, 비 오는 날엔 버섯 우산' }),
+  tools_moon: Object.freeze({ name: '달밤 세트', desc: '초승달 날과 금별 — 밤이면 은은하게 빛나요, 비 오는 날엔 밤하늘 우산' }),
+  tools_bloom: Object.freeze({ name: '꽃정원 세트', desc: '꽃잎 날과 덩굴 자루, 비 오는 날엔 꽃잎 우산' }),
 });
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -27,8 +30,13 @@ export const REVEAL_CARD = Object.freeze({
   boxburst: Object.freeze({ tag: 'PREMIUM · 전신 스킨', cta: '바로 입어보기' }),
 });
 
-/** 가격대별 연출(메모리 확정): 전신 스킨 = B+C 상자 폭발, 나머지 = A 스포트라이트 */
-export function revealModeOf(item) { return item?.slot === 'skin' ? 'boxburst' : 'spot'; }
+/** 가격대별 연출(메모리 확정): 전신 스킨·도구 세트 = B+C 상자 폭발, 나머지 = A 스포트라이트 */
+export function revealModeOf(item) { return item?.slot === 'skin' || item?.slot === 'tools' ? 'boxburst' : 'spot'; }
+
+//  🪓 도구 세트는 상자 연출을 같이 쓰되 카드 문구는 따로 — "전신 스킨" 이라 쓰면 거짓말이다
+const TOOLS_CARD = Object.freeze({ tag: 'PREMIUM · 도구 세트', cta: '바로 들어보기' });
+/** 카드 태그·버튼 — 칸이 정한다 */
+export function revealCardOf(item) { return item?.slot === 'tools' ? TOOLS_CARD : REVEAL_CARD[revealModeOf(item)]; }
 
 /** 🎁 B+C — sims/premium-reveal-sim.html mode D 와 같은 시간축 */
 export const BOX_OPEN = 1.4;
