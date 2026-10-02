@@ -35,6 +35,7 @@ import { PLATFORM } from '../platform.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
 import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
+import { closeProps } from '../shop/checkout-funnel.js';   // 📊 결제창을 닫을 때 어디까지 갔나
 import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
@@ -830,6 +831,8 @@ export function tryOnCos(it) {
     equipped: { ...cur.equipped, [it.slot]: on ? null : it.id },
   };
   cosPreview?.refresh(cosTryOn);
+  //  📊 입어보기 — 가게 노출(premium_row_view) → 입어보기 → 결제창 열기(cash_checkout_open) 퍼널의 가운데 칸
+  trackEvent('cosmetic_tryon', { item_id: it.id, slot: it.slot, premium: it.premium ? 1 : 0, action: on ? 'off' : 'on' });
   drawCosMenu();
 }
 
@@ -934,9 +937,14 @@ function cashButton(cash, itemId, kind, mine) {
   return btn;
 }
 setCheckoutHandlers({
-  onClosed: (c) => { trackEvent('cash_checkout_close', { item_id: c.itemId, kind: c.kind }); cashBusy = null; drawCosMenu(); },
+  //  📊 결제창 안 단계 — 뜸·이메일·결제수단·결제 시도·실패·완료(값은 checkout-funnel.js 가 개인정보를 걸러 만든다)
+  onStep: (c, p) => trackEvent('paddle_step', { item_id: c.itemId, kind: c.kind, ...p }),
+  onClosed: (c) => {
+    trackEvent('cash_checkout_close', { item_id: c.itemId, kind: c.kind, ...closeProps(c.funnel, Date.now()), ...(c.errorCode ? { error_code: c.errorCode } : {}) });
+    cashBusy = null; drawCosMenu();
+  },
   onCompleted: async (c) => {
-    trackEvent('cash_checkout_done', { item_id: c.itemId, kind: c.kind, price_id: c.priceId });
+    trackEvent('cash_checkout_done', { item_id: c.itemId, kind: c.kind, price_id: c.priceId, dwell_ms: closeProps(c.funnel, Date.now()).dwell_ms });
     const t0 = Date.now();
     pendingCash.add(c.itemId);                          // 원장에서 보일 때까지 이중 구매 차단
     cashBusy = null; drawCosMenu();
