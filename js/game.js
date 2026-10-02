@@ -92,6 +92,8 @@ import { applySkin, disposeSkin, showSprout } from './cosmetics/skin.js';   // �
 import { effectiveTrail, squashOf, skinSquashes, sproutVisible } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
 import { createTrailFx, rainbowHex } from './cosmetics/trail-fx.js';   // 💎 반딧불·무지개 입자(Points 하나)
 import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';   // ✨ 상점 이펙트 탭 — 자국만 걸어온다
+import { buildToolSkin, buildUmbrella, setToolSkinNight, disposeToolSkin, UMBRELLA_SHAFT } from './cosmetics/tool-skins.js';   // 🪓☂️ 💎 도구 테마 세트 조형
+import { SKIN_TOOLS, toolSkinOf, umbrellaShown } from './cosmetics/tool-skin-rules.js';   // 🪓☂️ 어떤 테마를 입었나 · 우산을 펼칠까
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
 import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
@@ -3382,6 +3384,7 @@ function applyCosmetics(cos) {
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
   showSprout(charGroup, sproutVisible(cos));   // 🌱 모자를 쓰면 정령 새싹을 숨긴다
+  refreshHeldTool(cos);                        // 🪓 💎 도구 테마 세트를 입고 벗으면 손에 든 도구도 바로 바뀐다(우산은 updateUmbrella 가 따라온다)
 }
 
 // ── 👣 발자국 ── (스펙 §4-4)
@@ -3431,6 +3434,138 @@ function updateTrail(dt) {
   trailFx.update(dt, { nightLevel });
 }
 
+// ── ☂️ 💎 도구 테마 세트의 우산 — 비 오는 날 바깥에서만 **왼손에 쥐고** 머리 위에 펼친다 ──
+//  ▶ 우산을 펼친 동안 쉬는 자세의 왼팔을 들어 올린다(UMBRELLA_GRIP — 팔/날개별). 휘두르는 동작 중엔 스윙 코드가
+//    왼팔을 그대로 움직이고(스윙 모션 불변), 우산은 그 손을 매 프레임 따라간다.
+//  ▶ 우산은 charGroup 에 달아 두고, 손 위치에서 머리 위 한 점(UMBRELLA_BACK 만큼 등 쪽)을 향하게 세운다 —
+//    손이 움직여도 대는 거의 곧게 서고, 갓 중심은 늘 머리 위에 온다.
+//  ▶ 높이는 동물마다 다르다(🐰 귀 끝 2.1 vs 🐤 1.4) → 만들 때 몸 바운딩 꼭대기를 재서 갓 꼭지가 그보다 위로 오게 배율을 정한다.
+//  ⚠️ 2026-10-02 실측: 몸에 비스듬히 붙였더니 손은 축 늘어지고 대가 허공에 떠 있었고, 갓이 낮아 귀가 뚫고 나왔다.
+//     머리 바로 위에 세운 1차안은 41° 게임 카메라에서 얼굴을 통째로 가렸다 — 등 쪽 0.12 로 살짝 뺀다.
+//  ⚠️ 우산은 구운 메시 하나(≤ 5콜)라 살을 접었다 펴지 않는다 — 배율로 '펴지는' 느낌만.
+let umbrellaMesh = null, umbrellaTheme = null, umbrellaPop = 0, umbrellaTop = 0;
+let umbrellaRest = 0, umbrellaRestHold = 0;   // 동작 중 어깨로 넘긴 정도(0 = 머리 위, 1 = 어깨) · 동작이 끝난 뒤 다시 들기까지 남은 초
+//  ☂️ 쥐는 법은 몸 구조마다 다르다(2026-10-02 실측, 사용자 판단: "팔 있는 애들과 병아리는 따로").
+//   · 팔 있는 동물 — 팔을 몸 앞·안쪽으로 모아 **세워 든다**. 곰처럼 손이 몸 바깥에 붙은 체형은 머리 쪽으로 기울이면
+//     대가 머리를 지나가고, 피하면 갓이 옆으로 밀려 머리를 못 덮었다 → 대는 거의 곧게, 갓을 머리 덮을 만큼 키운다.
+//   · 🐤 날개 — 날개를 바깥으로 벌려 **대각선**으로 든다(날개 끝이 머리에 붙어 있어 벌려야 대가 머리를 비켜 간다).
+const UMBRELLA_GRIP = {
+  arm:  { arm: [-0.9, 0, 0.15], lean: 0.85, back: 0.15 },   // lean = 꼭지 x 를 손 x 의 몇 배에서 시작할지(1 = 수직, 0 = 머리 중앙 위)
+  wing: { arm: [-1.1, 0, -0.6], lean: 0,    back: 0.12 },
+};
+const gripOf = () => (charK?.id === 'chick' ? UMBRELLA_GRIP.wing : UMBRELLA_GRIP.arm);
+const UMBRELLA_REST_HOLD = 0.6;           // 연속 밭일 중 우산이 오르내리며 펄럭이지 않게 — 마지막 동작 뒤 이만큼 어깨에 둔다
+const _uHand = new THREE.Vector3(), _uDir = new THREE.Vector3(), _uY = new THREE.Vector3(0, 1, 0), _uBox = new THREE.Box3();
+const UMBRELLA_ACT_TILT = 0.6;   // 동작 중 갓을 등 쪽으로 젖히는 정도(방향 벡터 z 감소량)
+function dropUmbrella() {
+  if (!umbrellaMesh) return;
+  umbrellaMesh.parent?.remove(umbrellaMesh); disposeToolSkin(umbrellaMesh);
+  umbrellaMesh = null; umbrellaTheme = null; umbrellaPop = 0; umbrellaRest = 0; umbrellaRestHold = 0;
+}
+/** 왼팔이 우산을 쥐고 있어야 하나 — 쉬는 자세의 왼팔 각도를 정하는 쪽과 updateUmbrella 가 묻는다 */
+function umbrellaHeld() { return !!umbrellaMesh && umbrellaMesh.visible && umbrellaPop > 0; }
+function updateUmbrella(dt) {
+  const theme = toolSkinOf(gameState.cosmetics);
+  //  🌊 바다터는 양팔로 릴대를 잡는다 · 클로즈업(요리·밤손님 대결)은 카메라가 붙어 우산이 화면을 가린다
+  const outdoors = !(indoor || atCafe || atMuseum || atMine || atSea || mgView || duelActive);
+  const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
+  if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
+  //  🪓 동작(도구질·줍기·삽질) 중엔 갓을 뒤로 젖힌다 — 머리 위 갓이 숙인 몸과 도구를 가렸다(2026-10-02 실측).
+  //     ⚠️ 어깨로 옮기던 1차안은 몸 비틀기와 겹쳐 우산이 왼쪽으로 휘둘렸다 튀는 등 요동쳤다(사용자 지적) → 손에 쥔 채 기울이기만.
+  if (actAnim > 0) umbrellaRestHold = UMBRELLA_REST_HOLD; else umbrellaRestHold = Math.max(0, umbrellaRestHold - dt);
+  umbrellaRest = umbrellaRestHold > 0 ? Math.min(1, umbrellaRest + dt * 6) : Math.max(0, umbrellaRest - dt * 3);
+  if (!show) {
+    if (umbrellaMesh) { umbrellaPop = Math.max(0, umbrellaPop - dt * 4); umbrellaMesh.visible = umbrellaPop > 0; if (umbrellaMesh.visible) poseUmbrella(); }
+    return;
+  }
+  if (!umbrellaMesh) {
+    umbrellaMesh = buildUmbrella(THREE, theme);
+    if (!umbrellaMesh) return;
+    charGroup.updateMatrixWorld(true);
+    umbrellaTop = _uBox.setFromObject(charGroup).max.y - charGroup.getWorldPosition(_uHand).y;   // 귀·모자 끝(우산을 달기 전에 잰다)
+    umbrellaTheme = theme; umbrellaPop = 0;
+    charGroup.add(umbrellaMesh);
+  }
+  umbrellaMesh.visible = true;
+  umbrellaPop = Math.min(1, umbrellaPop + dt * 2.2);
+  //  ✊ 우산을 쥔 왼팔은 동작 중에도 그 자리 — 휘두르기의 왼팔 반동(카운터)이 우산을 흔들어 손과 대가 떨어져 보였다.
+  //     updatePlayer(스윙) 다음에 불리므로 이번 프레임의 왼팔만 덮어쓴다. 오른팔·도구 스윙은 그대로.
+  if (playerArms) playerArms.L.pivot.rotation.set(...gripOf().arm);
+  poseUmbrella();
+  fadeUmbrella(dt);
+  setToolSkinNight(umbrellaMesh, nightLevel);
+}
+//  👻 카메라를 등지면 갓이 위에서 내려다보는 카메라와 캐릭터 사이에 끼어 몸을 통째로 가린다(2026-10-02 실측) →
+//     등질수록 반투명하게. 정면·옆에선 불투명 그대로.
+const UMBRELLA_FADE_MIN = 0.4;   // 완전히 등졌을 때 불투명도
+const _uFwd = new THREE.Vector3(), _uCam = new THREE.Vector3();
+let umbrellaAlpha = 1;
+function fadeUmbrella(dt) {
+  charGroup.getWorldDirection(_uFwd); _uFwd.y = 0;
+  camera.getWorldDirection(_uCam); _uCam.y = 0;
+  const away = _uFwd.lengthSq() && _uCam.lengthSq() ? _uFwd.normalize().dot(_uCam.normalize()) : 0;   // 1 = 카메라와 같은 쪽을 봄(등짐)
+  const target = 1 - (1 - UMBRELLA_FADE_MIN) * Math.min(1, Math.max(0, (away - 0.1) / 0.6));
+  umbrellaAlpha += (target - umbrellaAlpha) * Math.min(1, dt * 6);
+  const see = umbrellaAlpha < 0.98;
+  umbrellaMesh.traverse(o => {
+    if (!o.isMesh) return;
+    const m = o.material;
+    if (m.userData.baseOpacity == null) m.userData.baseOpacity = m.opacity;
+    if (m.transparent !== see) { m.transparent = see; m.needsUpdate = true; }
+    m.opacity = m.userData.baseOpacity * umbrellaAlpha;
+    m.depthWrite = !see;
+  });
+}
+//  ☂️ 들고 있는 자세 — 손에서 **머리 위(살짝 등 쪽)로 비스듬히** 세운다(사용자가 고른 대각선, 2026-10-02).
+//     단 대가 머리·귀를 **관통하면 안 된다** — 대를 따라 점을 찍어 머리 구(HR)·귀/모자 기둥(UMB_EAR_R)에
+//     닿으면 꼭지를 손 쪽으로 조금씩 옮긴다. 닿지 않는 한 대각선은 그대로다.
+//  ▶ 높이: 갓 표면이 **머리 반대편 끝**에서도 귀·모자 끝보다 위 — 낮으면 갓이 모자처럼 얹힌다(🐤 실측).
+const UMB_EAR_R = 0.2, UMB_MARGIN = 0.06;
+const _uApex = new THREE.Vector3(), _uP = new THREE.Vector3();
+function shaftClears(hand, apex, HY, HR) {
+  for (let i = 1; i <= 12; i++) {
+    _uP.lerpVectors(hand, apex, i / 12);
+    if (_uP.y < HY - HR || _uP.y > umbrellaTop) continue;          // 머리·귀 높이 구간만 본다
+    const r = _uP.y <= HY + HR * 0.6 ? HR + UMB_MARGIN : UMB_EAR_R;   // 아래는 머리 구, 위는 귀·모자 기둥
+    if (Math.hypot(_uP.x, _uP.z) < r) return false;
+  }
+  return true;
+}
+function heldPose(hand, R, depth) {
+  const { HY, HR } = charK, grip = gripOf();
+  let tx = hand.x * grip.lean, k = 1;
+  for (let i = 0; i < 12; i++) {
+    const off = Math.hypot(tx, grip.back);                          // 꼭지(=갓 중심)가 머리 중심에서 벗어난 거리
+    const kCover = (off + HR * 0.7) / R;                            // 갓이 머리 대부분을 덮을 만큼은 크게
+    for (let j = 0; j < 3; j++) {   // 꼭지 높이 ↔ 배율이 서로 물려 있어 몇 번 되풀이하면 수렴한다
+      const reach = off + HR + 0.05;                                // 꼭지에서 머리 반대편 끝까지 가로 거리
+      const drop = depth * k * Math.min(1, (reach / (R * k)) ** 2); // 그 자리에서 갓 표면이 꼭지보다 내려온 높이(구면 근사)
+      k = Math.min(1.6, Math.max(0.8, kCover, (umbrellaTop + 0.06 + drop - hand.y) / UMBRELLA_SHAFT));
+    }
+    _uApex.set(tx, hand.y + UMBRELLA_SHAFT * k, -grip.back);
+    if (shaftClears(hand, _uApex, HY, HR)) break;
+    tx += hand.x * 0.1;                                              // 손 쪽으로 한 칸 — 대각선을 조금만 세운다
+  }
+  _uDir.subVectors(_uApex, hand).normalize();
+  return k;
+}
+function poseUmbrella() {
+  const hand = playerArms?.L?.hand;
+  const info = umbrellaMesh.userData.umbrella;
+  charGroup.updateMatrixWorld(true);
+  if (hand) { hand.getWorldPosition(_uHand); charGroup.worldToLocal(_uHand); }
+  else _uHand.set(-charK.R * 0.95 * charK.bs[0], charK.bodyY * 0.9, charK.R * 0.2);   // 팔 없는 캐릭터 폴백
+  const k = heldPose(_uHand, info.R, info.depth);
+  //  🪓 동작 중 — 손에 쥔 채 갓만 등 쪽으로 젖힌다(위치는 손 그대로라 우산이 휩쓸리지 않는다)
+  const r = umbrellaRest * umbrellaRest * (3 - 2 * umbrellaRest);
+  umbrellaMesh.position.copy(_uHand);
+  _uDir.z -= UMBRELLA_ACT_TILT * r; _uDir.normalize();
+  umbrellaMesh.quaternion.setFromUnitVectors(_uY, _uDir);
+  const q = umbrellaPop, e = q < 1 ? 1 + 2.2 * Math.pow(q - 1, 3) + 1.2 * Math.pow(q - 1, 2) : 1;   // 살짝 넘쳤다 자리 잡는 펼침
+  const w = Math.max(0.2, 0.2 + 0.8 * e), kk = k;
+  umbrellaMesh.scale.set(kk * w, kk * (0.75 + 0.25 * e), kk * w);
+}
+
 // ── 캐릭터 선택 화면용: 독립 메시(도구/팔 없음) — 인게임과 같은 빌더 사용 ──
 //   cos 는 **가상 장착**을 받기 위한 인자다(🎀 꾸미기 상점의 "입어보기"). 기본값은 실제 장착이라
 //   캐릭터 선택 화면은 예전과 똑같이 동작한다.
@@ -3444,6 +3579,28 @@ export function buildCharacterMesh(id, cos = gameState.cosmetics) {
   }
   showSprout(built.group, sproutVisible(cos));   // 🌱 입어보기 모자도 새싹을 가린다
   return built.group;
+}
+
+// ── 🪓 💎 도구 세트 진열 — 가게 🪓 도구 탭 미리보기·구매 연출 공용. 원점 = 바닥(캐릭터 진열과 같은 기준) ──
+//   테마가 없으면 지금 쓰는 기본 도구를 건다 — "입어 보면 이렇게 바뀐다" 를 줄을 누르기 전에도 비교할 수 있게.
+//   ⚠️ 진열물은 전부 이 함수가 새로 만든 것(공유 재질 없음) — 버릴 때 disposeTree 해도 된다.
+const SHOWCASE_TOOLS = ['axe', 'shovel', 'water', 'rod'];
+export function buildToolShowcase(theme) {
+  const g = new THREE.Group();
+  SHOWCASE_TOOLS.forEach((id, i) => {
+    const t = toolMesh(id, 0, theme);
+    t.scale.multiplyScalar(1.5);
+    t.position.set((i - 1.5) * 0.46, id === 'water' ? 0.35 : 0.2, 0.3);
+    t.rotation.set(0, 0.25, (1.5 - i) * 0.1);
+    g.add(t);
+  });
+  if (theme) {
+    const u = buildUmbrella(THREE, theme);
+    if (u) { u.scale.setScalar(0.8); u.position.set(0.05, 0.05, -0.55); u.rotation.set(-0.18, 0, 0.08); g.add(u); }
+  }
+  if (theme === 'moon') setToolSkinNight(g, 0.6);   // 🌙 진열대에선 별이 켜진 모습을 보여 준다
+  g.userData.ownsGpu = true;                         // 구매 연출이 이 표식을 보고 통째로 버린다(캐릭터 진열과 달리 공유 재질 없음)
+  return g;
 }
 
 // ── 선택 화면 3D 프리뷰(드래그로 회전 + 살짝 자동 스핀) ──
@@ -3461,6 +3618,7 @@ function makeCharacterPreview(canvas) {
   let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
   let petStage = null, petKind = PET_KIND;           // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다(petKind = 어느 종을)
   let trailView = false, walk = null, lastT = 0;     // trailView = ✨이펙트 탭 — 캐릭터 대신 자국이 걸어온다
+  let toolsView = false, shelf = null, shelfTheme;   // toolsView = 🪓 도구 탭 — 캐릭터 대신 입어 본 도구 세트를 진열
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   //  카메라 두 벌 — 캐릭터는 몸통 높이, 걷는 자국은 바닥을 비스듬히 내려다본다(trail-walk.js WALK_CAM)
   function aimCamera() {
@@ -3478,6 +3636,15 @@ function makeCharacterPreview(canvas) {
     if (mesh) { pivot.remove(mesh); disposeSkin(mesh); }
     if (marks) { pivot.remove(marks); marks = null; }
     if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
+    const wantShelf = toolsView && petStage === null, theme = toolSkinOf(cos);
+    //  진열은 테마가 같으면 그대로 둔다 — 줄을 누를 때마다 도구 4개 + 우산을 다시 굽지 않게
+    if (shelf && !(wantShelf && theme === shelfTheme)) { pivot.remove(shelf); disposeTree(shelf); shelf = null; }   // 진열물은 공유 재질이 없다(buildToolShowcase)
+    if (wantShelf) {
+      mesh = null;
+      if (!shelf) { shelf = buildToolShowcase(theme); shelfTheme = theme; pivot.add(shelf); }
+      aimCamera();
+      return;
+    }
     const tid = effectiveTrail(cos);   // 🌱 자국 칸이 비었고 정령이면 새싹
     //  ✨ 이펙트 탭 — 캐릭터 발밑에 깔면 몸에 가려 뭐가 뭔지 모른다. 캐릭터를 빼고 자국만 걸어오게 한다.
     //     입어 본 게 없으면 🐾 발바닥(가장 싼 기본형)이 걷는다 — 탭을 열자마자 "이 탭은 이런 것" 이 보이게.
@@ -3529,6 +3696,11 @@ function makeCharacterPreview(canvas) {
     if (!!on === trailView) return;                       // 재그리기마다 호출된다 — 같으면 다시 짓지 않는다
     trailView = !!on; if (animal) rebuild();
   }
+  /** 🪓 도구 탭이면 true — 캐릭터 대신 입어 본 도구 세트(없으면 기본 도구)를 진열한다 */
+  function showTools(on) {
+    if (!!on === toolsView) return;
+    toolsView = !!on; if (animal) rebuild();
+  }
   function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } lastT = 0; }   // 패널을 닫으면 두 번째 렌더러를 세운다
   function start() { if (!raf) loop(); }
   function resize() {
@@ -3553,7 +3725,7 @@ function makeCharacterPreview(canvas) {
   const end = () => { dragging = false; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   resize(); loop();
-  return { setAnimal, resize, refresh, showPet, showTrail, stop, start };
+  return { setAnimal, resize, refresh, showPet, showTrail, showTools, stop, start };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
@@ -3572,7 +3744,17 @@ function disposeTree(root) {
   });
 }
 
-function toolMesh(id, tier = 0) {
+function toolMesh(id, tier = 0, skin = null) {
+  //  🪓 💎 도구 테마 세트(js/cosmetics/tool-skins.js) — 외형만. 성능·스윙·등급 판정은 그대로이고, 입으면 등급 외형보다 테마가 우선.
+  //     skin 기본값 null — 🧑‍🌾일꾼·🌊릴대는 테마를 입지 않는다.
+  if (skin && SKIN_TOOLS.includes(id)) {
+    const s = buildToolSkin(THREE, skin, id);
+    if (s) {
+      s.traverse(o => { if (o.isMesh && !o.material.transparent) o.castShadow = true; });
+      s.userData.toolId = id; s.userData.tier = tier; s.userData.skin = skin;
+      return s;
+    }
+  }
   const g = new THREE.Group();
   const T = paletteOf(tier);
   const up = tier >= 1;                   // 업그레이드 이상 — 크기·부품이 붙는다
@@ -3840,7 +4022,7 @@ function toolMesh(id, tier = 0) {
     g.scale.setScalar(1.25);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  g.userData.toolId = id; g.userData.tier = tier;   // refreshHeldTool 이 "지금 든 게 이 도구의 이 등급인가" 를 본다
+  g.userData.toolId = id; g.userData.tier = tier; g.userData.skin = null;   // refreshHeldTool 이 "지금 든 게 이 도구의 이 등급·테마인가" 를 본다
   return g;
 }
 // 🏗️ 밭 시설 조형 — 🚜 빨간 헛간 세트(사용자 레퍼런스 2026-09-13: 갬브럴 지붕 + 빨간 판자 + 흰 트림 + X 브레이스).
@@ -4054,10 +4236,11 @@ function poseHeldTool(stow, swingX, swingZ) {
 //      heldToolMesh 만 바꾸고 heldToolId 는 그대로 둔다. 그때 다시 만들면 손의 가구가 도구로 바뀐다.
 //   ⚠️ 등급이 그대로면 다시 만들지 않는다 — 🍲큰 냄비처럼 도구와 무관한 업그레이드에서도
 //      불리므로, 무조건 재생성하면 setHeldTool 의 부작용(🪏삽 첫 사용 안내)을 공짜로 다시 태운다.
-function refreshHeldTool() {
+function refreshHeldTool(cos = gameState.cosmetics) {
   if (!heldToolId || !heldToolMesh) return;
   if (heldToolMesh.userData.toolId !== heldToolId) return;
-  if (heldToolMesh.userData.tier === tierOf(heldToolId, gameState)) return;
+  const skinChanged = heldToolMesh.userData.skin !== toolSkinOf(cos);   // 🪓 💎 테마 세트를 입고 벗을 때도
+  if (heldToolMesh.userData.tier === tierOf(heldToolId, gameState) && !skinChanged) return;
   setHeldTool(heldToolId);
 }
 
@@ -4066,7 +4249,7 @@ function setHeldTool(id) {
   if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) { handAnchor.remove(heldToolMesh); disposeTree(heldToolMesh); }   // clayMat 은 캐시가 없다 — 안 버리면 도구를 바꿀 때마다 샌다
   heldToolId = id;
-  heldToolMesh = toolMesh(id, tierOf(id, gameState));   // 지금 등급으로 — 업그레이드를 샀으면 모습이 다르다
+  heldToolMesh = toolMesh(id, tierOf(id, gameState), toolSkinOf(gameState.cosmetics));   // 지금 등급·테마로 — 업그레이드를 샀거나 세트를 입었으면 모습이 다르다
   measureStowLen(heldToolMesh); updateStowPose();
   handAnchor.add(heldToolMesh);
   if (indoor || atCafe) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
@@ -5383,6 +5566,8 @@ function animate() {
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
+  updateUmbrella(dt);   // ☂️ 💎 도구 테마 세트 — 비 오는 날 바깥에서 우산
+  if (heldToolMesh?.userData.skin === 'moon') setToolSkinNight(heldToolMesh, nightLevel);   // 🌙 달밤 도구는 밤에만 은은히
   if (cosmeticShop) updateShopOwner(cosmeticShop, t);   // 🏪 가게 주인 배회(가게 안을 못 벗어난다)
   updateDecorGhost();   // 🫥 가구 배치 미리보기
   updateParticles(dt);
@@ -5667,7 +5852,8 @@ function updatePlayer(dt, t) {
     }
     if (playerArms) {
       playerArms.R.pivot.rotation.set(0, 0, 0);
-      playerArms.L.pivot.rotation.set(0, 0, 0);
+      if (umbrellaHeld()) playerArms.L.pivot.rotation.set(...gripOf().arm);   // ☂️ 우산을 쥔 왼팔(쉬는 자세만 — 스윙 중엔 스윙 코드가 움직인다)
+      else playerArms.L.pivot.rotation.set(0, 0, 0);
       armWristK = 0; toolPourTilt = 0; toolDigK = 0; toolGripFade = 0;
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신

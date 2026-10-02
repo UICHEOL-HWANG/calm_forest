@@ -22,7 +22,7 @@ test('onGranted — 연출은 저장 뒤, try 안에서(장식이 지급 저장�
   const body = cafe.slice(cafe.indexOf('function onGranted('));
   const save = body.indexOf('requestSave()'), play = body.indexOf('playPurchaseReveal(');
   assert.ok(save > 0 && play > save, 'requestSave 가 먼저');
-  assert.match(body.slice(save, play), /try \{\s*(closeCheckout\(\);[^\n]*\n\s*)?(const mode[^\n]*\n\s*)?$/);
+  assert.match(body.slice(save, play), /try \{\s*(closeCheckout\(\);[^\n]*\n\s*)?(const [^\n]*\n\s*){0,2}$/);   // 🪓 도구 세트로 선언 2줄(item·mode / toolTheme)
 });
 test('stopPurchaseReveal 이 --br-dim 을 0 으로 되돌린다', () => {
   assert.match(rev, /setProperty\('--br-dim', '0'\)/);

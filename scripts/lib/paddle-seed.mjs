@@ -8,7 +8,7 @@
 // =============================================================
 
 const CURRENCY = 'KRW';
-const SLOT_DESC = { head: '머리 꾸미기', neck: '목 꾸미기', back: '등 꾸미기', trail: '걷는 자국' };
+const SLOT_DESC = { head: '머리 꾸미기', neck: '목 꾸미기', back: '등 꾸미기', trail: '걷는 자국', skin: '전신 스킨', tools: '도구 테마 세트(도구 9종 외형 + 비 오는 날 우산)' };
 
 /** '₩1,500' → '1500'. KRW 는 소수 단위가 없어 Paddle 금액이 그대로 원 단위다 */
 export function labelToAmount(label) {

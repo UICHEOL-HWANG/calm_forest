@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>도구 세트 굽기 검수 — calm forest</title>
+<style>html,body{margin:0;height:100%;background:#cfe4ee;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif}canvas{display:block}
+#out{position:fixed;left:8px;top:8px;background:rgba(255,255,255,.9);padding:6px 10px;border-radius:8px;font-size:12px;white-space:pre}</style>
+<pre id="out"></pre>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+// 🪓☂️ 게임 모듈(js/cosmetics/tool-skins.js)을 **그대로** 불러 27개 도구 + 우산 3개를 굽고, 메시(=드로우콜) 수를 잰다.
+//   시안(sims/premium-tool-umbrella-sim.html)은 굽기 전 조형 — 이 페이지는 굽힌 결과가 시안과 같게 보이는지 확인한다.
+import * as THREE from 'three';
+import { buildToolSkin, buildUmbrella, setToolSkinNight } from '../js/cosmetics/tool-skins.js';
+import { TOOL_THEMES, SKIN_TOOLS } from '../js/cosmetics/tool-skin-rules.js';
+const night = new URLSearchParams(location.search).has('night');
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(Math.min(2, devicePixelRatio)); r.setSize(innerWidth, innerHeight); document.body.prepend(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(night ? 0x1d2440 : 0xcfe4ee);
+sc.add(new THREE.HemisphereLight(night ? 0x5a6aa0 : 0xe6f2ff, 0x8a9a7a, night ? 0.7 : 1.6));
+const sun = new THREE.DirectionalLight(0xfff1dc, night ? 0.4 : 2.0); sun.position.set(3, 6, 4); sc.add(sun);
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 100);
+const stats = [];
+TOOL_THEMES.forEach((th, r0) => {
+  SKIN_TOOLS.forEach((id, c) => {
+    const m = buildToolSkin(THREE, th, id);
+    m.position.set((c - 4) * 0.62, (1 - r0) * 1.45 - 0.2, 0); m.rotation.y = 0.3; sc.add(m);
+    if (night) setToolSkinNight(m, 1);
+    stats.push(`${th}.${id}=${m.children.length}`);
+  });
+  const u = buildUmbrella(THREE, th); u.scale.setScalar(0.45); u.position.set(3.4, (1 - r0) * 1.45 - 0.6, 0); sc.add(u);
+  if (night) setToolSkinNight(u, 1);
+  stats.push(`${th}.umbrella=${u.children.length}`);
+});
+const max = Math.max(...stats.map(s => +s.split('=')[1]));
+document.getElementById('out').textContent = `메시(콜) 최대 ${max}\n` + stats.join('  ').replace(/(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+/g, '$1\n');
+window.__bake = { stats, max };
+cam.position.set(0, 0.4, 9.2); cam.lookAt(0, 0.2, 0);
+r.render(sc, cam);
+</script>
