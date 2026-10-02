@@ -12,3 +12,11 @@ test('문의하기·도감은 자원 패널(#topright) 아래에 실측 배치 �
 test('시설 배너도 오른쪽 열 아래로 — --rcol-bottom', () => {
   assert.match(html, /#hint-banner \{ top: max\(calc\(162px \+ var\(--top-inset\)\), var\(--rcol-bottom, 0px\)\)/);
 });
+
+test('📐 B 배치 — 폰은 2칸 그리드(1줄 자원 #inv-chips · 2줄 날씨/가방), PC 는 칩 묶음을 풀어 예전 한 줄', () => {
+  assert.match(html, /<span id="inv-chips">/);
+  assert.match(html, /#inv-chips \{ display: contents; \}/);                                   // PC
+  assert.match(html, /#topright \{ display: grid; grid-template-columns: auto auto;/);          // 폰
+  assert.match(html, /#inv-chips \{ display: flex; grid-column: 1 \/ -1;/);
+  assert.match(html, /#bag-btn \{ grid-row: 2; grid-column: 2; justify-self: end;/);
+});
