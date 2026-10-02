@@ -102,7 +102,10 @@ export function stopPurchaseReveal() {
   if (rig) {
     scene.remove(rig.root, rig.rays, ...(rig.extra || []));
     if (!rig.extra) disposeTree(rig.root);          // A 진열물(자국)은 연출 전용이라 버린다
-    else disposeSkin(rig.root);                     // B+C 캐릭터는 월드와 재질 공유 → 스킨이 새로 만든 지오메트리만 버린다
+    else {
+      disposeSkin(rig.root);                        // B+C 캐릭터는 월드와 재질 공유 → 스킨이 새로 만든 지오메트리만 버린다
+      rig.root.traverse(o => { if (o.userData.ownsGpu) disposeTree(o); });   // 🪓 도구 세트 진열은 공유 재질이 없다 — 통째로 버린다(buildToolShowcase)
+    }
     disposeTree(rig.rays); (rig.extra || []).forEach(disposeTree);
     rig = null;
   }
