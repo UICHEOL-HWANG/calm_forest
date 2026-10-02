@@ -97,15 +97,9 @@ if (CONFIG.PADDLE.storeOpen) {
 // 💳 /shop — 가격표를 카탈로그에서 생성한다(가격 단일 출처). pages/shop.template.html 의 <!--ROWS--> 자리.
 if (CONFIG.PADDLE.storeOpen) {
   const { ITEMS } = await import('../js/cosmetics/catalog.js');
-  const { PET_KINDS, PET_PRICE } = await import('../js/pet/rules.js');
-  const { cashLabel, PET_CASH_LABEL } = await import('../js/shop/cash.js');
-  const SLOT_KO = { head: '🎩 머리', neck: '🧣 목', back: '🎒 등', trail: '👣 발자국' };
-  //  현금 칸은 항상 표시가를 보여 준다 — priceId 가 아직 없는 항목(cash === null)도 라벨은 등급표에서.
-  const row = (grp, name, coins, cashText) => `    <tr><td>${grp}</td><td>${name}</td><td>${coins.toLocaleString('ko-KR')}🪙</td><td>${cashText}</td></tr>`;
-  const rows = [
-    ...ITEMS.map(it => row(SLOT_KO[it.slot], `${it.ico} ${it.name}`, it.price.coins, it.price.cash?.label ?? cashLabel(it.price.coins))),
-    ...PET_KINDS.map(k => row('🐾 펫', `${k.ico} ${k.name}`, PET_PRICE, k.cash?.label ?? PET_CASH_LABEL)),
-  ].join('\n');
+  const { shopRows } = await import('./lib/shop-rows.mjs');
+  //  💎 현금 상품만(scripts/lib/shop-rows.mjs) — 코인 전용 아이템·펫은 현금으로 팔지 않는다
+  const rows = shopRows(ITEMS).join('\n');
   const tpl = await readFile(path.join(ROOT, 'pages/shop.template.html'), 'utf8');
   await writeFile(path.join(DIST, 'shop.html'), tpl.replace('<!--ROWS-->', rows));
 }

@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { gameSource } from './helpers/game-source.mjs';
 import { weatherForDate, slotOfHour, CAFE_SLOTS, PHASE_IDS, LANGS, kstDate } from '../functions/api/_game-day.js';
+import { seasonOf, weatherFromRoll } from '../js/season.js';
 import { planPregen, runAiPregen, variantsFor, MAX_CALLS, PACE_MS, MAX_VARIANTS } from '../functions/ai-pregen-cron.js';
 
 const SRC = gameSource();
@@ -16,7 +17,9 @@ const SRC = gameSource();
 test('서버 weatherForDate 는 게임 weatherOf 와 같은 값을 낸다', () => {
   const dateHash = SRC.match(/^function dateHash\([\s\S]*?\n\}/m)[0];
   const weatherOf = SRC.match(/^function weatherOf\([\s\S]*?\n\}/m)[0];
-  const gameWeather = (date) => new Function('todayStr', `${dateHash}\n${weatherOf}\nreturn weatherOf(0);`)(() => date);
+  // 🍂 weatherOf 는 계절 표(js/season.js)를 거친다 — 게임과 같은 함수를 넣어 원문 그대로 돌린다
+  const gameWeather = (date) => new Function('todayStr', 'seasonOf', 'weatherFromRoll',
+    `${dateHash}\n${weatherOf}\nreturn weatherOf(0);`)(() => date, seasonOf, weatherFromRoll);
   const seen = new Set();
   for (let d = 0; d < 120; d++) {
     const date = new Date(Date.UTC(2026, 8, 1) + d * 86400000).toISOString().slice(0, 10);

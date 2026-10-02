@@ -16,6 +16,13 @@ export function ownedIn(cos, slot) {
   return itemsOf(slot).filter(it => owned.includes(it.id));
 }
 
+/** 🧥 옷장 칸 탭을 보일지 — 웹이 아닌 곳(토스·안드로이드·itch)은 외부 결제가 막혀 가게가 스킨을 숨긴다.
+ *  거기서 산 게 없으면 '가게에서 살 수 있어요' 빈 안내가 거짓이 되므로 스킨 탭 자체를 감춘다. 순수 함수. */
+export function wardrobeTabVisible(slot, cos, platform) {
+  if (slot !== 'skin' || platform === 'web') return true;
+  return ownedIn(cos, 'skin').length > 0;
+}
+
 /** 옷장 칸을 누르면 — 입은 거면 벗고, 아니면 입는다. action: 'on' | 'off' | null(안 바뀜) */
 export function toggleWear(cos, id) {
   const it = findItem(id);
@@ -24,8 +31,9 @@ export function toggleWear(cos, id) {
   return { cos: equip(cos, id), action: 'on' };
 }
 
-/** 🎀 가게 줄 끝 버튼 — 산 건 다시 못 산다. 입기·벗기는 옷장에서 */
+/** 🎀 가게 줄 끝 버튼 — 산 건 다시 못 산다. 입기·벗기는 옷장에서. 💎 현금 전용이면 코인 버튼이 없다(null) */
 export function shopButton(it, cos) {
+  if (it.price.coins == null) return null;
   if (cos.owned.includes(it.id)) return { label: '구매 완료', disabled: true };
   return { label: `${it.price.coins.toLocaleString()}🪙`, disabled: false };
 }

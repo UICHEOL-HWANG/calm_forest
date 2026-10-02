@@ -18,9 +18,15 @@ export function cashLabel(coins) {
   return CASH_TIERS[CASH_TIERS.length - 1][1];
 }
 
-/** id 의 현금 칸. coins 가 null 이면 펫(고정 라벨) */
-export function cashFor(id, coins) {
+/** 원화 표시가 — 현금 전용 아이템(won)의 라벨 */
+export function wonLabel(won) {
+  return `₩${won.toLocaleString('ko-KR')}`;
+}
+
+/** id 의 현금 칸. won 이 있으면 현금 전용(그 금액), 아니면 coins 등급표 / coins 도 null 이면 펫(고정 라벨) */
+export function cashFor(id, coins, won = null) {
   const priceId = PRICE_IDS[id];
   if (!priceId) return null;
+  if (won != null) return { priceId, label: wonLabel(won) };
   return { priceId, label: coins == null ? PET_CASH_LABEL : cashLabel(coins) };
 }

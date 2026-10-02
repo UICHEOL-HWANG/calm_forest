@@ -13,7 +13,6 @@
 // =============================================================
 import { readFileSync, writeFileSync } from 'node:fs';
 import { ITEMS } from '../js/cosmetics/catalog.js';
-import { PET_KINDS } from '../js/pet/rules.js';
 import { buildPlan, patchPriceIds } from './lib/paddle-seed.mjs';
 
 const PRICE_IDS_PATH = new URL('../js/shop/price-ids.js', import.meta.url);
@@ -29,7 +28,7 @@ const env = process.env.PADDLE_ENV || 'sandbox';
 const base = BASES[env];
 if (!base) fail(`PADDLE_ENV 는 sandbox 또는 production: ${env}`);
 
-const plan = buildPlan(ITEMS, PET_KINDS).filter(p => !only || p.itemId === only);
+const plan = buildPlan(ITEMS).filter(p => !only || p.itemId === only);
 if (!plan.length) fail(`카탈로그에 없는 id: ${only}`);
 
 if (dryRun) {

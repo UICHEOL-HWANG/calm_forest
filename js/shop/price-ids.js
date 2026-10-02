@@ -17,6 +17,8 @@ export const PRICE_IDS = Object.freeze({
   scarf: null, bell: null, bowtie: null,
   // 🎒 등
   pack: null, basket: null, cape: null,
+  // 💎 프리미엄(현금 전용, 2026-10-01 스펙) — scripts/paddle-seed.mjs 가 채운다
+  firefly: 'pri_01m3v6d9wwffkgtq8gktb9xc7a', rainbow: 'pri_01m3v6dafayfnj0sgnqfrhqnyb', forest_spirit: 'pri_01m3v6dbmve8mpsk96twzd6m35', plush_doll: 'pri_01m3v6dc5ap4jp82sr36j5r7hb',
   // 👣 발자국
   paw: null, drop: null, flower: null, star: null, sparkle: null,
   // 🐾 펫

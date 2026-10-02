@@ -97,7 +97,8 @@ export function pickMissingDex(dex = {}, DEX = {}, seed = 0, ctx = {}) {
       // 📖 오늘 날씨에 닫힌 희귀종은 집지 않는다 — 그날 못 깨는 의뢰가 된다.
       //   ⚠️ night 은 보지 않는다. 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀌므로,
       //      밤 종을 낮에 걸러내면 의뢰가 사라진다. 플레이어가 밤까지 기다리면 된다.
-      if (ctx.weather && !weatherOpen(gateOf(cat, e.id), ctx.weather)) continue;
+      //   🍂 계절 한정 종도 같다 — 철이 지나면 2주를 기다려도 못 깬다(season 을 안 넘기면 닫힘).
+      if (ctx.weather && !weatherOpen(gateOf(cat, e.id), ctx.weather, ctx.season)) continue;
       pool.push({ ...e, cat });
     }
   }

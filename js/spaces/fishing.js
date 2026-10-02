@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, LAKE, RAIN_DAY, WEATHER, _v, baitActive, biteAt, biteEnd, bobber, buffOn, castPos, catchCeremony, clayMat,
+  $w, LAKE, RAIN_DAY, SEASON, WEATHER, _v, baitActive, biteAt, biteEnd, bobber, buffOn, castPos, catchCeremony, clayMat,
   clock, currentTool, dexDiscover, diffParams, dist2D, doPlayerAction, fishDiff, fishMesh, fishState, gameState,
   indoor, noteSpecialExhibit, player, questEvent, refreshInventoryUI, rollDifficulty, scene, settleDifficulty,
   showCatchItem, situation, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnWater, spawnWoodChips, trackGateBlocked,
@@ -66,7 +66,8 @@ export function catchFish() {
   // 🎣 무엇을 낚았는지는 캐치 배너로(월드 플로트 텍스트는 밀착 줌에서 화면을 덮었다 — 베타 피드백).
   //    서브 문구는 📖도감 토스트와 겹치지 않게 '희소성'만 말한다(둘이 동시에 뜬다).
   ui.catchBanner?.(`🐟 ${kind.name} +1`,
-    kind.rarity === 'rare' ? '✨ 아주 귀한 물고기예요!'
+    kind.season ? '🍂 이번 계절에만 낚이는 물고기예요!'
+    : kind.rarity === 'rare' ? '✨ 아주 귀한 물고기예요!'
     : kind.rarity === 'uncommon' ? '💫 조금 귀한 물고기예요'
     : '가방에 담았어요. 상점에서 팔 수 있어요');
   if (kind.rarity !== 'common') spawnSparkle(castPos.x, 0.7, castPos.z, 20);
@@ -78,9 +79,9 @@ export function catchFish() {
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
   catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
   showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
-  tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : kind.rarity === 'uncommon' ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
+  tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : (kind.season || kind.rarity === 'uncommon') ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
   settleDifficulty('fish', 1);   // 🎚️ 성공 → DDA 가 조금 어려워진다
-  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity, rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) }); // [GA4] 🎚️ 난이도 동봉
+  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity, season: SEASON, rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) }); // [GA4] 🎚️ 난이도 동봉
   resetFishing();
 }
 
