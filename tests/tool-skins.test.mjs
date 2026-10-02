@@ -115,7 +115,8 @@ test('구매 연출 — 도구 세트 진열은 통째로 버린다(공유 재�
 
 test('☂️ 우산은 왼손에 쥔다 — 쉬는 자세의 왼팔만 들어 올리고(스윙 코드는 그대로), 손 위치를 따라간다', () => {
   const src = gameSource();
-  assert.match(src, /if \(umbrellaHeld\(\)\) playerArms\.L\.pivot\.rotation\.set\(\.\.\.UMBRELLA_ARM\)/);
+  assert.match(src, /if \(umbrellaHeld\(\)\) playerArms\.L\.pivot\.rotation\.set\(\.\.\.gripOf\(\)\.arm\)/);
+  assert.match(src, /charK\?\.id === 'chick' \? UMBRELLA_GRIP\.wing : UMBRELLA_GRIP\.arm/);   // 팔 있는 동물(세워 들기) · 🐤 날개(대각선) 따로
   assert.match(src, /playerArms\?\.L\?\.hand/);
   assert.match(src, /if \(shaftClears\(hand, _uApex, HY, HR\)\) break;/);   // 대각선은 살리되 대가 머리·귀를 관통하지 않는다
   assert.match(src, /umbrellaTop \+ 0\.06 \+ drop - hand\.y/);   // 갓 표면이 머리 반대편 끝에서도 귀·모자 끝 위
