@@ -1,0 +1,76 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>폰 자원 패널 배치 시안 — calm forest</title>
+<style>
+  /* 📱 폰(390) 오른쪽 위 자원 패널 배치 시안 A·B·C — 게임 index.html 의 HUD 토큰(패널·민트 버튼)을 흉내 냈다.
+     토스 실기기에서 자원 5칸 + 코인 세 자리면 가방·날씨가 줄바꿈되어 왼쪽이 텅 빈 문제(2026-10-02). */
+  :root { --mint: #c6ead0; --ink: #3b4a3f; --panel: rgba(255,255,255,.86); --shadow: 0 2px 8px rgba(0,0,0,.12); }
+  body { margin: 0; background: #2f3f39; font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; color: var(--ink); }
+  .row { display: flex; gap: 14px; padding: 14px; flex-wrap: wrap; justify-content: center; }
+  .phone { width: 390px; height: 250px; position: relative; background: linear-gradient(#4b5e55, #3d5048); border-radius: 22px; overflow: hidden; }
+  .label { position: absolute; left: 12px; bottom: 10px; color: #fff; font-weight: 700; font-size: 14px; }
+  .label small { display: block; font-weight: 400; opacity: .8; font-size: 12px; }
+  .left { position: absolute; top: 10px; left: 12px; display: flex; gap: 6px; background: var(--panel); padding: 6px; border-radius: 14px; }
+  .left b { width: 36px; height: 36px; border-radius: 10px; background: #f2f2f2; display: grid; place-items: center; font-size: 17px; }
+  .left b.m { background: var(--mint); }
+  .panel { background: var(--panel); border-radius: 14px; box-shadow: var(--shadow); }
+  .chips { display: flex; align-items: center; gap: 4px; }
+  .chip { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 800; white-space: nowrap; }
+  .chip i { font-style: normal; font-size: 15px; }
+  .bag { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--mint); font-size: 16px; box-shadow: var(--shadow); }
+  .wx { font-size: 15px; letter-spacing: 1px; }
+  .tabs { position: absolute; right: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .tab { background: var(--panel); border-radius: 12px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+  /* 현재 */
+  .now .tr { position: absolute; top: 10px; right: 10px; max-width: 234px; padding: 4px 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .now .chips { flex-wrap: wrap; justify-content: flex-end; row-gap: 4px; }
+  .now .bag { padding: 5px 6px; gap: 3px; font-size: 13px; }
+  /* A 한 줄 */
+  .a .tr { position: absolute; top: 10px; right: 10px; padding: 5px 6px 5px 8px; display: flex; align-items: center; gap: 5px; }
+  .a .bag { width: 30px; height: 30px; }
+  .a .wx { padding-right: 2px; border-right: 1px solid #0002; margin-right: 1px; }
+  /* B 두 줄 정리 */
+  .b .tr { position: absolute; top: 10px; right: 10px; padding: 6px 8px; display: grid; gap: 4px; }
+  .b .r2 { display: flex; align-items: center; justify-content: space-between; }
+  .b .bag { padding: 3px 9px; font-size: 13px; gap: 3px; }
+  /* C 가방 분리 */
+  .c .tr { position: absolute; top: 10px; right: 10px; padding: 6px 8px; display: grid; gap: 3px; justify-items: end; }
+  .c .bagc { position: absolute; top: 12px; right: 228px; width: 40px; height: 40px; border-radius: 50%; }
+</style>
+<div class="row">
+  <div class="phone now">
+    <div class="left"><b>📷</b><b>🙂</b><b class="m">☰</b></div>
+    <div class="tr panel">
+      <div class="chips"><span class="chip"><i>🪵</i>12</span><span class="chip"><i>🌰</i>12</span><span class="chip"><i>🥕</i>1</span><span class="chip"><i>🪨</i>2</span><span class="chip"><i>🪙</i>722</span><span class="bag">🎒</span></div>
+      <div class="wx">🍂🌧️</div>
+    </div>
+    <div class="tabs" style="top:110px"><span class="tab">💬 문의하기</span><span class="tab">📖 도감</span></div>
+    <div class="label">지금<small>가방·날씨가 줄바꿈 → 왼쪽이 빔</small></div>
+  </div>
+  <div class="phone a">
+    <div class="left"><b>📷</b><b>🙂</b><b class="m">☰</b></div>
+    <div class="tr panel"><span class="wx">🍂🌧️</span><div class="chips"><span class="chip"><i>🪵</i>12</span><span class="chip"><i>🌰</i>12</span><span class="chip"><i>🥕</i>1</span><span class="chip"><i>🪨</i>2</span><span class="chip"><i>🪙</i>722</span></div><span class="bag">🎒</span></div>
+    <div class="tabs" style="top:58px"><span class="tab">💬 문의하기</span><span class="tab">📖 도감</span></div>
+    <div class="label">A 한 줄<small>계절·날씨를 앞에, 가방은 아이콘만 — 좌측 묶음과 간격 빠듯</small></div>
+  </div>
+  <div class="phone b">
+    <div class="left"><b>📷</b><b>🙂</b><b class="m">☰</b></div>
+    <div class="tr panel">
+      <div class="chips"><span class="chip"><i>🪵</i>12</span><span class="chip"><i>🌰</i>12</span><span class="chip"><i>🥕</i>1</span><span class="chip"><i>🪨</i>2</span><span class="chip"><i>🪙</i>722</span></div>
+      <div class="r2"><span class="wx">🍂🌧️</span><span class="bag">🎒 가방</span></div>
+    </div>
+    <div class="tabs" style="top:84px"><span class="tab">💬 문의하기</span><span class="tab">📖 도감</span></div>
+    <div class="label">B 두 줄 정리<small>1줄 자원 · 2줄 날씨(왼)·가방(오) 양끝 정렬</small></div>
+  </div>
+  <div class="phone c">
+    <div class="left"><b>📷</b><b>🙂</b><b class="m">☰</b></div>
+    <span class="bag bagc">🎒</span>
+    <div class="tr panel">
+      <div class="chips"><span class="chip"><i>🪵</i>12</span><span class="chip"><i>🌰</i>12</span><span class="chip"><i>🥕</i>1</span><span class="chip"><i>🪨</i>2</span><span class="chip"><i>🪙</i>722</span></div>
+      <span class="wx">🍂🌧️</span>
+    </div>
+    <div class="tabs" style="top:76px"><span class="tab">💬 문의하기</span><span class="tab">📖 도감</span></div>
+    <div class="label">C 가방 분리<small>패널은 자원·날씨만, 가방은 둥근 버튼</small></div>
+  </div>
+</div>

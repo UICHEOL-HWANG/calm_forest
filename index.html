@@ -520,6 +520,7 @@
   /* 우측 상단: 인벤토리 + 낮/밤 */
   #topright { top: calc(16px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   #inv-hud { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  #inv-chips { display: contents; }   /* 자원 칩 묶음 — PC 는 풀어서 예전 한 줄 그대로, 폰은 B 배치의 1줄(아래 @media 640) */
   .inv-item { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
   /* ⛏️ 광산 안에서는 자원칩이 광물로 바뀐다(베타 피드백). 🪨 돌만은 마을에서도 보인다 —
      집 2단계(목재 20+돌 10)를 마을에서 준비하는데 돌이 안 보여 '돌이 사라졌다'로 읽혔다(페르소나 플레이, 2026-10-02) */
@@ -1599,6 +1600,17 @@
     #topright { max-width: calc(100vw - 156px); }
     #inv-hud { flex-wrap: wrap; justify-content: flex-end; row-gap: 4px; }
     #time-emoji { font-size: 13px; }
+    /* 📐 B 두 줄 정리(2026-10-02 사용자 선택, 시안 sims/hud-topright-sim.html) — 1줄 자원 · 2줄 계절·날씨(왼)+가방(오).
+       폭이 모자라 가방·날씨가 각각 혼자 줄바꿈되면 패널 왼쪽이 텅 비었다(토스 실기기). 픽셀 폭을 맞추지 않고
+       **줄 구성**으로 정리한다 — iOS 이모지·글꼴이 넓어 자원 줄이 두 줄이 돼도 2줄째 구성은 그대로.
+       2칸 그리드: 1줄 #inv-chips 가 두 칸을 다 쓰고, 2줄은 날씨(왼)·가방(오). 고정 위치 상자라 폭이 자원 줄에 맞게 줄어든다
+       (줄바꿈 flex 는 내용 폭으로 안 줄어 왼쪽이 다시 비었다). #inv-hud 는 풀어도 클릭은 DOM 버블이라 openBag 그대로. */
+    #topright { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 6px; row-gap: 4px; }
+    #inv-hud { display: contents; }
+    #inv-chips { display: flex; grid-column: 1 / -1; justify-content: flex-end; flex-wrap: wrap; gap: 4px; cursor: pointer; }
+    #time-indicator { grid-row: 2; grid-column: 1; justify-self: start; }
+    #bag-btn { grid-row: 2; grid-column: 2; justify-self: end; padding: 3px 9px; }
+    .bag-lbl { display: inline; }   /* 2줄째에 자리가 있어 '가방' 글자를 다시 보인다(≤420 숨김 규칙보다 뒤) */
     /* 모바일은 우측 하단이 액션버튼이라, 문의하기는 인벤토리 아래(우측 상단)로 */
     #feedback-tab { bottom: auto; top: calc(82px + var(--top-inset)); right: 12px; padding: 6px 10px; font-size: 12px; }
     /* 도감 탭: 모바일에서도 인벤토리 HUD 바로 아래 */
@@ -1745,6 +1757,7 @@
 
   <div id="topright" class="panel">
     <div id="inv-hud" title="가방 열기">
+      <span id="inv-chips">
       <span class="inv-item field"><span class="inv-ico">🪵</span><b id="inv-wood">0</b></span>
       <span class="inv-item field"><span class="inv-ico">🌰</span><b id="inv-seed">0</b></span>
       <span class="inv-item field"><span class="inv-ico">🥕</span><b id="inv-crop">0</b></span>
@@ -1752,6 +1765,7 @@
       <span class="inv-item mine"><span class="inv-ico">⚫</span><b id="inv-coal">0</b></span>
       <span class="inv-item mine"><span class="inv-ico">💎</span><b id="inv-gem">0</b></span>
       <span class="inv-item"><span class="inv-ico">🪙</span><b id="inv-coin">0</b></span>
+      </span>
       <button id="bag-btn" title="가방 열기"><span class="bag-emo">🎒</span><span class="bag-lbl">가방</span></button>
     </div>
     <div id="time-indicator"><span id="season-emoji" title="계절">🍂</span><span id="time-emoji">🌤️</span></div>
