@@ -51,13 +51,14 @@ export function advance(state, name, nowMs) {
   return { ...state, last: st.id, max, failures: state.failures + (failed ? 1 : 0), at: nowMs };
 }
 
-const clean = (v, n = 40) => (typeof v === 'string' && /^[a-z0-9_.-]+$/i.test(v) ? v.slice(0, n) : undefined);
+/** 열거형 문자열만 통과(이메일·문장 차단) — 오류 코드·결제수단 종류용 */
+export const clean = (v, n = 40) => (typeof v === 'string' && /^[a-z0-9_.-]+$/i.test(v) ? v.slice(0, n) : undefined);
 
 /** GA4 paddle_step 에 실을 값 — 단계 이벤트일 때만 의미가 있다 */
 export function stepProps(ev, state) {
   const st = stepOf(ev?.name);
   const p = { step: st?.id || 'unknown', step_rank: st?.rank || 0, ms_since_open: Math.max(0, (state.at ?? state.openedAt) - state.openedAt) };
-  const method = clean(ev?.data?.payment?.method_details?.type);
+  const method = clean(ev?.data?.payment?.method_type ?? ev?.data?.payment?.method_details?.type);   // Paddle.js 는 method_type, 웹훅형은 method_details.type
   if (method) p.method = method;
   const code = clean(ev?.error?.code);
   if (code) p.error_code = code;

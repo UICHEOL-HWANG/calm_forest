@@ -88,3 +88,10 @@ test('SQL — checkout_events 테이블(이벤트 id 멱등, RLS 켜고 정책 �
   assert.match(sql, /enable row level security/);
   assert.doesNotMatch(sql, /email/);
 });
+
+test('리뷰 반영 — Paddle.js 형(method_type)도 읽는다 · 웹훅은 행 만들기까지 try 안', () => {
+  const s = advance(startFunnel(0), 'checkout.payment.selected', 100);
+  assert.equal(stepProps({ name: 'checkout.payment.selected', data: { payment: { method_type: 'card' } } }, s).method, 'card');
+  assert.equal(stepProps({ name: 'checkout.payment.selected', data: { payment: { method_type: 'a@b.c' } } }, s).method, undefined);   // 이메일 모양은 막는다
+  assert.match(read('../functions/api/paddle-webhook.js'), /try \{\n\s+fr = checkoutEventRow\(/);
+});

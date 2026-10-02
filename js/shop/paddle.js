@@ -14,7 +14,7 @@
 import { CONFIG, IS_DEV_SESSION } from '../config.js';
 import { PLATFORM } from '../platform.js';
 import { getLang } from '../i18n.js';
-import { startFunnel, advance, stepOf, stepProps } from './checkout-funnel.js';   // 📊 결제창 안 퍼널
+import { startFunnel, advance, stepOf, stepProps, clean } from './checkout-funnel.js';   // 📊 결제창 안 퍼널
 
 const PADDLE_JS = 'https://cdn.paddle.com/paddle/v2/paddle.js';
 let ready = null;          // Promise<Paddle> — 실패하면 null 로 되돌려 다음 클릭이 다시 시도한다
@@ -52,7 +52,7 @@ function onPaddleEvent(ev) {
     current = { ...current, funnel: advance(current.funnel, ev.name, Date.now()) };
     try { handlers.onStep(current, stepProps(ev, current.funnel)); } catch (_) { /* 트래킹 실패 무시 */ }
   }
-  if (ev?.name === 'checkout.error' && typeof ev.error?.code === 'string') current = { ...current, errorCode: ev.error.code.slice(0, 40) };
+  if (ev?.name === 'checkout.error' && clean(ev.error?.code)) current = { ...current, errorCode: clean(ev.error.code) };   // GA4 로 가는 값 — paddle_step 과 같은 정제
   if (ev?.name === 'checkout.completed') { const c = current; current = null; handlers.onCompleted(c); }
   else if (ev?.name === 'checkout.closed' || ev?.name === 'checkout.error') { const c = current; current = null; handlers.onClosed(c); }
 }

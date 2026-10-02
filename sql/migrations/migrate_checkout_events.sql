@@ -40,6 +40,6 @@ select distinct on (transaction_id)
   occurred_at as last_at
 from public.checkout_events
 where transaction_id is not null
-order by transaction_id, occurred_at desc;
+order by transaction_id, occurred_at desc, id desc;   -- 같은 시각 알림(created·updated) 동점은 나중에 쌓인 행
 -- 뷰도 서비스 키 전용(기본 권한 회수)
 revoke all on public.checkout_funnel from anon, authenticated;
