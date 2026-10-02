@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, buildCharacterMesh, cafeGuestCache, cafeGuestFetcher,
+  $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, buildCharacterMesh, buildToolShowcase, cafeGuestCache, cafeGuestFetcher,
   cafeGuestObjs, cafeInGroup, camera, clayMat, colliders, cookTier, cosmeticShop, cropMini, dateHash, dexDiscover,
   disposeTree, dist2D, doPlayerAction, firstHint, fishMesh, gameState, giveReward, houseWindows,
   keys, kitchenFinish, kitchenStart, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
@@ -37,7 +37,8 @@ import { buildShop } from '../shop/building.js';
 import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
 import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
-import { revealModeOf } from '../shop/reveal-pose.js';
+import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
+import { themeOf } from '../cosmetics/tool-skin-rules.js';   // 🪓 💎 도구 세트 → 테마(구매 연출 진열)
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
 import { Sound } from '../sound.js';
 import { state as authState, fetchPurchases } from '../supabase-client.js';
@@ -806,7 +807,7 @@ export function spawnCosmeticShop() {
 }
 
 // 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
-export const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨'], ['pet', '🐾 펫']];
+export const COS_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨'], ['tools', '🪓 도구'], ['pet', '🐾 펫']];
 
 export let cosTab = 'head';
 
@@ -965,10 +966,12 @@ function onGranted(c, t0) {
   if (c.kind === 'cosmetic' && findItem(c.itemId)?.premium && cosShopOpen()) {
     try {
       closeCheckout();   // 💳 Paddle 성공 창이 연출을 덮지 않게 먼저 닫는다
-      const mode = revealModeOf(findItem(c.itemId));
-      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character, mode,
-        //  🧥 스킨은 "입은 내 캐릭터"를 진열한다 — 이미 장착했으니 실제 장착 그대로 만든다
-        buildShowcase: mode === 'boxburst' ? () => buildCharacterMesh(gameState.character, gameState.cosmetics) : null,
+      const item = findItem(c.itemId), mode = revealModeOf(item);
+      const toolTheme = themeOf(c.itemId);
+      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character, mode, card: revealCardOf(item),
+        //  🧥 스킨은 "입은 내 캐릭터"를, 🪓 도구 세트는 도구 4종 + 우산을 진열한다
+        buildShowcase: toolTheme ? () => buildToolShowcase(toolTheme)
+          : mode === 'boxburst' ? () => buildCharacterMesh(gameState.character, gameState.cosmetics) : null,
         onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: mode === 'boxburst' ? 'wear' : 'walk', ms }); closeCosShopForWalk(); },
         onClose: (ms) => trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'close', ms }) });
     } catch (e) { console.warn('[reveal]', e?.message || e); }
@@ -1024,6 +1027,7 @@ export function drawCosMenu() {
     cosPreview?.showPet(stageOf(mine ? mine.works : Infinity), petView);
   } else cosPreview?.showPet(null);
   cosPreview?.showTrail(cosTab === 'trail');           // ✨ 이펙트 탭 — 캐릭터 대신 자국이 걸어온다
+  cosPreview?.showTools(cosTab === 'tools');           // 🪓 도구 탭 — 캐릭터 대신 입어 본 도구 세트를 진열
   //  걷는 자국은 돌리지 않는다(방향이 돌면 걸어오는 게 안 읽힌다) → "드래그해서 돌려보기" 도 감춘다.
   //  visibility 로 감춰 자리는 남긴다 — 탭을 오갈 때 미리보기 상자 높이가 튀지 않게.
   const hint = document.getElementById('cos-preview-hint');

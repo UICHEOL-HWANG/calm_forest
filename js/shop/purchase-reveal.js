@@ -115,14 +115,14 @@ export function stopPurchaseReveal() {
 
 /** mode: 'spot'(A 스포트라이트, 자국) | 'boxburst'(B+C 상자 폭발, 스킨) · buildShowcase: boxburst 진열 캐릭터 팩토리
  *  onWalk: [바로 걸어보기/입어보기] · onClose: [닫기] — 연출을 닫은 뒤 부른다. 인자 = 열려 있던 ms */
-export function playPurchaseReveal({ itemId, animalId = null, mode = 'spot', buildShowcase = null, onWalk = () => {}, onClose = () => {} }) {
+export function playPurchaseReveal({ itemId, animalId = null, mode = 'spot', card: cardIn = null, buildShowcase = null, onWalk = () => {}, onClose = () => {} }) {
   const wrap = document.getElementById('buy-reveal');
   const canvas = document.getElementById('br-canvas');
   if (!wrap || !canvas) return;
   stopPurchaseReveal();
   ensure(canvas);
   const copy = REVEAL_COPY[itemId] || { name: itemId, desc: '' };
-  const card = REVEAL_CARD[mode] || REVEAL_CARD.spot;
+  const card = cardIn || REVEAL_CARD[mode] || REVEAL_CARD.spot;   // 🪓 도구 세트는 상자 연출 + 자기 카드(revealCardOf)
   document.getElementById('br-name').textContent = copy.name;
   document.getElementById('br-desc').textContent = copy.desc;
   document.getElementById('br-tag').textContent = card.tag;

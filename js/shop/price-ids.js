@@ -19,6 +19,8 @@ export const PRICE_IDS = Object.freeze({
   pack: null, basket: null, cape: null,
   // 💎 프리미엄(현금 전용, 2026-10-01 스펙) — scripts/paddle-seed.mjs 가 채운다
   firefly: 'pri_01m3x4q3sjhg1c19b0vsz55b80', rainbow: 'pri_01m3x4q4a0v0pv06yreaqe3dh7', forest_spirit: 'pri_01m3x4q4szrecdh3rwc5sya6zt', plush_doll: 'pri_01m3x4q5abzr8m2xvzqb93rfrn',
+  // 🪓 도구 테마 세트(2026-10-02) — 라이브 키로 `PADDLE_ENV=production node scripts/paddle-seed.mjs --only tools_shroom` (세 번)
+  tools_shroom: null, tools_moon: null, tools_bloom: null,
   // 👣 발자국
   paw: null, drop: null, flower: null, star: null, sparkle: null,
   // 🐾 펫
