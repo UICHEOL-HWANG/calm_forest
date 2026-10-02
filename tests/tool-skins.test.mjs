@@ -84,7 +84,8 @@ test('게임 배선 — toolMesh 는 테마 인자를 받고(기본 null: 일꾼
   const src = gameSource();
   assert.match(src, /function toolMesh\(id, tier = 0, skin = null\)/);
   assert.match(src, /toolMesh\(id, tierOf\(id, gameState\), toolSkinOf\(gameState\.cosmetics\)\)/);
-  assert.match(src, /userData\.skin !== toolSkinOf\(gameState\.cosmetics\)/);   // refreshHeldTool 이 테마 변경도 본다
+  assert.match(src, /userData\.skin !== toolSkinOf\(cos\)/);   // refreshHeldTool 이 테마 변경도 본다(applyCosmetics 의 cos 기준)
+  assert.match(src, /atMine \|\| mgView \|\| duelActive/);   // 클로즈업에선 우산을 접는다
   assert.match(src, /umbrellaShown\(/);
 });
 
@@ -105,4 +106,9 @@ test('i18n — 도구 세트 문구 통문장 등재', () => {
   const en = read('../js/i18n-en.js');
   for (const k of ['🪓 도구', '버섯 숲 세트', '달밤 세트', '꽃정원 세트', 'PREMIUM · 도구 세트', '바로 들어보기',
     ...['tools_shroom', 'tools_moon', 'tools_bloom'].map(id => REVEAL_COPY[id].desc)]) assert.ok(en.includes(`'${k}'`), k);
+});
+
+test('구매 연출 — 도구 세트 진열은 통째로 버린다(공유 재질 없음 → GPU 누수 방지)', () => {
+  assert.match(gameSource(), /g\.userData\.ownsGpu = true/);
+  assert.match(read('../js/shop/purchase-reveal.js'), /userData\.ownsGpu\) disposeTree\(o\)/);
 });

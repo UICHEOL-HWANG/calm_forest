@@ -3384,7 +3384,7 @@ function applyCosmetics(cos) {
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
   showSprout(charGroup, sproutVisible(cos));   // 🌱 모자를 쓰면 정령 새싹을 숨긴다
-  refreshHeldTool();                           // 🪓 💎 도구 테마 세트를 입고 벗으면 손에 든 도구도 바로 바뀐다(우산은 updateUmbrella 가 따라온다)
+  refreshHeldTool(cos);                        // 🪓 💎 도구 테마 세트를 입고 벗으면 손에 든 도구도 바로 바뀐다(우산은 updateUmbrella 가 따라온다)
 }
 
 // ── 👣 발자국 ── (스펙 §4-4)
@@ -3446,7 +3446,7 @@ function dropUmbrella() {
 }
 function updateUmbrella(dt) {
   const theme = toolSkinOf(gameState.cosmetics);
-  const outdoors = !(indoor || atCafe || atMuseum || atMine);
+  const outdoors = !(indoor || atCafe || atMuseum || atMine || mgView || duelActive);   // 클로즈업(요리·밤손님 대결)에선 카메라가 붙어 우산이 화면을 가린다
   const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
   if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
   if (!show) {
@@ -3509,6 +3509,7 @@ export function buildToolShowcase(theme) {
     if (u) { u.scale.setScalar(0.8); u.position.set(0.05, 0.05, -0.55); u.rotation.set(-0.18, 0, 0.08); g.add(u); }
   }
   if (theme === 'moon') setToolSkinNight(g, 0.6);   // 🌙 진열대에선 별이 켜진 모습을 보여 준다
+  g.userData.ownsGpu = true;                         // 구매 연출이 이 표식을 보고 통째로 버린다(캐릭터 진열과 달리 공유 재질 없음)
   return g;
 }
 
@@ -3527,7 +3528,7 @@ function makeCharacterPreview(canvas) {
   let animal = null, marks = null, cosView = null;   // cosView = null 이면 실제 장착을 본다
   let petStage = null, petKind = PET_KIND;           // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다(petKind = 어느 종을)
   let trailView = false, walk = null, lastT = 0;     // trailView = ✨이펙트 탭 — 캐릭터 대신 자국이 걸어온다
-  let toolsView = false, shelf = null;               // toolsView = 🪓 도구 탭 — 캐릭터 대신 입어 본 도구 세트를 진열
+  let toolsView = false, shelf = null, shelfTheme;   // toolsView = 🪓 도구 탭 — 캐릭터 대신 입어 본 도구 세트를 진열
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   //  카메라 두 벌 — 캐릭터는 몸통 높이, 걷는 자국은 바닥을 비스듬히 내려다본다(trail-walk.js WALK_CAM)
   function aimCamera() {
@@ -3545,11 +3546,12 @@ function makeCharacterPreview(canvas) {
     if (mesh) { pivot.remove(mesh); disposeSkin(mesh); }
     if (marks) { pivot.remove(marks); marks = null; }
     if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
-    if (shelf) { pivot.remove(shelf); disposeTree(shelf); shelf = null; }   // 진열물은 공유 재질이 없다(buildToolShowcase)
-    if (toolsView && petStage === null) {
+    const wantShelf = toolsView && petStage === null, theme = toolSkinOf(cos);
+    //  진열은 테마가 같으면 그대로 둔다 — 줄을 누를 때마다 도구 4개 + 우산을 다시 굽지 않게
+    if (shelf && !(wantShelf && theme === shelfTheme)) { pivot.remove(shelf); disposeTree(shelf); shelf = null; }   // 진열물은 공유 재질이 없다(buildToolShowcase)
+    if (wantShelf) {
       mesh = null;
-      shelf = buildToolShowcase(toolSkinOf(cos));
-      pivot.add(shelf);
+      if (!shelf) { shelf = buildToolShowcase(theme); shelfTheme = theme; pivot.add(shelf); }
       aimCamera();
       return;
     }
@@ -4144,10 +4146,10 @@ function poseHeldTool(stow, swingX, swingZ) {
 //      heldToolMesh 만 바꾸고 heldToolId 는 그대로 둔다. 그때 다시 만들면 손의 가구가 도구로 바뀐다.
 //   ⚠️ 등급이 그대로면 다시 만들지 않는다 — 🍲큰 냄비처럼 도구와 무관한 업그레이드에서도
 //      불리므로, 무조건 재생성하면 setHeldTool 의 부작용(🪏삽 첫 사용 안내)을 공짜로 다시 태운다.
-function refreshHeldTool() {
+function refreshHeldTool(cos = gameState.cosmetics) {
   if (!heldToolId || !heldToolMesh) return;
   if (heldToolMesh.userData.toolId !== heldToolId) return;
-  const skinChanged = heldToolMesh.userData.skin !== toolSkinOf(gameState.cosmetics);   // 🪓 💎 테마 세트를 입고 벗을 때도
+  const skinChanged = heldToolMesh.userData.skin !== toolSkinOf(cos);   // 🪓 💎 테마 세트를 입고 벗을 때도
   if (heldToolMesh.userData.tier === tierOf(heldToolId, gameState) && !skinChanged) return;
   setHeldTool(heldToolId);
 }
