@@ -521,7 +521,8 @@
   #topright { top: calc(16px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   #inv-hud { display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .inv-item { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
-  /* ⛏️ 광산 안에서는 자원칩이 광물로 바뀐다(베타 피드백) — 칸 수는 4개 그대로라 상단 레이아웃이 안 흔들린다 */
+  /* ⛏️ 광산 안에서는 자원칩이 광물로 바뀐다(베타 피드백). 🪨 돌만은 마을에서도 보인다 —
+     집 2단계(목재 20+돌 10)를 마을에서 준비하는데 돌이 안 보여 '돌이 사라졌다'로 읽혔다(페르소나 플레이, 2026-10-02) */
   .inv-item.mine { display: none; }
   body.at-mine .inv-item.field { display: none; }
   body.at-mine .inv-item.mine { display: flex; }
@@ -1586,11 +1587,12 @@
     }
     #menu-btn { background: var(--mint); }
     #emote-pop { top: calc(96px + var(--top-inset)); left: 12px; }
-    /* 우측: 자원칩 + 가방 버튼 압축 */
-    #inv-hud { gap: 7px; }
+    /* 우측: 자원칩 + 가방 버튼 압축 — 마을 칩이 5개(🪨 추가)라 375pt 에서 한 줄에 들어가게 간격 4px·가방 여백 6px
+       (7px·9px 이면 가방이 둘째 줄로 밀려 아래 '문의하기'와 겹쳤다) */
+    #inv-hud { gap: 4px; }
     .inv-item { gap: 2px; font-size: 12px; }
     .inv-ico { font-size: 13px; }
-    #bag-btn { padding: 5px 9px; font-size: 12px; }
+    #bag-btn { padding: 5px 6px; font-size: 12px; }
     #bag-btn .bag-emo { font-size: 15px; }
     /* 좌측 묶음(📷🙂☰ ≈ 136px)과 최소 8px 간격 보장 — 코인이 세 자리(188)가 되면 390pt 폰에서 둘이 붙었다(토스 실기기).
        자원바는 좌측 묶음 폭만큼 빼고 남는 폭까지만, 넘치면 줄바꿈(우측 정렬) */
@@ -1746,7 +1748,7 @@
       <span class="inv-item field"><span class="inv-ico">🪵</span><b id="inv-wood">0</b></span>
       <span class="inv-item field"><span class="inv-ico">🌰</span><b id="inv-seed">0</b></span>
       <span class="inv-item field"><span class="inv-ico">🥕</span><b id="inv-crop">0</b></span>
-      <span class="inv-item mine"><span class="inv-ico">🪨</span><b id="inv-stone">0</b></span>
+      <span class="inv-item"><span class="inv-ico">🪨</span><b id="inv-stone">0</b></span>
       <span class="inv-item mine"><span class="inv-ico">⚫</span><b id="inv-coal">0</b></span>
       <span class="inv-item mine"><span class="inv-ico">💎</span><b id="inv-gem">0</b></span>
       <span class="inv-item"><span class="inv-ico">🪙</span><b id="inv-coin">0</b></span>
