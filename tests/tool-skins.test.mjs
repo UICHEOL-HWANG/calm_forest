@@ -129,3 +129,9 @@ test('☂️ 동작 중 — 우산을 쥔 왼팔은 고정(스윙 반동 무시)
   assert.match(src, /_uDir\.z -= UMBRELLA_ACT_TILT \* r/);
   assert.doesNotMatch(src, /_uRestPos/);
 });
+
+test('☂️ 카메라를 등지면 우산을 반투명하게 — 위에서 보는 카메라에 갓이 몸을 가리지 않게', () => {
+  const src = gameSource();
+  assert.match(src, /function fadeUmbrella\(dt\)/);
+  assert.match(src, /fadeUmbrella\(dt\);/);
+});
