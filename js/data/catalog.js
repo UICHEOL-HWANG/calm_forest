@@ -57,6 +57,12 @@ export const DECOR = [
 ];
 
 export const FISH_KINDS = [
+  // 🍂 계절 한정 — 누적 p 를 0 으로 둬서 원래 가중치가 없다. 그 계절에만 게이트(js/dex-gates.js)가 p 를 준다.
+  //   ⚠️ fish 는 rarity 가 곧 도감 id 다(DEX.fish). col 은 낚인 물고기·박물관 전시 색(fishMesh)
+  { rarity: 'sakura_trout', name: '벚꽃 송어', p: 0, season: 'spring', col: 0xf5a9c4 },
+  { rarity: 'puffer',       name: '동글 복어', p: 0, season: 'summer', col: 0xf2d16b },
+  { rarity: 'maple_carp',   name: '단풍 잉어', p: 0, season: 'autumn', col: 0xe8743c },
+  { rarity: 'ice_smelt',    name: '얼음 빙어', p: 0, season: 'winter', col: 0xbfe4f2 },
   { rarity: 'rare',     name: '무지개 물고기', p: 0.07 },
   { rarity: 'uncommon', name: '붉은 물고기',   p: 0.28 },
   { rarity: 'common',   name: '피라미',        p: 1.00 },

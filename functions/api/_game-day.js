@@ -5,7 +5,9 @@
 //     서버가 같은 식으로 계산하면 사전 생성 조합에서 날씨 축이 사라진다(24 → 6).
 //  ▶ ⚠️ js/game.js 의 dateHash·weatherOf, js/spaces/cafe.js 의 cafeSlot·playerPhase 와
 //     한 글자라도 어긋나면 안 된다. tests/ai-pregen.test.mjs 가 게임 원문과 대조한다.
+//  ▶ 🍂 계절별 날씨 경계는 js/season.js 를 그대로 import 한다(사본을 두지 않는다).
 // =============================================================
+import { seasonOf, weatherFromRoll } from '../../js/season.js';
 
 export const LANGS = ['ko', 'en'];
 export const PHASE_IDS = ['settling', 'settled', 'thriving'];
@@ -19,10 +21,9 @@ function dateHash(date, salt) {
   return h;
 }
 
-// 맑음 55% / 비 20% / 눈 12% / 안개 13% — js/game.js weatherOf 와 같은 경계
+// 🍂 계절마다 경계가 다르다(js/season.js) — js/game.js weatherOf 와 같은 식
 export function weatherForDate(date) {
-  const r = dateHash(date, 'weather') % 100;
-  return r < 20 ? 'rain' : r < 32 ? 'snow' : r < 45 ? 'fog' : 'clear';
+  return weatherFromRoll(dateHash(date, 'weather') % 100, seasonOf(date));
 }
 
 // ☕ 카페 시간대 — 아침(~11시) · 낮(~17시) · 저녁

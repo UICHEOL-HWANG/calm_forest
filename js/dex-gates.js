@@ -15,11 +15,20 @@
  * 희귀종 게이트.
  *   weather — 열리는 날씨 **배열**. 없으면 날씨를 안 본다
  *   night   — true 면 밤에만. 없으면 시간대를 안 본다
+ *   season  — 열리는 계절 **배열**(js/season.js). 없으면 계절을 안 본다
  *   p       — 게이트가 열렸을 때의 확률(원래 확률보다 커야 한다 — 테스트가 잠근다)
  */
 export const DEX_GATES = {
   // 🌈 무지개 물고기 — RAIN_DAY 에서 이미 희귀↑ 였다(catchFish)
-  fish:   { rare:    { weather: ['rain'], p: 0.22 } },
+  fish:   {
+    rare:    { weather: ['rain'], p: 0.22 },
+    // 🍂 계절 한정 4종 — 그 계절(14일)에만 낚인다. 원래 확률이 0 인 종이라 p 가 곧 계절 안 확률이다.
+    //   표(이름·색)는 js/data/catalog.js FISH_KINDS · 계절 규칙은 js/season.js
+    sakura_trout: { season: ['spring'], p: 0.12 },
+    puffer:       { season: ['summer'], p: 0.12 },
+    maple_carp:   { season: ['autumn'], p: 0.12 },
+    ice_smelt:    { season: ['winter'], p: 0.12 },
+  },
   // 💎 보석 — WEATHER==='fog' 에서 이미 gemP 0.1 → 0.2 였다(weightedOre)
   ore:    { gem:     { weather: ['fog'], p: 0.28 } },
   // 🌈 무지개반디 — rain||fog 에서 이미 희귀↑ 였다(rollBugKind). 반딧불이는 원래 밤 전용
@@ -34,19 +43,21 @@ export function gateOf(cat, id) {
 }
 
 /**
- * 날씨만 본다 — 🧑‍🦳큐레이터 의뢰 전용.
+ * 하루 단위 조건(날씨·계절)만 본다 — 🧑‍🦳큐레이터 의뢰 전용.
  * ⚠️ 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다. 밤 종을 낮에 걸러내면
  *    그날 의뢰가 아예 사라지므로, 의뢰 선택은 밤 조건을 무시하고 플레이어가 밤까지 기다리게 한다.
+ * ⚠️ 계절 게이트가 있는데 season 을 안 넘기면 **닫힘**이다 — 철 지난 종이 의뢰로 나가는 것보다 낫다.
  */
-export function weatherOpen(gate, weather) {
+export function weatherOpen(gate, weather, season) {
   if (!gate) return true;
+  if (gate.season && !gate.season.includes(season)) return false;
   return !gate.weather || gate.weather.includes(weather);
 }
 
-/** 획득 판정용 — 날씨와 밤낮을 둘 다 본다. @param {{weather:string, night:boolean}} situation */
+/** 획득 판정용 — 날씨·계절·밤낮을 다 본다. @param {{weather:string, season?:string, night:boolean}} situation */
 export function gateOpen(gate, situation) {
   if (!gate) return true;                                    // ⚠️ 게이트 없는 종은 항상 열림
-  if (!weatherOpen(gate, situation.weather)) return false;
+  if (!weatherOpen(gate, situation.weather, situation.season)) return false;
   if (gate.night && !situation.night) return false;
   return true;
 }

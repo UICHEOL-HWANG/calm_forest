@@ -255,6 +255,21 @@
   #chest-reveal h2 { color: #fff; margin: 0 0 4px; font-size: 22px; text-shadow: 0 2px 8px rgba(0,0,0,0.35); }
   #chest-reveal p { color: #fff8e0; margin: 0 0 12px; font-size: 15px; font-weight: 700; }
   #chest-reveal button { border: none; border-radius: 12px; padding: 10px 22px; font-weight: 700; font-size: 14px; background: #fff; color: #6b4a10; cursor: pointer; font-family: inherit; }
+  #buy-reveal { position: fixed; inset: 0; z-index: 34; display: none; place-items: center; background: rgba(8,6,20, calc(0.85 * var(--br-dim, 0))); }
+  #buy-reveal.show { display: grid; }
+  #buy-reveal .br-wrap { width: min(420px, 92vw); display: flex; flex-direction: column; align-items: center; }
+  #buy-reveal canvas { width: 100%; height: min(320px, 46dvh); display: block;
+    -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent); mask-image: radial-gradient(closest-side, #000 70%, transparent); }   /* 빛줄기가 캔버스 네모 테두리에서 잘려 보이지 않게 */
+  #buy-reveal .br-card { text-align: center; color: #fff; opacity: 0; transform: translateY(14px); transition: opacity .4s, transform .4s; }
+  #buy-reveal.card .br-card { opacity: 1; transform: none; }
+  #buy-reveal .br-tag { display: inline-block; font-size: 12px; letter-spacing: .08em; padding: 3px 10px; border-radius: 99px; background: rgba(255,215,120,.18); color: #ffd98a; margin-bottom: 8px; }
+  #buy-reveal h2 { margin: 0 0 4px; font-size: 22px; }
+  #buy-reveal p { margin: 0 0 14px; color: #ddd6ee; font-size: 14px; }
+  #buy-reveal .br-row { display: flex; gap: 8px; justify-content: center; }
+  #buy-reveal .br-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  #buy-reveal button { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
+  #br-walk { background: #e9a23b; color: #fff; }
+  #br-close { background: rgba(255,255,255,.16); color: #fff; }
   .boat-row.miss { background: #f2f2f0; color: #7b857e; }
   /* 📸 사진첩(그리드) + 크게 보기(그 위에 겹침) */
   #album-modal, #album-view { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
@@ -516,6 +531,7 @@
   #bag-btn .bag-emo { font-size: 18px; }
   /* 🌤️ 날씨·밤낮 표시 — 조절 기능이 없어진 뒤로 진행 바는 뺐다(아이콘 하나면 충분) */
   #time-indicator { display: flex; align-items: center; justify-content: center; }
+  #season-emoji { cursor: pointer; margin-right: 2px; }   /* 🍂 계절 — 누르면 남은 날·한정 어종 */
 
   /* 하단 중앙: 도구 하트바 */
   /* 🎒 페이지당 4칸 + 칩 1개 = 가장 좁은 화면에서도 한 줄에 들어간다.
@@ -1362,6 +1378,9 @@
   #shop-menu.show { display: flex; }
   .sh-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .sh-tab.active { background: var(--mint); }
+  /* 🧥 가게·옷장 탭이 6·5개 — 한 글자씩 꺾이지 않게 nowrap, 넘치면 줄 단위로 감싼다 */
+  #cos-tabs, #wd-slots { flex-wrap: wrap; }
+  #cos-tabs .sh-tab, #wd-slots .sh-tab { white-space: nowrap; padding: 6px 12px; }
   #sell-items, #buy-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   /* 🎀 꾸미기 상점 — #shop-menu 와 같은 자리·같은 폭. 목록 옆에 🪞입어보기 프리뷰를 세운다.
      ⚠️ 프리뷰를 목록 **위**에 얹지 않는다 — 목록이 스크롤되면 프리뷰가 같이 밀려 올라간다.
@@ -1634,7 +1653,7 @@
     #mg-title { font-size: 14px; }
     #mg-tap { padding: 15px; font-size: 16px; }
     .ck-tabs { flex-wrap: wrap; }
-    .ck-tab, .sh-tab { padding: 6px 11px; font-size: 12px; }
+    .ck-tab, .sh-tab, #cos-tabs .sh-tab, #wd-slots .sh-tab { padding: 6px 11px; font-size: 12px; }   /* id 규칙(데스크톱 12px)보다 이기도록 같이 적는다 */
     .ck-item { width: 84px; }
     /* NPC 모달 선물 버튼이 많아도 줄바꿈 */
     .npc-actions { flex-wrap: wrap; }
@@ -1733,7 +1752,7 @@
       <span class="inv-item"><span class="inv-ico">🪙</span><b id="inv-coin">0</b></span>
       <button id="bag-btn" title="가방 열기"><span class="bag-emo">🎒</span><span class="bag-lbl">가방</span></button>
     </div>
-    <div id="time-indicator"><span id="time-emoji">🌤️</span></div>
+    <div id="time-indicator"><span id="season-emoji" title="계절">🍂</span><span id="time-emoji">🌤️</span></div>
   </div>
 
   <!-- 이모트 팝업 (이모트 버튼 누르면) -->
@@ -2153,6 +2172,20 @@
     </div>
   </div>
 
+  <!-- 💎 획득 연출 A(스포트라이트) — js/shop/purchase-reveal.js -->
+  <div id="buy-reveal">
+    <div class="br-flash"></div>
+    <div class="br-wrap">
+      <canvas id="br-canvas"></canvas>
+      <div class="br-card">
+        <div class="br-tag" id="br-tag">PREMIUM · 걷는 자국</div>
+        <h2 id="br-name"></h2>
+        <p id="br-desc"></p>
+        <div class="br-row"><button id="br-walk">바로 걸어보기</button><button id="br-close">닫기</button></div>
+      </div>
+    </div>
+  </div>
+
   <!-- 🛶 런 결과 -->
   <div id="boat-result">
     <div class="tut-card">
@@ -2162,7 +2195,7 @@
       <div id="br-rows" style="text-align:left"></div>
       <div class="dm-actions" style="justify-content:center; margin-top:14px">
         <button id="br-again" class="primary">🛶 한 번 더</button>
-        <button id="br-close">그만하기</button>
+        <button id="boat-result-close">그만하기</button>
       </div>
     </div>
   </div>
@@ -5342,7 +5375,7 @@
     }
     $('bs-close').addEventListener('click', () => $('boat-shop').classList.remove('show'));
     $('boat-shop').addEventListener('click', (e) => { if (e.target === $('boat-shop')) $('boat-shop').classList.remove('show'); });
-    $('br-close').addEventListener('click', () => $('boat-result').classList.remove('show'));
+    $('boat-result-close').addEventListener('click', () => $('boat-result').classList.remove('show'));
     $('br-again').addEventListener('click', () => { $('boat-result').classList.remove('show'); Input.startBoatRun(); });
     $('boat-quit').addEventListener('click', () => Input.quitBoatRun());
     $('boat-view').addEventListener('click', () => {
@@ -5560,6 +5593,9 @@
       fetchDexNotes(Object.keys(d.cats).filter(c => d.cats[c].some(e => e.found)));
     }
     $('dex-tab').addEventListener('click', openDex);
+    // 🍂 계절 아이콘 — 지금 계절·남은 날·이번 계절 한정 어종
+    $('season-emoji').textContent = Input.seasonIco();
+    $('season-emoji').addEventListener('click', () => ui.toast(Input.seasonStatus(), 2600));
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
     $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
     // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다

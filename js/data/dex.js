@@ -16,6 +16,11 @@ export const DEX = {
     { id: 'common',   name: '피라미',        ico: '🐟' },
     { id: 'uncommon', name: '붉은 물고기',   ico: '🐠' },
     { id: 'rare',     name: '무지개 물고기', ico: '🌈' },
+    // 🍂 계절 한정(그 계절 14일에만 낚인다 — js/season.js · js/dex-gates.js)
+    { id: 'sakura_trout', name: '벚꽃 송어', ico: '🌸' },
+    { id: 'puffer',       name: '동글 복어', ico: '🐡' },
+    { id: 'maple_carp',   name: '단풍 잉어', ico: '🍁' },
+    { id: 'ice_smelt',    name: '얼음 빙어', ico: '❄️' },
   ],
   crop: [
     { id: 'carrot',    name: '당근',     ico: '🥕' },

@@ -12,6 +12,7 @@
 // =============================================================
 
 import { buildTrailMark, TRAIL_SIDE } from './trail.js';
+import { createTrailFx, rainbowHex, FX_IDS } from './trail-fx.js';
 
 export const WALK_STEP = 0.26;   // 한 걸음
 export const WALK_FADE = 1.6;    // 초
@@ -23,7 +24,7 @@ export const WALK_CAM ={ elev: 36, dist: 2.2, lookZ: -0.1 };   // 바닥을 비�
 
 const PER_LAP = Math.ceil(WALK_LEN / WALK_STEP);
 
-/** t 초에 보이는 자국들 — {z, side(±1), age(초)} */
+/** t 초에 보이는 자국들 — {z, side(±1), age(초), n(안정 id)} */
 export function walkMarks(t) {
   const out = [];
   const lapT = WALK_LEN / WALK_SPEED;
@@ -33,7 +34,7 @@ export function walkMarks(t) {
     for (let k = 0; k < PER_LAP; k++) {
       const age = t - (lap * lapT + k * WALK_STEP / WALK_SPEED);
       if (age < 0 || age >= WALK_FADE) continue;
-      out.push({ z: WALK_Z0 + k * WALK_STEP, side: k % 2 ? 1 : -1, age });
+      out.push({ z: WALK_Z0 + k * WALK_STEP, side: k % 2 ? 1 : -1, age, n: lap * PER_LAP + k });
     }
   }
   return out;
@@ -46,6 +47,16 @@ export function walkMarks(t) {
 export function makeTrailWalk(THREE, itemId, animalId) {
   const group = new THREE.Group();
   const meshes = [];
+  const isFx = FX_IDS.includes(itemId);
+  let ground = null;
+  if (isFx) {   // 💎 밝은 패널 위에선 가산 글로우가 안 보인다 → 밤 바닥 원판 + 일반 혼합. 반지름은 375px 의 세로로 긴 미리보기 아래까지 덮게(1.1 이면 아래 1/3 이 비었다)
+    ground = new THREE.Mesh(new THREE.CircleGeometry(2.4, 48), new THREE.MeshBasicMaterial({ color: 0x1f2a3a }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0.002, WALK_Z0 + WALK_LEN / 2);
+    group.add(ground);
+  }
+  const fx = createTrailFx(THREE, isFx ? { cap: 32, blending: 'normal' } : { cap: 32 });   // 미리보기는 늘 밤 값
+  group.add(fx.points);
+  const seen = new Set();                              // 이미 입자를 뿌린 자국 id(n)
   let t = WALK_FADE;                                   // 열자마자 자국이 몇 개 깔려 있게
   function update(dt) {
     t += dt;
@@ -59,12 +70,22 @@ export function makeTrailWalk(THREE, itemId, animalId) {
       m.visible = !!k;
       if (!k) return;
       m.position.set(k.side * TRAIL_SIDE, 0.01, k.z);
+      if (!seen.has(k.n)) { seen.add(k.n); fx.onStamp(itemId, m.position, { nightLevel: 1, step: k.n }); }   // 처음 나타날 때만 · 반짝이 색도 자국 id 에서
+      if (itemId === 'rainbow') {                       // 색은 자국 id 에서 — 메시가 밀려도 색이 기어다니지 않는다
+        const hex = rainbowHex(k.n);
+        m.traverse(o => { if (o.isMesh) o.material.color.setHex(hex); });
+      }
       const a = 1 - k.age / WALK_FADE;
       m.traverse(o => { if (o.material) o.material.opacity = a; });
     });
+    const live = new Set(marks.map(x => x.n));
+    for (const n of seen) if (!live.has(n)) seen.delete(n);
+    fx.update(dt, { nightLevel: 1 });
   }
   function dispose() {
     for (const m of meshes) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    if (ground) { ground.geometry.dispose(); ground.material.dispose(); }
+    fx.points.geometry.dispose(); fx.points.material.map.dispose(); fx.points.material.dispose();
   }
   update(0);
   return { group, update, dispose };

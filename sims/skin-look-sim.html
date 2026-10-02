@@ -1,0 +1,425 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>전신 스킨 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#16201c;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#e8efe6;overflow:hidden}
+  canvas{display:block;width:100%;height:100%}
+  #cells{position:fixed;inset:0 0 var(--ui,64px) 0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;pointer-events:none}
+  #cells div{padding:9px 11px;font-size:12.5px;line-height:1.4;border-right:1px solid rgba(0,0,0,.12);border-bottom:1px solid rgba(0,0,0,.12);color:#24332b}
+  body.night #cells div{color:#e8efe6;border-color:rgba(255,255,255,.1)}
+  #cells b{display:block;font-size:14.5px}
+  #cells small{display:block;opacity:.75;max-width:30em}
+  #cells .row{color:#4f8a5a;font-size:11px;letter-spacing:.04em}
+  body.night #cells .row{color:#9fd8a8}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:9px 12px 12px;background:rgba(10,16,13,.9);border-top:1px solid #2a3a33;font-size:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;padding:5px 9px;border-radius:8px;border:1px solid #4a5f55;background:#1d2a25;color:#e8efe6;cursor:pointer}
+  button.on{background:#5b8f5b;border-color:#6fa86f;color:#fff}
+  .sep{width:1px;height:20px;background:#34463e;margin:0 4px}
+  @media (max-width:760px){
+    #cells{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr)}
+    #cells div{font-size:10.5px;padding:5px 7px} #cells b{font-size:12px} #cells small{display:none}
+    #ui{font-size:11.5px;gap:5px} button{padding:4px 6px}
+  }
+</style>
+<canvas id="c"></canvas>
+<div id="cells"></div>
+<div id="ui">
+  <span id="animals"></span><span class="sep"></span>
+  <span id="times"></span><span class="sep"></span>
+  <span id="walks"></span>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+// 머리는 게임과 같은 소스(animal-faces.js) — 단추 눈·솔기가 실제 얼굴 위에서 어떻게 보이는지가 시안의 핵심
+import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
+
+// =============================================================
+//  🧥 전신 스킨 시안 — 🌿 숲의 정령 3 · 🧸 플러시 인형 3
+//  결정(2026-10-01): A 덧입히기 — 동물 체형·귀·꼬리는 그대로, 재질·장식만 바꾼다.
+//                    다른 꾸미기(모자·목·등)와 같이 입는다. 정령 자취는 자국 칸이 비었을 때만.
+//  ▶ 스킨은 "만든 캐릭터 그룹을 받아 고치는 함수" 하나 — 동물 7종에 같은 함수가 먹혀야 한다.
+//  ▶ 몸·꼬리·팔은 js/game.js buildAnimalMesh 근사(sims/cosmetic-sim.html 과 같은 근사), 머리는 원본.
+//  ▶ 블룸 임계 0.85 — 넓은 면 색은 그 아래.
+// =============================================================
+
+const ANIMALS = [
+  { id: 'fox',    ico: '🦊', body: 0xf0883a, belly: 0xf9ecd8, paw: 0x8a4a24, R: 0.52, bs: [0.90, 1.08, 0.90], HR: 0.37, HY: 1.26, tail: 'bushy' },
+  { id: 'dog',    ico: '🐶', body: 0xf0913a, belly: 0xfaf3e8, paw: 0x8a6038, R: 0.56, bs: [1.03, 0.99, 1.00], HR: 0.40, HY: 1.24, tail: 'curl' },
+  { id: 'rabbit', ico: '🐰', body: 0xf3eeea, belly: 0xffffff, paw: 0xf0c0c8, R: 0.46, bs: [1.00, 0.96, 1.00], HR: 0.39, HY: 1.12, tail: 'puff' },
+  { id: 'cat',    ico: '🐱', body: 0x9fa0c2, belly: 0xf2f2f8, paw: 0xf0b0b8, R: 0.50, bs: [0.88, 1.10, 0.88], HR: 0.36, HY: 1.25, tail: 'long' },
+  { id: 'bear',   ico: '🐻', body: 0x936a44, belly: 0xd2b38a, paw: 0x6a4828, R: 0.63, bs: [1.08, 1.00, 1.06], HR: 0.44, HY: 1.34, tail: 'stub' },
+  { id: 'panda',  ico: '🐼', body: 0xf6f6f6, belly: 0xffffff, paw: 0x2a2a2a, R: 0.63, bs: [1.08, 1.00, 1.06], HR: 0.45, HY: 1.34, tail: 'stub', arm: 0x262626 },
+  { id: 'chick',  ico: '🐤', body: 0xffe05a, belly: 0xfff0a0, paw: 0xffb020, R: 0.50, bs: [1.02, 0.94, 1.02], HR: 0.35, HY: 1.06, tail: 'feather' },
+];
+
+// ── 캐릭터 근사(몸·배·꼬리·팔) + 원본 머리 ──
+function taperedTube(pts, radiusFn, segs = 32, radial = 9) {
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const P = curve.getPointAt(i / segs), N = frames.normals[i], B = frames.binormals[i], r = radiusFn(i / segs);
+    for (let j = 0; j < radial; j++) {
+      const A = (j / radial) * Math.PI * 2, ca = Math.cos(A), sa = Math.sin(A);
+      pos.push(P.x + (N.x * ca + B.x * sa) * r, P.y + (N.y * ca + B.y * sa) * r, P.z + (N.z * ca + B.z * sa) * r);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i * radial + j, b = i * radial + (j + 1) % radial, c = (i + 1) * radial + j, d = (i + 1) * radial + (j + 1) % radial;
+    idx.push(a, c, b, b, c, d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return { geo, end: curve.getPointAt(1) };
+}
+const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
+
+function buildAnimal(a) {
+  const g = new THREE.Group();
+  const R = a.R, bs = a.bs, bodyY = R * bs[1] + 0.02;
+  const body = mesh(new THREE.SphereGeometry(R, 32, 24), plushMat(a.body), 0, bodyY, 0);
+  body.scale.set(...bs); g.add(body);
+  const belly = mesh(new THREE.SphereGeometry(R * 0.62, 24, 18), plushMat(a.belly), 0, bodyY - R * 0.16, R * 0.55);
+  belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  const head = buildAnimalHead(a.id, { HR: a.HR, HY: a.HY, body: a.body, belly: a.belly });
+  head.userData.part = 'head'; g.add(head);
+
+  const tail = new THREE.Group(); tail.position.set(0, bodyY + R * 0.10, -R * bs[2] * 0.86); g.add(tail);
+  const tm = plushMat(a.body), V = (x, y, z) => new THREE.Vector3(R * x, R * y, R * z);
+  const tube = (pts, rad) => { const { geo, end } = taperedTube(pts, rad); tail.add(new THREE.Mesh(geo, tm)); return end; };
+  if (a.tail === 'bushy') {
+    const rad = u => R * (0.29 + 0.05 * Math.sin(Math.PI * u)) * (1 - 0.38 * Math.max(0, u - 0.70) / 0.30);
+    const e = tube([V(0, -0.05, 0.10), V(0, 0.06, -0.30), V(0, 0.30, -0.50), V(0, 0.60, -0.58), V(0, 0.88, -0.54)], rad);
+    tail.add(mesh(new THREE.SphereGeometry(rad(1) * 0.98, 12, 9), plushMat(a.belly), e.x, e.y, e.z));
+  } else if (a.tail === 'long') {
+    const rad = u => R * (0.17 * (1 - u * 0.62) + 0.02);
+    const e = tube([V(0, -0.05, 0.10), V(0, 0.08, -0.36), V(0, 0.45, -0.60), V(0, 0.90, -0.58), V(0, 1.22, -0.36)], rad);
+    tail.add(mesh(new THREE.SphereGeometry(rad(1), 10, 8), tm, e.x, e.y, e.z));
+  } else if (a.tail === 'curl') {
+    const rad = u => R * (0.15 * (1 - u) + 0.05);
+    const e = tube([V(0, -0.05, 0.10), V(0, 0.05, -0.22), V(0, 0.30, -0.40), V(0, 0.58, -0.36), V(0, 0.72, -0.14)], rad);
+    tail.add(mesh(new THREE.SphereGeometry(rad(1), 10, 8), tm, e.x, e.y, e.z));
+  } else if (a.tail === 'puff') {
+    tail.add(mesh(new THREE.SphereGeometry(R * 0.30, 12, 10), plushMat(a.belly), 0, R * 0.04, -R * 0.06));
+  } else if (a.tail === 'feather') {
+    [-1, 0, 1].forEach(s => { const f = mesh(new THREE.ConeGeometry(R * 0.13, R * 0.46, 4), tm, s * R * 0.14, R * 0.16, -R * 0.14); f.rotation.set(-0.9, 0, s * 0.35); tail.add(f); });
+  } else tail.add(mesh(new THREE.SphereGeometry(R * 0.17, 10, 8), tm, 0, R * 0.06, -R * 0.02));
+
+  // 팔 — 늘어뜨린 자세(시안 비교용)
+  [-1, 1].forEach(s => {
+    const piv = new THREE.Group(); piv.position.set(s * R * 0.85 * bs[0], bodyY + R * 0.54, R * 0.20); piv.rotation.z = s * 0.35; g.add(piv);
+    const ar = R * 0.23, al = R * 0.32;
+    if (a.id === 'chick') {
+      const w = mesh(new THREE.SphereGeometry(R * 0.34, 10, 8), plushMat(0xffd23a), s * R * 0.02, -R * 0.3, 0); w.scale.set(0.3, 0.98, 0.75); piv.add(w);
+    } else {
+      piv.add(mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), plushMat(a.arm ?? a.body), 0, -(al / 2 + ar * 0.4), 0));
+      piv.add(mesh(new THREE.SphereGeometry(ar * 1.06, 10, 8), plushMat(a.paw), 0, -(al + ar * 0.9), 0));
+    }
+  });
+  g.userData.k = { R, bs, bodyY, HR: a.HR, HY: a.HY };
+  return g;
+}
+
+// ── 공통 도구 ──
+//  ⚠️ Color 내부값은 선형 공간이다 — 갈색 발바닥(0x8a4a24)이 선형 합 0.34 라 "어두움"으로 잡혔다. sRGB hex 로 판정한다.
+const isDark = (m) => { const c = m.material?.color; if (!c) return false; const h = c.getHex(); return (((h >> 16) & 255) + ((h >> 8) & 255) + (h & 255)) / 255 < 0.5; };
+const radiusOf = (m) => m.geometry?.parameters?.radius ?? 0;
+//  눈동자 = 어둡고 작은 구(반지름 < 0.25, 단위 공간) · 좌우(|x| > 0.1). 코는 x=0 이라 빠진다.
+const isPupil = (m) => m.geometry?.type === 'SphereGeometry' && isDark(m) && radiusOf(m) < 0.25 && Math.abs(m.position.x) > 0.1;
+const isHighlight = (m) => m.geometry?.type === 'SphereGeometry' && !isDark(m) && radiusOf(m) < 0.09 && m.material.roughness < 0.4;
+const headOf = (g) => g.children.find(c => c.userData.part === 'head');
+function baseMeshes(g) { const out = []; g.traverse(o => { if (o.isMesh && !o.userData.skin) out.push(o); }); return out; }
+//  타원체(중심 c, 반축 ax) 표면에서 방향 d 쪽 점 · 법선
+function onEllipsoid(c, ax, d) {
+  const n = d.clone().normalize();
+  const s = 1 / Math.sqrt((n.x / ax.x) ** 2 + (n.y / ax.y) ** 2 + (n.z / ax.z) ** 2);
+  const p = c.clone().addScaledVector(n, s);
+  const nrm = p.clone().sub(c).divide(ax).divide(ax).normalize();
+  return { p, nrm };
+}
+const skinPart = (m) => { m.userData.skin = true; return m; };
+const shade = (hex, k) => new THREE.Color(hex).multiplyScalar(k).getHex();
+
+//  바늘땀 — 점열을 둘씩 짝지어 짧은 캡슐을 찍는다(간격이 생겨 점선이 된다)
+function stitches(parent, pts, color, w = 0.016) {
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9 });
+  for (let i = 0; i < pts.length - 1; i += 2) {
+    const a = pts[i], b = pts[i + 1], len = a.distanceTo(b);
+    const m = skinPart(new THREE.Mesh(new THREE.CapsuleGeometry(w, Math.max(0.001, len - 2 * w), 2, 6), mat));
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    parent.add(m);
+  }
+}
+//  타원체 위 대원(평면 법선 axis)을 따라 θ0..θ1 구간 점열
+function arcOn(c, ax, axis, t0, t1, n, lift = 1.012) {
+  const u = new THREE.Vector3(0, 1, 0), v = axis === 'x' ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = t0 + (t1 - t0) * i / n;
+    pts.push(onEllipsoid(c, ax.clone().multiplyScalar(lift), u.clone().multiplyScalar(Math.cos(t)).addScaledVector(v, Math.sin(t))).p);
+  }
+  return pts;
+}
+//  천 조각 — 표면에 붙인 납작 둥근 사각 + 테두리 바늘땀
+function fabricPatch(parent, at, nrm, w, h, color, thread, roll = 0) {
+  const g = new THREE.Group(); g.position.copy(at);
+  g.lookAt(at.clone().add(nrm)); g.rotateZ(roll);
+  const shape = new THREE.Shape(); const r = Math.min(w, h) * 0.28, x = -w / 2, y = -h / 2;
+  shape.moveTo(x + r, y); shape.lineTo(x + w - r, y); shape.quadraticCurveTo(x + w, y, x + w, y + r);
+  shape.lineTo(x + w, y + h - r); shape.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  shape.lineTo(x + r, y + h); shape.quadraticCurveTo(x, y + h, x, y + h - r);
+  shape.lineTo(x, y + r); shape.quadraticCurveTo(x, y, x + r, y);
+  const plate = skinPart(new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: w * 0.04, bevelEnabled: true, bevelSize: w * 0.02, bevelThickness: w * 0.02, bevelSegments: 2, curveSegments: 6 }),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.92 })));
+  plate.position.z = -w * 0.03; g.add(plate);
+  const pts = shape.getSpacedPoints(28).map(p => new THREE.Vector3(p.x * 0.8, p.y * 0.8, w * 0.07));
+  stitches(g, pts, thread, w * 0.022);
+  parent.add(g); return g;
+}
+//  단추 눈 — 눈동자 자리에 납작 원통 + 테 + 구멍 4개, 하이라이트는 숨긴다
+function buttonEyes(g, color = 0x3b2a22) {
+  const head = headOf(g); if (!head) return;
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.1 });
+  const hole = new THREE.MeshStandardMaterial({ color: 0xcdbca4, roughness: 0.7 });
+  const rim = new THREE.MeshStandardMaterial({ color: shade(color, 1.6), roughness: 0.35 });
+  [...head.children].forEach(m => {
+    if (!m.isMesh) return;
+    if (isHighlight(m)) { m.visible = false; return; }
+    if (!isPupil(m)) return;
+    const r = radiusOf(m) * 1.15, n = m.position.clone().normalize();
+    const b = new THREE.Group(); b.position.copy(m.position).addScaledVector(n, r * 0.15);
+    b.lookAt(b.position.clone().add(n));
+    const disc = skinPart(new THREE.Mesh(new THREE.CylinderGeometry(r, r, r * 0.35, 20), mat)); disc.rotation.x = Math.PI / 2; b.add(disc);
+    const ring = skinPart(new THREE.Mesh(new THREE.TorusGeometry(r * 0.9, r * 0.1, 6, 20), rim)); ring.position.z = r * 0.18; b.add(ring);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
+      const h = skinPart(new THREE.Mesh(new THREE.SphereGeometry(r * 0.12, 8, 6), hole)); h.position.set(sx * r * 0.28, sy * r * 0.28, r * 0.17); h.scale.z = 0.4; b.add(h);
+    });
+    head.add(b); m.visible = false;
+  });
+}
+
+// ── 🌿 정령 ──
+function spiritBody(g, { color, emissive, ei, opacity }) {
+  const mat = new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: ei, roughness: 0.5, transparent: opacity < 1, opacity });
+  baseMeshes(g).forEach(m => { if (!isDark(m) && !isHighlight(m)) m.material = mat; });
+  return mat;
+}
+//  빛 테두리 — 큰 덩어리(몸·머리)에 뒤집힌 껍질을 한 겹 더 씌워 가장자리가 번지게
+function rimShell(g, color, opacity, grow = 1.07) {
+  const mat = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending });
+  baseMeshes(g).forEach(m => {
+    if (radiusOf(m) < 0.45 || m.geometry.type !== 'SphereGeometry') return;
+    const s = skinPart(new THREE.Mesh(m.geometry, mat));
+    s.position.copy(m.position); s.scale.copy(m.scale).multiplyScalar(grow); s.rotation.copy(m.rotation);
+    m.parent.add(s);
+  });
+}
+//  머리 위 새싹(머리 단위 공간)
+function sprout(g, color, glow) {
+  const head = headOf(g); if (!head) return;
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: glow, emissiveIntensity: 0.6, roughness: 0.6 });
+  const s = new THREE.Group(); s.position.set(0, 0.96, 0.05);
+  s.add(skinPart(mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.32, 6), mat, 0, 0.14, 0)));
+  [-1, 1].forEach(k => { const l = skinPart(mesh(new THREE.SphereGeometry(0.2, 12, 8), mat, k * 0.17, 0.33, 0)); l.scale.set(1, 0.32, 0.6); l.rotation.z = k * 0.45; s.add(l); });
+  head.add(s);
+}
+//  잎 조각 — 몸 표면에 작은 잎 몇 장
+function leafPatches(g, color) {
+  const { R, bs, bodyY } = g.userData.k;
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.75 });
+  const c = new THREE.Vector3(0, bodyY, 0), ax = new THREE.Vector3(R * bs[0], R * bs[1], R * bs[2]);
+  [[0.9, 0.5, -0.4, 0.6], [-0.85, 0.2, -0.5, -0.5], [0.4, -0.2, -1, 1.2], [-0.5, 0.65, 0.3, -1.0], [0.95, -0.35, 0.2, 0.3], [-0.2, 0.3, -1, 2.2]].forEach(([x, y, z, roll]) => {
+    const { p, nrm } = onEllipsoid(c, ax, new THREE.Vector3(x, y, z));
+    const l = skinPart(new THREE.Mesh(new THREE.SphereGeometry(R * 0.2, 12, 8), mat));
+    l.position.copy(p); l.lookAt(p.clone().add(nrm)); l.rotateZ(roll); l.scale.set(0.55, 1, 0.12);
+    g.add(l);
+  });
+}
+//  몸 안에 떠다니는 빛 알갱이(Points 1개 = 드로우콜 +1)
+function motes(g, color, n = 26) {
+  const { R, bs, bodyY, HR, HY } = g.userData.k;
+  const pos = new Float32Array(n * 3), seed = [];
+  for (let i = 0; i < n; i++) {
+    const inHead = i % 3 === 0;
+    seed.push({ cy: inHead ? HY : bodyY, rr: inHead ? HR * 0.7 : R * 0.75, a: Math.random() * 6.28, b: Math.random() * 6.28, sp: 0.3 + Math.random() * 0.5 });
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
+  const pts = skinPart(new THREE.Points(geo, new THREE.PointsMaterial({ color, size: 0.09, map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, blending: THREE.AdditiveBlending })));
+  pts.renderOrder = 5; pts.frustumCulled = false; g.add(pts);
+  pts.userData.tick = (t) => {
+    seed.forEach((s, i) => {
+      const a = s.a + t * s.sp, b = s.b + t * s.sp * 0.7;
+      pos[i * 3] = Math.cos(a) * Math.sin(b) * s.rr * bs[0]; pos[i * 3 + 1] = s.cy + Math.cos(b) * s.rr * 0.9; pos[i * 3 + 2] = Math.sin(a) * Math.sin(b) * s.rr * bs[2];
+    });
+    geo.attributes.position.needsUpdate = true;
+  };
+}
+
+// ── 🧸 인형 ──
+function knitTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, 128, 128); x.lineCap = 'round';
+  for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++) {
+    const cx = col * 16 + 8, cy = row * 16 + 3;
+    x.lineWidth = 5; x.strokeStyle = 'rgba(0,0,0,.22)';
+    x.beginPath(); x.moveTo(cx - 6, cy); x.lineTo(cx, cy + 10); x.lineTo(cx + 6, cy); x.stroke();
+    x.lineWidth = 2; x.strokeStyle = 'rgba(255,255,255,.6)';
+    x.beginPath(); x.moveTo(cx - 5, cy + 1); x.lineTo(cx, cy + 8); x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(7, 5); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const KNIT = knitTexture();
+function knitAll(g) {
+  const cache = new Map();
+  baseMeshes(g).forEach(m => {
+    if (isDark(m) || isHighlight(m) || !m.material?.color || !m.geometry.attributes.uv) return;
+    const hex = m.material.color.getHex();
+    if (!cache.has(hex)) cache.set(hex, new THREE.MeshStandardMaterial({ color: hex, map: KNIT, roughness: 0.95 }));
+    m.material = cache.get(hex);
+  });
+}
+//  옆구리 솔기 + 머리 정수리 솔기
+function seams(g, thread) {
+  const { R, bs, bodyY } = g.userData.k;
+  const c = new THREE.Vector3(0, bodyY, 0), ax = new THREE.Vector3(R * bs[0], R * bs[1], R * bs[2]);
+  stitches(g, arcOn(c, ax, 'z', 0.4, 2.5, 21), thread);
+  stitches(g, arcOn(c, ax, 'z', -2.5, -0.4, 21), thread);
+  const head = headOf(g);
+  if (head) stitches(head, arcOn(new THREE.Vector3(), new THREE.Vector3(1.04, 0.97, 1.0), 'x', -0.5, 2.4, 25), thread, 0.04);
+}
+function bellyPatch(g, color, thread) {
+  const { R, bodyY } = g.userData.k;
+  const at = new THREE.Vector3(0, bodyY - R * 0.16, R * 0.55 + R * 0.62 * 0.6 + 0.004);
+  fabricPatch(g, at, new THREE.Vector3(0, 0, 1), R * 0.62, R * 0.52, color, thread, 0.08);
+}
+function laundryTag(g) {
+  const { R, bs, bodyY } = g.userData.k;
+  const c = new THREE.Vector3(0, bodyY, 0), ax = new THREE.Vector3(R * bs[0], R * bs[1], R * bs[2]);
+  const { p, nrm } = onEllipsoid(c, ax, new THREE.Vector3(-0.75, -0.55, -0.35));
+  const t = skinPart(new THREE.Mesh(new THREE.BoxGeometry(R * 0.26, R * 0.34, 0.012), new THREE.MeshStandardMaterial({ color: 0xfaf6ea, roughness: 0.8 })));
+  t.position.copy(p).addScaledVector(nrm, 0.02); t.lookAt(t.position.clone().add(nrm)); t.rotateZ(0.25);
+  const heart = skinPart(new THREE.Mesh(new THREE.CircleGeometry(R * 0.05, 14), new THREE.MeshStandardMaterial({ color: 0xe0707a })));
+  heart.position.z = 0.008; t.add(heart);
+  g.add(t);
+}
+const PATCH_COLORS = [0xf2c6c2, 0xbfd8e8, 0xf3e3a6, 0xcfe3bf, 0xe2cfe8];
+function patchwork(g, a, thread) {
+  const { R, bs, bodyY } = g.userData.k;
+  const c = new THREE.Vector3(0, bodyY, 0), ax = new THREE.Vector3(R * bs[0], R * bs[1], R * bs[2]);
+  [[0.9, 0.35, 0.15, 0, 0.2], [-0.85, -0.2, 0.25, 1, -0.3], [0.3, 0.5, -1, 2, 0.5], [-0.4, -0.3, -0.9, 3, -0.2]].forEach(([x, y, z, ci, roll]) => {
+    const { p, nrm } = onEllipsoid(c, ax, new THREE.Vector3(x, y, z));
+    fabricPatch(g, p, nrm, R * 0.42, R * 0.36, PATCH_COLORS[ci], thread, roll);
+  });
+  const head = headOf(g);
+  if (head) {   // 머리 옆 한 조각(단위 공간 → 그룹 스케일 HR 이 키워 준다)
+    const { p, nrm } = onEllipsoid(new THREE.Vector3(), new THREE.Vector3(1.04, 0.97, 1), new THREE.Vector3(-0.75, 0.45, -0.35));
+    fabricPatch(head, p, nrm, 0.42, 0.36, PATCH_COLORS[4], thread, -0.3);
+  }
+}
+
+// ── 시안 6개 ──
+const SKINS = [
+  { row: '🌿 숲의 정령 ₩10,000', name: 'S1 유리 정령', note: '반투명 민트 몸 + 빛 테두리. 얼굴은 그대로라 무슨 동물인지 읽힌다.',
+    apply(g) { spiritBody(g, { color: 0x8fe0a8, emissive: 0x2f9a5a, ei: 0.75, opacity: 0.72 }); rimShell(g, 0x7ff0a0, 0.28); } },
+  { row: '🌿 숲의 정령', name: 'S2 이끼 정령', note: '불투명 이끼색 + 잎 조각 + 머리 새싹. 낮에도 또렷하다.',
+    apply(g) { spiritBody(g, { color: 0x79b56e, emissive: 0x1d4a26, ei: 0.5, opacity: 1 }); leafPatches(g, 0xa9d878); sprout(g, 0x9be07a, 0x3f9a40); } },
+  { row: '🌿 숲의 정령', name: 'S3 반딧불 정령', note: '청록 반투명 + 몸속을 떠도는 빛 알갱이 + 테두리 + 새싹. 밤에 가장 화려.',
+    apply(g) { spiritBody(g, { color: 0x5fc4a8, emissive: 0x1f7a68, ei: 0.8, opacity: 0.6 }); rimShell(g, 0x9af0c8, 0.22, 1.06); motes(g, 0xe6ff9a); sprout(g, 0x9be07a, 0x3f9a40); } },
+  { row: '🧸 플러시 인형 ₩9,000', name: 'P1 솔기·단추 눈', note: '원래 털색 그대로 + 옆구리·정수리 솔기 + 단추 눈 + 배 천 패치.',
+    plush: true, apply(g, a) { const th = shade(a.body, 0.55); seams(g, th); buttonEyes(g); bellyPatch(g, 0xf6e6c8, th); } },
+  { row: '🧸 플러시 인형', name: 'P2 패치워크', note: '파스텔 천 조각을 덧대 꿰맨 인형 + 솔기 + 단추 눈.',
+    plush: true, apply(g, a) { const th = shade(a.body, 0.5); patchwork(g, a, th); seams(g, th); buttonEyes(g); } },
+  { row: '🧸 플러시 인형', name: 'P3 니트 인형', note: '온몸 뜨개 무늬 + 단추 눈 + 옆구리 세탁 태그.',
+    plush: true, apply(g) { knitAll(g); buttonEyes(g); laundryTag(g); } },
+];
+
+// ── 장면 6칸 ──
+const q = new URLSearchParams(location.search);
+let animal = ANIMALS.find(a => a.id === q.get('a')) || ANIMALS[0], night = q.has('night'), walk = !q.has('still');
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setScissorTest(true);
+
+const cells = SKINS.map(s => {
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.05); scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xfff2d8, 1.15); key.position.set(2.5, 4, 3); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xbfe8ff, 0.45); rim.position.set(-3, 2, -2); scene.add(rim);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(1.5, 40), new THREE.MeshStandardMaterial({ color: 0x9fc08a, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; scene.add(ground);
+  const pivot = new THREE.Group(); scene.add(pivot);
+  return { s, scene, cam, hemi, key, rim, ground, pivot, char: null };
+});
+
+function rebuild() {
+  cells.forEach(C => {
+    if (C.char) C.pivot.remove(C.char);
+    C.char = buildAnimal(animal); C.s.apply(C.char, animal); C.pivot.add(C.char);
+  });
+}
+function lights() {
+  document.body.classList.toggle('night', night);
+  cells.forEach(C => {
+    C.scene.background = new THREE.Color(night ? 0x0e1624 : 0xdfeee8);
+    C.hemi.intensity = night ? 0.35 : 1.05; C.key.intensity = night ? 0.3 : 1.15; C.rim.intensity = night ? 0.25 : 0.45;
+    C.ground.material.color.setHex(night ? 0x2a4430 : 0x9fc08a);
+  });
+}
+
+// ── 라벨·버튼 ──
+document.getElementById('cells').innerHTML = SKINS.map(s => `<div><span class="row">${s.row}</span><b>${s.name}</b><small>${s.note}</small></div>`).join('');
+function btns(el, items, get, set) {
+  const draw = () => { el.innerHTML = ''; items.forEach(([v, label]) => {
+    const b = document.createElement('button'); b.textContent = label; if (get() === v) b.className = 'on';
+    b.onclick = () => { set(v); draw(); }; el.append(b, ' ');
+  }); };
+  draw();
+}
+btns(document.getElementById('animals'), ANIMALS.map(a => [a, a.ico]), () => animal, v => { animal = v; rebuild(); });
+btns(document.getElementById('times'), [[false, '☀️ 낮'], [true, '🌙 밤']], () => night, v => { night = v; lights(); });
+btns(document.getElementById('walks'), [[true, '🚶 걷기(인형 말랑)'], [false, '⏸ 서 있기']], () => walk, v => { walk = v; });
+rebuild(); lights();
+
+// ── 렌더 ──
+const fixedYaw = q.has('yaw') ? +q.get('yaw') : null;
+function frame(now) {
+  const t = now / 1000;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  const ui = document.getElementById('ui').offsetHeight;
+  document.documentElement.style.setProperty('--ui', ui + 'px');
+  const [gx, gy] = w < 760 ? [2, 3] : [3, 2];
+  const cw = w / gx, ch = (h - ui) / gy;
+  cells.forEach((C, i) => {
+    C.pivot.rotation.y = fixedYaw ?? (0.6 + Math.sin(t * 0.45) * 0.9);
+    //  🧸 걸을 때 말랑 — 위아래로 살짝 눌렸다 펴짐(부피 보존: xz 는 반대로)
+    const bob = walk ? Math.abs(Math.sin(t * 7)) : 1;
+    if (C.char) {
+      const sq = C.s.plush && walk ? 1 - 0.08 * (1 - bob) : 1;
+      C.char.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+      C.char.position.y = walk ? bob * 0.05 : 0;
+      C.char.traverse(o => o.userData.tick && o.userData.tick(t));
+    }
+    const cx = (i % gx) * cw, cy = ui + (gy - 1 - Math.floor(i / gx)) * ch;
+    renderer.setViewport(cx, cy, cw, ch); renderer.setScissor(cx, cy, cw, ch);
+    C.cam.aspect = cw / ch;
+    const fit = Math.max(1, 0.85 / C.cam.aspect);
+    C.cam.position.set(0, 1.25, 5.6 * fit); C.cam.lookAt(0, 0.95, 0); C.cam.updateProjectionMatrix();
+    renderer.render(C.scene, C.cam);
+  });
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
