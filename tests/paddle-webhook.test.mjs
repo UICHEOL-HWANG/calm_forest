@@ -39,12 +39,19 @@ test('JSON 이 아니면 400', async () => {
   assert.equal(r.status, 400);
 });
 
-test('모르는 price_id 만 있으면 200 + skipped, DB 는 부르지 않는다', async () => {
+test('모르는 price_id 만 있으면 200 + skipped, 구매 원장은 부르지 않는다(퍼널 기록만 남는다)', async () => {
   const f = fakeFetch();
   const r = await onRequestPost({ request: await req(txn), env, fetchImpl: f, now: NOW });
   assert.equal(r.status, 200);
   assert.deepEqual((await r.json()).skipped, ['pri_unknown']);
-  assert.equal(f.calls.length, 0);
+  assert.equal(f.calls.filter(c => c.url.includes('/purchases')).length, 0);
+  assert.equal(f.calls.filter(c => c.url.includes('/checkout_events')).length, 1);   // 📊 2026-10-02 결제 퍼널
+});
+
+test('📊 퍼널 기록이 실패해도(표 없음 404) 200 — Paddle 재시도를 부르지 않는다', async () => {
+  const f = fakeFetch(404);
+  const r = await onRequestPost({ request: await req(txn), env, fetchImpl: f, now: NOW });
+  assert.equal(r.status, 200);
 });
 
 test('알려진 price_id → purchases POST(ignore-duplicates), 200 + inserted:1', async () => {
