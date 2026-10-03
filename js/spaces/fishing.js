@@ -14,12 +14,14 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackChop, trackEvent } from '../analytics.js';
 import { FISH_KINDS } from '../data/catalog.js';
-import { DOCK_POND, DOCK_POND_R, LAKE_R } from '../data/places.js';
+import { DOCK_POND, DOCK_POND_R, LAKE_R, SEA_GATE } from '../data/places.js';
 import { CHOP_WOOD, TOOLS, TREE_RESPAWN_SEC } from '../data/tools.js';
 import { rollKind } from '../dex-gates.js';
 import { fallDirAway } from '../tree-fall.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
+
+const SEA_GATE_HINT_R = 8;   // 바다터 입구 안내 반경 — 호수 낚시 범위(LAKE_R+2.8)와는 12.8 떨어져 안 겹친다
 
 export function tryFish() {
   if (fishState === 'bite') { catchFish(); return; }        // 지금! 낚아채기
@@ -29,6 +31,8 @@ export function tryFish() {
   if (distLake > LAKE_R + 2.8) {
     // 🛶 나루터 연못은 호수와 생김새가 같아 낚시터로 오해한다(베타) — "여긴 아니다"를 분명히
     if (dist2D(DOCK_POND, player.position) < DOCK_POND_R + 3) ui.toast?.('🛶 나루터 연못에선 낚시가 안 돼요 — 🎣 낚시는 마을 호수에서', 2600);
+    // 🌊 바다터 입구 바깥에서 던지면 "호수에서만"이 "바다는 막혔다"로 읽혔다(페르소나 p11 4판 이탈, 2026-10-04)
+    else if (dist2D(SEA_GATE, player.position) < SEA_GATE_HINT_R) ui.toast?.('🌊 바다 낚시는 바다터에 들어가서 해야 해요', 2600);
     else ui.toast?.('🎣 낚시는 마을 호수 물가에서만 할 수 있어요', 2200);
     return;
   }
