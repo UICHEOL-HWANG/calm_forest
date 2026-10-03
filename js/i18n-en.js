@@ -1568,6 +1568,11 @@ export const EN = {
   '연습 모드가 있어요': 'There is a practice mode',
   '정령 1마리로 연습할 수 있어요. 켜둔 등불은 그대로 남아요.': 'You can practice with a single spirit. Your lit lanterns stay lit.',
   '다음에요': 'Maybe later',
+  // 🌳 정화 실패 → 다시 도전(2026-10-03)
+  '🌳 다시 도전': '🌳 Try again',
+  '수호목이 지쳤어요': 'The Guardian Tree is worn out',
+  '켜둔 등불은 그대로 남아요. 바로 다시 도전해 볼까요?': 'Your lit lanterns stay lit. Want to try again right away?',
+  '켜둔 등불은 그대로 남아요. 바로 다시 도전하거나, 정령 1마리로 연습해 볼 수도 있어요.': 'Your lit lanterns stay lit. Try again right away, or practice with a single spirit.',
   '💨 놀랐어요!': '💨 Startled!',
   '♪ 리듬에 맞춰 탭!': '♪ Tap to the rhythm!',
   '♪ {0} 달래기': '♪ Soothe {0}',
