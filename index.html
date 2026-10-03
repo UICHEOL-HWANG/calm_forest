@@ -2034,7 +2034,7 @@
     <button id="craft-claim" class="cf-btn go"></button>
     <div class="cf-sect" id="craft-ask">무엇을 구울까요</div>
     <div id="craft-recipes" style="display:flex;flex-direction:column;gap:8px"></div>
-    <div class="cf-hint" id="craft-hint">걸어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요</div>
+    <div class="cf-hint" id="craft-hint">넣어둔 것은 <b>다음 날</b> 찾아가면 다 구워져 있어요</div>
     <div class="dm-actions"><button id="craft-close">닫기</button></div>
   </div>
 
@@ -2047,7 +2047,7 @@
       <div id="cmg-after" style="display:none">
         <div class="cmg-result" id="cmg-grade"></div>
         <div class="cmg-yield" id="cmg-yield"></div>
-        <button class="cf-btn go cmg-press" id="cmg-ok">걸어두기</button>
+        <button class="cf-btn go cmg-press" id="cmg-ok">넣어두기</button>
       </div>
     </div>
   </div>
@@ -4656,7 +4656,7 @@
         row.innerHTML = `<span class="ico">${r.ico}</span>` +
           `<span class="txt"><span class="nm">${r.name}</span><span class="cost">${cost} → 2~5개</span></span>`;
         const b = document.createElement('button');
-        b.className = 'cf-btn'; b.textContent = '걸기';
+        b.className = 'cf-btn'; b.textContent = '넣기';
         b.disabled = r.lack.length > 0 || full;
         b.onclick = () => craftMinigame(r.id, (grade) => { const nd = Input.craftSet(r.id, grade); if (nd) renderCraft(nd); });
         row.appendChild(b); list.appendChild(row);
