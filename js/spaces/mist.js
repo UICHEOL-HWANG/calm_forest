@@ -290,6 +290,13 @@ export function startPurify() {
   trackEvent('mist_purify_start', { weather: WEATHER, lit: mistLanterns.filter(l => l.lit).length });   // [GA4]
 }
 
+// 🌳 실패 모달의 [다시 도전] — 그새 숲을 떠났거나 이미 다시 시작했으면 무시
+export function retryPurify() {
+  if (!atMist || mist.active) return;
+  trackEvent('mist_retry', { lit: mistLanterns.filter(l => l.lit).length });   // [GA4] 재도전 퍼널(이어서 mist_purify_start)
+  startPurify();
+}
+
 export function setMistStep(step) { mist.step = step; ui.setMistGuide?.(step, MIST_PRACTICE_STEPS, () => startPurify()); }
 
 export function practiceAdvance(to) {
@@ -382,15 +389,19 @@ export function mistEnd(result) {
     ui.showHintModal?.({ ico: '🌤️', title: '숲이 맑아졌어요!', body: `정령들이 하늘로 돌아가고 안개가 걷혔어요. 보너스 ✨${PURIFY_GLOW} — 모은 정령빛은 상점 야외 장식 ‘✨정령 등불’에 쓸 수 있어요. 내일 다시 안개가 차면 정령들이 돌아와요.` });
     awardBadge('purifier'); syncBadges();
   } else if (result === 'faded') {
-    ui.toast?.('🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600);
     Sound.build();
-    // 🎓 첫 실패 후 연습 미경험이면 한 번 제안(토스트가 읽힌 뒤). 숲을 떠났거나 다시 시작했으면 안 띄운다
-    if (!st.practiced) setTimeout(() => {
-      if (!atMist || mist.active || ui.anyModalOpen?.()) return;
-      trackEvent('mist_practice_offer');   // [GA4]
-      ui.showHintModal?.({ ico: '🌫️', title: '연습 모드가 있어요', body: '정령 1마리로 연습할 수 있어요. 켜둔 등불은 그대로 남아요.',
-        ok: { label: '🎓 연습해 보기', onClick: startPractice }, alt: { label: '다음에요' } });
-    }, 1200);
+    // 🌳 실패하면 바로 [다시 도전] — 예전엔 토스트만 뜨고 수호목 앞까지 걸어가야 재시작이 보여서
+    //    "재시작 버튼이 안 뜬다"며 이탈했다(페르소나 p12 3명 중 2명, 2026-10-03). 연습 미경험이면 보조 버튼이 🎓 연습.
+    setTimeout(() => {
+      if (!atMist || mist.active) return;
+      if (ui.anyModalOpen?.()) { ui.toast?.('🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600); return; }
+      if (!st.practiced) trackEvent('mist_practice_offer');   // [GA4]
+      ui.showHintModal?.({ ico: '🌫️', title: '수호목이 지쳤어요',
+        body: st.practiced ? '켜둔 등불은 그대로 남아요. 바로 다시 도전해 볼까요?'
+                           : '켜둔 등불은 그대로 남아요. 바로 다시 도전하거나, 정령 1마리로 연습해 볼 수도 있어요.',
+        ok: { label: '🌳 다시 도전', onClick: retryPurify },
+        alt: st.practiced ? { label: '다음에요' } : { label: '🎓 연습해 보기', onClick: startPractice } });
+    }, 900);
   }
   clearMistSpirits();
   mist.treeLight = TREE_LIGHT_MAX;                     // 다음 시도를 위해 회복(등불은 유지 — 재도전이 쉬워짐)
