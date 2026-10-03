@@ -343,8 +343,8 @@ export function updateDoorInteract() {
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
   else if (nearBench) firstHintBanner('bench', '🔧', '작업대', '재료로 도구 강화·장식·선물·🗿조각 만들기');
-  else if (nearStation?.id === 'kiln') firstHintBanner('kiln', '🔥', '화덕', '재료를 걸어두면 다음 날 구워져 있어요');
-  else if (nearStation?.id === 'vat') firstHintBanner('vat', '🫙', '발효통', '🍇포도를 밟아 걸어두면 다음 날 🍷포도즙이 돼요');
+  else if (nearStation?.id === 'kiln') firstHintBanner('kiln', '🔥', '화덕', '재료를 넣어두면 다음 날 구워져 있어요');
+  else if (nearStation?.id === 'vat') firstHintBanner('vat', '🫙', '발효통', '🍇포도를 밟아 넣어두면 다음 날 🍷포도즙이 돼요');
   else if (nearShop) firstHintBanner('shop', '🛒', '상점', '수확물을 팔고 씨앗을 사는 곳');
   else if (nd === 'farm') firstHintBanner('farmGate', '🌾', '내 텃밭 입구', '마음껏 농사짓는 나만의 넓은 밭');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)

@@ -337,10 +337,14 @@ export function applyStationCamera(rec) {
 //   마을 한복판이라 나무·장식이 화덕을 가린다(요리·조각 무대엔 없던 문제).
 //   안개로는 못 지운다 — 가리는 것이 화덕보다 **카메라 쪽**에 있어 더 가깝기 때문이다.
 export let kilnHidden = [];
+// 카메라 너머까지 숨긴다 — 줄기가 카메라 살짝 뒤에 있어도 갓(반경 ~1.5)이 렌즈를 덮는다
+const OCCLUDER_MARGIN = 2.0;
 
 export function hideKilnOccluders(rec, on) {
   if (!on) { for (const o of kilnHidden) o.visible = true; kilnHidden = []; return; }
-  const camZ = rec.z + 5.0;                      // 카메라 거리(3.8)보다 넉넉히
+  // ⚠️ 예전엔 5.0 고정 — 데스크톱(3.8)엔 넉넉했지만 폰 세로는 카메라가 3.8×1.75=6.65 까지 물러나
+  //    그 사이에 선 나무(접속마다 무작위)가 화면을 초록으로 덮었다(토스 화덕 불 조절, 2026-10-04).
+  const camZ = rec.z + stationCamDist + OCCLUDER_MARGIN;
   const between = (p) => p.z > rec.z + 0.7 && p.z < camZ && Math.abs(p.x - rec.x) < 4.5;   // 3.2 로는 화면 가장자리 나무가 남았다
   for (const t of trees) if (t.visible && between(t.position)) { t.visible = false; kilnHidden.push(t); }
   for (const m of outdoorMeshes) {
@@ -390,9 +394,9 @@ export function craftFocus(on) {
   if (on && nearStation) {
     $w.mgView = { type: 'station' };
     player.visible = false;      // 마을에 선 시설이라 캐릭터가 카메라와 시설 사이를 가린다(요리 무대엔 없던 문제)
+    applyStationCamera(nearStation);              // 먼저 — 화면 비율로 정해지는 카메라 거리(stationCamDist)를 아래가 쓴다
     hideKilnOccluders(nearStation, true);
     stationSign(nearStation, false);
-    applyStationCamera(nearStation);
   } else if (!on) {
     const k = nearStation && kilnFireOf(nearStation);
     if (k) k.fire.scale.set(1, 1, 1);        // 미니게임에서 키운 불을 되돌린다
