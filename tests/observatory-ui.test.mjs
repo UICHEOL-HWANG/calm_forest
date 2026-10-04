@@ -14,7 +14,7 @@ function requireUi() {
 
 test('렌즈 뷰는 리듬 로직, COPY, i18n, 입력 잠금을 연결한다', () => {
   requireUi();
-  assert.match(UI, /import \{ buildChart, judgeTap, summarize, rewardFor \} from '\.\/rhythm\.js'/);
+  assert.match(UI, /import \{ buildChart, judgeTap, summarize \} from '\.\/rhythm\.js'/);
   assert.match(UI, /import \{ COPY \} from '\.\/copy\.js'/);
   assert.match(UI, /import \{ t \} from '\.\.\/i18n\.js'/);
   assert.match(UI, /import \{ Input, trackDiffAbandon \} from '\.\.\/game\.js'/);
@@ -54,8 +54,9 @@ test('렌즈 뷰는 sim v=d 시각 요소와 성능 장치를 가진다', () => 
 
 test('천문대 COPY 는 plan §1 문구를 모으고 canvas 문구는 t(COPY.*) 로 쓴다', () => {
   requireUi();
-  for (const key of ['title', 'subtitle', 'tapGuide', 'perfect', 'good', 'miss', 'complete', 'close', 'combo']) {
+  for (const key of ['title', 'subtitle', 'tapGuide', 'perfect', 'good', 'miss', 'complete', 'fail', 'close', 'combo']) {
     assert.match(COPY, new RegExp(`${key}:`), `COPY.${key} 누락`);
+    if (key === 'complete' || key === 'fail') continue;   // 결과 제목은 성공/실패 분기 — observatory-overlay.test.mjs 가 동작으로 검사
     assert.match(UI, new RegExp(`t\\(COPY\\.${key}\\)`), `ui.js 에서 COPY.${key} 를 t() 로 감싸야 한다`);
   }
 });

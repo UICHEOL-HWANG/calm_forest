@@ -6,6 +6,7 @@ const GOLD = '#f3d27a';
 const GOLD2 = '#d9b45a';
 const NAVY = '#1a2552';
 const INK = '#e9ecff';
+const MISS_DOT = '#6b7088';   // 놓친 노트 — 회색(이은 금빛·남은 흐린 점과 구분)
 const FAMILY = '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
 
 
@@ -321,7 +322,7 @@ export function drawHud(state, L) {
     const y = ty + fs * 2 + 22;
     g.beginPath();
     g.arc(x, y, 5, 0, Math.PI * 2);
-    g.fillStyle = i < done ? GOLD : (i === done ? 'rgba(243,210,122,.45)' : 'rgba(233,236,255,.18)');
+    g.fillStyle = i < done ? (state.judges[i] === 'miss' ? MISS_DOT : GOLD) : (i === done ? 'rgba(243,210,122,.45)' : 'rgba(233,236,255,.18)');
     g.fill();
   }
   g.textAlign = 'right';

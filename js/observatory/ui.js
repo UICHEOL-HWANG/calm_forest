@@ -4,7 +4,7 @@
 //  sims/observatory-eyepiece-sim.html?v=d 의 혜성+링 시안을 실제
 //  미니게임 오버레이로 옮긴다. 보상·저장은 다음 단계에서 game.js 와 묶는다.
 // =============================================================
-import { buildChart, judgeTap, summarize, rewardFor } from './rhythm.js';
+import { buildChart, judgeTap, summarize } from './rhythm.js';
 import { COPY } from './copy.js';
 import { t } from '../i18n.js';
 import { Input, trackDiffAbandon } from '../game.js';
@@ -18,15 +18,16 @@ function showResult(state) {
   if (state.resultShown) return;
   state.resultShown = true;
   const summary = summarize(state.judges);
-  const reward = rewardFor(summary, false).coins || 0;
-  state.onResult?.(summary);
+  // onResult pays out (game side) and reports what was actually given — never show a reward that wasn't paid.
+  const coins = state.onResult?.(summary)?.coins || 0;
+  const reward = coins > 0 ? `<br>${t(COPY.reward)} +${coins}` : '';
 
   const card = document.createElement('div');
   card.className = 'observatory-card';
   card.innerHTML = `
-    <h2>${t(COPY.complete)}</h2>
+    <h2>${t(summary.success ? COPY.complete : COPY.fail)}</h2>
     <div class="score">${summary.score}</div>
-    <p>${t(COPY.result)} · ${t(COPY.perfect)} ${summary.perfect} · ${t(COPY.good)} ${summary.good} · ${t(COPY.miss)} ${summary.miss}<br>${t(COPY.reward)} +${reward}</p>
+    <p>${t(COPY.result)} · ${t(COPY.perfect)} ${summary.perfect} · ${t(COPY.good)} ${summary.good} · ${t(COPY.miss)} ${summary.miss}${reward}</p>
     <button type="button">${t(COPY.close)}</button>
   `;
   card.querySelector('button').addEventListener('click', () => closeStarView('complete'), { signal: state.controller.signal });
