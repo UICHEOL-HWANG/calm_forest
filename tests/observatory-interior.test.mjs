@@ -44,3 +44,42 @@ test('look pose pins position and direction each frame and restores tilt', () =>
   assert.equal(playerAnchor.rotation.x, 0.12);
   assert.equal(classes.has('menu-open'), false);
 });
+
+function spaceContext(extra = {}) {
+  const player = new THREE.Object3D(), playerAnchor = new THREE.Object3D();
+  const classes = new Set();
+  const c = vm.createContext({ THREE, player, playerAnchor, $w: {},
+    OBSERVATORY: new THREE.Vector3(0, 0, 540), OBSERVATORY_R: 5.4, Input: { setAnalog() {} },
+    ui: {}, Sound: { blip() {} }, trackEvent() {},
+    document: { body: { classList: { contains: x => classes.has(x), add: x => classes.add(x), remove: x => classes.delete(x) } } },
+    ...extra,
+  });
+  vm.runInContext(readFileSync(new URL('../js/spaces/observatory.js', import.meta.url), 'utf8')
+    .replace(/import[\s\S]*?from ['"][^'"]+['"];\n/g, '').replace(/^export /gm, ''), c);
+  return { c, player, playerAnchor, classes };
+}
+
+test('play camera frames the room centre, not just the player at the door', () => {
+  const { c } = spaceContext();
+  const centre = new THREE.Vector3(0, 0, 540);
+  // entrance spot (south, z+3.4) and the far edges of the walkable circle
+  for (const [x, z] of [[0, 543.4], [0, 535.35], [4.65, 540], [-4.65, 540]]) {
+    const focus = c.observatoryCamFocus(new THREE.Vector3(x, 0, z), new THREE.Vector3());
+    assert.ok(Math.hypot(focus.x - centre.x, focus.z - centre.z) <= 2, `focus for ${x},${z} drifts ${focus.toArray()}`);
+  }
+  // still follows the player a little so walking feels alive
+  const a = c.observatoryCamFocus(new THREE.Vector3(0, 0, 543), new THREE.Vector3());
+  const b = c.observatoryCamFocus(new THREE.Vector3(0, 0, 537), new THREE.Vector3());
+  assert.ok(a.z - b.z > 1);
+});
+
+test('floor reads lighter than the navy wall', () => {
+  const file = new URL('../js/observatory/interior.js', import.meta.url);
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const c = vm.createContext({ THREE });
+  vm.runInContext(game.slice(game.indexOf('function mergeGeos('), game.indexOf('// 테이퍼 튜브'))
+    + readFileSync(file, 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, ''), c);
+  const hall = c.buildObservatoryInterior(c.mergeGeos, 5.4);
+  const hsl = name => hall.getObjectByName(name).material.color.getHSL({}, THREE.SRGBColorSpace);
+  assert.ok(hsl('floor').l >= hsl('wall').l + 0.1, `floor ${hsl('floor').l.toFixed(2)} vs wall ${hsl('wall').l.toFixed(2)}`);
+});

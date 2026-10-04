@@ -164,7 +164,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import {
-  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, spawnObservatoryGate, startObservatoryLook, updateObservatory,
+  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, observatoryCamFocus, spawnObservatoryGate, startObservatoryLook, updateObservatory,
 } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import {
   INT_HALF, STAIR_PROMPT_R, buildDecorGhost, buildInterior, commitDecor, curFloorDef, curHalf, decorClampX,
@@ -6089,10 +6089,13 @@ function updateCameraFade() {
   }
 }
 
+const _obsFocus = new THREE.Vector3();
+const camFocus = () => atObservatory ? observatoryCamFocus(player.position, _obsFocus) : player.position;   // 🔭 작은 원형 홀 — 방 중심 쪽으로 당겨 잡는다
 function snapCamera() {
-  _camTarget.copy(player.position).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : camOffset);   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
+  const f = camFocus();
+  _camTarget.copy(f).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : camOffset);   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
-  _camLook.set(player.position.x, player.position.y + 1.2, player.position.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
+  _camLook.set(f.x, f.y + 1.2, f.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
 }
 function updateCamera(dt) {
@@ -6172,10 +6175,11 @@ function updateCamera(dt) {
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
   _camOff.copy(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
-  _camTarget.copy(player.position).add(_camOff);
+  const f = camFocus();
+  _camTarget.copy(f).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
-  _camLook.lerp(_camTarget.set(player.position.x, player.position.y + 1.2, player.position.z - lookAhead), k);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
+  _camLook.lerp(_camTarget.set(f.x, f.y + 1.2, f.z - lookAhead), k);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
 }
 
