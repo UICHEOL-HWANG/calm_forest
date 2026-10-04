@@ -8,6 +8,7 @@ export const COPY = {
   good: '좋아요',
   miss: '놓쳤어요',
   complete: '북두칠성을 그렸어요!',
+  fail: '조금만 더 해 볼까요?',
   close: '닫기',
   combo: '콤보',
   reward: '보상',
