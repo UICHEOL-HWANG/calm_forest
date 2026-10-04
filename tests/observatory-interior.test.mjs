@@ -112,3 +112,29 @@ test('telescope reads as a telescope from the play camera and its eyepiece faces
   const dir = [T.objective[0] - spot.x, T.objective[2] - spot.z], len = Math.hypot(...dir);
   assert.ok((fwd[0] * dir[0] + fwd[1] * dir[1]) / len > 0.95, 'player would not face the telescope');
 });
+
+test('hall furniture is solid once, and the telescope spot stays reachable', () => {
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const fn = game.slice(game.indexOf('function solidCircle('), game.indexOf('const houseWindows = [];'));
+  const interior = readFileSync(new URL('../js/observatory/interior.js', import.meta.url), 'utf8')
+    .replace(/^import .*;$/gm, '').replace(/^export /gm, '');
+  const colliders = [];
+  const { c } = spaceContext({ colliders, PLAYER_R: 0.42, scene: { add() {} }, mergeGeos: geos => geos[0] });
+  vm.runInContext(fn + interior.replace(/function buildObservatoryInterior[\s\S]*$/, '') + '\nthis.TELESCOPE_SPOT = TELESCOPE_SPOT; this.TELESCOPE_EYE = TELESCOPE_EYE;', c);
+  c.buildObservatoryInterior = () => new THREE.Group();
+  c.ensureObservatoryHall(); c.ensureObservatoryHall();   // second call must not stack colliders
+  const n = colliders.length;
+  assert.ok(n >= 4, `expected pier + 2 shelves + desk, got ${n}`);
+  c.$w.observatoryGroup = null; c.ensureObservatoryHall();
+  assert.equal(colliders.length, n, 'rebuilding the group must not add a second set');
+
+  const at = (x, z) => { const p = new THREE.Vector3(x, 0, 540 + z); c.resolveColliders(p); return [p.x, p.z - 540]; };
+  const moved = (x, z) => { const [a, b] = at(x, z); return Math.hypot(a - x, b - z) > 0.05; };
+  assert.ok(moved(0, 0), 'pier');
+  assert.ok(moved(3.5, 1.8), 'desk');
+  assert.ok(moved(Math.sin(2.2) * 4.6, Math.cos(2.2) * 4.6), 'right shelf');
+  assert.ok(moved(Math.sin(-2.2) * 4.6, Math.cos(-2.2) * 4.6), 'left shelf');
+  assert.ok(!moved(c.TELESCOPE_SPOT.x, c.TELESCOPE_SPOT.z), 'telescope prompt spot must stay walkable');
+  assert.ok(!moved(c.TELESCOPE_EYE.x, c.TELESCOPE_EYE.z), 'look spot must not be inside a collider');
+  assert.ok(!moved(0, 3.4), 'entrance spot');
+});

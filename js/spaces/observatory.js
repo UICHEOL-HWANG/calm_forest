@@ -3,13 +3,13 @@
 // =============================================================
 import {
   $w, Input, clayMat, colliders, disposeTree, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
-  setSpaceVisible, snapCamera, solidCircle, ui,
+  setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
 import { Sound } from '../sound.js';
 import { buildObservatoryExterior } from '../observatory/exterior.js';
-import { TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
+import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
 import * as THREE from 'three';
 
 export const OBSERVATORY_LIGHT = {
@@ -61,8 +61,12 @@ export function buildObservatoryHall() {
   return g;
 }
 
+let hallColliders = null;   // 홀은 다시 빌드하지 않으니 가구 충돌체도 한 번만 등록
 export function ensureObservatoryHall() {
   if (!$w.observatoryGroup) $w.observatoryGroup = buildObservatoryHall();
+  hallColliders ??= HALL_SOLIDS.map(s => s.r !== undefined
+    ? solidCircle(OBSERVATORY.x + s.x, OBSERVATORY.z + s.z, s.r)
+    : solidBox(OBSERVATORY.x + s.x1, OBSERVATORY.z + s.z1, OBSERVATORY.x + s.x2, OBSERVATORY.z + s.z2));
   return $w.observatoryGroup;
 }
 
