@@ -4,7 +4,7 @@ export function buildObservatoryInterior(mergeGeos, R = 5.4) {
   const hall = new THREE.Group(), parts = new Map();
   const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.9, ...extra });
   const mats = {
-    floor: mat(0x3a3550), wall: mat(0x27305a, { side: THREE.BackSide }),
+    floor: mat(0x5a5482), wall: mat(0x27305a, { side: THREE.BackSide }),
     dome: mat(0x1f2850, { side: THREE.BackSide }), gold: mat(0xd9b45a, { metalness: 0.5, roughness: 0.4 }),
     telescope: mat(0xeeeae2, { metalness: 0.25, roughness: 0.5 }),
     wood: mat(0x4a3a5a), dark: mat(0x1d2a55),

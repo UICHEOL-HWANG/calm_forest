@@ -45,6 +45,13 @@ export function refreshObservatoryGate() {
   observatoryGateGroup = spawnObservatoryGate();
 }
 
+// 🎥 The hall is small and the door is at the south edge, so a camera that just follows the
+//    player leaves the bottom half of the screen empty. Pull the focus most of the way to the centre.
+const CAM_PULL = 0.4;
+export function observatoryCamFocus(pos, out) {
+  return out.set(OBSERVATORY.x + (pos.x - OBSERVATORY.x) * CAM_PULL, pos.y, OBSERVATORY.z + (pos.z - OBSERVATORY.z) * CAM_PULL);
+}
+
 export function buildObservatoryHall() {
   const g = buildObservatoryInterior(mergeGeos, OBSERVATORY_R);
   g.position.copy(OBSERVATORY);
