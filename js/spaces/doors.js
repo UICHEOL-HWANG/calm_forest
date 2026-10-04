@@ -264,7 +264,7 @@ export function updateDoorInteract() {
   } else if (dist2D({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 }, player.position) < 2.4) {
     nd = 'museum'; prompt = '🏛️ 박물관에 들어가기';
     firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
-  } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 3.0 }, player.position) < 2.4) {
+  } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
     nd = 'observatory'; prompt = '🌌 별 보러 가기';
     firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 북두칠성을 이어 보는 곳');
   }
