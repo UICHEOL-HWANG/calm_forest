@@ -76,6 +76,8 @@ export function buildObservatoryExterior(mergeGeos) {
   }
   add('trim', cylinder(R + 0.3, R + 0.2, 0.32, BASE + H + 0.16));
   add('inner', new THREE.SphereGeometry(R - 0.1, 32, 18, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, DOME_Y, 0));
+  // Floor of the lining: hides the wall/trim top caps seen through the lower slit.
+  add('inner', new THREE.CircleGeometry(R + 0.05, 40).rotateX(Math.PI / 2).translate(0, DOME_Y + 0.01, 0));
   for (const sx of [-1, 1]) {
     add('gold', new THREE.TorusGeometry(R + 0.14, 0.08, 6, 40, Math.PI * 0.6)
       .rotateY(ROT + Math.PI / 2)
