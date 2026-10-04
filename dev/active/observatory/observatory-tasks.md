@@ -67,7 +67,7 @@
 - [x] R5 (2차 확인 OK) 돔 금빛 별 46개가 돔(반경 4.25) 안쪽 √(4.0²−dy²) 에 묻혀 안 보임(`observatory.js:96`) → 반경 4.25+0.03 바깥으로
 - [x] R6 (3차: `HALL_SOLIDS` 받침·책장2·책상, 첫 입장 때 1회 등록 — 동작 테스트 + 브라우저 확인) 실내 충돌체 없음(망원경·책장·책상 통과) → solidBox/solidCircle, 재빌드 없으니 1회 등록
 - [x] R7 (3차: 숙이는 동안 menu-open 잠금+매 프레임 위치 고정 브라우저 확인(방향키 1.5초 → 이동 0), star_start 는 렌즈가 실제로 열린 뒤 — diffParams 는 7단계에서) 허리 숙임 700ms 동안 WASD 로 걸어나감 → 시작 시 body `mg-open` 먼저(또는 lookState 동안 updatePlayer 입력 0). `star_start` 는 오버레이 열 때 diffParams 와 함께
-- [ ] R8 가짜 난이도로 abandon 트래킹(ui.js:14,81 DIFF_FALLBACK) → 7단계에서 rollDifficulty 연결 전까지는 트래킹 생략
+- [x] R8 (3차: DIFF_FALLBACK 삭제, opts.diff 없으면 abandon 미기록 — 동작 테스트) 가짜 난이도로 abandon 트래킹(ui.js:14,81 DIFF_FALLBACK) → 7단계에서 rollDifficulty 연결 전까지는 트래킹 생략
 - [ ] R9 정리: 첫 별 점등 800ms(render.js:214), 결과 카드 뒤 rAF 정지, 죽은 코드(refreshObservatoryGate 반환값 미사용→중복 생성 위험, observatoryBuilt/hallBuilt, render.js:53 roundRect), 0.7 중복 상수, places.js 박물관 주석이 OBSERVATORY_GATE 아래로 밀린 것
 - [ ] R10 동작 테스트 추가(정규식 말고): tap() 이른 탭 무시→결과, closeStarView 정리·결과 후 abandon 없음, 실패 시 실패 제목
 - [ ] R11 계획 대비 빠진 것(6~8단계 때 같이): 실내 별 Points·별자리 액자, 그림자 본체(벽+기단+돔), 슬릿 금 레일, 창 emissive 블룸 0.85 확인, 렌즈 shadowBlur ~30회/프레임 모바일 프로파일, 오버레이 중 3D 정지(mgView)

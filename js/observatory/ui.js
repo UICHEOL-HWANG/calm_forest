@@ -11,7 +11,6 @@ import { Input, trackDiffAbandon } from '../game.js';
 
 import { ensureStyle, layout, drawLens, drawConstellation, drawComet, drawJudge, drawHud } from './render.js';
 
-const DIFF_FALLBACK = { ease: 1, dda: 1, arm: null };
 let view = null;
 
 function showResult(state) {
@@ -78,7 +77,7 @@ function drawFrame(state) {
 }
 
 function abandon(state, reason) {
-  if (state.resultShown || state.closed) return;
+  if (state.resultShown || state.closed || !state.diff) return;   // 굴린 난이도가 없으면 기록하지 않는다(가짜 arm 금지)
   trackDiffAbandon('star', state.diff, reason, { constellation: 'big_dipper' });
 }
 
@@ -120,7 +119,7 @@ export async function openStarView(opts = {}) {
     g: canvas.getContext('2d'),
     dpr: Math.min(window.devicePixelRatio || 1, 2),
     ease: opts.ease || 1,
-    diff: opts.diff || DIFF_FALLBACK,
+    diff: opts.diff || null,
     chart: buildChart(opts.ease || 1),
     judges: [],
     flash: null,
