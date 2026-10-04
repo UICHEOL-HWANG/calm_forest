@@ -78,3 +78,19 @@ test('progress dots paint missed notes differently from hit notes', async () => 
   assert.notEqual(fills[0], fills[1], 'missed dot must not look like a hit');
   assert.notEqual(fills[0], fills[3], 'missed dot must not look like an upcoming note');
 });
+
+test('abandon is tracked only with a real rolled difficulty, never a placeholder', async () => {
+  const o = overlay();
+  await o.context.openStarView({});
+  o.dom.window.dispatch('keydown', { key: 'Escape' });
+  assert.equal(o.layer(), null, 'ESC closes the view');
+  assert.deepEqual(o.tracked, [], 'no difficulty → no abandon event');
+
+  const r = overlay();
+  const diff = { arm: 1, ease: 1.4, dda: 1 };
+  await r.context.openStarView({ diff, ease: diff.ease });
+  r.dom.window.dispatch('keydown', { key: 'Escape' });
+  assert.equal(r.tracked.length, 1);
+  assert.deepEqual(r.tracked[0].slice(0, 3), ['star', diff, 'esc']);
+  assert.equal(r.tracked[0][3].constellation, 'big_dipper');
+});
