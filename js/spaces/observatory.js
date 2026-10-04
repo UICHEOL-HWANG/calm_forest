@@ -9,6 +9,7 @@ import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
 import { Sound } from '../sound.js';
 import { buildObservatoryExterior } from '../observatory/exterior.js';
+import { starSettle } from '../observatory/star-run.js';
 import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
 
 export const OBSERVATORY_LIGHT = {
@@ -83,7 +84,7 @@ async function openStarView() {
   try {
     const mod = await import('../observatory/ui.js');
     if (lookState !== session) return;
-    await mod.openStarView({ onClose: resetLookPose });
+    await mod.openStarView({ onClose: resetLookPose, onResult: starSettle });
     trackEvent('star_start', { constellation: 'big_dipper' });   // 렌즈가 실제로 열렸을 때만
   } catch {
     ui.toast?.('🔭 별보기 준비 중이에요', 1600);
