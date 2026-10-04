@@ -164,7 +164,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import {
-  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, spawnObservatoryGate,
+  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, spawnObservatoryGate, startObservatoryLook, updateObservatory,
 } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import {
   INT_HALF, STAIR_PROMPT_R, buildDecorGhost, buildInterior, commitDecor, curFloorDef, curHalf, decorClampX,
@@ -5512,7 +5512,7 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (!mgView && !duelActive) { updatePlayer(dt, t); updateMuseumView(dt); updateCamera(dt); updateCameraFade(); }
+    else if (!mgView && !duelActive) { updatePlayer(dt, t); updateMuseumView(dt); updateObservatory(dt, t); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
@@ -5543,9 +5543,9 @@ function animate() {
         }));
       }
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } :  place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -6518,6 +6518,7 @@ function handleAction() {
   if (atMuseum) return;
   if (nearDoor === 'observatory') return enterObservatory();
   if (nearDoor === 'observatoryexit') return exitObservatory();
+  if (nearDoor === 'telescope') return startObservatoryLook();
   // 🔭 천문대 실내도 문·망원경 말고는 아무 액션도 없다.
   if (atObservatory) return;
   if (nearDoor === 'river') return enterRiver();

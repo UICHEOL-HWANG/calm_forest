@@ -25,6 +25,7 @@ import { fertBlockedByWatering } from '../first-loop.js';
 import { floorAt, rooftopFreeDecor } from '../house-floors.js';
 import { MUSEUM_FLOORS } from '../museum.js';
 import { OUTDOOR_MOVE_REACH, canPromptOutdoorMove } from '../outdoor-move.js';
+import { COPY } from '../observatory/copy.js';
 import { Sound } from '../sound.js';
 import { MUSEUM_HALF_D, _museumNear, museumFloor, museumFloorItems, museumPlateText, museumStairs, updateCafeInteract } from '../spaces/cafe.js';
 import { surveyBenchWorld, surveyDeskWorld } from '../spaces/farm-field.js';
@@ -36,6 +37,7 @@ import { updateMistInteract } from '../spaces/mist.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
+import { TELESCOPE_SPOT } from '../spaces/observatory.js';
 import { state as authState } from '../supabase-client.js';
 import { lockLine, mapOpenDay } from '../tuning.js';
 import * as THREE from 'three';
@@ -227,6 +229,7 @@ export function updateDoorInteract() {
     }
   } else if (atObservatory) {   // 🔭 천문대: 남쪽 문으로 나가기
     if (dist2D({ x: OBSERVATORY.x, z: OBSERVATORY.z + OBSERVATORY_R }, player.position) < 1.9) { nd = 'observatoryexit'; prompt = '🚪 나가기'; }
+    else if (dist2D({ x: OBSERVATORY.x + TELESCOPE_SPOT.x, z: OBSERVATORY.z + TELESCOPE_SPOT.z }, player.position) < TELESCOPE_SPOT.r) { nd = 'telescope'; prompt = COPY.lookIn; }
   } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < houseSolidR() + 0.6) { // 증축 크기에 맞춰 문 사거리도 확장
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {

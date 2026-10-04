@@ -2,8 +2,8 @@
 //  🔭 천문대 — 마을 게이트 + 실내 홀
 // =============================================================
 import {
-  $w, clayMat, colliders, disposeTree, firstHint, mergeGeos, obstacles, player, scene, setFogExempt,
-  setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
+  $w, Input, clayMat, colliders, disposeTree, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
+  setSpaceVisible, snapCamera, solidCircle, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
@@ -17,6 +17,10 @@ export const OBSERVATORY_LIGHT = {
 
 export let observatoryGateGroup = null, observatoryGateColliders = [];
 let hallBuilt = false;
+let lookState = null;
+
+export const TELESCOPE_SPOT = { x: 0, z: -2.75, r: 1.35 };
+export const TELESCOPE_EYE = { x: 0, z: -3.25, yaw: 0, duration: 0.7 };
 
 const box = (w, h, d, x, y, z, ry = 0) => {
   const b = new THREE.BoxGeometry(w, h, d);
@@ -168,7 +172,47 @@ export function enterObservatory() {
   Sound.blip(); trackEvent('observatory_enter');
 }
 
+function resetLookPose() {
+  if (!lookState) return;
+  playerAnchor.rotation.x = lookState.anchorX;
+  lookState = null;
+}
+
+async function openStarView() {
+  try {
+    const mod = await import('../observatory/ui.js');
+    await mod.openStarView?.({ onClose: resetLookPose });
+  } catch {
+    ui.toast?.('🔭 별보기 준비 중이에요', 1600);
+    resetLookPose();
+  }
+}
+
+export function startObservatoryLook() {
+  if (lookState) return;
+  Input.setAnalog(0, 0);
+  lookState = { t: 0, duration: 0.7, opened: false, anchorX: playerAnchor.rotation.x };
+  player.position.set(OBSERVATORY.x + TELESCOPE_EYE.x, 0, OBSERVATORY.z + TELESCOPE_EYE.z);
+  player.rotation.y = TELESCOPE_EYE.yaw;
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
+  Sound.blip();
+  trackEvent('star_start', { constellation: 'big_dipper' });
+}
+
+export function updateObservatory(dt, t) {
+  if (!lookState) return;
+  lookState.t = Math.min(lookState.duration, lookState.t + dt);
+  const k = Math.min(1, lookState.t / lookState.duration);
+  playerAnchor.rotation.x = -0.5 * k;
+  $w.armWristK = 0;
+  if (!lookState.opened && k >= 1) {
+    lookState.opened = true;
+    openStarView();
+  }
+}
+
 export function exitObservatory() {
+  resetLookPose();
   $w.atObservatory = false; setFogExempt(player, false);
   if ($w.observatoryGroup) $w.observatoryGroup.visible = false;
   player.position.set(OBSERVATORY_GATE.x, 0, OBSERVATORY_GATE.z + 3.4);
