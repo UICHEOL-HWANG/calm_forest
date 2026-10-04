@@ -16,6 +16,15 @@ export const TELESCOPE = {
   eye: { x: EYEPIECE[0] + Math.sin(YAW) * 0.35, z: EYEPIECE[2] + Math.cos(YAW) * 0.35, yaw: YAW + Math.PI },
 };
 
+// 🚧 Solid furniture in hall-local coordinates (pier, two bookshelves, desk). The space
+//    registers these once; the look spot just south-east of the pier stays outside them.
+const SHELF_ANGLES = [-2.2, 2.2], SHELF_R = 4.85;
+export const HALL_SOLIDS = [
+  { x: 0, z: 0, r: 0.4 },
+  ...SHELF_ANGLES.map(a => ({ x: Math.sin(a) * SHELF_R, z: Math.cos(a) * SHELF_R, r: 0.8 })),
+  { x1: 2.75, z1: 1.45, x2: 4.25, z2: 2.15 },
+];
+
 export function buildObservatoryInterior(mergeGeos, R = 5.4) {
   const hall = new THREE.Group(), parts = new Map();
   const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.9, ...extra });
@@ -65,7 +74,7 @@ export function buildObservatoryInterior(mergeGeos, R = 5.4) {
   for (const z of [-1.62, -0.2, 0.45]) add('gold', onTube(new THREE.TorusGeometry(0.205, 0.03, 8, 22).translate(0, 0, z)));
   add('dark', onTube(new THREE.CircleGeometry(0.2, 20).rotateY(Math.PI).translate(0, 0, -2.05)));
   const bookColors = [0xc0504a, 0x4f7fb0, 0xe0b050, 0x5f9a5a, 0x8a5aa0, 0xd9d0c0];
-  for (const a of [-2.2, 2.2]) {
+  for (const a of SHELF_ANGLES) {
     const place = geo => geo.rotateY(a + Math.PI).translate(Math.sin(a) * (R - 0.4), 0, Math.cos(a) * (R - 0.4));
     add('wood', place(box(1.6, 2.2, 0.08, 0, 1.1, -0.18)));
     for (const x of [-0.78, 0.78]) add('wood', place(box(0.08, 2.2, 0.45, x, 1.1, 0)));

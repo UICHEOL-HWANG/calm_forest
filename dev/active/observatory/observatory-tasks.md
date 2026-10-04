@@ -65,7 +65,7 @@
 - [x] R3 (3차: 성공/실패 제목 분리, 보상은 onResult 가 실제 지급액을 돌려줄 때만, miss 점 회색 — overlay 동작 테스트) 🔴 결과 카드: 실패(miss>3)에도 "북두칠성을 그렸어요!"(ui.js:27) + 실제로 안 주는 보상을 표시(ui.js:21). 성공/실패 제목 분리(실패 문구는 임시 `조금만 더 해 볼까요?`, ⏳검수 대상), 보상은 6단계에서 실제 지급될 때만 표시. 상단 진행 점은 miss 노트를 다른 색(회색)으로
 - [x] R4 (2차 확인 OK) 망원경 축: `observatory.js:138-139` cyl 의 ry 가 rotateY 라 관이 세로 막대 + 접안부가 떠 있음. rotateX/Z + 기울기, 받침(z -0.6)과 관 연결
 - [x] R5 (2차 확인 OK) 돔 금빛 별 46개가 돔(반경 4.25) 안쪽 √(4.0²−dy²) 에 묻혀 안 보임(`observatory.js:96`) → 반경 4.25+0.03 바깥으로
-- [ ] R6 실내 충돌체 없음(망원경·책장·책상 통과) → solidBox/solidCircle, 재빌드 없으니 1회 등록
+- [x] R6 (3차: `HALL_SOLIDS` 받침·책장2·책상, 첫 입장 때 1회 등록 — 동작 테스트 + 브라우저 확인) 실내 충돌체 없음(망원경·책장·책상 통과) → solidBox/solidCircle, 재빌드 없으니 1회 등록
 - [ ] R7 허리 숙임 700ms 동안 WASD 로 걸어나감 → 시작 시 body `mg-open` 먼저(또는 lookState 동안 updatePlayer 입력 0). `star_start` 는 오버레이 열 때 diffParams 와 함께
 - [ ] R8 가짜 난이도로 abandon 트래킹(ui.js:14,81 DIFF_FALLBACK) → 7단계에서 rollDifficulty 연결 전까지는 트래킹 생략
 - [ ] R9 정리: 첫 별 점등 800ms(render.js:214), 결과 카드 뒤 rAF 정지, 죽은 코드(refreshObservatoryGate 반환값 미사용→중복 생성 위험, observatoryBuilt/hallBuilt, render.js:53 roundRect), 0.7 중복 상수, places.js 박물관 주석이 OBSERVATORY_GATE 아래로 밀린 것
