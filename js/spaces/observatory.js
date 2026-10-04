@@ -95,7 +95,8 @@ async function openStarView() {
   try {
     const mod = await import('../observatory/ui.js');
     if (lookState !== session) return;
-    await mod.openStarView?.({ onClose: resetLookPose });
+    await mod.openStarView({ onClose: resetLookPose });
+    trackEvent('star_start', { constellation: 'big_dipper' });   // 렌즈가 실제로 열렸을 때만
   } catch {
     ui.toast?.('🔭 별보기 준비 중이에요', 1600);
     resetLookPose();
@@ -112,7 +113,6 @@ export function startObservatoryLook() {
   player.rotation.y = TELESCOPE_EYE.yaw;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   Sound.blip();
-  trackEvent('star_start', { constellation: 'big_dipper' });
 }
 
 export function updateObservatory(dt, t) {

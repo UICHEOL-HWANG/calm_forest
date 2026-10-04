@@ -138,3 +138,35 @@ test('hall furniture is solid once, and the telescope spot stays reachable', () 
   assert.ok(!moved(c.TELESCOPE_EYE.x, c.TELESCOPE_EYE.z), 'look spot must not be inside a collider');
   assert.ok(!moved(0, 3.4), 'entrance spot');
 });
+
+test('star_start fires when the lens view actually opens, not when the bend starts', async () => {
+  const events = [];
+  const load = (uiModule) => {
+    const player = new THREE.Object3D(), playerAnchor = new THREE.Object3D();
+    const classes = new Set();
+    const c = vm.createContext({ THREE, player, playerAnchor, $w: {},
+      OBSERVATORY: new THREE.Vector3(0, 0, 540), OBSERVATORY_R: 5.4, Input: { setAnalog() {} },
+      TELESCOPE: { eye: { x: 0.8, z: 0.65, yaw: 4.04 } },
+      ui: { toast() {} }, Sound: { blip() {} }, trackEvent: (name, params) => events.push([name, params]),
+      __import: async () => uiModule,
+      document: { body: { classList: { contains: x => classes.has(x), add: x => classes.add(x), remove: x => classes.delete(x) } } },
+    });
+    vm.runInContext(readFileSync(new URL('../js/spaces/observatory.js', import.meta.url), 'utf8')
+      .replace(/import[\s\S]*?from ['"][^'"]+['"];\n/g, '').replace(/^export /gm, '').replace(/\bimport\(/g, '__import('), c);
+    return c;
+  };
+  const c = load({ openStarView: async () => ({}) });
+  c.startObservatoryLook();
+  assert.deepEqual(events.filter(e => e[0] === 'star_start'), [], 'not yet — still bending');
+  c.updateObservatory(0.8, 0);
+  await new Promise(r => setTimeout(r, 0));
+  const starts = events.filter(e => e[0] === 'star_start');
+  assert.equal(starts.length, 1);
+  assert.equal(starts[0][1].constellation, 'big_dipper');
+
+  events.length = 0;
+  const broken = load({});   // ui failed to provide openStarView
+  broken.startObservatoryLook(); broken.updateObservatory(0.8, 0);
+  await new Promise(r => setTimeout(r, 0));
+  assert.deepEqual(events.filter(e => e[0] === 'star_start'), [], 'no start when the view never opened');
+});
