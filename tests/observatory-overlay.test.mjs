@@ -118,3 +118,34 @@ test('frame loop stops once the result card is up, and close cleans everything',
   assert.equal(o.dom.document.body.classList.contains('mg-open'), false);
   assert.deepEqual(o.tracked, [], 'closing a finished run is not an abandon');
 });
+
+test('early taps are ignored without penalty, then on-time taps judge each note', async () => {
+  const o = overlay();
+  await o.context.openStarView({});
+  o.dom.setNow(o.chart[0].hitMs - 400);
+  o.canvas().dispatch('pointerdown');
+  o.dom.window.dispatch('keydown', { key: ' ' });
+  assert.equal(o.card(), null);
+  o.play([0, 120, -150, 0, 0, 0, 0]);   // perfect, good, good, perfect…
+  const p = o.card().querySelector('p').textContent;
+  assert.match(p, new RegExp(`${COPY.perfect} 5`));
+  assert.match(p, new RegExp(`${COPY.good} 2`));
+  assert.match(p, new RegExp(`${COPY.miss} 0`));
+});
+
+test('closing mid-run tears everything down and calls onClose once', async () => {
+  const o = overlay();
+  let closed = 0;
+  await o.context.openStarView({ onClose: () => closed++ });
+  assert.ok(o.dom.document.body.classList.contains('mg-open'));
+  const canvas = o.canvas();
+  o.dom.tick(16);
+  o.layer().querySelector('.observatory-close').click();
+  assert.equal(closed, 1);
+  assert.equal(o.layer(), null);
+  assert.equal(o.dom.document.body.classList.contains('menu-open'), false);
+  assert.equal(o.dom.pendingFrames(), 0, 'rAF cancelled');
+  assert.equal(o.dom.window.listeners.length + o.dom.document.listeners.length + canvas.listeners.length, 0, 'listeners aborted');
+  o.dom.document.hidden = true; o.dom.document.dispatch('visibilitychange');
+  assert.equal(closed, 1, 'no second close');
+});
