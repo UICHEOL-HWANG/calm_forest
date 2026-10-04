@@ -31,7 +31,7 @@ test('천문대 자세 업데이트는 updatePlayer 뒤 매 프레임 호출된�
 test('startObservatoryLook 은 위치를 고정하고 700ms 뒤 렌즈 뷰를 연다', () => {
   assert.match(OBS, /export function startObservatoryLook\(\)/);
   assert.match(OBS, /Input\.setAnalog\(0, 0\)/);
-  assert.match(OBS, /duration: 0\.7/);
+  assert.match(OBS, /LOOK_SECONDS = 0\.7/);
   assert.match(OBS, /import\('\.\.\/observatory\/ui\.js'\)/);
   assert.match(OBS, /openStarView/);
 });
