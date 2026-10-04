@@ -45,7 +45,7 @@
 - [x] dev 세션(`?weather=clear`)에서 GA4 로 안 나가는지 확인 — 한 판 플레이 중 star_*/observatory_* 콘솔 폴백·GA 요청 0
 
 ## 8. i18n·마무리
-- [ ] `js/i18n-en.js` 영어 키 전부 → `node scripts/i18n_check.mjs` 0
+- [x] `js/i18n-en.js` 영어 키 전부 → `node scripts/i18n_check.mjs` 0 (천문대 문구 누락 0 — js/observatory 를 검사 대상에 추가. 전체 102건은 main 과 같은 기존분)
 - [ ] 드로우콜 측정(마을 증가 ≤ 12, 실내 ≤ 40) — plan §6.5 측정 절차, 전/후 수치 기록:
   - 마을 main: calls __ / tris __ · 추가 후: calls __ / tris __ · 실내: calls __ / tris __ · 모바일: __
 - [ ] 성능 규칙 점검(plan §6.5): ui.js 동적 import · hall 1회 빌드 · castShadow 본체만 · 오버레이 닫을 때 rAF/리스너 해제 · game.js 추가 줄 수
