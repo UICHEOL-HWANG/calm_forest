@@ -18,7 +18,8 @@ function showResult(state) {
   state.resultShown = true;
   const summary = summarize(state.judges);
   // onResult pays out (game side) and reports what was actually given — never show a reward that wasn't paid.
-  const coins = state.onResult?.(summary)?.coins || 0;
+  const run = { judges: [...state.judges], offsets: [...state.offsets], durationMs: performance.now() - state.startAt };
+  const coins = state.onResult?.(summary, run)?.coins || 0;
   const reward = coins > 0 ? `<br>${t(COPY.reward)} +${coins}` : '';
 
   const card = document.createElement('div');
@@ -43,6 +44,7 @@ function tap(state) {
   const judge = judgeTap(offset, state.ease);
   if (judge === 'early') return;
   state.judges.push(judge);
+  state.offsets.push(Math.round(offset));   // 탭한 노트만(만료 miss 는 오프셋이 없다)
   state.flash = { judge, until: performance.now() + 620 };
   if (state.judges.length >= state.chart.length) showResult(state);
 }
@@ -123,6 +125,7 @@ export async function openStarView(opts = {}) {
     diff: opts.diff || null,
     chart: buildChart(opts.ease || 1),
     judges: [],
+    offsets: [],
     flash: null,
     raf: 0,
     startAt: performance.now(),
