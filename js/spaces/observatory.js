@@ -2,7 +2,7 @@
 //  🔭 천문대 — 마을 게이트 + 실내 홀
 // =============================================================
 import {
-  $w, Input, clayMat, colliders, disposeTree, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
+  $w, Input, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
   setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
@@ -10,39 +10,28 @@ import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js'
 import { Sound } from '../sound.js';
 import { buildObservatoryExterior } from '../observatory/exterior.js';
 import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
-import * as THREE from 'three';
 
 export const OBSERVATORY_LIGHT = {
   hemi: 0.5, amb: 0.58, sun: 0.32, tint: 0xe8e5ff, sunTint: 0xfff1cf,
   player: 0.95, fog: 0x1a2552, near: 18, far: 46,
 };
 
-export let observatoryGateGroup = null, observatoryGateColliders = [];
-let hallBuilt = false;
+let gateGroup = null;
 let lookState = null;
 
+export const LOOK_SECONDS = 0.7;   // 허리 숙이는 시간 → 끝나면 렌즈 뷰
 export const TELESCOPE_EYE = TELESCOPE.eye;
 export const TELESCOPE_SPOT = { x: TELESCOPE_EYE.x, z: TELESCOPE_EYE.z + 0.5, r: 1.1 };
 
 
 export function spawnObservatoryGate() {
-  const g = buildObservatoryExterior(mergeGeos);
-  g.position.copy(OBSERVATORY_GATE);
-  scene.add(g);
+  if (gateGroup) return gateGroup;   // 마을은 한 번만 짓는다 — 두 번 불려도 건물·충돌체가 겹치지 않게
+  gateGroup = buildObservatoryExterior(mergeGeos);
+  gateGroup.position.copy(OBSERVATORY_GATE);
+  scene.add(gateGroup);
   obstacles.push({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, r: 5.9 });
-  observatoryGateColliders.push(solidCircle(OBSERVATORY_GATE.x, OBSERVATORY_GATE.z, 5.7));
-  return g;
-}
-
-export function refreshObservatoryGate() {
-  if (observatoryGateGroup) {
-    scene.remove(observatoryGateGroup); disposeTree(observatoryGateGroup);
-    for (const c of observatoryGateColliders) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
-    const oi = obstacles.findIndex(o => o.x === OBSERVATORY_GATE.x && o.z === OBSERVATORY_GATE.z);
-    if (oi >= 0) obstacles.splice(oi, 1);
-  }
-  observatoryGateColliders = [];
-  observatoryGateGroup = spawnObservatoryGate();
+  solidCircle(OBSERVATORY_GATE.x, OBSERVATORY_GATE.z, 5.7);
+  return gateGroup;
 }
 
 // 🎥 The hall is small and the door is at the south edge, so a camera that just follows the
@@ -57,7 +46,6 @@ export function buildObservatoryHall() {
   g.position.copy(OBSERVATORY);
   g.visible = false;
   scene.add(g);
-  hallBuilt = true;
   return g;
 }
 
@@ -106,7 +94,7 @@ async function openStarView() {
 export function startObservatoryLook() {
   if (lookState) return;
   Input.setAnalog(0, 0);
-  lookState = { t: 0, duration: 0.7, opened: false, anchorX: playerAnchor.rotation.x };
+  lookState = { t: 0, duration: LOOK_SECONDS, opened: false, anchorX: playerAnchor.rotation.x };
   lookState.ownsLock = !document.body.classList.contains('menu-open');
   document.body.classList.add('menu-open');
   player.position.set(OBSERVATORY.x + TELESCOPE_EYE.x, 0.18, OBSERVATORY.z + TELESCOPE_EYE.z);
@@ -137,8 +125,4 @@ export function exitObservatory() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('observatory_exit');
-}
-
-export function observatoryBuilt() {
-  return hallBuilt;
 }

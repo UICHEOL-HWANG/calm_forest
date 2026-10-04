@@ -51,11 +51,6 @@ function starXY(L, i) {
   return [L.cx + (x + 0.6) * k, L.cy - (y + 0.25) * k];
 }
 
-function roundRect(g, x, y, w, h, r) {
-  g.beginPath();
-  g.roundRect(x, y, w, h, r);
-}
-
 function glowDot(g, x, y, rad, color, blur) {
   g.save();
   g.shadowColor = color;
@@ -174,7 +169,7 @@ export function drawLens(state, L) {
   state.g.drawImage(state.rimCanvas, 0, 0, L.W, L.H);
 }
 
-export function drawConstellation(state, L) {
+export function drawConstellation(state, L, elapsed = 0) {
   const g = state.g;
   const pts = DIPPER.map((_, i) => starXY(L, i));
   const s = L.r / 300;
@@ -212,7 +207,7 @@ export function drawConstellation(state, L) {
     g.restore();
   }
 
-  const lit = new Set(ORDER.slice(0, done + 1));
+  const lit = new Set(elapsed >= state.chart[0].startMs ? ORDER.slice(0, done + 1) : []);   // 첫 별은 혜성이 출발할 때(800ms) 켜진다
   pts.forEach(([x, y], i) => {
     if (lit.has(i)) {
       glowDot(g, x, y, 9 * s, 'rgba(255,240,190,.35)', 24 * s);

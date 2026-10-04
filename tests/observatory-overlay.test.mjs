@@ -94,3 +94,27 @@ test('abandon is tracked only with a real rolled difficulty, never a placeholder
   assert.deepEqual(r.tracked[0].slice(0, 3), ['star', diff, 'esc']);
   assert.equal(r.tracked[0][3].constellation, 'big_dipper');
 });
+
+test('first star lights up only when the run starts (800ms), not at open', async () => {
+  const o = overlay();
+  await o.context.openStarView({});
+  const sparkles = () => o.canvas().getContext().calls.filter(c => c[0] === 'closePath').length;   // sparkle() = lit star
+  o.dom.tick(400);
+  const before = sparkles();
+  o.canvas().getContext().calls.length = 0;
+  o.dom.setNow(o.chart[0].startMs + 20); o.dom.tick(0);
+  assert.equal(before, 0, 'no lit star before 800ms');
+  assert.equal(sparkles(), 1, 'start star lit once the comet leaves');
+});
+
+test('frame loop stops once the result card is up, and close cleans everything', async () => {
+  const o = overlay();
+  await o.context.openStarView({});
+  o.play([0, 0, 0, 0, 0, 0, 0]);
+  o.dom.tick(16); o.dom.tick(16);
+  assert.equal(o.dom.pendingFrames(), 0, 'no more frames after the result');
+  o.card().querySelector('button').click();
+  assert.equal(o.layer(), null);
+  assert.equal(o.dom.document.body.classList.contains('mg-open'), false);
+  assert.deepEqual(o.tracked, [], 'closing a finished run is not an abandon');
+});

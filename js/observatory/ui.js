@@ -69,11 +69,12 @@ function drawFrame(state) {
   const elapsed = performance.now() - state.startAt;
   missExpired(state, elapsed);
   drawLens(state, L);
-  const pts = drawConstellation(state, L);
+  const pts = drawConstellation(state, L, elapsed);
   drawComet(state, L, pts, elapsed);
   drawJudge(state, L, pts);
   drawHud(state, L);
-  if (!state.closed) state.raf = requestAnimationFrame(() => drawFrame(state));
+  // 결과 카드가 뜨면 마지막 판(이은 선)을 한 번 그려 두고 멈춘다 — 카드 뒤에서 계속 돌 이유가 없다
+  state.raf = state.closed || state.resultShown ? 0 : requestAnimationFrame(() => drawFrame(state));
 }
 
 function abandon(state, reason) {

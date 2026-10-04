@@ -170,3 +170,18 @@ test('star_start fires when the lens view actually opens, not when the bend star
   await new Promise(r => setTimeout(r, 0));
   assert.deepEqual(events.filter(e => e[0] === 'star_start'), [], 'no start when the view never opened');
 });
+
+test('gate spawns once — a second call does not stack a building or colliders', () => {
+  const added = [], colliders = [], obstacles = [];
+  const { c } = spaceContext({
+    scene: { add: g => added.push(g), remove() {} }, colliders, obstacles,
+    OBSERVATORY_GATE: new THREE.Vector3(22, 0, 22), mergeGeos: geos => geos[0],
+    buildObservatoryExterior: () => new THREE.Group(),
+    solidCircle: (x, z, r) => { const s = { x, z, r }; colliders.push(s); return s; },
+  });
+  const a = c.spawnObservatoryGate(), b = c.spawnObservatoryGate();
+  assert.equal(a, b);
+  assert.equal(added.length, 1);
+  assert.equal(colliders.length, 1);
+  assert.equal(obstacles.length, 1);
+});
