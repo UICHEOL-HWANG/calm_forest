@@ -9,7 +9,7 @@ import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
 import { Sound } from '../sound.js';
 import { buildObservatoryExterior } from '../observatory/exterior.js';
-import { buildObservatoryInterior } from '../observatory/interior.js';
+import { TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
 import * as THREE from 'three';
 
 export const OBSERVATORY_LIGHT = {
@@ -21,8 +21,8 @@ export let observatoryGateGroup = null, observatoryGateColliders = [];
 let hallBuilt = false;
 let lookState = null;
 
-export const TELESCOPE_SPOT = { x: 0, z: 1.4, r: 1.0 };
-export const TELESCOPE_EYE = { x: 0, z: 1.15, yaw: Math.PI, duration: 0.7 };
+export const TELESCOPE_EYE = TELESCOPE.eye;
+export const TELESCOPE_SPOT = { x: TELESCOPE_EYE.x, z: TELESCOPE_EYE.z + 0.5, r: 1.1 };
 
 
 export function spawnObservatoryGate() {

@@ -1,5 +1,21 @@
 import * as THREE from 'three';
 
+// 🔭 Tube pose. Yawed off the camera axis so the overhead play camera sees its side
+//    silhouette instead of a foreshortened vertical bar; eyepiece/objective/eye spot are
+//    derived so the look pose (spaces/observatory.js) lines up with the geometry.
+const ELEVATION = 0.62, YAW = 0.9, PLATFORM = 0.18, PIVOT_Y = PLATFORM + 1.48;
+const alongTube = z => [
+  z * Math.cos(ELEVATION) * Math.sin(YAW),
+  PIVOT_Y - z * Math.sin(ELEVATION),
+  z * Math.cos(ELEVATION) * Math.cos(YAW),
+];
+const EYEPIECE = alongTube(0.85);
+export const TELESCOPE = {
+  eyepiece: EYEPIECE,
+  objective: alongTube(-1.5),
+  eye: { x: EYEPIECE[0] + Math.sin(YAW) * 0.35, z: EYEPIECE[2] + Math.cos(YAW) * 0.35, yaw: YAW + Math.PI },
+};
+
 export function buildObservatoryInterior(mergeGeos, R = 5.4) {
   const hall = new THREE.Group(), parts = new Map();
   const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.9, ...extra });
@@ -21,7 +37,7 @@ export function buildObservatoryInterior(mergeGeos, R = 5.4) {
     parts.get(key).push(geo);
   };
   const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
-  const H = 3.4, elevation = 0.62, platform = 0.18;
+  const H = 3.4, platform = PLATFORM;
   add('floor', new THREE.CircleGeometry(R, 48).rotateX(-Math.PI / 2));
   add('dark', new THREE.CylinderGeometry(1.4, 1.48, platform, 40).translate(0, platform / 2, 0));
   for (const [inner, outer] of [[1.5, 1.58], [2.6, 2.66]]) {
@@ -42,7 +58,7 @@ export function buildObservatoryInterior(mergeGeos, R = 5.4) {
     add('gold', new THREE.TorusGeometry(R - 0.06, 0.04, 5, 24, Math.PI * 0.4).rotateY(a).translate(0, H, 0));
   }
   add('telescope', new THREE.CylinderGeometry(0.28, 0.4, 1.3, 16).translate(0, platform + 0.65, 0));
-  const onTube = geo => geo.rotateX(elevation).translate(0, platform + 1.48, 0);
+  const onTube = geo => geo.rotateX(ELEVATION).rotateY(YAW).translate(0, PIVOT_Y, 0);
   add('telescope', onTube(new THREE.CylinderGeometry(0.2, 0.15, 2.4, 20).rotateX(Math.PI / 2).translate(0, 0, -0.55)));
   add('telescope', onTube(new THREE.CylinderGeometry(0.24, 0.24, 0.4, 20, 1, true).rotateX(Math.PI / 2).translate(0, 0, -1.85)));
   add('dark', onTube(new THREE.CylinderGeometry(0.05, 0.06, 0.26, 10).rotateX(Math.PI / 2).translate(0, 0, 0.78)));
