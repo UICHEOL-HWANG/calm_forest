@@ -29,6 +29,7 @@ export function shadowReaches(x, z, reach = MAX_REACH) {
 // 거리는 **공간 중심이 아니라 그 공간에서 receiveShadow=true 인 메시의 실제 바운딩 박스 최근접점**
 // 에서 상자 중심(clamp 된 플레이어 위치)까지 잰 값이다 — 중심만 보면 큰 배경 메시를 놓친다.
 //   실측 2026-09-12 (씬 그래프 Box3): 동굴 218.5m · 안개 217.5m · 카페 290.8m · 바다 292m · 강 376m.
+//   🔭 천문대 z=540 은 마을 그림자 상자에서 더 멀다.
 //   전부 MAX_REACH(60) 보다 한참 밖이라 여유가 크다.
 //   🍎 과수원 — 브라우저 실측 대신 지오메트리로 계산(2026-09-17): receiveShadow 메시가 둘이다 —
 //   buildOrchardGround() 의 지면 원반과 buildOrchardPaths() 의 오솔길 띠. 지면이 더 넓어서 지면이
@@ -38,7 +39,7 @@ export function shadowReaches(x, z, reach = MAX_REACH) {
 //   ⚠️ 처음 적었던 122m 는 지면을 CircleGeometry(ORCHARD_HALF=20) 로, 수신면을 하나로 본 값이었다.
 //   그 뒤 "언덕 끝에서 허공이 보인다" 를 고치며 반경이 36 으로 늘었고 오솔길에도 receiveShadow 가
 //   붙었다 — 결론(≫60)은 그대로지만 숫자와 전제는 틀려 있었다. 조형이 더 커지면 다시 계산할 것.
-export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea', 'atMuseum', 'atOrchard'];
+export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea', 'atMuseum', 'atObservatory', 'atOrchard'];
 
 // ② 상자는 닿지만 실측상 보이는 그림자가 없는 공간.
 // 진입 시점(timeOfDay 0.32)에 섀도맵을 한 번 굽고 얼린 뒤 해를 옮기며 live 렌더와 픽셀 비교했다

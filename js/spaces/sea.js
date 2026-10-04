@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, IS_MOBILE, WEATHER, _seaPrevTool, armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atRiver, atSea,
+  $w, IS_MOBILE, WEATHER, _seaPrevTool, armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atObservatory, atRiver, atSea,
   blockIfLocked, clayMat, clock, dateHash, diffParams, firstHint, gameState, giveReward, handAnchor, heldToolMesh,
   indoor, isNight, lastDoorPrompt, lastZoneHint, makeSignpost, measureStowLen, nearDoor, obstacles, player,
   playerAnchor, playerArms, poseHeldTool, questEvent, requestSave, rollDifficulty, scene, seaBuoy, seaFishes,
@@ -76,7 +76,7 @@ export function updateWavyWater(w, t, amp, speed) {
 // 매 프레임: 보이는 수면만 일렁임 + 등대 야간 빔 회전(마을 후미)
 export function updateSeaVisuals(t) {
   if (atSea) { if (seaWater) updateWavyWater(seaWater, t, 0.13, 1.4); }
-  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe && !atMuseum)
+  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe && !atMuseum && !atObservatory)
     updateWavyWater(coveWater, t, 0.085, 1.6);
   if (seaBeacon) {
     // 밤뿐 아니라 악천후(비·눈·안개) 낮에도 점등 — 흐린 날 등대가 물을 쓸어 비추는 이벤트
