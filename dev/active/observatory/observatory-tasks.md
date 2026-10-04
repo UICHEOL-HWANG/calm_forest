@@ -40,9 +40,9 @@
 - [x] 새로고침 왕복 확인 — 브라우저: 7노트 완주 → 🪙5→29(+24) → `__pet.roundTrip()`(applySave(getGameState())) → 재도전 보상 줄 없음·코인 29 유지. ⚠️ 이 환경은 오프라인 게스트(세이브 서버 없음)라 실제 새로고침 왕복은 로그인 세션에서 한 번 더 볼 것
 
 ## 7. 트래킹·난이도
-- [ ] `DIFFICULTY.star` (js/tuning.js), rollDifficulty/settleDifficulty 연결 — arm→ease 방향 cooking 과 대조
-- [ ] `observatory_enter/exit`, `star_start`, `star_result`, `minigame_abandon(game='star')` — plan §7 필드
-- [ ] dev 세션(`?weather=clear`)에서 GA4 로 안 나가는지 확인
+- [x] `DIFFICULTY.star` (js/tuning.js), rollDifficulty/settleDifficulty 연결 — arm→ease 방향 cooking 과 대조 (둘 다 '클수록 쉽다' — rhythm 의 ease 에 그대로 넣음, 테스트로 고정. `ddaOutcome('star')` = 점수/14)
+- [x] `observatory_enter/exit`, `star_start`, `star_result`, `minigame_abandon(game='star')` — plan §7 필드 (offsets·judges 는 요리 cooking_result 처럼 쉼표 문자열 — GA4 파라미터는 배열 불가)
+- [x] dev 세션(`?weather=clear`)에서 GA4 로 안 나가는지 확인 — 한 판 플레이 중 star_*/observatory_* 콘솔 폴백·GA 요청 0
 
 ## 8. i18n·마무리
 - [ ] `js/i18n-en.js` 영어 키 전부 → `node scripts/i18n_check.mjs` 0

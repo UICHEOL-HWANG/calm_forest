@@ -140,7 +140,8 @@ test('hall furniture is solid once, and the telescope spot stays reachable', () 
 });
 
 test('star_start fires when the lens view actually opens, not when the bend starts', async () => {
-  const events = [];
+  const events = [], rolls = [], settles = [];
+  let opened = null;
   const load = (uiModule) => {
     const player = new THREE.Object3D(), playerAnchor = new THREE.Object3D();
     const classes = new Set();
@@ -148,14 +149,16 @@ test('star_start fires when the lens view actually opens, not when the bend star
       OBSERVATORY: new THREE.Vector3(0, 0, 540), OBSERVATORY_R: 5.4, Input: { setAnalog() {} },
       TELESCOPE: { eye: { x: 0.8, z: 0.65, yaw: 4.04 } },
       ui: { toast() {} }, Sound: { blip() {} }, trackEvent: (name, params) => events.push([name, params]),
-      __import: async () => uiModule, starSettle: () => ({ coins: 0 }),
+      __import: async () => uiModule, starSettle: (...a) => { settles.push(a); return { coins: 0 }; },
+      rollDifficulty: game => { rolls.push(game); return { ease: 1.4, dda: 1, arm: 2 }; },
+      diffParams: r => ({ ease: r.ease, dda: r.dda, arm: r.arm }),
       document: { body: { classList: { contains: x => classes.has(x), add: x => classes.add(x), remove: x => classes.delete(x) } } },
     });
     vm.runInContext(readFileSync(new URL('../js/spaces/observatory.js', import.meta.url), 'utf8')
       .replace(/import[\s\S]*?from ['"][^'"]+['"];\n/g, '').replace(/^export /gm, '').replace(/\bimport\(/g, '__import('), c);
     return c;
   };
-  const c = load({ openStarView: async () => ({}) });
+  const c = load({ openStarView: async (opts) => { opened = opts; return {}; } });
   c.startObservatoryLook();
   assert.deepEqual(events.filter(e => e[0] === 'star_start'), [], 'not yet — still bending');
   c.updateObservatory(0.8, 0);
@@ -163,6 +166,13 @@ test('star_start fires when the lens view actually opens, not when the bend star
   const starts = events.filter(e => e[0] === 'star_start');
   assert.equal(starts.length, 1);
   assert.equal(starts[0][1].constellation, 'big_dipper');
+  assert.equal(starts[0][1].ease, 1.4, 'star_start carries diffParams');
+  assert.deepEqual(rolls, ['star']);
+  assert.equal(opened.ease, 1.4);
+  assert.equal(opened.diff.arm, 2);
+  opened.onResult({ score: 10 }, { judges: [] });
+  assert.equal(settles.length, 1);
+  assert.equal(settles[0][2].arm, 2, 'settle sees the same rolled difficulty');
 
   events.length = 0;
   const broken = load({});   // ui failed to provide openStarView

@@ -149,3 +149,15 @@ test('closing mid-run tears everything down and calls onClose once', async () =>
   o.dom.document.hidden = true; o.dom.document.dispatch('visibilitychange');
   assert.equal(closed, 1, 'no second close');
 });
+
+test('onResult gets the run: judges, integer offsets of tapped notes, duration', async () => {
+  const o = overlay();
+  const runs = [];
+  await o.context.openStarView({ onResult: (summary, run) => { runs.push(run); return { coins: 0 }; } });
+  o.play([12.4, -60, null, 0, 150, 0, -3]);   // third note left to expire
+  assert.equal(runs.length, 1);
+  const run = runs[0];
+  assert.deepEqual([...run.judges], ['perfect', 'perfect', 'miss', 'perfect', 'good', 'perfect', 'perfect']);
+  assert.deepEqual([...run.offsets], [12, -60, 0, 150, 0, -3]);
+  assert.ok(Math.abs(run.durationMs - (o.chart.at(-1).hitMs - 3)) < 1);
+});

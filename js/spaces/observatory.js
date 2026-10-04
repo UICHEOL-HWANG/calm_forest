@@ -2,8 +2,8 @@
 //  🔭 천문대 — 마을 게이트 + 실내 홀
 // =============================================================
 import {
-  $w, Input, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
-  setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
+  $w, Input, diffParams, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
+  rollDifficulty, setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
@@ -84,8 +84,9 @@ async function openStarView() {
   try {
     const mod = await import('../observatory/ui.js');
     if (lookState !== session) return;
-    await mod.openStarView({ onClose: resetLookPose, onResult: starSettle });
-    trackEvent('star_start', { constellation: 'big_dipper' });   // 렌즈가 실제로 열렸을 때만
+    const diff = rollDifficulty('star');   // 🎚️ ease 가 클수록 쉽다(느린 혜성·넓은 판정 창) — DIFFICULTY 와 같은 방향
+    await mod.openStarView({ diff, ease: diff.ease, onClose: resetLookPose, onResult: (summary, run) => starSettle(summary, run, diff) });
+    trackEvent('star_start', { constellation: 'big_dipper', ...diffParams(diff) });   // 렌즈가 실제로 열렸을 때만
   } catch {
     ui.toast?.('🔭 별보기 준비 중이에요', 1600);
     resetLookPose();
