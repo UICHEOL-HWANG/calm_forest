@@ -148,7 +148,7 @@ test('star_start fires when the lens view actually opens, not when the bend star
       OBSERVATORY: new THREE.Vector3(0, 0, 540), OBSERVATORY_R: 5.4, Input: { setAnalog() {} },
       TELESCOPE: { eye: { x: 0.8, z: 0.65, yaw: 4.04 } },
       ui: { toast() {} }, Sound: { blip() {} }, trackEvent: (name, params) => events.push([name, params]),
-      __import: async () => uiModule,
+      __import: async () => uiModule, starSettle: () => ({ coins: 0 }),
       document: { body: { classList: { contains: x => classes.has(x), add: x => classes.add(x), remove: x => classes.delete(x) } } },
     });
     vm.runInContext(readFileSync(new URL('../js/spaces/observatory.js', import.meta.url), 'utf8')

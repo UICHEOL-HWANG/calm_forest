@@ -35,9 +35,9 @@
 - [ ] PC 1280×800 / 모바일 390×844 캡처로 sim 과 나란히 비교
 
 ## 6. 보상·하루 1회·세이브
-- [ ] `gameState.starDay` 기본값·저장·복원 (ferry quiz 패턴)
-- [ ] 완성 시 `giveReward({coins}, 'star_rhythm', 'big_dipper')` + `requestSave()`, 같은 날 재도전 0
-- [ ] 새로고침 왕복 확인
+- [x] `gameState.starDay` 기본값·저장·복원 (ferry quiz 패턴) — 마지막으로 보상 받은 날짜 문자열, 저장은 getGameState 스프레드로 자동
+- [x] 완성 시 `giveReward({coins}, 'star_rhythm', 'big_dipper')` + `requestSave()`, 같은 날 재도전 0 — `js/observatory/star-run.js` `starSettle`, 실패는 그날을 쓰지 않음
+- [x] 새로고침 왕복 확인 — 브라우저: 7노트 완주 → 🪙5→29(+24) → `__pet.roundTrip()`(applySave(getGameState())) → 재도전 보상 줄 없음·코인 29 유지. ⚠️ 이 환경은 오프라인 게스트(세이브 서버 없음)라 실제 새로고침 왕복은 로그인 세션에서 한 번 더 볼 것
 
 ## 7. 트래킹·난이도
 - [ ] `DIFFICULTY.star` (js/tuning.js), rollDifficulty/settleDifficulty 연결 — arm→ease 방향 cooking 과 대조

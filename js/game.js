@@ -968,6 +968,7 @@ const gameState = {
   //    유저 테이블을 만들면 RLS·인증·동기화 비용만 는다.
   talk: { date: '', used: {} },
   quiz: { date: '', done: false, correct: 0 },   // 🦆 사공 퀴즈 — 오늘 풀었는지(시작하면 done). 날짜가 오늘이 아니면 다시 풀 수 있다
+  starDay: null,   // 🔭 별 잇기 — 마지막으로 보상 받은 날(같은 날 재도전은 연습)
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
   noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
   character: null,                          // 선택한 동물 캐릭터 id
@@ -2558,6 +2559,7 @@ function applySave(saved) {
   if (saved.quiz && typeof saved.quiz === 'object' && saved.quiz.date === todayStr()) {
     gameState.quiz = { date: saved.quiz.date, done: !!saved.quiz.done, correct: +saved.quiz.correct || 0 };
   }
+  if (typeof saved.starDay === 'string') gameState.starDay = saved.starDay;   // 🔭 별 잇기 하루 1회
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
   if (saved.houseStyle) { gameState.houseStyle = { ...gameState.houseStyle, ...saved.houseStyle }; applyHouseStyle(); } // 집 외관 복원
