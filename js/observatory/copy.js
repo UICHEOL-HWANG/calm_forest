@@ -1,6 +1,5 @@
 export const COPY = {
   lookIn: '🔭 들여다보기',
-  loading: '별빛을 맞추는 중이에요',
   title: '🔭 북두칠성',
   subtitle: '봄 하늘 · ★1',
   tapGuide: '빛과 링이 별에 닿을 때 탭!',
@@ -12,6 +11,5 @@ export const COPY = {
   close: '닫기',
   combo: '콤보',
   reward: '보상',
-  retry: '다시 보기',
   result: '결과',
 };
