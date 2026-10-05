@@ -5438,6 +5438,8 @@ function minimapMarks(place) {
       const col = t.stage === 'mature' && t.fruit > 0 && def ? '#' + def.fruitColor.toString(16).padStart(6, '0') : '#5f9e52';
       marks.push({ x: t.x, z: t.z, c: col, r: 2.6 });
     }
+  } else if (place === 'museum') {
+    marks.push({ x: MUSEUM.x, z: MUSEUM.z + MUSEUM_HALF_D, c: '#c8905a', kind: 'exit' });     // 나가는 문(남쪽 벽)
   } else if (place === 'mine') {
     marks.push({ x: MINE.x, z: MINE.z - MINE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
     for (const rock of oreRocks) {
@@ -5530,9 +5532,9 @@ function animate() {
         }));
       }
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } :  place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } :  place === 'cafe' ? CAFE : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : place === 'museum' ? Math.max(MUSEUM_HALF_W, MUSEUM_HALF_D) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
