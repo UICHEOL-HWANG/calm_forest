@@ -37,8 +37,9 @@ test('startObservatoryLook 은 위치를 고정하고 700ms 뒤 렌즈 뷰를 �
   assert.match(OBS, /openStarView/);
 });
 
-test('updateObservatory 는 허리 숙임을 playerAnchor.rotation.x 로 덮어쓴다', () => {
+test('updateObservatory 는 허리를 앞으로 숙인다(rotation.x 양수 = 앞, 도끼질과 같은 규약)', () => {
   assert.match(OBS, /export function updateObservatory\(dt, t\)/);
-  assert.match(OBS, /playerAnchor\.rotation\.x = -0\.5 \* k/);
+  assert.match(OBS, /playerAnchor\.rotation\.x = 0\.5 \* k/);
+  assert.doesNotMatch(OBS, /playerAnchor\.rotation\.x = -[\d.]+ \* k/);
   assert.match(OBS, /\$w\.armWristK = 0/);
 });

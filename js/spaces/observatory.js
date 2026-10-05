@@ -116,7 +116,7 @@ export function updateObservatory(dt, t) {
   player.rotation.y = TELESCOPE_EYE.yaw;
   lookState.t = Math.min(lookState.duration, lookState.t + dt);
   const k = Math.min(1, lookState.t / lookState.duration);
-  playerAnchor.rotation.x = -0.5 * k;
+  playerAnchor.rotation.x = 0.5 * k;   // 양수 = 앞으로 숙임(접안렌즈에 눈 대기)
   $w.armWristK = 0;
   if (!lookState.opened && k >= 1) {
     lookState.opened = true;
