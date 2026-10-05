@@ -25,6 +25,7 @@ let lensOpen = false;   // 렌즈 뷰(불투명 오버레이)가 화면을 덮�
 export function observatoryLensOpen() { return lensOpen; }
 
 export const LOOK_SECONDS = 0.7;   // 허리 숙이는 시간 → 끝나면 렌즈 뷰
+const LEAN = 0.28;                 // 얼굴이 접안렌즈에 닿을 만큼만 — 더 숙이면 머리가 경통을 뚫는다
 export const TELESCOPE_EYE = TELESCOPE.eye;
 export const TELESCOPE_SPOT = { x: TELESCOPE_EYE.x, z: TELESCOPE_EYE.z + 0.5, r: 1.1 };
 
@@ -116,7 +117,7 @@ export function updateObservatory(dt, t) {
   player.rotation.y = TELESCOPE_EYE.yaw;
   lookState.t = Math.min(lookState.duration, lookState.t + dt);
   const k = Math.min(1, lookState.t / lookState.duration);
-  playerAnchor.rotation.x = 0.5 * k;   // 양수 = 앞으로 숙임(접안렌즈에 눈 대기)
+  playerAnchor.rotation.x = LEAN * k;   // 양수 = 앞으로 숙임(접안렌즈에 눈 대기)
   $w.armWristK = 0;
   if (!lookState.opened && k >= 1) {
     lookState.opened = true;

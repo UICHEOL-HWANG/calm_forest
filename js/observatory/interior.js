@@ -10,10 +10,13 @@ const alongTube = z => [
   z * Math.cos(ELEVATION) * Math.cos(YAW),
 ];
 const EYEPIECE = alongTube(0.85);
+// Stand back far enough that the forward lean (spaces/observatory.js) brings the face to the
+// eyepiece instead of pushing the head through the tube.
+const EYE_BACK = 0.75;
 export const TELESCOPE = {
   eyepiece: EYEPIECE,
   objective: alongTube(-1.5),
-  eye: { x: EYEPIECE[0] + Math.sin(YAW) * 0.35, z: EYEPIECE[2] + Math.cos(YAW) * 0.35, yaw: YAW + Math.PI },
+  eye: { x: EYEPIECE[0] + Math.sin(YAW) * EYE_BACK, z: EYEPIECE[2] + Math.cos(YAW) * EYE_BACK, yaw: YAW + Math.PI },
 };
 
 // 🚧 Solid furniture in hall-local coordinates (pier, two bookshelves, desk). The space
