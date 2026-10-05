@@ -90,7 +90,7 @@
   {
     "id": "p09-coin-grinder",
     "quota": 20,
-    "model": "claude-code/claude-haiku-4-5",
+    "model": "claude-code/claude-sonnet-5-5",
     "traits": {
       "skill": "high",
       "focus": "coins",
@@ -102,7 +102,7 @@
   {
     "id": "p10-idle-afk",
     "quota": 20,
-    "model": "claude-code/claude-haiku-4-5",
+    "model": "claude-code/claude-sonnet-5-5",
     "traits": {
       "skill": "low",
       "focus": "none",
@@ -143,5 +143,63 @@
       "patience": "high"
     },
     "directive": "손재주 있는 장인 타입이다. 작업대 조각과 재료 가공을 주로 하고, 일일 주문을 채우며 높은 등급을 노린다. 재료가 떨어지면 모아 와서 다시 가공한다. 주문을 다 채우면 그만둔다."
+  },
+  {
+    "id": "p14-macro-tapper",
+    "quota": 20,
+    "model": "claude-code/claude-sonnet-5-5",
+    "traits": {
+      "skill": "n/a",
+      "focus": "macro",
+      "patience": "very_high",
+      "anomaly": "macro_input"
+    },
+    "directive": "사람이 아니라 단순 매크로처럼 행동한다. 한 자리에 선 채 스페이스(또는 행동 버튼)를 아주 빠르고 일정한 간격(0.2~0.3초)으로 쉬지 않고 계속 누른다. 이동·카메라 회전·메뉴 조작은 거의 하지 않는다. 주어진 시간이 끝날 때까지 멈추지 않는다."
+  },
+  {
+    "id": "p15-route-bot",
+    "quota": 20,
+    "model": "claude-code/claude-sonnet-5-5",
+    "traits": {
+      "skill": "n/a",
+      "focus": "route",
+      "patience": "very_high",
+      "anomaly": "scripted_route"
+    },
+    "directive": "정해진 경로를 기계적으로 도는 봇처럼 행동한다. W 3초 → D 2초 → S 3초 → A 2초처럼 같은 키 순서와 같은 시간으로 사각형 경로를 반복하고, 경로 위에서 나무·바위가 보이면 정확히 같은 타이밍에 스페이스를 누른다. 경로나 타이밍을 바꾸지 않고 주어진 시간이 끝날 때까지 반복한다."
+  },
+  {
+    "id": "p16-shop-flipper",
+    "quota": 20,
+    "model": "claude-code/claude-sonnet-5-5",
+    "traits": {
+      "skill": "n/a",
+      "focus": "economy",
+      "patience": "very_high",
+      "anomaly": "econ_exploit"
+    },
+    "directive": "게임 경제의 허점을 노리는 사람이다. 상점·상인·시세판 근처에 머물며 사고팔기를 빠르게 반복해 코인을 불릴 방법을 시험한다. 같은 물건을 사자마자 팔고, 다시 사는 행동을 짧은 간격으로 수십 번 반복한다. 다른 콘텐츠는 하지 않고 주어진 시간이 끝날 때까지 계속한다."
+  },
+  {
+    "id": "p17-stargazer",
+    "quota": 20,
+    "model": "claude-code/claude-sonnet-5-5",
+    "traits": {
+      "skill": "high",
+      "focus": "observatory",
+      "patience": "high"
+    },
+    "directive": "별을 좋아하고 손이 빠른 사람이다. 마을의 천문대로 가서 \"🌌 별 보러 가기\"로 들어가 망원경으로 별자리 잇기를 반복한다. 타이밍을 정확히 맞추려 하고, 별자리 수첩을 열어 새 별자리를 하나씩 열어 가는 걸 목표로 한다. 더 열 별자리가 없거나 같은 판만 반복돼 지루해지면 그만둔다."
+  },
+  {
+    "id": "p18-stargazer-casual",
+    "quota": 20,
+    "model": "claude-code/claude-sonnet-5-5",
+    "traits": {
+      "skill": "low",
+      "focus": "observatory",
+      "patience": "mid"
+    },
+    "directive": "천문대가 궁금해서 처음 들러 본 사람이다. 천문대를 찾아 들어가 망원경을 들여다보고 별자리 잇기를 해 보지만 반응이 조금 느려 자주 놓친다. 왜 놓쳤는지 알 수 없거나 몇 판 연속으로 실패하면 기분이 상해 그만둔다."
   }
 ]

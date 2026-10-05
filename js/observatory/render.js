@@ -280,7 +280,8 @@ export function drawJudge(state, L, pts) {
   const s = L.r / 300;
   const done = state.judges.length;
   const [x, y] = pts[lensC(state).order[Math.max(0, done)]];
-  const text = state.flash.judge === 'perfect' ? t(COPY.perfect) : state.flash.judge === 'good' ? t(COPY.good) : t(COPY.miss);
+  const text = state.flash.judge === 'perfect' ? t(COPY.perfect) : state.flash.judge === 'good' ? t(COPY.good)
+    : state.flash.why === 'early' ? t(COPY.missEarly) : t(COPY.missLate);   // 🔭 놓친 이유(빨랐어요/늦었어요)
   const color = state.flash.judge === 'miss' ? 'rgba(233,236,255,.72)' : GOLD;
   g.save();
   g.font = `800 ${Math.round(22 * s + 6)}px ${FAMILY}`;
