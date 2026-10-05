@@ -85,7 +85,8 @@ export function buildFarmInstances(cap = PLOT_CAP) {
   //   종류별 캔버스 텍스처 + 종류별 InstancedMesh 3개(아틀라스·커스텀 셰이더 없음).
   const hgeo = new THREE.PlaneGeometry(1.5, 1.5 * HINT_H / HINT_W);
   const mkHint = (tex) => {
-    const m = new THREE.InstancedMesh(hgeo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }), cap);
+    const m = new THREE.InstancedMesh(hgeo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }), cap);
+    m.renderOrder = 20;   // 🌾 캐릭터·작물에 가려지거나 관통돼 보이지 않게 항상 위에 그린다
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     m.castShadow = false; m.receiveShadow = false; m.count = 0; m.frustumCulled = false;
     scene.add(m);

@@ -6850,7 +6850,7 @@ const HINT_W = 256, HINT_H = 112;
 //     쿼드에 그려진 내용이므로, 맞춰야 하는 건 **"옛 캔버스 1px = 월드 몇" 비율**이다:
 //       scale = (옛 월드크기 / 옛 캔버스크기) × (새 캔버스크기 / 지오메트리크기)
 //     지오메트리가 1.5 × 1.5*HINT_H/HINT_W 라 가로·세로 모두 (HINT_W / 1.5) 배가 된다.
-const _HINT_K = HINT_W / 1.5;
+const _HINT_K = HINT_W / 1.5 * 0.8;   // 🌾 이모지만 그리니 배지를 20% 줄인다
 //   plot.hint 값 순서와 같다: 0 물! · 1 수확! · 2 씨앗을 넣어요
 const _HINT_SCALE = [
   new THREE.Vector3(1.15 / 176 * _HINT_K, 0.68 / 104 * _HINT_K, 1),
@@ -6867,31 +6867,31 @@ function warnTexture() {
   //     실제 fillText 문자열을 착각해 옮긴 것 — i18n-en.js 사전 키는 원래 문구 '💧 물 줘요!' 그대로다(리뷰 fix round 1).
   //     기능 변화 0 원칙에 따라 원래 문구로 되돌린다.
   //   폰트 30px·잉크 #164a6a 는 옛 warnMaterial(126293e) 그대로다.
-  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#164a6a', t('💧 물 줘요!'), 30);
+  _drawHintBadge(c, 'rgba(140,200,255,0.96)', '#164a6a', '💧', 46);
   return (_warnTex = _hintTexFromCanvas(cv));
 }
 function harvestTexture() {
   if (_harvestTex) return _harvestTex;
   const [cv, c] = _hintCanvas();
-  _drawHintBadge(c, 'rgba(150,220,150,0.96)', '#245a2a', t('🌾 수확!'), 30);   // 옛 harvestMaterial 도 bold 30px
+  _drawHintBadge(c, 'rgba(150,220,150,0.96)', '#245a2a', '🌾', 46);   // 옛 harvestMaterial 도 bold 30px
   return (_harvestTex = _hintTexFromCanvas(cv));
 }
 function seedHintTexture() {
   if (_seedHintTex) return _seedHintTex;
   const [cv, c] = _hintCanvas();
-  _drawHintBadge(c, 'rgba(233,206,150,0.97)', '#6b4a20', t('🌰 씨앗을 넣어요'), 28);   // ⚠️ 이것만 옛 값이 bold 28px
+  _drawHintBadge(c, 'rgba(233,206,150,0.97)', '#6b4a20', '🌰', 46);   // ⚠️ 이것만 옛 값이 bold 28px
   return (_seedHintTex = _hintTexFromCanvas(cv));
 }
 function weedTexture() {   // 🌿 고급 작물 — 잡초가 성장을 막고 있다(맨손 액션으로 뽑기)
   if (_weedTex) return _weedTex;
   const [cv, c] = _hintCanvas();
-  _drawHintBadge(c, 'rgba(190,225,160,0.96)', '#2f5a24', t('🌿 잡초 뽑기'), 30);
+  _drawHintBadge(c, 'rgba(190,225,160,0.96)', '#2f5a24', '🌿', 46);
   return (_weedTex = _hintTexFromCanvas(cv));
 }
 function pestTexture() {   // 🐛 고급 작물 — 해충(포충망으로 쫓기, 안 쫓으면 수확 절반)
   if (_pestTex) return _pestTex;
   const [cv, c] = _hintCanvas();
-  _drawHintBadge(c, 'rgba(245,200,170,0.97)', '#7a3a1a', t('🐛 해충! 포충망'), 28);
+  _drawHintBadge(c, 'rgba(245,200,170,0.97)', '#7a3a1a', '🐛', 46);
   return (_pestTex = _hintTexFromCanvas(cv));
 }
 
@@ -6918,7 +6918,7 @@ function syncFarmHints(now) {
   for (const p of plots) {
     const h = p.hint ?? -1;
     if (h < 0) continue;
-    _hintP.set(p.x, 1.4 + Math.sin(now * 3 + h) * 0.06, p.z);
+    _hintP.set(p.x, 1.85 + Math.sin(now * 3 + h) * 0.06, p.z);   // 🌾 캐릭터 머리 위로(1.4 에선 몸을 관통해 보였다)
     _fmM.compose(_hintP, _hintQ, _HINT_SCALE[h]);   // 종류마다 크기가 다르다 — 옛 Sprite 와 같게
     if (h === 0) M.warn.setMatrixAt(nWarn++, _fmM);
     else if (h === 1) M.harvest.setMatrixAt(nHarvest++, _fmM);
@@ -7122,7 +7122,10 @@ function makeNameTag(def) {
   const FONT = (px) => `bold ${px}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const c = cv.getContext('2d');
-  const label = `${def.emoji} ${t(def.name)}`;
+  // 🧑‍🌾 같은 ZWJ 결합 이모지는 웹뷰마다 폭이 달라(한 글자/두 글자) 이름표에 큰 공백이 생겼다 → 마지막 조각(🌾)만 쓴다.
+  //   폭이 실측 그대로라 배지가 글자에 딱 맞고 가운데 정렬된다. 대화창 등 다른 곳의 def.emoji 는 그대로.
+  const tagEmoji = def.emoji.includes('\u200D') ? def.emoji.split('\u200D').pop() : def.emoji;
+  const label = `${tagEmoji} ${t(def.name)}`;
 
   // ⚠️ textAlign='center' 에 기대지 않는다 — 토스 웹뷰에서 가운데 정렬이 안 먹어 글자가
   //    배지 밖으로 밀려 나갔다(2026-09-09 실기기 보고). 왼쪽 기준으로 x 를 직접 계산한다.
@@ -7131,7 +7134,7 @@ function makeNameTag(def) {
   // 🧑‍🌾 처럼 ZWJ 로 결합된 이모지는 iOS 웹뷰에서 🧑 + 🌾 두 글자로 그려지는데
   //   measureText 는 합쳐진 한 글자 폭을 돌려준다 → 배지보다 글자가 넓어져 밖으로 밀려 나갔다
   //   (2026-09-09 토스 실기기 보고, 농부 삼촌만 해당). 결합 조각 수만큼 여유를 미리 준다.
-  const zwjParts = (def.emoji.match(/\u200D/g) || []).length;
+  const zwjParts = 0;   // 위에서 ZWJ 이모지를 한 글자로 줄였다
   const PAD = 28, MAX_TEXT = W - 12 - PAD * 2;
   let px = 34, textW = 0;
   for (;;) {
