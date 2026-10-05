@@ -53,6 +53,7 @@ export const CONFIG = {
   RETENTION_GUIDANCE_SCORE_TABLE: 'retention_guidance_scores', // 리텐션 안내 모델 점수/피처 스냅샷
   //    🛶 나룻배 런 기록 — sql/migrations/migrate_boat_runs.sql 실행으로 생성
   BOAT_TABLE: 'boat_runs',       // 런당 1행(코스 시드·충돌 지점·수집물·결과)
+  STAR_TABLE: 'star_runs',       // 🔭 천문대 별 잇기 판 1행(성공·실패·포기) — sql/migrations/migrate_star_runs.sql
   SEA_TABLE: 'sea_records',      // 🌊 바다터 어획 1행(어종·무게) — '오늘의 대어' 리더보드 원천
 
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────
