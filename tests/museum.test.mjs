@@ -203,11 +203,13 @@ test('상태가 비어도 터지지 않는다', () => {
 //      명판도 못 읽고 🔍도 못 눌러 "있지만 볼 수 없는" 전시물이 됐다.
 //   game.js 는 노드에서 import 할 수 없어 함수 본문을 떼어 평가한다.
 const HALF_W = 7.5, HALF_D = 6.5;
-const slotsFn = (() => {
+const slotsFn0 = (() => {
   const src = SRC.slice(SRC.indexOf('function museumSlots('), SRC.indexOf('\nlet museumCases'));
   // eslint-disable-next-line no-new-func
-  return new Function('MUSEUM_HALF_W', 'MUSEUM_HALF_D', src + '\nreturn museumSlots;')(HALF_W, HALF_D);
+  return new Function('MUSEUM_HALF_W', 'MUSEUM_HALF_D', src + '\nreturn { museumSlots, museumStairBox };')(HALF_W, HALF_D);
 })();
+const stairBox = slotsFn0.museumStairBox;
+const slotsFn = slotsFn0.museumSlots;
 
 for (const floor of MUSEUM_FLOORS) {
   test(`${floor.name} 진열장이 전부 방 안에 있다`, () => {
@@ -226,6 +228,43 @@ test('진열장끼리 겹치지 않는다', () => {
       const d = Math.hypot(slots[i][0] - slots[j][0], slots[i][1] - slots[j][1]);
       assert.ok(d > 1.1, `${floor.name} 진열장이 겹친다(간격 ${d.toFixed(2)})`);
     }
+  }
+});
+
+// 🪜 계단 발판(충돌체)과 진열장 받침 충돌체(±0.5~0.6)가 겹치면 모서리 칸이 계단 속에 박힌다 +
+//    도착 지점이 칸 충돌체 안이면 층을 옮기자마자 갇힌다(옛 z0=-4.4 배치가 둘 다였다).
+test('계단이 진열장·도착 지점과 겹치지 않는다', () => {
+  for (const floor of MUSEUM_FLOORS) {
+    const slots = slotsFn(floorEntries(floor.id, DEX).length, floor.id === 1);
+    for (const sx of [-1, 1]) {
+      const b = stairBox(sx);
+      for (const [x, z, ry] of slots) {
+        const hw = ry && Math.abs(Math.sin(ry)) > 0.5 ? 0.6 : 0.5, hd = hw === 0.6 ? 0.5 : 0.6;
+        const hit = x + hw > b.x0 && x - hw < b.x1 && z + hd > b.z0 && z - hd < b.z1;
+        assert.ok(!hit, `${floor.name} 진열장(${x},${z}) 이 계단 발판과 겹친다`);
+      }
+      const arrive = [sx * 5.0, -5.3 + 1.4];   // museumStairs 의 x·z+1.4 (cafe.js stair())
+      for (const [x, z, ry] of slots) {
+        const hw = ry && Math.abs(Math.sin(ry)) > 0.5 ? 0.6 : 0.5, hd = hw === 0.6 ? 0.5 : 0.6;
+        assert.ok(Math.abs(arrive[0] - x) > hw + 0.35 || Math.abs(arrive[1] - z) > hd + 0.35,
+          `${floor.name} 계단 도착 지점이 진열장(${x},${z}) 충돌체에 붙는다`);
+      }
+      // 계단 안내(반경 1.8)가 진열장 앞 자리에서 뜨면 🔍 안내를 가린다 — 앞 서는 자리는 칸에서 0.9 앞
+      for (const [x, z, ry] of slots) {
+        const front = [x + Math.sin(ry) * 0.9, z + Math.cos(ry) * 0.9];
+        assert.ok(Math.hypot(front[0] - sx * 5.0, front[1] + 5.3) > 1.8, `${floor.name} 진열장(${x},${z}) 앞이 계단 안내 반경에 든다`);
+      }
+    }
+  }
+});
+
+// 🏛️ 마주 서는 줄 사이 통로 — 유리장이 41° 카메라에서 뒷줄을 가리지 않도록 줄 간격 ≥ 1.9
+test('섬 줄 간격이 충분하다(앞줄이 뒷줄을 가리지 않게)', () => {
+  for (const floor of MUSEUM_FLOORS) {
+    const slots = slotsFn(floorEntries(floor.id, DEX).length, floor.id === 1);
+    const island = slots.filter(([x]) => Math.abs(x) < 5);
+    const zs = [...new Set(island.map(([, z]) => +z.toFixed(2)))].sort((a, b) => a - b);
+    for (let i = 1; i < zs.length; i++) assert.ok(zs[i] - zs[i - 1] >= 1.8, `${floor.name} 줄 간격 ${(zs[i] - zs[i - 1]).toFixed(2)}`);
   }
 });
 

@@ -246,7 +246,8 @@ export function museumSlots(count = 13, reserveCenter = false) {
   const out = [];
   const side = Math.min(5, Math.ceil((count - 3) / 2));   // 안쪽 벽 3칸을 빼고 좌우로 나눈다
   //   ⚠️ 간격이 좁으면 진열장 다섯이 한 덩어리로 읽힌다 — 받침 폭 0.95 의 두 배 이상 띄운다.
-  const step = side > 1 ? 8.8 / (side - 1) : 0, z0 = -4.4;
+  //   🪜 z0=-2.9: 북쪽 모서리(-4.4~-2.4)는 계단 자리다 — 옛 z0=-4.4 는 계단과 첫 칸이 같은 자리를 썼고 도착 지점이 칸 충돌체 안이었다.
+  const step = side > 1 ? 7.3 / (side - 1) : 0, z0 = -2.9;
   for (let i = 0; i < side; i++) out.push([-MUSEUM_HALF_W + 1.2, z0 + i * step,  Math.PI / 2]);
   for (let i = 0; i < side; i++) out.push([ MUSEUM_HALF_W - 1.2, z0 + i * step, -Math.PI / 2]);
   const back = Math.min(3, count - out.length);
@@ -258,9 +259,12 @@ export function museumSlots(count = 13, reserveCenter = false) {
   //      ⚠️ 1층이 13→17칸으로 늘며 섬 4칸이 특별 진열대와 같은 자리(0,-0.3)를 차지해 겹쳐 보였다(2026-10-06 실기기).
   let rest = count - out.length;
   if (rest > 0) {
-    const cols = Math.min(reserveCenter ? 4 : 3, rest), rows = Math.ceil(rest / cols);
-    const cw = reserveCenter ? 2.6 : 2.3, rh = rows > 1 ? Math.min(reserveCenter ? 1.8 : 1.65, 8.4 / (rows - 1)) : 0;
-    const z0i = reserveCenter ? -2.9 : -(rows - 1) * rh / 2 + 0.6;
+    //   🏛️ 줄간격 ≥2 — 유리장 높이 1.9 를 41° 카메라가 내려다보면 뒷줄이 앞줄에 가려진다(옛 1.65 는 겹쳐 보였다).
+    //      서로 마주 보는 줄 사이 통로도 0.44 → 0.9 로 넓어진다. 칸이 많은 층은 5열(간격 1.95)로 줄 수를 줄여
+    //      맨 앞줄이 입구 길(z≥4.3)을 막지 않게 한다. 1층은 남쪽 절반이 특별 진열대 자리라 4열 한 줄.
+    const cols = Math.min(reserveCenter ? 4 : 5, rest), rows = Math.ceil(rest / cols);
+    const cw = reserveCenter ? 2.6 : (cols > 4 ? 1.95 : 2.1), rh = rows > 1 ? Math.min(2.1, 8.3 / (rows - 1)) : 0;
+    const z0i = reserveCenter ? -2.9 : (rows > 2 ? -3.3 : -(rows - 1) * rh / 2 + 0.6);
     for (let r = 0; r < rows && rest > 0; r++) {
       for (let c = 0; c < cols && rest > 0; c++, rest--) {
         out.push([(c - (cols - 1) / 2) * cw, z0i + r * rh, r % 2 ? Math.PI : 0]);
@@ -268,6 +272,11 @@ export function museumSlots(count = 13, reserveCenter = false) {
     }
   }
   return out.slice(0, count);
+}
+
+// 🪜 계단 발판 — 뒷벽 모서리에 가로로 붙인다(발판 5단 + 끝 띠). 칸 자리와 겹치지 않는지는 tests/museum.test.mjs 가 본다.
+export function museumStairBox(sx) {
+  return { x0: sx > 0 ? 4.3 : -7.2, x1: sx > 0 ? 7.2 : -4.3, z0: -6.3, z1: -4.7 };
 }
 
 export let museumCases = [];
@@ -305,9 +314,9 @@ export function museumPlateText() {
     _museumNear = hit;
     trackEvent('museum_exhibit_view', { item: item.id, cat: item.cat, got: at ? 1 : 0 });   // [GA4] 어떤 진열장 앞에 서는가
   }
-  if (!at) return `🎀 ${zone} — 아직 덮여 있어요. 찾아오면 천을 걷을게요`;
+  if (!at) return `🎀 ${zone} · 아직 천이 덮여 있어요`;
   const d = new Date(at);
-  return `${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일, 당신이 처음 발견했어요`;
+  return `${item.ico} ${item.name} · ${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} 처음 발견`;
 }
 
 // ✨ 특별 진열대 명판
@@ -318,9 +327,9 @@ export function museumExtraPlate(spot) {
   if (key !== _museumNearExtra) { _museumNearExtra = key; trackEvent('museum_exhibit_view', { item: spot.id, cat: 'special', got: gameState.museum.special[spot.id] ? 1 : 0 }); }
   const def = SPECIAL_EXHIBITS.find(d => d.id === spot.id); if (!def) return null;
   const rec = gameState.museum.special[def.id];
-  if (!rec) return `🎀 ${def.ico} ${def.name} — 그런 날을 기다려 보세요`;   // 🌐 글루 패턴은 js/i18n-en.js 박물관 블록
+  if (!rec) return `🎀 ${def.ico} ${def.name} · 아직 천이 덮여 있어요`;   // 🌐 글루 패턴은 js/i18n-en.js 박물관 블록
   const e = DEX[def.cat]?.find(x => x.id === rec.id), d = new Date(rec.at);
-  return `${def.ico} ${def.name} — ${e?.ico || ''} ${e?.name || rec.id}, ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  return `${def.ico} ${def.name} · ${e?.ico || ''} ${e?.name || rec.id} · ${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
 }
 
 // 🔍 전시물 관람 — 진열장 앞에서 액션을 누르면 크게 띄워 돌려 본다.
@@ -496,22 +505,23 @@ export function buildMuseumHall() {
     exhibitMeshes.push(ex); g.add(ex);   // 병합하지 않는다 — 실제 조형이라 재질이 제각각이고, 13개뿐이다
   });
 
+  // 🪜 계단 — 열린 층이 둘 이상일 때만 놓는다. ⚠️ 재질 병합 루프보다 **앞**에서 add 해야 그려진다(뒤에 두면 충돌체·안내만 있고 발판이 안 보였다). 위층은 북동, 아래층은 북서 구석
+  const opened = openFloors(gameState.dex, DEX);
+  museumStairs = [];
+  const stair = (sx, up) => {
+    for (let i = 0; i < 5; i++) add('stone', box(0.5, 0.22, 1.5, sx * (4.6 + i * 0.5), 0.11 + i * 0.22, -5.5));
+    add('trim', box(0.2, 0.16, 1.7, sx * 7.1, 0.11 + 5 * 0.22, -5.5));
+    museumStairs.push({ x: sx * 5.0, z: -5.3, up });   // 도착 지점 = z + 1.4 → (±5.0, -3.9): 앞 빈 바닥
+    const b = museumStairBox(sx);
+    museumColliders.push(solidBox(MUSEUM.x + b.x0, MUSEUM.z + b.z0, MUSEUM.x + b.x1, MUSEUM.z + b.z1));
+  };
+  if (museumFloor < opened) stair(1, true);
+  if (museumFloor > 1) stair(-1, false);
+
   for (const [k, geos] of parts) {
     const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
     m.receiveShadow = true; g.add(m);
   }
-  // 🪜 계단 — 열린 층이 둘 이상일 때만 놓는다. 위층은 북동, 아래층은 북서 구석
-  const opened = openFloors(gameState.dex, DEX);
-  museumStairs = [];
-  const stair = (sx, up) => {
-    const bx = sx * (MUSEUM_HALF_W - 1.5), bz = -MUSEUM_HALF_D + 1.6;
-    for (let i = 0; i < 5; i++) add('stone', box(1.5, 0.22, 0.5, bx, 0.11 + i * 0.22, bz + i * 0.5));
-    add('trim', box(1.7, 0.16, 0.2, bx, 0.11 + 5 * 0.22, bz + 5 * 0.5));
-    museumStairs.push({ x: bx, z: bz + 1.2, up });
-    museumColliders.push(solidBox(MUSEUM.x + bx - 0.85, MUSEUM.z + bz - 0.3, MUSEUM.x + bx + 0.85, MUSEUM.z + bz + 2.6));
-  };
-  if (museumFloor < opened) stair(1, true);
-  if (museumFloor > 1) stair(-1, false);
 
   // ✨ 1층 가운데 — 조건부 전시 3칸. 조형은 js/museum/extras.js(규칙은 js/museum.js)
   museumExtraSpots = [];

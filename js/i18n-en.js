@@ -1148,10 +1148,10 @@ export const EN = {
   '🌟 반딧불이': '🌟 Fireflies', '🪏 땅속': '🪏 Unearthed', '🐾 흔적': '🐾 Tracks', '🛶 강': '🛶 River',
   '🌫️ 정령': '🌫️ Spirits', '🌦️ 날씨': '🌦️ Weather', '🧑 주민': '🧑 Neighbours', '🍳 요리': '🍳 Dishes',
   // 조합 문구 — 글루 패턴으로 넣어야 {0} 이 재귀 번역된다(이 사전의 함정)
-  '🎀 {0} — 아직 덮여 있어요. 찾아오면 천을 걷을게요':
-    '🎀 {0} — still under cloth. Bring one in and we will draw it back',
-  '{0} {1} — {2}년 {3}월 {4}일, 당신이 처음 발견했어요':
-    '{0} {1} — first found by you on {3}/{4}/{2}',
+  '🎀 {0} · 아직 천이 덮여 있어요':
+    '🎀 {0} · still under cloth',
+  '{0} {1} · {2}.{3}.{4} 처음 발견':
+    '{0} {1} · first found {3}/{4}/{2}',
   // 🏠 house-floors: 이 글루는 원래 박물관(항상 위층행) 전용이었으나 이 브랜치부터 집 계단이 위/아래
   //   양방향으로 재사용한다 — "Up to"는 내려갈 때 오역이라 방향 중립 문구로 바꾼다(museum 쪽도 문제 없음).
   '🪜 {0}으로': '🪜 To the {0}',
@@ -1181,8 +1181,8 @@ export const EN = {
   '눈 오는 날 수확한 작물': 'A crop harvested in the snow',
   '안개 낀 날 주운 채집물': 'A find foraged in the fog',
   '🏛️ 박물관 특별 전시! {0} {1}': '🏛️ New special exhibit at the Museum! {0} {1}',
-  '🎀 {0} {1} — 그런 날을 기다려 보세요': '🎀 {0} {1} — wait for the right weather',
-  '{0} {1} — {2} {3}, {4}년 {5}월 {6}일': '{0} {1} — {2} {3}, {5}/{6}/{4}',
+  '🎀 {0} {1} · 아직 천이 덮여 있어요': '🎀 {0} {1} · still under cloth',
+  '{0} {1} · {2} {3} · {4}.{5}.{6}': '{0} {1} · {2} {3} · {5}/{6}/{4}',
   ' 🌊 나의 최대어 경신!': ' 🌊 New personal best!',
   '🏛️ {0} — {1}/{2}': '🏛️ {0} — {1}/{2}',
   '🏛️ 박물관이 {0}까지 늘었어요! 가서 보세요':
