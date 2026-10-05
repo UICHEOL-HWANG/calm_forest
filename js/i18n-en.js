@@ -2140,6 +2140,8 @@ export const EN = {
   '빛과 링이 별에 닿을 때 탭!': 'Tap when the light and the ring reach the star!',
   '딱 좋아요!': 'Perfect!',
   '놓쳤어요': 'Missed',
+  '빨랐어요': 'Too early',
+  '늦었어요': 'Too late',
   '북두칠성을 그렸어요!': 'You drew the Big Dipper!',
   '아깝다! 다시 이어 볼까요?': 'So close! Connect them again?',
   '콤보': 'Combo',
