@@ -47,6 +47,7 @@ select
     when event_name like 'mist_soothe%'  then 'mist'
     when event_name like 'cooking_%'     then 'cook'
     when event_name = 'craft_set'        then 'craft'
+    when event_name = 'star_start'       then 'star'   -- 🔭 판 시작 1회(star_result 도 arm 이 있어 둘 다 세면 두 배)
   end as game,
   arm, count(*) as plays
 from ev
@@ -202,13 +203,14 @@ with ev as (
       when event_name like 'fishing_%'    then 'fish'
       when event_name like 'sea_%'        then 'sea'
       when event_name like 'mist_soothe%' then 'mist'
+      when event_name = 'star_result'     then 'star'
     end as game,
     (select coalesce(value.double_value, cast(value.int_value as float64))
        from unnest(event_params) where key = 'dda') as dda
   from `calm-forest.analytics_547127440.events_*`
   where _TABLE_SUFFIX between '20260923' and format_date('%Y%m%d', current_date())
     and event_name in ('fishing_catch', 'fishing_miss', 'sea_catch', 'sea_miss',
-                       'mist_soothe', 'mist_soothe_miss')
+                       'mist_soothe', 'mist_soothe_miss', 'star_result')
 )
 select
   day, game,
@@ -245,12 +247,13 @@ done as (
       when event_name like 'fishing_%'    then 'fish'
       when event_name like 'sea_%'        then 'sea'
       when event_name like 'mist_soothe%' then 'mist'
+      when event_name = 'star_result'     then 'star'
     end as game,
     (select value.int_value from unnest(event_params) where key = 'arm') as arm
   from `calm-forest.analytics_547127440.events_*`
   where _TABLE_SUFFIX between '20260926' and format_date('%Y%m%d', current_date())
     and event_name in ('fishing_catch', 'fishing_miss', 'sea_catch', 'sea_miss',
-                       'mist_soothe', 'mist_soothe_miss')
+                       'mist_soothe', 'mist_soothe_miss', 'star_result')
     and (select value.int_value from unnest(event_params) where key = 'probe_v') = 2
 ),
 ab_n as (
@@ -274,3 +277,39 @@ select
 from done_n d
 full outer join ab_n a on a.game = d.game and a.arm = d.arm
 order by game, arm;
+
+
+-- =============================================================
+--  8. 🔭 별 잇기 — 별자리 × 팔 성공률·점수비 (2026-10-05~)
+-- =============================================================
+--  별자리마다 노트 수(4~11)·tempo 가 달라 점수는 score/max_score 로만 비교한다.
+--  팔 효과는 별자리 안에서 읽는다(constellation 은 공변량). first_clear 판은 따로 센다 —
+--  처음 깨는 판과 다시 하는 판은 동기가 다르다. 판 단위 원본은 Supabase star_runs(같은 run_id).
+--  포기율은 7번(game = 'star')에서 본다.
+with ev as (
+  select
+    (select value.string_value from unnest(event_params) where key = 'constellation') as constellation,
+    (select value.int_value    from unnest(event_params) where key = 'arm')           as arm,
+    (select coalesce(value.double_value, cast(value.int_value as float64))
+       from unnest(event_params) where key = 'ease')                                  as ease,
+    (select value.int_value    from unnest(event_params) where key = 'success')       as success,
+    (select value.int_value    from unnest(event_params) where key = 'score')         as score,
+    (select value.int_value    from unnest(event_params) where key = 'max_score')     as max_score,
+    (select value.int_value    from unnest(event_params) where key = 'first_clear')   as first_clear,
+    (select value.int_value    from unnest(event_params) where key = 'early_taps')    as early_taps
+  from `calm-forest.analytics_547127440.events_*`
+  where _TABLE_SUFFIX between '20261005' and format_date('%Y%m%d', current_date())
+    and event_name = 'star_result'
+    and (select value.int_value from unnest(event_params) where key = 'probe_v') = 2
+)
+select
+  constellation, arm, round(avg(ease), 2) as avg_ease,
+  count(*)                                         as plays,
+  round(100 * avg(success), 1)                     as success_pct,
+  round(avg(safe_divide(score, coalesce(max_score, 14))), 3) as score_ratio,
+  countif(first_clear = 1)                         as first_clears,
+  round(avg(early_taps), 2)                        as avg_early_taps
+from ev
+where arm is not null
+group by constellation, arm
+order by constellation, arm;

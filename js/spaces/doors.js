@@ -266,7 +266,7 @@ export function updateDoorInteract() {
     firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
   } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
     nd = 'observatory'; prompt = '🌌 별 보러 가기';
-    firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 북두칠성을 이어 보는 곳');
+    firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳');
   }
   $w.nearDoor = nd;
   if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');

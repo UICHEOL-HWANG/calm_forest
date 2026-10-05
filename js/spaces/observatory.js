@@ -2,14 +2,14 @@
 //  🔭 천문대 — 마을 게이트 + 실내 홀
 // =============================================================
 import {
-  $w, Input, diffParams, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
+  $w, Input, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
   rollDifficulty, setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
 import { Sound } from '../sound.js';
 import { R_BASE, STAIR_FOOT, STAIR_HALF_W, buildObservatoryExterior } from '../observatory/exterior.js';
-import { starSettle } from '../observatory/star-run.js';
+import { starAbandon, starBegin, starSettle, starState } from '../observatory/star-run.js';
 import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
 
 export const OBSERVATORY_LIGHT = {
@@ -85,19 +85,55 @@ function resetLookPose() {
   lookState = null; lensOpen = false;
 }
 
+// 🎲 판 id — GA4(star_*)와 star_runs 를 잇는 열쇠. randomUUID 가 없는 오래된 웹뷰는 v4 모양으로 만든다
+const newRunId = () => crypto.randomUUID?.()
+  || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+    const r = Math.random() * 16 | 0;
+    return (ch === 'x' ? r : (r & 3) | 8).toString(16);
+  });
+
+// 🔭 숙이기가 끝나면: 별자리 수첩 → 카드 고르기 → 렌즈 한 판 → 닫으면 다시 수첩 → 수첩을 닫으면 자세를 푼다
 async function openStarView() {
   const session = lookState;
   try {
-    const mod = await import('../observatory/ui.js');
+    const [lens, book] = await Promise.all([import('../observatory/ui.js'), import('../observatory/book.js')]);
     if (lookState !== session) return;
-    const diff = rollDifficulty('star');   // 🎚️ ease 가 클수록 쉽다(느린 혜성·넓은 판정 창) — DIFFICULTY 와 같은 방향
-    await mod.openStarView({ diff, ease: diff.ease, onClose: resetLookPose, onResult: (summary, run) => starSettle(summary, run, diff) });
-    if (lookState === session) lensOpen = true;   // 닫기가 먼저 왔으면(세션 끝) 켜지 않는다
-    trackEvent('star_start', { constellation: 'big_dipper', ...diffParams(diff) });   // 렌즈가 실제로 열렸을 때만
+    lensOpen = true;   // 수첩도 불투명 오버레이 — 그동안 3D 를 쉰다
+    showBook(lens, book, session);
   } catch {
     ui.toast?.('🔭 별보기 준비 중이에요', 1600);
     resetLookPose();
   }
+}
+
+function showBook(lens, book, session, fresh = null) {
+  if (lookState !== session) return;
+  const { cleared, best } = starState();
+  book.openStarBook({ cleared, best, fresh, onPick: c => startRun(lens, book, session, c), onClose: resetLookPose });
+}
+
+async function startRun(lens, book, session, c) {
+  if (lookState !== session) return;
+  const diff = rollDifficulty('star');   // 🎚️ ease 가 클수록 쉽다(느린 혜성·넓은 판정 창) — DIFFICULTY 와 같은 방향
+  const ctx = { c, runId: newRunId() };
+  let fresh = null;   // 이 판으로 열린 별자리 — 수첩으로 돌아가면 그 카드를 금빛으로(결과 카드에도 한 줄)
+  try {
+    await lens.openStarView({
+      constellation: c, diff, ease: diff.ease,
+      onResult: (summary, run) => {
+        const r = starSettle(summary, run, diff, ctx);
+        fresh = r.unlockedNext;
+        return r;
+      },
+      onAbandon: (reason, run) => starAbandon(reason, run, diff, ctx),
+      onClose: () => showBook(lens, book, session, fresh),
+    });
+  } catch {   // 수첩은 이미 닫혔다 — 렌즈가 안 열리면 자세까지 풀어 멈춘 화면을 남기지 않는다
+    ui.toast?.('🔭 별보기 준비 중이에요', 1600);
+    resetLookPose();
+    return;
+  }
+  Object.assign(ctx, starBegin(c, diff, ctx.runId));   // star_start — 렌즈가 실제로 열렸을 때만
 }
 
 export function startObservatoryLook() {

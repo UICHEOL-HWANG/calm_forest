@@ -64,9 +64,10 @@ test('a failed first try neither clears nor unlocks', () => {
 });
 
 test('starBegin counts attempts per constellation and sends star_start with run_id', () => {
-  const { c, events } = run('2026-10-04', null, { cleared: { big_dipper: 'x' }, plays: { cassiopeia: 2 }, best: {} });
+  const { c, events, saves } = run('2026-10-04', null, { cleared: { big_dipper: 'x' }, plays: { cassiopeia: 2 }, best: {} });
   const meta = c.starBegin(constellations.BY_ID.cassiopeia, { ease: 1, dda: 1, arm: 1 }, 'run-9');
   assert.deepEqual(plain(meta), { attemptN: 3, unlockedN: 2 });
+  assert.equal(saves.length, 1, 'attempt count is saved even if the run is abandoned');
   assert.equal(c.gameState.star.plays.cassiopeia, 3);
   assert.deepEqual(plain(events.at(-1)), ['star_start', {
     constellation: 'cassiopeia', notes: 4, run_id: 'run-9', attempt_n: 3, unlocked_n: 2, ease: 1, dda: 1, arm: 1,

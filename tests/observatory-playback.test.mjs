@@ -20,7 +20,7 @@ function harness() {
     performance: { now: () => 4000 }, Input: { setAnalog() {} } });
   vm.runInContext(source, context);
   const state = { g, dpr: 1, chart: rhythm.buildChart(), judges: [], ease: 1,
-    offsets: [], startAt: 0, resultShown: false };
+    offsets: [], noteOffsets: [], earlyTaps: 0, startAt: 0, resultShown: false };
   const L = { W: 1280, H: 800, r: 300, cx: 640, cy: 400, portrait: false };
   return { calls, state, L, context };
 }

@@ -31,6 +31,19 @@ export function ensureStyle() {
 .observatory-card p{margin:0 0 14px;font:600 14px/1.55 ${FAMILY};color:rgba(233,236,255,.74)}
 .observatory-card .score{margin:0 0 15px;font:800 30px/1 ${FAMILY};color:${GOLD}}
 .observatory-card button{height:38px;padding:0 16px;border-radius:8px;border:1px solid rgba(243,210,122,.45);background:${GOLD};color:#18204a;font:800 14px ${FAMILY};cursor:pointer}
+.observatory-book{display:flex;flex-direction:column;align-items:center;justify-content:safe center;padding:16px;overflow-y:auto;touch-action:pan-y}
+.observatory-book h2{margin:0 0 4px;font:800 21px ${FAMILY};color:${INK}}
+.observatory-book>p{margin:0 0 14px;font:500 13px ${FAMILY};color:rgba(233,236,255,.62);text-align:center}
+.observatory-book .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(560px,100%)}
+.observatory-book .cst{border-radius:16px;padding:10px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(233,236,255,.14);color:${INK};text-align:center;font-family:${FAMILY};cursor:pointer}
+.observatory-book .cst:hover:not([disabled]),.observatory-book .cst:focus-visible{border-color:${GOLD}}
+.observatory-book .cst[disabled]{opacity:.5;cursor:default}
+.observatory-book .cst.fresh{border-color:${GOLD};box-shadow:0 0 22px rgba(243,210,122,.35)}
+.observatory-layer.observatory-book canvas{position:static;inset:auto;width:100%;height:auto;aspect-ratio:1.5}
+.observatory-book .cst b{display:block;margin-top:4px;font:700 13px ${FAMILY}}
+.observatory-book .cst small{color:rgba(233,236,255,.62);font:600 11px ${FAMILY}}
+@media (max-width:520px){.observatory-book .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-height:560px){.observatory-book .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.observatory-layer.observatory-book canvas{aspect-ratio:2.4}.observatory-book h2{font-size:18px}.observatory-book>p{margin-bottom:8px}}
 `;
   document.head.appendChild(style);
 }
