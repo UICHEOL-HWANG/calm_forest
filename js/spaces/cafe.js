@@ -28,7 +28,6 @@ import { CAFE, CAFE_BOARD, CAFE_BONUS, CAFE_GATE, CAFE_GUESTS, CAFE_HALF, CAFE_O
 import { CROP_TYPES } from '../data/tools.js';
 import { PAL } from '../data/world.js';
 import { CONFIG } from '../config.js';
-import { MAX_HOUSE_STAGE } from '../house-cost.js';
 import { MUSEUM_FLOORS, SPECIAL_EXHIBITS, exhibitCenterY, floorEntries, floorProgress, openFloors, viewFrame } from '../museum.js';
 import { buildMuseumExtras } from '../museum/extras.js';
 import { PLATFORM } from '../platform.js';
@@ -76,7 +75,7 @@ export const CAFE_THANKS = ['잘 먹을게요, 고마워요 ☕', '역시 이 �
 export function playerPhase() {
   const st = gameState.houseStage || 0;
   return st < 3 ? 'settling'                       // 아직 빈터에 집을 짓는 중
-       : st < MAX_HOUSE_STAGE ? 'settled'          // 집을 완성하고 자리 잡음(증축 중 포함)
+       : st < 6 ? 'settled'                        // 집을 완성하고 자리 잡음(증축 중 포함) — 6=루프탑 빌라. 7단계 신설 후에도 '후반' 기준은 6 유지
        : 'thriving';                               // 증축까지 마친 후반
 }
 

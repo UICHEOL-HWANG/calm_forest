@@ -10,7 +10,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const q = new URLSearchParams(location.search);
 const NAMES = ['cottage', 'loft', 'penthouse', 'villa', 'apartment'];
-const list = q.get('all') ? NAMES : [q.get('house') || 'cottage'];
+// 🏝️ ?set=s7 — 7단계 후보 4종(stage7-a~d)을 6단계·5단계와 나란히(크기 기준선)
+const S7 = ['penthouse', 'villa', 'stage7-a', 'stage7-b', 'stage7-c', 'stage7-d'];
+const list = q.get('set') === 's7' ? S7 : q.get('all') ? NAMES : [q.get('house') || 'cottage'];
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -34,15 +36,15 @@ for (let i = 0; i < list.length; i++) {
   const name = list[i];
   try {
     // 게임 본체와 같은 파일(js/house/*.js) — apartment 는 채택 안 된 후보라 여기만 남아 있다
-    const mod = await import(`${name === 'apartment' ? './' : '../../js/house/'}${name}.js?v=${Date.now()}`);
+    const mod = await import(`${name === 'apartment' || name.startsWith('stage7-') ? './' : '../../js/house/'}${name}.js?v=${Date.now()}`);
     const g = mod.build(THREE, H);
-    g.position.x = (i - (list.length - 1) / 2) * 9;
+    g.position.x = (i - (list.length - 1) / 2) * (list.length > 4 ? 11 : 9);
     scene.add(g); label.push(name);
   } catch (e) { console.error(name, e); label.push(name + ' ✗'); }
 }
 document.getElementById('lbl').textContent = label.join('  ·  ');
 // 카메라: 게임 추적 오프셋 (0,14,16)·시선 (0,1.2,0) 과 같은 41°. 나란히 볼 땐 뒤로 뺀다
-const spread = list.length > 1 ? 2.6 : 1;
+const spread = list.length > 4 ? 3.6 : list.length > 1 ? 2.6 : 1;
 const camMode = q.get('cam') || 'game';
 if (camMode === 'line') { scene.fog = null; camera.position.set(0, 7, 24); camera.lookAt(0, 1.6, 0); }   // 나란히 비교용(안개 없음)
 else if (camMode === 'game') { camera.position.set(0, 14 * spread, 16 * spread); camera.lookAt(0, 1.2, 0); }
