@@ -84,6 +84,51 @@ function noise(dur, freq = 1200, vol = 0.5, q = 1) {
   src.connect(bp).connect(g).connect(master); src.start(t); src.stop(t + dur);
 }
 
+// ── 🔭 별빛 잔향 — 짧은 피드백 딜레이(천문대 효과음·오르골 BGM 반짝임에만) ──
+let echoIn = null;
+function ensureEcho() {
+  if (echoIn) return echoIn;
+  const c = ensureCtx();
+  echoIn = c.createDelay(1); echoIn.delayTime.value = 0.23;
+  const fb = c.createGain(); fb.gain.value = 0.32;
+  const wet = c.createGain(); wet.gain.value = 0.35;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
+  echoIn.connect(lp).connect(fb).connect(echoIn); lp.connect(wet).connect(master);
+  return echoIn;
+}
+// 잔향을 섞을 수 있는 톤 — at 으로 예약, out 기본은 효과음(master)
+function chime(freq, dur, vol, { type = 'sine', at = null, wet = 0, glide = null, out = null } = {}) {
+  if (!enabled) return;
+  const c = ensureCtx(); const t = at === null ? c.currentTime : at;
+  const osc = c.createOscillator(); const g = c.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, t);
+  if (glide) osc.frequency.exponentialRampToValueAtTime(glide, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(out || master);
+  if (wet) { const w = c.createGain(); w.gain.value = wet; g.connect(w).connect(ensureEcho()); }
+  osc.start(t); osc.stop(t + dur + 0.05);
+}
+// 위로 쓸어 올라가는 노이즈(혜성 "슝")
+function sweep(dur, from, to, vol, q = 2) {
+  if (!enabled) return;
+  const c = ensureCtx(); const t = c.currentTime;
+  const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource(); src.buffer = buf;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = q;
+  bp.frequency.setValueAtTime(from, t); bp.frequency.exponentialRampToValueAtTime(to, t + dur);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp).connect(g).connect(master); src.start(t); src.stop(t + dur);
+}
+// 🔭 별 차임 음계 — C 장조 5음 + 도↑. 이은 별 순번(step)마다 한 칸씩 올라가 완주하면 짧은 가락이 된다
+const STAR_SCALE = [1046.5, 1174.66, 1318.51, 1567.98, 1760.0, 2093.0];
+const starNote = step => STAR_SCALE[step % STAR_SCALE.length] * (step >= STAR_SCALE.length ? 2 : 1);
+
 // ── 게임 효과음 (game.js 액션 지점에서 호출) ────────────────────
 export const Sound = {
   chop()   { tone(180, 0.12, 'triangle', 0.6, 90); noise(0.08, 800, 0.25); }, // 벌목 "톡"
@@ -95,6 +140,22 @@ export const Sound = {
   blip()   { tone(720, 0.06, 'square', 0.18); },                                // 도구 전환
   nudge()  { tone(880, 0.12, 'sine', 0.35); setTimeout(() => tone(1175, 0.22, 'sine', 0.3), 110); }, // 🎯 이탈 배너 "띠링" — 수확음보다 한 톤 낮고 짧게
   plant()  { tone(440, 0.1, 'sine', 0.3, 560); },                               // 씨앗 심기
+  // 🔭 천문대 별 잇기 — 효과음 세트 1 '별 차임'(sims/observatory-sound-sim.html, 2026-10-05 사용자 선택)
+  starPerfect(step = 0) { const f = starNote(step); chime(f, 0.5, 0.16, { wet: 0.5 }); chime(f * 2, 0.25, 0.05, { type: 'triangle' }); chime(f * 4, 0.12, 0.02); },
+  starGood(step = 0)    { chime(starNote(step), 0.32, 0.09, { wet: 0.25 }); },
+  starMiss()   { chime(150, 0.2, 0.22, { glide: 88 }); noise(0.12, 500, 0.06, 0.7); },   // 낮고 둔한 "툭"
+  starComet()  { sweep(0.4, 500, 2600, 0.05); },                                       // 혜성 출발 "슝"
+  starComplete(notes = 7) {   // 이은 별만큼 음계를 훑고 C 화음으로 맺는다
+    const t = ensureCtx().currentTime;
+    for (let i = 0; i <= notes; i++) chime(starNote(i), 0.4, 0.1, { at: t + i * 0.07, wet: 0.4 });
+    [523.25, 659.25, 783.99, 1046.5].forEach(f => chime(f, 1.4, 0.06, { type: 'triangle', at: t + 0.65, wet: 0.5 }));
+  },
+  starUnlock(delay = 0) {   // 위에서 쏟아지는 반짝임 + 낮은 종 — delay(초)는 AudioContext 시계로(완주 팡파레 뒤에 이어 붙인다)
+    const t = ensureCtx().currentTime + delay;
+    [2637, 2349, 2093, 1760, 1568, 1319].forEach((f, i) => chime(f, 0.35, 0.05, { at: t + i * 0.06, wet: 0.6 }));
+    chime(523.25, 1.2, 0.07, { type: 'triangle', at: t + 0.4, wet: 0.5 });
+  },
+  starPick()   { chime(1320, 0.05, 0.07, { type: 'triangle' }); },                     // 수첩 카드 "톡"
 };
 
 // =============================================================
@@ -107,7 +168,7 @@ export const Sound = {
 //     리듬 음악에선 그 지터가 그대로 "박자가 흐트러진 느낌"이 된다.
 // =============================================================
 let musicOn = false, musicTimer = null, musicGain = null, barCount = 0;
-let bgmTheme = 'main';   // 'main' | 'cave'
+let bgmTheme = 'main';   // 'main' | 'cave' | 'stars'(🔭 천문대 오르골)
 
 // 밝은 진행: C → G → Am → F (두 바퀴 = 8마디 한 덩어리)
 const MAIN_CHORDS = [
@@ -149,6 +210,14 @@ const STAB_SLOTS  = [3, 7];      // 코드 스탭은 뒷박에 — 엇박이라�
 // 어두운 재료: A 단조 계열 + 반음(A#) 섞어 불안한 색
 const CAVE_NOTES = [440.00, 466.16, 523.25, 587.33, 349.23]; // A A# C D F
 const CAVE_BAR = 5000;
+
+// 🔭 천문대 오르골 — 76 BPM 8분 아르페지오(C·Am·F·G) + 낮은 바탕음 + 별빛 잔향
+const STARS_BPM = 76;
+const STARS_E = 30 / STARS_BPM;                 // 8분음표(초)
+const STARS_BAR = STARS_E * 8 * 1000;           // 한 마디(ms)
+const STARS_CHORDS = [[0, 2, 4, 7], [5, 0, 2, 5], [3, 5, 0, 3], [4, 6, 1, 4]];   // MEL 인덱스 — C Am F G
+const STARS_ROOTS = [130.81, 110, 87.31, 98];
+const STARS_ARP = [0, 1, 2, 3, 2, 1, 2, 3];     // 화음 안에서 오르내리기, 뒤 4칸은 한 옥타브 위
 
 // 빠른 어택·짧은 감쇠(뜯는 소리) — 활기찬 테마의 기본 음색
 function pluck(freq, dur, vol, type = 'triangle', at = null) {
@@ -264,8 +333,20 @@ function playCaveBar(at) {
   if (Math.random() < 0.7) drip(at + Math.random() * sec * 0.7);   // 물방울 에코
 }
 
-function barFn() { return bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+// 🔭 오르골 마디 — 쇠 빗살 음색(기음 + 3배음 살짝) + 잔향, 화음 루트로 낮게 깔리는 바탕음
+function playStarsBar(at) {
+  const bar = barCount++ % STARS_CHORDS.length;
+  const ch = STARS_CHORDS[bar];
+  STARS_ARP.forEach((k, i) => {
+    const f = MEL[ch[k]] * (i >= 4 ? 2 : 1), t = at + i * STARS_E;
+    chime(f, STARS_E * 2.2, 0.06, { at: t, wet: 0.4, out: musicGain });
+    chime(f * 3, STARS_E * 0.9, 0.011, { at: t, out: musicGain });
+  });
+  padNote(STARS_ROOTS[bar], STARS_E * 8, 0.05, 'triangle', at);
+}
+
+function barFn() { return bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을

@@ -7,7 +7,7 @@ import {
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
-import { Sound } from '../sound.js';
+import { Sound, setBGMTheme } from '../sound.js';
 import { R_BASE, STAIR_FOOT, STAIR_HALF_W, buildObservatoryExterior, stairHeight } from '../observatory/exterior.js';
 import { starAbandon, starBegin, starSettle, starState } from '../observatory/star-run.js';
 import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
@@ -81,6 +81,7 @@ export function enterObservatory() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('observatory', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳이에요. 나갈 땐 남쪽 문');
+  setBGMTheme('stars');   // 🎵 천문대 오르골
   Sound.blip(); trackEvent('observatory_enter');
 }
 
@@ -191,6 +192,7 @@ export function exitObservatory() {
   player.position.set(OBSERVATORY_GATE.x, 0, OBSERVATORY_GATE.z + 8);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
+  setBGMTheme('main');    // 🎵 마을 테마 복귀
   Sound.blip(); trackEvent('observatory_exit');
 }
 

@@ -10,7 +10,7 @@ import { fakeDom } from './helpers/fake-dom.mjs';
 
 function overlay() {
   const dom = fakeDom();
-  const tracked = [];
+  const tracked = [], sounds = [];
   const source = ['render.js', 'ui.js'].map(file =>
     readFileSync(new URL(`../js/observatory/${file}`, import.meta.url), 'utf8')).join('\n')
     .replace(/^import [\s\S]*?;\n/gm, '').replace(/^export /gm, '');
@@ -20,6 +20,7 @@ function overlay() {
     requestAnimationFrame: dom.requestAnimationFrame, cancelAnimationFrame: dom.cancelAnimationFrame,
     Input: { setAnalog() {} },
     trackDiffAbandon: (...a) => tracked.push(a),
+    Sound: new Proxy({}, { get: (_, k) => (...a) => sounds.push([k, ...a]) }),
   });
   vm.runInContext(source, context);
   const layer = () => dom.document.body.querySelector('.observatory-layer');
@@ -34,7 +35,7 @@ function overlay() {
       canvas().dispatch('pointerdown');
     });
   };
-  return { dom, context, tracked, layer, canvas, card, chart, play };
+  return { dom, context, tracked, sounds, layer, canvas, card, chart, play };
 }
 
 test('failed run (all misses) shows the fail title and no reward', async () => {
@@ -237,4 +238,28 @@ test('a replaced lens does not call the old onClose (would reopen the notebook o
   await o.context.openStarView({});
   assert.equal(closes, 0);
   assert.equal(o.dom.document.body.querySelectorAll('.observatory-layer').length, 1);
+});
+
+test('🔔 set-1 sounds: rising chime per star, soft good, thud on miss, comet per note, finish, unlock', async () => {
+  const c = overlay();   // comet departs once per note as frames pass each startMs (no taps → notes expire, that's fine here)
+  await c.context.openStarView({});
+  for (const n of c.chart) { c.dom.setNow(n.startMs + 5); c.dom.tick(0); }
+  assert.equal(c.sounds.filter(s => s[0] === 'starComet').length, 7);
+
+  const o = overlay();
+  await o.context.openStarView({ onResult: () => ({ coins: 10, unlockedNext: 'cassiopeia' }) });
+  o.play([0, 120, null, 0, 0, 0, 0]);   // perfect, good, (expired) miss, perfect×4
+  const named = k => o.sounds.filter(s => s[0] === k);
+  assert.deepEqual(named('starPerfect').map(s => s[1]), [0, 3, 4, 5, 6], 'chime steps follow the star index');
+  assert.deepEqual(named('starGood').map(s => s[1]), [1]);
+  assert.equal(named('starMiss').length, 1);
+  assert.deepEqual(named('starComplete').map(s => s[1]), [7]);
+  assert.equal(named('starUnlock').length, 1);
+});
+
+test('🔔 a failed run gets no finish fanfare', async () => {
+  const o = overlay();
+  await o.context.openStarView({});
+  o.dom.tick(o.chart.at(-1).hitMs + 400);
+  assert.equal(o.sounds.filter(s => s[0] === 'starComplete').length, 0);
 });

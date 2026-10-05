@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Observatory sound sim</title>
+<!-- 🔭🎵 천문대 BGM 3안 + 효과음 2세트 미리듣기 (게임에 연결 안 함)
+     js/sound.js 와 같은 합성 방식·음량(master 0.35 · 음악 0.5) — 외부 음원 없음 -->
+<style>
+  :root { --bg:#05070f; --card:#0f1430; --ink:#e9ecff; --dim:#9aa0c0; --gold:#f3d27a; --line:rgba(233,236,255,.14);
+          --font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); padding:20px 16px 40px }
+  main { max-width:760px; margin:0 auto }
+  h1 { font-size:22px; margin:0 0 4px } p.lead { color:var(--dim); margin:0 0 18px; font-size:14px }
+  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px }
+  h2 { font-size:16px; margin:0 0 4px } .sub { color:var(--dim); font-size:13px; margin:0 0 12px }
+  .row { display:flex; flex-wrap:wrap; gap:8px }
+  button { font:600 14px var(--font); color:var(--ink); background:rgba(255,255,255,.07); border:1px solid var(--line);
+           border-radius:12px; padding:10px 14px; cursor:pointer }
+  button:hover { border-color:var(--gold) }
+  button.on { background:rgba(243,210,122,.18); border-color:var(--gold) }
+  button.stop { color:#ffb4b4 }
+  .opt { flex:1 1 210px; border:1px solid var(--line); border-radius:12px; padding:12px }
+  .opt b { display:block; margin-bottom:4px } .opt small { color:var(--dim); display:block; margin-bottom:10px; line-height:1.45 }
+  .log { margin-top:10px; color:var(--gold); font:600 13px var(--font); min-height:18px }
+  label { color:var(--dim); font-size:13px; display:flex; align-items:center; gap:6px }
+</style>
+</head>
+<body>
+<main>
+  <h1>🔭 천문대 소리 시안</h1>
+  <p class="lead">버튼을 누르면 바로 들려요. 게임과 같은 음량으로 맞췄어요. 마을 BGM과 비교하려면 🏡 버튼을 눌러 보세요.</p>
+
+  <section>
+    <h2>🎵 BGM — 천문대 안·렌즈에서만</h2>
+    <p class="sub">나오면 마을 음악으로 돌아가요(채굴장 동굴 테마와 같은 방식).</p>
+    <div class="row">
+      <div class="opt"><b>A · 오르골</b><small>76 BPM · 높은 음역 오르골 아르페지오 + 낮은 바탕음. 또렷한 박자가 있어 리듬 게임과 잘 맞아요.</small>
+        <button data-bgm="musicbox">▶ A 듣기</button></div>
+      <div class="opt"><b>B · 별빛 패드</b><small>박자 없음 · 느린 화음 패드 + 드문드문 반짝이는 고음. 가장 고요하고 신비로워요.</small>
+        <button data-bgm="pad">▶ B 듣기</button></div>
+      <div class="opt"><b>C · 자장가 왈츠</b><small>3/4박 84 BPM · 첼레스타 멜로디 + 쿵·짝·짝 반주. 포근하고 따라 흥얼거리기 쉬워요.</small>
+        <button data-bgm="waltz">▶ C 듣기</button></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="stop" id="bgmStop">■ 음악 정지</button><button data-bgm="village">🏡 비교: 지금 마을 BGM</button></div>
+  </section>
+
+  <section>
+    <h2>🔔 효과음 — 렌즈 리듬 게임</h2>
+    <p class="sub">세트 1은 별을 이을 때마다 음이 한 칸씩 올라가 완주하면 짧은 멜로디가 돼요. 세트 2는 맑은 종소리에 콤보마다 화음이 쌓여요. (딱 좋아요를 연달아 눌러 보세요)</p>
+    <div class="row">
+      <div class="opt"><b>세트 1 · 별 차임(음계)</b>
+        <div class="row">
+          <button data-sfx="1:perfect">딱 좋아요</button><button data-sfx="1:good">좋아요</button><button data-sfx="1:miss">놓쳤어요</button>
+          <button data-sfx="1:comet">혜성 출발</button><button data-sfx="1:complete">완주</button><button data-sfx="1:unlock">새 별자리</button><button data-sfx="1:pick">수첩 카드</button>
+        </div></div>
+      <div class="opt"><b>세트 2 · 유리 종(화음 쌓기)</b>
+        <div class="row">
+          <button data-sfx="2:perfect">딱 좋아요</button><button data-sfx="2:good">좋아요</button><button data-sfx="2:miss">놓쳤어요</button>
+          <button data-sfx="2:comet">혜성 출발</button><button data-sfx="2:complete">완주</button><button data-sfx="2:unlock">새 별자리</button><button data-sfx="2:pick">수첩 카드</button>
+        </div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>🌌 한 판 들어보기 — 북두칠성 7노트</h2>
+    <p class="sub">실제 게임 차트 타이밍 그대로: 딱 좋아요 → 딱 좋아요 → 좋아요 → 놓쳤어요 → 딱 좋아요 ×3 → 완주 → 새 별자리.</p>
+    <div class="row">
+      <label>BGM <select id="demoBgm"><option value="musicbox">A 오르골</option><option value="pad">B 별빛 패드</option><option value="waltz">C 자장가 왈츠</option><option value="">없음</option></select></label>
+      <label>효과음 <select id="demoSfx"><option value="1">세트 1 별 차임</option><option value="2">세트 2 유리 종</option></select></label>
+      <button id="demoPlay">▶ 한 판 재생</button>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+</main>
+
+<script type="module">
+import { buildChart } from '../js/observatory/rhythm.js';
+import { BY_ID } from '../js/observatory/constellations.js';
+
+// ── 오디오 그래프: js/sound.js 와 같은 음량 ─────────────────────
+let ctx, master, music, sfxBus, echo;
+function ensure() {
+  if (ctx) return ctx;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.35; master.connect(ctx.destination);
+  music = ctx.createGain(); music.gain.value = 0.5; music.connect(master);
+  sfxBus = ctx.createGain(); sfxBus.gain.value = 1; sfxBus.connect(master);
+  // 별빛 잔향 — 짧은 피드백 딜레이(효과음·패드 반짝임에만)
+  echo = ctx.createDelay(1); echo.delayTime.value = 0.23;
+  const fb = ctx.createGain(); fb.gain.value = 0.32; const wet = ctx.createGain(); wet.gain.value = 0.35;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
+  echo.connect(lp).connect(fb).connect(echo); lp.connect(wet).connect(master);
+  return ctx;
+}
+const now = () => ensure().currentTime;
+function voice(freq, dur, { type = 'sine', vol = 0.1, at = now(), attack = 0.008, out = sfxBus, wet = 0, glide = null } = {}) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, at);
+  if (glide) o.frequency.exponentialRampToValueAtTime(glide, at + dur);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(vol, at + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  o.connect(g).connect(out);
+  if (wet) { const w = ctx.createGain(); w.gain.value = wet; g.connect(w).connect(echo); }
+  o.start(at); o.stop(at + dur + 0.05);
+}
+function noise(dur, { at = now(), vol = 0.2, type = 'bandpass', from = 800, to = null, q = 1, out = sfxBus } = {}) {
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+  const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const s = ctx.createBufferSource(); s.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(from, at);
+  if (to) f.frequency.exponentialRampToValueAtTime(to, at + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + dur * 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  s.connect(f).connect(g).connect(out); s.start(at); s.stop(at + dur);
+}
+// 오르골 톤: 기음 + 3배음 살짝(쇠 빗살 느낌)
+const tine = (f, d, v, at, out = music, wet = 0.4) => { voice(f, d, { vol: v, at, out, wet }); voice(f * 3, d * 0.4, { vol: v * 0.18, at, out }); };
+// 첼레스타: 기음 + 4배음
+const celesta = (f, d, v, at) => { voice(f, d, { vol: v, at, out: music, wet: 0.25 }); voice(f * 4, d * 0.3, { vol: v * 0.12, at, out: music }); };
+const pad = (f, d, v, at) => { voice(f, d, { vol: v, at, out: music, type: 'triangle', attack: d * 0.35 }); voice(f * 1.003, d, { vol: v * 0.7, at, out: music, attack: d * 0.4 }); };
+
+const C6 = [1046.5, 1174.66, 1318.51, 1567.98, 1760.0, 2093.0];   // C 장조 5음(펜타토닉) + 도↑
+const P = [523.25, 587.33, 659.25, 783.99, 880.0];                 // C5 펜타토닉
+
+// ── BGM 3안 + 마을 비교(간이) ────────────────────────────────
+const BGM = {
+  musicbox: {   // A · 76 BPM 8분 아르페지오
+    bar: 8 * (30 / 76),
+    play(at, n) {
+      const e = 30 / 76;
+      const chords = [[0, 2, 4, 7], [5, 0, 2, 5], [3, 5, 0, 3], [4, 6, 1, 4]];   // C Am F G (M 인덱스)
+      const M = [523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5];
+      const ch = chords[n % 4];
+      [0, 1, 2, 3, 2, 1, 2, 3].forEach((k, i) => tine(M[ch[k]] * (i >= 4 ? 2 : 1), e * 2.2, 0.06, at + i * e));
+      pad([130.81, 110, 87.31, 98][n % 4], e * 8, 0.05, at);   // 낮은 바탕음
+    },
+  },
+  pad: {        // B · 박자 없는 패드 + 반짝임
+    bar: 6,
+    play(at, n) {
+      const chords = [[130.81, 164.81, 196, 246.94], [110, 130.81, 164.81, 196], [87.31, 110, 130.81, 164.81], [98, 123.47, 146.83, 196]];
+      chords[n % 4].forEach((f, i) => pad(f, 6.6, i ? 0.035 : 0.05, at));
+      const k = 2 + ((n * 7) % 3);
+      for (let i = 0; i < k; i++) {
+        const f = C6[(n * 5 + i * 3) % C6.length];
+        tine(f, 1.4, 0.035, at + 0.6 + i * (4.6 / k) + ((n + i) % 3) * 0.17, music, 0.6);
+      }
+    },
+  },
+  waltz: {      // C · 3/4 84 BPM
+    bar: 3 * (60 / 84),
+    play(at, n) {
+      const b = 60 / 84;
+      const roots = [130.81, 110, 87.31, 98, 130.81, 87.31, 98, 130.81];
+      const triads = [[261.63, 329.63, 392], [220, 261.63, 329.63], [174.61, 220, 261.63], [196, 246.94, 293.66]];
+      const mel = [[[0, 4, 1], [1, 3, 1], [2, 2, 1]], [[0, 1, 2], [2, 0, 1]], [[0, 0, 1], [1, 1, 1], [2, 2, 1]], [[0, 3, 3]],
+                   [[0, 4, 1], [1, 4, 1], [2, 3, 1]], [[0, 2, 2], [2, 1, 1]], [[0, 1, 1], [1, 2, 1], [2, 3, 1]], [[0, 2, 3]]];
+      voice(roots[n % 8], b * 1.2, { vol: 0.12, at, out: music });                                                      // 쿵
+      [1, 2].forEach(s => triads[n % 4].forEach(f => voice(f, b * 0.5, { vol: 0.022, at: at + s * b, out: music, type: 'triangle' })));   // 짝·짝
+      mel[n % 8].forEach(([s, i, l]) => celesta(P[i] * 2, l * b * 0.95, 0.055, at + s * b));
+    },
+  },
+  village: {    // 비교용 — 마을 테마 간이 재현(박자·음색 느낌만)
+    bar: 8 * (30 / 138),
+    play(at, n) {
+      const e = 30 / 138;
+      const chords = [[261.63, 329.63, 392], [196, 246.94, 293.66], [220, 261.63, 329.63], [174.61, 220, 261.63]];
+      const ch = chords[n % 4];
+      for (let s = 0; s < 8; s++) {
+        noise(0.04, { at: at + s * e, vol: s % 2 ? 0.016 : 0.03, type: 'highpass', from: 7000, out: music });
+        if (s % 2 === 0) voice(ch[0] / 2, 0.19, { vol: 0.2, at: at + s * e, out: music });
+        if (s === 2 || s === 6) noise(0.13, { at: at + s * e, vol: 0.095, from: 1900, q: 0.7, out: music });
+      }
+      [0, 2, 4].forEach((s, i) => voice(ch[i] * 2, e * 1.8, { vol: 0.095, at: at + s * e, out: music, type: 'triangle' }));
+    },
+  },
+};
+let bgm = null, timer = 0, nextAt = 0, bars = 0;
+function startBgm(id) {
+  ensure(); stopBgm();
+  if (!id) return;
+  bgm = BGM[id]; nextAt = now() + 0.06; bars = 0;
+  const pump = () => { while (nextAt < now() + 0.5) { bgm.play(nextAt, bars++); nextAt += bgm.bar; } };
+  pump(); timer = setInterval(pump, 90);
+  document.querySelectorAll('[data-bgm]').forEach(b => b.classList.toggle('on', b.dataset.bgm === id));
+}
+function stopBgm() {
+  clearInterval(timer); timer = 0; bgm = null;
+  if (music) { music.disconnect(); music = ctx.createGain(); music.gain.value = 0.5; music.connect(master); }   // 예약된 음까지 끊는다
+  document.querySelectorAll('[data-bgm]').forEach(b => b.classList.remove('on'));
+}
+
+// ── 효과음 2세트 ─────────────────────────────────────────────
+//   step = 이번에 이은 별 순번(0부터) · combo = 연속 성공 수
+const bell = (f, at, v = 0.12, d = 0.9) => { voice(f, d, { vol: v, at, wet: 0.45 }); voice(f * 2.76, d * 0.4, { vol: v * 0.2, at }); voice(f * 5.4, d * 0.2, { vol: v * 0.1, at }); };
+const SFX = {
+  1: {
+    perfect: (at, step = 0) => { const f = C6[step % C6.length]; voice(f, 0.5, { vol: 0.16, at, wet: 0.5 }); voice(f * 2, 0.25, { vol: 0.05, at, type: 'triangle' }); voice(f * 4, 0.12, { vol: 0.02, at: at + 0.02 }); },
+    good: (at, step = 0) => { voice(C6[step % C6.length], 0.32, { vol: 0.09, at, wet: 0.25 }); },
+    miss: (at) => { voice(150, 0.2, { vol: 0.22, at, glide: 88 }); noise(0.12, { at, vol: 0.06, type: 'lowpass', from: 500 }); },
+    comet: (at) => noise(0.4, { at, vol: 0.05, from: 500, to: 2600, q: 2 }),
+    complete: (at, notes = 7) => {
+      for (let i = 0; i <= notes; i++) voice(C6[i % C6.length] * (i >= C6.length ? 2 : 1), 0.4, { vol: 0.1, at: at + i * 0.07, wet: 0.4 });
+      [523.25, 659.25, 783.99, 1046.5].forEach(f => voice(f, 1.4, { vol: 0.06, at: at + 0.65, type: 'triangle', wet: 0.5 }));
+    },
+    unlock: (at) => { [2637, 2349, 2093, 1760, 1568, 1319].forEach((f, i) => voice(f, 0.35, { vol: 0.05, at: at + i * 0.06, wet: 0.6 })); voice(523.25, 1.2, { vol: 0.07, at: at + 0.4, type: 'triangle', wet: 0.5 }); },
+    pick: (at) => voice(1320, 0.05, { vol: 0.07, at, type: 'triangle' }),
+  },
+  2: {
+    perfect: (at, step = 0, combo = 1) => {   // 유리 종 + 콤보마다 화음 한 음씩(도·솔·도↑·미↑)
+      bell(1318.51, at);
+      const stack = [1046.5, 1567.98, 2093, 2637];
+      for (let i = 0; i < Math.min(combo - 1, stack.length); i++) voice(stack[i], 0.7, { vol: 0.035, at: at + 0.015, wet: 0.3 });
+    },
+    good: (at) => bell(1318.51, at, 0.06, 0.5),
+    miss: (at) => { noise(0.22, { at, vol: 0.09, type: 'lowpass', from: 380 }); voice(196, 0.16, { vol: 0.08, at, glide: 150 }); },
+    comet: (at) => { noise(0.35, { at, vol: 0.04, from: 1200, to: 4200, q: 4 }); voice(2093, 0.3, { vol: 0.015, at: at + 0.05, glide: 2637 }); },
+    complete: (at) => { [1046.5, 1318.51, 1567.98, 2093].forEach((f, i) => bell(f, at + i * 0.12, 0.07, 1.6)); },
+    unlock: (at) => { for (let i = 0; i < 9; i++) voice(2000 + ((i * 397) % 1600), 0.25, { vol: 0.035, at: at + i * 0.045, wet: 0.7 }); bell(1046.5, at + 0.35, 0.06, 1.6); },
+    pick: (at) => { voice(2093, 0.06, { vol: 0.05, at }); voice(2093 * 2.76, 0.03, { vol: 0.01, at }); },
+  },
+};
+let tapStep = 0;
+document.querySelectorAll('[data-sfx]').forEach(b => b.addEventListener('click', () => {
+  ensure();
+  const [set, name] = b.dataset.sfx.split(':');
+  SFX[set][name](now() + 0.02, tapStep, tapStep + 1);
+  if (name === 'perfect' || name === 'good') tapStep = (tapStep + 1) % 7; else tapStep = 0;   // 연달아 누르면 음계·화음이 올라간다
+}));
+document.querySelectorAll('[data-bgm]').forEach(b => b.addEventListener('click', () => startBgm(b.dataset.bgm)));
+document.getElementById('bgmStop').addEventListener('click', stopBgm);
+
+// ── 한 판 재생: 실제 북두칠성 차트 타이밍 ───────────────────────
+document.getElementById('demoPlay').addEventListener('click', () => {
+  ensure();
+  const id = document.getElementById('demoBgm').value, set = SFX[document.getElementById('demoSfx').value];
+  startBgm(id);
+  const chart = buildChart(1, BY_ID.big_dipper);
+  const judges = ['perfect', 'perfect', 'good', 'miss', 'perfect', 'perfect', 'perfect'];
+  const t0 = now() + 1.2, log = document.getElementById('log'), lead = (t0 - now()) * 1000;
+  let combo = 0;
+  chart.forEach((n, i) => {
+    set.comet(t0 + n.startMs / 1000);
+    const j = judges[i];
+    combo = j === 'miss' ? 0 : combo + 1;
+    set[j](t0 + n.hitMs / 1000, i, combo);
+    setTimeout(() => { log.textContent = `${i + 1}/7 · ${j === 'perfect' ? '딱 좋아요!' : j === 'good' ? '좋아요' : '놓쳤어요'}`; }, lead + n.hitMs);
+  });
+  const end = chart.at(-1).hitMs / 1000 + 0.6;
+  set.complete(t0 + end, 7);
+  set.unlock(t0 + end + 2.2);
+  setTimeout(() => { log.textContent = '✨ 완주 → 새 별자리'; }, lead + end * 1000);
+});
+</script>
+</body>
+</html>
