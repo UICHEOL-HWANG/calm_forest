@@ -98,13 +98,15 @@ test('abandon is tracked only with a real rolled difficulty, never a placeholder
 test('first star lights up only when the run starts (800ms), not at open', async () => {
   const o = overlay();
   await o.context.openStarView({});
-  const sparkles = () => o.canvas().getContext().calls.filter(c => c[0] === 'closePath').length;   // sparkle() = lit star
+  // stars are drawn as small cached sprites — lit and dim are two different images
+  const starImages = () => new Set(o.canvas().getContext().calls
+    .filter(c => c[0] === 'drawImage' && c[4] < 200).map(c => c[1]));   // 화면 크기 캐시(배경·테두리)는 빼고
   o.dom.tick(400);
-  const before = sparkles();
+  const before = starImages();
   o.canvas().getContext().calls.length = 0;
   o.dom.setNow(o.chart[0].startMs + 20); o.dom.tick(0);
-  assert.equal(before, 0, 'no lit star before 800ms');
-  assert.equal(sparkles(), 1, 'start star lit once the comet leaves');
+  assert.equal(before.size, 1, 'only dim stars before 800ms');
+  assert.equal(starImages().size, 2, 'start star lit once the comet leaves');
 });
 
 test('frame loop stops once the result card is up, and close cleans everything', async () => {
@@ -160,4 +162,18 @@ test('onResult gets the run: judges, integer offsets of tapped notes, duration',
   assert.deepEqual([...run.judges], ['perfect', 'perfect', 'miss', 'perfect', 'good', 'perfect', 'perfect']);
   assert.deepEqual([...run.offsets], [12, -60, 0, 150, 0, -3]);
   assert.ok(Math.abs(run.durationMs - (o.chart.at(-1).hitMs - 3)) < 1);
+});
+
+test('a lens frame uses only a handful of shadowBlur draws (stars come from cached sprites)', async () => {
+  const o = overlay();
+  await o.context.openStarView({});
+  o.play([0, 0, 0]);
+  for (const at of [o.chart[3].startMs + 300, o.chart[4].startMs + 200]) {
+    o.dom.setNow(at);
+    const g = o.canvas().getContext(); g.calls.length = 0;
+    o.dom.tick(0);
+    const blurs = g.calls.filter(x => x[0] === '=shadowBlur' && x[1] > 0).length;
+    assert.ok(blurs <= 8, `${blurs} blurred draws in one frame`);
+    assert.ok(g.calls.filter(x => x[0] === 'drawImage').length >= 2 + 7, 'lens cache + 7 star sprites');
+  }
 });

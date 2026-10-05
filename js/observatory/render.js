@@ -169,6 +169,35 @@ export function drawLens(state, L) {
   state.g.drawImage(state.rimCanvas, 0, 0, L.W, L.H);
 }
 
+// ⭐ 별 7개의 빛번짐(shadowBlur)은 프레임마다 14번 그리면 모바일에서 비싸다 —
+//    켜진 별·꺼진 별 두 장을 크기가 바뀔 때만 오프스크린에 구워 두고 drawImage 로 찍는다.
+function starSprites(state, s) {
+  const key = `${s.toFixed(3)}:${state.dpr}`;
+  if (state.starSprites?.key === key) return state.starSprites;
+  const half = Math.ceil(40 * s);
+  const make = (paint) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.max(1, Math.ceil(half * 2 * state.dpr));
+    const g = c.getContext('2d');
+    g.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    paint(g, half, half);
+    return c;
+  };
+  const lit = make((g, x, y) => {
+    glowDot(g, x, y, 9 * s, 'rgba(255,240,190,.35)', 24 * s);
+    sparkle(g, x, y, 13 * s, '#fff6d6');
+  });
+  const dim = make((g, x, y) => {
+    glowDot(g, x, y, 4.2 * s, 'rgba(220,228,255,.85)', 8 * s);
+    g.strokeStyle = 'rgba(220,228,255,.22)';
+    g.lineWidth = 1.2 * s;
+    g.beginPath();
+    g.arc(x, y, 14 * s, 0, Math.PI * 2);
+    g.stroke();
+  });
+  return (state.starSprites = { key, half, lit, dim });
+}
+
 export function drawConstellation(state, L, elapsed = 0) {
   const g = state.g;
   const pts = DIPPER.map((_, i) => starXY(L, i));
@@ -208,20 +237,10 @@ export function drawConstellation(state, L, elapsed = 0) {
   }
 
   const lit = new Set(elapsed >= state.chart[0].startMs ? ORDER.slice(0, done + 1) : []);   // 첫 별은 혜성이 출발할 때(800ms) 켜진다
+  const sprites = starSprites(state, s);
   pts.forEach(([x, y], i) => {
-    if (lit.has(i)) {
-      glowDot(g, x, y, 9 * s, 'rgba(255,240,190,.35)', 24 * s);
-      sparkle(g, x, y, 13 * s, '#fff6d6');
-    } else {
-      glowDot(g, x, y, 4.2 * s, 'rgba(220,228,255,.85)', 8 * s);
-      g.save();
-      g.strokeStyle = 'rgba(220,228,255,.22)';
-      g.lineWidth = 1.2 * s;
-      g.beginPath();
-      g.arc(x, y, 14 * s, 0, Math.PI * 2);
-      g.stroke();
-      g.restore();
-    }
+    const img = lit.has(i) ? sprites.lit : sprites.dim;
+    g.drawImage(img, x - sprites.half, y - sprites.half, sprites.half * 2, sprites.half * 2);
   });
   return pts;
 }
@@ -292,7 +311,7 @@ export function drawComet(state, L, pts, elapsed) {
   const R = rnd(3);
   for (let i = 0; i < 9; i++) {
     const t2 = Math.max(0, T - R() * 0.4);
-    glowDot(g, px + (x - px) * t2 + (R() - 0.5) * 12 * s, py + (y - py) * t2 + (R() - 0.5) * 12 * s, (1 + R() * 1.6) * s, 'rgba(255,230,160,.8)', 6 * s);
+    glowDot(g, px + (x - px) * t2 + (R() - 0.5) * 12 * s, py + (y - py) * t2 + (R() - 0.5) * 12 * s, (1 + R() * 1.6) * s, 'rgba(255,230,160,.8)', 0);   // 1~3px 입자 — blur 는 안 보이고 비용만 든다
   }
 }
 
