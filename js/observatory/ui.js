@@ -4,7 +4,7 @@
 //  sims/observatory-eyepiece-sim.html?v=d 의 혜성+링 시안을 실제 미니게임 오버레이로 옮겼다.
 //  opts.constellation 으로 별자리를 받는다. 보상·저장·기록은 onResult/onAbandon(star-run.js)이 맡는다.
 // =============================================================
-import { buildChart, judgeTap, summarize } from './rhythm.js';
+import { buildChart, judgeTap, missWhy, summarize } from './rhythm.js';
 import { BY_ID } from './constellations.js';
 import { COPY, fill, starCopy } from './copy.js';
 import { t } from '../i18n.js';
@@ -35,12 +35,14 @@ function showResult(state) {
   // ✨ 해금 안내는 카드 안에 — 토스트(z 33)는 이 오버레이(z 3000) 밑에 깔려 보이지 않는다
   const unlock = paid.unlockedNext ? `<br>${t(fill(COPY.unlockToast, starCopy(paid.unlockedNext).name))}` : '';
 
+  // 놓친 판이 있으면 빨랐는지 늦었는지 나눠 보여 준다 — 다음 판에 무엇을 고칠지 알 수 있게
+  const why = summary.miss ? ` (${t(COPY.missEarly)} ${state.missWhy?.early || 0} · ${t(COPY.missLate)} ${state.missWhy?.late || 0})` : '';
   const card = document.createElement('div');
   card.className = 'observatory-card';
   card.innerHTML = `
     <h2>${t(summary.success ? starCopy(state.c.id).complete : COPY.fail)}</h2>
     <div class="score">${summary.score}</div>
-    <p>${t(COPY.result)} · ${t(COPY.perfect)} ${summary.perfect} · ${t(COPY.good)} ${summary.good} · ${t(COPY.miss)} ${summary.miss}${reward}${first}${unlock}</p>
+    <p>${t(COPY.result)} · ${t(COPY.perfect)} ${summary.perfect} · ${t(COPY.good)} ${summary.good} · ${t(COPY.miss)} ${summary.miss}${why}${reward}${first}${unlock}</p>
     <button type="button">${t(COPY.close)}</button>
   `;
   card.querySelector('button').addEventListener('click', () => closeStarView('complete'), { signal: state.controller.signal });
@@ -67,9 +69,15 @@ function tap(state) {
   state.judges.push(judge);
   state.offsets.push(Math.round(offset));   // 탭한 노트만(만료 miss 는 오프셋이 없다) — GA4 star_result 용
   state.noteOffsets.push(Math.round(offset));   // 노트 순서 정렬(만료 miss = null) — star_runs 학습용
-  state.flash = { judge, until: performance.now() + 620 };
+  state.flash = { judge, why: judge === 'miss' ? missWhy(offset) : null, until: performance.now() + 620 };
+  if (judge === 'miss') countMiss(state, missWhy(offset));
   judgeSound(judge, state.judges.length - 1);
   if (state.judges.length >= state.chart.length) showResult(state);
+}
+
+/** 놓친 이유별 수 — 옛 상태(테스트 하네스 등)에 칸이 없어도 만든다 */
+function countMiss(state, why) {
+  (state.missWhy ||= { early: 0, late: 0 })[why] += 1;
 }
 
 function missExpired(state, elapsed) {
@@ -80,7 +88,8 @@ function missExpired(state, elapsed) {
     if (judgeTap(elapsed - note.hitMs, state.ease) !== 'miss') break;
     state.judges.push('miss');
     state.noteOffsets.push(null);
-    state.flash = { judge: 'miss', until: performance.now() + 620 };
+    state.flash = { judge: 'miss', why: 'late', until: performance.now() + 620 };   // 안 누르고 지나감 = 늦음
+    countMiss(state, 'late');
     missed = true;
   }
   if (missed) Sound.starMiss();   // 한 프레임에 여럿 지나가도 "툭" 한 번
@@ -166,6 +175,7 @@ export async function openStarView(opts = {}) {
     offsets: [],
     noteOffsets: [],
     earlyTaps: 0,
+    missWhy: { early: 0, late: 0 },   // 🔭 놓친 이유별 수 — 결과 카드에 '빨랐어요 n · 늦었어요 n'
     cometIdx: -1,
     flash: null,
     raf: 0,
