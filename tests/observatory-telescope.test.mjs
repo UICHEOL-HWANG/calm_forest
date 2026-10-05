@@ -39,7 +39,8 @@ test('startObservatoryLook 은 위치를 고정하고 700ms 뒤 렌즈 뷰를 �
 
 test('updateObservatory 는 허리를 앞으로 숙인다(rotation.x 양수 = 앞, 도끼질과 같은 규약)', () => {
   assert.match(OBS, /export function updateObservatory\(dt, t\)/);
-  assert.match(OBS, /playerAnchor\.rotation\.x = 0\.5 \* k/);
+  assert.match(OBS, /const LEAN = 0\.\d+;/);
+  assert.match(OBS, /playerAnchor\.rotation\.x = LEAN \* k/);
   assert.doesNotMatch(OBS, /playerAnchor\.rotation\.x = -[\d.]+ \* k/);
   assert.match(OBS, /\$w\.armWristK = 0/);
 });

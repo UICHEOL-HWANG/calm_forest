@@ -85,7 +85,7 @@ export const MUSEUM_GATE = new THREE.Vector3(-26, 0, 5);   // 🏛️ 박물관 
 //   사용자가 고른 자리다(전체 지도의 "현위치"). 반경 3.4 안에 나무·바위가 없어 지형을 안 깎는다.
 //   ⛏️채굴 동굴(-14,3) 에서 12 — 서쪽 벨트의 끝점이라 가는 길에 자연히 지나친다.
 
-export const OBSERVATORY_GATE = new THREE.Vector3(22, 0, 22); // 🔭 천문대 — 남동쪽 언덕, 계곡·과수원 사이의 빈 자리
+export const OBSERVATORY_GATE = new THREE.Vector3(25, 0, 22); // 🔭 천문대 — 남동쪽 언덕, 계곡·과수원 사이의 빈 자리
 
 export const MUSEUM = new THREE.Vector3(0, 0, 360);    // 🏛️ 전시실(다른 인스턴스 공간과 멀찍이)
 

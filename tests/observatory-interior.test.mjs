@@ -105,9 +105,9 @@ test('telescope reads as a telescope from the play camera and its eyepiece faces
   const a = new THREE.Vector3(...T.eyepiece).project(cam), b = new THREE.Vector3(...T.objective).project(cam);
   const angle = Math.atan2(Math.abs(b.x - a.x) * 1.6, Math.abs(b.y - a.y)) * 180 / Math.PI;
   assert.ok(angle > 35, `tube is ${angle.toFixed(0)}° from vertical on screen`);
-  // the look spot is just behind the eyepiece, and its yaw faces down the tube
+  // the look spot is behind the eyepiece by the forward-lean reach (EYE_BACK), and its yaw faces down the tube
   const spot = T.eye;
-  assert.ok(Math.hypot(spot.x - T.eyepiece[0], spot.z - T.eyepiece[2]) < 0.6);
+  assert.ok(Math.hypot(spot.x - T.eyepiece[0], spot.z - T.eyepiece[2]) < 0.9);
   const fwd = [Math.sin(spot.yaw), Math.cos(spot.yaw)];
   const dir = [T.objective[0] - spot.x, T.objective[2] - spot.z], len = Math.hypot(...dir);
   assert.ok((fwd[0] * dir[0] + fwd[1] * dir[1]) / len > 0.95, 'player would not face the telescope');
