@@ -85,8 +85,8 @@ test('7단계 모델 3종은 merge 를 거치고 game.js 에는 새 조형 코�
 
 // ── 🏡 실내 스타일(모던/한옥) + 실내 정원 ─────────────────────────────
 test('실내 마감표에 7단계 모던·한옥이 있고 finishFor 가 스타일로 고른다', () => {
-  assert.ok(/'7m': \{[^}]*deco: 'modern'/.test(SRC), "INT_FINISH['7m']");
-  assert.ok(/'7h': \{[^}]*deco: 'hanok'/.test(SRC), "INT_FINISH['7h']");
+  assert.ok(/'7m': \{[^\n]*deco: 'modern'/.test(SRC), "INT_FINISH['7m']");
+  assert.ok(/'7h': \{[^\n]*deco: 'hanok'/.test(SRC), "INT_FINISH['7h']");
   assert.ok(SRC.includes("finishFor = (stage, style) => (stage >= 7"), 'finishFor 가 스타일을 받는다');
   assert.ok(SRC.includes('finishFor(gameState.houseStage, gameState.house.style)'), 'buildRoom 이 스타일을 넘긴다');
 });
