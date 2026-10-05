@@ -161,62 +161,136 @@ export function buildGardenFloor7(THREE, H, { style, half, doorZ, doorHalfW }) {
   const low = (cx, cz, w, d) => { add(H.box(w, 0.55, d, hanok ? stone : wallMat, cx, FY + 0.28, cz)); add(soft(H.box(w + 0.06, 0.07, d + 0.08, cap, cx, FY + 0.58, cz))); };
   low(0, -half + 0.1, (half - 0.3) * 2, 0.2); low(0, half - 0.1, (half - 0.3) * 2, 0.2); low(-half + 0.1, 0, 0.2, (half - 0.3) * 2);
 
-  // ── 정원 ──  (가운데는 가구 자리 — 길은 문에서 연못까지 대각선으로 흘러 가장자리를 돈다)
+  // ── 정원 ──  촘촘하게: 가장자리에 구역(연못·개울·누각·텃밭·쉼터)을 빽빽이, 가운데(x±3 · z -2~3)는 가구 자리라 납작한 것만
   const rnd = (i) => { const v = Math.sin(i * 12.9898 + 4.1414) * 43758.5453; return v - Math.floor(v); };
-  // 잔디 얼룩(밝고 어두운 두 톤) — 한 가지 초록이 칙칙하게 보이던 문제
   const patchD = H.clay(0x93cb6c), patchL = H.clay(0xb9e690);
-  for (let i = 0; i < 9; i++) {   // 은은한 얼룩 — 크지 않게(큰 다각형이 도드라지던 문제)
+  for (let i = 0; i < 9; i++) {   // 은은한 잔디 얼룩
     const x = (rnd(i) - 0.5) * (half * 2 - 3), z = (rnd(i + 40) - 0.5) * (half * 2 - 3), r = 0.45 + rnd(i + 80) * 0.5;
     const pt = G.cyl(r, r, 0.02, i % 2 ? patchD : patchL, x, FY + 0.012, z, 12); pt.castShadow = false;
   }
+  const M = G.m, woodM = H.clay(0xb98a57), woodDk = H.clay(0x8a5a36), ropeM = H.clay(0xc9b48a), strawM = H.clay(0xd9a441), tileM = H.clay(hanok ? 0x6b7885 : 0xe9e3d6), whiteM = H.clay(0xf4f3ee);
+  const soilM = M.soil, waterM = M.water;
   lift(() => {
-    // 돌길: 문 → 연못 쪽으로 이어지는 촘촘한 판석(끊기지 않게) + 길 끝 둥근 쉼터 판
+    const put = G.put;
+    // ─ 길: 문 → 연못 쪽 판석(끊기지 않게) + 쉼터 판 ─
     const path = [[wx - 1.3, doorZ], [wx - 2.3, doorZ + 0.15], [wx - 3.3, doorZ - 0.1], [wx - 4.3, doorZ - 0.6], [wx - 5.2, doorZ - 1.3], [wx - 6.0, doorZ - 2.1], [wx - 6.7, doorZ - 3.0], [wx - 7.3, doorZ - 4.0], [wx - 7.8, doorZ - 5.0], [wx - 8.2, doorZ - 6.0]];
     const slabMat = hanok ? stone : H.clay(0xe3dfd4);
     let k = 0;
-    for (let seg = 0; seg < path.length - 1; seg++) {   // 꺾이는 점 사이를 촘촘히 이어(0.55 간격) 끊기지 않는 길로
+    for (let seg = 0; seg < path.length - 1; seg++) {
       const [x0, z0] = path[seg], [x1, z1] = path[seg + 1], len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.55)), ang = Math.atan2(x1 - x0, z1 - z0);
-      for (let t = 0; t < n; t++, k++) {
-        const x = x0 + ((x1 - x0) * t) / n, z = z0 + ((z1 - z0) * t) / n;
-        const sl = G.put(H.box(0.72, 0.05, 0.5, slabMat, x, 0.025, z), x, 0.025, z, false); sl.rotation.y = ang + (rnd(k) - 0.5) * 0.18;
-      }
+      for (let t = 0; t < n; t++, k++) { const x = x0 + ((x1 - x0) * t) / n, z = z0 + ((z1 - z0) * t) / n; const sl = put(H.box(0.72, 0.05, 0.5, slabMat, x, 0.025, z), x, 0.025, z, false); sl.rotation.y = ang + (rnd(k) - 0.5) * 0.18; }
     }
-    G.cyl(1.0, 1.05, 0.06, stone, -half + 3.6, 0.03, -1.0, 12).castShadow = false;   // 쉼터 판
-    // 낮은 생울타리(왼쪽·가까운 변 안쪽)
-    const leaf = hanok ? G.m.leafDark : G.m.leaf;
-    const hedge = (x, z, w, d) => { G.put(H.box(w, 0.5, d, leaf, x, 0.25, z), x, 0.25, z, false); const n = Math.max(2, Math.round((w > d ? w : d) / 0.9)); for (let k = 0; k < n; k++) { const t = (k + 0.5) / n - 0.5; G.ico(0.34, G.m.leaf2, x + (w > d ? t * w : 0), 0.52, z + (w > d ? 0 : t * d)); } };
-    hedge(-half + 0.55, 0.6, 0.5, half * 2 - 3.0); hedge(-0.8, half - 0.55, half * 2 - 6.5, 0.5);
-    // 꽃: 길 가장자리·울타리 앞에 무리지어(색 5종 — 재질 5개로 병합)
-    for (let i = 0; i < 46; i++) {
-      const base = path[i % path.length], side = i % 2 ? 1 : -1;
-      const x = base[0] + side * (0.55 + rnd(i) * 0.5) + (rnd(i + 7) - 0.5) * 0.4, z = base[1] + side * (0.4 + rnd(i + 3) * 0.5);
+    G.cyl(1.0, 1.05, 0.06, stone, -half + 3.6, 0.03, -1.0, 12).castShadow = false;
+    // ─ 문 앞 아치(덩굴 장미) ─
+    for (const dz of [-1.05, 1.05]) { put(H.box(0.1, 2.3, 0.1, hanok ? woodDk : whiteM, wx - 1.15, 1.15, doorZ + dz), wx - 1.15, 1.15, doorZ + dz); }
+    put(H.box(0.12, 0.1, 2.3, hanok ? woodDk : whiteM, wx - 1.15, 2.32, doorZ), wx - 1.15, 2.32, doorZ, false);
+    for (const dz of [-0.75, 0.75]) { const r = put(H.box(0.1, 0.08, 0.7, hanok ? woodDk : whiteM, wx - 1.15, 2.2, doorZ + dz * 0.85), wx - 1.15, 2.2, doorZ + dz * 0.85, false); r.rotation.x = dz > 0 ? -0.5 : 0.5; }
+    for (let q = 0; q < 14; q++) { const dz = (q % 2 ? 1 : -1) * (0.9 + rnd(q) * 0.2), y = 0.4 + rnd(q + 5) * 1.9; G.ico(0.1 + rnd(q + 9) * 0.05, q % 3 ? M.leaf : M.flowers[(q % 2) ? 0 : 4], wx - 1.15 + (rnd(q + 3) - 0.5) * 0.2, y, doorZ + dz); }
+    // ─ 생울타리: 왼쪽 + 가까운 변(그네·쉼터 자리는 비움) ─
+    const leaf = hanok ? M.leafDark : M.leaf;
+    const hedge = (x, z, w, d) => { put(H.box(w, 0.5, d, leaf, x, 0.25, z), x, 0.25, z, false); const n = Math.max(2, Math.round((w > d ? w : d) / 0.9)); for (let q = 0; q < n; q++) { const t = (q + 0.5) / n - 0.5; G.ico(0.34, M.leaf2, x + (w > d ? t * w : 0), 0.52, z + (w > d ? 0 : t * d)); } };
+    hedge(-half + 0.55, -4.4, 0.5, 1.6); hedge(-half + 0.55, 5.0, 0.5, 2.4); hedge(-4.2, half - 0.55, 4.0, 0.5); hedge(2.6, half - 0.55, 2.6, 0.5);
+    // ─ 잔디 풀잎·조약돌·꽃무리(전체에 촘촘히) ─
+    for (let q = 0; q < 70; q++) { const x = (rnd(q + 100) - 0.5) * (half * 2 - 1.6), z = (rnd(q + 200) - 0.5) * (half * 2 - 1.6); if (x > wx - 0.8) continue; G.put(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.14 + rnd(q) * 0.1, 4), q % 2 ? M.leaf2 : M.leafDark), x, 0.07, z, false); }
+    for (let q = 0; q < 34; q++) { const x = (rnd(q + 300) - 0.5) * (half * 2 - 2), z = (rnd(q + 400) - 0.5) * (half * 2 - 2); if (x > wx - 0.9) continue; const rk = G.ico(0.045 + rnd(q) * 0.04, q % 2 ? M.rock : M.rockDark, x, 0.04, z); rk.scale.y = 0.6; }
+    const clusters = [[-2.2, -6.0], [0.9, -5.9], [5.3, 3.4], [-5.4, -5.3], [2.4, 5.6], [-0.4, 3.6], [-6.0, 2.0], [4.6, -3.2], [-2.6, 1.9], [1.8, 1.4], [3.2, -1.6], [-1.2, -1.2]];
+    clusters.forEach(([cx, cz], c) => { for (let q = 0; q < 8; q++) { const a = q * 0.8 + c, r = 0.15 + rnd(q + c * 9) * 0.5, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (x > wx - 0.7) continue; G.cyl(0.012, 0.012, 0.16, M.leafDark, x, 0.09, z, 4); G.ico(0.065, M.flowers[(q + c) % M.flowers.length], x, 0.2, z); } });
+    for (let q = 0; q < 40; q++) {   // 길가 꽃
+      const base = path[q % path.length], side = q % 2 ? 1 : -1;
+      const x = base[0] + side * (0.55 + rnd(q) * 0.5) + (rnd(q + 7) - 0.5) * 0.4, z = base[1] + side * (0.4 + rnd(q + 3) * 0.5);
       if (x > wx - 0.7 || x < -half + 0.6 || z < -half + 0.6 || z > half - 0.7) continue;
-      G.cyl(0.012, 0.012, 0.16, G.m.leafDark, x, 0.09, z, 4); G.ico(0.065, G.m.flowers[i % G.m.flowers.length], x, 0.2, z);
+      G.cyl(0.012, 0.012, 0.16, M.leafDark, x, 0.09, z, 4); G.ico(0.065, M.flowers[q % M.flowers.length], x, 0.2, z);
     }
+    // ─ 개울: 연못 → 동쪽으로 흐르는 얕은 물길 + 다리 ─
+    const sx0 = -half + 3.6 + 1.9, sx1 = 1.7, sz = -half + 1.1;
+    put(H.box(sx1 - sx0, 0.03, 0.8, M.waterBed, (sx0 + sx1) / 2, 0.02, sz), (sx0 + sx1) / 2, 0.02, sz, false);
+    put(H.box(sx1 - sx0, 0.03, 0.7, waterM, (sx0 + sx1) / 2, 0.06, sz), (sx0 + sx1) / 2, 0.06, sz, false);
+    for (let q = 0; q < 9; q++) { const x = sx0 + (q / 8) * (sx1 - sx0); for (const dz of [-0.45, 0.45]) { const rk = G.ico(0.12 + rnd(q + dz * 5) * 0.06, q % 2 ? M.rock : M.rockDark, x, 0.08, sz + dz); rk.scale.y = 0.6; } }
+    const bx = (sx0 + sx1) / 2 + 0.2;
+    if (hanok) {   // 돌다리
+      put(H.box(1.5, 0.14, 1.1, stone, bx, 0.3, sz), bx, 0.3, sz); for (const dx of [-0.6, 0.6]) put(H.box(0.2, 0.3, 1.0, stone, bx + dx, 0.15, sz), bx + dx, 0.15, sz);
+      for (const dz of [-0.5, 0.5]) for (const dx of [-0.65, 0.65]) put(H.box(0.12, 0.28, 0.12, stone, bx + dx, 0.5, sz + dz), bx + dx, 0.5, sz + dz);
+    } else {       // 나무 다리
+      for (let q = 0; q < 6; q++) put(H.box(0.2, 0.05, 1.1, woodM, bx - 0.65 + q * 0.26, 0.3, sz), bx - 0.65 + q * 0.26, 0.3, sz, false);
+      for (const dz of [-0.52, 0.52]) { put(H.box(1.6, 0.05, 0.05, woodDk, bx, 0.55, sz + dz), bx, 0.55, sz + dz, false); for (const dx of [-0.75, 0, 0.75]) put(H.box(0.05, 0.28, 0.05, woodDk, bx + dx, 0.42, sz + dz), bx + dx, 0.42, sz + dz, false); }
+      for (const dx of [-0.8, 0.8]) put(H.box(0.2, 0.25, 1.2, woodDk, bx + dx, 0.13, sz), bx + dx, 0.13, sz, false);
+    }
+    // ─ 연못 + 폭포 바위 + 연잎 ─
+    const px = -half + 3.4, pzp = -half + 3.0;
+    G.pond(px, pzp, hanok ? 2.0 : 1.8, hanok ? 1.25 : 1.15);
+    for (let q = 0; q < 6; q++) G.ico(0.22 + rnd(q) * 0.16, q % 2 ? M.rock : M.rockDark, px - 1.5 + (q % 3) * 0.28, 0.2 + (q > 2 ? 0.28 : 0), pzp - 0.9 - (q % 2) * 0.2);   // 폭포 바위
+    put(H.box(0.4, 0.5, 0.05, waterM, px - 1.3, 0.38, pzp - 0.8), px - 1.3, 0.38, pzp - 0.8, false);
+    for (let q = 0; q < 4; q++) { G.cyl(0.14, 0.14, 0.015, M.leaf2, px + (rnd(q + 60) - 0.4) * 2.0, 0.11, pzp + (rnd(q + 70) - 0.5) * 1.2, 8); }
+    if (hanok) for (const [dx, dz] of [[0.5, 0.2], [-0.5, -0.1], [0.1, 0.55]]) { G.ico(0.09, M.flowers[0], px + dx, 0.16, pzp + dz); }
+    // ─ 누각(NE): 모던 파고라 / 한옥 정자 ─
+    const kx = 3.9, kz = -4.6;
     if (hanok) {
-      G.pond(-half + 3.4, -half + 3.0, 2.0, 1.25); for (let i = 0; i < 5; i++) G.bush(-half + 1.4 + i * 0.9, -half + 0.9, 0.3, i % 2 ? G.m.leaf2 : G.m.leafDark);
-      G.pine(-half + 1.0, -half + 1.0, 1.35); G.pine(-half + 0.9, 3.8, 1.15); G.tree(1.2, -half + 1.2, 1.1, G.m.blossom);
-      for (let i = 0; i < 8; i++) { const x = -half + 1.2 + i * 0.5, z = 1.6 + (i % 3) * 0.25; G.cyl(0.04, 0.05, 2.2 + (i % 3) * 0.4, G.m.bamboo, x, 1.1, z, 5); G.ico(0.2, G.m.leaf2, x, 2.3 + (i % 3) * 0.4, z); }
-      for (const [x, z, k] of [[-half + 1.0, -2.2, 1], [-half + 1.7, -1.7, 0.8], [-half + 1.0, -1.2, 0.7]]) { G.cyl(0.3 * k, 0.34 * k, 0.55 * k, G.m.pot, x, 0.28 * k, z, 8); G.cyl(0.2 * k, 0.3 * k, 0.14 * k, G.m.rockDark, x, 0.62 * k, z, 8); }   // 장독대
-      // 정자(작은 누각): 마루 + 기둥 4 + 기와 사모지붕 — 오른쪽 먼 모서리
-      const px = 3.9, pz = -4.6, tile = H.clay(0x59636b), pil = H.clay(0x8a5a36), deck = H.clay(0xc9a56e);
-      G.put(H.box(3.0, 0.3, 2.6, deck, px, 0.15, pz), px, 0.15, pz, false);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) G.put(H.box(0.16, 2.3, 0.16, pil, px + sx * 1.3, 1.4, pz + sz * 1.1), px + sx * 1.3, 1.4, pz + sz * 1.1);
-      [[3.7, 0.16, 3.3], [2.8, 0.2, 2.4], [1.7, 0.2, 1.4], [0.7, 0.18, 0.5]].forEach(([w, h, d], k) => G.put(H.box(w, h, d, tile, px, 2.7 + k * 0.2, pz), px, 2.7 + k * 0.2, pz, false));
-      G.bench(px, pz + 0.7, 0); G.lantern(px + 2.2, pz + 1.4); G.lantern(wx - 1.2, doorZ - 1.6);
+      put(H.box(3.0, 0.3, 2.6, H.clay(0xc9a56e), kx, 0.15, kz), kx, 0.15, kz, false);
+      for (const a of [-1, 1]) for (const b of [-1, 1]) put(H.box(0.16, 2.3, 0.16, woodDk, kx + a * 1.3, 1.4, kz + b * 1.1), kx + a * 1.3, 1.4, kz + b * 1.1);
+      [[3.7, 0.16, 3.3], [2.8, 0.2, 2.4], [1.7, 0.2, 1.4], [0.7, 0.18, 0.5]].forEach(([w, h, d], q) => put(H.box(w, h, d, tileM, kx, 2.7 + q * 0.2, kz), kx, 2.7 + q * 0.2, kz, false));
+      G.bench(kx, kz + 0.7, 0); for (const a of [-1, 1]) G.cyl(0.05, 0.06, 0.4, ropeM, kx + a * 1.0, 0.5, kz - 0.7, 6);   // 난간 대
+      G.ico(0.14, M.lanternGlow, kx, 2.35, kz);
     } else {
-      G.pond(-half + 3.4, -half + 3.0, 1.8, 1.15); for (let i = 0; i < 5; i++) G.bush(-half + 1.5 + i * 0.9, -half + 0.9, 0.3, i % 2 ? G.m.leaf2 : G.m.leaf);
-      G.tree(-half + 1.0, -half + 1.0, 1.5); G.tree(-half + 1.1, half - 1.4, 1.4); G.tree(1.2, -half + 1.2, 1.2, G.m.blossom); G.tree(wx - 0.9, -half + 1.0, 1.35, G.m.blossom);
-      G.bed(-1.2, -half + 0.9, 3.4, 0.7, 14); G.bed(-half + 1.0, -2.4, 0.7, 2.6, 9);
-      // 파고라: 기둥 4 + 상부 슬랫 + 벤치·탁자 — 오른쪽 먼 모서리
-      const px = 3.9, pz = -4.6, post = H.clay(0xffffff), slat = H.clay(0xb98a57), tbl = H.clay(0xf1ece3);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) G.put(H.box(0.14, 2.4, 0.14, post, px + sx * 1.35, 1.2, pz + sz * 1.05), px + sx * 1.35, 1.2, pz + sz * 1.05);
-      G.put(H.box(3.0, 0.1, 0.16, post, px, 2.45, pz - 1.05), px, 2.45, pz - 1.05, false); G.put(H.box(3.0, 0.1, 0.16, post, px, 2.45, pz + 1.05), px, 2.45, pz + 1.05, false);
-      for (let i = 0; i < 9; i++) G.put(H.box(0.1, 0.08, 2.4, slat, px - 1.3 + i * 0.325, 2.52, pz), px - 1.3 + i * 0.325, 2.52, pz, false);
-      G.put(H.box(1.6, 0.04, 1.4, tbl, px, 0.02, pz), px, 0.02, pz, false);   // 데크 판
-      G.bench(px, pz - 0.6, Math.PI); G.put(H.box(0.6, 0.4, 0.6, tbl, px, 0.2, pz + 0.2), px, 0.2, pz + 0.2);
-      G.plant(px - 1.3, pz + 1.3, 1.1); G.plant(px + 1.3, pz + 1.3, 1.1);
-      G.lantern(wx - 1.2, doorZ - 1.6); G.lantern(-half + 1.0, -half + 3.0 + 1.8);
+      for (const a of [-1, 1]) for (const b of [-1, 1]) put(H.box(0.14, 2.4, 0.14, whiteM, kx + a * 1.35, 1.2, kz + b * 1.05), kx + a * 1.35, 1.2, kz + b * 1.05);
+      for (const b of [-1, 1]) put(H.box(3.0, 0.1, 0.16, whiteM, kx, 2.45, kz + b * 1.05), kx, 2.45, kz + b * 1.05, false);
+      for (let q = 0; q < 9; q++) put(H.box(0.1, 0.08, 2.4, woodM, kx - 1.3 + q * 0.325, 2.52, kz), kx - 1.3 + q * 0.325, 2.52, kz, false);
+      put(H.box(1.6, 0.04, 1.4, whiteM, kx, 0.02, kz), kx, 0.02, kz, false);
+      G.bench(kx, kz - 0.6, Math.PI); put(H.box(0.6, 0.4, 0.6, whiteM, kx, 0.2, kz + 0.2), kx, 0.2, kz + 0.2);
+      G.plant(kx - 1.3, kz + 1.3, 1.1); G.plant(kx + 1.3, kz + 1.3, 1.1);
+      for (const a of [-0.8, 0.8]) { G.cyl(0.006, 0.006, 0.4, ropeM, kx + a, 2.25, kz, 3); G.ico(0.11, M.lanternGlow, kx + a, 2.0, kz); }   // 매단 등
+    }
+    // ─ 텃밭(동쪽): 모던 = 높은 화단 3 + 격자 / 한옥 = 이랑 3 + 말뚝 ─
+    const gx = 5.0;
+    if (hanok) {
+      for (let q = 0; q < 3; q++) { const z = -1.8 + q * 1.15; put(H.box(1.5, 0.16, 0.7, soilM, gx, 0.08, z), gx, 0.08, z, false); for (let c = 0; c < 4; c++) { G.ico(0.15, c % 2 ? M.leaf2 : M.leaf, gx - 0.55 + c * 0.37, 0.24, z); } G.cyl(0.015, 0.015, 0.6, woodDk, gx + 0.7, 0.3, z, 4); }
+    } else {
+      for (let q = 0; q < 3; q++) { const z = -1.8 + q * 1.15; put(H.box(1.5, 0.4, 0.7, woodM, gx, 0.2, z), gx, 0.2, z); put(H.box(1.38, 0.05, 0.58, soilM, gx, 0.42, z), gx, 0.42, z, false); for (let c = 0; c < 4; c++) { put(new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 5), M.leaf), gx - 0.55 + c * 0.37, 0.6, z, false); G.ico(0.06, M.flowers[(q + c) % 5], gx - 0.55 + c * 0.37, 0.78, z); } }
+      put(H.box(0.04, 1.4, 0.04, woodDk, gx + 0.85, 1.0, -1.8), gx + 0.85, 1.0, -1.8, false); put(H.box(0.04, 1.4, 0.04, woodDk, gx + 0.85, 1.0, 0.5), gx + 0.85, 1.0, 0.5, false);
+      for (let q = 0; q < 4; q++) put(H.box(0.03, 0.03, 2.3, woodDk, gx + 0.85, 0.5 + q * 0.3, -0.65), gx + 0.85, 0.5 + q * 0.3, -0.65, false);   // 덩굴 격자
+      G.cyl(0.1, 0.12, 0.2, M.pot, gx - 0.4, 0.1, 1.45, 8); G.cyl(0.015, 0.015, 0.2, M.pot, gx - 0.28, 0.2, 1.45, 4);   // 물뿌리개
+    }
+    // ─ 서쪽 쉼터: 모던 = 화덕 + 통나무 의자 + 그네 / 한옥 = 평상 + 소반 + 소나무 ─
+    if (hanok) {
+      const fx = -5.0, fz = 2.4;
+      for (const a of [-1, 1]) for (const b of [-1, 1]) put(H.box(0.12, 0.34, 0.12, woodDk, fx + a * 1.0, 0.17, fz + b * 0.6), fx + a * 1.0, 0.17, fz + b * 0.6, false);
+      put(H.box(2.3, 0.1, 1.5, woodM, fx, 0.4, fz), fx, 0.4, fz); put(H.box(2.0, 0.025, 1.2, strawM, fx, 0.46, fz), fx, 0.46, fz, false);   // 평상 + 돗자리
+      put(H.box(0.6, 0.22, 0.45, woodDk, fx + 0.4, 0.58, fz), fx + 0.4, 0.58, fz); G.cyl(0.08, 0.1, 0.12, M.pot, fx + 0.3, 0.75, fz, 8); G.ico(0.045, M.pot, fx + 0.3, 0.84, fz); G.cyl(0.03, 0.03, 0.05, M.pot, fx + 0.5, 0.74, fz, 6);   // 소반·주전자·찻잔
+      put(H.box(0.5, 0.1, 0.5, H.clay(0xb55a4a), fx - 0.6, 0.5, fz + 0.1), fx - 0.6, 0.5, fz + 0.1, false);                                            // 방석
+      G.pine(-half + 1.0, 1.6, 1.4);
+    } else {
+      const fx = -4.4, fz = 0.8;
+      for (let q = 0; q < 8; q++) { const a = (q / 8) * Math.PI * 2; const rk = G.ico(0.17, q % 2 ? M.rock : M.rockDark, fx + Math.cos(a) * 0.6, 0.12, fz + Math.sin(a) * 0.6); rk.scale.y = 0.8; }
+      G.ico(0.18, H.clay(0xff9a3e, { emissive: 0xff6a1e, emissiveIntensity: 0.9 }), fx, 0.14, fz); for (const a of [0.5, 2.6]) { const lg = G.cyl(0.07, 0.07, 0.5, woodDk, fx, 0.1, fz, 6); lg.rotation.z = 1.4; lg.rotation.y = a; }
+      for (const a of [0.3, 2.4, 4.4]) G.cyl(0.2, 0.2, 0.34, woodM, fx + Math.cos(a) * 1.4, 0.17, fz + Math.sin(a) * 1.4, 8);   // 통나무 의자
+      const tx = -5.4, tz = 3.6; G.tree(tx, tz, 1.7);   // 그네 나무
+      for (const dx of [-0.3, 0.3]) G.cyl(0.008, 0.008, 1.5, ropeM, tx + 0.55 + dx, 1.35, tz + 0.2, 3);
+      put(H.box(0.7, 0.05, 0.25, woodM, tx + 0.55, 0.62, tz + 0.2), tx + 0.55, 0.62, tz + 0.2, false); put(H.box(0.04, 0.04, 0.9, woodDk, tx + 0.5, 2.05, tz), tx + 0.5, 2.05, tz, false);
+    }
+    // ─ 남쪽: 새 물그릇 / 장독·우물 ─
+    if (hanok) {
+      for (const [x, z, kk] of [[-half + 0.9, -0.4, 1.1], [-half + 1.7, 0.0, 0.9], [-half + 0.9, 0.5, 0.8], [-half + 1.6, 0.8, 1.0], [-half + 0.9, 1.1, 0.7]]) { G.cyl(0.3 * kk, 0.34 * kk, 0.55 * kk, M.pot, x, 0.28 * kk, z, 8); G.cyl(0.2 * kk, 0.3 * kk, 0.14 * kk, strawM, x, 0.62 * kk, z, 8); }
+      const wx2 = 5.3, wz2 = 3.4;   // 우물
+      for (let q = 0; q < 8; q++) { const a = (q / 8) * Math.PI * 2; put(H.box(0.3, 0.45, 0.28, stone, wx2 + Math.cos(a) * 0.48, 0.23, wz2 + Math.sin(a) * 0.48), wx2 + Math.cos(a) * 0.48, 0.23, wz2 + Math.sin(a) * 0.48).rotation.y = -a; }
+      G.cyl(0.4, 0.4, 0.04, waterM, wx2, 0.28, wz2, 10); for (const a of [-1, 1]) G.put(H.box(0.08, 1.2, 0.08, woodDk, wx2 + a * 0.6, 0.7, wz2), wx2 + a * 0.6, 0.7, wz2);
+      G.put(H.box(1.5, 0.1, 0.9, tileM, wx2, 1.38, wz2), wx2, 1.38, wz2, false); G.put(H.box(1.0, 0.1, 0.55, tileM, wx2, 1.5, wz2), wx2, 1.5, wz2, false);
+      G.cyl(0.1, 0.08, 0.14, woodDk, wx2 + 0.45, 0.9, wz2, 6);   // 두레박
+      G.lantern(-half + 1.0, -2.2); G.lantern(wx - 1.2, doorZ - 1.6); G.lantern(wx - 3.3, doorZ + 1.0); G.lantern(-2.4, 3.2);
+      for (let q = 0; q < 14; q++) { const x = -half + 1.0 + (q % 7) * 0.45 + (q > 6 ? 0.2 : 0), z = -half + 0.7 + (q > 6 ? 0.5 : 0); G.cyl(0.04, 0.05, 2.4 + (q % 3) * 0.4, M.bamboo, x + 4.0, 1.2, z, 5); G.ico(0.2, M.leaf2, x + 4.0, 2.5 + (q % 3) * 0.4, z); }   // 대나무 숲(북쪽 길게)
+      // 석가산(바위산)
+      for (const [dx, dy, dz, r] of [[0, 0.2, 0, 0.5], [0.45, 0.18, 0.2, 0.4], [-0.4, 0.22, 0.25, 0.42], [0.1, 0.62, 0.05, 0.4], [-0.1, 0.95, 0, 0.3]]) { const rk = G.ico(r, rnd(dx * 9 + 3) > 0.5 ? M.rock : M.rockDark, -half + 1.2 + dx, dy, -half + 1.2 + dz); rk.scale.y = 0.85; }
+      G.pine(-half + 1.2, -half + 1.2, 0.6);
+      G.pine(-half + 0.9, 3.8, 1.2); G.tree(1.3, -half + 1.3, 1.15, M.blossom); G.pine(-half + 1.0, half - 1.2, 1.1); G.tree(wx - 0.9, -half + 0.9, 1.2, M.blossom); G.bush(-2.0, 5.7, 0.4); G.bush(0.6, 5.8, 0.35);
+      for (let q = 0; q < 7; q++) G.bush(-half + 1.3 + q * 0.9, -half + 0.9, 0.28, q % 2 ? M.leaf2 : M.leafDark);
+    } else {
+      const bx2 = -1.7, bz2 = 5.35;   // 새 물그릇
+      G.cyl(0.14, 0.2, 0.55, whiteM, bx2, 0.28, bz2, 8); G.cyl(0.4, 0.2, 0.12, whiteM, bx2, 0.6, bz2, 10); G.cyl(0.32, 0.32, 0.03, waterM, bx2, 0.66, bz2, 10); G.ico(0.05, M.flowers[1], bx2 + 0.15, 0.7, bz2);
+      G.bench(1.9, 5.9, 0); G.plant(0.8, 5.9, 1.3); G.plant(3.0, 5.9, 1.3);
+      for (let q = 0; q < 4; q++) { const x = -4.4 + q * 0.8; G.cyl(0.1, 0.13, 0.22, M.pot, x, 0.11, 5.9, 8); G.ico(0.18, q % 2 ? M.leaf2 : M.leaf, x, 0.36, 5.9); }
+      G.lantern(wx - 1.2, doorZ - 1.6); G.lantern(wx - 3.3, doorZ + 1.0); G.lantern(-2.4, 3.2); G.lantern(-half + 1.0, -1.8);
+      for (let q = 0; q < 10; q++) { G.ico(0.13, q % 2 ? M.leaf : M.leaf2, -half + 1.0 + (q % 5) * 0.4, 0.15, -half + 1.0 + Math.floor(q / 5) * 0.4 - 0.7); }   // 장식 풀(관엽)
+      G.tree(-half + 1.0, -half + 1.0, 1.55); G.tree(-half + 1.1, half - 1.4, 1.5); G.tree(1.3, -half + 1.3, 1.2, M.blossom); G.tree(wx - 0.9, -half + 0.9, 1.35, M.blossom);
+      G.bed(-1.0, -half + 2.0, 3.0, 0.7, 14); G.bed(-half + 1.0, -2.6, 0.7, 2.0, 9);
+      G.bush(-2.4, 5.7, 0.4); G.bush(0.6, 5.5, 0.35, M.leaf);
     }
   });
   mergeByMaterial(THREE, g);
