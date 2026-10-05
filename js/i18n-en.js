@@ -2149,10 +2149,10 @@ export const EN = {
   // 🌌 별자리 수첩·해금(2026-10-05 문구 묶음 1)
   '망원경으로 별자리를 이어 보는 곳': 'Connect constellations through the telescope',
   '🔭 별자리 수첩': '🔭 Star Notebook',
-  '{0} / {1} 그렸어요 · 오늘 이을 별자리를 골라요': '{0} / {1} drawn · Pick a constellation to connect',
-  '앞 별자리를 이으면 열려요': 'Opens after you draw the one before',
+  '{0} / {1} 가지 별자리를 그렸어요 원하는 별자리를 골라주세요!': '{0} / {1} constellations drawn — pick the one you like!',
+  '이전 별자리를 이어주면 열려요!': 'Opens once you connect the one before!',
   '✓ 그렸어요 · 최고 {0}점': '✓ Drawn · Best {0}',
-  '처음': 'New',
+  '첫 별자리': 'New constellation',
   '✨ 새 별자리가 보여요 · {0}': '✨ A new constellation appears · {0}',
   '처음 그렸어요 +{0}🪙': 'First drawing +{0}🪙',
   '카시오페이아': 'Cassiopeia',
