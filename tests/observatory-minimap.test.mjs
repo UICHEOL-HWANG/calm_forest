@@ -17,9 +17,8 @@ test('minimap label and floor for the observatory are its own, not the farm defa
   assert.ok(EN['🔭 천문대'], 'English label');
 });
 
-test('minimap marks the observatory exit and telescope', () => {
+test('minimap marks come from the observatory module (exit + telescope — behaviour in observatory-interior)', () => {
   const src = gameSource();
   const body = src.slice(src.indexOf('function minimapMarks('), src.indexOf('function minimapMarks(') + 6000);
-  assert.match(body, /place === 'observatory'\) \{[^}]*OBSERVATORY\.z \+ OBSERVATORY_R[^}]*kind: 'exit'/);
-  assert.match(body, /place === 'observatory'\) \{[\s\S]*?TELESCOPE_SPOT/);
+  assert.match(body, /place === 'observatory'\) \{ observatoryMinimapMarks\(marks\);/);
 });

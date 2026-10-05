@@ -216,3 +216,31 @@ test('game loop skips the 3D render while the lens covers it', () => {
   const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   assert.match(src, /if \(!observatoryLensOpen\(\)\) composer\.render\(\);/);
 });
+
+test('space helpers moved out of game.js: clamp, lighting, action dispatch, minimap marks', () => {
+  const { c } = spaceContext();
+  // clamp — walkable circle is R − 0.75
+  const out = new THREE.Vector3(10, 0, 540); c.clampToObservatory(out);
+  assert.ok(Math.abs(out.x - (5.4 - 0.75)) < 1e-9 && out.z === 540);
+  const inside = new THREE.Vector3(1, 0, 541); c.clampToObservatory(inside);
+  assert.deepEqual(inside.toArray(), [1, 0, 541]);
+  // fixed indoor lighting, whatever the time of day (intensity, colour and light position)
+  const L = { hemiLight: { intensity: 0 }, ambient: { intensity: 0, color: new THREE.Color() },
+    sunLight: { intensity: 0, color: new THREE.Color(), position: new THREE.Vector3(), target: new THREE.Object3D() },
+    playerLight: { intensity: 0 }, fog: { color: new THREE.Color(), near: 0, far: 0 } };
+  c.applyObservatoryLight(L);
+  const LIGHT = vm.runInContext('OBSERVATORY_LIGHT', c);
+  assert.equal(L.ambient.intensity, LIGHT.amb);
+  assert.equal(L.sunLight.position.z, 540 + 9);
+  assert.equal(L.fog.far, LIGHT.far);
+  // action dispatch — door, exit, telescope; anything else inside is swallowed
+  const calls = [];
+  c.enterObservatory = () => calls.push('enter'); c.exitObservatory = () => calls.push('exit');
+  c.startObservatoryLook = () => calls.push('look');
+  for (const d of ['observatory', 'observatoryexit', 'telescope', null, 'farm']) c.observatoryAction(d);
+  assert.deepEqual(calls, ['enter', 'exit', 'look']);
+  // minimap: exit at the south wall + telescope
+  const marks = []; c.observatoryMinimapMarks(marks);
+  assert.equal(marks.length, 2);
+  assert.equal(marks[0].kind, 'exit'); assert.equal(marks[0].z, 540 + 5.4);
+});

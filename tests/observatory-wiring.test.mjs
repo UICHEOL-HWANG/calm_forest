@@ -34,9 +34,8 @@ test('setSpaceVisible, spaceFlags, toolZoneKey, place 문자열이 천문대를 
 
 test('handleAction 은 천문대 입장/퇴장과 실내 액션 가드를 처리한다', () => {
   const body = bodyOf('handleAction');
-  assert.match(body, /nearDoor === 'observatory'\) return enterObservatory\(\)/);
-  assert.match(body, /nearDoor === 'observatoryexit'\) return exitObservatory\(\)/);
-  assert.match(body, /if \(atObservatory\) return/);
+  // 실내에선 문·나가기·망원경만 — 그 밖의 액션은 observatoryAction 이 삼킨다(동작: observatory-interior)
+  assert.match(body, /if \(atObservatory \|\| nearDoor === 'observatory'\) return observatoryAction\(nearDoor\)/);
 });
 
 test('buildEnvironment 와 VILLAGE_PLACES 에 천문대가 있다', () => {

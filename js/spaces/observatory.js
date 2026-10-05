@@ -133,3 +133,37 @@ export function exitObservatory() {
   snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('observatory_exit');
 }
+
+// ── game.js 배선을 줄이려고 여기로 옮긴 공간 규칙들(박물관은 game.js 안에 같은 코드가 있다) ──
+
+/** 🔭 원형 홀 안쪽으로 이동 제한 */
+export function clampToObservatory(p) {
+  const R = OBSERVATORY_R - 0.75, dx = p.x - OBSERVATORY.x, dz = p.z - OBSERVATORY.z, dd = Math.hypot(dx, dz);
+  if (dd > R) { p.x = OBSERVATORY.x + dx / dd * R; p.z = OBSERVATORY.z + dz / dd * R; }
+}
+
+/** 🔭 시간대 무관 실내 조명 — 세기·색·광원 자리 3종 세트(박물관 MUSEUM_LIGHT 와 같은 규칙) */
+export function applyObservatoryLight({ hemiLight, ambient, sunLight, playerLight, fog }) {
+  const L = OBSERVATORY_LIGHT;
+  hemiLight.intensity = L.hemi; ambient.intensity = L.amb; sunLight.intensity = L.sun;
+  ambient.color.setHex(L.tint);
+  sunLight.color.setHex(L.sunTint);
+  sunLight.position.set(OBSERVATORY.x + 6, 14, OBSERVATORY.z + 9);
+  sunLight.target.position.set(OBSERVATORY.x, 1.6, OBSERVATORY.z);
+  sunLight.target.updateMatrixWorld();
+  if (playerLight) playerLight.intensity = L.player;
+  fog.color.setHex(L.fog); fog.near = L.near; fog.far = L.far;
+}
+
+/** 🔭 액션 버튼 — 문·나가기·망원경. 실내에선 그 밖의 액션을 전부 삼킨다(밭 갈기 등 방지) */
+export function observatoryAction(nearDoor) {
+  if (nearDoor === 'observatory') return enterObservatory();
+  if (nearDoor === 'observatoryexit') return exitObservatory();
+  if (nearDoor === 'telescope') return startObservatoryLook();
+}
+
+/** 🔭 실내 미니맵 — 나가는 문(남쪽) · 망원경 */
+export function observatoryMinimapMarks(marks) {
+  marks.push({ x: OBSERVATORY.x, z: OBSERVATORY.z + OBSERVATORY_R, c: '#c8905a', kind: 'exit' });
+  marks.push({ x: OBSERVATORY.x + TELESCOPE_SPOT.x, z: OBSERVATORY.z + TELESCOPE_SPOT.z, c: '#f3d27a', r: 3.0 });
+}
