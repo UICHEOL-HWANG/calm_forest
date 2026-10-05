@@ -163,9 +163,7 @@ import {
 import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
-import {
-  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, observatoryCamFocus, observatoryLensOpen, spawnObservatoryGate, TELESCOPE_SPOT, startObservatoryLook, updateObservatory,
-} from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
+import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import {
   INT_HALF, STAIR_PROMPT_R, buildDecorGhost, buildInterior, commitDecor, curFloorDef, curHalf, decorClampX,
   decorClampZ, decorMesh, floorHitFromEvent, ghostFarmDef, ghostOk, groundHitFromEvent, nearestDecor, onDecorFloorTap,
@@ -5453,9 +5451,7 @@ function minimapMarks(place) {
       const col = t.stage === 'mature' && t.fruit > 0 && def ? '#' + def.fruitColor.toString(16).padStart(6, '0') : '#5f9e52';
       marks.push({ x: t.x, z: t.z, c: col, r: 2.6 });
     }
-  } else if (place === 'observatory') {   // 🔭 나가는 문(남쪽) · 망원경
-    marks.push({ x: OBSERVATORY.x, z: OBSERVATORY.z + OBSERVATORY_R, c: '#c8905a', kind: 'exit' });
-    marks.push({ x: OBSERVATORY.x + TELESCOPE_SPOT.x, z: OBSERVATORY.z + TELESCOPE_SPOT.z, c: '#f3d27a', r: 3.0 });
+  } else if (place === 'observatory') { observatoryMinimapMarks(marks);   // 🔭 나가는 문 · 망원경
   } else if (place === 'mine') {
     marks.push({ x: MINE.x, z: MINE.z - MINE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
     for (const rock of oreRocks) {
@@ -5738,9 +5734,7 @@ function updatePlayer(dt, t) {
   } else if (atMuseum) { // 🏛️ 전시실: 벽 안쪽으로 제한
     player.position.x = Math.max(MUSEUM.x - MUSEUM_HALF_W + 0.8, Math.min(MUSEUM.x + MUSEUM_HALF_W - 0.8, player.position.x));
     player.position.z = Math.max(MUSEUM.z - MUSEUM_HALF_D + 0.8, Math.min(MUSEUM.z + MUSEUM_HALF_D - 0.7, player.position.z));
-  } else if (atObservatory) { // 🔭 천문대: 원형 홀 안쪽으로 제한
-    const R = OBSERVATORY_R - 0.75, dx = player.position.x - OBSERVATORY.x, dz = player.position.z - OBSERVATORY.z, dd = Math.hypot(dx, dz);
-    if (dd > R) { player.position.x = OBSERVATORY.x + dx / dd * R; player.position.z = OBSERVATORY.z + dz / dd * R; }
+  } else if (atObservatory) { clampToObservatory(player.position);   // 🔭 원형 홀 안쪽으로 제한
   } else if (atRiver) { // 🛶 나루터 데크: 물에 빠지지 않게 데크 안쪽으로 제한
     player.position.x = Math.max(RIVER.x - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.x + RIVER_DOCK_HALF - 0.7, player.position.x));
     player.position.z = Math.max(RIVER.z - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.z + RIVER_DOCK_HALF - 0.5, player.position.z));
@@ -6094,8 +6088,7 @@ function updateCameraFade() {
   }
 }
 
-const _obsFocus = new THREE.Vector3();
-const camFocus = () => atObservatory ? observatoryCamFocus(player.position, _obsFocus) : player.position;   // 🔭 작은 원형 홀 — 방 중심 쪽으로 당겨 잡는다
+const _obsFocus = new THREE.Vector3(), camFocus = () => atObservatory ? observatoryCamFocus(player.position, _obsFocus) : player.position;   // 🔭 작은 원형 홀 — 방 중심 쪽으로 당겨 잡는다
 function snapCamera() {
   const f = camFocus();
   _camTarget.copy(f).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : camOffset);   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
@@ -6312,16 +6305,7 @@ function updateDayNight(dt) {
     if (playerLight) playerLight.intensity = MUSEUM_LIGHT.player;
     scene.fog.color.setHex(MUSEUM_LIGHT.fog); scene.fog.near = MUSEUM_LIGHT.near; scene.fog.far = MUSEUM_LIGHT.far;
   }
-  if (atObservatory) {
-    hemiLight.intensity = OBSERVATORY_LIGHT.hemi; ambient.intensity = OBSERVATORY_LIGHT.amb; sunLight.intensity = OBSERVATORY_LIGHT.sun;
-    ambient.color.setHex(OBSERVATORY_LIGHT.tint);
-    sunLight.color.setHex(OBSERVATORY_LIGHT.sunTint);
-    sunLight.position.set(OBSERVATORY.x + 6, 14, OBSERVATORY.z + 9);
-    sunLight.target.position.set(OBSERVATORY.x, 1.6, OBSERVATORY.z);
-    sunLight.target.updateMatrixWorld();
-    if (playerLight) playerLight.intensity = OBSERVATORY_LIGHT.player;
-    scene.fog.color.setHex(OBSERVATORY_LIGHT.fog); scene.fog.near = OBSERVATORY_LIGHT.near; scene.fog.far = OBSERVATORY_LIGHT.far;
-  }
+  if (atObservatory) applyObservatoryLight({ hemiLight, ambient, sunLight, playerLight, fog: scene.fog });   // 🔭 시간대 무관 실내 조명
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
   if (atCafe) {
     hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
@@ -6525,11 +6509,7 @@ function handleAction() {
   if (nearDoor === 'museumdown') return museumGoFloor(false);
   // 🏛️ 전시실에선 문·전시 말고는 아무 액션도 없다 — 안 막으면 여기서 밭이 갈린다(실제로 겪었다)
   if (atMuseum) return;
-  if (nearDoor === 'observatory') return enterObservatory();
-  if (nearDoor === 'observatoryexit') return exitObservatory();
-  if (nearDoor === 'telescope') return startObservatoryLook();
-  // 🔭 천문대 실내도 문·망원경 말고는 아무 액션도 없다.
-  if (atObservatory) return;
+  if (atObservatory || nearDoor === 'observatory') return observatoryAction(nearDoor);   // 🔭 문·나가기·망원경 — 실내에선 그 밖의 액션 없음
   if (nearDoor === 'river') return enterRiver();
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();

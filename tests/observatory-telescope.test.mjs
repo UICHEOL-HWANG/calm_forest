@@ -21,7 +21,8 @@ test('천문대 실내 망원경 프롬프트는 COPY.lookIn 을 쓴다', () => 
 });
 
 test('handleAction 은 telescope 를 startObservatoryLook 으로 보낸다', () => {
-  assert.match(bodyOf('handleAction'), /nearDoor === 'telescope'\) return startObservatoryLook\(\)/);
+  // 분기 자체(telescope → startObservatoryLook)는 observatory-interior 의 observatoryAction 동작 테스트가 본다
+  assert.match(bodyOf('handleAction'), /return observatoryAction\(nearDoor\)/);
 });
 
 test('천문대 자세 업데이트는 updatePlayer 뒤 매 프레임 호출된다', () => {
