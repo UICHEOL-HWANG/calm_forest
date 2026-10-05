@@ -82,3 +82,19 @@ test('7단계 모델 3종은 merge 를 거치고 game.js 에는 새 조형 코�
   assert.ok(idx.includes('stage === 7 && !g.userData.anim'), '7단계 구성품 병합');
   assert.ok(!/stage7|Stage7/.test(readFileSync(new URL('../js/game.js', import.meta.url), 'utf8').replace(/house-stage7|HOUSE_CLEAR_R|extView\w+|normalizeHouseStyle/g, '')), 'game.js 에 7단계 조형이 들어갔다');
 });
+
+// ── 🏡 실내 스타일(모던/한옥) + 실내 정원 ─────────────────────────────
+test('실내 마감표에 7단계 모던·한옥이 있고 finishFor 가 스타일로 고른다', () => {
+  assert.ok(/'7m': \{[^}]*deco: 'modern'/.test(SRC), "INT_FINISH['7m']");
+  assert.ok(/'7h': \{[^}]*deco: 'hanok'/.test(SRC), "INT_FINISH['7h']");
+  assert.ok(SRC.includes("finishFor = (stage, style) => (stage >= 7"), 'finishFor 가 스타일을 받는다');
+  assert.ok(SRC.includes('finishFor(gameState.houseStage, gameState.house.style)'), 'buildRoom 이 스타일을 넘긴다');
+});
+
+test('interior7 은 병합하고(드로우콜) 두 스타일 모두 실내 정원을 만든다', () => {
+  const src = readFileSync(new URL('../js/house/interior7.js', import.meta.url), 'utf8');
+  assert.ok(src.includes('mergeByMaterial(THREE, g)'), '병합');
+  assert.ok(src.includes("style === 'hanok'") && src.includes('makeGarden'), '한옥 + 정원');
+  assert.ok((src.match(/makeGarden\(THREE, H, add\)/g) || []).length === 2, '모던·한옥 둘 다 정원');
+  assert.ok(src.includes('windowMats'), '밤 점등 창 재질을 돌려준다');
+});

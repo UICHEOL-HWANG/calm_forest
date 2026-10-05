@@ -25,6 +25,8 @@ import { nearMiss, spotInfo } from '../habitat.js';
 import { MAX_HOUSE_STAGE } from '../house-cost.js';
 import { canPlaceOn, decorUnlocked, floorAt } from '../house-floors.js';
 import { makeHouseHelpers } from '../house/index.js';
+import { INTERIOR7_WALL, buildInterior7 } from '../house/interior7.js';   // 🏡 7단계 실내 스타일(모던/한옥) + 실내 정원 — 새 조형은 그 모듈에
+import { normalizeHouseStyle } from '../house-stage7.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
@@ -41,9 +43,13 @@ export const INT_FINISH = {
   4: { floor: { kind: 'stone', c: 0xb9b3a8, rep: 6 }, tread: 0x23252a, rail: 0x23252a },
   5: { floor: { kind: 'stone', c: 0xe2ddd2, rep: 5 }, tread: 0xb98a4e, rail: 0x1e1f23 },
   6: { floor: { kind: 'stone', c: 0xf1ece3, rep: 4 }, tread: 0xf1ece3, rail: 'glass' },
+  // 🏡 7단계 정원 저택 — 스타일마다 바닥·벽·계단이 다르고 deco 가 벽 장식 + 실내 정원을 얹는다(js/house/interior7.js)
+  '7m': { floor: { kind: 'stone', c: 0xe6e2da, rep: 5 }, tread: 0xf1ece3, rail: 'glass', wall: INTERIOR7_WALL.modern, deco: 'modern' },
+  '7h': { floor: { kind: 'wood',  c: 0xc9a56e, rep: 6 }, tread: 0xb98a57, rail: 0x8a5a36, wall: INTERIOR7_WALL.hanok, deco: 'hanok' },
 };
 
-export const finishFor = (stage) => INT_FINISH[Math.min(6, Math.max(3, stage || 3))];
+// 7단계만 스타일('modern'|'hanok')로 갈린다 — 그 밖엔 단계 번호 그대로(3~6)
+export const finishFor = (stage, style) => (stage >= 7 ? INT_FINISH[normalizeHouseStyle(style, stage) === 'hanok' ? '7h' : '7m'] : INT_FINISH[Math.min(6, Math.max(3, stage || 3))]);
 
 // 🏠 지금 서 있는 층 정의 — houseStage 가 아직 안 연 층이면 1층 기본값으로.
 export function curFloorDef() {
@@ -91,7 +97,7 @@ export function buildRoom(def) {
   const g = new THREE.Group(); g.position.set(INT.x, def.outdoor ? ROOF_Y : INT.y, INT.z);   // ☀️ 루프탑만 ROOF_Y 만큼 띄운다(내부 좌표는 그대로 — 방 전체가 같이 올라간다)
   g.userData.floorIdx = def.f;   // refreshStairsLandmarks 가 위/아래 목적지를 계산할 때 쓴다
   const H = def.half, W = H * 2;
-  const fin = finishFor(gameState.houseStage);   // 🎨 집 단계에 맞춘 실내 마감(바닥·계단)
+  const fin = finishFor(gameState.houseStage, gameState.house.style);   // 🎨 집 단계(7단계는 스타일)에 맞춘 실내 마감(바닥·벽·계단)
   const lay = stairLayout(H);       // 🪜 이 방의 계단 좌표(오르는 진입점 · 내려가는 구멍)
   const hasDown = def.f > 0;        // 1층(f=0)은 내려갈 곳이 없다 — 바닥에 구멍을 뚫지 않는다
   const HH = makeHouseHelpers(THREE);   // house/*.js 와 같은 box/glass 도우미(계단·유리 난간에 씀)
@@ -131,13 +137,15 @@ export function buildRoom(def) {
     //   아니었다(2026-09-18 지시 오해로 한 차례 지었다 철거). 나무 데크 + 유리 난간 + 원형 구멍
     //   (뒤이어 buildSpiralStair 가 짓는 테두리 난간 + solidCircle 차단)이 루프탑의 전부다.
   } else {
-    const wall = () => clayMat(PAL.wall, false);
+    const wall = () => clayMat(fin.wall ?? PAL.wall, false);
     const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, H); back.castShadow = true; g.add(back);
     const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); left.position.set(-H, 1.5, 0); g.add(left);
     const right = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); right.position.set(H, 1.5, 0); g.add(right);
-    const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
-    houseWindows.push(winMat);
-    [-H / 2.8, H / 2.8].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, H - 0.1); g.add(win); });
+    if (!fin.deco) {   // 7단계는 deco 가 스타일 창을 직접 단다
+      const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
+      houseWindows.push(winMat);
+      [-H / 2.8, H / 2.8].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, H - 0.1); g.add(win); });
+    }
     if (def.id === 'ground') {   // 1층에만 나가는 문
       const sideW = H - 1;            // 문 반폭 1
       const fL = new THREE.Mesh(new THREE.BoxGeometry(sideW, 3, 0.24), wall()); fL.position.set(-(1 + sideW / 2), 1.5, -H); g.add(fL);
@@ -147,6 +155,10 @@ export function buildRoom(def) {
     } else {
       const fw = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); fw.position.set(0, 1.5, -H); g.add(fw);
     }
+  }
+  if (fin.deco && !def.outdoor) {   // 🏡 7단계 — 스타일 벽 장식(창·기둥·슬랫) + 실내 정원. 방마다 한 번, 재질별 병합(js/house/interior7.js)
+    const d7 = buildInterior7(THREE, HH, { style: fin.deco, half: H, ground: def.id === 'ground' });
+    g.add(d7.group); houseWindows.push(...d7.windowMats);   // 창 재질은 밤 점등 목록에(재건축 땐 unregisterWindows 가 뺀다)
   }
   // 🌀 나선 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2).
   //   sims/stair-concepts/stairs.js(kind='spiral') 승인안 포팅. 좌표는 stairLayout(H) —
