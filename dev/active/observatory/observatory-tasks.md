@@ -4,35 +4,36 @@
 브랜치: `feat/observatory` (main 에서 분기). main 병합·푸시·배포는 사람이 결정.
 
 ## 1. 순수 리듬 로직
-- [ ] `tests/observatory-rhythm.test.mjs` 작성 (RED)
+> 1~5단계: 이전 세션 구현 + 3·4차에서 테스트·헤드리스 브라우저(PC·모바일)로 확인해 체크
+- [x] `tests/observatory-rhythm.test.mjs` 작성 (RED)
   - ORDER 길이 8, 노트 7개(`buildChart().length === 7`), 첫 `startMs === 800`
   - hitMs 단조 증가, 각 travel ∈ [700, 1300] (ease=1), ease=1.4 이면 travel 이 1.4배
   - `judgeTap(0)==='perfect'`, `judgeTap(90)==='perfect'`, `judgeTap(91)==='good'`, `judgeTap(-180)==='good'`, `judgeTap(181)==='miss'`, `judgeTap(-181)==='early'`; ease 배수로 창이 넓어짐
   - `summarize`: 점수·maxCombo(miss 에서 끊김)·success(miss≤3)
   - `rewardFor`: 성공 = 10 + perfect×2, alreadyToday 또는 실패 = 0
-- [ ] `js/observatory/rhythm.js` 구현 (GREEN)
+- [x] `js/observatory/rhythm.js` 구현 (GREEN)
 
 ## 2. 장소 좌표 + 겹침 테스트
-- [ ] `js/data/places.js` 에 `OBSERVATORY_GATE (22,0,22)`, `OBSERVATORY (0,0,540)`, `OBSERVATORY_R = 5.4`
-- [ ] `tests/observatory-place.test.mjs`: 게이트가 context.md 점유 목록의 각 시설과 ≥ 8m, 원점에서 ≤ 36(maxR 42 − 기단), 실내 z 540 이 다른 실내 원점(context.md)과 ≥ 30 떨어짐. 실패하면 (-5,0,32) 로 바꿔 재검.
+- [x] `js/data/places.js` 에 `OBSERVATORY_GATE (22,0,22)`, `OBSERVATORY (0,0,540)`, `OBSERVATORY_R = 5.4`
+- [x] `tests/observatory-place.test.mjs`: 게이트가 context.md 점유 목록의 각 시설과 ≥ 8m, 원점에서 ≤ 36(maxR 42 − 기단), 실내 z 540 이 다른 실내 원점(context.md)과 ≥ 30 떨어짐. 실패하면 (-5,0,32) 로 바꿔 재검.
 
 ## 3. 공간 배선
-- [ ] `tests/observatory-wiring.test.mjs` (gameSource 텍스트 assert): `atObservatory` 가 $w getter/setter·export·setSpaceVisible·spaceFlags·toolZoneKey·place 체인·handleAction 가드에 존재, doors.js 에 `'🌌 별 보러 가기'`, VILLAGE_PLACES 에 `'천문대'`, shadow-scope 플래그
-- [ ] `js/spaces/observatory.js`: 외관(gate) + 실내 hall + enter/exit (박물관 복제 → 이름 변경 → C안 형태로 교체)
-- [ ] context.md 배선 체크리스트 전부 + `grep -rn atMuseum js tests` 대조
-- [ ] `tests/shadow-scope.test.mjs` 맵 갱신
-- [ ] 브라우저 확인: 문 프롬프트·입장·나가기·실내에서 액션 버튼 무반응
+- [x] `tests/observatory-wiring.test.mjs` (gameSource 텍스트 assert): `atObservatory` 가 $w getter/setter·export·setSpaceVisible·spaceFlags·toolZoneKey·place 체인·handleAction 가드에 존재, doors.js 에 `'🌌 별 보러 가기'`, VILLAGE_PLACES 에 `'천문대'`, shadow-scope 플래그
+- [x] `js/spaces/observatory.js`: 외관(gate) + 실내 hall + enter/exit (박물관 복제 → 이름 변경 → C안 형태로 교체)
+- [x] context.md 배선 체크리스트 전부 + `grep -rn atMuseum js tests` 대조
+- [x] `tests/shadow-scope.test.mjs` 맵 갱신
+- [x] 브라우저 확인: 문 프롬프트·입장·나가기·실내에서 액션 버튼 무반응
 
 ## 4. 망원경 상호작용 + 자세
-- [ ] doors.js 실내 분기에 망원경 근접 프롬프트(`nd='telescope'`)
-- [ ] handleAction → 플레이어 위치·방향 고정 → 700ms 허리 숙임(sea.js 덮어쓰기 패턴) → `openStarView()`
-- [ ] 닫으면 자세 복귀, 플레이어 다시 이동 가능
+- [x] doors.js 실내 분기에 망원경 근접 프롬프트(`nd='telescope'`)
+- [x] handleAction → 플레이어 위치·방향 고정 → 700ms 허리 숙임(sea.js 덮어쓰기 패턴) → `openStarView()`
+- [x] 닫으면 자세 복귀, 플레이어 다시 이동 가능
 
 ## 5. 렌즈 뷰 오버레이
-- [ ] `js/observatory/ui.js`: sim v=d 그리기 이식, rAF 구동, 입력(pointerdown/Space/Enter), 판정 표시, 결과 카드, ✕/ESC/visibility 포기
-- [ ] `COPY` 객체 + 모든 canvas 문자열 `t()`
-- [ ] body `menu-open mg-open` 토글, `Input.setAnalog(0,0)`
-- [ ] PC 1280×800 / 모바일 390×844 캡처로 sim 과 나란히 비교
+- [x] `js/observatory/ui.js`: sim v=d 그리기 이식, rAF 구동, 입력(pointerdown/Space/Enter), 판정 표시, 결과 카드, ✕/ESC/visibility 포기
+- [x] `COPY` 객체 + 모든 canvas 문자열 `t()`
+- [x] body `menu-open mg-open` 토글, `Input.setAnalog(0,0)`
+- [x] PC 1280×800 / 모바일 390×844 캡처로 sim 과 나란히 비교
 
 ## 6. 보상·하루 1회·세이브
 - [x] `gameState.starDay` 기본값·저장·복원 (ferry quiz 패턴) — 마지막으로 보상 받은 날짜 문자열, 저장은 getGameState 스프레드로 자동
@@ -54,13 +55,13 @@
 - [x] `npm test` 전부 통과 로그 첨부 — `# pass 1701 / # fail 0` (2026-10-04 3차 마지막 커밋 기준)
 - [x] 이 파일 체크 + context.md `Last Updated` 갱신 + 남은 일(⏳문구 검수 등) 메모 — 아래 '남은 일'
 
-## 🧾 3차 세션 정리 (Claude, 2026-10-04) — 남은 일
+## 🧾 3·4차 세션 정리 (Claude, 2026-10-04~05) — 남은 일
 - 브라우저 확인(헤드리스, PC 1280×800 + 모바일 390×844): 마을 문 → 실내 → 망원경 프롬프트 → 숙이기(이동 잠금) → 렌즈 → 7노트 완주 → 결과·코인 +24 → 닫기 → 나가기(문 앞 복귀) · 실내 액션 무반응 · 영어 화면
 - ⏳ 실제 새로고침 세이브 왕복: 이 환경은 오프라인 게스트라 서버 저장이 없다 → `applySave(getGameState())` 왕복으로만 확인. 로그인 세션에서 한 번 더
-- ⏳ 렌즈 shadowBlur 25~28회/프레임 — 실기기(저사양 안드로이드)에서 프레임 확인. 느리면 혜성 입자 9개의 blur 부터 끈다
-- ⏳ 오버레이 중 3D 렌더 계속 돎(가려져 안 보임) — 건너뛰는 경로는 v2
-- ⏳ game.js +56줄(목표 40) — 공간 배선 대부분이 atMuseum 나열 옆 한 줄씩이라 더 줄이려면 공간 플래그 목록화가 필요(별도 작업)
-- ⏳ 실내 미니맵이 'Farm' 라벨로 보임(캡처) — 미니맵 라벨이 천문대를 모름. 확인 필요
+- ✅ (4차) 렌즈 shadowBlur 28 → 5회/프레임 — 별 7개는 켜짐/꺼짐 스프라이트 2장을 크기별로 한 번 구워 drawImage, 혜성 입자 blur 끔(화면 동일). ⏳ 실기기 프레임 확인은 그대로
+- ✅ (4차) 렌즈가 덮는 동안 `composer.render()` 건너뜀(`observatoryLensOpen`) — 실측: 메인 캔버스 GL 드로우 1.5초 588 → 0, 닫으면 복귀. (남는 ~200/1.5초는 숨은 `char-preview` 캔버스 — 천문대와 무관, 별도 작업으로 제안)
+- ✅ (4차) game.js main 대비 +40줄 — 조명·이동 제한·액션 분기·미니맵 표시를 spaces/observatory.js 로(`applyObservatoryLight` `clampToObservatory` `observatoryAction` `observatoryMinimapMarks`, 동작 테스트)
+- ✅ (4차) 실내 미니맵 — 라벨 `🔭 천문대`·남보라 바닥·출구·망원경 점(전엔 기본값 '🌾 텃밭'). 박물관·과수원 미니맵 중심이 동굴 좌표로 떨어지는 기존 버그는 별도 작업으로 제안
 - ⏳ 문구 검수(아래 목록 + 실패 제목 `조금만 더 해 볼까요?`), 영어 번역도 같이
 
 ## ⏳ 사용자 확인 대기 (구현 중 막히면 임시값으로 진행하고 여기 적기)
