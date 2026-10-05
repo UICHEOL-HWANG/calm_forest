@@ -706,6 +706,24 @@ export async function sendBoatRun(row) {
   } catch (err) { console.warn('[Supabase 폴백] 런 기록 전송 실패:', err?.message || err); }
 }
 
+// ── [계측] 🔭 천문대 별 잇기 판 기록(star_runs) — 판 1회 = 1행(포기 포함) ──
+//    난이도 학습용: 노트별 판정·탭 오차·arm/ease/dda 를 한 행에. GA4 star_* 와 run_id 로 조인된다.
+//    dev 세션은 남기지 않는다(시험 판이 학습 데이터에 섞이면 가려낼 근거가 없다). 실패해도 게임엔 영향 없게 삼킨다.
+export async function sendStarRun(row) {
+  if (IS_DEV_SESSION) return;
+  const full = {
+    user_id: state.userId, session_id: state.sessionId,
+    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
+    run_date: kstDate(),   // YYYY-MM-DD · KST
+    ...row,
+  };
+  if (!state.online || !supabase) { console.log('[Supabase 폴백] 🔭 별 잇기 기록(오프라인):', full); return; }
+  try {
+    const { error } = await supabase.from(CONFIG.STAR_TABLE).insert(full);
+    if (error) throw error;
+  } catch (err) { console.warn('[Supabase 폴백] 별 잇기 기록 전송 실패:', err?.message || err); }
+}
+
 // ── [계측] 🌊 바다터 대어 기록(sea_records) — 어획 1회 = 1행 ──
 //    참치 무게가 '오늘의 대어' 리더보드(sea 보드)의 원천. 다른 어종도 함께 남겨
 //    어종별 도전/성공률 분석에 쓴다. 실패해도 게임엔 영향 없게 전부 삼킨다.

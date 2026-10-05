@@ -967,6 +967,7 @@ const gameState = {
   talk: { date: '', used: {} },
   quiz: { date: '', done: false, correct: 0 },   // 🦆 사공 퀴즈 — 오늘 풀었는지(시작하면 done). 날짜가 오늘이 아니면 다시 풀 수 있다
   starDay: null,   // 🔭 별 잇기 — 마지막으로 보상 받은 날(같은 날 재도전은 연습)
+  star: { cleared: {}, plays: {}, best: {} },   // 🌌 별자리별 첫 클리어 날짜·시도 횟수·최고 점수(해금은 cleared 로 계산)
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
   noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
   character: null,                          // 선택한 동물 캐릭터 id
@@ -2558,6 +2559,7 @@ function applySave(saved) {
     gameState.quiz = { date: saved.quiz.date, done: !!saved.quiz.done, correct: +saved.quiz.correct || 0 };
   }
   if (typeof saved.starDay === 'string') gameState.starDay = saved.starDay;   // 🔭 별 잇기 하루 1회
+  gameState.star = restoreStar(saved.star, saved.starDay);   // 🌌 별자리 기록(옛 북두칠성 보상 기록은 클리어로 친다)
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
   if (saved.houseStyle) { gameState.houseStyle = { ...gameState.houseStyle, ...saved.houseStyle }; applyHouseStyle(); } // 집 외관 복원
@@ -7322,6 +7324,16 @@ function rollDifficulty(game) {
 function settleDifficulty(game, outcome) {
   const st = gameState.difficulty[game]; if (!st) return;
   st.dda = nextDda(game, st.dda, outcome);
+}
+
+// 🌌 세이브의 별자리 기록 — 숫자·문자열만 남긴다. 별자리가 생기기 전 북두칠성으로 보상을 받은
+//    적이 있으면(starDay) 이미 깬 것으로 친다 — 안 그러면 기존 유저가 북두칠성을 다시 깨야 다음이 열린다.
+function restoreStar(saved, starDay) {
+  const pick = (o, ok) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, v]) => ok(v)));
+  const cleared = pick(saved?.cleared, v => typeof v === 'string');
+  if (!cleared.big_dipper && typeof starDay === 'string') cleared.big_dipper = starDay;
+  const num = v => Number.isFinite(v) && v >= 0;
+  return { cleared, plays: pick(saved?.plays, num), best: pick(saved?.best, num) };
 }
 
 // 🎚️ 결과 이벤트에 펼칠 세 필드. GA4 예약 파라미터(source·medium·campaign·term·content)와 겹치지 않는다.

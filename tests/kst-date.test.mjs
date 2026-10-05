@@ -8,9 +8,9 @@ test('kstDate — UTC 15:00 이후는 KST 다음 날(새벽 기록이 어제로 
   assert.equal(kstDate(Date.UTC(2026, 11, 31, 15, 0)), '2027-01-01');   // 해 넘김
 });
 
-test('sea_records·boat_runs 의 run_date 는 kstDate() 로 보낸다(UTC toISOString 금지)', async () => {
+test('sea_records·boat_runs·star_runs 의 run_date 는 kstDate() 로 보낸다(UTC toISOString 금지)', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
   assert.ok(!/run_date:\s*new Date\(\)\.toISOString/.test(src), 'run_date 가 아직 UTC 날짜다');
-  assert.equal((src.match(/run_date:\s*kstDate\(\)/g) || []).length, 2);
+  assert.equal((src.match(/run_date:\s*kstDate\(\)/g) || []).length, 3);
 });
