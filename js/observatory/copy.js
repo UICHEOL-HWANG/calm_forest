@@ -6,6 +6,8 @@ export const COPY = {
   perfect: '딱 좋아요!',
   good: '좋아요',
   miss: '놓쳤어요',
+  missEarly: '빨랐어요',   // 놓친 이유 — 판정 시각보다 먼저 누름
+  missLate: '늦었어요',    //            늦게 누르거나 안 누름
   complete: '북두칠성을 그렸어요!',
   fail: '아깝다! 다시 이어 볼까요?',
   close: '닫기',

@@ -14,7 +14,7 @@ function requireUi() {
 
 test('렌즈 뷰는 리듬 로직, COPY, i18n, 입력 잠금을 연결한다', () => {
   requireUi();
-  assert.match(UI, /import \{ buildChart, judgeTap, summarize \} from '\.\/rhythm\.js'/);
+  assert.match(UI, /import \{ buildChart, judgeTap, missWhy, summarize \} from '\.\/rhythm\.js'/);
   assert.match(UI, /import \{ COPY, fill, starCopy \} from '\.\/copy\.js'/);
   assert.match(UI, /import \{ t \} from '\.\.\/i18n\.js'/);
   assert.match(UI, /import \{ Input \} from '\.\.\/game\.js'/);

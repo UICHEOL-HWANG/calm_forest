@@ -43,6 +43,12 @@ export function judgeTap(offsetMs, ease = 1) {
   return offsetMs < 0 ? 'early' : 'miss';
 }
 
+/** 놓친 이유 — 판정 시각보다 먼저 누르면 early, 늦게 누르거나 안 누르면(offset=null) late.
+ *  화면에 '빨랐어요/늦었어요' 로 보여 준다(놓친 이유를 몰라 그만둔 판이 많았다, 2026-10-05). */
+export function missWhy(offsetMs) {
+  return offsetMs != null && offsetMs < 0 ? 'early' : 'late';
+}
+
 /** notes: 그 별자리의 노트 수(포기한 판은 진행한 judges 보다 많다). 허용 miss = ceil(노트 × 0.4) — 7노트는 3 */
 export function summarize(judges = [], notes = judges.length) {
   let perfect = 0;
