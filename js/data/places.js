@@ -82,10 +82,16 @@ export const BUG_KINDS = [
 export const CAFE_GATE = new THREE.Vector3(4, 0, 14);  // 마을 안 카페 건물(입구) — 주민 자리·호수·계곡과 안 겹치는 빈터
 
 export const MUSEUM_GATE = new THREE.Vector3(-26, 0, 5);   // 🏛️ 박물관 — 마을 서쪽 끝, ⛏️채굴 동굴 너머.
-
 //   사용자가 고른 자리다(전체 지도의 "현위치"). 반경 3.4 안에 나무·바위가 없어 지형을 안 깎는다.
 //   ⛏️채굴 동굴(-14,3) 에서 12 — 서쪽 벨트의 끝점이라 가는 길에 자연히 지나친다.
+
+export const OBSERVATORY_GATE = new THREE.Vector3(22, 0, 22); // 🔭 천문대 — 남동쪽 언덕, 계곡·과수원 사이의 빈 자리
+
 export const MUSEUM = new THREE.Vector3(0, 0, 360);    // 🏛️ 전시실(다른 인스턴스 공간과 멀찍이)
+
+export const OBSERVATORY = new THREE.Vector3(0, 0, 540); // 🔭 천문대 실내(다른 인스턴스 공간과 멀찍이)
+
+export const OBSERVATORY_R = 5.4;                      // 🔭 천문대 실내 반경
 
 export const CAFE = new THREE.Vector3(0, 0, 320);      // 카페 홀(다른 인스턴스 공간과 멀찍이)
 

@@ -1,0 +1,169 @@
+// =============================================================
+//  🔭 천문대 — 마을 게이트 + 실내 홀
+// =============================================================
+import {
+  $w, Input, diffParams, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
+  rollDifficulty, setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
+} from '../game.js';
+import { trackEvent } from '../analytics.js';
+import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
+import { Sound } from '../sound.js';
+import { buildObservatoryExterior } from '../observatory/exterior.js';
+import { starSettle } from '../observatory/star-run.js';
+import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
+
+export const OBSERVATORY_LIGHT = {
+  hemi: 0.5, amb: 0.58, sun: 0.32, tint: 0xe8e5ff, sunTint: 0xfff1cf,
+  player: 0.95, fog: 0x1a2552, near: 18, far: 46,
+};
+
+let gateGroup = null;
+let lookState = null;
+let lensOpen = false;   // 렌즈 뷰(불투명 오버레이)가 화면을 덮고 있는 동안 — 3D 렌더를 쉬어도 된다
+
+/** 렌즈가 화면을 다 덮고 있나 — game.js 루프가 composer.render() 를 건너뛴다 */
+export function observatoryLensOpen() { return lensOpen; }
+
+export const LOOK_SECONDS = 0.7;   // 허리 숙이는 시간 → 끝나면 렌즈 뷰
+export const TELESCOPE_EYE = TELESCOPE.eye;
+export const TELESCOPE_SPOT = { x: TELESCOPE_EYE.x, z: TELESCOPE_EYE.z + 0.5, r: 1.1 };
+
+
+export function spawnObservatoryGate() {
+  if (gateGroup) return gateGroup;   // 마을은 한 번만 짓는다 — 두 번 불려도 건물·충돌체가 겹치지 않게
+  gateGroup = buildObservatoryExterior(mergeGeos);
+  gateGroup.position.copy(OBSERVATORY_GATE);
+  scene.add(gateGroup);
+  obstacles.push({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, r: 5.9 });
+  solidCircle(OBSERVATORY_GATE.x, OBSERVATORY_GATE.z, 5.7);
+  return gateGroup;
+}
+
+// 🎥 The hall is small and the door is at the south edge, so a camera that just follows the
+//    player leaves the bottom half of the screen empty. Pull the focus most of the way to the centre.
+const CAM_PULL = 0.4;
+export function observatoryCamFocus(pos, out) {
+  return out.set(OBSERVATORY.x + (pos.x - OBSERVATORY.x) * CAM_PULL, pos.y, OBSERVATORY.z + (pos.z - OBSERVATORY.z) * CAM_PULL);
+}
+
+export function buildObservatoryHall() {
+  const g = buildObservatoryInterior(mergeGeos, OBSERVATORY_R);
+  g.position.copy(OBSERVATORY);
+  g.visible = false;
+  scene.add(g);
+  return g;
+}
+
+let hallColliders = null;   // 홀은 다시 빌드하지 않으니 가구 충돌체도 한 번만 등록
+export function ensureObservatoryHall() {
+  if (!$w.observatoryGroup) $w.observatoryGroup = buildObservatoryHall();
+  hallColliders ??= HALL_SOLIDS.map(s => s.r !== undefined
+    ? solidCircle(OBSERVATORY.x + s.x, OBSERVATORY.z + s.z, s.r)
+    : solidBox(OBSERVATORY.x + s.x1, OBSERVATORY.z + s.z1, OBSERVATORY.x + s.x2, OBSERVATORY.z + s.z2));
+  return $w.observatoryGroup;
+}
+
+export function enterObservatory() {
+  $w.atObservatory = true; setFogExempt(player, true);
+  const hall = ensureObservatoryHall();
+  hall.visible = true;
+  player.position.set(OBSERVATORY.x, 0, OBSERVATORY.z + OBSERVATORY_R - 2.0);
+  player.rotation.y = Math.PI;
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
+  snapCamera(); setSpaceVisible();
+  firstHint('observatory', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳이에요. 나갈 땐 남쪽 문');
+  Sound.blip(); trackEvent('observatory_enter');
+}
+
+function resetLookPose() {
+  if (!lookState) return;
+  playerAnchor.rotation.x = lookState.anchorX;
+  player.position.y = 0;
+  if (lookState.ownsLock) document.body.classList.remove('menu-open');
+  lookState = null; lensOpen = false;
+}
+
+async function openStarView() {
+  const session = lookState;
+  try {
+    const mod = await import('../observatory/ui.js');
+    if (lookState !== session) return;
+    const diff = rollDifficulty('star');   // 🎚️ ease 가 클수록 쉽다(느린 혜성·넓은 판정 창) — DIFFICULTY 와 같은 방향
+    await mod.openStarView({ diff, ease: diff.ease, onClose: resetLookPose, onResult: (summary, run) => starSettle(summary, run, diff) });
+    if (lookState === session) lensOpen = true;   // 닫기가 먼저 왔으면(세션 끝) 켜지 않는다
+    trackEvent('star_start', { constellation: 'big_dipper', ...diffParams(diff) });   // 렌즈가 실제로 열렸을 때만
+  } catch {
+    ui.toast?.('🔭 별보기 준비 중이에요', 1600);
+    resetLookPose();
+  }
+}
+
+export function startObservatoryLook() {
+  if (lookState) return;
+  Input.setAnalog(0, 0);
+  lookState = { t: 0, duration: LOOK_SECONDS, opened: false, anchorX: playerAnchor.rotation.x };
+  lookState.ownsLock = !document.body.classList.contains('menu-open');
+  document.body.classList.add('menu-open');
+  player.position.set(OBSERVATORY.x + TELESCOPE_EYE.x, 0.18, OBSERVATORY.z + TELESCOPE_EYE.z);
+  player.rotation.y = TELESCOPE_EYE.yaw;
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
+  Sound.blip();
+}
+
+export function updateObservatory(dt, t) {
+  if (!lookState) return;
+  player.position.set(OBSERVATORY.x + TELESCOPE_EYE.x, 0.18, OBSERVATORY.z + TELESCOPE_EYE.z);
+  player.rotation.y = TELESCOPE_EYE.yaw;
+  lookState.t = Math.min(lookState.duration, lookState.t + dt);
+  const k = Math.min(1, lookState.t / lookState.duration);
+  playerAnchor.rotation.x = -0.5 * k;
+  $w.armWristK = 0;
+  if (!lookState.opened && k >= 1) {
+    lookState.opened = true;
+    openStarView();
+  }
+}
+
+export function exitObservatory() {
+  resetLookPose();
+  $w.atObservatory = false; setFogExempt(player, false);
+  if ($w.observatoryGroup) $w.observatoryGroup.visible = false;
+  player.position.set(OBSERVATORY_GATE.x, 0, OBSERVATORY_GATE.z + 6.8);
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
+  snapCamera(); setSpaceVisible();
+  Sound.blip(); trackEvent('observatory_exit');
+}
+
+// ── game.js 배선을 줄이려고 여기로 옮긴 공간 규칙들(박물관은 game.js 안에 같은 코드가 있다) ──
+
+/** 🔭 원형 홀 안쪽으로 이동 제한 */
+export function clampToObservatory(p) {
+  const R = OBSERVATORY_R - 0.75, dx = p.x - OBSERVATORY.x, dz = p.z - OBSERVATORY.z, dd = Math.hypot(dx, dz);
+  if (dd > R) { p.x = OBSERVATORY.x + dx / dd * R; p.z = OBSERVATORY.z + dz / dd * R; }
+}
+
+/** 🔭 시간대 무관 실내 조명 — 세기·색·광원 자리 3종 세트(박물관 MUSEUM_LIGHT 와 같은 규칙) */
+export function applyObservatoryLight({ hemiLight, ambient, sunLight, playerLight, fog }) {
+  const L = OBSERVATORY_LIGHT;
+  hemiLight.intensity = L.hemi; ambient.intensity = L.amb; sunLight.intensity = L.sun;
+  ambient.color.setHex(L.tint);
+  sunLight.color.setHex(L.sunTint);
+  sunLight.position.set(OBSERVATORY.x + 6, 14, OBSERVATORY.z + 9);
+  sunLight.target.position.set(OBSERVATORY.x, 1.6, OBSERVATORY.z);
+  sunLight.target.updateMatrixWorld();
+  if (playerLight) playerLight.intensity = L.player;
+  fog.color.setHex(L.fog); fog.near = L.near; fog.far = L.far;
+}
+
+/** 🔭 액션 버튼 — 문·나가기·망원경. 실내에선 그 밖의 액션을 전부 삼킨다(밭 갈기 등 방지) */
+export function observatoryAction(nearDoor) {
+  if (nearDoor === 'observatory') return enterObservatory();
+  if (nearDoor === 'observatoryexit') return exitObservatory();
+  if (nearDoor === 'telescope') return startObservatoryLook();
+}
+
+/** 🔭 실내 미니맵 — 나가는 문(남쪽) · 망원경 */
+export function observatoryMinimapMarks(marks) {
+  marks.push({ x: OBSERVATORY.x, z: OBSERVATORY.z + OBSERVATORY_R, c: '#c8905a', kind: 'exit' });
+  marks.push({ x: OBSERVATORY.x + TELESCOPE_SPOT.x, z: OBSERVATORY.z + TELESCOPE_SPOT.z, c: '#f3d27a', r: 3.0 });
+}

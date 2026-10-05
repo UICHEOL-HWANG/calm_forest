@@ -1,0 +1,15 @@
+export const COPY = {
+  lookIn: '🔭 들여다보기',
+  title: '🔭 북두칠성',
+  subtitle: '봄 하늘 · ★1',
+  tapGuide: '빛과 링이 별에 닿을 때 탭!',
+  perfect: '딱 좋아요!',
+  good: '좋아요',
+  miss: '놓쳤어요',
+  complete: '북두칠성을 그렸어요!',
+  fail: '조금만 더 해 볼까요?',
+  close: '닫기',
+  combo: '콤보',
+  reward: '보상',
+  result: '결과',
+};
