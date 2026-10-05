@@ -19,8 +19,10 @@ function showResult(state) {
   const summary = summarize(state.judges);
   // onResult pays out (game side) and reports what was actually given — never show a reward that wasn't paid.
   const run = { judges: [...state.judges], offsets: [...state.offsets], durationMs: performance.now() - state.startAt };
-  const coins = state.onResult?.(summary, run)?.coins || 0;
-  const reward = coins > 0 ? `<br>${t(COPY.reward)} +${coins}` : '';
+  const paid = state.onResult?.(summary, run) || {};
+  const coins = paid.coins || 0;
+  const reward = coins > 0 ? `<br>${t(COPY.reward)} +${coins}`
+    : summary.success && paid.alreadyToday ? `<br>${t(COPY.rewardDone)}` : '';   // 실패는 그날을 쓰지 않으니 안내 없음
 
   const card = document.createElement('div');
   card.className = 'observatory-card';
