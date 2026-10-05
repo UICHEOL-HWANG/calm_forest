@@ -3160,11 +3160,13 @@
         $('char-modal').classList.add('show');
         // 모달이 보인 뒤에 프리뷰 생성/리사이즈(캔버스 크기 확보)
         requestAnimationFrame(() => {
+          if (!$('char-modal').classList.contains('show')) return;   // 한 프레임 안에 닫혔으면 루프를 켜지 않는다
           try {
             if (!ui._charPreview && typeof Input.createCharacterPreview === 'function') {
               ui._charPreview = Input.createCharacterPreview($('char-preview'));
             }
             if (ui._charPreview) {
+              ui._charPreview.start();   // 닫을 때 세운 루프를 다시 켠다(처음 만들 땐 이미 돌고 있어 no-op)
               ui._charPreview.resize();
               $('char-preview').style.display = '';
               $('char-preview-fallback').style.display = 'none';
@@ -3181,18 +3183,20 @@
           pick(animals.find(a => a.id === selected) || animals[0]);
           if (!ui._charResizeBound) { ui._charResizeBound = true; window.addEventListener('resize', () => { if (ui._charPreview && $('char-modal').classList.contains('show')) ui._charPreview.resize(); }); }
         });
+        //  ⚠️ 닫기는 이 함수로만 — 프리뷰는 두 번째 WebGL 렌더러라, 세우지 않으면 닫힌 뒤에도 계속 그린다
+        const closeCharModal = () => { $('char-modal').classList.remove('show'); ui._charPreview?.stop(); };
         $('char-confirm').onclick = () => {
           const a = animals.find(x => x.id === selected) || animals[0];
           const nr = Input.setNickname(nick.value, change ? 'change' : 'new');   // 🏷️ 닉네임 저장(검증 포함)
           if (!nr.ok) { ui.toast(nr.msg); nick.focus(); return; }
           Input.setCharacter(selected, change);
-          $('char-modal').classList.remove('show');
+          closeCharModal();
           ui.toast(change ? `${a.emoji} ${nr.nick}(으)로 바꿨어요!` : `${a.emoji} ${nr.nick}(으)로 시작해요!`);
           // 🎬 첫 시작이면 프롤로그 컷신부터(끝나면 introShow(false)가 튜토리얼로 이어줌)
           if (!change && Input.introStart()) return;
           if (!change && Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
         };
-        $('char-cancel').onclick = () => $('char-modal').classList.remove('show');
+        $('char-cancel').onclick = closeCharModal;
       },
       // 신규 유저 튜토리얼 표시 · ❓도움말로도 같은 모달을 연다
       //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
