@@ -58,6 +58,7 @@
 ## 🧾 3·4차 세션 정리 (Claude, 2026-10-04~05) — 남은 일
 - 브라우저 확인(헤드리스, PC 1280×800 + 모바일 390×844): 마을 문 → 실내 → 망원경 프롬프트 → 숙이기(이동 잠금) → 렌즈 → 7노트 완주 → 결과·코인 +24 → 닫기 → 나가기(문 앞 복귀) · 실내 액션 무반응 · 영어 화면
 - ⏳ 실제 새로고침 세이브 왕복: 이 환경은 오프라인 게스트라 서버 저장이 없다 → `applySave(getGameState())` 왕복으로만 확인. 로그인 세션에서 한 번 더
+  - (2026-10-05) 로컬 익명 게스트(서버 저장됨)로 실서버 확인: 완주 +24 → `[Supabase] 저장 완료` → `loadGame()` 서버 행 starDay·coins 일치 · 같은 날 2판째 +0·재도전 안내. 남은 것: 영구 계정으로 실제 새로고침 1회(게스트 버튼은 매번 새 익명 계정이라 불가)
 - ✅ (4차) 렌즈 shadowBlur 28 → 5회/프레임 — 별 7개는 켜짐/꺼짐 스프라이트 2장을 크기별로 한 번 구워 drawImage, 혜성 입자 blur 끔(화면 동일). ⏳ 실기기 프레임 확인은 그대로
 - ✅ (4차) 렌즈가 덮는 동안 `composer.render()` 건너뜀(`observatoryLensOpen`) — 실측: 메인 캔버스 GL 드로우 1.5초 588 → 0, 닫으면 복귀. (남는 ~200/1.5초는 숨은 `char-preview` 캔버스 — 천문대와 무관, 별도 작업으로 제안)
 - ✅ (4차) game.js main 대비 +40줄 — 조명·이동 제한·액션 분기·미니맵 표시를 spaces/observatory.js 로(`applyObservatoryLight` `clampToObservatory` `observatoryAction` `observatoryMinimapMarks`, 동작 테스트)
