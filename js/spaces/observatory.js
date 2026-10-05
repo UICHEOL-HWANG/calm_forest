@@ -8,7 +8,7 @@ import {
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
 import { Sound } from '../sound.js';
-import { buildObservatoryExterior } from '../observatory/exterior.js';
+import { R_BASE, STAIR_FOOT, STAIR_HALF_W, buildObservatoryExterior } from '../observatory/exterior.js';
 import { starSettle } from '../observatory/star-run.js';
 import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
 
@@ -37,6 +37,7 @@ export function spawnObservatoryGate() {
   scene.add(gateGroup);
   obstacles.push({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, r: 5.9 });
   solidCircle(OBSERVATORY_GATE.x, OBSERVATORY_GATE.z, 5.7);
+  solidBox(OBSERVATORY_GATE.x - STAIR_HALF_W, OBSERVATORY_GATE.z + R_BASE, OBSERVATORY_GATE.x + STAIR_HALF_W, OBSERVATORY_GATE.z + STAIR_FOOT);   // 🪜 계단은 밟지 않고 앞에서 문을 연다
   return gateGroup;
 }
 
@@ -129,7 +130,7 @@ export function exitObservatory() {
   resetLookPose();
   $w.atObservatory = false; setFogExempt(player, false);
   if ($w.observatoryGroup) $w.observatoryGroup.visible = false;
-  player.position.set(OBSERVATORY_GATE.x, 0, OBSERVATORY_GATE.z + 6.8);
+  player.position.set(OBSERVATORY_GATE.x, 0, OBSERVATORY_GATE.z + 8);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('observatory_exit');
