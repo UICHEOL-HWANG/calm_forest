@@ -158,7 +158,7 @@ function loadDone() {
     for (const line of readFileSync(join(RUNS_DIR, f), 'utf8').split('\n').filter(Boolean)) {
       const r = JSON.parse(line);
       if (!r.outcome || !r.account_id) continue;
-      if (isShortSonnet(r)) continue;               // ③ 모델이 못 다뤄 바로 그만둔 판 — 다시 돌린다
+      if (isShortSonnet(r) || isHaiku(r)) continue;   // ③ 모델이 못 다뤄 바로 그만둔 판·Haiku 판 — 다시 돌린다
       done.set(r.account_id, (done.get(r.account_id) || 0) + 1);
     }
   }
@@ -171,12 +171,15 @@ function isShortSonnet(r) {
     && new Date(r.ended_at) - new Date(r.started_at) < SHORT_SONNET_MS;
 }
 
-/** 이번 판의 모델 — 이상 페르소나는 지정 모델(Haiku) 그대로, 정상 페르소나는 OPUS_EVERY 판마다 1판 Opus */
-let normalRuns = 0;
+/** Haiku 판 — 지령(반복 파밍 등)을 수행하지 못해 학습용 행동이 안 나온다(2026-10-05 사용자 결정: Sonnet·Opus 만).
+ *  기록은 지우지 않고 할당에서만 뺀다 → 그만큼 Sonnet·Opus 로 다시 돈다. 분석에서도 거를 것. */
+function isHaiku(r) { return /haiku/.test(r.model || ''); }
+
+/** 이번 판의 모델 — 모든 페르소나가 OPUS_EVERY 판마다 1판 Opus, 나머지는 지정 모델(Sonnet) */
+let runCount = 0;
 function pickModel(p) {
   const m = p.model || DEFAULT_MODEL;
-  if (p.traits?.anomaly) return m;
-  return (normalRuns++ % OPUS_EVERY === OPUS_EVERY - 1) ? OPUS_MODEL : m;
+  return (runCount++ % OPUS_EVERY === OPUS_EVERY - 1) ? OPUS_MODEL : m;
 }
 
 /** 할당을 채웠거나 쉬는 계정이 없으면 null, 아니면 판이 가장 적은 계정(동률이면 a→e 순).
