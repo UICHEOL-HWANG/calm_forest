@@ -14,7 +14,8 @@ import { SPECIAL_EXHIBITS } from '../museum.js';
 
 // 방 로컬 좌표. 방은 x ±7.5 · z ±6.5, 입구는 남쪽(z +6.5) 가운데 폭 2.8, 계단은 북동·북서 구석.
 //   벽 13칸이 작물·물고기·광물로 꽉 차 빈 곳은 가운데뿐 — 들어오자마자 보이는 삼각형으로 둔다.
-const LAYOUT = { specials: [[-1.9, 0.9], [0, -0.3], [1.9, 0.9]] };
+//   벽 진열장이 17칸으로 늘어 가운데 북쪽 줄을 나머지 4칸이 쓴다(js/spaces/cafe.js museumSlots) — 특별 진열대는 남쪽으로 내렸다.
+const LAYOUT = { specials: [[-1.9, 2.6], [0, 1.4], [1.9, 2.6]] };
 
 // 날씨별 방석 색 — 블룸 임계(0.85)를 넘지 않게 채널을 0xd9 아래로
 const CUSHION = { rain: 0x7fa6c8, snow: 0xd6dde6, fog: 0xb7aecf };
