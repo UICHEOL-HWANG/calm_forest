@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import * as rhythm from '../js/observatory/rhythm.js';
-import { COPY } from '../js/observatory/copy.js';
+import { COPY, STAR_COPY, starCopy, fill } from '../js/observatory/copy.js';
+import * as constellations from '../js/observatory/constellations.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
 
 function overlay() {
@@ -14,7 +15,7 @@ function overlay() {
     readFileSync(new URL(`../js/observatory/${file}`, import.meta.url), 'utf8')).join('\n')
     .replace(/^import [\s\S]*?;\n/gm, '').replace(/^export /gm, '');
   const context = vm.createContext({
-    ...rhythm, COPY, t: s => s, AbortController,
+    ...rhythm, ...constellations, COPY, STAR_COPY, starCopy, fill, t: s => s, AbortController,
     document: dom.document, window: dom.window, performance: dom.performance,
     requestAnimationFrame: dom.requestAnimationFrame, cancelAnimationFrame: dom.cancelAnimationFrame,
     Input: { setAnalog() {} },

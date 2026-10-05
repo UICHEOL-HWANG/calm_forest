@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Constellation picker sim</title>
+<!-- 🌌 천문대 별자리 6종 모양 + 고르기 화면 시안 A·B·C (미리보기 전용 — 게임에 연결 안 함)
+     ?v=shapes | a | b | c   · 데이터는 js/observatory/constellations.js 단일 출처 -->
+<style>
+  :root { --gold:#f3d27a; --gold2:#d9b45a; --navy:#1a2552; --ink:#e9ecff; --dim:#6b7088; --bg:#05070f;
+          --font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif; }
+  * { box-sizing:border-box }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:var(--font); overflow:hidden }
+  canvas { display:block }
+  .tag { position:fixed; left:12px; top:10px; font:600 12px var(--font); color:#8b93c8; z-index:5 }
+  /* A — 아래 칩 줄 */
+  .chips { position:fixed; left:0; right:0; bottom:max(18px,3vh); display:flex; gap:10px; justify-content:safe center; padding:0 16px; overflow-x:auto }
+  .chip { flex:0 0 auto; width:88px; white-space:nowrap; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 6px; border-radius:16px;
+          background:rgba(255,255,255,.07); border:1px solid rgba(233,236,255,.14); color:var(--ink); font:600 11px var(--font) }
+  .chip.on { border-color:var(--gold); background:rgba(243,210,122,.14) }
+  .chip.lock { opacity:.45 }
+  .chip canvas { width:56px; height:40px }
+  /* B — 넘기기 */
+  .nav { position:fixed; transform:translateY(-50%); width:48px; height:48px; border-radius:24px; border:1px solid rgba(233,236,255,.22);
+         background:rgba(255,255,255,.1); color:var(--ink); font:700 22px var(--font) }
+  .dots { position:fixed; left:0; right:0; display:flex; justify-content:center; gap:8px }
+  .dots i { width:8px; height:8px; border-radius:4px; background:rgba(233,236,255,.25) } .dots i.on { background:var(--gold); width:20px }
+  .dots i.lock { background:rgba(107,112,136,.5) }
+  .go { position:fixed; left:50%; transform:translateX(-50%); padding:13px 26px; border-radius:24px; border:0; background:var(--gold); color:#2a2410; font:800 15px var(--font) }
+  /* C — 수첩 그리드 */
+  .book { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px }
+  .book h2 { margin:0 0 4px; font:800 20px var(--font) } .book p { margin:0 0 14px; color:#9aa0c0; font:500 13px var(--font) }
+  .grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; width:min(560px,100%) }
+  .card { border-radius:16px; padding:10px 8px 10px; background:rgba(255,255,255,.06); border:1px solid rgba(233,236,255,.14); text-align:center }
+  .card.on { border-color:var(--gold) } .card.lock { opacity:.5 }
+  .card canvas { width:100%; height:auto; aspect-ratio:1.5 }
+  .card b { display:block; font:700 13px var(--font); margin-top:4px } .card small { color:#9aa0c0; font:600 11px var(--font) }
+  @media (max-width:520px) { .grid { grid-template-columns:repeat(2, minmax(0,1fr)) } }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<script type="module">
+import { CONSTELLATIONS, fitter, noteCount, unlockedIds } from '../js/observatory/constellations.js';
+
+const NAME = { big_dipper:'북두칠성', cassiopeia:'카시오페이아', pegasus:'페가수스', leo:'사자자리', orion:'오리온', scorpius:'전갈자리' };
+const STARS = { big_dipper:1, cassiopeia:1, pegasus:2, leo:2, orion:3, scorpius:3 };
+const SEASON = { spring:'봄', summer:'여름', autumn:'가을', winter:'겨울' };
+// 시안 상태: 앞 3개를 깼다 → 사자자리까지 열림, 오리온·전갈은 잠김
+const cleared = { big_dipper:'2026-10-03', cassiopeia:'2026-10-04', pegasus:'2026-10-05' };
+const open = new Set(unlockedIds(cleared));
+const v = new URLSearchParams(location.search).get('v') || 'shapes';
+const W = innerWidth, H = innerHeight, dpr = devicePixelRatio || 1;
+const FONT = getComputedStyle(document.body).fontFamily;
+const bg = document.getElementById('bg'); bg.width = W * dpr; bg.height = H * dpr; bg.style.width = W + 'px'; bg.style.height = H + 'px';
+const g = bg.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+function sky(g, w, h) {
+  g.fillStyle = '#05070f'; g.fillRect(0, 0, w, h);
+  let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(220,228,255,${0.15 + rnd() * 0.4})`; g.fillRect(rnd() * w, rnd() * h, 1.2, 1.2); }
+}
+function lens(g, cx, cy, r) {
+  const gr = g.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+  gr.addColorStop(0, '#1d2a5c'); gr.addColorStop(1, '#0b1030');
+  g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+  g.strokeStyle = '#d9b45a'; g.lineWidth = Math.max(3, r * 0.03); g.stroke();
+}
+/** 별자리 한 개 — lit: 선까지 금빛, locked: 흐린 실루엣만 */
+function drawC(g, c, cx, cy, r, { lit = false, locked = false } = {}) {
+  const f = fitter(c, r);
+  const pts = c.stars.map((_, i) => { const [x, y] = f(i); return [cx + x, cy + y]; });
+  g.lineCap = 'round';
+  g.strokeStyle = locked ? 'rgba(107,112,136,.35)' : lit ? 'rgba(243,210,122,.9)' : 'rgba(233,236,255,.35)';
+  g.lineWidth = Math.max(1, r * 0.025) * (lit ? 1.4 : 1);
+  g.setLineDash(lit || locked ? [] : [r * 0.05, r * 0.05]);
+  g.beginPath();
+  c.order.forEach((k, i) => (i ? g.lineTo : g.moveTo).call(g, ...pts[k])); g.stroke(); g.setLineDash([]);
+  for (const [x, y] of pts) {
+    g.fillStyle = locked ? 'rgba(107,112,136,.7)' : lit ? '#fff6d6' : 'rgba(220,228,255,.9)';
+    if (lit) { g.shadowColor = 'rgba(255,240,190,.8)'; g.shadowBlur = r * 0.12; }
+    g.beginPath(); g.arc(x, y, Math.max(1.6, r * 0.035), 0, 7); g.fill(); g.shadowBlur = 0;
+  }
+}
+function thumb(c, w, h, opts) {
+  const cv = document.createElement('canvas'); cv.width = w * dpr; cv.height = h * dpr;
+  const t = cv.getContext('2d'); t.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawC(t, c, w / 2, h / 2, Math.min(w / 1.7, h / 1.5), opts); return cv;
+}
+const title = (txt, sub, y) => {
+  g.textAlign = 'center'; g.fillStyle = '#e9ecff'; g.font = `800 ${Math.min(26, W * 0.06)}px ${FONT}`;
+  g.fillText(txt, W / 2, y); g.fillStyle = '#9aa0c0'; g.font = `600 13px ${FONT}`; g.fillText(sub, W / 2, y + 22);
+};
+const label = (c) => `${SEASON[c.season]} 하늘 · ${'★'.repeat(STARS[c.id])} · 별 ${noteCount(c)}번`;
+sky(g, W, H);
+const portrait = H > W;
+
+if (v === 'shapes') {
+  const cols = portrait ? 2 : 3, rows = Math.ceil(CONSTELLATIONS.length / cols);
+  const cw = W / cols, ch = (H - 30) / rows;
+  CONSTELLATIONS.forEach((c, i) => {
+    const cx = cw * (i % cols) + cw / 2, cy = 30 + ch * Math.floor(i / cols) + ch / 2 - 14;
+    const r = Math.min(cw, ch) * 0.36;
+    lens(g, cx, cy, r); drawC(g, c, cx, cy, r, { lit: true });
+    g.textAlign = 'center'; g.fillStyle = '#e9ecff'; g.font = `700 14px ${FONT}`;
+    g.fillText(`${i + 1}. ${NAME[c.id]}`, cx, cy + r + 18);
+    g.fillStyle = '#9aa0c0'; g.font = `600 11px ${FONT}`; g.fillText(label(c), cx, cy + r + 34);
+  });
+  document.body.insertAdjacentHTML('beforeend', `<div class="tag">별자리 6종 · 해금 순서(왼→오, 위→아래)</div>`);
+}
+
+if (v === 'a') {   // A — 렌즈 + 아래 칩 줄(바로 고르고 바로 시작)
+  const sel = CONSTELLATIONS[3];
+  const r = Math.min(portrait ? W * 0.42 : W * 0.28, (H - 270) / 2);
+  const cy = 104 + r;
+  title('🔭 ' + NAME[sel.id], label(sel), 50);
+  lens(g, W / 2, cy, r); drawC(g, sel, W / 2, cy, r);
+  const row = document.createElement('div'); row.className = 'chips';
+  CONSTELLATIONS.forEach(c => {
+    const lock = !open.has(c.id), el = document.createElement('button');
+    el.className = 'chip' + (c === sel ? ' on' : '') + (lock ? ' lock' : '');
+    el.append(thumb(c, 56, 40, { locked: lock, lit: !!cleared[c.id] }));
+    el.insertAdjacentHTML('beforeend', `<span>${lock ? '🔒' : (cleared[c.id] ? '✓ ' : '') + NAME[c.id]}</span>`);
+    row.append(el);
+  });
+  document.body.append(row);
+  g.textAlign = 'center'; g.fillStyle = '#e9ecff'; g.font = `600 13px ${FONT}`;
+  g.fillText('별자리를 누르면 바로 시작해요', W / 2, cy + r + 30);
+  document.body.insertAdjacentHTML('beforeend', `<div class="tag">A · 렌즈 + 아래 칩 줄</div>`);
+}
+
+if (v === 'b') {   // B — 렌즈 안에서 ‹ › 넘기기 + 시작 버튼
+  const idx = 3, sel = CONSTELLATIONS[idx];
+  const r = Math.min(portrait ? W * 0.34 : W * 0.28, (H - 290) / 2);
+  const cy = 104 + r;
+  title('🔭 ' + NAME[sel.id], label(sel), 50);
+  lens(g, W / 2, cy, r); drawC(g, sel, W / 2, cy, r);
+  const off = Math.min(r + 40, W / 2 - 34);
+  document.body.insertAdjacentHTML('beforeend', `
+    <button class="nav" style="top:${cy}px;left:${W / 2 - off - 24}px">‹</button>
+    <button class="nav" style="top:${cy}px;left:${W / 2 + off - 24}px">›</button>
+    <div class="dots" style="top:${cy + r + 22}px">${CONSTELLATIONS.map((c, i) => `<i class="${i === idx ? 'on' : open.has(c.id) ? '' : 'lock'}"></i>`).join('')}</div>
+    <button class="go" style="top:${cy + r + 44}px">이 별자리 잇기</button>
+    <div class="tag">B · 렌즈 안 넘기기 + 시작 버튼</div>`);
+}
+
+if (v === 'c') {   // C — 별자리 수첩(도감 겸용) 그리드에서 고르기
+  const cards = CONSTELLATIONS.map(c => {
+    const lock = !open.has(c.id);
+    return `<div class="card${c.id === 'leo' ? ' on' : ''}${lock ? ' lock' : ''}" data-id="${c.id}">
+      <canvas></canvas><b>${lock ? '🔒 ???' : NAME[c.id]}</b>
+      <small>${lock ? '앞 별자리를 이으면 열려요' : cleared[c.id] ? '✓ 그렸어요 · 최고 ' + (noteCount(c) * 2 - 2) + '점' : '★'.repeat(STARS[c.id]) + ' · 처음'}</small></div>`;
+  }).join('');
+  document.body.insertAdjacentHTML('beforeend', `<div class="book"><h2>🔭 별자리 수첩</h2><p>${Object.keys(cleared).length} / ${CONSTELLATIONS.length} 그렸어요 · 오늘 이을 별자리를 골라요</p><div class="grid">${cards}</div></div><div class="tag">C · 별자리 수첩(도감 겸용)</div>`);
+  document.querySelectorAll('.card').forEach(el => {
+    const c = CONSTELLATIONS.find(k => k.id === el.dataset.id), cv = el.querySelector('canvas');
+    const w = cv.clientWidth, h = cv.clientHeight; cv.width = w * dpr; cv.height = h * dpr;
+    const t = cv.getContext('2d'); t.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawC(t, c, w / 2, h / 2, Math.min(w / 1.7, h / 1.5), { locked: !open.has(c.id), lit: !!cleared[c.id] });
+  });
+}
+</script>
+</body>
+</html>

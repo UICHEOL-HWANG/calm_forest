@@ -1,5 +1,5 @@
-import { DIPPER, ORDER } from './rhythm.js';
-import { COPY } from './copy.js';
+import { BY_ID, fitter } from './constellations.js';
+import { COPY, starCopy } from './copy.js';
 import { t } from '../i18n.js';
 
 const GOLD = '#f3d27a';
@@ -45,10 +45,10 @@ export function layout(state) {
   return { W, H, portrait, r, cx, cy, dpr: state.dpr };
 }
 
-function starXY(L, i) {
-  const k = L.r * 0.43;
-  const [x, y] = DIPPER[i];
-  return [L.cx + (x + 0.6) * k, L.cy - (y + 0.25) * k];
+const lensC = state => state.c || BY_ID.big_dipper;
+function starPoints(state, L) {
+  const c = lensC(state), f = fitter(c, L.r);   // bbox 중심 맞춤 — 북두칠성은 옛 (x+0.6, y+0.25)·0.43r 와 같다
+  return c.stars.map((_, i) => { const [x, y] = f(i); return [L.cx + x, L.cy + y]; });
 }
 
 function glowDot(g, x, y, rad, color, blur) {
@@ -169,7 +169,7 @@ export function drawLens(state, L) {
   state.g.drawImage(state.rimCanvas, 0, 0, L.W, L.H);
 }
 
-// ⭐ 별 7개의 빛번짐(shadowBlur)은 프레임마다 14번 그리면 모바일에서 비싸다 —
+// ⭐ 별(최대 12개)의 빛번짐(shadowBlur)을 프레임마다 그리면 모바일에서 비싸다 —
 //    켜진 별·꺼진 별 두 장을 크기가 바뀔 때만 오프스크린에 구워 두고 drawImage 로 찍는다.
 function starSprites(state, s) {
   const key = `${s.toFixed(3)}:${state.dpr}`;
@@ -200,7 +200,8 @@ function starSprites(state, s) {
 
 export function drawConstellation(state, L, elapsed = 0) {
   const g = state.g;
-  const pts = DIPPER.map((_, i) => starXY(L, i));
+  const ORDER = lensC(state).order;
+  const pts = starPoints(state, L);
   const s = L.r / 300;
   const done = Math.max(0, state.judges.length);
   g.save();
@@ -250,7 +251,7 @@ export function drawJudge(state, L, pts) {
   const g = state.g;
   const s = L.r / 300;
   const done = state.judges.length;
-  const [x, y] = pts[ORDER[Math.max(0, done)]];
+  const [x, y] = pts[lensC(state).order[Math.max(0, done)]];
   const text = state.flash.judge === 'perfect' ? t(COPY.perfect) : state.flash.judge === 'good' ? t(COPY.good) : t(COPY.miss);
   const color = state.flash.judge === 'miss' ? 'rgba(233,236,255,.72)' : GOLD;
   g.save();
@@ -327,10 +328,11 @@ export function drawHud(state, L) {
   const ty = portrait ? 34 : 40;
   g.font = `700 ${fs + 4}px ${FAMILY}`;
   g.fillStyle = INK;
-  g.fillText(t(COPY.title), tx, ty);
+  const sc = starCopy(lensC(state).id);
+  g.fillText(`🔭 ${t(sc.name)}`, tx, ty);
   g.font = `600 ${fs - 2}px ${FAMILY}`;
   g.fillStyle = 'rgba(233,236,255,.6)';
-  g.fillText(t(COPY.subtitle), tx, ty + fs + 8);
+  g.fillText(t(sc.subtitle), tx, ty + fs + 8);
   for (let i = 0; i < state.chart.length; i++) {
     const x = tx + 6 + i * (fs + 2);
     const y = ty + fs * 2 + 22;
