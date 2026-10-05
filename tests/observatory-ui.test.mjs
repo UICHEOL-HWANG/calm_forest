@@ -63,3 +63,11 @@ test('천문대 COPY 는 plan §1 문구를 모으고 canvas 문구는 t(COPY.*)
   assert.match(UI, /t\(sc\.name\)/, 'HUD 제목은 별자리 이름을 t() 로');
   assert.match(UI, /t\(sc\.subtitle\)/, 'HUD 부제는 별자리 부제를 t() 로');
 });
+
+test('토스 상단 시스템 버튼(··· ✕)을 피한다 — 닫기 버튼·수첩·렌즈 HUD 모두 --top-inset 만큼 내린다', () => {
+  const R = readFileSync(new URL('../js/observatory/render.js', import.meta.url), 'utf8');
+  assert.match(R, /\.observatory-close\{[^}]*top:calc\(clamp\(14px,4vw,34px\) \+ var\(--top-inset, 0px\)\)/);
+  assert.match(R, /\.observatory-book\{[^}]*padding:calc\(16px \+ var\(--top-inset, 0px\)\) 16px 16px/);
+  assert.match(R, /const ty = \(portrait \? 34 : 40\) \+ L\.top/);
+  assert.match(R, /top: topInset\(\)/, 'layout carries the measured inset');
+});
