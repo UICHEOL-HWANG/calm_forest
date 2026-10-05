@@ -8,7 +8,7 @@ import {
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
 import { Sound } from '../sound.js';
-import { R_BASE, STAIR_FOOT, STAIR_HALF_W, buildObservatoryExterior } from '../observatory/exterior.js';
+import { R_BASE, STAIR_FOOT, STAIR_HALF_W, buildObservatoryExterior, stairHeight } from '../observatory/exterior.js';
 import { starAbandon, starBegin, starSettle, starState } from '../observatory/star-run.js';
 import { HALL_SOLIDS, TELESCOPE, buildObservatoryInterior } from '../observatory/interior.js';
 
@@ -36,8 +36,15 @@ export function spawnObservatoryGate() {
   gateGroup.position.copy(OBSERVATORY_GATE);
   scene.add(gateGroup);
   obstacles.push({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, r: 5.9 });
-  solidCircle(OBSERVATORY_GATE.x, OBSERVATORY_GATE.z, 5.7);
-  solidBox(OBSERVATORY_GATE.x - STAIR_HALF_W, OBSERVATORY_GATE.z + R_BASE, OBSERVATORY_GATE.x + STAIR_HALF_W, OBSERVATORY_GATE.z + STAIR_FOOT);   // 🪜 계단은 밟지 않고 앞에서 문을 연다
+  const plinth = solidCircle(OBSERVATORY_GATE.x, OBSERVATORY_GATE.z, 5.7);
+  //    계단 통로 폭 안에서는 기단 원을 건너뛰어 맨 위 디딤판·문 앞까지 오른다 — 대신 탑 벽에서 멈춘다
+  plinth.except = p => Math.abs(p.x - OBSERVATORY_GATE.x) < STAIR_HALF_W && p.z > OBSERVATORY_GATE.z;
+  solidCircle(OBSERVATORY_GATE.x, OBSERVATORY_GATE.z, R_BASE + 0.1);
+  // 🪜 계단은 앞에서만 오른다 — 양옆을 얇은 벽으로 막아 옆에서 한 번에 1.2m 위로 튀어오르지 않게
+  for (const sx of [-1, 1]) {
+    const x0 = OBSERVATORY_GATE.x + sx * STAIR_HALF_W, x1 = x0 + sx * 0.12;
+    solidBox(Math.min(x0, x1), OBSERVATORY_GATE.z + R_BASE, Math.max(x0, x1), OBSERVATORY_GATE.z + STAIR_FOOT);
+  }
   return gateGroup;
 }
 
@@ -146,6 +153,21 @@ export function startObservatoryLook() {
   player.rotation.y = TELESCOPE_EYE.yaw;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   Sound.blip();
+}
+
+// 🪜 게이트 앞에서만 발밑 계단 높이로 부드럽게 올린다(카메라도 player.position 을 따라 같이 오른다).
+//    다른 공간·순간이동으로 계단 영역을 벗어나면 띄워 둔 높이를 바로 내려놓는다.
+let stairLift = false;
+export function updateObservatoryStairs(dt) {
+  const lx = player.position.x - OBSERVATORY_GATE.x, lz = player.position.z - OBSERVATORY_GATE.z;
+  if (Math.abs(lx) > 3 || lz < 0 || lz > 10) {
+    if (stairLift) { player.position.y = 0; stairLift = false; }
+    return;
+  }
+  const target = stairHeight(lx, lz);
+  player.position.y += (target - player.position.y) * Math.min(1, dt * 16);
+  stairLift = player.position.y > 1e-3;
+  if (!stairLift) player.position.y = 0;
 }
 
 export function updateObservatory(dt, t) {

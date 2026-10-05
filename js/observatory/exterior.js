@@ -1,11 +1,9 @@
 import * as THREE from 'three';
+import { OBS_BASE, OBS_R, STAIR_FOOT, STAIR_HALF_W, STAIR_RISE, STAIR_RUN, STAIR_STEPS } from './stairs.js';
 
-const R = 4.2, H = 3.4, BASE = 1.2, DOME_Y = BASE + H + 0.32;
-// 🪜 Stair footprint (gate-local) — the space registers it as a collider so the player stops at the
-//    bottom step instead of walking through it at ground height.
-export const R_BASE = R;
-export const STAIR_HALF_W = 1.1;
-export const STAIR_FOOT = R + 3.15;   // front edge of the bottom step (centre R+2.9, depth 0.5)
+export { R_BASE, STAIR_FOOT, STAIR_HALF_W, stairHeight } from './stairs.js';
+
+const R = OBS_R, H = 3.4, BASE = OBS_BASE, DOME_Y = BASE + H + 0.32;
 const ROT = -2.35, SLIT = 1.3;
 
 // Subtract the intersection of three half-spaces, interpolating normals/UVs
@@ -76,8 +74,8 @@ export function buildObservatoryExterior(mergeGeos) {
   add('body', cylinder(R + 1.3, R + 1.6, BASE, BASE / 2), 0xb9ae95);
   add('body', cylinder(R, R, H, BASE + H / 2), 0xd8d0bc);
   add('body', openDome(), 0x2f3f6b);
-  for (let i = 0; i < 4; i++) {
-    add('trim', new THREE.BoxGeometry(STAIR_HALF_W * 2, 0.3, 0.5).translate(0, 0.15 + i * 0.3, R + 2.9 - i * 0.45));
+  for (let i = 0; i < STAIR_STEPS; i++) {
+    add('trim', new THREE.BoxGeometry(STAIR_HALF_W * 2, STAIR_RISE, 0.5).translate(0, STAIR_RISE / 2 + i * STAIR_RISE, STAIR_FOOT - 0.25 - i * STAIR_RUN));
   }
   add('trim', cylinder(R + 0.3, R + 0.2, 0.32, BASE + H + 0.16));
   add('inner', new THREE.SphereGeometry(R - 0.1, 32, 18, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, DOME_Y, 0));

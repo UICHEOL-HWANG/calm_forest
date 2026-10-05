@@ -10,7 +10,8 @@ function build() {
   const context = vm.createContext({ THREE });
   const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   const merge = game.slice(game.indexOf('function mergeGeos('), game.indexOf('// 테이퍼 튜브'));
-  vm.runInContext(merge + readFileSync(url, 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, ''), context);
+  const stairs = readFileSync(new URL('../js/observatory/stairs.js', import.meta.url), 'utf8').replace(/^export /gm, '');
+  vm.runInContext(merge + stairs + readFileSync(url, 'utf8').replace(/^import .*;$/gm, '').replace(/^export \{[^}]*\} from .*;$/gm, '').replace(/^export /gm, ''), context);
   return context.buildObservatoryExterior(context.mergeGeos);
 }
 
