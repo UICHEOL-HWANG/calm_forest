@@ -31,7 +31,7 @@ import { MUSEUM_HALF_D, _museumNear, museumFloor, museumFloorItems, museumPlateT
 import { surveyBenchWorld, surveyDeskWorld } from '../spaces/farm-field.js';
 import { visitorTarget } from '../spaces/visitors.js';
 import { forageTarget } from '../spaces/forest.js';
-import { houseSolidR } from '../spaces/house.js';
+import { houseExitPoint, nearHouseDoor } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
 import { updateMistInteract } from '../spaces/mist.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
@@ -85,7 +85,8 @@ export function enterHouse() {
 
 export function exitHouse() {
   $w.indoor = false; setFogExempt(player, false); stopDecorPlacing(true);   // 들고 있던 가구는 제자리로(원래 층으로)
-  player.position.set(HOUSE_POS.x, 0, HOUSE_POS.z + 3);
+  const ex = houseExitPoint();   // 7단계는 현관 앞 마루, 그 밖은 집 앞 3
+  player.position.set(ex.x, 0, ex.z);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setIndoor?.(false); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_house'); // [GA4]
 }
@@ -230,7 +231,7 @@ export function updateDoorInteract() {
   } else if (atObservatory) {   // 🔭 천문대: 남쪽 문으로 나가기
     if (dist2D({ x: OBSERVATORY.x, z: OBSERVATORY.z + OBSERVATORY_R }, player.position) < 1.9) { nd = 'observatoryexit'; prompt = '🚪 나가기'; }
     else if (dist2D({ x: OBSERVATORY.x + TELESCOPE_SPOT.x, z: OBSERVATORY.z + TELESCOPE_SPOT.z }, player.position) < TELESCOPE_SPOT.r) { nd = 'telescope'; prompt = COPY.lookIn; }
-  } else if (gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < houseSolidR() + 0.6) { // 증축 크기에 맞춰 문 사거리도 확장
+  } else if (gameState.houseStage >= 3 && nearHouseDoor(player.position)) { // 증축 크기에 맞춰 문 사거리도 확장(7단계는 중정 안쪽 현관)
     nd = 'enter'; prompt = '🚪 집에 들어가기';
   } else if (dist2D(FARM_GATE, player.position) < 2.0) {
     nd = 'farm'; prompt = '🌾 내 텃밭';
@@ -356,7 +357,7 @@ export function updateDoorInteract() {
   else if (nearShop) firstHintBanner('shop', '🛒', '상점', '수확물을 팔고 씨앗을 사는 곳');
   else if (nd === 'farm') firstHintBanner('farmGate', '🌾', '내 텃밭 입구', '마음껏 농사짓는 나만의 넓은 밭');
   // 🎨 완성된 집 근처 → 외관 꾸미기 버튼(메뉴 대신 공간 기반 동선)
-  const nearHouse = inVillage2() && gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < 4.2;
+  const nearHouse = inVillage2() && gameState.houseStage >= 3 && dist2D(HOUSE_POS, player.position) < (gameState.houseStage >= 7 ? 5.2 : 4.2);   // 7단계는 풋프린트가 커서(옆벽 중심 ±3.95) 범위도 넓힌다
   if (nearHouse !== lastNearHouse) { $w.lastNearHouse = nearHouse; ui.setNearHouse?.(nearHouse); }
   if (nearHouse) firstHintBanner('extDecor', '🎨', '집 외관 꾸미기', '지붕·벽·문 색을 바꿔 나만의 집으로');
   updateZoneHint();

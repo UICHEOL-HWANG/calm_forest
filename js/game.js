@@ -76,6 +76,7 @@ import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [�
 import { createRetentionGuidance, buildRetentionGameStateSnapshot } from './retention-guidance.js';   // [🌿 리텐션 안내] 룰+모델 rescue 자리
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
 import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기 + 재질 도우미(루프탑 유리 난간)
+import { HOUSE_CLEAR_R, extViewLookK, extViewScale, normalizeHouseStyle } from './house-stage7.js';   // 🏡 7단계 정원 저택 규칙(새 로직은 그 순수 모듈에)
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
 import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
@@ -952,7 +953,7 @@ const gameState = {
   tutorialSeen: false,                      // 신규 유저 튜토리얼 표시 여부
   guideNudgeSeen: false,                    // 📖 튜토리얼 직후 "안내서 있어요" 배너를 이미 보여줬는지(1회)
   craft: { slots: [], noticedDay: null },   // 🔥 화덕에 걸어 둔 것 [{item,qty,grade,day}] · 완성 알림을 띄운 날 — 규칙은 js/craft/slots.js
-  house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [] },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
+  house: { decor: [], stored: {}, addons: [], bedGiven: false, grantedDecor: [], style: null },   // 실내 배치 가구 [{id,x,z,rot}] · 창고 { id: 개수 } · 🧩 산 구성품 id 목록 · 🛏️ 기본 침대 지급 여부 · 🏖️ 승계 가구(rooftopFreeDecor)를 이미 준 id 목록(옮기거나 창고에 넣어도 다시 안 준다)
   upgrades: { axe: false, water: false, rod: false, pot: false, net: false,   // 도구 업그레이드(영구) + 🍲 큰 냄비 + 🦋 촘촘한 포충망
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
   blueprints: {},                           // 🔨 히든 의뢰로 받은 📜 도면 { sickle: true } — js/tool-blueprints.js
@@ -1064,7 +1065,7 @@ function awardBadge(id) {
 // 배지 조건 일괄 판정 — 접속·퀘스트 완료·집 완성·도감 등록 시점에 호출(멱등)
 function syncBadges() {
   if (gameState.houseStage >= 3) awardBadge('house');
-  if (gameState.houseStage >= MAX_HOUSE_STAGE) awardBadge('modern');   // 🏙️ 모던 하우스 증축
+  if (gameState.houseStage >= 6) awardBadge('modern');   // 🏙️ 드림 하우스 — 루프탑 빌라(6단계) 증축. 7단계가 생겼어도 6 기준 유지(이미 받은/받을 6단계 유저 보호)
   const chains = NPCS.filter(n => !n.daily);   // 데일리(올빼미) 제외 상시 의뢰 체인
   //   ⚠️ allDone 은 🔁반복 의뢰가 열리면 false 로 돌아간다(지금 내줄 의뢰가 있다는 뜻).
   //   체인을 끝까지 깼는지는 포인터로 봐야 배지가 들쭉날쭉하지 않는다.
@@ -1814,7 +1815,7 @@ export const Input = {
   houseBuilt() { return gameState.houseStage >= 3; },
   setExtView(on) { extView = !!on; },            // 🏠 외관 메뉴 열림/닫힘 — 열린 동안 카메라가 집을 화면 위쪽에 둔다
   getExpansion() { return expandInfo(); },       // 🏗️ 증축 정보(외관 메뉴 렌더용)
-  expandHouse() { return doExpand(); },          // 🏗️ 증축 실행(외관 메뉴 버튼)
+  expandHouse(style) { return doExpand(style); }, // 🏗️ 증축 실행(외관 메뉴 버튼) — 7단계는 고른 스타일 'modern'|'hanok'
   getHouseAddons() { return houseAddonInfo(); },  // 🧩 구성품 상점 정보(외관 메뉴 렌더용)
   buyHouseAddon(id) { return buyHouseAddon(id); }, // 🧩 구성품 구매(코인 → 집에 바로 설치)
   emote(e) {   // 머리 위 이모지 + 기분에 맞는 캐릭터 모션(춤·점프·하트·인사)
@@ -2108,6 +2109,7 @@ export async function enterGame() {
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
+  if (_hq >= 7) gameState.house.style = _wq.get('style') === 'hanok' ? 'hanok' : 'modern';   // 테스트: ?house=7&style=hanok|modern
   if (_hq >= 1 && _hq <= MAX_HOUSE_STAGE) for (let s = gameState.houseStage + 1; s <= _hq; s++) buildHouseStage(s, true);
   if (_wq.get('coop') === '1' && !gameState.coop.built) buildCoop(true);   // 테스트: ?coop=1 — 닭장 미리보기
   if (_wq.get('farm') === '1') setTimeout(() => enterFarm(), 60); // 테스트: ?farm=1 — 개인 텃밭 바로 입장(?give=seed:9 와 조합)
@@ -2429,6 +2431,7 @@ function applySave(saved) {
   }
   if (saved.house && Array.isArray(saved.house.addons))                  // 🧩 구성품 복원(카탈로그에 있는 id 만, 중복 제거) — 집 복원(buildHouseStage) 전에
     gameState.house.addons = [...new Set(saved.house.addons.filter(id => HOUSE_ADDONS.some(a => a.id === id)))];
+  gameState.house.style = normalizeHouseStyle(saved.house?.style, saved.houseStage);   // 🏡 7단계 스타일(모던/한옥) — buildHouseStage 루프보다 먼저. 6단계 이하·옛 세이브는 null
   if (saved.house && saved.house.bedGiven) gameState.house.bedGiven = true;   // 🛏️ 기본 침대를 이미 받았는지(두 번 주지 않게)
   if (saved.house && Array.isArray(saved.house.grantedDecor))                // 🏖️ 승계 가구를 이미 줬는지(옮기거나 창고에 넣어도 다시 안 주게)
     gameState.house.grantedDecor = [...new Set(saved.house.grantedDecor.filter(id => typeof id === 'string'))];
@@ -2811,7 +2814,7 @@ function buildWorld() {
     for (let tries = 0; tries < 60 && !ok; tries++) { // 호수·집터·시설 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r;
-      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < 4.6 || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
+      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < HOUSE_CLEAR_R || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SHOP_POS) < 4   // 🏪 꾸미기 가게 — 반치수 2.56 + 걸어다닐 틈. 없으면 나무가 가게 안에 박힌다
@@ -4407,7 +4410,7 @@ function buildEnvironment() {
     const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 26;
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, LAKE) < 6.5) continue;       // 호수 위 제외
-    if (dist2D({ x, z }, HOUSE_POS) < 3.6) continue;  // 집 터 제외(빌라 발자국 5.4)
+    if (dist2D({ x, z }, HOUSE_POS) < HOUSE_CLEAR_R) continue;  // 집 터 제외(7단계 정원 저택 발자국 7.4×6.8)
     if (dist2D({ x, z }, COOP) < 2.8) continue;       // 🐔 닭장 터 제외
     if (dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 0.5) continue;   // 🛶 나루터 연못 위 제외
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
@@ -6152,11 +6155,11 @@ function updateCamera(dt) {
   }
   // 🏠 외관 꾸미기 중: 집을 화면 위쪽에 두고 바라본다(닫으면 아래 기본 추적이 부드럽게 복귀)
   if (extView && !mgView && !indoor) {   // 실내면 무시(방어) — 플래그가 남아도 카메라가 마을 집에 묶이지 않게
-    const s = 1 + (Math.min(2.3, Math.max(1, 1.35 / camera.aspect)) - 1) * 0.25;   // 가로 1 ~ 폰 세로 1.33
+    const s = (1 + (Math.min(2.3, Math.max(1, 1.35 / camera.aspect)) - 1) * 0.25) * extViewScale(gameState.houseStage);   // 가로 1 ~ 폰 세로 1.33 · 7단계는 더 넓어 ×1.65
     _extPos.copy(EXT_CAM_OFF).multiplyScalar(s).add(HOUSE_POS);
     const k = 1 - Math.pow(0.002, dt);   // 액션샷보다 살짝 느긋하게
     camera.position.lerp(_extPos, k);
-    _camLook.lerp(_camTarget.set(HOUSE_POS.x, EXT_LOOK_Y - (s - 1) * 2, HOUSE_POS.z), k);
+    _camLook.lerp(_camTarget.set(HOUSE_POS.x, EXT_LOOK_Y - (s - 1) * extViewLookK(gameState.houseStage), HOUSE_POS.z), k);
     camera.lookAt(_camLook);
     return;
   }

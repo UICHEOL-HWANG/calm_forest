@@ -8,8 +8,13 @@
 //  · 밤 점등 메시는 userData.role='window' + 재질 userData.nightScale(mountHouseModel 이 덮어쓰지 않음)
 //  · 굴뚝 연기처럼 움직이는 구성품은 group.userData.anim(t) — game.js 가 프레임마다 부른다(싸게)
 //  · 순수 로직(addonState)은 tests/house-addons.test.mjs 에서 검증
-//  좌표는 js/house/{cottage,loft,penthouse,villa}.js 의 치수에서 뽑았다 — 모델을 고치면 여기도 같이.
+//  좌표는 js/house/{cottage,loft,penthouse,villa,stage7-modern,stage7-hanok}.js 의 치수에서 뽑았다 — 모델을 고치면 여기도 같이.
+//  🏡 7단계(정원 저택)는 스타일(모던/한옥)마다 자리가 다르다 — 표 키 '7m'(모던) · '7h'(한옥). K(stage, style) 로 고른다.
+//     7단계는 구성품도 mountHouseAddons 가 재질별로 병합한다(드로우콜).
 // =============================================================
+
+/** 단계 + 스타일 → 위치 표 키. 7단계만 스타일로 갈린다('7m' 모던 · '7h' 한옥), 나머진 단계 번호 그대로. */
+export const K = (stage, style) => (stage === 7 ? (style === 'hanok' ? '7h' : '7m') : stage);
 
 const at = (THREE, [x, y, z], ry = 0) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; return g; };
 const ico = (THREE, r, mat, x, y, z, detail = 0) => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r, detail), mat); m.position.set(x, y, z); return m; };
@@ -20,8 +25,8 @@ const glow = (mesh) => { mesh.userData.role = 'window'; mesh.castShadow = false;
 
 // ── 💨 굴뚝 연기: 굴뚝 꼭대기에서 몽글몽글 올라가는 회색 구 4개(anim) ──
 const SMOKE_POS = { 3: [-1.15, 4.15, 0.15], 4: [0.32, 4.25, -0.9], 5: [2.0, 5.22, -1.7] };   // 빌라는 굴뚝이 없다
-function buildSmoke(THREE, H, stage) {
-  const p = SMOKE_POS[stage]; if (!p) return null;
+function buildSmoke(THREE, H, stage, style) {
+  const p = SMOKE_POS[K(stage, style)]; if (!p) return null;
   const g = at(THREE, p);
   const puffs = [];
   for (let i = 0; i < 4; i++) {
@@ -41,9 +46,9 @@ function buildSmoke(THREE, H, stage) {
 }
 
 // ── 🏮 정원등 2개: 문 앞 양쪽 기둥등(머리가 밤에 켜짐) ──
-const LAMP_POS = { 3: [[-1.05, 0.08, 2.0], [0.15, 0.08, 2.0]], 4: [[-0.7, 0.06, 2.0], [0.7, 0.06, 2.0]], 5: [[-1.5, 0.06, 2.05], [-0.62, 0.06, 2.12]], 6: [[-2.35, 0.1, 0.95], [-1.05, 0.1, 0.95]] };
-function buildLamps(THREE, H, stage) {
-  const ps = LAMP_POS[stage]; if (!ps) return null;
+const LAMP_POS = { '7m': [[-1.35, 0.28, 3.1], [1.35, 0.28, 3.1]], '7h': [[-1.35, 0.04, 3.1], [1.35, 0.04, 3.1]], 3: [[-1.05, 0.08, 2.0], [0.15, 0.08, 2.0]], 4: [[-0.7, 0.06, 2.0], [0.7, 0.06, 2.0]], 5: [[-1.5, 0.06, 2.05], [-0.62, 0.06, 2.12]], 6: [[-2.35, 0.1, 0.95], [-1.05, 0.1, 0.95]] };
+function buildLamps(THREE, H, stage, style) {
+  const ps = LAMP_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
   const post = H.clay(0x3b3d45), cap = H.clay(0x2a2c33), head = lit(H, 0xfff0c0, 0xffc46a, 1.0);
   for (const [x, y, z] of ps) {
@@ -55,9 +60,9 @@ function buildLamps(THREE, H, stage) {
 }
 
 // ── 📮 깃발 우편함: 파란 함 + 둥근 뚜껑 + 빨간 깃발 ──
-const MAIL_POS = { 3: [-2.0, 0.08, 2.0], 4: [2.25, 0.06, 1.55], 5: [2.85, 0, 1.6], 6: [0.05, 0.1, 0.95] };
-function buildMailbox(THREE, H, stage) {
-  const p = MAIL_POS[stage]; if (!p) return null;
+const MAIL_POS = { '7m': [1.5, 0, 4.05], '7h': [1.45, 0, 4.05], 3: [-2.0, 0.08, 2.0], 4: [2.25, 0.06, 1.55], 5: [2.85, 0, 1.6], 6: [0.05, 0.1, 0.95] };
+function buildMailbox(THREE, H, stage, style) {
+  const p = MAIL_POS[K(stage, style)]; if (!p) return null;
   const g = at(THREE, p);
   const wood = H.clay(0x8a5a36), blue = H.clay(0x4a6fa5), red = H.clay(0xd9403a);
   g.add(H.box(0.08, 0.8, 0.08, wood, 0, 0.4, 0));
@@ -70,9 +75,9 @@ function buildMailbox(THREE, H, stage) {
 }
 
 // ── 🌿 덩굴 장식: 벽을 타고 오르는 줄기 + 잎 8장 ──
-const IVY_POS = { 4: [[2.25, 0, 1.33], 2.0], 5: [[-0.25, 0, 1.23], 2.25], 6: [[-2.45, 0, 0.52], 2.3] };
-function buildIvy(THREE, H, stage) {
-  const e = IVY_POS[stage]; if (!e) return null;
+const IVY_POS = { '7m': [[-3.3, 0.25, -1.4], 2.2], '7h': [[-2.6, 0.55, 3.45], 0.9], 4: [[2.25, 0, 1.33], 2.0], 5: [[-0.25, 0, 1.23], 2.25], 6: [[-2.45, 0, 0.52], 2.3] };
+function buildIvy(THREE, H, stage, style) {
+  const e = IVY_POS[K(stage, style)]; if (!e) return null;
   const [p, h] = e; const g = at(THREE, p);
   const stem = H.clay(0x3f6b2e), leaf = [H.clay(0x5c9c44), H.clay(0x7cb85a)];
   g.add(H.box(0.04, h, 0.03, stem, 0, h / 2, 0));
@@ -84,9 +89,9 @@ function buildIvy(THREE, H, stage) {
 }
 
 // ── 🪑 앞마당 벤치: 앉는 판 + 등받이 + 다리 2 ──
-const BENCH_POS = { 4: [[1.35, 0.06, 2.0], 0], 5: [[-2.05, 0.06, 2.25], 0], 6: [[1.45, 0, 2.75], Math.PI] };
-function buildBench(THREE, H, stage) {
-  const e = BENCH_POS[stage]; if (!e) return null;
+const BENCH_POS = { '7m': [[1.25, 0.28, 0.1], -Math.PI / 2], '7h': [[1.3, 0.02, 1.2], -Math.PI / 2], 4: [[1.35, 0.06, 2.0], 0], 5: [[-2.05, 0.06, 2.25], 0], 6: [[1.45, 0, 2.75], Math.PI] };
+function buildBench(THREE, H, stage, style) {
+  const e = BENCH_POS[K(stage, style)]; if (!e) return null;
   const g = at(THREE, e[0], e[1]);
   const wood = H.clay(0xa87548), iron = H.clay(0x4a4a4a);
   g.add(H.box(0.9, 0.06, 0.32, wood, 0, 0.42, 0));
@@ -96,7 +101,7 @@ function buildBench(THREE, H, stage) {
 }
 
 // ── 🔆 천창 조명: 천창 유리 위에 살짝 띄운 판이 밤에 은은하게 ──
-function buildSkylight(THREE, H, stage) {
+function buildSkylight(THREE, H, stage, style) {
   const g = new THREE.Group();
   const mat = lit(H, 0xdcedf8, 0xffc06a, 1.0);   // 낮엔 유리처럼 연한 하늘빛, 밤엔 따뜻하게
   if (stage === 4) {                                   // 로프트: 양쪽 윙 바깥 경사면의 천창 격자 위
@@ -107,14 +112,15 @@ function buildSkylight(THREE, H, stage) {
     }
   } else if (stage === 5) g.add(glow(H.box(0.7, 0.04, 0.7, mat, 0.7, 4.87, -1.0)));
   else if (stage === 6) g.add(glow(H.box(0.64, 0.04, 0.64, mat, 1.0, 4.73, -1.4)));
+  else if (stage === 7) g.add(glow(style === 'hanok' ? H.box(0.7, 0.04, 0.7, mat, 0, 3.14, -2.5) : H.box(0.64, 0.04, 0.64, mat, 0.9, 6.83, -2.8)));
   else return null;
   return g;
 }
 
 // ── 🪴 발코니 화분 3개: 펜트하우스 발코니 난간 안쪽 · 빌라는 루프탑 테라스 앞 난간 ──
-const PLANTER_POS = { 5: [[0.625, 2.3, 1.38], [1.225, 2.3, 1.38], [1.825, 2.3, 1.38]], 6: [[-2.2, 2.62, 0.3], [-1.5, 2.62, 0.3], [-0.6, 2.62, 0.3]] };
-function buildPlanters(THREE, H, stage) {
-  const ps = PLANTER_POS[stage]; if (!ps) return null;
+const PLANTER_POS = { '7m': [[-1.35, 0.3, -1.15], [-1.05, 0.3, -1.15], [1.2, 0.3, -1.15]], '7h': [[-1.7, 0.52, -0.7], [-1.3, 0.52, -0.7], [1.5, 0.52, -0.7]], 5: [[0.625, 2.3, 1.38], [1.225, 2.3, 1.38], [1.825, 2.3, 1.38]], 6: [[-2.2, 2.62, 0.3], [-1.5, 2.62, 0.3], [-0.6, 2.62, 0.3]] };
+function buildPlanters(THREE, H, stage, style) {
+  const ps = PLANTER_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
   const pot = H.clay(0xc4714c), leaf = H.clay(0x6b9a4c), petal = [H.clay(0xf07a8a), H.clay(0xf7d15a), H.clay(0xffffff)];
   ps.forEach(([x, y, z], i) => {
@@ -127,11 +133,13 @@ function buildPlanters(THREE, H, stage) {
 
 // ── 💡 처마 조명: 지붕 슬래브 밑에 붙는 작은 등 ──
 const EAVE_POS = {
+  '7m': [[-2.6, 2.58, 3.05], [2.6, 2.58, 3.05], [-2.7, 2.58, -1.4], [-1.6, 2.58, -1.4], [1.6, 2.58, -1.4], [2.7, 2.58, -1.4]],
+  '7h': [[-2.2, 2.48, -1.05], [-0.8, 2.48, -1.05], [0.8, 2.48, -1.05], [2.2, 2.48, -1.05], [-2.75, 2.08, 2.85], [2.75, 2.08, 2.85]],
   5: [[-2.2, 2.32, 1.16], [-1.6, 2.32, 1.16], [-1.0, 2.32, 1.16], [-0.4, 2.32, 1.16], [2.56, 4.37, -1.5], [2.56, 4.37, -0.2]],
   6: [[0.5, 4.36, 0.42], [1.3, 4.36, 0.42], [2.1, 4.36, 0.42], [-2.3, 2.4, 0.52], [-1.2, 2.4, 0.52], [-0.1, 2.4, 0.52]],
 };
-function buildEaveLights(THREE, H, stage) {
-  const ps = EAVE_POS[stage]; if (!ps) return null;
+function buildEaveLights(THREE, H, stage, style) {
+  const ps = EAVE_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
   const mat = lit(H, 0xfff3cc, 0xffc46a, 1.0);
   for (const [x, y, z] of ps) g.add(glow(H.box(0.12, 0.06, 0.1, mat, x, y, z)));
@@ -139,9 +147,9 @@ function buildEaveLights(THREE, H, stage) {
 }
 
 // ── ⛱️ 차양: 현관 위 줄무늬 천 + 앞단 스캘럽 + 옆 받침대 ──
-const AWNING_POS = { 5: [[-1.05, 2.08, 1.5], 1.5], 6: [[-1.7, 2.26, 0.82], 1.3] };
-function buildAwning(THREE, H, stage) {
-  const e = AWNING_POS[stage]; if (!e) return null;
+const AWNING_POS = { '7m': [[-0.6, 2.25, -1.15], 1.5], '7h': [[0, 2.1, -1.15], 1.3], 5: [[-1.05, 2.08, 1.5], 1.5], 6: [[-1.7, 2.26, 0.82], 1.3] };
+function buildAwning(THREE, H, stage, style) {
+  const e = AWNING_POS[K(stage, style)]; if (!e) return null;
   const [p, w] = e; const g = at(THREE, p); g.rotation.x = 0.3;      // 앞(+z)이 낮아지게 기울임
   const stripe = [H.clay(0xf6f1e8), H.clay(0xd9534f)], rod = H.clay(0x3b3d45);
   const n = 5, sw = w / n;
@@ -155,9 +163,9 @@ function buildAwning(THREE, H, stage) {
 }
 
 // ── 🌴 야자수 2그루: 수영장 오른쪽, 살짝 기운 줄기 + 잎 5장 + 코코넛 ──
-const PALM_POS = { 6: [[2.9, 0, 0.75], [2.95, 0, 2.3]] };
-function buildPalms(THREE, H, stage) {
-  const ps = PALM_POS[stage]; if (!ps) return null;
+const PALM_POS = { '7m': [[-2.6, 0, 4.2], [2.7, 0, 4.3]], '7h': [[-3.4, 0, 4.4], [3.0, 0, 4.5]], 6: [[2.9, 0, 0.75], [2.95, 0, 2.3]] };
+function buildPalms(THREE, H, stage, style) {
+  const ps = PALM_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
   const bark = H.clay(0x9a6b45), frond = H.clay(0x4f9a3d), nut = H.clay(0x6b4a2a);
   ps.forEach((p, k) => {
@@ -174,29 +182,32 @@ function buildPalms(THREE, H, stage) {
 }
 
 // ── 🌊 수영장 야간 조명: 수면 아래 파란 빛판 + 벽 등 4개 ──
-function buildPoolLights(THREE, H, stage) {
-  if (stage !== 6) return null;
+const POOL = { 6: [1.45, 0.045, 1.55, 1.9, 1.3, 0.9, 0.6], '7m': [-0.3, 0.34, 2.1, 1.5, 1.0, 0.7, 0.45], '7h': [-0.5, 0.06, 1.5, 1.5, 1.0, 0.7, 0.45] };   // [중심 x,y,z · 빛판 w,d · 전구 dx,dz] — 7단계는 중정 연못
+function buildPoolLights(THREE, H, stage, style) {
+  const p = POOL[K(stage, style)]; if (!p) return null;
+  const [PX, PY, PZ, W, D, BX, BZ] = p;
   const g = new THREE.Group();
-  const PX = 1.45, PZ = 1.55;
-  g.add(glow(H.box(1.9, 0.02, 1.3, lit(H, 0x7fe0f0, 0x37b8ff, 1.3), PX, 0.045, PZ)));
+  g.add(glow(H.box(W, 0.02, D, lit(H, 0x7fe0f0, 0x37b8ff, 1.3), PX, PY, PZ)));
   const bulb = lit(H, 0xe8fbff, 0x8fdfff, 1.5);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(glow(ico(THREE, 0.045, bulb, PX + sx * 0.9, 0.06, PZ + sz * 0.6, 1)));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(glow(ico(THREE, 0.045, bulb, PX + sx * BX, PY + 0.015, PZ + sz * BZ, 1)));
   return g;
 }
 
 // ── 🏖️ 옥상 파라솔 세트: 루프탑 테라스 뒤쪽에 파라솔 + 라운지 체어 + 사이드 테이블 ──
-function buildRooftopSet(THREE, H, stage) {
-  if (stage !== 6) return null;
-  const TY = 2.62, g = new THREE.Group();
+const ROOFTOP = { 6: [-2.0, 2.62, -1.6], '7m': [2.25, 2.87, -0.9], '7h': [-2.0, 0.02, 4.6] };   // 파라솔 기준점 — 7단계 모던은 날개 지붕, 한옥은 대문 밖 앞마당
+function buildRooftopSet(THREE, H, stage, style) {
+  const o = ROOFTOP[K(stage, style)]; if (!o) return null;
+  const [ox, TY, oz] = o, g = new THREE.Group();
+  const dx = ox + 2.0, dz = oz + 1.6;   // 6단계 좌표(-2.0,-1.6 기준)를 기준점만큼 옮긴다
   const white = H.clay(0xf4f3ee), sunny = H.clay(0xf3c34e), chrome = H.clay(0xd8dde0, { roughness: 0.4, metalness: 0.4 });
-  g.add(cyl(THREE, 0.025, 0.025, 1.55, chrome, -2.0, TY + 0.78, -1.6, 6));
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.72, 0.22, 8), sunny); cone.position.set(-2.0, TY + 1.62, -1.6); g.add(cone);
-  g.add(ico(THREE, 0.04, white, -2.0, TY + 1.76, -1.6, 1));
-  g.add(H.box(0.5, 0.12, 1.1, white, -1.2, TY + 0.16, -1.6));
-  g.add(H.box(0.44, 0.06, 0.8, sunny, -1.2, TY + 0.25, -1.45));
-  const back = H.box(0.44, 0.55, 0.06, white, -1.2, TY + 0.45, -2.1); back.rotation.x = -0.55; g.add(back);
-  g.add(H.box(0.4, 0.05, 0.4, white, -1.65, TY + 0.32, -1.95));
-  g.add(cyl(THREE, 0.03, 0.03, 0.3, chrome, -1.65, TY + 0.15, -1.95, 6));
+  g.add(cyl(THREE, 0.025, 0.025, 1.55, chrome, -2.0 + dx, TY + 0.78, -1.6 + dz, 6));
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.72, 0.22, 8), sunny); cone.position.set(-2.0 + dx, TY + 1.62, -1.6 + dz); g.add(cone);
+  g.add(ico(THREE, 0.04, white, -2.0 + dx, TY + 1.76, -1.6 + dz, 1));
+  g.add(H.box(0.5, 0.12, 1.1, white, -1.2 + dx, TY + 0.16, -1.6 + dz));
+  g.add(H.box(0.44, 0.06, 0.8, sunny, -1.2 + dx, TY + 0.25, -1.45 + dz));
+  const back = H.box(0.44, 0.55, 0.06, white, -1.2 + dx, TY + 0.45, -2.1 + dz); back.rotation.x = -0.55; g.add(back);
+  g.add(H.box(0.4, 0.05, 0.4, white, -1.65 + dx, TY + 0.32, -1.95 + dz));
+  g.add(cyl(THREE, 0.03, 0.03, 0.3, chrome, -1.65 + dx, TY + 0.15, -1.95 + dz, 6));
   return g;
 }
 
