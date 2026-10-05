@@ -242,7 +242,7 @@ export function museumExhibitMesh(item) {
 }
 
 // 진열장 자리 — 좌우 벽 5칸씩 + 안쪽 3칸. [x, z, 바라보는 방향]
-export function museumSlots(count = 13) {
+export function museumSlots(count = 13, reserveCenter = false) {
   const out = [];
   const side = Math.min(5, Math.ceil((count - 3) / 2));   // 안쪽 벽 3칸을 빼고 좌우로 나눈다
   //   ⚠️ 간격이 좁으면 진열장 다섯이 한 덩어리로 읽힌다 — 받침 폭 0.95 의 두 배 이상 띄운다.
@@ -254,11 +254,13 @@ export function museumSlots(count = 13) {
   // 🏛️ 중앙 아일랜드 — 벽면(좌우 5+5 · 뒷벽 3 = 13)으로 모자라면 가운데 진열대가 받는다.
   //   ⚠️ 예전엔 남는 것을 뒷벽 한 줄에 계속 늘어놓아, 3층 31칸 중 16칸이 벽 밖 허공에 떴다.
   //      이동 제한 밖이라 명판도 못 읽는 "있지만 볼 수 없는" 전시물이 됐다.
+  //   🎁 reserveCenter(1층): 가운데 남쪽 절반은 ✨특별 진열대 3칸 자리(js/museum/extras.js) — 섬은 북쪽 줄에만 둔다.
+  //      ⚠️ 1층이 13→17칸으로 늘며 섬 4칸이 특별 진열대와 같은 자리(0,-0.3)를 차지해 겹쳐 보였다(2026-10-06 실기기).
   let rest = count - out.length;
   if (rest > 0) {
-    const cols = Math.min(3, rest), rows = Math.ceil(rest / cols);
-    const cw = 2.3, rh = rows > 1 ? Math.min(1.65, 8.4 / (rows - 1)) : 0;
-    const z0i = -(rows - 1) * rh / 2 + 0.6;
+    const cols = Math.min(reserveCenter ? 4 : 3, rest), rows = Math.ceil(rest / cols);
+    const cw = reserveCenter ? 2.6 : 2.3, rh = rows > 1 ? Math.min(reserveCenter ? 1.8 : 1.65, 8.4 / (rows - 1)) : 0;
+    const z0i = reserveCenter ? -2.9 : -(rows - 1) * rh / 2 + 0.6;
     for (let r = 0; r < rows && rest > 0; r++) {
       for (let c = 0; c < cols && rest > 0; c++, rest--) {
         out.push([(c - (cols - 1) / 2) * cw, z0i + r * rh, r % 2 ? Math.PI : 0]);
@@ -375,7 +377,7 @@ export function openMuseumView(i) {
   // ⚠️ 캐릭터가 보는 쪽에 띄우면 벽을 뚫는다(진열장은 벽에 붙어 있다).
   //    **진열장에서 통로 쪽으로** 띄우고 카메라는 그보다 더 통로 안쪽에서 본다 — 방향과 무관하게 안전하다.
   // ⚠️ 층마다 칸 수가 다르다 — 13칸 기준으로 읽으면 3층에서 undefined 를 구조분해해 터진다
-  const slot = museumSlots(museumFloorItems().length)[i];
+  const slot = museumSlots(museumFloorItems().length, museumFloor === 1)[i];
   if (!slot) return;
   const [sx, sz, ry] = slot;
   const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
@@ -455,7 +457,7 @@ export function buildMuseumHall() {
   }
 
   const items = museumFloorItems();
-  const slots = museumSlots(items.length);
+  const slots = museumSlots(items.length, museumFloor === 1);
   // 구역 러그 — 벽을 세우면 방이 좁아 보인다. 바닥은 공간감을 안 해치면서 경계가 읽힌다
   slots.forEach(([x, z, ry], i) => {
     const zn = MUSEUM_ZONES[items[i].zone];
