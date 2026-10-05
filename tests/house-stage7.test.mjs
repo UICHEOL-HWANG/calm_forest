@@ -79,7 +79,7 @@ test('증축은 스타일 없이는 7단계를 짓지 않는다(재료도 안 �
 test('7단계 모델 3종은 merge 를 거치고 game.js 에는 새 조형 코드가 없다(모듈 분리·드로우콜)', () => {
   const idx = readFileSync(new URL('../js/house/index.js', import.meta.url), 'utf8');
   assert.ok(idx.includes('mergeByMaterial(THREE, g)'), '7단계 외관 병합');
-  assert.ok(idx.includes('stage === 7 && !g.userData.anim'), '7단계 구성품 병합');
+  assert.ok(idx.includes('!g.userData.anim) mergeByMaterial(THREE, g)'), '구성품 병합(연기 제외)');
   assert.ok(!/stage7|Stage7/.test(readFileSync(new URL('../js/game.js', import.meta.url), 'utf8').replace(/house-stage7|HOUSE_CLEAR_R|extView\w+|normalizeHouseStyle/g, '')), 'game.js 에 7단계 조형이 들어갔다');
 });
 
