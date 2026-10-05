@@ -188,11 +188,13 @@ test('gate spawns once — a second call does not stack a building or colliders'
     OBSERVATORY_GATE: new THREE.Vector3(22, 0, 22), mergeGeos: geos => geos[0],
     buildObservatoryExterior: () => new THREE.Group(),
     solidCircle: (x, z, r) => { const s = { x, z, r }; colliders.push(s); return s; },
+    solidBox: (x1, z1, x2, z2) => { const s = { x1, z1, x2, z2 }; colliders.push(s); return s; },
+    R_BASE: 4.2, STAIR_HALF_W: 1.1, STAIR_FOOT: 7.35,
   });
   const a = c.spawnObservatoryGate(), b = c.spawnObservatoryGate();
   assert.equal(a, b);
   assert.equal(added.length, 1);
-  assert.equal(colliders.length, 1);
+  assert.equal(colliders.length, 2);   // foundation circle + stairs box
   assert.equal(obstacles.length, 1);
 });
 
