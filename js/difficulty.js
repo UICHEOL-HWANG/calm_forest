@@ -81,6 +81,7 @@ export function nextDda(game, dda = 1, outcome = 0) {
 export function ddaOutcome(game, res = {}) {
   if (game === 'cook') return res.abandoned ? null : Math.max(0, Math.min(100, res.score || 0)) / 100;
   if (game === 'craft') return res.played ? Math.max(0, Math.min(3, res.grade || 0)) / 3 : null;
+  if (game === 'star') return Math.max(0, Math.min(14, res.score || 0)) / 14;   // 🔭 끝까지 간 판만 불린다(포기는 trackDiffAbandon)
   return null;
 }
 

@@ -138,6 +138,7 @@ export const DIFFICULTY = {
   mist:  { arms: [0.7,  1.0,  1.3], target: 0.80, ddaOn: true  },  // 30일 성공률 80%(36/45) — 적정, 양방향
   cook:  { arms: [0.7,  1.0,  1.4], target: 0.78, ddaOn: true  },  // 실측 중앙값 78점(6판·3명, 9/23~25) — 65점이면 대부분이 넘겨 계속 어려워졌다. 표본 쌓이면 재조정
   craft: { arms: [0.7,  1.0,  1.4], target: 0.67, ddaOn: true  },  // 기록 0판(9/23~25). outcome 은 등급/3 → {0,⅓,⅔,1} 네 값뿐이라 목표는 2등급(⅔) — 0.78 이면 3등급 말고 전부 미달
+  star:  { arms: [0.7,  1.0,  1.4], target: 0.78, ddaOn: true  },  // 🔭 별 잇기(2026-10 신규) — 표본 0. 점수 게임(점수/14), 목표는 요리와 같은 잠정치
 };
 export const DIFF_K = 0.10;                 // DDA 한 판당 이동량 계수 — probe 보다 느리게 움직여야 한다
 export const DIFF_DDA_CLAMP = [0.7, 1.5];   // DDA 는 꼬리만 잡는다(목표값이 아직 잠정치라 좁게)

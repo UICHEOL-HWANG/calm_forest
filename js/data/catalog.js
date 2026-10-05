@@ -6,7 +6,7 @@
 //     옮긴 방법·검증: tools/refactor/ · docs/superpowers/specs/2026-09-24-gamejs-split-phase1-design.md
 // =============================================================
 import { FARM_BUILDINGS } from '../farm-building.js';
-import { BENCH, KITCHEN, SHOP, MARKET, RANK, FARM_GATE, MINE_GATE, COOP, CAFE_GATE, MUSEUM_GATE } from './places.js';
+import { BENCH, KITCHEN, SHOP, MARKET, RANK, FARM_GATE, MINE_GATE, COOP, CAFE_GATE, MUSEUM_GATE, OBSERVATORY_GATE } from './places.js';
 import { NPCS } from './npcs.js';
 import { STATIONS } from '../craft/recipes.js';
 
@@ -207,7 +207,7 @@ export const KILN_HOME = KILN_SPOTS[0];                 // 기본값(후보를 �
 export const KILN_CLEAR_R = 2.4;                        // 이 반경 안엔 나무가 없어야 한다(화덕 폭 2.03 + 여유)
 
 export function kilnAvoidPoints() {
-  return [MINE_GATE, CAFE_GATE, MUSEUM_GATE, FARM_GATE, KITCHEN, BENCH, SHOP, MARKET, RANK, COOP]
+  return [MINE_GATE, CAFE_GATE, MUSEUM_GATE, OBSERVATORY_GATE, FARM_GATE, KITCHEN, BENCH, SHOP, MARKET, RANK, COOP]
     .filter(Boolean)
     .concat(NPCS.map(n => ({ x: n.pos[0], z: n.pos[2] })));   // 주민 자리도 피한다
 }

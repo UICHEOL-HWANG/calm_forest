@@ -1,0 +1,257 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔭 망원경 뷰 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#05070f;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  canvas{display:block}
+  #ui{position:fixed;right:10px;bottom:10px;display:flex;gap:6px}
+  #ui button{font:inherit;font-size:13px;padding:5px 10px;border-radius:8px;border:1px solid #8890b0;background:#fff;cursor:pointer}
+  #ui button.on{background:#3d4f8a;color:#fff}
+  body.cap #ui{display:none}
+</style>
+<canvas id="c"></canvas>
+<div id="ui"></div>
+<script>
+// =============================================================
+//  🔭 망원경 뷰(리듬으로 북두칠성 잇기) 시안 3종 — 진행 중 한 장면을 정지 화면으로
+//  ?v=a|b|c &t=0..1(링/혜성 진행도) &cap=1
+//   A 줄어드는 링 — 다음 별 위로 링이 줄어들고, 별에 닿을 때 탭
+//   B 아래 박자 줄 — 렌즈 아래 박자 줄에서 음표가 판정 동그라미에 닿을 때 탭, 하늘엔 선이 이어짐
+//   C 별 사이 혜성 — 방금 이은 별에서 빛 알갱이가 다음 별로 날아가고, 도착할 때 탭
+//   D C+A 절충 — 혜성 + 목표 별 위 줄어드는 링(✅ 2026-10-04 채택)
+//  공통: 천문대 C안의 남색+금빛 팔레트, 손잡이 끝 → 국자 순서로 8번(마지막은 국자 닫기)
+//  문구는 임시 — 확정 전 문구 검수 따로
+// =============================================================
+const qs = new URLSearchParams(location.search);
+let V = qs.get('v') || 'a';
+const T = +(qs.get('t') ?? 0.62);
+if (qs.get('cap')) document.body.classList.add('cap');
+
+const GOLD = '#f3d27a', GOLD2 = '#d9b45a', NAVY = '#1a2552', INK = '#e9ecff';
+const DIPPER = [[0, 0], [1.05, -0.15], [1.25, -0.95], [0.15, -0.8], [-0.75, 0.15], [-1.55, 0.45], [-2.45, 0.35]];
+const ORDER = [6, 5, 4, 0, 1, 2, 3, 0];   // 손잡이 끝 → 국자, 마지막 0 = 국자 닫기
+const DONE = 3;                            // 이 장면: 선 3개 완료(6-5-4-0), 다음 목표 = 1번 별
+
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+
+function layout() {
+  const W = innerWidth, H = innerHeight, portrait = H > W;
+  const r = portrait ? Math.min(W * 0.44, H * 0.27) : Math.min(H * (V === 'b' ? 0.35 : 0.4), W * 0.3);
+  const cx = W / 2, cy = portrait ? H * (V === 'b' ? 0.4 : 0.45) : H * (V === 'b' ? 0.44 : 0.5);
+  return { W, H, portrait, r, cx, cy };
+}
+function starXY(L, i) {
+  const k = L.r * 0.43;
+  const [x, y] = DIPPER[i];
+  return [L.cx + (x + 0.6) * k, L.cy - (y + 0.25) * k];
+}
+
+function glowDot(x, y, rad, color, blur) {
+  g.save(); g.shadowColor = color; g.shadowBlur = blur; g.fillStyle = color;
+  g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill(); g.restore();
+}
+function sparkle(x, y, s, color) {
+  g.save(); g.translate(x, y); g.fillStyle = color; g.shadowColor = color; g.shadowBlur = s * 2;
+  g.beginPath();
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? s * 0.28 : s; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  g.closePath(); g.fill(); g.restore();
+}
+function roundRect(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+
+function drawLens(L) {
+  const { W, H, r, cx, cy } = L;
+  g.fillStyle = '#05070f'; g.fillRect(0, 0, W, H);
+  g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
+  const sky = g.createRadialGradient(cx, cy - r * 0.2, r * 0.1, cx, cy, r);
+  sky.addColorStop(0, '#24336e'); sky.addColorStop(0.7, NAVY); sky.addColorStop(1, '#0a0f2a');
+  g.fillStyle = sky; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+  g.save(); g.translate(cx, cy); g.rotate(-0.5);
+  const mw = g.createLinearGradient(0, -r * 0.35, 0, r * 0.35);
+  mw.addColorStop(0, 'rgba(150,170,255,0)'); mw.addColorStop(0.5, 'rgba(150,170,255,0.10)'); mw.addColorStop(1, 'rgba(150,170,255,0)');
+  g.fillStyle = mw; g.fillRect(-r, -r * 0.35, r * 2, r * 0.7); g.restore();
+  const R = rnd(9);
+  for (let i = 0; i < 220; i++) {
+    const a = R() * Math.PI * 2, d = Math.sqrt(R()) * r;
+    g.globalAlpha = 0.25 + R() * 0.55; g.fillStyle = '#fff';
+    g.beginPath(); g.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 0.5 + R() * 1.1, 0, Math.PI * 2); g.fill();
+  }
+  g.globalAlpha = 1;
+  const vg = g.createRadialGradient(cx, cy, r * 0.7, cx, cy, r);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  g.fillStyle = vg; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+  g.restore();
+  const rimW = Math.max(6, r * 0.035);
+  g.save();
+  g.lineWidth = rimW; g.strokeStyle = GOLD2; g.shadowColor = 'rgba(243,210,122,.35)'; g.shadowBlur = 18;
+  g.beginPath(); g.arc(cx, cy, r + rimW / 2, 0, Math.PI * 2); g.stroke(); g.restore();
+  g.save(); g.strokeStyle = 'rgba(243,210,122,.55)'; g.lineWidth = 2;
+  for (let i = 0; i < 48; i++) {
+    const a = i / 48 * Math.PI * 2, l = i % 4 ? 6 : 12, rr = r + rimW + 4;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); g.lineTo(cx + Math.cos(a) * (rr + l), cy + Math.sin(a) * (rr + l)); g.stroke();
+  }
+  g.restore();
+}
+
+function drawConstellation(L, opts = {}) {
+  const pts = DIPPER.map((_, i) => starXY(L, i));
+  const s = L.r / 300;
+  g.save(); g.setLineDash([4 * s, 7 * s]); g.strokeStyle = 'rgba(233,236,255,.18)'; g.lineWidth = 1.5 * s;
+  for (let k = DONE; k < ORDER.length - 1; k++) {
+    const [a, b] = [pts[ORDER[k]], pts[ORDER[k + 1]]];
+    g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke();
+  }
+  g.restore();
+  g.save(); g.strokeStyle = GOLD; g.lineWidth = 3.2 * s; g.lineCap = 'round'; g.shadowColor = GOLD; g.shadowBlur = 16 * s;
+  g.beginPath(); g.moveTo(...pts[ORDER[0]]);
+  for (let k = 1; k <= DONE; k++) g.lineTo(...pts[ORDER[k]]);
+  g.stroke(); g.restore();
+  const lit = new Set(ORDER.slice(0, DONE + 1));
+  pts.forEach(([x, y], i) => {
+    if (lit.has(i)) { glowDot(x, y, 9 * s, 'rgba(255,240,190,.35)', 24 * s); sparkle(x, y, 13 * s, '#fff6d6'); }
+    else {
+      glowDot(x, y, 4.2 * s, 'rgba(220,228,255,.85)', 8 * s);
+      if (opts.pendingRings !== false) {
+        g.save(); g.strokeStyle = 'rgba(220,228,255,.22)'; g.lineWidth = 1.2 * s;
+        g.beginPath(); g.arc(x, y, 14 * s, 0, Math.PI * 2); g.stroke(); g.restore();
+      }
+    }
+  });
+  return pts;
+}
+
+function judge(L, x, y, text, color) {
+  const s = L.r / 300;
+  g.save(); g.font = `800 ${Math.round(22 * s + 6)}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+  g.textAlign = 'center'; g.fillStyle = color; g.shadowColor = color; g.shadowBlur = 12;
+  g.fillText(text, x, y); g.restore();
+}
+
+function hud(L, hint) {
+  const { W, H, portrait, r, cx, cy } = L;
+  const fs = portrait ? 15 : 17;
+  g.save(); g.textBaseline = 'middle';
+  const tx = portrait ? 18 : 32, ty = portrait ? 34 : 40;
+  g.font = `700 ${fs + 4}px -apple-system, "Apple SD Gothic Neo", sans-serif`; g.fillStyle = INK;
+  g.fillText('🔭 북두칠성', tx, ty);
+  g.font = `600 ${fs - 2}px -apple-system, "Apple SD Gothic Neo", sans-serif`; g.fillStyle = 'rgba(233,236,255,.6)';
+  g.fillText('봄 하늘 · ★1', tx, ty + fs + 8);
+  for (let i = 0; i < 8; i++) {
+    const x = tx + 6 + i * (fs + 2), y = ty + fs * 2 + 22;
+    g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2);
+    g.fillStyle = i < DONE ? GOLD : (i === DONE ? 'rgba(243,210,122,.45)' : 'rgba(233,236,255,.18)'); g.fill();
+  }
+  g.textAlign = 'right';
+  g.font = `800 ${fs + 10}px -apple-system, "Apple SD Gothic Neo", sans-serif`; g.fillStyle = GOLD;
+  const rx = W - (portrait ? 64 : 92);
+  g.fillText('3', rx, ty + 2);
+  g.font = `600 ${fs - 2}px -apple-system, "Apple SD Gothic Neo", sans-serif`; g.fillStyle = 'rgba(233,236,255,.65)';
+  g.fillText('콤보', rx, ty + fs + 10);
+  g.textAlign = 'center';
+  roundRect(W - (portrait ? 50 : 70), ty - 18, 36, 36, 18); g.fillStyle = 'rgba(255,255,255,.12)'; g.fill();
+  g.font = `600 18px -apple-system, sans-serif`; g.fillStyle = INK; g.fillText('✕', W - (portrait ? 32 : 52), ty + 1);
+  g.font = `600 ${fs}px -apple-system, "Apple SD Gothic Neo", sans-serif`; g.fillStyle = 'rgba(233,236,255,.85)';
+  const hy = V === 'b' ? H - (portrait ? 34 : 30) : Math.min(H - 40, cy + r + (portrait ? 56 : 46));
+  g.fillText(hint, cx, hy);
+  g.restore();
+}
+
+// ── A: 줄어드는 링 ───────────────────────────────────────────
+function drawA(L) {
+  drawLens(L);
+  const pts = drawConstellation(L);
+  const s = L.r / 300;
+  const [x, y] = pts[ORDER[DONE + 1]];
+  g.save(); g.strokeStyle = 'rgba(243,210,122,.9)'; g.lineWidth = 2 * s;
+  g.beginPath(); g.arc(x, y, 16 * s, 0, Math.PI * 2); g.stroke();
+  const rr = 16 * s + (1 - T) * 70 * s;
+  g.lineWidth = 4 * s; g.strokeStyle = `rgba(243,210,122,${0.35 + T * 0.55})`; g.shadowColor = GOLD; g.shadowBlur = 14 * s;
+  g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.stroke(); g.restore();
+  const [jx, jy] = pts[ORDER[DONE]];
+  judge(L, jx, jy - 30 * s, '딱 좋아요!', GOLD);
+  hud(L, '링이 별에 닿을 때 탭!');
+}
+
+// ── B: 아래 박자 줄 ──────────────────────────────────────────
+function drawB(L) {
+  drawLens(L);
+  const pts = drawConstellation(L, { pendingRings: false });
+  const s = L.r / 300;
+  const [x, y] = pts[ORDER[DONE + 1]];
+  glowDot(x, y, (7 + T * 5) * s, `rgba(243,210,122,${0.35 + T * 0.4})`, 22 * s);
+  const { W, portrait } = L;
+  const lw = portrait ? W - 32 : Math.min(760, W * 0.62), lh = portrait ? 64 : 70;
+  const lx = (W - lw) / 2, ly = L.cy + L.r + (portrait ? 46 : 34);
+  g.save();
+  roundRect(lx, ly, lw, lh, lh / 2); g.fillStyle = 'rgba(26,37,82,.85)'; g.fill();
+  g.strokeStyle = 'rgba(243,210,122,.45)'; g.lineWidth = 2; g.stroke();
+  const hx = lx + lh * 0.9;
+  g.beginPath(); g.arc(hx, ly + lh / 2, lh * 0.36, 0, Math.PI * 2); g.strokeStyle = GOLD; g.lineWidth = 3; g.shadowColor = GOLD; g.shadowBlur = 10; g.stroke();
+  g.shadowBlur = 0;
+  const beat = lh * 1.35;
+  for (let k = 0; k < 20; k++) {
+    const bx = hx + k * beat * 0.5 + (1 - T) * beat * 0.5;
+    if (bx > lx + lw - 10) break;
+    g.fillStyle = 'rgba(233,236,255,.12)'; g.fillRect(bx - 1, ly + 12, 2, lh - 24);
+  }
+  for (let k = 0; k < 5; k++) {
+    const nx = hx + (k + (1 - T)) * beat;
+    if (nx > lx + lw - lh * 0.4) break;
+    sparkle(nx, ly + lh / 2, lh * (k === 0 ? 0.3 : 0.24), k === 0 ? '#fff6d6' : 'rgba(233,236,255,.75)');
+  }
+  g.restore();
+  const [jx, jy] = pts[ORDER[DONE]];
+  judge(L, jx, jy - 30 * s, '딱 좋아요!', GOLD);
+  hud(L, '별 음표가 동그라미에 닿을 때 탭!');
+}
+
+// ── C: 별 사이 혜성 ──────────────────────────────────────────
+function drawC(L) {
+  drawLens(L);
+  const pts = drawConstellation(L);
+  const s = L.r / 300;
+  const [px, py] = pts[ORDER[DONE]], [x, y] = pts[ORDER[DONE + 1]];
+  if (V === 'd') {
+    // 절충: A 의 목표 링 — 혜성이 도착하는 순간 링도 별에 닿는다(같은 T)
+    g.save(); g.strokeStyle = 'rgba(243,210,122,.9)'; g.lineWidth = 2 * s;
+    g.beginPath(); g.arc(x, y, 16 * s, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 3.5 * s; g.strokeStyle = `rgba(243,210,122,${0.3 + T * 0.55})`; g.shadowColor = GOLD; g.shadowBlur = 12 * s;
+    g.beginPath(); g.arc(x, y, 16 * s + (1 - T) * 56 * s, 0, Math.PI * 2); g.stroke(); g.restore();
+  } else {
+    g.save(); g.strokeStyle = 'rgba(243,210,122,.85)'; g.lineWidth = 2 * s; g.setLineDash([5 * s, 4 * s]);
+    g.beginPath(); g.arc(x, y, 18 * s, 0, Math.PI * 2); g.stroke(); g.restore();
+  }
+  const hx = px + (x - px) * T, hy = py + (y - py) * T;
+  g.save();
+  const t0 = Math.max(0, T - 0.45);
+  const tl = g.createLinearGradient(px + (x - px) * t0, py + (y - py) * t0, hx, hy); tl.addColorStop(0, 'rgba(243,210,122,0)'); tl.addColorStop(1, 'rgba(255,240,190,.95)');
+  g.strokeStyle = tl; g.lineWidth = 5 * s; g.lineCap = 'round'; g.shadowColor = GOLD; g.shadowBlur = 18 * s;
+  g.beginPath(); g.moveTo(px + (x - px) * t0, py + (y - py) * t0); g.lineTo(hx, hy); g.stroke();
+  g.restore();
+  glowDot(hx, hy, 7 * s, '#fff6d6', 26 * s);
+  const R = rnd(3);
+  for (let i = 0; i < 9; i++) {
+    const t2 = Math.max(0, T - R() * 0.4);
+    glowDot(px + (x - px) * t2 + (R() - 0.5) * 12 * s, py + (y - py) * t2 + (R() - 0.5) * 12 * s, (1 + R() * 1.6) * s, 'rgba(255,230,160,.8)', 6 * s);
+  }
+  const [jx, jy] = pts[ORDER[DONE]];
+  judge(L, jx, jy - 30 * s, '딱 좋아요!', GOLD);
+  hud(L, V === 'd' ? '빛과 링이 별에 닿을 때 탭!' : '빛이 다음 별에 닿을 때 탭!');
+}
+
+function draw() {
+  cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
+  cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+  g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  const L = layout();
+  ({ a: drawA, b: drawB, c: drawC, d: drawC })[V](L);
+  const ui = document.getElementById('ui'); ui.innerHTML = '';
+  for (const [k, n] of [['a', 'A 링'], ['b', 'B 박자 줄'], ['c', 'C 혜성'], ['d', 'C+A 절충']]) {
+    const bt = document.createElement('button'); bt.textContent = n; bt.className = k === V ? 'on' : '';
+    bt.onclick = () => { V = k; draw(); }; ui.appendChild(bt);
+  }
+}
+addEventListener('resize', draw);
+draw();
+</script>
