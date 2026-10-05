@@ -211,7 +211,7 @@ test('gate spawns once — a second call does not stack a building or colliders'
   const a = c.spawnObservatoryGate(), b = c.spawnObservatoryGate();
   assert.equal(a, b);
   assert.equal(added.length, 1);
-  assert.equal(colliders.length, 2);   // foundation circle + stairs box
+  assert.equal(colliders.length, 4);   // plinth circle (stair notch) + tower wall + two stair side walls
   assert.equal(obstacles.length, 1);
 });
 
@@ -258,4 +258,25 @@ test('space helpers moved out of game.js: clamp, lighting, action dispatch, mini
   const marks = []; c.observatoryMinimapMarks(marks);
   assert.equal(marks.length, 2);
   assert.equal(marks[0].kind, 'exit'); assert.equal(marks[0].z, 540 + 5.4);
+});
+
+test('gate colliders: the stair corridor reaches the landing at the door, plinth and stair sides stay solid', () => {
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const fn = game.slice(game.indexOf('function solidCircle('), game.indexOf('const houseWindows = [];'));
+  const colliders = [], obstacles = [];
+  const G = new THREE.Vector3(25, 0, 22);
+  const { c } = spaceContext({
+    colliders, obstacles, PLAYER_R: 0.42, scene: { add() {} }, mergeGeos: geos => geos[0],
+    OBSERVATORY_GATE: G, buildObservatoryExterior: () => new THREE.Group(),
+    R_BASE: 4.2, STAIR_HALF_W: 1.1, STAIR_FOOT: 7.35,
+  });
+  vm.runInContext(fn, c);
+  c.spawnObservatoryGate();
+  const at = (x, z) => { const p = new THREE.Vector3(G.x + x, 0, G.z + z); c.resolveColliders(p); return [p.x - G.x, p.z - G.z]; };
+  const [, landing] = at(0, 5.0);
+  assert.ok(Math.abs(landing - 5.0) < 1e-9, 'top landing in front of the door is walkable');
+  assert.ok(at(0, 4.0)[1] >= 4.2 + 0.42 - 1e-9, 'door wall stops you');
+  const side = at(3.2, 4.5);
+  assert.ok(Math.hypot(...side) >= 5.7 + 0.42 - 1e-9, 'plinth side still solid');
+  assert.ok(Math.abs(at(1.3, 6.5)[0]) >= 1.1 + 0.12 + 0.42 - 1e-9 || Math.abs(at(1.3, 6.5)[0]) <= 1.1 - 0.42 + 1e-9, 'stair side wall');
 });

@@ -163,7 +163,7 @@ import {
 import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
-import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
+import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import {
   INT_HALF, STAIR_PROMPT_R, buildDecorGhost, buildInterior, commitDecor, curFloorDef, curHalf, decorClampX,
   decorClampZ, decorMesh, floorHitFromEvent, ghostFarmDef, ghostOk, groundHitFromEvent, nearestDecor, onDecorFloorTap,
@@ -1361,6 +1361,7 @@ const obstacles = [];             // 밭 만들기 금지 구역 {x,z,r} (나무
 //   문이 있는 건물은 원으로 막으면 문 앞에 설 수 없어 사각을 쓴다.
 const colliders = [];
 //   off=true 면 잠시 통과 가능(베어진 나무·캔 광맥처럼 안 보이는 동안)
+//   except(p)=true 인 자리에선 그 콜라이더만 건너뛴다(🔭 천문대 기단 원에 계단 통로를 뚫을 때)
 function solidCircle(x, z, r) { const c = { x, z, r, off: false }; colliders.push(c); return c; }
 function solidBox(x1, z1, x2, z2) { const c = { x1, z1, x2, z2, off: false }; colliders.push(c); return c; }
 //   손님처럼 사라지는 대상은 콜라이더도 같이 치운다(안 그러면 안 보이는 벽이 남음)
@@ -1369,7 +1370,7 @@ function removeSolid(c) { const i = colliders.indexOf(c); if (i >= 0) colliders.
 // 이동 후 밀어내기 — "가장 얕게 빠져나가는 방향"으로만 밀어 벽을 따라 미끄러지게 한다
 function resolveColliders(p) {
   for (const c of colliders) {
-    if (c.off) continue;
+    if (c.off || c.except?.(p)) continue;
     if (c.r !== undefined) {
       const dx = p.x - c.x, dz = p.z - c.z;
       const min = c.r + PLAYER_R;
@@ -5517,7 +5518,7 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (!mgView && !duelActive) { updatePlayer(dt, t); updateMuseumView(dt); updateObservatory(dt, t); updateCamera(dt); updateCameraFade(); }
+    else if (!mgView && !duelActive) { updatePlayer(dt, t); updateObservatoryStairs(dt); updateMuseumView(dt); updateObservatory(dt, t); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }

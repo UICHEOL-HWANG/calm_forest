@@ -31,7 +31,7 @@ export function ensureStyle() {
 .observatory-card p{margin:0 0 14px;font:600 14px/1.55 ${FAMILY};color:rgba(233,236,255,.74)}
 .observatory-card .score{margin:0 0 15px;font:800 30px/1 ${FAMILY};color:${GOLD}}
 .observatory-card button{height:38px;padding:0 16px;border-radius:8px;border:1px solid rgba(243,210,122,.45);background:${GOLD};color:#18204a;font:800 14px ${FAMILY};cursor:pointer}
-.observatory-book{display:flex;flex-direction:column;align-items:center;justify-content:safe center;padding:16px;overflow-y:auto;touch-action:pan-y}
+.observatory-book{display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:16px;overflow-y:auto;touch-action:pan-y}
 .observatory-book h2{margin:0 0 4px;font:800 21px ${FAMILY};color:${INK}}
 .observatory-book>p{margin:0 0 14px;font:500 13px ${FAMILY};color:rgba(233,236,255,.62);text-align:center}
 .observatory-book .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(560px,100%)}
