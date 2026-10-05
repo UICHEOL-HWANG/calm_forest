@@ -158,3 +158,35 @@ test('§8.1: stopDecorPlacing 취소(putBack)는 들었던 원래 층(pickedDeco
     /if\s*\(pickedDecor\s*&&\s*putBack\)\s*placeDecor\([^)]*,\s*pickedDecor\.f\)\s*;/,
   );
 });
+
+// ── 🌿 7단계 정원 층(f=3) — 문으로 가는 야외 바닥(지붕처럼 띄우지 않는다) ─────────────
+import { floorsFor as _floorsFor, floorAt as _floorAt, normalizeFloor as _normalizeFloor } from '../js/house-floors.js';
+
+test('7단계에서만 정원 층(f=3)이 열린다', () => {
+  assert.deepEqual(_floorsFor(6).map(f => f.id), ['ground', 'upper', 'roof']);
+  assert.deepEqual(_floorsFor(7).map(f => f.id), ['ground', 'upper', 'roof', 'garden']);
+  assert.equal(_floorAt(6, 3), null);
+  assert.equal(_floorAt(7, 3).id, 'garden');
+});
+
+test('정원은 야외이고 띄우지 않는다(지붕만 elevated)', () => {
+  const g = _floorAt(7, 3), r = _floorAt(7, 2);
+  assert.equal(g.outdoor, true);
+  assert.equal(!!g.elevated, false);
+  assert.equal(r.elevated, true);
+  assert.equal(_floorAt(7, 0).elevated || false, false);
+});
+
+test('정원 f=3 저장값은 7단계 아래에선 1층으로 떨군다', () => {
+  assert.equal(_normalizeFloor(3, 7), 3);
+  assert.equal(_normalizeFloor(3, 6), 0);
+  assert.equal(_normalizeFloor(3, 4), 0);
+});
+
+import { gardenDoorLocal, GARDEN_DOOR_Z, GARDEN_DOOR_HALF_W } from '../js/house-floors.js';
+test('정원 문 자리는 1층 방 안쪽이고 먼 벽 출구(z=-7)·왼쪽 슬랫벽과 겹치지 않는다', () => {
+  const d = gardenDoorLocal(7);
+  assert.ok(d.x > 5 && d.x < 7, '오른쪽 벽 안쪽');
+  assert.ok(Math.abs(d.z - (-7)) > 8, '먼 벽 출구와 멀다');
+  assert.ok(GARDEN_DOOR_Z + GARDEN_DOOR_HALF_W < 7 - 0.5, '문이 벽 모서리 안');
+});
