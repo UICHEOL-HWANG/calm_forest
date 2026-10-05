@@ -15,9 +15,9 @@ function requireUi() {
 test('렌즈 뷰는 리듬 로직, COPY, i18n, 입력 잠금을 연결한다', () => {
   requireUi();
   assert.match(UI, /import \{ buildChart, judgeTap, summarize \} from '\.\/rhythm\.js'/);
-  assert.match(UI, /import \{ COPY \} from '\.\/copy\.js'/);
+  assert.match(UI, /import \{ COPY, fill, starCopy \} from '\.\/copy\.js'/);
   assert.match(UI, /import \{ t \} from '\.\.\/i18n\.js'/);
-  assert.match(UI, /import \{ Input, trackDiffAbandon \} from '\.\.\/game\.js'/);
+  assert.match(UI, /import \{ Input \} from '\.\.\/game\.js'/);
   assert.match(UI, /export async function openStarView/);
   assert.match(UI, /Input\.setAnalog\(0, 0\)/);
 });
@@ -34,7 +34,7 @@ test('렌즈 뷰는 오버레이 생명주기와 포기 경로를 정리한다',
   assert.match(UI, /e\.key === ' ' \|\| e\.key === 'Enter'/);
   assert.match(UI, /requestAnimationFrame/);
   assert.match(UI, /cancelAnimationFrame/);
-  assert.match(UI, /trackDiffAbandon\('star'[\s\S]*constellation: 'big_dipper'/);
+  assert.match(UI, /state\.onAbandon\?\.\(reason, runSnapshot\(state\)\)/);
   assert.match(UI, /controller\.abort\(\)/);
 });
 

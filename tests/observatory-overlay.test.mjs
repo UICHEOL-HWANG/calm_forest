@@ -109,11 +109,14 @@ test('abandon is tracked only with a real rolled difficulty, never a placeholder
 
   const r = overlay();
   const diff = { arm: 1, ease: 1.4, dda: 1 };
-  await r.context.openStarView({ diff, ease: diff.ease });
+  const got = [];
+  await r.context.openStarView({ diff, ease: diff.ease, onAbandon: (reason, run) => got.push([reason, run]) });
+  r.dom.setNow(rhythm.buildChart(1.4)[0].hitMs); r.canvas().dispatch('pointerdown');   // one on-time tap (ease 1.4 chart)
   r.dom.window.dispatch('keydown', { key: 'Escape' });
-  assert.equal(r.tracked.length, 1);
-  assert.deepEqual(r.tracked[0].slice(0, 3), ['star', diff, 'esc']);
-  assert.equal(r.tracked[0][3].constellation, 'big_dipper');
+  assert.equal(got.length, 1);
+  assert.equal(got[0][0], 'esc');
+  assert.deepEqual([...got[0][1].judges], ['perfect']);
+  assert.deepEqual([...got[0][1].noteOffsets], [0], 'per-note offsets ride along for star_runs');
 });
 
 test('first star lights up only when the run starts (800ms), not at open', async () => {
@@ -197,4 +200,22 @@ test('a lens frame uses only a handful of shadowBlur draws (stars come from cach
     assert.ok(blurs <= 8, `${blurs} blurred draws in one frame`);
     assert.ok(g.calls.filter(x => x[0] === 'drawImage').length >= 2 + 7, 'lens cache + 7 star sprites');
   }
+});
+
+test('result card shows the first-clear bonus and the newly opened constellation (toasts hide under the overlay)', async () => {
+  const o = overlay();
+  await o.context.openStarView({ onResult: () => ({ coins: 10, bonus: 30, unlockedNext: 'cassiopeia' }) });
+  o.play([0, 0, 0, 0, 0, 0, 0]);
+  const text = o.card().querySelector('p').textContent;
+  assert.ok(text.includes('처음 그렸어요 +30🪙'), text);
+  assert.ok(text.includes('✨ 새 별자리가 보여요 · 카시오페이아'), text);
+});
+
+test('a replaced lens does not call the old onClose (would reopen the notebook over the new lens)', async () => {
+  const o = overlay();
+  let closes = 0;
+  await o.context.openStarView({ onClose: () => { closes += 1; } });
+  await o.context.openStarView({});
+  assert.equal(closes, 0);
+  assert.equal(o.dom.document.body.querySelectorAll('.observatory-layer').length, 1);
 });

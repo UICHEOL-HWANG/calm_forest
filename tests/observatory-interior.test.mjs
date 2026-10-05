@@ -139,46 +139,63 @@ test('hall furniture is solid once, and the telescope spot stays reachable', () 
   assert.ok(!moved(0, 3.4), 'entrance spot');
 });
 
-test('star_start fires when the lens view actually opens, not when the bend starts', async () => {
-  const events = [], rolls = [], settles = [];
-  let opened = null;
-  const load = (uiModule) => {
-    const player = new THREE.Object3D(), playerAnchor = new THREE.Object3D();
-    const classes = new Set();
-    const c = vm.createContext({ THREE, player, playerAnchor, $w: {},
-      OBSERVATORY: new THREE.Vector3(0, 0, 540), OBSERVATORY_R: 5.4, Input: { setAnalog() {} },
-      TELESCOPE: { eye: { x: 0.8, z: 0.65, yaw: 4.04 } },
-      ui: { toast() {} }, Sound: { blip() {} }, trackEvent: (name, params) => events.push([name, params]),
-      __import: async () => uiModule, starSettle: (...a) => { settles.push(a); return { coins: 0 }; },
-      rollDifficulty: game => { rolls.push(game); return { ease: 1.4, dda: 1, arm: 2 }; },
-      diffParams: r => ({ ease: r.ease, dda: r.dda, arm: r.arm }),
-      document: { body: { classList: { contains: x => classes.has(x), add: x => classes.add(x), remove: x => classes.delete(x) } } },
-    });
-    vm.runInContext(readFileSync(new URL('../js/spaces/observatory.js', import.meta.url), 'utf8')
-      .replace(/import[\s\S]*?from ['"][^'"]+['"];\n/g, '').replace(/^export /gm, '').replace(/\bimport\(/g, '__import('), c);
-    return c;
+// 🔭 숙이기 → 별자리 수첩 → 카드 → 렌즈 → 닫으면 수첩 → 수첩 닫으면 자세 풀기
+function flowContext({ lens = {}, autoPick = 'leo' } = {}) {
+  const log = { begins: [], settles: [], abandons: [], books: [], lens: [], toasts: [], rolls: [] };
+  const BY_ID = { big_dipper: { id: 'big_dipper' }, leo: { id: 'leo' } };
+  const book = {
+    openStarBook: (opts) => { log.books.push(opts); if (autoPick && log.books.length === 1) opts.onPick(BY_ID[autoPick]); },
   };
-  const c = load({ openStarView: async (opts) => { opened = opts; return {}; } });
+  const ui = { openStarView: async (opts) => { log.lens.push(opts); return {}; }, ...lens };
+  const { c, classes } = spaceContext({
+    __import: async path => (path.includes('book') ? book : ui),
+    ui: { toast: (m) => log.toasts.push(m) },
+    rollDifficulty: game => { log.rolls.push(game); return { ease: 1.4, dda: 1, arm: 2 }; },
+    starState: () => ({ cleared: { big_dipper: 'x' }, best: {} }),
+    starBegin: (cst, diff, runId) => { log.begins.push([cst.id, diff.arm, runId]); return { attemptN: 3, unlockedN: 4 }; },
+    starSettle: (...a) => { log.settles.push(a); return { coins: 0, unlockedNext: 'orion' }; },
+    starAbandon: (...a) => log.abandons.push(a),
+    crypto: { randomUUID: () => 'run-uuid' },
+  });
+  return { c, classes, log };
+}
+
+test('the notebook opens after the bend; picking a card opens the lens and only then sends star_start', async () => {
+  const { c, log } = flowContext();
   c.startObservatoryLook();
-  assert.deepEqual(events.filter(e => e[0] === 'star_start'), [], 'not yet — still bending');
+  assert.equal(log.books.length, 0, 'not yet — still bending');
   c.updateObservatory(0.8, 0);
   await new Promise(r => setTimeout(r, 0));
-  const starts = events.filter(e => e[0] === 'star_start');
-  assert.equal(starts.length, 1);
-  assert.equal(starts[0][1].constellation, 'big_dipper');
-  assert.equal(starts[0][1].ease, 1.4, 'star_start carries diffParams');
-  assert.deepEqual(rolls, ['star']);
-  assert.equal(opened.ease, 1.4);
-  assert.equal(opened.diff.arm, 2);
-  opened.onResult({ score: 10 }, { judges: [] });
-  assert.equal(settles.length, 1);
-  assert.equal(settles[0][2].arm, 2, 'settle sees the same rolled difficulty');
+  assert.equal(log.books.length, 1, 'notebook first');
+  assert.deepEqual(log.books[0].cleared, { big_dipper: 'x' });
+  assert.equal(log.lens.length, 1);
+  assert.equal(log.lens[0].constellation.id, 'leo');
+  assert.equal(log.lens[0].ease, 1.4);
+  assert.deepEqual(log.rolls, ['star']);
+  assert.deepEqual(log.begins, [['leo', 2, 'run-uuid']], 'star_start after the lens opened, same rolled difficulty + run id');
+  // settle and abandon see the same run context
+  const r = log.lens[0].onResult({ score: 10 }, { judges: [] });
+  assert.equal(log.settles[0][2].arm, 2);
+  assert.deepEqual({ id: log.settles[0][3].c.id, runId: log.settles[0][3].runId, attemptN: log.settles[0][3].attemptN }, { id: 'leo', runId: 'run-uuid', attemptN: 3 });
+  assert.equal(r.unlockedNext, 'orion');
+  log.lens[0].onAbandon('esc', { judges: ['perfect'] });
+  assert.equal(log.abandons[0][0], 'esc');
+  assert.equal(log.abandons[0][3].runId, 'run-uuid');
+  // closing the lens goes back to the notebook, with the newly opened card highlighted
+  log.lens[0].onClose();
+  assert.equal(log.books.length, 2);
+  assert.equal(log.books[1].fresh, 'orion');
+});
 
-  events.length = 0;
-  const broken = load({});   // ui failed to provide openStarView
-  broken.startObservatoryLook(); broken.updateObservatory(0.8, 0);
+test('broken lens module → no start, pose released', async () => {
+  const { c, log, classes } = flowContext({ lens: { openStarView: undefined } });
+  c.startObservatoryLook(); c.updateObservatory(0.8, 0);
   await new Promise(r => setTimeout(r, 0));
-  assert.deepEqual(events.filter(e => e[0] === 'star_start'), [], 'no start when the view never opened');
+  await new Promise(r => setTimeout(r, 0));
+  assert.deepEqual(log.begins, [], 'no star_start when the view never opened');
+  assert.equal(c.observatoryLensOpen(), false, 'pose released — no frozen screen');
+  assert.equal(classes.has('menu-open'), false);
+  assert.ok(log.toasts.length >= 1);
 });
 
 test('gate spawns once — a second call does not stack a building or colliders', () => {
@@ -198,19 +215,15 @@ test('gate spawns once — a second call does not stack a building or colliders'
   assert.equal(obstacles.length, 1);
 });
 
-test('observatoryLensOpen is true only while the opaque lens view is up (3D render can pause)', async () => {
-  let opened = null;
-  const { c } = spaceContext({
-    __import: async () => ({ openStarView: async (opts) => { opened = opts; return {}; } }),
-    starSettle: () => ({ coins: 0 }), rollDifficulty: () => ({ ease: 1, dda: 1, arm: 1 }), diffParams: () => ({}),
-  });
+test('observatoryLensOpen is true while the notebook or lens covers the screen (3D render can pause)', async () => {
+  const { c, log } = flowContext({ autoPick: null });
   assert.equal(c.observatoryLensOpen(), false);
   c.startObservatoryLook();
   assert.equal(c.observatoryLensOpen(), false, 'still bending — the room is visible');
   c.updateObservatory(0.8, 0);
   await new Promise(r => setTimeout(r, 0));
-  assert.equal(c.observatoryLensOpen(), true);
-  opened.onClose();
+  assert.equal(c.observatoryLensOpen(), true, 'notebook is opaque too');
+  log.books[0].onClose();
   assert.equal(c.observatoryLensOpen(), false);
 });
 

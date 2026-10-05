@@ -1,13 +1,14 @@
 // =============================================================
 //  calm forest · 🔭 천문대 렌즈 뷰
 //  ------------------------------------------------------------
-//  sims/observatory-eyepiece-sim.html?v=d 의 혜성+링 시안을 실제
-//  미니게임 오버레이로 옮긴다. 보상·저장은 다음 단계에서 game.js 와 묶는다.
+//  sims/observatory-eyepiece-sim.html?v=d 의 혜성+링 시안을 실제 미니게임 오버레이로 옮겼다.
+//  opts.constellation 으로 별자리를 받는다. 보상·저장·기록은 onResult/onAbandon(star-run.js)이 맡는다.
 // =============================================================
 import { buildChart, judgeTap, summarize } from './rhythm.js';
-import { COPY } from './copy.js';
+import { BY_ID } from './constellations.js';
+import { COPY, fill, starCopy } from './copy.js';
 import { t } from '../i18n.js';
-import { Input, trackDiffAbandon } from '../game.js';
+import { Input } from '../game.js';
 
 import { ensureStyle, layout, drawLens, drawConstellation, drawComet, drawJudge, drawHud } from './render.js';
 
@@ -16,20 +17,22 @@ let view = null;
 function showResult(state) {
   if (state.resultShown) return;
   state.resultShown = true;
-  const summary = summarize(state.judges);
+  const summary = summarize(state.judges, state.chart.length);
   // onResult pays out (game side) and reports what was actually given — never show a reward that wasn't paid.
-  const run = { judges: [...state.judges], offsets: [...state.offsets], durationMs: performance.now() - state.startAt };
-  const paid = state.onResult?.(summary, run) || {};
+  const paid = state.onResult?.(summary, runSnapshot(state)) || {};
   const coins = paid.coins || 0;
   const reward = coins > 0 ? `<br>${t(COPY.reward)} +${coins}`
     : summary.success && paid.alreadyToday ? `<br>${t(COPY.rewardDone)}` : '';   // 실패는 그날을 쓰지 않으니 안내 없음
+  const first = paid.bonus > 0 ? `<br>${t(fill(COPY.firstClear, paid.bonus))}` : '';   // 🌌 별자리 첫 클리어 1회
+  // ✨ 해금 안내는 카드 안에 — 토스트(z 33)는 이 오버레이(z 3000) 밑에 깔려 보이지 않는다
+  const unlock = paid.unlockedNext ? `<br>${t(fill(COPY.unlockToast, starCopy(paid.unlockedNext).name))}` : '';
 
   const card = document.createElement('div');
   card.className = 'observatory-card';
   card.innerHTML = `
-    <h2>${t(summary.success ? COPY.complete : COPY.fail)}</h2>
+    <h2>${t(summary.success ? starCopy(state.c.id).complete : COPY.fail)}</h2>
     <div class="score">${summary.score}</div>
-    <p>${t(COPY.result)} · ${t(COPY.perfect)} ${summary.perfect} · ${t(COPY.good)} ${summary.good} · ${t(COPY.miss)} ${summary.miss}${reward}</p>
+    <p>${t(COPY.result)} · ${t(COPY.perfect)} ${summary.perfect} · ${t(COPY.good)} ${summary.good} · ${t(COPY.miss)} ${summary.miss}${reward}${first}${unlock}</p>
     <button type="button">${t(COPY.close)}</button>
   `;
   card.querySelector('button').addEventListener('click', () => closeStarView('complete'), { signal: state.controller.signal });
@@ -44,9 +47,10 @@ function tap(state) {
   if (!note) return;
   const offset = performance.now() - state.startAt - note.hitMs;
   const judge = judgeTap(offset, state.ease);
-  if (judge === 'early') return;
+  if (judge === 'early') { state.earlyTaps += 1; return; }   // 벌점 없음 — 조급함의 신호로 기록만
   state.judges.push(judge);
-  state.offsets.push(Math.round(offset));   // 탭한 노트만(만료 miss 는 오프셋이 없다)
+  state.offsets.push(Math.round(offset));   // 탭한 노트만(만료 miss 는 오프셋이 없다) — GA4 star_result 용
+  state.noteOffsets.push(Math.round(offset));   // 노트 순서 정렬(만료 miss = null) — star_runs 학습용
   state.flash = { judge, until: performance.now() + 620 };
   if (state.judges.length >= state.chart.length) showResult(state);
 }
@@ -57,6 +61,7 @@ function missExpired(state, elapsed) {
     const note = state.chart[state.judges.length];
     if (judgeTap(elapsed - note.hitMs, state.ease) !== 'miss') break;
     state.judges.push('miss');
+    state.noteOffsets.push(null);
     state.flash = { judge: 'miss', until: performance.now() + 620 };
   }
   if (state.judges.length >= state.chart.length) showResult(state);
@@ -81,9 +86,17 @@ function drawFrame(state) {
   state.raf = state.closed || state.resultShown ? 0 : requestAnimationFrame(() => drawFrame(state));
 }
 
+/** 판 기록(정산·포기 공통) — offsets 는 탭한 노트만, noteOffsets 는 노트 순서(miss=null) */
+function runSnapshot(state) {
+  return {
+    judges: [...state.judges], offsets: [...state.offsets], noteOffsets: [...state.noteOffsets],
+    earlyTaps: state.earlyTaps, durationMs: performance.now() - state.startAt,
+  };
+}
+
 function abandon(state, reason) {
   if (state.resultShown || state.closed || !state.diff) return;   // 굴린 난이도가 없으면 기록하지 않는다(가짜 arm 금지)
-  trackDiffAbandon('star', state.diff, reason, { constellation: 'big_dipper' });
+  state.onAbandon?.(reason, runSnapshot(state));   // 게임 쪽(star-run.js starAbandon)이 GA4·star_runs 에 남긴다
 }
 
 function closeStarView(reason = 'close') {
@@ -96,7 +109,7 @@ function closeStarView(reason = 'close') {
   document.body.classList.remove('menu-open', 'mg-open');
   state.layer.remove();
   view = null;
-  state.onClose?.();
+  if (reason !== 'replace') state.onClose?.();   // 새 렌즈가 이 자리를 넘겨받았다 — 수첩을 다시 열면 새 렌즈 위에 덮인다
 }
 
 export async function openStarView(opts = {}) {
@@ -125,9 +138,12 @@ export async function openStarView(opts = {}) {
     dpr: Math.min(window.devicePixelRatio || 1, 2),
     ease: opts.ease || 1,
     diff: opts.diff || null,
-    chart: buildChart(opts.ease || 1),
+    c: opts.constellation || BY_ID.big_dipper,
+    chart: buildChart(opts.ease || 1, opts.constellation || BY_ID.big_dipper),
     judges: [],
     offsets: [],
+    noteOffsets: [],
+    earlyTaps: 0,
     flash: null,
     raf: 0,
     startAt: performance.now(),
@@ -135,6 +151,7 @@ export async function openStarView(opts = {}) {
     closed: false,
     onClose: opts.onClose,
     onResult: opts.onResult,
+    onAbandon: opts.onAbandon,
     bgCanvas: null,
     rimCanvas: null,
     cacheKey: '',

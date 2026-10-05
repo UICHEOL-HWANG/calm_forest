@@ -27,6 +27,7 @@ export function starBegin(c, diff, runId) {
   const attemptN = (st.plays[c.id] || 0) + 1;
   const unlockedN = unlockedIds(st.cleared).length;
   gameState.star = { ...st, plays: { ...st.plays, [c.id]: attemptN } };
+  requestSave();   // 포기한 판도 시도 횟수는 남긴다 — 안 그러면 새로고침 뒤 attempt_n 이 되풀이된다
   trackEvent('star_start', {
     constellation: c.id, notes: noteCount(c), run_id: runId, attempt_n: attemptN, unlocked_n: unlockedN,
     ...(diff ? diffParams(diff) : {}),
