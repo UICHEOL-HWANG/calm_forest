@@ -81,7 +81,10 @@ export function nextDda(game, dda = 1, outcome = 0) {
 export function ddaOutcome(game, res = {}) {
   if (game === 'cook') return res.abandoned ? null : Math.max(0, Math.min(100, res.score || 0)) / 100;
   if (game === 'craft') return res.played ? Math.max(0, Math.min(3, res.grade || 0)) / 3 : null;
-  if (game === 'star') return Math.max(0, Math.min(14, res.score || 0)) / 14;   // 🔭 끝까지 간 판만 불린다(포기는 trackDiffAbandon)
+  if (game === 'star') {   // 🔭 끝까지 간 판만 불린다(포기는 trackDiffAbandon). 별자리마다 노트 수가 달라 그 판의 만점으로 나눈다
+    const max = res.maxScore || 14;   // maxScore 없는 옛 요약 = 북두칠성 14
+    return Math.max(0, Math.min(max, res.score || 0)) / max;
+  }
   return null;
 }
 

@@ -1,15 +1,6 @@
-export const DIPPER = [
-  [0, 0],
-  [1.05, -0.15],
-  [1.25, -0.95],
-  [0.15, -0.8],
-  [-0.75, 0.15],
-  [-1.55, 0.45],
-  [-2.45, 0.35],
-];
+import { BY_ID } from './constellations.js';
 
-export const ORDER = [6, 5, 4, 0, 1, 2, 3, 0];
-
+const DEFAULT = BY_ID.big_dipper;   // 인자 없이 부르면 첫 별자리(북두칠성) — 옛 호출과 같은 차트
 const START_MS = 800;
 const PERFECT_MS = 90;
 const GOOD_MS = 180;
@@ -19,25 +10,24 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-function distance(a, b) {
-  const ax = DIPPER[a][0];
-  const ay = DIPPER[a][1];
-  const bx = DIPPER[b][0];
-  const by = DIPPER[b][1];
+function distance(c, a, b) {
+  const [ax, ay] = c.stars[a];
+  const [bx, by] = c.stars[b];
   return Math.hypot(ax - bx, ay - by);
 }
 
-function travelMs(from, to, ease) {
-  return clamp(650 + distance(from, to) * 380, 700, 1300) * ease;
+function travelMs(c, from, to, ease) {
+  return clamp(650 + distance(c, from, to) * 380, 700, 1300) * (c.tempo ?? 1) * ease;
 }
 
-export function buildChart(ease = 1) {
+/** c: constellations.js 항목 — 노트 = order 의 인접 쌍. tempo·ease 가 둘 다 이동 시간에 곱해진다 */
+export function buildChart(ease = 1, c = DEFAULT) {
   const chart = [];
   let startMs = START_MS;
-  for (let i = 0; i < ORDER.length - 1; i++) {
-    const from = ORDER[i];
-    const to = ORDER[i + 1];
-    const hitMs = startMs + travelMs(from, to, ease);
+  for (let i = 0; i < c.order.length - 1; i++) {
+    const from = c.order[i];
+    const to = c.order[i + 1];
+    const hitMs = startMs + travelMs(c, from, to, ease);
     chart.push({ i, from, to, startMs, hitMs });
     startMs = hitMs;
   }
@@ -53,7 +43,8 @@ export function judgeTap(offsetMs, ease = 1) {
   return offsetMs < 0 ? 'early' : 'miss';
 }
 
-export function summarize(judges = []) {
+/** notes: 그 별자리의 노트 수(포기한 판은 진행한 judges 보다 많다). 허용 miss = ceil(노트 × 0.4) — 7노트는 3 */
+export function summarize(judges = [], notes = judges.length) {
   let perfect = 0;
   let good = 0;
   let miss = 0;
@@ -75,7 +66,7 @@ export function summarize(judges = []) {
     maxCombo = Math.max(maxCombo, combo);
   }
   const score = perfect * 2 + good;
-  return { perfect, good, miss, maxCombo, score, success: miss <= 3 };
+  return { perfect, good, miss, maxCombo, score, maxScore: notes * 2, success: miss <= Math.ceil(notes * 0.4) };
 }
 
 export function rewardFor(summary, alreadyToday) {

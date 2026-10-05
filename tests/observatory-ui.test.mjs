@@ -57,6 +57,9 @@ test('천문대 COPY 는 plan §1 문구를 모으고 canvas 문구는 t(COPY.*)
   for (const key of ['title', 'subtitle', 'tapGuide', 'perfect', 'good', 'miss', 'complete', 'fail', 'close', 'combo']) {
     assert.match(COPY, new RegExp(`${key}:`), `COPY.${key} 누락`);
     if (key === 'complete' || key === 'fail') continue;   // 결과 제목은 성공/실패 분기 — observatory-overlay.test.mjs 가 동작으로 검사
+    if (key === 'title' || key === 'subtitle') continue;   // 별자리별 — starCopy(id) 로 아래에서 검사
     assert.match(UI, new RegExp(`t\\(COPY\\.${key}\\)`), `ui.js 에서 COPY.${key} 를 t() 로 감싸야 한다`);
   }
+  assert.match(UI, /t\(sc\.name\)/, 'HUD 제목은 별자리 이름을 t() 로');
+  assert.match(UI, /t\(sc\.subtitle\)/, 'HUD 부제는 별자리 부제를 t() 로');
 });

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DIPPER, ORDER, buildChart, judgeTap, rewardFor, summarize } from '../js/observatory/rhythm.js';
+import { buildChart, judgeTap, rewardFor, summarize } from '../js/observatory/rhythm.js';
+import { BY_ID } from '../js/observatory/constellations.js';
+const { stars: DIPPER, order: ORDER } = BY_ID.big_dipper;
 
 test('북두칠성 차트는 시작 별 하나와 7개 노트로 구성된다', () => {
   assert.equal(DIPPER.length, 7);
@@ -48,13 +50,13 @@ test('judgeTap 은 ease 만큼 판정 창이 넓어진다', () => {
 test('summarize 는 점수와 miss 로 끊기는 최대 콤보를 계산한다', () => {
   assert.deepEqual(
     summarize(['perfect', 'good', 'miss', 'perfect', 'perfect', 'good', 'miss']),
-    { perfect: 3, good: 2, miss: 2, maxCombo: 3, score: 8, success: true },
+    { perfect: 3, good: 2, miss: 2, maxCombo: 3, score: 8, maxScore: 14, success: true },
   );
 });
 
-test('summarize 는 miss 가 4개 이상이면 실패로 본다', () => {
-  assert.equal(summarize(['miss', 'miss', 'miss']).success, true);
-  assert.equal(summarize(['miss', 'miss', 'miss', 'miss']).success, false);
+test('summarize 는 (7노트 북두칠성에서) miss 가 4개 이상이면 실패로 본다', () => {
+  assert.equal(summarize(['miss', 'miss', 'miss'], 7).success, true);
+  assert.equal(summarize(['miss', 'miss', 'miss', 'miss'], 7).success, false);
 });
 
 test('rewardFor 는 성공한 첫 완성에만 코인을 준다', () => {
