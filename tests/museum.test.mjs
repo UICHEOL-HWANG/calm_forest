@@ -212,7 +212,7 @@ const slotsFn = (() => {
 for (const floor of MUSEUM_FLOORS) {
   test(`${floor.name} 진열장이 전부 방 안에 있다`, () => {
     const count = floorEntries(floor.id, DEX).length;
-    const slots = slotsFn(count);
+    const slots = slotsFn(count, floor.id === 1);
     assert.equal(slots.length, count, '칸 수와 자리 수가 다르다 — 전시물이 사라지거나 남는다');
     const out = slots.filter(([x, z]) => Math.abs(x) > HALF_W - 0.8 || Math.abs(z) > HALF_D - 0.8);
     assert.deepEqual(out, [], `${out.length}칸이 벽 밖이다 — 걸어갈 수 없어 영원히 못 본다`);
@@ -221,7 +221,7 @@ for (const floor of MUSEUM_FLOORS) {
 
 test('진열장끼리 겹치지 않는다', () => {
   for (const floor of MUSEUM_FLOORS) {
-    const slots = slotsFn(floorEntries(floor.id, DEX).length);
+    const slots = slotsFn(floorEntries(floor.id, DEX).length, floor.id === 1);
     for (let i = 0; i < slots.length; i++) for (let j = i + 1; j < slots.length; j++) {
       const d = Math.hypot(slots[i][0] - slots[j][0], slots[i][1] - slots[j][1]);
       assert.ok(d > 1.1, `${floor.name} 진열장이 겹친다(간격 ${d.toFixed(2)})`);
@@ -229,11 +229,25 @@ test('진열장끼리 겹치지 않는다', () => {
   }
 });
 
+// ✨ 1층 가운데 특별 진열대 3칸이 벽·섬 진열장과 같은 자리를 쓰면 겹쳐 보인다(2026-10-06 실기기 제보)
+test('1층 특별 진열대가 진열장과 겹치지 않는다', () => {
+  const EXTRAS = readFileSync(new URL('../js/museum/extras.js', import.meta.url), 'utf8');
+  const specials = JSON.parse(EXTRAS.match(/specials: (\[\[.*?\]\])/)[1]);
+  assert.equal(specials.length, 3);
+  const slots = slotsFn(floorEntries(1, DEX).length, true);
+  for (const [sx, sz] of specials) for (const [x, z] of slots) {
+    assert.ok(Math.hypot(sx - x, sz - z) > 1.6, `특별 진열대(${sx},${sz}) 가 진열장(${x},${z})과 겹친다`);
+  }
+  for (let i = 0; i < specials.length; i++) for (let j = i + 1; j < specials.length; j++) {
+    assert.ok(Math.hypot(specials[i][0] - specials[j][0], specials[i][1] - specials[j][1]) > 1.6, '특별 진열대끼리 겹친다');
+  }
+});
+
 // ⚠️ 관람 모형은 진열장과 **같은 자리**에 떠야 한다. 13칸 기준으로 읽으면
 //    3층에서 undefined 를 구조분해해 터지고, 특별전에선 9m 떨어진 벽 속에 뜬다.
 test('관람 모형이 층 칸 수에 맞는 자리를 쓴다', () => {
   const fn = SRC.slice(SRC.indexOf('function openMuseumView('), SRC.indexOf('\nfunction closeMuseumView'));
-  assert.match(fn, /museumSlots\(museumFloorItems\(\)\.length\)/, '13칸 기준 자리를 쓰고 있다');
+  assert.match(fn, /museumSlots\(museumFloorItems\(\)\.length[,)]/, '13칸 기준 자리를 쓰고 있다');
   assert.match(fn, /if \(!slot\) return/, '없는 자리를 그대로 구조분해한다');
 });
 
