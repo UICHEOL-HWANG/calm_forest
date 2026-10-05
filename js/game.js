@@ -164,7 +164,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import {
-  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, observatoryCamFocus, spawnObservatoryGate, TELESCOPE_SPOT, startObservatoryLook, updateObservatory,
+  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, observatoryCamFocus, observatoryLensOpen, spawnObservatoryGate, TELESCOPE_SPOT, startObservatoryLook, updateObservatory,
 } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import {
   INT_HALF, STAIR_PROMPT_R, buildDecorGhost, buildInterior, commitDecor, curFloorDef, curHalf, decorClampX,
@@ -5600,7 +5600,7 @@ function animate() {
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
   if (houseGhost) { houseGhost.visible = showHouseCue; if (showHouseCue) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); }
-  composer.render();
+  if (!observatoryLensOpen()) composer.render();   // 🔭 불투명 렌즈 뷰가 덮는 동안엔 3D 를 그리지 않는다
   if (perfSampler && mode === 'play') { const ps = perfSampler.frame(performance.now()); if (ps) trackEvent('perf_sample', { ...ps, ...perfContext(renderer) }); }
 
   // 📷 액션샷 정점 캡처 — 렌더 직후 캡처해 항상 온전한 프레임을 얻음

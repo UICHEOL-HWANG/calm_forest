@@ -19,6 +19,10 @@ export const OBSERVATORY_LIGHT = {
 
 let gateGroup = null;
 let lookState = null;
+let lensOpen = false;   // 렌즈 뷰(불투명 오버레이)가 화면을 덮고 있는 동안 — 3D 렌더를 쉬어도 된다
+
+/** 렌즈가 화면을 다 덮고 있나 — game.js 루프가 composer.render() 를 건너뛴다 */
+export function observatoryLensOpen() { return lensOpen; }
 
 export const LOOK_SECONDS = 0.7;   // 허리 숙이는 시간 → 끝나면 렌즈 뷰
 export const TELESCOPE_EYE = TELESCOPE.eye;
@@ -76,7 +80,7 @@ function resetLookPose() {
   playerAnchor.rotation.x = lookState.anchorX;
   player.position.y = 0;
   if (lookState.ownsLock) document.body.classList.remove('menu-open');
-  lookState = null;
+  lookState = null; lensOpen = false;
 }
 
 async function openStarView() {
@@ -86,6 +90,7 @@ async function openStarView() {
     if (lookState !== session) return;
     const diff = rollDifficulty('star');   // 🎚️ ease 가 클수록 쉽다(느린 혜성·넓은 판정 창) — DIFFICULTY 와 같은 방향
     await mod.openStarView({ diff, ease: diff.ease, onClose: resetLookPose, onResult: (summary, run) => starSettle(summary, run, diff) });
+    if (lookState === session) lensOpen = true;   // 닫기가 먼저 왔으면(세션 끝) 켜지 않는다
     trackEvent('star_start', { constellation: 'big_dipper', ...diffParams(diff) });   // 렌즈가 실제로 열렸을 때만
   } catch {
     ui.toast?.('🔭 별보기 준비 중이에요', 1600);

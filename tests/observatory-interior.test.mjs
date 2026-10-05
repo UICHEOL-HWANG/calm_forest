@@ -55,7 +55,7 @@ function spaceContext(extra = {}) {
     ...extra,
   });
   vm.runInContext(readFileSync(new URL('../js/spaces/observatory.js', import.meta.url), 'utf8')
-    .replace(/import[\s\S]*?from ['"][^'"]+['"];\n/g, '').replace(/^export /gm, ''), c);
+    .replace(/import[\s\S]*?from ['"][^'"]+['"];\n/g, '').replace(/^export /gm, '').replace(/\bimport\(/g, '__import('), c);
   return { c, player, playerAnchor, classes };
 }
 
@@ -194,4 +194,25 @@ test('gate spawns once — a second call does not stack a building or colliders'
   assert.equal(added.length, 1);
   assert.equal(colliders.length, 1);
   assert.equal(obstacles.length, 1);
+});
+
+test('observatoryLensOpen is true only while the opaque lens view is up (3D render can pause)', async () => {
+  let opened = null;
+  const { c } = spaceContext({
+    __import: async () => ({ openStarView: async (opts) => { opened = opts; return {}; } }),
+    starSettle: () => ({ coins: 0 }), rollDifficulty: () => ({ ease: 1, dda: 1, arm: 1 }), diffParams: () => ({}),
+  });
+  assert.equal(c.observatoryLensOpen(), false);
+  c.startObservatoryLook();
+  assert.equal(c.observatoryLensOpen(), false, 'still bending — the room is visible');
+  c.updateObservatory(0.8, 0);
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(c.observatoryLensOpen(), true);
+  opened.onClose();
+  assert.equal(c.observatoryLensOpen(), false);
+});
+
+test('game loop skips the 3D render while the lens covers it', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(src, /if \(!observatoryLensOpen\(\)\) composer\.render\(\);/);
 });
