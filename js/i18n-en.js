@@ -958,6 +958,10 @@ export const EN = {
   '루프탑 빌라': 'Rooftop Villa',
   // 🏡 7단계 정원 저택(모던/한옥 택1) — js/house-stage7.js STYLE_INFO · index.html renderExpand
   '정원 저택': 'Garden Estate',
+  '정원': 'Garden',
+  '🌿 정원으로': '🌿 To the Garden',
+  '🏠 집 안으로': '🏠 Back inside',
+  '🌿 정원': '🌿 Garden',
   '정원 저택 완성!': 'Garden Estate complete!',
   '테라스 코트': 'Terrace Court',
   '흰 유리 집 + 계단식 옥상 정원': 'White glass house + tiered rooftop gardens',

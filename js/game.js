@@ -79,7 +79,7 @@ import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/ind
 import { HOUSE_CLEAR_R, extViewLookK, extViewScale, normalizeHouseStyle } from './house-stage7.js';   // 🏡 7단계 정원 저택 규칙(새 로직은 그 순수 모듈에)
 import { HOUSE_ADDONS, addonState } from './house/addons.js';          // 🧩 집 구성품 카탈로그(코인 장식 12종)
 import { shadowActiveFor } from './shadow-scope.js';   // 🌓 그림자 상자가 닿는 공간인지 판정(서브 공간에선 섀도맵 정지)
-import { floorAt, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
+import { floorAt, gardenDoorLocal, normalizeFloor, decorUnlocked, canPlaceOn, rooftopFreeDecor } from './house-floors.js';   // 🏠 집 실내 층 규칙(순수 모듈)
 import { STATIONS, stationDef, CRAFT_RECIPES, recipesOf, recipeOf as craftRecipeOf, yieldOf, lackOf, canAfford, mgBaseOf } from './craft/recipes.js';   // 🔥🫙 가공 레시피 표(순수 모듈) — recipeOf 는 요리(:9813)가 이미 쓰는 이름이라 별칭
 import { millScore, fireScore, knead2Score, crushScore, gradeOfScore } from './craft/minigame.js';   // 🔥🫙 가공 미니게임 판정(순수 모듈)
 import { SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, claimAll, waitedDays, sanitizeSlots, stationOf, slotsOf, unitState } from './craft/slots.js';   // 🔥🫙 가공 슬롯 규칙(순수 모듈)
@@ -5468,6 +5468,7 @@ function minimapMarks(place) {
     }
   } else if (place === 'house') {
     if (houseFloor === 0) marks.push({ x: INT.x, z: INT.z - INT_HALF, c: '#c8905a', kind: 'exit' });   // 나가는 문(1층에만)
+    if (gameState.houseStage >= 7 && (houseFloor === 0 || houseFloor === 3)) { const gd = gardenDoorLocal(curHalf()); marks.push({ x: INT.x + gd.x + 0.9, z: INT.z + gd.z, c: '#7fbf6a', kind: 'exit' }); }   // 🌿 정원 문(1층 ↔ 정원)
     for (const d of gameState.house.decor) {
       if ((d.f || 0) !== houseFloor) continue;                                                  // 🏠 지금 층만 — 다른 층 가구가 겹쳐 찍히면 빈 자리를 못 읽는다
       marks.push({ x: INT.x + d.x, z: INT.z + d.z, c: '#e0b483', r: 2.2 });                     // 배치한 가구
@@ -6099,7 +6100,7 @@ function updateCameraFade() {
 const _obsFocus = new THREE.Vector3(), camFocus = () => atObservatory ? observatoryCamFocus(player.position, _obsFocus) : player.position;   // 🔭 작은 원형 홀 — 방 중심 쪽으로 당겨 잡는다
 function snapCamera() {
   const f = camFocus();
-  _camTarget.copy(f).add(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : camOffset);   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
+  _camTarget.copy(f).add(indoor && curFloorDef().elevated ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : camOffset);   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
   _camLook.set(f.x, f.y + 1.2, f.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
@@ -6180,7 +6181,7 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy(indoor && curFloorDef().outdoor ? camOffsetRoof : indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
+  _camOff.copy(indoor && curFloorDef().elevated ? camOffsetRoof : indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
   const f = camFocus();
   _camTarget.copy(f).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적

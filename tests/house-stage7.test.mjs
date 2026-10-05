@@ -95,6 +95,7 @@ test('interior7 은 병합하고(드로우콜) 두 스타일 모두 실내 정�
   const src = readFileSync(new URL('../js/house/interior7.js', import.meta.url), 'utf8');
   assert.ok(src.includes('mergeByMaterial(THREE, g)'), '병합');
   assert.ok(src.includes("style === 'hanok'") && src.includes('makeGarden'), '한옥 + 정원');
-  assert.ok((src.match(/makeGarden\(THREE, H, add\)/g) || []).length === 2, '모던·한옥 둘 다 정원');
+  assert.ok((src.match(/makeGarden\(THREE, H, add\)/g) || []).length === 3, '실내 모던·한옥 + 정원 층');
+  assert.ok(src.includes('export function buildGardenFloor7'), '정원 층 빌더');
   assert.ok(src.includes('windowMats'), '밤 점등 창 재질을 돌려준다');
 });

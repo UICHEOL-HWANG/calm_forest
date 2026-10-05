@@ -22,7 +22,7 @@ import { TOOLS } from '../data/tools.js';
 import { storageTotal } from '../farm-building.js';
 import { farmStageInfo } from '../farm-stage.js';
 import { fertBlockedByWatering } from '../first-loop.js';
-import { floorAt, rooftopFreeDecor } from '../house-floors.js';
+import { floorAt, gardenDoorLocal, rooftopFreeDecor } from '../house-floors.js';
 import { MUSEUM_FLOORS } from '../museum.js';
 import { OUTDOOR_MOVE_REACH, canPromptOutdoorMove } from '../outdoor-move.js';
 import { COPY } from '../observatory/copy.js';
@@ -93,13 +93,14 @@ export function exitHouse() {
 
 export function goFloor(f) {
   const def = floorAt(gameState.houseStage, f); if (!def) return;
+  const prev = houseFloor;
   $w.houseFloor = f;
-  player.position.y = def.outdoor ? ROOF_Y : 0;   // ☀️ 루프탑만 층 높이만큼 띄운다 — 카메라·시선은 player.position 을 그대로 따라간다
+  player.position.y = def.elevated ? ROOF_Y : 0;   // 지붕만 띄운다 — 🌿정원은 땅 위   // ☀️ 루프탑만 층 높이만큼 띄운다 — 카메라·시선은 player.position 을 그대로 따라간다
   // 🏖️ 루프탑에 처음 올라갈 때, 이미 산 구성품(예: rooftop_set)을 값 없이 실물로 놓아 준다.
   // "줬는지"는 gameState.house.grantedDecor 로 영구히 기억한다 — 지금 바닥에 놓여 있는지로만 보면,
   // 옮기려고 든 순간(pickDecor 가 decor 배열에서 즉시 빼낸다)이나 창고에 넣은 뒤 재방문했을 때
   // "안 보이니 다시 준다"고 오판해 무한 복제된다. 한 번 줬으면 그 뒤로는 평범한 가구라 옮기거나 창고에 넣을 수 있다.
-  if (def.outdoor) {
+  if (def.id === 'roof') {   // 🏖️ 지붕 전용 — 정원(outdoor)에는 파라솔 세트를 주지 않는다
     const granted = gameState.house.grantedDecor || (gameState.house.grantedDecor = []);
     for (const id of rooftopFreeDecor(gameState.house.addons)) {
       // 🏖️ 계단 구멍(stairLayout 기준 -x·z≈0 쪽)에서 대각선으로 먼 +x·+z 구석에 놓는다 —
@@ -110,13 +111,18 @@ export function goFloor(f) {
   const h = def.half;
   player.position.x = Math.max(INT.x - h + 1.5, Math.min(INT.x + h - 1.5, player.position.x));
   player.position.z = Math.max(INT.z - h + 1.5, Math.min(INT.z + h - 1.5, player.position.z));
+  if (f === 3 || (f === 0 && prev === 3)) {   // 🌿 정원 문으로 드나들 땐 문 앞에 선다(계단 층 이동과 달리 위치를 유지하지 않는다)
+    const gd = gardenDoorLocal(h);
+    player.position.set(INT.x + gd.x - 0.6, player.position.y, INT.z + gd.z);
+    player.rotation.y = -Math.PI / 2;
+  }
   $w.nearDoor = null; ui.setDoorPrompt?.(null);
   $w.lastFloorChoiceKey = null; ui.setFloorChoice?.(null);   // 🪜 양방향 선택 UI도 즉시 닫는다(다음 프레임에 필요하면 다시 뜬다)
   setSpaceVisible();
   Sound.blip();
   // 🏠 지금 어디로 왔는지 잠깐 확인 — 프롬프트(🪜)는 "이동" 동작이라 도착 확인엔 다른 아이콘을 쓴다.
   //   실외 층(루프탑)은 ☀️, 실내 층은 🏠(정착 느낌) — def.outdoor 로 갈린다.
-  ui.toast?.(def.outdoor ? `☀️ ${def.name}` : `🏠 ${def.name}`, 1200);
+  ui.toast?.(def.id === 'garden' ? `🌿 ${def.name}` : def.outdoor ? `☀️ ${def.name}` : `🏠 ${def.name}`, 1200);
   trackEvent('house_floor', { to: def.id, stage: gameState.houseStage });   // [GA4] 층 사용률
 }
 
@@ -158,7 +164,10 @@ export function updateDoorInteract() {
     return;
   }
   if (indoor) {
-    if (houseFloor === 0 && dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 1층 문 바로 앞에서만
+    const gd = gardenDoorLocal(curHalf()), nearGardenDoor = dist2D({ x: INT.x + gd.x, z: INT.z + gd.z }, player.position) < 1.7;
+    if (gameState.houseStage >= 7 && houseFloor === 0 && nearGardenDoor) { nd = 'floor'; $w.nearDoorFloor = 3; prompt = '🌿 정원으로'; }   // 🌿 1층 오른쪽 벽 문 → 정원
+    else if (houseFloor === 3 && nearGardenDoor) { nd = 'floor'; $w.nearDoorFloor = 0; prompt = '🏠 집 안으로'; }                          // 정원 → 집 안
+    else if (houseFloor === 0 && dist2D({ x: INT.x, z: INT.z - INT_HALF }, player.position) < 1.7) { nd = 'exit'; prompt = '🚪 나가기'; } // 1층 문 바로 앞에서만
     else {
       // 🌀 나선 계단 — buildRoom 의 st(단일 랜드마크)와 같은 stairLayout(h) 공식으로 자리를 잡는다
       //   (계단을 옮기면 이 판정 좌표도 반드시 같이 옮긴다 — 포팅 전 "아래로 못 내려간다" 제보의 원인).
@@ -167,9 +176,10 @@ export function updateDoorInteract() {
       //   제시**한다(우선순위로 하나만 주면 "원치 않는 층을 거쳐야" 하는 문제가 재발 — task 지시).
       const h = curHalf();
       const lay = stairLayout(h);
-      const upDef = floorAt(gameState.houseStage, houseFloor + 1);
-      const downDef = houseFloor > 0 ? floorAt(gameState.houseStage, houseFloor - 1) : null;
-      const nearStair = dist2D({ x: INT.x + lay.cx, z: INT.z + lay.cz }, player.position) < STAIR_PROMPT_R;
+      let upDef = floorAt(gameState.houseStage, houseFloor + 1);
+      if (upDef?.id === 'garden') upDef = null;   // 🌿 정원은 계단이 아니라 문으로 간다(지붕에서 '정원으로' 가 뜨지 않게)
+      const downDef = houseFloor > 0 && houseFloor !== 3 ? floorAt(gameState.houseStage, houseFloor - 1) : null;
+      const nearStair = houseFloor !== 3 && dist2D({ x: INT.x + lay.cx, z: INT.z + lay.cz }, player.position) < STAIR_PROMPT_R;   // 정원엔 계단이 없다
       const opts = [];
       if (nearStair && upDef) opts.push({ f: houseFloor + 1, label: `🪜 ${upDef.name}으로` });
       if (nearStair && downDef) opts.push({ f: houseFloor - 1, label: `🪜 ${downDef.name}으로` });
