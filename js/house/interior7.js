@@ -28,6 +28,7 @@ export function buildInterior7(THREE, H, { style, half, ground, doorZ = 4.6, doo
   const lit = (color, emissive, nightScale) => {
     const m = H.clay(color, { emissive, emissiveIntensity: 0 }); m.userData.nightScale = nightScale; windowMats.push(m); return m;
   };
+  const hanok7 = style === 'hanok';
   const gap = ground ? 1.15 : 0;   // 1층 먼 벽 출입문 틈(반폭)
   // 🌿 1층 오른쪽 벽의 정원 문 틈(z doorZ±doorHalfW) — 판자·걸레받이가 문 앞을 가리지 않게 그 구간은 비운다
   const rightSegs = (len) => {   // [{c, l}] 오른쪽 벽을 따라 놓을 조각(중심 z, 길이)
@@ -102,6 +103,12 @@ export function buildInterior7(THREE, H, { style, half, ground, doorZ = 4.6, doo
       G.plant(-half + 1.0, -half + 3.0, 1.2); G.bush(half - 1.1, -half + 2.2, 0.35);
     });
   }
+  // 🧶 바닥 러그 — 방이 휑하지 않게 가운데 왼쪽에 한 장(가구는 위에 그대로 놓인다 — 바닥 레이캐스트 그룹이 아니라 배치에 간섭 없음)
+  const rugBase = H.clay(hanok7 ? 0xeadfc4 : 0xd9d5cc), rugEdge = H.clay(hanok7 ? 0x8a5a36 : 0x9a968c);
+  const rw = hanok7 ? 3.8 : 4.4, rd = hanok7 ? 2.6 : 3.0, rx = -1.0, rz = 1.4;
+  g.add(soft(H.box(rw + 0.24, 0.03, rd + 0.24, rugEdge, rx, FY + 0.015, rz)));
+  g.add(soft(H.box(rw, 0.04, rd, rugBase, rx, FY + 0.02, rz)));
+  if (hanok7) for (const dx of [-0.7, 0.7]) g.add(soft(H.box(0.55, 0.12, 0.55, H.clay(0xb55a4a), rx + dx, FY + 0.1, rz + 0.1)));   // 방석 2
   mergeByMaterial(THREE, g);
   return { group: g, windowMats };
 }
@@ -154,24 +161,62 @@ export function buildGardenFloor7(THREE, H, { style, half, doorZ, doorHalfW }) {
   const low = (cx, cz, w, d) => { add(H.box(w, 0.55, d, hanok ? stone : wallMat, cx, FY + 0.28, cz)); add(soft(H.box(w + 0.06, 0.07, d + 0.08, cap, cx, FY + 0.58, cz))); };
   low(0, -half + 0.1, (half - 0.3) * 2, 0.2); low(0, half - 0.1, (half - 0.3) * 2, 0.2); low(-half + 0.1, 0, 0.2, (half - 0.3) * 2);
 
-  // ── 정원 ──
+  // ── 정원 ──  (가운데는 가구 자리 — 길은 문에서 연못까지 대각선으로 흘러 가장자리를 돈다)
+  const rnd = (i) => { const v = Math.sin(i * 12.9898 + 4.1414) * 43758.5453; return v - Math.floor(v); };
+  // 잔디 얼룩(밝고 어두운 두 톤) — 한 가지 초록이 칙칙하게 보이던 문제
+  const patchD = H.clay(0x93cb6c), patchL = H.clay(0xb9e690);
+  for (let i = 0; i < 9; i++) {   // 은은한 얼룩 — 크지 않게(큰 다각형이 도드라지던 문제)
+    const x = (rnd(i) - 0.5) * (half * 2 - 3), z = (rnd(i + 40) - 0.5) * (half * 2 - 3), r = 0.45 + rnd(i + 80) * 0.5;
+    const pt = G.cyl(r, r, 0.02, i % 2 ? patchD : patchL, x, FY + 0.012, z, 12); pt.castShadow = false;
+  }
   lift(() => {
-    G.stones([[wx - 1.6, doorZ - 0.1, 0.22], [wx - 2.7, doorZ - 0.5, 0.2], [wx - 3.8, doorZ - 0.9, 0.2], [wx - 4.9, doorZ - 1.4, 0.2], [wx - 6.0, doorZ - 1.9, 0.2], [wx - 7.0, doorZ - 2.4, 0.2]]);
-    if (hanok) {
-      G.pond(-half + 3.0, -half + 3.0, 1.9, 1.2);
-      G.pine(-half + 1.0, -half + 1.0, 1.3); G.pine(-half + 1.1, 3.8, 1.1); G.tree(3.8, -half + 1.2, 1.1, G.m.blossom);
-      for (let i = 0; i < 9; i++) { const x = 0.5 + i * 0.55, z = -half + 0.6 + (i % 2) * 0.25; G.cyl(0.04, 0.05, 2.4 + (i % 3) * 0.4, G.m.bamboo, x, 1.2, z, 5); G.ico(0.2, G.m.leaf2, x, 2.5 + (i % 3) * 0.4, z); }
-      G.lantern(-half + 1.0, -1.6); G.lantern(wx - 1.2, doorZ - 1.6);
-      for (const [x, z, s] of [[-half + 1.0, 0.4, 1], [-half + 1.7, 0.9, 0.8], [-half + 1.0, 1.4, 0.7]]) {   // 장독대
-        G.cyl(0.3 * s, 0.34 * s, 0.55 * s, G.m.pot, x, 0.28 * s, z, 8); G.cyl(0.2 * s, 0.3 * s, 0.14 * s, G.m.rockDark, x, 0.62 * s, z, 8);
+    // 돌길: 문 → 연못 쪽으로 이어지는 촘촘한 판석(끊기지 않게) + 길 끝 둥근 쉼터 판
+    const path = [[wx - 1.3, doorZ], [wx - 2.3, doorZ + 0.15], [wx - 3.3, doorZ - 0.1], [wx - 4.3, doorZ - 0.6], [wx - 5.2, doorZ - 1.3], [wx - 6.0, doorZ - 2.1], [wx - 6.7, doorZ - 3.0], [wx - 7.3, doorZ - 4.0], [wx - 7.8, doorZ - 5.0], [wx - 8.2, doorZ - 6.0]];
+    const slabMat = hanok ? stone : H.clay(0xe3dfd4);
+    let k = 0;
+    for (let seg = 0; seg < path.length - 1; seg++) {   // 꺾이는 점 사이를 촘촘히 이어(0.55 간격) 끊기지 않는 길로
+      const [x0, z0] = path[seg], [x1, z1] = path[seg + 1], len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.55)), ang = Math.atan2(x1 - x0, z1 - z0);
+      for (let t = 0; t < n; t++, k++) {
+        const x = x0 + ((x1 - x0) * t) / n, z = z0 + ((z1 - z0) * t) / n;
+        const sl = G.put(H.box(0.72, 0.05, 0.5, slabMat, x, 0.025, z), x, 0.025, z, false); sl.rotation.y = ang + (rnd(k) - 0.5) * 0.18;
       }
-      G.bush(-2.2, 5.6, 0.4);
+    }
+    G.cyl(1.0, 1.05, 0.06, stone, -half + 3.6, 0.03, -1.0, 12).castShadow = false;   // 쉼터 판
+    // 낮은 생울타리(왼쪽·가까운 변 안쪽)
+    const leaf = hanok ? G.m.leafDark : G.m.leaf;
+    const hedge = (x, z, w, d) => { G.put(H.box(w, 0.5, d, leaf, x, 0.25, z), x, 0.25, z, false); const n = Math.max(2, Math.round((w > d ? w : d) / 0.9)); for (let k = 0; k < n; k++) { const t = (k + 0.5) / n - 0.5; G.ico(0.34, G.m.leaf2, x + (w > d ? t * w : 0), 0.52, z + (w > d ? 0 : t * d)); } };
+    hedge(-half + 0.55, 0.6, 0.5, half * 2 - 3.0); hedge(-0.8, half - 0.55, half * 2 - 6.5, 0.5);
+    // 꽃: 길 가장자리·울타리 앞에 무리지어(색 5종 — 재질 5개로 병합)
+    for (let i = 0; i < 46; i++) {
+      const base = path[i % path.length], side = i % 2 ? 1 : -1;
+      const x = base[0] + side * (0.55 + rnd(i) * 0.5) + (rnd(i + 7) - 0.5) * 0.4, z = base[1] + side * (0.4 + rnd(i + 3) * 0.5);
+      if (x > wx - 0.7 || x < -half + 0.6 || z < -half + 0.6 || z > half - 0.7) continue;
+      G.cyl(0.012, 0.012, 0.16, G.m.leafDark, x, 0.09, z, 4); G.ico(0.065, G.m.flowers[i % G.m.flowers.length], x, 0.2, z);
+    }
+    if (hanok) {
+      G.pond(-half + 3.4, -half + 3.0, 2.0, 1.25); for (let i = 0; i < 5; i++) G.bush(-half + 1.4 + i * 0.9, -half + 0.9, 0.3, i % 2 ? G.m.leaf2 : G.m.leafDark);
+      G.pine(-half + 1.0, -half + 1.0, 1.35); G.pine(-half + 0.9, 3.8, 1.15); G.tree(1.2, -half + 1.2, 1.1, G.m.blossom);
+      for (let i = 0; i < 8; i++) { const x = -half + 1.2 + i * 0.5, z = 1.6 + (i % 3) * 0.25; G.cyl(0.04, 0.05, 2.2 + (i % 3) * 0.4, G.m.bamboo, x, 1.1, z, 5); G.ico(0.2, G.m.leaf2, x, 2.3 + (i % 3) * 0.4, z); }
+      for (const [x, z, k] of [[-half + 1.0, -2.2, 1], [-half + 1.7, -1.7, 0.8], [-half + 1.0, -1.2, 0.7]]) { G.cyl(0.3 * k, 0.34 * k, 0.55 * k, G.m.pot, x, 0.28 * k, z, 8); G.cyl(0.2 * k, 0.3 * k, 0.14 * k, G.m.rockDark, x, 0.62 * k, z, 8); }   // 장독대
+      // 정자(작은 누각): 마루 + 기둥 4 + 기와 사모지붕 — 오른쪽 먼 모서리
+      const px = 3.9, pz = -4.6, tile = H.clay(0x59636b), pil = H.clay(0x8a5a36), deck = H.clay(0xc9a56e);
+      G.put(H.box(3.0, 0.3, 2.6, deck, px, 0.15, pz), px, 0.15, pz, false);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) G.put(H.box(0.16, 2.3, 0.16, pil, px + sx * 1.3, 1.4, pz + sz * 1.1), px + sx * 1.3, 1.4, pz + sz * 1.1);
+      [[3.7, 0.16, 3.3], [2.8, 0.2, 2.4], [1.7, 0.2, 1.4], [0.7, 0.18, 0.5]].forEach(([w, h, d], k) => G.put(H.box(w, h, d, tile, px, 2.7 + k * 0.2, pz), px, 2.7 + k * 0.2, pz, false));
+      G.bench(px, pz + 0.7, 0); G.lantern(px + 2.2, pz + 1.4); G.lantern(wx - 1.2, doorZ - 1.6);
     } else {
-      G.pond(-half + 3.2, -half + 3.0, 1.7, 1.1);
-      G.tree(-half + 1.0, -half + 1.0, 1.5); G.tree(-half + 1.1, half - 1.2, 1.4); G.tree(wx - 0.8, -half + 1.0, 1.4, G.m.blossom); G.tree(3.6, -half + 1.2, 1.1, G.m.blossom);
-      G.bed(-0.8, -half + 0.9, 4.2, 0.7, 14); G.bed(wx - 0.9, 2.4 - 6, 0.7, 2.2, 8);
-      G.bench(-half + 0.9, 0.6, Math.PI / 2); G.lantern(wx - 1.2, doorZ - 1.6); G.lantern(-half + 1.0, -1.8);
-      G.bush(-2.4, 5.7, 0.4); G.bush(0.8, 5.8, 0.35, G.m.leaf);
+      G.pond(-half + 3.4, -half + 3.0, 1.8, 1.15); for (let i = 0; i < 5; i++) G.bush(-half + 1.5 + i * 0.9, -half + 0.9, 0.3, i % 2 ? G.m.leaf2 : G.m.leaf);
+      G.tree(-half + 1.0, -half + 1.0, 1.5); G.tree(-half + 1.1, half - 1.4, 1.4); G.tree(1.2, -half + 1.2, 1.2, G.m.blossom); G.tree(wx - 0.9, -half + 1.0, 1.35, G.m.blossom);
+      G.bed(-1.2, -half + 0.9, 3.4, 0.7, 14); G.bed(-half + 1.0, -2.4, 0.7, 2.6, 9);
+      // 파고라: 기둥 4 + 상부 슬랫 + 벤치·탁자 — 오른쪽 먼 모서리
+      const px = 3.9, pz = -4.6, post = H.clay(0xffffff), slat = H.clay(0xb98a57), tbl = H.clay(0xf1ece3);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) G.put(H.box(0.14, 2.4, 0.14, post, px + sx * 1.35, 1.2, pz + sz * 1.05), px + sx * 1.35, 1.2, pz + sz * 1.05);
+      G.put(H.box(3.0, 0.1, 0.16, post, px, 2.45, pz - 1.05), px, 2.45, pz - 1.05, false); G.put(H.box(3.0, 0.1, 0.16, post, px, 2.45, pz + 1.05), px, 2.45, pz + 1.05, false);
+      for (let i = 0; i < 9; i++) G.put(H.box(0.1, 0.08, 2.4, slat, px - 1.3 + i * 0.325, 2.52, pz), px - 1.3 + i * 0.325, 2.52, pz, false);
+      G.put(H.box(1.6, 0.04, 1.4, tbl, px, 0.02, pz), px, 0.02, pz, false);   // 데크 판
+      G.bench(px, pz - 0.6, Math.PI); G.put(H.box(0.6, 0.4, 0.6, tbl, px, 0.2, pz + 0.2), px, 0.2, pz + 0.2);
+      G.plant(px - 1.3, pz + 1.3, 1.1); G.plant(px + 1.3, pz + 1.3, 1.1);
+      G.lantern(wx - 1.2, doorZ - 1.6); G.lantern(-half + 1.0, -half + 3.0 + 1.8);
     }
   });
   mergeByMaterial(THREE, g);

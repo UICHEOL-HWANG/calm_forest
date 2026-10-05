@@ -10,9 +10,9 @@ export function build(THREE, H) {
   const soft = (m) => { m.castShadow = false; return m; };
   const R = (m, r) => H.role(m, r);
   const wall = H.clay(0xf7f3ea), roof = H.clay(0xeee9dd), door = H.clay(0xa8733f);
-  const glass = H.glass(0x24394a); glass.opacity = 0.55;
+  const glass = H.glass(0x24415c); glass.opacity = 0.7;   // 더 푸르고 진하게 — 게임 안개 속에서 밋밋한 갈색으로 보이던 문제
   const rail = H.glass(0xb6e0ee); rail.opacity = 0.25;
-  const slat = H.clay(0xb98a57), warm = H.clay(0xf3dcb8, { emissive: 0xffb877, emissiveIntensity: 0.55 });
+  const slat = H.clay(0xb98a57), warm = H.clay(0x7a644e, { emissive: 0xffb877, emissiveIntensity: 0.16 });
   const glow = H.clay(0xffe3a6, { emissive: 0xffbf6a, emissiveIntensity: 1.1 });
   const grass = H.clay(0x86b862), deck = H.clay(0xc9a56e);
   const G = makeGarden(THREE, H, add);
