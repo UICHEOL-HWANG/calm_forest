@@ -8,7 +8,7 @@ export function build(THREE, H) {
   const add = (m) => { g.add(m); return m; };
   const soft = (m) => { m.castShadow = false; return m; };
   const R = (m, r) => H.role(m, r);
-  const tile = H.clay(0x59636b), wall = H.clay(0xf6f1e6), pillar = H.clay(0x8a5a36);
+  const tile = H.clay(0x6b7885), wall = H.clay(0xf6f1e6), pillar = H.clay(0x8a5a36);
   const lattice = H.clay(0xb98a57), paper = H.clay(0xfff4d9, { emissive: 0xffd9a0, emissiveIntensity: 0 });
   paper.userData.nightScale = 0.9;   // 밤에만 한지창이 켜진다(prepHouseMeshes 가 emissive 세기를 밤 수치로 갱신)
   const door = H.clay(0xa8733f), base = H.clay(0xcfc9ba), floorW = H.clay(0xc9a56e), grass = H.clay(0x86b862);

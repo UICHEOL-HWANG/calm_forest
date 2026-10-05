@@ -104,7 +104,7 @@ export function buildRoom(def) {
   const HH = makeHouseHelpers(THREE);   // house/*.js 와 같은 box/glass 도우미(계단·유리 난간에 씀)
   // 바닥은 단계별 마감 — 루프탑(def.outdoor)은 표와 무관하게 나무 데크(villa.js 수영장 데크와 같은 널)
   //   돌·대리석은 가구용 나무 텍스처를 안 써서(베타 때 테이블·책장이 텍스처에 묻힌 문제 재발 방지) 평면 음영으로 둔다
-  const floorMat = isGarden ? clayMat(0x9ccf78, false)   // 🌿 정원 — 잔디
+  const floorMat = isGarden ? clayMat(0xa8dc80, false)   // 🌿 정원 — 잔디
     : def.outdoor
     ? woodMat(3, 3, 0xc19a66)
     : fin.floor.kind === 'wood' ? woodMat(fin.floor.rep, fin.floor.rep, fin.floor.c)
