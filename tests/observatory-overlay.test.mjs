@@ -145,10 +145,10 @@ test('frame loop stops once the result card is up, and close cleans everything',
   assert.deepEqual(o.tracked, [], 'closing a finished run is not an abandon');
 });
 
-test('early taps are ignored without penalty, then on-time taps judge each note', async () => {
+test('taps before the comet leaves are ignored; on-time taps judge each note', async () => {
   const o = overlay();
   await o.context.openStarView({});
-  o.dom.setNow(o.chart[0].hitMs - 400);
+  o.dom.setNow(o.chart[0].startMs - 400);   // intro — the comet has not left yet
   o.canvas().dispatch('pointerdown');
   o.dom.window.dispatch('keydown', { key: ' ' });
   assert.equal(o.card(), null);
@@ -157,6 +157,25 @@ test('early taps are ignored without penalty, then on-time taps judge each note'
   assert.match(p, new RegExp(`${COPY.perfect} 5`));
   assert.match(p, new RegExp(`${COPY.good} 2`));
   assert.match(p, new RegExp(`${COPY.miss} 0`));
+});
+
+test('an early tap while the comet is in flight is a miss for that note (mashing fails)', async () => {
+  const o = overlay();
+  let run = null;
+  await o.context.openStarView({ onResult: (s, r) => { run = r; return {}; } });
+  o.dom.setNow(o.chart[0].hitMs - 400);   // comet flying, way before the window
+  o.canvas().dispatch('pointerdown');
+  o.play([null, 0, 0, 0, 0, 0, 0]);
+  const p = o.card().querySelector('p').textContent;
+  assert.match(p, new RegExp(`${COPY.miss} 1`));
+  assert.equal(run.judges[0], 'miss');
+  assert.equal(run.noteOffsets[0], -400, 'the early offset is kept for training data');
+  assert.equal(run.earlyTaps, 1);
+
+  const m = overlay();
+  await m.context.openStarView({});
+  for (let t = m.chart[0].startMs; t < m.chart.at(-1).hitMs + 300; t += 30) { m.dom.setNow(t); m.canvas().dispatch('pointerdown'); }
+  assert.equal(m.card().querySelector('h2').textContent, COPY.fail, 'mashing through the run fails');
 });
 
 test('closing mid-run tears everything down and calls onClose once', async () => {

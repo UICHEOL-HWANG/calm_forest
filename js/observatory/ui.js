@@ -45,9 +45,15 @@ function tap(state) {
   if (state.resultShown) return;
   const note = state.chart[state.judges.length];
   if (!note) return;
-  const offset = performance.now() - state.startAt - note.hitMs;
-  const judge = judgeTap(offset, state.ease);
-  if (judge === 'early') { state.earlyTaps += 1; return; }   // 벌점 없음 — 조급함의 신호로 기록만
+  const elapsed = performance.now() - state.startAt;
+  const offset = elapsed - note.hitMs;
+  let judge = judgeTap(offset, state.ease);
+  if (judge === 'early') {
+    state.earlyTaps += 1;
+    // 혜성이 출발하기 전(인트로) 탭은 무시. 날아가는 중의 이른 탭은 그 노트를 놓친 것 — 연타로 통과 못 하게(2026-10-05)
+    if (elapsed < note.startMs) return;
+    judge = 'miss';
+  }
   state.judges.push(judge);
   state.offsets.push(Math.round(offset));   // 탭한 노트만(만료 miss 는 오프셋이 없다) — GA4 star_result 용
   state.noteOffsets.push(Math.round(offset));   // 노트 순서 정렬(만료 miss = null) — star_runs 학습용
