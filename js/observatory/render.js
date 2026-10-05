@@ -25,13 +25,13 @@ export function ensureStyle() {
   style.textContent = `
 .observatory-layer{position:fixed;inset:0;z-index:3000;background:#05070f;color:${INK};overflow:hidden;touch-action:none}
 .observatory-layer canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.observatory-close{position:absolute;right:clamp(14px,4vw,36px);top:clamp(14px,4vw,34px);width:42px;height:42px;border:1px solid rgba(233,236,255,.22);border-radius:21px;background:rgba(255,255,255,.12);color:${INK};font:700 18px ${FAMILY};cursor:pointer}
+.observatory-close{position:absolute;right:clamp(14px,4vw,36px);top:calc(clamp(14px,4vw,34px) + var(--top-inset, 0px));width:42px;height:42px;border:1px solid rgba(233,236,255,.22);border-radius:21px;background:rgba(255,255,255,.12);color:${INK};font:700 18px ${FAMILY};cursor:pointer}
 .observatory-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100vw - 44px));padding:20px 18px 16px;border:1px solid rgba(243,210,122,.36);border-radius:8px;background:rgba(10,15,42,.92);box-shadow:0 20px 80px rgba(0,0,0,.45),0 0 34px rgba(243,210,122,.15);text-align:center}
 .observatory-card h2{margin:0 0 8px;font:800 23px/1.2 ${FAMILY};letter-spacing:0;color:${INK}}
 .observatory-card p{margin:0 0 14px;font:600 14px/1.55 ${FAMILY};color:rgba(233,236,255,.74)}
 .observatory-card .score{margin:0 0 15px;font:800 30px/1 ${FAMILY};color:${GOLD}}
 .observatory-card button{height:38px;padding:0 16px;border-radius:8px;border:1px solid rgba(243,210,122,.45);background:${GOLD};color:#18204a;font:800 14px ${FAMILY};cursor:pointer}
-.observatory-book{display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:16px;overflow-y:auto;touch-action:pan-y}
+.observatory-book{display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:calc(16px + var(--top-inset, 0px)) 16px 16px;overflow-y:auto;touch-action:pan-y}
 .observatory-book h2{margin:0 0 4px;font:800 21px ${FAMILY};color:${INK}}
 .observatory-book>p{margin:0 0 14px;font:500 13px ${FAMILY};color:rgba(233,236,255,.62);text-align:center}
 .observatory-book .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(560px,100%)}
@@ -48,6 +48,21 @@ export function ensureStyle() {
   document.head.appendChild(style);
 }
 
+// 📱 토스 미니앱은 상단에 시스템 버튼(··· ✕)이 떠 있다 — index.html 의 --top-inset(= safe-area + --toss-reserve 52px)
+//    만큼 캔버스 HUD 를 내린다. CSS 변수라 한 번 재서 캐시한다(프레임마다 재면 레이아웃 계산이 돈다).
+let cachedTopInset = null;
+function topInset() {
+  if (cachedTopInset !== null) return cachedTopInset;
+  try {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;visibility:hidden;height:var(--top-inset, 0px)';
+    document.body.appendChild(probe);
+    cachedTopInset = probe.getBoundingClientRect().height || 0;
+    probe.remove();
+  } catch { cachedTopInset = 0; }
+  return cachedTopInset;
+}
+
 export function layout(state) {
   const W = window.innerWidth || 1;
   const H = window.innerHeight || 1;
@@ -55,7 +70,7 @@ export function layout(state) {
   const r = portrait ? Math.min(W * 0.44, H * 0.27) : Math.min(H * 0.4, W * 0.3);
   const cx = W / 2;
   const cy = portrait ? H * 0.45 : H * 0.5;
-  return { W, H, portrait, r, cx, cy, dpr: state.dpr };
+  return { W, H, portrait, r, cx, cy, dpr: state.dpr, top: topInset() };
 }
 
 const lensC = state => state.c || BY_ID.big_dipper;
@@ -338,7 +353,7 @@ export function drawHud(state, L) {
   g.save();
   g.textBaseline = 'middle';
   const tx = portrait ? 18 : 32;
-  const ty = portrait ? 34 : 40;
+  const ty = (portrait ? 34 : 40) + L.top;   // 토스 상단 버튼 아래로
   g.font = `700 ${fs + 4}px ${FAMILY}`;
   g.fillStyle = INK;
   const sc = starCopy(lensC(state).id);
