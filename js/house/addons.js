@@ -22,6 +22,8 @@ const cyl = (THREE, rt, rb, h, mat, x, y, z, seg = 8) => { const m = new THREE.M
 // 밤에 빛나는 재질 — 자기 emissive 색과 세기(nightScale)를 갖는다
 const lit = (H, color, emissive, nightScale) => { const m = H.clay(color, { emissive, emissiveIntensity: 0 }); m.userData.nightScale = nightScale; return m; };
 const glow = (mesh) => { mesh.userData.role = 'window'; mesh.castShadow = false; return mesh; };
+const cone = (THREE, r, h, mat, x, y, z, seg = 8) => { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat); m.position.set(x, y, z); return m; };
+const rnd = (i) => { const v = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };   // 결정적 난수(같은 집이 늘 같은 모양)
 
 // ── 💨 굴뚝 연기: 굴뚝 꼭대기에서 몽글몽글 올라가는 회색 구 4개(anim) ──
 const SMOKE_POS = { 3: [-1.15, 4.15, 0.15], 4: [0.32, 4.25, -0.9], 5: [2.0, 5.22, -1.7] };   // 빌라는 굴뚝이 없다
@@ -29,16 +31,17 @@ function buildSmoke(THREE, H, stage, style) {
   const p = SMOKE_POS[K(stage, style)]; if (!p) return null;
   const g = at(THREE, p);
   const puffs = [];
-  for (let i = 0; i < 4; i++) {
-    const m = ico(THREE, 0.13, H.clay(0xd9dcdf, { transparent: true, opacity: 0.7 }), 0, 0, 0, 1);
-    m.castShadow = m.receiveShadow = false; m.userData.phase = i / 4; g.add(m); puffs.push(m);
+  const tints = [0xd9dcdf, 0xe6e8ea, 0xc9ccd0];
+  for (let i = 0; i < 6; i++) {
+    const m = ico(THREE, 0.12, H.clay(tints[i % 3], { transparent: true, opacity: 0.7 }), 0, 0, 0, 1);
+    m.castShadow = m.receiveShadow = false; m.userData.phase = i / 6; g.add(m); puffs.push(m);
   }
   g.userData.anim = (t) => {
     for (const m of puffs) {
-      const ph = m.userData.phase, k = (t * 0.28 + ph) % 1;          // 0 → 1: 굴뚝에서 나와 흩어짐
-      m.position.set(Math.sin(t * 1.1 + ph * 7) * (0.04 + k * 0.14), 0.1 + k * 1.05, Math.cos(t * 0.9 + ph * 5) * 0.05);
-      m.scale.setScalar(0.55 + k * 1.1);
-      m.material.opacity = 0.7 * (1 - k) * Math.min(1, k * 6);
+      const ph = m.userData.phase, k = (t * 0.26 + ph) % 1;          // 0 → 1: 굴뚝에서 나와 흩어짐
+      m.position.set(Math.sin(t * 1.1 + ph * 7) * (0.04 + k * 0.2), 0.1 + k * 1.3, Math.cos(t * 0.9 + ph * 5) * 0.06);
+      m.scale.setScalar(0.5 + k * 1.3);
+      m.material.opacity = 0.72 * (1 - k) * Math.min(1, k * 6);
     }
   };
   g.userData.anim(0);
@@ -50,11 +53,18 @@ const LAMP_POS = { '7m': [[-1.35, 0.28, 3.1], [1.35, 0.28, 3.1]], '7h': [[-1.35,
 function buildLamps(THREE, H, stage, style) {
   const ps = LAMP_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
-  const post = H.clay(0x3b3d45), cap = H.clay(0x2a2c33), head = lit(H, 0xfff0c0, 0xffc46a, 1.0);
+  const post = H.clay(0x3b3d45), cap = H.clay(0x2a2c33), head = lit(H, 0xfff0c0, 0xffc46a, 1.0), rock = H.clay(0x9a9a92), tuft = H.clay(0x6b9a4c);
   for (const [x, y, z] of ps) {
-    g.add(H.box(0.06, 0.62, 0.06, post, x, y + 0.31, z));
-    g.add(glow(H.box(0.16, 0.16, 0.16, head, x, y + 0.7, z)));
-    g.add(H.box(0.22, 0.04, 0.22, cap, x, y + 0.8, z));
+    g.add(cyl(THREE, 0.13, 0.16, 0.08, post, x, y + 0.04, z, 8));                 // 받침
+    g.add(cyl(THREE, 0.04, 0.055, 0.62, post, x, y + 0.39, z, 8));                // 기둥(아래가 굵다)
+    g.add(cyl(THREE, 0.075, 0.075, 0.03, cap, x, y + 0.7, z, 8));                 // 목 장식 고리
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(H.box(0.025, 0.24, 0.025, post, x + sx * 0.09, y + 0.84, z + sz * 0.09));   // 등 틀 모서리 4
+    g.add(glow(H.box(0.15, 0.2, 0.15, head, x, y + 0.84, z)));                    // 불빛 심지
+    g.add(H.box(0.24, 0.035, 0.24, cap, x, y + 0.97, z));                          // 지붕 판
+    g.add(cone(THREE, 0.17, 0.13, cap, x, y + 1.05, z, 4));                       // 뾰족 지붕
+    g.add(ico(THREE, 0.03, cap, x, y + 1.14, z));                                   // 꼭지
+    for (let i = 0; i < 5; i++) { const a = i * 1.26 + 0.4; g.add(ico(THREE, 0.04, rock, x + Math.cos(a) * 0.2, y + 0.03, z + Math.sin(a) * 0.2)); }   // 발치 돌
+    g.add(cone(THREE, 0.05, 0.12, tuft, x + 0.17, y + 0.06, z - 0.12, 5)); g.add(cone(THREE, 0.04, 0.09, tuft, x - 0.16, y + 0.05, z + 0.13, 5));   // 풀잎
   }
   return g;
 }
@@ -64,13 +74,21 @@ const MAIL_POS = { '7m': [1.5, 0, 4.05], '7h': [1.45, 0, 4.05], 3: [-2.0, 0.08, 
 function buildMailbox(THREE, H, stage, style) {
   const p = MAIL_POS[K(stage, style)]; if (!p) return null;
   const g = at(THREE, p);
-  const wood = H.clay(0x8a5a36), blue = H.clay(0x4a6fa5), red = H.clay(0xd9403a);
-  g.add(H.box(0.08, 0.8, 0.08, wood, 0, 0.4, 0));
-  g.add(H.box(0.42, 0.22, 0.26, blue, 0, 0.9, 0));
-  const capGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.42, 10); capGeo.rotateZ(Math.PI / 2);
-  const cap = new THREE.Mesh(capGeo, blue); cap.position.set(0, 1.01, 0); g.add(cap);
-  g.add(H.box(0.03, 0.22, 0.03, red, 0.23, 1.12, -0.08));
-  g.add(H.box(0.03, 0.12, 0.18, red, 0.23, 1.2, -0.0));
+  const wood = H.clay(0x8a5a36), woodL = H.clay(0xa87548), blue = H.clay(0x4a6fa5), blueD = H.clay(0x3a5a8a), red = H.clay(0xd9403a), white = H.clay(0xf4f3ee), soil = H.clay(0x6b4a30), leaf = H.clay(0x6b9a4c);
+  const petal = [H.clay(0xf07a8a), H.clay(0xf7d15a), H.clay(0xffffff)];
+  g.add(H.box(0.09, 0.82, 0.09, wood, 0, 0.41, 0));                                  // 기둥
+  g.add(H.box(0.34, 0.06, 0.07, woodL, 0.13, 0.78, 0));                              // 받침 팔
+  g.add(H.box(0.42, 0.2, 0.28, blue, 0.18, 0.9, 0));                                 // 함 몸통
+  const capGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.42, 12, 1, false, 0, Math.PI); capGeo.rotateZ(Math.PI / 2); capGeo.rotateY(Math.PI / 2);
+  const capM = new THREE.Mesh(capGeo, blue); capM.position.set(0.18, 1.0, 0); g.add(capM);   // 둥근 뚜껑(반원통)
+  g.add(H.box(0.02, 0.17, 0.22, blueD, 0.4, 0.93, 0));                               // 앞 문
+  g.add(H.box(0.03, 0.04, 0.04, white, 0.42, 0.93, 0));                              // 손잡이
+  g.add(H.box(0.2, 0.07, 0.01, white, 0.18, 0.9, 0.145));                            // 문패
+  g.add(H.box(0.02, 0.24, 0.02, red, 0.38, 1.12, -0.12));                            // 깃대
+  g.add(H.box(0.03, 0.12, 0.2, red, 0.38, 1.22, -0.03));                             // 깃발
+  g.add(H.box(0.5, 0.12, 0.3, wood, -0.02, 0.06, 0));                                // 발치 화단 틀
+  g.add(H.box(0.44, 0.06, 0.24, soil, -0.02, 0.14, 0));
+  [[-0.16, 0], [0.0, 0.06], [0.14, -0.04]].forEach(([dx, dz], i) => { g.add(cone(THREE, 0.04, 0.16, leaf, dx, 0.25, dz, 5)); g.add(ico(THREE, 0.055, petal[i], dx, 0.35, dz)); });
   return g;
 }
 
@@ -79,12 +97,16 @@ const IVY_POS = { '7m': [[-3.3, 0.25, -1.4], 2.2], '7h': [[-2.6, 0.55, 3.45], 0.
 function buildIvy(THREE, H, stage, style) {
   const e = IVY_POS[K(stage, style)]; if (!e) return null;
   const [p, h] = e; const g = at(THREE, p);
-  const stem = H.clay(0x3f6b2e), leaf = [H.clay(0x5c9c44), H.clay(0x7cb85a)];
-  g.add(H.box(0.04, h, 0.03, stem, 0, h / 2, 0));
-  for (let i = 0; i < 8; i++) {
-    const y = 0.25 + (h - 0.4) * (i / 7), r = 0.14 - i * 0.008;
-    g.add(ico(THREE, r, leaf[i % 2], Math.sin(i * 1.7) * 0.13, y, 0.04));
+  const stem = H.clay(0x3f6b2e), leaf = [H.clay(0x4f8a3a), H.clay(0x5c9c44), H.clay(0x7cb85a)], bloom = [H.clay(0xffffff), H.clay(0xf3b6c8)];
+  // 줄기: 살짝 휘며 올라가는 4마디 + 곁가지 2
+  let x = 0;
+  for (let i = 0; i < 4; i++) { const seg = H.box(0.035, h / 4 + 0.02, 0.03, stem, x, (h / 4) * (i + 0.5), 0.02); seg.rotation.z = (i % 2 ? -1 : 1) * 0.1; g.add(seg); x += (i % 2 ? -1 : 1) * 0.02; }
+  for (const [y, side] of [[h * 0.4, 1], [h * 0.7, -1]]) { const b = H.box(0.3, 0.025, 0.025, stem, side * 0.15, y, 0.03); b.rotation.z = side * 0.4; g.add(b); }
+  for (let i = 0; i < 22; i++) {                                                         // 잎 22장 — 크기·색·방향이 제각각
+    const t = i / 21, y = 0.2 + (h - 0.35) * t, side = rnd(i) > 0.5 ? 1 : -1, off = side * (0.06 + rnd(i + 9) * 0.2);
+    g.add(ico(THREE, 0.1 - t * 0.03 + rnd(i + 3) * 0.03, leaf[i % 3], off, y, 0.05));
   }
+  for (let i = 0; i < 5; i++) g.add(ico(THREE, 0.035, bloom[i % 2], (rnd(i + 30) - 0.5) * 0.4, 0.5 + rnd(i + 50) * (h - 0.8), 0.1));   // 작은 꽃
   return g;
 }
 
@@ -93,10 +115,16 @@ const BENCH_POS = { '7m': [[1.25, 0.28, 0.1], -Math.PI / 2], '7h': [[1.3, 0.02, 
 function buildBench(THREE, H, stage, style) {
   const e = BENCH_POS[K(stage, style)]; if (!e) return null;
   const g = at(THREE, e[0], e[1]);
-  const wood = H.clay(0xa87548), iron = H.clay(0x4a4a4a);
-  g.add(H.box(0.9, 0.06, 0.32, wood, 0, 0.42, 0));
-  const back = H.box(0.9, 0.3, 0.05, wood, 0, 0.66, -0.16); back.rotation.x = -0.15; g.add(back);
-  for (const x of [-0.38, 0.38]) g.add(H.box(0.06, 0.42, 0.3, iron, x, 0.21, 0));
+  const wood = H.clay(0xa87548), woodD = H.clay(0x8a5a36), iron = H.clay(0x4a4a4a), cush = H.clay(0xd9644f);
+  for (let i = 0; i < 5; i++) g.add(H.box(0.92, 0.035, 0.055, wood, 0, 0.43, -0.12 + i * 0.06));     // 앉는 판 5장
+  for (let i = 0; i < 3; i++) { const b = H.box(0.92, 0.07, 0.03, wood, 0, 0.58 + i * 0.1, -0.2); b.rotation.x = -0.15; g.add(b); }   // 등받이 판 3장
+  for (const x of [-0.42, 0.42]) {
+    g.add(H.box(0.05, 0.43, 0.05, iron, x, 0.215, 0.12)); g.add(H.box(0.05, 0.43, 0.05, iron, x, 0.215, -0.14));      // 다리
+    const arm = H.box(0.05, 0.04, 0.34, woodD, x, 0.62, -0.02); g.add(arm);                                           // 팔걸이
+    g.add(H.box(0.04, 0.2, 0.04, iron, x, 0.52, 0.12));                                                               // 팔걸이 기둥
+    const side = H.box(0.04, 0.03, 0.3, iron, x, 0.3, -0.01); g.add(side);                                            // 다리 연결 가로대
+  }
+  g.add(H.box(0.3, 0.07, 0.26, cush, -0.22, 0.48, 0.0));                                                              // 쿠션
   return g;
 }
 
@@ -122,11 +150,13 @@ const PLANTER_POS = { '7m': [[-1.35, 0.3, -1.15], [-1.05, 0.3, -1.15], [1.2, 0.3
 function buildPlanters(THREE, H, stage, style) {
   const ps = PLANTER_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
-  const pot = H.clay(0xc4714c), leaf = H.clay(0x6b9a4c), petal = [H.clay(0xf07a8a), H.clay(0xf7d15a), H.clay(0xffffff)];
+  const pot = H.clay(0xc4714c), rim = H.clay(0xd9855e), soil = H.clay(0x5a3d28), leaf = [H.clay(0x6b9a4c), H.clay(0x4f8a3a), H.clay(0x8bb85a)], petal = [H.clay(0xf07a8a), H.clay(0xf7d15a), H.clay(0xffffff)];
   ps.forEach(([x, y, z], i) => {
-    g.add(cyl(THREE, 0.11, 0.09, 0.2, pot, x, y + 0.1, z, 6));
-    g.add(ico(THREE, 0.15, leaf, x, y + 0.3, z));
-    g.add(ico(THREE, 0.055, petal[i], x + 0.04, y + 0.42, z + 0.05));
+    g.add(cyl(THREE, 0.12, 0.09, 0.2, pot, x, y + 0.1, z, 8));                    // 화분
+    g.add(cyl(THREE, 0.135, 0.135, 0.035, rim, x, y + 0.215, z, 8));              // 테두리
+    g.add(cyl(THREE, 0.1, 0.1, 0.02, soil, x, y + 0.235, z, 8));                  // 흙
+    for (let k = 0; k < 4; k++) { const a = k * 1.57 + i; g.add(ico(THREE, 0.1, leaf[k % 3], x + Math.cos(a) * 0.07, y + 0.32 + (k % 2) * 0.05, z + Math.sin(a) * 0.07)); }   // 잎 4
+    for (let k = 0; k < 3; k++) { const a = k * 2.1 + 0.6; g.add(cyl(THREE, 0.008, 0.008, 0.1, leaf[1], x + Math.cos(a) * 0.05, y + 0.4, z + Math.sin(a) * 0.05, 4)); g.add(ico(THREE, 0.05, petal[(i + k) % 3], x + Math.cos(a) * 0.05, y + 0.47 + k * 0.02, z + Math.sin(a) * 0.05)); }   // 꽃 3
   });
   return g;
 }
@@ -141,8 +171,13 @@ const EAVE_POS = {
 function buildEaveLights(THREE, H, stage, style) {
   const ps = EAVE_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
-  const mat = lit(H, 0xfff3cc, 0xffc46a, 1.0);
-  for (const [x, y, z] of ps) g.add(glow(H.box(0.12, 0.06, 0.1, mat, x, y, z)));
+  const mat = lit(H, 0xfff3cc, 0xffc46a, 1.0), metal = H.clay(0x3b3d45);
+  for (const [x, y, z] of ps) {
+    g.add(H.box(0.05, 0.03, 0.12, metal, x, y + 0.045, z));                         // 부착 브래킷
+    g.add(cone(THREE, 0.08, 0.07, metal, x, y + 0.0, z, 8));                       // 갓
+    g.add(glow(ico(THREE, 0.045, mat, x, y - 0.05, z, 1)));                        // 전구(동그란 빛)
+    g.add(glow(H.box(0.1, 0.012, 0.1, mat, x, y - 0.1, z)));                       // 바닥으로 번지는 빛 판
+  }
   return g;
 }
 
@@ -151,14 +186,20 @@ const AWNING_POS = { '7m': [[-0.6, 2.25, -1.15], 1.5], '7h': [[0, 2.1, -1.15], 1
 function buildAwning(THREE, H, stage, style) {
   const e = AWNING_POS[K(stage, style)]; if (!e) return null;
   const [p, w] = e; const g = at(THREE, p); g.rotation.x = 0.3;      // 앞(+z)이 낮아지게 기울임
-  const stripe = [H.clay(0xf6f1e8), H.clay(0xd9534f)], rod = H.clay(0x3b3d45);
-  const n = 5, sw = w / n;
+  const stripe = [H.clay(0xf6f1e8), H.clay(0xd9534f)], rod = H.clay(0x3b3d45), tassel = H.clay(0xf3c34e);
+  const n = 7, sw = w / n;
   for (let i = 0; i < n; i++) {
-    const x = -w / 2 + sw * (i + 0.5);
-    g.add(H.box(sw, 0.03, 0.6, stripe[i % 2], x, 0, 0));
-    g.add(H.box(sw - 0.02, 0.1, 0.02, stripe[i % 2], x, -0.05, 0.3));
+    const x = -w / 2 + sw * (i + 0.5), m = stripe[i % 2];
+    g.add(H.box(sw, 0.03, 0.62, m, x, 0, 0));
+    g.add(H.box(sw - 0.01, 0.1, 0.02, m, x, -0.05, 0.31));                         // 앞 주름
+    g.add(cone(THREE, sw * 0.5, 0.07, m, x, -0.12, 0.31, 3));                      // 스캘럽 끝(삼각 장식)
+    if (i % 2 === 0) g.add(ico(THREE, 0.02, tassel, x, -0.17, 0.31));              // 술
   }
-  for (const s of [-1, 1]) g.add(H.box(0.03, 0.03, 0.6, rod, s * (w / 2 + 0.01), 0, 0));
+  for (const s of [-1, 1]) {
+    g.add(H.box(0.03, 0.03, 0.66, rod, s * (w / 2 + 0.01), 0, 0));                 // 옆 받침대
+    const arm = H.box(0.03, 0.34, 0.03, rod, s * (w / 2 + 0.01), 0.15, -0.3); arm.rotation.x = -0.4; g.add(arm);   // 벽 쪽 지지대
+  }
+  g.add(H.box(w + 0.06, 0.035, 0.035, rod, 0, 0.02, -0.3));                        // 벽 쪽 가로대
   return g;
 }
 
@@ -167,15 +208,20 @@ const PALM_POS = { '7m': [[-2.6, 0, 4.2], [2.7, 0, 4.3]], '7h': [[-3.4, 0, 4.4],
 function buildPalms(THREE, H, stage, style) {
   const ps = PALM_POS[K(stage, style)]; if (!ps) return null;
   const g = new THREE.Group();
-  const bark = H.clay(0x9a6b45), frond = H.clay(0x4f9a3d), nut = H.clay(0x6b4a2a);
+  const bark = H.clay(0x9a6b45), barkD = H.clay(0x7e5434), frond = [H.clay(0x4f9a3d), H.clay(0x6bb04a)], nut = H.clay(0x6b4a2a), mound = H.clay(0x86b862);
   ps.forEach((p, k) => {
-    const tree = at(THREE, p, k * 1.3); tree.rotation.z = 0.12;         // 수영장 쪽(-x)으로 기움
-    tree.add(cyl(THREE, 0.07, 0.11, 2.3, bark, 0, 1.15, 0, 6));
-    for (let i = 0; i < 5; i++) {
-      const piv = new THREE.Group(); piv.position.y = 2.3; piv.rotation.y = i * Math.PI * 2 / 5 + k;
-      const f = H.box(0.95, 0.03, 0.2, frond, 0.42, 0, 0); f.rotation.z = -0.5; piv.add(f); tree.add(piv);
+    const tree = at(THREE, p, k * 1.3); tree.rotation.z = 0.12;         // 수영장(연못) 쪽(-x)으로 기움
+    const m0 = ico(THREE, 0.3, mound, 0, 0.05, 0); m0.scale.y = 0.35; tree.add(m0);   // 발치 흙무더기
+    for (let i = 0; i < 7; i++) {                                         // 줄기 7마디 — 위로 갈수록 가늘고 번갈아 어둡다
+      const r0 = 0.11 - i * 0.008, h = 0.34; tree.add(cyl(THREE, r0 - 0.008, r0, h, i % 2 ? barkD : bark, Math.sin(i * 0.5) * 0.02, 0.17 + i * 0.32, 0, 7));
     }
-    tree.add(ico(THREE, 0.07, nut, 0.08, 2.2, 0.06, 1));
+    for (let i = 0; i < 9; i++) {                                         // 잎 9장 — 2마디로 꺾이며 처진다
+      const piv = new THREE.Group(); piv.position.y = 2.35; piv.rotation.y = i * Math.PI * 2 / 9 + k;
+      const f1 = H.box(0.6, 0.03, 0.2, frond[i % 2], 0.3, 0.04, 0); f1.rotation.z = -0.25; piv.add(f1);
+      const f2 = H.box(0.5, 0.03, 0.16, frond[(i + 1) % 2], 0.78, -0.08, 0); f2.rotation.z = -0.75; piv.add(f2);
+      tree.add(piv);
+    }
+    for (let i = 0; i < 3; i++) tree.add(ico(THREE, 0.075, nut, 0.07 + i * 0.07, 2.25, 0.05 - i * 0.05, 1));   // 코코넛 송이
     g.add(tree);
   });
   return g;
@@ -188,8 +234,11 @@ function buildPoolLights(THREE, H, stage, style) {
   const [PX, PY, PZ, W, D, BX, BZ] = p;
   const g = new THREE.Group();
   g.add(glow(H.box(W, 0.02, D, lit(H, 0x7fe0f0, 0x37b8ff, 1.3), PX, PY, PZ)));
+  g.add(glow(H.box(W * 0.6, 0.022, D * 0.6, lit(H, 0xc6f6ff, 0x6fd8ff, 1.5), PX, PY + 0.003, PZ)));   // 가운데 더 밝은 코어(깊이감)
   const bulb = lit(H, 0xe8fbff, 0x8fdfff, 1.5);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(glow(ico(THREE, 0.045, bulb, PX + sx * BX, PY + 0.015, PZ + sz * BZ, 1)));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(glow(ico(THREE, 0.05, bulb, PX + sx * BX, PY + 0.015, PZ + sz * BZ, 1)));
+  for (const sx of [-1, 1]) g.add(glow(ico(THREE, 0.04, bulb, PX + sx * BX, PY + 0.015, PZ, 1)));
+  for (const sz of [-1, 1]) g.add(glow(ico(THREE, 0.04, bulb, PX, PY + 0.015, PZ + sz * BZ, 1)));      // 변 가운데 전구 4 — 총 8
   return g;
 }
 
@@ -199,15 +248,33 @@ function buildRooftopSet(THREE, H, stage, style) {
   const o = ROOFTOP[K(stage, style)]; if (!o) return null;
   const [ox, TY, oz] = o, g = new THREE.Group();
   const dx = ox + 2.0, dz = oz + 1.6;   // 6단계 좌표(-2.0,-1.6 기준)를 기준점만큼 옮긴다
-  const white = H.clay(0xf4f3ee), sunny = H.clay(0xf3c34e), chrome = H.clay(0xd8dde0, { roughness: 0.4, metalness: 0.4 });
-  g.add(cyl(THREE, 0.025, 0.025, 1.55, chrome, -2.0 + dx, TY + 0.78, -1.6 + dz, 6));
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.72, 0.22, 8), sunny); cone.position.set(-2.0 + dx, TY + 1.62, -1.6 + dz); g.add(cone);
-  g.add(ico(THREE, 0.04, white, -2.0 + dx, TY + 1.76, -1.6 + dz, 1));
-  g.add(H.box(0.5, 0.12, 1.1, white, -1.2 + dx, TY + 0.16, -1.6 + dz));
-  g.add(H.box(0.44, 0.06, 0.8, sunny, -1.2 + dx, TY + 0.25, -1.45 + dz));
-  const back = H.box(0.44, 0.55, 0.06, white, -1.2 + dx, TY + 0.45, -2.1 + dz); back.rotation.x = -0.55; g.add(back);
-  g.add(H.box(0.4, 0.05, 0.4, white, -1.65 + dx, TY + 0.32, -1.95 + dz));
-  g.add(cyl(THREE, 0.03, 0.03, 0.3, chrome, -1.65 + dx, TY + 0.15, -1.95 + dz, 6));
+  const P = (x, y, z) => [x + dx, TY + y, z + dz];
+  const white = H.clay(0xf4f3ee), sunny = H.clay(0xf3c34e), cream = H.clay(0xfff2c2), chrome = H.clay(0xd8dde0, { roughness: 0.4, metalness: 0.4 }), cushion = H.clay(0x6fd3e3), glassM = H.glass(0xcfeef7), straw = H.clay(0xd9a441), green = H.clay(0x6b9a4c);
+  // 파라솔: 기둥 + 8조각 우산(노랑/크림 번갈아) + 꼭지 + 받침 추
+  const pole = P(-2.0, 0, -1.6);
+  g.add(cyl(THREE, 0.14, 0.17, 0.1, white, pole[0], pole[1] + 0.05, pole[2], 8));
+  g.add(cyl(THREE, 0.025, 0.025, 1.6, chrome, pole[0], pole[1] + 0.8, pole[2], 6));
+  for (let i = 0; i < 8; i++) {
+    const th = new THREE.CylinderGeometry(0.02, 0.74, 0.22, 8, 1, false, (i * Math.PI * 2) / 8, (Math.PI * 2) / 8);
+    const m = new THREE.Mesh(th, i % 2 ? cream : sunny); m.position.set(pole[0], pole[1] + 1.62, pole[2]); g.add(m);
+  }
+  g.add(ico(THREE, 0.045, white, pole[0], pole[1] + 1.78, pole[2], 1));
+  // 라운지 체어: 프레임 + 쿠션 + 베개 + 기울어진 등받이 + 다리
+  const lc = P(-1.2, 0, -1.6);
+  g.add(H.box(0.5, 0.06, 1.1, white, lc[0], lc[1] + 0.2, lc[2]));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(H.box(0.04, 0.2, 0.04, chrome, lc[0] + sx * 0.2, lc[1] + 0.1, lc[2] + sz * 0.5));
+  g.add(H.box(0.44, 0.07, 0.8, cushion, lc[0], lc[1] + 0.27, lc[2] + 0.15));
+  const back = H.box(0.44, 0.07, 0.5, cushion, lc[0], lc[1] + 0.5, lc[2] - 0.5); back.rotation.x = -0.65; g.add(back);
+  g.add(H.box(0.3, 0.1, 0.14, white, lc[0], lc[1] + 0.34, lc[2] - 0.38));                                       // 베개
+  g.add(H.box(0.4, 0.015, 0.3, sunny, lc[0], lc[1] + 0.32, lc[2] + 0.55));                                      // 수건
+  // 사이드 테이블 + 음료 + 작은 화분
+  const tb = P(-1.65, 0, -1.95);
+  g.add(cyl(THREE, 0.2, 0.2, 0.04, white, tb[0], tb[1] + 0.34, tb[2], 10));
+  g.add(cyl(THREE, 0.03, 0.03, 0.3, chrome, tb[0], tb[1] + 0.17, tb[2], 6));
+  g.add(cyl(THREE, 0.15, 0.15, 0.02, white, tb[0], tb[1] + 0.02, tb[2], 10));
+  g.add(cyl(THREE, 0.04, 0.035, 0.12, glassM, tb[0] + 0.07, tb[1] + 0.42, tb[2] + 0.03, 8));                    // 유리잔
+  g.add(cone(THREE, 0.025, 0.05, straw, tb[0] + 0.07, tb[1] + 0.5, tb[2] + 0.03, 5));                           // 빨대 장식
+  g.add(cyl(THREE, 0.08, 0.06, 0.1, straw, tb[0] - 0.08, tb[1] + 0.41, tb[2] - 0.05, 8)); g.add(ico(THREE, 0.08, green, tb[0] - 0.08, tb[1] + 0.52, tb[2] - 0.05));
   return g;
 }
 

@@ -43,7 +43,7 @@ export function buildHouseModel(THREE, stage, style = DEFAULT_HOUSE_STYLE) {
 }
 
 /** 🧩 산 구성품(ids)을 단계(stage)·스타일(7단계만)에 맞는 자리에 얹은 그룹(name 'addons'). 그 단계에 자리가 없는 건 건너뛴다.
- *  7단계는 구성품 안 조각도 재질별로 병합한다(드로우콜) — 움직이는 구성품(userData.anim)은 안 건드린다. */
+ *  구성품 안 조각은 모든 단계에서 재질별로 병합한다(드로우콜) — 움직이는 구성품(userData.anim)은 안 건드린다. */
 export function mountHouseAddons(THREE, stage, ids = [], style = DEFAULT_HOUSE_STYLE) {
   const H = makeHouseHelpers(THREE);
   const root = new THREE.Group(); root.name = 'addons';
@@ -51,7 +51,7 @@ export function mountHouseAddons(THREE, stage, ids = [], style = DEFAULT_HOUSE_S
     const def = HOUSE_ADDONS.find(a => a.id === id); if (!def) continue;
     const g = def.build(THREE, H, stage, style); if (!g) continue;
     g.name = id;
-    if (stage === 7 && !g.userData.anim) mergeByMaterial(THREE, g);
+    if (!g.userData.anim) mergeByMaterial(THREE, g);   // 구성품은 조각이 많아 모든 단계에서 재질별 병합(움직이는 연기만 제외)
     root.add(g);
   }
   return root;
