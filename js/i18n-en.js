@@ -2130,6 +2130,7 @@ export const EN = {
   '{0} {1} · {2}일 남음 — 이번 계절 한정 {3}도 낚았어요 ✅': '{0} {1} · {2} days left — you caught this season\'s {3} ✅',
   // 🔭 천문대 — 문·실내·렌즈 뷰(js/observatory/copy.js). ⏳ 망원경·판정·결과 문구는 검수 전 임시
   '천문대': 'Observatory',
+  '🔭 천문대': '🔭 Observatory',
   '🌌 별 보러 가기': '🌌 Go stargazing',
   '망원경으로 북두칠성을 이어 보는 곳': 'Connect the Big Dipper through the telescope',
   '망원경으로 별자리를 이어 보는 곳이에요. 나갈 땐 남쪽 문': 'Trace constellations through the telescope here. The exit is the south door',

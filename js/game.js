@@ -164,7 +164,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import {
-  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, observatoryCamFocus, spawnObservatoryGate, startObservatoryLook, updateObservatory,
+  OBSERVATORY_LIGHT, enterObservatory, exitObservatory, observatoryCamFocus, spawnObservatoryGate, TELESCOPE_SPOT, startObservatoryLook, updateObservatory,
 } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import {
   INT_HALF, STAIR_PROMPT_R, buildDecorGhost, buildInterior, commitDecor, curFloorDef, curHalf, decorClampX,
@@ -5453,6 +5453,9 @@ function minimapMarks(place) {
       const col = t.stage === 'mature' && t.fruit > 0 && def ? '#' + def.fruitColor.toString(16).padStart(6, '0') : '#5f9e52';
       marks.push({ x: t.x, z: t.z, c: col, r: 2.6 });
     }
+  } else if (place === 'observatory') {   // 🔭 나가는 문(남쪽) · 망원경
+    marks.push({ x: OBSERVATORY.x, z: OBSERVATORY.z + OBSERVATORY_R, c: '#c8905a', kind: 'exit' });
+    marks.push({ x: OBSERVATORY.x + TELESCOPE_SPOT.x, z: OBSERVATORY.z + TELESCOPE_SPOT.z, c: '#f3d27a', r: 3.0 });
   } else if (place === 'mine') {
     marks.push({ x: MINE.x, z: MINE.z - MINE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
     for (const rock of oreRocks) {
