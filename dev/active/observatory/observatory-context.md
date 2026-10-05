@@ -1,11 +1,11 @@
 # 🔭 천문대 — 컨텍스트
 
-**Last Updated:** 2026-10-04 (Claude, 3차 — 리뷰 D1~D3·R3·R6~R10 + 6~8단계 구현) — 아래 줄 번호는 기획 세션 기준이라 어긋나면 함수명으로 grep.
+**Last Updated:** 2026-10-05 (Claude, 4차 — 미니맵·렌즈 중 3D 정지·렌즈 blur 축소·game.js 배선 이동; 3차: 리뷰 D1~D3·R3·R6~R10 + 6~8단계) — 아래 줄 번호는 기획 세션 기준이라 어긋나면 함수명으로 grep.
 
 ### 3차에서 생긴 것 (파일 지도)
 - `js/observatory/star-run.js` — `starSettle(summary, run, diff)`: 하루 1회 보상(`gameState.starDay`)·DDA(`ddaOutcome('star')`=점수/14)·`star_result`
 - `js/observatory/interior.js` — `TELESCOPE`(관 자세 → 접안부·대물·자세 위치 파생), `HALL_SOLIDS`(받침·책장·책상 충돌체)
-- `js/spaces/observatory.js` — `observatoryCamFocus`(카메라 초점을 홀 중심 쪽 0.4배), `rollDifficulty('star')` → 렌즈 열기 → `star_start`
+- `js/spaces/observatory.js` — `applyObservatoryLight`·`clampToObservatory`·`observatoryAction`·`observatoryMinimapMarks`(game.js 에서 옮김), `observatoryLensOpen`(렌즈 중 3D 렌더 건너뜀), `observatoryCamFocus`(카메라 초점을 홀 중심 쪽 0.4배), `rollDifficulty('star')` → 렌즈 열기 → `star_start`
 - `tests/helpers/fake-dom.mjs` + `tests/observatory-overlay.test.mjs` — 렌즈 뷰 동작 테스트(가짜 DOM)
 - `js/tuning.js` `DIFFICULTY.star`, `js/difficulty.js` `ddaOutcome('star')`, `scripts/i18n_check.mjs` 가 js/observatory 도 검사
 
