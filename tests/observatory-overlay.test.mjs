@@ -63,6 +63,26 @@ test('successful run shows the complete title; reward only when one was actually
   assert.match(paid.card().querySelector('p').textContent, new RegExp(`${COPY.reward} \\+24`));
 });
 
+test('same-day success: no reward line, says today\'s reward was already collected', async () => {
+  const o = overlay();
+  await o.context.openStarView({ onResult: () => ({ coins: 0, alreadyToday: true }) });
+  o.play([0, 0, 0, 0, 0, 0, 0]);
+  const p = o.card().querySelector('p').textContent;
+  assert.ok(!p.includes(`${COPY.reward} +`), 'nothing paid → no reward line');
+  assert.ok(p.includes(COPY.rewardDone), 'explains why there is no reward');
+
+  const first = overlay();   // first success of the day → reward line, no notice
+  await first.context.openStarView({ onResult: () => ({ coins: 24, alreadyToday: false }) });
+  first.play([0, 0, 0, 0, 0, 0, 0]);
+  assert.ok(!first.card().querySelector('p').textContent.includes(COPY.rewardDone));
+
+  const failed = overlay();  // a failed run never uses up the day → no notice
+  await failed.context.openStarView({ onResult: () => ({ coins: 0, alreadyToday: true }) });
+  failed.dom.tick(failed.chart.at(-1).hitMs + 400);
+  failed.dom.tick(16);
+  assert.ok(!failed.card().querySelector('p').textContent.includes(COPY.rewardDone));
+});
+
 test('progress dots paint missed notes differently from hit notes', async () => {
   const o = overlay();
   await o.context.openStarView({});
