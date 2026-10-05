@@ -8,7 +8,7 @@
 import {
   $w, RES_ICON, RES_LABEL, applyHouseStyle, doPlayerAction, gameState, houseCollider, houseGhost, houseGroup,
   houseSign, houseSignCtx, houseSignTex, houseWindows, interiorFloors, obstacles, rebuildInteriorFinish,
-  refreshCollectQuests, refreshInventoryUI, requestSave, roundRect, scene, solidCircle, spawnConfetti, spawnDust,
+  refreshCollectQuests, refreshInventoryUI, removeSolid, requestSave, roundRect, scene, solidBox, solidCircle, spawnConfetti, spawnDust,
   spawnSparkle, syncBadges, syncStory, triggerMoment, tryUnlockDrop, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
@@ -20,6 +20,7 @@ import { t } from '../i18n.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
 import { expandWoodOf } from '../tool-tiers.js';
+import { HOUSE_CLEAR_R, HOUSE_STYLES, STYLE_INFO, normalizeHouseStyle, stage7Boxes, stage7DoorPoint, stage7ExitPoint } from '../house-stage7.js';   // 🏡 7단계(정원 저택) 규칙 — 새 로직은 그 순수 모듈에
 import * as THREE from 'three';
 
 export function buildHouseGhost() {
@@ -57,23 +58,41 @@ export function buildHouseGhost() {
   //    제일 공들인 정면이 영원히 뒷면이 되고 플레이어에겐 창문 없는 뒷벽만 보인다.
   houseGroup.rotation.y = Math.PI;
   scene.add(houseGroup);
-  obstacles.push({ x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }); // 집 터엔 밭 금지
+  houseObstacle = { x: HOUSE_POS.x, z: HOUSE_POS.z, r: 2.6 }; obstacles.push(houseObstacle); // 집 터엔 밭 금지(7단계는 syncHouseCollider 가 반경을 넓힌다)
   $w.houseCollider = solidCircle(HOUSE_POS.x, HOUSE_POS.z, 2.2); // 🚧 집 벽 — 짓는 동안엔 꺼 두고 완성되면 켠다
   syncHouseCollider();
 }
+
+let houseObstacle = null;       // 밭 금지 원(obstacles 항목) — 7단계에서 반경을 넓힌다
+let houseBoxes = [];             // 🏡 7단계 건물 충돌 박스 3개(안채·좌·우 행랑) — 중정은 열어 둔다
 
 // 집 충돌 반경 — 단계별 실제 풋프린트(3×3 → 4.2 → 4.6 → 5.0)에 맞춰 커진다.
 // 문 프롬프트 사거리는 이 값 +0.6 이라 어느 단계든 문 앞에 설 수 있다(PLAYER_R 0.42 감안).
 export function houseSolidR() {
   const s = gameState.houseStage;
-  return s >= 6 ? 2.7 : s >= 5 ? 2.55 : s >= 4 ? 2.4 : 2.2;
+  return s >= 7 ? 3.9 : s >= 6 ? 2.7 : s >= 5 ? 2.55 : s >= 4 ? 2.4 : 2.2;
+}
+
+// 🚪 집 문 프롬프트 범위 — 7단계는 ㄷ자 중정 안쪽 안채 현관, 그 밖은 집 중심에서 houseSolidR()+0.6
+export function nearHouseDoor(p) {
+  if (gameState.houseStage >= 7) { const d = stage7DoorPoint(gameState.house.style, HOUSE_POS); return Math.hypot(d.x - p.x, d.z - p.z) < 1.9; }
+  return Math.hypot(HOUSE_POS.x - p.x, HOUSE_POS.z - p.z) < houseSolidR() + 0.6;
+}
+
+// 🚪 집에서 나와 서는 자리 — 7단계는 현관 앞 마루, 그 밖은 집 앞 3
+export function houseExitPoint() {
+  return gameState.houseStage >= 7 ? stage7ExitPoint(gameState.house.style, HOUSE_POS) : { x: HOUSE_POS.x, z: HOUSE_POS.z + 3 };
 }
 
 // 짓는 동안(터·기초·벽)은 터를 자유롭게 오가고, 완성(지붕, 3단계+)되면 실제 크기만큼 막는다
 export function syncHouseCollider() {
   if (!houseCollider) return;
-  houseCollider.off = gameState.houseStage < 3;
+  const stage = gameState.houseStage;
+  houseCollider.off = stage < 3 || stage >= 7;   // 7단계는 원 하나가 중정까지 막아서 박스 3개로 바꾼다
   houseCollider.r = houseSolidR();
+  if (houseObstacle) houseObstacle.r = stage >= 7 ? HOUSE_CLEAR_R : 2.6;
+  for (const b of houseBoxes) removeSolid(b);    // 증축·복원마다 다시 만든다 — 안 지우면 옛 박스가 쌓인다
+  houseBoxes = stage >= 7 ? stage7Boxes(gameState.house.style, HOUSE_POS).map((b) => solidBox(b.x0, b.z0, b.x1, b.z1)) : [];
 }
 
 // 집 터 안내판 텍스트 갱신(완성되면 숨김)
@@ -207,7 +226,7 @@ export function buildHouseStage(stage, silent = false) {
       Sound.complete();
       triggerMoment();                           // 📷 순간 줌인
       tryUnlockDrop(1);                          // 🎨 증축 보상: 랜덤 색 1개 확정
-      trackEvent('house_expand', { stage });     // [GA4] 증축 퍼널
+      trackEvent('house_expand', { stage, ...(stage >= 7 ? { style: gameState.house.style } : {}) });     // [GA4] 증축 퍼널(7단계는 고른 스타일도)
       refreshCollectQuests();                    // 이미 받아 둔 증축 의뢰는 여기서 달성 처리
       syncBadges();                              // 🏅 궁전의 주인 배지
     }
@@ -219,9 +238,10 @@ export function buildHouseStage(stage, silent = false) {
 //   · role roof/wall/door 재질은 기본색을 기억(스와치 0번) · role window 재질은 밤 점등 목록에 등록
 //   · 🧩 산 구성품은 래퍼 안에 'addons' 그룹으로 같이 얹어 회전을 물려받는다(refreshHouseAddons 가 이 그룹만 갈아 끼움)
 export function mountHouseModel(stage) {
-  const g = buildHouseModel(THREE, stage);
+  const style = normalizeHouseStyle(gameState.house.style, stage);   // 7단계만 값이 있다(모던/한옥)
+  const g = buildHouseModel(THREE, stage, style || undefined);
   g.rotation.y = Math.PI;
-  const addons = mountHouseAddons(THREE, stage, gameState.house.addons);
+  const addons = mountHouseAddons(THREE, stage, gameState.house.addons, style || undefined);
   g.add(addons); prepHouseMeshes(g); registerAddonAnims(addons);
   return g;
 }
@@ -261,7 +281,7 @@ export function refreshHouseAddons() {
   const old = houseGroup?.getObjectByName('addons'); if (!old) return;
   unregisterWindows(old);
   const parent = old.parent; parent.remove(old);
-  const fresh = mountHouseAddons(THREE, gameState.houseStage, gameState.house.addons);
+  const fresh = mountHouseAddons(THREE, gameState.houseStage, gameState.house.addons, normalizeHouseStyle(gameState.house.style, gameState.houseStage) || undefined);
   parent.add(fresh); prepHouseMeshes(fresh); registerAddonAnims(fresh);
 }
 
@@ -301,24 +321,28 @@ export function expandInfo() {
     const need = k === 'wood' ? expandWoodOf(gameState, v) : v;
     return { k, need, have: gameState.inventory[k] || 0, label: RES_LABEL[k] || k };
   });
-  return { maxed: false, next: { stage: next.stage, name: next.name, ico: next.ico }, items, affordable: items.every(i => i.have >= i.need) };
+  return { maxed: false, next: { stage: next.stage, name: next.name, ico: next.ico, styles: next.styles || null }, needsStyle: !!next.styles, items, affordable: items.every(i => i.have >= i.need) };
 }
 
 // 증축 실행 — 자원 검증 → 소비 → 재건축. 결과 msg 는 호출부가 토스트
-export function doExpand() {
+export function doExpand(style) {
   if (gameState.houseStage < 3) return { ok: false, msg: '먼저 🔨망치로 집을 완성해요' };
   const info = expandInfo();
-  if (info.maxed) return { ok: false, msg: '🏝️ 이미 루프탑 빌라까지 완성했어요!' };
+  if (info.maxed) return { ok: false, msg: '🏡 이미 정원 저택까지 완성했어요!' };
   if (!info.affordable) {
     const lack = info.items.filter(i => i.have < i.need).map(i => `${i.label} ${i.have}/${i.need}`).join(' · ');
     return { ok: false, msg: `${info.next.ico} ${info.next.name} 증축 재료 부족 — ${lack}` };
   }
   const exp = EXPANSIONS.find(e => e.stage === info.next.stage);
+  // 🏡 7단계는 스타일(모던/한옥)을 골라야 짓는다 — 재료를 쓰기 **전에** 거른다(망치 경로는 스타일 없이 부르므로 메뉴로 안내)
+  if (exp.styles && !HOUSE_STYLES.includes(style)) return { ok: false, needsStyle: true, msg: '🏡 정원 저택은 🎨 집 꾸미기 메뉴에서 스타일을 골라 증축해요' };
   for (const it of info.items) gameState.inventory[it.k] -= it.need;   // expandInfo 가 계산한 그 값으로 소비
   const coinCost = info.items.find(i => i.k === 'coins')?.need || 0;
   if (coinCost) logEcon('house_expand', 'stage' + exp.stage, -coinCost, gameState.inventory.coins); // [원장] 코인 소비
   refreshInventoryUI();
   doPlayerAction(HOUSE_POS.x, HOUSE_POS.z);   // 건축 제스처
+  if (exp.styles) gameState.house.style = style;   // 고른 스타일 확정 — buildHouseStage(7) 의 mountHouseModel 이 읽는다
   buildHouseStage(exp.stage);
-  return { ok: true, msg: `${exp.ico} ${exp.name} 증축 완료! 축하해요 🎉` };
+  const picked = exp.styles ? exp.styles[style] : null;
+  return { ok: true, msg: `${picked ? picked.ico : exp.ico} ${exp.name} 증축 완료! 축하해요 🎉` };   // 7단계는 고른 스타일 아이콘(🌸/🏯)으로 — i18n 글루 패턴 '{0} {1} 증축 완료!' 그대로
 }

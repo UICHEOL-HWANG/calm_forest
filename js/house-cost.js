@@ -16,6 +16,7 @@
 //  THREE 비의존 — 노드에서 잠근다(tests/house-cost.test.mjs).
 // =============================================================
 import { HAMMER_EXPAND_RATE } from './tool-tiers.js';
+import { STYLE_INFO } from './house-stage7.js';   // 🏡 7단계 스타일(모던/한옥) 이름·아이콘
 
 /** 단계별 재료. 키 순서가 곧 표시 순서다(🪵 → 🪨 → 🪙). */
 export const BUILD_STAGES = [
@@ -40,6 +41,8 @@ export const EXPANSIONS = [
   { stage: 4, name: '브릭 로프트', ico: '🧱', cost: { wood: 45, stone: 15, coins: 120 } },
   { stage: 5, name: '펜트하우스', ico: '🏢', cost: { wood: 75, stone: 30, coal: 10, coins: 350 } },
   { stage: 6, name: '루프탑 빌라', ico: '🏝️', cost: { wood: 120, stone: 50, gem: 3, coins: 800 } },
+  // 🏡 7단계 — 같은 ㄷ자 중정 배치에 스타일 둘(택1, 고르면 확정). 규칙·충돌은 js/house-stage7.js
+  { stage: 7, name: '정원 저택', ico: '🏡', cost: { wood: 180, stone: 80, gem: 5, coins: 1500 }, styles: STYLE_INFO },
 ];
 
 export const MAX_HOUSE_STAGE = EXPANSIONS[EXPANSIONS.length - 1].stage;

@@ -96,7 +96,7 @@ test('망치는 목재만 깎고 돌·코인은 그대로', () => {
 test('🏗️ 증축 목재가 ×1.5 로 올랐고 코인은 그대로다', () => {
   // 코인은 일반 유저 도달률이 0 이라 올리지 않기로 했다(econ_logs 측정, 2026-09-21).
   assert.deepEqual(EXPANSIONS.map(e => [e.stage, e.cost.wood, e.cost.coins]),
-    [[4, 45, 120], [5, 75, 350], [6, 120, 800]]);
+    [[4, 45, 120], [5, 75, 350], [6, 120, 800], [7, 180, 1500]]);
   assert.equal(SRC.includes('const EXPANSIONS ='), false);   // 수치가 game.js 로 되돌아가지 않게
 });
 
