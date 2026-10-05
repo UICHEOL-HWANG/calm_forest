@@ -9,10 +9,18 @@ import { BY_ID } from './constellations.js';
 import { COPY, fill, starCopy } from './copy.js';
 import { t } from '../i18n.js';
 import { Input } from '../game.js';
+import { Sound } from '../sound.js';
 
 import { ensureStyle, layout, drawLens, drawConstellation, drawComet, drawJudge, drawHud } from './render.js';
 
 let view = null;
+
+// 🔔 효과음 세트 1 '별 차임' — 딱 좋아요는 이은 별 순번(step)만큼 음이 올라간다
+function judgeSound(judge, step) {
+  if (judge === 'perfect') Sound.starPerfect(step);
+  else if (judge === 'good') Sound.starGood(step);
+  else Sound.starMiss();
+}
 
 function showResult(state) {
   if (state.resultShown) return;
@@ -37,6 +45,8 @@ function showResult(state) {
   `;
   card.querySelector('button').addEventListener('click', () => closeStarView('complete'), { signal: state.controller.signal });
   state.layer.appendChild(card);
+  if (summary.success) Sound.starComplete(state.chart.length);
+  if (paid.unlockedNext) Sound.starUnlock(1.1);   // 팡파레가 맺힌 뒤 반짝임
 }
 
 function tap(state) {
@@ -58,18 +68,22 @@ function tap(state) {
   state.offsets.push(Math.round(offset));   // 탭한 노트만(만료 miss 는 오프셋이 없다) — GA4 star_result 용
   state.noteOffsets.push(Math.round(offset));   // 노트 순서 정렬(만료 miss = null) — star_runs 학습용
   state.flash = { judge, until: performance.now() + 620 };
+  judgeSound(judge, state.judges.length - 1);
   if (state.judges.length >= state.chart.length) showResult(state);
 }
 
 function missExpired(state, elapsed) {
   if (state.resultShown) return;
+  let missed = false;
   while (state.judges.length < state.chart.length) {
     const note = state.chart[state.judges.length];
     if (judgeTap(elapsed - note.hitMs, state.ease) !== 'miss') break;
     state.judges.push('miss');
     state.noteOffsets.push(null);
     state.flash = { judge: 'miss', until: performance.now() + 620 };
+    missed = true;
   }
+  if (missed) Sound.starMiss();   // 한 프레임에 여럿 지나가도 "툭" 한 번
   if (state.judges.length >= state.chart.length) showResult(state);
 }
 
@@ -83,6 +97,8 @@ function drawFrame(state) {
   }
   const elapsed = performance.now() - state.startAt;
   missExpired(state, elapsed);
+  const flying = state.chart.findIndex(n => elapsed >= n.startMs && elapsed < n.hitMs);
+  if (flying > state.cometIdx) { state.cometIdx = flying; Sound.starComet(); }   // 혜성이 새 별로 출발할 때 "슝"
   drawLens(state, L);
   const pts = drawConstellation(state, L, elapsed);
   drawComet(state, L, pts, elapsed);
@@ -150,6 +166,7 @@ export async function openStarView(opts = {}) {
     offsets: [],
     noteOffsets: [],
     earlyTaps: 0,
+    cometIdx: -1,
     flash: null,
     raf: 0,
     startAt: performance.now(),

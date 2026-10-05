@@ -8,6 +8,7 @@ import { CONSTELLATIONS, fitter, unlockedIds } from './constellations.js';
 import { COPY, fill, starCopy } from './copy.js';
 import { ensureStyle } from './render.js';
 import { t } from '../i18n.js';
+import { Sound } from '../sound.js';
 
 let book = null;
 
@@ -86,6 +87,7 @@ export function openStarBook({ cleared = {}, best = {}, fresh = null, onPick, on
         if (!book) return;
         const b = book;
         book = null;              // 고르기는 '닫기'가 아니다 — onClose(자세 풀기)를 부르지 않는다
+        Sound.starPick();
         b.controller.abort();
         b.layer.remove();
         onPick?.(c);

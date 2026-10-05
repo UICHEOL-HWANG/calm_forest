@@ -17,7 +17,8 @@ function harness() {
     .replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
   const context = vm.createContext({ ...rhythm, ...constellations, COPY, STAR_COPY, starCopy, fill, t: s => s,
     document: { createElement: () => ({ getContext: () => new Proxy({}, { get: () => () => {}, set: () => true }) }) },
-    performance: { now: () => 4000 }, Input: { setAnalog() {} } });
+    performance: { now: () => 4000 }, Input: { setAnalog() {} },
+    Sound: new Proxy({}, { get: () => () => {} }) });
   vm.runInContext(source, context);
   const state = { g, dpr: 1, chart: rhythm.buildChart(), judges: [], ease: 1,
     offsets: [], noteOffsets: [], earlyTaps: 0, startAt: 0, resultShown: false };
