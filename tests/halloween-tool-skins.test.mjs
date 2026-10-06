@@ -18,11 +18,20 @@ test('🎃 새 테마 파일 — 9종 전부 · 우산 · themeBuilders 에 펼�
   const h = read('../js/cosmetics/tool-skins-halloween.js');
   assert.match(h, /export function halloweenThemes\(THREE, K\)/);
   for (const theme of ['batnight', 'harvest']) assert.match(h, new RegExp(`${theme}:`), theme);
-  for (const tool of SKIN_TOOLS) assert.match(h, new RegExp(`\\b${tool}\\b`), `도구 ${tool}`);
+  // 테마 블록별로 잘라 두 테마 모두 9종을 갖췄는지 본다
+  const body = h.slice(h.indexOf('export function halloweenThemes'));
+  const bi = body.indexOf('batnight: {'), hi = body.indexOf('harvest: {');
+  assert.ok(bi > 0 && hi > bi, '테마 블록 순서');
+  const blocks = { batnight: body.slice(bi, hi), harvest: body.slice(hi) };
+  for (const [theme, src] of Object.entries(blocks)) {
+    for (const tool of SKIN_TOOLS) assert.match(src, new RegExp(`\\b${tool}\\(g\\)`), `${theme}.${tool}`);
+  }
   const ts = read('../js/cosmetics/tool-skins.js');
   assert.match(ts, /\.\.\.halloweenThemes\(THREE, K\)/);
-  assert.match(ts, /batnight:\s*\{/);
-  assert.match(ts, /harvest:\s*\{/);   // UMBRELLAS
+  const umb = ts.slice(ts.indexOf('const UMBRELLAS = {'));
+  const umbTable = umb.slice(0, umb.indexOf('\n};'));
+  assert.match(umbTable, /batnight:\s*\{/);   // UMBRELLAS 표
+  assert.match(umbTable, /harvest:\s*\{/);
 });
 
 test('🎃 스윙·쥐기 값은 건드리지 않는다(새 파일이 모션 상수를 정의하지 않음)', () => {
