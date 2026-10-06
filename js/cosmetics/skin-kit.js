@@ -45,6 +45,7 @@ export function bakeInto(THREE, parent, stage) {
 
 // ── 스테이징 조립 ─────────────────────────────────────────────
 /** 스테이징 그룹에 메시 하나 — bakeInto 가 구우면서 지오메트리를 버린다 */
+//  ⚠️ 스테이징 전용 — built.group 에 직접 put 하지 말 것(부모 없는 stage 에만 넣고 bakeInto 로 굽는다)
 export const put = (THREE, parent, geo, mat, x = 0, y = 0, z = 0) => {
   const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m;
 };
