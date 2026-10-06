@@ -86,13 +86,14 @@ function makePoints(THREE, atlas, cap) {
   });
   const points = new THREE.Points(geo, mat);
   points.frustumCulled = false; points.renderOrder = 5;
-  //  ⚠️ 점 크기(px) = 월드 크기 × 화면 세로 / (2·tan(fov/2)) / 거리 — 렌더 직전에 그 화면·카메라 값으로 맞춘다
-  //     (게임 본화면·상점 미리보기·구매 연출이 각자 다른 렌더러를 쓴다)
-  const buf = new THREE.Vector2();
+  //  ⚠️ 점 크기(px) = 월드 크기 × 뷰포트 세로 / (2·tan(fov/2)) / 거리 — 렌더 직전에 그 뷰포트·카메라 값으로 맞춘다
+  //     (게임 본화면·상점 미리보기·구매 연출이 각자 다른 렌더러를 쓴다. 캔버스 전체가 아니라 **지금 뷰포트** 높이 —
+  //      캔버스를 나눠 그리면 캔버스 높이로는 박쥐가 그 배수만큼 커진다)
+  const vp = new THREE.Vector4();
   points.onBeforeRender = (renderer, _scene, camera) => {
     if (!camera.isPerspectiveCamera) return;
-    renderer.getDrawingBufferSize(buf);
-    mat.uniforms.uScale.value = buf.y / (2 * Math.tan(camera.fov * Math.PI / 360));
+    renderer.getCurrentViewport(vp);
+    mat.uniforms.uScale.value = vp.w / (2 * Math.tan(camera.fov * Math.PI / 360));
   };
   return { points, geo, mat, arr };
 }
@@ -102,17 +103,18 @@ export function createBatSprites(THREE, { cap = 16 } = {}) {
   const atlas = makeAtlas(THREE, FLAP.map(a => (c, S) => drawBat(c, S, a, ST_B)));
   const { points, geo, mat, arr } = makePoints(THREE, atlas, cap);
 
-  /** list: kind 'bat' 입자(trail-fx.js particleStep 결과 + alpha) */
+  /** list: kind 'bat' 입자(trail-fx.js particleStep 결과 + alpha + ang) — 넘치면 가장 새 박쥐를 남긴다 */
   function setBats(list, nightLevel = 0) {
-    const n = Math.min(list.length, cap), luma = nightLevel >= 0.5 ? BAT_LUMA.night : BAT_LUMA.day;
+    const shown = list.length > cap ? list.slice(-cap) : list;
+    const n = shown.length, luma = nightLevel >= 0.5 ? BAT_LUMA.night : BAT_LUMA.day;
     for (let i = 0; i < n; i++) {
-      const p = list[i], k = p.age / p.life, ang = p.phase + k * p.turns * Math.PI * 2, depth = Math.sin(ang);
+      const p = shown[i], ang = p.ang, depth = Math.sin(ang);
       arr.position.set([p.x, p.y, p.z], i * 3);
       arr.aColor.set([luma, luma, luma], i * 3);
       arr.aSize[i] = p.size * outBack(p.age / GROW_T) * (0.88 + 0.12 * depth);   // 앞으로 돌 때 살짝 크게 — 원근감
       arr.aAlpha[i] = p.alpha * (0.85 + 0.15 * depth);
       arr.aFrame[i] = Math.floor((p.age * FLAP_HZ + p.phase) % FLAP.length);
-      arr.aRot[i] = -Math.cos(ang) * 0.25;                                       // 도는 쪽으로 몸을 기울인다
+      arr.aRot[i] = -Math.cos(ang) * p.dir * 0.25;                               // 도는 쪽으로 몸을 기울인다
     }
     geo.setDrawRange(0, n);
     for (const k in ATTRS) geo.attributes[k].needsUpdate = true;
