@@ -11,4 +11,5 @@ test('👻 유령 2종 — export · 표식 · 소유 표시', () => {
   assert.match(src, /skinOwned\s*=\s*true/, 'disposeSkin 이 지오메트리를 버리게');
   assert.doesNotMatch(src, /\.dispose\(\)/, '캐릭터 원본 재질은 dispose 금지');
   assert.ok(src.split('\n').length < 800, '800줄 이하');
+  assert.doesNotMatch(src, /from '\.\/skin\.js'/, 'skin.js 를 import 하면 순환이 된다');
 });
