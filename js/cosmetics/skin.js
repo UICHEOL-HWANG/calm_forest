@@ -11,9 +11,11 @@
 //  ▶ 드로우콜: 정령 ≤ +4(껍질 2·알갱이 1·새싹 1) · 인형 ≤ +6(땀·단추·테·구멍·패치판, 재질별 병합)
 // =============================================================
 import { mergeGeos } from './trail.js';
-import { bellyPatchZ } from './skin-rules.js';
+import { bellyPatchZ, skinPartVisible } from './skin-rules.js';
+import { applyGhostNightcap, applyGhostCloud } from './skin-ghost.js';
+import { applyWitchClassic, applyWitchStarry } from './skin-witch.js';
 
-export const SKIN_IDS = Object.freeze(['forest_spirit', 'plush_doll']);
+export const SKIN_IDS = Object.freeze(['forest_spirit', 'plush_doll', 'ghost_nightcap', 'ghost_cloud', 'witch_classic', 'witch_starry']);
 
 const SPIRIT = { body: 0x5fc4a8, emissive: 0x1f7a68, ei: 0.8, opacity: 0.6, rim: 0x9af0c8, rimOpacity: 0.22, rimGrow: 1.06,
   mote: 0xe6ff9a, moteSize: 0.09, motes: 26, sprout: 0x9be07a, sproutGlow: 0x3f9a40 };
@@ -210,12 +212,24 @@ function applyPlush(THREE, built) {
 export function applySkin(THREE, built, skinId) {
   if (skinId === 'forest_spirit') applySpirit(THREE, built);
   else if (skinId === 'plush_doll') applyPlush(THREE, built);
+  else if (skinId === 'ghost_nightcap') applyGhostNightcap(THREE, built);
+  else if (skinId === 'ghost_cloud') applyGhostCloud(THREE, built);
+  else if (skinId === 'witch_classic') applyWitchClassic(THREE, built);
+  else if (skinId === 'witch_starry') applyWitchStarry(THREE, built);
   return built.group;
 }
 
 /** 🌱 정령 머리 새싹 켜고 끄기 — 표식(part='sprout')만 건드린다. 판정은 skin-rules.js sproutVisible */
 export function showSprout(group, on) {
   group?.traverse(o => { if (o.userData?.part === 'sprout') o.visible = on; });
+}
+
+/** 🧥 머리·등을 덮는 스킨 부위 켜고 끄기 — 표식(part)만 건드린다. 판정은 skin-rules.js skinPartVisible */
+export function showSkinParts(group, cos) {
+  group?.traverse(o => {
+    const part = o.userData?.part;
+    if (part === 'sprout' || part === 'skinhead' || part === 'skinback') o.visible = skinPartVisible(part, cos);
+  });
 }
 
 /** 스킨이 새로 만든 지오메트리만 버린다(재질은 캐시 공유, 캐릭터 원본은 손대지 않는다) */
