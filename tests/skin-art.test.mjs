@@ -17,8 +17,10 @@ test('캐릭터 재질을 dispose 하지 않는다 — skinOwned 지오메트리
   assert.match(d, /skinOwned/);
   assert.doesNotMatch(d, /material\.dispose/);
 });
-test('바늘땀·단추는 병합 — mergeGeos 를 쓴다', () => {
-  assert.match(src, /import \{ mergeGeos \} from '\.\/trail\.js'/);
+test('바늘땀·단추는 병합 — mergeGeos 를 쓴다(bakeInto 는 skin-kit.js 로 옮겼다)', () => {
+  const kit = readFileSync(new URL('../js/cosmetics/skin-kit.js', import.meta.url), 'utf8');
+  assert.match(kit, /import \{ mergeGeos \} from '\.\/trail\.js'/);
+  assert.match(src, /import \{[^}]*\bbakeInto\b[^}]*\} from '\.\/skin-kit\.js'/);
 });
 test('정령 빛 알갱이는 깊이 검사를 끄지 않는다(월드에서 벽 너머로 비치지 않게)', () => {
   assert.doesNotMatch(src, /depthTest: false/);

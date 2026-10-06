@@ -93,6 +93,7 @@ function disposeTree(o) {
     if (!m.isMesh && !m.isPoints) return;
     m.geometry.dispose();
     if (m.material.map) m.material.map.dispose();
+    m.material.uniforms?.map?.value?.dispose();   // 🦇 박쥐 스프라이트(ShaderMaterial)는 아틀라스를 uniform 으로 든다
     m.material.dispose();
   });
 }

@@ -1,0 +1,13 @@
+# observatory-constellations — tasks
+- [x] 1. 시안: sims/constellation-sim.html → C 수첩 그리드·6종·문구 묶음 1 확정
+- [x] 2. SQL migrate_star_runs.sql 적용(2026-10-05 사용자) — 컬럼·RLS 확인
+- [x] 3. constellations.js · rhythm 일반화 · star-run(첫 클리어 +30·해금·plays/best) · difficulty 정규화 · game.js 세이브(restoreStar, 옛 starDay → 북두칠성 클리어)
+- [x] 4. sendStarRun · STAR_TABLE (dev 세션 제외)
+- [x] 5. UI: book.js · 렌즈 일반화 · 결과 카드 첫 클리어/해금 줄(토스트는 오버레이 밑이라 안 보임 → 카드·수첩 금빛) · i18n-en · 문 안내
+- [x] 6. difficulty_probe.sql §1·6·7 + §8 (BQ dry-run 통과)
+- [x] 7a. 브라우저 검증(127.0.0.1 게스트, PC 1280·모바일 375): 수첩→북두칠성 완주 +10/+30 → 카시오페이아 해금·금빛 → ESC 포기→수첩→ESC 종료(자세 복구) · 전갈 11노트 렌즈
+- [x] 7b. code-reviewer: #2 replace 시 수첩 재오픈 · #3 시도 횟수 저장 수정. #1 옛 클라이언트가 star 없이 저장 → 4곳 동시 배포로 대응(메모리 병합은 계정 전환 시 진행도 섞임 위험이라 안 함)
+- [x] 7c. star_runs 실제 행 확인(fail·abandon) — 테스트 게스트 29efee5e-a4f0-4af1-b256-51aa6e59e4a3 2행 제외할 것
+- [~] 7d. 배포(2026-10-05): 웹 311ffcbf ✅ · Play v36 internal+alpha ✅(top inset 포함) · itch zip 전달(1f05c2f) · 토스 -107 APPROVED(노트 문구 오류·닫기 가림) → -108 검수 제출(15:31, reviewRequestId 233581, 노트 '천문대가 생겼어요') → 승인 후 콘솔에서 -108 출시하기(-107 은 출시 안 함) · 공지는 토스 출시 후
+- [ ] 7e. 다음 날 BQ §8 재검증
+- [x] 연타 → 혜성 비행 중 이른 탭 = miss (1eeaedb, 사용자 결정)
