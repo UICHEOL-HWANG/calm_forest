@@ -10,7 +10,7 @@
 //  ▶ ⚠️ Color 내부값은 선형이다 — 밝기 판정은 getHex()(sRGB). 시안에서 갈색 발바닥이 "어두움"으로 잡혔다.
 //  ▶ 드로우콜: 정령 ≤ +4(껍질 2·알갱이 1·새싹 1) · 인형 ≤ +6(땀·단추·테·구멍·패치판, 재질별 병합)
 // =============================================================
-import { mergeGeos } from './trail.js';
+import { cached, isDark, part, own, headOf, bakeInto } from './skin-kit.js';   // 공통 도구 — 유령·마녀와 같이 쓴다
 import { bellyPatchZ, skinPartVisible } from './skin-rules.js';
 import { applyGhostNightcap, applyGhostCloud } from './skin-ghost.js';
 import { applyWitchClassic, applyWitchStarry } from './skin-witch.js';
@@ -23,14 +23,6 @@ const SPIRIT = { body: 0x5fc4a8, emissive: 0x1f7a68, ei: 0.8, opacity: 0.6, rim:
 const SPROUT_AT = { default: [0, 0.96, 0.05], chick: [0, 0.86, 0.45] };
 const PLUSH = { patch: 0xf6e6c8, button: 0x3b2a22, hole: 0xcdbca4, threadK: 0.55 };
 
-const cache = new Map();
-const cached = (key, make) => { if (!cache.has(key)) cache.set(key, make()); return cache.get(key); };
-const srgbSum = (c) => { const h = c.getHex(); return (((h >> 16) & 255) + ((h >> 8) & 255) + (h & 255)) / 255; };
-const isDark = (m) => !!m.material?.color && srgbSum(m.material.color) < 0.5;
-const part = (o) => o.userData?.part;
-const own = (m) => { m.userData.skinOwned = true; m.userData.skin = true; return m; };
-
-function headOf(g) { return g.children.find(c => part(c) === 'head') || null; }
 function skullOf(head) { return head?.children.find(c => part(c) === 'skull') || null; }
 
 /** 타원체(중심 c, 반축 ax) 표면에서 방향 d 쪽 점 · 법선 */
@@ -49,28 +41,6 @@ function arcOn(THREE, c, ax, axis, t0, t1, n, lift = 1.012) {
     pts.push(onEllipsoid(THREE, c, big, u.clone().multiplyScalar(Math.cos(t)).addScaledVector(v, Math.sin(t))).p);
   }
   return pts;
-}
-
-/** 스테이징 → 재질별로 한 메시씩 구워 parent 에 붙인다.
- *  ⚠️ stage 는 **부모 없이** 만든 그룹 — 그래야 matrixWorld 가 곧 parent 좌표계다. */
-function bakeInto(THREE, parent, stage) {
-  stage.updateMatrixWorld(true);
-  const byMat = new Map(), out = [];
-  stage.traverse(o => {
-    if (!o.isMesh) return;
-    const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
-    if (!byMat.has(o.material)) byMat.set(o.material, []);
-    byMat.get(o.material).push(geo);
-    o.geometry.dispose();
-  });
-  for (const [mat, geos] of byMat) {
-    const m = own(new THREE.Mesh(mergeGeos(THREE, geos), mat));
-    m.castShadow = false;
-    parent.add(m);
-    geos.forEach(g => g.dispose());
-    out.push(m);
-  }
-  return out;
 }
 
 /** 바늘땀 — 점열을 둘씩 짝지어 짧은 캡슐(간격이 생겨 점선이 된다) */
