@@ -549,3 +549,19 @@ test('sanitizeBest — 양수 숫자만, 어종 id 는 알려준 목록 안에�
   assert.deepEqual(sanitizeBest({ aji: 2.4, tuna: -1, mola: 'x', hack: 999 }, ['aji', 'tuna', 'mola']), { aji: 2.4 });
   assert.deepEqual(sanitizeBest(null, ['aji']), {});
 });
+
+// ── 🏛️ 리디자인: 층 정의에 배치·테마가 붙는다 ──────────────────────
+import { realDexIds } from './helpers/real-dex.mjs';
+
+test('층 정의: 1·2층은 벽 유리장, 3층·특별전은 회랑 — 그리고 테마 색이 있다', () => {
+  assert.deepEqual(MUSEUM_FLOORS.map(f => f.layout), ['wall', 'wall', 'gallery', 'gallery']);
+  for (const f of MUSEUM_FLOORS) {
+    for (const k of ['floor', 'wall', 'light']) assert.ok(Number.isInteger(f.theme?.[k]), `${f.name} theme.${k}`);
+  }
+});
+
+test('실제 도감 칸 수 — 1층 17 · 2층 17 · 3층 31 · 특별전 11(바뀌면 배치 한도를 다시 본다)', () => {
+  const real = realDexIds();
+  const DEXR = Object.fromEntries(Object.entries(real).map(([k, v]) => [k, v.map(id => ({ id }))]));
+  assert.deepEqual(MUSEUM_FLOORS.map(f => floorEntries(f.id, DEXR).length), [17, 17, 31, 11]);
+});
