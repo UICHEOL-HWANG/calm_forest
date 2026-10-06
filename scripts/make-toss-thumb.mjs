@@ -1,4 +1,6 @@
 // =============================================================
+//  ⚠️ 2026-10-06: 썸네일은 sims/thumbnail-sim.html + dev/active/thumbnail-redesign/shoot.mjs 로 다시 렌더한 새 이미지로 교체됐다.
+//     이 스크립트(title-source.jpg 크롭)를 돌리면 새 이미지를 옛 뒷모습 사진으로 덮어쓴다 — 돌리지 말 것.
 //  🎮 앱인토스 가로 썸네일 생성
 //   assets/social/title-source.jpg → assets/social/toss-thumbnail.png (1932×828)
 //  ------------------------------------------------------------

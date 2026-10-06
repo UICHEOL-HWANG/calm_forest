@@ -1,0 +1,208 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>썸네일 시안 — calm forest</title>
+<!--
+  토스(1932×828)·OG(1200×630)·itch(630×500) 썸네일 시안 렌더러.
+  인게임과 같은 buildAnimalMesh 를 그대로 import 해서 캐릭터를 정면으로 세운다(원본은 전부 뒷모습이었다).
+  사용: python3 scripts/serve.py 8791 &  →  /sims/thumbnail-sim.html?v=A|B|C  (뷰포트 크기 = 출력 크기)
+  캡처: node dev/active/thumbnail-redesign/shoot.mjs
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+  #wrap { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #txt, #shade { position: absolute; inset: 0; pointer-events: none; }
+  .logo { position: absolute; display: flex; flex-direction: column; }
+  .title { line-height: .95; letter-spacing: -.01em; white-space: nowrap; }
+  .tag { white-space: nowrap; }
+</style>
+<div id="wrap"><canvas id="c"></canvas><div id="shade"></div><div id="txt"></div></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildAnimalMesh } from '../js/game.js';
+
+const q = new URLSearchParams(location.search);
+const V = (q.get('v') || 'A').toUpperCase();
+const W = innerWidth, H = innerHeight, AR = W / H;
+const WIDE = AR > 1.7;                       // 토스 2.33 / OG 1.9 → 가로형, itch 1.26 → 정사각에 가까움
+
+// ── 시안별 팔레트·연출 ───────────────────────────────────────
+const CFG = {
+  A: { // 레퍼런스형 — 밝은 낮, 왼쪽 로고 패널 + 오른쪽 캐릭터 줄
+    sky: ['#9fdcff', '#e9f8ff'], fog: 0xe9f8ff, fogNear: 14, fogFar: 46, ground: 0x86cf6c, ground2: 0x6fbd5a,
+    pine: [0x3f8f5b, 0x4aa468], round: [0x7acb5e, 0x62b84f], sun: 0xfff3d2, sunI: 1.25, hemi: [0xffffff, 0xb7d9a8, 1.05], exposure: 1.0 },
+  B: { // 마스코트형 — 골든아워, 곰 크게
+    sky: ['#ffc99a', '#fff1d6'], fog: 0xffe2bd, fogNear: 10, fogFar: 40, ground: 0xa5c96a, ground2: 0x8fb85a,
+    pine: [0x4f8a4c, 0x5f9d55], round: [0x9acb62, 0x84bb54], sun: 0xffd9a0, sunI: 1.5, hemi: [0xfff1dc, 0xc9b98a, 0.95], exposure: 1.0 },
+  C: { // 해질녘 모닥불 — 따뜻한 빛, 반딧불
+    sky: ['#3b3a78', '#ffb27a'], fog: 0xe9906f, fogNear: 8, fogFar: 36, ground: 0x4e7a52, ground2: 0x3f6a47,
+    pine: [0x2f6a4f, 0x3a7a58], round: [0x4f8a58, 0x3f7a4c], sun: 0xffb38a, sunI: 0.9, hemi: [0x9aa0ff, 0x4a4a6a, 0.55], exposure: 1.05, fire: true, fireflies: true },
+}[V];
+
+// ── 렌더러·씬 ───────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const rend = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+rend.setPixelRatio(devicePixelRatio); rend.setSize(W, H, false);
+rend.shadowMap.enabled = true; rend.shadowMap.type = THREE.PCFSoftShadowMap;
+rend.toneMapping = THREE.ACESFilmicToneMapping; rend.toneMappingExposure = CFG.exposure;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(CFG.fog, CFG.fogNear, CFG.fogFar);
+// 하늘은 CSS 그라데이션(캔버스 뒤) — 안개색은 지평선 색과 맞춰서 먼 나무가 하늘에 녹는다
+document.getElementById('wrap').style.background = `linear-gradient(${CFG.sky[0]}, ${CFG.sky[1]} 62%)`;
+
+scene.add(new THREE.HemisphereLight(CFG.hemi[0], CFG.hemi[1], CFG.hemi[2]));
+const sun = new THREE.DirectionalLight(CFG.sun, CFG.sunI);
+sun.position.set(-5, 8, 6); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -12, near: 1, far: 40 });
+sun.shadow.bias = -0.0006; sun.shadow.radius = 4;
+scene.add(sun);
+
+const flat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.95, metalness: 0 });
+const rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+
+// ── 지형: 완만한 언덕 ──
+const hill = (x, z) => Math.sin(x * .32) * .22 + Math.cos(z * .27 + x * .1) * .2 - Math.max(0, (z - 3) * .06);
+{
+  const g = new THREE.PlaneGeometry(70, 60, 90, 80); g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position, col = [];
+  const c1 = new THREE.Color(CFG.ground), c2 = new THREE.Color(CFG.ground2);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i); p.setY(i, hill(x, z));
+    const t = (Math.sin(x * .6) * Math.cos(z * .5) + 1) / 2; const c = c1.clone().lerp(c2, t); col.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
+  m.receiveShadow = true; scene.add(m);
+}
+
+// ── 나무 ──
+function pine(x, z, s = 1) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.12 * s, .16 * s, .7 * s, 6), flat(0x7a4a2a)); trunk.position.y = .35 * s; g.add(trunk);
+  for (let i = 0; i < 4; i++) {
+    const r = (1.15 - i * .24) * s, h = (1.05 - i * .1) * s;
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), flat(CFG.pine[i % 2])); m.position.y = (.75 + i * .62) * s; m.castShadow = true; g.add(m);
+  }
+  g.position.set(x, hill(x, z), z); g.rotation.y = rnd() * 6; scene.add(g);
+}
+function roundTree(x, z, s = 1) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.14 * s, .2 * s, 1.2 * s, 6), flat(0x8a5a34)); trunk.position.y = .6 * s; trunk.castShadow = true; g.add(trunk);
+  [[0, 1.7, 0, 1], [.55, 1.45, .2, .72], [-.5, 1.5, -.15, .78], [.1, 2.15, .1, .7]].forEach(([dx, dy, dz, k], i) => {
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(.85 * k * s, 0), flat(CFG.round[i % 2]));
+    m.position.set(dx * s, dy * s, dz * s); m.castShadow = true; g.add(m);
+  });
+  g.position.set(x, hill(x, z), z); g.rotation.y = rnd() * 6; scene.add(g);
+}
+for (let i = 0; i < 46; i++) { const x = -26 + i * 1.15 + rnd() * .8, z = -9 - rnd() * 9; (rnd() > .35 ? pine : roundTree)(x, z, 1.1 + rnd() * .9); }
+for (let i = 0; i < 18; i++) { const x = -20 + i * 2.3 + rnd(), z = -4.5 - rnd() * 3; (rnd() > .5 ? pine : roundTree)(x, z, 1.0 + rnd() * .5); }
+
+// ── 풀·꽃(instancing) ──
+{
+  const n = 2200, m = new THREE.InstancedMesh(new THREE.ConeGeometry(.045, .3, 4), flat(0x5fae4e), n);
+  const d = new THREE.Object3D();
+  for (let i = 0; i < n; i++) { const x = -16 + rnd() * 32, z = -4 + rnd() * 8; d.position.set(x, hill(x, z) + .12, z); d.rotation.set((rnd() - .5) * .5, rnd() * 6, (rnd() - .5) * .5); d.scale.setScalar(.7 + rnd() * .9); d.updateMatrix(); m.setMatrixAt(i, d.matrix); }
+  scene.add(m);
+  const colors = [0xffffff, 0xffd84a, 0xff8fb0, 0xc9a5ff];
+  for (let k = 0; k < 4; k++) {
+    const f = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.065, 0), flat(colors[k]), 40);
+    for (let i = 0; i < 40; i++) { const x = -14 + rnd() * 28, z = -2 + rnd() * 6.5; d.position.set(x, hill(x, z) + .22, z); d.rotation.set(0, 0, 0); d.scale.setScalar(.8 + rnd() * .6); d.updateMatrix(); f.setMatrixAt(i, d.matrix); }
+    scene.add(f);
+  }
+}
+
+// ── 캐릭터 ──
+const cam = new THREE.PerspectiveCamera(30, AR, .1, 120);
+function place(id, x, z, { s = 1, yaw = 0, wave = false } = {}) {
+  const a = buildAnimalMesh(id), g = a.group;
+  g.scale.setScalar(s); g.position.set(x, hill(x, z), z); g.rotation.y = yaw;
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
+  const arm = a.armR && (a.armR.pivot || a.armR);
+  if (wave && arm) { arm.rotation.z = -2.5; arm.rotation.x = 0; }
+  scene.add(g);
+  const blob = new THREE.Mesh(new THREE.CircleGeometry(.62 * s, 24), new THREE.MeshBasicMaterial({ color: 0x1d3b1d, transparent: true, opacity: .28, fog: false, depthWrite: false }));
+  blob.rotation.x = -Math.PI / 2; blob.position.set(x, hill(x, z) + .03, z); scene.add(blob);
+}
+
+const L = { // 시안별 배치(월드 좌표) + 카메라. units = [id, x, z, scale, yaw, wave]
+  A: WIDE
+    ? { cam: [2.4, 1.25, 10.4], look: [2.4, 1.05, 0], units: [['panda', .1, .1, 1, .35, 0], ['bear', 1.9, -.1, 1.1, -.05, 0], ['fox', 3.6, .15, 1, -.3, 1], ['rabbit', 5.0, .3, .92, -.45, 0]], shift: AR > 2 ? .13 : .19 }
+    : { cam: [0, 1.9, 13.2], look: [0, 2.15, 0], units: [['panda', -3.0, .2, 1, .35, 0], ['bear', -1.0, -.1, 1.1, .1, 0], ['fox', 1.0, .15, 1, -.2, 1], ['rabbit', 2.7, .3, .92, -.4, 0]], shift: 0 },
+  B: WIDE
+    ? { cam: [1.6, 1.35, 8.4], look: [1.6, 1.25, 0], units: [['bear', 1.4, 0, 1.3, -.1, 1], ['fox', 3.5, .5, 1.0, -.4, 0]], shift: .17 }
+    : { cam: [0, 1.7, 8.6], look: [0, 1.3, 0], units: [['bear', -.5, 0, 1.3, .1, 1], ['fox', 1.9, .6, 1, -.25, 0]], shift: 0 },
+  C: WIDE
+    ? { cam: [0, 1.6, 10.2], look: [0, 1.75, 0], units: [['fox', -2.8, .3, 1.05, .45, 0], ['bear', 0, -.4, 1.15, 0, 1], ['panda', 2.8, .3, 1.05, -.45, 0]], shift: 0 }
+    : { cam: [0, 1.6, 9.6], look: [0, 1.0, 0], units: [['fox', -2.4, .3, 1.05, .45, 0], ['bear', 0, -.4, 1.18, 0, 1], ['panda', 2.4, .3, 1.05, -.45, 0]], shift: 0 },
+}[V];
+for (const [id, x, z, s, yaw, wave] of L.units) place(id, x, z, { s, yaw, wave: !!wave });
+
+// ── 모닥불·반딧불(C) ──
+if (CFG.fire) {
+  const fx = 0, fz = 1.4, fy = hill(fx, fz) + .1;
+  for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.CylinderGeometry(.07, .08, .8, 6), flat(0x6a4126)); l.rotation.set(Math.PI / 2 * .9, i * 1.05, 0); l.position.set(fx, fy + .07, fz); scene.add(l); }
+  const f1 = new THREE.Mesh(new THREE.ConeGeometry(.2, .55, 6), new THREE.MeshBasicMaterial({ color: 0xffc34d, fog: false })); f1.position.set(fx, fy + .38, fz); scene.add(f1);
+  const f2 = new THREE.Mesh(new THREE.ConeGeometry(.12, .36, 6), new THREE.MeshBasicMaterial({ color: 0xfff2b0, fog: false })); f2.position.set(fx, fy + .32, fz + .02); scene.add(f2);
+  const pl = new THREE.PointLight(0xffa24a, 26, 9, 1.6); pl.position.set(fx, fy + .8, fz + .3); scene.add(pl);
+}
+if (CFG.fireflies) {
+  const m = new THREE.MeshBasicMaterial({ color: 0xfff6a8, fog: false });
+  for (let i = 0; i < 46; i++) {
+    const pos = new THREE.Vector3(-9 + rnd() * 18, .6 + rnd() * 4, -4 + rnd() * 10);
+    const f = new THREE.Mesh(new THREE.SphereGeometry(.035 + rnd() * .03, 8, 6), m); f.position.copy(pos); scene.add(f);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffe98a, transparent: true, opacity: .16, fog: false, depthWrite: false })); h.position.copy(pos); scene.add(h);
+  }
+}
+
+// ── 카메라 + 가로 시프트(텍스트 자리 확보) ──
+cam.position.set(...L.cam); cam.lookAt(...L.look);
+if (L.shift) cam.setViewOffset(W, H, -W * L.shift, 0, W, H);
+rend.render(scene, cam);
+
+// ── 텍스트·로고 오버레이 ─────────────────────────────────────
+const BEAR = '../assets/brand/bear-25deg-1024.png';
+const px = (f) => `${Math.round(H * f)}px`;
+const txt = document.getElementById('txt'), shade = document.getElementById('shade');
+const T = {
+  A: () => {
+    shade.style.background = WIDE
+      ? 'linear-gradient(90deg, rgba(30,92,64,.92) 0%, rgba(40,110,76,.80) 24%, rgba(60,140,90,.30) 40%, rgba(60,140,90,0) 49%)'
+      : 'linear-gradient(180deg, rgba(30,92,64,.92) 0%, rgba(40,110,76,.78) 34%, rgba(60,140,90,0) 56%)';
+    const L0 = WIDE ? 'left:5.5%; top:50%; transform:translateY(-50%); align-items:flex-start;' : 'left:0; right:0; top:4%; align-items:center; text-align:center;';
+    txt.innerHTML = `<div class="logo" style="${L0}">
+      <img src="${BEAR}" style="width:${px(WIDE ? .25 : .15)}; height:${px(WIDE ? .25 : .15)}; object-fit:contain; border-radius:50%; background:rgba(255,255,255,.22); border:${px(.006)} solid rgba(255,255,255,.55); padding:${px(.014)}; box-shadow:0 ${px(.012)} ${px(.03)} rgba(0,0,0,.25); margin-bottom:${px(WIDE ? .03 : .015)}">
+      <div class="title" style="font:700 ${px(WIDE ? (AR > 2 ? .14 : .15) : .125)} Fredoka,sans-serif; color:#fff; text-shadow:0 ${px(.012)} 0 #1d5238, 0 0 ${px(.04)} rgba(20,70,45,.45); -webkit-text-stroke:${px(.006)} #1d5238; paint-order:stroke fill">calm forest</div>
+      <div class="tag" style="font:600 ${px(WIDE ? .064 : .056)} Fredoka,sans-serif; color:#e9ffe0; margin-top:${px(.03)}; letter-spacing:.02em; text-shadow:0 ${px(.006)} ${px(.012)} rgba(20,70,45,.6)">a little cozy space</div>
+    </div>`;
+  },
+  B: () => {
+    shade.style.background = WIDE
+      ? 'linear-gradient(90deg, rgba(255,241,214,.88) 0%, rgba(255,236,200,.62) 30%, rgba(255,236,200,0) 52%)'
+      : 'linear-gradient(180deg, rgba(255,241,214,.9) 0%, rgba(255,236,200,.55) 28%, rgba(255,236,200,0) 46%)';
+    const L0 = WIDE ? 'left:6%; top:50%; transform:translateY(-50%); align-items:flex-start;' : 'left:0; right:0; top:6%; align-items:center; text-align:center;';
+    txt.innerHTML = `<div class="logo" style="${L0}">
+      <div class="title" style="font:700 ${px(WIDE ? .2 : .14)} Fraunces,serif; color:#2f5a3a; text-shadow:0 ${px(.008)} 0 rgba(255,255,255,.7)">calm<br>forest</div>
+      <div style="width:${px(.2)}; height:${px(.008)}; background:#d98a4a; border-radius:9px; margin:${px(.035)} 0"></div>
+      <div class="tag" style="font:600 ${px(WIDE ? .06 : .052)} Fraunces,serif; font-style:italic; color:#7a5a3a">a little cozy space</div>
+    </div>`;
+  },
+  C: () => {
+    shade.style.background = 'linear-gradient(180deg, rgba(25,22,60,.55) 0%, rgba(25,22,60,0) 40%)';
+    txt.innerHTML = `<div class="logo" style="left:0; right:0; top:${WIDE ? '4%' : '5%'}; align-items:center; text-align:center;">
+      <div class="title" style="font:800 ${px(WIDE ? .17 : .12)} 'Baloo 2',sans-serif; color:#fff3d6; text-shadow:0 0 ${px(.05)} rgba(255,170,90,.75), 0 ${px(.01)} 0 #b8613a">calm forest</div>
+      <div class="tag" style="font:700 ${px(WIDE ? .05 : .045)} 'Baloo 2',sans-serif; color:#ffe2b8; letter-spacing:.06em; text-shadow:0 0 ${px(.02)} rgba(255,150,80,.7)">a little cozy space</div>
+    </div>`;
+  },
+}[V];
+T();
+await document.fonts.ready;
+document.title = 'READY';
+</script>

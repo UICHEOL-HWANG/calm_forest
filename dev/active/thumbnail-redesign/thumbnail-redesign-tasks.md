@@ -1,0 +1,5 @@
+- [x] 시안 A/B/C 렌더·비교
+- [x] A안 다듬기(정사각 레이아웃·뱃지·부제·제목 겹침)
+- [ ] 사용자 최종 확인
+- [ ] assets/social 교체(preview.jpg 1200×630 q90, toss-thumbnail.png 1932×828) + make-*.mjs 가 title-source 의존이라 수정 필요
+- [ ] 토스 콘솔 업로드(THUMBNAIL·HORIZONTAL·gameInfo.horizontalThumbnailUri 3곳) · itch 커버 · 웹 배포
