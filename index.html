@@ -3920,7 +3920,7 @@
 
     // ── 인터랙티브 튜토리얼(코치) 상태머신 ──
     // 기기별 조작 안내(터치=조이스틱/액션버튼, 데스크톱=키보드/클릭)
-    const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touchsim');   // 📱 js/touch-sim.js 와 같은 판정
     const A = TOUCH ? '(액션)' : '(Space)';   // ⭕(U+2B55)는 빨간 원으로 렌더돼 민트색 액션 버튼과 어긋난다
     const MOVE = TOUCH ? '왼쪽 조이스틱' : 'WASD·방향키';
     // 코치 카드는 모바일에서 폭 213px(375px 화면) — 한 단계가 30자를 넘으면 4~6줄로 터진다.
