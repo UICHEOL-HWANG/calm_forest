@@ -13,6 +13,16 @@ Task 0~6, 8~12, 15 + Task 13(실제 게임 스모크) + Task 9 후속 수정(나
 - Task 7(자국 2종)은 수정 라운드 1 통과, **밤 호박 밝기 후속 수정만 미완**.
 - Paddle 라이브에 신규 10개 가격 **등록 완료**(활성 상품 17, 중복 없음) — `js/shop/price-ids.js` 에 pri_ 기입됨.
 
+## 클라우드 세션 진행 (2026-10-06)
+- ✅ 1번 호박등 밤 밝기: wip 패치 적용·검증 후 커밋(9260271). `npm test` 1889/1889. 전/후 `look/verify-trail-pumpkin-{lit-night-before,unlit-night}.png`.
+- ✅ 드로우콜 실측(실제 빌더로 그려지는 객체 수 카운트):
+  - 자국: 모든 자국이 마크당 1(굽기). 걷기 속도 6 → 동시 마크 ≈ 12(TRAIL_CAP 상한, 기존 자국과 동일) + 입자 Points 2(점·박쥐, 전체 공용). 호박등은 기존 자국 대비 추가 0.
+  - 도구(쥔 1개): batnight 3~5(물뿌리개 5 최대), harvest 1~3, 참고 moon 3~5. 우산 batnight 3·harvest 2.
+  - 스킨(맨몸 대비 증가): 나이트캡 +5, 구름 +3, 클래식 마녀 +6, **별밤 마녀 +10**(최대), 참고 forest_spirit +4.
+  - 등: bat_wing +2, bat_cape +3(기존 망토 +2).
+- ✅ 비밀 스캔(코드 파일): 0건.
+- ⏳ 코드 리뷰: 진행 중(결과는 아래 남은 일에 반영).
+
 ## 남은 일
 1. **호박등(pumpkin_glow) 밤에 어두운 문제** (Task 13 FAIL A)
    - 증거: `look/game-trails.png`(game-night-trail-pumpkin), `look/verify-trail-close-pumpkin-night.png` vs 시안 `look/trail-pc-night.png`
