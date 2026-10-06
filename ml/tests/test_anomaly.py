@@ -60,6 +60,27 @@ def test_label_join_uses_user_and_run_window():
     assert pd.isna(out.loc["s3", "anomaly"]) and pd.isna(out.loc["s4", "anomaly"])
 
 
+def test_excluded_runs_are_dropped_not_mistaken_for_real_users():
+    # 제외할 판(Haiku·짧은 Sonnet·이상 행동을 못 낸 페르소나)의 세션은 '실제 유저'(NaN)로 남으면 안 된다
+    runs = [{"user_id": "a", "persona_id": "p16-shop-flipper", "account_id": "p16-shop-flipper-a",
+             "traits": {"anomaly": "econ_exploit"}, "outcome": "quit", "model": "claude-code/claude-sonnet-5-5",
+             "started_at": "2026-10-05T03:00:00Z", "ended_at": "2026-10-05T03:10:00Z"}]
+    s = pd.DataFrame([_row(session_id="s1", user_id="a", started_at=pd.Timestamp("2026-10-05T03:00:30Z"))])
+    out = label_sessions(s, runs, exclude=lambda r: r["persona_id"] == "p16-shop-flipper")
+    assert bool(out.loc[0, "drop"]) is True
+    assert pd.isna(out.loc[0, "anomaly"])
+
+
+def test_default_exclusion_drops_haiku_and_short_sonnet():
+    from calm_ml.anomaly_features import default_exclude
+    base = {"started_at": "2026-10-05T03:00:00Z", "persona_id": "p01"}
+    assert default_exclude({**base, "model": "claude-code/claude-haiku-4-5", "ended_at": "2026-10-05T03:10:00Z"})
+    assert default_exclude({**base, "model": "claude-code/claude-sonnet-5-5", "ended_at": "2026-10-05T03:01:00Z"})
+    assert not default_exclude({**base, "model": "claude-code/claude-sonnet-5-5", "min_try_min": 5, "ended_at": "2026-10-05T03:01:00Z"})
+    assert not default_exclude({**base, "model": "claude-code/claude-opus-5", "ended_at": "2026-10-05T03:01:00Z"})
+    assert default_exclude({**base, "persona_id": "p16-shop-flipper", "model": "claude-code/claude-opus-5", "ended_at": "2026-10-05T03:10:00Z"})
+
+
 def _synthetic(seed=0, n_norm=120, n_idle=15, n_farm=15, n_real=200):
     rng = np.random.default_rng(seed)
     rows = []

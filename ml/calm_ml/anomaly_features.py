@@ -67,19 +67,39 @@ def load_runs(runs_dir: Path | str) -> list[dict]:
     return rows
 
 
-def label_sessions(sessions: pd.DataFrame, runs: list[dict]) -> pd.DataFrame:
+# 이상 행동을 실제로 못 낸 페르소나 — 시작 코인 5 로는 사고팔기를 시작조차 못 했다(2026-10-05 수집)
+NO_SIGNAL_PERSONAS = {"p16-shop-flipper"}
+SHORT_SONNET = pd.Timedelta(minutes=2)
+
+
+def default_exclude(r: dict) -> bool:
+    """학습·평가에서 뺄 판 — Haiku(지령 미수행), 최소 시도 규칙 전 Sonnet 2분 미만, 신호 없는 페르소나."""
+    model = r.get("model") or ""
+    if "haiku" in model or r.get("persona_id") in NO_SIGNAL_PERSONAS:
+        return True
+    if "sonnet" in model and not r.get("min_try_min") and r.get("started_at") and r.get("ended_at"):
+        return pd.Timestamp(r["ended_at"]) - pd.Timestamp(r["started_at"]) < SHORT_SONNET
+    return False
+
+
+def label_sessions(sessions: pd.DataFrame, runs: list[dict], exclude=None) -> pd.DataFrame:
     """세션에 페르소나 라벨을 붙인다. user_id 가 같고 판 시간창 안에서 시작한 세션만 그 판의 세션이다
-    (페르소나 계정 a~e 는 여러 판에 재사용된다)."""
+    (페르소나 계정 a~e 는 여러 판에 재사용된다).
+    exclude(run) 이 참인 판의 세션은 drop=True — 라벨 없는 채로 남기면 '실제 유저'로 섞이므로 호출부가 버린다."""
     ok = [r for r in runs if r.get("outcome") and r.get("user_id") and r.get("started_at") and r.get("ended_at")]
     out = sessions.copy()
     out["anomaly"] = np.nan
     out["persona_id"] = None
     out["anomaly_kind"] = None
+    out["drop"] = False
     started = pd.to_datetime(out["started_at"], utc=True)
     for r in ok:
         lo = pd.Timestamp(r["started_at"]) - RUN_WINDOW_LEAD
         hi = pd.Timestamp(r["ended_at"])
         m = (out["user_id"] == r["user_id"]) & (started >= lo) & (started <= hi)
+        if exclude is not None and exclude(r):
+            out.loc[m, "drop"] = True
+            continue
         kind = (r.get("traits") or {}).get("anomaly")
         out.loc[m, "anomaly"] = 1.0 if kind else 0.0
         out.loc[m, "persona_id"] = r["persona_id"]
