@@ -257,7 +257,7 @@ test('모든 층 카테고리에 전시물 색 폴백이 있다', () => {
     if (['crop', 'fish', 'ore'].includes(cat)) continue;   // 전용 조형이 있다
     assert.match(tint, new RegExp(`${cat}:`), `${cat} 폴백 색이 없다`);
   }
-  const fn = SRC.slice(SRC.indexOf('function museumExhibitMesh('), SRC.indexOf('\n}', SRC.indexOf('function museumExhibitMesh(')));
+  const fn = SRC.slice(SRC.indexOf('function fallbackExhibit('), SRC.indexOf('\n}', SRC.indexOf('function fallbackExhibit(')));
   assert.match(fn, /MUSEUM_CAT_TINT\[item\.cat\]/, '폴백을 쓰지 않는다');
 });
 
@@ -522,4 +522,13 @@ test('실제 도감 칸 수 — 1층 17 · 2층 17 · 3층 31 · 특별전 11(�
   const real = realDexIds();
   const DEXR = Object.fromEntries(Object.entries(real).map(([k, v]) => [k, v.map(id => ({ id }))]));
   assert.deepEqual(MUSEUM_FLOORS.map(f => floorEntries(f.id, DEXR).length), [17, 17, 31, 11]);
+});
+
+test('전시물 메시: 새 조형 → 폴백 순서, 모든 경로가 바닥 y=0 으로 앉는다', () => {
+  const i = CAFE_SRC.indexOf('export function museumExhibitMesh(');
+  const fn = CAFE_SRC.slice(i, CAFE_SRC.indexOf('\nfunction fallbackExhibit'));
+  assert.match(fn, /buildExhibitMesh\(THREE, exhibitParts\(/);
+  assert.match(fn, /\|\| fallbackExhibit\(item\)/);
+  assert.match(fn, /return seatOnBase\(obj\)/);
+  assert.match(CAFE_SRC, /updateWorldMatrix\(true, true\);[^\n]*\n\s*const b = new THREE\.Box3/, '재기 전에 월드 행렬을 갱신해야 한다');
 });

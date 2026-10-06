@@ -52,3 +52,36 @@ test('같은 입력이면 같은 결과, 호출할 때마다 새 객체(불변)'
 test('PARTS_CATS 는 실제로 다루는 카테고리와 같다', () => {
   assert.deepEqual([...PARTS_CATS].sort(), [...PORTED].sort());
 });
+
+// ── 빌더: 도형 목록 → 재질별 병합 메시 ─────────────────────────────
+import { buildExhibitMesh } from '../js/museum/exhibit-build.js';
+
+// 최소 가짜 THREE — 병합 결과가 재질당 메시 1개인지만 본다(실제 THREE 정확성은 브라우저 스모크가 본다)
+function fakeTHREE() {
+  class Geo { constructor(n = 12) { this.attributes = { position: { count: n, array: new Float32Array(n * 3), itemSize: 3 }, normal: { count: n, array: new Float32Array(n * 3), itemSize: 3 } }; this.index = null; } applyMatrix4() { return this; } setAttribute(k, v) { this.attributes[k] = v; } toNonIndexed() { return this; } dispose() {} }
+  const geo = function () { return new Geo(); };
+  class Obj { constructor() { this.children = []; } add(o) { this.children.push(o); return this; } }
+  return {
+    Group: Obj, Mesh: class extends Obj { constructor(geometry, material) { super(); this.geometry = geometry; this.material = material; this.isMesh = true; } },
+    BufferGeometry: Geo, BufferAttribute: class { constructor(arr, size) { this.array = arr; this.itemSize = size; this.count = arr.length / size; } },
+    SphereGeometry: geo, CylinderGeometry: geo, ConeGeometry: geo, BoxGeometry: geo, IcosahedronGeometry: geo, DodecahedronGeometry: geo, TorusGeometry: geo, LatheGeometry: geo, TubeGeometry: geo,
+    Vector2: class {}, Vector3: class {}, CatmullRomCurve3: class {},
+    Matrix4: class { compose() { return this; } }, Quaternion: class { setFromEuler() { return this; } }, Euler: class {},
+    Color: class { constructor(h) { this.r = ((h >> 16) & 255) / 255; this.g = ((h >> 8) & 255) / 255; this.b = (h & 255) / 255; } },
+    MeshStandardMaterial: class { constructor(o) { Object.assign(this, o); } }, MeshBasicMaterial: class { constructor(o) { Object.assign(this, o); } },
+    DoubleSide: 2,
+  };
+}
+
+test('buildExhibitMesh: 재질별로 병합 — 전시물 하나는 메시 3개 이하', () => {
+  const T = fakeTHREE();
+  const mk = (shape, args, color, mat) => ({ shape, args, color, mat, pos: [0, 0, 0], scl: [1, 1, 1], rot: [0, 0, 0] });
+  const g = buildExhibitMesh(T, [mk('sph', [0.1, 8, 6], 0xff0000, 'solid'), mk('box', [1, 1, 1], 0x00ff00, 'solid'), mk('sph', [0.1, 8, 6], 0xd0c060, 'glow'), mk('cyl', [1, 1, 1, 8], 0xcfeff5, 'glass')]);
+  assert.equal(g.children.length, 3, 'solid·glow·glass 한 메시씩이어야 한다');
+  assert.equal(buildExhibitMesh(T, null), null);
+});
+
+test('buildExhibitMesh: solid 만 있으면 메시 1개', () => {
+  const g = buildExhibitMesh(fakeTHREE(), exhibitParts('ore', 'gem'));
+  assert.equal(g.children.length, 1);
+});
