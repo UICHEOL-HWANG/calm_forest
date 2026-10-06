@@ -40,6 +40,7 @@ import { buildShop } from '../shop/building.js';
 import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
 import { closeProps } from '../shop/checkout-funnel.js';   // 📊 결제창을 닫을 때 어디까지 갔나
 import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
+import { saleOpen, saleTagOf } from '../shop/sale-window.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
 import { themeOf } from '../cosmetics/tool-skin-rules.js';   // 🪓 💎 도구 세트 → 테마(구매 연출 진열)
@@ -946,6 +947,8 @@ function cashButton(cash, itemId, kind, mine) {
   btn.onclick = async (ev) => {
     ev.stopPropagation();
     if (btn.disabled) return;
+    const it = kind === 'pet' ? null : findItem(itemId);
+    if (it?.sale && !saleOpen(it)) { drawCosMenu(); return; }   // 🎃 가게를 열어 둔 채 기간이 끝났으면 — 결제창 대신 행을 다시 그린다(숨김)
     trackEvent('cash_checkout_open', { item_id: itemId, kind, price_id: cash.priceId });
     cashBusy = itemId; drawCosMenu();
     try {
@@ -1069,11 +1072,20 @@ export function drawCosMenu() {
     if (it.premium) {
       mode = premiumRowMode(it, rowCtx(it));
       if (mode === 'hidden') continue;
-      if (!premiumViewed.has(it.id)) { premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode }); }
+      if (!premiumViewed.has(it.id)) { premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode, ...(it.sale ? { sale: it.sale } : {}) }); }
     }
     const row = document.createElement('div');
     row.className = 'sh-row' + (cosView().equipped[it.slot] === it.id ? ' try' : '');
     row.innerHTML = `<span>${it.premium ? '💎 ' : ''}${it.ico} ${it.name}</span>`;
+    const tag = it.sale && mode !== 'owned' ? saleTagOf(it) : null;
+    if (tag) {
+      const t = document.createElement('small');
+      t.className = 'sale-tag';
+      const l = document.createElement('span'); l.textContent = tag.label;       // i18n 옵저버가 번역
+      const u = document.createElement('span'); u.textContent = ` ${tag.until}`;  // 날짜는 그대로
+      t.append(l, u);
+      row.firstElementChild.appendChild(t);
+    }
     row.onclick = () => tryOnCos(it);                  // 🪞 줄 = 입어보기(구매 아님)
     const buys = document.createElement('div');
     buys.className = 'sh-buys';

@@ -85,7 +85,7 @@ export function makeTrailWalk(THREE, itemId, animalId) {
   function dispose() {
     for (const m of meshes) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     if (ground) { ground.geometry.dispose(); ground.material.dispose(); }
-    fx.points.geometry.dispose(); fx.points.material.map.dispose(); fx.points.material.dispose();
+    fx.dispose();                                      // 점 입자 + 🦇 박쥐 스프라이트(points 는 Group)
   }
   update(0);
   return { group, update, dispose };
