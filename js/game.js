@@ -143,7 +143,7 @@ import {
   buildForest, forageTarget, tryForage, updateForage,
 } from './spaces/forest.js';   // 📦 🍄 채집 숲 — 새 동사: 줍기 (도구 없이, 시간이 지나면 다시 돋음)
 import {
-  MUSEUM_HALF_D, MUSEUM_HALF_W, MUSEUM_LIGHT, _museumNear, buildCafeHall, cafeCookDone, cafeView, closeCosPreview,
+  museumDims, MUSEUM_LIGHT, _museumNear, buildCafeHall, cafeCookDone, cafeView, closeCosPreview,
   closeMuseumView, enterCafe, enterMuseum, exitCafe, exitMuseum, josa, museumFloor, museumFloorItems, museumGoFloor,
   museumPlateText, museumStairs, museumView, museumViewFrame, openCosPreview, openMuseumView, playerPhase,
   refreshCafeGuests, refreshMuseumGate, serveCafeGuest, spawnCafeGate, spawnCosmeticShop, updateCafeGuests,
@@ -5459,7 +5459,7 @@ function minimapMarks(place) {
       marks.push({ x: t.x, z: t.z, c: col, r: 2.6 });
     }
   } else if (place === 'museum') {
-    marks.push({ x: MUSEUM.x, z: MUSEUM.z + MUSEUM_HALF_D, c: '#c8905a', kind: 'exit' });     // 나가는 문(남쪽 벽)
+    if (museumFloor === 1) marks.push({ x: MUSEUM.x, z: MUSEUM.z + museumDims().hd, c: '#c8905a', kind: 'exit' });     // 나가는 문(1층 남쪽 벽만)
   } else if (place === 'observatory') { observatoryMinimapMarks(marks);   // 🔭 나가는 문 · 망원경
   } else if (place === 'mine') {
     marks.push({ x: MINE.x, z: MINE.z - MINE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
@@ -5556,7 +5556,7 @@ function animate() {
       if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : place === 'museum' ? Math.max(MUSEUM_HALF_W, MUSEUM_HALF_D) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -5742,8 +5742,9 @@ function updatePlayer(dt, t) {
     player.position.x = Math.max(CAFE.x - CAFE_HALF + 0.8, Math.min(CAFE.x + CAFE_HALF - 0.8, player.position.x));
     player.position.z = Math.max(CAFE.z - CAFE_HALF + 0.8, Math.min(CAFE.z + CAFE_HALF - 0.7, player.position.z));
   } else if (atMuseum) { // 🏛️ 전시실: 벽 안쪽으로 제한
-    player.position.x = Math.max(MUSEUM.x - MUSEUM_HALF_W + 0.8, Math.min(MUSEUM.x + MUSEUM_HALF_W - 0.8, player.position.x));
-    player.position.z = Math.max(MUSEUM.z - MUSEUM_HALF_D + 0.8, Math.min(MUSEUM.z + MUSEUM_HALF_D - 0.7, player.position.z));
+    const mdm = museumDims();
+    player.position.x = Math.max(MUSEUM.x - mdm.hw + 0.8, Math.min(MUSEUM.x + mdm.hw - 0.8, player.position.x));
+    player.position.z = Math.max(MUSEUM.z - mdm.hd + 0.8, Math.min(MUSEUM.z + mdm.hd - 0.7, player.position.z));
   } else if (atObservatory) { clampToObservatory(player.position);   // 🔭 원형 홀 안쪽으로 제한
   } else if (atRiver) { // 🛶 나루터 데크: 물에 빠지지 않게 데크 안쪽으로 제한
     player.position.x = Math.max(RIVER.x - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.x + RIVER_DOCK_HALF - 0.7, player.position.x));
