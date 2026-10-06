@@ -487,7 +487,7 @@ export function buildMuseumHall() {
       add('stone', box(0.55, 0.03, 0.55, x, 0.815, z, ry));
       if (!got) { add('cloth', box(0.42, 0.12, 0.42, x, 0.89, z, ry)); return; }   // 🎀 곧 열릴 전시 — 작은 천 덮개
       const ex = museumExhibitMesh(item);
-      ex.position.set(x, 0.83, z); ex.rotation.y = ry + 0.35;
+      ex.position.set(x, 0.83, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.3);   // 뚜껑 없는 탁자 — 카메라 거리에서 읽히게 키운다
       exhibitMeshes.push(ex); g.add(ex);
       return;
     }
@@ -509,7 +509,7 @@ export function buildMuseumHall() {
     add('glass', box(0.86, 0.88, 0.54, x, 1.41, z, ry));
     add('trim',  box(0.94, 0.07, 0.62, x, 1.88, z, ry));
     const ex = museumExhibitMesh(item);
-    ex.position.set(x, 0.97, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(0.85);   // 받침 위 — 모델 바닥이 y=0 이다
+    ex.position.set(x, 0.97, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.15);   // 받침 위 — 모델 바닥이 y=0 이다(유리 높이 0.88 안에 들어가는 최대 크기)
     exhibitMeshes.push(ex); g.add(ex);   // 병합하지 않는다 — 전시물 자체가 이미 재질별로 병합돼 있다(≤3 메시)
   });
 
