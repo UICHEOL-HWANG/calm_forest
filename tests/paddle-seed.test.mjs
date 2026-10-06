@@ -20,7 +20,7 @@ test('labelToAmount — 원화 라벨을 Paddle 최소 단위 문자열로(KRW �
 
 test('buildPlan — 프리미엄(현금 전용)만, PRICE_IDS 에 칸이 있다', () => {
   const plan = buildPlan(ITEMS);
-  assert.deepEqual(plan.map(p => p.itemId), ['firefly', 'rainbow', 'forest_spirit', 'plush_doll', 'tools_shroom', 'tools_moon', 'tools_bloom']);
+  assert.deepEqual(plan.map(p => p.itemId), ['firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl', 'forest_spirit', 'plush_doll', 'ghost_nightcap', 'ghost_cloud', 'witch_classic', 'witch_starry', 'tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest', 'bat_wing', 'bat_cape']);
   for (const p of plan) assert.ok(p.itemId in PRICE_IDS, p.itemId);
 });
 

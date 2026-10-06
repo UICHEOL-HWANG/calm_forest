@@ -6,11 +6,13 @@
 //  ▶ 토스·안드로이드·itch 는 행 자체를 숨긴다 — 외부 결제 안내 금지(플레이·토스 정책).
 //    웹에서 산 건 옷장(보유품만 보임)에서 모든 플랫폼이 장착한다.
 // =============================================================
+import { saleOpen } from './sale-window.js';
 
 /** @returns {'owned'|'buy'|'login'|'unavailable'|'hidden'} */
-export function premiumRowMode(item, { owned, platform, online, isGuest, tokenSet, storeOpen }) {
+export function premiumRowMode(item, { owned, platform, online, isGuest, tokenSet, storeOpen, now }) {
   if (owned) return 'owned';
   if (platform !== 'web') return 'hidden';
+  if (!saleOpen(item, now)) return 'hidden';   // 🎃 기간 한정 — 기간 밖이면 안 산 사람에겐 행 자체가 없다(승인 전 배포도 안전)
   if (!tokenSet || !storeOpen || !item.price.cash) return 'unavailable';   // 상점이 닫혔으면 게스트에게도 "로그인하면" 이라 하지 않는다
   if (isGuest) return 'login';
   if (!online) return 'unavailable';

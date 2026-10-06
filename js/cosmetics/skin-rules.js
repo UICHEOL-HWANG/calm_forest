@@ -34,3 +34,13 @@ export function bellyPatchZ(R, bs) {
 
 /** 🌱 정령 머리 새싹 — 머리 칸에 뭔가 쓰면 숨긴다(모자를 뚫고 솟아 보였다, 2026-10-01 사용자 결정) */
 export function sproutVisible(cos) { return !cos?.equipped?.head; }
+
+/** 🧥 스킨 부위 표식(userData.part)별 가시 규칙 — 머리·등을 덮는 부위는 그 칸이 비었을 때만 보인다.
+ *  'sprout'(🌱 정령 새싹)·'skinhead'(후드 끝·마녀 모자) = 머리 칸 · 'skinback'(망토·빗자루) = 등 칸.
+ *  모자를 쓰면 스킨 모자가 뚫고 나와 보였던 정령 새싹(2026-10-01)과 같은 이유 */
+export function skinPartVisible(part, cos) {
+  const eq = cos?.equipped;
+  if (part === 'sprout' || part === 'skinhead') return !eq?.head;
+  if (part === 'skinback') return !eq?.back;
+  return true;
+}
