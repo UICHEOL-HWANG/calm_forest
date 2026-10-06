@@ -1,0 +1,25 @@
+<!doctype html><meta charset="utf-8"><title>썸네일 시안 비교</title>
+<style>
+ body{margin:0;background:#1e1e22;color:#eee;font:14px -apple-system,"Apple SD Gothic Neo",sans-serif;padding:24px;width:2000px}
+ h2{margin:26px 0 10px;font-size:18px} h2 small{font-weight:400;color:#aaa;margin-left:10px}
+ .row{display:flex;gap:18px;align-items:flex-end}
+ figure{margin:0} figcaption{font-size:12px;color:#aaa;margin-top:5px}
+ img{display:block;border-radius:8px}
+ .now img{object-fit:cover}
+</style>
+<h2>현재 <small>토스 1932×828 · OG 1200×630 · itch(OG를 630×500으로 크롭 추정) · 토스 목록 크기(300px)</small></h2>
+<div class="row now">
+ <figure><img src="../../../assets/social/toss-thumbnail.png" width="966"><figcaption>토스</figcaption></figure>
+ <figure><img src="../../../assets/social/preview.jpg" width="600"><figcaption>OG</figcaption></figure>
+ <figure><img src="../../../assets/social/preview.jpg" width="315" height="250"><figcaption>itch(추정)</figcaption></figure>
+ <figure><img src="../../../assets/social/toss-thumbnail.png" width="300"><figcaption>목록 크기</figcaption></figure>
+</div>
+<script>
+for (const [v,t] of [['A','A · 레퍼런스형 — 낮, 왼쪽 로고 패널 + 캐릭터 4명'],['B','B · 마스코트형 — 골든아워, 곰 크게 + 세리프 로고'],['C','C · 해질녘 모닥불 — 따뜻한 밤 분위기, 중앙 로고']]) {
+ document.body.insertAdjacentHTML('beforeend',`<h2>${t}</h2><div class="row">
+ <figure><img src="look/${v}-toss.png" width="966"><figcaption>토스</figcaption></figure>
+ <figure><img src="look/${v}-og.png" width="600"><figcaption>OG</figcaption></figure>
+ <figure><img src="look/${v}-itch.png" width="315"><figcaption>itch</figcaption></figure>
+ <figure><img src="look/${v}-toss.png" width="300"><figcaption>목록 크기</figcaption></figure></div>`);
+}
+</script>
