@@ -20,7 +20,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
-from calm_ml.anomaly_features import FEATURES, build_features, label_sessions, load_runs
+from calm_ml.anomaly_features import FEATURES, build_features, default_exclude, label_sessions, load_runs
 
 HERE = Path(__file__).parent
 SQL = HERE / "sql" / "anomaly_session_features.sql"
@@ -87,7 +87,11 @@ def main() -> None:
 
     from calm_ml.bq import read_sql                                 # BQ 의존은 실행 시에만(테스트는 합성 데이터)
     raw = read_sql(SQL.read_text(), since=date.fromisoformat(a.since))
-    df = label_sessions(raw, load_runs(a.runs_dir)).reset_index(drop=True)
+    runs = load_runs(a.runs_dir)
+    persona_uids = {r["user_id"] for r in runs if r.get("user_id")}
+    df = label_sessions(raw, runs, exclude=default_exclude)
+    # 제외 판 + 어느 판에도 안 걸린 페르소나 계정 세션(판 사이 잔여 세션) — 실제 유저로 섞이지 않게 버린다
+    df = df[~df["drop"] & ~(df["anomaly"].isna() & df["user_id"].isin(persona_uids))].reset_index(drop=True)
     rep = fit_and_evaluate(df, seed=a.seed)
 
     out = Path(a.out_dir) / datetime.now().strftime("%Y-%m-%d")
