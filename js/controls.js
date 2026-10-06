@@ -7,10 +7,11 @@
 // =============================================================
 
 import { Input } from './game.js';
+import { isTouchDevice, touchSimOn } from './touch-sim.js';   // 📱 ?touchsim=1 — 데스크톱에서 모바일 조작 흉내(페르소나)
 
 // 터치 지원 여부 감지 → 모바일 컨트롤 노출
 export function initControls() {
-  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  const isTouch = isTouchDevice();
   const mobileUI = document.getElementById('mobile-controls');
   if (!isTouch) { mobileUI.style.display = 'none'; return; }
   mobileUI.style.display = 'block';
@@ -75,6 +76,19 @@ function setupJoystick() {
     for (const t of e.changedTouches) if (t.identifier === id) end();
   });
   base.addEventListener('touchcancel', end);
+
+  // 📱 ?touchsim=1 일 때만 — 마우스로 조이스틱을 끈다(Aside 페르소나는 터치를 못 보낸다). 일반 유저엔 영향 없음
+  if (touchSimOn(location.search)) {
+    base.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') return;           // 진짜 터치는 위 touch 핸들러가 맡는다
+      start({ identifier: 'ptr', clientX: e.clientX, clientY: e.clientY });
+      base.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+    });
+    base.addEventListener('pointermove', (e) => { if (id === 'ptr') move(e); });
+    base.addEventListener('pointerup', () => { if (id === 'ptr') end(); });
+    base.addEventListener('pointercancel', () => { if (id === 'ptr') end(); });
+  }
 }
 
 // ── 액션 버튼(선택 도구로 상호작용) ─────────────────────────────
@@ -82,4 +96,8 @@ function setupActionButton() {
   const btn = document.getElementById('action-btn');
   btn.addEventListener('touchstart', (e) => { Input.doAction(); btn.classList.add('press'); e.preventDefault(); }, { passive: false });
   btn.addEventListener('touchend', () => btn.classList.remove('press'));
+  if (touchSimOn(location.search)) {   // 📱 ?touchsim=1 — 마우스 클릭도 액션(페르소나)
+    btn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; Input.doAction(); btn.classList.add('press'); e.preventDefault(); });
+    btn.addEventListener('pointerup', () => btn.classList.remove('press'));
+  }
 }

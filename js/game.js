@@ -72,6 +72,7 @@ import { restoreStage } from './orchard-onboard.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
 import { logOrchardEvent } from './orchard-log.js';   // 🍎 과수원 이벤트 원장(Supabase, fire-and-forget) — GA4 유실·지연 대비
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
+import { isTouchDevice, touchSimOn } from './touch-sim.js';   // 📱 터치 판정 단일 출처 + ?touchsim=1
 import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { createRetentionGuidance, buildRetentionGameStateSnapshot } from './retention-guidance.js';   // [🌿 리텐션 안내] 룰+모델 rescue 자리
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
@@ -342,7 +343,7 @@ export const $w = {
 };
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
-const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820);
+const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820) || touchSimOn(location.search);   // 📱 ?touchsim=1 = 모바일 취급(페르소나)
 
 // ── 작물 종류(다양화) — 심을 때 랜덤 배정, 열매 색이 달라짐 ─────
 
@@ -1993,7 +1994,7 @@ function retentionGuidanceState() {
   // ⌨️ 조작 안내를 PC/터치로 나누기 위한 플래그 — index.html 의 TOUCH 와 같은 판정식.
   //    retention-guidance.js 는 브라우저 전역을 안 쓰는 순수 모듈이라 여기서 재서 넘긴다.
   let touch = false;
-  try { touch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; } catch (e) { touch = false; }
+  touch = isTouchDevice();   // 📱 controls.js·index.html 과 같은 판정(touchsim 포함)
   return { ...buildRetentionGameStateSnapshot(snap), touch };
 }
 
