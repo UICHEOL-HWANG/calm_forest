@@ -32,7 +32,7 @@ Task 0~6, 8~12, 15 + Task 13(실제 게임 스모크) + Task 9 후속 수정(나
    - 원인: 자국 마크가 lit 재질(`trail.js film()` → `bake()`)이라 밤에 어둡다. 시안은 unlit + 후광.
    - 미완성 시도: `handoff/wip-pumpkin-unlit.patch`(검증 안 됨, 참고용 — `git apply --check` 먼저). 방침: pumpkin_glow 마크만 unlit(MeshBasicMaterial 정점색) 단일 메시로 굽고 다른 자국은 불변(테스트로 잠금).
 2. **Task 14**: 드로우콜 실측(호박불≈9·달밤 보라 도구≈5·마녀 별밤·망토 C), 전체 `npm test`, 코드 리뷰(code-reviewer/security-reviewer), 비밀 스캔(공개 저장소!), 최종 whole-branch 리뷰.
-3. **사용자 확인 대기**: 우산 2종 모양(`look/umbrella-batnight.png`, `umbrella-harvest.png`), 달밤 보라 우산 앞면이 이마로 처지는 점(시안과 동일), 이름 `달밤 세트` vs `달밤 보라 세트` 혼동 가능.
+3. ✅ **사용자 확인 완료(2026-10-06, "괜찮다")** — 그대로 간다: 우산 2종 모양(`look/umbrella-batnight.png`, `umbrella-harvest.png`), 달밤 보라 우산 앞면이 이마로 처지는 점(시안과 동일), 이름 `달밤 세트` vs `달밤 보라 세트` 혼동 가능.
 4. **배포는 별도**(Release Runbook): 웹·토스·Play·itch 4곳 동시 → 승인 후 `SALE_WINDOWS` 날짜 확정 → 종료일 Paddle Price 보관. ⚠️ 라이브 가격이 이미 들어가 있어서 `SALE_WINDOWS.halloween.from`(기본 2026-10-24)이 되면 로그인한 웹 유저에게 구매 버튼이 보인다. Paddle 도메인 승인이 아직이면 결제창이 안 열리므로 **승인 전에는 from 날짜를 미루거나 배포하지 말 것.**
 
 ## 알려진 수용 사항 (판정 기록은 ledger)
