@@ -58,3 +58,8 @@ export function headAnchor(HY) { return { x: 0, y: HY, z: 0 }; }
 /** 🐶 목줄이 이미 쓰는 좌표 */
 export function neckAnchor(HR, HY) { return { x: 0, y: HY - HR * 0.55, z: 0 }; }
 export function neckR(HR) { return HR * 0.92; }
+
+// 꼬리 종류 — game.js ANIMALS 의 tail 은 { type: 'bushy', ... } 객체다(옛 문자열 형태도 허용).
+export function tailType(tail) {
+  return typeof tail === 'string' ? tail : (tail && tail.type) || '';
+}
