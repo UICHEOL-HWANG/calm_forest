@@ -213,8 +213,22 @@ export function mergeGeos(THREE, geos) {
   return out;
 }
 
+//  🎃 조명 없이(MeshBasicMaterial) 굽는 자국 — 스스로 빛나는 등불은 밤에 어두워지면 안 된다
+//     (시안 lanternCell 도 unlit). 색은 시안 낮 값(pumpkinGeo(false)) 그대로 — 밤 빛은 trail-fx.js 의 온기 입자가 더한다.
+//     나머지 자국은 지금처럼 조명 받는 재질이다.
+export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow']));
+
+/** 자국 하나의 재질 — 자국마다 새로 만든다(공유 아님: 페이드·무지개 색을 자국마다 따로 움직인다) */
+export function markMaterial(THREE, itemId, opacity) {
+  const common = { color: 0xffffff, vertexColors: true };
+  const fade = { transparent: true, opacity, depthWrite: false };
+  return TRAIL_UNLIT.has(itemId)
+    ? new THREE.MeshBasicMaterial({ ...common, ...fade })
+    : new THREE.MeshStandardMaterial({ ...common, roughness: 0.5, metalness: 0, ...fade });
+}
+
 /** 조형용으로 만든 메시 더미 → 정점색 단일 메시 하나 */
-function bake(THREE, src, opacity) {
+function bake(THREE, src, opacity, itemId) {
   src.updateMatrixWorld(true);
   const geos = [];
   src.traverse(o => {
@@ -224,10 +238,7 @@ function bake(THREE, src, opacity) {
     paintRGBA(THREE, q, o.material.color, opacity > 0 ? o.material.opacity / opacity : 1);
     geos.push(q);
   });
-  const m = new THREE.Mesh(mergeGeos(THREE, geos), new THREE.MeshStandardMaterial({
-    color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0,
-    transparent: true, opacity, depthWrite: false,
-  }));
+  const m = new THREE.Mesh(mergeGeos(THREE, geos), markMaterial(THREE, itemId, opacity));
   m.castShadow = false;
   return m;
 }
@@ -247,7 +258,7 @@ export function buildTrailMark(THREE, itemId, opacity, animalId) {
   if (!fn) return g;
   const src = new THREE.Group();
   fn(src, TRAIL_S, opacity, animalId);
-  const m = bake(THREE, src, opacity);
+  const m = bake(THREE, src, opacity, itemId);
   m.renderOrder = MARK_ORDER[itemId] ?? 0;
   g.add(m);
   return g;

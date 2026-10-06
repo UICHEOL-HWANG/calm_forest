@@ -62,3 +62,21 @@ test('🎃 온기는 점 입자 Points 안에서 점마다 크기를 받는다(�
   assert.match(src, /gl_PointSize = size \* aSizeK;/);
   assert.match(read('../js/cosmetics/trail-fx-sprites.js'), /list\.slice\(-cap\)/, '넘치면 가장 새 박쥐를 남긴다');
 });
+
+test('🎃 호박등 자국만 조명 없이(unlit) 굽는다 — 다른 자국 재질은 그대로', async () => {
+  const { markMaterial, TRAIL_UNLIT } = await import('../js/cosmetics/trail.js');
+  class Std { constructor(o) { this.kind = 'standard'; Object.assign(this, o); } }
+  class Basic { constructor(o) { this.kind = 'basic'; Object.assign(this, o); } }
+  const THREE = { MeshStandardMaterial: Std, MeshBasicMaterial: Basic };
+  assert.deepEqual([...TRAIL_UNLIT], ['pumpkin_glow']);
+  const lit = markMaterial(THREE, 'firefly', 0.7);
+  assert.equal(lit.kind, 'standard');
+  assert.deepEqual({ ...lit }, { kind: 'standard', color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0,
+    transparent: true, opacity: 0.7, depthWrite: false }, '기존 자국 재질은 한 글자도 바뀌지 않는다');
+  for (const id of ['paw', 'flower', 'star', 'sparkle', 'drop', 'firefly', 'rainbow', 'sprout', 'bat_swirl'])
+    assert.equal(markMaterial(THREE, id, 1).kind, 'standard', `${id} 는 조명 받는 재질 그대로`);
+  const un = markMaterial(THREE, 'pumpkin_glow', 0.7);
+  assert.equal(un.kind, 'basic', '🎃 밤에도 등불로 읽히게 조명 없이');
+  assert.equal(un.vertexColors, true); assert.equal(un.transparent, true);
+  assert.equal(un.opacity, 0.7); assert.equal(un.depthWrite, false);
+});
