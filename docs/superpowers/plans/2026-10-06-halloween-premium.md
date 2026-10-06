@@ -1169,3 +1169,14 @@ Expected: 결과 없음.
 4. **종료일**: Paddle 대시보드에서 10개 상품의 Price 를 **보관(Archive)**.
 5. 소식함 공지(`notices_admin.html`) — 토스 출시 후.
 6. 환불·약관 문구가 한정 상품에 맞는지(`refund.html` "미사용 14일" 조건 손질) 확인.
+
+---
+
+### Task 15 (추가 — 사용자 지시 2026-10-06 "다 되면 paddle에도 가격 등록해라"): Paddle 라이브 가격 등록
+
+**Files:** Modify `js/shop/price-ids.js`(스크립트가 자동 기입), `tests/halloween-catalog.test.mjs`.
+- [ ] Step 1: `node scripts/paddle-seed.mjs --dry-run` 로 17개 중 신규 10개만 만들어질 목록 확인(키 불필요).
+- [ ] Step 2: 키체인 `calmforest-paddle-live` 에서 키를 읽어(출력·로그 금지) `PADDLE_ENV=production node scripts/paddle-seed.mjs` — 기존 7개는 `custom_data.item_id` 로 재사용(수정·삭제 금지), 신규 10개만 생성. 금액이 다르면 경고만(바꾸지 않음).
+- [ ] Step 3: `price-ids.js` 의 신규 10칸이 `pri_…` 로 채워졌는지, 기존 7칸 값이 그대로인지 diff 로 확인.
+- [ ] Step 4: `tests/halloween-catalog.test.mjs` 의 "priceId 승인 전 null" 단언을 "pri_ 형식 문자열 · 서로 유일" 로 교체. 전체 `npm test` 0 fail.
+- [ ] Step 5: 커밋(`price-ids.js` 와 테스트만; 키·응답 원문은 어떤 파일에도 남기지 않는다).
