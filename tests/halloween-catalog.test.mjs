@@ -38,14 +38,20 @@ test('🎃 금액은 모두 ₩4,000대', () => {
   }
 });
 
-test('🎃 망토 2종은 등(back) 앵커 · priceId 는 승인 전이라 null', () => {
+test('🎃 망토 2종은 등(back) 앵커 · 라이브 priceId 등록됨', () => {
   assert.equal(findItem('bat_wing').anchor, 'back');
   assert.equal(findItem('bat_cape').anchor, 'back');
   for (const id of Object.keys(HALLOWEEN)) {
     assert.ok(id in PRICE_IDS, `${id}: price-ids.js 에 칸이 없다`);
-    assert.equal(PRICE_IDS[id], null, `${id}: 승인 전엔 null`);
-    assert.equal(findItem(id).price.cash, null, id);
+    assert.match(PRICE_IDS[id], /^pri_[a-z0-9]+$/, id);
+    const won = HALLOWEEN[id].won;
+    const label = `₩${won.toLocaleString('en-US')}`;
+    assert.deepEqual(findItem(id).price.cash, { priceId: PRICE_IDS[id], label }, id);
   }
+  const mine = Object.keys(HALLOWEEN).map(id => PRICE_IDS[id]);
+  assert.equal(new Set(mine).size, 10, '10개 모두 서로 달라야 한다');
+  const others = Object.entries(PRICE_IDS).filter(([k, v]) => v && !(k in HALLOWEEN)).map(([, v]) => v);
+  for (const v of mine) assert.ok(!others.includes(v), `${v}: 기존 id 와 겹침`);
 });
 
 test('🎃 슬롯별 순서 — 자국은 프리미엄 뒤에 이어 붙고, 스킨·도구·등은 기존 프리미엄 뒤', () => {
