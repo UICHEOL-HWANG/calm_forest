@@ -72,6 +72,54 @@ async function publishCarousel(env, deck) {
   return permalink;
 }
 
+/**
+ * 같은 카드 묶음을 Threads 에도 올린다(tools/cardnews/threads.mjs 의 워커 판).
+ * 선택 채널이라 호출하는 쪽이 토큰·본문 유무를 먼저 보고, 실패는 호출한 쪽이 잡는다.
+ */
+const THREADS = 'https://graph.threads.net/v1.0';
+
+async function threadsCall(env, path, params = {}, method = 'GET') {
+  const url = new URL(THREADS + path);
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v != null) (method === 'GET' ? url.searchParams : body).set(k, String(v));
+  }
+  (method === 'GET' ? url.searchParams : body).set('access_token', env.THREADS_TOKEN);
+  const res = await fetch(url, method === 'GET' ? {} : { method, body });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.error) {
+    const e = json.error || {};
+    // ⚠️ url 을 찍으면 토큰이 로그에 남는다. 경로만 남긴다.
+    throw new Error(`Threads ${method} ${path} → ${res.status} [${e.code ?? '?'}] ${e.message || ''}`);
+  }
+  return json;
+}
+
+async function publishThreads(env, deck) {
+  const children = [];
+  for (const image_url of deck.urls) {
+    const { id } = await threadsCall(env, '/me/threads', { media_type: 'IMAGE', image_url, is_carousel_item: true }, 'POST');
+    children.push(id);
+  }
+  const { id: parent } = await threadsCall(env, '/me/threads', {
+    media_type: 'CAROUSEL', children: children.join(','), text: deck.threadsText,
+  }, 'POST');
+
+  for (let i = 0; ; i++) {
+    const s = await threadsCall(env, `/${parent}`, { fields: 'status,error_message' });
+    if (s.status === 'FINISHED') break;
+    if (s.status === 'ERROR' || s.status === 'EXPIRED') {
+      throw new Error(`Threads 컨테이너 ${s.status}: ${s.error_message || ''}`);
+    }
+    if (i >= 30) throw new Error('Threads 컨테이너가 90초 넘게 IN_PROGRESS');
+    await sleep(3000);
+  }
+
+  const { id: mediaId } = await threadsCall(env, '/me/threads_publish', { creation_id: parent }, 'POST');
+  const { permalink } = await threadsCall(env, `/${mediaId}`, { fields: 'permalink' });
+  return permalink;
+}
+
 export async function runCardnewsCron(env) {
   if (!env.CARDNEWS) return { skipped: 'KV 바인딩 없음' };
 
@@ -107,11 +155,28 @@ export async function runCardnewsCron(env) {
     state.lastSlug = deck.slug;
     await saveState(env, state);
 
+    // 🧵 Threads — 인스타는 이미 나갔고 상태도 저장했다. 여기서 실패해도 큐를 되돌리지 않는다
+    //    (되돌리면 다음 실행에서 인스타가 같은 카드를 또 올린다). 결과는 메일 한 줄로만 알린다.
+    let threadsLine = '🧵 Threads: 건너뜀 (THREADS_TOKEN 없음)';
+    if (env.THREADS_TOKEN) {
+      if (!deck.threadsText) {
+        threadsLine = '🧵 Threads: 건너뜀 (큐 항목에 threadsText 없음 — 옛 큐 항목)';
+      } else {
+        try {
+          threadsLine = `🧵 Threads: ${await publishThreads(env, deck)}`;
+        } catch (e) {
+          const m = e instanceof Error ? e.message : String(e);
+          threadsLine = `⚠️ Threads 발행 실패 (인스타는 나갔다): ${m}\n   토큰 만료(code 190)면 60일 갱신이 안 돈 것이다.`;
+          console.error(JSON.stringify({ message: 'cardnews cron Threads 실패', slug: deck.slug, error: m }));
+        }
+      }
+    }
+
     // 남은 게 없으면 성공 알림에 미리 알려 둔다 — 사흘 뒤에 또 메일받는 것보다 낫다.
     const tail = state.queue.length
       ? `남은 카드 묶음 ${state.queue.length}개`
       : `⚠️ 남은 카드 묶음이 없다. 다음 차례 전에 만들어야 한다.`;
-    await notify(env, `[카드뉴스] ${deck.slug} 발행됨`, `${permalink}\n\n${tail}\n`);
+    await notify(env, `[카드뉴스] ${deck.slug} 발행됨`, `${permalink}\n\n${threadsLine}\n\n${tail}\n`);
     return { published: deck.slug, permalink };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

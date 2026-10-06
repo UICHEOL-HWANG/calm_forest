@@ -198,96 +198,54 @@ test('상태가 비어도 터지지 않는다', () => {
 });
 
 
-// ── 🏛️ 진열장 자리 — 모든 칸이 방 안에 있어야 한다 ─────────────
-//   ⚠️ 이게 없어서 3층 31칸 중 16칸이 벽 밖 허공에 떴다. 이동 제한 밖이라
-//      명판도 못 읽고 🔍도 못 눌러 "있지만 볼 수 없는" 전시물이 됐다.
-//   game.js 는 노드에서 import 할 수 없어 함수 본문을 떼어 평가한다.
-const HALF_W = 7.5, HALF_D = 6.5;
-const slotsFn0 = (() => {
-  const src = SRC.slice(SRC.indexOf('function museumSlots('), SRC.indexOf('\nlet museumCases'));
-  // eslint-disable-next-line no-new-func
-  return new Function('MUSEUM_HALF_W', 'MUSEUM_HALF_D', src + '\nreturn { museumSlots, museumStairBox };')(HALF_W, HALF_D);
-})();
-const stairBox = slotsFn0.museumStairBox;
-const slotsFn = slotsFn0.museumSlots;
-
-for (const floor of MUSEUM_FLOORS) {
-  test(`${floor.name} 진열장이 전부 방 안에 있다`, () => {
-    const count = floorEntries(floor.id, DEX).length;
-    const slots = slotsFn(count, floor.id === 1);
-    assert.equal(slots.length, count, '칸 수와 자리 수가 다르다 — 전시물이 사라지거나 남는다');
-    const out = slots.filter(([x, z]) => Math.abs(x) > HALF_W - 0.8 || Math.abs(z) > HALF_D - 0.8);
-    assert.deepEqual(out, [], `${out.length}칸이 벽 밖이다 — 걸어갈 수 없어 영원히 못 본다`);
-  });
-}
-
-test('진열장끼리 겹치지 않는다', () => {
-  for (const floor of MUSEUM_FLOORS) {
-    const slots = slotsFn(floorEntries(floor.id, DEX).length, floor.id === 1);
-    for (let i = 0; i < slots.length; i++) for (let j = i + 1; j < slots.length; j++) {
-      const d = Math.hypot(slots[i][0] - slots[j][0], slots[i][1] - slots[j][1]);
-      assert.ok(d > 1.1, `${floor.name} 진열장이 겹친다(간격 ${d.toFixed(2)})`);
-    }
-  }
+// ── 🏛️ 배치는 js/museum/layout.js(순수)가 계산한다 — 테스트는 tests/museum-layout.test.mjs ──
+//   ⚠️ 예전엔 game.js 에서 museumSlots 함수 본문을 떼어 new Function 으로 평가했다. 순수 모듈로 옮겨 그럴 필요가 없다.
+const CAFE_SRC = readFileSync(new URL('../js/spaces/cafe.js', import.meta.url), 'utf8');
+test('전시실은 배치를 layout.js 에서 가져온다 — cafe.js 에 슬롯 계산을 다시 두지 않는다', () => {
+  assert.match(CAFE_SRC, /from '\.\.\/museum\/layout\.js'/, 'layout.js 를 안 쓴다');
+  assert.doesNotMatch(CAFE_SRC, /function museumSlots\(/, '낡은 슬롯 계산이 남아 있다');
+  assert.doesNotMatch(CAFE_SRC, /MUSEUM_HALF_[WD]\b/, '고정 방 크기 상수가 남아 있다 — 층마다 방이 다르다');
+  assert.match(CAFE_SRC, /export const museumDims = /);
 });
 
-// 🪜 계단 발판(충돌체)과 진열장 받침 충돌체(±0.5~0.6)가 겹치면 모서리 칸이 계단 속에 박힌다 +
-//    도착 지점이 칸 충돌체 안이면 층을 옮기자마자 갇힌다(옛 z0=-4.4 배치가 둘 다였다).
-test('계단이 진열장·도착 지점과 겹치지 않는다', () => {
-  for (const floor of MUSEUM_FLOORS) {
-    const slots = slotsFn(floorEntries(floor.id, DEX).length, floor.id === 1);
-    for (const sx of [-1, 1]) {
-      const b = stairBox(sx);
-      for (const [x, z, ry] of slots) {
-        const hw = ry && Math.abs(Math.sin(ry)) > 0.5 ? 0.6 : 0.5, hd = hw === 0.6 ? 0.5 : 0.6;
-        const hit = x + hw > b.x0 && x - hw < b.x1 && z + hd > b.z0 && z - hd < b.z1;
-        assert.ok(!hit, `${floor.name} 진열장(${x},${z}) 이 계단 발판과 겹친다`);
-      }
-      const arrive = [sx * 5.0, -5.3 + 1.4];   // museumStairs 의 x·z+1.4 (cafe.js stair())
-      for (const [x, z, ry] of slots) {
-        const hw = ry && Math.abs(Math.sin(ry)) > 0.5 ? 0.6 : 0.5, hd = hw === 0.6 ? 0.5 : 0.6;
-        assert.ok(Math.abs(arrive[0] - x) > hw + 0.35 || Math.abs(arrive[1] - z) > hd + 0.35,
-          `${floor.name} 계단 도착 지점이 진열장(${x},${z}) 충돌체에 붙는다`);
-      }
-      // 계단 안내(반경 1.8)가 진열장 앞 자리에서 뜨면 🔍 안내를 가린다 — 앞 서는 자리는 칸에서 0.9 앞
-      for (const [x, z, ry] of slots) {
-        const front = [x + Math.sin(ry) * 0.9, z + Math.cos(ry) * 0.9];
-        assert.ok(Math.hypot(front[0] - sx * 5.0, front[1] + 5.3) > 1.8, `${floor.name} 진열장(${x},${z}) 앞이 계단 안내 반경에 든다`);
-      }
-    }
+test('방 크기를 읽는 곳은 전부 museumDims() 를 쓴다(이동 제한·미니맵·출구)', () => {
+  for (const f of ['js/game.js', 'js/spaces/doors.js']) {
+    const t = readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+    assert.doesNotMatch(t, /MUSEUM_HALF_[WD]\b/, `${f} 에 고정 방 크기가 남아 있다`);
   }
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(game, /museumDims\(\)/, 'game.js 가 museumDims 를 안 쓴다');
 });
 
-// 🏛️ 마주 서는 줄 사이 통로 — 유리장이 41° 카메라에서 뒷줄을 가리지 않도록 줄 간격 ≥ 1.9
-test('섬 줄 간격이 충분하다(앞줄이 뒷줄을 가리지 않게)', () => {
-  for (const floor of MUSEUM_FLOORS) {
-    const slots = slotsFn(floorEntries(floor.id, DEX).length, floor.id === 1);
-    const island = slots.filter(([x]) => Math.abs(x) < 5);
-    const zs = [...new Set(island.map(([, z]) => +z.toFixed(2)))].sort((a, b) => a - b);
-    for (let i = 1; i < zs.length; i++) assert.ok(zs[i] - zs[i - 1] >= 1.8, `${floor.name} 줄 간격 ${(zs[i] - zs[i - 1]).toFixed(2)}`);
-  }
+// ⚠️ 정문은 1층에만 있다 — 상층에서 "🚪 나가기" 가 뜨면 계단으로 올라온 사람이 밖으로 나가진다(2026-10-06 사용자 지적)
+test('나가기는 1층에서만 뜬다', () => {
+  const doors = readFileSync(new URL('../js/spaces/doors.js', import.meta.url), 'utf8');
+  const i = doors.indexOf('} else if (atMuseum) {');
+  const body = doors.slice(i, doors.indexOf('} else if', i + 10));
+  assert.match(body, /museumFloor === 1[^\n]*museumexit|museumexit[^\n]*museumFloor === 1/, 'museumexit 가 museumFloor === 1 조건 안에 없다');
 });
 
-// ✨ 1층 가운데 특별 진열대 3칸이 벽·섬 진열장과 같은 자리를 쓰면 겹쳐 보인다(2026-10-06 실기기 제보)
-test('1층 특별 진열대가 진열장과 겹치지 않는다', () => {
-  const EXTRAS = readFileSync(new URL('../js/museum/extras.js', import.meta.url), 'utf8');
-  const specials = JSON.parse(EXTRAS.match(/specials: (\[\[.*?\]\])/)[1]);
-  assert.equal(specials.length, 3);
-  const slots = slotsFn(floorEntries(1, DEX).length, true);
-  for (const [sx, sz] of specials) for (const [x, z] of slots) {
-    assert.ok(Math.hypot(sx - x, sz - z) > 1.6, `특별 진열대(${sx},${sz}) 가 진열장(${x},${z})과 겹친다`);
-  }
-  for (let i = 0; i < specials.length; i++) for (let j = i + 1; j < specials.length; j++) {
-    assert.ok(Math.hypot(specials[i][0] - specials[j][0], specials[i][1] - specials[j][1]) > 1.6, '특별 진열대끼리 겹친다');
-  }
+test('미니맵 출구 표시도 1층에서만', () => {
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(game, /if \(museumFloor === 1\) marks\.push\(\{ x: MUSEUM\.x, z: MUSEUM\.z \+ museumDims\(\)\.hd[^\n]*kind: 'exit'/);
 });
 
-// ⚠️ 관람 모형은 진열장과 **같은 자리**에 떠야 한다. 13칸 기준으로 읽으면
-//    3층에서 undefined 를 구조분해해 터지고, 특별전에선 9m 떨어진 벽 속에 뜬다.
-test('관람 모형이 층 칸 수에 맞는 자리를 쓴다', () => {
-  const fn = SRC.slice(SRC.indexOf('function openMuseumView('), SRC.indexOf('\nfunction closeMuseumView'));
-  assert.match(fn, /museumSlots\(museumFloorItems\(\)\.length[,)]/, '13칸 기준 자리를 쓰고 있다');
+test('관람 모형이 층의 실제 자리와 방향을 쓴다', () => {
+  const i = CAFE_SRC.indexOf('export function openMuseumView(');
+  const fn = CAFE_SRC.slice(i, CAFE_SRC.indexOf('\nexport function closeMuseumView'));
+  assert.match(fn, /museumLayoutNow\(\)\.slots\[i\]/, '층 배치의 자리를 안 쓴다');
+  assert.match(fn, /inwardOf\(/, '탁자 칸은 방향이 칸마다 다르다 — 옛 ry===0 분기를 쓰면 틀어진다');
   assert.match(fn, /if \(!slot\) return/, '없는 자리를 그대로 구조분해한다');
+});
+
+test('buildMuseumHall: 정문은 1층만 비우고, 상층은 난간+유리창으로 막는다', () => {
+  const i = CAFE_SRC.indexOf('export function buildMuseumHall(');
+  const body = CAFE_SRC.slice(i, CAFE_SRC.indexOf('\n// 수집이 늘면 천이 걷힌다'));
+  assert.match(body, /if \(museumFloor === 1\)/, '정문 분기가 없다');
+  assert.match(body, /lay\.tables/, '탁자를 안 짓는다');
+  assert.match(body, /slot\.kind === 'open'/, '탁자 칸 분기가 없다');
+  assert.match(body, /stairBox\(sx, lay\.dims\)/, '계단 충돌체가 방 크기를 안 따른다');
+  assert.doesNotMatch(body, /museumSlots\(/);
 });
 
 // ⚠️ 2·3층 카테고리는 ORES·CROP_TYPES 에 없다 — 폴백이 없으면 2층에 들어가는 순간 터진다
@@ -299,7 +257,7 @@ test('모든 층 카테고리에 전시물 색 폴백이 있다', () => {
     if (['crop', 'fish', 'ore'].includes(cat)) continue;   // 전용 조형이 있다
     assert.match(tint, new RegExp(`${cat}:`), `${cat} 폴백 색이 없다`);
   }
-  const fn = SRC.slice(SRC.indexOf('function museumExhibitMesh('), SRC.indexOf('\n}', SRC.indexOf('function museumExhibitMesh(')));
+  const fn = SRC.slice(SRC.indexOf('function fallbackExhibit('), SRC.indexOf('\n}', SRC.indexOf('function fallbackExhibit(')));
   assert.match(fn, /MUSEUM_CAT_TINT\[item\.cat\]/, '폴백을 쓰지 않는다');
 });
 
@@ -548,4 +506,29 @@ test('bestAfterCatch — 더 무거울 때만 갱신, 원본 불변', () => {
 test('sanitizeBest — 양수 숫자만, 어종 id 는 알려준 목록 안에서만', () => {
   assert.deepEqual(sanitizeBest({ aji: 2.4, tuna: -1, mola: 'x', hack: 999 }, ['aji', 'tuna', 'mola']), { aji: 2.4 });
   assert.deepEqual(sanitizeBest(null, ['aji']), {});
+});
+
+// ── 🏛️ 리디자인: 층 정의에 배치·테마가 붙는다 ──────────────────────
+import { realDexIds } from './helpers/real-dex.mjs';
+
+test('층 정의: 1·2층은 벽 유리장, 3층·특별전은 회랑 — 그리고 테마 색이 있다', () => {
+  assert.deepEqual(MUSEUM_FLOORS.map(f => f.layout), ['wall', 'wall', 'gallery', 'gallery']);
+  for (const f of MUSEUM_FLOORS) {
+    for (const k of ['floor', 'wall', 'light']) assert.ok(Number.isInteger(f.theme?.[k]), `${f.name} theme.${k}`);
+  }
+});
+
+test('실제 도감 칸 수 — 1층 17 · 2층 17 · 3층 31 · 특별전 11(바뀌면 배치 한도를 다시 본다)', () => {
+  const real = realDexIds();
+  const DEXR = Object.fromEntries(Object.entries(real).map(([k, v]) => [k, v.map(id => ({ id }))]));
+  assert.deepEqual(MUSEUM_FLOORS.map(f => floorEntries(f.id, DEXR).length), [17, 17, 31, 11]);
+});
+
+test('전시물 메시: 새 조형 → 폴백 순서, 모든 경로가 바닥 y=0 으로 앉는다', () => {
+  const i = CAFE_SRC.indexOf('export function museumExhibitMesh(');
+  const fn = CAFE_SRC.slice(i, CAFE_SRC.indexOf('\nfunction fallbackExhibit'));
+  assert.match(fn, /buildExhibitMesh\(THREE, exhibitParts\(/);
+  assert.match(fn, /\|\| fallbackExhibit\(item\)/);
+  assert.match(fn, /return seatOnBase\(obj\)/);
+  assert.match(CAFE_SRC, /updateWorldMatrix\(true, true\);[^\n]*\n\s*const b = new THREE\.Box3/, '재기 전에 월드 행렬을 갱신해야 한다');
 });

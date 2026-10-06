@@ -30,6 +30,10 @@ import { PAL } from '../data/world.js';
 import { CONFIG } from '../config.js';
 import { MUSEUM_FLOORS, SPECIAL_EXHIBITS, exhibitCenterY, floorEntries, floorProgress, openFloors, viewFrame } from '../museum.js';
 import { buildMuseumExtras } from '../museum/extras.js';
+import { museumLayout, dimsOf, stairBox, stairSpot, caseHalf, inwardOf } from '../museum/layout.js';
+import { buildExhibitMesh } from '../museum/exhibit-build.js';
+import { exhibitParts } from '../museum/exhibit-parts.js';
+import { NPCS } from '../data/npcs.js';
 import { PLATFORM } from '../platform.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
@@ -197,7 +201,7 @@ export function makeWallPlate(text, w, h) {
 //      ③ 전시물은 종마다 색이 달라 재질을 따로 만들면 13종이 13콜이 된다 →
 //         색을 **정점에 실어** 한 재질(vertexColors)로 묶는다
 //   ▶ 명판 글자는 3D 텍스처가 아니라 HUD 패널이다(칸마다 캔버스를 만들면 그게 곧 드로우콜).
-export const MUSEUM_HALF_W = 7.5, MUSEUM_HALF_D = 6.5, MUSEUM_H = 3.2;
+export const MUSEUM_H = 3.2;
 
 // 구역 러그 — 카테고리마다 색을 달리해 경계가 읽히게. 층마다 카테고리가 다르므로 순서대로 돌려 쓴다
 export const MUSEUM_ZONES = [
@@ -215,6 +219,14 @@ export const DEX_CAT_LABEL = { crop: '🌾 작물', fish: '🐟 물고기', ore:
 
 export let museumFloor = 1;
 
+const curFloorDef = () => MUSEUM_FLOORS.find(f => f.id === museumFloor) || MUSEUM_FLOORS[0];
+// 🏛️ 방은 층마다 크기가 다르다(벽 16×14 · 회랑 16×14|20×14 — 회랑은 칸 수에 맞춘다). 이동 제한·미니맵·출구가 전부 이 값을 읽는다.
+//   이동 제한이 프레임마다 읽으므로 층을 지을 때(buildMuseumHall) 정해 둔 값을 돌려준다.
+let _museumDims = dimsOf('wall');
+export const museumDims = () => _museumDims;
+// 지금 층의 배치 — 칸 자리·탁자. 전시물 목록(museumFloorItems)과 같은 순서다.
+export const museumLayoutNow = () => museumLayout(curFloorDef().layout, museumFloorItems().length);
+
 // 이 층에 전시할 목록 — 카테고리 순서대로 러그 구역이 갈린다
 export function museumFloorItems(floor = museumFloor) {
   const def = MUSEUM_FLOORS.find(f => f.id === floor);
@@ -222,61 +234,37 @@ export function museumFloorItems(floor = museumFloor) {
   return floorEntries(floor, DEX).map(e => ({ ...e, zone: def.cats.indexOf(e.cat) % MUSEUM_ZONES.length }));
 }
 
-// 🏛️ 전시물 메시 — **게임에서 실제로 쓰는 조형을 그대로 쓴다.**
-//   🌾작물은 수확 때 머리 위로 드는 cropMini, 🐟물고기는 낚시 때의 fishMesh,
-//   ⛏️광물은 광맥과 같은 다면체. 도감에 등록한 그것이 그대로 전시되어야 "내 것" 으로 읽힌다.
+// 🏛️ 전시물 메시 — 작물·물고기는 **게임에서 실제로 쓰는 조형**(cropMini·fishMesh)을 그대로 쓴다. 나머지는
+//   js/museum/exhibit-parts.js 의 카테고리별 대표 조형 + 종별 변형. 그것도 없으면 색 20면체 폴백.
+//   도감에 등록한 그것이 그대로 전시되어야 "내 것" 으로 읽힌다.
+//   ⚠️ 2·3층 카테고리는 ORES 에 없다 — 폴백이 없으면 undefined.color 로 터진다(fallbackExhibit).
+//   모든 경로가 **바닥이 y=0** 인 그룹을 돌려준다(seatOnBase) — 받침·탁자·돔 어디에 놓든 같은 규칙.
+function exhibitMeta(item) {
+  if (item.cat !== 'npc') return {};
+  const n = NPCS.find(x => x.id === item.id) || CAFE_GUESTS.find(x => x.id === item.id);
+  return n ? { color: n.color, hat: n.hat } : {};
+}
+function seatOnBase(obj) {
+  const g = new THREE.Group(); g.add(obj);
+  obj.updateWorldMatrix(true, true);   // ⚠️ 재기 전에 행렬 갱신(museum-view-worldspace 의 교훈)
+  const b = new THREE.Box3().setFromObject(g);
+  if (Number.isFinite(b.min.y)) obj.position.y -= b.min.y;
+  return g;
+}
 export function museumExhibitMesh(item) {
-  if (item.cat === 'crop') return cropMini(CROP_TYPES.find(c => c.id === item.id));
-  if (item.cat === 'fish') return fishMesh(item.id);   // common / uncommon / rare 가 곧 등급 키다
-  // ⚠️ 2·3층 카테고리(🍄채집·🌟반딧불이·🪏땅속·🐾흔적·🛶강·🌫️정령·🌦️날씨·🧑주민)는
-  //    ORES 에 없다. 폴백이 없으면 **2층에 들어가는 순간 undefined.color 로 터진다.**
+  let obj;
+  if (item.cat === 'crop') obj = cropMini(CROP_TYPES.find(c => c.id === item.id));
+  else if (item.cat === 'fish') obj = fishMesh(item.id);   // common / uncommon / rare 가 곧 등급 키다
+  else obj = buildExhibitMesh(THREE, exhibitParts(item.cat, item.id, exhibitMeta(item))) || fallbackExhibit(item);
+  return seatOnBase(obj);
+}
+function fallbackExhibit(item) {
   const ore = ORES.find(o => o.id === item.id);
   const tint = ore ? ore.color : (MUSEUM_CAT_TINT[item.cat] ?? 0xcfc8b8);
   const g = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.IcosahedronGeometry(item.id === 'gem' ? 0.2 : 0.24, 0),
-    item.id === 'gem'
-      ? new THREE.MeshStandardMaterial({ color: tint, roughness: 0.25, metalness: 0.1, flatShading: true })
-      : clayMat(tint));
+  const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), clayMat(tint));
   m.castShadow = true; g.add(m);
   return g;
-}
-
-// 진열장 자리 — 좌우 벽 5칸씩 + 안쪽 3칸. [x, z, 바라보는 방향]
-export function museumSlots(count = 13, reserveCenter = false) {
-  const out = [];
-  const side = Math.min(5, Math.ceil((count - 3) / 2));   // 안쪽 벽 3칸을 빼고 좌우로 나눈다
-  //   ⚠️ 간격이 좁으면 진열장 다섯이 한 덩어리로 읽힌다 — 받침 폭 0.95 의 두 배 이상 띄운다.
-  //   🪜 z0=-2.9: 북쪽 모서리(-4.4~-2.4)는 계단 자리다 — 옛 z0=-4.4 는 계단과 첫 칸이 같은 자리를 썼고 도착 지점이 칸 충돌체 안이었다.
-  const step = side > 1 ? 7.3 / (side - 1) : 0, z0 = -2.9;
-  for (let i = 0; i < side; i++) out.push([-MUSEUM_HALF_W + 1.2, z0 + i * step,  Math.PI / 2]);
-  for (let i = 0; i < side; i++) out.push([ MUSEUM_HALF_W - 1.2, z0 + i * step, -Math.PI / 2]);
-  const back = Math.min(3, count - out.length);
-  for (let i = 0; i < back; i++) out.push([(i - (back - 1) / 2) * 2.6, -MUSEUM_HALF_D + 1.2, 0]);
-  // 🏛️ 중앙 아일랜드 — 벽면(좌우 5+5 · 뒷벽 3 = 13)으로 모자라면 가운데 진열대가 받는다.
-  //   ⚠️ 예전엔 남는 것을 뒷벽 한 줄에 계속 늘어놓아, 3층 31칸 중 16칸이 벽 밖 허공에 떴다.
-  //      이동 제한 밖이라 명판도 못 읽는 "있지만 볼 수 없는" 전시물이 됐다.
-  //   🎁 reserveCenter(1층): 가운데 남쪽 절반은 ✨특별 진열대 3칸 자리(js/museum/extras.js) — 섬은 북쪽 줄에만 둔다.
-  //      ⚠️ 1층이 13→17칸으로 늘며 섬 4칸이 특별 진열대와 같은 자리(0,-0.3)를 차지해 겹쳐 보였다(2026-10-06 실기기).
-  let rest = count - out.length;
-  if (rest > 0) {
-    //   🏛️ 줄간격 ≥2 — 유리장 높이 1.9 를 41° 카메라가 내려다보면 뒷줄이 앞줄에 가려진다(옛 1.65 는 겹쳐 보였다).
-    //      서로 마주 보는 줄 사이 통로도 0.44 → 0.9 로 넓어진다. 칸이 많은 층은 5열(간격 1.95)로 줄 수를 줄여
-    //      맨 앞줄이 입구 길(z≥4.3)을 막지 않게 한다. 1층은 남쪽 절반이 특별 진열대 자리라 4열 한 줄.
-    const cols = Math.min(reserveCenter ? 4 : 5, rest), rows = Math.ceil(rest / cols);
-    const cw = reserveCenter ? 2.6 : (cols > 4 ? 1.95 : 2.1), rh = rows > 1 ? Math.min(2.1, 8.3 / (rows - 1)) : 0;
-    const z0i = reserveCenter ? -2.9 : (rows > 2 ? -3.3 : -(rows - 1) * rh / 2 + 0.6);
-    for (let r = 0; r < rows && rest > 0; r++) {
-      for (let c = 0; c < cols && rest > 0; c++, rest--) {
-        out.push([(c - (cols - 1) / 2) * cw, z0i + r * rh, r % 2 ? Math.PI : 0]);
-      }
-    }
-  }
-  return out.slice(0, count);
-}
-
-// 🪜 계단 발판 — 뒷벽 모서리에 가로로 붙인다(발판 5단 + 끝 띠). 칸 자리와 겹치지 않는지는 tests/museum.test.mjs 가 본다.
-export function museumStairBox(sx) {
-  return { x0: sx > 0 ? 4.3 : -7.2, x1: sx > 0 ? 7.2 : -4.3, z0: -6.3, z1: -4.7 };
 }
 
 export let museumCases = [];
@@ -386,11 +374,10 @@ export function openMuseumView(i) {
   // ⚠️ 캐릭터가 보는 쪽에 띄우면 벽을 뚫는다(진열장은 벽에 붙어 있다).
   //    **진열장에서 통로 쪽으로** 띄우고 카메라는 그보다 더 통로 안쪽에서 본다 — 방향과 무관하게 안전하다.
   // ⚠️ 층마다 칸 수가 다르다 — 13칸 기준으로 읽으면 3층에서 undefined 를 구조분해해 터진다
-  const slot = museumSlots(museumFloorItems().length, museumFloor === 1)[i];
+  const slot = museumLayoutNow().slots[i];
   if (!slot) return;
-  const [sx, sz, ry] = slot;
-  const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
-  group.position.set(MUSEUM.x + sx + inward[0] * 1.25, 1.75, MUSEUM.z + sz + inward[1] * 1.25);   // 명판(화면 중앙) 위로 띄운다
+  const inward = inwardOf(slot.ry);
+  group.position.set(MUSEUM.x + slot.x + inward[0] * 1.25, 1.75, MUSEUM.z + slot.z + inward[1] * 1.25);   // 명판(화면 중앙) 위로 띄운다
   scene.add(group);
   player.visible = false;   // 🔍 관람 중엔 캐릭터를 숨긴다 — 몸이 화면 절반을 가린다(1인칭처럼 물건만)
   museumView = { group, mesh, idx: i, spin: 0, inward, frame: null };
@@ -424,9 +411,10 @@ export function updateMuseumView(dt) {
 
 export function buildMuseumHall() {
   const g = new THREE.Group(); g.position.copy(MUSEUM); g.visible = false;
+  const def = curFloorDef(), th = def.theme;
   const MATS = {
-    wall:  clayMat(0xf3e2c8, false), trim: clayMat(0xf2ece0, false),
-    floor: woodMat(6, 6, 0xd9b98a),  stone: clayMat(0xcfc7b0, false),
+    wall:  clayMat(th.wall, false), trim: clayMat(0xf2ece0, false),
+    floor: woodMat(6, 6, th.floor),  stone: clayMat(0xcfc7b0, false),
     wood:  woodMat(4, 1, 0xb5834f),  dark: clayMat(0x6b5a46, false),
     cloth: clayMat(0xe4dccb, false),                       // 🎀 빈 칸을 덮은 천
     rugA:  clayMat(0xb8cfa8, false), rugB: clayMat(0xa8c4d8, false),
@@ -443,52 +431,76 @@ export function buildMuseumHall() {
     }
   };
   const box = (w, h, d, x, y, z, ry = 0) => { const b = new THREE.BoxGeometry(w, h, d); if (ry) b.rotateY(ry); return b.translate(x, y, z); };
-  const W = MUSEUM_HALF_W * 2, D = MUSEUM_HALF_D * 2, H = MUSEUM_H;
+
+  const items = museumFloorItems();
+  const lay = museumLayoutNow();                       // 칸 자리·탁자·방 크기 — js/museum/layout.js
+  _museumDims = lay.dims;
+  const { hw: HW, hd: HD } = lay.dims, W = HW * 2, D = HD * 2, H = MUSEUM_H;
 
   add('floor', box(W, 0.2, D, 0, -0.1, 0));
   // ⚠️ 천장은 만들지 않는다 — 카메라가 41° 로 내려다보므로 천장을 덮으면 방 안이 통째로 가린다.
   //    집 실내(buildInterior)·☕카페 홀도 같은 이유로 천장이 없다(js/shadow-scope.js 주석 참고).
-  add('trim',  box(W + 0.4, 0.18, 0.5, 0, H, -MUSEUM_HALF_D));   // 뒷벽 위 처마만 — 공간의 위쪽을 닫아 보이게
-  add('wall',  box(W, H, 0.3, 0, H / 2, -MUSEUM_HALF_D));
-  add('wall',  box(0.3, H, D, -MUSEUM_HALF_W, H / 2, 0));
-  add('wall',  box(0.3, H, D,  MUSEUM_HALF_W, H / 2, 0));
-  // 정면(입구 쪽) 벽 — 문 자리를 비우고 좌우만
-  //   ⚠️ 정면(남쪽)은 낮은 난간만 — 카메라가 이쪽에서 41° 로 내려다보므로 벽을 세우면 방이 가린다
-  const doorW = 2.8, side = (W - doorW) / 2, RAIL = 0.9;
-  add('wall', box(side, RAIL, 0.3, -(doorW + side) / 2, RAIL / 2, MUSEUM_HALF_D));
-  add('wall', box(side, RAIL, 0.3,  (doorW + side) / 2, RAIL / 2, MUSEUM_HALF_D));
-  add('trim', box(side + 0.1, 0.12, 0.4, -(doorW + side) / 2, RAIL, MUSEUM_HALF_D));
-  add('trim', box(side + 0.1, 0.12, 0.4,  (doorW + side) / 2, RAIL, MUSEUM_HALF_D));
-  add('dark', box(doorW, 0.06, 1.1, 0, 0.02, MUSEUM_HALF_D - 0.2));   // 문턱(나가는 자리 표시)
+  add('trim',  box(W + 0.4, 0.18, 0.5, 0, H, -HD));   // 뒷벽 위 처마만 — 공간의 위쪽을 닫아 보이게
+  add('wall',  box(W, H, 0.3, 0, H / 2, -HD));
+  add('wall',  box(0.3, H, D, -HW, H / 2, 0));
+  add('wall',  box(0.3, H, D,  HW, H / 2, 0));
+  // 정면(남쪽) — ⚠️ 낮은 난간만. 카메라가 이쪽에서 41° 로 내려다보므로 벽을 세우면 방이 가린다
+  const RAIL = 0.9;
+  if (museumFloor === 1) {   // 🚪 정문은 1층에만 — 문 자리를 비우고 좌우만
+    const doorW = 2.8, side = (W - doorW) / 2;
+    add('wall', box(side, RAIL, 0.3, -(doorW + side) / 2, RAIL / 2, HD));
+    add('wall', box(side, RAIL, 0.3,  (doorW + side) / 2, RAIL / 2, HD));
+    add('trim', box(side + 0.1, 0.12, 0.4, -(doorW + side) / 2, RAIL, HD));
+    add('trim', box(side + 0.1, 0.12, 0.4,  (doorW + side) / 2, RAIL, HD));
+    add('dark', box(doorW, 0.06, 1.1, 0, 0.02, HD - 0.2));   // 문턱(나가는 자리 표시)
+  } else {                   // 상층 — 문 없이 막는다. 층 이동은 계단뿐
+    add('wall', box(W, RAIL, 0.3, 0, RAIL / 2, HD));
+    add('trim', box(W + 0.1, 0.12, 0.4, 0, RAIL, HD));
+    add('glass', box(W, 1.0, 0.06, 0, RAIL + 0.06 + 0.5, HD));
+    for (let k = -4; k <= 4; k++) add('trim', box(0.08, 1.0, 0.1, k * W / 8.5, RAIL + 0.56, HD));
+  }
   // 굽도리 + 벽 상단 띠
-  for (const [x, z, w, d] of [[0, -MUSEUM_HALF_D + 0.2, W, 0.12], [-MUSEUM_HALF_W + 0.2, 0, 0.12, D], [MUSEUM_HALF_W - 0.2, 0, 0.12, D]]) {
+  for (const [x, z, w, d] of [[0, -HD + 0.2, W, 0.12], [-HW + 0.2, 0, 0.12, D], [HW - 0.2, 0, 0.12, D]]) {
     add('trim', box(w, 0.22, d, x, 0.11, z), box(w, 0.14, d, x, H - 0.45, z));
   }
 
-  const items = museumFloorItems();
-  const slots = museumSlots(items.length, museumFloor === 1);
-  // 구역 러그 — 벽을 세우면 방이 좁아 보인다. 바닥은 공간감을 안 해치면서 경계가 읽힌다
-  slots.forEach(([x, z, ry], i) => {
-    const zn = MUSEUM_ZONES[items[i].zone];
-    const inward = ry === 0 ? [0, 1] : [ry > 0 ? 1 : -1, 0];
-    add(zn.key, box(1.0, 0.03, 1.0, x + inward[0] * 0.95, 0.015, z + inward[1] * 0.95));
+  // 구역 러그 — 유리장 앞에만(탁자 칸은 탁자가 구역을 말한다)
+  lay.slots.forEach((slot, i) => {
+    if (slot.kind !== 'case') return;
+    const zn = MUSEUM_ZONES[items[i].zone], [dx, dz] = inwardOf(slot.ry);
+    add(zn.key, box(1.0, 0.03, 1.0, slot.x + dx * 0.95, 0.015, slot.z + dz * 0.95));
   });
 
   museumCases = [];
   // 🚧 이전 전시실의 충돌체를 걷어낸다 — 들어갈 때마다 다시 지으므로 안 지우면 계속 쌓인다
   for (const c of museumColliders) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
   museumColliders = [];
-  slots.forEach(([x, z, ry], i) => {
-    const item = items[i];
+
+  // 🪑 낮은 탁자(회랑층) — 뚜껑 없는 전시. 통과할 수 없다
+  for (const t of lay.tables) {
+    add('wood',  box(t.w, 0.75, t.d, t.x, 0.375, t.z));
+    add('stone', box(t.w + 0.2, 0.08, t.d + 0.1, t.x, 0.79, t.z));
+    museumColliders.push(solidBox(MUSEUM.x + t.x - t.w / 2, MUSEUM.z + t.z - t.d / 2, MUSEUM.x + t.x + t.w / 2, MUSEUM.z + t.z + t.d / 2));
+  }
+
+  lay.slots.forEach((slot, i) => {
+    const item = items[i], { x, z, ry } = slot;
     const got = !!gameState.dex[item.cat]?.[item.id];
-    museumCases.push({ x, z, i });
+    museumCases.push({ x, z, i, kind: slot.kind });
+    if (slot.kind === 'open') {   // 탁자 위 — 작은 받침 + 전시물(유리 없음)
+      add('stone', box(0.55, 0.03, 0.55, x, 0.815, z, ry));
+      if (!got) { add('cloth', box(0.42, 0.12, 0.42, x, 0.89, z, ry)); return; }   // 🎀 곧 열릴 전시 — 작은 천 덮개
+      const ex = museumExhibitMesh(item);
+      ex.position.set(x, 0.83, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.3);   // 뚜껑 없는 탁자 — 카메라 거리에서 읽히게 키운다
+      exhibitMeshes.push(ex); g.add(ex);
+      return;
+    }
     add('stone', box(0.95, 0.12, 0.7, x, 0.9, z, ry));
     add('wood',  box(0.8, 0.85, 0.58, x, 0.46, z, ry));
     // 받침은 통과할 수 없다. 원으로 두면 모서리에 낄 수 있어 사각으로 — 명판 판정(1.9)은 그대로 닿는다.
-    //   ⚠️ 벽 쪽으로 0.6 까지 덮어야 한다. 진열장은 벽에서 1.2, 이동 제한은 0.8 이라
-    //      그냥 받침 크기(0.34)로 두면 그 사이 0.4 틈으로 진열장 뒤를 지나갈 수 있다.
-    const hw = ry ? 0.6 : 0.5, hd = ry ? 0.5 : 0.6;
-    museumColliders.push(solidBox(MUSEUM.x + x - hw, MUSEUM.z + z - hd, MUSEUM.x + x + hw, MUSEUM.z + z + hd));
+    //   ⚠️ 벽 쪽으로 0.6 까지 덮어야 한다. 진열장은 벽에서 1.2, 이동 제한은 0.8 이라 그냥 받침 크기로 두면 그 사이 틈으로 뒤를 지나갈 수 있다.
+    const { hx, hz } = caseHalf(slot);
+    museumColliders.push(solidBox(MUSEUM.x + x - hx, MUSEUM.z + z - hz, MUSEUM.x + x + hx, MUSEUM.z + z + hz));
     add('trim',  box(0.5, 0.14, 0.05, x + Math.sin(ry) * 0.32, 0.99, z + Math.cos(ry) * 0.32, ry));
     if (!got) {   // 🎀 "아직 없음" 이 아니라 "곧 열릴 전시" — 수집하면 천이 걷힌다
       add('cloth', box(0.9, 0.26, 0.66, x, 1.09, z, ry), box(0.78, 0.18, 0.54, x, 1.28, z, ry));
@@ -501,18 +513,18 @@ export function buildMuseumHall() {
     add('glass', box(0.86, 0.88, 0.54, x, 1.41, z, ry));
     add('trim',  box(0.94, 0.07, 0.62, x, 1.88, z, ry));
     const ex = museumExhibitMesh(item);
-    ex.position.set(x, 1.2, z); ex.rotation.y = ry + 0.5; ex.scale.setScalar(0.72);
-    exhibitMeshes.push(ex); g.add(ex);   // 병합하지 않는다 — 실제 조형이라 재질이 제각각이고, 13개뿐이다
+    ex.position.set(x, 0.97, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.15);   // 받침 위 — 모델 바닥이 y=0 이다(유리 높이 0.88 안에 들어가는 최대 크기)
+    exhibitMeshes.push(ex); g.add(ex);   // 병합하지 않는다 — 전시물 자체가 이미 재질별로 병합돼 있다(≤3 메시)
   });
 
   // 🪜 계단 — 열린 층이 둘 이상일 때만 놓는다. ⚠️ 재질 병합 루프보다 **앞**에서 add 해야 그려진다(뒤에 두면 충돌체·안내만 있고 발판이 안 보였다). 위층은 북동, 아래층은 북서 구석
   const opened = openFloors(gameState.dex, DEX);
   museumStairs = [];
   const stair = (sx, up) => {
-    for (let i = 0; i < 5; i++) add('stone', box(0.5, 0.22, 1.5, sx * (4.6 + i * 0.5), 0.11 + i * 0.22, -5.5));
-    add('trim', box(0.2, 0.16, 1.7, sx * 7.1, 0.11 + 5 * 0.22, -5.5));
-    museumStairs.push({ x: sx * 5.0, z: -5.3, up });   // 도착 지점 = z + 1.4 → (±5.0, -3.9): 앞 빈 바닥
-    const b = museumStairBox(sx);
+    for (let i = 0; i < 5; i++) add('stone', box(0.5, 0.22, 1.5, sx * (HW - 2.9 + i * 0.5), 0.11 + i * 0.22, -HD + 1.0));
+    add('trim', box(0.2, 0.16, 1.7, sx * (HW - 0.4), 0.11 + 5 * 0.22, -HD + 1.0));
+    museumStairs.push({ ...stairSpot(sx, lay.dims), up });   // 도착 지점 = z + 1.4: 앞 빈 바닥
+    const b = stairBox(sx, lay.dims);
     museumColliders.push(solidBox(MUSEUM.x + b.x0, MUSEUM.z + b.z0, MUSEUM.x + b.x1, MUSEUM.z + b.z1));
   };
   if (museumFloor < opened) stair(1, true);
@@ -530,7 +542,7 @@ export function buildMuseumHall() {
     g.add(ex.group); museumExtraSpots = ex.spots; museumColliders.push(...ex.colliders);   // 충돌체는 다시 지을 때 같이 걷힌다
   }
 
-  const lamp = new THREE.PointLight(0xfff3dc, 0.8, 26); lamp.position.set(0, H - 0.7, 0); g.add(lamp);
+  const lamp = new THREE.PointLight(th.light, 0.8, 26); lamp.position.set(0, H - 0.7, 0); g.add(lamp);
   scene.add(g);
   return g;
 }
@@ -545,7 +557,7 @@ export function enterMuseum() {
   $w.atMuseum = true; setFogExempt(player, true);
   refreshMuseumHall();                                   // 그사이 채운 칸이 있으면 천이 걷혀 있다
   museumGroup.visible = true;
-  player.position.set(MUSEUM.x, 0, MUSEUM.z + MUSEUM_HALF_D - 2.2); player.rotation.y = Math.PI;
+  player.position.set(MUSEUM.x, 0, MUSEUM.z + museumDims().hd - 2.2); player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   const { have, total } = floorProgress(museumFloor, gameState.dex, DEX);
