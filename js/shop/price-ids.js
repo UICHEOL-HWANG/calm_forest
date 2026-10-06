@@ -21,6 +21,9 @@ export const PRICE_IDS = Object.freeze({
   firefly: 'pri_01m3x4q3sjhg1c19b0vsz55b80', rainbow: 'pri_01m3x4q4a0v0pv06yreaqe3dh7', forest_spirit: 'pri_01m3x4q4szrecdh3rwc5sya6zt', plush_doll: 'pri_01m3x4q5abzr8m2xvzqb93rfrn',
   // 🪓 도구 테마 세트(2026-10-02 라이브 등록) — 키는 macOS 키체인 calmforest-paddle-live
   tools_shroom: 'pri_01m3xh7k2wb9vjtjsyvapyh0fr', tools_moon: 'pri_01m3xh7mep2x2hw6gqgp5sfr6w', tools_bloom: 'pri_01m3xh7nde3pafbrn0jhxb7fm0',
+  // 🎃 할로윈 한정(2026-10-06) — 승인 후 scripts/paddle-seed.mjs(PADDLE_ENV=production)가 채운다
+  pumpkin_glow: null, bat_swirl: null, ghost_nightcap: null, ghost_cloud: null, witch_classic: null, witch_starry: null,
+  tools_batnight: null, tools_harvest: null, bat_wing: null, bat_cape: null,
   // 👣 발자국
   paw: null, drop: null, flower: null, star: null, sparkle: null,
   // 🐾 펫
