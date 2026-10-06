@@ -10,7 +10,7 @@
 //  ▶ ⚠️ 블룸 임계 0.85 — PALETTE 전 색이 그 아래다. 색을 고치면 luma 를 다시 재라.
 // =============================================================
 
-import { ringR, domeTheta, DOME_BOT, onSurf } from './anchors.js';
+import { ringR, domeTheta, DOME_BOT, onSurf, tailType } from './anchors.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -515,7 +515,7 @@ function makeTables(THREE) {
       //     0.50 고정 → 곰·판다에서 등이 통째로 열려 망토가 커튼 두 장이 됐다.
       //     0 고정   → 🦊여우 꼬리가 천 한가운데를 뚫고 나왔다.
       //     큰 꼬리(bushy·long)만 지나갈 만큼 열고, 나머지는 장식 트임만 남긴다.
-      const BIG_TAIL = k.tail === 'bushy' || k.tail === 'long';
+      const BIG_TAIL = ['bushy', 'long'].includes(tailType(k.tail));
       const VENT = BIG_TAIL ? 0.26 : 0.06;
       const VENT_TOP = BIG_TAIL ? 0.45 : 0.30;   // 깃 밑에서의 폭 비율(자락으로 갈수록 1 에 수렴)
 
