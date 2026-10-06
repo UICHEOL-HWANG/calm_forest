@@ -1,0 +1,505 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>할로윈 한정 자국 시안 — calm forest</title>
+<style>
+  :root{--bg:#f4f1ea;--ink:#3a4a3a;--card:#fff;--box1:#eef7f0;--box2:#dcebe0;--mut:.65}
+  body.night{--bg:#141a30;--ink:#e6e0f4;--card:#1f2745;--box1:#27325a;--box2:#171e3b}
+  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:var(--ink);padding:14px 16px 20px}
+  h1{font-size:16px;margin:0 0 4px}
+  h2.sec{font-size:14px;margin:14px 0 6px}
+  p.note{overflow-wrap:anywhere;font-size:12px;opacity:.7;margin:0 0 8px}
+  .bar{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+  button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer;color:#3a4a3a}
+  button.on{background:#e98a2e;color:#fff;border-color:#c06a14}
+  .row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .opt{background:var(--card);border-radius:14px;padding:10px;box-shadow:0 1px 4px rgba(0,0,0,.12);min-width:0}
+  .opt h3{font-size:13px;margin:0 0 2px}
+  .opt small{display:block;font-size:11px;opacity:var(--mut);margin-bottom:4px;line-height:1.35;min-height:30px}
+  .opt .cap{font-size:10px;opacity:.75;margin:4px 0 0;line-height:1.3}
+  .box{border-radius:12px;overflow:hidden;background:linear-gradient(160deg,var(--box1),var(--box2));box-shadow:inset 0 2px 10px rgba(90,120,100,.12)}
+  canvas{display:block}
+  .big canvas{width:100%;aspect-ratio:380/400}
+  .smalls{display:flex;gap:8px;margin-top:6px;align-items:flex-end}
+  .smalls .box canvas{width:120px;height:146px}
+  .smalls span{font-size:10px;opacity:.6}
+  .ref{display:flex;gap:10px;flex-wrap:wrap}
+  .ref .opt{padding:8px}
+  .ref canvas{width:120px;height:146px}
+  .ref h3{font-size:11px}
+  @media (max-width:700px){
+    body{padding:10px}
+    .row{gap:6px}
+    .opt{padding:6px;border-radius:10px}
+    .opt h3{font-size:11px}
+    .opt small{font-size:9.5px;min-height:0}
+    .opt .cap{font-size:8.5px}
+    .big canvas{aspect-ratio:98/120;}
+    .smalls{display:none}
+    .ref canvas{width:98px;height:120px}
+    .ref{gap:6px}
+  }
+</style>
+<h1>🎃🦇 할로윈 한정 프리미엄 걷는 자국 — 시안 6안</h1>
+<p class="note">자국 위상은 반딧불·무지개와 같은 💎 프리미엄(바닥 → 공중 순). 게임 코드 미수정 — 시안 전용. 기준 자국은 js/cosmetics/trail.js · trail-fx.js 를 그대로 import.</p>
+<div class="bar" id="mode"></div>
+<h2 class="sec">기준 — 지금 게임의 자국 (상점 실제 크기)</h2>
+<div class="ref" id="ref"></div>
+<h2 class="sec">🎃 호박불</h2>
+<div class="row" id="row-pumpkin"></div>
+<h2 class="sec">🦇 박쥐 떼</h2>
+<div class="row" id="row-bat"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildTrailMark, TRAIL_SIDE, mergeGeos } from '../js/cosmetics/trail.js';
+import { createTrailFx } from '../js/cosmetics/trail-fx.js';
+
+const errors = []; window.__errors = errors;
+addEventListener('error', e => errors.push(String(e.message)));
+addEventListener('unhandledrejection', e => errors.push(String(e.reason)));
+
+const q = new URLSearchParams(location.search);
+if (q.get('vw')) { document.body.style.width = q.get('vw') + 'px'; document.body.style.boxSizing = 'border-box'; }   // 캡처용: 헤드리스 최소 창 폭 우회
+let mode = q.get('mode') === 'night' ? 'night' : 'day';
+
+// ---------- 공통 유틸 ----------
+const STEP = 0.26, SPEED = 0.75, LAP = 1.4, Z0 = -0.8, FADE = 1.6;
+const CAM = { elev: 36, dist: 2.2, lookZ: -0.1 };
+const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const clamp01 = x => Math.max(0, Math.min(1, x));
+const outBack = x => { const c1 = 1.70158, c3 = c1 + 1; x = clamp01(x); return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2; };
+const outCubic = x => 1 - (1 - clamp01(x)) ** 3;
+
+// ---------- 스프라이트 아틀라스(캔버스로 직접 그린다) ----------
+function makeAtlas(fns) {
+  const S = 128, c = document.createElement('canvas'); c.width = S * fns.length; c.height = S;
+  const g = c.getContext('2d');
+  fns.forEach((fn, i) => { g.save(); g.translate(i * S, 0); g.beginPath(); g.rect(0, 0, S, S); g.clip(); g.lineJoin = 'round'; g.lineCap = 'round'; fn(g, S); g.restore(); });
+  const tex = new THREE.CanvasTexture(c);
+  tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+  return { tex, n: fns.length };
+}
+const halo = (r, gg, b, a) => (c, S) => { const g = c.createRadialGradient(S / 2, S / 2, 2, S / 2, S / 2, S * 0.48);
+  g.addColorStop(0, `rgba(${r},${gg},${b},${a})`); g.addColorStop(0.5, `rgba(${r},${gg},${b},${a * 0.4})`); g.addColorStop(1, `rgba(${r},${gg},${b},0)`); c.fillStyle = g; c.fillRect(0, 0, S, S); };
+const fnEmber = (c, S) => { const g = c.createRadialGradient(S / 2, S / 2, 1, S / 2, S / 2, S * 0.3);
+  g.addColorStop(0, 'rgba(255,248,200,1)'); g.addColorStop(0.35, 'rgba(255,190,70,.9)'); g.addColorStop(1, 'rgba(255,120,30,0)'); c.fillStyle = g; c.fillRect(0, 0, S, S); };
+const fnStar = (c, S) => { const cx = S / 2, cy = S / 2, R = S * 0.3, r = S * 0.07;
+  c.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 - Math.PI / 2, rr = i % 2 ? r : R; c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } c.closePath();
+  c.fillStyle = '#fff4d0'; c.strokeStyle = 'rgba(160,120,230,.9)'; c.lineWidth = S * 0.035; c.stroke(); c.fill(); };
+
+// 잭오랜턴 얼굴(눈 삼각형 + 웃는 입) — 폭 w 의 얼굴 경로
+function faceShapes(c, cx, cy, w) {
+  const e = w * 0.2;
+  [-1, 1].forEach(s => { c.moveTo(cx + s * w * 0.28 - e * 0.9, cy + e * 0.5); c.lineTo(cx + s * w * 0.28 + e * 0.9, cy + e * 0.5); c.lineTo(cx + s * w * 0.28, cy - e * 0.9); c.closePath(); });
+  c.moveTo(cx - w * 0.38, cy + w * 0.2); c.quadraticCurveTo(cx, cy + w * 0.62, cx + w * 0.38, cy + w * 0.2);
+  c.quadraticCurveTo(cx, cy + w * 0.42, cx - w * 0.38, cy + w * 0.2); c.closePath();
+}
+// 불꽃 모자를 쓴 호박불
+const fnSpirit = (c, S) => {
+  const cx = S / 2, cy = S * 0.6, rx = S * 0.27, ry = S * 0.23;
+  const g = c.createRadialGradient(cx, cy, 4, cx, cy, S * 0.5); g.addColorStop(0, 'rgba(255,160,50,.5)'); g.addColorStop(1, 'rgba(255,160,50,0)');
+  c.fillStyle = g; c.fillRect(0, 0, S, S);
+  c.strokeStyle = '#9a4310'; c.lineWidth = S * 0.03;
+  const lobe = (dx, w, col) => { c.beginPath(); c.ellipse(cx + dx, cy, w, ry, 0, 0, 7); c.fillStyle = col; c.fill(); c.stroke(); };
+  lobe(-rx * 0.55, rx * 0.62, '#ee8228'); lobe(rx * 0.55, rx * 0.62, '#ee8228'); lobe(0, rx * 0.6, '#ff9d40');
+  c.fillStyle = '#6f9a45'; c.strokeStyle = '#3f5e26'; c.lineWidth = S * 0.025; c.beginPath(); c.roundRect(cx - S * 0.03, cy - ry - S * 0.07, S * 0.06, S * 0.09, 3); c.fill(); c.stroke();
+  const fy = cy - ry - S * 0.07;
+  c.beginPath(); c.moveTo(cx, fy - S * 0.24); c.bezierCurveTo(cx + S * 0.1, fy - S * 0.1, cx + S * 0.07, fy, cx, fy); c.bezierCurveTo(cx - S * 0.07, fy, cx - S * 0.1, fy - S * 0.1, cx, fy - S * 0.24);
+  c.fillStyle = '#ffc94a'; c.strokeStyle = '#e8751a'; c.lineWidth = S * 0.02; c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(cx, fy - S * 0.12); c.bezierCurveTo(cx + S * 0.04, fy - S * 0.05, cx + S * 0.03, fy, cx, fy); c.bezierCurveTo(cx - S * 0.03, fy, cx - S * 0.04, fy - S * 0.05, cx, fy - S * 0.12); c.fillStyle = '#fff3b8'; c.fill();
+  c.shadowColor = '#ffb347'; c.shadowBlur = S * 0.07; c.fillStyle = '#fff3b0'; c.beginPath(); faceShapes(c, cx, cy - S * 0.015, S * 0.34); c.fill();
+};
+// 박쥐 한 장 — a: 날갯짓(+1 활짝 위 … -1 아래), st: 색
+function drawBat(c, S, a, st) {
+  c.save(); c.translate(S / 2, S / 2 + S * 0.04); c.scale(S * 0.5, S * 0.5);
+  const th = a * 0.85;
+  const wing = s => {
+    const sh = [s * 0.14, -0.05], tip = [s * 0.86 * Math.cos(th), -0.05 - 0.86 * Math.sin(th)], hip = [s * 0.13, 0.3];
+    c.beginPath(); c.moveTo(...sh);
+    c.quadraticCurveTo((sh[0] + tip[0]) / 2, Math.min(sh[1], tip[1]) - 0.16 + (th < 0 ? 0.1 : 0), ...tip);
+    for (let i = 0; i < 3; i++) {
+      const A = [tip[0] + (hip[0] - tip[0]) * i / 3, tip[1] + (hip[1] - tip[1]) * i / 3], B = [tip[0] + (hip[0] - tip[0]) * (i + 1) / 3, tip[1] + (hip[1] - tip[1]) * (i + 1) / 3];
+      const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1; let nx = -dy / L, ny = dx / L;
+      const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+      if (nx * (mx - sh[0]) + ny * (my - sh[1]) < 0) { nx = -nx; ny = -ny; }
+      const bulge = 0.17 * (i === 2 ? 0.5 : 1);
+      c.quadraticCurveTo(mx + nx * bulge, my + ny * bulge, ...B);
+    }
+    c.closePath();
+    if (st.rim) { c.lineWidth = 0.13; c.strokeStyle = st.rim; c.stroke(); }
+    c.fillStyle = st.wing; c.fill(); c.lineWidth = 0.05; c.strokeStyle = st.out; c.stroke();
+  };
+  wing(-1); wing(1);
+  c.beginPath(); c.ellipse(0, 0.04, 0.22, 0.3, 0, 0, 7);
+  c.moveTo(0.17, -0.3); c.arc(0, -0.3, 0.17, 0, 7);
+  [-1, 1].forEach(s => { c.moveTo(s * 0.04, -0.4); c.lineTo(s * 0.15, -0.44); c.lineTo(s * 0.19, -0.66); c.lineTo(s * 0.02, -0.46); });
+  if (st.rim) { c.lineWidth = 0.13; c.strokeStyle = st.rim; c.stroke(); }
+  c.fillStyle = st.body; c.fill(); c.lineWidth = 0.05; c.strokeStyle = st.out; c.stroke();
+  if (st.belly) { c.beginPath(); c.ellipse(0, 0.1, 0.12, 0.2, 0, 0, 7); c.fillStyle = st.belly; c.fill(); }
+  [-1, 1].forEach(s => {
+    c.beginPath(); c.arc(s * 0.075, -0.31, 0.058, 0, 7); c.fillStyle = st.eye; c.fill();
+    if (st.pupil) { c.beginPath(); c.arc(s * 0.075, -0.3, 0.03, 0, 7); c.fillStyle = st.pupil; c.fill(); }
+    if (st.cheek) { c.beginPath(); c.arc(s * 0.13, -0.22, 0.04, 0, 7); c.fillStyle = st.cheek; c.fill(); }
+  });
+  c.restore();
+}
+const FLAP = [1, 0.3, -0.7, 0.3];
+const batFrames = st => FLAP.map(a => (c, S) => drawBat(c, S, a, st));
+const ST_A = { body: '#4d3b80', wing: '#5f4a9a', out: '#2c2050', rim: '#e9ddff', eye: '#ffe27a' };
+const ST_B = { body: '#b9a0f2', wing: '#dccbff', out: '#6a48b0', belly: '#fff0f6', eye: '#fff', pupil: '#3b2a66', cheek: '#ffb6d0' };
+const ST_C = { body: '#f8e8c6', wing: '#f3b563', out: '#7a4a86', belly: '#fffaf0', eye: '#fff', pupil: '#3b2a4a', cheek: '#ffa890' };
+
+// ---------- 입자: THREE.Points 하나(드로우콜 +1) ----------
+function makePoints(env, atlas, cap) {
+  const geo = new THREE.BufferGeometry();
+  const A = { position: 3, aColor: 3, aSize: 1, aAlpha: 1, aFrame: 1, aRot: 1 };
+  const arr = {};
+  for (const [k, n] of Object.entries(A)) { arr[k] = new Float32Array(cap * n); geo.setAttribute(k, new THREE.BufferAttribute(arr[k], n)); }
+  geo.setDrawRange(0, 0);
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, uniforms: { map: { value: atlas.tex }, uNF: { value: atlas.n }, uScale: { value: 300 } },
+    vertexShader: `attribute vec3 aColor; attribute float aSize, aAlpha, aFrame, aRot; uniform float uScale;
+      varying vec3 vC; varying float vA, vF, vR;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); gl_Position = projectionMatrix*mv; gl_PointSize = aSize*uScale/(-mv.z); vC=aColor; vA=aAlpha; vF=aFrame; vR=aRot; }`,
+    fragmentShader: `uniform sampler2D map; uniform float uNF; varying vec3 vC; varying float vA, vF, vR;
+      void main(){ vec2 p = gl_PointCoord-.5; float s=sin(vR), c=cos(vR); p = vec2(c*p.x - s*p.y, s*p.x + c*p.y)+.5;
+        if(p.x<0.||p.x>1.||p.y<0.||p.y>1.) discard;
+        vec4 t = texture2D(map, vec2((vF+p.x)/uNF, 1.-p.y)); gl_FragColor = vec4(t.rgb*vC, t.a*vA); }`,
+  });
+  const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 5; env.scene.add(pts);
+  env.points.push(mat);
+  return {
+    cap,
+    write(list) {
+      const n = Math.min(list.length, cap);
+      for (let i = 0; i < n; i++) { const p = list[i], c = p.c || [1, 1, 1];
+        arr.position.set([p.x, p.y, p.z], i * 3); arr.aColor.set(c, i * 3);
+        arr.aSize[i] = p.size; arr.aAlpha[i] = p.alpha; arr.aFrame[i] = p.frame; arr.aRot[i] = p.rot || 0; }
+      geo.setDrawRange(0, n);
+      for (const k in A) geo.attributes[k].needsUpdate = true;
+      return n;
+    },
+  };
+}
+const age = (p, dt) => ({ ...p, age: p.age + dt });
+const alive = p => p.age < p.life;
+const fadeOut = (p, tail) => Math.min(1, (p.life - p.age) / tail);
+
+// =============================================================
+//  🎃 호박불 3안
+// =============================================================
+function pumpkinGeo(night) {
+  const R = 0.07, YC = 0.057, KY = 0.82, geos = [];
+  const body = new THREE.SphereGeometry(R, 14, 10), P = body.attributes.position, cols = [];
+  const base = new THREE.Color(0xf08a2c);
+  for (let i = 0; i < P.count; i++) {
+    const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+    const th = Math.atan2(z, x), lobe = Math.cos(th * 7), k = 1 + 0.08 * lobe, ny = y / R;
+    P.setXYZ(i, x * k, y * KY + YC, z * k);
+    const sh = (0.8 + 0.2 * (lobe + 1) / 2) * (0.82 + 0.18 * ny) * (night ? 0.6 : 1);
+    cols.push(base.r * sh, base.g * sh, base.b * sh);
+  }
+  body.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); body.deleteAttribute('normal'); body.deleteAttribute('uv'); geos.push(body);
+  const stem = new THREE.CylinderGeometry(0.011, 0.019, 0.042, 6); stem.rotateZ(0.25); stem.translate(0.004, YC + R * KY + 0.012, 0);
+  const sc = new THREE.Color(0x6f9a45), sn = stem.attributes.position.count;
+  stem.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: sn }, () => [sc.r, sc.g, sc.b]).flat(), 3)); stem.deleteAttribute('normal'); stem.deleteAttribute('uv'); geos.push(stem);
+  // 얼굴 — 몸 앞면(+z)에 붙인 밝은 면
+  const fc = new THREE.Color(night ? 0xffe9a0 : 0xffd45e);
+  const ez = (x, y) => R * Math.sqrt(Math.max(0, 1 - (x / R) ** 2 - ((y - YC) / (R * KY)) ** 2)) + 0.004;
+  const tri = pts => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts.flatMap(([x, y]) => [x, y, ez(x, y)]), 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(pts.flatMap(() => [fc.r, fc.g, fc.b]), 3)); return g; };
+  [-1, 1].forEach(s => geos.push(tri([[s * 0.026 - 0.011, 0.062], [s * 0.026 + 0.011, 0.062], [s * 0.026, 0.085]])));
+  for (let i = 0; i < 6; i++) {
+    const x0 = -0.036 + i * 0.012, x1 = x0 + 0.012, top = x => 0.054 - 0.017 * (1 - (x / 0.036) ** 2), bt = x => top(x) - 0.013;
+    geos.push(tri([[x0, bt(x0)], [x1, bt(x1)], [x1, top(x1)]]), tri([[x0, bt(x0)], [x1, top(x1)], [x0, top(x0)]]));
+  }
+  return mergeGeos(THREE, geos);
+}
+
+function lanternCell(env) {
+  const { scene, rnd, night } = env, geo = pumpkinGeo(night);
+  const atlas = makeAtlas([halo(255, 150, 40, 0.9), fnEmber]), pts = makePoints(env, atlas, 28);
+  let lan = [], emb = [];
+  const LIFE = 2.2;
+  return {
+    stamp({ x, z }) {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, side: THREE.DoubleSide }));
+      m.position.set(x, 0, z); m.rotation.y = (rnd() - 0.5) * 0.5; scene.add(m);
+      lan.push({ m, age: 0, x, z, ph: rnd() * 6 });
+      for (let i = 0; i < 2; i++) emb.push({ y: 0.11, z, bx: x, ph: rnd() * 6, vy: 0.22 + rnd() * 0.18, age: -i * 0.25, life: 1.0 + rnd() * 0.5, size: 0.04 + rnd() * 0.02 });
+    },
+    tick(dt) {
+      const out = [];
+      lan = lan.map(l => ({ ...l, age: l.age + dt })).filter(l => { if (l.age >= LIFE) { scene.remove(l.m); l.m.material.dispose(); return false; } return true; });
+      for (const l of lan) {
+        const pop = outBack(l.age / 0.32), fo = clamp01((LIFE - l.age) / 0.7), fl = 0.88 + 0.12 * Math.sin(l.age * 13 + l.ph);
+        l.m.scale.setScalar(Math.max(0.001, pop * (0.8 + 0.2 * fo))); l.m.material.opacity = fo; l.m.material.color.setScalar(fl);
+        out.push({ x: l.x, y: 0.03, z: l.z, size: 0.36 * pop, alpha: (night ? 0.75 : 0.55) * fo * fl, frame: 0, c: [1, 0.85, 0.7] });
+      }
+      emb = emb.map(e => ({ ...e, age: e.age + dt })).filter(e => e.age < e.life);
+      for (const e of emb) if (e.age > 0) { const k = e.age / e.life;
+        out.push({ x: e.bx + Math.sin(e.age * 4 + e.ph) * 0.03, y: e.y + e.vy * e.age, z: e.z, size: e.size * (1 - k * 0.4), alpha: Math.min(1, e.age * 6) * (1 - k) * (0.7 + 0.3 * Math.sin(e.age * 20 + e.ph)), frame: 1 }); }
+      return pts.write(out) + lan.length;
+    },
+  };
+}
+
+function spiritCell(env) {
+  const { rnd, night } = env;
+  const atlas = makeAtlas([fnSpirit, fnEmber, halo(255, 170, 60, 0.8)]), pts = makePoints(env, atlas, 36);
+  let sp = [], sk = [], gl = [];
+  return {
+    stamp({ x, z }) {
+      sp.push({ x, z, age: 0, life: 2.5, ph: rnd() * 6, dir: rnd() < 0.5 ? -1 : 1 });
+      gl.push({ x, z, age: 0, life: 0.9 });
+      for (let i = 0; i < 2; i++) sk.push({ x, z, age: -i * 0.18, life: 1.0, ph: rnd() * 6, vy: 0.3 + rnd() * 0.15 });
+    },
+    tick(dt) {
+      const out = [];
+      sp = sp.map(p => age(p, dt)).filter(alive); gl = gl.map(p => age(p, dt)).filter(alive); sk = sk.map(p => age(p, dt)).filter(alive);
+      for (const g of gl) out.push({ x: g.x, y: 0.02, z: g.z, size: 0.18, alpha: 0.45 * (1 - g.age / g.life) * (night ? 1.2 : 0.9), frame: 2 });
+      for (const p of sp) { const k = p.age / p.life, rise = 0.09 + 0.3 * outCubic(k) + Math.sin(p.age * 3 + p.ph) * 0.02;
+        out.push({ x: p.x + p.dir * 0.06 * Math.sin(p.age * 1.7 + p.ph) + p.dir * 0.05 * k, y: rise, z: p.z - 0.06 * k, size: 0.2 * outBack(p.age / 0.35),
+          alpha: Math.min(1, fadeOut(p, 0.8)) * (0.88 + 0.12 * Math.sin(p.age * 12 + p.ph)), frame: 0, rot: Math.sin(p.age * 2.2 + p.ph) * 0.18 }); }
+      for (const s of sk) if (s.age > 0) { const k = s.age / s.life;
+        out.push({ x: s.x + Math.sin(s.age * 5 + s.ph) * 0.04, y: 0.1 + s.vy * s.age, z: s.z, size: 0.04, alpha: (1 - k) * Math.min(1, s.age * 8), frame: 1 }); }
+      return pts.write(out);
+    },
+  };
+}
+
+function gobo(night) {
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  const r = g.createRadialGradient(S / 2, S / 2, 4, S / 2, S / 2, S / 2);
+  r.addColorStop(0, 'rgba(255,150,40,.95)'); r.addColorStop(0.6, 'rgba(255,130,30,.7)'); r.addColorStop(1, 'rgba(255,140,40,0)');
+  g.fillStyle = r; g.fillRect(0, 0, S, S);
+  g.beginPath(); faceShapes(g, S / 2, S / 2 - S * 0.03, S * 0.5);
+  g.lineJoin = 'round'; g.lineWidth = S * 0.04; g.strokeStyle = night ? '#e8751a' : '#b8460c'; g.stroke(); g.fillStyle = night ? '#fff0b0' : '#ffe486'; g.fill();
+  const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; return t;
+}
+function faceCell(env) {
+  const { scene, rnd, night } = env, tex = gobo(night), geo = new THREE.PlaneGeometry(0.34, 0.34).rotateX(-Math.PI / 2);
+  const atlas = makeAtlas([fnEmber]), pts = makePoints(env, atlas, 20);
+  let dec = [], emb = [];
+  const LIFE = 1.7;
+  return {
+    stamp({ x, z, n }) {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+      m.position.set(x * 0.4, 0.012, z); m.rotation.y = (n % 2 ? 1 : -1) * 0.14; m.renderOrder = 1; scene.add(m);
+      dec.push({ m, age: 0, ph: rnd() * 6 });
+      for (let i = 0; i < 3; i++) emb.push({ x, z, th: rnd() * 6.28, age: -i * 0.12, life: 1.1 + rnd() * 0.3, r: 0.05 + rnd() * 0.03, vy: 0.3 + rnd() * 0.15 });
+    },
+    tick(dt) {
+      dec = dec.map(d => ({ ...d, age: d.age + dt })).filter(d => { if (d.age >= LIFE) { scene.remove(d.m); d.m.material.dispose(); return false; } return true; });
+      for (const d of dec) { const pop = outBack(d.age / 0.28), fl = 0.9 + 0.1 * Math.sin(d.age * 11 + d.ph), flash = 1 + 0.5 * Math.max(0, 1 - d.age / 0.25);
+        d.m.scale.setScalar(Math.max(0.01, 0.5 + 0.5 * pop)); d.m.material.opacity = Math.min(1, fadeOut({ age: d.age, life: LIFE }, 0.9)) * fl; d.m.material.color.setScalar(Math.min(1.4, flash)); }
+      emb = emb.map(e => ({ ...e, age: e.age + dt })).filter(e => e.age < e.life);
+      const out = [];
+      for (const e of emb) if (e.age > 0) { const k = e.age / e.life, th = e.th + e.age * 6;
+        out.push({ x: e.x * 0.4 + Math.cos(th) * e.r, y: 0.04 + e.vy * e.age, z: e.z + Math.sin(th) * e.r * 0.8, size: 0.05 * (1 - k * 0.5), alpha: Math.min(1, e.age * 8) * (1 - k), frame: 0 }); }
+      return pts.write(out) + dec.length;
+    },
+  };
+}
+
+// =============================================================
+//  🦇 박쥐 떼 3안
+// =============================================================
+function burstCell(env) {
+  const { rnd } = env;
+  const atlas = makeAtlas([...batFrames(ST_A), halo(150, 110, 230, 0.75)]), pts = makePoints(env, atlas, 24);
+  let bats = [], puffs = [];
+  return {
+    stamp({ x, z }) {
+      puffs.push({ x, z, age: 0, life: 0.55 });
+      for (let i = 0; i < 3; i++) { const a = rnd() * 6.28, sp = 0.12 + rnd() * 0.22;
+        bats.push({ x, y: 0.05, z, vx: Math.cos(a) * sp, vy: 0.38 + rnd() * 0.2, vz: Math.sin(a) * sp * 0.8 - 0.05, age: -i * 0.07, life: 1.5 + rnd() * 0.3, ph: rnd() * 6, size: 0.17 + rnd() * 0.06 }); }
+    },
+    tick(dt) {
+      puffs = puffs.map(p => age(p, dt)).filter(alive);
+      bats = bats.map(b => { const a = b.age + dt; if (a < 0) return { ...b, age: a };
+        const wob = Math.sin(a * 9 + b.ph);
+        return { ...b, age: a, x: b.x + (b.vx + wob * 0.05) * dt, y: b.y + b.vy * dt, z: b.z + b.vz * dt, vy: b.vy * (1 - 0.9 * dt) - 0.25 * dt, vx: b.vx * (1 + 0.3 * dt), vz: b.vz * (1 + 0.3 * dt) }; }).filter(alive);
+      const out = puffs.map(p => ({ x: p.x, y: 0.03, z: p.z, size: 0.14 + 0.1 * (p.age / p.life), alpha: 0.5 * (1 - p.age / p.life), frame: 4 }));
+      for (const b of bats) if (b.age >= 0) {
+        out.push({ x: b.x, y: b.y, z: b.z, size: b.size * (0.35 + 0.65 * outBack(b.age / 0.2)), alpha: fadeOut(b, 0.5), frame: Math.floor((b.age * 13 + b.ph) % 4), rot: Math.max(-0.5, Math.min(0.5, b.vx * 2.2)) }); }
+      return pts.write(out);
+    },
+  };
+}
+
+function helixCell(env) {
+  const { rnd } = env;
+  const atlas = makeAtlas([...batFrames(ST_B), fnStar]), pts = makePoints(env, atlas, 28);
+  let bats = [], sp = [];
+  return {
+    stamp({ x, z, side }) {
+      bats.push({ x, z, age: 0, life: 2.4, th0: rnd() * 6.28, dir: side, ph: rnd() * 6 });
+      for (let i = 0; i < 2; i++) sp.push({ x, z, age: -i * 0.3, life: 1.2, ph: rnd() * 6 });
+    },
+    tick(dt) {
+      bats = bats.map(b => age(b, dt)).filter(alive); sp = sp.map(s => age(s, dt)).filter(alive);
+      const out = [];
+      for (const b of bats) { const k = b.age / b.life, th = b.th0 + b.dir * b.age * 5.2, r = 0.05 + 0.08 * k, depth = Math.sin(th), grow = outBack(b.age / 0.25);
+        out.push({ x: b.x + Math.cos(th) * r, y: 0.06 + 0.42 * Math.pow(k, 0.75), z: b.z + depth * r * 0.7, size: 0.19 * grow * (0.88 + 0.12 * depth),
+          alpha: fadeOut(b, 0.7) * (0.85 + 0.15 * depth), frame: Math.floor((b.age * 9 + b.ph) % 4), rot: -Math.cos(th) * b.dir * 0.25 }); }
+      for (const s of sp) if (s.age > 0) { const k = s.age / s.life;
+        out.push({ x: s.x + Math.sin(s.age * 4 + s.ph) * 0.07, y: 0.12 + 0.3 * k, z: s.z, size: 0.065 * (0.6 + 0.4 * Math.sin(s.age * 16 + s.ph)), alpha: (1 - k) * Math.min(1, s.age * 6), frame: 4, rot: s.age * 2 }); }
+      return pts.write(out);
+    },
+  };
+}
+
+function stampTex(night) {
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'); g.lineJoin = 'round';
+  drawBat(g, S, 0.1, { body: '#8a63c4', wing: '#8a63c4', out: night ? '#f1e6ff' : '#4b3380', eye: '#fff', pupil: '#2d1f4d' });
+  const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; return t;
+}
+function stampBatCell(env) {
+  const { scene, rnd, night } = env, tex = stampTex(night), geo = new THREE.PlaneGeometry(0.2, 0.2).rotateX(-Math.PI / 2);
+  const atlas = makeAtlas([...batFrames(ST_C), halo(255, 170, 70, 0.7)]), pts = makePoints(env, atlas, 16);
+  let st = [], bats = [];
+  return {
+    stamp({ x, z, side }) {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+      m.position.set(x, 0.01, z); m.rotation.y = side * 0.2; m.renderOrder = 1; scene.add(m);
+      st.push({ m, age: 0, life: FADE });
+      bats.push({ x, z, side, age: 0, life: 2.1, ph: rnd() * 6 });
+    },
+    tick(dt) {
+      st = st.map(s => age(s, dt)).filter(s => { if (!alive(s)) { scene.remove(s.m); s.m.material.dispose(); return false; } return true; });
+      for (const s of st) { s.m.material.opacity = fadeOut(s, 0.9); s.m.scale.setScalar(0.6 + 0.4 * outBack(s.age / 0.25)); }
+      bats = bats.map(b => age(b, dt)).filter(alive);
+      const out = [];
+      for (const b of bats) { const k = b.age / b.life, rise = 1 - Math.exp(-b.age * 2.4), pop = outBack(b.age / 0.3), sz = 0.24 * (0.3 + 0.7 * pop) * (1 + 0.06 * Math.sin(b.age * 8 + b.ph));
+        const pos = { x: b.x + b.side * 0.28 * k + Math.sin(b.age * 2.6 + b.ph) * 0.05, y: 0.06 + 0.3 * rise + Math.sin(b.age * 3.4 + b.ph) * 0.03, z: b.z - 0.12 * k };
+        out.push({ ...pos, y: pos.y - 0.012, size: sz * 1.5, alpha: 0.4 * fadeOut(b, 0.6) * Math.min(1, b.age * 6), frame: 4 });
+        out.push({ ...pos, size: sz, alpha: fadeOut(b, 0.6), frame: Math.floor((b.age * 8 + b.ph) % 4), rot: Math.sin(b.age * 2.6 + b.ph) * 0.2 }); }
+      return pts.write(out) + st.length;
+    },
+  };
+}
+
+const CELLS = {
+  pumpkin: [
+    { id: 'A', name: 'A · 꼬마 호박등', sub: '걸음마다 작은 잭오랜턴이 톡 올라와 바닥에서 따뜻하게 깜빡이고 불씨가 솔솔 피어요. 바닥 · 입체 소품', cap: '상한: 호박 메시 8 + 불빛·불씨 입자 28 → 드로우콜 최대 9', make: lanternCell },
+    { id: 'B', name: 'B · 둥둥 호박불', sub: '불꽃 모자를 쓴 호박 도깨비불이 발자국에서 떠올라 살랑살랑 떠다녀요. 공중 · 스프라이트', cap: '상한: 입자 36(호박불 8 + 불똥 16 + 온기 8) → 드로우콜 1', make: spiritCell },
+    { id: 'C', name: 'C · 호박 얼굴 불빛', sub: '바닥에 잭오랜턴 얼굴 모양 불빛이 퐁 켜졌다 사라지고 불씨가 빙글 올라가요. 바닥 · 빛 투영', cap: '상한: 얼굴 판 6 + 불씨 입자 20 → 드로우콜 최대 7', make: faceCell },
+  ],
+  bat: [
+    { id: 'A', name: 'A · 박쥐 폭죽', sub: '걸음마다 보랏빛 박쥐 3마리가 땅에서 퍼덕 솟구쳐 사방으로 흩어져요. 공중 · 진한 실루엣', cap: '상한: 입자 24(박쥐 18 + 먼지 6) → 드로우콜 1', make: burstCell },
+    { id: 'B', name: 'B · 박쥐 회오리', sub: '연보라 동글 박쥐가 발자국마다 나선으로 한 줄기씩 올라가고 달가루가 반짝여요. 공중 · 파스텔', cap: '상한: 입자 28(박쥐 8 + 달가루 16) → 드로우콜 1', make: helixCell },
+    { id: 'C', name: 'C · 박쥐 도장', sub: '바닥에 박쥐 도장이 찍히고 통통한 크림색 박쥐가 쏙 빠져나와 느릿하게 날아가요. 바닥+공중', cap: '상한: 도장 판 6 + 입자 16(박쥐 6 + 달빛 6) → 드로우콜 최대 7', make: stampBatCell },
+  ],
+};
+
+// ---------- 기준(현재 게임) 자국 ----------
+function refCell(item) {
+  return env => {
+    const { scene, rnd, night } = env;
+    let live = [], pool = [], fx = null;
+    if (item === 'firefly') { fx = createTrailFx(THREE, { cap: 64, rnd }); scene.add(fx.points); }
+    return {
+      stamp({ x, z }) {
+        const m = pool.pop() || buildTrailMark(THREE, item, 1, 'rabbit'); m.position.set(x, 0.01, z); scene.add(m); live.push({ m, t: 0 });
+        if (fx) fx.onStamp('firefly', { x, y: 0, z }, { nightLevel: night ? 1 : 0 });
+      },
+      tick(dt) {
+        for (let i = live.length - 1; i >= 0; i--) { const e = live[i]; e.t += dt; const a = Math.max(0, 1 - e.t / FADE);
+          e.m.traverse(o => { if (o.material) o.material.opacity = a; }); if (a <= 0) { scene.remove(e.m); pool.push(e.m); live.splice(i, 1); } }
+        if (fx) fx.update(dt, { nightLevel: night ? 1 : 0 });
+        return live.length + (fx ? 1 : 0);
+      },
+    };
+  };
+}
+
+// ---------- 뷰(공유 렌더러 하나 → 2D 캔버스로 복사해 컨텍스트 수를 아낀다) ----------
+const gl = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+const views = [];
+function makeView(canvas, make, seed) {
+  const pr = Math.min(devicePixelRatio || 1, 2), w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = Math.round(w * pr); canvas.height = Math.round(h * pr);
+  const night = mode === 'night', scene = new THREE.Scene(), rnd = mulberry(seed);
+  const cam = new THREE.PerspectiveCamera(32, w / h, 0.1, 100), e = CAM.elev * Math.PI / 180;
+  cam.position.set(0, Math.sin(e) * CAM.dist, CAM.lookZ + Math.cos(e) * CAM.dist); cam.lookAt(0, 0.1, CAM.lookZ);
+  // 바닥 은은한 풀빛 판(시안 전용 — 게임 드로우콜 아님)
+  const gc = document.createElement('canvas'); gc.width = gc.height = 128; const gg = gc.getContext('2d'), gr = gg.createRadialGradient(64, 64, 4, 64, 64, 64);
+  gr.addColorStop(0, night ? 'rgba(40,66,70,.9)' : 'rgba(150,196,140,.55)'); gr.addColorStop(1, night ? 'rgba(40,66,70,0)' : 'rgba(150,196,140,0)'); gg.fillStyle = gr; gg.fillRect(0, 0, 128, 128);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false }));
+  ground.position.y = -0.002; ground.renderOrder = -1; scene.add(ground);
+  if (night) { scene.add(new THREE.HemisphereLight(0x8090c8, 0x1a2038, 0.75)); const d = new THREE.DirectionalLight(0x9fb0ee, 0.55); d.position.set(-2, 4, 2); scene.add(d); }
+  else { scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.05)); const k = new THREE.DirectionalLight(0xfff2d8, 1.15); k.position.set(2.5, 4, 3); scene.add(k); }
+  const env = { THREE, scene, rnd, night, points: [] };
+  const cell = make(env);
+  const v = { canvas, ctx: canvas.getContext('2d'), scene, cam, cell, env, last: null, side: 1, n: 0, count: 0 };
+  views.push(v); return v;
+}
+function sim(v, t, dt) {
+  const d = { x: 0, z: Z0 + (t * SPEED) % LAP, loop: Math.floor(t * SPEED / LAP) };
+  if (!v.last || d.loop !== v.last.loop) v.last = { x: d.x, z: d.z, loop: d.loop, acc: STEP };
+  v.last.acc += Math.hypot(d.x - v.last.x, d.z - v.last.z); v.last.x = d.x; v.last.z = d.z;
+  if (v.last.acc >= STEP) { v.last.acc = 0; v.side = -v.side; v.n++; v.cell.stamp({ x: d.x + v.side * TRAIL_SIDE, z: d.z, side: v.side, n: v.n }); }
+  v.count = v.cell.tick(dt);
+}
+function draw(v) {
+  gl.setPixelRatio(1); gl.setSize(v.canvas.width, v.canvas.height, false);
+  const scale = v.canvas.height / (2 * Math.tan(v.cam.fov * Math.PI / 360));
+  v.env.points.forEach(m => { m.uniforms.uScale.value = scale; });
+  gl.setClearColor(0x000000, 0); gl.clear(); gl.render(v.scene, v.cam);
+  v.ctx.clearRect(0, 0, v.canvas.width, v.canvas.height); v.ctx.drawImage(gl.domElement, 0, 0);
+}
+
+// ---------- 페이지 구성 ----------
+function box(cls) { const d = document.createElement('div'); d.className = 'box ' + cls; const c = document.createElement('canvas'); d.appendChild(c); return { d, c }; }
+function build() {
+  views.length = 0;
+  for (const id of ['ref', 'row-pumpkin', 'row-bat']) document.getElementById(id).innerHTML = '';
+  let seed = 11;
+  const refs = [['paw', '🐾 발바닥 (코인)'], ['sparkle', '✨ 반짝이 (코인)'], ['firefly', '💎 반딧불 (프리미엄)']];
+  for (const [item, label] of refs) {
+    const o = document.createElement('div'); o.className = 'opt'; o.innerHTML = `<h3>${label}</h3>`; const b = box(''); o.appendChild(b.d); document.getElementById('ref').appendChild(o);
+    b.c.dataset.make = item; b.c.dataset.seed = seed++;
+  }
+  for (const prod of ['pumpkin', 'bat']) {
+    const row = document.getElementById('row-' + prod);
+    for (const cell of CELLS[prod]) {
+      const o = document.createElement('div'); o.className = 'opt';
+      o.innerHTML = `<h3>${prod === 'pumpkin' ? '🎃' : '🦇'} ${cell.name}</h3><small>${cell.sub}</small>`;
+      const big = box('big'); o.appendChild(big.d);
+      const sm = document.createElement('div'); sm.className = 'smalls'; const sb = box('small'); sm.appendChild(sb.d); sm.insertAdjacentHTML('beforeend', '<span>상점 미리보기 실제 크기</span>'); o.appendChild(sm);
+      o.insertAdjacentHTML('beforeend', `<div class="cap">${cell.cap}</div>`); row.appendChild(o);
+      big.c.dataset.cell = prod + cell.id; big.c.dataset.seed = seed++; sb.c.dataset.cell = prod + cell.id; sb.c.dataset.seed = seed++;
+    }
+  }
+  document.querySelectorAll('canvas[data-make]').forEach(c => makeView(c, refCell(c.dataset.make), +c.dataset.seed));
+  document.querySelectorAll('canvas[data-cell]').forEach(c => { const prod = c.dataset.cell.startsWith('pumpkin') ? 'pumpkin' : 'bat', id = c.dataset.cell.slice(-1);
+    if (c.clientWidth > 0) makeView(c, CELLS[prod].find(x => x.id === id).make, +c.dataset.seed); });
+}
+let T = 0;
+function modeBar() {
+  const el = document.getElementById('mode'); el.innerHTML = '';
+  [['day', '☀️ 낮'], ['night', '🌙 밤']].forEach(([k, l]) => { const b = document.createElement('button'); b.textContent = l; b.className = mode === k ? 'on' : '';
+    b.onclick = () => { mode = k; document.body.classList.toggle('night', k === 'night'); modeBar(); build(); T = 0; }; el.appendChild(b); });
+}
+document.body.classList.toggle('night', mode === 'night');
+modeBar(); build();
+
+// 고정 스텝 시계(?t=초) — 없으면 실시간. 캡처는 항상 고정 스텝으로 찍는다.
+const fixed = q.get('t');
+let prev = performance.now();
+if (fixed) {
+  const end = +fixed;
+  for (let s = 0; s < end; s += 1 / 60) views.forEach(v => sim(v, s, 1 / 60));
+  views.forEach(draw);
+  window.__counts = views.map(v => v.count);
+  window.__ready = true;
+} else {
+  (function loop(now) { const dt = Math.min(0.05, (now - prev) / 1000); prev = now; T += dt;
+    views.forEach(v => { sim(v, T, dt); draw(v); }); requestAnimationFrame(loop); })(prev);
+}
+</script>
