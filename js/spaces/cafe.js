@@ -31,6 +31,9 @@ import { CONFIG } from '../config.js';
 import { MUSEUM_FLOORS, SPECIAL_EXHIBITS, exhibitCenterY, floorEntries, floorProgress, openFloors, viewFrame } from '../museum.js';
 import { buildMuseumExtras } from '../museum/extras.js';
 import { museumLayout, dimsOf, stairBox, stairSpot, caseHalf, inwardOf } from '../museum/layout.js';
+import { buildExhibitMesh } from '../museum/exhibit-build.js';
+import { exhibitParts } from '../museum/exhibit-parts.js';
+import { NPCS } from '../data/npcs.js';
 import { PLATFORM } from '../platform.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
@@ -228,21 +231,35 @@ export function museumFloorItems(floor = museumFloor) {
   return floorEntries(floor, DEX).map(e => ({ ...e, zone: def.cats.indexOf(e.cat) % MUSEUM_ZONES.length }));
 }
 
-// 🏛️ 전시물 메시 — **게임에서 실제로 쓰는 조형을 그대로 쓴다.**
-//   🌾작물은 수확 때 머리 위로 드는 cropMini, 🐟물고기는 낚시 때의 fishMesh,
-//   ⛏️광물은 광맥과 같은 다면체. 도감에 등록한 그것이 그대로 전시되어야 "내 것" 으로 읽힌다.
+// 🏛️ 전시물 메시 — 작물·물고기는 **게임에서 실제로 쓰는 조형**(cropMini·fishMesh)을 그대로 쓴다. 나머지는
+//   js/museum/exhibit-parts.js 의 카테고리별 대표 조형 + 종별 변형. 그것도 없으면 색 20면체 폴백.
+//   도감에 등록한 그것이 그대로 전시되어야 "내 것" 으로 읽힌다.
+//   ⚠️ 2·3층 카테고리는 ORES 에 없다 — 폴백이 없으면 undefined.color 로 터진다(fallbackExhibit).
+//   모든 경로가 **바닥이 y=0** 인 그룹을 돌려준다(seatOnBase) — 받침·탁자·돔 어디에 놓든 같은 규칙.
+function exhibitMeta(item) {
+  if (item.cat !== 'npc') return {};
+  const n = NPCS.find(x => x.id === item.id) || CAFE_GUESTS.find(x => x.id === item.id);
+  return n ? { color: n.color, hat: n.hat } : {};
+}
+function seatOnBase(obj) {
+  const g = new THREE.Group(); g.add(obj);
+  obj.updateWorldMatrix(true, true);   // ⚠️ 재기 전에 행렬 갱신(museum-view-worldspace 의 교훈)
+  const b = new THREE.Box3().setFromObject(g);
+  if (Number.isFinite(b.min.y)) obj.position.y -= b.min.y;
+  return g;
+}
 export function museumExhibitMesh(item) {
-  if (item.cat === 'crop') return cropMini(CROP_TYPES.find(c => c.id === item.id));
-  if (item.cat === 'fish') return fishMesh(item.id);   // common / uncommon / rare 가 곧 등급 키다
-  // ⚠️ 2·3층 카테고리(🍄채집·🌟반딧불이·🪏땅속·🐾흔적·🛶강·🌫️정령·🌦️날씨·🧑주민)는
-  //    ORES 에 없다. 폴백이 없으면 **2층에 들어가는 순간 undefined.color 로 터진다.**
+  let obj;
+  if (item.cat === 'crop') obj = cropMini(CROP_TYPES.find(c => c.id === item.id));
+  else if (item.cat === 'fish') obj = fishMesh(item.id);   // common / uncommon / rare 가 곧 등급 키다
+  else obj = buildExhibitMesh(THREE, exhibitParts(item.cat, item.id, exhibitMeta(item))) || fallbackExhibit(item);
+  return seatOnBase(obj);
+}
+function fallbackExhibit(item) {
   const ore = ORES.find(o => o.id === item.id);
   const tint = ore ? ore.color : (MUSEUM_CAT_TINT[item.cat] ?? 0xcfc8b8);
   const g = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.IcosahedronGeometry(item.id === 'gem' ? 0.2 : 0.24, 0),
-    item.id === 'gem'
-      ? new THREE.MeshStandardMaterial({ color: tint, roughness: 0.25, metalness: 0.1, flatShading: true })
-      : clayMat(tint));
+  const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), clayMat(tint));
   m.castShadow = true; g.add(m);
   return g;
 }

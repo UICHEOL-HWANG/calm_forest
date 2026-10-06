@@ -12,9 +12,9 @@
 import * as THREE from 'three';
 import { SPECIAL_EXHIBITS } from '../museum.js';
 
-// 방 로컬 좌표. 방은 x ±7.5 · z ±6.5, 입구는 남쪽(z +6.5) 가운데 폭 2.8, 계단은 북동·북서 구석.
+// 방 로컬 좌표. 1층은 벽 배치 방(x ±8 · z ±7, js/museum/layout.js), 입구는 남쪽(z +7) 가운데 폭 2.8, 계단은 북동·북서 구석.
 //   벽 13칸이 작물·물고기·광물로 꽉 차 빈 곳은 가운데뿐 — 들어오자마자 보이는 삼각형으로 둔다.
-//   벽 진열장이 17칸으로 늘어 가운데 북쪽 줄을 나머지 4칸이 쓴다(js/spaces/cafe.js museumSlots) — 특별 진열대는 남쪽으로 내렸다.
+//   벽 유리장이 17칸이고 가운데는 비어 있어 — 특별 진열대 3칸이 가운데를 쓴다.
 const LAYOUT = { specials: [[-1.9, 2.6], [0, 1.4], [1.9, 2.6]] };
 
 // 날씨별 방석 색 — 블룸 임계(0.85)를 넘지 않게 채널을 0xd9 아래로
@@ -47,7 +47,7 @@ export function buildMuseumExtras(kit, { origin, special = {} }) {
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.06, 10), trim);
       cap.position.set(x, 1.86, z); g.add(cap);
       const ex = kit.exhibitMesh({ cat: def.cat, id: got.id });
-      ex.position.set(x, 1.3, z); ex.rotation.y = 0.5; ex.scale.setScalar(0.72); g.add(ex);
+      ex.position.set(x, 1.06, z); ex.rotation.y = 0.5; ex.scale.setScalar(0.85);   // 방석 윗면(1.05) 위 — 전시물 모델 바닥이 y=0 g.add(ex);
     } else {   // 🎀 아직 — 천을 덮어 둔다("곧 열릴 전시")
       const c = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.38, 0.36, 8), cloth);
       c.position.set(x, 1.2, z); g.add(c);
