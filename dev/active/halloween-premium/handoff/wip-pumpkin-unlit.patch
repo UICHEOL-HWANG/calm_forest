@@ -1,0 +1,75 @@
+diff --git a/js/cosmetics/trail.js b/js/cosmetics/trail.js
+index 0b0e599..cc8a7ae 100644
+--- a/js/cosmetics/trail.js
++++ b/js/cosmetics/trail.js
+@@ -213,8 +213,22 @@ export function mergeGeos(THREE, geos) {
+   return out;
+ }
+ 
++//  🎃 조명 없이(MeshBasicMaterial) 굽는 자국 — 스스로 빛나는 등불은 밤에 어두워지면 안 된다
++//     (시안 lanternCell 도 unlit). 색은 시안 낮 값(pumpkinGeo(false)) 그대로 — 밤 빛은 trail-fx.js 의 온기 입자가 더한다.
++//     나머지 자국은 지금처럼 조명 받는 재질이다.
++export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow']));
++
++/** 자국 하나의 재질 — 자국마다 새로 만든다(공유 아님: 페이드·무지개 색을 자국마다 따로 움직인다) */
++export function markMaterial(THREE, itemId, opacity) {
++  const common = { color: 0xffffff, vertexColors: true };
++  const fade = { transparent: true, opacity, depthWrite: false };
++  return TRAIL_UNLIT.has(itemId)
++    ? new THREE.MeshBasicMaterial({ ...common, ...fade })
++    : new THREE.MeshStandardMaterial({ ...common, roughness: 0.5, metalness: 0, ...fade });
++}
++
+ /** 조형용으로 만든 메시 더미 → 정점색 단일 메시 하나 */
+-function bake(THREE, src, opacity) {
++function bake(THREE, src, opacity, itemId) {
+   src.updateMatrixWorld(true);
+   const geos = [];
+   src.traverse(o => {
+@@ -224,10 +238,7 @@ function bake(THREE, src, opacity) {
+     paintRGBA(THREE, q, o.material.color, opacity > 0 ? o.material.opacity / opacity : 1);
+     geos.push(q);
+   });
+-  const m = new THREE.Mesh(mergeGeos(THREE, geos), new THREE.MeshStandardMaterial({
+-    color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0,
+-    transparent: true, opacity, depthWrite: false,
+-  }));
++  const m = new THREE.Mesh(mergeGeos(THREE, geos), markMaterial(THREE, itemId, opacity));
+   m.castShadow = false;
+   return m;
+ }
+@@ -247,7 +258,7 @@ export function buildTrailMark(THREE, itemId, opacity, animalId) {
+   if (!fn) return g;
+   const src = new THREE.Group();
+   fn(src, TRAIL_S, opacity, animalId);
+-  const m = bake(THREE, src, opacity);
++  const m = bake(THREE, src, opacity, itemId);
+   m.renderOrder = MARK_ORDER[itemId] ?? 0;
+   g.add(m);
+   return g;
+diff --git a/tests/halloween-trail.test.mjs b/tests/halloween-trail.test.mjs
+index 977f4ea..1cc44dc 100644
+--- a/tests/halloween-trail.test.mjs
++++ b/tests/halloween-trail.test.mjs
+@@ -62,3 +62,21 @@ test('🎃 온기는 점 입자 Points 안에서 점마다 크기를 받는다(
+   assert.match(src, /gl_PointSize = size \* aSizeK;/);
+   assert.match(read('../js/cosmetics/trail-fx-sprites.js'), /list\.slice\(-cap\)/, '넘치면 가장 새 박쥐를 남긴다');
+ });
++
++test('🎃 호박등 자국만 조명 없이(unlit) 굽는다 — 다른 자국 재질은 그대로', async () => {
++  const { markMaterial, TRAIL_UNLIT } = await import('../js/cosmetics/trail.js');
++  class Std { constructor(o) { this.kind = 'standard'; Object.assign(this, o); } }
++  class Basic { constructor(o) { this.kind = 'basic'; Object.assign(this, o); } }
++  const THREE = { MeshStandardMaterial: Std, MeshBasicMaterial: Basic };
++  assert.deepEqual([...TRAIL_UNLIT], ['pumpkin_glow']);
++  const lit = markMaterial(THREE, 'firefly', 0.7);
++  assert.equal(lit.kind, 'standard');
++  assert.deepEqual({ ...lit }, { kind: 'standard', color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0,
++    transparent: true, opacity: 0.7, depthWrite: false }, '기존 자국 재질은 한 글자도 바뀌지 않는다');
++  for (const id of ['paw', 'flower', 'star', 'sparkle', 'drop', 'firefly', 'rainbow', 'sprout', 'bat_swirl'])
++    assert.equal(markMaterial(THREE, id, 1).kind, 'standard', `${id} 는 조명 받는 재질 그대로`);
++  const un = markMaterial(THREE, 'pumpkin_glow', 0.7);
++  assert.equal(un.kind, 'basic', '🎃 밤에도 등불로 읽히게 조명 없이');
++  assert.equal(un.vertexColors, true); assert.equal(un.transparent, true);
++  assert.equal(un.opacity, 0.7); assert.equal(un.depthWrite, false);
++});
