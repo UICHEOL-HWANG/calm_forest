@@ -1,0 +1,140 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>🏛️ 박물관 전시물 조형 시안 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#2a2a28;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;overflow:hidden}
+  canvas{display:block}
+  .lab{position:fixed;background:rgba(255,255,255,.93);padding:4px 9px;border-radius:8px;font-size:12px;line-height:1.5;color:#2f3f2f;white-space:nowrap}
+  .lab b{color:#2f5e2f;font-size:13px}
+  .names{position:fixed;font-size:11px;color:#4a4a3a;background:rgba(255,255,255,.75);padding:1px 6px;border-radius:6px;white-space:nowrap}
+</style>
+<div id="labs"></div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+
+// =============================================================
+//  🏛️ 전시물 조형 시안 — 카테고리별 대표 조형 + 종별 변형(색·소품)
+//  ▶ 지금은 작물·물고기·광물 말고는 전부 색만 다른 20면체 하나다(맨 앞 칸 "현재").
+//  ▶ 각 모델은 높이 ≈0.5, 도형 수십 개 미만 — 실제 이식 땐 단순 도형만 쓴다.
+// =============================================================
+const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .75, flatShading: true, ...o });
+const glass = (c = 0xcfeff5, op = .25) => mat(c, { transparent: true, opacity: op, roughness: .2, flatShading: false, side: THREE.DoubleSide });
+const glow = (c, i = 1.1) => mat(c, { emissive: c, emissiveIntensity: i, flatShading: false });
+const mesh = (geo, m, x = 0, y = 0, z = 0, s = [1, 1, 1], r = [0, 0, 0]) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(...s); o.rotation.set(...r); return o; };
+const grp = (...c) => { const g = new THREE.Group(); c.flat(Infinity).forEach(o => g.add(o)); return g; };
+const SPH = (r, w = 10, h = 8) => new THREE.SphereGeometry(r, w, h), CYL = (a, b, h, n = 8) => new THREE.CylinderGeometry(a, b, h, n), CONE = (r, h, n = 8) => new THREE.ConeGeometry(r, h, n), BOX = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+const PI = Math.PI;
+
+// ── 🆚 현재 ──
+const cur = c => grp(mesh(new THREE.IcosahedronGeometry(.24, 0), mat(c)));
+
+// ── ⛏️ 광물 (원석 → 광물 표본) ──
+const oreStone = () => grp(mesh(new THREE.DodecahedronGeometry(.2, 0), mat(0x9a9a92), 0, .17, 0, [1, .8, 1.1]), mesh(new THREE.DodecahedronGeometry(.11, 0), mat(0xb0b0a6), .2, .09, .1), mesh(new THREE.DodecahedronGeometry(.08, 0), mat(0x80807a), -.2, .07, .12));
+const oreCoal = () => grp(mesh(new THREE.IcosahedronGeometry(.19, 0), mat(0x2d2d33), 0, .17, 0, [1.1, .85, 1]), mesh(new THREE.IcosahedronGeometry(.11, 0), mat(0x1c1c22), .2, .1, .1), mesh(BOX(.1, .02, .06), mat(0x7a7a88, { metalness: .4, roughness: .3 }), -.04, .3, .04, [1, 1, 1], [.3, .5, 0]));
+const oreGem = () => grp([[0, 0, .3, 0], [.12, .1, .22, -.35], [-.12, .04, .2, .4], [.04, -.12, .17, .2], [-.05, .13, .15, -.2]].map(([x, z, h, t], i) => mesh(CONE(.075, h, 6), mat(i % 2 ? 0x6fe0e8 : 0x4fc3f0, { roughness: .15, metalness: .1 }), x, h / 2 + .02, z, [1, 1, 1], [t, 0, t * .6])), mesh(CYL(.2, .22, .04, 8), mat(0x7a6a5a), 0, .02, 0));
+
+// ── 🍄 채집 ──
+const mushroom = () => grp(mesh(CYL(.05, .07, .2), mat(0xf1e4cf), 0, .1, 0), mesh(SPH(.17, 10, 6), mat(0xd9483b), 0, .22, 0, [1, .65, 1]), [[.07, .3, .05], [-.08, .28, .03], [.01, .3, -.09]].map(p => mesh(SPH(.03, 6, 4), mat(0xfff7e8), ...p)));
+const berry = () => grp([[0, .12, 0], [.1, .08, .05], [-.09, .09, .06], [.03, .08, -.1], [-.04, .17, -.03]].map(p => mesh(SPH(.075, 8, 6), mat(0x4a5fd9, { roughness: .4 }), ...p)), mesh(CONE(.09, .05, 4), mat(0x4f9a4a), 0, .25, 0), mesh(SPH(.1, 6, 4), mat(0x4f9a4a), .05, .02, -.12, [1.8, .25, 1.2]));
+const acorn = () => grp(mesh(SPH(.12, 10, 8), mat(0xb97c3f), 0, .16, 0, [1, 1.2, 1]), mesh(SPH(.13, 10, 6), mat(0x7a5530), 0, .28, 0, [1, .55, 1]), mesh(CYL(.012, .012, .06, 4), mat(0x5a3a20), 0, .38, 0));
+const herb = () => grp([0, 1, 2, 3, 4].map(i => { const l = .22 + (i % 2) * .08; const g = grp(mesh(CYL(.012, .012, l, 4), mat(0x3e8a45), 0, l / 2, 0), mesh(SPH(.06, 6, 4), mat(0x62b25a), 0, l, 0, [.7, 1.4, .25])); g.rotation.set(Math.sin(i * 1.7) * .3, i * 1.2, Math.cos(i * 1.7) * .3); return g; }));
+
+// ── 🌟 반딧불이 (유리병) ──
+const jar = cols => grp(mesh(CYL(.15, .15, .3, 10), glass(), 0, .17, 0), mesh(CYL(.1, .1, .05, 8), mat(0x8a6a44), 0, .35, 0), mesh(CYL(.16, .16, .03, 10), mat(0x8a6a44), 0, .02, 0),
+  cols.map((c, i) => mesh(SPH(.05, 8, 6), glow(c, 1.4), Math.sin(i * 2.2) * .07, .16 + (i % 3) * .06, Math.cos(i * 2.2) * .07)));
+// ── 🐾 흔적 · 🪏 땅속 ──
+const tile = () => mesh(CYL(.24, .24, .05, 10), mat(0xa89a82), 0, .025, 0);
+const paw = c => grp(mesh(SPH(.05, 6, 4), mat(c), 0, .06, .02, [1.3, .25, 1]), [-.07, -.025, .025, .07].map((x, i) => mesh(SPH(.022, 5, 4), mat(c), x, .06, -.06 - (i % 3 ? .02 : 0))));
+const fur = () => grp(tile(), [[0, .15, 0, .1], [.08, .12, .04, .08], [-.07, .12, .05, .08], [0, .11, -.08, .07]].map(([x, y, z, r]) => mesh(new THREE.IcosahedronGeometry(r, 1), mat(0x9a8e86, { flatShading: false }), x, y, z)), (() => { const p = paw(0x6a5f58); p.position.z = .17; return p; })());
+const dropAcorn = () => { const a = acorn(); a.position.set(-.02, .05, 0); a.scale.setScalar(.8); const p = paw(0x6a5f58); p.position.z = .18; return grp(tile(), a, p); };
+const worm = () => { const pts = [...Array(14)].map((_, i) => new THREE.Vector3(Math.sin(i * .9) * .13, .03 + (i % 3 === 1 ? .03 : 0), (i - 7) * .035)); return grp(tile(), mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, .026, 6), mat(0xd98a8a, { flatShading: false }), 0, .05, 0)); };
+const shard = () => grp(mesh(CYL(.2, .2, .03, 5), mat(0x7a6a58), 0, .015, 0), [[0, .06, 0, .3], [.1, .05, .08, -.6], [-.1, .05, .05, 1.1]].map(([x, y, z, r], i) => mesh(BOX(.15, .035, .1), mat(i ? 0xeef3f6 : 0x5f9ec8), x, y + .03, z, [1, 1, 1], [.2, r, .15])));
+const oldCoin = () => grp(mesh(CYL(.2, .22, .06, 10), mat(0x6b5a46), 0, .03, 0), mesh(CYL(.16, .16, .03, 14), mat(0xe0b44a, { metalness: .6, roughness: .35, flatShading: false }), 0, .2, 0, [1, 1, 1], [PI / 2 - .3, 0, 0]), mesh(BOX(.05, .05, .02), mat(0x9a6e2a), 0, .2, 0, [1, 1, 1], [PI / 2 - .3, 0, .8]));
+// ── 🛶 강 ──
+const lotus = () => grp(mesh(CYL(.24, .24, .02, 12), mat(0x4f9a4a), 0, .02, 0), [0, 1, 2, 3, 4, 5].map(i => mesh(SPH(.08, 6, 5), mat(0xf4a9c4), Math.cos(i * 1.05) * .09, .1, Math.sin(i * 1.05) * .09, [1, 1.6, .5], [Math.sin(i * 1.05) * .9, 0, -Math.cos(i * 1.05) * .9])), mesh(SPH(.05, 6, 5), mat(0xf5d56a), 0, .08, 0));
+const driftwood = () => grp(mesh(CYL(.2, .22, .03, 10), mat(0x6f8fa8), 0, .015, 0), mesh(CYL(.045, .055, .5, 6), mat(0x8a6a44), 0, .09, 0, [1, 1, 1], [0, 0, PI / 2 - .15]), mesh(CYL(.03, .04, .3, 6), mat(0x735736), .02, .17, .05, [1, 1, 1], [.3, .5, PI / 2 + .3]));
+const shell = () => grp(mesh(SPH(.2, 10, 6), mat(0xf5e3cf), 0, .08, 0, [1.1, .4, .9]), [-3, -2, -1, 0, 1, 2, 3].map(i => mesh(BOX(.015, .06, .2), mat(0xd9b99a), i * .055, .15 - Math.abs(i) * .012, 0, [1, 1, 1], [0, i * .13, 0])));
+const moonFish = () => grp(mesh(CYL(.22, .22, .02, 14), mat(0x3b4a78), 0, .01, 0), mesh(SPH(.14, 10, 8), glow(0xf6eaa8, .9), 0, .2, 0, [1.4, .8, .6]), mesh(CONE(.09, .14, 4), glow(0xf6eaa8, .7), -.2, .2, 0, [1, 1, .4], [0, 0, PI / 2]), mesh(SPH(.015, 4, 4), mat(0x2a2a3a), .13, .22, .07));
+// ── 🌫️ 정령 ──
+const spirit = (c, golden) => grp(new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [.1, .02], [.15, .13], [.13, .25], [.07, .33], [0, .35]].map(([r, y]) => new THREE.Vector2(r, y)), 12), mat(c, { flatShading: false, emissive: c, emissiveIntensity: golden ? .8 : .3, transparent: true, opacity: .92 })),
+  mesh(SPH(.02, 4, 4), mat(0x2a2a3a), -.045, .24, .12), mesh(SPH(.02, 4, 4), mat(0x2a2a3a), .045, .24, .12), golden ? mesh(new THREE.TorusGeometry(.13, .012, 4, 16), glow(0xffe27a), 0, .45, 0, [1, 1, 1], [PI / 2, 0, 0]) : []);
+// ── 🌦️ 날씨 (스노우글로브) ──
+const globe = inner => { const g = grp(mesh(CYL(.17, .2, .08, 10), mat(0x7a6a5a), 0, .04, 0), mesh(SPH(.2, 14, 10), glass(0xdff4ff, .22), 0, .28, 0)); const i = grp(inner); i.position.y = .28; g.add(i); return g; };
+const sunG = () => globe([mesh(SPH(.07, 8, 6), glow(0xffd24a)), [0, 1, 2, 3, 4, 5, 6, 7].map(i => mesh(CONE(.015, .06, 4), glow(0xffd24a), Math.cos(i * .785) * .12, Math.sin(i * .785) * .12, 0, [1, 1, 1], [0, 0, i * .785 - PI / 2]))]);
+const rainG = () => globe([mesh(SPH(.07, 8, 6), mat(0xe9eef2), -.03, .08, 0, [1.5, .8, 1]), mesh(SPH(.06, 8, 6), mat(0xe9eef2), .06, .09, 0, [1.3, .8, 1]), [[-.05, -.03], [.02, -.05], [.07, -.02], [-.01, -.08]].map(([x, y]) => mesh(CONE(.012, .05, 4), mat(0x4fa0e8), x, y, .02, [1, 1, 1], [PI, 0, 0]))]);
+const snowG = () => globe([[...Array(8)].map((_, i) => mesh(SPH(.018, 5, 4), mat(0xffffff), Math.sin(i * 2.4) * .1, Math.cos(i * 1.7) * .09 + .05, Math.cos(i * 2.4) * .08)), mesh(SPH(.05, 8, 6), mat(0xffffff), 0, -.1, 0), mesh(SPH(.035, 8, 6), mat(0xffffff), 0, -.03, 0), mesh(CONE(.012, .04, 4), mat(0xf08a3a), 0, -.03, .035, [1, 1, 1], [PI / 2, 0, 0])]);
+const fogG = () => globe([[-.06, 0, 0], [.05, .05, .03], [0, -.06, -.02], [.07, -.05, 0]].map(([x, y, z]) => mesh(SPH(.07, 8, 6), mat(0xcdd6dc, { transparent: true, opacity: .75, flatShading: false }), x, y, z, [1.4, .7, 1])));
+// ── 🧑 주민 (인형) ──
+const doll = (c, hat, acc) => grp(mesh(CYL(.1, .14, .2, 8), mat(c), 0, .12, 0), mesh(SPH(.11, 10, 8), mat(c), 0, .31, 0), [-1, 1].map(s => mesh(SPH(.035, 6, 4), mat(c), s * .1, .39, 0, [1, 1.3, 1])), [-1, 1].map(s => mesh(SPH(.014, 4, 4), mat(0x2a2a3a), s * .04, .32, .1)),
+  mesh(CYL(.12, .13, .04, 8), mat(hat), 0, .4, 0), mesh(CYL(.07, .08, .07, 8), mat(hat), 0, .44, 0),
+  acc === 'antler' ? [-1, 1].map(s => mesh(CYL(.01, .014, .14, 4), mat(0x7a5f3c), s * .07, .5, 0, [1, 1, 1], [0, 0, s * -.4])) : [],
+  acc === 'spike' ? [...Array(6)].map((_, i) => mesh(CONE(.02, .07, 4), mat(0x5a4d6a), Math.sin(i * 1.05) * .1, .22, -.1 - Math.cos(i * 1.05) * .03, [1, 1, 1], [-1.2, 0, 0])) : [],
+  acc === 'ribbon' ? mesh(BOX(.08, .03, .02), mat(0xe0607a), 0, .22, .13) : []);
+// ── 🍳 요리 ──
+const plate = () => mesh(CYL(.22, .18, .03, 14), mat(0xf5f2ea), 0, .02, 0);
+const soup = () => grp(mesh(CYL(.2, .13, .14, 12), mat(0xe9e2d3), 0, .09, 0), mesh(CYL(.17, .17, .01, 12), mat(0xe58a3a, { flatShading: false }), 0, .155, 0), mesh(SPH(.03, 5, 4), mat(0x6fb36a), .05, .17, .03), mesh(SPH(.025, 5, 4), mat(0xf4e3a0), -.06, .17, -.03));
+const bread = () => grp(plate(), mesh(SPH(.2, 10, 8), mat(0xd9a05a, { flatShading: false }), 0, .14, 0, [1.1, .7, .8]), [-1, 0, 1].map(i => mesh(BOX(.015, .02, .14), mat(0xb8803a), i * .09, .26, 0, [1, 1, 1], [0, .5, 0])));
+const cake = () => grp(plate(), mesh(CYL(.15, .15, .1, 12), mat(0xf5e3c0), 0, .09, 0), mesh(CYL(.155, .155, .03, 12), mat(0xf5b8c4), 0, .15, 0), mesh(SPH(.035, 8, 6), mat(0xd9302e), 0, .2, 0));
+const skewer = () => grp(plate(), mesh(CYL(.01, .01, .44, 4), mat(0x8a6a44), 0, .12, 0, [1, 1, 1], [0, 0, PI / 2]), [-.14, -.05, .04, .13].map((x, i) => mesh(i % 2 ? SPH(.05, 6, 5) : BOX(.09, .09, .09), mat([0xd9483b, 0x6fb36a, 0xe0a050, 0x6fb36a][i]), x, .12, 0)));
+// ── 🦋 방문객 ──
+const butterfly = () => grp(mesh(CYL(.012, .012, .2, 4), mat(0x3a3028), 0, .26, 0, [1, 1, 1], [PI / 2, 0, 0]), [-1, 1].map(s => [mesh(SPH(.12, 8, 6), mat(0xf08a3a, { flatShading: false }), s * .1, .29, -.03, [1, .15, 1.1], [0, 0, s * -.4]), mesh(SPH(.08, 8, 6), mat(0xf6c84a, { flatShading: false }), s * .08, .26, .09, [1, .15, 1])]), mesh(CYL(.015, .02, .22, 5), mat(0x4f9a4a), 0, .11, 0));
+const sparrow = () => grp(mesh(SPH(.13, 10, 8), mat(0x9a6a3a), 0, .18, 0, [1, .9, 1.3]), mesh(SPH(.08, 8, 6), mat(0xb98050), 0, .28, .13), mesh(CONE(.025, .06, 4), mat(0xe0a050), 0, .28, .22, [1, 1, 1], [PI / 2, 0, 0]), mesh(CONE(.04, .14, 4), mat(0x7a4a2a), 0, .18, -.2, [1, 1, 1], [-PI / 2 - .3, 0, 0]), mesh(SPH(.012, 4, 4), mat(0x1a1a1a), .035, .3, .19), mesh(SPH(.012, 4, 4), mat(0x1a1a1a), -.035, .3, .19), mesh(CYL(.01, .01, .1, 4), mat(0x6a4a2a), 0, .06, 0));
+const hedgehog = () => grp(mesh(SPH(.15, 10, 8), mat(0x8a7a6a), 0, .14, 0, [1, .8, 1.2]), [...Array(14)].map((_, i) => mesh(CONE(.025, .1, 4), mat(0x5a4d3a), Math.sin(i * 2.1) * .1, .21 + Math.cos(i * 1.3) * .03, -.03 - Math.abs(Math.cos(i * 2.1)) * .06, [1, 1, 1], [-.6 - Math.cos(i) * .3, i, 0])), mesh(SPH(.07, 8, 6), mat(0xe8c9a0), 0, .12, .17), mesh(SPH(.015, 4, 4), mat(0x1a1a1a), 0, .12, .24));
+const frog = () => grp(mesh(SPH(.14, 10, 8), mat(0x6fbf5a), 0, .1, 0, [1.2, .65, 1]), [-1, 1].map(s => [mesh(SPH(.04, 6, 5), mat(0x8fd070), s * .07, .2, .08), mesh(SPH(.02, 5, 4), mat(0x1a1a1a), s * .07, .22, .11)]), mesh(SPH(.1, 8, 6), mat(0xd9e8b0), 0, .06, .09, [1, .3, .6]), [-1, 1].map(s => mesh(SPH(.05, 6, 5), mat(0x5aa84a), s * .13, .04, -.05, [1.4, .5, 1])));
+
+// ── 시트 ──
+const SHEET = [
+  ['🆚 현재 (색만 다른 원석 하나)', [['채집', () => cur(0xc07a4a)], ['반딧불이', () => cur(0xd9c14a)], ['정령', () => cur(0xb8a8d8)], ['주민', () => cur(0xd9a06a)], ['요리', () => cur(0xe0a05a)]]],
+  ['⛏️ 광물 표본', [['돌', oreStone], ['석탄', oreCoal], ['보석 결정', oreGem]]],
+  ['🍄 채집물', [['숲 버섯', mushroom], ['산딸기', berry], ['도토리', acorn], ['숲 약초', herb]]],
+  ['🌟 반딧불이 (유리병)', [['노랑', () => jar([0xffe45a, 0xffe45a])], ['푸른', () => jar([0x6ab8ff, 0x6ab8ff])], ['초록', () => jar([0x8aff7a, 0x8aff7a])], ['무지개', () => jar([0xff6a8a, 0xffd24a, 0x6aff9a, 0x6ab8ff, 0xc08aff])]]],
+  ['🐾 흔적 · 🪏 땅속', [['털뭉치', fur], ['주운 도토리', dropAcorn], ['지렁이', worm], ['사금파리', shard], ['옛 동전', oldCoin]]],
+  ['🛶 강', [['연꽃', lotus], ['떠내려온 나무', driftwood], ['강 조개', shell], ['달빛 물고기', moonFish]]],
+  ['🌫️ 정령', [['수줍은', () => spirit(0xa86fd9)], ['졸린', () => spirit(0x6a8ad9)], ['장난꾸러기', () => spirit(0xf09a4a)], ['황금', () => spirit(0xf5d04a, true)]]],
+  ['🌦️ 날씨 (스노우글로브)', [['맑음', sunG], ['비', rainG], ['눈', snowG], ['안개', fogG]]],
+  ['🧑 주민 (인형)', [['사슴(뿔)', () => doll(0xd9a86a, 0x7a5f3c, 'antler')], ['수달(리본)', () => doll(0x6fa8c9, 0xf0e0c0, 'ribbon')], ['고슴도치(가시)', () => doll(0xa08fb8, 0x5a4d6a, 'spike')], ['의뢰인', () => doll(0x9a7a5a, 0xc0503a)]]],
+  ['🍳 요리 (접시 위)', [['수프', soup], ['빵', bread], ['케이크', cake], ['꼬치', skewer]]],
+  ['🦋 방문객 (작은 인형)', [['나비', butterfly], ['참새', sparrow], ['고슴도치', hedgehog], ['청개구리', frog]]],
+];
+const COLS = 4, ROWS = 3;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio)); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xefe3ce);
+scene.add(new THREE.HemisphereLight(0xfff2e2, 0xb8a98c, 1.0));
+const sun = new THREE.DirectionalLight(0xfff4e4, 1.3); sun.position.set(4, 10, 8); scene.add(sun);
+const labs = document.getElementById('labs');
+const cells = SHEET.map(([title, items], ci) => {
+  const g = new THREE.Group(); g.position.set(ci * 40, 0, 0);
+  const n = items.length, gap = .78, names = [];
+  items.forEach(([name, fn], k) => {
+    const x = (k - (n - 1) / 2) * gap, m = fn();
+    g.add(mesh(CYL(.33, .36, .22, 12), mat(0xcfc7b0), x, -.11, 0));
+    m.position.x += x; m.scale.multiplyScalar(1.15); g.add(m);
+    const el = document.createElement('div'); el.className = 'names'; el.textContent = name; labs.appendChild(el); names.push([el, x]);
+  });
+  scene.add(g);
+  const d = document.createElement('div'); d.className = 'lab'; d.innerHTML = `<b>${title}</b>`; labs.appendChild(d);
+  return { g, n, gap, names, title: d };
+});
+const cam = new THREE.PerspectiveCamera(30, 1, .1, 100);
+function frame() {
+  const w = innerWidth, h = innerHeight, cw = w / COLS, ch = h / ROWS;
+  renderer.setSize(w, h); renderer.setScissorTest(true);
+  cells.forEach((c, i) => {
+    const col = i % COLS, row = Math.floor(i / COLS), x = col * cw, y = h - (row + 1) * ch;
+    renderer.setViewport(x, y, cw, ch); renderer.setScissor(x, y, cw, ch);
+    cam.aspect = cw / ch;
+    const span = c.n * c.gap + .3, t15 = Math.tan(THREE.MathUtils.degToRad(15));
+    const R = Math.max(span / 2 / (t15 * cam.aspect), .5 / t15) * 1.0, a = THREE.MathUtils.degToRad(24);
+    cam.position.set(i * 40, .25 + Math.sin(a) * R, Math.cos(a) * R); cam.lookAt(i * 40, .2, 0); cam.updateProjectionMatrix();
+    renderer.render(scene, cam);
+    c.title.style.left = x + 6 + 'px'; c.title.style.top = row * ch + 5 + 'px';
+    const pxPerUnit = (ch / 2) / (R * t15);
+    c.names.forEach(([el, ex]) => { el.style.left = x + cw / 2 + ex * pxPerUnit - el.offsetWidth / 2 + 'px'; el.style.top = row * ch + ch - 26 + 'px'; });
+  });
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
