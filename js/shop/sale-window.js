@@ -38,3 +38,10 @@ export function saleEndLabel(item) {
   const [, m, d] = w.to.split('-').map(Number);
   return `${m}/${d}`;
 }
+
+/** 상점 행 태그 — 라벨(번역 대상)과 날짜(번역 안 함)를 따로 준다. 조합 문장 글루 금지(i18n) */
+export function saleTagOf(item) {
+  const until = saleEndLabel(item);
+  if (!until) return null;
+  return { label: '🎃 할로윈 한정', until: `~${until}` };
+}

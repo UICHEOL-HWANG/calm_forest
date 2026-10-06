@@ -1,7 +1,7 @@
 // tests/halloween-sale-window.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SALE_WINDOWS, saleOpen, saleEndLabel } from '../js/shop/sale-window.js';
+import { SALE_WINDOWS, saleOpen, saleEndLabel, saleTagOf } from '../js/shop/sale-window.js';
 
 const item = { id: 'pumpkin_glow', sale: 'halloween' };
 const at = (iso) => Date.parse(iso);
@@ -29,4 +29,9 @@ test('종료 날짜 라벨 — 11/2', () => {
   assert.equal(saleEndLabel(item), '11/2');
   assert.equal(saleEndLabel({ id: 'firefly' }), null);
   assert.ok(Object.isFrozen(SALE_WINDOWS));
+});
+
+test('시즌 태그 — 라벨과 날짜는 따로(날짜는 번역 안 함)', () => {
+  assert.deepEqual(saleTagOf(item), { label: '🎃 할로윈 한정', until: '~11/2' });
+  assert.equal(saleTagOf({ id: 'firefly' }), null);
 });
