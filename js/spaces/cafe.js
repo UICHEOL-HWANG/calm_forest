@@ -40,7 +40,7 @@ import { buildShop } from '../shop/building.js';
 import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
 import { closeProps } from '../shop/checkout-funnel.js';   // 📊 결제창을 닫을 때 어디까지 갔나
 import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
-import { saleTagOf } from '../shop/sale-window.js';
+import { saleOpen, saleTagOf } from '../shop/sale-window.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
 import { themeOf } from '../cosmetics/tool-skin-rules.js';   // 🪓 💎 도구 세트 → 테마(구매 연출 진열)
@@ -947,6 +947,8 @@ function cashButton(cash, itemId, kind, mine) {
   btn.onclick = async (ev) => {
     ev.stopPropagation();
     if (btn.disabled) return;
+    const it = kind === 'pet' ? null : findItem(itemId);
+    if (it?.sale && !saleOpen(it)) { drawCosMenu(); return; }   // 🎃 가게를 열어 둔 채 기간이 끝났으면 — 결제창 대신 행을 다시 그린다(숨김)
     trackEvent('cash_checkout_open', { item_id: itemId, kind, price_id: cash.priceId });
     cashBusy = itemId; drawCosMenu();
     try {
