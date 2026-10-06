@@ -19,6 +19,8 @@ const API = 'https://graph.threads.net/v1.0';
 export const THREADS_TOKEN_FILE =
   process.env.THREADS_TOKEN_FILE || resolve(homedir(), '.config/calmforest/threads_token');
 export const THREADS_TEXT_MAX = 500;
+// Threads 는 게시물당 주제 태그가 하나라 인스타처럼 여러 개를 달지 않는다
+export const THREADS_TAG = '인디게임';
 
 let cached = null;
 
@@ -68,19 +70,32 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
  * 해시태그 줄이 보통 맨 끝이라 문단 단위로 앞에서부터 담고, 넘기 직전에서 멈춘다.
  * 첫 문단만으로 넘치면 문장 끝에서 자른다. 자른 흔적은 "…" 하나.
  */
-export function toThreadsText(caption, max = THREADS_TEXT_MAX) {
-  const text = (caption || '').trim();
-  if (text.length <= max) return text;
+export function toThreadsText(caption, max = THREADS_TEXT_MAX, tag = THREADS_TAG) {
+  // 인스타용 해시태그 줄은 빼고, Threads 는 주제 태그 하나(#인디게임)만 맨 끝에 붙인다.
+  const body = (caption || '')
+    .split('\n')
+    .filter(line => !/^\s*(#\S+\s*)+$/.test(line))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  const suffix = tag ? `\n\n#${tag}` : '';
+  const room = max - suffix.length;
+  return fit(body, room) + suffix;
+}
+
+/** 본문을 room 자 안으로: 문단 단위로 담고, 첫 문단이 넘치면 문장 끝에서 자른다 */
+function fit(text, room) {
+  if (text.length <= room) return text;
   let out = '';
   for (const p of text.split(/\n{2,}/)) {
     const next = out ? `${out}\n\n${p}` : p;
-    if (next.length > max) break;
+    if (next.length > room) break;
     out = next;
   }
   if (out) return out;
-  const cut = text.slice(0, max - 1);
+  const cut = text.slice(0, room - 1);
   const end = Math.max(...['. ', '! ', '? ', '요.', '다.'].map(m => cut.lastIndexOf(m)));
-  return (end > max * 0.5 ? cut.slice(0, end + 1) : cut).trimEnd() + '…';
+  return (end > room * 0.5 ? cut.slice(0, end + 1) : cut).trimEnd() + '…';
 }
 
 /**
@@ -100,18 +115,32 @@ export async function publishThreadsCarousel({ urls, text }) {
     media_type: 'CAROUSEL', children: children.join(','), text,
   }, 'POST');
 
-  // Meta 권고: 발행 전에 컨테이너가 FINISHED 가 될 때까지 기다린다
+  return finishAndPublish(parent, 30);
+}
+
+/**
+ * 영상 1편 → Threads 게시물. 게시물 URL 을 돌려준다.
+ * ⚠️ 영상은 인코딩이 있어 이미지보다 오래 걸린다(최대 5분 기다린다).
+ */
+export async function publishThreadsVideo({ videoUrl, text }) {
+  if (text.length > THREADS_TEXT_MAX) throw new Error(`본문 ${text.length}자 — Threads 상한 ${THREADS_TEXT_MAX}자 초과`);
+  const { id } = await threads('/me/threads', { media_type: 'VIDEO', video_url: videoUrl, text }, 'POST');
+  return finishAndPublish(id, 100);
+}
+
+/** 컨테이너가 FINISHED 가 될 때까지 3초 간격으로 기다렸다가 발행한다(Meta 권고) */
+async function finishAndPublish(container, maxTries) {
   for (let i = 0; ; i++) {
-    const s = await threads(`/${parent}`, { fields: 'status,error_message' });
+    const s = await threads(`/${container}`, { fields: 'status,error_message' });
     if (s.status === 'FINISHED') break;
     if (s.status === 'ERROR' || s.status === 'EXPIRED') {
       throw new Error(`Threads 컨테이너 ${s.status}: ${s.error_message || ''}`);
     }
-    if (i >= 30) throw new Error('Threads 컨테이너가 90초 넘게 IN_PROGRESS');
+    if (i >= maxTries) throw new Error(`Threads 컨테이너가 ${maxTries * 3}초 넘게 IN_PROGRESS`);
     await sleep(3000);
   }
 
-  const { id: mediaId } = await threads('/me/threads_publish', { creation_id: parent }, 'POST');
+  const { id: mediaId } = await threads('/me/threads_publish', { creation_id: container }, 'POST');
   const { permalink } = await threads(`/${mediaId}`, { fields: 'permalink' });
   return permalink;
 }

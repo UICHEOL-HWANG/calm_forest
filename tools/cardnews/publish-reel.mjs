@@ -16,14 +16,17 @@
 //  ⚠️ 캐러셀과 달리 자식 컨테이너가 없다. 컨테이너 하나가 곧 게시물이다.
 // =============================================================
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ig, me, quota, sleep } from './ig.mjs';
-import { hostReel } from './host.mjs';
+import { hostReel, BASE_URL } from './host.mjs';
+import { threadsToken, publishThreadsVideo, toThreadsText, THREADS_TEXT_MAX } from './threads.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const slug = process.argv[2];
 const DO_PUBLISH = process.argv.includes('--publish');
+// 인스타는 나갔는데 Threads 만 실패했을 때 Threads 만 다시 올린다
+const THREADS_ONLY = process.argv.includes('--threads-only');
 
 if (!slug) {
   console.error('사용: node publish-reel.mjs <이름> [--publish]');
@@ -34,9 +37,16 @@ const specPath = resolve(HERE, 'decks', `${slug}.json`);
 const spec = JSON.parse(await readFile(specPath, 'utf-8'));
 
 // 🚫 이미 발행된 건 다시 올리지 않는다. 사람 기억이 아니라 JSON 이 판단한다.
-if (spec.publishedAt) {
+if (THREADS_ONLY) {
+  if (!spec.publishedAt) { console.error(`⛔ ${slug} 는 인스타에 아직 안 나갔다. --threads-only 는 인스타 발행 뒤에만 쓴다.`); process.exit(1); }
+  if (spec.threadsPublishedAt) {
+    console.error(`⛔ ${slug} 는 Threads 에 이미 발행됨 (${spec.threadsPublishedAt})\n   ${spec.threadsPermalink || ''}`);
+    process.exit(1);
+  }
+} else if (spec.publishedAt) {
   console.error(`⛔ ${slug} 는 이미 발행됨 (${spec.publishedAt})` +
-    `\n   정말 다시 올리려면 decks/${slug}.json 의 publishedAt 을 지울 것.`);
+    `\n   정말 다시 올리려면 decks/${slug}.json 의 publishedAt 을 지울 것.` +
+    (spec.threadsPublishedAt ? '' : `\n   Threads 만 빠졌다면: node publish-reel.mjs ${slug} --threads-only`));
   process.exit(1);
 }
 
@@ -46,6 +56,42 @@ if (caption.length > 2200) {
   console.error(`캡션이 ${caption.length}자 — 인스타 상한 2200자 초과`); process.exit(1);
 }
 if (!spec.file) { console.error(`decks/${slug}.json 에 file 이 없다.`); process.exit(1); }
+
+// Threads 본문은 500자 상한 — decks/<slug>.json 의 threadsText 가 있으면 그걸, 없으면 캡션을 줄인다.
+const threadsText = (spec.threadsText || toThreadsText(caption)).trim();
+if (threadsText.length > THREADS_TEXT_MAX) {
+  console.error(`threadsText 가 ${threadsText.length}자 — Threads 상한 ${THREADS_TEXT_MAX}자 초과`);
+  process.exit(1);
+}
+
+/**
+ * 같은 영상을 Threads 에도 올리고 재발행 방지 표시를 남긴다.
+ * 실패해도 던지지 않는다 — 인스타는 이미 나갔고, 재시도는 --threads-only 로 Threads 만 한다.
+ */
+async function postToThreads(videoUrl) {
+  if (!(await threadsToken())) {
+    console.log(`\n🧵 Threads 건너뜀 — 토큰 없음 (~/.config/calmforest/threads_token)`);
+    return;
+  }
+  try {
+    console.log(`\n🧵 Threads 업로드 (인코딩 대기, 최대 5분)`);
+    const link = await publishThreadsVideo({ videoUrl, text: threadsText });
+    console.log(`🧵 Threads 발행 완료\n   ${link}`);
+    spec.threadsPublishedAt = new Date().toISOString().slice(0, 10);
+    spec.threadsPermalink = link;
+    await writeFile(specPath, JSON.stringify(spec, null, 2) + '\n');
+    console.log(`   decks/${slug}.json 에 threadsPublishedAt 기록`);
+  } catch (e) {
+    console.error(`\n⚠️ Threads 발행 실패 (인스타는 나갔다): ${e.message}\n   Threads 만 재시도: node publish-reel.mjs ${slug} --threads-only`);
+    process.exitCode = 1;
+  }
+}
+
+if (THREADS_ONLY) {
+  // 영상은 인스타 발행 때 이미 KV 에 올라가 있다(TTL 30일). 다시 올리지 않고 같은 URL 을 쓴다.
+  await postToThreads(`${BASE_URL}/cardnews/${slug}/${basename(spec.file)}`);
+  process.exit(process.exitCode ?? 0);
+}
 
 // ── 1. 계정·한도 ─────────────────────────────────────────────
 const acct = await me();
@@ -89,6 +135,7 @@ if (!ok) {
 
 // ── 4. 리허설이면 여기서 멈춘다 ───────────────────────────────
 console.log(`\n─── 캡션 (${caption.length}자) ───\n${caption}\n──────────────────`);
+console.log(`\n─── Threads 본문 (${threadsText.length}/${THREADS_TEXT_MAX}자) ───\n${threadsText}\n──────────────────`);
 if (!DO_PUBLISH) {
   console.log(`\n✋ 리허설이라 아무것도 안 나갔다.\n` +
     `   지금 발행 : node publish-reel.mjs ${slug} --publish`);
@@ -128,3 +175,6 @@ spec.publishedAt = new Date().toISOString().slice(0, 10);
 spec.permalink = permalink;
 await writeFile(specPath, JSON.stringify(spec, null, 2) + '\n');
 console.log(`   decks/${slug}.json 에 publishedAt 기록`);
+
+// ── 8. Threads — 같은 영상 URL 을 그대로 쓴다 ─────────────────
+await postToThreads(video_url);
