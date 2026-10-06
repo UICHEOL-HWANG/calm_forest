@@ -8,7 +8,7 @@
 //  ▶ 테스트: tests/tool-skins.test.mjs
 // =============================================================
 
-export const TOOL_THEMES = Object.freeze(['shroom', 'moon', 'bloom']);
+export const TOOL_THEMES = Object.freeze(['shroom', 'moon', 'bloom', 'batnight', 'harvest']);   // 🎃 뒤 둘 = 할로윈(js/cosmetics/tool-skins-halloween.js)
 
 /** 테마가 입히는 도구 — 손에 드는 9종(js/tool-tiers.js TOOL_UPGRADE 와 같은 집합).
  *  🌊 릴대(reel)는 바다터 장비라 넣지 않는다. 일꾼 도구도 toolMesh 기본 인자라 그대로. */

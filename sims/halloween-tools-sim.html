@@ -1,0 +1,1147 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>할로윈 프리미엄 시안 · 호박 도구 세트 + 박쥐 망토 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#dfe9ee;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a3a4a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:6px 10px 10px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-top:1px solid #d6d2e2;font-size:12.5px}
+  #ui .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  button{font:inherit;padding:4px 9px;border-radius:8px;border:1px solid #c4bdd8;background:#fff;cursor:pointer}
+  button.on{background:#7a5ab8;color:#fff;border-color:#5f428f}
+  .tab button{font-weight:700;padding:5px 12px}
+  label{display:flex;gap:4px;align-items:center;white-space:nowrap}
+  b{color:#5a3f8f}
+  .hide{display:none!important}
+  #labels{position:fixed;inset:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:700;
+       background:rgba(255,255,255,.88);padding:2px 8px;border-radius:7px;white-space:nowrap;line-height:1.3}
+  .tag small{display:block;font-weight:400;opacity:.72;font-size:10.5px}
+  .tag.top{transform:translate(-50%,-100%)}
+  .tag.left{transform:translate(0,0);text-align:left}
+  .tag.side{transform:translate(-100%,-50%)}
+  .tag.mini{font-size:10.5px;padding:1px 5px;background:rgba(255,255,255,.7);font-weight:600}
+  #hud{position:fixed;top:8px;right:10px;background:rgba(255,255,255,.9);padding:7px 11px;border-radius:9px;font-size:11.5px;line-height:1.55;max-width:330px;cursor:pointer}
+  #hud.min .more{display:none}
+  #hud.min{max-width:none}
+  #hud .t{display:block;margin-bottom:2px}
+  #hud table{border-collapse:collapse;margin-top:4px;font-size:10.5px}
+  #hud td,#hud th{border:1px solid #d8d2e6;padding:1px 5px;text-align:center}
+  @media (max-width:700px){ .tag{font-size:10px;padding:1px 5px} .tag small{display:none} .tag.mini{font-size:9px} #hud{max-width:215px;font-size:10px;padding:5px 8px} button{padding:3px 7px} #ui{font-size:11.5px} }
+</style>
+<div id="labels"></div>
+<div id="hud" title="눌러서 접기"></div>
+<div id="ui">
+  <div class="row tab"><button data-tab="tool">🎃 호박 도구 세트</button><button data-tab="cape">🦇 박쥐 망토</button><button data-tab="umb">☂️ 우산</button></div>
+  <div class="row" id="toolRow">
+    <b>보기</b>
+    <button data-mode="rep">한눈에</button><button data-mode="all">9종 전체</button><button data-mode="hold">쥔 모습</button><button data-mode="single">하나 크게</button>
+    <label><input id="withBase" type="checkbox"> 기본과 비교</label>
+    <button id="penBtn">관통 검사</button>
+  </div>
+  <div class="row" id="toolPickRow"><b>도구</b><span id="toolPick"></span></div>
+  <div class="row hide" id="capeRow">
+    <b>시점</b><button data-view="back34">뒤 3/4</button><button data-view="back">뒤</button><button data-view="side">옆</button><button data-view="front34">앞 3/4</button>
+    <b>동물</b><span id="capeAnimals"></span>
+  </div>
+  <div class="row hide" id="umbRow"><b>우산</b><button data-open="1">펼침</button><button data-open="0">접음</button></div>
+  <div class="row">
+    <b>캐릭터</b><span id="animals"></span>
+    <label><input id="night" type="checkbox"> 밤</label>
+    <label><input id="spin" type="checkbox"> 회전</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
+import { ARM_AIM_R, ARM_AIM_L, TOOL_QREST_HOLD, TOOL_GRIP } from '../js/data/character.js';
+import { gripForwardZ, pawRadius, ARM_R_K } from '../js/data/grip.js';
+import { backAnchor } from '../js/cosmetics/anchors.js';
+import { clothShell } from '../js/cosmetics/art.js';
+
+// =============================================================
+//  🎃🦇 할로윈 프리미엄 시안 (2026-10-06) — 시안 전용, 게임 코드 미수정
+//  ------------------------------------------------------------
+//  · 도구 세트 3안 × 9종 + 우산. 4번째 테마(tools_shroom·moon·bloom 옆)로 들어갈 후보.
+//      A 🎃 잭오랜턴  — 날·통 자체가 호박(결 홈·꼭지·밤에 켜지는 얼굴)
+//      B 🦇 달밤 보라  — 박쥐 날개 날 · 가마솥 물조리개 · 끝마다 꼬마 호박 하나
+//      C 🌽 수확제     — 짚·옥수수·허수아비 기움천 · 새끼줄 · 옥수수 방망이
+//  · 도구는 모양만 바뀐다. 쥐는 자리·모션은 게임 원본 값을 import 해서 그대로 쓴다
+//    (js/data/character.js TOOL_GRIP·TOOL_QREST_HOLD, js/data/grip.js gripForwardZ).
+//  · 망토 3안: 클로스 껍질은 js/cosmetics/art.js clothShell 을 import (복제본 없음).
+//      A 🦇 펼친 박쥐 날개 · B 가장자리 뾰족 짧은 망토 · C 일반 망토 + 꼬마 박쥐
+//  · 블룸 임계 0.85 — 넓은 면 색은 그 아래, 발광은 작은 면(얼굴·별·물약)만.
+// =============================================================
+
+const glowMats = [];
+const clay = (color, o = {}) => {
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0, flatShading: !o.smooth, side: o.side ?? THREE.FrontSide });
+  if (o.glow) { m.emissive = new THREE.Color(o.glow); m.userData.glow = { hex: o.glow, k: o.k ?? 0.8 }; glowMats.push({ m, k: o.k ?? 0.8 }); }
+  if (o.opacity != null) { m.transparent = true; m.opacity = o.opacity; }
+  return m;
+};
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const M = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t * t * (3 - 2 * t);
+const smooth = (a, b, t) => ease(Math.min(1, Math.max(0, (t - a) / (b - a))));
+
+// ── 2D 윤곽 ───────────────────────────────────────────────
+function starShape(r, k = 0.46, n = 5) {
+  const s = new THREE.Shape();
+  for (let i = 0; i < n * 2; i++) { const a = Math.PI / 2 + i * Math.PI / n, rr = i % 2 ? r * k : r; i ? s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  s.closePath(); return s;
+}
+function petalShape(w, h) {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0); s.bezierCurveTo(w * 1.1, h * 0.22, w * 0.95, h * 0.8, 0, h); s.bezierCurveTo(-w * 0.95, h * 0.8, -w * 1.1, h * 0.22, 0, 0);
+  return s;
+}
+function crescentShape(R = 0.13, cx = -0.08, deg = 84) {
+  const s = new THREE.Shape(), a0 = deg * Math.PI / 180;
+  const ex = R * Math.cos(a0), ey = R * Math.sin(a0), r2 = Math.hypot(ex - cx, ey), ti = Math.atan2(ey, ex - cx);
+  for (let i = 0; i <= 16; i++) { const a = -a0 + 2 * a0 * i / 16; i ? s.lineTo(R * Math.cos(a), R * Math.sin(a)) : s.moveTo(R * Math.cos(a), R * Math.sin(a)); }
+  for (let i = 0; i <= 16; i++) { const a = ti - 2 * ti * i / 16; s.lineTo(cx + r2 * Math.cos(a), r2 * Math.sin(a)); }
+  s.closePath(); return s;
+}
+function roundBlade(bw, bh) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-bw, 0); sh.lineTo(-bw, bh); sh.absarc(0, bh, bw, Math.PI, 0, true); sh.lineTo(bw, 0); sh.closePath();
+  return sh;
+}
+const ext = (shape, depth, bev = 0.01, seg = 12) => {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: seg });
+  g.translate(0, 0, -depth / 2); return g;
+};
+// 호박 조각 날 — 반원 가장자리에 결(홈) n 개
+function sliceShape(R, ribs = 3) {
+  const s = new THREE.Shape(), N = 30;
+  for (let i = 0; i <= N; i++) {
+    const a = -Math.PI / 2 + Math.PI * i / N, th = a + Math.PI / 2;
+    const rr = R * (1 - 0.075 * (1 - Math.abs(Math.sin(ribs * th))));
+    i ? s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  s.closePath(); return s;
+}
+// 박쥐 날개(날 모양) — 어깨 (0,.05) → 바깥 +x, 끝이 뾰족한 손가락 셋
+function batWingShape(sc = 1) {
+  const P = (x, y) => [x * sc, y * sc], s = new THREE.Shape();
+  s.moveTo(...P(0, 0.05));
+  s.quadraticCurveTo(...P(0.10, 0.17), ...P(0.27, 0.11));
+  [[0.21, 0.015], [0.245, -0.075], [0.15, -0.025], [0.165, -0.115], [0.09, -0.05], [0.075, -0.125], [0, -0.06]].forEach(p => s.lineTo(...P(...p)));
+  s.closePath(); return s;
+}
+// 박쥐 실루엣(양각용) — 반쪽을 거울로
+function batSilShape(sc = 1) {
+  const half = [[0, 0.028], [0.011, 0.052], [0.021, 0.03], [0.05, 0.046], [0.092, 0.062], [0.083, 0.02], [0.064, 0.012], [0.068, -0.014], [0.046, -0.006], [0.04, -0.032], [0.02, -0.009], [0, -0.03]];
+  const full = [...half, ...half.slice(1, -1).reverse().map(([x, y]) => [-x, y])];
+  const s = new THREE.Shape(); full.forEach(([x, y], i) => i ? s.lineTo(x * sc, y * sc) : s.moveTo(x * sc, y * sc)); s.closePath(); return s;
+}
+// 잭오랜턴 얼굴(단위 좌표 ±0.7) — 눈 둘 + 이빨 있는 웃는 입
+const FACE = (() => {
+  const eye = (cx, cy, w) => { const s = new THREE.Shape(); s.moveTo(cx - w, cy - w * 0.7); s.lineTo(cx + w, cy - w * 0.7); s.lineTo(cx, cy + w * 0.9); s.closePath(); return s; };
+  const mouth = new THREE.Shape();
+  const top = [[-0.62, -0.10], [-0.44, -0.10], [-0.32, -0.30], [-0.17, -0.10], [0, -0.30], [0.17, -0.10], [0.32, -0.30], [0.44, -0.10], [0.62, -0.10]];
+  mouth.moveTo(...top[0]); top.slice(1).forEach(p => mouth.lineTo(...p));
+  for (let i = 1; i <= 8; i++) { const a = i / 8; mouth.lineTo(0.62 - 1.24 * a, -0.10 - 0.52 * Math.sin(Math.PI * a)); }
+  mouth.closePath();
+  return [eye(-0.38, 0.24, 0.2), eye(0.38, 0.24, 0.2), mouth];
+})();
+
+// ── 호박: 결 있는 납작 구 + 꼭지 ────────────────────────────
+const pGeo = new Map();
+function pumpkinGeo(r, ribs = 6, amp = 0.09, squash = 0.82) {
+  const key = [r, ribs, amp, squash].join();
+  if (pGeo.has(key)) return pGeo.get(key);
+  const g = new THREE.SphereGeometry(r, ribs * 4, 9), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), phi = Math.atan2(z, x);
+    const f = 1 + amp * Math.cos(ribs * phi) * Math.sqrt(Math.max(0, 1 - (y / r) ** 2));
+    p.setXYZ(i, x * f, y * squash, z * f);
+  }
+  g.computeVertexNormals(); pGeo.set(key, g); return g;
+}
+function pumpkin(parent, r, x, y, z, o = {}) {
+  const col = o.color ?? 0xf0893a, sq = o.squash ?? 0.82;
+  const gr = new THREE.Group(); gr.position.set(x, y, z); parent.add(gr);
+  gr.add(M(pumpkinGeo(r, o.ribs ?? 6, o.amp ?? 0.09, sq), clay(col, { smooth: true })));
+  const st = M(new THREE.CylinderGeometry(r * 0.13, r * 0.2, r * 0.42, 5), clay(o.stem ?? 0x6f8a3a), 0, r * sq * 0.98 + r * 0.08, 0);
+  st.rotation.z = o.stemTilt ?? 0.28; gr.add(st);
+  return gr;
+}
+// 곡면(구)에 새기는 얼굴 — normal 쪽을 보게 놓는다. 면 안쪽으로 반쯤 묻어 가장자리에서 뜨지 않게
+function carved(parent, mat, pos, s, normal, depth = 0.16) {
+  const gr = new THREE.Group(); gr.position.copy(pos); gr.quaternion.setFromUnitVectors(V3(0, 0, 1), normal.clone().normalize()); gr.scale.setScalar(s); parent.add(gr);
+  FACE.forEach(sh => gr.add(M(ext(sh, depth, 0, 2), mat)));
+  return gr;
+}
+
+// ── 자루 ─────────────────────────────────────────────────
+//  P.knobFn(g, r) 이 있으면 끝 혹을 그걸로(호박·짚 다발). 반환: 꼭대기 y
+function handle(g, P, l, r = 0.030) {
+  g.add(M(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clay(P.wood), 0, l / 2 - 0.08, 0));
+  g.add(M(new THREE.CylinderGeometry(r * 1.18, r * 1.18, 0.07, 7), clay(P.grip), 0, -0.02, 0));
+  if (P.knobFn) P.knobFn(g, r); else g.add(M(new THREE.SphereGeometry(r * 1.35, 7, 6), clay(P.knob ?? P.grip), 0, -0.08, 0));
+  return l - 0.08;
+}
+function calyx(g, y, color, r0 = 0.032) {   // 목을 받친 잎 5장
+  for (let i = 0; i < 5; i++) {
+    const a = i * Math.PI * 2 / 5, s = M(new THREE.ConeGeometry(0.022, 0.075, 4), clay(color), Math.cos(a) * r0, y, Math.sin(a) * r0);
+    s.rotation.set(Math.sin(a) * 0.55, 0, -Math.cos(a) * 0.55); g.add(s);
+  }
+}
+function rodFrame(g, { knobFn, rear, pole, line = 0xe8e4d8 }, bob) {
+  knobFn(g);
+  g.add(M(new THREE.CylinderGeometry(0.026, 0.030, 0.20, 7), rear, 0, -0.01, 0));
+  const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
+  const RL = 0.92; pole(poleG, RL);
+  const lineG = new THREE.Group(); lineG.position.y = RL; lineG.rotation.z = 0.12; poleG.add(lineG);
+  lineG.add(M(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 5), clay(line), 0, -0.17, 0));
+  const b = new THREE.Group(); b.position.y = -0.38; lineG.add(b); bob(b);
+  g.scale.setScalar(1.25);
+}
+function pickArms(hd, segMat, tipMat) {
+  [-1, 1].forEach(sx => {
+    const TH = [0.14, 0.32], LEN = [0.13, 0.12]; let px = sx * 0.042, py = 0.012;
+    for (let i = 0; i < 2; i++) {
+      const dx = Math.cos(TH[i]) * sx, dy = -Math.sin(TH[i]);
+      const seg = M(new THREE.BoxGeometry(LEN[i], 0.048 - i * 0.012, 0.05 - i * 0.012), segMat, px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
+      seg.rotation.z = -sx * TH[i]; hd.add(seg); px += dx * LEN[i]; py += dy * LEN[i];
+    }
+    const t3 = 0.48, dx = Math.cos(t3) * sx, dy = -Math.sin(t3);
+    const tip = M(new THREE.ConeGeometry(0.020, 0.085, 6), tipMat, px + dx * 0.042, py + dy * 0.042, 0);
+    tip.rotation.z = -sx * (Math.PI / 2 + t3); hd.add(tip);
+  });
+}
+function sickleBlade(g, top, segMat, edgeMat, wk = 1) {
+  const bl = new THREE.Group(); bl.position.y = top + 0.01; bl.rotation.y = 0.10; g.add(bl);
+  const TH = [0.06, 0.28, 0.60], LEN = [0.15, 0.12, 0.10], W = [0.055 * wk, 0.045 * wk, 0.030 * wk]; let px = 0, py = 0;
+  for (let i = 0; i < 3; i++) {
+    const dx = Math.sin(TH[i]), dy = Math.cos(TH[i]);
+    const seg = M(new THREE.BoxGeometry(W[i], LEN[i], 0.016), segMat, px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0); seg.rotation.z = -TH[i]; bl.add(seg);
+    const edge = M(new THREE.BoxGeometry(0.013, LEN[i] * 0.94, 0.012), edgeMat, px + dx * LEN[i] / 2 + dy * (W[i] / 2), py + dy * LEN[i] / 2 - dx * (W[i] / 2), 0); edge.rotation.z = -TH[i]; bl.add(edge);
+    px += dx * LEN[i]; py += dy * LEN[i];
+  }
+}
+const netBagC = (color, opacity) => clay(color, { opacity, side: THREE.DoubleSide });
+
+// ── 팔레트 ─────────────────────────────────────────────────
+const BASE = { wood: 0x8a5a3a, grip: 0x5f3d26, metal: 0x6d757c, edge: 0xd9dfe4, can: 0x8fd0ea, pole: 0x7a4a2a };
+const JA = { orange: 0xf0893a, orangeD: 0xd9691f, cream: 0xffdca0, stem: 0x7f8f3c, stemD: 0x5c6d2a, leaf: 0x8cc05a, olive: 0x7d6a3c, brownD: 0x4d3322, carve: 0x40261a, glow: 0xffb12e };
+const BT = { vio: 0x7c66bd, plum: 0x4f3f88, night: 0x35295f, lilac: 0xbaa9ea, orange: 0xf59a3a, gold: 0xffd96a, pot: 0x2f2650, potion: 0x8fe06a };
+const HV = { wood: 0x9a6b3a, woodD: 0x6e4a28, straw: 0xe9c75e, strawD: 0xc99a3c, rope: 0xd9c08a, burlap: 0xcdac72, burlapD: 0xa88650, red: 0xc9482f, blue: 0x6286c0, corn: 0xf4cf48, cornD: 0xdcae2c, husk: 0x90c04c, huskD: 0x628f38, pump: 0xf08a35, cream: 0xf6e7b8 };
+
+// =============================================================
+//  도구 조형: BUILD[theme][tool](g)  (원점 = 쥐는 곳, +y 가 위)
+// =============================================================
+const TOOLS = [
+  { id: 'axe', name: '🪓 도끼' }, { id: 'shovel', name: '🪏 삽' }, { id: 'water', name: '💧 물조리개' }, { id: 'rod', name: '🎣 낚싯대' },
+  { id: 'hoe', name: '⛏️ 괭이' }, { id: 'sickle', name: '🌾 낫' }, { id: 'hammer', name: '🔨 망치' }, { id: 'net', name: '🦋 포충망' }, { id: 'seed', name: '🌱 씨앗' },
+];
+const REP = ['axe', 'shovel', 'water', 'rod'];
+
+const BUILD = { base: {}, jack: {}, bat: {}, harvest: {} };
+
+// ── 기본(게임 0단계 그대로) — 관통·크기 비교 기준 ──
+Object.assign(BUILD.base, {
+  axe(g) { const top = handle(g, BASE, 0.52);
+    g.add(M(new THREE.BoxGeometry(0.17, 0.13, 0.06), clay(BASE.metal), 0.075, top - 0.05, 0));
+    const bl = M(new THREE.BoxGeometry(0.07, 0.155, 0.028), clay(BASE.edge), 0.175, top - 0.05, 0); bl.rotation.z = 0.06; g.add(bl);
+    g.add(M(new THREE.BoxGeometry(0.05, 0.09, 0.07), clay(BASE.metal), -0.035, top - 0.05, 0)); g.scale.setScalar(1.18); },
+  shovel(g) { const top = handle(g, BASE, 0.58);
+    g.add(M(new THREE.CylinderGeometry(0.034, 0.042, 0.07, 7), clay(BASE.metal), 0, top + 0.01, 0));
+    g.add(M(ext(roundBlade(0.105, 0.13), 0.03, 0.012, 14), clay(BASE.metal, { smooth: true }), 0, top + 0.03, 0)); g.scale.setScalar(1.18); },
+  water(g) { g.add(M(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clay(BASE.can), 0, 0.18, 0));
+    const sp = M(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clay(BASE.can), 0.15, 0.26, 0); sp.rotation.z = -0.9; g.add(sp); g.scale.setScalar(1.25); },
+  rod(g) { rodFrame(g, { knobFn: g => g.add(M(new THREE.SphereGeometry(0.040, 7, 6), clay(BASE.grip), 0, -0.09, 0)), rear: clay(BASE.grip), pole: (p, L) => p.add(M(new THREE.CylinderGeometry(0.013, 0.026, L, 6), clay(BASE.pole), 0, L / 2, 0)) },
+    b => { const s = M(new THREE.SphereGeometry(0.042, 8, 7), clay(0xd94f4f)); s.scale.set(1, 1.25, 1); b.add(s); b.add(M(new THREE.CylinderGeometry(0.040, 0.040, 0.022, 9), clay(0xf4efe6))); }); },
+  hoe(g) { const top = handle(g, BASE, 0.52), IRON = 0x4d5156; const hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    hd.add(M(new THREE.BoxGeometry(0.085, 0.095, 0.075), clay(IRON))); pickArms(hd, clay(IRON), clay(IRON)); g.scale.setScalar(1.18); },
+  sickle(g) { const top = handle(g, BASE, 0.30, 0.034); sickleBlade(g, top, clay(BASE.metal), clay(BASE.edge));
+    g.add(M(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clay(BASE.metal), 0, top - 0.01, 0)); g.scale.setScalar(1.18); },
+  hammer(g) { const top = handle(g, BASE, 0.50);
+    const head = M(new THREE.CylinderGeometry(0.055, 0.055, 0.20, 8), clay(BASE.metal), 0, top - 0.04, 0); head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => { const c = M(new THREE.CylinderGeometry(0.062, 0.058, 0.03, 8), clay(BASE.edge), sx * 0.105, top - 0.04, 0); c.rotation.z = Math.PI / 2; g.add(c); });
+    g.add(M(new THREE.SphereGeometry(0.022, 6, 5), clay(BASE.grip), 0, top + 0.022, 0)); g.scale.setScalar(1.18); },
+  net(g) { g.add(M(new THREE.CylinderGeometry(0.028, 0.028, 0.62, 6), clay(BASE.wood), 0, 0.2, 0));
+    const ring = M(new THREE.TorusGeometry(0.17, 0.018, 6, 14), clay(0xdfe6ea), 0, 0.6, 0); ring.rotation.x = Math.PI / 2; g.add(ring);
+    g.add(M(new THREE.ConeGeometry(0.16, 0.3, 10, 1, true), netBagC(0xfaffff, 0.45), 0, 0.74, 0)); g.scale.setScalar(1.25); },
+  seed(g) { const bag = M(new THREE.SphereGeometry(0.12, 8, 8), clay(0xcaa06a), 0, 0.08, 0); bag.scale.set(1, 1.15, 1); g.add(bag); g.scale.setScalar(1.25); },
+});
+
+// ─────────────────────────────────────────────────────────────
+//  A 🎃 잭오랜턴 — 날·통 자체가 호박. 얼굴은 밤에 켜진다(작은 면만 발광)
+// ─────────────────────────────────────────────────────────────
+const faceMat = () => clay(JA.carve, { glow: JA.glow, k: 0.9 });
+const jackHandle = (g, l, r = 0.03) => handle(g, { wood: JA.olive, grip: JA.brownD,
+  knobFn: (g, r) => pumpkin(g, r * 1.55, 0, -0.082, 0, { stemTilt: 0.5 }) }, l, r);
+const vineLeaf = (parent, x, y, z, rz, ry = 0, w = 0.026, h = 0.08) => {
+  const lf = M(ext(petalShape(w, h), 0.006, 0.003), clay(JA.leaf), x, y, z); lf.rotation.set(0, ry, rz); parent.add(lf); return lf;
+};
+Object.assign(BUILD.jack, {
+  axe(g) {   // 호박을 쪼갠 조각 날 — 크림 속살 테두리 + 결 선, 등에는 꼭지
+    const top = jackHandle(g, 0.52), cy = top - 0.05, R = 0.125;
+    g.add(M(new THREE.BoxGeometry(0.06, 0.12, 0.07), clay(JA.olive), 0, cy, 0));
+    g.add(M(ext(sliceShape(R * 1.07), 0.034, 0.006, 20), clay(JA.cream), 0.035, cy, 0));
+    g.add(M(ext(sliceShape(R), 0.05, 0.014, 20), clay(JA.orange, { smooth: true }), 0.035, cy, 0));
+    [-30, 30].forEach(d => { const a = d * Math.PI / 180;
+      [-1, 1].forEach(sz => { const ln = M(new THREE.BoxGeometry(R * 0.86, 0.006, 0.004), clay(JA.orangeD), 0.035 + Math.cos(a) * R * 0.46, cy + Math.sin(a) * R * 0.46, sz * 0.0405); ln.rotation.z = a; g.add(ln); }); });
+    const st = M(new THREE.CylinderGeometry(0.02, 0.027, 0.075, 5), clay(JA.stem), -0.045, cy, 0); st.rotation.z = Math.PI / 2; g.add(st);
+    vineLeaf(g, -0.04, cy + 0.035, 0.02, 1.9, 0.3, 0.02, 0.06);
+    g.scale.setScalar(1.18);
+  },
+  shovel(g) {   // 둥근 날이 호박 얼굴 — 앞뒤로 새김
+    const top = jackHandle(g, 0.58);
+    g.add(M(new THREE.CylinderGeometry(0.036, 0.044, 0.07, 6), clay(JA.stem), 0, top + 0.01, 0));
+    g.add(M(ext(roundBlade(0.115, 0.138), 0.024, 0.006, 14), clay(JA.cream), 0, top + 0.03, 0));
+    g.add(M(ext(roundBlade(0.105, 0.13), 0.034, 0.012, 14), clay(JA.orange, { smooth: true }), 0, top + 0.03, 0));
+    const fm = faceMat();
+    [-1, 1].forEach(sz => {
+      carved(g, fm, V3(0, top + 0.03 + 0.125, sz * 0.026), 0.075, V3(0, 0, sz));
+      g.add(M(new THREE.BoxGeometry(0.005, 0.12, 0.004), clay(JA.orangeD), 0, top + 0.03 + 0.07, sz * 0.0305));
+      [-1, 1].forEach(sx => g.add(M(new THREE.BoxGeometry(0.005, 0.1, 0.004), clay(JA.orangeD), sx * 0.075, top + 0.03 + 0.08, sz * 0.0305)));
+    });
+    vineLeaf(g, 0.03, top - 0.0, 0.03, -1.0, 0.4, 0.024, 0.07);
+    g.scale.setScalar(1.18);
+  },
+  water(g) {   // 호박 물조리개 — 통이 호박, 꼭지가 주둥이
+    pumpkin(g, 0.145, 0, 0.17, 0, { squash: 0.9, stemTilt: 0.3 });
+    carved(g, faceMat(), V3(0, 0.185, 0.136), 0.085, V3(0, 0.05, 1));
+    const sp = M(new THREE.CylinderGeometry(0.02, 0.036, 0.22, 6), clay(JA.stem), 0.15, 0.25, 0); sp.rotation.z = -0.9; g.add(sp);
+    g.add(M(new THREE.TorusGeometry(0.03, 0.01, 4, 8), clay(JA.stemD), 0.245, 0.34, 0));
+    vineLeaf(g, -0.02, 0.35, 0.02, 0.9, 0.5, 0.03, 0.09);
+    g.scale.setScalar(1.25);
+  },
+  rod(g) {
+    rodFrame(g, { knobFn: g => pumpkin(g, 0.062, 0, -0.095, 0, { stemTilt: 0.5 }), rear: clay(JA.olive), pole: (p, L) => {
+      p.add(M(new THREE.CylinderGeometry(0.013, 0.026, L, 6), clay(JA.stem), 0, L / 2, 0));
+      [0.25, 0.5, 0.75].forEach(f => p.add(M(new THREE.CylinderGeometry(0.02 - f * 0.008, 0.02 - f * 0.008, 0.014, 6), clay(JA.stemD), 0, L * f, 0)));
+      vineLeaf(p, 0, L * 0.35, 0, -1.1, 0.8, 0.025, 0.1); vineLeaf(p, 0, L * 0.62, 0, -1.2, -1.2, 0.022, 0.085);
+    } }, b => pumpkin(b, 0.052, 0, 0, 0, { squash: 0.9, stemTilt: 0.25 }));
+  },
+  hoe(g) {   // 곡괭이 양팔은 지키고(실루엣) 팔 색을 호박·속살로, 가운데에 꼬마 호박
+    const top = jackHandle(g, 0.52), hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    hd.add(M(new THREE.BoxGeometry(0.08, 0.08, 0.075), clay(JA.olive)));
+    pickArms(hd, clay(JA.orange), clay(JA.cream));
+    pumpkin(hd, 0.06, 0, 0.045, 0, { stemTilt: 0.3 });
+    g.scale.setScalar(1.18);
+  },
+  sickle(g) {
+    const top = handle(g, { wood: JA.olive, grip: JA.brownD, knobFn: (g, r) => pumpkin(g, r * 1.5, 0, -0.082, 0, { stemTilt: 0.5 }) }, 0.30, 0.034);
+    sickleBlade(g, top, clay(JA.orange), clay(JA.cream), 1.25);
+    calyx(g, top - 0.01, JA.leaf, 0.034);
+    g.scale.setScalar(1.18);
+  },
+  hammer(g) {   // 줄기 막대 양끝에 호박 — 꼭지가 바깥으로
+    const top = jackHandle(g, 0.50);
+    const head = M(new THREE.CylinderGeometry(0.036, 0.036, 0.16, 6), clay(JA.stem), 0, top - 0.04, 0); head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => { const p = pumpkin(g, 0.085, sx * 0.1, top - 0.04, 0, { squash: 0.85 }); p.rotation.z = -sx * Math.PI / 2; });
+    g.scale.setScalar(1.18);
+  },
+  net(g) {
+    g.add(M(new THREE.CylinderGeometry(0.028, 0.03, 0.72, 6), clay(JA.olive), 0, 0.25, 0));
+    g.add(M(new THREE.SphereGeometry(0.036, 6, 5), clay(JA.brownD), 0, -0.1, 0));
+    const ring = M(new THREE.TorusGeometry(0.17, 0.02, 6, 16), clay(JA.stem), 0, 0.6, 0); ring.rotation.x = Math.PI / 2; g.add(ring);
+    [[0.5, 0.04], [2.3, 0.03], [4.0, 0.035]].forEach(([a, r]) => pumpkin(g, r, Math.cos(a) * 0.17, 0.6 + r * 0.7, Math.sin(a) * 0.17, { squash: 0.85, stemTilt: 0.2 }));
+    vineLeaf(g, 0.15, 0.62, -0.08, -1.3, 1.9, 0.02, 0.07);
+    g.add(M(new THREE.ConeGeometry(0.16, 0.3, 12, 1, true), netBagC(0xffe6b8, 0.5), 0, 0.74, 0));
+    g.scale.setScalar(1.25);
+  },
+  seed(g) {   // 주머니 자체가 호박
+    pumpkin(g, 0.125, 0, 0.09, 0, { squash: 0.92, stemTilt: 0.3 });
+    vineLeaf(g, 0.02, 0.2, 0.0, -1.0, 0.5, 0.03, 0.09);
+    [[-0.04, 0.2, 0.05, 0.4], [0.05, 0.19, -0.02, -0.5]].forEach(([x, y, z, ry]) => { const s = M(new THREE.SphereGeometry(0.014, 6, 4), clay(JA.cream), x, y, z); s.scale.set(1, 0.5, 0.6); s.rotation.y = ry; g.add(s); });
+    g.scale.setScalar(1.25);
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+//  B 🦇 달밤 보라 — 박쥐 날개 날 · 가마솥 · 끝마다 꼬마 호박 하나
+// ─────────────────────────────────────────────────────────────
+const batHandle = (g, l, r = 0.03) => handle(g, { wood: BT.plum, grip: BT.night,
+  knobFn: (g, r) => pumpkin(g, r * 1.3, 0, -0.08, 0, { color: BT.orange, stemTilt: 0.5, stem: 0x6b8f3c }) }, l, r);
+const starGlow = () => clay(BT.gold, { glow: BT.gold, k: 0.9 });
+Object.assign(BUILD.bat, {
+  axe(g) {   // 날이 박쥐 날개 — 어깨가 자루에, 끝 뾰족한 손가락 셋
+    const top = batHandle(g, 0.52), cy = top - 0.05;
+    g.add(M(new THREE.BoxGeometry(0.06, 0.12, 0.07), clay(BT.night), 0, cy, 0));
+    g.add(M(ext(batWingShape(1.12), 0.04, 0.008, 10), clay(BT.vio, { smooth: true }), 0.025, cy, 0));
+    [-1, 1].forEach(sz => g.add(M(ext(starShape(0.024), 0.008, 0.003), starGlow(), 0.1, cy + 0.02, sz * 0.025)));
+    pumpkin(g, 0.03, 0.0, cy + 0.085, 0.0, { color: BT.orange, stem: 0x6b8f3c });
+    g.scale.setScalar(1.18);
+  },
+  shovel(g) {   // 보랏빛 둥근 날에 박쥐 한 마리 양각
+    const top = batHandle(g, 0.58);
+    g.add(M(new THREE.CylinderGeometry(0.036, 0.044, 0.07, 7), clay(BT.night), 0, top + 0.01, 0));
+    g.add(M(ext(roundBlade(0.105, 0.13), 0.03, 0.012, 14), clay(BT.vio, { smooth: true }), 0, top + 0.03, 0));
+    [-1, 1].forEach(sz => {
+      g.add(M(ext(batSilShape(1.0), 0.008, 0.003, 4), clay(BT.night), 0, top + 0.03 + 0.12, sz * 0.0335));
+      g.add(M(ext(starShape(0.018), 0.006, 0.002), starGlow(), 0.06, top + 0.03 + 0.062, sz * 0.0335));
+      g.add(M(ext(starShape(0.013), 0.006, 0.002), starGlow(), -0.055, top + 0.03 + 0.07, sz * 0.0335));
+    });
+    pumpkin(g, 0.03, 0.06, top - 0.005, 0.0, { color: BT.orange, stem: 0x6b8f3c });
+    g.scale.setScalar(1.18);
+  },
+  water(g) {   // 마녀 가마솥 물조리개 — 초록 물약이 보글보글
+    const prof = [[0.001, 0], [0.058, 0.002], [0.095, 0.035], [0.118, 0.105], [0.108, 0.165], [0.088, 0.2]].map(([r, y]) => new THREE.Vector2(r, y));
+    g.add(M(new THREE.LatheGeometry(prof, 12), clay(BT.pot, { smooth: true }), 0, 0.08, 0));
+    const rim = M(new THREE.TorusGeometry(0.09, 0.013, 5, 14), clay(BT.lilac), 0, 0.282, 0); rim.rotation.x = Math.PI / 2; g.add(rim);
+    const potion = M(new THREE.CircleGeometry(0.088, 12), clay(BT.potion, { glow: BT.potion, k: 0.6, side: THREE.DoubleSide }), 0, 0.272, 0); potion.rotation.x = -Math.PI / 2; g.add(potion);
+    [[0.04, 0.3, 0.03, 0.02], [-0.05, 0.31, -0.02, 0.016], [0.0, 0.33, -0.05, 0.012]].forEach(([x, y, z, r]) => g.add(M(new THREE.SphereGeometry(r, 6, 5), clay(BT.potion, { glow: BT.potion, k: 0.6 }), x, y, z)));
+    [0, 2.1, 4.2].forEach(a => { const l = M(new THREE.ConeGeometry(0.022, 0.06, 4), clay(BT.pot), Math.cos(a) * 0.066, 0.075, Math.sin(a) * 0.066); l.rotation.x = Math.PI; g.add(l); });
+    const arch = M(new THREE.TorusGeometry(0.092, 0.01, 4, 14, Math.PI), clay(BT.lilac), 0, 0.28, 0); arch.rotation.y = Math.PI / 2; g.add(arch);
+    const band = M(new THREE.TorusGeometry(0.11, 0.011, 4, 14), clay(BT.orange), 0, 0.2, 0); band.rotation.x = Math.PI / 2; g.add(band);
+    const sp = M(new THREE.CylinderGeometry(0.02, 0.036, 0.22, 6), clay(BT.vio), 0.15, 0.27, 0); sp.rotation.z = -0.9; g.add(sp);
+    g.add(M(ext(starShape(0.04), 0.014, 0.004), starGlow(), 0.245, 0.35, 0));
+    g.scale.setScalar(1.25);
+  },
+  rod(g) {
+    rodFrame(g, { knobFn: g => pumpkin(g, 0.05, 0, -0.095, 0, { color: BT.orange, stem: 0x6b8f3c, stemTilt: 0.5 }), rear: clay(BT.night), line: 0xd9dcf0, pole: (p, L) => {
+      p.add(M(new THREE.CylinderGeometry(0.016, 0.027, L, 6), clay(BT.plum), 0, L / 2, 0));
+      [0.2, 0.42, 0.64].forEach(f => p.add(M(new THREE.CylinderGeometry(0.026 - f * 0.012, 0.026 - f * 0.012, 0.016, 6), clay(BT.lilac), 0, L * f, 0)));
+      p.add(M(ext(starShape(0.035), 0.012, 0.004), starGlow(), 0, L + 0.01, 0));
+    } }, b => pumpkin(b, 0.05, 0, 0, 0, { color: BT.orange, stem: 0x6b8f3c, squash: 0.9, stemTilt: 0.2 }));
+  },
+  hoe(g) {   // 박쥐 한 마리 — 가운데 몸은 꼬마 잭오랜턴, 양팔이 처진 날개
+    const top = batHandle(g, 0.52), hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    hd.add(M(new THREE.BoxGeometry(0.06, 0.07, 0.06), clay(BT.night)));
+    [-1, 1].forEach(sx => {
+      const pv = new THREE.Group(); pv.position.set(sx * 0.03, 0.0, 0); pv.rotation.y = sx > 0 ? 0 : Math.PI; hd.add(pv);
+      const w = M(ext(batWingShape(0.92), 0.034, 0.007, 10), clay(BT.vio, { smooth: true })); w.rotation.z = -0.62; pv.add(w);
+    });
+    pumpkin(hd, 0.058, 0, 0.0, 0.0, { color: BT.orange, stem: 0x6b8f3c, stemTilt: 0.2 });
+    carved(hd, clay(BT.night, { glow: BT.gold, k: 0.9 }), V3(0, 0.0, 0.052), 0.034, V3(0, 0, 1), 0.2);
+    [-1, 1].forEach(sx => { const e = M(new THREE.ConeGeometry(0.014, 0.04, 4), clay(BT.night), sx * 0.03, 0.075, 0); e.rotation.z = -sx * 0.25; hd.add(e); });
+    g.scale.setScalar(1.18);
+  },
+  sickle(g) {   // 가는 초승달 + 별 하나
+    const top = batHandle(g, 0.30, 0.034);
+    const R = 0.21, cx = -0.05, deg = 70, a0 = deg * Math.PI / 180;
+    g.add(M(ext(crescentShape(R, cx, deg), 0.02, 0.006, 20), clay(BT.lilac, { smooth: true }), -R * Math.cos(a0), top + R * Math.sin(a0), 0));
+    g.add(M(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clay(BT.night), 0, top - 0.01, 0));
+    g.add(M(ext(starShape(0.026), 0.01, 0.004), starGlow(), 0, top - 0.01, 0.036));
+    g.scale.setScalar(1.18);
+  },
+  hammer(g) {   // 보라 북통 + 주황 띠 + 금별
+    const top = batHandle(g, 0.50);
+    const head = M(new THREE.CylinderGeometry(0.056, 0.056, 0.2, 10), clay(BT.vio), 0, top - 0.04, 0); head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => { const c = M(new THREE.CylinderGeometry(0.064, 0.06, 0.036, 10), clay(BT.lilac), sx * 0.105, top - 0.04, 0); c.rotation.z = Math.PI / 2; g.add(c); });
+    const band = M(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 10), clay(BT.orange), 0, top - 0.04, 0); band.rotation.z = Math.PI / 2; g.add(band);
+    [[-0.055, 0.018], [0.055, 0.018]].forEach(([x, r]) => g.add(M(ext(starShape(r), 0.008, 0.003), starGlow(), x, top - 0.04, 0.058)));
+    g.scale.setScalar(1.18);
+  },
+  net(g) {
+    g.add(M(new THREE.CylinderGeometry(0.028, 0.03, 0.72, 7), clay(BT.plum), 0, 0.25, 0));
+    g.add(M(new THREE.SphereGeometry(0.036, 6, 5), clay(BT.night), 0, -0.1, 0));
+    const ring = M(new THREE.TorusGeometry(0.17, 0.02, 6, 16), clay(BT.vio), 0, 0.6, 0); ring.rotation.x = Math.PI / 2; g.add(ring);
+    [[0.6, 0.03], [2.4, 0.022], [4.1, 0.026]].forEach(([a, r]) => g.add(M(ext(starShape(r), 0.01, 0.004), starGlow(), Math.cos(a) * 0.17, 0.6, Math.sin(a) * 0.17)));
+    pumpkin(g, 0.04, -0.17, 0.62, 0, { color: BT.orange, stem: 0x6b8f3c });
+    g.add(M(new THREE.ConeGeometry(0.16, 0.3, 12, 1, true), netBagC(0xc9bff0, 0.45), 0, 0.74, 0));
+    g.scale.setScalar(1.25);
+  },
+  seed(g) {
+    const bag = M(new THREE.SphereGeometry(0.115, 10, 8), clay(BT.vio, { smooth: true }), 0, 0.08, 0); bag.scale.set(1, 1.12, 1); g.add(bag);
+    g.add(M(new THREE.CylinderGeometry(0.05, 0.07, 0.06, 8), clay(BT.vio), 0, 0.2, 0));
+    const cord = M(new THREE.TorusGeometry(0.058, 0.012, 5, 14), clay(BT.orange), 0, 0.2, 0); cord.rotation.x = Math.PI / 2; g.add(cord);
+    g.add(M(new THREE.ConeGeometry(0.06, 0.05, 8, 1, true), clay(BT.vio, { side: THREE.DoubleSide }), 0, 0.245, 0));
+    g.add(M(ext(batSilShape(0.75), 0.008, 0.003, 4), clay(BT.night), 0, 0.09, 0.112));
+    g.add(M(ext(starShape(0.016), 0.006, 0.002), starGlow(), 0.04, 0.14, 0.106));
+    g.scale.setScalar(1.25);
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+//  C 🌽 수확제 — 짚·옥수수·허수아비 기움천 · 새끼줄
+// ─────────────────────────────────────────────────────────────
+function twine(g, y, r, n = 1, gap = 0.022, col = HV.rope) {
+  for (let i = 0; i < n; i++) { const t = M(new THREE.TorusGeometry(r, 0.0065, 4, 10), clay(col), 0, y + i * gap, 0); t.rotation.x = Math.PI / 2; g.add(t); }
+}
+const strawKnob = (g, r) => {   // 짚 다발 — 끝을 묶고 아래로 풀어진다
+  g.add(M(new THREE.CylinderGeometry(r * 1.55, r * 0.95, 0.055, 7), clay(HV.straw), 0, -0.075, 0));
+  const t = M(new THREE.TorusGeometry(r * 1.2, 0.007, 4, 8), clay(HV.rope), 0, -0.07, 0); t.rotation.x = Math.PI / 2; g.add(t);
+  [0, 2.1, 4.2].forEach((a, i) => { const s = M(new THREE.ConeGeometry(0.011, 0.07, 4), clay(i ? HV.strawD : HV.straw), Math.cos(a) * r * 0.9, -0.125, Math.sin(a) * r * 0.9); s.rotation.set(Math.PI + Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35); g.add(s); });
+};
+const hvHandle = (g, l, r = 0.03, twines = true) => {
+  const top = handle(g, { wood: HV.wood, grip: HV.woodD, knobFn: strawKnob }, l, r);
+  if (twines) { twine(g, 0.2, r * 0.95, 2, 0.026); twine(g, l - 0.15, r * 0.78, 1); }   // ⚠️ 0.2 아래는 팔뚝과 겹친다(쥐는 점 바로 위)
+  return top;
+};
+// 기움천 — 작은 네모 + x 박음질
+function patch(parent, x, y, z, w, col, sz = 1, rz = 0) {
+  const gr = new THREE.Group(); gr.position.set(x, y, z); gr.rotation.z = rz; parent.add(gr);
+  gr.add(M(new THREE.BoxGeometry(w, w, 0.008), clay(col), 0, 0, sz * 0.004));
+  [0.7, -0.7].forEach(a => { const s = M(new THREE.BoxGeometry(w * 1.1, 0.005, 0.004), clay(HV.woodD), 0, 0, sz * 0.009); s.rotation.z = a; gr.add(s); });
+  return gr;
+}
+const cobGeo = (() => {
+  const c = new Map();
+  return (len, r0, r1) => {
+    const key = [len, r0, r1].join(); if (c.has(key)) return c.get(key);
+    const g = new THREE.CylinderGeometry(r1, r0, len, 8, 6), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), row = Math.round((y / len + 0.5) * 6), col = Math.round(Math.atan2(z, x) / (Math.PI / 4));
+      const k = ((row + col) & 1) ? 1.09 : 0.95; p.setXYZ(i, x * k, y, z * k);
+    }
+    g.computeVertexNormals(); c.set(key, g); return g;
+  };
+})();
+function cob(parent, x, y, z, len = 0.15, r0 = 0.05, r1 = 0.034, huskN = 3) {   // +y 가 끝(뾰족한 쪽)
+  const gr = new THREE.Group(); gr.position.set(x, y, z); parent.add(gr);
+  gr.add(M(cobGeo(len, r0, r1), clay(HV.corn), 0, 0, 0));
+  gr.add(M(new THREE.SphereGeometry(r1 * 1.0, 8, 5), clay(HV.cornD), 0, len / 2, 0));
+  for (let i = 0; i < huskN; i++) {
+    const a = i * Math.PI * 2 / huskN + 0.4, l = M(new THREE.ConeGeometry(r0 * 0.62, len * 0.7, 4), clay(i % 2 ? HV.husk : HV.huskD), Math.cos(a) * r0 * 0.78, -len * 0.28, Math.sin(a) * r0 * 0.78);
+    l.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); gr.add(l);
+  }
+  return gr;
+}
+function strawHat(parent, x, y, z, s = 1) {   // 허수아비 모자
+  const gr = new THREE.Group(); gr.position.set(x, y, z); gr.scale.setScalar(s); parent.add(gr);
+  gr.add(M(new THREE.CylinderGeometry(0.085, 0.09, 0.012, 12), clay(HV.straw), 0, 0, 0));
+  gr.add(M(new THREE.CylinderGeometry(0.04, 0.05, 0.05, 10), clay(HV.straw), 0, 0.03, 0));
+  gr.add(M(new THREE.CylinderGeometry(0.052, 0.052, 0.016, 10), clay(HV.red), 0, 0.016, 0));
+  return gr;
+}
+Object.assign(BUILD.harvest, {
+  axe(g) {   // 수염 도끼 — 짚빛 날 + 빨간 끈 + 기움천, 등에서 짚이 삐죽
+    const top = hvHandle(g, 0.52), cy = top - 0.05;
+    g.add(M(new THREE.BoxGeometry(0.06, 0.12, 0.07), clay(HV.woodD), 0, cy, 0));
+    const sh = new THREE.Shape(); sh.moveTo(0, -0.075); sh.lineTo(0.1, -0.115); sh.quadraticCurveTo(0.215, 0, 0.1, 0.115); sh.lineTo(0, 0.075); sh.closePath();
+    g.add(M(ext(sh, 0.044, 0.01, 10), clay(HV.straw), 0.03, cy, 0));
+    const edge = new THREE.Shape(); edge.moveTo(0.19, -0.075); edge.quadraticCurveTo(0.255, 0, 0.19, 0.075); edge.lineTo(0.17, 0.05); edge.quadraticCurveTo(0.2, 0, 0.17, -0.05); edge.closePath();
+    g.add(M(ext(edge, 0.03, 0.005, 6), clay(HV.cream), 0.03, cy, 0));
+    [-1, 1].forEach(sz => patch(g, 0.095, cy - 0.01, sz * 0.054, 0.052, sz > 0 ? HV.red : HV.blue, sz, 0.12));
+    g.add(M(new THREE.BoxGeometry(0.014, 0.15, 0.085), clay(HV.red), 0.02, cy, 0));
+    [0.3, -0.2].forEach((a, i) => { const s = M(new THREE.ConeGeometry(0.012, 0.09, 4), clay(i ? HV.strawD : HV.straw), -0.065, cy + (i ? -0.02 : 0.025), 0.01 * (i ? -1 : 1)); s.rotation.z = Math.PI / 2 + a; g.add(s); });
+    g.scale.setScalar(1.18);
+  },
+  shovel(g) {   // 짚빛 둥근 날 + 큰 기움천 + 목에 옥수수잎 깃
+    const top = hvHandle(g, 0.58);
+    g.add(M(new THREE.CylinderGeometry(0.036, 0.044, 0.07, 7), clay(HV.woodD), 0, top + 0.01, 0));
+    calyx(g, top + 0.03, HV.husk, 0.034);
+    g.add(M(ext(roundBlade(0.105, 0.13), 0.034, 0.012, 14), clay(HV.straw, { smooth: true }), 0, top + 0.03, 0));
+    [-1, 1].forEach(sz => {
+      patch(g, 0.0, top + 0.03 + 0.1, sz * 0.0485, 0.085, sz > 0 ? HV.red : HV.blue, sz, 0.12);
+      [-0.075, 0.075].forEach(x => g.add(M(new THREE.BoxGeometry(0.005, 0.1, 0.004), clay(HV.strawD), x, top + 0.03 + 0.07, sz * 0.0465)));
+    });
+    g.scale.setScalar(1.18);
+  },
+  water(g) {   // 새끼줄 두른 양동이 — 짚 테두리 · 기움천 · 줄 손잡이
+    g.add(M(new THREE.CylinderGeometry(0.098, 0.088, 0.2, 10), clay(HV.burlap), 0, 0.18, 0));
+    twine(g, 0.12, 0.094, 2, 0.04); twine(g, 0.25, 0.098, 1);
+    const rim = M(new THREE.TorusGeometry(0.098, 0.011, 5, 14), clay(HV.straw), 0, 0.282, 0); rim.rotation.x = Math.PI / 2; g.add(rim);
+    patch(g, 0, 0.19, 0.093, 0.07, HV.red, 1, 0.1);
+    const bail = M(new THREE.TorusGeometry(0.098, 0.008, 4, 14, Math.PI), clay(HV.rope), 0, 0.28, 0); bail.rotation.y = Math.PI / 2; g.add(bail);
+    const sp = M(new THREE.CylinderGeometry(0.02, 0.036, 0.22, 6), clay(HV.husk), 0.15, 0.26, 0); sp.rotation.z = -0.9; g.add(sp);
+    g.scale.setScalar(1.25);
+  },
+  rod(g) {   // 옥수숫대 장대 — 마디마다 잎, 끝에 수염, 찌는 작은 옥수수
+    rodFrame(g, { knobFn: g => strawKnob(g, 0.03), rear: clay(HV.woodD), line: 0xece2c8, pole: (p, L) => {
+      p.add(M(new THREE.CylinderGeometry(0.014, 0.026, L, 6), clay(HV.husk), 0, L / 2, 0));
+      [0.2, 0.42, 0.64, 0.84].forEach(f => p.add(M(new THREE.CylinderGeometry(0.026 - f * 0.012, 0.026 - f * 0.012, 0.016, 6), clay(HV.huskD), 0, L * f, 0)));
+      [[0.3, 0.5, 1.1], [0.55, 3.7, 1.2]].forEach(([f, ry, rz]) => { const lf = M(ext(petalShape(0.026, 0.14), 0.006, 0.003), clay(HV.husk), 0, L * f, 0); lf.rotation.set(0, ry, -rz); p.add(lf); });
+      [0, 2.1, 4.2].forEach(a => { const s = M(new THREE.ConeGeometry(0.006, 0.07, 4), clay(HV.strawD), Math.cos(a) * 0.012, L + 0.03, Math.sin(a) * 0.012); s.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); p.add(s); });
+    } }, b => cob(b, 0, 0, 0, 0.1, 0.034, 0.024, 3));
+  },
+  hoe(g) {   // 옥수수 곡괭이 — 양팔이 옥수수 색, 가운데엔 허수아비 모자
+    const top = hvHandle(g, 0.52), hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    hd.add(M(new THREE.BoxGeometry(0.08, 0.08, 0.075), clay(HV.woodD)));
+    pickArms(hd, clay(HV.corn), clay(HV.husk));
+    strawHat(hd, 0, 0.042, 0, 0.95);
+    g.scale.setScalar(1.18);
+  },
+  sickle(g) {
+    const top = hvHandle(g, 0.30, 0.034);
+    sickleBlade(g, top, clay(0x9a8460), clay(HV.cream), 1.2);
+    calyx(g, top - 0.01, HV.husk, 0.034);
+    g.scale.setScalar(1.18);
+  },
+  hammer(g) {   // 옥수수 방망이 — 양끝이 옥수수
+    const top = hvHandle(g, 0.50);
+    const head = M(new THREE.CylinderGeometry(0.04, 0.04, 0.12, 8), clay(HV.woodD), 0, top - 0.04, 0); head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => { const c = cob(g, sx * 0.1, top - 0.04, 0, 0.15, 0.052, 0.036, 3); c.rotation.z = -sx * Math.PI / 2; });
+    g.scale.setScalar(1.18);
+  },
+  net(g) {
+    g.add(M(new THREE.CylinderGeometry(0.028, 0.03, 0.72, 7), clay(HV.wood), 0, 0.25, 0));
+    strawKnob(g, 0.03); twine(g, 0.2, 0.027, 2, 0.026);
+    const ring = M(new THREE.TorusGeometry(0.17, 0.022, 6, 16), clay(HV.straw), 0, 0.6, 0); ring.rotation.x = Math.PI / 2; g.add(ring);
+    [0.4, 1.6, 2.8, 4.1, 5.3].forEach(a => { const t = M(new THREE.BoxGeometry(0.014, 0.05, 0.05), clay(HV.rope), Math.cos(a) * 0.17, 0.6, Math.sin(a) * 0.17); t.rotation.y = -a; g.add(t); });
+    const bow = new THREE.Group(); bow.position.set(0, 0.62, 0.17); g.add(bow);
+    [-1, 1].forEach(sx => { const w = M(new THREE.ConeGeometry(0.03, 0.08, 4), clay(HV.red), sx * 0.04, 0, 0); w.rotation.z = -sx * Math.PI / 2; bow.add(w); });
+    bow.add(M(new THREE.BoxGeometry(0.03, 0.03, 0.03), clay(HV.red)));
+    g.add(M(new THREE.ConeGeometry(0.16, 0.3, 12, 1, true), netBagC(0xf3e3b8, 0.5), 0, 0.74, 0));
+    g.scale.setScalar(1.25);
+  },
+  seed(g) {   // 삼베 자루 — 새끼줄 목 · 기움천 · 터진 짚
+    const bag = M(new THREE.SphereGeometry(0.115, 10, 8), clay(HV.burlap, { smooth: true }), 0, 0.08, 0); bag.scale.set(1, 1.12, 1); g.add(bag);
+    g.add(M(new THREE.CylinderGeometry(0.05, 0.07, 0.06, 8), clay(HV.burlap), 0, 0.2, 0));
+    twine(g, 0.2, 0.058, 2, 0.014);
+    g.add(M(new THREE.ConeGeometry(0.06, 0.06, 8, 1, true), clay(HV.burlapD, { side: THREE.DoubleSide }), 0, 0.255, 0));
+    patch(g, -0.035, 0.07, 0.106, 0.06, HV.red, 1, 0.15); patch(g, 0.05, 0.13, 0.095, 0.04, HV.blue, 1, -0.2);
+    [0, 1, 2].forEach(i => { const k = M(new THREE.SphereGeometry(0.013, 6, 4), clay(HV.corn), -0.03 + i * 0.03, 0.29, 0.0); k.scale.set(1, 1.2, 0.8); g.add(k); });
+    g.scale.setScalar(1.25);
+  },
+});
+
+const THEMES = [
+  { id: 'jack',    ico: '🎃', name: 'A 잭오랜턴', sub: '날·통이 호박 · 밤엔 얼굴이 켜짐', tint: [0xffe3c4, 0x9a7658] },
+  { id: 'bat',     ico: '🦇', name: 'B 달밤 보라', sub: '박쥐 날개 날 · 가마솥 · 꼬마 호박', tint: [0xddd3f4, 0x8a7fbf] },
+  { id: 'harvest', ico: '🌽', name: 'C 수확제',   sub: '짚·옥수수·기움천·새끼줄', tint: [0xf6e8b8, 0x9a8c58] },
+];
+
+function buildTool(theme, tool) {
+  const g = new THREE.Group();
+  BUILD[theme][tool](g);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData.toolId = tool;
+  return g;
+}
+
+// 굽기 통계 — 게임 bake() 와 같은 버킷 키(평면/부드러움·면·투명·발광)
+function statsOf(root) {
+  const b = new Set(); let meshes = 0, tris = 0;
+  root.traverse(o => {
+    if (!o.isMesh) return; meshes++;
+    const m = o.material, gl = m.userData.glow;
+    b.add([m.flatShading ? 'f' : 's', m.side, m.transparent ? m.opacity : 1, gl ? `g${gl.hex}:${gl.k}` : ''].join('|'));
+    const g = o.geometry; tris += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+  });
+  return { meshes, tris: Math.round(tris), calls: b.size };
+}
+const themeStats = {};
+function computeThemeStats() {
+  ['base', 'jack', 'bat', 'harvest'].forEach(t => {
+    const arr = TOOLS.map(tl => statsOf(buildTool(t, tl.id)));
+    themeStats[t] = {
+      meshAvg: Math.round(arr.reduce((a, s) => a + s.meshes, 0) / arr.length), meshMax: Math.max(...arr.map(s => s.meshes)),
+      callAvg: +(arr.reduce((a, s) => a + s.calls, 0) / arr.length).toFixed(1), callMax: Math.max(...arr.map(s => s.calls)),
+      triAvg: Math.round(arr.reduce((a, s) => a + s.tris, 0) / arr.length), per: Object.fromEntries(TOOLS.map((tl, i) => [tl.id, arr[i]])),
+    };
+  });
+}
+
+// =============================================================
+//  캐릭터 — 게임 팔 구조(어깨 피벗 → 조준 → 손) 그대로
+// =============================================================
+const ANIMALS = {
+  fox:    { id: 'fox',    ico: '🦊', body: 0xf0883a, belly: 0xf9ecd8, ear: 0x8a4a24, R: 0.52, bs: [0.90, 1.08, 0.90], HR: 0.37, HY: 1.26, tail: 'bushy' },
+  rabbit: { id: 'rabbit', ico: '🐰', body: 0xf3eeea, belly: 0xffffff, ear: 0xf0c0c8, R: 0.46, bs: [1.00, 0.96, 1.00], HR: 0.39, HY: 1.12, tail: 'puff' },
+  cat:    { id: 'cat',    ico: '🐱', body: 0x9fa0c2, belly: 0xf2f2f8, ear: 0xf0b0b8, R: 0.50, bs: [0.88, 1.10, 0.88], HR: 0.36, HY: 1.25, tail: 'long' },
+  bear:   { id: 'bear',   ico: '🐻', body: 0x936a44, belly: 0xd2b38a, ear: 0x6a4828, R: 0.63, bs: [1.08, 1.00, 1.06], HR: 0.44, HY: 1.34, tail: 'stub' },
+};
+function taperedTube(pts, radiusFn, segs = 24, radial = 8) {
+  const curve = new THREE.CatmullRomCurve3(pts), frames = curve.computeFrenetFrames(segs, false), pos = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const P = curve.getPointAt(i / segs), N = frames.normals[i], B = frames.binormals[i], r = radiusFn(i / segs);
+    for (let j = 0; j < radial; j++) { const A = j / radial * Math.PI * 2, ca = Math.cos(A), sa = Math.sin(A); pos.push(P.x + (N.x * ca + B.x * sa) * r, P.y + (N.y * ca + B.y * sa) * r, P.z + (N.z * ca + B.z * sa) * r); }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * radial + j, b = i * radial + (j + 1) % radial, c = (i + 1) * radial + j, d = (i + 1) * radial + (j + 1) % radial; idx.push(a, c, b, b, c, d); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+  return { geo, end: curve.getPointAt(1) };
+}
+function buildAnimal(a) {
+  const g = new THREE.Group(), R = a.R, bs = a.bs, bodyY = R * bs[1] + 0.02;
+  const body = M(new THREE.SphereGeometry(R, 32, 24), plushMat(a.body), 0, bodyY, 0); body.scale.set(...bs); g.add(body);
+  const belly = M(new THREE.SphereGeometry(R * 0.62, 24, 18), plushMat(a.belly), 0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  g.add(buildAnimalHead(a.id, { HR: a.HR, HY: a.HY, body: a.body, belly: a.belly }));
+  [-1, 1].forEach(s => g.add(M(new THREE.CapsuleGeometry(R * 0.17, R * 0.34, 4, 8), plushMat(a.body), s * R * 0.36, bodyY - R * 0.92, R * 0.10)));
+  const tail = new THREE.Group(); tail.position.set(0, bodyY + R * 0.10, -R * bs[2] * 0.86); g.add(tail);
+  const tm = plushMat(a.body), V = (x, y, z) => V3(R * x, R * y, R * z);
+  const tube = (pts, rad) => { const { geo, end } = taperedTube(pts, rad); tail.add(new THREE.Mesh(geo, tm)); return end; };
+  if (a.tail === 'bushy') {
+    const rad = u => R * (0.29 + 0.05 * Math.sin(Math.PI * u)) * (1 - 0.38 * Math.max(0, u - 0.70) / 0.30);
+    const e = tube([V(0, -0.05, 0.10), V(0, 0.06, -0.30), V(0, 0.30, -0.50), V(0, 0.60, -0.58), V(0, 0.88, -0.54)], rad);
+    tail.add(M(new THREE.SphereGeometry(rad(1) * 0.98, 12, 9), plushMat(a.belly), e.x, e.y, e.z));
+  } else if (a.tail === 'long') {
+    const rad = u => R * (0.17 * (1 - u * 0.62) + 0.02);
+    const e = tube([V(0, -0.05, 0.10), V(0, 0.08, -0.36), V(0, 0.45, -0.60), V(0, 0.90, -0.58), V(0, 1.22, -0.36)], rad);
+    tail.add(M(new THREE.SphereGeometry(rad(1), 10, 8), tm, e.x, e.y, e.z));
+  } else if (a.tail === 'puff') tail.add(M(new THREE.SphereGeometry(R * 0.30, 12, 10), plushMat(a.belly), 0, R * 0.04, -R * 0.06));
+  else tail.add(M(new THREE.SphereGeometry(R * 0.17, 10, 8), tm, 0, R * 0.06, -R * 0.02));
+  // 팔 — game.js mkArm 과 같다(어깨 = 가로폭 비례, 조준 = ARM_AIM)
+  const arms = {}, ar = R * ARM_R_K, al = R * 0.32;
+  [1, -1].forEach(side => {
+    const pivot = new THREE.Group(); pivot.rotation.order = 'YXZ'; pivot.position.set(side * R * 0.85 * bs[0], bodyY + R * 0.54, R * 0.20); g.add(pivot);
+    const aim = new THREE.Group(); aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L); pivot.add(aim);
+    aim.add(M(new THREE.CapsuleGeometry(ar, al, 4, 8), plushMat(a.body), 0, -(al / 2 + ar * 0.4), 0));
+    aim.add(M(new THREE.SphereGeometry(pawRadius(R), 10, 8), clay(a.ear, { smooth: true }), 0, -(al + ar * 0.9), 0));
+    const hand = new THREE.Group(); hand.position.y = -(al + ar * 0.9); aim.add(hand);
+    arms[side > 0 ? 'R' : 'L'] = { pivot, hand };
+  });
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { a, R, bs, bodyY, HR: a.HR, HY: a.HY, arms, ar, al };
+  return g;
+}
+// 게임 poseHeldTool 의 평상시(스윙 아님) 자세 — 위치는 TOOL_GRIP, 회전은 TOOL_QREST_HOLD × grip.q
+function mountTool(ch, tool, toolId) {
+  const grip = TOOL_GRIP[toolId], p = grip.p.clone();
+  if (grip.pawRel) p.z = gripForwardZ(ch.userData.R);
+  tool.quaternion.copy(TOOL_QREST_HOLD).multiply(grip.q);
+  tool.position.copy(p).applyQuaternion(TOOL_QREST_HOLD);
+  ch.userData.arms.R.hand.add(tool);
+}
+
+// ── 관통·부유 검사 ───────────────────────────────────────────
+//  도구 정점이 몸(타원체)·머리(구)·위팔(캡슐 상단 70%) 안으로 들어간 비율 + 발바닥과의 최소 거리(부유)
+const _v = new THREE.Vector3(), _w = new THREE.Vector3();
+function segDist(p, a, b) { _w.copy(b).sub(a); const t = Math.min(1, Math.max(0, _v.copy(p).sub(a).dot(_w) / _w.lengthSq())); return _v.copy(a).addScaledVector(_w, t).distanceTo(p); }
+function penCheck(theme, toolId, animalId) {
+  const ch = buildAnimal(ANIMALS[animalId]), tool = buildTool(theme, toolId); mountTool(ch, tool, toolId);
+  ch.updateMatrixWorld(true);
+  const { R, bs, bodyY, HR, HY, ar } = ch.userData, A = ch.userData.arms.R;
+  const sh = A.pivot.getWorldPosition(new THREE.Vector3()), paw = A.hand.getWorldPosition(new THREE.Vector3());
+  const upperEnd = sh.clone().lerp(paw, 0.7), pawR = pawRadius(R);
+  let n = 0, inBody = 0, inHead = 0, inArm = 0, minPaw = 1e9, deep = 0; const p = new THREE.Vector3();
+  const Rm = R * (bs[0] + bs[1] + bs[2]) / 3;
+  tool.traverse(o => {
+    if (!o.isMesh) return; const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      p.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); n++;
+      const e = Math.hypot(p.x / (R * bs[0]), (p.y - bodyY) / (R * bs[1]), p.z / (R * bs[2]));
+      const hd = Math.hypot(p.x, p.y - HY, p.z), ad = segDist(p, sh, upperEnd);
+      if (e < 0.97) { inBody++; deep = Math.max(deep, (0.97 - e) * Rm / ar); }
+      else if (hd < HR * 0.97) { inHead++; deep = Math.max(deep, (HR * 0.97 - hd) / ar); }
+      else if (ad < ar * 0.9) { inArm++; deep = Math.max(deep, (ar * 0.9 - ad) / ar); if (window.__dbg) window.__dbg.push([o.geometry.type, +o.position.y.toFixed(3), +(tool.worldToLocal(p.clone()).y).toFixed(3), +(ar * 0.9 - ad).toFixed(3)]); }
+      minPaw = Math.min(minPaw, p.distanceTo(paw));
+    }
+  });
+  return { theme, toolId, animalId, pct: +(100 * (inBody + inHead + inArm) / n).toFixed(1), deep: +(100 * deep).toFixed(0), body: inBody, head: inHead, arm: inArm, verts: n, touch: +(minPaw / pawR).toFixed(2) };
+}
+function penTable() {
+  const rows = [];
+  ['base', 'jack', 'bat', 'harvest'].forEach(t => TOOLS.forEach(tl => Object.keys(ANIMALS).forEach(an => rows.push(penCheck(t, tl.id, an)))));
+  const sum = {};
+  ['base', 'jack', 'bat', 'harvest'].forEach(t => {
+    const r = rows.filter(x => x.theme === t);
+    sum[t] = { avg: +(r.reduce((a, x) => a + x.pct, 0) / r.length).toFixed(2), max: Math.max(...r.map(x => x.pct)), deepAvg: Math.round(r.reduce((a, x) => a + x.deep, 0) / r.length), deepMax: Math.max(...r.map(x => x.deep)), worst: r.reduce((a, x) => x.deep > a.deep ? x : a, r[0]), floatMax: Math.max(...r.map(x => x.touch)) };
+  });
+  return { rows, sum };
+}
+
+// =============================================================
+//  망토 — art.js clothShell 로 굽는다. 좌표는 등 앵커 로컬(cape-concepts 와 같은 규약)
+// =============================================================
+//  face = 겉에서 보이는 색, lining = 안감.
+//  ⚠️ clothShell 의 out/inn 은 **겉면 삼각형 감김이 안쪽을 보게 돼 있어** 바깥에서는 inn 색이 보인다
+//     (실물 망토도 P.capeIn 이 겉으로 나온다 — sims/cape-concepts 'real' 로 확인). 그래서 face 를 inn 에 넣는다.
+const CAPE_C = {
+  wing: { face: 0x5a4693, lining: 0xe0803a, bone: 0x3b2d70, trim: 0xf59a3a },
+  spike: { face: 0x34285f, lining: 0xf08a35, bone: 0x34285f, trim: 0xf59a3a },
+  bats: { face: 0x7a62c0, lining: 0x4c3d85, bone: 0x2f2554, trim: 0xe9a24a },
+};
+const shellColors = c => ({ out: c.lining, inn: c.face });
+const clothMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+
+function capeKit(k) {
+  const R = k.R, bs = k.bs, zc = R * bs[2] * 0.98, anchorY = k.bodyY + R * 0.30;
+  const yTop = (k.HY - k.HR * 0.58) - anchorY, rNeck = k.HR * 0.92 * 1.02;
+  const hAt = y => { const dy = (y + anchorY - k.bodyY) / (R * bs[1]); return R * bs[0] * Math.sqrt(Math.max(0.02, 1 - dy * dy)); };
+  const bodyMax = R * Math.max(bs[0], bs[2]);
+  const BIG = k.tail === 'bushy' || k.tail === 'long';
+  return { R, bs, zc, anchorY, yTop, rNeck, hAt, bodyMax, BIG, ARC: Math.PI * 1.06 };
+}
+// 깃 + 여밈끈 + 꼬마 호박 브로치
+function collar(g, K, trim) {
+  const { R, rNeck, yTop, zc, ARC } = K, tube = R * 0.062;
+  const band = M(new THREE.TorusGeometry(rNeck, tube, 5, 30, ARC), clay(trim), 0, yTop + R * 0.04, zc);
+  band.rotation.x = Math.PI / 2; band.rotation.z = -Math.PI / 2 - ARC / 2; g.add(band);
+  const cord = M(new THREE.TorusGeometry(rNeck * 0.82, tube * 0.42, 4, 16, Math.PI * 2 - ARC), clay(trim), 0, yTop + R * 0.02, zc);
+  cord.rotation.x = Math.PI / 2; cord.rotation.z = -Math.PI / 2 + ARC / 2; g.add(cord);
+  pumpkin(g, R * 0.1, 0, yTop - R * 0.02, zc + rNeck * 0.9, { color: 0xf0893a, stemTilt: 0.2 });
+}
+// 일반 원통형 망토 — art.js BACK.cape 와 같은 식 + 가장자리 변형(spikes) 옵션
+function roundCape(k, o) {
+  const K = capeKit(k), { R, zc, yTop, rNeck, hAt, bodyMax, ARC } = K;
+  const g = new THREE.Group(), yBot = R * o.bot;
+  const rShoulder = Math.max(hAt(yTop - R * 0.45), bodyMax) * (1.10 + o.foldAmt), rHem = rShoulder * o.flare;
+  const VENT = K.BIG ? 0.26 : 0.06, VENT_TOP = K.BIG ? 0.45 : 0.30;
+  const surf = (u, v) => {
+    const vent = VENT * (VENT_TOP + (1 - VENT_TOP) * smooth(0.04, 0.42, v));
+    const s = u < 0.5 ? -1 : 1, t = u < 0.5 ? (0.5 - u) * 2 : (u - 0.5) * 2, th = s * (vent + (ARC / 2 - vent) * t);
+    const r = (rNeck + (rShoulder - rNeck) * smooth(0, 0.30, v) + (rHem - rShoulder) * smooth(0.30, 1, v)) * (1 + o.foldAmt * smooth(0.12, 1, v) * Math.cos(o.folds * th));
+    let y = yTop + (yBot - yTop) * v + o.hem * R * v * v * Math.cos(o.folds * th + Math.PI);
+    if (o.spikes) {   // 가장자리 뾰족 — 삼각파, 자락 쪽에서만
+      const x = (th / ARC + 0.5) * o.spikes, tip = 1 - 2 * Math.abs(x - Math.floor(x) - 0.5);
+      y -= o.spikeDepth * R * tip * smooth(0.45, 1, v);
+    }
+    return { x: Math.sin(th) * r, y, z: zc - Math.cos(th) * r - 0.10 * R * v * v };
+  };
+  const segU = o.segU ?? 40;
+  const m = new THREE.Mesh(clothShell(THREE, surf, { segU, segV: o.segV ?? 13, split: segU / 2, thick: R * 0.035, ...shellColors(o) }), clothMat());
+  m.castShadow = true; g.add(m);
+  collar(g, K, o.trim);
+  g.userData.surf = surf; g.userData.K = K;
+  return g;
+}
+// ── A 펼친 박쥐 날개 ──
+function wingCape(k) {
+  const C = CAPE_C.wing, K = capeKit(k), { R, bs, zc, anchorY } = K, g = new THREE.Group();
+  const bodyY = k.bodyY, toLocal = (x, y, z) => ({ x, y: y + bodyY - anchorY, z: z + zc });
+  const zBody = (x, y) => { const d = 1 - (x / (R * bs[0])) ** 2 - (y / (R * bs[1])) ** 2; return d > 0.001 ? -R * bs[2] * Math.sqrt(d) : null; };
+  const gap = R * 0.05, yN = (k.HY - k.HR * 0.58) - bodyY;
+  const wing = s => {
+    const rx = k.tail === 'stub' ? 0.06 : 0.42;   // 꼬리가 있는 종(🦊🐱🐰)은 두 날개 사이로 꼬리가 지나간다(곰은 그루터기라 붙여도 된다)
+    const P0 = V3(s * R * rx, yN - R * 0.05, 0), P1 = V3(s * R * 1.95, R * 0.02, -R * 0.78), CC = V3(s * R * 0.95, yN + R * 0.62, -R * 0.62);
+    const lead = u => V3((1 - u) ** 2 * P0.x + 2 * u * (1 - u) * CC.x + u * u * P1.x, (1 - u) ** 2 * P0.y + 2 * u * (1 - u) * CC.y + u * u * P1.y, (1 - u) ** 2 * P0.z + 2 * u * (1 - u) * CC.z + u * u * P1.z);
+    const base = u => V3(s * R * lerp(rx, 1.95, u), lerp(-R * 0.62, R * 0.02, ease(u)), lerp(-R * 0.1, -R * 0.78, u));
+    const sc = u => 0.34 * Math.abs(Math.cos(3.5 * Math.PI * u));          // 손가락 끝 u=.14 .43 .71 1.0 / 골짜기 사이
+    const trail = u => base(u).lerp(lead(u), sc(u));
+    const surf = (u, v) => {
+      const p = lead(u).lerp(trail(u), v);
+      p.z -= R * 0.07 * Math.sin(Math.PI * u) * Math.sin(Math.PI * v);                 // 막이 불룩
+      const zb = zBody(p.x, p.y); if (zb != null && p.z > zb - gap) p.z = zb - gap;    // 몸에 붙어 따라가되 뚫지 않는다
+      return toLocal(p.x, p.y, p.z);
+    };
+    const geo = clothShell(THREE, s > 0 ? surf : (u, v) => surf(1 - u, v), { segU: 28, segV: 10, thick: R * 0.03, ...shellColors(C) });
+    const m = new THREE.Mesh(geo, clothMat()); m.castShadow = true; g.add(m);
+    const bone = (pts, r) => { const cv = new THREE.CatmullRomCurve3(pts.map(p => { const q = toLocal(p.x, p.y, p.z - gap * 0.6); return V3(q.x, q.y, q.z); })); g.add(new THREE.Mesh(new THREE.TubeGeometry(cv, 10, r, 4), clay(C.bone))); };
+    bone(Array.from({ length: 7 }, (_, i) => lead(i / 6)), R * 0.016);
+    [0.43, 0.71].forEach(uf => bone([lead(uf * 0.55), lead(uf * 0.8).lerp(trail(uf), 0.5), trail(uf)], R * 0.011));
+  };
+  wing(1); wing(-1);
+  collar(g, K, C.trim);
+  return g;
+}
+// ── B 가장자리 뾰족 짧은 망토 ──
+const spikeCape = k => roundCape(k, { ...CAPE_C.spike, bot: -0.34, flare: 1.14, folds: 0, foldAmt: 0.03, hem: 0, spikes: 9, spikeDepth: 0.34, segU: 66, segV: 12 });
+// ── C 일반 망토 + 작은 박쥐 ──
+function bat(parent, s) {   // s = 박쥐 크기 기준
+  const gr = new THREE.Group(); parent.add(gr);
+  const bm = clay(0x2f2554, { smooth: true });
+  gr.add(M(new THREE.SphereGeometry(s * 0.17, 8, 6), bm, 0, 0, s * 0.02));
+  gr.add(M(new THREE.SphereGeometry(s * 0.13, 8, 6), bm, 0, s * 0.19, s * 0.02));
+  [-1, 1].forEach(sx => {
+    gr.add(M(new THREE.ConeGeometry(s * 0.05, s * 0.12, 4), bm, sx * s * 0.07, s * 0.32, s * 0.02));
+    const w = new THREE.Group(); w.position.set(sx * s * 0.1, 0, 0); w.rotation.y = sx > 0 ? 0 : Math.PI; gr.add(w);
+    w.add(M(ext(batWingShape(s * 3.2), s * 0.04, s * 0.01, 8), bm));
+    gr.add(M(new THREE.SphereGeometry(s * 0.026, 5, 4), clay(0xffe27a, { glow: 0xffe27a, k: 0.7 }), sx * s * 0.055, s * 0.21, s * 0.13));
+  });
+  return gr;
+}
+function batsCape(k) {
+  const C = CAPE_C.bats, g = roundCape(k, { ...C, bot: -1.05, flare: 1.22, folds: 8, foldAmt: 0.075, hem: 0.09 });
+  const { surf, K } = g.userData, R = K.R;
+  const pin = (u, v, sc, roll = 0) => {   // 천 위에 납작하게 핀으로 꽂는다
+    const p = surf(u, v), du = surf(Math.min(1, u + 0.02), v), dv = surf(u, Math.min(1, v + 0.03));
+    const P = V3(p.x, p.y, p.z), tu = V3(du.x - p.x, du.y - p.y, du.z - p.z).normalize(), tv = V3(dv.x - p.x, dv.y - p.y, dv.z - p.z).normalize();
+    const n = tu.clone().cross(tv).normalize(); if (n.z > 0) n.negate();   // 법선이 몸 바깥(−z)을 보게
+    const up = tv.clone().negate(), right = up.clone().cross(n).normalize(), up2 = n.clone().cross(right).normalize();
+    const gr = new THREE.Group(); gr.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up2, n)); gr.rotateZ(roll);
+    gr.position.copy(P).addScaledVector(n, R * 0.04); g.add(gr); bat(gr, R * sc); return gr;
+  };
+  pin(0.36, 0.80, 0.46, 0.12); pin(0.68, 0.50, 0.34, -0.2); pin(0.60, 0.92, 0.24, 0.3);
+  return g;
+}
+const CAPES = [
+  { id: 'wing',  name: 'A 펼친 박쥐 날개', sub: '등에서 양옆으로 펴진 날개 · 끝 뾰족 셋', build: wingCape },
+  { id: 'spike', name: 'B 뾰족 짧은 망토', sub: '어깨~허리 · 자락이 톱니처럼 뾰족', build: spikeCape },
+  { id: 'bats',  name: 'C 일반 + 꼬마 박쥐', sub: '평범한 긴 망토 · 천에 박쥐 셋', build: batsCape },
+];
+function capeStats(k, c) {
+  const root = c.build(k), st = statsOf(root);
+  root.position.copy(backAnchor(k.bs, k.R, k.bodyY)); root.updateMatrixWorld(true);
+  let n = 0, inB = 0, minE = 9; const p = V3(0, 0, 0);
+  root.traverse(o => {
+    if (!o.isMesh || !o.material.vertexColors) return; const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) { p.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); n++;
+      const e = Math.hypot(p.x / (k.R * k.bs[0]), (p.y - k.bodyY) / (k.R * k.bs[1]), p.z / (k.R * k.bs[2])); minE = Math.min(minE, e); if (e < 0.985) inB++; }
+  });
+  return { ...st, pen: +(100 * inB / n).toFixed(1), minE: +minE.toFixed(3) };
+}
+
+// =============================================================
+//  장면
+// =============================================================
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(24, 1, 0.05, 100);
+const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.enablePan = false;
+const hemi = new THREE.HemisphereLight(0xe6f2ff, 0x8a9a7a, 1.6); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.6); sun.position.set(3, 7, 6); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9 }); scene.add(sun);
+const moon = new THREE.DirectionalLight(0x8fa0ff, 0); moon.position.set(-4, 5, 5); scene.add(moon);
+
+const q = new URLSearchParams(location.search);
+const state = {
+  tab: q.get('tab') || 'tool', mode: q.get('mode') || 'rep', tool: q.get('tool') || 'axe', animal: q.get('animal') || 'fox',
+  night: q.has('night'), spin: q.has('spin'), withBase: q.has('base'), view: q.get('view') || 'back34',
+  capeAnimals: (q.get('capes') || 'fox,bear').split(','), open: q.get('open') !== '0',
+};
+let world = new THREE.Group(); scene.add(world);
+let spinners = [], labels = [], cards = [], umbs = [];
+const labelsEl = document.getElementById('labels');
+const portrait = () => innerWidth < innerHeight * 0.95;
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const viewH = () => Math.max(200, innerHeight - document.getElementById('ui').offsetHeight);
+
+function addLabel(obj, html, off = V3(), cls = '') {
+  const el = document.createElement('div'); el.className = 'tag ' + cls; el.innerHTML = html; labelsEl.appendChild(el); labels.push({ el, obj, off });
+}
+function clearWorld() { scene.remove(world); world = new THREE.Group(); scene.add(world); spinners = []; labels = []; cards = []; umbs = []; labelsEl.innerHTML = ''; glowMats.length = 0; }
+function addCard(w, h, cx, cy, themeIdx, z = -0.9) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: themeIdx < 0 ? 0xe9eaec : THEMES[themeIdx].tint[0] }));
+  m.position.set(cx, cy, z); world.add(m); cards.push({ m, themeIdx });
+}
+function tintCards() { cards.forEach(c => c.m.material.color.setHex(c.themeIdx < 0 ? (state.night ? 0x8a8fa8 : 0xe9eaec) : THEMES[c.themeIdx].tint[state.night ? 1 : 0])); }
+
+// 진열 도구 — 높이를 맞춰 세운다(실제 크기 비교는 ‘쥔 모습’에서)
+const _bx = new THREE.Box3(), _sz = new THREE.Vector3(), _ct = new THREE.Vector3();
+function display(theme, toolId, x, y, targetH, spin = true, cap = 1.5) {
+  const t = buildTool(theme, toolId); const holder = new THREE.Group(), pivot = new THREE.Group();
+  holder.add(pivot); pivot.add(t);
+  t.updateMatrixWorld(true); _bx.setFromObject(t); _bx.getSize(_sz); _bx.getCenter(_ct);
+  t.position.sub(_ct);
+  const sc = Math.min(cap, targetH / Math.max(_sz.y, _sz.x * 0.9, 0.2)); holder.scale.setScalar(sc);
+  holder.position.set(x, y, 0); pivot.rotation.y = 0.5; world.add(holder);
+  if (spin) spinners.push({ pivot, base: 0.5 });
+  return holder;
+}
+function holdChar(theme, toolId, animalId, x, y, yaw = 0.55) {
+  const ch = buildAnimal(ANIMALS[animalId]); ch.position.set(x, y, 0); ch.rotation.y = yaw;
+  if (theme !== 'none') { const t = buildTool(theme, toolId); mountTool(ch, t, toolId); }
+  world.add(ch); return ch;
+}
+const statLine = t => { const s = themeStats[t]; return `메시 평균 ${s.meshAvg} · 굽기 후 ${s.callAvg}콜(최대 ${s.callMax})`; };
+
+function buildToolScene() {
+  clearWorld();
+  const P = portrait(), list = state.withBase ? [{ id: 'base', ico: '⚪', name: '기본(비교)', sub: '지금 게임 모습' }, ...THEMES] : THEMES;
+  const nT = list.length;
+  list.forEach((th, i) => {
+    const ti = th.id === 'base' ? -1 : THEMES.findIndex(t => t.id === th.id), isBase = th.id === 'base';
+    const tag = (obj, off, cls = '') => addLabel(obj, `${th.ico} ${th.name}<small>${th.sub}</small>${isBase ? '' : `<small>${statLine(th.id)}</small>`}`, off, cls);
+    if (state.mode === 'rep') {
+      if (!P) {   // 가로: 테마 = 열. 위에 캐릭터, 아래 2×2 진열
+        const cx = (i - (nT - 1) / 2) * 2.55;
+        addCard(2.4, 4.55, cx, 0.05, ti);
+        holdChar(th.id, state.tool, state.animal, cx, 0.62);
+        REP.forEach((id, j) => display(th.id, id, cx + (j % 2 - 0.5) * 1.1, -0.9 - Math.floor(j / 2) * 1.05, 0.92));
+        const a = new THREE.Object3D(); a.position.set(cx, 2.6, -0.9); world.add(a); tag(a, V3(), 'top');
+      } else {    // 세로: 테마 = 행. 왼쪽 캐릭터, 오른쪽 2×2 진열
+        const cy = ((nT - 1) / 2 - i) * 2.5;
+        addCard(4.2, 2.34, 0, cy, ti);
+        holdChar(th.id, state.tool, state.animal, -1.35, cy - 1.0, 0.5);
+        REP.forEach((id, j) => display(th.id, id, 0.65 + (j % 2) * 1.12, cy + 0.5 - Math.floor(j / 2) * 1.0, 0.88));
+        const a = new THREE.Object3D(); a.position.set(-1.35, cy + 1.02, -0.9); world.add(a); tag(a, V3(0.5, 0, 0), 'top');
+      }
+    } else if (state.mode === 'all') {
+      const per = P ? 5 : 9, rows = Math.ceil(9 / per), gx = P ? 0.84 : 1.0, gy = 1.05;
+      const W = per * gx + 0.3, H = rows * gy + 0.7, cy = ((nT - 1) / 2 - i) * (H + 0.62);
+      addCard(W, H, 0, cy, ti);
+      TOOLS.forEach((tl, j) => display(th.id, tl.id, ((j % per) - (per - 1) / 2) * gx, cy + (rows - 1) * gy / 2 - Math.floor(j / per) * gy - 0.18, 0.95));
+      const a = new THREE.Object3D(); a.position.set(0, cy + H / 2 + 0.02, -0.9); world.add(a); tag(a, V3(), 'top');
+    } else if (state.mode === 'hold') {
+      const animals = P ? ['fox', 'bear'] : ['fox', 'rabbit', 'cat', 'bear'], gx = 1.95, cols = animals.length;
+      const W = cols * gx + 0.3, H = 2.7, cy = ((nT - 1) / 2 - i) * (H + 0.1);
+      addCard(W, H, 0, cy, ti);
+      animals.forEach((an, j) => { const ch = holdChar(th.id, state.tool, an, (j - (cols - 1) / 2) * gx, cy - 1.3, 0.5); if (state.spin) spinners.push({ pivot: ch, base: 0.5, amp: 0.7 }); });
+      const a = new THREE.Object3D(); a.position.set(-W / 2 + 0.05, cy + H / 2 - 0.05, -0.9); world.add(a); tag(a, V3(), 'left');
+    } else {   // single — 하나 크게
+      const gx = P ? 1.6 : 2.2, H = P ? 3.3 : 4.0, cx = P ? 0 : (i - (nT - 1) / 2) * gx, cy = P ? ((nT - 1) / 2 - i) * 3.4 : 0;
+      addCard(gx - 0.1 + (P ? 2.6 : 0), H, cx, cy, ti);
+      display(th.id, state.tool, cx, cy - 0.15, 2.45, true, 4);
+      const a = new THREE.Object3D(); a.position.set(cx, cy + H / 2 - 0.02, -0.9); world.add(a); tag(a, V3(), '');
+    }
+  });
+  tintCards();
+  fit(state.mode === 'hold' || state.mode === 'rep' ? 0.1 : 0.2, 1.06);
+}
+
+const capeInfo = {};
+function buildCapeScene() {
+  clearWorld();
+  const animals = state.capeAnimals.filter(a => ANIMALS[a]), P = portrait();
+  const gx = 2.15, gy = 2.3, nA = animals.length, nD = CAPES.length;
+  const views = { back34: Math.PI * 0.82, back: Math.PI, side: Math.PI * 0.5, front34: Math.PI * 0.18 };
+  const rot = views[state.view] ?? views.back34;
+  CAPES.forEach((c, i) => animals.forEach((an, j) => {
+    const A = ANIMALS[an], k = { R: A.R, HR: A.HR, HY: A.HY, bs: A.bs, bodyY: A.R * A.bs[1] + 0.02, tail: A.tail };
+    const ch = buildAnimal(A), holder = new THREE.Group(), bk = backAnchor(k.bs, k.R, k.bodyY); holder.position.set(bk.x, bk.y, bk.z);
+    holder.add(c.build(k)); ch.add(holder);
+    const gr = new THREE.Group(); gr.add(ch); gr.rotation.y = rot;   // 카메라는 +z 고정 — 캐릭터를 돌려 시점을 바꾼다(π = 뒷모습)
+    // 가로 화면: 열 = 안, 행 = 동물 / 세로 화면: 행 = 안, 열 = 동물
+    const x = P ? (j - (nA - 1) / 2) * gx : (i - (nD - 1) / 2) * gx * 1.15, y = P ? ((nD - 1) / 2 - i) * gy : ((nA - 1) / 2 - j) * gy;
+    gr.position.set(x, y - 1.0, 0); world.add(gr);
+    addCard(P ? nA * gx : gx * 1.1, P ? gy - 0.1 : nA * gy - 0.1, P ? 0 : x, P ? y : 0, i % 3, -1.2);
+    if (state.spin) spinners.push({ pivot: gr, base: gr.rotation.y, amp: 0.5 });
+    if (j === 0) {
+      const a = new THREE.Object3D(); a.position.set(P ? -nA * gx / 2 + 0.05 : x, P ? y + gy / 2 - 0.12 : (nA * gy) / 2 + 0.05, 0); world.add(a);
+      addLabel(a, `${c.name}<small>${c.sub}</small>`, V3(), P ? 'left' : 'top');
+    }
+    if (j === 0) capeInfo[c.id] = capeStats(k, c);
+  }));
+  tintCards(); fit(0.04, 1.06, 0.1);
+}
+
+function buildUmbScene() {
+  clearWorld();
+  THEMES.forEach((th, i) => {
+    const cx = (i - 1) * 2.45;
+    addCard(2.35, 3.9, cx, 0.2, i);
+    const ch = buildAnimal(ANIMALS[state.animal]); ch.position.set(cx, -1.3, 0); world.add(ch);
+    const u = makeUmbrella(UMB[th.id]); u.userData.setOpen(state.open ? 1 : 0); const o = { u, ch }; umbs.push(o); poseUmb(o);
+    const a = new THREE.Object3D(); a.position.set(cx, 2.2, 0); world.add(a);
+    addLabel(a, `${th.ico} ${th.name}<small>${UMB[th.id].sub}</small>`, V3(), 'top');
+  });
+  tintCards(); fit(0.5, 1.02);
+}
+// ── ☂️ 우산(살 N장이 꼭짓점 경첩에 달려 접히고 펴진다 — premium-tool-umbrella-sim 과 같은 방식) ──
+function goreGeo(R, thMax, halfW, shape) {
+  const W = 8, H = 9, pos = [], idx = [];
+  for (let j = 0; j <= H; j++) { const v = j / H;
+    for (let i = 0; i <= W; i++) { const u = i / W * 2 - 1, phi = u * halfW * shape.w(v), th = thMax * v * (1 + shape.tip * (1 - u * u));
+      pos.push(-Math.cos(phi) * Math.sin(th) * R, (Math.cos(th) - 1) * R, Math.sin(phi) * Math.sin(th) * R); } }
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const a = j * (W + 1) + i, b = a + 1, c = a + W + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals(); return geo;
+}
+function surfPt(R, th, phi) { const p = V3(-Math.cos(phi) * Math.sin(th) * R, (Math.cos(th) - 1) * R, Math.sin(phi) * Math.sin(th) * R); return { p, n: p.clone().add(V3(0, R, 0)).normalize() }; }
+const jHook = (root, mat, r = 0.075) => { const j = M(new THREE.TorusGeometry(r, 0.022, 6, 14, Math.PI), mat, r, 0, 0); j.rotation.z = Math.PI; root.add(j); };
+const UMB = {
+  jack: { sub: '주황 8폭 호박 갓 · 꼭지 꼭대기 · 한 폭에 얼굴', N: 8, R: 0.92, th: 1.02, overlap: 1, shape: { w: () => 1, tip: 0 },
+    outer: k => clay(k % 2 ? JA.orangeD : JA.orange), inner: () => clay(JA.cream, { side: THREE.BackSide }),
+    shaft(root, L) { root.add(M(new THREE.CylinderGeometry(0.03, 0.04, L, 7), clay(JA.stem), 0, L / 2, 0)); jHook(root, clay(JA.stemD)); },
+    deco(h, k) { if (k === 2) { const { p, n } = surfPt(0.92 * 1.002, 0.78, 0.0); carved(h, clay(JA.carve, { glow: JA.glow, k: 0.9 }), p, 0.12, n, 0.1); } },
+    finial(c) { c.add(M(new THREE.CylinderGeometry(0.03, 0.05, 0.12, 5), clay(JA.stem), 0, 0.045, 0)); c.add(M(new THREE.TorusGeometry(0.035, 0.012, 4, 8, Math.PI * 1.4), clay(JA.stemD), 0.03, 0.12, 0)); } },
+  bat: { sub: '보라 6폭 · 끝이 박쥐 날개처럼 뾰족', N: 6, R: 1.0, th: 0.92, overlap: 1.28, layer: true, shape: { w: v => 0.42 + 0.58 * Math.sin(Math.PI * Math.min(1, 0.12 + v * 0.88)), tip: 0.12 },
+    outer: k => clay(k % 2 ? BT.plum : BT.vio), inner: () => clay(0xd9cff4, { side: THREE.BackSide }),
+    shaft(root, L) { root.add(M(new THREE.CylinderGeometry(0.022, 0.028, L, 7), clay(BT.plum), 0, L / 2, 0)); jHook(root, clay(BT.night), 0.07); },
+    deco(h) { const tipP = surfPt(1.0, 0.92 * 1.1, 0).p; h.add(M(new THREE.SphereGeometry(0.022, 6, 5), clay(BT.orange), tipP.x, tipP.y, tipP.z)); },
+    finial(c) { pumpkin(c, 0.05, 0, 0.04, 0, { color: BT.orange, stem: 0x6b8f3c }); } },
+  harvest: { sub: '짚 갓우산 · 새끼줄 띠 · 옥수수 꼭지', N: 10, R: 1.35, th: 0.62, overlap: 1, shape: { w: () => 1, tip: 0 },
+    outer: k => clay(k % 2 ? HV.strawD : HV.straw), inner: () => clay(HV.cream, { side: THREE.BackSide }),
+    shaft(root, L) { root.add(M(new THREE.CylinderGeometry(0.026, 0.034, L, 7), clay(HV.wood), 0, L / 2, 0)); twine(root, L - 0.5, 0.032, 2, 0.04); jHook(root, clay(HV.woodD)); },
+    deco(h, k) { const p1 = surfPt(1.35 * 1.003, 0.31, 0).p; if (k % 2 === 0) h.add(M(new THREE.BoxGeometry(0.03, 0.03, 0.2), clay(HV.red), p1.x, p1.y, p1.z)); },
+    finial(c) { cob(c, 0, 0.1, 0, 0.16, 0.04, 0.028, 3); } },
+};
+function makeUmbrella(def) {
+  const root = new THREE.Group(), L = 1.5; def.shaft(root, L);
+  const canopy = new THREE.Group(); canopy.position.y = L; root.add(canopy); const hinges = [];
+  const og = goreGeo(def.R, def.th, Math.PI / def.N * def.overlap, def.shape), ig = goreGeo(def.R * 0.985, def.th, Math.PI / def.N * def.overlap, def.shape);
+  for (let k = 0; k < def.N; k++) {
+    const piv = new THREE.Group(); piv.rotation.y = k * Math.PI * 2 / def.N; canopy.add(piv);
+    const hinge = new THREE.Group(); piv.add(hinge);
+    const rr = def.layer ? 1 + (k % 2) * 0.012 : 1;
+    const out = new THREE.Mesh(og, def.outer(k)); out.scale.setScalar(rr); hinge.add(out);
+    const inn = new THREE.Mesh(ig, def.inner(k)); inn.scale.setScalar(rr); hinge.add(inn);
+    def.deco?.(hinge, k); hinges.push(hinge);
+  }
+  def.finial?.(canopy);
+  const fold = Math.PI / 2 - 0.12 - def.th / 2;
+  root.userData = { open: 0, setOpen(t) { this.open = t; const e = ease(t); hinges.forEach(h => { h.rotation.z = lerp(fold, 0, e); h.scale.z = lerp(0.28, 1, e); h.scale.x = lerp(0.62, 1, e); }); } };
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return root;
+}
+const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+function poseUmb(o) {
+  const e = ease(o.u.userData.open), { pivot, hand } = o.ch.userData.arms.R;
+  pivot.rotation.set(lerp(-0.45, -1.2, e), 0, lerp(0.5, 0.15, e));
+  if (o.u.parent !== hand) hand.add(o.u);
+  _q1.setFromEuler(pivot.rotation).invert(); o.u.quaternion.copy(_q1).multiply(_q2.setFromEuler(new THREE.Euler(lerp(-0.55, -0.12, e), 0, lerp(-0.55, 0.12, e))));
+}
+
+// 카메라 맞춤
+const _box = new THREE.Box3(), _s = new THREE.Vector3(), _c = new THREE.Vector3();
+function fit(elev, pad = 1.08, lift = 0) {
+  world.updateMatrixWorld(true); _box.setFromObject(world); _box.min.y -= 0.35; _box.max.y += 0.55; _box.getSize(_s); _box.getCenter(_c);
+  const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), aspect = innerWidth / viewH();
+  const d = Math.max(_s.y / (2 * t), _s.x / (2 * t * aspect)) * pad + _s.z / 2;
+  controls.target.set(_c.x, _c.y + lift, _c.z);
+  camera.position.set(_c.x, _c.y + lift + Math.sin(elev) * d, Math.cos(elev) * d); controls.update();
+}
+
+// ── 조명·HUD·UI ──
+function applyLight() {
+  const bg = state.night ? 0x232a52 : 0xdfe9ee;
+  scene.background = new THREE.Color(bg); document.body.style.background = '#' + bg.toString(16).padStart(6, '0');
+  hemi.color.set(state.night ? 0x6a78b0 : 0xe6f2ff); hemi.intensity = state.night ? 1.35 : 1.6;
+  sun.color.set(state.night ? 0x9fb0ff : 0xfff1dc); sun.intensity = state.night ? 0.9 : 1.6;
+  moon.intensity = state.night ? 0.8 : 0;
+  glowMats.forEach(({ m, k }) => m.emissiveIntensity = state.night ? k : k * 0.08);
+  tintCards();
+}
+const hud = $('#hud'); hud.classList.add('min'); hud.onclick = () => hud.classList.toggle('min');
+let penCache = null;
+function setHud() {
+  if (state.tab === 'tool') {
+    const s = themeStats;
+    hud.innerHTML = `<b class="t">ℹ️ 🎃 도구 세트 통계 (눌러서 펼침)</b><div class="more">모양만 바뀐다(성능·휘두르는 모션 그대로)<br>` +
+      THEMES.map(t => `${t.ico} ${t.name}: 메시 ${s[t.id].meshAvg}(최대 ${s[t.id].meshMax}) · ${s[t.id].callAvg}콜(최대 ${s[t.id].callMax}) · 삼각형 ${s[t.id].triAvg}`).join('<br>') +
+      `<br>⚪ 기본: 메시 ${s.base.meshAvg} · ${s.base.callAvg}콜 · 삼각형 ${s.base.triAvg}<br><small>세트 한 벌 ₩5,000 가정 · ‘쥔 모습’ = 게임 쥐는 자리·자세 그대로</small>` +
+      (penCache ? '<br>' + penHtml(penCache) : '') + '</div>';
+  } else if (state.tab === 'cape') {
+    hud.innerHTML = `<b class="t">ℹ️ 🦇 망토 통계 (눌러서 펼침)</b><div class="more">back 슬롯(anchor back) · ₩5,000~6,000 가정<br>` +
+      CAPES.map(c => { const i = capeInfo[c.id]; return i ? `${c.name}: 메시 ${i.meshes} · ${i.calls}콜 · 삼각형 ${i.tris} · 몸 침투 ${i.pen}%` : c.name; }).join('<br>') + `<br><small>기존 망토(천 1 + 여밈 3)와 같은 방식</small></div>`;
+  } else hud.innerHTML = `<b class="t">ℹ️ ☂️ 우산</b><div class="more">세트와 같은 테마 · 비 오면 펴서 머리 위로 (펼침/접음 토글)</div>`;
+}
+function penHtml(p) {
+  const f = t => { const s = p.sum[t]; return `<tr><td>${t === 'base' ? '기본' : t}</td><td>${s.avg}%</td><td>${s.deepAvg}/${s.deepMax}%</td><td>${s.worst.toolId}·${s.worst.animalId}</td><td>${s.floatMax}</td></tr>`; };
+  return `<b>관통 검사</b>(4동물×9도구, 평상시 쥐기)<table><tr><th>안</th><th>정점 비율</th><th>깊이 평균/최대(팔 굵기 대비)</th><th>최악</th><th>발바닥 최대거리/반경</th></tr>${['base', 'jack', 'bat', 'harvest'].map(f).join('')}</table>`;
+}
+function syncUI() {
+  $$('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === state.tab));
+  $$('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === state.mode));
+  $$('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === state.tool));
+  $$('[data-animal]').forEach(b => b.classList.toggle('on', b.dataset.animal === state.animal));
+  $$('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === state.view));
+  $$('[data-open]').forEach(b => b.classList.toggle('on', (b.dataset.open === '1') === state.open));
+  $$('[data-cape]').forEach(b => b.classList.toggle('on', state.capeAnimals.includes(b.dataset.cape)));
+  $('#toolRow').classList.toggle('hide', state.tab !== 'tool');
+  $('#toolPickRow').classList.toggle('hide', state.tab !== 'tool' || !['rep', 'hold', 'single'].includes(state.mode));
+  $('#capeRow').classList.toggle('hide', state.tab !== 'cape');
+  $('#umbRow').classList.toggle('hide', state.tab !== 'umb');
+  $('#night').checked = state.night; $('#spin').checked = state.spin; $('#withBase').checked = state.withBase;
+}
+function rebuild() {
+  (state.tab === 'tool' ? buildToolScene : state.tab === 'cape' ? buildCapeScene : buildUmbScene)();
+  applyLight(); setHud(); syncUI();
+}
+$('#toolPick').innerHTML = TOOLS.map(t => `<button data-tool="${t.id}">${t.name}</button>`).join('');
+$('#animals').innerHTML = Object.values(ANIMALS).map(a => `<button data-animal="${a.id}">${a.ico}</button>`).join('');
+$('#capeAnimals').innerHTML = Object.values(ANIMALS).map(a => `<button data-cape="${a.id}">${a.ico}</button>`).join('');
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.tab) { state.tab = b.dataset.tab; rebuild(); }
+  else if (b.dataset.mode) { state.mode = b.dataset.mode; rebuild(); }
+  else if (b.dataset.tool) { state.tool = b.dataset.tool; rebuild(); }
+  else if (b.dataset.animal) { state.animal = b.dataset.animal; rebuild(); }
+  else if (b.dataset.view) { state.view = b.dataset.view; rebuild(); }
+  else if (b.dataset.cape) { const a = b.dataset.cape, s = state.capeAnimals; state.capeAnimals = s.includes(a) ? (s.length > 1 ? s.filter(x => x !== a) : s) : [...s, a]; rebuild(); }
+  else if (b.dataset.open) { state.open = b.dataset.open === '1'; umbs.forEach(o => { o.u.userData.setOpen(state.open ? 1 : 0); poseUmb(o); }); syncUI(); }
+  else if (b.id === 'penBtn') { penCache = penTable(); setHud(); hud.classList.remove('min'); }
+});
+$('#night').onchange = e => { state.night = e.target.checked; applyLight(); };
+$('#spin').onchange = e => { state.spin = e.target.checked; rebuild(); };
+$('#withBase').onchange = e => { state.withBase = e.target.checked; rebuild(); };
+
+function resize() { renderer.setSize(innerWidth, viewH()); camera.aspect = innerWidth / viewH(); camera.updateProjectionMatrix(); }
+addEventListener('resize', () => { resize(); rebuild(); });
+computeThemeStats(); resize(); rebuild();
+
+const _p = V3(0, 0, 0); let simT = 0;
+function step(dt) {
+  simT += dt;
+  if (state.spin) spinners.forEach((s, i) => { s.pivot.rotation.y = s.base + Math.sin(simT * 0.5 + i * 0.4) * (s.amp ?? 0.9); });
+}
+let lastVH = 0;
+function render() {
+  // 조작판 높이가 글꼴·줄바꿈 때문에 첫 배치 뒤에 바뀌면 캔버스·카메라·라벨이 어긋난다 — 바뀐 걸 보면 다시 맞춘다
+  const vh = viewH(); if (vh !== lastVH) { lastVH = vh; resize(); rebuild(); }
+  controls.update(); renderer.render(scene, camera);
+  labels.forEach(l => { l.obj.getWorldPosition(_p); _p.add(l.off).project(camera);
+    l.el.style.left = (_p.x + 1) / 2 * innerWidth + 'px'; l.el.style.top = (1 - _p.y) / 2 * viewH() + 'px'; l.el.style.display = _p.z < 1 && l.el.innerHTML ? '' : 'none'; });
+}
+const clock = new THREE.Clock();
+(function loop() { requestAnimationFrame(loop); step(Math.min(0.05, clock.getDelta())); render(); })();
+// 검증 훅 — 헤드리스에서 고정 스텝으로 진행시켜 찍는다(game-capture-pitfall)
+window.__sim = { buildAnimal, ANIMALS, CAPES, backAnchor, penCheck, setCam(p, t) { camera.position.set(...p); controls.target.set(...t); controls.update(); render(); }, camera, controls, scene, world: () => world, state, rebuild, penTable, themeStats, capeInfo, statsOf, buildTool, advance(sec) { for (let s = 0; s < sec; s += 1 / 60) step(1 / 60); render(); } };
+window.__ready = true;
+</script>

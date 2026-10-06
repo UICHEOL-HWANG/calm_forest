@@ -34,7 +34,7 @@ test('미리보기 — skinTick · rebuild 때 disposeSkin', () => {
   assert.match(src, /if \(mesh\) \{ pivot\.remove\(mesh\); disposeSkin\(mesh\); \}/);
 });
 
-test('🌱 새싹 숨김 — 월드(applyCosmetics)와 미리보기(buildCharacterMesh) 모두 showSprout(…, sproutVisible(cos))', () => {
-  assert.match(fn('applyCosmetics'), /showSprout\(charGroup, sproutVisible\(cos\)\)/);
-  assert.match(fn('buildCharacterMesh'), /showSprout\(built\.group, sproutVisible\(cos\)\)/);
+test('🌱 새싹 숨김 — 월드(applyCosmetics)와 미리보기(buildCharacterMesh) 모두 showSkinParts(…, cos)', () => {
+  assert.match(fn('applyCosmetics'), /showSkinParts\(charGroup, cos\)/);
+  assert.match(fn('buildCharacterMesh'), /showSkinParts\(built\.group, cos\)/);
 });

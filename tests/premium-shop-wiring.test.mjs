@@ -31,3 +31,8 @@ test('🧥 6탭 — 가게·옷장 탭 줄이 nowrap + wrap 규칙을 가진다'
   assert.match(html, /#cos-tabs \.sh-tab, #wd-slots \.sh-tab \{[^}]*white-space: nowrap/);
   assert.match(html, /#cos-tabs, #wd-slots \{ flex-wrap: wrap; \}/);
 });
+
+test('🎃 시즌 태그 · premium_row_view 에 sale 파라미터', () => {
+  assert.match(cafe, /saleTagOf\(it\)/);
+  assert.match(cafe, /trackEvent\('premium_row_view', \{ item_id: it\.id, mode, \.\.\.\(it\.sale \? \{ sale: it\.sale \} : \{\}\) \}\)/);
+});

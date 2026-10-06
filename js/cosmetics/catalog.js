@@ -6,6 +6,7 @@
 //  ▶ price.cash 는 js/shop/cash.js 가 채운다 — priceId(js/shop/price-ids.js)가 있는 항목만 { priceId, label }.
 //    null 이면 UI 는 현금 버튼을 안 그린다. 라벨은 코인 등급표(스펙 2026-09-30 §2-2).
 //  ▶ won 이 있으면 💎 프리미엄(현금 전용) — price.coins 는 null, 라벨은 won 그대로(₩4,000).
+//  ▶ sale: 'halloween' 같은 한정 판매 키 — 기간·노출 규칙은 js/shop/sale-window.js (스펙 2026-10-06).
 //  ▶ earSafe: 머리 장식이 귀를 어떻게 다루는가(§3-3)
 //      'low'  위가 트여 귀가 지나간다 · 'dome' 머리를 덮되 테두리가 귀 밑동보다 위
 //  ▶ anchor: 슬롯 안에서 **붙을 면**을 아이템이 고른다. 가방류는 옆구리(side),
@@ -37,14 +38,27 @@ const RAW = [
   // 💎 프리미엄 — 현금 전용(won). 코인으로 못 산다(2026-10-01 스펙 §2)
   { id: 'firefly', slot: 'trail', ico: '🌟', name: '반딧불', won: 4000, tier: '프리미엄' },
   { id: 'rainbow', slot: 'trail', ico: '🌈', name: '무지개', won: 3000, tier: '프리미엄' },
+  // 🎃 할로윈 한정 자국 — sale 이 있으면 js/shop/sale-window.js 의 기간에만 안 산 사람에게 보인다(스펙 2026-10-06)
+  { id: 'pumpkin_glow', slot: 'trail', ico: '🎃', name: '꼬마 호박등', won: 4000, tier: '프리미엄', sale: 'halloween' },
+  { id: 'bat_swirl',    slot: 'trail', ico: '🦇', name: '박쥐 회오리', won: 4000, tier: '프리미엄', sale: 'halloween' },
   // 🧥 전신 스킨 — 현금 전용(2026-10-01 2단계 스펙). 동물 체형은 그대로, 재질·장식만 바뀐다(js/cosmetics/skin.js)
   { id: 'forest_spirit', slot: 'skin', ico: '🌿', name: '숲의 정령',   won: 10000, tier: '프리미엄' },
   { id: 'plush_doll',    slot: 'skin', ico: '🧸', name: '플러시 인형', won: 9000,  tier: '프리미엄' },
+  // 🎃 할로윈 한정 전신 스킨 4종
+  { id: 'ghost_nightcap', slot: 'skin', ico: '👻', name: '나이트캡 유령',  won: 4900, tier: '프리미엄', sale: 'halloween' },
+  { id: 'ghost_cloud',    slot: 'skin', ico: '☁️', name: '구름 유령',     won: 4900, tier: '프리미엄', sale: 'halloween' },
+  { id: 'witch_classic',  slot: 'skin', ico: '🧙', name: '클래식 마녀',    won: 4900, tier: '프리미엄', sale: 'halloween' },
+  { id: 'witch_starry',   slot: 'skin', ico: '🔮', name: '별밤 견습 마녀', won: 4900, tier: '프리미엄', sale: 'halloween' },
   // 🪓 도구 테마 세트 — 현금 전용(2026-10-02). 손에 드는 도구 9종 외형 + 비 오는 날 우산(js/cosmetics/tool-skins.js)
   //   외형만 바뀐다 — 성능·휘두르는 모션·금빛 도구 규칙은 그대로
   { id: 'tools_shroom', slot: 'tools', ico: '🍄', name: '버섯 숲 세트', won: 5000, tier: '프리미엄' },
   { id: 'tools_moon',   slot: 'tools', ico: '🌙', name: '달밤 세트',    won: 5000, tier: '프리미엄' },
   { id: 'tools_bloom',  slot: 'tools', ico: '🌸', name: '꽃정원 세트',  won: 5000, tier: '프리미엄' },
+  // 🎃 할로윈 한정 도구 세트 2종 + 등 꾸미기(박쥐) 2종
+  { id: 'tools_batnight', slot: 'tools', ico: '🦇', name: '달밤 보라 세트', won: 4500, tier: '프리미엄', sale: 'halloween' },
+  { id: 'tools_harvest',  slot: 'tools', ico: '🌽', name: '수확제 세트',    won: 4500, tier: '프리미엄', sale: 'halloween' },
+  { id: 'bat_wing', slot: 'back', ico: '🦇', name: '박쥐 날개', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
+  { id: 'bat_cape', slot: 'back', ico: '🧛', name: '박쥐 망토', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
   // 👣 발자국 — 값이 오를수록 바닥에 있던 게 공중으로 올라온다
   { id: 'paw',     slot: 'trail', ico: '🐾', name: '발바닥', coins: 700,  tier: '기본' },
   { id: 'drop',    slot: 'trail', ico: '💧', name: '물방울', coins: 900,  tier: '기본' },
