@@ -94,11 +94,11 @@ async function gameTab(host) {
 }
 
 /** localStorage 를 비우고 페르소나 세션을 넣은 뒤 새로고침 — 판마다 client_id·로컬 세이브도 새로 시작 */
-async function injectSession(tab, session, host) {
+async function injectSession(tab, session, host, url = `https://${host}/`) {
   const payload = Buffer.from(JSON.stringify(session)).toString('base64');
   const out = await repl(`
     await attachBrowserTab('${tab}');
-    await page.goto('https://${host}/');
+    await page.goto('${url}');
     await page.evaluate(([k, b64]) => { localStorage.clear(); localStorage.setItem(k, atob(b64)); }, ['${storageKey()}', '${payload}']);
     await page.reload();
     await sleep(5000);
@@ -116,6 +116,14 @@ async function clearSession(tab) {
     .catch(e => console.warn('[persona-sim] 세션 정리 실패(다음 판 주입 때 다시 비움):', e.message));
 }
 
+// 📱 모바일 페르소나 — ?touchsim=1 로 터치 화면·조작을 흉내 낸다(js/touch-sim.js). Aside 창을 폰 폭으로 줄여 두면 레이아웃도 가까워진다
+const MOBILE_HOWTO = [
+  `- 이 사람은 휴대폰으로 플레이한다. 키보드는 쓰지 말고 화면만 쓴다.`,
+  `- 이동: 왼쪽 아래 동그란 조이스틱을 마우스로 눌러 원하는 방향으로 끌고 있다가 놓는다.`,
+  `- 행동(벌목·낚시·대화 등): 오른쪽 아래 둥근 액션 버튼을 클릭한다. 도구는 아래쪽 도구 막대를 클릭해 바꾼다.`,
+];
+const gameUrl = (p, host) => p.device === 'mobile' ? `https://${host}/?touchsim=1` : `https://${host}/`;
+
 function prompt(p, host, model) {
   const minTry = /sonnet/.test(model)
     ? [`- 그만두더라도 **최소 ${SONNET_MIN_TRY_MIN}분은** 이것저것 시도해 본 뒤에만 그만둘 수 있다. 막히면 지도·안내·주민 대화·다른 장소를 먼저 찾아봐라.`]
@@ -123,13 +131,16 @@ function prompt(p, host, model) {
   return [
     `지금 Aside 브라우저에 열린 ${host} 탭은 '고요한 숲'이라는 3D 힐링 게임이고, 이미 로그인돼 있다.`,
     `반드시 ${host} 탭에서만 플레이하고 다른 탭은 건드리지 마라(다른 탭은 다른 사람이 쓰는 중이다).`,
-    `아래 인물이 되어 그 사람처럼 이 게임을 직접 플레이해라. 사람처럼 키보드(WASD·스페이스·E)와 클릭으로 조작한다.`,
+    p.device === 'mobile'
+      ? `아래 인물이 되어 그 사람처럼 이 게임을 직접 플레이해라. 화면은 휴대폰용(조이스틱·액션 버튼)이다.`
+      : `아래 인물이 되어 그 사람처럼 이 게임을 직접 플레이해라. 사람처럼 키보드(WASD·스페이스·E)와 클릭으로 조작한다.`,
     ``,
     `[인물] ${p.directive}`,
     ``,
     `규칙:`,
     `- 최대 ${MINUTES}분. 로그인·로그아웃·계정·설정·결제·현금 상점은 절대 건드리지 마라.`,
     ...minTry,
+    ...(p.device === 'mobile' ? MOBILE_HOWTO : []),
     `- 인물이 그만두고 싶어지는 순간이 오면 바로 멈추고 마지막 줄에 "QUIT: <그만둔 이유 한 문장>" 이라고 답해라.`,
     `- 시간이 다 될 때까지 계속했다면 마지막 줄에 "TIMEUP" 이라고 답해라.`,
   ].join('\n');
@@ -196,7 +207,7 @@ function nextAccount(p, done, busy = new Set()) {
 // ── 한 판 ────────────────────────────────────────────────────
 async function playOnce(p, accountId, round, host, slot) {
   const rec = { run_id: `${accountId}-${Date.now()}`, persona_id: p.id, account_id: accountId, traits: p.traits,
-                email: personaEmail(accountId), round, minutes_budget: MINUTES, host, slot };
+                email: personaEmail(accountId), round, minutes_budget: MINUTES, host, slot, device: p.device || 'desktop' };
   // 모델: 페르소나별(personas.json model) — 정상=Sonnet·이상=Haiku(2026-10-04 전환, 그 전 155판은 Opus 기본값).
   //       모델이 행동을 바꾸므로 판마다 기록해 분석에서 공변량으로 쓴다.
   rec.model = pickModel(p);
@@ -206,7 +217,7 @@ async function playOnce(p, accountId, round, host, slot) {
   const acct = await ensureUser(accountId, p.id);
   const session = await mintSession(accountId);
   const tab = await gameTab(host);
-  await injectSession(tab, session, host);
+  await injectSession(tab, session, host, gameUrl(p, host));
 
   rec.user_id = session.user.id;
   rec.account_created = acct.created;

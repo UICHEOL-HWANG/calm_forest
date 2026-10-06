@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { ig, me, quota, sleep } from './ig.mjs';
 import { hostDeck } from './host.mjs';
 import { enqueue } from './queue.mjs';
+import { threadsToken, publishThreadsCarousel, toThreadsText, THREADS_TEXT_MAX } from './threads.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const slug = process.argv[2];
@@ -52,6 +53,14 @@ if (!caption) {
 }
 if (caption.length > 2200) {
   console.error(`캡션이 ${caption.length}자 — 인스타 상한 2200자 초과`);
+  process.exit(1);
+}
+
+// Threads 본문은 500자 상한이라 인스타 캡션을 그대로 못 쓴다.
+// decks/<slug>.json 의 threadsText 가 있으면 그걸, 없으면 캡션에서 문단 단위로 줄인다.
+const threadsText = (deck.threadsText || toThreadsText(caption)).trim();
+if (threadsText.length > THREADS_TEXT_MAX) {
+  console.error(`threadsText 가 ${threadsText.length}자 — Threads 상한 ${THREADS_TEXT_MAX}자 초과`);
   process.exit(1);
 }
 
@@ -92,9 +101,10 @@ for (const url of urls) {
 
 // ── 3. 리허설이면 여기서 멈춘다 ───────────────────────────────
 console.log(`\n─── 캡션 (${caption.length}자) ───\n${caption}\n──────────────────`);
+console.log(`\n─── Threads 본문 (${threadsText.length}/${THREADS_TEXT_MAX}자) ───\n${threadsText}\n──────────────────`);
 // 큐에 넣기 — 검수를 통과한 카드 묶음만 여기로 온다. 크론은 큐에 있는 걸 묻지 않고 올린다.
 if (DO_QUEUE) {
-  const n = await enqueue({ slug, caption, urls });
+  const n = await enqueue({ slug, caption, urls, threadsText });
   console.log(`\n📥 큐에 넣었다. 대기 ${n}개.\n   사흘 간격으로 크론이 하나씩 꺼내 올린다.`);
   process.exit(0);
 }
@@ -139,3 +149,18 @@ console.log('\n준비 완료');
 const { id: mediaId } = await ig('/me/media_publish', { creation_id: parent }, 'POST');
 const { permalink } = await ig(`/${mediaId}`, { fields: 'permalink' });
 console.log(`\n🎉 발행 완료\n   ${permalink}`);
+
+// ── 8. Threads ───────────────────────────────────────────────
+//  인스타는 이미 나갔다 — 여기서 실패해도 되돌릴 수 없고, 다시 돌리면 인스타가 중복 발행된다.
+//  그래서 실패는 던지지 않고 알린다. 재시도는 Threads 만 따로(아래 명령).
+if (await threadsToken()) {
+  try {
+    const threadsLink = await publishThreadsCarousel({ urls, text: threadsText });
+    console.log(`\n🧵 Threads 발행 완료\n   ${threadsLink}`);
+  } catch (e) {
+    console.error(`\n⚠️ Threads 발행 실패 (인스타는 나갔다): ${e.message}`);
+    process.exitCode = 1;
+  }
+} else {
+  console.log(`\n🧵 Threads 건너뜀 — 토큰 없음 (~/.config/calmforest/threads_token)`);
+}

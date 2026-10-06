@@ -17,10 +17,12 @@ import { gateOf, weatherOpen } from './dex-gates.js';   // 📖 희귀종 게이
  * ⚠️ 모든 도감 카테고리가 어느 한 층에는 들어가야 한다 — 빠지면 그 종은 영영 전시되지 않는다(테스트로 잠금).
  */
 export const MUSEUM_FLOORS = [
-  { id: 1, name: '1층',   cats: ['crop', 'fish', 'ore'],                  need: 0 },
-  { id: 2, name: '2층',   cats: ['forage', 'bug', 'dig', 'track', 'visitor'], need: 9 },
-  { id: 3, name: '3층',   cats: ['river', 'spirit', 'weather', 'npc'],    need: 9 },
-  { id: 4, name: '특별전', cats: ['cook'],                                 need: 12 },
+  //   layout: 'wall'(벽 유리장 16×14, 최대 17칸) | 'gallery'(회랑 20×14 — 벽 유리장 + 낮은 탁자) → js/museum/layout.js
+  //   theme: 층마다 바닥·벽·조명 색(위층 느낌). 2026-10-06 후보 3종 시각 비교에서 사용자가 C(푸른 저녁)을 골랐다 — 위층으로 갈수록 회청색으로 차분해진다.
+  { id: 1, name: '1층',   cats: ['crop', 'fish', 'ore'],                  need: 0,  layout: 'wall',    theme: { floor: 0xd9b98a, wall: 0xf3e2c8, light: 0xfff3dc } },
+  { id: 2, name: '2층',   cats: ['forage', 'bug', 'dig', 'track', 'visitor'], need: 9,  layout: 'wall',    theme: { floor: 0xc9b496, wall: 0xe6e3dc, light: 0xf6f2ea } },
+  { id: 3, name: '3층',   cats: ['river', 'spirit', 'weather', 'npc'],    need: 9,  layout: 'gallery', theme: { floor: 0xb0a898, wall: 0xdfe2e8, light: 0xeaf0ff } },
+  { id: 4, name: '특별전', cats: ['cook'],                                 need: 12, layout: 'gallery', theme: { floor: 0x9a99a6, wall: 0xd5d9e6, light: 0xe2e8ff } },
 ];
 
 const floorDef = (floor) => MUSEUM_FLOORS.find(f => f.id === floor) || null;
