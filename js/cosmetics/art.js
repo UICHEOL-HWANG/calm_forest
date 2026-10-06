@@ -11,6 +11,7 @@
 // =============================================================
 
 import { ringR, domeTheta, DOME_BOT, onSurf, tailType } from './anchors.js';
+import { buildBatWing, buildBatCape } from './art-bats.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -461,6 +462,9 @@ function makeTables(THREE) {
   const strapLoop = (g, r, tube, mat) =>
     put(g, new THREE.Mesh(new THREE.TorusGeometry(r, tube, 4, 14), mat), 0, 0, 0, false);
 
+  //  🦇 할로윈 등 장식(js/cosmetics/art-bats.js)에 넘기는 헬퍼 묶음 — 그쪽이 art.js 를 import 하면 순환이다
+  const h = { clay, put, P, clothShell };
+
   const BACK = {
     //  ▶ 가방류는 **옆구리(side 앵커)** 에 맨다. 등 한가운데는 🦊여우 꼬리 자리다.
     //    앵커는 어깨끈 링의 가장 낮은 점이라, 가방을 거기서 **아래로 매달면** 끈과 붙는다.
@@ -561,6 +565,8 @@ function makeTables(THREE) {
       const brooch = put(g, new THREE.Mesh(new THREE.CylinderGeometry(R * 0.085, R * 0.085, R * 0.05, 10), clay(P.bell)), 0, yTop + R * 0.02, zc + rNeck * 0.84);
       brooch.rotation.x = Math.PI / 2;
     },
+    bat_wing: (g, k) => buildBatWing(THREE, g, k, h),   // 🦇 펼친 박쥐 날개
+    bat_cape: (g, k) => buildBatCape(THREE, g, k, h),   // 🧛 일반 망토 + 꼬마 박쥐
   };
 
   return { HEAD, NECK, BACK, mergeStatics };

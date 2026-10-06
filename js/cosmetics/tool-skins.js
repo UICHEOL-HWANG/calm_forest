@@ -1,6 +1,6 @@
 // js/cosmetics/tool-skins.js
 // =============================================================
-//  calm forest · 🪓☂️ 프리미엄 도구 테마 세트 조형 — 도구 9종 × 3테마 + 비 오는 날 우산
+//  calm forest · 🪓☂️ 프리미엄 도구 테마 세트 조형 — 도구 9종 × 5테마(🎃 할로윈 2종 포함) + 비 오는 날 우산
 //  ------------------------------------------------------------
 //  ▶ 시안·확정: sims/premium-tool-umbrella-sim.html (2026-10-02). 조형 수치는 시안에서 그대로 옮겼다.
 //    시안을 고치면 여기도 같이 고친다(tool-tier-sim 에서 0단계 값이 갈려 역이식된 사고가 있었다).
@@ -13,6 +13,7 @@
 //  ▶ THREE 를 인자로 받는다(node 테스트는 three 를 못 불러 소스 검사만 한다 — tests/tool-skins.test.mjs).
 // =============================================================
 import { mergeGeos } from './trail.js';
+import { halloweenThemes, halloweenKit, BT, HV } from './tool-skins-halloween.js';   // 🎃 달밤 보라 · 수확제
 
 // ── 팔레트 ─────────────────────────────────────────────────
 const SH = { stem: 0xeee2c8, stemD: 0xcdb894, cap: 0xd1473a, spot: 0xfff5e6, gill: 0xe6cfa6, birch: 0x5b4636, door: 0x8a5a3a };
@@ -427,6 +428,9 @@ function themeBuilders(THREE, K) {
         g.scale.setScalar(1.25);
       },
     },
+
+    // 🎃 할로윈 2종(🦇 달밤 보라 · 🌽 수확제) — js/cosmetics/tool-skins-halloween.js
+    ...halloweenThemes(THREE, K),
   };
 }
 
@@ -493,6 +497,10 @@ const UMBRELLAS = {
   moon:   { N: 8, R: 1.15, th: 0.76, overlap: 1, shape: { w: () => 1, tip: -0.07 }, twist: Math.PI / 8 },
   bloom:  { N: 6, R: 1.0,  th: 0.98, overlap: 1.32, layer: true,
             shape: { w: v => 0.42 + 0.58 * Math.sin(Math.PI * Math.min(1, 0.12 + v * 0.88)), tip: 0.10 } },
+  // 🎃 할로윈 — 시안 sims/halloween-tools-sim.html UMB.bat / UMB.harvest 그대로(2026-10-06 확정, look/umbrella-pc.png)
+  batnight: { N: 6, R: 1.0,  th: 0.92, overlap: 1.28, layer: true,   // 보라 6폭 · 끝이 박쥐 날개처럼 뾰족
+              shape: { w: v => 0.42 + 0.58 * Math.sin(Math.PI * Math.min(1, 0.12 + v * 0.88)), tip: 0.12 } },
+  harvest:  { N: 10, R: 1.35, th: 0.62, overlap: 1, shape: { w: () => 1, tip: 0 } },   // 짚 갓우산
 };
 export const UMBRELLA_SHAFT = 1.55;   // 쥐는 곳 → 꼭지
 
@@ -519,6 +527,7 @@ export function buildUmbrella(THREE, theme) {
     const p = V(-Math.cos(phi) * Math.sin(th) * R, (Math.cos(th) - 1) * R, Math.sin(phi) * Math.sin(th) * R);
     return { p, n: p.clone().add(V(0, R, 0)).normalize() };
   };
+  const HK = halloweenKit(THREE, K);
   const L = UMBRELLA_SHAFT, root = new THREE.Group();
   const jHook = (mat, r = 0.075) => { const j = M(new THREE.TorusGeometry(r, 0.022, 6, 14, Math.PI), mat, r, 0, 0); j.rotation.z = Math.PI; root.add(j); };
   const look = {
@@ -568,6 +577,34 @@ export function buildUmbrella(THREE, theme) {
         c.add(M(new THREE.SphereGeometry(0.06, 10, 8), clay(BL.center), 0, 0.02, 0));
         for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.add(M(new THREE.SphereGeometry(0.016, 6, 5), clay(0xe0a83a), Math.cos(a) * 0.05, 0.07, Math.sin(a) * 0.05)); }
       },
+    },
+    // 🦇 달밤 보라 — 보라·자두 번갈이 6폭, 폭 끝이 박쥐 날개처럼 뾰족 + 끝마다 주황 구슬, 꼭지는 꼬마 호박
+    batnight: {
+      outer: k => clay(k % 2 ? BT.plum : BT.vio), inner: () => clay(0xd9cff4, { side: THREE.BackSide, lift: 0.3 }),
+      shaft() {
+        root.add(M(new THREE.CylinderGeometry(0.022, 0.028, L, 7), clay(BT.plum), 0, L / 2, 0));
+        jHook(clay(BT.night), 0.07);
+      },
+      deco(h) {
+        const tipP = surf(def.R, def.th * 1.1, 0).p;   // 폭 가운데 뾰족한 끝
+        h.add(M(new THREE.SphereGeometry(0.022, 6, 5), clay(BT.orange), tipP.x, tipP.y, tipP.z));
+      },
+      finial(c) { HK.pumpkin(c, 0.05, 0, 0.04, 0); },
+    },
+    // 🌽 수확제 — 짚 갓우산 10폭 · 한 폭 걸러 빨간 끈 · 자루에 새끼줄 · 꼭지는 옥수수
+    harvest: {
+      outer: k => clay(k % 2 ? HV.strawD : HV.straw), inner: () => clay(HV.cream, { side: THREE.BackSide, lift: 0.35 }),
+      shaft() {
+        root.add(M(new THREE.CylinderGeometry(0.026, 0.034, L, 7), clay(HV.wood), 0, L / 2, 0));
+        HK.twine(root, L - 0.5, 0.032, 2, 0.04);
+        jHook(clay(HV.woodD));
+      },
+      deco(h, k) {
+        if (k % 2) return;
+        const p = surf(def.R * 1.003, 0.31, 0).p;
+        h.add(M(new THREE.BoxGeometry(0.03, 0.03, 0.2), clay(HV.red), p.x, p.y, p.z));
+      },
+      finial(c) { HK.cob(c, 0, 0.1, 0, 0.16, 0.04, 0.028, 3); },
     },
   }[theme];
   look.shaft();

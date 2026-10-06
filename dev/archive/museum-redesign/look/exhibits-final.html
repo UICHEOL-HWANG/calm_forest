@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><title>박물관 전시물 전체 — 실제 게임 데이터</title>
+<style>
+  html,body{margin:0;background:#efe3ce;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#2f3f2f}
+  canvas{display:block;position:absolute;left:0;top:0}
+  .t{position:absolute;font-size:12px;text-align:center;line-height:1.25;width:210px;color:#3a4a3a}
+  .t small{display:block;color:#8a7a5a;font-size:10.5px}
+  h1{position:absolute;margin:0;left:14px;top:8px;font-size:18px;color:#2f5e2f;z-index:2}
+</style>
+<h1>🏛️ 박물관 전시물 — 실제 게임 코드(exhibit-parts + exhibit-build)로 그린 전체</h1>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { DEX } from '/js/data/dex.js';
+import { NPCS } from '/js/data/npcs.js';
+import { CAFE_GUESTS } from '/js/data/places.js';
+import { exhibitParts } from '/js/museum/exhibit-parts.js';
+import { buildExhibitMesh } from '/js/museum/exhibit-build.js';
+
+const CATS = [['ore','⛏️ 광물'],['forage','🍄 채집'],['bug','🌟 반딧불이'],['track','🐾 흔적'],['dig','🪏 땅속'],['river','🛶 강'],['spirit','🌫️ 정령'],['weather','🌦️ 날씨'],['visitor','🦋 방문객'],['cook','🍳 요리'],['npc','🧑 주민']];
+const cells = [];
+for (const [cat, label] of CATS) for (const e of DEX[cat]) {
+  const n = cat === 'npc' ? (NPCS.find(x => x.id === e.id) || CAFE_GUESTS.find(x => x.id === e.id)) : null;
+  const parts = exhibitParts(cat, e.id, n ? { color: n.color, hat: n.hat } : {});
+  if (parts) cells.push({ cat, label, e, parts });
+}
+const COLS = 8, CW = 210, CH = 200, TOP = 44, rows = Math.ceil(cells.length / COLS);
+const W = COLS * CW, H = TOP + rows * CH;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xefe3ce);
+scene.add(new THREE.HemisphereLight(0xfff2e2, 0xb8a98c, 1.1));
+const sun = new THREE.DirectionalLight(0xfff4e4, 1.2); sun.position.set(3, 8, 6); scene.add(sun);
+const cam = new THREE.PerspectiveCamera(28, CW / (CH - 30), 0.1, 50);
+cam.position.set(0, 0.62, 1.75); cam.lookAt(0, 0.2, 0);
+renderer.setScissorTest(true);
+const stone = new THREE.MeshStandardMaterial({ color: 0xcfc7b0, roughness: 0.9, flatShading: true });
+cells.forEach((c, i) => {
+  const g = new THREE.Group();
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.33, 0.14, 12), stone); ped.position.y = -0.07; g.add(ped);
+  const m = buildExhibitMesh(THREE, c.parts); m.rotation.y = 0.5; g.add(m);
+  scene.add(g);
+  const col = i % COLS, row = Math.floor(i / COLS), x = col * CW, y = TOP + row * CH;
+  const vy = H - (y + CH - 30);
+  renderer.setViewport(x, vy, CW, CH - 30); renderer.setScissor(x, vy, CW, CH - 30);
+  renderer.render(scene, cam);
+  scene.remove(g);
+  const t = document.createElement('div'); t.className = 't'; t.style.left = x + 'px'; t.style.top = (y + CH - 30) + 'px';
+  t.innerHTML = `${c.e.ico || ''} ${c.e.name}<small>${c.label}</small>`; document.body.appendChild(t);
+});
+document.body.style.width = W + 'px'; document.body.style.height = H + 'px';
+window.__ready = { n: cells.length, W, H };
+</script>
