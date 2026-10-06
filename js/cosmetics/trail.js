@@ -141,15 +141,57 @@ function makeMarks(THREE) {
         g.add(leaf);
       });
     },
+    //  🎃 꼬마 호박등 — 결 있는 납작 호박 + 꼭지 + 얼굴(밝은 주황). 시안 sims/halloween-trail-sim.html lanternCell(A).
+    //     바닥 소품이 주인공이라 입체다. 한 자국 = 단일 메시(bake) — 색은 정점색으로, 재질 종류를 늘리지 않는다.
+    //     얼굴 색은 블룸 임계(0.85) 아래의 밝은 주황(0xffd27a).
+    pumpkin_glow: (g, s, o) => {
+      //  시안 pumpkinGeo 치수(반지름 0.07)를 u 배로 옮긴다. 결 7개 · 아래가 땅에 닿게 YC = R·KY
+      const R = s * 0.62, KY = 0.82, YC = R * KY, u = R / 0.07;
+      const body = new THREE.SphereGeometry(R, 14, 10), BP = body.attributes.position, shade = [];
+      for (let i = 0; i < BP.count; i++) {
+        const x = BP.getX(i), y = BP.getY(i), z = BP.getZ(i);
+        const th = Math.atan2(z, x), lobe = Math.cos(th * 7), k = 1 + 0.08 * lobe, ny = y / R;
+        BP.setXYZ(i, x * k, y * KY + YC, z * k);
+        const sh = (0.8 + 0.2 * (lobe + 1) / 2) * (0.82 + 0.18 * ny);   // 결 골은 어둡게 · 아래는 그늘
+        shade.push(sh, sh, sh);
+      }
+      body.setAttribute('color', new THREE.Float32BufferAttribute(shade, 3));   // bake 가 재질 색에 곱한다(paintRGBA)
+      body.computeVertexNormals();
+      put(g, new THREE.Mesh(body, film(0xe8863a, o)), 0, 0, 0, false);
+      put(g, new THREE.Mesh(new THREE.CylinderGeometry(0.011 * u, 0.019 * u, 0.042 * u, 6), film(0x5f8f4a, o)),
+          0.004 * u, YC + R * KY + 0.012 * u, 0, false).rotation.z = 0.25;
+      //  얼굴 — 몸 앞면(+z, 카메라 쪽)에 붙인 납작 도형. 정점을 몸 표면으로 밀어 붙인다(시안 ez)
+      const ez = (x, y) => R * Math.sqrt(Math.max(0, 1 - (x / R) ** 2 - ((y - YC) / (R * KY)) ** 2)) + 0.004 * u;
+      const facePiece = pts => {
+        const geo = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x * u, y * u))));
+        const FP = geo.attributes.position;
+        for (let i = 0; i < FP.count; i++) FP.setZ(i, ez(FP.getX(i), FP.getY(i)));
+        put(g, new THREE.Mesh(geo, film(0xffd27a, o)), 0, 0, 0, false);
+      };
+      [-1, 1].forEach(k => facePiece([[k * 0.026 - 0.011, 0.062], [k * 0.026 + 0.011, 0.062], [k * 0.026, 0.085]]));   // 세모 눈
+      const top = x => 0.054 - 0.017 * (1 - (x / 0.036) ** 2), xs = Array.from({ length: 7 }, (_, i) => -0.036 + i * 0.012);
+      facePiece([...xs.map(x => [x, top(x) - 0.013]), ...[...xs].reverse().map(x => [x, top(x)])]);                  // 웃는 입
+      put(g, new THREE.Mesh(new THREE.CircleGeometry(s * 1.1, 14), film(0xffa347, o * 0.25)), 0, 0.004, 0, false)
+        .rotation.x = -Math.PI / 2;                                                                                  // 바닥 온기
+    },
+    //  🦇 박쥐 회오리 — 바닥엔 연보랏빛 달가루 원판만. 주인공은 위로 도는 박쥐(trail-fx.js).
+    bat_swirl: (g, s, o) => {
+      put(g, new THREE.Mesh(new THREE.CircleGeometry(s * 0.78, 14), film(0xcfc2ff, o * 0.30)), 0, 0.004, 0, false)
+        .rotation.x = -Math.PI / 2;
+    },
   };
 
   return TRAIL;
 }
 
-/** 정점색(rgb + 알파 비율) — itemSize 4 라 three 가 USE_COLOR_ALPHA 로 굽는다 */
+/** 정점색(rgb + 알파 비율) — itemSize 4 라 three 가 USE_COLOR_ALPHA 로 굽는다
+ *  조형이 정점 음영(color 속성, 0..1)을 실어 두었으면 재질 색에 곱한다 — 🎃 호박 결 */
 function paintRGBA(THREE, geo, color, alpha) {
-  const n = geo.attributes.position.count, arr = new Float32Array(n * 4);
-  for (let i = 0; i < n; i++) { arr[i * 4] = color.r; arr[i * 4 + 1] = color.g; arr[i * 4 + 2] = color.b; arr[i * 4 + 3] = alpha; }
+  const n = geo.attributes.position.count, arr = new Float32Array(n * 4), shade = geo.attributes.color;
+  for (let i = 0; i < n; i++) {
+    const r = shade ? shade.getX(i) : 1, gg = shade ? shade.getY(i) : 1, b = shade ? shade.getZ(i) : 1;
+    arr[i * 4] = color.r * r; arr[i * 4 + 1] = color.g * gg; arr[i * 4 + 2] = color.b * b; arr[i * 4 + 3] = alpha;
+  }
   geo.setAttribute('color', new THREE.BufferAttribute(arr, 4));
   return geo;
 }
@@ -171,8 +213,22 @@ export function mergeGeos(THREE, geos) {
   return out;
 }
 
+//  🎃 조명 없이(MeshBasicMaterial) 굽는 자국 — 스스로 빛나는 등불은 밤에 어두워지면 안 된다
+//     (시안 lanternCell 도 unlit). 색은 시안 낮 값(pumpkinGeo(false)) 그대로 — 밤 빛은 trail-fx.js 의 온기 입자가 더한다.
+//     나머지 자국은 지금처럼 조명 받는 재질이다.
+export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow']));
+
+/** 자국 하나의 재질 — 자국마다 새로 만든다(공유 아님: 페이드·무지개 색을 자국마다 따로 움직인다) */
+export function markMaterial(THREE, itemId, opacity) {
+  const common = { color: 0xffffff, vertexColors: true };
+  const fade = { transparent: true, opacity, depthWrite: false };
+  return TRAIL_UNLIT.has(itemId)
+    ? new THREE.MeshBasicMaterial({ ...common, ...fade })
+    : new THREE.MeshStandardMaterial({ ...common, roughness: 0.5, metalness: 0, ...fade });
+}
+
 /** 조형용으로 만든 메시 더미 → 정점색 단일 메시 하나 */
-function bake(THREE, src, opacity) {
+function bake(THREE, src, opacity, itemId) {
   src.updateMatrixWorld(true);
   const geos = [];
   src.traverse(o => {
@@ -182,13 +238,14 @@ function bake(THREE, src, opacity) {
     paintRGBA(THREE, q, o.material.color, opacity > 0 ? o.material.opacity / opacity : 1);
     geos.push(q);
   });
-  const m = new THREE.Mesh(mergeGeos(THREE, geos), new THREE.MeshStandardMaterial({
-    color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0,
-    transparent: true, opacity, depthWrite: false,
-  }));
+  const m = new THREE.Mesh(mergeGeos(THREE, geos), markMaterial(THREE, itemId, opacity));
   m.castShadow = false;
   return m;
 }
+
+//  🎃 호박등은 입자(trail-fx.js 의 온기·불씨)보다 **먼저** 그린다 — 가산 온기가 호박 위에 겹쳐야 밤에도 등불로 읽힌다
+//     (시안 lanternCell 은 빛무리를 renderOrder 5 로 호박 위에 그렸다). 투명끼리 정렬이 거리순이라 두면 들쭉날쭉하다.
+const MARK_ORDER = { pumpkin_glow: -1 };
 
 /**
  * 자국 하나 → **단일 메시**. 색이 두 가지 이상이면 정점색으로 굽는다.
@@ -201,7 +258,9 @@ export function buildTrailMark(THREE, itemId, opacity, animalId) {
   if (!fn) return g;
   const src = new THREE.Group();
   fn(src, TRAIL_S, opacity, animalId);
-  g.add(bake(THREE, src, opacity));
+  const m = bake(THREE, src, opacity, itemId);
+  m.renderOrder = MARK_ORDER[itemId] ?? 0;
+  g.add(m);
   return g;
 }
 

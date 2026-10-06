@@ -14,18 +14,18 @@ import { gameSource } from './helpers/game-source.mjs';
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const owning = (id) => ({ owned: [id], equipped: { ...emptyCosmetics().equipped, tools: id } });
 
-test('🪓 도구 칸 — 테마 세트 3종, 각 ₩5,000 현금 전용', () => {
+test('🪓 도구 칸 — 테마 세트 3종 ₩5,000 + 🎃 할로윈 2종 ₩4,500, 현금 전용', () => {
   assert.ok(SLOTS.includes('tools'));
   const ids = itemsOf('tools').map(i => i.id);
-  assert.deepEqual(ids, ['tools_shroom', 'tools_moon', 'tools_bloom']);
+  assert.deepEqual(ids, ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest']);
   for (const id of ids) {
     const it = findItem(id);
-    assert.equal(it.price.won, 5000); assert.equal(it.price.coins, null); assert.equal(it.premium, true);
+    assert.equal(it.price.won, ids.indexOf(id) < 3 ? 5000 : 4500); assert.equal(it.price.coins, null); assert.equal(it.premium, true);
   }
 });
 
-test('테마 = 버섯·달밤·꽃 · 카탈로그 id ↔ 테마', () => {
-  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom']);
+test('테마 = 버섯·달밤·꽃 + 🎃 달밤 보라·수확제 · 카탈로그 id ↔ 테마', () => {
+  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest']);
   assert.equal(themeOf('tools_moon'), 'moon');
   assert.equal(themeOf('cape'), null);
   assert.equal(themeOf(null), null);
@@ -69,10 +69,10 @@ test('구매 연출 — 도구 세트는 상자 폭발 + 도구 세트 카드', 
   for (const id of ['tools_shroom', 'tools_moon', 'tools_bloom']) assert.ok(REVEAL_COPY[id]?.desc, id);
 });
 
-test('Paddle 등록 계획 — 도구 세트 3종이 ₩5,000 으로 들어간다', () => {
+test('Paddle 등록 계획 — 도구 세트 5종이 ₩5,000(3)·₩4,500(할로윈 2)으로 들어간다', () => {
   const plan = buildPlan(itemsOf('tools'));
-  assert.equal(plan.length, 3);
-  for (const p of plan) { assert.equal(p.amount, '5000'); assert.match(p.description, /도구/); }
+  assert.equal(plan.length, 5);
+  plan.forEach((p, i) => { assert.equal(p.amount, i < 3 ? '5000' : '4500'); assert.match(p.description, /도구/); });
 });
 
 test('price-ids.js 에 세 칸이 있다(값은 사용자가 시드로 채운다)', () => {
