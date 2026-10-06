@@ -232,6 +232,10 @@ function bake(THREE, src, opacity) {
   return m;
 }
 
+//  🎃 호박등은 입자(trail-fx.js 의 온기·불씨)보다 **먼저** 그린다 — 가산 온기가 호박 위에 겹쳐야 밤에도 등불로 읽힌다
+//     (시안 lanternCell 은 빛무리를 renderOrder 5 로 호박 위에 그렸다). 투명끼리 정렬이 거리순이라 두면 들쭉날쭉하다.
+const MARK_ORDER = { pumpkin_glow: -1 };
+
 /**
  * 자국 하나 → **단일 메시**. 색이 두 가지 이상이면 정점색으로 굽는다.
  * animalId 는 🐾발바닥에만 쓴다(🐰길쭉 · 🐻🐼크게 · 🐤세 갈래).
@@ -243,7 +247,9 @@ export function buildTrailMark(THREE, itemId, opacity, animalId) {
   if (!fn) return g;
   const src = new THREE.Group();
   fn(src, TRAIL_S, opacity, animalId);
-  g.add(bake(THREE, src, opacity));
+  const m = bake(THREE, src, opacity);
+  m.renderOrder = MARK_ORDER[itemId] ?? 0;
+  g.add(m);
   return g;
 }
 

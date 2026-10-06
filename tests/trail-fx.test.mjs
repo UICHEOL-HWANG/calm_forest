@@ -38,7 +38,7 @@ test('onStamp — step 을 주면 그 걸음 색(미리보기: 자국 id 와 반
   const THREE = { BufferGeometry: class { constructor() { this.attributes = {}; } setAttribute(k, v) { this.attributes[k] = v; } setDrawRange() {} },
     BufferAttribute: Attr, PointsMaterial: class {}, ShaderMaterial: class { constructor(o) { Object.assign(this, o); } },
     Points: class { constructor(g) { this.geometry = g; } }, Group: class { constructor() { this.children = []; } add(...o) { this.children.push(...o); } },
-    Vector2: class {}, CanvasTexture: class {}, Color: class { setHex() { return this; } },
+    Vector4: class {}, CanvasTexture: class {}, Color: class { setHex() { return this; } },
     AdditiveBlending: 2, NormalBlending: 1, SRGBColorSpace: 'srgb', LinearFilter: 1006 };
   const fx = createTrailFx(THREE, { rnd: () => 0.5 });
   assert.equal(fx.onStamp('rainbow', { x: 0, y: 0, z: 0 }, { step: 5 }).tint, rainbowHex(5));
