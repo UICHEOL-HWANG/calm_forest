@@ -219,8 +219,10 @@ export const DEX_CAT_LABEL = { crop: '🌾 작물', fish: '🐟 물고기', ore:
 export let museumFloor = 1;
 
 const curFloorDef = () => MUSEUM_FLOORS.find(f => f.id === museumFloor) || MUSEUM_FLOORS[0];
-// 🏛️ 방은 층마다 크기가 다르다(벽 16×14 · 회랑 20×14). 이동 제한·미니맵·출구가 전부 이 값을 읽는다.
-export const museumDims = () => dimsOf(curFloorDef().layout);
+// 🏛️ 방은 층마다 크기가 다르다(벽 16×14 · 회랑 16×14|20×14 — 회랑은 칸 수에 맞춘다). 이동 제한·미니맵·출구가 전부 이 값을 읽는다.
+//   이동 제한이 프레임마다 읽으므로 층을 지을 때(buildMuseumHall) 정해 둔 값을 돌려준다.
+let _museumDims = dimsOf('wall');
+export const museumDims = () => _museumDims;
 // 지금 층의 배치 — 칸 자리·탁자. 전시물 목록(museumFloorItems)과 같은 순서다.
 export const museumLayoutNow = () => museumLayout(curFloorDef().layout, museumFloorItems().length);
 
@@ -431,6 +433,7 @@ export function buildMuseumHall() {
 
   const items = museumFloorItems();
   const lay = museumLayoutNow();                       // 칸 자리·탁자·방 크기 — js/museum/layout.js
+  _museumDims = lay.dims;
   const { hw: HW, hd: HD } = lay.dims, W = HW * 2, D = HD * 2, H = MUSEUM_H;
 
   add('floor', box(W, 0.2, D, 0, -0.1, 0));

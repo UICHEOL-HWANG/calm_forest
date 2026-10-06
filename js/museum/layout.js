@@ -2,7 +2,7 @@
 //  🏛️ 박물관 층 배치 — 순수 계산(THREE·DOM 의존 없음, Node 테스트)
 //  ------------------------------------------------------------
 //  ▶ 벽 배치(1·2층): 16×14 방, 뒷벽 최대 5 + 좌우 6/6 = 17칸. 가운데 섬이 없다.
-//  ▶ 회랑 배치(3층·특별전): 20×14 방, 벽 유리장 + 가운데 **뚜껑 없는 낮은 탁자**.
+//  ▶ 회랑 배치(3층·특별전): 벽 유리장 + 가운데 **뚜껑 없는 낮은 탁자**. 방은 20×14, 탁자 한 줄이 5칸 이하면 16×14.
 //    높이 1.9m 유리장이 41° 카메라에서 뒷줄을 가리던 빽빽함(2026-10-06 사용자 지적)을 이걸로 푼다.
 //  ▶ 좌표는 방 로컬(중심 0,0) · 입구는 남쪽(+z) · 계단은 북쪽 두 구석.
 //  ▶ ⚠️ 한도를 넘으면 던진다 — 층에 도감이 늘어 넘치면 조용히 잘리지 않고 테스트가 먼저 터져야 한다.
@@ -10,8 +10,10 @@
 export const WALL_DIMS = { hw: 8, hd: 7 };
 export const GALLERY_DIMS = { hw: 10, hd: 7 };
 export const WALL_MAX = 17;
-export const GALLERY_MAX = 35;
+export const GALLERY_MAX = 33;   // 탁자 두 줄 9칸씩 — 이보다 길면 탁자 끝과 옆벽 유리장 사이 통로가 1.6m 아래로 좁아진다(테스트가 잠근다)
 const GALLERY_WALL_MAX = 15, TABLE_GAP = 1.35, TABLE_ROW_MAX = 10;
+// 탁자 한 줄이 이 칸 수 이하면 16×14(벽 배치와 같은 방)로 충분하다 — 특별전 요리 11칸이 20×14 에서 휑하던 문제(2026-10-06)
+const GALLERY_NARROW_TABLE_MAX = 5;
 
 export const dimsOf = (kind) => ({ ...(kind === 'gallery' ? GALLERY_DIMS : WALL_DIMS) });
 
@@ -41,10 +43,11 @@ function wallLayout(count) {
 
 function galleryLayout(count) {
   if (count > GALLERY_MAX) throw new Error(`회랑 배치는 최대 ${GALLERY_MAX}칸이다(받은 ${count}) — 탁자 줄을 늘려야 한다`);
-  const dims = dimsOf('gallery'), { hw, hd } = dims;
   const wallN = Math.min(GALLERY_WALL_MAX, Math.ceil(count / 2)), tableN = count - wallN;
+  const dims = dimsOf(tableN <= GALLERY_NARROW_TABLE_MAX ? 'wall' : 'gallery'), { hw, hd } = dims;
+  const backGap = hw <= WALL_DIMS.hw ? 1.9 : 2.3;   // 좁은 방은 코너 계단(x≥hw-3.2)을 피해 뒷벽 간격을 줄인다
   const slots = [], back = Math.min(5, wallN);
-  for (let i = 0; i < back; i++) slots.push({ x: (i - (back - 1) / 2) * 2.3, z: -hd + 1.2, ry: 0, kind: 'case' });
+  for (let i = 0; i < back; i++) slots.push({ x: (i - (back - 1) / 2) * backGap, z: -hd + 1.2, ry: 0, kind: 'case' });
   for (let j = 0; j < wallN - back; j++) {
     const isRight = j % 2 === 1, k = Math.floor(j / 2);
     slots.push({ x: isRight ? hw - 1.2 : -(hw - 1.2), z: -3.2 + k * 1.9, ry: isRight ? -Math.PI / 2 : Math.PI / 2, kind: 'case' });
@@ -52,7 +55,7 @@ function galleryLayout(count) {
   const tables = [];
   if (tableN > 0) {
     const rows = tableN > TABLE_ROW_MAX - 2 ? 2 : 1;   // 8칸 이하면 한 줄
-    const perRow = Math.ceil(tableN / rows), zs = rows === 2 ? [-1.9, 1.9] : [-1.9];
+    const perRow = Math.ceil(tableN / rows), zs = rows === 2 ? [-1.9, 1.9] : [-0.4];   // 한 줄이면 방 가운데쪽으로 — 뒷벽에 붙이면 남쪽 절반이 휑하다
     for (let r = 0; r < rows; r++) {
       const n = r === 0 ? perRow : tableN - perRow, ry = r === 0 ? 0 : Math.PI;
       for (let k = 0; k < n; k++) slots.push({ x: (k - (n - 1) / 2) * TABLE_GAP, z: zs[r], ry, kind: 'open' });
