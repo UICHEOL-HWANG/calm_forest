@@ -1,6 +1,6 @@
 // js/cosmetics/tool-skins.js
 // =============================================================
-//  calm forest · 🪓☂️ 프리미엄 도구 테마 세트 조형 — 도구 9종 × 3테마 + 비 오는 날 우산
+//  calm forest · 🪓☂️ 프리미엄 도구 테마 세트 조형 — 도구 9종 × 5테마(🎃 할로윈 2종 포함) + 비 오는 날 우산
 //  ------------------------------------------------------------
 //  ▶ 시안·확정: sims/premium-tool-umbrella-sim.html (2026-10-02). 조형 수치는 시안에서 그대로 옮겼다.
 //    시안을 고치면 여기도 같이 고친다(tool-tier-sim 에서 0단계 값이 갈려 역이식된 사고가 있었다).
@@ -497,9 +497,10 @@ const UMBRELLAS = {
   moon:   { N: 8, R: 1.15, th: 0.76, overlap: 1, shape: { w: () => 1, tip: -0.07 }, twist: Math.PI / 8 },
   bloom:  { N: 6, R: 1.0,  th: 0.98, overlap: 1.32, layer: true,
             shape: { w: v => 0.42 + 0.58 * Math.sin(Math.PI * Math.min(1, 0.12 + v * 0.88)), tip: 0.10 } },
-  // 🎃 할로윈 — 시안 없이 테마 팔레트로 설계(2026-10-06). 달밤 보라: 살 끝이 뾰족한 박쥐 날개 톱니 · 수확제: 겹친 짚 갓
-  batnight: { N: 8, R: 1.08, th: 0.86, overlap: 1, shape: { w: () => 1, tip: -0.05 }, twist: Math.PI / 8 },
-  harvest:  { N: 6, R: 1.0,  th: 1.0,  overlap: 1.2, layer: true, shape: { w: () => 1, tip: 0.04 } },
+  // 🎃 할로윈 — 시안 sims/halloween-tools-sim.html UMB.bat / UMB.harvest 그대로(2026-10-06 확정, look/umbrella-pc.png)
+  batnight: { N: 6, R: 1.0,  th: 0.92, overlap: 1.28, layer: true,   // 보라 6폭 · 끝이 박쥐 날개처럼 뾰족
+              shape: { w: v => 0.42 + 0.58 * Math.sin(Math.PI * Math.min(1, 0.12 + v * 0.88)), tip: 0.12 } },
+  harvest:  { N: 10, R: 1.35, th: 0.62, overlap: 1, shape: { w: () => 1, tip: 0 } },   // 짚 갓우산
 };
 export const UMBRELLA_SHAFT = 1.55;   // 쥐는 곳 → 꼭지
 
@@ -525,15 +526,6 @@ export function buildUmbrella(THREE, theme) {
   const surf = (R, th, phi) => {
     const p = V(-Math.cos(phi) * Math.sin(th) * R, (Math.cos(th) - 1) * R, Math.sin(phi) * Math.sin(th) * R);
     return { p, n: p.clone().add(V(0, R, 0)).normalize() };
-  };
-  // 갓 표면에 붙이는 판 — 로컬 +z = 바깥 법선, +y = 꼭지 쪽(납작한 무늬가 살을 따라 바로 선다)
-  const _basis = new THREE.Matrix4();
-  const onCanopy = (h, R, th, phi) => {
-    const w = new THREE.Group(); w.rotation.y = phi; h.add(w);
-    const p = new THREE.Group(); p.position.set(-Math.sin(th) * R, (Math.cos(th) - 1) * R, 0);
-    _basis.makeBasis(V(0, 0, 1), V(Math.cos(th), Math.sin(th), 0), V(-Math.sin(th), Math.cos(th), 0));
-    p.quaternion.setFromRotationMatrix(_basis); w.add(p);
-    return p;
   };
   const HK = halloweenKit(THREE, K);
   const L = UMBRELLA_SHAFT, root = new THREE.Group();
@@ -586,32 +578,20 @@ export function buildUmbrella(THREE, theme) {
         for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.add(M(new THREE.SphereGeometry(0.016, 6, 5), clay(0xe0a83a), Math.cos(a) * 0.05, 0.07, Math.sin(a) * 0.05)); }
       },
     },
-    // 🦇 달밤 보라 — 보라·자두 번갈이 8폭, 살 끝이 뾰족(박쥐 날개 톱니) + 끝마다 주황 구슬, 별 점·박쥐 그림자, 꼭지는 꼬마 호박
+    // 🦇 달밤 보라 — 보라·자두 번갈이 6폭, 폭 끝이 박쥐 날개처럼 뾰족 + 끝마다 주황 구슬, 꼭지는 꼬마 호박
     batnight: {
       outer: k => clay(k % 2 ? BT.plum : BT.vio), inner: () => clay(0xd9cff4, { side: THREE.BackSide, lift: 0.3 }),
       shaft() {
         root.add(M(new THREE.CylinderGeometry(0.022, 0.028, L, 7), clay(BT.plum), 0, L / 2, 0));
-        const band = M(new THREE.TorusGeometry(0.03, 0.009, 5, 12), clay(BT.orange), 0, L - 0.45, 0); band.rotation.x = Math.PI / 2; root.add(band);
         jHook(clay(BT.night), 0.07);
       },
-      deco(h, k) {
-        const tipP = surf(def.R, def.th, Math.PI / def.N).p;   // 살(뼈) 끝 = 날개 손가락 끝
-        h.add(M(new THREE.SphereGeometry(0.024, 8, 6), clay(BT.orange), tipP.x, tipP.y, tipP.z));
-        if (k === 1 || k === 5) {   // 박쥐는 두 폭에만 — 마주 보는 쪽
-          const bat = M(ext(HK.batSilShape(2.3), 0.008, 0.003, 4), clay(BT.night));
-          onCanopy(h, def.R * 1.006, k === 1 ? 0.52 : 0.62, 0).add(bat);
-        } else if (k % 2 === 0) {   // 별은 박쥐 없는 폭 하나 걸러 — 크기 다르게
-          const j = k / 2, r = [0.06, 0.042, 0.054, 0.046][j];
-          const s = M(ext(starShape(r), 0.006, 0.002), clay(BT.gold, { glow: BT.gold, k: 0.9 }));
-          onCanopy(h, def.R * 1.006, [0.42, 0.6, 0.36, 0.55][j], [0.1, -0.12, 0.0, 0.14][j]).add(s);
-        }
+      deco(h) {
+        const tipP = surf(def.R, def.th * 1.1, 0).p;   // 폭 가운데 뾰족한 끝
+        h.add(M(new THREE.SphereGeometry(0.022, 6, 5), clay(BT.orange), tipP.x, tipP.y, tipP.z));
       },
-      finial(c) {
-        c.add(M(new THREE.CylinderGeometry(0.012, 0.02, 0.04, 6), clay(BT.night), 0, 0.015, 0));
-        HK.pumpkin(c, 0.055, 0, 0.06, 0);
-      },
+      finial(c) { HK.pumpkin(c, 0.05, 0, 0.04, 0); },
     },
-    // 🌽 수확제 — 짚·짙은 짚 번갈이 6폭 겹친 갓, 기움천 세 장 · 새끼줄 띠, 자루에 새끼줄, 꼭지는 옥수수
+    // 🌽 수확제 — 짚 갓우산 10폭 · 한 폭 걸러 빨간 끈 · 자루에 새끼줄 · 꼭지는 옥수수
     harvest: {
       outer: k => clay(k % 2 ? HV.strawD : HV.straw), inner: () => clay(HV.cream, { side: THREE.BackSide, lift: 0.35 }),
       shaft() {
@@ -620,15 +600,11 @@ export function buildUmbrella(THREE, theme) {
         jHook(clay(HV.woodD));
       },
       deco(h, k) {
-        if (k % 2) return;   // 겹친 폭(바깥으로 살짝 뜬 쪽)은 비워 둔다 — 깜빡임·관통 방지
-        const j = k / 2;
-        HK.patch(onCanopy(h, def.R * 1.004, [0.62, 0.48, 0.7][j], [0.06, -0.08, 0.0][j]), 0, 0, 0, [0.2, 0.16, 0.18][j], j === 1 ? HV.blue : HV.red, 1, [0.12, -0.2, 0.3][j]);
+        if (k % 2) return;
+        const p = surf(def.R * 1.003, 0.31, 0).p;
+        h.add(M(new THREE.BoxGeometry(0.03, 0.03, 0.2), clay(HV.red), p.x, p.y, p.z));
       },
-      finial(c) {
-        const rope = M(new THREE.TorusGeometry(def.R * 1.016 * Math.sin(0.3), 0.014, 4, 30), clay(HV.rope), 0, (Math.cos(0.3) - 1) * def.R * 1.016, 0);
-        rope.rotation.x = Math.PI / 2; c.add(rope);   // 새끼줄 띠 — 꼭지 둘레
-        HK.cob(c, 0, 0.09, 0, 0.16, 0.04, 0.028, 3);
-      },
+      finial(c) { HK.cob(c, 0, 0.1, 0, 0.16, 0.04, 0.028, 3); },
     },
   }[theme];
   look.shaft();
