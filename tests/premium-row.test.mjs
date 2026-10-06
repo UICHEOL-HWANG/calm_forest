@@ -44,3 +44,26 @@ test('slotVisible — 산 게 있으면(owned) 웹 밖에서도 보인다 · 코
   const coin = { id: 'cap', price: { coins: 1500 } };
   assert.equal(slotVisible([coin], () => ({ ...base, platform: 'toss' })), true);
 });
+
+const sale = { ...it, id: 'pumpkin_glow', sale: 'halloween' };
+const IN = Date.parse('2026-10-28T03:00:00Z'), BEFORE = Date.parse('2026-10-10T03:00:00Z'), AFTER = Date.parse('2026-11-10T03:00:00Z');
+
+test('🎃 한정 상품 — 기간 안에서만 안 산 사람에게 보인다', () => {
+  assert.equal(premiumRowMode(sale, { ...base, now: IN }), 'buy');
+  assert.equal(premiumRowMode(sale, { ...base, now: BEFORE }), 'hidden');
+  assert.equal(premiumRowMode(sale, { ...base, now: AFTER }), 'hidden');
+});
+
+test('🎃 산 사람은 기간과 무관하게 owned — 옷장·가게에서 계속 보인다', () => {
+  assert.equal(premiumRowMode(sale, { ...base, owned: true, now: AFTER }), 'owned');
+  assert.equal(premiumRowMode(sale, { ...base, owned: true, now: BEFORE, platform: 'toss' }), 'owned');
+});
+
+test('🎃 웹 밖은 기간 안이어도 hidden · 게스트는 기간 안에서 login', () => {
+  assert.equal(premiumRowMode(sale, { ...base, platform: 'android', now: IN }), 'hidden');
+  assert.equal(premiumRowMode(sale, { ...base, isGuest: true, now: IN }), 'login');
+});
+
+test('🎃 sale 키가 없는 기존 프리미엄은 기간과 무관(영향 없음)', () => {
+  assert.equal(premiumRowMode(it, { ...base, now: AFTER }), 'buy');
+});
