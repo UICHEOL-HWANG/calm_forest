@@ -27,7 +27,7 @@ import { MUSEUM_FLOORS } from '../museum.js';
 import { OUTDOOR_MOVE_REACH, canPromptOutdoorMove } from '../outdoor-move.js';
 import { COPY } from '../observatory/copy.js';
 import { Sound } from '../sound.js';
-import { MUSEUM_HALF_D, _museumNear, museumFloor, museumFloorItems, museumPlateText, museumStairs, updateCafeInteract } from '../spaces/cafe.js';
+import { museumDims, _museumNear, museumFloor, museumFloorItems, museumPlateText, museumStairs, updateCafeInteract } from '../spaces/cafe.js';
 import { surveyBenchWorld, surveyDeskWorld } from '../spaces/farm-field.js';
 import { visitorTarget } from '../spaces/visitors.js';
 import { forageTarget } from '../spaces/forest.js';
@@ -226,8 +226,8 @@ export function updateDoorInteract() {
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
-  } else if (atMuseum) {   // 🏛️ 전시실: 남쪽 문으로 나가기 / 진열장 앞 자세히 보기
-    if (dist2D({ x: MUSEUM.x, z: MUSEUM.z + MUSEUM_HALF_D }, player.position) < 1.9) { nd = 'museumexit'; prompt = '🚪 나가기'; }
+  } else if (atMuseum) {   // 🏛️ 전시실: 정문은 1층만 — 상층은 계단으로만 오르내린다 / 진열장 앞 자세히 보기
+    if (museumFloor === 1 && dist2D({ x: MUSEUM.x, z: MUSEUM.z + museumDims().hd }, player.position) < 1.9) { nd = 'museumexit'; prompt = '🚪 나가기'; }
     else {
       const st = museumStairs.find(t => dist2D({ x: MUSEUM.x + t.x, z: MUSEUM.z + t.z }, player.position) < 1.8);
       if (st) {
