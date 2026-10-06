@@ -19,7 +19,9 @@ const TAU = Math.PI * 2;
 const SHEET = { color: 0xe6e3f0, glow: 0x4a4860, glowI: 0.55, roughness: 0.96 };
 const NIGHTCAP = { body: 1.16, peakH: 2.75, trim: 0xcdbff0, orange: 0xf6a04d,
   // 후드 중 머리 꾸미기에 숨길 부분 — 정수리(peakY0)~꼭대기 구간의 20% 위부터(머리 꼭대기 높이, 처짐이 보이기 시작하는 곳)
-  tipFrom: 0.2 };
+  tipFrom: 0.2,
+  // 후드 끝을 숨겼을 때 잘린 자리를 닫는 뚜껑 높이(머리 단위) — 원뿔 속에 들어갈 만큼 낮게
+  capH: 0.28 };
 const CLOUD = { body: 0xf1ecff, emissive: 0x8d7bd6, ei: 0.28, opacity: 0.8,
   rim: 0xc3b4ff, rimOpacity: 0.2, rimGrow: 1.06,
   puff: 0xf6f2ff, puffGlow: 0x6d5cb8, puffEi: 0.18, puffOpacity: 0.92 };
@@ -62,8 +64,11 @@ export function applyGhostNightcap(THREE, built) {
     const t = (y - y0) / (yT - y0);
     p.z -= HR * 2.0 * t * t; p.y -= HR * 1.05 * t * t * t; p.x += HR * 0.28 * t * t;
   };
-  const D = drape(THREE, { yTop: yT - 0.004, hemY: bodyY - Ry * 0.12, rAt, hemAmp: 0.05, hemFreq: 11, rows: 56, fold: 0.03,
-    hole: win.hole, cut: (phi, y) => y > yCut, post: droop });
+  //  후드 끝은 격자 위쪽 몇 행 — 잘린 고리는 낮은 둥근 뚜껑으로 닫는다(머리 꾸미기를 써서 끝이 숨어도 정수리가 안 뚫린다)
+  const yTop = yT - 0.004, hemY = bodyY - Ry * 0.12, rows = 56;
+  const cutRow = Math.round((yTop - yCut) / (yTop - hemY) * rows);
+  const D = drape(THREE, { yTop, hemY, rAt, hemAmp: 0.05, hemFreq: 11, rows, fold: 0.03,
+    hole: win.hole, cutRow, cap: HR * NIGHTCAP.capH, post: droop });
   const sheet = sheetMat(THREE);
   const trim = cached('ghost-nightcap-trim', () => std(THREE, NIGHTCAP.trim));
   const orange = cached('ghost-nightcap-orange', () => std(THREE, NIGHTCAP.orange, { roughness: 0.95 }));

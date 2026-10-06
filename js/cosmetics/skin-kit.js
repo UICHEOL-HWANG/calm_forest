@@ -54,6 +54,23 @@ export function onSurface(THREE, parent, p, nrm, roll = 0) {
   const g = new THREE.Group(); g.position.copy(p); g.lookAt(p.clone().add(nrm)); g.rotateZ(roll); parent.add(g); return g;
 }
 export const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const CAP_RINGS = [[0.9, 0.36], [0.7, 0.68], [0.42, 0.9], [0.18, 0.98]];   // [고리 반경 비, 높이 비] — 가장자리는 가파르게, 가운데는 납작하게
+/** 잘린 고리(edge, 열 cols+1 개)를 덮는 둥근 뚜껑 — 꼭짓점을 pos 뒤에 덧붙이고 삼각형 인덱스를 돌려준다.
+ *  가장자리 꼭짓점은 따로 복제한다(시트 법선과 섞이지 않게 — 이음매 음영은 시트 쪽 그대로). */
+function capIdx(pos, edge, cols, h) {
+  const n = cols, c = { x: 0, y: 0, z: 0 };
+  for (let j = 0; j < n; j++) { c.x += edge[j].x / n; c.y += edge[j].y / n; c.z += edge[j].z / n; }
+  const base = pos.length / 3, W = cols + 1, out = [];
+  const rings = [[1, 0], ...CAP_RINGS];
+  for (const [k, lift] of rings) for (const p of edge) pos.push(c.x + (p.x - c.x) * k, p.y + (c.y - p.y) * (1 - k) + h * lift, c.z + (p.z - c.z) * k);
+  for (let r = 0; r < rings.length - 1; r++) for (let j = 0; j < cols; j++) {
+    const a = base + r * W + j, b = a + 1, cc = a + W, d = cc + 1; out.push(a, cc, b, b, cc, d);
+  }
+  const top = pos.length / 3, last = base + (rings.length - 1) * W;
+  pos.push(c.x, c.y + h, c.z);
+  for (let j = 0; j < cols; j++) out.push(last + j, top, last + j + 1);
+  return out;
+}
 const wrapPi = (a) => ((a + PI) % TAU + TAU) % TAU - PI;
 /** 점열을 따라가는 관(테두리·밑단 실) */
 export const tubeGeo = (THREE, pts, rad, closed = false, seg = 120) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed), seg, rad, 6, closed);
@@ -89,10 +106,14 @@ export function silhouette(k, o) {
 }
 
 // ── 천(drape) 생성기 — φ 는 앞(+z)=0, +x 쪽으로 증가 ──
-//  hole(φ, y): 건너뛸 사각형(얼굴 창) · cut(φ, y): 따로 떼어 geoCut 으로 보낼 사각형(후드 끝처럼 따로 숨길 부위).
+//  hole(φ, y): 건너뛸 사각형(얼굴 창)
+//  cutRow: 위에서부터 이 행 수만큼을 따로 떼어 geoCut 으로(후드 끝처럼 따로 숨길 부위). 행 단위라 이음매는 꼭짓점 고리 한 줄.
+//  cap: cutRow 와 같이 주면 그 고리를 높이 cap 의 둥근 뚜껑으로 닫아 **늘 보이는 geo** 에 넣는다
+//       (geoCut 을 숨겨도 구멍이 안 뚫린다. 같은 재질·같은 메시라 드로우콜 0). 뚜껑은 잘린 고리 안쪽·위로만 솟아
+//       geoCut(위로 좁아지는 원뿔)이 보일 땐 그 속에 가려진다.
 //  법선은 자르기 **전** 전체 격자에서 구한다 → 두 조각 이음매에 음영 단차가 없다.
 export function drape(THREE, { yTop, hemY, rAt, phi0 = -PI, phi1 = PI, rows = 44, cols = 72, hemAmp = 0.05, hemFreq = 9,
-  fold = 0.03, foldFreq = 6, foldK = () => 1, hole = null, cut = null, post = null }) {
+  fold = 0.03, foldFreq = 6, foldK = () => 1, hole = null, cutRow = 0, cap = 0, post = null }) {
   const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
   const pos = [], idx = [], idxCut = [], dphi = (phi1 - phi0) / cols;
   const hemAt = (phi) => { const f = ((phi * hemFreq / TAU) % 1 + 1) % 1; return hemY + hemAmp * (1 - Math.sqrt(Math.max(0, 1 - (2 * f - 1) ** 2))); };
@@ -109,13 +130,14 @@ export function drape(THREE, { yTop, hemY, rAt, phi0 = -PI, phi1 = PI, rows = 44
     const cphi = wrapPi(phi0 + (j + 0.5) * dphi), cy = (grid[i][j].y + grid[i + 1][j + 1].y) / 2;
     if (hole && hole(cphi, cy)) continue;
     const a = i * W + j, b = a + 1, c = a + W, d = c + 1;
-    (cut && cut(cphi, cy) ? idxCut : idx).push(a, c, b, b, c, d);
+    (i < cutRow ? idxCut : idx).push(a, c, b, b, c, d);
   }
+  if (cutRow && cap) idx.push(...capIdx(pos, grid[cutRow].map(q => q.p), cols, cap));
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setIndex([...idx, ...idxCut]); geo.computeVertexNormals();
   let geoCut = null;
-  if (cut) { geoCut = geo.clone(); geoCut.setIndex(idxCut); geo.setIndex(idx); }
+  if (cutRow) { geoCut = geo.clone(); geoCut.setIndex(idxCut); geo.setIndex(idx); }
   const col = (j) => grid.map(r => r[j].p), hem = grid[rows].map(q => q.p);
   return { geo, geoCut, hem, edgeL: col(0), edgeR: col(cols),
     at: (phi, y) => { const r = rAt(y); return { p: V3(r * Math.sin(phi), y, r * Math.cos(phi)), nrm: V3(Math.sin(phi), 0, Math.cos(phi)) }; } };
