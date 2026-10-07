@@ -3,7 +3,7 @@
 // =============================================================
 import {
   $w, Input, firstHint, mergeGeos, obstacles, player, playerAnchor, scene, setFogExempt,
-  rollDifficulty, setSpaceVisible, snapCamera, solidBox, solidCircle, ui,
+  rollDifficulty, setSpaceVisible, snapCamera, solidBox, solidCircle, syncStory, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
@@ -117,7 +117,8 @@ async function openStarView() {
 function showBook(lens, book, session, fresh = null) {
   if (lookState !== session) return;
   const { cleared, best } = starState();
-  book.openStarBook({ cleared, best, fresh, onPick: c => startRun(lens, book, session, c), onClose: resetLookPose });
+  book.openStarBook({ cleared, best, fresh, onPick: c => startRun(lens, book, session, c),
+    onClose: () => { resetLookPose(); syncStory('star'); } });   // 📖 7장 — 렌즈·수첩 오버레이가 다 닫힌 뒤
 }
 
 async function startRun(lens, book, session, c) {
