@@ -1497,7 +1497,7 @@ export function finishCafeServe(guest, tier, { fromPantry = false, score = null 
   refreshCafeGuests();                                            // 만족한 손님은 자리를 뜸
   trackEvent('cafe_serve', { recipe: o.recipe.id, npc: o.id, pay, quality: tier.id, score,
     from_pantry: fromPantry ? 1 : 0, served_total: st.served, affinity: aff });   // [GA4] 접객 루프 KPI
-  syncStory();                                                    // 📖 3장(마을의 맛) 진행
+  syncStory('serve');                                             // 📖 3장(마을의 맛) 진행
   const complete = st.done.length >= CAFE_ORDERS && !st.bonus;
   if (complete) {                                                 // 🎉 오늘 영업 완주
     st.bonus = true;

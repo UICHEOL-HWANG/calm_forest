@@ -118,7 +118,7 @@ function showBook(lens, book, session, fresh = null) {
   if (lookState !== session) return;
   const { cleared, best } = starState();
   book.openStarBook({ cleared, best, fresh, onPick: c => startRun(lens, book, session, c),
-    onClose: () => { resetLookPose(); syncStory(); } });   // 📖 7장 — 렌즈·수첩 오버레이가 다 닫힌 뒤
+    onClose: () => { resetLookPose(); syncStory('star'); } });   // 📖 7장 — 렌즈·수첩 오버레이가 다 닫힌 뒤
 }
 
 async function startRun(lens, book, session, c) {
