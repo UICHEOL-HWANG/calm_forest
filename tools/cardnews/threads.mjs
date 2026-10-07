@@ -22,6 +22,9 @@ export const THREADS_TEXT_MAX = 500;
 // Threads 는 게시물당 주제 태그가 하나라 인스타처럼 여러 개를 달지 않는다
 export const THREADS_TAG = '인디게임';
 
+/** 게임 링크는 프로필(X)·본문이 아니라 **첫 댓글**에 단다(사용자 결정 2026-10-07). 덱의 threadsReply 가 있으면 그걸 쓴다. */
+export const THREADS_LINK_REPLY = '🎮 지금 바로 플레이해 보세요 (무료 · 웹 / 토스 / Google Play)\nhttps://calmforest.cloud/';
+
 let cached = null;
 
 /** 토큰이 없으면 null — Threads 는 선택 채널이라 없으면 건너뛴다 */
@@ -75,6 +78,7 @@ export function toThreadsText(caption, max = THREADS_TEXT_MAX, tag = THREADS_TAG
   const body = (caption || '')
     .split('\n')
     .filter(line => !/^\s*(#\S+\s*)+$/.test(line))
+    .filter(line => !/프로필|🔗/.test(line))   // 링크는 본문이 아니라 첫 댓글로 간다(THREADS_LINK_REPLY)
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -122,14 +126,30 @@ export async function publishThreadsCarousel({ urls, text }) {
  * 영상 1편 → Threads 게시물. 게시물 URL 을 돌려준다.
  * ⚠️ 영상은 인코딩이 있어 이미지보다 오래 걸린다(최대 5분 기다린다).
  */
-export async function publishThreadsVideo({ videoUrl, text }) {
+export async function publishThreadsVideo({ videoUrl, text, replyText = THREADS_LINK_REPLY }) {
   if (text.length > THREADS_TEXT_MAX) throw new Error(`본문 ${text.length}자 — Threads 상한 ${THREADS_TEXT_MAX}자 초과`);
   const { id } = await threads('/me/threads', { media_type: 'VIDEO', video_url: videoUrl, text }, 'POST');
-  return finishAndPublish(id, 100);
+  const post = await finish(id, 100);
+  // 댓글이 실패해도 던지지 않는다 — 게시물은 이미 나갔다. 던지면 호출부가 "발행 실패"로 오해해 재발행(중복)한다.
+  if (replyText) {
+    try { await replyToThread(post.id, replyText); }
+    catch (e) { console.error(`⚠️ Threads 링크 댓글 실패 (게시물은 나갔다): ${e.message}\n   게시물 ID ${post.id} — 댓글만 수동으로 달아 주세요.`); }
+  }
+  return post.permalink;
+}
+
+/** 이미 나간 게시물에 댓글(답글) 하나 — reply_to_id 로 텍스트 컨테이너를 만들어 발행한다 */
+export async function replyToThread(mediaId, text) {
+  if (text.length > THREADS_TEXT_MAX) throw new Error(`댓글 ${text.length}자 — Threads 상한 ${THREADS_TEXT_MAX}자 초과`);
+  const { id } = await threads('/me/threads', { media_type: 'TEXT', text, reply_to_id: mediaId }, 'POST');
+  return finish(id, 30);
 }
 
 /** 컨테이너가 FINISHED 가 될 때까지 3초 간격으로 기다렸다가 발행한다(Meta 권고) */
-async function finishAndPublish(container, maxTries) {
+async function finishAndPublish(container, maxTries) { return (await finish(container, maxTries)).permalink; }
+
+/** finishAndPublish 와 같되 게시물 ID 도 돌려준다(댓글을 달려면 ID 가 필요하다) */
+async function finish(container, maxTries) {
   for (let i = 0; ; i++) {
     const s = await threads(`/${container}`, { fields: 'status,error_message' });
     if (s.status === 'FINISHED') break;
@@ -142,7 +162,7 @@ async function finishAndPublish(container, maxTries) {
 
   const { id: mediaId } = await threads('/me/threads_publish', { creation_id: container }, 'POST');
   const { permalink } = await threads(`/${mediaId}`, { fields: 'permalink' });
-  return permalink;
+  return { id: mediaId, permalink };
 }
 
 /** 장기 토큰 갱신. 새 토큰은 파일에만 쓰고 화면에 찍지 않는다 */

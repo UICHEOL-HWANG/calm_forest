@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Sequence, interpolate, staticFile, useVideoConfig } from "remotion";
 import { Audio } from "@remotion/media";
-import { BrandBug, Caption, EndCard, Flash, GameClip } from "./parts";
+import { BrandBug, Caption, EmojiCaption, EndCard, Flash, GameClip } from "./parts";
 import { NIGHT_CUTS, NIGHT_END_BEATS, NIGHT_HOOK, NIGHT_MUSIC } from "./nightTimeline";
 import { beats } from "./timeline";
 
@@ -29,7 +29,9 @@ function buildBlocks(): Block[] {
     push(beats(c.beats), (
       <>
         <GameClip src={c.src} startSec={c.startSec} dir={dir} rate={c.rate} zoom={c.zoom} origin={c.origin} />
-        <Caption word={c.word} line={c.line} color={c.color} dir={dir} top={c.captionTop} />
+        {c.emoji
+          ? <EmojiCaption emoji={c.emoji} color={c.color} dir={dir} top={c.captionTop} />
+          : <Caption word={c.word} line={c.line} color={c.color} dir={dir} top={c.captionTop} />}
         <Flash />
       </>
     ), true);

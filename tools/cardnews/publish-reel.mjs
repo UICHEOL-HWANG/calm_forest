@@ -75,7 +75,8 @@ async function postToThreads(videoUrl) {
   }
   try {
     console.log(`\n🧵 Threads 업로드 (인코딩 대기, 최대 5분)`);
-    const link = await publishThreadsVideo({ videoUrl, text: threadsText });
+    // 게임 링크는 프로필이 아니라 첫 댓글로 단다 — 덱에 threadsReply 가 있으면 그 문구, 없으면 기본 문구
+    const link = await publishThreadsVideo({ videoUrl, text: threadsText, replyText: spec.threadsReply });
     console.log(`🧵 Threads 발행 완료\n   ${link}`);
     spec.threadsPublishedAt = new Date().toISOString().slice(0, 10);
     spec.threadsPermalink = link;
