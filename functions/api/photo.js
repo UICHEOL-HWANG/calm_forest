@@ -134,6 +134,12 @@ export async function onRequestPost({ request, env }) {
 }
 
 // ── DELETE /api/photo?key=... — 본인 소유 오브젝트만 ─────────────
+/** 본인 사진 키인가 — 형태(photos/<uuid>/<숫자>.jpg)와 본인 prefix 를 함께 못 박는다.
+ *  삭제(DELETE)와 표시 URL 발급(photo-urls)이 같이 쓴다. */
+export function isOwnPhotoKey(key, uid) {
+  return typeof key === 'string' && /^photos\/[0-9a-f-]{36}\/\d+\.jpg$/.test(key) && key.startsWith(`photos/${uid}/`);
+}
+
 export async function onRequestDelete({ request, env }) {
   if (!ociReady(env)) return json({ error: 'not_configured' }, 503);
   const user = await verifyUser(env, request);
@@ -143,8 +149,7 @@ export async function onRequestDelete({ request, env }) {
   //   photos/<내uid>/../<남uid>/x.jpg 는 startsWith 를 통과하는데, 서명은 원본 경로로 만들고
   //   fetch 는 '..' 를 정규화해 보내므로 지금은 서명 불일치로 우연히 막히는 상태다.
   //   서명 방식이나 중간 프록시가 바뀌면 그대로 뚫리므로 여기서 형태를 못 박는다.
-  const okKey = /^photos\/[0-9a-f-]{36}\/\d+\.jpg$/.test(key);
-  if (!okKey || !key.startsWith(`photos/${user.id}/`)) return json({ error: 'forbidden' }, 403);
+  if (!isOwnPhotoKey(key, user.id)) return json({ error: 'forbidden' }, 403);
   const del = await s3Fetch(env, 'DELETE', `/${env.OCI_BUCKET}/${key}`);
   if (!del.ok && del.status !== 404) return json({ error: 'storage_delete_failed', status: del.status }, 502);
   return json({ ok: true });
