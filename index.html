@@ -5473,6 +5473,7 @@
       storyModalThen = then || null;
       renderStory(); Input.setAnalog(0, 0);
       $('story-modal').classList.add('show');
+      trackEvent('story_modal_open', { ch: lastStoryView.ch + 1, via: 'onboard' });   // [GA4] 온보딩 지도 1회 노출
     }
     function renderStory() {
       const v = lastStoryView || Input.getStory();
@@ -5491,7 +5492,10 @@
       });
       requestAnimationFrame(() => box.querySelector('.st-row.now')?.scrollIntoView({ block: 'nearest' }));   // 모달이 보인 뒤에 스크롤(숨김 상태에선 no-op)
     }
-    $('story-chip').addEventListener('click', () => { renderStory(); Input.setAnalog(0, 0); $('story-modal').classList.add('show'); });
+    $('story-chip').addEventListener('click', () => {
+      renderStory(); Input.setAnalog(0, 0); $('story-modal').classList.add('show');
+      trackEvent('story_modal_open', { ch: (lastStoryView?.ch ?? 0) + 1, via: 'chip' });   // [GA4] 이야기를 실제로 펼쳐 보는가(현재 장 번호)
+    });
     $('story-close').addEventListener('click', () => closeStoryModal());
     $('story-modal').addEventListener('click', (e) => { if (e.target === $('story-modal')) closeStoryModal(); });
 

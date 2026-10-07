@@ -52,3 +52,10 @@ export function buildStoryView(story, s) {
     })),
   };
 }
+
+/** [GA4] 장 시작(started[id] = 시각)부터 지금까지 시간 — 0.1시간 단위. 옛 세이브의 1·없음·시계 역행은 null(파라미터 생략). */
+export function hoursSince(startedAt, now) {
+  const t = Number(startedAt);
+  if (!Number.isFinite(t) || t < 1e12 || now < t) return null;
+  return Math.round((now - t) / 360000) / 10;
+}
