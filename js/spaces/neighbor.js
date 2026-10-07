@@ -6,19 +6,20 @@
 //  🔒 게임 상태는 gameState.neighbors · gameState.hintsSeen.neighborPublic 만 쓴다(tests/neighbor-space 가 잠근다).
 //     이웃 데이터는 visit 객체에만 둔다. 3D 는 js/neighbors/scene.js, 화면은 js/neighbors/ui.js.
 // =============================================================
-import { $w, ANIMALS, gameState, giveReward, player, requestSave, setSpaceVisible, snapCamera, syncStory, ui } from '../game.js';
+import { $w, ANIMALS, gameState, giveReward, makeSignpost, obstacles, player, requestSave, scene, setSpaceVisible, snapCamera, syncStory, ui } from '../game.js';
+import * as THREE from 'three';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';
 import { OUTDOOR } from '../data/catalog.js';
 import { HOUSE_POS, NEIGHBOR, NEIGHBOR_GATE, NEIGHBOR_R } from '../data/places.js';
 import { Sound } from '../sound.js';
 import { sanitizeShowcase } from '../neighbors/sanitize.js';
-import { FAIL_TOAST, HOST_TALK_R, REWARD_COINS, pickerRows, reactOutcome, recordVisit } from '../neighbors/rules.js';
-import { evFail, evOpen, evReact, evVisitEnd, evVisitStart } from '../neighbors/track.js';
+import { FAIL_TOAST, HOST_TALK_R, REWARD_COINS, markSeen, noticeView, pickerRows, reactOutcome, recordVisit, visitorsSince } from '../neighbors/rules.js';
+import { evFail, evNotice, evOpen, evReact, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
 import { neighborApi } from '../neighbors/net.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
 import { inVillage2 } from './doors.js';
-import { closePickerModal, hideNeighborHud, isPickerOpen, openPickerModal, setHostBubble, setPickerBusy, showNeighborHud } from '../neighbors/ui.js';
+import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openPickerModal, openVisitorsModal, setHostBubble, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy }
 let pickerBusy = false;
@@ -150,3 +151,62 @@ export function neighborMinimapMarks(marks) {
 
 /** 이웃 공간에서 저장되면 팻말 앞으로 적는다 — 새로고침하면 마을에서 시작한다 */
 export function neighborReturnPos() { return { x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 2.2 }; }
+
+// ── 🏡 마을 입구 팻말 — buildEnvironment 가 한 번 부른다 ──
+let gateGroup = null;
+export function spawnNeighborGate() {
+  if (gateGroup) return gateGroup;   // 두 번 불려도 팻말·충돌체가 겹치지 않게
+  gateGroup = new THREE.Group();
+  gateGroup.position.copy(NEIGHBOR_GATE);
+  gateGroup.add(makeSignpost('🏡 이웃 마을 가는 길', 0, 0));   // 기둥 충돌체는 makeSignpost 가 다음 프레임에 등록
+  scene.add(gateGroup);
+  obstacles.push({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z, r: 1.2 });   // 팻말 위엔 밭·야외 장식 금지
+  return gateGroup;
+}
+
+// ── 접속(부팅) — ⚙️ 토글 묶기 + 다녀간 이웃 알림 + 첫 공개 안내 ──
+let villagePublic = true;   // 서버 기본값과 같다. my_visitors 가 실제 값을 준다
+export function initNeighbors() {
+  bindVillagePublicToggle(toggleVillagePublic);
+  const member = !!authState.online && !authState.isGuest;
+  setVillagePublicUi(villagePublic, member);   // 게스트는 후보에 안 들어가므로 토글을 숨긴다
+  if (!member || !gameState.character || !gameState.tutorialSeen) return;   // 신규 온보딩(캐릭터 선택·튜토리얼)과 겹치지 않게
+  setTimeout(bootVisitors, 6000);   // 출석·📮 소식 모달이 먼저 — 그 뒤 빈 화면을 기다려 띄운다
+}
+
+async function bootVisitors() {
+  const asked = Date.now();
+  const r = await neighborApi.visitors(visitorsSince(gameState.neighbors.seenAt, asked));
+  if (!r.ok) { trackEvent(...evFail('visitors', r.reason)); return; }   // 접속 직후라 토스트로 방해하지 않는다(GA4 로만)
+  villagePublic = r.isPublic;
+  setVillagePublicUi(villagePublic, true);
+  whenNoModal(() => {
+    if (r.total > 0) {
+      const view = noticeView(r, faceOf);
+      trackEvent(...evNotice(view.rows.length, view.total));   // [GA4] 보여 준 줄 수·전체 방문자 수
+      openVisitorsModal(view, () => { gameState.neighbors = markSeen(gameState.neighbors, asked); requestSave(); firstPublicNotice(); });
+    } else firstPublicNotice();
+  });
+}
+
+function firstPublicNotice() {
+  if (gameState.hintsSeen.neighborPublic || !villagePublic) return;
+  gameState.hintsSeen.neighborPublic = true;
+  requestSave();
+  ui.toast?.('🏡 내 마을이 이웃에게 보여요 · ⚙️ 설정에서 끌 수 있어요', 4200);
+}
+
+// 출석·소식·안내 모달이 떠 있으면 닫힐 때까지 기다린다(최대 30초 — 그래도 안 닫히면 그냥 띄운다)
+function whenNoModal(fn, tries = 0) {
+  if (!ui.anyModalOpen?.() || tries >= 20) return fn();
+  setTimeout(() => whenNoModal(fn, tries + 1), 1500);
+}
+
+async function toggleVillagePublic() {
+  const next = !villagePublic;
+  const r = await neighborApi.setPublic(next);
+  if (!r.ok) { trackEvent(...evFail('toggle', r.reason)); ui.toast?.(FAIL_TOAST, 2400); return; }
+  villagePublic = r.is_public;
+  setVillagePublicUi(villagePublic, true);
+  trackEvent(...evToggle(villagePublic));   // [GA4] 공개 끄기·켜기
+}

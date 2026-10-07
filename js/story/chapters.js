@@ -50,9 +50,9 @@ export const STORY = [
     reward: { coins: 120 },
   },
   {
-    id: 'neighbors', ico: '🏡', title: '이웃의 숲', goal: '이웃 마을에 놀러 가기', soon: true,
+    id: 'neighbors', ico: '🏡', title: '이웃의 숲', goal: '이웃 마을에 놀러 가기',
     start: '같은 잎사귀를 받고 숲에 온 이웃들이 있대요. 그들의 마을에 놀러 가보자.',
-    done: '',
+    done: '이웃의 마을에 다녀왔어요. 숲은 생각보다 넓고, 생각보다 따뜻해요.',   // ⚠️ 문구 검수 대기(2026-10-07 후보) — 병합 전 사용자 확인
     reward: { coins: 150 },
   },
 ];
