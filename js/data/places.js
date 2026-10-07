@@ -292,3 +292,11 @@ export const DOOR_COLORS = [0xa9743f, 0x8a5a3a, 0x5a6a8a, 0x5a8a6a, 0xd0a050];  
 export const PART_NAME = { roof: '지붕', wall: '벽', door: '문' };
 
 export const HOUSE_POS = new THREE.Vector3(-8, 0, -8); // 정해진 집 터 위치
+
+// 🏡 이웃 마을 — 다른 플레이어의 앞마당을 구경하는 인스턴스(가장 먼 천문대 540 너머, 비어 있음)
+//   스펙: docs/superpowers/specs/2026-10-07-neighbor-village-design.md
+export const NEIGHBOR = new THREE.Vector3(0, 0, 700);
+export const NEIGHBOR_R = 16;                                // 이동 반경 — 앞마당(14) + 걸어 다닐 여유
+//   입구 팻말 — 남쪽 🍄채집 숲(-18,23)과 🌟반딧불이 계곡(7,26) 사이 빈터. 겹침 검사는 tests/neighbor-village.test.mjs
+//   (계곡 중심 11.05 = 링 끝까지 1.45 · 숲 중심 14.14 = 링 끝까지 2.5 · 닭장 13.5 · 카페 13.6 · 가장 가까운 주민 ⭐별 보는 아이 11.0 · 화덕 후보 11.5)
+export const NEIGHBOR_GATE = new THREE.Vector3(-4, 0, 25);

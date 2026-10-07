@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, atCafe, atFarm, atMine, atMist, atMuseum, atObservatory, atRiver, atSea, camera, decorNearRing, decorRot, farmBuildingRecs,
+  $w, atCafe, atFarm, atMine, atMist, atMuseum, atObservatory, atNeighbor, atRiver, atSea, camera, decorNearRing, decorRot, farmBuildingRecs,
   gameState, giveReward, houseWindows, indoor, markHabitatDirty, nearDoor, nearNPC, obstacles, outdoorMeshes,
   outdoorTarget, pickedOutdoor, placingOutdoor, player, plots, pointer, questEvent, raycaster, refreshInventoryUI,
   removeSolid, requestSave, rewardText, scene, spawnFloatText, spawnSparkle, ui,
@@ -20,7 +20,7 @@ import { Sound } from '../sound.js';
 import { buildDecorGhost, removeDecorGhost } from '../spaces/indoor.js';
 
 // 🪵 야외 장식을 놓을 수 있는 구역(마을 실외·텃밭) — 옮기기 프롬프트도 여기서만
-export function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory; }
+export function outdoorZone() { return !indoor && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atNeighbor; }
 
 // 캐릭터↔야외 장식 거리 — 규칙은 js/outdoor-move.js
 //   🏗️ 발자국이 있는 시설은 가장자리 거리로(2×2 는 중심까지 1.0 안에 설 수 없다 — 실내 nearestDecor 와 같은 규칙), 장식은 중심 거리.
