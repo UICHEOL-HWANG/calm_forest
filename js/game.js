@@ -66,6 +66,7 @@ import { ADV_CROPS, MATURE, isAdv, growthPerWater, stageIndex, renderStage, wilt
 import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, jobOf, gradeInfo, gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages, pickTask, catchUpSteps, worksPerStep, candidatesFor, releaseCandidate } from './farm-worker.js';   // 🧑‍🌾 노동자 규칙(직군·등급·우선순위·월급·오프라인 스텝)
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
+import { catalogVisible, saleOpen, saleTagOf } from './shop/sale-window.js';   // 🎃 기간 한정 항목 — 목록 필터·행 태그
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
@@ -244,6 +245,7 @@ import {
   updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
 import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐릭터·꾸미기 › 옷장·펫 탭
+import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _hintAnyPrev() { return _hintAnyPrev; }, set _hintAnyPrev(v) { _hintAnyPrev = v; },
@@ -1632,8 +1634,10 @@ export const Input = {
   // 플레이어가 만질 수 있는 건 🛏️ 침대뿐(밤에 누우면 아침). dayPaused 는 ?time= dev 파라미터 전용.
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() {   // 🏠 층별 해금 — 잠긴 것도 목록엔 보이되 locked 로 흐리게(살 목표가 보여야 싱크가 된다)
-    const st = gameState.houseStage;
-    return DECOR.filter(d => !d.hidden).map(d => ({ ...d, locked: !decorUnlocked(d, st) }));
+    const st = gameState.houseStage, kept = gameState.house.stored || {};
+    return DECOR.filter(d => !d.hidden)
+      .filter(d => catalogVisible(d, { stored: kept[d.id] || 0 }))   // 🎃 기간 밖 한정품은 안 산 사람에겐 숨긴다(보관분은 계속 보인다)
+      .map(d => ({ ...d, locked: !decorUnlocked(d, st), tag: saleTagOf(d) }));
   },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
   kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
@@ -1708,7 +1712,7 @@ export const Input = {
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getTier2() { return tier2List(); },                   // 🔨 금빛 도구(2단계) 목록 — 도면 상태·비용
   craftTier2(tool) { return craftTier2(tool); },        // 🔨 금빛 도구 제작
-  getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록(+🏗️ 밭 시설 farm:true — UI 가 텃밭 안에서만 보여 준다)
+  getOutdoor() { return OUTDOOR.filter(o => catalogVisible(o, { stored: gameState.outdoorStored?.[o.id] || 0 })).map(o => ({ ...o, tag: saleTagOf(o) })); },   // 야외 장식 목록(+🏗️ 밭 시설 farm:true) · 🎃 기간 밖 한정품 숨김
   isAtFarm() { return atFarm; },
   selectOutdoor(id) { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기). 들고 있던 장식은 제자리로(안 그러면 새 장식이 "옮김"으로 공짜 설치됨)
   hireWorker(i) { return hireWorker(i); },              // 🧑‍🌾 일꾼 고용(📋 게시판 창)
@@ -2335,7 +2339,10 @@ export async function enterGame() {
     window.__museumLight = MUSEUM_LIGHT;              // 🏛️ 전시실 조명 검수(값을 바꿔 보며 비교)
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
-    window.__decor = (id, x, z, rot = 0) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true);   // 가구 무료 배치(검수용)
+    window.__decor = (id, x, z, rot = 0, f = null) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true, f);   // 가구 무료 배치(검수용) — f 는 층
+    window.__decorY = () => decorMeshes.map(m => [m.userData.rec?.id, +m.position.y.toFixed(2), !!m.userData.collider, !!m.userData.onSurface]);   // 🪔 높이·충돌체 검수용
+    window.__decorPick = (i) => pickDecor(decorMeshes[i]);   // 🪔 i 번째를 들어 올린다(받침 제거 검수)
+    window.__decorBack = () => stopDecorPlacing(true);       // 🪔 들었던 걸 제자리로
     window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
@@ -5055,6 +5062,8 @@ function outdoorMesh(id) {
     houseWindows.push(headMat);
     const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), headMat); head.position.set(0.16, 1.36, 0); g.add(head);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 5, 12), clayMat(0x4a5a58)); ring.position.set(0.16, 1.36, 0); g.add(ring);
+  } else if (HALLOWEEN_OUTDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 밤에 켜지는 재질은 houseWindows 에 올린다(postlamp 와 같은 규칙)
+    g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, (m) => houseWindows.push(m))));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
@@ -5147,12 +5156,17 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   const moved = !silent && !!pickedOutdoor;                                   // 🪵 옮겨 놓기(비용 없음)
   const taken = (!silent && !moved) ? takeStored(gameState.outdoorStored, id) : null;   // 🧺 보관분 우선
   if (taken) gameState.outdoorStored = taken;
+  if (!silent && !moved && !taken && def.sale && !saleOpen(def)) { ui.toast?.('🎃 할로윈 장식 판매가 끝났어요'); return false; }   // 🎃 기간 한정 — 신규 구매만 막는다
   if (!silent && !moved && !taken) {
     for (const k in def.cost) {
       if ((gameState.inventory[k] || 0) < def.cost[k]) { ui.toast?.((RES_LABEL[k] || k) + '이(가) 부족해요'); return false; }
     }
     for (const k in def.cost) gameState.inventory[k] -= def.cost[k];
     refreshInventoryUI();
+    if (def.sale && def.cost.coins) {   // [원장][GA4] 한정 코인 장식 구매 — 실내 decor_buy 와 같은 축
+      logEcon('outdoor_buy', id, -def.cost.coins, gameState.inventory.coins);
+      trackEvent('outdoor_buy_coins', { item: id, coins: def.cost.coins, sale: def.sale });
+    }
   }
   const m = outdoorMesh(id); m.position.set(wx, 0, wz); m.rotation.y = ry * Math.PI / 2; scene.add(m); outdoorMeshes.push(m);
   // 들고 있던 장식은 저장 레코드를 그대로 쓴다(들고 있는 동안 세이브가 나가도 분실되지 않게 목록에 남겨 둔다) — 옮겨 놓기·제자리 복귀 모두
@@ -5179,7 +5193,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);
-    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp'].includes(id) ? 0.22 : 0.5) : null;
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
   if (STATION_IDS.includes(id)) {

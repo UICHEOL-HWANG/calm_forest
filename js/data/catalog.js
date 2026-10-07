@@ -16,26 +16,30 @@ export const DECOR_SCALE = 1.5;
 
 //   foot: [가로, 세로] — 밟고 못 지나가는 발자국(배율 전, decorMesh 치수 기준). 러그류는 밟고 지나가므로 없음.
 //   "가구를 그냥 통과한다"는 베타 피드백 → 배치 시 solidBox 로 막는다(놓은 방향에 따라 가로·세로를 바꿈).
+//   🪔 top: { y, pad } — 소품을 올려놓을 수 있는 상판(y 는 배율 전 윗면 높이, pad 는 [가로, 세로]).
+//      sm: true + h — 상판에 올릴 수 있는 작은 소품(h 는 배율 전 높이). 높이를 저장하지 않고 좌표에서 파생시킨다(js/house/surface.js).
+//      벽 높이가 3 이라 상판은 낮은 가구만 — 새 상판/소품은 tests/decor-ceiling.test.mjs 가 천장 규칙을 검사한다.
 export const DECOR = [
   { id: 'rug',      name: '러그',   ico: '🎨', cost: 2, pay: 'crop' },
-  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop', foot: [0.45, 0.45] },
+  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop', foot: [0.45, 0.45], sm: true, h: 0.8 },
   { id: 'chair',    name: '의자',   ico: '🪑', cost: 3, pay: 'crop', foot: [0.55, 0.55] },
-  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop', foot: [1.1, 0.7] },
+  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop', foot: [1.1, 0.7], top: { y: 0.66, pad: [1.1, 0.7] } },
   { id: 'lamp',     name: '램프',   ico: '🕯️', cost: 4, pay: 'crop', foot: [0.4, 0.4] },
+  { id: 'deskLamp', name: '탁상 등불', ico: '🪔', cost: 3, pay: 'crop', foot: [0.28, 0.28], sm: true, h: 0.42 },   // 스탠드 램프는 탁상에 올리면 천장을 뚫는다 → 짧은 등불을 따로 둔다
   { id: 'sofa',     name: '소파',   ico: '🛋️', cost: 5, pay: 'crop', foot: [1.6, 0.75] },
-  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish', foot: [0.66, 0.42] }, // 물고기로 구매
+  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish', foot: [0.66, 0.42], sm: true, h: 0.66 }, // 물고기로 구매
   // ── 큰 가구(사이즈 大) ──
   { id: 'bed',       name: '침대',    ico: '🛏️', cost: 8,  pay: 'crop', big: true, foot: [1.5, 2.2] },
-  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true, foot: [1.8, 1.0] },
+  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true, foot: [1.8, 1.0], top: { y: 0.69, pad: [1.8, 1.0] } },
   { id: 'bigsofa',   name: '큰 소파', ico: '🛋️', cost: 10, pay: 'crop', big: true, foot: [2.4, 0.95] },
   { id: 'bookshelf', name: '책장',    ico: '📚', cost: 9,  pay: 'crop', big: true, foot: [1.3, 0.45] },
   { id: 'bigrug',    name: '큰 러그', ico: '🟪', cost: 6,  pay: 'crop', big: true },
   // ── 2026-09-09 추가 9종(베타: "가구 종류가 적다") ──
-  { id: 'stool',       name: '스툴',     ico: '🟤', cost: 2,  pay: 'crop', foot: [0.45, 0.45] },
-  { id: 'vase',        name: '꽃병',     ico: '🌷', cost: 2,  pay: 'crop', foot: [0.3, 0.3] },
-  { id: 'nightstand',  name: '협탁',     ico: '🗄️', cost: 3,  pay: 'crop', foot: [0.5, 0.45] },
+  { id: 'stool',       name: '스툴',     ico: '🟤', cost: 2,  pay: 'crop', foot: [0.45, 0.45], top: { y: 0.42, pad: [0.44, 0.44] } },
+  { id: 'vase',        name: '꽃병',     ico: '🌷', cost: 2,  pay: 'crop', foot: [0.3, 0.3], sm: true, h: 0.72 },
+  { id: 'nightstand',  name: '협탁',     ico: '🗄️', cost: 3,  pay: 'crop', foot: [0.5, 0.45], top: { y: 0.55, pad: [0.5, 0.45] } },
   { id: 'cushion',     name: '바닥 쿠션', ico: '🟠', cost: 3,  pay: 'crop' },                       // 밟고 지나감
-  { id: 'radio',       name: '라디오',   ico: '📻', cost: 4,  pay: 'crop', foot: [0.5, 0.25] },
+  { id: 'radio',       name: '라디오',   ico: '📻', cost: 4,  pay: 'crop', foot: [0.5, 0.25], sm: true, h: 0.6 },
   { id: 'wardrobe',    name: '옷장',     ico: '🧥', cost: 9,  pay: 'crop', big: true, foot: [1.2, 0.5] },
   { id: 'fireplace',   name: '벽난로',   ico: '🔥', cost: 12, pay: 'crop', big: true, foot: [1.4, 0.6] },
   { id: 'piano',       name: '피아노',   ico: '🎹', cost: 12, pay: 'crop', big: true, foot: [1.4, 1.1] },
@@ -54,6 +58,10 @@ export const DECOR = [
   // 🏖️ 옥상 파라솔 세트 승계(§8.2) — 구성품(js/house/addons.js rooftop_set, 900🪙)을 이미 산 사람에게
   // 루프탑에 실물로 놓아 준다. 상점엔 안 뜬다(hidden) · 값은 이미 치렀으므로 cost: 0.
   { id: 'parasol_set', name: '파라솔 세트', ico: '🏖️', cost: 0, pay: 'coins', stage: 6, outdoorOnly: true, hidden: true, foot: [1.8, 1.2] },
+  // 🎃 할로윈 한정 코인 장식(SALE_WINDOWS.halloween) — 사면 영구, 기간 밖엔 안 산 사람에겐 목록에서 숨는다(보관분은 계속 보임). 집 단계 제한 없음 — 가격만 문턱
+  { id: 'ghostCandle',   name: '유령 촛불', ico: '👻', cost: 150, pay: 'coins', sale: 'halloween', foot: [0.3, 0.3], sm: true, h: 0.5 },
+  { id: 'miniGrave',     name: '미니 묘비', ico: '🪦', cost: 200, pay: 'coins', sale: 'halloween', foot: [0.5, 0.3] },
+  { id: 'witchCauldron', name: '마녀 솥',   ico: '🧙', cost: 450, pay: 'coins', sale: 'halloween', big: true, foot: [1.0, 1.0] },
 ];
 
 export const FISH_KINDS = [
@@ -194,6 +202,10 @@ export const OUTDOOR = [
   { id: 'pumpkins',         name: '호박 더미',      ico: '🎃', cost: { leaf: 60 }, desc: '수확제 좌판에서 산 호박 더미', hidden: true },
   { id: 'pumpkinlamp',      name: '호박 등불',      ico: '🏮', cost: { leaf: 9999 }, desc: '수확제 광장 🥈 보상 — 밤에 은은히', hidden: true },
   { id: 'harvestscarecrow', name: '수확제 허수아비', ico: '🧑‍🌾', cost: { leaf: 9999 }, desc: '수확제 광장 🥇 보상', hidden: true },
+  // 🎃 할로윈 한정 코인 장식 — 직접 구매(작업대 목록, 기간 한정). hidden 과 다르다: hidden 은 영구 비판매, sale 은 기간 판매
+  { id: 'ghostlamp',  name: '유령 정원등', ico: '👻', cost: { coins: 200 }, sale: 'halloween', desc: '밤이 되면 으스스하게 빛나는 유령 등' },
+  { id: 'gravefence', name: '묘비 울타리', ico: '🪦', cost: { coins: 280 }, sale: 'halloween', desc: '묘비 모양 울타리 · 밤손님은 못 막아요' },
+  { id: 'webarch',    name: '거미줄 아치', ico: '🕸️', cost: { coins: 500 }, sale: 'halloween', desc: '마당 입구에 세우는 커다란 거미줄 아치' },
   ...FARM_BUILDINGS,   // 🏗️ 밭 시설 7종(farm:true, fp:[가로칸,세로칸]) — 같은 배치 문법, 텃밭 안에서만(js/farm-building.js)
 ];
 
