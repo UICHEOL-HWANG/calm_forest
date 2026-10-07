@@ -1,0 +1,23 @@
+{
+  "name": "calm-forest-reel-motion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts PlayReel out/play-reel.mp4",
+    "render:night": "remotion render src/index.ts NightReel out/night-reel.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.530",
+    "@remotion/google-fonts": "^4.0.530",
+    "@remotion/media": "^4.0.530",
+    "@remotion/transitions": "^4.0.530",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.530"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2"
+  }
+}
