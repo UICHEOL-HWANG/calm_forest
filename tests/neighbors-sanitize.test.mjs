@@ -52,6 +52,10 @@ test('펫·캐릭터·닉네임·색 인덱스 방어', () => {
   assert.equal(sanitizeShowcase(raw({ character: 'dragon' }), CTX).character, 'fox');
   assert.equal(sanitizeShowcase(raw({ nickname: '   ' }), CTX).nickname, '이름 없는 여행자');
   assert.equal(sanitizeShowcase(raw({ nickname: '가'.repeat(30) }), CTX).nickname.length, 16);
+  // 이모지(서로게이트 쌍)를 반으로 자르지 않는다 — 코드 포인트 16개
+  const emo = sanitizeShowcase(raw({ nickname: '🐰'.repeat(17) }), CTX).nickname;
+  assert.equal([...emo].length, 16);
+  assert.equal(emo, '🐰'.repeat(16));
   assert.deepEqual(sanitizeShowcase(raw({ houseStyle: { roof: 9, wall: -1, door: 'x' } }), CTX).houseStyle, { roof: 0, wall: 0, door: 0 });
 });
 

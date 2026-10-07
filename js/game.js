@@ -6309,6 +6309,7 @@ function updateDayNight(dt) {
   }
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
   if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
+  if (atNeighbor) { scene.fog.near = 24; scene.fog.far = 66; }   // 🏡 이웃 마당은 구경하는 곳 — 집·장식이 안개에 묻히지 않게(날씨 톤은 유지)
   if (mgView?.type === 'carve') { scene.fog.near = 40; scene.fog.far = 140; }   // 🗿 공방 무대는 원거리 카메라(모바일 ~12.5) — 날씨 안개에 잠기지 않게
   // 🔥 화덕은 반대다 — 마을 한복판이라 채굴장·팻말·나무가 다 보여 산만했다.
   //    안개를 바짝 당겨 화덕 뒤를 지우고 무대처럼 만든다(카메라 거리 3.8 기준).

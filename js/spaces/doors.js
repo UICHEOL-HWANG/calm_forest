@@ -170,6 +170,7 @@ export function updateDoorInteract() {
     $w.nearDoor = nd;
     if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
     if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
+    updateToolPageAuto();   // 🎒 맨 끝까지 안 가고 돌아가니 여기서 — ZONE_PAGE.neighbor 'none'(맨손)
     return;
   }
   if (indoor) {

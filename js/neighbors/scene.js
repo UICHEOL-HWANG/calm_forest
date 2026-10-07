@@ -86,51 +86,18 @@ function fixedSet() {
 export function buildNeighborScene(view) {
   const group = new THREE.Group(); group.name = 'neighbor';
   const solids = [];
-  group.add(fixedSet());
-
-  const house = view.houseStage >= 3 ? buildHouseModel(THREE, view.houseStage, view.style || undefined) : earlyHouse(view.houseStage);
-  if (view.houseStage >= 3) house.add(mountHouseAddons(THREE, view.houseStage, view.addons, view.style || undefined));
-  house.position.copy(NEIGHBOR);   // 모델 정면이 +z — 마을은 houseGroup(π)·래퍼(π)로 상쇄하지만 여기선 돌리지 않는다
-  prepHouseMeshes(house);          // 그림자 · 기본색 기억 · 밤 창문 등록(houseWindows) — 치울 때 unregisterWindows
-  paintHouse(house, view.houseStyle);
-  group.add(house);
-  if (view.houseStage >= 7) for (const b of stage7Boxes(view.style, NEIGHBOR)) solids.push(solidBox(b.x0, b.z0, b.x1, b.z1));
-  else if (view.houseStage >= 3) solids.push(solidCircle(NEIGHBOR.x, NEIGHBOR.z, houseSolidR(view.houseStage)));
-
-  for (const o of view.outdoor) {   // 앞마당 장식 — 집 터 기준 상대좌표. 충돌체는 두지 않는다(구경 공간)
-    const m = outdoorMesh(o.id);
-    m.position.set(NEIGHBOR.x + o.dx, 0, NEIGHBOR.z + o.dz);
-    m.rotation.y = o.rot * Math.PI / 2;
-    group.add(m);
-  }
-
-  const spot = hostSpot(view.houseStage, view.style, NEIGHBOR);
-  const host = buildCharacterMesh(view.character, { owned: [], equipped: view.equipped });
-  host.position.set(spot.x, 0, spot.z);   // rotation 0 = +z(카메라) 를 본다
-  group.add(host);
-  solids.push(solidCircle(spot.x, spot.z, 0.45));
-  let pet = null;
-  if (view.pet) {
-    pet = spawnPet(THREE, view.pet.kind, view.pet.stage);
-    if (pet) { pet.position.set(spot.x + 1.1, 0, spot.z + 0.3); group.add(pet); }
-  }
-
-  const sign = makeSignpost('🚪 내 마을로', NEIGHBOR.x + 2.4, NEIGHBOR.z + NEIGHBOR_R - 0.6);
-  group.add(sign);
-  scene.add(group);
-
-  let t = 0;
-  return {
+  let host = null, pet = null, sign = null, t = 0;
+  const built = {
     group,
-    hostSpot: spot,
+    hostSpot: null,
     update(dt) { t += dt; host.position.y = Math.abs(Math.sin(t * 2.2)) * 0.04; },   // 반가워서 통통
     dispose() {
       for (const c of solids) removeSolid(c);
-      sign.userData.dead = true;                                     // makeSignpost 의 rAF 등록이 철거 뒤에 돌지 않게
+      if (sign) sign.userData.dead = true;                           // makeSignpost 의 rAF 등록이 철거 뒤에 돌지 않게
       unregisterWindows(group);                                      // 집 창문·정원등·화로 — 밤 점등 목록에서 뺀다
       dropKilnFlames(group);                                         // 🔥 장식 화덕 불꽃 — 전역 목록에서(부모 사슬이 살아 있을 때)
       scene.remove(group);
-      group.remove(host); disposeSkin(host);
+      if (host) { group.remove(host); disposeSkin(host); }
       if (pet) group.remove(pet);
       //  장식(화덕·발효통) 속 팻말까지 — 기둥 충돌체를 치우고 아직 rAF 등록 전이면 건너뛰게(rebuildFarm 과 같은 규칙)
       group.traverse(o => { if (o.userData.solid) removeSolid(o.userData.solid); o.userData.dead = true; });
@@ -138,4 +105,42 @@ export function buildNeighborScene(view) {
       disposeTree(group);
     },
   };
+
+  try {
+    group.add(fixedSet());
+
+    const house = view.houseStage >= 3 ? buildHouseModel(THREE, view.houseStage, view.style || undefined) : earlyHouse(view.houseStage);
+    if (view.houseStage >= 3) house.add(mountHouseAddons(THREE, view.houseStage, view.addons, view.style || undefined));
+    house.position.copy(NEIGHBOR);   // 모델 정면이 +z — 마을은 houseGroup(π)·래퍼(π)로 상쇄하지만 여기선 돌리지 않는다
+    group.add(house);
+
+    for (const o of view.outdoor) {   // 앞마당 장식 — 집 터 기준 상대좌표. 충돌체는 두지 않는다(구경 공간)
+      const m = outdoorMesh(o.id);
+      m.position.set(NEIGHBOR.x + o.dx, 0, NEIGHBOR.z + o.dz);
+      m.rotation.y = o.rot * Math.PI / 2;
+      group.add(m);
+    }
+
+    //  전역 등록(창문 점등·충돌체)은 장식까지 다 지은 뒤에 — 그래도 아래서 터지면 catch 가 dispose 로 되돌린다
+    prepHouseMeshes(house);          // 그림자 · 기본색 기억 · 밤 창문 등록(houseWindows) — 치울 때 unregisterWindows
+    paintHouse(house, view.houseStyle);
+    if (view.houseStage >= 7) for (const b of stage7Boxes(view.style, NEIGHBOR)) solids.push(solidBox(b.x0, b.z0, b.x1, b.z1));
+    else if (view.houseStage >= 3) solids.push(solidCircle(NEIGHBOR.x, NEIGHBOR.z, houseSolidR(view.houseStage)));
+
+    const spot = hostSpot(view.houseStage, view.style, NEIGHBOR);
+    built.hostSpot = spot;
+    host = buildCharacterMesh(view.character, { owned: [], equipped: view.equipped });
+    host.position.set(spot.x, 0, spot.z);   // rotation 0 = +z(카메라) 를 본다
+    group.add(host);
+    solids.push(solidCircle(spot.x, spot.z, 0.45));
+    if (view.pet) {
+      pet = spawnPet(THREE, view.pet.kind, view.pet.stage);
+      if (pet) { pet.position.set(spot.x + 1.1, 0, spot.z + 0.3); group.add(pet); }
+    }
+
+    sign = makeSignpost('🚪 내 마을로', NEIGHBOR.x + 2.4, NEIGHBOR.z + NEIGHBOR_R - 0.6);
+    group.add(sign);
+    scene.add(group);
+  } catch (e) { built.dispose(); throw e; }   // 짓다 터지면 z≈700 에 투명 벽·밤 창문 등록이 남지 않게
+  return built;
 }

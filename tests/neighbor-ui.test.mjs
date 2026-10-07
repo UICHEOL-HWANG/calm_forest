@@ -50,3 +50,13 @@ test('요청 중(busy)엔 배경 클릭으로 엽서 모달이 닫히지 않고,
 test('구경 중엔 상단 좌·우 패널도 숨긴다(상단 줄과 겹침 방지)', () => {
   assert.match(UI, /body\.neighbor-visit #topleft, body\.neighbor-visit #topright \{ display: none !important; \}/);
 });
+
+test('💬 집주인 말풍선은 아래(조이스틱·액션 버튼 위) — 위쪽 28% 는 집주인·집을 가렸다', () => {
+  assert.match(UI, /#nb-bubble \{[^}]*top: auto; bottom: calc\(222px \+ env\(safe-area-inset-bottom\)\);/);
+  assert.doesNotMatch(UI, /#nb-bubble \{[^}]*top: 28%/);
+  assert.match(UI, /#nb-bubble::after \{[^}]*bottom: auto; top: -8px;[^}]*border-top: 0; border-bottom: 8px solid #fff;/);
+  // 375px 폰: 조이스틱 위 끝 90+120=210 · 액션 버튼 위 끝 96+88=184 → 222 는 둘 다 위
+  const joy = HTML.match(/#joy-base \{[^}]*bottom: calc\((\d+)px[^}]*height: (\d+)px/);
+  const act = HTML.match(/#action-btn \{[^}]*bottom: calc\((\d+)px[^}]*height: (\d+)px/);
+  assert.ok(222 > +joy[1] + +joy[2] && 222 > +act[1] + +act[2]);
+});
