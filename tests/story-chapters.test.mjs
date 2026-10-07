@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { STORY } from '../js/story/chapters.js';
 import { STORY_RULES, chapterDone, chapterProgress, pendingChapters, isSoon, buildStoryView } from '../js/story/rules.js';
 
@@ -17,6 +18,7 @@ test('STORY: 8장, id 고유, 순서, 잠긴 장 없음(🏡 이웃 마을 출�
   assert.deepEqual(STORY.slice(4).map(c => c.reward.coins), [100, 120, 120, 150]);
   for (const c of STORY) assert.ok(STORY_RULES[c.id], `규칙 없음: ${c.id}`);
   assert.equal(STORY[7].done, '이웃의 마을에 다녀왔어요. 숲은 생각보다 넓고, 생각보다 따뜻해요.');
+  assert.doesNotMatch(readFileSync(new URL('../js/story/chapters.js', import.meta.url), 'utf8'), /문구 검수 대기/);   // 8장 문구 승인됨(2026-10-07)
 });
 
 test('기존 1~4장 판정·진행 문구는 그대로', () => {

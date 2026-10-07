@@ -9,6 +9,7 @@ test('개인정보처리방침: 이웃 마을 공개 항목·끄는 법·보관'
   assert.match(p, /⚙️ 설정 › 이웃에게 내 마을 보여 주기/);
   assert.match(p, /10분 안에/);
   assert.match(p, /이웃 방문 기록/);
+  assert.match(p, /부적절한 닉네임은 운영자가 가리거나/);   // 🛡️ UGC 자율 관리
   assert.doesNotMatch(p, /최종 수정일: 2026년 9월 11일/);
 });
 
