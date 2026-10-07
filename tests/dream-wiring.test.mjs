@@ -77,6 +77,10 @@ test('리뷰 반영 — 미니맵·펫·발자국·밤 재확인·충돌 뒤 재
   assert.match(DREAM, /if \(!isNight\(\)\) \{ ui\.toast\?\.\('🌙 꿈꾸기는 밤에만 할 수 있어요'\); return; \}/);
 });
 
+test('센서 — 꿈길 컷신 동안 좌표 샘플을 보내지 않는다(조작 없는 이동이 이탈 피처를 왜곡)', () => {
+  assert.match(GAME, /if \(!dreamCutActive\(\)\) sampleFrame\(\(\) => \(\{/);
+});
+
 test('트래킹 — GA4 예약 파라미터(source·medium·campaign…)를 쓰지 않는다', () => {
   const calls = DREAM.match(/trackEvent\([^)]*\)/g) || [];
   assert.ok(calls.length >= 8);
