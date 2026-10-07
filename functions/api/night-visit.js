@@ -42,7 +42,7 @@ export function pickAnimal(roll, blocked = []) {
 
 // ── HMAC-SHA256(시크릿, uid:date) → 결정적 난수열(0~1) ──────────
 async function seededRolls(env, uid, date, n) {
-  const secret = env.NIGHT_SEED_SECRET || 'calm-forest-night';   // 미설정이어도 동작(결정성만 유지)
+  const secret = env.NIGHT_SEED_SECRET;   // 🔒 공개 저장소에 박힌 기본값을 쓰면 판정을 미리 계산할 수 있다 — 없으면 호출부가 막는다
   const key = await crypto.subtle.importKey(
     'raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
   );
@@ -74,6 +74,7 @@ export async function onRequestPost({ request, env }) {
   const blocked = blockedAnimals(body?.truce, date);
 
   if (!uid || nights < 1 || plots.length === 0) return none('no-night');
+  if (!env.NIGHT_SEED_SECRET) return none('not-configured');   // 시크릿 없이 배포되면 밤손님만 쉰다(게임은 그대로)
 
   const [rollVisit, rollAnimal, rollCount, ...rollPicks] = await seededRolls(env, uid, date, 8);
 
