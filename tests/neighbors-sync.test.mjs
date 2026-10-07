@@ -26,3 +26,15 @@ test('집 충돌 반경 표가 js/spaces/house.js houseSolidR 와 같다', () =>
   assert.ok(read('js/spaces/house.js').includes('return s >= 7 ? 3.9 : s >= 6 ? 2.7 : s >= 5 ? 2.55 : s >= 4 ? 2.4 : 2.2;'));
   assert.deepEqual([3, 4, 5, 6, 7].map(houseSolidR), [2.2, 2.4, 2.55, 2.7, 3.9]);
 });
+
+test('🧑‍🤝‍🧑 페르소나 분리 — 후보 함수가 PERSONA_DOMAIN 으로 나누고, 분리 마이그레이션과 본 파일이 같다', () => {
+  const dom = read('tools/persona-sim/supabase-admin.mjs').match(/PERSONA_DOMAIN = '([^']+)'/)[1];
+  const fn = (s) => s.match(/create or replace function public\._nb_candidates[\s\S]*?\n\$\$;/)[0];
+  const main = fn(SQL), split = read('sql/migrations/migrate_neighbors_sim_split.sql');
+  assert.ok(main.includes(`(lower(coalesce(u.email, '')) like '%@${dom}') = exists (select 1 from auth.users c where c.id = p_caller and lower(coalesce(c.email, '')) like '%@${dom}')`));
+  assert.equal(fn(split), main);
+  assert.match(split, /revoke all on function public\._nb_candidates\(uuid, date, int\) from public, anon, authenticated;/);
+  const selftest = read('sql/tests/neighbors_selftest.sql');
+  assert.equal(selftest.match(/^do \$\$/gm).length, 1);
+  assert.ok(selftest.includes(`'nb-selftest-sim@${dom}'`) && selftest.includes('ids := ids || j;'));
+});

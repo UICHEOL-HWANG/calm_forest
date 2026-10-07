@@ -87,6 +87,8 @@ language sql stable security definer set search_path = public as $$
     and coalesce(vp.is_public, true)
     and gs.updated_at >= now() - interval '7 days'
     and case when jsonb_typeof(gs.state->'houseStage') = 'number' then (gs.state->>'houseStage')::numeric >= 1 else false end
+    -- 🧑‍🤝‍🧑 페르소나(@sim.calmforest.local)는 페르소나끼리, 실사용자는 실사용자끼리만 만난다
+    and (lower(coalesce(u.email, '')) like '%@sim.calmforest.local') = exists (select 1 from auth.users c where c.id = p_caller and lower(coalesce(c.email, '')) like '%@sim.calmforest.local')
   order by 2
   limit greatest(0, least(coalesce(p_limit, 3), 100000));
 $$;

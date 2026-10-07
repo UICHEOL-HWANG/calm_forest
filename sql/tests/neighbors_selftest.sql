@@ -4,7 +4,7 @@
 --  사용법: migrate_neighbors.sql 적용 뒤 SQL Editor 에 통째로 붙여 실행.
 --          통과: NOTICE 'NEIGHBORS SELFTEST ALL PASS'
 --          실패: EXCEPTION 으로 멈추고 블록 전체가 자동 롤백(아무것도 안 남는다).
---  ⚠️ 가짜 계정(nb-selftest-*@example.invalid)을 만들고, 통과하면 맨 끝에서 스스로 지운다(game_saves·village_* 는 cascade).
+--  ⚠️ 가짜 계정(nb-selftest-*@example.invalid · nb-selftest-sim@sim.calmforest.local)을 만들고, 통과하면 맨 끝에서 스스로 지운다(game_saves·village_* 는 cascade).
 --     끝나고 확인: select count(*) from auth.users where email like 'nb-selftest-%';   -- 0
 -- =============================================================
 do $$
@@ -13,6 +13,7 @@ declare
   a uuid := gen_random_uuid(); b uuid := gen_random_uuid(); c uuid := gen_random_uuid();
   d uuid := gen_random_uuid(); e uuid := gen_random_uuid(); f uuid := gen_random_uuid();
   g uuid := gen_random_uuid(); h uuid := gen_random_uuid(); i uuid := gen_random_uuid();
+  j uuid := gen_random_uuid();   -- 🧑‍🤝‍🧑 페르소나(@sim.calmforest.local) 가짜
   ids uuid[]; ks text[] := array['a','b','c','d','e','f','g','h','i'];
   x uuid; pid uuid; r jsonb; t jsonb; sc jsonb; t1 jsonb; t2 jsonb; n int; vday date; keys text[];
   v_day date := (now() at time zone 'Asia/Seoul')::date;
@@ -70,6 +71,18 @@ begin
     if strpos(t1::text, x::text) > 0 then raise exception 'FAIL: today 응답에 user_id(%)가 있다', x; end if;
   end loop;
   raise notice 'candidate checks pass';
+
+  -- ── ①-b 페르소나 분리: sim 계정은 실사용자(a) 후보에 없고, sim 의 후보엔 실사용자(b) 가 없다 ──
+  insert into auth.users (id, aud, role, email, is_anonymous, created_at, updated_at)
+  values (j, 'authenticated', 'authenticated', 'nb-selftest-sim@sim.calmforest.local', false, now(), now());
+  insert into public.game_saves (user_id, state, updated_at)
+  values (j, jsonb_build_object('nickname', 'selftest-sim', 'character', 'rabbit', 'houseStage', 3), now());
+  ids := ids || j;   -- 정리 때 페르소나 가짜도 지운다
+  select array_agg(uid) into full_list from public._nb_candidates(a, v_day, 100000);
+  if j = any(full_list) then raise exception 'FAIL: 페르소나(sim)가 실사용자 후보에 있다'; end if;
+  select array_agg(uid) into full_list from public._nb_candidates(j, v_day, 100000);
+  if b = any(coalesce(full_list, '{}')) then raise exception 'FAIL: 실사용자(b)가 페르소나 후보에 있다'; end if;
+  raise notice 'persona split checks pass';
 
   -- ── ② showcase 허용 목록 ──
   pid := public._nb_public_id(f);
