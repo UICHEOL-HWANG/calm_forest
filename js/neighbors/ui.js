@@ -44,10 +44,10 @@ const CSS = `
 body.neighbor-visit #nb-hud-top { display: flex; }
 body.neighbor-visit #hotbar, body.neighbor-visit #quest-panel, body.neighbor-visit #story-chip { display: none !important; }
 body.neighbor-visit #topleft, body.neighbor-visit #topright { display: none !important; }   /* 상단 줄(#nb-hud-top)과 겹침 */
-#nb-bubble { position: fixed; left: 50%; top: 28%; transform: translateX(-50%); z-index: 21; display: none; background: #fff; border-radius: 16px;
+#nb-bubble { position: fixed; left: 50%; top: auto; bottom: calc(222px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 21; display: none; background: #fff; border-radius: 16px;
   padding: 9px 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow); text-align: center; width: min(260px, calc(100vw - 32px)); }
 #nb-bubble.show { display: block; }
-#nb-bubble::after { content: ''; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); border: 8px solid transparent; border-top-color: #fff; border-bottom: 0; }
+#nb-bubble::after { content: ''; position: absolute; left: 50%; bottom: auto; top: -8px; transform: translateX(-50%); border: 8px solid transparent; border-top: 0; border-bottom: 8px solid #fff; }   /* 💬 아래 자리(조이스틱 210·액션 184 위) — 꼬리는 위쪽 집주인을 가리킨다. 위 28% 는 집주인·집을 가렸다 */
 .nb-react { display: flex; gap: 6px; justify-content: center; margin-top: 7px; }
 .nb-react button { border: none; background: #f4faf5; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
 .nb-visits { text-align: left; font-size: 12.5px; margin: 6px 0 12px; }

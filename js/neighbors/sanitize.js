@@ -57,7 +57,7 @@ export function sanitizeShowcase(raw, ctx) {
   }
 
   return {
-    nickname: nick ? nick.slice(0, 16) : NICK_FALLBACK,
+    nickname: nick ? [...nick].slice(0, 16).join('') : NICK_FALLBACK,   // 코드 포인트 기준 — 이모지를 반으로 자르지 않게
     character, equipped, pet,
     houseStage: stage,
     houseStyle: { roof: swatch(hs.roof), wall: swatch(hs.wall), door: swatch(hs.door) },

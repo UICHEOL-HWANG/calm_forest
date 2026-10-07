@@ -84,7 +84,7 @@ export function exitNeighbor() {
   hideNeighborHud();
   v.built.dispose();
   $w.atNeighbor = false;
-  player.position.set(NEIGHBOR_GATE.x, 0, NEIGHBOR_GATE.z + 2.2);
+  player.position.set(NEIGHBOR_GATE.x, 0, NEIGHBOR_GATE.z + 3.6);   // 팻말 트리거(z+1.2, r 2.2) 밖 — 프롬프트가 곧바로 다시 뜨지 않게
   player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
@@ -150,7 +150,7 @@ export function neighborMinimapMarks(marks) {
 }
 
 /** 이웃 공간에서 저장되면 팻말 앞으로 적는다 — 새로고침하면 마을에서 시작한다 */
-export function neighborReturnPos() { return { x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 2.2 }; }
+export function neighborReturnPos() { return { x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 3.6 }; }
 
 // ── 🏡 마을 입구 팻말 — buildEnvironment 가 한 번 부른다 ──
 let gateGroup = null;

@@ -126,3 +126,32 @@ test('놀러 가기: 검증·짓기·입장 실패는 조용히 삼키지 않는
   assert.match(go, /evFail\('showcase', 'build'\)/);
   assert.match(go.slice(go.indexOf('catch (e)')), /ui\.toast\?\.\(FAIL_TOAST, 2600\)/);
 });
+
+// ── 최종 리뷰 수정 ──
+test('🌫️ 이웃 마당 안개 — 바다처럼 시야를 넓힌다(구경 공간 · 날씨 톤은 유지, setFogExempt 아님)', () => {
+  const dn = bodyOf('updateDayNight');
+  assert.match(dn, /if \(atNeighbor\) \{ scene\.fog\.near = 24; scene\.fog\.far = 66; \}/);
+  assert.ok(dn.indexOf('if (atNeighbor) { scene.fog.near') > dn.indexOf("WEATHER === 'snow'"), '날씨 안개 뒤에 덮어쓴다');
+  assert.doesNotMatch(SRC, /setFogExempt\([^)]*[Nn]eighbor/);
+});
+
+test('🎒 이웃 공간 분기도 도구 페이지를 넘긴다(ZONE_PAGE.neighbor=none 이 실제로 적용)', () => {
+  const i = DOORS.indexOf('if (atNeighbor) {');
+  const branch = DOORS.slice(i, DOORS.indexOf('\n  }', i));
+  assert.match(branch, /updateToolPageAuto\(\);[^\n]*\n\s*return;/);
+});
+
+test('↩️ 돌아오는 자리는 팻말 트리거(중심 z+1.2, r 2.2) 밖 — 프롬프트가 바로 다시 뜨지 않게', () => {
+  assert.match(SPACE, /player\.position\.set\(NEIGHBOR_GATE\.x, 0, NEIGHBOR_GATE\.z \+ 3\.6\);/);
+  assert.match(SPACE, /export function neighborReturnPos\(\) \{ return \{ x: NEIGHBOR_GATE\.x, z: NEIGHBOR_GATE\.z \+ 3\.6 \}; \}/);
+  assert.match(DOORS, /dist2D\(\{ x: NEIGHBOR_GATE\.x, z: NEIGHBOR_GATE\.z \+ 1\.2 \}, player\.position\) < 2\.2/);
+  assert.ok(3.6 - 1.2 > 2.2);
+});
+
+test('🧱 짓다가 터지면 충돌체·창문 등록을 되돌리고 다시 던진다(z≈700 투명 벽 방지)', () => {
+  const b = SCENE.slice(SCENE.indexOf('export function buildNeighborScene('));
+  assert.match(b, /\} catch \(e\) \{ built\.dispose\(\); throw e; \}/);
+  assert.ok(b.indexOf('try {') < b.indexOf('solidCircle(') && b.indexOf('try {') < b.indexOf('prepHouseMeshes(house)'), '충돌체·창문 등록은 try 안');
+  assert.match(disposeBody(), /if \(host\) \{ group\.remove\(host\); disposeSkin\(host\); \}/);
+  assert.match(disposeBody(), /if \(sign\) sign\.userData\.dead = true;/);
+});
