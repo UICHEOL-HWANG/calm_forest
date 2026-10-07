@@ -43,6 +43,7 @@ const CSS = `
 #nb-exit { background: #eef2ee; padding: 7px 10px; font-size: 12px; box-shadow: none; }
 body.neighbor-visit #nb-hud-top { display: flex; }
 body.neighbor-visit #hotbar, body.neighbor-visit #quest-panel, body.neighbor-visit #story-chip { display: none !important; }
+body.neighbor-visit #topleft, body.neighbor-visit #topright { display: none !important; }   /* 상단 줄(#nb-hud-top)과 겹침 */
 #nb-bubble { position: fixed; left: 50%; top: 28%; transform: translateX(-50%); z-index: 21; display: none; background: #fff; border-radius: 16px;
   padding: 9px 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow); text-align: center; width: min(260px, calc(100vw - 32px)); }
 #nb-bubble.show { display: block; }

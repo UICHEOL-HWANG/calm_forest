@@ -46,3 +46,7 @@ test('요청 중(busy)엔 배경 클릭으로 엽서 모달이 닫히지 않고,
   assert.match(UI, /overflow-wrap: anywhere/);
   assert.doesNotMatch(UI, /aria-label', id\)/);
 });
+
+test('구경 중엔 상단 좌·우 패널도 숨긴다(상단 줄과 겹침 방지)', () => {
+  assert.match(UI, /body\.neighbor-visit #topleft, body\.neighbor-visit #topright \{ display: none !important; \}/);
+});
