@@ -1,13 +1,14 @@
 # 🌙 꿈의 숲 — 체크리스트
-- [ ] 1 layout.js + 테스트
-- [ ] 2 art.js
-- [ ] 3 spaces/dream.js
-- [ ] 4 cutscene.js
-- [ ] 5 game.js 연결
-- [ ] 6 index.html UI
-- [ ] 7 꿈 장식 4종
-- [ ] 8 BGM dream
-- [ ] 9 i18n
-- [ ] 10 테스트 갱신·전체 통과
-- [ ] 11 브라우저 실측(PC·모바일)
-- [ ] 12 코드 리뷰·커밋
+- [x] 1 layout.js + 테스트(11)
+- [x] 2 art.js
+- [x] 3 spaces/dream.js
+- [x] 4 cutscene.js
+- [x] 5 game.js 연결
+- [x] 6 index.html UI
+- [x] 7 꿈 장식 4종(decor-art.js)
+- [x] 8 BGM dream
+- [x] 9 i18n(dream-i18n 39건)
+- [x] 10 테스트 갱신·전체 통과(2131)
+- [x] 11 브라우저 실측(PC·모바일, 오프라인 CDP) — .scratch/dream/
+- [ ] 12 코드 리뷰·수정
+- [ ] 13 사용자 확인 → main 병합 → 4곳 동시 배포(웹·토스·Play·itch) + 공지
