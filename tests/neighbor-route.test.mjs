@@ -50,3 +50,23 @@ test('Worker 핸들러: 200 은 10분 캐시 + RPC 인자, null 은 404·캐시 
     assert.equal(up.status, 502);
   } finally { globalThis.fetch = realFetch; delete globalThis.caches; }
 });
+
+test('Worker 핸들러: fetch 가 throw 하거나 env 가 없으면 502', async () => {
+  const { onRequestGet } = await import('../functions/api/neighbor.js');
+  globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new TypeError('network'); };
+  try {
+    const r = await onRequestGet({ request: new Request(`https://x/api/neighbor?id=${ID}`), env: { SUPABASE_URL: 'https://sb', SUPABASE_ANON_KEY: 'k' } });
+    assert.equal(r.status, 502);
+    assert.deepEqual(await r.json(), { error: 'upstream' });
+  } finally { globalThis.fetch = realFetch; delete globalThis.caches; }
+});
+
+test('serve.py 미러: fullmatch + env 누락 가드', () => {
+  const py = src('scripts/serve.py');
+  const body = py.slice(py.indexOf('def serve_neighbor'), py.indexOf('def do_POST'));
+  assert.ok(body.includes('re.fullmatch('), 'fullmatch 필요');
+  assert.ok(!body.includes('re.match('), 're.match 금지(개행 통과)');
+  assert.ok(body.includes('if not url or not anon:'), 'env 누락 가드');
+});
