@@ -19,6 +19,7 @@ import { onRequestPost as photoUpload, onRequestDelete as photoDelete } from '..
 import { onRequestPost as photoUrls } from '../functions/api/photo-urls.js';
 import { onRequestGet as leaderboard } from '../functions/api/leaderboard.js';
 import { onRequestGet as plaza } from '../functions/api/plaza.js';
+import { onRequestGet as neighbor } from '../functions/api/neighbor.js';
 import { onRequestPost as paddleWebhook } from '../functions/api/paddle-webhook.js';
 import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
@@ -167,6 +168,12 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/plaza') {
     if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
     return await plaza({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+  }
+
+  // 🏡 이웃 마을 구경 — Supabase RPC 프록시(엣지 캐시 10분, 비공개·없음은 404·캐시 안 함)
+  if (pathname === '/api/neighbor') {
+    if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+    return await neighbor({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
   }
 
   // 🍎 과수원 이벤트 원장 — GA4 유실·지연 대비, 유저 본인 토큰으로 orchard_events 에 적재

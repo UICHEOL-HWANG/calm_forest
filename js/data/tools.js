@@ -70,7 +70,7 @@ export const WILT_TIME = 60;  // 물 없이 목마른 채 방치되면 시드는
 // 구역별 기본 페이지. 마을은 일부러 비워 뒀다 —
 // 밭일·벌목·건축이 한곳에 뒤섞이는 곳이라, 자동으로 넘기면 방금 고른 도구를 뺏는 꼴이 된다.
 export const ZONE_PAGE = {
-  indoor: 'none', cafe: 'none', forest: 'none', river: 'none', mist: 'none', museum: 'none', observatory: 'none',  // 도구를 쓰지 않는 곳
+  indoor: 'none', cafe: 'none', forest: 'none', river: 'none', mist: 'none', museum: 'none', observatory: 'none', neighbor: 'none',  // 도구를 쓰지 않는 곳
   farm: 'farm', mine: 'farm',        // ⛏️괭이 — 밭갈기·채굴 둘 다 농사 페이지에 있다
   orchard: 'farm',                   // 🍎 심기·물주기·수확(🌰💧🌾)이 전부 농사 페이지다. 이 줄이 없어서
                                      //    과수원만 페이지가 안 열렸고, 묘목 종류를 바꾸려면(🌰 다시 누르기)

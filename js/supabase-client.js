@@ -595,6 +595,22 @@ async function plazaCall(fn, args) {
 export function plazaDonate(season, item, qty) { return plazaCall('plaza_donate', { p_season: season, p_item: item, p_qty: qty }); }
 export function plazaMine(season) { return plazaCall('plaza_mine', { p_season: season }); }
 
+// ── 🏡 이웃 마을 RPC — 판정은 전부 서버(migrate_neighbors.sql). 여기선 호출만 ──
+//    오프라인·에러는 { ok:false, reason } 로 통일 → 호출부(js/neighbors/api.js)가 토스트·트래킹을 맡는다(조용히 삼키지 않는다)
+const NEIGHBOR_RPCS = new Set(['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public']);
+export async function neighborRpc(fn, args = {}) {
+  if (!NEIGHBOR_RPCS.has(fn)) return { ok: false, reason: 'bad_fn' };
+  if (!state.online || !supabase) return { ok: false, reason: 'offline' };
+  try {
+    const { data, error } = await supabase.rpc(fn, args);
+    if (error) { console.warn(`[neighbor] ${fn} 실패:`, error.message); return { ok: false, reason: 'upstream' }; }
+    return data || { ok: false, reason: 'upstream' };
+  } catch (e) {
+    console.warn(`[neighbor] ${fn} 예외:`, e?.message || e);
+    return { ok: false, reason: 'offline' };
+  }
+}
+
 // ── [계측] ☕ 그날의 카페 손님 보관(cafe_guests) — Gemini 생성 콘텐츠 아카이브 ──
 //    손님은 날짜 시드라 그날 접속한 전원이 똑같은 4명을 봅니다. 그래서 유저별이 아니라
 //    (날짜, 날씨, 인원)당 1행만 남깁니다 — 먼저 들어온 한 명이 기록하고 나머지는
