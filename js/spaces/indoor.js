@@ -25,11 +25,14 @@ import { nearMiss, spotInfo } from '../habitat.js';
 import { MAX_HOUSE_STAGE } from '../house-cost.js';
 import { GARDEN_DOOR_HALF_W, GARDEN_DOOR_Z, canPlaceOn, decorUnlocked, floorAt } from '../house-floors.js';
 import { makeHouseHelpers } from '../house/index.js';
+import { FLOOR_LIFT, decorHalf, planSeats, surfaceAt } from '../house/surface.js';   // 🪔 상판 올려놓기 규칙(순수)
 import { INTERIOR7_WALL, buildGardenFloor7, buildInterior7 } from '../house/interior7.js';   // 🏡 7단계 실내 스타일(모던/한옥) + 실내 정원 — 새 조형은 그 모듈에
 import { normalizeHouseStyle } from '../house-stage7.js';
 import { logEcon } from '../metrics.js';
+import { buyBlocked, SALE_ENDED_MSG } from '../shop/sale-window.js';
 import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
+import { HALLOWEEN_INDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './halloween-art.js';
 import { unregisterWindows } from '../spaces/house.js';
 import * as THREE from 'three';
 
@@ -420,6 +423,12 @@ export function decorMesh(id) {
       const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 5), clayMat(0x6da35a)); stem.position.set(dx, 0.5, dz); stem.rotation.z = dx * 1.2; g.add(stem);
       const bloom = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), clayMat(c, false)); bloom.position.set(dx * 1.6, 0.62 + i * 0.02, dz * 1.6); g.add(bloom);
     });
+  } else if (id === 'deskLamp') {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.05, 10), clayMat(0x5a5148)); base.position.y = 0.025; g.add(base);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.032, 0.18, 6), clayMat(0x5a5148)); pole.position.y = 0.14; g.add(pole);
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.19, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 0.32; g.add(shade);
+  } else if (HALLOWEEN_INDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 조형은 halloween-art.js (시안 HTML 과 같은 코드)
+    g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE)));
   } else if (id === 'nightstand') {
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.45), woodMat(1, 1)); body.position.y = 0.275; g.add(body);
     const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.18, 0.03), woodMat(1, 1, 0xd9b585)); drawer.position.set(0, 0.36, 0.235); g.add(drawer);
@@ -592,6 +601,54 @@ export function decorMesh(id) {
   return root;
 }
 
+// ── 🪔 상판에 올려놓기 — 순수 규칙은 js/house/surface.js, 여기는 후보 목록을 만들어 넘기는 어댑터 ──
+const DECOR_BY_ID = new Map(DECOR.map(d => [d.id, d]));   // 매 프레임·매 소품 DECOR.find 선형 탐색을 피한다
+
+/** decorMeshes → planSeats 입력. roots[i] 가 items[i] 의 메시 — 레코드 없는 메시는 뺀다 */
+function seatPlan() {
+  const roots = [], items = [];
+  for (const root of decorMeshes) {
+    const rec = root.userData.rec; if (!rec) continue;
+    roots.push(root);
+    items.push({ x: root.position.x, z: root.position.z, rot: rec.rot || 0, f: rec.f || 0, def: DECOR_BY_ID.get(rec.id) });
+  }
+  return { roots, items, plan: planSeats({ items, scale: DECOR_SCALE }) };
+}
+
+function surfaceHosts() {
+  const out = [];
+  for (const root of decorMeshes) {
+    const rec = root.userData.rec; if (!rec) continue;
+    const top = DECOR_BY_ID.get(rec.id)?.top; if (!top) continue;
+    out.push({ id: rec.id, x: root.position.x, z: root.position.z, rot: rec.rot || 0, f: rec.f || 0, top, root });
+  }
+  return out;
+}
+
+export function surfaceFor(x, z, def, rot, f) {
+  const hosts = surfaceHosts();
+  const hit = surfaceAt({ x, z, f, def, rot: rot || 0, hosts, scale: DECOR_SCALE });
+  return hit ? { y: hit.y, root: hosts[hit.hostIndex].root } : null;
+}
+
+// 받침 가구가 생기거나 사라질 때마다 소품을 다시 앉힌다 — 파생값이라 재계산이 곧 정답(복원 순서도 상관없다)
+export function reseatDecor() {
+  const { roots, items, plan } = seatPlan();
+  roots.forEach((root, i) => {
+    const def = items[i].def; if (!def?.sm) return;
+    const f = items[i].f, on = plan[i].onSurface;
+    root.position.y = floorBaseY(f) + FLOOR_LIFT + plan[i].y;
+    root.userData.onSurface = on;
+    if (!def.foot) return;
+    if (on && root.userData.collider) { removeSolid(root.userData.collider); root.userData.collider = null; }   // 상판 위로 올라갔으니 통행 차단 해제
+    else if (!on && !root.userData.collider) {                                                                  // 바닥으로 내려왔으니 다시 막는다
+      const [hw, hd] = decorHalf(def.foot, items[i].rot, DECOR_SCALE);
+      root.userData.collider = solidBox(root.position.x - hw, root.position.z - hd, root.position.x + hw, root.position.z + hd);
+      root.userData.collider.off = !root.visible;   // 안 보이는 층의 발자국은 막지 않는다(§8.1)
+    }
+  });
+}
+
 // 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음) · free=true 면 옮겨 놓기(비용 없음)
 export function placeDecor(id, wx, wz, silent = false, rot = null, free = false, f = null) {
   const def = DECOR.find(d => d.id === id); if (!def) return false;
@@ -613,6 +670,9 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
   const stored = gameState.house.stored || (gameState.house.stored = {});
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
+  if (buyBlocked({ silent, free, fromStore, def })) {   // 🎃 목록을 열어 둔 채 기간이 끝난 경우 — 새로 못 산다(보관분·옮기기·복원은 통과)
+    ui.toast?.(SALE_ENDED_MSG); return false;
+  }
   if (!silent && !free && !fromStore) {
     const pay = def.pay || 'crop';                          // 화폐: 작물 · 물고기 · 🪙코인(고급 가구)
     const have = pay === 'coins' ? (gameState.inventory.coins || 0) : (gameState.inventory[pay] || 0);
@@ -631,12 +691,14 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
   const m = decorMesh(id);
   const lx = decorClampX(wx), lz = decorClampZ(wz);
   const fy = floorBaseY(curFloor);   // ☀️ 루프탑이면 ROOF_Y — 옛 세이브(y 저장 안 함, x·z·f 만)도 f 로 다시 계산되어 자동으로 맞는 높이에 놓인다
-  m.position.set(lx, fy + 0.2, lz);
+  const on = surfaceFor(lx, lz, def, ry, curFloor);   // 🪔 같은 층 상판 위에 놓이는 자리면 그만큼 올린다
+  m.position.set(lx, fy + FLOOR_LIFT + (on ? on.y : 0), lz);
+  m.userData.onSurface = !!on;
   m.rotation.y = ry * Math.PI / 2;
   const rec = { id, x: lx - INT.x, z: lz - INT.z, rot: ry, f: curFloor };
   m.userData.rec = rec;                                     // 탭해서 들어 올릴 때 저장 레코드를 같이 뺀다
-  if (def.foot) {                                           // 🚧 발자국만큼 통행 차단 — 90°·270° 로 놓으면 가로·세로 교환
-    const hw = def.foot[ry % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[ry % 2 ? 0 : 1] / 2 * DECOR_SCALE;
+  if (def.foot && !on) {                                    // 🚧 발자국만큼 통행 차단 — 90°·270° 로 놓으면 가로·세로 교환(상판 위 소품은 막지 않는다)
+    const [hw, hd] = decorHalf(def.foot, ry, DECOR_SCALE);
     m.userData.collider = solidBox(lx - hw, lz - hd, lx + hw, lz + hd);
   }
   // ⚠️ §8.1 재발 지점 — indoor 만 보면 취소 경로(stopDecorPlacing→placeDecor, indoor===true인 채로 실행)에서
@@ -645,6 +707,7 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
   if (m.userData.collider) m.userData.collider.off = !m.visible;   // 🚧 안 보이는 층의 발자국은 막지 않는다(§8.1 콜라이더 버전)
   scene.add(m); decorMeshes.push(m);
   gameState.house.decor.push(rec);
+  reseatDecor();                                            // 받침이 늘었으니 소품 높이를 다시 앉힌다
   if (!silent) {
     m.userData.pop = 1; m.scale.setScalar(0.01);
     Sound.blip(); spawnFloatText(lx, fy + 1.3, lz, def.ico + ' 배치!', '#2fa564');
@@ -775,7 +838,9 @@ export function updateDecorGhost() {
     decorTarget.x = decorClampX(player.position.x + Math.sin(player.rotation.y) * reach);
     decorTarget.z = decorClampZ(player.position.z + Math.cos(player.rotation.y) * reach);
   }
-  decorGhost.position.set(decorTarget.x, floorBaseY(houseFloor) + 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);   // ☀️ 루프탑이면 덱 높이에서 미리보기
+  const gdef = DECOR.find(d => d.id === placingDecor);
+  const on = surfaceFor(decorTarget.x, decorTarget.z, gdef, decorRot, houseFloor);   // 🪔 상판 위 자리면 미리보기도 상판 높이로
+  decorGhost.position.set(decorTarget.x, floorBaseY(houseFloor) + FLOOR_LIFT + (on ? on.y : 0) + Math.sin(clock.elapsedTime * 3) * 0.03, decorTarget.z);   // ☀️ 루프탑이면 덱 높이에서 미리보기
   decorGhost.rotation.y = decorRot * Math.PI / 2;
 }
 
@@ -808,7 +873,11 @@ export function floorHitFromEvent(e) {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObject(interiorFloor, true)[0];   // 🌀 floorGroup — 나선 포팅 후 구멍 뚫린 바닥도 메시 하나(Shape.holes)뿐이지만, 방마다 조각 수가 달라도 안전하도록 재귀 탐색은 그대로 둔다
+  // 🪔 소품을 들고 있을 땐 같은 층 상판도 조준 대상 — 바닥만 맞히면 테이블을 뚫고 지나가 "위에 올려놓기"를 가리킬 수 없다
+  const targets = [interiorFloor];
+  if (DECOR.find(d => d.id === placingDecor)?.sm)
+    for (const root of decorMeshes) { const rec = root.userData.rec; if (rec && (rec.f || 0) === houseFloor && DECOR.find(d => d.id === rec.id)?.top) targets.push(root); }
+  const hit = raycaster.intersectObjects(targets, true)[0];   // 🌀 floorGroup 은 재귀 탐색(조각 수가 달라도 안전)
   return hit ? hit.point : null;
 }
 
@@ -842,18 +911,22 @@ export function tryPickDecor(e) {
 // 캐릭터에서 가장 가까운 가구 — 발자국 상자 가장자리까지의 거리(러그처럼 foot 없는 건 중심 거리)
 //   다른 층 가구는 같은 좌표에 겹칠 수 있어 반드시 지금 층만 본다(위 tryPickDecor 와 같은 이유).
 export function nearestDecor(reach) {
+  const { roots, items, plan } = seatPlan();   // 프레임당 한 번 — 소품마다 받침을 다시 찾지 않는다(O(decor))
   let best = null;
-  for (const root of decorMeshes) {
-    const rec = root.userData.rec; if (!rec || (rec.f || 0) !== houseFloor) continue;
-    const def = DECOR.find(d => d.id === rec.id);
-    const dx = player.position.x - root.position.x, dz = player.position.z - root.position.z;
+  roots.forEach((root, i) => {
+    const it = items[i]; if (it.f !== houseFloor) return;
+    // 🪔 상판 위 소품은 받침 가구의 발자국을 빌려 잰다 — 큰 식탁 한가운데 소품은 중심 거리로 재면 0.9 안에 설 방법이 없다
+    const hostIdx = it.def?.sm ? plan[i].hostIndex : -1;
+    const hosted = hostIdx >= 0, ref = hosted ? roots[hostIdx] : root, rit = hosted ? items[hostIdx] : it;
+    const dx = player.position.x - ref.position.x, dz = player.position.z - ref.position.z;
     let d;
-    if (def?.foot) {
-      const hw = def.foot[rec.rot % 2 ? 1 : 0] / 2 * DECOR_SCALE, hd = def.foot[rec.rot % 2 ? 0 : 1] / 2 * DECOR_SCALE;
+    if (rit.def?.foot) {
+      const [hw, hd] = decorHalf(rit.def.foot, rit.rot, DECOR_SCALE);
       d = Math.hypot(Math.max(0, Math.abs(dx) - hw), Math.max(0, Math.abs(dz) - hd));
     } else d = Math.hypot(dx, dz);
-    if (d < reach && (!best || d < best.d)) best = { root, d };
-  }
+    const key = hosted ? d - 0.01 : d;   // 받침과 거리가 같아지므로 그 위 소품을 먼저 집는다(받침은 직접 탭)
+    if (d < reach && (!best || key < best.key)) best = { root, d, key };
+  });
   return best;
 }
 
@@ -864,6 +937,7 @@ export function pickDecor(root) {
   unregisterWindows(root);   // 🏮 샹들리에·파이어핏·자쿠지처럼 밤 점등 목록에 올라간 재질을 들어 올릴 때 같이 뺀다(pickOutdoor 와 같은 규칙)
   if (root.userData.collider) removeSolid(root.userData.collider);   // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   const i = gameState.house.decor.indexOf(rec); if (i >= 0) gameState.house.decor.splice(i, 1);
+  reseatDecor();   // 🪔 받치던 가구를 들었다면 위에 있던 소품이 바닥으로 내려온다
   $w.decorRot = rec.rot || 0;
   startDecorPlacing(rec.id, { id: rec.id, wx: INT.x + rec.x, wz: INT.z + rec.z, rot: decorRot, f: rec.f || 0 }); // f: 원래 있던 층 — 취소 시 그 층으로 되돌린다(Ruling B)
   Sound.blip(); trackEvent('pick_decor', { item: rec.id }); // [GA4] 옮기기 시작
