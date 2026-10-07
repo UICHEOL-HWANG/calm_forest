@@ -27,12 +27,18 @@ test('행 렌더가 태그를 그린다(라벨과 날짜는 별개 노드)', () 
 test('placeDecor 는 신규 구매에서만 기간을 막는다', () => {
   const s = SRC.indexOf('function placeDecor(');
   const body = SRC.slice(s, SRC.indexOf('\nconst DECOR_WALL_PAD', s));
-  assert.match(body, /!silent && !free && !fromStore && def\.sale && !saleOpen\(def\)/);
+  const g = body.indexOf('buyBlocked(');
+  assert.ok(g >= 0, 'buyBlocked 사용');
+  assert.ok(g < body.indexOf('gameState.inventory[pay] -= def.cost'), '결제보다 먼저');
+  assert.match(body, /buyBlocked\(\{ silent, free, fromStore, def \}\)[\s\S]{0,80}SALE_ENDED_MSG/);
 });
 test('placeOutdoor 는 신규 구매에서만 기간을 막고 한정 코인 구매를 기록한다', () => {
   const s = SRC.indexOf('function placeOutdoor(');
   const body = SRC.slice(s, s + 5000);
-  assert.match(body, /!silent && !moved && !taken && def\.sale && !saleOpen\(def\)/);
+  const g = body.indexOf('buyBlocked(');
+  assert.ok(g >= 0, 'buyBlocked 사용');
+  assert.ok(g < body.indexOf('gameState.inventory[k] -= def.cost[k]'), '결제보다 먼저');
+  assert.match(body, /buyBlocked\(\{ silent, free: moved, fromStore: !!taken, def \}\)[\s\S]{0,80}SALE_ENDED_MSG/);
   assert.match(body, /logEcon\('outdoor_buy', id, -def\.cost\.coins/);
   assert.match(body, /trackEvent\('outdoor_buy_coins'/);
 });
