@@ -210,7 +210,7 @@ import {
   enterHouse, exitHouse, goFloor, inVillage2, updateDoorInteract,
 } from './spaces/doors.js';   // 📦 🚪 침대·문 근접·구역 안내 (구역 머리말 — 분리 2단계)
 import {
-  duelActive, investigateTrace, resolveNightVisit, spawnTrace, traceObjs,
+  duelActive, investigateTrace, resolveNightVisit, spawnTrace, traceObjs, updateTraceBubbles,
 } from './spaces/night-visit.js';   // 📦 🦝 밤손님 — 자리를 비운 밤사이 너구리·멧돼지가 작물을 훔쳐간다
 import {
   craftCover, refreshCovers, resolveWeatherEvent, weatherPrepView,
@@ -5603,6 +5603,7 @@ function animate() {
   updatePet(dt, t);         // 🐾 펫 — 따라다니기 / 맡긴 잡일 연쇄(접속 중에만 — 오프라인 정산 없음)
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
+  updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
   updateUmbrella(dt);   // ☂️ 💎 도구 테마 세트 — 비 오는 날 바깥에서 우산
   if (heldToolMesh?.userData.skin === 'moon') setToolSkinNight(heldToolMesh, nightLevel);   // 🌙 달밤 도구는 밤에만 은은히
