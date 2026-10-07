@@ -201,7 +201,7 @@ import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
 import {
-  HABITAT_BLOCK_LINE, enterFarm, exitFarm, observeVisitor, visitorTarget, visitors,
+  HABITAT_BLOCK_LINE, enterFarm, exitFarm, observeVisitor, updateVisitorBubbles, visitorTarget, visitors,
 } from './spaces/visitors.js';   // 📦 🦋 텃밭 방문객 안내 (구역 머리말 — 분리 2단계)
 import {
   buildMine, enterMine, exitMine, spawnMineGate, tryMine, updateOreRocks,
@@ -5604,6 +5604,7 @@ function animate() {
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
+  updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
   updateUmbrella(dt);   // ☂️ 💎 도구 테마 세트 — 비 오는 날 바깥에서 우산
   if (heldToolMesh?.userData.skin === 'moon') setToolSkinNight(heldToolMesh, nightLevel);   // 🌙 달밤 도구는 밤에만 은은히
