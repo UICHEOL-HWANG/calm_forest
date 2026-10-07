@@ -21,7 +21,7 @@ declare
   x uuid; pid uuid; r jsonb; t jsonb; sc jsonb; t1 jsonb; t2 jsonb; n int; vday date; keys text[];
   v_day date := (now() at time zone 'Asia/Seoul')::date;
   full_list uuid[]; sorted uuid[]; top3 uuid[]; blocked boolean := false;
-  vid bigint; vid2 bigint; k int; acts text[];   -- ⑦ 📒 원장
+  vid bigint; vid2 bigint; vk int; acts text[];   -- ⑦ 📒 원장
 begin
   ids := array[a, b, c, d, e, f, g, h, i];
 
@@ -386,9 +386,9 @@ begin
   -- 하루 30행 상한(거절된 호출은 행을 안 만든다)
   select count(*) into n from public.village_views where visitor = a and day = v_day;
   if n <> 2 then raise exception 'FAIL: 거절된 view_start 가 행을 만들었다: %', n; end if;
-  for k in 1..(30 - n) loop
+  for vk in 1..(30 - n) loop
     r := public.neighbor_view_start(public._nb_public_id(f), 0, false);
-    if not (r->>'ok')::boolean then raise exception 'FAIL view % 번째: %', n + k, r; end if;
+    if not (r->>'ok')::boolean then raise exception 'FAIL view % 번째: %', n + vk, r; end if;
   end loop;
   r := public.neighbor_view_start(public._nb_public_id(f), 0, false);
   if r->>'reason' is distinct from 'limit' then raise exception 'FAIL view limit: %', r; end if;
