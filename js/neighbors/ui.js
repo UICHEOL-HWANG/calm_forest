@@ -20,7 +20,8 @@ const CSS = `
 .nb-row { display: flex; gap: 10px; align-items: center; background: #f4faf5; border-radius: 16px; padding: 10px; text-align: left; box-shadow: var(--shadow); }
 .nb-row.done { opacity: .55; }
 .nb-ava { width: 52px; height: 52px; border-radius: 50%; background: #fff3dd; display: grid; place-items: center; font-size: 30px; flex: 0 0 52px; }
-.nb-name { font-weight: 800; font-size: 13px; word-break: keep-all; }
+.nb-row > div:nth-child(2) { min-width: 0; flex: 1; }
+.nb-name { font-weight: 800; font-size: 13px; word-break: keep-all; overflow-wrap: anywhere; }
 .nb-meta { font-size: 11.5px; opacity: .75; margin-top: 2px; }
 .nb-badge { display: inline-block; font-size: 10.5px; background: #ffe9b8; border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
 .nb-btn { white-space: nowrap; border: none; border-radius: 12px; padding: 9px 14px; font-weight: 700; font-size: 13px;
@@ -36,11 +37,11 @@ const CSS = `
   #nb-pick-modal .nb-row { flex-direction: column; text-align: center; flex: 1; }
   #nb-pick-modal .nb-go { margin: 6px 0 0; }
 }
-#nb-hud-top { position: fixed; top: calc(10px + var(--top-inset, 0px)); left: 50%; transform: translateX(-50%); z-index: 20; display: none;
-  background: rgba(255,255,255,.86); border-radius: 12px; padding: 6px 12px; font-weight: 700; font-size: 13px; box-shadow: var(--shadow);
-  max-width: calc(100vw - 140px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#nb-exit { position: fixed; left: 12px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 20; display: none; background: #eef2ee; }
-body.neighbor-visit #nb-hud-top, body.neighbor-visit #nb-exit { display: block; }
+#nb-hud-top { position: fixed; top: calc(10px + var(--top-inset, 0px)); left: 12px; right: 12px; z-index: 20; display: none; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.86); border-radius: 12px; padding: 5px 6px 5px 6px; font-weight: 700; font-size: 13px; box-shadow: var(--shadow); box-sizing: border-box; }
+#nb-hud-top .nb-title { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+#nb-exit { background: #eef2ee; padding: 7px 10px; font-size: 12px; box-shadow: none; }
+body.neighbor-visit #nb-hud-top { display: flex; }
 body.neighbor-visit #hotbar, body.neighbor-visit #quest-panel, body.neighbor-visit #story-chip { display: none !important; }
 #nb-bubble { position: fixed; left: 50%; top: 28%; transform: translateX(-50%); z-index: 21; display: none; background: #fff; border-radius: 16px;
   padding: 9px 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow); text-align: center; width: min(260px, calc(100vw - 32px)); }
@@ -49,10 +50,13 @@ body.neighbor-visit #hotbar, body.neighbor-visit #quest-panel, body.neighbor-vis
 .nb-react { display: flex; gap: 6px; justify-content: center; margin-top: 7px; }
 .nb-react button { border: none; background: #f4faf5; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
 .nb-visits { text-align: left; font-size: 12.5px; margin: 6px 0 12px; }
-.nb-visits div { display: flex; justify-content: space-between; padding: 6px 2px; border-bottom: 1px solid #f0f4f0; }
+.nb-visits div span { overflow-wrap: anywhere; min-width: 0; }
+.nb-visits div { display: flex; gap: 8px; justify-content: space-between; padding: 6px 2px; border-bottom: 1px solid #f0f4f0; }
 `;
 
+const REACT_LABEL = { wave: '손 흔들기', heart: '하트', flower: '꽃', star: '별' };
 let styled = false;
+let pickerBusy = false;
 const onClose = {};
 
 function el(tag, cls, text) {
@@ -73,7 +77,7 @@ function modal(id) {
   let root = document.getElementById(id);
   if (!root) {
     root = el('div'); root.id = id;
-    root.addEventListener('click', (e) => { if (e.target === root) closeModal(id); });
+    root.addEventListener('click', (e) => { if (e.target === root && !(id === 'nb-pick-modal' && pickerBusy)) closeModal(id); });
     document.body.appendChild(root);
   }
   root.replaceChildren();
@@ -90,6 +94,7 @@ function closeModal(id) {
 
 // ── 오늘의 이웃(A 엽서 카드) ──
 export function openPickerModal(rows, rewardedToday, onGo) {
+  pickerBusy = false;
   const { root, card } = modal('nb-pick-modal');
   card.append(el('div', 'nb-ico', '🏡'), el('h2', null, '오늘의 이웃'), el('p', 'nb-sub', '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요'));
   const list = el('div', 'nb-list');
@@ -113,20 +118,24 @@ export function openPickerModal(rows, rewardedToday, onGo) {
 }
 
 export function setPickerBusy(on) {
+  pickerBusy = !!on;
   document.querySelectorAll('#nb-pick-modal .nb-go').forEach(b => { b.disabled = !!on; });
 }
 
-export function closePickerModal() { closeModal('nb-pick-modal'); }
+export function closePickerModal() { pickerBusy = false; closeModal('nb-pick-modal'); }
 
 // ── 구경 중 상단 줄 · 🚪 내 마을로 ──
 export function showNeighborHud(nickname, onExit) {
   ensureStyle();
   let top = document.getElementById('nb-hud-top');
-  if (!top) { top = el('div'); top.id = 'nb-hud-top'; document.body.appendChild(top); }
-  top.textContent = `🏡 ${nickname} 의 마을`;
-  let exit = document.getElementById('nb-exit');
-  if (!exit) { exit = el('button', 'nb-btn', '🚪 내 마을로'); exit.id = 'nb-exit'; document.body.appendChild(exit); }
-  exit.onclick = () => onExit();
+  if (!top) {
+    top = el('div'); top.id = 'nb-hud-top';
+    const exit = el('button', 'nb-btn', '🚪 내 마을로'); exit.id = 'nb-exit';
+    top.append(exit, el('div', 'nb-title'));
+    document.body.appendChild(top);
+  }
+  top.querySelector('.nb-title').textContent = `🏡 ${nickname} 의 마을`;
+  document.getElementById('nb-exit').onclick = () => onExit();
   document.body.classList.add('neighbor-visit');
 }
 
@@ -149,7 +158,7 @@ export function setHostBubble(b) {
     const row = el('div', 'nb-react');
     for (const id of EMOJI_IDS) {
       const btn = el('button', null, EMOJI[id]);
-      btn.setAttribute('aria-label', id);
+      btn.setAttribute('aria-label', REACT_LABEL[id] || '');
       btn.onclick = () => b.onReact(id);
       row.appendChild(btn);
     }
