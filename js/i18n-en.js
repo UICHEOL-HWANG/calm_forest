@@ -1392,6 +1392,7 @@ export const EN = {
   '숲에서 이어지는 이야기': 'Your story in the forest',
   '📖 새 이야기가 이어져요 — {0#}장 「{1}」': '📖 Your story continues — Chapter {0}, "{1}"',
   '\n\n🏡 다음 이야기는 곧 열려요.': '\n\nThe next chapter is coming soon. 🏡',
+  '▸ {0} — {1}': '▸ {0} — {1}',   // 📖 모달 진행 줄(목표 — 진행) — 조각은 각각 번역된다
   '조용한': 'Quiet',
   '포근한': 'Cozy',
   '느긋한': 'Laid-back',
