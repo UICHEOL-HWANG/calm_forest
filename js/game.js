@@ -3452,7 +3452,7 @@ function updateTrail(dt) {
     for (const m of trailPool) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     trailPool.length = 0; trailItem = id;
   }
-  const off = indoor || atCafe || atMuseum || atObservatory || atMine;
+  const off = indoor || atCafe || atMuseum || atObservatory || atMine || atDream;   // 🌙 꿈속 — 비행 경로(허공)에 자국이 찍힌다
   if (!id || off) { if (trailLive.length) clearTrail(); else trailFx.clear(); return; }
 
   if (player.position.distanceTo(trailLastPos) >= TRAIL_STEP) {
@@ -5830,6 +5830,7 @@ function updatePlayer(dt, t) {
   // 🚧 건물·바위·가구 밀어내기 — 공간 클램프 뒤에 마지막으로(벽 모서리에 끼지 않게)
   //    실내(집)는 가구를 직접 배치하는 공간이라 제외 — 잘못 놓으면 갇힐 수 있음
   resolveColliders(player.position);   // 실내에서도 — 놓은 가구(solidBox)가 막아야 한다(전엔 실내를 통째로 건너뛰어 가구를 그냥 통과했다)
+  if (atDream) clampToDream(player.position);   // 🌙 구름 침대 상자가 섬 가장자리 밖으로 밀어낼 수 있다 — 밀린 뒤 한 번 더 섬 안으로
   // 테스트: ?dbg=1 — 현재 좌표·카메라·콜라이더 수를 <body data-dbg> 에 기록(충돌 디버깅용)
   if (_wq.has('dbg')) {
     document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;

@@ -1,6 +1,6 @@
 # 🌙 꿈의 숲 — 컨텍스트
 
-Last Updated: 2026-10-08 00:55 KST
+Last Updated: 2026-10-08 (구현·리뷰 완료, 미병합)
 
 ## 핵심 파일 (조사 결과)
 - 공간 진입 패턴: js/spaces/mist.js:228-254 (플래그→player.position→nearDoor null→snapCamera→setSpaceVisible→BGM→trackEvent)
@@ -22,3 +22,10 @@ Last Updated: 2026-10-08 00:55 KST
 - 꿈 장식 pay:'shard' → 기존 꾸미기 메뉴 재사용, visits>0 일 때만 노출
 - 입력 잠금은 sleeping 재사용
 - 4곳 동시 배포 필요(dream 필드·새 가구 id)
+
+## 상태 (2026-10-08)
+- feat/dream-forest: 88c78de 스펙 · aa458df 구현 · 리뷰 반영 커밋. 테스트 2134 통과.
+- 실측: 오프라인 CDP(Supabase·GA 차단) PC·모바일 — .scratch/dream/ · 스크립트는 세션 스크래치(tools/store-shots/cdp.mjs 사용)
+- 로컬 훅: ?dbg 없이도 localhost 면 window.__dream.{night,house,open,start,skip,state,tp,wake,reset}
+- 미리보기: 루트 .claude/launch.json "dream-forest"(8032) — ⚠️ 맨 localhost 로 열지 말 것(운영 기록), dev 파라미터 필수
+- 배포 남은 일: 4곳 동시(웹·토스·Play·itch) — 옛 클라가 dream 필드·꿈 장식 id 를 지운다. 토스 검수 지연 고려 필요

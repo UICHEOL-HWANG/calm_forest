@@ -67,6 +67,16 @@ test('트래킹 — 스펙 §10 이벤트 8종이 전부 소스에 있다', () =
   for (const choice of ['sleep', 'dream', 'cancel']) assert.match(DREAM, new RegExp(`choice: '${choice}'`));
 });
 
+test('리뷰 반영 — 미니맵·펫·발자국·밤 재확인·충돌 뒤 재클램프·Space 로 카드 닫기', () => {
+  assert.match(HTML, /d\.place === 'dream' \? 'rgba\(110,90,170,0\.8\)'/);
+  assert.match(HTML, /d\.place === 'dream' \? '🌙 꿈의 숲'/);
+  assert.match(HTML, /'dream-arrive-modal': 'dream-arrive-ok'/);
+  assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream;/);
+  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMine \|\| atDream;/);
+  assert.match(GAME, /resolveColliders\(player\.position\);[^\n]*\n\s+if \(atDream\) clampToDream\(player\.position\);/);
+  assert.match(DREAM, /if \(!isNight\(\)\) \{ ui\.toast\?\.\('🌙 꿈꾸기는 밤에만 할 수 있어요'\); return; \}/);
+});
+
 test('트래킹 — GA4 예약 파라미터(source·medium·campaign…)를 쓰지 않는다', () => {
   const calls = DREAM.match(/trackEvent\([^)]*\)/g) || [];
   assert.ok(calls.length >= 8);
