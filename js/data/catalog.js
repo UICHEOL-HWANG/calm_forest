@@ -62,6 +62,12 @@ export const DECOR = [
   { id: 'ghostCandle',   name: '유령 촛불', ico: '👻', cost: 150, pay: 'coins', sale: 'halloween', foot: [0.3, 0.3], sm: true, h: 0.5 },
   { id: 'miniGrave',     name: '미니 묘비', ico: '🪦', cost: 200, pay: 'coins', sale: 'halloween', foot: [0.5, 0.3] },
   { id: 'witchCauldron', name: '마녀 솥',   ico: '🧙', cost: 450, pay: 'coins', sale: 'halloween', big: true, foot: [1.0, 1.0] },
+  // 🌙 꿈 장식 — ✨ 꿈 조각(꿈의 숲, 하루 7개)으로만 산다. 꿈을 한 번 꾼 뒤에야 목록에 보인다(dream: true · game.js getDecor)
+  //    조형 js/dream/decor-art.js · 총 45조각 ≈ 7밤 · ☁️ 구름 침대는 sleep: true 라 밤에 이 침대로도 자기·꿈꾸기(js/spaces/doors.js)
+  { id: 'moonLamp',   name: '달 램프',   ico: '🌙', cost: 5,  pay: 'shard', dream: true, foot: [0.3, 0.3], sm: true, h: 0.55 },
+  { id: 'crystalPot', name: '수정 화분', ico: '💎', cost: 8,  pay: 'shard', dream: true, foot: [0.32, 0.32], sm: true, h: 0.7 },
+  { id: 'starMobile', name: '별 모빌',   ico: '⭐', cost: 12, pay: 'shard', dream: true, foot: [0.5, 0.5] },
+  { id: 'cloudBed',   name: '구름 침대', ico: '☁️', cost: 20, pay: 'shard', dream: true, big: true, sleep: true, foot: [1.5, 2.2] },
 ];
 
 export const FISH_KINDS = [
