@@ -8,7 +8,7 @@
 import {
   Input, clearCrop, currentTool, dist2D, doPlayerAction, firstHintBanner, gameState, giveReward, isBlocked,
   orchardSlotsWorld, orchardStreamWorld, player, plots, questEvent, rebuildOrchard, refreshCropStage, refreshInventoryUI,
-  requestSave, spawnDust, spawnFloatText, toolPage, ui, updatePlotVisual,
+  requestSave, spawnDust, spawnFloatText, syncStory, toolPage, ui, updatePlotVisual,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { BASIC_CROPS, TOOLS } from '../data/tools.js';
@@ -59,6 +59,7 @@ export function plantSapling(slot) {
     kind, near_stream: nearStream(tree, orchardStreamWorld()) ? 1 : 0, trees: gameState.orchard.trees.length });
   logOrchardEvent('sapling_plant', {                             // [원장] GA4 유실 대비 — Supabase 직접 기록
     kind, near_stream: nearStream(tree, orchardStreamWorld()), trees: gameState.orchard.trees.length });
+  syncStory();   // 📖 5장(마을의 살림) — 밭 2단계와 함께 나무 1그루
 }
 
 export function waterTree(tree) {
