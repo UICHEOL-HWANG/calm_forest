@@ -5489,7 +5489,7 @@
           </div>${c.state === 'done' ? '<span class="st-done">✅</span>' : ''}`;
         box.appendChild(row);
       });
-      box.querySelector('.st-row.now')?.scrollIntoView({ block: 'nearest' });
+      requestAnimationFrame(() => box.querySelector('.st-row.now')?.scrollIntoView({ block: 'nearest' }));   // 모달이 보인 뒤에 스크롤(숨김 상태에선 no-op)
     }
     $('story-chip').addEventListener('click', () => { renderStory(); Input.setAnalog(0, 0); $('story-modal').classList.add('show'); });
     $('story-close').addEventListener('click', () => closeStoryModal());
