@@ -1,7 +1,7 @@
 // tests/house-surface.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { WALL_H, FLOOR_LIFT, decorHalf, surfaceAt, ceilingOk } from '../js/house/surface.js';
+import { WALL_H, FLOOR_LIFT, decorHalf, surfaceAt, ceilingOk, planSeats } from '../js/house/surface.js';
 
 const S = 1.5;
 const table = { id: 'table', x: 10, z: 20, rot: 0, f: 0, top: { y: 0.66, pad: [1.1, 0.7] } };
@@ -74,4 +74,52 @@ test('top 이 없는 가구는 받침이 아니다', () => {
 test('ceilingOk: 탁상 등불은 되고 스탠드 램프(1.6)는 안 된다', () => {
   assert.equal(ceilingOk(0.66, 0.42, S), true);
   assert.equal(ceilingOk(0.66, 1.6, S), false);   // 0.2+(0.66+1.6)*1.5 = 3.59
+});
+
+// ── planSeats: 순서 무관 한 번에 앉히기 ──
+const tableDef = { top: { y: 0.66, pad: [1.1, 0.7] } };
+const bigDef = { top: { y: 0.69, pad: [1.8, 1.0] } };
+const propDef = { sm: true, foot: [0.3, 0.3] };
+const tItem = { x: 10, z: 20, rot: 0, f: 0, def: tableDef };
+const pItem = { x: 10, z: 20, rot: 0, f: 0, def: propDef };
+
+test('planSeats: 소품·탁자 순서가 바뀌어도 소품 결과가 같다', () => {
+  const a = planSeats({ items: [pItem, tItem], scale: S })[0];
+  const b = planSeats({ items: [tItem, pItem], scale: S })[1];
+  assert.equal(a.onSurface, true);
+  assert.equal(b.onSurface, true);
+  assert.ok(Math.abs(a.y - 0.66 * S) < 1e-9);
+  assert.equal(a.y, b.y);
+});
+
+test('planSeats: 탁자를 치우면 소품은 바닥으로(onSurface false, y 0, hostIndex -1)', () => {
+  const [r] = planSeats({ items: [pItem], scale: S });
+  assert.deepEqual(r, { onSurface: false, y: 0, hostIndex: -1 });
+});
+
+test('planSeats: 0층 탁자는 1층 소품을 받치지 않는다', () => {
+  const r = planSeats({ items: [tItem, { ...pItem, f: 1 }], scale: S })[1];
+  assert.equal(r.onSurface, false);
+  assert.equal(r.y, 0);
+});
+
+test('planSeats: 소품은 받침이 되지 않고 탁자는 앉지 않는다(sm 만 앉는다)', () => {
+  const [t, p] = planSeats({ items: [tItem, pItem], scale: S });
+  assert.equal(t.onSurface, false);
+  assert.equal(t.hostIndex, -1);
+  assert.equal(p.hostIndex, 0);
+  const [a, b] = planSeats({ items: [pItem, { ...pItem }], scale: S });   // top 없는 소품끼리는 서로 안 받친다
+  assert.equal(a.onSurface, false);
+  assert.equal(b.onSurface, false);
+});
+
+test('planSeats: 상판이 겹치면 높은 쪽이 받치고 hostIndex 가 그것을 가리킨다', () => {
+  const r = planSeats({ items: [tItem, { ...tItem, def: bigDef }, pItem], scale: S });
+  assert.equal(r[2].hostIndex, 1);
+  assert.ok(Math.abs(r[2].y - 0.69 * S) < 1e-9);
+});
+
+test('planSeats: 결과 길이는 items 와 같다', () => {
+  assert.equal(planSeats({ items: [], scale: S }).length, 0);
+  assert.equal(planSeats({ items: [tItem, pItem, pItem], scale: S }).length, 3);
 });

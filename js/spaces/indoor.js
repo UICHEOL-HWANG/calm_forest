@@ -25,7 +25,7 @@ import { nearMiss, spotInfo } from '../habitat.js';
 import { MAX_HOUSE_STAGE } from '../house-cost.js';
 import { GARDEN_DOOR_HALF_W, GARDEN_DOOR_Z, canPlaceOn, decorUnlocked, floorAt } from '../house-floors.js';
 import { makeHouseHelpers } from '../house/index.js';
-import { FLOOR_LIFT, decorHalf, surfaceAt } from '../house/surface.js';   // 🪔 상판 올려놓기 규칙(순수)
+import { FLOOR_LIFT, decorHalf, planSeats, surfaceAt } from '../house/surface.js';   // 🪔 상판 올려놓기 규칙(순수)
 import { INTERIOR7_WALL, buildGardenFloor7, buildInterior7 } from '../house/interior7.js';   // 🏡 7단계 실내 스타일(모던/한옥) + 실내 정원 — 새 조형은 그 모듈에
 import { normalizeHouseStyle } from '../house-stage7.js';
 import { logEcon } from '../metrics.js';
@@ -602,11 +602,24 @@ export function decorMesh(id) {
 }
 
 // ── 🪔 상판에 올려놓기 — 순수 규칙은 js/house/surface.js, 여기는 후보 목록을 만들어 넘기는 어댑터 ──
+const DECOR_BY_ID = new Map(DECOR.map(d => [d.id, d]));   // 매 프레임·매 소품 DECOR.find 선형 탐색을 피한다
+
+/** decorMeshes → planSeats 입력. roots[i] 가 items[i] 의 메시 — 레코드 없는 메시는 뺀다 */
+function seatPlan() {
+  const roots = [], items = [];
+  for (const root of decorMeshes) {
+    const rec = root.userData.rec; if (!rec) continue;
+    roots.push(root);
+    items.push({ x: root.position.x, z: root.position.z, rot: rec.rot || 0, f: rec.f || 0, def: DECOR_BY_ID.get(rec.id) });
+  }
+  return { roots, items, plan: planSeats({ items, scale: DECOR_SCALE }) };
+}
+
 function surfaceHosts() {
   const out = [];
   for (const root of decorMeshes) {
     const rec = root.userData.rec; if (!rec) continue;
-    const top = DECOR.find(d => d.id === rec.id)?.top; if (!top) continue;
+    const top = DECOR_BY_ID.get(rec.id)?.top; if (!top) continue;
     out.push({ id: rec.id, x: root.position.x, z: root.position.z, rot: rec.rot || 0, f: rec.f || 0, top, root });
   }
   return out;
@@ -620,21 +633,20 @@ export function surfaceFor(x, z, def, rot, f) {
 
 // 받침 가구가 생기거나 사라질 때마다 소품을 다시 앉힌다 — 파생값이라 재계산이 곧 정답(복원 순서도 상관없다)
 export function reseatDecor() {
-  for (const root of decorMeshes) {
-    const rec = root.userData.rec; if (!rec) continue;
-    const def = DECOR.find(d => d.id === rec.id); if (!def?.sm) continue;
-    const f = rec.f || 0;
-    const on = surfaceFor(root.position.x, root.position.z, def, rec.rot || 0, f);
-    root.position.y = floorBaseY(f) + FLOOR_LIFT + (on ? on.y : 0);
-    root.userData.onSurface = !!on;
-    if (!def.foot) continue;
+  const { roots, items, plan } = seatPlan();
+  roots.forEach((root, i) => {
+    const def = items[i].def; if (!def?.sm) return;
+    const f = items[i].f, on = plan[i].onSurface;
+    root.position.y = floorBaseY(f) + FLOOR_LIFT + plan[i].y;
+    root.userData.onSurface = on;
+    if (!def.foot) return;
     if (on && root.userData.collider) { removeSolid(root.userData.collider); root.userData.collider = null; }   // 상판 위로 올라갔으니 통행 차단 해제
     else if (!on && !root.userData.collider) {                                                                  // 바닥으로 내려왔으니 다시 막는다
-      const [hw, hd] = decorHalf(def.foot, rec.rot || 0, DECOR_SCALE);
+      const [hw, hd] = decorHalf(def.foot, items[i].rot, DECOR_SCALE);
       root.userData.collider = solidBox(root.position.x - hw, root.position.z - hd, root.position.x + hw, root.position.z + hd);
       root.userData.collider.off = !root.visible;   // 안 보이는 층의 발자국은 막지 않는다(§8.1)
     }
-  }
+  });
 }
 
 // 가구 배치(작물로 구매). silent=true 면 저장 복원(비용/이펙트 없음) · free=true 면 옮겨 놓기(비용 없음)
@@ -899,24 +911,22 @@ export function tryPickDecor(e) {
 // 캐릭터에서 가장 가까운 가구 — 발자국 상자 가장자리까지의 거리(러그처럼 foot 없는 건 중심 거리)
 //   다른 층 가구는 같은 좌표에 겹칠 수 있어 반드시 지금 층만 본다(위 tryPickDecor 와 같은 이유).
 export function nearestDecor(reach) {
+  const { roots, items, plan } = seatPlan();   // 프레임당 한 번 — 소품마다 받침을 다시 찾지 않는다(O(decor))
   let best = null;
-  for (const root of decorMeshes) {
-    const rec = root.userData.rec; if (!rec || (rec.f || 0) !== houseFloor) continue;
-    const def = DECOR.find(d => d.id === rec.id);
+  roots.forEach((root, i) => {
+    const it = items[i]; if (it.f !== houseFloor) return;
     // 🪔 상판 위 소품은 받침 가구의 발자국을 빌려 잰다 — 큰 식탁 한가운데 소품은 중심 거리로 재면 0.9 안에 설 방법이 없다
-    const host = def?.sm ? surfaceFor(root.position.x, root.position.z, def, rec.rot || 0, rec.f || 0)?.root : null;
-    const ref = host || root;
-    const rdef = host ? DECOR.find(d => d.id === host.userData.rec.id) : def;
-    const rrot = (host ? host.userData.rec.rot : rec.rot) || 0;
+    const hostIdx = it.def?.sm ? plan[i].hostIndex : -1;
+    const hosted = hostIdx >= 0, ref = hosted ? roots[hostIdx] : root, rit = hosted ? items[hostIdx] : it;
     const dx = player.position.x - ref.position.x, dz = player.position.z - ref.position.z;
     let d;
-    if (rdef?.foot) {
-      const [hw, hd] = decorHalf(rdef.foot, rrot, DECOR_SCALE);
+    if (rit.def?.foot) {
+      const [hw, hd] = decorHalf(rit.def.foot, rit.rot, DECOR_SCALE);
       d = Math.hypot(Math.max(0, Math.abs(dx) - hw), Math.max(0, Math.abs(dz) - hd));
     } else d = Math.hypot(dx, dz);
-    const key = host ? d - 0.01 : d;   // 받침과 거리가 같아지므로 그 위 소품을 먼저 집는다(받침은 직접 탭)
+    const key = hosted ? d - 0.01 : d;   // 받침과 거리가 같아지므로 그 위 소품을 먼저 집는다(받침은 직접 탭)
     if (d < reach && (!best || key < best.key)) best = { root, d, key };
-  }
+  });
   return best;
 }
 
