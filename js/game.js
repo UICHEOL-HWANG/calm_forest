@@ -66,7 +66,7 @@ import { ADV_CROPS, MATURE, isAdv, growthPerWater, stageIndex, renderStage, wilt
 import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, jobOf, gradeInfo, gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages, pickTask, catchUpSteps, worksPerStep, candidatesFor, releaseCandidate } from './farm-worker.js';   // 🧑‍🌾 노동자 규칙(직군·등급·우선순위·월급·오프라인 스텝)
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
-import { catalogVisible, saleTagOf } from './shop/sale-window.js';   // 🎃 기간 한정 항목 — 목록 필터·행 태그
+import { catalogVisible, saleOpen, saleTagOf } from './shop/sale-window.js';   // 🎃 기간 한정 항목 — 목록 필터·행 태그
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
@@ -5153,12 +5153,17 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   const moved = !silent && !!pickedOutdoor;                                   // 🪵 옮겨 놓기(비용 없음)
   const taken = (!silent && !moved) ? takeStored(gameState.outdoorStored, id) : null;   // 🧺 보관분 우선
   if (taken) gameState.outdoorStored = taken;
+  if (!silent && !moved && !taken && def.sale && !saleOpen(def)) { ui.toast?.('🎃 할로윈 장식 판매가 끝났어요'); return false; }   // 🎃 기간 한정 — 신규 구매만 막는다
   if (!silent && !moved && !taken) {
     for (const k in def.cost) {
       if ((gameState.inventory[k] || 0) < def.cost[k]) { ui.toast?.((RES_LABEL[k] || k) + '이(가) 부족해요'); return false; }
     }
     for (const k in def.cost) gameState.inventory[k] -= def.cost[k];
     refreshInventoryUI();
+    if (def.sale && def.cost.coins) {   // [원장][GA4] 한정 코인 장식 구매 — 실내 decor_buy 와 같은 축
+      logEcon('outdoor_buy', id, -def.cost.coins, gameState.inventory.coins);
+      trackEvent('outdoor_buy_coins', { item: id, coins: def.cost.coins, sale: def.sale });
+    }
   }
   const m = outdoorMesh(id); m.position.set(wx, 0, wz); m.rotation.y = ry * Math.PI / 2; scene.add(m); outdoorMeshes.push(m);
   // 들고 있던 장식은 저장 레코드를 그대로 쓴다(들고 있는 동안 세이브가 나가도 분실되지 않게 목록에 남겨 둔다) — 옮겨 놓기·제자리 복귀 모두

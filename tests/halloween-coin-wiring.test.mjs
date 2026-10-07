@@ -24,3 +24,15 @@ test('행 렌더가 태그를 그린다(라벨과 날짜는 별개 노드)', () 
   assert.match(HTML, /class="di-tag">\$\{d\.tag\.label\}<\/span><span class="di-tag">\$\{d\.tag\.until\}/);
   assert.match(HTML, /class="ck-tag">\$\{o\.tag\.label\}<\/span><span class="ck-tag">\$\{o\.tag\.until\}/);
 });
+test('placeDecor 는 신규 구매에서만 기간을 막는다', () => {
+  const s = SRC.indexOf('function placeDecor(');
+  const body = SRC.slice(s, SRC.indexOf('\nconst DECOR_WALL_PAD', s));
+  assert.match(body, /!silent && !free && !fromStore && def\.sale && !saleOpen\(def\)/);
+});
+test('placeOutdoor 는 신규 구매에서만 기간을 막고 한정 코인 구매를 기록한다', () => {
+  const s = SRC.indexOf('function placeOutdoor(');
+  const body = SRC.slice(s, s + 5000);
+  assert.match(body, /!silent && !moved && !taken && def\.sale && !saleOpen\(def\)/);
+  assert.match(body, /logEcon\('outdoor_buy', id, -def\.cost\.coins/);
+  assert.match(body, /trackEvent\('outdoor_buy_coins'/);
+});
