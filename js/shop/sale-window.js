@@ -45,3 +45,9 @@ export function saleTagOf(item) {
   if (!until) return null;
   return { label: '🎃 할로윈 한정', until: `~${until}` };
 }
+
+/** 상점 목록에 보일까 — sale 이 없거나 기간 안이거나 이미 보관분이 있으면 보인다.
+ *  기간 밖에서 안 산 사람에겐 숨긴다(유료 꾸미기 premiumRowMode 'owned' 와 같은 원칙). 판정은 표시용이다 */
+export function catalogVisible(item, { stored = 0, now = Date.now() } = {}) {
+  return !item?.sale || saleOpen(item, now) || stored > 0;
+}
