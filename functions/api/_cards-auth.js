@@ -44,10 +44,24 @@ export function isIngestAuthorized(request, env) {
   return safeEqual(request.headers.get('x-cardnews-secret') || '', env?.CARDNEWS_INGEST_SECRET || '');
 }
 
+// 🔐 카드뉴스 도구는 운영자 전용 — SQL cf_is_admin()(migrate_admin_uid_guard.sql)과 같은 UUID.
+//    service key 로 쓰는 API 라 "로그인만 하면 통과"면 게스트 계정이 행을 무한히 쌓을 수 있다(2026-10-07).
+export const CARDS_ADMIN_UIDS = Object.freeze([
+  '17bb08c7-c4bc-4870-b464-1b131e67aff8',
+  '4cab8ea4-c27f-4ef5-b350-cf55f0f993b5',
+]);
+export const TITLE_MAX = 120;
+export const MEMO_MAX = 2000;
+
+/** 관리자이면서 익명이 아닌 계정만 */
+export function isCardsAdmin(user) {
+  return !!user && user.is_anonymous !== true && CARDS_ADMIN_UIDS.includes(user.id);
+}
+
 /**
  * JWT 서명을 직접 검증하지 않고 Supabase 에 물어본다 — 사용자가 1명이라
  * 요청당 호출 1회가 부담이 아니고, 키 롤링·만료를 그쪽이 책임진다.
- * @returns 사용자 uuid, 아니면 null
+ * @returns 관리자 uuid, 아니면 null(게스트·일반 유저 포함)
  */
 export async function getUserId(token, env) {
   if (!token || !env?.SUPABASE_URL || !env?.SUPABASE_ANON_KEY) return null;
@@ -56,5 +70,5 @@ export async function getUserId(token, env) {
   });
   if (!res.ok) return null;
   const user = await res.json().catch(() => null);
-  return user?.id || null;
+  return isCardsAdmin(user) ? user.id : null;
 }
