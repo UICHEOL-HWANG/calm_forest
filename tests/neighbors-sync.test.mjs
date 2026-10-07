@@ -31,8 +31,11 @@ test('🧑‍🤝‍🧑 페르소나 분리 — 후보 함수가 PERSONA_DOMAIN
   const dom = read('tools/persona-sim/supabase-admin.mjs').match(/PERSONA_DOMAIN = '([^']+)'/)[1];
   const fn = (s) => s.match(/create or replace function public\._nb_candidates[\s\S]*?\n\$\$;/)[0];
   const main = fn(SQL), split = read('sql/migrations/migrate_neighbors_sim_split.sql');
-  assert.ok(main.includes(`(lower(coalesce(u.email, '')) like '%@${dom}') = exists (select 1 from auth.users c where c.id = p_caller and lower(coalesce(c.email, '')) like '%@${dom}')`));
-  assert.equal(fn(split), main);
+  const clause = `(lower(coalesce(u.email, '')) like '%@${dom}') = exists (select 1 from auth.users c where c.id = p_caller and lower(coalesce(c.email, '')) like '%@${dom}')`;
+  assert.ok(main.includes(clause));
+  // 분리 마이그레이션은 그 시점 스냅숏 — 이후 🛡️ 모더레이션이 hidden_by_admin 한 줄만 더했다(최신본은 moderation 파일과 같다)
+  assert.equal(fn(split), main.replace("    and not coalesce(vp.hidden_by_admin, false)\n", ''));
+  assert.equal(fn(read('sql/migrations/migrate_neighbors_moderation.sql')), main);
   assert.match(split, /revoke all on function public\._nb_candidates\(uuid, date, int\) from public, anon, authenticated;/);
   const selftest = read('sql/tests/neighbors_selftest.sql');
   assert.equal(selftest.match(/^do \$\$/gm).length, 1);

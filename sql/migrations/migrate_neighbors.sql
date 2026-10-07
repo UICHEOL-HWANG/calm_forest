@@ -1,5 +1,6 @@
 -- =============================================================
---  🏡 이웃 마을 구경하기 1단계 — 공개 프로필·방문 원장·RPC 5종
+--  🏡 이웃 마을 구경하기 1단계 — 공개 프로필·방문 원장·RPC 5종 + 🛡️ 모더레이션(닉네임 필터·관리자 숨기기 RPC 2종)
+--  ▶ 최종 상태 — 새로 깔 땐 이 파일 하나. 기존 DB 는 migrate_neighbors_sim_split.sql → migrate_neighbors_moderation.sql 순서로 올린다.
 --  ------------------------------------------------------------
 --  ▶ 두 테이블 모두 RLS on · 정책 없음 = 직접 접근 금지. 읽기·쓰기는 전부 아래 SECURITY DEFINER RPC 로만.
 --  ▶ 밖으로 나가는 식별자는 village_profiles.public_id(무작위 uuid) 하나뿐. user_id 는 어떤 응답에도 없다.
@@ -16,8 +17,14 @@ create table if not exists public.village_profiles (
   user_id    uuid primary key references auth.users(id) on delete cascade,
   public_id  uuid not null unique default gen_random_uuid(),   -- 밖으로 나가는 유일한 식별자
   is_public  boolean not null default true,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  hidden_by_admin boolean not null default false,                -- 🛡️ 관리자: 이웃 목록·구경에서 제외
+  nick_hidden     boolean not null default false                 -- 🛡️ 관리자: 닉네임을 '이름 없는 여행자'로 가림
 );
+-- 1단계(모더레이션 전)에 이미 만든 테이블에도 — migrate_neighbors_moderation.sql 과 같다
+alter table public.village_profiles
+  add column if not exists hidden_by_admin boolean not null default false,
+  add column if not exists nick_hidden boolean not null default false;
 
 create table if not exists public.village_visits (
   id         bigserial primary key,
@@ -56,6 +63,25 @@ returns jsonb language sql immutable set search_path = public as $$
   select case when jsonb_typeof(p) = 'number' then p else 'null'::jsonb end;
 $$;
 
+-- 🛡️ 금칙어 판정(서버 쪽 표시 필터) — 패턴 = js/nickname-filter.js NICK_BLOCK_PATTERNS
+create or replace function public._nb_nick_blocked(p_nick text)
+returns boolean language sql immutable set search_path = public as $$
+  select regexp_replace(regexp_replace(lower(coalesce(p_nick, '')), '[^a-z가-힣ㄱ-ㆎ]', '', 'g'), '(.)\1+', '\1', 'g')
+         ~* '[시씨쓰]이?[발빨팔]|씨[바빠]|[ㅅㅆ]ㅂ|[ㅅㅆ]발|[시씨]ㅂ|[병븅빙]신|병싄|ㅂㅅ|개[새세쉐섀색][끼기키히]|ㄱㅅㄲ|좆|좃|존나|지랄|ㅈㄹ|미친[놈년새]|썅|씹[새쌔년할창]|느금|니[애에]미|엠창|ㄴㄱㅁ|섹스|쎅스|섹수|보지(?!마|말)|자지(?!마|말)|강간|창녀|야동|포르노|한남충|맘충|급식충|틀딱|김치녀|된장녀|메갈(?!로)|일베|짱깨|쪽바리|깜둥|조센징|히틀러|f[uv]ck|fck|shit(?!ake)|bia?tch|ashole|bastard|cunt|dick|pusy|slut|whore|niger|niga|fagot|retard|nazi|hitler|penis|porn|^sex|sexy|sexual|^rape';
+$$;
+
+-- 🛡️ 남에게 보여 줄 닉네임의 단일 출처 — nick_hidden·금칙어면 '이름 없는 여행자'
+create or replace function public._nb_nick(p_state jsonb, p_user uuid)
+returns text language sql stable security definer set search_path = public as $$
+  select case
+           when n.v = '' then '이름 없는 여행자'
+           when exists (select 1 from village_profiles vp where vp.user_id = p_user and vp.nick_hidden) then '이름 없는 여행자'
+           when _nb_nick_blocked(n.v) then '이름 없는 여행자'
+           else left(n.v, 16)
+         end
+  from (select btrim(case when jsonb_typeof(p_state->'nickname') = 'string' then p_state->>'nickname' else '' end) as v) n;
+$$;
+
 -- 앞마당 장식만 — 집 터(-8,-8) 반경 14, 최대 40. js/data/places.js HOUSE_POS · js/neighbors/sanitize.js YARD_R·DECOR_MAX 와 같아야 한다
 create or replace function public._nb_yard(p_state jsonb)
 returns jsonb language sql immutable set search_path = public as $$
@@ -74,7 +100,7 @@ returns jsonb language sql immutable set search_path = public as $$
   ) y;
 $$;
 
--- 후보 = 공개(행 없으면 공개) + 비익명 + 7일 안에 저장 + 집 1단계 이상 + 본인 제외. 하루 고정 정렬(리롤 불가)
+-- 후보 = 공개(행 없으면 공개) + 관리자 숨김 아님 + 비익명 + 7일 안에 저장 + 집 1단계 이상 + 본인 제외. 하루 고정 정렬(리롤 불가)
 create or replace function public._nb_candidates(p_caller uuid, p_day date, p_limit int default 3)
 returns table (uid uuid, k text)
 language sql stable security definer set search_path = public as $$
@@ -85,6 +111,7 @@ language sql stable security definer set search_path = public as $$
   where gs.user_id <> p_caller
     and coalesce(u.is_anonymous, false) = false
     and coalesce(vp.is_public, true)
+    and not coalesce(vp.hidden_by_admin, false)
     and gs.updated_at >= now() - interval '7 days'
     and case when jsonb_typeof(gs.state->'houseStage') = 'number' then (gs.state->>'houseStage')::numeric >= 1 else false end
     -- 🧑‍🤝‍🧑 페르소나(@sim.calmforest.local)는 페르소나끼리, 실사용자는 실사용자끼리만 만난다
@@ -117,7 +144,7 @@ begin
   on conflict (user_id) do nothing;
   select coalesce(jsonb_agg(jsonb_build_object(
            'public_id', vp.public_id,
-           'nick', left(coalesce(nullif(gs.state->>'nickname', ''), '이름 없는 여행자'), 16),
+           'nick', _nb_nick(gs.state, c.uid),
            'character', case when jsonb_typeof(gs.state->'character') = 'string' then left(gs.state->>'character', 16) end,
            'house_stage', (gs.state->>'houseStage')::numeric::int,
            'decor_n', jsonb_array_length(_nb_yard(gs.state)),
@@ -135,17 +162,17 @@ end $$;
 
 create or replace function public.neighbor_showcase(p_public_id uuid)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
-declare v_user uuid; v_pub boolean; s jsonb;
+declare v_user uuid; v_pub boolean; v_hid boolean; s jsonb;
 begin
   if p_public_id is null then return null; end if;
-  select user_id, is_public into v_user, v_pub from village_profiles where public_id = p_public_id;
-  if not found or not v_pub then return null; end if;
+  select user_id, is_public, hidden_by_admin into v_user, v_pub, v_hid from village_profiles where public_id = p_public_id;
+  if not found or not v_pub or v_hid then return null; end if;
   if exists (select 1 from auth.users u where u.id = v_user and coalesce(u.is_anonymous, false)) then return null; end if;
   select state into s from game_saves where user_id = v_user;
   if s is null or jsonb_typeof(s) <> 'object' then return null; end if;
   -- ⚠️ 허용 목록 — 키를 하나씩 고른다. 여기 없는 세이브 필드는 절대 나가지 않는다
   return jsonb_build_object(
-    'nickname',   to_jsonb(left(coalesce(nullif(s->>'nickname', ''), '이름 없는 여행자'), 16)),
+    'nickname',   to_jsonb(_nb_nick(s, v_user)),
     'character',  _nb_str(s->'character', 16),
     'equipped',   jsonb_build_object(
                     'head',  _nb_str(s #> '{cosmetics,equipped,head}'),
@@ -216,7 +243,7 @@ begin
   select is_public into v_pub from village_profiles where user_id = v_uid;
   select count(distinct visitor) into v_total from village_visits where host = v_uid and created_at > v_since;
   select coalesce(jsonb_agg(jsonb_build_object(
-           'nick', left(coalesce(nullif(gs.state->>'nickname', ''), '이름 없는 여행자'), 16),
+           'nick', _nb_nick(gs.state, x.visitor),
            'character', case when jsonb_typeof(gs.state->'character') = 'string' then left(gs.state->>'character', 16) end,
            'emoji', x.emoji, 'at', x.created_at) order by x.created_at desc), '[]'::jsonb)
     into v_list
@@ -243,6 +270,56 @@ begin
   return jsonb_build_object('ok', true, 'is_public', p_on);
 end $$;
 
+-- ── 🛡️ 관리자 RPC — dashboards/notices_admin.html 「🏡 이웃 마을 관리」 ──
+create or replace function public.admin_village_find(p_nick text)
+returns jsonb language plpgsql volatile security definer set search_path = public as $$
+declare
+  v_q    text := btrim(coalesce(p_nick, ''));
+  v_ids  uuid[];
+  v_list jsonb;
+begin
+  if not coalesce(public.cf_is_admin(), false) then return jsonb_build_object('ok', false, 'reason', 'forbidden'); end if;
+  if v_q = '' or length(v_q) > 40 then return jsonb_build_object('ok', false, 'reason', 'query'); end if;
+  v_q := '%' || replace(replace(replace(v_q, '\', '\\'), '%', '\%'), '_', '\_') || '%';   -- 입력의 % _ 는 글자 그대로
+  select array_agg(q.user_id order by q.updated_at desc) into v_ids from (
+    select gs.user_id, gs.updated_at
+    from game_saves gs join auth.users u on u.id = gs.user_id
+    where coalesce(u.is_anonymous, false) = false
+      and jsonb_typeof(gs.state->'nickname') = 'string' and gs.state->>'nickname' ilike v_q
+    order by gs.updated_at desc limit 20
+  ) q;
+  insert into village_profiles (user_id) select unnest(coalesce(v_ids, '{}'::uuid[])) on conflict (user_id) do nothing;
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'public_id', vp.public_id,
+           'nick', left(gs.state->>'nickname', 40),
+           'house_stage', case when jsonb_typeof(gs.state->'houseStage') = 'number' then (gs.state->>'houseStage')::numeric::int end,
+           'hidden_by_admin', vp.hidden_by_admin,
+           'nick_hidden', vp.nick_hidden,
+           'filtered', _nb_nick_blocked(gs.state->>'nickname'),
+           'updated_at', gs.updated_at
+         ) order by x.ord), '[]'::jsonb)
+    into v_list
+  from unnest(coalesce(v_ids, '{}'::uuid[])) with ordinality as x(uid, ord)
+  join game_saves gs on gs.user_id = x.uid
+  join village_profiles vp on vp.user_id = x.uid;
+  return jsonb_build_object('ok', true, 'list', v_list);
+end $$;
+
+create or replace function public.admin_village_moderate(p_public_id uuid, p_hide boolean, p_hide_nick boolean)
+returns jsonb language plpgsql volatile security definer set search_path = public as $$
+declare v_hid boolean; v_nh boolean;
+begin
+  if not coalesce(public.cf_is_admin(), false) then return jsonb_build_object('ok', false, 'reason', 'forbidden'); end if;
+  update village_profiles
+     set hidden_by_admin = coalesce(p_hide, hidden_by_admin),
+         nick_hidden     = coalesce(p_hide_nick, nick_hidden),
+         updated_at      = now()
+   where public_id = p_public_id
+  returning hidden_by_admin, nick_hidden into v_hid, v_nh;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'not_found'); end if;
+  return jsonb_build_object('ok', true, 'hidden_by_admin', v_hid, 'nick_hidden', v_nh);
+end $$;
+
 -- ── 권한 ──
 revoke all on function public._nb_kst_today() from public, anon, authenticated;
 revoke all on function public._nb_str(jsonb, int) from public, anon, authenticated;
@@ -250,16 +327,22 @@ revoke all on function public._nb_num(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_yard(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_candidates(uuid, date, int) from public, anon, authenticated;
 revoke all on function public._nb_public_id(uuid) from public, anon, authenticated;
+revoke all on function public._nb_nick_blocked(text) from public, anon, authenticated;
+revoke all on function public._nb_nick(jsonb, uuid) from public, anon, authenticated;
 revoke all on function public.neighbors_today() from public, anon;
 revoke all on function public.neighbor_showcase(uuid) from public;
 revoke all on function public.neighbor_react(uuid, text) from public, anon;
 revoke all on function public.my_visitors(timestamptz) from public, anon;
 revoke all on function public.set_village_public(boolean) from public, anon;
+revoke all on function public.admin_village_find(text) from public, anon;
+revoke all on function public.admin_village_moderate(uuid, boolean, boolean) from public, anon;
 grant execute on function public.neighbors_today() to authenticated;
 grant execute on function public.neighbor_showcase(uuid) to anon, authenticated;
 grant execute on function public.neighbor_react(uuid, text) to authenticated;
 grant execute on function public.my_visitors(timestamptz) to authenticated;
 grant execute on function public.set_village_public(boolean) to authenticated;
+grant execute on function public.admin_village_find(text) to authenticated;
+grant execute on function public.admin_village_moderate(uuid, boolean, boolean) to authenticated;
 
 commit;
 

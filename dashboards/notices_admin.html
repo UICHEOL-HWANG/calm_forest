@@ -68,6 +68,11 @@
   .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--surface-1);
     padding: 9px 16px; border-radius: 12px; font-size: 13px; box-shadow: var(--shadow); opacity: 0; transition: opacity .2s; pointer-events: none; }
   .toast.on { opacity: 1; }
+  /* 🏡 이웃 마을 — 관리 카드 */
+  .vmsg { font-size: 12.5px; margin-top: 10px; color: var(--ink-2); }
+  .vmsg.err { color: var(--down); font-weight: 600; }
+  #vTable { margin-top: 10px; }
+  #vTable td.act { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -123,6 +128,16 @@
           <div id="fList"></div>
           <div class="empty" id="fEmpty" style="display:none">받은 피드백이 없어요</div>
         </div>
+        <div class="card">
+          <h2>🏡 이웃 마을 관리 <span class="count" id="vCount"></span></h2>
+          <p class="hint">닉네임 일부로 찾아요(최근 저장 순 최대 20명). <b>숨기기</b>는 다른 유저의 이웃 목록·구경에서 빼고, <b>닉네임 가리기</b>는 이름을 ‘이름 없는 여행자’로 보여 줘요. 금칙어 닉네임은 서버가 자동으로 가려요.</p>
+          <div class="row" style="margin-top:0">
+            <input type="text" id="vQuery" maxlength="40" placeholder="닉네임 일부" style="flex:1; min-width:0" />
+            <button class="btn" id="vSearch">찾기</button>
+          </div>
+          <div class="vmsg" id="vMsg" style="display:none"></div>
+          <table class="mini" id="vTable" style="display:none"><thead><tr><th>닉네임</th><th>집 단계</th><th>상태</th><th></th></tr></thead><tbody id="vList"></tbody></table>
+        </div>
       </div>
     </div>
   </div>
@@ -164,7 +179,7 @@
       }
       if (!isAdmin) { showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/migrations/migrate_notices_admin.sql 의 허용목록에 이메일을 추가하세요.</small>'); return; }
       $('load').style.display = 'none'; $('dash').style.display = 'block';
-      wire();
+      wire(); wireVillage();
       await loadNotices(); await loadFeedback();   // 피드백의 '답장함' 표시는 소식 목록을 참조하므로 순서 유지
     })();
 
@@ -317,6 +332,80 @@
         document.querySelectorAll('#nList tr').forEach((r) => r.classList.remove('sel'));
         $('title').focus(); window.scrollTo({ top: 0, behavior: 'smooth' });
       });
+    }
+
+    // ── 🏡 이웃 마을 관리 — 닉네임은 유저가 쓴 글(UGC)이라 textContent 로만 넣는다(innerHTML 금지) ──
+    let villageRows = [];
+    const vMsg = (text, isErr = false) => {
+      const m = $('vMsg'); m.textContent = text || ''; m.style.display = text ? '' : 'none'; m.classList.toggle('err', !!isErr);
+    };
+    const vCell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
+    const vStatus = (r) => [
+      r.hidden_by_admin ? '🚫 목록에서 숨김' : '✅ 목록에 보임',
+      r.nick_hidden ? '🙈 닉네임 가림' : (r.filtered ? '🛡️ 금칙어 자동 가림' : ''),
+    ].filter(Boolean).join(' · ');
+
+    function wireVillage() {
+      $('vSearch').onclick = searchVillage;
+      $('vQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchVillage(); });
+    }
+
+    async function searchVillage() {
+      const q = $('vQuery').value.trim();
+      if (!q) { vMsg('닉네임 일부를 입력하세요', true); return; }
+      $('vSearch').disabled = true;
+      const { data, error } = await sb.rpc('admin_village_find', { p_nick: q });
+      $('vSearch').disabled = false;
+      if (error) {
+        vMsg(/function|does not exist/i.test(String(error.message))
+          ? '조회 실패: RPC 가 없습니다 — sql/migrations/migrate_neighbors_moderation.sql 을 먼저 적용하세요'
+          : '조회 실패: ' + error.message, true);
+        return;
+      }
+      if (!data?.ok) { vMsg('조회 실패: ' + (data?.reason || '알 수 없는 응답'), true); return; }
+      villageRows = data.list || [];
+      renderVillage();
+      vMsg(villageRows.length ? '' : '찾은 유저가 없어요');
+    }
+
+    function renderVillage() {
+      const tb = $('vList');
+      tb.replaceChildren();
+      $('vTable').style.display = villageRows.length ? '' : 'none';
+      $('vCount').textContent = villageRows.length ? `${villageRows.length}명` : '';
+      for (const r of villageRows) {
+        const tr = document.createElement('tr');
+        tr.append(vCell(r.nick ?? '', 't'), vCell(r.house_stage == null ? '-' : `${r.house_stage}단계`), vCell(vStatus(r)));
+        const act = document.createElement('td');
+        act.className = 'act';
+        const hideBtn = document.createElement('button');
+        hideBtn.className = 'btn sm' + (r.hidden_by_admin ? '' : ' danger');
+        hideBtn.textContent = r.hidden_by_admin ? '이웃 목록에 보이기' : '이웃 목록에서 숨기기';
+        const nickBtn = document.createElement('button');
+        nickBtn.className = 'btn sm' + (r.nick_hidden ? '' : ' danger');
+        nickBtn.textContent = r.nick_hidden ? '닉네임 보이기' : '닉네임 가리기';
+        const btns = [hideBtn, nickBtn];
+        hideBtn.onclick = () => moderateVillage(r, { p_hide: !r.hidden_by_admin, p_hide_nick: null }, btns);
+        nickBtn.onclick = () => moderateVillage(r, { p_hide: null, p_hide_nick: !r.nick_hidden }, btns);
+        act.append(...btns);
+        tr.append(act);
+        tb.append(tr);
+      }
+    }
+
+    async function moderateVillage(r, flags, btns) {
+      btns.forEach((b) => { b.disabled = true; });
+      const { data, error } = await sb.rpc('admin_village_moderate', { p_public_id: r.public_id, ...flags });
+      if (error || !data?.ok) {
+        btns.forEach((b) => { b.disabled = false; });
+        vMsg('변경 실패: ' + (error?.message || data?.reason || '알 수 없는 응답'), true);
+        return;
+      }
+      villageRows = villageRows.map((x) => (x.public_id === r.public_id
+        ? { ...x, hidden_by_admin: data.hidden_by_admin, nick_hidden: data.nick_hidden } : x));
+      renderVillage();
+      vMsg('');
+      toast('변경했어요 — 이웃 목록은 다음 조회부터 반영돼요');
     }
   </script>
 </body>
