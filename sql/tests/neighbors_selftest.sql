@@ -245,9 +245,9 @@ begin
   if not (r->>'ok')::boolean then raise exception 'FAIL react nh: %', r; end if;
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
   r := public.my_visitors(now() - interval '1 hour');
-  select count(*) into n from jsonb_array_elements(r->'list') e where e->>'nick' = '이름 없는 여행자';
+  select count(*) into n from jsonb_array_elements(r->'list') el where el->>'nick' = '이름 없는 여행자';
   if (r->>'total')::int <> 3 or n <> 2 or strpos(r::text, 'selftest-bad') > 0 or strpos(r::text, 'selftest-nh') > 0
-     or not exists (select 1 from jsonb_array_elements(r->'list') e where e->>'nick' = 'selftest-a') then
+     or not exists (select 1 from jsonb_array_elements(r->'list') el where el->>'nick' = 'selftest-a') then
     raise exception 'FAIL visitors 가림: %', r; end if;
 
   -- 오늘의 이웃: bad 를 상위 3명에 두는 페르소나 호출자를 골라(md5 정렬은 결정적) today 응답에서 가려졌는지 본다
@@ -268,7 +268,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', simcaller, 'role', 'authenticated')::text, true);
   t := public.neighbors_today();
   pid := public._nb_public_id(bad);
-  if not exists (select 1 from jsonb_array_elements(t->'list') e where e->>'public_id' = pid::text and e->>'nick' = '이름 없는 여행자')
+  if not exists (select 1 from jsonb_array_elements(t->'list') el where el->>'public_id' = pid::text and el->>'nick' = '이름 없는 여행자')
      or strpos(t::text, 'selftest-bad') > 0 then
     raise exception 'FAIL: today 가 금칙어 닉네임을 가리지 않았다: %', t; end if;
 
