@@ -41,6 +41,17 @@ export async function enterGame(page, opts = {}) {
   const playMs = opts.playMs ?? 20000;
 
   if (!await step(page, '#guest-btn', 30000)) throw new Error('로그인 게이트 통과 실패');  // 구글 로그인 안 씀
+  // opts.char — 캐릭터 이름(예: '곰'). 없으면 기본값(여우). 쇼츠 주인공을 곰으로 맞출 때 쓴다
+  if (opts.char) {
+    await page.waitForSelector('.char-card', { state: 'visible', timeout: 30000 });
+    const ok = await page.evaluate(n => {
+      const c = [...document.querySelectorAll('.char-card')].find(x => x.textContent.includes(n));
+      if (c) c.click();
+      return !!c;
+    }, opts.char);
+    if (!ok) throw new Error(`캐릭터 '${opts.char}' 를 못 찾았다`);
+    await page.waitForTimeout(400);
+  }
   if (!await step(page, '#char-confirm', 30000)) throw new Error('캐릭터 선택 실패');
   // 예산 6초. 예전 4초는 DSF 2 에서 모자랐다 — 헤드리스가 2배 해상도로 그리면 프레임이
   // 1/2~1/4 로 떨어지고, 집 리디자인·야외 장식·배칭이 들어가며 기동이 더 느려져
