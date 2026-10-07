@@ -26,3 +26,10 @@ test('빈 입력은 빈 결과', () => {
   assert.deepEqual(nearIndices([], [{ x: 0, z: 0 }]), []);
   assert.deepEqual(nearIndices([{ x: 0, z: 0 }], []), []);
 });
+
+// 🥣 그릇 자리 — 그릇은 발보다 훨씬 작아서 점마다 반경을 따로 줄 수 있어야 한다(작물 잎이 그릇을 뚫던 것, 2026-10-07 릴스 제보)
+test('점마다 반경을 따로 줄 수 있다 — r 이 없는 점은 기본 반경', () => {
+  const pos = [{ x: 0.3, z: 0 }, { x: 5.3, z: 0 }, { x: 8.3, z: 0 }];
+  const pts = [{ x: 0, z: 0 }, { x: 5, z: 0, r: 0.5 }, { x: 8, z: 0, r: 0.2 }];
+  assert.deepEqual(nearIndices(pos, pts, 1), [0, 1]);
+});

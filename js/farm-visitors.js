@@ -138,5 +138,7 @@ export function createVisitors(deps) {
     return a.id;
   }
 
-  return { update, clear, target, observe, get alive() { return alive.map(a => a.id); } };
+  return { update, clear, target, observe, get alive() { return alive.map(a => a.id); },
+           /** 말풍선 연출용 — 떠 있는 손님의 메시와 월드 좌표 */
+           get live() { return alive.map(a => ({ mesh: a.mesh, wx: a.wx, wz: a.wz })); } };
 }

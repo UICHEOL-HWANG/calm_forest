@@ -27,6 +27,8 @@ const slug = process.argv[2];
 const DO_PUBLISH = process.argv.includes('--publish');
 // 인스타는 나갔는데 Threads 만 실패했을 때 Threads 만 다시 올린다
 const THREADS_ONLY = process.argv.includes('--threads-only');
+// 인스타에는 올리지 않고 Threads 에만 새 영상을 올린다(영상 호스팅부터 한다)
+const THREADS_NEW = process.argv.includes('--threads-new');
 
 if (!slug) {
   console.error('사용: node publish-reel.mjs <이름> [--publish]');
@@ -39,6 +41,11 @@ const spec = JSON.parse(await readFile(specPath, 'utf-8'));
 // 🚫 이미 발행된 건 다시 올리지 않는다. 사람 기억이 아니라 JSON 이 판단한다.
 if (THREADS_ONLY) {
   if (!spec.publishedAt) { console.error(`⛔ ${slug} 는 인스타에 아직 안 나갔다. --threads-only 는 인스타 발행 뒤에만 쓴다.`); process.exit(1); }
+  if (spec.threadsPublishedAt) {
+    console.error(`⛔ ${slug} 는 Threads 에 이미 발행됨 (${spec.threadsPublishedAt})\n   ${spec.threadsPermalink || ''}`);
+    process.exit(1);
+  }
+} else if (THREADS_NEW) {
   if (spec.threadsPublishedAt) {
     console.error(`⛔ ${slug} 는 Threads 에 이미 발행됨 (${spec.threadsPublishedAt})\n   ${spec.threadsPermalink || ''}`);
     process.exit(1);
@@ -75,7 +82,8 @@ async function postToThreads(videoUrl) {
   }
   try {
     console.log(`\n🧵 Threads 업로드 (인코딩 대기, 최대 5분)`);
-    const link = await publishThreadsVideo({ videoUrl, text: threadsText });
+    // 게임 링크는 프로필이 아니라 첫 댓글로 단다 — 덱에 threadsReply 가 있으면 그 문구, 없으면 기본 문구
+    const link = await publishThreadsVideo({ videoUrl, text: threadsText, replyText: spec.threadsReply });
     console.log(`🧵 Threads 발행 완료\n   ${link}`);
     spec.threadsPublishedAt = new Date().toISOString().slice(0, 10);
     spec.threadsPermalink = link;
@@ -90,6 +98,23 @@ async function postToThreads(videoUrl) {
 if (THREADS_ONLY) {
   // 영상은 인스타 발행 때 이미 KV 에 올라가 있다(TTL 30일). 다시 올리지 않고 같은 URL 을 쓴다.
   await postToThreads(`${BASE_URL}/cardnews/${slug}/${basename(spec.file)}`);
+  process.exit(process.exitCode ?? 0);
+}
+
+if (THREADS_NEW) {
+  // 인스타 계정·한도·컨테이너는 건너뛰고 영상 호스팅 → 도달 확인 → (리허설이면 멈춤) → Threads 발행
+  console.log(`영상 업로드 → KV`);
+  const url = await hostReel(slug, spec.file);
+  let reachable = false;
+  for (let i = 0; i < 12 && !reachable; i++) {
+    const r = await fetch(url, { headers: { range: 'bytes=0-1023' } });
+    reachable = r.status === 206;
+    if (!reachable) await sleep(3000);
+  }
+  if (!reachable) { console.error(`✗ ${url} — Range 응답(206)이 안 온다`); process.exit(1); }
+  console.log(`  ✓ 도달 확인\n\n─── Threads 본문 (${threadsText.length}/${THREADS_TEXT_MAX}자) ───\n${threadsText}\n──────────────────`);
+  if (!DO_PUBLISH) { console.log(`\n✋ 리허설이라 아무것도 안 나갔다.\n   지금 발행 : node publish-reel.mjs ${slug} --threads-new --publish`); process.exit(0); }
+  await postToThreads(url);
   process.exit(process.exitCode ?? 0);
 }
 

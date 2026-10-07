@@ -12,6 +12,7 @@ import {
 import { trackEvent } from '../analytics.js';
 import { FARM, FARM_GATE } from '../data/places.js';
 import { CELL as FARM_CELL } from '../farm-building.js';
+import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 import { createVisitors } from '../farm-visitors.js';
 import { matchVisitors, visitorOf } from '../habitat.js';
 import { Sound } from '../sound.js';
@@ -55,11 +56,25 @@ function lookTexture() {
   return _lookTex;
 }
 
+const VBUBBLE = { w: 0.85, h: 0.85, y: 1.35 };
+const VALERT_R = 5;   // 살펴보기 반경(CATCH_R 2.5)의 두 배 — 다가가는 동안 눈에 띄게
+
+/** 매 프레임 — 🔍 말풍선 연출(모든 방문객 공통: 참새·나비 같은 히든 손님 전부) */
+export function updateVisitorBubbles(dt, time) {
+  if (!atFarm || !visitors) return;
+  for (const v of visitors.live) {
+    const bubble = v.mesh.userData.lookBubble, ring = v.mesh.userData.lookRing;
+    if (!bubble || !ring) continue;
+    animateBubble({ bubble, ring, base: VBUBBLE, dist: Math.hypot(v.wx - player.position.x, v.wz - player.position.z), alertR: VALERT_R, time, dt });
+  }
+}
+
 export function makeVisitorMesh(id) {
   const g = makeVisitor(THREE, id);
-  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: lookTexture(), transparent: true, depthWrite: false, fog: false, toneMapped: false }));
-  bubble.scale.set(0.85, 0.85, 1); bubble.position.set(0, 1.35, 0);
-  g.add(bubble); g.userData.lookBubble = bubble;
+  const bubble = onTop(new THREE.Sprite(new THREE.SpriteMaterial({ map: lookTexture(), transparent: true, depthWrite: false, fog: false, toneMapped: false })));
+  bubble.scale.set(VBUBBLE.w, VBUBBLE.h, 1); bubble.position.set(0, VBUBBLE.y, 0);
+  const ring = makeRing(VBUBBLE.y);
+  g.add(ring, bubble); g.userData.lookBubble = bubble; g.userData.lookRing = ring;
   return g;
 }
 
