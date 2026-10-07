@@ -16,6 +16,29 @@ test('6종이 모두 있고 승인 기본안이 목록 안에 있다', () => {
   ids.forEach(id => assert.ok(HALLOWEEN_STYLES[id].includes(HALLOWEEN_STYLE[id]), id));
 });
 
+test('승인 스타일만 남는다', () => {
+  assert.deepEqual(HALLOWEEN_STYLE, { ghostCandle: 'ghost', miniGrave: 'gable', witchCauldron: 'bubble', ghostlamp: 'lantern', gravefence: 'iron', webarch: 'tree' });
+  ids.forEach(id => assert.deepEqual(HALLOWEEN_STYLES[id], [HALLOWEEN_STYLE[id]], id));
+});
+
+test('알 수 없는 id·style 은 조용히 넘어가지 않고 throw', () => {
+  assert.throws(() => buildHalloween(THREE, 'nope', 'x', makeCtx(THREE)), /Unknown halloween model id\/style/);
+  assert.throws(() => buildHalloween(THREE, 'ghostlamp', 'sheet', makeCtx(THREE)), /Unknown halloween model id\/style/);
+  assert.throws(() => buildHalloween(THREE, 'ghostCandle', 'jar', makeCtx(THREE)), /Unknown halloween model id\/style/);
+});
+
+test('ghostlamp 은 night 재질을 onNight 로 넘기고 0 으로 시작, 실내 3종은 부르지 않는다', () => {
+  const got = [];
+  buildHalloween(THREE, 'ghostlamp', HALLOWEEN_STYLE.ghostlamp, makeCtx(THREE, m => got.push(m)));
+  assert.ok(got.length >= 1, 'night 재질 없음');
+  got.forEach(m => assert.equal(m.emissiveIntensity, 0));
+  for (const id of HALLOWEEN_INDOOR_IDS) {
+    let calls = 0;
+    buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, () => { calls++; }));
+    assert.equal(calls, 0, id);
+  }
+});
+
 for (const id of ids) for (const style of HALLOWEEN_STYLES[id]) {
   test(`${id}/${style}: 메시 ≤3 · 크기 제약`, () => {
     const g = buildHalloween(THREE, id, style, makeCtx(THREE));

@@ -37,7 +37,7 @@ for (const [id, styles] of Object.entries(HALLOWEEN_STYLES)) {
   const indoor = HALLOWEEN_INDOOR_IDS.includes(id), dist = id === 'webarch' ? 8 : id === 'ghostCandle' ? 1.2 : id === 'miniGrave' ? 1.6 : indoor ? 2.2 : id === 'gravefence' ? 3 : 4.2;
   rootEl.insertAdjacentHTML('beforeend', '<h2>' + NAMES[id] + '</h2><div class="row" id="r-' + id + '"></div>');
   const row = document.getElementById('r-' + id);
-  styles.forEach((s, i) => { const c = document.createElement('div'); c.className = 'card'; c.innerHTML = '<b>' + 'ABC'[i] + '안 <small>' + s + '</small></b>';
+  styles.forEach((s) => { const c = document.createElement('div'); c.className = 'card'; c.innerHTML = '<b>' + s + '</b>';
     const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;gap:8px;align-items:flex-end';
     wrap.append(addView(id, s, 240, 240, dist), addView(id, s, 110, 110, dist * 1.6)); c.append(wrap); row.append(c); });
 }
