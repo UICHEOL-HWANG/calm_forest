@@ -21,7 +21,7 @@ import { buildNeighborScene } from '../neighbors/scene.js';
 import { inVillage2 } from './doors.js';
 import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openPickerModal, openVisitorsModal, setHostBubble, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
 
-let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy }
+let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId }
 let pickerBusy = false;
 
 const faceOf = (id) => (ANIMALS.find(a => a.id === id) || ANIMALS[0]).emoji;
@@ -76,6 +76,7 @@ export function enterNeighbor(entry) {
   showNeighborHud(entry.view.nickname, exitNeighbor);
   Sound.blip();
   trackEvent(...evVisitStart(entry));                        // [GA4] host·slot·revisit·load_ms
+  startView(visit);                                          // [원장] village_views — 기다리지 않는다(입장을 막지 않음)
 }
 
 export function exitNeighbor() {
@@ -89,10 +90,29 @@ export function exitNeighbor() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   Sound.blip();
-  trackEvent(...evVisitEnd(v.publicId, (performance.now() - v.t0) / 1000, v.reacted));   // [GA4] 머문 시간·반응 여부
+  const sec = (performance.now() - v.t0) / 1000;
+  trackEvent(...evVisitEnd(v.publicId, sec, v.reacted));   // [GA4] 머문 시간·반응 여부
+  endView(v, sec, v.reacted);                              // [원장] 같은 값으로 village_views 를 닫는다
   gameState.neighbors = recordVisit(gameState.neighbors);   // 📖 8장 판정(visited ≥ 1)
   requestSave();
   setTimeout(() => syncStory('neighbor_visit'), 600);       // 📖 8장 — 마을로 돌아온 화면이 먼저 보이고 나서
+}
+
+// ── 📒 방문 원장(village_views) — 광고 차단으로 GA4 가 빠져도 서버에 남는다(성공 기준: 주간 활동자 중 방문 경험) ──
+//    탭을 닫으면 viewEnd 가 안 가서 ended_at·sec 이 비어 남는다(허용 — 방문 자체는 기록됨)
+function startView(v) {
+  v.viewReq = neighborApi.viewStart(v.publicId, v.slot, v.revisit).then((r) => {
+    if (!r.ok) { trackEvent(...evFail('view_start', r.reason)); return null; }
+    v.viewId = r.viewId;
+    return r.viewId;
+  });
+}
+
+function endView(v, sec, reacted) {
+  //  시작 응답이 아직이면 기다렸다 닫는다 · 시작이 실패했으면(이미 evFail) 닫을 행이 없다
+  v.viewReq?.then((id) => id == null ? null : neighborApi.viewEnd(id, sec, reacted).then((r) => {
+    if (!r.ok) trackEvent(...evFail('view_end', r.reason));
+  }));
 }
 
 // ── 집주인 말풍선 · 반응 ──
