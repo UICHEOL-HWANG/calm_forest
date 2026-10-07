@@ -66,7 +66,11 @@ $$;
 -- 🛡️ 금칙어 판정(서버 쪽 표시 필터) — 패턴 = js/nickname-filter.js NICK_BLOCK_PATTERNS
 create or replace function public._nb_nick_blocked(p_nick text)
 returns boolean language sql immutable set search_path = public as $$
-  select regexp_replace(regexp_replace(lower(coalesce(p_nick, '')), '[^a-z가-힣ㄱ-ㆎ]', '', 'g'), '(.)\1+', '\1', 'g')
+  -- 앞 64자만(정규식 비용 상한) → NFKC(전각 ｆｕｃｋ → fuck) → 조합용 자모를 호환 자모로 되돌림(NFKC 가 ㅅ→ᄉ 로 바꾼다) → 소문자
+  select regexp_replace(regexp_replace(lower(translate(normalize(left(coalesce(p_nick, ''), 64), NFKC),
+           'ᄀᄁᄂᄃᄄᄅᄆᄇᄈᄉᄊᄋᄌᄍᄎᄏᄐᄑ하ᅢᅣᅤᅥᅦᅧᅨᅩᅪᅫᅬᅭᅮᅯᅰᅱᅲᅳᅴᅵ',
+           'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ')),
+           '[^a-z가-힣ㄱ-ㆎ]', '', 'g'), '(.)\1+', '\1', 'g')
          ~* '[시씨쓰]이?[발빨팔]|씨[바빠]|[ㅅㅆ]ㅂ|[ㅅㅆ]발|[시씨]ㅂ|[병븅빙]신|병싄|ㅂㅅ|개[새세쉐섀색][끼기키히]|ㄱㅅㄲ|좆|좃|존나|지랄|ㅈㄹ|미친[놈년새]|썅|씹[새쌔년할창]|느금|니[애에]미|엠창|ㄴㄱㅁ|섹스|쎅스|섹수|보지(?!마|말)|자지(?!마|말)|강간|창녀|야동|포르노|한남충|맘충|급식충|틀딱|김치녀|된장녀|메갈(?!로)|일베|짱깨|쪽바리|깜둥|조센징|히틀러|f[uv]ck|fck|shit(?!ake)|bia?tch|ashole|bastard|cunt|dick|pusy|slut|whore|niger|niga|fagot|retard|nazi|hitler|penis|porn|^sex|sexy|sexual|^rape';
 $$;
 
@@ -76,7 +80,7 @@ returns text language sql stable security definer set search_path = public as $$
   select case
            when n.v = '' then '이름 없는 여행자'
            when exists (select 1 from village_profiles vp where vp.user_id = p_user and vp.nick_hidden) then '이름 없는 여행자'
-           when _nb_nick_blocked(n.v) then '이름 없는 여행자'
+           when _nb_nick_blocked(left(n.v, 16)) then '이름 없는 여행자'
            else left(n.v, 16)
          end
   from (select btrim(case when jsonb_typeof(p_state->'nickname') = 'string' then p_state->>'nickname' else '' end) as v) n;
@@ -204,6 +208,7 @@ declare
   v_day  date := _nb_kst_today();
   v_host uuid;
   v_pub  boolean;
+  v_hid  boolean;
   v_cnt  int;
   v_rew  boolean;
   v_id   bigint;
@@ -211,10 +216,10 @@ begin
   if v_uid is null then return jsonb_build_object('ok', false, 'reason', 'auth'); end if;
   if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then return jsonb_build_object('ok', false, 'reason', 'login'); end if;
   if p_emoji is null or p_emoji not in ('wave', 'heart', 'flower', 'star') then return jsonb_build_object('ok', false, 'reason', 'emoji'); end if;
-  select user_id, is_public into v_host, v_pub from village_profiles where public_id = p_public_id;
+  select user_id, is_public, hidden_by_admin into v_host, v_pub, v_hid from village_profiles where public_id = p_public_id;
   if not found then return jsonb_build_object('ok', false, 'reason', 'not_found'); end if;
   if v_host = v_uid then return jsonb_build_object('ok', false, 'reason', 'self'); end if;
-  if not v_pub then return jsonb_build_object('ok', false, 'reason', 'private'); end if;
+  if not v_pub or v_hid then return jsonb_build_object('ok', false, 'reason', 'private'); end if;   -- 🛡️ 관리자 숨김도 비공개처럼(행·보상 없음)
   perform pg_advisory_xact_lock(hashtext('nb:' || v_uid::text));   -- 동시 반응으로 상한 3을 넘지 않게
   select count(*) into v_cnt from village_visits where visitor = v_uid and day = v_day and rewarded;
   v_rew := v_cnt < 3;
@@ -295,7 +300,7 @@ begin
            'house_stage', case when jsonb_typeof(gs.state->'houseStage') = 'number' then (gs.state->>'houseStage')::numeric::int end,
            'hidden_by_admin', vp.hidden_by_admin,
            'nick_hidden', vp.nick_hidden,
-           'filtered', _nb_nick_blocked(gs.state->>'nickname'),
+           'filtered', _nb_nick_blocked(left(gs.state->>'nickname', 40)),
            'updated_at', gs.updated_at
          ) order by x.ord), '[]'::jsonb)
     into v_list

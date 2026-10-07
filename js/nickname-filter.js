@@ -4,7 +4,7 @@
 //   — 이미 저장된 옛 닉네임·구버전 클라이언트 대비. 패턴 일치는 tests/neighbors-moderation.test.mjs 가 검사한다.
 //
 // ▶ 판정 = normalizeNickname(닉네임) 에 NICK_BLOCK_PATTERNS 중 하나라도 걸리면 막음.
-//   정규화: NFC → 전각 영숫자를 반각으로 → 소문자 → 제로폭 문자 제거 → 공백·문장부호·이모지 제거
+//   정규화: 앞 64자 → NFKC(전각→반각, 조합용 자모는 호환 자모로 되돌림) → 소문자 → 제로폭 문자 제거 → 공백·문장부호·이모지 제거
 //         → 영문 글자 사이에 낀 숫자/기호만 leet 치환(f4ck·sh1t·a$$) → 남은 숫자 제거(시1발·태그 #4821)
 //         → 같은 글자 반복을 하나로 접기(fuuuck·씨이이발).
 //   ⚠️ 그래서 패턴은 "반복이 접힌" 철자로 쓴다 — asshole → ashole, nigger → niger, pussy → pusy.
@@ -40,19 +40,25 @@ export const NICK_BLOCK_PATTERNS = [
 ];
 
 const BLOCK_RE = new RegExp(NICK_BLOCK_PATTERNS.join('|'));
-const FULLWIDTH = /[！-～]/g;
-const ZERO_WIDTH = /[­​-‏⁠-⁤﻿]/g;
+// 🛡️ 정규식 비용 상한 — 닉네임은 클라가 쓰는 값이라 길이를 믿지 않는다(서버 _nb_nick_blocked 의 left(…, 64) 와 같다)
+export const NICK_CHECK_MAX = 64;
+// NFKC 는 호환 자모(ㅅ U+3145)를 조합용 자모(U+1109)로 바꾼다 → 패턴이 쓰는 호환 자모로 되돌린다(서버 translate 와 같은 표)
+const JAMO_FROM = [...Array(19)].map((_, i) => String.fromCharCode(0x1100 + i)).join('') + [...Array(21)].map((_, i) => String.fromCharCode(0x1161 + i)).join('');
+const JAMO_TO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ' + [...Array(21)].map((_, i) => String.fromCharCode(0x314F + i)).join('');
+const JAMO_MAP = Object.fromEntries([...JAMO_FROM].map((c, k) => [c, JAMO_TO[k]]));
+const JAMO_RE = /[\u1100-\u1112\u1161-\u1175]/g;
+const ZERO_WIDTH = /[\u00AD\u200B-\u200F\u2060-\u2064\uFEFF]/g;
 const LEET = { 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', '@': 'a', $: 's' };
 
 export function normalizeNickname(nick) {
-  return String(nick ?? '')
-    .normalize('NFC')
-    .replace(FULLWIDTH, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+  return [...String(nick ?? '')].slice(0, NICK_CHECK_MAX).join('')
+    .normalize('NFKC')                                                            // 전각 ｆｕｃｋ → fuck
+    .replace(JAMO_RE, (c) => JAMO_MAP[c])
     .toLowerCase()
     .replace(ZERO_WIDTH, '')
-    .replace(/[^a-z0-9@$가-힣ㄱ-ㆎ]/g, '')                      // 공백·문장부호·이모지
+    .replace(/[^a-z0-9@$\uAC00-\uD7A3\u3131-\u318E]/g, '')                      // 공백·문장부호·이모지
     .replace(/(?<=[a-z])[013457@$]+(?=[a-z])/g, (run) => [...run].map((c) => LEET[c]).join(''))
-    .replace(/[^a-z가-힣ㄱ-ㆎ]/g, '')                           // 남은 숫자·기호
+    .replace(/[^a-z\uAC00-\uD7A3\u3131-\u318E]/g, '')                           // 남은 숫자·기호
     .replace(/(.)\1+/g, '$1');                                                  // 반복 접기
 }
 
