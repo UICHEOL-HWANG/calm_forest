@@ -87,3 +87,42 @@ test('미니맵: 이웃 공간 라벨·바닥색', () => {
   assert.match(html, /d\.place === 'neighbor' \? 'rgba\(150,200,120,0\.75\)'/);
   assert.match(html, /d\.place === 'neighbor' \? '🏡 이웃의 숲'/);
 });
+
+// ── 리뷰 1차 수정 ──
+const UI = read('js/neighbors/ui.js');
+const disposeBody = () => { const i = SCENE.indexOf('dispose() {'); assert.ok(i >= 0); return SCENE.slice(i, SCENE.indexOf('\n    },', i)); };
+
+test('치우기: 트리 안 모든 userData.solid 제거 + 늦게 오는 팻말 등록 차단(화덕·발효통 팻말 포함)', () => {
+  const d = disposeBody();
+  assert.match(d, /group\.traverse\(o => \{ if \(o\.userData\.solid\) removeSolid\(o\.userData\.solid\); o\.userData\.dead = true; \}\)/);
+  // 순서: 치우기(traverse)는 disposeTree 보다 앞
+  assert.ok(d.indexOf('group.traverse(o => { if (o.userData.solid)') < d.indexOf('disposeTree(group)'));
+});
+
+test('치우기: 🔥 화덕 불꽃 목록에서 이 그룹의 불꽃을 뺀다(방문마다 kilnFlames 가 늘지 않게)', () => {
+  assert.match(disposeBody(), /dropKilnFlames\(group\);/);
+  const helper = SRC.slice(SRC.indexOf('function dropKilnFlames('), SRC.indexOf('function dropKilnFlames(') + 400);
+  assert.match(helper, /kilnFlames\.splice\(i, 1\)/);
+  assert.match(helper, /o = o\.parent/);           // 조상 사슬로 그룹 안인지 판정
+  assert.match(SRC, /export \{[\s\S]*\bdropKilnFlames\b[\s\S]*\};/);
+  assert.ok(disposeBody().indexOf('dropKilnFlames(group)') < disposeBody().indexOf('scene.remove(group)'), '부모 사슬이 살아 있을 때 판정');
+});
+
+test('치우기: 재질의 map(팻말 캔버스·나무 텍스처 복제)도 버린다', () => {
+  assert.match(disposeBody(), /m\?\.map\?\.dispose\?\.\(\)/);
+});
+
+test('놀러 가기: 닫힌 피커에 늦게 온 응답은 순간이동하지 않는다 · 요청 중 닫기 잠금 · 다른 공간에선 입장 거부', () => {
+  const go = SPACE.slice(SPACE.indexOf('async function goVisit('), SPACE.indexOf('// ── 입장 · 퇴장'));
+  assert.ok(go.indexOf('if (!isPickerOpen()) return;') > go.indexOf('await neighborApi.showcase('), 'await 뒤에 확인');
+  assert.match(UI, /export function isPickerOpen\(\)/);
+  assert.match(UI, /#nb-pick-modal \.nb-go, #nb-pick-modal \.nb-close/);
+  assert.match(bodyOf('enterNeighbor'), /if \(visit \|\| !inVillage2\(\)\) return;/);
+});
+
+test('놀러 가기: 검증·짓기·입장 실패는 조용히 삼키지 않는다(evFail showcase/build + 토스트)', () => {
+  const go = SPACE.slice(SPACE.indexOf('async function goVisit('), SPACE.indexOf('// ── 입장 · 퇴장'));
+  assert.match(go, /try \{[\s\S]*sanitizeShowcase[\s\S]*enterNeighbor\([\s\S]*\} catch \(e\) \{/);
+  assert.match(go, /evFail\('showcase', 'build'\)/);
+  assert.match(go.slice(go.indexOf('catch (e)')), /ui\.toast\?\.\(FAIL_TOAST, 2600\)/);
+});

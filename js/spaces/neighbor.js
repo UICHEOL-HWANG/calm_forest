@@ -17,7 +17,8 @@ import { FAIL_TOAST, HOST_TALK_R, REWARD_COINS, pickerRows, reactOutcome, record
 import { evFail, evOpen, evReact, evVisitEnd, evVisitStart } from '../neighbors/track.js';
 import { neighborApi } from '../neighbors/net.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
-import { closePickerModal, hideNeighborHud, openPickerModal, setHostBubble, setPickerBusy, showNeighborHud } from '../neighbors/ui.js';
+import { inVillage2 } from './doors.js';
+import { closePickerModal, hideNeighborHud, isPickerOpen, openPickerModal, setHostBubble, setPickerBusy, showNeighborHud } from '../neighbors/ui.js';
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy }
 let pickerBusy = false;
@@ -42,20 +43,28 @@ export async function openNeighborPicker(via) {
 
 async function goVisit(row) {
   const r = await neighborApi.showcase(row.publicId);
-  const view = r.ok ? sanitizeShowcase(r.data, showcaseCtx()) : null;
-  if (!view) {
-    trackEvent(...evFail('showcase', r.ok ? 'invalid' : (r.code || r.reason)));
+  if (!isPickerOpen()) return;   // 기다리는 사이 피커가 닫혔다 — 늦게 온 응답으로 순간이동하지 않는다
+  try {
+    const view = r.ok ? sanitizeShowcase(r.data, showcaseCtx()) : null;
+    if (!view) {
+      trackEvent(...evFail('showcase', r.ok ? 'invalid' : (r.code || r.reason)));
+      ui.toast?.(FAIL_TOAST, 2600);
+      setPickerBusy(false);
+      return;
+    }
+    closePickerModal();
+    enterNeighbor({ publicId: row.publicId, slot: row.slot, revisit: row.done, view, loadMs: r.loadMs });
+  } catch (e) {   // 검증·짓기·입장 실패 — 조용히 삼키지 않는다
+    console.error('[neighbor] visit failed', e);
+    trackEvent(...evFail('showcase', 'build'));
     ui.toast?.(FAIL_TOAST, 2600);
     setPickerBusy(false);
-    return;
   }
-  closePickerModal();
-  enterNeighbor({ publicId: row.publicId, slot: row.slot, revisit: row.done, view, loadMs: r.loadMs });
 }
 
 // ── 입장 · 퇴장 ──
 export function enterNeighbor(entry) {
-  if (visit) return;
+  if (visit || !inVillage2()) return;   // 다른 공간(실내·동굴…)에 있으면 겹쳐 들어가지 않는다
   const built = buildNeighborScene(entry.view);
   visit = { ...entry, built, t0: performance.now(), reacted: entry.revisit, bubble: entry.revisit ? 'thanks' : 'ask', near: false, busy: false };
   $w.atNeighbor = true;
