@@ -61,9 +61,11 @@ export function startDreamCut({ first, hooks }) {
     hooks.land({ skipped, atS: Math.round(st.t * 10) / 10, short: !first });
   }
 
+  const FADE_IN_S = 0.75;   // #sleep-fade 의 CSS 전환(.7s) — 덮이기 전에 순간이동하면 점프가 보인다
   st.update = (dt) => {
     if (st.done) return;
     st.t += dt;
+    if (st.skipAfterFade && st.t >= FADE_IN_S) { finish(true); return; }
     if (st.t >= SLEEP_S && !st.teleported) { teleport(); seat(from); hooks.fade(0); hooks.caption(null); }
     if (!st.teleported) return;
     const p = Math.min(1, (st.t - SLEEP_S) / fly), u = from + (1 - from) * smooth(p);
@@ -78,6 +80,7 @@ export function startDreamCut({ first, hooks }) {
     hooks.camera.lookAt(_look);
     if (p >= 1) finish(false);
   };
-  st.skip = () => finish(true);
+  // 잠들기 암전이 다 덮이기 전에 누르면 덮일 때까지 기다렸다가 넘긴다
+  st.skip = () => { if (!st.teleported && st.t < FADE_IN_S) st.skipAfterFade = true; else finish(true); };
   return st;
 }

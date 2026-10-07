@@ -141,10 +141,10 @@ dream: { visits: 0, day: '', got: [], total: 0 }
 
 | 이벤트 | 파라미터 |
 |---|---|
-| `dream_prompt_shown` | `visit_n`, `left_today` |
+| `dream_prompt_shown` | `prior_visits`(들어가기 전 누적), `left_today` |
 | `dream_choice` | `choice: sleep\|dream\|cancel`, `first: 0/1`, `left_today` |
 | `dream_cutscene_end` | `skipped: 0/1`, `at_s`, `short: 0/1` |
-| `dream_enter` | `visit_n`, `left_today` |
+| `dream_enter` | `visit_n`(이번 방문 포함, 1부터), `left_today` |
 | `dream_shard` | `shard_id`, `island`, `nth_today`, `elapsed_s` |
 | `dream_wake` | `via: bed`, `shards`, `elapsed_s`, `left_today` |
 | `dream_hint` | `step: night\|arrive\|shard\|wake` |

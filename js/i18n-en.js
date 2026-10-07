@@ -39,6 +39,8 @@ export const EN = {
   '🛋️ 꾸미기에서 꿈 조각으로 바꿔요': '🛋️ Trade dream shards for decor in Decorate',
   '달 램프': 'Moon Lamp', '수정 화분': 'Crystal Pot', '별 모빌': 'Star Mobile', '구름 침대': 'Cloud Bed',
   '알겠어요': 'Got it',
+  '🌙 꿈의 숲': '🌙 Dream Forest',
+  '🌙 꿈꾸기는 밤에만 할 수 있어요': '🌙 You can only dream at night',
   '☁️ 구름 침대 · 자기': '☁️ Cloud Bed · Sleep',   // ⚠️ 단독 '자기' 키 금지(자기 자신·자기장 오역) — 문장째 EXACT
   // ── 🍲 보글보글 냄비(자유 요리) ─────────────────────────────
   //    요리 이름·한 줄 평은 조합 표(js/free-pot/table.js)의 _en 을 index.html 이 직접 쓴다

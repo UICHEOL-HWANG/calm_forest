@@ -45,7 +45,10 @@ function ensureWorld() {
 
 /** 오늘 기준으로 정리한 dream 상태(날이 바뀌면 got 이 비워진다) — 항상 이걸로 읽는다 */
 export function dreamState() {
-  gameState.dream = normalizeDream(gameState.dream, todayStr());
+  // 정리는 날이 바뀌었을 때만 — 꿈속 프롬프트가 매 프레임 부르는데, 매번 새 객체로 바꾸면 할당이 쌓인다(applySave 가 처음 한 번 정리한다)
+  const today = todayStr(), d = gameState.dream;
+  if (d && d.day === today && Array.isArray(d.got)) return d;
+  gameState.dream = normalizeDream(d, today);
   return gameState.dream;
 }
 export function dreamLeftToday() { return shardsLeft(dreamState(), todayStr()).length; }
@@ -57,7 +60,7 @@ export function setDreamVisible(on) { if (world) world.group.visible = on; }
 export function openSleepChoice() {
   if (!isNight()) return doSleep();   // 낮이면 doSleep 이 안내 토스트를 띄운다
   const d = dreamState(), left = dreamLeftToday(), first = d.visits === 0;
-  trackEvent('dream_prompt_shown', { visit_n: d.visits, left_today: left });
+  trackEvent('dream_prompt_shown', { prior_visits: d.visits, left_today: left });   // ⚠️ visit_n 이 아니다 — dream_enter.visit_n 은 들어간 뒤 값(1부터)
   ui.openDreamChoice?.({
     first, left,
     onSleep() { trackEvent('dream_choice', { choice: 'sleep', first: +first, left_today: left }); doSleep(); },
@@ -68,13 +71,15 @@ export function openSleepChoice() {
 
 /** 🛏️ 밤에 꿈을 안 꿔 본 사람이 침대 옆에 오면 한 번 — js/spaces/doors.js 침대 프롬프트에서 부른다 */
 export function dreamNightHint() {
-  if (dreamState().visits > 0) return;
+  if ((gameState.dream?.visits || 0) > 0) return;   // 매 프레임 불린다 — 꿈 꿔 본 사람은 정리 없이 바로 나간다
   if (firstHintBanner('dreamNight', '🌙', '꿈꾸기', '밤엔 침대에서 꿈의 숲에 갈 수 있어요')) trackEvent('dream_hint', { step: 'night' });
 }
 
 // ── 들어가기(컷신) ───────────────────────────────────────────
 export function startDream() {
   if (cut || atDream) return;
+  // 선택 창을 띄워 둔 사이에도 시계는 돈다 — 날이 밝은 뒤 🌙 를 누르면 꿈에서 깰 때 시계가 0.30 으로 되감긴다
+  if (!isNight()) { ui.toast?.('🌙 꿈꾸기는 밤에만 할 수 있어요'); return; }
   ensureWorld();
   const first = dreamState().visits === 0;
   $w.sleeping = true;   // 이동·액션·앉기·도구 전환 잠금(game.js 의 자기 잠금을 그대로 쓴다)
