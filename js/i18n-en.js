@@ -998,6 +998,7 @@ export const EN = {
   '의자': 'Chair',
   '테이블': 'Table',
   '램프': 'Lamp',
+  '탁상 등불': 'Table Lamp',
   '소파': 'Sofa',
   '어항': 'Aquarium',
   '침대': 'Bed',

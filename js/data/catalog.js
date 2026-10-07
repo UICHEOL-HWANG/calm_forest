@@ -16,26 +16,30 @@ export const DECOR_SCALE = 1.5;
 
 //   foot: [가로, 세로] — 밟고 못 지나가는 발자국(배율 전, decorMesh 치수 기준). 러그류는 밟고 지나가므로 없음.
 //   "가구를 그냥 통과한다"는 베타 피드백 → 배치 시 solidBox 로 막는다(놓은 방향에 따라 가로·세로를 바꿈).
+//   🪔 top: { y, pad } — 소품을 올려놓을 수 있는 상판(y 는 배율 전 윗면 높이, pad 는 [가로, 세로]).
+//      sm: true + h — 상판에 올릴 수 있는 작은 소품(h 는 배율 전 높이). 높이를 저장하지 않고 좌표에서 파생시킨다(js/house/surface.js).
+//      벽 높이가 3 이라 상판은 낮은 가구만 — 새 상판/소품은 tests/decor-ceiling.test.mjs 가 천장 규칙을 검사한다.
 export const DECOR = [
   { id: 'rug',      name: '러그',   ico: '🎨', cost: 2, pay: 'crop' },
-  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop', foot: [0.45, 0.45] },
+  { id: 'plant',    name: '화분',   ico: '🪴', cost: 2, pay: 'crop', foot: [0.45, 0.45], sm: true, h: 0.8 },
   { id: 'chair',    name: '의자',   ico: '🪑', cost: 3, pay: 'crop', foot: [0.55, 0.55] },
-  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop', foot: [1.1, 0.7] },
+  { id: 'table',    name: '테이블', ico: '🟫', cost: 3, pay: 'crop', foot: [1.1, 0.7], top: { y: 0.66, pad: [1.1, 0.7] } },
   { id: 'lamp',     name: '램프',   ico: '🕯️', cost: 4, pay: 'crop', foot: [0.4, 0.4] },
+  { id: 'deskLamp', name: '탁상 등불', ico: '🪔', cost: 3, pay: 'crop', foot: [0.28, 0.28], sm: true, h: 0.42 },   // 스탠드 램프는 탁상에 올리면 천장을 뚫는다 → 짧은 등불을 따로 둔다
   { id: 'sofa',     name: '소파',   ico: '🛋️', cost: 5, pay: 'crop', foot: [1.6, 0.75] },
-  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish', foot: [0.66, 0.42] }, // 물고기로 구매
+  { id: 'aquarium', name: '어항',   ico: '🐟', cost: 2, pay: 'fish', foot: [0.66, 0.42], sm: true, h: 0.66 }, // 물고기로 구매
   // ── 큰 가구(사이즈 大) ──
   { id: 'bed',       name: '침대',    ico: '🛏️', cost: 8,  pay: 'crop', big: true, foot: [1.5, 2.2] },
-  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true, foot: [1.8, 1.0] },
+  { id: 'bigtable',  name: '큰 식탁', ico: '🍽️', cost: 8,  pay: 'crop', big: true, foot: [1.8, 1.0], top: { y: 0.69, pad: [1.8, 1.0] } },
   { id: 'bigsofa',   name: '큰 소파', ico: '🛋️', cost: 10, pay: 'crop', big: true, foot: [2.4, 0.95] },
   { id: 'bookshelf', name: '책장',    ico: '📚', cost: 9,  pay: 'crop', big: true, foot: [1.3, 0.45] },
   { id: 'bigrug',    name: '큰 러그', ico: '🟪', cost: 6,  pay: 'crop', big: true },
   // ── 2026-09-09 추가 9종(베타: "가구 종류가 적다") ──
-  { id: 'stool',       name: '스툴',     ico: '🟤', cost: 2,  pay: 'crop', foot: [0.45, 0.45] },
-  { id: 'vase',        name: '꽃병',     ico: '🌷', cost: 2,  pay: 'crop', foot: [0.3, 0.3] },
-  { id: 'nightstand',  name: '협탁',     ico: '🗄️', cost: 3,  pay: 'crop', foot: [0.5, 0.45] },
+  { id: 'stool',       name: '스툴',     ico: '🟤', cost: 2,  pay: 'crop', foot: [0.45, 0.45], top: { y: 0.42, pad: [0.44, 0.44] } },
+  { id: 'vase',        name: '꽃병',     ico: '🌷', cost: 2,  pay: 'crop', foot: [0.3, 0.3], sm: true, h: 0.72 },
+  { id: 'nightstand',  name: '협탁',     ico: '🗄️', cost: 3,  pay: 'crop', foot: [0.5, 0.45], top: { y: 0.55, pad: [0.5, 0.45] } },
   { id: 'cushion',     name: '바닥 쿠션', ico: '🟠', cost: 3,  pay: 'crop' },                       // 밟고 지나감
-  { id: 'radio',       name: '라디오',   ico: '📻', cost: 4,  pay: 'crop', foot: [0.5, 0.25] },
+  { id: 'radio',       name: '라디오',   ico: '📻', cost: 4,  pay: 'crop', foot: [0.5, 0.25], sm: true, h: 0.6 },
   { id: 'wardrobe',    name: '옷장',     ico: '🧥', cost: 9,  pay: 'crop', big: true, foot: [1.2, 0.5] },
   { id: 'fireplace',   name: '벽난로',   ico: '🔥', cost: 12, pay: 'crop', big: true, foot: [1.4, 0.6] },
   { id: 'piano',       name: '피아노',   ico: '🎹', cost: 12, pay: 'crop', big: true, foot: [1.4, 1.1] },
