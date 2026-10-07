@@ -106,6 +106,31 @@ export const Caption: React.FC<{ word: string; line: string; color: string; dir:
   );
 };
 
+/** Emoji-only caption — slams in huge, overshoots, settles, then keeps a gentle bob.
+ *  A shock ring and a short shake on the hit frame give the cut some impact. */
+export const EmojiCaption: React.FC<{ emoji: string; color: string; dir: 1 | -1; top?: string }> = ({ emoji, color, dir, top = "52%" }) => {
+  const f = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const slam = spring({ frame: f - 2, fps, config: { damping: 7, stiffness: 220, mass: 0.7 } });
+  const scale = interpolate(slam, [0, 1], [0.1, 1]);
+  const spin = interpolate(slam, [0, 1], [dir * -28, -dir * 5]);
+  const ring = interpolate(f, [2, 14], [0.4, 2.4], { ...clamp, easing: Easing.out(Easing.cubic) });
+  const ringO = interpolate(f, [2, 14], [0.75, 0], clamp);
+  const shake = f >= 2 && f < 8 ? Math.sin(f * 4.2) * (8 - f) * 2.2 : 0;
+  const bob = f > 10 ? Math.sin((f - 10) / 5) * 10 : 0;
+  return (
+    <AbsoluteFill style={{ alignItems: "center", top }}>
+      <div style={{ position: "relative", width: 420, height: 420, display: "flex", alignItems: "center", justifyContent: "center", transform: `translate(${shake}px, ${bob}px)` }}>
+        <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `22px solid ${color}`, opacity: ringO, transform: `scale(${ring})` }} />
+        <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: color, opacity: 0.9, transform: `scale(${scale})`, boxShadow: "0 12px 0 rgba(10,16,12,.35)" }} />
+        <div style={{ position: "relative", fontSize: 250, lineHeight: 1, transform: `scale(${scale}) rotate(${spin}deg)`, filter: "drop-shadow(0 10px 0 rgba(10,16,12,.35))" }}>
+          {emoji}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 /** Persistent brand chip, top-left, like a channel bug */
 export const BrandBug: React.FC = () => {
   const f = useCurrentFrame();
