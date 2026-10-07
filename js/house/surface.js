@@ -42,3 +42,22 @@ export function surfaceAt({ x, z, f = 0, def, rot, hosts, scale }) {
 export function ceilingOk(topY, h, scale, wallH = WALL_H) {
   return FLOOR_LIFT + (topY + h) * scale < wallH;
 }
+
+/**
+ * 모든 소품을 한 번에 앉힌다 — 받침 목록을 한 번만 만들고 순서와 무관하게 같은 결과를 낸다.
+ * @param {{items:{x:number,z:number,rot?:number,f?:number,def?:object}[],scale:number}} a  x,z 는 월드 좌표
+ * @returns {{onSurface:boolean,y:number,hostIndex:number}[]}  items 와 같은 길이·순서.
+ *   y = 상판 윗면 높이 × scale(FLOOR_LIFT·층 높이 제외, 바닥이면 0) · hostIndex = 받치는 items 의 인덱스(없으면 -1)
+ */
+export function planSeats({ items, scale }) {
+  const hosts = [], hostItem = [];
+  items.forEach((it, i) => {
+    const top = it.def?.top; if (!top) return;
+    hosts.push({ x: it.x, z: it.z, rot: it.rot || 0, f: it.f || 0, top });
+    hostItem.push(i);
+  });
+  return items.map((it) => {
+    const hit = surfaceAt({ x: it.x, z: it.z, f: it.f || 0, def: it.def, rot: it.rot || 0, hosts, scale });
+    return hit ? { onSurface: true, y: hit.y, hostIndex: hostItem[hit.hostIndex] } : { onSurface: false, y: 0, hostIndex: -1 };
+  });
+}

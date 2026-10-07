@@ -19,11 +19,14 @@ test('placeDecor 는 상판 높이로 앉히고 상판 위 소품엔 충돌체�
 test('고스트·조준·가까운 가구·들기가 같은 규칙을 쓴다', () => {
   assert.match(fn('updateDecorGhost'), /surfaceFor\(/);
   assert.match(fn('floorHitFromEvent'), /intersectObjects\(targets/);
-  assert.match(fn('nearestDecor'), /surfaceFor\(/);
+  assert.match(fn('nearestDecor'), /seatPlan\(\)/);
+  assert.doesNotMatch(fn('nearestDecor'), /surfaceFor\(/);   // 소품마다 받침을 다시 찾지 않는다
+  assert.match(fn('seatPlan'), /planSeats\(/);
   assert.match(fn('pickDecor'), /reseatDecor\(\)/);
 });
 test('reseatDecor 는 층을 따라 높이를 앉힌다', () => {
   const b = fn('reseatDecor');
+  assert.match(b, /seatPlan\(\)/);
   assert.match(b, /floorBaseY\(f\)/);
   assert.match(b, /removeSolid/);
   assert.match(b, /solidBox/);
