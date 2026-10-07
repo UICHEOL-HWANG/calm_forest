@@ -200,6 +200,8 @@ export function updateDoorInteract() {
           } else {
             nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
             if (def.id === 'bed') firstHintBanner('bedSleep', '🛏️', '침대', '밤에 누우면 아침까지 자요');
+            // 🪔 위에 소품이 올라가 있으면 액션은 소품을 집는다 — 받침을 통째로 옮기는 길(탭)을 한 번 알려 준다
+            if (def.sm && near.root.userData.onSurface) firstHintBanner('decorStack', '🪔', '올려둔 소품', '받치고 있는 가구는 직접 탭하면 옮겨요');
           }
           const ring = ensureNearRing(); ring.position.set(near.root.position.x, near.root.position.y + 0.02, near.root.position.z); ring.visible = true;   // ☀️ 루프탑 가구는 ROOF_Y 만큼 높다 — 그 가구의 실제 y 를 그대로 따라간다
         }

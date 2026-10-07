@@ -1002,6 +1002,8 @@ export const EN = {
   '소파': 'Sofa',
   '어항': 'Aquarium',
   '침대': 'Bed',
+  '올려둔 소품': 'Item on top',
+  '받치고 있는 가구는 직접 탭하면 옮겨요': 'Tap the furniture underneath to move it',
   '큰 식탁': 'Big Dining Table',
   '큰 소파': 'Big Sofa',
   '책장': 'Bookshelf',
