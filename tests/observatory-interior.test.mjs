@@ -155,6 +155,7 @@ function flowContext({ lens = {}, autoPick = 'leo' } = {}) {
     starBegin: (cst, diff, runId) => { log.begins.push([cst.id, diff.arm, runId]); return { attemptN: 3, unlockedN: 4 }; },
     starSettle: (...a) => { log.settles.push(a); return { coins: 0, unlockedNext: 'orion' }; },
     starAbandon: (...a) => log.abandons.push(a),
+    syncStory: () => {},
     crypto: { randomUUID: () => 'run-uuid' },
   });
   return { c, classes, log };

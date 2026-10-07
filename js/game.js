@@ -1050,6 +1050,7 @@ function noteSpecialExhibit(cat, id) {
   ui.toast?.(`🏛️ 박물관 특별 전시! ${def.ico} ${def.name}`, 2800);
   trackEvent('museum_special', { exhibit: def.id, cat, entry: id });   // [GA4] 조건부 전시 획득(날씨별 도달)
   requestSave();
+  setTimeout(() => syncStory(), 2200);   // 📖 6장 — 잡은 물고기·수확 연출이 먼저 지나가고 나서(4장 정화와 같은 간격)
 }
 
 // ── 🏅 업적 배지 — 도감 모달 하단에 전시. 달성 시 1회 기념 보상 ──
@@ -4552,7 +4553,8 @@ function surveyOfficeInteract() {
   // 숫자로도 남긴다 — 조망샷이 끝난 뒤 "뭐가 늘었는지" 한 장(사용자 지적 2026-09-13)
   const afterCells = farmCellCount(farmHalf()), afterWorkers = workerCap();
   setTimeout(() => ui.showHintModal?.({ ico: next.ico, title: next.name + ' 완성!', body:
-    `🌱 심을 수 있는 칸 ${beforeCells} → ${afterCells}칸\n🧑‍🌾 일꾼 ${beforeWorkers} → ${afterWorkers}명\n심어둔 밭과 시설은 그대로예요` }), SURVEY_HOLD * 1000);
+    `🌱 심을 수 있는 칸 ${beforeCells} → ${afterCells}칸\n🧑‍🌾 일꾼 ${beforeWorkers} → ${afterWorkers}명\n심어둔 밭과 시설은 그대로예요`,
+    ok: { onClick: syncStory } }), SURVEY_HOLD * 1000);   // 📖 5장 — 증축 안내를 닫은 뒤(모달은 하나만 뜬다)
   trackEvent('farm_expand', { stage: next.stage, wood: next.cost.wood, stone: next.cost.stone, coins: next.cost.coins });   // [GA4] 증축 퍼널(집 house_expand 와 같은 축: stage)
   nearDoor = null; ui.setDoorPrompt?.(null);               // 측량소가 새 울타리 밖으로 옮겨갔다 — 옛 프롬프트를 지우고 다음 프레임에 다시 판정
   requestSave();
