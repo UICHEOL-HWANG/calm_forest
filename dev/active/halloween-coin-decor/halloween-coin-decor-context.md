@@ -29,3 +29,13 @@ Supabase 2026-10-07: 14일 저장 326건 보유 중앙값 10/p75 165, 30일 획�
 - `git commit` 과 `grep -n` 한 명령에 섞지 않기(ECC 훅 오탐)
 - 워크트리 세션은 git 명령을 복합(&&)으로 묶으면 거부된다 — 한 줄씩
 - 이름·설명 문구는 코드 전에 후보 검수(ui-copy-review-first)
+
+## 결과 (2026-10-07 최종)
+- 브랜치 worktree-halloween-coin-decor (main 9c212a6 기준) · 코드 19파일 +659/−29 · npm test 1941/1941
+- 승인 시안: 유령 촛불 ghost · 미니 묘비 gable(사용자 미선택→컨트롤러 판단) · 마녀 솥 bubble · 유령 정원등 lantern · 묘비 울타리 iron · 거미줄 아치 tree
+- 드로우콜 증가: 실내 +7(94→101), 야외 +25(857→882, PC)
+- 보정: 유령 촛불 몸통 emissive 0.5→0.25(낮 블룸) · .di-tag 8px nowrap(모바일 62px 타일 줄바꿈)
+- 최종 리뷰 Important: ①옛 클라이언트는 모르는 id 를 세이브에서 지움 → 4곳 동시 배포 필수(탁상 등불은 판매기간 없어 웹만 먼저 나가면 위험) ②기존 버그: 가구를 든 채 selectDecor 하면 든 가구 소실 → 별도 작업 칩으로 분리
+- 남은 질문: 유령 정원등이 서식지(habitat) 조명 점수에 안 잡힘(postlamp/spiritlamp 만) — 의도인지 확인
+- 시안 단독 HTML 재생성: node tools/halloween/build-mockup.mjs (산출물 gitignore)
+- ⚠️ 검증 중 운영 DB 오염: 익명 계정 5개+game_saves 5행(2026-10-07 02:35~02:44 UTC, 로그 0건). 삭제는 사용자 승인 대기. 이후 검증은 tools/store-shots/cdp.mjs 방식(Supabase/GA 차단)
