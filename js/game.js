@@ -131,6 +131,7 @@ import {
 import {
   DEX, DEX_TOTAL, BADGES, STORY, NICK_ADJS, DAILY_COINS,
 } from './data/dex.js';
+import { pendingChapters, buildStoryView } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
 import {
   _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
   TOOL_QREST_HOLD, TOOL_GRIP, slashPhase, PLAYER_R, NPC_R,
@@ -1091,60 +1092,34 @@ function syncBadges() {
 
 let storyBooted = false;   // 첫 syncStory(세이브 소급)는 조용히, 이후엔 축하 연출
 
-// 챕터 달성 여부 — 전부 기존 상태에서 파생(새 카운터는 의뢰 수 q 하나뿐)
-function storyDone(i) {
-  const s = gameState;
-  if (i === 0) return s.houseStage >= 3;
-  if (i === 1) return (s.story.q || 0) >= 3;
-  if (i === 2) return (s.kitchen.cooked || 0) >= 1 && (s.cafe.served || 0) >= 1;
-  if (i === 3) return (s.mist?.purifyTotal || 0) >= 1;
-  return false;
-}
-function storyProgressText(i) {
-  const s = gameState;
-  if (i === 0) return `공사 ${Math.min(s.houseStage, 3)}/3`;
-  if (i === 1) return `의뢰 ${Math.min(s.story.q || 0, 3)}/3`;
-  if (i === 2) return `요리 ${Math.min(s.kitchen.cooked || 0, 1)}/1 · 서빙 ${Math.min(s.cafe.served || 0, 1)}/1`;
-  if (i === 3) return `정화 ${Math.min(s.mist?.purifyTotal || 0, 1)}/1`;
-  return '';
-}
-// index.html(스토리 칩·모달)이 렌더할 뷰
-function storyView() {
-  const ch = gameState.story.ch;
-  return {
-    ch,
-    allDone: ch >= STORY.length,
-    chapters: STORY.map((c, i) => ({
-      n: i + 1, ico: c.ico, title: c.title, goal: c.goal,
-      line: i < ch ? c.done : c.start,
-      state: i < ch ? 'done' : i === ch ? 'now' : 'lock',
-      progress: i === ch ? storyProgressText(i) : null,
-    })),
-  };
-}
+// 장 판정·뷰는 js/story/rules.js(순수) — 여기는 gameState 를 넘기는 얇은 층
+function storyView() { return buildStoryView(STORY, gameState); }
 
 // 진행 판정(멱등) — 접속 소급 + 각 마일스톤 훅에서 호출
 function syncStory() {
   const st = gameState.story;
   let retro = 0;
-  while (st.ch < STORY.length && storyDone(st.ch)) {
-    const c = STORY[st.ch];
+  for (const i of pendingChapters(STORY, gameState)) {        // soon 장에서 멈춘다(js/story/rules.js)
+    const c = STORY[i];
     giveReward(c.reward, 'story', c.id);                       // [원장] 챕터 보상 출처 기록
-    trackEvent('story_chapter_complete', { chapter: c.id, n: st.ch + 1, retro: storyBooted ? 0 : 1 }); // [GA4] 온보딩→후반 진행 퍼널
-    st.ch++;
+    trackEvent('story_chapter_complete', { chapter: c.id, n: i + 1, retro: storyBooted ? 0 : 1 }); // [GA4] 온보딩→후반 진행 퍼널
+    st.ch = i + 1;
     if (storyBooted) {
       const next = STORY[st.ch];
       Sound.complete(); spawnConfetti(player.position.x, 2.6, player.position.z);
       ui.showHintModal?.({
         ico: c.ico, title: `${st.ch}장 완료 — ${c.title}`,
         body: `${c.done}\n\n🦉 의뢰 올빼미가 당신의 이야기를 기록했어요. 보상 🪙${c.reward.coins}${c.reward.seed ? ` · 🌰${c.reward.seed}` : ''}`
-          + (next ? `\n\n다음 이야기 — ${next.ico} ${st.ch + 1}장 「${next.title}」: ${next.goal}` : ''),
+          + (!next ? '' : next.soon ? '\n\n🏡 다음 이야기는 곧 열려요.'   // 잠긴 장은 목표 대신 예고만
+            : `\n\n다음 이야기 — ${next.ico} ${st.ch + 1}장 「${next.title}」: ${next.goal}`),
       });
     } else retro++;
   }
-  // 현재 장의 시작을 1회만 기록(퍼널 시작점)
-  const cur = STORY[gameState.story.ch];
-  if (cur && !st.started[cur.id]) {
+  // 현재 장의 시작을 1회만 기록(퍼널 시작점) — 잠긴 장은 시작이 아니다
+  const cur = STORY[st.ch];
+  if (cur && !cur.soon && !st.started[cur.id]) {
+    // 4장까지 끝낸 기존 유저: 배포 뒤 첫 부팅에 새 장이 열렸음을 한 번 알린다(소급 토스트가 없을 때만)
+    if (!storyBooted && !retro && st.ch === 4) ui.toast?.(`📖 새 이야기가 이어져요 — ${st.ch + 1}장 「${cur.title}」`, 3200);
     st.started[cur.id] = 1;
     trackEvent('story_chapter_start', { chapter: cur.id, n: st.ch + 1 });
   }
