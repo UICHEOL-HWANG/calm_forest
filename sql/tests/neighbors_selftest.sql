@@ -194,12 +194,17 @@ begin
      or public._nb_nick(jsonb_build_object('nickname', 'ㅅㅂ'), null) <> '이름 없는 여행자'
      or public._nb_nick(jsonb_build_object('nickname', 'fuuuuck'), null) <> '이름 없는 여행자'
      or public._nb_nick(jsonb_build_object('nickname', '   '), null) <> '이름 없는 여행자'
-     or public._nb_nick('{}'::jsonb, null) <> '이름 없는 여행자' then
+     or public._nb_nick('{}'::jsonb, null) <> '이름 없는 여행자'
+     or public._nb_nick(jsonb_build_object('nickname', 'ｆｕｃｋ'), null) <> '이름 없는 여행자'      -- 전각: NFKC 로 접혀야(사라지면 안 된다)
+     or public._nb_nick(jsonb_build_object('nickname', 'ﾵﾲ'), null) <> '이름 없는 여행자' then        -- 반각 자모 → NFKC → 호환 자모 ㅅㅂ
     raise exception 'FAIL _nb_nick: 금칙어·빈 닉네임이 그대로 나간다'; end if;
   if public._nb_nick(jsonb_build_object('nickname', '  조용한 곰 #1234  '), null) <> '조용한 곰 #1234'
      or public._nb_nick(jsonb_build_object('nickname', 'Shiitake Bear'), null) <> 'Shiitake Bear'
      or public._nb_nick(jsonb_build_object('nickname', '시바견 키우는 고양이 집사랍니다'), null) <> left('시바견 키우는 고양이 집사랍니다', 16) then
     raise exception 'FAIL _nb_nick: 평범한 닉네임이 가려졌다'; end if;
+  -- 정규식 비용 상한: 금칙어 판정은 표시되는 앞 16자만 본다(아주 긴 닉네임도 잘라서 판정)
+  if public._nb_nick(jsonb_build_object('nickname', repeat('가', 10) || repeat('x', 5000) || '시발'), null) <> repeat('가', 10) || repeat('x', 6) then
+    raise exception 'FAIL _nb_nick: 긴 닉네임 자르기'; end if;
 
   insert into auth.users (id, aud, role, email, is_anonymous, created_at, updated_at) values
     (bad, 'authenticated', 'authenticated', 'nb-selftest-bad@sim.calmforest.local', false, now(), now()),
@@ -218,6 +223,13 @@ begin
   if hid = any(full_list) then raise exception 'FAIL: 관리자 숨김(hid)이 후보에 있다'; end if;
   if not (nh = any(full_list)) then raise exception 'FAIL: 닉네임만 가린(nh)은 후보에 있어야 한다'; end if;
   if public.neighbor_showcase(public._nb_public_id(hid)) is not null then raise exception 'FAIL: 관리자 숨김 showcase 가 null 이 아니다'; end if;
+  -- 숨긴 집엔 반응도 못 남긴다(열려 있던 화면의 public_id 로 와도) — 'private', 행·보상 없음
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  r := public.neighbor_react(public._nb_public_id(hid), 'heart');
+  if r->>'reason' is distinct from 'private' then raise exception 'FAIL: 관리자 숨김 집 반응: %', r; end if;
+  select count(*) into n from public.village_visits where host = hid;
+  if n <> 0 then raise exception 'FAIL: 관리자 숨김 집에 방문 행이 생겼다'; end if;
+  perform set_config('request.jwt.claims', '', true);
   sc := public.neighbor_showcase(public._nb_public_id(nh));
   if sc->>'nickname' <> '이름 없는 여행자' then raise exception 'FAIL: nick_hidden showcase: %', sc->>'nickname'; end if;
   sc := public.neighbor_showcase(public._nb_public_id(bad));

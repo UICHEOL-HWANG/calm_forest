@@ -22,6 +22,9 @@ test('정규화: 소문자·공백/문장부호/제로폭 제거·단어 속 숫
   assert.equal(normalizeNickname('ｆｕｃｋ'), 'fuck');
   assert.equal(normalizeNickname('Sparkly Bear #4821'), 'sparklybear');   // 태그 숫자는 leet 로 안 바뀐다(글자 사이가 아님)
   assert.equal(normalizeNickname(null), '');
+  assert.equal(normalizeNickname('ㅅㅂ'), 'ㅅㅂ');                       // NFKC 가 자모를 조합용으로 바꿔도 호환 자모로 되돌린다
+  assert.equal(normalizeNickname('\uFFB5\uFFB2'), 'ㅅㅂ');               // 반각 한글 자모
+  assert.equal(normalizeNickname('a'.repeat(100) + 'fuck'), 'a');         // 앞 64자만 본다(정규식 비용 상한 — 서버와 같다)
 });
 
 test('막는다 — 한국어 욕설·비하·성적 표현', () => {
