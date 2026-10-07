@@ -67,6 +67,7 @@ import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, 
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { buyBlocked, catalogVisible, SALE_ENDED_MSG, saleTagOf } from './shop/sale-window.js';   // 🎃 기간 한정 항목 — 목록 필터·행 태그
+import { isNicknameBlocked } from './nickname-filter.js';   // 🛡️ 닉네임 금칙어(이웃 마을이 남에게 보여 준다 — UGC 자율 관리)
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
@@ -1150,6 +1151,10 @@ function genNickname(animal) {
 function setNickname(name, source = 'change') {
   const nick = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
   if (nick.length < 2) return { ok: false, msg: '닉네임은 2~16자로 지어주세요' };
+  if (isNicknameBlocked(nick)) {
+    trackEvent('nickname_set_blocked', { len: nick.length });   // [GA4] 막힌 횟수만 — 값 자체는 보내지 않음
+    return { ok: false, msg: '쓸 수 없는 말이 들어 있어요' };
+  }
   gameState.nickname = nick;
   trackEvent('nickname_set', { source, len: nick.length });   // [GA4] 값 자체는 보내지 않음
   return { ok: true, nick };
