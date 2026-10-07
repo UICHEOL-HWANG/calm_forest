@@ -1,6 +1,6 @@
 // =============================================================
 //  🏡 이웃 마을 네트워크 — 주입형 순수 팩토리(Node 테스트). 실제 바인딩은 ./net.js
-//  RPC 4종(유저별, 캐시 없음) + /api/neighbor(엣지 10분 캐시). 실패는 전부 { ok:false, reason } — 삼키지 않는다.
+//  RPC 6종(유저별, 캐시 없음 — 방문 원장 viewStart/viewEnd 포함) + /api/neighbor(엣지 10분 캐시). 실패는 전부 { ok:false, reason } — 삼키지 않는다.
 // =============================================================
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -26,6 +26,17 @@ export function createNeighborApi({ rpc, fetchFn, base = '', now = () => perform
     async setPublic(on) {
       const r = await call('set_village_public', { p_on: !!on });
       return r.ok ? { ok: true, is_public: r.is_public !== false } : { ok: false, reason: r.reason || 'upstream' };
+    },
+    // 📒 방문 원장(village_views) — GA4 가 광고 차단으로 빠져도 서버에 남는다. 탭을 닫으면 viewEnd 없이 ended_at 이 비어 남는다(허용)
+    async viewStart(publicId, slot, revisit) {
+      const r = await call('neighbor_view_start', { p_public_id: publicId, p_slot: Number.isInteger(slot) ? slot : null, p_revisit: !!revisit });
+      if (!r.ok || !Number.isFinite(r.view_id)) return { ok: false, reason: r.reason || 'upstream' };
+      return { ok: true, viewId: r.view_id };
+    },
+    async viewEnd(viewId, sec, reacted) {
+      if (viewId == null) return { ok: false, reason: 'no_view' };
+      const r = await call('neighbor_view_end', { p_view_id: viewId, p_sec: Math.max(0, Math.round(Number(sec) || 0)), p_reacted: !!reacted });
+      return r.ok ? { ok: true } : { ok: false, reason: r.reason || 'upstream' };
     },
     async showcase(publicId) {
       if (!UUID_RE.test(publicId || '')) return { ok: false, reason: 'bad_id', code: 400 };
