@@ -683,6 +683,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.split('?')[0] == '/api/plaza':
             self.serve_plaza()
             return
+        if self.path.split('?')[0] == '/api/neighbor':
+            self.serve_neighbor()
+            return
         if self.path.split('?')[0] == '/api/npc-talk':
             self.serve_npc_talk()
             return
@@ -790,6 +793,36 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                     payload = res.read(); code = 200
             except Exception as e:
                 print(f'[plaza] RPC 실패: {type(e).__name__}: {e}')
+                payload = json.dumps({'error': 'upstream'}).encode(); code = 502
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    # ── 🏡 이웃 마을 구경 (functions/api/neighbor.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
+    #    Supabase RPC(public.neighbor_showcase) 프록시. 로컬은 캐시 없이 매번 조회(개발 편의).
+    def serve_neighbor(self):
+        import urllib.parse as _up
+        q = _up.parse_qs(_up.urlparse(self.path).query)
+        pid = (q.get('id') or [''])[0].lower()
+        if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', pid):
+            payload = json.dumps({'error': 'bad id'}).encode(); code = 400
+        else:
+            url = os.environ.get('SUPABASE_URL'); anon = os.environ.get('SUPABASE_ANON_KEY')
+            body = json.dumps({'p_public_id': pid}).encode()
+            req = urllib.request.Request(url + '/rest/v1/rpc/neighbor_showcase', data=body, method='POST',
+                                         headers={'Content-Type': 'application/json', 'apikey': anon,
+                                                  'Authorization': 'Bearer ' + anon})
+            try:
+                with urllib.request.urlopen(req, timeout=15, context=ssl_context()) as res:
+                    data = json.loads(res.read() or b'null')
+                if data is None:
+                    payload = json.dumps({'error': 'not_found'}).encode(); code = 404
+                else:
+                    payload = json.dumps(data, ensure_ascii=False).encode(); code = 200
+            except Exception as e:
+                print(f'[neighbor] RPC 실패: {type(e).__name__}: {e}')
                 payload = json.dumps({'error': 'upstream'}).encode(); code = 502
         self.send_response(code)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
