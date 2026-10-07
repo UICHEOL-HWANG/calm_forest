@@ -15,7 +15,7 @@ export const STORY_RULES = {
                progress: s => `밭 ${frac(num(s.farm?.stage), 2)} · 나무 ${frac(trees(s), 1)}` },
   memory:    { done: s => count(s.museum?.special) >= 1,          progress: s => `특별 진열 ${frac(count(s.museum?.special), 1)}` },
   stars:     { done: s => count(s.star?.cleared) >= 1,            progress: s => `별자리 ${frac(count(s.star?.cleared), 1)}` },
-  neighbors: { done: () => false,                                 progress: () => '' },   // 🏡 이웃 마을 기능 출시 때 채운다
+  neighbors: { done: s => num(s.neighbors?.visited) >= 1,         progress: s => `방문 ${frac(num(s.neighbors?.visited), 1)}` },   // 🏡 이웃 마을 첫 방문(js/spaces/neighbor.js exitNeighbor)
 };
 
 export const isSoon = (story, i) => !!story[i]?.soon;

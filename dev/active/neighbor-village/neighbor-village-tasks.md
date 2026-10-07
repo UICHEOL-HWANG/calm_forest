@@ -1,0 +1,13 @@
+# neighbor-village — tasks
+- [x] 0 워크트리·dev docs
+- [x] 1 SQL·셀프테스트(운영 적용)
+- [ ] 2 /api/neighbor + serve.py
+- [ ] 3 sanitize·rules
+- [ ] 4 API
+- [ ] 5 GA4 7종
+- [ ] 6 UI
+- [ ] 7 이웃 공간
+- [ ] 8 마을 배선·세이브·8장
+- [ ] 9 i18n
+- [ ] 10 개인정보처리방침·안내서
+- [ ] 11 실측·리뷰·배포

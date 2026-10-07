@@ -26,7 +26,7 @@ test('handleAction 은 telescope 를 startObservatoryLook 으로 보낸다', () 
 });
 
 test('천문대 자세 업데이트는 updatePlayer 뒤 매 프레임 호출된다', () => {
-  assert.match(SRC, /updatePlayer\(dt, t\); updateObservatoryStairs\(dt\); updateMuseumView\(dt\); updateObservatory\(dt, t\); updateCamera\(dt\)/);
+  assert.match(SRC, /updatePlayer\(dt, t\); updateObservatoryStairs\(dt\); updateMuseumView\(dt\); updateObservatory\(dt, t\); updateNeighbor\(dt\); updateCamera\(dt\)/);   // 🏡 이웃 공간 갱신이 사이에 낀다(tests/neighbor-space)
 });
 
 test('startObservatoryLook 은 위치를 고정하고 700ms 뒤 렌즈 뷰를 연다', () => {

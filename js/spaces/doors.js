@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, WEATHER, atCafe, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atRiver, atSea, boat, clock,
+  $w, DIG_WINDOW, WEATHER, atCafe, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor,
@@ -17,7 +17,7 @@ import {
 import { plazaSpot } from '../plaza/index.js';
 import { trackEvent } from '../analytics.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
-import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MUSEUM, MUSEUM_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
+import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
 import { TOOLS } from '../data/tools.js';
 import { storageTotal } from '../farm-building.js';
 import { farmStageInfo } from '../farm-stage.js';
@@ -34,6 +34,7 @@ import { forageTarget } from '../spaces/forest.js';
 import { houseExitPoint, nearHouseDoor } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
 import { updateMistInteract } from '../spaces/mist.js';
+import { neighborDoor } from '../spaces/neighbor.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
@@ -163,6 +164,15 @@ export function updateDoorInteract() {
     if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }
+  if (atNeighbor) {    // 🏡 이웃 마을: 남쪽으로 나가기 — 집주인 반응은 말풍선이 맡는다(js/spaces/neighbor.js)
+    nd = neighborDoor(player.position);
+    prompt = nd ? '🚪 내 마을로' : null;
+    $w.nearDoor = nd;
+    if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+    if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
+    updateToolPageAuto();   // 🎒 맨 끝까지 안 가고 돌아가니 여기서 — ZONE_PAGE.neighbor 'none'(맨손)
+    return;
+  }
   if (indoor) {
     const gd = gardenDoorLocal(curHalf()), nearGardenDoor = dist2D({ x: INT.x + gd.x, z: INT.z + gd.z }, player.position) < 1.7;
     if (gameState.houseStage >= 7 && houseFloor === 0 && nearGardenDoor) { nd = 'floor'; $w.nearDoorFloor = 3; prompt = '🌿 정원으로'; }   // 🌿 1층 오른쪽 벽 문 → 정원
@@ -280,6 +290,9 @@ export function updateDoorInteract() {
   } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
     nd = 'observatory'; prompt = '🌌 별 보러 가기';
     firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳');
+  } else if (dist2D({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 1.2 }, player.position) < 2.2) {
+    nd = 'neighbor'; prompt = '🏡 이웃 마을 가는 길';
+    firstHintBanner('neighborGate', '🏡', '이웃 마을 가는 길', '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요');
   }
   $w.nearDoor = nd;
   if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
@@ -405,7 +418,7 @@ export function updateZoneHint() {
   if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 
-export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atOrchard; }
+export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atOrchard && !atNeighbor; }
 
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 export function ensureNearRing() {
