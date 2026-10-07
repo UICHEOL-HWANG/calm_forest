@@ -598,6 +598,10 @@ function kilnCount() { return stationCount('kiln'); }
 
 // 🔥 화덕 불꽃 — 서로 다른 박자로 늘었다 줄고 비틀린다. updateDayNight 가 매 프레임 돌린다
 const kilnFlames = [];
+// 🏡 그룹째 철거할 때(이웃 공간 퇴장) 그 안의 불꽃을 목록에서 뺀다 — 안 빼면 사라진 메시를 매 프레임 돌리고 방문마다 늘어난다
+function dropKilnFlames(root) {
+  for (let i = kilnFlames.length - 1; i >= 0; i--) { let o = kilnFlames[i].mesh; while (o && o !== root) o = o.parent; if (o) kilnFlames.splice(i, 1); }
+}
 
 // 가공 시설의 겉모습을 슬롯 상태에 맞춘다. 슬롯은 특정 채에 묶여 있지 않고
 // 'i 번째 = 그 시설 칸의 2i·2i+1' 로 파생한다(배치 장식엔 고유 id 가 없다 — js/craft/slots.js 참고).
@@ -7410,7 +7414,7 @@ export {
   bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, castPos, catchCeremony,
   churnTrigger, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop, cropMini, currentQuest,
   currentTool, cycleSapSel, dateHash, dayStr, decorGhost, decorMeshes, decorNearRing, decorRot, decorTapHintShown,
-  decorTarget, dexDiscover, diffParams, disposeTree, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack,
+  decorTarget, dexDiscover, diffParams, disposeTree, dropKilnFlames, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack,
   farmActionFirst, farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob,
   firstHint, firstHintBanner, fishDiff, fishMesh, fishState, floatTexts, forageNodes, forecastLine, forestGroup,
   gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCells, habitatCtx,

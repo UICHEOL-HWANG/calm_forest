@@ -8,7 +8,7 @@
 //     (tests/neighbor-space 가 그 함수 이름이 이 파일에 없음을 잠근다)
 // =============================================================
 import * as THREE from 'three';
-import { buildCharacterMesh, disposeTree, makeSignpost, outdoorMesh, removeSolid, scene, solidBox, solidCircle } from '../game.js';
+import { buildCharacterMesh, disposeTree, dropKilnFlames, makeSignpost, outdoorMesh, removeSolid, scene, solidBox, solidCircle } from '../game.js';
 import { buildHouseModel, mountHouseAddons } from '../house/index.js';
 import { prepHouseMeshes, unregisterWindows } from '../spaces/house.js';
 import { spawnPet } from '../pet/render.js';
@@ -127,11 +127,14 @@ export function buildNeighborScene(view) {
     dispose() {
       for (const c of solids) removeSolid(c);
       sign.userData.dead = true;                                     // makeSignpost 의 rAF 등록이 철거 뒤에 돌지 않게
-      if (sign.userData.solid) removeSolid(sign.userData.solid);
       unregisterWindows(group);                                      // 집 창문·정원등·화로 — 밤 점등 목록에서 뺀다
+      dropKilnFlames(group);                                         // 🔥 장식 화덕 불꽃 — 전역 목록에서(부모 사슬이 살아 있을 때)
       scene.remove(group);
       group.remove(host); disposeSkin(host);
       if (pet) group.remove(pet);
+      //  장식(화덕·발효통) 속 팻말까지 — 기둥 충돌체를 치우고 아직 rAF 등록 전이면 건너뛰게(rebuildFarm 과 같은 규칙)
+      group.traverse(o => { if (o.userData.solid) removeSolid(o.userData.solid); o.userData.dead = true; });
+      group.traverse(o => { if (o.isMesh) for (const m of [].concat(o.material)) m?.map?.dispose?.(); });   // 팻말 캔버스·나무 텍스처 복제
       disposeTree(group);
     },
   };

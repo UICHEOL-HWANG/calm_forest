@@ -120,9 +120,10 @@ export function openPickerModal(rows, rewardedToday, onGo) {
 
 export function setPickerBusy(on) {
   pickerBusy = !!on;
-  document.querySelectorAll('#nb-pick-modal .nb-go').forEach(b => { b.disabled = !!on; });
+  document.querySelectorAll('#nb-pick-modal .nb-go, #nb-pick-modal .nb-close').forEach(b => { b.disabled = !!on; });   // 요청 중엔 닫기도 잠근다
 }
 
+export function isPickerOpen() { return !!document.getElementById('nb-pick-modal')?.classList.contains('show'); }
 export function closePickerModal() { pickerBusy = false; closeModal('nb-pick-modal'); }
 
 // ── 구경 중 상단 줄 · 🚪 내 마을로 ──
