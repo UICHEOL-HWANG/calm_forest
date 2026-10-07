@@ -51,3 +51,10 @@ export function saleTagOf(item) {
 export function catalogVisible(item, { stored = 0, now = Date.now() } = {}) {
   return !item?.sale || saleOpen(item, now) || stored > 0;
 }
+
+export const SALE_ENDED_MSG = '🎃 할로윈 장식 판매가 끝났어요';
+
+/** 기간 한정(sale) 항목의 **신규 구매**를 막아야 하나. 보관분 꺼내기(fromStore)·옮기기(free)·세이브 복원(silent)은 통과한다 */
+export function buyBlocked({ silent = false, free = false, fromStore = false, def, now = Date.now() } = {}) {
+  return !silent && !free && !fromStore && !!def?.sale && !saleOpen(def, now);
+}
