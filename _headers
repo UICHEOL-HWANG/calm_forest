@@ -2,12 +2,17 @@
 # JS/HTML/CSS 는 매 요청마다 재검증(no-cache) → 배포 후 새로고침만으로 최신 반영.
 # (ETag 로 변경 없으면 304, 변경되면 200 새 파일)
 
+# 🔒 HSTS 는 includeSubDomains 없이 — lab.calmforest.cloud 등 서브도메인의 HTTPS 여부와 엮지 않는다.
+#    CSP 는 깨질 일이 없는 지시어만(플러그인·<base> 주입 차단, 프레이밍은 X-Frame-Options 와 같은 정책).
+#    script-src 는 index.html 의 큰 인라인 모듈 때문에 'unsafe-inline' 없이는 못 건다 — 넣으면 효과 없이 깨질 위험만 남아 보류.
 /*
   Cache-Control: no-cache
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Strict-Transport-Security: max-age=15552000
+  Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'
 
 # 📖 안내서 — 토스 번들(다른 오리진)이 fetch 로 받아가므로 CORS 허용. 내용이 자주 안 바뀌어 1시간 캐시.
 /guide/*

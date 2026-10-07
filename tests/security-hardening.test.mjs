@@ -52,3 +52,42 @@ test('☕ 카페 손님 count 상한 = 크론 적재 인원(PREGEN_COUNT)', () =
   assert.ok(!/MAX_COUNT/.test(src), 'MAX_COUNT 가 남아 있다');
   assert.match(src, /const count = Math\.min\(PREGEN_COUNT,/);
 });
+
+// ── LOW 3건(2026-10-08) ───────────────────────────────────────
+import { decodeJpegBody, MAX_BODY } from '../functions/api/photo.js';
+import { onRequestPost as nightVisit } from '../functions/api/night-visit.js';
+
+const jpegBody = (bytes) => JSON.stringify({ image: 'data:image/jpeg;base64,' + Buffer.from(bytes).toString('base64') });
+
+test('📸 decodeJpegBody — JPEG 시그니처·크기·형식', () => {
+  assert.equal(decodeJpegBody(jpegBody([0xFF, 0xD8, 0xFF, 0xE0, 1, 2])).bin.length, 6);
+  assert.equal(decodeJpegBody(jpegBody([0x89, 0x50, 0x4E, 0x47])).error, 'jpeg_only');      // PNG 를 jpeg 로 위장
+  assert.equal(decodeJpegBody('{"image":"data:image/png;base64,AAAA"}').error, 'jpeg_only');
+  assert.equal(decodeJpegBody('{"image":"data:image/jpeg;base64,@@@"}').error, 'jpeg_only');
+  assert.equal(decodeJpegBody('not json').error, 'bad_json');
+  assert.equal(decodeJpegBody('x'.repeat(MAX_BODY + 1)).status, 413);
+});
+
+test('🦝 NIGHT_SEED_SECRET 없으면 밤손님은 쉰다(공개 기본값 금지)', async () => {
+  const src = read('functions/api/night-visit.js');
+  assert.ok(!/calm-forest-night/.test(src), '하드코딩 기본값이 남아 있다');
+  const req = new Request('https://x/api/night-visit', { method: 'POST',
+    body: JSON.stringify({ uid: '11111111-2222-3333-4444-555555555555', nights: 1, plots: [{ id: 0 }], date: '2026-10-08' }) });
+  const res = await nightVisit({ request: req, env: {} });
+  const body = await res.json();
+  assert.deepEqual(body, { visited: false, reason: 'not-configured' });
+});
+
+test('🔒 _headers — HSTS·최소 CSP', () => {
+  const h = read('_headers');
+  assert.match(h, /Strict-Transport-Security: max-age=\d+/);
+  assert.match(h, /Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'/);
+  assert.ok(!/includeSubDomains/.test(h.split('\n').filter(l => !l.startsWith('#')).join('\n')));
+});
+
+test('🗄️ 클라 jsonb 크기 상한 마이그레이션', () => {
+  const sql = read('sql/migrations/migrate_security_size_caps.sql');
+  assert.match(sql, /game_saves_state_size[\s\S]*?<= 524288/);
+  for (const t of ['boat_runs', 'cafe_guests', 'feedback', 'retention_guidance_scores', 'session_logs', 'star_runs'])
+    assert.match(sql, new RegExp(`alter table public\\.${t} add constraint`), t);
+});
