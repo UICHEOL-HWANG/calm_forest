@@ -1441,6 +1441,7 @@ export const EN = {
   '숲속의': 'Woodland',
   '여행자': 'Traveler',
   '닉네임은 2~16자로 지어주세요': 'Nicknames must be 2–16 characters',
+  '쓸 수 없는 말이 들어 있어요': 'That name contains a blocked word',
   '🏷️ 당신의 이름: {0} — ☰메뉴 > 캐릭터·이름에서 바꿀 수 있어요': '🏷️ Your name: {0} — change it in ☰Menu > Character & Name',
   ' 아직 도감에 없는 날씨예요! 📖': ' That weather isn\'t in your Collection yet! 📖',
   '연속 {0}일째 방문! {1} 받았어요.': 'Day {0} of your visit streak! You received {1}.',
