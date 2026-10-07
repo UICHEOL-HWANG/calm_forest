@@ -78,8 +78,12 @@ const ALERT_R = 3.6;       // 이 안에 들면 말풍선이 커지고 튄다(�
 export function traceBubble() {
   const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: traceTexture(), transparent: true, depthWrite: false, fog: false, toneMapped: false }));
   bubble.scale.set(BUBBLE_W, BUBBLE_H, 1); bubble.position.set(0, BUBBLE_Y, 0);
+  // 🌾 밭 배지(farm.js)가 renderOrder 20 + depthTest 끔으로 항상 맨 위에 그려진다 — 같은 조건에 순서만 더 높여야
+  //   튀어 오른 말풍선이 밭 말풍선 뒤로 숨지 않는다(2026-10-07 제보).
+  bubble.material.depthTest = false; bubble.renderOrder = 22;
   const ring = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTexture(), transparent: true, depthWrite: false, fog: false, toneMapped: false, opacity: 0 }));
   ring.position.set(0, BUBBLE_Y - 0.05, 0);
+  ring.material.depthTest = false; ring.renderOrder = 21;
   return { bubble, ring };
 }
 
