@@ -88,6 +88,17 @@ def run_checks(con):
                 s=s, st=stage, it=item, u=uid)
         names = con.run('select public.plaza_progress(:s)', s=s)[0][0]['names']
         ok &= check(BAD_NICK not in names, f'plaza: 금칙어 없음 (명판 {len(names)}명)')
+
+    # ④ 크기 상한(migrate_security_size_caps.sql) — 512KiB 초과 세이브는 23514, 이하면 통과
+    con.run('savepoint big')
+    try:
+        con.run("update game_saves set state = jsonb_build_object('pad', repeat('x', 600000)) where user_id = cast(:u as uuid)", u=uid)
+        ok &= check(False, 'size cap: 600KB 세이브가 통과했다')
+    except pg8000.exceptions.DatabaseError as e:
+        ok &= check(e.args[0].get('C') == '23514', f"size cap: 600KB 세이브 거부 ({e.args[0].get('C')})")
+        con.run('rollback to savepoint big')
+    con.run("update game_saves set state = jsonb_build_object('pad', repeat('x', 400000)) where user_id = cast(:u as uuid)", u=uid)
+    ok &= check(True, 'size cap: 400KB 세이브 통과')
     return ok
 
 

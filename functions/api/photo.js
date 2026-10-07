@@ -106,18 +106,37 @@ export async function verifyUser(env, request) {
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 
+// base64 는 원본의 4/3 + JSON 껍데기 여유
+export const MAX_BODY = Math.ceil(MAX_BYTES * 4 / 3) + 1024;
+
+/** 업로드 본문({ image: 'data:image/jpeg;base64,…' }) → { bin } 또는 { error, status }.
+ *  MIME 접두사만 믿지 않고 JPEG 시그니처(FF D8 FF)까지 본다. */
+export function decodeJpegBody(text) {
+  if (typeof text !== 'string' || text.length > MAX_BODY) return { error: 'too_large', status: 413 };
+  let image;
+  try { ({ image } = JSON.parse(text)); } catch (e) { return { error: 'bad_json', status: 400 }; }
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(typeof image === 'string' ? image : '');
+  if (!m) return { error: 'jpeg_only', status: 400 };
+  let bin;
+  try { bin = Uint8Array.from(atob(m[1]), c => c.charCodeAt(0)); } catch (e) { return { error: 'jpeg_only', status: 400 }; }
+  if (bin.length > MAX_BYTES) return { error: 'too_large', status: 413 };
+  if (bin.length < 4 || bin[0] !== 0xFF || bin[1] !== 0xD8 || bin[2] !== 0xFF) return { error: 'jpeg_only', status: 400 };
+  return { bin };
+}
+
 // ── POST /api/photo — 공유 카드 JPEG 업로드 ──────────────────────
 export async function onRequestPost({ request, env }) {
   if (!ociReady(env)) return json({ error: 'not_configured' }, 503);
   const user = await verifyUser(env, request);
   if (!user) return json({ error: 'login_required' }, 403);
 
-  let image;
-  try { ({ image } = await request.json()); } catch (e) { return json({ error: 'bad_json' }, 400); }
-  const m = /^data:image\/jpeg;base64,(.+)$/.exec(image || '');
-  if (!m) return json({ error: 'jpeg_only' }, 400);
-  const bin = Uint8Array.from(atob(m[1]), c => c.charCodeAt(0));
-  if (bin.length > MAX_BYTES) return json({ error: 'too_large' }, 413);
+  // 🔒 본문 크기를 파싱 전에 자른다 — request.json()·atob 는 크기와 무관하게 통째로 메모리에 올린다
+  if (Number(request.headers.get('content-length') || 0) > MAX_BODY) return json({ error: 'too_large' }, 413);
+  let text;
+  try { text = await request.text(); } catch (e) { return json({ error: 'bad_json' }, 400); }
+  const img = decodeJpegBody(text);
+  if (img.error) return json({ error: img.error }, img.status);
+  const bin = img.bin;
 
   const prefix = `photos/${user.id}/`;
   // 한도 확인 — 오브젝트 저장소를 원본 기준으로 센다(메타 행 유실과 무관하게 정확)
