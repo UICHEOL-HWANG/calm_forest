@@ -1133,6 +1133,40 @@
   /* 🛏️ 자는 동안 덮는 암전 — 밤→아침으로 시간이 건너뛰는 걸 가린다. 덮인 동안엔 입력도 막는다 */
   #sleep-fade { position: fixed; inset: 0; z-index: 52; background: #0b1020; opacity: 0; pointer-events: none; transition: opacity .7s ease-in-out; }
   #sleep-fade.on { pointer-events: auto; }
+  /* 🌙 꿈길 — 같은 암전을 보랏빛으로(js/spaces/dream.js · ui.sleepFade(a, 'dream')) */
+  #sleep-fade.dream { background: radial-gradient(ellipse at center, #6c58c4 0%, #2a2160 70%, #171236 100%); }
+  #dream-caption { position: fixed; left: 50%; top: 46%; transform: translateX(-50%); z-index: 53; color: #fff; font-size: clamp(16px, 4.6vw, 20px); font-weight: 700;
+    text-shadow: 0 2px 12px rgba(40,20,90,0.7); opacity: 0; transition: opacity .5s; pointer-events: none; white-space: nowrap; }
+  #dream-caption.show { opacity: 1; }
+  #dream-skip { position: fixed; z-index: 54; right: max(14px, env(safe-area-inset-right)); top: calc(var(--top-inset, 0px) + 14px); display: none;
+    border: none; border-radius: 12px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
+    background: rgba(255,255,255,0.2); color: #fff; backdrop-filter: blur(4px); }
+  body.dream-cut #dream-skip { display: block; }
+  /* 컷신 중엔 게임 HUD 를 숨긴다(프롤로그와 같은 목록) */
+  body.dream-cut #topleft, body.dream-cut #topright, body.dream-cut #minimap, body.dream-cut #hotbar,
+  body.dream-cut #mobile-controls, body.dream-cut #talk-btn, body.dream-cut #dex-tab, body.dream-cut #feedback-tab,
+  body.dream-cut #door-prompt, body.dream-cut #npc-prompt, body.dream-cut #zone-prompt, body.dream-cut #quest-panel,
+  body.dream-cut #buffs, body.dream-cut #decor-btn, body.dream-cut #ext-btn, body.dream-cut #hint, body.dream-cut #story-chip { display: none !important; }
+  /* 💤/🌙 선택 창 · 🌙 도착 안내 — id 가 -modal 로 끝나야 anyModalOpen 이 잡는다 */
+  #dream-modal, #dream-arrive-modal { position: fixed; inset: 0; z-index: 46; display: none; place-items: center; background: rgba(30,20,60,0.55); }
+  #dream-modal.show, #dream-arrive-modal.show { display: grid; }
+  #dream-modal .tut-card, #dream-arrive-modal .tut-card { width: min(380px, 92vw); background: #fffaf2; padding: 22px 18px 16px; }
+  #dream-modal h2, #dream-arrive-modal h2 { margin: 0 0 4px; font-size: 19px; }
+  .dream-sub { margin: 0 0 12px; font-size: 13.5px; opacity: .75; }
+  .dream-opt { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; margin-top: 10px; padding: 12px 14px; min-height: 56px;
+    border-radius: 16px; border: 2px solid #eee3d6; background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
+  .dream-opt:active { transform: scale(0.98); }
+  .dream-opt .do-ico { font-size: 28px; line-height: 1; }
+  .dream-opt b { display: block; font-size: 15.5px; }
+  .dream-opt small { display: block; font-size: 12.5px; opacity: .72; line-height: 1.45; }
+  .dream-opt.dream { border-color: #c9b8f2; background: #f6f1ff; }
+  .dream-opt.dream.first { border-color: #a48be0; box-shadow: 0 0 0 3px rgba(164,139,224,0.18); }
+  .dream-new { position: absolute; right: 10px; top: -9px; background: #8f7ad6; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+  .dream-cancel { margin-top: 12px; border: none; background: none; color: var(--ink); opacity: .6; font: inherit; font-size: 13px; cursor: pointer; padding: 8px; }
+  .dream-list { list-style: none; margin: 8px 0 16px; padding: 0; text-align: left; }
+  .dream-list li { font-size: 14px; line-height: 1.5; padding: 7px 0; border-bottom: 1px solid #f1ecf8; }
+  .dream-list li:last-child { border-bottom: none; }
+  #dream-arrive-ok { width: 100%; border: none; border-radius: 14px; min-height: 48px; font-weight: 800; font-size: 15px; cursor: pointer; background: #8f7ad6; color: #fff; }
   body.intro-open #intro-layer { display: block; }
   /* 컷신 중 게임 HUD 전부 숨김 — 모바일 조이스틱 포함 */
   body.intro-open #topleft, body.intro-open #topright, body.intro-open #minimap, body.intro-open #hotbar,
@@ -1958,6 +1992,31 @@
 
   <!-- 🛏️ 자기 암전 -->
   <div id="sleep-fade"></div>
+  <!-- 🌙 꿈길 자막 · 건너뛰기(js/spaces/dream.js) -->
+  <div id="dream-caption"></div>
+  <button id="dream-skip">건너뛰기 ›</button>
+  <!-- 🌙 밤 침대: 💤 푹 자기 / 🌙 꿈꾸기 -->
+  <div id="dream-modal">
+    <div class="tut-card">
+      <h2>🛏️ 잘 시간이에요</h2>
+      <p class="dream-sub">오늘 밤은 어떻게 할까요?</p>
+      <button class="dream-opt" id="dream-opt-sleep"><span class="do-ico">💤</span><span><b>푹 자기</b><small>바로 아침이 돼요</small></span></button>
+      <button class="dream-opt dream" id="dream-opt-dream"><span class="dream-new" id="dream-new">NEW</span><span class="do-ico">🌙</span><span><b>꿈꾸기</b><small>꿈의 숲에서 꿈 조각을 모아요</small><small id="dream-opt-first">깨어나면 아침이에요</small><small id="dream-opt-left"></small></span></button>
+      <button class="dream-cancel" id="dream-opt-cancel">닫기</button>
+    </div>
+  </div>
+  <!-- 🌙 꿈의 숲 첫 도착 안내(1회) -->
+  <div id="dream-arrive-modal">
+    <div class="tut-card">
+      <h2>🌙 꿈의 숲에 왔어요</h2>
+      <ul class="dream-list">
+        <li>✨ 반짝이는 꿈 조각을 모아요</li>
+        <li>🪨 떠 있는 돌을 밟고 다른 섬으로 건너가요</li>
+        <li>🛏️ 구름 침대에 누우면 아침에 깨어나요</li>
+      </ul>
+      <button id="dream-arrive-ok">알겠어요</button>
+    </div>
+  </div>
 
   <!-- 🍳 요리 미니게임 오버레이 (풀스크린 — 모바일은 화면 전체가 탭 버튼) -->
   <div id="mg-layer">
@@ -3237,12 +3296,41 @@
       // 🛏️ 자는 동안의 암전. a=1 덮기 / a=0 걷기 — .on 은 덮인 동안 입력을 막는 용도
       //   ⚠️ a=0 일 때 .on 을 바로 빼면 화면이 아직 새까만 0.7초 동안 탭이 통과한다 —
       //   전환이 끝난 뒤에 푼다(game.js 의 sleeping 해제 타이밍과 맞춘다).
-      sleepFade(a) {
-        const el = $('sleep-fade'); el.style.opacity = a;
+      sleepFade(a, tint = null) {
+        const el = $('sleep-fade');
+        if (a > 0) el.classList.toggle('dream', tint === 'dream');   // 🌙 꿈길은 보랏빛 — 걷힐 땐 색을 그대로 둔다(전환 중 색이 튀지 않게)
+        el.style.opacity = a;
         if (a > 0) { clearTimeout(el._unlock); el.classList.add('on'); }
         else el._unlock = setTimeout(() => el.classList.remove('on'), 700);
       },
       introTitle(on) { $('intro-title').classList.toggle('show', !!on); },
+      // 🌙 꿈의 숲 UI — js/spaces/dream.js 가 부른다
+      openDreamChoice(o) {
+        const m = $('dream-modal');
+        $('dream-new').hidden = !o.first; $('dream-opt-first').hidden = !o.first;
+        $('dream-opt-dream').classList.toggle('first', !!o.first);
+        $('dream-opt-left').textContent = o.left > 0 ? `✨ 오늘 남은 조각 ${o.left}개` : '';
+        $('dream-opt-left').hidden = !(o.left > 0);
+        const close = () => { m.classList.remove('show'); m.onclick = null; };
+        $('dream-opt-sleep').onclick = () => { close(); o.onSleep(); };
+        $('dream-opt-dream').onclick = () => { close(); o.onDream(); };
+        $('dream-opt-cancel').onclick = () => { close(); o.onCancel(); };
+        m.onclick = (e) => { if (e.target === m) { close(); o.onCancel(); } };
+        Input.setAnalog(0, 0);
+        m.classList.add('show');
+      },
+      showDreamArrive() {
+        const m = $('dream-arrive-modal');
+        $('dream-arrive-ok').onclick = () => m.classList.remove('show');
+        Input.setAnalog(0, 0);
+        m.classList.add('show');
+      },
+      setDreamSkip(on) { document.body.classList.toggle('dream-cut', !!on); },
+      dreamCaption(text) {
+        const el = $('dream-caption');
+        if (!text) { el.classList.remove('show'); return; }
+        el.textContent = text; el.classList.add('show');
+      },
       // 📖 메인 퀘스트 칩 갱신 — game.js(syncStory)가 진행 변화 때마다 호출
       setStory(v) {
         lastStoryView = v;
@@ -3454,7 +3542,8 @@
           : t.includes('리듬') || t.includes('달래기') ? '♪' : t.includes('등불 켜기') ? '🏮' : t.includes('정화') ? '🌳'
           : t.includes('던지기') || t.includes('기다리는') ? '🎣' : t.includes('당기세요') ? '🎣' : t.includes('버텨') ? '💪'
           : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : t.includes('· 자기') ? '🛏️' : t.includes('옮기기') ? '✋' : t.includes('맡기기') ? '🐾'
-          : t.includes('광장') ? '🌾' : t.includes('수확제 좌판') ? '🍂' : '🚪';
+          : t.includes('광장') ? '🌾' : t.includes('수확제 좌판') ? '🍂'
+          : t.includes('깨어나') ? '🛏️' : t.includes('조각을 찾아') ? '✨' : '🚪';   // 🌙 꿈의 숲 — 안내 줄이 문(🚪)으로 보이지 않게
         refreshActionIcon();
         if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
@@ -3611,7 +3700,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -3627,7 +3716,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
@@ -4313,11 +4402,11 @@
 
     // ── 집 꾸미기 메뉴 ──
     function renderDecorItems() {
-      $('dm-crop').textContent = `🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}`;
+      $('dm-crop').textContent = `🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}` + (lastInv.shard ? `  ✨ ${lastInv.shard}` : '');   // 🌙 꿈 조각은 생긴 뒤에만
       const box = $('dm-items'); box.innerHTML = '';
       Input.getDecor().forEach(d => {
         const pay = d.pay || 'crop';
-        const payIco = pay === 'fish' ? '🐟' : pay === 'coins' ? '🪙' : '🥕';
+        const payIco = pay === 'fish' ? '🐟' : pay === 'coins' ? '🪙' : pay === 'shard' ? '✨' : '🥕';
         const have = lastInv[pay] || 0;
         const stored = (Input.getStored?.() || {})[d.id] || 0;      // 🧺 창고 보유분 — 값 없이 꺼내 놓는다
         const ok = !d.locked && (stored > 0 || have >= d.cost);
@@ -4327,7 +4416,7 @@
         el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${d.locked ? '🔒' : (stored > 0 ? `보유 ${stored}` : payIco + d.cost)}</span>${d.tag ? `<span class="di-tag">${d.tag.label}</span><span class="di-tag">${d.tag.until}</span>` : ''}`;
         el.addEventListener('click', () => {
           if (d.locked) { ui.toast('집을 더 증축하면 살 수 있어요'); return; }
-          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : pay === 'coins' ? '코인이 부족해요 🪙' : '작물이 부족해요 🥕'); return; }
+          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : pay === 'coins' ? '코인이 부족해요 🪙' : pay === 'shard' ? '꿈 조각이 부족해요 ✨' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)
           if (decorGuideStep >= 0) setDecorGuide(1);              // 단계 안내 ② 자리 잡기
@@ -5450,13 +5539,14 @@
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
     window.addEventListener('keydown', e => {                // 데스크톱: 안내 모달이 떠 있으면 Space = 알겠어요 — 게임 조작으로 안 새게 capture
       if (e.code !== 'Space' || e.repeat) return;
-      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok' };
+      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok' };
       const open = Object.keys(OK_BTN).find(id => $(id).classList.contains('show'));
       if (!open) return;
       e.preventDefault(); e.stopPropagation();
       $(OK_BTN[open]).click();
     }, true);
-    $('intro-skip').addEventListener('click', () => Input.introSkip());   // 🎬 프롤로그 건너뛰기
+    $('intro-skip').addEventListener('click', () => Input.introSkip());
+    $('dream-skip').addEventListener('click', () => Input.dreamSkip());   // 🌙 꿈길 건너뛰기   // 🎬 프롤로그 건너뛰기
 
     // 📖 이야기 모달 — 칩 클릭으로 열람(완결 장은 완료 문구, 현재 장은 진행도)
     let lastStoryView = null;

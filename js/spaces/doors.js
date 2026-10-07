@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, WEATHER, atCafe, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
+  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor,
@@ -34,6 +34,7 @@ import { forageTarget } from '../spaces/forest.js';
 import { houseExitPoint, nearHouseDoor } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
 import { updateMistInteract } from '../spaces/mist.js';
+import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { neighborDoor } from '../spaces/neighbor.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { updateRiverInteract } from '../spaces/river.js';
@@ -148,6 +149,12 @@ export function updateDoorInteract() {
     if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
     return;   // 존 힌트는 updateMist 가 상태표시로 사용
   }
+  if (atDream) {       // 🌙 꿈의 숲: 구름 침대에서 깨어나기 / 남은 조각 안내(모바일 규칙 — 안내는 프롬프트 줄에만)
+    const dp = dreamPrompt();
+    $w.nearDoor = dp.nd;
+    if (dp.prompt !== lastDoorPrompt) { $w.lastDoorPrompt = dp.prompt; ui.setDoorPrompt?.(dp.prompt); }
+    return;   // 존 힌트(✨ N/7)는 js/spaces/dream.js 가 상태표시로 쓴다
+  }
   if (atSea) {         // 🌊 바다터: 뭍(남쪽)으로 나가기 / 미니게임 상태 안내
     if (seaMG.st === 'idle' && dist2D({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6 }, player.position) < 1.9) { nd = 'seaexit'; prompt = '🚪 마을로 나가기'; }
     else prompt = seaPrompt();
@@ -202,10 +209,11 @@ export function updateDoorInteract() {
         const near = nearestDecor(0.9);
         if (near) {
           $w.nearDecorMesh = near.root; const def = DECOR.find(d => d.id === near.root.userData.rec.id);
-          if (def.id === 'bed' && isNight()) {
+          if ((def.id === 'bed' || def.sleep) && isNight()) {   // ☁️ 구름 침대(꿈 장식)도 침대다
             // 🛏️ 밤엔 액션이 '자기' — 옮기기는 탭(레이캐스트) 경로로 밤낮 상관없이 그대로 된다
             nd = 'sleep'; prompt = `${def.ico} ${def.name} · 자기`;
             // 밤엔 액션이 '자기' 로 넘어가 침대를 들 수 없다 — 탭 경로가 있다는 걸 한 번 알려 준다
+            dreamNightHint();   // 🌙 꿈을 안 꿔 본 사람에게 한 번 — '꿈꾸기' 가 있다는 걸 먼저 알린다
             firstHintBanner('bedMove', '🛏️', '침대 옮기기', '밤엔 침대를 직접 탭하면 옮겨요');
           } else {
             nd = 'decor'; prompt = `${def.ico} ${def.name} · 옮기기`;
@@ -418,7 +426,7 @@ export function updateZoneHint() {
   if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 
-export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atOrchard && !atNeighbor; }
+export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atOrchard && !atNeighbor && !atDream; }
 
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 export function ensureNearRing() {

@@ -33,6 +33,7 @@ import { buyBlocked, SALE_ENDED_MSG } from '../shop/sale-window.js';
 import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
 import { HALLOWEEN_INDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './halloween-art.js';
+import { DREAM_DECOR_IDS, buildDreamDecor } from '../dream/decor-art.js';   // 🌙 꿈 장식 4종
 import { unregisterWindows } from '../spaces/house.js';
 import * as THREE from 'three';
 
@@ -427,6 +428,8 @@ export function decorMesh(id) {
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.05, 10), clayMat(0x5a5148)); base.position.y = 0.025; g.add(base);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.032, 0.18, 6), clayMat(0x5a5148)); pole.position.y = 0.14; g.add(pole);
     const shade = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.19, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 0.32; g.add(shade);
+  } else if (DREAM_DECOR_IDS.includes(id)) {   // 🌙 꿈 장식 — ✨ 꿈 조각으로 산다(js/dream/decor-art.js)
+    g.add(buildDreamDecor(id));
   } else if (HALLOWEEN_INDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 조형은 halloween-art.js (시안 HTML 과 같은 코드)
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE)));
   } else if (id === 'nightstand') {
@@ -674,11 +677,12 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
     ui.toast?.(SALE_ENDED_MSG); return false;
   }
   if (!silent && !free && !fromStore) {
-    const pay = def.pay || 'crop';                          // 화폐: 작물 · 물고기 · 🪙코인(고급 가구)
+    const pay = def.pay || 'crop';                          // 화폐: 작물 · 물고기 · 🪙코인(고급 가구) · ✨꿈 조각(꿈 장식)
     const have = pay === 'coins' ? (gameState.inventory.coins || 0) : (gameState.inventory[pay] || 0);
     if (have < def.cost) {
       ui.toast?.(pay === 'coins' ? `코인이 부족해요 (필요 ${def.cost} 🪙)`
                : pay === 'fish'  ? `물고기가 부족해요 (필요 ${def.cost} 🐟)`
+               : pay === 'shard' ? `꿈 조각이 부족해요 (필요 ${def.cost} ✨)`
                :                   `작물이 부족해요 (필요 ${def.cost} 🥕)`);
       return false;
     }
@@ -687,6 +691,7 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
       logEcon('decor_buy', id, -def.cost, gameState.inventory.coins);   // [원장] 코인 소비 — 다른 코인 싱크와 같은 축
       trackEvent('decor_buy_coins', { item: id, coins: def.cost, stage: gameState.houseStage }); // [GA4] 코인 싱크 퍼널
     }
+    if (pay === 'shard') trackEvent('decor_buy_shard', { item: id, cost: def.cost, left: gameState.inventory.shard });   // [GA4] 🌙 꿈 조각 싱크 — econ_logs 는 코인 전용이라 GA4 만
   }
   const m = decorMesh(id);
   const lx = decorClampX(wx), lz = decorClampZ(wz);
