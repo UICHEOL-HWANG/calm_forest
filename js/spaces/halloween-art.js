@@ -54,9 +54,9 @@ function kit(T) {
     cone: (r, h, x, y, z, c, seg = 8) => paint(new T.ConeGeometry(r, h, seg).translate(x, y, z), c),
     ball: (r, x, y, z, c) => paint(new T.IcosahedronGeometry(r, 0).translate(x, y, z), c),
     orb: (r, x, y, z, c) => paint(new T.IcosahedronGeometry(r, 1).translate(x, y, z), c),   // 발광용 — 각진 보석처럼 안 보이게 한 단계 더 둥글게
-    // flat=true 면 바닥에 눕힌 고리, arc 로 반원(아치) 가능 — 기본은 세운 전체 고리
-    ring: (R, r, x, y, z, c, flat = false, arc = Math.PI * 2) => {
-      const geo = new T.TorusGeometry(R, r, 5, 14, arc);
+    // flat=true 면 바닥에 눕힌 고리 — 기본은 세운 전체 고리
+    ring: (R, r, x, y, z, c, flat = false) => {
+      const geo = new T.TorusGeometry(R, r, 5, 14);
       return paint((flat ? geo.rotateX(Math.PI / 2) : geo).translate(x, y, z), c);
     },
   };
