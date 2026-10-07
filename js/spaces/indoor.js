@@ -420,6 +420,10 @@ export function decorMesh(id) {
       const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 5), clayMat(0x6da35a)); stem.position.set(dx, 0.5, dz); stem.rotation.z = dx * 1.2; g.add(stem);
       const bloom = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), clayMat(c, false)); bloom.position.set(dx * 1.6, 0.62 + i * 0.02, dz * 1.6); g.add(bloom);
     });
+  } else if (id === 'deskLamp') {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.05, 10), clayMat(0x5a5148)); base.position.y = 0.025; g.add(base);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.032, 0.18, 6), clayMat(0x5a5148)); pole.position.y = 0.14; g.add(pole);
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.19, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 0.32; g.add(shade);
   } else if (id === 'nightstand') {
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.45), woodMat(1, 1)); body.position.y = 0.275; g.add(body);
     const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.18, 0.03), woodMat(1, 1, 0xd9b585)); drawer.position.set(0, 0.36, 0.235); g.add(drawer);

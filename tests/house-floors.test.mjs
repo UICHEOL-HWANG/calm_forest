@@ -86,11 +86,10 @@ test('parasol_set 은 승계 전용(hidden)이라 상점에 안 뜬다 — 값 0
   assert.match(line, /outdoorOnly: true/);
 });
 
-test('기존 21종은 작물·생선 그대로다', () => {
-  // ⚠️ task-2-brief 는 "기존 22종"을 전제했으나 DECOR 원본을 세어 보면 21종이다(주석
-  // "2026-09-09 추가 9종" 기준으로도 12+9=21). 실측값에 맞춰 기대치를 21로 둔다.
+test('기존 22종은 작물·생선 그대로다', () => {
+  // ⚠️ 21종 + 🪔 탁상 등불(2026-10-07, 작물 3) = 22. 코인 전용·sale 항목은 pay 가 coins 라 세지 않는다.
   const old = DECOR_SRC.split('\n').filter(l => /pay: '(crop|fish)'/.test(l));
-  assert.equal(old.length, 21);
+  assert.equal(old.length, 22);
 });
 
 // ── Task 3: 가구 f(층) 저장 + 복원 마이그레이션 ─────────────────────
