@@ -186,6 +186,7 @@ export const EN = {
   '🌑 그늘': '🌑 Shade',
   '🌾 먹이': '🌾 Food',
   '🎃 공포': '🎃 Fear',
+  '🎃 할로윈 장식 판매가 끝났어요': 'Halloween decor is no longer on sale',
   '허수아비를 무서워해요': 'is scared of the scarecrow',
   '꽃이 더 필요해요': 'wants more flowers',
   '다 자란 작물이 더 필요해요': 'wants more ripe crops',

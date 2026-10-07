@@ -29,6 +29,7 @@ import { FLOOR_LIFT, decorHalf, surfaceAt } from '../house/surface.js';   // �
 import { INTERIOR7_WALL, buildGardenFloor7, buildInterior7 } from '../house/interior7.js';   // 🏡 7단계 실내 스타일(모던/한옥) + 실내 정원 — 새 조형은 그 모듈에
 import { normalizeHouseStyle } from '../house-stage7.js';
 import { logEcon } from '../metrics.js';
+import { saleOpen } from '../shop/sale-window.js';
 import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
 import { unregisterWindows } from '../spaces/house.js';
@@ -654,6 +655,9 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
   const stored = gameState.house.stored || (gameState.house.stored = {});
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
+  if (!silent && !free && !fromStore && def.sale && !saleOpen(def)) {   // 🎃 목록을 열어 둔 채 기간이 끝난 경우 — 새로 못 산다(보관분·옮기기·복원은 위 조건에서 통과)
+    ui.toast?.('🎃 할로윈 장식 판매가 끝났어요'); return false;
+  }
   if (!silent && !free && !fromStore) {
     const pay = def.pay || 'crop';                          // 화폐: 작물 · 물고기 · 🪙코인(고급 가구)
     const have = pay === 'coins' ? (gameState.inventory.coins || 0) : (gameState.inventory[pay] || 0);
