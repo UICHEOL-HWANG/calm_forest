@@ -140,6 +140,21 @@ async function credits(tab) {
   return n;
 }
 
+/** Flow 가 새 기능을 낼 때 띄우는 '변경 로그' 공지를 닫는다.
+ *  ⚠️ 이 다이얼로그가 떠 있으면 화면이 가려져 '동영상' 컬렉션을 못 찾는다
+ *     ("동영상 컬렉션으로 못 갔다" — 2026-10-07, Nano Banana 2.1 공지). 생성 전 단계라 크레딧은
+ *     안 나갔지만 매번 사람이 팝업을 닫아야 했다. 공지 닫기('시작하기')만 누르고 다른 건 건드리지 않는다. */
+async function dismissChangelog(tab) {
+  await repl(`
+    await attachBrowserTab('${tab}');
+    const a = await snapshot(page, { interactive: true });
+    if (/dialog:\\s*\\n\\s*- text: "변경 로그"/.test(a.tree)) {
+      const m = a.tree.match(/button "시작하기"[^\\n]*\\[ref=(e\\d+)\\]/);
+      if (m) { await page.locator(m[1]).click(); await sleep(1500); console.log('CHANGELOG=dismissed'); }
+    }
+  `);
+}
+
 /** 프로젝트 `동영상` 컬렉션의 타일 수.
  *
  *  ⚠️ 완료 판정을 채팅의 "편집기에서 동영상 열기" 버튼 수로 했다가 두 번 실패했다.
@@ -198,6 +213,7 @@ async function main() {
   await assertServer(urlPath);
 
   const tab = await flowTab();
+  await dismissChangelog(tab);
   const cr0 = await credits(tab);
   const res0 = await videoTiles(tab);
   console.log(`탭 ${tab.slice(0, 8)}… · 크레딧 ${cr0}개 · 기존 동영상 ${res0}개`);

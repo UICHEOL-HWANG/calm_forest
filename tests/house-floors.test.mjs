@@ -62,7 +62,7 @@ const DECOR_SRC = SRC.slice(SRC.indexOf('const DECOR = ['), SRC.indexOf('\n];', 
 // 🏖️ Task 6 가 hidden: true 인 parasol_set(승계 전용, 상점에 안 뜸)을 DECOR 에 추가했다.
 // 아래 세 카운트는 "상점에 보이는 고급 가구"만 세도록 hidden 줄을 뺀다 — 그래야 누가 실수로
 // 팔리는 항목을 늘려도(=상점 노출 개수가 어긋나면) 여전히 실패한다.
-const SHOP_DECOR_SRC = DECOR_SRC.split('\n').filter(l => !l.includes('hidden: true')).join('\n');
+const SHOP_DECOR_SRC = DECOR_SRC.split('\n').filter(l => !l.includes('hidden: true') && !l.includes('sale:')).join('\n');   // 🎃 기간 한정 코인 장식(sale)도 뺀다 — 따로 센다(tests/halloween-coin-catalog.test.mjs)
 
 test('상점에 보이는 고급 가구 10종이 코인 전용으로 들어 있다', () => {
   const coinLines = SHOP_DECOR_SRC.split('\n').filter(l => l.includes("pay: 'coins'"));
@@ -86,11 +86,10 @@ test('parasol_set 은 승계 전용(hidden)이라 상점에 안 뜬다 — 값 0
   assert.match(line, /outdoorOnly: true/);
 });
 
-test('기존 21종은 작물·생선 그대로다', () => {
-  // ⚠️ task-2-brief 는 "기존 22종"을 전제했으나 DECOR 원본을 세어 보면 21종이다(주석
-  // "2026-09-09 추가 9종" 기준으로도 12+9=21). 실측값에 맞춰 기대치를 21로 둔다.
+test('기존 22종은 작물·생선 그대로다', () => {
+  // ⚠️ 21종 + 🪔 탁상 등불(2026-10-07, 작물 3) = 22. 코인 전용·sale 항목은 pay 가 coins 라 세지 않는다.
   const old = DECOR_SRC.split('\n').filter(l => /pay: '(crop|fish)'/.test(l));
-  assert.equal(old.length, 21);
+  assert.equal(old.length, 22);
 });
 
 // ── Task 3: 가구 f(층) 저장 + 복원 마이그레이션 ─────────────────────

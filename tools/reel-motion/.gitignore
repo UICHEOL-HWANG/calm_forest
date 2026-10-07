@@ -1,0 +1,6 @@
+node_modules/
+out/
+public/clips/
+public/lofi.wav
+public/talk/
+public/night.wav
