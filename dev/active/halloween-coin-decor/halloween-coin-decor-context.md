@@ -39,3 +39,10 @@ Supabase 2026-10-07: 14일 저장 326건 보유 중앙값 10/p75 165, 30일 획�
 - 남은 질문: 유령 정원등이 서식지(habitat) 조명 점수에 안 잡힘(postlamp/spiritlamp 만) — 의도인지 확인
 - 시안 단독 HTML 재생성: node tools/halloween/build-mockup.mjs (산출물 gitignore)
 - ⚠️ 검증 중 운영 DB 오염: 익명 계정 5개+game_saves 5행(2026-10-07 02:35~02:44 UTC, 로그 0건). 삭제는 사용자 승인 대기. 이후 검증은 tools/store-shots/cdp.mjs 방식(Supabase/GA 차단)
+
+## main 병합 + 한계점 개선 (2026-10-07, 푸시 전)
+- main 병합: 92ef6d0 (selectDecor 수정 20ddf2f/c0eb36d 와 충돌 없음). 병합본 npm test 1942/1942 → 개선 후 1956/1956
+- 개선(코드): f7e6d0f buyBlocked 순수 함수(돈 경로를 동작 테스트로) · 0ca5a3a planSeats(복원 순서 무관·nearestDecor 프레임당 비용 O(props×decor)→O(decor)) · b61eb2b 죽은 arc 제거. 리뷰 승인(Critical/Important 없음)
+- 개선(실측, part3-report.md): 실제 다층(f0 탁자 위로 f1 소품이 안 올라감, 루프탑 4.59) PASS · applySave 왕복(저장 순서·역순) PASS · 회귀 PASS · 실내는 그림자 자체가 꺼져 있어(shadowAuto=false) 지글거림 문제 없음
+- 못 한 것: 실제 Supabase 저장/로드 왕복 · 모바일 뷰포트 · 실시간 움직임 프레임 간격(헤드리스 소프트웨어 렌더라 0.7~1.3초 간격)
+- 남은 결정: 푸시(main + feat/capacitor-app) · 4곳 동시 배포(10/24 전) · 테스트 익명 계정 삭제(확정 5개 + 미귀속 1개 03:44 UTC, 모두 비어 있음) · 유령 정원등 서식지 점수
