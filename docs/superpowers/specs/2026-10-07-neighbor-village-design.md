@@ -111,6 +111,15 @@ RLS on, 정책 없음(직접 접근 금지) — 전부 SECURITY DEFINER RPC 경�
 | `neighbor_load_fail` | `stage`(today\|showcase\|react), `code` |
 
 DB: `village_visits` 자체가 원장(누가 누구를 언제 어떤 반응으로). econ_logs 는 `neighbor_visit` 출처로 기존 원장이 기록.
+
+서버 원장 2종(`sql/migrations/migrate_neighbors_ledger.sql`, RLS on·정책 없음·RPC 로만):
+
+| 원장 | 언제 남나 | 쓰임 |
+|---|---|---|
+| `village_views` | 입장 `neighbor_view_start`(게스트 포함 `is_guest`, `slot`·`revisit`) → 퇴장 `neighbor_view_end`(GA4 `neighbor_visit_end` 와 같은 `sec`·`reacted`, sec 0~3600). 방문자당 하루 30행 상한 | 반응 없는 방문까지 센다 — 성공 기준 「주간 활동자 중 방문 경험」의 분자(GA4 는 광고 차단으로 빠질 수 있음). 탭을 닫으면 `ended_at`·`sec` 이 null(머문 시간은 닫힌 행만) |
+| `moderation_log` | `admin_village_moderate` 가 플래그를 실제로 바꾼 호출마다(`hide`·`unhide`·`hide_nick`·`unhide_nick`, 둘 다면 `+`), before/after 플래그 | 앱인토스 UGC 자율 관리 증빙. 관리자 화면 「최근 조치」(`admin_moderation_log`, uuid 없음) |
+
+실패는 GA4 `neighbor_load_fail` `stage=view_start|view_end`.
 다음날 BQ 재검증: 위 7종 적재·`host` 값이 uuid 형식·dev 세션 제외.
 
 ## 8. 문구

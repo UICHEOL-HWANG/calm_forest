@@ -1,10 +1,11 @@
 -- =============================================================
 --  🏡 이웃 마을 RPC 자가 테스트 — **DO 블록 하나**
 --  (SQL Editor 는 문장마다 따로 커밋한다 → 여러 문장·temp table 로 나누면 안 된다. 2026-10-07 nb_t 사고)
---  사용법: migrate_neighbors.sql(+ _sim_split · _moderation) 적용 뒤 SQL Editor 에 통째로 붙여 실행.
+--  사용법: migrate_neighbors.sql(+ _sim_split · _moderation · _ledger) 적용 뒤 SQL Editor 에 통째로 붙여 실행.
 --          통과: NOTICE 'NEIGHBORS SELFTEST ALL PASS'
 --          실패: EXCEPTION 으로 멈추고 블록 전체가 자동 롤백(아무것도 안 남는다).
---  ⚠️ 가짜 계정(nb-selftest-*@example.invalid · nb-selftest-*@sim.calmforest.local)을 만들고, 통과하면 맨 끝에서 스스로 지운다(game_saves·village_* 는 cascade).
+--  ⚠️ 가짜 계정(nb-selftest-*@example.invalid · nb-selftest-*@sim.calmforest.local)을 만들고, 통과하면 맨 끝에서 스스로 지운다(game_saves·village_* 는 cascade,
+--     moderation_log 는 target 이 set null 이라 계정을 지우기 전에 target 으로 먼저 지운다).
 --     끝나고 확인: select count(*) from auth.users where email like 'nb-selftest-%';   -- 0
 -- =============================================================
 do $$
@@ -20,6 +21,7 @@ declare
   x uuid; pid uuid; r jsonb; t jsonb; sc jsonb; t1 jsonb; t2 jsonb; n int; vday date; keys text[];
   v_day date := (now() at time zone 'Asia/Seoul')::date;
   full_list uuid[]; sorted uuid[]; top3 uuid[]; blocked boolean := false;
+  vid bigint; vid2 bigint; vk int; acts text[];   -- ⑦ 📒 원장
 begin
   ids := array[a, b, c, d, e, f, g, h, i];
 
@@ -320,8 +322,116 @@ begin
   if r->>'reason' is distinct from 'not_found' then raise exception 'FAIL moderate not_found: %', r; end if;
   raise notice 'moderation checks pass';
 
+  -- ── ⑦ 📒 원장: 모더레이션 감사 로그(moderation_log) · 방문 원장(village_views) ──
+  -- ⑥ 의 관리자 호출: hid 숨김 해제 → 닉네임 가림 → 다시 숨김 = 3행. 비관리자·not_found 호출은 0행
+  select array_agg(action order by id) into acts from public.moderation_log where target = hid;
+  if acts is distinct from array['unhide', 'hide_nick', 'hide'] then raise exception 'FAIL moderation_log actions: %', acts; end if;
+  select count(*) into n from public.moderation_log where target = nh;
+  if n <> 0 then raise exception 'FAIL: 비관리자 호출이 moderation_log 를 남겼다'; end if;
+  if not exists (select 1 from public.moderation_log where target = hid and action = 'hide'
+                   and before = '{"hidden_by_admin": false, "nick_hidden": true}'::jsonb
+                   and after  = '{"hidden_by_admin": true, "nick_hidden": true}'::jsonb
+                   and admin_uid = '17bb08c7-c4bc-4870-b464-1b131e67aff8') then
+    raise exception 'FAIL moderation_log before/after/admin_uid'; end if;
+  r := public.admin_village_moderate(public._nb_public_id(hid), true, null);   -- 바뀌는 게 없으면 로그도 없다
+  select count(*) into n from public.moderation_log where target = hid;
+  if n <> 3 then raise exception 'FAIL: 변화 없는 호출이 로그를 남겼다: %', n; end if;
+  r := public.admin_moderation_log(200);
+  if not (r->>'ok')::boolean or r->'list'->0->>'action' <> 'hide' or r->'list'->1->>'action' <> 'hide_nick'
+     or r->'list'->2->>'action' <> 'unhide' or r->'list'->0->>'nick' <> '이름 없는 여행자'
+     or r->'list'->0->'after' <> '{"hidden_by_admin": true, "nick_hidden": true}'::jsonb or (r->'list'->0) ? 'target' then
+    raise exception 'FAIL admin_moderation_log: %', left(r::text, 400); end if;
+  if strpos(r::text, hid::text) > 0 or strpos(r::text, '17bb08c7-c4bc-4870-b464-1b131e67aff8') > 0 then
+    raise exception 'FAIL: admin_moderation_log 에 uuid 가 있다'; end if;
+  if jsonb_array_length(public.admin_moderation_log(1)->'list') <> 1 then raise exception 'FAIL: admin_moderation_log p_limit'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated', 'email', 'nb-selftest-a@example.invalid')::text, true);
+  r := public.admin_moderation_log(30);
+  if r->>'reason' is distinct from 'forbidden' then raise exception 'FAIL: 비관리자 admin_moderation_log: %', r; end if;
+
+  -- 방문 시작 → 남이 닫기 거절 → 주인이 닫기(sec 3600 상한) → 두 번 닫기 거절
+  r := public.neighbor_view_start(public._nb_public_id(f), 1, false);
+  if not coalesce((r->>'ok')::boolean, false) or r->>'view_id' is null then raise exception 'FAIL view_start: %', r; end if;
+  if strpos(r::text, f::text) > 0 or strpos(r::text, a::text) > 0 then raise exception 'FAIL: view_start 응답에 user_id'; end if;
+  vid := (r->>'view_id')::bigint;
+  if not exists (select 1 from public.village_views where id = vid and visitor = a and host = f and not is_guest and slot = 1
+                   and not revisit and not reacted and day = v_day and ended_at is null and sec is null) then
+    raise exception 'FAIL: village_views 행이 다르다'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  r := public.neighbor_view_end(vid, 10, true);
+  if r->>'reason' is distinct from 'not_found' then raise exception 'FAIL: 남이 view_end: %', r; end if;
+  if exists (select 1 from public.village_views where id = vid and ended_at is not null) then raise exception 'FAIL: 남이 닫았다'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  r := public.neighbor_view_end(vid, 99999, true);
+  if not (r->>'ok')::boolean then raise exception 'FAIL view_end: %', r; end if;
+  if not exists (select 1 from public.village_views where id = vid and sec = 3600 and reacted and ended_at is not null) then
+    raise exception 'FAIL: view_end sec 상한·reacted'; end if;
+  r := public.neighbor_view_end(vid, 5, false);
+  if r->>'reason' is distinct from 'dup' then raise exception 'FAIL: 두 번 닫기: %', r; end if;
+  if not exists (select 1 from public.village_views where id = vid and sec = 3600 and reacted) then raise exception 'FAIL: 두 번째 end 가 덮어썼다'; end if;
+  -- 칸 범위 밖은 null · 음수 sec 은 0 · revisit 저장
+  r := public.neighbor_view_start(public._nb_public_id(g), 7, true);
+  vid2 := (r->>'view_id')::bigint;
+  r := public.neighbor_view_end(vid2, -20, false);
+  if not exists (select 1 from public.village_views where id = vid2 and slot is null and revisit and sec = 0 and not reacted) then
+    raise exception 'FAIL: slot 범위·sec 하한·revisit'; end if;
+
+  -- 거절: 본인 · 비공개(c, 끈 b) · 관리자 숨김(hid) · 없는 id · 익명 집(d)
+  if public.neighbor_view_start(public._nb_public_id(a), 0, false)->>'reason' is distinct from 'self' then raise exception 'FAIL view self'; end if;
+  if public.neighbor_view_start(public._nb_public_id(c), 0, false)->>'reason' is distinct from 'private' then raise exception 'FAIL view private c'; end if;
+  if public.neighbor_view_start(public._nb_public_id(b), 0, false)->>'reason' is distinct from 'private' then raise exception 'FAIL view private b'; end if;
+  if public.neighbor_view_start(public._nb_public_id(hid), 0, false)->>'reason' is distinct from 'private' then raise exception 'FAIL view hidden'; end if;
+  if public.neighbor_view_start(gen_random_uuid(), 0, false)->>'reason' is distinct from 'not_found' then raise exception 'FAIL view not_found'; end if;
+  if public.neighbor_view_start(public._nb_public_id(d), 0, false)->>'reason' is distinct from 'not_found' then raise exception 'FAIL view anon host'; end if;
+
+  -- 하루 30행 상한(거절된 호출은 행을 안 만든다)
+  select count(*) into n from public.village_views where visitor = a and day = v_day;
+  if n <> 2 then raise exception 'FAIL: 거절된 view_start 가 행을 만들었다: %', n; end if;
+  for vk in 1..(30 - n) loop
+    r := public.neighbor_view_start(public._nb_public_id(f), 0, false);
+    if not (r->>'ok')::boolean then raise exception 'FAIL view % 번째: %', n + vk, r; end if;
+  end loop;
+  r := public.neighbor_view_start(public._nb_public_id(f), 0, false);
+  if r->>'reason' is distinct from 'limit' then raise exception 'FAIL view limit: %', r; end if;
+  select count(*) into n from public.village_views where visitor = a and day = v_day;
+  if n <> 30 then raise exception 'FAIL: 상한 뒤 행 수 %', n; end if;
+
+  -- 🔐 게스트(익명)도 남고 is_guest 로 구분된다
+  perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated', 'is_anonymous', true)::text, true);
+  r := public.neighbor_view_start(public._nb_public_id(f), 0, false);
+  if not coalesce((r->>'ok')::boolean, false) then raise exception 'FAIL guest view_start: %', r; end if;
+  if not exists (select 1 from public.village_views where id = (r->>'view_id')::bigint and visitor = d and is_guest) then
+    raise exception 'FAIL: 게스트 방문이 is_guest 가 아니다'; end if;
+
+  -- anon 역할은 실행 권한 없음 · authenticated 도 테이블 직접 접근 불가
+  execute 'set local role anon';
+  begin
+    r := public.neighbor_view_start(gen_random_uuid(), 0, false);
+    raise exception 'FAIL: anon 이 neighbor_view_start 를 실행했다';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    r := public.admin_moderation_log(30);
+    raise exception 'FAIL: anon 이 admin_moderation_log 를 실행했다';
+  exception when insufficient_privilege then null;
+  end;
+  execute 'reset role';
+  execute 'set local role authenticated';
+  begin
+    perform 1 from public.village_views limit 1;
+    raise exception 'FAIL: authenticated 가 village_views 를 직접 읽었다';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform 1 from public.moderation_log limit 1;
+    raise exception 'FAIL: authenticated 가 moderation_log 를 직접 읽었다';
+  exception when insufficient_privilege then null;
+  end;
+  execute 'reset role';
+  raise notice 'ledger checks pass';
+
   -- ── 정리: 가짜 계정(→ game_saves·village_* cascade) + 이 테스트가 만든 프로필 행(기능 출시 전이라 실사용자 행은 없다) ──
   perform set_config('request.jwt.claims', '', true);
+  delete from public.moderation_log where target = any(ids);   -- target 은 set null 이라 계정보다 먼저(village_views 는 cascade)
   delete from auth.users where id = any(ids);
   delete from public.village_profiles where updated_at >= now();   -- now() = 이 트랜잭션 시작 시각(t0 는 그보다 늦어 남는 행이 생겼다)
   raise notice 'NEIGHBORS SELFTEST ALL PASS';

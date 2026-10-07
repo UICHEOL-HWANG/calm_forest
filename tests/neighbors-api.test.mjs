@@ -46,9 +46,9 @@ test('showcase: 잘못된 id 는 fetch 하지 않는다 · 404/502/예외/정상
   assert.deepEqual(await mk({ fetchFn: async () => { throw new Error('x'); } }).api.showcase(ID), { ok: false, reason: 'offline', code: 0 });
 });
 
-test('supabase-client 에 neighborRpc 가 있고 허용 RPC 4개만 부른다', () => {
+test('supabase-client 에 neighborRpc 가 있고 허용 RPC 6개만 부른다(원장 2종 포함)', () => {
   const s = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
-  assert.match(s, /const NEIGHBOR_RPCS = new Set\(\['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public'\]\);/);
+  assert.match(s, /const NEIGHBOR_RPCS = new Set\(\['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end'\]\);/);
   assert.match(s, /export async function neighborRpc\(fn, args = \{\}\)/);
   const net = readFileSync(new URL('../js/neighbors/net.js', import.meta.url), 'utf8');
   assert.match(net, /createNeighborApi\(\{ rpc: neighborRpc, fetchFn: \(u\) => fetch\(u\), base: CONFIG\.API_BASE \}\)/);

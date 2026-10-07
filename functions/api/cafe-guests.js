@@ -65,7 +65,6 @@ const WEATHER_EN = { clear: 'sunny', rain: 'rainy', snow: 'snowy', fog: 'foggy' 
 const SLOT_KO = { morning: '아침', noon: '한낮', evening: '저녁' };
 const SLOT_EN = { morning: 'morning', noon: 'midday', evening: 'evening' };
 
-const MAX_COUNT = 6;
 const LINE_MAX = 48;      // 주문판·근접 프롬프트 한 줄에 들어가는 길이(하드 캡 — 넘으면 …로 잘림)
 const THANKS_MAX = 28;
 const LINE_ASK = 42;      // 모델에겐 조금 낮게 일러 둔다 — 살짝 넘겨도 …로 잘리지 않게
@@ -236,7 +235,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const date = clampDate(url.searchParams.get('date') || '');   // 🔒 어제·오늘·내일만
   // 🌦️ 날씨는 날짜로 계산(_game-day.js) — 게임과 같은 해시라 값이 같고 조합 축이 하나 빠진다
   const weather = weatherForDate(date);
-  const count = Math.min(MAX_COUNT, Math.max(1, parseInt(url.searchParams.get('count') || '4', 10) || 4));
+  // 🔒 상한 = 크론 적재 인원 — 그보다 크면 적재본이 늘 모자라 요청마다 Gemini 를 부른다(무인증 쿼터 소진, 2026-10-07)
+  const count = Math.min(PREGEN_COUNT, Math.max(1, parseInt(url.searchParams.get('count') || '4', 10) || 4));
   const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'ko';   // 화이트리스트(그 외 값은 ko)
   const rawPhase = url.searchParams.get('phase') || '';
   const phase = PHASES[rawPhase] ? rawPhase : 'settled';             // 화이트리스트(그 외 값은 settled)

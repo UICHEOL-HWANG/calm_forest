@@ -597,7 +597,7 @@ export function plazaMine(season) { return plazaCall('plaza_mine', { p_season: s
 
 // ── 🏡 이웃 마을 RPC — 판정은 전부 서버(migrate_neighbors.sql). 여기선 호출만 ──
 //    오프라인·에러는 { ok:false, reason } 로 통일 → 호출부(js/neighbors/api.js)가 토스트·트래킹을 맡는다(조용히 삼키지 않는다)
-const NEIGHBOR_RPCS = new Set(['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public']);
+const NEIGHBOR_RPCS = new Set(['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end']);
 export async function neighborRpc(fn, args = {}) {
   if (!NEIGHBOR_RPCS.has(fn)) return { ok: false, reason: 'bad_fn' };
   if (!state.online || !supabase) return { ok: false, reason: 'offline' };

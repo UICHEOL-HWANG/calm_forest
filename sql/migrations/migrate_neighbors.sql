@@ -1,6 +1,8 @@
 -- =============================================================
 --  🏡 이웃 마을 구경하기 1단계 — 공개 프로필·방문 원장·RPC 5종 + 🛡️ 모더레이션(닉네임 필터·관리자 숨기기 RPC 2종)
 --  ▶ 최종 상태 — 새로 깔 땐 이 파일 하나. 기존 DB 는 migrate_neighbors_sim_split.sql → migrate_neighbors_moderation.sql 순서로 올린다.
+--  ▶ 📒 그다음 항상 migrate_neighbors_ledger.sql(방문 원장·모더레이션 감사 로그) — admin_village_moderate 를 로그 남기는 본문으로 바꾼다.
+--    ⚠️ ledger 적용 뒤 이 파일·_moderation 을 다시 돌리면 로그 없는 옛 본문으로 돌아간다 → ledger 도 다시 돌릴 것.
 --  ------------------------------------------------------------
 --  ▶ 두 테이블 모두 RLS on · 정책 없음 = 직접 접근 금지. 읽기·쓰기는 전부 아래 SECURITY DEFINER RPC 로만.
 --  ▶ 밖으로 나가는 식별자는 village_profiles.public_id(무작위 uuid) 하나뿐. user_id 는 어떤 응답에도 없다.
