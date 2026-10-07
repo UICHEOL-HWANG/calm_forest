@@ -219,19 +219,30 @@ function raccoonBuild(T, P, o) {
   //    7각이면 "넓은 뺨 → 좁은 주둥이" 사다리꼴은 남기면서 둥근 몸통과 한 몸으로 읽힌다.
   const head = new T.CylinderGeometry(rf, rr, len, 7).rotateY(Math.PI / 7).rotateX(-Math.PI / 2);
   head.scale(o.wide, o.tall, 1);
-  P([head.translate(0, HY, 0)], RACC_COL.body);
+  P([head.translate(0, HY, HZ)], RACC_COL.body);   // ⚠️ z=0 이면 가면·눈·주둥이(HZ 기준)가 머리 앞으로 떠 나온다(2026-10-07 릴스 제보)
   const halfW = z => (rf + (rr - rf) * ((z - zFront) / len)) * o.wide;
   const halfH = z => (rf + (rr - rf) * ((z - zFront) / len)) * o.tall;
 
-  // 🖤 가면 — 눈 중심에 두고 바깥 아래로 기울여 눈꼬리를 만든다
+  // 🖤 가면 — 얇은 얼룩 판을 머리 옆면 **표면**에 붙이고 바깥 아래로 기울여 눈꼬리를 만든다
+  //   ⚠️ 머리 통이 HZ 에 있으므로 부품도 통 단면(7각형, 변까지 거리 = 반지름×cos(π/7)) 위에 얹어야 한다.
+  //      안쪽(0.5 배)에 두면 통에 묻혀 늑대가 되고, 통 앞에 두면 눈알이 허공에 뜬다(2026-10-07 릴스 제보).
+  const APO = Math.cos(Math.PI / 7);
   const mz = zFront + len * o.maskT, mw = halfW(mz), mh = halfH(mz);
-  const mEyeX = mw * 0.52, mEyeY = HY + mh * 0.16;
-  for (const sgn of [-1, 1]) P([B(T, mw * o.maskW, mh * o.maskH, len * 0.26, sgn * mEyeX, mEyeY, mz, sgn * -0.34)], RACC_COL.mask, false);
-  // 눈 — 가면보다 앞에 박아 반짝임이 검은 바탕 위에 뜨게 한다
-  const eyeR = HEAD_R * 0.085, eyeZ = mz - len * 0.17, eyeY = mEyeY + mh * 0.06;
-  P([SP(T, eyeR, -mEyeX, eyeY, eyeZ, 1, 1, .55), SP(T, eyeR, mEyeX, eyeY, eyeZ, 1, 1, .55)], EYE_DARK, false);
-  P([SP(T, eyeR * .48, -mEyeX + eyeR * .34, eyeY + eyeR * .36, eyeZ - eyeR * .5, 1, 1, .55),
-     SP(T, eyeR * .48,  mEyeX + eyeR * .34, eyeY + eyeR * .36, eyeZ - eyeR * .5, 1, 1, .55)], EYE_WHITE, false);
+  const mEyeX = mw * APO, mEyeY = HY + mh * 0.16;
+  // 눈꼬리 — 크게 바깥 아래로 기울인 타원체 가면 + 눈에 흰 테(2026-10-07 시안 3종 중 C 확정).
+  //   판자(Box)는 모서리가 삐져나오고, 눈이 검은 가면에 묻히지 않게 흰 테가 필요하다.
+  const mR = mh * o.maskH * 0.62;
+  const fz = zFront + len * 0.20, fw = halfW(fz);
+  for (const sgn of [-1, 1]) {
+    const q = new T.SphereGeometry(mR * 1.15, 14, 12); q.scale(0.40, 0.78, 1.15); q.rotateZ(sgn * -0.50);
+    P([q.translate(sgn * fw * APO * 0.98, mEyeY - mh * 0.06, fz)], RACC_COL.mask, false);
+  }
+  const eyeR = HEAD_R * 0.095, eyeZ = fz - len * 0.12, eyeY = mEyeY + mh * 0.05;
+  const eyeX = halfW(eyeZ) * APO * 1.02;
+  P([SP(T, eyeR * 1.45, -eyeX + 0.004, eyeY, eyeZ + 0.004, 0.55, 1, 1), SP(T, eyeR * 1.45, eyeX - 0.004, eyeY, eyeZ + 0.004, 0.55, 1, 1)], RACC_COL.pale, false);
+  P([SP(T, eyeR, -eyeX, eyeY, eyeZ), SP(T, eyeR, eyeX, eyeY, eyeZ)], EYE_DARK, false);
+  P([SP(T, eyeR * .45, -eyeX - eyeR * .35, eyeY + eyeR * .36, eyeZ - eyeR * .45),
+     SP(T, eyeR * .45,  eyeX + eyeR * .35, eyeY + eyeR * .36, eyeZ - eyeR * .45)], EYE_WHITE, false);
   // 콧대 — 두 가면 사이 밝은 세로줄. 이게 있어야 검은 뭉치가 "가면"으로 읽힌다
   P([B(T, mw * 0.30, mh * 1.05, len * 0.22, 0, HY + mh * 0.10, mz - len * 0.02)], RACC_COL.pale);
 

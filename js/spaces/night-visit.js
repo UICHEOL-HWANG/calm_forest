@@ -17,6 +17,7 @@ import { makeRaidScar } from '../duel/raid-art.js';
 import { truceUntil } from '../duel/truce.js';
 import { ADV_CROPS } from '../farm-crops.js';
 import { t } from '../i18n.js';
+import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
 
@@ -43,20 +44,41 @@ export const NIGHT_ANIMAL = {
 
 export const traceObjs = [];
 
-// 흔적 위 '🐾 조사' 말풍선(공유 텍스처) — 밭의 '물 줘요!' 와 같은 문법
-export let _traceMat = null;
+// 흔적 위 🐾 말풍선 — 글자 없이 이모지 하나(사용자 결정 2026-10-07, 🔍 방문객 말풍선과 같은 문법).
+//   바탕은 베이지 + 안개·톤매핑 끔 + sRGB — 작은 말풍선이 하얗게 날아가는 걸 막는다(visitors.js 실측).
+//   텍스처는 공유하고 재질은 흔적마다 복제한다 — 흔들기(rotation)·페이드가 재질 값을 직접 쓰므로 공유하면 흔적끼리 같이 움직인다.
+export let _traceTex = null;
 
-export function traceMaterial() {
-  if (_traceMat) return _traceMat;
-  const cv = document.createElement('canvas'); cv.width = 200; cv.height = 104;
+function traceTexture() {
+  if (_traceTex) return _traceTex;
+  const cv = document.createElement('canvas'); cv.width = 104; cv.height = 104;
   const c = cv.getContext('2d');
-  c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 184, 64, 18); c.fill();
-  c.beginPath(); c.moveTo(90, 72); c.lineTo(110, 72); c.lineTo(96, 94); c.closePath(); c.fill();
-  c.fillStyle = '#5a4126'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(t('🐾 조사!'), 100, 40);
-  const tex = new THREE.CanvasTexture(cv);
-  _traceMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  return _traceMat;
+  c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 88, 64, 18); c.fill();
+  c.beginPath(); c.moveTo(42, 72); c.lineTo(62, 72); c.lineTo(48, 94); c.closePath(); c.fill();
+  c.font = '50px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('🐾', 52, 41);
+  _traceTex = new THREE.CanvasTexture(cv);
+  _traceTex.colorSpace = THREE.SRGBColorSpace;
+  return _traceTex;
+}
+
+const BUBBLE_Y = 1.35, BUBBLE_W = 0.85, BUBBLE_H = 0.85;
+const ALERT_R = 3.6;       // 이 안에 들면 말풍선이 커지고 튄다(조사 가능 반경 1.7 보다 넓게 — 다가가는 동안 눈에 띄게)
+
+export function traceBubble() {
+  const bubble = onTop(new THREE.Sprite(new THREE.SpriteMaterial({ map: traceTexture(), transparent: true, depthWrite: false, fog: false, toneMapped: false })));
+  bubble.scale.set(BUBBLE_W, BUBBLE_H, 1); bubble.position.set(0, BUBBLE_Y, 0);
+  return { bubble, ring: makeRing(BUBBLE_Y) };
+}
+
+/** 매 프레임 — 흔적 말풍선이 통통 튀고, 가까이 가면 커지며 흔들리고 고리가 퍼진다. */
+export function updateTraceBubbles(dt, time, playerPos) {
+  for (const tr of traceObjs) {
+    const { bubble, ring } = tr.mesh.userData;
+    if (!bubble) continue;
+    const dist = playerPos ? Math.hypot(tr.mesh.position.x - playerPos.x, tr.mesh.position.z - playerPos.z) : 99;
+    animateBubble({ bubble, ring, base: { w: BUBBLE_W, h: BUBBLE_H, y: BUBBLE_Y }, dist, alertR: ALERT_R, time, dt });
+  }
 }
 
 // 파헤쳐진 흙 + 도망간 방향 발자국 — "눈으로 봐야 사건으로 느껴진다"
@@ -66,9 +88,9 @@ export function traceMesh(animal, x = 0, z = 0) {
   //   달아난 방향은 좌표 시드로 정한다 — 같은 흔적은 새로고침해도 같은 모양.
   const seed = x * 31 + z * 17, a = ((seed * 0.6180339) % 1) * Math.PI * 2;
   const g = makeRaidScar(THREE, { animal, seed, away: [Math.cos(a), Math.sin(a)] });
-  const bubble = new THREE.Sprite(traceMaterial());
-  bubble.scale.set(1.28, 0.7, 1); bubble.position.set(0, 1.35, 0);
-  g.add(bubble);
+  const { bubble, ring } = traceBubble();
+  g.add(ring, bubble);
+  g.userData.bubble = bubble; g.userData.ring = ring;
   return g;
 }
 

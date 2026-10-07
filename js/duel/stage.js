@@ -122,7 +122,8 @@ export function enterDuelStage(stage, { animal, x, z }) {
   const handle = { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, throws: [],
            mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null,
            bowlMid: { x: midX + dirX * 0.5, z: midZ + dirZ * 0.5 } };
-  handle.feet = { meshes: stage.crops || [], points: [player.position.clone(), animalMesh.position.clone()] };
+  handle.feet = { meshes: stage.crops || [], base: [player.position.clone(), animalMesh.position.clone()] };
+  handle.feet.points = handle.feet.base;
   handle.clearedCrops = clearFeet(THREE, handle.feet.meshes, handle.feet.points);
   startMotion(handle, { dirX, dirZ });
   return handle;
@@ -478,6 +479,17 @@ function tween(ms, fn) {
   });
 }
 
+// 🥣 그릇 자리의 작물 비우기 — 그릇 줄이 밭 흙 위에 놓이면 작물 잎이 그릇을 뚫고 나온다(릴스 제보 2026-10-07).
+//   발밑 비우기와 같은 방식(인스턴스 크기 0)이고, 섞기 중 그릇은 세 자리 사이만 오가므로 세 자리만 비우면 된다.
+const BOWL_CLEAR_R = BOWL_R + 0.3;
+function clearBowlCrops(handle, slots) {
+  const feet = handle?.feet;
+  if (!feet?.meshes.length) return;
+  restoreFeet(handle);                                  // 0 으로 둔 칸을 먼저 되돌려야 새로 비울 때 원본 행렬을 저장한다
+  feet.points = [...feet.base, ...slots];
+  handle.clearedCrops = clearFeet(handle.THREE, feet.meshes, feet.points);
+}
+
 /** 그릇 3개를 무대에 놓고 작물을 하나에 넣는다. slotPos[i] = i 번 그릇이 지금 서 있는 자리 */
 export function showBowls(handle, cropIco, startPos) {
   if (!handle) return;
@@ -498,6 +510,7 @@ export function showBowls(handle, cropIco, startPos) {
     bowls.push(b);
   }
   handle.bowls = { group, meshes: bowls, axis: { x: ax, z: az }, slotPos: [0, 1, 2], startPos, crop: null, cropBowl: null };
+  clearBowlCrops(handle, bowls.map(b => ({ x: b.position.x, z: b.position.z, r: BOWL_CLEAR_R })));
   return handle.bowls;
 }
 
