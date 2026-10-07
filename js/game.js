@@ -1825,7 +1825,7 @@ export const Input = {
     if (m) startEmote(m[0], m[1]);
     if (e === '❤️' || e === '🎵') Sound.harvest(); else Sound.blip();
   },
-  selectDecor(id) { startDecorPlacing(id); },     // 가구 선택 → 손에 들고 + 바닥 고스트 미리보기
+  selectDecor(id) { if (pickedDecor) stopDecorPlacing(true); startDecorPlacing(id); },     // 가구 선택 → 손에 들고 + 바닥 고스트 미리보기
   cancelDecor() { stopDecorPlacing(true); },      // 들어 올린 가구였다면 제자리로
   rotateDecor() { decorRot = (decorRot + 1) % 4; if (placingDecor) setHeldDecor(placingDecor); updateDecorGhost(); return decorRot; }, // 가로/세로 회전(고스트도 같이)
   getDecorRot() { return decorRot; },
