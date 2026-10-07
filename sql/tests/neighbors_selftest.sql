@@ -1,10 +1,10 @@
 -- =============================================================
 --  🏡 이웃 마을 RPC 자가 테스트 — **DO 블록 하나**
 --  (SQL Editor 는 문장마다 따로 커밋한다 → 여러 문장·temp table 로 나누면 안 된다. 2026-10-07 nb_t 사고)
---  사용법: migrate_neighbors.sql 적용 뒤 SQL Editor 에 통째로 붙여 실행.
+--  사용법: migrate_neighbors.sql(+ _sim_split · _moderation) 적용 뒤 SQL Editor 에 통째로 붙여 실행.
 --          통과: NOTICE 'NEIGHBORS SELFTEST ALL PASS'
 --          실패: EXCEPTION 으로 멈추고 블록 전체가 자동 롤백(아무것도 안 남는다).
---  ⚠️ 가짜 계정(nb-selftest-*@example.invalid · nb-selftest-sim@sim.calmforest.local)을 만들고, 통과하면 맨 끝에서 스스로 지운다(game_saves·village_* 는 cascade).
+--  ⚠️ 가짜 계정(nb-selftest-*@example.invalid · nb-selftest-*@sim.calmforest.local)을 만들고, 통과하면 맨 끝에서 스스로 지운다(game_saves·village_* 는 cascade).
 --     끝나고 확인: select count(*) from auth.users where email like 'nb-selftest-%';   -- 0
 -- =============================================================
 do $$
@@ -14,6 +14,8 @@ declare
   d uuid := gen_random_uuid(); e uuid := gen_random_uuid(); f uuid := gen_random_uuid();
   g uuid := gen_random_uuid(); h uuid := gen_random_uuid(); i uuid := gen_random_uuid();
   j uuid := gen_random_uuid();   -- 🧑‍🤝‍🧑 페르소나(@sim.calmforest.local) 가짜
+  -- 🛡️ 모더레이션 가짜: bad 금칙어 닉네임(페르소나) · hid 관리자 숨김 · nh 닉네임 가림 · simcaller bad 를 상위 3명에 두는 페르소나 호출자
+  bad uuid := gen_random_uuid(); hid uuid := gen_random_uuid(); nh uuid := gen_random_uuid(); simcaller uuid; tries int;
   ids uuid[]; ks text[] := array['a','b','c','d','e','f','g','h','i'];
   x uuid; pid uuid; r jsonb; t jsonb; sc jsonb; t1 jsonb; t2 jsonb; n int; vday date; keys text[];
   v_day date := (now() at time zone 'Asia/Seoul')::date;
@@ -184,6 +186,127 @@ begin
   end;
   execute 'reset role';
   if not blocked then raise exception 'FAIL: village_visits 직접 insert 가 통과했다'; end if;
+
+  -- ── ⑥ 🛡️ 모더레이션: 금칙어 닉네임 가림 · 관리자 숨김 · 닉네임 가림 · 관리자 RPC 가드 ──
+  perform set_config('request.jwt.claims', '', true);
+  if public._nb_nick(jsonb_build_object('nickname', '시 발'), null) <> '이름 없는 여행자'
+     or public._nb_nick(jsonb_build_object('nickname', 'F.U.C.K'), null) <> '이름 없는 여행자'
+     or public._nb_nick(jsonb_build_object('nickname', 'ㅅㅂ'), null) <> '이름 없는 여행자'
+     or public._nb_nick(jsonb_build_object('nickname', 'fuuuuck'), null) <> '이름 없는 여행자'
+     or public._nb_nick(jsonb_build_object('nickname', '   '), null) <> '이름 없는 여행자'
+     or public._nb_nick('{}'::jsonb, null) <> '이름 없는 여행자' then
+    raise exception 'FAIL _nb_nick: 금칙어·빈 닉네임이 그대로 나간다'; end if;
+  if public._nb_nick(jsonb_build_object('nickname', '  조용한 곰 #1234  '), null) <> '조용한 곰 #1234'
+     or public._nb_nick(jsonb_build_object('nickname', 'Shiitake Bear'), null) <> 'Shiitake Bear'
+     or public._nb_nick(jsonb_build_object('nickname', '시바견 키우는 고양이 집사랍니다'), null) <> left('시바견 키우는 고양이 집사랍니다', 16) then
+    raise exception 'FAIL _nb_nick: 평범한 닉네임이 가려졌다'; end if;
+
+  insert into auth.users (id, aud, role, email, is_anonymous, created_at, updated_at) values
+    (bad, 'authenticated', 'authenticated', 'nb-selftest-bad@sim.calmforest.local', false, now(), now()),
+    (hid, 'authenticated', 'authenticated', 'nb-selftest-hid@example.invalid', false, now(), now()),
+    (nh,  'authenticated', 'authenticated', 'nb-selftest-nh@example.invalid', false, now(), now());
+  insert into public.game_saves (user_id, state, updated_at) values
+    (bad, jsonb_build_object('nickname', '씨.발 selftest-bad', 'character', 'cat', 'houseStage', 3), now()),
+    (hid, jsonb_build_object('nickname', 'selftest-hid', 'character', 'cat', 'houseStage', 3), now()),
+    (nh,  jsonb_build_object('nickname', 'selftest-nh', 'character', 'cat', 'houseStage', 3), now());
+  ids := ids || array[bad, hid, nh];
+  insert into public.village_profiles (user_id, hidden_by_admin) values (hid, true);
+  insert into public.village_profiles (user_id, nick_hidden) values (nh, true);
+
+  -- 관리자 숨김은 후보·구경에서 빠지고, 닉네임만 가린 계정은 후보에 남되 이름이 가려진다
+  select array_agg(uid) into full_list from public._nb_candidates(a, v_day, 100000);
+  if hid = any(full_list) then raise exception 'FAIL: 관리자 숨김(hid)이 후보에 있다'; end if;
+  if not (nh = any(full_list)) then raise exception 'FAIL: 닉네임만 가린(nh)은 후보에 있어야 한다'; end if;
+  if public.neighbor_showcase(public._nb_public_id(hid)) is not null then raise exception 'FAIL: 관리자 숨김 showcase 가 null 이 아니다'; end if;
+  sc := public.neighbor_showcase(public._nb_public_id(nh));
+  if sc->>'nickname' <> '이름 없는 여행자' then raise exception 'FAIL: nick_hidden showcase: %', sc->>'nickname'; end if;
+  sc := public.neighbor_showcase(public._nb_public_id(bad));
+  if sc->>'nickname' <> '이름 없는 여행자' then raise exception 'FAIL: 금칙어 showcase: %', sc->>'nickname'; end if;
+  if public.neighbor_showcase(public._nb_public_id(f))->>'nickname' <> 'selftest-f' then raise exception 'FAIL: 평범한 닉네임 showcase 가 가려졌다'; end if;
+
+  -- 다녀간 이웃: f 에게 a(앞서 wave)·bad·nh 가 다녀간다 → bad·nh 는 가려진다
+  perform set_config('request.jwt.claims', json_build_object('sub', bad, 'role', 'authenticated')::text, true);
+  r := public.neighbor_react(public._nb_public_id(f), 'heart');
+  if not (r->>'ok')::boolean then raise exception 'FAIL react bad: %', r; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', nh, 'role', 'authenticated')::text, true);
+  r := public.neighbor_react(public._nb_public_id(f), 'star');
+  if not (r->>'ok')::boolean then raise exception 'FAIL react nh: %', r; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
+  r := public.my_visitors(now() - interval '1 hour');
+  select count(*) into n from jsonb_array_elements(r->'list') e where e->>'nick' = '이름 없는 여행자';
+  if (r->>'total')::int <> 3 or n <> 2 or strpos(r::text, 'selftest-bad') > 0 or strpos(r::text, 'selftest-nh') > 0
+     or not exists (select 1 from jsonb_array_elements(r->'list') e where e->>'nick' = 'selftest-a') then
+    raise exception 'FAIL visitors 가림: %', r; end if;
+
+  -- 오늘의 이웃: bad 를 상위 3명에 두는 페르소나 호출자를 골라(md5 정렬은 결정적) today 응답에서 가려졌는지 본다
+  select array_agg(uid) into full_list from public._nb_candidates(j, v_day, 100000);   -- j 를 뺀 페르소나 전원
+  full_list := full_list || j;
+  if not (bad = any(full_list)) then raise exception 'FAIL: bad 가 페르소나 후보에 없다'; end if;
+  for tries in 1..20000 loop
+    x := gen_random_uuid();
+    select array_agg(u order by md5(x::text || v_day::text || u::text)) into sorted from unnest(full_list) u;
+    if bad = any(sorted[1:3]) then simcaller := x; exit; end if;
+  end loop;
+  if simcaller is null then raise exception 'FAIL: bad 를 상위 3명에 둔 호출자를 못 찾았다'; end if;
+  insert into auth.users (id, aud, role, email, is_anonymous, created_at, updated_at)
+  values (simcaller, 'authenticated', 'authenticated', 'nb-selftest-simcaller@sim.calmforest.local', false, now(), now());
+  ids := ids || simcaller;
+  select array_agg(uid order by k) into top3 from public._nb_candidates(simcaller, v_day, 3);
+  if not (bad = any(top3)) then raise exception 'FAIL: 예측한 상위 3명과 다르다: %', top3; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', simcaller, 'role', 'authenticated')::text, true);
+  t := public.neighbors_today();
+  pid := public._nb_public_id(bad);
+  if not exists (select 1 from jsonb_array_elements(t->'list') e where e->>'public_id' = pid::text and e->>'nick' = '이름 없는 여행자')
+     or strpos(t::text, 'selftest-bad') > 0 then
+    raise exception 'FAIL: today 가 금칙어 닉네임을 가리지 않았다: %', t; end if;
+
+  -- 관리자 RPC: 관리자 아닌 로그인 유저 → forbidden, 플래그 그대로 · anon 은 실행 권한 없음
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated', 'email', 'nb-selftest-a@example.invalid')::text, true);
+  r := public.admin_village_find('selftest');
+  if r->>'reason' is distinct from 'forbidden' then raise exception 'FAIL: 비관리자 admin_village_find: %', r; end if;
+  r := public.admin_village_moderate(public._nb_public_id(nh), true, false);
+  if r->>'reason' is distinct from 'forbidden' then raise exception 'FAIL: 비관리자 admin_village_moderate: %', r; end if;
+  if (select hidden_by_admin or not nick_hidden from public.village_profiles where user_id = nh) then
+    raise exception 'FAIL: 비관리자 호출이 플래그를 바꿨다'; end if;
+  execute 'set local role anon';
+  begin
+    r := public.admin_village_find('selftest');
+    raise exception 'FAIL: anon 이 admin_village_find 를 실행했다';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    r := public.admin_village_moderate(gen_random_uuid(), true, true);
+    raise exception 'FAIL: anon 이 admin_village_moderate 를 실행했다';
+  exception when insufficient_privilege then null;
+  end;
+  execute 'reset role';
+
+  -- 관리자(명단의 클레임을 흉내) → 찾기·숨김 해제·닉네임 가림·다시 숨김. 가짜 계정(hid)만 건드린다
+  perform set_config('request.jwt.claims', json_build_object('sub', '17bb08c7-c4bc-4870-b464-1b131e67aff8', 'role', 'authenticated', 'email', 'icuchoel@gmail.com')::text, true);
+  if not public.cf_is_admin() then raise exception 'FAIL: 관리자 클레임인데 cf_is_admin 이 false — 관리자 명단이 바뀌었으면 이 줄도 고칠 것'; end if;
+  r := public.admin_village_find('selftest-hid');
+  if not (r->>'ok')::boolean or jsonb_array_length(r->'list') <> 1 or r->'list'->0->>'nick' <> 'selftest-hid'
+     or not (r->'list'->0->>'hidden_by_admin')::boolean or (r->'list'->0->>'house_stage')::int <> 3 then
+    raise exception 'FAIL admin find: %', r; end if;
+  if strpos(r::text, hid::text) > 0 or strpos(r::text, 'example.invalid') > 0 then raise exception 'FAIL: admin find 에 user_id/이메일: %', r; end if;
+  r := public.admin_village_find('selftest_hid');   -- '_' 는 와일드카드가 아니라 글자 그대로
+  if jsonb_array_length(r->'list') <> 0 then raise exception 'FAIL: ilike 이스케이프: %', r; end if;
+  r := public.admin_village_find('  ');
+  if r->>'reason' is distinct from 'query' then raise exception 'FAIL: 빈 검색어: %', r; end if;
+  pid := public._nb_public_id(hid);
+  r := public.admin_village_moderate(pid, false, null);
+  if not (r->>'ok')::boolean or (r->>'hidden_by_admin')::boolean or (r->>'nick_hidden')::boolean then raise exception 'FAIL moderate unhide: %', r; end if;
+  select array_agg(uid) into full_list from public._nb_candidates(a, v_day, 100000);
+  if not (hid = any(full_list)) or public.neighbor_showcase(pid) is null then raise exception 'FAIL: 숨김 해제 뒤에도 안 보인다'; end if;
+  r := public.admin_village_moderate(pid, null, true);
+  if public.neighbor_showcase(pid)->>'nickname' <> '이름 없는 여행자' then raise exception 'FAIL: 닉네임 가림이 안 먹었다'; end if;
+  r := public.admin_village_moderate(pid, true, null);
+  select array_agg(uid) into full_list from public._nb_candidates(a, v_day, 100000);
+  if hid = any(full_list) or public.neighbor_showcase(pid) is not null or not (r->>'nick_hidden')::boolean then
+    raise exception 'FAIL: 다시 숨김: %', r; end if;
+  r := public.admin_village_moderate(gen_random_uuid(), true, true);
+  if r->>'reason' is distinct from 'not_found' then raise exception 'FAIL moderate not_found: %', r; end if;
+  raise notice 'moderation checks pass';
 
   -- ── 정리: 가짜 계정(→ game_saves·village_* cascade) + 이 테스트가 만든 프로필 행(기능 출시 전이라 실사용자 행은 없다) ──
   perform set_config('request.jwt.claims', '', true);
