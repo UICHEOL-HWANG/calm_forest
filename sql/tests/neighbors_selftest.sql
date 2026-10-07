@@ -1,53 +1,51 @@
 -- =============================================================
---  🏡 이웃 마을 RPC 자가 테스트 — 트랜잭션 안에서 가짜 계정을 만들고 마지막에 ROLLBACK
+--  🏡 이웃 마을 RPC 자가 테스트 — **DO 블록 하나**
+--  (SQL Editor 는 문장마다 따로 커밋한다 → 여러 문장·temp table 로 나누면 안 된다. 2026-10-07 nb_t 사고)
 --  사용법: migrate_neighbors.sql 적용 뒤 SQL Editor 에 통째로 붙여 실행.
---          마지막에 NOTICE 'NEIGHBORS SELFTEST ALL PASS' 가 보이면 통과, 실패는 EXCEPTION 으로 멈춘다.
---  ⚠️ auth.users·game_saves 에 가짜 행(nb-selftest-*@example.invalid)을 넣는다 — 맨 끝 rollback 이 지운다.
---     중간에 EXCEPTION 으로 멈춰도 커밋된 문장이 없다. 끝나고 아래로 남은 게 없는지 확인할 것:
---     select count(*) from auth.users where email like 'nb-selftest-%';   -- 0
+--          통과: NOTICE 'NEIGHBORS SELFTEST ALL PASS'
+--          실패: EXCEPTION 으로 멈추고 블록 전체가 자동 롤백(아무것도 안 남는다).
+--  ⚠️ 가짜 계정(nb-selftest-*@example.invalid)을 만들고, 통과하면 맨 끝에서 스스로 지운다(game_saves·village_* 는 cascade).
+--     끝나고 확인: select count(*) from auth.users where email like 'nb-selftest-%';   -- 0
 -- =============================================================
-begin;
-
--- a 방문자 · b,f,g,h 공개 이웃 · c 비공개 · d 익명 · e 7일 넘게 안 들어옴 · i 집 0단계
-create temp table nb_t (k text primary key, id uuid not null default gen_random_uuid()) on commit drop;
-insert into nb_t (k) values ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i');
-
-insert into auth.users (id, aud, role, email, is_anonymous, created_at, updated_at)
-select id, 'authenticated', 'authenticated', 'nb-selftest-' || k || '@example.invalid', k = 'd', now(), now() from nb_t;
-
-insert into public.game_saves (user_id, state, updated_at)
-select id,
-  jsonb_build_object(
-    'nickname', 'selftest-' || k, 'character', 'rabbit', 'houseStage', case when k = 'i' then 0 else 3 end,
-    'inventory', jsonb_build_object('coins', 999), 'cashOwned', jsonb_build_array('secret_pack'),
-    'cosmetics', jsonb_build_object('owned', jsonb_build_array('beanie'),
-                                    'equipped', jsonb_build_object('head', 'beanie', 'neck', null, 'back', null, 'trail', null, 'skin', null)),
-    'pet', jsonb_build_object('kind', 'leaf', 'name', 'SECRET_PET_NAME', 'works', 50, 'restUntil', 0),
-    'houseStyle', jsonb_build_object('roof', 1, 'wall', 2, 'door', 0),
-    'house', jsonb_build_object('style', null, 'addons', jsonb_build_array('chimney_smoke'),
-                                'decor', jsonb_build_array(jsonb_build_object('id', 'bed', 'x', 0, 'z', 0))),
-    'outdoor', jsonb_build_array(jsonb_build_object('id', 'flowerbed', 'x', -5, 'z', -5, 'rot', 1),
-                                 jsonb_build_object('id', 'fence', 'x', 20, 'z', 20, 'rot', 0)),
-    'workers', jsonb_build_array(jsonb_build_object('id', 'w1', 'name', 'SECRET_WORKER_NAME')),
-    'coop', jsonb_build_object('built', true, 'fed', '2026-10-07')),
-  case when k = 'e' then now() - interval '10 days' else now() end
-from nb_t;
-
-insert into public.village_profiles (user_id, is_public) select id, false from nb_t where k = 'c';
-
--- ① 후보 규칙 · 날짜 고정 정렬 · today 응답에 user_id 없음
 do $$
 declare
-  a uuid; b uuid; c uuid; d uuid; e uuid; f uuid; g uuid; h uuid; i uuid; x uuid;
+  t0 timestamptz := clock_timestamp();
+  a uuid := gen_random_uuid(); b uuid := gen_random_uuid(); c uuid := gen_random_uuid();
+  d uuid := gen_random_uuid(); e uuid := gen_random_uuid(); f uuid := gen_random_uuid();
+  g uuid := gen_random_uuid(); h uuid := gen_random_uuid(); i uuid := gen_random_uuid();
+  ids uuid[]; ks text[] := array['a','b','c','d','e','f','g','h','i'];
+  x uuid; pid uuid; r jsonb; t jsonb; sc jsonb; t1 jsonb; t2 jsonb; n int; vday date; keys text[];
   v_day date := (now() at time zone 'Asia/Seoul')::date;
-  full_list uuid[]; sorted uuid[]; top3 uuid[]; t1 jsonb; t2 jsonb;
+  full_list uuid[]; sorted uuid[]; top3 uuid[]; blocked boolean := false;
 begin
-  select id into a from nb_t where k = 'a'; select id into b from nb_t where k = 'b';
-  select id into c from nb_t where k = 'c'; select id into d from nb_t where k = 'd';
-  select id into e from nb_t where k = 'e'; select id into f from nb_t where k = 'f';
-  select id into g from nb_t where k = 'g'; select id into h from nb_t where k = 'h';
-  select id into i from nb_t where k = 'i';
+  ids := array[a, b, c, d, e, f, g, h, i];
 
+  -- ── 준비: a 방문자 · b,f,g,h 공개 이웃 · c 비공개 · d 익명 · e 7일 넘게 안 들어옴 · i 집 0단계 ──
+  insert into auth.users (id, aud, role, email, is_anonymous, created_at, updated_at)
+  select ids[s], 'authenticated', 'authenticated', 'nb-selftest-' || ks[s] || '@example.invalid', ks[s] = 'd', now(), now()
+  from generate_subscripts(ids, 1) s;
+
+  insert into public.game_saves (user_id, state, updated_at)
+  select ids[s],
+    jsonb_build_object(
+      'nickname', 'selftest-' || ks[s], 'character', 'rabbit', 'houseStage', case when ks[s] = 'i' then 0 else 3 end,
+      'inventory', jsonb_build_object('coins', 999), 'cashOwned', jsonb_build_array('secret_pack'),
+      'cosmetics', jsonb_build_object('owned', jsonb_build_array('beanie'),
+                                      'equipped', jsonb_build_object('head', 'beanie', 'neck', null, 'back', null, 'trail', null, 'skin', null)),
+      'pet', jsonb_build_object('kind', 'leaf', 'name', 'SECRET_PET_NAME', 'works', 50, 'restUntil', 0),
+      'houseStyle', jsonb_build_object('roof', 1, 'wall', 2, 'door', 0),
+      'house', jsonb_build_object('style', null, 'addons', jsonb_build_array('chimney_smoke'),
+                                  'decor', jsonb_build_array(jsonb_build_object('id', 'bed', 'x', 0, 'z', 0))),
+      'outdoor', jsonb_build_array(jsonb_build_object('id', 'flowerbed', 'x', -5, 'z', -5, 'rot', 1),
+                                   jsonb_build_object('id', 'fence', 'x', 20, 'z', 20, 'rot', 0)),
+      'workers', jsonb_build_array(jsonb_build_object('id', 'w1', 'name', 'SECRET_WORKER_NAME')),
+      'coop', jsonb_build_object('built', true, 'fed', '2026-10-07')),
+    case when ks[s] = 'e' then now() - interval '10 days' else now() end
+  from generate_subscripts(ids, 1) s;
+
+  insert into public.village_profiles (user_id, is_public) values (c, false);
+
+  -- ── ① 후보 규칙 · 날짜 고정 정렬 · today 응답에 user_id 없음 ──
   select array_agg(uid order by k) into full_list from public._nb_candidates(a, v_day, 100000);
   if not (b = any(full_list) and f = any(full_list) and g = any(full_list) and h = any(full_list)) then
     raise exception 'FAIL: 공개 이웃(b,f,g,h)이 후보에 없다'; end if;
@@ -72,18 +70,12 @@ begin
     if strpos(t1::text, x::text) > 0 then raise exception 'FAIL: today 응답에 user_id(%)가 있다', x; end if;
   end loop;
   raise notice 'candidate checks pass';
-end $$;
 
--- ② showcase 허용 목록
-do $$
-declare a uuid; c uuid; d uuid; f uuid; pid uuid; sc jsonb; keys text[];
-begin
-  select id into a from nb_t where k = 'a'; select id into c from nb_t where k = 'c';
-  select id into d from nb_t where k = 'd'; select id into f from nb_t where k = 'f';
+  -- ── ② showcase 허용 목록 ──
   pid := public._nb_public_id(f);
   sc := public.neighbor_showcase(pid);
   if sc is null then raise exception 'FAIL: 공개 이웃 showcase 가 null'; end if;
-  select array_agg(t.key order by t.key collate "C") into keys from jsonb_object_keys(sc) as t(key);
+  select array_agg(k2.key order by k2.key collate "C") into keys from jsonb_object_keys(sc) as k2(key);
   if keys <> array['addons','character','coop','equipped','houseStage','houseStyle','nickname','outdoor','pet','style'] then
     raise exception 'FAIL keys: %', keys; end if;
   if strpos(sc::text, f::text) > 0 then raise exception 'FAIL: showcase 에 user_id 가 있다'; end if;
@@ -104,18 +96,9 @@ begin
   execute 'reset role';
   if sc is null then raise exception 'FAIL: anon 이 showcase 를 못 본다'; end if;
   raise notice 'showcase checks pass';
-end $$;
 
--- ③ 반응: 하루 1회 · 보상 3회 상한 · 비공개/본인/없음/이모지 · KST 날짜 · 익명 거절 · anon 실행 불가
-do $$
-declare a uuid; b uuid; c uuid; d uuid; f uuid; g uuid; h uuid; r jsonb; t jsonb; n int; vday date;
-begin
-  select id into a from nb_t where k = 'a'; select id into b from nb_t where k = 'b';
-  select id into c from nb_t where k = 'c'; select id into d from nb_t where k = 'd';
-  select id into f from nb_t where k = 'f'; select id into g from nb_t where k = 'g';
-  select id into h from nb_t where k = 'h';
+  -- ── ③ 반응: 하루 1회 · 보상 3회 상한 · 비공개/본인/없음/이모지 · KST 날짜 · 익명 거절 · anon 실행 불가 ──
   perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
-
   r := public.neighbor_react(public._nb_public_id(b), 'heart');
   if not (r->>'ok')::boolean or not (r->>'rewarded')::boolean or (r->>'rewarded_today')::int <> 1 then raise exception 'FAIL react b: %', r; end if;
   r := public.neighbor_react(public._nb_public_id(b), 'star');
@@ -160,13 +143,8 @@ begin
   end;
   execute 'reset role';
   raise notice 'react checks pass';
-end $$;
 
--- ④ 다녀간 이웃 · 공개 끄기
-do $$
-declare a uuid; b uuid; r jsonb; full_list uuid[];
-begin
-  select id into a from nb_t where k = 'a'; select id into b from nb_t where k = 'b';
+  -- ── ④ 다녀간 이웃 · 공개 끄기 ──
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
   r := public.my_visitors(now() - interval '1 hour');
   if (r->>'total')::int <> 1 or r->'list'->0->>'emoji' <> 'heart' or r->'list'->0->>'nick' <> 'selftest-a'
@@ -177,19 +155,14 @@ begin
 
   r := public.set_village_public(false);
   if not (r->>'ok')::boolean or (r->>'is_public')::boolean then raise exception 'FAIL toggle: %', r; end if;
-  select array_agg(uid) into full_list from public._nb_candidates(a, (now() at time zone 'Asia/Seoul')::date, 100000);
+  select array_agg(uid) into full_list from public._nb_candidates(a, v_day, 100000);
   if b = any(full_list) then raise exception 'FAIL: 끈 뒤에도 후보에 있다'; end if;
   if public.neighbor_showcase(public._nb_public_id(b)) is not null then raise exception 'FAIL: 끈 뒤에도 showcase'; end if;
   r := public.my_visitors(now() - interval '1 hour');
   if (r->>'is_public')::boolean then raise exception 'FAIL: is_public 이 안 바뀌었다: %', r; end if;
   raise notice 'visitors/toggle checks pass';
-end $$;
 
--- ⑤ 직접 쓰기 차단(authenticated 역할)
-do $$
-declare a uuid; b uuid; blocked boolean := false;
-begin
-  select id into a from nb_t where k = 'a'; select id into b from nb_t where k = 'b';
+  -- ── ⑤ 직접 쓰기 차단(authenticated 역할) ──
   perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
   execute 'set local role authenticated';
   begin
@@ -198,7 +171,10 @@ begin
   end;
   execute 'reset role';
   if not blocked then raise exception 'FAIL: village_visits 직접 insert 가 통과했다'; end if;
+
+  -- ── 정리: 가짜 계정(→ game_saves·village_* cascade) + 이 테스트가 만든 프로필 행(기능 출시 전이라 실사용자 행은 없다) ──
+  perform set_config('request.jwt.claims', '', true);
+  delete from auth.users where id = any(ids);
+  delete from public.village_profiles where updated_at >= now();   -- now() = 이 트랜잭션 시작 시각(t0 는 그보다 늦어 남는 행이 생겼다)
   raise notice 'NEIGHBORS SELFTEST ALL PASS';
 end $$;
-
-rollback;
