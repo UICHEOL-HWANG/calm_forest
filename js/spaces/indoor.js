@@ -32,6 +32,7 @@ import { logEcon } from '../metrics.js';
 import { saleOpen } from '../shop/sale-window.js';
 import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
+import { HALLOWEEN_INDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './halloween-art.js';
 import { unregisterWindows } from '../spaces/house.js';
 import * as THREE from 'three';
 
@@ -426,6 +427,8 @@ export function decorMesh(id) {
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.05, 10), clayMat(0x5a5148)); base.position.y = 0.025; g.add(base);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.032, 0.18, 6), clayMat(0x5a5148)); pole.position.y = 0.14; g.add(pole);
     const shade = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.19, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 0.32; g.add(shade);
+  } else if (HALLOWEEN_INDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 조형은 halloween-art.js (시안 HTML 과 같은 코드)
+    g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE)));
   } else if (id === 'nightstand') {
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.45), woodMat(1, 1)); body.position.y = 0.275; g.add(body);
     const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.18, 0.03), woodMat(1, 1, 0xd9b585)); drawer.position.set(0, 0.36, 0.235); g.add(drawer);

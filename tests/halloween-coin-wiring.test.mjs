@@ -36,3 +36,12 @@ test('placeOutdoor 는 신규 구매에서만 기간을 막고 한정 코인 구
   assert.match(body, /logEcon\('outdoor_buy', id, -def\.cost\.coins/);
   assert.match(body, /trackEvent\('outdoor_buy_coins'/);
 });
+
+test('decorMesh·outdoorMesh 가 조형 모듈로 6종을 만든다', () => {
+  assert.match(SRC, /HALLOWEEN_INDOOR_IDS\.includes\(id\)[\s\S]{0,200}buildHalloween\(THREE, id, HALLOWEEN_STYLE\[id\]/);
+  assert.match(SRC, /HALLOWEEN_OUTDOOR_IDS\.includes\(id\)[\s\S]{0,260}buildHalloween\(THREE, id, HALLOWEEN_STYLE\[id\]/);
+});
+test('유령 정원등·묘비 울타리는 막고 거미줄 아치는 걸어 통과한다', () => {
+  assert.match(SRC, /'fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence'/);
+  assert.doesNotMatch(SRC, /\['fence'[^\]]*'webarch'/);   // webarch 는 솔리드 목록에 없다
+});
