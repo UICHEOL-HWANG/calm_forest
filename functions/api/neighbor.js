@@ -27,15 +27,21 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
-  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/neighbor_showcase`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      apikey: env.SUPABASE_ANON_KEY,
-      authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify({ p_public_id: id }),
-  });
+  let r;
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/neighbor_showcase`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        apikey: env.SUPABASE_ANON_KEY,
+        authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ p_public_id: id }),
+    });
+  } catch (e) {
+    console.log(JSON.stringify({ evt: 'neighbor_rpc_throw', msg: String(e && e.message || e).slice(0, 200) }));
+    return json({ error: 'upstream' }, 502);
+  }
   if (!r.ok) {
     console.log(JSON.stringify({ evt: 'neighbor_rpc_fail', status: r.status, body: (await r.text()).slice(0, 200) }));
     return json({ error: 'upstream' }, 502);

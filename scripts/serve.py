@@ -806,15 +806,20 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         import urllib.parse as _up
         q = _up.parse_qs(_up.urlparse(self.path).query)
         pid = (q.get('id') or [''])[0].lower()
-        if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', pid):
+        if not re.fullmatch(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', pid):
             payload = json.dumps({'error': 'bad id'}).encode(); code = 400
         else:
             url = os.environ.get('SUPABASE_URL'); anon = os.environ.get('SUPABASE_ANON_KEY')
+            if not url or not anon:
+                print('[neighbor] SUPABASE_URL / SUPABASE_ANON_KEY 환경변수가 없습니다')
+                url = None
             body = json.dumps({'p_public_id': pid}).encode()
-            req = urllib.request.Request(url + '/rest/v1/rpc/neighbor_showcase', data=body, method='POST',
-                                         headers={'Content-Type': 'application/json', 'apikey': anon,
-                                                  'Authorization': 'Bearer ' + anon})
             try:
+                if url is None:
+                    raise RuntimeError('missing env')
+                req = urllib.request.Request(url + '/rest/v1/rpc/neighbor_showcase', data=body, method='POST',
+                                             headers={'Content-Type': 'application/json', 'apikey': anon,
+                                                      'Authorization': 'Bearer ' + anon})
                 with urllib.request.urlopen(req, timeout=15, context=ssl_context()) as res:
                     data = json.loads(res.read() or b'null')
                 if data is None:
