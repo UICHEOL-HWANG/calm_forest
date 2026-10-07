@@ -2338,7 +2338,10 @@ export async function enterGame() {
     window.__museumLight = MUSEUM_LIGHT;              // 🏛️ 전시실 조명 검수(값을 바꿔 보며 비교)
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
-    window.__decor = (id, x, z, rot = 0) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true);   // 가구 무료 배치(검수용)
+    window.__decor = (id, x, z, rot = 0, f = null) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true, f);   // 가구 무료 배치(검수용) — f 는 층
+    window.__decorY = () => decorMeshes.map(m => [m.userData.rec?.id, +m.position.y.toFixed(2), !!m.userData.collider, !!m.userData.onSurface]);   // 🪔 높이·충돌체 검수용
+    window.__decorPick = (i) => pickDecor(decorMeshes[i]);   // 🪔 i 번째를 들어 올린다(받침 제거 검수)
+    window.__decorBack = () => stopDecorPlacing(true);       // 🪔 들었던 걸 제자리로
     window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
