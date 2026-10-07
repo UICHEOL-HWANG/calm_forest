@@ -168,7 +168,7 @@ export const Sound = {
 //     리듬 음악에선 그 지터가 그대로 "박자가 흐트러진 느낌"이 된다.
 // =============================================================
 let musicOn = false, musicTimer = null, musicGain = null, barCount = 0;
-let bgmTheme = 'main';   // 'main' | 'cave' | 'stars'(🔭 천문대 오르골)
+let bgmTheme = 'main';   // 'main' | 'cave' | 'stars'(🔭 천문대 오르골) | 'dream'(🌙 꿈의 숲)
 
 // 밝은 진행: C → G → Am → F (두 바퀴 = 8마디 한 덩어리)
 const MAIN_CHORDS = [
@@ -218,6 +218,13 @@ const STARS_BAR = STARS_E * 8 * 1000;           // 한 마디(ms)
 const STARS_CHORDS = [[0, 2, 4, 7], [5, 0, 2, 5], [3, 5, 0, 3], [4, 6, 1, 4]];   // MEL 인덱스 — C Am F G
 const STARS_ROOTS = [130.81, 110, 87.31, 98];
 const STARS_ARP = [0, 1, 2, 3, 2, 1, 2, 3];     // 화음 안에서 오르내리기, 뒤 4칸은 한 옥타브 위
+// 🌙 꿈의 숲 — 오르골보다 느리고(BPM 60) 7화음으로 떠 있는 느낌. Fmaj7 → Em7 → Dm7 → Cmaj7(내려앉는 진행)
+const DREAM_BPM = 60;
+const DREAM_E = 30 / DREAM_BPM;
+const DREAM_BAR = DREAM_E * 8 * 1000;
+const DREAM_CHORDS = [[3, 5, 7, 9], [2, 4, 6, 8], [1, 3, 5, 7], [0, 2, 4, 6]];   // MEL 인덱스(F·E·D·C 위로 3도씩 쌓은 7화음)
+const DREAM_ROOTS = [87.31, 82.41, 73.42, 65.41];
+const DREAM_ARP = [0, 2, 1, 3];                  // 2박에 한 음 — 성기게
 
 // 빠른 어택·짧은 감쇠(뜯는 소리) — 활기찬 테마의 기본 음색
 function pluck(freq, dur, vol, type = 'triangle', at = null) {
@@ -345,8 +352,21 @@ function playStarsBar(at) {
   padNote(STARS_ROOTS[bar], STARS_E * 8, 0.05, 'triangle', at);
 }
 
-function barFn() { return bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+// 🌙 꿈의 숲 마디 — 성긴 오르골 + 길게 깔리는 바탕음 두 겹(살짝 어긋나 맥놀이) + 가끔 높은 반짝임
+function playDreamBar(at) {
+  const bar = barCount++ % DREAM_CHORDS.length;
+  const ch = DREAM_CHORDS[bar];
+  DREAM_ARP.forEach((k, i) => {
+    const f = MEL[ch[k]], t = at + i * DREAM_E * 2;
+    chime(f, DREAM_E * 4, 0.05, { at: t, wet: 0.55, out: musicGain });
+  });
+  padNote(DREAM_ROOTS[bar], DREAM_E * 8, 0.045, 'sine', at);
+  padNote(DREAM_ROOTS[bar] * 1.503, DREAM_E * 8, 0.022, 'triangle', at);   // 5도 위, 조금 어긋나게
+  if (Math.random() < 0.5) chime(MEL[(Math.random() * MEL.length) | 0] * 2, DREAM_E * 1.5, 0.018, { at: at + (2 + Math.random() * 5) * DREAM_E, wet: 0.7, out: musicGain });
+}
+
+function barFn() { return bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을
