@@ -2234,6 +2234,8 @@ export async function enterGame() {
     // 🌙 꿈의 숲 검수(로컬 전용) — 집 안 침대 옆 밤을 만들고 선택 창·꿈길·조각 줍기를 콘솔에서 몬다
     window.__dream = {
       night: () => { timeOfDay = 0.8; dayPaused = true; return isNight(); },
+      day: () => { timeOfDay = 0.35; dayPaused = true; return isNight(); },
+      save: () => { const g = getGameState(); return { pos: g.playerPos, tod: g.timeOfDay, dream: g.dream, shard: g.inventory.shard, indoor }; },
       house: () => { if (!indoor) enterHouse(); return indoor; },
       open: () => openSleepChoice(),
       start: () => startDream(),
@@ -5609,7 +5611,9 @@ function animate() {
       ui.setMinimap?.(md);
     }
     // [센서] 매 프레임 스냅샷 → logger throttle 후 배치 전송
-    sampleFrame(() => ({
+    //   🌙 꿈길 컷신 동안은 멈춘다 — 마차가 플레이어를 ~40m 실어 나르는 구간이라 조작 없는 '이동'으로 잡혀
+    //      이탈 예측 피처(pathLen·idle, js/features.js)를 왜곡한다. 꿈속 좌표(z≈-550)는 다른 서브 공간처럼 그대로 보낸다.
+    if (!dreamCutActive()) sampleFrame(() => ({
       char: { x: player.position.x, y: 0, z: player.position.z },
       cam: { yaw: camera.rotation.y, pitch: camera.rotation.x },
     }));

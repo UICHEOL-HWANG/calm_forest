@@ -22,7 +22,7 @@ import { houseExitPoint } from './house.js';
 import { stopDecorPlacing } from './indoor.js';
 import { Sound, setBGMTheme } from '../sound.js';
 
-const BED_REACH = 2.1;   // 구름 침대 중심에서 이 거리 안이면 "깨어나기"
+const BED_REACH = 2.4;   // 구름 침대 중심에서 이 거리 안이면 "깨어나기" — 침대 상자(1.7×2.4) 둘레 어디에 서도 닿게(2.1 은 발치 끝에서 빠졌다, QA 2026-10-08)
 let world = null;        // buildDreamWorld() 결과 — 처음 꿈꿀 때 짓는다(첫 로딩에 얹지 않는다)
 let cut = null;          // 진행 중인 컷신
 let ret = null;          // 돌아갈 자리 { x, y, z, floor, indoor }
