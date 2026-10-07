@@ -2217,4 +2217,9 @@ export const EN = {
   '사자자리를 그렸어요!': 'You drew Leo!',
   '오리온을 그렸어요!': 'You drew Orion!',
   '전갈자리를 그렸어요!': 'You drew Scorpius!',
+  '유령 촛불': 'Ghost Candle', '미니 묘비': 'Mini Gravestone', '마녀 솥': 'Witch Cauldron',
+  '유령 정원등': 'Ghost Garden Lamp', '묘비 울타리': 'Gravestone Fence', '거미줄 아치': 'Cobweb Arch',
+  '밤이 되면 으스스하게 빛나는 유령 등': 'A spooky ghost lamp that glows at night',
+  '묘비 모양 울타리 · 밤손님은 못 막아요': 'Gravestone-shaped fence · does not keep night visitors out',
+  '마당 입구에 세우는 커다란 거미줄 아치': 'A big cobweb arch for the yard entrance',
 };

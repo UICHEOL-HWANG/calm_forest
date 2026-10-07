@@ -58,6 +58,10 @@ export const DECOR = [
   // 🏖️ 옥상 파라솔 세트 승계(§8.2) — 구성품(js/house/addons.js rooftop_set, 900🪙)을 이미 산 사람에게
   // 루프탑에 실물로 놓아 준다. 상점엔 안 뜬다(hidden) · 값은 이미 치렀으므로 cost: 0.
   { id: 'parasol_set', name: '파라솔 세트', ico: '🏖️', cost: 0, pay: 'coins', stage: 6, outdoorOnly: true, hidden: true, foot: [1.8, 1.2] },
+  // 🎃 할로윈 한정 코인 장식(SALE_WINDOWS.halloween) — 사면 영구, 기간 밖엔 안 산 사람에겐 목록에서 숨는다(보관분은 계속 보임). 집 단계 제한 없음 — 가격만 문턱
+  { id: 'ghostCandle',   name: '유령 촛불', ico: '👻', cost: 150, pay: 'coins', sale: 'halloween', foot: [0.3, 0.3], sm: true, h: 0.5 },
+  { id: 'miniGrave',     name: '미니 묘비', ico: '🪦', cost: 200, pay: 'coins', sale: 'halloween', foot: [0.5, 0.3] },
+  { id: 'witchCauldron', name: '마녀 솥',   ico: '🧙', cost: 450, pay: 'coins', sale: 'halloween', big: true, foot: [1.0, 1.0] },
 ];
 
 export const FISH_KINDS = [
@@ -198,6 +202,10 @@ export const OUTDOOR = [
   { id: 'pumpkins',         name: '호박 더미',      ico: '🎃', cost: { leaf: 60 }, desc: '수확제 좌판에서 산 호박 더미', hidden: true },
   { id: 'pumpkinlamp',      name: '호박 등불',      ico: '🏮', cost: { leaf: 9999 }, desc: '수확제 광장 🥈 보상 — 밤에 은은히', hidden: true },
   { id: 'harvestscarecrow', name: '수확제 허수아비', ico: '🧑‍🌾', cost: { leaf: 9999 }, desc: '수확제 광장 🥇 보상', hidden: true },
+  // 🎃 할로윈 한정 코인 장식 — 직접 구매(작업대 목록, 기간 한정). hidden 과 다르다: hidden 은 영구 비판매, sale 은 기간 판매
+  { id: 'ghostlamp',  name: '유령 정원등', ico: '👻', cost: { coins: 200 }, sale: 'halloween', desc: '밤이 되면 으스스하게 빛나는 유령 등' },
+  { id: 'gravefence', name: '묘비 울타리', ico: '🪦', cost: { coins: 280 }, sale: 'halloween', desc: '묘비 모양 울타리 · 밤손님은 못 막아요' },
+  { id: 'webarch',    name: '거미줄 아치', ico: '🕸️', cost: { coins: 500 }, sale: 'halloween', desc: '마당 입구에 세우는 커다란 거미줄 아치' },
   ...FARM_BUILDINGS,   // 🏗️ 밭 시설 7종(farm:true, fp:[가로칸,세로칸]) — 같은 배치 문법, 텃밭 안에서만(js/farm-building.js)
 ];
 
