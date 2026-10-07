@@ -9,11 +9,12 @@
 
 export const CLEAR_R = 0.95;
 
-/** positions[i] 중 points 어느 하나와의 거리가 r 미만인 i 목록(오름차순, 중복 없음) */
+/** positions[i] 중 points 어느 하나와의 거리가 반경 미만인 i 목록(오름차순, 중복 없음).
+ *  반경은 점의 q.r 이 있으면 그것, 없으면 r — 그릇 자리처럼 발보다 작은 점을 섞어 쓴다. */
 export function nearIndices(positions, points, r = CLEAR_R) {
   const out = [];
   positions.forEach((p, i) => {
-    if (points.some(q => Math.hypot(p.x - q.x, p.z - q.z) < r)) out.push(i);
+    if (points.some(q => Math.hypot(p.x - q.x, p.z - q.z) < (q.r ?? r))) out.push(i);
   });
   return out;
 }
