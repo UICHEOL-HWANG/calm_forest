@@ -29,7 +29,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   let r;
   try {
-    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/neighbor_showcase`, {
+    r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/neighbor_showcase`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
