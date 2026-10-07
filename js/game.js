@@ -66,6 +66,7 @@ import { ADV_CROPS, MATURE, isAdv, growthPerWater, stageIndex, renderStage, wilt
 import { JOBS, GRADES, HIRE_COST, HAUL_N, MASTER_YIELD, MASTER_SPEED, STEP_SEC, jobOf, gradeInfo, gradeOf, toNextGrade, skillsOf, hasPerk, workSecOf, dailyWage, settleWages, pickTask, catchUpSteps, worksPerStep, candidatesFor, releaseCandidate } from './farm-worker.js';   // 🧑‍🌾 노동자 규칙(직군·등급·우선순위·월급·오프라인 스텝)
 import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp, canPlaceBuilding, inRadiusOf, warehouseCap, storageTotal, compostLeft, HONEY_PER_HIVE, COMPOST_PER_DAY, WELL_WET_MUL, HIVE_GROWTH_MUL, STORAGE_KEYS } from './farm-building.js';   // 🏗️ 밭 시설(게시판·창고·지지대·우물·퇴비통·쉼터·벌통)
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
+import { catalogVisible, saleTagOf } from './shop/sale-window.js';   // 🎃 기간 한정 항목 — 목록 필터·행 태그
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
@@ -1632,8 +1633,10 @@ export const Input = {
   // 플레이어가 만질 수 있는 건 🛏️ 침대뿐(밤에 누우면 아침). dayPaused 는 ?time= dev 파라미터 전용.
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() {   // 🏠 층별 해금 — 잠긴 것도 목록엔 보이되 locked 로 흐리게(살 목표가 보여야 싱크가 된다)
-    const st = gameState.houseStage;
-    return DECOR.filter(d => !d.hidden).map(d => ({ ...d, locked: !decorUnlocked(d, st) }));
+    const st = gameState.houseStage, kept = gameState.house.stored || {};
+    return DECOR.filter(d => !d.hidden)
+      .filter(d => catalogVisible(d, { stored: kept[d.id] || 0 }))   // 🎃 기간 밖 한정품은 안 산 사람에겐 숨긴다(보관분은 계속 보인다)
+      .map(d => ({ ...d, locked: !decorUnlocked(d, st), tag: saleTagOf(d) }));
   },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
   kitchenStart(id, where) { return kitchenStart(id, where); },  // 🍳 요리 시작(재료 소비, 코스 개시)
@@ -1708,7 +1711,7 @@ export const Input = {
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getTier2() { return tier2List(); },                   // 🔨 금빛 도구(2단계) 목록 — 도면 상태·비용
   craftTier2(tool) { return craftTier2(tool); },        // 🔨 금빛 도구 제작
-  getOutdoor() { return OUTDOOR; },                     // 야외 장식 목록(+🏗️ 밭 시설 farm:true — UI 가 텃밭 안에서만 보여 준다)
+  getOutdoor() { return OUTDOOR.filter(o => catalogVisible(o, { stored: gameState.outdoorStored?.[o.id] || 0 })).map(o => ({ ...o, tag: saleTagOf(o) })); },   // 야외 장식 목록(+🏗️ 밭 시설 farm:true) · 🎃 기간 밖 한정품 숨김
   isAtFarm() { return atFarm; },
   selectOutdoor(id) { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기). 들고 있던 장식은 제자리로(안 그러면 새 장식이 "옮김"으로 공짜 설치됨)
   hireWorker(i) { return hireWorker(i); },              // 🧑‍🌾 일꾼 고용(📋 게시판 창)
