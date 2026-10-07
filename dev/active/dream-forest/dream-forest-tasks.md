@@ -11,4 +11,5 @@
 - [x] 10 테스트 갱신·전체 통과(2131)
 - [x] 11 브라우저 실측(PC·모바일, 오프라인 CDP) — .scratch/dream/
 - [x] 12 코드 리뷰·수정(MEDIUM 3·LOW 5 반영: 미니맵·펫/발자국·밤 재확인·정규화 빈도·암전 중 건너뛰기·침대 충돌 재클램프·Space 닫기·prior_visits)
-- [ ] 13 사용자 확인 → main 병합 → 4곳 동시 배포(웹·토스·Play·itch) + 공지
+- [x] 13a main 병합(a068a7f) · 토스 -121 업로드·테스트푸시 · Play AAB v49 · itch zip (A안 준비)
+- [ ] 13b 출시: 런북 dream-forest-launch.md 순서대로(토스 검수 제출 = 출시 시작)
