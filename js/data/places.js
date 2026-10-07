@@ -161,6 +161,7 @@ export const DOCK_POND = new THREE.Vector3(0, 0, -21.5); // 나루터 앞 물가
 export const DOCK_POND_R = 7;                            // 연못 반경(나무·꽃 배치와 물 진입 차단의 기준)
 
 export const RIVER = new THREE.Vector3(0, 0, -400);      // 강 공간(다른 인스턴스와 멀찍이)
+export const DREAM = new THREE.Vector3(0, 0, -550);      // 🌙 꿈의 숲(떠 있는 섬) — 강(-400)과 150 띄움 · 섬·조각 좌표는 js/dream/layout.js(로컬)
 
 export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸어 다니는 데크) 반경
 
