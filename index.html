@@ -961,6 +961,7 @@
   .dm-item .di-ico { font-size: 22px; }
   .dm-item .di-name { font-size: 11px; font-weight: 600; }
   .dm-item .di-cost { font-size: 10px; opacity: .7; }
+  .dm-item .di-tag { font-size: 9px; line-height: 1.1; color: #c4631b; }
   .dm-hint { font-size: 12px; opacity: .7; text-align: center; }
   .dm-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .dm-actions button { border: none; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
@@ -1503,6 +1504,7 @@
   .ck-item .ck-name { font-size: 12px; font-weight: 700; }
   .ck-item .ck-buff { font-size: 10px; opacity: .8; line-height: 1.2; }
   .ck-item .ck-cost { font-size: 10.5px; opacity: .75; }
+  .ck-item .ck-tag { font-size: 9.5px; line-height: 1.15; color: #c4631b; }
   /* 활성 버프 HUD — 우측 상단 인벤토리 아래 */
   #buffs { position: fixed; top: calc(84px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
   #buffs .buff { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.72); border-radius: 12px; padding: 5px 10px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow);
@@ -4319,7 +4321,7 @@
         const el = document.createElement('div');
         // 🔒 잠긴 고급 가구도 목록엔 그대로 둔다 — 뭘 향해 모으는지 보여야 코인 싱크가 된다(흐리게 + 자물쇠만)
         el.className = 'dm-item' + (ok ? '' : ' off') + (d.locked ? ' locked' : '');
-        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${d.locked ? '🔒' : (stored > 0 ? `보유 ${stored}` : payIco + d.cost)}</span>`;
+        el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${d.locked ? '🔒' : (stored > 0 ? `보유 ${stored}` : payIco + d.cost)}</span>${d.tag ? `<span class="di-tag">${d.tag.label}</span><span class="di-tag">${d.tag.until}</span>` : ''}`;
         el.addEventListener('click', () => {
           if (d.locked) { ui.toast('집을 더 증축하면 살 수 있어요'); return; }
           if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : pay === 'coins' ? '코인이 부족해요 🪙' : '작물이 부족해요 🥕'); return; }
@@ -4421,7 +4423,7 @@
         const enough = stored > 0 || Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
         const el = document.createElement('div');
         el.className = 'ck-item' + (enough ? '' : ' off');
-        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span><span class="ck-buff">${o.desc}</span><span class="ck-cost">${stored > 0 ? `보유 ${stored}` : costStr}</span>`;
+        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span><span class="ck-buff">${o.desc}</span><span class="ck-cost">${stored > 0 ? `보유 ${stored}` : costStr}</span>${o.tag ? `<span class="ck-tag">${o.tag.label}</span><span class="ck-tag">${o.tag.until}</span>` : ''}`;
         el.addEventListener('click', () => {
           if (!enough) { ui.toast('재료가 부족해요'); return; }
           Input.selectOutdoor(o.id); closeCook();
