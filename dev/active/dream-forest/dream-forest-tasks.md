@@ -1,0 +1,13 @@
+# 🌙 꿈의 숲 — 체크리스트
+- [ ] 1 layout.js + 테스트
+- [ ] 2 art.js
+- [ ] 3 spaces/dream.js
+- [ ] 4 cutscene.js
+- [ ] 5 game.js 연결
+- [ ] 6 index.html UI
+- [ ] 7 꿈 장식 4종
+- [ ] 8 BGM dream
+- [ ] 9 i18n
+- [ ] 10 테스트 갱신·전체 통과
+- [ ] 11 브라우저 실측(PC·모바일)
+- [ ] 12 코드 리뷰·커밋
