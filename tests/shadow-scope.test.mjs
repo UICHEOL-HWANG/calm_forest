@@ -80,7 +80,7 @@ test('game.js 의 그림자 카메라 반폭이 BOX_HALF 와 같다', () => {
 // ─────────────────────────────────────────────────────────────
 
 // 기하학적으로 상자 밖인 공간(플래그 이름 ↔ game.js 좌표 상수). OUT_OF_REACH_FLAGS 와 짝이다.
-const OUT_OF_REACH = { atMine: 'MINE', atCafe: 'CAFE', atMist: 'MIST', atRiver: 'RIVER', atSea: 'SEA', atMuseum: 'MUSEUM', atObservatory: 'OBSERVATORY', atOrchard: 'ORCHARD', atNeighbor: 'NEIGHBOR' };
+const OUT_OF_REACH = { atMine: 'MINE', atCafe: 'CAFE', atMist: 'MIST', atRiver: 'RIVER', atSea: 'SEA', atMuseum: 'MUSEUM', atObservatory: 'OBSERVATORY', atOrchard: 'ORCHARD', atNeighbor: 'NEIGHBOR', atDream: 'DREAM' };
 // 상자는 닿지만 실측상 보이는 그림자가 없는 공간.
 const MEASURED_SHADOWLESS = { indoor: 'INT', atFarm: 'FARM' };
 
@@ -92,7 +92,7 @@ const MEASURED_SHADOWLESS = { indoor: 'INT', atFarm: 'FARM' };
 // 지면이 더 넓어 최근접점을 정한다: CircleGeometry(ORCHARD_HALF + 16 = 36) @ (0,160)
 // → z 최소 124, 상자 클램프 18 을 빼서 106m. js/shadow-scope.js 주석에 산출 과정을 적어 뒀다.
 const NEAREST_RECEIVER_M = { atMine: 218.5, atMist: 217.5, atCafe: 290.8, atSea: 292, atRiver: 376,
-                             atMuseum: 330, atObservatory: 510, indoor: 27, atFarm: 18, atOrchard: 106, atNeighbor: 648 };   // 🔭 z=540 — 🏛️박물관보다 멀다 · 🏡 z=700 − 바닥 반경 34 − 클램프 18
+                             atMuseum: 330, atObservatory: 510, indoor: 27, atFarm: 18, atOrchard: 106, atNeighbor: 648, atDream: 392 };   // 🔭 z=540 — 🏛️박물관보다 멀다 · 🏡 z=700 − 바닥 반경 34 − 클램프 18 · 🌙 z=-550 + 하늘 구 반경 140 − 클램프 18(가장 보수적 — 실제 수신면은 없다)
 // 마을 땅 안의 구역: 그림자가 실제로 보인다. 절대 끄면 안 된다.
 const VILLAGE_SPACES = ['GLADE', 'FOREST', 'DOCK_POND'];
 

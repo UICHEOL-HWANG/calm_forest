@@ -10,6 +10,38 @@
 // =============================================================
 
 export const EN = {
+  // ── 🌙 꿈의 숲(js/spaces/dream.js · 선택 창·도착 카드는 index.html) ─────────────
+  '🛏️ 잘 시간이에요': '🛏️ Time for bed',
+  '오늘 밤은 어떻게 할까요?': 'How would you like to spend tonight?',
+  '푹 자기': 'Sleep soundly',
+  '바로 아침이 돼요': 'Wake up in the morning',
+  '꿈꾸기': 'Dream',
+  '꿈의 숲에서 꿈 조각을 모아요': 'Gather dream shards in the Dream Forest',
+  '깨어나면 아침이에요': "It'll be morning when you wake",
+  '✨ 오늘 남은 조각 {0#}개': '✨ {0} shards left today',
+  '🌙 꿈의 숲에 왔어요': '🌙 Welcome to the Dream Forest',
+  '✨ 반짝이는 꿈 조각을 모아요': '✨ Gather the glittering dream shards',
+  '🪨 떠 있는 돌을 밟고 다른 섬으로 건너가요': '🪨 Hop across the floating stones to other islands',
+  '🛏️ 구름 침대에 누우면 아침에 깨어나요': '🛏️ Lie on the cloud bed to wake up in the morning',
+  '스르르… 꿈속으로': 'Drifting off into a dream…',
+  '🛏️ 구름 침대 · 깨어나기': '🛏️ Cloud Bed · Wake up',
+  '✨ 반짝이는 조각을 찾아보세요 · {0#}개 남음': '✨ Look for the glittering shards · {0} left',
+  '🛏️ 구름 침대에서 깨어나요': '🛏️ Wake up on the cloud bed',
+  '🌙 꿈의 숲 · ✨ {0#}/{1#}': '🌙 Dream Forest · ✨ {0}/{1}',
+  '오늘 꿈 조각은 다 모았어요 · 내일 또 와요': "You've found all of today's dream shards · Come back tomorrow",
+  '☀️ 잘 잤어요 · 꿈 조각 ✨{0#}개': '☀️ Good morning · {0} dream shards ✨',
+  '꿈 조각이 부족해요 ✨': 'Not enough dream shards ✨',
+  '꿈 조각이 부족해요 (필요 {0#} ✨)': 'Not enough dream shards (need {0} ✨)',
+  '밤엔 침대에서 꿈의 숲에 갈 수 있어요': 'At night, your bed can take you to the Dream Forest',
+  '꿈 조각': 'Dream Shards',
+  '구름 침대에 누우면 아침에 깨어나요': 'Lie on the cloud bed to wake up in the morning',
+  '꿈 장식': 'Dream Decor',
+  '🛋️ 꾸미기에서 꿈 조각으로 바꿔요': '🛋️ Trade dream shards for decor in Decorate',
+  '달 램프': 'Moon Lamp', '수정 화분': 'Crystal Pot', '별 모빌': 'Star Mobile', '구름 침대': 'Cloud Bed',
+  '알겠어요': 'Got it',
+  '🌙 꿈의 숲': '🌙 Dream Forest',
+  '🌙 꿈꾸기는 밤에만 할 수 있어요': '🌙 You can only dream at night',
+  '☁️ 구름 침대 · 자기': '☁️ Cloud Bed · Sleep',   // ⚠️ 단독 '자기' 키 금지(자기 자신·자기장 오역) — 문장째 EXACT
   // ── 🍲 보글보글 냄비(자유 요리) ─────────────────────────────
   //    요리 이름·한 줄 평은 조합 표(js/free-pot/table.js)의 _en 을 index.html 이 직접 쓴다
   '📖 레시피': '📖 Recipes',
