@@ -34,3 +34,15 @@ test('⚙️ 설정에 이웃 공개 토글 — 게스트는 숨김(처음엔 di
   assert.match(HTML, /#village-public-btn\.off \{ opacity: \.5; \}/);
   assert.match(UI, /b\.style\.display = visible \? '' : 'none'/);
 });
+
+test('나가기 버튼은 상단 줄 안에 있다(하단 조이스틱 #joy-base 와 안 겹침)', () => {
+  assert.doesNotMatch(UI, /#nb-exit \{[^}]*bottom:/);
+  assert.match(UI, /top\.append\(exit, el\('div', 'nb-title'\)\)/);
+  assert.ok(UI.includes("'🚪 내 마을로'"));
+});
+
+test('요청 중(busy)엔 배경 클릭으로 엽서 모달이 닫히지 않고, 긴 닉네임은 줄바꿈된다', () => {
+  assert.match(UI, /!\(id === 'nb-pick-modal' && pickerBusy\)/);
+  assert.match(UI, /overflow-wrap: anywhere/);
+  assert.doesNotMatch(UI, /aria-label', id\)/);
+});
