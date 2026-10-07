@@ -71,7 +71,7 @@ const BUILDERS = {
     parts.push(k.ball(0.024, -0.04, 0.29, 0.095, INK), k.ball(0.024, 0.04, 0.29, 0.095, INK), k.ball(0.014, 0, 0.23, 0.105, INK));
     const body = [k.cyl(0.1, 0.14, 0.22, 0, 0.11, 0, GHOST_BODY, 10), k.orb(0.11, 0, 0.27, 0, GHOST_BODY)];   // 몸통은 살짝 스스로 빛나게 — 낮에도 회색 돌로 안 읽히도록
     for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; body.push(k.orb(0.035, Math.cos(a) * 0.115, 0.03, Math.sin(a) * 0.115, GHOST_BODY)); }
-    glows.push([body, 0xffffff, 0xffffff, 0.5, false]);
+    glows.push([body, 0xffffff, 0xffffff, 0.25, false]);
     glows.push([k.orb(0.05, 0, 0.42, 0, 0xffffff), ...GHOST_GLOW, 0.85, false]);
   },
   miniGrave(k, parts) {   // 폭 ≤0.5 · 깊이 ≤0.3 · 높이 ≤0.6 — 바닥 소품. 박공 지붕 묘비
