@@ -131,6 +131,7 @@ import {
 import {
   DEX, DEX_TOTAL, BADGES, STORY, NICK_ADJS, DAILY_COINS,
 } from './data/dex.js';
+import { pendingChapters, buildStoryView, hoursSince } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
 import {
   _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
   TOOL_QREST_HOLD, TOOL_GRIP, slashPhase, PLAYER_R, NPC_R,
@@ -1049,6 +1050,7 @@ function noteSpecialExhibit(cat, id) {
   ui.toast?.(`🏛️ 박물관 특별 전시! ${def.ico} ${def.name}`, 2800);
   trackEvent('museum_special', { exhibit: def.id, cat, entry: id });   // [GA4] 조건부 전시 획득(날씨별 도달)
   requestSave();
+  setTimeout(() => syncStory('special'), 2200);   // 📖 6장 — 잡은 물고기·수확 연출이 먼저 지나가고 나서(4장 정화와 같은 간격)
 }
 
 // ── 🏅 업적 배지 — 도감 모달 하단에 전시. 달성 시 1회 기념 보상 ──
@@ -1091,62 +1093,38 @@ function syncBadges() {
 
 let storyBooted = false;   // 첫 syncStory(세이브 소급)는 조용히, 이후엔 축하 연출
 
-// 챕터 달성 여부 — 전부 기존 상태에서 파생(새 카운터는 의뢰 수 q 하나뿐)
-function storyDone(i) {
-  const s = gameState;
-  if (i === 0) return s.houseStage >= 3;
-  if (i === 1) return (s.story.q || 0) >= 3;
-  if (i === 2) return (s.kitchen.cooked || 0) >= 1 && (s.cafe.served || 0) >= 1;
-  if (i === 3) return (s.mist?.purifyTotal || 0) >= 1;
-  return false;
-}
-function storyProgressText(i) {
-  const s = gameState;
-  if (i === 0) return `공사 ${Math.min(s.houseStage, 3)}/3`;
-  if (i === 1) return `의뢰 ${Math.min(s.story.q || 0, 3)}/3`;
-  if (i === 2) return `요리 ${Math.min(s.kitchen.cooked || 0, 1)}/1 · 서빙 ${Math.min(s.cafe.served || 0, 1)}/1`;
-  if (i === 3) return `정화 ${Math.min(s.mist?.purifyTotal || 0, 1)}/1`;
-  return '';
-}
-// index.html(스토리 칩·모달)이 렌더할 뷰
-function storyView() {
-  const ch = gameState.story.ch;
-  return {
-    ch,
-    allDone: ch >= STORY.length,
-    chapters: STORY.map((c, i) => ({
-      n: i + 1, ico: c.ico, title: c.title, goal: c.goal,
-      line: i < ch ? c.done : c.start,
-      state: i < ch ? 'done' : i === ch ? 'now' : 'lock',
-      progress: i === ch ? storyProgressText(i) : null,
-    })),
-  };
-}
+// 장 판정·뷰는 js/story/rules.js(순수) — 여기는 gameState 를 넘기는 얇은 층
+function storyView() { return buildStoryView(STORY, gameState); }
 
-// 진행 판정(멱등) — 접속 소급 + 각 마일스톤 훅에서 호출
-function syncStory() {
+// 진행 판정(멱등) — 접속 소급 + 각 마일스톤 훅에서 호출. trigger = 부른 곳(완료 계기 — 5장처럼 조건이 둘이면 마지막에 채운 쪽)
+function syncStory(trigger = '') {
   const st = gameState.story;
   let retro = 0;
-  while (st.ch < STORY.length && storyDone(st.ch)) {
-    const c = STORY[st.ch];
+  for (const i of pendingChapters(STORY, gameState)) {        // soon 장에서 멈춘다(js/story/rules.js)
+    const c = STORY[i];
     giveReward(c.reward, 'story', c.id);                       // [원장] 챕터 보상 출처 기록
-    trackEvent('story_chapter_complete', { chapter: c.id, n: st.ch + 1, retro: storyBooted ? 0 : 1 }); // [GA4] 온보딩→후반 진행 퍼널
-    st.ch++;
+    const hrs = hoursSince(st.started[c.id], Date.now());     // 장 하나에 걸린 시간(옛 세이브는 1 이라 null → 생략)
+    trackEvent('story_chapter_complete', { chapter: c.id, n: i + 1, retro: storyBooted ? 0 : 1,   // [GA4] 온보딩→후반 진행 퍼널
+      trigger: storyBooted ? (trigger || 'unknown') : 'boot', ...(hrs != null ? { hours_since_start: hrs } : {}) });
+    st.ch = i + 1;
     if (storyBooted) {
       const next = STORY[st.ch];
       Sound.complete(); spawnConfetti(player.position.x, 2.6, player.position.z);
       ui.showHintModal?.({
         ico: c.ico, title: `${st.ch}장 완료 — ${c.title}`,
         body: `${c.done}\n\n🦉 의뢰 올빼미가 당신의 이야기를 기록했어요. 보상 🪙${c.reward.coins}${c.reward.seed ? ` · 🌰${c.reward.seed}` : ''}`
-          + (next ? `\n\n다음 이야기 — ${next.ico} ${st.ch + 1}장 「${next.title}」: ${next.goal}` : ''),
+          + (!next ? '' : next.soon ? '\n\n🏡 다음 이야기는 곧 열려요.'   // 잠긴 장은 목표 대신 예고만
+            : `\n\n다음 이야기 — ${next.ico} ${st.ch + 1}장 「${next.title}」: ${next.goal}`),
       });
     } else retro++;
   }
-  // 현재 장의 시작을 1회만 기록(퍼널 시작점)
-  const cur = STORY[gameState.story.ch];
-  if (cur && !st.started[cur.id]) {
-    st.started[cur.id] = 1;
-    trackEvent('story_chapter_start', { chapter: cur.id, n: st.ch + 1 });
+  // 현재 장의 시작을 1회만 기록(퍼널 시작점) — 잠긴 장은 시작이 아니다
+  const cur = STORY[st.ch];
+  if (cur && !cur.soon && !st.started[cur.id]) {
+    // 4장까지 끝낸 기존 유저: 배포 뒤 첫 부팅에 새 장이 열렸음을 한 번 알린다(소급 토스트가 없을 때만)
+    if (!storyBooted && !retro && st.ch === 4) ui.toast?.(`📖 새 이야기가 이어져요 — ${st.ch + 1}장 「${cur.title}」`, 3200);
+    st.started[cur.id] = Date.now();   // 시각 — 완료 때 hours_since_start 를 잰다(옛 세이브의 1 도 참이라 판정은 그대로)
+    trackEvent('story_chapter_start', { chapter: cur.id, n: st.ch + 1, via: storyBooted ? 'live' : 'boot' });   // [GA4] boot = 접속 소급으로 열림(기존 완료자에게 새 장)
   }
   if (retro) ui.toast?.(`📖 지난 이야기 ${st.ch}장까지의 기록이 정리됐어요 (+보상)`, 3000);
   ui.setStory?.(storyView());
@@ -4577,7 +4555,8 @@ function surveyOfficeInteract() {
   // 숫자로도 남긴다 — 조망샷이 끝난 뒤 "뭐가 늘었는지" 한 장(사용자 지적 2026-09-13)
   const afterCells = farmCellCount(farmHalf()), afterWorkers = workerCap();
   setTimeout(() => ui.showHintModal?.({ ico: next.ico, title: next.name + ' 완성!', body:
-    `🌱 심을 수 있는 칸 ${beforeCells} → ${afterCells}칸\n🧑‍🌾 일꾼 ${beforeWorkers} → ${afterWorkers}명\n심어둔 밭과 시설은 그대로예요` }), SURVEY_HOLD * 1000);
+    `🌱 심을 수 있는 칸 ${beforeCells} → ${afterCells}칸\n🧑‍🌾 일꾼 ${beforeWorkers} → ${afterWorkers}명\n심어둔 밭과 시설은 그대로예요`,
+    ok: { onClick: () => syncStory('farm_expand') } }), SURVEY_HOLD * 1000);   // 📖 5장 — 증축 안내를 닫은 뒤(모달은 하나만 뜬다)
   trackEvent('farm_expand', { stage: next.stage, wood: next.cost.wood, stone: next.cost.stone, coins: next.cost.coins });   // [GA4] 증축 퍼널(집 house_expand 와 같은 축: stage)
   nearDoor = null; ui.setDoorPrompt?.(null);               // 측량소가 새 울타리 밖으로 옮겨갔다 — 옛 프롬프트를 지우고 다음 프레임에 다시 판정
   requestSave();
@@ -4935,7 +4914,7 @@ function kitchenFinish(id, res = {}) {
   if (!isFreeId(id)) dexDiscover('cook', id);                // 📖 도감(첫 요리) — 자유 요리 조합은 도감이 아니라 발견 수로 센다
   questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
   triggerMoment();                                           // 📷 순간 줌인
-  syncStory();                                               // 📖 3장(마을의 맛) 진행
+  syncStory('cook');                                         // 📖 3장(마을의 맛) 진행
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
@@ -7277,7 +7256,7 @@ export function npcClaim() {
       trackEvent('hidden_quest_clear', { npc: o.def.id, tool: q.tool });   // [GA4] 문턱 도달 → 발견 → 완료 퍼널
     } else if (repeating) st.repeat.done = true; else st.idx++;
     st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
-    gameState.story.q = (gameState.story.q || 0) + 1; syncStory();   // 📖 2장(이웃들) 진행
+    gameState.story.q = (gameState.story.q || 0) + 1; syncStory('quest');   // 📖 2장(이웃들) 진행
     if (!currentQuest(o.def, st)) { st.allDone = true; syncBadges(); } // 🏅 체인 완료 배지(패널은 아래 refreshQuestPanel 이 다시 그린다)
     refreshCollectQuests(); refreshQuestPanel(); updateNPCGlyph(o);
   }

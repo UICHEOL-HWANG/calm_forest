@@ -382,7 +382,7 @@ export function mistEnd(result) {
   const st = gameState.mist;
   if (result === 'purified') {
     st.purified = true; st.purifyTotal = (st.purifyTotal || 0) + 1;
-    setTimeout(() => syncStory(), 2200);   // 📖 4장(숲의 비밀) — 정화 축하 연출이 먼저 지나가고 나서
+    setTimeout(() => syncStory('purify'), 2200);   // 📖 4장(숲의 비밀) — 정화 축하 연출이 먼저 지나가고 나서
     giveReward({ glow: PURIFY_GLOW }, 'mist_purify', 'day');
     Sound.complete();
     spawnConfetti(MIST.x, 4, MIST.z - 3); spawnSparkle(MIST.x, 3, MIST.z - 3, 40);

@@ -368,7 +368,6 @@ export const EN = {
   '리듬 탭': 'rhythm taps',
   '! 잘할수록 버프가 오래가요': '! Play well and your buff lasts longer',
   '📖 나의 이야기': '📖 My Story',
-  '숲에서 이어지는 네 개의 장': 'Four chapters in the forest',
   '🏆 리더보드': '🏆 Leaderboard',
   '이번 주 숲의 기록 — 매주 월요일 새로 시작해요': 'This week\'s forest records — a fresh start every Monday',
   '건너뛰기 ›': 'Skip ›',
@@ -1363,6 +1362,37 @@ export const EN = {
   '{0}\n\n🦉 의뢰 올빼미가 당신의 이야기를 기록했어요. 보상 🪙{1}{2}': '{0}\n\n🦉 The Errand Owl wrote your story down. Reward 🪙{1}{2}',
   '\n\n다음 이야기 — {0} {1}장 「{2}」: {3}': '\n\nNext up — {0} Chapter {1}, "{2}": {3}',
   '📖 지난 이야기 {0}장까지의 기록이 정리됐어요 (+보상)': '📖 Your story so far is all written down — through Chapter {0} (+rewards)',
+  // 📖 5~8장(2026-10-07)
+  '마을의 살림': 'Village Life',
+  '밭 넓히고 과일나무 심기': 'Expand the field and plant a fruit tree',
+  '이제 이 숲이 내 집이에요. 밭을 넓히고, 오래 함께할 과일나무를 한 그루 심어보자. 측량소는 밭 울타리 옆에 있어요.':
+    'This forest is home now. Expand your field and plant a fruit tree to keep you company for years. The survey office is by the field fence.',
+  '밭이 넓어지고 어린 나무가 뿌리를 내렸어요. 계절이 바뀌어도 여기 있을 거예요.':
+    'The field grew and a young tree took root. It\'ll still be here when the seasons turn.',
+  '숲의 기억': 'Memories of the Forest',
+  '박물관 특별 진열대 채우기': 'Fill the museum\'s special display',
+  '박물관엔 날씨가 남긴 기억을 두는 특별 진열대가 있대요. 비나 눈, 안개 낀 날에 얻은 것을 가져가 보자.':
+    'They say the museum has a special display for memories the weather leaves behind. Bring something you found on a rainy, snowy, or foggy day.',
+  '진열대에 첫 기억이 놓였어요. 그날의 날씨까지 함께 남았어요.':
+    'The first memory is on display — and the weather of that day stayed with it.',
+  '별을 잇는 밤': 'A Night of Stars',
+  '천문대에서 별자리 잇기': 'Connect a constellation at the observatory',
+  '수호목이 말했어요. "밤하늘에도 잎사귀가 있단다." 천문대에 올라 별을 이어보자.':
+    'The Guardian Tree said, "There are leaves in the night sky too." Climb the observatory and connect the stars.',
+  '별을 이으니 잎사귀 모양이 떠올랐어요. 수호목이 웃었어요. "잎사귀를 받은 건 너 하나가 아니란다."':
+    'The stars formed the shape of a leaf. The Guardian Tree smiled. "You weren\'t the only one who got a leaf."',
+  '이웃의 숲': 'Neighboring Forests',
+  '이웃 마을에 놀러 가기': 'Visit a neighbor\'s village',
+  '같은 잎사귀를 받고 숲에 온 이웃들이 있대요. 그들의 마을에 놀러 가보자.':
+    'Others came to the forest with the same leaf. Go visit their villages.',
+  '밭 {0#}/2 · 나무 {1#}/1': 'Field {0}/2 · Trees {1}/1',
+  '특별 진열 {0#}/1': 'Special display {0}/1',
+  '별자리 {0#}/1': 'Constellations {0}/1',
+  '곧 열려요': 'Coming soon',
+  '숲에서 이어지는 이야기': 'Your story in the forest',
+  '📖 새 이야기가 이어져요 — {0#}장 「{1}」': '📖 Your story continues — Chapter {0}, "{1}"',
+  '\n\n🏡 다음 이야기는 곧 열려요.': '\n\nThe next chapter is coming soon. 🏡',
+  '▸ {0} — {1}': '▸ {0} — {1}',   // 📖 모달 진행 줄(목표 — 진행) — 조각은 각각 번역된다
   '조용한': 'Quiet',
   '포근한': 'Cozy',
   '느긋한': 'Laid-back',

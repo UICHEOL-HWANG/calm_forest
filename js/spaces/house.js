@@ -198,7 +198,7 @@ export function buildHouseStage(stage, silent = false) {
   gameState.houseStage = Math.max(gameState.houseStage, stage);
   if (interiorFloors.ground) rebuildInteriorFinish();   // 🪜🎨 실내 마감(바닥·계단)을 새 단계로 다시 짓는다 — 실내에 있는 채로 증축했을 드문 경우까지 대비(스펙 §3 위반 A)
   syncHouseCollider();                        // 🚧 완성되면 충돌 on + 증축 크기 반영(짓는 동안엔 통행 자유)
-  if (!silent) syncStory();                   // 📖 1장(보금자리) 진행
+  if (!silent) syncStory('house');                   // 📖 1장(보금자리) 진행
   if (stage >= 3) houseGhost.visible = false; // 완성되면 터 표시 제거
   updateHouseSign();                          // 안내판 갱신(완성 시 숨김)
   applyHouseStyle();                          // 저장된 외관 색 반영
