@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오라 팔레트 시안</title>
+<style>
+  :root { --page: #f4f1ea; --ink: #2b3330; --sub: #6b7570; --night: #1E2A3A; --day: #CFE6D4; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  }
+  header { padding: 16px 20px 4px; }
+  h1 { margin: 0; font-size: 19px; }
+  header p { margin: 4px 0 0; font-size: 12.5px; color: var(--sub); line-height: 1.5; }
+  .panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 10px 20px 18px; }
+  .panel { border-radius: 14px; padding: 12px 12px 6px; }
+  .panel h2 { margin: 0 0 8px; font-size: 14px; }
+  .night { background: var(--night); color: #eef0f4; }
+  .day { background: var(--day); color: #24312a; }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .cell { display: flex; align-items: center; gap: 9px; padding: 7px 6px; border-radius: 10px; min-width: 0; }
+  .night .cell { background: rgba(255,255,255,.035); }
+  .day .cell { background: rgba(255,255,255,.28); }
+  .chip { flex: none; width: 34px; height: 34px; border-radius: 9px; background: var(--c); }
+  .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--c); }
+  .night .dot { box-shadow: 0 0 6px 2px var(--c), 0 0 16px 6px color-mix(in srgb, var(--c) 45%, transparent); }
+  .day .dot { box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .txt { min-width: 0; line-height: 1.25; }
+  .ko { font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .id { font-size: 10.5px; opacity: .7; font-family: ui-monospace, Menlo, monospace; }
+  .cr { font-size: 10px; opacity: .65; }
+  .flag { display: inline-block; white-space: nowrap; font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 6px; }
+  .flag.bright { background: #ffe9a8; color: #6a4a00; }
+  .was { opacity: .75; text-decoration: line-through; }
+  .cell.changed { outline: 2px solid color-mix(in srgb, var(--c) 70%, transparent); outline-offset: -2px; }
+  .flag.faint { background: #f3c6c6; color: #6b1f1f; }
+  .legend { padding: 0 20px 14px; font-size: 12px; color: var(--sub); line-height: 1.6; }
+  @media (max-width: 760px) {
+    .panels { grid-template-columns: minmax(0, 1fr); padding: 10px 16px 16px; }
+    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    header, .legend { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔮 오라 팔레트 24색 — 2차 수정안 (겹치는 색 정리)</h1>
+  <p>왼쪽 네모 = 색 그대로 · 오른쪽 점 = 오라 알갱이처럼 빛나게(밤판만 번짐) · 대비 = 배경과의 명도 대비(1.0 = 안 보임) · 테두리 칸 = 1차에서 바뀐 8색(취소선 = 이전 값)</p>
+</header>
+<div class="panels">
+  <section class="panel night"><h2>🌙 밤 배경 #1E2A3A</h2><div class="grid" id="night"></div></section>
+  <section class="panel day"><h2>☀️ 낮 배경 #CFE6D4</h2><div class="grid" id="day"></div></section>
+</div>
+<p class="legend">
+  <span class="flag bright">밝음</span> 밝기 0.85 이상 — 게임 블룸 임계(0.85)에 닿아 밤에 눈부실 수 있어 렌더러에서 세기를 낮춰야 하는 색 ·
+  <span class="flag faint">흐림</span> 배경과 명도 대비 1.15 미만 — 그 배경에서 묻히기 쉬운 색(명도만 본 값이라 색상 차이로 보이는 경우도 있음)
+</p>
+<script>
+// 2차 수정안(겹치는 색 정리) — 승인 후 js/aura/palette.js 에 그대로 쓴다(id 는 바꾸지 않는다)
+const PALETTE = [['mint',0x95dcd5,'민트'],['cream',0xfff8ec,'크림'],['pink',0xf7b6cc,'벚꽃'],['rose',0xed93b1,'장미'],
+ ['peach',0xfac2a0,'복숭아'],['coral',0xf0997b,'산호'],['honey',0xfac775,'꿀'],['amber',0xef9f27,'호박'],
+ ['lemon',0xf7a65f,'살구'],['leaf',0x97c459,'새잎'],['moss',0x6cbf7f,'이끼'],['sage',0xc0dd97,'세이지'],
+ ['sky',0xb5d4f4,'하늘'],['lake',0x85b7eb,'호수'],['dew',0x3f78b8,'바다'],['teal',0x5dcaa5,'청록'],
+ ['lilac',0xd9c6f5,'라일락'],['violet',0xa99ce6,'제비꽃'],['night',0x7f77dd,'밤하늘'],['snow',0xf1efe8,'눈'],
+ ['ash',0xd3d1c7,'잿빛'],['cocoa',0xd8a679,'코코아'],['berry',0xd4537e,'산딸기'],['gold',0xffd36b,'금빛']];
+// 1차 초안에서 바뀐 색(이전 값) — 비교용 표시
+const BEFORE = { mint: [0x9fe1cb, '민트'], pink: [0xf4c0d1, '벚꽃'], peach: [0xf5c4b3, '복숭아'], lemon: [0xfaeeda, '레몬'],
+  moss: [0x8fd6a0, '이끼'], dew: [0xe1f5ee, '이슬'], lilac: [0xcecbf6, '라일락'], violet: [0xafa9ec, '제비꽃'] };
+
+const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+const relLum = (n) => 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+const contrast = (a, b) => { const x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+// 블룸 판정용 밝기 — 셰이더 luma(0.299/0.587/0.114, 감마 공간) 기준
+const luma = (n) => (((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) / 255;
+
+function render(el, bg) {
+  el.innerHTML = PALETTE.map(([id, c, ko]) => {
+    const cr = contrast(c, bg), bright = luma(c) >= 0.85, faint = cr < 1.15;
+    return `<div class="cell${BEFORE[id] ? ' changed' : ''}" style="--c:${hex(c)}">
+      <div class="chip"></div><div class="dot"></div>
+      <div class="txt"><div class="ko">${ko}</div>
+      <div class="id">${id} ${hex(c)}${BEFORE[id] ? ` <span class="was">← ${hex(BEFORE[id][0])}${BEFORE[id][1] !== ko ? ' ' + BEFORE[id][1] : ''}</span>` : ''}</div><div class="cr">대비 ${cr.toFixed(1)} ${bright ? '<span class="flag bright">밝음</span>' : ''}${faint ? '<span class="flag faint">흐림</span>' : ''}</div></div></div>`;
+  }).join('');
+}
+render(document.getElementById('night'), 0x1E2A3A);
+render(document.getElementById('day'), 0xCFE6D4);
+</script>
+</body>
+</html>
