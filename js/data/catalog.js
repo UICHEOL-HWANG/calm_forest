@@ -68,6 +68,12 @@ export const DECOR = [
   { id: 'crystalPot', name: '수정 화분', ico: '💎', cost: 8,  pay: 'shard', dream: true, foot: [0.32, 0.32], sm: true, h: 0.7 },
   { id: 'starMobile', name: '별 모빌',   ico: '⭐', cost: 12, pay: 'shard', dream: true, foot: [0.5, 0.5] },
   { id: 'cloudBed',   name: '구름 침대', ico: '☁️', cost: 20, pay: 'shard', dream: true, big: true, sleep: true, foot: [1.5, 2.2] },
+  // 🪞 거울 장식 — 🪞 거울 조각(거울 마을 의뢰, 하루 최대 9)으로만 산다. 거울 마을을 한 번 다녀온 뒤에 보인다(mirror: true · game.js getDecor)
+  //   외관 보색 반전(시안 mockups/compare-decor.png 2안 확정) · waterMirror 는 벽걸이 체계가 없어 바닥 스탠드 거울
+  { id: 'upsidePot',   name: '거꾸로 화분', ico: '🪴', cost: 6,  pay: 'mirror', mirror: true, foot: [0.34, 0.34], sm: true, h: 0.7 },
+  { id: 'waterMirror', name: '물빛 거울',   ico: '🪞', cost: 10, pay: 'mirror', mirror: true, foot: [0.6, 0.3] },
+  { id: 'shadowBear', name: '거울 곰 인형', ico: '🧸', cost: 14, pay: 'mirror', mirror: true, foot: [0.5, 0.45] },
+  { id: 'mirrorLamp', name: '거울 등불',   ico: '🏮', cost: 22, pay: 'mirror', mirror: true, foot: [0.5, 0.5] },
 ];
 
 export const FISH_KINDS = [

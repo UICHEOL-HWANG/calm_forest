@@ -119,15 +119,17 @@ export function makeMoonCarriage() {
   const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.26, 0.2), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
   lamp.position.set(0, 2.3, 1.55); root.add(lamp);
   const lh = halo(0xffd27a, 1.5, 0.7); lh.position.copy(lamp.position); root.add(lh);
-  const wool = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true });
-  const face = new THREE.MeshStandardMaterial({ color: 0x5a4a5a, roughness: 0.9, flatShading: true });
+  // ⚡ 털 5덩이+머리는 한 정점색 메시로 굽는다(양 한 마리 6콜→1콜, 🪞 거울 마을 정박 마차까지 ≤60 예산 — 2026-10-08 실측)
+  const sheepMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
   const wingMat = new THREE.MeshStandardMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.85, flatShading: true });
   const reinMat = new THREE.MeshBasicMaterial({ color: 0xffd27a });
   const sheep = [];
   [-0.45, 0.45].forEach((sx) => {
     const s = new THREE.Group(); s.position.set(sx, 1.0, 3.0); root.add(s); sheep.push(s);
-    for (let k = 0; k < 5; k++) { const p = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 1), wool); p.position.set(((k * 37) % 5 - 2) * 0.1, ((k * 13) % 3) * 0.08, ((k * 7) % 5 - 2) * 0.14); s.add(p); }
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), face); head.position.set(0, 0.08, 0.5); head.scale.set(0.9, 1, 1.15); s.add(head);
+    const body = new THREE.Group();
+    for (let k = 0; k < 5; k++) part(body, new THREE.IcosahedronGeometry(0.3, 1), 0xffffff, ((k * 37) % 5 - 2) * 0.1, ((k * 13) % 3) * 0.08, ((k * 7) % 5 - 2) * 0.14);
+    part(body, new THREE.SphereGeometry(0.22, 10, 8), 0x5a4a5a, 0, 0.08, 0.5).scale.set(0.9, 1, 1.15);
+    s.add(new THREE.Mesh(bakeGroup(body), sheepMat));
     const wing = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), wingMat); wing.position.y = 0.3; wing.scale.set(1.8, 0.15, 0.6); s.add(wing);
     const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2.0, 4), reinMat);
     rein.position.set(-sx * 0.45, 0.3, -1.0); rein.rotation.x = Math.PI / 2 - 0.2; s.add(rein);

@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>Mirror Real World</title>
+<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }</script>
+<body style="margin:0;background:#000">
+<script type="module">
+import * as THREE from 'three';
+import { buildMirrorWorld, PAL3 } from '/js/mirror/art.js';
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.45;
+const s = new THREE.Scene(); s.background = new THREE.Color(PAL3.sky); s.fog = new THREE.Fog(PAL3.fog, 26, 90);
+s.add(new THREE.HemisphereLight(0xe0d4ff, 0x3a3270, 1.35)); const d = new THREE.DirectionalLight(0xe8dcff, 1); d.position.set(10, 22, 8); s.add(d);
+const w = buildMirrorWorld(); s.add(w.group);
+const c = new THREE.PerspectiveCamera(innerHeight > innerWidth ? 60 : 45, innerWidth / innerHeight, 0.1, 300); c.position.set(2.5, 14, 28.4); c.lookAt(2.5, 0, 10.9);
+r.info.autoReset = false; r.render(s, c); window.__calls = r.info.render.calls;
+</script></body>

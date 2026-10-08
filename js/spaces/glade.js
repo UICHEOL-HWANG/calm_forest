@@ -12,7 +12,7 @@ import {
   spawnFloatText, spawnSparkle, spawnTree, trackGateBlocked, tryUnlockDrop, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
-import { BUG_KINDS, CAFE_GATE, GLADE, GLADE_R } from '../data/places.js';
+import { BUG_KINDS, CAFE_GATE, GLADE, GLADE_R, LIGHT_WORKSHOP, LIGHT_WORKSHOP_POND } from '../data/places.js';
 import { PAL } from '../data/world.js';
 import { NIGHT_MIN } from '../daynight.js';
 import { rollKind } from '../dex-gates.js';
@@ -39,6 +39,9 @@ export function buildGlade() {
     const a = (i / 11) * Math.PI * 2 + 0.25, r = GLADE_R + 1.4 + Math.random() * 1.2;
     const tx = GLADE.x + Math.cos(a) * r, tz = GLADE.z + Math.sin(a) * r;
     if (dist2D({ x: tx, z: tz }, CAFE_GATE) < 5.5) continue;   // ☕ 카페 시야를 가리지 않게 비움
+    // 🏮 빛 공방 — 오두막에 박히는 나무만 비우고 옆 나무는 남긴다(숲 가장자리 느낌) · 연못 위도 비움
+    if (dist2D({ x: tx, z: tz }, LIGHT_WORKSHOP) < 2.8) continue;
+    if (dist2D({ x: tx, z: tz }, { x: LIGHT_WORKSHOP.x + LIGHT_WORKSHOP_POND.x, z: LIGHT_WORKSHOP.z + LIGHT_WORKSHOP_POND.z }) < LIGHT_WORKSHOP_POND.r + 0.6) continue;
     spawnTree(tx, tz);
   }
   obstacles.push({ x: GLADE.x, z: GLADE.z, r: GLADE_R });   // 계곡 안엔 밭 금지(빈터 유지)

@@ -1135,6 +1135,7 @@
   #sleep-fade.on { pointer-events: auto; }
   /* 🌙 꿈길 — 같은 암전을 보랏빛으로(js/spaces/dream.js · ui.sleepFade(a, 'dream')) */
   #sleep-fade.dream { background: radial-gradient(ellipse at center, #6c58c4 0%, #2a2160 70%, #171236 100%); }
+  #sleep-fade.mirror { background: radial-gradient(ellipse at center, #9ec8ff 0%, #50629a 55%, #120f2e 100%); }
   #dream-caption { position: fixed; left: 50%; top: 46%; transform: translateX(-50%); z-index: 53; color: #fff; font-size: clamp(16px, 4.6vw, 20px); font-weight: 700;
     text-shadow: 0 2px 12px rgba(40,20,90,0.7); opacity: 0; transition: opacity .5s; pointer-events: none; white-space: nowrap; }
   #dream-caption.show { opacity: 1; }
@@ -1148,10 +1149,10 @@
   body.dream-cut #door-prompt, body.dream-cut #npc-prompt, body.dream-cut #zone-prompt, body.dream-cut #quest-panel,
   body.dream-cut #buffs, body.dream-cut #decor-btn, body.dream-cut #ext-btn, body.dream-cut #hint, body.dream-cut #story-chip { display: none !important; }
   /* 💤/🌙 선택 창 · 🌙 도착 안내 — id 가 -modal 로 끝나야 anyModalOpen 이 잡는다 */
-  #dream-modal, #dream-arrive-modal { position: fixed; inset: 0; z-index: 46; display: none; place-items: center; background: rgba(30,20,60,0.55); }
-  #dream-modal.show, #dream-arrive-modal.show { display: grid; }
-  #dream-modal .tut-card, #dream-arrive-modal .tut-card { width: min(380px, 92vw); background: #fffaf2; padding: 22px 18px 16px; }
-  #dream-modal h2, #dream-arrive-modal h2 { margin: 0 0 4px; font-size: 19px; }
+  #dream-modal, #dream-arrive-modal, #mirror-arrive-modal { position: fixed; inset: 0; z-index: 46; display: none; place-items: center; background: rgba(30,20,60,0.55); }
+  #dream-modal.show, #dream-arrive-modal.show, #mirror-arrive-modal.show { display: grid; }
+  #dream-modal .tut-card, #dream-arrive-modal .tut-card, #mirror-arrive-modal .tut-card { width: min(380px, 92vw); background: #fffaf2; padding: 22px 18px 16px; }
+  #dream-modal h2, #dream-arrive-modal h2, #mirror-arrive-modal h2 { margin: 0 0 4px; font-size: 19px; }
   .dream-sub { margin: 0 0 12px; font-size: 13.5px; opacity: .75; }
   .dream-opt { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; margin-top: 10px; padding: 12px 14px; min-height: 56px;
     border-radius: 16px; border: 2px solid #eee3d6; background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
@@ -1167,6 +1168,7 @@
   .dream-list li { font-size: 14px; line-height: 1.5; padding: 7px 0; border-bottom: 1px solid #f1ecf8; }
   .dream-list li:last-child { border-bottom: none; }
   #dream-arrive-ok { width: 100%; border: none; border-radius: 14px; min-height: 48px; font-weight: 800; font-size: 15px; cursor: pointer; background: #8f7ad6; color: #fff; }
+  #mirror-arrive-ok { width: 100%; border: none; border-radius: 14px; min-height: 48px; font-weight: 800; font-size: 15px; cursor: pointer; background: #50629a; color: #fff; }
   body.intro-open #intro-layer { display: block; }
   /* 컷신 중 게임 HUD 전부 숨김 — 모바일 조이스틱 포함 */
   body.intro-open #topleft, body.intro-open #topright, body.intro-open #minimap, body.intro-open #hotbar,
@@ -2015,6 +2017,18 @@
         <li>🛏️ 구름 침대에 누우면 아침에 깨어나요</li>
       </ul>
       <button id="dream-arrive-ok">알겠어요</button>
+    </div>
+  </div>
+  <!-- 🪞 거울 마을 첫 도착 안내(1회) -->
+  <div id="mirror-arrive-modal">
+    <div class="tut-card">
+      <h2>🪞 거울 마을에 왔어요</h2>
+      <ul class="dream-list">
+        <li>💬 거울 주민에게 말을 걸어 보세요</li>
+        <li>🔍 잃어버린 물건을 찾아 돌려주면 🪞 조각을 받아요</li>
+        <li>🚏 정류장에서 언제든 마을로 돌아가요</li>
+      </ul>
+      <button id="mirror-arrive-ok">알겠어요</button>
     </div>
   </div>
 
@@ -3299,6 +3313,7 @@
       sleepFade(a, tint = null) {
         const el = $('sleep-fade');
         if (a > 0) el.classList.toggle('dream', tint === 'dream');   // 🌙 꿈길은 보랏빛 — 걷힐 땐 색을 그대로 둔다(전환 중 색이 튀지 않게)
+        if (a > 0) el.classList.toggle('mirror', tint === 'mirror');   // 🪞 거울 문 번쩍은 물빛
         el.style.opacity = a;
         if (a > 0) { clearTimeout(el._unlock); el.classList.add('on'); }
         else el._unlock = setTimeout(() => el.classList.remove('on'), 700);
@@ -3322,6 +3337,12 @@
       showDreamArrive() {
         const m = $('dream-arrive-modal');
         $('dream-arrive-ok').onclick = () => m.classList.remove('show');
+        Input.setAnalog(0, 0);
+        m.classList.add('show');
+      },
+      showMirrorArrive() {
+        const m = $('mirror-arrive-modal');
+        $('mirror-arrive-ok').onclick = () => m.classList.remove('show');
         Input.setAnalog(0, 0);
         m.classList.add('show');
       },
@@ -3578,6 +3599,8 @@
         Input.setAnalog(0, 0); $('cos-menu').classList.add('show'); document.body.classList.add('menu-open');
         requestAnimationFrame(() => Input.openCosMenu?.($('cos-preview')));
       },
+      // 🏮 빛 공방 — 모달은 필요할 때 불러온다
+      openLightWorkshop() { import('./js/aura/workshop-ui.js').then(m => m.openWorkshop()); },
       // ☕ 카페 주문판 열기
       openCafe(d) { renderCafe(d); Input.setAnalog(0, 0); $('cafe-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🛶 나룻배 런 시작/종료 — 마을 UI를 걷어내고 배 HUD로 전환
@@ -3700,7 +3723,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -3716,7 +3739,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
@@ -4402,11 +4425,11 @@
 
     // ── 집 꾸미기 메뉴 ──
     function renderDecorItems() {
-      $('dm-crop').textContent = `🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}` + (lastInv.shard ? `  ✨ ${lastInv.shard}` : '');   // 🌙 꿈 조각은 생긴 뒤에만
+      $('dm-crop').textContent = `🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}` + (lastInv.shard ? `  ✨ ${lastInv.shard}` : '') + (lastInv.mirror ? `  🪞 ${lastInv.mirror}` : '');   // 🌙 꿈 조각 · 🪞 거울 조각은 생긴 뒤에만
       const box = $('dm-items'); box.innerHTML = '';
       Input.getDecor().forEach(d => {
         const pay = d.pay || 'crop';
-        const payIco = pay === 'fish' ? '🐟' : pay === 'coins' ? '🪙' : pay === 'shard' ? '✨' : '🥕';
+        const payIco = pay === 'fish' ? '🐟' : pay === 'coins' ? '🪙' : pay === 'mirror' ? '🪞' : pay === 'shard' ? '✨' : '🥕';
         const have = lastInv[pay] || 0;
         const stored = (Input.getStored?.() || {})[d.id] || 0;      // 🧺 창고 보유분 — 값 없이 꺼내 놓는다
         const ok = !d.locked && (stored > 0 || have >= d.cost);
@@ -4416,7 +4439,7 @@
         el.innerHTML = `<span class="di-ico">${d.ico}</span><span class="di-name">${d.name}</span><span class="di-cost">${d.locked ? '🔒' : (stored > 0 ? `보유 ${stored}` : payIco + d.cost)}</span>${d.tag ? `<span class="di-tag">${d.tag.label}</span><span class="di-tag">${d.tag.until}</span>` : ''}`;
         el.addEventListener('click', () => {
           if (d.locked) { ui.toast('집을 더 증축하면 살 수 있어요'); return; }
-          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : pay === 'coins' ? '코인이 부족해요 🪙' : pay === 'shard' ? '꿈 조각이 부족해요 ✨' : '작물이 부족해요 🥕'); return; }
+          if (!ok) { ui.toast(pay === 'fish' ? '물고기가 부족해요 🐟' : pay === 'coins' ? '코인이 부족해요 🪙' : pay === 'mirror' ? '거울 조각이 부족해요 🪞' : pay === 'shard' ? '꿈 조각이 부족해요 ✨' : '작물이 부족해요 🥕'); return; }
           Input.selectDecor(d.id); closeDecor();
           placingDecorItem = d; refreshActionIcon();             // 액션버튼 = 이 가구(설치 버튼)
           if (decorGuideStep >= 0) setDecorGuide(1);              // 단계 안내 ② 자리 잡기
@@ -5539,7 +5562,7 @@
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
     window.addEventListener('keydown', e => {                // 데스크톱: 안내 모달이 떠 있으면 Space = 알겠어요 — 게임 조작으로 안 새게 capture
       if (e.code !== 'Space' || e.repeat) return;
-      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok' };
+      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok', 'mirror-arrive-modal': 'mirror-arrive-ok' };
       const open = Object.keys(OK_BTN).find(id => $(id).classList.contains('show'));
       if (!open) return;
       e.preventDefault(); e.stopPropagation();
