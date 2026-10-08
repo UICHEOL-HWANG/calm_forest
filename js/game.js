@@ -250,6 +250,8 @@ import {
   PLOT_KEEP_OUT, badgeColor, buildNPCs, npcState, questView, refreshQuestPanel, shadeToLum, talkToNPC, updateMerchantVisit,
   updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
+import { restoreAura } from './aura/recipe.js';
+import { createAuraFx, lookOf } from './aura/render.js';
 import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐릭터·꾸미기 › 옷장·펫 탭
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
@@ -986,6 +988,7 @@ const gameState = {
   //    유저 테이블을 만들면 RLS·인증·동기화 비용만 는다.
   talk: { date: '', used: {} },
   quiz: { date: '', done: false, correct: 0 },   // 🦆 사공 퀴즈 — 오늘 풀었는지(시작하면 done). 날짜가 오늘이 아니면 다시 풀 수 있다
+  aura: { slots: [], equipped: null },   // 🏮 빛 공방 오라 — 보관함 3칸(레시피 사본+다듬기) · 장착 id
   starDay: null,   // 🔭 별 잇기 — 마지막으로 보상 받은 날(같은 날 재도전은 연습)
   star: { cleared: {}, plays: {}, best: {} },   // 🌌 별자리별 첫 클리어 날짜·시도 횟수·최고 점수(해금은 cleared 로 계산)
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
@@ -2591,6 +2594,8 @@ function applySave(saved) {
     gameState.quiz = { date: saved.quiz.date, done: !!saved.quiz.done, correct: +saved.quiz.correct || 0 };
   }
   if (typeof saved.starDay === 'string') gameState.starDay = saved.starDay;   // 🔭 별 잇기 하루 1회
+  gameState.aura = restoreAura(saved.aura);   // 🏮 모르는 값·4칸째·사라진 장착 id 는 걸러진다
+  refreshAura();
   gameState.star = restoreStar(saved.star, saved.starDay);   // 🌌 별자리 기록(옛 북두칠성 보상 기록은 클리어로 친다)
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
@@ -3444,6 +3449,19 @@ function clearTrail() {
   for (const e of trailLive) { scene.remove(e.mesh); trailPool.push(e.mesh); }
   trailLive.length = 0;
   trailFx.clear();
+}
+
+// 🏮 오라 — 장착한 레시피 하나를 몸 주변에. 트레일과 같은 곳에서 꺼진다.
+const auraFx = createAuraFx(THREE);
+export function refreshAura() {
+  const slot = gameState.aura.slots.find(s => s.id === gameState.aura.equipped);
+  auraFx.setLook(slot ? lookOf(slot) : null);
+}
+function updateAura(dt) {
+  if (!auraFx.points.parent) scene.add(auraFx.points);
+  const off = indoor || atCafe || atMuseum || atObservatory || atMine || atDream;
+  auraFx.points.visible = !off && !!gameState.aura.equipped;
+  if (auraFx.points.visible) auraFx.update(dt, player.position, { nightLevel });
 }
 
 function updateTrail(dt) {
@@ -5648,6 +5666,7 @@ function animate() {
   updatePops(dt);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
   updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
+  updateAura(dt);       // 🏮 빛 공방 오라
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
   updateUmbrella(dt);   // ☂️ 💎 도구 테마 세트 — 비 오는 날 바깥에서 우산
   if (heldToolMesh?.userData.skin === 'moon') setToolSkinNight(heldToolMesh, nightLevel);   // 🌙 달밤 도구는 밤에만 은은히
