@@ -233,6 +233,10 @@ returns text[] language sql immutable set search_path = public as $$
   select array['friendarch']::text[]
 $$;
 
+-- 상수 도우미는 트리거(security definer)만 쓴다 — API 로 부를 이유가 없다
+revoke all on function public._premium_cosmetic_ids() from public, anon, authenticated;
+revoke all on function public._reward_decor_ids()     from public, anon, authenticated;
+
 create or replace function public._game_saves_guard_decor()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare

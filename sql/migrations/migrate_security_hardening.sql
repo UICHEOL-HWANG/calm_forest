@@ -188,7 +188,9 @@ returns text[] language sql immutable set search_path = public as $$
     'firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl',
     'forest_spirit', 'plush_doll', 'ghost_nightcap', 'ghost_cloud', 'witch_classic', 'witch_starry',
     'tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest',
-    'bat_wing', 'bat_cape'
+    'bat_wing', 'bat_cape',
+    -- 🤝 친구 초대 보상(migrate_referrals.sql 과 같은 목록 — 둘 중 어느 파일을 다시 돌려도 가드가 안 풀리게)
+    'tools_star', 'friend_wing', 'friend_pin'
   ]::text[]
 $$;
 
