@@ -1,0 +1,409 @@
+<title>calm forest 지표 후보 보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Gowun+Batang:wght@700&display=swap">
+<style>
+/* layout: header + event legend → filter row → small-multiple grid by category → raw tables in tabs */
+:root {
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --ink: #17201b;
+  --ink-2: #4c5650;
+  --ink-3: #7b847e;
+  --rule: #dfe3dd;
+  --grid: #eceee9;
+  --line: #2f6b4f;
+  --ev-toss-ink: #8a5c00;
+  --ev-beta: rgba(74,58,167,.12);
+  --ev-persona: rgba(120,120,115,.22);
+  --ev-persona-ink: #5b5b56;
+  --chip-on: #17201b;
+  --chip-on-ink: #ffffff;
+  --font-display: "Gowun Batang", "Nanum Myeongjo", serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121614; --surface: #1a1f1c; --ink: #edf1ed; --ink-2: #b9c2bc; --ink-3: #8b948e;
+    --rule: #2c332f; --grid: #252b27; --line: #6fbf93;
+    --ev-toss-ink: #e7b54a; --ev-beta: rgba(144,133,233,.16);
+    --ev-persona: rgba(190,190,180,.18); --ev-persona-ink: #b5b5ad;
+    --chip-on: #edf1ed; --chip-on-ink: #121614;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121614; --surface: #1a1f1c; --ink: #edf1ed; --ink-2: #b9c2bc; --ink-3: #8b948e;
+  --rule: #2c332f; --grid: #252b27; --line: #6fbf93;
+  --ev-toss-ink: #e7b54a; --ev-beta: rgba(144,133,233,.16);
+  --ev-persona: rgba(190,190,180,.18); --ev-persona-ink: #b5b5ad;
+  --chip-on: #edf1ed; --chip-on-ink: #121614;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.55; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 28px; }
+header { display: grid; gap: 10px; }
+h1 { font-family: var(--font-display); font-size: clamp(24px, 3.4vw, 34px); line-height: 1.2; margin: 0; text-wrap: balance; }
+.lede { color: var(--ink-2); margin: 0; max-width: 72ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--ink-3); }
+.meta b { color: var(--ink-2); font-weight: 600; }
+.events { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12.5px; color: var(--ink-2); }
+.ev { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 18px; height: 12px; border-radius: 2px; display: inline-block; }
+.sw.toss { border-left: 2px dashed var(--ev-toss-ink); width: 10px; border-radius: 0; }
+.sw.beta { background: var(--ev-beta); }
+.sw.persona { background: repeating-linear-gradient(135deg, var(--ev-persona) 0 3px, transparent 3px 6px); border: 1px solid var(--ev-persona-ink); }
+.sw.partial { border: 1.5px solid var(--line); background: var(--surface); border-radius: 50%; width: 10px; height: 10px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 10px; z-index: 5; border-bottom: 1px solid var(--rule); }
+.filters .lbl { font-size: 12px; color: var(--ink-3); letter-spacing: .04em; }
+.chipset { display: flex; flex-wrap: wrap; gap: 6px; margin-right: 10px; }
+.chip { font: inherit; font-size: 12.5px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink-2); padding: 5px 11px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); border-color: var(--chip-on); }
+.chip:focus-visible, .tab:focus-visible { outline: 2px solid var(--line); outline-offset: 2px; }
+.group { display: grid; gap: 12px; }
+.group h2 { font-size: 15px; font-weight: 600; margin: 0; display: flex; align-items: baseline; gap: 10px; }
+.group h2 small { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 12px 8px; display: grid; gap: 4px; align-content: start; min-width: 0; position: relative; }
+.card .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.card .name { font-size: 13px; font-weight: 600; line-height: 1.35; }
+.card .id { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); margin-right: 5px; }
+.src { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-3); border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; white-space: nowrap; }
+.nums { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.big { font-family: var(--font-mono); font-size: 20px; font-weight: 500; }
+.sub { font-size: 11.5px; color: var(--ink-3); }
+svg.chart { width: 100%; height: auto; display: block; }
+svg text { font-family: var(--font-mono); font-size: 9px; fill: var(--ink-3); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 11.5px; padding: 5px 8px; border-radius: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 3; }
+.na { font-size: 12.5px; color: var(--ink-2); margin: 4px 0 0; }
+.tables { display: grid; gap: 12px; }
+.tables h2 { font-size: 15px; margin: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid var(--rule); }
+.tab { font: inherit; font-size: 13px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--ink-3); padding: 6px 0; margin-bottom: -1px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); border-color: var(--line); }
+.scroller { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 100%; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface); }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+td:first-child .id { font-family: var(--font-mono); color: var(--ink-3); margin-right: 6px; }
+td.partial { color: var(--ink-3); font-style: italic; }
+.facts { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 4px; max-width: 90ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>calm forest 북극성 지표 후보 보드</h1>
+    <p class="lede">필터 없는 원본 데이터 전체 기간에서 뽑은 후보 지표 53개(계산 불가 3개 별도)를 주 단위로 그렸습니다. 페르소나·베타·개발자·게스트를 모두 포함한 숫자이고, 무엇을 뺄지는 아직 정하지 않았습니다.</p>
+    <div class="meta">
+      <span><b>GA4</b> 7/27–10/6 · user_pseudo_id</span>
+      <span><b>SL</b> session_logs 8/6–10/8 · client_id</span>
+      <span><b>GL</b> game_logs 7/27–10/8</span>
+      <span><b>EC</b> econ_logs 8/3 주–</span>
+      <span>주 = 월요일 시작 · 집계 2026-10-08</span>
+    </div>
+    <div class="events" aria-label="차트 배경 표시">
+      <span class="ev"><span class="sw toss"></span>9/4 앱인토스 출시</span>
+      <span class="ev"><span class="sw beta"></span>9/9–9/15 유급 베타 10명</span>
+      <span class="ev"><span class="sw persona"></span>9/28–10/6 페르소나 시뮬 실행</span>
+      <span class="ev"><span class="sw partial"></span>속 빈 점·점선 = 부분 주</span>
+    </div>
+  </header>
+
+  <div class="filters" role="toolbar" aria-label="필터">
+    <span class="lbl">분류</span>
+    <div class="chipset" id="cat-chips"></div>
+    <span class="lbl">원천</span>
+    <div class="chipset" id="src-chips"></div>
+  </div>
+
+  <main id="groups" style="display:grid;gap:28px"></main>
+
+  <section class="group">
+    <h2>숫자에서 바로 보이는 사실 <small>해석·제외 판단 아님</small></h2>
+    <ul class="facts">
+      <li>같은 주라도 사람 키에 따라 값이 크게 다르다. 8/10 주 WAU: SL client_id 29 · SL user_id 135 · GA4 89.</li>
+      <li>9/28·10/5 주에 SL·GL·EC 의 client_id 수가 10배 안팎으로 뛴다(SL 27 → 418). 같은 주 GA4 WAU 는 45.</li>
+      <li>8/10–8/31 GA4 출석 유저와 도감 유저가 매주 같다(27 · 13 · 23 · 43).</li>
+      <li>GA4 9/21 신규 코호트만 D1(17/49)·2주차 복귀(15)가 다른 주보다 크게 높다.</li>
+      <li>이웃 마을·수확제(GA4 이벤트 거의 없음), 결제·매출(구매 이벤트 없음), 안드로이드(SL 에 행 없음)는 계산 불가.</li>
+    </ul>
+  </section>
+
+  <section class="tables">
+    <h2>원본 표</h2>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="scroller" id="table-box"></div>
+  </section>
+</div>
+
+<script>
+const WEEKS = ['7/27','8/3','8/10','8/17','8/24','8/31','9/7','9/14','9/21','9/28','10/5'];
+const N = null;
+const PARTIAL = { SL: [1, 10], GA4: [10], GL: [10], EC: [10] };
+const SRCS = ['SL', 'GA4', 'GL', 'EC'];
+const CATS = [
+  { key: 'reach', name: '활동 폭' },
+  { key: 'habit', name: '습관·빈도' },
+  { key: 'ret', name: '리텐션' },
+  { key: 'depth', name: '깊이·참여' },
+  { key: 'prog', name: '진행·활성화' },
+  { key: 'econ', name: '경제' },
+  { key: 'social', name: '소셜' },
+];
+
+const ratio = (a, b) => a.map((v, i) => (v == null || b[i] == null || b[i] === 0) ? null : +(v / b[i]).toFixed(3));
+const ga = {
+  wau: [17,38,89,67,38,65,83,75,58,45,45],
+  dau: [4.3,8,14.7,10.9,6.3,11.1,18.6,13.6,12.3,21.6,9.1],
+  newu: [17,35,81,64,35,63,77,59,49,21,25],
+  act: [12,14,6,3,3,10,23,7,7,2,0],
+  d1: [3,6,4,2,0,6,8,3,17,2,0],
+  d17: [5,8,4,2,0,8,14,3,18,2,0],
+  w2: [4,3,1,0,1,2,3,0,15,0,0],
+};
+
+const M = [
+  { id:'A1', cat:'reach', src:'SL',  name:'WAU (client_id)', v:[N,14,29,17,27,33,45,41,27,418,281] },
+  { id:'A2', cat:'reach', src:'SL',  name:'WAU (user_id)', v:[N,80,135,93,96,72,57,105,32,83,110] },
+  { id:'A3', cat:'reach', src:'GA4', name:'WAU (user_pseudo_id)', v:ga.wau },
+  { id:'A4', cat:'reach', src:'GA4', name:'WAU (GA4 user_id)', v:[51,190,157,91,105,96,66,113,44,82,83] },
+  { id:'A5', cat:'reach', src:'GA4', name:'평균 DAU', v:ga.dau, fmt:'dec' },
+  { id:'A6', cat:'reach', src:'SL',  name:'웹 WAU', v:[N,14,29,17,27,12,28,25,8,407,277] },
+  { id:'A7', cat:'reach', src:'SL',  name:'토스 WAU', v:[N,0,0,0,0,20,14,14,15,9,4] },
+  { id:'A8', cat:'reach', src:'SL',  name:'itch WAU', v:[N,0,0,0,0,0,3,2,2,2,0] },
+  { id:'A9', cat:'reach', src:'SL',  name:'로그인 계정 WAU', v:[N,1,4,1,2,17,26,25,21,412,278] },
+  { id:'A10', cat:'reach', src:'SL', name:'게스트 WAU', v:[N,13,25,16,25,16,19,16,6,6,3] },
+  { id:'A11', cat:'reach', src:'GL', name:'game_logs client_id', v:[7,35,30,18,31,147,54,51,37,419,284] },
+  { id:'A12', cat:'reach', src:'GA4', name:'로그인 화면 도달', v:[0,0,0,0,0,13,52,42,31,29,25] },
+  { id:'A13', cat:'reach', src:'GA4', name:'로그인 성공', v:[17,34,27,13,23,43,43,39,32,17,8] },
+  { id:'B1', cat:'habit', src:'SL',  name:'가꾼 날 수 (사람×날, 핵심 루프)', v:[N,8,11,5,10,14,55,33,15,165,97] },
+  { id:'B2', cat:'habit', src:'SL',  name:'가꾼 사람 수', v:[N,8,9,4,6,9,26,20,10,162,95] },
+  { id:'B3', cat:'habit', src:'SL',  name:'정착 주민 (2일+ & 핵심 루프)', v:[N,3,3,2,1,4,16,9,4,3,1] },
+  { id:'B4', cat:'habit', src:'SL',  name:'주 2일 이상 접속', v:[N,3,6,4,1,7,18,11,5,6,3] },
+  { id:'B5', cat:'habit', src:'SL',  name:'주 3일 이상 접속', v:[N,2,2,1,1,2,10,4,3,4,2] },
+  { id:'B6', cat:'habit', src:'GA4', name:'출석 보상 수령자', v:[0,14,27,13,23,43,47,39,31,16,8] },
+  { id:'B7', cat:'habit', src:'GA4', name:'DAU / WAU 고착도', v:ratio(ga.dau, ga.wau), fmt:'ratio' },
+  { id:'C1', cat:'ret', src:'SL',  name:'재방문 (이번 주 & 지난주)', v:[N,0,5,4,3,2,6,14,7,6,5] },
+  { id:'C2', cat:'ret', src:'SL',  name:'재방문 & 핵심 루프', v:[N,0,4,2,1,2,4,11,3,4,2] },
+  { id:'C3', cat:'ret', src:'GA4', name:'신규 D1 재방문율', v:ratio(ga.d1, ga.newu), fmt:'pct', num:ga.d1, den:ga.newu },
+  { id:'C4', cat:'ret', src:'GA4', name:'신규 D1–7 재방문율', v:ratio(ga.d17, ga.newu), fmt:'pct', num:ga.d17, den:ga.newu },
+  { id:'C5', cat:'ret', src:'GA4', name:'신규 2주차 복귀 수', v:ga.w2 },
+  { id:'D1', cat:'depth', src:'SL',  name:'핵심 루프 완료 총량', v:[N,65,237,33,37,608,2478,1243,943,1666,1218] },
+  { id:'D2', cat:'depth', src:'GA4', name:'핵심 루프 이벤트 수', v:[192,177,237,34,28,615,2468,1215,948,1655,969] },
+  { id:'D3', cat:'depth', src:'GA4', name:'핵심 루프 유저', v:[11,15,9,5,4,10,25,19,11,8,4] },
+  { id:'D4', cat:'depth', src:'SL',  name:'세션 수 (SL)', v:[N,80,145,93,96,99,170,172,79,576,336] },
+  { id:'D5', cat:'depth', src:'GA4', name:'세션 수 (GA4)', v:[63,95,136,100,71,110,199,142,117,184,77] },
+  { id:'D6', cat:'depth', src:'SL',  name:'의미 있는 세션 (10분+ & 핵심 루프)', v:[N,5,6,4,2,14,45,25,6,37,18] },
+  { id:'D7', cat:'depth', src:'SL',  name:'플레이 시간 원본', v:[N,13.9,23.2,14.2,11.3,19.2,81.6,51.5,13.4,46.2,28.1], fmt:'h' },
+  { id:'D8', cat:'depth', src:'SL',  name:'플레이 시간 세션당 60분 상한', v:[N,13.5,18,12.5,11.3,17.5,37.4,29,8.2,46.2,28.1], fmt:'h' },
+  { id:'D9', cat:'depth', src:'GA4', name:'GA4 참여 시간', v:[2.2,2.4,1.8,1.2,1.2,5.7,15.2,7.9,5.2,28.4,16.5], fmt:'h' },
+  { id:'D10', cat:'depth', src:'GL', name:'client × 분 (좌표 샘플)', v:[67,520,434,268,255,785,1441,1399,455,3096,1964] },
+  { id:'D11', cat:'depth', src:'GL', name:'좌표 샘플 수', v:[5125,24898,18761,9417,14041,55481,142646,72818,37781,108471,86166] },
+  { id:'E1', cat:'prog', src:'GA4', name:'튜토리얼 완료', v:[4,2,0,0,0,2,4,0,0,0,0] },
+  { id:'E2', cat:'prog', src:'GA4', name:'퀘스트 완료자', v:[10,9,2,2,2,7,20,15,3,5,3] },
+  { id:'E3', cat:'prog', src:'GA4', name:'도감 등록자', v:[0,8,27,13,23,43,47,38,27,15,6] },
+  { id:'E4', cat:'prog', src:'GA4', name:'배지 획득자', v:[0,3,5,5,5,6,20,12,4,4,2] },
+  { id:'E5', cat:'prog', src:'GA4', name:'스토리 장 완료자', v:[0,0,0,5,4,7,16,5,3,2,2] },
+  { id:'E6', cat:'prog', src:'GA4', name:'꾸미기 (배치·색 해금)', v:[2,11,5,5,3,7,20,12,5,4,2] },
+  { id:'E7', cat:'prog', src:'GA4', name:'신규 활성화율 (핵심 루프 도달)', v:ratio(ga.act, ga.newu), fmt:'pct', num:ga.act, den:ga.newu },
+  { id:'E8', cat:'prog', src:'GA4', name:'신규 유저', v:ga.newu },
+  { id:'F1', cat:'econ', src:'EC', name:'코인 거래 수', v:[N,123,249,131,150,773,1758,728,986,1173,642] },
+  { id:'F2', cat:'econ', src:'EC', name:'코인 활동 client', v:[N,14,30,18,32,140,53,47,36,265,181] },
+  { id:'F3', cat:'econ', src:'EC', name:'코인 획득', v:[N,972,2585,1304,1438,23580,31537,18628,11692,19301,8071] },
+  { id:'F4', cat:'econ', src:'EC', name:'코인 사용', v:[N,0,80,0,0,1805,12299,8563,5105,3560,1142] },
+  { id:'F5', cat:'econ', src:'EC', name:'코인 사용자 수', v:[N,0,1,0,0,3,13,10,4,6,4] },
+  { id:'F6', cat:'econ', src:'EC', name:'판매 거래', v:[N,15,32,0,0,102,943,210,734,237,259] },
+  { id:'F7', cat:'econ', src:'EC', name:'퀘스트 보상 거래', v:[N,16,37,7,11,80,317,187,62,180,68] },
+  { id:'F8', cat:'econ', src:'GA4', name:'상점 구매 유저', v:[0,1,0,0,0,1,5,4,3,4,1] },
+  { id:'G1', cat:'social', src:'GA4', name:'소셜 행동 유저 (선물·잡담·랭킹·사진)', v:[0,1,1,5,6,9,17,14,8,8,2] },
+];
+const NA = [
+  { cat:'social', name:'이웃 마을 방문 · 수확제 기부', why:'GA4 이벤트 거의 없음(plaza 1명). Supabase 전용 테이블일 가능성.' },
+  { cat:'econ', name:'결제자 · 매출', why:'GA4 구매 이벤트 없음. Paddle 라이브 전, 토스 IAP 콘솔 미조회.' },
+  { cat:'reach', name:'안드로이드 WAU', why:'session_logs 에 platform=android 행 없음.' },
+];
+
+function fmt(v, m) {
+  if (v == null) return '—';
+  if (m.fmt === 'pct') return Math.round(v * 100) + '%';
+  if (m.fmt === 'ratio') return v.toFixed(2);
+  if (m.fmt === 'h') return v.toFixed(1) + 'h';
+  if (m.fmt === 'dec') return v.toFixed(1);
+  if (v >= 10000) return (v / 1000).toFixed(1) + 'k';
+  return Math.round(v).toLocaleString('ko-KR');
+}
+function fmtFull(v, m, i) {
+  if (v == null) return '데이터 없음';
+  if (m.fmt === 'pct') return `${(v * 100).toFixed(1)}% (${m.num[i]}/${m.den[i]})`;
+  if (m.fmt === 'h') return v.toFixed(1) + '시간';
+  if (m.fmt === 'ratio') return v.toFixed(2);
+  if (m.fmt === 'dec') return v.toFixed(1);
+  return v.toLocaleString('ko-KR');
+}
+
+// x = days since 7/27, each week point at mid-week (+3.5)
+const W = 300, H = 128, PL = 36, PR = 8, PT = 8, PB = 18, DAYS = 77;
+const xs = d => PL + (d / DAYS) * (W - PL - PR);
+const MONTHS = [{ d: 5, t: '8월' }, { d: 36, t: '9월' }, { d: 66, t: '10월' }];
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+
+function chart(m) {
+  const vals = m.v.filter(v => v != null);
+  const ymax = niceMax(Math.max(...vals) * 1.05);
+  const ys = v => PT + (1 - v / ymax) * (H - PT - PB);
+  const partial = PARTIAL[m.src] || [];
+  const top = PT, bot = H - PB;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${m.name} 주간 추이">`;
+  s += `<defs><pattern id="hatch-${m.id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="5" fill="var(--ev-persona)"/></pattern></defs>`;
+  s += `<rect x="${xs(44)}" y="${top}" width="${xs(51) - xs(44)}" height="${bot - top}" fill="var(--ev-beta)"/>`;
+  s += `<rect x="${xs(63)}" y="${top}" width="${xs(73) - xs(63)}" height="${bot - top}" fill="url(#hatch-${m.id})"/>`;
+  s += `<line x1="${xs(39)}" x2="${xs(39)}" y1="${top}" y2="${bot}" stroke="var(--ev-toss-ink)" stroke-width="1" stroke-dasharray="2 2"/>`;
+  [0.5, 1].forEach(f => {
+    const y = ys(ymax * f);
+    s += `<line x1="${PL}" x2="${W - PR}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>`;
+    s += `<text x="${PL - 5}" y="${y + 3}" text-anchor="end">${fmt(ymax * f, m)}</text>`;
+  });
+  s += `<text x="${PL - 5}" y="${ys(0) + 3}" text-anchor="end">0</text>`;
+  s += `<line x1="${PL}" x2="${W - PR}" y1="${ys(0)}" y2="${ys(0)}" stroke="var(--rule)" stroke-width="1"/>`;
+  MONTHS.forEach(mo => { s += `<text x="${xs(mo.d)}" y="${H - 4}" text-anchor="middle">${mo.t}</text>`; });
+  const pts = m.v.map((v, i) => v == null ? null : { x: xs(i * 7 + 3.5), y: ys(v), i, v });
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (!a || !b) continue;
+    const dashed = partial.includes(a.i) || partial.includes(b.i);
+    s += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--line)" stroke-width="2" stroke-linecap="round"${dashed ? ' stroke-dasharray="3 3"' : ''}/>`;
+  }
+  pts.forEach(p => {
+    if (!p) return;
+    const hollow = partial.includes(p.i);
+    s += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${hollow ? 'var(--surface)' : 'var(--line)'}" stroke="var(--line)" stroke-width="1.5"/>`;
+  });
+  s += `<line class="xh" x1="0" x2="0" y1="${top}" y2="${bot}" stroke="var(--ink-3)" stroke-width="1" visibility="hidden"/>`;
+  s += `<rect class="hit" x="${PL}" y="0" width="${W - PL - PR}" height="${H}" fill="transparent"/>`;
+  return { svg: s + '</svg>', pts };
+}
+
+const state = { cat: 'all', src: 'all' };
+
+function card(m) {
+  const vals = m.v.filter(v => v != null);
+  const el = document.createElement('article');
+  el.className = 'card';
+  const { svg, pts } = chart(m);
+  el.innerHTML = `
+    <div class="top"><div class="name"><span class="id">${m.id}</span>${m.name}</div><span class="src">${m.src}</span></div>
+    <div class="nums"><span class="big">${fmt(m.v[9], m)}</span><span class="sub">9/28 주 · 범위 ${fmt(Math.min(...vals), m)}–${fmt(Math.max(...vals), m)}</span></div>
+    ${svg}`;
+  const svgEl = el.querySelector('svg');
+  const hit = svgEl.querySelector('.hit');
+  const xh = svgEl.querySelector('.xh');
+  const tip = document.createElement('div');
+  tip.className = 'tip';
+  tip.hidden = true;
+  el.appendChild(tip);
+  const partial = PARTIAL[m.src] || [];
+  hit.addEventListener('pointermove', ev => {
+    const r = svgEl.getBoundingClientRect();
+    const x = (ev.clientX - r.left) * (W / r.width);
+    let best = null;
+    pts.forEach(p => { if (p && (!best || Math.abs(p.x - x) < Math.abs(best.x - x))) best = p; });
+    if (!best) return;
+    xh.setAttribute('x1', best.x); xh.setAttribute('x2', best.x); xh.setAttribute('visibility', 'visible');
+    tip.textContent = `${WEEKS[best.i]} 주 · ${fmtFull(best.v, m, best.i)}${partial.includes(best.i) ? ' · 부분 주' : ''}`;
+    tip.hidden = false;
+    const cr = el.getBoundingClientRect();
+    const px = r.left - cr.left + best.x * (r.width / W);
+    const py = r.top - cr.top + best.y * (r.height / H);
+    tip.style.left = Math.min(Math.max(px - tip.offsetWidth / 2, 4), cr.width - tip.offsetWidth - 4) + 'px';
+    tip.style.top = Math.max(py - 34, 2) + 'px';
+  });
+  hit.addEventListener('pointerleave', () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); });
+  return el;
+}
+
+function render() {
+  const root = document.getElementById('groups');
+  root.innerHTML = '';
+  CATS.forEach(c => {
+    if (state.cat !== 'all' && state.cat !== c.key) return;
+    const ms = M.filter(m => m.cat === c.key && (state.src === 'all' || m.src === state.src));
+    const nas = NA.filter(n => n.cat === c.key && state.src === 'all');
+    if (!ms.length && !nas.length) return;
+    const g = document.createElement('section');
+    g.className = 'group';
+    g.innerHTML = `<h2>${c.name} <small>${ms.length}개${nas.length ? ` · 계산 불가 ${nas.length}개` : ''}</small></h2>`;
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    ms.forEach(m => grid.appendChild(card(m)));
+    nas.forEach(n => {
+      const el = document.createElement('article');
+      el.className = 'card';
+      el.innerHTML = `<div class="top"><div class="name">${n.name}</div><span class="src">계산 불가</span></div><p class="na">${n.why}</p>`;
+      grid.appendChild(el);
+    });
+    g.appendChild(grid);
+    root.appendChild(g);
+  });
+}
+
+function chips(boxId, items, key) {
+  const box = document.getElementById(boxId);
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.type = 'button';
+    b.id = `${key}-${it.key}`;
+    b.textContent = it.name;
+    b.setAttribute('aria-pressed', String(state[key] === it.key));
+    b.addEventListener('click', () => {
+      state[key] = it.key;
+      box.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      render();
+    });
+    box.appendChild(b);
+  });
+}
+chips('cat-chips', [{ key: 'all', name: '전체' }, ...CATS], 'cat');
+chips('src-chips', [{ key: 'all', name: '전체' }, ...SRCS.map(k => ({ key: k, name: k }))], 'src');
+render();
+
+const TABLES = [
+  { key: 'SL', name: 'session_logs', has: m => m.src === 'SL' },
+  { key: 'GA4', name: 'GA4', has: m => m.src === 'GA4' },
+  { key: 'GLEC', name: 'game_logs · econ_logs', has: m => m.src === 'GL' || m.src === 'EC' },
+];
+function table(t) {
+  const ms = M.filter(t.has);
+  let h = '<table><thead><tr><th>지표</th>' + WEEKS.map(w => `<th>${w}</th>`).join('') + '</tr></thead><tbody>';
+  ms.forEach(m => {
+    const partial = PARTIAL[m.src] || [];
+    h += `<tr><td><span class="id">${m.id}</span>${m.name}</td>` + m.v.map((v, i) => `<td class="${partial.includes(i) ? 'partial' : ''}">${fmt(v, m)}</td>`).join('') + '</tr>';
+  });
+  return h + '</tbody></table>';
+}
+const tabs = document.getElementById('tabs');
+const tbox = document.getElementById('table-box');
+TABLES.forEach((t, idx) => {
+  const b = document.createElement('button');
+  b.className = 'tab';
+  b.type = 'button';
+  b.setAttribute('role', 'tab');
+  b.id = `tab-${t.key}`;
+  b.textContent = t.name;
+  b.setAttribute('aria-selected', String(idx === 0));
+  b.addEventListener('click', () => {
+    tabs.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    tbox.innerHTML = table(t);
+  });
+  tabs.appendChild(b);
+});
+tbox.innerHTML = table(TABLES[0]);
+</script>
