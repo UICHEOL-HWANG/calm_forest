@@ -9,7 +9,7 @@
 import { CONFIG, IS_DEV_SESSION } from '../config.js';
 import { getAccessToken } from '../supabase-client.js';
 import { PLATFORM } from '../platform.js';
-import { captureInvite, runOnPlay, pendingInvite } from './flow.js';
+import { captureInvite, runOnPlay, pendingInvite, claimAndApply } from './flow.js';
 import { MSG } from './rules.js';
 import { renderInviteSheet } from './ui.js';
 
@@ -64,7 +64,7 @@ export async function referralOnPlay({ auth, toast, track, resync }) {
 }
 
 /** ☰ 친구 초대 — 시트를 그린다. 코드는 처음 열 때 발급받는다 */
-export async function openInviteSheet({ box, auth, toast, track, shareNative }) {
+export async function openInviteSheet({ box, auth, toast, track, shareNative, resync }) {
   const guest = !auth || auth.isGuest || auth.provider === 'offline' || auth.provider === 'anonymous';
   const view = { guest, loading: !guest, error: false, code: null, active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0 };
   const on = {
@@ -84,6 +84,15 @@ export async function openInviteSheet({ box, auth, toast, track, shareNative }) 
   renderInviteSheet(box, view, on);
   track('invite_sheet_open', { guest: guest ? 1 : 0, active: view.active });
   if (guest || !enabled()) return;
-  const res = await call('code');
-  renderInviteSheet(box, { ...view, loading: false, error: !res?.ok, code: res?.code ?? null }, on);
+  // 친구 수는 열 때마다 다시 센다 — 부팅 때 값은 정산이 끝나기 전이거나 그 뒤 친구가 늘었을 수 있다(리뷰 2026-10-09).
+  //   30초 쿨다운 중이어도 서버는 숫자를 돌려준다(throttled). 실패하면 부팅 때 값을 그대로 쓴다.
+  const [res, claim] = await Promise.all([
+    call('code'),
+    resync ? claimAndApply({ call, track, resync }).catch(() => null) : Promise.resolve(null),
+  ]);
+  if (claim) memo.claim = claim;
+  renderInviteSheet(box, {
+    ...view, loading: false, error: !res?.ok, code: res?.code ?? null,
+    active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0,
+  }, on);
 }
