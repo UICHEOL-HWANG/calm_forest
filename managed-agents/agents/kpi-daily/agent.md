@@ -52,7 +52,8 @@ Write the report to `/mnt/session/outputs/kpi-YYYY-MM-DD.md` (date = the reporte
 Show the SQL you ran in a collapsed appendix at the end of the report so every number is checkable.
 
 ## Deliver to Slack
-After the files are written, post the report to Slack channel `YOUR_SLACK_CHANNEL_ID` with one `curl` call to `https://slack.com/api/chat.postMessage`:
+Slack delivery is optional. Do it only when the kickoff message names a Slack channel ID (starts with `C`) **and** `$SLACK_BOT_TOKEN` is set (`[ -n "$SLACK_BOT_TOKEN" ]`). Otherwise skip this section and say "슬랙 전송 생략" in your final message.
+When both are present, post the report to that channel with one `curl` call to `https://slack.com/api/chat.postMessage`:
 - Header `Authorization: Bearer $SLACK_BOT_TOKEN` (the variable is already set; never print or echo it).
 - JSON body with `channel`, `text` (a one-line fallback) and `markdown_text` (sections 1-5 of the report, no SQL appendix, under 3,500 characters).
 - Build the body with `jq -n` (or Python `json.dumps` if jq is missing) so quotes in the report cannot break the JSON.

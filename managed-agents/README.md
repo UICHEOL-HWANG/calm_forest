@@ -9,9 +9,12 @@ Run every `ant` command from this directory: `claude-lock.json` lives here and m
 
 No secrets in this repo (public). Credentials live only in the Anthropic vault `calm-forest-analytics`.
 
+## Status
+- Deployment `depl_01HBxqhczrELj4SQUqzhNqDD` is **paused** until Slack is wired.
+- Slack later: run `scripts/vault-add.sh slack` (Keychain `calmforest-slack-bot-kpi`), put the channel ID in the kickoff text of `deployment-daily.yaml` (e.g. "슬랙 채널: C0..."), `ant apply agents/kpi-daily/deployment-daily.yaml`, then unpause.
+
 ## Read the latest report
+Console -> Sessions -> latest `calm-forest-kpi-daily` run -> outputs (`ant beta:files list --scope-id` currently returns 400).
 ```sh
-DEP=$(jq -r '.resources["./agents/kpi-daily/deployment-daily.yaml"].id' claude-lock.json)
-SID=$(ant beta:deployment-runs list --deployment-id "$DEP" --max-items 1 --transform session_id -r)
-ant beta:files list --scope-id "$SID"
+ant beta:deployment-runs list --deployment-id depl_01HBxqhczrELj4SQUqzhNqDD --max-items 1 --transform session_id -r
 ```
