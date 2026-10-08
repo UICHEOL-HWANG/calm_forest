@@ -9,7 +9,13 @@ export function decideScreen(orders, today, night) {
   return night ? 'order' : 'daytime';
 }
 
+// 받기 전에 자리부터 본다: 가득인데 비울 칸을 안 골랐으면 서버 호출 없이 교체 화면으로.
+export function claimPlan(aura, replaceId) {
+  return !replaceId && aura.slots.length >= SLOT_MAX ? 'replace' : 'claim';
+}
+
 export function addToSlots(aura, slot, replaceId) {
+  if (aura.slots.some(s => s.id === slot.id)) return { aura, full: false };   // 더블탭 중복 방지
   if (replaceId) {
     const slots = aura.slots.map(s => (s.id === replaceId ? slot : s));
     return { aura: { slots, equipped: aura.equipped === replaceId ? null : aura.equipped }, full: false };

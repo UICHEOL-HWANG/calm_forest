@@ -6,7 +6,7 @@
 import { cardsFromText, swapCard, TEXT_MAX, SPEEDS, RADII, COUNT_MIN, COUNT_MAX } from './recipe.js';
 import { AURA_PALETTE } from './palette.js';
 import { fetchMyOrders, placeOrder, claimOrder } from './client.js';
-import { decideScreen, addToSlots } from './workshop-rules.js';
+import { decideScreen, addToSlots, claimPlan } from './workshop-rules.js';
 import { isNicknameBlocked } from '../nickname-filter.js';
 import { kstDate } from '../kst-date.js';
 import { trackEvent } from '../analytics.js';
@@ -131,12 +131,19 @@ function drawClaim(orders) {
   say(r.line || MSG.claimGreeting);
   card.appendChild(el('div', null, r.name));
   card.appendChild(el('div', 'note', `${SHAPE_KO[r.shape]} · ${MOTION_KO[r.motion]} · ${BAND_KO[r.band]}`));
+  let wearBtn, keepBtn;
+  const lock = on => { if (wearBtn) wearBtn.disabled = on; if (keepBtn) keepBtn.disabled = on; };
   const take = async (wear, replaceId) => {
+    if (claimPlan(game.gameState.aura, replaceId) === 'replace') { drawReplace(wear, take, () => drawClaim(orders)); return; }
+    lock(true);
     const res = await claimOrder(o.id);
-    if (res.error) { card.appendChild(el('div', 'note', '건네주다 놓쳤어요. 다시 눌러 주세요.')); return; }
+    if (res.error) {
+      lock(false);
+      if (!card.querySelector('.claim-err')) card.appendChild(el('div', 'note claim-err', '건네주다 놓쳤어요. 다시 눌러 주세요.'));
+      return;
+    }
     const slot = { id: o.id, recipe: r, tune: { count: r.count, speed: r.speed, radius: r.radius, colors: r.colors } };
     const added = addToSlots(game.gameState.aura, slot, replaceId);
-    if (added.full) { drawReplace(wear, take); return; }
     game.gameState.aura = wear ? { ...added.aura, equipped: o.id } : added.aura;
     game.refreshAura(); game.requestSave();
     const hours = Math.round((Date.now() - Date.parse(o.created_at)) / 36e5) || 0;
@@ -144,20 +151,21 @@ function drawClaim(orders) {
     if (wear) trackEvent('aura_equip', { order_id: o.id, via: 'workshop' });
     close();
   };
-  const wearBtn = el('button', 'primary', MSG.wear); wearBtn.onclick = () => take(true);
-  const keepBtn = el('button', 'ghost', MSG.keep); keepBtn.onclick = () => take(false);
+  wearBtn = el('button', 'primary', MSG.wear); wearBtn.onclick = () => take(true);
+  keepBtn = el('button', 'ghost', MSG.keep); keepBtn.onclick = () => take(false);
   card.append(wearBtn, keepBtn);
   aiNote();
 }
 
-function drawReplace(wear, take) {
+function drawReplace(wear, take, back) {
   card.replaceChildren();
   say(MSG.full);
   for (const s of game.gameState.aura.slots) {
     const b = el('button', 'ghost', s.recipe.name);
-    b.onclick = () => take(wear, s.id);
+    b.onclick = async () => { b.disabled = true; await take(wear, s.id); b.disabled = false; };
     card.appendChild(b);
   }
+  const back_ = el('button', 'ghost', '돌아가기'); back_.onclick = back; card.appendChild(back_);
 }
 
 function drawTune() {
