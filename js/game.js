@@ -4965,11 +4965,13 @@ function kitchenFinish(id, res = {}) {
   const j = res.judges || {};
   const cookO = ddaOutcome('cook', { abandoned: res.abandoned, score });   // 🎚️ 점수/100 — 포기한 판은 DDA 를 안 움직인다(DDA 켬 2026-09-27)
   if (cookO != null) settleDifficulty('cook', cookO);
+  // 🧮 GA4 는 이벤트당 25개까지만 받는다(trackEvent 가 ts·platform 을 더 붙인다) → 원본 배열·자유 요리 정보는
+  //    cooking_detail 로 나누고 run_id 로 잇는다. arms·eases·dda·probe_v 는 기존 분석 쿼리가 쓰므로 본 이벤트에 남긴다.
+  const runId = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
+    run_id: runId,
     recipe: id, mg_type: r.stages.join('>'), diff: recipeDiff(r), quality: tier.id, score,
-    stage_scores: (res.stageScores || []).map(v => Math.round(v)).join(','),   // 단계별 점수(어느 판에서 무너지는지)
     avg_offset_ms: offsets.length ? Math.round(offsets.reduce((a, b) => a + Math.abs(b), 0) / offsets.length) : null, // 평균 절대 오차(정밀도)
-    offsets: offsets.join(','),                              // 탭별 원본 타이밍(부호=빠름/늦음)
     max_combo: res.maxCombo || 0,
     n_perfect: j.perfect || 0, n_good: j.good || 0, n_miss: j.miss || 0,
     duration_ms: Math.round(res.durationMs || 0),
@@ -4980,11 +4982,16 @@ function kitchenFinish(id, res = {}) {
     eases: cookDiffs.map(d => Math.round(d.ease * 100) / 100).join(','),
     dda:   Math.round((cookDiffs[0]?.dda ?? 1) * 100) / 100,
     probe_v: PROBE_SCHEME,
+    buff: r.buff, dur_base: r.dur,                           // 제어 파라미터 — 버프 종류·기본 지속
+  });
+  trackEvent('cooking_detail', {
+    run_id: runId, recipe: id, outcome: res.abandoned ? 'abandon' : 'result',
+    stage_scores: (res.stageScores || []).map(v => Math.round(v)).join(','),   // 단계별 점수(어느 판에서 무너지는지)
+    offsets: offsets.join(','),                              // 탭별 원본 타이밍(부호=빠름/늦음)
     combo_key: r.free ? r.free.key : null,                   // 🍲 조합(접두사 없는 키) — recipe 와 같은 대상
     taste: r.free ? r.free.taste : null,                     // 🍲 자유 요리 맛 ★(레시피 요리는 null)
     is_new: r.free ? (isNew ? 1 : 0) : null,                 // 🍲 처음 발견한 조합인지
     found: r.free ? Object.keys(st.best).filter(isFreeId).length : null,   // 🍲 누적 발견 수(이 판 포함)
-    buff: r.buff, dur_base: r.dur,                           // 제어 파라미터 — 버프 종류·기본 지속
   });
   pendingDish = { id, tier: tier.id, score };
   return {

@@ -120,11 +120,17 @@ test('star_result carries the run, the payout and the rolled difficulty; DDA lea
   assert.equal(name, 'star_result');
   assert.deepEqual({ ...p }, {
     constellation: 'big_dipper', notes: 7, max_score: 14, success: 1, perfect: 4, good: 2, miss: 1, max_combo: 4, score: 10,
-    coins: 18, bonus_coins: 30, first_clear: 1, already_today: 0, offsets: '3,-120,40,0,-10,150',
-    judges: 'perfect,good,miss,perfect,perfect,good,perfect', duration_ms: 7013, early_taps: 0,
+    coins: 18, bonus_coins: 30, first_clear: 1, already_today: 0, duration_ms: 7013, early_taps: 0,
     run_id: '', attempt_n: 0, unlocked_n: 0,
     ease: 1.4, dda: 1, arm: 2,
   });
+  // 🧮 탭별 배열은 GA4 25개 한도 때문에 star_detail 로 나눈다(run_id 로 잇는다)
+  const [, d] = events.find(e => e[0] === 'star_detail');
+  assert.deepEqual({ ...d }, {
+    constellation: 'big_dipper', run_id: '', offsets: '3,-120,40,0,-10,150',
+    judges: 'perfect,good,miss,perfect,perfect,good,perfect',
+  });
+  assert.ok(Object.keys(p).length + 2 <= 25, 'ts·platform 포함 25개 이하');
   assert.deepEqual(settled, [['star', 10 / 14]]);
 });
 
