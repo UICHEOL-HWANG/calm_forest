@@ -1,0 +1,13 @@
+name: calm-forest-kpi-daily
+agent: ./agent.md
+environment_id: ./environment.yaml
+vault_ids: [vlt_011CfovbWZuvijWmFmHCijWh]
+budget: {type: limit, max_list_cost: {currency: USD, amount: "80"}}
+schedule: {type: cron, expression: "0 9 * * 1,3,5", timezone: Asia/Seoul}
+initial_events:
+  - type: user.message
+    content:
+      - type: text
+        text: |
+          어제(KST) 일일 KPI 리포트를 작성해 주세요.
+          슬랙 채널: C0C7FNDACJF
