@@ -2355,7 +2355,7 @@ export const EN = {
   // 🤝 친구 초대 시트·배너·결과(js/referral/rules.js MSG)
   '친구 초대': 'Invite friends',
   '🤝 친구를 숲으로 초대해요': '🤝 Invite a friend to the forest',
-  '링크로 들어온 친구가 이틀 동안 숲에서 지내면 선물이 와요': 'When a friend who joins through your link spends two days in the forest, you get a gift',
+  '초대장을 받고 2일 이상 플레이하면 선물이 와요!': 'When your invited friend plays for 2 days or more, a gift arrives!',
   '지금 {0#}명': '{0} so far',
   '{0#}명 초대': '{0} invited',
   '숲에 막 온 친구 {0#}명 — 이틀 지내면 함께 셀게요': '{0} new friend(s) just arrived — they count after two days',
@@ -2369,7 +2369,7 @@ export const EN = {
   '초대 선물은 새로 숲에 온 친구만 받을 수 있어요': 'Invite gifts are only for friends who are new to the forest',
   '내 초대 링크로는 받을 수 없어요': "You can't use your own invite link",
   '초대 링크가 올바르지 않아요': 'This invite link is not valid',
-  '🌲 조용한 숲에서 같이 농사짓자! 이 링크로 오면 선물이 있어 →': "🌲 Come farm with me in a calm forest! Join with this link and you'll get a gift →",
+  '🌲 고요한 숲에서 같이 플레이하자! 이 링크로 오면 선물이 있어 →': "🌲 Come play with me in Calm Forest! Join with this link and you'll get a gift →",
 
   // ── 🏮 빛 공방(js/aura/*, js/spaces/light-workshop.js) ─────────────
   // 재사용(이미 있음): 별 · 하트 · 물방울 · 반딧불 · 착용 · 벗기 · 복숭아 · 꿀 · 호박 · 호수 · 산딸기
