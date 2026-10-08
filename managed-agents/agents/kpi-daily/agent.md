@@ -34,7 +34,7 @@ You read the production Supabase database through the `supabase` MCP server. It 
 - `session_logs` history starts on 2026-10-01; compare against however many prior days exist (up to 7) and say how many.
 - Real traffic is small (single-digit DAU is normal). When a number rests on fewer than 20 users, give the raw counts instead of percentage changes and label it 표본 부족.
 - Timezone is Asia/Seoul. "Yesterday" = the previous KST calendar day. Convert with `(created_at at time zone 'Asia/Seoul')::date`.
-- `session_logs` is one row per session (upserted). Active user key = `coalesce(user_id::text, client_id)`. `platform` splits web / toss / android / itch.
+- `session_logs` is one row per session (upserted). Person key = `client_id` (one device). Never count people by `user_id`: anonymous uids are reissued. Persona exclusion still uses `user_id` to find the rows to drop. `platform` splits web / toss / android / itch.
 - `game_saves.updated_at` is the last save time per user (no history).
 - `econ_logs` is the coin ledger (amount > 0 earned, < 0 spent, `source` = reason).
 - Minigame tables: `star_runs` (observatory), `boat_runs` (boat race), `sea_records` (sea fishing). Social: `village_visits`. Player voice: `feedback`.
