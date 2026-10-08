@@ -164,6 +164,9 @@ export const DOCK_POND_R = 7;                            // 연못 반경(나무
 
 export const RIVER = new THREE.Vector3(0, 0, -400);      // 강 공간(다른 인스턴스와 멀찍이)
 export const DREAM = new THREE.Vector3(0, 0, -550);      // 🌙 꿈의 숲(떠 있는 섬) — 강(-400)과 150 띄움 · 섬·조각 좌표는 js/dream/layout.js(로컬)
+export const MIRROR = new THREE.Vector3(0, 0, -700);     // 🪞 거울 마을 — 꿈의 숲(-550)과 150 띄움 · 로컬 좌표는 js/mirror/layout.js
+export const MIRROR_R = 22;
+export const MIRROR_STOP = new THREE.Vector3(16, 0, 17); // 🚏 마을 정류장 — 호수(16,9 r6) 남쪽 잔디(시안 A 확정, 2026-10-08)
 
 export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸어 다니는 데크) 반경
 

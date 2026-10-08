@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mirror Lost Items</title><link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }</script>
+</head><body><div class="title" id="title"></div>
+<script type="module">
+import { THREE, setup, mat, glow, mesh, halo, ground, tree, bush, rock, labeler, loop } from './lib.js';
+const V = new URLSearchParams(location.search).get('v') || '1';
+const { renderer, scene, camera, portrait } = setup();
+const lab = labeler(camera), anims = [];
+ground(scene); [[-7, -5], [7, -5], [0, -8]].forEach(([x, z], i) => tree(scene, x, z, 1.3, i));
+
+// 스타일: role → 재질 (base = 원래 색)
+const STY = {
+  1: { t: '1. 🎨 원색 저폴리', s: '물건마다 제 색 · 각진 저폴리 · 이 세계에서 따뜻한 색은 물건뿐 → 멀리서도 튐',
+       m: (c, k = 0.25) => mat(c, { emissive: c, emissiveIntensity: k }), seg: 1 },
+  2: { t: '2. ✨ 금빛 보물', s: '모두 금·호박빛 계열로 통일 + 반짝임 · "잃어버린 보물" 느낌, 종류는 형태로 구분',
+       m: (c, k = 0.25) => { const g = new THREE.Color(c).lerp(new THREE.Color(0xffc861), 0.65); return new THREE.MeshStandardMaterial({ color: g, metalness: 0.75, roughness: 0.28, emissive: g, emissiveIntensity: k * 0.8, flatShading: true }); }, seg: 1 },
+  3: { t: '3. 🍡 말랑 파스텔', s: '둥글고 매끈한 파스텔 · 은은한 자체 발광 · 플러시 인형 같은 촉감 (조형 단순)',
+       m: (c, k = 0.25) => { const p = new THREE.Color(c).lerp(new THREE.Color(0xffffff), 0.35); return new THREE.MeshStandardMaterial({ color: p, roughness: 0.55, emissive: p, emissiveIntensity: k + 0.2 }); }, seg: 2.2 },
+}[V];
+const M = STY.m, Q = (n) => Math.max(3, Math.round(n * STY.seg));
+function star(r1, r2) { const s = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? r2 : r1, a = i / 10 * Math.PI * 2 + Math.PI / 2; i ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(Math.cos(a) * r, Math.sin(a) * r); } return s; }
+const ITEMS = {
+  ring: ['💍 금반지', g => { mesh(g, new THREE.TorusGeometry(0.26, 0.07, Q(6), Q(14)), M(0xffd27a), 0, 0.3, 0); mesh(g, new THREE.OctahedronGeometry(0.11, V === '3' ? 2 : 0), M(0x9ee8ff, 0.6), 0, 0.6, 0); }],
+  music: ['🎵 오르골 상자', g => { mesh(g, new THREE.BoxGeometry(0.55, 0.32, 0.4), M(0xff9e9e), 0, 0.16, 0); const lid = mesh(g, new THREE.BoxGeometry(0.58, 0.07, 0.42), M(0xffd27a), 0, 0.38, -0.08); lid.rotation.x = -0.5; mesh(g, new THREE.CylinderGeometry(0.03, 0.03, 0.16, 6), M(0xd8d8e8), 0.3, 0.18, 0).rotation.z = Math.PI / 2; mesh(g, new THREE.SphereGeometry(0.05, Q(6), Q(4)), M(0xd8d8e8), 0.4, 0.18, 0); }],
+  carrot: ['🥕 당근 인형', g => { const c = mesh(g, new THREE.ConeGeometry(0.22, 0.62, Q(8)), M(0xff9e5e), 0, 0.31, 0); c.rotation.x = Math.PI; c.position.y = 0.33; [-0.08, 0, 0.08].forEach((x, i) => { const l = mesh(g, new THREE.ConeGeometry(0.06, 0.28, Q(5)), M(0x86d18a), x, 0.74, 0); l.rotation.z = (i - 1) * 0.4; }); [-1, 1].forEach(s => mesh(g, new THREE.SphereGeometry(0.03, 6, 4), mat(0x26224a), s * 0.07, 0.5, 0.18)); }],
+  yarn: ['🧶 털실 뭉치', g => { mesh(g, new THREE.SphereGeometry(0.28, Q(10), Q(8)), M(0xc8a0ff), 0, 0.28, 0); [0, 1, 2].forEach(i => { const t = mesh(g, new THREE.TorusGeometry(0.285, 0.025, 4, Q(16)), M(0xe8d0ff), 0, 0.28, 0); t.rotation.set(i * 0.9, i * 0.6, 0.3); }); const n = mesh(g, new THREE.CylinderGeometry(0.015, 0.015, 0.7, 5), M(0xd8d8e8), 0.1, 0.45, 0); n.rotation.z = 0.7; }],
+  lantern: ['🏮 작은 등불', g => { mesh(g, new THREE.BoxGeometry(0.34, 0.42, 0.34), glow(0xffd59e, V === '2' ? 1.0 : 1.4), 0, 0.26, 0); mesh(g, new THREE.ConeGeometry(0.28, 0.16, 4), M(0xb05a3a), 0, 0.55, 0).rotation.y = Math.PI / 4; mesh(g, new THREE.TorusGeometry(0.07, 0.015, 4, 10), M(0x8a6a4a), 0, 0.68, 0); mesh(g, new THREE.BoxGeometry(0.38, 0.05, 0.38), M(0xb05a3a), 0, 0.04, 0); }],
+  brooch: ['⭐ 별 브로치', g => { const s = mesh(g, new THREE.ExtrudeGeometry(star(0.3, 0.13), { depth: 0.07, bevelEnabled: V === '3', bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2 }), M(0xffe08a, 0.4), 0, 0.36, 0); mesh(g, new THREE.SphereGeometry(0.06, Q(6), Q(4)), M(0xff9ee0, 0.6), 0, 0.36, 0.09); }],
+};
+const ids = Object.keys(ITEMS);
+// 위: 6종 진열(받침 위) · 아래 왼쪽: 덤불 밑에 숨은 상태(단서 듣기 전 — 안 보임) · 아래 오른쪽: 단서 들은 뒤(반짝)
+const cols = portrait ? 3 : 6, gap = portrait ? 1.9 : 1.6, rowGap = portrait ? 2.6 : 1.9;
+ids.forEach((id, i) => {
+  const c = i % cols, r = Math.floor(i / cols);
+  const x = (c - (cols - 1) / 2) * gap, z = (portrait ? -2.4 : -1.2) + r * rowGap;
+  mesh(scene, new THREE.CylinderGeometry(0.42, 0.48, 0.18, 10), mat(0xb8b0d0), x, 0.09, z);
+  const g = new THREE.Group(); g.position.set(x, 0.18, z); scene.add(g); ITEMS[id][1](g);
+  halo(scene, 0xffd59e, 1.6, x, 0.55, z, V === '2' ? 0.75 : 0.5);
+  anims.push(t => { g.rotation.y = t * 0.8 + i; });
+  lab.add(ITEMS[id][0], x, 1.1, z);
+});
+const hz = portrait ? 3.6 : 2.6;
+[[-1.6, false, '숨은 상태 (단서 전)'], [1.6, true, '단서 들은 뒤 · 반짝']].forEach(([x, lit, txt], i) => {
+  bush(scene, x, hz, 1.25, i); bush(scene, x + 0.55, hz - 0.2, 0.9, i + 1);
+  const g = new THREE.Group(); g.position.set(x - 0.3, 0.02, hz + 0.15); g.scale.setScalar(0.8); g.rotation.z = 0.4; scene.add(g); ITEMS.ring[1](g);
+  if (lit) {
+    halo(scene, 0xffd59e, 2.6, x - 0.3, 0.4, hz + 0.15, 0.95);
+    const beam = mesh(scene, new THREE.CylinderGeometry(0.2, 0.2, 5, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending }), x - 0.3, 2.5, hz + 0.15);
+    beam.castShadow = false;
+    for (let k = 0; k < 6; k++) { const s = halo(scene, 0xfff2c8, 0.25, x - 0.45, 0.4, hz + 0.45, 0.9); anims.push(t => { const a = t * 1.5 + k; s.position.set(x - 0.3 + Math.cos(a) * 0.45, 0.5 + ((t * 0.6 + k / 6) % 1) * 1.2, hz + 0.15 + Math.sin(a) * 0.45); }); }
+  }
+  lab.add(txt, x, -0.05, hz + 1.25);
+});
+document.getElementById('title').innerHTML = `<b>${STY.t}</b><span>${STY.s}</span>`;
+camera.position.set(0, portrait ? 8.5 : 5.2, portrait ? 11.5 : 9.4); camera.lookAt(0, 0.2, portrait ? 0.8 : 0.6);
+loop(renderer, scene, camera, anims, lab);
+</script></body></html>
