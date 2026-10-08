@@ -76,6 +76,7 @@ export async function openWorkshop() {
   }
   const orders = res.orders || [];
   const screen = decideScreen(orders, kstDate(), game.isNight());
+  trackEvent('aura_workshop_view', { screen, has_ready: screen === 'claim' ? 1 : 0 });
   ({ claim: drawClaim, waiting: drawPending, done: drawPending, order: drawOrder, daytime: drawDaytime })[screen](orders);
 }
 
@@ -113,7 +114,8 @@ function drawOrder() {
       go.disabled = false;
       err.textContent = r.error === 'limit' ? MSG.already
         : r.error === 'blocked' ? MSG.blocked : '주문이 닿지 않았어요. 잠시 뒤에 다시 눌러 주세요.';
-      trackEvent('aura_order_blocked', { reason: r.error });
+      const reason = r.error === 'blocked' ? 'profanity' : r.error === 'limit' ? 'limit' : 'error';
+      trackEvent('aura_order_blocked', reason === 'error' ? { reason, code: String(r.error) } : { reason });
       return;
     }
     trackEvent('aura_order_submit', { order_id: r.order?.id, len: text.length, cards_changed: changed });
@@ -193,7 +195,7 @@ function drawTune() {
       const value = list[Number(r.value)];
       const slots = aura.slots.map(s => (s.id === cur.id ? { ...s, tune: { ...s.tune, [field]: value } } : s));
       game.gameState.aura = { ...aura, slots };
-      trackEvent('aura_tune', { order_id: cur.id, field, value });
+      trackEvent('aura_tune', { order_id: cur.id, field, val: value });
       game.refreshAura(); game.requestSave(); drawTune();
     };
     card.appendChild(row);

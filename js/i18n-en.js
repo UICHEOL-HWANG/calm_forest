@@ -2358,7 +2358,7 @@ export const EN = {
   '동글': 'Round', '꽃잎': 'Petal', '나뭇잎': 'Leaf', '눈송이': 'Snowflake', '음표': 'Note', '비눗방울': 'Bubble',
   '맴돌기': 'Orbiting', '피어오르기': 'Rising', '내려앉기': 'Settling', '둥실둥실': 'Drifting', '휘감기': 'Swirling', '반짝반짝': 'Twinkling',
   '발밑': 'At your feet', '몸 둘레': 'Around you', '머리 위': 'Overhead',
-  '민트': 'Mint', '크림': 'Cream', '벚꽃': 'Cherry blossom', '장미': 'Rose', '산호': 'Coral', '살구': 'Apricot',
+  '민트': 'Mint', '크림': 'Cream', '벚꽃': 'Cherry blossom', '장미': 'Rose', '산호': 'Coral', '호박빛': 'Amber', '살구': 'Apricot',
   '새잎': 'Fresh leaf', '이끼': 'Moss', '세이지': 'Sage', '하늘': 'Sky', '바다': 'Sea', '청록': 'Teal',
   '라일락': 'Lilac', '제비꽃': 'Violet', '밤하늘': 'Night sky', '눈': 'Snow', '잿빛': 'Ash gray', '코코아': 'Cocoa', '금빛': 'Golden',
   '작은 빛': 'Little Glow', '꽃잎 바람': 'Petal Breeze', '풀잎 바람': 'Grass Breeze', '별 부스러기': 'Stardust',
