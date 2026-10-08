@@ -40,14 +40,14 @@ test('game.js 공간 플래그 배선(천문대와 같은 자리)', () => {
   assert.match(SRC, /_spaceFlags = \{[^}]*atNeighbor: false/);
   assert.match(bodyOf('spaceFlags'), /_spaceFlags\.atNeighbor = atNeighbor/);
   assert.match(bodyOf('toolZoneKey'), /if \(atNeighbor\) return 'neighbor'/);
-  assert.equal((SRC.match(/atNeighbor \? 'neighbor' : (?:atDream \? 'dream' : )?atRiver/g) || []).length, 2, 'place 문자열 2곳(세션 요약·미니맵)');
+  assert.equal((SRC.match(/atNeighbor \? 'neighbor' : (?:atMirror \? 'mirror' : )?(?:atDream \? 'dream' : )?atRiver/g) || []).length, 2, 'place 문자열 2곳(세션 요약·미니맵)');
   assert.match(SRC, /place === 'neighbor' \? NEIGHBOR :/);
   assert.match(SRC, /place === 'neighbor' \? NEIGHBOR_R :/);
   assert.match(bodyOf('minimapMarks'), /place === 'neighbor'\) \{ neighborMinimapMarks\(marks\);/);
   assert.match(SRC, /\} else if \(atNeighbor\) \{ clampToNeighbor\(player\.position\);/);
   assert.match(bodyOf('handleAction'), /if \(atNeighbor \|\| nearDoor === 'neighbor'\) return neighborAction\(nearDoor\);/);
   assert.match(SRC, /updateObservatory\(dt, t\); updateNeighbor\(dt\);/);
-  assert.match(bodyOf('getGameState'), /gameState\.playerPos = atNeighbor \? neighborReturnPos\(\) : (?:atDream \? dreamReturnPos\(\) : )?\{ x: player\.position\.x, z: player\.position\.z \};/);
+  assert.match(bodyOf('getGameState'), /gameState\.playerPos = atNeighbor \? neighborReturnPos\(\) : (?:atMirror \? mirrorReturnPos\(\) : )?(?:atDream \? dreamReturnPos\(\) : )?\{ x: player\.position\.x, z: player\.position\.z \};/);
   assert.match(SRC, /atObservatory, atOrchard, atNeighbor, atRiver/);
 });
 
@@ -57,7 +57,7 @@ test('공간 가드: 문·야외 장식·마을 판정·그림자·도구 페이
   assert.match(DOORS, /prompt = nd \? '🚪 내 마을로' : null;/);
   assert.match(DOORS, /inVillage2\(\) \{ return [^}]*!atNeighbor/);
   assert.match(read('js/spaces/outdoor-decor.js'), /outdoorZone\(\) \{ return [^}]*!atNeighbor/);
-  assert.match(read('js/shadow-scope.js'), /'atOrchard', 'atNeighbor'(?:, 'atDream')?\]/);
+  assert.match(read('js/shadow-scope.js'), /'atOrchard', 'atNeighbor'(?:, 'atDream')?(?:, 'atMirror')?\]/);
   assert.match(read('js/data/tools.js'), /neighbor: 'none'/);
 });
 
