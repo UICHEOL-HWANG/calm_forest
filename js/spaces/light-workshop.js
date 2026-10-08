@@ -49,7 +49,7 @@ export function buildLightWorkshop() {
   const hut = new THREE.Mesh(mergeGeos(solid), vtxMat());
   hut.castShadow = true; hut.receiveShadow = true; g.add(hut);
   g.add(new THREE.Mesh(mergeGeos(glow), new THREE.MeshBasicMaterial({ color: 0xffe2a0 })));
-  const k = buildKeeper(); k.position.set(1.55, 0, 1.45); k.rotation.y = -0.3;   // 창 오른쪽 — 문을 가리지 않는다
+  const k = buildKeeper(); k.position.set(2, 0, 1.8); k.rotation.y = -0.45;   // 창 오른쪽 앞 — 왼쪽 날개(폭 ~0.5)가 벽·처마(x≤1.32, z≤1.17)에 박히지 않게(1.55,1.45 에선 관통)
   const tag = makeNameTag(KEEPER); tag.position.y = 2.15; k.add(tag);   // 더듬이 끝(1.8) 위
   g.add(k);
   g.add(makeSignpost('🏮 빛 공방', -1.85, 1.2));   // 왼쪽 앞 모서리(연못 옆) — 창·열린 문짝을 가리지 않는다

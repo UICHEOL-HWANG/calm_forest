@@ -58,6 +58,14 @@ test('🧱 공방은 메시를 병합해 드로우콜 예산(12) 안 — 오두�
   assert.doesNotMatch(fn, /ConeGeometry/, '옛 사각뿔 지붕은 치운다');
 });
 
+test('🧚 반디 요정 날개가 오두막 벽·처마를 뚫지 않는 자리', () => {
+  const src = readFileSync(new URL('../js/spaces/light-workshop.js', import.meta.url), 'utf8');
+  const m = src.match(/k\.position\.set\(([\d.]+), 0, ([\d.]+)\); k\.rotation\.y = (-?[\d.]+)/);
+  assert.ok(m, '주인 자리');
+  // 왼쪽 날개 안쪽 끝 ≈ 주인 x − 0.52 (회전 −0.45 기준 실측 계산) — 처마 반폭 1.32 바깥이어야 한다
+  assert.ok(Number(m[1]) - 0.52 >= 1.32 + 0.1, `날개 끝 x ${Number(m[1]) - 0.52}`);
+});
+
 test('🗺️ 미니맵·전체 지도에 🏮 빛 공방 지명(영어 라벨 포함)', () => {
   assert.match(SRC, /\{ ico: '🏮', name: '빛 공방',\s*x: LIGHT_WORKSHOP\.x, z: LIGHT_WORKSHOP\.z, pri: 1 \}/);
   const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
