@@ -1639,6 +1639,7 @@ export const Input = {
     return DECOR.filter(d => !d.hidden)
       .filter(d => catalogVisible(d, { stored: kept[d.id] || 0 }))   // 🎃 기간 밖 한정품은 안 산 사람에겐 숨긴다(보관분은 계속 보인다)
       .filter(d => !d.dream || (gameState.dream?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🌙 꿈을 꿔 보기 전엔 ✨ 화폐가 뭔지 모른다 — 숨긴다
+      .filter(d => !d.mirror || (gameState.mirror?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🪞 거울 마을을 다녀오기 전엔 🪞 화폐가 뭔지 모른다
       .map(d => ({ ...d, locked: !decorUnlocked(d, st), tag: saleTagOf(d) }));
   },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
