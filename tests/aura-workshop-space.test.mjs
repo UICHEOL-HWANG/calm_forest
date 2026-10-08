@@ -12,12 +12,14 @@ test('공방 좌표는 계곡과 천문대 사이 빈터 — 계곡 잔디·천�
   const x = Number(m[1]), z = Number(m[2]);
   assert.ok(Math.hypot(x - 7, z - 26) >= 7 + 0.6 + 1.3 + 1.0, '계곡 잔디(반경 7.6) 바깥 + 걸어갈 틈 — 겹치는 링 나무는 glade.js 가 비운다');
   assert.ok(Math.hypot(x - 25, z - 22) >= 5.7 + 1.3 + 0.9, '천문대 기단(5.7) + 오두막 반폭 + 걸어갈 틈');
-  assert.ok(x > 7 && x < 25, '두 시설 사이');
+  assert.ok(x > 7 && x < 25, '계곡 동쪽');
+  assert.ok(Math.hypot(x, z) + 2.5 < 42, '마을 걷기 경계(42) 안 — 문 앞에 설 자리');
 });
 
 test('공방 자리엔 무작위 나무·꽃·풀이 안 생긴다', () => {
-  assert.match(SRC, /dist2D\(\{ x, z \}, LIGHT_WORKSHOP\) < 4/, '벌목 나무');
-  assert.match(SRC, /dist2D\(\{ x: tx, z: tz \}, LIGHT_WORKSHOP\) < 4/, '계곡 나무 링');
+  assert.match(SRC, /dist2D\(\{ x, z \}, LIGHT_WORKSHOP\) < 4\.3/, '벌목 나무(연못까지)');
+  assert.match(SRC, /dist2D\(\{ x: tx, z: tz \}, LIGHT_WORKSHOP\) < 2\.8/, '계곡 나무 링 — 박히는 나무만');
+  assert.match(SRC, /LIGHT_WORKSHOP_POND\.r \+ 0\.6/, '연못 위 나무 금지');
   assert.match(SRC, /if \(dist2D\(\{ x, z \}, LIGHT_WORKSHOP\) < 3\.2\) continue;/, '꽃·풀');
 });
 
