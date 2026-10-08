@@ -2318,7 +2318,7 @@ export const EN = {
   '묘비 모양 울타리 · 밤손님은 못 막아요': 'Gravestone-shaped fence · does not keep night visitors out',
   '마당 입구에 세우는 커다란 거미줄 아치': 'A big cobweb arch for the yard entrance',
   // 🤝 친구 초대 보상(2026-10) — 카탈로그 이름 · 장식 설명 · 상점 표시 · 도착 토스트
-  '별빛 도구 세트': 'Starlight Tool Set', '별빛 우정 날개': 'Starlight Friendship Wings', '우정 하트핀': 'Friendship Heart Pin',
+  '무지개 크리스탈 세트': 'Rainbow Crystal Set', '별빛 우정 날개': 'Starlight Friendship Wings', '우정 하트핀': 'Friendship Heart Pin',
   '무지개 우정 아치': 'Rainbow Friendship Arch',
   '친구 3명 초대 보상 — 하트 등불이 둥실': 'Reward for inviting 3 friends — heart lanterns float around',
   '🤝 초대 보상': '🤝 Invite reward',

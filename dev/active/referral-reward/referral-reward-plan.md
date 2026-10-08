@@ -7,7 +7,7 @@ AARRR 의 R(Referral). 초대 링크로 들어와 **실제로 남은** 친구 �
 ## 확정 사항 (2026-10-08)
 | 단계 | 보상 | 종류 | 구현 위치 |
 |---|---|---|---|
-| 친구 1명 | ⭐ 별빛 도구 세트 (대표: 물뿌리개) | 도구 스킨 `tools_star` (세트 전체) | cosmetics catalog + tool-skins `star` 테마 전 도구 |
+| 친구 1명 | 💎 무지개 크리스탈 세트 (시안 B, id tools_star 유지) | 도구 스킨 `tools_star` (세트 전체) | cosmetics catalog + tool-skins `star` 테마 전 도구 |
 | 친구 3명 | 🌈 무지개 우정 아치 | 야외 장식 `friendarch` (hidden) | js/data/catalog.js OUTDOOR + 조형 |
 | 친구 5명 | 🦋 별빛 우정 날개 | 등 슬롯 `friend_wing` | cosmetics catalog back + 조형 |
 | 피초대자 | 💗 하트 머리핀(가칭) | 머리 슬롯 `friend_pin` | cosmetics catalog head |
