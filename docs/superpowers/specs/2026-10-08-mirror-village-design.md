@@ -27,7 +27,7 @@
 ## 2. 흐름
 
 ```
-낮(06~18시) · 🚏 마을 정류장 옆 액션 「🪞 거울 마을행 타기」 (mirror_board{dir:'go'})
+낮(06~18시) — 판정은 !isNight()(js/daynight.js 단일 출처) · 🚏 마을 정류장 옆 액션 「🪞 거울 마을행 타기」 (mirror_board{dir:'go'})
   ① 탑승 — 조작 잠금, 캐릭터가 정류장 앞 승차 지점까지 걸어감 → 초승달 마차에 올라앉음
   ② 출발 — 마차가 떠올라 마을 연못 쪽으로 비행 → 수면에 닿는 순간 위아래 뒤집힘(물결 와이프)
   ③ 도착 — 거울 마을 하늘에서 내려와 거울 정류장에 착지 → 하차(서기) (mirror_cutscene_end, mirror_enter)
@@ -80,9 +80,9 @@
 | id | 이름 | 값 | 비고 |
 |---|---|---|---|
 | `upsidePot` | 거꾸로 화분 | 6 | 상판 소품(`sm`) |
-| `waterMirror` | 물빛 거울 | 10 | 벽걸이, 은은한 발광 |
+| `waterMirror` | 물빛 거울 | 10 | 바닥 스탠드 거울(벽걸이 가구 체계가 없어 YAGNI), foot 0.6×0.3 |
 | `shadowBear` | 그림자 곰 인형 | 14 | 바닥 |
-| `mirrorLamp` | 거울 등불 기둥 | 22 | 바닥 스탠드, 푸른 빛 |
+| `mirrorLamp` | 거울 등불 | 22 | 바닥 스탠드, 푸른 빛 |
 
 - 외관 ✅ **2안 보색 반전** — 마을·주민과 같은 보색 팔레트(`mockups/compare-decor.png`, 2026-10-08 확정). `shadowBear` 표시 이름은 `거울 곰 인형`.
 - 총 52 ≈ 7~8일. 노출: `mirror.visits > 0` 또는 창고 보유분.
@@ -146,7 +146,8 @@ gameState.mirror = { visits: 0, day: '', done: 0, hinted: [], total: 0 }
 | `js/mirror/decor-art.js` | 거울 장식 4 | THREE |
 | `js/mirror/track.js` | 이벤트 11종 래퍼 | `trackEvent` |
 | `js/spaces/mirror.js` | 지연 빌드·탑승/귀환·의뢰·힌트·HUD·온보딩 | 위 + game.js(순환 import 규칙) |
-| `js/dream/cutscene.js` (수정) | 경로·착지점·훅 인자화, 탑승(걷기→앉기)·하차 단계 | 꿈 동작 불변 |
+| `js/mirror/ride.js` | 탑승(걷기→앉기)·이륙·🪞 거울 문 통과·착지·하차 타임라인. 1차 `js/dream/cutscene.js` 는 고치지 않는다(라이브 꿈길 회귀 0) — 마차 조형만 `makeMoonCarriage()` 재사용 | THREE |
+| `js/mirror/ride-schedule.js` | 단계 경계 시각(순수) | — |
 
 - `game.js` 는 연결부만(`atMirror`, 조명·그림자 플래그, 세이브 왕복, 정류장 액션) — 목표 ≤ 50줄.
 - UI(index.html): 도착 카드, 힌트 버튼, HUD 칩, 꾸미기 🪞 아이콘, 컷신 건너뛰기 재사용.
