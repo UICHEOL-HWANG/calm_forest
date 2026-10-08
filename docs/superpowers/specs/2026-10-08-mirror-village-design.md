@@ -1,7 +1,7 @@
 # 🪞 거울 마을 (Mirror Village) — 설계
 
 - 날짜: 2026-10-08
-- 상태: 섹션 1~5 승인됨 · 디자인 시안 컨펌 대기
+- 상태: 섹션 1~5 승인됨 · ✅ 디자인 6항목 컨펌 완료(2026-10-08)
 - 선행: 🌙 꿈의 숲(`2026-10-08-dream-forest-design.md`) — 차원 맵 2차
 - 시안: `dev/active/dimension-maps/storyboard.html?s=B`(컨셉) · 본 시안은 `dev/active/mirror-village/`
 - 브랜치: `feat/mirror-village` (워크트리 `.claude/worktrees/mirror-village`)
@@ -32,6 +32,7 @@
   ② 출발 — 마차가 떠올라 마을 연못 쪽으로 비행 → 수면에 닿는 순간 위아래 뒤집힘(물결 와이프)
   ③ 도착 — 거울 마을 하늘에서 내려와 거울 정류장에 착지 → 하차(서기) (mirror_cutscene_end, mirror_enter)
        첫 회 ≈ 6s / 이후 ≈ 2.5s · 탭/액션/Esc 건너뛰기
+  차원 전환 ✅ **B 🪞 거울 문** — 호수 위에 둥근 거울 링이 일어서고 거울 속(색 반전 마을)으로 통과(`mockups/compare-cut3.png`, 2026-10-08 확정). ②의 '수면 물결 와이프' 대신 이 연출. 공통 컷 `mockups/compare-cut1.png`(정차 자리는 정류장 지붕과 겹치지 않게).
   ④ 의뢰 — 그림자 주민(머리 위 💬)에게 말 걸기 → 단서 (mirror_clue)
   ⑤ 물건 줍기 (mirror_found) → 주민에게 돌려주기 → 🪞 +N (mirror_return)
   ⑥ 귀환 — 거울 정류장 「🚏 마을로 돌아가기」 (mirror_board{dir:'back'}) → ①~③ 역순 → 마을 정류장 하차 (mirror_leave)
@@ -83,6 +84,7 @@
 | `shadowBear` | 그림자 곰 인형 | 14 | 바닥 |
 | `mirrorLamp` | 거울 등불 기둥 | 22 | 바닥 스탠드, 푸른 빛 |
 
+- 외관 ✅ **2안 보색 반전** — 마을·주민과 같은 보색 팔레트(`mockups/compare-decor.png`, 2026-10-08 확정). `shadowBear` 표시 이름은 `거울 곰 인형`.
 - 총 52 ≈ 7~8일. 노출: `mirror.visits > 0` 또는 창고 보유분.
 - 결제 아이콘 `🪞`, 부족 토스트 `거울 조각이 부족해요 (필요 N 🪞)`.
 - 천장 규칙·벽걸이 규칙 테스트에 새 소품 포함.
