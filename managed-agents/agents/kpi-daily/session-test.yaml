@@ -1,0 +1,11 @@
+# One-off smoke test. IDs come from ../../claude-lock.json after the first apply.
+agent: YOUR_AGENT_ID
+environment_id: YOUR_ENV_ID
+vault_ids: [YOUR_VAULT_ID]
+budget: {type: limit, max_list_cost: {currency: USD, amount: "100"}}
+initial_events:
+  - type: user.message
+    content:
+      - type: text
+        text: |
+          어제(KST) 일일 KPI 리포트를 작성해 주세요.
