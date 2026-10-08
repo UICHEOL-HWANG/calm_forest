@@ -23,6 +23,15 @@ test('strict — 빠진 키·모르는 키·열거값 밖은 throw', () => {
   assert.throws(() => T.onboard({ step: 'oops' }), /step/);
 });
 
+test('strict — undefined·NaN 값은 throw 하고 아무것도 보내지 않는다', () => {
+  const base = { quest_n: 1, item_id: 'ring', spot_id: 'well-l', flipped: false, hinted: false, search_s: 3 };
+  const n = sent.length;
+  assert.throws(() => T.found({ ...base, search_s: undefined }), /search_s/);
+  assert.throws(() => T.found({ ...base, search_s: NaN }), /search_s/);
+  assert.throws(() => T.found(undefined), /missing/);
+  assert.equal(sent.length, n);
+});
+
 test('예약 파라미터 이름 금지 · 호출부는 trackEvent 를 직접 부르지 않는다', { skip: !existsSync(new URL('../js/spaces/mirror.js', import.meta.url)) && 'Task 10 전' }, () => {
   for (const keys of Object.values(EVENTS)) for (const k of keys) assert.doesNotMatch(k, /^(source|medium|campaign|campaign_id|term|content)$/);
   const src = readFileSync(new URL('../js/spaces/mirror.js', import.meta.url), 'utf8');

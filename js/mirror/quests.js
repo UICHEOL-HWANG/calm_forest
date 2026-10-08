@@ -12,7 +12,7 @@ export const ITEMS = Object.freeze([
   { id: 'musicbox', ko: '오르골 상자', en: 'music box',      ico: '🎵' },
   { id: 'carrot',   ko: '당근 인형',   en: 'carrot doll',    ico: '🥕' },
   { id: 'yarn',     ko: '털실 뭉치',   en: 'ball of yarn',   ico: '🧶' },
-  { id: 'lantern',  ko: '작은 등불',   en: 'little lantern', ico: '🏮' },
+  { id: 'lantern',  ko: '작은 등불',   en: 'little lantern', ico: '🕯️' },
   { id: 'brooch',   ko: '별 브로치',   en: 'star brooch',    ico: '⭐' },
 ].map(Object.freeze));
 
