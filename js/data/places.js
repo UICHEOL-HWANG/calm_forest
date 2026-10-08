@@ -66,6 +66,8 @@ export const COOP_FEED = 2;                            // 모이(씨앗) 소비�
 export const GLADE = new THREE.Vector3(7, 0, 26);      // 계곡 중심(남동쪽 숲) — ☕카페·🍄채집 숲과 안 겹치게
 
 export const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
+export const LIGHT_WORKSHOP = new THREE.Vector3(16.5, 0, 33.5);    // 🏮 빛 공방 — 계곡 남동쪽 나무숲 가장자리(사용자: 아래 나무 쪽으로, 2026-10-09). 겹치는 계곡 링 나무만 glade.js 가 비우고 옆 나무는 남긴다
+export const LIGHT_WORKSHOP_POND = { x: -2.3, z: 2.3, r: 0.9 };   // 공방 연못(공방 기준 오프셋) — 나무가 물에 박히지 않게 glade.js 도 쓴다
 
 //   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
 // 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)

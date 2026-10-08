@@ -96,6 +96,7 @@ export const CONFIG = {
   //    과수원(리텐션 측정이 존재 이유) 핵심 이벤트만 Supabase 에도 직접 남긴다.
   //    js/orchard-log.js 가 fire-and-forget 으로 호출(실패해도 게임에 영향 없음).
   ORCHARD_EVENTS_API: `${API_BASE}/api/orchard-events`,
+  AURA_ORDER_API: `${API_BASE}/api/aura-order`,   // 🏮 빛 공방 오라 주문
 
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)

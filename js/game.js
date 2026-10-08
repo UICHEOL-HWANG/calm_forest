@@ -117,7 +117,7 @@ import {
 import {
   INT, ROOF_Y, LAKE_R, BENCH, KITCHEN, SHOP, MARKET, RANK, SELL_ICO_G, FARM, FARM_GATE, MINE, MINE_HALF, MINE_GATE,
   PIER, onPier, COOP_STREAK, COOP, PARK_BENCHES, COOP_COST, COOP_FEED, GLADE, GLADE_R, BUG_KINDS, CAFE_GATE, MUSEUM_GATE,
-  OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, DREAM, MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
+  OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, LIGHT_WORKSHOP, DREAM, MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
   FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
   RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_LAMPS, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
   BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
@@ -142,6 +142,7 @@ import { grillKeyOf, stageKeys } from './cook-ingredients.js';   // 🍲 조리 
 import {
   buildGlade, tryNet, updateFireflyBugs,
 } from './spaces/glade.js';   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
+import { buildLightWorkshop } from './spaces/light-workshop.js';   // 🏮 빛 공방(계곡 연못가)
 import {
   buildForest, forageTarget, tryForage, updateForage,
 } from './spaces/forest.js';   // 📦 🍄 채집 숲 — 새 동사: 줍기 (도구 없이, 시간이 지나면 다시 돋음)
@@ -250,6 +251,8 @@ import {
   PLOT_KEEP_OUT, badgeColor, buildNPCs, npcState, questView, refreshQuestPanel, shadeToLum, talkToNPC, updateMerchantVisit,
   updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
+import { restoreAura } from './aura/recipe.js';
+import { createAuraFx, lookOf } from './aura/render.js';
 import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐릭터·꾸미기 › 옷장·펫 탭
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
@@ -322,6 +325,7 @@ export const $w = {
   get nearCafeGuest() { return nearCafeGuest; }, set nearCafeGuest(v) { nearCafeGuest = v; },
   get nearCoop() { return nearCoop; }, set nearCoop(v) { nearCoop = v; },
   get nearCosShop() { return nearCosShop; }, set nearCosShop(v) { nearCosShop = v; },
+  get nearLightWorkshop() { return nearLightWorkshop; }, set nearLightWorkshop(v) { nearLightWorkshop = v; },
   get nearDecorMesh() { return nearDecorMesh; }, set nearDecorMesh(v) { nearDecorMesh = v; },
   get nearDoor() { return nearDoor; }, set nearDoor(v) { nearDoor = v; },
   get nearDoorFloor() { return nearDoorFloor; }, set nearDoorFloor(v) { nearDoorFloor = v; },
@@ -490,6 +494,7 @@ const boat = {
 
 let cosmeticShop = null;          // buildShop 이 돌려준 { group, owner, lamp } — 프레임 루프가 주인을 움직인다
 let nearCosShop = false;
+let nearLightWorkshop = false;   // 🏮 빛 공방 문 앞
 
 // ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
 let mistGroup = null, atMist = false;
@@ -986,6 +991,7 @@ const gameState = {
   //    유저 테이블을 만들면 RLS·인증·동기화 비용만 는다.
   talk: { date: '', used: {} },
   quiz: { date: '', done: false, correct: 0 },   // 🦆 사공 퀴즈 — 오늘 풀었는지(시작하면 done). 날짜가 오늘이 아니면 다시 풀 수 있다
+  aura: { slots: [], equipped: null },   // 🏮 빛 공방 오라 — 보관함 3칸(레시피 사본+다듬기) · 장착 id
   starDay: null,   // 🔭 별 잇기 — 마지막으로 보상 받은 날(같은 날 재도전은 연습)
   star: { cleared: {}, plays: {}, best: {} },   // 🌌 별자리별 첫 클리어 날짜·시도 횟수·최고 점수(해금은 cleared 로 계산)
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
@@ -2591,6 +2597,8 @@ function applySave(saved) {
     gameState.quiz = { date: saved.quiz.date, done: !!saved.quiz.done, correct: +saved.quiz.correct || 0 };
   }
   if (typeof saved.starDay === 'string') gameState.starDay = saved.starDay;   // 🔭 별 잇기 하루 1회
+  gameState.aura = restoreAura(saved.aura);   // 🏮 모르는 값·4칸째·사라진 장착 id 는 걸러진다
+  refreshAura();
   gameState.star = restoreStar(saved.star, saved.starDay);   // 🌌 별자리 기록(옛 북두칠성 보상 기록은 클리어로 친다)
   if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
@@ -2852,6 +2860,7 @@ function buildWorld() {
       || dist2D({ x, z }, { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 5 }) < 3.5   //    계단 앞 진입로도 틔운다
       || dist2D({ x, z }, OBSERVATORY_GATE) < 6.2   // 🔭 천문대 — 돔과 계단이 나무에 가리지 않게
       || dist2D({ x, z }, { x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 5 }) < 3.8
+      || dist2D({ x, z }, LIGHT_WORKSHOP) < 4.3   // 🏮 빛 공방 오두막·손수레·연못 위엔 나무 금지
       || dist2D({ x, z }, NEIGHBOR_GATE) < 3   // 🏡 이웃 마을 팻말이 나무에 가리지 않게
       || orchardGateBlocks(x, z)   // 🍎 과수원 입구 잔디 판·울타리 위엔 벌목 나무 금지
       || dist2D({ x, z }, RANK) < 3.5   // 🏆 랭킹 게시판이 나무에 가리지 않게
@@ -2886,6 +2895,7 @@ function buildWorld() {
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
+    if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침도 같은 이유
     if (plazaScatterBlocks(x, z, 0.5)) continue;
     grassBuckets[i % 3].push({ x, y: 0.35, z, ph: Math.random() * Math.PI * 2 });
   }
@@ -3444,6 +3454,19 @@ function clearTrail() {
   for (const e of trailLive) { scene.remove(e.mesh); trailPool.push(e.mesh); }
   trailLive.length = 0;
   trailFx.clear();
+}
+
+// 🏮 오라 — 장착한 레시피 하나를 몸 주변에. 트레일과 같은 곳에서 꺼진다.
+const auraFx = createAuraFx(THREE);
+export function refreshAura() {
+  const slot = gameState.aura.slots.find(s => s.id === gameState.aura.equipped);
+  auraFx.setLook(slot ? lookOf(slot) : null);
+}
+function updateAura(dt) {
+  if (!auraFx.points.parent) scene.add(auraFx.points);
+  const off = indoor || atCafe || atMuseum || atObservatory || atMine || atDream;
+  auraFx.points.visible = !off && !!gameState.aura.equipped;
+  if (auraFx.points.visible) auraFx.update(dt, player.position, { nightLevel });
 }
 
 function updateTrail(dt) {
@@ -4445,12 +4468,14 @@ function buildEnvironment() {
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;                  // 🏪 꾸미기 가게 터 제외(반치수 2.56 + 여유)
     if (dist2D({ x, z }, OBSERVATORY_GATE) < 6.2) continue;          // 🔭 천문대 기단·계단 제외
+    if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침·디딤판 위 제외
     if (dist2D({ x, z }, NEIGHBOR_GATE) < 1.5) continue;             // 🏡 이웃 마을 팻말 밑
     if (plazaScatterBlocks(x, z, 1)) continue;
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
   buildGlade();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
+  buildLightWorkshop();   // 🏮 빛 공방(계곡 연못가 오두막 + 주인)
   spawnCafeGate();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
   spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
@@ -5464,6 +5489,7 @@ const VILLAGE_PLACES = [
   { ico: '🍄', name: '채집 숲',       x: FOREST.x,      z: FOREST.z,      pri: 1 },
   { ico: '🏛️', name: '박물관',        x: MUSEUM_GATE.x, z: MUSEUM_GATE.z, pri: 1 },
   { ico: '🔭', name: '천문대',        x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, pri: 1 },
+  { ico: '🏮', name: '빛 공방',       x: LIGHT_WORKSHOP.x, z: LIGHT_WORKSHOP.z, pri: 1 },
   { ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z, pri: 1 },
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
@@ -5648,6 +5674,7 @@ function animate() {
   updatePops(dt);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
   updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
+  updateAura(dt);       // 🏮 빛 공방 오라
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
   updateUmbrella(dt);   // ☂️ 💎 도구 테마 세트 — 비 오는 날 바깥에서 우산
   if (heldToolMesh?.userData.skin === 'moon') setToolSkinNight(heldToolMesh, nightLevel);   // 🌙 달밤 도구는 밤에만 은은히
@@ -6653,6 +6680,10 @@ function handleAction() {
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (plazaSpotNow()) return openPlaza();   // 🌾 기부함·좌판·명판
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
+  if (nearLightWorkshop) {                 // 🏮 빛 공방 → 주문·수령·다듬기
+    trackEvent('aura_workshop_open', { night: isNight() ? 1 : 0 });
+    return ui.openLightWorkshop?.();
+  }
   if (nearCosShop) {                       // 🏪 꾸미기 가게 → 🎀 꾸미기 패널
     trackEvent('shop_enter', { from: 'walk' });
     trackEvent('shop_open', { tab: 'cosmetics' });
@@ -6803,7 +6834,7 @@ function farmActionFirst() {
   if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
-  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || !!plazaSpotNow()) return false;
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || nearLightWorkshop || !!plazaSpotNow()) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
   if (forageTarget() || traceTarget() || visitorTarget()) return false;   // 🔍 방문객 살펴보기도 먼저 처리된다
@@ -7500,7 +7531,7 @@ export {
   lastNearHouse, lastNearMiss, lastZoneHint, lerpAngle, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
   mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView, mineGroup, mineTorches, mist, mistGroup,
   mistLanterns, mistTree, mode, museumGroup, observatoryGroup, nearBench, nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest, nearCoop,
-  nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC,
+  nearCosShop, nearLightWorkshop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC,
   nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher, nightLevel, nightNoteFetcher, noteSpecialExhibit,
   npcObjs, obstacles, onPlotArea, orchardSlotsWorld, orchardStreamWorld, oreRocks, outdoorMesh, outdoorMeshes,
   outdoorTarget, paintGeo, pantryHas, pantryTake, particles, pendingDig, pendingDish, pestTarget, pestTexture, pet3d,
