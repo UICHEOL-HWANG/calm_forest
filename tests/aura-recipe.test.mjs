@@ -44,6 +44,15 @@ test('sanitizeCards: 네 칸이 모두 허용값이어야 한다', () => {
   assert.equal(sanitizeCards({ shape: 'laser', color: 'mint', motion: 'fall', band: 'body' }), null);
 });
 
+test('cardsFromText: 색은 형용사형(노란·푸른·빨간…)도 알아듣는다', () => {
+  assert.equal(cardsFromText('노란 반딧불이가 머리 위에서').color, 'gold');
+  assert.equal(cardsFromText('조용한 밤바다 같은 푸른 빛').color, 'sky');
+  assert.equal(cardsFromText('파란 물결').color, 'sky');
+  assert.equal(cardsFromText('빨간 하트').color, 'berry');
+  assert.equal(cardsFromText('하얀 눈송이').color, 'snow');
+  assert.equal(cardsFromText('깊은 바다 빛').color, 'dew');
+});
+
 test('cardsFromText: 키워드를 카드로, 없으면 기본 카드', () => {
   const c = cardsFromText('비 온 뒤 풀잎에 맺힌 물방울처럼');
   assert.equal(c.shape, 'drop');
