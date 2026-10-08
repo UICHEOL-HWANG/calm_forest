@@ -1,6 +1,6 @@
 # 🪞 거울 마을 — 컨텍스트
 
-Last Updated: 2026-10-08
+Last Updated: 2026-10-08 (Task 14 리뷰 반영 · HEAD 5d658ca)
 
 - 브랜치 `feat/mirror-village` · 워크트리 `.claude/worktrees/mirror-village` · 기준 origin/main f5a366f
 - 핵심 결정: A(물건 찾기)+B(반전 단서) · ① 점진(1번째 그대로, 2·3 반전)+💧 힌트 · 정류장 신설+초승달 마차 재사용, 낮만 · 탑승·하차 연출 필수 · 🪞 거울 조각→장식 4종 · 시간 정지+늘 푸른 밤 · 구조 A안(복제+컷신 공용화)

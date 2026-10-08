@@ -1,7 +1,7 @@
 # 🪞 거울 마을 (Mirror Village) — 설계
 
 - 날짜: 2026-10-08
-- 상태: 섹션 1~5 승인됨 · ✅ 디자인 6항목 컨펌 완료(2026-10-08)
+- 상태: ✅ 구현 완료(미병합) · 배포는 웹·토스·Play·itch 4곳 동시 — 섹션 1~5 승인 · 디자인 6항목 컨펌(2026-10-08)
 - 선행: 🌙 꿈의 숲(`2026-10-08-dream-forest-design.md`) — 차원 맵 2차
 - 시안: `dev/active/dimension-maps/storyboard.html?s=B`(컨셉) · 본 시안은 `dev/active/mirror-village/`
 - 브랜치: `feat/mirror-village` (워크트리 `.claude/worktrees/mirror-village`)
