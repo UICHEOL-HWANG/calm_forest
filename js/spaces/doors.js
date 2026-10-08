@@ -313,7 +313,7 @@ export function updateDoorInteract() {
   $w.nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   $w.nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
   $w.nearCosShop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && dist2D(SHOP_DOOR, player.position) < 2.8; // 🏪 꾸미기 가게(마을 서쪽)
-  $w.nearLightWorkshop = !indoor && !nearCosShop && dist2D(LIGHT_WORKSHOP, player.position) < 2.6;   // 🏮 빛 공방(계곡 연못가)
+  $w.nearLightWorkshop = !indoor && !nearCosShop && dist2D(LIGHT_WORKSHOP, player.position) < 3.2;   // 🏮 빛 공방(계곡 입구) — 오두막(충돌 1.6)+반디 요정 앞에 서면 중심에서 ~3
   // 🌾 수확제 광장 — 기부함·좌판·명판(마을 동쪽 멀리라 다른 시설과 겹치지 않는다)
   const plazaHere = inVillage && !nearRank ? plazaSpot(player.position) : null;
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
@@ -416,7 +416,7 @@ export function updateZoneHint() {
   }
   const wasGlade = nearGlade;
   $w.nearGlade = inVillage2() && dist2D(GLADE, player.position) < GLADE_R + 0.5;
-  if (nearGlade) {
+  if (nearGlade && !nearLightWorkshop) {   // 🏮 공방 문 앞에선 공방 프롬프트만 — 밤에 안내 두 줄이 겹쳤다
     hint = isNight() ? '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
     if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
     firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 포충망으로 반딧불이 잡는 곳');
