@@ -1,0 +1,32 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+import { bindTracker, T, EVENTS } from '../js/mirror/track.js';
+
+const sent = [];
+bindTracker((name, params) => sent.push([name, params]), { strict: true });
+
+test('11종 이름·파라미터가 스펙 §8 그대로', () => {
+  assert.deepEqual(Object.keys(EVENTS).sort(), ['decor_buy_mirror', 'mirror_board', 'mirror_clue', 'mirror_cutscene_end', 'mirror_enter', 'mirror_found', 'mirror_hint', 'mirror_leave', 'mirror_onboard', 'mirror_return', 'mirror_stop_shown']);
+  assert.deepEqual(EVENTS.mirror_found, ['quest_n', 'item_id', 'spot_id', 'flipped', 'hinted', 'search_s']);
+});
+
+test('불린은 0/1 · 키 순서 무관', () => {
+  sent.length = 0;
+  T.found({ hinted: false, quest_n: 2, item_id: 'yarn', spot_id: 'clock-r', flipped: true, search_s: 12.3 });
+  assert.deepEqual(sent[0], ['mirror_found', { quest_n: 2, item_id: 'yarn', spot_id: 'clock-r', flipped: 1, hinted: 0, search_s: 12.3 }]);
+});
+
+test('strict — 빠진 키·모르는 키·열거값 밖은 throw', () => {
+  assert.throws(() => T.clue({ quest_n: 1, npc_id: 'farmer', spot_id: 'well-l' }), /flipped/);
+  assert.throws(() => T.onboard({ step: 'stop', source: 'x' }), /source/);
+  assert.throws(() => T.onboard({ step: 'oops' }), /step/);
+});
+
+test('예약 파라미터 이름 금지 · 호출부는 trackEvent 를 직접 부르지 않는다', { skip: !existsSync(new URL('../js/spaces/mirror.js', import.meta.url)) && 'Task 10 전' }, () => {
+  for (const keys of Object.values(EVENTS)) for (const k of keys) assert.doesNotMatch(k, /^(source|medium|campaign|campaign_id|term|content)$/);
+  const src = readFileSync(new URL('../js/spaces/mirror.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /trackEvent\('/);
+  for (const fn of ['stopShown', 'board', 'cutsceneEnd', 'enter', 'clue', 'hint', 'found', 'ret', 'leave', 'onboard']) assert.match(src, new RegExp(`T\\.${fn}\\(`), fn);
+  for (const step of ['stop', 'arrive', 'flip', 'return']) assert.match(src, new RegExp(`T\\.onboard\\(\\{ step: '${step}' \\}\\)`), step);
+});
