@@ -258,7 +258,9 @@ export const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // �
 
 export const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 
-export const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
+export const ORCHARD_GATE = new THREE.Vector3(33, 0, 7);   // 🍎 마을 동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
+//   (32,2) 였을 때 울타리 왼날개 끝(25.5,−0.9)이 🌾수확제 광장(23,−4·반경 5)·좌판(25.4,−1)에 박혀 남동으로 옮겼다(2026-10-09).
+//   잔디 판 기준 여유: 광장 4.6 · 좌판 4.9 · 호수 3.6 · 🔭천문대 기단 4.2.
 
 // 🔒 문 앞 프롬프트 반경 — **잠금 충돌체를 넘어서야 한다**. 잠겼을 때 문을 막는 원은
 //   (문 앞 0.45, 반경 1.5)라 남쪽에서 다가설 수 있는 한계가 0.45+1.5+PLAYER_R(0.42)=2.37 이다.
@@ -266,7 +268,7 @@ export const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동
 //   한 번도 뜨지 못했다 — 유저는 무엇을 하면 열리는지 알 길이 없었다(🏛️ 박물관 계단 STAIR_PROMPT_R 과 같은 교훈).
 export const ORCHARD_PROMPT_R = 2.8;
 
-//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다. 동쪽은 x>18 에 고정물이 없다.
+//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다(지금은 위 사유로 33,7). 동쪽 x 18~28 에는 🌾수확제 광장이 있다.
 export const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 
 export const ORCHARD_HALF = 20;                            // 언덕 반경

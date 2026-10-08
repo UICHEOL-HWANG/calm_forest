@@ -5224,7 +5224,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);
-    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
   if (STATION_IDS.includes(id)) {
