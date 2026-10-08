@@ -8,14 +8,15 @@
 // =============================================================
 import {
   $w, atMirror, camera, dist2D, firstHintBanner, gameState, handAnchor, isNight, makeNameTag, player, playerAnchor,
-  refreshInventoryUI, requestSave, scene, setSpaceVisible, snapCamera, solidBox, spawnFloatText, spawnSparkle, todayStr, ui,
+  refreshInventoryUI, requestSave, scene, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, spawnSparkle, todayStr, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { MIRROR, MIRROR_STOP } from '../data/places.js';
 import { NPCS } from '../data/npcs.js';
+import { NPC_R, PLAYER_R } from '../data/character.js';
 import { buildNPCFigure } from './npc.js';
 import {
-  LANDMARKS, NPC_SPOTS, SOLIDS, MIRROR_LANDING, MIRROR_STOP_LOCAL, MIRROR_PARK, MIRROR_GATE_LOCAL, STOP_REACH, PICK_R, TALK_R,
+  LANDMARKS, NPC_SPOTS, SOLIDS, SOLID_CIRCLES, STOP_SHELTER_BOX, SIGN_POLE, carriageBox, MIRROR_LANDING, MIRROR_STOP_LOCAL, MIRROR_PARK, MIRROR_GATE_LOCAL, STOP_REACH, PICK_R, TALK_R,
   VILLAGE_BOARD, VILLAGE_PARK, LAKE_GATE, clampWalkable, spotOf,
 } from '../mirror/layout.js';
 import { QUESTS_PER_DAY, normalizeMirror, questAt, rewardFor } from '../mirror/quests.js';
@@ -35,6 +36,7 @@ const HINT_AFTER_S = 30;
 const TWIN_IDS = ['farmer', 'angler', 'chef'];   // NPC_SPOTS 순서와 같다
 let world = null, carriage = null, shelter = null, gateLake = null, gateMirror = null, twins = [];
 let ride = null;            // 진행 중 연출
+let carriageSolid = null;   // 정박 마차 충돌 상자 하나를 마차가 선 자리로 옮겨 쓴다(안 보이거나 연출 중이면 off)
 let active = null;          // 단서를 들은 의뢰 { q, heardAt, hinted, hintShown } — 저장하지 않는다(스펙 §6)
 let arrivedAt = 0, lastHud = '', lastDay = '', stopShownKey = null;
 // 힌트 쓴 의뢰 'day:n' — active 는 귀환 때 지워지지만 감점은 남아야 한다(다시 타고 와서 +3 받는 구멍)
@@ -61,12 +63,14 @@ function ensureWorld() {
   world.group.visible = false;
   scene.add(world.group);
   for (const b of SOLIDS) solidBox(MIRROR.x + b.x1, MIRROR.z + b.z1, MIRROR.x + b.x2, MIRROR.z + b.z2);
+  for (const c of SOLID_CIRCLES) solidCircle(MIRROR.x + c.x, MIRROR.z + c.z, c.r);
   // 보색 쌍둥이 — 실제 주민 몸 그대로, 색만 뒤집는다(시안 residents.html v=2 확정)
   twins = TWIN_IDS.map((id, i) => {
     const def = NPCS.find(d => d.id === id);
     const { group } = buildNPCFigure(def);
     mirrorizeFigure(group);
     const s = NPC_SPOTS[i]; group.position.set(s.x, 0, s.z); group.rotation.y = s.ry;
+    solidCircle(MIRROR.x + s.x, MIRROR.z + s.z, NPC_R);   // 마을 주민처럼 몸이 막는다(npc.js 와 같은 반경)
     const tag = makeNameTag({ ...def, name: npcName(id, lang()), color: invertColor(def.color) });
     tag.position.y = 2.25; group.add(tag);
     const bubble = bubbleSprite(); group.add(bubble);
@@ -90,7 +94,19 @@ function ensureVillageSide() {
   shelter = makeStopShelter(0x6f8fc9, 0xb98a5e);
   shelter.position.set(MIRROR_STOP.x, 0, MIRROR_STOP.z); shelter.rotation.y = Math.PI;
   scene.add(shelter);
-  solidBox(MIRROR_STOP.x - 1.4, MIRROR_STOP.z - 0.7, MIRROR_STOP.x + 1.4, MIRROR_STOP.z + 0.5);   // x 14.6..17.4 · z 16.3..17.5 — VILLAGE_BOARD(z 15.6) 는 밖
+  const B = STOP_SHELTER_BOX;   // 거울 쪽 정류장과 같은 상자(기둥·벤치) — VILLAGE_BOARD(z 15.6) 는 밖
+  solidBox(MIRROR_STOP.x + B.x1, MIRROR_STOP.z + B.z1, MIRROR_STOP.x + B.x2, MIRROR_STOP.z + B.z2);
+  solidCircle(MIRROR_STOP.x + SIGN_POLE.dx, MIRROR_STOP.z + SIGN_POLE.dz, SIGN_POLE.r);   // 표지판 기둥
+}
+/** 정박 마차 충돌 — 상자 하나를 지금 선 자리로 옮긴다(box 가 null 이면 끈다) */
+//   꺼져 있던 상자를 켤 때 플레이어가 그 자리에 서 있으면(밤에 마차 자리 → 날이 밝음) 비킬 때까지 꺼 둔다 — 순간이동처럼 튕기지 않게
+function parkSolid(box) {
+  if (!carriageSolid) carriageSolid = Object.assign(solidBox(0, 0, 0, 0), { off: true });
+  if (!box) { carriageSolid.off = true; return; }
+  const p = player.position, inside = p.x > box.x1 - PLAYER_R && p.x < box.x2 + PLAYER_R && p.z > box.z1 - PLAYER_R && p.z < box.z2 + PLAYER_R;
+  if (carriageSolid.off && inside) return;
+  Object.assign(carriageSolid, box);
+  carriageSolid.off = false;
 }
 /** 낮엔 정류장에 마차가 서 있다(발견성) · 밤엔 막차가 끊긴다 — game.js 루프에서 매 프레임(가벼움) */
 export function syncVillageCarriage(inVillage) {
@@ -99,12 +115,15 @@ export function syncVillageCarriage(inVillage) {
     if (!carriage) return;
     carriage.visible = true;
     carriage.position.set(MIRROR.x + MIRROR_PARK.x, 0, MIRROR.z + MIRROR_PARK.z); carriage.rotation.set(0, MIRROR_PARK.heading, 0);
+    const b = carriageBox(MIRROR_PARK);
+    parkSolid({ x1: MIRROR.x + b.x1, z1: MIRROR.z + b.z1, x2: MIRROR.x + b.x2, z2: MIRROR.z + b.z2 });
     return;
   }
-  if (!inVillage) { if (carriage) carriage.visible = false; return; }
+  if (!inVillage) { if (carriage) carriage.visible = false; if (carriageSolid) carriageSolid.off = true; return; }
   ensureVillageSide();
   carriage.visible = !isNight();
   carriage.position.set(VILLAGE_PARK.x, 0, VILLAGE_PARK.z); carriage.rotation.set(0, VILLAGE_PARK.heading, 0);
+  parkSolid(carriage.visible ? carriageBox(VILLAGE_PARK) : null);
 }
 
 export function mirrorState() {
@@ -146,6 +165,7 @@ function board(dir) {
   $w.sleeping = true; $w.sitting = false;   // 이동·액션·앉기·도구 전환 잠금(꿈길과 같은 잠금)
   if (handAnchor) handAnchor.visible = false;
   carriage.visible = true;
+  if (carriageSolid) carriageSolid.off = true;   // 연출 중엔 플레이어가 마차 위에 앉아 있다 — 밀어내면 안 된다
   Sound.blip();
   ui.setDreamSkip?.(true);   // 건너뛰기 버튼은 꿈길 것을 같이 쓴다(Input.dreamSkip 이 둘 다 부른다)
   ride = startRide({

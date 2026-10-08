@@ -49,13 +49,43 @@ export const MIRROR_LANDING = Object.freeze({ x: 2.5, z: 10.8 });      // 하차
 export const MIRROR_PARK = Object.freeze({ x: 2.5, z: 18.4, heading: Math.PI / 2 });   // 정류장 남쪽 — 카메라 시선(높이≈4.5)보다 낮아 플레이어를 안 가린다
 export const MIRROR_GATE_LOCAL = Object.freeze({ x: 0, y: 5.5, z: -2 });   // 거울 마을 쪽 🪞 거울 문(연못 위)
 
-// 충돌 상자(로컬) — 연못(원 r3 를 상자로 근사)·집 3·우물·시계탑. 숨는 자리는 밖에 있어야 한다(테스트)
+// 충돌 — 보이는 조형물은 걸어서 뚫고 지나가면 안 된다(2026-10-09 통과 검수 · tests/mirror-collide.test.mjs · 실측 tools/mirror/collide.mjs)
+// 🚏 정류장 상자 — 정류장 중심 기준(지붕 남쪽으로 돌린 makeStopShelter: 기둥 z+0.4 · 벤치 z+0.55) · 마을·거울 정류장 공용
+export const STOP_SHELTER_BOX = Object.freeze({ x1: -1.4, z1: -0.7, x2: 1.4, z2: 0.8 });
+export const SIGN_POLE = Object.freeze({ dx: -1.7, dz: -0.2, r: 0.12 });   // 정류장 표지판 기둥(돌린 뒤)
+// 집은 비스듬히 놓여 있어 회전한 벽(3×2.6) 전체를 감싸는 상자 — 축 맞춘 3.2×2.8 로는 모서리를 뚫고 지나갔다
+const houseBox = (h) => { const c = Math.abs(Math.cos(h.ry)), s = Math.abs(Math.sin(h.ry)), hx = 1.5 * c + 1.3 * s, hz = 1.5 * s + 1.3 * c; return { x1: h.x - hx, z1: h.z - hz, x2: h.x + hx, z2: h.z + hz }; };
+const STOP = LANDMARKS.find(l => l.id === 'stop');
+// 상자(로컬) — 연못(원 r3 를 상자로 근사)·집 3·우물·시계탑·정류장. 숨는 자리는 밖에 있어야 한다(테스트)
 export const SOLIDS = Object.freeze([
   { x1: -2.7, z1: -2.7, x2: 2.7, z2: 2.7 },
-  ...HOUSES.map(h => ({ x1: h.x - 1.6, z1: h.z - 1.4, x2: h.x + 1.6, z2: h.z + 1.4 })),
+  ...HOUSES.map(houseBox),
   { x1: -8.95, z1: -2.95, x2: -7.05, z2: -1.05 },
   { x1: 6.75, z1: -7.25, x2: 8.25, z2: -5.75 },
+  { x1: STOP.x + STOP_SHELTER_BOX.x1, z1: STOP.z + STOP_SHELTER_BOX.z1, x2: STOP.x + STOP_SHELTER_BOX.x2, z2: STOP.z + STOP_SHELTER_BOX.z2 },
 ].map(Object.freeze));
+
+// 가장자리 숲 링 — art.js 가 그리는 자리와 같은 목록(⚠️ 정류장 남쪽 z > 14, |x − 정류장| < 7 은 비운다 — 화면 아래를 가림)
+export const RING_TREES = Object.freeze(Array.from({ length: 34 }, (_, i) => {
+  const a = i / 34 * Math.PI * 2, r = 20.5 + (i % 3) * 1.4;
+  return { i, r, x: Math.cos(a) * r, z: Math.sin(a) * r };
+}).filter(t => !(t.z > 14 && Math.abs(t.x - MIRROR_STOP_LOCAL.x) < 7)).map(Object.freeze));
+// 원(로컬) — 등불 기둥·표지판·덮개 나무 줄기·걸어서 닿는 가장자리 나무(WALK_R 바로 밖 줄)
+export const SOLID_CIRCLES = Object.freeze([
+  (() => { const l = LANDMARKS.find(x => x.id === 'lamp'); return { x: l.x, z: l.z, r: 0.22 }; })(),
+  { x: STOP.x + SIGN_POLE.dx, z: STOP.z + SIGN_POLE.dz, r: SIGN_POLE.r },
+  ...SPOTS.filter(s => s.cover === 'tree').map(s => ({ x: s.x, z: s.z - 0.3, r: 0.3 })),
+  ...RING_TREES.filter(t => t.r < 21).map(t => ({ x: t.x, z: t.z, r: 0.35 })),
+].map(Object.freeze));
+
+// 🌙 정박 마차 — 달 몸체(로컬 x ±0.75 · z −1.6..1.6)만 막는다. 양은 공중(y≈1)에 떠 있고, 막으면 마을 탑승 자리(VILLAGE_BOARD)를 덮는다.
+//   heading 은 ±π/2 뿐(축 맞춘 상자로 충분) — 좌표계는 park 와 같다(거울 쪽은 로컬, 마을 쪽은 월드)
+export function carriageBox(park) {
+  const c = Math.cos(park.heading), s = Math.sin(park.heading);
+  const pts = [[-0.75, -1.6], [0.75, -1.6], [-0.75, 1.6], [0.75, 1.6]].map(([x, z]) => [park.x + x * c + z * s, park.z - x * s + z * c]);
+  const xs = pts.map(p => p[0]), zs = pts.map(p => p[1]);
+  return { x1: Math.min(...xs), z1: Math.min(...zs), x2: Math.max(...xs), z2: Math.max(...zs) };
+}
 
 export function isWalkable(x, z) { return Math.hypot(x, z) <= WALK_R + 1e-9; }
 export function clampWalkable(x, z) {
