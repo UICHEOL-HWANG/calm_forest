@@ -1073,7 +1073,8 @@ export function drawCosMenu() {
     if (gatedRow(it)) {
       mode = premiumRowMode(it, rowCtx(it));
       if (mode === 'hidden') continue;
-      if (it.premium && !premiumViewed.has(it.id)) {   // 🤝 초대 보상은 판매 퍼널이 아니다 premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode, ...(it.sale ? { sale: it.sale } : {}) }); }
+      // 🤝 초대 보상은 판매 퍼널이 아니다 — premium_row_view 는 현금 상품만
+      if (it.premium && !premiumViewed.has(it.id)) { premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode, ...(it.sale ? { sale: it.sale } : {}) }); }
     }
     const row = document.createElement('div');
     row.className = 'sh-row' + (cosView().equipped[it.slot] === it.id ? ' try' : '');
