@@ -36,7 +36,7 @@ export function startRide({ dir, first, route, hooks }) {
   const st = { t: 0, done: false, teleported: false, dir };
   const start = hooks.player.position.clone();
   const { carriage: car, player, playerAnchor, camera } = hooks;
-  const seatW = () => { car.updateMatrixWorld(true); return _w.set(0, car.userData.seatY, -0.1).applyMatrix4(car.matrixWorld).clone(); };
+  const seatW = () => { car.updateMatrixWorld(true); return _w.set(0, car.userData.seatY, -0.1).applyMatrix4(car.matrixWorld); };   // 공유 벡터 — 오래 들고 있을 곳은 호출부가 복사
   const onCurve = (curve, u, endHeading) => {
     curve.getPointAt(u, _a); curve.getTangentAt(Math.min(u, 0.999), _t);
     car.position.copy(_a);
@@ -88,7 +88,9 @@ export function startRide({ dir, first, route, hooks }) {
       playerAnchor.position.y = -0.3 * p;
       cam(0);
     } else if (ph.name === 'rise') {
-      onCurve(A, smooth(ph.p) * 0.85, null); sitOn();
+      onCurve(A, smooth(ph.p) * 0.85, null);
+      car.rotation.y = route.from.park.heading + wrap(car.rotation.y - route.from.park.heading) * smooth(ph.p / 0.25);   // 정박 방향 → 진행 방향(첫 25%) — 순간 회전 없음
+      sitOn();
       const g = smooth((st.t - S.gate[0]) / (S.gate[1] - S.gate[0]));
       hooks.gateFrom.setRise(g); hooks.gateFrom.setOpen(g);
       cam(ph.p * 0.6);
