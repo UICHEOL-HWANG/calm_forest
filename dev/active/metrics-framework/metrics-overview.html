@@ -101,7 +101,7 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
         <div class="label">NORTH STAR</div>
         <div class="name">하루 평균 수확·포획·제작한 유저 수</div>
         <div class="big">1.86<small>명/일 · 9/28 주</small></div>
-        <div class="def">지난 7일 동안 수확·낚시·요리·퀘스트 완료 등 <b>획득 행동 16종</b>을 1번 이상 한 (주민 × 날)의 수 ÷ 7</div>
+        <div class="def">지난 7일 동안 수확·낚시·요리·퀘스트 완료 등 <b>획득 행동 16종</b>을 1번 이상 한 (유저 × 날)의 수 ÷ 7</div>
         <div class="chips">
           <span class="chip">매일 잠깐 리듬</span><span class="chip">손에 쥐고 나간 날</span><span class="chip">혼합 키</span><span class="chip">KST 자정</span>
         </div>
@@ -110,10 +110,10 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
         <div class="tag">주간 값과 95% 신뢰구간 · 주간 등락은 해석하지 않고 4주 기준선 밖일 때만 변화로 읽는다</div>
         <svg id="nsm-chart" viewBox="0 0 640 220" role="img" aria-label="북극성 주간 추이와 신뢰구간"></svg>
         <div class="formula" aria-label="곱셈 분해">
-          <div class="fbox"><b>주간 방문 주민</b><span>26 → 15</span></div><span class="op">×</span>
+          <div class="fbox"><b>주간 방문 유저</b><span>26 → 15</span></div><span class="op">×</span>
           <div class="fbox"><b>1인당 방문일</b><span>1.69 → 1.60</span></div><span class="op">×</span>
           <div class="fbox"><b>획득 비율</b><span>48% → 54%</span></div><span class="op">=</span>
-          <div class="fbox" style="background:#c5c8ff;color:#141640"><b>획득한 주민×날</b><span>21 → 13</span></div>
+          <div class="fbox" style="background:#c5c8ff;color:#141640"><b>획득한 유저×날</b><span>21 → 13</span></div>
         </div>
       </div>
     </div>
@@ -153,13 +153,13 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
       <div class="card">
         <h3>Retention</h3><div class="ko">유지 · 북극성</div>
         <div class="state ok">결과 지표</div><hr>
-        <div class="k">하루 평균 획득한 주민</div><div class="v">1.86</div>
-        <div class="s">매주 남는 유지 주민 4~5명<br>2~3주 차 재방문: 첫 주 획득 16% vs 미획득 4%</div>
+        <div class="k">하루 평균 획득한 유저</div><div class="v">1.86</div>
+        <div class="s">매주 남는 유지 유저 4~5명<br>2~3주 차 재방문: 첫 주 획득 16% vs 미획득 4%</div>
       </div>
       <div class="card">
         <h3>Revenue</h3><div class="ko">수익 · 코인 소비 → 결제</div>
         <div class="state wait">결제 측정 대기</div><hr>
-        <div class="k">코인 소비 주민 비율 (선행)</div><div class="v">24%</div>
+        <div class="k">코인 소비 유저 비율 (선행)</div><div class="v">24%</div>
         <div class="s">결제 전환율: Paddle 라이브 대기<br>결제 원장 BQ 미적재</div>
       </div>
       <div class="card off">
@@ -230,13 +230,13 @@ const MONO = 'IBM Plex Mono, monospace';
   svg.style.background = '#141414';
   const S = {
     nsm:    { x: 1000, y: 135, r: 26, k: 'nsm',  t: '하루 평균 수확·포획·제작한 유저 수', v: '3.00 → 1.86 명/일', side: 'left' },
-    reach:  { x: 610,  y: 300, r: 15, k: 'star', t: '주간 방문 주민 수', v: '26 → 15', side: 'left' },
+    reach:  { x: 610,  y: 300, r: 15, k: 'star', t: '주간 방문 유저 수', v: '26 → 15', side: 'left' },
     freq:   { x: 860,  y: 400, r: 15, k: 'star', t: '1인당 방문일', v: '1.69 → 1.60', side: 'right' },
     qual:   { x: 1080, y: 345, r: 15, k: 'star', t: '방문일 중 획득 비율', v: '48% → 54%', side: 'above' },
     newv:   { x: 420,  y: 410, r: 10, k: 'star', t: '신규', v: '20 → 8', side: 'left' },
     kept:   { x: 560,  y: 480, r: 10, k: 'star', t: '유지', v: '5 → 5', side: 'right' },
     back:   { x: 650,  y: 585, r: 8,  k: 'star', t: '복귀', v: '1 → 2', side: 'below' },
-    habit:  { x: 790,  y: 575, r: 9,  k: 'star', t: '습관 주민 (주 4일+)', v: '12% → 7%', side: 'below' },
+    habit:  { x: 790,  y: 575, r: 9,  k: 'star', t: '습관 유저 (주 4일+)', v: '12% → 7%', side: 'below' },
     gap:    { x: 930,  y: 520, r: 8,  k: 'star', t: '방문 간격', v: '중앙값 1일', side: 'below' },
     mix:    { x: 1120, y: 520, r: 8,  k: 'star', t: '분야별 획득', v: '농사 80%', side: 'below' },
     empty:  { x: 1040, y: 640, r: 8,  k: 'star', t: '빈손 방문 마지막 위치', v: '마을 86%', side: 'below' },
