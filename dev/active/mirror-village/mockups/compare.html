@@ -10,6 +10,8 @@ const S = {
   stop: [['A · 호수 남쪽 잔디','stop/pc-a.png','stop/mobile-a.png'],['B · 호수 동쪽 기슭','stop/pc-b.png','stop/mobile-b.png'],['C · 나루터 옆','stop/pc-c.png','stop/mobile-c.png']],
   game: [['1 · 푸른 밤 거울 광장','village/pc-v-1.png','village/m-v-1.png'],['2 · 물 위 마을','village/pc-v-2.png','village/m-v-2.png'],['3 · 색 반전 숲 마을','village/pc-v-3.png','village/m-v-3.png']],
   wide: [['1 · 전경','village/pc-v-1-cam-wide.png','village/m-v-1-cam-wide.png'],['2 · 전경','village/pc-v-2-cam-wide.png','village/m-v-2-cam-wide.png'],['3 · 전경','village/pc-v-3-cam-wide.png','village/m-v-3-cam-wide.png']],
+  res: [['1 · 그림자 실루엣','residents/pc-v-1.png','residents/m-v-1.png'],['2 · 보색 쌍둥이','residents/pc-v-2.png','residents/m-v-2.png'],['3 · 물방울 요정','residents/pc-v-3.png','residents/m-v-3.png']],
+  items: [['1 · 원색 저폴리','items/pc-v-1.png','items/m-v-1.png'],['2 · 금빛 보물','items/pc-v-2.png','items/m-v-2.png'],['3 · 말랑 파스텔','items/pc-v-3.png','items/m-v-3.png']],
 }[new URLSearchParams(location.search).get('set') || 'stop'];
 document.getElementById('g').innerHTML = S.map(([t,p,m]) => `<div class="c"><h2>${t}</h2><img src="${p}"><img class="m" src="${m}"></div>`).join('');
 </script></body></html>
