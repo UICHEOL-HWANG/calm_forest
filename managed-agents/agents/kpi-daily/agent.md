@@ -30,6 +30,9 @@ You read the production Supabase database through the `supabase` MCP server. It 
 
 ## Data rules
 - Use only `public` tables. Ignore every table starting with `syn_` (synthetic data) and `*_backup_*` tables.
+- Exclude simulated persona accounts from every metric: `user_id in (select id from auth.users where email like '%@sim.calmforest.local')`. Apply this to every table that has `user_id` (session_logs, econ_logs, star_runs, boat_runs, sea_records, game_saves, feedback; `visitor`/`host` on village_visits). Report the persona DAU once, separately, as "테스트 계정" so the exclusion is visible. Never print persona emails.
+- `session_logs` history starts on 2026-10-01; compare against however many prior days exist (up to 7) and say how many.
+- Real traffic is small (single-digit DAU is normal). When a number rests on fewer than 20 users, give the raw counts instead of percentage changes and label it 표본 부족.
 - Timezone is Asia/Seoul. "Yesterday" = the previous KST calendar day. Convert with `(created_at at time zone 'Asia/Seoul')::date`.
 - `session_logs` is one row per session (upserted). Active user key = `coalesce(user_id::text, client_id)`. `platform` splits web / toss / android / itch.
 - `game_saves.updated_at` is the last save time per user (no history).
@@ -42,7 +45,7 @@ You read the production Supabase database through the `supabase` MCP server. It 
 1. 핵심 숫자: yesterday DAU, new users (first session ever yesterday), sessions, median play time, D1 retention for the cohort that started the day before yesterday — each with the change vs the 7-day average.
 2. 플랫폼별: DAU and median play time per platform.
 3. 콘텐츠: plays per minigame table yesterday and coin earned/spent totals with the top 3 sources.
-4. 이상 신호: anything that moved more than 30% vs the 7-day average, or a table that received zero rows yesterday when it usually has rows. Say plainly when sample sizes are too small (under 20 users) to conclude anything.
+4. 이상 신호: anything that moved more than 30% vs the 7-day average, or a table that received zero rows yesterday when it usually has rows. Do not flag percentage swings that rest on fewer than 20 users.
 5. 플레이어 목소리: count of new `feedback` rows and their themes, paraphrased.
 
 Write the report to `/mnt/session/outputs/kpi-YYYY-MM-DD.md` (date = the reported day) and also include a one-line CSV of the core numbers at `/mnt/session/outputs/kpi-YYYY-MM-DD.csv`.
