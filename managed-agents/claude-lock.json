@@ -9,15 +9,27 @@
     "./agents/analyst/agent.md": {
       "kind": "agent",
       "id": "agent_01UvMwYwdCjx1ujXXj11svo5",
-      "version": "3",
-      "hash": "be64b9225252c8b0603beddc98d4f9cd",
-      "remote_hash": "2e880699aa695791ce6062b0c3d2525c"
+      "version": "4",
+      "hash": "9dfade30e7c07e78a430d52170c6f512",
+      "remote_hash": "3956fabccbe72f4fef2a6f4fffe7d704"
+    },
+    "./agents/analyst/deployment-weekly.yaml": {
+      "kind": "deployment",
+      "id": "depl_01BPLzRD7F7Xxhh7UwKkiTbx",
+      "hash": "64379b87f876194a91374101946c6885",
+      "remote_hash": "64379b87f876194a91374101946c6885"
     },
     "./agents/analyst/environment.yaml": {
       "kind": "environment",
       "id": "env_013dZsyAKfbN9NFfhpcEbE5H",
       "hash": "3f93cb5dacc1aee7c1d90a5a13711fb3",
       "remote_hash": "a9f9d0f3892a1d042c9043e4fe0dd7b9"
+    },
+    "./agents/analyst/memory_store-ledger.yaml": {
+      "kind": "memory_store",
+      "id": "memstore_01Homr26TYEpR5cPDpARSubp",
+      "hash": "2f65b9a3c9ea21582aa5a876df60de4b",
+      "remote_hash": "2f65b9a3c9ea21582aa5a876df60de4b"
     },
     "./agents/kpi-daily/agent.md": {
       "kind": "agent",
@@ -29,8 +41,8 @@
     "./agents/kpi-daily/deployment-daily.yaml": {
       "kind": "deployment",
       "id": "depl_01HBxqhczrELj4SQUqzhNqDD",
-      "hash": "133ab4cfa1b223511dd2406109a37764",
-      "remote_hash": "133ab4cfa1b223511dd2406109a37764"
+      "hash": "e90564f59e0c0df36f050ecbd1c93dc1",
+      "remote_hash": "e90564f59e0c0df36f050ecbd1c93dc1"
     },
     "./agents/kpi-daily/environment.yaml": {
       "kind": "environment",

@@ -5,14 +5,14 @@ Run every `ant` command from this directory: `claude-lock.json` lives here and m
 
 | Agent | What | Schedule | Cap |
 |---|---|---|---|
-| `agents/kpi-daily` | Daily KPI report from Supabase (read-only MCP) | 09:00 KST daily (paused) | $0.80 / run |
-| `agents/analyst` | One-question deep analysis over BigQuery (`execute_sql_readonly` only) + Supabase | on demand | set per session |
+| `agents/kpi-daily` | KPI report from Supabase (read-only MCP) -> #cf-data | Mon/Wed/Fri 09:00 KST | $0.80 / run |
+| `agents/analyst` | Deep analysis over BigQuery (`execute_sql_readonly` only) + Supabase -> #cf-analysis. Reads/appends the ledger memory store so no analysis repeats | weekly Tue 10:00 KST autonomous (paused) + on demand | $8 / run |
 
 No secrets in this repo (public). Keychain: `calmforest-supabase-pat-cma`, `calmforest-bq-oauth-client`, `calmforest-bq-refresh-cma`, `calmforest-slack-bot-kpi`; register with `scripts/vault-add.sh` / `scripts/bq-oauth.py`. Credentials live only in the Anthropic vault `calm-forest-analytics`.
 
 ## Status
-- Deployment `depl_01HBxqhczrELj4SQUqzhNqDD` is **paused** until Slack is wired.
-- Slack later: run `scripts/vault-add.sh slack` (Keychain `calmforest-slack-bot-kpi`), put the channel ID in the kickoff text of `deployment-daily.yaml` (e.g. "슬랙 채널: C0..."), `ant apply agents/kpi-daily/deployment-daily.yaml`, then unpause.
+- KPI deployment `depl_01HBxqhczrELj4SQUqzhNqDD` active (Mon/Wed/Fri). Analyst weekly `depl_01BPLzRD7F7Xxhh7UwKkiTbx` paused until the first run is reviewed.
+- Ledger store `memstore_01Homr26TYEpR5cPDpARSubp` (`/ledger.md`, seeded from `agents/analyst/data/ledger-seed.md`). Note: `memories create --content @file` stores the literal string; pipe `jq -n --rawfile c FILE '{content:$c}'` instead.
 
 ## Read the latest report
 Console -> Sessions -> latest `calm-forest-kpi-daily` run -> outputs (`ant beta:files list --scope-id` currently returns 400).
