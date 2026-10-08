@@ -35,6 +35,16 @@ create table if not exists public.referrals (
 );
 create index if not exists idx_referrals_inviter on public.referrals (inviter_id);
 
+-- ②-1 남용 방지 — 정산 쿨다운(30초) · 틀린 코드 시도 수(계정당 10회)
+alter table public.referral_codes add column if not exists last_claim_at timestamptz;
+create table if not exists public.referral_bind_fails (
+  user_id  uuid primary key references auth.users(id) on delete cascade,
+  n        int not null default 0,
+  last_at  timestamptz not null default now()
+);
+alter table public.referral_bind_fails enable row level security;   -- 정책 없음 = 클라이언트 접근 불가
+revoke all on public.referral_bind_fails from anon, authenticated;
+
 alter table public.referral_codes enable row level security;
 alter table public.referrals      enable row level security;
 drop policy if exists "own referral code select" on public.referral_codes;
@@ -116,8 +126,15 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'already_bound');
   end if;
 
+  if (select n from referral_bind_fails where user_id = p_invitee) >= 10 then
+    return jsonb_build_object('ok', false, 'reason', 'too_many');
+  end if;
   select user_id into v_inviter from referral_codes where code = v_code;
-  if v_inviter is null then return jsonb_build_object('ok', false, 'reason', 'bad_code'); end if;
+  if v_inviter is null then
+    insert into referral_bind_fails (user_id, n) values (p_invitee, 1)
+    on conflict (user_id) do update set n = referral_bind_fails.n + 1, last_at = now();
+    return jsonb_build_object('ok', false, 'reason', 'bad_code');
+  end if;
   if v_inviter = p_invitee then return jsonb_build_object('ok', false, 'reason', 'self'); end if;
   if exists (select 1 from referrals where invitee_id = v_inviter and inviter_id = p_invitee) then
     return jsonb_build_object('ok', false, 'reason', 'cycle');           -- 서로 초대하기 차단
@@ -146,6 +163,16 @@ declare
   v_newly    int;
   v_granted  text[];
 begin
+  -- 쿨다운 — 30초 안에 다시 부르면 훑지 않고 현재 상태만 돌려준다(코드 없는 사람은 초대한 적도 없다)
+  update referral_codes set last_claim_at = now()
+  where user_id = p_inviter and (last_claim_at is null or last_claim_at < now() - interval '30 seconds');
+  if not found then
+    return jsonb_build_object(
+      'active',  (select count(*) from referrals where inviter_id = p_inviter and activated_at is not null),
+      'pending', (select count(*) from referrals where inviter_id = p_inviter and activated_at is null),
+      'newly_active', 0, 'granted', '[]'::jsonb, 'throttled', true);
+  end if;
+
   with days as (
     select r.invitee_id,
            count(distinct (s.started_at at time zone 'Asia/Seoul')::date) as d

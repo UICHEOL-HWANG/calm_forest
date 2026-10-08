@@ -55,7 +55,9 @@ def bind(con, uid, code):
     return con.run('select public.referral_bind(cast(:u as uuid), :c, :p)', u=uid, c=code, p='web')[0][0]
 
 
-def claim(con, uid):
+def claim(con, uid, cool=True):
+    if cool:   # 쿨다운을 풀어 매 호출이 실제로 훑게 한다(쿨다운 자체는 따로 검사)
+        con.run("update referral_codes set last_claim_at = null where user_id = cast(:u as uuid)", u=uid)
     return con.run('select public.referral_claim(cast(:u as uuid))', u=uid)[0][0]
 
 
@@ -115,6 +117,15 @@ def run_checks(con):
                 f'claim: 2일 → 활성 + tools_star {c3}')
     c4 = claim(con, inviter)
     ok &= check(c4['granted'] == [] and c4['newly_active'] == 0, f'claim: 재호출 중복 없음 {c4}')
+    c5 = claim(con, inviter, cool=False)
+    ok &= check(c5.get('throttled') is True and c5['active'] == 1, f'claim: 30초 안 재호출은 쿨다운 {c5}')
+    ok &= check(claim(con, new_user(con), cool=False).get('throttled') is True, 'claim: 코드 없는 사람은 훑지 않음')
+
+    # 틀린 코드 시도 상한
+    guesser = new_user(con)
+    for i in range(10):
+        bind(con, guesser, f'ZZZZZZZ{"23456789ABCDEFGHJK"[i]}')
+    ok &= check(bind(con, guesser, 'SELFAB23')['reason'] == 'too_many', 'bind: 틀린 코드 10회 후 차단(맞는 코드도)')
 
     # ③ 가드
     state = {'nickname': 't', 'outdoor': [{'id': 'friendarch', 'x': 1, 'z': 2}, {'id': 'flowerbed', 'x': 0, 'z': 0}],

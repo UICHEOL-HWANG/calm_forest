@@ -7,16 +7,18 @@
 - [x] 별 테마 = 도구 세트 전체 · 활성화 원천 session_logs 수용 (2026-10-08)
 
 ## 1. DB
-- [ ] `migrate_referrals.sql`: referral_codes · referrals · RLS
-- [ ] purchases.source 컬럼 + kind CHECK 'decor'
-- [ ] 보안 트리거: 새 3종 id + friendarch 야외 장식 가드
-- [ ] 셀프테스트 스크립트 + 풀러 적용
+- [x] `migrate_referrals.sql`: referral_codes · referrals · RLS (+ referral_bind_fails · claim 쿨다운)
+- [x] purchases.source 컬럼 + kind CHECK 'decor'
+- [x] 보안 트리거: 새 3종 id + friendarch 야외 장식 가드
+- [x] 셀프테스트 28종 + 운영 적용 (2026-10-08)
 
 ## 2. API (Worker)
-- [ ] `/api/referral/code` (GET/POST, 비익명 JWT)
-- [ ] `/api/referral/bind` (검증 5종)
-- [ ] `/api/referral/claim` (활성화 판정·멱등 지급·소식)
-- [ ] worker/index.js 라우트 등록 + 테스트
+- [x] `POST /api/referral` action=code (비익명 JWT)
+- [x] action=bind (거절 사유: anonymous·not_new·self·bad_code·already_bound·cycle·inviter_full·too_many)
+- [x] action=claim (활성화·멱등 지급·소식, 30초 쿨다운 throttled)
+- [x] worker/index.js 라우트 등록 + 단위 테스트 11종
+- [ ] 보상 소식 문구 사용자 검수 (REWARD_NOTICE)
+- [ ] 실 JWT 로 배포 후 E2E (워크트리에 .dev.vars 없음)
 
 ## 3. 카탈로그·소유
 - [ ] catalog: tools_star · friend_wing · friend_pin (비매 플래그) / OUTDOOR friendarch hidden
