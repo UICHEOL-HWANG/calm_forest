@@ -30,3 +30,21 @@ test('공방 메시는 mergeGeos 로 병합해 드로우콜을 아낀다', () =>
   const src = readFileSync(new URL('../js/spaces/light-workshop.js', import.meta.url), 'utf8');
   assert.match(src, /mergeGeos\(/);
 });
+
+test('🧱 공방 외관 C안 — 벽돌·기와 오두막은 별도 모듈, THREE 는 인자로 받는다', () => {
+  const hut = readFileSync(new URL('../js/spaces/light-workshop-hut.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(hut, /^import .*from 'three'/m, 'node 테스트 — THREE 는 인자로');
+  assert.match(hut, /export function buildHutGeos\(THREE\)/);
+  assert.match(hut, /export function buildCartGeos\(THREE, /);
+  for (const part of ['brickWall', '빗살', '십자', '디딤판', '기와']) assert.match(hut, new RegExp(part), part);
+});
+
+test('🧱 공방은 메시를 병합해 드로우콜 예산(12) 안 — 오두막 1·불빛 1·주인 3·이름표·팻말', () => {
+  const src = readFileSync(new URL('../js/spaces/light-workshop.js', import.meta.url), 'utf8');
+  assert.match(src, /buildHutGeos\(THREE\)/);
+  assert.match(src, /buildCartGeos\(THREE, /);
+  const fn = src.slice(src.indexOf('export function buildLightWorkshop'));
+  const meshes = (fn.match(/new THREE\.Mesh\(/g) || []).length;
+  assert.equal(meshes, 2, '오두막(정점색 병합) 1 + 창·문 불빛 1');
+  assert.doesNotMatch(fn, /ConeGeometry/, '옛 사각뿔 지붕은 치운다');
+});

@@ -4,6 +4,7 @@
 // =============================================================
 import { makeNameTag, makeSignpost, mergeGeos, obstacles, paintGeo, scene, solidCircle, vtxMat } from '../game.js';
 import { LIGHT_WORKSHOP } from '../data/places.js';
+import { buildCartGeos, buildHutGeos } from './light-workshop-hut.js';
 import * as THREE from 'three';
 
 export const KEEPER = { id: 'lightkeeper', emoji: '🧚', name: '반디 요정', color: 0xe58fb0 };
@@ -40,20 +41,20 @@ function buildKeeper() {
 
 export function buildLightWorkshop() {
   const g = new THREE.Group(); g.position.copy(LIGHT_WORKSHOP); g.rotation.y = 0;   // 문·창·반디 요정이 카메라(남쪽)를 정면으로 본다
-  const pond = baked(new THREE.CircleGeometry(0.9, 20), -1.6, 0.03, 1.4, { rot: [-Math.PI / 2, 0, 0] });
-  const hut = new THREE.Mesh(mergeGeos([
-    paint(new THREE.BoxGeometry(2.2, 1.5, 1.8), 0xd8b48a, 0, 0.75, 0),
-    paint(new THREE.ConeGeometry(1.75, 1.0, 4), 0x6f8f7a, 0, 2.0, 0, { rot: [0, Math.PI / 4, 0] }),
-    paint(new THREE.BoxGeometry(0.55, 0.9, 0.05), 0x8a5a3c, 0, 0.45, 0.92),
-    paintGeo(pond, 0x7fb7c9),
-  ]), vtxMat());
-  hut.castShadow = true; g.add(hut);
-  const win = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 0.05), new THREE.MeshBasicMaterial({ color: 0xffe2a0 })); win.position.set(0.68, 0.95, 0.92); g.add(win);
-  const k = buildKeeper(); k.position.set(0.9, 0, 1.5); k.rotation.y = 0.3;
+  // 🧱 벽돌·기와 오두막(C안) + 손수레 + 연못 — 정점색 한 메시 · 창·문 안쪽 불빛 한 메시 → 드로우콜 2
+  const { solid, glow } = buildHutGeos(THREE);
+  const cartAt = new THREE.Matrix4().makeRotationY(Math.PI / 2 - 0.2).setPosition(-1.65, 0, -0.5);   // 왼쪽 박공 옆, 뒤쪽 — 손잡이가 팻말에 닿지 않게
+  solid.push(...buildCartGeos(THREE, cartAt));
+  solid.push(paintGeo(baked(new THREE.CircleGeometry(0.9, 20), -2.3, 0.03, 2.3, { rot: [-Math.PI / 2, 0, 0] }), 0x7fb7c9));   // 연못
+  const hut = new THREE.Mesh(mergeGeos(solid), vtxMat());
+  hut.castShadow = true; hut.receiveShadow = true; g.add(hut);
+  g.add(new THREE.Mesh(mergeGeos(glow), new THREE.MeshBasicMaterial({ color: 0xffe2a0 })));
+  const k = buildKeeper(); k.position.set(1.55, 0, 1.45); k.rotation.y = -0.3;   // 창 오른쪽 — 문을 가리지 않는다
   const tag = makeNameTag(KEEPER); tag.position.y = 2.15; k.add(tag);   // 더듬이 끝(1.8) 위
   g.add(k);
-  g.add(makeSignpost('🏮 빛 공방', -0.4, 2.2));
+  g.add(makeSignpost('🏮 빛 공방', -1.85, 1.2));   // 왼쪽 앞 모서리(연못 옆) — 창·열린 문짝을 가리지 않는다
   scene.add(g);
   obstacles.push({ x: LIGHT_WORKSHOP.x, z: LIGHT_WORKSHOP.z, r: 1.6 });
   solidCircle(LIGHT_WORKSHOP.x, LIGHT_WORKSHOP.z, 1.3);   // 오두막은 걸어서 못 지나간다
+  solidCircle(LIGHT_WORKSHOP.x - 1.65, LIGHT_WORKSHOP.z - 0.3, 0.55);   // 🛒 손수레(손잡이까지)
 }
