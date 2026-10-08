@@ -2321,6 +2321,7 @@ export const EN = {
   // ── 🏮 빛 공방(js/aura/*, js/spaces/light-workshop.js) ─────────────
   // 재사용(이미 있음): 별 · 하트 · 물방울 · 반딧불 · 착용 · 벗기 · 복숭아 · 꿀 · 호박 · 호수 · 산딸기
   '🏮 빛 공방': '🏮 Light Workshop',
+  '빛 공방': 'Light Workshop',   // 🗺️ 지도 지명
   '🏮 빛 공방에 들어가기': '🏮 Enter the Light Workshop',
   '빛 공방을 찾았어요': 'You found the Light Workshop',
   '밤에 한 줄로 주문하면 내일 아침 빛을 받아요': 'Order a glow in one line at night, and pick it up tomorrow morning',
