@@ -1,0 +1,15 @@
+name: calm-forest-analyst-weekly
+agent: ./agent.md
+environment_id: ./environment.yaml
+vault_ids: [vlt_011CfovbWZuvijWmFmHCijWh]
+resources:
+  - ./memory_store-ledger.yaml
+budget: {type: limit, max_list_cost: {currency: USD, amount: "800"}}
+schedule: {type: cron, expression: "0 10 * * 2", timezone: Asia/Seoul}
+initial_events:
+  - type: user.message
+    content:
+      - type: text
+        text: |
+          자율 심화 분석 1건을 해 주세요. 원장을 먼저 읽고, 아직 하지 않은 가장 가치 있는 질문 하나를 골라 끝까지 분석해 주세요.
+          슬랙 채널: C0C7RKY2TGU

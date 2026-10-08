@@ -12,6 +12,7 @@
 
 import { ringR, domeTheta, DOME_BOT, onSurf, tailType } from './anchors.js';
 import { buildBatWing, buildBatCape } from './art-bats.js';
+import { buildFriendWing, buildFriendPin } from './art-friend.js';   // 🤝 친구 초대 보상(날개·하트핀)
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -352,6 +353,8 @@ function makeTables(THREE) {
       const clip = put(g, new THREE.Mesh(new THREE.BoxGeometry(k.HR * 0.26, k.HR * 0.06, k.HR * 0.12), clay(P.strawDark)), rad * 0.64, H + k.HR * 0.01, rad * 0.62, false);
       clip.rotation.set(0, -0.7, -0.3);
     },
+    //  💗 우정 하트핀(🤝 초대 보상) — js/cosmetics/art-friend.js. h 는 아래에서 정의되지만 호출 시점엔 이미 있다
+    friend_pin: (g, k) => buildFriendPin(THREE, g, k, h),
   };
 
   // =============================================================
@@ -567,6 +570,7 @@ function makeTables(THREE) {
     },
     bat_wing: (g, k) => buildBatWing(THREE, g, k, h),   // 🦇 펼친 박쥐 날개
     bat_cape: (g, k) => buildBatCape(THREE, g, k, h),   // 🧛 일반 망토 + 꼬마 박쥐
+    friend_wing: (g, k) => buildFriendWing(THREE, g, k, h),   // 🦋 별빛 우정 날개(🤝 초대 보상) — js/cosmetics/art-friend.js
   };
 
   return { HEAD, NECK, BACK, mergeStatics };

@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "origin": {
+    "base_url": "https://api.anthropic.com",
+    "organization_id": "afbe7d87-0111-4bea-aea1-eb50a5b76fe4",
+    "workspace_id": "wrkspc_012sAKMZYf59JTCkgfNJSDtR"
+  },
+  "resources": {
+    "./agents/analyst/agent.md": {
+      "kind": "agent",
+      "id": "agent_01UvMwYwdCjx1ujXXj11svo5",
+      "version": "6",
+      "hash": "1214ecb5b5c09a1f7fc57af63c65c928",
+      "remote_hash": "749c7d8e84fff345b31f55e34ea55337"
+    },
+    "./agents/analyst/deployment-weekly.yaml": {
+      "kind": "deployment",
+      "id": "depl_01BPLzRD7F7Xxhh7UwKkiTbx",
+      "hash": "5bb2c9379d17c98dfc0701fe290f691f",
+      "remote_hash": "5bb2c9379d17c98dfc0701fe290f691f"
+    },
+    "./agents/analyst/environment.yaml": {
+      "kind": "environment",
+      "id": "env_013dZsyAKfbN9NFfhpcEbE5H",
+      "hash": "3f93cb5dacc1aee7c1d90a5a13711fb3",
+      "remote_hash": "a9f9d0f3892a1d042c9043e4fe0dd7b9"
+    },
+    "./agents/analyst/memory_store-ledger.yaml": {
+      "kind": "memory_store",
+      "id": "memstore_01Homr26TYEpR5cPDpARSubp",
+      "hash": "2f65b9a3c9ea21582aa5a876df60de4b",
+      "remote_hash": "2f65b9a3c9ea21582aa5a876df60de4b"
+    },
+    "./agents/kpi-daily/agent.md": {
+      "kind": "agent",
+      "id": "agent_01R6LWSRaHMaSJVqamJG4FQ7",
+      "version": "4",
+      "hash": "29e05ddd4508176a8d4d3cc1485ab414",
+      "remote_hash": "a384f42665af0a2646df874938e14637"
+    },
+    "./agents/kpi-daily/deployment-daily.yaml": {
+      "kind": "deployment",
+      "id": "depl_01HBxqhczrELj4SQUqzhNqDD",
+      "hash": "e90564f59e0c0df36f050ecbd1c93dc1",
+      "remote_hash": "e90564f59e0c0df36f050ecbd1c93dc1"
+    },
+    "./agents/kpi-daily/environment.yaml": {
+      "kind": "environment",
+      "id": "env_01Jfv7kDncpyktzwXv2sRKHE",
+      "hash": "ebceb4657348934467ecfd716feac79b",
+      "remote_hash": "2188a9df2851a01507f3460a1c6573f2"
+    },
+    "./agents/kpi-daily/vault.yaml": {
+      "kind": "vault",
+      "id": "vlt_011CfovbWZuvijWmFmHCijWh",
+      "hash": "3a4be3f94dbbd665352b08bef1777a7e",
+      "remote_hash": "3a4be3f94dbbd665352b08bef1777a7e"
+    },
+    "./agents/tracking-qa/agent.md": {
+      "kind": "agent",
+      "id": "agent_01WtxMkEfxGMscDsF5WZwcvz",
+      "version": "2",
+      "hash": "1bda11ae4de5ba57c0dbc2932797f281",
+      "remote_hash": "bfebe15c0de8611e8ce4cbb673accfc4"
+    },
+    "./agents/tracking-qa/deployment-weekly.yaml": {
+      "kind": "deployment",
+      "id": "depl_01UBPXzUfZgT2Y75TmCDxp1W",
+      "hash": "8543e3e00821df2a623ad828ba0ed0f6",
+      "remote_hash": "8543e3e00821df2a623ad828ba0ed0f6"
+    },
+    "./agents/tracking-qa/memory_store-notes.yaml": {
+      "kind": "memory_store",
+      "id": "memstore_012sAKNShjCMCHXfDiXgSZHK",
+      "hash": "70e5a799de8d35bd9f30c6986abea485",
+      "remote_hash": "70e5a799de8d35bd9f30c6986abea485"
+    },
+    "./agents/tracking-qa/memory_store-spec.yaml": {
+      "kind": "memory_store",
+      "id": "memstore_01Q73JMqXPmsc8jx9ZiJshq5",
+      "hash": "816dd217d34e1d20145084722d1887d1",
+      "remote_hash": "816dd217d34e1d20145084722d1887d1"
+    }
+  }
+}

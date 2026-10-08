@@ -257,6 +257,7 @@ import { restoreAura } from './aura/recipe.js';
 import { createAuraFx, lookOf } from './aura/render.js';
 import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐릭터·꾸미기 › 옷장·펫 탭
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
+import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _hintAnyPrev() { return _hintAnyPrev; }, set _hintAnyPrev(v) { _hintAnyPrev = v; },
@@ -1986,7 +1987,7 @@ function retentionGuidanceSuppressed() {
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
     if (b.classList.contains('intro-open')) return 'intro';
-    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
+    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show, #invite-modal.show')) return 'modal';
     // ⚠️ 아래는 **CSS 가 #hint-banner 를 display:none 으로 숨기는 상태**다(index.html 524·580·595·937·1005).
     //    JS 가 이걸 모르면 안 보이는 배너를 "띄웠다"고 치고 세션당 1회 예산을 날린 뒤,
     //    shown 이벤트까지 찍어 10분 성과창이 아무도 못 본 배너를 잰다.
@@ -5141,6 +5142,8 @@ function outdoorMesh(id) {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 5, 12), clayMat(0x4a5a58)); ring.position.set(0.16, 1.36, 0); g.add(ring);
   } else if (HALLOWEEN_OUTDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 밤에 켜지는 재질은 houseWindows 에 올린다(postlamp 와 같은 규칙)
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, (m) => houseWindows.push(m))));
+  } else if (id === FRIEND_ARCH_ID) {   // 🌈 무지개 우정 아치 — 걸어서 통과(충돌체 없음) · 밤 반짝이는 houseWindows
+    g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
@@ -6934,6 +6937,13 @@ function respawnPet() {
 }
 
 // 💳 원장 동기화가 화면에 손대는 통로 — js/shop/purchases.js 는 game.js 를 import 하지 않는다
+/** 🤝 서버가 원장에 새 행을 넣은 뒤(친구 초대 보상 등) 다시 맞춘다 — js/referral/index.js
+ *  quiet: 도착 토스트를 부르는 쪽이 따로 띄울 때(연결 성공의 하트핀 문구) 겹치지 않게 끈다 */
+export function resyncPurchases(via, { quiet = false } = {}) {
+  const hooks = purchaseHooks();
+  return syncPurchases({ gameState, fetchPurchases, via, hooks: quiet ? { ...hooks, toast: () => {} } : hooks });
+}
+
 export function purchaseHooks() {
   return {
     applyCosmetics: (cos) => applyCosmetics(cos),

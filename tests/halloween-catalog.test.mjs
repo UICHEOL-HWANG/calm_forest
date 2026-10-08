@@ -59,6 +59,6 @@ test('🎃 슬롯별 순서 — 자국은 프리미엄 뒤에 이어 붙고, 스
   assert.deepEqual(itemsOf('skin').map(i => i.id),
     ['forest_spirit', 'plush_doll', 'ghost_nightcap', 'ghost_cloud', 'witch_classic', 'witch_starry']);
   assert.deepEqual(itemsOf('tools').map(i => i.id),
-    ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest']);
-  assert.deepEqual(itemsOf('back').map(i => i.id), ['pack', 'basket', 'cape', 'bat_wing', 'bat_cape']);
+    ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest', 'tools_star']);   // ⭐ 🤝 초대 보상은 맨 뒤
+  assert.deepEqual(itemsOf('back').map(i => i.id), ['pack', 'basket', 'cape', 'bat_wing', 'bat_cape', 'friend_wing']);
 });
