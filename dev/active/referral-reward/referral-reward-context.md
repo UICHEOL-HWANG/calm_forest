@@ -1,6 +1,6 @@
 # 🤝 친구 추천 보상 — 컨텍스트
 
-Last Updated: 2026-10-08
+Last Updated: 2026-10-08 (1단계 DB 운영 적용 · 2단계 API 완료)
 
 ## 작업 위치
 - 워크트리 `.claude/worktrees/referral-reward` · 브랜치 `feat/referral-reward` (main cd5f804 기준)
@@ -33,3 +33,10 @@ Last Updated: 2026-10-08
 - 4곳 동시 배포 후 플래그 ON (옛 클라가 새 id 삭제)
 - SQL 은 내가 풀러로 직접 실행
 - 새 won/비매 품목은 SQL 목록에도 추가
+
+## 진행 기록
+- DB: `migrate_referrals.sql` 운영 적용(셀프테스트 28/28, `sql/tests/referrals_selftest.py --apply`). 활성화 기준 = METRICS_FRAMEWORK 획득 행동 16종.
+- API: 단일 엔드포인트 `POST /api/referral {action: code|bind|claim}` — `functions/api/referral.js`. 규칙은 SQL 이 단일 출처.
+- 리뷰 반영: 코드 발급 함수·상한 advisory lock·순환 차단·DML revoke·claim 쿨다운·틀린 코드 10회 차단·fetch 타임아웃.
+- 수용한 한계: 소식 insert 실패 시 재전송 없음(원장이 진실) · 가짜 계정 파밍(외형뿐·상한) — 모니터링 대상.
+- ⚠️ purchases 매출 집계는 `source='paddle'` 필터 필수.

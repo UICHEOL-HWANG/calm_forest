@@ -25,6 +25,7 @@ import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
+import { onRequestPost as referral } from '../functions/api/referral.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
 import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
@@ -180,6 +181,12 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/orchard-events') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await orchardEvents({ request, env });
+  }
+
+  // 🤝 친구 추천 — 코드 발급·연결·정산. 유저 JWT 로 uid 를 확인하고 service key 로 RPC
+  if (pathname === '/api/referral') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await referral({ request, env });
   }
 
   // 📥 카드뉴스 소재 업로드 — 크론이 부른다(사람 JWT 아님, 시크릿 헤더)
