@@ -8,7 +8,7 @@
 // =============================================================
 import * as THREE from 'three';
 import { bakeGroup } from '../dream/art.js';
-import { LANDMARKS, HOUSES, SPOTS, MIRROR_STOP_LOCAL } from './layout.js';
+import { LANDMARKS, HOUSES, SPOTS, RING_TREES } from './layout.js';
 import { invertColorPure } from './art-color.js';
 export { invertColorPure as invertColor };
 
@@ -128,11 +128,7 @@ export function buildMirrorWorld() {
     for (const wx of [-0.75, 0.75]) put(w, new THREE.BoxGeometry(0.6, 0.6, 0.05), P.win[i], wx, 1.3, 1.31);
   });
   // 가장자리 숲 링 — ⚠️ 정류장 남쪽(z > 14, |x − 2.5| < 7)엔 나무 금지(화면 아래를 가림, 시안 확인)
-  for (let i = 0; i < 34; i++) {
-    const a = i / 34 * Math.PI * 2, r = 20.5 + (i % 3) * 1.4, x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (z > 14 && Math.abs(x - MIRROR_STOP_LOCAL.x) < 7) continue;
-    lowTree(solid, x, z, 1.5 + (i % 2) * 0.4, P.leaf[i % 3], P.trunk);
-  }
+  for (const t of RING_TREES) lowTree(solid, t.x, t.z, 1.5 + (t.i % 2) * 0.4, P.leaf[t.i % 3], P.trunk);   // 자리·제외 규칙은 layout.js(충돌과 같은 목록)
   SPOTS.forEach((s, i) => cover(solid, s, P, i));
   const body = new THREE.Mesh(bakeGroup(solid), new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   body.castShadow = true; body.receiveShadow = true;
