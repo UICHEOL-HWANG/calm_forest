@@ -229,7 +229,7 @@ const DREAM_ARP = [0, 2, 1, 3];                  // 2박에 한 음 — 성기�
 const MIRROR_BPM = 68;
 const MIRROR_E = 30 / MIRROR_BPM;
 const MIRROR_BAR = MIRROR_E * 8 * 1000;
-const MIRROR_CHORDS = [[0, 2, 4, 6], [3, 5, 7, 9], [0, 2, 4, 7], [4, 6, 8, 11]];   // MEL 인덱스(MEL 은 10음 — 11 은 % MEL.length 로 감싼다)
+const MIRROR_CHORDS = [[0, 2, 4, 6], [3, 5, 7, 9], [0, 2, 4, 7], [4, 6, 7, 8]];   // MEL 인덱스(MEL 은 10음 — 모두 < MEL.length, 오름차순)
 const MIRROR_ROOTS = [65.41, 87.31, 65.41, 98];
 const MIRROR_ARP = [3, 2, 1, 0, 1, 2, 3, 2];
 
