@@ -13,6 +13,7 @@ tools:
     configs:
       - {name: web_search, enabled: false}
       - {name: web_fetch, enabled: false}
+      - {name: bash, enabled: true, permission_policy: {type: auto}}
   - type: mcp_toolset
     mcp_server_name: supabase
     default_config: {enabled: false}
@@ -45,4 +46,14 @@ You read the production Supabase database through the `supabase` MCP server. It 
 5. 플레이어 목소리: count of new `feedback` rows and their themes, paraphrased.
 
 Write the report to `/mnt/session/outputs/kpi-YYYY-MM-DD.md` (date = the reported day) and also include a one-line CSV of the core numbers at `/mnt/session/outputs/kpi-YYYY-MM-DD.csv`.
-Show the SQL you ran in a collapsed appendix at the end of the report so every number is checkable. Finish with a 3-line summary message.
+Show the SQL you ran in a collapsed appendix at the end of the report so every number is checkable.
+
+## Deliver to Slack
+After the files are written, post the report to Slack channel `YOUR_SLACK_CHANNEL_ID` with one `curl` call to `https://slack.com/api/chat.postMessage`:
+- Header `Authorization: Bearer $SLACK_BOT_TOKEN` (the variable is already set; never print or echo it).
+- JSON body with `channel`, `text` (a one-line fallback) and `markdown_text` (sections 1-5 of the report, no SQL appendix, under 3,500 characters).
+- Build the body with `jq -n` (or Python `json.dumps` if jq is missing) so quotes in the report cannot break the JSON.
+- Check the response has `"ok": true`. If not, retry once; if it still fails, say so in your final message with Slack's `error` value.
+This is the only network call you make besides the Supabase MCP server. Never post anywhere else.
+
+Finish with a 3-line summary message.
