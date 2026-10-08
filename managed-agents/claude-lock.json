@@ -9,15 +9,21 @@
     "./agents/kpi-daily/agent.md": {
       "kind": "agent",
       "id": "agent_01R6LWSRaHMaSJVqamJG4FQ7",
-      "version": "1",
-      "hash": "1739360e890cd201ee0dbd6ba0cb80eb",
-      "remote_hash": "edbb6bdb026507a6a838a92326c20bc9"
+      "version": "2",
+      "hash": "e368a865d949e4311619ffe7cc073536",
+      "remote_hash": "659f2b4f4a740419be74d3cdfb367ae5"
+    },
+    "./agents/kpi-daily/deployment-daily.yaml": {
+      "kind": "deployment",
+      "id": "depl_01HBxqhczrELj4SQUqzhNqDD",
+      "hash": "53fac307022f4aca84b2def0d5cd94af",
+      "remote_hash": "53fac307022f4aca84b2def0d5cd94af"
     },
     "./agents/kpi-daily/environment.yaml": {
       "kind": "environment",
       "id": "env_01Jfv7kDncpyktzwXv2sRKHE",
-      "hash": "678dfc47f6578ee44541dc2c855445a8",
-      "remote_hash": "e64fd43faf146e4a5cc482223e9b1c86"
+      "hash": "ebceb4657348934467ecfd716feac79b",
+      "remote_hash": "2188a9df2851a01507f3460a1c6573f2"
     },
     "./agents/kpi-daily/vault.yaml": {
       "kind": "vault",
