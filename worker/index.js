@@ -25,6 +25,7 @@ import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
+import { onRequest as auraOrder } from '../functions/api/aura-order.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
 import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
@@ -180,6 +181,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/orchard-events') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await orchardEvents({ request, env });
+  }
+
+  if (pathname === '/api/aura-order') {   // 🏮 빛 공방 주문·조회·수령
+    if (request.method !== 'GET' && request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await auraOrder({ request, env });
   }
 
   // 📥 카드뉴스 소재 업로드 — 크론이 부른다(사람 JWT 아님, 시크릿 헤더)
