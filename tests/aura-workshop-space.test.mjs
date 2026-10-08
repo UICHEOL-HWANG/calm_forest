@@ -6,11 +6,11 @@ import { gameSource } from './helpers/game-source.mjs';
 const SRC = gameSource();
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
-test('공방 좌표는 계곡과 천문대 사이 빈터 — 계곡 나무 링·천문대 기단과 안 겹친다', () => {
+test('공방 좌표는 계곡과 천문대 사이 빈터 — 계곡 잔디·천문대 기단과 안 겹친다', () => {
   const m = SRC.match(/LIGHT_WORKSHOP = new THREE\.Vector3\(([-\d.]+), 0, ([-\d.]+)\)/);
   assert.ok(m, 'places.js 에 LIGHT_WORKSHOP');
   const x = Number(m[1]), z = Number(m[2]);
-  assert.ok(Math.hypot(x - 7, z - 26) >= 7 + 2.6 + 1.3, '계곡 나무 링(반경 ~9.6) 바깥');
+  assert.ok(Math.hypot(x - 7, z - 26) >= 7 + 0.6 + 1.3 + 1.0, '계곡 잔디(반경 7.6) 바깥 + 걸어갈 틈 — 겹치는 링 나무는 glade.js 가 비운다');
   assert.ok(Math.hypot(x - 25, z - 22) >= 5.7 + 1.3 + 0.9, '천문대 기단(5.7) + 오두막 반폭 + 걸어갈 틈');
   assert.ok(x > 7 && x < 25, '두 시설 사이');
 });
@@ -54,4 +54,10 @@ test('🧱 공방은 메시를 병합해 드로우콜 예산(12) 안 — 오두�
   const meshes = (fn.match(/new THREE\.Mesh\(/g) || []).length;
   assert.equal(meshes, 2, '오두막(정점색 병합) 1 + 창·문 불빛 1');
   assert.doesNotMatch(fn, /ConeGeometry/, '옛 사각뿔 지붕은 치운다');
+});
+
+test('🗺️ 미니맵·전체 지도에 🏮 빛 공방 지명(영어 라벨 포함)', () => {
+  assert.match(SRC, /\{ ico: '🏮', name: '빛 공방',\s*x: LIGHT_WORKSHOP\.x, z: LIGHT_WORKSHOP\.z, pri: 1 \}/);
+  const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
+  assert.match(en, /'빛 공방': '/);
 });

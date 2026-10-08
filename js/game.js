@@ -5489,6 +5489,7 @@ const VILLAGE_PLACES = [
   { ico: '🍄', name: '채집 숲',       x: FOREST.x,      z: FOREST.z,      pri: 1 },
   { ico: '🏛️', name: '박물관',        x: MUSEUM_GATE.x, z: MUSEUM_GATE.z, pri: 1 },
   { ico: '🔭', name: '천문대',        x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, pri: 1 },
+  { ico: '🏮', name: '빛 공방',       x: LIGHT_WORKSHOP.x, z: LIGHT_WORKSHOP.z, pri: 1 },
   { ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z, pri: 1 },
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
