@@ -6,6 +6,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
+// trackEvent renames GA4-reserved keys before sending (js/ga-params.js) — mirror it so the spec matches GA4.
+const { RESERVED_TRAFFIC_KEYS } = await import(join(ROOT, 'js/ga-params.js'));
 const CALL = /\b(?:trackEvent|track)\(\s*['"]([a-z0-9_]+)['"]\s*(?:,\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\})?/g;
 
 function walk(dir, out = []) {
@@ -26,7 +28,7 @@ for (const file of walk(join(ROOT, 'js'))) {
     const flat = body.replace(/\{[^{}]*\}/g, '').replace(/(['"`]).*?\1/g, '');
     for (const seg of flat.replace(/\([^()]*\)/g, '').split(',')) {
       const k = seg.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(?::|$)/);
-      if (k) e.keys.add(k[1]);
+      if (k) e.keys.add(RESERVED_TRAFFIC_KEYS[k[1]] || k[1]);
     }
     e.files.add(relative(ROOT, file));
     events.set(name, e);
@@ -37,7 +39,7 @@ const lines = [
   '# calm forest tracking spec (generated from js/**)',
   '',
   `Generated ${new Date().toISOString().slice(0, 10)} by managed-agents/scripts/tracking-spec.mjs. ${events.size} event names.`,
-  'Param keys are a static best guess (spread/computed keys are missed). Treat a missing key as "check", not "bug".',
+  'Param keys are a static best guess (spread/computed keys are missed). Reserved keys are shown as sent (source -> src). Treat a missing key as "check", not "bug".',
   '',
   '| event | param keys | files |',
   '|---|---|---|',

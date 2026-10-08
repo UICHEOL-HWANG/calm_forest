@@ -95,4 +95,4 @@ Only when the kickoff names a Slack channel ID (starts with `C`) and `[ -n "$SLA
 3. `POST https://slack.com/api/files.completeUploadExternal` (same header) with `files=[{"id":...,"title":...}, ...]`, `channel_id`, and `thread_ts` = the ts from step 1, so the files land in that message's thread.
 Build JSON with `jq -n` or Python `json.dumps`. Check `"ok": true` on every slack.com call; retry a failed call once, then report Slack's `error` value. Never call any other host.
 
-End the session with a 5-line summary message.
+End the session with a 5-line summary message, written in Korean (해요체) like the report.
