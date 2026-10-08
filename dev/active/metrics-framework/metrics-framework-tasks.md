@@ -7,14 +7,14 @@
 - [x] Codex 브리핑 (`CODEX_BRIEF.md`)
 
 ## M1 북극성 지표
-- [ ] 후보 1 제시 → 판정
-- [ ] (필요 시) 후보 2, 3 …
-- [ ] 정의서에 NSM 절 작성 (정의·단위·주기·반례·조작 위험)
+- [x] 후보 전수(53개)·보드 → 사용자 판단으로 정의 (Q1~Q6)
+- [x] 측정 가능성 확인 (V2·계측 일치·V3·노이즈) — 선발전 아님
+- [x] 정의서 docs/analysis/METRICS_FRAMEWORK.md
 
 ## M2 지표 계층
-- [ ] L1 입력 지표 3~5개 합의
-- [ ] L2 드라이버·계측 이벤트 매핑
-- [ ] 트리 다이어그램
+- [x] L1 폭·빈도·품질 (곱셈 분해) + 활성화
+- [x] L2·견제 지표 3종
+- [x] 별자리 시각화 (nsm-constellation.html)
 
 ## M3 AARRR
 - [ ] 단계별 정의 (Acquisition·Activation·Retention·Referral·Revenue)
