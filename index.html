@@ -3578,6 +3578,8 @@
         Input.setAnalog(0, 0); $('cos-menu').classList.add('show'); document.body.classList.add('menu-open');
         requestAnimationFrame(() => Input.openCosMenu?.($('cos-preview')));
       },
+      // 🏮 빛 공방 — 모달은 필요할 때 불러온다
+      openLightWorkshop() { import('./js/aura/workshop-ui.js').then(m => m.openWorkshop()); },
       // ☕ 카페 주문판 열기
       openCafe(d) { renderCafe(d); Input.setAnalog(0, 0); $('cafe-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🛶 나룻배 런 시작/종료 — 마을 UI를 걷어내고 배 HUD로 전환

@@ -141,7 +141,8 @@ import { pawRadius, gripForwardZ } from './data/grip.js';
 import { grillKeyOf, stageKeys } from './cook-ingredients.js';   // 🍲 조리 무대 재료 모형 규칙   // ✊ 긴 도구 자루 앞 오프셋 = 발바닥 반지름 비례
 import {
   buildGlade, tryNet, updateFireflyBugs,
-} from './spaces/glade.js';   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
+} from './spaces/glade.js';
+import { buildLightWorkshop } from './spaces/light-workshop.js';   // 🏮 빛 공방(계곡 연못가)   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
 import {
   buildForest, forageTarget, tryForage, updateForage,
 } from './spaces/forest.js';   // 📦 🍄 채집 숲 — 새 동사: 줍기 (도구 없이, 시간이 지나면 다시 돋음)
@@ -324,6 +325,7 @@ export const $w = {
   get nearCafeGuest() { return nearCafeGuest; }, set nearCafeGuest(v) { nearCafeGuest = v; },
   get nearCoop() { return nearCoop; }, set nearCoop(v) { nearCoop = v; },
   get nearCosShop() { return nearCosShop; }, set nearCosShop(v) { nearCosShop = v; },
+  get nearLightWorkshop() { return nearLightWorkshop; }, set nearLightWorkshop(v) { nearLightWorkshop = v; },
   get nearDecorMesh() { return nearDecorMesh; }, set nearDecorMesh(v) { nearDecorMesh = v; },
   get nearDoor() { return nearDoor; }, set nearDoor(v) { nearDoor = v; },
   get nearDoorFloor() { return nearDoorFloor; }, set nearDoorFloor(v) { nearDoorFloor = v; },
@@ -492,6 +494,7 @@ const boat = {
 
 let cosmeticShop = null;          // buildShop 이 돌려준 { group, owner, lamp } — 프레임 루프가 주인을 움직인다
 let nearCosShop = false;
+let nearLightWorkshop = false;   // 🏮 빛 공방 문 앞
 
 // ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
 let mistGroup = null, atMist = false;
@@ -4469,6 +4472,7 @@ function buildEnvironment() {
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
   buildGlade();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
+  buildLightWorkshop();   // 🏮 빛 공방(계곡 연못가 오두막 + 주인)
   spawnCafeGate();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
   spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
@@ -6672,6 +6676,10 @@ function handleAction() {
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (plazaSpotNow()) return openPlaza();   // 🌾 기부함·좌판·명판
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
+  if (nearLightWorkshop) {                 // 🏮 빛 공방 → 주문·수령·다듬기
+    trackEvent('aura_workshop_open', { night: isNight() ? 1 : 0 });
+    return ui.openLightWorkshop?.();
+  }
   if (nearCosShop) {                       // 🏪 꾸미기 가게 → 🎀 꾸미기 패널
     trackEvent('shop_enter', { from: 'walk' });
     trackEvent('shop_open', { tab: 'cosmetics' });
@@ -6822,7 +6830,7 @@ function farmActionFirst() {
   if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
-  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || !!plazaSpotNow()) return false;
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || nearLightWorkshop || !!plazaSpotNow()) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
   if (forageTarget() || traceTarget() || visitorTarget()) return false;   // 🔍 방문객 살펴보기도 먼저 처리된다
@@ -7519,7 +7527,7 @@ export {
   lastNearHouse, lastNearMiss, lastZoneHint, lerpAngle, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
   mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView, mineGroup, mineTorches, mist, mistGroup,
   mistLanterns, mistTree, mode, museumGroup, observatoryGroup, nearBench, nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest, nearCoop,
-  nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC,
+  nearCosShop, nearLightWorkshop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC,
   nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher, nightLevel, nightNoteFetcher, noteSpecialExhibit,
   npcObjs, obstacles, onPlotArea, orchardSlotsWorld, orchardStreamWorld, oreRocks, outdoorMesh, outdoorMeshes,
   outdoorTarget, paintGeo, pantryHas, pantryTake, particles, pendingDig, pendingDish, pestTarget, pestTexture, pet3d,
