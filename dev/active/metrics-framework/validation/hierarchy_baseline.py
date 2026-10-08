@@ -17,6 +17,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from nsm_validate import RAW, RESULT_ACTIONS  # noqa: E402
 from calm_ml.bq import GA4, read_sql  # noqa: E402  (path set by nsm_validate)
+from person_key import stitch_person  # noqa: E402
 
 WEEKS = [pd.Timestamp(d).date() for d in ("2026-09-07", "2026-09-14", "2026-09-21", "2026-09-28")]
 END = pd.Timestamp("2026-10-04").date()
@@ -42,7 +43,7 @@ WITH latest AS (
 )
 SELECT
   DATE(started_at, 'Asia/Seoul') AS d, started_at,
-  IF(is_guest = FALSE AND user_id IS NOT NULL, CONCAT('u:', user_id), CONCAT('c:', client_id)) AS person,
+  client_id, user_id, is_guest,
   counts, last_place
 FROM latest
 WHERE platform IN ('web', 'toss')
@@ -108,8 +109,14 @@ def _counts(raw: str | None) -> dict[str, float]:
         return {}
 
 
-def person_days() -> pd.DataFrame:
+def person_days(stitch: bool = True) -> pd.DataFrame:
     s = read_sql(SL_SQL)
+    s, report = stitch_person(s)
+    if not stitch:
+        logged = s['is_guest'].eq(False).fillna(False).astype(bool) & s['user_id'].notna()
+        s = s.assign(person=[f"u:{u}" if lg else f"c:{c}" for lg, u, c in zip(logged, s['user_id'], s['client_id'])])
+    label = 'on' if stitch else 'off (report shows what stitching WOULD merge; not applied)'
+    print(f"[person key] stitch={label} — {report}")
     s["d"] = pd.to_datetime(s["d"]).dt.date
     s["kv"] = s["counts"].map(_counts)
     for cat, keys in CATEGORY.items():
@@ -198,7 +205,7 @@ def guards(pd_df: pd.DataFrame) -> None:
 
 
 def main() -> None:
-    pd_df = person_days()
+    pd_df = person_days(stitch='--no-stitch' not in sys.argv)
     l1(pd_df)
     l2(pd_df)
     funnel()
