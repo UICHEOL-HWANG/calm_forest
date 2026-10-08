@@ -31,6 +31,7 @@ import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } fr
 import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { runAiPregen } from '../functions/ai-pregen-cron.js';
+import { runAuraCron } from '../functions/aura-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
 
@@ -96,6 +97,13 @@ export default {
     if (event.cron === '0,20,40 11-13 * * *') {
       ctx.waitUntil(runAiPregen(env).then(r => {
         console.log(JSON.stringify({ message: 'ai-pregen cron', cron: event.cron, ...r }));
+      }));
+      return;
+    }
+    if (event.cron === '0,30 18-21 * * *' || event.cron === '0 22 * * *') {   // 🏮 빛 공방 — KST 03:00~06:30 틱 · 07:00 마감
+      const phase = event.cron === '0 22 * * *' ? 'final' : 'tick';
+      ctx.waitUntil(runAuraCron(env, { phase }).then(r => {
+        console.log(JSON.stringify({ message: 'aura cron', cron: event.cron, ...r }));
       }));
       return;
     }
