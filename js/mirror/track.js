@@ -23,10 +23,12 @@ let sink = null, strict = false;
 export function bindTracker(fn, opts = {}) { sink = fn; strict = !!opts.strict; }
 
 function emit(name, p) {
+  p = p ?? {};
   const keys = EVENTS[name], out = {}, bad = [];
   for (const k of keys) {
-    if (!(k in p)) { bad.push(`missing ${k}`); continue; }
+    if (p[k] === undefined) { bad.push(`missing ${k}`); continue; }
     const v = p[k];
+    if (typeof v === 'number' && Number.isNaN(v)) { bad.push(`NaN ${k}`); continue; }
     if (ENUMS[k] && !ENUMS[k].includes(v)) bad.push(`bad ${k}=${v}`);
     out[k] = typeof v === 'boolean' ? +v : v;
   }
