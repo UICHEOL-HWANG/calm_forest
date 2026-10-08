@@ -90,12 +90,25 @@ GROUP BY 1
 """
 
 GUARD_SQL = f"""
-SELECT DATE_TRUNC(PARSE_DATE('%Y%m%d', event_date), WEEK(MONDAY)) AS wk,
-  COUNTIF(event_name = 'save_load_failed') AS save_failed,
-  COUNTIF(event_name = 'session_start') AS sessions
-FROM `{GA4}.events_*`
-WHERE _TABLE_SUFFIX BETWEEN '20260907' AND '20261004'
-GROUP BY 1 ORDER BY 1
+-- unrecovered save-load failure: a session with save_load_failed and no save_load_recovered (spec §5 guardrail)
+WITH e AS (
+  SELECT DATE_TRUNC(PARSE_DATE('%Y%m%d', event_date), WEEK(MONDAY)) AS wk, user_pseudo_id, event_name,
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS sid
+  FROM `{GA4}.events_*`
+  WHERE _TABLE_SUFFIX BETWEEN '20260907' AND '20261004'
+),
+s AS (
+  SELECT wk, user_pseudo_id, sid,
+    LOGICAL_OR(event_name = 'save_load_failed') AS failed,
+    LOGICAL_OR(event_name = 'save_load_recovered') AS recovered,
+    LOGICAL_OR(event_name = 'session_start') AS started
+  FROM e GROUP BY 1, 2, 3
+)
+SELECT wk,
+  COUNTIF(failed AND NOT recovered) AS save_failed,
+  COUNTIF(failed) AS failed_sessions,
+  COUNTIF(started) AS sessions
+FROM s GROUP BY 1 ORDER BY 1
 """
 
 ECON_SQL = f"""
@@ -201,7 +214,7 @@ def guards(pd_df: pd.DataFrame) -> None:
     ec = read_sql(ECON_SQL)
     gu = read_sql(GUARD_SQL)
     print("\n[Guardrails + revenue lead]")
-    print("  week   empty-handed share  coin net/econ-client  spender share  save_failed/sessions")
+    print("  week   empty-handed share  coin net/econ-client  spender share  unrecovered/failed/sessions")
     for wk in WEEKS:
         g = pd_df[pd_df["wk"] == wk]
         empty = 1 - g["tended"].mean()
@@ -209,7 +222,7 @@ def guards(pd_df: pd.DataFrame) -> None:
         u = gu[pd.to_datetime(gu["wk"]).dt.date == wk]
         net = float(e["net_coins"].iloc[0]) / float(e["econ_clients"].iloc[0]) if len(e) else float("nan")
         sp = float(e["spenders"].iloc[0]) / float(e["econ_clients"].iloc[0]) if len(e) else float("nan")
-        sf = f"{int(u['save_failed'].iloc[0])}/{int(u['sessions'].iloc[0])}" if len(u) else "-"
+        sf = f"{int(u['save_failed'].iloc[0])}/{int(u['failed_sessions'].iloc[0])}/{int(u['sessions'].iloc[0])}" if len(u) else "-"
         print(f"  {wk}  {empty:12.0%}  {net:16.0f}  {sp:12.0%}  {sf:>14s}")
 
 
