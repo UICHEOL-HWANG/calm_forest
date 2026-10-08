@@ -6,9 +6,8 @@
 
 | 누구 | 경로 | 브랜치 |
 |---|---|---|
-| Claude | `calm_forest/.claude/worktrees/metrics-framework` | `analytics/metrics-framework` (공유·최종 병합 단위) |
+| Claude | `calm_forest` (메인 폴더) | `analytics/metrics-framework` (공유·최종 병합 단위) |
 | Codex | `calm_forest-codex-metrics` | `analytics/codex` → 공유 브랜치로 merge |
-| main 루트 | `calm_forest` | 배포 전용 — 여기서 분석 작업 금지 |
 
 폴더 소유: `docs/analysis/METRICS_FRAMEWORK.md` = Claude · `sql/analytics/metrics/` = Codex · `dev/active/metrics-framework/` = 공동
 
