@@ -15,7 +15,7 @@ export const NAME_MAX = 12, LINE_MAX = 40, TEXT_MAX = 60, SLOT_MAX = 3;
 export const CARD_KEYS = Object.freeze(['shape', 'color', 'motion', 'band']);
 
 export const DEFAULT_RECIPE = Object.freeze({
-  v: RECIPE_VERSION, name: '작은 빛', line: '연못물에 담가 하룻밤 빚었어요.',
+  v: RECIPE_VERSION, name: '작은 빛', line: '카드에 고른 재료 그대로 정성껏 빚었어요',
   shape: 'dot', motion: 'orbit', band: 'body', count: 14, speed: 1, radius: 1, colors: Object.freeze(['mint', 'cream']),
 });
 
