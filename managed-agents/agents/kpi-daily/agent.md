@@ -55,7 +55,7 @@ Show the SQL you ran in a collapsed appendix at the end of the report so every n
 Slack delivery is optional. Do it only when the kickoff message names a Slack channel ID (starts with `C`) **and** `$SLACK_BOT_TOKEN` is set (`[ -n "$SLACK_BOT_TOKEN" ]`). Otherwise skip this section and say "슬랙 전송 생략" in your final message.
 When both are present, post the report to that channel with one `curl` call to `https://slack.com/api/chat.postMessage`:
 - Header `Authorization: Bearer $SLACK_BOT_TOKEN` (the variable is already set; never print or echo it).
-- JSON body with `channel`, `text` (a one-line fallback) and `markdown_text` (sections 1-5 of the report, no SQL appendix, under 3,500 characters).
+- JSON body with `channel` and `markdown_text` only (sections 1-5 of the report, no SQL appendix, under 3,500 characters). Do not also send `text`: Slack rejects the pair with `markdown_text_conflict`.
 - Build the body with `jq -n` (or Python `json.dumps` if jq is missing) so quotes in the report cannot break the JSON.
 - Check the response has `"ok": true`. If not, retry once; if it still fails, say so in your final message with Slack's `error` value.
 This is the only network call you make besides the Supabase MCP server. Never post anywhere else.

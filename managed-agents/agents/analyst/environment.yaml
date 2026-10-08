@@ -5,4 +5,4 @@ config:
     type: limited
     allow_mcp_servers: true
     allow_package_managers: true
-    allowed_hosts: []
+    allowed_hosts: [slack.com, files.slack.com]

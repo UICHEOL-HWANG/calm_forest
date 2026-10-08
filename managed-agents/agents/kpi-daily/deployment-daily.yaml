@@ -10,3 +10,4 @@ initial_events:
       - type: text
         text: |
           어제(KST) 일일 KPI 리포트를 작성해 주세요.
+          슬랙 채널: C0C7FNDACJF
