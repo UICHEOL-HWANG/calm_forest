@@ -6,7 +6,8 @@
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge, mode } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';   // 🔐 게스트(익명)는 기부 불가 — plaza_mine 호출 자체를 건너뛴다
-import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
+import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
+import { plazaPropSolids, plazaPathSolids } from './solids.js';
 import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens, economyAllowed, nearPollDue, normalizeMineReason } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
@@ -71,13 +72,9 @@ function rebuild(stage, phase) {
   scene.add(built.group);
   pathBuilt = buildPath(stage, phase);
   scene.add(pathBuilt.group);
-  for (const s of [-1, 1]) pathSolids.push(solidCircle(PLAZA_ARCH.x + s * PLAZA_ARCH_HALF, PLAZA_ARCH.z, 0.3));   // 아치 기둥(가운데는 지나갈 수 있게)
-  if (phase === 'active' && stage < 4) pathSolids.push(solidCircle(PLAZA_POLE.x, PLAZA_POLE.z, 0.3));
+  for (const [x, z, r] of plazaPathSolids(stage, phase)) pathSolids.push(solidCircle(x, z, r));   // 아치 기둥·깃대·깃발 줄 기둥
   obstacle = { x: PLAZA.x, z: PLAZA.z, r: PLAZA_R }; obstacles.push(obstacle);   // 야외 장식을 광장 위에 못 놓게
-  solids.push(solidCircle(PLAZA_BOX.x, PLAZA_BOX.z, 0.6));
-  if (phase === 'active') solids.push(solidCircle(PLAZA_STALL_POS.x, PLAZA_STALL_POS.z, 0.9));
-  if (stage >= 2) solids.push(solidCircle(PLAZA.x - 3.6, PLAZA.z, 0.5), solidCircle(PLAZA.x + 3.6, PLAZA.z, 0.5));
-  if (stage === 4) solids.push(solidCircle(PLAZA.x, PLAZA.z, 1.0));
+  for (const [x, z, r] of plazaPropSolids(stage, phase)) solids.push(solidCircle(x, z, r));       // 기부함·좌판·벤치·가로등·허수아비·볏단·호박·나무
 }
 
 export function plazaScatterBlocks(x, z, pad = 2) {
