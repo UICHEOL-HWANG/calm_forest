@@ -22,7 +22,7 @@ export const TIERS = Object.freeze([
 export const MSG = Object.freeze({
   menu: '친구 초대',
   title: '🤝 친구를 숲으로 초대해요',
-  desc: '링크로 들어온 친구가 이틀 동안 숲에서 지내면 선물이 와요',
+  desc: '초대장을 받고 2일 이상 플레이하면 선물이 와요!',
   now: '지금 {0#}명',
   tierNeed: '{0#}명 초대',
   pending: '숲에 막 온 친구 {0#}명 — 이틀 지내면 함께 셀게요',
@@ -36,7 +36,7 @@ export const MSG = Object.freeze({
   notNew: '초대 선물은 새로 숲에 온 친구만 받을 수 있어요',
   self: '내 초대 링크로는 받을 수 없어요',
   invalid: '초대 링크가 올바르지 않아요',
-  shareText: '🌲 조용한 숲에서 같이 농사짓자! 이 링크로 오면 선물이 있어 →',
+  shareText: '🌲 고요한 숲에서 같이 플레이하자! 이 링크로 오면 선물이 있어 →',
 });
 
 /** location.search → 초대 코드(대문자) | null */

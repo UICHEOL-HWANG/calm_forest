@@ -23,9 +23,9 @@ const TIMEOUT_MS = 8000;   // 응답이 매달리지 않게 — Supabase 가 느
 export const REWARD_NOTICE = Object.freeze({
   tools_star: {
     title: '💎 무지개 크리스탈 세트를 받았어요',
-    body: '초대한 친구가 숲에 자리를 잡았어요! 옷장 🧥 도구 탭에서 무지개 크리스탈 세트를 골라 보세요.',
+    body: '초대한 친구가 숲에 자리를 잡았어요! 옷장 🧥 🪓 도구 탭에서 무지개 크리스탈 세트를 골라 보세요.',
     title_en: '💎 You got the Rainbow Crystal Set',
-    body_en: 'A friend you invited has settled into the forest! Pick the Rainbow Crystal Set in the Wardrobe 🧥 Tools tab.',
+    body_en: 'A friend you invited has settled into the forest! Pick the Rainbow Crystal Set in the Wardrobe 🧥 🪓 Tools tab.',
   },
   friendarch: {
     title: '🌈 무지개 우정 아치를 받았어요',
@@ -35,9 +35,9 @@ export const REWARD_NOTICE = Object.freeze({
   },
   friend_wing: {
     title: '🦋 별빛 우정 날개를 받았어요',
-    body: '친구 5명이 숲에 자리를 잡았어요! 옷장 🧥 등 탭에서 날개를 달아 보세요. 고마워요 💗',
+    body: '친구 5명이 숲에 자리를 잡았어요! 옷장 🧥 🎒 가방 탭에서 날개를 달아 보세요. 고마워요 💗',
     title_en: '🦋 You got the Starlight Friendship Wings',
-    body_en: 'Five friends have settled into the forest! Put on the wings in the Wardrobe 🧥 Back tab. Thank you 💗',
+    body_en: 'Five friends have settled into the forest! Put on the wings in the Wardrobe 🧥 🎒 Bag tab. Thank you 💗',
   },
 });
 
