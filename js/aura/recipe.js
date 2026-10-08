@@ -68,9 +68,9 @@ const RULES = [
   ['motion', /흩날|떨어|내리|맺힌|fall|drift down/i, 'fall'], ['motion', /둥실|떠다|drift|wander/i, 'drift'],
   ['motion', /두근|반짝반짝|맥|pulse|beat/i, 'pulse'], ['motion', /돌|감싸|orbit|circle/i, 'orbit'],
   ['band', /머리|왕관|위에|head|crown/i, 'head'], ['band', /발|발밑|땅|feet|ground/i, 'feet'],
-  ['color', /벚꽃|분홍|pink/i, 'pink'], ['color', /하늘|파랑|blue|sky/i, 'sky'], ['color', /노랑|금|gold|yellow/i, 'gold'],
-  ['color', /보라|purple|violet/i, 'violet'], ['color', /물방울|이슬|dew/i, 'dew'], ['color', /초록|연두|풀|green/i, 'leaf'],
-  ['color', /하양|흰|white|눈/i, 'snow'], ['color', /빨강|red|딸기/i, 'berry'], ['color', /주황|orange/i, 'amber'],
+  ['color', /벚꽃|분홍|pink/i, 'pink'], ['color', /하늘|파랑|파란|푸른|푸르|blue|sky/i, 'sky'], ['color', /노랑|노란|금|gold|yellow/i, 'gold'],
+  ['color', /보라|purple|violet/i, 'violet'], ['color', /물방울|이슬|바다|ocean|\bsea\b|dew/i, 'dew'], ['color', /초록|연두|풀|green/i, 'leaf'],
+  ['color', /하양|하얀|흰|white|눈/i, 'snow'], ['color', /빨강|빨간|red|딸기/i, 'berry'], ['color', /주황|orange/i, 'amber'],
 ];
 const CARD_DEFAULT = Object.freeze({ shape: 'dot', color: 'mint', motion: 'orbit', band: 'body' });
 export function cardsFromText(text) {
