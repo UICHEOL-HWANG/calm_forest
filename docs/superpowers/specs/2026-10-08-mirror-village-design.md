@@ -20,7 +20,7 @@
 - 구조: 1차 패턴 복제(A안) + 컷신만 공용화. 공통 모듈 일반화는 3차 맵 때 두 사례를 보고.
 
 성공 기준
-- 들어간 사람 중 1번째 의뢰 완료 ≥ 80%, 3건 모두 완료 ≥ 50% (`mirror_enter` → `mirror_return{quest_n}`)
+- 들어간 사람 중 1번째 의뢰 완료 ≥ 80%, 3건 모두 완료 ≥ 50% (`mirror_enter` → `mirror_found{quest_n}`)
 - 반전 단서(`flipped=1`)의 힌트 없는 해결률 ≥ 40%. 반전 쪽 힌트율 > 50% 면 단서 문구 개정
 - 같은 날 `dream_enter` 와 `mirror_enter` 를 둘 다 한 사람 비율이 다음 날 BigQuery 에서 읽힌다
 
@@ -34,7 +34,7 @@
        첫 회 ≈ 5.6s / 이후 ≈ 2.4s · 탭/액션/Esc 건너뛰기
   차원 전환 ✅ **B 🪞 거울 문** — 호수 위에 둥근 거울 링이 일어서고 거울 속(색 반전 마을)으로 통과(`mockups/compare-cut3.png`, 2026-10-08 확정). ②의 '수면 물결 와이프' 대신 이 연출. 공통 컷 `mockups/compare-cut1.png`(정차 자리는 정류장 지붕과 겹치지 않게).
   ④ 의뢰 — 그림자 주민(머리 위 💬)에게 말 걸기 → 단서 (mirror_clue)
-  ⑤ 물건 줍기 (mirror_found) → 주민에게 돌려주기 → 🪞 +N (mirror_return)
+  ⑤ 물건 줍기 (mirror_found) → 주민에게 돌려주기 → 🪞 +N (보상은 `mirror_found.hinted` 로 파생 — 2026-10-08 정리로 return 이벤트 삭제)
   ⑥ 귀환 — 거울 정류장 「🚏 마을로 돌아가기」 (mirror_board{dir:'back'}) → ①~③ 역순 → 마을 정류장 하차 (mirror_leave)
 ```
 
@@ -121,19 +121,18 @@ gameState.mirror = { visits: 0, day: '', done: 0, hinted: [], total: 0 }
 | 이벤트 | 파라미터 |
 |---|---|
 | `mirror_stop_shown` | `prior_visits`, `night: 0/1` |
-| `mirror_board` | `dir: go\|back`, `first: 0/1`, `done_today` |
+| `mirror_board` | `dir: go\|back`, `first: 0/1`, `left_today` |
 | `mirror_cutscene_end` | `dir`, `skipped: 0/1`, `at_s`, `short: 0/1` |
-| `mirror_enter` | `visit_n`, `done_today` |
-| `mirror_clue` | `quest_n`, `npc_id`, `spot_id`, `flipped: 0/1` |
-| `mirror_hint` | `quest_n`, `spot_id`, `wait_s` |
-| `mirror_found` | `quest_n`, `item_id`, `spot_id`, `flipped`, `hinted: 0/1`, `search_s` |
-| `mirror_return` | `quest_n`, `reward` |
-| `mirror_leave` | `done_today`, `elapsed_s` |
+| `mirror_enter` | `visit_n`, `left_today` |
+| `mirror_clue` | `quest_n`, `npc`, `spot_id`, `flipped: 0/1` |
+| `mirror_hint` | `quest_n`, `spot_id`, `elapsed_s`(단서 뒤 초) |
+| `mirror_found` | `quest_n`, `item`, `spot_id`, `flipped`, `hinted: 0/1`, `elapsed_s`(단서 뒤 초) — 보상 = hinted ? 2 : 3 |
+| `mirror_leave` | `left_today`, `elapsed_s` |
 | `mirror_onboard` | `step: stop\|arrive\|flip\|return` |
 | `decor_buy_mirror` | `item`, `cost`, `left` |
 
 - Supabase 별도 테이블 없음(조각은 코인 아님 → `econ_logs` 대상 아님).
-- 배포 다음 날 BigQuery: 의뢰 단계 퍼널, `flipped` 별 `search_s`·힌트율, 꿈·거울 같은 날 동시 이용률.
+- 배포 다음 날 BigQuery: 의뢰 단계 퍼널, `flipped` 별 `mirror_found.elapsed_s`·힌트율, 꿈·거울 같은 날 동시 이용률.
 
 ## 9. 코드 구조
 
@@ -144,7 +143,7 @@ gameState.mirror = { visits: 0, day: '', done: 0, hinted: [], total: 0 }
 | `js/mirror/clues.js` | 단서·힌트 문장(ko/en 문장을 모듈이 직접 완성 — 사전 글루 함정), `flipSide` | 순수 |
 | `js/mirror/art.js` | 마을·그림자 주민·물건 6·정류장 2 | THREE |
 | `js/mirror/decor-art.js` | 거울 장식 4 | THREE |
-| `js/mirror/track.js` | 이벤트 11종 래퍼 | `trackEvent` |
+| `js/mirror/track.js` | 이벤트 10종 래퍼 | `trackEvent` |
 | `js/spaces/mirror.js` | 지연 빌드·탑승/귀환·의뢰·힌트·HUD·온보딩 | 위 + game.js(순환 import 규칙) |
 | `js/mirror/ride.js` | 탑승(걷기→앉기)·이륙·🪞 거울 문 통과·착지·하차 타임라인. 1차 `js/dream/cutscene.js` 는 고치지 않는다(라이브 꿈길 회귀 0) — 마차 조형만 `makeMoonCarriage()` 재사용 | THREE |
 | `js/mirror/ride-schedule.js` | 단계 경계 시각(순수) | — |
@@ -156,7 +155,7 @@ gameState.mirror = { visits: 0, day: '', done: 0, hinted: [], total: 0 }
 
 - `tests/mirror-quests.test.mjs`: 시드 결정성·3건·quest 1 그대로 / 2·3 반전(왼/오 자리)·표지물 중복 없음·`normalizeMirror` 경계.
 - `tests/mirror-clues.test.mjs`: `flipSide`, 반전 단서·힌트 문장, ko/en 키 존재.
-- `tests/mirror-track.test.mjs`(소스 검사): 11종 호출 존재, 예약 파라미터 미사용, `flipped`·`hinted`·`search_s` 누락 없음.
+- `tests/mirror-track.test.mjs`(소스 검사): 10종 호출 존재, 예약 파라미터 미사용, `flipped`·`hinted`·`elapsed_s` 누락 없음 · 옛 키(npc_id·item_id·wait_s·search_s·done_today·reward) 없음.
 - `tests/mirror-wiring.test.mjs`: `atMirror` 연결 지점, 미니맵·펫·발자국 고정 목록.
 - 기존 갱신: shadow-scope, minimap, decor-ceiling, i18n, **dream QA 27항목(컷신 공용화 회귀)**.
 - 브라우저 실측: 오프라인 CDP — 탑승 → 의뢰 3건 → 힌트 → 귀환 → 🪞 결제, PC·모바일·영어 캡처.

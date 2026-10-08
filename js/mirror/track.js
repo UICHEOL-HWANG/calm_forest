@@ -1,19 +1,19 @@
 // =============================================================
-//  🪞 거울 마을 트래킹 — 스펙 §8 의 11종을 이름·파라미터째 한곳에 고정한다
+//  🪞 거울 마을 트래킹 — 스펙 §8 의 10종을 이름·파라미터째 한곳에 고정한다
 //  ------------------------------------------------------------
+//  키는 기존 게임·꿈 1차 키를 재사용한다(npc·item·elapsed_s·left_today — GA4 키 과다 방지, dev/active/mirror-village/param-review.md).
 //  호출부(js/spaces/mirror.js · indoor.js)는 trackEvent 를 직접 부르지 않고 T.* 만 쓴다(quest_id 누락 사고 재발 방지).
 //  싱크는 주입(bindTracker) — Node 테스트가 analytics.js(브라우저 전역) 없이 돈다.
 // =============================================================
 export const EVENTS = Object.freeze({
   mirror_stop_shown:   ['prior_visits', 'night'],
-  mirror_board:        ['dir', 'first', 'done_today'],
+  mirror_board:        ['dir', 'first', 'left_today'],
   mirror_cutscene_end: ['dir', 'skipped', 'at_s', 'short'],
-  mirror_enter:        ['visit_n', 'done_today'],
-  mirror_clue:         ['quest_n', 'npc_id', 'spot_id', 'flipped'],
-  mirror_hint:         ['quest_n', 'spot_id', 'wait_s'],
-  mirror_found:        ['quest_n', 'item_id', 'spot_id', 'flipped', 'hinted', 'search_s'],
-  mirror_return:       ['quest_n', 'reward'],
-  mirror_leave:        ['done_today', 'elapsed_s'],
+  mirror_enter:        ['visit_n', 'left_today'],
+  mirror_clue:         ['quest_n', 'npc', 'spot_id', 'flipped'],
+  mirror_hint:         ['quest_n', 'spot_id', 'elapsed_s'],
+  mirror_found:        ['quest_n', 'item', 'spot_id', 'flipped', 'hinted', 'elapsed_s'],   // 보상은 hinted 로 파생(2/3) — return 이벤트는 따로 안 찍는다
+  mirror_leave:        ['left_today', 'elapsed_s'],
   mirror_onboard:      ['step'],
   decor_buy_mirror:    ['item', 'cost', 'left'],
 });
@@ -44,7 +44,6 @@ export const T = Object.freeze({
   clue: (p) => emit('mirror_clue', p),
   hint: (p) => emit('mirror_hint', p),
   found: (p) => emit('mirror_found', p),
-  ret: (p) => emit('mirror_return', p),
   leave: (p) => emit('mirror_leave', p),
   onboard: (p) => emit('mirror_onboard', p),
   decorBuy: (p) => emit('decor_buy_mirror', p),
