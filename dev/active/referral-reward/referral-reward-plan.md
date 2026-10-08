@@ -29,7 +29,14 @@ AARRR 의 R(Referral). 초대 링크로 들어와 **실제로 남은** 친구 �
 - 보안 트리거 `_premium_cosmetic_ids()` 에 friend_wing·friend_pin·tools_star 추가 + **야외 장식 friendarch 도 가드**(outdoor/outdoorStored 에서 원장 없으면 제거).
 - RLS: 두 테이블 모두 본인 행 select 만, 쓰기는 service key(Worker) 전용.
 
-## 트래킹 (구현과 동시)
+## 트래킹 (구현과 동시) — ⚠️ 파라미터 다이어트 (사용자 지시 2026-10-08: "다 만들면 이벤트 파라미터 정리")
+실측(BQ 30일, 2026-10-08): 커스텀 파라미터 키 **346종**(GA4 맞춤 측정기준 칸은 50) · `star_result`·`cooking_result` 는
+이벤트당 커스텀 파라미터 **25개 상한에 도달**(넘는 건 조용히 버려짐). 추천 이벤트 원칙:
+- 이벤트당 커스텀 파라미터 **≤ 5개**. 새 키 신설 최소화 — 기존 키(`item_id`·`via`·`platform`) 재사용.
+- 서버가 진실인 값(활성화·지급)은 `referrals`/`purchases` 테이블로 분석 — GA4 에 중복 싣지 않는다.
+- 최종 정리(마지막 단계): 이벤트·파라미터 표 확정 → 맞춤 측정기준 등록 필요분만 → 기존 과다 이벤트(star_result·cooking_result) 정리는 별도 제안.
+
+(초안)
 `invite_link_create` → `invite_share{channel}` → `invite_open{code_hash}` → `referral_bind{ok|reason}` → `referral_activated` → `referral_reward_grant{tier}`. 서버 테이블(`referrals`)이 진실, GA4 는 퍼널 보조. K-factor = 1인당 초대 수 × 활성 전환율.
 
 ## 리스크

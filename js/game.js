@@ -1972,7 +1972,7 @@ function retentionGuidanceSuppressed() {
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
     if (b.classList.contains('intro-open')) return 'intro';
-    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show')) return 'modal';
+    if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show, #invite-modal.show')) return 'modal';
     // ⚠️ 아래는 **CSS 가 #hint-banner 를 display:none 으로 숨기는 상태**다(index.html 524·580·595·937·1005).
     //    JS 가 이걸 모르면 안 보이는 배너를 "띄웠다"고 치고 세션당 1회 예산을 날린 뒤,
     //    shown 이벤트까지 찍어 10분 성과창이 아무도 못 본 배너를 잰다.
@@ -6853,6 +6853,13 @@ function respawnPet() {
 }
 
 // 💳 원장 동기화가 화면에 손대는 통로 — js/shop/purchases.js 는 game.js 를 import 하지 않는다
+/** 🤝 서버가 원장에 새 행을 넣은 뒤(친구 초대 보상 등) 다시 맞춘다 — js/referral/index.js
+ *  quiet: 도착 토스트를 부르는 쪽이 따로 띄울 때(연결 성공의 하트핀 문구) 겹치지 않게 끈다 */
+export function resyncPurchases(via, { quiet = false } = {}) {
+  const hooks = purchaseHooks();
+  return syncPurchases({ gameState, fetchPurchases, via, hooks: quiet ? { ...hooks, toast: () => {} } : hooks });
+}
+
 export function purchaseHooks() {
   return {
     applyCosmetics: (cos) => applyCosmetics(cos),
