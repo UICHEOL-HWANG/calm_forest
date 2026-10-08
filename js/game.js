@@ -264,6 +264,7 @@ export const $w = {
   get atMuseum() { return atMuseum; }, set atMuseum(v) { atMuseum = v; },
   get atNeighbor() { return atNeighbor; }, set atNeighbor(v) { atNeighbor = v; },
   get atDream() { return atDream; }, set atDream(v) { atDream = v; },
+  get atMirror() { return atMirror; }, set atMirror(v) { atMirror = v; },
   get sleeping() { return sleeping; }, set sleeping(v) { sleeping = v; },
   get atObservatory() { return atObservatory; }, set atObservatory(v) { atObservatory = v; },
   get atOrchard() { return atOrchard; }, set atOrchard(v) { atOrchard = v; },
@@ -462,6 +463,7 @@ let atCafe = false, nearCafeBoard = false;
 let atMuseum = false, museumGroup = null;   // 🏛️ 박물관 전시실
 let atObservatory = false, observatoryGroup = null;   // 🔭 천문대 실내
 let atDream = false;                                  // 🌙 꿈의 숲(떠 있는 섬) 안에 있는지 — js/spaces/dream.js
+let atMirror = false;                                 // 🪞 거울 마을 안에 있는지 — js/spaces/mirror.js
 let atNeighbor = false;                               // 🏡 이웃 마을(남의 앞마당) 안에 있는지 — 공간은 js/neighbors/scene.js 가 입장 때 짓고 퇴장 때 치운다
 let cafeInGroup = null, cafeGuestObjs = [];     // 홀 그룹 / 앉은 손님 런타임 { order, group, sprite, phase }
 let nearCafeGuest = null;
@@ -7480,7 +7482,7 @@ function onResize() {
 export {
   BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, HINT_H, HINT_W, IS_MOBILE, LAKE, ORES, RAIN_DAY, RES_ICON, RES_LABEL,
   SEASON, SEVERE_TODAY, SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _hintAnyPrev, _seaPrevTool, _v, actAnim, analog,
-  applyCosmetics, applyHouseStyle, armWristK, atCafe, atDream, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea,
+  applyCosmetics, applyHouseStyle, armWristK, atCafe, atDream, atMirror, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea,
   awardBadge, baitActive, biteAt, biteEnd, blockIfLocked, boat, boatView, bobber, buffOn, buffs, bugJarMesh,
   bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, castPos, catchCeremony,
   churnTrigger, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop, cropMini, currentQuest,
