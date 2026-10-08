@@ -34,6 +34,8 @@ import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
 import { HALLOWEEN_INDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './halloween-art.js';
 import { DREAM_DECOR_IDS, buildDreamDecor } from '../dream/decor-art.js';   // 🌙 꿈 장식 4종
+import { MIRROR_DECOR_IDS, buildMirrorDecor } from '../mirror/decor-art.js';   // 🪞 거울 장식 4종
+import { T as MirrorT } from '../mirror/track.js';
 import { unregisterWindows } from '../spaces/house.js';
 import * as THREE from 'three';
 
@@ -430,6 +432,8 @@ export function decorMesh(id) {
     const shade = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.19, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 0.32; g.add(shade);
   } else if (DREAM_DECOR_IDS.includes(id)) {   // 🌙 꿈 장식 — ✨ 꿈 조각으로 산다(js/dream/decor-art.js)
     g.add(buildDreamDecor(id));
+  } else if (MIRROR_DECOR_IDS.includes(id)) {   // 🪞 거울 장식 — 🪞 거울 조각으로 산다(js/mirror/decor-art.js)
+    g.add(buildMirrorDecor(id));
   } else if (HALLOWEEN_INDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 조형은 halloween-art.js (시안 HTML 과 같은 코드)
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE)));
   } else if (id === 'nightstand') {
@@ -683,6 +687,7 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
       ui.toast?.(pay === 'coins' ? `코인이 부족해요 (필요 ${def.cost} 🪙)`
                : pay === 'fish'  ? `물고기가 부족해요 (필요 ${def.cost} 🐟)`
                : pay === 'shard' ? `꿈 조각이 부족해요 (필요 ${def.cost} ✨)`
+               : pay === 'mirror' ? `거울 조각이 부족해요 (필요 ${def.cost} 🪞)`
                :                   `작물이 부족해요 (필요 ${def.cost} 🥕)`);
       return false;
     }
@@ -692,6 +697,7 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
       trackEvent('decor_buy_coins', { item: id, coins: def.cost, stage: gameState.houseStage }); // [GA4] 코인 싱크 퍼널
     }
     if (pay === 'shard') trackEvent('decor_buy_shard', { item: id, cost: def.cost, left: gameState.inventory.shard });   // [GA4] 🌙 꿈 조각 싱크 — econ_logs 는 코인 전용이라 GA4 만
+    if (pay === 'mirror') MirrorT.decorBuy({ item: id, cost: def.cost, left: gameState.inventory.mirror });   // [GA4] 🪞 거울 조각 싱크(js/mirror/track.js 경유)
   }
   const m = decorMesh(id);
   const lx = decorClampX(wx), lz = decorClampZ(wz);

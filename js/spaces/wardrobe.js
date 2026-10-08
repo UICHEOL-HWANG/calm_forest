@@ -13,10 +13,11 @@ import {
 import { trackEvent } from '../analytics.js';
 import { PLATFORM } from '../platform.js';
 import { ownedIn, toggleWear, wardrobeTabVisible } from '../cosmetics/wardrobe.js';
+import { auraTabVisible, drawAuraTab } from '../aura/wardrobe-aura.js';
 import { PET_KINDS, stageOf, toNextStage } from '../pet/rules.js';
 
 //  가게 탭 이름과 같은 말을 쓴다 — 가게에서 본 칸 이름이 옷장에서도 그대로 보이게
-const SLOT_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨'], ['tools', '🪓 도구']];
+const SLOT_TABS = [['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['aura', '🔮 오라'], ['skin', '🧥 스킨'], ['tools', '🪓 도구']];
 let slot = 'head';
 
 /** 🐾 데리고 다닐 종을 바꾼다 — 가게에서 새로 산 직후에도 쓴다.
@@ -63,7 +64,7 @@ function empty(box, text) {
 export function drawWardrobe(tabsEl, box, preview, hintEl) {
   const redraw = () => drawWardrobe(tabsEl, box, preview, hintEl);
   tabsEl.innerHTML = '';
-  const tabs = SLOT_TABS.filter(([id]) => wardrobeTabVisible(id, gameState.cosmetics, PLATFORM));
+  const tabs = SLOT_TABS.filter(([id]) => id === 'aura' ? auraTabVisible(gameState.aura) : wardrobeTabVisible(id, gameState.cosmetics, PLATFORM));
   if (!tabs.some(([id]) => id === slot)) slot = 'head';   // 숨겨진 칸에 머물러 있었다면 머리로
   for (const [id, label] of tabs) {
     const b = document.createElement('button');
@@ -79,6 +80,7 @@ export function drawWardrobe(tabsEl, box, preview, hintEl) {
   //  걷는 자국은 돌리지 않는다 → 안내를 감춘다. visibility 라 자리는 남는다(칸을 오갈 때 상자 높이가 안 튄다)
   if (hintEl) hintEl.style.visibility = slot === 'trail' ? 'hidden' : '';
   box.innerHTML = '';
+  if (slot === 'aura') { drawAuraTab(box, redraw); return; }
   const items = ownedIn(gameState.cosmetics, slot);
   if (!items.length) { empty(box, '아직 산 게 없어요 · 🎀 꾸미기 가게에서 살 수 있어요'); return; }
   for (const it of items) {

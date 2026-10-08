@@ -43,7 +43,9 @@ export function shadowReaches(x, z, reach = MAX_REACH) {
 //   z 최소 666, 상자 클램프 18 을 빼서 648m. MAX_REACH(60) 밖. 바닥 반경을 바꾸면 tests/shadow-scope 가 다시 계산한다.
 //   🌙 꿈의 숲 — 지오메트리(2026-10-08): DREAM(0,0,-550). 꿈 조형은 receiveShadow 를 쓰지 않는다(js/dream/art.js).
 //   가장 넓게 뻗는 하늘 구(반경 140)로 잡아도 z 최대 -410 → 상자 클램프 18 을 빼서 392m. MAX_REACH(60) 밖.
-export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea', 'atMuseum', 'atObservatory', 'atOrchard', 'atNeighbor', 'atDream'];
+//   🪞 거울 마을 — 지오메트리(2026-10-08): MIRROR(0,0,-700). 가장 넓은 바닥은 숲 링 RingGeometry(23, 70)(js/mirror/art.js)
+//   → z 최대 -630, 상자 클램프 18 을 빼서 612m. MAX_REACH(60) 밖.
+export const OUT_OF_REACH_FLAGS = ['atMine', 'atCafe', 'atRiver', 'atMist', 'atSea', 'atMuseum', 'atObservatory', 'atOrchard', 'atNeighbor', 'atDream', 'atMirror'];
 
 // ② 상자는 닿지만 실측상 보이는 그림자가 없는 공간.
 // 진입 시점(timeOfDay 0.32)에 섀도맵을 한 번 굽고 얼린 뒤 해를 옮기며 live 렌더와 픽셀 비교했다
