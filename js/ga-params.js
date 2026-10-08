@@ -26,3 +26,14 @@ export function renameReservedParams(params = {}) {
     {},
   );
 }
+
+// GA4 는 이벤트당 파라미터 25개까지만 받고 남는 값은 조용히 버린다.
+//   2026-10-08 cooking_result(28)·star_result(26)에서 판마다 값이 무작위로 빠진 것을 발견 →
+//   무거운 배열은 *_detail 이벤트로 나누고, 넘치면 ga_param_overflow 로 알린다.
+export const GA_PARAM_LIMIT = 25;
+
+// 실제로 전송되는 값(null·undefined 제외)이 한도를 몇 개 넘는지. 넘지 않으면 0.
+export function overParamLimit(params = {}) {
+  const sent = Object.values(params).filter(v => v !== null && v !== undefined).length;
+  return Math.max(0, sent - GA_PARAM_LIMIT);
+}
