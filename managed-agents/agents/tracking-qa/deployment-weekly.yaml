@@ -1,0 +1,16 @@
+name: calm-forest-tracking-qa-weekly
+agent: ./agent.md
+environment_id: ../kpi-daily/environment.yaml
+vault_ids: [vlt_011CfovbWZuvijWmFmHCijWh]
+resources:
+  - ./memory_store-spec.yaml
+  - ./memory_store-notes.yaml
+budget: {type: limit, max_list_cost: {currency: USD, amount: "100"}}
+schedule: {type: cron, expression: "30 8 * * 1", timezone: Asia/Seoul}
+initial_events:
+  - type: user.message
+    content:
+      - type: text
+        text: |
+          이번 주 트래킹 품질 점검을 해 주세요.
+          슬랙 채널: C0C7FNDACJF
