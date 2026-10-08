@@ -12,6 +12,9 @@ const S = {
   wide: [['1 · 전경','village/pc-v-1-cam-wide.png','village/m-v-1-cam-wide.png'],['2 · 전경','village/pc-v-2-cam-wide.png','village/m-v-2-cam-wide.png'],['3 · 전경','village/pc-v-3-cam-wide.png','village/m-v-3-cam-wide.png']],
   res: [['1 · 그림자 실루엣','residents/pc-v-1.png','residents/m-v-1.png'],['2 · 보색 쌍둥이','residents/pc-v-2.png','residents/m-v-2.png'],['3 · 물방울 요정','residents/pc-v-3.png','residents/m-v-3.png']],
   items: [['1 · 원색 저폴리','items/pc-v-1.png','items/m-v-1.png'],['2 · 금빛 보물','items/pc-v-2.png','items/m-v-2.png'],['3 · 말랑 파스텔','items/pc-v-3.png','items/m-v-3.png']],
+  decor: [['1 · 은빛 거울','decor/pc-v-1.png','decor/m-v-1.png'],['2 · 보색 반전','decor/pc-v-2.png','decor/m-v-2.png'],['3 · 물빛 유리','decor/pc-v-3.png','decor/m-v-3.png']],
+  cut1: [['① 탑승','cutscene/pc-f-1.png','cutscene/m-f-1.png'],['② 출발','cutscene/pc-f-2.png','cutscene/m-f-2.png'],['④ 도착·하차','cutscene/pc-f-4.png','cutscene/m-f-4.png']],
+  cut3: [['③-A 연못 다이브','cutscene/pc-f-3a.png','cutscene/m-f-3a.png'],['③-B 거울 문','cutscene/pc-f-3b.png','cutscene/m-f-3b.png'],['③-C 하늘 뒤집기','cutscene/pc-f-3c.png','cutscene/m-f-3c.png']],
 }[new URLSearchParams(location.search).get('set') || 'stop'];
 document.getElementById('g').innerHTML = S.map(([t,p,m]) => `<div class="c"><h2>${t}</h2><img src="${p}"><img class="m" src="${m}"></div>`).join('');
 </script></body></html>
