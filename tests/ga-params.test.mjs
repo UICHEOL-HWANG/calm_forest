@@ -41,3 +41,14 @@ test('빈 입력에도 안전하다', () => {
   assert.deepEqual(renameReservedParams(), {});
   assert.deepEqual(renameReservedParams({}), {});
 });
+
+// GA4 는 이벤트당 파라미터 25개를 넘으면 남는 값을 조용히 버린다(2026-10-08 cooking_result 28·star_result 26 발견).
+test('GA_PARAM_LIMIT 은 25 이고 overParamLimit 은 넘친 개수를 돌려준다', async () => {
+  const { GA_PARAM_LIMIT, overParamLimit } = await import('../js/ga-params.js');
+  assert.equal(GA_PARAM_LIMIT, 25);
+  const mk = n => Object.fromEntries(Array.from({ length: n }, (_, i) => [`k${i}`, i]));
+  assert.equal(overParamLimit(mk(25)), 0);
+  assert.equal(overParamLimit(mk(28)), 3);
+  assert.equal(overParamLimit({ a: 1, b: null, c: undefined }), 0, 'null·undefined 는 전송되지 않으니 세지 않는다');
+  assert.equal(overParamLimit(), 0);
+});
