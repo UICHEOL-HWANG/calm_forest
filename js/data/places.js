@@ -268,7 +268,7 @@ export const ORCHARD_GATE = new THREE.Vector3(33, 0, 7);   // 🍎 마을 동쪽
 //   한 번도 뜨지 못했다 — 유저는 무엇을 하면 열리는지 알 길이 없었다(🏛️ 박물관 계단 STAIR_PROMPT_R 과 같은 교훈).
 export const ORCHARD_PROMPT_R = 2.8;
 
-//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다. 동쪽은 x>18 에 고정물이 없다.
+//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다(지금은 위 사유로 33,7). 동쪽 x 18~28 에는 🌾수확제 광장이 있다.
 export const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 
 export const ORCHARD_HALF = 20;                            // 언덕 반경
