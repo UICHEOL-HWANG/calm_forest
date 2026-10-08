@@ -2346,6 +2346,7 @@ export async function enterGame() {
       tick: (s) => { for (let i = 0; i < s * 60; i++) visitors?.update(1 / 60); return visitors?.alive || []; } };   // 시간을 앞당겨 스폰을 확인(검수용)
     window.__house = { enter: enterHouse, exit: exitHouse };   // 실내 검수용 즉시 입퇴장
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
+    window.__scene = scene;   // 🎨 시안 캡처용(로컬 전용) — 후보 모형을 실제 마을에 꽂아 비교
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, shadowAuto: renderer.shadowMap.autoUpdate, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
     // 🌓 그림자·드로우콜 검수용 즉시 입퇴장 — __house·__mine 과 같은 패턴(마을 밖 공간 전부)
     window.__space = { farm: [enterFarm, exitFarm], cafe: [enterCafe, exitCafe], river: [enterRiver, exitRiver],
