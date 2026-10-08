@@ -9,6 +9,7 @@ import { FARM_BUILDINGS } from '../farm-building.js';
 import { BENCH, KITCHEN, SHOP, MARKET, RANK, FARM_GATE, MINE_GATE, COOP, CAFE_GATE, MUSEUM_GATE, OBSERVATORY_GATE } from './places.js';
 import { NPCS } from './npcs.js';
 import { STATIONS } from '../craft/recipes.js';
+import { REWARD_DECOR } from './reward-decor.js';
 
 // 🛋️ 가구 배율 — 14×14 방에 비해 가구가 너무 작아 꾸미기가 허전하다는 베타 피드백(2026-09-09).
 //    decorMesh() 안쪽 그룹에만 곱하고 바깥 그룹은 1 로 둔다(등장 팝 애니메이션이 바깥 scale 을 0.01→1 로 쓴다).
@@ -208,6 +209,7 @@ export const OUTDOOR = [
   { id: 'pumpkins',         name: '호박 더미',      ico: '🎃', cost: { leaf: 60 }, desc: '수확제 좌판에서 산 호박 더미', hidden: true },
   { id: 'pumpkinlamp',      name: '호박 등불',      ico: '🏮', cost: { leaf: 9999 }, desc: '수확제 광장 🥈 보상 — 밤에 은은히', hidden: true },
   { id: 'harvestscarecrow', name: '수확제 허수아비', ico: '🧑‍🌾', cost: { leaf: 9999 }, desc: '수확제 광장 🥇 보상', hidden: true },
+  ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   // 🎃 할로윈 한정 코인 장식 — 직접 구매(작업대 목록, 기간 한정). hidden 과 다르다: hidden 은 영구 비판매, sale 은 기간 판매
   { id: 'ghostlamp',  name: '유령 정원등', ico: '👻', cost: { coins: 200 }, sale: 'halloween', desc: '밤이 되면 으스스하게 빛나는 유령 등' },
   { id: 'gravefence', name: '묘비 울타리', ico: '🪦', cost: { coins: 280 }, sale: 'halloween', desc: '묘비 모양 울타리 · 밤손님은 못 막아요' },

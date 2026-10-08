@@ -7,7 +7,7 @@ import { TOOL_THEMES, SKIN_TOOLS, themeOf, toolSkinOf } from '../js/cosmetics/to
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
 test('🎃 테마 5종 — 기존 3 + 달밤 보라(batnight) + 수확제(harvest)', () => {
-  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest']);
+  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest', 'star']);   // ⭐ star = 🤝 초대 보상
   assert.equal(themeOf('tools_batnight'), 'batnight');
   assert.equal(themeOf('tools_harvest'), 'harvest');
   assert.equal(themeOf('tools_moon'), 'moon', '기존 달밤 세트와 안 섞인다');

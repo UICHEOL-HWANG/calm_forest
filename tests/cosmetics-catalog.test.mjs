@@ -3,15 +3,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 6개 · 품목 35종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10)', () => {
+test('슬롯 6개 · 품목 38종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🤝 초대 보상 3)', () => {
   assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools']);
-  assert.equal(ITEMS.length, 35);
-  assert.equal(itemsOf('head').length, 7);
+  assert.equal(ITEMS.length, 38);
+  assert.equal(itemsOf('head').length, 8);
   assert.equal(itemsOf('neck').length, 3);
-  assert.equal(itemsOf('back').length, 5);
+  assert.equal(itemsOf('back').length, 6);
   assert.equal(itemsOf('trail').length, 9);
   assert.equal(itemsOf('skin').length, 6);
-  assert.equal(itemsOf('tools').length, 5);
+  assert.equal(itemsOf('tools').length, 6);
+  assert.equal(ITEMS.filter(i => i.reward).length, 3);
 });
 
 test('🧥 스킨 2종 — 현금 전용(won), 정령 ₩10,000 · 인형 ₩9,000', () => {
@@ -33,13 +34,17 @@ test('가격 — coins 와 won 중 정확히 하나. 현금 칸은 null 이거�
     assert.ok(c === null || (typeof c.priceId === 'string' && typeof c.label === 'string'), `${it.id} 의 cash 형태`);
     const hasCoins = Number.isInteger(it.price.coins) && it.price.coins > 0;
     const hasWon = Number.isInteger(it.price.won) && it.price.won > 0;
+    if (it.reward) {   // 🤝 초대 보상 — 비매품: 가격이 전부 없다
+      assert.ok(!hasCoins && !hasWon && c === null && !it.premium, `${it.id}: 보상은 가격 없음`);
+      continue;
+    }
     assert.ok(hasCoins !== hasWon, `${it.id}: coins/won 중 하나만`);
     assert.equal(!!it.premium, hasWon, `${it.id}: premium ⇔ won`);
   }
 });
 
 test('꾸미기 최저가가 일꾼 초빙료(120🪙)보다 훨씬 비싸다 — 집 증축을 밀어내면 안 된다(§2-2)', () => {
-  assert.ok(Math.min(...ITEMS.filter(i => !i.premium).map(i => i.price.coins)) >= 600);
+  assert.ok(Math.min(...ITEMS.filter(i => !i.premium && !i.reward).map(i => i.price.coins)) >= 600);
 });
 
 test('머리 장식은 earSafe 를 반드시 갖는다 — 귀 처리 규칙(§3-3)', () => {

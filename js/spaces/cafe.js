@@ -39,7 +39,7 @@ import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rul
 import { buildShop } from '../shop/building.js';
 import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
 import { closeProps } from '../shop/checkout-funnel.js';   // 📊 결제창을 닫을 때 어디까지 갔나
-import { premiumRowMode, slotVisible } from '../shop/premium-row.js';
+import { premiumRowMode, slotVisible, gatedRow } from '../shop/premium-row.js';
 import { saleOpen, saleTagOf } from '../shop/sale-window.js';
 import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
@@ -1028,6 +1028,7 @@ function pollSlowGrant(c, t0, n = 0) {
 //  💎 프리미엄(현금 전용) 행 — 문구는 스펙 2026-10-01 §8 검수 문구
 const PREMIUM_LOGIN_MSG = '로그인하면 살 수 있어요';
 const PREMIUM_NA_MSG = '지금은 살 수 없어요';
+const REWARD_TAG = '🤝 초대 보상';
 let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 항목당 한 번(닫으면 비운다)
 
 export function drawCosMenu() {
@@ -1069,14 +1070,14 @@ export function drawCosMenu() {
   if (cosTab === 'pet') { drawPetTab(box); return; }
   for (const it of itemsOf(cosTab)) {
     let mode = null;
-    if (it.premium) {
+    if (gatedRow(it)) {
       mode = premiumRowMode(it, rowCtx(it));
       if (mode === 'hidden') continue;
-      if (!premiumViewed.has(it.id)) { premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode, ...(it.sale ? { sale: it.sale } : {}) }); }
+      if (it.premium && !premiumViewed.has(it.id)) {   // 🤝 초대 보상은 판매 퍼널이 아니다 premiumViewed = new Set([...premiumViewed, it.id]); trackEvent('premium_row_view', { item_id: it.id, mode, ...(it.sale ? { sale: it.sale } : {}) }); }
     }
     const row = document.createElement('div');
     row.className = 'sh-row' + (cosView().equipped[it.slot] === it.id ? ' try' : '');
-    row.innerHTML = `<span>${it.premium ? '💎 ' : ''}${it.ico} ${it.name}</span>`;
+    row.innerHTML = `<span>${it.reward ? '🤝 ' : it.premium ? '💎 ' : ''}${it.ico} ${it.name}</span>`;
     const tag = it.sale && mode !== 'owned' ? saleTagOf(it) : null;
     if (tag) {
       const t = document.createElement('small');
@@ -1112,7 +1113,12 @@ export function drawCosMenu() {
       };
       buys.appendChild(btn);
     }
-    if (it.premium) {
+    if (it.reward) {                                   // 🤝 친구 초대 보상 — 판매 버튼 대신 받은 표시만(행은 받은 사람에게만 보인다)
+      const tag = document.createElement('button');
+      tag.className = 'sh-cash'; tag.disabled = true;
+      tag.textContent = REWARD_TAG;
+      buys.appendChild(tag);
+    } else if (it.premium) {
       if (mode === 'buy' || mode === 'owned') buys.appendChild(cashButton(it.price.cash || { label: '', priceId: '' }, it.id, 'cosmetic', mode === 'owned'));
       else {
         const off = document.createElement('button');

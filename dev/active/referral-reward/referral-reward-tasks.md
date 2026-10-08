@@ -21,9 +21,10 @@
 - [ ] 실 JWT 로 배포 후 E2E (워크트리에 .dev.vars 없음)
 
 ## 3. 카탈로그·소유
-- [ ] catalog: tools_star · friend_wing · friend_pin (비매 플래그) / OUTDOOR friendarch hidden
-- [ ] entitlements: decor kind → outdoorStored
-- [ ] security-hardening 테스트 목록 일치
+- [x] catalog: tools_star · friend_wing · friend_pin (`reward:'referral'`, premium 아님) / OUTDOOR friendarch (js/data/reward-decor.js)
+- [x] entitlements: decor kind → outdoorStored · 보상 토스트 REWARD_MSG · 상점 행 '🤝 초대 보상'(받은 사람만)
+- [x] security-hardening 테스트: premium + reward = SQL 목록 (2165 pass)
+- [ ] 새 문구 검수: 토스트·상점 태그·아이템 이름·아치 설명
 
 ## 4. 조형
 - [ ] 별빛 도구 세트(전 도구) · 아치 · 날개 · 하트 핀 (게임 안 캡처 PC+모바일 컨펌)

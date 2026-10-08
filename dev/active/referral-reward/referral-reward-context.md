@@ -1,6 +1,6 @@
 # 🤝 친구 추천 보상 — 컨텍스트
 
-Last Updated: 2026-10-08 (1단계 DB 운영 적용 · 2단계 API 완료)
+Last Updated: 2026-10-08 (1단계 DB 운영 적용 · 2단계 API · 3단계 카탈로그 완료)
 
 ## 작업 위치
 - 워크트리 `.claude/worktrees/referral-reward` · 브랜치 `feat/referral-reward` (main cd5f804 기준)
@@ -40,3 +40,5 @@ Last Updated: 2026-10-08 (1단계 DB 운영 적용 · 2단계 API 완료)
 - 리뷰 반영: 코드 발급 함수·상한 advisory lock·순환 차단·DML revoke·claim 쿨다운·틀린 코드 10회 차단·fetch 타임아웃.
 - 수용한 한계: 소식 insert 실패 시 재전송 없음(원장이 진실) · 가짜 계정 파밍(외형뿐·상한) — 모니터링 대상.
 - ⚠️ purchases 매출 집계는 `source='paddle'` 필터 필수.
+- 3단계: 보상 아이템은 `reward:'referral'` — **premium 이 아니다**(premium = 현금 판매: Paddle·가격 페이지·PRICE_IDS). 서버 가드 목록 = premium ∪ reward.
+  보상 장식 정의는 순수 모듈 `js/data/reward-decor.js`(data/catalog.js 가 THREE 를 끌어와 entitlements 에서 import 불가). tools_star·friendarch 는 조형 전이라 기본 모양/빈 그룹 — **조형 전엔 API 배포 금지**.
