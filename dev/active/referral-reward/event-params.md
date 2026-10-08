@@ -35,12 +35,10 @@ K-factor = 1인당 `invite_share` 수 × (`referrals` 활성 / 공유 수) — �
 
 GA4 맞춤 측정기준 등록이 필요한 것: `result` · `channel` · `tier` (3칸). `guest`·`active` 는 BQ 로만 본다.
 
-## 3. 기존 넘치는 이벤트 정리안 — ⏸️ 사용자 결정 대기
+## 3. 기존 넘치는 이벤트 — ✅ 이미 main 에서 처리됨(다른 세션, 2026-10-08 16:37 `9e29ec8`, 병합 `7a09b61`)
 
-| 이벤트 | 안 | 근거 |
-|---|---|---|
-| `star_result` | `offsets`·`judges`(긴 쉼표 문자열) 2개를 GA4 에서 뺀다 → 24개 | 같은 판이 `star_runs` 테이블에 `run_id` 로 전부 남는다(judges·offsets jsonb 컬럼) |
-| `cooking_result` | 자유 요리 4키(`combo_key`·`taste`·`is_new`·`found`)를 `free_pot_result` 별도 이벤트로 분리 → 최대 22+2 | 자유 요리 행(4%)만 쓰는 키. 일반 요리 행엔 null 이라 원래 안 실린다 |
-| 공통 가드 | `trackEvent` 가 직접 키 > 23 이면 콘솔 경고 + 테스트로 상한 고정 | 다음 기능에서 재발 방지 |
-
-⚠️ 난이도 probe 분석(`arms`·`eases`·`dda`·`probe_v`)은 그대로 둔다 — 빼면 실험 해석이 끊긴다.
+- `cooking_result`/`cooking_abandon`: `stage_scores`·`offsets`·자유 요리 4키 → `cooking_detail`(run_id 로 조인)
+- `star_result`: `offsets`·`judges` → `star_detail`(run_id 로 조인, 전체 기록은 `star_runs`)
+- `trackEvent`: 25개 초과 시 `ga_param_overflow { ev, n }` 경보 (`js/ga-params.js overParamLimit`)
+- 난이도 probe 키(`arms`·`eases`·`dda`·`probe_v`)는 본 이벤트에 유지
+- ⚠️ feat/referral-reward 는 main 병합 전 이 커밋들을 받아야 한다(analytics.js·game.js 충돌 여부 확인)
