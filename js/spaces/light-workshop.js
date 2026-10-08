@@ -2,7 +2,7 @@
 //  🏮 빛 공방 — 계곡과 천문대 사이 빈터의 연못가 오두막 + 공방 주인(🧚 반디 요정)
 //  ⚠️ game.js 와 순환 import — 로딩 시점엔 game.js 값을 읽지 않는다(함수 안에서만).
 // =============================================================
-import { makeNameTag, makeSignpost, mergeGeos, obstacles, paintGeo, scene, solidCircle, vtxMat } from '../game.js';
+import { makeNameTag, makeSignpost, mergeGeos, obstacles, paintGeo, scene, solidBox, solidCircle, vtxMat } from '../game.js';
 import { LIGHT_WORKSHOP, LIGHT_WORKSHOP_POND } from '../data/places.js';
 import { buildCartGeos, buildHutGeos } from './light-workshop-hut.js';
 import * as THREE from 'three';
@@ -54,7 +54,12 @@ export function buildLightWorkshop() {
   g.add(k);
   g.add(makeSignpost('🏮 빛 공방', -1.85, 1.2));   // 왼쪽 앞 모서리(연못 옆) — 창·열린 문짝을 가리지 않는다
   scene.add(g);
-  obstacles.push({ x: LIGHT_WORKSHOP.x, z: LIGHT_WORKSHOP.z, r: 1.6 });
-  solidCircle(LIGHT_WORKSHOP.x, LIGHT_WORKSHOP.z, 1.3);   // 오두막은 걸어서 못 지나간다
-  solidCircle(LIGHT_WORKSHOP.x - 1.65, LIGHT_WORKSHOP.z - 0.3, 0.55);   // 🛒 손수레(손잡이까지)
+  obstacles.push({ x: LIGHT_WORKSHOP.x, z: LIGHT_WORKSHOP.z, r: 3.4 });   // 밭 금지 — 오두막·손수레·연못·요정까지
+  // 🚧 걸어서 뚫지 못하게(2026-10-09 격자 검수: 원 하나로는 벽 모서리·손수레 손잡이·요정 몸을 통과했다)
+  const { x: wx, z: wz } = LIGHT_WORKSHOP;
+  solidBox(wx - 1.17, wz - 0.97, wx + 1.17, wz + 0.97);   // 벽돌 벽(반폭 1.1·0.9 + 들쭉날쭉)
+  solidBox(wx - 0.76, wz + 0.97, wx + 0.06, wz + 1.14);   // 열린 문짝 두 장
+  solidCircle(wx - 1.65, wz - 0.5, 0.45);                 // 🛒 손수레 짐칸·바퀴
+  solidCircle(wx - 1.77, wz + 0.09, 0.35);                // 🛒 손잡이(앞으로 뻗음)
+  solidCircle(wx + k.position.x, wz + k.position.z, 0.58); // 🧚 반디 요정 몸(앞치마 0.56 까지)
 }

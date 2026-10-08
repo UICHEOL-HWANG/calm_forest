@@ -66,6 +66,14 @@ test('🧚 반디 요정 날개가 오두막 벽·처마를 뚫지 않는 자리
   assert.ok(Number(m[1]) - 0.52 >= 1.32 + 0.1, `날개 끝 x ${Number(m[1]) - 0.52}`);
 });
 
+test('🚧 오두막·손수레·반디 요정은 걸어서 뚫을 수 없다', () => {
+  const src = readFileSync(new URL('../js/spaces/light-workshop.js', import.meta.url), 'utf8');
+  assert.match(src, /solidBox\(wx - 1\.17, wz - 0\.97, wx \+ 1\.17, wz \+ 0\.97\)/, '벽은 상자 — 원이면 모서리를 파고든다');
+  assert.match(src, /solidBox\(wx - 0\.76, wz \+ 0\.97/, '열린 문짝');
+  assert.match(src, /solidCircle\(wx - 1\.77, wz \+ 0\.09, 0\.35\)/, '손수레 손잡이');
+  assert.match(src, /solidCircle\(wx \+ k\.position\.x, wz \+ k\.position\.z, 0\.58\)/, '반디 요정 몸(앞치마까지)');
+});
+
 test('🗺️ 미니맵·전체 지도에 🏮 빛 공방 지명(영어 라벨 포함)', () => {
   assert.match(SRC, /\{ ico: '🏮', name: '빛 공방',\s*x: LIGHT_WORKSHOP\.x, z: LIGHT_WORKSHOP\.z, pri: 1 \}/);
   const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
