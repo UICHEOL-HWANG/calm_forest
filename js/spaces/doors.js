@@ -9,7 +9,7 @@ import {
   $w, DIG_WINDOW, WEATHER, atCafe, atDream, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
-  nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearDoor, nearDoorFloor,
+  nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearLightWorkshop, nearDoor, nearDoorFloor,
   nearForest, nearGlade, nearKitchen, nearMarket, nearNPC, nearOutdoorMesh, nearRank, nearShop, nearStation,
   petChoresNear, pickedOutdoor, placingDecor, placingOutdoor, player, plots, requestSave, scene, seaMG, setFogExempt,
   setSpaceVisible, snapCamera, stopOutdoorPlacing, toolPage, ui, updateToolPageAuto, workerCap,
@@ -17,7 +17,7 @@ import {
 import { plazaSpot } from '../plaza/index.js';
 import { trackEvent } from '../analytics.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
-import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
+import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, LIGHT_WORKSHOP, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
 import { TOOLS } from '../data/tools.js';
 import { storageTotal } from '../farm-building.js';
 import { farmStageInfo } from '../farm-stage.js';
@@ -313,6 +313,7 @@ export function updateDoorInteract() {
   $w.nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
   $w.nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
   $w.nearCosShop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && dist2D(SHOP_DOOR, player.position) < 2.8; // 🏪 꾸미기 가게(마을 서쪽)
+  $w.nearLightWorkshop = !indoor && !nearCosShop && dist2D(LIGHT_WORKSHOP, player.position) < 2.6;   // 🏮 빛 공방(계곡 연못가)
   // 🌾 수확제 광장 — 기부함·좌판·명판(마을 동쪽 멀리라 다른 시설과 겹치지 않는다)
   const plazaHere = inVillage && !nearRank ? plazaSpot(player.position) : null;
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
@@ -338,6 +339,10 @@ export function updateDoorInteract() {
   else if (nearCosShop) {   // ⚠️ 안내는 프롬프트 줄에만 — 월드 라벨로 띄우면 다른 라벨을 가린다
     prompt = '🎀 꾸미기 가게';
     firstHintBanner('cosShop', '🎀', '꾸미기 가게', '모자·목도리·가방·이펙트로 내 캐릭터를 꾸며요');
+  }
+  else if (nearLightWorkshop) {
+    prompt = '🏮 빛 공방에 들어가기';
+    firstHintBanner('lightWorkshop', '🏮', '빛 공방을 찾았어요', '밤에 한 줄로 주문하면 내일 아침 빛을 받아요');
   }
   if (!prompt) {   // 🪏 반쯤 판 밭 앞: 남은 유예를 프롬프트 줄로(모바일 규칙 — 안내는 컨텍스트 슬롯에만)
     const dp = plots.find(p => p.digAt && dist2D(p.group.position, player.position) < 1.6);

@@ -66,6 +66,7 @@ export const COOP_FEED = 2;                            // 모이(씨앗) 소비�
 export const GLADE = new THREE.Vector3(7, 0, 26);      // 계곡 중심(남동쪽 숲) — ☕카페·🍄채집 숲과 안 겹치게
 
 export const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
+export const LIGHT_WORKSHOP = new THREE.Vector3(11.6, 0, 29.2);   // 🏮 빛 공방 — 계곡 동쪽 가장자리 연못가(중심에서 ~5.6, 나무 링 안쪽)
 
 //   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
 // 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
