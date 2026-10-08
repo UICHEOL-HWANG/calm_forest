@@ -24,7 +24,7 @@ test('game.js — 플래그·$w·spaceFlags·가시성·이동 한계·미니맵
 
 test('game.js — 루프·입력: 컷신이 카메라를 갖고, 탭·Space·Esc 로 건너뛴다', () => {
   assert.match(GAME, /else if \(updateDreamCut\(dt, t\)\) \{ wantAction = false; \}/);
-  assert.match(GAME, /!intro && !dreamCutActive\(\)\) \{\n\s+handleAction\(\);/);
+  assert.match(GAME, /!intro && !dreamCutActive\(\)( && !mirrorRideActive\(\))?\) \{\n\s+handleAction\(\);/);
   assert.match(GAME, /if \(dreamCutActive\(\) && \(e\.code === 'Space' \|\| e\.code === 'Escape' \|\| e\.code === 'Enter'\)\) skipDreamCut\(\);/);
   assert.match(GAME, /if \(dreamCutActive\(\)\) \{ skipDreamCut\(\); return; \}/);
   assert.match(GAME, /updateDream\(dt, t\);/);
@@ -45,7 +45,7 @@ test('game.js — 세이브: 꿈속에서 끊기면 집 앞·아침으로, dream
 });
 
 test('game.js — 꿈속에선 밤이 멈추고, 깨면 💤 자기와 같은 아침(wakeToMorning)', () => {
-  assert.match(GAME, /if \(!dayPaused && !atDream\) timeOfDay =/);
+  assert.match(GAME, /if \(!dayPaused && !atDream( && !atMirror)?\) timeOfDay =/);
   assert.match(GAME, /function wakeToMorning\(\) \{\n\s+timeOfDay = WAKE_TIME;/);
   assert.match(DREAM, /wakeToMorning\(\);/);
 });
@@ -71,14 +71,14 @@ test('리뷰 반영 — 미니맵·펫·발자국·밤 재확인·충돌 뒤 재
   assert.match(HTML, /d\.place === 'dream' \? 'rgba\(110,90,170,0\.8\)'/);
   assert.match(HTML, /d\.place === 'dream' \? '🌙 꿈의 숲'/);
   assert.match(HTML, /'dream-arrive-modal': 'dream-arrive-ok'/);
-  assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream;/);
-  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMine \|\| atDream;/);
+  assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream( \|\| atMirror)?;/);
+  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMine \|\| atDream( \|\| atMirror)?;/);
   assert.match(GAME, /resolveColliders\(player\.position\);[^\n]*\n\s+if \(atDream\) clampToDream\(player\.position\);/);
   assert.match(DREAM, /if \(!isNight\(\)\) \{ ui\.toast\?\.\('🌙 꿈꾸기는 밤에만 할 수 있어요'\); return; \}/);
 });
 
 test('센서 — 꿈길 컷신 동안 좌표 샘플을 보내지 않는다(조작 없는 이동이 이탈 피처를 왜곡)', () => {
-  assert.match(GAME, /if \(!dreamCutActive\(\)\) sampleFrame\(\(\) => \(\{/);
+  assert.match(GAME, /if \(!dreamCutActive\(\)( && !mirrorRideActive\(\))?\) sampleFrame\(\(\) => \(\{/);
 });
 
 test('트래킹 — GA4 예약 파라미터(source·medium·campaign…)를 쓰지 않는다', () => {
