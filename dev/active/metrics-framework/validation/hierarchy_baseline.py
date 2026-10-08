@@ -166,8 +166,9 @@ def l2(pd_df: pd.DataFrame) -> None:
 
 def funnel() -> None:
     f = read_sql(FUNNEL_SQL)
+    f["platform"] = f["platform"].fillna("web")  # GA4 platform property empty -> web (decision 2026-10-08)
     print("\n[Activation funnel — GA4 cohort, first visit 8/6~9/27, first 7 days, persona excluded]")
-    for label, df in [("all", f), ("web", f[f["platform"] == "web"]), ("toss", f[f["platform"] == "toss"])]:
+    for label, df in [("all", f)] + [(p, f[f["platform"] == p]) for p in sorted(f["platform"].unique())]:
         n = len(df)
         if not n:
             continue
