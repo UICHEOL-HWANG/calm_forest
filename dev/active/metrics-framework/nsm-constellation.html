@@ -1,0 +1,203 @@
+<title>calm forest 북극성 별자리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: night-sky plate — formula caption, constellation SVG (NSM top-right, three L1 clusters, activation bridge), guardrail line, reading notes */
+:root {
+  --sky: #141414;
+  --plate: #181818;
+  --plate-edge: #2a2a2a;
+  --ink: #f2f1ee;
+  --ink-2: #b9b7b1;
+  --ink-3: #807e78;
+  --dust: #5c5b57;
+  --line: #4a4a48;
+  --nsm-fill: #3b3592;
+  --nsm-edge: #9a92f2;
+  --nsm-ray: #2c4f9e;
+  --star-fill: #6e4614;
+  --star-edge: #e3a948;
+  --bridge: #e3a948;
+  --guard: #d07a6a;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--sky); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.6; margin: 0; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+h1 { font-size: clamp(22px, 3vw, 30px); font-weight: 700; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.lede { color: var(--ink-2); margin: 0; max-width: 70ch; }
+.formula { font-family: var(--font-mono); font-size: 13px; color: var(--ink-2); background: var(--plate); border: 1px solid var(--plate-edge); border-radius: 8px; padding: 10px 14px; overflow-x: auto; white-space: nowrap; }
+.formula b { color: var(--nsm-edge); font-weight: 500; }
+.formula i { font-style: normal; color: var(--star-edge); }
+.plate { background: var(--plate); border: 1px solid var(--plate-edge); border-radius: 10px; overflow-x: auto; position: relative; }
+svg.sky { display: block; width: 100%; min-width: 760px; height: auto; }
+svg text { font-family: var(--font-body); }
+.lbl { fill: var(--ink); font-size: 17px; font-weight: 600; }
+.lbl-nsm { fill: var(--ink); font-size: 21px; font-weight: 700; }
+.sub { fill: var(--ink-2); font-size: 13.5px; }
+.sub-nsm { fill: var(--ink-2); font-size: 15px; }
+.tier { fill: var(--ink-3); font-size: 11px; font-family: var(--font-mono); letter-spacing: .08em; }
+.guard-txt { fill: var(--ink-2); font-size: 14.5px; }
+.lbl, .lbl-nsm, .sub, .sub-nsm { paint-order: stroke; stroke: var(--plate); stroke-width: 6px; stroke-linejoin: round; }
+.dust { fill: none; stroke: var(--dust); stroke-width: 1.2; }
+.star { cursor: pointer; outline: none; }
+.star:focus-visible circle.body { stroke: #ffffff; stroke-width: 3; }
+.star:hover circle.body { filter: brightness(1.35); }
+.twinkle { animation: tw 4s ease-in-out infinite; }
+@keyframes tw { 0%, 100% { opacity: .9 } 50% { opacity: .35 } }
+@media (prefers-reduced-motion: reduce) { .twinkle { animation: none; } }
+.tip { position: absolute; pointer-events: none; max-width: 300px; background: #0c0c0c; border: 1px solid var(--plate-edge); color: var(--ink); font-size: 12.5px; padding: 9px 11px; border-radius: 6px; line-height: 1.5; z-index: 3; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.tip b { display: block; font-size: 13px; margin-bottom: 2px; }
+.tip code { font-family: var(--font-mono); font-size: 11.5px; color: var(--star-edge); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { border-top: 1px solid var(--plate-edge); padding-top: 10px; min-width: 0; }
+.note h2 { font-size: 13px; font-weight: 600; margin: 0 0 4px; color: var(--ink); }
+.note p { margin: 0; color: var(--ink-2); font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>calm forest 북극성 별자리</h1>
+    <p class="lede">사람들이 매일 잠깐씩 마을에 들러 무언가를 손에 쥐고 나가는가. 그 하루들의 총량이 북극성이고, 아래 별들은 그 숫자를 움직이는 레버입니다. 별에 마우스를 올리면 정의가 나옵니다.</p>
+  </header>
+
+  <div class="formula" aria-label="분해식">
+    <b>북극성</b> × 7 &nbsp;=&nbsp; <i>주간 방문 주민 수</i> (폭) &nbsp;×&nbsp; <i>1인당 방문일</i> (빈도) &nbsp;×&nbsp; <i>방문일 중 가꾼 비율</i> (품질)
+  </div>
+
+  <div class="plate" id="plate">
+    <svg class="sky" id="sky" viewBox="0 0 1200 760" role="img" aria-label="북극성 지표 트리를 별자리로 그린 그림"></svg>
+  </div>
+
+  <div class="legend" aria-label="범례">
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="#3b3592" stroke="#9a92f2" stroke-width="1.5"/></svg>북극성</span>
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L1 레버</span>
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="5.5" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L2 세부 지표</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#2c4f9e" stroke-width="2" stroke-dasharray="4 4"/></svg>곱셈 분해 (L1 → 북극성)</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2"/></svg>활성화 다리 (신규 → 유지)</span>
+  </div>
+
+  <section class="notes">
+    <div class="note"><h2>세는 법</h2><p>로그인 계정은 계정으로, 게스트는 기기로 셉니다. 게스트 기기가 나중에 로그인하면 과거 기록을 계정으로 합칩니다. 하루는 한국 시간 자정 기준, 웹·토스만 집계합니다.</p></div>
+    <div class="note"><h2>공식 값과 원본</h2><p>공식 값은 페르소나·개발자를 빼고, 베타테스터는 9/9~9/15에만 뺍니다. 필터 없는 원본을 항상 옆에 둡니다. 9/28 주는 원본 21.3, 잠정 필터 1.9였습니다.</p></div>
+    <div class="note"><h2>읽는 법</h2><p>주간 등락은 해석하지 않습니다. 하루 0.6~3.2명이 노이즈 범위입니다. 최근 4주 평균이 직전 4주의 95% 신뢰구간 밖으로 나갈 때만 변화로 봅니다.</p></div>
+    <div class="note"><h2>원천</h2><p>공식 값은 session_logs, 같은 정의를 GA4로도 계산해 대조합니다. 로그인 계정 일치율 98.4%가 기준선이고, 95% 밑으로 2주 연속이면 계측을 점검합니다.</p></div>
+  </section>
+</div>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const sky = document.getElementById('sky');
+const plate = document.getElementById('plate');
+
+const S = {
+  nsm:   { x: 1000, y: 150, r: 26, tier: 'nsm', label: '북극성: 하루 평균 가꾼 주민 수', sub: '7일간 (주민 × 가꾼 날) ÷ 7', side: 'left',
+           tip: ['결과물 행동 16종 중 하나라도 한 날 = 가꾼 하루', '농사(수확·달걀·꿀) · 낚시·채집 · 만들기(제작·요리·카페·조각·밤사이 가공) · 마을(퀘스트·천문대·밤손님)', '원천 <code>session_logs.counts</code> · 그림자 GA4'] },
+  reach: { x: 610, y: 330, r: 15, tier: 'l1', label: '주간 방문 주민 수', sub: '폭 · 몇 명이 오나', side: 'left',
+           tip: ['그 주에 세션이 1개 이상인 주민', '신규 + 유지 + 복귀로 나뉜다'] },
+  freq:  { x: 860, y: 430, r: 15, tier: 'l1', label: '1인당 방문일', sub: '빈도 · 며칠 오나', side: 'right',
+           tip: ['방문일 합 ÷ 방문 주민', '매일 잠깐 리듬이면 7에 가까워진다'] },
+  qual:  { x: 1080, y: 380, r: 15, tier: 'l1', label: '방문일 중 가꾼 비율', sub: '품질 · 온 날이 알찼나', side: 'above',
+           tip: ['가꾼 (주민×날) ÷ 방문 (주민×날)', '1 − 이 값 = 빈손 방문 비율 (견제 지표)'] },
+  newv:  { x: 210, y: 470, r: 9, tier: 'l2', label: '신규 방문', sub: '이번 주 처음', side: 'left',
+           tip: ['그 주가 첫 방문인 주민'] },
+  ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 결과물까지 시간', sub: '온보딩 속도', side: 'below',
+           tip: ['첫 세션 시작 → 첫 결과물 이벤트까지 걸린 시간'] },
+  act:   { x: 360, y: 590, r: 12, tier: 'l2', label: '활성화', sub: '신규 중 7일 내 첫 결과물', side: 'below',
+           tip: ['신규 주민 중 첫 7일 안에 가꾼 날이 1일 이상인 비율', '신규 → 유지 사이의 다리. AARRR 의 Activation'] },
+  keep:  { x: 520, y: 500, r: 9, tier: 'l2', label: '유지', sub: '지난주에도 방문', side: 'right',
+           tip: ['이번 주와 지난주 모두 방문한 주민'] },
+  back:  { x: 580, y: 640, r: 8, tier: 'l2', label: '복귀', sub: '2주+ 공백 후', side: 'below',
+           tip: ['2주 이상 오지 않다가 돌아온 주민'] },
+  habit: { x: 800, y: 600, r: 9, tier: 'l2', label: '습관 주민 비율', sub: '주 4일 이상 방문', side: 'below',
+           tip: ['주 4일 이상 방문한 주민 ÷ 방문 주민'] },
+  mix:   { x: 1095, y: 540, r: 8, tier: 'l2', label: '분야별 결과물 비중', sub: '어디서 가치를 얻나', side: 'below',
+           tip: ['농사 · 낚시채집 · 만들기 · 마을 중 가꾼 날의 구성'] },
+  empty: { x: 980, y: 600, r: 8, tier: 'l2', label: '빈손 방문 마지막 위치', sub: '어디서 막혔나', side: 'below',
+           tip: ['결과물 0 인 날의 <code>last_place</code> 분포'] },
+};
+const CHAINS = [['newv', 'reach'], ['keep', 'reach'], ['back', 'reach'], ['habit', 'freq'], ['mix', 'qual'], ['empty', 'qual'], ['ttfr', 'act']];
+const BRIDGE = [['newv', 'act'], ['act', 'keep']];
+const RAYS = ['reach', 'freq', 'qual'];
+
+const el = (tag, attrs = {}, parent = sky) => {
+  const node = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+  parent.appendChild(node);
+  return node;
+};
+
+// background dust — fixed seed so the sky is identical on every load
+let seed = 7;
+const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+for (let i = 0; i < 46; i++) {
+  const x = 20 + rnd() * 1160, y = 20 + rnd() * 690;
+  if (Object.values(S).some(s => Math.hypot(s.x - x, s.y - y) < 80)) continue;
+  const c = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 2.6, class: 'dust' + (i % 5 === 0 ? ' twinkle' : '') });
+  c.style.animationDelay = (rnd() * 4).toFixed(2) + 's';
+}
+
+const line = (a, b, attrs) => el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, ...attrs });
+RAYS.forEach(id => line(S[id], S.nsm, { stroke: 'var(--nsm-ray)', 'stroke-width': 2, 'stroke-dasharray': '5 5' }));
+CHAINS.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--line)', 'stroke-width': 1.6 }));
+BRIDGE.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--bridge)', 'stroke-width': 2, opacity: .75 }));
+
+const n = S.nsm;
+[[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => {
+  el('line', { x1: n.x + dx * (n.r + 2), y1: n.y + dy * (n.r + 2), x2: n.x + dx * (n.r + 22), y2: n.y + dy * (n.r + 22), stroke: 'var(--nsm-ray)', 'stroke-width': 2 });
+});
+
+
+const tip = document.createElement('div');
+tip.className = 'tip';
+tip.hidden = true;
+plate.appendChild(tip);
+
+function showTip(s, g) {
+  tip.innerHTML = `<b>${s.label.replace('북극성: ', '')}</b>${s.tip.map(t => `<div>${t}</div>`).join('')}`;
+  tip.hidden = false;
+  const pr = plate.getBoundingClientRect();
+  const r = g.querySelector('circle.body').getBoundingClientRect();
+  let left = r.left - pr.left + plate.scrollLeft + r.width / 2 - tip.offsetWidth / 2;
+  left = Math.max(8, Math.min(left, plate.scrollWidth - tip.offsetWidth - 8));
+  let top = r.top - pr.top - tip.offsetHeight - 12;
+  if (top < 8) top = r.bottom - pr.top + 12;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+
+Object.values(S).forEach(s => {
+  const isN = s.tier === 'nsm';
+  const g = el('g', { class: 'star', tabindex: 0, role: 'button', 'aria-label': `${s.label}. ${s.sub}` });
+  el('circle', {
+    class: 'body', cx: s.x, cy: s.y, r: s.r,
+    fill: isN ? 'var(--nsm-fill)' : 'var(--star-fill)',
+    stroke: isN ? 'var(--nsm-edge)' : 'var(--star-edge)',
+    'stroke-width': isN ? 2 : 1.8,
+  }, g);
+  el('circle', { cx: s.x, cy: s.y, r: s.r + 14, fill: 'transparent' }, g);
+  const gap = s.r + 14;
+  let lx = s.x, ly = s.y, anchor = 'middle';
+  if (s.side === 'left') { lx = s.x - gap; anchor = 'end'; ly = s.y - (isN ? 6 : 2); }
+  if (s.side === 'right') { lx = s.x + gap; anchor = 'start'; ly = s.y - 2; }
+  if (s.side === 'below') { ly = s.y + s.r + 24; }
+  if (s.side === 'above') { ly = s.y - s.r - 36; }
+  el('text', { x: lx, y: ly, 'text-anchor': anchor, class: isN ? 'lbl-nsm' : 'lbl' }, g).textContent = s.label;
+  el('text', { x: lx, y: ly + (isN ? 26 : 21), 'text-anchor': anchor, class: isN ? 'sub-nsm' : 'sub' }, g).textContent = s.sub;
+  g.addEventListener('pointerenter', () => showTip(s, g));
+  g.addEventListener('pointerleave', () => { tip.hidden = true; });
+  g.addEventListener('focus', () => showTip(s, g));
+  g.addEventListener('blur', () => { tip.hidden = true; });
+});
+
+const gt = el('text', { x: 600, y: 726, 'text-anchor': 'middle', class: 'guard-txt' });
+const gl = el('tspan', { fill: 'var(--guard)', 'font-weight': 600 }, gt);
+gl.textContent = '견제   ';
+const gr = el('tspan', {}, gt);
+gr.textContent = '빈손 방문 비율 · 코인 순증가 속도 · 세이브 실패율 — 북극성만 오르고 다른 곳이 망가지지 않게';
+</script>
