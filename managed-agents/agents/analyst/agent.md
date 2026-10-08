@@ -17,6 +17,7 @@ tools:
     configs:
       - {name: web_search, enabled: false}
       - {name: web_fetch, enabled: false}
+      - {name: bash, enabled: true, permission_policy: {type: auto}}
   - type: mcp_toolset
     mcp_server_name: bigquery
     default_config: {enabled: false}
@@ -80,4 +81,12 @@ Write `/mnt/session/outputs/report.md` and the charts as `/mnt/session/outputs/f
 ## 이 숫자로 말할 수 없는 것   (never empty)
 ## 다음에 확인할 것
 ```
+## Deliver to Slack
+Only when the kickoff names a Slack channel ID (starts with `C`) and `[ -n "$SLACK_BOT_TOKEN" ]`; otherwise say "슬랙 전송 생략".
+`$SLACK_BOT_TOKEN` is a placeholder the platform swaps for the real token on requests to `slack.com` only. Never print or echo it.
+1. `POST https://slack.com/api/chat.postMessage` with header `Authorization: Bearer $SLACK_BOT_TOKEN`, JSON `{channel, markdown_text}` (never add `text`: Slack rejects the pair with `markdown_text_conflict`): the question, 한 줄 답, the 5-line summary (under 3,000 characters). Keep its `ts`.
+2. For `report.md` and each `fig-*.png`: `POST https://slack.com/api/files.getUploadURLExternal` (same header, form fields `filename`, `length` = byte size) -> `upload_url`, `file_id`; then `POST` the bytes to `upload_url` with `-F file=@<path>` and **no Authorization header** (it is a pre-signed `files.slack.com` URL; expect HTTP 200).
+3. `POST https://slack.com/api/files.completeUploadExternal` (same header) with `files=[{"id":...,"title":...}, ...]`, `channel_id`, and `thread_ts` = the ts from step 1, so the files land in that message's thread.
+Build JSON with `jq -n` or Python `json.dumps`. Check `"ok": true` on every slack.com call; retry a failed call once, then report Slack's `error` value. Never call any other host.
+
 End the session with a 5-line summary message.
