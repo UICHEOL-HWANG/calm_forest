@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dimension Maps Mockup</title>
+<style>
+  :root { --ink:#3b2f4a; --card:rgba(255,255,255,.82); }
+  html,body { margin:0; height:100%; overflow:hidden; background:#000; font-family:"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif; }
+  canvas { display:block; width:100vw !important; height:100vh !important; }
+  .hud { position:fixed; left:16px; top:14px; display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { background:var(--card); color:var(--ink); padding:7px 12px; border-radius:999px; font-weight:700; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.18); }
+  .title { position:fixed; left:16px; right:16px; bottom:22px; text-align:center; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.55); }
+  .title b { display:block; font-size:26px; letter-spacing:-.5px; }
+  .title span { font-size:14px; opacity:.92; }
+  .prompt { position:fixed; left:50%; transform:translateX(-50%); bottom:96px; background:var(--card); color:var(--ink); padding:9px 16px; border-radius:14px; font-weight:700; font-size:15px; box-shadow:0 2px 10px rgba(0,0,0,.2); white-space:nowrap; max-width:calc(100vw - 32px); box-sizing:border-box; }
+  @media (max-width:600px){ .title b{font-size:21px} .title span{font-size:12px} .prompt{font-size:12.5px; bottom:92px; white-space:normal; text-align:center; width:max-content} .chip{font-size:12px; padding:6px 10px} }
+  [hidden] { display:none !important; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div class="hud" id="hud" hidden></div>
+<div class="prompt" id="prompt" hidden></div>
+<div class="title" id="title" hidden></div>
+<script type="module">
+import * as THREE from 'three';
+
+const C = new URLSearchParams(location.search).get('c') || 'a';
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const portrait = H > W;
+const camera = new THREE.PerspectiveCamera(portrait ? 62 : 48, W / H, 0.1, 300);
+
+// ---------- helpers ----------
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85, ...o });
+const glow = (color, k = 1.6) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: k, flatShading: true, roughness: 0.4 });
+function mesh(geo, m, x = 0, y = 0, z = 0, parent = scene) {
+  const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o;
+}
+let seed = 7;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const range = (a, b) => a + rnd() * (b - a);
+
+let haloTex;
+function halo(color, size, x, y, z, op = 0.8, parent = scene) {
+  if (!haloTex) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const g = cv.getContext('2d'); const gr = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128); haloTex = new THREE.CanvasTexture(cv);
+  }
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending }));
+  s.scale.set(size, size, 1); s.position.set(x, y, z); parent.add(s); return s;
+}
+function gradientSky(top, bottom) {
+  const cv = document.createElement('canvas'); cv.width = 2; cv.height = 256;
+  const g = cv.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, top); gr.addColorStop(1, bottom); g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function stars(n, r, color = 0xffffff, size = 0.35) {
+  const p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const th = rnd() * Math.PI * 2, ph = rnd() * Math.PI * 0.45;
+    p[i * 3] = r * Math.sin(ph) * Math.cos(th); p[i * 3 + 1] = r * Math.cos(ph) * 0.8 + 6; p[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color, size, sizeAttenuation: true, transparent: true, opacity: 0.9 })));
+}
+
+// 🐻 player bear (same build as the brand mark)
+function bear(x, z, ry = 0, tint = 0x9a6a45, parent = scene, opts = {}) {
+  const g = new THREE.Group(); g.position.set(x, opts.y || 0, z); g.rotation.y = ry; parent.add(g);
+  const fur = opts.mat || mat(tint, { roughness: 0.95 });
+  const light = opts.mat || mat(0xd9b48a);
+  const body = mesh(new THREE.SphereGeometry(0.62, 16, 12), fur, 0, 0.62, 0, g); body.scale.set(1, 1.05, 0.92);
+  mesh(new THREE.SphereGeometry(0.4, 14, 10), light, 0, 0.55, 0.36, g).scale.set(1, 1.1, 0.5);
+  mesh(new THREE.SphereGeometry(0.46, 16, 12), fur, 0, 1.42, 0.02, g);
+  [-1, 1].forEach(s => {
+    mesh(new THREE.SphereGeometry(0.15, 10, 8), fur, s * 0.33, 1.8, -0.02, g);
+    mesh(new THREE.SphereGeometry(0.16, 10, 8), fur, s * 0.6, 0.72, 0.1, g).scale.set(0.9, 1.4, 0.9);
+    mesh(new THREE.SphereGeometry(0.055, 8, 6), opts.eye || mat(0x1d1410), s * 0.16, 1.5, 0.41, g);
+  });
+  if (!opts.mat) {
+    mesh(new THREE.SphereGeometry(0.16, 12, 8), light, 0, 1.33, 0.4, g).scale.set(1.2, 0.85, 0.8);
+    mesh(new THREE.SphereGeometry(0.055, 8, 6), mat(0x1d1410), 0, 1.38, 0.53, g);
+  }
+  return g;
+}
+function lowTree(x, z, s = 1, leaf = 0x8fd6a0, trunk = 0xd8a679, parent = scene) {
+  mesh(new THREE.CylinderGeometry(0.16 * s, 0.22 * s, 1.4 * s, 6), mat(trunk), x, 0.7 * s, z, parent);
+  mesh(new THREE.IcosahedronGeometry(1.0 * s, 0), mat(leaf), x, 1.9 * s, z, parent);
+  mesh(new THREE.IcosahedronGeometry(0.7 * s, 0), mat(leaf), x + 0.4 * s, 2.5 * s, z + 0.1 * s, parent);
+}
+function pine(x, z, s = 1, leaf = 0x5fae7a, parent = scene) {
+  mesh(new THREE.CylinderGeometry(0.12 * s, 0.16 * s, 0.8 * s, 6), mat(0xa8774f), x, 0.4 * s, z, parent);
+  [0, 1, 2].forEach(i => mesh(new THREE.ConeGeometry((1.1 - i * 0.28) * s, 1.2 * s, 7), mat(leaf), x, (1.1 + i * 0.7) * s, z, parent));
+}
+function house(x, z, ry, wall, roof, parent = scene, win = 0xfff2a8, winGlow = false) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; parent.add(g);
+  mesh(new THREE.BoxGeometry(3, 2.2, 2.6), mat(wall), 0, 1.1, 0, g);
+  const r = mesh(new THREE.ConeGeometry(2.4, 1.5, 4), mat(roof), 0, 2.95, 0, g); r.rotation.y = Math.PI / 4; r.scale.set(1, 1, 0.85);
+  const wm = winGlow ? glow(win, 1.2) : mat(win);
+  mesh(new THREE.BoxGeometry(0.6, 0.6, 0.05), wm, -0.75, 1.3, 1.31, g);
+  mesh(new THREE.BoxGeometry(0.6, 0.6, 0.05), wm, 0.75, 1.3, 1.31, g);
+  mesh(new THREE.BoxGeometry(0.7, 1.1, 0.05), mat(0xb07a4c), 0, 0.55, 1.31, g);
+  mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), mat(0xc9b6a8), 0.9, 3.3, -0.3, g);
+  return g;
+}
+function sun(color, intensity, x, y, z) {
+  const d = new THREE.DirectionalLight(color, intensity); d.position.set(x, y, z); d.castShadow = true;
+  d.shadow.mapSize.set(2048, 2048); const sc = d.shadow.camera; sc.left = sc.bottom = -30; sc.right = sc.top = 30; sc.far = 120;
+  d.shadow.bias = -0.0008; scene.add(d); return d;
+}
+function setUI(chips, prompt, title, sub) {
+  document.getElementById('hud').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+  document.getElementById('prompt').textContent = prompt;
+  document.getElementById('title').innerHTML = `<b>${title}</b><span>${sub}</span>`;
+}
+
+const anims = [];
+
+// =============================================================
+//  A. 🌙 꿈의 숲 — 잠들면 들어가는 떠 있는 섬들
+// =============================================================
+function buildDream() {
+  scene.background = gradientSky('#2a2560', '#c9a6e8');
+  scene.fog = new THREE.Fog(0xb89ad8, 26, 80);
+  scene.add(new THREE.HemisphereLight(0xe8d8ff, 0x6b5aa8, 0.85));
+  sun(0xffe6f5, 1.4, -12, 22, 10);
+  stars(500, 90, 0xfff6d8, 0.45);
+
+  mesh(new THREE.IcosahedronGeometry(4, 2), glow(0xfff4c8, 1.1), -26, 26, -60);
+  halo(0xffeec0, 30, -26, 26, -59, 0.55);
+
+  const island = (x, y, z, r, top = 0xc8b8ff) => {
+    const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+    mesh(new THREE.CylinderGeometry(r, r * 0.92, 0.6, 9), mat(top), 0, 0, 0, g);
+    const under = mesh(new THREE.ConeGeometry(r * 0.92, r * 1.5, 9), mat(0x8e78c8), 0, -0.3 - r * 0.75, 0, g); under.rotation.x = Math.PI;
+    mesh(new THREE.ConeGeometry(r * 0.35, r * 0.7, 6), mat(0x7a64b8), r * 0.4, -r * 1.4, 0.2, g).rotation.x = Math.PI;
+    anims.push(t => { g.position.y = y + Math.sin(t * 0.6 + x) * 0.25; });
+    return g;
+  };
+  const crystalTree = (parent, x, z, s, c) => {
+    mesh(new THREE.CylinderGeometry(0.1 * s, 0.16 * s, 1.2 * s, 5), mat(0xf6e9ff), x, 0.9 * s, z, parent);
+    mesh(new THREE.OctahedronGeometry(0.85 * s, 0), glow(c, 0.55), x, 2.1 * s, z, parent).scale.set(1, 1.35, 1);
+    halo(c, 3.2 * s, x, 2.1 * s, z, 0.35, parent);
+  };
+
+  const main = island(0, 0, 0, 7, 0xd9ccff);
+  crystalTree(main, -3.5, -2.5, 1.2, 0xff9ee0);
+  crystalTree(main, 3.8, -3, 1.0, 0x9ee8ff);
+  crystalTree(main, 4.5, 1.8, 0.8, 0xffd59e);
+  const bed = new THREE.Group(); bed.position.set(-3.2, 0.3, 2.6); main.add(bed);
+  mesh(new THREE.BoxGeometry(2.2, 0.5, 1.4), mat(0xb98fd6), 0, 0.25, 0, bed);
+  mesh(new THREE.BoxGeometry(2.1, 0.25, 1.3), mat(0xfff6ff), 0, 0.6, 0, bed);
+  mesh(new THREE.SphereGeometry(0.42, 10, 8), mat(0xffffff), -0.7, 0.85, 0, bed).scale.set(1, 0.55, 1.3);
+  [[2, 3.6, 0xffb3e6], [0.6, 4.6, 0x9ef0ff], [-0.8, -4.6, 0xfff09e]].forEach(([x, z, c]) => {
+    mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.6, 6), mat(0xffffff), x, 0.6, z, main);
+    mesh(new THREE.SphereGeometry(0.35, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), glow(c, 1.2), x, 0.85, z, main);
+    halo(c, 2.2, x, 1.0, z, 0.6, main);
+  });
+
+  const isl2 = island(-13, 3.5, -12, 4.2, 0xffd6ec);
+  crystalTree(isl2, 0, -0.5, 1.4, 0xb59eff);
+  const isl3 = island(12, 6, -16, 4.8, 0xc6f2ff);
+  crystalTree(isl3, -1.2, 0, 1.1, 0xff9ee0); crystalTree(isl3, 1.6, -1, 0.9, 0xfff09e);
+  island(22, 1, -4, 3.2, 0xe2d6ff);
+  island(-22, 8, -30, 5, 0xd6e8ff); island(4, 12, -40, 6, 0xffe0f0);
+
+  for (let i = 0; i < 5; i++) {
+    const t = (i + 1) / 6;
+    const s = mesh(new THREE.CylinderGeometry(0.7, 0.55, 0.3, 7), mat(0xeadfff), THREE.MathUtils.lerp(-5, -11, t), THREE.MathUtils.lerp(0.4, 3.6, t), THREE.MathUtils.lerp(-4, -10, t));
+    anims.push(tt => { s.position.y = THREE.MathUtils.lerp(0.4, 3.6, t) + Math.sin(tt + i) * 0.12; });
+  }
+  for (let i = 0; i < 6; i++) {
+    const t = (i + 1) / 7;
+    mesh(new THREE.CylinderGeometry(0.7, 0.55, 0.3, 7), mat(0xd9f4ff), THREE.MathUtils.lerp(5, 10, t), THREE.MathUtils.lerp(0.4, 6.1, t), THREE.MathUtils.lerp(-4, -13, t));
+  }
+
+  const shardSpots = [[1.2, 1.5, -1.5], [-6.5, 2.4, -6.5], [-13, 6, -12], [8, 4.2, -9], [12, 8.6, -16], [22, 3.4, -4], [3, 1.6, 2]];
+  shardSpots.forEach(([x, y, z], i) => {
+    const c = [0xfff09e, 0xff9ee0, 0x9ee8ff][i % 3];
+    const s = mesh(new THREE.OctahedronGeometry(0.32, 0), glow(c, 2.2), x, y, z); s.scale.y = 1.6;
+    halo(c, 2.4, x, y, z, 0.75);
+    anims.push(t => { s.rotation.y = t * 1.5 + i; s.position.y = y + Math.sin(t * 2 + i) * 0.15; });
+  });
+
+  for (let i = 0; i < 9; i++) {
+    const g = new THREE.Group(); g.position.set(range(-40, 40), range(3, 18), range(-55, -20)); scene.add(g);
+    for (let k = 0; k < 4; k++) mesh(new THREE.IcosahedronGeometry(range(1, 1.8), 1), mat(0xffffff, { roughness: 1 }), k * 1.4 - 2, range(-0.3, 0.4), range(-0.4, 0.4), g);
+  }
+  for (let i = 0; i < 40; i++) halo([0xfff09e, 0xffb3e6, 0x9ef0ff][i % 3], range(0.3, 0.7), range(-12, 14), range(0.6, 7), range(-14, 6), 0.9);
+
+  const me = bear(0.5, 2.0, 0.45, 0x9a6a45, main, { y: 0.3 });
+  const cap = mesh(new THREE.ConeGeometry(0.36, 0.75, 10), mat(0x8fb8ff), 0.1, 2.0, -0.05, me); cap.rotation.z = -0.45;
+  mesh(new THREE.SphereGeometry(0.11, 8, 6), mat(0xffffff), 0.4, 2.28, -0.05, me);
+
+  camera.position.set(portrait ? 4 : 7, portrait ? 9 : 7.5, portrait ? 17 : 15);
+  camera.lookAt(-1, 2.2, -5);
+  setUI(['🌙 꿈의 숲', '✨ 꿈 조각 3 / 7', '⏳ 해 뜨기까지 4:12'], '✨ 꿈 조각 줍기  ·  🛏️ 깨어나기', 'A. 🌙 꿈의 숲', '🛏️ 잠들면 열리는 떠 있는 섬 — 꿈 조각으로 꿈 장식·별자리 해금');
+}
+
+// =============================================================
+//  B. 🪞 거울 마을 — 연못 너머, 밤낮이 뒤집힌 내 마을
+// =============================================================
+function buildMirror() {
+  scene.background = gradientSky('#0d1838', '#2f5a7a');
+  scene.fog = new THREE.Fog(0x24476a, 22, 70);
+  scene.add(new THREE.HemisphereLight(0x9cc8ff, 0x1a2a48, 0.7));
+  sun(0xbfd8ff, 0.9, 10, 20, 8);
+  stars(260, 90, 0xd6ecff, 0.3);
+
+  // 하늘에 거꾸로 매달린 "현실" 낮 마을
+  const sky = new THREE.Group(); sky.position.y = 13.5; sky.rotation.z = Math.PI; scene.add(sky);
+  const skyGround = new THREE.Mesh(new THREE.CircleGeometry(26, 40), mat(0xbfe8c9)); skyGround.rotation.x = -Math.PI / 2; sky.add(skyGround);
+  house(-6, -4, 0.3, 0xffe3c4, 0xff9e9e, sky); house(5, -6, -0.4, 0xfff2d6, 0x9ecbff, sky); house(0, 6, Math.PI, 0xffe3c4, 0xffc89e, sky);
+  [[-10, 3], [10, 2], [-3, -10], [8, 8], [-9, 9]].forEach(([x, z]) => lowTree(x, z, 1.1, 0x8fd6a0, 0xd8a679, sky));
+  const skyLight = new THREE.PointLight(0xfff2c8, 40, 30); skyLight.position.set(0, 11, -4); scene.add(skyLight);
+  halo(0xfff2c8, 40, 0, 12, -6, 0.22);
+
+  // 물빛 경계(거울 막)
+  const veil = new THREE.Mesh(new THREE.CircleGeometry(30, 48), new THREE.MeshStandardMaterial({ color: 0x9ee0ff, transparent: true, opacity: 0.12, side: THREE.DoubleSide, emissive: 0x6fbfff, emissiveIntensity: 0.4 }));
+  veil.rotation.x = Math.PI / 2; veil.position.y = 8.6; scene.add(veil);
+  for (let i = 0; i < 4; i++) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(4 + i * 4, 0.05, 6, 64), new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.35 - i * 0.06 }));
+    ring.rotation.x = Math.PI / 2; ring.position.set(0, 8.6, -4); scene.add(ring);
+    anims.push(t => { const k = ((t * 0.25 + i / 4) % 1); ring.scale.setScalar(0.4 + k * 1.6); ring.material.opacity = 0.4 * (1 - k); });
+  }
+
+  // 거울 쪽 땅 — 좌우 반전, 색 반전된 내 마을
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(30, 48), mat(0x3d5f7a, { roughness: 0.6, metalness: 0.15 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(2.4, 28), new THREE.MeshStandardMaterial({ color: 0xbff0ff, emissive: 0x7fd6ff, emissiveIntensity: 0.9, roughness: 0.1, metalness: 0.4 }));
+  pond.rotation.x = -Math.PI / 2; pond.position.set(3.5, 0.03, 4); scene.add(pond);
+  halo(0x9ee8ff, 7, 3.5, 0.6, 4, 0.5);
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; mesh(new THREE.DodecahedronGeometry(0.35, 0), mat(0x8aa0b8), 3.5 + Math.cos(a) * 2.6, 0.15, 4 + Math.sin(a) * 2.6); }
+
+  house(6, -4, -0.3, 0x5a6fa0, 0x3d4f8a, scene, 0x9ee8ff, true);
+  house(-5, -6, 0.4, 0x6a5f9a, 0x4a3f7a, scene, 0xffd59e, true);
+  house(0, -13, Math.PI * 0.05, 0x506a9a, 0x6a4f8a, scene, 0xb8f0ff, true);
+  [[10, 3], [-10, 2], [3, -10], [-8, 8], [9, 9], [-12, -6], [12, -10]].forEach(([x, z], i) => lowTree(x, z, 1.1, [0x4f7aa8, 0x5a8fb0, 0x6a7ac0][i % 3], 0x6a7090));
+
+  // 그림자 주민 (반투명 실루엣 + 빛나는 눈)
+  const shadowMat = new THREE.MeshStandardMaterial({ color: 0x1a2240, transparent: true, opacity: 0.72, roughness: 1 });
+  const eyeMat = glow(0xbff6ff, 2.4);
+  [[-3.5, -1, 0.6], [7.5, 0.5, -0.9], [-1, -8, 0.2]].forEach(([x, z, r], i) => {
+    const b = bear(x, z, r, 0, scene, { mat: shadowMat, eye: eyeMat });
+    anims.push(t => { b.position.y = Math.sin(t * 1.6 + i) * 0.12; });
+    mesh(new THREE.SphereGeometry(0.3, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), x, 2.6, z);
+    halo(0xffffff, 1.4, x, 2.6, z, 0.5);
+  });
+
+  // 잃어버린 물건 (이 세계에서 유일하게 따뜻한 색)
+  const lost = [
+    [-7.5, 0.4, 3, () => { const g = new THREE.Group(); mesh(new THREE.TorusGeometry(0.28, 0.08, 6, 14), mat(0xffd27a, { metalness: 0.6, roughness: 0.3 }), 0, 0, 0, g); return g; }],
+    [1.5, 0.4, -4, () => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(0.5, 0.35, 0.35), mat(0xff9e9e), 0, 0, 0, g); mesh(new THREE.BoxGeometry(0.56, 0.08, 0.4), mat(0xffd27a), 0, 0.1, 0, g); return g; }],
+    [10, 0.4, -6, () => { const g = new THREE.Group(); mesh(new THREE.ConeGeometry(0.3, 0.6, 8), mat(0xff9e5e), 0, 0, 0, g); mesh(new THREE.SphereGeometry(0.12, 6, 6), mat(0x86d18a), 0, 0.35, 0, g); return g; }],
+  ];
+  lost.forEach(([x, y, z, mk], i) => {
+    const o = mk(); o.position.set(x, y, z); scene.add(o);
+    halo(0xffd59e, 2.6, x, y + 0.1, z, 0.85);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 6, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending }));
+    beam.position.set(x, 3, z); scene.add(beam);
+    anims.push(t => { o.rotation.y = t + i; o.position.y = y + Math.sin(t * 2 + i) * 0.1; });
+  });
+  for (let i = 0; i < 50; i++) halo(0xbfeaff, range(0.2, 0.5), range(-14, 14), range(0.5, 9), range(-14, 8), 0.7);
+
+  bear(1.6, 5.2, 0.5);
+  halo(0xfff2c8, 4, 1.6, 1.2, 5.2, 0.35);
+
+  camera.position.set(portrait ? 5 : 7, portrait ? 2.6 : 3.4, portrait ? 26 : 17);
+  camera.lookAt(0, portrait ? 6.2 : 5.4, -4);
+  setUI(['🪞 거울 마을', '🔍 잃어버린 물건 1 / 3', '👤 그림자 주민 3'], '👤 그림자 주민에게 말 걸기  ·  💧 연못으로 돌아가기', 'B. 🪞 거울 마을', '연못에 비친 내 마을 — 밤낮이 뒤집힌 곳에서 주민들의 잃어버린 물건 찾기');
+}
+
+// =============================================================
+//  C. 🍄 요정 고리 — 하루 한 번 나타나는 짧은 방 (오늘의 테마: 사탕 숲)
+// =============================================================
+function buildFairy() {
+  scene.background = gradientSky('#ffd6ec', '#fff3d6');
+  scene.fog = new THREE.Fog(0xffe6ef, 22, 60);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xffc8dc, 1.0));
+  sun(0xfff4e0, 1.6, 12, 24, 12);
+
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(13, 13, 0.5, 40), mat(0xffe9c8)); floor.position.y = -0.25; floor.receiveShadow = true; scene.add(floor);
+  for (let r = 0; r < 3; r++) for (let i = 0; i < 18 + r * 10; i++) {
+    const a = i / (18 + r * 10) * Math.PI * 2, rr = 4.5 + r * 3;
+    mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.06, 6), mat([0xffb3d1, 0xb3e6ff, 0xfff0a8, 0xc8f0c0][(i + r) % 4]), Math.cos(a) * rr, 0.03, Math.sin(a) * rr);
+  }
+  for (let i = 0; i < 40; i++) {
+    const a = i / 40 * Math.PI * 2;
+    mesh(new THREE.BoxGeometry(1.9, 1.2 + (i % 2) * 0.4, 0.5), mat(i % 2 ? 0xe0a86a : 0xf2c48a), Math.cos(a) * 13, 0.6, Math.sin(a) * 13).rotation.y = -a + Math.PI / 2;
+  }
+  for (let i = 0; i < 22; i++) { const a = i / 22 * Math.PI * 2 + 0.1; pine(Math.cos(a) * range(17, 24), Math.sin(a) * range(17, 24), range(1.4, 2.2), 0x8fd6a0); }
+
+  // 중앙: 버섯 고리(출구)
+  for (let i = 0; i < 9; i++) {
+    const a = i / 9 * Math.PI * 2, x = Math.cos(a) * 2.3, z = Math.sin(a) * 2.3 + 1;
+    mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.45, 6), mat(0xfff6e6), x, 0.22, z);
+    mesh(new THREE.SphereGeometry(0.32, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), glow(0xff7aa8, 0.6), x, 0.42, z);
+    halo(0xffb3d1, 1.4, x, 0.6, z, 0.55);
+  }
+  const swirl = new THREE.Mesh(new THREE.CircleGeometry(2, 32), new THREE.MeshBasicMaterial({ color: 0xffd6f5, transparent: true, opacity: 0.55 }));
+  swirl.rotation.x = -Math.PI / 2; swirl.position.set(0, 0.05, 1); scene.add(swirl);
+  for (let i = 0; i < 20; i++) halo([0xffffff, 0xffd6f5, 0xfff0a8][i % 3], range(0.2, 0.45), range(-1.8, 1.8), range(0.3, 3.5), 1 + range(-1.8, 1.8), 0.9);
+
+  const lolli = (x, z, s, c1, c2) => {
+    mesh(new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 2.6 * s, 6), mat(0xffffff), x, 1.3 * s, z);
+    const d = mesh(new THREE.CylinderGeometry(0.9 * s, 0.9 * s, 0.3 * s, 16), mat(c1), x, 2.8 * s, z); d.rotation.x = Math.PI / 2;
+    mesh(new THREE.TorusGeometry(0.5 * s, 0.13 * s, 6, 16), mat(c2), x, 2.8 * s, z + 0.16 * s);
+  };
+  lolli(-8, -5, 1.3, 0xff8fb8, 0xffffff); lolli(8.5, -4, 1.1, 0x8fd6ff, 0xffffff); lolli(-6, 6, 1.0, 0xfff08f, 0xff8fb8); lolli(9, 5, 1.2, 0xb8f08f, 0xffffff); lolli(0, -10, 1.4, 0xd6a8ff, 0xffffff);
+  const gum = [[-4, -3, 0xff6f91], [3.5, -5.5, 0x6fd6ff], [5.5, 1.5, 0xffd36f], [-6, 1.5, 0x8fe08f], [-2, -7, 0xc89fff], [6.5, -8, 0xff6f91]];
+  gum.forEach(([x, z, c], i) => {
+    const g = mesh(new THREE.SphereGeometry(0.55, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.25, clearcoat: 1, flatShading: true }), x, 0, z);
+    g.scale.y = 1.4;
+    if (i < 2) halo(0xffffff, 1.6, x, 0.9, z, 0.7);
+    anims.push(t => { g.scale.y = 1.4 + Math.sin(t * 3 + i) * 0.08; });
+  });
+  mesh(new THREE.CylinderGeometry(1, 1.2, 0.7, 8), mat(0xf2c48a), 0, 0.35, -5);
+  const box = new THREE.Group(); box.position.set(0, 0.7, -5); scene.add(box);
+  mesh(new THREE.BoxGeometry(1.1, 0.8, 0.8), mat(0xff8fb8), 0, 0.4, 0, box);
+  mesh(new THREE.BoxGeometry(1.16, 0.15, 0.86), mat(0xfff08f), 0, 0.82, 0, box);
+  mesh(new THREE.BoxGeometry(0.18, 0.84, 0.86), mat(0xfff08f), 0, 0.42, 0, box);
+  halo(0xfff0a8, 4, 0, 1.4, -5, 0.6);
+  // 다음 방 문(다른 테마 미리보기)
+  [0xd6f0ff, 0xc8f0c0, 0xffe0b3].forEach((c, i) => {
+    const a = -Math.PI / 2 + (i - 1) * 0.55, x = Math.cos(a) * 12.3, z = Math.sin(a) * 12.3;
+    const arch = mesh(new THREE.TorusGeometry(1.2, 0.25, 8, 20, Math.PI), mat(0xffffff), x, 1.2, z); arch.rotation.y = -a + Math.PI / 2;
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20, 0, Math.PI), new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide })); fill.position.set(x, 1.2, z); fill.rotation.y = -a + Math.PI / 2; scene.add(fill);
+    mesh(new THREE.BoxGeometry(2.2, 1.2, 0.05), new THREE.MeshBasicMaterial({ color: c }), x, 0.6, z).rotation.y = -a + Math.PI / 2;
+  });
+  [[-2.5, 2.2, -2], [3, 2.6, -1]].forEach(([x, y, z], i) => {
+    const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+    mesh(new THREE.SphereGeometry(0.16, 8, 6), glow(0xfff6c8, 1.5), 0, 0, 0, g);
+    [-1, 1].forEach(s => { const w = mesh(new THREE.CircleGeometry(0.3, 8), new THREE.MeshBasicMaterial({ color: 0xd6f0ff, transparent: true, opacity: 0.7, side: THREE.DoubleSide }), s * 0.22, 0.05, 0, g); w.rotation.y = s * 0.6; });
+    halo(0xfff6c8, 1.4, 0, 0, 0, 0.8, g);
+    anims.push(t => { g.position.y = y + Math.sin(t * 2.5 + i) * 0.25; });
+  });
+  for (let i = 0; i < 60; i++) halo([0xffb3d1, 0xb3e6ff, 0xfff0a8][i % 3], range(0.15, 0.35), range(-12, 12), range(0.5, 10), range(-12, 10), 0.85);
+
+  bear(-0.4, 5.2, 0.35);
+
+  camera.position.set(portrait ? 3 : 5, portrait ? 13 : 10.5, portrait ? 19 : 16);
+  camera.lookAt(0, 0.5, -3);
+  setUI(['🍄 요정 고리 · 방 2 / 4', '🍬 오늘의 테마: 사탕 숲', '⏳ 2:47', '🫧 젤리 2 / 6'], '🫧 젤리 톡 터뜨리기  ·  🍄 고리로 나가기', 'C. 🍄 요정 고리', '하루 한 번 나타나는 버섯 고리 — 매일 테마가 바뀌는 3~5분짜리 작은 방');
+}
+
+({ a: buildDream, b: buildMirror, c: buildFairy })[C]();
+
+const clock = new THREE.Clock();
+const T0 = Number(new URLSearchParams(location.search).get('t') || 1.3);
+function frame() {
+  const t = T0 + clock.getElapsedTime();
+  anims.forEach(f => f(t));
+  const cv = renderer.domElement;
+  if (cv.width !== Math.round(cv.clientWidth * renderer.getPixelRatio()) || cv.height !== Math.round(cv.clientHeight * renderer.getPixelRatio())) {
+    renderer.setSize(cv.clientWidth, cv.clientHeight, false); camera.aspect = cv.clientWidth / cv.clientHeight; camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+// 🎬 쇼츠 티저용 카메라 무빙 — 연못 쪽에서 다가가며 하늘에 거꾸로 매달린 마을까지 올려다본다(?c=b 전용)
+if (C === 'b') {
+  const from = new THREE.Vector3(5, 2.6, 26), to = new THREE.Vector3(2.2, 2.0, 13);
+  const lookFrom = new THREE.Vector3(0, 4.2, -4), lookTo = new THREE.Vector3(0, 10.5, -6);
+  const DUR = Number(new URLSearchParams(location.search).get('dur') || 5);
+  // 녹화기(record-page.mjs)가 녹화를 켜는 순간 window.__recStart 를 찍는다 — 그 전엔 출발점에 멈춰 있는다
+  anims.push(() => {
+    const t0 = window.__recStart;
+    const k = t0 ? Math.min(1, (performance.now() - t0) / 1000 / DUR) : 0, e = k * k * (3 - 2 * k);
+    camera.position.lerpVectors(from, to, e);
+    camera.lookAt(new THREE.Vector3().lerpVectors(lookFrom, lookTo, e));
+  });
+}
+frame();
+window.__ready = true;
+</script>
+</body>
+</html>

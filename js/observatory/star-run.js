@@ -80,17 +80,21 @@ export function starSettle(summary, run = {}, diff = null, ctx = {}) {
   if (coins > 0 || firstClear || bestUp) requestSave();
 
   if (diff) settleDifficulty('star', ddaOutcome('star', summary));   // 🎚️ 점수/그 판 만점
-  // [GA4] 식별자·숫자만. 배열은 쉼표 문자열로(요리 cooking_result 와 같은 모양 — GA4 파라미터는 배열을 못 받는다)
+  // [GA4] 식별자·숫자만(25개 한도 — 배열은 아래 star_detail 로). 배열은 쉼표 문자열(GA4 파라미터는 배열을 못 받는다)
   trackEvent('star_result', {
     constellation: c.id, notes: noteCount(c), max_score: maxScore(c),
     success: summary.success ? 1 : 0,
     perfect: summary.perfect, good: summary.good, miss: summary.miss, max_combo: summary.maxCombo, score: summary.score,
     coins, bonus_coins: bonus, first_clear: firstClear ? 1 : 0, already_today: alreadyToday ? 1 : 0,
-    offsets: (run.offsets || []).map(v => Math.round(v)).join(','),
-    judges: (run.judges || []).join(','),
     duration_ms: Math.round(run.durationMs || 0), early_taps: run.earlyTaps || 0,
     run_id: ctx.runId || '', attempt_n: ctx.attemptN || 0, unlocked_n: ctx.unlockedN || 0,
     ...(diff ? diffParams(diff) : {}),
+  });
+  // 🧮 탭별 원본 배열은 GA4 25개 한도 때문에 따로 보낸다 — run_id 로 star_result 와 잇는다(전체 기록은 star_runs)
+  trackEvent('star_detail', {
+    constellation: c.id, run_id: ctx.runId || '',
+    offsets: (run.offsets || []).map(v => Math.round(v)).join(','),
+    judges: (run.judges || []).join(','),
   });
   if (unlockedNext) trackEvent('star_unlock', { constellation: unlockedNext, from: c.id, run_id: ctx.runId || '' });
 
