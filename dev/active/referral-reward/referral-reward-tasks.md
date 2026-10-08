@@ -30,10 +30,14 @@
 - [ ] 별빛 도구 세트(전 도구) · 아치 · 날개 · 하트 핀 (게임 안 캡처 PC+모바일 컨펌)
 
 ## 5. UI
-- [ ] ☰ 친구 초대 시트 (링크·공유·진행 1/3/5) — 문구 선검수
-- [ ] 도착 배너 · 보상 소식
+- [x] ☰ 친구 초대 시트 (링크·공유·진행 1/3/5) — 문구 추천안 A 확정 · js/referral/{rules,flow,ui,index}.js · PC·모바일 캡처 확인
+- [x] 로그인 화면 도착 배너 · 연결 결과 토스트 · 보상 소식(서버 notices)
+- [x] CONFIG.REFERRAL_ON=false (4곳 배포 후 켬) · dev 세션은 서버 안 부름
+
+## 5-1. 사고
+- [x] cafe.js 한 줄 if 주석이 본문을 삼켜 게임 부팅 불가 → 6a5864b 수정 + tests/js-syntax.test.mjs(js/ 전체 파싱 가드)
 
 ## 6. 마무리
-- [ ] 트래킹 이벤트 6종
+- [ ] 트래킹 최종 정리(사용자 지시: 다 만들면 파라미터 정리) — 현재 5종: invite_land{} · invite_sheet_open{guest,active} · invite_share{channel} · referral_bind{result} · referral_reward_grant{item_id,tier}
 - [ ] 코드 리뷰 · 보안 리뷰
 - [ ] 4곳 배포 → 플래그 ON → 다음날 BQ 재검증
