@@ -1,0 +1,314 @@
+<title>calm forest 지표 체계</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* layout: dark presentation board — NSM hero (big number + weekly CI chart + decomposition), metric hierarchy tree (role colors), AARRR cards + funnel */
+:root {
+  --bg: #101112;
+  --panel: #17181a;
+  --edge: #2a2c2f;
+  --ink: #f3f2ef;
+  --ink-2: #b8b6b0;
+  --ink-3: #7f7d78;
+  --core: #f7ef9e;
+  --core-ink: #2a2610;
+  --funnel: #f2b39c;
+  --habit: #c6e3a1;
+  --exp: #bfe0f2;
+  --guard: #ff6b5e;
+  --accent: #5b7cff;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: grid; gap: 44px; }
+header { display: grid; gap: 6px; }
+h1 { font-size: clamp(24px, 3.4vw, 34px); margin: 0; font-weight: 700; letter-spacing: -.01em; }
+.meta { color: var(--ink-3); font-size: 12.5px; }
+section { display: grid; gap: 16px; }
+.sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h2 { font-size: clamp(20px, 2.6vw, 26px); margin: 0; font-weight: 700; }
+.tag { font-size: 12.5px; color: var(--ink-2); }
+.banner { background: var(--accent); color: #fff; border-radius: 10px; padding: 14px 18px; font-weight: 600; font-size: 15px; text-align: center; }
+.panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 20px; min-width: 0; }
+.nsm { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 1.6fr); gap: 16px; }
+@media (max-width: 860px) { .nsm { grid-template-columns: 1fr; } }
+.nsm-card { background: linear-gradient(135deg, #2b2f6b 0%, #191a33 100%); border: 1px solid #3a3f86; border-radius: 12px; padding: 22px; display: grid; gap: 10px; align-content: start; }
+.nsm-card .label { font-size: 12px; color: #c5c8ff; letter-spacing: .06em; }
+.nsm-card .name { font-size: 22px; font-weight: 700; }
+.big { font-family: var(--mono); font-size: 56px; font-weight: 600; line-height: 1; }
+.big small { font-size: 16px; color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+.def { color: #d6d8ff; font-size: 13.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; border: 1px solid #4a4f9a; border-radius: 999px; padding: 3px 9px; color: #dfe1ff; }
+.formula { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--mono); }
+.fbox { background: var(--core); color: var(--core-ink); border-radius: 6px; padding: 8px 10px; display: grid; gap: 1px; min-width: 120px; }
+.fbox b { font-family: var(--font); font-size: 12.5px; }
+.fbox span { font-size: 15px; font-weight: 600; }
+.op { color: var(--ink-2); font-size: 18px; }
+svg text { font-family: var(--font); }
+.tree-wrap { overflow-x: auto; }
+svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 16px; height: 12px; border-radius: 3px; display: inline-block; }
+.aarrr { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 980px) { .aarrr { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .aarrr { grid-template-columns: 1fr; } }
+.card { background: linear-gradient(120deg, #0d0d0e 0%, #3a3b3e 100%); border: 1px solid var(--edge); border-radius: 12px; padding: 18px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card.hot { border: 2px solid var(--guard); }
+.card.off { opacity: .55; }
+.card h3 { margin: 0; font-size: 19px; font-weight: 700; font-family: Georgia, "Times New Roman", serif; }
+.card .ko { font-size: 13px; color: var(--ink-2); }
+.card .state { font-size: 12px; font-weight: 600; }
+.card .state.bad { color: var(--guard); }
+.card .state.ok { color: #9fd38a; }
+.card .state.wait { color: var(--ink-3); }
+.card hr { border: 0; border-top: 1px solid #55575b; margin: 4px 0; width: 100%; }
+.card .k { font-size: 12px; color: var(--ink-3); }
+.card .v { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+.card .s { font-size: 12.5px; color: var(--ink-2); }
+.funnel { display: grid; gap: 10px; }
+.frow { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 12px; align-items: center; }
+.frow .lab { font-size: 13px; color: var(--ink-2); }
+.bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-items: end; height: 110px; }
+.bar { position: relative; background: #2a2b2e; border-radius: 4px; height: 100%; }
+.bar i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--funnel); border-radius: 4px; }
+.bar em { position: absolute; left: 0; right: 0; top: 4px; text-align: center; font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.bar.hot i { background: var(--guard); }
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; font-size: 12px; color: var(--ink-3); text-align: center; }
+.note { font-size: 12.5px; color: var(--ink-3); }
+.guards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 720px) { .guards { grid-template-columns: 1fr; } }
+.g { border: 1px dashed var(--guard); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; }
+.g b { font-size: 13px; }
+.g span { font-family: var(--mono); font-size: 15px; }
+.g small { color: var(--ink-3); font-size: 12px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>calm forest 지표 체계</h1>
+    <div class="meta">기간 2026-09-07 ~ 10-04 (4주) · 공식 값: 페르소나·개발자 기기 제외, 베타는 9/9~9/15만 제외, 웹·토스, 게스트 기기 → 단일 계정 통합 · 정의서 docs/analysis/METRICS_FRAMEWORK.md</div>
+  </header>
+
+  <section>
+    <div class="sec-head"><h2>01. 북극성 지표</h2><span class="tag">North Star Metric</span></div>
+    <div class="nsm">
+      <div class="nsm-card">
+        <div class="label">NORTH STAR</div>
+        <div class="name">하루 평균 가꾼 주민 수</div>
+        <div class="big">1.86<small>명/일 · 9/28 주</small></div>
+        <div class="def">지난 7일 동안 수확·낚시·요리·퀘스트 완료 등 <b>획득 행동 16종</b>을 1번 이상 한 (주민 × 날)의 수 ÷ 7</div>
+        <div class="chips">
+          <span class="chip">매일 잠깐 리듬</span><span class="chip">손에 쥐고 나간 날</span><span class="chip">혼합 키</span><span class="chip">KST 자정</span>
+        </div>
+      </div>
+      <div class="panel" style="display:grid;gap:14px">
+        <div class="tag">주간 값과 95% 신뢰구간 · 주간 등락은 해석하지 않고 4주 기준선 밖일 때만 변화로 읽는다</div>
+        <svg id="nsm-chart" viewBox="0 0 640 220" role="img" aria-label="북극성 주간 추이와 신뢰구간"></svg>
+        <div class="formula" aria-label="곱셈 분해">
+          <div class="fbox"><b>주간 방문 주민</b><span>26 → 15</span></div><span class="op">×</span>
+          <div class="fbox"><b>1인당 방문일</b><span>1.69 → 1.60</span></div><span class="op">×</span>
+          <div class="fbox"><b>가꾼 비율</b><span>48% → 54%</span></div><span class="op">=</span>
+          <div class="fbox" style="background:#c5c8ff;color:#141640"><b>가꾼 주민×날</b><span>21 → 13</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="banner">빈도·품질은 그대로 — 북극성 하락은 폭, 그중에서도 신규 유입 감소(20 → 8명)에서 나왔다</div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>02. 메트릭 하이라키</h2><span class="tag">구조도 · 박스 값 = 9/7 주 → 9/28 주</span></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--core)"></i>북극성 · 곱셈 분해 (기간형)</span>
+      <span><i class="sw" style="background:var(--habit)"></i>습관의 깊이 · 품질 세부</span>
+      <span><i class="sw" style="background:var(--funnel)"></i>활성화 퍼널 (코호트형, 첫 7일)</span>
+      <span><i class="sw" style="background:var(--exp);outline:1px dashed #6aa8cc"></i>실험 레버</span>
+      <span><i class="sw" style="border:1px dashed var(--ink-3)"></i>측정 대기</span>
+      <span><i class="sw" style="border:1px dashed var(--guard)"></i>견제 지표</span>
+    </div>
+    <div class="panel tree-wrap">
+      <svg class="tree" id="tree" viewBox="0 0 1200 720" role="img" aria-label="메트릭 하이라키 트리"></svg>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>03. AARRR</h2><span class="tag">진단</span></div>
+    <div class="aarrr">
+      <div class="card">
+        <h3>Acquisition</h3><div class="ko">유입 · 방문 → 게임 진입</div>
+        <div class="state bad">입구 이탈 (웹)</div><hr>
+        <div class="k">진입 전환율</div><div class="v">44%</div>
+        <div class="s">웹 33% · 토스 89%<br>방문 415 → 진입 182</div>
+      </div>
+      <div class="card hot">
+        <h3>Activation</h3><div class="ko">활성화 · 첫 획득 행동</div>
+        <div class="state bad">병목</div><hr>
+        <div class="k">진입 후 7일 내 첫 획득 행동</div><div class="v">41%</div>
+        <div class="s">캐릭터 선택 153 → 첫 획득 74<br>빈손 방문의 86%가 마을에서 끝남</div>
+      </div>
+      <div class="card">
+        <h3>Retention</h3><div class="ko">유지 · 북극성</div>
+        <div class="state ok">결과 지표</div><hr>
+        <div class="k">하루 평균 가꾼 주민</div><div class="v">1.86</div>
+        <div class="s">매주 남는 유지 주민 4~5명<br>2~3주 차 재방문: 첫 주 획득 16% vs 미획득 4%</div>
+      </div>
+      <div class="card">
+        <h3>Revenue</h3><div class="ko">수익 · 코인 소비 → 결제</div>
+        <div class="state wait">결제 측정 대기</div><hr>
+        <div class="k">코인 소비 주민 비율 (선행)</div><div class="v">24%</div>
+        <div class="s">결제 전환율: Paddle 라이브 대기<br>결제 원장 BQ 미적재</div>
+      </div>
+      <div class="card off">
+        <h3>Referral</h3><div class="ko">추천</div>
+        <div class="state wait">측정 제외</div><hr>
+        <div class="s">메타 광고·지인 추천 이벤트 진행 때 설계<br>현재 공유 링크 유입 0</div>
+      </div>
+    </div>
+
+    <div class="panel funnel">
+      <div class="tag">활성화 퍼널 — 첫 방문 8/6~9/27 신규 코호트, 첫 7일 (막대 = 방문 대비 남은 비율, 빨강 = 직전 단계에서 절반 이상 이탈)</div>
+      <div class="frow"><span class="lab">웹+토스</span><div class="bars" id="f-all"></div></div>
+      <div class="frow"><span class="lab">웹</span><div class="bars" id="f-web"></div></div>
+      <div class="frow"><span class="lab">토스</span><div class="bars" id="f-toss"></div></div>
+      <div class="frow"><span></span><div class="steps"><span>방문</span><span>진입</span><span>캐릭터 선택</span><span>첫 획득 행동</span></div></div>
+      <div class="note">웹은 입구(로그인 화면)에서, 토스는 첫 획득 전에서 가장 많이 샌다.</div>
+    </div>
+
+    <div class="guards">
+      <div class="g"><b>견제 · 빈손 방문 비율</b><span>52% → 46%</span><small>보상으로 방문만 부풀리지 않는지</small></div>
+      <div class="g"><b>견제 · 코인 순증가 /기기</b><span>384 → 96</span><small>보상 남발로 경제가 인플레되지 않는지</small></div>
+      <div class="g"><b>견제 · 복구 안 된 세이브 실패</b><span>0 세션</span><small>지표가 오르는 사이 마을 유실이 묻히지 않는지</small></div>
+    </div>
+    <div class="banner">유입보다 활성화 — 신규가 첫 획득 행동까지 가지 못하는 것이 가장 큰 누수다</div>
+  </section>
+</div>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+const txt = (parent, x, y, s, attrs) => { const t = el('text', { x, y, ...attrs }, parent); t.textContent = s; return t; };
+const MONO = 'IBM Plex Mono, monospace';
+
+(function nsmChart() {
+  const svg = document.getElementById('nsm-chart');
+  const data = [
+    { w: '9/7 주', v: 3.00, lo: 1.57, hi: 4.86 },
+    { w: '9/14 주', v: 2.86, lo: 1.57, hi: 4.43 },
+    { w: '9/21 주', v: 2.86, lo: 1.43, hi: 4.57 },
+    { w: '9/28 주', v: 1.86, lo: 1.00, hi: 2.86 },
+  ];
+  const L = 44, R = 620, T = 14, B = 190, max = 5;
+  const y = v => B - (v / max) * (B - T);
+  [0, 1, 2, 3, 4, 5].forEach(v => {
+    el('line', { x1: L, x2: R, y1: y(v), y2: y(v), stroke: '#26282b', 'stroke-width': 1 }, svg);
+    txt(svg, L - 8, y(v) + 4, v, { 'text-anchor': 'end', 'font-size': 11, fill: '#7f7d78', 'font-family': MONO });
+  });
+  const step = (R - L) / data.length;
+  data.forEach((d, i) => {
+    const cx = L + step * (i + 0.5);
+    const last = i === data.length - 1;
+    el('rect', { x: cx - 26, y: y(d.v), width: 52, height: B - y(d.v), rx: 4, fill: last ? '#7b8cff' : '#3d4388' }, svg);
+    el('line', { x1: cx, x2: cx, y1: y(d.hi), y2: y(d.lo), stroke: '#c5c8ff', 'stroke-width': 1.5 }, svg);
+    el('line', { x1: cx - 8, x2: cx + 8, y1: y(d.hi), y2: y(d.hi), stroke: '#c5c8ff', 'stroke-width': 1.5 }, svg);
+    el('line', { x1: cx - 8, x2: cx + 8, y1: y(d.lo), y2: y(d.lo), stroke: '#c5c8ff', 'stroke-width': 1.5 }, svg);
+    txt(svg, cx + 30, y(d.v) + 4, d.v.toFixed(2), { 'text-anchor': 'start', 'font-size': 13, fill: '#f3f2ef', 'font-weight': 600, 'font-family': MONO });
+    txt(svg, cx, B + 20, d.w, { 'text-anchor': 'middle', 'font-size': 12, fill: '#b8b6b0' });
+  });
+})();
+
+(function tree() {
+  const svg = document.getElementById('tree');
+  const C = {
+    core: ['#f7ef9e', '#2a2610'], habit: ['#c6e3a1', '#1f2e10'], funnel: ['#f2b39c', '#3a1d12'],
+    exp: ['#bfe0f2', '#10283a'], wait: ['#17181a', '#b8b6b0'], nsm: ['#c5c8ff', '#141640'],
+  };
+  const W = 160, H = 64;
+  const N = {
+    nsm:   { x: 600, y: 60,  w: 260, h: 74, kind: 'nsm', t: '북극성: 하루 평균 가꾼 주민 수', v: '3.00 → 1.86 명/일' },
+    reach: { x: 250, y: 215, kind: 'core', t: '주간 방문 주민 수', v: '26 → 15' },
+    freq:  { x: 600, y: 215, kind: 'core', t: '1인당 방문일', v: '1.69 → 1.60' },
+    qual:  { x: 950, y: 215, kind: 'core', t: '방문일 중 가꾼 비율', v: '48% → 54%' },
+    newv:  { x: 110, y: 360, kind: 'core', t: '신규', v: '20 → 8' },
+    kept:  { x: 250, y: 360, w: 120, kind: 'core', t: '유지', v: '5 → 5' },
+    back:  { x: 390, y: 360, w: 120, kind: 'core', t: '복귀', v: '1 → 2' },
+    habit: { x: 545, y: 360, kind: 'habit', t: '습관 주민 (주 4일+)', v: '12% → 7%' },
+    gap:   { x: 710, y: 360, kind: 'habit', t: '방문 간격', v: '중앙값 1일' },
+    mix:   { x: 875, y: 360, kind: 'habit', t: '분야별 획득', v: '농사 80%' },
+    empty: { x: 1045, y: 360, kind: 'habit', t: '빈손 방문 마지막 위치', v: '마을 86%' },
+    f1:    { x: 110, y: 540, kind: 'funnel', t: '방문 → 진입', v: '44% (웹 33%)' },
+    f2:    { x: 290, y: 540, kind: 'funnel', t: '진입 → 캐릭터 선택', v: '84%' },
+    f3:    { x: 470, y: 540, w: 170, kind: 'funnel', t: '캐릭터 → 첫 획득 행동', v: '48% (활성화 41%)' },
+    e1:    { x: 470, y: 660, w: 170, kind: 'exp', t: '실험: 첫 5분 수확', v: '목표 60% (현재 41~43%)' },
+    e2:    { x: 310, y: 452, w: 150, h: 48, kind: 'exp', t: '실험: 힌트 배너', v: '이탈 직전 개입' },
+    coin:  { x: 1045, y: 60, kind: 'core', t: '코인 소비 비율', v: '26% → 24%' },
+    pay:   { x: 1045, y: 140, h: 48, kind: 'wait', t: '결제 전환율', v: '측정 대기' },
+  };
+  const hOf = n => n.h || H;
+  const link = (a, b, opts = {}) => {
+    const A = N[a], Bn = N[b];
+    const ay = A.y + hOf(A) / 2, by = Bn.y - hOf(Bn) / 2;
+    const my = opts.my ?? (ay + by) / 2;
+    el('path', { d: `M${A.x},${ay} V${my} H${Bn.x} V${by}`, fill: 'none', stroke: opts.stroke || '#6b6e73', 'stroke-width': 1.8, 'stroke-dasharray': opts.dash || '', 'stroke-linejoin': 'round' }, svg);
+  };
+  ['reach', 'freq', 'qual'].forEach(k => link('nsm', k, { my: 160 }));
+  ['newv', 'kept', 'back'].forEach(k => link('reach', k, { my: 300 }));
+  ['habit', 'gap'].forEach(k => link('freq', k, { my: 300 }));
+  ['mix', 'empty'].forEach(k => link('qual', k, { my: 300 }));
+  ['f1', 'f2', 'f3'].forEach(k => link('newv', k, { my: 482, stroke: '#b9806c' }));
+  link('f3', 'e1', { dash: '5 5', stroke: '#6aa8cc' });
+  el('path', { d: `M${N.e2.x},${N.e2.y - hOf(N.e2) / 2} V${N.e2.y - 40} H${N.kept.x} V${N.kept.y + H / 2}`, fill: 'none', stroke: '#6aa8cc', 'stroke-width': 1.8, 'stroke-dasharray': '5 5' }, svg);
+  el('path', { d: `M${N.nsm.x + 130},${N.nsm.y} H${N.coin.x - W / 2}`, fill: 'none', stroke: '#8b93b8', 'stroke-width': 1.6, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' }, svg);
+  el('path', { d: `M${N.coin.x},${N.coin.y + H / 2} V${N.pay.y - hOf(N.pay) / 2}`, fill: 'none', stroke: '#6b6e73', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }, svg);
+  [[425, 215], [775, 215]].forEach(([x, yy]) => txt(svg, x, yy + 10, '×', { 'text-anchor': 'middle', 'font-size': 30, fill: '#f3f2ef' }));
+  txt(svg, 600, 150, '÷ 7 · 곱셈 분해 (4주 모두 정확히 일치)', { 'text-anchor': 'middle', 'font-size': 12, fill: '#7f7d78' });
+  txt(svg, 30, 500, '원인 분해: 신규가 왜 유지로 안 넘어가나', { 'font-size': 12, fill: '#d79a83' });
+  txt(svg, 1045, 22, '결과: 수익', { 'text-anchor': 'middle', 'font-size': 12, fill: '#8b93b8' });
+
+  Object.values(N).forEach(n => {
+    const [fill, ink] = C[n.kind];
+    const w = n.w || W, h = hOf(n);
+    const g = el('g', {}, svg);
+    const dashed = n.kind === 'exp' || n.kind === 'wait';
+    el('rect', { x: n.x - w / 2, y: n.y - h / 2, width: w, height: h, rx: 6, fill,
+      stroke: n.kind === 'exp' ? '#6aa8cc' : n.kind === 'wait' ? '#7f7d78' : 'none',
+      'stroke-dasharray': dashed ? '5 4' : '', 'stroke-width': 1.5 }, g);
+    const big = n.kind === 'nsm';
+    const off = h > 50 ? 7 : 4;
+    txt(g, n.x, n.y - off + (big ? -2 : 0), n.t, { 'text-anchor': 'middle', 'font-size': big ? 15 : 12.5, 'font-weight': 700, fill: ink });
+    txt(g, n.x, n.y + off + 10, n.v, { 'text-anchor': 'middle', 'font-size': big ? 15 : 12.5, fill: ink, 'font-family': MONO });
+  });
+
+  const gy = 660;
+  txt(svg, 875, gy - 44, '견제 지표', { 'text-anchor': 'middle', 'font-size': 12, fill: '#ff6b5e', 'font-weight': 600 });
+  [['빈손 방문 비율', '52% → 46%', 720], ['코인 순증가 /기기', '384 → 96', 875], ['복구 안 된 세이브 실패', '0 세션', 1045]].forEach(([t, v, x]) => {
+    el('rect', { x: x - 76, y: gy - 30, width: 152, height: 60, rx: 6, fill: 'transparent', stroke: '#ff6b5e', 'stroke-dasharray': '5 4', 'stroke-width': 1.5 }, svg);
+    txt(svg, x, gy - 4, t, { 'text-anchor': 'middle', 'font-size': 12, fill: '#f3f2ef', 'font-weight': 600 });
+    txt(svg, x, gy + 16, v, { 'text-anchor': 'middle', 'font-size': 12.5, fill: '#f3f2ef', 'font-family': MONO });
+  });
+})();
+
+(function funnel() {
+  const rows = { 'f-all': [415, 182, 153, 74], 'f-web': [333, 109, 94, 49], 'f-toss': [82, 73, 59, 25] };
+  for (const [id, vals] of Object.entries(rows)) {
+    const box = document.getElementById(id);
+    vals.forEach((v, i) => {
+      const pct = v / vals[0];
+      const pass = i ? v / vals[i - 1] : 1;
+      const b = document.createElement('div');
+      b.className = 'bar' + (i && pass <= 0.5 ? ' hot' : '');
+      b.innerHTML = `<i style="height:${Math.max(pct * 100, 2)}%"></i><em>${v} · ${Math.round(pct * 100)}%</em>`;
+      b.title = i ? `직전 단계 통과 ${Math.round(pass * 100)}%` : '기준';
+      box.appendChild(b);
+    });
+  }
+})();
+</script>
