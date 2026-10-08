@@ -2253,6 +2253,15 @@ export async function enterGame() {
       wake: () => { nearDoor = 'dreamwake'; wantAction = true; return true; },
       reset: () => { gameState.dream = { visits: 0, day: '', got: [], total: 0 }; delete gameState.hintsSeen.dreamArrive; return true; },
     };
+    window.__mirror = {   // 🪞 거울 마을 검수(로컬 전용) — tools/mirror/qa.mjs
+      day: () => { timeOfDay = 0.35; dayPaused = true; return !isNight(); },
+      night: () => { timeOfDay = 0.8; dayPaused = true; return isNight(); },
+      stop: () => window.__tp(16, 15.6),
+      state: () => ({ atMirror, ride: mirrorRideActive(), sleeping, mirror: gameState.mirror, coins: gameState.inventory.mirror, tod: timeOfDay, pos: window.__pos(), nearDoor }),
+      tp: (lx, lz) => { player.position.set(MIRROR.x + lx, 0, MIRROR.z + lz); snapCamera(); return window.__pos(); },
+      save: () => { const g = getGameState(); return { pos: g.playerPos, mirror: g.mirror, coins: g.inventory.mirror }; },
+      reset: () => { gameState.mirror = { visits: 0, day: '', done: 0, hinted: [], total: 0 }; for (const k of ['mirrorArrive', 'mirrorStop', 'mirrorFlip', 'mirrorReturn']) delete gameState.hintsSeen[k]; return true; },
+    };
     // 🎬 __introTest() — 프롤로그 강제 재생(이미 본 세이브에서도) / __introJump(s) — 타임라인 점프(검증용)
     window.__introTest = () => introStart(true);
     window.__introJump = (s) => { if (intro) intro.t = s; return !!intro; };
