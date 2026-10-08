@@ -1,0 +1,8 @@
+name: calm-forest-analyst-env
+config:
+  type: cloud
+  networking:
+    type: limited
+    allow_mcp_servers: true
+    allow_package_managers: true
+    allowed_hosts: []

@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """Mint a BigQuery-only OAuth refresh token for the Managed Agents vault.
 
-Usage: python3 scripts/bq-oauth.py [path/to/client_secret_*.json]
+Usage: scripts/bq-oauth.py  (Homebrew python: the python.org 3.8 build lacks CA certs) [path/to/client_secret_*.json]
 
 - The Desktop OAuth client JSON is read once, stored in macOS Keychain
   (calmforest-bq-oauth-client) and can then be deleted from Downloads.

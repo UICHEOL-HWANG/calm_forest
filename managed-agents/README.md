@@ -5,9 +5,10 @@ Run every `ant` command from this directory: `claude-lock.json` lives here and m
 
 | Agent | What | Schedule | Cap |
 |---|---|---|---|
-| `agents/kpi-daily` | Daily KPI report from Supabase (read-only MCP) | 09:00 KST daily | $0.80 / run |
+| `agents/kpi-daily` | Daily KPI report from Supabase (read-only MCP) | 09:00 KST daily (paused) | $0.80 / run |
+| `agents/analyst` | One-question deep analysis over BigQuery (`execute_sql_readonly` only) + Supabase | on demand | set per session |
 
-No secrets in this repo (public). Credentials live only in the Anthropic vault `calm-forest-analytics`.
+No secrets in this repo (public). Keychain: `calmforest-supabase-pat-cma`, `calmforest-bq-oauth-client`, `calmforest-bq-refresh-cma`, `calmforest-slack-bot-kpi`; register with `scripts/vault-add.sh` / `scripts/bq-oauth.py`. Credentials live only in the Anthropic vault `calm-forest-analytics`.
 
 ## Status
 - Deployment `depl_01HBxqhczrELj4SQUqzhNqDD` is **paused** until Slack is wired.

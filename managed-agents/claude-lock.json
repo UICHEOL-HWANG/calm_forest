@@ -6,18 +6,31 @@
     "workspace_id": "wrkspc_012sAKMZYf59JTCkgfNJSDtR"
   },
   "resources": {
+    "./agents/analyst/agent.md": {
+      "kind": "agent",
+      "id": "agent_01UvMwYwdCjx1ujXXj11svo5",
+      "version": "1",
+      "hash": "962f5901eddbff4049b032ee4185da93",
+      "remote_hash": "01f6afacae5d9ea00f3714a72371a0d5"
+    },
+    "./agents/analyst/environment.yaml": {
+      "kind": "environment",
+      "id": "env_013dZsyAKfbN9NFfhpcEbE5H",
+      "hash": "7135b3b79ea369a5d4a860cf9f51b2b4",
+      "remote_hash": "4519ec946250cfb1f787049076b701e2"
+    },
     "./agents/kpi-daily/agent.md": {
       "kind": "agent",
       "id": "agent_01R6LWSRaHMaSJVqamJG4FQ7",
-      "version": "2",
-      "hash": "e368a865d949e4311619ffe7cc073536",
-      "remote_hash": "659f2b4f4a740419be74d3cdfb367ae5"
+      "version": "3",
+      "hash": "cd70ccb9c5a241b97acca11cb8147697",
+      "remote_hash": "e6cd964fc10a2c092e5ea35c94332944"
     },
     "./agents/kpi-daily/deployment-daily.yaml": {
       "kind": "deployment",
       "id": "depl_01HBxqhczrELj4SQUqzhNqDD",
-      "hash": "53fac307022f4aca84b2def0d5cd94af",
-      "remote_hash": "53fac307022f4aca84b2def0d5cd94af"
+      "hash": "1226d4f89cdb1884e699c015edb53b4f",
+      "remote_hash": "1226d4f89cdb1884e699c015edb53b4f"
     },
     "./agents/kpi-daily/environment.yaml": {
       "kind": "environment",
