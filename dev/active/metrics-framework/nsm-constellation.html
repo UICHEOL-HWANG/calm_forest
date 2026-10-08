@@ -19,6 +19,7 @@
   --star-edge: #e3a948;
   --bridge: #e3a948;
   --guard: #d07a6a;
+  --outcome: #8b93b8;
   --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   color-scheme: dark;
@@ -40,6 +41,8 @@ svg text { font-family: var(--font-body); }
 .sub { fill: var(--ink-2); font-size: 13.5px; }
 .sub-nsm { fill: var(--ink-2); font-size: 15px; }
 .tier { fill: var(--ink-3); font-size: 11px; font-family: var(--font-mono); letter-spacing: .08em; }
+.stage { fill: #9a988f; font-size: 11px; font-family: var(--font-mono); letter-spacing: .14em; paint-order: stroke; stroke: var(--plate); stroke-width: 5px; }
+.note-txt { fill: var(--ink-3); font-size: 12px; paint-order: stroke; stroke: var(--plate); stroke-width: 5px; }
 .guard-txt { fill: var(--ink-2); font-size: 14.5px; }
 .lbl, .lbl-nsm, .sub, .sub-nsm { paint-order: stroke; stroke: var(--plate); stroke-width: 6px; stroke-linejoin: round; }
 .dust { fill: none; stroke: var(--dust); stroke-width: 1.2; }
@@ -63,7 +66,7 @@ svg text { font-family: var(--font-body); }
 <div class="wrap">
   <header>
     <h1>calm forest 북극성 별자리</h1>
-    <p class="lede">사람들이 매일 잠깐씩 마을에 들러 무언가를 손에 쥐고 나가는가. 그 하루들의 총량이 북극성이고, 아래 별들은 그 숫자를 움직이는 레버입니다. 별에 마우스를 올리면 정의가 나옵니다.</p>
+    <p class="lede">사람들이 매일 잠깐씩 마을에 들러 무언가를 손에 쥐고 나가는가. 그 하루들의 총량이 북극성이고, 아래 별들은 그 숫자를 움직이는 레버입니다. 왼쪽 아래에서 오른쪽 위로 AARRR(방문 → 진입 → 활성화 → 유지 → 수익)을 따라 읽으면 됩니다. 추천은 메타 광고·지인 추천 이벤트 때 설계해 이번엔 뺐습니다. 별에 마우스를 올리면 정의가 나옵니다.</p>
   </header>
 
   <div class="formula" aria-label="분해식">
@@ -79,7 +82,9 @@ svg text { font-family: var(--font-body); }
     <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L1 레버</span>
     <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="5.5" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L2 세부 지표</span>
     <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#2c4f9e" stroke-width="2" stroke-dasharray="4 4"/></svg>곱셈 분해 (L1 → 북극성)</span>
-    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2"/></svg>활성화 다리 (신규 → 유지)</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2"/></svg>신규 경로 (방문 → 진입 → 활성화 → 유지)</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#8b93b8" stroke-width="2" stroke-dasharray="1.5 5" stroke-linecap="round"/></svg>결과로 이어짐 (북극성 → 수익)</span>
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="#181818" stroke="#e3a948" stroke-width="1.5" stroke-dasharray="3 3"/></svg>측정 대기</span>
   </div>
 
   <section class="notes">
@@ -104,8 +109,14 @@ const S = {
            tip: ['방문일 합 ÷ 방문 주민', '매일 잠깐 리듬이면 7에 가까워진다'] },
   qual:  { x: 1080, y: 380, r: 15, tier: 'l1', label: '방문일 중 가꾼 비율', sub: '품질 · 온 날이 알찼나', side: 'above',
            tip: ['가꾼 (주민×날) ÷ 방문 (주민×날)', '1 − 이 값 = 빈손 방문 비율 (견제 지표)'] },
-  newv:  { x: 210, y: 470, r: 9, tier: 'l2', label: '신규 방문', sub: '이번 주 처음', side: 'left',
-           tip: ['그 주가 첫 방문인 주민'] },
+  visit: { x: 95, y: 330, r: 9, tier: 'l2', label: '첫 방문', sub: '페이지 도착', side: 'right',
+           tip: ['GA4 <code>first_visit</code> 한 사람', '로그인 화면에서 나간 사람도 포함'] },
+  newv:  { x: 210, y: 470, r: 9, tier: 'l2', label: '게임 진입', sub: '신규 주민 · 첫 세션', side: 'left',
+           tip: ['첫 세션을 시작한 신규 주민 (session_logs)', '첫 방문과의 차이 = 입구 이탈'] },
+  coin:  { x: 590, y: 160, r: 11, tier: 'l2', label: '코인 소비 주민 비율', sub: '수익 선행 지표', side: 'left',
+           tip: ['코인으로 무언가를 산 주민 ÷ 방문 주민', '<code>econ_logs</code> amount &lt; 0 · 지출 11종'] },
+  pay:   { x: 290, y: 120, r: 11, tier: 'l2', pending: true, label: '결제 전환율', sub: '측정 대기 · Paddle 승인 후', side: 'below',
+           tip: ['그 주 결제 주민 ÷ 방문 주민 · 매출 · ARPPU', '원장 <code>purchases</code> 는 아직 BigQuery 미적재'] },
   ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 획득 행동까지 시간', sub: '온보딩 속도', side: 'below',
            tip: ['첫 세션 시작 → 첫 획득 행동 이벤트까지 걸린 시간'] },
   act:   { x: 360, y: 590, r: 12, tier: 'l2', label: '활성화', sub: '신규 중 7일 내 첫 획득 행동', side: 'below',
@@ -123,6 +134,9 @@ const S = {
 };
 const CHAINS = [['newv', 'reach'], ['keep', 'reach'], ['back', 'reach'], ['habit', 'freq'], ['mix', 'qual'], ['empty', 'qual'], ['ttfr', 'act']];
 const BRIDGE = [['newv', 'act'], ['act', 'keep']];
+const ENTRY = [['visit', 'newv']];
+const OUTCOME = [['nsm', 'coin']];
+const REV = [['coin', 'pay']];
 const RAYS = ['reach', 'freq', 'qual'];
 
 const el = (tag, attrs = {}, parent = sky) => {
@@ -146,6 +160,13 @@ const line = (a, b, attrs) => el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, .
 RAYS.forEach(id => line(S[id], S.nsm, { stroke: 'var(--nsm-ray)', 'stroke-width': 2, 'stroke-dasharray': '5 5' }));
 CHAINS.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--line)', 'stroke-width': 1.6 }));
 BRIDGE.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--bridge)', 'stroke-width': 2, opacity: .75 }));
+ENTRY.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--bridge)', 'stroke-width': 2, opacity: .75 }));
+OUTCOME.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--outcome)', 'stroke-width': 1.6, 'stroke-dasharray': '1.5 5', 'stroke-linecap': 'round' }));
+REV.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--line)', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }));
+{ const a = S.visit, b = S.newv; el('text', { x: (a.x + b.x) / 2 + 14, y: (a.y + b.y) / 2 + 4, class: 'note-txt' }).textContent = '입구 이탈'; }
+[['ACQUISITION', 95, 300], ['ACTIVATION', 360, 562], ['RETENTION', 1000, 90], ['REVENUE', 440, 82]].forEach(([t, x, y]) => {
+  el('text', { x, y, 'text-anchor': 'middle', class: 'stage' }).textContent = t;
+});
 
 const n = S.nsm;
 [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => {
@@ -176,9 +197,10 @@ Object.values(S).forEach(s => {
   const g = el('g', { class: 'star', tabindex: 0, role: 'button', 'aria-label': `${s.label}. ${s.sub}` });
   el('circle', {
     class: 'body', cx: s.x, cy: s.y, r: s.r,
-    fill: isN ? 'var(--nsm-fill)' : 'var(--star-fill)',
+    fill: isN ? 'var(--nsm-fill)' : (s.pending ? 'var(--plate)' : 'var(--star-fill)'),
     stroke: isN ? 'var(--nsm-edge)' : 'var(--star-edge)',
     'stroke-width': isN ? 2 : 1.8,
+    ...(s.pending ? { 'stroke-dasharray': '3 3' } : {}),
   }, g);
   el('circle', { cx: s.x, cy: s.y, r: s.r + 14, fill: 'transparent' }, g);
   const gap = s.r + 14;
