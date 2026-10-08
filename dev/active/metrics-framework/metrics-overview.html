@@ -121,17 +121,17 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
   </section>
 
   <section>
-    <div class="sec-head"><h2>02. 메트릭 하이라키</h2><span class="tag">구조도 · 박스 값 = 9/7 주 → 9/28 주</span></div>
+    <div class="sec-head"><h2>02. 메트릭 하이라키</h2><span class="tag">별자리 · 별 아래 값 = 9/7 주 → 9/28 주</span></div>
     <div class="legend">
-      <span><i class="sw" style="background:var(--core)"></i>북극성 · 곱셈 분해 (기간형)</span>
-      <span><i class="sw" style="background:var(--habit)"></i>습관의 깊이 · 품질 세부</span>
-      <span><i class="sw" style="background:var(--funnel)"></i>활성화 퍼널 (코호트형, 첫 7일)</span>
-      <span><i class="sw" style="background:var(--exp);outline:1px dashed #6aa8cc"></i>실험 레버</span>
-      <span><i class="sw" style="border:1px dashed var(--ink-3)"></i>측정 대기</span>
-      <span><i class="sw" style="border:1px dashed var(--guard)"></i>견제 지표</span>
+      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#3b3592" stroke="#9a92f2" stroke-width="1.5"/></svg>북극성</span>
+      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L1·L2 지표</span>
+      <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#2c4f9e" stroke-width="2" stroke-dasharray="4 4"/></svg>곱셈 분해</span>
+      <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2"/></svg>신규 경로 (활성화 퍼널)</span>
+      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#17181a" stroke="#7fc4ea" stroke-width="1.5" stroke-dasharray="3 3"/></svg>실험 레버</span>
+      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#17181a" stroke="#e3a948" stroke-width="1.5" stroke-dasharray="3 3"/></svg>측정 대기</span>
     </div>
     <div class="panel tree-wrap">
-      <svg class="tree" id="tree" viewBox="0 0 1200 720" role="img" aria-label="메트릭 하이라키 트리"></svg>
+      <svg class="tree" id="tree" viewBox="0 0 1200 780" role="img" aria-label="메트릭 하이라키 별자리"></svg>
     </div>
   </section>
 
@@ -227,73 +227,76 @@ const MONO = 'IBM Plex Mono, monospace';
 
 (function tree() {
   const svg = document.getElementById('tree');
-  const C = {
-    core: ['#f7ef9e', '#2a2610'], habit: ['#c6e3a1', '#1f2e10'], funnel: ['#f2b39c', '#3a1d12'],
-    exp: ['#bfe0f2', '#10283a'], wait: ['#17181a', '#b8b6b0'], nsm: ['#c5c8ff', '#141640'],
+  svg.style.background = '#141414';
+  const S = {
+    nsm:    { x: 1000, y: 135, r: 26, k: 'nsm',  t: '북극성: 하루 평균 가꾼 주민 수', v: '3.00 → 1.86 명/일', side: 'left' },
+    reach:  { x: 610,  y: 300, r: 15, k: 'star', t: '주간 방문 주민 수', v: '26 → 15', side: 'left' },
+    freq:   { x: 860,  y: 400, r: 15, k: 'star', t: '1인당 방문일', v: '1.69 → 1.60', side: 'right' },
+    qual:   { x: 1080, y: 345, r: 15, k: 'star', t: '방문일 중 가꾼 비율', v: '48% → 54%', side: 'above' },
+    newv:   { x: 420,  y: 410, r: 10, k: 'star', t: '신규', v: '20 → 8', side: 'left' },
+    kept:   { x: 560,  y: 480, r: 10, k: 'star', t: '유지', v: '5 → 5', side: 'right' },
+    back:   { x: 650,  y: 585, r: 8,  k: 'star', t: '복귀', v: '1 → 2', side: 'below' },
+    habit:  { x: 790,  y: 575, r: 9,  k: 'star', t: '습관 주민 (주 4일+)', v: '12% → 7%', side: 'below' },
+    gap:    { x: 930,  y: 520, r: 8,  k: 'star', t: '방문 간격', v: '중앙값 1일', side: 'below' },
+    mix:    { x: 1120, y: 520, r: 8,  k: 'star', t: '분야별 획득', v: '농사 80%', side: 'below' },
+    empty:  { x: 1040, y: 640, r: 8,  k: 'star', t: '빈손 방문 마지막 위치', v: '마을 86%', side: 'below' },
+    visit:  { x: 80,   y: 300, r: 9,  k: 'star', t: '첫 방문', v: '415', side: 'right' },
+    entry:  { x: 150,  y: 430, r: 9,  k: 'star', t: '진입', v: '44% (웹 33%)', side: 'right' },
+    chars:  { x: 220,  y: 555, r: 9,  k: 'star', t: '캐릭터 선택', v: '84%', side: 'right' },
+    act:    { x: 380,  y: 625, r: 13, k: 'star', t: '첫 획득 행동 = 활성화', v: '41% (병목)', side: 'below' },
+    e1:     { x: 190,  y: 690, r: 9,  k: 'exp',  t: '실험: 첫 5분 수확', v: '목표 60%', side: 'below' },
+    e2:     { x: 470,  y: 560, r: 8,  k: 'exp',  t: '실험: 힌트 배너', v: '이탈 직전 개입', side: 'below' },
+    coin:   { x: 620,  y: 150, r: 10, k: 'star', t: '코인 소비 비율', v: '26% → 24%', side: 'left' },
+    pay:    { x: 330,  y: 110, r: 10, k: 'wait', t: '결제 전환율', v: '측정 대기', side: 'below' },
   };
-  const W = 160, H = 64;
-  const N = {
-    nsm:   { x: 600, y: 60,  w: 260, h: 74, kind: 'nsm', t: '북극성: 하루 평균 가꾼 주민 수', v: '3.00 → 1.86 명/일' },
-    reach: { x: 250, y: 215, kind: 'core', t: '주간 방문 주민 수', v: '26 → 15' },
-    freq:  { x: 600, y: 215, kind: 'core', t: '1인당 방문일', v: '1.69 → 1.60' },
-    qual:  { x: 950, y: 215, kind: 'core', t: '방문일 중 가꾼 비율', v: '48% → 54%' },
-    newv:  { x: 110, y: 360, kind: 'core', t: '신규', v: '20 → 8' },
-    kept:  { x: 250, y: 360, w: 120, kind: 'core', t: '유지', v: '5 → 5' },
-    back:  { x: 390, y: 360, w: 120, kind: 'core', t: '복귀', v: '1 → 2' },
-    habit: { x: 545, y: 360, kind: 'habit', t: '습관 주민 (주 4일+)', v: '12% → 7%' },
-    gap:   { x: 710, y: 360, kind: 'habit', t: '방문 간격', v: '중앙값 1일' },
-    mix:   { x: 875, y: 360, kind: 'habit', t: '분야별 획득', v: '농사 80%' },
-    empty: { x: 1045, y: 360, kind: 'habit', t: '빈손 방문 마지막 위치', v: '마을 86%' },
-    f1:    { x: 110, y: 540, kind: 'funnel', t: '방문 → 진입', v: '44% (웹 33%)' },
-    f2:    { x: 290, y: 540, kind: 'funnel', t: '진입 → 캐릭터 선택', v: '84%' },
-    f3:    { x: 470, y: 540, w: 170, kind: 'funnel', t: '캐릭터 → 첫 획득 행동', v: '48% (활성화 41%)' },
-    e1:    { x: 470, y: 660, w: 170, kind: 'exp', t: '실험: 첫 5분 수확', v: '목표 60% (현재 41~43%)' },
-    e2:    { x: 310, y: 452, w: 150, h: 48, kind: 'exp', t: '실험: 힌트 배너', v: '이탈 직전 개입' },
-    coin:  { x: 1045, y: 60, kind: 'core', t: '코인 소비 비율', v: '26% → 24%' },
-    pay:   { x: 1045, y: 140, h: 48, kind: 'wait', t: '결제 전환율', v: '측정 대기' },
-  };
-  const hOf = n => n.h || H;
-  const link = (a, b, opts = {}) => {
-    const A = N[a], Bn = N[b];
-    const ay = A.y + hOf(A) / 2, by = Bn.y - hOf(Bn) / 2;
-    const my = opts.my ?? (ay + by) / 2;
-    el('path', { d: `M${A.x},${ay} V${my} H${Bn.x} V${by}`, fill: 'none', stroke: opts.stroke || '#6b6e73', 'stroke-width': 1.8, 'stroke-dasharray': opts.dash || '', 'stroke-linejoin': 'round' }, svg);
-  };
-  ['reach', 'freq', 'qual'].forEach(k => link('nsm', k, { my: 160 }));
-  ['newv', 'kept', 'back'].forEach(k => link('reach', k, { my: 300 }));
-  ['habit', 'gap'].forEach(k => link('freq', k, { my: 300 }));
-  ['mix', 'empty'].forEach(k => link('qual', k, { my: 300 }));
-  ['f1', 'f2', 'f3'].forEach(k => link('newv', k, { my: 482, stroke: '#b9806c' }));
-  link('f3', 'e1', { dash: '5 5', stroke: '#6aa8cc' });
-  el('path', { d: `M${N.e2.x},${N.e2.y - hOf(N.e2) / 2} V${N.e2.y - 40} H${N.kept.x} V${N.kept.y + H / 2}`, fill: 'none', stroke: '#6aa8cc', 'stroke-width': 1.8, 'stroke-dasharray': '5 5' }, svg);
-  el('path', { d: `M${N.nsm.x + 130},${N.nsm.y} H${N.coin.x - W / 2}`, fill: 'none', stroke: '#8b93b8', 'stroke-width': 1.6, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' }, svg);
-  el('path', { d: `M${N.coin.x},${N.coin.y + H / 2} V${N.pay.y - hOf(N.pay) / 2}`, fill: 'none', stroke: '#6b6e73', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }, svg);
-  [[425, 215], [775, 215]].forEach(([x, yy]) => txt(svg, x, yy + 10, '×', { 'text-anchor': 'middle', 'font-size': 30, fill: '#f3f2ef' }));
-  txt(svg, 600, 150, '÷ 7 · 곱셈 분해 (4주 모두 정확히 일치)', { 'text-anchor': 'middle', 'font-size': 12, fill: '#7f7d78' });
-  txt(svg, 30, 500, '원인 분해: 신규가 왜 유지로 안 넘어가나', { 'font-size': 12, fill: '#d79a83' });
-  txt(svg, 1045, 22, '결과: 수익', { 'text-anchor': 'middle', 'font-size': 12, fill: '#8b93b8' });
+  const line = (a, b, attrs) => el('line', { x1: S[a].x, y1: S[a].y, x2: S[b].x, y2: S[b].y, ...attrs }, svg);
 
-  Object.values(N).forEach(n => {
-    const [fill, ink] = C[n.kind];
-    const w = n.w || W, h = hOf(n);
-    const g = el('g', {}, svg);
-    const dashed = n.kind === 'exp' || n.kind === 'wait';
-    el('rect', { x: n.x - w / 2, y: n.y - h / 2, width: w, height: h, rx: 6, fill,
-      stroke: n.kind === 'exp' ? '#6aa8cc' : n.kind === 'wait' ? '#7f7d78' : 'none',
-      'stroke-dasharray': dashed ? '5 4' : '', 'stroke-width': 1.5 }, g);
-    const big = n.kind === 'nsm';
-    const off = h > 50 ? 7 : 4;
-    txt(g, n.x, n.y - off + (big ? -2 : 0), n.t, { 'text-anchor': 'middle', 'font-size': big ? 15 : 12.5, 'font-weight': 700, fill: ink });
-    txt(g, n.x, n.y + off + 10, n.v, { 'text-anchor': 'middle', 'font-size': big ? 15 : 12.5, fill: ink, 'font-family': MONO });
+  let seed = 11;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 52; i++) {
+    const x = 20 + rnd() * 1160, y = 20 + rnd() * 700;
+    if (Object.values(S).some(s => Math.hypot(s.x - x, s.y - y) < 85)) continue;
+    el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 2.4, fill: 'none', stroke: '#55534f', 'stroke-width': 1.1 }, svg);
+  }
+
+  ['reach', 'freq', 'qual'].forEach(k => line(k, 'nsm', { stroke: '#2c4f9e', 'stroke-width': 2, 'stroke-dasharray': '5 5' }));
+  [['newv', 'reach'], ['kept', 'reach'], ['back', 'reach'], ['habit', 'freq'], ['gap', 'freq'], ['mix', 'qual'], ['empty', 'qual']]
+    .forEach(([a, b]) => line(a, b, { stroke: '#4a4a48', 'stroke-width': 1.6 }));
+  [['visit', 'entry'], ['entry', 'chars'], ['chars', 'act'], ['act', 'kept'], ['newv', 'act']]
+    .forEach(([a, b]) => line(a, b, { stroke: '#e3a948', 'stroke-width': 2, opacity: .8 }));
+  line('e1', 'act', { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
+  line('e2', 'kept', { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
+  line('nsm', 'coin', { stroke: '#8b93b8', 'stroke-width': 1.6, 'stroke-dasharray': '1.5 5', 'stroke-linecap': 'round' });
+  line('coin', 'pay', { stroke: '#4a4a48', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' });
+
+  const n = S.nsm;
+  [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => el('line', {
+    x1: n.x + dx * (n.r + 2), y1: n.y + dy * (n.r + 2), x2: n.x + dx * (n.r + 22), y2: n.y + dy * (n.r + 22), stroke: '#2c4f9e', 'stroke-width': 2 }, svg));
+
+  const halo = { 'paint-order': 'stroke', stroke: '#141414', 'stroke-width': 6, 'stroke-linejoin': 'round' };
+  Object.values(S).forEach(s => {
+    const isN = s.k === 'nsm', hollow = s.k === 'exp' || s.k === 'wait';
+    el('circle', { cx: s.x, cy: s.y, r: s.r,
+      fill: isN ? '#3b3592' : hollow ? '#141414' : '#6e4614',
+      stroke: isN ? '#9a92f2' : s.k === 'exp' ? '#7fc4ea' : '#e3a948',
+      'stroke-width': isN ? 2 : 1.8, 'stroke-dasharray': hollow ? '3 3' : '' }, svg);
+    const gap = s.r + 12;
+    let x = s.x, y = s.y, anchor = 'middle';
+    if (s.side === 'left') { x = s.x - gap; anchor = 'end'; y = s.y - 3; }
+    if (s.side === 'right') { x = s.x + gap; anchor = 'start'; y = s.y - 3; }
+    if (s.side === 'below') { y = s.y + s.r + 20; }
+    if (s.side === 'above') { y = s.y - s.r - 32; }
+    txt(svg, x, y, s.t, { 'text-anchor': anchor, 'font-size': isN ? 19 : 14.5, 'font-weight': 700, fill: '#f3f2ef', ...halo });
+    txt(svg, x, y + (isN ? 24 : 19), s.v, { 'text-anchor': anchor, 'font-size': isN ? 15 : 12.5, fill: '#b9b7b1', 'font-family': MONO, ...halo });
   });
 
-  const gy = 660;
-  txt(svg, 875, gy - 44, '견제 지표', { 'text-anchor': 'middle', 'font-size': 12, fill: '#ff6b5e', 'font-weight': 600 });
-  [['빈손 방문 비율', '52% → 46%', 720], ['코인 순증가 /기기', '384 → 96', 875], ['복구 안 된 세이브 실패', '0 세션', 1045]].forEach(([t, v, x]) => {
-    el('rect', { x: x - 76, y: gy - 30, width: 152, height: 60, rx: 6, fill: 'transparent', stroke: '#ff6b5e', 'stroke-dasharray': '5 4', 'stroke-width': 1.5 }, svg);
-    txt(svg, x, gy - 4, t, { 'text-anchor': 'middle', 'font-size': 12, fill: '#f3f2ef', 'font-weight': 600 });
-    txt(svg, x, gy + 16, v, { 'text-anchor': 'middle', 'font-size': 12.5, fill: '#f3f2ef', 'font-family': MONO });
-  });
+  const tag = (t, x, y) => txt(svg, x, y, t, { 'text-anchor': 'middle', 'font-size': 11, fill: '#9a988f', 'letter-spacing': '.14em', 'font-family': MONO, ...halo });
+  tag('ACQUISITION', 80, 268); tag('ACTIVATION', 330, 598); tag('RETENTION', 1000, 70); tag('REVENUE', 470, 85);
+  txt(svg, 820, 230, '× 곱셈 분해 · 4주 모두 정확히 일치', { 'text-anchor': 'middle', 'font-size': 12, fill: '#6f86c8', ...halo });
+
+  const g = txt(svg, 600, 755, '', { 'text-anchor': 'middle', 'font-size': 14, fill: '#b9b7b1' });
+  const t1 = el('tspan', { fill: '#ff6b5e', 'font-weight': 600 }, g); t1.textContent = '견제   ';
+  const t2 = el('tspan', {}, g); t2.textContent = '빈손 방문 52% → 46% · 코인 순증가 384 → 96 /기기 · 복구 안 된 세이브 실패 0 세션';
 })();
 
 (function funnel() {
