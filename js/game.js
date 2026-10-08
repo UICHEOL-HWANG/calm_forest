@@ -141,8 +141,8 @@ import { pawRadius, gripForwardZ } from './data/grip.js';
 import { grillKeyOf, stageKeys } from './cook-ingredients.js';   // 🍲 조리 무대 재료 모형 규칙   // ✊ 긴 도구 자루 앞 오프셋 = 발바닥 반지름 비례
 import {
   buildGlade, tryNet, updateFireflyBugs,
-} from './spaces/glade.js';
-import { buildLightWorkshop } from './spaces/light-workshop.js';   // 🏮 빛 공방(계곡 연못가)   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
+} from './spaces/glade.js';   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
+import { buildLightWorkshop } from './spaces/light-workshop.js';   // 🏮 빛 공방(계곡 연못가)
 import {
   buildForest, forageTarget, tryForage, updateForage,
 } from './spaces/forest.js';   // 📦 🍄 채집 숲 — 새 동사: 줍기 (도구 없이, 시간이 지나면 다시 돋음)

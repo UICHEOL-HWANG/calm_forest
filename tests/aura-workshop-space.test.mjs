@@ -20,3 +20,8 @@ test('공방은 지어지고, 가까우면 프롬프트, 액션이면 모달', (
   assert.match(SRC, /nearCosShop \|\| nearLightWorkshop/, '월드 액션 억제 목록에도 들어간다');
   assert.match(HTML, /openLightWorkshop\(\) \{/);
 });
+
+test('공방 메시는 mergeGeos 로 병합해 드로우콜을 아낀다', () => {
+  const src = readFileSync(new URL('../js/spaces/light-workshop.js', import.meta.url), 'utf8');
+  assert.match(src, /mergeGeos\(/);
+});
