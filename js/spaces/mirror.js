@@ -4,7 +4,7 @@
 //  스펙: docs/superpowers/specs/2026-10-08-mirror-village-design.md
 //  ⚠️ game.js 와 서로 import 한다(순환). 로딩 시점엔 game.js 값을 읽지 않는다 — 함수 안에서만. let 쓰기는 `$w.x = …`.
 //  ▶ 좌표 js/mirror/layout.js(로컬, 월드 = MIRROR + 로컬) · 의뢰 quests.js · 문장 clues.js · 조형 art.js · 연출 ride.js
-//  ▶ 트래킹은 js/mirror/track.js 의 T.* 만(스펙 §8 11종 — trackEvent 직접 호출 금지, tests/mirror-track.test.mjs 가 잠금)
+//  ▶ 트래킹은 js/mirror/track.js 의 T.* 만(스펙 §8 10종 — trackEvent 직접 호출 금지, tests/mirror-track.test.mjs 가 잠금)
 // =============================================================
 import {
   $w, atMirror, camera, dist2D, firstHintBanner, gameState, handAnchor, isNight, makeNameTag, player, playerAnchor,
@@ -142,7 +142,7 @@ function board(dir) {
   if (dir === 'go' && isNight()) { ui.toast?.('🌙 막차가 끊겼어요 · 꿈의 숲은 침대에서'); return; }   // 프롬프트를 띄운 채 해가 진 경우
   ensureWorld(); ensureVillageSide();
   const m = mirrorState(), first = dir === 'go' ? m.visits === 0 : !gameState.hintsSeen.mirrorReturn;
-  T.board({ dir, first, done_today: m.done });
+  T.board({ dir, first, left_today: QUESTS_PER_DAY - m.done });
   $w.sleeping = true; $w.sitting = false;   // 이동·액션·앉기·도구 전환 잠금(꿈길과 같은 잠금)
   if (handAnchor) handAnchor.visible = false;
   carriage.visible = true;
@@ -180,7 +180,7 @@ function arrive({ skipped, atS, short }) {
   setTimeout(() => { $w.sleeping = false; }, 300);   // 번쩍이 걷히는 동안 연타가 새지 않게
   const m = mirrorState();
   T.cutsceneEnd({ dir: 'go', skipped, at_s: atS, short });
-  T.enter({ visit_n: m.visits, done_today: m.done });
+  T.enter({ visit_n: m.visits, left_today: QUESTS_PER_DAY - m.done });
   syncHud();
   if (!gameState.hintsSeen.mirrorArrive) { gameState.hintsSeen.mirrorArrive = true; ui.showMirrorArrive?.(); T.onboard({ step: 'arrive' }); }
   requestSave();
@@ -200,7 +200,7 @@ function backHome({ skipped, atS, short }) {
   setTimeout(() => { $w.sleeping = false; }, 300);
   const m = mirrorState();
   T.cutsceneEnd({ dir: 'back', skipped, at_s: atS, short });
-  T.leave({ done_today: m.done, elapsed_s: secs(arrivedAt) });
+  T.leave({ left_today: QUESTS_PER_DAY - m.done, elapsed_s: secs(arrivedAt) });
   if (firstHintBanner('mirrorReturn', '🪞', '거울 장식', '🛋️ 꾸미기에서 거울 조각으로 바꿔요')) T.onboard({ step: 'return' });
   requestSave();
 }
@@ -251,14 +251,14 @@ function talk() {
   const used = hintUsed.has(hintKey(q));
   active = { q, heardAt: performance.now(), hinted: used, hintShown: used };
   ui.toast?.(clueText(q, lang()), 5200);
-  T.clue({ quest_n: q.n, npc_id: q.npc, spot_id: q.spot, flipped: q.flipped });
+  T.clue({ quest_n: q.n, npc: q.npc, spot_id: q.spot, flipped: q.flipped });
   if (q.n === 2 && firstHintBanner('mirrorFlip', '🪞', '거울 말', '여기 주민들은 좌우를 반대로 말해요')) T.onboard({ step: 'flip' });
   refreshWorld();
 }
 function useHint() {
   if (!active || active.hintShown) return;
   active.hintShown = true; active.hinted = true; hintUsed.add(hintKey(active.q));
-  T.hint({ quest_n: active.q.n, spot_id: active.q.spot, wait_s: secs(active.heardAt) });
+  T.hint({ quest_n: active.q.n, spot_id: active.q.spot, elapsed_s: secs(active.heardAt) });
   ui.toast?.(hintText(active.q, lang()), 4200);
   refreshWorld();
 }
@@ -277,7 +277,7 @@ function found() {
   active = null;
   // 거울 마을 안에서 자정을 넘기면 어제 의뢰가 남아 있다 — 오늘 다음 의뢰와 다르면 보상 없이 닫는다
   if (!next || next.n !== a.q.n || next.spot !== a.q.spot) { refreshWorld(); return; }
-  T.found({ quest_n: a.q.n, item_id: a.q.item, spot_id: a.q.spot, flipped: a.q.flipped, hinted: a.hinted, search_s: secs(a.heardAt) });
+  T.found({ quest_n: a.q.n, item: a.q.item, spot_id: a.q.spot, flipped: a.q.flipped, hinted: a.hinted, elapsed_s: secs(a.heardAt) });
   const reward = rewardFor(a.hinted);
   m.done += 1; if (a.hinted) m.hinted.push(a.q.n); m.total += reward;
   gameState.inventory.mirror = (gameState.inventory.mirror || 0) + reward;
@@ -285,7 +285,6 @@ function found() {
   const w = twinWorld(twins.find(x => x.id === a.q.npc));
   spawnSparkle(w.x, 1.4, w.z, 22); spawnFloatText(w.x, 2.2, w.z, `+${reward} 🪞`, '#7ad6c0');
   Sound.starPick?.();
-  T.ret({ quest_n: a.q.n, reward });
   const en = lang() === 'en', nm = npcName(a.q.npc, lang());
   ui.toast?.(m.done >= QUESTS_PER_DAY ? '오늘 의뢰는 끝났어요 · 🚏 정류장에서 돌아가요' : (en ? `${nm}: "Thank you for finding it!"` : `${nm}: "찾아 줘서 고마워요!"`), 3000);
   refreshWorld(); syncHud(); requestSave();
