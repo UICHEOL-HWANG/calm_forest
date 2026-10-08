@@ -221,4 +221,26 @@ table.mini td.n { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .legend-note { font-size: 11px; color: var(--ink-3); margin-top: 6px; }
 
+/* 🤝 친구 초대 섹션(admin, #refSec 안에서만 — notices_admin 의 .tag 와 겹치지 않게) — 한 장 요약 · 실패 사유 막대 · 단계 보상 타일 */
+#refSec .tag { display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--ink-3); background: var(--surface-2); border-radius: 6px; padding: 2px 7px; margin-left: 6px; vertical-align: middle; }
+#refSec .src { font-size: 10.5px; color: var(--ink-3); margin: 8px 0 0; }
+#refSec .src b { font-weight: 700; color: var(--s1); }
+#refSec .one { display: grid; grid-template-columns: 200px 1fr; gap: 18px; }
+#refSec .one .stack { display: grid; gap: 10px; align-content: start; }
+#refSec .bars .row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 6px; }
+#refSec .bars .row .k { width: 110px; color: var(--ink-3); flex: none; }
+#refSec .bars .row .b { flex: 1; height: 14px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+#refSec .bars .row .b i { display: block; height: 100%; background: var(--s2); }
+#refSec .bars .row .v { width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+#refSec .tiers { display: flex; gap: 8px; }
+#refSec .tiers .t { flex: 1; background: var(--surface-2); border-radius: 10px; padding: 9px 6px; text-align: center; }
+#refSec .tiers .t .ico { font-size: 20px; }
+#refSec .tiers .t .n { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+#refSec .tiers .t .l { font-size: 10.5px; color: var(--ink-3); }
+#refSec .warn { color: var(--down); font-weight: 700; }
+@media (max-width: 640px) {
+  #refSec .one { grid-template-columns: 1fr; } #refSec .one .stack { grid-template-columns: 1fr 1fr; }
+  #refSec .funnel-row .fl { width: 80px; font-size: 11px; } #refSec .funnel-row .fv { width: 104px; font-size: 11px; }
+}
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
