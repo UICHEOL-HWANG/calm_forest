@@ -60,6 +60,13 @@ test('주문 검증: 빈 문장·60자 초과·카드 불량·금칙어', async 
   assert.equal(await go({ text: BAD, cards: CARDS }), 422);
 });
 
+test('본문 상한은 바이트 기준: 한글 1500자(4500B, 1500 UTF-16 단위)는 413', async () => {
+  world();
+  const res = await onRequest({ request: req('POST', { text: '가'.repeat(1500), cards: CARDS }), env: ENV, now: NOW });
+  assert.equal(res.status, 413);
+  assert.equal((await res.json()).error, 'too_large');
+});
+
 test('하루 1회: DB 유일키 충돌은 409 limit', async () => {
   world({ insertStatus: 409 });
   const res = await onRequest({ request: req('POST', { text: '별빛', cards: CARDS }), env: ENV, now: NOW });

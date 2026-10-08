@@ -53,8 +53,9 @@ async function claim(env, base, uid, id, now) {
 }
 
 async function place(env, base, uid, request, now) {
+  if (Number(request.headers.get('content-length')) > BODY_MAX) return json({ error: 'too_large' }, 413);
   const raw = await request.text();
-  if (raw.length > BODY_MAX) return json({ error: 'too_large' }, 413);
+  if (new TextEncoder().encode(raw).length > BODY_MAX) return json({ error: 'too_large' }, 413);   // UTF-8 바이트 기준
   let body;
   try { body = JSON.parse(raw); } catch { return json({ error: 'bad_json' }, 400); }
   const text = typeof body?.text === 'string' ? body.text.trim() : '';
