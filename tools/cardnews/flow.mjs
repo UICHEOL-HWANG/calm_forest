@@ -252,6 +252,16 @@ async function main() {
       a = await snapshot(page, { interactive: true });
     }
 
+    // ⚠️ 앞선 시도가 중간에 죽으면 프롬프트·소재가 상자에 남는다. 글이 남은 입력창은 이름이
+    //    그 글로 바뀌어 아래 'textbox [ref=' 검색에 안 걸리고, 소재는 두 장씩 붙는다 → 새 세션으로 비운다
+    if (B(a.tree, '프롬프트 지우기') || /button "소재"/.test(a.tree)) {
+      const fresh = B(a.tree, '새로운 세션 시작');
+      if (fresh) { await page.locator(fresh).click(); await sleep(3000); }
+      a = await snapshot(page, { interactive: true });
+      const clr = B(a.tree, '프롬프트 지우기');
+      if (clr) { await page.locator(clr).click(); await sleep(1000); a = await snapshot(page, { interactive: true }); }
+    }
+
     const addRef = B(a.tree, '프롬프트 상자에 소재 추가');
     if (!addRef) throw new Error('소재 추가 버튼을 못 찾았다 (프로젝트 진입 실패)');
     await page.locator(addRef).click();
