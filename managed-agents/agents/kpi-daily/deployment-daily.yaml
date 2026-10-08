@@ -1,7 +1,7 @@
 name: calm-forest-kpi-daily
 agent: ./agent.md
 environment_id: ./environment.yaml
-vault_ids: [YOUR_VAULT_ID]
+vault_ids: [vlt_011CfovbWZuvijWmFmHCijWh]
 budget: {type: limit, max_list_cost: {currency: USD, amount: "80"}}
 schedule: {type: cron, expression: "0 9 * * *", timezone: Asia/Seoul}
 initial_events:
