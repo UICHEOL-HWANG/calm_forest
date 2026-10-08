@@ -52,6 +52,8 @@ test('cardsFromText: 키워드를 카드로, 없으면 기본 카드', () => {
   assert.equal(cardsFromText('벚꽃잎이 빙글빙글').shape, 'petal');
   assert.equal(cardsFromText('벚꽃잎이 빙글빙글').motion, 'spiral');
   assert.equal(cardsFromText('머리 위에 별').band, 'head');
+  assert.equal(cardsFromText('비눗방울이 둥실').shape, 'bubble');
+  assert.notEqual(cardsFromText('비밀의 정원').shape, 'drop');
   assert.ok(SHAPES.includes(cardsFromText('').shape));
 });
 

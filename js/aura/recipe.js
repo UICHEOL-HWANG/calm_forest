@@ -59,10 +59,11 @@ export function sanitizeCards(raw) {
 
 // 문장 → 카드. 칸마다 앞에서부터 처음 맞는 규칙이 이긴다. AI 없이 즉석으로 보여 주는 '이렇게 들렸어요'.
 const RULES = [
-  ['shape', /벚꽃|꽃잎|꽃|petal|blossom|flower/i, 'petal'], ['shape', /물방울|이슬|비|drop|rain|dew/i, 'drop'],
+  ['shape', /벚꽃|꽃잎|꽃|petal|blossom|flower/i, 'petal'], ['shape', /비눗방울|거품|bubble/i, 'bubble'],
+  ['shape', /물방울|이슬|빗방울|비가|비\s*온|drop|rain|dew/i, 'drop'],
   ['shape', /잎|풀|leaf|grass/i, 'leaf'], ['shape', /별|star/i, 'star'],
   ['shape', /반딧불|firefly/i, 'firefly'], ['shape', /눈|snow/i, 'snow'], ['shape', /하트|사랑|heart|love/i, 'heart'],
-  ['shape', /음표|노래|음악|note|song|music/i, 'note'], ['shape', /비눗방울|거품|bubble/i, 'bubble'],
+  ['shape', /음표|노래|음악|note|song|music/i, 'note'],
   ['motion', /빙글|회오리|소용돌이|spiral|swirl/i, 'spiral'], ['motion', /피어오르|올라|솟|rise|float up/i, 'rise'],
   ['motion', /흩날|떨어|내리|맺힌|fall|drift down/i, 'fall'], ['motion', /둥실|떠다|drift|wander/i, 'drift'],
   ['motion', /두근|반짝반짝|맥|pulse|beat/i, 'pulse'], ['motion', /돌|감싸|orbit|circle/i, 'orbit'],
