@@ -71,6 +71,8 @@ await b.sleep(1200); await shot('m1-stop-day');   // 🚏 정류장(호수를 �
 await until(async () => (await ms()).nearDoor === 'mirrorgo');
 await press('Space');
 check('M2b 탑승 연출 시작', !!(await until(async () => (await ms()).ride === true, 6000)));
+const rs = await ev('__mirror.save()');   // 마차가 호수 위를 지나는 중 — 저장 좌표가 호수면 새로고침 때 물에 빠진다
+check('M2s 탑승 중 저장 = 정류장 앞', JSON.stringify(rs.pos) === JSON.stringify({ x: 16, z: 15.6 }), JSON.stringify(rs.pos));
 await b.sleep(1200); await shot('m2-board');
 let st = await waitRide();
 check('M2c 거울 마을 도착·조작 해제·방문 1', st.atMirror === true && st.mirror.visits === 1, JSON.stringify(st.pos));
@@ -99,6 +101,15 @@ for (let n = 1; n <= 3; n++) {
     check('M5h 30초 뒤 💧 힌트 프롬프트', /연못에 비춰|Peek/.test(p), p);
     await until(async () => (await ms()).nearDoor === 'mirrorhint');
     await press('Space'); await until(async () => (await ms()).nearDoor !== 'mirrorhint', 5000); await b.sleep(1500); await shot('m5-hint');
+    // 힌트 본 뒤 마을에 다녀와 다시 말 걸어도 감점(+2)이 남아야 한다 — M5z 합계 8 로 잠근다
+    await ev(`__mirror.tp(2.5, 13.2)`); await until(async () => (await ms()).nearDoor === 'mirrorback');
+    await press('Space'); await until(async () => (await ms()).ride === true, 6000); await b.sleep(300); await press('Escape'); await waitRide();
+    await ev('__mirror.stop()'); await until(async () => (await ms()).nearDoor === 'mirrorgo');
+    await press('Space'); await until(async () => (await ms()).ride === true, 6000); await b.sleep(300); await press('Escape'); await waitRide();
+    await ev(`__mirror.tp(${sp.x}, ${sp.z + 1.4})`); await until(async () => (await ms()).nearDoor === 'mirrortalk');
+    await press('Space'); await until(async () => (await ms()).nearDoor !== 'mirrortalk', 5000); await b.sleep(800);
+    p = await prompt();
+    check('M5r 재탑승 뒤 다시 말 걸면 힌트가 바로 이어진다', !/연못에 비춰|Peek/.test(p) && (await ms()).nearDoor !== 'mirrorhint', p);
   }
   const spot = await ev(`(async () => (${LY}).spotOf('${q.spot}'))()`);
   if (n === 3) { await ev(`__mirror.tp(${spot.x}, ${spot.z + 4.5})`); await b.sleep(2500); await shot('m5-beam'); }   // 💧 빛기둥이 화면 안에 들게 조금 떨어져서

@@ -36,7 +36,10 @@ const TWIN_IDS = ['farmer', 'angler', 'chef'];   // NPC_SPOTS 순서와 같다
 let world = null, carriage = null, shelter = null, gateLake = null, gateMirror = null, twins = [];
 let ride = null;            // 진행 중 연출
 let active = null;          // 단서를 들은 의뢰 { q, heardAt, hinted, hintShown } — 저장하지 않는다(스펙 §6)
-let arrivedAt = 0, lastHud = '', stopShownKey = null;
+let arrivedAt = 0, lastHud = '', lastDay = '', stopShownKey = null;
+// 힌트 쓴 의뢰 'day:n' — active 는 귀환 때 지워지지만 감점은 남아야 한다(다시 타고 와서 +3 받는 구멍)
+const hintUsed = new Set();
+const hintKey = (q) => `${todayStr()}:${q.n}`;
 const lang = () => (getLang() === 'en' ? 'en' : 'ko');   // i18n.js 가 언어의 단일 출처(document lang 은 쓰지 않는다)
 const secs = (from) => Math.round((performance.now() - from) / 100) / 10;
 const W = (l) => ({ x: MIRROR.x + l.x, z: MIRROR.z + l.z });
@@ -245,7 +248,8 @@ export function mirrorAction(nd) {
 }
 function talk() {
   const q = questAt(mirrorState(), todayStr()); if (!q || active) return;
-  active = { q, heardAt: performance.now(), hinted: false, hintShown: false };
+  const used = hintUsed.has(hintKey(q));
+  active = { q, heardAt: performance.now(), hinted: used, hintShown: used };
   ui.toast?.(clueText(q, lang()), 5200);
   T.clue({ quest_n: q.n, npc_id: q.npc, spot_id: q.spot, flipped: q.flipped });
   if (q.n === 2 && firstHintBanner('mirrorFlip', '🪞', '거울 말', '여기 주민들은 좌우를 반대로 말해요')) T.onboard({ step: 'flip' });
@@ -253,7 +257,7 @@ function talk() {
 }
 function useHint() {
   if (!active || active.hintShown) return;
-  active.hintShown = true; active.hinted = true;
+  active.hintShown = true; active.hinted = true; hintUsed.add(hintKey(active.q));
   T.hint({ quest_n: active.q.n, spot_id: active.q.spot, wait_s: secs(active.heardAt) });
   ui.toast?.(hintText(active.q, lang()), 4200);
   refreshWorld();
@@ -262,6 +266,8 @@ function useHint() {
 export function updateMirror(dt, t) {
   if (!atMirror || !world || ride) return;
   world.update(t);
+  const m = mirrorState();   // 안에서 자정을 넘기면 HUD·말풍선이 어제 상태로 남는다
+  if (m.day !== lastDay) { lastDay = m.day; lastHud = null; syncHud(); refreshWorld(); }
   if (!active) return;
   const s = spotOf(active.q.spot);
   if (Math.hypot(player.position.x - MIRROR.x - s.x, player.position.z - MIRROR.z - (s.z + 0.35)) < PICK_R) found();
