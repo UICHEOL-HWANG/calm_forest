@@ -385,15 +385,34 @@ export { DUEL_ART_H };
 //   ▶ DOM 카드에만 결과를 적으면 "내가 뭘 냈고 쟤가 뭘 냈는지"가 무대에서 안 보인다.
 //     승부는 마주 선 둘 사이에서 벌어져야 하므로, 낸 손을 머리 위에 올린다.
 //   ▶ 이모지를 캔버스에 그려 스프라이트로 쓴다 — 외부 이미지 없이(저장소 규칙) 또렷하다.
+//   ⚠️ WebKit(토스 iOS 웹뷰·Safari)은 U+FE0F 가 붙은 ✌️🖐️ 의 폭을 잘못 재서 textAlign 'center' 가
+//     오른쪽으로 밀리고 캔버스 끝에서 잘렸다(토스 제보 2026-10-09, WKWebView 실측 x 79~127).
+//     엔진의 글자 측정을 믿지 않고, 넉넉한 판에 그린 뒤 **실제 잉크 상자**를 재서 가운데로 옮겨 담는다.
+//     FE0F 를 빼는 길은 Apple 글꼴이 없는 안드로이드에서 흑백 글자로 떨어질 수 있어 쓰지 않는다.
+function emojiCanvas(ico, size, px) {
+  const W = size * 2;
+  const src = document.createElement('canvas');
+  src.width = src.height = W;
+  const c = src.getContext('2d', { willReadFrequently: true });
+  c.font = `${px}px "Apple Color Emoji", sans-serif`;
+  c.textBaseline = 'alphabetic';
+  c.fillText(ico, size / 2, W * 0.7);
+  const d = c.getImageData(0, 0, W, W).data;
+  let x0 = W, y0 = W, x1 = -1, y1 = -1;
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+    if (d[(y * W + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  const out = document.createElement('canvas');
+  out.width = out.height = size;
+  if (x1 < 0) return out;                                   // 그려진 게 없다(글꼴 없음) — 빈 칸
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  const k = Math.min(1, size * 0.9 / Math.max(w, h));       // 넘칠 때만 줄인다 — 가장자리 여백 5%
+  out.getContext('2d').drawImage(src, x0, y0, w, h, (size - w * k) / 2, (size - h * k) / 2, w * k, h * k);
+  return out;
+}
+
 function handSprite(THREE, ico) {
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = 128;
-  const c = cv.getContext('2d');
-  c.font = '96px "Apple Color Emoji", sans-serif';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  c.fillText(ico, 64, 70);
-  const tex = new THREE.CanvasTexture(cv);
+  const tex = new THREE.CanvasTexture(emojiCanvas(ico, 128, 96));
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
   sp.scale.set(0.62, 0.62, 1);
   return sp;
@@ -455,13 +474,7 @@ function makeBowl(THREE) {
 
 /** 🥕 작물 — 이모지를 캔버스에 그려 스프라이트로(외부 이미지 없이, 손 스프라이트와 같은 문법) */
 function cropSprite(THREE, ico) {
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = 96;
-  const c = cv.getContext('2d');
-  c.font = '72px "Apple Color Emoji", sans-serif';
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(ico, 48, 54);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(emojiCanvas(ico, 96, 72)), transparent: true, depthWrite: false }));
   sp.scale.set(0.34, 0.34, 1);
   return sp;
 }

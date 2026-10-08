@@ -2346,6 +2346,30 @@ export const EN = {
   '밤이 되면 으스스하게 빛나는 유령 등': 'A spooky ghost lamp that glows at night',
   '묘비 모양 울타리 · 밤손님은 못 막아요': 'Gravestone-shaped fence · does not keep night visitors out',
   '마당 입구에 세우는 커다란 거미줄 아치': 'A big cobweb arch for the yard entrance',
+  // 🤝 친구 초대 보상(2026-10) — 카탈로그 이름 · 장식 설명 · 상점 표시 · 도착 토스트
+  '무지개 크리스탈 세트': 'Rainbow Crystal Set', '별빛 우정 날개': 'Starlight Friendship Wings', '우정 하트핀': 'Friendship Heart Pin',
+  '무지개 우정 아치': 'Rainbow Friendship Arch',
+  '친구 3명 초대 보상 — 하트 등불이 둥실': 'Reward for inviting 3 friends — heart lanterns float around',
+  '🤝 초대 보상': '🤝 Invite reward',
+  '🤝 친구 초대 보상이 도착했어요': '🤝 Your friend-invite reward has arrived',
+  // 🤝 친구 초대 시트·배너·결과(js/referral/rules.js MSG)
+  '친구 초대': 'Invite friends',
+  '🤝 친구를 숲으로 초대해요': '🤝 Invite a friend to the forest',
+  '초대장을 받고 2일 이상 플레이하면 선물이 와요!': 'When your invited friend plays for 2 days or more, a gift arrives!',
+  '지금 {0#}명': '{0} so far',
+  '{0#}명 초대': '{0} invited',
+  '숲에 막 온 친구 {0#}명 — 이틀 지내면 함께 셀게요': '{0} new friend(s) just arrived — they count after two days',
+  '🔗 링크 복사': '🔗 Copy link',
+  '📤 공유하기': '📤 Share',
+  '링크를 복사했어요': 'Link copied',
+  '로그인하면 초대 링크를 만들 수 있어요': 'Log in to create an invite link',
+  '초대 링크를 불러오지 못했어요. 잠시 후 다시 열어 주세요': "Couldn't load your invite link. Please try again in a moment",
+  '💗 친구가 숲으로 초대했어요! 로그인하면 우정 하트핀을 드려요': '💗 A friend invited you to the forest! Log in to get a Friendship Heart Pin',
+  '💗 우정 하트핀이 도착했어요 · 옷장에서 달아 보세요': '💗 Your Friendship Heart Pin has arrived · Put it on in the Wardrobe',
+  '초대 선물은 새로 숲에 온 친구만 받을 수 있어요': 'Invite gifts are only for friends who are new to the forest',
+  '내 초대 링크로는 받을 수 없어요': "You can't use your own invite link",
+  '초대 링크가 올바르지 않아요': 'This invite link is not valid',
+  '🌲 고요한 숲에서 같이 플레이하자! 이 링크로 오면 선물이 있어 →': "🌲 Come play with me in Calm Forest! Join with this link and you'll get a gift →",
 
   // ── 🏮 빛 공방(js/aura/*, js/spaces/light-workshop.js) ─────────────
   // 재사용(이미 있음): 별 · 하트 · 물방울 · 반딧불 · 착용 · 벗기 · 복숭아 · 꿀 · 호박 · 호수 · 산딸기

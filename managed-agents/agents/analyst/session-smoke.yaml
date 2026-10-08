@@ -1,0 +1,13 @@
+agent: agent_01UvMwYwdCjx1ujXXj11svo5
+environment_id: env_013dZsyAKfbN9NFfhpcEbE5H
+vault_ids: [vlt_011CfovbWZuvijWmFmHCijWh]
+title: analyst smoke test - BigQuery connection
+budget: {type: limit, max_list_cost: {currency: USD, amount: "200"}}
+initial_events:
+  - type: user.message
+    content:
+      - type: text
+        text: |
+          연결 점검만 해 주세요(분석 아님, 리포트 파일 불필요). BigQuery 에서 데이터셋·테이블 목록을 확인하고,
+          GA4 events_* 의 첫 날짜·마지막 날짜와 최근 14일 일별 user_pseudo_id 수를 표로 주세요.
+          Supabase 연결도 list_tables 한 번으로 확인해 주세요. 끝나면 어떤 도구가 됐고 안 됐는지 요약해 주세요.
