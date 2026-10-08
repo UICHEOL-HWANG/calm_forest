@@ -30,7 +30,7 @@ test('game.js — 루프·입력: 연출이 카메라를 갖고 탭·Space·Esc�
 
 test('game.js — 액션·세이브·시간 정지·조명·그림자·나무 제외', () => {
   assert.match(GAME, /if \(atMirror \|\| nearDoor === 'mirrorgo'\) return mirrorAction\(nearDoor\);/);
-  assert.match(GAME, /atMirror \? mirrorReturnPos\(\) : atDream \? dreamReturnPos\(\) :/);
+  assert.match(GAME, /\(atMirror \|\| mirrorRideActive\(\)\) \? mirrorReturnPos\(\) : atDream \? dreamReturnPos\(\) :/, '탑승 연출 중 저장도 정류장 앞(마차는 호수 위를 지난다)');
   assert.match(GAME, /gameState\.mirror = normalizeMirror\(saved\.mirror, todayStr\(\)\);/);
   assert.match(GAME, /mirror: \{ visits: 0, day: '', done: 0, hinted: \[\], total: 0 \}/);
   assert.match(GAME, /bait: 0, shard: 0, mirror: 0,/);
@@ -61,4 +61,12 @@ test('doors.js · 고정 목록 · index.html · BGM', () => {
 
 test('index.html — 꾸미기 메뉴 머리에 🪞 조각 잔량(생긴 뒤에만, ✨ 와 같은 방식)', () => {
   assert.match(HTML, /\(lastInv\.mirror \? `  🪞 \$\{lastInv\.mirror\}` : ''\)/);
+});
+
+test('mirror.js — 재탑승해도 힌트 감점 유지 · 자정 넘기면 HUD·말풍선 갱신', () => {
+  const M = read('js/spaces/mirror.js');
+  assert.match(M, /const hintUsed = new Set\(\);/, '힌트 쓴 의뢰(day:n)는 leaveSpace 뒤에도 기억');
+  assert.match(M, /hintUsed\.add\(hintKey\(active\.q\)\)/);
+  assert.match(M, /const used = hintUsed\.has\(hintKey\(q\)\);\n\s+active = \{ q, heardAt: performance\.now\(\), hinted: used, hintShown: used \};/);
+  assert.match(M, /if \(m\.day !== lastDay\) \{ lastDay = m\.day; lastHud = null; syncHud\(\); refreshWorld\(\); \}/);
 });

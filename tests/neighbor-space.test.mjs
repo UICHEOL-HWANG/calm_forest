@@ -47,7 +47,7 @@ test('game.js 공간 플래그 배선(천문대와 같은 자리)', () => {
   assert.match(SRC, /\} else if \(atNeighbor\) \{ clampToNeighbor\(player\.position\);/);
   assert.match(bodyOf('handleAction'), /if \(atNeighbor \|\| nearDoor === 'neighbor'\) return neighborAction\(nearDoor\);/);
   assert.match(SRC, /updateObservatory\(dt, t\); updateNeighbor\(dt\);/);
-  assert.match(bodyOf('getGameState'), /gameState\.playerPos = atNeighbor \? neighborReturnPos\(\) : (?:atMirror \? mirrorReturnPos\(\) : )?(?:atDream \? dreamReturnPos\(\) : )?\{ x: player\.position\.x, z: player\.position\.z \};/);
+  assert.match(bodyOf('getGameState'), /gameState\.playerPos = atNeighbor \? neighborReturnPos\(\) : (?:\(atMirror \|\| mirrorRideActive\(\)\) \? mirrorReturnPos\(\) : )?(?:atDream \? dreamReturnPos\(\) : )?\{ x: player\.position\.x, z: player\.position\.z \};/);
   assert.match(SRC, /atObservatory, atOrchard, atNeighbor, atRiver/);
 });
 
