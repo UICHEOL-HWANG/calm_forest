@@ -44,7 +44,7 @@ export const EN = {
   '☁️ 구름 침대 · 자기': '☁️ Cloud Bed · Sleep',   // ⚠️ 단독 '자기' 키 금지(자기 자신·자기장 오역) — 문장째 EXACT
   // ── 🪞 거울 마을 ─────────────────────────────────────────
   '🪞 거울 마을행 타기': '🪞 Ride to Mirror Village',
-  '🌙 막차가 끊겼어요 · 꿈의 숲은 침대에서': '🌙 The last carriage has left · Dream from your bed tonight',
+  '🌙 막차가 끊겼어요 · 꿈의 숲은 침대에서': '🌙 The last carriage has left · Visit the Dream Forest from your bed',
   '🚏 마을로 돌아가기': '🚏 Ride back to the village',
   '💧 연못에 비춰 보기': '💧 Peek into the pond',
   '오늘 의뢰는 끝났어요 · 🚏 정류장에서 돌아가요': "That's all for today · Head back from the 🚏 stop",
@@ -63,7 +63,7 @@ export const EN = {
   '마차 정류장': 'Carriage Stop',
   '낮엔 🪞 거울 마을에 갈 수 있어요': 'By day, ride to 🪞 Mirror Village',
   '거울 말': 'Mirror-speak',
-  '여기 주민들은 좌우를 반대로 말해요': 'Villagers here say left and right the wrong way round',
+  '여기 주민들은 좌우를 반대로 말해요': 'Villagers here say left and right the wrong way around',
   '거울 장식': 'Mirror Decor',
   '🛋️ 꾸미기에서 거울 조각으로 바꿔요': '🛋️ Trade mirror shards for decor in Decorate',
   '거꾸로 화분': 'Upside-down Pot', '물빛 거울': 'Water Mirror', '거울 곰 인형': 'Mirror Bear', '거울 등불': 'Mirror Lamp',
