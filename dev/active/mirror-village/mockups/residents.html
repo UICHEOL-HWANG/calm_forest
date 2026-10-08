@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mirror Residents</title><link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }</script>
+</head><body><div class="say" id="say"></div><div class="title" id="title"></div>
+<script type="module">
+import { THREE, setup, mat, glow, mesh, halo, ground, tree, bush, rock, labeler, loop } from './lib.js';
+const V = new URLSearchParams(location.search).get('v') || '1';
+const { renderer, scene, camera, portrait } = setup();
+const lab = labeler(camera), anims = [];
+ground(scene); [[-6, -4], [6, -5], [-8, 1], [8, 0], [0, -7]].forEach(([x, z], i) => tree(scene, x, z, 1.3, i));
+[[-4.6, 1.5], [4.6, 1.8], [-1.5, -2.5], [2, -3]].forEach(([x, z], i) => bush(scene, x, z, 1, i)); rock(scene, 3.6, 2.6, 1.2);
+
+const EYE = glow(0xbff6ff, 2.4);
+const inv = (c) => { const k = new THREE.Color(0xffffff - c); const h = {}; k.getHSL(h); return new THREE.Color().setHSL(h.h, Math.min(h.s, 0.55), Math.min(Math.max(h.l, 0.45), 0.72)).getHex(); };
+// 실제 주민 3명(농부·낚시꾼·요리사 판다)의 실루엣을 단순화해 따라 만든 몸
+const REAL = [
+  { id: 'farmer', name: '농부 삼촌', body: 0x5fbf62, hat: 0xf0cd6a, skin: 0xfde3c8 },
+  { id: 'angler', name: '낚시꾼 할아버지', body: 0x3f8fd6, hat: 0x27506f, skin: 0xfde3c8 },
+  { id: 'chef', name: '요리사 판다', body: 0xf7f4ee, hat: 0xffffff, skin: 0xf7f4ee },
+];
+function realLook(g, d, M) {   // M(colorHex) → material
+  const b = mesh(g, new THREE.SphereGeometry(0.5, 16, 12), M(d.body), 0, 0.55, 0); b.scale.set(1, 1.1, 0.95);
+  mesh(g, new THREE.SphereGeometry(0.42, 16, 12), M(d.skin), 0, 1.22, 0);
+  [-1, 1].forEach(s => mesh(g, new THREE.SphereGeometry(0.055, 8, 6), EYE, s * 0.15, 1.27, 0.38));
+  if (d.id === 'farmer') {
+    mesh(g, new THREE.CylinderGeometry(0.78, 0.8, 0.06, 18), M(d.hat), 0, 1.55, 0);
+    mesh(g, new THREE.CylinderGeometry(0.34, 0.4, 0.3, 14), M(d.hat), 0, 1.7, 0);
+  } else if (d.id === 'angler') {
+    mesh(g, new THREE.CylinderGeometry(0.36, 0.52, 0.34, 14), M(d.hat), 0, 1.6, 0);
+    mesh(g, new THREE.SphereGeometry(0.22, 10, 8), M(0xeeeeee), 0, 1.03, 0.28).scale.set(1, 0.7, 0.6);
+    const rod = mesh(g, new THREE.CylinderGeometry(0.025, 0.035, 2.0, 6), M(0x8a6a4a), 0.55, 1.2, 0.1); rod.rotation.z = -0.45;
+  } else {
+    [-1, 1].forEach(s => mesh(g, new THREE.SphereGeometry(0.14, 10, 8), M(0x222222), s * 0.3, 1.58, 0));
+    [-1, 1].forEach(s => mesh(g, new THREE.SphereGeometry(0.1, 8, 6), M(0x222222), s * 0.15, 1.27, 0.34).scale.set(1, 1.2, 0.5));
+    mesh(g, new THREE.CylinderGeometry(0.26, 0.24, 0.36, 14), M(d.hat), 0, 1.75, 0);
+    mesh(g, new THREE.SphereGeometry(0.34, 12, 8), M(d.hat), 0, 1.98, 0).scale.set(1, 0.6, 1);
+  }
+}
+// 3안: 이 마을에만 사는 물방울 요정 — 몸은 같고 머리 장식으로 구분
+const SPRITES = [
+  { name: '방울', tint: 0xc8b0ff, acc: 'ribbon', accC: 0xff9ee0 },
+  { name: '이슬', tint: 0x9ee8ff, acc: 'leaf', accC: 0x9ef6d0 },
+  { name: '윤슬', tint: 0xffd6a8, acc: 'star', accC: 0xffe08a },
+];
+function spriteLook(g, d) {
+  const M = new THREE.MeshPhysicalMaterial({ color: d.tint, transparent: true, opacity: 0.82, roughness: 0.15, transmission: 0.2, emissive: d.tint, emissiveIntensity: 0.35, flatShading: true });
+  const b = mesh(g, new THREE.SphereGeometry(0.62, 18, 14), M, 0, 0.7, 0); b.scale.set(1, 0.95, 1);
+  const tip = mesh(g, new THREE.ConeGeometry(0.4, 0.75, 16), M, 0, 1.48, 0);
+  [-1, 1].forEach(s => mesh(g, new THREE.SphereGeometry(0.07, 8, 6), mat(0x26224a), s * 0.2, 0.82, 0.56));
+  [-1, 1].forEach(s => mesh(g, new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff9ec8, transparent: true, opacity: 0.6 }), s * 0.36, 0.68, 0.5));
+  const A = mat(d.accC, { emissive: d.accC, emissiveIntensity: 0.4 });
+  if (d.acc === 'ribbon') { [-1, 1].forEach(s => { const r = mesh(g, new THREE.ConeGeometry(0.16, 0.3, 4), A, s * 0.17, 1.62, 0.15); r.rotation.z = s * Math.PI / 2; }); mesh(g, new THREE.SphereGeometry(0.07, 8, 6), A, 0, 1.62, 0.15); }
+  if (d.acc === 'leaf') { const l = mesh(g, new THREE.SphereGeometry(0.22, 8, 6), A, 0.12, 1.9, 0); l.scale.set(1.4, 0.25, 0.7); l.rotation.z = 0.5; }
+  if (d.acc === 'star') { const s = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.09 : 0.2, a = i / 10 * Math.PI * 2 + Math.PI / 2; i ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    mesh(g, new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: false }), A, 0.25, 1.55, 0.25); }
+  halo(g, d.tint, 2.4, 0, 0.8, 0, 0.35);
+}
+
+const SHADOW = new THREE.MeshStandardMaterial({ color: 0x2a2250, transparent: true, opacity: 0.82, roughness: 1, flatShading: true });
+const INFO = {
+  1: ['1. 👤 그림자 실루엣', '실제 주민 모양 그대로, 온몸이 반투명 그림자 + 빛나는 눈 · 모자·소품 실루엣으로 누군지 알아봄', d => realLook(d.g, d.def, () => SHADOW), i => '그림자 ' + REAL[i].name],
+  2: ['2. 🌗 보색 쌍둥이', '실제 주민 모양 그대로, 색만 보색으로 뒤집힘 · 마을 팔레트(색 반전 숲)와 가장 잘 이어짐', d => realLook(d.g, d.def, c => mat(inv(c))), i => '거울 ' + REAL[i].name],
+  3: ['3. 💧 물방울 요정', '이 마을에만 사는 새 주민 · 실제 주민과 무관 · 머리 장식(리본·잎·별)으로 구분', d => spriteLook(d.g, SPRITES[d.i]), i => SPRITES[i].name],
+}[V];
+[-2.6, 0, 2.6].forEach((x, i) => {
+  const g = new THREE.Group(); g.position.set(x, 0, 0); g.rotation.y = [0.35, 0, -0.35][i]; scene.add(g);
+  INFO[2]({ g, def: REAL[i], i });
+  if (V === '1') mesh(scene, new THREE.CircleGeometry(0.6, 20), new THREE.MeshBasicMaterial({ color: 0x9ee8ff, transparent: true, opacity: 0.25 }), x, 0.02, 0).rotation.x = -Math.PI / 2;
+  anims.push(t => { g.position.y = Math.sin(t * 1.6 + i) * 0.08; });
+  lab.add(INFO[3](i), x, V === '3' ? 2.2 : 2.25, 0, 'npc');
+  if (i === 0) lab.add('💬', x, V === '3' ? 2.75 : 2.8, 0, 'bubble');
+});
+document.getElementById('say').textContent = `${INFO[3](0)}: "🪣 우물 왼쪽 덤불 밑에서 반지를 잃어버렸어요"`;
+document.getElementById('title').innerHTML = `<b>${INFO[0]}</b><span>${INFO[1]}</span>`;
+camera.position.set(0, portrait ? 5.2 : 3.4, portrait ? 15.5 : 8.2); camera.lookAt(0, portrait ? 0.6 : 1.1, 0);
+loop(renderer, scene, camera, anims, lab);
+</script></body></html>

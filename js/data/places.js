@@ -66,6 +66,8 @@ export const COOP_FEED = 2;                            // 모이(씨앗) 소비�
 export const GLADE = new THREE.Vector3(7, 0, 26);      // 계곡 중심(남동쪽 숲) — ☕카페·🍄채집 숲과 안 겹치게
 
 export const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
+export const LIGHT_WORKSHOP = new THREE.Vector3(16.5, 0, 33.5);    // 🏮 빛 공방 — 계곡 남동쪽 나무숲 가장자리(사용자: 아래 나무 쪽으로, 2026-10-09). 겹치는 계곡 링 나무만 glade.js 가 비우고 옆 나무는 남긴다
+export const LIGHT_WORKSHOP_POND = { x: -2.3, z: 2.3, r: 0.9 };   // 공방 연못(공방 기준 오프셋) — 나무가 물에 박히지 않게 glade.js 도 쓴다
 
 //   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
 // 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
@@ -162,6 +164,9 @@ export const DOCK_POND_R = 7;                            // 연못 반경(나무
 
 export const RIVER = new THREE.Vector3(0, 0, -400);      // 강 공간(다른 인스턴스와 멀찍이)
 export const DREAM = new THREE.Vector3(0, 0, -550);      // 🌙 꿈의 숲(떠 있는 섬) — 강(-400)과 150 띄움 · 섬·조각 좌표는 js/dream/layout.js(로컬)
+export const MIRROR = new THREE.Vector3(0, 0, -700);     // 🪞 거울 마을 — 꿈의 숲(-550)과 150 띄움 · 로컬 좌표는 js/mirror/layout.js
+export const MIRROR_R = 22;
+export const MIRROR_STOP = new THREE.Vector3(16, 0, 17); // 🚏 마을 정류장 — 호수(16,9 r6) 남쪽 잔디(시안 A 확정, 2026-10-08)
 
 export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸어 다니는 데크) 반경
 
@@ -258,7 +263,9 @@ export const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // �
 
 export const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 
-export const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
+export const ORCHARD_GATE = new THREE.Vector3(33, 0, 7);   // 🍎 마을 동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
+//   (32,2) 였을 때 울타리 왼날개 끝(25.5,−0.9)이 🌾수확제 광장(23,−4·반경 5)·좌판(25.4,−1)에 박혀 남동으로 옮겼다(2026-10-09).
+//   잔디 판 기준 여유: 광장 4.6 · 좌판 4.9 · 호수 3.6 · 🔭천문대 기단 4.2.
 
 // 🔒 문 앞 프롬프트 반경 — **잠금 충돌체를 넘어서야 한다**. 잠겼을 때 문을 막는 원은
 //   (문 앞 0.45, 반경 1.5)라 남쪽에서 다가설 수 있는 한계가 0.45+1.5+PLAYER_R(0.42)=2.37 이다.
@@ -266,7 +273,7 @@ export const ORCHARD_GATE = new THREE.Vector3(32, 0, 2);   // 🍎 마을 정동
 //   한 번도 뜨지 못했다 — 유저는 무엇을 하면 열리는지 알 길이 없었다(🏛️ 박물관 계단 STAIR_PROMPT_R 과 같은 교훈).
 export const ORCHARD_PROMPT_R = 2.8;
 
-//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다. 동쪽은 x>18 에 고정물이 없다.
+//   x=22 였을 때 언덕길 계단이 호수(LAKE 16,9 · 반경 6)를 덮어 32 로 밀었다(지금은 위 사유로 33,7). 동쪽 x 18~28 에는 🌾수확제 광장이 있다.
 export const ORCHARD = new THREE.Vector3(0, 0, 160);       // 과수원 인스턴스 — 텃밭(84)과 광산(250) 사이
 
 export const ORCHARD_HALF = 20;                            // 언덕 반경
