@@ -2317,4 +2317,10 @@ export const EN = {
   '밤이 되면 으스스하게 빛나는 유령 등': 'A spooky ghost lamp that glows at night',
   '묘비 모양 울타리 · 밤손님은 못 막아요': 'Gravestone-shaped fence · does not keep night visitors out',
   '마당 입구에 세우는 커다란 거미줄 아치': 'A big cobweb arch for the yard entrance',
+  // 🤝 친구 초대 보상(2026-10) — 카탈로그 이름 · 장식 설명 · 상점 표시 · 도착 토스트
+  '별빛 도구 세트': 'Starlight Tool Set', '별빛 우정 날개': 'Starlight Friendship Wings', '우정 하트핀': 'Friendship Heart Pin',
+  '무지개 우정 아치': 'Rainbow Friendship Arch', '친구 초대': 'Friend invite',
+  '친구 3명 초대 보상 — 하트 등불이 둥실': 'Reward for inviting 3 friends — heart lanterns float around',
+  '🤝 초대 보상': '🤝 Invite reward',
+  '🤝 친구 초대 보상이 도착했어요': '🤝 Your friend-invite reward has arrived',
 };

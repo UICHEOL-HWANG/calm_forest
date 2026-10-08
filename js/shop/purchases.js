@@ -8,9 +8,14 @@
 //  ▶ 문구 2건(GRANT_MSG·LATER_MSG)은 사용자 검수를 거친 값이다(Task 9) — 바꾸려면 다시 검수.
 // =============================================================
 import { applyPurchases } from './entitlements.js';
+import { findItem } from '../cosmetics/catalog.js';
+import { isRewardDecor } from '../data/reward-decor.js';
 
 export const GRANT_MSG = '🎁 산 아이템이 도착했어요';
 export const LATER_MSG = '잠시 후 다시 들어오면 도착해 있어요';
+export const REWARD_MSG = '🤝 친구 초대 보상이 도착했어요';   // 산 게 아니니 GRANT_MSG 를 쓰지 않는다
+
+const isReward = (id) => !!findItem(id)?.reward || isRewardDecor(id);
 
 export async function syncPurchases({ gameState, fetchPurchases, hooks, via }) {
   const rows = await fetchPurchases();
@@ -22,7 +27,7 @@ export async function syncPurchases({ gameState, fetchPurchases, hooks, via }) {
   if (granted.some(g => g.kind === 'pet') || revoked.some(g => g.kind === 'pet')) hooks.refreshPet();
   for (const g of granted) hooks.track('cash_grant', { item_id: g.item_id, kind: g.kind, via });
   for (const g of revoked) hooks.track('cash_revoke', { item_id: g.item_id, kind: g.kind });
-  if (granted.length) hooks.toast(GRANT_MSG);
+  if (granted.length) hooks.toast(granted.every(g => isReward(g.item_id)) ? REWARD_MSG : GRANT_MSG);
   hooks.requestSave();
   return { granted, revoked };
 }

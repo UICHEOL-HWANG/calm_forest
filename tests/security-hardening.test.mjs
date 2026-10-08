@@ -8,12 +8,14 @@ import { isCardsAdmin, CARDS_ADMIN_UIDS } from '../functions/api/_cards-auth.js'
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const MIG = read('sql/migrations/migrate_security_hardening.sql');
+// 🤝 _premium_cosmetic_ids() 의 현재 정의는 추천 마이그레이션이 대체했다(머리말 경고 참고)
+const REF = read('sql/migrations/migrate_referrals.sql');
 
-test('💎 SQL _premium_cosmetic_ids() = 카탈로그의 현금 전용(won) 품목 — 코인 품목이 섞이면 회수 오판', () => {
-  const body = MIG.match(/_premium_cosmetic_ids\(\)[\s\S]*?array\[([\s\S]*?)\]::text\[\]/);
+test('💎 SQL _premium_cosmetic_ids() = 카탈로그의 현금 전용(won) + 🤝 초대 보상 품목 — 코인 품목이 섞이면 회수 오판', () => {
+  const body = REF.match(/function public\._premium_cosmetic_ids\(\)[\s\S]*?array\[([\s\S]*?)\]::text\[\]/);
   assert.ok(body, 'SQL 에서 프리미엄 목록을 못 찾음');
   const sqlIds = [...body[1].matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
-  const catIds = ITEMS.filter(i => i.premium).map(i => i.id).sort();
+  const catIds = ITEMS.filter(i => i.premium || i.reward).map(i => i.id).sort();
   assert.deepEqual(sqlIds, catIds);
 });
 
