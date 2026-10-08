@@ -11,7 +11,7 @@ import {
   refreshInventoryUI, requestSave, scene, setSpaceVisible, snapCamera, solidBox, spawnFloatText, spawnSparkle, todayStr, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
-import { MIRROR } from '../data/places.js';
+import { MIRROR, MIRROR_STOP } from '../data/places.js';
 import { NPCS } from '../data/npcs.js';
 import { buildNPCFigure } from './npc.js';
 import {
@@ -20,7 +20,7 @@ import {
 } from '../mirror/layout.js';
 import { QUESTS_PER_DAY, normalizeMirror, questAt, rewardFor } from '../mirror/quests.js';
 import { clueText, clueShort, hintText, npcName } from '../mirror/clues.js';
-import { buildMirrorWorld, invertColor, makeMirrorGate, mirrorizeFigure } from '../mirror/art.js';
+import { buildMirrorWorld, invertColor, makeStopShelter, makeMirrorGate, mirrorizeFigure } from '../mirror/art.js';
 import { makeMoonCarriage } from '../dream/art.js';
 import { startRide } from '../mirror/ride.js';
 import { T, bindTracker } from '../mirror/track.js';
@@ -33,7 +33,7 @@ bindTracker(trackEvent, { strict: ['localhost', '127.0.0.1'].includes(location.h
 
 const HINT_AFTER_S = 30;
 const TWIN_IDS = ['farmer', 'angler', 'chef'];   // NPC_SPOTS 순서와 같다
-let world = null, carriage = null, gateLake = null, gateMirror = null, twins = [];
+let world = null, carriage = null, shelter = null, gateLake = null, gateMirror = null, twins = [];
 let ride = null;            // 진행 중 연출
 let active = null;          // 단서를 들은 의뢰 { q, heardAt, hinted, hintShown } — 저장하지 않는다(스펙 §6)
 let arrivedAt = 0, lastHud = '', stopShownKey = null;
@@ -83,13 +83,25 @@ function ensureVillageSide() {
   scene.add(carriage);
   gateLake = makeMirrorGate(); gateLake.group.position.set(LAKE_GATE.x, LAKE_GATE.y, LAKE_GATE.z);
   scene.add(gateLake.group);
+  // 🚏 마을 정류장 — 지붕이 남쪽, 열린 쪽(북)이 호수·VILLAGE_BOARD 를 본다(거울 쪽 정류장과 같은 방향). 낮밤 모두 서 있다
+  shelter = makeStopShelter(0x6f8fc9, 0xb98a5e);
+  shelter.position.set(MIRROR_STOP.x, 0, MIRROR_STOP.z); shelter.rotation.y = Math.PI;
+  scene.add(shelter);
+  solidBox(MIRROR_STOP.x - 1.4, MIRROR_STOP.z - 0.7, MIRROR_STOP.x + 1.4, MIRROR_STOP.z + 0.5);   // x 14.6..17.4 · z 16.3..17.5 — VILLAGE_BOARD(z 15.6) 는 밖
 }
 /** 낮엔 정류장에 마차가 서 있다(발견성) · 밤엔 막차가 끊긴다 — game.js 루프에서 매 프레임(가벼움) */
 export function syncVillageCarriage(inVillage) {
   if (ride) return;
+  if ($w.atMirror) {   // 거울 마을 안 — 마차가 정박 자리에 서 있다(타기 직전·내린 뒤에 튀지 않게)
+    if (!carriage) return;
+    carriage.visible = true;
+    carriage.position.set(MIRROR.x + MIRROR_PARK.x, 0, MIRROR.z + MIRROR_PARK.z); carriage.rotation.set(0, MIRROR_PARK.heading, 0);
+    return;
+  }
   if (!inVillage) { if (carriage) carriage.visible = false; return; }
   ensureVillageSide();
   carriage.visible = !isNight();
+  carriage.position.set(VILLAGE_PARK.x, 0, VILLAGE_PARK.z); carriage.rotation.set(0, VILLAGE_PARK.heading, 0);
 }
 
 export function mirrorState() {
@@ -215,13 +227,13 @@ export function mirrorPrompt() {
   if (dist2D(W(MIRROR_STOP_LOCAL), player.position) < STOP_REACH) return { nd: 'mirrorback', prompt: '🚏 마을로 돌아가기' };
   const next = questAt(mirrorState(), todayStr());
   const tw = next && !active ? twins.find(x => x.id === next.npc) : null;
-  if (tw && dist2D(twinWorld(tw), player.position) < TALK_R) return { nd: 'mirrortalk', prompt: `💬 ${npcName(tw.id, lang())}에게 말 걸기` };
+  if (tw && dist2D(twinWorld(tw), player.position) < TALK_R) return { nd: 'mirrortalk', prompt: lang() === 'en' ? `💬 Talk to ${npcName(tw.id, 'en')}` : `💬 ${npcName(tw.id, 'ko')}에게 말 걸기` };
   if (active) {
     if (!active.hintShown && secs(active.heardAt) >= HINT_AFTER_S) return { nd: 'mirrorhint', prompt: '💧 연못에 비춰 보기' };
     return { nd: null, prompt: active.hintShown ? hintText(active.q, lang()) : clueShort(active.q, lang()) };
   }
   if (!next) return { nd: null, prompt: '오늘 의뢰는 끝났어요 · 🚏 정류장에서 돌아가요' };
-  return { nd: null, prompt: `💬 ${npcName(next.npc, lang())}에게 말 걸기` };
+  return { nd: null, prompt: lang() === 'en' ? `💬 Talk to ${npcName(next.npc, 'en')}` : `💬 ${npcName(next.npc, 'ko')}에게 말 걸기` };
 }
 /** handleAction 에서 — 정류장 타기(마을) · 돌아가기 · 말 걸기 · 힌트 */
 export function mirrorAction(nd) {
@@ -268,7 +280,8 @@ function found() {
   spawnSparkle(w.x, 1.4, w.z, 22); spawnFloatText(w.x, 2.2, w.z, `+${reward} 🪞`, '#7ad6c0');
   Sound.starPick?.();
   T.ret({ quest_n: a.q.n, reward });
-  ui.toast?.(m.done >= QUESTS_PER_DAY ? '오늘 의뢰는 끝났어요 · 🚏 정류장에서 돌아가요' : `${npcName(a.q.npc, lang())}: "찾아 줘서 고마워요!"`, 3000);
+  const en = lang() === 'en', nm = npcName(a.q.npc, lang());
+  ui.toast?.(m.done >= QUESTS_PER_DAY ? '오늘 의뢰는 끝났어요 · 🚏 정류장에서 돌아가요' : (en ? `${nm}: "Thank you for finding it!"` : `${nm}: "찾아 줘서 고마워요!"`), 3000);
   refreshWorld(); syncHud(); requestSave();
 }
 

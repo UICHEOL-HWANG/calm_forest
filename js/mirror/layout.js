@@ -45,7 +45,7 @@ const SPOT_BY_ID = new Map(SPOTS.map(s => [s.id, s]));
 export function spotOf(id) { return SPOT_BY_ID.get(id) ?? null; }
 
 export const MIRROR_STOP_LOCAL = Object.freeze({ x: 2.5, z: 13.4 });   // 정류장 지붕 북쪽 앞 — 서면 「마을로 돌아가기」
-export const MIRROR_LANDING = Object.freeze({ x: 2.5, z: 12.4 });      // 하차 뒤 서는 자리(연못을 본다)
+export const MIRROR_LANDING = Object.freeze({ x: 2.5, z: 10.8 });      // 하차 뒤 서는 자리(연못을 본다)
 export const MIRROR_PARK = Object.freeze({ x: 2.5, z: 18.4, heading: Math.PI / 2 });   // 정류장 남쪽 — 카메라 시선(높이≈4.5)보다 낮아 플레이어를 안 가린다
 export const MIRROR_GATE_LOCAL = Object.freeze({ x: 0, y: 5.5, z: -2 });   // 거울 마을 쪽 🪞 거울 문(연못 위)
 

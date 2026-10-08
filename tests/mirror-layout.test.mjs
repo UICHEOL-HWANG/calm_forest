@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LANDMARKS, SPOTS, spotOf, isWalkable, clampWalkable, MIRROR_LANDING, MIRROR_STOP_LOCAL, MIRROR_PARK,
-  SOLIDS, NPC_SPOTS, HOUSES,
+  SOLIDS, NPC_SPOTS, HOUSES, STOP_REACH,
 } from '../js/mirror/layout.js';
 
 test('표지물 5종 · 숨는 자리 15곳 · 왼/오 자리 10곳', () => {
@@ -44,4 +44,8 @@ test('clampWalkable — 안이면 그대로, 밖이면 원 경계 안쪽으로',
   const c = clampWalkable(40, 0);
   assert.ok(isWalkable(c.x, c.z));
   assert.ok(c.x > 19 && c.x < 21.6 && Math.abs(c.z) < 1e-6);
+});
+
+test('하차 자리는 정류장 프롬프트 반경 밖 — 도착 직후 탭이 귀환이 되지 않는다', () => {
+  assert.ok(Math.hypot(MIRROR_LANDING.x - MIRROR_STOP_LOCAL.x, MIRROR_LANDING.z - MIRROR_STOP_LOCAL.z) > STOP_REACH);
 });
