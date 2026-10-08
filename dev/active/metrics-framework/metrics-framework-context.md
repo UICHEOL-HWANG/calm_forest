@@ -1,6 +1,6 @@
 # 지표 체계 설계 — Context
 
-**Last Updated** 2026-10-08
+**Last Updated** 2026-10-08 (지표 정의 단계 완료 — M1~M4)
 
 ## 작업 공간
 
