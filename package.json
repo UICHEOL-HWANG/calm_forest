@@ -37,6 +37,7 @@
   },
   "private": true,
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
     "@capgo/capacitor-social-login": "^8.5.10"
   }
 }

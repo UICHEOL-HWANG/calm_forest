@@ -25,11 +25,13 @@ import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
+import { onRequest as auraOrder } from '../functions/api/aura-order.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
 import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { runAiPregen } from '../functions/ai-pregen-cron.js';
+import { runAuraCron } from '../functions/aura-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
 
@@ -95,6 +97,13 @@ export default {
     if (event.cron === '0,20,40 11-13 * * *') {
       ctx.waitUntil(runAiPregen(env).then(r => {
         console.log(JSON.stringify({ message: 'ai-pregen cron', cron: event.cron, ...r }));
+      }));
+      return;
+    }
+    if (event.cron === '0,30 18-21 * * *' || event.cron === '0 22 * * *') {   // 🏮 빛 공방 — KST 03:00~06:30 틱 · 07:00 마감
+      const phase = event.cron === '0 22 * * *' ? 'final' : 'tick';
+      ctx.waitUntil(runAuraCron(env, { phase }).then(r => {
+        console.log(JSON.stringify({ message: 'aura cron', cron: event.cron, ...r }));
       }));
       return;
     }
@@ -180,6 +189,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/orchard-events') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await orchardEvents({ request, env });
+  }
+
+  if (pathname === '/api/aura-order') {   // 🏮 빛 공방 주문·조회·수령
+    if (request.method !== 'GET' && request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await auraOrder({ request, env });
   }
 
   // 📥 카드뉴스 소재 업로드 — 크론이 부른다(사람 JWT 아님, 시크릿 헤더)

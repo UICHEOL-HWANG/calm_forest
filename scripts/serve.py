@@ -689,6 +689,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.split('?')[0] == '/api/npc-talk':
             self.serve_npc_talk()
             return
+        if self.path.split('?')[0] == '/api/aura-order':
+            self.serve_aura_order('GET')
+            return
         super().do_GET()
 
     # ── 💬 NPC 대화 (functions/api/npc-talk.js 와 같은 규칙 — 한쪽만 고치지 마세요) ──
@@ -835,6 +838,35 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    # ── 🏮 빛 공방 주문 (functions/api/aura-order.js 로컬 미러) ──
+    #    검증·금칙어·하루 1회 규칙을 파이썬에 복제하지 않고, AURA_PROXY_ORIGIN(운영 Worker 오리진)으로 그대로 넘긴다.
+    def serve_aura_order(self, method):
+        origin = os.environ.get('AURA_PROXY_ORIGIN', '').rstrip('/')
+        if not origin:
+            print('[aura-order] AURA_PROXY_ORIGIN 환경변수가 없습니다')
+            self.send_json({'error': 'not_configured'}, 503)
+            return
+        body = None
+        if method == 'POST':
+            body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
+        headers = {'Content-Type': 'application/json'}
+        if self.headers.get('Authorization'):
+            headers['Authorization'] = self.headers['Authorization']
+        try:
+            req = urllib.request.Request(origin + self.path, data=body, method=method, headers=headers)
+            with urllib.request.urlopen(req, timeout=15, context=ssl_context()) as res:
+                payload, code = res.read(), res.status
+        except urllib.error.HTTPError as e:
+            payload, code = e.read(), e.code
+        except Exception as e:
+            print(f'[aura-order] 프록시 실패: {type(e).__name__}: {e}')
+            payload, code = json.dumps({'error': 'upstream'}).encode(), 502
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
     def do_POST(self):
         route = self.path.split('?')[0]
         if route == '/api/night-visit':
@@ -845,6 +877,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             return
         if route == '/api/photo-urls':
             self.serve_photo_urls()
+            return
+        if route == '/api/aura-order':
+            self.serve_aura_order('POST')
             return
         self.send_error(404)
 

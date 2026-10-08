@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>빛 공방 외관 시안</title>
+<style>
+  :root { --bg: #141c27; --card: #1E2A3A; --ink: #f3ede0; --sub: #a9b4c2; --line: #2d3d52; --warm: #ffd38a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  header { padding: 18px 24px 6px; }
+  h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: var(--sub); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 12px 24px 20px; }
+  .card { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .stage { position: relative; height: 300px; border-bottom: 1px solid var(--line); }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+  .badge { position: absolute; top: 10px; left: 12px; font-weight: 700; font-size: 14px; background: rgba(0,0,0,.4); padding: 4px 10px; border-radius: 99px; }
+  .tag { position: absolute; bottom: 8px; right: 10px; font-size: 12px; color: #fff; background: rgba(0,0,0,.4); padding: 3px 8px; border-radius: 99px; }
+  .meta { padding: 10px 14px 14px; }
+  .dir { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+  .note { font-size: 12px; color: var(--sub); margin: 0 0 4px; line-height: 1.55; }
+  .dc { color: var(--warm); font-weight: 700; }
+  @media (max-width: 760px) {
+    header { padding: 14px 16px 4px; }
+    .grid { grid-template-columns: minmax(0, 1fr); padding: 10px 16px 16px; gap: 10px; }
+    .stage { height: 220px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏮 빛 공방 외관 시안 — 벽돌·기와 오두막</h1>
+  <p>위: 가까이(레퍼런스 구도, 낮 · 주인 숨김) · 가운데: 게임 카메라(낮) · 아래: 게임 카메라(밤, 반딧불이 계곡)</p>
+</header>
+<div class="grid" id="grid"></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ── game.js 헬퍼 사본 ──
+function paintGeo(geo, hex) {
+  const c = new THREE.Color(hex), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return geo;
+}
+const vtxMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
+function mergeGeos(geos) {
+  const flat = geos.map(g => (g.index ? g.toNonIndexed() : g));
+  const out = new THREE.BufferGeometry();
+  for (const name of ['position', 'normal', 'uv', 'color']) {
+    if (!flat[0].attributes[name]) continue;
+    const size = flat[0].attributes[name].itemSize;
+    let total = 0; for (const g of flat) total += g.attributes[name].count;
+    const arr = new Float32Array(total * size); let off = 0;
+    for (const g of flat) { arr.set(g.attributes[name].array, off); off += g.attributes[name].count * size; }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  }
+  return out;
+}
+const M4 = (x, y, z, rot = [0, 0, 0], scale = [1, 1, 1]) => new THREE.Matrix4().compose(
+  new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...scale));
+const mul = (a, b) => new THREE.Matrix4().multiplyMatrices(a, b);
+const box = (w, h, d, hex, m) => paintGeo(new THREE.BoxGeometry(w, h, d).applyMatrix4(m), hex);
+
+// 결정적 난수(시안마다 같은 벽돌 배치)
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+const BRICKS = [0xd9b2a8, 0xf0dcc0, 0xbba49c, 0xe6b48d, 0xf6e8d4, 0xc9aea4];
+const TILES = [0xd99a6c, 0xc8895d, 0xe2ab7f, 0xcf9166];
+const WOOD = 0xe9d4ae, WOOD_D = 0xc9a978, WOOD_EDGE = 0xa8835a;
+
+// ── 🧱 벽 한 면 — 벽돌을 반 장씩 엇갈려 쌓고, 문·창 구멍은 비운다 ──
+function brickWall(out, r, { u0, u1, rows, rowH, brickL, thick, holes, face, rowShift }) {
+  const gap = 0.018;
+  for (let i = 0; i < rows; i++) {
+    const v0 = i * rowH, vc = v0 + rowH / 2;
+    const cut = holes.filter(h => vc > h.v0 && vc < h.v1);
+    for (let s = u0 - ((i + rowShift) % 2 ? brickL / 2 : 0); s < u1; s += brickL) {
+      let pieces = [[Math.max(s, u0), Math.min(s + brickL, u1)]];
+      for (const h of cut) pieces = pieces.flatMap(([a, b]) => (b <= h.u0 || a >= h.u1) ? [[a, b]] : [[a, Math.min(b, h.u0)], [Math.max(a, h.u1), b]].filter(([p, q]) => q - p > 0.001));
+      for (const [a, b] of pieces) {
+        const w = b - a - gap; if (w < 0.04) continue;
+        out.push(box(w, rowH - gap, thick, BRICKS[Math.floor(r() * BRICKS.length)], face((a + b) / 2, vc, (r() - 0.5) * 0.02)));
+      }
+    }
+  }
+}
+
+// ── 🏠 오두막 본체 ── ridge 'z' = 박공이 문 쪽(레퍼런스) · 'x' = 기와 경사면이 문 쪽
+function buildHut({ ridge = 'z', seed = 7, frontWindow = false }) {
+  const r = rng(seed);
+  const W = 2.2, D = 1.8, H = 1.5, rows = 9, rowH = H / rows, T = 0.12, brickL = 0.34, roofH = 0.95, base = 0.08;
+  const solid = [], glow = [];
+  const doorX = ridge === 'x' ? -0.35 : 0;
+  const door = { u0: doorX - 0.37, u1: doorX + 0.37, v0: 0, v1: 1.05 };
+  const sideWin = { u0: -0.27, u1: 0.27, v0: 0.62, v1: 1.17 };
+  const fwU = 0.55, frontWin = { u0: fwU - 0.25, u1: fwU + 0.25, v0: 0.62, v1: 1.12 };
+
+  // 바닥 나무 받침 + 문 앞 디딤판
+  solid.push(box(W + 0.36, base, D + 0.36, WOOD, M4(0, base / 2, 0)));
+  solid.push(box(W + 0.4, 0.03, D + 0.4, WOOD_EDGE, M4(0, 0.015, 0)));
+  solid.push(box(1.05, 0.06, 0.6, WOOD, M4(doorX, 0.03, D / 2 + 0.45)));
+  solid.push(box(1.09, 0.025, 0.64, WOOD_EDGE, M4(doorX, 0.0125, D / 2 + 0.45)));
+  // 속 벽(줄눈 색) — 벽돌 틈으로 보인다
+  solid.push(box(W - 2 * T + 0.02, H, D - 2 * T + 0.02, 0x8d7a70, M4(0, base + H / 2, 0)));
+
+  const y0 = base, top = y0 + H;
+  for (const [sz, holes] of [[1, [door, ...(frontWindow ? [frontWin] : [])]], [-1, []]])
+    brickWall(solid, r, { u0: -W / 2, u1: W / 2, rows, rowH, brickL, thick: T, holes, rowShift: 0, face: (u, v, j) => M4(u, y0 + v, sz * (D / 2 - T / 2 + j)) });
+  for (const [sx, holes] of [[1, ridge === 'z' ? [sideWin] : []], [-1, []]])
+    brickWall(solid, r, { u0: -D / 2, u1: D / 2, rows, rowH, brickL, thick: T, holes, rowShift: 1, face: (u, v, j) => M4(sx * (W / 2 - T / 2 + j), y0 + v, -sx * u, [0, Math.PI / 2, 0]) });
+
+  // 🚪 빗살 여닫이문(살짝 열림) — 경첩은 바깥 모서리
+  const dw = 0.36, dh = 1.02, dt = 0.04, fr = 0.045;
+  const leaf = (sign) => {   // 경첩이 원점, sign=+1 이면 +x 로 뻗는다
+    const parts = [], cx = sign * dw / 2;
+    parts.push(box(dw, dh, dt, 0xf1e1c2, M4(cx, dh / 2, 0)));
+    parts.push(box(dw, fr, dt + 0.02, WOOD_D, M4(cx, fr / 2, 0.005)), box(dw, fr, dt + 0.02, WOOD_D, M4(cx, dh - fr / 2, 0.005)));
+    parts.push(box(fr, dh, dt + 0.02, WOOD_D, M4(sign * fr / 2, dh / 2, 0.005)), box(fr, dh, dt + 0.02, WOOD_D, M4(sign * (dw - fr / 2), dh / 2, 0.005)));
+    const iw = dw - 2 * fr, ih = dh - 2 * fr;   // 빗살 — 45° 선을 안쪽 사각형에 잘라 붙인다
+    for (let c = -ih / 2 - iw / 2 + 0.06; c < ih / 2 + iw / 2; c += 0.11) {
+      const pts = [];
+      for (const x of [-iw / 2, iw / 2]) { const y = x * sign + c; if (y >= -ih / 2 && y <= ih / 2) pts.push([x, y]); }
+      for (const y of [-ih / 2, ih / 2]) { const x = (y - c) * sign; if (x > -iw / 2 && x < iw / 2) pts.push([x, y]); }
+      if (pts.length < 2) continue;
+      const [[ax, ay], [bx, by]] = pts, len = Math.hypot(bx - ax, by - ay);
+      if (len < 0.05) continue;
+      parts.push(box(len, 0.018, 0.012, WOOD_EDGE, M4(cx + (ax + bx) / 2, dh / 2 + (ay + by) / 2, dt / 2 + 0.006, [0, 0, Math.atan2(by - ay, bx - ax)])));
+    }
+    return parts;
+  };
+  const doorM = ridge === 'z' ? new THREE.Matrix4() : new THREE.Matrix4();
+  for (const [sign, ang] of [[1, -0.55], [-1, 0.32]]) {
+    const m = mul(doorM, M4(doorX - sign * 0.37, y0, D / 2 + 0.01, [0, ang, 0]));
+    for (const p of leaf(sign)) solid.push(p.applyMatrix4(m));
+  }
+  glow.push(new THREE.PlaneGeometry(0.72, 1.03).applyMatrix4(M4(doorX, y0 + 0.52, D / 2 - T + 0.005)));   // 문 안쪽 빛
+  solid.push(box(0.84, 0.07, T + 0.04, WOOD_D, M4(doorX, y0 + 1.085, D / 2 - T / 2)));                    // 문 인방
+
+  // 🪟 십자 격자창
+  const windowAt = (m, w, h) => {
+    const f = 0.05;
+    for (const [bw, bh, x, y] of [[w + 2 * f, f, 0, h / 2 + f / 2], [w + 2 * f, f, 0, -h / 2 - f / 2], [f, h, -w / 2 - f / 2, 0], [f, h, w / 2 + f / 2, 0], [0.035, h, 0, 0], [w, 0.035, 0, 0]])
+      solid.push(box(bw, bh, 0.08, WOOD, mul(m, M4(x, y, 0))));
+    glow.push(new THREE.PlaneGeometry(w, h).applyMatrix4(mul(m, M4(0, 0, -0.06))));
+  };
+  if (ridge === 'z') windowAt(M4(W / 2 - 0.02, y0 + 0.895, 0, [0, Math.PI / 2, 0]), 0.5, 0.5);
+  if (frontWindow) windowAt(M4(fwU, y0 + 0.87, D / 2 - 0.02), 0.46, 0.46);
+
+  // 🔺 박공 삼각벽(밝은 나무판) + 🟫 기와 지붕
+  const span = ridge === 'z' ? W : D, len = ridge === 'z' ? D : W;   // span = 경사가 덮는 폭, len = 용마루 길이
+  const hw = span / 2, a = Math.atan2(roofH, hw);
+  const toWorld = (m) => ridge === 'z' ? m : mul(new THREE.Matrix4().makeRotationY(Math.PI / 2), m);
+  for (const sz of [1, -1]) {
+    const zf = sz * (len / 2 - T / 2);
+    let k = 0;
+    for (let x0 = -hw; x0 < hw - 0.001; x0 += 0.22, k++) {
+      const x1 = Math.min(x0 + 0.21, hw), yt = (x) => roofH * (1 - Math.abs(x) / hw);
+      const sh = new THREE.Shape(); sh.moveTo(x0, 0); sh.lineTo(x1, 0); sh.lineTo(x1, yt(x1));
+      if (x0 < 0 && x1 > 0) sh.lineTo(0, roofH);
+      sh.lineTo(x0, yt(x0)); sh.closePath();
+      const g = new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: false }); g.translate(0, 0, -0.025);
+      solid.push(paintGeo(g.applyMatrix4(toWorld(M4(0, top, zf))), k % 2 ? 0xf3e6cc : 0xe8d7b6));
+    }
+    const bl = Math.hypot(hw, roofH) + 0.3;   // 박공 테두리 판
+    for (const s of [-1, 1]) solid.push(box(bl, 0.09, 0.07, WOOD_EDGE, toWorld(M4(s * (hw / 2 + 0.06), top + roofH / 2 - 0.0, sz * (len / 2 + 0.2), [0, 0, -s * a]))));
+  }
+  const ov = 0.22, sl = hw / Math.cos(a) + ov, zl = len + 0.4;
+  for (const s of [1, -1]) {
+    // 경사 좌표: 용마루에서 아래로 sx, 법선 n, 용마루 방향 uz
+    const slope = (sx, n, uz, kick = 0) => toWorld(mul(M4(0, top + roofH, 0, [0, 0, -s * a]), M4(s * sx, n, uz, [0, 0, -s * kick])));
+    solid.push(box(sl, 0.05, zl, WOOD_EDGE, slope(sl / 2, 0.0, 0)));
+    const tl = 0.34, step = 0.235, tw = 0.36;
+    let row = 0;
+    for (let d = 0.04; d + tl / 2 < sl + 0.05; d += step, row++) {
+      const shift = row % 2 ? tw / 2 : 0;
+      for (let u = -zl / 2 - shift; u < zl / 2; u += tw) {
+        const a0 = Math.max(u, -zl / 2), a1 = Math.min(u + tw, zl / 2), w = a1 - a0 - 0.022;
+        if (w < 0.06) continue;
+        solid.push(box(tl, 0.045, w, TILES[Math.floor(r() * TILES.length)], slope(d + tl / 2, 0.05 + 0.012 * (row % 2), (a0 + a1) / 2, 0.07)));
+      }
+    }
+  }
+  solid.push(box(0.16, 0.16, zl + 0.04, 0xb9784f, toWorld(M4(0, top + roofH + 0.04, 0, [0, 0, Math.PI / 4]))));   // 용마루
+  return { solid, glow };
+}
+
+// ── 🛒 나무 손수레 ──
+function buildCart(m) {
+  const P = [], add = (w, h, d, hex, mm) => P.push(box(w, h, d, hex, mul(m, mm)));
+  add(0.62, 0.035, 0.44, WOOD, M4(0, 0.36, 0));
+  add(0.62, 0.22, 0.03, WOOD, M4(0, 0.47, 0.205)); add(0.62, 0.22, 0.03, WOOD, M4(0, 0.47, -0.205));
+  add(0.03, 0.22, 0.44, WOOD, M4(-0.295, 0.47, 0)); add(0.03, 0.26, 0.44, WOOD, M4(0.32, 0.49, 0, [0, 0, -0.25]));
+  for (const s of [-1, 1]) add(0.62, 0.035, 0.035, WOOD_D, M4(-0.55, 0.42, s * 0.17, [0, 0, -0.18]));
+  add(0.03, 0.035, 0.38, WOOD_D, M4(-0.86, 0.48, 0));
+  for (const s of [-1, 1]) add(0.03, 0.34, 0.035, WOOD_D, M4(-0.2, 0.17, s * 0.17));   // 다리
+  const wm = mul(m, M4(0.12, 0.2, 0.25));   // 바퀴 — 테 + 살 6개 + 축
+  P.push(paintGeo(new THREE.TorusGeometry(0.17, 0.025, 6, 18).applyMatrix4(wm), WOOD));
+  for (let i = 0; i < 3; i++) P.push(box(0.33, 0.022, 0.02, WOOD_D, mul(wm, M4(0, 0, 0, [0, 0, i * Math.PI / 3]))));
+  P.push(paintGeo(new THREE.CylinderGeometry(0.045, 0.045, 0.05, 8).applyMatrix4(mul(wm, M4(0, 0, 0, [Math.PI / 2, 0, 0]))), WOOD_D));
+  return P;
+}
+
+// ── 🧚 공방 주인(승인안 사본, 크기 비교용) ──
+const GLOW = 0xd7f27a;
+function buildKeeper() {
+  const k = new THREE.Group();
+  const p = (geo, hex, x, y, z, rot = [0, 0, 0], sc = [1, 1, 1]) => paintGeo(geo.applyMatrix4(M4(x, y, z, rot, sc)), hex);
+  const solid = [
+    p(new THREE.IcosahedronGeometry(0.5, 1), 0xe58fb0, 0, 0.55, 0, [0, 0, 0], [1, 1.05, 1]),
+    p(new THREE.IcosahedronGeometry(0.38, 1), 0xfff1e0, 0, 1.15, 0),
+    p(new THREE.SphereGeometry(0.36, 14, 10), 0xfaf3e2, 0, 0.48, 0.38, [0, 0, 0], [1, 1.05, 0.5]),
+  ];
+  for (const ex of [-0.13, 0.13]) solid.push(p(new THREE.SphereGeometry(0.05, 8, 8), 0x2a221e, ex, 1.18, 0.32));
+  const b = new THREE.Mesh(mergeGeos(solid), vtxMat()); b.castShadow = true; k.add(b);
+  const wings = [-1, 1].map(s => new THREE.SphereGeometry(0.55, 14, 10).applyMatrix4(M4(s * 0.62, 1.1, -0.3, [0.15, s * 1.0, s * -0.5], [0.75, 1.1, 0.08])));
+  k.add(new THREE.Mesh(mergeGeos(wings), new THREE.MeshStandardMaterial({ color: 0xdff3ff, roughness: 0.4, transparent: true, opacity: 0.62, side: THREE.DoubleSide })));
+  k.add(new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10).applyMatrix4(M4(0, 0.42, -0.5, [0, 0, 0], [1, 0.9, 1.25])), new THREE.MeshBasicMaterial({ color: GLOW })));
+  return k;
+}
+
+const VARIANTS = [
+  { key: 'A', title: 'A · 박공 정면', note: '레퍼런스의 문 쪽 면을 그대로 카메라 정면에. 박공 나무판·빗살문이 가장 잘 보이고, 십자창은 오른쪽 옆면(손수레 옆).',
+    hut: { ridge: 'z', seed: 11 }, rotY: 0, keeper: [1.05, 1.6, -0.35], cart: [1.65, 0, -0.1, -Math.PI / 2 + 0.2] },
+  { key: 'B', title: 'B · 레퍼런스 구도(30° 비틀기)', note: '집을 비스듬히 돌려 사진처럼 박공+문 면과 창 옆면이 함께 보임. 실루엣이 가장 입체적.',
+    hut: { ridge: 'z', seed: 11 }, rotY: -0.52, keeper: [-1.15, 1.55, 0.35], cart: [1.65, 0, -0.1, -Math.PI / 2 + 0.2] },
+  { key: 'C', title: 'C · 기와면 정면', note: '긴 벽을 정면으로 — 기와 경사면이 카메라를 향하고 문+십자창이 한 면에. 위에서 볼 때 지붕 기와가 화면을 가장 많이 채움.',
+    hut: { ridge: 'x', seed: 11, frontWindow: true }, rotY: 0, keeper: [1.55, 1.45, -0.3], cart: [-1.6, 0, 0.0, Math.PI / 2 - 0.2] },
+];
+
+function makeScene(v, night, withKeeper = true) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(night ? 0x1b2338 : 0xbfd9e6);
+  scene.fog = new THREE.Fog(scene.background, 18, 40);
+  scene.add(new THREE.HemisphereLight(night ? 0x6e7fae : 0xfff6e6, night ? 0x223326 : 0x6f8f5e, night ? 0.55 : 1.05));
+  const sun = new THREE.DirectionalLight(night ? 0x9fb3e0 : 0xfff1d6, night ? 0.55 : 1.6);
+  sun.position.set(-6, 10, 7); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 }); scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(14, 40), new THREE.MeshStandardMaterial({ color: night ? 0x3b5a3d : 0x8fbf6d, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+  const g = new THREE.Group(); g.rotation.y = v.rotY;
+  const { solid, glow } = buildHut(v.hut);
+  const [cx, cy, cz, cr] = v.cart; solid.push(...buildCart(M4(cx, cy, cz, [0, cr, 0])));
+  const hut = new THREE.Mesh(mergeGeos(solid), vtxMat()); hut.castShadow = true; hut.receiveShadow = true; g.add(hut);
+  g.add(new THREE.Mesh(mergeGeos(glow), new THREE.MeshBasicMaterial({ color: night ? 0xffd27a : 0xf6dca0, side: THREE.DoubleSide })));
+  scene.add(g);
+  if (withKeeper) { const k = buildKeeper(); k.position.set(v.keeper[0], 0, v.keeper[1]); k.rotation.y = v.keeper[2]; scene.add(k); }   // 주인은 카메라를 본다
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(0.9, 20), new THREE.MeshStandardMaterial({ color: 0x7fb7c9, roughness: 0.4 }));
+  pond.rotation.x = -Math.PI / 2; pond.position.set(v.key === 'B' ? -2.6 : -2.2, 0.03, 2.4); scene.add(pond);
+  if (night) {
+    const pl = new THREE.PointLight(0xffc56b, 2.2, 5, 1.6); pl.position.set(0, 0.8, 1.6); scene.add(pl);
+    const r = rng(3), pts = [];   // 반딧불이 몇 점
+    for (let i = 0; i < 40; i++) pts.push((r() - 0.5) * 9, 0.4 + r() * 2.2, (r() - 0.5) * 9);
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: GLOW, size: 0.09 })));
+  }
+  return { scene, verts: hut.geometry.attributes.position.count };
+}
+
+const grid = document.getElementById('grid');
+for (const v of VARIANTS) {
+  const card = document.createElement('div'); card.className = 'card';
+  const gameCam = { cam: [0, 14 * 0.42, 1.4 + 16 * 0.42], look: [0, 0.6, 1.4], fov: 42 };
+  const views = [
+    { label: '가까이 · 낮', night: false, cam: [3.4, 2.5, 4.9], look: [0, 1.0, 0.2], fov: 36 },
+    { label: '게임 카메라 · 낮', night: false, ...gameCam },
+    { label: '게임 카메라 · 밤', night: true, ...gameCam },
+  ];
+  let verts = 0;
+  for (const view of views) {
+    const st = document.createElement('div'); st.className = 'stage';
+    const cv = document.createElement('canvas'); st.appendChild(cv);
+    if (view === views[0]) { const b = document.createElement('div'); b.className = 'badge'; b.textContent = v.key; st.appendChild(b); }
+    const t = document.createElement('div'); t.className = 'tag'; t.textContent = view.label; st.appendChild(t);
+    card.appendChild(st);
+    const built = makeScene(v, view.night, view !== views[0]); verts = built.verts;
+    requestAnimationFrame(() => {
+      const w = st.clientWidth, h = st.clientHeight;
+      const ren = new THREE.WebGLRenderer({ canvas: cv, antialias: true }); ren.setPixelRatio(Math.min(2, devicePixelRatio)); ren.setSize(w, h, false);
+      ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap; ren.outputColorSpace = THREE.SRGBColorSpace;
+      const cam = new THREE.PerspectiveCamera(view.fov, w / h, 0.1, 100); cam.position.set(...view.cam); cam.lookAt(...view.look);
+      ren.render(built.scene, cam);
+    });
+  }
+  const meta = document.createElement('div'); meta.className = 'meta';
+  meta.innerHTML = `<p class="dir">${v.title}</p><p class="note">${v.note}</p>`
+    + `<p class="note">드로우콜 <span class="dc">7</span> = 오두막·수레·연못 1 · 창/문빛 1 · 주인 3 · 이름표 1 · 팻말 1 (예산 12) · 정점 ${verts.toLocaleString()}</p>`;
+  card.appendChild(meta);
+  grid.appendChild(card);
+}
+window.__ready = true;
+</script>
+</body>
+</html>
