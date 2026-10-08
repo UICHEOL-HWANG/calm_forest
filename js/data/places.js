@@ -66,7 +66,7 @@ export const COOP_FEED = 2;                            // 모이(씨앗) 소비�
 export const GLADE = new THREE.Vector3(7, 0, 26);      // 계곡 중심(남동쪽 숲) — ☕카페·🍄채집 숲과 안 겹치게
 
 export const GLADE_R = 7;                              // 반딧불이가 떠다니는 반경
-export const LIGHT_WORKSHOP = new THREE.Vector3(9.6, 0, 20.6);    // 🏮 빛 공방 — 계곡 입구(카페 쪽 북쪽 가장자리, 중심에서 ~6.0). 남쪽 끝은 카메라 반대편이라 나무 링에 가렸다
+export const LIGHT_WORKSHOP = new THREE.Vector3(17, 0, 21.6);    // 🏮 빛 공방 — 계곡(나무 링 ~9.6)과 천문대(기단 5.7) 사이 빈터. 계곡 입구(9.6,20.6)는 카페·계곡 팻말·주민과 겹쳐 답답했다(2026-10-08)
 
 //   밤 판정 기준 NIGHT_MIN 은 js/daynight.js — 🛏️ 자기 기능과 같은 기준을 써야 한다
 // 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
