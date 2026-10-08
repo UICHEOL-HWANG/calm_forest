@@ -18,7 +18,7 @@ test('새 문구는 영어 사전에 있다', () => {
 test('🧥 스킨 탭 — 가게(이펙트 뒤·펫 앞)와 옷장(이펙트 뒤) · 빈 탭 숨김', () => {
   const ward = readFileSync(new URL('../js/spaces/wardrobe.js', import.meta.url), 'utf8');
   assert.match(cafe, /\['trail', '✨ 이펙트'\], \['skin', '🧥 스킨'\], \['tools', '🪓 도구'\], \['pet', '🐾 펫'\]/);   // 🪓 도구 세트(2026-10-02)는 스킨 뒤
-  assert.match(ward, /\['trail', '✨ 이펙트'\], \['skin', '🧥 스킨'\], \['tools', '🪓 도구'\]\]/);
+  assert.match(ward, /\['trail', '✨ 이펙트'\], \['aura', '🔮 오라'\], \['skin', '🧥 스킨'\], \['tools', '🪓 도구'\]\]/);
   assert.match(cafe, /slotVisible\(itemsOf\(id\), rowCtx\)/);
 });
 test('i18n — 스킨 문구 통문장 등재', () => {
