@@ -97,6 +97,12 @@ export const CONFIG = {
   //    js/orchard-log.js 가 fire-and-forget 으로 호출(실패해도 게임에 영향 없음).
   ORCHARD_EVENTS_API: `${API_BASE}/api/orchard-events`,
 
+  // 🤝 친구 초대 — POST { action: code|bind|claim } (functions/api/referral.js). 판정·지급은 서버 SQL.
+  //    REFERRAL_ON: ☰ 친구 초대·도착 배너·연결/정산을 켤지. ⚠️ 4곳(웹·토스·안드로이드·itch) 배포가 끝난 뒤에만 true —
+  //    옛 클라이언트는 새 보상 id 를 세이브에서 지운다(dev/active/referral-reward 계획 §리스크).
+  REFERRAL_API: `${API_BASE}/api/referral`,
+  REFERRAL_ON: false,
+
   // ── A/B 실험 스위치 ─────────────────────────────────────────
   //    'off'  = 전원 control(변형 배정 안 함, variant 필드는 계속 기록)
   //    'map'  = 맵 크기 A/B (client_id 해시로 A/B 50:50 배정)
