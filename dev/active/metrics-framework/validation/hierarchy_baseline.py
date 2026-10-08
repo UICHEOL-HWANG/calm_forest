@@ -34,6 +34,12 @@ PERSONA = f"""
   HAVING COUNT(DISTINCT client_id) >= 4 AND MIN(DATE(started_at, 'Asia/Seoul')) >= '2026-09-28'
 """
 
+# dev devices (spec §2): any client that ever ran the game on localhost (churn_events.origin)
+DEV_CLIENTS = f"""
+  SELECT DISTINCT client_id FROM `{RAW}.churn_events`
+  WHERE (origin LIKE 'http://localhost%' OR origin LIKE 'http://127.0.0.1%') AND client_id IS NOT NULL
+"""
+
 SL_SQL = f"""
 WITH latest AS (
   SELECT * EXCEPT(rn) FROM (
@@ -48,6 +54,7 @@ SELECT
 FROM latest
 WHERE platform IN ('web', 'toss')
   AND IFNULL(user_id NOT IN ({PERSONA}), TRUE)
+  AND client_id NOT IN ({DEV_CLIENTS})
   AND NOT (IFNULL(variant, '') IN ('beta_A', 'beta_B')
            AND DATE(started_at, 'Asia/Seoul') BETWEEN '2026-09-09' AND '2026-09-15')
 """
@@ -63,7 +70,9 @@ fv AS (
   HAVING MIN(d) BETWEEN '2026-08-06' AND '2026-09-27'
 ),
 persona_pseudo AS (
-  SELECT DISTINCT user_pseudo_id FROM ev WHERE user_id IN ({PERSONA})
+  SELECT DISTINCT user_pseudo_id FROM ev
+  WHERE user_id IN ({PERSONA})
+     OR user_id IN (SELECT user_id FROM `{RAW}.session_logs` WHERE client_id IN ({DEV_CLIENTS}) AND user_id IS NOT NULL)
 ),
 w AS (
   SELECT e.* FROM ev e JOIN fv USING (user_pseudo_id)
@@ -174,7 +183,7 @@ def l2(pd_df: pd.DataFrame) -> None:
 def funnel() -> None:
     f = read_sql(FUNNEL_SQL)
     f["platform"] = f["platform"].fillna("web")  # GA4 platform property empty -> web (decision 2026-10-08)
-    print("\n[Activation funnel — GA4 cohort, first visit 8/6~9/27, first 7 days, persona excluded]")
+    print("\n[Activation funnel — GA4 cohort, first visit 8/6~9/27, first 7 days, persona + dev excluded]")
     for label, df in [("all", f)] + [(p, f[f["platform"] == p]) for p in sorted(f["platform"].unique())]:
         n = len(df)
         if not n:
