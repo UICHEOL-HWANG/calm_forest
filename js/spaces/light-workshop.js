@@ -39,7 +39,7 @@ function buildKeeper() {
 }
 
 export function buildLightWorkshop() {
-  const g = new THREE.Group(); g.position.copy(LIGHT_WORKSHOP); g.rotation.y = -0.35;   // 카메라(남쪽)를 향하게 — 문·창·반디 요정이 보이도록, 계곡 쪽으로 살짝
+  const g = new THREE.Group(); g.position.copy(LIGHT_WORKSHOP); g.rotation.y = 0;   // 문·창·반디 요정이 카메라(남쪽)를 정면으로 본다
   const pond = baked(new THREE.CircleGeometry(0.9, 20), -1.6, 0.03, 1.4, { rot: [-Math.PI / 2, 0, 0] });
   const hut = new THREE.Mesh(mergeGeos([
     paint(new THREE.BoxGeometry(2.2, 1.5, 1.8), 0xd8b48a, 0, 0.75, 0),
