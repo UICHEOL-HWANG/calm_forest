@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeos, houseWindows, paintGeo, vtxMat } from '../game.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS } from '../data/plaza.js';
+import { SCARECROW } from './solids.js';
 
 // 🎨 디자인 게이트 A(2026-09-27): 시안 c — 붉은 단풍·짙은 나무(가을 강조) 확정
 //   dirt 는 마을 길(0xded0b4)보다 한 톤 어두운 낮은 채도 흙 — 주황이면 화면에서 가장 튀어 자재 더미를 묻는다(A2 피드백)
@@ -20,7 +21,7 @@ const ringFlat = (r1, r2, y) => new THREE.RingGeometry(r1, r2, 32).rotateX(-Math
 // 로컬 좌표(광장 중심 기준)
 const BX = PLAZA_BOX.x - PLAZA.x, BZ = PLAZA_BOX.z - PLAZA.z;
 const SX = PLAZA_STALL_POS.x - PLAZA.x, SZ = PLAZA_STALL_POS.z - PLAZA.z;
-const SCX = -3.9, SCZ = -1.5;                                     // 허수아비(3·4단계 같은 자리)
+const { x: SCX, z: SCZ } = SCARECROW;                             // 허수아비(3·4단계 같은 자리) — 충돌체와 같은 상수(solids.js)
 
 function stage1(add) {
   add('dirt', cyl(PLAZA_R, PLAZA_R, 0.06, 0, 0.03, 0, 28));
