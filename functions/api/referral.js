@@ -86,6 +86,19 @@ async function sendRewardNotices(env, fetchImpl, uid, granted) {
     log({ status: 'notice_throw', msg: String(e?.message || e).slice(0, 200) });
   }
 }
+/** 📊 연결 시도 1건 기록(관리자 대시보드 '연결 실패 사유'). 기록 실패는 연결 결과에 영향 없다 */
+async function logBind(env, fetchImpl, uid, reason, platform) {
+  try {
+    const r = await fetchImpl(`${env.SUPABASE_URL}/rest/v1/referral_bind_log`, {
+      method: 'POST', headers: { ...serviceHeaders(env), prefer: 'return=minimal' },
+      body: JSON.stringify({ user_id: uid, reason: String(reason || 'unknown').slice(0, 32), platform }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!r.ok) log({ status: 'bind_log_fail', http: r.status });
+  } catch (e) {
+    log({ status: 'bind_log_throw', msg: String(e?.message || e).slice(0, 200) });
+  }
+}
 
 export async function onRequestPost({ request, env, fetchImpl = fetch }) {
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_KEY) {
@@ -105,10 +118,14 @@ export async function onRequestPost({ request, env, fetchImpl = fetch }) {
 
     if (action === 'bind') {
       const code = String(body.code ?? '').trim().toUpperCase();
-      if (!CODE_RE.test(code)) return json({ ok: false, reason: 'bad_code' });
       const platform = PLATFORMS.has(body.platform) ? body.platform : null;
+      if (!CODE_RE.test(code)) {
+        await logBind(env, fetchImpl, uid, 'bad_code', platform);
+        return json({ ok: false, reason: 'bad_code' });
+      }
       const out = await rpc(env, fetchImpl, 'referral_bind', { p_invitee: uid, p_code: code, p_platform: platform });
       log({ status: 'bind', ok: !!out?.ok, reason: out?.reason ?? null });
+      await logBind(env, fetchImpl, uid, out?.ok ? 'ok' : out?.reason, platform);
       return json(out);
     }
 
