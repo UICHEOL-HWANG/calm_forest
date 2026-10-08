@@ -4436,7 +4436,7 @@
     $('invite-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
       $('invite-modal').classList.add('show');
-      openInviteSheet({ box: $('invite-box'), auth: authState, toast: (m) => ui.toast(m, 2200), track: trackEvent,
+      openInviteSheet({ box: $('invite-box'), auth: authState, toast: (m) => ui.toast(m, 2200), track: trackEvent, resync: resyncPurchases,
         shareNative: IS_ANDROID ? (text) => shareUrlNative({ plugin: capPlugin('Photo'), url: text, title: '🌿 calm forest' }) : null });
     });
     $('invite-close').addEventListener('click', () => $('invite-modal').classList.remove('show'));

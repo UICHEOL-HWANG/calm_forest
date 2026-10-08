@@ -43,6 +43,11 @@ export async function runOnPlay({ storage, call, toast, track, resync, platform,
     if (res?.ok) await resync('referral_bind', { quiet: true });   // 하트핀 문구를 방금 띄웠다 — 도착 토스트 겹침 방지
   }
 
+  return claimAndApply({ call, track, resync });
+}
+
+/** 내가 초대한 친구 정산 — 새 단계 보상이 있으면 원장을 다시 받아 게임에 반영한다. 결과(또는 null) */
+export async function claimAndApply({ call, track, resync }) {
   const claim = await call('claim', {});
   if (!claim || claim.error) return null;
   const granted = Array.isArray(claim.granted) ? claim.granted : [];
