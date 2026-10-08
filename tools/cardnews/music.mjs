@@ -1,7 +1,7 @@
 // =============================================================
 //  calm forest · 🎹 쇼츠 배경음악 (자체 제작, 저작권 free)
 //  ------------------------------------------------------------
-//  node music.mjs [--style piano|lofi|night] [--secs 32] [--out out/music/calm.wav]
+//  node music.mjs [--style piano|lofi|night|dream] [--secs 32] [--out out/music/calm.wav]
 //
 //  왜 직접 만드나:
 //    클래식은 **곡**의 저작권이 풀렸어도 **연주 녹음**은 따로 보호된다.
@@ -29,9 +29,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const SECS = Number(arg('--secs', '32'));
-/** --style piano(기본, 느린 피아노) | lofi(로파이 하우스 105BPM, 모던한 플레이 영상용) | night(밤손님 릴스 전용, --secs 31) */
+/** --style piano(기본, 느린 피아노) | lofi(로파이 하우스 105BPM, 모던한 플레이 영상용) | night(밤손님 릴스 전용, --secs 31) | dream(꿈의 숲 릴스 전용, --secs 26) */
 const STYLE = arg('--style', 'piano');
-const DEFAULT_OUT = { piano: 'out/music/calm.wav', lofi: 'out/music/lofi.wav', night: 'out/music/night.wav' };
+const DEFAULT_OUT = { piano: 'out/music/calm.wav', lofi: 'out/music/lofi.wav', night: 'out/music/night.wav', dream: 'out/music/dream.wav' };
 if (!DEFAULT_OUT[STYLE]) throw new Error(`--style 은 ${Object.keys(DEFAULT_OUT).join('|')} 중 하나: ${STYLE}`);
 const OUT = arg('--out', DEFAULT_OUT[STYLE]);
 
@@ -540,6 +540,92 @@ kick(T(47), 0.7);
 for (const [o, m] of [[0, 84], [1, 79], [2, 76], [3, 79], [4, 81], [5, 79]]) bell(m, T(47 + o), 0.07);
 `;
 
+/** 🌙 꿈의 숲 — 자장가 → 마차 도착 → 꿈길 드롭 → 조각 차임 → 아침 → 거울 마을(단조) → 엔드 (105BPM, 44박 ≈ 25.1초).
+ *  tools/reel-motion/src/dreamTimeline.ts 의 컷 길이(박)와 1:1 — 컷이 바뀌면 여기도 바꾼다.
+ *   0~4 잠(오르골) · 4~10 마차 도착(하프 글리산도·라이저) · 10~20 꿈길·꿈의 숲(하프타임 드롭)
+ *   20~26 꿈 조각(박마다 차임) · 26~30 아침(밝은 F) · 30~37 다음 꿈은…(Dm, 필터 닫힘·유리 차임) · 37~44 엔드(F 로 해결)
+ *  악기는 NIGHT 의 것을 그대로 쓴다(앞부분 셋업·악기 정의까지만 잘라 붙임). 실행: --style dream --secs 26 */
+const KIT = NIGHT.slice(0, NIGHT.indexOf('\n// 필터:'));
+const DREAM = KIT + `
+const harp = (m, at, vol) => pluck(m, at, BEAT * 1.6, vol || 0.06, 5200);
+
+// 필터: 잠은 닫혀 있다가 마차가 오며 열리고, 거울 마을에서 다시 닫힌다
+lp.frequency.setValueAtTime(1400, 0);
+lp.frequency.exponentialRampToValueAtTime(7000, T(10));
+lp.frequency.setValueAtTime(7000, T(30));
+lp.frequency.exponentialRampToValueAtTime(1100, T(31));
+lp.frequency.setValueAtTime(6000, T(37));
+
+// ① 잠 0~4 — 오르골 자장가(F), 숨소리 같은 패드
+pad([53, 60, 65], T(0), T(4), 0.035);
+for (const [o, m] of [[0, 77], [0.5, 81], [1, 84], [1.5, 81], [2, 79], [2.5, 76], [3, 77], [3.5, 72]]) bell(m, T(o), 0.07);
+
+// ② 마차 도착 4~10 — 하프 글리산도가 두 번 오르고 라이저로 차오른다
+pad([50, 57, 62, 65], T(4), T(6), 0.04);   // Dm7 — 무언가 오고 있다
+for (let i = 0; i < 12; i++) harp([65, 69, 72, 74, 77, 81][i % 6] + (i >= 6 ? 12 : 0), T(4 + i * 0.25), 0.05);
+for (const [o, m] of [[2, 84], [2.5, 86], [3, 89], [4, 88], [4.5, 86], [5, 84]]) bell(m, T(4 + o), 0.06);
+riser(T(7), T(3), 0.22);
+for (const b of [8, 8.5, 9, 9.25, 9.5, 9.75]) shaker(T(b), 0.05);
+
+// ③④ 꿈길·꿈의 숲 10~20 — 하프타임 드롭: 킥은 첫 박, 클랩은 1.75박 뒤
+crash(T(10), 0.28);
+const DRM = [
+  { r: 29, st: [53, 57, 60, 64], arp: [69, 72, 76, 72] },   // Fmaj7
+  { r: 33, st: [52, 57, 60, 64], arp: [69, 72, 76, 81] },   // Am7
+  { r: 26, st: [50, 53, 57, 60], arp: [65, 69, 72, 74] },   // Dm7
+  { r: 31, st: [55, 58, 62, 65], arp: [67, 70, 74, 77] },   // Gm7
+];
+for (let s = 10, k = 0; s < 20; s += 2.5, k++) {
+  const c = DRM[k % 4];
+  pad(c.st, T(s), T(2.5), 0.03);
+  sub(c.r, T(s), BEAT * 1.2, 0.34); sub(c.r + 7, T(s + 1.5), BEAT * 0.6, 0.26);
+  kick(T(s), 0.75);
+  clap(T(s + 1.75));
+  for (let o = 0.5; o < 2.5; o += 1) hat(T(s + o), 0.08);
+  c.arp.forEach((m, j) => harp(m, T(s + j * 0.5), 0.05));
+}
+for (const [o, m] of [[6, 81], [6.5, 84], [7, 88], [8, 86], [8.5, 84], [9, 81]]) bell(m, T(10 + o), 0.07);   // 16박부터 멜로디(꿈의 숲)
+
+// ⑤ 꿈 조각 20~26 — 박마다 줍는 차임(올라가는 음), 그루브 유지
+crash(T(20), 0.18);
+const PICK = [77, 79, 81, 84, 86, 89];
+for (let i = 0; i < 6; i++) {
+  const t = T(20 + i);
+  bell(PICK[i], t, 0.1); bell(PICK[i] + 12, t + BEAT * 0.5, 0.04);
+  kick(t, i % 2 ? 0.55 : 0.75); hat(t + BEAT / 2, 0.09); shaker(t + BEAT / 4, 0.04); shaker(t + BEAT * 0.75, 0.04);
+  if (i % 2) clap(t);
+  sub([29, 29, 33, 33, 31, 31][i], t, BEAT * 0.8, 0.32);
+}
+pad([53, 57, 60, 64], T(20), T(6), 0.03);
+riser(T(24), T(2), 0.16);
+
+// ⑥ 아침 26~30 — 밝은 F, 스탭과 종
+crash(T(26), 0.3);
+for (const o of [0, 1.5, 2.5]) stab([53, 57, 60, 65], T(26 + o), BEAT * 0.5, 0.05);
+for (let b = 26; b < 30; b++) { kick(T(b), 0.7); hat(T(b + 0.5), 0.1); }
+sub(29, T(26), BEAT * 1.8, 0.36); sub(36, T(28), BEAT * 1.8, 0.34);
+for (const [o, m] of [[0, 84], [0.5, 81], [1, 77], [2, 79], [2.5, 81], [3, 84]]) bell(m, T(26 + o), 0.08);
+
+// ⑦ 다음 꿈은… 30~37 — 음악이 숨을 죽이고 Dm 으로 내려앉는다. 유리 차임이 물결처럼
+mix.gain.setValueAtTime(1, T(30) - 0.002);
+mix.gain.linearRampToValueAtTime(0.0001, T(30) + 0.03);
+mix.gain.setValueAtTime(0.0001, T(30.5));
+mix.gain.linearRampToValueAtTime(1, T(31));
+glide(T(30), 0.7);
+pad([38, 45, 50, 53], T(30.5), T(6.5), 0.06);   // Dm — 낮고 넓게
+for (const b of [31, 33, 35]) thump(T(b), 0.55);
+const GLASS = [86, 81, 77, 74, 81, 77, 74, 69];   // 아래로 떨어지는 반사광
+GLASS.forEach((m, i) => bell(m, T(31 + i * 0.75), 0.06));
+riser(T(35), T(2), 0.18);
+
+// ⑧ 엔드 37~44 — F 로 돌아와 따뜻하게 해결
+crash(T(37), 0.25);
+stab([53, 60, 65, 69, 72], T(37), BEAT * 2, 0.06);
+pad([53, 60, 65, 69], T(37), T(7), 0.045);
+kick(T(37), 0.7); sub(29, T(37), BEAT * 2, 0.36);
+for (const [o, m] of [[0, 77], [0.5, 81], [1, 84], [2, 81], [3, 79], [4, 77]]) bell(m, T(37 + o), 0.07);
+`;
+
 const TAIL = `
 // 끝 3초 페이드아웃 — 영상 끝에서 뚝 끊기면 싸구려로 들린다
 master.gain.setValueAtTime(master.gain.value, Math.max(0, DUR - 3));
@@ -570,7 +656,7 @@ for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(nul
 return btoa(bin);
 `;
 
-const SCORE = HEAD + { piano: PIANO, lofi: LOFI, night: NIGHT }[STYLE] + TAIL;
+const SCORE = HEAD + { piano: PIANO, lofi: LOFI, night: NIGHT, dream: DREAM }[STYLE] + TAIL;
 
 const browser = await chromium.launch();
 const page = await browser.newPage();

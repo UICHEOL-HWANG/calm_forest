@@ -39,6 +39,9 @@ const specPath = resolve(HERE, 'decks', `${slug}.json`);
 const spec = JSON.parse(await readFile(specPath, 'utf-8'));
 
 // 🚫 이미 발행된 건 다시 올리지 않는다. 사람 기억이 아니라 JSON 이 판단한다.
+if (THREADS_ONLY && spec.threadsSkip) {
+  console.error(`⛔ ${slug} 는 Threads 에 올리지 않는 덱이다 — ${spec.threadsSkip}`); process.exit(1);
+}
 if (THREADS_ONLY) {
   if (!spec.publishedAt) { console.error(`⛔ ${slug} 는 인스타에 아직 안 나갔다. --threads-only 는 인스타 발행 뒤에만 쓴다.`); process.exit(1); }
   if (spec.threadsPublishedAt) {
@@ -202,4 +205,6 @@ await writeFile(specPath, JSON.stringify(spec, null, 2) + '\n');
 console.log(`   decks/${slug}.json 에 publishedAt 기록`);
 
 // ── 8. Threads — 같은 영상 URL 을 그대로 쓴다 ─────────────────
-await postToThreads(video_url);
+// A/B 처럼 Threads 에 다른 영상을 따로 올리는 덱은 threadsSkip(이유)으로 막는다 — 같은 영상이 양쪽에 나가면 비교가 깨진다
+if (spec.threadsSkip) console.log(`\n🧵 Threads 건너뜀 — ${spec.threadsSkip}`);
+else await postToThreads(video_url);

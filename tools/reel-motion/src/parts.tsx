@@ -55,7 +55,8 @@ export const HookBeat: React.FC<{ w: HookWord; dir: 1 | -1 }> = ({ w, dir }) => 
 };
 
 /** Gameplay clip with punch-in zoom and a whip-in from the side */
-export const GameClip: React.FC<{ src: string; startSec: number; dir: 1 | -1; rate?: number; zoom?: number; origin?: string }> = ({ src, startSec, dir, rate = 1, zoom = 1, origin = "50% 50%" }) => {
+// pan: horizontal object-position keyframes for landscape sources in the 9:16 frame — { frames: [...], x: [% ...] }
+export const GameClip: React.FC<{ src: string; startSec: number; dir: 1 | -1; rate?: number; zoom?: number; origin?: string; pan?: { frames: number[]; x: number[] } }> = ({ src, startSec, dir, rate = 1, zoom = 1, origin = "50% 50%", pan }) => {
   const f = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const whip = interpolate(f, [0, 5], [dir * 35, 0], { ...clamp, easing: Easing.out(Easing.cubic) });
@@ -63,11 +64,12 @@ export const GameClip: React.FC<{ src: string; startSec: number; dir: 1 | -1; ra
   const punch = spring({ frame: f, fps, config: { damping: 14, stiffness: 180 } });
   const drift = interpolate(f, [0, durationInFrames], [0, 0.05]);
   const scale = interpolate(punch, [0, 1], [1.28, 1.08]) + drift;
+  const panX = pan ? interpolate(f, pan.frames, pan.x, { ...clamp, easing: Easing.inOut(Easing.cubic) }) : 50;
   return (
     <AbsoluteFill style={{ background: COLORS.ink, overflow: "hidden" }}>
       <AbsoluteFill style={{ transform: `translateX(${whip}%) scale(${scale * zoom})`, transformOrigin: origin, filter: `blur(${blur}px)` }}>
         <Video src={staticFile(src)} trimBefore={Math.round(startSec * fps)} playbackRate={rate} muted objectFit="cover"
-          style={{ width: "100%", height: "100%" }} />
+          style={{ width: "100%", height: "100%", objectPosition: `${panX}% 50%` }} />
       </AbsoluteFill>
       {/* soft vignette keeps captions legible */}
       <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(10,16,12,.45) 100%)" }} />
