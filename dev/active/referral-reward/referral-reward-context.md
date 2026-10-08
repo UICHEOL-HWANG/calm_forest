@@ -23,7 +23,7 @@ Last Updated: 2026-10-08 (1단계 DB 운영 적용 · 2단계 API · 3단계 카
 - 테스트: `npm test` (node --test), `tests/helpers/game-source.mjs`
 
 ## 의사결정
-- 보상 = 추천 전용 꾸미기(판매 X, 외형만). 단계 1/3/5 = 별빛 도구 세트/아치/날개. 피초대자 웰컴 핀.
+- 보상 = 추천 전용 꾸미기(판매 X, 외형만). 단계 1/3/5 = 무지개 크리스탈 세트/꽃 덩굴 아치/스테인드글라스 나비 날개. 피초대자 웰컴 핀.
 - 별 테마는 도구 세트 전체(물뿌리개만 하면 다른 도구가 기본으로 돌아가는 손해) · session_logs 조작 가능성 수용 — 둘 다 사용자 결정 2026-10-08.
 - 활성화 = 비익명 + 7일 내 NSM 2일. 상한 5. 신규 계정 72h 내 바인딩만.
 - 원장 재사용(purchases + source 컬럼) — 보안 트리거가 출처 무관하게 원장 존재만 보므로 자동 보호.
@@ -42,3 +42,4 @@ Last Updated: 2026-10-08 (1단계 DB 운영 적용 · 2단계 API · 3단계 카
 - ⚠️ purchases 매출 집계는 `source='paddle'` 필터 필수.
 - 3단계: 보상 아이템은 `reward:'referral'` — **premium 이 아니다**(premium = 현금 판매: Paddle·가격 페이지·PRICE_IDS). 서버 가드 목록 = premium ∪ reward.
   보상 장식 정의는 순수 모듈 `js/data/reward-decor.js`(data/catalog.js 가 THREE 를 끌어와 entitlements 에서 import 불가). tools_star·friendarch 는 조형 전이라 기본 모양/빈 그룹 — **조형 전엔 API 배포 금지**.
+- 🎨 시안 선택(2026-10-08): 도구 B 무지개 크리스탈(이름 '💎 무지개 크리스탈 세트'로 변경, id tools_star 유지) · 날개 A 스테인드글라스 나비 · 하트핀 B 수정 하트+별 방울(크게) · 아치 B 꽃 덩굴 아치. 시안: sims/referral-reward-sim.html · 캡처 dev/active/referral-reward/shots/

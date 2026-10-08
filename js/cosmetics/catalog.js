@@ -62,8 +62,9 @@ const RAW = [
   { id: 'tools_harvest',  slot: 'tools', ico: '🌽', name: '수확제 세트',    won: 4500, tier: '프리미엄', sale: 'halloween' },
   { id: 'bat_wing', slot: 'back', ico: '🦇', name: '박쥐 날개', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
   { id: 'bat_cape', slot: 'back', ico: '🧛', name: '박쥐 망토', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
-  // 🤝 친구 초대 보상 — 비매품(dev/active/referral-reward). 1명 별빛 도구 세트 · 5명 날개 · 초대받은 친구 하트핀(🌈 3명 아치는 야외 장식)
-  { id: 'tools_star',  slot: 'tools', ico: '⭐', name: '별빛 도구 세트', reward: 'referral', tier: '친구 초대' },
+  // 🤝 친구 초대 보상 — 비매품(dev/active/referral-reward). 1명 무지개 크리스탈 세트 · 5명 날개 · 초대받은 친구 하트핀(🌈 3명 아치는 야외 장식)
+  //    id tools_star 는 서버 가드·원장에 이미 등록돼 그대로 둔다(이름만 2026-10-08 시안 B 선택에 맞춰 바꿈)
+  { id: 'tools_star',  slot: 'tools', ico: '💎', name: '무지개 크리스탈 세트', reward: 'referral', tier: '친구 초대' },
   { id: 'friend_wing', slot: 'back',  ico: '🦋', name: '별빛 우정 날개', reward: 'referral', tier: '친구 초대', anchor: 'back' },
   { id: 'friend_pin',  slot: 'head',  ico: '💗', name: '우정 하트핀',    reward: 'referral', tier: '친구 초대', earSafe: 'low' },
   // 👣 발자국 — 값이 오를수록 바닥에 있던 게 공중으로 올라온다

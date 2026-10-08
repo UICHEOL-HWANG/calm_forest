@@ -14,7 +14,7 @@ export const WEB_ORIGIN = 'https://calmforest.cloud';
 const CODE_RE = /^[A-HJ-NP-Z2-9]{8}$/;
 
 export const TIERS = Object.freeze([
-  Object.freeze({ need: 1, ico: '⭐', item: 'tools_star' }),
+  Object.freeze({ need: 1, ico: '💎', item: 'tools_star' }),
   Object.freeze({ need: 3, ico: '🌈', item: 'friendarch' }),
   Object.freeze({ need: 5, ico: '🦋', item: 'friend_wing' }),
 ]);

@@ -22,10 +22,10 @@ const TIMEOUT_MS = 8000;   // 응답이 매달리지 않게 — Supabase 가 느
 /** 보상 소식 문구 — ⚠️ 사용자 검수 대기(ui-copy-review-first) */
 export const REWARD_NOTICE = Object.freeze({
   tools_star: {
-    title: '⭐ 별빛 도구 세트를 받았어요',
-    body: '초대한 친구가 숲에 자리를 잡았어요! 옷장 🧥 도구 탭에서 별빛 도구 세트를 골라 보세요.',
-    title_en: '⭐ You got the Starlight Tool Set',
-    body_en: 'A friend you invited has settled into the forest! Pick the Starlight Tool Set in the Wardrobe 🧥 Tools tab.',
+    title: '💎 무지개 크리스탈 세트를 받았어요',
+    body: '초대한 친구가 숲에 자리를 잡았어요! 옷장 🧥 도구 탭에서 무지개 크리스탈 세트를 골라 보세요.',
+    title_en: '💎 You got the Rainbow Crystal Set',
+    body_en: 'A friend you invited has settled into the forest! Pick the Rainbow Crystal Set in the Wardrobe 🧥 Tools tab.',
   },
   friendarch: {
     title: '🌈 무지개 우정 아치를 받았어요',
