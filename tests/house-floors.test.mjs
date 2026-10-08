@@ -118,7 +118,7 @@ test('getDecor 가 hidden 가구는 목록에서 뺀다(Task 6 parasol_set 대�
 });
 
 test('placeDecor 가 결제 전에 층 해금·실외 전용 가드를 건다', () => {
-  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2000);
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2600);
   const guardIdx = decorSrc.indexOf('decorUnlocked(def, gameState.houseStage)');
   const payIdx = decorSrc.indexOf('gameState.inventory[pay] -= def.cost');
   assert.ok(guardIdx > -1 && payIdx > -1 && guardIdx < payIdx);
@@ -130,7 +130,7 @@ test('placeDecor 가 결제 전에 층 해금·실외 전용 가드를 건다', 
 test('placeDecor 의 해금 가드는 silent(세이브 복원) 복원을 막지 않는다', () => {
   // applySave 는 houseStage 를 가구보다 나중에 복원한다 — silent 경로까지 gameState.houseStage 로
   // 즉시 걸면 이미 정당하게 산 고급 가구가 복원 시 사라진다(회귀). guard 가 !silent 안에 있어야 한다.
-  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2000);
+  const decorSrc = SRC.slice(SRC.indexOf('function placeDecor('), SRC.indexOf('function placeDecor(') + 2600);
   const guardBlockIdx = decorSrc.indexOf('if (!silent) {');
   const innerGuardIdx = decorSrc.indexOf('decorUnlocked(def, gameState.houseStage)');
   assert.ok(guardBlockIdx > -1 && innerGuardIdx > guardBlockIdx);

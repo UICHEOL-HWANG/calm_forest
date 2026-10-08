@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
+  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearLightWorkshop, nearDoor, nearDoorFloor,
@@ -35,6 +35,7 @@ import { houseExitPoint, nearHouseDoor } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
 import { updateMistInteract } from '../spaces/mist.js';
 import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
+import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
 import { neighborDoor } from '../spaces/neighbor.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { updateRiverInteract } from '../spaces/river.js';
@@ -155,6 +156,12 @@ export function updateDoorInteract() {
     if (dp.prompt !== lastDoorPrompt) { $w.lastDoorPrompt = dp.prompt; ui.setDoorPrompt?.(dp.prompt); }
     return;   // 존 힌트(✨ N/7)는 js/spaces/dream.js 가 상태표시로 쓴다
   }
+  if (atMirror) {      // 🪞 거울 마을: 정류장 돌아가기 / 주민 말 걸기 / 💧 힌트 / 단서 요약(모바일 규칙 — 안내는 프롬프트 줄에만)
+    const mp = mirrorPrompt();
+    $w.nearDoor = mp.nd;
+    if (mp.prompt !== lastDoorPrompt) { $w.lastDoorPrompt = mp.prompt; ui.setDoorPrompt?.(mp.prompt); }
+    return;   // 존 힌트(의뢰 N/3)는 js/spaces/mirror.js 가 상태표시로 쓴다
+  }
   if (atSea) {         // 🌊 바다터: 뭍(남쪽)으로 나가기 / 미니게임 상태 안내
     if (seaMG.st === 'idle' && dist2D({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6 }, player.position) < 1.9) { nd = 'seaexit'; prompt = '🚪 마을로 나가기'; }
     else prompt = seaPrompt();
@@ -180,6 +187,7 @@ export function updateDoorInteract() {
     updateToolPageAuto();   // 🎒 맨 끝까지 안 가고 돌아가니 여기서 — ZONE_PAGE.neighbor 'none'(맨손)
     return;
   }
+  const mv = !indoor && mirrorVillagePrompt();   // 🚏 거울 마을 정류장 — 아래 사슬의 마을 분기에서 쓴다
   if (indoor) {
     const gd = gardenDoorLocal(curHalf()), nearGardenDoor = dist2D({ x: INT.x + gd.x, z: INT.z + gd.z }, player.position) < 1.7;
     if (gameState.houseStage >= 7 && houseFloor === 0 && nearGardenDoor) { nd = 'floor'; $w.nearDoorFloor = 3; prompt = '🌿 정원으로'; }   // 🌿 1층 오른쪽 벽 문 → 정원
@@ -295,6 +303,8 @@ export function updateDoorInteract() {
   } else if (dist2D({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 }, player.position) < 2.4) {
     nd = 'museum'; prompt = '🏛️ 박물관에 들어가기';
     firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
+  } else if (mv) {     // 🚏 거울 마을 정류장(낮 운행 · 밤엔 막차 안내만, nd 없음)
+    nd = mv.nd; prompt = mv.prompt;
   } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
     nd = 'observatory'; prompt = '🌌 별 보러 가기';
     firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳');
@@ -431,7 +441,7 @@ export function updateZoneHint() {
   if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 
-export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atOrchard && !atNeighbor && !atDream; }
+export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atOrchard && !atNeighbor && !atDream && !atMirror; }
 
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 export function ensureNearRing() {

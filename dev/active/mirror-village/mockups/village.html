@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mirror Village Mockup</title>
+<style>
+  :root { --ink:#26324a; --card:rgba(255,255,255,.84); }
+  html,body { margin:0; height:100%; overflow:hidden; background:#000; font-family:"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif; }
+  canvas { display:block; width:100vw !important; height:100vh !important; }
+  .hud { position:fixed; left:16px; top:14px; display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { background:var(--card); color:var(--ink); padding:7px 12px; border-radius:999px; font-weight:700; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.18); }
+  .title { position:fixed; left:16px; right:16px; bottom:22px; text-align:center; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.6); }
+  .title b { display:block; font-size:26px; letter-spacing:-.5px; }
+  .title span { font-size:14px; opacity:.92; }
+  .prompt { position:fixed; left:50%; transform:translateX(-50%); bottom:96px; background:var(--card); color:var(--ink); padding:9px 16px; border-radius:14px; font-weight:700; font-size:15px; box-shadow:0 2px 10px rgba(0,0,0,.2); white-space:nowrap; max-width:calc(100vw - 32px); box-sizing:border-box; }
+  .tag { position:fixed; transform:translate(-50%,-100%); background:rgba(255,255,255,.9); color:var(--ink); font-size:12px; font-weight:800; padding:3px 8px; border-radius:8px; white-space:nowrap; pointer-events:none; }
+  .bubble { position:fixed; transform:translate(-50%,-100%); background:#fff; color:#26324a; font-size:15px; font-weight:800; padding:2px 7px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.25); }
+  @media (max-width:600px){ .title b{font-size:21px} .title span{font-size:12px} .prompt{font-size:12.5px; bottom:92px; white-space:normal; text-align:center; width:max-content} .chip{font-size:12px; padding:6px 10px} .tag{font-size:10px} }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div class="hud" id="hud"></div>
+<div class="prompt" id="prompt"></div>
+<div class="title" id="title"></div>
+<div id="labels"></div>
+<script type="module">
+import * as THREE from 'three';
+
+const Q = new URLSearchParams(location.search);
+const V = Q.get('v') || '1';
+const CAM = Q.get('cam') || 'game';   // game = 실제 게임 시점(오프셋 0,14,16) · wide = 전경
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.45;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const portrait = H > W;
+const camera = new THREE.PerspectiveCamera(portrait ? 60 : 45, W / H, 0.1, 400);
+
+// ---------- helpers ----------
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85, ...o });
+const glow = (color, k = 1.6) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: k, flatShading: true, roughness: 0.4 });
+function mesh(geo, m, x = 0, y = 0, z = 0, parent = scene) {
+  const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o;
+}
+let seed = 11;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const range = (a, b) => a + rnd() * (b - a);
+let haloTex;
+function halo(color, size, x, y, z, op = 0.8, parent = scene) {
+  if (!haloTex) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const g = cv.getContext('2d'); const gr = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128); haloTex = new THREE.CanvasTexture(cv);
+  }
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending }));
+  s.scale.set(size, size, 1); s.position.set(x, y, z); parent.add(s); return s;
+}
+function gradientSky(top, bottom) {
+  const cv = document.createElement('canvas'); cv.width = 2; cv.height = 256;
+  const g = cv.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, top); gr.addColorStop(1, bottom); g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function stars(n, r, color = 0xffffff, size = 0.35) {
+  const p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const th = rnd() * Math.PI * 2, ph = rnd() * Math.PI * 0.45;
+    p[i * 3] = r * Math.sin(ph) * Math.cos(th); p[i * 3 + 1] = r * Math.cos(ph) * 0.8 + 6; p[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color, size, sizeAttenuation: true, transparent: true, opacity: 0.9 })));
+}
+function sun(color, intensity, x, y, z) {
+  const d = new THREE.DirectionalLight(color, intensity); d.position.set(x, y, z); d.castShadow = true;
+  d.shadow.mapSize.set(2048, 2048); const sc = d.shadow.camera; sc.left = sc.bottom = -30; sc.right = sc.top = 30; sc.far = 120;
+  d.shadow.bias = -0.0008; scene.add(d); return d;
+}
+function bear(x, z, ry = 0, tint = 0x9a6a45, parent = scene, opts = {}) {
+  const g = new THREE.Group(); g.position.set(x, opts.y || 0, z); g.rotation.y = ry; parent.add(g);
+  const fur = opts.mat || mat(tint, { roughness: 0.95 });
+  const light = opts.mat || mat(0xd9b48a);
+  const body = mesh(new THREE.SphereGeometry(0.62, 16, 12), fur, 0, 0.62, 0, g); body.scale.set(1, 1.05, 0.92);
+  mesh(new THREE.SphereGeometry(0.4, 14, 10), light, 0, 0.55, 0.36, g).scale.set(1, 1.1, 0.5);
+  mesh(new THREE.SphereGeometry(0.46, 16, 12), fur, 0, 1.42, 0.02, g);
+  [-1, 1].forEach(s => {
+    mesh(new THREE.SphereGeometry(0.15, 10, 8), fur, s * 0.33, 1.8, -0.02, g);
+    mesh(new THREE.SphereGeometry(0.16, 10, 8), fur, s * 0.6, 0.72, 0.1, g).scale.set(0.9, 1.4, 0.9);
+    mesh(new THREE.SphereGeometry(0.055, 8, 6), opts.eye || mat(0x1d1410), s * 0.16, 1.5, 0.41, g);
+  });
+  if (!opts.mat) {
+    mesh(new THREE.SphereGeometry(0.16, 12, 8), light, 0, 1.33, 0.4, g).scale.set(1.2, 0.85, 0.8);
+    mesh(new THREE.SphereGeometry(0.055, 8, 6), mat(0x1d1410), 0, 1.38, 0.53, g);
+  }
+  return g;
+}
+function lowTree(x, z, s, leaf, trunk) {
+  mesh(new THREE.CylinderGeometry(0.16 * s, 0.22 * s, 1.4 * s, 6), mat(trunk), x, 0.7 * s, z);
+  mesh(new THREE.IcosahedronGeometry(1.0 * s, 0), mat(leaf), x, 1.9 * s, z);
+  mesh(new THREE.IcosahedronGeometry(0.7 * s, 0), mat(leaf), x + 0.4 * s, 2.5 * s, z + 0.1 * s);
+}
+function bush(x, z, c, s = 1) { mesh(new THREE.IcosahedronGeometry(0.55 * s, 0), mat(c), x, 0.35 * s, z).scale.set(1.3, 0.8, 1.1); }
+function rock(x, z, c, s = 1) { mesh(new THREE.DodecahedronGeometry(0.42 * s, 0), mat(c), x, 0.2 * s, z); }
+function house(x, z, ry, wall, roof, win, parent = scene) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; parent.add(g);
+  mesh(new THREE.BoxGeometry(3, 2.2, 2.6), mat(wall), 0, 1.1, 0, g);
+  const r = mesh(new THREE.ConeGeometry(2.4, 1.5, 4), mat(roof), 0, 2.95, 0, g); r.rotation.y = Math.PI / 4; r.scale.set(1, 1, 0.85);
+  const wm = glow(win, 1.1);
+  mesh(new THREE.BoxGeometry(0.6, 0.6, 0.05), wm, -0.75, 1.3, 1.31, g);
+  mesh(new THREE.BoxGeometry(0.6, 0.6, 0.05), wm, 0.75, 1.3, 1.31, g);
+  mesh(new THREE.BoxGeometry(0.7, 1.1, 0.05), mat(0x4a4060), 0, 0.55, 1.31, g);
+  return g;
+}
+
+// ---------- 공통 배치(모든 안 동일 — 단서 표지물 5 · 집 3 · 주민 3) ----------
+//  카메라는 북쪽을 본다 → 화면 왼쪽 = 서쪽(-x)
+const L = {
+  pond:  [0, 0],    well: [-8, -2],   clock: [7.5, -6.5],  lamp: [-6, 7],   stop: [2.5, 15],
+  houses: [[-11, -10, 0.3], [11, 1.5, -0.5], [1, -14, 0.05]],
+  npcs:   [[-9, -6.8], [8.6, 4.4], [3.4, -10.8]],
+};
+const labels = [];
+const tag = (txt, x, y, z, cls = 'tag') => labels.push({ txt, p: new THREE.Vector3(x, y, z), cls });
+
+function landmarks(P) {
+  // 🪞 거울 연못
+  const pond = mesh(new THREE.CircleGeometry(3, 32), new THREE.MeshStandardMaterial({ color: P.pond, emissive: P.pondGlow, emissiveIntensity: 0.9, roughness: 0.08, metalness: 0.5 }), 0, 0.03, 0);
+  pond.rotation.x = -Math.PI / 2;
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; rock(Math.cos(a) * 3.3, Math.sin(a) * 3.3, P.stone, 0.8); }
+  halo(P.pondGlow, 9, 0, 0.8, 0, 0.45);
+  tag('🪞 거울 연못', 0, 1.2, 0);
+  // 🪣 우물
+  const [wx, wz] = L.well;
+  mesh(new THREE.CylinderGeometry(0.9, 0.95, 0.9, 10), mat(P.stone), wx, 0.45, wz);
+  mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.05, 10), glow(P.pondGlow, 0.8), wx, 0.92, wz);
+  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.12, 1.6, 0.12), mat(P.wood), wx + s * 0.85, 1.3, wz);
+  mesh(new THREE.ConeGeometry(1.25, 0.7, 4), mat(P.roofA), wx, 2.4, wz).rotation.y = Math.PI / 4;
+  tag('🪣 우물', wx, 3.0, wz);
+  // 🕰️ 거꾸로 시계탑 — 지붕이 아래(땅 쪽), 받침이 위
+  const [cx, cz] = L.clock;
+  const tower = new THREE.Group(); tower.position.set(cx, 0, cz); scene.add(tower);
+  const sp = mesh(new THREE.ConeGeometry(1.1, 1.6, 4), mat(P.roofB), 0, 0.8, 0, tower); sp.rotation.set(Math.PI, Math.PI / 4, 0);
+  mesh(new THREE.BoxGeometry(1.5, 3.4, 1.5), mat(P.wallB), 0, 3.3, 0, tower);
+  mesh(new THREE.BoxGeometry(1.9, 0.35, 1.9), mat(P.stone), 0, 5.15, 0, tower);
+  const face = mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 20), glow(0xfff2c8, 0.9), 0, 3.9, 0.78, tower); face.rotation.x = Math.PI / 2;
+  const hand = mesh(new THREE.BoxGeometry(0.06, 0.42, 0.04), mat(0x26324a), 0, 3.75, 0.83, tower); hand.rotation.z = 2.4;
+  tag('🕰️ 거꾸로 시계탑', cx, 6.0, cz);
+  // 🏮 등불 기둥
+  const [lx, lz] = L.lamp;
+  mesh(new THREE.CylinderGeometry(0.12, 0.16, 3.2, 6), mat(P.wood), lx, 1.6, lz);
+  mesh(new THREE.BoxGeometry(0.6, 0.7, 0.6), glow(P.lampGlow, 1.6), lx, 3.4, lz);
+  halo(P.lampGlow, 5, lx, 3.4, lz, 0.6);
+  const pl = new THREE.PointLight(P.lampGlow, 18, 12); pl.position.set(lx, 3.2, lz); scene.add(pl);
+  tag('🏮 등불 기둥', lx, 4.3, lz);
+  // 🚏 거울 정류장
+  const [sx, sz] = L.stop;
+  for (const s of [-1.1, 1.1]) mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.3, 6), mat(P.wood), sx + s, 1.15, sz - 0.4);
+  mesh(new THREE.BoxGeometry(2.8, 0.16, 1.3), mat(P.roofA), sx, 2.36, sz - 0.25).rotation.x = 0.12;
+  mesh(new THREE.BoxGeometry(1.8, 0.12, 0.45), mat(P.wood), sx, 0.48, sz - 0.55);
+  tag('🚏 거울 정류장', sx, 3.1, sz);
+}
+function residents(P) {
+  const shadowMat = new THREE.MeshStandardMaterial({ color: P.shadow, transparent: true, opacity: 0.78, roughness: 1 });
+  const eyeMat = glow(0xbff6ff, 2.4);
+  L.npcs.forEach(([x, z], i) => {
+    const g = bear(x, z, [0.5, -0.6, 0.1][i], 0, scene, { mat: shadowMat, eye: eyeMat });
+    anims.push(t => { g.position.y = Math.sin(t * 1.6 + i) * 0.1; });
+    if (i === 0) labels.push({ txt: '💬', p: new THREE.Vector3(x, 2.6, z), cls: 'bubble' });
+  });
+}
+function lostItem(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0.45, z); scene.add(g);
+  mesh(new THREE.TorusGeometry(0.26, 0.08, 6, 14), mat(0xffd27a, { metalness: 0.6, roughness: 0.3, emissive: 0x6a4a10, emissiveIntensity: 0.6 }), 0, 0, 0, g);
+  halo(0xffd59e, 2.8, x, 0.55, z, 0.9);
+  anims.push(t => { g.rotation.y = t * 1.2; g.position.y = 0.45 + Math.sin(t * 2) * 0.08; });
+}
+function scatter(P) {
+  const trees = [[-15, 3], [-14, -3], [14, -7], [15, 8], [-4, -17], [9, -15], [-12, 12], [12, 13], [-17, -9], [17, -1], [-7, -13], [6, 10]];
+  trees.forEach(([x, z], i) => lowTree(x, z, 1.15, P.leaf[i % P.leaf.length], P.trunk));
+  const bushes = [[-9.8, -2.2], [-6.2, -2.0], [5.9, -6.3], [9.1, -6.6], [-7.5, 7.2], [-4.5, 7.0], [1.5, -3.6], [-1.6, 3.6], [3.8, 1.2], [-3.9, -1.2], [10, 4.8], [-10.5, -7.8]];
+  bushes.forEach(([x, z], i) => bush(x, z, P.bush[i % P.bush.length], 1.0));
+  [[-12.5, 6], [13, -3.5], [0.5, 9.5], [-2.5, -9], [7, 13]].forEach(([x, z]) => rock(x, z, P.stone, 1.2));
+}
+
+const anims = [];
+function common(P) {
+  landmarks(P); residents(P); scatter(P);
+  L.houses.forEach(([x, z, r], i) => house(x, z, r, P.walls[i], P.roofs[i], P.win[i]));
+  for (let i = 0; i < 34; i++) { const a = i / 34 * Math.PI * 2; const r = 20 + (i % 3) * 1.6; lowTree(Math.cos(a) * r, Math.sin(a) * r, 1.5 + (i % 2) * 0.4, P.leaf[i % P.leaf.length], P.trunk); }
+  const rim = mesh(new THREE.RingGeometry(21.5, 60, 48), mat(P.bush[0])); rim.rotation.x = -Math.PI / 2; rim.position.y = -0.01;
+  lostItem(-9.9, -1.4);
+  bear(1.2, 11.6, Math.PI * 0.95);
+}
+
+// =============================================================
+//  1. 🌌 푸른 밤 거울 광장 — 시안 B 계승: 하늘에 거꾸로 매달린 낮 마을
+// =============================================================
+function v1() {
+  scene.background = gradientSky('#0b1532', '#2c5578');
+  scene.fog = new THREE.Fog(0x21426a, 26, 80);
+  scene.add(new THREE.HemisphereLight(0xb8dcff, 0x3a5a88, 1.35));
+  sun(0xbfd8ff, 1.0, 10, 22, 8);
+  stars(300, 110, 0xd6ecff, 0.35);
+  const P = { ground: 0x5f86a6, pond: 0xbff0ff, pondGlow: 0x7fd6ff, stone: 0x8aa0b8, wood: 0x7a86a8, roofA: 0x4a5f9a, roofB: 0x5a4f8a, wallB: 0x5a6fa0,
+    lampGlow: 0xffd59e, shadow: 0x223058, leaf: [0x4f7aa8, 0x5a8fb0, 0x6a7ac0], trunk: 0x6a7090, bush: [0x3f6a92, 0x4a5f9a],
+    walls: [0x5a6fa0, 0x6a5f9a, 0x506a9a], roofs: [0x3d4f8a, 0x4a3f7a, 0x6a4f8a], win: [0x9ee8ff, 0xffd59e, 0xb8f0ff] };
+  const g = mesh(new THREE.CircleGeometry(22, 56), mat(P.ground, { roughness: 0.55, metalness: 0.15 })); g.rotation.x = -Math.PI / 2;
+  // 하늘의 거꾸로 낮 마을(원경, 저폴리 실루엣)
+  const sky = new THREE.Group(); sky.position.set(0, 26, -18); sky.rotation.z = Math.PI; scene.add(sky);
+  const sg = mesh(new THREE.CircleGeometry(24, 40), new THREE.MeshBasicMaterial({ color: 0xbfe8c9, fog: false }), 0, 0, 0, sky); sg.rotation.x = -Math.PI / 2;
+  [[-7, -3, 0xffe3c4, 0xff9e9e], [6, -5, 0xfff2d6, 0x9ecbff], [0, 6, 0xffe3c4, 0xffc89e]].forEach(([x, z, w, r]) => {
+    mesh(new THREE.BoxGeometry(3, 2.2, 2.6), new THREE.MeshBasicMaterial({ color: w, fog: false }), x, 1.1, z, sky);
+    const rf = mesh(new THREE.ConeGeometry(2.4, 1.5, 4), new THREE.MeshBasicMaterial({ color: r, fog: false }), x, 2.95, z, sky); rf.rotation.y = Math.PI / 4;
+  });
+  halo(0xfff2c8, 40, 0, 24, -18, 0.25);
+  for (let i = 0; i < 4; i++) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(5 + i * 5, 0.06, 6, 64), new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.3 }));
+    ring.rotation.x = Math.PI / 2; ring.position.set(0, 18, -14); scene.add(ring);
+    anims.push(t => { const k = ((t * 0.2 + i / 4) % 1); ring.scale.setScalar(0.4 + k * 1.6); ring.material.opacity = 0.35 * (1 - k); });
+  }
+  common(P);
+  for (let i = 0; i < 40; i++) halo(0xbfeaff, range(0.2, 0.45), range(-16, 16), range(0.5, 7), range(-16, 14), 0.7);
+  return ['1. 🌌 푸른 밤 거울 광장', '시안 B 계승 · 하늘에 거꾸로 매달린 낮 마을이 "이쪽은 반대편"을 알려 줌'];
+}
+
+// =============================================================
+//  2. 💧 물 위 마을 — 땅 전체가 얕은 물빛 거울, 나무 데크 길
+// =============================================================
+function v2() {
+  scene.background = gradientSky('#0d2a3a', '#3f8a98');
+  scene.fog = new THREE.Fog(0x2d6a7a, 26, 80);
+  scene.add(new THREE.HemisphereLight(0xc8f8ff, 0x2f6a78, 1.35));
+  sun(0xd8f6ff, 1.0, -10, 22, 10);
+  stars(260, 110, 0xe8fbff, 0.32);
+  const P = { ground: 0x6ab0b8, pond: 0xe6fbff, pondGlow: 0x9ef6ff, stone: 0x9fb8bf, wood: 0xa88a6a, roofA: 0x3f7a8a, roofB: 0x4a6a8a, wallB: 0x5f8f9f,
+    lampGlow: 0xffe0a8, shadow: 0x1a3a48, leaf: [0x5aa8a0, 0x6fb8b0, 0x4f9aa8], trunk: 0x8a7a6a, bush: [0x4f9a96, 0x5aa8a0],
+    walls: [0x6f9fae, 0x7f8fb8, 0x5f9aa0], roofs: [0x3f6a8a, 0x5a5f9a, 0x3f7a7a], win: [0xfff2c8, 0xbff6ff, 0xffd59e] };
+  // 물빛 바닥 — 반짝이는 얕은 물
+  const water = mesh(new THREE.CircleGeometry(22, 56), new THREE.MeshStandardMaterial({ color: P.ground, roughness: 0.12, metalness: 0.55, emissive: 0x1a4a58, emissiveIntensity: 0.35 }));
+  water.rotation.x = -Math.PI / 2;
+  // 데크 길: 정류장 → 연못 → 우물/시계탑/등불
+  const deck = (x1, z1, x2, z2) => { const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz); const d = mesh(new THREE.BoxGeometry(1.6, 0.12, len), mat(P.wood), (x1 + x2) / 2, 0.06, (z1 + z2) / 2); d.rotation.y = Math.atan2(dx, dz); };
+  deck(2.5, 14, 0.8, 3.4); deck(-2.6, -1.4, -7.2, -2); deck(2.4, -2.2, 7, -5.6); deck(-1.8, 2.6, -5.6, 6.4); deck(-8, -2.6, -10.5, -8.5); deck(8, -5.5, 3, -12); deck(3, 1.5, 10, 2);
+  for (let i = 0; i < 12; i++) { const r = mesh(new THREE.TorusGeometry(range(0.4, 1.2), 0.03, 4, 24), new THREE.MeshBasicMaterial({ color: 0xd8fbff, transparent: true, opacity: 0.4 }), range(-18, 18), 0.04, range(-18, 18)); r.rotation.x = Math.PI / 2; }
+  // 큰 달 + 수면 반사 띠
+  mesh(new THREE.IcosahedronGeometry(5, 2), new THREE.MeshBasicMaterial({ color: 0xf2fbff, fog: false }), 18, 30, -70);
+  halo(0xd8f6ff, 40, 18, 30, -69, 0.5);
+  common(P);
+  for (let i = 0; i < 40; i++) halo(0xd8fbff, range(0.2, 0.45), range(-16, 16), range(0.5, 7), range(-16, 14), 0.7);
+  return ['2. 💧 물 위 마을', '땅 전체가 얕은 물빛 거울 · 나무 데크 길이 표지물을 이어 줘 길 찾기가 쉬움'];
+}
+
+// =============================================================
+//  3. 🌗 색 반전 숲 마을 — 내 마을 색의 보색 · 은빛 나무 · 오로라
+// =============================================================
+function v3() {
+  scene.background = gradientSky('#120f2e', '#3a2f68');
+  scene.fog = new THREE.Fog(0x2e2858, 26, 80);
+  scene.add(new THREE.HemisphereLight(0xe0d4ff, 0x3a3270, 1.35));
+  sun(0xe8dcff, 1.0, 12, 22, 6);
+  stars(320, 110, 0xf2e8ff, 0.35);
+  const P = { ground: 0x50629a, pond: 0xf0e8ff, pondGlow: 0xc89eff, stone: 0xb8b0d0, wood: 0xc8c0e0, roofA: 0x7ad6c0, roofB: 0x6ab8e0, wallB: 0xe8b8d0,
+    lampGlow: 0x9ef6d0, shadow: 0x2a2250, leaf: [0xdfe6f2, 0xc8d6ea, 0xeef2ff], trunk: 0x8a86a8, bush: [0x5a6aa0, 0x6a5aa8],
+    walls: [0xc8a0d8, 0xa8c0e8, 0xe0b0c0], roofs: [0x6ad6b0, 0xe0d06a, 0x7ab8f0], win: [0x9ef6d0, 0xffe08a, 0xff9ee0] };
+  const g = mesh(new THREE.CircleGeometry(22, 56), mat(P.ground, { roughness: 0.7 })); g.rotation.x = -Math.PI / 2;
+  // 오로라 띠
+  for (let i = 0; i < 3; i++) {
+    const a = new THREE.Mesh(new THREE.PlaneGeometry(90, 10, 1, 1), new THREE.MeshBasicMaterial({ color: [0x7affc8, 0x9ec8ff, 0xd89eff][i], transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    a.position.set(0, 26 + i * 4, -60 - i * 6); a.rotation.z = 0.12 - i * 0.1; scene.add(a);
+    anims.push(t => { a.material.opacity = 0.12 + Math.sin(t * 0.7 + i) * 0.05; });
+  }
+  common(P);
+  for (let i = 0; i < 40; i++) halo([0x9ef6d0, 0xd89eff][i % 2], range(0.2, 0.45), range(-16, 16), range(0.5, 7), range(-16, 14), 0.7);
+  return ['3. 🌗 색 반전 숲 마을', '내 마을 색을 뒤집은 보색 팔레트 · 은빛 나무와 오로라 — 가장 낯설고 동화적'];
+}
+
+const [title, sub] = ({ 1: v1, 2: v2, 3: v3 })[V]();
+document.getElementById('hud').innerHTML = ['🪞 거울 마을 · 의뢰 0/3', '🪞 6'].map(c => `<span class="chip">${c}</span>`).join('');
+document.getElementById('prompt').textContent = '💬 그림자 곰돌이에게 말 걸기';
+document.getElementById('title').innerHTML = `<b>${title}</b><span>${sub}</span>`;
+
+// 카메라: game = 플레이어(1.2, 11.6) 기준 실제 게임 오프셋(0,14,16) · wide = 전경
+if (CAM === 'game') {
+  const k = portrait ? 1.15 : 1.0;
+  camera.position.set(1.2, 14 * k, 11.6 + 16 * k); camera.lookAt(1.2, 0, 11.6 - 1.5);
+} else {
+  camera.position.set(portrait ? 2 : 4, portrait ? 30 : 22, portrait ? 40 : 34); camera.lookAt(0, 0, -2);
+}
+
+const clock = new THREE.Clock();
+const labelBox = document.getElementById('labels');
+function frame() {
+  const t = 1.3 + clock.getElapsedTime();
+  anims.forEach(f => f(t));
+  renderer.render(scene, camera);
+  labelBox.innerHTML = labels.map(l => {
+    const v = l.p.clone().project(camera); if (v.z > 1) return '';
+    const x = (v.x * 0.5 + 0.5) * innerWidth, y = (-v.y * 0.5 + 0.5) * innerHeight;
+    if (x < 0 || x > innerWidth || y < 0 || y > innerHeight) return '';
+    return `<div class="${l.cls}" style="left:${x}px;top:${y}px">${l.txt}</div>`;
+  }).join('');
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

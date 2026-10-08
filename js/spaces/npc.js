@@ -273,6 +273,21 @@ export function buildNPCLook(g, def) {
   }
 }
 
+/** 주민 몸 한 벌(몸통·머리·외형 장식·눈) — 마을 주민과 🪞 거울 마을 보색 쌍둥이가 같이 쓴다. 위치·scene 추가는 호출부 */
+export function buildNPCFigure(def) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), clayMat(def.color, false));
+  body.position.y = 0.55; body.castShadow = true; body.scale.set(1, 1.05, 1); g.add(body);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), clayMat(def.skin || 0xffe0c0, false));
+  head.position.y = 1.15; head.castShadow = true; g.add(head);
+  const look = buildNPCLook(g, def) || {};
+  if (!look.eyes) {   // 🦉 올빼미처럼 제 눈을 직접 그린 외형은 공용 눈을 얹지 않는다
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
+    [-0.13, 0.13].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat); e.position.set(ex, 1.18, 0.32); e.userData.npcEye = true; g.add(e); });
+  }
+  return { group: g, body, look };
+}
+
 // 모든 주민 생성 (데이터 기반)
 export function buildNPCs() {
   // ⚠️ 여기서 의뢰를 뽑지 않는다. buildNPCs 는 bootWorld(로그인·loadGame 전)에서 돌기 때문에
@@ -282,17 +297,8 @@ export function buildNPCs() {
   //    의뢰는 enterGame(세이브 로드 후)에서만 뽑고, 그 전까지 def.quests 는 비어 있다
   //    (currentQuest 가 빈 배열을 null 로 돌려주므로 글리프·대화 모두 안전하다).
   for (const def of NPCS) {
-    const g = new THREE.Group();
+    const { group: g, body, look } = buildNPCFigure(def);
     g.position.set(def.pos[0], 0, def.pos[2]);
-    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), clayMat(def.color, false));
-    body.position.y = 0.55; body.castShadow = true; body.scale.set(1, 1.05, 1); g.add(body);
-    const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), clayMat(def.skin || 0xffe0c0, false));
-    head.position.y = 1.15; head.castShadow = true; g.add(head);
-    const look = buildNPCLook(g, def) || {};
-    if (!look.eyes) {   // 🦉 올빼미처럼 제 눈을 직접 그린 외형은 공용 눈을 얹지 않는다
-      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
-      [-0.13, 0.13].forEach(ex => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat); e.position.set(ex, 1.18, 0.32); g.add(e); });
-    }
     scene.add(g);
 
     // 머리 위 상태 말풍선(캔버스 텍스처 — 외부 파일 없음)
