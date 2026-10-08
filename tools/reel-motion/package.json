@@ -5,7 +5,8 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts PlayReel out/play-reel.mp4",
-    "render:night": "remotion render src/index.ts NightReel out/night-reel.mp4"
+    "render:night": "remotion render src/index.ts NightReel out/night-reel.mp4",
+    "render:dream": "remotion render src/index.ts DreamReelA out/dream-reel-a.mp4 && remotion render src/index.ts DreamReelB out/dream-reel-b.mp4"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.530",

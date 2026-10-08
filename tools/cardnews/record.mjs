@@ -2,7 +2,7 @@
 //  calm forest · 🎥 게임 플레이 녹화
 //  ------------------------------------------------------------
 //  node record.mjs --out clips/04_game.mp4 [--secs 5] [--port 8000]
-//                  [--q "weather=clear&time=0.46"] [--scenario night-duel] [--char 곰] [--animal raccoon] [--require-win]
+//                  [--q "weather=clear&time=0.46"] [--scenario night-duel|dream] [--char 곰] [--animal raccoon] [--require-win]
 //
 //  왜 필요한가: 쇼츠 앞부분은 Veo 생성 영상이라 아무리 참조를 물려도
 //  "진짜 게임 화면"은 아니다. 마지막에 실제 렌더를 붙여야 광고가 거짓이 안 된다.
@@ -111,6 +111,54 @@ async function nightDuel(page, marks, t0, animal = 'boar') {
   return banner.includes('되찾았어요');             // ui.COPY.matchWin — 문구가 바뀌면 여기서 항상 false 가 된다
 }
 
+/** 🌙 꿈의 숲 한 바퀴 — 밤 침대 → 꿈 선택 → 초승달 마차 컷신 → 섬 도착 → 조각 줍기 → 깨어나기.
+ *  window.__dream 은 localhost 전용 검수 훅(js/game.js). 선택 창·도착 안내는 DOM 이라 녹화엔 안 담기고,
+ *  암전(#sleep-fade)도 DOM 이라 빠진다 — 컷 경계는 marks 로 자른다. */
+async function dreamTour(page, marks, t0) {
+  const mark = (name) => { marks[name] = +((Date.now() - t0()) / 1000).toFixed(2); };
+  const wait = (ms) => page.waitForTimeout(ms);
+  const st = () => page.evaluate(() => window.__dream.state());
+  mark('bed');                                     // 밤의 집 안 — 침대 곁
+  await wait(1500);
+  await page.evaluate(() => { window.__dream.open(); });
+  await wait(500);
+  await page.evaluate(() => document.getElementById('dream-opt-dream')?.click());
+  mark('cut_start');
+  for (let i = 0; i < 80; i++) {                   // 프레임에 따라 컷신 길이가 다르다 — 끝날 때까지 폴링
+    const s = await st();
+    if (s.atDream && !s.cut && !s.sleeping) break;
+    await wait(200);
+  }
+  if (!(await st()).atDream) throw new Error('꿈의 숲에 도착하지 못했다');
+  mark('arrive');
+  await page.evaluate(() => document.getElementById('dream-arrive-ok')?.click());
+  await wait(1800);                                // 도착 직후 섬 전경
+  // 조각: 각 자리 2.2 남쪽에 세우고 위로 걸어 들어가 줍는다(순간이동으로 줍는 장면은 광고에 안 쓴다)
+  const spots = await page.evaluate(async () => {
+    const L = await import('/js/dream/layout.js');
+    const d = window.__dream.state().dream;
+    return L.shardsLeft(d, d.day).map(id => { const s = L.spotOf(id); return [s.x, s.z]; });
+  });
+  if (spots.length < 4) throw new Error(`오늘 남은 꿈 조각이 ${spots.length}개뿐 — __dream.reset() 이 안 먹었다(줍는 장면이 빈다)`);
+  for (const [i, [x, z]] of spots.slice(0, 4).entries()) {
+    await page.evaluate(([x, z]) => window.__dream.tp(x, z + 2.2), [x, z]);
+    await wait(500);
+    mark(`walk_${i + 1}`);
+    await page.keyboard.down('ArrowUp'); await wait(900); await page.keyboard.up('ArrowUp');
+    await wait(900);
+    mark(`shard_${i + 1}`);
+  }
+  marks.shards = (await st()).dream.got.length;
+  // 깨어나기 — 구름 침대 곁(머리가 -z)에서 Space
+  await page.evaluate(() => window.__dream.tp(-3.6, 4.4));
+  await wait(1200);
+  mark('wake');
+  await page.keyboard.press('Space');
+  await wait(3000);
+  mark('end');
+  return !(await st()).atDream;
+}
+
 const tmp = await mkdtemp(join(tmpdir(), 'cf-record-'));
 // ⚠️ 헤드리스는 실제 화면 합성을 억제한다. rAF 는 60 으로 돌아도(측정함) 캔버스에
 //    새 프레임이 안 올라와 captureStream 이 2.8fps 밖에 못 뜬다. 창을 띄워야
@@ -168,6 +216,12 @@ try {
     await page.evaluate(() => [...document.querySelectorAll('button')]
       .find(b => b.offsetParent && b.textContent.includes('알겠어요'))?.click());
     await page.waitForTimeout(600);
+  } else if (SCENARIO === 'dream') {
+    // 꿈은 오늘 조각 기록이 비어 있어야 7개가 다 깔린다. 집 안 침대 곁·밤으로 맞춘다
+    await page.evaluate(() => { window.__dream.reset(); window.__dream.house(); });
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.__dream.night());
+    await page.waitForTimeout(800);
   }
   // HUD 숨김 — 쇼츠에 UI 가 나오면 안 된다. (캔버스만 녹화하므로 DOM 오버레이는 어차피 안 담긴다 —
   //  대결의 손 이모지는 3D 라 영상에 나온다)
@@ -196,6 +250,12 @@ try {
     console.log('마커(초)', JSON.stringify(marks), won ? '· 결과: 승리' : '· 결과: 패배/미확인');
     // 가위바위보는 무작위다. 광고에 지는 장면을 쓰고 싶지 않으면 --require-win 으로 다시 뜨게 한다
     if (argv.includes('--require-win') && !won) throw new Error('RETRY: 이번 판은 이기지 못했다');
+  } else if (SCENARIO === 'dream') {
+    const woke = await dreamTour(page, marks, () => recT0);
+    recSecs = marks.end + 0.3;
+    console.log('마커(초)', JSON.stringify(marks), woke ? '· 깨어남' : '· ⚠️ 아직 꿈 안');
+    // 컷 시각(dreamTimeline.ts)이 이 흐름을 전제한다 — 조각을 못 줍거나 못 깨면 조용히 성공하지 말 것
+    if (marks.shards < 4 || !woke) throw new Error(`꿈 녹화 불완전: 조각 ${marks.shards}/4 · 깨어남 ${woke}`);
   } else if (SCENARIO) {
     throw new Error(`알 수 없는 --scenario: ${SCENARIO}`);
   } else {
