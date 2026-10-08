@@ -23,7 +23,7 @@ test('recipeFromResult: 성공은 정제 후 done, 거절·파싱 실패·오류
   const done = recipeFromResult(o, okMsg({ name: '벚꽃 바람', line: '봄 냄새가 나요.', shape: 'petal', motion: 'spiral', band: 'body', count: 40, speed: 1, radius: 1, colors: ['pink', 'rose'] }));
   assert.equal(done.status, 'done');
   assert.equal(done.recipe.count, 24);
-  assert.equal(recipeFromResult(o, { type: 'succeeded', message: { stop_reason: 'refusal', content: [] } }).status, 'retry');
+  assert.equal(recipeFromResult(o, { type: 'succeeded', message: { stop_reason: 'refusal', content: [] } }).status, 'fallback');
   assert.equal(recipeFromResult(o, { type: 'succeeded', message: { stop_reason: 'end_turn', content: [{ type: 'text', text: '{oops' }] } }).status, 'retry');
   assert.equal(recipeFromResult(o, { type: 'errored', error: { type: 'overloaded_error' } }).status, 'retry');
   assert.equal(recipeFromResult(o, undefined).status, 'retry');
@@ -78,6 +78,24 @@ test('tick: 끝난 배치는 수집 — 성공 done, 실패 retry(시도+1), 시
   assert.equal(rows[c.id].recipe.shape, 'petal');
   assert.equal(r.done, 1); assert.equal(r.retried, 1); assert.equal(r.fallback, 1);
   assert.ok(rows[a.id].user_id && rows[a.id].text, '업서트는 NOT NULL 칸을 모두 싣는다');
+});
+
+test('tick: 거절(refusal)은 재시도 없이 대체 레시피', async () => {
+  const a = order('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', { status: 'submitted', batch_id: 'msgbatch_1' });
+  const w = world({ submitted: [a], results: [{ custom_id: a.id, result: { type: 'succeeded', message: { stop_reason: 'refusal', content: [] } } }] });
+  const r = await runAuraCron(ENV, { phase: 'tick', fetch: w.fetch, notify: w.notify, now: 0 });
+  assert.equal(w.calls.upserts[0][0].status, 'fallback');
+  assert.equal(r.fallback, 1); assert.equal(r.retried, 0);
+});
+
+test('tick: 수집분이 전부 실패면 알림 1회 + error=all_failed', async () => {
+  const a = order('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', { status: 'submitted', batch_id: 'msgbatch_1' });
+  const b = order('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', { status: 'submitted', batch_id: 'msgbatch_1' });
+  const results = [a, b].map(o => ({ custom_id: o.id, result: { type: 'errored', error: { type: 'overloaded_error' } } }));
+  const w = world({ submitted: [a, b], results });
+  const r = await runAuraCron(ENV, { phase: 'tick', fetch: w.fetch, notify: w.notify, now: 0 });
+  assert.equal(w.calls.notified.length, 1);
+  assert.match(r.error, /^all_failed: overloaded_error/);
 });
 
 test('tick: 진행 중 배치는 건드리지 않는다', async () => {

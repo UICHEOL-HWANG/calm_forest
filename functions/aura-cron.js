@@ -42,14 +42,15 @@ export function buildRequest(o) {
 }
 
 export function recipeFromResult(o, result) {
-  if (result?.type !== 'succeeded') return { status: 'retry' };
+  if (result?.type !== 'succeeded') return { status: 'retry', reason: result?.error?.type || result?.type || 'no_result' };
   const msg = result.message;
-  if (msg?.stop_reason === 'refusal' || msg?.stop_reason === 'max_tokens') return { status: 'retry' };
+  if (msg?.stop_reason === 'refusal') return { status: 'fallback', reason: 'refusal' }; // 스펙 §5.3 — 거절은 재시도 없이 즉시 대체
+  if (msg?.stop_reason === 'max_tokens') return { status: 'retry', reason: 'max_tokens' };
   const text = (msg?.content || []).find(b => b.type === 'text')?.text;
   try {
     const raw = JSON.parse(text);
     return { status: 'done', recipe: sanitizeRecipe(raw, { isBlocked: isNicknameBlocked, fallback: fallbackRecipe(o.cards, o.id) }) };
-  } catch { return { status: 'retry' }; }
+  } catch { return { status: 'retry', reason: 'parse' }; }
 }
 
 const iso = ms => new Date(ms).toISOString();
@@ -72,6 +73,7 @@ export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetc
     });
     if (!r.ok) throw new Error(`upsert ${r.status}`);
   };
+  let firstFailure = null;
   const out = { phase, submitted: 0, collected: 0, done: 0, retried: 0, fallback: 0, error: null };
   try {
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, fetch, maxRetries: 1 });
@@ -90,6 +92,8 @@ export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetc
         const rows = orders.map(o => {
           const got = recipeFromResult(o, results.get(o.id));
           if (got.status === 'done') { out.done++; return { ...o, status: 'done', recipe: got.recipe, model: AURA_MODEL, ready_at: iso(now) }; }
+          firstFailure ??= got.reason || 'unknown';
+          if (got.status === 'fallback') { out.fallback++; return { ...asFallback(o, now), attempts: (o.attempts || 0) + 1 }; }
           const attempts = (o.attempts || 0) + 1;
           if (attempts >= MAX_ATTEMPTS) { out.fallback++; return { ...asFallback(o, now), attempts }; }
           out.retried++;
@@ -97,6 +101,10 @@ export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetc
         });
         await upsert(rows);
         out.collected += rows.length;
+      }
+      if (out.collected > 0 && out.done === 0) {
+        out.error = `all_failed: ${firstFailure}`.slice(0, 400);
+        await notify(env, '🟠 빛 공방: 배치 결과 전부 실패', `${phase}: 수집 ${out.collected}건 모두 실패 (${firstFailure}). 재시도 ${out.retried}, 대체 ${out.fallback}`);
       }
       // ② 제출 — 대기 주문 최대 BATCH_MAX 건을 배치 1건으로
       const pending = await read(`status=eq.pending&select=*&order=created_at.asc&limit=${BATCH_MAX}`);
