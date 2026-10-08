@@ -9,15 +9,15 @@
     "./agents/analyst/agent.md": {
       "kind": "agent",
       "id": "agent_01UvMwYwdCjx1ujXXj11svo5",
-      "version": "5",
-      "hash": "fb01cbf089a8e6e01d597bc211ac45cf",
-      "remote_hash": "c2ac599727c8d061395bcad41da0decf"
+      "version": "6",
+      "hash": "1214ecb5b5c09a1f7fc57af63c65c928",
+      "remote_hash": "749c7d8e84fff345b31f55e34ea55337"
     },
     "./agents/analyst/deployment-weekly.yaml": {
       "kind": "deployment",
       "id": "depl_01BPLzRD7F7Xxhh7UwKkiTbx",
-      "hash": "e1a588f51a1afcfb0a19d5708807758c",
-      "remote_hash": "e1a588f51a1afcfb0a19d5708807758c"
+      "hash": "5bb2c9379d17c98dfc0701fe290f691f",
+      "remote_hash": "5bb2c9379d17c98dfc0701fe290f691f"
     },
     "./agents/analyst/environment.yaml": {
       "kind": "environment",
@@ -59,15 +59,15 @@
     "./agents/tracking-qa/agent.md": {
       "kind": "agent",
       "id": "agent_01WtxMkEfxGMscDsF5WZwcvz",
-      "version": "1",
-      "hash": "ccd5ed1da385f232ab1a8466c0e5fb7b",
-      "remote_hash": "d315e1fc60de8eae925b8f83418411bd"
+      "version": "2",
+      "hash": "1bda11ae4de5ba57c0dbc2932797f281",
+      "remote_hash": "bfebe15c0de8611e8ce4cbb673accfc4"
     },
     "./agents/tracking-qa/deployment-weekly.yaml": {
       "kind": "deployment",
       "id": "depl_01UBPXzUfZgT2Y75TmCDxp1W",
-      "hash": "fd1ccfece155e1a7af8916a9fe10f167",
-      "remote_hash": "fd1ccfece155e1a7af8916a9fe10f167"
+      "hash": "8543e3e00821df2a623ad828ba0ed0f6",
+      "remote_hash": "8543e3e00821df2a623ad828ba0ed0f6"
     },
     "./agents/tracking-qa/memory_store-notes.yaml": {
       "kind": "memory_store",
