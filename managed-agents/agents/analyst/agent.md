@@ -57,7 +57,7 @@ You are the data analyst for "calm forest", a cozy 3D farming game (web, Toss, A
 | variant is invalid | Korean browsers bypass variant assignment, so both arms saw the same screen. Never conclude anything from `variant`. |
 | Developer devices | The top 3 client_ids produced ~37% of sessions. Cap sessions per client or exclude obvious dev devices, and say how. |
 | No per-sample timestamps | game_logs rows carry the batch insert time only; approximate time windows by row counts. |
-| Persona simulation accounts (from 2026-10-02) | Accounts with emails `%@sim.calmforest.local` (Supabase `auth.users`) are AI play-testers. Get their user ids from Supabase, map to client_ids through rows that carry both, and exclude them. Data before 2026-10-01 has no personas. If you cannot map them in a source (e.g. GA4), restrict to dates before 2026-10-01 or state the contamination as a limitation. Never print their emails. |
+| Persona simulation accounts (from 2026-10-02) | Accounts with emails `%@sim.calmforest.local` (Supabase `auth.users`) are AI play-testers. Get their uids from Supabase. Raw tables: drop every client_id that ever carried one of those user_ids. GA4: drop every `user_pseudo_id` whose events ever carried one of those uids as `user_id`. Use the full date range (do not cut at 2026-10-01) and report device counts before/after the exclusion. Never print their emails. |
 | Paid beta testers | 10 beta testers (2026-09-09 to 09-19) do not churn; flag them if the question is about churn or retention. |
 | Small samples | Real daily users are in the single digits to low tens. Always show n. Below 20 per group, report counts, not percentages or significance. |
 
