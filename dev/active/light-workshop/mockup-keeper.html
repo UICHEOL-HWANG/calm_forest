@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>빛 공방 주인 시안</title>
+<style>
+  :root {
+    --bg: #141c27; --card: #1E2A3A; --ink: #f3ede0; --sub: #a9b4c2; --line: #2d3d52; --warm: #ffd38a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  }
+  header { padding: 18px 24px 6px; }
+  h1 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+  header p { margin: 4px 0 0; color: var(--sub); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 12px 24px 20px; }
+  .card { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .stage { position: relative; height: 470px; }
+  .stage canvas { display: block; width: 100%; height: 100%; max-width: 100%; }
+  .badge {
+    position: absolute; top: 10px; left: 12px; font-weight: 700; font-size: 14px;
+    background: rgba(0,0,0,.35); padding: 4px 10px; border-radius: 99px;
+  }
+  .meta { padding: 10px 14px 14px; border-top: 1px solid var(--line); }
+  .dir { font-size: 13px; color: var(--sub); margin: 0 0 8px; }
+  .names { display: flex; gap: 8px; flex-wrap: wrap; }
+  .name {
+    font-size: 15px; font-weight: 700; padding: 5px 12px; border-radius: 99px;
+    border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 22%, transparent);
+  }
+  .name small { font-weight: 500; color: var(--sub); margin-right: 4px; }
+  .note { font-size: 12px; color: var(--sub); margin: 8px 0 0; line-height: 1.5; }
+  @media (max-width: 760px) {
+    header { padding: 14px 16px 4px; }
+    .grid { grid-template-columns: minmax(0, 1fr); padding: 10px 16px 16px; gap: 10px; }
+    .stage { height: 205px; }
+    .dir { font-size: 12px; margin-bottom: 6px; }
+    .meta { padding: 8px 12px 10px; }
+    .note { display: none; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<header>
+  <h1>🏮 빛 공방 주인 — 시안 3개</h1>
+  <p>밤 조명 · 공방 오두막 일부와 함께 · 이름표는 ① 이름으로 렌더 · 주민과 같은 몸(0.5)·머리(0.38) 규격</p>
+</header>
+<div class="grid">
+  <div class="card">
+    <div class="stage"><canvas id="cA"></canvas><span class="badge">A · 등불 든 너구리 장인</span></div>
+    <div class="meta">
+      <p class="dir">청록 작업복 + 검은 눈가면 · 줄무늬 꼬리 · 손에 든 등불이 실루엣</p>
+      <div class="names" style="--c:#2f8f8a">
+        <span class="name"><small>①</small>🦝 등불 너구리</span>
+        <span class="name"><small>②</small>🦝 빛장이 너구리</span>
+      </div>
+      <p class="note">고유색 청록(기존 주민에 없음). 메시 12개. 등불이 공방 불빛과 같은 따뜻한 색이라 멀리서도 "빛 만드는 사람"으로 읽힘.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="stage"><canvas id="cB"></canvas><span class="badge">B · 앞치마 두른 반딧불 요정</span></div>
+    <div class="meta">
+      <p class="dir">장밋빛 옷 + 크림 앞치마 · 큰 날개 두 장 · 빛나는 꽁무니와 더듬이</p>
+      <div class="names" style="--c:#e58fb0">
+        <span class="name"><small>①</small>🧚 반디 요정</span>
+        <span class="name"><small>②</small>🧚 앞치마 반디</span>
+      </div>
+      <p class="note">고유색 장밋빛(기존 주민에 없음). 메시 12개. 날개가 가장 큰 실루엣 — 위에서 봐도 구분됨. 꽁무니 빛은 블룸 임계 아래로 맞춤.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="stage"><canvas id="cC"></canvas><span class="badge">C · 유리병 모자 두더지</span></div>
+    <div class="meta">
+      <p class="dir">짙은 벨벳 몸 + 하늘색 목도리 · 머리 위 큰 유리병(안에 빛 한 알) · 분홍 코·삽 손</p>
+      <div class="names" style="--c:#8a86c8">
+        <span class="name"><small>①</small>🫙 병모자 두더지</span>
+        <span class="name"><small>②</small>🫙 빛단지 두더지</span>
+      </div>
+      <p class="note">고유색 짙은 벨벳(오소리 잿빛과 명도 차). 메시 11개. 유리병이 키를 키워 이름표가 높게 뜸. 🫙 이모지는 구형 안드로이드에서 빈칸 위험 → 🏮 대체 가능.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const clay = (color, flat = false) => new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0, flatShading: flat });
+const glowMat = (color, intensity = 1) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, roughness: 0.6 });
+
+// 게임 makeNameTag 를 단순화 — 밝힌 배지 + 진한 테두리 + 진한 글자
+function shade(hex, k) {
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  const f = (v) => Math.round(Math.min(255, Math.max(0, v)));
+  return k >= 0
+    ? `rgb(${f(r + (255 - r) * k)},${f(g + (255 - g) * k)},${f(b + (255 - b) * k)})`
+    : `rgb(${f(r * (1 + k))},${f(g * (1 + k))},${f(b * (1 + k))})`;
+}
+function makeNameTag(label, color) {
+  const W = 384, H = 96, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  const FONT = (px) => `bold ${px}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
+  let px = 34, tw = 0;
+  for (;;) { c.font = FONT(px); tw = c.measureText(label).width; if (tw <= W - 68 || px <= 22) break; px -= 2; }
+  const w = Math.min(W - 12, tw + 56), x = (W - w) / 2, y = 20;
+  c.beginPath(); c.roundRect(x, y, w, 56, 28);
+  c.fillStyle = shade(color, 0.55); c.fill();
+  c.strokeStyle = shade(color, -0.55); c.lineWidth = 4; c.stroke();
+  c.fillStyle = shade(color, -0.75); c.textBaseline = 'middle'; c.fillText(label, x + (w - tw) / 2, y + 29);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(2.27, 2.27 * H / W, 1);
+  return sp;
+}
+
+// 공용 몸통·머리·눈(주민 규격) — 메시 4개
+function baseBody(g, bodyColor, headColor, eyeY = 1.18, eyeZ = 0.32) {
+  const add = (m, x, y, z) => { m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), clay(bodyColor)), 0, 0.55, 0).scale.set(1, 1.05, 1);
+  add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), clay(headColor)), 0, 1.15, 0);
+  const eye = new THREE.MeshStandardMaterial({ color: 0x2a221e, roughness: 0.5 });
+  [-0.13, 0.13].forEach(ex => add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eye), ex, eyeY, eyeZ));
+  return add;
+}
+
+// (A) 🦝 등불 든 너구리 장인 — 12 메시
+function keeperA() {
+  const g = new THREE.Group();
+  const add = baseBody(g, 0x2f8f8a, 0xc9c2b6, 1.19, 0.37);                       // 4
+  const mask = add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), clay(0x3b322c)), 0, 1.19, 0.22);
+  mask.scale.set(1.75, 0.55, 0.6);                                     // 5 눈가면 띠
+  [-1, 1].forEach(s => {                                               // 6·7 세모 귀
+    const ear = add(new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.24, 4), clay(0x5b534b, true)), s * 0.24, 1.48, -0.02);
+    ear.rotation.z = -s * 0.28;
+  });
+  const tail = add(new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.55, 4, 10), clay(0xb9b1a6)), -0.28, 0.42, -0.52);
+  tail.rotation.set(-0.9, 0, 0.5);                                     // 8 꼬리
+  const tip = add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), clay(0x3b3530)), -0.5, 0.72, -0.8);
+  tip.scale.set(1, 1.15, 1);                                           // 9 꼬리 끝(진한 띠)
+  const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), clay(0x6b4a34)), 0.6, 0.98, 0.32);
+  pole.rotation.z = -0.25;                                             // 10 손잡이
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.3, 6), glowMat(0xffc46b, 1.1)), 0.64, 0.6, 0.34); // 11 등불
+  add(new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.14, 6), clay(0x7a5334, true)), 0.64, 0.82, 0.34);            // 12 지붕
+  const lamp = new THREE.PointLight(0xffb259, 2.2, 4.5, 1.6); lamp.position.set(0.62, 0.58, 0.5); g.add(lamp);
+  return { g, tag: '🦝 등불 너구리', color: 0x2f8f8a };
+}
+
+// (B) 🧚 앞치마 두른 반딧불 요정 — 12 메시
+function keeperB() {
+  const g = new THREE.Group();
+  const add = baseBody(g, 0xe58fb0, 0xfff1e0);                       // 4
+  const apron = add(new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 10), clay(0xfaf3e2)), 0, 0.48, 0.38);
+  apron.scale.set(1.0, 1.05, 0.5);   // 5 앞치마(앞판)
+  const wingMat = new THREE.MeshStandardMaterial({ color: 0xdff3ff, roughness: 0.4, transparent: true, opacity: 0.62, side: THREE.DoubleSide });
+  [-1, 1].forEach(s => {                                              // 6·7 날개
+    const w = add(new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 10), wingMat), s * 0.62, 1.1, -0.3);
+    w.scale.set(0.75, 1.1, 0.08); w.rotation.set(0.15, s * 1.0, s * -0.5); w.castShadow = false;
+  });
+  const antMat = clay(0x6b4a5a);
+  [-1, 1].forEach(s => {                                              // 8·9 더듬이 / 10·11 빛 끝
+    const a = add(new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.42, 5), antMat), s * 0.13, 1.6, 0.04);
+    a.rotation.z = -s * 0.35;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), glowMat(0xd7f27a, 1.2)), s * 0.21, 1.8, 0.04);
+  });
+  const bulb = add(new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), glowMat(0xd7f27a, 0.9)), 0, 0.42, -0.5);
+  bulb.scale.set(1, 0.9, 1.25);                                       // 12 반딧불 꽁무니
+  const glow = new THREE.PointLight(0xc8ee6a, 2.0, 4, 1.6); glow.position.set(0, 0.5, -0.8); g.add(glow);
+  return { g, tag: '🧚 반디 요정', color: 0xe58fb0 };
+}
+
+// (C) 🫙 유리병 모자 두더지 — 11 메시
+function keeperC() {
+  const g = new THREE.Group();
+  const add = baseBody(g, 0x4a4566, 0x5a5478, 1.2);                   // 4 (작은 눈은 공용과 같게)
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), clay(0xf2a3b5)), 0, 1.08, 0.38);                    // 5 분홍 코
+  [-1, 1].forEach(s => {                                              // 6·7 넓적한 삽 손
+    const h = add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), clay(0xf2b8c2)), s * 0.5, 0.62, 0.22);
+    h.scale.set(1.15, 0.5, 1);  h.rotation.z = s * 0.4;
+  });
+  const scarf = add(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.08, 8, 18), clay(0x8fc8ea)), 0, 0.88, 0.02);
+  scarf.rotation.x = Math.PI / 2;                                     // 8 목도리
+  const jar = add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.52, 14),
+    new THREE.MeshStandardMaterial({ color: 0xcfe9f2, roughness: 0.15, transparent: true, opacity: 0.38 })), 0, 1.68, 0); // 9 유리병
+  jar.castShadow = false;
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.1, 12), clay(0xb98a5a, true)), 0, 1.99, 0);      // 10 코르크 뚜껑
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), glowMat(0xffd36b, 1.2)), 0, 1.66, 0);             // 11 병 속 빛
+  const glow = new THREE.PointLight(0xffcf6b, 2.0, 4, 1.6); glow.position.set(0, 1.7, 0.3); g.add(glow);
+  return { g, tag: '🫙 병모자 두더지', color: 0x8a86c8 };
+}
+
+// 오두막 일부 — 상자 2.2×1.5×1.8 흙빛 + 4면 원뿔 지붕(세이지) + 빛나는 창
+function hut() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 1.8), clay(0xd6a27a, true));
+  body.position.y = 0.75; body.castShadow = body.receiveShadow = true; g.add(body);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.75, 1.15, 4), clay(0x9fbf8a, true));
+  roof.position.y = 1.5 + 0.575; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.45), glowMat(0xffcf7a, 1.4));
+  win.position.set(0.45, 0.9, 0.905); g.add(win);
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.95), clay(0x7a5334));
+  door.position.set(-0.45, 0.475, 0.905); g.add(door);
+  const wl = new THREE.PointLight(0xffb05a, 3, 5, 1.5); wl.position.set(0.45, 0.9, 1.4); g.add(wl);
+  return g;
+}
+
+function scene3(canvas, keeper) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1E2A3A);
+  scene.fog = new THREE.Fog(0x1E2A3A, 9, 18);
+  scene.add(new THREE.HemisphereLight(0xc9cde6, 0x2a3530, 1.05));
+  const moon = new THREE.DirectionalLight(0xd4dcff, 0.8);
+  moon.position.set(3, 7, 6); moon.castShadow = true; moon.shadow.mapSize.set(1024, 1024);
+  scene.add(moon);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(9, 32), clay(0x2f4a3a));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(1.3, 24), new THREE.MeshStandardMaterial({ color: 0x2c4f6e, roughness: 0.55 }));
+  pond.rotation.x = -Math.PI / 2; pond.position.set(2.3, 0.01, 1.2); pond.scale.set(1.4, 1, 1); scene.add(pond);
+  const h = hut(); h.position.set(-1.4, 0, -1.2); h.rotation.y = 0.35; scene.add(h);
+
+  const k = keeper();
+  k.g.position.set(0.7, 0, 0.6); k.g.rotation.y = -0.25; scene.add(k.g);
+  const top = new THREE.Box3().setFromObject(k.g).max.y;
+  const tag = makeNameTag(k.tag, k.color); tag.position.set(0.7, top + 0.3, 0.6); scene.add(tag);
+
+  const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
+  camera.position.set(3.0, 2.9, 7.6); camera.lookAt(0, 1.0, 0);
+
+  function fit() {
+    const w = canvas.clientWidth, hgt = canvas.clientHeight;
+    renderer.setSize(w, hgt, false);
+    camera.aspect = w / hgt;
+    camera.fov = camera.aspect > 1.4 ? 30 : 34;
+    camera.updateProjectionMatrix();
+  }
+  fit(); window.addEventListener('resize', fit);
+  let n = 0;
+  (function loop() { renderer.render(scene, camera); if (++n < 30) requestAnimationFrame(loop); })();
+}
+
+scene3(document.getElementById('cA'), keeperA);
+scene3(document.getElementById('cB'), keeperB);
+scene3(document.getElementById('cC'), keeperC);
+</script>
+</body>
+</html>
