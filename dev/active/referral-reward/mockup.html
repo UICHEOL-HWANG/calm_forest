@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>추천 보상 시안</title>
+<style>
+  :root { --bg:#f6f1e7; --card:#fffaf2; --ink:#3d3428; --sub:#7a6d5c; --line:#e6dccb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",sans-serif; }
+  header { padding:28px 16px 8px; max-width:1180px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 6px; }
+  header p { margin:0; color:var(--sub); font-size:14px; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:16px; max-width:1180px; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; overflow:hidden; }
+  .stage { aspect-ratio:1/1; width:100%; display:block; }
+  .meta { padding:14px 16px 18px; }
+  .tag { display:inline-block; font-size:12px; font-weight:700; padding:3px 9px; border-radius:99px; background:#efe4d2; margin-bottom:8px; }
+  h2 { font-size:17px; margin:0 0 6px; }
+  .meta p { font-size:13.5px; line-height:1.55; color:var(--sub); margin:0 0 8px; }
+  .meta ul { margin:0; padding-left:18px; font-size:13px; color:var(--sub); line-height:1.6; }
+  @media (max-width:820px){ .grid{ grid-template-columns:1fr; } }
+</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+</head>
+<body>
+<header>
+  <h1>🤝 친구 추천 보상 시안 3종</h1>
+  <p>상점에서 팔지 않는 추천 전용 · 외형만 · 이웃 마을 구경에서 보이는 자리</p>
+</header>
+<div class="grid">
+  <div class="card"><canvas class="stage" id="cA"></canvas><div class="meta">
+    <span class="tag">A · 몸에 착용</span><h2>🦋 별빛 우정 날개</h2>
+    <p>등에 다는 무지개빛 날개. 걸을 때 팔랑이고 별가루가 흩날려요.</p>
+    <ul><li>늘 보임 → 노출 최대</li><li>망토 슬롯과 자리 겹침 (택1)</li></ul></div></div>
+  <div class="card"><canvas class="stage" id="cB"></canvas><div class="meta">
+    <span class="tag">B · 집 앞 장식</span><h2>🌈 무지개 우정 아치</h2>
+    <p>집 앞에 세우는 구름 무지개 아치. 하트 등불이 둥실 떠다녀요.</p>
+    <ul><li>이웃 마을 첫 화면에 크게 보임</li><li>드로우콜 부담 (병합 필요)</li></ul></div></div>
+  <div class="card"><canvas class="stage" id="cC"></canvas><div class="meta">
+    <span class="tag">C · 도구 스킨</span><h2>⭐ 별빛 물뿌리개</h2>
+    <p>보석 박힌 라벤더 물뿌리개. 물 대신 별이 쏟아져요.</p>
+    <ul><li>매일 쓰는 도구 → 체감 큼</li><li>기존 스킨 시스템 재사용</li></ul></div></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+
+const clay = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, flatShading: true, ...o });
+const glow = (c, i = 0.6, o = {}) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: i, roughness: 0.5, flatShading: true, ...o });
+const RAINBOW = [0xf59ab0, 0xf7b98a, 0xf5dc7a, 0x9fd99a, 0x8fc6ee, 0xb7a3ea];
+
+function heartShape(s = 1) {
+  const h = new THREE.Shape();
+  h.moveTo(0, -0.9 * s);
+  h.bezierCurveTo(-1.1 * s, -0.2 * s, -1.0 * s, 0.75 * s, -0.5 * s, 0.75 * s);
+  h.bezierCurveTo(-0.15 * s, 0.75 * s, 0, 0.45 * s, 0, 0.35 * s);
+  h.bezierCurveTo(0, 0.45 * s, 0.15 * s, 0.75 * s, 0.5 * s, 0.75 * s);
+  h.bezierCurveTo(1.0 * s, 0.75 * s, 1.1 * s, -0.2 * s, 0, -0.9 * s);
+  return h;
+}
+function starShape(r1, r2, n = 5) {
+  const s = new THREE.Shape();
+  for (let i = 0; i <= n * 2; i++) {
+    const r = i % 2 ? r2 : r1, a = (i / (n * 2)) * Math.PI * 2 + Math.PI / 2;
+    i ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  return s;
+}
+const ext = (shape, d, bev = 0.04) => new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: true, bevelSize: bev, bevelThickness: bev, bevelSegments: 1, curveSegments: 8 }).center();
+
+function makeStage(id, bgTop, bgBot) {
+  const canvas = document.getElementById(id);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  const scene = new THREE.Scene();
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, bgTop); gr.addColorStop(1, bgBot); g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  scene.background = new THREE.CanvasTexture(c); scene.background.colorSpace = THREE.SRGBColorSpace;
+  const cam = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+  scene.add(new THREE.HemisphereLight(0xfff8ee, 0xb8a888, 1.8));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.6);
+  sun.position.set(3, 6, 4); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 });
+  scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.3, 9), clay(0x9ccc7a));
+  ground.position.y = -0.15; ground.receiveShadow = true; scene.add(ground);
+  const turn = new THREE.Group(); scene.add(turn);
+  const resize = () => { const w = canvas.clientWidth; renderer.setSize(w, w, false); };
+  resize(); addEventListener('resize', resize);
+  return { renderer, scene, cam, turn };
+}
+
+function sparkles(parent, n, radius, h, colors) {
+  const list = [];
+  const geo = new THREE.OctahedronGeometry(0.05, 0);
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(geo, glow(colors[i % colors.length], 1.2));
+    m.userData = { a: (i * 2.39) % 6.28, r: radius * (0.6 + ((i * 37) % 10) / 16), y: ((i * 53) % 20) / 20 * h, sp: 0.3 + ((i * 17) % 10) / 16, ph: i * 0.9 };
+    parent.add(m); list.push(m);
+  }
+  return t => list.forEach(m => {
+    const u = m.userData, a = u.a + t * u.sp;
+    m.position.set(Math.cos(a) * u.r, u.y + Math.sin(t * 1.5 + u.ph) * 0.15, Math.sin(a) * u.r);
+    m.scale.setScalar(0.6 + 0.6 * Math.abs(Math.sin(t * 3 + u.ph)));
+    m.rotation.y = t * 2;
+  });
+}
+
+function bunny(fur = 0xfffaf2) {
+  const g = new THREE.Group(), m = clay(fur);
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), m); body.scale.set(1, 1.1, 0.9); body.position.y = 0.48;
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), m); head.position.y = 1.12;
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.36, 2, 6), m);
+    ear.position.set(0.17 * s, 1.58, 0); ear.rotation.z = -0.22 * s; g.add(ear);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), clay(0x2e2620));
+    eye.position.set(0.13 * s, 1.15, 0.34); g.add(eye);
+    const blush = new THREE.Mesh(new THREE.CircleGeometry(0.06, 10), clay(0xf2a7a7));
+    blush.position.set(0.22 * s, 1.05, 0.335); blush.rotation.y = 0.35 * s; g.add(blush);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), m);
+    foot.scale.set(1, 0.6, 1.3); foot.position.set(0.18 * s, 0.07, 0.08); g.add(foot);
+  }
+  g.add(body, head);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+window.__stages = [];
+
+/* ---------- A. 별빛 우정 날개 ---------- */
+{
+  const S = makeStage('cA', '#e9ddff', '#fde7ef');
+  S.cam.position.set(2.6, 1.9, 3.6); S.cam.lookAt(0, 1.0, 0);
+  const b = bunny(); S.turn.add(b);
+  function wing(top) {
+    const s = new THREE.Shape();
+    if (top) { s.moveTo(0, 0); s.bezierCurveTo(0.3, 0.9, 1.3, 1.25, 1.25, 0.55); s.bezierCurveTo(1.2, 0.2, 0.6, 0.05, 0, 0); }
+    else { s.moveTo(0, 0); s.bezierCurveTo(0.5, -0.1, 0.95, -0.55, 0.65, -0.8); s.bezierCurveTo(0.35, -0.95, 0.1, -0.4, 0, 0); }
+    const geo = new THREE.ShapeGeometry(s, 10); const pos = geo.attributes.position, col = [];
+    const cs = top ? [0xff7fb6, 0xa97cff, 0x5cc4ff] : [0xffb36b, 0xff7fb6, 0xa97cff];
+    for (let i = 0; i < pos.count; i++) {
+      const t = Math.min(1, Math.hypot(pos.getX(i), pos.getY(i)) / 1.3);
+      const c = t < 0.5 ? new THREE.Color(cs[0]).lerp(new THREE.Color(cs[1]), t * 2) : new THREE.Color(cs[1]).lerp(new THREE.Color(cs[2]), (t - 0.5) * 2);
+      col.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.9, emissive: 0xffb8e0, emissiveIntensity: 0.22, roughness: 0.35 }));
+    const pts = s.getPoints(30).map(p => new THREE.Vector3(p.x, p.y, 0));
+    const rim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 60, 0.022, 5, true), glow(0xffd86a, 0.7));
+    const gg = new THREE.Group(); gg.add(mesh, rim);
+    const dot = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), glow(0xfff3b0, 1.4));
+    dot.position.set(top ? 0.75 : 0.45, top ? 0.6 : -0.45, 0.01); gg.add(dot);
+    return gg;
+  }
+  const wings = [];
+  for (const side of [-1, 1]) {
+    const pivot = new THREE.Group(); pivot.position.set(0.05 * side, 0.72, -0.3);
+    for (const top of [true, false]) { const w = wing(top); w.scale.x = side; pivot.add(w); }
+    b.add(pivot); wings.push({ pivot, side });
+  }
+  const heart = new THREE.Mesh(ext(heartShape(0.09), 0.04, 0.015), glow(0xff8fb1, 0.8));
+  heart.position.set(0, 0.72, -0.34); heart.rotation.y = Math.PI; b.add(heart);
+  const tick = sparkles(S.turn, 26, 1.3, 2.0, [0xfff3b0, 0xffc8e0, 0xcde8ff, 0xe2d4ff]);
+  S.anim = t => {
+    S.turn.rotation.y = Math.PI * 0.85 + Math.sin(t * 0.4) * 0.9;
+    wings.forEach(w => { w.pivot.rotation.y = w.side * (0.35 + Math.sin(t * 5) * 0.35); });
+    b.position.y = 0.06 + Math.abs(Math.sin(t * 2.5)) * 0.06;
+    tick(t);
+  };
+  window.__stages.push(S);
+}
+
+/* ---------- B. 무지개 우정 아치 ---------- */
+{
+  const S = makeStage('cB', '#d9efff', '#fff4dc');
+  S.cam.position.set(0.8, 2.3, 5.6); S.cam.lookAt(0, 1.1, 0);
+  const arch = new THREE.Group(); S.turn.add(arch);
+  RAINBOW.forEach((c, i) => {
+    const r = 1.75 - i * 0.14;
+    const m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.075, 6, 28, Math.PI), clay(c, { emissive: c, emissiveIntensity: 0.15 }));
+    m.castShadow = true; m.position.y = 0.25; arch.add(m);
+  });
+  for (const s of [-1, 1]) {
+    const cloud = new THREE.Group();
+    [[0, 0, 0, 0.42], [0.3, -0.05, 0.1, 0.32], [-0.3, -0.05, 0.05, 0.3], [0.05, 0.25, 0, 0.3], [0, -0.05, 0.3, 0.28]].forEach(([x, y, z, r]) => {
+      const p = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), clay(0xffffff, { emissive: 0xfff6fb, emissiveIntensity: 0.45 }));
+      p.position.set(x, y, z); p.castShadow = true; cloud.add(p);
+    });
+    cloud.position.set(1.4 * s, 0.32, 0); arch.add(cloud);
+    for (let k = 0; k < 4; k++) {
+      const f = new THREE.Group();
+      const petalC = [0xf7a8c8, 0xfff0a0, 0xc6a8f2, 0xffb38a][k];
+      for (let p = 0; p < 5; p++) {
+        const pe = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), clay(petalC));
+        const a = p / 5 * 6.28; pe.position.set(Math.cos(a) * 0.08, 0, Math.sin(a) * 0.08); pe.scale.y = 0.5; f.add(pe);
+      }
+      f.add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), glow(0xffd85a, 0.4)));
+      f.position.set(s * (0.9 + (k % 2) * 0.35), 0.06, 0.55 + (k > 1 ? 0.25 : 0) - 0.1 * k); arch.add(f);
+    }
+  }
+  const top = new THREE.Mesh(ext(heartShape(0.28), 0.12, 0.04), glow(0xff7fa8, 0.5));
+  top.position.set(0, 2.05, 0.05); top.castShadow = true; arch.add(top);
+  const lanterns = [];
+  for (let i = 0; i < 6; i++) {
+    const h = new THREE.Mesh(ext(heartShape(0.1), 0.05, 0.02), glow(RAINBOW[i], 0.9));
+    h.userData = { x: -1.3 + i * 0.52, y: 0.9 + (i % 3) * 0.35, ph: i * 1.1 };
+    arch.add(h); lanterns.push(h);
+  }
+  for (let i = 0; i < 5; i++) {
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.05, 7), clay(0xe8dcc6));
+    st.position.set(0, 0.02, 0.9 - i * 0.4); st.receiveShadow = true; arch.add(st);
+  }
+  const b = bunny(); b.scale.setScalar(0.62); b.position.set(0.6, 0, 1.55); b.rotation.y = -0.3; S.turn.add(b);
+  const tick = sparkles(arch, 18, 1.6, 2.3, [0xfff3b0, 0xffffff, 0xffc8e0]);
+  S.anim = t => {
+    S.turn.rotation.y = Math.sin(t * 0.35) * 0.55;
+    top.rotation.y = Math.sin(t * 1.2) * 0.4; top.position.y = 2.05 + Math.sin(t * 2) * 0.04;
+    lanterns.forEach(h => { const u = h.userData; h.position.set(u.x, u.y + Math.sin(t * 1.4 + u.ph) * 0.12, 0.35); h.rotation.y = Math.sin(t + u.ph) * 0.6; });
+    tick(t);
+  };
+  window.__stages.push(S);
+}
+
+/* ---------- C. 별빛 물뿌리개 ---------- */
+{
+  const S = makeStage('cC', '#e6e0ff', '#ffe9d6');
+  S.cam.position.set(2.2, 2.4, 4.6); S.cam.lookAt(0.2, 1.0, 0);
+  const can = new THREE.Group(); S.turn.add(can);
+  const lav = clay(0xb9a3ec, { emissive: 0xb9a3ec, emissiveIntensity: 0.12 });
+  const gold = glow(0xffcf4d, 0.35, { roughness: 0.4 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.75, 10), lav); body.castShadow = true;
+  const rimTop = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.045, 6, 20), gold); rimTop.rotation.x = Math.PI / 2; rimTop.position.y = 0.38;
+  const rimBot = rimTop.clone(); rimBot.scale.setScalar(1.18); rimBot.position.y = -0.36;
+  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 6, 0, 6.28, 0, Math.PI / 2), lav); lid.position.y = 0.38; lid.scale.y = 0.5;
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 6, 16, Math.PI * 1.2), gold);
+  handle.position.set(-0.32, 0.3, 0); handle.rotation.z = 0.4;
+  const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 0.9, 8), lav);
+  spout.position.set(0.55, 0.2, 0); spout.rotation.z = -0.95;
+  const rose = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.07, 0.12, 10), gold);
+  rose.position.set(0.92, 0.47, 0); rose.rotation.z = -0.95;
+  const gem = new THREE.Mesh(ext(starShape(0.2, 0.09), 0.08, 0.025), glow(0xffe27a, 0.7));
+  gem.position.set(0, 0.0, 0.5);
+  const gemFrame = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.025, 4, 20), gold); gemFrame.position.set(0, 0, 0.48);
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * 6.28, j = new THREE.Mesh(new THREE.OctahedronGeometry(0.045, 0), glow([0xff9ec4, 0x9fd4f5, 0xa8e6a0][i % 3], 0.6));
+    j.position.set(Math.cos(a) * 0.47, -0.22, Math.sin(a) * 0.47); can.add(j);
+  }
+  can.add(body, rimTop, rimBot, lid, handle, spout, rose, gem, gemFrame);
+  can.position.set(-0.35, 1.15, 0); can.rotation.z = 0.12;
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 8), clay(0xefe3cf)); ped.position.y = 0.17; ped.castShadow = ped.receiveShadow = true;
+  const pedRim = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.03, 4, 16), gold); pedRim.rotation.x = Math.PI / 2; pedRim.position.y = 0.35;
+  S.turn.add(ped, pedRim);
+  const starGeo = ext(starShape(0.07, 0.03), 0.02, 0.008);
+  const stream = [];
+  for (let i = 0; i < 16; i++) {
+    const m = new THREE.Mesh(starGeo, glow([0xfff3b0, 0xffc8e0, 0xcde8ff, 0xe2d4ff][i % 4], 1.1));
+    m.userData = { off: i / 16, dz: (((i * 7) % 10) / 10 - 0.5) * 0.3 }; S.turn.add(m); stream.push(m);
+  }
+  const b = bunny(); b.scale.setScalar(0.55); b.position.set(-0.95, 0, 1.35); b.rotation.y = 0.5; S.turn.add(b);
+  const bloom = [];
+  for (let i = 0; i < 5; i++) {
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), glow(RAINBOW[i], 0.3));
+    f.position.set(1.15 + (i % 2) * 0.25, 0.06, -0.5 + i * 0.25); f.scale.y = 0.6; S.turn.add(f); bloom.push(f);
+  }
+  S.anim = t => {
+    S.turn.rotation.y = -0.4 + Math.sin(t * 0.4) * 0.6;
+    can.position.y = 1.15 + Math.sin(t * 1.6) * 0.06;
+    gem.rotation.z = t * 0.8;
+    const sx = 0.65, sy = 1.62;
+    stream.forEach(m => {
+      const u = m.userData, k = (t * 0.5 + u.off) % 1;
+      m.position.set(sx + k * 0.6, sy + Math.sin(t * 1.6) * 0.06 + 0.15 * k - 1.7 * k * k, u.dz * k);
+      m.rotation.set(t * 3, t * 2, 0); m.scale.setScalar(1 - k * 0.5);
+    });
+    bloom.forEach((f, i) => f.scale.setScalar(0.8 + 0.25 * Math.sin(t * 2 + i)));
+  };
+  window.__stages.push(S);
+}
+
+const clock = new THREE.Clock();
+(function loop() {
+  const t = clock.getElapsedTime();
+  window.__stages.forEach(S => { S.anim(t); S.renderer.render(S.scene, S.cam); });
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -90,6 +90,23 @@
   #settings-list button { display: flex; align-items: center; gap: 10px; border: none; border-radius: 12px; padding: 12px 14px; cursor: pointer; background: #f4faf5; color: var(--ink); font-weight: 700; font-size: 14px; box-shadow: var(--shadow); }
   #settings-list .uico { font-size: 17px; }
   #settings-list #delacc-btn { margin-top: 10px; background: transparent; box-shadow: none; color: #b3483e; font-weight: 600; font-size: 13px; }
+  /* 🤝 친구 초대 시트 — js/referral/ui.js 가 그린다 */
+  #invite-box { text-align: center; }
+  #invite-box .inv-title { margin: 0 0 6px; font-size: 18px; }
+  #invite-box .inv-desc { margin: 0 0 14px; font-size: 13px; line-height: 1.55; opacity: .8; }
+  #invite-box .inv-tiers { display: flex; gap: 8px; justify-content: center; margin: 0 0 8px; }
+  #invite-box .inv-tier { flex: 1; min-width: 0; padding: 10px 4px 8px; border-radius: 14px; background: #f3f0e8; opacity: .55; display: grid; gap: 3px; }
+  #invite-box .inv-tier.done { opacity: 1; background: #fff3cf; box-shadow: inset 0 0 0 2px #f2c75c; }
+  #invite-box .inv-ico { font-size: 24px; line-height: 1; }
+  #invite-box .inv-need { font-size: 12px; font-weight: 700; }
+  #invite-box .inv-now { margin: 4px 0 6px; font-size: 13px; font-weight: 800; }
+  #invite-box .inv-note { margin: 4px 0 8px; font-size: 12.5px; line-height: 1.5; opacity: .75; }
+  #invite-box .inv-link { width: 100%; box-sizing: border-box; margin: 10px 0 8px; padding: 9px 10px; border: 1px solid #e3dccb; border-radius: 10px; font-size: 13px; background: #fffaf0; color: var(--ink); }
+  #invite-box .inv-actions { display: flex; gap: 8px; }
+  #invite-box .inv-actions button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-weight: 800; font-size: 14px; cursor: pointer; background: #ffe0a8; color: var(--ink); box-shadow: var(--shadow); }
+  #invite-close { margin-top: 12px; width: 100%; border: none; border-radius: 12px; padding: 11px 16px; background: var(--mint); color: var(--ink); font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
+  #login-invite { display: none; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,240,246,.95); color: #8a3a5a; font-size: 13px; font-weight: 700; line-height: 1.45; }
+  #login-invite.show { display: block; }
   #settings-close { margin-top: 14px; width: 100%; border: none; border-radius: 12px; padding: 11px 16px; background: var(--mint); color: var(--ink); font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
   /* ☰ 펼치면 겹치는 미니맵·퀘스트는 잠깐 숨김(데스크톱·모바일 공통) */
   #topleft.open { z-index: 50; }
@@ -299,8 +316,8 @@
   .boat-up button:disabled { opacity: .45; cursor: default; }
   .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show { display: grid; }
   /* 📮 소식함 — 공지·개발자 답장 목록(최신이 위). 답장은 내 문의 원문을 한 줄 인용 */
   #notice-list { text-align: left; margin: 0 0 16px; }
   .nt-item { padding: 12px 0; border-bottom: 1px solid #f0f4f0; }
@@ -1785,6 +1802,7 @@
       <button id="map-btn"><span class="uico">🗺️</span><span class="ulbl">마을 지도</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
       <button id="inbox-btn"><span class="uico">📮</span><span class="ulbl">소식함</span></button>
+      <button id="invite-btn" style="display:none;"><span class="uico">🤝</span><span class="ulbl">친구 초대</span></button>
       <hr class="util-sep">
       <button id="lb-btn"><span class="uico">🏆</span><span class="ulbl">리더보드</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
@@ -2357,6 +2375,7 @@
       <h1>calm forest</h1>
       <div class="tagline">a cozy little forest</div>
       <div id="login-main">
+        <div id="login-invite"></div>
         <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
         <button id="toss-btn">바로 플레이하기</button>
         <button id="email-btn">✉️ 이메일로 시작하기</button>
@@ -2541,6 +2560,14 @@
   <!-- ⚙️ 설정 — ☰ 에서 옮겨 온 버튼들. **id 를 그대로 두고 자리만 옮겼다** → 기존 핸들러(음악 토글·언어 전환·
        정책 페이지·나가기)와 토스 제거 로직(privacy/delacc .remove())이 손대지 않고 그대로 돈다.
        계정 삭제는 맨 아래 — 잘못 누르지 않게 나머지와 떼어 둔다(플레이 정책: 앱 안에 경로만 있으면 된다). -->
+  <!-- 🤝 친구 초대 — 내용은 js/referral/ui.js 가 그린다(CONFIG.REFERRAL_ON 일 때만 ☰ 에 입구가 보인다) -->
+  <div id="invite-modal">
+    <div class="tut-card" style="max-width:380px; width:min(380px,92vw);">
+      <div id="invite-box"></div>
+      <button id="invite-close">닫기</button>
+    </div>
+  </div>
+
   <div id="settings-modal">
     <div class="tut-card" style="max-width:360px; width:min(360px,92vw);">
       <h2 style="margin:0 0 12px;">⚙️ 설정</h2>
@@ -2614,7 +2641,8 @@
     import { consumeExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다
     import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { IS_TOSS, IS_ITCH, IS_ANDROID } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen } from './js/game.js';
+    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
+    import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
     import { CONFIG } from './js/config.js';
@@ -4180,6 +4208,8 @@
           ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 할 수 있어요.'
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
       trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
+      const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
+      if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
     }
 
     let started = false;
@@ -4209,6 +4239,9 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
+      // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
+      referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });
+      if (referralEnabled()) $('invite-btn').style.display = '';
       initControls();                                // 모바일 컨트롤(터치 감지 시)
       try { if ((localStorage.getItem('cf_music') || 'on') !== 'off') startBGM(); } catch (e) { startBGM(); } // 배경음악
       // 구글=로그아웃 / 게스트=나가기 (둘 다 메인 화면으로 복귀)
@@ -4399,6 +4432,15 @@
       $('notice-modal').classList.remove('show');
       markNoticesSeen(noticeShown); noticeShown = [];
     });
+    // 🤝 친구 초대 시트 — 코드는 처음 열 때 발급. 앱은 네이티브 공유 시트, 웹은 navigator.share → 복사
+    $('invite-btn').addEventListener('click', () => {
+      $('topleft').classList.remove('open');
+      $('invite-modal').classList.add('show');
+      openInviteSheet({ box: $('invite-box'), auth: authState, toast: (m) => ui.toast(m, 2200), track: trackEvent,
+        shareNative: IS_ANDROID ? (text) => shareUrlNative({ plugin: capPlugin('Photo'), url: text, title: '🌿 calm forest' }) : null });
+    });
+    $('invite-close').addEventListener('click', () => $('invite-modal').classList.remove('show'));
+    $('invite-modal').addEventListener('click', (e) => { if (e.target.id === 'invite-modal') $('invite-modal').classList.remove('show'); });
     // 🐾 캐릭터·꾸미기 — 동물 바꾸기(진행 상황은 그대로) + 🧥 옷장·🐾 펫 탭(2026-09-29)
     $('char-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
@@ -6244,6 +6286,7 @@
     });
 
     (async () => {
+      bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
       initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
       initDuel();                                    // 🐗🦝 승부 등록(흔적을 조사하면 도둑과 마주 선다)

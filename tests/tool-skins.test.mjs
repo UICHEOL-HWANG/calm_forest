@@ -16,7 +16,7 @@ const owning = (id) => ({ owned: [id], equipped: { ...emptyCosmetics().equipped,
 
 test('🪓 도구 칸 — 테마 세트 3종 ₩5,000 + 🎃 할로윈 2종 ₩4,500, 현금 전용', () => {
   assert.ok(SLOTS.includes('tools'));
-  const ids = itemsOf('tools').map(i => i.id);
+  const ids = itemsOf('tools').filter(i => !i.reward).map(i => i.id);   // ⭐ 초대 보상은 tests/referral-items.test.mjs
   assert.deepEqual(ids, ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest']);
   for (const id of ids) {
     const it = findItem(id);
@@ -25,7 +25,7 @@ test('🪓 도구 칸 — 테마 세트 3종 ₩5,000 + 🎃 할로윈 2종 ₩4
 });
 
 test('테마 = 버섯·달밤·꽃 + 🎃 달밤 보라·수확제 · 카탈로그 id ↔ 테마', () => {
-  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest']);
+  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest', 'star']);   // ⭐ star = 🤝 초대 보상
   assert.equal(themeOf('tools_moon'), 'moon');
   assert.equal(themeOf('cape'), null);
   assert.equal(themeOf(null), null);

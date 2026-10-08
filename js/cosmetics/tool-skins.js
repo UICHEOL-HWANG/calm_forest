@@ -14,6 +14,7 @@
 // =============================================================
 import { mergeGeos } from './trail.js';
 import { halloweenThemes, halloweenKit, BT, HV } from './tool-skins-halloween.js';   // 🎃 달밤 보라 · 수확제
+import { crystalThemes, crystalKit, RB } from './tool-skins-crystal.js';            // ⭐ 별빛(무지개 크리스탈) — 🤝 친구 초대 보상
 
 // ── 팔레트 ─────────────────────────────────────────────────
 const SH = { stem: 0xeee2c8, stemD: 0xcdb894, cap: 0xd1473a, spot: 0xfff5e6, gill: 0xe6cfa6, birch: 0x5b4636, door: 0x8a5a3a };
@@ -431,6 +432,9 @@ function themeBuilders(THREE, K) {
 
     // 🎃 할로윈 2종(🦇 달밤 보라 · 🌽 수확제) — js/cosmetics/tool-skins-halloween.js
     ...halloweenThemes(THREE, K),
+
+    // ⭐ 별빛 도구 세트(star) — 🌈 무지개 크리스탈 · js/cosmetics/tool-skins-crystal.js
+    ...crystalThemes(THREE, K),
   };
 }
 
@@ -501,6 +505,8 @@ const UMBRELLAS = {
   batnight: { N: 6, R: 1.0,  th: 0.92, overlap: 1.28, layer: true,   // 보라 6폭 · 끝이 박쥐 날개처럼 뾰족
               shape: { w: v => 0.42 + 0.58 * Math.sin(Math.PI * Math.min(1, 0.12 + v * 0.88)), tip: 0.12 } },
   harvest:  { N: 10, R: 1.35, th: 0.62, overlap: 1, shape: { w: () => 1, tip: 0 } },   // 짚 갓우산
+  // ⭐ 별빛 — 무지개 6폭 육각 갓(폭마다 한 빛) · 꼭지는 수정. 시안 sims/referral-reward-sim.html 에서 확인
+  star:     { N: 6, R: 1.0, th: 0.95, overlap: 1, shape: { w: () => 1, tip: 0 }, twist: Math.PI / 6 },
 };
 export const UMBRELLA_SHAFT = 1.55;   // 쥐는 곳 → 꼭지
 
@@ -527,7 +533,7 @@ export function buildUmbrella(THREE, theme) {
     const p = V(-Math.cos(phi) * Math.sin(th) * R, (Math.cos(th) - 1) * R, Math.sin(phi) * Math.sin(th) * R);
     return { p, n: p.clone().add(V(0, R, 0)).normalize() };
   };
-  const HK = halloweenKit(THREE, K);
+  const HK = halloweenKit(THREE, K), CK = crystalKit(THREE, K);
   const L = UMBRELLA_SHAFT, root = new THREE.Group();
   const jHook = (mat, r = 0.075) => { const j = M(new THREE.TorusGeometry(r, 0.022, 6, 14, Math.PI), mat, r, 0, 0); j.rotation.z = Math.PI; root.add(j); };
   const look = {
@@ -605,6 +611,20 @@ export function buildUmbrella(THREE, theme) {
         h.add(M(new THREE.BoxGeometry(0.03, 0.03, 0.2), clay(HV.red), p.x, p.y, p.z));
       },
       finial(c) { HK.cob(c, 0, 0.1, 0, 0.16, 0.04, 0.028, 3); },
+    },
+    // ⭐ 별빛 — 무지개 여섯 폭(분홍·레몬·민트·하늘·라일락·분홍) · 진주 자루에 무지개 띠 · 꼭지 수정(작은 보석만 발광)
+    star: {
+      outer: k => clay([RB.pink, RB.lemon, RB.mint, RB.sky, RB.lilac, RB.pink][k]), inner: () => clay(RB.pearl, { side: THREE.BackSide, lift: 0.3 }),
+      shaft() {
+        root.add(M(new THREE.CylinderGeometry(0.024, 0.03, L, 6), clay(RB.pearl), 0, L / 2, 0));
+        [RB.pink, RB.lemon, RB.sky].forEach((c, i) => root.add(M(new THREE.CylinderGeometry(0.033, 0.033, 0.03, 6), clay(c), 0, L - 0.55 + i * 0.04, 0)));
+        jHook(clay(RB.lilac), 0.07);
+      },
+      deco(h) {
+        const tipP = surf(def.R, def.th * 0.98, 0).p;   // 폭 끝 수정 구슬
+        h.add(CK.crystal(0.026, clay(RB.lilac), 1.3).translateX(tipP.x).translateY(tipP.y).translateZ(tipP.z));
+      },
+      finial(c) { c.add(CK.crystal(0.05, clay(RB.lilac), 1.6).translateY(0.07)); c.add(CK.crystal(0.022, CK.gem(), 1.5).translateY(0.17)); },
     },
   }[theme];
   look.shaft();

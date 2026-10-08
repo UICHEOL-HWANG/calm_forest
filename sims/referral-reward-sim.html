@@ -1,0 +1,953 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>친구 추천 보상 시안 · 별빛 도구·날개·하트핀·아치 — calm forest</title>
+<style>
+  html,body{margin:0;height:100%;background:#e6e9f3;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a3a4a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:6px 10px 10px;background:rgba(255,255,255,.93);backdrop-filter:blur(6px);border-top:1px solid #d9d2ea;font-size:12.5px;box-sizing:border-box;max-width:100vw}
+  #ui .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  button{font:inherit;padding:4px 9px;border-radius:8px;border:1px solid #c9bfe0;background:#fff;cursor:pointer;color:#3a3a4a}
+  button.on{background:#8a66c9;color:#fff;border-color:#6a4aa6}
+  .tab button{font-weight:700;padding:5px 12px}
+  label{display:flex;gap:4px;align-items:center;white-space:nowrap}
+  b{color:#6a4aa6}
+  .hide{display:none!important}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:700;
+       background:rgba(255,255,255,.9);padding:2px 8px;border-radius:7px;white-space:nowrap;line-height:1.3;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
+  .tag small{display:block;font-weight:400;opacity:.75;font-size:10.5px;white-space:normal}
+  .tag.top{transform:translate(-50%,-100%)}
+  .tag.left{transform:translate(0,0);text-align:left;max-width:80vw}
+  #hud{position:fixed;top:8px;right:10px;background:rgba(255,255,255,.9);padding:7px 11px;border-radius:9px;font-size:11.5px;line-height:1.55;max-width:330px;cursor:pointer}
+  #hud.min .more{display:none}
+  #hud .t{display:block;margin-bottom:2px}
+  @media (max-width:700px){ .tag{font-size:10.5px;padding:1px 6px} .tag small{font-size:9.5px} #hud{max-width:200px;font-size:10px;padding:5px 8px} button{padding:3px 7px} #ui{font-size:11.5px;padding:4px 8px 8px} .tab button{padding:4px 8px} }
+</style>
+<div id="labels"></div>
+<div id="hud" title="눌러서 접기"></div>
+<div id="ui">
+  <div class="row tab"><button data-tab="tool">⭐ 도구 세트</button><button data-tab="wing">🦋 날개</button><button data-tab="pin">💗 하트핀</button><button data-tab="arch">🌈 아치</button></div>
+  <div class="row" id="toolRow">
+    <b>보기</b><button data-mode="rep">한눈에</button><button data-mode="all">9종 전체</button><button data-mode="hold">쥔 모습</button>
+    <label><input id="withBase" type="checkbox"> 기본과 비교</label>
+    <label><input id="spin" type="checkbox"> 회전</label>
+  </div>
+  <div class="row" id="toolPickRow"><b>도구</b><span id="toolPick"></span></div>
+  <div class="row hide" id="viewRow">
+    <b>시점</b><span id="views"></span>
+    <b>동물</b><span id="animals"></span>
+  </div>
+  <div class="row"><label><input id="night" type="checkbox"> 🌙 밤(발광·블룸 확인)</label></div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
+import { ARM_AIM_R, ARM_AIM_L, TOOL_QREST_HOLD, TOOL_GRIP } from '../js/data/character.js';
+import { gripForwardZ, pawRadius, ARM_R_K } from '../js/data/grip.js';
+import { backAnchor } from '../js/cosmetics/anchors.js';
+//  ✅ 확정안(도구 B · 날개 A · 하트핀 B · 아치 B)은 **게임 모듈을 그대로 import** 한다 — 복제본 없음(2026-10-08 이식).
+import { buildToolSkin } from '../js/cosmetics/tool-skins.js';
+import { buildCosmetic } from '../js/cosmetics/art.js';
+import { buildFriendArch } from '../js/spaces/friend-arch-art.js';
+
+// =============================================================
+//  🤝 친구 추천 보상 시안 (2026-10-08) — 시안 전용, 게임 코드 미수정
+//  ------------------------------------------------------------
+//  4종 × A/B/C. 비매품·외형만.
+//   ⭐ 도구 세트(테마 'star' 후보) — 9종. 실루엣은 지키고 테마가 날·통 자체가 된다.
+//      A 별빛 라벤더 · B 무지개 크리스탈 · C 우주 소풍(달밤 moon 테마와 겹치지 않게 금·은·초승달 배제)
+//   🦋 날개(back 앵커) — A 스테인드글라스 나비 · B 깃털 천사 · C 별자리 크리스탈
+//   💗 하트핀(head, earSafe 'low' — star_pin 자리: 옆머리 앞쪽 낮게)
+//   🌈 아치(집 앞 야외 장식, 걸어서 지나가는 크기)
+//  · 캐릭터·쥐는 자리는 게임 모듈 import(animal-faces · data/character · data/grip · cosmetics/anchors).
+//  · 블룸 임계 0.85 — 발광은 작은 별·보석·테두리만. 밤 토글에서 블룸을 켜 판정한다.
+// =============================================================
+
+const glowMats = [];
+const clay = (color, o = {}) => {
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0, flatShading: !o.smooth, side: o.side ?? THREE.FrontSide });
+  if (o.glow) { m.emissive = new THREE.Color(o.glow); m.userData.glow = { hex: o.glow, k: o.k ?? 0.8 }; glowMats.push({ m, k: o.k ?? 0.8 }); }
+  if (o.opacity != null) { m.transparent = true; m.opacity = o.opacity; }
+  return m;
+};
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const M = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
+const put = (parent, m) => { parent.add(m); return m; };   // add 는 부모를 돌려준다 — 자식에 이어 쓰려면 이걸로
+const small = m => { m.userData.small = true; return m; };   // 작은 파츠 — 그림자 안 드리움(지글거림)
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// ── 2D 윤곽 ───────────────────────────────────────────────
+function starShape(r, k = 0.46, n = 5, cx = 0, cy = 0, path = null) {
+  const s = path || new THREE.Shape();
+  for (let i = 0; i < n * 2; i++) { const a = Math.PI / 2 + i * Math.PI / n, rr = i % 2 ? r * k : r; const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr; i ? s.lineTo(x, y) : s.moveTo(x, y); }
+  s.closePath(); return s;
+}
+function heartShape(r) {
+  const s = new THREE.Shape();
+  s.moveTo(0, -r * 0.95);
+  s.bezierCurveTo(r * 0.35, -r * 0.6, r * 1.1, -r * 0.2, r * 1.0, r * 0.32);
+  s.bezierCurveTo(r * 0.92, r * 0.92, r * 0.2, r * 0.98, 0, r * 0.5);
+  s.bezierCurveTo(-r * 0.2, r * 0.98, -r * 0.92, r * 0.92, -r * 1.0, r * 0.32);
+  s.bezierCurveTo(-r * 1.1, -r * 0.2, -r * 0.35, -r * 0.6, 0, -r * 0.95);
+  return s;
+}
+function petalShape(w, h) {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0); s.bezierCurveTo(w * 1.1, h * 0.22, w * 0.95, h * 0.8, 0, h); s.bezierCurveTo(-w * 0.95, h * 0.8, -w * 1.1, h * 0.22, 0, 0);
+  return s;
+}
+function roundBlade(bw, bh) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-bw, 0); sh.lineTo(-bw, bh); sh.absarc(0, bh, bw, Math.PI, 0, true); sh.lineTo(bw, 0); sh.closePath();
+  return sh;
+}
+function sector(r0, r1, a0, a1) {   // 고리 부채꼴(r0=0 이면 파이)
+  const s = new THREE.Shape();
+  if (r0 <= 0) { s.moveTo(0, 0); s.absarc(0, 0, r1, a0, a1, false); s.lineTo(0, 0); }
+  else { s.absarc(0, 0, r1, a0, a1, false); s.absarc(0, 0, r0, a1, a0, true); }
+  s.closePath(); return s;
+}
+const ext = (shape, depth, bev = 0.01, seg = 12, bevSeg = 2, bevSize = bev) => {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bevSize, bevelSegments: bevSeg, curveSegments: seg });
+  g.translate(0, 0, -depth / 2); return g;
+};
+// 통통한 별·하트(쿠키처럼 부푼 단면) — 테마의 ‘형태’ 단위
+const puffStar = (r, k = 0.5) => ext(starShape(r, k), r * 0.3, r * 0.2, 4, 3, r * 0.1);
+const puffHeart = r => ext(heartShape(r), r * 0.3, r * 0.22, 10, 3, r * 0.1);
+const sparkle = r => ext(starShape(r, 0.32, 4), r * 0.18, r * 0.06, 2, 1);
+// 결(로브) 있는 구 — 별 단면 물조리개·주머니(호박 지오메트리와 같은 방식, 로브 n 개)
+const lobeCache = new Map();
+function lobedGeo(r, n = 5, amp = 0.12, squash = 0.95, seg = 6) {
+  const key = [r, n, amp, squash, seg].join(); if (lobeCache.has(key)) return lobeCache.get(key);
+  const g = new THREE.SphereGeometry(r, n * seg, 12), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), phi = Math.atan2(z, x) + Math.PI / 2;
+    const f = 1 + amp * Math.cos(n * phi) * Math.sqrt(Math.max(0, 1 - (y / r) ** 2));
+    p.setXYZ(i, x * f, y * squash, z * f);
+  }
+  g.computeVertexNormals(); lobeCache.set(key, g); return g;
+}
+// 다리 + 반원(아치 경로)
+class ArchCurve extends THREE.Curve {
+  constructor(r, h, y0 = 0.02) { super(); this.r = r; this.h = h; this.y0 = y0; }
+  getPoint(t, out = new THREE.Vector3()) {
+    const { r, h, y0 } = this, L = 2 * (h - y0) + Math.PI * r, s = t * L, hl = h - y0;
+    if (s < hl) return out.set(-r, y0 + s, 0);
+    if (s < hl + Math.PI * r) { const a = Math.PI - (s - hl) / r; return out.set(r * Math.cos(a), h + r * Math.sin(a), 0); }
+    return out.set(r, h - (s - hl - Math.PI * r), 0);
+  }
+}
+
+// ── 자루·공통 부품(halloween-tools-sim 과 같은 규약: 원점 = 쥐는 곳, +y 위) ──
+function handle(g, P, l, r = 0.030) {
+  g.add(M(new THREE.CylinderGeometry(r * 0.8, r, l, 7), clay(P.wood), 0, l / 2 - 0.08, 0));
+  g.add(M(new THREE.CylinderGeometry(r * 1.18, r * 1.18, 0.07, 7), clay(P.grip), 0, -0.02, 0));
+  if (P.knobFn) P.knobFn(g, r); else g.add(M(new THREE.SphereGeometry(r * 1.35, 7, 6), clay(P.knob ?? P.grip), 0, -0.08, 0));
+  return l - 0.08;
+}
+function rodFrame(g, { knobFn, rear, pole, line = 0xe8e4d8 }, bob) {
+  knobFn(g);
+  g.add(M(new THREE.CylinderGeometry(0.026, 0.030, 0.20, 7), rear, 0, -0.01, 0));
+  const poleG = new THREE.Group(); poleG.position.y = 0.08; poleG.rotation.z = -0.12; g.add(poleG);
+  const RL = 0.92; pole(poleG, RL);
+  const lineG = new THREE.Group(); lineG.position.y = RL; lineG.rotation.z = 0.12; poleG.add(lineG);
+  lineG.add(M(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 5), clay(line), 0, -0.17, 0));
+  const b = new THREE.Group(); b.position.y = -0.38; lineG.add(b); bob(b);
+  g.scale.setScalar(1.25);
+}
+// 곡괭이 양팔 — segMat 은 재질 하나 또는 [안쪽, 바깥] 배열
+function pickArms(hd, segMat, tipMat) {
+  [-1, 1].forEach(sx => {
+    const TH = [0.14, 0.32], LEN = [0.13, 0.12]; let px = sx * 0.042, py = 0.012;
+    for (let i = 0; i < 2; i++) {
+      const dx = Math.cos(TH[i]) * sx, dy = -Math.sin(TH[i]);
+      const seg = M(new THREE.BoxGeometry(LEN[i], 0.048 - i * 0.012, 0.05 - i * 0.012), Array.isArray(segMat) ? segMat[i] : segMat, px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0);
+      seg.rotation.z = -sx * TH[i]; hd.add(seg); px += dx * LEN[i]; py += dy * LEN[i];
+    }
+    const t3 = 0.48, dx = Math.cos(t3) * sx, dy = -Math.sin(t3);
+    const tip = M(new THREE.ConeGeometry(0.020, 0.085, 6), tipMat, px + dx * 0.042, py + dy * 0.042, 0);
+    tip.rotation.z = -sx * (Math.PI / 2 + t3); hd.add(tip);
+  });
+}
+// 낫 날 — segMat 재질 하나 또는 3개 배열. 반환: 날 그룹 + 끝 좌표
+function sickleBlade(g, top, segMat, edgeMat, wk = 1) {
+  const bl = new THREE.Group(); bl.position.y = top + 0.01; bl.rotation.y = 0.10; g.add(bl);
+  const TH = [0.06, 0.28, 0.60], LEN = [0.15, 0.12, 0.10], W = [0.055 * wk, 0.045 * wk, 0.030 * wk]; let px = 0, py = 0;
+  for (let i = 0; i < 3; i++) {
+    const dx = Math.sin(TH[i]), dy = Math.cos(TH[i]);
+    const seg = M(new THREE.BoxGeometry(W[i], LEN[i], 0.016), Array.isArray(segMat) ? segMat[i] : segMat, px + dx * LEN[i] / 2, py + dy * LEN[i] / 2, 0); seg.rotation.z = -TH[i]; bl.add(seg);
+    const edge = M(new THREE.BoxGeometry(0.013, LEN[i] * 0.94, 0.012), edgeMat, px + dx * LEN[i] / 2 + dy * (W[i] / 2), py + dy * LEN[i] / 2 - dx * (W[i] / 2), 0); edge.rotation.z = -TH[i]; bl.add(edge);
+    px += dx * LEN[i]; py += dy * LEN[i];
+  }
+  return { bl, tip: V3(px, py, 0) };
+}
+const netBag = (color, opacity) => clay(color, { opacity, side: THREE.DoubleSide });
+const faceX = (m, dir = 1) => { m.rotation.y = dir * Math.PI / 2; return m; };   // 납작한 모양(면 = +z)을 ±x 로 돌린다
+
+// ── 팔레트 ─────────────────────────────────────────────────
+const BASE = { wood: 0x8a5a3a, grip: 0x5f3d26, metal: 0x6d757c, edge: 0xd9dfe4, can: 0x8fd0ea, pole: 0x7a4a2a };
+const CE = { lav: 0xb7a3ea, lavL: 0xd3c6f6, deep: 0x6c58b4, gold: 0xf2cd5c, gem: 0xfff0a0 };                       // A 별빛 라벤더
+const RB = { pearl: 0xf3edf8, pink: 0xf6a6c6, lemon: 0xffe48a, mint: 0xa4e3c4, sky: 0x9ecbf3, lilac: 0xc4acf0, gem: 0xfff6fb };   // B 무지개 크리스탈
+const GX = { ind: 0x4b3f98, indD: 0x2f2a6c, aur: 0x7ce0cb, pink: 0xf4a2cd, peri: 0x9a9cf2, white: 0xf6f0ff, glint: 0xfff4c8 };   // C 우주 소풍
+
+// =============================================================
+//  도구 조형: BUILD[theme][tool](g)
+// =============================================================
+const TOOLS = [
+  { id: 'water', name: '💧 물조리개' }, { id: 'hoe', name: '⛏️ 괭이' }, { id: 'axe', name: '🪓 도끼' }, { id: 'seed', name: '🌱 씨앗' }, { id: 'sickle', name: '🌾 낫' },
+  { id: 'shovel', name: '🪏 삽' }, { id: 'hammer', name: '🔨 망치' }, { id: 'rod', name: '🎣 낚싯대' }, { id: 'net', name: '🦋 포충망' },
+];
+const BUILD = { base: {}, celest: {}, prism: {}, cosmos: {} };
+
+// ── 기본(게임 0단계 toolMesh 그대로 — halloween-tools-sim 의 base 와 같다) ──
+Object.assign(BUILD.base, {
+  axe(g) { const top = handle(g, BASE, 0.52);
+    g.add(M(new THREE.BoxGeometry(0.17, 0.13, 0.06), clay(BASE.metal), 0.075, top - 0.05, 0));
+    const bl = M(new THREE.BoxGeometry(0.07, 0.155, 0.028), clay(BASE.edge), 0.175, top - 0.05, 0); bl.rotation.z = 0.06; g.add(bl);
+    g.add(M(new THREE.BoxGeometry(0.05, 0.09, 0.07), clay(BASE.metal), -0.035, top - 0.05, 0)); g.scale.setScalar(1.18); },
+  shovel(g) { const top = handle(g, BASE, 0.58);
+    g.add(M(new THREE.CylinderGeometry(0.034, 0.042, 0.07, 7), clay(BASE.metal), 0, top + 0.01, 0));
+    g.add(M(ext(roundBlade(0.105, 0.13), 0.03, 0.012, 14), clay(BASE.metal, { smooth: true }), 0, top + 0.03, 0)); g.scale.setScalar(1.18); },
+  water(g) { g.add(M(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 10), clay(BASE.can), 0, 0.18, 0));
+    const sp = M(new THREE.CylinderGeometry(0.02, 0.035, 0.22, 6), clay(BASE.can), 0.15, 0.26, 0); sp.rotation.z = -0.9; g.add(sp); g.scale.setScalar(1.25); },
+  rod(g) { rodFrame(g, { knobFn: g => g.add(M(new THREE.SphereGeometry(0.040, 7, 6), clay(BASE.grip), 0, -0.09, 0)), rear: clay(BASE.grip), pole: (p, L) => p.add(M(new THREE.CylinderGeometry(0.013, 0.026, L, 6), clay(BASE.pole), 0, L / 2, 0)) },
+    b => { const s = M(new THREE.SphereGeometry(0.042, 8, 7), clay(0xd94f4f)); s.scale.set(1, 1.25, 1); b.add(s); b.add(M(new THREE.CylinderGeometry(0.040, 0.040, 0.022, 9), clay(0xf4efe6))); }); },
+  hoe(g) { const top = handle(g, BASE, 0.52), IRON = 0x4d5156; const hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    hd.add(M(new THREE.BoxGeometry(0.085, 0.095, 0.075), clay(IRON))); pickArms(hd, clay(IRON), clay(IRON)); g.scale.setScalar(1.18); },
+  sickle(g) { const top = handle(g, BASE, 0.30, 0.034); sickleBlade(g, top, clay(BASE.metal), clay(BASE.edge));
+    g.add(M(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clay(BASE.metal), 0, top - 0.01, 0)); g.scale.setScalar(1.18); },
+  hammer(g) { const top = handle(g, BASE, 0.50);
+    const head = M(new THREE.CylinderGeometry(0.055, 0.055, 0.20, 8), clay(BASE.metal), 0, top - 0.04, 0); head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => { const c = M(new THREE.CylinderGeometry(0.062, 0.058, 0.03, 8), clay(BASE.edge), sx * 0.105, top - 0.04, 0); c.rotation.z = Math.PI / 2; g.add(c); });
+    g.add(M(new THREE.SphereGeometry(0.022, 6, 5), clay(BASE.grip), 0, top + 0.022, 0)); g.scale.setScalar(1.18); },
+  net(g) { g.add(M(new THREE.CylinderGeometry(0.028, 0.028, 0.62, 6), clay(BASE.wood), 0, 0.2, 0));
+    const ring = M(new THREE.TorusGeometry(0.17, 0.018, 6, 14), clay(0xdfe6ea), 0, 0.6, 0); ring.rotation.x = Math.PI / 2; g.add(ring);
+    g.add(M(new THREE.ConeGeometry(0.16, 0.3, 10, 1, true), netBag(0xfaffff, 0.45), 0, 0.74, 0)); g.scale.setScalar(1.25); },
+  seed(g) { const bag = M(new THREE.SphereGeometry(0.12, 8, 8), clay(0xcaa06a), 0, 0.08, 0); bag.scale.set(1, 1.15, 1); g.add(bag); g.scale.setScalar(1.25); },
+});
+
+// ─────────────────────────────────────────────────────────────
+//  A ⭐ 별빛 라벤더 — 별이 형태가 된다: 별 단면 통 · 별 구멍 날 · 별 테 망 · 별 망치머리
+// ─────────────────────────────────────────────────────────────
+const ceGem = () => clay(CE.gem, { glow: CE.gem, k: 0.9 });
+const ceGold = () => clay(CE.gold);
+const ceHandle = (g, l, r = 0.03) => {
+  const top = handle(g, { wood: CE.lav, grip: CE.deep, knobFn: (g, r) => g.add(M(puffStar(r * 1.75), ceGold(), 0, -0.088, 0)) }, l, r);
+  g.add(M(new THREE.CylinderGeometry(r * 0.98, r * 0.98, 0.022, 7), ceGold(), 0, l - 0.2, 0));
+  return top;
+};
+// 도끼날 윤곽(부채꼴) — hole: 별 구멍
+function fanBlade(hole) {
+  const sh = new THREE.Shape(); sh.moveTo(0, -0.07); sh.lineTo(0.09, -0.118); sh.quadraticCurveTo(0.205, 0, 0.09, 0.118); sh.lineTo(0, 0.07); sh.closePath();
+  if (hole) sh.holes.push(starShape(hole.r, 0.5, 5, hole.x, hole.y, new THREE.Path()));
+  return sh;
+}
+function fanEdge(c0 = 0.188, c1 = 0.232) {   // 날 끝 테두리(초승달 띠) — 날 안쪽으로 살짝 파고들어 틈이 없다
+  const sh = new THREE.Shape(); sh.moveTo(0.075, -0.135); sh.quadraticCurveTo(c1, 0, 0.075, 0.135); sh.lineTo(0.09, 0.112); sh.quadraticCurveTo(c0, 0, 0.09, -0.112); sh.closePath();
+  return sh;
+}
+Object.assign(BUILD.celest, {
+  water(g) {   // ★ 히어로 — 통 자체가 통통한 별(앞뒤로 부푼 별 물통) · 금 테 · 주둥이 끝 금별 · 별이 쏟아진다
+    const cy = 0.2, tank = starShape(0.158, 0.56);
+    g.add(M(ext(tank, 0.11, 0.05, 6, 3, 0.03), clay(CE.lav), 0, cy, 0));
+    g.add(M(ext(starShape(0.2, 0.56), 0.04, 0.01, 6, 2), ceGold(), 0, cy, 0));     // 가장자리 금 테(얇아서 둘레만 보인다)
+    g.add(small(M(sparkle(0.03), ceGem(), -0.04, cy + 0.03, 0.105)));
+    g.add(M(new THREE.CylinderGeometry(0.03, 0.036, 0.05, 8), clay(CE.lavL), 0, cy + 0.165, 0));
+    const rim = M(new THREE.TorusGeometry(0.034, 0.011, 5, 12), ceGold(), 0, cy + 0.19, 0); rim.rotation.x = Math.PI / 2; g.add(rim);
+    g.add(small(M(puffStar(0.03), ceGem(), 0, cy + 0.23, 0)));
+    const sp = M(new THREE.CylinderGeometry(0.017, 0.032, 0.24, 7), clay(CE.lav), 0.17, cy + 0.08, 0); sp.rotation.z = -0.95; g.add(sp);
+    const rose = M(puffStar(0.044), ceGold(), 0.27, cy + 0.155, 0); rose.rotation.set(0, Math.PI / 2, 0.62); g.add(rose);
+    const hd = M(new THREE.TorusGeometry(0.075, 0.016, 5, 12, Math.PI * 1.05), ceGold(), -0.13, cy + 0.06, 0); hd.rotation.z = Math.PI / 2 + 0.25; g.add(hd);
+    [[0.315, cy + 0.11, 0.02], [0.345, cy + 0.045, 0.015], [0.36, cy - 0.015, 0.011]].forEach(([x, y, r], i) => { const st = small(M(puffStar(r), ceGem(), x, y, i % 2 ? 0.02 : -0.01)); st.rotation.z = i * 0.5; g.add(st); });
+    g.scale.setScalar(1.25);
+  },
+  hoe(g) {     // 곡괭이 양팔은 그대로, 가운데 머리 자체가 통통한 금별
+    const top = ceHandle(g, 0.52), hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    pickArms(hd, clay(CE.lav), ceGold());
+    hd.add(M(puffStar(0.07), ceGold(), 0, 0.012, 0));
+    [-1, 1].forEach(sz => hd.add(small(M(sparkle(0.022), ceGem(), 0, 0.014, sz * 0.042))));
+    g.scale.setScalar(1.18);
+  },
+  axe(g) {     // 부채꼴 라벤더 날에 별 구멍(속에 보석별) · 금빛 날끝 · 등에 금별
+    const top = ceHandle(g, 0.52), cy = top - 0.05;
+    g.add(M(new THREE.BoxGeometry(0.06, 0.12, 0.07), clay(CE.deep), 0, cy, 0));
+    g.add(M(ext(fanBlade({ x: 0.085, y: 0, r: 0.046 }), 0.042, 0.01, 12), clay(CE.lav), 0.03, cy, 0));
+    g.add(M(ext(fanEdge(), 0.03, 0.006, 12), ceGold(), 0.03, cy, 0));
+    g.add(small(M(puffStar(0.026), ceGem(), 0.115, cy, 0)));
+    g.add(faceX(M(puffStar(0.045), ceGold(), -0.042, cy, 0), -1));
+    g.scale.setScalar(1.18);
+  },
+  seed(g) {    // 주머니 자체가 통통한 별(물통과 같은 형태 언어) · 위 꼭짓점이 금끈 묶은 주둥이
+    g.add(M(ext(starShape(0.13, 0.6), 0.1, 0.045, 6, 3, 0.025), clay(CE.lav), 0, 0.09, 0));
+    g.add(M(new THREE.CylinderGeometry(0.03, 0.045, 0.05, 8), clay(CE.lav), 0, 0.235, 0));
+    const cord = M(new THREE.TorusGeometry(0.034, 0.01, 5, 12), ceGold(), 0, 0.24, 0); cord.rotation.x = Math.PI / 2; g.add(cord);
+    g.add(M(new THREE.ConeGeometry(0.05, 0.045, 8, 1, true), clay(CE.lavL, { side: THREE.DoubleSide }), 0, 0.28, 0));
+    g.add(M(puffStar(0.028), ceGold(), 0.03, 0.235, 0.035));
+    g.add(small(M(sparkle(0.02), ceGem(), -0.035, 0.1, 0.1)));
+    g.scale.setScalar(1.25);
+  },
+  sickle(g) {  // 라벤더 날 + 금빛 날끝, 날 끝이 별 한 점
+    const top = ceHandle(g, 0.30, 0.034);
+    const { bl, tip } = sickleBlade(g, top, clay(CE.lav), ceGold(), 1.25);
+    bl.add(M(puffStar(0.036), ceGold(), tip.x, tip.y, 0));
+    bl.add(small(M(sparkle(0.014), ceGem(), tip.x, tip.y, 0.022)));
+    g.add(M(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), ceGold(), 0, top - 0.01, 0));
+    g.scale.setScalar(1.18);
+  },
+  shovel(g) {  // 둥근 날에 별 구멍 — 뒤판 금이 비쳐 금별 상감
+    const top = ceHandle(g, 0.58);
+    g.add(M(new THREE.CylinderGeometry(0.036, 0.044, 0.07, 7), clay(CE.deep), 0, top + 0.01, 0));
+    g.add(M(ext(roundBlade(0.115, 0.14), 0.022, 0.006, 14), ceGold(), 0, top + 0.028, 0));
+    const sh = roundBlade(0.105, 0.13); sh.holes.push(starShape(0.05, 0.5, 5, 0, 0.13, new THREE.Path()));
+    g.add(M(ext(sh, 0.034, 0.012, 14), clay(CE.lav, { smooth: true }), 0, top + 0.03, 0));
+    g.add(small(M(sparkle(0.018), ceGem(), 0, top + 0.01, 0.046)));
+    g.scale.setScalar(1.18);
+  },
+  hammer(g) {  // 망치머리 양끝이 통통한 금별
+    const top = ceHandle(g, 0.50);
+    const head = M(new THREE.CylinderGeometry(0.048, 0.048, 0.17, 10), clay(CE.lav), 0, top - 0.04, 0); head.rotation.z = Math.PI / 2; g.add(head);
+    [-1, 1].forEach(sx => g.add(faceX(M(puffStar(0.072), ceGold(), sx * 0.098, top - 0.04, 0), sx)));
+    const band = M(new THREE.CylinderGeometry(0.052, 0.052, 0.026, 10), clay(CE.deep), 0, top - 0.04, 0); band.rotation.z = Math.PI / 2; g.add(band);
+    g.add(small(M(sparkle(0.02), ceGem(), 0, top - 0.04, 0.058)));
+    g.scale.setScalar(1.18);
+  },
+  rod(g) {
+    rodFrame(g, { knobFn: g => g.add(M(puffStar(0.05), ceGold(), 0, -0.095, 0)), rear: clay(CE.deep), line: 0xf3ecff, pole: (p, L) => {
+      p.add(M(new THREE.CylinderGeometry(0.014, 0.027, L, 7), clay(CE.lav), 0, L / 2, 0));
+      [0.25, 0.5, 0.75].forEach(f => p.add(M(new THREE.CylinderGeometry(0.025 - f * 0.011, 0.025 - f * 0.011, 0.016, 7), ceGold(), 0, L * f, 0)));
+      p.add(small(M(puffStar(0.03), ceGem(), 0, L + 0.025, 0)));
+    } }, b => { b.add(M(puffStar(0.05), ceGold())); b.add(M(new THREE.SphereGeometry(0.018, 6, 5), clay(CE.lav), 0, 0.055, 0)); });
+  },
+  net(g) {     // 망 고리 자체가 별 테
+    g.add(M(new THREE.CylinderGeometry(0.028, 0.03, 0.72, 7), clay(CE.lav), 0, 0.25, 0));
+    g.add(M(puffStar(0.05), ceGold(), 0, -0.1, 0));
+    const fr = starShape(0.215, 0.72); fr.holes.push(starShape(0.18, 0.72, 5, 0, 0, new THREE.Path()));
+    const ring = M(ext(fr, 0.028, 0.006, 4), ceGold(), 0, 0.6, 0); ring.rotation.x = -Math.PI / 2; g.add(ring);
+    g.add(M(new THREE.ConeGeometry(0.13, 0.3, 10, 1, true), netBag(CE.lavL, 0.5), 0, 0.75, 0));
+    g.add(small(M(puffStar(0.024), ceGem(), 0, 0.615, 0.21)));
+    g.scale.setScalar(1.25);
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+//  B 🌈 무지개 크리스탈 — 파스텔 무지개 띠가 날·통의 층이 된다 + 육각 보석
+// ─────────────────────────────────────────────────────────────
+const crystal = (r, mat, ey = 1.6) => { const m = M(new THREE.OctahedronGeometry(r, 0), mat); m.scale.y = ey; return m; };
+//  B안 = 게임 theme 'star'(js/cosmetics/tool-skins-crystal.js) 를 굽힌 그대로 쓴다. 발광 재질은 밤 토글에 올린다
+const gameTool = id => {
+  const m = buildToolSkin(THREE, 'star', id);
+  m.traverse(o => { const k = o.material?.userData?.glowK; if (k != null) glowMats.push({ m: o.material, k }); });
+  return m;
+};
+TOOLS.forEach(t => { BUILD.prism[t.id] = g => g.add(gameTool(t.id)); });
+
+// ─────────────────────────────────────────────────────────────
+//  C 🪐 우주 소풍 — 남보라 + 오로라 민트·핑크. 고리 행성 통 · 혜성 날 · 별똥별
+//     (달밤 moon 테마의 남색·은·금·초승달과 겹치지 않게: 금속색·초승달 없음)
+// ─────────────────────────────────────────────────────────────
+const gxGlint = () => clay(GX.glint, { glow: GX.glint, k: 0.9 });
+const gxHandle = (g, l, r = 0.03) => {
+  const top = handle(g, { wood: GX.ind, grip: GX.indD, knobFn: (g, r) => g.add(M(puffStar(r * 1.7), clay(GX.white), 0, -0.088, 0)) }, l, r);
+  g.add(M(new THREE.CylinderGeometry(r * 0.97, r * 0.97, 0.024, 7), clay(GX.aur), 0, l - 0.2, 0));
+  return top;
+};
+function planet(parent, r, body, ring, x, y, z, tilt = 0.4, ring2 = null) {
+  const gr = new THREE.Group(); gr.position.set(x, y, z); parent.add(gr);
+  gr.add(M(new THREE.SphereGeometry(r, 14, 10), clay(body, { smooth: true })));
+  const rg = new THREE.Group(); rg.rotation.set(Math.PI / 2 - 0.25, 0, tilt); gr.add(rg);
+  rg.add(M(new THREE.TorusGeometry(r * 1.55, r * 0.11, 4, 24), clay(ring)));
+  if (ring2) rg.add(M(new THREE.TorusGeometry(r * 1.3, r * 0.08, 4, 24), clay(ring2)));
+  return gr;
+}
+// 혜성 날 윤곽 — 머리(둥근 날끝)는 +x, 꼬리는 자루 쪽으로 가늘어진다
+function cometBlade() {
+  const s = new THREE.Shape(); s.moveTo(0, -0.04); s.quadraticCurveTo(0.06, -0.06, 0.115, -0.105); s.absarc(0.12, 0, 0.105, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05, false); s.quadraticCurveTo(0.06, 0.06, 0, 0.04); s.closePath();
+  return s;
+}
+Object.assign(BUILD.cosmos, {
+  water(g) {   // ★ 히어로 — 고리 두 줄 두른 행성 통 · 주둥이 끝이 흰 별 · 반짝이 둘
+    put(g, M(new THREE.SphereGeometry(0.135, 18, 12), clay(GX.ind, { smooth: true }), 0, 0.185, 0)).scale.set(1, 0.92, 1);
+    const rg = new THREE.Group(); rg.position.set(0, 0.18, 0); rg.rotation.set(Math.PI / 2 - 0.32, 0, -0.18); g.add(rg);
+    rg.add(M(new THREE.TorusGeometry(0.205, 0.017, 4, 32), clay(GX.pink)));
+    rg.add(M(new THREE.TorusGeometry(0.168, 0.012, 4, 32), clay(GX.aur)));
+    g.add(M(new THREE.CylinderGeometry(0.05, 0.065, 0.04, 10), clay(GX.aur), 0, 0.31, 0));
+    g.add(small(M(puffStar(0.03), gxGlint(), 0, 0.355, 0)));
+    const sp = M(new THREE.CylinderGeometry(0.018, 0.034, 0.25, 7), clay(GX.peri), 0.158, 0.27, 0); sp.rotation.z = -0.9; g.add(sp);
+    const st = M(puffStar(0.05), clay(GX.white), 0.258, 0.347, 0); st.rotation.set(0, Math.PI / 2, 0.68); g.add(st);
+    const hd = M(new THREE.TorusGeometry(0.085, 0.016, 5, 12, Math.PI), clay(GX.peri), -0.105, 0.21, 0); hd.rotation.z = Math.PI / 2; g.add(hd);
+    [[0.05, 0.26, 0.11, 0.022], [-0.06, 0.13, 0.112, 0.016]].forEach(([x, y, z, r]) => { const s = small(M(sparkle(r), gxGlint(), x, y, z)); s.lookAt(V3(x * 3, (y - 0.185) * 3 + 0.185, z * 3)); g.add(s); });
+    [[0.31, 0.29, 0.017], [0.335, 0.22, 0.012]].forEach(([x, y, r]) => g.add(small(M(sparkle(r), gxGlint(), x, y, 0))));
+    g.scale.setScalar(1.25);
+  },
+  hoe(g) {     // 가운데 머리가 고리 행성
+    const top = gxHandle(g, 0.52), hd = new THREE.Group(); hd.position.y = top + 0.01; g.add(hd);
+    pickArms(hd, clay(GX.ind), clay(GX.aur));
+    planet(hd, 0.05, GX.pink, GX.aur, 0, 0.018, 0, 0.35);
+    g.scale.setScalar(1.18);
+  },
+  axe(g) {     // 날이 혜성 — 둥근 머리가 날끝(오로라 띠), 꼬리가 자루 쪽
+    const top = gxHandle(g, 0.52), cy = top - 0.05;
+    g.add(M(new THREE.BoxGeometry(0.06, 0.12, 0.07), clay(GX.indD), 0, cy, 0));
+    g.add(M(ext(cometBlade(), 0.042, 0.01, 14), clay(GX.ind), 0.025, cy, 0));
+    const edge = new THREE.Shape(); edge.absarc(0, 0, 0.122, -1.05, 1.05, false); edge.absarc(-0.012, 0, 0.098, 1.05, -1.05, true); edge.closePath();
+    g.add(M(ext(edge, 0.03, 0.006, 14), clay(GX.aur), 0.025 + 0.12, cy, 0));
+    [-1, 1].forEach(sz => g.add(small(M(sparkle(0.024), gxGlint(), 0.13, cy + 0.015, sz * 0.04)).rotateY(sz < 0 ? Math.PI : 0)));
+    g.add(faceX(M(puffStar(0.04), clay(GX.pink), -0.04, cy, 0), -1));
+    g.scale.setScalar(1.18);
+  },
+  seed(g) {    // 주머니가 작은 행성 — 고리가 묶는 끈
+    put(g, M(new THREE.SphereGeometry(0.115, 14, 10), clay(GX.peri, { smooth: true }), 0, 0.09, 0)).scale.set(1, 1.08, 1);
+    const rg = M(new THREE.TorusGeometry(0.15, 0.014, 4, 26), clay(GX.pink), 0, 0.1, 0); rg.rotation.set(Math.PI / 2 - 0.3, 0, 0.25); g.add(rg);
+    g.add(M(new THREE.CylinderGeometry(0.045, 0.06, 0.05, 10), clay(GX.peri), 0, 0.205, 0));
+    const cord = M(new THREE.TorusGeometry(0.05, 0.011, 5, 12), clay(GX.aur), 0, 0.205, 0); cord.rotation.x = Math.PI / 2; g.add(cord);
+    g.add(M(puffStar(0.04), clay(GX.white), 0, 0.26, 0));
+    g.add(small(M(sparkle(0.016), gxGlint(), -0.05, 0.14, 0.098)));
+    g.scale.setScalar(1.25);
+  },
+  sickle(g) {  // 남보라 날 + 오로라 날끝, 끝에 흰 별(별똥별)
+    const top = gxHandle(g, 0.30, 0.034);
+    const { bl, tip } = sickleBlade(g, top, clay(GX.ind), clay(GX.aur), 1.25);
+    bl.add(M(puffStar(0.034), clay(GX.white), tip.x, tip.y, 0));
+    bl.add(small(M(sparkle(0.014), gxGlint(), tip.x, tip.y, 0.022)));
+    g.add(M(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 7), clay(GX.pink), 0, top - 0.01, 0));
+    g.scale.setScalar(1.18);
+  },
+  shovel(g) {  // 남보라 날 · 오로라 테 · 별똥별이 가로지른다
+    const top = gxHandle(g, 0.58), y0 = top + 0.03;
+    g.add(M(new THREE.CylinderGeometry(0.036, 0.044, 0.07, 7), clay(GX.indD), 0, top + 0.01, 0));
+    g.add(M(ext(roundBlade(0.116, 0.14), 0.022, 0.006, 14), clay(GX.aur), 0, top + 0.026, 0));
+    g.add(M(ext(roundBlade(0.105, 0.13), 0.034, 0.012, 14), clay(GX.ind, { smooth: true }), 0, y0, 0));
+    [-1, 1].forEach(sz => {
+      const z = sz * 0.035;
+      [[GX.pink, 0.012], [GX.aur, -0.012]].forEach(([c, dy]) => { const t = M(new THREE.BoxGeometry(0.12, 0.016, 0.012), clay(c), -0.025, y0 + 0.105 + dy, z); t.rotation.z = 0.45; g.add(t); });
+      put(g, M(puffStar(0.036), clay(GX.white), 0.045, y0 + 0.14, sz * 0.04)).rotation.y = sz < 0 ? Math.PI : 0;
+    });
+    g.scale.setScalar(1.18);
+  },
+  hammer(g) {  // 망치머리가 비스듬한 고리 행성
+    const top = gxHandle(g, 0.50), y = top - 0.04;
+    const head = M(new THREE.CylinderGeometry(0.055, 0.055, 0.17, 12), clay(GX.ind), 0, y, 0); head.rotation.z = Math.PI / 2; g.add(head);
+    [[-1, GX.pink], [1, GX.aur]].forEach(([sx, c]) => { const e = M(new THREE.CylinderGeometry(0.062, 0.058, 0.032, 12), clay(c), sx * 0.098, y, 0); e.rotation.z = Math.PI / 2; g.add(e); });
+    const ring = M(new THREE.TorusGeometry(0.082, 0.012, 4, 22), clay(GX.peri), 0, y, 0); ring.rotation.set(0.35, Math.PI / 2, 0); g.add(ring);
+    g.add(small(M(sparkle(0.018), gxGlint(), -0.04, y + 0.02, 0.056)));
+    g.scale.setScalar(1.18);
+  },
+  rod(g) {
+    rodFrame(g, { knobFn: g => g.add(M(puffStar(0.05), clay(GX.white), 0, -0.095, 0)), rear: clay(GX.indD), line: 0xe9f6ff, pole: (p, L) => {
+      p.add(M(new THREE.CylinderGeometry(0.014, 0.027, L, 7), clay(GX.ind), 0, L / 2, 0));
+      [0.25, 0.5, 0.75].forEach((f, i) => p.add(M(new THREE.CylinderGeometry(0.025 - f * 0.011, 0.025 - f * 0.011, 0.016, 7), clay(i % 2 ? GX.pink : GX.aur), 0, L * f, 0)));
+      p.add(small(M(puffStar(0.03), gxGlint(), 0, L + 0.025, 0)));
+    } }, b => planet(b, 0.036, GX.pink, GX.aur, 0, 0, 0, 0.3));
+  },
+  net(g) {     // 오로라 고리 · 보랏빛 망 · 고리에 별똥별 하나
+    g.add(M(new THREE.CylinderGeometry(0.028, 0.03, 0.72, 7), clay(GX.ind), 0, 0.25, 0));
+    g.add(M(puffStar(0.05), clay(GX.white), 0, -0.1, 0));
+    const ring = M(new THREE.TorusGeometry(0.17, 0.022, 6, 18), clay(GX.aur), 0, 0.6, 0); ring.rotation.x = Math.PI / 2; g.add(ring);
+    g.add(M(new THREE.ConeGeometry(0.155, 0.3, 12, 1, true), netBag(GX.peri, 0.5), 0, 0.75, 0));
+    const ss = new THREE.Group(); ss.position.set(0.12, 0.62, 0.12); ss.rotation.y = -Math.PI / 4; g.add(ss);
+    ss.add(M(puffStar(0.04), clay(GX.white)));
+    [[GX.pink, 0.012], [GX.aur, -0.012]].forEach(([c, dy]) => { const t = M(new THREE.BoxGeometry(0.1, 0.014, 0.012), clay(c), -0.07, dy - 0.02, 0); t.rotation.z = 0.35; ss.add(t); });
+    g.add(small(M(sparkle(0.016), gxGlint(), -0.12, 0.64, 0.12)));
+    g.scale.setScalar(1.25);
+  },
+});
+
+const THEMES = [
+  { id: 'celest', ico: '⭐', name: 'A 별빛 라벤더', sub: '라벤더+금 · 별 단면 통 · 별 구멍 날 · 별 테 망', tint: [0xefe8fb, 0x3e3868] },
+  { id: 'prism',  ico: '🌈', name: 'B 무지개 크리스탈 ✅게임', sub: '파스텔 무지개 띠가 날·통의 층 · 육각 보석', tint: [0xfdeef3, 0x46385a] },
+  { id: 'cosmos', ico: '🪐', name: 'C 우주 소풍', sub: '남보라+오로라 · 고리 행성 통 · 혜성 날', tint: [0xe4e7f7, 0x272a54] },
+];
+function buildTool(theme, tool) {
+  const g = new THREE.Group(); BUILD[theme][tool](g);
+  g.traverse(o => { if (o.isMesh) o.castShadow = !o.userData.small; });
+  g.userData.toolId = tool; return g;
+}
+// 굽기 통계 — 게임 bake() 버킷 키(평면/부드러움·면·투명·발광). 색은 정점색으로 들어가 콜이 안 늘어난다
+function statsOf(root) {
+  const b = new Set(), cols = new Set(); let meshes = 0, tris = 0;
+  root.traverse(o => {
+    if (!o.isMesh || !o.material.isMeshStandardMaterial) return; meshes++;
+    const m = o.material, gl = m.userData.glow;
+    b.add([m.flatShading ? 'f' : 's', m.side, m.transparent ? m.opacity : 1, gl ? `g${gl.hex}:${gl.k}` : ''].join('|'));
+    cols.add(m.color.getHex());
+    const g = o.geometry; tris += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+  });
+  return { meshes, tris: Math.round(tris), calls: b.size, colors: cols.size };
+}
+const themeStats = {};
+function computeThemeStats() {
+  ['base', ...THEMES.map(t => t.id)].forEach(t => {
+    const arr = TOOLS.map(tl => statsOf(buildTool(t, tl.id)));
+    themeStats[t] = { meshAvg: Math.round(arr.reduce((a, s) => a + s.meshes, 0) / arr.length), callAvg: +(arr.reduce((a, s) => a + s.calls, 0) / arr.length).toFixed(1), callMax: Math.max(...arr.map(s => s.calls)), triAvg: Math.round(arr.reduce((a, s) => a + s.tris, 0) / arr.length) };
+  });
+  glowMats.length = 0;
+}
+
+// =============================================================
+//  🦋 날개 — back 앵커 로컬. 한쪽(+x)을 만들고 scale.x=-1 로 거울. 크기는 여우(R .52) 기준 × R/.52
+// =============================================================
+//  A안 = 게임 friend_wing(js/cosmetics/art-friend.js) — 게임에선 정지 자세라 시안도 펄럭이지 않는다
+const WB = { row0: 0xefe7e0, row1: 0xf8cfe1, row2: 0xd7c7f6, gold: 0xf0c95a };
+//  깃 한 줄 = 윗변은 팔(arm) 곡선, 아랫변은 깃끝 물결. 낱장 깃을 꽂으면 가시처럼 읽혀(1차) 줄 단위 판으로 바꿨다
+function featherRow(arm, len, n, pointy, u0 = 0) {
+  const dir = u => -1.75 + u * 1.25, N = n * 6, s = new THREE.Shape();
+  for (let i = 0; i <= 12; i++) { const u = lerp(u0, 1, i / 12), p = arm(u); i ? s.lineTo(p.x, p.y + 0.02) : s.moveTo(p.x, p.y + 0.02); }
+  for (let i = N; i >= 0; i--) {
+    const u = lerp(u0, 1, i / N), p = arm(u), ph = Math.abs(Math.sin(Math.PI * n * (i / N)));
+    const L = len(u) * (0.78 + 0.22 * (pointy ? Math.sqrt(ph) : ph)), a = dir(u);
+    s.lineTo(p.x + Math.cos(a) * L, p.y + Math.sin(a) * L);
+  }
+  s.closePath(); return s;
+}
+function wingFeather(side) {    // B 깃털 천사 — 세 겹 깃판(크림 덮깃 → 분홍 → 라일락 끝깃) · 뿌리에 금별
+  const arm = u => V3(lerp(0.02, 0.84, u), 0.04 + Math.sin(Math.PI * u * 0.8) * 0.42 + u * 0.1, 0);
+  side.add(M(ext(featherRow(arm, u => 0.46 + u * 0.22, 6, true, 0.3), 0.02, 0.008, 4), clay(WB.row2), 0, 0, 0.0));
+  side.add(M(ext(featherRow(arm, u => 0.3 + u * 0.06, 6, false, 0.0), 0.02, 0.008, 4), clay(WB.row1), 0, 0, -0.03));
+  side.add(M(ext(featherRow(arm, u => 0.13, 7, false, 0.0), 0.022, 0.009, 4), clay(WB.row0), 0, 0, -0.06));
+  side.add(small(M(puffStar(0.045), clay(WB.gold, { glow: 0xffe9a0, k: 0.8 }), 0.05, 0.08, -0.09)));
+  side.add(small(M(sparkle(0.03), clay(0xffe9a0, { glow: 0xffe9a0, k: 0.8 }), 0.86, 0.6, -0.04)));
+}
+const WC = { sky: 0xb8dbff, lilac: 0xd3c3ff, node: 0xfff1b0, root: 0xece6ff };
+function wingConstellation(side) {   // C 별자리 크리스탈 — 수정 조각 넷이 부채꼴, 끝마다 별, 별끼리 별자리 선
+  const shards = [[-0.42, 0.5], [0.12, 0.8], [0.6, 0.82], [1.08, 0.56]];
+  const tips = shards.map(([a, L], i) => {
+    const kite = new THREE.Shape(); kite.moveTo(0, 0); kite.lineTo(0.085, L * 0.33); kite.lineTo(0, L); kite.lineTo(-0.085, L * 0.33); kite.closePath();
+    const m = M(ext(kite, 0.03, 0.014, 1, 1), clay(i % 2 ? WC.lilac : WC.sky, { opacity: 0.84 }), 0.03, 0.02, i * 0.004); m.rotation.z = a - Math.PI / 2; side.add(m);
+    return V3(0.03 + Math.cos(a) * L, 0.02 + Math.sin(a) * L, 0.02);
+  });
+  const nodeM = clay(WC.node, { glow: WC.node, k: 0.9 });
+  tips.forEach((p, i) => side.add(small(M(puffStar(i === 2 ? 0.05 : 0.036), nodeM, p.x, p.y, p.z))));
+  for (let i = 0; i < tips.length - 1; i++) {
+    const a = tips[i], b = tips[i + 1], d = b.clone().sub(a), l = d.length();
+    const ln = small(M(new THREE.CylinderGeometry(0.006, 0.006, l, 4), nodeM, (a.x + b.x) / 2, (a.y + b.y) / 2, 0.02)); ln.rotation.z = Math.atan2(d.y, d.x) - Math.PI / 2; side.add(ln);
+  }
+  [[0.06, 0.05, 0.05], [0.02, 0.14, 0.035], [0.12, 0.0, 0.03]].forEach(([x, y, r]) => side.add(crystal(r, clay(WC.root), 1.5).translateX(x).translateY(y)));
+}
+const WINGS = [
+  { id: 'butterfly', name: 'A 스테인드글라스 나비 ✅게임', sub: '금 테 + 반투명 파스텔 유리 · 눈무늬 보석', game: 'friend_wing' },
+  { id: 'feather', name: 'B 깃털 천사', sub: '크림·분홍·라일락 세 겹 깃 · 뿌리에 금별', build: wingFeather },
+  { id: 'constel', name: 'C 별자리 크리스탈', sub: '수정 조각 부채꼴 · 끝마다 별, 별자리 선', build: wingConstellation },
+];
+// 반환: 등 앵커 로컬 그룹. userData.flaps = 날갯짓할 피벗들
+function buildWings(def, k) {
+  if (def.game) { const g = buildCosmetic(THREE, def.game, k); g.userData.flaps = []; return g; }
+  const g = new THREE.Group(), S = k.R / 0.52, flaps = [];
+  [1, -1].forEach(s => {
+    const root = new THREE.Group(); root.position.set(s * k.R * 0.1, k.R * 0.02, -k.R * 0.12); root.scale.set(s * S * 0.86, S * 0.86, S * 0.86); g.add(root);
+    const tilt = new THREE.Group(); tilt.rotation.z = 0.12; root.add(tilt);
+    const flap = new THREE.Group(); flap.rotation.y = 0.22; tilt.add(flap);
+    def.build(flap); flaps.push(flap);
+  });
+  g.traverse(o => { if (o.isMesh) o.castShadow = !o.userData.small && !o.material.transparent; });
+  g.userData.flaps = flaps; return g;
+}
+
+// =============================================================
+//  💗 하트핀 — head 로컬(머리 중심). star_pin 자리: 옆머리 **앞쪽** 낮게(귀 밑동 0.46·HR 근처, 귀보다 앞)
+// =============================================================
+const PIN_DIR = V3(0.78, 0.34, 0.52).normalize();
+function pinFrame(g, HR) {
+  const f = new THREE.Group(); f.position.copy(PIN_DIR).multiplyScalar(HR * 0.99);
+  f.lookAt(PIN_DIR.clone().multiplyScalar(HR * 3)); f.scale.setScalar(HR * 1.3); g.add(f); return f;   // +z = 머리 바깥, 단위 = HR
+}
+const PA = { pink: 0xff8fbb, white: 0xfff1f5, gold: 0xf2cd5c, quartz: 0xf8b6d2, core: 0xec6aa3, lilac: 0xf09ac2, wing: 0xf3ece6, gem: 0xfff0a0 };
+const PINS = [
+  { id: 'puff', name: 'A 퐁신 하트 + 리본', sub: '통통한 분홍 하트 · 아래 흰 리본 · 금 집게', build(f) {
+    f.add(M(new THREE.BoxGeometry(0.36, 0.06, 0.05), clay(PA.gold), 0, -0.02, 0.03));
+    f.add(M(puffHeart(0.2), clay(PA.pink), 0, 0.05, 0.12));
+    [-1, 1].forEach(sx => { const l = M(new THREE.ConeGeometry(0.07, 0.15, 4), clay(PA.white), sx * 0.1, -0.17, 0.1); l.rotation.z = sx * Math.PI / 2; l.scale.z = 0.5; f.add(l); });
+    f.add(M(new THREE.SphereGeometry(0.05, 6, 5), clay(PA.white), 0, -0.17, 0.11));
+    f.add(small(M(sparkle(0.04), clay(PA.gem, { glow: PA.gem, k: 0.8 }), 0.09, 0.13, 0.2)));
+  } },
+  { id: 'crystal', name: 'B 수정 하트 + 별 방울 ✅게임', sub: '깎은 장밋빛 수정(속 하트 비침) · 금별이 달랑 · 시안보다 크게', game: 'friend_pin' },
+  { id: 'winged', name: 'C 날개 달린 하트', sub: '하트 양옆에 꼬마 천사 날개 · 가운데 보석별', build(f) {
+    f.add(M(new THREE.BoxGeometry(0.32, 0.055, 0.05), clay(PA.gold), 0, -0.02, 0.03));
+    f.add(M(puffHeart(0.18), clay(PA.lilac), 0, 0.03, 0.12));
+    [-1, 1].forEach(sx => [[0.2, 0.9], [0.16, 1.25], [0.12, 1.6]].forEach(([l, a], i) => {
+      const fe = M(ext(petalShape(0.05, l), 0.014, 0.006, 6), clay(PA.wing), sx * 0.15, 0.06 - i * 0.02, 0.1 - i * 0.016); fe.rotation.z = -sx * a; f.add(fe);
+    }));
+    f.add(small(M(puffStar(0.05), clay(PA.gem, { glow: PA.gem, k: 0.85 }), 0, 0.06, 0.205)));
+  } },
+];
+function buildPin(def, HR) { if (def.game) return buildCosmetic(THREE, def.game, { HR }); const g = new THREE.Group(); def.build(pinFrame(g, HR)); g.traverse(o => { if (o.isMesh) o.castShadow = false; }); return g; }
+
+// =============================================================
+//  🌈 아치 — 바닥 y=0(풀밭 윗면), 아치는 0.02 띄운다. 폭 ~2.5 · 높이 ~2.3~2.6 · 안쪽은 캐릭터가 지나간다
+// =============================================================
+const anims = [];   // { obj, kind, base, ph }
+function cloud(parent, x, y, z, s, mat) {
+  [[0, 0, 0, 0.26], [0.22, -0.05, 0.05, 0.2], [-0.21, -0.06, -0.02, 0.19], [0.05, 0.15, -0.04, 0.17], [0.0, -0.08, 0.17, 0.16]].forEach(([dx, dy, dz, r]) =>
+    parent.add(M(new THREE.IcosahedronGeometry(r * s, 1), mat, x + dx * s, y + dy * s, z + dz * s)));
+}
+const AA = { pink: 0xf6a3c2, lemon: 0xffe38c, mint: 0xa6e2c2, sky: 0xa4cbf3, cloud: 0xeef0fa, heart: 0xff86b4 };
+function archRainbow(g) {   // A 구름 무지개 — 네 띠 무지개 · 발치에 구름 · 꼭대기 큰 하트 · 하트 등불 둘
+  const bands = new THREE.Group(); bands.scale.z = 1.6; g.add(bands);
+  [[1.22, AA.pink], [1.11, AA.lemon], [1.0, AA.mint], [0.89, AA.sky]].forEach(([r, c]) => bands.add(M(new THREE.TubeGeometry(new ArchCurve(r, 1.05), 72, 0.06, 7), clay(c, { smooth: true }))));
+  const cm = clay(AA.cloud, { smooth: true });
+  [-1, 1].forEach(s => cloud(g, s * 1.05, 0.2, 0.02, 1.15, cm));
+  const top = 1.05 + 1.22;
+  g.add(M(puffHeart(0.3), clay(AA.heart), 0, top + 0.2, 0));
+  const lm = clay(AA.heart, { glow: AA.heart, k: 0.7 });
+  [[-1.5, 1.8, 0.25, 0.11], [1.48, 1.45, 0.3, 0.095], [-1.25, 2.35, 0.1, 0.075]].forEach(([x, y, z, r], i) => { const h = small(M(puffHeart(r), lm, x, y, z)); g.add(h); anims.push({ obj: h, kind: 'bob', base: y, ph: i * 1.7 }); });
+  [[0.55, 2.55, 0.15], [-0.62, 2.48, 0.12]].forEach(([x, y, r]) => g.add(small(M(sparkle(r * 0.5), clay(AA.lemon, { glow: AA.lemon, k: 0.8 }), x, y, 0.15))));
+}
+//  B안 = 게임 friendarch(js/spaces/friend-arch-art.js) — 굽힌 3덩이 그대로. 반짝이는 밤 토글에 올린다
+const AC = { lilac: 0xb7a2ea, gold: 0xf2cd5c, pink: 0xff8fbb, cream: 0xfff0cf, glow: 0xffe39a };
+function archLantern(g) {    // C 별·하트 등불 아치 — 라일락 틀에 별·하트 꿰미 · 꼭대기 큰 별 · 하트 등불 둘이 흔들
+  const R = 1.12, H = 1.08;
+  g.add(M(new THREE.TubeGeometry(new ArchCurve(R, H), 80, 0.075, 8), clay(AC.lilac, { smooth: true })));
+  g.add(M(new THREE.TubeGeometry(new ArchCurve(R - 0.17, H, 0.3), 70, 0.026, 6), clay(AC.gold, { smooth: true })));
+  const goldM = clay(AC.gold), pinkM = clay(AC.pink);
+  [0.12, 0.27, 0.4, 0.6, 0.73, 0.88].forEach((t, i) => { const a = Math.PI * t; put(g, M(i % 2 ? puffHeart(0.14) : puffStar(0.16), i % 2 ? pinkM : goldM, Math.cos(a) * R, H + Math.sin(a) * R, 0)).rotation.z = i % 2 ? 0 : a - Math.PI / 2; });
+  g.add(M(puffStar(0.3), goldM, 0, H + R + 0.12, 0));
+  g.add(small(M(puffHeart(0.08), clay(AC.pink, { glow: AC.pink, k: 0.8 }), 0, H + R + 0.11, 0.1)));
+  [-1, 1].forEach(s => {
+    g.add(M(new THREE.BoxGeometry(0.34, 0.14, 0.34), clay(AC.lilac), s * R, 0.07 + 0.02, 0));
+    g.add(small(M(puffStar(0.05), clay(AC.glow, { glow: AC.glow, k: 0.9 }), s * R, 0.2, 0.18)));
+  });
+  // 하트 등불 — 금줄에 매달려 흔들린다(통은 크림 종이, 하트 창만 발광)
+  [[-1, 0.33], [1, 0.67]].forEach(([s, t], i) => {
+    const a = Math.PI * t, px = Math.cos(a) * (R - 0.17), py = H + Math.sin(a) * (R - 0.17);
+    const piv = new THREE.Group(); piv.position.set(px, py, 0); g.add(piv); anims.push({ obj: piv, kind: 'swing', base: 0, ph: i * 2 });
+    piv.add(small(M(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 4), goldM, 0, -0.15, 0)));
+    piv.add(M(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 6), clay(AC.cream), 0, -0.4, 0));
+    piv.add(M(new THREE.CylinderGeometry(0.07, 0.11, 0.05, 6), clay(AC.lilac), 0, -0.275, 0));
+    piv.add(M(new THREE.CylinderGeometry(0.11, 0.07, 0.04, 6), clay(AC.lilac), 0, -0.52, 0));
+    [-1, 1].forEach(sz => piv.add(small(M(puffHeart(0.045), clay(AC.pink, { glow: AC.pink, k: 0.8 }), 0, -0.4, sz * 0.095)).rotateY(sz < 0 ? Math.PI : 0)));
+  });
+}
+const ARCHES = [
+  { id: 'rainbow', name: 'A 구름 무지개', sub: '네 띠 무지개 · 발치 구름 · 큰 하트 · 둥실 하트 등불', build: archRainbow },
+  { id: 'trellis', name: 'B 꽃 덩굴 아치 ✅게임', sub: '크림 격자 · 꽃 · 기둥 위 무지개 리본 · 리본 하트', build: g => g.add(buildFriendArch(THREE, m => glowMats.push({ m, k: 0.8 }))) },
+  { id: 'lantern', name: 'C 별·하트 등불 아치', sub: '라일락 틀 별·하트 꿰미 · 큰 별 · 흔들리는 하트 등불', build: archLantern },
+];
+function buildArch(def) { const g = new THREE.Group(); def.build(g); g.traverse(o => { if (o.isMesh) o.castShadow = !o.userData.small; o.receiveShadow = true; }); return g; }
+
+// =============================================================
+//  캐릭터 — 게임 팔 구조(어깨 피벗 → 조준 → 손) 그대로 (halloween-tools-sim 과 같다)
+// =============================================================
+const ANIMALS = {
+  fox:    { id: 'fox',    ico: '🦊', body: 0xf0883a, belly: 0xf9ecd8, ear: 0x8a4a24, R: 0.52, bs: [0.90, 1.08, 0.90], HR: 0.37, HY: 1.26, tail: 'bushy' },
+  rabbit: { id: 'rabbit', ico: '🐰', body: 0xf3eeea, belly: 0xffffff, ear: 0xf0c0c8, R: 0.46, bs: [1.00, 0.96, 1.00], HR: 0.39, HY: 1.12, tail: 'puff' },
+  cat:    { id: 'cat',    ico: '🐱', body: 0x9fa0c2, belly: 0xf2f2f8, ear: 0xf0b0b8, R: 0.50, bs: [0.88, 1.10, 0.88], HR: 0.36, HY: 1.25, tail: 'long' },
+  bear:   { id: 'bear',   ico: '🐻', body: 0x936a44, belly: 0xd2b38a, ear: 0x6a4828, R: 0.63, bs: [1.08, 1.00, 1.06], HR: 0.44, HY: 1.34, tail: 'stub' },
+};
+function taperedTube(pts, radiusFn, segs = 24, radial = 8) {
+  const curve = new THREE.CatmullRomCurve3(pts), frames = curve.computeFrenetFrames(segs, false), pos = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const P = curve.getPointAt(i / segs), N = frames.normals[i], B = frames.binormals[i], r = radiusFn(i / segs);
+    for (let j = 0; j < radial; j++) { const A = j / radial * Math.PI * 2, ca = Math.cos(A), sa = Math.sin(A); pos.push(P.x + (N.x * ca + B.x * sa) * r, P.y + (N.y * ca + B.y * sa) * r, P.z + (N.z * ca + B.z * sa) * r); }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * radial + j, b = i * radial + (j + 1) % radial, c = (i + 1) * radial + j, d = (i + 1) * radial + (j + 1) % radial; idx.push(a, c, b, b, c, d); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+  return { geo, end: curve.getPointAt(1) };
+}
+function buildAnimal(a) {
+  const g = new THREE.Group(), R = a.R, bs = a.bs, bodyY = R * bs[1] + 0.02;
+  const body = M(new THREE.SphereGeometry(R, 32, 24), plushMat(a.body), 0, bodyY, 0); body.scale.set(...bs); g.add(body);
+  const belly = M(new THREE.SphereGeometry(R * 0.62, 24, 18), plushMat(a.belly), 0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  const head = buildAnimalHead(a.id, { HR: a.HR, HY: a.HY, body: a.body, belly: a.belly }); g.add(head);
+  [-1, 1].forEach(s => g.add(M(new THREE.CapsuleGeometry(R * 0.17, R * 0.34, 4, 8), plushMat(a.body), s * R * 0.36, bodyY - R * 0.92, R * 0.10)));
+  const tail = new THREE.Group(); tail.position.set(0, bodyY + R * 0.10, -R * bs[2] * 0.86); g.add(tail);
+  const tm = plushMat(a.body), V = (x, y, z) => V3(R * x, R * y, R * z);
+  const tube = (pts, rad) => { const { geo, end } = taperedTube(pts, rad); tail.add(new THREE.Mesh(geo, tm)); return end; };
+  if (a.tail === 'bushy') {
+    const rad = u => R * (0.29 + 0.05 * Math.sin(Math.PI * u)) * (1 - 0.38 * Math.max(0, u - 0.70) / 0.30);
+    const e = tube([V(0, -0.05, 0.10), V(0, 0.06, -0.30), V(0, 0.30, -0.50), V(0, 0.60, -0.58), V(0, 0.88, -0.54)], rad);
+    tail.add(M(new THREE.SphereGeometry(rad(1) * 0.98, 12, 9), plushMat(a.belly), e.x, e.y, e.z));
+  } else if (a.tail === 'long') {
+    const rad = u => R * (0.17 * (1 - u * 0.62) + 0.02);
+    const e = tube([V(0, -0.05, 0.10), V(0, 0.08, -0.36), V(0, 0.45, -0.60), V(0, 0.90, -0.58), V(0, 1.22, -0.36)], rad);
+    tail.add(M(new THREE.SphereGeometry(rad(1), 10, 8), tm, e.x, e.y, e.z));
+  } else if (a.tail === 'puff') tail.add(M(new THREE.SphereGeometry(R * 0.30, 12, 10), plushMat(a.belly), 0, R * 0.04, -R * 0.06));
+  else tail.add(M(new THREE.SphereGeometry(R * 0.17, 10, 8), tm, 0, R * 0.06, -R * 0.02));
+  const arms = {}, ar = R * ARM_R_K, al = R * 0.32;
+  [1, -1].forEach(side => {
+    const pivot = new THREE.Group(); pivot.rotation.order = 'YXZ'; pivot.position.set(side * R * 0.85 * bs[0], bodyY + R * 0.54, R * 0.20); g.add(pivot);
+    const aim = new THREE.Group(); aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L); pivot.add(aim);
+    aim.add(M(new THREE.CapsuleGeometry(ar, al, 4, 8), plushMat(a.body), 0, -(al / 2 + ar * 0.4), 0));
+    aim.add(M(new THREE.SphereGeometry(pawRadius(R), 10, 8), clay(a.ear, { smooth: true }), 0, -(al + ar * 0.9), 0));
+    const hand = new THREE.Group(); hand.position.y = -(al + ar * 0.9); aim.add(hand);
+    arms[side > 0 ? 'R' : 'L'] = { pivot, hand };
+  });
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { a, R, bs, bodyY, HR: a.HR, HY: a.HY, arms, head };
+  return g;
+}
+function mountTool(ch, tool, toolId) {   // 게임 poseHeldTool 평상시 자세 — TOOL_GRIP · TOOL_QREST_HOLD
+  const grip = TOOL_GRIP[toolId], p = grip.p.clone();
+  if (grip.pawRel) p.z = gripForwardZ(ch.userData.R);
+  tool.quaternion.copy(TOOL_QREST_HOLD).multiply(grip.q);
+  tool.position.copy(p).applyQuaternion(TOOL_QREST_HOLD);
+  ch.userData.arms.R.hand.add(tool);
+}
+const kOf = A => ({ R: A.R, HR: A.HR, HY: A.HY, bs: A.bs, bodyY: A.R * A.bs[1] + 0.02, tail: A.tail });
+
+// =============================================================
+//  장면
+// =============================================================
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(24, 1, 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.enablePan = false;
+const hemi = new THREE.HemisphereLight(0xe6f2ff, 0x8a9a7a, 1.6); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.6); sun.position.set(3, 7, 6); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 }); sun.shadow.bias = -0.0005; scene.add(sun);
+const moon = new THREE.DirectionalLight(0x8fa0ff, 0); moon.position.set(-4, 5, 5); scene.add(moon);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.4, 0.85); composer.addPass(bloom);   // 게임과 같은 임계 0.85
+composer.addPass(new OutputPass());
+
+const q = new URLSearchParams(location.search);
+const TABS = ['tool', 'wing', 'pin', 'arch'], MODES = ['rep', 'all', 'hold'];
+const state = {
+  tab: TABS.includes(q.get('tab')) ? q.get('tab') : 'tool', mode: MODES.includes(q.get('mode')) ? q.get('mode') : 'rep',
+  tool: TOOLS.some(t => t.id === q.get('tool')) ? q.get('tool') : 'water', night: q.get('night') === '1', spin: q.get('spin') === '1', withBase: q.get('base') === '1',
+  view: q.get('view') || '', animals: { wing: ['fox', 'bear'], pin: ['fox', 'cat'], arch: ['fox'] },
+};
+if (q.get('animals')) { const a = q.get('animals').split(',').filter(x => ANIMALS[x]); if (a.length && state.animals[state.tab]) state.animals[state.tab] = a; }
+const VIEWS = {
+  wing: { back34: ['뒤 3/4', Math.PI * 0.8], back: ['뒤', Math.PI], side: ['옆', Math.PI * 0.5], front34: ['앞 3/4', Math.PI * 0.15] },
+  pin: { front34: ['앞 3/4', -0.62], side: ['옆', -Math.PI / 2], front: ['앞', 0], back34: ['뒤 3/4', -2.3] },
+  arch: { front: ['정면', 0], f34: ['비스듬히', 0.55], side: ['옆', 1.3] },
+};
+const viewOf = tab => { const v = VIEWS[tab]; if (!v) return 0; const key = v[state.view] ? state.view : Object.keys(v)[0]; return v[key][1]; };
+
+let world = new THREE.Group(); scene.add(world);
+let spinners = [], labels = [], cards = [], flaps = [];
+const labelsEl = document.getElementById('labels');
+const portrait = () => innerWidth < innerHeight * 0.95;
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const viewH = () => Math.max(200, innerHeight - document.getElementById('ui').offsetHeight);
+function addLabel(obj, html, cls = '') { const el = document.createElement('div'); el.className = 'tag ' + cls; el.innerHTML = html; labelsEl.appendChild(el); labels.push({ el, obj }); }
+function anchorAt(x, y, z = 0) { const a = new THREE.Object3D(); a.position.set(x, y, z); world.add(a); return a; }
+function clearWorld() { scene.remove(world); world = new THREE.Group(); scene.add(world); spinners = []; labels = []; cards = []; flaps = []; anims.length = 0; labelsEl.innerHTML = ''; glowMats.length = 0; }
+const TINT = { base: [0xe9eaec, 0x4a4e62], 0: THEMES[0].tint, 1: THEMES[1].tint, 2: THEMES[2].tint };
+function addCard(w, h, cx, cy, ti, z = -0.9) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: 0xffffff })); m.position.set(cx, cy, z); world.add(m); cards.push({ m, ti }); return m;
+}
+function tintCards() { cards.forEach(c => c.m.material.color.setHex((TINT[c.ti] ?? TINT.base)[state.night ? 1 : 0])); }
+const tagHtml = (t, sub, extra = '') => `${t}<small>${sub}</small>${extra ? `<small>${extra}</small>` : ''}`;
+
+// 진열 — 높이를 맞춰 세운다(실제 크기 비교는 ‘쥔 모습’)
+const _bx = new THREE.Box3(), _sz = new THREE.Vector3(), _ct = new THREE.Vector3();
+function display(theme, toolId, x, y, targetH, cap = 2.2) {
+  const t = buildTool(theme, toolId), holder = new THREE.Group(), pivot = new THREE.Group(); holder.add(pivot); pivot.add(t);
+  t.updateMatrixWorld(true); _bx.setFromObject(t); _bx.getSize(_sz); _bx.getCenter(_ct); t.position.sub(_ct);
+  holder.scale.setScalar(Math.min(cap, targetH / Math.max(_sz.y, _sz.x * 0.9, 0.2)));
+  holder.position.set(x, y, 0); pivot.rotation.y = 0.45; world.add(holder);
+  spinners.push({ pivot, base: 0.45 }); return holder;
+}
+function holdChar(theme, toolId, animalId, x, y, yaw = 0.55) {
+  const ch = buildAnimal(ANIMALS[animalId]); ch.position.set(x, y, 0); ch.rotation.y = yaw;
+  mountTool(ch, buildTool(theme, toolId), toolId); world.add(ch); return ch;
+}
+
+function buildToolScene() {
+  clearWorld();
+  const P = portrait(), list = state.withBase ? [{ id: 'base', ico: '⚪', name: '기본(비교)', sub: '지금 게임 모습' }, ...THEMES] : THEMES, nT = list.length;
+  list.forEach((th, i) => {
+    const ti = th.id === 'base' ? 'base' : THEMES.indexOf(th), st = themeStats[th.id];
+    const html = tagHtml(`${th.ico} ${th.name}`, th.sub, th.id === 'base' ? '' : `굽기 후 평균 ${st.callAvg}콜(최대 ${st.callMax})`);
+    if (state.mode === 'rep') {
+      if (!P) {
+        const cx = (i - (nT - 1) / 2) * 2.55;
+        addCard(2.42, 3.9, cx, 0.05, ti);
+        display(th.id, 'water', cx, 0.75, 1.55);
+        display(th.id, 'hoe', cx - 0.58, -1.05, 0.95); display(th.id, 'axe', cx + 0.58, -1.05, 0.95);
+        addLabel(anchorAt(cx, 2.05, -0.9), html, 'top');
+      } else {
+        const cy = ((nT - 1) / 2 - i) * 2.35;
+        addCard(4.1, 2.22, 0, cy, ti);
+        display(th.id, 'water', -1.15, cy - 0.12, 1.45);
+        display(th.id, 'hoe', 0.45, cy - 0.12, 1.0); display(th.id, 'axe', 1.45, cy - 0.12, 1.0);
+        addLabel(anchorAt(-2.0, cy + 1.08, -0.9), html, 'left');
+      }
+    } else if (state.mode === 'all') {
+      const per = P ? 3 : 9, rows = Math.ceil(9 / per), gx = P ? 1.25 : 1.0, gy = 1.12;
+      const W = per * gx + 0.3, H = rows * gy + (P ? 0.95 : 0.55), cy = ((nT - 1) / 2 - i) * (H + (P ? 0.12 : 0.62));
+      addCard(W, H, 0, cy, ti);
+      TOOLS.forEach((tl, j) => display(th.id, tl.id, ((j % per) - (per - 1) / 2) * gx, cy + (rows - 1) * gy / 2 - Math.floor(j / per) * gy - (P ? 0.32 : 0.12), 0.95));
+      addLabel(P ? anchorAt(-W / 2 + 0.05, cy + H / 2 - 0.03, -0.9) : anchorAt(0, cy + H / 2 + 0.02, -0.9), html, P ? 'left' : 'top');
+    } else {
+      const animals = P ? ['fox', 'bear'] : ['fox', 'rabbit', 'cat', 'bear'], gx = 1.95, cols = animals.length;
+      const W = cols * gx + 0.3, H = 2.7, cy = ((nT - 1) / 2 - i) * (H + 0.12);
+      addCard(W, H, 0, cy, ti);
+      animals.forEach((an, j) => { const ch = holdChar(th.id, state.tool, an, (j - (cols - 1) / 2) * gx, cy - 1.3, 0.5); if (state.spin) spinners.push({ pivot: ch, base: 0.5, amp: 0.7 }); });
+      addLabel(anchorAt(-W / 2 + 0.05, cy + H / 2 - 0.05, -0.9), html, 'left');
+    }
+  });
+  if (!state.spin) spinners = [];
+  tintCards(); fit(state.mode === 'hold' ? 0.1 : 0.16, 1.06);
+}
+
+function buildWingScene() {
+  clearWorld();
+  const animals = state.animals.wing, P = portrait(), gx = 2.25, gy = 2.35, nA = animals.length, nD = WINGS.length, rot = viewOf('wing');
+  WINGS.forEach((w, i) => animals.forEach((an, j) => {
+    const A = ANIMALS[an], k = kOf(A), ch = buildAnimal(A), holder = new THREE.Group(), bk = backAnchor(k.bs, k.R, k.bodyY);
+    holder.position.set(bk.x, bk.y, bk.z); const wg = buildWings(w, k); holder.add(wg); ch.add(holder); flaps.push(...wg.userData.flaps);
+    const gr = new THREE.Group(); gr.add(ch); gr.rotation.y = rot;
+    const x = P ? (j - (nA - 1) / 2) * gx : (i - (nD - 1) / 2) * gx * 1.2, y = P ? ((nD - 1) / 2 - i) * gy : ((nA - 1) / 2 - j) * gy;
+    gr.position.set(x, y - 1.0, 0); world.add(gr);
+    if (j === 0) {
+      addCard(P ? nA * gx : gx * 1.15, P ? gy - 0.1 : nA * gy - 0.1, P ? 0 : x, P ? y : 0, i, -1.4);
+      const s = statsOf(wg);
+      addLabel(P ? anchorAt(-nA * gx / 2 + 0.05, y + gy / 2 - 0.1, -1.4) : anchorAt(x, nA * gy / 2 - 0.05, -1.4), tagHtml(w.name, w.sub, `메시 ${s.meshes} · 굽기 후 ${s.calls}콜 · 색 ${s.colors}`), P ? 'left' : 'top');
+    }
+  }));
+  tintCards(); fit(0.08, 1.05, 0.1);
+}
+
+function buildPinScene() {
+  clearWorld();
+  const animals = state.animals.pin, P = portrait(), gx = P ? 0.95 : 1.05, nA = animals.length, rot = viewOf('pin'), focus = new THREE.Box3(), gy = P ? 1.25 : 1.2;
+  PINS.forEach((pd, i) => {
+    const cx = P ? 0 : (i - 1) * (nA * gx + 0.15), cy = P ? (1 - i) * gy : 0;
+    addCard(nA * gx + 0.05, gy - 0.06, cx, cy + 0.05, i, -1.0);
+    animals.forEach((an, j) => {
+      const A = ANIMALS[an], ch = buildAnimal(A), pin = buildPin(pd, A.HR); pin.position.set(0, A.HY, 0); ch.add(pin);
+      if (P) ch.children.forEach(c => { if (c !== ch.userData.head && c !== pin) c.visible = false; });   // 세로 화면: 머리만(줄끼리 몸이 겹치지 않게)
+      ch.rotation.y = rot; ch.position.set(cx + (j - (nA - 1) / 2) * gx, cy - A.HY - 0.12, 0); world.add(ch);
+      ch.updateMatrixWorld(true); focus.expandByObject(ch.userData.head); focus.expandByObject(pin);
+    });
+    const s = statsOf(buildPin(pd, 0.37));
+    addLabel(P ? anchorAt(cx - (nA * gx) / 2 + 0.03, cy + gy / 2 - 0.08, -1.0) : anchorAt(cx, cy + gy / 2 + 0.06, -1.0), tagHtml(pd.name, pd.sub, `메시 ${s.meshes} · ${s.calls}콜`), P ? 'left' : 'top');
+  });
+  tintCards();
+  world.updateMatrixWorld(true);
+  focus.expandByScalar(0.08); focus.max.y += 0.12;
+  fit(0.05, 1.0, 0, focus);
+}
+
+function buildArchScene() {
+  clearWorld();
+  const P = portrait(), rot = viewOf('arch');
+  ARCHES.forEach((ad, i) => {
+    const cx = P ? 0 : (i - 1) * 4.9, cy = P ? (1 - i) * 3.7 : 0;
+    const CH = P ? 3.6 : 3.15; addCard(4.7, CH, cx, cy + (P ? 0.35 : 0.2), i, -2.6);
+    const site = new THREE.Group(); site.position.set(cx, cy - 1.15, 0); site.rotation.y = rot; world.add(site);
+    const patch = M(new THREE.CylinderGeometry(2.25, 2.3, 0.08, 28), clay(0x9dcc78), 0.35, -0.04, 0); patch.receiveShadow = true; site.add(patch);
+    const arch = buildArch(ad); site.add(arch);
+    const ch = buildAnimal(ANIMALS[state.animals.arch[0] || 'fox']); ch.position.set(1.95, 0, 0.4); ch.rotation.y = -0.4; site.add(ch);
+    const s = statsOf(arch);
+    addLabel(P ? anchorAt(cx - 2.3, cy + 0.35 + CH / 2 - 0.05, -2.6) : anchorAt(cx, cy + 0.2 + CH / 2 - 0.02, -2.6), tagHtml(ad.name, ad.sub, `메시 ${s.meshes} · 색 ${s.colors} · 굽기 후 ${s.calls}콜`), P ? 'left' : 'top');
+  });
+  tintCards(); fit(0.2, 1.04);
+}
+
+// 카메라 맞춤
+const _box = new THREE.Box3(), _s = new THREE.Vector3(), _c = new THREE.Vector3();
+function fit(elev, pad = 1.08, lift = 0, box = null) {
+  world.updateMatrixWorld(true);
+  if (box) _box.copy(box); else { _box.setFromObject(world); _box.min.y -= 0.3; _box.max.y += 0.45; }
+  if (portrait()) _box.max.y += (_box.max.y - _box.min.y) * 0.06;   // 세로 화면: 위 HUD 자리
+  _box.getSize(_s); _box.getCenter(_c);
+  const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), aspect = innerWidth / viewH();
+  const d = Math.max(_s.y / (2 * t), _s.x / (2 * t * aspect)) * pad + _s.z / 2;
+  controls.target.set(_c.x, _c.y + lift, _c.z);
+  camera.position.set(_c.x, _c.y + lift + Math.sin(elev) * d, Math.cos(elev) * d); controls.update();
+}
+
+// ── 조명·HUD·UI ──
+function applyLight() {
+  const bg = state.night ? 0x1c2147 : 0xe6e9f3;
+  scene.background = new THREE.Color(bg); document.body.style.background = '#' + bg.toString(16).padStart(6, '0');
+  hemi.color.set(state.night ? 0x5a68a8 : 0xe6f2ff); hemi.intensity = state.night ? 1.05 : 1.6;
+  sun.color.set(state.night ? 0x8fa0f0 : 0xfff1dc); sun.intensity = state.night ? 0.55 : 1.6;
+  moon.intensity = state.night ? 0.6 : 0;
+  glowMats.forEach(({ m, k }) => m.emissiveIntensity = state.night ? k * 1.6 : k * 0.08);
+  tintCards();
+}
+const hud = $('#hud'); hud.classList.add('min'); hud.onclick = () => hud.classList.toggle('min');
+function setHud() {
+  const head = { tool: '⭐ 별빛 도구 세트', wing: '🦋 별빛 우정 날개', pin: '💗 우정 하트핀', arch: '🌈 무지개 우정 아치' }[state.tab];
+  let more = '';
+  if (state.tab === 'tool') more = '모양만 바뀐다(쥐는 자리·모션 그대로)<br>' + THEMES.map(t => { const s = themeStats[t.id]; return `${t.ico} ${t.name}: 메시 ${s.meshAvg} · ${s.callAvg}콜(최대 ${s.callMax}) · 삼각형 ${s.triAvg}`; }).join('<br>') + `<br>⚪ 기본: 메시 ${themeStats.base.meshAvg} · ${themeStats.base.callAvg}콜`;
+  else if (state.tab === 'wing') more = 'back 슬롯(anchors.backAnchor) · 망토와 택1<br>천천히 날갯짓(게임에선 걸을 때 조금 빨라짐)';
+  else if (state.tab === 'pin') more = 'head 슬롯 · earSafe low — star_pin 과 같은 자리(옆머리 앞쪽 낮게)<br>🐱 고양이 귀 밑동(0.46·HR)이 가장 낮다 — 같이 확인';
+  else more = '집 앞 야외 장식 · 걸어서 지나가는 크기(폭 ~2.5 · 높이 ~2.4)<br>여우 옆에 세워 크기 비교 · 등불은 밤에만 켜짐';
+  hud.innerHTML = `<b class="t">ℹ️ ${head} (눌러서 펼침)</b><div class="more">${more}<br><small>비매품 · 친구 추천 보상 · 외형만</small></div>`;
+}
+function syncUI() {
+  $$('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === state.tab));
+  $$('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === state.mode));
+  $$('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === state.tool));
+  $('#toolRow').classList.toggle('hide', state.tab !== 'tool');
+  $('#toolPickRow').classList.toggle('hide', state.tab !== 'tool' || state.mode !== 'hold');
+  $('#viewRow').classList.toggle('hide', state.tab === 'tool');
+  if (state.tab !== 'tool') {
+    const v = VIEWS[state.tab], cur = v[state.view] ? state.view : Object.keys(v)[0];
+    $('#views').innerHTML = Object.entries(v).map(([k, [n]]) => `<button data-view="${k}" class="${k === cur ? 'on' : ''}">${n}</button>`).join('');
+    const sel = state.animals[state.tab];
+    $('#animals').innerHTML = Object.values(ANIMALS).map(a => `<button data-animal="${a.id}" class="${sel.includes(a.id) ? 'on' : ''}">${a.ico}</button>`).join('');
+  }
+  $('#night').checked = state.night; $('#spin').checked = state.spin; $('#withBase').checked = state.withBase;
+}
+function rebuild() {
+  ({ tool: buildToolScene, wing: buildWingScene, pin: buildPinScene, arch: buildArchScene })[state.tab]();
+  applyLight(); setHud(); syncUI();
+}
+$('#toolPick').innerHTML = TOOLS.map(t => `<button data-tool="${t.id}">${t.name}</button>`).join('');
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.tab) { if (state.tab !== b.dataset.tab) state.view = ''; state.tab = b.dataset.tab; rebuild(); }
+  else if (b.dataset.mode) { state.mode = b.dataset.mode; rebuild(); }
+  else if (b.dataset.tool) { state.tool = b.dataset.tool; rebuild(); }
+  else if (b.dataset.view) { state.view = b.dataset.view; rebuild(); }
+  else if (b.dataset.animal) {
+    const a = b.dataset.animal, s = state.animals[state.tab];
+    state.animals[state.tab] = state.tab === 'arch' ? [a] : s.includes(a) ? (s.length > 1 ? s.filter(x => x !== a) : s) : [...s, a].slice(-3);
+    rebuild();
+  }
+});
+$('#night').onchange = e => { state.night = e.target.checked; applyLight(); };
+$('#spin').onchange = e => { state.spin = e.target.checked; rebuild(); };
+$('#withBase').onchange = e => { state.withBase = e.target.checked; rebuild(); };
+
+function resize() {
+  const w = innerWidth, h = viewH();
+  renderer.setSize(w, h); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', () => { resize(); rebuild(); });
+computeThemeStats(); resize(); rebuild();
+
+const _p = V3(0, 0, 0); let simT = 0;
+function step(dt) {
+  simT += dt;
+  if (state.spin) spinners.forEach((s, i) => { s.pivot.rotation.y = s.base + Math.sin(simT * 0.5 + i * 0.4) * (s.amp ?? 0.9); });
+  flaps.forEach(f => { f.rotation.y = 0.22 + Math.sin(simT * 2.2) * 0.13; });
+  anims.forEach(a => {
+    if (a.kind === 'bob') a.obj.position.y = a.base + Math.sin(simT * 1.4 + a.ph) * 0.06;
+    else if (a.kind === 'sway') a.obj.rotation.z = Math.sin(simT * 1.6 + a.ph) * 0.12;
+    else if (a.kind === 'swing') a.obj.rotation.z = Math.sin(simT * 1.2 + a.ph) * 0.1;
+  });
+}
+let lastVH = 0, frames = 0;
+function render() {
+  const vh = viewH(); if (vh !== lastVH) { lastVH = vh; resize(); rebuild(); }
+  controls.update();
+  if (state.night) composer.render(); else renderer.render(scene, camera);
+  labels.forEach(l => { l.obj.getWorldPosition(_p); _p.project(camera);
+    l.el.style.left = (_p.x + 1) / 2 * innerWidth + 'px'; l.el.style.top = (1 - _p.y) / 2 * viewH() + 'px'; l.el.style.display = _p.z < 1 ? '' : 'none'; });
+  if (++frames === 1) window.__ready = true;
+}
+const clock = new THREE.Clock();
+(function loop() { requestAnimationFrame(loop); step(Math.min(0.05, clock.getDelta())); render(); })();
+window.__sim = { state, rebuild, scene, camera, controls, world: () => world, themeStats, statsOf, buildTool, buildWings, buildPin, buildArch, WINGS, PINS, ARCHES, advance(sec) { for (let s = 0; s < sec; s += 1 / 60) step(1 / 60); render(); } };
+</script>
