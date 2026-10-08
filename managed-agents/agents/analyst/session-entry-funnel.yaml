@@ -1,0 +1,20 @@
+agent: agent_01UvMwYwdCjx1ujXXj11svo5
+environment_id: env_013dZsyAKfbN9NFfhpcEbE5H
+vault_ids: [vlt_011CfovbWZuvijWmFmHCijWh]
+title: 입구 이탈 단계 분해
+resources:
+  - type: memory_store
+    memory_store_id: memstore_01Homr26TYEpR5cPDpARSubp
+    access: read_write
+budget: {type: limit, max_list_cost: {currency: USD, amount: "800"}}
+initial_events:
+  - type: user.message
+    content:
+      - type: text
+        text: |
+          심화 분석: 입구 이탈의 단계 분해.
+          원장에 '입구 이탈 59.4%'와 '로그인 화면도 못 지난 164대'까지는 있어요. 그 다음 단계를 봐 주세요:
+          첫 방문 기기가 첫 세션에서 로딩 → 타이틀/로그인(게스트 포함) → 튜토리얼 각 스텝 → 첫 핵심 행동까지 어느 단계에서 몇 대가 빠지는지,
+          그리고 그 이탈이 플랫폼·국가(국내/해외)·기기(모바일/PC)·시기(9/12 전후 등 주요 배포 전후)에 따라 어떻게 다른지.
+          GA4 이벤트 기준, 페르소나가 없는 2026-10-01 이전 데이터로 해 주세요. 사용할 이벤트 이름은 GA4 테이블에서 직접 확인해 주세요.
+          슬랙 채널: C0C7RKY2TGU
