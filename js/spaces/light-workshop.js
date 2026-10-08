@@ -3,7 +3,7 @@
 //  ⚠️ game.js 와 순환 import — 로딩 시점엔 game.js 값을 읽지 않는다(함수 안에서만).
 // =============================================================
 import { makeNameTag, makeSignpost, mergeGeos, obstacles, paintGeo, scene, solidCircle, vtxMat } from '../game.js';
-import { LIGHT_WORKSHOP } from '../data/places.js';
+import { LIGHT_WORKSHOP, LIGHT_WORKSHOP_POND } from '../data/places.js';
 import { buildCartGeos, buildHutGeos } from './light-workshop-hut.js';
 import * as THREE from 'three';
 
@@ -45,7 +45,7 @@ export function buildLightWorkshop() {
   const { solid, glow } = buildHutGeos(THREE);
   const cartAt = new THREE.Matrix4().makeRotationY(Math.PI / 2 - 0.2).setPosition(-1.65, 0, -0.5);   // 왼쪽 박공 옆, 뒤쪽 — 손잡이가 팻말에 닿지 않게
   solid.push(...buildCartGeos(THREE, cartAt));
-  solid.push(paintGeo(baked(new THREE.CircleGeometry(0.9, 20), -2.3, 0.03, 2.3, { rot: [-Math.PI / 2, 0, 0] }), 0x7fb7c9));   // 연못
+  solid.push(paintGeo(baked(new THREE.CircleGeometry(LIGHT_WORKSHOP_POND.r, 20), LIGHT_WORKSHOP_POND.x, 0.03, LIGHT_WORKSHOP_POND.z, { rot: [-Math.PI / 2, 0, 0] }), 0x7fb7c9));   // 연못
   const hut = new THREE.Mesh(mergeGeos(solid), vtxMat());
   hut.castShadow = true; hut.receiveShadow = true; g.add(hut);
   g.add(new THREE.Mesh(mergeGeos(glow), new THREE.MeshBasicMaterial({ color: 0xffe2a0 })));
