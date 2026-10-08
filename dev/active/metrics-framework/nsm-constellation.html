@@ -97,7 +97,7 @@ const plate = document.getElementById('plate');
 
 const S = {
   nsm:   { x: 1000, y: 150, r: 26, tier: 'nsm', label: '북극성: 하루 평균 가꾼 주민 수', sub: '7일간 (주민 × 가꾼 날) ÷ 7', side: 'left',
-           tip: ['결과물 행동 16종 중 하나라도 한 날 = 가꾼 하루', '농사(수확·달걀·꿀) · 낚시·채집 · 만들기(제작·요리·카페·조각·밤사이 가공) · 마을(퀘스트·천문대·밤손님)', '원천 <code>session_logs.counts</code> · 그림자 GA4'] },
+           tip: ['획득 행동 16종 중 하나라도 한 날 = 가꾼 하루', '농사(수확·달걀·꿀) · 낚시·채집 · 만들기(제작·요리·카페·조각·밤사이 가공) · 마을(퀘스트·천문대·밤손님)', '원천 <code>session_logs.counts</code> · 그림자 GA4'] },
   reach: { x: 610, y: 330, r: 15, tier: 'l1', label: '주간 방문 주민 수', sub: '폭 · 몇 명이 오나', side: 'left',
            tip: ['그 주에 세션이 1개 이상인 주민', '신규 + 유지 + 복귀로 나뉜다'] },
   freq:  { x: 860, y: 430, r: 15, tier: 'l1', label: '1인당 방문일', sub: '빈도 · 며칠 오나', side: 'right',
@@ -106,9 +106,9 @@ const S = {
            tip: ['가꾼 (주민×날) ÷ 방문 (주민×날)', '1 − 이 값 = 빈손 방문 비율 (견제 지표)'] },
   newv:  { x: 210, y: 470, r: 9, tier: 'l2', label: '신규 방문', sub: '이번 주 처음', side: 'left',
            tip: ['그 주가 첫 방문인 주민'] },
-  ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 결과물까지 시간', sub: '온보딩 속도', side: 'below',
-           tip: ['첫 세션 시작 → 첫 결과물 이벤트까지 걸린 시간'] },
-  act:   { x: 360, y: 590, r: 12, tier: 'l2', label: '활성화', sub: '신규 중 7일 내 첫 결과물', side: 'below',
+  ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 획득 행동까지 시간', sub: '온보딩 속도', side: 'below',
+           tip: ['첫 세션 시작 → 첫 획득 행동 이벤트까지 걸린 시간'] },
+  act:   { x: 360, y: 590, r: 12, tier: 'l2', label: '활성화', sub: '신규 중 7일 내 첫 획득 행동', side: 'below',
            tip: ['신규 주민 중 첫 7일 안에 가꾼 날이 1일 이상인 비율', '신규 → 유지 사이의 다리. AARRR 의 Activation'] },
   keep:  { x: 520, y: 500, r: 9, tier: 'l2', label: '유지', sub: '지난주에도 방문', side: 'right',
            tip: ['이번 주와 지난주 모두 방문한 주민'] },
@@ -116,10 +116,10 @@ const S = {
            tip: ['2주 이상 오지 않다가 돌아온 주민'] },
   habit: { x: 800, y: 600, r: 9, tier: 'l2', label: '습관 주민 비율', sub: '주 4일 이상 방문', side: 'below',
            tip: ['주 4일 이상 방문한 주민 ÷ 방문 주민'] },
-  mix:   { x: 1095, y: 540, r: 8, tier: 'l2', label: '분야별 결과물 비중', sub: '어디서 가치를 얻나', side: 'below',
+  mix:   { x: 1095, y: 540, r: 8, tier: 'l2', label: '분야별 획득 비중', sub: '어디서 가치를 얻나', side: 'below',
            tip: ['농사 · 낚시채집 · 만들기 · 마을 중 가꾼 날의 구성'] },
   empty: { x: 980, y: 600, r: 8, tier: 'l2', label: '빈손 방문 마지막 위치', sub: '어디서 막혔나', side: 'below',
-           tip: ['결과물 0 인 날의 <code>last_place</code> 분포'] },
+           tip: ['획득 행동이 0 인 날의 <code>last_place</code> 분포'] },
 };
 const CHAINS = [['newv', 'reach'], ['keep', 'reach'], ['back', 'reach'], ['habit', 'freq'], ['mix', 'qual'], ['empty', 'qual'], ['ttfr', 'act']];
 const BRIDGE = [['newv', 'act'], ['act', 'keep']];
