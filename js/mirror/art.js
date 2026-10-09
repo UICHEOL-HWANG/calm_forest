@@ -33,43 +33,51 @@ export function mirrorizeFigure(group) {
   });
 }
 
+const SIGN_X = 2.1;   // 🚏 표지판 기둥 x(돌리기 전) — 판 1.6~2.6 이 지붕 끝 1.4 와 20cm 떨어진다 · 충돌은 layout.js SIGN_POLE.dx(= −SIGN_X)
 export function makeStopShelter(roof, wood) {
   const g = new THREE.Group();
   for (const s of [-1.1, 1.1]) put(g, new THREE.CylinderGeometry(0.09, 0.11, 2.3, 6), wood, s, 1.15, -0.4);
   put(g, new THREE.BoxGeometry(2.8, 0.16, 1.3), roof, 0, 2.36, -0.25).rotation.x = 0.12;
   put(g, new THREE.BoxGeometry(1.8, 0.12, 0.45), wood, 0, 0.48, -0.55);
-  put(g, new THREE.CylinderGeometry(0.06, 0.06, 2.6, 6), 0x8a8f99, 1.7, 1.3, 0.2);
-  put(g, new THREE.BoxGeometry(1.0, 0.4, 0.06), 0xfff8ea, 1.7, 2.4, 0.2);
+  put(g, new THREE.CylinderGeometry(0.06, 0.06, 2.2, 6), 0x8a8f99, SIGN_X, 1.1, 0.2);   // 지붕(x ±1.4) 밖 — 1.7 이면 판(폭 1.0)이 지붕 모서리를 파고들었다 · 기둥(지름 12cm)이 판(두께 6cm)보다 굵어 판 아래 끝(2.2)에서 멈춘다 — 판 위까지 올리면 그림을 세로로 가로질렀다(2026-10-10 지적)
+  put(g, new THREE.BoxGeometry(1.0, 0.4, 0.06), 0x3f63a8, SIGN_X, 2.4, 0.2);   // 판도 얼굴과 같은 파랑 — 흰 판 테두리가 튀어나와 보였다
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
 }
 
-/** 🚏 표지판 얼굴 — 빈 흰 판은 뒷면처럼 읽힌다(조명 받는 재질 — Basic 흰색은 블룸). 판(1.7, 2.4, 0.2) 앞뒤에 그림 한 장씩, 한 메시(드로우콜 1).
- *  정류장과 같은 로컬 좌표 — 마을은 shelter 에, 거울 쪽은 굽기(bakeGroup)가 텍스처를 버리니 같은 변환의 그룹에 따로 단다 */
+/** 🚏 표지판 얼굴 — 빈 흰 판은 뒷면처럼 읽힌다. 판(SIGN_X, 2.4, 0.2) 앞뒤에 그림 한 장씩.
+ *  마을 정류장은 조명 받는 재질 한 메시 · 거울 쪽은 연못과 한 장(아틀라스)으로 합쳐 드로우콜 1 을 아낀다(makeMirrorPond) */
+function drawSign(x, ox, oy, light) {   // 256×104 — 파란 바탕(흰 판은 블룸 0.85 에 번진다) + 크림 원 + 🚏
+  x.fillStyle = '#3f63a8'; x.fillRect(ox, oy, 256, 104);
+  x.fillStyle = light; x.beginPath(); x.arc(ox + 128, oy + 52, 42, 0, Math.PI * 2); x.fill();
+  x.font = '64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🚏', ox + 128, oy + 56);
+}
+function mergeGeos(geos) {   // non-indexed position·normal·uv 이어 붙이기
+  const out = new THREE.BufferGeometry();
+  for (const k of ['position', 'normal', 'uv']) {
+    const size = geos[0].attributes[k].itemSize, arr = new Float32Array(geos.reduce((n, g) => n + g.attributes[k].array.length, 0));
+    let off = 0; for (const g of geos) { arr.set(g.attributes[k].array, off); off += g.attributes[k].array.length; }
+    out.setAttribute(k, new THREE.BufferAttribute(arr, size));
+  }
+  geos.forEach(g => g.dispose());
+  return out;
+}
+function signFaceGeometry() {
+  return mergeGeos([1, -1].map(s => {
+    const p = new THREE.PlaneGeometry(0.96, 0.36).toNonIndexed();
+    if (s < 0) p.rotateY(Math.PI);
+    p.translate(SIGN_X, 2.4, 0.2 + s * 0.032);   // 판 겉면(±0.03)에 붙인다 — 띄우면 비스듬히 볼 때 따로 놀아 보인다(2026-10-09 지적)
+    return p;
+  }));
+}
 let _signTex = null;
 export function makeStopSignFace() {
   if (!_signTex) {
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 104;
-    const x = cv.getContext('2d');
-    x.fillStyle = '#3f63a8'; x.fillRect(0, 0, 256, 104);   // 파란 바탕 — 흰 판은 블룸(0.85)에 번진다
-    x.fillStyle = '#f4ecd8'; x.beginPath(); x.arc(128, 52, 42, 0, Math.PI * 2); x.fill();
-    x.font = '64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🚏', 128, 56);
+    drawSign(cv.getContext('2d'), 0, 0, '#f4ecd8');
     _signTex = new THREE.CanvasTexture(cv); _signTex.colorSpace = THREE.SRGBColorSpace;
   }
-  const W = 0.96, H = 0.36, geos = [1, -1].map(s => {
-    const p = new THREE.PlaneGeometry(W, H).toNonIndexed();
-    if (s < 0) p.rotateY(Math.PI);
-    p.translate(1.7, 2.4, 0.2 + s * 0.05);   // 판 겉면(±0.03)에서 2cm — 멀리서 z-파이팅 없게
-    return p;
-  });
-  const merged = new THREE.BufferGeometry();
-  for (const k of ['position', 'normal', 'uv']) {
-    const size = geos[0].attributes[k].itemSize, arr = new Float32Array(geos.reduce((n, g) => n + g.attributes[k].array.length, 0));
-    let off = 0; for (const g of geos) { arr.set(g.attributes[k].array, off); off += g.attributes[k].array.length; }
-    merged.setAttribute(k, new THREE.BufferAttribute(arr, size));
-  }
-  geos.forEach(g => g.dispose());
-  const m = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ map: _signTex, roughness: 0.9 }));
+  const m = new THREE.Mesh(signFaceGeometry(), new THREE.MeshStandardMaterial({ map: _signTex, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));   // polygonOffset — 판 겉면과 2mm, 멀리서 깜빡이지 않게
   m.name = 'stopSignFace';
   return m;
 }
@@ -162,9 +170,9 @@ function makeMirrorCeiling() {
   root.position.set(MIRROR_CEILING.x, MIRROR_CEILING.y, MIRROR_CEILING.z);
   return root;
 }
-/** 🪞 연못 — 낮 하늘이 비친 수면 + 가장자리에서 안쪽으로 거꾸로 선 집·나무 + 물결 링(기존 연못 빛 위에 한 장) */
-function makeMirrorPond() {
-  const tex = canvasTex(256, (x) => {
+/** 🪞 연못 — 낮 하늘이 비친 수면 + 가장자리에서 안쪽으로 거꾸로 선 집·나무 + 물결 링(기존 연못 빛 위에 한 장) · 🚏 거울 정류장 표지판 얼굴도 같은 메시 */
+function makeMirrorPond(stopAt) {
+  const tex = canvasTex(512, (x) => {   // 왼쪽 위 256² = 연못 · 오른쪽 위 256×104 = 🚏 표지판 얼굴(아래 절반은 비운다)
     x.save(); x.beginPath(); x.arc(128, 128, 126, 0, Math.PI * 2); x.clip();
     const gr = x.createRadialGradient(128, 128, 10, 128, 128, 128); gr.addColorStop(0, '#bcdbe6'); gr.addColorStop(1, '#86bcd8');
     x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
@@ -181,9 +189,13 @@ function makeMirrorPond() {
     for (const r of [40, 70, 100]) { x.beginPath(); x.arc(128, 128, r, 0, Math.PI * 2); x.stroke(); }
     x.restore();
     x.strokeStyle = '#c89eff'; x.lineWidth = 6; x.beginPath(); x.arc(128, 128, 124, 0, Math.PI * 2); x.stroke();   // 연못 빛 테두리(P.pondGlow)
+    drawSign(x, 256, 0, '#d8d0bc');   // 무광(Basic)이라 크림 원을 한 톤 눌렀다(블룸)
   });
-  const m = new THREE.Mesh(new THREE.CircleGeometry(3, 40), new THREE.MeshBasicMaterial({ map: tex }));
-  m.name = 'mirrorPond'; m.rotation.x = -Math.PI / 2; m.position.y = 0.05;
+  const atlas = (g, u0, v0, du, dv) => { const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) * du, v0 + uv.getY(k) * dv); return g; };
+  const pond = atlas(new THREE.CircleGeometry(3, 40).toNonIndexed().rotateX(-Math.PI / 2).translate(0, 0.05, 0), 0, 0.5, 0.5, 0.5);
+  const sign = atlas(signFaceGeometry().applyMatrix4(stopAt), 0.5, 1 - 104 / 512, 0.5, 104 / 512);
+  const m = new THREE.Mesh(mergeGeos([pond, sign]), new THREE.MeshBasicMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  m.name = 'mirrorPond';
   return m;
 }
 
@@ -211,8 +223,7 @@ export function buildMirrorWorld() {
   // 🏮 등불 기둥
   { const { x, z } = LM.lamp; put(solid, new THREE.CylinderGeometry(0.12, 0.16, 3.2, 6), P.wood, x, 1.6, z); put(glow, new THREE.BoxGeometry(0.6, 0.7, 0.6), P.lampGlow, x, 3.4, z); }
   // 🚏 거울 정류장(지붕이 남쪽, 앞이 북쪽 연못을 본다)
-  { const sh = makeStopShelter(P.roofA, P.wood); sh.position.set(LM.stop.x, 0, LM.stop.z); sh.rotation.y = Math.PI; solid.add(sh);
-    const face = makeStopSignFace(); face.position.copy(sh.position); face.rotation.y = Math.PI; group.add(face); }
+  { const sh = makeStopShelter(P.roofA, P.wood); sh.position.set(LM.stop.x, 0, LM.stop.z); sh.rotation.y = Math.PI; solid.add(sh); }   // 표지판 얼굴은 연못 아틀라스에(makeMirrorPond)
   // 집 3 — 창문은 같은 변환의 glow 그룹에
   HOUSES.forEach((h, i) => {
     const s = placed(solid, h.x, h.z, h.ry), w = placed(glow, h.x, h.z, h.ry);
@@ -227,7 +238,9 @@ export function buildMirrorWorld() {
   const body = new THREE.Mesh(bakeGroup(solid), new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   body.castShadow = true; body.receiveShadow = true;
   group.add(body, new THREE.Mesh(bakeGroup(glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
-  group.add(makeMirrorCeiling(), makeMirrorPond());
+  const ceiling = makeMirrorCeiling(); ceiling.visible = false;   // ⚡ 도착 연출 동안만 켠다(js/spaces/mirror.js) — 플레이 카메라는 하늘을 못 보는데 3콜을 먹었다(QA M8 66>60)
+  const stopAt = new THREE.Matrix4().makeRotationY(Math.PI).setPosition(LM.stop.x, 0, LM.stop.z);
+  group.add(ceiling, makeMirrorPond(stopAt));
   // 오로라 1 · 반딧불 1
   const aur = new THREE.Mesh(new THREE.PlaneGeometry(120, 14), new THREE.MeshBasicMaterial({ color: 0x9ec8ff, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
   aur.position.set(0, 30, -70); aur.rotation.z = 0.08; group.add(aur);
@@ -246,5 +259,5 @@ export function buildMirrorWorld() {
     for (const g of items.values()) if (g.visible) g.rotation.y = t * 1.2;
     npcAnchors.forEach((a, i) => { a.position.y = Math.sin(t * 1.6 + i) * 0.08; });
   };
-  return { group, items, npcAnchors, beam, update };
+  return { group, items, npcAnchors, beam, ceiling, update };
 }
