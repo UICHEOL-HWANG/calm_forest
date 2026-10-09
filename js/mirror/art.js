@@ -7,7 +7,7 @@
 //  ⚠️ 블룸 임계 0.85 — 흰 발광 금지(연못·등불은 채도 있는 파스텔)
 // =============================================================
 import * as THREE from 'three';
-import { bakeGroup } from '../dream/art.js';
+import { bakeGroup, part } from '../dream/art.js';
 import { LANDMARKS, HOUSES, SPOTS, RING_TREES } from './layout.js';
 import { invertColorPure } from './art-color.js';
 export { invertColorPure as invertColor };
@@ -42,6 +42,36 @@ export function makeStopShelter(roof, wood) {
   put(g, new THREE.BoxGeometry(1.0, 0.4, 0.06), 0xfff8ea, 1.7, 2.4, 0.2);
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
+}
+
+/** 🚏 표지판 얼굴 — 빈 흰 판은 뒷면처럼 읽힌다(조명 받는 재질 — Basic 흰색은 블룸). 판(1.7, 2.4, 0.2) 앞뒤에 그림 한 장씩, 한 메시(드로우콜 1).
+ *  정류장과 같은 로컬 좌표 — 마을은 shelter 에, 거울 쪽은 굽기(bakeGroup)가 텍스처를 버리니 같은 변환의 그룹에 따로 단다 */
+let _signTex = null;
+export function makeStopSignFace() {
+  if (!_signTex) {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 104;
+    const x = cv.getContext('2d');
+    x.fillStyle = '#3f63a8'; x.fillRect(0, 0, 256, 104);   // 파란 바탕 — 흰 판은 블룸(0.85)에 번진다
+    x.fillStyle = '#f4ecd8'; x.beginPath(); x.arc(128, 52, 42, 0, Math.PI * 2); x.fill();
+    x.font = '64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🚏', 128, 56);
+    _signTex = new THREE.CanvasTexture(cv); _signTex.colorSpace = THREE.SRGBColorSpace;
+  }
+  const W = 0.96, H = 0.36, geos = [1, -1].map(s => {
+    const p = new THREE.PlaneGeometry(W, H).toNonIndexed();
+    if (s < 0) p.rotateY(Math.PI);
+    p.translate(1.7, 2.4, 0.2 + s * 0.05);   // 판 겉면(±0.03)에서 2cm — 멀리서 z-파이팅 없게
+    return p;
+  });
+  const merged = new THREE.BufferGeometry();
+  for (const k of ['position', 'normal', 'uv']) {
+    const size = geos[0].attributes[k].itemSize, arr = new Float32Array(geos.reduce((n, g) => n + g.attributes[k].array.length, 0));
+    let off = 0; for (const g of geos) { arr.set(g.attributes[k].array, off); off += g.attributes[k].array.length; }
+    merged.setAttribute(k, new THREE.BufferAttribute(arr, size));
+  }
+  geos.forEach(g => g.dispose());
+  const m = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ map: _signTex, roughness: 0.9 }));
+  m.name = 'stopSignFace';
+  return m;
 }
 
 function star(r1, r2) { const s = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? r2 : r1, a = i / 10 * Math.PI * 2 + Math.PI / 2; if (i) s.lineTo(Math.cos(a) * r, Math.sin(a) * r); else s.moveTo(Math.cos(a) * r, Math.sin(a) * r); } return s; }
@@ -94,6 +124,69 @@ function cover(parent, s, P, i) {
 }
 
 /** 거울 마을 전체 — group 은 MIRROR 좌표에 놓는다 */
+// ── 🌤️ 거울 천장 · 연못에 비친 낮 마을 (스펙 §3 "하늘엔 거꾸로 매달린 낮 마을" — 시안 sims/mirror-sky-sheep-sim.html C-3 확정, 2026-10-09)
+//   플레이 카메라(41°)는 하늘을 못 본다 → 천장은 도착 연출(ride.js 올려다보기)에서, 마을 안에선 연못이 낮 마을을 비춘다
+//   ⚠️ 블룸 임계 0.85 — 낮 색은 한 톤 눌렀다 · 안개 밖(fog:false) · 드로우콜 3(천장 땅·천장 조형·연못)
+const DAY = { grass: '#8fc79a', grassEdge: '#7ab68a', path: '#d8c49a', walls: [0xe0c4a2, 0xdccfb0, 0xd6bb9c], roofs: [0xd47a74, 0x7aa0d8, 0xd89a5c], leaf: 0x6fae6a, trunk: 0x9a7350 };
+export const MIRROR_CEILING = Object.freeze({ x: 30, y: 20, z: 2, scale: 0.75 });   // 로컬 — 도착 카메라(서쪽에서 동쪽)가 올려다보는 자리
+function canvasTex(size, draw) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = size; draw(cv.getContext('2d'));
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function makeMirrorCeiling() {
+  const root = new THREE.Group(); root.name = 'mirrorCeiling';
+  const tex = canvasTex(256, (x) => {
+    const gr = x.createRadialGradient(128, 128, 20, 128, 128, 128);
+    gr.addColorStop(0, DAY.grass); gr.addColorStop(0.75, DAY.grassEdge); gr.addColorStop(1, 'rgba(46,40,88,0)');   // 가장자리는 안개색으로 사라진다
+    x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+    x.strokeStyle = DAY.path; x.lineWidth = 10; x.beginPath(); x.arc(128, 128, 60, 0, Math.PI * 1.6); x.stroke();
+  });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(34, 48), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+  disc.rotation.x = -Math.PI / 2; root.add(disc);
+  const town = new THREE.Group();
+  const box = (geo, c, x, y, z) => part(town, geo, c, x, y, z);
+  [[-12, -4], [10, -9], [2, 12], [-4, -15], [16, 6]].forEach(([x, z], i) => {
+    box(new THREE.BoxGeometry(3.3, 2.42, 2.86), DAY.walls[i % 3], x, 1.21, z);
+    box(new THREE.ConeGeometry(2.64, 1.65, 4), DAY.roofs[i % 3], x, 3.25, z).rotation.y = Math.PI / 4;
+  });
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * Math.PI * 2, x = Math.cos(a) * 22, z = Math.sin(a) * 22;
+    box(new THREE.CylinderGeometry(0.2, 0.26, 1.56, 5), DAY.trunk, x, 0.78, z);
+    box(new THREE.ConeGeometry(1.17, 2.6, 6), DAY.leaf, x, 2.6, z);
+  }
+  box(new THREE.CylinderGeometry(0.7, 0.85, 7, 8), 0xdcd0c0, -18, 3.5, 10);   // 🗼 등대
+  box(new THREE.ConeGeometry(1.0, 1.4, 8), DAY.roofs[0], -18, 7.7, 10);
+  root.add(new THREE.Mesh(bakeGroup(town), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false })));
+  root.rotation.z = Math.PI;   // 위아래 뒤집어 매단다
+  root.scale.setScalar(MIRROR_CEILING.scale);
+  root.position.set(MIRROR_CEILING.x, MIRROR_CEILING.y, MIRROR_CEILING.z);
+  return root;
+}
+/** 🪞 연못 — 낮 하늘이 비친 수면 + 가장자리에서 안쪽으로 거꾸로 선 집·나무 + 물결 링(기존 연못 빛 위에 한 장) */
+function makeMirrorPond() {
+  const tex = canvasTex(256, (x) => {
+    x.save(); x.beginPath(); x.arc(128, 128, 126, 0, Math.PI * 2); x.clip();
+    const gr = x.createRadialGradient(128, 128, 10, 128, 128, 128); gr.addColorStop(0, '#bcdbe6'); gr.addColorStop(1, '#86bcd8');
+    x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    for (const [cx, cy, r] of [[95, 110, 16], [112, 104, 20], [130, 112, 14], [165, 150, 12], [178, 146, 15]]) { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill(); }
+    const css = (c) => `#${c.toString(16).padStart(6, '0')}`;
+    [[0.3, 0], [1.5, -1], [2.4, 1], [3.4, -1], [4.3, 2], [5.4, -1]].forEach(([a, i]) => {
+      x.save(); x.translate(128 + Math.cos(a) * 126, 128 + Math.sin(a) * 126); x.rotate(a + Math.PI / 2);   // 물가 → 안쪽으로 비친다
+      if (i >= 0) { x.fillStyle = css(DAY.walls[i]); x.fillRect(-16, 0, 32, 24); x.fillStyle = css(DAY.roofs[i]); x.beginPath(); x.moveTo(-22, 24); x.lineTo(0, 44); x.lineTo(22, 24); x.fill(); }
+      else { x.fillStyle = css(DAY.trunk); x.fillRect(-3, 0, 6, 12); x.fillStyle = css(DAY.leaf); x.beginPath(); x.moveTo(-13, 12); x.lineTo(0, 40); x.lineTo(13, 12); x.fill(); }
+      x.restore();
+    });
+    x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 3;
+    for (const r of [40, 70, 100]) { x.beginPath(); x.arc(128, 128, r, 0, Math.PI * 2); x.stroke(); }
+    x.restore();
+    x.strokeStyle = '#c89eff'; x.lineWidth = 6; x.beginPath(); x.arc(128, 128, 124, 0, Math.PI * 2); x.stroke();   // 연못 빛 테두리(P.pondGlow)
+  });
+  const m = new THREE.Mesh(new THREE.CircleGeometry(3, 40), new THREE.MeshBasicMaterial({ map: tex }));
+  m.name = 'mirrorPond'; m.rotation.x = -Math.PI / 2; m.position.y = 0.05;
+  return m;
+}
+
 export function buildMirrorWorld() {
   const P = PAL3, group = new THREE.Group(); group.name = 'mirrorWorld';
   const solid = new THREE.Group(), glow = new THREE.Group();
@@ -118,7 +211,8 @@ export function buildMirrorWorld() {
   // 🏮 등불 기둥
   { const { x, z } = LM.lamp; put(solid, new THREE.CylinderGeometry(0.12, 0.16, 3.2, 6), P.wood, x, 1.6, z); put(glow, new THREE.BoxGeometry(0.6, 0.7, 0.6), P.lampGlow, x, 3.4, z); }
   // 🚏 거울 정류장(지붕이 남쪽, 앞이 북쪽 연못을 본다)
-  { const sh = makeStopShelter(P.roofA, P.wood); sh.position.set(LM.stop.x, 0, LM.stop.z); sh.rotation.y = Math.PI; solid.add(sh); }
+  { const sh = makeStopShelter(P.roofA, P.wood); sh.position.set(LM.stop.x, 0, LM.stop.z); sh.rotation.y = Math.PI; solid.add(sh);
+    const face = makeStopSignFace(); face.position.copy(sh.position); face.rotation.y = Math.PI; group.add(face); }
   // 집 3 — 창문은 같은 변환의 glow 그룹에
   HOUSES.forEach((h, i) => {
     const s = placed(solid, h.x, h.z, h.ry), w = placed(glow, h.x, h.z, h.ry);
@@ -133,6 +227,7 @@ export function buildMirrorWorld() {
   const body = new THREE.Mesh(bakeGroup(solid), new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 }));
   body.castShadow = true; body.receiveShadow = true;
   group.add(body, new THREE.Mesh(bakeGroup(glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
+  group.add(makeMirrorCeiling(), makeMirrorPond());
   // 오로라 1 · 반딧불 1
   const aur = new THREE.Mesh(new THREE.PlaneGeometry(120, 14), new THREE.MeshBasicMaterial({ color: 0x9ec8ff, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
   aur.position.set(0, 30, -70); aur.rotation.z = 0.08; group.add(aur);
