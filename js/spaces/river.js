@@ -20,7 +20,7 @@ import { PAL } from '../data/world.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
 import { sendBoatRun } from '../supabase-client.js';
-import { chestGive, chestOutcome, chestPaid, chestToday, placeChest, rollChest } from '../boat-chest.js';
+import { chestGive, chestHintToday, chestOutcome, chestPaid, chestToday, placeChest, rollChest } from '../boat-chest.js';
 import { animateChest, makeChestMesh, setChestNight } from '../boat-chest-art.js';
 import * as THREE from 'three';
 
@@ -180,6 +180,8 @@ export function boatDaily() {
 }
 
 export function boatRunsLeft() { return Math.max(0, BOAT_RUNS_PER_DAY - boatDaily().count); }
+/** 🧰 오늘 보물상자를 아직 건질 수 있나 — 마을 나루터 입구(doors.js)·탑승 안내가 쓴다 */
+export function chestHintNow() { return chestHintToday(gameState.boat, todayStr(), boatRunsLeft()); }
 
 export function boatLampMax() { return BOAT_LAMPS + (gameState.boat.up.hull || 0); }
 
@@ -739,7 +741,7 @@ export function updateRiverInteract() {
   if (Math.hypot(lx, lz + RIVER_DOCK_HALF + 1.4) < 2.6) {
     $w.nearBoat = true;
     const left = boatRunsLeft();
-    return left > 0 ? `🛶 나룻배 타기 (오늘 ${left}/${BOAT_RUNS_PER_DAY}회 남음)` : '🛶 오늘은 다 탔어요. 내일 새 물길이 열려요';
+    return left > 0 ? `🛶 나룻배 타기 (오늘 ${left}/${BOAT_RUNS_PER_DAY}회 남음)${chestHintNow() ? ' · 🧰 보물상자' : ''}` : '🛶 오늘은 다 탔어요. 내일 새 물길이 열려요';
   }
   if (Math.hypot(lx + RIVER_DOCK_HALF - 2, lz - 1.6) < 2.6) {
     $w.nearBoatShop = true;
