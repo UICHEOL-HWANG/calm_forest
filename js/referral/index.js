@@ -64,6 +64,28 @@ async function captureTossEntry({ storage, track }) {
   }
 }
 
+/** 클립보드 복사 — 성공하면 true.
+ *  ① navigator.clipboard ② 막히면(토스·일부 웹뷰) 숨긴 textarea + execCommand('copy').
+ *  토스 SDK setClipboardText 는 쓰지 않는다 — apps-in-toss.config.ts 에 clipboard 권한을 선언해야 하고
+ *  (없으면 SetClipboardTextPermissionError) 선언하면 유저에게 권한 창이 뜬다(2026-10-09 -129 에서 복사 실패). */
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* 아래 고전 방식으로 */ }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.append(ta);
+  try {
+    ta.select();
+    ta.setSelectionRange(0, text.length);   // iOS 웹뷰는 select() 만으로는 범위가 안 잡힌다
+    return document.execCommand('copy');
+  } catch (e) {
+    return false;
+  } finally {
+    ta.remove();
+  }
+}
+
 /** 토스 안에서 보낼 공유 링크 — 친구도 토스 앱에서 바로 열린다(없으면 스토어). 실패하면 null → 웹 링크로 */
 async function tossShareUrl(code) {
   try {
@@ -117,12 +139,7 @@ export async function openInviteSheet({ box, auth, toast, track, shareNative, re
   const view = { guest, loading: !guest, error: false, code: null, active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0 };
   const on = {
     copy: async (url) => {
-      const text = `${MSG.shareText} ${url}`;
-      try {
-        if (IS_TOSS) await (await loadTossSDK()).setClipboardText(text);   // 토스 웹뷰는 navigator.clipboard 가 막힐 수 있다
-        else await navigator.clipboard.writeText(text);
-        toast(MSG.copied);
-      } catch (e) { toast(url); }
+      toast(await copyText(`${MSG.shareText} ${url}`) ? MSG.copied : url);
       track('invite_share', { channel: 'copy' });
     },
     share: async (url) => {
