@@ -2364,7 +2364,7 @@ export const EN = {
   '링크를 복사했어요': 'Link copied',
   '로그인하면 초대 링크를 만들 수 있어요': 'Log in to create an invite link',
   '초대 링크를 불러오지 못했어요. 잠시 후 다시 열어 주세요': "Couldn't load your invite link. Please try again in a moment",
-  '💗 친구가 숲으로 초대했어요! 로그인하면 우정 하트핀을 드려요': '💗 A friend invited you to the forest! Log in to get a Friendship Heart Pin',
+  '💗 친구가 숲으로 초대했어요! 로그인하면\n우정 하트핀을 드려요': '💗 A friend invited you to the forest! Log in to get a Friendship Heart Pin',
   '💗 우정 하트핀이 도착했어요 · 옷장에서 달아 보세요': '💗 Your Friendship Heart Pin has arrived · Put it on in the Wardrobe',
   '초대 선물은 새로 숲에 온 친구만 받을 수 있어요': 'Invite gifts are only for friends who are new to the forest',
   '내 초대 링크로는 받을 수 없어요': "You can't use your own invite link",
