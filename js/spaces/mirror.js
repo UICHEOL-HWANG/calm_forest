@@ -17,7 +17,7 @@ import { NPC_R, PLAYER_R } from '../data/character.js';
 import { buildNPCFigure } from './npc.js';
 import {
   LANDMARKS, NPC_SPOTS, SOLIDS, SOLID_CIRCLES, STOP_SHELTER_BOX, SIGN_POLE, carriageBox, MIRROR_LANDING, MIRROR_STOP_LOCAL, MIRROR_PARK, MIRROR_GATE_LOCAL, STOP_REACH, PICK_R, TALK_R,
-  VILLAGE_BOARD, VILLAGE_PARK, LAKE_GATE, clampWalkable, spotOf,
+  VILLAGE_BOARD, VILLAGE_PARK, VILLAGE_WALL, LAKE_GATE, clampWalkable, spotOf, nearVillageStop,
 } from '../mirror/layout.js';
 import { QUESTS_PER_DAY, normalizeMirror, questAt, rewardFor } from '../mirror/quests.js';
 import { clueText, clueShort, hintText, npcName } from '../mirror/clues.js';
@@ -137,7 +137,7 @@ export function setMirrorVisible(on) { if (world) world.group.visible = on; }
 // ── 마을 정류장 ──────────────────────────────────────────────
 /** doors.js 마을 분기에서 — 정류장 앞이면 { nd, prompt }, 아니면 null */
 export function mirrorVillagePrompt() {
-  if (dist2D(VILLAGE_BOARD, player.position) >= STOP_REACH) { stopShownKey = null; return null; }
+  if (!nearVillageStop(player.position.x, player.position.z)) { stopShownKey = null; return null; }   // 정류장 둘레·마차 옆까지(지붕 뒤에서도)
   const night = isNight(), key = `${todayStr()}:${+night}`;
   if (stopShownKey !== key) { stopShownKey = key; T.stopShown({ prior_visits: mirrorState().visits, night }); }
   if (night) return { nd: null, prompt: '🌙 막차가 끊겼어요 · 꿈의 숲은 침대에서' };
@@ -148,7 +148,7 @@ export function mirrorVillagePrompt() {
 // ── 탑승 ─────────────────────────────────────────────────────
 function routeGo() {
   return {
-    from: { board: VILLAGE_BOARD, park: VILLAGE_PARK, gate: LAKE_GATE },
+    from: { board: VILLAGE_BOARD, park: VILLAGE_PARK, gate: LAKE_GATE, avoid: VILLAGE_WALL },   // avoid — 지붕 뒤에서 타도 벽·마차를 돌아서 걷는다
     to: { gate: { x: MIRROR.x + MIRROR_GATE_LOCAL.x, y: MIRROR_GATE_LOCAL.y, z: MIRROR.z + MIRROR_GATE_LOCAL.z }, park: { ...W(MIRROR_PARK), heading: MIRROR_PARK.heading }, landing: W(MIRROR_LANDING) },
   };
 }
