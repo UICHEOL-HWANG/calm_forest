@@ -51,13 +51,29 @@ export function inviteBanner() {
   return s && pendingInvite(s) ? MSG.banner : null;
 }
 
+// 초대받은 새 친구는 입장 직후 캐릭터 선택 → 🎬 프롤로그 → 안내 모달을 지난다. 연결 결과(💗 하트핀 도착)가
+//   그 사이에 오면 토스트(z 33)가 프롤로그(z 55)·모달 밑에 깔린 채 사라졌다(2026-10-09 녹화 중 발견).
+//   ⇒ 셋 다 닫힐 때까지 미뤘다가 띄운다. 판정이 어긋나 영영 안 닫혀도 3분 뒤엔 띄운다(말은 꼭 한다).
+const ONBOARDING_OPEN = ['body.intro-open', '#char-modal.show', '#tutorial-modal.show'];
+const onboardingBusy = () => ONBOARDING_OPEN.some(sel => document.querySelector(sel));
+function afterOnboarding(fn, { first = 1000, every = 500, maxMs = 180000 } = {}) {
+  const t0 = Date.now();
+  let clear = 0;   // 캐릭터 창이 닫히고 프롤로그(body.intro-open)가 켜지기 전 한 프레임 틈이 있다 → '비었음'을 두 번 연속 봐야 띄운다
+  const tick = () => {
+    clear = onboardingBusy() ? 0 : clear + 1;
+    if (clear >= 2 || Date.now() - t0 >= maxMs) fn(); else setTimeout(tick, every);
+  };
+  setTimeout(tick, first);   // 입장 직후엔 캐릭터 선택 창이 아직 안 열렸을 수 있다 — 한 박자 쉬고 본다
+}
+
 /** enterGame 이후 — 연결·정산. 실패해도 게임엔 영향 없다 */
 export async function referralOnPlay({ auth, toast, track, resync }) {
   if (!enabled()) return;
   const s = store();
   if (!s) return;
+  const quietToast = (m) => afterOnboarding(() => toast(m));
   try {
-    memo.claim = await runOnPlay({ storage: s, call, toast, track, resync, platform: PLATFORM, auth });
+    memo.claim = await runOnPlay({ storage: s, call, toast: quietToast, track, resync, platform: PLATFORM, auth });
   } catch (e) {
     console.warn('[referral] 진입 처리 실패(무시):', e?.message || e);
   }
