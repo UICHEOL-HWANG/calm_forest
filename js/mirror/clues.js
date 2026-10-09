@@ -43,3 +43,32 @@ export function clueShort(q, lang) {
     ? `🔍 ${landmark(s.landmark, 'en')} · ${side} · ${COVER.en[s.cover]} · ${it.ico} ${it.en}`
     : `🔍 ${landmark(s.landmark, 'ko')} ${SIDE_KO[side]} ${COVER.ko[s.cover]} 밑 · ${it.ico} ${it.ko}`;
 }
+
+// ── 🎁 돌려주기(2026-10-09 — 찾으면 대사로 끝나지 말고 주민에게 가져가 마무리 대사를 듣는다) ──
+/** 받침 있으면 a, 없으면 b */
+function josa(w, a, b) { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 ? a : b; }
+/** 주웠을 때 — 누구에게 가져가는지 */
+export function pickedText(q, lang) {
+  const it = item(q.item);
+  return L(lang) === 'en' ? `${it.ico} Found the ${it.en}! · Take it to ${npcName(q.npc, 'en')}` : `${it.ico} ${it.ko}${josa(it.ko, '을', '를')} 찾았어요 · ${npcName(q.npc, 'ko')}에게 가져다줘요`;
+}
+/** 들고 다니는 동안 프롬프트 줄 */
+export function carryShort(q, lang) {
+  const it = item(q.item);
+  return L(lang) === 'en' ? `🎁 Bring the ${it.ico} ${it.en} to ${npcName(q.npc, 'en')}` : `🎁 ${npcName(q.npc, 'ko')}에게 ${it.ico} ${it.ko} 가져다주기`;
+}
+/** 주인 앞 — 누르면 돌려준다 */
+export function giveShort(q, lang) {
+  const it = item(q.item);
+  return L(lang) === 'en' ? `🎁 Give back the ${it.ico} ${it.en}` : `🎁 ${it.ico} ${it.ko} 돌려주기`;
+}
+/** 마무리 대사 — 주민별 말투(사용자 확정안 2026-10-09) */
+const THANKS = {
+  farmer: { ko: (w) => `어이쿠, ${w} 여기 있었네! 덕분에 오늘 밭일이 즐겁겠어요`, en: (w) => `Oh my, there's my ${w}! Farm work will be fun today, thanks to you` },
+  angler: { ko: (w) => `허허, ${w}${josa(w, '이', '가')} 거기 있었구먼. 고맙네`, en: (w) => `Ho ho, so my ${w} was over there. Thank you kindly` },
+  chef:   { ko: (w) => `와, ${w}${josa(w, '이다', '다')}! 고마워요, 다음엔 맛있는 거 해 줄게요`, en: (w) => `Wow, my ${w}! Thank you — I'll cook you something tasty next time` },
+};
+export function thanksText(q, lang) {
+  const it = item(q.item), en = L(lang) === 'en', t = THANKS[q.npc] ?? THANKS.farmer;
+  return `${npcName(q.npc, lang)}: "${en ? t.en(it.en) : t.ko(it.ko)}"`;
+}

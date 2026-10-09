@@ -2,7 +2,7 @@
 // =============================================================
 //  🪞 거울 마을 오프라인 QA — Supabase·GA 차단 헤드리스, 실제 키 입력(CDP)으로 민다
 //  ------------------------------------------------------------
-//  사용: 워크트리 루트를 8033 으로 서빙(python3 scripts/serve.py 8033) 후
+//  사용: 워크트리 루트를 8033 으로 서빙(python3 scripts/serve.py 8033 · 다른 포트면 QA_PORT=) 후
 //        node tools/mirror/qa.mjs [pc|mobile] [CDP 포트=9421] [en]   → .scratch/mirror/qa/*.png + PASS/FAIL
 //  ⚠️ 함정(tools/dream/qa.mjs 와 같다)
 //   · 헤드리스 탭이 hidden 이면 rAF 0 → 포커스 에뮬레이션 + 0.7초마다 bringToFront
@@ -34,7 +34,7 @@ const key = async (code, type) => { const [k, vk] = KEYS[code]; await b.send('In
 const press = async (code) => { await key(code, 'keyDown'); await b.sleep(80); await key(code, 'keyUp'); };
 const hold = async (code, ms) => { await key(code, 'keyDown'); await b.sleep(ms); await key(code, 'keyUp'); };
 const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
-await b.goto(`http://127.0.0.1:8033/?dbg=1&weather=clear&time=0.42${lang ? '&lang=' + lang : ''}`, 9000);
+await b.goto(`http://127.0.0.1:${process.env.QA_PORT || 8033}/?dbg=1&weather=clear&time=0.42${lang ? '&lang=' + lang : ''}`, 9000);
 for (let i = 0; i < 30; i++) { if (await ev(`(() => { const g=document.getElementById('guest-btn'); if (g && g.offsetParent) { g.click(); return true; } return false; })()`) === true) break; await b.sleep(1000); }
 
 await b.sleep(3500);
@@ -114,8 +114,17 @@ for (let n = 1; n <= 3; n++) {
   const spot = await ev(`(async () => (${LY}).spotOf('${q.spot}'))()`);
   if (n === 3) { await ev(`__mirror.tp(${spot.x}, ${spot.z + 4.5})`); await b.sleep(2500); await shot('m5-beam'); }   // 💧 빛기둥이 화면 안에 들게 조금 떨어져서
   await ev(`__mirror.tp(${spot.x}, ${spot.z + 0.35})`);
+  // 🎁 주우면 끝이 아니다 — 주인에게 가져가 돌려줘야 완료(2026-10-09)
+  p = await waitPrompt(/가져다주기|Bring the/);
+  check(`M5.${n}p 주운 뒤 가져다주기 안내 · 아직 미완료`, /가져다주기|Bring the/.test(p) && (await ms()).mirror.done === n - 1, p);
+  if (n === 1) { await b.sleep(800); await shot('m5-carry'); }
+  await ev(`__mirror.tp(${sp.x}, ${sp.z + 1.4})`);
+  p = await waitPrompt(/돌려주기|Give back/);
+  check(`M5.${n}g 주인 앞 돌려주기 프롬프트`, /돌려주기|Give back/.test(p) && (await ms()).nearDoor === 'mirrorgive', p);
+  await press('Space');
   st = await until(async () => { const s = await ms(); return s.mirror.done === n ? s : null; }, 10000) || await ms();
   check(`M5.${n} 의뢰 ${n} 완료`, st.mirror.done === n, JSON.stringify(st.mirror));
+  if (n === 1) { await b.sleep(600); await shot('m5-thanks'); }
 }
 st = await ms();
 check('M5z 보상 합계 = 3+3+2 · 힌트 기록 [3]', st.coins === 8 && JSON.stringify(st.mirror.hinted) === '[3]', JSON.stringify({ coins: st.coins, hinted: st.mirror.hinted }));
@@ -129,10 +138,11 @@ await press('Space'); await until(async () => (await ms()).ride === true, 6000);
 check('M6 마을로 귀환', st.atMirror === false && Math.hypot(st.pos[0] - 16, st.pos[1] - 15.6) < 0.3, JSON.stringify(st.pos));
 // M6w 걸어서 다가가기 — 순간이동(__mirror.stop)만 쓰던 QA 가 놓친 것: 마을(남)·마차(동)에서 걸어오면 지붕 뒤 벽·마차에 막혀
 //      승차 지점 반경 밖에서 멈췄고 안내가 끝내 안 떴다(2026-10-09 페르소나 p32 4/10). 막힐 때까지 걸어 본 뒤 안내를 본다
-const walkUntil = async (code, n = 25) => { for (let i = 0; i < n; i++) { if ((await ms()).nearDoor === 'mirrorgo') return true; await hold(code, 350); } return (await ms()).nearDoor === 'mirrorgo'; };
-await ev('__tp(23.5, 16.6)'); await b.sleep(800);
+const walkUntil = async (code, n = 70) =>   // ⏱️ 헤드리스는 dt 상한 때문에 걸음이 느리다(≈0.4m/s) — 지붕 뒤 5m 를 걸으려면 넉넉히
+   { for (let i = 0; i < n; i++) { if ((await ms()).nearDoor === 'mirrorgo') return true; await hold(code, 350); } return (await ms()).nearDoor === 'mirrorgo'; };
+await ev('__tp(23.5, 16.6)'); await until(async () => (await ms()).nearDoor !== 'mirrorgo', 8000);   // ⏱️ 헤드리스는 느려 0.8초로는 정류장 안내가 안 풀린다 — 걷기 전에 이미 '도착'으로 끝났다
 check('M6w1 마차 동쪽에서 걸어오면 탑승 안내', await walkUntil('ArrowLeft'), JSON.stringify((await ms()).pos));
-await ev('__tp(16, 22)'); await b.sleep(800);
+await ev('__tp(16, 22)'); await until(async () => (await ms()).nearDoor !== 'mirrorgo', 8000);   // ⏱️ 헤드리스는 느려 0.8초로는 정류장 안내가 안 풀린다 — 걷기 전에 이미 '도착'으로 끝났다
 check('M6w2 정류장 지붕 뒤(남)에서 걸어오면 탑승 안내', await walkUntil('ArrowUp'), JSON.stringify((await ms()).pos));
 await b.sleep(800); await shot('m6w-stop-back');
 // 지붕 뒤에서 탄다 — 걷기 단계가 정류장·마차 상자를 뚫지 않아야 한다(돌아서 승차 지점으로)

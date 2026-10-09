@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { rideSchedule, phaseAt } from './ride-schedule.js';
 import { boardPath } from './layout.js';
 
+const CAM_FLOOR = 6.5;  // 이륙~하차 카메라 최소 높이(m) — 마을 나무(≈5)·숲 링 위
 const CEILING_LIFT = 4;   // 내려앉기 시작 때 시선을 드는 높이(m) — 천장(art.js MIRROR_CEILING)이 화면 위쪽에 들어온다
 const smooth = (p) => { const c = Math.min(1, Math.max(0, p)); return c * c * (3 - 2 * c); };
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -18,7 +19,8 @@ function curveFrom(f) {   // 정박 → 문 쪽으로 오르며 → 문 3 앞(�
   const dx = f.gate.x - f.park.x, dz = f.gate.z - f.park.z, len = Math.hypot(dx, dz) || 1;
   return new THREE.CatmullRomCurve3([
     new THREE.Vector3(f.park.x, 0, f.park.z),
-    new THREE.Vector3(f.park.x + dx * 0.35, f.gate.y * 0.55, f.park.z + dz * 0.35),
+    f.over ? new THREE.Vector3(f.over.x, f.over.y, f.over.z)   // 정류장 지붕을 넘어서 — 뚫고 지나가지 않게(2026-10-09)
+      : new THREE.Vector3(f.park.x + dx * 0.35, f.gate.y * 0.55, f.park.z + dz * 0.35),
     new THREE.Vector3(f.gate.x - dx / len * 3, f.gate.y, f.gate.z - dz / len * 3),
     new THREE.Vector3(f.gate.x, f.gate.y, f.gate.z),
   ]);
@@ -28,7 +30,8 @@ function curveTo(t) {     // 문 중심 → 내려오며 → 정박
   return new THREE.CatmullRomCurve3([
     new THREE.Vector3(t.gate.x, t.gate.y, t.gate.z),
     new THREE.Vector3(t.gate.x + dx * 0.4, t.gate.y * 0.9, t.gate.z + dz * 0.4),
-    new THREE.Vector3(t.gate.x + dx * 0.8, 1.2, t.gate.z + dz * 0.8),
+    t.over ? new THREE.Vector3(t.over.x, t.over.y, t.over.z)   // 지붕 위를 지나 정박 자리로 내려앉는다
+      : new THREE.Vector3(t.gate.x + dx * 0.8, 1.2, t.gate.z + dz * 0.8),
     new THREE.Vector3(t.park.x, 0, t.park.z),
   ]);
 }
@@ -58,10 +61,11 @@ export function startRide({ dir, first, route, hooks }) {
     car.rotation.x = -Math.sin(u * Math.PI) * 0.12;
   };
   const sitOn = () => { player.position.copy(seatW()); player.rotation.y = car.rotation.y; playerAnchor.position.y = -0.3; };   // 앉기 포즈(프롤로그·꿈길과 같은 값)
-  function cam(back, lift = 0) {   // 마차 왼쪽 옆에서 — 옆에서 봐야 초승달로 읽힌다(꿈길 실측). 세로 화면은 더 멀리
+  function cam(back, lift = 0, high = 0) {   // 마차 왼쪽 옆에서 — 옆에서 봐야 초승달로 읽힌다(꿈길 실측). 세로 화면은 더 멀리
     const K = Math.max(1, Math.min(2.0, 0.85 / camera.aspect)), yaw = car.rotation.y, dist = 7 + 4 * back;
     _look.copy(player.position); _look.y += 1.0;
     camera.position.set(_look.x - Math.cos(yaw) * dist * K, _look.y + (2.4 + 2.6 * back) * K, _look.z + Math.sin(yaw) * dist * K);
+    const floor = CAM_FLOOR * K; if (high > 0 && camera.position.y < floor) camera.position.y += (floor - camera.position.y) * high;   // 🌲 날아가는 동안은 나무·바위 위에서 — 옆에서 잡다 숲을 뚫고 지나갔다(2026-10-09)
     _look.y += lift * K;   // 🌤️ 시선만 든다(자리는 그대로) — 거울 천장을 올려다봤다가 마차로 내려온다
     camera.lookAt(_look);
   }
@@ -107,24 +111,24 @@ export function startRide({ dir, first, route, hooks }) {
       sitOn();
       const g = smooth((st.t - S.gate[0]) / (S.gate[1] - S.gate[0]));
       hooks.gateFrom.setRise(g); hooks.gateFrom.setOpen(g);
-      cam(ph.p * 0.6);
+      cam(ph.p * 0.6, 0, smooth(ph.p / 0.35));   // 이륙하며 서서히 위로(올라앉기 카메라에서 튀지 않게)
     } else if (ph.name === 'pass') {
       if (st.t < S.flash) { onCurve(A, 0.85 + 0.15 * ph.p, null); }
       else { teleport(); onCurve(B, 0, null); }
       sitOn();
       hooks.flash(Math.sin(ph.p * Math.PI) * 0.9);   // 거울 문 통과 — 보랏빛 번쩍(가장 밝을 때 공간이 바뀐다)
-      cam(0.6, st.teleported && dir === 'go' ? CEILING_LIFT : 0);   // 번쩍 뒤엔 이미 천장을 올려다본다(내려앉기와 이어지게)
+      cam(0.6, st.teleported && dir === 'go' ? CEILING_LIFT : 0, 1);   // 번쩍 뒤엔 이미 천장을 올려다본다(내려앉기와 이어지게)
     } else if (ph.name === 'descend') {
       teleport(); hooks.flash(0);
       const p = smooth(ph.p); onCurve(B, p, route.to.park.heading); sitOn();
       hooks.gateTo.setRise(1 - smooth((ph.p - 0.5) / 0.5));
-      cam(0.6 * (1 - p) + 0.2, dir === 'go' ? CEILING_LIFT * (1 - smooth((ph.p - 0.25) / 0.5)) : 0);   // 거울 마을 도착 — 하늘의 낮 마을을 먼저 보여 준다
+      cam(0.6 * (1 - p) + 0.2, dir === 'go' ? CEILING_LIFT * (1 - smooth((ph.p - 0.25) / 0.5)) : 0, 1);   // 거울 마을 도착 — 하늘의 낮 마을을 먼저 보여 준다
     } else if (ph.name === 'alight') {
       const p = smooth(ph.p), seat = seatW(), lx = route.to.landing.x, lz = route.to.landing.z;
       car.rotation.x = 0;
       player.position.set(seat.x + (lx - seat.x) * p, seat.y * (1 - p) + Math.sin(p * Math.PI) * 0.5, seat.z + (lz - seat.z) * p);
       playerAnchor.position.y = -0.3 * (1 - p);
-      cam(0.2);
+      cam(0.2, 0, 1);
     }
   };
   st.skip = () => finish(true);

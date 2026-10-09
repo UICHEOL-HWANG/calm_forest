@@ -149,14 +149,13 @@ export function makeMoonCarriage() {
   // ⚡ 몸·날개를 각각 한 정점색 메시로 굽는다(양 한 마리 2콜, 🪞 거울 마을 정박 마차까지 ≤60 예산 — 2026-10-08 실측)
   const sheepMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
   const wingMat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.9, flatShading: true, side: THREE.DoubleSide });
-  const reinMat = new THREE.MeshBasicMaterial({ color: 0xffd27a });
   const sheep = [];
   [-0.45, 0.45].forEach((sx) => {
     const s = new THREE.Group(); s.position.set(sx, 1.0, 3.0); root.add(s); sheep.push(s);
-    s.add(new THREE.Mesh(bakeGroup(cloudSheepBody()), sheepMat));
+    const body = cloudSheepBody();
+    part(body, new THREE.CylinderGeometry(0.015, 0.015, 2.0, 4), 0xffd27a, -sx * 0.45, 0.3, -1.0).rotation.x = Math.PI / 2 - 0.2;   // 고삐도 몸과 같이 굽는다(따로 두면 양마다 1콜 — 🪞 예산 60)
+    s.add(new THREE.Mesh(bakeGroup(body), sheepMat));
     s.add(new THREE.Mesh(bakeGroup(featherWings()), wingMat));
-    const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2.0, 4), reinMat);
-    rein.position.set(-sx * 0.45, 0.3, -1.0); rein.rotation.x = Math.PI / 2 - 0.2; s.add(rein);
   });
   root.userData.sheep = sheep;
   root.userData.seatY = 0.62;   // 앉는 높이(플레이어 발바닥 기준)

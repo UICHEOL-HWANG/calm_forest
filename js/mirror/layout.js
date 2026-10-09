@@ -52,7 +52,7 @@ export const MIRROR_GATE_LOCAL = Object.freeze({ x: 0, y: 5.5, z: -2 });   // �
 // 충돌 — 보이는 조형물은 걸어서 뚫고 지나가면 안 된다(2026-10-09 통과 검수 · tests/mirror-collide.test.mjs · 실측 tools/mirror/collide.mjs)
 // 🚏 정류장 상자 — 정류장 중심 기준(지붕 남쪽으로 돌린 makeStopShelter: 기둥 z+0.4 · 벤치 z+0.55) · 마을·거울 정류장 공용
 export const STOP_SHELTER_BOX = Object.freeze({ x1: -1.4, z1: -0.7, x2: 1.4, z2: 0.8 });
-export const SIGN_POLE = Object.freeze({ dx: -1.7, dz: -0.2, r: 0.12 });   // 정류장 표지판 기둥(돌린 뒤)
+export const SIGN_POLE = Object.freeze({ dx: -2.1, dz: -0.2, r: 0.12 });   // 정류장 표지판 기둥(돌린 뒤) — art.js SIGN_X 와 짝(판이 지붕을 파고들어 1.7→2.1, 2026-10-10)
 // 집은 비스듬히 놓여 있어 회전한 벽(3×2.6) 전체를 감싸는 상자 — 축 맞춘 3.2×2.8 로는 모서리를 뚫고 지나갔다
 const houseBox = (h) => { const c = Math.abs(Math.cos(h.ry)), s = Math.abs(Math.sin(h.ry)), hx = 1.5 * c + 1.3 * s, hz = 1.5 * s + 1.3 * c; return { x1: h.x - hx, z1: h.z - hz, x2: h.x + hx, z2: h.z + hz }; };
 const STOP = LANDMARKS.find(l => l.id === 'stop');
