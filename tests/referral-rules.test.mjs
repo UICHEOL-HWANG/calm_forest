@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  readInviteParam, shouldBind, tierView, inviteUrl, bindMessage, keepPendingAfter, TIERS, MSG,
+  readInviteParam, shouldBind, tierView, inviteUrl, tossInvitePath, bindMessage, keepPendingAfter, TIERS, MSG,
 } from '../js/referral/rules.js';
 import { findItem } from '../js/cosmetics/catalog.js';
 import { REWARD_DECOR } from '../js/data/reward-decor.js';
@@ -14,6 +14,20 @@ test('readInviteParam — ?invite= 를 대문자로, 형식이 틀리면 null', 
   assert.equal(readInviteParam('?invite=<script>'), null);
   assert.equal(readInviteParam('?ref=ABCD2345'), null, '?ref 는 GA 캠페인용 — 초대 코드가 아니다');
   assert.equal(readInviteParam(''), null);
+});
+
+test('readInviteParam — 토스 진입 스킴 URL(Environment.initialURL)에서도 읽는다', () => {
+  assert.equal(readInviteParam('intoss://calmforest?invite=abcd2345'), 'ABCD2345');
+  assert.equal(readInviteParam('intoss://calmforest/?_deploymentId=01a1&invite=ABCD2345'), 'ABCD2345');
+  assert.equal(readInviteParam('intoss-private://calmforest?invite=ABCD2345&host=appsInTossHost'), 'ABCD2345');
+  assert.equal(readInviteParam('intoss://calmforest'), null, '쿼리 없는 진입');
+  assert.equal(readInviteParam('intoss://calmforest?invite=ABCD2345#top'), 'ABCD2345', '# 조각은 떼고 읽는다');
+  assert.equal(readInviteParam('intoss://calmforest?invite=FOREST24'), null, 'O 가 들어간 코드는 무효');
+  assert.equal(readInviteParam(undefined), null);
+});
+
+test('tossInvitePath — 토스 공유 링크용 intoss:// 딥링크(getTossShareLink 입력)', () => {
+  assert.equal(tossInvitePath('ABCD2345'), 'intoss://calmforest?invite=ABCD2345');
 });
 
 test('shouldBind — 코드가 있고 로그인 계정(게스트·오프라인 아님)일 때만', () => {

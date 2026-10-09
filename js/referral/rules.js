@@ -39,10 +39,12 @@ export const MSG = Object.freeze({
   shareText: '🌲 고요한 숲에서 같이 플레이하자! 이 링크로 오면 선물이 있어 →',
 });
 
-/** location.search → 초대 코드(대문자) | null */
+/** location.search 또는 토스 진입 스킴 URL(intoss://calmforest?invite=…) → 초대 코드(대문자) | null */
 export function readInviteParam(search) {
   let raw = null;
-  try { raw = new URLSearchParams(search || '').get('invite'); } catch (e) { return null; }
+  const str = String(search || '').split('#')[0];   // # 조각이 코드 끝에 붙으면 형식 검사에서 버려진다
+  const q = str.indexOf('?');   // 전체 URL 이면 ? 뒤만 — 스킴 URL 은 URL() 로 파싱하면 호스트·경로 해석이 브라우저마다 다르다
+  try { raw = new URLSearchParams(q >= 0 ? str.slice(q) : str).get('invite'); } catch (e) { return null; }
   const code = String(raw ?? '').trim().toUpperCase();
   return CODE_RE.test(code) ? code : null;
 }
@@ -60,6 +62,14 @@ export function tierView(active) {
 
 export function inviteUrl(code) {
   return `${WEB_ORIGIN}/?invite=${code}`;
+}
+
+/** 토스 앱인토스 이름 — apps-in-toss.config.ts appName 과 같아야 한다 */
+export const TOSS_APP = 'calmforest';
+/** 토스 안에서 보낼 링크의 딥링크 경로 — getTossShareLink 가 https 공유 링크로 바꿔 준다.
+ *  받는 친구는 토스 앱에서 바로 열리고(없으면 스토어), 진입 URL(Environment.initialURL)에 ?invite= 가 담겨 온다 */
+export function tossInvitePath(code) {
+  return `intoss://${TOSS_APP}?invite=${code}`;
 }
 
 /** bind 결과 → 토스트 문구. null = 말하지 않는다(이미 연결됨·익명·네트워크 실패) */
