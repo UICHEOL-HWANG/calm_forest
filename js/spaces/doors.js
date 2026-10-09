@@ -159,7 +159,8 @@ export function updateDoorInteract() {
   if (atMirror) {      // 🪞 거울 마을: 정류장 돌아가기 / 주민 말 걸기 / 💧 힌트 / 단서 요약(모바일 규칙 — 안내는 프롬프트 줄에만)
     const mp = mirrorPrompt();
     $w.nearDoor = mp.nd;
-    if (mp.prompt !== lastDoorPrompt) { $w.lastDoorPrompt = mp.prompt; ui.setDoorPrompt?.(mp.prompt); }
+    const key = `${mp.nd ? '' : 'i|'}${mp.prompt}`;   // 같은 문구라도 누를 수 있나(말 걸기 자리)·안내뿐인가가 바뀌면 다시 그린다
+    if (key !== lastDoorPrompt) { $w.lastDoorPrompt = key; ui.setDoorPrompt?.(mp.prompt, { info: !mp.nd }); }
     return;   // 존 힌트(의뢰 N/3)는 js/spaces/mirror.js 가 상태표시로 쓴다
   }
   if (atSea) {         // 🌊 바다터: 뭍(남쪽)으로 나가기 / 미니게임 상태 안내
