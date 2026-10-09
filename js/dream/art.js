@@ -101,6 +101,33 @@ export function cloudBedParts(parent, glowParent = null) {
 
 /** 🌙 초승달 마차 — 두 원호(바깥 R1.5 · 안쪽 r1.35 중심 +0.55)로 그린 요람 외곽선을 옆으로 세워 뽑는다.
  *  ⚠️ 시안에서 구멍(hole)으로 파면 안쪽 원이 바깥을 벗어나 삼각분할이 깨져 고리처럼 보였다 — 외곽선을 직접 그린다. */
+// 🐑 구름 양(시안 sims/mirror-sky-sheep-sim.html S-1 확정, 2026-10-09) — 털 5덩이+공 머리는 덩어리가 따로 놀았다.
+//   한 덩어리 몸에 털 혹을 반쯤 묻어 실루엣만 뭉게구름 · 짙은 얼굴·옆 귀 · 접은 다리. 머리는 +z
+const WOOL = 0xf2eefa, PLUM = 0x5a4a5a;
+function cloudSheepBody() {
+  const b = new THREE.Group();
+  part(b, new THREE.SphereGeometry(0.4, 12, 10), WOOL, 0, 0, 0).scale.set(1, 0.85, 1.2);
+  [[0, 0.3, 0.1], [0.24, 0.2, -0.1], [-0.24, 0.2, -0.1], [0, 0.22, -0.32], [0.2, 0.22, 0.28], [-0.2, 0.22, 0.28]].forEach(([x, y, z]) => part(b, new THREE.IcosahedronGeometry(0.2, 1), WOOL, x, y, z));
+  part(b, new THREE.SphereGeometry(0.2, 10, 8), PLUM, 0, 0.05, 0.5).scale.set(0.85, 1, 1.15);
+  part(b, new THREE.IcosahedronGeometry(0.13, 1), WOOL, 0, 0.22, 0.48);   // 앞머리 털
+  for (const e of [-1, 1]) {
+    part(b, new THREE.SphereGeometry(0.1, 8, 6), PLUM, e * 0.2, 0.1, 0.42).scale.set(1.4, 0.5, 0.7);   // 옆 귀
+    part(b, new THREE.SphereGeometry(0.035, 6, 4), 0xf4ecd8, e * 0.08, 0.1, 0.66);                      // 눈
+  }
+  for (const [x, z] of [[0.17, 0.25], [-0.17, 0.25], [0.17, -0.25], [-0.17, -0.25]]) part(b, new THREE.CylinderGeometry(0.05, 0.045, 0.22, 6), PLUM, x, -0.36, z).rotation.x = -0.5;
+  return b;
+}
+/** 깃털 3장 부채 날개 × 양옆 — 몸을 관통하던 납작 원판 대신(한 메시) */
+function featherWings() {
+  const g = new THREE.Group();
+  const feather = (len) => { const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.quadraticCurveTo(0.16, len * 0.45, 0, len); sh.quadraticCurveTo(-0.056, len * 0.5, 0, 0); return new THREE.ShapeGeometry(sh, 6); };
+  for (const side of [-1, 1]) {
+    const w = new THREE.Group(); w.position.set(side * 0.3, 0.2, -0.05); w.rotation.set(-0.9, side * 0.2, 0); g.add(w);   // 옆으로 펴고 뒤로 눕힌다
+    for (let i = 0; i < 3; i++) part(w, feather(0.6 * (1 - i * 0.18)), 0xe8f4ff).rotation.set(0, 0, -side * (1.05 + i * 0.28));
+  }
+  return g;
+}
+
 export function makeMoonCarriage() {
   const root = new THREE.Group(); root.name = 'moonCarriage';
   const R = 1.5, r = 1.35, cy = 0.55, ty = (R * R - r * r + cy * cy) / (2 * cy), tx = Math.sqrt(R * R - ty * ty);
@@ -119,18 +146,15 @@ export function makeMoonCarriage() {
   const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.26, 0.2), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
   lamp.position.set(0, 2.3, 1.55); root.add(lamp);
   const lh = halo(0xffd27a, 1.5, 0.7); lh.position.copy(lamp.position); root.add(lh);
-  // ⚡ 털 5덩이+머리는 한 정점색 메시로 굽는다(양 한 마리 6콜→1콜, 🪞 거울 마을 정박 마차까지 ≤60 예산 — 2026-10-08 실측)
+  // ⚡ 몸·날개를 각각 한 정점색 메시로 굽는다(양 한 마리 2콜, 🪞 거울 마을 정박 마차까지 ≤60 예산 — 2026-10-08 실측)
   const sheepMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
-  const wingMat = new THREE.MeshStandardMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.85, flatShading: true });
+  const wingMat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.9, flatShading: true, side: THREE.DoubleSide });
   const reinMat = new THREE.MeshBasicMaterial({ color: 0xffd27a });
   const sheep = [];
   [-0.45, 0.45].forEach((sx) => {
     const s = new THREE.Group(); s.position.set(sx, 1.0, 3.0); root.add(s); sheep.push(s);
-    const body = new THREE.Group();
-    for (let k = 0; k < 5; k++) part(body, new THREE.IcosahedronGeometry(0.3, 1), 0xffffff, ((k * 37) % 5 - 2) * 0.1, ((k * 13) % 3) * 0.08, ((k * 7) % 5 - 2) * 0.14);
-    part(body, new THREE.SphereGeometry(0.22, 10, 8), 0x5a4a5a, 0, 0.08, 0.5).scale.set(0.9, 1, 1.15);
-    s.add(new THREE.Mesh(bakeGroup(body), sheepMat));
-    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), wingMat); wing.position.y = 0.3; wing.scale.set(1.8, 0.15, 0.6); s.add(wing);
+    s.add(new THREE.Mesh(bakeGroup(cloudSheepBody()), sheepMat));
+    s.add(new THREE.Mesh(bakeGroup(featherWings()), wingMat));
     const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2.0, 4), reinMat);
     rein.position.set(-sx * 0.45, 0.3, -1.0); rein.rotation.x = Math.PI / 2 - 0.2; s.add(rein);
   });
