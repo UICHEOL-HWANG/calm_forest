@@ -21,7 +21,7 @@ import {
 } from '../mirror/layout.js';
 import { QUESTS_PER_DAY, normalizeMirror, questAt, rewardFor } from '../mirror/quests.js';
 import { clueText, clueShort, hintText, npcName } from '../mirror/clues.js';
-import { buildMirrorWorld, invertColor, makeStopShelter, makeMirrorGate, mirrorizeFigure } from '../mirror/art.js';
+import { buildMirrorWorld, invertColor, makeStopShelter, makeStopSignFace, makeMirrorGate, mirrorizeFigure } from '../mirror/art.js';
 import { makeMoonCarriage } from '../dream/art.js';
 import { startRide } from '../mirror/ride.js';
 import { T, bindTracker } from '../mirror/track.js';
@@ -92,6 +92,7 @@ function ensureVillageSide() {
   scene.add(gateLake.group);
   // 🚏 마을 정류장 — 지붕이 남쪽, 열린 쪽(북)이 호수·VILLAGE_BOARD 를 본다(거울 쪽 정류장과 같은 방향). 낮밤 모두 서 있다
   shelter = makeStopShelter(0x6f8fc9, 0xb98a5e);
+  shelter.add(makeStopSignFace());   // 빈 흰 판은 뒷면처럼 읽힌다(2026-10-09)
   shelter.position.set(MIRROR_STOP.x, 0, MIRROR_STOP.z); shelter.rotation.y = Math.PI;
   scene.add(shelter);
   const B = STOP_SHELTER_BOX;   // 거울 쪽 정류장과 같은 상자(기둥·벤치) — VILLAGE_BOARD(z 15.6) 는 밖
