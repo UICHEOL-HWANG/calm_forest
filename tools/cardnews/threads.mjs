@@ -14,6 +14,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
+import { isVideo } from './host.mjs';
 
 const API = 'https://graph.threads.net/v1.0';
 export const THREADS_TOKEN_FILE =
@@ -111,15 +112,17 @@ export async function publishThreadsCarousel({ urls, text }) {
   if (text.length > THREADS_TEXT_MAX) throw new Error(`본문 ${text.length}자 — Threads 상한 ${THREADS_TEXT_MAX}자 초과`);
 
   const children = [];
-  for (const image_url of urls) {
-    const { id } = await threads('/me/threads', { media_type: 'IMAGE', image_url, is_carousel_item: true }, 'POST');
+  for (const url of urls) {
+    const item = isVideo(url) ? { media_type: 'VIDEO', video_url: url } : { media_type: 'IMAGE', image_url: url };
+    const { id } = await threads('/me/threads', { ...item, is_carousel_item: true }, 'POST');
+    if (isVideo(url)) await waitReady(id, 100);   // 영상 자식은 인코딩이 끝나야 부모에 묶인다
     children.push(id);
   }
   const { id: parent } = await threads('/me/threads', {
     media_type: 'CAROUSEL', children: children.join(','), text,
   }, 'POST');
 
-  return finishAndPublish(parent, 30);
+  return finishAndPublish(parent, urls.some(isVideo) ? 100 : 30);
 }
 
 /**
@@ -150,6 +153,14 @@ async function finishAndPublish(container, maxTries) { return (await finish(cont
 
 /** finishAndPublish 와 같되 게시물 ID 도 돌려준다(댓글을 달려면 ID 가 필요하다) */
 async function finish(container, maxTries) {
+  await waitReady(container, maxTries);
+  const { id: mediaId } = await threads('/me/threads_publish', { creation_id: container }, 'POST');
+  const { permalink } = await threads(`/${mediaId}`, { fields: 'permalink' });
+  return { id: mediaId, permalink };
+}
+
+/** 컨테이너가 FINISHED 가 될 때까지만 기다린다(발행 안 함) — 캐러셀 영상 자식용 */
+async function waitReady(container, maxTries) {
   for (let i = 0; ; i++) {
     const s = await threads(`/${container}`, { fields: 'status,error_message' });
     if (s.status === 'FINISHED') break;
@@ -159,10 +170,6 @@ async function finish(container, maxTries) {
     if (i >= maxTries) throw new Error(`Threads 컨테이너가 ${maxTries * 3}초 넘게 IN_PROGRESS`);
     await sleep(3000);
   }
-
-  const { id: mediaId } = await threads('/me/threads_publish', { creation_id: container }, 'POST');
-  const { permalink } = await threads(`/${mediaId}`, { fields: 'permalink' });
-  return { id: mediaId, permalink };
 }
 
 /** 장기 토큰 갱신. 새 토큰은 파일에만 쓰고 화면에 찍지 않는다 */

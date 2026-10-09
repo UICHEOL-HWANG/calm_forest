@@ -18,7 +18,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ig, me, quota, sleep } from './ig.mjs';
-import { hostDeck } from './host.mjs';
+import { hostDeck, isVideo } from './host.mjs';
 import { enqueue } from './queue.mjs';
 import { threadsToken, publishThreadsCarousel, toThreadsText, THREADS_TEXT_MAX } from './threads.mjs';
 
@@ -77,8 +77,8 @@ try {
   console.log(`한도  확인 실패(무시하고 진행): ${e.message}`);
 }
 
-// ── 2. 이미지 호스팅 ─────────────────────────────────────────
-console.log(`\n이미지 업로드 → KV`);
+// ── 2. 카드 호스팅(이미지 · 영상) ─────────────────────────────
+console.log(`\n카드 업로드 → KV`);
 const urls = await hostDeck(slug);
 if (urls.length < 2 || urls.length > 10) {
   console.error(`캐러셀은 2~10장이다. 현재 ${urls.length}장`);
@@ -103,6 +103,12 @@ for (const url of urls) {
 console.log(`\n─── 캡션 (${caption.length}자) ───\n${caption}\n──────────────────`);
 console.log(`\n─── Threads 본문 (${threadsText.length}/${THREADS_TEXT_MAX}자) ───\n${threadsText}\n──────────────────`);
 // 큐에 넣기 — 검수를 통과한 카드 묶음만 여기로 온다. 크론은 큐에 있는 걸 묻지 않고 올린다.
+// 🎬 영상 카드가 든 묶음은 큐에 넣지 않는다 — 크론(functions/cardnews-cron.js)은 이미지 캐러셀만 만든다.
+//    넣으면 크론이 mp4 를 image_url 로 던져 컨테이너가 ERROR 로 죽는다(사흘 뒤, 아무도 안 보는 새벽에).
+if (DO_QUEUE && urls.some(isVideo)) {
+  console.error(`\n⛔ 영상 카드가 있어 큐에 넣지 않는다(크론은 이미지 전용). 검수 후 직접: node publish.mjs ${slug} --publish`);
+  process.exit(1);
+}
 if (DO_QUEUE) {
   const n = await enqueue({ slug, caption, urls, threadsText });
   console.log(`\n📥 큐에 넣었다. 대기 ${n}개.\n   사흘 간격으로 크론이 하나씩 꺼내 올린다.`);
@@ -111,17 +117,35 @@ if (DO_QUEUE) {
 
 if (!DO_PUBLISH) {
   console.log(`\n✋ 리허설이라 아무것도 안 나갔다.\n` +
-    `   큐에 넣기 : node publish.mjs ${slug} --queue\n` +
+    (urls.some(isVideo) ? `   (영상 카드가 있어 큐는 못 쓴다)\n` : `   큐에 넣기 : node publish.mjs ${slug} --queue\n`) +
     `   지금 발행 : node publish.mjs ${slug} --publish`);
   process.exit(0);
+}
+
+/** 컨테이너가 FINISHED 될 때까지 3초 간격 폴링. 영상이 있으면 인코딩 때문에 5분까지 기다린다 */
+async function waitReady(id, label) {
+  const max = urls.some(isVideo) ? 100 : 40;
+  for (let i = 0; ; i++) {
+    const s = await ig(`/${id}`, { fields: 'status_code,status' });
+    if (s.status_code === 'FINISHED') return;
+    if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') {
+      console.error(`\n${label} 컨테이너 ${s.status_code}: ${s.status || ''}`);
+      process.exit(1);
+    }
+    if (i >= max) { console.error(`\n${label}: ${max * 3}초 넘게 IN_PROGRESS — 중단`); process.exit(1); }
+    process.stdout.write('.');
+    await sleep(3000);
+  }
 }
 
 // ── 4. 자식 컨테이너 ─────────────────────────────────────────
 console.log(`\n컨테이너 생성`);
 const children = [];
-for (const [i, image_url] of urls.entries()) {
-  const { id } = await ig('/me/media', { image_url, is_carousel_item: true }, 'POST');
-  console.log(`  ${String(i + 1).padStart(2, '0')}  ${id}`);
+for (const [i, url] of urls.entries()) {
+  const item = isVideo(url) ? { media_type: 'VIDEO', video_url: url } : { image_url: url };
+  const { id } = await ig('/me/media', { ...item, is_carousel_item: true }, 'POST');
+  console.log(`  ${String(i + 1).padStart(2, '0')}  ${id}${isVideo(url) ? '  (영상)' : ''}`);
+  if (isVideo(url)) await waitReady(id, `${i + 1}번 영상`);   // 영상 자식은 인코딩이 끝나야 부모에 묶인다
   children.push(id);
 }
 
@@ -132,18 +156,8 @@ const { id: parent } = await ig('/me/media', {
 console.log(`부모 캐러셀  ${parent}`);
 
 // ── 6. 준비될 때까지 폴링 ────────────────────────────────────
-for (let i = 0; ; i++) {
-  const s = await ig(`/${parent}`, { fields: 'status_code,status' });
-  if (s.status_code === 'FINISHED') break;
-  if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') {
-    console.error(`컨테이너 ${s.status_code}: ${s.status || ''}`);
-    process.exit(1);
-  }
-  if (i >= 40) { console.error('2분 넘게 IN_PROGRESS — 중단'); process.exit(1); }
-  process.stdout.write('.');
-  await sleep(3000);
-}
-console.log('\n준비 완료');
+await waitReady(parent, '부모 캐러셀');
+console.log('준비 완료');
 
 // ── 7. 발행 ──────────────────────────────────────────────────
 const { id: mediaId } = await ig('/me/media_publish', { creation_id: parent }, 'POST');
