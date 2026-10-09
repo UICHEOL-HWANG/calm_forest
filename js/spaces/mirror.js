@@ -20,7 +20,7 @@ import {
   VILLAGE_BOARD, VILLAGE_PARK, VILLAGE_WALL, LAKE_GATE, clampWalkable, spotOf, nearVillageStop,
 } from '../mirror/layout.js';
 import { QUESTS_PER_DAY, normalizeMirror, questAt, rewardFor } from '../mirror/quests.js';
-import { clueText, clueShort, hintText, npcName } from '../mirror/clues.js';
+import { clueText, clueShort, hintText, npcName, pickedText, carryShort, giveShort, thanksText } from '../mirror/clues.js';
 import { buildMirrorWorld, invertColor, makeStopShelter, makeStopSignFace, makeMirrorGate, mirrorizeFigure } from '../mirror/art.js';
 import { makeMoonCarriage } from '../dream/art.js';
 import { startRide } from '../mirror/ride.js';
@@ -37,7 +37,7 @@ const TWIN_IDS = ['farmer', 'angler', 'chef'];   // NPC_SPOTS 순서와 같다
 let world = null, carriage = null, shelter = null, gateLake = null, gateMirror = null, twins = [];
 let ride = null;            // 진행 중 연출
 let carriageSolid = null;   // 정박 마차 충돌 상자 하나를 마차가 선 자리로 옮겨 쓴다(안 보이거나 연출 중이면 off)
-let active = null;          // 단서를 들은 의뢰 { q, heardAt, hinted, hintShown } — 저장하지 않는다(스펙 §6)
+let active = null;          // 단서를 들은 의뢰 { q, heardAt, hinted, hintShown, carrying, pickedAt } — 저장하지 않는다(스펙 §6) · 들고 나가면 다음에 다시 찾는다
 let arrivedAt = 0, lastHud = '', lastDay = '', stopShownKey = null;
 // 힌트 쓴 의뢰 'day:n' — active 는 귀환 때 지워지지만 감점은 남아야 한다(다시 타고 와서 +3 받는 구멍)
 const hintUsed = new Set();
@@ -147,15 +147,17 @@ export function mirrorVillagePrompt() {
 }
 
 // ── 탑승 ─────────────────────────────────────────────────────
+// 🚏 거울 정류장 지붕(정류장 중심 z+0.25, 높이 2.44) 위로 지나가는 점 — 정박 자리(남쪽)와 거울 문(북쪽) 사이에 지붕이 있어 곡선이 지붕을 뚫었다(2026-10-09)
+const ROOF_OVER = () => ({ ...W({ x: LANDMARKS.find(l => l.id === 'stop').x, z: LANDMARKS.find(l => l.id === 'stop').z + 0.25 }), y: 3.4 });
 function routeGo() {
   return {
     from: { board: VILLAGE_BOARD, park: VILLAGE_PARK, gate: LAKE_GATE, avoid: VILLAGE_WALL },   // avoid — 지붕 뒤에서 타도 벽·마차를 돌아서 걷는다
-    to: { gate: { x: MIRROR.x + MIRROR_GATE_LOCAL.x, y: MIRROR_GATE_LOCAL.y, z: MIRROR.z + MIRROR_GATE_LOCAL.z }, park: { ...W(MIRROR_PARK), heading: MIRROR_PARK.heading }, landing: W(MIRROR_LANDING) },
+    to: { gate: { x: MIRROR.x + MIRROR_GATE_LOCAL.x, y: MIRROR_GATE_LOCAL.y, z: MIRROR.z + MIRROR_GATE_LOCAL.z }, park: { ...W(MIRROR_PARK), heading: MIRROR_PARK.heading }, landing: W(MIRROR_LANDING), over: ROOF_OVER() },
   };
 }
 function routeBack() {
   const g = routeGo();
-  return { from: { board: W(MIRROR_STOP_LOCAL), park: g.to.park, gate: g.to.gate }, to: { gate: LAKE_GATE, park: VILLAGE_PARK, landing: VILLAGE_BOARD } };
+  return { from: { board: W(MIRROR_STOP_LOCAL), park: g.to.park, gate: g.to.gate, over: g.to.over }, to: { gate: LAKE_GATE, park: VILLAGE_PARK, landing: VILLAGE_BOARD } };
 }
 function board(dir) {
   if (ride) return;
@@ -187,6 +189,7 @@ export function updateMirrorRide(dt, t) { if (!ride) return false; ride.update(d
 
 function enterSpace() {
   $w.atMirror = true;
+  if (world) world.ceiling.visible = true;   // 🌤️ 도착 연출에서만 — arrive() 가 끈다
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastDoorPrompt = null;
   mirrorState().visits += 1;
   active = null; refreshWorld();
@@ -194,6 +197,7 @@ function enterSpace() {
 }
 function arrive({ skipped, atS, short }) {
   ride = null; ui.setDreamSkip?.(false);
+  world.ceiling.visible = false;   // ⚡ 플레이 카메라는 하늘을 못 본다 — 3콜 아끼기(QA M8)
   if (handAnchor) handAnchor.visible = true;
   player.rotation.y = Math.PI;   // 연못(북쪽)을 본다
   snapCamera();
@@ -232,10 +236,10 @@ function refreshWorld() {
   const next = questAt(mirrorState(), todayStr());
   for (const g of world.items.values()) g.visible = false;
   // 물건은 단서를 들은 의뢰 것만 보인다(미리 주우면 "누구 거지?"가 된다 — 스펙 §4)
-  if (active) { const s = spotOf(active.q.spot), g = world.items.get(active.q.item); g.position.set(s.x, 0.15, s.z + 0.35); g.visible = true; }
-  world.beam.visible = !!active?.hintShown;
+  if (active) { const s = spotOf(active.q.spot), g = world.items.get(active.q.item); g.position.set(s.x, 0.15, s.z + 0.35); g.visible = true; }   // 들고 있으면 updateMirror 가 머리 위로 옮긴다
+  world.beam.visible = !!active?.hintShown && !active.carrying;
   if (active?.hintShown) { const s = spotOf(active.q.spot); world.beam.position.set(s.x, 3.5, s.z + 0.35); }
-  for (const tw of twins) if (tw.bubble) tw.bubble.visible = !!next && !active && next.npc === tw.id;
+  for (const tw of twins) if (tw.bubble) tw.bubble.visible = (!!next && !active && next.npc === tw.id) || (!!active?.carrying && active.q.npc === tw.id);   // 🎁 들고 있으면 주인 머리 위에
 }
 function syncHud() {
   const key = `${mirrorState().done}`;
@@ -252,6 +256,11 @@ export function mirrorPrompt() {
   const next = questAt(mirrorState(), todayStr());
   const tw = next && !active ? twins.find(x => x.id === next.npc) : null;
   if (tw && dist2D(twinWorld(tw), player.position) < TALK_R) return { nd: 'mirrortalk', prompt: lang() === 'en' ? `💬 Talk to ${npcName(tw.id, 'en')}` : `💬 ${npcName(tw.id, 'ko')}에게 말 걸기` };
+  if (active?.carrying) {   // 🎁 주인 앞이면 돌려주기, 아니면 누구에게 가져갈지
+    const owner = twins.find(x => x.id === active.q.npc);
+    if (owner && dist2D(twinWorld(owner), player.position) < TALK_R) return { nd: 'mirrorgive', prompt: giveShort(active.q, lang()) };
+    return { nd: null, prompt: carryShort(active.q, lang()) };
+  }
   if (active) {
     if (!active.hintShown && secs(active.heardAt) >= HINT_AFTER_S) return { nd: 'mirrorhint', prompt: '💧 연못에 비춰 보기' };
     return { nd: null, prompt: active.hintShown ? hintText(active.q, lang()) : clueShort(active.q, lang()) };
@@ -266,6 +275,7 @@ export function mirrorAction(nd) {
   if (nd === 'mirrorback') return board('back');
   if (nd === 'mirrortalk') return talk();
   if (nd === 'mirrorhint') return useHint();
+  if (nd === 'mirrorgive') return deliver();
 }
 function talk() {
   const q = questAt(mirrorState(), todayStr()); if (!q || active) return;
@@ -290,15 +300,34 @@ export function updateMirror(dt, t) {
   const m = mirrorState();   // 안에서 자정을 넘기면 HUD·말풍선이 어제 상태로 남는다
   if (m.day !== lastDay) { lastDay = m.day; lastHud = null; syncHud(); refreshWorld(); }
   if (!active) return;
+  if (active.carrying) {   // 🎁 머리 위에 들고 다닌다(그룹 로컬 = 월드 − MIRROR)
+    world.items.get(active.q.item)?.position.set(player.position.x - MIRROR.x, 2.35 + Math.sin(t * 3) * 0.06, player.position.z - MIRROR.z);
+    return;
+  }
   const s = spotOf(active.q.spot);
   if (Math.hypot(player.position.x - MIRROR.x - s.x, player.position.z - MIRROR.z - (s.z + 0.35)) < PICK_R) found();
 }
+const DAY_OVER = () => (lang() === 'en' ? '🌙 A new day began · Ask the residents again' : '🌙 날이 바뀌었어요 · 주민에게 다시 물어봐요');
+/** 물건을 주웠다 — 보상은 주인에게 돌려줄 때(deliver) */
 function found() {
-  const a = active, m = mirrorState(), next = questAt(m, todayStr());
-  active = null;
+  const a = active, next = questAt(mirrorState(), todayStr());
   // 거울 마을 안에서 자정을 넘기면 어제 의뢰가 남아 있다 — 오늘 다음 의뢰와 다르면 보상 없이 닫는다
-  if (!next || next.n !== a.q.n || next.spot !== a.q.spot) { refreshWorld(); return; }
+  if (!next || next.n !== a.q.n || next.spot !== a.q.spot) { active = null; ui.toast?.(DAY_OVER(), 3600); refreshWorld(); return; }
   T.found({ quest_n: a.q.n, item: a.q.item, spot_id: a.q.spot, flipped: a.q.flipped, hinted: a.hinted, elapsed_s: secs(a.heardAt) });
+  a.carrying = true; a.pickedAt = performance.now();
+  const s = spotOf(a.q.spot);
+  spawnSparkle(MIRROR.x + s.x, 0.8, MIRROR.z + s.z + 0.35, 14);
+  Sound.blip?.();
+  ui.toast?.(pickedText(a.q, lang()), 3600);
+  refreshWorld();
+}
+/** 🎁 주인에게 돌려준다 — 마무리 대사 + 보상 */
+function deliver() {
+  const a = active, m = mirrorState(), next = questAt(m, todayStr());
+  if (!a?.carrying) return;
+  active = null;
+  if (!next || next.n !== a.q.n || next.spot !== a.q.spot) { ui.toast?.(DAY_OVER(), 3600); refreshWorld(); return; }   // 자정을 넘겼다 — found 와 같은 규칙(말없이 사라지지 않게)
+  T.deliver({ quest_n: a.q.n, npc: a.q.npc, item: a.q.item, hinted: a.hinted, elapsed_s: secs(a.pickedAt) });
   const reward = rewardFor(a.hinted);
   m.done += 1; if (a.hinted) m.hinted.push(a.q.n); m.total += reward;
   gameState.inventory.mirror = (gameState.inventory.mirror || 0) + reward;
@@ -306,8 +335,7 @@ function found() {
   const w = twinWorld(twins.find(x => x.id === a.q.npc));
   spawnSparkle(w.x, 1.4, w.z, 22); spawnFloatText(w.x, 2.2, w.z, `+${reward} 🪞`, '#7ad6c0');
   Sound.starPick?.();
-  const en = lang() === 'en', nm = npcName(a.q.npc, lang());
-  ui.toast?.(m.done >= QUESTS_PER_DAY ? '오늘 의뢰는 끝났어요 · 🚏 정류장에서 돌아가요' : (en ? `${nm}: "Thank you for finding it!"` : `${nm}: "찾아 줘서 고마워요!"`), 3000);
+  ui.toast?.(thanksText(a.q, lang()), 4200);   // 다 끝났다는 안내는 프롬프트 줄(「오늘 의뢰는 끝났어요」)과 의뢰 N/3 이 맡는다
   refreshWorld(); syncHud(); requestSave();
 }
 
@@ -321,5 +349,5 @@ export const MIRROR_MAP = Object.freeze({ cx: MIRROR.x, cz: MIRROR.z, half: 23 }
 export function mirrorMinimapMarks(marks) {
   for (const l of LANDMARKS) marks.push({ x: MIRROR.x + l.x, z: MIRROR.z + l.z, c: '#c8c0e0', r: 1.6 });
   marks.push({ x: MIRROR.x + MIRROR_STOP_LOCAL.x, z: MIRROR.z + MIRROR_STOP_LOCAL.z, c: '#9ecbff', kind: 'exit' });
-  if (active?.hintShown) { const s = spotOf(active.q.spot); marks.push({ x: MIRROR.x + s.x, z: MIRROR.z + s.z, c: '#ffd86b', r: 2.4 }); }
+  if (active?.hintShown && !active.carrying) { const s = spotOf(active.q.spot); marks.push({ x: MIRROR.x + s.x, z: MIRROR.z + s.z, c: '#ffd86b', r: 2.4 }); }
 }

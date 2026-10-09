@@ -1,7 +1,8 @@
 // 🪞 거울 마을 탑승 연출 시간표(순수) — js/mirror/ride.js 가 쓴다 · tests/mirror-ride-schedule.test.mjs
 //   걷기 → 올라앉기 → 이륙(🪞 거울 문이 일어섬) → 거울 문 통과(가운데서 번쩍 = 공간 전환) → 내려앉기 → 하차
-const FIRST = { walk: 1.0, board: 0.4, rise: 1.2, pass: 0.4, descend: 1.9, alight: 0.7 };
-const SHORT = { walk: 0.3, board: 0.2, rise: 0.5, pass: 0.2, descend: 0.8, alight: 0.4 };
+// 2026-10-09 실기기 피드백 "출발이 너무 빠르다" — 이륙·내려앉기를 늘렸다(첫 회 5.6→7.5s, 이후 2.4→3.3s)
+const FIRST = { walk: 1.0, board: 0.5, rise: 2.2, pass: 0.5, descend: 2.6, alight: 0.7 };
+const SHORT = { walk: 0.3, board: 0.25, rise: 0.9, pass: 0.25, descend: 1.2, alight: 0.4 };
 const ORDER = ['walk', 'board', 'rise', 'pass', 'descend', 'alight'];
 const round = (v) => Math.round(v * 1000) / 1000;
 
