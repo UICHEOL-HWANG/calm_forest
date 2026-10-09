@@ -99,3 +99,51 @@ export function clampWalkable(x, z) {
 export const VILLAGE_BOARD = Object.freeze({ x: 16, z: 15.6 });                          // 정류장 북쪽 앞(호수 남쪽 기슭) — 「거울 마을행 타기」·귀환 하차 자리
 export const VILLAGE_PARK = Object.freeze({ x: 19.2, z: 16.6, heading: -Math.PI / 2 });  // 정류장 동쪽 — 낮엔 늘 서 있다(발견성)
 export const LAKE_GATE = Object.freeze({ x: 16, y: 3.6, z: 9 });                         // 🪞 거울 문이 서는 자리(호수 위)
+export const VILLAGE_STOP = Object.freeze({ x: 16, z: 17 });   // = places.js MIRROR_STOP(THREE 없는 사본 · 테스트가 대조)
+
+// 🚏 마을 쪽 탑승 안내 판정 — 승차 지점(호숫가) 반경만 보면 마을(남)에서 걸어온 사람은 지붕 뒤 벽에서 2.62 로 멈춰
+//   안내가 끝내 안 떴다(2026-10-09 페르소나 p32 4/10 "마차 옆에서 아무 반응이 없다"). 정류장 둘레·정박 마차 옆까지 넓힌다.
+export const STOP_AROUND_R = 3.0;   // 정류장 중심 — 지붕 벽에 붙어 선 자리(최대 ≈2.6)를 덮는다
+export const PARK_AROUND_R = 2.8;   // 정박 마차 중심 — 마차 몸체에 붙어 선 자리(최대 ≈2.6)를 덮는다
+export function nearVillageStop(x, z) {
+  return Math.hypot(x - VILLAGE_BOARD.x, z - VILLAGE_BOARD.z) < STOP_REACH
+    || Math.hypot(x - VILLAGE_STOP.x, z - VILLAGE_STOP.z) < STOP_AROUND_R
+    || Math.hypot(x - VILLAGE_PARK.x, z - VILLAGE_PARK.z) < PARK_AROUND_R;
+}
+
+// 정류장 상자·정박 마차 상자(둘은 0.2 떨어져 붙어 있다) — 탑승 연출의 걷기가 이걸 뚫지 않게 돌아간다
+//   판정은 실제 상자 둘로(합친 상자로 하면 그 안의 빈 바닥 — 마차 남쪽 띠 등 — 에서 탈 때 직선으로 모서리를 뚫는다, 리뷰 2026-10-09)
+export const VILLAGE_WALL = Object.freeze([
+  { x1: VILLAGE_STOP.x + STOP_SHELTER_BOX.x1, z1: VILLAGE_STOP.z + STOP_SHELTER_BOX.z1, x2: VILLAGE_STOP.x + STOP_SHELTER_BOX.x2, z2: VILLAGE_STOP.z + STOP_SHELTER_BOX.z2 },
+  carriageBox(VILLAGE_PARK),
+].map(Object.freeze));
+
+/** 선분 a→b 가 축 맞춘 상자 안을 지나가나(Liang–Barsky) */
+export function segHitsBox(a, b, box) {
+  let t0 = 0, t1 = 1;
+  const dx = b.x - a.x, dz = b.z - a.z;
+  for (const [p, q] of [[-dx, a.x - box.x1], [dx, box.x2 - a.x], [-dz, a.z - box.z1], [dz, box.z2 - a.z]]) {
+    if (p === 0) { if (q <= 0) return false; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+  }
+  return t1 - t0 > 1e-6;
+}
+
+/** 지금 자리 → 승차 지점 걷는 길 — 상자들을 지나면 묶음의 모서리로 돌아간다(서·동 중 짧은 쪽). 상자가 없으면 곧장 */
+export function boardPath(start, board, boxes, m = 0.35) {
+  const s = { x: start.x, z: start.z }, b = { x: board.x, z: board.z };
+  const hits = (a, c) => (boxes || []).some(box => segHitsBox(a, c, box));
+  if (!hits(s, b)) return [s, b];
+  const box = { x1: Math.min(...boxes.map(o => o.x1)), z1: Math.min(...boxes.map(o => o.z1)), x2: Math.max(...boxes.map(o => o.x2)), z2: Math.max(...boxes.map(o => o.z2)) };
+  const nz = box.z1 - m, sz = box.z2 + m;
+  const len = (pts) => pts.reduce((n, p, i) => (i ? n + Math.hypot(p.x - pts[i - 1].x, p.z - pts[i - 1].z) : 0), 0);
+  const clear = (pts) => pts.every((p, i) => !i || !hits(pts[i - 1], p));
+  const routes = [box.x1 - m, box.x2 + m].flatMap((x) => [
+    [s, { x, z: nz }, b],                    // 옆에서 — 북쪽 모서리만
+    [s, { x, z: s.z }, { x, z: nz }, b],     // 옆으로 비켜선 뒤 북쪽 모서리
+    [s, { x, z: sz }, { x, z: nz }, b],      // 남쪽에서 — 남쪽 모서리 → 북쪽 모서리
+    [s, { x: s.x, z: sz }, { x, z: sz }, { x, z: nz }, b],   // 상자 사이 틈·띠에서 — 남쪽으로 빠진 뒤 돌아간다
+  ]).filter(clear);
+  return routes.length ? routes.reduce((best, r) => (len(r) < len(best) ? r : best)) : [s, b];   // 상자 안(충돌 밀림 직후)일 때만 곧장
+}

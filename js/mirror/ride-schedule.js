@@ -5,8 +5,10 @@ const SHORT = { walk: 0.3, board: 0.2, rise: 0.5, pass: 0.2, descend: 0.8, aligh
 const ORDER = ['walk', 'board', 'rise', 'pass', 'descend', 'alight'];
 const round = (v) => Math.round(v * 1000) / 1000;
 
-export function rideSchedule(first) {
-  const d = first ? FIRST : SHORT, s = {};
+const WALK_SPEED = 4.5;   // 승차 지점까지 종종걸음(m/s) — 정류장 뒤에서 돌아오면 걷기 단계만 늘어난다
+
+export function rideSchedule(first, walkLen = 0) {
+  const base = first ? FIRST : SHORT, d = { ...base, walk: Math.max(base.walk, walkLen / WALK_SPEED) }, s = {};
   let t = 0;
   for (const k of ORDER) { s[k] = [round(t), round(t + d[k])]; t += d[k]; }
   s.total = round(t);
