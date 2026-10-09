@@ -145,6 +145,21 @@
       </div>
     </div>
 
+    <!-- 🤝 친구 초대(C안, 2026-10-09) — cf_admin_referral(days). 공유 링크 보기에선 숨긴다(관리자 전용 RPC) -->
+    <div id="refSec" style="display:none">
+      <h2 class="sec">🤝 친구 초대</h2>
+      <div class="card"><h3>친구 초대 한눈에<span class="tag" id="refDays"></span></h3><p class="hint">왼쪽 숫자 · 오른쪽 퍼널(빨간 표시 = 가장 많이 빠지는 단계) · K-factor ≈ 기간 안 활성 친구 ÷ 초대한 사람(근사).</p>
+        <div class="one">
+          <div class="stack" id="refStack"></div>
+          <div><div id="refFunnel"></div>
+            <p class="src"><b>●</b> 서버 테이블(referrals·purchases) — 정확한 값 · 나머지는 세션 카운터(로그인 화면에서 나간 사람은 빠짐)</p></div>
+        </div></div>
+      <div class="grid" style="margin-top:14px">
+        <div class="card"><h3>연결 실패 사유</h3><p class="hint">초대 링크로 왔는데 연결이 안 된 이유.</p><div id="refFails"></div></div>
+        <div class="card"><h3>단계 보상 · 감시</h3><p class="hint">단계 보상은 누적 · 하루 3명 넘게 연결된 초대자는 <span class="warn">빨간색</span>.</p><div id="refTiers"></div><div id="refTop" style="margin-top:10px"></div></div>
+      </div>
+    </div>
+
     <h2 class="sec">세그먼트</h2>
     <div class="grid">
       <div class="card"><h3>게스트 vs 로그인</h3><p class="hint">회원 전환 여지를 봅니다.</p><canvas id="cGuest" height="200"></canvas></div>
@@ -225,6 +240,37 @@
       }
       $('load').style.display = 'none';
       render(data);
+      if (!shareKey) loadReferral();
+    }
+
+    // ── 🤝 친구 초대 — 별도 RPC. 실패해도 위 대시보드는 그대로 둔다 ──
+    const REF_FAIL = { not_new: '이미 가입한 계정', self: '내 링크', bad_code: '잘못된 코드', too_many: '코드 10회 틀림',
+      cycle: '서로 초대', inviter_full: '초대자 정원 참', already_bound: '이미 연결됨', anonymous: '게스트', no_user: '계정 없음' };
+    const REF_TIERS = [['tools_star', '💎', '1명 · 크리스탈'], ['friendarch', '🌈', '3명 · 아치'], ['friend_wing', '🦋', '5명 · 날개']];
+    const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    async function loadReferral() {
+      const { data: r, error } = await sb.rpc('cf_admin_referral', { days });
+      if (error || !r) { $('refSec').style.display = 'none'; if (error) console.warn('[referral]', error.message); return; }
+      $('refSec').style.display = 'block';
+      $('refDays').textContent = `${r.days}일`;
+      const s = r.steps || {};
+      const k = s.share ? (s.active / s.share).toFixed(2) : '—';
+      $('refStack').innerHTML = [['K-factor', k], ['초대한 사람', nf(s.share)], ['활성 친구', nf(s.active)], ['보상 지급', nf(s.granted)]]
+        .map(([l, n]) => `<div class="kpi"><div class="lbl">${l}</div><div class="num">${n}</div></div>`).join('');
+      const dot = ' <span class="src"><b>●</b></span>';
+      $('refFunnel').innerHTML = s.sheet || s.bound ? funnelRows([
+        ['시트 열기', s.sheet], ['링크 공유', s.share], ['링크로 도착', s.land],
+        ['연결 성공' + dot, s.bound], ['2일 플레이' + dot, s.active], ['보상 지급' + dot, s.granted],
+      ], { drop: true }) : '<div class="empty">기간 안에 초대 기록이 아직 없습니다.</div>';
+      const fails = r.fails || [];
+      const fm = Math.max(1, ...fails.map(f => f.n));
+      $('refFails').innerHTML = fails.length ? `<div class="bars">${fails.map(f => `<div class="row"><span class="k">${esc(REF_FAIL[f.reason] || f.reason)}</span><span class="b"><i style="width:${f.n / fm * 100}%"></i></span><span class="v">${nf(f.n)}</span></div>`).join('')}</div>`
+        : '<div class="empty">실패한 연결이 없습니다.</div>';
+      const t = r.tiers || {};
+      $('refTiers').innerHTML = `<div class="tiers">${REF_TIERS.map(([id, ico, l]) => `<div class="t"><div class="ico">${ico}</div><div class="n">${nf(t[id])}</div><div class="l">${l}</div></div>`).join('')}</div>`;
+      const top = r.top || [];
+      $('refTop').innerHTML = top.length ? `<table class="mini"><tr><th>초대자</th><th>연결</th><th>활성</th><th>하루 최다</th><th>플랫폼</th></tr>${top.map(u => `<tr><td style="font-family:var(--mono)"${u.peak > 3 ? ' class="warn"' : ''}>${esc(u.who)}</td><td class="n">${nf(u.bound)}</td><td class="n">${nf(u.active)}</td><td class="n${u.peak > 3 ? ' warn' : ''}">${nf(u.peak)}</td><td>${esc(u.platforms)}</td></tr>`).join('')}</table>`
+        : '';
     }
 
     function render(d) {

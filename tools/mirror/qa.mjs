@@ -127,6 +127,26 @@ check('M6a 돌아가기 프롬프트', /마을로 돌아가기|Ride back/.test(p
 await until(async () => (await ms()).nearDoor === 'mirrorback');
 await press('Space'); await until(async () => (await ms()).ride === true, 6000); st = await waitRide();
 check('M6 마을로 귀환', st.atMirror === false && Math.hypot(st.pos[0] - 16, st.pos[1] - 15.6) < 0.3, JSON.stringify(st.pos));
+// M6w 걸어서 다가가기 — 순간이동(__mirror.stop)만 쓰던 QA 가 놓친 것: 마을(남)·마차(동)에서 걸어오면 지붕 뒤 벽·마차에 막혀
+//      승차 지점 반경 밖에서 멈췄고 안내가 끝내 안 떴다(2026-10-09 페르소나 p32 4/10). 막힐 때까지 걸어 본 뒤 안내를 본다
+const walkUntil = async (code, n = 25) => { for (let i = 0; i < n; i++) { if ((await ms()).nearDoor === 'mirrorgo') return true; await hold(code, 350); } return (await ms()).nearDoor === 'mirrorgo'; };
+await ev('__tp(23.5, 16.6)'); await b.sleep(800);
+check('M6w1 마차 동쪽에서 걸어오면 탑승 안내', await walkUntil('ArrowLeft'), JSON.stringify((await ms()).pos));
+await ev('__tp(16, 22)'); await b.sleep(800);
+check('M6w2 정류장 지붕 뒤(남)에서 걸어오면 탑승 안내', await walkUntil('ArrowUp'), JSON.stringify((await ms()).pos));
+await b.sleep(800); await shot('m6w-stop-back');
+// 지붕 뒤에서 탄다 — 걷기 단계가 정류장·마차 상자를 뚫지 않아야 한다(돌아서 승차 지점으로)
+const WALL = await ev(`(async () => (${LY}).VILLAGE_WALL)()`);
+await press('Space');
+await until(async () => (await ms()).ride === true, 6000);
+const walkPts = [];
+for (let i = 0; i < 40; i++) { const s = await ms(); if (!s.ride || s.atMirror) break; walkPts.push(s.pos); if (Math.hypot(s.pos[0] - 16, s.pos[1] - 15.6) < 0.2) break; await b.sleep(120); }
+const inside = walkPts.filter(([x, z]) => WALL.some(w => x > w.x1 && x < w.x2 && z > w.z1 && z < w.z2));   // 정류장·마차 상자
+check('M6w3 지붕 뒤에서 타도 벽·마차를 뚫지 않고 돌아간다', walkPts.length > 0 && inside.length === 0, `${walkPts.length}점 · 안쪽 ${JSON.stringify(inside.slice(0, 3))}`);
+await press('Escape'); st = await waitRide();
+check('M6w4 지붕 뒤 탑승도 거울 마을 도착', st.atMirror === true, JSON.stringify(st.pos));
+await ev(`__mirror.tp(2.5, 13.2)`); await until(async () => (await ms()).nearDoor === 'mirrorback');
+await press('Space'); await until(async () => (await ms()).ride === true, 6000); await b.sleep(300); await press('Escape'); await waitRide();
 // M7 두 번째 탑승은 Esc 건너뛰기
 await ev('__mirror.stop()'); await until(async () => (await ms()).nearDoor === 'mirrorgo');
 await press('Space'); await until(async () => (await ms()).ride === true, 6000); await b.sleep(300); await press('Escape');
