@@ -23,6 +23,8 @@ export const CHEST_ZONE = [0.70, 0.85];   // 코스 진행도 — 3구간(가장
 export const CHEST_RULE = 'always';        // 난파·그만두기에도 지급(기존 🪷 수집물과 같은 규칙)
 
 export const chestToday = (st, today) => st?.chestDate !== today;
+// 🧰 안내(마을 나루터 입구·탑승 프롬프트) — 오늘 아직 건질 수 있을 때만. 상자는 나룻배 코스에만 떠내려와서 알려 주지 않으면 못 찾는다(페르소나 p34 10/10)
+export const chestHintToday = (st, today, runsLeft) => runsLeft > 0 && chestToday(st, today);
 
 export function placeChest(rnd, { len, width }) {
   const d = len * (CHEST_ZONE[0] + rnd() * (CHEST_ZONE[1] - CHEST_ZONE[0]));
