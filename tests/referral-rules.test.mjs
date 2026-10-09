@@ -54,5 +54,6 @@ test('keepPendingAfter — 네트워크 실패만 코드를 남겨 다음 부팅
 test('새 문구는 영어 사전에 있다', async () => {
   const { readFileSync } = await import('node:fs');
   const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
-  for (const v of Object.values(MSG)) assert.ok(en.includes(`'${v}'`), v);
+  // 줄바꿈이 든 문구(banner)는 사전 원문에 \n 이스케이프로 적혀 있다
+  for (const v of Object.values(MSG)) assert.ok(en.includes(`'${v.replace(/\n/g, '\\n')}'`), v);
 });
