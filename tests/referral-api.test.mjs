@@ -110,3 +110,24 @@ test('worker 에 /api/referral 라우트가 등록돼 있다', async () => {
   assert.match(src, /from '\.\.\/functions\/api\/referral\.js'/);
   assert.match(src, /pathname === '\/api\/referral'/);
 });
+
+// 📊 연결 시도 기록(관리자 대시보드 '연결 실패 사유') — 실패해도 응답은 그대로
+test('bind — 결과 사유를 referral_bind_log 에 남긴다(형식 오류 포함)', async () => {
+  const f = fakeFetch({ rpc: { referral_bind: { ok: false, reason: 'not_new' } } });
+  await call(f, { action: 'bind', code: 'ABCD2345', platform: 'web' });
+  const log = f.calls.find(c => c.url.endsWith('/rest/v1/referral_bind_log'));
+  assert.deepEqual(log.body, { user_id: UID, reason: 'not_new', platform: 'web' });
+  const f2 = fakeFetch({ rpc: { referral_bind: { ok: true, welcome: 'friend_pin' } } });
+  await call(f2, { action: 'bind', code: 'ABCD2345' });
+  assert.equal(f2.calls.find(c => c.url.endsWith('/rest/v1/referral_bind_log')).body.reason, 'ok');
+  const f3 = fakeFetch();
+  await call(f3, { action: 'bind', code: 'no!' });
+  assert.equal(f3.calls.find(c => c.url.endsWith('/rest/v1/referral_bind_log')).body.reason, 'bad_code');
+});
+
+test('bind — 기록이 실패해도 연결 결과는 그대로 돌려준다', async () => {
+  const f = fakeFetch({ rpc: { referral_bind: { ok: true, welcome: 'friend_pin' } } });   // bind_log 는 404
+  const r = await call(f, { action: 'bind', code: 'ABCD2345' });
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { ok: true, welcome: 'friend_pin' });
+});

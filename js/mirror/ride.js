@@ -7,6 +7,7 @@
 // =============================================================
 import * as THREE from 'three';
 import { rideSchedule, phaseAt } from './ride-schedule.js';
+import { boardPath } from './layout.js';
 
 const smooth = (p) => { const c = Math.min(1, Math.max(0, p)); return c * c * (3 - 2 * c); };
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -32,9 +33,20 @@ function curveTo(t) {     // 문 중심 → 내려오며 → 정박
 }
 
 export function startRide({ dir, first, route, hooks }) {
-  const S = rideSchedule(first), A = curveFrom(route.from), B = curveTo(route.to);
-  const st = { t: 0, done: false, teleported: false, dir };
   const start = hooks.player.position.clone();
+  // 지금 자리 → 승차 지점 — 정류장 지붕 뒤·마차 옆에서 타면 벽을 뚫지 않게 모서리로 돌아간다(route.from.avoid)
+  const path = boardPath(start, route.from.board, route.from.avoid), segs = path.slice(1).map((p, i) => Math.hypot(p.x - path[i].x, p.z - path[i].z));
+  const pathLen = segs.reduce((a, b) => a + b, 0);
+  const S = rideSchedule(first, pathLen), A = curveFrom(route.from), B = curveTo(route.to);
+  const st = { t: 0, done: false, teleported: false, dir };
+  const alongPath = (u) => {   // 0..1 → 길 위의 자리·진행 방향
+    let d = u * pathLen;
+    for (let i = 0; i < segs.length; i++) {
+      if (d <= segs[i] || i === segs.length - 1) { const a = path[i], b = path[i + 1], k = segs[i] ? Math.min(1, d / segs[i]) : 1; return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, dx: b.x - a.x, dz: b.z - a.z }; }
+      d -= segs[i];
+    }
+    return { x: path.at(-1).x, z: path.at(-1).z, dx: 0, dz: 0 };
+  };
   const { carriage: car, player, playerAnchor, camera } = hooks;
   const seatW = () => { car.updateMatrixWorld(true); return _w.set(0, car.userData.seatY, -0.1).applyMatrix4(car.matrixWorld); };   // 공유 벡터 — 오래 들고 있을 곳은 호출부가 복사
   const onCurve = (curve, u, endHeading) => {
@@ -77,9 +89,9 @@ export function startRide({ dir, first, route, hooks }) {
     const ph = phaseAt(S, st.t);
     if (ph.name === 'done') { finish(false); return; }
     if (ph.name === 'walk') {   // 지금 자리 → 승차 지점(종종걸음)
-      const p = smooth(ph.p), bx = route.from.board.x, bz = route.from.board.z;
-      player.position.set(start.x + (bx - start.x) * p, 0, start.z + (bz - start.z) * p);
-      if (Math.hypot(bx - start.x, bz - start.z) > 0.05) player.rotation.y = Math.atan2(bx - start.x, bz - start.z);
+      const q = alongPath(smooth(ph.p));
+      player.position.set(q.x, 0, q.z);
+      if (Math.hypot(q.dx, q.dz) > 0.05) player.rotation.y = Math.atan2(q.dx, q.dz);
       playerAnchor.position.y = Math.abs(Math.sin(st.t * 14)) * 0.06;
       cam(0);
     } else if (ph.name === 'board') {   // 승차 지점 → 좌석(살짝 뛰어 오름)
