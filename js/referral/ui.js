@@ -37,7 +37,7 @@ export function renderInviteSheet(box, view, on) {
   if (view.error) { box.append(el('p', 'inv-note', MSG.loadFail)); return; }
   if (!view.code) { box.append(el('p', 'inv-note', '…')); return; }
 
-  const url = inviteUrl(view.code);
+  const url = view.url || inviteUrl(view.code);   // 토스는 index.js 가 만든 토스 공유 링크를 넘긴다
   const link = el('input', 'inv-link');
   link.readOnly = true; link.value = url;
   link.addEventListener('focus', () => link.select());

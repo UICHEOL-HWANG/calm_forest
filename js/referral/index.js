@@ -8,14 +8,19 @@
 // =============================================================
 import { CONFIG, IS_DEV_SESSION } from '../config.js';
 import { getAccessToken } from '../supabase-client.js';
-import { PLATFORM } from '../platform.js';
+import { PLATFORM, IS_TOSS, loadTossSDK } from '../platform.js';
 import { captureInvite, runOnPlay, pendingInvite, claimAndApply } from './flow.js';
-import { MSG } from './rules.js';
+import { MSG, tossInvitePath } from './rules.js';
 import { renderInviteSheet } from './ui.js';
 
 const enabled = () => !!CONFIG.REFERRAL_ON && !IS_DEV_SESSION;
 const store = () => { try { return window.localStorage; } catch (e) { return null; } };
-const memo = { claim: null };
+const memo = { claim: null, tossBoot: null };
+// 토스 공유 링크 미리보기(토스앱 Android 5.240·iOS 5.239 이상만 적용) — index.html og:image 와 같은 그림
+const OG_IMAGE = 'https://calmforest.cloud/preview.jpg';
+/** SDK 호출이 끝나지 않을 때 기다리는 한도 — 넘으면 fallback 으로 넘어간다(시트가 '…' 에 갇히지 않게) */
+const SDK_WAIT_MS = 4000;
+const withTimeout = (p, fallback, ms = SDK_WAIT_MS) => Promise.race([p, new Promise(r => setTimeout(() => r(fallback), ms))]);
 
 async function call(action, body = {}) {
   const token = await getAccessToken();
@@ -41,7 +46,33 @@ export const referralEnabled = () => enabled();
 export function bootReferral({ track }) {
   if (!enabled()) return null;
   const s = store();
-  return s ? captureInvite({ search: location.search, storage: s, track }) : null;
+  if (!s) return null;
+  // 🟦 토스 공유 링크(intoss://calmforest?invite=…)로 들어오면 코드는 주소창이 아니라 진입 스킴 URL 에 있다.
+  //    SDK 를 기다려야 해서 비동기 — referralOnPlay 가 연결(bind) 전에 이 약속을 기다린다.
+  if (IS_TOSS) memo.tossBoot = captureTossEntry({ storage: s, track });
+  return captureInvite({ search: location.search, storage: s, track });
+}
+
+async function captureTossEntry({ storage, track }) {
+  try {
+    const sdk = await loadTossSDK();
+    const entry = sdk?.Environment?.initialURL || (await sdk?.getSchemeUri?.()) || '';   // getSchemeUri 는 옛 이름(Promise 일 수도)
+    return captureInvite({ search: entry, storage, track });
+  } catch (e) {
+    console.warn('[referral] 토스 진입 URL 읽기 실패(무시):', e?.message || e);
+    return null;
+  }
+}
+
+/** 토스 안에서 보낼 공유 링크 — 친구도 토스 앱에서 바로 열린다(없으면 스토어). 실패하면 null → 웹 링크로 */
+async function tossShareUrl(code) {
+  try {
+    const sdk = await loadTossSDK();
+    return await withTimeout(sdk.getTossShareLink(tossInvitePath(code), OG_IMAGE), null);
+  } catch (e) {
+    console.warn('[referral] 토스 공유 링크 생성 실패(웹 링크로):', e?.message || e);
+    return null;
+  }
 }
 
 /** 로그인 화면 배너 문구 — 초대 링크로 왔고 아직 연결 전이면 */
@@ -72,6 +103,7 @@ export async function referralOnPlay({ auth, toast, track, resync }) {
   const s = store();
   if (!s) return;
   const quietToast = (m) => afterOnboarding(() => toast(m));
+  if (memo.tossBoot) await withTimeout(memo.tossBoot, null);   // 토스 진입 URL 의 초대 코드가 보관된 뒤에 연결한다(SDK 가 멈춰도 정산은 진행)
   try {
     memo.claim = await runOnPlay({ storage: s, call, toast: quietToast, track, resync, platform: PLATFORM, auth });
   } catch (e) {
@@ -85,13 +117,19 @@ export async function openInviteSheet({ box, auth, toast, track, shareNative, re
   const view = { guest, loading: !guest, error: false, code: null, active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0 };
   const on = {
     copy: async (url) => {
-      try { await navigator.clipboard.writeText(`${MSG.shareText} ${url}`); toast(MSG.copied); } catch (e) { toast(url); }
+      const text = `${MSG.shareText} ${url}`;
+      try {
+        if (IS_TOSS) await (await loadTossSDK()).setClipboardText(text);   // 토스 웹뷰는 navigator.clipboard 가 막힐 수 있다
+        else await navigator.clipboard.writeText(text);
+        toast(MSG.copied);
+      } catch (e) { toast(url); }
       track('invite_share', { channel: 'copy' });
     },
     share: async (url) => {
-      track('invite_share', { channel: shareNative ? 'native' : navigator.share ? 'share' : 'copy' });
+      track('invite_share', { channel: IS_TOSS ? 'toss' : shareNative ? 'native' : navigator.share ? 'share' : 'copy' });
       try {
-        if (shareNative) await shareNative(`${MSG.shareText} ${url}`);
+        if (IS_TOSS) await (await loadTossSDK()).share({ message: `${MSG.shareText} ${url}` });
+        else if (shareNative) await shareNative(`${MSG.shareText} ${url}`);
         else if (navigator.share) await navigator.share({ title: '🌿 calm forest', text: MSG.shareText, url });
         else { await navigator.clipboard.writeText(`${MSG.shareText} ${url}`); toast(MSG.copied); }
       } catch (e) { /* 공유 시트 취소는 정상 흐름 */ }
@@ -107,8 +145,10 @@ export async function openInviteSheet({ box, auth, toast, track, shareNative, re
     resync ? claimAndApply({ call, track, resync }).catch(() => null) : Promise.resolve(null),
   ]);
   if (claim) memo.claim = claim;
+  const code = res?.code ?? null;
+  const url = code && IS_TOSS ? await tossShareUrl(code) : null;   // 토스 → 토스 공유 링크 · 그 외(또는 실패) → ui 가 웹 링크
   renderInviteSheet(box, {
-    ...view, loading: false, error: !res?.ok, code: res?.code ?? null,
+    ...view, loading: false, error: !res?.ok, code, url,
     active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0,
   }, on);
 }
