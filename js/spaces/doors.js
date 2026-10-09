@@ -38,7 +38,7 @@ import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
 import { neighborDoor } from '../spaces/neighbor.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
-import { updateRiverInteract } from '../spaces/river.js';
+import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
 import { TELESCOPE_SPOT } from '../spaces/observatory.js';
 import { state as authState } from '../supabase-client.js';
@@ -281,7 +281,7 @@ export function updateDoorInteract() {
     prompt = locked ? lockLine('mist', mapOpenDay(authState.mapOrder, 'mist')) : '🌫️ 안개 낀 숲에 들어가기';
     if (!locked) firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
   } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
-    nd = 'river'; prompt = '🛶 나루터 (나룻배 타러 가기)';
+    nd = 'river'; prompt = chestHintNow() ? '🛶 나루터 · 🧰 오늘의 보물상자가 떠내려와요' : '🛶 나루터 (나룻배 타러 가기)';   // 🧰 상자는 나룻배에만 — 입구에서 알린다
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
   } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
     nd = 'sea';
