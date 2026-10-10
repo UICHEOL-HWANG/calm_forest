@@ -40,20 +40,21 @@ const SCENES = [
 const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
 // 캡처 직전 정리 — 오프라인 표기·토스트·초보자 안내서 배너(클래스 제거로는 안 사라져 fixed 컨테이너를 숨긴다)
 const CLEAN = `(() => { document.body.classList.remove('hintbanner');
-  for (const el of document.querySelectorAll('#topleft *')) if (el.childNodes.length===1 && el.firstChild.nodeType===3 && /오프라인/.test(el.textContent)) el.textContent = el.textContent.replace('(오프라인)','');
+  for (const el of document.querySelectorAll('#topleft *')) if (el.childNodes.length===1 && el.firstChild.nodeType===3 && /오프라인|offline/.test(el.textContent)) el.textContent = el.textContent.replace('(오프라인)','').replace(' (offline)','');
   document.querySelectorAll('#toast').forEach(e => e.style.display='none');
-  for (const el of document.querySelectorAll('body *')) if (el.children.length===0 && /초보자 안내서가 있어요/.test(el.textContent)) { let c=el; while (c && c!==document.body && getComputedStyle(c).position!=='fixed') c=c.parentElement; if (c && c!==document.body) c.style.display='none'; }
+  for (const el of document.querySelectorAll('body *')) if (el.children.length===0 && /초보자 안내서가 있어요|beginner.s guide/.test(el.textContent)) { let c=el; while (c && c!==document.body && getComputedStyle(c).position!=='fixed') c=c.parentElement; if (c && c!==document.body) c.style.display='none'; }
   return true; })()`;
 
 async function enterGame(b, params) {
-  await b.goto(BASE + '?dbg=1&weather=clear&' + params, 9000);
+  const lang = process.env.SHOT_LANG ? `lang=${process.env.SHOT_LANG}&` : '';   // SHOT_LANG=en → 영어 UI(App Store en-US)
+  await b.goto(BASE + '?dbg=1&weather=clear&' + lang + params, 9000);
   for (let i = 0; i < 30; i++) {
     const ok = await b.evaluate(`(() => { const g=document.getElementById('guest-btn'); if (g && g.offsetParent) { g.click(); return true; } return false; })()`);
     if (ok) break; await b.sleep(1000);
   }
   await b.sleep(3500);
-  await b.evaluate(`(() => { const c=[...document.querySelectorAll('#char-grid *')].find(e=>/곰/.test(e.textContent)); c?.click();
-    [...document.querySelectorAll('#char-modal button')].find(x=>/시작|확인|결정|이 친구/.test(x.textContent))?.click(); return true; })()`);
+  await b.evaluate(`(() => { const c=[...document.querySelectorAll('#char-grid *')].find(e=>/곰|Bear/.test(e.textContent)); c?.click();
+    [...document.querySelectorAll('#char-modal button')].find(x=>/시작|확인|결정|이 친구|Start|OK|friend/i.test(x.textContent))?.click(); return true; })()`);
   await b.sleep(2500);
   for (let i = 0; i < 12; i++) {
     const hit = await b.evaluate(`(() => { for (const id of ${JSON.stringify(DISMISS)}) { const e=document.getElementById(id); if (e && e.offsetParent) { e.click(); return id; } }
@@ -77,7 +78,7 @@ for (const [name, params, acts] of SCENES) {
   await b.sleep(2500);
   for (const a of acts) { await b.evaluate(`(()=>{ try { return ${a}; } catch (e) { return 'ERR ' + e.message } })()`); await b.sleep(2500); }
   await b.evaluate(CLEAN); await b.sleep(1200);
-  const file = path.join(OUT, `${dev}-${name}.png`);
+  const file = path.join(OUT, `${dev}${process.env.SHOT_LANG ? '-' + process.env.SHOT_LANG : ''}-${name}.png`);
   await b.shot(file);
   if (d.crop) execFileSync('sips', ['-c', String(d.crop[0]), String(d.crop[1]), file], { stdio: 'ignore' });
   console.log('📸', path.relative(ROOT, file));

@@ -14,7 +14,14 @@ import { launch } from './cdp.mjs';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = path.join(ROOT, '.scratch', 'store-shots');
 const W = 1320, H = 2868;
-const SCENES = [
+const LANG = process.env.LANG_CAPTION === 'en' ? 'en' : 'ko';   // LANG_CAPTION=en → 영어 캡션(App Store en-US)
+const SCENES = LANG === 'en' ? [
+  ['1-village', 'A tiny forest village', 'Your slow, cozy day'],
+  ['2-house', 'Gather wood', 'Build and decorate home'],
+  ['3-farm', 'Plant, water, wait', 'Watch your garden grow'],
+  ['4-sea', 'Head out to sea', 'Reel in the big one'],
+  ['5-night', 'When night falls', 'The forest glows'],
+] : [
   ['1-village', '숲속 작은 마을에서', '나만의 느긋한 하루'],
   ['2-house', '나무를 모아', '내 집을 짓고 꾸며요'],
   ['3-farm', '씨앗을 심고 물을 주면', '텃밭이 무럭무럭'],
@@ -22,7 +29,7 @@ const SCENES = [
   ['5-night', '밤이 오면', '숲이 반짝여요'],
 ];
 const FONT = `-apple-system, 'Apple SD Gothic Neo', sans-serif`;
-const img = (name) => 'data:image/png;base64,' + readFileSync(path.join(DIR, `iphone-${name}.png`)).toString('base64');
+const img = (name) => 'data:image/png;base64,' + readFileSync(path.join(DIR, `iphone-${LANG === 'en' ? 'en-' : ''}${name}.png`)).toString('base64');
 
 const VARIANTS = {
   A: (src) => `<img src="${src}" style="width:${W}px;height:${H}px;display:block">`,
@@ -53,7 +60,7 @@ const outs = [];
 for (const [v, render] of Object.entries(VARIANTS)) {
   for (const [name, l1, l2] of SCENES) {
     const html = `<!doctype html><meta charset="utf-8"><body style="margin:0">${render(img(name), l1, l2)}</body>`;
-    const file = path.join(DIR, `ios-${v}-${name}.html`);
+    const file = path.join(DIR, `ios-${LANG === 'en' ? 'en-' : ''}${v}-${name}.html`);
     writeFileSync(file, html);
     await b.goto('file://' + file, 1200);
     const png = file.replace(/\.html$/, '.png');
@@ -67,12 +74,12 @@ const cell = 300, ch = Math.round(cell * H / W);
 const sheet = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:#20302a;font-family:${FONT};color:#fff;padding:30px">
 ${Object.keys(VARIANTS).map(v => `<div style="display:flex;align-items:center;gap:18px;margin-bottom:26px">
   <div style="width:70px;font-size:54px;font-weight:800">${v}</div>
-  ${SCENES.map(([n]) => `<img src="ios-${v}-${n}.png" style="width:${cell}px;height:${ch}px;border-radius:24px">`).join('')}
+  ${SCENES.map(([n]) => `<img src="ios-${LANG === 'en' ? 'en-' : ''}${v}-${n}.png" style="width:${cell}px;height:${ch}px;border-radius:24px">`).join('')}
 </div>`).join('')}</body>`;
-const sheetFile = path.join(DIR, 'ios-compare.html');
+const sheetFile = path.join(DIR, `ios-${LANG === 'en' ? 'en-' : ''}compare.html`);
 writeFileSync(sheetFile, sheet);
 await b.viewport(70 + 18 * 6 + cell * 5 + 60, (ch + 26) * 3 + 60, { dsf: 1 });
 await b.goto('file://' + sheetFile, 2500);
-await b.shot(path.join(DIR, 'ios-compare.png'));
+await b.shot(sheetFile.replace(/\.html$/, '.png'));
 console.log('📋 .scratch/store-shots/ios-compare.png');
 await b.close();

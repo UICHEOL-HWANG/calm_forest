@@ -3,6 +3,7 @@
 > App Store Connect 입력란에 그대로 붙여넣는 용도. Play 문안(`STORE_LISTING.md`)을 바탕으로 iOS 규격에 맞췄다.
 > 기본 언어 **한국어**, 영어 현지화 추가.
 >
+> ⚠️ 설명란에 이모지 금지 — App Store Connect 가 거절한다(2026-10-11). 소제목은 【 】.
 > ⚠️ 가이드라인 2.3.10 — 메타데이터에 다른 플랫폼 이름(구글·안드로이드 등)을 쓰면 반려된다.
 > Play 문안의 "구글 계정으로 로그인"·"PC·태블릿·휴대폰 모두 지원"은 빼고 게임 센터·Apple 로 바꿨다.
 
@@ -52,43 +53,43 @@ Autumn leaves have settled over the forest. Tend your fields, reel in a big catc
 
 한국어:
 ```
-🌿 서두를 일이 없는 마을
+【서두를 일이 없는 마을】
 
 고요한 숲은 목표를 재촉하지 않는 3D 힐링 게임입니다.
 체력도, 시간 제한도, 실패도 없습니다.
 오늘 하고 싶은 만큼만 하고 쉬어도 마을은 그대로 기다립니다.
 
-🏡 내 손으로 짓는 집
+【내 손으로 짓는 집】
 · 나무를 베어 작은 오두막부터 시작해 다락, 별채, 루프탑까지 증축
 · 외벽 색과 지붕 모양을 고르고, 가구를 하나씩 놓아 안을 꾸미기
 · 마당에 화분과 등불을 두어 바깥까지 내 취향대로
 
-🌾 논밭과 과수원
+【논밭과 과수원】
 · 밭을 갈고 씨를 뿌리고 물을 주어 거두기
 · 측량소에서 땅을 넓히고, 자재 작업대로 시설을 세우고, 일꾼을 들이기
 · 과일나무를 키워 잼과 곶감으로 가공하기
 
-🎣 물가에서
+【물가에서】
 · 강에서 찌를 던지고, 나룻배를 타고 바다로 나가 큰 놈과 겨루기
 · 안개 낀 숲에서 무리를 헤치며 나아가기
 
-🍳 만드는 재미
+【만드는 재미】
 · 자유주방에서 재료를 골라 미니게임으로 요리하기
 · 작업대에서 나무를 깎아 주문받은 조각 만들기
 · 광산에서 돌과 석탄, 보석 캐기
 · 카페에서 손님을 맞고 음료 내기
 
-🦉 마을 사람들
+【마을 사람들】
 · 주민에게 말을 걸면 오늘의 이야기를 들려줍니다
 · 반복 의뢰와 하루치 부탁을 받고 보답 받기
 · 처음 보는 것을 잡거나 캐거나 거두면 도감에 차곡차곡
 
-🌙 흐르는 하루와 계절
+【흐르는 하루와 계절】
 · 아침과 밤, 맑음과 비, 사계절이 번갈아 옵니다
 · 밤이 되면 집에 들어가 잠들고, 꿈의 숲을 거닐기
 · 망원경으로 별자리를 찾고, 마음에 드는 장면은 사진으로 남기기
 
-🎮 이어서 하기
+【이어서 하기】
 · 게임 센터 계정으로 자동 저장됩니다
 · Apple로 로그인할 수도 있습니다
 
@@ -97,43 +98,43 @@ Autumn leaves have settled over the forest. Tend your fields, reel in a big catc
 
 영어:
 ```
-🌿 A village with nothing to rush
+【A village with nothing to rush】
 
 calm forest is a cozy 3D game that never hurries you.
 No stamina bar, no timers, no failing.
 Do as much as you like today — your village will be waiting.
 
-🏡 A home you build yourself
+【A home you build yourself】
 · Chop wood and grow a tiny cabin into a loft, an annex and a rooftop
 · Pick wall colors and roof shapes, then furnish the inside piece by piece
 · Set out flower pots and lanterns to make the yard your own
 
-🌾 Fields and orchards
+【Fields and orchards】
 · Till, sow, water and harvest
 · Expand your land at the survey office, raise facilities, hire helpers
 · Grow fruit trees and turn the harvest into jam and dried persimmons
 
-🎣 By the water
+【By the water】
 · Cast a float in the river, or take the ferry out to sea for the big one
 · Push through the misty woods
 
-🍳 Making things
+【Making things】
 · Cook with mini-games in the open kitchen
 · Carve wood to fill orders at the workbench
 · Mine stone, coal and gems
 · Welcome guests and serve drinks at the café
 
-🦉 Villagers
+【Villagers】
 · Talk to neighbors and hear today's story
 · Take on requests and daily favors
 · Catch, dig or harvest something new and it goes into your collection book
 
-🌙 Days and seasons
+【Days and seasons】
 · Mornings and nights, sun and rain, and four seasons come and go
 · Go to bed at night and wander the Dream Forest
 · Find constellations through the telescope and snap photos of your favorite moments
 
-🎮 Pick up where you left off
+【Pick up where you left off】
 · Progress saves automatically with Game Center
 · You can also sign in with Apple
 
