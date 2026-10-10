@@ -1,7 +1,7 @@
 # 🔄 데이터 파이프라인 — Supabase → BigQuery (일일 적재 + 경량화)
 
 Supabase는 **최근 7일**만 유지(핫 스토리지), BigQuery에 **전체 이력**을 쌓습니다(콜드 스토리지).
-GitHub Actions가 매일 자동으로: ①`game_logs`·`econ_logs` 증분 적재(id 기준) → ②`session_logs` 증분 적재(updated_at 기준) → ③`game_saves` 스냅샷 → ④7일 지난 로그 prune.
+GitHub Actions가 매일 자동으로: ①`game_logs`·`econ_logs` 증분 적재(id 기준) → ②`session_logs` 증분 적재(updated_at 기준) → ③`game_saves` 스냅샷 → ④관리자 대시보드 집계표 롤업(`cf_rollup`) → ⑤7일 지난 로그 prune.
 
 > **익명(게스트) 계정 자동 삭제는 2026-09-13부터 기본 OFF** — 계정을 지우면 FK cascade/set null 로 `feedback.user_id` 등 흔적이 끊긴다.
 > 켜려면 워크플로 env 에 `ANON_CLEANUP: '1'`. 게스트 저장은 재방문 때 불러오지 않으므로(휘발성) 남겨 둬도 동작엔 영향 없다.
@@ -16,12 +16,17 @@ Supabase ─(이 파이프라인)▶ BigQuery(calm_forest_raw)      # 좌표·�
                           └ 7일 지난 game_logs/econ_logs/session_logs는 Supabase에서 삭제
 ```
 
+> **④ 롤업이 prune 보다 먼저다(2026-10-10).** 관리자 대시보드는 Supabase 원본이 아니라 집계표
+> `cf_sessions`(세션 1행)·`cf_heat_day`(날×맵×격자)·`cf_econ_day`(날×출처)를 읽는다. 롤업이 실패하면 예외로 멈춰
+> prune 까지 가지 않는다 — 집계 안 된 원본을 지우면 대시보드 이력이 영영 빈다.
+> 정의 `sql/migrations/migrate_admin_rollup.sql` · 과거분(7/27~10/3)은 `ml/scripts/backfill_admin_rollup.py` 로 BQ 에서 한 번 채웠다.
+
 > `session_logs`는 세션당 1행을 계속 upsert하므로 BQ에는 같은 세션이 여러 번 실릴 수 있음 →
 > 분석 시 `ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY updated_at DESC) = 1` 로 최신행만 사용.
 
 ## 파일
 - `.github/workflows/supabase-to-bq.yml` — 매일 03:00 KST 실행(수동 실행도 가능)
-- `ml/scripts/export_to_bq.py` — 증분 적재 + prune 로직
+- `ml/scripts/export_to_bq.py` — 증분 적재 + 롤업 + prune 로직
 
 ## 필요한 설정 (GitHub → Settings → Secrets and variables → Actions)
 
