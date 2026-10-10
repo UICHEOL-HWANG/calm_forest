@@ -1,27 +1,21 @@
-# iOS 앱 — 작업
-- [x] platform.js IS_IOS/IS_NATIVE + 테스트 (build-cap.test)
-- [x] apple-native.js + 테스트
-- [x] google-native.js iOS 클라이언트 ID 지원 + 테스트
-- [x] supabase-client: signInWithApple, IS_NATIVE 분기, iOS 게스트 이관(holdGuestBeforeLink·APP_ACCOUNTS)
-- [x] index.html: Apple 버튼, 넛지, 상점·약관 링크 숨김, 'apple' = 영구 계정(isGuestNow·라벨·로그아웃)
-- [x] build-cap.mjs 타깃 인자 + 테스트, build:cap:ios
-- [x] capacitor.config.json apple:true · @capacitor/ios 8.5.3 · cap add ios (SPM)
-- [x] App.entitlements(Sign in with Apple) · iPhone 전용 · ITSAppUsesNonExemptEncryption=false
-- [x] SQL migrate_platform_ios.sql — ✅운영 적용(2026-10-11)
-- [x] referral API PLATFORMS 에 ios (웹 배포 때 반영)
-- [x] 로컬 커밋 a419a9f (미푸시)
-- [ ] 코드 리뷰 반영
-- [ ] Apple 버튼 시안 3개 비교·문구 검수
-- [ ] (runFirstLaunch·iOS 플랫폼 다운로드 후) 시뮬레이터 실행 검증
-- [ ] 후속: iOS Photo 플러그인(갤러리 저장) — 지금은 저장 버튼 숨김·웹 공유 폴백
-- [ ] 사용자 몫: 개발자 승인 → Supabase Apple 공급자(Client IDs=번들 ID) · GCP iOS 클라이언트 → GOOGLE_IOS_CLIENT_ID + Info.plist URL scheme · 서명 팀 설정
+# iOS 앱 — 작업 (Last Updated: 2026-10-11 04:45 KST)
 
-## 게임센터 (2026-10-11 결정)
-- [ ] gc-auth Worker + 테스트(openssl 자체서명 인증서로 서명 검증)
-- [ ] account-kind 'gc' + 테스트
-- [ ] gc-native.js + 테스트
-- [ ] supabase-client signInWithGameCenter · provider 'gc' · APP_ACCOUNTS
-- [ ] index.html iOS 흐름(자동 연결·바로 플레이하기·넛지·isGuestNow)
-- [ ] Swift 플러그인 + MainViewController + pbxproj 등록 + game-center entitlement
-- [ ] 구글 iOS 코드 제거
-- [ ] 사용자 몫: gc-auth 시크릿(SUPABASE_SERVICE_KEY·GC_USER_SECRET) 배포 · App Store Connect 게임센터 활성화
+## ✅ 완료
+- [x] Capacitor iOS 플랫폼 · IS_IOS/IS_NATIVE · build:cap:ios
+- [x] 로그인: 게임센터 자동(gc-auth Worker 배포) + "Apple로 계속하기" 하나(닫으면 게스트) · 구글 iOS 제외
+- [x] 앱 안 계정 삭제(5.1.1(v)) — 실기기 검증
+- [x] loginVia 분리(GA4 login{method}) · 같은 이메일이면 Apple 이 구글 계정에 연결됨
+- [x] DB platform CHECK 'ios' · referral PLATFORMS ios · 개인정보처리방침 Apple·게임센터 반영(웹 배포)
+- [x] 아이콘 · 홈 이름(ko 고요한 숲 / en calm forest) · 스크린샷 B안 ko/en
+- [x] App Store Connect API(tools/asc) · 등록정보·스크린샷·연령등급·가격·심사연락처
+- [x] 개인정보 라벨 게시(Aside repl)
+- [x] 실기기 Apple·게임센터 로그인 검증
+- [x] 🚀 심사 제출 1.0.0(3) — WAITING_FOR_REVIEW, 수동 출시
+
+## ⏳ 다음
+- [ ] 심사 결과 대응(반려 시 사유 보고 → 수정 → 빌드 +1)
+- [ ] 승인 후 사용자가 출시 버튼
+- [ ] 🤝 친구 초대 링크 iOS·안드로이드 앱으로(스토어 경유 시 초대 코드 유실 문제 — iOS 방식 선택 필요)
+- [ ] 앱 미리보기 영상(레코들리) → 1.0.1
+- [ ] Apple 토큰 폐기(계정 삭제 시, .p8 키) 검토
+- [ ] 안드로이드 PGS 유저도 웹 삭제 페이지로는 계정 삭제 불가 — 앱 안 삭제 이식 검토
