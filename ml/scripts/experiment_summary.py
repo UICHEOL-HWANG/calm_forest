@@ -65,8 +65,8 @@ HINT_SQL = f"""
 select session_id,
        min(if(intervene, `at`, null)) as t0,
        array_agg(distinct arm ignore nulls) as arms,
-       logical_or(origin is null or origin = '' or regexp_contains(origin, r'localhost|127\\.0\\.0\\.1')) as bad_origin,
-       logical_or(variant in ('beta_A', 'beta_B')) as beta,
+       coalesce(logical_or(origin is null or origin = '' or regexp_contains(origin, r'localhost|127\\.0\\.0\\.1')), true) as bad_origin,
+       coalesce(logical_or(variant in ('beta_A', 'beta_B')), false) as beta,   -- NULL 이면 NA 마스크로 세션이 조용히 빠진다
        any_value(nullif(client_id, '')) as ce_client
 from {RAW}.churn_events
 group by session_id
@@ -74,7 +74,7 @@ having t0 is not null
 """
 HINT_FROM = pd.Timestamp("2026-09-06", tz=KST)
 HINT_TO = pd.Timestamp("2026-10-07", tz=KST)          # 10/6 끝까지
-P1_SINCE = pd.Timestamp("2026-09-28", tz="UTC")
+P1_SINCE = pd.Timestamp("2026-09-28", tz=KST)
 
 
 def run_hint(sessions: pd.DataFrame) -> dict:
@@ -109,7 +109,7 @@ def run_hint(sessions: pd.DataFrame) -> dict:
     if ev.arm.nunique() == 2:
         lo, hi = cluster_bootstrap_ci(ev.y.values, arm01, ev.resident.values, n_boot=2000, seed=7)
         official = {
-            "d": round((ev.y[arm01 == 1].mean() - ev.y[arm01 == 0].mean()) * 100, 2), "lo": lo, "hi": hi,
+            "d": round(float(ev.y[arm01 == 1].mean() - ev.y[arm01 == 0].mean()) * 100, 2), "lo": lo, "hi": hi,
             "p": round(randomization_pvalue(ev.y.values, arm01, n_perm=10_000, seed=7), 4),
             "method": "randomization 10,000회 · 주민 클러스터 부트스트랩 2,000회",
             "complete": bool(data_max >= HINT_TO + pd.Timedelta(days=7)),
@@ -131,8 +131,11 @@ select date(timestamp_micros(event_timestamp), '{KST}') as day, user_pseudo_id, 
        (select value.int_value from unnest(event_params) where key = 'arm') as arm,
        if(event_name = 'fishing_catch', 1, 0) as y
 from {GA4}
-where _TABLE_SUFFIX >= '20260926'
-  and event_name in ('fishing_catch', 'fishing_miss')
+where regexp_contains(_TABLE_SUFFIX, r'^[0-9]{{8}}$') and _TABLE_SUFFIX >= '20260926'   -- events_intraday_* 는 다음 날 events_* 와 겹친다
+  and (event_name in ('fishing_catch', 'fishing_miss')
+       or (event_name = 'minigame_abandon'
+           and (select value.string_value from unnest(event_params) where key = 'game') = 'fish'
+           and coalesce((select value.string_value from unnest(event_params) where key = 'stage'), '') != 'wait'))
   and (select coalesce(value.int_value, safe_cast(value.string_value as int64)) from unnest(event_params) where key = 'probe_v') = 2
   and (user_id is null or user_id not in unnest(@persona_ids))
 """
@@ -152,13 +155,14 @@ def run_probe(persona_ids: list[str]) -> dict:
         "official": None,
         "window": {"from": "2026-09-26", "to": None},
         "notes": [f"플레이어 {df.user_pseudo_id.nunique()}명 · 페르소나 제외 · probe_v=2(블록 셔플)만",
+                  "입질 뒤 포기는 실패로 셈 · 입질 전(wait) 포기는 팔을 겪기 전이라 제외",
                   "판 단위 Wald 근사 — 한 사람의 여러 판이 묶여 있어 공식 분석은 계층 로지스틱"],
     }
 
 
 # ── 리텐션 안내 배너(정책 · 무작위 아님) ─────────────────────────
 GUIDE_SQL = f"""
-select session_id, min(created_at) as t0, logical_or(final_eligible) as shown,
+select session_id, min(created_at) as t0, coalesce(logical_or(final_eligible), false) as shown,
        any_value(user_id) as user_id, any_value(nullif(client_id, '')) as client_id, logical_and(is_guest) as is_guest
 from {RAW}.retention_guidance_scores
 group by session_id

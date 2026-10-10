@@ -12,11 +12,21 @@ import numpy as np
 import pandas as pd
 
 
+def _is_true(v) -> bool:
+    """BQ BOOL → pandas 는 numpy.bool_·pd.NA 로 준다. `is True` 비교는 numpy.bool_ 에서 틀리므로 값으로 판정."""
+    if v is None:
+        return False
+    try:
+        return bool(v)
+    except TypeError:          # pd.NA — 알 수 없음은 '게스트 아님'으로 본다(user_id 가 있으면 계정 세션)
+        return False
+
+
 def resident_key(user_id, is_guest, client_id) -> str | None:
     """주민 키 — 로그인 계정이면 u:<user_id>, 아니면 기기 c:<client_id> (힌트 배너 사전등록 정의)."""
-    if user_id and is_guest is False:
+    if isinstance(user_id, str) and user_id and not _is_true(is_guest):
         return f"u:{user_id}"
-    if client_id:
+    if isinstance(client_id, str) and client_id:
         return f"c:{client_id}"
     return None
 
