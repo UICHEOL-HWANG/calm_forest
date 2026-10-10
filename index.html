@@ -513,11 +513,19 @@
      활동 기록 대시보드는 구글 계정 전용이라 숨긴다 */
   body.platform-android #google-btn, body.platform-android #guest-btn, body.platform-android #stats-btn { display: none; }
   body.platform-android #toss-btn { display: inline-flex; }
+  /* 🍎 App Store 앱: Apple(4.8 — 구글과 같은 크기·위계) + 구글 네이티브 + 게스트. 구글 iOS 클라이언트 ID 가 없으면 Apple 만(.no-google).
+     활동 기록 대시보드는 웹 새 탭이라 앱 세션이 안 넘어감 → 숨김. 📷 WKWebView 는 <a download> 를 무시 → 저장 버튼 숨김(공유는 된다) */
+  #apple-btn { display: none; align-items: center; justify-content: center; gap: 8px; border: none; background: #000; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
+  #apple-btn svg { width: 16px; height: 19px; fill: currentColor; margin-top: -2px; }
+  #apple-btn:active { transform: scale(0.96); }
+  body.platform-ios #apple-btn, body.platform-ios #google-btn { display: flex; justify-content: center; width: 100%; max-width: 260px; box-sizing: border-box; margin: 0 auto; }
+  body.platform-ios #google-btn { margin-top: 12px; }
+  body.platform-ios.no-google #google-btn, body.platform-ios #stats-btn, body.platform-ios #photo-save { display: none; }
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
   /* ✉️ 이메일 코드 로그인 — 구글 아래 보조 버튼(반투명 테두리) + 단계 카드 */
   #email-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 0; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 24px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: transform .12s; }
   #email-btn:active { transform: scale(0.96); }
-  body.platform-toss #email-btn, body.platform-android #email-btn { display: none; }   /* 토스·플레이 앱은 전용 로그인 */
+  body.platform-toss #email-btn, body.platform-android #email-btn, body.platform-ios #email-btn { display: none; }   /* 토스·스토어 앱은 전용 로그인 */
   #login-main[hidden], .login-step[hidden] { display: none !important; }
   .login-step .step-title { font-size: 19px; font-weight: 800; margin: 4px 0 6px; text-shadow: 0 2px 10px rgba(0,0,0,.25); }
   .login-step .step-hint { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.9); margin: 0 0 14px; word-break: keep-all; overflow-wrap: anywhere; }
@@ -2390,6 +2398,7 @@
       <div class="tagline">a cozy little forest</div>
       <div id="login-main">
         <div id="login-invite"></div>
+        <button id="apple-btn"><svg viewBox="0 0 384 512" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Apple로 계속하기</button>
         <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
         <button id="toss-btn">바로 플레이하기</button>
         <button id="email-btn">✉️ 이메일로 시작하기</button>
@@ -2651,13 +2660,13 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { consumeExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다
     import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
-    import { IS_TOSS, IS_ITCH, IS_ANDROID } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
+    import { IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
@@ -4211,7 +4220,9 @@
       const dot = $('login-dot');
       dot.classList.remove('online', 'offline');
       dot.classList.add(s.online && !s.lost ? 'online' : 'offline');   // 🔌 끊긴 세션에 초록 점을 찍지 않는다
-      const label = (s.provider === 'google' || s.provider === 'email') ? (s.email || (s.provider === 'email' ? '이메일' : '구글')) : s.online ? '익명' : '게스트(오프라인)';
+      const label = (s.provider === 'google' || s.provider === 'email') ? (s.email || (s.provider === 'email' ? '이메일' : '구글'))
+        : s.provider === 'apple' ? 'Apple'   // 🍎 이메일은 가리기(privaterelay) 주소일 수 있어 보여 주지 않는다
+        : s.online ? '익명' : '게스트(오프라인)';
       $('login-status').textContent = label;
     }
 
@@ -4264,7 +4275,7 @@
       try { if ((localStorage.getItem('cf_music') || 'on') !== 'off') startBGM(); } catch (e) { startBGM(); } // 배경음악
       // 구글=로그아웃 / 게스트=나가기 (둘 다 메인 화면으로 복귀)
       const exitBtn = $('logout-btn'); exitBtn.style.display = '';
-      exitBtn.innerHTML = '<span class="uico">🚪</span><span class="ulbl">' + ((authState.provider === 'google' || authState.provider === 'email') ? '로그아웃' : '나가기') + '</span>';
+      exitBtn.innerHTML = '<span class="uico">🚪</span><span class="ulbl">' + (['google', 'email', 'apple'].includes(authState.provider) ? '로그아웃' : '나가기') + '</span>';
 
       // 진행상황 자동 저장 — 30초 주기 + 탭 숨김/종료 시 (창 닫았다 열어도 이어짐)
       setInterval(() => requestSave(), 30000);
@@ -4277,7 +4288,10 @@
     if (IS_TOSS) document.body.classList.add('platform-toss');
     if (IS_ITCH) document.body.classList.add('platform-itch');
     if (IS_ANDROID) document.body.classList.add('platform-android');
+    if (IS_IOS) document.body.classList.add('platform-ios');
+    if (IS_IOS && !CONFIG.GOOGLE_IOS_CLIENT_ID) document.body.classList.add('no-google');   // 🍎 구글 iOS 클라이언트 등록 전엔 Apple 만
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    $('apple-btn').addEventListener('click', () => signInWithApple());    // 🍎 iOS 앱 — 세션이 잡히면 authState 콜백이 enterPlay
     //  ✉️ 이메일 코드 — 세션이 잡히면 initAuth 콜백이 enterPlay (토스·앱은 CSS 로 버튼이 숨고 함수도 막혀 있다)
     mountEmailLogin({ $, requestCode: requestEmailCode, verifyCode: verifyEmailCode, track: trackEvent });
     // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
@@ -4433,7 +4447,7 @@
     //  💳 약관·환불 링크(설정 메뉴 + 로그인 카드)는 토스·안드로이드에서 내린다 —
     //     토스는 위와 같은 편도 티켓 문제(자체 IAP 라 필요도 없다), 안드로이드는 구글 플레이 정책상 외부 결제 안내 링크 금지.
     //     storeOpen 이 false 면 웹에서도 내린다 — 팔 현금 상품이 아직 없다(프리미엄 아이템과 함께 공개).
-    if (IS_TOSS || IS_ANDROID || !CONFIG.PADDLE.storeOpen) {
+    if (IS_TOSS || IS_NATIVE || !CONFIG.PADDLE.storeOpen) {
       $('terms-btn').remove(); $('refund-btn').remove();
       $('login-links')?.remove();
     } else {
@@ -5757,7 +5771,7 @@
     // ⚠️ js/game.js 에도 같은 이름의 표가 있다(박물관 명판용). 문구가 서로 달라 **둘 다** 고쳐야 한다 —
     //    한쪽만 고치면 도감 모달 제목에 카테고리 키가 날것으로 뜬다('visitor' 가 그대로 보였다).
     const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서', visitor: '🦋 텃밭 방문객' };
-    const isGuestNow = () => !['google', 'email', 'toss', 'pgs'].includes(authState.provider);   // 구글·이메일·토스·플레이 게임즈 계정 = 영구 계정
+    const isGuestNow = () => !['google', 'email', 'toss', 'pgs', 'apple'].includes(authState.provider);   // 구글·이메일·토스·플레이 게임즈·🍎Apple 계정 = 영구 계정
     // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
     //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
     //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.
@@ -5834,8 +5848,10 @@
     // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다
     //    (안 바꾸면 게스트가 "구글로 로그인하세요"라는 실행 불가능한 안내에 갇힌다)
     //    📱 플레이 앱도 같은 이유(WebView 구글 OAuth 차단)로 출구를 플레이 게임즈 연결로 바꾼다.
-    const NUDGE_TARGET = IS_TOSS ? 'toss' : IS_ANDROID ? 'pgs' : 'google';
+    //    🍎 iOS 앱은 Apple 로 연결한다(구글 버튼은 iOS 클라이언트 등록 전엔 숨어 있다).
+    const NUDGE_TARGET = IS_TOSS ? 'toss' : IS_ANDROID ? 'pgs' : IS_IOS ? 'apple' : 'google';
     const nudgeConnect = IS_TOSS ? () => signInWithToss()
+      : IS_IOS ? async () => { await signInWithApple(); if (!isGuestNow()) $('nudge-modal').classList.remove('show'); }
       : IS_ANDROID ? async () => {
           const r = await signInWithPlayGames({ interactive: true });
           trackEvent('pgs_connect', { mode: 'nudge', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
@@ -5857,6 +5873,13 @@
       bannerBtn.textContent = '🎮 플레이 게임즈로 도감 지키기';
       $('nudge-google').textContent = '🎮 플레이 게임즈 연결하고 영구 보존';
     }
+    if (IS_IOS) {
+      const banner = $('dex-guest'), bannerBtn = $('dex-google');
+      banner.innerHTML = '🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>Apple 계정을 연결하면 <b>영구 보존</b>!';
+      banner.appendChild(bannerBtn);
+      bannerBtn.textContent = ' Apple로 도감 지키기';
+      $('nudge-google').textContent = ' Apple 계정 연결하고 영구 보존';
+    }
     $('dex-google').addEventListener('click', () => {
       trackEvent('login_nudge_click', { from: 'dex', target: NUDGE_TARGET });   // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
       nudgeConnect();
@@ -5873,6 +5896,8 @@
         ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 토스 계정 연결 한 번이면 영구 보존돼요.'
         : IS_ANDROID
         ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 플레이 게임즈 연결 한 번이면 영구 보존돼요.'
+        : IS_IOS
+        ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. Apple 계정 연결 한 번이면 영구 보존돼요.'
         : '게스트로 나가면 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
       $('nudge-modal').classList.add('show');
       Input.setAnalog(0, 0);

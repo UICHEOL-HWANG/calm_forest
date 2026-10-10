@@ -1,0 +1,12 @@
+# iOS 앱 — 작업
+- [ ] platform.js IS_IOS/IS_NATIVE + 테스트
+- [ ] apple-native.js + 테스트
+- [ ] google-native.js iOS 클라이언트 ID 지원
+- [ ] supabase-client: signInWithApple, IS_NATIVE 분기
+- [ ] index.html: Apple 버튼(문구·시안 검수), 넛지, 상점, 자동 연결 분기
+- [ ] build-cap.mjs 타깃 인자 + 테스트, package.json build:cap:ios
+- [ ] capacitor.config.json apple:true, ios 설정 · @capacitor/ios 설치 · cap add ios
+- [ ] Info.plist/entitlements (Sign in with Apple, 구글 URL scheme)
+- [ ] SQL: platform CHECK 에 'ios' (앱 출시 전 적용)
+- [ ] 코드 리뷰
+- [ ] (Xcode 설치 후) 시뮬레이터 실행 검증

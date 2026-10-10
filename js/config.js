@@ -23,6 +23,9 @@ export const CONFIG = {
   // 📱 구글 플레이 앱 네이티브 로그인 audience — GCP(calm-forest) '웹 애플리케이션' 클라이언트 ID(calmforest-web)(공개값).
   //    Supabase Google 공급자와 같은 값이어야 signInWithIdToken 이 통과한다.
   GOOGLE_WEB_CLIENT_ID: '536929088498-qo1v15ribu6hfbovbt6eoqgi5magcd6q.apps.googleusercontent.com',
+  // 🍎 iOS 앱 구글 로그인 — GCP(calm-forest) 'iOS' 클라이언트 ID(번들 ID com.cheorish.lab.calmforest, 공개값).
+  //    비어 있으면 iOS 에서 구글 버튼을 숨긴다(Apple 로그인만). 채우면 Info.plist URL scheme(역순 ID)도 같이 넣을 것.
+  GOOGLE_IOS_CLIENT_ID: '',
 
   // ── 💳 Paddle(현금 결제, 웹 전용) — 클라이언트 토큰은 공개값. 서버 시크릿은 wrangler secret ──
   //    env 'sandbox' 면 Paddle.Environment.set('sandbox'). 승인 후 라이브 토큰 + 'production' 으로 교체.
