@@ -247,19 +247,22 @@ async function signInWithGoogleNative() {
 // ── 🍎 Apple 네이티브 로그인 (iOS 앱 전용) ────────────────────────────
 //   ASAuthorization 시트 → ID 토큰 → signInWithIdToken. 시트를 닫으면 조용히 끝낸다.
 //   ⚠️ Supabase Apple 공급자: Enabled + Client IDs 에 번들 ID. 안 켜 두면 'Provider not enabled'.
+//   → { ok: true } | { ok: false, reason: 'cancelled' | 'token' | 'session' | 'unavailable' }
+//   실패해도 창을 띄우지 않는다 — 호출부(로그인 화면)가 안드로이드처럼 게스트로 이어 준다.
 export async function signInWithApple() {
-  if (!supabase || !IS_IOS) return;
-  const fail = (msg) => { console.warn('[Apple 로그인 실패]', msg); alert(t('Apple 로그인 실패: {0}').replace('{0}', msg)); };
+  if (!supabase || !IS_IOS) return { ok: false, reason: 'unavailable' };
+  const fail = (reason, msg) => { console.warn('[Apple 로그인 실패]', reason, msg); return { ok: false, reason }; };
   let got;
   try {
     got = await getAppleIdToken({ plugin: capPlugin('SocialLogin') });
-  } catch (e) { return fail(e?.message || String(e)); }
-  if (got.cancelled) return;
+  } catch (e) { return fail('token', e?.message || String(e)); }
+  if (got.cancelled) return { ok: false, reason: 'cancelled' };
   await holdGuestBeforeLink();
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: got.idToken, nonce: got.rawNonce });
-  if (error || !data?.session) return fail(error?.message || 'no session');
+  if (error || !data?.session) return fail('session', error?.message || 'no session');
   applySession(data.session);
   console.log('[Apple] 세션 연결 완료', state.userId);
+  return { ok: true };
 }
 
 // ── 🎮 구글 팝업 로그인 (itch.io 등 iframe 호스트 전용) ────────────────
@@ -543,7 +546,9 @@ export async function loadGame() {
 //   규칙은 save-migrate.js(순수 모듈, 테스트로 잠금). 한 번 처리하면 비운다 — 새로고침마다 다시 옮기지 않게.
 let pendingGuest = null;   // { userId, state } | null
 //  게스트 이관을 받는 정식 계정 — 토스·플레이 게임즈 + 🍎 iOS 앱의 게임센터·Apple
-const APP_ACCOUNTS = ['toss', 'pgs', 'gc', 'apple'];
+//  ⚠️ Apple ID 이메일이 기존 구글 계정과 같으면 Supabase 가 그 계정에 apple 신원을 붙인다 → provider 는 'google'
+//     (2026-10-11 실기기 확인). iOS 에서 Apple 로 붙어도 게스트 진행도를 넘겨받게 google 도 넣는다.
+const APP_ACCOUNTS = ['toss', 'pgs', 'gc', 'apple', ...(IS_IOS ? ['google'] : [])];
 
 //  🍎 iOS: 놀던 게스트가 넛지·로그인 버튼으로 계정을 붙이는 경우 — 세션이 바뀌기 전에(익명 세션 RLS 로) 게스트 저장을 읽어 둔다.
 //  ⚠️ 시도마다 새로 읽는다 — 이전 실행·실패한 시도의 낡은 스냅숏으로 비교하면 방금 논 진행도를 버린다(리뷰 2026-10-11).

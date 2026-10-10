@@ -513,15 +513,15 @@
      활동 기록 대시보드는 구글 계정 전용이라 숨긴다 */
   body.platform-android #google-btn, body.platform-android #guest-btn, body.platform-android #stats-btn { display: none; }
   body.platform-android #toss-btn { display: inline-flex; }
-  /* 🍎 App Store 앱: 게임센터는 부팅 때 조용히 붙는다(화면 없음). 이 화면이 보이면 게임센터가 안 된 것 → 'Apple로 계속하기' 하나 + 게스트 링크.
-     게스트 링크는 남긴다 — 가이드라인 5.1.1: 계정이 꼭 필요 없는 앱은 로그인 없이도 쓸 수 있어야 한다(강제 로그인 리젝 방지).
+  /* 🍎 App Store 앱: 게임센터는 부팅 때 조용히 붙는다(화면 없음). 이 화면이 보이면 게임센터가 안 된 것 → 'Apple로 계속하기' 하나.
+     Apple 창을 닫거나 실패하면 게스트로 바로 시작한다 — 가이드라인 5.1.1(강제 로그인 금지)을 지키면서 버튼은 하나(사용자 결정 2026-10-11).
      구글은 iOS 에서 쓰지 않는다(4.8 은 외부 소셜 로그인에만 해당 — 게임센터·Apple 은 해당 없음).
      활동 기록 대시보드는 웹 새 탭이라 앱 세션이 안 넘어감 → 숨김. 📷 WKWebView 는 <a download> 를 무시 → 저장 버튼 숨김(공유는 된다) */
   #apple-btn { display: none; align-items: center; justify-content: center; gap: 8px; border: none; background: #000; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
   #apple-btn svg { width: 16px; height: 19px; fill: currentColor; margin-top: -2px; }
   #apple-btn:active { transform: scale(0.96); }
   body.platform-ios #apple-btn { display: flex; justify-content: center; width: 100%; max-width: 260px; box-sizing: border-box; margin: 0 auto; }
-  body.platform-ios #google-btn, body.platform-ios #stats-btn, body.platform-ios #photo-save { display: none; }
+  body.platform-ios #google-btn, body.platform-ios #guest-btn, body.platform-ios #stats-btn, body.platform-ios #photo-save { display: none; }   /* 게스트는 Apple 창을 닫으면 자동(안드로이드와 같은 한 버튼) */
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
   /* ✉️ 이메일 코드 로그인 — 구글 아래 보조 버튼(반투명 테두리) + 단계 카드 */
   #email-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 0; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 24px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: transform .12s; }
@@ -4293,7 +4293,16 @@
     if (IS_ANDROID) document.body.classList.add('platform-android');
     if (IS_IOS) document.body.classList.add('platform-ios');
     $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
-    $('apple-btn').addEventListener('click', () => signInWithApple());    // 🍎 iOS 앱 — 세션이 잡히면 authState 콜백이 enterPlay
+    //  🍎 iOS: 로그인 화면엔 이 버튼 하나(안드로이드 '바로 플레이하기'와 같은 자리). Apple 창을 닫거나 실패하면
+    //     묻지 않고 게스트로 시작한다 — 강제 로그인이 아니게(가이드라인 5.1.1). 성공은 authState 콜백이 enterPlay.
+    $('apple-btn').addEventListener('click', async () => {
+      const r = await signInWithApple();
+      trackEvent('apple_connect', { mode: 'button', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+      if (r.ok) return;
+      const g = await signInAsGuest(); await enterPlay();
+      setTimeout(() => ui.toast(g && g.online === false ? '게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요'
+                                                        : '이번엔 게스트로 시작해요. 진행은 이 기기에만 임시 저장돼요.', 4000), 2200);
+    });
     //  ✉️ 이메일 코드 — 세션이 잡히면 initAuth 콜백이 enterPlay (토스·앱은 CSS 로 버튼이 숨고 함수도 막혀 있다)
     mountEmailLogin({ $, requestCode: requestEmailCode, verifyCode: verifyEmailCode, track: trackEvent });
     // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
