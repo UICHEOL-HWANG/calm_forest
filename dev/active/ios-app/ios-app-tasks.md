@@ -1,12 +1,17 @@
 # iOS 앱 — 작업
-- [ ] platform.js IS_IOS/IS_NATIVE + 테스트
-- [ ] apple-native.js + 테스트
-- [ ] google-native.js iOS 클라이언트 ID 지원
-- [ ] supabase-client: signInWithApple, IS_NATIVE 분기
-- [ ] index.html: Apple 버튼(문구·시안 검수), 넛지, 상점, 자동 연결 분기
-- [ ] build-cap.mjs 타깃 인자 + 테스트, package.json build:cap:ios
-- [ ] capacitor.config.json apple:true, ios 설정 · @capacitor/ios 설치 · cap add ios
-- [ ] Info.plist/entitlements (Sign in with Apple, 구글 URL scheme)
-- [ ] SQL: platform CHECK 에 'ios' (앱 출시 전 적용)
-- [ ] 코드 리뷰
-- [ ] (Xcode 설치 후) 시뮬레이터 실행 검증
+- [x] platform.js IS_IOS/IS_NATIVE + 테스트 (build-cap.test)
+- [x] apple-native.js + 테스트
+- [x] google-native.js iOS 클라이언트 ID 지원 + 테스트
+- [x] supabase-client: signInWithApple, IS_NATIVE 분기, iOS 게스트 이관(holdGuestBeforeLink·APP_ACCOUNTS)
+- [x] index.html: Apple 버튼, 넛지, 상점·약관 링크 숨김, 'apple' = 영구 계정(isGuestNow·라벨·로그아웃)
+- [x] build-cap.mjs 타깃 인자 + 테스트, build:cap:ios
+- [x] capacitor.config.json apple:true · @capacitor/ios 8.5.3 · cap add ios (SPM)
+- [x] App.entitlements(Sign in with Apple) · iPhone 전용 · ITSAppUsesNonExemptEncryption=false
+- [x] SQL migrate_platform_ios.sql — ✅운영 적용(2026-10-11)
+- [x] referral API PLATFORMS 에 ios (웹 배포 때 반영)
+- [x] 로컬 커밋 a419a9f (미푸시)
+- [ ] 코드 리뷰 반영
+- [ ] Apple 버튼 시안 3개 비교·문구 검수
+- [ ] (runFirstLaunch·iOS 플랫폼 다운로드 후) 시뮬레이터 실행 검증
+- [ ] 후속: iOS Photo 플러그인(갤러리 저장) — 지금은 저장 버튼 숨김·웹 공유 폴백
+- [ ] 사용자 몫: 개발자 승인 → Supabase Apple 공급자(Client IDs=번들 ID) · GCP iOS 클라이언트 → GOOGLE_IOS_CLIENT_ID + Info.plist URL scheme · 서명 팀 설정
