@@ -50,6 +50,8 @@ def read_sql(query: str, **params) -> pd.DataFrame:
 
 def _param(name: str, value):
     """파이썬 값 → BQ 파라미터. 타입을 명시해야 BQ 가 받아준다."""
+    if isinstance(value, (list, tuple)):  # 문자열 배열 — `x in unnest(@ids)` 용(예: 페르소나 user_id 목록)
+        return bigquery.ArrayQueryParameter(name, "STRING", [str(v) for v in value])
     if isinstance(value, bool):      # bool 이 int 의 하위 클래스라 먼저 검사
         t = "BOOL"
     elif isinstance(value, int):
