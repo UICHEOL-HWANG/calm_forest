@@ -73,6 +73,20 @@ returns boolean language sql immutable as $$
       and e.value ~ '^[0-9]+$' and e.value::numeric > 0)
 $$;
 
+-- 시뮬레이터(페르소나) 계정 판정 — 이메일 접두어만으로는 누구나 흉내 낼 수 있다(이메일 OTP 가입이 열려 있음).
+--   접두어 + 시뮬 전용 도메인이 둘 다 맞아야 한다. 도메인은 PUBLIC 저장소에 두지 않고 이 표에만 넣는다(풀러로 직접 insert).
+create table if not exists public.cf_persona_domains (domain text primary key);
+alter table public.cf_persona_domains enable row level security;
+revoke all on public.cf_persona_domains from anon, authenticated;
+
+create or replace function public.cf_persona_user_ids()
+returns setof uuid language sql stable security definer set search_path = public as $$
+  select u.id from auth.users u
+  join cf_persona_domains d on lower(split_part(u.email, '@', 2)) = d.domain
+  where u.email like 'persona-%'
+$$;
+revoke all on function public.cf_persona_user_ids() from public, anon, authenticated;
+
 -- 맵 판정은 cf_rollup 안에서 한다(아래 '맵별 이동 밀도').
 --   좌표만으로는 안 된다: 강 나룻배 코스(z -408 ~ -1028, |x|≤6.4)가 꿈의 숲(0,-550)·거울 마을(0,-700)과
 --   월드 좌표가 겹친다. 그래서 세션 안에서 '먼 구역(z ≤ -380)' 방문 구간을 묶고, 구간의 첫 위치로 가른다 —
@@ -92,8 +106,11 @@ declare
   t1 timestamptz;
   n_sess int; n_heat int; n_econ int;
 begin
-  -- prune 경계 날은 일부만 남아 있다 → 원본 최초일 다음 날부터만 집계
-  select (min(created_at) at time zone tz)::date + 1 into v_floor from game_logs;
+  -- 같은 날을 두 곳(대시보드 열기·03:00 적재)이 동시에 지우고 다시 넣으면 PK 충돌 → 한 번에 하나만
+  perform pg_advisory_xact_lock(hashtext('cf_rollup'));
+  -- prune 경계 날은 일부만 남아 있다 → 원본 최초일 다음 날부터만 집계(로그 두 종 중 늦게 시작한 쪽 기준)
+  select (greatest((select min(created_at) from game_logs), (select min(created_at) from econ_logs)) at time zone tz)::date + 1
+    into v_floor;
   v_from := greatest(p_from, coalesce(v_floor, p_from));
   if v_from > p_to then
     return jsonb_build_object('from', v_from, 'to', p_to, 'skipped', true);
@@ -141,7 +158,7 @@ begin
   select j.session_id, j.uid, j.user_id, j.is_guest, j.platform, j.variant,
          (j.start_ts at time zone tz)::date, j.start_ts, j.end_ts, j.dur_sec, j.play_sec, j.last_place,
          j.counts, cf_is_acq(j.counts),
-         coalesce((select u.email like 'persona-%' from auth.users u where u.id = j.user_id), false),
+         coalesce(j.user_id in (select * from cf_persona_user_ids()), false),
          now()
   from j
   where j.uid is not null and j.start_ts >= t0 and j.start_ts < t1
@@ -160,7 +177,8 @@ begin
     select g.session_id, g.created_at, g.char_x as x, g.char_z as z, g.user_id,
            (g.char_z <= -380 and abs(g.char_x) <= 45) as far
     from game_logs g
-    where g.created_at >= t0 and g.created_at < t1 and g.char_x is not null and g.char_z is not null
+    -- 자정을 넘긴 나룻배 구간이 다음 날 '강 한가운데에서 시작'한 것처럼 보이지 않게 앞 3시간을 맥락으로 읽는다(집계는 t0 부터)
+    where g.created_at >= t0 - interval '3 hours' and g.created_at < t1 and g.char_x is not null and g.char_z is not null
   ),
   r as (   -- 먼 구역에 새로 들어설 때마다 구간 번호를 올린다
     select *, sum(case when far and not coalesce(prev_far, false) then 1 else 0 end)
@@ -168,14 +186,17 @@ begin
     from (select *, lag(far) over (partition by session_id order by created_at) as prev_far from g) q
   ),
   st as (
-    select session_id, run_no, (array_agg(z order by created_at))[1] as start_z
+    select session_id, run_no, (array_agg(z order by created_at))[1] as start_z,
+           max(abs(x)) as max_ax, max(z) - min(z) as z_span
     from r where far group by 1, 2
   ),
   lab as (
     select r.created_at, r.x, r.z, r.user_id,
            case
              when not r.far then case when abs(r.x) <= 44 and abs(r.z) <= 44 then 'main' end
-             when st.start_z > -470 then null                                         -- 나룻배(강 코스)
+             -- 나룻배(강 코스): 나루터 근처에서 시작했거나, 강폭(|x|≤6.4) 안에서만 60유닛 넘게 내려간 구간
+             --   (로그가 듬성듬성해 첫 기록이 -470 아래로 찍혀도 강 띠 모양이면 잡힌다)
+             when st.start_z > -470 or (st.max_ax <= 6.5 and st.z_span > 60) then null
              when abs(r.x) <= 40 and r.z between -590 and -510 then 'dream'
              when abs(r.x) <= 40 and r.z between -740 and -660 then 'mirror'
            end as map
@@ -186,8 +207,8 @@ begin
          (round((l.z - case l.map when 'dream' then -550 when 'mirror' then -700 else 0 end) / 2.0) * 2)::smallint,
          count(*)
   from lab l
-  left join (select id from auth.users where email like 'persona-%') pu on pu.id = l.user_id
-  where l.map is not null
+  left join cf_persona_user_ids() pu(id) on pu.id = l.user_id
+  where l.map is not null and l.created_at >= t0
   group by 1, 2, 3, 4, 5;
   get diagnostics n_heat = row_count;
 
@@ -198,7 +219,7 @@ begin
          sum(case when e.amount > 0 then e.amount else 0 end),
          sum(case when e.amount < 0 then -e.amount else 0 end)
   from econ_logs e
-  left join (select id from auth.users where email like 'persona-%') pu on pu.id = e.user_id
+  left join cf_persona_user_ids() pu(id) on pu.id = e.user_id
   where e.created_at >= t0 and e.created_at < t1
   group by 1, 2, 3;
   get diagnostics n_econ = row_count;
