@@ -12,9 +12,9 @@ for (const first of [true, false]) test(`단계가 빈틈없이 이어진다 (fi
   assert.ok(s.gate[0] >= s.rise[0] && s.gate[1] <= s.pass[0], '거울 문은 이륙하는 동안 일어선다');
 });
 
-test('길이 — 첫 회 ≈7.5s, 이후 ≈3.3s (스펙 §2, 2026-10-09 "출발이 너무 빠르다"로 늘림)', () => {
+test('길이 — 첫 회 ≈7.5s, 이후 ≈5.0s (스펙 §2, 2026-10-09 "출발이 너무 빠르다" · 2026-10-10 "두 번째부터 너무 빠르다"로 늘림)', () => {
   assert.ok(Math.abs(rideSchedule(true).total - 7.5) < 0.05);
-  assert.ok(Math.abs(rideSchedule(false).total - 3.3) < 0.05);
+  assert.ok(Math.abs(rideSchedule(false).total - 5.0) < 0.05);
 });
 
 test('phaseAt', () => {
