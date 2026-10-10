@@ -506,8 +506,9 @@ let pendingGuest = null;   // { userId, state } | null
 const APP_ACCOUNTS = ['toss', 'pgs', 'apple', ...(IS_IOS ? ['google'] : [])];
 
 //  🍎 iOS: 놀던 게스트가 넛지·로그인 버튼으로 계정을 붙이는 경우 — 세션이 바뀌기 전에(익명 세션 RLS 로) 게스트 저장을 읽어 둔다.
+//  ⚠️ 시도마다 새로 읽는다 — 이전 실행·실패한 시도의 낡은 스냅숏으로 비교하면 방금 논 진행도를 버린다(리뷰 2026-10-11).
 async function holdGuestBeforeLink() {
-  if (IS_IOS && state.provider === 'anonymous' && state.userId && !pendingGuest) pendingGuest = await readGuestSave(state.userId);
+  if (IS_IOS && state.provider === 'anonymous' && state.userId) pendingGuest = await readGuestSave(state.userId);
 }
 
 async function readGuestSave(userId) {

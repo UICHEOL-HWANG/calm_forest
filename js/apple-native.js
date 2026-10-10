@@ -37,7 +37,7 @@ export async function getAppleIdToken({ plugin, crypto = globalThis.crypto }) {
     });
   } catch (e) {
     const msg = String(e?.message || e);
-    if (/cancel|1001/i.test(msg)) return { cancelled: true };   // 시트를 닫은 것(ASAuthorizationError.canceled=1001) — 오류 아님
+    if (/cancel|AuthorizationError\D*1001/i.test(msg)) return { cancelled: true };   // 시트를 닫은 것(ASAuthorizationError.canceled=1001) — 오류 아님
     throw new Error(msg);
   }
   const idToken = res?.result?.idToken;

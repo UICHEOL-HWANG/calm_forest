@@ -53,3 +53,17 @@ test('플러그인 없음·idToken 없음은 throw', async () => {
   await assert.rejects(getAppleIdToken({ plugin: undefined, crypto: webcrypto }), /plugin/);
   await assert.rejects(getAppleIdToken({ plugin: fakePlugin({ idToken: null }), crypto: webcrypto }), /idToken/);
 });
+
+test('"1001" 이 들어간 다른 오류는 취소로 삼키지 않는다', async () => {
+  await assert.rejects(getAppleIdToken({ plugin: fakePlugin({ fail: 'HTTP 500 request 1001 failed' }), crypto: webcrypto }), /1001/);
+});
+
+test('🍎 iOS 계정 연결은 시도할 때마다 지금 게스트 저장을 다시 읽는다(낡은 스냅숏으로 비교 금지)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const sc = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
+  const i = sc.indexOf('async function holdGuestBeforeLink');
+  const body = sc.slice(i, sc.indexOf('\n}\n', i));
+  assert.ok(i > 0);
+  assert.doesNotMatch(body, /!pendingGuest/);
+  assert.match(body, /readGuestSave\(state\.userId\)/);
+});
