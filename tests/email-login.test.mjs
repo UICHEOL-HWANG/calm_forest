@@ -54,7 +54,7 @@ test('supabase-client 에 코드 요청·확인 함수 — 토스·플레이 앱
     const i = sc.indexOf(`export async function ${fn}`);
     assert.ok(i > 0, `${fn} 없음`);
     const body = sc.slice(i, sc.indexOf('\n}\n', i));
-    assert.match(body, /IS_TOSS \|\| IS_ANDROID/, `${fn} 가 토스·앱을 막지 않는다`);
+    assert.match(body, /IS_TOSS \|\| IS_NATIVE/, `${fn} 가 토스·앱(안드로이드·iOS)을 막지 않는다`);
   }
   assert.match(sc, /signInWithOtp\(\{\s*email/);
   assert.match(sc, /verifyOtp\(\{\s*email,\s*token[^}]*type: 'email'/);
@@ -258,4 +258,8 @@ test('로그인 화면: 코드 칸 마크업 — 입력은 하나, 칸은 장식
   assert.match(html, /id="code-cells"[^>]*aria-hidden="true"/);
   assert.match(html, /id="code-input"[^>]*autocomplete="one-time-code"/);
   assert.match(html, /id="code-input"[^>]*aria-label="6자리 코드"/);
+});
+
+test('IS_NATIVE 는 안드로이드·iOS 둘 다 포함한다(이메일 로그인 차단 범위)', () => {
+  assert.match(src('js/platform.js'), /export const IS_NATIVE = IS_ANDROID \|\| IS_IOS;/);
 });

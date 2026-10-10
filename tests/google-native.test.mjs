@@ -53,3 +53,12 @@ test('실패 사유를 구분한다', async () => {
   await assert.rejects(getGoogleIdToken({ plugin: fakePlugin({ idToken: null }), webClientId: 'w', crypto: webcrypto }), /idToken/);
   await assert.rejects(getGoogleIdToken({ plugin: fakePlugin({ fail: '[28444] Developer console is not set up correctly' }), webClientId: 'w', crypto: webcrypto }), /28444/);
 });
+
+test('🍎 iOS: iOSClientId 를 주면 iOS 클라이언트 + 서버 클라이언트(=웹)로 초기화', async () => {
+  const plugin = fakePlugin();
+  await getGoogleIdToken({ plugin, webClientId: 'web.apps.googleusercontent.com', iOSClientId: 'ios.apps.googleusercontent.com', crypto: webcrypto });
+  assert.deepEqual(plugin.calls.init[0], { google: {
+    webClientId: 'web.apps.googleusercontent.com', mode: 'online',
+    iOSClientId: 'ios.apps.googleusercontent.com', iOSServerClientId: 'web.apps.googleusercontent.com',
+  } });
+});

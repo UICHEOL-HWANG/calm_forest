@@ -1,5 +1,5 @@
 // =============================================================
-//  calm forest · 플랫폼 어댑터 — 'web'(기본) | 'toss'(앱인토스 웹뷰) | 'itch'(itch.io iframe) | 'android'(구글 플레이 앱)
+//  calm forest · 플랫폼 어댑터 — 'web'(기본) | 'toss'(앱인토스 웹뷰) | 'itch'(itch.io iframe) | 'android'(구글 플레이 앱) | 'ios'(App Store 앱)
 //  ------------------------------------------------------------
 //  단일 코드베이스 전략: 기능 코드는 플랫폼을 모른 채 개발하고,
 //  로그인·트래킹·정책 분기만 이 모듈의 값 하나로 갈라집니다.
@@ -9,7 +9,8 @@
 //   ② 앱인토스 SDK 전역 — @apps-in-toss/web-framework 통합 후 자동 감지
 //   ③ itch.io — scripts/build-itch.mjs 가 주입한 window.__ITCH__ 플래그, 또는 *.itch.zone 호스트
 //   ④ 구글 플레이 앱 — scripts/build-cap.mjs 가 주입한 window.__ANDROID__ 플래그(Capacitor WebView)
-//   ⑤ 기본 'web'
+//   ⑤ App Store 앱 — scripts/build-cap.mjs ios 가 주입한 window.__IOS__ 플래그(Capacitor WKWebView)
+//   ⑥ 기본 'web'
 //
 //  ▶ itch 메모: itch 는 게임을 html-classic.itch.zone 오리진의 iframe 안에서 서빙한다.
 //    · '/api/*' 상대경로는 전부 404 → 빌드가 API_BASE 를 웹 오리진으로 치환(토스와 동일)
@@ -33,14 +34,17 @@ function detect() {
     if (window.AppsInToss || window.__APPS_IN_TOSS__) return 'toss';
     if (window.__ITCH__ || /(^|\.)itch\.zone$/.test(location.hostname)) return 'itch';
     if (window.__ANDROID__) return 'android';
+    if (window.__IOS__) return 'ios';
   } catch (e) { /* 접근 불가 환경 무시 */ }
   return 'web';
 }
 
-export const PLATFORM = detect();          // 'web' | 'toss' | 'itch' | 'android'
+export const PLATFORM = detect();          // 'web' | 'toss' | 'itch' | 'android' | 'ios'
 export const IS_TOSS = PLATFORM === 'toss';
 export const IS_ITCH = PLATFORM === 'itch';
-export const IS_ANDROID = PLATFORM === 'android';   // 구글 플레이 앱 — 구글 로그인은 네이티브(google-native.js)
+export const IS_ANDROID = PLATFORM === 'android';   // 구글 플레이 앱 — Play Games·Photo 플러그인은 여기만
+export const IS_IOS = PLATFORM === 'ios';           // App Store 앱 — Apple 로그인(apple-native.js)
+export const IS_NATIVE = IS_ANDROID || IS_IOS;      // 📱 스토어 앱 공통 — 구글 네이티브 로그인·외부 결제 숨김·이메일 로그인 없음
 console.log('[platform]', PLATFORM);
 
 // ── 앱인토스 웹뷰 SDK 지연 로더 — esm.sh CDN(ESM·CORS 허용, 무번들 검증 완료) ──

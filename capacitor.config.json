@@ -9,12 +9,16 @@
   "android": {
     "backgroundColor": "#1b2a1f"
   },
+  "ios": {
+    "backgroundColor": "#1b2a1f",
+    "contentInset": "never"
+  },
   "plugins": {
     "SocialLogin": {
       "providers": {
         "google": true,
         "facebook": false,
-        "apple": false,
+        "apple": true,
         "twitter": false
       },
       "logLevel": 1
