@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install deps
-        run: pip install --quiet google-cloud-bigquery requests
+        run: pip install --quiet google-cloud-bigquery requests pandas numpy db-dtypes
       - name: Export to BigQuery + prune Supabase
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
@@ -44,3 +44,12 @@ jobs:
           BQ_LOCATION: ${{ vars.BQ_LOCATION }}
           RETENTION_DAYS: '7'
         run: python ml/scripts/export_to_bq.py
+
+      # 🧪 관리자 실험 페이지 요약(BQ → cf_experiment_results). 적재가 성공한 날만 돈다 —
+      #    적재가 실패한 날 돌면 어제 상태의 BQ 로 계산한 값에 오늘 계산 시각이 찍힌다
+      - name: Experiment summaries
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: python ml/scripts/experiment_summary.py
