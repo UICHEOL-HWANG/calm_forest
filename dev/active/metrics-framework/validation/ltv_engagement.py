@@ -34,7 +34,8 @@ excluded AS (
   SELECT user_id FROM `{RAW}.session_logs` WHERE client_id IN ({DEV_CLIENTS}) AND user_id IS NOT NULL
 ),
 ev AS (
-  SELECT user_pseudo_id, user_id, event_name,
+  SELECT user_pseudo_id, user_id, event_name, event_timestamp,
+    traffic_source.source AS src, traffic_source.medium AS med,
     DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Seoul') AS d,
     IFNULL((SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'platform'), 'web') AS platform
   FROM `{GA4}.events_*`
@@ -46,12 +47,33 @@ pseudo_acct AS (
 )
 SELECT IF(a.acct IS NOT NULL, CONCAT('u:', a.acct), CONCAT('p:', ev.user_pseudo_id)) AS person, ev.d,
   LOGICAL_OR(ev.event_name IN ({_EV})) AS tended,
-  LOGICAL_OR(ev.user_id IS NOT NULL) AS entered
+  LOGICAL_OR(ev.user_id IS NOT NULL) AS entered,
+  LOGICAL_OR(ev.platform = 'toss') AS toss,
+  ARRAY_AGG(STRUCT(ev.src, ev.med) ORDER BY ev.event_timestamp LIMIT 1)[OFFSET(0)].src AS src,
+  ARRAY_AGG(STRUCT(ev.src, ev.med) ORDER BY ev.event_timestamp LIMIT 1)[OFFSET(0)].med AS med
 FROM ev LEFT JOIN pseudo_acct a USING (user_pseudo_id)
 WHERE ev.platform IN ('web', 'toss') AND ev.d >= '{GA4_START}'
   AND ev.user_pseudo_id NOT IN (SELECT user_pseudo_id FROM pseudo_out)
 GROUP BY 1, 2
 """
+
+
+# Acquisition channel (spec §5-3) — first-touch, priority order. Referral comes from Supabase
+# `referrals` (0 rows as of 2026-10-10) and is not in BQ yet, so it is reported as pending.
+CHANNELS = ("referral", "meta_paid", "toss", "social", "organic_direct")
+_PAID = r"cpc|paid"
+_SOCIAL_SRC = r"instagram|facebook|linkedin|threads|^x$|^ig$|t\.co|dcinside"
+
+
+def channel_of(first_day: pd.DataFrame) -> pd.Series:
+    """first_day: one row per person (their d0 row) with toss/src/med."""
+    med = first_day["med"].fillna("").str.lower()
+    src = first_day["src"].fillna("").str.lower()
+    ch = pd.Series("organic_direct", index=first_day.index)
+    ch[med.isin(["social", "community"]) | src.str.contains(_SOCIAL_SRC)] = "social"
+    ch[first_day["toss"].astype(bool)] = "toss"
+    ch[med.str.contains(_PAID)] = "meta_paid"
+    return ch
 
 
 HORIZONS = (7, 14, 28)
@@ -79,6 +101,9 @@ def cohort_table(pd_df: pd.DataFrame) -> pd.DataFrame:
         per[f"ltv{h}"] = df[df["k"] < h].groupby("person")["tended"].sum().reindex(per.index, fill_value=0)
     per["post_8_28"] = df[df["k"].between(7, 27)].groupby("person")["tended"].sum().reindex(per.index, fill_value=0)
     per["activated"] = per["ltv7"] > 0
+    if "src" in df.columns:
+        d0_rows = df[df["k"] == 0].groupby("person")[["toss", "src", "med"]].first().reindex(per.index)
+        per["channel"] = channel_of(d0_rows)
     print(f"cohort: first visit {eligible.min()} ~ {eligible.max()} (28-day observable), data until {last_day}")
     return per
 
@@ -106,6 +131,26 @@ def report(per: pd.DataFrame) -> None:
     print(f"\n[concentration] top 10% of new users hold {top:.0%} of 28-day acquired days")
 
 
+MIN_SEGMENT_N = 30
+
+
+def report_channels(per: pd.DataFrame) -> None:
+    print("\n[engagement LTV by acquisition channel] (n<30 = directional only)")
+    for ch in CHANNELS:
+        g = per[per["channel"] == ch]
+        if g.empty:
+            print(f"  {ch:15s} n=  0  — no data yet")
+            continue
+        flag = "" if len(g) >= MIN_SEGMENT_N else "  (n<30)"
+        parts = []
+        for h in (7, 28):
+            v = g[f"ltv{h}"].to_numpy(float)
+            lo, hi = _ci(v)
+            parts.append(f"LTV{h} {v.mean():.2f} [{lo:.2f}, {hi:.2f}]")
+        print(f"  {ch:15s} n={len(g):3d}  {' · '.join(parts)} · zero {(g['ltv28'] == 0).mean():.0%}"
+              f" · activated {g['activated'].mean():.0%}{flag}")
+
+
 def ga4_person_days() -> pd.DataFrame:
     df = read_sql(GA4_SQL)
     df["d"] = pd.to_datetime(df["d"]).dt.date
@@ -122,6 +167,8 @@ def main() -> None:
         print("[cohort] game-entered users only (user_id appeared) — same population as session_logs")
     per = cohort_table(days)
     report(per)
+    if "channel" in per.columns:
+        report_channels(per)
 
 
 if __name__ == "__main__":
