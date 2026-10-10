@@ -14,13 +14,14 @@ import { trackEvent } from '../analytics.js';
 import { MIRROR, MIRROR_STOP } from '../data/places.js';
 import { NPCS } from '../data/npcs.js';
 import { NPC_R, PLAYER_R } from '../data/character.js';
-import { buildNPCFigure } from './npc.js';
+import { buildNPCFigure, fadeNameTag } from './npc.js';
 import {
   LANDMARKS, NPC_SPOTS, SOLIDS, SOLID_CIRCLES, STOP_SHELTER_BOX, SIGN_POLE, carriageBox, MIRROR_LANDING, MIRROR_STOP_LOCAL, MIRROR_PARK, MIRROR_GATE_LOCAL, STOP_REACH, PICK_R, TALK_R,
   VILLAGE_BOARD, VILLAGE_PARK, VILLAGE_WALL, LAKE_GATE, clampWalkable, spotOf, nearVillageStop,
 } from '../mirror/layout.js';
 import { QUESTS_PER_DAY, normalizeMirror, questAt, rewardFor } from '../mirror/quests.js';
-import { clueText, clueShort, hintText, npcName, pickedText, carryShort, giveShort, thanksText } from '../mirror/clues.js';
+import { clueLine, clueShort, hintText, npcName, pickedText, carryShort, giveShort, thanksLine } from '../mirror/clues.js';
+import { hideTalk, onTalkTap, showTalk, talkShown } from '../mirror/talk-box.js';
 import { buildMirrorWorld, invertColor, makeStopShelter, makeStopSignFace, makeMirrorGate, mirrorizeFigure } from '../mirror/art.js';
 import { makeMoonCarriage } from '../dream/art.js';
 import { startRide } from '../mirror/ride.js';
@@ -75,7 +76,7 @@ function ensureWorld() {
     tag.position.y = 2.25; group.add(tag);
     const bubble = bubbleSprite(); group.add(bubble);
     world.npcAnchors[i].add(group);
-    return { id, group, spot: s, bubble };
+    return { id, group, spot: s, bubble, tag };
   });
   gateMirror = makeMirrorGate();
   gateMirror.group.position.set(MIRROR.x + MIRROR_GATE_LOCAL.x, MIRROR_GATE_LOCAL.y, MIRROR.z + MIRROR_GATE_LOCAL.z);
@@ -161,6 +162,7 @@ function routeBack() {
 }
 function board(dir) {
   if (ride) return;
+  closeTalk('leave');
   if (dir === 'go' && isNight()) { ui.toast?.('🌙 막차가 끊겼어요 · 꿈의 숲은 침대에서'); return; }   // 프롬프트를 띄운 채 해가 진 경우
   ensureWorld(); ensureVillageSide();
   const m = mirrorState(), first = dir === 'go' ? m.visits === 0 : !gameState.hintsSeen.mirrorReturn;
@@ -211,6 +213,7 @@ function arrive({ skipped, atS, short }) {
   requestSave();
 }
 function leaveSpace() {
+  closeTalk('leave');
   $w.atMirror = false;
   active = null; if (world) world.beam.visible = false;
   ui.setZoneHint?.(null); $w.lastZoneHint = null;
@@ -272,16 +275,40 @@ export function mirrorPrompt() {
 export function mirrorAction(nd) {
   if (nd === 'mirrorgo') return board('go');
   if (!atMirror) return;
+  if (talkOpen()) return closeTalk('action');   // 🪞 대화 박스가 떠 있으면 액션은 닫기부터(같은 Space 로 다음 일이 겹쳐 일어나지 않게)
   if (nd === 'mirrorback') return board('back');
   if (nd === 'mirrortalk') return talk();
   if (nd === 'mirrorhint') return useHint();
   if (nd === 'mirrorgive') return deliver();
 }
+// ── 🪞 대화 박스(B안 2026-10-10) — 말 걸기·돌려주기 대사를 화면 아래 얼굴·이름·대사로 ──
+const TALK_CLOSE_R = 5;   // 주민에게서 이만큼 멀어지면 닫힌다(말 걸기 사거리 2.0 의 두 배 남짓 — 걸으며 읽을 여유)
+let talkWith = null;      // { q, kind, at } — 지금 박스에 말하고 있는 주민
+const talkOpen = () => !!talkWith && talkShown();
+function openTalk(q, kind) {
+  closeTalk('action');   // 앞 박스가 남아 있으면(돌려주기 직후 다음 말 걸기 등) 기록을 남기고 갈아 끼운다
+  const def = NPCS.find(d => d.id === q.npc), tw = twins.find(x => x.id === q.npc);
+  const en = lang() === 'en', touch = document.body.classList.contains('is-touch');
+  showTalk({
+    face: def.emoji.includes('\u200D') ? def.emoji.split('\u200D').pop() : def.emoji,   // 이름표와 같은 ZWJ 처리
+    color: '#' + invertColor(def.color).toString(16).padStart(6, '0'),
+    name: npcName(q.npc, lang()),
+    line: kind === 'clue' ? clueLine(q, lang()) : thanksLine(q, lang()),
+    next: touch ? (en ? '▶ Tap' : '▶ 탭') : (en ? '▶ Space · click' : '▶ Space · 클릭'),
+  });
+  talkWith = { q, kind, at: twinWorld(tw) };
+  onTalkTap(() => closeTalk('tap'));
+}
+function closeTalk(via) {
+  if (!talkWith) return;
+  const s = hideTalk(), w = talkWith; talkWith = null;
+  if (s != null) T.talkClose({ quest_n: w.q.n, kind: w.kind, via, elapsed_s: s });
+}
 function talk() {
   const q = questAt(mirrorState(), todayStr()); if (!q || active) return;
   const used = hintUsed.has(hintKey(q));
   active = { q, heardAt: performance.now(), hinted: used, hintShown: used };
-  ui.toast?.(clueText(q, lang()), 5200);
+  openTalk(q, 'clue');
   T.clue({ quest_n: q.n, npc: q.npc, spot_id: q.spot, flipped: q.flipped });
   if (q.n === 2 && firstHintBanner('mirrorFlip', '🪞', '거울 말', '여기 주민들은 좌우를 반대로 말해요')) T.onboard({ step: 'flip' });
   refreshWorld();
@@ -297,6 +324,8 @@ function useHint() {
 export function updateMirror(dt, t) {
   if (!atMirror || !world || ride) return;
   world.update(t);
+  for (const tw of twins) fadeNameTag(tw.tag, dist2D(twinWorld(tw), player.position));   // 🏷️ 마을 주민과 같은 거리 페이드 — 없으면 이름표가 영영 꺼져 있다(2026-10-10)
+  if (talkOpen() && dist2D(talkWith.at, player.position) > TALK_CLOSE_R) closeTalk('walk');   // 🪞 대화 박스 — 주민에게서 멀어지면 닫힌다
   const m = mirrorState();   // 안에서 자정을 넘기면 HUD·말풍선이 어제 상태로 남는다
   if (m.day !== lastDay) { lastDay = m.day; lastHud = null; syncHud(); refreshWorld(); }
   if (!active) return;
@@ -335,7 +364,7 @@ function deliver() {
   const w = twinWorld(twins.find(x => x.id === a.q.npc));
   spawnSparkle(w.x, 1.4, w.z, 22); spawnFloatText(w.x, 2.2, w.z, `+${reward} 🪞`, '#7ad6c0');
   Sound.starPick?.();
-  ui.toast?.(thanksText(a.q, lang()), 4200);   // 다 끝났다는 안내는 프롬프트 줄(「오늘 의뢰는 끝났어요」)과 의뢰 N/3 이 맡는다
+  openTalk(a.q, 'thanks');   // 다 끝났다는 안내는 프롬프트 줄(「오늘 의뢰는 끝났어요」)과 의뢰 N/3 이 맡는다
   refreshWorld(); syncHud(); requestSave();
 }
 

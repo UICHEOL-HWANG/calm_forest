@@ -14,11 +14,12 @@ export const EVENTS = Object.freeze({
   mirror_hint:         ['quest_n', 'spot_id', 'elapsed_s'],
   mirror_found:        ['quest_n', 'item', 'spot_id', 'flipped', 'hinted', 'elapsed_s'],   // 물건을 주웠다(단서→줍기 초) — 보상은 돌려줄 때
   mirror_deliver:      ['quest_n', 'npc', 'item', 'hinted', 'elapsed_s'],                 // 주민에게 돌려줬다(줍기→돌려주기 초) · 보상은 hinted 로 파생(2/3) — 2026-10-09 돌려주기 단계 추가
+  mirror_talk_close:   ['quest_n', 'kind', 'via', 'elapsed_s'],                           // 🪞 대화 박스(B안 2026-10-10)를 닫았다 — 단서/고마워요 · 액션·탭·멀어짐 · 떠 있던 초
   mirror_leave:        ['left_today', 'elapsed_s'],
   mirror_onboard:      ['step'],
   decor_buy_mirror:    ['item', 'cost', 'left'],
 });
-const ENUMS = { dir: ['go', 'back'], step: ['stop', 'arrive', 'flip', 'return'] };
+const ENUMS = { dir: ['go', 'back'], step: ['stop', 'arrive', 'flip', 'return'], kind: ['clue', 'thanks'], via: ['action', 'tap', 'walk', 'leave'] };
 
 let sink = null, strict = false;
 export function bindTracker(fn, opts = {}) { sink = fn; strict = !!opts.strict; }
@@ -46,6 +47,7 @@ export const T = Object.freeze({
   hint: (p) => emit('mirror_hint', p),
   found: (p) => emit('mirror_found', p),
   deliver: (p) => emit('mirror_deliver', p),
+  talkClose: (p) => emit('mirror_talk_close', p),
   leave: (p) => emit('mirror_leave', p),
   onboard: (p) => emit('mirror_onboard', p),
   decorBuy: (p) => emit('decor_buy_mirror', p),
