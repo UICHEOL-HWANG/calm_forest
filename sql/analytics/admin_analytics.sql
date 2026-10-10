@@ -26,6 +26,8 @@
 drop function if exists public.cf_admin_overview();
 drop function if exists public.cf_admin_overview(int);
 
+-- ⚠️ 2026-10-10 부터 관리자 화면은 cf_admin_dashboard(sql/analytics/admin_dashboard.sql) 를 쓴다.
+--    이 함수는 7일만 남는 원본을 직접 읽어 30·90일이 실제로는 7일치였다 — 새로 쓰지 말 것.
 create or replace function public.cf_admin_overview(days int default 30, token text default null)
 returns jsonb
 language plpgsql
