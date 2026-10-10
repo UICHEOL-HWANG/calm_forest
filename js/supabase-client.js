@@ -23,7 +23,8 @@ import { setAbVariant, trackEvent } from './analytics.js';
 import { kstDate } from './kst-date.js';   // 🕛 run_date 는 KST 날짜
 import { markExit } from './exit-flag.js';   // 🚪 나가기 → 새로고침 뒤 로그인 화면
 import { deleteOwnAccount } from './account/delete-account.js';   // 🗑️ 앱 안 계정 삭제(iOS 5.1.1(v))
-import { accountKind } from './auth/account-kind.js';   // 🔵📱 토스·PGS 판정(합성 이메일 도메인 — user_metadata 는 유저가 바꿀 수 있다)
+import { accountKind } from './auth/account-kind.js';
+import { resolveLoginVia, LOGIN_VIA_KEY } from './auth/login-via.js';   // 🔑 로그인 수단 ≠ 계정 종류(GA4 오염 방지)   // 🔵📱 토스·PGS 판정(합성 이메일 도메인 — user_metadata 는 유저가 바꿀 수 있다)
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -31,6 +32,7 @@ export const state = {
   userId: null,        // 로그인된 유저 UUID (오프라인이면 로컬 ID)
   email: null,         // 구글 계정 이메일/이름
   provider: null,      // 'google' | 'toss' | 'pgs' | 'gc' | 'apple' | 'anonymous' | 'offline'
+  loginVia: null,      // 🔑 이번에 들어온 수단(GA4 login{method}) — 같은 이메일로 붙은 apple 이면 provider 는 google 이어도 'apple'
   sessionId: randId(), // 이번 플레이 세션 식별자(로그 그룹핑)
   clientId: clientId(),// 분석용 영구 기기 식별자(localStorage, 게스트 재방문 추적)
   isGuest: null,       // 게스트(익명/오프라인) 여부 — 세그먼트 분석용
@@ -69,6 +71,8 @@ function applySession(session) {
   if (!isAnon(session)) freshGuest = false;
   state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : isPgs ? '플레이 게임즈' : isGc ? '게임 센터' : (session.user.email || session.user.user_metadata?.name || '유저');
   state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : isPgs ? 'pgs' : isGc ? 'gc' : (session.user.app_metadata?.provider || 'google');
+  let storedVia = null; try { storedVia = localStorage.getItem(LOGIN_VIA_KEY); } catch (e) { /* 저장소 막힘 — 계정 종류로 */ }
+  state.loginVia = resolveLoginVia({ provider: state.provider, user: session.user, stored: storedVia });
   state.betaReady = resolveBetaGroup(session);
   emit();
 }
@@ -260,6 +264,7 @@ export async function signInWithApple() {
   await holdGuestBeforeLink();
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: got.idToken, nonce: got.rawNonce });
   if (error || !data?.session) return fail('session', error?.message || 'no session');
+  try { localStorage.setItem(LOGIN_VIA_KEY, 'apple'); } catch (e) { /* 표시용 — 실패해도 로그인은 됐다 */ }
   applySession(data.session);
   console.log('[Apple] 세션 연결 완료', state.userId);
   return { ok: true };
