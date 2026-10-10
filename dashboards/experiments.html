@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>calm forest · 실험 (A/B)</title>
+<meta name="description" content="calm forest 실험 레지스트리 — 사전 기준 · 배정 비율 검사 · 효과 크기와 신뢰구간 · 판정" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="_dash.css" />
+<link rel="stylesheet" href="_admin.css" />
+<style>
+  /* 실험 페이지 전용 — 시안: dev/active/admin-dashboard-v2/experiments-mockup.html (A + C 효과 그림) */
+  :root {
+    --amber-bg: color-mix(in srgb, var(--s4) 16%, transparent);
+    --blue-bg: color-mix(in srgb, var(--s3) 13%, transparent);
+  }
+  #msg .msg-char { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; }
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  .chip.win { background: rgba(var(--tint-rgb), .15); color: var(--up); }
+  .chip.lose, .chip.conf { background: var(--warn-bg); color: var(--down); }
+  .chip.small { background: var(--amber-bg); color: color-mix(in srgb, var(--s4) 70%, var(--ink)); }
+  .chip.obs { background: var(--blue-bg); color: var(--s3); }
+  .chip.st { background: transparent; border: 1px solid var(--line); color: var(--ink-3); }
+  .bar { display: block; height: 6px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--s1); border-radius: 4px; }
+  .ok { color: var(--up); font-weight: 800; } .bad { color: var(--down); font-weight: 800; }
+  .forest { width: 100%; height: auto; display: block; }
+
+  .lead { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 22px; margin-top: 18px; align-items: start; }
+  .fp { background: var(--surface-1); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px 8px; min-width: 0; }
+  .fp h2 { margin: 0 0 2px; font-size: 14px; font-weight: 800; }
+  .rules { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--surface-1); display: grid; gap: 8px; font-size: 12px; color: var(--ink-2); }
+  .rules h3 { margin: 0; font-size: 12.5px; display: flex; gap: 8px; align-items: center; }
+  .rules h3 img { width: 30px; height: 30px; object-fit: contain; }
+  .rules ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+  .xwrap { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; margin-top: 24px; align-items: start; }
+  .xlist { display: grid; gap: 6px; position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); }
+  .grp-t { margin: 10px 0 2px; }
+  .item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer;
+          border: 1px solid transparent; text-align: left; background: transparent; width: 100%; color: inherit; font: inherit; }
+  .item:hover { background: var(--surface-2); }
+  .item.on { background: var(--surface-1); border-color: var(--line); box-shadow: var(--shadow); }
+  .item b { font-size: 13px; display: block; }
+  .item .row { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; align-items: center; }
+  .av { width: 34px; height: 34px; flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+        background: radial-gradient(circle at 50% 60%, rgba(var(--tint-rgb), .18), rgba(var(--tint-rgb), .04) 70%); }
+  .av img { width: 122%; height: 122%; object-fit: contain; transform: translateY(9%); }
+
+  .detail { display: grid; gap: 18px; min-width: 0; scroll-margin-top: 16px; }
+  .xh { display: grid; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .xh h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
+  .hyp { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 0; max-width: 80ch; }
+  .lock { font-size: 10.5px; color: var(--ink-3); font-weight: 700; }
+  .checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--surface-1); overflow: hidden; }
+  .checks > div { padding: 13px 15px; border-left: 1px solid var(--line-soft); display: grid; gap: 4px; align-content: start; min-width: 0; }
+  .checks > div:first-child { border-left: 0; }
+  .checks .num { font-size: 22px; letter-spacing: -.5px; }
+  .xtwo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .log { display: grid; gap: 8px; font-size: 12.5px; }
+  .log div { display: grid; grid-template-columns: 52px 1fr; gap: 10px; color: var(--ink-2); }
+  .log span { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .t th { text-align: left; font-size: 10.5px; color: var(--ink-3); font-weight: 700; padding: 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .t td { padding: 8px 6px; border-bottom: 1px solid var(--line-soft); }
+  .t .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  @media (max-width: 860px) {
+    .lead, .xwrap, .xtwo { grid-template-columns: 1fr; }
+    .xlist { position: static; }
+    .checks { grid-template-columns: 1fr; }
+    .checks > div { border-left: 0; border-top: 1px solid var(--line-soft); }
+    .checks > div:first-child { border-top: 0; }
+  }
+</style>
+</head>
+<body>
+  <div id="page" class="is-loading">
+    <div class="ah"><a class="crumb" href="index.html">← 관리자 홈</a></div>
+    <div class="ah" style="margin-top:6px">
+      <img class="brand" src="img/chars/chick.png" alt="" />
+      <h1>calm forest · 실험 (A/B)</h1>
+      <div class="meta skel" id="meta">실험 레지스트리를 불러오는 중</div>
+    </div>
+    <div class="loader" id="loader" role="status" aria-live="polite">
+      <img src="img/chars/chick.png" alt="" /><span class="t">분석 중</span><span class="step"></span><span class="bar"><i></i></span>
+    </div>
+    <div id="msg"></div>
+
+    <main class="dash" id="dash">
+      <div class="lead">
+        <section class="fp" aria-labelledby="fpTitle">
+          <h2 id="fpTitle">주 지표 효과 한눈에</h2>
+          <p class="def">비율 지표 실험을 같은 축(%p)에 놓았습니다. 점선 = 무작위가 아니거나 교란이 있어 효과로 읽으면 안 되는 것. 단위가 다른 실험(평균)은 글자로만 적습니다.</p>
+          <div id="forest" class="chartbox"></div>
+        </section>
+        <aside class="rules">
+          <h3><img src="img/chars/bear.png" alt="" />판정 규칙</h3>
+          <ol>
+            <li>결과 보기 전에 주 지표·검정·판정선을 고정(🔒)</li>
+            <li>배정 비율이 어긋나면(SRM p&lt;0.01) 판정하지 않음</li>
+            <li>관측 창이 끝나기 전, 목표 표본 전에는 판정하지 않음</li>
+            <li>CI 가 0을 걸치면 "판정 불가" + 검출 가능 최소 효과 보고</li>
+            <li>무작위 배정이 없으면 효과 판정 안 함</li>
+          </ol>
+        </aside>
+      </div>
+
+      <div class="xwrap">
+        <nav class="xlist" id="list" aria-label="실험 목록"></nav>
+        <article class="detail" id="detail"></article>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/admin-experiments.js"></script>
+</body>
+</html>

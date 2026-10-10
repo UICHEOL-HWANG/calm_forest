@@ -65,11 +65,11 @@ const STEPS = [
   ['bear', '곰이 코호트 리텐션을 세는 중'],
   ['chick', '병아리가 퍼널 단계를 줄 세우는 중'],
 ];
-export function createLoader(root, el) {
+export function createLoader(root, el, steps = STEPS) {
   let timer = null;
   const img = el.querySelector('img'), step = el.querySelector('.step'), bar = el.querySelector('.bar i'), label = el.querySelector('.t');
   const show = (i) => {
-    const [c, text] = STEPS[i % STEPS.length];
+    const [c, text] = steps[i % steps.length];
     img.src = CHAR(c);
     step.textContent = text;
     bar.style.width = `${Math.min(90, (i + 1) * 22)}%`;
