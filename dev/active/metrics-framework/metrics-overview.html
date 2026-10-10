@@ -86,6 +86,24 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
 .g b { font-size: 13px; }
 .g span { font-family: var(--mono); font-size: 15px; }
 .g small { color: var(--ink-3); font-size: 12px; }
+.ltv { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); gap: 16px; }
+@media (max-width: 860px) { .ltv { grid-template-columns: 1fr; } }
+.ltv-sum { display: grid; gap: 10px; align-content: start; }
+.ltv-k { display: grid; grid-template-columns: 56px auto 1fr; align-items: baseline; gap: 10px; }
+.ltv-k span { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.ltv-k b { font-family: var(--mono); font-size: 26px; font-weight: 600; }
+.ltv-k small { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.ltv-k.main b { color: var(--core); font-size: 34px; }
+.ch { display: grid; gap: 10px; margin: 14px 0 10px; }
+.crow { display: grid; grid-template-columns: 110px minmax(0, 1fr) 150px; gap: 12px; align-items: center; font-size: 13px; }
+.crow .nm { color: var(--ink-2); }
+.crow .nm small { display: block; color: var(--ink-3); font-family: var(--mono); font-size: 11px; }
+.track { position: relative; height: 18px; background: #222326; border-radius: 4px; }
+.track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--habit); border-radius: 4px; }
+.track .ci { position: absolute; top: 50%; height: 2px; background: var(--ink); transform: translateY(-50%); }
+.crow .val { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+.crow.wait .track { background: repeating-linear-gradient(90deg, #222326 0 6px, transparent 6px 10px); }
+@media (max-width: 520px) { .crow { grid-template-columns: 84px minmax(0, 1fr); } .crow .val { grid-column: 2; } }
 </style>
 
 <div class="wrap">
@@ -127,6 +145,7 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
       <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L1·L2 지표</span>
       <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#2c4f9e" stroke-width="2" stroke-dasharray="4 4"/></svg>곱셈 분해</span>
       <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2"/></svg>신규 경로 (활성화 퍼널)</span>
+      <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/></svg>추천 고리</span>
       <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#17181a" stroke="#7fc4ea" stroke-width="1.5" stroke-dasharray="3 3"/></svg>실험 레버</span>
       <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#17181a" stroke="#e3a948" stroke-width="1.5" stroke-dasharray="3 3"/></svg>측정 대기</span>
     </div>
@@ -162,10 +181,11 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
         <div class="k">코인 소비 유저 비율 (선행)</div><div class="v">24%</div>
         <div class="s">결제 전환율: Paddle 라이브 대기<br>결제 원장 BQ 미적재</div>
       </div>
-      <div class="card off">
-        <h3>Referral</h3><div class="ko">추천</div>
-        <div class="state wait">측정 제외</div><hr>
-        <div class="s">메타 광고·지인 추천 이벤트 진행 때 설계<br>현재 공유 링크 유입 0</div>
+      <div class="card">
+        <h3>Referral</h3><div class="ko">추천 · 친구 추천 보상</div>
+        <div class="state wait">데이터 대기 (10/9 배포)</div><hr>
+        <div class="k">추천 유입 진입 유저 (주간)</div><div class="v">0</div>
+        <div class="s">링크 공유 비율 · 초대 → 진입 전환<br>추천 유입 LTV · K-팩터</div>
       </div>
     </div>
 
@@ -184,6 +204,25 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
       <div class="g"><b>견제 · 복구 안 된 세이브 실패</b><span>0 세션</span><small>지표가 오르는 사이 마을 유실이 묻히지 않는지</small></div>
     </div>
     <div class="banner">유입보다 활성화 — 신규가 첫 획득 행동까지 가지 못하는 것이 가장 큰 누수다</div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>04. 참여 LTV</h2><span class="tag">가치 단위 = 획득한 날 · 첫 방문 7/27~9/11 진입 신규 150명 · 데이터 ~10/8</span></div>
+    <div class="ltv">
+      <div class="panel ltv-sum">
+        <div class="tag">신규 1명이 첫 방문 후 k일 동안 쌓은 획득한 날</div>
+        <div class="ltv-k"><span>LTV7</span><b>0.77</b><small>0.56~0.99</small></div>
+        <div class="ltv-k"><span>LTV14</span><b>0.89</b><small>0.63~1.18</small></div>
+        <div class="ltv-k main"><span>LTV28</span><b>1.01</b><small>0.69~1.37</small></div>
+        <div class="note">0일 비율 58% · 상위 10%가 63%를 차지 — 평균만 보지 않는다<br>8~28일차: 첫 주 활성화 0.55 vs 미활성 0.01</div>
+      </div>
+      <div class="panel">
+        <div class="tag">유입 경로별 LTV28 (막대 = 평균, 선 = 95% CI · 판정 순서 추천 → 메타 → 토스 → 소셜 → 자연·직접)</div>
+        <div class="ch" id="ltv-ch"></div>
+        <div class="note">경로 차이를 경로 효과로 읽지 않는다 — 자연·직접에 베타·초기 지인이 섞였고, 토스는 자동 로그인이라 세는 키가 다르다. n&lt;30 은 방향만.</div>
+      </div>
+    </div>
+    <div class="banner">추천인의 가치 = 자기 LTV + 데려온 유저들의 LTV · 광고는 경로 LTV 를 진입 1명당 광고비 옆에 놓는다</div>
   </section>
 </div>
 
@@ -248,6 +287,8 @@ const MONO = 'IBM Plex Mono, monospace';
     e2:     { x: 470,  y: 560, r: 8,  k: 'exp',  t: '실험: 힌트 배너', v: '이탈 직전 개입', side: 'below' },
     coin:   { x: 620,  y: 150, r: 10, k: 'star', t: '코인 소비 비율', v: '26% → 24%', side: 'left' },
     pay:    { x: 330,  y: 110, r: 10, k: 'wait', t: '결제 전환율', v: '측정 대기', side: 'below' },
+    ref:    { x: 210,  y: 190, r: 9,  k: 'wait', t: '추천 유입 진입', v: '0 · 10/9 배포', side: 'left' },
+    ltv:    { x: 760,  y: 62,  r: 10, k: 'star', t: '참여 LTV (28일)', v: '1.01 획득한 날', side: 'left' },
   };
   const line = (a, b, attrs) => el('line', { x1: S[a].x, y1: S[a].y, x2: S[b].x, y2: S[b].y, ...attrs }, svg);
 
@@ -268,6 +309,10 @@ const MONO = 'IBM Plex Mono, monospace';
   line('e2', 'kept', { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
   line('nsm', 'coin', { stroke: '#8b93b8', 'stroke-width': 1.6, 'stroke-dasharray': '1.5 5', 'stroke-linecap': 'round' });
   line('coin', 'pay', { stroke: '#4a4a48', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' });
+  line('nsm', 'ltv', { stroke: '#8b93b8', 'stroke-width': 1.6, 'stroke-dasharray': '1.5 5', 'stroke-linecap': 'round' });
+  const loop = { fill: 'none', stroke: '#e3a948', 'stroke-width': 1.8, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round', opacity: .8 };
+  el('path', { d: `M ${S.reach.x} ${S.reach.y} Q 420 210 ${S.ref.x + 11} ${S.ref.y}`, ...loop }, svg);
+  line('ref', 'visit', loop);
 
   const n = S.nsm;
   [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => el('line', {
@@ -291,12 +336,33 @@ const MONO = 'IBM Plex Mono, monospace';
   });
 
   const tag = (t, x, y) => txt(svg, x, y, t, { 'text-anchor': 'middle', 'font-size': 11, fill: '#9a988f', 'letter-spacing': '.14em', 'font-family': MONO, ...halo });
-  tag('ACQUISITION', 80, 268); tag('ACTIVATION', 330, 598); tag('RETENTION', 1000, 70); tag('REVENUE', 470, 85);
+  tag('ACQUISITION', 80, 268); tag('ACTIVATION', 330, 598); tag('RETENTION', 1000, 70); tag('REVENUE', 470, 85); tag('REFERRAL', 120, 160);
+  txt(svg, 430, 222, '남은 유저가 신규를 데려옴', { 'text-anchor': 'middle', 'font-size': 12, fill: '#9a988f', ...halo });
   txt(svg, 820, 230, '× 곱셈 분해 · 4주 모두 정확히 일치', { 'text-anchor': 'middle', 'font-size': 12, fill: '#6f86c8', ...halo });
 
   const g = txt(svg, 600, 755, '', { 'text-anchor': 'middle', 'font-size': 14, fill: '#b9b7b1' });
   const t1 = el('tspan', { fill: '#ff6b5e', 'font-weight': 600 }, g); t1.textContent = '견제   ';
   const t2 = el('tspan', {}, g); t2.textContent = '빈손 방문 52% → 46% · 코인 순증가 384 → 96 /기기 · 복구 안 된 세이브 실패 0 세션';
+})();
+
+(function ltvChannels() {
+  const max = 1.8;
+  const rows = [
+    { nm: '친구 추천', n: 0 }, { nm: '메타 광고', n: 0 },
+    { nm: '토스', n: 42, v: 0.86, lo: 0.29, hi: 1.62, z: '0일 69%' },
+    { nm: '소셜·커뮤니티', n: 10, v: 0.30, lo: 0.00, hi: 0.60, z: '0일 70%' },
+    { nm: '자연·직접', n: 98, v: 1.14, lo: 0.79, hi: 1.59, z: '0일 52%' },
+  ];
+  const box = document.getElementById('ltv-ch');
+  const pct = x => `${(x / max) * 100}%`;
+  rows.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'crow' + (r.n ? '' : ' wait');
+    d.innerHTML = r.n
+      ? `<span class="nm">${r.nm}<small>n=${r.n}${r.n < 30 ? ' · 방향만' : ''}</small></span><div class="track"><i style="width:${pct(r.v)}${r.n < 30 ? ';opacity:.5' : ''}"></i><span class="ci" style="left:${pct(r.lo)};width:calc(${pct(r.hi)} - ${pct(r.lo)})"></span></div><span class="val">${r.v.toFixed(2)} · ${r.z}</span>`
+      : `<span class="nm">${r.nm}<small>n=0</small></span><div class="track"></div><span class="val">데이터 대기</span>`;
+    box.appendChild(d);
+  });
 })();
 
 (function funnel() {
