@@ -83,7 +83,8 @@
 ## 데이터 분석 대시보드
 
 배포 주소 뒤에 `/dashboards/analytics.html` 로 접속하면 본인 `game_logs` 로 이동 히트맵·세션 지표를,
-`/dashboards/admin_analytics.html` 로는 관리자 전체통계를 볼 수 있습니다. (Supabase 로그인 필요)
+`/dashboards/` (관리자 홈)에서 관리자 페이지를 고릅니다 — 애널리틱스(`admin_analytics.html`, RPC `cf_admin_dashboard`)·
+소식함 관리·보관(베타 관제). (Supabase 관리자 로그인 필요, 판정은 `cf_is_admin()` = 이메일+UUID)
 
 ### 관리자 대시보드를 잠깐 공유하기
 
@@ -91,7 +92,7 @@
 
 ```sql
 -- 토큰 보관표. RLS 켜고 정책을 두지 않아 클라이언트에서는 직접 못 읽고,
--- security definer 함수(cf_admin_overview)만 소유자 권한으로 조회합니다.
+-- security definer 함수(cf_admin_dashboard)만 소유자 권한으로 조회합니다.
 create table if not exists public.cf_share_links (
   token        text primary key,
   label        text,
@@ -104,7 +105,7 @@ alter table public.cf_share_links enable row level security;
 revoke all on table public.cf_share_links from anon, authenticated;
 ```
 
-그다음 `sql/analytics/admin_analytics.sql` 을 **다시** 실행해 함수를 `(days, token)` 시그니처로 교체하고, 링크를 발급합니다:
+그다음 링크를 발급합니다(애널리틱스 RPC 는 `sql/analytics/admin_dashboard.sql`):
 
 ```sql
 insert into public.cf_share_links (token, label, expires_at)

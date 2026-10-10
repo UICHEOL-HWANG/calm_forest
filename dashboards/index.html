@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>calm forest · 관리자 홈</title>
+<meta name="description" content="calm forest 관리자 페이지 모음 — 애널리틱스 · 실험 · 소식함 · 보관" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="_dash.css" />
+<link rel="stylesheet" href="_admin.css" />
+<style>
+  /* 허브 전용 — 카드는 "고르는 물건"이라 여기서만 띄운다(리포트 페이지는 구분선만 씀) */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 22px; }
+  .tile {
+    position: relative; display: grid; grid-template-columns: 1fr 84px; gap: 4px 12px; align-items: start;
+    padding: 18px 18px 16px; border-radius: 16px; background: var(--surface-1); border: 1px solid var(--line);
+    box-shadow: var(--shadow); color: inherit; text-decoration: none; min-height: 132px;
+    transition: transform .18s cubic-bezier(.16, 1, .3, 1), border-color .18s;
+  }
+  a.tile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--s1) 45%, var(--line)); }
+  a.tile:active { transform: translateY(0) scale(.99); }
+  .tile img { grid-column: 2; grid-row: 1 / span 3; width: 84px; height: 84px; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .12)); }
+  .tile h2 { grid-column: 1; margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+  .tile p { grid-column: 1; margin: 0; font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+  .tile .live { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; font-size: 12px; color: var(--ink-2); }
+  .tile .live b { font-variant-numeric: tabular-nums; color: var(--ink); }
+  .tile.soon { opacity: .62; box-shadow: none; }
+  .tile h2 .chip { margin-left: 6px; vertical-align: 2px; }
+  .grp { margin: 30px 0 0; }
+  .grp:first-of-type { margin-top: 8px; }
+  .grp > .eyebrow { display: block; margin-bottom: -8px; }
+  #msg .msg-char { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; }
+  @media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+</style>
+</head>
+<body>
+  <div class="ah">
+    <a class="crumb" href="../index.html">← 게임으로</a>
+  </div>
+  <div class="ah" style="margin-top:6px">
+    <img class="brand" src="img/chars/bear.png" alt="" />
+    <h1>calm forest · 관리자 홈</h1>
+    <div class="meta" id="who">관리자 계정을 확인하는 중…</div>
+  </div>
+
+  <div id="msg"></div>
+
+  <div id="hubWrap" hidden>
+    <section class="grp">
+      <span class="eyebrow">분석</span>
+      <div class="hub">
+        <a class="tile" href="admin_analytics.html">
+          <img src="img/chars/fox.png" alt="" />
+          <h2>애널리틱스</h2>
+          <p>북극성 · 첫 주 퍼널 · 리텐션 곡선과 코호트 · DAU 구성 · 맵별 이동 밀도</p>
+          <div class="live skel" id="liveKpi"><span>최근 7일 요약을 불러오는 중</span></div>
+        </a>
+        <a class="tile" href="experiments.html">
+          <img src="img/chars/chick.png" alt="" />
+          <h2>실험 (A/B)</h2>
+          <p>실험마다 사전 기준 · 배정 비율 검사(SRM) · 효과 크기와 신뢰구간 · 판정. 위에는 전체 효과를 한 축에.</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="grp">
+      <span class="eyebrow">운영</span>
+      <div class="hub">
+        <a class="tile" href="notices_admin.html">
+          <img src="img/chars/panda.png" alt="" />
+          <h2>소식함 · 이웃 마을 관리</h2>
+          <p>공지 작성 · 1:1 답장 · 이웃 마을 닉네임 숨기기와 처리 기록</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="grp">
+      <span class="eyebrow">보관</span>
+      <div class="hub">
+        <a class="tile" href="beta_monitor.html">
+          <img src="img/chars/rabbit.png" alt="" />
+          <h2>베타 관제<span class="chip">종료 9/19</span></h2>
+          <p>베타테스터 A/B 군별 현황 · 튜토리얼 퍼널 · 일지. 기록 확인용으로 남겨 둡니다.</p>
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="js/admin-hub.js"></script>
+</body>
+</html>

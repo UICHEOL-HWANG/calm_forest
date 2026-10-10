@@ -265,6 +265,17 @@ def load_json(client, table, rows, schema, mode):
     return len(rows)
 
 
+def rollup_before_prune():
+    """관리자 대시보드 집계표(cf_sessions·cf_heat_day·cf_econ_day)를 원본이 지워지기 전에 채운다.
+    원본이 온전한 최근 며칠을 다시 말아 덮어쓴다(멱등). 실패하면 예외 → main 이 prune 까지 가지 않는다
+    — 집계되지 않은 원본을 지우면 대시보드 이력이 영영 비기 때문."""
+    kst_today = (datetime.now(timezone.utc) + timedelta(hours=9)).date()
+    body = {"p_from": str(kst_today - timedelta(days=RETENTION_DAYS - 2)), "p_to": str(kst_today)}
+    r = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/cf_rollup", headers=HEADERS, json=body, timeout=300)
+    r.raise_for_status()
+    print(f"[rollup] {r.json()}")
+
+
 def prune_old_logs():
     """BQ 적재 후에만 호출 — 7일 지난 로그성 테이블만 Supabase에서 삭제(saves는 건드리지 않음)."""
     # ISO의 '+00:00'는 URL에서 '+'가 공백으로 해석돼 400 → 'Z'로 치환
@@ -357,7 +368,8 @@ def main():
 
     print(f"[export] logs +{n_logs} (after id {after}) · econ +{n_econ} · sessions +{n_sess} · retention_guidance +{n_rg} · saves snapshot {n_saves}")
 
-    # 적재가 성공적으로 끝난 뒤에만 경량화
+    # 적재가 성공적으로 끝난 뒤에만 경량화 — 그 전에 대시보드 집계표부터 말아 둔다(실패 시 여기서 멈춤)
+    rollup_before_prune()
     prune_old_logs()
 
     # 로그가 BQ에 안전히 이관된 뒤에만 익명 계정 정리(7일 유예)
