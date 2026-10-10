@@ -106,7 +106,9 @@ export function checkPublicKeyUrl(url) {
 async function fetchCert(fetch, url) {
   const hit = certCache.get(url);
   if (hit && Date.now() - hit.at < CERT_TTL_MS) return hit.der;
-  const res = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(TIMEOUT_MS) });
+  //  ⚠️ redirect:'error' 는 Workers 런타임이 지원하지 않아 예외(500)가 난다(2026-10-11 배포 후 발견) → 'manual':
+  //     3xx 는 res.ok 가 false 라 아래에서 거부된다 — 리다이렉트를 따라가지 않는 효과는 같다.
+  const res = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new HttpError('인증서 다운로드 실패 HTTP ' + res.status, 502, '인증서 확인 실패');
   const der = new Uint8Array(await res.arrayBuffer());
   if (der.length > CERT_MAX_BYTES) throw new HttpError('인증서 크기 초과 ' + der.length, 502, '인증서 확인 실패');

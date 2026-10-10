@@ -120,7 +120,14 @@ test('🔒 인증서 다운로드는 리다이렉트를 따라가지 않는다',
   const f = async (u, init = {}) => { calls.push({ url: String(u), init }); return String(u) === url ? new Response(CERT) : res(200, { access_token: "a", refresh_token: "r" }); };
   await worker.handle(post({ ...sign(), publicKeyUrl: url }), ENV, { fetch: f });
   const certCall = calls.find(c => c.url === url);
-  assert.equal(certCall.init.redirect, 'error');
+  assert.equal(certCall.init.redirect, 'manual');   // Workers 는 'error' 미지원
+});
+
+test('🔒 인증서 주소가 리다이렉트(3xx)를 주면 거부한다', async () => {
+  const url = 'https://static.gc.apple.com/public-key/gc-prod-78.cer';
+  const f = async (u) => String(u) === url ? new Response(null, { status: 302, headers: { location: 'https://evil.test/k.cer' } }) : res(200, {});
+  const r = await worker.handle(post({ ...sign(), publicKeyUrl: url }), ENV, { fetch: f });
+  assert.equal(r.status, 502);
 });
 
 test('🔒 인증서가 아닌 응답은 캐시하지 않는다(다음 요청이 다시 받는다)', async () => {
