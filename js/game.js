@@ -142,7 +142,7 @@ import { grillKeyOf, stageKeys } from './cook-ingredients.js';   // 🍲 조리 
 import {
   buildGlade, tryNet, updateFireflyBugs,
 } from './spaces/glade.js';   // 📦 🌟 반딧불이 계곡 — 밤에만 열리는 남쪽 숲 (새 동사: 잡기)
-import { buildLightWorkshop } from './spaces/light-workshop.js';   // 🏮 빛 공방(계곡 연못가)
+import { buildLightWorkshop, updateLightWorkshop } from './spaces/light-workshop.js';   // 🏮 빛 공방(계곡 연못가)
 import {
   buildForest, forageTarget, tryForage, updateForage,
 } from './spaces/forest.js';   // 📦 🍄 채집 숲 — 새 동사: 줍기 (도구 없이, 시간이 지나면 다시 돋음)
@@ -5715,6 +5715,7 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
+  updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
   updateOwlVisit(dt);        // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
   updatePlaza(dt, inVillage2());   // 🌾 광장 근처면 진행률 재조회

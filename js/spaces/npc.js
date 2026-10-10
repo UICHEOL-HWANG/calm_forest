@@ -37,6 +37,11 @@ export function npcState(id) {
 export const NAMETAG_NEAR = 11;
 
 export const NAMETAG_FAR = 18;
+/** 🏷️ 이름표 거리 페이드 — makeNameTag 는 꺼진 채 만들어지므로 이 함수가 켜야 보인다(마을 주민·거울 주민·반디 요정 공용) */
+export function fadeNameTag(tag, d) {
+  const a = d <= NAMETAG_NEAR ? 1 : d >= NAMETAG_FAR ? 0 : (NAMETAG_FAR - d) / (NAMETAG_FAR - NAMETAG_NEAR);
+  tag.visible = a > 0.02; tag.material.opacity = a;
+}
 
 // 이름표 색 — 이 게임의 캔버스 UI 규칙을 그대로 따른다(상점 말풍선·집 간판과 같은 규칙):
 //   UnrealBloomPass 임계값 0.85 를 넘는 색은 후광이 번져 글자를 삼킨다.
@@ -540,11 +545,7 @@ export function updateNPC(dt, t) {
     o.body.position.y = bodyY;
     if (o.bobParts) for (const m of o.bobParts) m.position.y = m.userData.y0 + (bodyY - 0.55);   // 가슴털·허리띠는 몸통과 같이 움직여야 안 깜빡인다
     if (o.sprite) o.sprite.position.y = o.spriteY0 + Math.sin(t * 2.5 + o.phase) * 0.08;
-    if (o.tag) {   // 🏷️ 이름표 — 가까워질수록 서서히 나타남(멀리선 감춰 화면을 비워 둔다)
-      const d = dist2D(o.group.position, player.position);
-      const a = d <= NAMETAG_NEAR ? 1 : d >= NAMETAG_FAR ? 0 : (NAMETAG_FAR - d) / (NAMETAG_FAR - NAMETAG_NEAR);
-      o.tag.visible = a > 0.02; o.tag.material.opacity = a;
-    }
+    if (o.tag) fadeNameTag(o.tag, dist2D(o.group.position, player.position));   // 🏷️ 이름표 — 가까워질수록 서서히 나타남(멀리선 감춰 화면을 비워 둔다)
     if (o.fly && updateOwlFly(o, dt, t)) {
       // 🦉 하늘에 있는 동안엔 updateOwlFly 가 이동·고도·날개를 담당
     } else if (merchantVisit && o.def.id === 'merchant') {
