@@ -22,6 +22,7 @@ import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식�
 import { setAbVariant, trackEvent } from './analytics.js';
 import { kstDate } from './kst-date.js';   // 🕛 run_date 는 KST 날짜
 import { markExit } from './exit-flag.js';   // 🚪 나가기 → 새로고침 뒤 로그인 화면
+import { deleteOwnAccount } from './account/delete-account.js';   // 🗑️ 앱 안 계정 삭제(iOS 5.1.1(v))
 import { accountKind } from './auth/account-kind.js';   // 🔵📱 토스·PGS 판정(합성 이메일 도메인 — user_metadata 는 유저가 바꿀 수 있다)
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
@@ -700,6 +701,24 @@ export async function sendCafeGuests({ date, weather, count, phase, model, guest
 
 // ── 📸 사진첩 — 업로드 인증 토큰 + 메타데이터 행(photos 테이블, RLS) ──
 //    사진 원본은 OCI 버킷(서버 프록시 /api/photo 경유), 목록·정렬은 이 테이블로.
+// ── 🗑️ 앱 안 계정 삭제(🍎 iOS — 웹 삭제 페이지는 앱 세션이 없다) ── 성공하면 로컬 저장까지 비운다
+//   → { ok: true, photoFailures } | { ok: false, reason: 'guest' | 'error', message }
+export async function deleteMyAccount() {
+  if (!supabase || !state.online || state.provider === 'anonymous') return { ok: false, reason: 'guest' };
+  try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) return { ok: false, reason: 'error', message: 'no session' };
+    const { photoFailures } = await deleteOwnAccount({ supabase, accessToken, apiBase: CONFIG.API_BASE });
+    intentionalSignOut = true;   // 🔌 세션 손실 경보가 울리지 않게
+    await supabase.auth.signOut().catch(() => {});
+    try { localStorage.clear(); } catch (e) {}
+    return { ok: true, photoFailures };
+  } catch (e) {
+    console.warn('[계정 삭제 실패]', e?.message || e);
+    return { ok: false, reason: 'error', message: e?.message || String(e) };
+  }
+}
+
 export async function getAccessToken() {
   if (!supabase) return null;
   try { const { data } = await supabase.auth.getSession(); return data?.session?.access_token || null; }
