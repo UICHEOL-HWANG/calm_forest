@@ -17,7 +17,42 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from hierarchy_baseline import person_days  # noqa: E402
+from hierarchy_baseline import DEV_CLIENTS, PERSONA, person_days  # noqa: E402
+from nsm_validate import RESULT_ACTIONS  # noqa: E402
+from calm_ml.bq import GA4, RAW, read_sql  # noqa: E402
+
+GA4_START = "2000-01-01"  # no floor: from the first day GA4 has (game launch 7/26 account, 7/27 first events)
+_EV = ", ".join(f"'{e}'" for e in RESULT_ACTIONS)
+GA4_SQL = f"""
+-- GA4 version of the person-day table, so cohorts can start before session_logs (8/6)
+WITH logged AS (
+  SELECT DISTINCT user_id FROM `{RAW}.session_logs` WHERE is_guest = FALSE AND user_id IS NOT NULL
+),
+excluded AS (
+  SELECT user_id FROM ({PERSONA})
+  UNION DISTINCT
+  SELECT user_id FROM `{RAW}.session_logs` WHERE client_id IN ({DEV_CLIENTS}) AND user_id IS NOT NULL
+),
+ev AS (
+  SELECT user_pseudo_id, user_id, event_name,
+    DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Seoul') AS d,
+    IFNULL((SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'platform'), 'web') AS platform
+  FROM `{GA4}.events_*`
+),
+pseudo_out AS (SELECT DISTINCT user_pseudo_id FROM ev WHERE user_id IN (SELECT user_id FROM excluded)),
+pseudo_acct AS (
+  SELECT user_pseudo_id, ANY_VALUE(user_id) AS acct FROM ev
+  WHERE user_id IN (SELECT user_id FROM logged) GROUP BY 1 HAVING COUNT(DISTINCT user_id) = 1
+)
+SELECT IF(a.acct IS NOT NULL, CONCAT('u:', a.acct), CONCAT('p:', ev.user_pseudo_id)) AS person, ev.d,
+  LOGICAL_OR(ev.event_name IN ({_EV})) AS tended,
+  LOGICAL_OR(ev.user_id IS NOT NULL) AS entered
+FROM ev LEFT JOIN pseudo_acct a USING (user_pseudo_id)
+WHERE ev.platform IN ('web', 'toss') AND ev.d >= '{GA4_START}'
+  AND ev.user_pseudo_id NOT IN (SELECT user_pseudo_id FROM pseudo_out)
+GROUP BY 1, 2
+"""
+
 
 HORIZONS = (7, 14, 28)
 RNG = np.random.default_rng(20261010)
@@ -71,8 +106,21 @@ def report(per: pd.DataFrame) -> None:
     print(f"\n[concentration] top 10% of new users hold {top:.0%} of 28-day acquired days")
 
 
+def ga4_person_days() -> pd.DataFrame:
+    df = read_sql(GA4_SQL)
+    df["d"] = pd.to_datetime(df["d"]).dt.date
+    return df
+
+
 def main() -> None:
-    per = cohort_table(person_days())
+    src = "ga4" if "--ga4" in sys.argv else "sl"
+    print(f"[source] {src}")
+    days = ga4_person_days() if src == "ga4" else person_days()
+    if src == "ga4" and "--entered" in sys.argv:
+        entered = days.groupby("person")["entered"].any()
+        days = days[days["person"].isin(entered[entered].index)]
+        print("[cohort] game-entered users only (user_id appeared) — same population as session_logs")
+    per = cohort_table(days)
     report(per)
 
 
