@@ -88,7 +88,9 @@ function render(d) {
   $('meta').innerHTML = `<b>${mmdd(m.since)} – ${mmdd(m.today)}</b> (${m.days}일) · 기기 기준 · KST · 페르소나 세션 ${nf(m.persona_sessions)}개 제외 · 데이터 ${mmdd(m.data_from)}~`
     + (shareKey ? ' · 🔗 <b>임시 공유 보기</b>(읽기 전용)' : '');
   $('ovEyebrow').textContent = `개요 · 최근 ${m.days}일`;
-  renderKpis(k, d.nsm_daily || []);
+  // 직전 기간이 데이터 시작일(7/27 출시)보다 앞으로 넘어가면 그 기간은 비어 있어 증감이 부풀려진다 → 숨긴다
+  const prevOk = String(m.prev_since) >= String(m.data_from);
+  renderKpis(prevOk ? k : { ...k, avg_dau_prev: null, new_prev: null, d1_prev: null, stickiness_prev: null }, d.nsm_daily || [], prevOk);
   renderInsights(d);
   renderFunnel(d.funnel || {}, m);
   renderBuckets(d.session_buckets || []);
@@ -104,7 +106,7 @@ function render(d) {
 }
 
 // ── 개요 ──
-function renderKpis(k, nsmDaily) {
+function renderKpis(k, nsmDaily, prevOk = true) {
   $('kpis').innerHTML = `
     <div class="nsm"><span class="lbl">★ 북극성 · 획득한 유저 / 일</span>
       <span><span class="num">${k.nsm ?? '—'}</span> ${dl(k.nsm, k.nsm_prev)}</span>
@@ -113,7 +115,7 @@ function renderKpis(k, nsmDaily) {
     <div><span class="lbl">평균 DAU</span><span class="num">${k.avg_dau ?? '—'}</span>${dl(k.avg_dau, k.avg_dau_prev)}
       <span class="def">오늘 ${nf(k.dau_today)}명(진행 중)</span></div>
     <div><span class="lbl">신규 유저</span><span class="num">${nf(k.new_users)}</span>${dl(k.new_users, k.new_prev)}
-      <span class="def">직전 기간 ${nf(k.new_prev)}</span></div>
+      <span class="def">${prevOk ? `직전 기간 ${nf(k.new_prev)}` : '직전 기간은 출시 전이라 비교 안 함'}</span></div>
     <div><span class="lbl">D1 리텐션</span><span class="num">${pct(k.d1)}</span>${dl(k.d1, k.d1_prev, { pp: true })}
       <span class="def">대상 ${nf(k.d1_base)}명 · D7 ${pct(k.d7)}</span></div>
     <div><span class="lbl">Stickiness</span><span class="num">${pct(k.stickiness)}</span>${dl(k.stickiness, k.stickiness_prev, { pp: true })}
