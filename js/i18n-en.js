@@ -1910,7 +1910,6 @@ export const EN = {
 
   // ── 콜사이트 패턴(문자열 연결부를 {0} 패턴으로 정리) ──
   '구글 로그인 실패: {0}': 'Google sign-in failed: {0}',
-  'Apple 로그인 실패: {0}': 'Apple sign-in failed: {0}',
   '게스트로만 플레이했다면 별도 계정이 없습니다. 서버의 게스트 기록은 마지막 접속 7일 뒤 자동 삭제됩니다.':
     'If you only played as a guest, there is no account to delete. Guest records on the server are removed automatically 7 days after your last visit.',
   '계정과 마을·도감·기록·사진이 모두 지워지고 되돌릴 수 없습니다.\n정말 지우시려면 삭제 라고 입력해 주세요.':
