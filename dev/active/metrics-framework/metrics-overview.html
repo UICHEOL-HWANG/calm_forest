@@ -2,7 +2,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* layout: dark presentation board — NSM hero (big number + weekly CI chart + decomposition), metric hierarchy tree (role colors), AARRR cards + funnel */
+/* layout: dark presentation board — NSM hero (big number + weekly CI chart + decomposition) + NSM constellation, metric hierarchy as layered tree (L0-L3), AARRR cards + funnel, engagement LTV curve + contribution bars */
 :root {
   --bg: #101112;
   --panel: #17181a;
@@ -19,6 +19,9 @@
   --accent: #5b7cff;
   --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --sky: #141414; --plate: #181818; --plate-edge: #2a2a2a; --dust: #5c5b57; --line: #4a4a48;
+  --nsm-fill: #3b3592; --nsm-edge: #9a92f2; --nsm-ray: #2c4f9e; --star-fill: #6e4614; --star-edge: #e3a948;
+  --bridge: #e3a948; --outcome: #8b93b8; --font-body: var(--font); --font-mono: var(--mono);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -31,6 +34,27 @@ section { display: grid; gap: 16px; }
 .sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 h2 { font-size: clamp(20px, 2.6vw, 26px); margin: 0; font-weight: 700; }
 .tag { font-size: 12.5px; color: var(--ink-2); }
+.plate { background: var(--plate); border: 1px solid var(--plate-edge); border-radius: 10px; overflow-x: auto; position: relative; }
+svg.sky { display: block; width: 100%; min-width: 760px; height: auto; }
+.lbl { fill: var(--ink); font-size: 17px; font-weight: 600; }
+.lbl-nsm { fill: var(--ink); font-size: 21px; font-weight: 700; }
+.sub { fill: var(--ink-2); font-size: 13.5px; }
+.sub-nsm { fill: var(--ink-2); font-size: 15px; }
+.tier { fill: var(--ink-3); font-size: 11px; font-family: var(--font-mono); letter-spacing: .08em; }
+.stage { fill: #9a988f; font-size: 11px; font-family: var(--font-mono); letter-spacing: .14em; paint-order: stroke; stroke: var(--plate); stroke-width: 5px; }
+.note-txt { fill: var(--ink-3); font-size: 12px; paint-order: stroke; stroke: var(--plate); stroke-width: 5px; }
+.guard-txt { fill: var(--ink-2); font-size: 14.5px; }
+.lbl, .lbl-nsm, .sub, .sub-nsm { paint-order: stroke; stroke: var(--plate); stroke-width: 6px; stroke-linejoin: round; }
+.dust { fill: none; stroke: var(--dust); stroke-width: 1.2; }
+.star { cursor: pointer; outline: none; }
+.star:focus-visible circle.body { stroke: #ffffff; stroke-width: 3; }
+.star:hover circle.body { filter: brightness(1.35); }
+.twinkle { animation: tw 4s ease-in-out infinite; }
+@keyframes tw { 0%, 100% { opacity: .9 } 50% { opacity: .35 } }
+@media (prefers-reduced-motion: reduce) { .twinkle { animation: none; } }
+.tip { position: absolute; pointer-events: none; max-width: 300px; background: #0c0c0c; border: 1px solid var(--plate-edge); color: var(--ink); font-size: 12.5px; padding: 9px 11px; border-radius: 6px; line-height: 1.5; z-index: 3; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.tip b { display: block; font-size: 13px; margin-bottom: 2px; }
+.tip code { font-family: var(--font-mono); font-size: 11.5px; color: var(--star-edge); }
 .banner { background: var(--accent); color: #fff; border-radius: 10px; padding: 14px 18px; font-weight: 600; font-size: 15px; text-align: center; }
 .panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 20px; min-width: 0; }
 .nsm { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 1.6fr); gap: 16px; }
@@ -86,24 +110,28 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
 .g b { font-size: 13px; }
 .g span { font-family: var(--mono); font-size: 15px; }
 .g small { color: var(--ink-3); font-size: 12px; }
-.ltv { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); gap: 16px; }
-@media (max-width: 860px) { .ltv { grid-template-columns: 1fr; } }
-.ltv-sum { display: grid; gap: 10px; align-content: start; }
-.ltv-k { display: grid; grid-template-columns: 56px auto 1fr; align-items: baseline; gap: 10px; }
-.ltv-k span { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
-.ltv-k b { font-family: var(--mono); font-size: 26px; font-weight: 600; }
-.ltv-k small { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
-.ltv-k.main b { color: var(--core); font-size: 34px; }
-.ch { display: grid; gap: 10px; margin: 14px 0 10px; }
-.crow { display: grid; grid-template-columns: 110px minmax(0, 1fr) 150px; gap: 12px; align-items: center; font-size: 13px; }
-.crow .nm { color: var(--ink-2); }
-.crow .nm small { display: block; color: var(--ink-3); font-family: var(--mono); font-size: 11px; }
-.track { position: relative; height: 18px; background: #222326; border-radius: 4px; }
-.track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--habit); border-radius: 4px; }
-.track .ci { position: absolute; top: 50%; height: 2px; background: var(--ink); transform: translateY(-50%); }
-.crow .val { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
-.crow.wait .track { background: repeating-linear-gradient(90deg, #222326 0 6px, transparent 6px 10px); }
-@media (max-width: 520px) { .crow { grid-template-columns: 84px minmax(0, 1fr); } .crow .val { grid-column: 2; } }
+.ltv { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; }
+@media (max-width: 900px) { .ltv { grid-template-columns: 1fr; } }
+.ltv-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; }
+.seg button { background: transparent; color: var(--ink-2); border: 0; padding: 6px 12px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: #2a2c2f; color: var(--ink); }
+.ltv-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
+.ltv-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ltv-k { display: flex; gap: 18px; flex-wrap: wrap; }
+.ltv-k div { display: grid; }
+.ltv-k span { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.ltv-k b { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+.ltv-k .main b { color: var(--core); }
+.contrib { display: grid; gap: 12px; align-content: start; }
+.stack { display: grid; gap: 4px; }
+.stack .lab { font-size: 12.5px; color: var(--ink-2); }
+.stack .bar100 { display: flex; height: 26px; border-radius: 4px; overflow: hidden; gap: 2px; }
+.stack .bar100 i { display: flex; align-items: center; justify-content: center; font-style: normal; font-family: var(--mono); font-size: 11.5px; color: #141414; min-width: 0; overflow: hidden; }
+.appx { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 12.5px; table-layout: fixed; }
+.appx th { font-weight: 400; color: var(--ink-3); text-align: center; }
+.appx td { text-align: center; padding: 6px 0; border-radius: 4px; font-family: var(--mono); }
+.appx td:first-child { text-align: left; font-family: var(--font); color: var(--ink-2); }
 </style>
 
 <div class="wrap">
@@ -135,22 +163,35 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
         </div>
       </div>
     </div>
+    <div class="tag">북극성 별자리 — 북극성(오른쪽 위)을 움직이는 레버들. 왼쪽 아래에서 오른쪽 위로 AARRR 을 따라 읽고, 별에 마우스를 올리면 정의가 나온다</div>
+    <div class="plate" id="plate">
+      <svg class="sky" id="sky" viewBox="0 0 1200 760" role="img" aria-label="북극성 지표 트리를 별자리로 그린 그림"></svg>
+    </div>
+  <div class="legend" aria-label="별자리 범례">
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="#3b3592" stroke="#9a92f2" stroke-width="1.5"/></svg>북극성</span>
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L1 레버</span>
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="5.5" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L2 세부 지표</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#2c4f9e" stroke-width="2" stroke-dasharray="4 4"/></svg>곱셈 분해 (L1 → 북극성)</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2"/></svg>신규 경로 (방문 → 진입 → 활성화 → 유지)</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#8b93b8" stroke-width="2" stroke-dasharray="1.5 5" stroke-linecap="round"/></svg>결과로 이어짐 (북극성 → 수익·LTV)</span>
+    <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/></svg>추천 고리 (유지 → 추천 → 방문)</span>
+    <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="#181818" stroke="#e3a948" stroke-width="1.5" stroke-dasharray="3 3"/></svg>측정 대기</span>
+  </div>
     <div class="banner">빈도·품질은 그대로 — 북극성 하락은 폭, 그중에서도 신규 유입 감소(20 → 8명)에서 나왔다</div>
   </section>
 
   <section>
-    <div class="sec-head"><h2>02. 메트릭 하이라키</h2><span class="tag">별자리 · 별 아래 값 = 9/7 주 → 9/28 주</span></div>
+    <div class="sec-head"><h2>02. 메트릭 하이라키</h2><span class="tag">계층형 · 칸 아래 값 = 9/7 주 → 9/28 주</span></div>
     <div class="legend">
-      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#3b3592" stroke="#9a92f2" stroke-width="1.5"/></svg>북극성</span>
-      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#6e4614" stroke="#e3a948" stroke-width="1.5"/></svg>L1·L2 지표</span>
-      <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#2c4f9e" stroke-width="2" stroke-dasharray="4 4"/></svg>곱셈 분해</span>
-      <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2"/></svg>신규 경로 (활성화 퍼널)</span>
-      <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/></svg>추천 고리</span>
-      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#17181a" stroke="#7fc4ea" stroke-width="1.5" stroke-dasharray="3 3"/></svg>실험 레버</span>
-      <span><svg width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#17181a" stroke="#e3a948" stroke-width="1.5" stroke-dasharray="3 3"/></svg>측정 대기</span>
+      <span><i class="sw" style="background:#3b3592;border:1px solid #9a92f2"></i>북극성</span>
+      <span><i class="sw" style="background:#6e4614;border:1px solid #e3a948"></i>L1 레버 (곱셈 분해)</span>
+      <span><i class="sw" style="background:#1e1f22;border:1px solid #e3a948"></i>L2 세부 지표</span>
+      <span><i class="sw" style="background:#1e1f22;border:1px dashed #e3a948"></i>측정 대기</span>
+      <span><i class="sw" style="background:#1e1f22;border:1px dashed #7fc4ea"></i>실험 레버</span>
+      <span><i class="sw" style="background:#1e1f22;border:1px solid #8b93b8"></i>결과 지표</span>
     </div>
     <div class="panel tree-wrap">
-      <svg class="tree" id="tree" viewBox="0 0 1200 780" role="img" aria-label="메트릭 하이라키 별자리"></svg>
+      <svg class="tree" id="tree" viewBox="0 0 1200 690" role="img" aria-label="메트릭 하이라키 계층도: 북극성 아래 폭·빈도·품질, 그 아래 세부 지표와 신규 경로, 오른쪽 결과 지표, 맨 아래 견제 지표"></svg>
     </div>
   </section>
 
@@ -209,20 +250,35 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
   <section>
     <div class="sec-head"><h2>04. 참여 LTV</h2><span class="tag">가치 단위 = 획득한 날 · 첫 방문 7/27~9/11 진입 신규 150명 · 데이터 ~10/8</span></div>
     <div class="ltv">
-      <div class="panel ltv-sum">
-        <div class="tag">신규 1명이 첫 방문 후 k일 동안 쌓은 획득한 날</div>
-        <div class="ltv-k"><span>LTV7</span><b>0.77</b><small>0.56~0.99</small></div>
-        <div class="ltv-k"><span>LTV14</span><b>0.89</b><small>0.63~1.18</small></div>
-        <div class="ltv-k main"><span>LTV28</span><b>1.01</b><small>0.69~1.37</small></div>
-        <div class="note">0일 비율 58% · 상위 10%가 63%를 차지 — 평균만 보지 않는다<br>8~28일차: 첫 주 활성화 0.55 vs 미활성 0.01</div>
+      <div class="panel" style="display:grid;gap:12px">
+        <div class="ltv-head">
+          <div class="tag">누적 LTV 곡선 — 첫 방문 후 k일차까지 쌓인 획득한 날 (분모 = 코호트 전원 고정)</div>
+          <div class="seg" role="group" aria-label="곡선 나누기">
+            <button type="button" data-mode="act" aria-pressed="true">활성화별</button>
+            <button type="button" data-mode="ch" aria-pressed="false">유입 경로별</button>
+          </div>
+        </div>
+        <div class="ltv-legend" id="ltv-legend"></div>
+        <svg id="ltv-curve" viewBox="0 0 720 300" role="img" aria-label="누적 참여 LTV 곡선"></svg>
+        <div class="ltv-k">
+          <div><span>LTV7</span><b>0.77</b></div><div><span>LTV14</span><b>0.89</b></div><div class="main"><span>LTV28</span><b>1.01</b></div>
+          <div><span>95% CI (28일)</span><b style="font-size:16px;color:var(--ink-2)">0.69~1.37</b></div>
+        </div>
+        <div class="note" id="ltv-note"></div>
       </div>
-      <div class="panel">
-        <div class="tag">유입 경로별 LTV28 (막대 = 평균, 선 = 95% CI · 판정 순서 추천 → 메타 → 토스 → 소셜 → 자연·직접)</div>
-        <div class="ch" id="ltv-ch"></div>
-        <div class="note">경로 차이를 경로 효과로 읽지 않는다 — 자연·직접에 베타·초기 지인이 섞였고, 토스는 자동 로그인이라 세는 키가 다르다. n&lt;30 은 방향만.</div>
+      <div class="panel contrib">
+        <div class="tag">구간별 기여 — 28일 획득한 날 기준</div>
+        <div class="stack"><span class="lab">유저 비중</span><div class="bar100" id="b-users"></div></div>
+        <div class="stack"><span class="lab">획득한 날 비중</span><div class="bar100" id="b-days"></div></div>
+        <div class="ltv-legend" id="b-legend"></div>
+        <div class="note">유저 58%는 0일 · 2일 이상 15%가 획득한 날의 74% — 평균 1.01 은 "보통 유저"가 아니다</div>
       </div>
     </div>
-    <div class="banner">추천인의 가치 = 자기 LTV + 데려온 유저들의 LTV · 광고는 경로 LTV 를 진입 1명당 광고비 옆에 놓는다</div>
+    <div class="panel" style="display:grid;gap:10px">
+      <div class="tag">부록 · 코호트 표 (첫 방문 주 × D1·D7·D14·D28 누적) — 주당 n 9~38명이라 칸마다 오차가 크다. 코호트가 쌓이면 메인으로</div>
+      <table class="appx" id="appx"><tr><th style="width:26%">첫 방문 주</th><th>D1</th><th>D7</th><th>D14</th><th>D28</th></tr></table>
+    </div>
+    <div class="banner">첫 주에 획득한 유저는 28일에 2.42일, 아닌 유저는 0.01일 — 활성화가 LTV 의 갈림길 (인과 아님)</div>
   </section>
 </div>
 
@@ -236,6 +292,144 @@ const el = (tag, attrs, parent) => {
 };
 const txt = (parent, x, y, s, attrs) => { const t = el('text', { x, y, ...attrs }, parent); t.textContent = s; return t; };
 const MONO = 'IBM Plex Mono, monospace';
+
+(function constellation() {
+const NS = 'http://www.w3.org/2000/svg';
+const sky = document.getElementById('sky');
+const plate = document.getElementById('plate');
+
+const S = {
+  nsm:   { x: 1000, y: 150, r: 26, tier: 'nsm', label: '하루 평균 수확·포획·제작한 유저 수', sub: '7일간 (유저 × 획득한 날) ÷ 7', side: 'left',
+           tip: ['획득 행동 16종 중 하나라도 한 날 = 획득한 하루', '농사(수확·달걀·꿀) · 낚시·채집 · 만들기(제작·요리·카페·조각·밤사이 가공) · 마을(퀘스트·천문대·밤손님)', '원천 <code>session_logs.counts</code> · 그림자 GA4'] },
+  reach: { x: 610, y: 330, r: 15, tier: 'l1', label: '주간 방문 유저 수', sub: '폭 · 몇 명이 오나', side: 'left',
+           tip: ['그 주에 세션이 1개 이상인 유저', '신규 + 유지 + 복귀로 나뉜다'] },
+  freq:  { x: 860, y: 430, r: 15, tier: 'l1', label: '1인당 방문일', sub: '빈도 · 며칠 오나', side: 'right',
+           tip: ['방문일 합 ÷ 방문 유저', '매일 잠깐 리듬이면 7에 가까워진다'] },
+  qual:  { x: 1080, y: 380, r: 15, tier: 'l1', label: '방문일 중 획득 비율', sub: '품질 · 온 날이 알찼나', side: 'above',
+           tip: ['획득한 (유저×날) ÷ 방문 (유저×날)', '1 − 이 값 = 빈손 방문 비율 (견제 지표)'] },
+  visit: { x: 95, y: 330, r: 9, tier: 'l2', label: '첫 방문', sub: '페이지 도착', side: 'right',
+           tip: ['GA4 <code>first_visit</code> 한 사람', '로그인 화면에서 나간 사람도 포함'] },
+  newv:  { x: 210, y: 470, r: 9, tier: 'l2', label: '게임 진입', sub: '신규 유저 · 첫 세션', side: 'left',
+           tip: ['첫 세션을 시작한 신규 유저 (session_logs)', '첫 방문과의 차이 = 입구 이탈'] },
+  coin:  { x: 590, y: 160, r: 11, tier: 'l2', label: '코인 소비 유저 비율', sub: '수익 선행 지표', side: 'left',
+           tip: ['코인으로 무언가를 산 유저 ÷ 방문 유저', '<code>econ_logs</code> amount &lt; 0 · 지출 11종'] },
+  pay:   { x: 290, y: 120, r: 11, tier: 'l2', pending: true, label: '결제 전환율', sub: '측정 대기 · Paddle 승인 후', side: 'below',
+           tip: ['그 주 결제 유저 ÷ 방문 유저 · 매출 · ARPPU', '원장 <code>purchases</code> 는 아직 BigQuery 미적재'] },
+  ref:   { x: 200, y: 240, r: 10, tier: 'l2', pending: true, label: '추천 유입 진입 유저', sub: '측정 대기 · 10/9 배포', side: 'left',
+           tip: ['추천 링크로 들어와 계정이 추천인과 연결된 신규 수 (<code>referrals</code>)', '하위: 링크 공유 비율 · 초대 → 진입 전환 · K-팩터', '아직 BigQuery 미적재 · 데이터 0'] },
+  ltv:   { x: 760, y: 72, r: 11, tier: 'l2', label: '참여 LTV', sub: '28일 획득한 날 · 유입 경로별', side: 'left',
+           tip: ['신규 1명이 첫 방문 후 28일 동안 쌓은 획득한 날 (현재 1.01일)', '유입 경로: 친구 추천 · 메타 광고 · 토스 · 소셜 · 자연·직접', '추천인의 가치 = 자기 LTV + 데려온 유저들의 LTV'] },
+  ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 획득 행동까지 시간', sub: '온보딩 속도', side: 'below',
+           tip: ['첫 세션 시작 → 첫 획득 행동 이벤트까지 걸린 시간'] },
+  act:   { x: 360, y: 590, r: 12, tier: 'l2', label: '활성화', sub: '신규 중 7일 내 첫 획득 행동', side: 'below',
+           tip: ['신규 유저 중 첫 7일 안에 획득한 날이 1일 이상인 비율', '신규 → 유지 사이의 다리. AARRR 의 Activation'] },
+  keep:  { x: 520, y: 500, r: 9, tier: 'l2', label: '유지', sub: '지난주에도 방문', side: 'right',
+           tip: ['이번 주와 지난주 모두 방문한 유저'] },
+  back:  { x: 580, y: 640, r: 8, tier: 'l2', label: '복귀', sub: '2주+ 공백 후', side: 'below',
+           tip: ['2주 이상 오지 않다가 돌아온 유저'] },
+  habit: { x: 800, y: 600, r: 9, tier: 'l2', label: '습관 유저 비율', sub: '주 4일 이상 방문', side: 'below',
+           tip: ['주 4일 이상 방문한 유저 ÷ 방문 유저'] },
+  mix:   { x: 1095, y: 540, r: 8, tier: 'l2', label: '분야별 획득 비중', sub: '어디서 가치를 얻나', side: 'below',
+           tip: ['농사 · 낚시채집 · 만들기 · 마을 중 획득한 날의 구성'] },
+  empty: { x: 980, y: 600, r: 8, tier: 'l2', label: '빈손 방문 마지막 위치', sub: '어디서 막혔나', side: 'below',
+           tip: ['획득 행동이 0 인 날의 <code>last_place</code> 분포'] },
+};
+const CHAINS = [['newv', 'reach'], ['keep', 'reach'], ['back', 'reach'], ['habit', 'freq'], ['mix', 'qual'], ['empty', 'qual'], ['ttfr', 'act']];
+const BRIDGE = [['newv', 'act'], ['act', 'keep']];
+const ENTRY = [['visit', 'newv']];
+const OUTCOME = [['nsm', 'coin'], ['nsm', 'ltv']];
+const REV = [['coin', 'pay']];
+const LOOP = [['ref', 'visit']];
+const RAYS = ['reach', 'freq', 'qual'];
+
+const el = (tag, attrs = {}, parent = sky) => {
+  const node = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+  parent.appendChild(node);
+  return node;
+};
+
+// background dust — fixed seed so the sky is identical on every load
+let seed = 7;
+const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+for (let i = 0; i < 46; i++) {
+  const x = 20 + rnd() * 1160, y = 20 + rnd() * 690;
+  if (Object.values(S).some(s => Math.hypot(s.x - x, s.y - y) < 80)) continue;
+  const c = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 2.6, class: 'dust' + (i % 5 === 0 ? ' twinkle' : '') });
+  c.style.animationDelay = (rnd() * 4).toFixed(2) + 's';
+}
+
+const line = (a, b, attrs) => el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, ...attrs });
+RAYS.forEach(id => line(S[id], S.nsm, { stroke: 'var(--nsm-ray)', 'stroke-width': 2, 'stroke-dasharray': '5 5' }));
+CHAINS.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--line)', 'stroke-width': 1.6 }));
+BRIDGE.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--bridge)', 'stroke-width': 2, opacity: .75 }));
+ENTRY.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--bridge)', 'stroke-width': 2, opacity: .75 }));
+OUTCOME.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--outcome)', 'stroke-width': 1.6, 'stroke-dasharray': '1.5 5', 'stroke-linecap': 'round' }));
+REV.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--line)', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }));
+// referral loop: users who stay bring new users, who land back at first visit
+el('path', { d: `M ${S.reach.x} ${S.reach.y} Q 420 240 ${S.ref.x + 12} ${S.ref.y}`, fill: 'none', stroke: 'var(--bridge)', 'stroke-width': 1.8, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round', opacity: .8 });
+LOOP.forEach(([p, q]) => line(S[p], S[q], { stroke: 'var(--bridge)', 'stroke-width': 1.8, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round', opacity: .8 }));
+el('text', { x: 430, y: 252, 'text-anchor': 'middle', class: 'note-txt' }).textContent = '남은 유저가 신규를 데려옴';
+{ const a = S.visit, b = S.newv; el('text', { x: (a.x + b.x) / 2 + 14, y: (a.y + b.y) / 2 + 4, class: 'note-txt' }).textContent = '입구 이탈'; }
+[['ACQUISITION', 95, 300], ['ACTIVATION', 360, 562], ['RETENTION', 1000, 90], ['REVENUE', 440, 82], ['REFERRAL', 110, 206]].forEach(([t, x, y]) => {
+  el('text', { x, y, 'text-anchor': 'middle', class: 'stage' }).textContent = t;
+});
+
+const n = S.nsm;
+[[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => {
+  el('line', { x1: n.x + dx * (n.r + 2), y1: n.y + dy * (n.r + 2), x2: n.x + dx * (n.r + 22), y2: n.y + dy * (n.r + 22), stroke: 'var(--nsm-ray)', 'stroke-width': 2 });
+});
+
+
+const tip = document.createElement('div');
+tip.className = 'tip';
+tip.hidden = true;
+plate.appendChild(tip);
+
+function showTip(s, g) {
+  tip.innerHTML = `<b>${s.label.replace('북극성: ', '')}</b>${s.tip.map(t => `<div>${t}</div>`).join('')}`;
+  tip.hidden = false;
+  const pr = plate.getBoundingClientRect();
+  const r = g.querySelector('circle.body').getBoundingClientRect();
+  let left = r.left - pr.left + plate.scrollLeft + r.width / 2 - tip.offsetWidth / 2;
+  left = Math.max(8, Math.min(left, plate.scrollWidth - tip.offsetWidth - 8));
+  let top = r.top - pr.top - tip.offsetHeight - 12;
+  if (top < 8) top = r.bottom - pr.top + 12;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+
+Object.values(S).forEach(s => {
+  const isN = s.tier === 'nsm';
+  const g = el('g', { class: 'star', tabindex: 0, role: 'button', 'aria-label': `${s.label}. ${s.sub}` });
+  el('circle', {
+    class: 'body', cx: s.x, cy: s.y, r: s.r,
+    fill: isN ? 'var(--nsm-fill)' : (s.pending ? 'var(--plate)' : 'var(--star-fill)'),
+    stroke: isN ? 'var(--nsm-edge)' : 'var(--star-edge)',
+    'stroke-width': isN ? 2 : 1.8,
+    ...(s.pending ? { 'stroke-dasharray': '3 3' } : {}),
+  }, g);
+  el('circle', { cx: s.x, cy: s.y, r: s.r + 14, fill: 'transparent' }, g);
+  const gap = s.r + 14;
+  let lx = s.x, ly = s.y, anchor = 'middle';
+  if (s.side === 'left') { lx = s.x - gap; anchor = 'end'; ly = s.y - (isN ? 6 : 2); }
+  if (s.side === 'right') { lx = s.x + gap; anchor = 'start'; ly = s.y - 2; }
+  if (s.side === 'below') { ly = s.y + s.r + 24; }
+  if (s.side === 'above') { ly = s.y - s.r - 36; }
+  el('text', { x: lx, y: ly, 'text-anchor': anchor, class: isN ? 'lbl-nsm' : 'lbl' }, g).textContent = s.label;
+  el('text', { x: lx, y: ly + (isN ? 26 : 21), 'text-anchor': anchor, class: isN ? 'sub-nsm' : 'sub' }, g).textContent = s.sub;
+  g.addEventListener('pointerenter', () => showTip(s, g));
+  g.addEventListener('pointerleave', () => { tip.hidden = true; });
+  g.addEventListener('focus', () => showTip(s, g));
+  g.addEventListener('blur', () => { tip.hidden = true; });
+});
+
+const gt = el('text', { x: 600, y: 726, 'text-anchor': 'middle', class: 'guard-txt' });
+const gl = el('tspan', { fill: 'var(--guard)', 'font-weight': 600 }, gt);
+gl.textContent = '견제   ';
+const gr = el('tspan', {}, gt);
+gr.textContent = '빈손 방문 비율 · 코인 순증가 속도 · 세이브 실패율 — 북극성만 오르고 다른 곳이 망가지지 않게';
+})();
 
 (function nsmChart() {
   const svg = document.getElementById('nsm-chart');
@@ -266,102 +460,154 @@ const MONO = 'IBM Plex Mono, monospace';
 
 (function tree() {
   const svg = document.getElementById('tree');
-  svg.style.background = '#141414';
-  const S = {
-    nsm:    { x: 1000, y: 135, r: 26, k: 'nsm',  t: '하루 평균 수확·포획·제작한 유저 수', v: '3.00 → 1.86 명/일', side: 'left' },
-    reach:  { x: 610,  y: 300, r: 15, k: 'star', t: '주간 방문 유저 수', v: '26 → 15', side: 'left' },
-    freq:   { x: 860,  y: 400, r: 15, k: 'star', t: '1인당 방문일', v: '1.69 → 1.60', side: 'right' },
-    qual:   { x: 1080, y: 345, r: 15, k: 'star', t: '방문일 중 획득 비율', v: '48% → 54%', side: 'above' },
-    newv:   { x: 420,  y: 410, r: 10, k: 'star', t: '신규', v: '20 → 8', side: 'left' },
-    kept:   { x: 560,  y: 480, r: 10, k: 'star', t: '유지', v: '5 → 5', side: 'right' },
-    back:   { x: 650,  y: 585, r: 8,  k: 'star', t: '복귀', v: '1 → 2', side: 'below' },
-    habit:  { x: 790,  y: 575, r: 9,  k: 'star', t: '습관 유저 (주 4일+)', v: '12% → 7%', side: 'below' },
-    gap:    { x: 930,  y: 520, r: 8,  k: 'star', t: '방문 간격', v: '중앙값 1일', side: 'below' },
-    mix:    { x: 1120, y: 520, r: 8,  k: 'star', t: '분야별 획득', v: '농사 80%', side: 'below' },
-    empty:  { x: 1040, y: 640, r: 8,  k: 'star', t: '빈손 방문 마지막 위치', v: '마을 86%', side: 'below' },
-    visit:  { x: 80,   y: 300, r: 9,  k: 'star', t: '첫 방문', v: '415', side: 'right' },
-    entry:  { x: 150,  y: 430, r: 9,  k: 'star', t: '진입', v: '44% (웹 33%)', side: 'right' },
-    chars:  { x: 220,  y: 555, r: 9,  k: 'star', t: '캐릭터 선택', v: '84%', side: 'right' },
-    act:    { x: 380,  y: 625, r: 13, k: 'star', t: '첫 획득 행동 = 활성화', v: '41% (병목)', side: 'below' },
-    e1:     { x: 190,  y: 690, r: 9,  k: 'exp',  t: '실험: 첫 5분 수확', v: '목표 60%', side: 'below' },
-    e2:     { x: 470,  y: 560, r: 8,  k: 'exp',  t: '실험: 힌트 배너', v: '이탈 직전 개입', side: 'below' },
-    coin:   { x: 620,  y: 150, r: 10, k: 'star', t: '코인 소비 비율', v: '26% → 24%', side: 'left' },
-    pay:    { x: 330,  y: 110, r: 10, k: 'wait', t: '결제 전환율', v: '측정 대기', side: 'below' },
-    ref:    { x: 210,  y: 190, r: 9,  k: 'wait', t: '추천 유입 진입', v: '0 · 10/9 배포', side: 'left' },
-    ltv:    { x: 760,  y: 62,  r: 10, k: 'star', t: '참여 LTV (28일)', v: '1.01 획득한 날', side: 'left' },
+  const H = 50;
+  const B = {
+    nsm:   { x: 470,  y: 46,  w: 380, h: 64, k: 'nsm',  t: '하루 평균 수확·포획·제작한 유저 수', v: '3.00 → 1.86 명/일' },
+    reach: { x: 230,  y: 180, w: 220, k: 'l1',   t: '주간 방문 유저 수 (폭)', v: '26 → 15' },
+    freq:  { x: 560,  y: 180, w: 200, k: 'l1',   t: '1인당 방문일 (빈도)', v: '1.69 → 1.60' },
+    qual:  { x: 840,  y: 180, w: 220, k: 'l1',   t: '방문일 중 획득 비율 (품질)', v: '48% → 54%' },
+    ltv:   { x: 1070, y: 46,  w: 200, k: 'out',  t: '참여 LTV (28일)', v: '1.01 획득한 날' },
+    coin:  { x: 1070, y: 120, w: 200, k: 'out',  t: '코인 소비 비율', v: '26% → 24%' },
+    pay:   { x: 1070, y: 190, w: 200, k: 'wait', t: '결제 전환율', v: '측정 대기' },
+    newv:  { x: 95,   y: 300, w: 130, k: 'l2',   t: '신규', v: '20 → 8' },
+    kept:  { x: 230,  y: 300, w: 120, k: 'l2',   t: '유지', v: '5 → 5' },
+    back:  { x: 360,  y: 300, w: 120, k: 'l2',   t: '복귀', v: '1 → 2' },
+    habit: { x: 495,  y: 300, w: 140, k: 'l2',   t: '습관 유저 (주 4일+)', v: '12% → 7%' },
+    gap:   { x: 640,  y: 300, w: 130, k: 'l2',   t: '방문 간격', v: '중앙값 1일' },
+    mix:   { x: 780,  y: 300, w: 130, k: 'l2',   t: '분야별 획득', v: '농사 80%' },
+    empty: { x: 940,  y: 300, w: 170, k: 'l2',   t: '빈손 방문 마지막 위치', v: '마을 86%' },
+    visit: { x: 95,   y: 440, w: 130, k: 'l2',   t: '첫 방문', v: '415' },
+    entry: { x: 240,  y: 440, w: 130, k: 'l2',   t: '진입', v: '44% (웹 33%)' },
+    chars: { x: 385,  y: 440, w: 130, k: 'l2',   t: '캐릭터 선택', v: '84%' },
+    act:   { x: 545,  y: 440, w: 160, k: 'hot',  t: '첫 획득 = 활성화', v: '41% (병목)' },
+    ref:   { x: 95,   y: 545, w: 150, k: 'wait', t: '추천 유입 진입', v: '0 · 10/9 배포' },
+    e1:    { x: 545,  y: 545, w: 160, k: 'exp',  t: '실험: 첫 5분 수확', v: '목표 60%' },
+    e2:    { x: 730,  y: 440, w: 150, k: 'exp',  t: '실험: 힌트 배너', v: '이탈 직전 개입' },
   };
-  const line = (a, b, attrs) => el('line', { x1: S[a].x, y1: S[a].y, x2: S[b].x, y2: S[b].y, ...attrs }, svg);
+  const ST = {
+    nsm:  { fill: '#3b3592', stroke: '#9a92f2' },
+    l1:   { fill: '#6e4614', stroke: '#e3a948' },
+    l2:   { fill: '#1e1f22', stroke: '#e3a948' },
+    hot:  { fill: '#1e1f22', stroke: '#ff6b5e', sw: 2 },
+    wait: { fill: '#1e1f22', stroke: '#e3a948', dash: '4 4' },
+    exp:  { fill: '#1e1f22', stroke: '#7fc4ea', dash: '4 4' },
+    out:  { fill: '#1e1f22', stroke: '#8b93b8' },
+  };
+  const h = b => b.h || H;
+  const top = b => b.y - h(b) / 2, bot = b => b.y + h(b) / 2;
+  const path = (d, attrs) => el('path', { d, fill: 'none', ...attrs }, svg);
+  const elbow = (p, c, attrs) => {
+    const P = B[p], C = B[c], mid = (bot(P) + top(C)) / 2;
+    path(`M ${P.x} ${bot(P)} V ${mid} H ${C.x} V ${top(C)}`, attrs);
+  };
+  const MUL = { stroke: '#5b7cff', 'stroke-width': 2, 'stroke-dasharray': '6 5' };
+  const TREE = { stroke: '#5a5c60', 'stroke-width': 1.6 };
+  const PATHW = { stroke: '#e3a948', 'stroke-width': 2 };
+  const DOT = (c) => ({ stroke: c, 'stroke-width': 1.6, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' });
 
-  let seed = 11;
-  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
-  for (let i = 0; i < 52; i++) {
-    const x = 20 + rnd() * 1160, y = 20 + rnd() * 700;
-    if (Object.values(S).some(s => Math.hypot(s.x - x, s.y - y) < 85)) continue;
-    el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 2.4, fill: 'none', stroke: '#55534f', 'stroke-width': 1.1 }, svg);
-  }
+  ['reach', 'freq', 'qual'].forEach(k => elbow('nsm', k, MUL));
+  [['reach', 'newv'], ['reach', 'kept'], ['reach', 'back'], ['freq', 'habit'], ['freq', 'gap'], ['qual', 'mix'], ['qual', 'empty']]
+    .forEach(([p, c]) => elbow(p, c, TREE));
+  // new-user path: first visit -> entry -> character -> activation, feeding 신규 / 유지
+  path(`M ${B.newv.x} ${bot(B.newv)} V ${top(B.visit)}`, { ...PATHW, 'stroke-dasharray': '6 4' });
+  [['visit', 'entry'], ['entry', 'chars'], ['chars', 'act']].forEach(([a, b]) =>
+    path(`M ${B[a].x + B[a].w / 2} ${B[a].y} H ${B[b].x - B[b].w / 2}`, PATHW));
+  path(`M ${B.act.x} ${top(B.act)} V 380 H ${B.kept.x} V ${bot(B.kept)}`, { ...PATHW, opacity: .75 });
+  path(`M ${B.e1.x} ${top(B.e1)} V ${bot(B.act)}`, { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
+  path(`M ${B.e2.x - B.e2.w / 2} ${B.e2.y} H ${B.act.x + B.act.w / 2}`, { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
+  path(`M ${B.ref.x} ${top(B.ref)} V ${bot(B.visit)}`, DOT('#e3a948'));
+  path(`M ${B.nsm.x + B.nsm.w / 2} ${B.nsm.y} H ${B.ltv.x - B.ltv.w / 2}`, DOT('#8b93b8'));
+  path(`M ${B.nsm.x + B.nsm.w / 2 + 20} ${B.nsm.y} V ${B.coin.y} H ${B.coin.x - B.coin.w / 2}`, DOT('#8b93b8'));
+  path(`M ${B.coin.x} ${bot(B.coin)} V ${top(B.pay)}`, { stroke: '#5a5c60', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' });
 
-  ['reach', 'freq', 'qual'].forEach(k => line(k, 'nsm', { stroke: '#2c4f9e', 'stroke-width': 2, 'stroke-dasharray': '5 5' }));
-  [['newv', 'reach'], ['kept', 'reach'], ['back', 'reach'], ['habit', 'freq'], ['gap', 'freq'], ['mix', 'qual'], ['empty', 'qual']]
-    .forEach(([a, b]) => line(a, b, { stroke: '#4a4a48', 'stroke-width': 1.6 }));
-  [['visit', 'entry'], ['entry', 'chars'], ['chars', 'act'], ['act', 'kept'], ['newv', 'act']]
-    .forEach(([a, b]) => line(a, b, { stroke: '#e3a948', 'stroke-width': 2, opacity: .8 }));
-  line('e1', 'act', { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
-  line('e2', 'kept', { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
-  line('nsm', 'coin', { stroke: '#8b93b8', 'stroke-width': 1.6, 'stroke-dasharray': '1.5 5', 'stroke-linecap': 'round' });
-  line('coin', 'pay', { stroke: '#4a4a48', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' });
-  line('nsm', 'ltv', { stroke: '#8b93b8', 'stroke-width': 1.6, 'stroke-dasharray': '1.5 5', 'stroke-linecap': 'round' });
-  const loop = { fill: 'none', stroke: '#e3a948', 'stroke-width': 1.8, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round', opacity: .8 };
-  el('path', { d: `M ${S.reach.x} ${S.reach.y} Q 420 210 ${S.ref.x + 11} ${S.ref.y}`, ...loop }, svg);
-  line('ref', 'visit', loop);
+  const halo = { 'paint-order': 'stroke', stroke: '#17181a', 'stroke-width': 5, 'stroke-linejoin': 'round' };
+  const note = (x, y, s, anchor = 'middle', fill = '#9a988f') => txt(svg, x, y, s, { 'text-anchor': anchor, 'font-size': 12, fill, ...halo });
+  note(640, 104, '× 곱셈 분해 · 4주 모두 정확히 일치', 'middle', '#7f97e6');
+  note(B.newv.x + 8, 377, '신규 경로', 'start', '#c9a25a');
+  note(B.ref.x + 8, 504, '추천 고리', 'start', '#c9a25a');
+  note(900, 70, '결과', 'middle', '#8b93b8');
 
-  const n = S.nsm;
-  [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => el('line', {
-    x1: n.x + dx * (n.r + 2), y1: n.y + dy * (n.r + 2), x2: n.x + dx * (n.r + 22), y2: n.y + dy * (n.r + 22), stroke: '#2c4f9e', 'stroke-width': 2 }, svg));
-
-  const halo = { 'paint-order': 'stroke', stroke: '#141414', 'stroke-width': 6, 'stroke-linejoin': 'round' };
-  Object.values(S).forEach(s => {
-    const isN = s.k === 'nsm', hollow = s.k === 'exp' || s.k === 'wait';
-    el('circle', { cx: s.x, cy: s.y, r: s.r,
-      fill: isN ? '#3b3592' : hollow ? '#141414' : '#6e4614',
-      stroke: isN ? '#9a92f2' : s.k === 'exp' ? '#7fc4ea' : '#e3a948',
-      'stroke-width': isN ? 2 : 1.8, 'stroke-dasharray': hollow ? '3 3' : '' }, svg);
-    const gap = s.r + 12;
-    let x = s.x, y = s.y, anchor = 'middle';
-    if (s.side === 'left') { x = s.x - gap; anchor = 'end'; y = s.y - 3; }
-    if (s.side === 'right') { x = s.x + gap; anchor = 'start'; y = s.y - 3; }
-    if (s.side === 'below') { y = s.y + s.r + 20; }
-    if (s.side === 'above') { y = s.y - s.r - 32; }
-    txt(svg, x, y, s.t, { 'text-anchor': anchor, 'font-size': isN ? 19 : 14.5, 'font-weight': 700, fill: '#f3f2ef', ...halo });
-    txt(svg, x, y + (isN ? 24 : 19), s.v, { 'text-anchor': anchor, 'font-size': isN ? 15 : 12.5, fill: '#b9b7b1', 'font-family': MONO, ...halo });
+  Object.values(B).forEach(b => {
+    const s = ST[b.k], isN = b.k === 'nsm';
+    el('rect', { x: b.x - b.w / 2, y: top(b), width: b.w, height: h(b), rx: 8, fill: s.fill, stroke: s.stroke,
+      'stroke-width': s.sw || (isN ? 2 : 1.4), ...(s.dash ? { 'stroke-dasharray': s.dash } : {}) }, svg);
+    txt(svg, b.x, b.y - (isN ? 4 : 3), b.t, { 'text-anchor': 'middle', 'font-size': isN ? 17 : 13.5, 'font-weight': 700, fill: '#f3f2ef' });
+    txt(svg, b.x, b.y + (isN ? 20 : 15), b.v, { 'text-anchor': 'middle', 'font-size': isN ? 14 : 12, fill: b.k === 'hot' ? '#ff9a90' : '#b9b7b1', 'font-family': MONO });
   });
 
-  const tag = (t, x, y) => txt(svg, x, y, t, { 'text-anchor': 'middle', 'font-size': 11, fill: '#9a988f', 'letter-spacing': '.14em', 'font-family': MONO, ...halo });
-  tag('ACQUISITION', 80, 268); tag('ACTIVATION', 330, 598); tag('RETENTION', 1000, 70); tag('REVENUE', 470, 85); tag('REFERRAL', 120, 160);
-  txt(svg, 430, 222, '남은 유저가 신규를 데려옴', { 'text-anchor': 'middle', 'font-size': 12, fill: '#9a988f', ...halo });
-  txt(svg, 820, 230, '× 곱셈 분해 · 4주 모두 정확히 일치', { 'text-anchor': 'middle', 'font-size': 12, fill: '#6f86c8', ...halo });
+  const tag = (t, x, y) => txt(svg, x, y, t, { 'text-anchor': 'start', 'font-size': 11, fill: '#7f7d78', 'letter-spacing': '.14em', 'font-family': MONO });
+  tag('L0', 14, 50); tag('L1', 14, 184); tag('L2', 14, 304); tag('L3', 14, 444);
 
-  const g = txt(svg, 600, 755, '', { 'text-anchor': 'middle', 'font-size': 14, fill: '#b9b7b1' });
+  el('line', { x1: 20, x2: 1180, y1: 612, y2: 612, stroke: '#2a2c2f', 'stroke-width': 1 }, svg);
+  const g = txt(svg, 600, 648, '', { 'text-anchor': 'middle', 'font-size': 14, fill: '#b9b7b1' });
   const t1 = el('tspan', { fill: '#ff6b5e', 'font-weight': 600 }, g); t1.textContent = '견제   ';
   const t2 = el('tspan', {}, g); t2.textContent = '빈손 방문 52% → 46% · 코인 순증가 384 → 96 /기기 · 복구 안 된 세이브 실패 0 세션';
 })();
 
-(function ltvChannels() {
-  const max = 1.8;
-  const rows = [
-    { nm: '친구 추천', n: 0 }, { nm: '메타 광고', n: 0 },
-    { nm: '토스', n: 42, v: 0.86, lo: 0.29, hi: 1.62, z: '0일 69%' },
-    { nm: '소셜·커뮤니티', n: 10, v: 0.30, lo: 0.00, hi: 0.60, z: '0일 70%' },
-    { nm: '자연·직접', n: 98, v: 1.14, lo: 0.79, hi: 1.59, z: '0일 52%' },
+(function ltv() {
+  const D = {
+    act: [
+      { nm: '첫 주 활성화', n: 62, c: '#c6e3a1', dash: '', v: [0.92,1.19,1.4,1.53,1.71,1.82,1.87,1.92,1.98,2.03,2.08,2.08,2.1,2.15,2.15,2.18,2.23,2.26,2.26,2.29,2.34,2.35,2.39,2.39,2.39,2.4,2.4,2.42] },
+      { nm: '전체', n: 150, c: '#f7ef9e', dash: '7 5', v: [0.38,0.49,0.58,0.63,0.71,0.75,0.77,0.79,0.82,0.84,0.86,0.86,0.87,0.89,0.89,0.9,0.92,0.93,0.93,0.95,0.97,0.97,0.99,0.99,0.99,1.0,1.0,1.01] },
+      { nm: '미활성', n: 88, c: '#f2b39c', dash: '2 5', v: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.01,0.01,0.01] },
+    ],
+    ch: [
+      { nm: '자연·직접', n: 98, c: '#c6e3a1', dash: '', v: [0.43,0.57,0.69,0.77,0.87,0.93,0.95,0.98,1.01,1.03,1.04,1.04,1.05,1.07,1.07,1.08,1.11,1.12,1.12,1.13,1.14,1.14,1.14,1.14,1.14,1.14,1.14,1.14] },
+      { nm: '토스', n: 42, c: '#bfe0f2', dash: '7 5', v: [0.29,0.36,0.38,0.4,0.43,0.45,0.48,0.48,0.5,0.52,0.57,0.57,0.57,0.6,0.6,0.62,0.62,0.64,0.64,0.67,0.71,0.74,0.79,0.79,0.81,0.83,0.83,0.86] },
+      { nm: '소셜·커뮤니티 (n<30)', n: 10, c: '#f2b39c', dash: '2 5', v: Array(28).fill(0.3) },
+    ],
+  };
+  const NOTE = {
+    act: '28일차: 활성화 2.42 vs 미활성 0.01 — 첫 주에 획득하지 못한 유저는 이후에도 거의 돌아오지 않는다',
+    ch: '친구 추천·메타 광고는 데이터 대기 — 들어오면 선이 추가되고, 광고비(진입 1명당)를 가로선으로 그어 회수 시점을 본다. 자연·직접엔 베타·초기 지인이 섞여 있어 경로 효과로 읽지 않는다',
+  };
+  const svg = document.getElementById('ltv-curve');
+  const L = 40, R = 700, T = 14, Bt = 268, max = 2.5;
+  const x = k => L + (k / 27) * (R - L), y = v => Bt - (v / max) * (Bt - T);
+  function draw(mode) {
+    svg.replaceChildren();
+    [0, 0.5, 1, 1.5, 2, 2.5].forEach(v => {
+      el('line', { x1: L, x2: R, y1: y(v), y2: y(v), stroke: '#26282b' }, svg);
+      txt(svg, L - 8, y(v) + 4, v.toFixed(1), { 'text-anchor': 'end', 'font-size': 11, fill: '#7f7d78', 'font-family': MONO });
+    });
+    [0, 6, 13, 20, 27].forEach(k => txt(svg, x(k), Bt + 20, `${k + 1}일`, { 'text-anchor': 'middle', 'font-size': 11, fill: '#7f7d78', 'font-family': MONO }));
+    D[mode].forEach(s => {
+      el('polyline', { points: s.v.map((v, k) => `${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(' '), fill: 'none', stroke: s.c,
+        'stroke-width': 2.2, 'stroke-dasharray': s.dash, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+      const last = s.v[27];
+      el('circle', { cx: x(27), cy: y(last), r: 4, fill: s.c, stroke: '#17181a', 'stroke-width': 2 }, svg);
+      txt(svg, x(27) - 8, y(last) - 9, last.toFixed(2), { 'text-anchor': 'end', 'font-size': 12, fill: '#f3f2ef', 'font-family': MONO, 'font-weight': 600 });
+    });
+    document.getElementById('ltv-legend').innerHTML = D[mode].map(s =>
+      `<span><svg width="28" height="8" aria-hidden="true"><line x1="0" y1="4" x2="28" y2="4" stroke="${s.c}" stroke-width="2.2" stroke-dasharray="${s.dash}" stroke-linecap="round"/></svg>${s.nm} n=${s.n}</span>`).join('');
+    document.getElementById('ltv-note').textContent = NOTE[mode];
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+  }
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => draw(b.dataset.mode)));
+  draw('act');
+
+  const BK = [
+    { k: '0일', c: '#55575b', u: 58.0, d: 0 },
+    { k: '1일', c: '#bfe0f2', u: 26.7, d: 26.5 },
+    { k: '2~5일', c: '#c6e3a1', u: 11.3, d: 35.8 },
+    { k: '6일+', c: '#f7ef9e', u: 4.0, d: 37.7 },
   ];
-  const box = document.getElementById('ltv-ch');
-  const pct = x => `${(x / max) * 100}%`;
-  rows.forEach(r => {
-    const d = document.createElement('div');
-    d.className = 'crow' + (r.n ? '' : ' wait');
-    d.innerHTML = r.n
-      ? `<span class="nm">${r.nm}<small>n=${r.n}${r.n < 30 ? ' · 방향만' : ''}</small></span><div class="track"><i style="width:${pct(r.v)}${r.n < 30 ? ';opacity:.5' : ''}"></i><span class="ci" style="left:${pct(r.lo)};width:calc(${pct(r.hi)} - ${pct(r.lo)})"></span></div><span class="val">${r.v.toFixed(2)} · ${r.z}</span>`
-      : `<span class="nm">${r.nm}<small>n=0</small></span><div class="track"></div><span class="val">데이터 대기</span>`;
-    box.appendChild(d);
+  const fill = (id, key) => {
+    document.getElementById(id).innerHTML = BK.filter(b => b[key] > 0).map(b =>
+      `<i style="flex:${b[key]};background:${b.c}" title="${b.k} ${b[key]}%">${b[key] >= 8 ? Math.round(b[key]) + '%' : ''}</i>`).join('');
+  };
+  fill('b-users', 'u'); fill('b-days', 'd');
+  document.getElementById('b-legend').innerHTML = BK.map(b => `<span><i class="sw" style="background:${b.c}"></i>${b.k}</span>`).join('');
+
+  const COH = [['07/27', 9, [0.56, 1.56, 1.89, 2.22]], ['08/03', 30, [0.43, 0.63, 0.63, 0.63]], ['08/10', 17, [0.29, 0.47, 0.47, 0.53]],
+    ['08/17', 10, [0.5, 0.5, 0.5, 0.5]], ['08/24', 20, [0.35, 0.35, 0.45, 0.5]], ['08/31', 38, [0.26, 0.47, 0.61, 0.89]], ['09/07', 26, [0.46, 1.73, 2.0, 2.08]]];
+  const ramp = ['#1d2433', '#26385a', '#2f4f86', '#4a6fb8', '#7b98e0'];
+  const tb = document.getElementById('appx');
+  COH.forEach(([w, n, c]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${w} 주 <span style="color:var(--ink-3)">n=${n}</span></td>` +
+      c.map(v => `<td style="background:${ramp[Math.min(4, Math.floor(v / 0.5))]}">${v.toFixed(2)}</td>`).join('');
+    tb.appendChild(tr);
   });
 })();
 
