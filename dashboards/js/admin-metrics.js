@@ -196,6 +196,7 @@ export function analyzeExperiment(e, today) {
   else if (e.confound) verdict = ['conf', '교란 주의'];
   else if (s != null && s < 0.01) verdict = ['lose', '배정 어긋남 · 판정 보류'];
   else if (e.decide_after && String(today) < String(e.decide_after)) verdict = ['obs', `관측 대기 · ${mmdd(e.decide_after)}`];
+  else if (r.official && r.official.complete === false) verdict = ['obs', '관측 대기 · 데이터 도착 전'];
   else if (e.need && n < e.need && e.status === 'run') verdict = ['small', '표본 모으는 중'];
   else if (est.p != null && est.p < 0.05) verdict = est.d > 0 ? ['win', '효과 있음 ▲'] : ['lose', '효과 있음 ▼'];
   else verdict = ['na', '판정 불가'];

@@ -23,6 +23,15 @@ def test_resident_key_prefers_logged_in_account_over_device():
     assert resident_key(None, None, None) is None
 
 
+def test_resident_key_handles_numpy_and_missing_booleans_from_bigquery():
+    # BQ BOOL 열은 pandas boolean 확장형 → 순회하면 numpy.bool_ · pd.NA 가 온다(`is False` 비교가 깨진다)
+    assert resident_key("u1", np.False_, "c1") == "u:u1"
+    assert resident_key("u1", np.True_, "c1") == "c:c1"
+    assert resident_key("u1", pd.NA, "c1") == "u:u1"
+    s = pd.Series([False, True, None], dtype="boolean")
+    assert [resident_key("u1", g, "c1") for g in s] == ["u:u1", "c:c1", "u:u1"]
+
+
 def test_revisit_counts_only_other_sessions_strictly_after_t0_within_window():
     t0 = pd.Timestamp("2026-09-10 12:00", tz="UTC")
     starts = pd.DataFrame({

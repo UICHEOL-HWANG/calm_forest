@@ -136,8 +136,8 @@ function armsTable(e) {
 function emptyResult(e) {
   if (e.kind === 'ext') {
     return `<div class="empty-st"><img src="${CHAR('fox')}" alt=""><b>외부 플랫폼 숫자를 아직 안 넣었어요</b>
-      인사이트의 조회·링크 클릭을 군별로 넣으면 계산됩니다 —
-      <code>insert into cf_experiment_results (exp_id, source, result) values ('${esc(e.id)}', 'manual', '{"type":"prop","compare":["A","B"],"arms":[{"key":"A","n":조회,"x":클릭},{"key":"B","n":조회,"x":클릭}]}')</code></div>`;
+      인사이트의 조회(n)·링크 클릭(x)을 군별로 0 자리에 넣어 실행하면 계산됩니다(다시 실행하면 갱신) —
+      <code>insert into cf_experiment_results (exp_id, source, result) values ('${esc(e.id)}', 'manual', '{"type":"prop","compare":["A","B"],"arms":[{"key":"A","label":"A","n":0,"x":0},{"key":"B","label":"B","n":0,"x":0}]}') on conflict (exp_id) do update set result = excluded.result, source = excluded.source, computed_at = now();</code></div>`;
   }
   return `<div class="empty-st"><img src="${CHAR('rabbit')}" alt=""><b>${e.status === 'plan' ? '아직 배정 전이에요' : '아직 결과가 없어요'}</b>${esc(e.period)}</div>`;
 }

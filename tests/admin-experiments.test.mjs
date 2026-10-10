@@ -56,3 +56,10 @@ test('실험 페이지는 v2 RPC 를 부르고 허브에서 열린다', () => {
   assert.match(src('dashboards/js/admin-experiments.js'), /cf_admin_experiments/);
   assert.match(src('dashboards/index.html'), /href="experiments.html"/);
 });
+
+test('공식 검정이 관측 진행 중(complete=false)이면 날짜가 지나도 판정하지 않는다', () => {
+  const e = { kind: 'ab', status: 'obs', need: null, decide_after: '2026-10-14', confound: null,
+    result: { type: 'prop', compare: ['t', 'c'], arms: [{ key: 't', n: 200, x: 90 }, { key: 'c', n: 200, x: 40 }],
+      official: { d: 25, lo: 15, hi: 35, p: 0.0001, complete: false } } };
+  assert.equal(analyzeExperiment(e, '2026-10-20').verdict[1], '관측 대기 · 데이터 도착 전');
+});
