@@ -70,14 +70,15 @@ r as (
   from (select *, lag(far) over (partition by session_id order by created_at) prev_far from g)
 ),
 st as (
-  select session_id, run_no, array_agg(z order by created_at limit 1)[offset(0)] start_z
+  select session_id, run_no, array_agg(z order by created_at limit 1)[offset(0)] start_z,
+         max(abs(x)) max_ax, max(z) - min(z) z_span
   from r where far group by 1, 2
 ),
 lab as (
   select r.created_at, r.user_id, r.x, r.z,
          case
            when not r.far then if(abs(r.x) <= 44 and abs(r.z) <= 44, 'main', null)
-           when st.start_z > -470 then null
+           when st.start_z > -470 or (st.max_ax <= 6.5 and st.z_span > 60) then null
            when abs(r.x) <= 40 and r.z between -590 and -510 then 'dream'
            when abs(r.x) <= 40 and r.z between -740 and -660 then 'mirror'
          end map
@@ -105,7 +106,7 @@ insert into cf_sessions (session_id, uid, user_id, is_guest, platform, variant, 
 select r.session_id, r.uid, nullif(r.user_id, '')::uuid, r.is_guest, r.platform, r.variant,
        (r.start_ts at time zone 'Asia/Seoul')::date, r.start_ts, r.end_ts, r.dur_sec, r.play_sec, r.last_place,
        coalesce(r.counts, '{}'::jsonb), cf_is_acq(r.counts),
-       coalesce((select u.email like 'persona-%' from auth.users u where u.id::text = r.user_id), false),
+       coalesce(r.user_id in (select id::text from cf_persona_user_ids() p(id)), false),
        now()
 from jsonb_to_recordset(cast(:payload as jsonb)) as r(
   session_id text, uid text, user_id text, is_guest boolean, platform text, variant text,
@@ -123,7 +124,7 @@ INSERT_HEAT = """
 insert into cf_heat_day (day, map, persona, gx, gz, hits)
 select r.day, r.map, (pu.id is not null), r.gx, r.gz, sum(r.hits)
 from jsonb_to_recordset(cast(:payload as jsonb)) as r(day date, map text, user_id text, gx smallint, gz smallint, hits int)
-left join (select id::text as id from auth.users where email like 'persona-%') pu on pu.id = r.user_id
+left join (select id::text as id from cf_persona_user_ids() p(id)) pu on pu.id = r.user_id
 group by 1, 2, 3, 4, 5
 """
 CLEAR_ECON = "delete from cf_econ_day where day between cast(:f as date) and cast(:t as date)"
@@ -131,7 +132,7 @@ INSERT_ECON = """
 insert into cf_econ_day (day, source, persona, tx, inflow, outflow)
 select r.day, r.source, (pu.id is not null), sum(r.tx), sum(r.inflow), sum(r.outflow)
 from jsonb_to_recordset(cast(:payload as jsonb)) as r(day date, source text, user_id text, tx int, inflow bigint, outflow bigint)
-left join (select id::text as id from auth.users where email like 'persona-%') pu on pu.id = r.user_id
+left join (select id::text as id from cf_persona_user_ids() p(id)) pu on pu.id = r.user_id
 group by 1, 2, 3
 """
 

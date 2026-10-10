@@ -32,13 +32,13 @@ test('비율은 분모가 기준 미만이면 null — 소표본 숫자를 그�
 test('맵별 밀도 격자: 맵 경계 밖 칸은 버리고 최댓값을 함께 준다', () => {
   const cells = [
     { map: 'main', gx: 0, gz: 0, hits: 5 },
-    { map: 'main', gx: 42, gz: -44, hits: 9 },
+    { map: 'main', gx: 44, gz: -44, hits: 9 },     // 경계 칸(양 끝 포함)
     { map: 'main', gx: 200, gz: 0, hits: 99 },     // 경계 밖
     { map: 'dream', gx: 0, gz: 0, hits: 7 },       // 다른 맵
   ];
   const g = heatGrid(cells, 'main');
   assert.equal(g.max, 9);
-  assert.equal(g.n, MAPS.main.r);                  // 2유닛 격자 → 칸 수 = 반경
+  assert.equal(g.n, MAPS.main.r + 1);              // 2유닛 격자, -r..r 양 끝 포함
   assert.equal(g.grid.reduce((a, b) => a + b, 0), 14);
   assert.equal(heatGrid(cells, 'mirror').max, 0);
 });

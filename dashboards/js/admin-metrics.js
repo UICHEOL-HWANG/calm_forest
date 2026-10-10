@@ -3,7 +3,7 @@
 //  tests/admin-metrics.test.mjs 가 이 파일을 직접 import 한다.
 // =============================================================
 
-// 이동 밀도 맵 — r = 맵 원점 기준 반경(월드 유닛). 롤업 표(cf_heat_day)는 2유닛 격자라 칸 수 = r.
+// 이동 밀도 맵 — r = 맵 원점 기준 반경(월드 유닛). 롤업 표(cf_heat_day)는 2유닛 격자라 -r..r 이 r+1 칸.
 //   원점·크기 근거: js/data/places.js (마을 0,0 · DREAM 0,-550 · MIRROR 0,-700 r22) · js/dream/layout.js(섬 x -16~22, z -19~6)
 export const MAPS = {
   main:   { label: '마을',      r: 44, char: 'fox' },
@@ -41,7 +41,7 @@ export function rate(n, base, minBase = 1) {
 /** 한 맵의 밀도 격자. 행 0 = 북쪽(-z). */
 export function heatGrid(cells, map) {
   const { r } = MAPS[map];
-  const n = r;
+  const n = r + 1;   // -r, -r+2, …, r (양 끝 포함)
   const grid = new Array(n * n).fill(0);
   let max = 0;
   for (const c of cells) {

@@ -24,13 +24,15 @@ as $$
 declare
   tz constant text := 'Asia/Seoul';
   allowed boolean := false;
+  is_admin boolean := false;
   today  date;
   since  date;   -- 기간 첫날
   psince date;   -- 직전 기간 첫날
   result jsonb;
 begin
   -- ── 접근: 관리자(이메일+UUID, cf_is_admin) 또는 유효한 임시 공유 토큰 ──
-  if public.cf_is_admin() then
+  is_admin := public.cf_is_admin();
+  if is_admin then
     allowed := true;
   elsif coalesce(token, '') <> '' then
     update public.cf_share_links s
@@ -47,7 +49,16 @@ begin
   since  := today - (days - 1);
   psince := since - days;
 
-  perform public.cf_rollup(today - 1, today);
+  -- 오늘치 신선도: 관리자가 열 때만, 다른 롤업이 돌고 있으면 건너뛰고, 실패해도 화면은 연다(어제까지는 03:00 롤업이 채움)
+  if is_admin then
+    begin
+      if pg_try_advisory_xact_lock(hashtext('cf_rollup')) then
+        perform public.cf_rollup(today - 1, today);
+      end if;
+    exception when others then
+      raise notice 'cf_rollup skipped: %', sqlerrm;
+    end;
+  end if;
 
   with
   s as (select * from cf_sessions where not persona),
@@ -100,9 +111,14 @@ begin
            percentile_cont(0.5) within group (order by coalesce(nullif(play_sec, 0), nullif(dur_sec, 0)))::int as med_sec
     from s where day between since and today group by day
   ),
+  -- Stickiness 는 기간 버튼과 무관하게 '최근 30일 평균 DAU ÷ 30일 MAU' 로 고정(7·30·60일 화면끼리 비교되게)
   mau as (
     select count(distinct uid) filter (where day between today - 30 and today - 1) as cur,
-           count(distinct uid) filter (where day between since - 31 and since - 2) as prev
+           count(distinct uid) filter (where day between today - 60 and today - 31) as prev,
+           (select avg(coalesce(a.dau, 0)) from generate_series(today - 30, today - 1, interval '1 day') g(d)
+              left join day_act a on a.day = g.d::date) as dau30,
+           (select avg(coalesce(a.dau, 0)) from generate_series(today - 60, today - 31, interval '1 day') g(d)
+              left join day_act a on a.day = g.d::date) as dau30_prev
     from ud
   ),
   kp as (
@@ -113,14 +129,15 @@ begin
       (select avg(dau) from nsm where d between psince and since - 1) as avg_dau_prev,
       (select count(*) from fs where first_day between since and today) as new_users,
       (select count(*) from fs where first_day between psince and since - 1) as new_prev,
-      (select count(*) filter (where d1) from fx where first_day between since - 1 and today - 1) as d1_n,
-      (select count(*) from fx where first_day between since - 1 and today - 1) as d1_base,
-      (select count(*) filter (where d1) from fx where first_day between psince - 1 and since - 2) as d1p_n,
-      (select count(*) from fx where first_day between psince - 1 and since - 2) as d1p_base,
-      (select count(*) filter (where d7) from fx where first_day between since - 7 and today - 7) as d7_n,
-      (select count(*) from fx where first_day between since - 7 and today - 7) as d7_base,
-      (select count(*) filter (where d7) from fx where first_day between psince - 7 and since - 8) as d7p_n,
-      (select count(*) from fx where first_day between psince - 7 and since - 8) as d7p_base,
+      -- 관측일이 오늘(진행 중)인 코호트는 뺀다: D1 은 첫날 ≤ 오늘-2, D7 은 ≤ 오늘-8
+      (select count(*) filter (where d1) from fx where first_day between since - 2 and today - 2) as d1_n,
+      (select count(*) from fx where first_day between since - 2 and today - 2) as d1_base,
+      (select count(*) filter (where d1) from fx where first_day between psince - 2 and since - 3) as d1p_n,
+      (select count(*) from fx where first_day between psince - 2 and since - 3) as d1p_base,
+      (select count(*) filter (where d7) from fx where first_day between since - 8 and today - 8) as d7_n,
+      (select count(*) from fx where first_day between since - 8 and today - 8) as d7_base,
+      (select count(*) filter (where d7) from fx where first_day between psince - 8 and since - 9) as d7p_n,
+      (select count(*) from fx where first_day between psince - 8 and since - 9) as d7p_base,
       (select percentile_cont(0.5) within group (order by coalesce(nullif(play_sec, 0), nullif(dur_sec, 0)))
          from s where day between since and today) as med_sec,
       (select percentile_cont(0.5) within group (order by coalesce(nullif(play_sec, 0), nullif(dur_sec, 0)))
@@ -132,7 +149,7 @@ begin
       'data_from', (select min(day) from cf_sessions),
       'rolled_at', (select max(rolled_at) from cf_sessions),
       'persona_sessions', (select count(*) from cf_sessions where persona and day between since and today),
-      'funnel_from', since - 7, 'funnel_to', today - 7
+      'funnel_from', since - 8, 'funnel_to', today - 8
     ),
 
     'kpis', (select jsonb_build_object(
@@ -144,8 +161,8 @@ begin
       'd1_prev', round(100.0 * kp.d1p_n / nullif(kp.d1p_base, 0), 1),
       'd7', round(100.0 * kp.d7_n / nullif(kp.d7_base, 0), 1), 'd7_base', kp.d7_base,
       'd7_prev', round(100.0 * kp.d7p_n / nullif(kp.d7p_base, 0), 1),
-      'stickiness', round(100.0 * kp.avg_dau / nullif((select cur from mau), 0), 1),
-      'stickiness_prev', round(100.0 * kp.avg_dau_prev / nullif((select prev from mau), 0), 1),
+      'stickiness', round(100.0 * (select dau30 from mau) / nullif((select cur from mau), 0), 1),
+      'stickiness_prev', round(100.0 * (select dau30_prev from mau) / nullif((select prev from mau), 0), 1),
       'mau', (select cur from mau),
       'med_session_sec', kp.med_sec::int, 'med_session_prev', kp.med_prev::int
     ) from kp),
@@ -168,7 +185,7 @@ begin
                  -- 같은 코호트를 단계 없이 본 값 — "첫날 획득이 재방문을 가르나" 비교용
                  'd1_if_acq', count(*) filter (where acq_d0 and d1),  'n_acq', count(*) filter (where acq_d0),
                  'd1_if_non', count(*) filter (where not acq_d0 and d1), 'n_non', count(*) filter (where not acq_d0))
-               from fx where first_day between since - 7 and today - 7),
+               from fx where first_day between since - 8 and today - 8),
 
     'curve', (select coalesce(jsonb_agg(jsonb_build_object(
                 'n', n, 'base', base, 'ret', ret, 'base_acq', base_acq, 'ret_acq', ret_acq,
@@ -179,7 +196,7 @@ begin
                        count(*) filter (where x.acq_d0) as base_acq, count(u.uid) filter (where x.acq_d0) as ret_acq,
                        count(*) filter (where not x.acq_d0) as base_non, count(u.uid) filter (where not x.acq_d0) as ret_non
                 from generate_series(0, 30) g(n)
-                join fx x on x.first_day between since and today - 1 and x.first_day <= today - g.n
+                join fx x on x.first_day between since and today - 1 and x.first_day <= today - g.n - 1
                 left join ud u on u.uid = x.uid and u.day = x.first_day + g.n
                 group by g.n
               ) c),
@@ -194,8 +211,8 @@ begin
                     from fx x where x.first_day between since and today
                     union all
                     select date_trunc('week', x.first_day)::date, g.n,
-                           count(*) filter (where x.first_day <= today - g.n),
-                           count(u.uid) filter (where x.first_day <= today - g.n), null
+                           count(*) filter (where x.first_day <= today - g.n - 1),
+                           count(u.uid) filter (where x.first_day <= today - g.n - 1), null
                     from fx x cross join unnest(array[1, 3, 7, 14, 30]) g(n)
                     left join ud u on u.uid = x.uid and u.day = x.first_day + g.n
                     where x.first_day between since and today
@@ -229,7 +246,7 @@ begin
                      from (select source, sum(tx)::int as tx, sum(inflow)::bigint as i, sum(outflow)::bigint as o from cf_econ_day
                            where not persona and day between since and today group by source order by sum(inflow + outflow) desc limit 12) e),
 
-    'users', (select coalesce(jsonb_agg(jsonb_build_object(
+    'users', case when not is_admin then '[]'::jsonb else (select coalesce(jsonb_agg(jsonb_build_object(
                 'uid', left(r.uid, 6) || '…', 'is_guest', r.is_guest, 'platform', r.platform,
                 'first_day', f.first_day, 'active_days', r.active_days, 'acq_days', r.acq_days,
                 'sessions', r.sessions, 'last_seen', r.last_seen) order by r.last_seen desc), '[]'::jsonb)
@@ -238,7 +255,7 @@ begin
                            count(*) as sessions, max(end_ts) as last_seen
                     from s where day between since and today
                     group by uid order by max(end_ts) desc limit 40) r
-              join fs f using (uid)),
+              join fs f using (uid)) end,
 
     'segments', jsonb_build_object(
       'platform', (select coalesce(jsonb_agg(jsonb_build_object('seg', seg, 'users', n) order by n desc), '[]'::jsonb)
@@ -253,12 +270,15 @@ begin
     -- 진행도(세이브 누적 — 기간과 무관, 페르소나 계정 제외)
     'progress', (
       with sv as (
-        select coalesce((g.state ->> 'houseStage')::int, 0) as house_stage,
+        select case when g.state ->> 'houseStage' ~ '^[0-9]{1,2}$' then (g.state ->> 'houseStage')::int else 0 end as house_stage,
                nullif(g.state ->> 'character', '') as character,
-               (select coalesce(sum((select count(*) from jsonb_object_keys(c.value))), 0)
-                  from jsonb_each(coalesce(g.state -> 'dex', '{}'::jsonb)) c) as dex_count
+               case when jsonb_typeof(g.state -> 'dex') = 'object' then
+                 (select coalesce(sum(case when jsonb_typeof(c.value) = 'object'
+                                           then (select count(*) from jsonb_object_keys(c.value)) else 0 end), 0)
+                    from jsonb_each(g.state -> 'dex') c)
+               else 0 end as dex_count
         from game_saves g
-        where not exists (select 1 from auth.users u where u.id = g.user_id and u.email like 'persona-%')
+        where g.user_id not in (select * from cf_persona_user_ids())
       )
       select jsonb_build_object(
         'house', (select coalesce(jsonb_agg(jsonb_build_object('stage', house_stage, 'users', n) order by house_stage), '[]'::jsonb)

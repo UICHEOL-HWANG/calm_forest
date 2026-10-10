@@ -76,6 +76,8 @@ async function load() {
   loader.done();
   if (error) { $('wrap').hidden = true; showMsg(explainRpcError(error, 'cf_admin_dashboard')); return; }
   data = d;
+  $('msg').style.display = 'none';
+  $('wrap').hidden = false;     // 앞선 요청이 실패해 숨겼더라도 성공하면 다시 연다
   render(d);
   $('dash').classList.remove('fadein');
   void $('dash').offsetWidth;   // 애니메이션 다시 걸기
@@ -90,7 +92,12 @@ function render(d) {
   $('ovEyebrow').textContent = `개요 · 최근 ${m.days}일`;
   // 직전 기간이 데이터 시작일(7/27 출시)보다 앞으로 넘어가면 그 기간은 비어 있어 증감이 부풀려진다 → 숨긴다
   const prevOk = String(m.prev_since) >= String(m.data_from);
-  renderKpis(prevOk ? k : { ...k, avg_dau_prev: null, new_prev: null, d1_prev: null, stickiness_prev: null }, d.nsm_daily || [], prevOk);
+  const shift = (iso, n) => new Date(Date.parse(iso) - n * 864e5).toISOString().slice(0, 10);
+  const nsmPrevOk = shift(m.today, 14) >= String(m.data_from);     // 지난주 7일 평균에도 앞 7일이 필요
+  const kk = { ...k,
+    ...(prevOk ? {} : { avg_dau_prev: null, new_prev: null, d1_prev: null, d7_prev: null, med_session_prev: null }),
+    ...(nsmPrevOk ? {} : { nsm_prev: null }) };
+  renderKpis(kk, d.nsm_daily || [], prevOk);
   renderInsights(d);
   renderFunnel(d.funnel || {}, m);
   renderBuckets(d.session_buckets || []);
@@ -262,7 +269,10 @@ function renderHeat(cells) {
 
 // ── 운영 ──
 function renderUsers(rows) {
-  if (!rows.length) { $('users').innerHTML = `<tr><td>${emptyState('기간 안에 접속한 유저가 없어요', '')}</td></tr>`; return; }
+  if (!rows.length) {
+    $('users').innerHTML = `<tr><td>${shareKey ? emptyState('공유 보기에서는 개별 유저 목록을 숨겨요', '관리자로 로그인하면 보입니다.') : emptyState('기간 안에 접속한 유저가 없어요', '')}</td></tr>`;
+    return;
+  }
   const now = new Date();
   const ago = (t) => { const mins = Math.round((now - new Date(t)) / 60000);
     return mins < 60 ? `${Math.max(mins, 0)}분 전` : mins < 1440 ? `${Math.round(mins / 60)}시간 전` : `${Math.round(mins / 1440)}일 전`; };

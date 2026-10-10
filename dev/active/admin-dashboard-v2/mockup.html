@@ -438,7 +438,7 @@ function renderA(dt) {
     </nav>
     <div class="dash">
       <section id="a-ov">
-        <div class="sh" style="--av:url(chars/fox.png)"><span class="eyebrow">개요 · 최근 ${days}일</span><h3>이번 기간 한눈에</h3><p class="insight skelable">${insightLine(dt)}</p></div>
+        <div class="sh" style="--av:url(../../../dashboards/img/chars/fox.png)"><span class="eyebrow">개요 · 최근 ${days}일</span><h3>이번 기간 한눈에</h3><p class="insight skelable">${insightLine(dt)}</p></div>
         <div class="kstrip">
           <div class="nsm"><span class="lbl">★ 북극성 · 획득한 유저 / 일</span><span><span class="num">${k.nsm.toFixed(1)}</span> ${delta(k.nsm, k.nsmPrev)}</span>
             <div class="chartbox" style="height:44px"><canvas id="aSpark"></canvas></div><span class="def">수확·포획·제작한 (유저×날) ÷ 7 · 지난주 대비</span></div>
@@ -449,7 +449,7 @@ function renderA(dt) {
         </div>
       </section>
       <section id="a-act">
-        <div class="sh" style="--av:url(chars/chick.png)"><span class="eyebrow">Activation · 신규 첫 주</span><h3>신규 유저는 어디서 멈추나</h3>
+        <div class="sh" style="--av:url(../../../dashboards/img/chars/chick.png)"><span class="eyebrow">Activation · 신규 첫 주</span><h3>신규 유저는 어디서 멈추나</h3>
           <p class="insight">첫 주 안에 <b>획득 행동</b>(수확·낚시·제작 등)까지 가는지가 재방문을 가르는 지점입니다.</p></div>
         <div class="two">
           <div class="panel">${funnelHTML(dt.funnel)}</div>
@@ -458,7 +458,7 @@ function renderA(dt) {
         </div>
       </section>
       <section id="a-ret">
-        <div class="sh" style="--av:url(chars/bear.png)"><span class="eyebrow">Retention</span><h3>얼마나 다시 오나</h3>
+        <div class="sh" style="--av:url(../../../dashboards/img/chars/bear.png)"><span class="eyebrow">Retention</span><h3>얼마나 다시 오나</h3>
           <p class="insight">곡선은 로그 축 — 첫 주 획득 여부로 나눠 보면 D7 에서 <b>${(dt.curves.acq[7] / dt.curves.non[7]).toFixed(1)}배</b> 차이.</p></div>
         <div class="two">
           <div class="panel"><h4>N일차 리텐션 곡선</h4><p class="def">첫 접속일 = D0. 그날 이후 N일째에 접속한 비율.</p><div class="chartbox"><canvas id="aCurve"></canvas></div></div>
@@ -466,17 +466,17 @@ function renderA(dt) {
         </div>
       </section>
       <section id="a-gro">
-        <div class="sh" style="--av:url(chars/dog.png)"><span class="eyebrow">Growth accounting</span><h3>DAU 는 무엇으로 이루어지나</h3>
+        <div class="sh" style="--av:url(../../../dashboards/img/chars/dog.png)"><span class="eyebrow">Growth accounting</span><h3>DAU 는 무엇으로 이루어지나</h3>
           <p class="insight">신규·연속 복귀·재활성(7일+ 쉬다 돌아옴)이 위로, 어제 왔는데 오늘 안 온 이탈이 아래로 쌓입니다.</p></div>
         <div class="chartbox"><canvas id="aGrowth"></canvas></div>
       </section>
       <section id="a-eng">
-        <div class="sh" style="--av:url(chars/cat.png)"><span class="eyebrow">Engagement</span><h3>언제 노나</h3></div>
+        <div class="sh" style="--av:url(../../../dashboards/img/chars/cat.png)"><span class="eyebrow">Engagement</span><h3>언제 노나</h3></div>
         <div class="two"><div class="panel"><h4>요일 × 시간대 (KST)</h4><p class="def">세션 시작 기준. 이벤트·푸시 시각 정할 때.</p>${hourHTML(dt.hour)}</div>
           <div class="panel"><h4>일별 세션 수</h4><p class="def">DAU 당 세션이 늘면 하루 여러 번 들어온다는 뜻.</p><div class="chartbox"><canvas id="aSess"></canvas></div></div></div>
       </section>
       <section id="a-ops">
-        <div class="sh" style="--av:url(chars/panda.png)"><span class="eyebrow">운영</span><h3>지금 지켜볼 유저</h3><p class="insight">이틀 넘게 안 온 유저는 이탈 위험으로 표시. 식별자는 서버에서 가려서 내려옵니다.</p></div>
+        <div class="sh" style="--av:url(../../../dashboards/img/chars/panda.png)"><span class="eyebrow">운영</span><h3>지금 지켜볼 유저</h3><p class="insight">이틀 넘게 안 온 유저는 이탈 위험으로 표시. 식별자는 서버에서 가려서 내려옵니다.</p></div>
         ${usersHTML(dt.users)}
         <p class="def">경제(코인 유입·유출)·세그먼트·이동 히트맵은 현재 대시보드 그대로 이 아래에 둡니다.</p>
       </section>
@@ -500,7 +500,7 @@ function renderB(dt) {
     <div class="tile hero"><span class="eyebrow">★ 북극성 지표</span>
       <h4>하루 평균 획득한 유저 <small>수확·포획·제작 · 7일 평균</small></h4>
       <div><span class="num">${k.nsm.toFixed(1)}</span> <span style="font-size:13px;color:var(--ink-3)">명/일</span> ${delta(k.nsm, k.nsmPrev)}</div>
-      <div class="chartbox"><canvas id="bNsm"></canvas></div><img class="peek" src="chars/fox.png" alt=""></div>
+      <div class="chartbox"><canvas id="bNsm"></canvas></div><img class="peek" src="../../../dashboards/img/chars/fox.png" alt=""></div>
     <div class="kgrid">
       ${tile('DAU', k.dau, delta(k.dau, k.dauPrev), '어제 대비')}
       ${tile('신규 유저', k.newU, delta(k.newU, k.newPrev), '직전 기간 대비')}
@@ -509,15 +509,15 @@ function renderB(dt) {
       ${tile('D7 리텐션', k.d7.toFixed(1) + '%', delta(k.d7, k.d7Prev, { pp: true }), '관측 완료분')}
       ${tile('세션 중앙값', k.medSess.toFixed(1) + '분', delta(k.medSess, k.medPrev), '평균보다 덜 흔들림')}
     </div>
-    <div class="tile s7"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="chars/chick.png" alt=""></span>신규 첫 주 퍼널</span> <small>가장 큰 누수 강조</small></h4>${funnelHTML(dt.funnel)}</div>
-    <div class="tile s5"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="chars/bear.png" alt=""></span>리텐션 곡선</span> <small>첫 주 획득 여부별 · 로그축</small></h4><div class="chartbox"><canvas id="bCurve"></canvas></div>
+    <div class="tile s7"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="../../../dashboards/img/chars/chick.png" alt=""></span>신규 첫 주 퍼널</span> <small>가장 큰 누수 강조</small></h4>${funnelHTML(dt.funnel)}</div>
+    <div class="tile s5"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="../../../dashboards/img/chars/bear.png" alt=""></span>리텐션 곡선</span> <small>첫 주 획득 여부별 · 로그축</small></h4><div class="chartbox"><canvas id="bCurve"></canvas></div>
       <p class="insight skelable" style="font-size:12px">${insightLine(dt)}</p></div>
     <div class="tile s7"><h4>주간 코호트 × N일차</h4>${triHTML(dt.cohorts)}</div>
-    <div class="tile s5"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="chars/dog.png" alt=""></span>DAU 구성</span> <small>신규·복귀·재활성 / 이탈</small></h4><div class="chartbox"><canvas id="bGrowth"></canvas></div></div>
-    <div class="tile s6"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="chars/cat.png" alt=""></span>요일 × 시간대</span> <small>KST · 세션 시작</small></h4>${hourHTML(dt.hour)}</div>
+    <div class="tile s5"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="../../../dashboards/img/chars/dog.png" alt=""></span>DAU 구성</span> <small>신규·복귀·재활성 / 이탈</small></h4><div class="chartbox"><canvas id="bGrowth"></canvas></div></div>
+    <div class="tile s6"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="../../../dashboards/img/chars/cat.png" alt=""></span>요일 × 시간대</span> <small>KST · 세션 시작</small></h4>${hourHTML(dt.hour)}</div>
     <div class="tile s3"><h4>세션 길이</h4><div class="chartbox"><canvas id="bBuckets"></canvas></div></div>
     <div class="tile s3"><h4>코인 순증 <small>예시</small></h4><span class="num skelable" style="font-size:24px">+12,480</span><span class="def">유입 41,920 · 유출 29,440 — 유입 우세가 이어지면 소비처 부족</span></div>
-    <div class="tile s12"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="chars/panda.png" alt=""></span>지켜볼 유저</span> <small>최근 활성 · 마스킹</small></h4>${usersHTML(dt.users)}</div>
+    <div class="tile s12"><h4><span style="display:inline-flex;gap:6px;align-items:center"><span class="av sm"><img src="../../../dashboards/img/chars/panda.png" alt=""></span>지켜볼 유저</span> <small>최근 활성 · 마스킹</small></h4>${usersHTML(dt.users)}</div>
   </div></div></div>`;
 }
 function afterB(dt) {
@@ -548,7 +548,7 @@ function renderC(dt) {
   if (tabC === 'eng') body = `<div class="big"><h4>DAU 구성 (Growth accounting)</h4><div class="chartbox"><canvas id="cGrowth"></canvas></div></div>
     <div class="big" style="margin-top:14px"><h4>요일 × 시간대 (KST)</h4>${hourHTML(dt.hour)}</div>`;
   if (tabC === 'ops') body = `<div class="big"><h4>지켜볼 유저</h4>${usersHTML(dt.users)}</div>
-    <div class="big" style="margin-top:14px"><h4>빈 상태 예시</h4><div class="empty-st"><img src="chars/rabbit.png" alt=""><b>14일 관측이 끝난 신규가 아직 없어요</b>기간을 60일 이상으로 넓히면 이탈 퍼널이 채워집니다.</div></div>`;
+    <div class="big" style="margin-top:14px"><h4>빈 상태 예시</h4><div class="empty-st"><img src="../../../dashboards/img/chars/rabbit.png" alt=""><b>14일 관측이 끝난 신규가 아직 없어요</b>기간을 60일 이상으로 넓히면 이탈 퍼널이 채워집니다.</div></div>`;
   const notes = {
     sum: [['북극성', '지난 7일 동안 획득 행동 16종 중 1회 이상 한 (유저×날) ÷ 7'], ['유저', '로그인=계정, 게스트=기기'], ['제외', '페르소나·개발자 기기'], ['기준', 'KST 자정']],
     fun: [['분모', '기간 안 첫 접속 유저'], ['단계', '앞 단계 통과자만'], ['D1·D7', '관측 기간 지난 유저만'], ['획득', '수확·포획·제작 16종']],
@@ -571,10 +571,10 @@ function afterC(dt) {
 }
 
 function headerHTML() {
-  return `<div class="dh"><img class="brandmark" src="chars/bear.png" alt=""><h2>calm forest · 관리자 애널리틱스</h2>
+  return `<div class="dh"><img class="brandmark" src="../../../dashboards/img/chars/bear.png" alt=""><h2>calm forest · 관리자 애널리틱스</h2>
     <span class="meta">${data ? data.daily[0].day + ' – ' + data.daily.at(-1).day : ''} · KST · 기기 기준 · 페르소나 제외</span>
     <div class="range" role="group" aria-label="기간">${[7, 30, 60, 90].map(d => `<button data-d="${d}" class="${d === days ? 'on' : ''}">${d}일</button>`).join('')}</div></div>
-    <div class="loader" role="status" aria-live="polite"><img class="ld-char" id="ldChar" src="chars/fox.png" alt=""><span class="t">분석 중 · 최근 <span id="ldDays">${days}</span>일</span><span class="step" id="ldStep">여우가 세션 로그를 모으는 중</span><span class="bar"><i id="ldBar"></i></span></div>`;
+    <div class="loader" role="status" aria-live="polite"><img class="ld-char" id="ldChar" src="../../../dashboards/img/chars/fox.png" alt=""><span class="t">분석 중 · 최근 <span id="ldDays">${days}</span>일</span><span class="step" id="ldStep">여우가 세션 로그를 모으는 중</span><span class="bar"><i id="ldBar"></i></span></div>`;
 }
 
 function render(anim) {
