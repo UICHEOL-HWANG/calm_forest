@@ -33,7 +33,7 @@ export async function getAppleIdToken({ plugin, crypto = globalThis.crypto }) {
   try {
     res = await plugin.login({
       provider: 'apple',
-      options: { scopes: ['email', 'name'], nonce: await sha256Hex(rawNonce, crypto) },
+      options: { scopes: ['email'], nonce: await sha256Hex(rawNonce, crypto) },   // 이름은 저장하지 않으니 요청도 안 한다(데이터 최소화·개인정보처리방침)
     });
   } catch (e) {
     const msg = String(e?.message || e);

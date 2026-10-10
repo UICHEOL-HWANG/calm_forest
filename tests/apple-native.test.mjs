@@ -26,7 +26,7 @@ test('Apple 에는 해시 nonce, 돌려주는 건 원본 nonce (Supabase 용)', 
   const sent = plugin.calls.login[0];
   assert.equal(sent.provider, 'apple');
   assert.equal(sent.options.nonce, await sha256Hex(r.rawNonce, webcrypto));
-  assert.deepEqual(sent.options.scopes, ['email', 'name']);
+  assert.deepEqual(sent.options.scopes, ['email'], '이름은 요청하지 않는다');
 });
 
 test('initialize 는 apple 공급자만, 플러그인당 한 번', async () => {
