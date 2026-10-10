@@ -7,5 +7,8 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- 🍎 게임센터 로그인(GameCenterPlugin.swift · gc-auth Worker) -->
+	<key>com.apple.developer.game-center</key>
+	<true/>
 </dict>
 </plist>

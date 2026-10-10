@@ -42,3 +42,11 @@ test('supabase-client 는 user_metadata.toss/pgs 로 판정하지 않는다', ()
   assert.doesNotMatch(s, /user_metadata\?\.(toss|pgs)/);
   assert.match(s, /accountKind\(session\.user\)/);
 });
+
+test('🍎 게임센터 합성 계정 — gc.calmforest.local, gc-auth Worker 와 같은 도메인', async () => {
+  const { GC_EMAIL_DOMAIN } = await import('../js/auth/account-kind.js');
+  assert.equal(accountKind(user('gc-ef56@gc.calmforest.local')), 'gc');
+  assert.equal(accountKind(user('x@gc.calmforest.local.evil.com')), null);
+  assert.equal(accountKind(user('forest@gmail.com', { gc: true })), null);
+  assert.match(src('gc-auth/src/index.js'), new RegExp('@' + GC_EMAIL_DOMAIN.replace(/\./g, '\\.') + '`'));
+});
