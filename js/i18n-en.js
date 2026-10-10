@@ -1916,6 +1916,8 @@ export const EN = {
   '계정과 마을·도감·기록·사진이 모두 지워지고 되돌릴 수 없습니다.\n정말 지우시려면 삭제 라고 입력해 주세요.':
     'Your account, village, collection, records and photos will be deleted permanently.\nType delete to confirm.',
   '계정을 지우는 중…': 'Deleting your account…',
+  'Apple로 로그인하면 마을이 안전하게 저장돼요.': 'Sign in with Apple to keep your village safe.',
+  '게임 센터': 'Game Center',
   '삭제하지 못했습니다: {0}\ncheorish.hw@gmail.com 으로 알려주시면 직접 처리해 드리겠습니다.':
     'Could not delete: {0}\nPlease email cheorish.hw@gmail.com and we will handle it for you.',
   '✅ 계정과 데이터를 모두 삭제했습니다. 그동안 고요한 숲에 머물러 주셔서 고맙습니다.':
