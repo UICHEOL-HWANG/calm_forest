@@ -3,7 +3,7 @@
 //  📸 스토어 스크린샷 촬영 — 헤드리스 Chrome(CDP) + 게임 개발용 쿼리 파라미터
 //  ------------------------------------------------------------
 //  사용: python3 scripts/serve.py 8791 &   (프로젝트 루트 서빙)
-//        node tools/store-shots/shots.mjs <phone|tab7|tab10|toss> [포트=9333] [장면 접두어]
+//        node tools/store-shots/shots.mjs <phone|tab7|tab10|toss|iphone> [포트=9333] [장면 접두어]
 //  산출: .scratch/store-shots/<기기>-<장면>.png  (git 무시)
 //
 //  ⚠️ 함정(2026-09-23, 전부 겪음)
@@ -27,6 +27,7 @@ const DEVICES = {
   phone: { w: 360, h: 640, dsf: 3, touch: true, mobile: true, ua: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36' },   // 1080×1920
   tab7:  { w: 960, h: 540, dsf: 2, touch: true, ua: 'Mozilla/5.0 (Linux; Android 14; SM-X110) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36' },                           // 1920×1080
   tab10: { w: 1280, h: 720, dsf: 2, touch: true, ua: 'Mozilla/5.0 (Linux; Android 14; SM-X810) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36' },                          // 2560×1440
+  iphone: { w: 440, h: 956, dsf: 3, touch: true, mobile: true, ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148" },   // 🍎 App Store 6.9" → 1320×2868
   toss:  { w: 1003, h: 494, dsf: 1.5, touch: true, mobile: true, crop: [741, 1504], ua: 'Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36' }, // → 1504×741
 };
 const SCENES = [
