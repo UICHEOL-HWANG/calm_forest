@@ -95,6 +95,12 @@ for (let n = 1; n <= 3; n++) {
   await until(async () => (await ms()).nearDoor === 'mirrortalk');
   await press('Space');
   await until(async () => (await ms()).nearDoor !== 'mirrortalk', 5000);
+  // 🪞 대화 박스(B안 2026-10-10) — 말 걸면 아래 박스에 주민 이름·단서가 뜨고, Space 로 닫는다(닫기 전 Space 는 다른 일을 하지 않는다)
+  const tb = await until(() => ev(`document.getElementById('mirror-talk')?.classList.contains('show') ? document.getElementById('mt-name').textContent + ' | ' + document.getElementById('mt-line').textContent : ''`), 4000);
+  check(`M5.${n}b 대화 박스에 이름·단서`, !!tb && /거울|Mirror/.test(tb), String(tb));
+  if (n === 1) { await b.sleep(400); await shot('m5-talkbox'); }
+  await press('Space');
+  check(`M5.${n}c Space 로 대화 박스 닫힘`, !!(await until(() => ev(`!document.getElementById('mirror-talk').classList.contains('show')`), 4000)));
   if (n === 3) {
     await b.sleep(30500);
     p = await waitPrompt(/연못에 비춰|Peek/);
@@ -108,6 +114,7 @@ for (let n = 1; n <= 3; n++) {
     await press('Space'); await until(async () => (await ms()).ride === true, 6000); await b.sleep(300); await press('Escape'); await waitRide();
     await ev(`__mirror.tp(${sp.x}, ${sp.z + 1.4})`); await until(async () => (await ms()).nearDoor === 'mirrortalk');
     await press('Space'); await until(async () => (await ms()).nearDoor !== 'mirrortalk', 5000); await b.sleep(800);
+    await press('Space'); await until(() => ev(`!document.getElementById('mirror-talk').classList.contains('show')`), 4000);   // 대화 박스 닫기
     p = await prompt();
     check('M5r 재탑승 뒤 다시 말 걸면 힌트가 바로 이어진다', !/연못에 비춰|Peek/.test(p) && (await ms()).nearDoor !== 'mirrorhint', p);
   }
@@ -124,6 +131,7 @@ for (let n = 1; n <= 3; n++) {
   await press('Space');
   st = await until(async () => { const s = await ms(); return s.mirror.done === n ? s : null; }, 10000) || await ms();
   check(`M5.${n} 의뢰 ${n} 완료`, st.mirror.done === n, JSON.stringify(st.mirror));
+  check(`M5.${n}t 돌려주면 고마워요 대화 박스`, !!(await until(() => ev(`document.getElementById('mirror-talk').classList.contains('show')`), 4000)));
   if (n === 1) { await b.sleep(600); await shot('m5-thanks'); }
 }
 st = await ms();
@@ -165,9 +173,12 @@ check('M7 Esc 건너뛰기 → 바로 도착', st.atMirror === true);
 // M8 드로우콜(거울 마을 안 · 몇 프레임 안정 뒤)
 await b.sleep(2500);
 // ⚠️ 예산 60 은 '공간' 몫 — 어느 공간에나 따라오는 플레이어 캐릭터(≈31콜)는 뺀다(천문대 예산과 같은 기준). 후처리 패스(≈15)는 포함
+// 🏷️ 주민 이름표(2026-10-10 부터 보임 · 거리 페이드)도 캐릭터처럼 뺀다 — 마을 주민과 같은 UI 몫이라 공간 조형 예산(60)과 따로 센다
 const dc = await ev(`(() => { const [px, pz] = __pos(); const pl = __scene.children.find(c => c.type === 'Group' && Math.hypot(c.position.x - px, c.position.z - pz) < 0.6);
-  const all = __perf().calls; if (!pl) return { all, space: all }; pl.visible = false; const space = __perf().calls; pl.visible = true; return { all, space }; })()`);
-check('M8 거울 마을 드로우콜 ≤ 60(캐릭터 제외)', dc.space <= 60, JSON.stringify(dc));
+  const tags = []; __scene.traverse(o => { if (o.isSprite && o.visible && o.material?.map?.image?.width === 384) tags.push(o); });
+  const all = __perf().calls; if (pl) pl.visible = false; tags.forEach(t => { t.visible = false; }); const space = __perf().calls;
+  if (pl) pl.visible = true; tags.forEach(t => { t.visible = true; }); return { all, space, tags: tags.length }; })()`);
+check('M8 거울 마을 드로우콜 ≤ 60(캐릭터·이름표 제외)', dc.space <= 60, JSON.stringify(dc));
 // M9 꾸미기 — 🪞 8 로 거꾸로 화분(6) 사기 · 남은 2
 await ev(`__mirror.tp(2.5, 13.2)`); await until(async () => (await ms()).nearDoor === 'mirrorback');
 await press('Space'); await until(async () => (await ms()).ride === true, 6000); await waitRide();

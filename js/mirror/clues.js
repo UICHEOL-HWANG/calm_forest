@@ -23,11 +23,13 @@ function eulReul(w) { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >=
 /** 영어 위치구 — 왼/오는 to the X of, 앞/뒤는 in front of / behind */
 const whereEn = (side, lm) => (side === 'left' || side === 'right' ? `to the ${side} of the ${lm}` : side === 'front' ? `in front of the ${lm}` : `behind the ${lm}`);
 
-export function clueText(q, lang) {
+/** 단서 대사만(따옴표 포함) — 🪞 대화 박스가 이름과 따로 그린다(B안 2026-10-10) */
+export function clueLine(q, lang) {
   const s = spotOf(q.spot), it = item(q.item), side = said(q);
-  if (L(lang) === 'en') return `${npcName(q.npc, 'en')}: "I lost my ${it.en} under the ${COVER.en[s.cover]} ${whereEn(side, landmark(s.landmark, 'en'))}"`;
-  return `${npcName(q.npc, 'ko')}: "${landmark(s.landmark, 'ko')} ${SIDE_KO[side]} ${COVER.ko[s.cover]} 밑에서 ${it.ko}${eulReul(it.ko)} 잃어버렸어요"`;
+  if (L(lang) === 'en') return `"I lost my ${it.en} under the ${COVER.en[s.cover]} ${whereEn(side, landmark(s.landmark, 'en'))}"`;
+  return `"${landmark(s.landmark, 'ko')} ${SIDE_KO[side]} ${COVER.ko[s.cover]} 밑에서 ${it.ko}${eulReul(it.ko)} 잃어버렸어요"`;
 }
+export function clueText(q, lang) { return `${npcName(q.npc, lang)}: ${clueLine(q, lang)}`; }
 
 export function hintText(q, lang) {
   const s = spotOf(q.spot), en = L(lang) === 'en';
@@ -68,7 +70,9 @@ const THANKS = {
   angler: { ko: (w) => `허허, ${w}${josa(w, '이', '가')} 거기 있었구먼. 고맙네`, en: (w) => `Ho ho, so my ${w} was over there. Thank you kindly` },
   chef:   { ko: (w) => `와, ${w}${josa(w, '이다', '다')}! 고마워요, 다음엔 맛있는 거 해 줄게요`, en: (w) => `Wow, my ${w}! Thank you — I'll cook you something tasty next time` },
 };
-export function thanksText(q, lang) {
+/** 고마워요 대사만(따옴표 포함) — 대화 박스용 */
+export function thanksLine(q, lang) {
   const it = item(q.item), en = L(lang) === 'en', t = THANKS[q.npc] ?? THANKS.farmer;
-  return `${npcName(q.npc, lang)}: "${en ? t.en(it.en) : t.ko(it.ko)}"`;
+  return `"${en ? t.en(it.en) : t.ko(it.ko)}"`;
 }
+export function thanksText(q, lang) { return `${npcName(q.npc, lang)}: ${thanksLine(q, lang)}`; }

@@ -127,11 +127,14 @@ gameState.mirror = { visits: 0, day: '', done: 0, hinted: [], total: 0 }
 | `mirror_clue` | `quest_n`, `npc`, `spot_id`, `flipped: 0/1` |
 | `mirror_hint` | `quest_n`, `spot_id`, `elapsed_s`(단서 뒤 초) |
 | `mirror_found` | `quest_n`, `item`, `spot_id`, `flipped`, `hinted: 0/1`, `elapsed_s`(단서 뒤 초) — 보상 = hinted ? 2 : 3 |
+| `mirror_deliver` | `quest_n`, `npc`, `item`, `hinted: 0/1`, `elapsed_s`(줍기 뒤 초) — 2026-10-09 돌려주기 |
+| `mirror_talk_close` | `quest_n`, `kind: clue\|thanks`, `via: action\|tap\|walk\|leave`, `elapsed_s`(박스가 떠 있던 초) — 2026-10-10 대화 박스(B안) |
 | `mirror_leave` | `left_today`, `elapsed_s` |
 | `mirror_onboard` | `step: stop\|arrive\|flip\|return` |
 | `decor_buy_mirror` | `item`, `cost`, `left` |
 
 - Supabase 별도 테이블 없음(조각은 코인 아님 → `econ_logs` 대상 아님).
+- 🪞 대화 박스(B안, 2026-10-10): 말 걸기·돌려주기 대사는 토스트 대신 화면 아래 박스(`js/mirror/talk-box.js`, `#mirror-talk`). 액션·탭으로 닫거나 주민에게서 5 넘게 멀어지면 닫힌다. `mirror_talk_close.elapsed_s` 로 읽는 시간을 본다.
 - 배포 다음 날 BigQuery: 의뢰 단계 퍼널, `flipped` 별 `mirror_found.elapsed_s`·힌트율, 꿈·거울 같은 날 동시 이용률.
 
 ## 9. 코드 구조
