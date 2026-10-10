@@ -137,7 +137,7 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
 <div class="wrap">
   <header>
     <h1>calm forest 지표 체계</h1>
-    <div class="meta">기간 2026-09-07 ~ 10-04 (4주) · 공식 값: 페르소나·개발자 기기 제외, 베타는 9/9~9/15만 제외, 웹·토스, 게스트 기기 → 단일 계정 통합 · 정의서 docs/analysis/METRICS_FRAMEWORK.md</div>
+    <div class="meta">기간 게임 개시 2026-07-27 ~ 10-04 (10주) · 원천 7/27~8/5 GA4 + 8/6~ session_logs · 공식 값: 페르소나·개발자 기기 제외, 베타는 9/9~9/15만 제외, 웹·토스, 게스트 기기 → 단일 계정 통합 · 정의서 docs/analysis/METRICS_FRAMEWORK.md</div>
   </header>
 
   <section>
@@ -153,13 +153,13 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
         </div>
       </div>
       <div class="panel" style="display:grid;gap:14px">
-        <div class="tag">주간 값과 95% 신뢰구간 · 주간 등락은 해석하지 않고 4주 기준선 밖일 때만 변화로 읽는다</div>
+        <div class="tag">주간 값과 95% 신뢰구간 (게임 개시 7/27 주 ~ 9/28 주) · 7/27 주 GA4, 8/3 주 GA4+SL 혼합 · 주간 등락은 해석하지 않고 4주 기준선 밖일 때만 변화로 읽는다</div>
         <svg id="nsm-chart" viewBox="0 0 640 220" role="img" aria-label="북극성 주간 추이와 신뢰구간"></svg>
         <div class="formula" aria-label="곱셈 분해">
-          <div class="fbox"><b>주간 방문 유저</b><span>26 → 15</span></div><span class="op">×</span>
-          <div class="fbox"><b>1인당 방문일</b><span>1.69 → 1.60</span></div><span class="op">×</span>
-          <div class="fbox"><b>획득 비율</b><span>48% → 54%</span></div><span class="op">=</span>
-          <div class="fbox" style="background:#c5c8ff;color:#141640"><b>획득한 유저×날</b><span>21 → 13</span></div>
+          <div class="fbox"><b>주간 방문 유저</b><span>평균 23.6</span></div><span class="op">×</span>
+          <div class="fbox"><b>1인당 방문일</b><span>1.47</span></div><span class="op">×</span>
+          <div class="fbox"><b>획득 비율</b><span>47.1%</span></div><span class="op">=</span>
+          <div class="fbox" style="background:#c5c8ff;color:#141640"><b>획득한 유저×날</b><span>주 16.3 (10주 163)</span></div>
         </div>
       </div>
     </div>
@@ -177,11 +177,11 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
     <span><svg width="34" height="10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="#e3a948" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/></svg>추천 고리 (유지 → 추천 → 방문)</span>
     <span><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="8" fill="#181818" stroke="#e3a948" stroke-width="1.5" stroke-dasharray="3 3"/></svg>측정 대기</span>
   </div>
-    <div class="banner">빈도·품질은 그대로 — 북극성 하락은 폭, 그중에서도 신규 유입 감소(20 → 8명)에서 나왔다</div>
+    <div class="banner">하락은 두 번, 원인이 달랐다 — 8/17 주는 획득 비율(27%), 9/28 주는 신규 유입(16 → 7명). 품질은 27% → 59%로 올랐지만 유입은 늘지 않았다</div>
   </section>
 
   <section>
-    <div class="sec-head"><h2>02. 메트릭 하이라키</h2><span class="tag">계층형 · 칸 아래 값 = 9/7 주 → 9/28 주</span></div>
+    <div class="sec-head"><h2>02. 메트릭 하이라키</h2><span class="tag">계층형 · 칸 아래 값 = 10주 (개시 7/27 ~ 10/4)</span></div>
     <div class="legend">
       <span><i class="sw" style="background:#3b3592;border:1px solid #9a92f2"></i>북극성</span>
       <span><i class="sw" style="background:#6e4614;border:1px solid #e3a948"></i>L1 레버 (곱셈 분해)</span>
@@ -201,26 +201,26 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
       <div class="card">
         <h3>Acquisition</h3><div class="ko">유입 · 방문 → 게임 진입</div>
         <div class="state bad">입구 이탈 (웹)</div><hr>
-        <div class="k">진입 전환율</div><div class="v">44%</div>
-        <div class="s">웹 33% · 토스 89%<br>방문 415 → 진입 182</div>
+        <div class="k">진입 전환율</div><div class="v">46%</div>
+        <div class="s">웹 37% · 토스 89%<br>방문 455 → 진입 211</div>
       </div>
       <div class="card hot">
         <h3>Activation</h3><div class="ko">활성화 · 첫 획득 행동</div>
         <div class="state bad">병목</div><hr>
-        <div class="k">진입 후 7일 내 첫 획득 행동</div><div class="v">41%</div>
-        <div class="s">캐릭터 선택 153 → 첫 획득 74<br>획득 없는 방문일의 86%가 마을에서 끝남</div>
+        <div class="k">진입 후 7일 내 첫 획득 행동</div><div class="v">43%</div>
+        <div class="s">캐릭터 선택 161 → 첫 획득 90<br>획득 없는 방문일의 81%가 마을에서 끝남</div>
       </div>
       <div class="card">
         <h3>Retention</h3><div class="ko">유지 · 북극성</div>
         <div class="state ok">결과 지표</div><hr>
-        <div class="k">하루 평균 획득한 유저</div><div class="v">1.86</div>
-        <div class="s">매주 남는 유지 유저 4~5명<br>2~3주 차 재방문: 첫 주 획득 16% vs 미획득 4%</div>
+        <div class="k">하루 평균 획득한 유저 (10주 평균)</div><div class="v">2.33</div>
+        <div class="s">최근 1.86 · 매주 남는 유지 유저 0~5명<br>2~3주 차 재방문: 첫 주 획득 16% vs 미획득 4%</div>
       </div>
       <div class="card">
         <h3>Revenue</h3><div class="ko">수익 · 코인 소비 → 결제</div>
         <div class="state wait">결제 측정 대기</div><hr>
         <div class="k">코인 소비 유저 비율 (선행)</div><div class="v">24%</div>
-        <div class="s">결제 전환율: Paddle 라이브 대기<br>결제 원장 BQ 미적재</div>
+        <div class="s">8월 0~3% → 코인 루프(9/5) 후 13~26%<br>결제 전환율: Paddle 라이브 대기<br>결제 원장 BQ 미적재</div>
       </div>
       <div class="card">
         <h3>Referral</h3><div class="ko">추천 · 친구 추천 보상</div>
@@ -231,7 +231,7 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
     </div>
 
     <div class="panel funnel">
-      <div class="tag">활성화 퍼널 — 첫 방문 8/6~9/27 신규 코호트, 첫 7일 (막대 = 방문 대비 남은 비율, 빨강 = 직전 단계에서 절반 이상 이탈)</div>
+      <div class="tag">활성화 퍼널 — 첫 방문 7/27~9/27 신규 코호트, 첫 7일 (막대 = 방문 대비 남은 비율, 빨강 = 직전 단계에서 절반 이상 이탈)</div>
       <div class="frow"><span class="lab">웹+토스</span><div class="bars" id="f-all"></div></div>
       <div class="frow"><span class="lab">웹</span><div class="bars" id="f-web"></div></div>
       <div class="frow"><span class="lab">토스</span><div class="bars" id="f-toss"></div></div>
@@ -240,9 +240,9 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
     </div>
 
     <div class="guards">
-      <div class="g"><b>가드레일 · 획득 없는 방문일 비율</b><span>52% → 46%</span><small>보상으로 방문만 부풀리지 않는지</small></div>
-      <div class="g"><b>가드레일 · 코인 순증가 /기기</b><span>384 → 96</span><small>보상 남발로 경제가 인플레되지 않는지</small></div>
-      <div class="g"><b>가드레일 · 복구 안 된 세이브 실패</b><span>0 세션</span><small>지표가 오르는 사이 마을 유실이 묻히지 않는지</small></div>
+      <div class="g"><b>가드레일 · 획득 없는 방문일 비율</b><span>53% (35~73%)</span><small>보상으로 방문만 부풀리지 않는지</small></div>
+      <div class="g"><b>가드레일 · 코인 순증가 /기기</b><span>45 ~ 384</span><small>8/3 주부터 · 보상 남발로 경제가 인플레되지 않는지</small></div>
+      <div class="g"><b>가드레일 · 복구 안 된 세이브 실패</b><span>10주 0 세션</span><small>지표가 오르는 사이 마을 유실이 묻히지 않는지</small></div>
     </div>
     <div class="banner">유입보다 활성화 — 신규가 첫 획득 행동까지 가지 못하는 것이 가장 큰 누수다</div>
   </section>
@@ -434,10 +434,16 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
 (function nsmChart() {
   const svg = document.getElementById('nsm-chart');
   const data = [
-    { w: '9/7 주', v: 3.00, lo: 1.57, hi: 4.86 },
-    { w: '9/14 주', v: 2.86, lo: 1.57, hi: 4.43 },
-    { w: '9/21 주', v: 2.86, lo: 1.43, hi: 4.57 },
-    { w: '9/28 주', v: 1.86, lo: 1.00, hi: 2.86 },
+    { w: '7/27', v: 1.57, lo: 0.57, hi: 2.86 },
+    { w: '8/3', v: 3.29, lo: 2.14, hi: 4.57 },
+    { w: '8/10', v: 2.14, lo: 1.29, hi: 3.14 },
+    { w: '8/17', v: 1.00, lo: 0.43, hi: 1.71 },
+    { w: '8/24', v: 2.29, lo: 1.00, hi: 4.14 },
+    { w: '8/31', v: 2.43, lo: 1.14, hi: 3.86 },
+    { w: '9/7', v: 3.00, lo: 1.43, hi: 4.86 },
+    { w: '9/14', v: 2.86, lo: 1.43, hi: 4.29 },
+    { w: '9/21', v: 2.86, lo: 1.43, hi: 4.57 },
+    { w: '9/28', v: 1.86, lo: 1.00, hi: 2.86 },
   ];
   const L = 44, R = 620, T = 14, B = 190, max = 5;
   const y = v => B - (v / max) * (B - T);
@@ -449,11 +455,11 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
   data.forEach((d, i) => {
     const cx = L + step * (i + 0.5);
     const last = i === data.length - 1;
-    el('rect', { x: cx - 26, y: y(d.v), width: 52, height: B - y(d.v), rx: 4, fill: last ? '#7b8cff' : '#3d4388' }, svg);
+    el('rect', { x: cx - 15, y: y(d.v), width: 30, height: B - y(d.v), rx: 4, fill: last ? '#7b8cff' : '#3d4388' }, svg);
     el('line', { x1: cx, x2: cx, y1: y(d.hi), y2: y(d.lo), stroke: '#c5c8ff', 'stroke-width': 1.5 }, svg);
     el('line', { x1: cx - 8, x2: cx + 8, y1: y(d.hi), y2: y(d.hi), stroke: '#c5c8ff', 'stroke-width': 1.5 }, svg);
     el('line', { x1: cx - 8, x2: cx + 8, y1: y(d.lo), y2: y(d.lo), stroke: '#c5c8ff', 'stroke-width': 1.5 }, svg);
-    txt(svg, cx + 30, y(d.v) + 4, d.v.toFixed(2), { 'text-anchor': 'start', 'font-size': 13, fill: '#f3f2ef', 'font-weight': 600, 'font-family': MONO });
+    txt(svg, cx, y(d.hi) - 6, d.v.toFixed(2), { 'text-anchor': 'middle', 'font-size': 11.5, fill: '#f3f2ef', 'font-weight': 600, 'font-family': MONO });
     txt(svg, cx, B + 20, d.w, { 'text-anchor': 'middle', 'font-size': 12, fill: '#b8b6b0' });
   });
 })();
@@ -462,24 +468,24 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
   const svg = document.getElementById('tree');
   const H = 50;
   const B = {
-    nsm:   { x: 470,  y: 46,  w: 380, h: 64, k: 'nsm',  t: '하루 평균 수확·포획·제작한 유저 수', v: '3.00 → 1.86 명/일' },
-    reach: { x: 230,  y: 180, w: 220, k: 'l1',   t: '주간 방문 유저 수 (폭)', v: '26 → 15' },
-    freq:  { x: 560,  y: 180, w: 200, k: 'l1',   t: '1인당 방문일 (빈도)', v: '1.69 → 1.60' },
-    qual:  { x: 840,  y: 180, w: 220, k: 'l1',   t: '방문일 중 획득 비율 (품질)', v: '48% → 54%' },
+    nsm:   { x: 470,  y: 46,  w: 380, h: 64, k: 'nsm',  t: '하루 평균 수확·포획·제작한 유저 수', v: '10주 평균 2.33 · 최근 1.86 명/일' },
+    reach: { x: 230,  y: 180, w: 220, k: 'l1',   t: '주간 방문 유저 수 (폭)', v: '평균 23.6 (10~36)' },
+    freq:  { x: 560,  y: 180, w: 200, k: 'l1',   t: '1인당 방문일 (빈도)', v: '1.47 (1.21~1.70)' },
+    qual:  { x: 840,  y: 180, w: 220, k: 'l1',   t: '방문일 중 획득 비율 (품질)', v: '47.1% (27~65%)' },
     ltv:   { x: 1070, y: 46,  w: 200, k: 'out',  t: '참여 LTV (28일)', v: '1.01 획득한 날' },
-    coin:  { x: 1070, y: 120, w: 200, k: 'out',  t: '코인 소비 비율', v: '26% → 24%' },
+    coin:  { x: 1070, y: 120, w: 200, k: 'out',  t: '코인 소비 비율', v: '8월 0~3% → 9월 13~26%' },
     pay:   { x: 1070, y: 190, w: 200, k: 'wait', t: '결제 전환율', v: '측정 대기' },
-    newv:  { x: 95,   y: 300, w: 130, k: 'l2',   t: '신규', v: '20 → 8' },
-    kept:  { x: 230,  y: 300, w: 120, k: 'l2',   t: '유지', v: '5 → 5' },
-    back:  { x: 360,  y: 300, w: 120, k: 'l2',   t: '복귀', v: '1 → 2' },
-    habit: { x: 495,  y: 300, w: 140, k: 'l2',   t: '파워 유저 (주 4일+)', v: '12% → 7%' },
+    newv:  { x: 95,   y: 300, w: 130, k: 'l2',   t: '신규', v: '10주 193명' },
+    kept:  { x: 230,  y: 300, w: 120, k: 'l2',   t: '유지', v: '주 평균 3.6' },
+    back:  { x: 360,  y: 300, w: 120, k: 'l2',   t: '복귀', v: '주 평균 0.7' },
+    habit: { x: 495,  y: 300, w: 140, k: 'l2',   t: '파워 유저 (주 4일+)', v: '6% (3~12%)' },
     gap:   { x: 640,  y: 300, w: 130, k: 'l2',   t: '방문 간격', v: '중앙값 1일' },
-    mix:   { x: 780,  y: 300, w: 130, k: 'l2',   t: '분야별 획득', v: '농사 80%' },
-    empty: { x: 965,  y: 300, w: 210, k: 'l2',   t: '획득 없는 방문일 마지막 위치', v: '마을 86%' },
-    visit: { x: 95,   y: 440, w: 130, k: 'l2',   t: '첫 방문', v: '415' },
-    entry: { x: 240,  y: 440, w: 130, k: 'l2',   t: '진입', v: '44% (웹 33%)' },
-    chars: { x: 385,  y: 440, w: 130, k: 'l2',   t: '캐릭터 선택', v: '84%' },
-    act:   { x: 545,  y: 440, w: 160, k: 'hot',  t: '첫 획득 = 활성화', v: '41% (병목)' },
+    mix:   { x: 780,  y: 300, w: 130, k: 'l2',   t: '분야별 획득', v: '채집 74% · 농사 62%' },
+    empty: { x: 965,  y: 300, w: 210, k: 'l2',   t: '획득 없는 방문일 마지막 위치', v: '마을 81%' },
+    visit: { x: 95,   y: 440, w: 130, k: 'l2',   t: '첫 방문', v: '455' },
+    entry: { x: 240,  y: 440, w: 130, k: 'l2',   t: '진입', v: '46% (웹 37%)' },
+    chars: { x: 385,  y: 440, w: 130, k: 'l2',   t: '캐릭터 선택', v: '76%' },
+    act:   { x: 545,  y: 440, w: 160, k: 'hot',  t: '첫 획득 = 활성화', v: '43% (병목)' },
     ref:   { x: 95,   y: 545, w: 150, k: 'wait', t: '추천 유입 진입', v: '0 · 10/9 배포' },
     e1:    { x: 545,  y: 545, w: 160, k: 'exp',  t: '실험: 첫 5분 수확', v: '목표 60%' },
     e2:    { x: 730,  y: 440, w: 150, k: 'exp',  t: '실험: 힌트 배너', v: '이탈 직전 개입' },
@@ -541,7 +547,7 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
   el('line', { x1: 20, x2: 1180, y1: 612, y2: 612, stroke: '#2a2c2f', 'stroke-width': 1 }, svg);
   const g = txt(svg, 600, 648, '', { 'text-anchor': 'middle', 'font-size': 14, fill: '#b9b7b1' });
   const t1 = el('tspan', { fill: '#ff6b5e', 'font-weight': 600 }, g); t1.textContent = '가드레일   ';
-  const t2 = el('tspan', {}, g); t2.textContent = '획득 없는 방문일 52% → 46% · 코인 순증가 384 → 96 /기기 · 복구 안 된 세이브 실패 0 세션';
+  const t2 = el('tspan', {}, g); t2.textContent = '획득 없는 방문일 53% (35~73%) · 코인 순증가 45~384 /기기 (8/3 주부터) · 복구 안 된 세이브 실패 10주 0 세션';
 })();
 
 (function ltv() {
@@ -612,7 +618,7 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
 })();
 
 (function funnel() {
-  const rows = { 'f-all': [415, 182, 153, 74], 'f-web': [333, 109, 94, 49], 'f-toss': [82, 73, 59, 25] };
+  const rows = { 'f-all': [455, 211, 161, 90], 'f-web': [373, 138, 102, 65], 'f-toss': [82, 73, 59, 25] };
   for (const [id, vals] of Object.entries(rows)) {
     const box = document.getElementById(id);
     vals.forEach((v, i) => {
