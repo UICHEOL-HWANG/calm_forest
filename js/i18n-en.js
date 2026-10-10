@@ -1910,6 +1910,17 @@ export const EN = {
 
   // ── 콜사이트 패턴(문자열 연결부를 {0} 패턴으로 정리) ──
   '구글 로그인 실패: {0}': 'Google sign-in failed: {0}',
+  '게스트로만 플레이했다면 별도 계정이 없습니다. 서버의 게스트 기록은 마지막 접속 7일 뒤 자동 삭제됩니다.':
+    'If you only played as a guest, there is no account to delete. Guest records on the server are removed automatically 7 days after your last visit.',
+  '계정과 마을·도감·기록·사진이 모두 지워지고 되돌릴 수 없습니다.\n정말 지우시려면 삭제 라고 입력해 주세요.':
+    'Your account, village, collection, records and photos will be deleted permanently.\nType delete to confirm.',
+  '계정을 지우는 중…': 'Deleting your account…',
+  'Apple로 로그인하면 마을이 안전하게 저장돼요.': 'Sign in with Apple to keep your village safe.',
+  '게임 센터': 'Game Center',
+  '삭제하지 못했습니다: {0}\ncheorish.hw@gmail.com 으로 알려주시면 직접 처리해 드리겠습니다.':
+    'Could not delete: {0}\nPlease email cheorish.hw@gmail.com and we will handle it for you.',
+  '✅ 계정과 데이터를 모두 삭제했습니다. 그동안 고요한 숲에 머물러 주셔서 고맙습니다.':
+    '✅ Your account and data have been deleted. Thank you for spending time in calm forest.',
   '팝업이 차단됐어요. 이 사이트의 팝업을 허용한 뒤 다시 눌러주세요.': 'The pop-up was blocked. Allow pop-ups for this site and try again.',
 
   // ── 🪙 코인 첫 루프(2026-09-05) ──

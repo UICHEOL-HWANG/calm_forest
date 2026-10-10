@@ -44,6 +44,27 @@ test('build-cap: 플래그 주입 · vendor 치환 · API_BASE 절대 URL · SW 
   }
 });
 
+test("platform: __IOS__ 플래그가 있으면 'ios'", async () => {
+  assert.equal(await detectWith({ __IOS__: true }), 'ios');
+});
+
+test('build-cap ios: __IOS__ 만 주입(안드로이드 플래그 없음) · 외부 결제 링크 제거', () => {
+  try {
+    execFileSync('node', ['scripts/build-cap.mjs', 'ios'], { stdio: 'pipe' });
+    const html = readFileSync('dist-cap/index.html', 'utf8');
+    assert.match(html, /<head>\s*<script>window\.__IOS__ = true;<\/script>/);
+    assert.doesNotMatch(html, /__ANDROID__/);
+    assert.doesNotMatch(html, /id="login-links"/, 'App Store 3.1.1 — 외부 결제 안내 링크는 앱 번들에 없어야 한다');
+  } finally {
+    rmSync('dist-cap', { recursive: true, force: true });
+  }
+});
+
+test('build-cap: 모르는 타깃은 실패(조용히 안드로이드 번들이 나가지 않게)', () => {
+  assert.throws(() => execFileSync('node', ['scripts/build-cap.mjs', 'iphone'], { stdio: 'pipe' }));
+  rmSync('dist-cap', { recursive: true, force: true });
+});
+
 test('웹 원본은 CDN 그대로 — 앱 치환이 공통 경로에 새지 않는다', () => {
   const html = readFileSync('index.html', 'utf8');
   assert.match(html, /"three": "https:\/\/unpkg\.com\/three@0\.160\.0\/build\/three\.module\.js"/);

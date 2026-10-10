@@ -16,7 +16,7 @@
 
 const ACTIONS = new Set(['code', 'bind', 'claim']);
 const CODE_RE = /^[A-HJ-NP-Z2-9]{8}$/;
-const PLATFORMS = new Set(['web', 'toss', 'android', 'itch']);
+const PLATFORMS = new Set(['web', 'toss', 'android', 'itch', 'ios']);
 const TIMEOUT_MS = 8000;   // 응답이 매달리지 않게 — Supabase 가 느리면 502 로 끊는다
 
 /** 보상 소식 문구 — ⚠️ 사용자 검수 대기(ui-copy-review-first) */

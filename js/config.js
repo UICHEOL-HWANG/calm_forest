@@ -69,6 +69,8 @@ export const CONFIG = {
   //    서버 클라이언트 ID 는 Play Games '게임 서버' OAuth 클라이언트(공개값) — Worker 의 PGS_CLIENT_ID 와 같은 값.
   //    둘 중 하나라도 비어 있으면 자동 연결을 건너뛰고 '바로 플레이하기' → 게스트로 폴백한다.
   PGS_AUTH_ENDPOINT: 'https://calmforest-pgs-auth.icuchoel.workers.dev',
+  // 🍎 iOS 앱 게임센터 → Supabase 세션 교환 Worker(gc-auth/). 비어 있으면 자동 연결을 건너뛰고 로그인 화면(Apple·바로 플레이하기).
+  GC_AUTH_ENDPOINT: 'https://calmforest-gc-auth.icuchoel.workers.dev',
   PGS_SERVER_CLIENT_ID: '536929088498-qo1v15ribu6hfbovbt6eoqgi5magcd6q.apps.googleusercontent.com',   // calm-forest 웹 클라이언트 calmforest-web(Supabase 구글 공급자와 같은 클라이언트)
 
   // ── ☕ 카페 손님 동적 생성 엔드포인트 ─────────────────────────
