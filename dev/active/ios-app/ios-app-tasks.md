@@ -15,3 +15,13 @@
 - [ ] (runFirstLaunch·iOS 플랫폼 다운로드 후) 시뮬레이터 실행 검증
 - [ ] 후속: iOS Photo 플러그인(갤러리 저장) — 지금은 저장 버튼 숨김·웹 공유 폴백
 - [ ] 사용자 몫: 개발자 승인 → Supabase Apple 공급자(Client IDs=번들 ID) · GCP iOS 클라이언트 → GOOGLE_IOS_CLIENT_ID + Info.plist URL scheme · 서명 팀 설정
+
+## 게임센터 (2026-10-11 결정)
+- [ ] gc-auth Worker + 테스트(openssl 자체서명 인증서로 서명 검증)
+- [ ] account-kind 'gc' + 테스트
+- [ ] gc-native.js + 테스트
+- [ ] supabase-client signInWithGameCenter · provider 'gc' · APP_ACCOUNTS
+- [ ] index.html iOS 흐름(자동 연결·바로 플레이하기·넛지·isGuestNow)
+- [ ] Swift 플러그인 + MainViewController + pbxproj 등록 + game-center entitlement
+- [ ] 구글 iOS 코드 제거
+- [ ] 사용자 몫: gc-auth 시크릿(SUPABASE_SERVICE_KEY·GC_USER_SECRET) 배포 · App Store Connect 게임센터 활성화

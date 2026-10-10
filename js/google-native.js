@@ -9,8 +9,6 @@
 //  ⚠️ nonce 는 양쪽에 다르게 준다: 구글에는 SHA-256 해시본, Supabase 에는 원본.
 //  ⚠️ webClientId 는 **웹 애플리케이션** 클라이언트 ID(Supabase Google 공급자와 같은 값).
 //     Android 클라이언트(패키지명+SHA-1)는 같은 GCP 프로젝트(calm-forest)에 등록만 하고 여기 넣지 않는다.
-//  🍎 iOS 는 iOS 클라이언트 ID(번들 ID)가 따로 필요하다 → iOSClientId. ID 토큰 aud 를 Supabase 와 같은
-//     웹 클라이언트로 맞추려고 iOSServerClientId 에 웹 클라이언트 ID 를 넣는다.
 //  의존성은 인자로 받는다 — 브라우저·테스트 어디서든 같은 코드가 돈다.
 // =============================================================
 
@@ -27,13 +25,12 @@ function randomHex(bytes, crypto) {
 }
 
 // → { idToken, rawNonce } | { cancelled: true }. 그 밖의 실패는 throw(사유가 메시지에 남는다).
-export async function getGoogleIdToken({ plugin, webClientId, iOSClientId, crypto = globalThis.crypto }) {
+export async function getGoogleIdToken({ plugin, webClientId, crypto = globalThis.crypto }) {
   if (!plugin) throw new Error('SocialLogin plugin 없음 — 앱 빌드에 플러그인이 빠졌다');
   if (!webClientId) throw new Error('webClientId 미설정 — CONFIG.GOOGLE_WEB_CLIENT_ID');
 
   if (_initializedFor !== plugin) {
-    const ios = iOSClientId ? { iOSClientId, iOSServerClientId: webClientId } : {};
-    await plugin.initialize({ google: { webClientId, mode: 'online', ...ios } });
+    await plugin.initialize({ google: { webClientId, mode: 'online' } });
     _initializedFor = plugin;
   }
 

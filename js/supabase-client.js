@@ -14,6 +14,7 @@ import { PLATFORM, IS_ITCH, IS_TOSS, IS_IOS, IS_NATIVE } from './platform.js'; /
 import { getGoogleIdToken } from './google-native.js';   // 📱 앱: WebView OAuth 는 구글이 막아 네이티브 계정 시트로
 import { getAppleIdToken } from './apple-native.js';     // 🍎 iOS 앱: Apple 로그인(가이드라인 4.8)
 import { getPgsAuthCode } from './pgs-native.js';         // 📱 앱: Play Games 자동 로그인 → authCode → pgs-auth Worker
+import { getGcIdentity } from './gc-native.js';           // 🍎 iOS 앱: 게임센터 자동 로그인 → 신원 서명 → gc-auth Worker
 import { capPlugin } from './cap-bridge.js';               // 📱 앱: Capacitor.Plugins 는 비어 있다(@capacitor/core 미사용) → nativePromise 로 직접
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
 import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지 · 🔌 노는 중 세션 죽음 판정
@@ -28,7 +29,7 @@ export const state = {
   online: false,       // Supabase 세션 보유 여부
   userId: null,        // 로그인된 유저 UUID (오프라인이면 로컬 ID)
   email: null,         // 구글 계정 이메일/이름
-  provider: null,      // 'google' | 'toss' | 'pgs' | 'anonymous' | 'offline'
+  provider: null,      // 'google' | 'toss' | 'pgs' | 'gc' | 'apple' | 'anonymous' | 'offline'
   sessionId: randId(), // 이번 플레이 세션 식별자(로그 그룹핑)
   clientId: clientId(),// 분석용 영구 기기 식별자(localStorage, 게스트 재방문 추적)
   isGuest: null,       // 게스트(익명/오프라인) 여부 — 세그먼트 분석용
@@ -58,14 +59,15 @@ function applySession(session) {
   const kind = accountKind(session.user);
   const isToss = kind === 'toss';
   const isPgs = kind === 'pgs';
+  const isGc = kind === 'gc';
   state.online = true;
   state.userId = session.user.id;
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
   //  🚪 정식 계정으로 바뀌면 "잃을 세이브가 없다"는 전제가 깨진다 — 빗장을 원래대로.
   //    (signInAsGuest 는 이 함수를 부른 뒤에 다시 true 로 세운다)
   if (!isAnon(session)) freshGuest = false;
-  state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : isPgs ? '플레이 게임즈' : (session.user.email || session.user.user_metadata?.name || '유저');
-  state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : isPgs ? 'pgs' : (session.user.app_metadata?.provider || 'google');
+  state.email = isAnon(session) ? '게스트' : isToss ? '토스 유저' : isPgs ? '플레이 게임즈' : isGc ? '게임 센터' : (session.user.email || session.user.user_metadata?.name || '유저');
+  state.provider = isAnon(session) ? 'anonymous' : isToss ? 'toss' : isPgs ? 'pgs' : isGc ? 'gc' : (session.user.app_metadata?.provider || 'google');
   state.betaReady = resolveBetaGroup(session);
   emit();
 }
@@ -232,11 +234,9 @@ async function signInWithGoogleNative() {
   const fail = (msg) => { console.warn('[구글 네이티브 로그인 실패]', msg); alert(t('구글 로그인 실패: {0}').replace('{0}', msg)); };
   let got;
   try {
-    got = await getGoogleIdToken({ plugin: capPlugin('SocialLogin'), webClientId: CONFIG.GOOGLE_WEB_CLIENT_ID,
-                                   iOSClientId: IS_IOS ? CONFIG.GOOGLE_IOS_CLIENT_ID : undefined });
+    got = await getGoogleIdToken({ plugin: capPlugin('SocialLogin'), webClientId: CONFIG.GOOGLE_WEB_CLIENT_ID });
   } catch (e) { return fail(e?.message || String(e)); }
   if (got.cancelled) return;
-  await holdGuestBeforeLink();
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: got.idToken, nonce: got.rawNonce });
   if (error || !data?.session) return fail(error?.message || 'no session');
   applySession(data.session);
@@ -405,6 +405,45 @@ export async function signInWithPlayGames({ interactive = false } = {}) {
   }
 }
 
+// ── 🍎 게임센터 로그인 (iOS 앱 전용) ─────────────────────────────────
+//   플레이 게임즈와 같은 자리·같은 계약: 신원 서명 → gc-auth Worker(Apple 인증서로 검증) → 세션.
+//   interactive=false(부팅): 창 없이 자동 인증 결과만. true(버튼·넛지): 게임센터 로그인 창을 한 번 띄운다.
+//   → { ok: true } | { ok: false, reason }  (reason: endpoint_not_configured·not_signed_in·plugin·identity·server·session)
+export async function signInWithGameCenter({ interactive = false } = {}) {
+  const fail = (reason, message) => Object.assign(new Error(message), { reason });
+  try {
+    if (!CONFIG.GC_AUTH_ENDPOINT) return { ok: false, reason: 'endpoint_not_configured' };
+    let got;
+    try {
+      got = await getGcIdentity({ plugin: capPlugin('GameCenter'), interactive });
+    } catch (e) {
+      throw fail(/plugin/.test(e?.message) ? 'plugin' : 'identity', e?.message || String(e));
+    }
+    if (got.notSignedIn) return { ok: false, reason: 'not_signed_in' };
+    let data;
+    try {
+      const res = await fetch(CONFIG.GC_AUTH_ENDPOINT, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(got.identity),
+      });
+      data = await res.json();
+      if (!res.ok || !data.access_token || !data.refresh_token) throw new Error(data.error || 'HTTP ' + res.status);
+    } catch (netErr) {
+      throw fail('server', netErr?.message || String(netErr));
+    }
+    await holdGuestBeforeLink();
+    const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (error) throw fail('session', error.message);
+    applySession(s.session);
+    console.log('[게임 센터] Supabase 세션 연결 완료', state.userId);
+    return { ok: true };
+  } catch (err) {
+    const reason = err?.reason || 'unknown';
+    console.warn('[게임 센터 연결 실패]', reason, err?.message || err);
+    return { ok: false, reason, error: err };
+  }
+}
+
 // ── 게스트로 플레이 (매번 새 익명계정 → 휘발성, 재방문 시 새 마을) ──
 //   익명 로그인이 성공해야 game_logs/game_saves 에 실제로 쌓임(RLS·FK 때문).
 //   실패하면 순수 오프라인(콘솔 폴백)으로만 동작.
@@ -502,8 +541,8 @@ export async function loadGame() {
 //   initAuth 가 로그아웃 전에 읽어 둔 게스트 저장(pendingGuest)을, 토스 계정으로 붙은 첫 loadGame 에서 처리한다.
 //   규칙은 save-migrate.js(순수 모듈, 테스트로 잠금). 한 번 처리하면 비운다 — 새로고침마다 다시 옮기지 않게.
 let pendingGuest = null;   // { userId, state } | null
-//  게스트 이관을 받는 정식 계정 — 토스·플레이 게임즈 + 🍎 iOS 앱의 Apple·구글 네이티브
-const APP_ACCOUNTS = ['toss', 'pgs', 'apple', ...(IS_IOS ? ['google'] : [])];
+//  게스트 이관을 받는 정식 계정 — 토스·플레이 게임즈 + 🍎 iOS 앱의 게임센터·Apple
+const APP_ACCOUNTS = ['toss', 'pgs', 'gc', 'apple'];
 
 //  🍎 iOS: 놀던 게스트가 넛지·로그인 버튼으로 계정을 붙이는 경우 — 세션이 바뀌기 전에(익명 세션 RLS 로) 게스트 저장을 읽어 둔다.
 //  ⚠️ 시도마다 새로 읽는다 — 이전 실행·실패한 시도의 낡은 스냅숏으로 비교하면 방금 논 진행도를 버린다(리뷰 2026-10-11).
