@@ -6,8 +6,8 @@ import { bindTracker, T, EVENTS } from '../js/mirror/track.js';
 const sent = [];
 bindTracker((name, params) => sent.push([name, params]), { strict: true });
 
-test('11종 이름·파라미터가 스펙 §8 그대로(Task 15 정리: 기존 키 재사용 · 2026-10-09 돌려주기 mirror_deliver 추가)', () => {
-  assert.deepEqual(Object.keys(EVENTS).sort(), ['decor_buy_mirror', 'mirror_board', 'mirror_clue', 'mirror_cutscene_end', 'mirror_deliver', 'mirror_enter', 'mirror_found', 'mirror_hint', 'mirror_leave', 'mirror_onboard', 'mirror_stop_shown']);
+test('12종 이름·파라미터가 스펙 §8 그대로(Task 15 정리: 기존 키 재사용 · 2026-10-09 돌려주기 mirror_deliver · 2026-10-10 대화 박스 mirror_talk_close 추가)', () => {
+  assert.deepEqual(Object.keys(EVENTS).sort(), ['decor_buy_mirror', 'mirror_board', 'mirror_clue', 'mirror_cutscene_end', 'mirror_deliver', 'mirror_enter', 'mirror_found', 'mirror_hint', 'mirror_leave', 'mirror_onboard', 'mirror_stop_shown', 'mirror_talk_close']);
   assert.deepEqual(EVENTS.mirror_deliver, ['quest_n', 'npc', 'item', 'hinted', 'elapsed_s']);   // 새 키 없이 기존 키만(GA4 키 과다 방지)
   assert.deepEqual(EVENTS.mirror_found, ['quest_n', 'item', 'spot_id', 'flipped', 'hinted', 'elapsed_s']);
   assert.deepEqual(EVENTS.mirror_clue, ['quest_n', 'npc', 'spot_id', 'flipped']);
