@@ -4249,7 +4249,7 @@
       if (started) return; started = true;
       $('login-screen').classList.remove('show');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
-      trackLogin(authState.provider || 'offline');   // [GA4] 로그인 이벤트
+      trackLogin(authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
       // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
