@@ -17,8 +17,10 @@
 //   응답  200 { access_token, refresh_token } | 4xx/5xx { error }
 //
 //  ▶ 인증서 신뢰: Apple 문서는 발급 체인 확인을 권하지만, Worker 에는 X.509 체인 검증기가 없다.
-//    대신 URL 을 https + apple.com 하위 도메인으로 묶는다 — TLS 가 그 호스트의 진위를 보증하므로
-//    공격자가 자기 인증서를 내밀 수 없다.
+//    대신 URL 을 https://static.gc.apple.com/public-key/gc-prod-N.cer 로 고정하고 리다이렉트를 막는다
+//    — TLS 가 그 호스트의 진위를 보증하므로 공격자가 자기 인증서를 내밀 수 없다.
+//    (apple.com 아무 하위 도메인이나 받거나 리다이렉트를 따라가면, 어딘가의 열린 리다이렉트로
+//     공격자 인증서를 물려 남의 teamPlayerID 세션을 받을 수 있다 — 보안 리뷰 2026-10-11)
 //  ▶ 파생 비밀번호: HMAC-SHA256(GC_USER_SECRET, 'cf-gc:' + teamPlayerID). Worker 밖으로 나가지 않는다.
 //    GC_USER_SECRET 을 바꾸면 기존 게임센터 유저 로그인이 전부 깨진다 → 불변.
 // =============================================================
@@ -26,7 +28,10 @@
 const TIMEOUT_MS = 8000;                 // Apple·Supabase 가 멈춰도 Worker 가 끝까지 매달리지 않게
 const MAX_AGE_MS = 10 * 60 * 1000;       // 서명 유효 시간 — 이보다 오래된 서명은 재사용으로 본다
 const MAX_SKEW_MS = 5 * 60 * 1000;       // 기기 시계가 앞선 경우 허용치
-const certCache = new Map();             // publicKeyUrl → 인증서 DER (isolate 수명 동안)
+const CERT_MAX_BYTES = 8192;             // Apple 인증서는 ~1KB — 큰 응답은 인증서가 아니다
+const CERT_TTL_MS = 60 * 60 * 1000;      // 키 교체·폐기를 늦어도 1시간 안에 반영
+const CERT_CACHE_MAX = 8;                // URL 은 고정 패턴이라 몇 개뿐 — 넘치면 비운다
+const certCache = new Map();             // publicKeyUrl → { der, at } — SPKI 를 꺼내는 데 성공한 것만
 
 export default {
   fetch(req, env) { return this.handle(req, env, { fetch: globalThis.fetch.bind(globalThis) }); },
@@ -88,20 +93,26 @@ function parseBody(b) {
            timestamp: String(b.timestamp), publicKeyUrl: b.publicKeyUrl };
 }
 
-// https 의 apple.com(하위 도메인 포함)만 — 공격자가 자기 인증서를 내밀지 못하게
+// Apple 게임센터 공개키 자리만 — 호스트·경로를 정확히, 포트·쿼리·해시 없이
 export function checkPublicKeyUrl(url) {
   try {
     const u = new URL(url);
-    return u.protocol === 'https:' && (u.hostname === 'apple.com' || u.hostname.endsWith('.apple.com'));
+    return u.protocol === 'https:' && u.hostname === 'static.gc.apple.com' && u.port === ''
+      && /^\/public-key\/gc-prod-\d{1,4}\.cer$/.test(u.pathname) && u.search === '' && u.hash === ''
+      && url === u.href;   // 정규화 전후가 같아야 한다(../ · 대소문자 장난 차단)
   } catch { return false; }
 }
 
 async function fetchCert(fetch, url) {
-  if (certCache.has(url)) return certCache.get(url);
-  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const hit = certCache.get(url);
+  if (hit && Date.now() - hit.at < CERT_TTL_MS) return hit.der;
+  const res = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new HttpError('인증서 다운로드 실패 HTTP ' + res.status, 502, '인증서 확인 실패');
   const der = new Uint8Array(await res.arrayBuffer());
-  certCache.set(url, der);
+  if (der.length > CERT_MAX_BYTES) throw new HttpError('인증서 크기 초과 ' + der.length, 502, '인증서 확인 실패');
+  try { spkiFromCertDer(der); } catch { return der; }   // 인증서가 아니면 캐시하지 않는다(검증은 아래에서 실패)
+  if (certCache.size >= CERT_CACHE_MAX) certCache.clear();
+  certCache.set(url, { der, at: Date.now() });
   return der;
 }
 

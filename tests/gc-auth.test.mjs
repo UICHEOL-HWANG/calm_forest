@@ -106,3 +106,32 @@ test('handle — 시크릿 미설정이면 500, POST 외 405', async () => {
   const g = await worker.handle(new Request('https://gc.test/'), ENV, { fetch: fakeFetch() });
   assert.equal(g.status, 405);
 });
+
+test('🔒 인증서 URL 은 static.gc.apple.com/public-key/gc-prod-N.cer 로 고정(포트·쿼리·다른 apple.com 호스트 거부)', () => {
+  for (const bad of ['https://www.apple.com/a.cer', 'https://static.gc.apple.com:8443/public-key/gc-prod-10.cer',
+                     'https://static.gc.apple.com/public-key/gc-prod-10.cer?x=1', 'https://static.gc.apple.com/redirect?to=evil',
+                     'https://static.gc.apple.com/public-key/../x.cer'])
+    assert.equal(checkPublicKeyUrl(bad), false, bad);
+});
+
+test('🔒 인증서 다운로드는 리다이렉트를 따라가지 않는다', async () => {
+  const url = "https://static.gc.apple.com/public-key/gc-prod-11.cer";   // 앞 테스트의 캐시를 피한다
+  const calls = [];
+  const f = async (u, init = {}) => { calls.push({ url: String(u), init }); return String(u) === url ? new Response(CERT) : res(200, { access_token: "a", refresh_token: "r" }); };
+  await worker.handle(post({ ...sign(), publicKeyUrl: url }), ENV, { fetch: f });
+  const certCall = calls.find(c => c.url === url);
+  assert.equal(certCall.init.redirect, 'error');
+});
+
+test('🔒 인증서가 아닌 응답은 캐시하지 않는다(다음 요청이 다시 받는다)', async () => {
+  const url = 'https://static.gc.apple.com/public-key/gc-prod-77.cer';
+  let n = 0;
+  const f = async (u, init = {}) => {
+    if (String(u) === url) { n++; return new Response(n === 1 ? 'not a cert' : CERT, { status: 200 }); }
+    if (String(u).includes('/auth/v1/token')) return res(200, { access_token: 'at', refresh_token: 'rt' });
+    throw new Error('unexpected ' + u);
+  };
+  const body = { ...sign(), publicKeyUrl: url };
+  assert.equal((await worker.handle(post(body), ENV, { fetch: f })).status, 401);
+  assert.equal((await worker.handle(post({ ...sign(), publicKeyUrl: url }), ENV, { fetch: f })).status, 200);
+});

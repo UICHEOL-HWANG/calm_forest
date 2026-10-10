@@ -4223,6 +4223,7 @@
       dot.classList.add(s.online && !s.lost ? 'online' : 'offline');   // 🔌 끊긴 세션에 초록 점을 찍지 않는다
       const label = (s.provider === 'google' || s.provider === 'email') ? (s.email || (s.provider === 'email' ? '이메일' : '구글'))
         : s.provider === 'apple' ? 'Apple'   // 🍎 이메일은 가리기(privaterelay) 주소일 수 있어 보여 주지 않는다
+        : s.provider === 'gc' ? '게임 센터'
         : s.online ? '익명' : '게스트(오프라인)';
       $('login-status').textContent = label;
     }
@@ -4236,6 +4237,7 @@
         ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
         : (why === 'toss_fail' || why === 'pgs_fail')
           ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 할 수 있어요.'
+          : IS_IOS ? 'Apple로 로그인하면 마을이 안전하게 저장돼요.'   // 🍎 Apple 계정은 iOS 앱 전용 — '어느 기기에서든'은 거짓 약속
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
       trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
