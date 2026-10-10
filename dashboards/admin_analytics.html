@@ -2,9 +2,9 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>calm forest · 관리자 애널리틱스 📊</title>
-<meta name="description" content="calm forest — DAU/WAU/MAU · 리텐션 · 퍼널 · 경제 지표 관리자 대시보드" />
+<meta name="description" content="calm forest — 북극성 · 첫 주 퍼널 · 리텐션 · DAU 구성 · 맵별 이동 밀도 관리자 대시보드" />
 <!-- 임시 공유 링크(?k=)가 검색에 노출되면 "임시"가 아니게 되므로 색인 차단 -->
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="calm forest · 관리자 애널리틱스 📊" />
-<meta property="og:description" content="DAU/WAU/MAU · 리텐션 · 퍼널 · 경제 지표" />
+<meta property="og:description" content="북극성 · 첫 주 퍼널 · 리텐션 · DAU 구성" />
 <meta property="og:url" content="https://calmforest.cloud/dashboards/admin_analytics.html" />
 <meta property="og:image" content="https://calmforest.cloud/preview.jpg" />
 <meta property="og:image:width" content="1200" />
@@ -21,508 +21,162 @@
 <meta name="twitter:image" content="https://calmforest.cloud/preview.jpg" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="_dash.css" />
+<link rel="stylesheet" href="_admin.css" />
 <style>
-  /* 페이지 전용 잔여 스타일 — 공통 토큰/컴포넌트는 _dash.css */
   code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  #msg .msg-char { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; }
 </style>
 </head>
 <body>
-  <header>
-    <div>
-      <a class="back" href="../index.html">← 게임으로</a>
-      <h1>📊 calm forest · 관리자 애널리틱스</h1>
+  <div id="page" class="is-loading">
+    <div class="ah">
+      <a class="crumb" href="index.html">← 관리자 홈</a>
     </div>
-    <div id="range">
-      <!-- 로그인 게이트 통과 전에는 기간 전환이 의미 없으므로 비활성 -->
-      <button data-d="7" disabled>7일</button>
-      <button data-d="30" class="on" disabled>30일</button>
-      <button data-d="90" disabled>90일</button>
+    <div class="ah" style="margin-top:6px">
+      <img class="brand" src="img/chars/bear.png" alt="" />
+      <h1>calm forest · 관리자 애널리틱스</h1>
+      <div class="seg range" id="range" role="group" aria-label="기간">
+        <!-- 게이트 통과 전에는 기간 전환이 의미 없으므로 비활성 -->
+        <button data-d="7" disabled>7일</button>
+        <button data-d="30" class="on" disabled>30일</button>
+        <button data-d="60" disabled>60일</button>
+      </div>
+      <div class="meta skel" id="meta">기기 기준 · KST · 페르소나 제외</div>
     </div>
-  </header>
-  <div class="sub" id="meta">전체 유저 합산 · 관리자 전용</div>
-
-  <div id="msg"></div>
-  <div id="load">불러오는 중…</div>
-
-  <div id="dash" style="display:none;">
-    <h2 class="sec">핵심 지표</h2>
-    <div class="kpis" id="kpis"></div>
-
-    <h2 class="sec">트래픽</h2>
-    <div class="grid wide">
-      <div class="card">
-        <h3>일별 활성 유저 (DAU)</h3>
-        <p class="hint">막대 = 신규/복귀 분해, 선 = 전체 DAU. 기기(client_id) 기준이라 게스트 재방문이 신규로 중복 집계되지 않습니다.</p>
-        <canvas id="cDaily" height="150"></canvas>
-      </div>
-      <div class="card">
-        <h3>세션 수 · 플레이타임</h3>
-        <p class="hint">막대 = 일별 세션 수, 선 = 세션당 중앙값 플레이타임(분). 평균 대신 중앙값이라 이상치에 덜 흔들립니다.</p>
-        <canvas id="cSess" height="150"></canvas>
-      </div>
+    <div class="loader" id="loader" role="status" aria-live="polite">
+      <img src="img/chars/fox.png" alt="" /><span class="t">분석 중</span><span class="step"></span><span class="bar"><i></i></span>
     </div>
 
-    <h2 class="sec">리텐션</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>N일차 복귀율</h3>
-        <p class="hint">첫 접속일로부터 N일 뒤에 다시 온 비율. 분모는 관측 기간이 지난 유저만 포함합니다.</p>
-        <div class="kpis" id="ret"></div>
-      </div>
-      <div class="card" style="grid-column:span 2;min-width:320px;">
-        <h3>주간 코호트</h3>
-        <p class="hint">가입 주차별로 이후 몇 주까지 남아있는지. 진한 칸일수록 잔존율이 높습니다.</p>
-        <div id="cohort"></div>
-      </div>
-    </div>
+    <div id="msg"></div>
 
-    <h2 class="sec">플레이 패턴</h2>
-    <div class="grid">
-      <div class="card" style="grid-column:span 2;min-width:340px;">
-        <h3>요일 × 시간대 접속 (KST)</h3>
-        <p class="hint">언제 사람이 몰리는지 — 이벤트·푸시 타이밍 잡을 때 씁니다.</p>
-        <div id="hourmap"></div>
-      </div>
-      <div class="card"><h3>세션 길이 분포</h3><p class="hint">짧은 세션이 많으면 초반 이탈 신호입니다.</p><canvas id="cBucket" height="200"></canvas></div>
-      <div class="card"><h3>행동 이벤트 Top</h3><p class="hint">세션 요약에 집계된 이벤트 총 발생 횟수.</p><canvas id="cEvents" height="260"></canvas></div>
-      <div class="card"><h3>마지막 체류 장소</h3><p class="hint">세션이 끝난 위치 — 어디서 이탈하는지.</p><canvas id="cPlaces" height="200"></canvas></div>
-      <div class="card" style="grid-column:span 2;min-width:300px;">
-        <h3>이동 히트맵</h3>
-        <p class="hint">전체 유저 좌표 밀도. 밝을수록 오래 머문 구역입니다.</p>
-        <canvas id="heatmap" width="60" height="60"></canvas>
-      </div>
-    </div>
+    <div class="wrap" id="wrap">
+      <nav class="toc" id="toc" aria-label="섹션">
+        <a class="on" href="#s-ov">개요</a>
+        <a href="#s-act">활성화 퍼널 <em>A</em></a>
+        <a href="#s-ret">리텐션 <em>R</em></a>
+        <a href="#s-gro">성장 구성</a>
+        <a href="#s-eng">참여 · 맵</a>
+        <a href="#s-ops">유저 관찰</a>
+      </nav>
 
-    <h2 class="sec">진행 퍼널</h2>
-    <div class="grid">
-      <div class="card" style="grid-column:span 2;min-width:340px;">
-        <h3>온보딩 → 성장 퍼널</h3>
-        <p class="hint">세이브가 있는 유저 기준. 괄호는 전체 대비 / 직전 단계 대비 통과율입니다.</p>
-        <div id="funnel"></div>
-      </div>
-      <div class="card"><h3>집 건설 단계</h3><p class="hint">0=없음 · 3=완성 · 4~6=증축</p><canvas id="cHouse" height="200"></canvas></div>
-      <div class="card"><h3>도감 수집량</h3><p class="hint">수집 콘텐츠가 실제로 소비되는지.</p><canvas id="cDex" height="200"></canvas></div>
-      <div class="card"><h3>배지 보유 수</h3><p class="hint">업적 달성 분포.</p><canvas id="cBadge" height="200"></canvas></div>
-      <div class="card"><h3>캐릭터 선택</h3><p class="hint">첫 화면 선호도.</p><canvas id="cChar" height="200"></canvas></div>
-      <div class="card"><h3>연속 출석(스트릭)</h3><p class="hint">8일 이상은 8로 묶음. 2일차가 닭장 해금 지점입니다.</p><canvas id="cStreak" height="200"></canvas></div>
-    </div>
+      <main class="dash" id="dash">
+        <section class="rsec" id="s-ov">
+          <div class="sh" style="--av:url(img/chars/fox.png)">
+            <span class="eyebrow" id="ovEyebrow">개요</span>
+            <h2>이번 기간 한눈에</h2>
+            <p class="insight skel" id="insight">요약을 만드는 중입니다.</p>
+          </div>
+          <div class="kstrip" id="kpis">
+            <div class="nsm"><span class="lbl">★ 북극성 · 획득한 유저 / 일</span><span class="num">0.0</span></div>
+            <div><span class="lbl">평균 DAU</span><span class="num">0</span></div>
+            <div><span class="lbl">신규 유저</span><span class="num">0</span></div>
+            <div><span class="lbl">D1 리텐션</span><span class="num">0%</span></div>
+            <div><span class="lbl">Stickiness</span><span class="num">0%</span></div>
+          </div>
+        </section>
 
-    <h2 class="sec">유저 흐름</h2>
-    <div class="grid wide">
-      <div class="card">
-        <h3>활동 퍼널 (기간 내 유저 기준)</h3>
-        <p class="hint">세션 이벤트 카운트 기준 — 접속한 유저가 이번 기간에 어떤 깊이까지 놀았는지.
-          진행 퍼널(세이브 상태 누적)과 달리 선택한 기간의 행동만 봅니다.</p>
-        <div id="actFunnel"></div>
-      </div>
-      <div class="card">
-        <h3>이탈 퍼널 (라이프사이클)</h3>
-        <p class="hint">신규 유저가 어느 관문에서 사라지는지. 덜 관측된 유저를 이탈로 오판하지 않도록
-          14일 관측이 끝난 코호트만 집계합니다. 단계 사이 붉은 수치 = 이탈률, 가장 큰 누수는 강조.</p>
-        <div id="churnFunnel"></div>
-      </div>
-    </div>
-    <div class="grid wide" style="margin-top:14px;">
-      <div class="card" style="grid-column:1/-1;">
-        <h3>유저별 퍼널 위치</h3>
-        <p class="hint">최근 활성 유저(최대 40명)가 지금 어느 단계에 서 있는지 — 개별 이탈 징후를 훑는 표.
-          식별자는 서버에서 마스킹되어 내려옵니다. 이틀 넘게 안 온 유저는 붉게 표시.</p>
-        <div style="overflow-x:auto"><table class="mini" id="userTbl"></table></div>
-      </div>
-    </div>
+        <section class="rsec" id="s-act">
+          <div class="sh" style="--av:url(img/chars/chick.png)">
+            <span class="eyebrow">Activation · 신규 첫 주</span>
+            <h2>신규 유저는 어디서 멈추나</h2>
+            <p class="insight skel" id="actInsight">첫날 획득 행동(수확·낚시·제작 등)까지 가는지가 재방문을 가르는 지점인지 봅니다.</p>
+          </div>
+          <div class="two">
+            <div class="panel">
+              <h3>첫 주 퍼널</h3>
+              <p class="def" id="funnelDef">7일 관측이 끝난 신규만 셉니다. 각 단계는 앞 단계를 통과한 사람 중에서 셉니다.</p>
+              <div id="funnel"></div>
+            </div>
+            <div class="panel">
+              <h3>세션 길이 분포</h3>
+              <p class="def">주황 = 1분 미만(첫 화면 이탈 신호). 세션 요약의 플레이 시간 기준.</p>
+              <div class="chartbox"><canvas id="cBuckets" height="170"></canvas></div>
+            </div>
+          </div>
+        </section>
 
-    <h2 class="sec">인게임 경제</h2>
-    <div class="grid wide">
-      <div class="card">
-        <h3>일별 코인 유입 · 유출</h3>
-        <p class="hint">유입이 계속 크면 인플레이션 — 소비처(싱크)가 부족하다는 뜻입니다.</p>
-        <canvas id="cEcon" height="150"></canvas>
-      </div>
-      <div class="card">
-        <h3>출처별 코인 흐름</h3>
-        <p class="hint">어떤 활동이 코인을 만들고 어디서 쓰이는지.</p>
-        <div id="econSrc"></div>
-      </div>
-    </div>
+        <section class="rsec" id="s-ret">
+          <div class="sh" style="--av:url(img/chars/bear.png)">
+            <span class="eyebrow">Retention</span>
+            <h2>얼마나 다시 오나</h2>
+            <p class="insight skel" id="retInsight">첫날 획득 여부로 나눈 N일차 리텐션입니다.</p>
+          </div>
+          <div class="two">
+            <div class="panel">
+              <h3>N일차 리텐션 곡선</h3>
+              <p class="def">기간 안 신규, 첫 접속일 = D0. 분모 5명 미만인 날은 그리지 않습니다. 첫날 획득 기준이라 미래 행동이 섞이지 않습니다.</p>
+              <div class="chartbox"><canvas id="cCurve" height="230"></canvas></div>
+            </div>
+            <div class="panel">
+              <h3>주간 코호트 × N일차</h3>
+              <p class="def">첫 접속 주별 D1·D3·D7·D14·D30 잔존율.</p>
+              <div id="cohorts"></div>
+            </div>
+          </div>
+        </section>
 
-    <!-- 🤝 친구 초대(C안, 2026-10-09) — cf_admin_referral(days). 공유 링크 보기에선 숨긴다(관리자 전용 RPC) -->
-    <div id="refSec" style="display:none">
-      <h2 class="sec">🤝 친구 초대</h2>
-      <div class="card"><h3>친구 초대 한눈에<span class="tag" id="refDays"></span></h3><p class="hint">왼쪽 숫자 · 오른쪽 퍼널(빨간 표시 = 가장 많이 빠지는 단계) · K-factor ≈ 기간 안 활성 친구 ÷ 초대한 사람(근사).</p>
-        <div class="one">
-          <div class="stack" id="refStack"></div>
-          <div><div id="refFunnel"></div>
-            <p class="src"><b>●</b> 서버 테이블(referrals·purchases) — 정확한 값 · 나머지는 세션 카운터(로그인 화면에서 나간 사람은 빠짐)</p></div>
-        </div></div>
-      <div class="grid" style="margin-top:14px">
-        <div class="card"><h3>연결 실패 사유</h3><p class="hint">초대 링크로 왔는데 연결이 안 된 이유.</p><div id="refFails"></div></div>
-        <div class="card"><h3>단계 보상 · 감시</h3><p class="hint">단계 보상은 누적 · 하루 3명 넘게 연결된 초대자는 <span class="warn">빨간색</span>.</p><div id="refTiers"></div><div id="refTop" style="margin-top:10px"></div></div>
-      </div>
-    </div>
+        <section class="rsec" id="s-gro">
+          <div class="sh" style="--av:url(img/chars/dog.png)">
+            <span class="eyebrow">Growth accounting</span>
+            <h2>DAU 는 무엇으로 이루어지나</h2>
+            <p class="insight">신규·연속 복귀·재활성(쉬었다 돌아옴)이 위로, 전날 왔는데 그날 안 온 이탈이 아래로 쌓입니다. 오늘 이탈은 하루가 끝나야 셉니다.</p>
+          </div>
+          <div class="chartbox"><canvas id="cGrowth" height="120"></canvas></div>
+          <div class="panel">
+            <h3>북극성 추이</h3>
+            <p class="def">막대 = 그날 획득한 유저, 선 = 7일 평균.</p>
+            <div class="chartbox"><canvas id="cNsm" height="90"></canvas></div>
+          </div>
+        </section>
 
-    <h2 class="sec">세그먼트</h2>
-    <div class="grid">
-      <div class="card"><h3>게스트 vs 로그인</h3><p class="hint">회원 전환 여지를 봅니다.</p><canvas id="cGuest" height="200"></canvas></div>
-      <div class="card"><h3>A/B 변형</h3><p class="hint">실험이 off면 전원 control 입니다.</p><canvas id="cVariant" height="200"></canvas></div>
+        <section class="rsec" id="s-eng">
+          <div class="sh" style="--av:url(img/chars/cat.png)">
+            <span class="eyebrow">Engagement</span>
+            <h2>언제, 어디서 노나</h2>
+          </div>
+          <div class="two">
+            <div class="panel">
+              <h3>요일 × 시간대 (KST)</h3>
+              <p class="def">세션 시작 기준. 이벤트·푸시 시각을 정할 때 씁니다.</p>
+              <div id="hourmap"></div>
+            </div>
+            <div class="panel">
+              <h3>맵별 이동 밀도</h3>
+              <div class="seg" id="mapSel" role="group" aria-label="맵">
+                <button data-map="main" class="on">마을</button>
+                <button data-map="dream">꿈의 숲</button>
+                <button data-map="mirror">거울 마을</button>
+              </div>
+              <div class="heatwrap"><canvas id="heat" width="44" height="44"></canvas></div>
+              <p class="def" id="heatDef">위 = 북쪽. 밝을수록 오래 머문 칸(2유닛 격자).</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="rsec" id="s-ops">
+          <div class="sh" style="--av:url(img/chars/panda.png)">
+            <span class="eyebrow">운영</span>
+            <h2>지금 지켜볼 유저</h2>
+            <p class="insight">기간 안에 접속한 최근 40명. 이틀 넘게 안 오면 이탈 위험입니다. 식별자는 서버에서 가려서 내려옵니다.</p>
+          </div>
+          <div class="scroll-x"><table class="ut" id="users"></table></div>
+
+          <details class="more">
+            <summary>경제 · 세그먼트 · 진행도</summary>
+            <div class="minigrid">
+              <div class="panel"><h3>일별 코인 유입 · 유출</h3><p class="def">유입이 계속 크면 소비처가 모자란다는 뜻.</p><div class="chartbox"><canvas id="cEcon" height="170"></canvas></div></div>
+              <div class="panel"><h3>출처별 코인 흐름</h3><div class="scroll-x" id="econSrc"></div></div>
+              <div class="panel"><h3>플랫폼</h3><div class="chartbox"><canvas id="cPlatform" height="170"></canvas></div></div>
+              <div class="panel"><h3>게스트 vs 로그인</h3><div class="chartbox"><canvas id="cGuest" height="170"></canvas></div></div>
+              <div class="panel"><h3>집 단계 (누적)</h3><p class="def">0=없음 · 3=완성 · 4+ 증축</p><div class="chartbox"><canvas id="cHouse" height="170"></canvas></div></div>
+              <div class="panel"><h3>도감 수집량 (누적)</h3><div class="chartbox"><canvas id="cDex" height="170"></canvas></div></div>
+            </div>
+          </details>
+        </section>
+      </main>
     </div>
   </div>
 
-  <script type="module">
-    import { CONFIG, isSupabaseConfigured } from '../js/config.js';
-    const $ = (id) => document.getElementById(id);
-    const showMsg = (html) => { $('load').style.display='none'; const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
-    // 차트 색은 _dash.css 토큰에서 읽습니다(라이트/다크 자동 대응).
-    // 카테고리 팔레트는 s1→s5 순서 고정 — 순서가 색맹 안전장치라 섞으면 안 됩니다.
-    const V = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    const P = [V('--s1'), V('--s2'), V('--s3'), V('--s4'), V('--s5')];
-    Chart.defaults.color = V('--ink-3');
-    Chart.defaults.borderColor = V('--line-soft');
-    Chart.defaults.font.family = V('--font');
-    // OS 테마가 바뀌면 토큰 값이 바뀌므로 새 색으로 전부 다시 그립니다
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => location.reload());
-    const charts = {};                       // 재조회 시 파괴용(캔버스 중복 렌더 방지)
-    let sb = null, days = 30;
-
-    const nf   = (n) => (n ?? 0).toLocaleString();
-    const secs = (s) => !s ? '—' : s >= 60 ? `${Math.floor(s/60)}분 ${Math.round(s%60)}초` : `${Math.round(s)}초`;
-    const mmdd = (d) => String(d).slice(5);
-
-    // Chart.js 공통 옵션 — 격자 최소화, 범례는 필요할 때만
-    //  ※ maintainAspectRatio:false 를 쓰면 부모 높이가 auto 인 카드 안에서
-    //    캔버스 높이가 무한히 커집니다(측정값 840~1238px). 종횡비로 높이를 고정.
-    const base = (extra = {}) => ({
-      responsive: true, maintainAspectRatio: true, aspectRatio: 2.2,
-      plugins: { legend: { display: false }, ...(extra.plugins || {}) },
-      scales: { y: { beginAtZero: true, grid: { color: V('--line-soft') }, ticks: { font: { size: 10 } } },
-                x: { grid: { display: false }, ticks: { font: { size: 10 } } }, ...(extra.scales || {}) },
-      ...extra,
-    });
-    function draw(id, cfg) { charts[id]?.destroy(); charts[id] = new Chart($(id), cfg); }
-
-    // 임시 공개 링크: ?k=<토큰> — cf_share_links 표에서 발급 (docs/ops/DEPLOY.md 참고)
-    const shareKey = new URLSearchParams(location.search).get('k') || '';
-
-    // ── 부팅 ──
-    (async () => {
-      if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
-      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth:{ detectSessionInUrl:true, persistSession:true }});
-
-      // 공유 링크(?k=토큰)면 로그인 게이트를 건너뜁니다.
-      // 토큰의 유효성/만료는 서버(cf_admin_overview)가 판정하므로 여기선 통과만 시킵니다.
-      if (!shareKey) {
-        const { data:s } = await sb.auth.getSession();
-        if (!s?.session) {
-          showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">또는 게임에서 먼저 로그인 후 이 페이지를 여세요</small>');
-          $('lg').onclick = () => sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname }});
-          return;
-        }
-      }
-      $('range').addEventListener('click', (e) => {
-        const b = e.target.closest('button'); if (!b) return;
-        [...$('range').children].forEach(x => x.classList.toggle('on', x === b));
-        days = +b.dataset.d; load();
-      });
-      load();
-    })();
-
-    async function load() {
-      $('load').style.display = 'block'; $('msg').style.display = 'none';
-      const { data, error } = await sb.rpc('cf_admin_overview', shareKey ? { days, token: shareKey } : { days });
-      if (error) {
-        if (String(error.message).includes('권한')) {
-          if (shareKey) showMsg('🔒 공유 링크가 만료됐거나 올바르지 않습니다.<br><small style="opacity:.6">관리자에게 새 링크를 요청해 주세요.</small>');
-          else showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/analytics/admin_analytics.sql 의 허용목록에 이메일을 추가하세요.</small>');
-        }
-        else if (/function|does not exist/i.test(String(error.message))) showMsg('함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/analytics/admin_analytics.sql 을 SQL Editor 에서 <b>다시</b> 실행하세요 (days 파라미터가 추가됐습니다).</small>');
-        else showMsg('오류: ' + error.message);
-        return;
-      }
-      $('load').style.display = 'none';
-      render(data);
-      if (!shareKey) loadReferral();
-    }
-
-    // ── 🤝 친구 초대 — 별도 RPC. 실패해도 위 대시보드는 그대로 둔다 ──
-    const REF_FAIL = { not_new: '이미 가입한 계정', self: '내 링크', bad_code: '잘못된 코드', too_many: '코드 10회 틀림',
-      cycle: '서로 초대', inviter_full: '초대자 정원 참', already_bound: '이미 연결됨', anonymous: '게스트', no_user: '계정 없음' };
-    const REF_TIERS = [['tools_star', '💎', '1명 · 크리스탈'], ['friendarch', '🌈', '3명 · 아치'], ['friend_wing', '🦋', '5명 · 날개']];
-    const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    async function loadReferral() {
-      const { data: r, error } = await sb.rpc('cf_admin_referral', { days });
-      if (error || !r) { $('refSec').style.display = 'none'; if (error) console.warn('[referral]', error.message); return; }
-      $('refSec').style.display = 'block';
-      $('refDays').textContent = `${r.days}일`;
-      const s = r.steps || {};
-      const k = s.share ? (s.active / s.share).toFixed(2) : '—';
-      $('refStack').innerHTML = [['K-factor', k], ['초대한 사람', nf(s.share)], ['활성 친구', nf(s.active)], ['보상 지급', nf(s.granted)]]
-        .map(([l, n]) => `<div class="kpi"><div class="lbl">${l}</div><div class="num">${n}</div></div>`).join('');
-      const dot = ' <span class="src"><b>●</b></span>';
-      $('refFunnel').innerHTML = s.sheet || s.bound ? funnelRows([
-        ['시트 열기', s.sheet], ['링크 공유', s.share], ['링크로 도착', s.land],
-        ['연결 성공' + dot, s.bound], ['2일 플레이' + dot, s.active], ['보상 지급' + dot, s.granted],
-      ], { drop: true }) : '<div class="empty">기간 안에 초대 기록이 아직 없습니다.</div>';
-      const fails = r.fails || [];
-      const fm = Math.max(1, ...fails.map(f => f.n));
-      $('refFails').innerHTML = fails.length ? `<div class="bars">${fails.map(f => `<div class="row"><span class="k">${esc(REF_FAIL[f.reason] || f.reason)}</span><span class="b"><i style="width:${f.n / fm * 100}%"></i></span><span class="v">${nf(f.n)}</span></div>`).join('')}</div>`
-        : '<div class="empty">실패한 연결이 없습니다.</div>';
-      const t = r.tiers || {};
-      $('refTiers').innerHTML = `<div class="tiers">${REF_TIERS.map(([id, ico, l]) => `<div class="t"><div class="ico">${ico}</div><div class="n">${nf(t[id])}</div><div class="l">${l}</div></div>`).join('')}</div>`;
-      const top = r.top || [];
-      $('refTop').innerHTML = top.length ? `<table class="mini"><tr><th>초대자</th><th>연결</th><th>활성</th><th>하루 최다</th><th>플랫폼</th></tr>${top.map(u => `<tr><td style="font-family:var(--mono)"${u.peak > 3 ? ' class="warn"' : ''}>${esc(u.who)}</td><td class="n">${nf(u.bound)}</td><td class="n">${nf(u.active)}</td><td class="n${u.peak > 3 ? ' warn' : ''}">${nf(u.peak)}</td><td>${esc(u.platforms)}</td></tr>`).join('')}</table>`
-        : '';
-    }
-
-    function render(d) {
-      $('dash').style.display = 'block';
-      const m = d.meta || {};
-      $('meta').innerHTML = `전체 유저 합산 · 기기(client_id) 기준 · KST · <b>${m.since} ~ ${m.today}</b> (${m.days}일)`
-        + (shareKey ? ' · 🔗 <b>임시 공유 보기</b> (읽기 전용 · 기간 만료 시 자동 종료)' : '');
-      [...$('range').children].forEach(b => b.disabled = false);   // 게이트 통과 후에만 기간 전환 허용
-
-      renderKpis(d.kpis || {});
-      renderDaily(d.daily || []);
-      renderSessions(d.daily || []);
-      renderRetention(d.retention || {});
-      renderCohort(d.cohorts || []);
-      renderHourmap(d.hourly || []);
-      renderHeatmap(d.heatmap || []);
-      renderFunnel(d.funnel || {});
-      renderEcon(d.econ_daily || []);
-      renderEconSrc(d.econ_sources || []);
-
-      renderActivity(d.activity_funnel || {});
-      renderChurn(d.churn_funnel || {});
-      renderUserStages(d.user_stages || []);
-
-      // 단일 시리즈 차트는 전부 s1 단색 — 카드마다 색을 바꾸면 색이 정보처럼 읽힙니다.
-      bar('cBucket', d.session_buckets, r=>r.bucket, r=>r.sessions, V('--s1'));
-      hbar('cEvents', d.events, r=>r.event, r=>r.n, V('--s1'));
-      pie('cPlaces', d.places, r=>r.place, r=>r.sessions);
-      bar('cHouse', d.house_stages, r=>({0:'없음',1:'기초',2:'벽',3:'완성',4:'넓은집',5:'저택',6:'모던'}[r.stage] ?? r.stage), r=>r.users, V('--s1'));
-      bar('cDex', d.dex_dist, r=>r.bucket, r=>r.users, V('--s1'));
-      bar('cBadge', d.badge_dist, r=>r.badges + '개', r=>r.users, V('--s1'));
-      pie('cChar', d.characters, r=>r.character, r=>r.users);
-      bar('cStreak', d.streaks, r=>r.streak + '일', r=>r.users, V('--s1'));
-      pie('cGuest', d.segments?.guest, r=>r.seg, r=>r.users);
-      pie('cVariant', d.segments?.variant, r=>r.seg, r=>r.users);
-    }
-
-    // ── 헤드라인 KPI ──
-    function renderKpis(k) {
-      const delta = (cur, prev) => {
-        if (prev == null || prev === 0) return '';
-        const p = Math.round((cur - prev) / prev * 100);
-        const cls = p > 0 ? 'up' : p < 0 ? 'down' : 'flat';
-        return `<span class="dlt ${cls}">${p > 0 ? '▲' : p < 0 ? '▼' : '–'}${Math.abs(p)}%</span>`;
-      };
-      const cards = [
-        { n: nf(k.dau), l: 'DAU (오늘)', x: delta(k.dau, k.dau_prev), f: `어제 ${nf(k.dau_prev)}` },
-        { n: nf(k.wau), l: 'WAU (7일)',  f: '최근 7일 순 유저' },
-        { n: nf(k.mau), l: 'MAU (30일)', f: '최근 30일 순 유저' },
-        { n: (k.stickiness ?? 0) + '%', l: 'Stickiness', f: 'DAU/MAU — 20%↑면 습관화' },
-        { n: nf(k.new_today), l: '신규 (오늘)', f: `누적 ${nf(k.users)}명` },
-        { n: nf(k.sessions), l: '총 세션', f: `샘플 ${nf(k.samples)}건` },
-        { n: secs(k.med_session_sec), l: '세션 길이(중앙값)', f: `평균 ${secs(k.avg_session_sec)}` },
-        { n: (k.returning_pct ?? 0) + '%', l: '재방문율', f: '2일 이상 접속한 비율' },
-      ];
-      $('kpis').innerHTML = cards.map(c =>
-        `<div class="card kpi"><div><span class="num">${c.n}</span>${c.x || ''}</div>
-         <div class="lbl">${c.l}</div><div class="foot">${c.f || ''}</div></div>`).join('');
-    }
-
-    // ── 일별 DAU (신규/복귀 stacked + DAU 선) ──
-    function renderDaily(rows) {
-      if (!rows.length) return;
-      draw('cDaily', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
-        { type:'bar', label:'신규', data: rows.map(r=>r.new_users), backgroundColor:V('--s1'), stack:'u' },
-        { type:'bar', label:'복귀', data: rows.map(r=>r.returning), backgroundColor:V('--s3'), stack:'u' },
-        { type:'line', label:'DAU', data: rows.map(r=>r.dau), borderColor:V('--s2'), backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
-      ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
-        scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}} }, y:{ stacked:true, beginAtZero:true, grid:{color:V('--line-soft')}, ticks:{font:{size:10}} } } }) });
-    }
-
-    // ── 세션 수 + 중앙값 플레이타임(분) ──
-    function renderSessions(rows) {
-      if (!rows.length) return;
-      draw('cSess', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
-        { type:'bar', label:'세션', data: rows.map(r=>r.sessions), backgroundColor:V('--s3'), yAxisID:'y' },
-        { type:'line', label:'플레이(분,중앙값)', data: rows.map(r=>+((r.med_play_sec||0)/60).toFixed(1)), borderColor:V('--s2'), backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y1' },
-      ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
-        scales:{ y:{ beginAtZero:true, grid:{color:V('--line-soft')}, ticks:{font:{size:10}} },
-                 y1:{ position:'right', beginAtZero:true, grid:{display:false}, ticks:{font:{size:10}} },
-                 x:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
-    }
-
-    // ── D1/D3/D7 ──
-    function renderRetention(r) {
-      const items = [['D1', r.d1, r.d1_base], ['D3', r.d3, r.d3_base], ['D7', r.d7, r.d7_base]];
-      $('ret').innerHTML = items.map(([l, v, b]) =>
-        `<div class="card kpi" style="box-shadow:none;border:1px solid var(--line);">
-           <span class="num">${v == null ? '—' : v + '%'}</span>
-           <div class="lbl">${l} 복귀</div><div class="foot">대상 ${nf(b)}명</div></div>`).join('');
-    }
-
-    // ── 주간 코호트 테이블 ──
-    function renderCohort(rows) {
-      if (!rows.length) { $('cohort').innerHTML = '<div class="empty">코호트를 만들 데이터가 아직 없습니다.</div>'; return; }
-      const weeks = [...new Set(rows.map(r => r.cohort))].sort();
-      const maxW  = Math.max(...rows.map(r => r.week));
-      const cell  = (w, n) => rows.find(r => r.cohort === w && r.week === n);
-      // 농도 = s1 그린 단일색(_dash.css --tint-rgb) — 다크에서도 토큰이 알아서 바뀝니다.
-      const tint  = (p) => p == null ? 'transparent'
-        : `rgba(var(--tint-rgb),${Math.max(.08, Math.min(1, p / 100)).toFixed(2)})`;
-      let h = '<table class="mini cohort"><tr><th>코호트</th><th>인원</th>';
-      for (let n = 0; n <= maxW; n++) h += `<th style="text-align:center">W${n}</th>`;
-      h += '</tr>';
-      for (const w of weeks) {
-        const size = cell(w, 0)?.size ?? 0;
-        h += `<tr><td class="lbl">${mmdd(w)} 주</td><td class="n">${nf(size)}</td>`;
-        for (let n = 0; n <= maxW; n++) {
-          const c = cell(w, n);
-          h += `<td style="background:${tint(c?.pct)}">${c ? c.pct + '%' : ''}</td>`;
-        }
-        h += '</tr>';
-      }
-      $('cohort').innerHTML = h + '</table>';
-    }
-
-    // ── 요일×시간 히트맵 ──
-    function renderHourmap(rows) {
-      const DOW = ['일','월','화','수','목','금','토'];
-      const max = Math.max(1, ...rows.map(r => r.sessions));
-      const get = (d, h) => rows.find(r => r.dow === d && r.hour === h)?.sessions || 0;
-      let h = '<div class="hourgrid"><div></div>';
-      for (let i = 0; i < 24; i++) h += `<div style="text-align:center">${i % 3 === 0 ? i : ''}</div>`;
-      h += '</div><div class="hourgrid">';
-      for (let d = 0; d < 7; d++) {
-        h += `<div class="rowlbl">${DOW[d]}</div>`;
-        for (let i = 0; i < 24; i++) {
-          const v = get(d, i), a = v ? Math.max(.12, v / max) : 0;
-          h += `<div class="cell" title="${DOW[d]} ${i}시 · ${v}세션"${v ? ` style="background:rgba(var(--tint-rgb),${a.toFixed(2)})"` : ''}></div>`;
-        }
-      }
-      $('hourmap').innerHTML = h + '</div>';
-    }
-
-    // ── 온보딩 퍼널 ──
-    function renderFunnel(f) {
-      const steps = [
-        ['세이브 보유', f.saves], ['캐릭터 선택', f.character], ['튜토리얼 완료', f.tutorial],
-        ['집 착공', f.house1], ['집 완성', f.house3], ['도감 5종+', f.dex5], ['배지 1개+', f.badge1],
-      ];
-      const top = steps[0][1] || 1;
-      $('funnel').innerHTML = steps.map(([l, v], i) => {
-        const prev = i ? (steps[i-1][1] || 0) : null;
-        const step = prev ? Math.round(((v || 0) / prev) * 100) : null;
-        return `<div class="funnel-row"><span class="fl">${l}</span>
-          <span class="fbar"><i style="width:${Math.max(0, ((v||0) / top) * 100)}%"></i></span>
-          <span class="fv">${nf(v)} <small>(${Math.round(((v||0)/top)*100)}%${step != null ? ` · 단계 ${step}%` : ''})</small></span></div>`;
-      }).join('');
-    }
-
-    // ── 유저 흐름: 활동/이탈 퍼널 · 유저별 위치 ──
-    const ACT_STAGES = ['접속', '필드 활동', '채집·작업', '미니게임', '상점 거래'];
-    function funnelRows(steps, { drop = false } = {}) {
-      const top = steps[0][1] || 1;
-      const drops = steps.map(([, v], i) => i ? Math.round((1 - (v || 0) / (steps[i-1][1] || 1)) * 100) : 0);
-      const worst = Math.max(...drops.slice(1));
-      return steps.map(([l, v], i) => {
-        const stepPct = i ? Math.round((v || 0) / (steps[i-1][1] || 1) * 100) : null;
-        const dropTag = drop && i ? `<span class="drop${drops[i] === worst ? ' worst' : ''}">−${drops[i]}%</span>` : '';
-        return `<div class="funnel-row"><span class="fl">${l}</span>
-          <span class="fbar"><i style="width:${Math.max(0, (v || 0) / top * 100)}%"></i></span>
-          <span class="fv">${nf(v)} <small>(${Math.round((v || 0) / top * 100)}%${stepPct != null && !drop ? ` · 단계 ${stepPct}%` : ''})</small> ${dropTag}</span></div>`;
-      }).join('');
-    }
-    function renderActivity(a) {
-      $('actFunnel').innerHTML = a.active ? funnelRows([
-        ['접속', a.active], ['필드 활동', a.field], ['채집·작업', a.work],
-        ['미니게임', a.minigame], ['상점 거래', a.trade],
-      ]) : '<div class="empty">기간 내 세션 요약이 아직 없습니다.</div>';
-    }
-    function renderChurn(c) {
-      $('churnFunnel').innerHTML = c.entered ? funnelRows([
-        ['신규 진입', c.entered], ['튜토리얼 완료', c.tutorial], ['2일차 복귀', c.d2],
-        ['7일 내 재방문', c.w7], ['14일 잔존', c.d14],
-      ], { drop: true }) : '<div class="empty">14일 관측이 끝난 신규 코호트가 아직 없습니다.</div>';
-    }
-    function renderUserStages(rows) {
-      if (!rows.length) { $('userTbl').innerHTML = ''; return; }
-      const ago = (t) => { const m = Math.round((Date.now() - new Date(t)) / 60000);
-        return m < 60 ? `${Math.max(m, 0)}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
-      const stale = (t) => (Date.now() - new Date(t)) > 2 * 864e5;   // 이틀 넘게 미접속 = 이탈 징후
-      $('userTbl').innerHTML =
-        '<tr><th>유저</th><th>현재 단계</th><th>진행</th><th style="text-align:right">세션</th><th style="text-align:right">마지막 접속</th></tr>'
-        + rows.map(r => {
-          let chips = '<span class="stagechips">';
-          for (let i = 0; i < 5; i++) chips += `<i${i < r.stage ? ' class="f"' : ''}></i>`;
-          chips += '</span>';
-          return `<tr><td style="font-family:var(--mono);font-size:11px">${r.is_guest ? 'g_' : 'u_'}${r.uid}</td>
-            <td>${ACT_STAGES[r.stage - 1] || '—'}</td><td>${chips}</td>
-            <td class="n">${nf(r.sessions)}</td>
-            <td class="n" style="color:${stale(r.last_seen) ? 'var(--down);font-weight:700' : 'var(--ink-3)'}">${ago(r.last_seen)}</td></tr>`;
-        }).join('');
-    }
-
-    // ── 경제 ──
-    function renderEcon(rows) {
-      if (!rows.length) return;
-      draw('cEcon', { data: { labels: rows.map(r => mmdd(r.day)), datasets: [
-        { type:'bar', label:'유입', data: rows.map(r=>r.inflow),  backgroundColor:V('--s1') },
-        { type:'bar', label:'유출', data: rows.map(r=>-r.outflow), backgroundColor:V('--s2') },
-        { type:'line', label:'순증', data: rows.map(r=>r.net), borderColor:V('--s3'), backgroundColor:'transparent', tension:.3, pointRadius:0, borderWidth:2 },
-      ]}, options: base({ plugins:{ legend:{ display:true, labels:{ boxWidth:10, font:{size:10} } } },
-        scales:{ y:{ grid:{color:V('--line-soft')}, ticks:{font:{size:10}} }, x:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
-    }
-    function renderEconSrc(rows) {
-      if (!rows.length) { $('econSrc').innerHTML = '<div class="empty">경제 로그가 아직 없습니다.</div>'; return; }
-      $('econSrc').innerHTML = '<table class="mini"><tr><th>출처</th><th style="text-align:right">건수</th><th style="text-align:right">유입</th><th style="text-align:right">유출</th><th style="text-align:right">순증</th></tr>'
-        + rows.map(r => `<tr><td>${r.source}</td><td class="n">${nf(r.tx)}</td>
-            <td class="n" style="color:var(--up)">${r.inflow ? '+' + nf(r.inflow) : '—'}</td>
-            <td class="n" style="color:var(--down)">${r.outflow ? '-' + nf(r.outflow) : '—'}</td>
-            <td class="n"><b>${r.net > 0 ? '+' : ''}${nf(r.net)}</b></td></tr>`).join('') + '</table>';
-    }
-
-    // ── 이동 히트맵(캔버스) ──
-    function renderHeatmap(cells) {
-      const N = 60, R = 44, c = $('heatmap'), ctx = c.getContext('2d');
-      const grid = new Float32Array(N*N); let max = 0;
-      cells.forEach(({gx,gz,hits}) => {
-        const ix = Math.floor(((gx + R)/(2*R))*N), iz = Math.floor(((gz + R)/(2*R))*N);
-        if (ix<0||ix>=N||iz<0||iz>=N) return; grid[iz*N+ix] += hits; if (grid[iz*N+ix]>max) max = grid[iz*N+ix];
-      });
-      const img = ctx.createImageData(N,N);
-      for (let i=0;i<N*N;i++){ const v = max?Math.pow(grid[i]/max,0.5):0; const col=heat(v);
-        img.data[i*4]=col[0];img.data[i*4+1]=col[1];img.data[i*4+2]=col[2];img.data[i*4+3]=255; }
-      ctx.putImageData(img,0,0);
-    }
-    // 그린 단일색 램프(_dash.css --heat-lo/--heat-hi) — 다색 램프는 색맹에서 순서가 뒤집혀 보입니다.
-    const heatLo = V('--heat-lo').split(',').map(Number);
-    const heatHi = V('--heat-hi').split(',').map(Number);
-    function heat(v){ return heatLo.map((a,k)=>Math.round(a+(heatHi[k]-a)*Math.max(0,Math.min(1,v)))); }
-
-    // ── 차트 헬퍼 ──
-    function bar(id, rows, lab, val, color) {
-      if (!rows?.length) return;
-      draw(id, { type:'bar', data:{ labels: rows.map(lab),
-        datasets:[{ data: rows.map(val), backgroundColor: color || rows.map((_,i)=>P[i%P.length]), borderRadius:4 }] },
-        options: base() });
-    }
-    function hbar(id, rows, lab, val, color) {
-      if (!rows?.length) return;
-      draw(id, { type:'bar', data:{ labels: rows.map(lab),
-        datasets:[{ data: rows.map(val), backgroundColor: color, borderRadius:4 }] },
-        options: base({ indexAxis:'y', aspectRatio: 0.95,   // 항목이 많아 세로로 길게
-          scales:{ x:{ beginAtZero:true, grid:{color:'#eef5f0'}, ticks:{font:{size:10}} }, y:{ grid:{display:false}, ticks:{font:{size:10}} } } }) });
-    }
-    function pie(id, rows, lab, val) {
-      if (!rows?.length) return;
-      draw(id, { type:'doughnut', data:{ labels: rows.map(lab),
-        datasets:[{ data: rows.map(val), backgroundColor: rows.map((_,i)=>P[i%P.length]), borderWidth:0 }] },
-        options: { responsive:true, maintainAspectRatio:true, aspectRatio:1.35, cutout:'58%',
-          plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{size:10}, padding:8 } } } } });
-    }
-  </script>
+  <script type="module" src="js/admin-analytics.js"></script>
 </body>
 </html>
