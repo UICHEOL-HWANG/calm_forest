@@ -103,13 +103,13 @@ const plate = document.getElementById('plate');
 
 const S = {
   nsm:   { x: 1000, y: 150, r: 26, tier: 'nsm', label: '하루 평균 수확·포획·제작한 유저 수', sub: '7일간 (유저 × 획득한 날) ÷ 7', side: 'left',
-           tip: ['획득 행동 16종 중 하나라도 한 날 = 획득한 하루', '농사(수확·달걀·꿀) · 낚시·채집 · 만들기(제작·요리·카페·조각·밤사이 가공) · 마을(퀘스트·천문대·밤손님)', '원천 <code>session_logs.counts</code> · 그림자 GA4'] },
+           tip: ['획득 행동 16종 중 하나라도 한 날 = 획득한 하루', '농사(수확·달걀·꿀) · 낚시·채집 · 만들기(제작·요리·카페·조각·밤사이 가공) · 마을(퀘스트·천문대·밤손님)', '원천 <code>session_logs.counts</code> · 대조값 GA4'] },
   reach: { x: 610, y: 330, r: 15, tier: 'l1', label: '주간 방문 유저 수', sub: '폭 · 몇 명이 오나', side: 'left',
            tip: ['그 주에 세션이 1개 이상인 유저', '신규 + 유지 + 복귀로 나뉜다'] },
   freq:  { x: 860, y: 430, r: 15, tier: 'l1', label: '1인당 방문일', sub: '빈도 · 며칠 오나', side: 'right',
            tip: ['방문일 합 ÷ 방문 유저', '매일 잠깐 리듬이면 7에 가까워진다'] },
   qual:  { x: 1080, y: 380, r: 15, tier: 'l1', label: '방문일 중 획득 비율', sub: '품질 · 온 날이 알찼나', side: 'above',
-           tip: ['획득한 (유저×날) ÷ 방문 (유저×날)', '1 − 이 값 = 빈손 방문 비율 (견제 지표)'] },
+           tip: ['획득한 (유저×날) ÷ 방문 (유저×날)', '1 − 이 값 = 빈손 방문 비율 (가드레일 지표)'] },
   visit: { x: 95, y: 330, r: 9, tier: 'l2', label: '첫 방문', sub: '페이지 도착', side: 'right',
            tip: ['GA4 <code>first_visit</code> 한 사람', '로그인 화면에서 나간 사람도 포함'] },
   newv:  { x: 210, y: 470, r: 9, tier: 'l2', label: '게임 진입', sub: '신규 유저 · 첫 세션', side: 'left',
@@ -120,8 +120,8 @@ const S = {
            tip: ['그 주 결제 유저 ÷ 방문 유저 · 매출 · ARPPU', '원장 <code>purchases</code> 는 아직 BigQuery 미적재'] },
   ref:   { x: 200, y: 240, r: 10, tier: 'l2', pending: true, label: '추천 유입 진입 유저', sub: '측정 대기 · 10/9 배포', side: 'left',
            tip: ['추천 링크로 들어와 계정이 추천인과 연결된 신규 수 (<code>referrals</code>)', '하위: 링크 공유 비율 · 초대 → 진입 전환 · K-팩터', '아직 BigQuery 미적재 · 데이터 0'] },
-  ltv:   { x: 760, y: 72, r: 11, tier: 'l2', label: '참여 LTV', sub: '28일 획득한 날 · 유입 경로별', side: 'left',
-           tip: ['신규 1명이 첫 방문 후 28일 동안 쌓은 획득한 날 (현재 1.01일)', '유입 경로: 친구 추천 · 메타 광고 · 토스 · 소셜 · 자연·직접', '추천인의 가치 = 자기 LTV + 데려온 유저들의 LTV'] },
+  ltv:   { x: 760, y: 72, r: 11, tier: 'l2', label: '참여 LTV', sub: '28일 획득한 날 · 유입 채널별', side: 'left',
+           tip: ['신규 1명이 첫 방문 후 28일 동안 쌓은 획득한 날 (현재 1.01일)', '유입 채널: 친구 추천 · 메타 광고 · 토스 · 소셜 · 자연·직접', '추천인의 가치 = 자기 LTV + 데려온 유저들의 LTV'] },
   ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 획득 행동까지 시간', sub: '온보딩 속도', side: 'below',
            tip: ['첫 세션 시작 → 첫 획득 행동 이벤트까지 걸린 시간'] },
   act:   { x: 360, y: 590, r: 12, tier: 'l2', label: '활성화', sub: '신규 중 7일 내 첫 획득 행동', side: 'below',
@@ -130,7 +130,7 @@ const S = {
            tip: ['이번 주와 지난주 모두 방문한 유저'] },
   back:  { x: 580, y: 640, r: 8, tier: 'l2', label: '복귀', sub: '2주+ 공백 후', side: 'below',
            tip: ['2주 이상 오지 않다가 돌아온 유저'] },
-  habit: { x: 800, y: 600, r: 9, tier: 'l2', label: '습관 유저 비율', sub: '주 4일 이상 방문', side: 'below',
+  habit: { x: 800, y: 600, r: 9, tier: 'l2', label: '파워 유저 비율', sub: '주 4일 이상 방문', side: 'below',
            tip: ['주 4일 이상 방문한 유저 ÷ 방문 유저'] },
   mix:   { x: 1095, y: 540, r: 8, tier: 'l2', label: '분야별 획득 비중', sub: '어디서 가치를 얻나', side: 'below',
            tip: ['농사 · 낚시채집 · 만들기 · 마을 중 획득한 날의 구성'] },
@@ -229,7 +229,7 @@ Object.values(S).forEach(s => {
 
 const gt = el('text', { x: 600, y: 726, 'text-anchor': 'middle', class: 'guard-txt' });
 const gl = el('tspan', { fill: 'var(--guard)', 'font-weight': 600 }, gt);
-gl.textContent = '견제   ';
+gl.textContent = '가드레일   ';
 const gr = el('tspan', {}, gt);
 gr.textContent = '빈손 방문 비율 · 코인 순증가 속도 · 세이브 실패율 — 북극성만 오르고 다른 곳이 망가지지 않게';
 </script>
