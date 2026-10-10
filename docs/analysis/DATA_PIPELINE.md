@@ -1,7 +1,7 @@
 # 🔄 데이터 파이프라인 — Supabase → BigQuery (일일 적재 + 경량화)
 
 Supabase는 **최근 7일**만 유지(핫 스토리지), BigQuery에 **전체 이력**을 쌓습니다(콜드 스토리지).
-GitHub Actions가 매일 자동으로: ①`game_logs`·`econ_logs` 증분 적재(id 기준) → ②`session_logs` 증분 적재(updated_at 기준) → ③`game_saves` 스냅샷 → ④관리자 대시보드 집계표 롤업(`cf_rollup`) → ⑤7일 지난 로그 prune.
+GitHub Actions가 매일 자동으로: ①`game_logs`·`econ_logs` 증분 적재(id 기준) → ②`session_logs` 증분 적재(updated_at 기준) → ③`game_saves` 스냅샷 → ④관리자 대시보드 집계표 롤업(`cf_rollup`) → ⑤7일 지난 로그 prune. 적재가 성공한 날엔 이어서 ⑥실험 요약(`ml/scripts/experiment_summary.py` → `cf_experiment_results`, 관리자 실험 페이지)을 계산한다.
 
 > **익명(게스트) 계정 자동 삭제는 2026-09-13부터 기본 OFF** — 계정을 지우면 FK cascade/set null 로 `feedback.user_id` 등 흔적이 끊긴다.
 > 켜려면 워크플로 env 에 `ANON_CLEANUP: '1'`. 게스트 저장은 재방문 때 불러오지 않으므로(휘발성) 남겨 둬도 동작엔 영향 없다.

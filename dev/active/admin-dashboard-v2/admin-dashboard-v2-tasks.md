@@ -8,9 +8,9 @@
 - [x] 6. 캐릭터 PNG → dashboards/img/chars
 - [x] 7. admin_analytics.html A안 재작성 + 로딩 + 맵 필터
 - [x] 8. dashboards/index.html 허브
-- [~] 9. 브라우저 실측(PC·모바일·다크) + code-reviewer
-- [ ] 10. 실험 페이지 시안 3개 → 확정 후 구현
-- [ ] 11. 키 스캔 → main 병합 → 웹 배포
+- [x] 9. 브라우저 실측(PC·모바일·다크) + code-reviewer
+- [x] 10. 실험 페이지 시안 3개 → 확정 후 구현
+- [x] 11. 키 스캔 → main 병합 → 웹 배포
 
 ## 진행 메모 (2026-10-10)
 - 롤업 검증: Supabase 원본과 날짜별 세션·DAU 정확히 일치(10/4~10/10)
@@ -19,3 +19,9 @@
 - RPC 서버 시간 0.53s(60일), 롤업 0.36s
 - 브라우저: 실제 RPC 응답 픽스처(dev/active/.../fixtures, git 제외)로 렌더 · 로딩 · 맵 필터 · 모바일/라이트 확인
 - 워크트리 npm ci 필요(@anthropic-ai/sdk) — 그 뒤 전체 테스트 통과
+
+## 실험 페이지 (2026-10-11, main c9402f3 · 웹 배포)
+- A(레지스트리+상세) + C(효과 그림) · 레지스트리 cf_experiments(시드 6개) · 결과 cf_experiment_results ← experiment_summary.py(매일)
+- 힌트 배너는 사전등록 그대로(randomization 10k · 주민 클러스터 부트스트랩) · 10/14 이후, complete=true 일 때만 판정
+- 리뷰 반영: numpy.bool_ 주민 키 버그(잠정값 −1.2 → −10.5%p, p=0.33) · NULL 플래그 · P1 KST · 입질 뒤 포기=실패 · intraday 제외
+- 릴스 숫자는 수동 입력(페이지에 실행 가능한 SQL 안내)
