@@ -14,7 +14,7 @@ import { trackEvent } from '../analytics.js';
 import { MIRROR, MIRROR_STOP } from '../data/places.js';
 import { NPCS } from '../data/npcs.js';
 import { NPC_R, PLAYER_R } from '../data/character.js';
-import { buildNPCFigure } from './npc.js';
+import { buildNPCFigure, fadeNameTag } from './npc.js';
 import {
   LANDMARKS, NPC_SPOTS, SOLIDS, SOLID_CIRCLES, STOP_SHELTER_BOX, SIGN_POLE, carriageBox, MIRROR_LANDING, MIRROR_STOP_LOCAL, MIRROR_PARK, MIRROR_GATE_LOCAL, STOP_REACH, PICK_R, TALK_R,
   VILLAGE_BOARD, VILLAGE_PARK, VILLAGE_WALL, LAKE_GATE, clampWalkable, spotOf, nearVillageStop,
@@ -75,7 +75,7 @@ function ensureWorld() {
     tag.position.y = 2.25; group.add(tag);
     const bubble = bubbleSprite(); group.add(bubble);
     world.npcAnchors[i].add(group);
-    return { id, group, spot: s, bubble };
+    return { id, group, spot: s, bubble, tag };
   });
   gateMirror = makeMirrorGate();
   gateMirror.group.position.set(MIRROR.x + MIRROR_GATE_LOCAL.x, MIRROR_GATE_LOCAL.y, MIRROR.z + MIRROR_GATE_LOCAL.z);
@@ -297,6 +297,7 @@ function useHint() {
 export function updateMirror(dt, t) {
   if (!atMirror || !world || ride) return;
   world.update(t);
+  for (const tw of twins) fadeNameTag(tw.tag, dist2D(twinWorld(tw), player.position));   // 🏷️ 마을 주민과 같은 거리 페이드 — 없으면 이름표가 영영 꺼져 있다(2026-10-10)
   const m = mirrorState();   // 안에서 자정을 넘기면 HUD·말풍선이 어제 상태로 남는다
   if (m.day !== lastDay) { lastDay = m.day; lastHud = null; syncHud(); refreshWorld(); }
   if (!active) return;

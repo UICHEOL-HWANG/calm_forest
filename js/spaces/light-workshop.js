@@ -2,7 +2,10 @@
 //  🏮 빛 공방 — 계곡과 천문대 사이 빈터의 연못가 오두막 + 공방 주인(🧚 반디 요정)
 //  ⚠️ game.js 와 순환 import — 로딩 시점엔 game.js 값을 읽지 않는다(함수 안에서만).
 // =============================================================
-import { makeNameTag, makeSignpost, mergeGeos, obstacles, paintGeo, scene, solidBox, solidCircle, vtxMat } from '../game.js';
+import { makeNameTag, makeSignpost, mergeGeos, obstacles, paintGeo, player, scene, solidBox, solidCircle, vtxMat } from '../game.js';
+import { fadeNameTag } from './npc.js';
+
+let keeperTag = null, keeperAt = null;   // 🏷️ 반디 요정 이름표 — updateLightWorkshop 이 거리로 켠다
 import { LIGHT_WORKSHOP, LIGHT_WORKSHOP_POND } from '../data/places.js';
 import { buildCartGeos, buildHutGeos } from './light-workshop-hut.js';
 import * as THREE from 'three';
@@ -51,6 +54,7 @@ export function buildLightWorkshop() {
   g.add(new THREE.Mesh(mergeGeos(glow), new THREE.MeshBasicMaterial({ color: 0xffe2a0 })));
   const k = buildKeeper(); k.position.set(2, 0, 1.8); k.rotation.y = -0.45;   // 창 오른쪽 앞 — 왼쪽 날개(폭 ~0.5)가 벽·처마(x≤1.32, z≤1.17)에 박히지 않게(1.55,1.45 에선 관통)
   const tag = makeNameTag(KEEPER); tag.position.y = 2.15; k.add(tag);   // 더듬이 끝(1.8) 위
+  keeperTag = tag; keeperAt = { x: LIGHT_WORKSHOP.x + k.position.x, z: LIGHT_WORKSHOP.z + k.position.z };
   g.add(k);
   g.add(makeSignpost('🏮 빛 공방', -1.85, 1.2));   // 왼쪽 앞 모서리(연못 옆) — 창·열린 문짝을 가리지 않는다
   scene.add(g);
@@ -62,4 +66,9 @@ export function buildLightWorkshop() {
   solidCircle(wx - 1.65, wz - 0.5, 0.45);                 // 🛒 손수레 짐칸·바퀴
   solidCircle(wx - 1.77, wz + 0.09, 0.35);                // 🛒 손잡이(앞으로 뻗음)
   solidCircle(wx + k.position.x, wz + k.position.z, 0.58); // 🧚 반디 요정 몸(앞치마 0.56 까지)
+}
+
+/** 🏷️ 게임 루프(updateNPC 옆)에서 — 반디 요정 이름표를 마을 주민과 같은 거리 규칙으로 켠다 */
+export function updateLightWorkshop() {
+  if (keeperTag) fadeNameTag(keeperTag, Math.hypot(player.position.x - keeperAt.x, player.position.z - keeperAt.z));
 }
