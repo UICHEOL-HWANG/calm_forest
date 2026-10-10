@@ -208,7 +208,7 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
         <h3>Activation</h3><div class="ko">활성화 · 첫 획득 행동</div>
         <div class="state bad">병목</div><hr>
         <div class="k">진입 후 7일 내 첫 획득 행동</div><div class="v">41%</div>
-        <div class="s">캐릭터 선택 153 → 첫 획득 74<br>빈손 방문의 86%가 마을에서 끝남</div>
+        <div class="s">캐릭터 선택 153 → 첫 획득 74<br>획득 없는 방문일의 86%가 마을에서 끝남</div>
       </div>
       <div class="card">
         <h3>Retention</h3><div class="ko">유지 · 북극성</div>
@@ -240,7 +240,7 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
     </div>
 
     <div class="guards">
-      <div class="g"><b>가드레일 · 빈손 방문 비율</b><span>52% → 46%</span><small>보상으로 방문만 부풀리지 않는지</small></div>
+      <div class="g"><b>가드레일 · 획득 없는 방문일 비율</b><span>52% → 46%</span><small>보상으로 방문만 부풀리지 않는지</small></div>
       <div class="g"><b>가드레일 · 코인 순증가 /기기</b><span>384 → 96</span><small>보상 남발로 경제가 인플레되지 않는지</small></div>
       <div class="g"><b>가드레일 · 복구 안 된 세이브 실패</b><span>0 세션</span><small>지표가 오르는 사이 마을 유실이 묻히지 않는지</small></div>
     </div>
@@ -306,7 +306,7 @@ const S = {
   freq:  { x: 860, y: 430, r: 15, tier: 'l1', label: '1인당 방문일', sub: '빈도 · 며칠 오나', side: 'right',
            tip: ['방문일 합 ÷ 방문 유저', '매일 잠깐 리듬이면 7에 가까워진다'] },
   qual:  { x: 1080, y: 380, r: 15, tier: 'l1', label: '방문일 중 획득 비율', sub: '품질 · 온 날이 알찼나', side: 'above',
-           tip: ['획득한 (유저×날) ÷ 방문 (유저×날)', '1 − 이 값 = 빈손 방문 비율 (가드레일 지표)'] },
+           tip: ['획득한 (유저×날) ÷ 방문 (유저×날)', '1 − 이 값 = 획득 없는 방문일 비율 (가드레일 지표)'] },
   visit: { x: 95, y: 330, r: 9, tier: 'l2', label: '첫 방문', sub: '페이지 도착', side: 'right',
            tip: ['GA4 <code>first_visit</code> 한 사람', '로그인 화면에서 나간 사람도 포함'] },
   newv:  { x: 210, y: 470, r: 9, tier: 'l2', label: '게임 진입', sub: '신규 유저 · 첫 세션', side: 'left',
@@ -331,7 +331,7 @@ const S = {
            tip: ['주 4일 이상 방문한 유저 ÷ 방문 유저'] },
   mix:   { x: 1095, y: 540, r: 8, tier: 'l2', label: '분야별 획득 비중', sub: '어디서 가치를 얻나', side: 'below',
            tip: ['농사 · 낚시채집 · 만들기 · 마을 중 획득한 날의 구성'] },
-  empty: { x: 980, y: 600, r: 8, tier: 'l2', label: '빈손 방문 마지막 위치', sub: '어디서 막혔나', side: 'below',
+  empty: { x: 980, y: 600, r: 8, tier: 'l2', label: '획득 없는 방문일 마지막 위치', sub: '어디서 막혔나', side: 'below',
            tip: ['획득 행동이 0 인 날의 <code>last_place</code> 분포'] },
 };
 const CHAINS = [['newv', 'reach'], ['keep', 'reach'], ['back', 'reach'], ['habit', 'freq'], ['mix', 'qual'], ['empty', 'qual'], ['ttfr', 'act']];
@@ -428,7 +428,7 @@ const gt = el('text', { x: 600, y: 726, 'text-anchor': 'middle', class: 'guard-t
 const gl = el('tspan', { fill: 'var(--guard)', 'font-weight': 600 }, gt);
 gl.textContent = '가드레일   ';
 const gr = el('tspan', {}, gt);
-gr.textContent = '빈손 방문 비율 · 코인 순증가 속도 · 세이브 실패율 — 북극성만 오르고 다른 곳이 망가지지 않게';
+gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · 세이브 실패율 — 북극성만 오르고 다른 곳이 망가지지 않게';
 })();
 
 (function nsmChart() {
@@ -475,7 +475,7 @@ gr.textContent = '빈손 방문 비율 · 코인 순증가 속도 · 세이브 �
     habit: { x: 495,  y: 300, w: 140, k: 'l2',   t: '파워 유저 (주 4일+)', v: '12% → 7%' },
     gap:   { x: 640,  y: 300, w: 130, k: 'l2',   t: '방문 간격', v: '중앙값 1일' },
     mix:   { x: 780,  y: 300, w: 130, k: 'l2',   t: '분야별 획득', v: '농사 80%' },
-    empty: { x: 940,  y: 300, w: 170, k: 'l2',   t: '빈손 방문 마지막 위치', v: '마을 86%' },
+    empty: { x: 965,  y: 300, w: 210, k: 'l2',   t: '획득 없는 방문일 마지막 위치', v: '마을 86%' },
     visit: { x: 95,   y: 440, w: 130, k: 'l2',   t: '첫 방문', v: '415' },
     entry: { x: 240,  y: 440, w: 130, k: 'l2',   t: '진입', v: '44% (웹 33%)' },
     chars: { x: 385,  y: 440, w: 130, k: 'l2',   t: '캐릭터 선택', v: '84%' },
@@ -541,7 +541,7 @@ gr.textContent = '빈손 방문 비율 · 코인 순증가 속도 · 세이브 �
   el('line', { x1: 20, x2: 1180, y1: 612, y2: 612, stroke: '#2a2c2f', 'stroke-width': 1 }, svg);
   const g = txt(svg, 600, 648, '', { 'text-anchor': 'middle', 'font-size': 14, fill: '#b9b7b1' });
   const t1 = el('tspan', { fill: '#ff6b5e', 'font-weight': 600 }, g); t1.textContent = '가드레일   ';
-  const t2 = el('tspan', {}, g); t2.textContent = '빈손 방문 52% → 46% · 코인 순증가 384 → 96 /기기 · 복구 안 된 세이브 실패 0 세션';
+  const t2 = el('tspan', {}, g); t2.textContent = '획득 없는 방문일 52% → 46% · 코인 순증가 384 → 96 /기기 · 복구 안 된 세이브 실패 0 세션';
 })();
 
 (function ltv() {
