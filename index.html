@@ -2661,11 +2661,11 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
-    import { consumeExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다
+    import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
@@ -4425,6 +4425,24 @@
     // ⚖️ 정책 페이지(개인정보 처리방침·계정 삭제) — 마을은 그대로 두고 새 탭으로 연다.
     //    · API_BASE 를 앞에 붙이는 이유: 토스·itch 번들은 오리진이 달라 상대경로가 404 다(일지 버튼과 같은 처리).
     //    · window.open 에 'noopener' 를 features 로 주면 항상 null 이 돌아와 폴백까지 타므로, 열고 나서 opener 만 끊는다.
+    // 🗑️ 🍎 iOS: 웹 삭제 페이지(새 탭=Safari)엔 앱의 게임센터·Apple 세션이 없다 → 앱 안에서 바로 지운다(5.1.1(v)).
+    //    문구는 pages/delete-account.html 과 같다. 확인은 '삭제' 입력(웹과 같은 장치).
+    async function deleteAccountInApp() {
+      $('topleft').classList.remove('open');
+      trackEvent('delete_account_open');
+      if (!authState.online || authState.provider === 'anonymous') {
+        alert(t('게스트로만 플레이했다면 별도 계정이 없습니다. 서버의 게스트 기록은 마지막 접속 7일 뒤 자동 삭제됩니다.'));
+        return;
+      }
+      const typed = prompt(t('계정과 마을·도감·기록·사진이 모두 지워지고 되돌릴 수 없습니다.\n정말 지우시려면 삭제 라고 입력해 주세요.'));
+      if ((typed || '').trim() !== '삭제' && (typed || '').trim().toLowerCase() !== 'delete') return;
+      ui.toast('계정을 지우는 중…', 6000);
+      const r = await deleteMyAccount();
+      trackEvent('delete_account', { result: r.ok ? 'ok' : r.reason });
+      if (!r.ok) { alert(t('삭제하지 못했습니다: {0}\ncheorish.hw@gmail.com 으로 알려주시면 직접 처리해 드리겠습니다.').replace('{0}', r.message || '')); return; }
+      alert(t('✅ 계정과 데이터를 모두 삭제했습니다. 그동안 고요한 숲에 머물러 주셔서 고맙습니다.'));
+      markExit(sessionStorage); location.reload();    // 🚪 새로 고침 → 로그인 화면(자동 연결 건너뜀)
+    }
     const openPolicyPage = (path, evt) => {
       $('topleft').classList.remove('open');        // 메뉴는 접고 — 돌아왔을 때 열린 채로 남지 않게
       trackEvent(evt);                               // [GA4] 정책·삭제 경로에 실제로 도달하는 비율
@@ -4442,7 +4460,7 @@
       $('privacy-btn').remove(); $('delacc-btn').remove();
     } else {
       $('privacy-btn').addEventListener('click', () => openPolicyPage('/privacy', 'privacy_open'));
-      $('delacc-btn').addEventListener('click', () => openPolicyPage('/delete-account', 'delete_account_open'));
+      $('delacc-btn').addEventListener('click', IS_IOS ? deleteAccountInApp : () => openPolicyPage('/delete-account', 'delete_account_open'));
     }
     //  💳 약관·환불 링크(설정 메뉴 + 로그인 카드)는 토스·안드로이드에서 내린다 —
     //     토스는 위와 같은 편도 티켓 문제(자체 IAP 라 필요도 없다), 안드로이드는 구글 플레이 정책상 외부 결제 안내 링크 금지.
