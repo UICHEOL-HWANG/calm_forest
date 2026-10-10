@@ -513,15 +513,15 @@
      활동 기록 대시보드는 구글 계정 전용이라 숨긴다 */
   body.platform-android #google-btn, body.platform-android #guest-btn, body.platform-android #stats-btn { display: none; }
   body.platform-android #toss-btn { display: inline-flex; }
-  /* 🍎 App Store 앱: 안드로이드와 같은 한 버튼('바로 플레이하기' = 게임센터 재시도 → 안 되면 게스트) + 게임센터를 꺼 둔 유저용 Apple.
+  /* 🍎 App Store 앱: 게임센터는 부팅 때 조용히 붙는다(화면 없음). 이 화면이 보이면 게임센터가 안 된 것 → 'Apple로 계속하기' 하나 + 게스트 링크.
+     게스트 링크는 남긴다 — 가이드라인 5.1.1: 계정이 꼭 필요 없는 앱은 로그인 없이도 쓸 수 있어야 한다(강제 로그인 리젝 방지).
      구글은 iOS 에서 쓰지 않는다(4.8 은 외부 소셜 로그인에만 해당 — 게임센터·Apple 은 해당 없음).
      활동 기록 대시보드는 웹 새 탭이라 앱 세션이 안 넘어감 → 숨김. 📷 WKWebView 는 <a download> 를 무시 → 저장 버튼 숨김(공유는 된다) */
   #apple-btn { display: none; align-items: center; justify-content: center; gap: 8px; border: none; background: #000; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
   #apple-btn svg { width: 16px; height: 19px; fill: currentColor; margin-top: -2px; }
   #apple-btn:active { transform: scale(0.96); }
-  body.platform-ios #toss-btn, body.platform-ios #apple-btn { display: flex; justify-content: center; width: 100%; max-width: 260px; box-sizing: border-box; margin: 0 auto; }
-  body.platform-ios #apple-btn { margin-top: 12px; }
-  body.platform-ios #google-btn, body.platform-ios #guest-btn, body.platform-ios #stats-btn, body.platform-ios #photo-save { display: none; }
+  body.platform-ios #apple-btn { display: flex; justify-content: center; width: 100%; max-width: 260px; box-sizing: border-box; margin: 0 auto; }
+  body.platform-ios #google-btn, body.platform-ios #stats-btn, body.platform-ios #photo-save { display: none; }
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
   /* ✉️ 이메일 코드 로그인 — 구글 아래 보조 버튼(반투명 테두리) + 단계 카드 */
   #email-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 0; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 24px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: transform .12s; }
@@ -4296,13 +4296,11 @@
     mountEmailLogin({ $, requestCode: requestEmailCode, verifyCode: verifyEmailCode, track: trackEvent });
     // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
     //    또 실패하면 유저에게 결정을 떠넘기지 않고 게스트로 바로 시작한다(토스트로만 알림).
-    //    📱 플레이 앱도 같은 버튼 — 플레이 게임즈 로그인 창을 한 번 띄워(interactive) 재시도한다. 🍎 iOS 는 게임센터.
+    //    📱 플레이 앱도 같은 버튼 — 플레이 게임즈 로그인 창을 한 번 띄워(interactive) 재시도한다. (🍎 iOS 는 이 버튼 없음 — Apple 버튼)
     $('toss-btn').addEventListener('click', async () => {
-      const r = IS_ANDROID ? await signInWithPlayGames({ interactive: true })
-        : IS_IOS ? await signInWithGameCenter({ interactive: true })
-        : await signInWithToss({ silent: true });
+      const r = IS_ANDROID ? await signInWithPlayGames({ interactive: true }) : await signInWithToss({ silent: true });
       // login{method} 는 enterPlay 가 쏘므로 여기선 시도 결과만 기록(이중 집계 방지)
-      trackEvent(IS_ANDROID ? 'pgs_connect' : IS_IOS ? 'gc_connect' : 'toss_connect', { mode: 'button', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
+      trackEvent(IS_ANDROID ? 'pgs_connect' : 'toss_connect', { mode: 'button', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
       if (r.ok) return;                                  // 세션 반영 → authState 콜백이 enterPlay
       const g = await signInAsGuest(); await enterPlay();
       // 토스트는 한 칸짜리(덮어쓰기)라 진입 직후 도감 토스트에 묻힌다 → 한 박자 뒤에 길게 띄운다
@@ -6376,7 +6374,7 @@
       }
       else if (IS_IOS && !res.offline && !justExited) {
         // 🍎 iOS 앱: 안드로이드와 같은 자리 — 게임센터 자동 인증 결과로 조용히 연결(창 없음).
-        //    안 되면 '바로 플레이하기'(게임센터 창 한 번 → 게스트) + Apple 화면.
+        //    안 되면 로그인 화면('Apple로 계속하기' + 게스트 링크).
         const r = await signInWithGameCenter();
         trackEvent('gc_connect', { mode: 'auto', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
         if (!r.ok) showLoginScreen(false, r.reason === 'endpoint_not_configured' ? 'gc_unconfigured' : 'gc_fail');
