@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>거울 주민 대화창 시안</title>
+<style>
+  :root { --ink:#4a5a4f; --mint:#bfe8c9; --mirror:#7a6fd0; --mirror-soft:#efeefe; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; background:#e9ece8; font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:var(--ink); }
+  h1 { font-size:20px; margin:0 0 4px; } .sub { font-size:13px; opacity:.75; margin:0 0 20px; max-width:1300px; }
+  .opt { display:grid; grid-template-columns:auto auto 1fr; gap:18px; align-items:start; background:#fff; border-radius:18px; padding:16px 18px; margin-bottom:22px; box-shadow:0 6px 20px rgba(0,0,0,.06); }
+  .opt h2 { font-size:17px; margin:0 0 6px; } .opt p { font-size:13px; line-height:1.55; margin:0 0 6px; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:8px; background:#eef5ef; margin-right:4px; }
+  .frame { position:relative; overflow:hidden; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.18); }
+  .pc { width:800px; height:450px; background:url(bg-pc.jpg) center/cover; }
+  .m { width:362px; height:784px; background:url(bg-m.jpg) center/cover; }
+  .lbl { position:absolute; left:8px; bottom:6px; font-size:10px; font-weight:700; color:#fff; background:rgba(0,0,0,.35); padding:2px 6px; border-radius:6px; z-index:9; }
+  .who { display:flex; align-items:center; gap:8px; font-weight:700; }
+  .em { font-size:20px; }
+  .line { line-height:1.5; }
+  .clue { background:var(--mirror-soft); border-radius:12px; padding:10px 12px; font-size:12.5px; line-height:1.6; }
+  .clue b { color:#4b3fa8; }
+  .btn { border:none; border-radius:12px; padding:9px 16px; font-weight:700; background:var(--mint); color:var(--ink); font-size:13px; }
+
+  /* A: 가운데 대화창(마을 주민과 같은 카드) */
+  .A .dim { position:absolute; inset:0; background:rgba(20,30,60,.38); display:grid; place-items:center; }
+  .A .card { width:min(380px,90%); background:#fff; border-radius:20px; padding:18px 18px 14px; box-shadow:0 18px 50px rgba(20,20,60,.35); }
+  .A .card .line { margin:10px 0 12px; font-size:14.5px; }
+  .A .card .acts { display:flex; justify-content:flex-end; margin-top:12px; }
+  .A .head-bar { height:5px; border-radius:4px; background:linear-gradient(90deg,#b9b0ff,#8fd6e0); margin:-6px -4px 12px; }
+  .m.A .card { padding:16px 14px 12px; } .m.A .card .line { font-size:14px; }
+
+  /* B: 아래 대화 박스(게임 화면 유지) */
+  .B .box { position:absolute; left:50%; transform:translateX(-50%); bottom:18px; width:min(620px,92%); background:rgba(255,255,255,.96); border-radius:18px; padding:14px 16px 12px 86px; box-shadow:0 10px 30px rgba(20,20,60,.3); min-height:96px; }
+  .B .face { position:absolute; left:14px; top:14px; width:58px; height:58px; border-radius:50%; background:radial-gradient(circle at 50% 40%,#c9b49a,#7d5e45); display:grid; place-items:center; font-size:28px; border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .B .name { display:inline-block; font-size:12px; font-weight:800; color:#fff; background:var(--mirror); padding:2px 10px; border-radius:10px; margin-bottom:6px; }
+  .B .line { font-size:14px; }
+  .B .next { position:absolute; right:14px; bottom:8px; font-size:11px; opacity:.6; }
+  .m.B .box { bottom:150px; padding:12px 12px 22px 70px; } .m.B .face { width:46px; height:46px; font-size:22px; left:12px; } .m.B .line { font-size:13.5px; }
+
+  /* C: 머리 위 말풍선 + 단서 카드 고정 */
+  .C .bubble { position:absolute; background:#fff; border-radius:16px; padding:10px 12px; font-size:13px; line-height:1.45; box-shadow:0 8px 22px rgba(20,20,60,.3); width:260px; }
+  .C .bubble::after { content:""; position:absolute; left:50%; bottom:-10px; transform:translateX(-50%); border:10px solid transparent; border-bottom:0; border-top-color:#fff; }
+  .C .bubble .who { font-size:12px; margin-bottom:4px; color:#4b3fa8; }
+  .C .pin { position:absolute; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.95); border-radius:14px; padding:8px 12px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.18); border-left:5px solid var(--mirror); white-space:nowrap; }
+  .m.C .bubble { width:220px; font-size:12.5px; } .m.C .pin { white-space:normal; width:86%; }
+</style></head><body>
+<h1>🪞 거울 주민 대화창 — 시안 3개</h1>
+<p class="sub">지금은 말을 걸면 화면 아래 토스트가 5초 떴다 사라짐 → "대화가 안 열린다"로 읽힘(페르소나 3/20). 예시: 1번 의뢰 · 거울 낚시꾼 할아버지 · 🏮 등불 기둥 왼쪽 바위 밑 🥕 당근 인형. 돌려줄 때(고마워요 + 🪞 보상)도 같은 모양을 씁니다.</p>
+
+<div class="opt">
+  <div><div class="frame pc A"><span class="lbl">PC 1280×720</span>
+    <div class="dim"><div class="card"><div class="head-bar"></div>
+      <div class="who"><span class="em">🎣</span>거울 낚시꾼 할아버지<span style="margin-left:auto;font-size:11px;opacity:.6">🪞 의뢰 1/3</span></div>
+      <div class="line">"아이고, 큰일이네… 등불 기둥 왼쪽 바위 밑에서 당근 인형을 잃어버렸어요."</div>
+      <div class="clue">🔍 찾을 것 <b>🥕 당근 인형</b><br>📍 어디 <b>🏮 등불 기둥 왼쪽 바위 밑</b></div>
+      <div class="acts"><button class="btn">찾으러 갈게요</button></div></div></div></div></div>
+  <div><div class="frame m A"><span class="lbl">모바일 375×812</span>
+    <div class="dim"><div class="card"><div class="head-bar"></div>
+      <div class="who"><span class="em">🎣</span>거울 낚시꾼 할아버지</div>
+      <div class="line">"아이고, 큰일이네… 등불 기둥 왼쪽 바위 밑에서 당근 인형을 잃어버렸어요."</div>
+      <div class="clue">🔍 찾을 것 <b>🥕 당근 인형</b><br>📍 어디 <b>🏮 등불 기둥 왼쪽 바위 밑</b></div>
+      <div class="acts"><button class="btn">찾으러 갈게요</button></div></div></div></div></div>
+  <div><h2>A · 마을 주민 대화창 그대로</h2>
+    <p>마을 주민과 <b>같은 카드</b>(가운데·화면 어둡게)에 거울 색 띠만 얹습니다. 대사 + 찾을 것·어디를 따로 정리.</p>
+    <p><span class="tag">장점</span>이미 익숙한 모양 — "대화가 열렸다"가 가장 확실 · 단서를 다시 읽기 쉬움</p>
+    <p><span class="tag">단점</span>화면을 가림 · 버튼을 눌러야 닫힘(한 번 더 조작)</p></div>
+</div>
+
+<div class="opt">
+  <div><div class="frame pc B"><span class="lbl">PC 1280×720</span>
+    <div class="box"><div class="face">🎣</div><div class="name">거울 낚시꾼 할아버지</div>
+      <div class="line">"아이고, 큰일이네… <b>등불 기둥 왼쪽 바위 밑</b>에서 <b>🥕 당근 인형</b>을 잃어버렸어요."</div>
+      <div class="next">▶ Space / 탭</div></div></div></div>
+  <div><div class="frame m B"><span class="lbl">모바일 375×812</span>
+    <div class="box"><div class="face">🎣</div><div class="name">거울 낚시꾼 할아버지</div>
+      <div class="line">"아이고, 큰일이네… <b>등불 기둥 왼쪽 바위 밑</b>에서 <b>🥕 당근 인형</b>을 잃어버렸어요."</div>
+      <div class="next">▶ 탭</div></div></div></div>
+  <div><h2>B · 아래 대화 박스 (게임식)</h2>
+    <p>화면 아래 <b>얼굴 + 이름 + 대사</b> 박스. 화면을 어둡게 하지 않고, Space/탭으로 닫힘.</p>
+    <p><span class="tag">장점</span>"주민이 말한다" 느낌이 가장 강함 · 게임 흐름이 안 끊김</p>
+    <p><span class="tag">단점</span>새 UI(마을 주민 대화창과 모양이 다름) · 모바일에선 조이스틱 위 공간을 씀</p></div>
+</div>
+
+<div class="opt">
+  <div><div class="frame pc C"><span class="lbl">PC 1280×720</span>
+    <div class="bubble" style="left:282px;top:30px"><div class="who">🎣 거울 낚시꾼 할아버지</div>"등불 기둥 왼쪽 바위 밑에서 당근 인형을 잃어버렸어요."</div>
+    <div class="pin" style="bottom:20px">🔍 🥕 당근 인형 · 🏮 등불 기둥 왼쪽 바위 밑</div></div></div>
+  <div><div class="frame m C"><span class="lbl">모바일 375×812</span>
+    <div class="bubble" style="left:72px;top:140px"><div class="who">🎣 거울 낚시꾼 할아버지</div>"등불 기둥 왼쪽 바위 밑에서 당근 인형을 잃어버렸어요."</div>
+    <div class="pin" style="bottom:170px">🔍 🥕 당근 인형 · 🏮 등불 기둥 왼쪽 바위 밑</div></div></div>
+  <div><h2>C · 머리 위 말풍선 + 단서 카드 고정</h2>
+    <p>주민 <b>머리 위에 말풍선</b>(몇 초 뒤 사라짐) + 찾는 동안 <b>단서 카드가 화면에 계속 고정</b>.</p>
+    <p><span class="tag">장점</span>누가 말했는지 위치로 바로 보임 · 단서를 잊지 않음</p>
+    <p><span class="tag">단점</span>말풍선이 다른 물체에 가릴 수 있음 · 모바일 하단 슬롯과 자리 다툼</p></div>
+</div>
+</body></html>
