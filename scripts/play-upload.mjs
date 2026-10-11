@@ -62,7 +62,9 @@ async function setTrack(status) {
   const release = { versionCodes: [String(bundle.versionCode)], status };
   if (NOTES) release.releaseNotes = [{ language: 'ko-KR', text: NOTES }];
   await call('PUT', `${API}/edits/${edit.id}/tracks/${TRACK}`, ...json({ track: TRACK, releases: [release] }));
-  return call('POST', `${API}/edits/${edit.id}:commit`);
+  // 🚨 기본값(CANCEL_IN_REVIEW_AND_SUBMIT)은 검토 중인 변경을 **취소**하고 다시 낸다 —
+  //    2026-10-11 테스트 트랙 업로드가 프로덕션 첫 출시 검토(제출 #49)를 취소시켰다. 검토 중이면 멈춘다.
+  return call('POST', `${API}/edits/${edit.id}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW`);
 }
 
 try {
