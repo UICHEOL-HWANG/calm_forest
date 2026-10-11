@@ -121,7 +121,7 @@ Farm, fish and stargaze in a cozy 3D village with a dream forest and a mirror to
 |---|---|---|
 | 앱 아이콘(Play) | 512×512 PNG, **꽉 찬 정사각**(Play 가 마스크를 씌운다) | `assets/brand/bear-25deg-1024.png` → `scripts/lib/icon-art.mjs` (`round:false, pad:0.86`) |
 | 앱 로고(토스) | 600×600 PNG | `assets/brand/icon-600.png` — `node scripts/make-icon.mjs` |
-| 피처 그래픽 | 1024×500 PNG | `assets/social/play-feature.png` — `node scripts/make-play-feature.mjs` |
+| 피처 그래픽 | 1024×500 PNG | `assets/social/play-feature.png` — `python3 scripts/serve.py 8797 &` 후 `node scripts/make-play-feature.mjs` (10/6 A안 렌더러 `sims/thumbnail-sim.html?v=A`, 2026-10-11 교체) |
 | 폰 스크린샷 | 1080×1920 × 8 | `node tools/store-shots/shots.mjs phone` |
 | 7인치 태블릿 | 1920×1080 × 8 | `node tools/store-shots/shots.mjs tab7` |
 | 10인치 태블릿 | 2560×1440 × 8 | `node tools/store-shots/shots.mjs tab10` |
