@@ -1,5 +1,6 @@
 // =============================================================
 //  🏡 이웃 마을 화면 — 오늘의 이웃(A 엽서 카드) · 집주인 말풍선(C) · 다녀간 이웃 알림(A) · 상단 줄·나가기 · ⚙️ 토글
+//  🚩🚫 신고·차단(App Store 1.2, 시안 C 2026-10-11 dev/active/ugc-report-block/mockup.html): 목록 각 줄 ⋯ · 구경 중 상단 줄 ⋯
 //  시안: dev/active/neighbor-village/mockup.html (확정 A+C+A, 2026-10-07)
 //  DOM 은 전부 textContent — 닉네임은 남이 지은 문자열이다(HTML 문자열 주입 금지). 영어는 i18n 옵저버가 번역한다.
 //  모달 루트 id 가 '-modal' 로 끝나야 index.html anyModalOpen() 이 잡는다(js/plaza/ui.js 와 같은 규칙).
@@ -53,6 +54,20 @@ body.neighbor-visit #topleft, body.neighbor-visit #topright { display: none !imp
 .nb-visits { text-align: left; font-size: 12.5px; margin: 6px 0 12px; }
 .nb-visits div span { overflow-wrap: anywhere; min-width: 0; }
 .nb-visits div { display: flex; gap: 8px; justify-content: space-between; padding: 6px 2px; border-bottom: 1px solid #f0f4f0; }
+.nb-more { border: none; background: none; font-size: 20px; line-height: 1; color: #7a8a80; padding: 6px 8px; cursor: pointer; font-family: inherit; flex: 0 0 auto; }
+#nb-more-btn { background: #eef2ee; border-radius: 10px; width: 34px; height: 30px; padding: 0; font-size: 18px; }
+#nb-menu { position: fixed; z-index: 35; display: none; background: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 6px; min-width: 170px; }
+#nb-menu.show { display: block; }
+#nb-menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 11px 10px; font-size: 13.5px; font-weight: 700; border-radius: 10px; color: #b3483e; cursor: pointer; font-family: inherit; }
+#nb-menu button:active { background: #fff1ef; }
+#nb-report-modal, #nb-block-modal { position: fixed; inset: 0; z-index: 34; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+#nb-report-modal.show, #nb-block-modal.show { display: grid; }
+.nb-reasons { display: flex; flex-direction: column; gap: 7px; margin: 4px 0 12px; text-align: left; }
+.nb-reasons button { display: flex; align-items: center; gap: 10px; border: none; border-radius: 12px; background: #f4faf5; padding: 11px 12px; font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer; font-family: inherit; }
+.nb-reasons button i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #9db8a6; box-sizing: border-box; flex: none; }
+.nb-reasons button[aria-checked="true"] i { border: 6px solid #3e8f5c; }
+.nb-acts { display: flex; gap: 8px; } .nb-acts .nb-btn { flex: 1; margin-top: 0; }
+.nb-danger { background: #e4736f; color: #fff; }
 `;
 
 const REACT_LABEL = { wave: '손 흔들기', heart: '하트', flower: '꽃', star: '별' };
@@ -94,7 +109,7 @@ function closeModal(id) {
 }
 
 // ── 오늘의 이웃(A 엽서 카드) ──
-export function openPickerModal(rows, rewardedToday, onGo) {
+export function openPickerModal(rows, rewardedToday, onGo, onMore) {
   pickerBusy = false;
   const { root, card } = modal('nb-pick-modal');
   card.append(el('div', 'nb-ico', '🏡'), el('h2', null, '오늘의 이웃'), el('p', 'nb-sub', '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요'));
@@ -108,7 +123,10 @@ export function openPickerModal(rows, rewardedToday, onGo) {
     info.append(name, el('div', 'nb-meta', r.meta));
     const go = el('button', 'nb-btn nb-go', r.go);
     go.onclick = () => { setPickerBusy(true); onGo(r); };
-    row.append(el('div', 'nb-ava', r.face), info, go);
+    const more = el('button', 'nb-more', '⋯');
+    more.setAttribute('aria-label', '더보기');
+    more.onclick = (e) => { e.stopPropagation(); onMore?.(r, more); };   // 🚩🚫 신고·차단
+    row.append(el('div', 'nb-ava', r.face), info, go, more);
     list.appendChild(row);
   }
   const close = el('button', 'nb-btn nb-close', '닫기');
@@ -120,24 +138,27 @@ export function openPickerModal(rows, rewardedToday, onGo) {
 
 export function setPickerBusy(on) {
   pickerBusy = !!on;
-  document.querySelectorAll('#nb-pick-modal .nb-go, #nb-pick-modal .nb-close').forEach(b => { b.disabled = !!on; });   // 요청 중엔 닫기도 잠근다
+  document.querySelectorAll('#nb-pick-modal .nb-go, #nb-pick-modal .nb-close, #nb-pick-modal .nb-more').forEach(b => { b.disabled = !!on; });   // 요청 중엔 닫기·⋯ 도 잠근다(가는 중인 집을 차단하는 경합 방지)
 }
 
 export function isPickerOpen() { return !!document.getElementById('nb-pick-modal')?.classList.contains('show'); }
 export function closePickerModal() { pickerBusy = false; closeModal('nb-pick-modal'); }
 
 // ── 구경 중 상단 줄 · 🚪 내 마을로 ──
-export function showNeighborHud(nickname, onExit) {
+export function showNeighborHud(nickname, onExit, onMore) {
   ensureStyle();
   let top = document.getElementById('nb-hud-top');
   if (!top) {
     top = el('div'); top.id = 'nb-hud-top';
     const exit = el('button', 'nb-btn', '🚪 내 마을로'); exit.id = 'nb-exit';
-    top.append(exit, el('div', 'nb-title'));
+    const more = el('button', 'nb-more', '⋯'); more.id = 'nb-more-btn'; more.setAttribute('aria-label', '더보기');
+    top.append(exit, el('div', 'nb-title'), more);
     document.body.appendChild(top);
   }
   top.querySelector('.nb-title').textContent = `🏡 ${nickname} 의 마을`;
   document.getElementById('nb-exit').onclick = () => onExit();
+  const moreBtn = document.getElementById('nb-more-btn');
+  moreBtn.onclick = () => onMore?.(moreBtn);
   document.body.classList.add('neighbor-visit');
 }
 
@@ -167,6 +188,56 @@ export function setHostBubble(b) {
     box.appendChild(row);
   }
   box.classList.add('show');
+}
+
+// ── 🚩🚫 ⋯ 메뉴 — 누른 버튼 바로 아래(화면 밖으로 안 나가게) ──
+export function openNbMenu(anchor, { onReport, onBlock }) {
+  ensureStyle();
+  let menu = document.getElementById('nb-menu');
+  if (!menu) {
+    menu = el('div'); menu.id = 'nb-menu'; document.body.appendChild(menu);
+    document.addEventListener('pointerdown', (e) => { if (!menu.contains(e.target)) menu.classList.remove('show'); }, true);
+  }
+  menu.replaceChildren();
+  const item = (label, fn) => { const b = el('button', null, label); b.onclick = () => { menu.classList.remove('show'); fn(); }; return b; };
+  menu.append(item('🚩 신고하기', onReport), item('🚫 차단하기', onBlock));
+  const r = anchor.getBoundingClientRect();
+  menu.classList.add('show');
+  const w = menu.offsetWidth, h = menu.offsetHeight;
+  menu.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
+  menu.style.top = Math.max(8, Math.min(window.innerHeight - h - 8, r.bottom + 6)) + 'px';
+}
+
+export function openReportModal(onSubmit) {
+  const { root, card } = modal('nb-report-modal');
+  let reason = 'nick';
+  const list = el('div', 'nb-reasons');
+  const opts = [['nick', '부적절한 닉네임'], ['decor', '부적절한 꾸미기'], ['other', '기타']].map(([id, label]) => {
+    const b = el('button'); b.setAttribute('role', 'radio');
+    b.append(el('i'), el('span', null, label));
+    b.onclick = () => { reason = id; opts.forEach(([, x]) => x.setAttribute('aria-checked', x === b ? 'true' : 'false')); };
+    list.appendChild(b);
+    return [id, b];
+  });
+  opts.forEach(([id, b]) => b.setAttribute('aria-checked', id === reason ? 'true' : 'false'));
+  const cancel = el('button', 'nb-btn nb-close', '취소'); cancel.onclick = () => closeModal('nb-report-modal');
+  const send = el('button', 'nb-btn nb-danger', '신고 보내기');
+  send.onclick = async () => { send.disabled = true; try { await onSubmit(reason); } finally { closeModal('nb-report-modal'); } };
+  const acts = el('div', 'nb-acts'); acts.append(cancel, send);
+  card.append(el('h2', null, '🚩 신고하기'), el('p', 'nb-sub', '운영자가 확인 후 조치해요.'), list, acts);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
+}
+
+export function openBlockConfirm(onConfirm) {
+  const { root, card } = modal('nb-block-modal');
+  const cancel = el('button', 'nb-btn nb-close', '취소'); cancel.onclick = () => closeModal('nb-block-modal');
+  const ok = el('button', 'nb-btn nb-danger', '차단');
+  ok.onclick = async () => { ok.disabled = true; try { await onConfirm(); } finally { closeModal('nb-block-modal'); } };
+  const acts = el('div', 'nb-acts'); acts.append(cancel, ok);
+  card.append(el('h2', null, '🚫 이 이웃을 차단할까요?'), el('p', 'nb-sub', '오늘의 이웃 목록과 방문 기록에서 사라지고, 상대도 내 마을에 올 수 없어요.'), acts);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
 }
 
 // ── 다녀간 이웃 알림(A) ──

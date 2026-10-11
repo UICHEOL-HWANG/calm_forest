@@ -37,7 +37,7 @@ test('⚙️ 설정에 이웃 공개 토글 — 게스트는 숨김(처음엔 di
 
 test('나가기 버튼은 상단 줄 안에 있다(하단 조이스틱 #joy-base 와 안 겹침)', () => {
   assert.doesNotMatch(UI, /#nb-exit \{[^}]*bottom:/);
-  assert.match(UI, /top\.append\(exit, el\('div', 'nb-title'\)\)/);
+  assert.match(UI, /top\.append\(exit, el\('div', 'nb-title'\)(, more)?\)/);   // 🚩🚫 ⋯ 도 같은 상단 줄(2026-10-11)
   assert.ok(UI.includes("'🚪 내 마을로'"));
 });
 
