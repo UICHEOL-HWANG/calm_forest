@@ -48,3 +48,22 @@ test('보관함: 같은 id 는 한 번만, 없는 replaceId 는 변화 없음', 
   assert.deepEqual(miss.slots.map(s => s.id), ['a', 'b']);
   assert.equal(miss.equipped, 'a');
 });
+
+// 🏮 빛 공방 창 — 시안 C(2026-10-11) 머리줄·닫기·오류 계측 잠금
+import { readFileSync } from 'node:fs';
+const SRC = readFileSync(new URL('../js/aura/workshop-ui.js', import.meta.url), 'utf8');
+
+test('workshop modal: fixed header with keeper name, ✕ close, body swapped per screen', () => {
+  assert.match(SRC, /el\('div', 'nm', '반디 요정'\), el\('div', 'sub', '🏮 빛 공방'\)/);
+  assert.match(SRC, /el\('button', 'x', '✕'\)/);
+  assert.match(SRC, /x\.onclick = close/);
+  assert.match(SRC, /card = el\('div', 'body'\)/);
+  assert.match(SRC, /background:#2b2840/);
+});
+
+test('workshop modal: error state has a close button and reuses existing GA4 keys only', () => {
+  assert.match(SRC, /const ok = el\('button', 'ghost', '닫기'\); ok\.onclick = close;/);
+  const m = SRC.match(/trackEvent\('aura_workshop_view', \{ screen: 'error', ([^}]*)\}\)/);
+  assert.ok(m, 'error view tracked');
+  assert.deepEqual(m[1].split(',').map(s => s.trim().split(':')[0]).filter(Boolean), ['code']);
+});

@@ -6,18 +6,20 @@
 //  🔒 게임 상태는 gameState.neighbors · gameState.hintsSeen.neighborPublic 만 쓴다(tests/neighbor-space 가 잠근다).
 //     이웃 데이터는 visit 객체에만 둔다. 3D 는 js/neighbors/scene.js, 화면은 js/neighbors/ui.js.
 // =============================================================
-import { $w, ANIMALS, gameState, giveReward, makeSignpost, obstacles, player, requestSave, scene, setSpaceVisible, snapCamera, syncStory, ui } from '../game.js';
+import { $w, ANIMALS, gameState, giveReward, obstacles, player, requestSave, scene, setSpaceVisible, snapCamera, solidCircle, syncStory, ui } from '../game.js';
 import * as THREE from 'three';
+import { t } from '../i18n.js';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';
 import { OUTDOOR } from '../data/catalog.js';
 import { HOUSE_POS, NEIGHBOR, NEIGHBOR_GATE, NEIGHBOR_R } from '../data/places.js';
 import { Sound } from '../sound.js';
 import { sanitizeShowcase } from '../neighbors/sanitize.js';
-import { FAIL_TOAST, HOST_TALK_R, REWARD_COINS, markSeen, noticeView, pickerRows, reactOutcome, recordVisit, visitorsSince } from '../neighbors/rules.js';
-import { evBlock, evFail, evNotice, evOpen, evReact, evReport, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
+import { BANNER_KEY, FAIL_TOAST, HOST_TALK_R, bannerDue, kstDay, REWARD_COINS, markSeen, noticeView, pickerRows, reactOutcome, recordVisit, visitorsSince } from '../neighbors/rules.js';
+import { evBlock, evBanner, evFail, evNotice, evOpen, evReact, evReport, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
 import { neighborApi } from '../neighbors/net.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
+import { buildNeighborBalloon } from '../neighbors/gate-art.js';
 import { inVillage2 } from './doors.js';
 import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openBlockConfirm, openNbMenu, openPickerModal, openReportModal, openVisitorsModal, setHostBubble, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
 
@@ -158,6 +160,7 @@ async function onReact(emoji) {
 }
 
 export function updateNeighbor(dt) {
+  gateArt?.update(dt, performance.now() / 1000);
   if (!visit) return;
   visit.built.update(dt);
   const h = visit.built.hostSpot;
@@ -195,15 +198,19 @@ export function neighborMinimapMarks(marks) {
 /** 이웃 공간에서 저장되면 팻말 앞으로 적는다 — 새로고침하면 마을에서 시작한다 */
 export function neighborReturnPos() { return { x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 3.6 }; }
 
-// ── 🏡 마을 입구 팻말 — buildEnvironment 가 한 번 부른다 ──
+// ── 🎈 마을 입구 열기구 — buildEnvironment 가 한 번 부른다 ──
+//    팻말(1.5m)이 안 보여 4일 방문 1/118 → 열기구(~5.5m) + 풍선 허리 띠 "이웃 마을"(2026-10-11 시안 B 확정)
 let gateGroup = null;
+let gateArt = null;   // 열기구 흔들림·등불 — updateNeighbor 가 돌린다
 export function spawnNeighborGate() {
-  if (gateGroup) return gateGroup;   // 두 번 불려도 팻말·충돌체가 겹치지 않게
+  if (gateGroup) return gateGroup;   // 두 번 불려도 열기구·충돌체가 겹치지 않게
   gateGroup = new THREE.Group();
   gateGroup.position.copy(NEIGHBOR_GATE);
-  gateGroup.add(makeSignpost('🏡 이웃 마을 가는 길', 0, 0));   // 기둥 충돌체는 makeSignpost 가 다음 프레임에 등록
+  gateArt = buildNeighborBalloon(THREE, t('이웃 마을'));
+  gateGroup.add(gateArt.group);
   scene.add(gateGroup);
-  obstacles.push({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z, r: 1.2 });   // 팻말 위엔 밭·야외 장식 금지
+  solidCircle(NEIGHBOR_GATE.x, NEIGHBOR_GATE.z, 0.65);                 // 바구니 충돌(1×1)
+  obstacles.push({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z, r: 1.6 });   // 열기구 밑엔 밭·야외 장식 금지(말뚝 줄까지)
   return gateGroup;
 }
 
@@ -213,8 +220,27 @@ export function initNeighbors() {
   bindVillagePublicToggle(toggleVillagePublic);
   const member = !!authState.online && !authState.isGuest;
   setVillagePublicUi(villagePublic, member);   // 게스트는 후보에 안 들어가므로 토글을 숨긴다
-  if (!member || !gameState.character || !gameState.tutorialSeen) return;   // 신규 온보딩(캐릭터 선택·튜토리얼)과 겹치지 않게
+  if (!authState.online || !gameState.character || !gameState.tutorialSeen) return;   // 신규 온보딩(캐릭터 선택·튜토리얼)과 겹치지 않게
+  setTimeout(dailyBanner, 14000);   // 게스트도 구경은 할 수 있다 — 다녀간 이웃 알림(6초)보다 뒤
+  if (!member) return;
   setTimeout(bootVisitors, 6000);   // 출석·📮 소식 모달이 먼저 — 그 뒤 빈 화면을 기다려 띄운다
+}
+
+// 🏡 하루 한 번 "오늘의 이웃" 배너 — 누르면 목록이 열린다(기기당 KST 하루 1회)
+function readBannerDay() { try { return localStorage.getItem(BANNER_KEY); } catch { return null; } }
+function dailyBanner() {
+  if (!bannerDue(readBannerDay(), Date.now())) return;
+  whenNoModal(() => {
+    if (visit || !inVillage2() || ui.anyModalOpen?.()) return;   // 실내·다른 공간·30초 넘게 창이 떠 있으면 오늘 몫을 쓰지 않고 다음 접속에 다시
+    try { localStorage.setItem(BANNER_KEY, kstDay(Date.now())); } catch { /* 저장 못 해도 배너는 띄운다 */ }
+    ui.showHintBanner?.({
+      ico: '🏡', title: '오늘의 이웃이 기다려요', line: '눌러서 이웃 마을 구경 가기',
+      near: () => true, attention: true,
+      onShow: () => trackEvent(...evBanner('show')),   // [GA4] 배너 노출 → 탭 전환율
+      onTap: () => { trackEvent(...evBanner('tap')); openNeighborPicker('banner'); },
+      onDismiss: (reason) => { if (reason !== 'tap') trackEvent(...evBanner('dismiss')); },   // 탭은 done('tap') 이 먼저 부른다
+    });
+  });
 }
 
 async function bootVisitors() {
