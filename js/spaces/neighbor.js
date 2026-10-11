@@ -199,7 +199,7 @@ export function neighborMinimapMarks(marks) {
 export function neighborReturnPos() { return { x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 3.6 }; }
 
 // ── 🎈 마을 입구 열기구 — buildEnvironment 가 한 번 부른다 ──
-//    팻말(1.5m)이 안 보여 4일 방문 1/118 → 열기구(~5.5m) + 풍선 한가운데 "이웃 마을" 글씨(2026-10-11 시안 B 확정)
+//    팻말(1.5m)이 안 보여 4일 방문 1/118 → 열기구(~5.5m) + 풍선 허리 띠 "이웃 마을"(2026-10-11 시안 B 확정)
 let gateGroup = null;
 let gateArt = null;   // 열기구 흔들림·등불 — updateNeighbor 가 돌린다
 export function spawnNeighborGate() {
