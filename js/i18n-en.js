@@ -1476,11 +1476,16 @@ export const EN = {
   '고마워요 🌱': 'Thank you 🌱',
   '외 {0#}명': 'and {0} more',
   '🏡 이웃 마을 가는 길': '🏡 Road to the Neighbors',
+  '이웃 마을': 'Neighbors',   // 🎈 열기구 풍선 글씨(2026-10-11)
+  '오늘의 이웃이 기다려요': 'Your neighbors are waiting',
+  '눌러서 이웃 마을 구경 가기': 'Tap to visit a neighbor village',
   '이웃 마을 가는 길': 'Road to the Neighbors',
   '아직 놀러 갈 이웃이 없어요 · 내일 다시 와 보세요': 'No neighbors to visit yet · Check back tomorrow',
   '이웃에게 내 마을 보여 주기': 'Show my village to neighbors',
   // 🚩🚫 이웃 신고·차단(App Store 1.2, 2026-10-11)
   '🚩 신고하기': '🚩 Report',
+  '신고하기': 'Report',
+  '차단하기': 'Block',
   '🚫 차단하기': '🚫 Block',
   '운영자가 확인 후 조치해요.': 'Our team will review it and take action.',
   '부적절한 닉네임': 'Inappropriate name',
