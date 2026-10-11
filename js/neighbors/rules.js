@@ -78,3 +78,8 @@ export function restoreNeighbors(v) {
 }
 export function recordVisit(nb) { const o = restoreNeighbors(nb); return { ...o, visited: o.visited + 1 }; }
 export function markSeen(nb, at) { const o = restoreNeighbors(nb); return { ...o, seenAt: Math.max(o.seenAt, whole(at)) }; }
+
+// 🏡 하루 한 번 배너 — 팻말·열기구는 카메라(북향 ~8m)에 잘 안 잡혀 4일 방문 1/118(2026-10-11). 서버 day 와 같은 KST 날짜로 센다
+export const BANNER_KEY = 'cf_nb_banner_day';
+export const kstDay = (ms) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
+export const bannerDue = (lastDay, ms) => lastDay !== kstDay(ms);

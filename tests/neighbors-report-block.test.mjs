@@ -64,7 +64,7 @@ test('UI: ⋯ 입구 두 곳(목록 각 줄·구경 중 상단 줄) · 모달 id
 
 test('검수된 문구 그대로(시안 C, 2026-10-11)', () => {
   const ui = src('js/neighbors/ui.js'), ctl = src('js/spaces/neighbor.js');
-  for (const s of ['🚩 신고하기', '🚫 차단하기', '운영자가 확인 후 조치해요.', '부적절한 닉네임', '부적절한 꾸미기', '기타', '신고 보내기',
+  for (const s of ['신고하기', '차단하기', '운영자가 확인 후 조치해요.', '부적절한 닉네임', '부적절한 꾸미기', '기타', '신고 보내기',
     '🚫 이 이웃을 차단할까요?', '오늘의 이웃 목록과 방문 기록에서 사라지고, 상대도 내 마을에 올 수 없어요.', '차단']) assert.ok(ui.includes(`'${s}'`), s);
   assert.ok(ctl.includes("'🚫 차단했어요. 이 이웃은 다시 나오지 않아요.'"));
 });
@@ -80,4 +80,22 @@ test('후속(리뷰 반영): 방문 시작도 차단 · 차단 하루 50 · 후�
   assert.match(ctl, /r\.reason === 'private'[\s\S]{0,80}exitNeighbor\(\)/, '방문 시작이 막히면 내보낸다');
   assert.ok(ctl.includes("'🔒 지금은 이 마을에 갈 수 없어요'"));
   assert.match(src('js/neighbors/ui.js'), /#nb-pick-modal \.nb-more'\)\.forEach/, '가는 중엔 ⋯ 잠금');
+});
+
+// 🏡 하루 한 번 배너(2026-10-11) — 팻말·열기구가 북향 카메라에 안 잡혀 진입 경로를 배너로
+test('daily neighbor banner: KST day gate + GA4 act', async () => {
+  const { kstDay, bannerDue } = await import('../js/neighbors/rules.js');
+  const { evBanner } = await import('../js/neighbors/track.js');
+  const utc1459 = Date.UTC(2026, 9, 10, 14, 59);   // KST 10/10 23:59
+  const utc1500 = Date.UTC(2026, 9, 10, 15, 0);    // KST 10/11 00:00
+  assert.equal(kstDay(utc1459), '2026-10-10');
+  assert.equal(kstDay(utc1500), '2026-10-11');
+  assert.equal(bannerDue('2026-10-10', utc1459), false);
+  assert.equal(bannerDue('2026-10-10', utc1500), true);
+  assert.equal(bannerDue(null, utc1500), true);
+  assert.deepEqual(evBanner('tap'), ['neighbor_banner', { act: 'tap' }]);
+  const SRC = readFileSync(new URL('../js/spaces/neighbor.js', import.meta.url), 'utf8');
+  assert.match(SRC, /openNeighborPicker\('banner'\)/);
+  assert.match(SRC, /if \(visit \|\| !inVillage2\(\)\) return;/);
+  assert.match(SRC, /reason !== 'tap'/);
 });

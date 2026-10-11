@@ -44,7 +44,8 @@ test('팻말 세우기 · 나무/꽃 산포 제외 · 지도 지명 · 문 프�
   assert.match(SRC, /\{ ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE\.x, z: NEIGHBOR_GATE\.z, pri: 1 \}/);
   assert.match(DOORS, /nd = 'neighbor'; prompt = '🏡 이웃 마을 가는 길';/);
   assert.match(DOORS, /firstHintBanner\('neighborGate', '🏡', '이웃 마을 가는 길', '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요'\)/);
-  assert.match(SPACE, /makeSignpost\('🏡 이웃 마을 가는 길', 0, 0\)/);
+  assert.match(SPACE, /gateArt = buildNeighborBalloon\(THREE, t\('이웃 마을'\)\)/);
+  assert.match(SPACE, /solidCircle\(NEIGHBOR_GATE.x, NEIGHBOR_GATE.z, 0.65\)/);
 });
 
 test('세이브 필드 neighbors — 기본값·복원·부팅 알림', () => {
