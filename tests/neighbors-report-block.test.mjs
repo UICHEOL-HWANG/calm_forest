@@ -68,3 +68,16 @@ test('검수된 문구 그대로(시안 C, 2026-10-11)', () => {
     '🚫 이 이웃을 차단할까요?', '오늘의 이웃 목록과 방문 기록에서 사라지고, 상대도 내 마을에 올 수 없어요.', '차단']) assert.ok(ui.includes(`'${s}'`), s);
   assert.ok(ctl.includes("'🚫 차단했어요. 이 이웃은 다시 나오지 않아요.'"));
 });
+
+test('후속(리뷰 반영): 방문 시작도 차단 · 차단 하루 50 · 후보는 not exists · 신고 증거 보존', () => {
+  const sql = src('sql/migrations/migrate_neighbors_report_block_2.sql');
+  assert.match(sql, /function public\.neighbor_view_start[\s\S]*_nb_blocked\(v_uid, v_host\)[^\n]*'private'/);
+  assert.match(sql, /v_today >= 50/);
+  assert.match(sql, /not exists \(select 1 from village_blocks b/);
+  assert.match(sql, /on delete set null/);
+  assert.match(sql, /target_nick/);
+  const ctl = src('js/spaces/neighbor.js');
+  assert.match(ctl, /r\.reason === 'private'[\s\S]{0,80}exitNeighbor\(\)/, '방문 시작이 막히면 내보낸다');
+  assert.ok(ctl.includes("'🔒 지금은 이 마을에 갈 수 없어요'"));
+  assert.match(src('js/neighbors/ui.js'), /#nb-pick-modal \.nb-more'\)\.forEach/, '가는 중엔 ⋯ 잠금');
+});

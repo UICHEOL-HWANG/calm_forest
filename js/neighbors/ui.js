@@ -138,7 +138,7 @@ export function openPickerModal(rows, rewardedToday, onGo, onMore) {
 
 export function setPickerBusy(on) {
   pickerBusy = !!on;
-  document.querySelectorAll('#nb-pick-modal .nb-go, #nb-pick-modal .nb-close').forEach(b => { b.disabled = !!on; });   // 요청 중엔 닫기도 잠근다
+  document.querySelectorAll('#nb-pick-modal .nb-go, #nb-pick-modal .nb-close, #nb-pick-modal .nb-more').forEach(b => { b.disabled = !!on; });   // 요청 중엔 닫기·⋯ 도 잠근다(가는 중인 집을 차단하는 경합 방지)
 }
 
 export function isPickerOpen() { return !!document.getElementById('nb-pick-modal')?.classList.contains('show'); }
@@ -222,7 +222,7 @@ export function openReportModal(onSubmit) {
   opts.forEach(([id, b]) => b.setAttribute('aria-checked', id === reason ? 'true' : 'false'));
   const cancel = el('button', 'nb-btn nb-close', '취소'); cancel.onclick = () => closeModal('nb-report-modal');
   const send = el('button', 'nb-btn nb-danger', '신고 보내기');
-  send.onclick = async () => { send.disabled = true; await onSubmit(reason); closeModal('nb-report-modal'); };
+  send.onclick = async () => { send.disabled = true; try { await onSubmit(reason); } finally { closeModal('nb-report-modal'); } };
   const acts = el('div', 'nb-acts'); acts.append(cancel, send);
   card.append(el('h2', null, '🚩 신고하기'), el('p', 'nb-sub', '운영자가 확인 후 조치해요.'), list, acts);
   Input.setAnalog(0, 0);
@@ -233,7 +233,7 @@ export function openBlockConfirm(onConfirm) {
   const { root, card } = modal('nb-block-modal');
   const cancel = el('button', 'nb-btn nb-close', '취소'); cancel.onclick = () => closeModal('nb-block-modal');
   const ok = el('button', 'nb-btn nb-danger', '차단');
-  ok.onclick = async () => { ok.disabled = true; await onConfirm(); closeModal('nb-block-modal'); };
+  ok.onclick = async () => { ok.disabled = true; try { await onConfirm(); } finally { closeModal('nb-block-modal'); } };
   const acts = el('div', 'nb-acts'); acts.append(cancel, ok);
   card.append(el('h2', null, '🚫 이 이웃을 차단할까요?'), el('p', 'nb-sub', '오늘의 이웃 목록과 방문 기록에서 사라지고, 상대도 내 마을에 올 수 없어요.'), acts);
   Input.setAnalog(0, 0);

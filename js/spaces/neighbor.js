@@ -121,7 +121,11 @@ function openMore(publicId, from, anchor) {
 //    탭을 닫으면 viewEnd 가 안 가서 ended_at·sec 이 비어 남는다(허용 — 방문 자체는 기록됨)
 function startView(v) {
   v.viewReq = neighborApi.viewStart(v.publicId, v.slot, v.revisit).then((r) => {
-    if (!r.ok) { trackEvent(...evFail('view_start', r.reason)); return null; }
+    if (!r.ok) {
+      //  🚫 차단 관계 — 쇼케이스는 익명 캐시라 들어와졌어도 서버가 막는다("상대도 내 마을에 올 수 없어요" 약속)
+      if (r.reason === 'private') { if (visit === v) { exitNeighbor(); ui.toast?.('🔒 지금은 이 마을에 갈 수 없어요', 2600); } return null; }
+      trackEvent(...evFail('view_start', r.reason)); return null;
+    }
     v.viewId = r.viewId;
     return r.viewId;
   });

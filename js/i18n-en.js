@@ -1492,6 +1492,7 @@ export const EN = {
   '🚩 신고했어요. 운영자가 확인 후 조치해요.': '🚩 Reported. Our team will review it and take action.',
   '🚫 차단했어요. 이 이웃은 다시 나오지 않아요.': '🚫 Blocked. This neighbor will not appear again.',
   '더보기': 'More',
+  '🔒 지금은 이 마을에 갈 수 없어요': "🔒 You can't visit this village right now",
   '기타': 'Other',
   '🏡 내 마을이 이웃에게 보여요 · ⚙️ 설정에서 끌 수 있어요': '🏡 Neighbors can visit your village now · Turn it off in ⚙️ Settings',
   '🏠 코티지': '🏠 Cottage',
