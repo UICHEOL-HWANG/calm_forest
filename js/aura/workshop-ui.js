@@ -36,19 +36,29 @@ const MSG = {
   ai: '🤖 AI가 밤사이 빚어요',
 };
 
-const CSS = `#aura-modal{position:fixed;inset:0;z-index:33;display:none;place-items:center;background:rgba(20,40,30,.55)}
+// 🎨 창 시안 C · 밤 공방 등불(2026-10-11 사용자 확정) — 남색 카드 · 빛나는 요정 얼굴 머리줄 · ✕ · 노란 버튼
+//    머리줄(.head)은 고정, 화면마다 바뀌는 건 .body 만(card 변수 = .body)
+const CSS = `#aura-modal{position:fixed;inset:0;z-index:33;display:none;place-items:center;background:rgba(20,30,40,.55)}
 #aura-modal.show{display:grid}
-#aura-modal .card{width:min(92vw,420px);box-sizing:border-box;max-height:calc(100dvh - 24px - var(--top-inset,0px));overflow-y:auto;background:#fffaf0;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;color:#3b2a20;font-size:15px;word-break:keep-all;overflow-wrap:anywhere}
-#aura-modal .npc{background:#f3ead8;border-radius:12px;padding:10px 12px;line-height:1.5}
-#aura-modal input[type=text]{font-size:16px;padding:10px;border-radius:10px;border:1px solid #c9b79a}
+#aura-modal .shell{width:min(92vw,400px);box-sizing:border-box;max-height:calc(100dvh - 24px - var(--top-inset,0px));overflow-y:auto;background:#2b2840;color:#f4ecd8;border-radius:22px;padding:18px;box-shadow:0 0 0 1px rgba(255,210,122,.25),0 0 40px rgba(255,200,110,.18),0 20px 60px rgba(0,0,0,.5);font-size:15px;word-break:keep-all;overflow-wrap:anywhere}
+#aura-modal .head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+#aura-modal .av{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;background:radial-gradient(circle,#ffe2a8,#e58fb0);box-shadow:0 0 16px rgba(255,210,122,.6)}
+#aura-modal .nm{font-weight:800;font-size:16px}
+#aura-modal .sub{font-size:12px;opacity:.65}
+#aura-modal .x{margin-left:auto;flex:none;border:0;background:rgba(255,255,255,.1);color:#f4ecd8;border-radius:10px;width:34px;height:34px;font-size:15px;font-family:inherit;cursor:pointer}
+#aura-modal .body{display:flex;flex-direction:column;gap:10px}
+#aura-modal .npc{background:rgba(255,255,255,.07);border-radius:14px;padding:11px 13px;line-height:1.6}
+#aura-modal input[type=text]{font-size:16px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:inherit}
+#aura-modal input[type=text]::placeholder{color:rgba(244,236,216,.45)}
 #aura-modal .cards{display:flex;flex-wrap:wrap;gap:6px}
-#aura-modal .cards button{border:0;border-radius:10px;padding:6px 10px;background:#e3f0d6;font-size:14px;font-family:inherit}
-#aura-modal .primary{border:0;border-radius:12px;padding:12px;background:#4f7f55;color:#fff;font-size:16px;font-family:inherit}
-#aura-modal .primary[disabled]{opacity:.5}
-#aura-modal .ghost{border:1px solid #c9b79a;border-radius:12px;padding:10px;background:transparent;font-size:15px;font-family:inherit}
-#aura-modal .note{font-size:12px;color:#8a7a68;text-align:center}
+#aura-modal .cards button{border:1px solid rgba(255,210,122,.35);border-radius:10px;padding:6px 11px;background:rgba(255,210,122,.12);color:#ffe2a8;font-size:14px;font-family:inherit;cursor:pointer}
+#aura-modal .primary{border:0;border-radius:12px;padding:12px;background:#ffd27a;color:#3a2a10;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer}
+#aura-modal .primary[disabled],#aura-modal .ghost[disabled]{opacity:.5}
+#aura-modal .ghost{border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px;background:transparent;color:#f4ecd8;font-size:15px;font-family:inherit;cursor:pointer}
+#aura-modal .name{font-weight:800;font-size:17px;color:#ffe2a8;text-align:center}
+#aura-modal .note{font-size:12px;color:rgba(244,236,216,.6);text-align:center}
 #aura-modal .row{display:flex;align-items:center;gap:8px;font-size:14px}
-#aura-modal .row input[type=range]{flex:1}`;
+#aura-modal .row input[type=range]{flex:1;accent-color:#ffd27a}`;
 
 let root = null, card = null, game = null;
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -57,7 +67,12 @@ function ensure() {
   const style = el('style'); style.id = 'aura-style'; style.textContent = CSS; document.head.appendChild(style);
   root = el('div'); root.id = 'aura-modal';
   root.addEventListener('click', e => { if (e.target === root) close(); });
-  card = el('div', 'card'); root.appendChild(card); document.body.appendChild(root);
+  const shell = el('div', 'shell'), head = el('div', 'head'), who = el('div');
+  who.append(el('div', 'nm', '반디 요정'), el('div', 'sub', '🏮 빛 공방'));   // 주인 = js/spaces/light-workshop.js KEEPER
+  const x = el('button', 'x', '✕'); x.setAttribute('aria-label', '닫기'); x.onclick = close;
+  head.append(el('div', 'av', '🧚'), who, x);
+  card = el('div', 'body');
+  shell.append(head, card); root.appendChild(shell); document.body.appendChild(root);
 }
 function close() { root?.classList.remove('show'); }
 const say = text => card.appendChild(el('div', 'npc', text));
@@ -72,6 +87,8 @@ export async function openWorkshop() {
   if (res.error) {
     card.replaceChildren();
     say(res.error === 'login_required' ? '로그인하면 빛을 빚어 줄 수 있어요.' : '지금은 공방 문이 잠겼어요. 잠시 뒤에 다시 와 주세요.');
+    const ok = el('button', 'ghost', '닫기'); ok.onclick = close; card.appendChild(ok);
+    trackEvent('aura_workshop_view', { screen: 'error', code: String(res.error) });   // [GA4] 기존 키(screen·code) 재사용 — 새 키 없음
     return;
   }
   const orders = res.orders || [];
@@ -131,7 +148,7 @@ function drawClaim(orders) {
   const r = o.recipe;
   card.replaceChildren();
   say(r.line || MSG.claimGreeting);
-  card.appendChild(el('div', null, r.name));
+  card.appendChild(el('div', 'name', r.name));
   card.appendChild(el('div', 'note', `${SHAPE_KO[r.shape]} · ${MOTION_KO[r.motion]} · ${BAND_KO[r.band]}`));
   let wearBtn, keepBtn;
   const lock = on => { if (wearBtn) wearBtn.disabled = on; if (keepBtn) keepBtn.disabled = on; };

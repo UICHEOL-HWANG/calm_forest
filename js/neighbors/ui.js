@@ -54,19 +54,23 @@ body.neighbor-visit #topleft, body.neighbor-visit #topright { display: none !imp
 .nb-visits { text-align: left; font-size: 12.5px; margin: 6px 0 12px; }
 .nb-visits div span { overflow-wrap: anywhere; min-width: 0; }
 .nb-visits div { display: flex; gap: 8px; justify-content: space-between; padding: 6px 2px; border-bottom: 1px solid #f0f4f0; }
-.nb-more { border: none; background: none; font-size: 20px; line-height: 1; color: #7a8a80; padding: 6px 8px; cursor: pointer; font-family: inherit; flex: 0 0 auto; }
-#nb-more-btn { background: #eef2ee; border-radius: 10px; width: 34px; height: 30px; padding: 0; font-size: 18px; }
-#nb-menu { position: fixed; z-index: 35; display: none; background: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 6px; min-width: 170px; }
+.nb-more { border: none; background: #eef2ee; border-radius: 10px; width: 32px; height: 32px; padding: 0; font-size: 16px; line-height: 1; color: #6a7a70; cursor: pointer; font-family: inherit; flex: 0 0 32px; margin-left: 2px; }
+.nb-row .nb-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#nb-more-btn { width: 34px; height: 30px; font-size: 18px; flex: 0 0 34px; }
+#nb-menu { position: fixed; z-index: 35; display: none; background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 6px; min-width: 180px; }
 #nb-menu.show { display: block; }
-#nb-menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 11px 10px; font-size: 13.5px; font-weight: 700; border-radius: 10px; color: #b3483e; cursor: pointer; font-family: inherit; }
+#nb-menu button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: none; background: none; padding: 12px 12px; font-size: 14px; font-weight: 700; border-radius: 10px; color: #b3483e; cursor: pointer; font-family: inherit; }
+#nb-menu button + button { border-top: 1px solid #f3e6e3; border-radius: 0 0 10px 10px; }
+#nb-menu button .ico { width: 20px; text-align: center; flex: none; }
 #nb-menu button:active { background: #fff1ef; }
 #nb-report-modal, #nb-block-modal { position: fixed; inset: 0; z-index: 34; display: none; place-items: center; background: rgba(20,40,30,0.55); }
 #nb-report-modal.show, #nb-block-modal.show { display: grid; }
-.nb-reasons { display: flex; flex-direction: column; gap: 7px; margin: 4px 0 12px; text-align: left; }
+.nb-reasons { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 16px; text-align: left; }
 .nb-reasons button { display: flex; align-items: center; gap: 10px; border: none; border-radius: 12px; background: #f4faf5; padding: 11px 12px; font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer; font-family: inherit; }
 .nb-reasons button i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #9db8a6; box-sizing: border-box; flex: none; }
 .nb-reasons button[aria-checked="true"] i { border: 6px solid #3e8f5c; }
-.nb-acts { display: flex; gap: 8px; } .nb-acts .nb-btn { flex: 1; margin-top: 0; }
+.nb-acts { display: flex; gap: 10px; margin-top: 4px; } .nb-acts .nb-btn { flex: 1; margin-top: 0; padding: 12px 14px; }
+#nb-report-modal .nb-sub, #nb-block-modal .nb-sub { margin-bottom: 14px; line-height: 1.5; word-break: keep-all; }
 .nb-danger { background: #e4736f; color: #fff; }
 `;
 
@@ -199,8 +203,9 @@ export function openNbMenu(anchor, { onReport, onBlock }) {
     document.addEventListener('pointerdown', (e) => { if (!menu.contains(e.target)) menu.classList.remove('show'); }, true);
   }
   menu.replaceChildren();
-  const item = (label, fn) => { const b = el('button', null, label); b.onclick = () => { menu.classList.remove('show'); fn(); }; return b; };
-  menu.append(item('🚩 신고하기', onReport), item('🚫 차단하기', onBlock));
+  //  이모지와 글자를 따로 — 한 문자열이면 폰트마다 이모지 폭이 달라 붙어 보였다(2026-10-11 피드백)
+  const item = (ico, label, fn) => { const b = el('button'); b.append(el('span', 'ico', ico), el('span', null, label)); b.onclick = () => { menu.classList.remove('show'); fn(); }; return b; };
+  menu.append(item('🚩', '신고하기', onReport), item('🚫', '차단하기', onBlock));
   const r = anchor.getBoundingClientRect();
   menu.classList.add('show');
   const w = menu.offsetWidth, h = menu.offsetHeight;

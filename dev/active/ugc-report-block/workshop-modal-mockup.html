@@ -1,0 +1,72 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>빛 공방 창 시안</title>
+<style>
+body{margin:0;font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#1b1b1b;color:#3b2a20}
+.grid{display:grid;grid-template-columns:repeat(3,390px);gap:16px;padding:16px}
+.phone{position:relative;width:390px;height:620px;border-radius:20px;overflow:hidden;background:radial-gradient(circle at 50% 35%,#5a5a3a,#2c3a2c 70%)}
+.phone::before{content:"";position:absolute;inset:0;background:rgba(20,40,30,.5)}
+.tag{position:absolute;top:10px;left:12px;z-index:3;color:#fff;font-weight:800;font-size:15px;background:rgba(0,0,0,.45);padding:4px 10px;border-radius:10px}
+.wrap{position:absolute;inset:0;display:grid;place-items:center;z-index:2}
+.stack{display:flex;flex-direction:column;gap:14px;align-items:center}
+/* 공통 */
+.card{width:350px;box-sizing:border-box;font-size:15px;word-break:keep-all}
+button{font-family:inherit}
+/* A — 주민 대화창과 같은 결 */
+.A .card{background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(30,50,40,.35);padding:18px 18px 16px}
+.A .head{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px}
+.A .head .em{font-size:22px}.A .head .x{margin-left:auto;border:0;background:#eef2ee;border-radius:10px;width:32px;height:32px;font-size:15px;color:#4a4a4a}
+.A .line{margin:12px 0 14px;line-height:1.55}
+.A .acts{display:flex;justify-content:flex-end;gap:10px}
+.A .acts button{border:0;border-radius:12px;padding:10px 18px;font-weight:600;font-size:15px}
+.A .ghost{background:#eef2ee}.A .primary{background:#bfe8cd}
+.A input{width:100%;box-sizing:border-box;font-size:16px;padding:10px;border-radius:12px;border:1px solid #d7ddd7;margin-bottom:10px}
+/* B — 공방 간판 머리 + 말풍선 */
+.B .card{background:#fffaf0;border-radius:22px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.B .bar{display:flex;align-items:center;gap:8px;padding:12px 14px;background:linear-gradient(180deg,#f6d89a,#efc77a);font-weight:800;font-size:16px;color:#5a3a1a}
+.B .bar .x{margin-left:auto;border:0;background:rgba(255,255,255,.55);border-radius:10px;width:30px;height:30px;font-size:14px;color:#5a3a1a}
+.B .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.B .who{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;color:#8a4a6a}
+.B .bubble{position:relative;background:#f3ead8;border-radius:14px;padding:11px 13px;line-height:1.55}
+.B .bubble::before{content:"";position:absolute;top:-7px;left:18px;border:7px solid transparent;border-top:0;border-bottom-color:#f3ead8}
+.B .primary{border:0;border-radius:12px;padding:12px;background:#4f7f55;color:#fff;font-size:16px;font-weight:700}
+.B .ghost{border:1px solid #c9b79a;border-radius:12px;padding:10px;background:transparent;font-size:15px}
+.B input{font-size:16px;padding:10px;border-radius:10px;border:1px solid #c9b79a}
+/* C — 밤 공방 등불 */
+.C .card{background:#2b2840;color:#f4ecd8;border-radius:22px;padding:18px;box-shadow:0 0 0 1px rgba(255,210,122,.25),0 0 40px rgba(255,200,110,.18),0 20px 60px rgba(0,0,0,.5)}
+.C .head{display:flex;align-items:center;gap:10px}
+.C .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;background:radial-gradient(circle,#ffe2a8,#e58fb0);box-shadow:0 0 16px rgba(255,210,122,.6)}
+.C .nm{font-weight:800;font-size:16px}.C .sub{font-size:12px;opacity:.65}
+.C .x{margin-left:auto;border:0;background:rgba(255,255,255,.1);color:#f4ecd8;border-radius:10px;width:32px;height:32px}
+.C .line{margin:14px 0;line-height:1.6;background:rgba(255,255,255,.07);border-radius:14px;padding:11px 13px}
+.C .primary{width:100%;border:0;border-radius:12px;padding:12px;background:#ffd27a;color:#3a2a10;font-size:16px;font-weight:800}
+.C .ghost{width:100%;border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px;background:transparent;color:#f4ecd8;font-size:15px}
+.C input{width:100%;box-sizing:border-box;font-size:16px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;margin-bottom:10px}
+.cap{color:#ddd;font-size:13px;text-align:center;padding:6px 0 0}
+</style></head><body><div class="grid">
+
+<div><div class="phone A"><span class="tag">A · 주민 대화창과 같은 결</span><div class="wrap"><div class="stack">
+ <div class="card"><div class="head"><span class="em">🧚</span><span>반디 요정</span><button class="x">✕</button></div>
+  <p class="line">지금은 공방 문이 잠겼어요. 잠시 뒤에 다시 와 주세요.</p>
+  <div class="acts"><button class="ghost">닫기</button></div></div>
+ <div class="card"><div class="head"><span class="em">🧚</span><span>반디 요정</span><button class="x">✕</button></div>
+  <p class="line">어떤 빛을 두르고 싶어요? 한 줄로 들려주세요</p>
+  <input placeholder="예: 발밑에 벚꽃잎이 살랑살랑"><div class="acts"><button class="primary">빚어 주세요</button></div></div>
+</div></div></div><div class="cap">흰 카드 · 이름 머리줄 · ✕ · 오른쪽 버튼 (주민 창과 동일)</div></div>
+
+<div><div class="phone B"><span class="tag">B · 공방 간판 머리 + 말풍선</span><div class="wrap"><div class="stack">
+ <div class="card"><div class="bar">🏮 빛 공방<button class="x">✕</button></div><div class="body">
+  <div class="who">🧚 반디 요정</div><div class="bubble">지금은 공방 문이 잠겼어요. 잠시 뒤에 다시 와 주세요.</div>
+  <button class="ghost">닫기</button></div></div>
+ <div class="card"><div class="bar">🏮 빛 공방<button class="x">✕</button></div><div class="body">
+  <div class="who">🧚 반디 요정</div><div class="bubble">어떤 빛을 두르고 싶어요? 한 줄로 들려주세요</div>
+  <input placeholder="예: 발밑에 벚꽃잎이 살랑살랑"><button class="primary">빚어 주세요</button></div></div>
+</div></div></div><div class="cap">지금 색 유지 · 등불색 머리띠 · 화자 이름 · 말풍선 꼬리</div></div>
+
+<div><div class="phone C"><span class="tag">C · 밤 공방 등불</span><div class="wrap"><div class="stack">
+ <div class="card"><div class="head"><div class="av">🧚</div><div><div class="nm">반디 요정</div><div class="sub">🏮 빛 공방</div></div><button class="x">✕</button></div>
+  <div class="line">지금은 공방 문이 잠겼어요. 잠시 뒤에 다시 와 주세요.</div><button class="ghost">닫기</button></div>
+ <div class="card"><div class="head"><div class="av">🧚</div><div><div class="nm">반디 요정</div><div class="sub">🏮 빛 공방</div></div><button class="x">✕</button></div>
+  <div class="line">어떤 빛을 두르고 싶어요? 한 줄로 들려주세요</div><input placeholder="예: 발밑에 벚꽃잎이 살랑살랑"><button class="primary">빚어 주세요</button></div>
+</div></div></div><div class="cap">밤에만 여는 공방 — 남색 카드 · 빛나는 얼굴 · 노란 버튼</div></div>
+
+</div></body></html>
