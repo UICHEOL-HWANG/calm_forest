@@ -676,7 +676,9 @@ export function plazaMine(season) { return plazaCall('plaza_mine', { p_season: s
 
 // ── 🏡 이웃 마을 RPC — 판정은 전부 서버(migrate_neighbors.sql). 여기선 호출만 ──
 //    오프라인·에러는 { ok:false, reason } 로 통일 → 호출부(js/neighbors/api.js)가 토스트·트래킹을 맡는다(조용히 삼키지 않는다)
-const NEIGHBOR_RPCS = new Set(['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end']);
+// ⚠️ js/neighbors/api.js 가 부르는 RPC 는 전부 여기 있어야 한다 — 빠지면 요청 전에 'bad_fn' 으로 막혀 "연결이 불안정해요"만 뜬다
+//    (2026-10-11 신고·차단이 빠져 출시 후 0건, tests/neighbors-report-block 이 잠근다)
+const NEIGHBOR_RPCS = new Set(['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end', 'neighbor_report', 'neighbor_block']);
 export async function neighborRpc(fn, args = {}) {
   if (!NEIGHBOR_RPCS.has(fn)) return { ok: false, reason: 'bad_fn' };
   if (!state.online || !supabase) return { ok: false, reason: 'offline' };

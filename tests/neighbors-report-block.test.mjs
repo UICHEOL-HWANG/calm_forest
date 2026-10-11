@@ -99,3 +99,13 @@ test('daily neighbor banner: KST day gate + GA4 act', async () => {
   assert.match(SRC, /if \(visit \|\| !inVillage2\(\) \|\| ui\.anyModalOpen\?\.\(\)\) return;/);
   assert.match(SRC, /reason !== 'tap'/);
 });
+
+// 🐞 2026-10-11 실기기: 신고·차단이 "연결이 불안정해요" — supabase-client 허용 목록에 RPC 가 빠져 요청 전에 막혔다
+test('every RPC that neighbors/api.js calls is allowed by supabase-client NEIGHBOR_RPCS', () => {
+  const api = src('js/neighbors/api.js');
+  const called = [...api.matchAll(/call\('([a-z_]+)'/g)].map(m => m[1]);
+  const allow = src('js/supabase-client.js').match(/const NEIGHBOR_RPCS = new Set\(\[([^\]]*)\]\)/)[1];
+  const allowed = [...allow.matchAll(/'([a-z_]+)'/g)].map(m => m[1]);
+  assert.ok(called.includes('neighbor_report') && called.includes('neighbor_block'));
+  for (const fn of called) assert.ok(allowed.includes(fn), `${fn} missing from NEIGHBOR_RPCS`);
+});
