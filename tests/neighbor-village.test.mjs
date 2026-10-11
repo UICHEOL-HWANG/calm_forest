@@ -67,3 +67,11 @@ test('설정 토글 — 성공하면 상태·GA4, 실패하면 토스트+실패 
 test('8장 해제 — 기존 4장 완료자처럼 7장 완료자에게도 새 장 토스트', () => {
   assert.match(bodyOf('syncStory'), /if \(!storyBooted && !retro && \(st\.ch === 4 \|\| st\.ch === 7\)\)/);
 });
+
+// 🎈 열기구 "이웃 마을" 풍선 허리 띠(2026-10-11 시안 A) — 글씨 칸이 마을 쪽(+z)을 보게
+test('neighbor balloon: sash label faces the village', () => {
+  const ART = readFileSync(new URL('../js/neighbors/gate-art.js', import.meta.url), 'utf8');
+  assert.match(ART, /copies: 2/);
+  assert.match(ART, /CylinderGeometry\(1\.255, 1\.255, 0\.42, 32, 1, true, -Math\.PI \/ 2, Math\.PI \* 2\)/);
+  assert.doesNotMatch(ART, /nblabel|style ===/);
+});
