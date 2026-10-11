@@ -15,11 +15,11 @@ import { HOUSE_POS, NEIGHBOR, NEIGHBOR_GATE, NEIGHBOR_R } from '../data/places.j
 import { Sound } from '../sound.js';
 import { sanitizeShowcase } from '../neighbors/sanitize.js';
 import { FAIL_TOAST, HOST_TALK_R, REWARD_COINS, markSeen, noticeView, pickerRows, reactOutcome, recordVisit, visitorsSince } from '../neighbors/rules.js';
-import { evFail, evNotice, evOpen, evReact, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
+import { evBlock, evFail, evNotice, evOpen, evReact, evReport, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
 import { neighborApi } from '../neighbors/net.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
 import { inVillage2 } from './doors.js';
-import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openPickerModal, openVisitorsModal, setHostBubble, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
+import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openBlockConfirm, openNbMenu, openPickerModal, openReportModal, openVisitorsModal, setHostBubble, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId }
 let pickerBusy = false;
@@ -38,7 +38,7 @@ export async function openNeighborPicker(via) {
     const today = await neighborApi.today();
     if (!today.ok) { trackEvent(...evFail('today', today.reason)); ui.toast?.(FAIL_TOAST, 2600); return; }
     trackEvent(...evOpen(today, via));                       // [GA4] 후보 수·오늘 받은 보상·진입 경로
-    openPickerModal(pickerRows(today.list, faceOf), today.rewardedToday, goVisit);
+    openPickerModal(pickerRows(today.list, faceOf), today.rewardedToday, goVisit, (row, anchor) => openMore(row.publicId, 'list', anchor));
   } finally { pickerBusy = false; }
 }
 
@@ -73,7 +73,7 @@ export function enterNeighbor(entry) {
   player.rotation.y = Math.PI;   // 집 쪽(−z)을 보고 선다
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  showNeighborHud(entry.view.nickname, exitNeighbor);
+  showNeighborHud(entry.view.nickname, exitNeighbor, (anchor) => openMore(entry.publicId, 'visit', anchor));
   Sound.blip();
   trackEvent(...evVisitStart(entry));                        // [GA4] host·slot·revisit·load_ms
   startView(visit);                                          // [원장] village_views — 기다리지 않는다(입장을 막지 않음)
@@ -96,6 +96,25 @@ export function exitNeighbor() {
   gameState.neighbors = recordVisit(gameState.neighbors);   // 📖 8장 판정(visited ≥ 1)
   requestSave();
   setTimeout(() => syncStory('neighbor_visit'), 600);       // 📖 8장 — 마을로 돌아온 화면이 먼저 보이고 나서
+}
+
+// ── 🚩🚫 신고·차단(App Store 1.2) — 목록(list)·구경 중(visit) 두 입구가 같은 흐름. 게스트도 가능(서버가 하루 20건으로 막는다)
+function openMore(publicId, from, anchor) {
+  openNbMenu(anchor, {
+    onReport: () => openReportModal(async (reason) => {
+      const r = await neighborApi.report(publicId, reason);
+      trackEvent(...evReport(publicId, reason, from, r.ok));       // [GA4] host·reason·from·ok
+      ui.toast?.(r.ok ? '🚩 신고했어요. 운영자가 확인 후 조치해요.' : FAIL_TOAST, 2800);
+    }),
+    onBlock: () => openBlockConfirm(async () => {
+      const r = await neighborApi.block(publicId);
+      trackEvent(...evBlock(publicId, from, r.ok));                // [GA4] host·from·ok
+      if (!r.ok) { ui.toast?.(FAIL_TOAST, 2600); return; }
+      ui.toast?.('🚫 차단했어요. 이 이웃은 다시 나오지 않아요.', 3000);
+      if (from === 'visit') { if (visit?.publicId === publicId) exitNeighbor(); }
+      else if (isPickerOpen()) { closePickerModal(); openNeighborPicker('after_block'); }   // 목록을 새로 받는다(차단한 이웃 빠지고 다른 이웃이 채움)
+    }),
+  });
 }
 
 // ── 📒 방문 원장(village_views) — 광고 차단으로 GA4 가 빠져도 서버에 남는다(성공 기준: 주간 활동자 중 방문 경험) ──
