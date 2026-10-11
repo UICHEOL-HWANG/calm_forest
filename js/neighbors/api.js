@@ -1,8 +1,9 @@
 // =============================================================
 //  🏡 이웃 마을 네트워크 — 주입형 순수 팩토리(Node 테스트). 실제 바인딩은 ./net.js
-//  RPC 6종(유저별, 캐시 없음 — 방문 원장 viewStart/viewEnd 포함) + /api/neighbor(엣지 10분 캐시). 실패는 전부 { ok:false, reason } — 삼키지 않는다.
+//  RPC 8종(신고·차단 포함)(유저별, 캐시 없음 — 방문 원장 viewStart/viewEnd 포함) + /api/neighbor(엣지 10분 캐시). 실패는 전부 { ok:false, reason } — 삼키지 않는다.
 // =============================================================
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const REPORT_REASONS = ['nick', 'decor', 'other'];   // SQL check 와 같게
 
 export function createNeighborApi({ rpc, fetchFn, base = '', now = () => performance.now() }) {
   async function call(fn, args) {
@@ -36,6 +37,18 @@ export function createNeighborApi({ rpc, fetchFn, base = '', now = () => perform
     async viewEnd(viewId, sec, reacted) {
       if (viewId == null) return { ok: false, reason: 'no_view' };
       const r = await call('neighbor_view_end', { p_view_id: viewId, p_sec: Math.max(0, Math.round(Number(sec) || 0)), p_reacted: !!reacted });
+      return r.ok ? { ok: true } : { ok: false, reason: r.reason || 'upstream' };
+    },
+    // 🚩 신고(사유 nick|decor|other) · 🚫 차단 — App Store 1.2. 게스트도 가능(서버가 하루 20건으로 막는다)
+    async report(publicId, reason) {
+      if (!UUID_RE.test(publicId || '')) return { ok: false, reason: 'bad_id' };
+      if (!REPORT_REASONS.includes(reason)) return { ok: false, reason: 'reason' };
+      const r = await call('neighbor_report', { p_public_id: publicId, p_reason: reason });
+      return r.ok ? { ok: true, dup: !!r.dup } : { ok: false, reason: r.reason || 'upstream' };
+    },
+    async block(publicId) {
+      if (!UUID_RE.test(publicId || '')) return { ok: false, reason: 'bad_id' };
+      const r = await call('neighbor_block', { p_public_id: publicId });
       return r.ok ? { ok: true } : { ok: false, reason: r.reason || 'upstream' };
     },
     async showcase(publicId) {
