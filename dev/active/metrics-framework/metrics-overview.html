@@ -319,8 +319,8 @@ const S = {
            tip: ['추천 링크로 들어와 계정이 추천인과 연결된 신규 수 (<code>referrals</code>)', '하위: 링크 공유 비율 · 초대 → 진입 전환 · K-팩터', '아직 BigQuery 미적재 · 데이터 0'] },
   ltv:   { x: 760, y: 72, r: 11, tier: 'l2', label: '참여 LTV', sub: '28일 획득한 날 · 유입 채널별', side: 'left',
            tip: ['신규 1명이 첫 방문 후 28일 동안 쌓은 획득한 날 (현재 1.01일)', '유입 채널: 친구 추천 · 메타 광고 · 토스 · 소셜 · 자연·직접', '추천인의 가치 = 자기 LTV + 데려온 유저들의 LTV'] },
-  ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 획득 행동까지 시간', sub: '온보딩 속도', side: 'below',
-           tip: ['첫 세션 시작 → 첫 획득 행동 이벤트까지 걸린 시간'] },
+  ttfr:  { x: 170, y: 640, r: 8, tier: 'l2', label: '첫 획득 행동까지 시간', sub: '중앙값 2.1분 · 75% 가 5분 안', side: 'below',
+           tip: ['게임 진입 → 첫 획득 행동까지 걸린 시간 · 중앙값 2.1분', '7일 안 첫 획득의 75% 가 진입 5분 안 — 첫 5분이 갈림길'] },
   act:   { x: 360, y: 590, r: 12, tier: 'l2', label: '활성화', sub: '신규 중 7일 내 첫 획득 행동', side: 'below',
            tip: ['신규 유저 중 첫 7일 안에 획득한 날이 1일 이상인 비율', '신규 → 유지 사이의 다리. AARRR 의 Activation'] },
   keep:  { x: 520, y: 500, r: 9, tier: 'l2', label: '유지', sub: '지난주에도 방문', side: 'right',
@@ -488,6 +488,7 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
     act:   { x: 545,  y: 440, w: 160, k: 'hot',  t: '첫 획득 = 활성화', v: '43% (병목)' },
     ref:   { x: 95,   y: 545, w: 150, k: 'wait', t: '추천 유입 진입', v: '0 · 10/9 배포' },
     e1:    { x: 545,  y: 545, w: 160, k: 'exp',  t: '실험: 첫 5분 수확', v: '목표 60%' },
+    ttfa:  { x: 385,  y: 545, w: 140, k: 'l2',   t: '첫 획득까지 시간', v: '중앙값 2.1분' },
     e2:    { x: 730,  y: 440, w: 150, k: 'exp',  t: '실험: 힌트 배너', v: '이탈 직전 개입' },
   };
   const ST = {
@@ -519,6 +520,7 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
   [['visit', 'entry'], ['entry', 'chars'], ['chars', 'act']].forEach(([a, b]) =>
     path(`M ${B[a].x + B[a].w / 2} ${B[a].y} H ${B[b].x - B[b].w / 2}`, PATHW));
   path(`M ${B.act.x} ${top(B.act)} V 380 H ${B.kept.x} V ${bot(B.kept)}`, { ...PATHW, opacity: .75 });
+  path(`M ${B.ttfa.x} ${top(B.ttfa)} V 495 H ${B.act.x - 30} V ${bot(B.act)}`, TREE);
   path(`M ${B.e1.x} ${top(B.e1)} V ${bot(B.act)}`, { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
   path(`M ${B.e2.x - B.e2.w / 2} ${B.e2.y} H ${B.act.x + B.act.w / 2}`, { stroke: '#7fc4ea', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' });
   path(`M ${B.ref.x} ${top(B.ref)} V ${bot(B.visit)}`, DOT('#e3a948'));
