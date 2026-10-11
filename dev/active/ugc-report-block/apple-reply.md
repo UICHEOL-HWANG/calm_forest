@@ -1,5 +1,7 @@
 # Apple 회신 — Guideline 2.1 Information Needed (제출 30be8612, 2026-10-11)
 
+> 🍎 재제출 빌드: **1.0.0 (5)** — 녹화도 빌드 5(TestFlight)로 찍는다.
+
 > App Store Connect › 앱 심사 › 메시지에 회신 + 같은 내용을 버전의 "앱 심사 정보 › 메모"에도 붙인다(Apple 요청).
 > 영어로 보낸다(심사팀 공용어). 녹화 파일은 회신에 첨부.
 
@@ -7,7 +9,7 @@
 1. 홈 화면에서 **고요한 숲 아이콘을 눌러 실행**(녹화는 실행부터 시작)
 2. 게임 센터 자동 연결 → 바로 게임 진입(또는 로그인 화면이면 "Apple로 계속하기" → Face ID → 진입)
 3. 마을 돌아다니기: 나무 베기 한 번, 밭 갈기·씨 뿌리기 한 번(10~20초)
-4. 🏡 이웃 마을 팻말 → **오늘의 이웃** 목록
+4. 화면 위 **🏡 오늘의 이웃이 기다려요** 배너 탭(하루 1회 · 이미 봤으면 마을 남쪽 🎈 열기구 바구니 앞으로 걸어가 행동 버튼) → **오늘의 이웃** 목록
 5. 한 줄의 **⋯ → 🚩 신고하기** → 사유 고르기 → **신고 보내기** → "신고했어요" 토스트
 6. 다른 줄 **놀러 가기** → 이웃 마을 구경 → 상단 줄 **⋯ → 🚫 차단하기 → 차단** → 내 마을로 돌아옴·토스트
 7. 다시 오늘의 이웃을 열어 **차단한 이웃이 없는 것** 보여 주기
@@ -28,7 +30,7 @@ calm forest is a cozy, low-pressure 3D village life game. Players chop wood, far
 **3. How to access the main features**
 No login credentials are needed. On launch the app signs in automatically with Game Center. If Game Center is not available, tap "Continue with Apple"; if you close the Apple sheet, the game starts right away as a guest with full access to all features.
 - Move with the on-screen joystick and tap the action button to interact.
-- Neighbor villages: walk to the 🏡 signpost to open "Today's neighbors".
+- Neighbor villages: tap the "Your neighbors are waiting" banner shown once a day, or walk to the hot-air balloon labeled "Neighbors" at the south of the village and tap the action button, to open "Today's neighbors".
 - Report / block: tap ⋯ on any neighbor in the list, or ⋯ in the top bar while visiting a neighbor's village.
 - Account deletion: ☰ → ⚙️ Settings → Delete account (type "delete" to confirm). Deletion happens inside the app immediately.
 
