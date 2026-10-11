@@ -50,8 +50,9 @@ export function buildNeighborBalloon(THREE, label) {
 
   // 🏡 풍선 한가운데 "이웃 마을" — 과수원 사과 명판처럼 흰 글씨+짙은 테두리(사용자 요청 2026-10-11)
   //    풍선과 같이 흔들리게 balloon 의 자식. 앞면(+z)이 마을 쪽(카메라가 북향이라 남쪽 면이 보인다)
-  const lbl = floatLabel(THREE, label, 2.2, 0.8);
-  lbl.position.set(0, 0, 1.33); balloon.add(lbl);
+  const lbl = floatLabel(THREE, label, 1.9, 0.7);
+  lbl.scale.y = 1 / 1.18;   // 풍선 세로 늘림(1.18)을 되돌려 글씨가 길쭉해지지 않게
+  lbl.position.set(0, 0, 1.3); balloon.add(lbl);
 
   // 땅에 매어 둔 줄 + 말뚝
   add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), mat(THREE, 0x8a6a4a)), 1.3, 0.25, 0.9);

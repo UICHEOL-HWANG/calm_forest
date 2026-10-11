@@ -96,6 +96,6 @@ test('daily neighbor banner: KST day gate + GA4 act', async () => {
   assert.deepEqual(evBanner('tap'), ['neighbor_banner', { act: 'tap' }]);
   const SRC = readFileSync(new URL('../js/spaces/neighbor.js', import.meta.url), 'utf8');
   assert.match(SRC, /openNeighborPicker\('banner'\)/);
-  assert.match(SRC, /if \(visit \|\| !inVillage2\(\)\) return;/);
+  assert.match(SRC, /if \(visit \|\| !inVillage2\(\) \|\| ui\.anyModalOpen\?\.\(\)\) return;/);
   assert.match(SRC, /reason !== 'tap'/);
 });

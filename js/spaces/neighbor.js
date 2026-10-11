@@ -231,7 +231,7 @@ function readBannerDay() { try { return localStorage.getItem(BANNER_KEY); } catc
 function dailyBanner() {
   if (!bannerDue(readBannerDay(), Date.now())) return;
   whenNoModal(() => {
-    if (visit || !inVillage2()) return;   // 실내·다른 공간이면 오늘은 건너뛰지 않고 다음 접속에 다시
+    if (visit || !inVillage2() || ui.anyModalOpen?.()) return;   // 실내·다른 공간·30초 넘게 창이 떠 있으면 오늘 몫을 쓰지 않고 다음 접속에 다시
     try { localStorage.setItem(BANNER_KEY, kstDay(Date.now())); } catch { /* 저장 못 해도 배너는 띄운다 */ }
     ui.showHintBanner?.({
       ico: '🏡', title: '오늘의 이웃이 기다려요', line: '눌러서 이웃 마을 구경 가기',
