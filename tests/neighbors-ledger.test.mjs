@@ -47,7 +47,7 @@ test('viewEnd: 인자(sec 반올림·0 아래 자름) · view_id 없으면 부�
 
 test('supabase-client 허용 RPC 에 원장 2종이 있다', () => {
   assert.match(read('js/supabase-client.js'),
-    /const NEIGHBOR_RPCS = new Set\(\['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end'\]\);/);
+    /const NEIGHBOR_RPCS = new Set\(\['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end', 'neighbor_report', 'neighbor_block'\]\);/);
 });
 
 // ── spaces/neighbor.js 배선 ──
