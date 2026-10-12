@@ -1,0 +1,3 @@
+shots/
+mock/*.png
+!mock/compare-pc-*.png

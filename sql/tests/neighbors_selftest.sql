@@ -40,7 +40,7 @@ begin
       'pet', jsonb_build_object('kind', 'leaf', 'name', 'SECRET_PET_NAME', 'works', 50, 'restUntil', 0),
       'houseStyle', jsonb_build_object('roof', 1, 'wall', 2, 'door', 0),
       'house', jsonb_build_object('style', null, 'addons', jsonb_build_array('chimney_smoke'),
-                                  'decor', jsonb_build_array(jsonb_build_object('id', 'bed', 'x', 0, 'z', 0))),
+                                  'decor', jsonb_build_array(jsonb_build_object('id','bed','x',1,'z',2,'rot',1,'f',0), jsonb_build_object('id','lamp','x',9,'z',0,'rot',0,'f',0), jsonb_build_object('id','rug','x',0,'z',0,'rot',7,'f',9), '{"id":"rug","x":1e400,"z":0,"rot":0,"f":0}'::jsonb)),
       'outdoor', jsonb_build_array(jsonb_build_object('id', 'flowerbed', 'x', -5, 'z', -5, 'rot', 1),
                                    jsonb_build_object('id', 'fence', 'x', 20, 'z', 20, 'rot', 0)),
       'workers', jsonb_build_array(jsonb_build_object('id', 'w1', 'name', 'SECRET_WORKER_NAME')),
@@ -93,7 +93,7 @@ begin
   sc := public.neighbor_showcase(pid);
   if sc is null then raise exception 'FAIL: 공개 이웃 showcase 가 null'; end if;
   select array_agg(k2.key order by k2.key collate "C") into keys from jsonb_object_keys(sc) as k2(key);
-  if keys <> array['addons','character','coop','equipped','houseStage','houseStyle','nickname','outdoor','pet','style'] then
+  if keys <> array['addons','character','coop','equipped','houseStage','houseStyle','nickname','outdoor','pet','room','style'] then
     raise exception 'FAIL keys: %', keys; end if;
   if strpos(sc::text, f::text) > 0 then raise exception 'FAIL: showcase 에 user_id 가 있다'; end if;
   if strpos(sc::text, 'inventory') > 0 or strpos(sc::text, 'cashOwned') > 0 or strpos(sc::text, 'owned') > 0
@@ -102,6 +102,9 @@ begin
     raise exception 'FAIL: 허용 목록 밖 값이 나갔다: %', sc; end if;
   if jsonb_array_length(sc->'outdoor') <> 1 or sc->'outdoor'->0->>'id' <> 'flowerbed' then
     raise exception 'FAIL: 앞마당 반경 14 필터: %', sc->'outdoor'; end if;
+  if jsonb_array_length(sc->'room') <> 2 or sc->'room'->0->>'id' <> 'bed' or (sc->'room'->0->>'rot')::int <> 1
+     or (sc->'room'->1->>'rot')::int <> 0 or (sc->'room'->1->>'f')::int <> 0 then
+    raise exception 'FAIL: 실내 room 필터(범위 7.5·rot/f 정규화): %', sc->'room'; end if;
   if sc->'pet'->>'kind' <> 'leaf' or (sc->'pet'->>'works')::int <> 50 or (sc->'pet') ? 'name' then
     raise exception 'FAIL pet: %', sc->'pet'; end if;
   if public.neighbor_showcase(public._nb_public_id(c)) is not null then raise exception 'FAIL: 비공개 showcase'; end if;

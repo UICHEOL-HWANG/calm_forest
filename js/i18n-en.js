@@ -1465,6 +1465,10 @@ export const EN = {
   '🪙 오늘 받은 방문 보상 {0#}/3': '🪙 Visit rewards today {0}/3',
   '🏡 {0} 의 마을': "🏡 {0}'s village",
   '🚪 내 마을로': '🚪 Back to my village',
+  '🚪 들어가 보기': '🚪 Go inside',
+  '🚪 마당으로': '🚪 Back to the yard',
+  '🏡 {0} 의 집': "🏡 {0}'s house",
+  '🏠 집 안을 불러오지 못했어요': "🏠 Couldn't load the house",
   '"와 줘서 고마워요! 어땠어요?"': '"Thanks for coming! How was it?"',
   '"또 와 줘서 기뻐요!"': '"So happy you came again!"',
   '❤️ 마음을 남겼어요 · 🪙+5': '❤️ You left a reaction · 🪙+5',
@@ -2450,4 +2454,10 @@ export const EN = {
   '라일락': 'Lilac', '제비꽃': 'Violet', '밤하늘': 'Night sky', '눈': 'Snow', '잿빛': 'Ash gray', '코코아': 'Cocoa', '금빛': 'Golden',
   '작은 빛': 'Little Glow', '꽃잎 바람': 'Petal Breeze', '풀잎 바람': 'Grass Breeze', '별 부스러기': 'Stardust',
   '물방울 빛': 'Dewdrop Glow', '반딧불 산책': 'Firefly Stroll', '눈송이 춤': 'Snowflake Dance', '두근두근': 'Heartbeat', '콧노래': 'Humming',
+  // 📲 웹 → 앱 유도 배너 (js/app-banner-ui.js · 스펙 §3-1)
+  '이 마을, 앱에서도 만나요': 'Get the app',
+  '지금 마을 그대로 이어져요': 'Pick up where you left off',
+  '로그인하면 지금 마을 그대로 가져가요': 'Sign in to bring your village',
+  '로그인하고 받기': 'Sign in',
+  '배너 닫기': 'Close banner',
 };

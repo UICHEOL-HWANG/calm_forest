@@ -141,7 +141,8 @@ function markSessionLost() {
 //  초기화 — 페이지 로드시 호출.
 //  반환: { needLogin } → true면 로그인 화면을 띄워야 함.
 // =============================================================
-export async function initAuth(onStatusChange) {
+//  keepGuest: 🧪 E2 처치(skip_login) 기기 — 웹이라도 남아 있는 게스트(익명) 세션을 이어 간다(같은 기기 재방문, js/exp-e2.js)
+export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
   statusCb = onStatusChange;
   state.variant = assignVariant();   // 실험 off면 'control', 켜지면 client_id 해시로 A/B
 
@@ -179,6 +180,7 @@ export async function initAuth(onStatusChange) {
       return { needLogin: false, offline: false };
     }
     if (s && isAnon(s)) {
+      if (keepGuest && !IS_TOSS && !IS_NATIVE) { applySession(s); return { needLogin: false, offline: false }; }
       // 🔵 토스·📱 플레이 앱: 자동 연결이 안 돼 게스트로 플레이했던 진행도를 잠시 들고 있는다.
       //    익명 세션을 정리하면 그 계정의 저장을 더는 읽을 수 없으므로(RLS) 로그아웃 전에 읽어야 한다.
       //    정식 계정으로 붙은 뒤 loadGame() 이 pickSave 로 어느 쪽을 남길지 정한다.
@@ -479,14 +481,19 @@ export async function signInAsGuest() {
       );
     }
   }
-  // 순수 오프라인 게스트(익명 로그인 불가) — 진행은 되지만 DB 저장은 안 됨
+  startLocalGuest();
+  return { online: false };
+}
+
+// 순수 오프라인 게스트(익명 로그인 불가) — 진행은 되지만 DB 저장은 안 됨
+//   🧪 E2 처치도 첫 입력 전까지 이 상태로 논다(익명 계정은 입력 뒤 signInAsGuest — js/auth/deferred-guest.js)
+export function startLocalGuest() {
   state.online = false;
   state.userId = 'local-' + state.sessionId;
   state.isGuest = true;
   state.email = '게스트';
   state.provider = 'offline';
   emit();
-  return { online: false };
 }
 
 // ── 로그아웃 ──

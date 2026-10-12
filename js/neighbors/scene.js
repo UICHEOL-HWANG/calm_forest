@@ -2,8 +2,8 @@
 //  🏡 이웃 공간 짓기·치우기 — NEIGHBOR(0,0,700)
 //  ⚠️ 넘겨받은 뷰(js/neighbors/sanitize.js 결과)로만 그린다. 내 세이브는 읽지도 쓰지도 않는다 —
 //     tests/neighbor-space.test.mjs 가 이 파일에 그 이름이 아예 없음을 잠근다.
-//  ⚠️ 치울 때: 캐릭터 재질은 내 캐릭터와 공유(game.js makeCharacterPreview 주석) → disposeSkin 만.
-//     펫도 같은 이유로 떼어 내기만 한다. 집·구성품·장식·고정 세트는 여기서 새로 만든 것이라 disposeTree.
+//  ⚠️ 치울 때: 캐릭터·펫 재질은 내 캐릭터·펫과 공유(game.js makeCharacterPreview 주석) → 지오메트리만(disposeGeos).
+//     집·구성품·장식·고정 세트는 여기서 새로 만든 것이라 disposeTree.
 //  ⚠️ 구성품 애니메이션 등록(spaces/house.js 의 addon 애니 등록 함수)은 부르지 않는다 — 내 집의 전역 목록을 갈아 끼운다.
 //     (tests/neighbor-space 가 그 함수 이름이 이 파일에 없음을 잠근다)
 // =============================================================
@@ -12,10 +12,10 @@ import { buildCharacterMesh, disposeTree, dropKilnFlames, makeSignpost, outdoorM
 import { buildHouseModel, mountHouseAddons } from '../house/index.js';
 import { prepHouseMeshes, unregisterWindows } from '../spaces/house.js';
 import { spawnPet } from '../pet/render.js';
-import { disposeSkin } from '../cosmetics/skin.js';
 import { DOOR_COLORS, NEIGHBOR, NEIGHBOR_R, ROOF_COLORS, WALL_COLORS } from '../data/places.js';
 import { stage7Boxes } from '../house-stage7.js';
 import { hostSpot, houseSolidR } from './rules.js';
+import { hostStand } from './indoor-rules.js';
 
 export const GROUND_R = NEIGHBOR_R + 18;   // 34 — 언덕 끝 허공이 안 보이게(과수원 ORCHARD_HALF+16 과 같은 교훈). shadow-scope: 700−34−18 = 648m
 const TREE_SPOTS = [[-15, -8], [-17, 3], [-13, 11], [15, -8], [17, 3], [13, 11], [-7, -16], [7, -16]];
@@ -56,6 +56,13 @@ function earlyHouse(stage) {
   return g;
 }
 
+//  🧹 캐릭터·펫 — 지오메트리는 부를 때마다 새로 만든다(buildAnimalMesh·buildCosmetic·스킨·pet BUILD 모두 캐시 없음).
+//     재질만 plushMat·꾸미기·pet matsFor 캐시로 내 캐릭터·펫과 공유 → 재질은 건드리지 않는다.
+//     (예전엔 disposeSkin 만 불러 방문마다 캐릭터 21개 + 펫 6개 지오메트리가 샜다, 2026-10-12)
+function disposeGeos(root) {
+  root.traverse(o => { if (o.isMesh) o.geometry?.dispose(); });
+}
+
 // 고정 세트 — 바닥 · 울타리(남쪽 출구만 비움) · 나무 8그루
 function fixedSet() {
   const g = new THREE.Group();
@@ -90,6 +97,8 @@ export function buildNeighborScene(view) {
   const built = {
     group,
     hostSpot: null,
+    doorSpot: null,
+    setVisible(on) { group.visible = on; for (const c of solids) c.off = !on; },   // 🏠 실내에 있는 동안 마당을 끈다
     update(dt) { t += dt; host.position.y = Math.abs(Math.sin(t * 2.2)) * 0.04; },   // 반가워서 통통
     dispose() {
       for (const c of solids) removeSolid(c);
@@ -97,8 +106,8 @@ export function buildNeighborScene(view) {
       unregisterWindows(group);                                      // 집 창문·정원등·화로 — 밤 점등 목록에서 뺀다
       dropKilnFlames(group);                                         // 🔥 장식 화덕 불꽃 — 전역 목록에서(부모 사슬이 살아 있을 때)
       scene.remove(group);
-      if (host) { group.remove(host); disposeSkin(host); }
-      if (pet) group.remove(pet);
+      if (host) { group.remove(host); disposeGeos(host); }
+      if (pet) { group.remove(pet); disposeGeos(pet); }
       //  장식(화덕·발효통) 속 팻말까지 — 기둥 충돌체를 치우고 아직 rAF 등록 전이면 건너뛰게(rebuildFarm 과 같은 규칙)
       group.traverse(o => { if (o.userData.solid) removeSolid(o.userData.solid); o.userData.dead = true; });
       group.traverse(o => { if (o.isMesh) for (const m of [].concat(o.material)) m?.map?.dispose?.(); });   // 팻말 캔버스·나무 텍스처 복제
@@ -128,14 +137,16 @@ export function buildNeighborScene(view) {
     else if (view.houseStage >= 3) solids.push(solidCircle(NEIGHBOR.x, NEIGHBOR.z, houseSolidR(view.houseStage)));
 
     const spot = hostSpot(view.houseStage, view.style, NEIGHBOR);
-    built.hostSpot = spot;
+    built.doorSpot = spot;                         // 🚪 실내 문 프롬프트 자리
+    const stand = hostStand(spot);                 // 🙋 문 앞에서 비켜 선다(문 프롬프트·말풍선 겹침 방지)
+    built.hostSpot = stand;
     host = buildCharacterMesh(view.character, { owned: [], equipped: view.equipped });
-    host.position.set(spot.x, 0, spot.z);   // rotation 0 = +z(카메라) 를 본다
+    host.position.set(stand.x, 0, stand.z);   // rotation 0 = +z(카메라) 를 본다
     group.add(host);
-    solids.push(solidCircle(spot.x, spot.z, 0.45));
+    solids.push(solidCircle(stand.x, stand.z, 0.45));
     if (view.pet) {
       pet = spawnPet(THREE, view.pet.kind, view.pet.stage);
-      if (pet) { pet.position.set(spot.x + 1.1, 0, spot.z + 0.3); group.add(pet); }
+      if (pet) { pet.position.set(stand.x + 1.1, 0, stand.z + 0.3); group.add(pet); }
     }
 
     sign = makeSignpost('🚪 내 마을로', NEIGHBOR.x + 2.4, NEIGHBOR.z + NEIGHBOR_R - 0.6);

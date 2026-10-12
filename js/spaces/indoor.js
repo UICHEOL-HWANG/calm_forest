@@ -98,12 +98,19 @@ export function rodBetween(p1, p2, r, mat) {
   m.castShadow = true; return m;
 }
 
-// 방 한 채를 짓는다 — def = floorAt() 이 주는 층 정의(반경·실외 여부·id)
+// 방 한 채를 짓는다 — def = floorAt() 이 주는 층 정의(반경·실외 여부·id). 내 집 전용 어댑터(이웃 집은 js/neighbors/indoor-scene.js)
 export function buildRoom(def) {
-  const g = new THREE.Group(); g.position.set(INT.x, def.elevated ? ROOF_Y : INT.y, INT.z);   // ☀️ 루프탑만 ROOF_Y 만큼 띄운다(내부 좌표는 그대로 — 방 전체가 같이 올라간다)
+  const g = buildRoomWith(def, { stage: gameState.houseStage, style: gameState.house.style, origin: INT, windows: houseWindows, solidCircle });
+  scene.add(g);
+  return g;
+}
+
+// 🏠 방 짓기 본체 — ctx = { stage, style, origin, windows, solidCircle }. 전역을 직접 읽지 않는다(이웃 집 실내가 같은 함수를 쓴다, 2026-10-11)
+export function buildRoomWith(def, ctx) {
+  const g = new THREE.Group(); g.position.set(ctx.origin.x, def.elevated ? ROOF_Y : ctx.origin.y, ctx.origin.z);   // ☀️ 루프탑만 ROOF_Y 만큼 띄운다(내부 좌표는 그대로 — 방 전체가 같이 올라간다)
   g.userData.floorIdx = def.f;   // refreshStairsLandmarks 가 위/아래 목적지를 계산할 때 쓴다
   const H = def.half, W = H * 2;
-  const fin = finishFor(gameState.houseStage, gameState.house.style);   // 🎨 집 단계(7단계는 스타일)에 맞춘 실내 마감(바닥·벽·계단)
+  const fin = finishFor(ctx.stage, ctx.style);   // 🎨 집 단계(7단계는 스타일)에 맞춘 실내 마감(바닥·벽·계단)
   const lay = stairLayout(H);       // 🪜 이 방의 계단 좌표(오르는 진입점 · 내려가는 구멍)
   const isGarden = def.id === 'garden';   // 🌿 문으로 가는 옆 공간 — 계단·구멍이 없다
   const hasDown = def.f > 0 && !isGarden;   // 1층(f=0)은 내려갈 곳이 없다 — 바닥에 구멍을 뚫지 않는다
@@ -134,7 +141,7 @@ export function buildRoom(def) {
   }
   if (isGarden) {   // 🌿 정원 — 집 벽(문)·낮은 담·잔디 위 정원(js/house/interior7.js). 하늘이 그대로 보인다
     const g7 = buildGardenFloor7(THREE, HH, { style: fin.deco || 'modern', half: H, doorZ: GARDEN_DOOR_Z, doorHalfW: GARDEN_DOOR_HALF_W });
-    g.add(g7.group); houseWindows.push(...g7.windowMats);
+    g.add(g7.group); ctx.windows.push(...g7.windowMats);
   } else if (def.outdoor) {   // ☀️ 루프탑 — 벽 대신 유리 난간, 하늘·밤별이 보인다
     // 🪟 외관 루프탑 모델(js/house/villa.js railGlass)과 같은 재질 — 스펙 "유리 난간", 불투명 크림색이면
     // 같은 건물처럼 안 읽힌다. H.glass() 는 기본 opacity 0.55 라 난간 전용으로 0.22 를 덮어쓴다.
@@ -151,7 +158,7 @@ export function buildRoom(def) {
     const wall = () => clayMat(fin.wall ?? PAL.wall, false);
     const back = new THREE.Mesh(new THREE.BoxGeometry(W, 3, 0.24), wall()); back.position.set(0, 1.5, H); back.castShadow = true; g.add(back);
     const left = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, W), wall()); left.position.set(-H, 1.5, 0); g.add(left);
-    if (def.id === 'ground' && gameState.houseStage >= 7) {   // 🌿 7단계 1층 오른쪽 벽에 정원 문 틈 — 문 위 린텔 + 문짝
+    if (def.id === 'ground' && ctx.stage >= 7) {   // 🌿 7단계 1층 오른쪽 벽에 정원 문 틈 — 문 위 린텔 + 문짝
       const gz0 = GARDEN_DOOR_Z - GARDEN_DOOR_HALF_W, gz1 = GARDEN_DOOR_Z + GARDEN_DOOR_HALF_W;
       const rA = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, gz0 + H), wall()); rA.position.set(H, 1.5, (-H + gz0) / 2); g.add(rA);
       const rB = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3, H - gz1), wall()); rB.position.set(H, 1.5, (gz1 + H) / 2); g.add(rB);
@@ -162,7 +169,7 @@ export function buildRoom(def) {
     }
     if (!fin.deco) {   // 7단계는 deco 가 스타일 창을 직접 단다
       const winMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8, emissive: 0xffcaa0, emissiveIntensity: 0, roughness: 0.7 });
-      houseWindows.push(winMat);
+      ctx.windows.push(winMat);
       [-H / 2.8, H / 2.8].forEach(wx => { const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1, 0.06), winMat); win.position.set(wx, 1.7, H - 0.1); g.add(win); });
     }
     if (def.id === 'ground') {   // 1층에만 나가는 문
@@ -177,7 +184,7 @@ export function buildRoom(def) {
   }
   if (fin.deco && !def.outdoor && !isGarden) {   // 🏡 7단계 — 스타일 벽 장식(창·기둥·슬랫) + 실내 정원. 방마다 한 번, 재질별 병합(js/house/interior7.js)
     const d7 = buildInterior7(THREE, HH, { style: fin.deco, half: H, ground: def.id === 'ground', doorZ: GARDEN_DOOR_Z, doorHalfW: GARDEN_DOOR_HALF_W });
-    g.add(d7.group); houseWindows.push(...d7.windowMats);   // 창 재질은 밤 점등 목록에(재건축 땐 unregisterWindows 가 뺀다)
+    g.add(d7.group); ctx.windows.push(...d7.windowMats);   // 창 재질은 밤 점등 목록에(재건축 땐 unregisterWindows 가 뺀다)
   }
   // 🌀 나선 계단 — 올라가지 않는다. 옆에 서면 프롬프트가 뜨는 표지물(스펙 §4.2).
   //   sims/stair-concepts/stairs.js(kind='spiral') 승인안 포팅. 좌표는 stairLayout(H) —
@@ -272,13 +279,13 @@ export function buildRoom(def) {
     // 🚧 콜라이더 — 원형 발자국이라 solidCircle 로 정확히 막는다(각도에 상관없이 같은 반경에서 멈춘다).
     //   구멍이 있는 층(hasHole)은 구멍 전체를, 없는 층(1층)은 디딤판 바깥 반경을 — 둘 다 holeR 로
     //   통일해 단순하게(디딤판 R=1.2 보다 살짝 넉넉한 값이라 발이 걸리지 않는다).
-    st.userData.collider = solidCircle(g.position.x + cx, g.position.z + cz, holeR);
+    st.userData.collider = ctx.solidCircle(g.position.x + cx, g.position.z + cz, holeR);
     g.add(st);
     return st;
   };
 
   g.userData.st = isGarden ? null : buildSpiralStair(def.f < 2, hasDown);   // 🌿 정원엔 계단이 없다(문으로 간다)
-  scene.add(g); g.visible = false;
+  g.visible = false;
   setFogExempt(g, true);   // 방은 안개 밖(작은 방이라 안개가 지척의 벽까지 흐리게 만든다 — 루프탑도 좁아 같은 이유로 예외)
   return g;
 }

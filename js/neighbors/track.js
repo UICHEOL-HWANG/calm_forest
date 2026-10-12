@@ -19,3 +19,9 @@ export const evBlock = (publicId, from, ok) => ['neighbor_block', { host: public
 // 🏡 하루 한 번 배너 — act: show | tap | dismiss
 export const evBanner = (act) => ['neighbor_banner', { act }];
 export const evFail = (stage, code) => ['neighbor_load_fail', { stage, code: String(code ?? 'unknown') }];
+
+// 🏠 실내 — 들어갈 때(집 단계·보이는 가구 수) · 나올 때(머문 초·둘러본 층 수·이름표 본 가구 수)
+export const evIndoorEnter = (publicId, stage, decorN) =>
+  ['neighbor_indoor_enter', { host: publicId, house_stage: stage, decor_n: decorN }];
+export const evIndoorExit = (publicId, sec, floorsSeen, tagsSeen) =>
+  ['neighbor_indoor_exit', { host: publicId, sec: Math.max(0, Math.round(sec)), floors_seen: floorsSeen, tags_seen: tagsSeen }];

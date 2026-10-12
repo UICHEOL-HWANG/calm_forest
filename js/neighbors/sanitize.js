@@ -3,16 +3,19 @@
 //  서버(neighbor_showcase)가 허용 목록만 보내지만 클라도 믿지 않는다: 모르는 id·깨진 좌표는 버리고,
 //  그릴 수 없는 응답(집 단계 밖)은 null. 결과(View)만 js/neighbors/scene.js 가 받는다.
 //  ⚠️ OUTDOOR·ANIMALS·HOUSE_POS 는 three/game.js 를 끌어와 여기서 import 할 수 없다 → ctx 로 주입
-//     ctx = { outdoorIds:Set, animalIds:Set, fallbackAnimal:string, yard:{x,z} }
+//     ctx = { outdoorIds:Set, decorIds:Set(실내 가구), animalIds:Set, fallbackAnimal:string, yard:{x,z} }
 //  숫자 YARD_R·DECOR_MAX 는 sql/migrations/migrate_neighbors.sql _nb_yard 와 같아야 한다(tests/neighbors-sync)
 // =============================================================
 import { HOUSE_ADDONS } from '../house/addons.js';
 import { findItem } from '../cosmetics/catalog.js';
 import { petKindOf, stageOf } from '../pet/rules.js';
 import { normalizeHouseStyle } from '../house-stage7.js';
+import { normalizeFloor } from '../house-floors.js';
 
 export const YARD_R = 14;
 export const DECOR_MAX = 40;
+export const ROOM_MAX = 120;      // 🏠 실내 가구 상한 — sql _nb_room 의 limit
+export const ROOM_MAX_XY = 7.5;   // 🏠 방 반폭(7)+여유 — sql _nb_room 의 abs(x|z) 상한
 export const COSMETIC_SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin']);
 const MAX_STAGE = 7;
 const PALETTE_N = 5;                      // ROOF/WALL/DOOR_COLORS 길이(js/data/places.js)
@@ -56,12 +59,29 @@ export function sanitizeShowcase(raw, ctx) {
     outdoor.push({ id: o.id, dx, dz, rot: r != null && Number.isInteger(r) ? ((r % 4) + 4) % 4 : 0 });
   }
 
+  const room = Array.isArray(raw.room) && ctx.decorIds ? sanitizeRoom(raw.room, ctx.decorIds, stage) : null;
+
   return {
     nickname: nick ? [...nick].slice(0, 16).join('') : NICK_FALLBACK,   // 코드 포인트 기준 — 이모지를 반으로 자르지 않게
     character, equipped, pet,
     houseStage: stage,
     houseStyle: { roof: swatch(hs.roof), wall: swatch(hs.wall), door: swatch(hs.door) },
     style: normalizeHouseStyle(typeof raw.style === 'string' ? raw.style : null, stage),
-    addons, outdoor,
+    addons, outdoor, room,
   };
+}
+
+/** 🏠 실내 가구 — 서버 _nb_room 과 같은 조건 + 이 클라가 아는 가구만 · 층은 그 집 단계로 보정 */
+function sanitizeRoom(list, decorIds, stage) {
+  const out = [];
+  for (const d of list) {
+    if (out.length >= ROOM_MAX) break;
+    if (!d || typeof d !== 'object' || typeof d.id !== 'string' || !decorIds.has(d.id)) continue;
+    const x = num(d.x), z = num(d.z);
+    if (x == null || z == null || Math.abs(x) > ROOM_MAX_XY || Math.abs(z) > ROOM_MAX_XY) continue;
+    const r = num(d.rot), f = num(d.f);
+    out.push({ id: d.id, x, z, rot: r != null && Number.isInteger(r) ? ((r % 4) + 4) % 4 : 0,
+               f: normalizeFloor(f != null && Number.isInteger(f) ? f : 0, stage) });
+  }
+  return out;
 }

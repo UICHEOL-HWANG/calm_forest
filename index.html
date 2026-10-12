@@ -691,6 +691,34 @@
   #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
   /* 배너가 떠 있는 동안 토스트는 그 아래로 내려 겹침 방지 */
   body.hintbanner #toast { top: calc(158px + var(--toss-reserve)); }
+  /* 📲 웹 → 앱 유도 배너(B안 가로 바) — 스펙 dev/active/app-banner-funnel §3-1. DOM·규칙은 js/app-banner-ui.js · js/app-banner.js
+     ⚠️ 여기서 display:none 으로 숨기는 상태가 늘면 JS 는 render() 의 실제 표시 여부로 알아챈다(노출로 안 침) */
+  #app-banner { position: fixed; z-index: 29; left: 50%; transform: translateX(-50%); width: min(420px, calc(100vw - 24px));
+    bottom: calc(282px + env(safe-area-inset-bottom)); display: none; align-items: center; gap: 10px;
+    padding: 9px 9px 9px 10px; border-radius: 18px; color: var(--ink);
+    background: rgba(255,247,236,.96); box-shadow: 0 8px 22px rgba(60,80,60,.25); }
+  #app-banner.show { display: flex; }
+  #app-banner img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+  #app-banner .ab-text { flex: 1; min-width: 0; word-break: keep-all; }
+  #app-banner .ab-title { font-size: 14px; font-weight: 800; line-height: 1.3; }
+  #app-banner .ab-line { font-size: 12px; opacity: .72; margin-top: 1px; line-height: 1.3; }
+  #app-banner .ab-btn { border: 0; border-radius: 999px; font: inherit; font-weight: 800; font-size: 12.5px; padding: 8px 11px;
+    background: #1f2a22; color: #fff; flex: none; white-space: nowrap; cursor: pointer; }
+  #app-banner .ab-btn.guest { background: #5aa36f; }
+  #app-banner .ab-x { border: 0; background: none; font-size: 15px; color: var(--ink); opacity: .45; padding: 4px; flex: none; cursor: pointer; }
+  body:not(.playing) #app-banner, body.menu-open #app-banner, body.sea-mode #app-banner, body.guide-open #app-banner,
+  body.mg-open #app-banner, body.intro-open #app-banner, body.duel-open #app-banner, body.coaching #app-banner,
+  body.decor-guide #app-banner, body.mist-guide #app-banner, body.cv-open #app-banner,
+  body.boat-run #app-banner, body.dream-cut #app-banner { display: none !important; }
+  @media (max-width: 760px) { #app-banner { left: 12px; right: 12px; width: auto; transform: none; } }
+  /* ▶ 를 넣으면 375px 에서 제목 여유가 4px — 폰트가 넓은 기기에서 "만나/요"로 꺾여 400px 이하에선 뺀다 */
+  @media (max-width: 400px) { #app-banner .ab-play { display: none; } }
+  @media (max-width: 360px) { #app-banner img { display: none; } #app-banner { gap: 8px; padding-left: 12px; } }
+  /* 짧은 화면(높이 ≤760 — 360×740 갤럭시에서 곰 발치를 덮는 걸 실측): 하단 배치가 가운데 띠(캐릭터)를 덮는다 → 오른쪽 HUD 열 아래로. 떠 있는 10초 동안 의뢰 패널·스토리 칩은 비켜 준다 */
+  @media (max-width: 760px) and (max-height: 760px) {
+    #app-banner { bottom: auto; top: max(calc(162px + var(--top-inset)), var(--rcol-bottom, 0px)); }
+    body.app-banner-on #story-chip, body.app-banner-on #quest-panel { display: none !important; }
+  }
   /* 🎨 첫 가구 배치 단계 안내(1회) — 시설 배너 자리에 코치 모양으로. 코치가 떠 있으면 코치 문구를 대신 바꿔 쓴다 */
   #decor-guide { top: calc(96px + var(--toss-reserve)); left: 50%; transform: translateX(-50%); max-width: min(360px, 92vw);
     display: none; flex-direction: column; gap: 5px; text-align: left; pointer-events: none; border: 2px solid var(--mint); }
@@ -2661,18 +2689,22 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
-    import { IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
+    import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
+    import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
-    import { trackLogin, trackEvent, setGaUser } from './js/analytics.js';
-    import { CONFIG } from './js/config.js';
+    import { trackLogin, trackEvent, setGaUser, onTrack } from './js/analytics.js';
+    import { e2Decision, e2HasInvite } from './js/exp-e2-boot.js';   // 🧪 E2 웹 로그인 화면 건너뛰기 — 배정(analytics 평가 때 이미 판정)
+    import { skipLoginNow, keepGuestSession } from './js/exp-e2.js';
+    import { armDeferredGuest, upgradeGuest } from './js/auth/deferred-guest.js';   // 🧪 E2 처치 — 익명 계정은 첫 입력 뒤에
+    import { CONFIG, IS_DEV_SESSION } from './js/config.js';
     import { initControls } from './js/controls.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
@@ -4245,11 +4277,11 @@
     }
 
     let started = false;
-    async function enterPlay() {                     // 로그인 완료 → 실제 플레이
+    async function enterPlay(via) {                  // 로그인 완료 → 실제 플레이 (via: login 이벤트 수단을 직접 줄 때만 — 🧪 E2 'guest_deferred')
       if (started) return; started = true;
       $('login-screen').classList.remove('show');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
-      trackLogin(authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
+      trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
       // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
@@ -4273,6 +4305,14 @@
       await enterGame();                             // 저장 로드 + 조작/로깅 on
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
       referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });
+      // 📲 앱 유도 배너 — 웹·안드로이드/아이폰·스토어가 열린 OS 에서만(TUNING.appBanner.storeLive). 실패해도 게임 진행
+      try {
+        mountAppBanner({
+          config: TUNING.appBanner, platform: PLATFORM, t, track: trackEvent, onTrack,
+          isGuest: () => isGuestNow(), clientId: () => authState.clientId, connect: () => nudgeConnect(),
+          devParam: IS_DEV_SESSION ? new URLSearchParams(location.search).get('appbanner') : null,   // QA: ?weather=clear&appbanner=android-guest
+        });
+      } catch (e) { console.warn('[app-banner] skipped', e); }
       if (referralEnabled()) $('invite-btn').style.display = '';
       initControls();                                // 모바일 컨트롤(터치 감지 시)
       try { if ((localStorage.getItem('cf_music') || 'on') !== 'off') startBGM(); } catch (e) { startBGM(); } // 배경음악
@@ -4284,6 +4324,19 @@
       setInterval(() => requestSave(), 30000);
       document.addEventListener('visibilitychange', () => { if (document.hidden) requestSave(); });
       window.addEventListener('beforeunload', () => { try { requestSave(); } catch (e) {} });
+    }
+
+    // 🧪 E2 처치(skip_login) — 로그인 화면 없이 오프라인 게스트 상태로 바로 입장하고,
+    //    사람의 첫 실제 입력(이동·탭) 뒤에야 익명 계정을 만든다(크롤러는 계정을 만들지 않는다).
+    //    로그인은 기존 저장 안내(login_nudge)·☰ 메뉴(나가기 → 로그인 화면)로만 닿는다. 새 문구 없음.
+    let deferredGuest = false;   // 계정이 생기기 전의 'local-…' 임시 id 를 GA4 user_id 로 보내지 않게(사람 단위 조인이 갈라진다)
+    async function startDeferredGuest() {
+      deferredGuest = true;
+      startLocalGuest();
+      //  입력 감지는 입장보다 먼저 건다 — enterPlay 가 던져도 계정은 만들어진다. enterGame 의 첫 loadGame 은
+      //  enterPlay 안에서 동기로 시작되므로(입력 이벤트보다 먼저) 오프라인 판정이 뒤바뀌지 않는다.
+      armDeferredGuest(window, () => upgradeGuest({ signInAsGuest, loadGame, track: trackEvent }));
+      await enterPlay('guest_deferred');
     }
 
     // 로그인 화면 버튼
@@ -6364,17 +6417,21 @@
 
     (async () => {
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
+      try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
       initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
       initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
       initDuel();                                    // 🐗🦝 승부 등록(흔적을 조사하면 도둑과 마주 선다)
       await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
       $('loading').style.display = 'none';
 
+      // 🧪 E2 — 배정은 로그인 화면 판단보다 먼저(js/analytics.js 평가 때 이미 판정·GA4 exp_entry). 여기선 결과만 쓴다.
+      const e2 = e2Decision();
+
       // ② 인증 — 세션 잡히면 즉시 플레이 진입(구글 리다이렉트 복귀 포함)
       let sessionExpiredSent = false;   // 🔌 만료는 세션당 한 번만 센다(emit 은 여러 번 온다)
       const res = await initAuth((s) => {
         showLoginStatus(s);
-        if (s.userId) setGaUser(s.userId);          // [④] GA4에 user_id 연결
+        if (s.userId && !(deferredGuest && !s.online)) setGaUser(s.userId);   // [④] GA4에 user_id 연결(🧪 E2 계정 생성 전 임시 id 제외)
         if (s.online && !started) enterPlay();
         // 🔌 세션이 죽었다 — 저장은 이미 잠겼다(supabase-client.js). 스스로 낫지 않으니
         //   재시도 19초를 기다리지 않고 바로 세운다. 안내는 멱등이지만 GA4 는 아니라 1회만 쏜다.
@@ -6382,7 +6439,7 @@
           if (!sessionExpiredSent) { sessionExpiredSent = true; trackEvent('session_expired', { provider: s.provider || 'unknown' }); }
           ui.setSaveStuck(true);
         }
-      });
+      }, { keepGuest: keepGuestSession(e2, { hasInvite: e2HasInvite() }) });   // 🧪 E2 처치 기기만 같은 기기의 게스트 세션을 이어 간다
       // 🚪 방금 '나가기'로 나왔으면 토스 자동 연결을 한 번 건너뛴다 — 안 그러면 곧장 다시 들어와 캐릭터 선택으로 돌아오는 루프(js/exit-flag.js)
       const justExited = consumeExit(sessionStorage);
       if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작(토스 재방문도 여기 — SDK 호출 없음)
@@ -6408,6 +6465,7 @@
         trackEvent('gc_connect', { mode: 'auto', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
         if (!r.ok) showLoginScreen(false, r.reason === 'endpoint_not_configured' ? 'gc_unconfigured' : 'gc_fail');
       }
+      else if (skipLoginNow({ decision: e2, offline: res.offline, justExited, hasInvite: e2HasInvite() })) startDeferredGuest();   // 🧪 E2 처치(웹 전용)
       else showLoginScreen(res.offline);             // 세션 없음 → 로그인 화면(씬 위에)
     })();
   </script>
