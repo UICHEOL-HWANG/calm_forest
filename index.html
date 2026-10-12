@@ -1691,6 +1691,21 @@
   /* 🔌 저장이 끊겼다는 안내만은 모달(32~35)·미니게임(40)·승부(40)·인트로(55) 위에 선다.
      31 로 두면 요리·조각 미니게임 중에 세션이 죽었을 때 화면 뒤에 깔려, 정작 필요한 순간에 안 보인다. */
   #loading.save-stuck { z-index: 60; }
+  /* 🧭 첫 실행 "어디서 알게 되셨어요?"(시안 A) — 로딩 위 가운데 카드·2열 보기. 로딩이 먼저 끝나도 크림 막으로 게임을 가린다 */
+  #survey-card { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(255,247,236,0.72); padding: 0 14px; }
+  #survey-card.show { display: grid; }
+  #survey-card .sv-card { width: min(420px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; box-sizing: border-box; background: #fff; border-radius: 22px; box-shadow: 0 14px 40px rgba(30,50,40,0.22); padding: 18px 14px 12px; color: var(--ink); animation: floatUp .4s ease both; }
+  #survey-card h2 { margin: 0 0 4px; font-size: 17px; text-align: center; word-break: keep-all; }
+  #survey-card .sv-hint { font-size: 12.5px; opacity: .7; text-align: center; margin: 0 0 12px; }
+  #survey-card .sv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  #survey-card .sv-opt { border: none; border-radius: 12px; padding: 10px 8px; background: #f4faf5; font-weight: 700; font-size: 13.5px; line-height: 1.25; color: var(--ink); text-align: left; box-shadow: var(--shadow); cursor: pointer; word-break: keep-all; }   /* 좁은 폰(320px)에선 두 줄로 — 말줄임 금지 */
+  #survey-card .sv-opt.sel { background: var(--mint); outline: 2px solid #7bbf8a; }
+  #survey-card .sv-code[hidden] { display: none; }
+  #survey-card .sv-code-row { display: flex; gap: 6px; margin-top: 9px; }
+  #survey-card .sv-code input { flex: 1; min-width: 0; border: 1.5px solid #cfe3d4; border-radius: 10px; padding: 9px; font-size: 16px; text-transform: uppercase; }
+  #survey-card .sv-ok { border: none; border-radius: 10px; background: var(--mint); font-weight: 800; padding: 0 14px; color: var(--ink); cursor: pointer; }
+  #survey-card .sv-err { margin: 6px 0 0; font-size: 12.5px; color: #c0634a; min-height: 0; }
+  #survey-card .sv-skip { display: block; margin: 10px auto 0; border: none; background: none; color: var(--ink); opacity: .6; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 6px 10px; }
 
   /* ── 모바일(좁은 화면) 전용: HUD를 더 작고 촘촘하게 ── */
   @media (max-width: 640px) {
@@ -2665,6 +2680,7 @@
   </div>
 
   <div id="loading">calm forest 불러오는 중… 🌿</div>
+  <div id="survey-card"></div><!-- 🧭 첫 실행 설문(js/install-survey-ui.js) — #loading 안에 넣으면 setLoadWait 가 덮어쓴다 -->
 
   <!-- 🌐 로딩 화면만 먼저 번역한다 — 아래 큰 모듈 스크립트에 맡기면 늦는다.
        그 스크립트는 js/game.js(+three.js, 모듈 64개)를 static import 하는데, ES 모듈은
@@ -2699,7 +2715,7 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
@@ -2711,8 +2727,9 @@
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
-    import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps } from './js/analytics.js';
-    import { bootInstallReferrer, syncInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
+    import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
+    import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
+    import { bootInstallSurvey, syncInstallSurvey } from './js/install-survey-ui.js';   // 🧭 첫 실행 "어디서 알게 되셨어요?"(iOS 전원·안드로이드 링크 없이 온 사람)
     import { e2Decision, e2HasInvite } from './js/exp-e2-boot.js';   // 🧪 E2 웹 로그인 화면 건너뛰기 — 배정(analytics 평가 때 이미 판정)
     import { skipLoginNow, keepGuestSession } from './js/exp-e2.js';
     import { armDeferredGuest, upgradeGuest } from './js/auth/deferred-guest.js';   // 🧪 E2 처치 — 익명 계정은 첫 입력 뒤에
@@ -6437,20 +6454,35 @@
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
       // 📲 안드로이드: 설치 채널(Play Install Referrer) — 첫 실행에 한 번 읽어 GA4 + Supabase. 기다리지 않는다(실패해도 게임 진행)
       let syncInstall = () => {};
+      let referrerP = null, referrerFresh = false;   // 🧭 설문이 '링크 없이 온 첫 실행'인지 판정하는 데 쓴다
       if (IS_ANDROID && !IS_DEV_SESSION) {          // 🧪 dev 세션은 GA4 를 안 보내니 1회 읽기를 소모하지 않는다
         try {
           const storage = localStorage;
+          referrerFresh = !cachedInstallAttribution(storage);   // 캐시가 없었다 = 이번 실행에 새로 읽는다(첫 실행)
           syncInstall = (auth) => syncInstallAttribution({ auth, storage, insert: insertInstallAttribution }).catch(() => {});
-          bootInstallReferrer({ plugin: capPlugin('InstallReferrer'), storage, track: trackEvent, setUserProps: setInstallUserProps })
-            .then(() => syncInstall({ ...authState }))   // 로그인이 귀속보다 먼저 끝난 경우
+          referrerP = bootInstallReferrer({ plugin: capPlugin('InstallReferrer'), storage, track: trackEvent, setUserProps: setInstallUserProps });
+          referrerP.then(() => syncInstall({ ...authState }))   // 로그인이 귀속보다 먼저 끝난 경우
             .catch(e => console.warn('[install-referrer] skipped', e));
         } catch (e) { /* 저장소 없음 — 귀속만 빠진다 */ }
       }
+      // 🧭 첫 실행 설문 — 로딩(bootWorld)과 병렬로 띄운다. 기다리지 않고 시작만, 인증 직전에만 기다린다(답이 느린 사람만 대기)
+      let syncSurvey = () => {};
+      let surveyP = Promise.resolve(null);
+      try {
+        const storage = localStorage;
+        syncSurvey = (auth) => syncInstallSurvey({ auth, storage, insert: insertInstallSurvey, platform: PLATFORM }).catch(() => {});
+        surveyP = bootInstallSurvey({
+          platform: PLATFORM, storage, doc: document, root: $('survey-card'), t, track: trackEvent, setUserProps: setSurveyUserProps,
+          referrerP, fresh: referrerFresh,
+          dev: IS_DEV_SESSION, force: IS_DEV_SESSION && new URLSearchParams(location.search).get('survey') === '1',   // QA: ?dbg&survey=1
+        });
+      } catch (e) { /* 저장소 없음 — 설문만 빠진다 */ }
       initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
       initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
       initDuel();                                    // 🐗🦝 승부 등록(흔적을 조사하면 도둑과 마주 선다)
       await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
       $('loading').style.display = 'none';
+      await surveyP;                                 // 🧭 설문에 아직 답하는 중이면 기다린다 — 🤝 초대 코드가 enterPlay 전에 cf_invite 에 있어야 한다
 
       // 🧪 E2 — 배정은 로그인 화면 판단보다 먼저(js/analytics.js 평가 때 이미 판정·GA4 exp_entry). 여기선 결과만 쓴다.
       const e2 = e2Decision();
@@ -6462,6 +6494,7 @@
         if (s.userId && !(deferredGuest && !s.online)) setGaUser(s.userId);   // [④] GA4에 user_id 연결(🧪 E2 계정 생성 전 임시 id 제외)
         if (s.online && !started) enterPlay();
         if (s.online) syncInstall(s);                // 📲 계정마다 1행 — 게스트 → Play Games 로 바뀌면 새 계정에도 붙는다
+        if (s.online) syncSurvey(s);                 // 🧭 설문 답도 계정마다 1행(같은 규칙)
         // 🔌 세션이 죽었다 — 저장은 이미 잠겼다(supabase-client.js). 스스로 낫지 않으니
         //   재시도 19초를 기다리지 않고 바로 세운다. 안내는 멱등이지만 GA4 는 아니라 1회만 쏜다.
         if (s.lost && started) {

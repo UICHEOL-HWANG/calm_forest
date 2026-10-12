@@ -362,6 +362,23 @@ export const EN = {
   '내 문의: {0}': 'My message: {0}',
   '아직 온 소식이 없어요 🌱': 'No news yet 🌱',
   '배경음악': 'Music',
+  // 🧭 첫 실행 설문 — js/install-survey.js · js/install-survey-ui.js
+  'calm forest 를 어디서 알게 되셨어요?': 'How did you hear about calm forest?',
+  '불러오는 동안 하나만 여쭤볼게요 🌿': 'Just one quick question while we load 🌿',
+  '구글·네이버 검색': 'Web search',
+  '스토어 둘러보다가': 'App store',
+  '인스타그램': 'Instagram',
+  '스레드': 'Threads',
+  '유튜브': 'YouTube',
+  'X(트위터)': 'X (Twitter)',
+  '1km': '1km',   // 서비스 이름 — 그대로
+  '하이데어': 'HiThere',
+  '블로그·커뮤니티': 'Blog / community',
+  '아는 사람이 알려 줌': 'Someone told me',
+  '친구 초대 받았어요': 'A friend invited me',
+  '초대 코드 (선택)': 'Invite code (optional)',
+  '코드를 다시 확인해 주세요': 'Please check the code again',
+  '확인': 'OK',
   // 🔔 푸시 알림(안드로이드) — js/push-ui.js
   '밭 소식 알림': 'Farm notifications',
   '밭 소식': 'Farm news',

@@ -17,6 +17,7 @@ import { e2Decision } from './exp-e2-boot.js';   // 🧪 E2 배정 — 이 모�
 import { e2UserProps } from './exp-e2.js';
 import { installUserProps } from './install-referrer.js';            // 📲 안드로이드 설치 채널(Play Install Referrer)
 import { cachedInstallAttribution } from './install-referrer-boot.js';
+import { readSurvey, surveyUserProps } from './install-survey.js';           // 🧭 첫 실행 설문 → heard_from
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -24,7 +25,10 @@ let abVariant = null;   // 마지막으로 set 한 ab_variant — 설치 채널 
 
 // 📲 저장된 설치 채널(안드로이드 첫 실행 이후) — 사용자 속성을 다시 set 할 때마다 같이 실어 지워지지 않게
 function installProps() {
-  try { return installUserProps(cachedInstallAttribution(globalThis.localStorage)); } catch { return {}; }
+  let props = {};
+  try { props = installUserProps(cachedInstallAttribution(globalThis.localStorage)); } catch { /* 저장소 없음 */ }
+  try { props = { ...props, ...surveyUserProps(readSurvey(globalThis.localStorage)) }; } catch { /* 저장소 없음 */ }
+  return props;
 }
 
 // ── 공유 링크 별칭(ref=/from=) → GA4 캠페인 주입 ──────────────
@@ -90,9 +94,21 @@ export function setAbVariant(v) {
 export function setInstallUserProps(props) {
   if (IS_DEV_SESSION || !props?.install_source) return;
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()), ...props });
+    window.gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()), ...installProps(), ...props });   // 🧭 heard_from 도 같이
   } else {
     console.log('[GA4 폴백] install user_properties:', props);
+  }
+}
+
+// [속성] 🧭 첫 실행 설문에 답했을 때(js/install-survey-ui.js) — heard_from. 다른 속성과 같이 실어 지워지지 않게
+export function setSurveyUserProps() {
+  if (IS_DEV_SESSION) return;
+  const props = installProps();
+  if (!props.heard_from) return;
+  if (isGaConfigured() && typeof window.gtag === 'function') {
+    window.gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()), ...props });
+  } else {
+    console.log('[GA4 폴백] survey user_properties:', props);
   }
 }
 
