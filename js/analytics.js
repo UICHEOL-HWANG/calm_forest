@@ -18,6 +18,7 @@ import { e2UserProps } from './exp-e2.js';
 import { installUserProps } from './install-referrer.js';            // 📲 안드로이드 설치 채널(Play Install Referrer)
 import { cachedInstallAttribution } from './install-referrer-boot.js';
 import { readSurvey, surveyUserProps } from './install-survey.js';           // 🧭 첫 실행 설문 → heard_from
+import { withExpArm } from './exp-e1.js';   // 🧪 E1 — 획득 이벤트에 exp_arm
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -112,6 +113,15 @@ export function setSurveyUserProps() {
   }
 }
 
+// [속성] 🧪 E1 첫 5분 수확 실험 — 등록된 기기면 무리를 기억해 획득 이벤트에 exp_arm 을 붙인다(js/spaces/e1-start.js)
+let expArm = null;
+export function setExpArm(arm) {
+  expArm = arm;
+  if (isGaConfigured() && typeof window.gtag === 'function') {
+    window.gtag('set', 'user_properties', { exp_arm: arm });
+  }
+}
+
 // ── 이벤트 훅 — 세션 요약(metrics.js)이 이벤트 발생 횟수를 집계하는 용도 ──
 //    analytics → metrics 역방향 import 없이(순환 방지) 콜백 등록으로 연결.
 const trackHooks = [];
@@ -120,7 +130,7 @@ export function onTrack(cb) { trackHooks.push(cb); }
 // GA4 로 이벤트 전송(폴백: 콘솔) — 모든 트래킹은 이 함수를 거칩니다.
 export function trackEvent(name, params = {}) {
   if (IS_DEV_SESSION) return;                                 // 🧪 dev 세션 — GA4·세션 카운터 없음
-  const payload = { ...params, ts: Date.now(), platform: PLATFORM };   // 이벤트 단위 platform 차원(웹/토스 퍼널 비교)
+  const payload = withExpArm(name, { ...params, ts: Date.now(), platform: PLATFORM }, expArm);   // 이벤트 단위 platform 차원(웹/토스 퍼널 비교) · 🧪 획득 이벤트엔 exp_arm(25개 한도 안에서만)
   trackHooks.forEach(cb => { try { cb(name, payload); } catch (e) {} }); // 카운터 훅(실패해도 트래킹 계속)
 
   // [GA4 전송 지점] gtag 가 로드되어 있고 설정이 유효할 때만 실제 전송

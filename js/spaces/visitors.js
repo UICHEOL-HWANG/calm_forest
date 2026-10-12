@@ -16,6 +16,7 @@ import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 import { createVisitors } from '../farm-visitors.js';
 import { matchVisitors, visitorOf } from '../habitat.js';
 import { Sound } from '../sound.js';
+import { e1Pending } from './e1-start.js';   // 🧪 E1 처치 대기 중엔 첫 안내·방문객을 첫 수확 뒤로
 import { makeVisitor } from '../visitor-art.js';
 import * as THREE from 'three';
 
@@ -118,8 +119,8 @@ export function enterFarm() {
   $w.atFarm = true; $w.playerInYard = false;
   player.position.set(FARM.x, 0, FARM.z + farmHalf() - 1.5); player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요. 나갈 땐 남쪽 문');
-  startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다
+  if (!e1Pending()) firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요. 나갈 땐 남쪽 문');   // 🧪 E1 처치는 '눌러서 수확하기' 하나만
+  if (!e1Pending()) startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다 · 🧪 E1 처치는 첫 수확 뒤(e1OnHarvest)
   Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
 }
 

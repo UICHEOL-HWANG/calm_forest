@@ -172,6 +172,8 @@ import {
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
+import { applyE1, e1FirstScreen, enrollE1, updateE1Bubble } from './spaces/e1-start.js';   // 📦 🧪 E1 첫 5분 수확 실험 — 배정·처치 밭·첫 화면 말풍선
+import { sanitizeE1 } from './exp-e1.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
 import { MIRROR_MAP, clampToMirror, mirrorAction, mirrorMinimapMarks, mirrorReturnPos, mirrorRideActive, setMirrorVisible, skipMirrorRide, syncVillageCarriage, updateMirror, updateMirrorRide } from './spaces/mirror.js';   // 📦 🪞 거울 마을(js/mirror/*)
@@ -1001,6 +1003,7 @@ const gameState = {
   starDay: null,   // 🔭 별 잇기 — 마지막으로 보상 받은 날(같은 날 재도전은 연습)
   star: { cleared: {}, plays: {}, best: {} },   // 🌌 별자리별 첫 클리어 날짜·시도 횟수·최고 점수(해금은 cleared 로 계산)
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
+  e1: null,                                 // 🧪 E1 첫 5분 수확 실험 { arm, seeded, harvested } — 등록된 신규만(js/exp-e1.js)
   dream: { visits: 0, day: '', got: [], total: 0 },   // 🌙 꿈의 숲 — 누적 방문·그날 주운 조각 자리·누적 획득(js/dream/layout.js normalizeDream)
   mirror: { visits: 0, day: '', done: 0, hinted: [], total: 0 },   // 🪞 거울 마을 — 누적 방문·그날 마친 의뢰·힌트 쓴 의뢰·누적 조각(js/mirror/quests.js normalizeMirror)
   noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
@@ -1823,6 +1826,7 @@ export const Input = {
     }
   },
   needsTutorial() { return !gameState.tutorialSeen; },
+  e1FirstScreen() { return e1FirstScreen(); },   // 🧪 E1 처치 대기 중이면 환영 모달 대신 밭 앞에서 시작(true) — 모달은 첫 수확 뒤
   guideNudgeSeen() { return !!gameState.guideNudgeSeen; },
   markGuideNudgeSeen() { gameState.guideNudgeSeen = true; },
   markTutorialSeen() { gameState.tutorialSeen = true; },
@@ -2098,6 +2102,8 @@ export async function enterGame() {
     if (load.canPlay) trackEvent('save_load_recovered', { tries: tries + 1 });   // [GA4] 사고 재발 감시 — 몇 번 만에 붙었나
   }
   ui.setLoadWait?.(false);
+  // 🧪 E1 배정 — 신규/기존 판정이 확정된 바로 여기, 세이브 적용·어떤 return 보다 먼저(옛 variant 사고: 배정 전에 return).
+  const e1 = enrollE1(load);
   // [GA4] 읽기는 됐는데 행이 없는 경우. RLS 거부·유저 id 재매핑도 여기로 들어오므로(둘 다 data·error 가 null),
   //   "신규 유저 급증"이 사실은 복귀 유저인 상황을 이 이벤트로 가려낸다.
   if (load.kind === 'empty') trackEvent('save_load_empty', { provider: authState.provider || 'unknown' });
@@ -2113,6 +2119,7 @@ export async function enterGame() {
     })();
   }
   if (load.state) applySave(load.state);
+  applyE1(e1);                         // 🧪 처치 신규면 텃밭에 다 자란 당근 2×2(한 번만) — 세이브 복원 뒤라 밭이 겹치지 않는다
   // 💳 현금 구매 원장과 맞춘다 — 웹에서 산 걸 앱·토스에서도 보이게 하는 경로. 못 읽으면 세이브대로.
   try { await syncPurchases({ gameState, fetchPurchases, via: 'boot', hooks: purchaseHooks() }); }
   catch (e) { console.warn('[purchases] 부팅 병합 실패(세이브대로 진행):', e?.message || e); }
@@ -2435,6 +2442,7 @@ export async function enterGame() {
 
   // 신규: 캐릭터(동물) 미선택이면 선택 화면 → 그 뒤 튜토리얼. 이미 선택했으면 튜토리얼만.
   if (!gameState.character) ui.showCharacterSelect?.();
+  else if (Input.e1FirstScreen()) { /* 🧪 E1 처치 — 첫 수확 전 재접속: 다시 밭 앞에서 */ }
   else if (!gameState.tutorialSeen) { gameState.tutorialSeen = true; ui.showTutorial?.(); }
 }
 
@@ -2475,6 +2483,7 @@ function applySave(saved) {
   usePet(activeSaved ? activeSaved.kind : (hadPetsField ? null : Object.keys(gameState.pets)[0] || null));
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
+  gameState.e1 = sanitizeE1(saved.e1);                                   // 🧪 E1 무리 — 다른 기기에서 로그인해도 같은 무리
   if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
   if (saved.house && saved.house.stored && typeof saved.house.stored === 'object') {   // 🧺 창고 복원(개수만, 음수·비숫자 버림)
     gameState.house.stored = {};
@@ -5639,6 +5648,7 @@ function animate() {
       updateDoorInteract();
     }
     updateFishing();
+    updateE1Bubble();     // 🧪 E1 처치 말풍선(첫 수확 전에만 있다)
     updateSea(dt, t);     // 🌊 바다터(배회 물고기 + 줄다리기 미니게임)
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신

@@ -59,6 +59,7 @@ onTrack((name, p) => {
   if (name === 'econ_tx' || name === 'session_summary') return;
   counts[name] = (counts[name] || 0) + 1;
   if (name === 'tutorial_step' && p?.key) counts['tut_' + p.key] = (counts['tut_' + p.key] || 0) + 1; // 🧪 군별 스텝 퍼널용
+  if (name === 'exp_exposure' && p?.exp_arm) counts['e1_' + p.exp_arm] = 1;   // 🧪 E1 무리 표시(session_logs 가 공식 원천)
 });
 
 // ── 세션 요약 upsert ─────────────────────────────────────────

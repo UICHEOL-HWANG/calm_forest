@@ -33,6 +33,7 @@ import { syncOrchardGateLock } from '../spaces/mist.js';
 import { finishOrchardQuest, maybeOfferOrchardQuest, tryHoe } from '../spaces/orchard-actions.js';
 import { DIG_HIT_AT, DIG_RESTORE, digHit, expireDig, setPlotDug, trySeed, tryWater, updateDigFx } from '../spaces/shovel.js';
 import { refreshCovers } from '../spaces/weather.js';
+import { e1OnHarvest } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
 import { sickleReach } from '../tool-tiers.js';
 import * as THREE from 'three';
 
@@ -130,6 +131,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   if (plot.cropType?.id) noteSpecialExhibit('crop', plot.cropType.id);   // 🏛️ ✨눈 오는 날이면 특별 전시(일꾼이 거둔 건 안 센다 — 직접 한 것만)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
+  e1OnHarvest();                                                  // 🧪 E1 처치: 말풍선 거두고 환영 모달·방문객 이어서
   if (!adv) maybeOfferOrchardQuest();                              // 🌾→🍎 기본 작물을 거두면 과수원 가는 길 의뢰(한 번)
   if (!viaSickle) {
     catchCeremony('harvestZoom');                                 // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
