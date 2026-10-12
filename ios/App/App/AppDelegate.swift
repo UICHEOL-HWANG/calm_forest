@@ -1,5 +1,7 @@
 import UIKit
 import Capacitor
+import FirebaseCore
+import FirebaseMessaging
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,8 +9,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // 🔔 푸시 — iOS 도 FCM 토큰으로 보낸다(서버 functions/push/fcm.js 를 안드로이드와 같이 쓴다)
+        //    GoogleService-Info.plist 는 PUBLIC 저장소라 gitignore — Firebase 관리 API 로 받아 로컬에 둔다.
+        FirebaseApp.configure()
         return true
+    }
+
+    // 🔔 APNs 토큰 → Firebase Messaging → FCM 토큰을 Capacitor 푸시 플러그인에 넘긴다(registration 이벤트로 JS 에 도착)
+    //    Capacitor 공식 안내(Using Push Notifications with Firebase on iOS)와 같은 방식
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+        Messaging.messaging().token { token, error in
+            if let error = error {
+                NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+            } else if let token = token {
+                NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: token)
+            }
+        }
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

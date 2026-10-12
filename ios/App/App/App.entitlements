@@ -10,5 +10,8 @@
 	<!-- 🍎 게임센터 로그인(GameCenterPlugin.swift · gc-auth Worker) -->
 	<key>com.apple.developer.game-center</key>
 	<true/>
+	<!-- 🔔 푸시 알림(APNs) — 배포(App Store) 서명 때 production 으로 바뀐다 -->
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>
