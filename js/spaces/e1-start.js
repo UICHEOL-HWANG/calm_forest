@@ -9,6 +9,7 @@
 // =============================================================
 import { atFarm, camera, gameState, mode, player, plots, refreshCropStage, snapCamera, ui, updatePlotVisual } from '../game.js';
 import { setExpArm, trackEvent } from '../analytics.js';
+import { IS_DEV_SESSION } from '../config.js';
 import { FARM } from '../data/places.js';
 import { CROP_TYPES } from '../data/tools.js';
 import {
@@ -40,7 +41,7 @@ export function enrollE1(load) {
   const forced = new URLSearchParams(location.search).get('e1');   // QA 강제 — DEV_PARAMS 라 기록은 남지 않는다
   const d = decideE1({ clientId: clientId(), platform: PLATFORM, loadKind: load?.kind, saved: load?.state || null, stored: readStored(), forced });
   if (!d.enrolled) return d;
-  if (d.reason !== 'forced') writeStored(d.arm);
+  if (d.reason !== 'forced' && !IS_DEV_SESSION) writeStored(d.arm);   // dev 세션은 기기에 남기지 않는다(GA4 도 안 나간다)
   setExpArm(d.arm);   // 이 세션의 획득 이벤트에 exp_arm + GA4 유저 속성
   trackEvent('exp_exposure', { exp: 'e1', exp_arm: d.arm, first: d.first ? 1 : 0 });   // [GA4] 배정 직후 · session counts e1_<arm>
   return d;

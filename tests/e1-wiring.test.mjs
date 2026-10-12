@@ -76,3 +76,8 @@ test('새 코드는 game.js 밖 — 규칙은 js/exp-e1.js, 연결은 js/spaces/
   assert.doesNotMatch(GAME, /function armFor|function decideE1/);
   assert.match(E1START, /from '\.\.\/exp-e1\.js'/);
 });
+
+test('dev 세션(?dbg 등)은 기기에 무리를 남기지 않는다 — 개발 기기가 나중에 재방문 등록자로 잡히지 않게', () => {
+  const enroll = fnBody(E1START, 'export function enrollE1(load)');
+  assert.match(enroll, /if \(d\.reason !== 'forced' && !IS_DEV_SESSION\) writeStored\(d\.arm\)/);
+});

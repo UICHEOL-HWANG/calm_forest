@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_PLOTS, NEW_KINDS,
+  ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_PLOTS, E1_SPAWN, NEW_KINDS,
   armFor, decideE1, e1Prompt, parseStored, seedCoinValue, shouldSeed, withExpArm,
 } from '../js/exp-e1.js';
 import { readFileSync } from 'node:fs';
@@ -142,4 +142,12 @@ test('exp_arm 은 획득 이벤트에만, 한도 안에서만 붙고 원본은 �
   const kept = withExpArm('cooking_result', full, 'control');
   assert.equal(overParamLimit(kept), 0, '25개가 찬 이벤트에 붙여서 다른 값을 밀어내지 않는다');
   assert.equal(kept.exp_arm, undefined);
+});
+
+test('시작 자리에서 첫 액션이 곧 수확이다(자동 수확 반경 안)', () => {
+  // 2026-10-12 실기: (1, 1.8) 은 가장 가까운 밭까지 2.06 — 반경 1.8 밖이라 첫 Space 가 괭이로 새 밭을 갈았다
+  const FARM_AUTO = readFileSync(new URL('../js/spaces/farm-auto.js', import.meta.url), 'utf8');
+  const R = Number(/export const FARM_AUTO_R = ([\d.]+)/.exec(FARM_AUTO)[1]);
+  const d = Math.min(...E1_PLOTS.map(([x, z]) => Math.hypot(x - E1_SPAWN[0], z - E1_SPAWN[1])));
+  assert.ok(d < R - 0.2, `시작 자리 → 가장 가까운 밭 ${d.toFixed(2)} (반경 ${R})`);
 });

@@ -26,7 +26,7 @@ export const ACQ_EVENTS = [
 // 처치 밭 — FARM 기준 오프셋. 2×2 다 자란 당근(짝수 격자 = tryHoe 와 같은 규칙)
 export const E1_PLOTS = [[0, -2], [2, -2], [0, 0], [2, 0]];
 export const E1_CROP = 'carrot';
-export const E1_SPAWN = [1, 1.8];                     // 밭 바로 아래(남쪽), 북쪽을 보고 선다
+export const E1_SPAWN = [0, 1.4];                     // 앞줄 왼쪽 밭(0,0) 바로 아래, 북쪽을 보고 선다 — 자동 수확 반경(1.8) 안이라 첫 액션 = 수확
 export const E1_TUTORIAL_DELAY_MS = 1400;             // 첫 수확 연출(열매 번쩍)을 본 뒤 환영 모달
 
 const isArm = (a) => ARMS.includes(a);

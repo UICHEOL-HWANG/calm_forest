@@ -3,13 +3,21 @@
 - [x] 사전등록 읽기
 - [x] 시안 3종 PC·모바일 → B 확정
 - [x] 문구 → "👆 눌러서 수확하기" 확정 · 환영 모달 첫 수확 뒤
-- [ ] 테스트 먼저: 배정 결정성·층화·독립성·신규만·기존 무영향·부팅 경로·경제·GA4 한도
-- [ ] js/exp-e1.js 순수 규칙
-- [ ] js/spaces/e1-start.js 연결 + game.js/index.html/visitors/farm-auto 훅
-- [ ] analytics exp_arm 덧붙임 · metrics counts · DEV_PARAMS e1
-- [ ] i18n 영어 사전 + i18n_check
-- [ ] 실기 검증: 처치·대조·기존 유저(PC·모바일 390/320)
+- [x] 테스트 먼저: 배정 결정성·층화·독립성·신규만·기존 무영향·부팅 경로·경제·GA4 한도
+- [x] js/exp-e1.js 순수 규칙
+- [x] js/spaces/e1-start.js 연결 + game.js/index.html/visitors/farm-auto 훅
+- [x] analytics exp_arm 덧붙임 · metrics counts · DEV_PARAMS e1
+- [x] i18n 영어 사전 + i18n_check
+- [x] 실기 검증: 처치·대조·기존 유저(PC·모바일 390/320)
 - [ ] 코드 리뷰
-- [ ] 임시 파일 제거(launch.json 항목·mock.mjs)
+- [x] 임시 파일 제거(launch.json 항목·mock.mjs)
 - [ ] 배포 확인 받기 → 키 스캔 → 웹·토스(bundle_upload memo)·itch·안드로이드
 - [ ] GA4 에 exp_arm 도착 확인(web·toss) → 배포일 보고
+
+## 실기 검증 기록 (2026-10-12)
+- 처치 PC: 프롤로그 뒤 텃밭 (0,85.4) · 말풍선 "👆 Space·클릭으로 수확하기" · Space 1번 = 당근 +1·씨앗 +2 · 1.4초 뒤 환영 모달
+- 처치 모바일 390/320: "👆 눌러서 수확하기" 144×37px, 액션 버튼·조이스틱과 안 겹침 · touchstart 1번 = 수확 → 환영 모달
+- 대조: 밭 없음·마을 (0,0)·프롤로그 직후 환영 모달(현행과 같음)
+- 기존 유저(loaded 세이브): 등록 안 됨·밭 0·첫 화면 그대로·기기 기록 없음
+- 고친 것: 시작 자리가 자동 수확 반경 밖(첫 Space 가 새 밭을 갊) → (0,1.4) · dev 세션이 기기 기록을 남김 → 막음
+- 관찰: 첫 기본 작물 수확이 기존 "과수원 가는 길" 의뢰를 바로 연다(현행 규칙, 처치에선 1분 안에 일어남)
