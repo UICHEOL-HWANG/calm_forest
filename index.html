@@ -2689,7 +2689,7 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
@@ -2700,7 +2700,8 @@
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
-    import { trackLogin, trackEvent, setGaUser, onTrack } from './js/analytics.js';
+    import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps } from './js/analytics.js';
+    import { bootInstallReferrer, syncInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
     import { e2Decision, e2HasInvite } from './js/exp-e2-boot.js';   // 🧪 E2 웹 로그인 화면 건너뛰기 — 배정(analytics 평가 때 이미 판정)
     import { skipLoginNow, keepGuestSession } from './js/exp-e2.js';
     import { armDeferredGuest, upgradeGuest } from './js/auth/deferred-guest.js';   // 🧪 E2 처치 — 익명 계정은 첫 입력 뒤에
@@ -6418,6 +6419,17 @@
     (async () => {
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
+      // 📲 안드로이드: 설치 채널(Play Install Referrer) — 첫 실행에 한 번 읽어 GA4 + Supabase. 기다리지 않는다(실패해도 게임 진행)
+      let syncInstall = () => {};
+      if (IS_ANDROID && !IS_DEV_SESSION) {          // 🧪 dev 세션은 GA4 를 안 보내니 1회 읽기를 소모하지 않는다
+        try {
+          const storage = localStorage;
+          syncInstall = (auth) => syncInstallAttribution({ auth, storage, insert: insertInstallAttribution }).catch(() => {});
+          bootInstallReferrer({ plugin: capPlugin('InstallReferrer'), storage, track: trackEvent, setUserProps: setInstallUserProps })
+            .then(() => syncInstall({ ...authState }))   // 로그인이 귀속보다 먼저 끝난 경우
+            .catch(e => console.warn('[install-referrer] skipped', e));
+        } catch (e) { /* 저장소 없음 — 귀속만 빠진다 */ }
+      }
       initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
       initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
       initDuel();                                    // 🐗🦝 승부 등록(흔적을 조사하면 도둑과 마주 선다)
@@ -6433,6 +6445,7 @@
         showLoginStatus(s);
         if (s.userId && !(deferredGuest && !s.online)) setGaUser(s.userId);   // [④] GA4에 user_id 연결(🧪 E2 계정 생성 전 임시 id 제외)
         if (s.online && !started) enterPlay();
+        if (s.online) syncInstall(s);                // 📲 계정마다 1행 — 게스트 → Play Games 로 바뀌면 새 계정에도 붙는다
         // 🔌 세션이 죽었다 — 저장은 이미 잠겼다(supabase-client.js). 스스로 낫지 않으니
         //   재시도 19초를 기다리지 않고 바로 세운다. 안내는 멱등이지만 GA4 는 아니라 1회만 쏜다.
         if (s.lost && started) {

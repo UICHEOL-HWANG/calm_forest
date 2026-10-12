@@ -865,6 +865,21 @@ export async function sendSeaRecord(row) {
 }
 
 
+// ── 📲 설치 채널 귀속(install_attribution) — 계정마다 1행, 첫 귀속은 덮어쓰지 않는다(on conflict do nothing) ──
+//    js/install-referrer-boot.js 가 온라인 계정마다 한 번 부른다. { ok } — 실패면 다음 상태 변경 때 다시.
+export async function insertInstallAttribution(row) {
+  if (!state.online || !supabase) return { ok: false, offline: true };
+  try {
+    const { error } = await supabase.from('install_attribution')
+      .upsert({ ...row, platform: PLATFORM }, { onConflict: 'user_id,client_id', ignoreDuplicates: true });
+    if (error) throw error;
+    return { ok: true };
+  } catch (err) {
+    console.warn('[Supabase 폴백] 설치 채널 전송 실패:', err?.message || err);
+    return { ok: false };
+  }
+}
+
 // ── [계측] 세션 요약 upsert(session_logs) — 세션당 1행, 주기/이탈 시 갱신 ──
 export async function upsertSessionRow(row) {
   const full = {
