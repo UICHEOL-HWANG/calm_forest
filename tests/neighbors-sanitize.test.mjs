@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizeShowcase, YARD_R, DECOR_MAX } from '../js/neighbors/sanitize.js';
+import { sanitizeShowcase, YARD_R, DECOR_MAX, ROOM_MAX } from '../js/neighbors/sanitize.js';
 
 const CTX = { outdoorIds: new Set(['fence', 'flowerbed', 'postlamp']), animalIds: new Set(['fox', 'rabbit']),
   fallbackAnimal: 'fox', yard: { x: -8, z: -8 } };
@@ -13,7 +13,7 @@ const raw = (o = {}) => ({
 
 test('정상 응답 → 그릴 뷰(앞마당 상대좌표·펫 단계)', () => {
   const v = sanitizeShowcase(raw(), CTX);
-  assert.deepEqual(Object.keys(v).sort(), ['addons', 'character', 'equipped', 'houseStage', 'houseStyle', 'nickname', 'outdoor', 'pet', 'style']);
+  assert.deepEqual(Object.keys(v).sort(), ['addons', 'character', 'equipped', 'houseStage', 'houseStyle', 'nickname', 'outdoor', 'pet', 'room', 'style']);
   assert.equal(v.nickname, '느긋한 토끼 #1093');
   assert.equal(v.character, 'rabbit');
   assert.deepEqual(v.equipped, { head: 'beanie', neck: null, back: 'cape', trail: 'firefly', skin: null });
@@ -69,4 +69,32 @@ test('그릴 수 없는 응답은 null', () => {
   for (const bad of [null, 'x', [], { ...raw(), houseStage: 0 }, { ...raw(), houseStage: 8 }, { ...raw(), houseStage: 2.5 }, { ...raw(), houseStage: '3' }]) {
     assert.equal(sanitizeShowcase(bad, CTX), null, String(JSON.stringify(bad)).slice(0, 40));
   }
+});
+
+test('🏠 room — 모르는 id·범위 밖·깨진 좌표는 버리고 rot·f 를 정규화', () => {
+  const c = { ...CTX, decorIds: new Set(['bed', 'lamp', 'rocker']) };
+  const v = sanitizeShowcase(raw({ houseStage: 4, room: [
+    { id: 'bed', x: 1, z: 2, rot: 1, f: 0 },
+    { id: 'ghostCandle', x: 0, z: 0, rot: 0, f: 0 },
+    { id: 'lamp', x: 8, z: 0, rot: 0, f: 0 },
+    { id: 'lamp', x: 'a', z: 0 },
+    { id: 'rocker', x: -3, z: 3, rot: 6, f: 2 },
+  ] }), c);
+  assert.deepEqual(v.room, [
+    { id: 'bed', x: 1, z: 2, rot: 1, f: 0 },
+    { id: 'rocker', x: -3, z: 3, rot: 2, f: 0 },
+  ]);
+});
+
+test('🏠 room — 키가 없거나 배열이 아니면 null(문을 숨긴다)', () => {
+  const c = { ...CTX, decorIds: new Set(['bed']) };
+  assert.equal(sanitizeShowcase(raw({ houseStage: 4 }), c).room, null);
+  assert.equal(sanitizeShowcase(raw({ houseStage: 4, room: {} }), c).room, null);
+  assert.deepEqual(sanitizeShowcase(raw({ houseStage: 4, room: [] }), c).room, []);
+});
+
+test('🏠 room — 상한 ROOM_MAX', () => {
+  const c = { ...CTX, decorIds: new Set(['bed']) };
+  const room = Array.from({ length: ROOM_MAX + 5 }, () => ({ id: 'bed', x: 0, z: 0, rot: 0, f: 0 }));
+  assert.equal(sanitizeShowcase(raw({ houseStage: 4, room }), c).room.length, ROOM_MAX);
 });

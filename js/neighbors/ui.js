@@ -166,6 +166,11 @@ export function showNeighborHud(nickname, onExit, onMore) {
   document.body.classList.add('neighbor-visit');
 }
 
+/** 🏠 상단 제목만 바꾼다 — 마당 `🏡 {0} 의 마을` ↔ 실내 `🏡 {0} 의 집` */
+export function setNeighborHudTitle(text) {
+  const el2 = document.querySelector('#nb-hud-top .nb-title'); if (el2) el2.textContent = text;
+}
+
 export function hideNeighborHud() {
   document.body.classList.remove('neighbor-visit');
   setHostBubble(null);

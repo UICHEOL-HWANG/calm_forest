@@ -170,7 +170,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
-import { clampToNeighbor, initNeighbors, neighborAction, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
+import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
@@ -564,7 +564,7 @@ function setSpaceVisible() {
   //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
   setShadowActive(shadowActiveFor(spaceFlags()));
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
-  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atDream && !atMirror) startRainSound();
+  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atDream && !atMirror && !neighborIndoorFrame()) startRainSound();
   else stopRainSound();
 }
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
@@ -4391,13 +4391,13 @@ function buildSeasonDrift() {
 }
 function updateSeasonDrift(dt, t) {
   if (!seasonDrift) return;
-  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atDream && !atMirror;   // 빗줄기와 같은 조건(실내·동굴·카페·박물관·천문대·꿈속 숨김)
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atDream && !atMirror && !neighborIndoorFrame();   // 빗줄기와 같은 조건(실내·동굴·카페·박물관·천문대·꿈속 숨김)
   seasonDrift.update(dt, t, player.position.x, player.position.z, show);
 }
 
 function updateRain(dt) {
   if (!rainLines) return;
-  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atDream && !atMirror;   // 실내·동굴·카페 홀·박물관·천문대·꿈속에선 숨김(텃밭은 야외)
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atDream && !atMirror && !neighborIndoorFrame();   // 실내·동굴·카페 홀·박물관·천문대·꿈속에선 숨김(텃밭은 야외)
   rainLines.visible = show;
   if (!show) return;
   const { vel, snow, len } = rainLines.userData;
@@ -5664,9 +5664,9 @@ function animate() {
       } else if (place === 'mirror') {   // 🪞 거울 마을 — 원 하나를 한 화면에
         md.cx = MIRROR_MAP.cx; md.cz = MIRROR_MAP.cz; md.half = MIRROR_MAP.half; md.marks = []; mirrorMinimapMarks(md.marks);
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'neighbor' ? NEIGHBOR : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'neighbor' ? NEIGHBOR_R : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -6306,7 +6306,7 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy(indoor && curFloorDef().elevated ? camOffsetRoof : indoor ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
+  _camOff.copy((indoor && curFloorDef().elevated) || neighborIndoorElevated() ? camOffsetRoof : (indoor || neighborIndoorFrame()) ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
   const f = camFocus();
   _camTarget.copy(f).add(_camOff);
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
@@ -6423,7 +6423,7 @@ function updateDayNight(dt) {
   }
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
   if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
-  if (atNeighbor) { scene.fog.near = 24; scene.fog.far = 66; }   // 🏡 이웃 마당은 구경하는 곳 — 집·장식이 안개에 묻히지 않게(날씨 톤은 유지)
+  if (atNeighbor && !neighborIndoorFrame()) { scene.fog.near = 24; scene.fog.far = 66; }   // 🏡 이웃 마당은 구경하는 곳 — 집·장식이 안개에 묻히지 않게(날씨 톤은 유지) · 🏠 실내는 fog 예외라 건너뛴다
   if (mgView?.type === 'carve') { scene.fog.near = 40; scene.fog.far = 140; }   // 🗿 공방 무대는 원거리 카메라(모바일 ~12.5) — 날씨 안개에 잠기지 않게
   // 🔥 화덕은 반대다 — 마을 한복판이라 채굴장·팻말·나무가 다 보여 산만했다.
   //    안개를 바짝 당겨 화덕 뒤를 지우고 무대처럼 만든다(카메라 거리 3.8 기준).

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { REWARD_CAP, NOTICE_MAX, EMOJI_IDS, houseSolidR } from '../js/neighbors/rules.js';
-import { YARD_R, DECOR_MAX } from '../js/neighbors/sanitize.js';
+import { YARD_R, DECOR_MAX, ROOM_MAX, ROOM_MAX_XY } from '../js/neighbors/sanitize.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const SQL = read('sql/migrations/migrate_neighbors.sql');
@@ -40,4 +40,17 @@ test('🧑‍🤝‍🧑 페르소나 분리 — 후보 함수가 PERSONA_DOMAIN
   const selftest = read('sql/tests/neighbors_selftest.sql');
   assert.equal(selftest.match(/^do \$\$/gm).length, 1);
   assert.ok(selftest.includes(`'nb-selftest-sim@${dom}'`) && selftest.includes('ids := ids || j;'));
+});
+
+test('🏠 실내 상한 — SQL _nb_room 과 sanitize 가 같다 · 운영 파일이 최종본과 같다', () => {
+  const room = (s) => s.match(/create or replace function public\._nb_room[\s\S]*?\n\$\$;/)[0];
+  const show = (s) => s.match(/create or replace function public\.neighbor_showcase[\s\S]*?\nend \$\$;/)[0];
+  const ROOM_SQL = read('sql/migrations/migrate_neighbors_room.sql');
+  assert.equal(room(ROOM_SQL), room(SQL));
+  assert.equal(show(ROOM_SQL), show(SQL));
+  assert.match(room(SQL), new RegExp(`abs\\(\\(e\\.o->>'x'\\)::numeric\\) <= ${ROOM_MAX_XY}`));
+  assert.match(room(SQL), new RegExp(`abs\\(\\(e\\.o->>'z'\\)::numeric\\) <= ${ROOM_MAX_XY}`));
+  assert.match(room(SQL), new RegExp(`limit ${ROOM_MAX}\\n`));
+  assert.match(show(SQL), /'outdoor',\s+_nb_yard\(s\),\n\s+'room',\s+_nb_room\(s\),/);
+  assert.match(ROOM_SQL, /⚠️ 적용 순서/);
 });

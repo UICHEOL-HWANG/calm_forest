@@ -106,6 +106,26 @@ returns jsonb language sql immutable set search_path = public as $$
   ) y;
 $$;
 
+-- 🏠 실내 가구만 — house.decor 의 {id,x,z,rot,f}. 좌표는 INT 기준 상대값(방 반폭 7 + 여유 = 7.5), 최대 120.
+--    js/neighbors/sanitize.js ROOM_MAX·ROOM_MAX_XY 와 같아야 한다(tests/neighbors-sync)
+create or replace function public._nb_room(p_state jsonb)
+returns jsonb language sql immutable set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', y.o->'id', 'x', y.o->'x', 'z', y.o->'z',
+           'rot', case when jsonb_typeof(y.o->'rot') = 'number' and (y.o->>'rot')::numeric in (0, 1, 2, 3) then y.o->'rot' else '0'::jsonb end,
+           'f',   case when jsonb_typeof(y.o->'f') = 'number' and (y.o->>'f')::numeric in (0, 1, 2, 3) then y.o->'f' else '0'::jsonb end) order by y.ord), '[]'::jsonb)
+  from (
+    select e.o, e.ord
+    from jsonb_array_elements(case when jsonb_typeof(p_state #> '{house,decor}') = 'array' then p_state #> '{house,decor}' else '[]'::jsonb end)
+         with ordinality as e(o, ord)
+    where jsonb_typeof(e.o) = 'object' and jsonb_typeof(e.o->'id') = 'string' and length(e.o->>'id') <= 40
+      and jsonb_typeof(e.o->'x') = 'number' and jsonb_typeof(e.o->'z') = 'number'
+      and abs((e.o->>'x')::numeric) <= 7.5 and abs((e.o->>'z')::numeric) <= 7.5
+    order by e.ord
+    limit 120
+  ) y;
+$$;
+
 -- 후보 = 공개(행 없으면 공개) + 관리자 숨김 아님 + 비익명 + 7일 안에 저장 + 집 1단계 이상 + 본인 제외. 하루 고정 정렬(리롤 불가)
 create or replace function public._nb_candidates(p_caller uuid, p_day date, p_limit int default 3)
 returns table (uid uuid, k text)
@@ -199,6 +219,7 @@ begin
                                                                then s #> '{house,addons}' else '[]'::jsonb end) as e(v)
                      where jsonb_typeof(e.v) = 'string' and length(e.v #>> '{}') <= 40 limit 40) q),
     'outdoor',    _nb_yard(s),
+    'room',       _nb_room(s),
     'coop',       jsonb_build_object('built', coalesce(s #> '{coop,built}' = 'true'::jsonb, false))
   );
 end $$;
@@ -332,6 +353,7 @@ revoke all on function public._nb_kst_today() from public, anon, authenticated;
 revoke all on function public._nb_str(jsonb, int) from public, anon, authenticated;
 revoke all on function public._nb_num(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_yard(jsonb) from public, anon, authenticated;
+revoke all on function public._nb_room(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_candidates(uuid, date, int) from public, anon, authenticated;
 revoke all on function public._nb_public_id(uuid) from public, anon, authenticated;
 revoke all on function public._nb_nick_blocked(text) from public, anon, authenticated;

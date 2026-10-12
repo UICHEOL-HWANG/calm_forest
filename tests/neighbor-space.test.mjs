@@ -41,8 +41,8 @@ test('game.js 공간 플래그 배선(천문대와 같은 자리)', () => {
   assert.match(bodyOf('spaceFlags'), /_spaceFlags\.atNeighbor = atNeighbor/);
   assert.match(bodyOf('toolZoneKey'), /if \(atNeighbor\) return 'neighbor'/);
   assert.equal((SRC.match(/atNeighbor \? 'neighbor' : (?:atMirror \? 'mirror' : )?(?:atDream \? 'dream' : )?atRiver/g) || []).length, 2, 'place 문자열 2곳(세션 요약·미니맵)');
-  assert.match(SRC, /place === 'neighbor' \? NEIGHBOR :/);
-  assert.match(SRC, /place === 'neighbor' \? NEIGHBOR_R :/);
+  assert.match(SRC, /place === 'neighbor' \? \(neighborIndoorFrame\(\)\?\.c \?\? NEIGHBOR\) :/);   // 🏠 이웃 실내면 실내 중심·반폭(2026-10-11)
+  assert.match(SRC, /place === 'neighbor' \? \(neighborIndoorFrame\(\)\?\.half \?\? NEIGHBOR_R\) :/);
   assert.match(bodyOf('minimapMarks'), /place === 'neighbor'\) \{ neighborMinimapMarks\(marks\);/);
   assert.match(SRC, /\} else if \(atNeighbor\) \{ clampToNeighbor\(player\.position\);/);
   assert.match(bodyOf('handleAction'), /if \(atNeighbor \|\| nearDoor === 'neighbor'\) return neighborAction\(nearDoor\);/);
@@ -53,8 +53,9 @@ test('game.js 공간 플래그 배선(천문대와 같은 자리)', () => {
 
 test('공간 가드: 문·야외 장식·마을 판정·그림자·도구 페이지', () => {
   assert.match(DOORS, /if \(atNeighbor\) \{/);
-  assert.match(DOORS, /nd = neighborDoor\(player\.position\);/);
-  assert.match(DOORS, /prompt = nd \? '🚪 내 마을로' : null;/);
+  assert.match(DOORS, /const np = neighborPrompt\(player\.position\);/);   // 🏠 마당·실내 프롬프트를 한 함수로(2026-10-11 neighborDoor 대체)
+  assert.match(DOORS, /nd = np\.nd; prompt = np\.prompt;/);
+  assert.match(read('js/spaces/neighbor.js'), /return \{ nd: 'neighborexit', prompt: '🚪 내 마을로' \};/);
   assert.match(DOORS, /inVillage2\(\) \{ return [^}]*!atNeighbor/);
   assert.match(read('js/spaces/outdoor-decor.js'), /outdoorZone\(\) \{ return [^}]*!atNeighbor/);
   assert.match(read('js/shadow-scope.js'), /'atOrchard', 'atNeighbor'(?:, 'atDream')?(?:, 'atMirror')?\]/);
@@ -73,9 +74,13 @@ test('입장·퇴장: 퇴장 때 치우고 8장 훅 · 반응 보상은 원장 �
   assert.match(SPACE, /authState\.isGuest \? \{ ok: false, reason: 'login' \}/);
 });
 
-test('치우기: 캐릭터는 disposeSkin 만(재질 공유) · 창문 점등 해제 · 충돌체 제거', () => {
-  assert.match(SCENE, /group\.remove\(host\); disposeSkin\(host\);/);
-  assert.match(SCENE, /if \(pet\) group\.remove\(pet\);/);
+test('치우기: 캐릭터·펫은 지오메트리만(재질 공유) · 창문 점등 해제 · 충돌체 제거', () => {
+  assert.match(SCENE, /group\.remove\(host\); disposeGeos\(host\);/);
+  assert.match(SCENE, /if \(pet\) \{ group\.remove\(pet\); disposeGeos\(pet\); \}/);
+  //  재질은 내 캐릭터·펫과 공유(plushMat·pet matsFor 캐시) — 지오메트리만 버린다. 방문마다 21(+펫 6)개씩 새던 누수(2026-10-12)
+  const fn = SCENE.slice(SCENE.indexOf('function disposeGeos('), SCENE.indexOf('\n}', SCENE.indexOf('function disposeGeos(')));
+  assert.match(fn, /o\.geometry\?\.dispose\(\)/);
+  assert.doesNotMatch(fn, /material/);
   assert.match(SCENE, /unregisterWindows\(group\);/);
   assert.match(SCENE, /for \(const c of solids\) removeSolid\(c\);/);
   assert.match(SCENE, /sign\.userData\.dead = true;/);
@@ -130,8 +135,8 @@ test('놀러 가기: 검증·짓기·입장 실패는 조용히 삼키지 않는
 // ── 최종 리뷰 수정 ──
 test('🌫️ 이웃 마당 안개 — 바다처럼 시야를 넓힌다(구경 공간 · 날씨 톤은 유지, setFogExempt 아님)', () => {
   const dn = bodyOf('updateDayNight');
-  assert.match(dn, /if \(atNeighbor\) \{ scene\.fog\.near = 24; scene\.fog\.far = 66; \}/);
-  assert.ok(dn.indexOf('if (atNeighbor) { scene.fog.near') > dn.indexOf("WEATHER === 'snow'"), '날씨 안개 뒤에 덮어쓴다');
+  assert.match(dn, /if \(atNeighbor && !neighborIndoorFrame\(\)\) \{ scene\.fog\.near = 24; scene\.fog\.far = 66; \}/);   // 🏠 실내는 fog 예외라 건너뛴다(2026-10-11)
+  assert.ok(dn.indexOf('if (atNeighbor && !neighborIndoorFrame()) { scene.fog.near') > dn.indexOf("WEATHER === 'snow'"), '날씨 안개 뒤에 덮어쓴다');
   assert.doesNotMatch(SRC, /setFogExempt\([^)]*[Nn]eighbor/);
 });
 
@@ -152,6 +157,6 @@ test('🧱 짓다가 터지면 충돌체·창문 등록을 되돌리고 다시 �
   const b = SCENE.slice(SCENE.indexOf('export function buildNeighborScene('));
   assert.match(b, /\} catch \(e\) \{ built\.dispose\(\); throw e; \}/);
   assert.ok(b.indexOf('try {') < b.indexOf('solidCircle(') && b.indexOf('try {') < b.indexOf('prepHouseMeshes(house)'), '충돌체·창문 등록은 try 안');
-  assert.match(disposeBody(), /if \(host\) \{ group\.remove\(host\); disposeSkin\(host\); \}/);
+  assert.match(disposeBody(), /if \(host\) \{ group\.remove\(host\); disposeGeos\(host\); \}/);
   assert.match(disposeBody(), /if \(sign\) sign\.userData\.dead = true;/);
 });
