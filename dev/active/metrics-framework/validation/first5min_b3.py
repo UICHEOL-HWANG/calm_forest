@@ -54,7 +54,7 @@ FROM c LEFT JOIN s ON s.pid = c.entry_pid AND s.sid = c.entry_sid
 
 
 def main() -> None:
-    d = read_sql(SESSION_SQL)
+    d = read_sql(SESSION_SQL).sort_values("person").reset_index(drop=True)   # reproducible bootstrap
     acq = d[d["ttfa_sec"].notna()]
     non = d[d["ttfa_sec"].isna()].copy()
     print(f"cohort {len(d)} · acquired≤7d {len(acq)} · non-acquirers {len(non)} · "

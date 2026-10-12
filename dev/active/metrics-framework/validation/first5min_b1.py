@@ -52,7 +52,7 @@ GROUP BY 1, 2, 3, 4, 5
 
 
 def main() -> None:
-    d = read_sql(SQL)
+    d = read_sql(SQL).sort_values("person").reset_index(drop=True)   # reproducible bootstrap
     d["places"] = d["places"].map(lambda xs: [PLACE[x] for x in (xs if xs is not None else []) if x in PLACE])
     no5 = d[~(d["ttfa_sec"].notna() & (d["ttfa_sec"] <= 300))]
     t = no5[no5["stay_sec"] >= 126].copy()

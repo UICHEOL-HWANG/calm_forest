@@ -55,7 +55,7 @@ def classify(acts) -> str:
 
 
 def main() -> None:
-    d = read_sql(SQL)
+    d = read_sql(SQL).sort_values("person").reset_index(drop=True)   # reproducible bootstrap
     d["group"] = d["acts"].map(classify)
     d["acq5"] = d["ttfa_sec"].notna() & (d["ttfa_sec"] <= 300)
     print(f"cohort first entry {WINDOW[0]}~{WINDOW[1]}: {len(d)} · groups: " +
