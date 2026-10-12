@@ -2,13 +2,13 @@
 -- definition: 1 − Q · (획득 − 사용) / 경제 활동 기기 · 실패 후 같은 세션에서 복구되지 않은 세션 수
 -- grain: week × platform|all
 -- source: SL|EC|GA4
--- caveats: save_load_failed는 9/14 배포부터 존재: 이전은 NULL; sid 없는 사건은 연결 불가; EC 기기 단위
+-- caveats: save_load_failed는 9/14 배포부터 존재: 이전은 NULL (Q3, 측정 안 함 ≠ 0), 9/14 주는 부분 계측; sid 없는 사건은 연결 불가; EC 기기 단위
 -- Run after _filters.sql in the same BigQuery script (see run.py).
 WITH ec AS (SELECT DATE_TRUNC(d,WEEK(MONDAY)) period,scope platform,population_variant variant,SUM(amount) net,COUNT(DISTINCT client_id) devices FROM metric_economy CROSS JOIN UNNEST([COALESCE(platform,'(none)'),'all']) scope WHERE d BETWEEN @start_date AND @end_date GROUP BY 1,2,3),
  recovery_context AS (SELECT user_pseudo_id,sid,LOGICAL_OR(event_name='save_load_recovered') recovered
  FROM ga_events WHERE sid IS NOT NULL AND user_pseudo_id IS NOT NULL GROUP BY 1,2),
  sessions AS (SELECT population_variant variant,user_pseudo_id,sid,
- MIN(d) d,ARRAY_AGG(platform ORDER BY event_at LIMIT 1)[OFFSET(0)] platform,
+ MIN(d) d,IF(LOGICAL_OR(platform_property='toss'),'toss',COALESCE(ARRAY_AGG(platform_property IGNORE NULLS ORDER BY event_at LIMIT 1)[SAFE_OFFSET(0)],'web')) platform,
  LOGICAL_OR(event_name='save_load_failed') failed,LOGICAL_OR(COALESCE(r.recovered,FALSE)) recovered
  FROM metric_ga LEFT JOIN recovery_context r USING(user_pseudo_id,sid) WHERE sid IS NOT NULL AND user_pseudo_id IS NOT NULL GROUP BY 1,2,3),
  failures AS (SELECT DATE_TRUNC(d,WEEK(MONDAY)) period,scope platform,variant,COUNTIF(failed AND NOT recovered) n

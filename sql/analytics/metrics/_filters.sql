@@ -1,5 +1,6 @@
 -- metric: _filters
 -- definition: 공식 = 페르소나·개발자 제외, 베타테스터는 베타 기간(9/9~9/15)만 제외 · 원본 = 필터 없음. 항상 나란히 표시
+-- variants: official | raw | beta (= 베타테스터의 베타 기간 세션만, 페르소나·개발자 제외 — 베타는 따로 분석, 2026-10-12 결정)
 -- grain: week × platform|all
 -- source: SL|EC|GA4
 -- caveats: GA4 베타 배정 속성은 README 및 codex-questions.md 참조; raw는 플랫폼을 포함해 제외 필터 없음
@@ -22,11 +23,11 @@ SELECT DISTINCT user_id FROM `calm-forest.calm_forest_raw.session_logs`
 WHERE client_id IN (SELECT client_id FROM developer_devices) AND user_id IS NOT NULL;
 CREATE TEMP TABLE metric_sessions AS
 WITH population AS (
- SELECT s.*, v AS population_variant FROM latest_sessions s CROSS JOIN UNNEST(['official','raw']) v
+ SELECT s.*, v AS population_variant FROM latest_sessions s CROSS JOIN UNNEST(['official','raw','beta']) v
  WHERE v='raw' OR (platform IN ('web','toss')
  AND NOT EXISTS(SELECT 1 FROM UNNEST(@persona_user_ids) p WHERE p=s.user_id)
  AND NOT EXISTS(SELECT 1 FROM developer_devices x WHERE x.client_id=s.client_id)
- AND NOT (COALESCE(variant,'') IN ('beta_A','beta_B') AND d BETWEEN '2026-09-09' AND '2026-09-15'))
+ AND (COALESCE(variant,'') IN ('beta_A','beta_B') AND d BETWEEN '2026-09-09' AND '2026-09-15') = (v='beta'))
 ), accounts AS (
  SELECT population_variant, client_id, COUNT(DISTINCT user_id) AS n, MIN(user_id) account
  FROM population WHERE is_guest=FALSE AND user_id IS NOT NULL GROUP BY 1,2
@@ -48,7 +49,7 @@ GROUP BY 1,2,3,4;
 CREATE TEMP TABLE metric_calendar AS
 SELECT d period FROM UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(@start_date,WEEK(MONDAY)),DATE_TRUNC(@end_date,WEEK(MONDAY)),INTERVAL 7 DAY)) d;
 CREATE TEMP TABLE metric_scopes AS
-SELECT variant,platform FROM UNNEST(['official','raw']) variant CROSS JOIN UNNEST(['all','web','toss']) platform
+SELECT variant,platform FROM UNNEST(['official','raw','beta']) variant CROSS JOIN UNNEST(['all','web','toss']) platform
 UNION DISTINCT SELECT DISTINCT variant,platform FROM metric_days;
 CREATE TEMP TABLE metric_weekly AS
 SELECT c.period,s.platform,s.variant,COUNT(DISTINCT d.person) visitors,COUNT(d.person) visit_days,
@@ -58,12 +59,12 @@ LEFT JOIN metric_days d ON d.period=c.period AND d.platform=s.platform AND d.var
  AND d.d BETWEEN @start_date AND @end_date GROUP BY 1,2,3;
 CREATE TEMP TABLE metric_economy AS
 SELECT e.*, DATE(created_at,'Asia/Seoul') d, v population_variant
-FROM `calm-forest.calm_forest_raw.econ_logs` e CROSS JOIN UNNEST(['official','raw']) v
+FROM `calm-forest.calm_forest_raw.econ_logs` e CROSS JOIN UNNEST(['official','raw','beta']) v
 WHERE v='raw' OR (platform IN ('web','toss')
  AND NOT EXISTS(SELECT 1 FROM UNNEST(@persona_user_ids) p WHERE p=e.user_id)
  AND NOT EXISTS(SELECT 1 FROM developer_devices x WHERE x.client_id=e.client_id)
- AND NOT (COALESCE(e.variant,'') IN ('beta_A','beta_B')
- AND DATE(e.created_at,'Asia/Seoul') BETWEEN '2026-09-09' AND '2026-09-15'));
+ AND (COALESCE(e.variant,'') IN ('beta_A','beta_B')
+ AND DATE(e.created_at,'Asia/Seoul') BETWEEN '2026-09-09' AND '2026-09-15') = (v='beta'));
 CREATE TEMP TABLE ga_events AS
 SELECT user_pseudo_id,user_id,event_name,TIMESTAMP_MICROS(event_timestamp) event_at,
  DATE(TIMESTAMP_MICROS(event_timestamp),'Asia/Seoul') d,
@@ -83,8 +84,8 @@ SELECT DISTINCT user_pseudo_id,sid,d FROM ga_events
 WHERE experiment_variant IN ('beta_A','beta_B')
 AND d BETWEEN '2026-09-09' AND '2026-09-15' AND sid IS NOT NULL;
 CREATE TEMP TABLE metric_ga AS
-SELECT e.*,v population_variant FROM ga_events e CROSS JOIN UNNEST(['official','raw']) v
+SELECT e.*,v population_variant FROM ga_events e CROSS JOIN UNNEST(['official','raw','beta']) v
 WHERE v='raw' OR (platform IN ('web','toss')
  AND NOT EXISTS(SELECT 1 FROM ga_excluded_devices x WHERE x.user_pseudo_id=e.user_pseudo_id)
- AND NOT (COALESCE(experiment_variant,'') IN ('beta_A','beta_B') AND d BETWEEN '2026-09-09' AND '2026-09-15')
- AND NOT EXISTS(SELECT 1 FROM ga_beta_sessions b WHERE b.user_pseudo_id=e.user_pseudo_id AND b.sid=e.sid AND b.d=e.d));
+ AND ((COALESCE(experiment_variant,'') IN ('beta_A','beta_B') AND d BETWEEN '2026-09-09' AND '2026-09-15')
+  OR EXISTS(SELECT 1 FROM ga_beta_sessions b WHERE b.user_pseudo_id=e.user_pseudo_id AND b.sid=e.sid AND b.d=e.d)) = (v='beta'));

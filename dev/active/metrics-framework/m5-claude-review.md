@@ -1,7 +1,9 @@
 # M5 Claude 리뷰 — Codex 지표 SQL (`analytics/codex` fcdaf88f)
 
 **작성** 2026-10-12 · 대상: `sql/analytics/metrics/*` · Codex 검증 기록 `m5-validation.md` · 질문 `codex-questions.md` (둘 다 `analytics/codex` 브랜치)
-상태: 리뷰 완료 · Q1~Q6 사용자 결정 대기 · 공유 브랜치 병합 안 함
+상태: ✅ 반영 완료(2026-10-12) — 사용자 결정: Q1·Q2 공식은 베타 기간 제외 + **`beta` 출력 추가(베타는 따로 분석)** · Q3 NULL · Q4 첫 비어 있지 않은 플랫폼 · Q5 게임 전체 이력 · **Q6 보류** · `analytics/codex` 를 공유 브랜치에 병합 후 여기서 마무리(Codex 사용 불가) · `run.py --baseline` 전부 PASS · `hierarchy_baseline.py` 를 같은 규칙으로 고쳐 독립 재현 일치
+
+**beta 출력 (베타 테스터의 9/9~9/15 세션):** 9/7 주 W 10 · Q 95% · 코인 순증가 1,018/기기 · 소비 50% / 9/14 주 W 9 · Q 87% · 733/기기 · 67%  — 공식(25·104/기기)과 자릿수가 다름
 
 ## 결론
 - **북극성·L1(W·F·Q)·L2(신규·유지·복귀·습관·간격·분야·빈손 위치)·통합 리포트는 정답지와 4주 모두 정확히 일치** — 정의 대조 결과 SQL 로직에 오류 없음

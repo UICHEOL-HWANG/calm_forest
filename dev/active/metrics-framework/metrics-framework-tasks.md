@@ -26,7 +26,7 @@
 ## M5 SQL 구현 (Codex)
 - [x] 공통 필터 (개발자·페르소나·베타 제외)
 - [x] 지표 SQL
-- [ ] 검증 쿼리 · Claude 리뷰 — 리뷰 완료(2026-10-12, `m5-claude-review.md`) · Q1~Q5 결정(공식 베타 제외 + `beta` 출력 추가, Q6 보류) · 반영 중
+- [x] 검증 쿼리 · Claude 리뷰 — 리뷰·반영 완료(2026-10-12, `m5-claude-review.md`) · Q1~Q5 반영(공식 베타 제외 + `beta` 출력), Q6 보류 · `run.py --baseline` PASS · Python 정답지 독립 재현 일치
 
 ## M6 베이스라인
 - [ ] 최근 4주·주간 추이·플랫폼 분해 Artifact

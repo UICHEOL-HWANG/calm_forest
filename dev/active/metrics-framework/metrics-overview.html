@@ -201,13 +201,13 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
       <div class="card">
         <h3>Acquisition</h3><div class="ko">유입 · 방문 → 게임 진입</div>
         <div class="state bad">입구 이탈 (웹)</div><hr>
-        <div class="k">진입 전환율</div><div class="v">46%</div>
-        <div class="s">웹 37% · 토스 89%<br>방문 455 → 진입 211</div>
+        <div class="k">진입 전환율</div><div class="v">45%</div>
+        <div class="s">웹 36% · 토스 89%<br>방문 447 → 진입 203</div>
       </div>
       <div class="card hot">
         <h3>Activation</h3><div class="ko">활성화 · 첫 획득 행동</div>
         <div class="state bad">병목</div><hr>
-        <div class="k">진입 후 7일 내 첫 획득 행동</div><div class="v">43%</div>
+        <div class="k">진입 후 7일 내 첫 획득 행동</div><div class="v">39%</div>
         <div class="s">캐릭터 선택 161 → 첫 획득 90<br>획득 없는 방문일의 81%가 마을에서 끝남</div>
       </div>
       <div class="card">
@@ -241,7 +241,7 @@ svg.tree { display: block; width: 100%; min-width: 980px; height: auto; }
 
     <div class="guards">
       <div class="g"><b>가드레일 · 획득 없는 방문일 비율</b><span>53% (35~73%)</span><small>보상으로 방문만 부풀리지 않는지</small></div>
-      <div class="g"><b>가드레일 · 코인 순증가 /기기</b><span>45 ~ 384</span><small>8/3 주부터 · 보상 남발로 경제가 인플레되지 않는지</small></div>
+      <div class="g"><b>가드레일 · 코인 순증가 /기기</b><span>25 ~ 225</span><small>8/3 주부터 · 보상 남발로 경제가 인플레되지 않는지</small></div>
       <div class="g"><b>가드레일 · 복구 안 된 세이브 실패</b><span>10주 0 세션</span><small>지표가 오르는 사이 마을 유실이 묻히지 않는지</small></div>
     </div>
     <div class="banner">유입보다 활성화 — 신규가 첫 획득 행동까지 가지 못하는 것이 가장 큰 누수다</div>
@@ -483,9 +483,9 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
     mix:   { x: 780,  y: 300, w: 130, k: 'l2',   t: '분야별 획득', v: '채집 74% · 농사 62%' },
     empty: { x: 965,  y: 300, w: 210, k: 'l2',   t: '획득 없는 방문일 마지막 위치', v: '마을 81%' },
     visit: { x: 95,   y: 440, w: 130, k: 'l2',   t: '첫 방문', v: '455' },
-    entry: { x: 240,  y: 440, w: 130, k: 'l2',   t: '진입', v: '46% (웹 37%)' },
+    entry: { x: 240,  y: 440, w: 130, k: 'l2',   t: '진입', v: '45% (웹 36%)' },
     chars: { x: 385,  y: 440, w: 130, k: 'l2',   t: '캐릭터 선택', v: '76%' },
-    act:   { x: 545,  y: 440, w: 160, k: 'hot',  t: '첫 획득 = 활성화', v: '43% (병목)' },
+    act:   { x: 545,  y: 440, w: 160, k: 'hot',  t: '첫 획득 = 활성화', v: '39% (병목)' },
     ref:   { x: 95,   y: 545, w: 150, k: 'wait', t: '추천 유입 진입', v: '0 · 10/9 배포' },
     e1:    { x: 545,  y: 545, w: 160, k: 'exp',  t: '실험: 첫 5분 수확', v: '목표 60%' },
     ttfa:  { x: 385,  y: 545, w: 140, k: 'l2',   t: '첫 획득까지 시간', v: '중앙값 2.1분' },
@@ -549,7 +549,7 @@ gr.textContent = '획득 없는 방문일 비율 · 코인 순증가 속도 · �
   el('line', { x1: 20, x2: 1180, y1: 612, y2: 612, stroke: '#2a2c2f', 'stroke-width': 1 }, svg);
   const g = txt(svg, 600, 648, '', { 'text-anchor': 'middle', 'font-size': 14, fill: '#b9b7b1' });
   const t1 = el('tspan', { fill: '#ff6b5e', 'font-weight': 600 }, g); t1.textContent = '가드레일   ';
-  const t2 = el('tspan', {}, g); t2.textContent = '획득 없는 방문일 53% (35~73%) · 코인 순증가 45~384 /기기 (8/3 주부터) · 복구 안 된 세이브 실패 10주 0 세션';
+  const t2 = el('tspan', {}, g); t2.textContent = '획득 없는 방문일 53% (35~73%) · 코인 순증가 25~225 /기기 (8/3 주부터, 베타 제외) · 복구 안 된 세이브 실패 10주 0 세션';
 })();
 
 (function ltv() {
