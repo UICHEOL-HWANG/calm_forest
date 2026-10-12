@@ -88,7 +88,8 @@ A/B별로 계산할 수 있으면 EDA 통과. 표식이나 조인이 깨지면 �
   시각 근사다.
 - **판정**: 세션 단위에서는 힌트 배너 방향성 신호가 있으나, 이벤트 단위에서는 반대다.
   Hβ3는 **약한 방향성/보류**로 둔다. 다음 게이트에서 검정을 하려면 세션 단위를 사전 고정해야 한다.
-- **기록**: CSV `ml/reports/beta_h3_banner_eda_2026-09-16/`,
+- **기록**: 집계 CSV `ml/reports/beta_h3_banner_eda_2026-09-16/`
+  (행 단위 `*_rows.csv` 는 ID 포함이라 로컬 전용 — 저장소에 없음),
   차트 `ml/reports/figs/beta_h3_banner_survival_event.png`,
   `ml/reports/figs/beta_h3_banner_survival_session.png`,
   `ml/reports/figs/beta_h3_banner_arm_counts.png`.

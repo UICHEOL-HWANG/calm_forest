@@ -89,4 +89,6 @@ dev/active/premium-cosmetics/refs/*
 tools/persona-sim/runs/
 # 🔎 이상치 탐지 리포트(실제 user_id 포함 — 공개 저장소에 올리지 않는다)
 ml/reports/anomaly/
+# 🔒 행 단위 리포트(user_id·client_id·session_id 포함) — 집계 CSV 만 올린다
+ml/reports/**/*_rows.csv
 dev/active/halloween-coin-decor/look/mockups.html
