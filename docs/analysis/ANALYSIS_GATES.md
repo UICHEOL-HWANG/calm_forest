@@ -12,7 +12,7 @@
 | G0 분석 목적 | ✅ 확정 | 2026-10-12 | `dev/active/metrics-framework/analysis-candidates.md` §0 — 시작은 했지만 첫 획득까지 못 가는 이유를 찾아 첫 5분 수확 실험을 설계 |
 | G0 가설표 | ✅ 완료 | 2026-10-12 | `dev/active/metrics-framework/first5min-hypotheses.md` — B3 · B2 · B1 · C2 합의 |
 | G1 데이터 신뢰성 | ✅ 제한부 통과 | 2026-10-12 | [결과 페이지](https://claude.ai/artifact/NXkzG9HrtVWmn1y7XKUWLc) · W&B `g1-first5min-diagnosis` · `validation/first5min_g1.py` — 표본 203 재현 · 세션 번호 100% · 중복 의심 21,379행은 같은 묶음의 별개 이벤트(복사본 0) · 수확 이벤트는 플레이어 직접 수확만 · ⚠️ 대화(8/1)·의뢰 제안(8/6)·채집 숲(8/12) 기록이 늦게 시작 → B2 기간 8/12~9/27 로 조정 제안(승인 대기) · ⚠️ 묶음 안 순서 모호 → B2 "동시" 따로 집계 |
-| G2 분포 확인 | ⏳ 대기 | — | — |
+| G2 분포 확인 | 🔄 진행 (B3 완료) | 2026-10-12 | **B3 지지** — 획득 없이 떠난 119명 중 59%(70명)가 첫 세션을 2.1분 안에 끝냄(95% CI 50~68%, 하한이 기준선에 걸림) · 5분 이상 머문 28%(33명)는 막힌 무리 · 플랫폼별(사전 기준 밖 기술): 토스 2.1분 안 78% vs 웹 46%·웹은 5분 이상 41% · `validation/first5min_b3.py` · 차트 `ml/reports/figs/first5min_b3_first_session.png` |
 
 ---
 
