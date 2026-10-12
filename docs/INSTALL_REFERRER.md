@@ -17,7 +17,7 @@ https://play.google.com/store/apps/details?id=com.cheorish.lab.calmforest&referr
 | 단계 | 위치 |
 |---|---|
 | 네이티브 읽기(첫 실행 1회, 확정되면 SharedPreferences `cf_install_referrer.done`) | `android/.../InstallReferrerPlugin.java` |
-| 파싱 — 빈 값·`google-play`=organic, utm_source 없음=unknown, 미지원 기기=unknown, 첫 읽기보다 24시간 넘게 먼저 설치(이 기능 전 기존 사용자)=preexisting | `js/install-referrer.js` |
+| 파싱 — 빈 값·`google-play`=organic, utm_source 없음=unknown, 미지원 기기=unknown, 첫 읽기보다 24시간 넘게 먼저 설치했고 referrer 에 채널이 없으면(이 기능 전 기존 사용자)=preexisting — utm_source 가 있으면 오래된 설치라도 그 채널(Play 가 90일 보관 → 프로덕션 출시 전 홍보 설치자도 업데이트 때 소급) | `js/install-referrer.js` |
 | 기기 확정(localStorage `cf_install_attr`) · GA4 이벤트 1회 · 계정 동기화 | `js/install-referrer-boot.js` |
 | GA4 사용자 속성 `install_source`·`install_campaign`, 이벤트 `install_attribution{install_source,install_medium,install_campaign}` | `js/analytics.js` |
 | Supabase `install_attribution` — 온라인 계정마다 1행(게스트 → Play Games 로 바뀌면 행 추가), 덮어쓰지 않음 | `sql/migrations/migrate_install_attribution.sql` |

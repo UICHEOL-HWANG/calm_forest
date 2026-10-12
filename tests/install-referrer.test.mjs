@@ -63,10 +63,18 @@ test('기존 설치(첫 읽기보다 24시간 이상 먼저 설치) → preexist
   const now = 1_800_000_000_000;
   const old = attributionFromNative({ status: 'ok', referrer: '', firstInstallMs: now - 3 * 86400_000 }, now);
   assert.equal(old.source, 'preexisting'); assert.equal(old.medium, '(none)'); assert.equal(old.campaign, '(none)');
+  const oldUnknown = attributionFromNative({ status: 'ok', referrer: 'gclid=x', firstInstallMs: now - 3 * 86400_000 }, now);
+  assert.equal(oldUnknown.source, 'preexisting');
   const fresh = attributionFromNative({ status: 'ok', referrer: 'utm_source=kakao', firstInstallMs: now - 3600_000 }, now);
   assert.equal(fresh.source, 'kakao');
   const unknownTime = attributionFromNative({ status: 'ok', referrer: 'utm_source=kakao', firstInstallMs: 0 }, now);   // 디버그 테스트 referrer 등
   assert.equal(unknownTime.source, 'kakao');
+});
+
+test('오래된 설치라도 referrer 에 utm_source 가 있으면 그 채널 — 프로덕션 출시 전 홍보 링크 설치자를 업데이트 때 소급', () => {
+  const now = 1_800_000_000_000;
+  const a = attributionFromNative({ status: 'ok', referrer: 'utm_source=instagram&utm_medium=social&utm_campaign=play_launch', firstInstallMs: now - 20 * 86400_000 }, now);
+  assert.deepEqual([a.source, a.medium, a.campaign], ['instagram', 'social', 'play_launch']);
 });
 
 test('일시 장애(SERVICE_UNAVAILABLE)·오류 → null(다음 실행에서 다시 읽는다)', () => {
