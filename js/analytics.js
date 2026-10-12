@@ -116,6 +116,7 @@ export function setSurveyUserProps() {
 // [속성] 🧪 E1 첫 5분 수확 실험 — 등록된 기기면 무리를 기억해 획득 이벤트에 exp_arm 을 붙인다(js/spaces/e1-start.js)
 let expArm = null;
 export function setExpArm(arm) {
+  if (IS_DEV_SESSION) return;   // 🧪 dev 세션 — 유저 속성도 남기지 않는다(trackEvent 와 같은 규칙)
   expArm = arm;
   if (isGaConfigured() && typeof window.gtag === 'function') {
     window.gtag('set', 'user_properties', { exp_arm: arm });

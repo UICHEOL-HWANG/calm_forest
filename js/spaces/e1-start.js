@@ -27,6 +27,7 @@ const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0
 const MODAL_OPEN = '#char-modal.show, #tutorial-modal.show, #hint-modal.show, #notice-modal.show, #story-modal.show';
 
 let bubble = null;
+let active = false;   // 이번 세션에 등록됐는가 — 세이브의 e1 만으로 처치를 켜지 않는다(앱에서 웹 처치 세이브를 열 때, 리뷰 M5)
 const _v = new THREE.Vector3();
 
 function readStored() {
@@ -39,7 +40,7 @@ function writeStored(arm) {
 // ── 배정 — 로드 판정(load.kind)이 정해진 직후, 어떤 분기보다 먼저 ──
 export function enrollE1(load) {
   const forced = new URLSearchParams(location.search).get('e1');   // QA 강제 — DEV_PARAMS 라 기록은 남지 않는다
-  const d = decideE1({ clientId: clientId(), platform: PLATFORM, loadKind: load?.kind, saved: load?.state || null, stored: readStored(), forced });
+  const d = decideE1({ clientId: clientId(), platform: PLATFORM, loadKind: load?.kind, saved: load?.state || null, stored: readStored(), forced, dev: IS_DEV_SESSION });
   if (!d.enrolled) return d;
   if (d.reason !== 'forced' && !IS_DEV_SESSION) writeStored(d.arm);   // dev 세션은 기기에 남기지 않는다(GA4 도 안 나간다)
   setExpArm(d.arm);   // 이 세션의 획득 이벤트에 exp_arm + GA4 유저 속성
@@ -50,6 +51,7 @@ export function enrollE1(load) {
 // ── 세이브 적용 뒤 — 상태 확정 + 처치 밭 ──
 export function applyE1(d) {
   if (!d?.enrolled) return;
+  active = true;
   if (!gameState.e1 || gameState.e1.arm !== d.arm) gameState.e1 = { arm: d.arm, seeded: false, harvested: false };
   if (shouldSeed(d, gameState.e1)) { seedField(); gameState.e1 = { ...gameState.e1, seeded: true }; }
   document.body.classList.toggle('e1-pending', isPending(gameState.e1));
@@ -69,11 +71,12 @@ function seedField() {
   syncFarmSoil(true); syncFarmCrops(true);
 }
 
-export function e1Pending() { return isPending(gameState.e1); }
+export function e1Pending() { return active && isPending(gameState.e1); }
 
 // ── 첫 화면 — 캐릭터 선택·프롤로그가 끝나 환영 모달이 뜰 자리 ──
 export function e1FirstScreen() {
   if (!e1Pending()) return false;
+  if (!nearestRipe()) { e1OnHarvest(); return false; }   // 익은 처치 밭이 사라졌다(삽으로 없앰 등) — 대기를 풀고 평소 흐름으로(리뷰 L6)
   if (!atFarm) enterFarm();   // 처치 대기 중이라 '내 텃밭' 안내·방문객은 enterFarm 이 건너뛴다
   player.position.set(FARM.x + E1_SPAWN[0], 0, FARM.z + E1_SPAWN[1]);
   player.rotation.y = Math.PI;   // 북쪽(밭)을 본다 — enterFarm 과 같은 방향
@@ -96,10 +99,12 @@ function hideBubble() { bubble?.remove(); bubble = null; }
 export function updateE1Bubble() {
   if (!bubble) return;
   const target = nearestRipe();
+  if (!target) { e1OnHarvest(); return; }   // 거두지 않고 밭이 사라져도 미뤄 둔 안내를 풀어 준다
   const show = target && atFarm && mode === 'play' && !document.body.classList.contains('intro-open') && !document.querySelector(MODAL_OPEN);
   bubble.classList.toggle('show', !!show);
   if (!show) return;
   _v.set(target.x, 1.3, target.z).project(camera);
+  if (_v.z > 1) { bubble.classList.remove('show'); return; }   // 카메라 뒤 — 투영이 뒤집힌다
   bubble.style.left = `${((_v.x + 1) / 2) * innerWidth}px`;
   bubble.style.top = `${((1 - _v.y) / 2) * innerHeight}px`;
 }

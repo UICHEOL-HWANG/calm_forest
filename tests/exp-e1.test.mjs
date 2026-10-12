@@ -46,6 +46,7 @@ test('신규(세이브 없음)만 등록 — 모든 신규 부팅 경로', () =>
     const d = decideE1({ clientId: 'c-x', platform: 'web', loadKind, saved: null, stored: null });
     assert.equal(d.enrolled, true, loadKind);
     assert.equal(d.first, true, loadKind);
+    assert.equal(d.fresh, true, loadKind);
     assert.equal(d.arm, armFor('c-x', 'web'));
   }
 });
@@ -84,7 +85,8 @@ test('웹·토스만 — 앱·itch 는 등록 안 함', () => {
 
 test('재방문은 같은 무리 — 기기 기록·세이브 기록', () => {
   const arm = 'harvest_start';
-  const byDevice = decideE1({ clientId: 'c-any', platform: 'web', loadKind: 'loaded', saved: { inventory: {} }, stored: { arm, platform: 'web' } });
+  // 첫 저장 전에 나갔다 돌아온 같은 기기(세이브 없음) — 기기 기록의 무리를 그대로(해시가 달라져도)
+  const byDevice = decideE1({ clientId: 'c-any', platform: 'web', loadKind: 'empty', saved: null, stored: { arm, platform: 'web' } });
   assert.deepEqual([byDevice.enrolled, byDevice.arm, byDevice.first], [true, arm, false]);
   const bySave = decideE1({ clientId: 'c-other', platform: 'toss', loadKind: 'loaded', saved: { e1: { arm: 'control' } }, stored: null });
   assert.deepEqual([bySave.enrolled, bySave.arm, bySave.first], [true, 'control', false]);
@@ -103,7 +105,7 @@ test('기기 기록 파싱은 낯선 값을 버린다', () => {
 });
 
 test('처치 밭은 처치 무리의 신규에게 한 번만', () => {
-  const d = (arm, first = true) => ({ enrolled: true, arm, first });
+  const d = (arm, fresh = true) => ({ enrolled: true, arm, first: fresh, fresh });
   assert.equal(shouldSeed(d('harvest_start'), undefined), true);
   assert.equal(shouldSeed(d('control'), undefined), false);
   assert.equal(shouldSeed(d('harvest_start'), { seeded: true }), false);
@@ -150,4 +152,27 @@ test('시작 자리에서 첫 액션이 곧 수확이다(자동 수확 반경 �
   const R = Number(/export const FARM_AUTO_R = ([\d.]+)/.exec(FARM_AUTO)[1]);
   const d = Math.min(...E1_PLOTS.map(([x, z]) => Math.hypot(x - E1_SPAWN[0], z - E1_SPAWN[1])));
   assert.ok(d < R - 0.2, `시작 자리 → 가장 가까운 밭 ${d.toFixed(2)} (반경 ${R})`);
+});
+
+test('리뷰 H1 — 첫 저장 전에 나간 처치 신규는 다음 접속에서 밭을 받는다(로그상 first 는 0)', () => {
+  const d = decideE1({ clientId: 'c', platform: 'web', loadKind: 'empty', saved: null, stored: { arm: 'harvest_start', platform: 'web' } });
+  assert.deepEqual([d.enrolled, d.arm, d.first, d.fresh], [true, 'harvest_start', false, true]);
+  assert.equal(shouldSeed(d, undefined), true);
+});
+
+test('리뷰 H2 — 기기 기록이 있어도 e1 없는 기존 세이브면 등록하지 않는다', () => {
+  const d = decideE1({ clientId: 'c', platform: 'web', loadKind: 'loaded', saved: { inventory: {} }, stored: { arm: 'control', platform: 'web' } });
+  assert.deepEqual([d.enrolled, d.reason], [false, 'existing']);
+});
+
+test('리뷰 M3 — offline 은 세이브가 없는지 모르므로 신규로 보지 않는다', () => {
+  assert.ok(!NEW_KINDS.includes('offline'));
+  assert.equal(decideE1({ clientId: 'c', platform: 'web', loadKind: 'offline' }).enrolled, false);
+});
+
+test('리뷰 M4 — dev 세션은 강제(?e1=)가 아니면 등록하지 않고, 강제여도 기존 세이브엔 밭을 깔지 않는다', () => {
+  assert.deepEqual(Object.values((({ enrolled, reason }) => ({ enrolled, reason }))(decideE1({ clientId: 'c', platform: 'web', loadKind: 'empty', dev: true }))), [false, 'dev']);
+  const forcedExisting = decideE1({ clientId: 'c', platform: 'web', loadKind: 'loaded', saved: { inventory: {} }, forced: 'harvest_start', dev: true });
+  assert.equal(forcedExisting.enrolled, true);
+  assert.equal(shouldSeed(forcedExisting, undefined), false);
 });

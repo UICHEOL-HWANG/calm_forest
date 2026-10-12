@@ -81,3 +81,9 @@ test('dev 세션(?dbg 등)은 기기에 무리를 남기지 않는다 — 개발
   const enroll = fnBody(E1START, 'export function enrollE1(load)');
   assert.match(enroll, /if \(d\.reason !== 'forced' && !IS_DEV_SESSION\) writeStored\(d\.arm\)/);
 });
+
+test('리뷰 M4·M5 — dev 세션 유저 속성 차단 · 이번 세션에 등록됐을 때만 처치 대기', () => {
+  assert.match(fnBody(ANALYTICS, 'export function setExpArm('), /IS_DEV_SESSION/);
+  assert.match(fnBody(E1START, 'export function e1Pending()'), /active &&/);
+  assert.match(fnBody(E1START, 'export function enrollE1(load)'), /dev: IS_DEV_SESSION/);
+});

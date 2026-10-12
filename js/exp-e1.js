@@ -12,7 +12,7 @@
 
 export const ARMS = ['control', 'harvest_start'];
 export const E1_PLATFORMS = ['web', 'toss'];          // 안드로이드·iOS 는 플랫폼 태깅이 갖춰지면 따로 결정
-export const NEW_KINDS = ['empty', 'offline', 'failed_fresh'];   // js/save-guard.js — 세이브 없이 입장하는 판정
+export const NEW_KINDS = ['empty', 'failed_fresh'];   // js/save-guard.js — 세이브가 없다고 확인된 판정. 'offline' 은 있는지 모르니 뺀다(리뷰 M3)
 export const E1_STORE_KEY = 'cf_e1';                  // localStorage — { arm, platform }
 
 // 정의서 §2 획득 행동 16종 — exp_arm 을 덧붙여 주 지표(5분 안 첫 획득)를 무리별로 바로 센다
@@ -43,17 +43,21 @@ export function armFor(clientId, platform) {
 /**
  * 이번 부팅의 실험 판정.
  *   ⚠️ 해시(hashed)는 어떤 분기보다 먼저 구한다 — 옛 variant 사고(배정 전에 return)를 구조로 막는다.
- * @returns {{ hashed: string, enrolled: boolean, arm: string|null, first: boolean, reason: string }}
+ *   first = 배정이 일어난 세션(로그 exp_exposure.first) · fresh = 세이브가 없다고 확인된 신규(처치 밭을 깔 수 있다)
+ *   순서: 강제 → dev → 플랫폼 → 세이브의 무리 → 기존 세이브(기기 기록보다 먼저 — 리뷰 H2) → 기기 기록 → 신규
+ * @returns {{ hashed: string, enrolled: boolean, arm: string|null, first: boolean, fresh: boolean, reason: string }}
  */
-export function decideE1({ clientId, platform, loadKind, saved = null, stored = null, forced = null } = {}) {
+export function decideE1({ clientId, platform, loadKind, saved = null, stored = null, forced = null, dev = false } = {}) {
   const hashed = armFor(clientId, platform);
-  const out = (enrolled, arm, first, reason) => ({ hashed, enrolled, arm: enrolled ? arm : null, first, reason });
+  const fresh = !saved && NEW_KINDS.includes(loadKind);
+  const out = (enrolled, arm, first, reason) => ({ hashed, enrolled, arm: enrolled ? arm : null, first, fresh: enrolled && fresh, reason });
   if (isArm(forced)) return out(true, forced, !stored && !saved?.e1, 'forced');    // QA ?e1= (dev 세션 — 기록 없음)
+  if (dev) return out(false, null, false, 'dev');                                  // ?dbg 등 — 개발 기기를 실험에 넣지 않는다(리뷰 M4)
   if (!E1_PLATFORMS.includes(platform)) return out(false, null, false, 'platform');
   if (isArm(saved?.e1?.arm)) return out(true, saved.e1.arm, false, 'save');        // 다른 기기에서 로그인해도 같은 무리
-  if (isArm(stored?.arm)) return out(true, stored.arm, false, 'device');           // 같은 기기 재방문
-  if (saved) return out(false, null, false, 'existing');                          // 기존 유저 — 등록 안 함
-  if (NEW_KINDS.includes(loadKind)) return out(true, hashed, true, 'new');
+  if (saved) return out(false, null, false, 'existing');                          // 기존 유저 — 기기에 옛 기록이 있어도 등록 안 함
+  if (isArm(stored?.arm)) return out(true, stored.arm, false, 'device');           // 같은 기기 재방문(첫 저장 전에 나갔으면 fresh)
+  if (fresh) return out(true, hashed, true, 'new');
   return out(false, null, false, 'unknown');
 }
 
@@ -72,7 +76,7 @@ export function sanitizeE1(v) {
 
 // 처치 밭은 처치 무리의 신규에게, 한 번만
 export function shouldSeed(decision, e1State) {
-  return !!(decision?.enrolled && decision.arm === 'harvest_start' && decision.first && !e1State?.seeded);
+  return !!(decision?.enrolled && decision.arm === 'harvest_start' && decision.fresh && !e1State?.seeded);
 }
 
 // 처치가 진행 중(밭은 깔렸고 아직 첫 수확 전)
