@@ -87,3 +87,10 @@ test('리뷰 M4·M5 — dev 세션 유저 속성 차단 · 이번 세션에 등�
   assert.match(fnBody(E1START, 'export function e1Pending()'), /active &&/);
   assert.match(fnBody(E1START, 'export function enrollE1(load)'), /dev: IS_DEV_SESSION/);
 });
+
+test('말풍선은 🔍 방문객과 같은 3D 스프라이트(bubble-fx) — DOM 글자 말풍선 없음', () => {
+  assert.match(E1START, /from '\.\.\/bubble-fx\.js'/);
+  assert.match(E1START, /animateBubble\(/);
+  assert.doesNotMatch(E1START, /createElement\('div'\)/);
+  assert.doesNotMatch(HTML, /#e1-bubble/);
+});

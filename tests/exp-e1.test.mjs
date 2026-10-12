@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_PLOTS, E1_SPAWN, NEW_KINDS,
-  armFor, decideE1, e1Prompt, parseStored, seedCoinValue, shouldSeed, withExpArm,
+  E1_BUBBLE_EMOJI, armFor, decideE1, parseStored, seedCoinValue, shouldSeed, withExpArm,
 } from '../js/exp-e1.js';
 import { readFileSync } from 'node:fs';
 import { EN } from '../js/i18n-en.js';
@@ -121,11 +121,10 @@ test('경제 가드레일 — 처음 주는 밭은 작고 코인 가치가 작�
   assert.ok(coins <= 30, `처치 밭 판매가 ${coins}🪙 — 상인 환영 거래(30)를 넘지 않는다`);
 });
 
-test('안내 문구 — 터치/PC · 영어 사전', () => {
-  assert.equal(e1Prompt(true), '👆 눌러서 수확하기');
-  assert.equal(e1Prompt(false), '👆 Space·클릭으로 수확하기');
-  assert.equal(EN['👆 눌러서 수확하기'], '👆 Tap to harvest');
-  assert.equal(EN['👆 Space·클릭으로 수확하기'], '👆 Space or click to harvest');
+test('첫 안내는 월드 말풍선 이모지 하나 — 글자 문구 없음(사용자 결정: 월드 말풍선은 이모지만)', () => {
+  assert.equal([...new Intl.Segmenter().segment(E1_BUBBLE_EMOJI)].length, 1, '이모지 한 글자');
+  assert.doesNotMatch(E1_BUBBLE_EMOJI, /[가-힣A-Za-z]/);
+  assert.equal(EN['👆 눌러서 수확하기'], undefined, '옛 글자 문구는 사전에서도 뺀다');
 });
 
 test('획득 행동 16종(정의서 §2)', () => {

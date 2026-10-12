@@ -943,14 +943,7 @@
   #coach-skip { border: none; background: none; font-size: 11px; opacity: .55; text-decoration: underline; cursor: pointer; color: var(--ink); }
 
   /* 문 입장/퇴장 프롬프트 */
-  /* 🧪 E1 처치 — 다 자란 밭 머리 위 "👆 눌러서 수확하기"(시안 B, 2026-10-12). 위치는 js/spaces/e1-start.js 가 매 프레임 투영.
-     첫 수확 전엔 도구바 "눌러서 도구 바꾸기" 칩을 숨긴다 — 첫 안내는 하나 */
-  #e1-bubble { position: fixed; z-index: 11; transform: translate(-50%, calc(-100% - 10px)); display: none; pointer-events: none; white-space: nowrap;
-    background: var(--cream); color: var(--ink); border: 2px solid #f2b65a; border-radius: 14px; padding: 7px 13px; font-size: 15px; font-weight: 700; box-shadow: var(--shadow); }
-  #e1-bubble.show { display: block; animation: e1-bob 1.6s ease-in-out infinite; }
-  #e1-bubble::after { content: ''; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); border: 8px solid transparent; border-top-color: #f2b65a; border-bottom: 0; }
-  @keyframes e1-bob { 0%, 100% { margin-top: 0; } 50% { margin-top: -4px; } }
-  @media (prefers-reduced-motion: reduce) { #e1-bubble.show { animation: none; } }
+  /* 🧪 E1 처치 — 첫 수확 전엔 도구바 "눌러서 도구 바꾸기" 칩을 숨긴다 — 첫 안내는 밭 위 말풍선 하나(js/spaces/e1-start.js) */
   body.e1-pending .pg-tip { display: none; }
   #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
   /* 🪞 거울 주민 대화 박스(B안 2026-10-10) — 화면 아래 얼굴·이름·대사. 어둡게 하지 않는다(걸으며 읽기). 떠 있는 동안 같은 자리의 문 프롬프트는 숨김 */

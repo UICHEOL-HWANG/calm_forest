@@ -4,7 +4,7 @@
 //  ▶ 사전등록(고정 2026-10-12): analytics/metrics-framework 브랜치
 //    dev/active/metrics-framework/first5min-harvest-experiment-prereg.md — 기준은 여기서 고치지 않는다
 //  ▶ 대조(control) = 지금 그대로 · 처치(harvest_start) = 신규가 다 자란 밭 앞에서 시작,
-//    첫 안내는 "👆 눌러서 수확하기" 하나(시안 B 말풍선, 2026-10-12 사용자 승인)
+//    첫 안내는 밭 머리 위 이모지 말풍선 하나(시안 B, 2026-10-12 — 월드 말풍선은 이모지만)
 //  ▶ 배정: 기기(client_id) 해시 50:50, 플랫폼(web·toss)마다 솔트를 달리해 따로 나눈다(층화).
 //    신규(세이브 없음)만 등록하고, 등록 기록(기기·세이브)으로 재방문에도 같은 무리를 유지한다.
 //  ▶ 게임 연결은 js/spaces/e1-start.js · 테스트: tests/exp-e1.test.mjs, tests/e1-wiring.test.mjs
@@ -89,10 +89,8 @@ export function seedCoinValue(sellPrice) {
   return E1_PLOTS.length * (sellPrice?.crop || 0);
 }
 
-// 안내 문구(한국어 원문 = i18n 키) — 터치는 "눌러서", PC 는 Space·클릭
-export function e1Prompt(touch) {
-  return touch ? '👆 눌러서 수확하기' : '👆 Space·클릭으로 수확하기';
-}
+// 첫 안내 — 다 자란 밭 머리 위 월드 말풍선의 이모지 하나(월드 말풍선은 이모지만 — 🔍 방문객과 같은 문법)
+export const E1_BUBBLE_EMOJI = '👆';
 
 // GA4 페이로드에 exp_arm 을 덧붙인 새 객체. 획득 이벤트만, 25개 한도를 넘기면 붙이지 않는다(다른 값을 밀어내지 않게)
 export function withExpArm(name, payload, arm, limit = 25) {

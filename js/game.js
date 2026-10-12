@@ -5648,7 +5648,7 @@ function animate() {
       updateDoorInteract();
     }
     updateFishing();
-    updateE1Bubble();     // 🧪 E1 처치 말풍선(첫 수확 전에만 있다)
+    updateE1Bubble(dt, t);   // 🧪 E1 처치 말풍선(첫 수확 전에만 있다)
     updateSea(dt, t);     // 🌊 바다터(배회 물고기 + 줄다리기 미니게임)
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신

@@ -1038,8 +1038,6 @@ export const EN = {
   '1번으로 🌾농사 · 🏕️야외도구 · ✋맨손을 바꿔요. 2~6번으로 도구를 골라요': 'Press 1 to cycle 🌾Farming · 🏕️Outdoors · ✋Bare hands, then 2–6 to pick a tool',
   '1 번 키로 도구 바꾸기': 'Press 1 to swap tool sets',
   '눌러서 도구 바꾸기': 'Tap to swap tool sets',
-  '👆 눌러서 수확하기': '👆 Tap to harvest',                       // 🧪 E1 처치 첫 화면 말풍선(js/exp-e1.js)
-  '👆 Space·클릭으로 수확하기': '👆 Space or click to harvest',
   '⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요': '⛏️ Mine with the Hoe (2) from the 🌾Farming set',
   '🎒 도구를 등에 멨어요. 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요': '🎒 Tools slung on your back. the bottom-left button (key 1) takes one out again',
   '✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요': '✋ Bare hands — use the bottom-left button (key 1) to take out a tool',
