@@ -7,6 +7,7 @@ Prints aggregates only (PUBLIC repo — no per-user rows).
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 import sys
 from pathlib import Path
@@ -59,14 +60,29 @@ WHERE platform IN ('web', 'toss')
            AND DATE(started_at, 'Asia/Seoul') BETWEEN '2026-09-09' AND '2026-09-15')
 """
 
+# 2026-10-12 decisions (M5 review): Q1 official funnel drops beta sessions (a device-session-day with any beta tag,
+# 9/9~9/15) · Q4 cohort platform = first non-empty platform property within the first 7 days, else web.
 FUNNEL_SQL = f"""
-WITH ev AS (
-  SELECT user_pseudo_id, user_id, event_name, PARSE_DATE('%Y%m%d', event_date) AS d,
-    (SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'platform') AS platform
-  FROM `{GA4}.events_*`
+WITH ev0 AS (
+  SELECT user_pseudo_id, user_id, event_name, event_timestamp AS ts,
+    DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Seoul') AS d,
+    NULLIF((SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'platform'), '') AS platform,
+    COALESCE((SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'ab_variant'),
+             (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'variant')) AS ab,
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS sid
+  FROM `{GA4}.events_*` WHERE REGEXP_CONTAINS(_TABLE_SUFFIX, r'^[0-9]{{8}}$')
+),
+beta_sess AS (
+  SELECT DISTINCT user_pseudo_id, sid, d FROM ev0
+  WHERE ab IN ('beta_A', 'beta_B') AND d BETWEEN '2026-09-09' AND '2026-09-15' AND sid IS NOT NULL
+),
+ev AS (
+  SELECT e.* FROM ev0 e LEFT JOIN beta_sess b USING (user_pseudo_id, sid, d)
+  WHERE b.user_pseudo_id IS NULL
+    AND NOT (IFNULL(e.ab, '') IN ('beta_A', 'beta_B') AND e.d BETWEEN '2026-09-09' AND '2026-09-15')
 ),
 fv AS (
-  SELECT user_pseudo_id, MIN(d) AS d0 FROM ev WHERE event_name = 'first_visit' GROUP BY 1
+  SELECT user_pseudo_id, MIN(d) AS d0 FROM ev0 WHERE event_name = 'first_visit' GROUP BY 1
   HAVING MIN(d) BETWEEN '2026-08-06' AND '2026-09-27'
 ),
 persona_pseudo AS (
@@ -74,19 +90,25 @@ persona_pseudo AS (
   WHERE user_id IN ({PERSONA})
      OR user_id IN (SELECT user_id FROM `{RAW}.session_logs` WHERE client_id IN ({DEV_CLIENTS}) AND user_id IS NOT NULL)
 ),
+plat AS (
+  SELECT e.user_pseudo_id, ARRAY_AGG(e.platform IGNORE NULLS ORDER BY e.ts, e.platform LIMIT 1)[SAFE_OFFSET(0)] AS platform
+  FROM ev0 e JOIN fv USING (user_pseudo_id)
+  WHERE e.d BETWEEN fv.d0 AND DATE_ADD(fv.d0, INTERVAL 6 DAY) GROUP BY 1
+),
 w AS (
   SELECT e.* FROM ev e JOIN fv USING (user_pseudo_id)
   WHERE e.d BETWEEN fv.d0 AND DATE_ADD(fv.d0, INTERVAL 6 DAY)
 )
 SELECT
   fv.user_pseudo_id,
-  ANY_VALUE(w.platform) AS platform,
+  ANY_VALUE(plat.platform) AS platform,
   LOGICAL_OR(w.user_id IS NOT NULL) AS entered,
   LOGICAL_OR(w.event_name = 'character_select') AS onboarded,
   LOGICAL_OR(w.event_name IN ({", ".join(f"'{a}'" for a in RESULT_ACTIONS)})) AS activated
-FROM fv LEFT JOIN w USING (user_pseudo_id)
+FROM fv JOIN w USING (user_pseudo_id) LEFT JOIN plat USING (user_pseudo_id)
 WHERE fv.user_pseudo_id NOT IN (SELECT user_pseudo_id FROM persona_pseudo)
 GROUP BY 1
+HAVING IFNULL(ANY_VALUE(plat.platform), 'web') IN ('web', 'toss')
 """
 
 GUARD_SQL = f"""
@@ -120,6 +142,9 @@ FROM `{RAW}.econ_logs`
 WHERE DATE(created_at, 'Asia/Seoul') BETWEEN '2026-09-07' AND '2026-10-04'
   AND platform IN ('web', 'toss')
   AND IFNULL(user_id NOT IN ({PERSONA}), TRUE)
+  AND IFNULL(client_id NOT IN ({DEV_CLIENTS}), TRUE)          -- Q2 (2026-10-12): common developer exclusion
+  AND NOT (IFNULL(variant, '') IN ('beta_A', 'beta_B')        -- Q2: common beta exclusion
+           AND DATE(created_at, 'Asia/Seoul') BETWEEN '2026-09-09' AND '2026-09-15')
 GROUP BY 1 ORDER BY 1
 """
 
@@ -222,7 +247,8 @@ def guards(pd_df: pd.DataFrame) -> None:
         u = gu[pd.to_datetime(gu["wk"]).dt.date == wk]
         net = float(e["net_coins"].iloc[0]) / float(e["econ_clients"].iloc[0]) if len(e) else float("nan")
         sp = float(e["spenders"].iloc[0]) / float(e["econ_clients"].iloc[0]) if len(e) else float("nan")
-        sf = f"{int(u['save_failed'].iloc[0])}/{int(u['failed_sessions'].iloc[0])}/{int(u['sessions'].iloc[0])}" if len(u) else "-"
+        sf = "NULL (unmeasured)" if wk < dt.date(2026, 9, 14) else (   # Q3: save_load_failed exists from 9/14
+            f"{int(u['save_failed'].iloc[0])}/{int(u['failed_sessions'].iloc[0])}/{int(u['sessions'].iloc[0])}" if len(u) else "-")
         print(f"  {wk}  {empty:12.0%}  {net:16.0f}  {sp:12.0%}  {sf:>14s}")
 
 

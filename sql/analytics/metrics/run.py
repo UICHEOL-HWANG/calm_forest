@@ -64,24 +64,27 @@ def validate(rows):
         if abs(official[week,'W']['value']*official[week,'F']['value']*row['value']-acquired)>1e-9:
             raise AssertionError(f'{week}: decomposition identity failed')
     # Cohort sums: ratio denominators are the counts, never average weekly rates.
-    for platform,target in [('all',(415,182,153,74)),('web',(333,109,94,49)),('toss',(82,73,59,25))]:
+    # 2026-10-12 decision (Q1): official funnel also drops beta sessions -> baseline updated from 415/182/153/74.
+    for platform,target in [('all',(407,174,147,63)),('web',(325,101,88,38)),('toss',(82,73,59,25))]:
         metrics=['visits','entry_share','character_select_share','first_acquisition_share']
         actual=tuple(sum(r['numerator'] for r in rows if r['file']=='funnel_activation'
                          and r['variant']=='official' and r['platform']==platform and r['metric']==m) for m in metrics)
         if actual!=target:
             failures.append(f'funnel {platform}: {actual} != {target}')
     print('PASS: 4-week NSM/L1/new/kept/back/habit baseline')
+    # 2026-10-12 decisions: Q2 economy follows the common developer+beta exclusions (was 384/228/210/96, 26/23/13/24%);
+    # Q3 unmeasured week before save_load_failed existed is NULL, not 0.
     for metric,targets,rounded in [
-        ('net_coins_per_device',[384,228,210,96],True),
-        ('revenue_lead',[.26,.23,.13,.24],False),
-        ('unrecovered_save_sessions',[0,0,0,0],False)]:
+        ('net_coins_per_device',[25,104,225,102],True),
+        ('revenue_lead',[.14,.13,.14,.25],False),
+        ('unrecovered_save_sessions',[None,0,0,0],False)]:
         actual=[official[week,metric]['value'] for week,*_ in expected]
         comparable=[None if v is None else (round(v) if rounded else round(v,2)) for v in actual]
         if comparable!=targets:
             failures.append(f'{metric}: {comparable} != {targets}')
     if failures:
         for failure in failures: print('MISMATCH: '+failure)
-        raise AssertionError('Published baseline conflicts remain; see codex-questions.md')
+        raise AssertionError('Baseline mismatch; see m5-claude-review.md')
     print('PASS: cohort funnel, economy and save-failure baseline')
 
 def main():
