@@ -91,4 +91,9 @@ tools/persona-sim/runs/
 ml/reports/anomaly/
 # 🔒 행 단위 리포트(user_id·client_id·session_id 포함) — 집계 CSV 만 올린다
 ml/reports/**/*_rows.csv
+#   이메일·user_id 가 든 베타 테스터별 원본(백업: ~/calm_forest_private/)
+ml/reports/beta_h1_eda_2026-09-16/tester_metrics.csv
+ml/reports/beta_h2_map_eda_2026-09-16/map_open_event_metrics.csv
+ml/reports/beta_h4_diary_eda_2026-09-16/d7_preference_rows_masked.csv
+ml/reports/beta_h8_completion_eda_2026-09-16/tester_day_grid.csv
 dev/active/halloween-coin-decor/look/mockups.html
