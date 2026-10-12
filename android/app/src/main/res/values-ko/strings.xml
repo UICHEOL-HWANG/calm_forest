@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- 📱 한국어 기기 홈 화면 이름 — 스토어 제목·iOS(ko.lproj)와 같게. 그 외 언어는 values/ 의 calm forest -->
+    <string name="app_name">고요한 숲</string>
+    <string name="title_activity_main">고요한 숲</string>
+</resources>
