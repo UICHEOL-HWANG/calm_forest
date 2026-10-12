@@ -94,3 +94,10 @@ test('말풍선은 🔍 방문객과 같은 3D 스프라이트(bubble-fx) — DO
   assert.doesNotMatch(E1START, /createElement\('div'\)/);
   assert.doesNotMatch(HTML, /#e1-bubble/);
 });
+
+test('첫 수확 뒤 환영 모달은 다른 모달(새 집 색·소식 등)이 닫힌 뒤에 — 겹치지 않는다', () => {
+  // 2026-10-12 실기: 수확 순간 '새 집 색을 얻었어요' hint-modal 위로 환영 모달이 함께 열려 두 장이 겹쳤다
+  const body = fnBody(E1START, 'export function e1OnHarvest()');
+  assert.match(body, /otherModalOpen\(\)/);
+  assert.match(E1START, /function otherModalOpen\(\)/);
+});
