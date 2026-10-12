@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity {
         // 📱 로컬 플러그인은 super.onCreate 전에 등록해야 브리지에 붙는다
         registerPlugin(PlayGamesPlugin.class);
         registerPlugin(PhotoPlugin.class);       // 📷 사진 저장·공유(WebView 는 download·share 를 못 한다)
+        registerPlugin(InstallReferrerPlugin.class);   // 📲 설치 링크 referrer(utm_*) → 채널 귀속
         super.onCreate(savedInstanceState);
         // 🔠 시스템 글꼴 크기가 커도 게임 글자는 100% — WebView 는 기본으로 시스템 배율을 곱해 HUD 가 깨진다(2026-09-25 실기기)
         getBridge().getWebView().getSettings().setTextZoom(100);

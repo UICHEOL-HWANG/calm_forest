@@ -1,0 +1,11 @@
+# install-survey tasks
+- [x] 시안 A·보기 12개 확정 · 계획 승인 · 워크트리
+- [ ] SQL install_survey + 셀프테스트
+- [ ] js/install-survey.js (순수) + 테스트
+- [ ] bootInstallReferrer fresh
+- [ ] js/install-survey-ui.js + 테스트
+- [ ] supabase insert/sync · analytics heard_from
+- [ ] index.html wiring + CSS + wiring 테스트
+- [ ] i18n
+- [ ] 실렌더 375px ko/en · 리뷰
+- [ ] 배포: 웹·main·capacitor·Play v71(사용자)·iOS 교체 재제출·토스·itch · 시트 Links 값 추가 · GA4 heard_from 등록(사용자)

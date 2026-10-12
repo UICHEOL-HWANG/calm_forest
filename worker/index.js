@@ -25,6 +25,7 @@ import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
+import { onRequestPost as pushRegister } from '../functions/api/push-register.js';
 import { onRequestPost as referral } from '../functions/api/referral.js';
 import { onRequest as auraOrder } from '../functions/api/aura-order.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
@@ -32,6 +33,7 @@ import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } fr
 import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { runAiPregen } from '../functions/ai-pregen-cron.js';
+import { runPush, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { runCardnewsCron } from '../functions/cardnews-cron.js';
@@ -94,8 +96,16 @@ export default {
       }));
       return;
     }
-    // 🦉☕ 의뢰·카페 손님 사전 생성 — KST 20:00~22:40, 20분 간격(wrangler.jsonc "0,20,40 11-13 * * *")
-    if (event.cron === '0,20,40 11-13 * * *') {
+    // 🦉☕ 의뢰·카페 손님 사전 생성(분 0·20·40) + 🔔 푸시(분 10·30·50) — KST 20:00~22:50.
+    //    cron 슬롯이 5/5 라 한 표현식을 분으로 가른다. 실행이 따로라 subrequest 50 예산도 따로다
+    //    (ai-pregen 혼자 44 를 쓰므로 같은 실행에 얹으면 넘친다).
+    if (event.cron === '0,10,20,30,40,50 11-13 * * *') {
+      if (isPushTick(event.scheduledTime)) {
+        ctx.waitUntil(runPush(env).then(r => {
+          console.log(JSON.stringify({ message: 'push cron', cron: event.cron, ...r }));
+        }));
+        return;
+      }
       ctx.waitUntil(runAiPregen(env).then(r => {
         console.log(JSON.stringify({ message: 'ai-pregen cron', cron: event.cron, ...r }));
       }));
@@ -184,6 +194,12 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/neighbor') {
     if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
     return await neighbor({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+  }
+
+  // 🔔 푸시 토큰 등록·켜기/끄기 — 안드로이드 앱만 부른다(유저 JWT 검증 후 service key upsert)
+  if (pathname === '/api/push-register') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await pushRegister({ request, env });
   }
 
   // 🍎 과수원 이벤트 원장 — GA4 유실·지연 대비, 유저 본인 토큰으로 orchard_events 에 적재

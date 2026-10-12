@@ -3,7 +3,7 @@
 //  (2026-10-01 상점 열기 — Paddle 심사 페이지에 "팔지 않는 가격"이 보이면 안 된다).
 
 /** 칸 이름 — 게임 안 탭 이름과 같게 */
-export const SLOT_KO = Object.freeze({ head: '🎩 머리', neck: '🧣 목', back: '🎒 가방', trail: '✨ 이펙트', skin: '🧥 스킨' });
+export const SLOT_KO = Object.freeze({ head: '🎩 머리', neck: '🧣 목', back: '🎒 가방', trail: '✨ 이펙트', skin: '🧥 스킨', tools: '🪓 도구' });
 
 const won = (n) => `₩${n.toLocaleString('ko-KR')}`;
 

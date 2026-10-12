@@ -53,6 +53,7 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     implementation 'com.google.android.gms:play-services-games-v2:22.1.0'   // 📱 Play Games 자동 로그인(PlayGamesPlugin)
+    implementation 'com.android.installreferrer:installreferrer:2.2'          // 📲 설치 채널 귀속(InstallReferrerPlugin)
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

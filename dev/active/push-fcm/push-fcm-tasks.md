@@ -1,0 +1,17 @@
+# push-fcm tasks
+- [x] 워크트리·기준선(2494 pass)
+- [x] 시안 B(알림 미리보기 카드) 확정 · 문구: 🌙 밭이 조금 수상해요/오늘 밤 누군가 찾아올지도 몰라요 · 🔥 {화덕}에 넣어 둔 게 다 됐어요/꺼내러 와 주세요 🌿 · 🍓 수확할 게 생겼을지도 몰라요/숲이 조용히 기다리고 있어요
+- [x] DB SQL 작성: push_tokens · push_logs · push_candidates/push_mark RPC (⏳ 운영 적용 전)
+- [x] _night-judge.js 추출(원본 golden 120건 동치) + js/duel/night-defense.js
+- [x] functions/push/pick-kind.js
+- [x] functions/push/fcm.js (JWT·KV 캐시·send·UNREGISTERED)
+- [x] functions/push-cron.js + worker 분 분기 + /api/push-register + config
+- [x] 안드로이드: @capacitor/push-notifications 8.1.3 · POST_NOTIFICATIONS · ic_stat_leaf · FCM 기본 아이콘/색/채널 · google-services.json(워크트리, gitignore) · assembleDebug ✅
+- [x] 클라: capListen · push-native.js · push-ui.js · 카드 B · ⚙️ 토글 · i18n · 트래킹
+- [x] 전체 테스트 2538 pass · 카드 실렌더 확인(375px)
+- [ ] 리뷰(code/security) 반영 · 키 스캔
+- [ ] 사용자: SA 키 발급 → 키체인 calmforest-fcm-sa → wrangler secret put FCM_SA_KEY
+- [ ] SQL 운영 적용(pg8000)
+- [ ] 커밋 → main 병합 → wrangler deploy(cron 표현식 변경 포함)
+- [ ] 실기기 E2E(Play internal): 카드→권한→토큰 행→수동 발송→탭→GA4 push_open
+- [ ] 배포 4곳(웹·토스·itch·Play) · main+feat/capacitor-app 푸시 · 다음 날 BQ 재검증

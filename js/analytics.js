@@ -13,9 +13,23 @@ import { CONFIG, isGaConfigured, IS_DEV_SESSION } from './config.js';
 import { PLATFORM } from './platform.js';         // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
 import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
 import { renameReservedParams, overParamLimit } from './ga-params.js';  // source/medium 등 GA4 예약어 충돌 방지
+import { e2Decision } from './exp-e2-boot.js';   // 🧪 E2 배정 — 이 모듈 평가(로그인 판단보다 먼저)에서 처음 판정된다
+import { e2UserProps } from './exp-e2.js';
+import { installUserProps } from './install-referrer.js';            // 📲 안드로이드 설치 채널(Play Install Referrer)
+import { cachedInstallAttribution } from './install-referrer-boot.js';
+import { readSurvey, surveyUserProps } from './install-survey.js';           // 🧭 첫 실행 설문 → heard_from
 
 let firstChopFired = false;
 const sessionStart = Date.now();
+let abVariant = null;   // 마지막으로 set 한 ab_variant — 설치 채널 속성을 나중에 실을 때 같이 다시 싣는다
+
+// 📲 저장된 설치 채널(안드로이드 첫 실행 이후) — 사용자 속성을 다시 set 할 때마다 같이 실어 지워지지 않게
+function installProps() {
+  let props = {};
+  try { props = installUserProps(cachedInstallAttribution(globalThis.localStorage)); } catch { /* 저장소 없음 */ }
+  try { props = { ...props, ...surveyUserProps(readSurvey(globalThis.localStorage)) }; } catch { /* 저장소 없음 */ }
+  return props;
+}
 
 // ── 공유 링크 별칭(ref=/from=) → GA4 캠페인 주입 ──────────────
 //   유입 경로(utm_*)는 GA4 가 URL 에서 자동으로 읽어 '세션 소스/매체/캠페인'
@@ -52,7 +66,9 @@ function applyAliasCampaign() {
   gtag('config', id);
   // 유저 단위 차원 — platform(앱인토스), 그리고 표시 언어·A/B 변형.
   //   한 번에 set 해야 뒤 호출이 앞 호출을 덮어쓰지 않는다(gtag user_properties 는 병합이 아니라 치환).
-  gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: assignVariant() });
+  //   🧪 exp_entry(E2 웹 로그인 화면 건너뛰기) — 등록된 웹 첫 방문 기기만. 이벤트 파라미터가 아니라 사용자 속성(25개 한도와 무관)
+  abVariant = assignVariant();
+  gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant, ...e2UserProps(e2Decision()), ...installProps() });
   console.log('[GA4] 로드됨:', id);
 })();
 
@@ -68,8 +84,31 @@ export function setGaUser(userId) {
 
 // [속성] A/B 변형이 로그인 후(명단 조회) 확정될 때 GA4 유저 속성 갱신
 export function setAbVariant(v) {
+  abVariant = v;
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('set', 'user_properties', { ab_variant: v });
+    window.gtag('set', 'user_properties', { ab_variant: v, ...e2UserProps(e2Decision()), ...installProps() });   // 🧪 exp_entry·📲 install_* 를 같이 실어 덮어써도 지워지지 않게
+  }
+}
+
+// [속성] 📲 안드로이드 첫 실행에서 설치 채널이 확정됐을 때(js/install-referrer-boot.js) — install_source·install_campaign
+export function setInstallUserProps(props) {
+  if (IS_DEV_SESSION || !props?.install_source) return;
+  if (isGaConfigured() && typeof window.gtag === 'function') {
+    window.gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()), ...installProps(), ...props });   // 🧭 heard_from 도 같이
+  } else {
+    console.log('[GA4 폴백] install user_properties:', props);
+  }
+}
+
+// [속성] 🧭 첫 실행 설문에 답했을 때(js/install-survey-ui.js) — heard_from. 다른 속성과 같이 실어 지워지지 않게
+export function setSurveyUserProps() {
+  if (IS_DEV_SESSION) return;
+  const props = installProps();
+  if (!props.heard_from) return;
+  if (isGaConfigured() && typeof window.gtag === 'function') {
+    window.gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()), ...props });
+  } else {
+    console.log('[GA4 폴백] survey user_properties:', props);
   }
 }
 

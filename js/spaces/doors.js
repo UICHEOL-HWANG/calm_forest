@@ -36,7 +36,7 @@ import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayou
 import { updateMistInteract } from '../spaces/mist.js';
 import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
-import { neighborDoor } from '../spaces/neighbor.js';
+import { neighborPrompt } from '../spaces/neighbor.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
@@ -179,11 +179,14 @@ export function updateDoorInteract() {
     if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }
-  if (atNeighbor) {    // 🏡 이웃 마을: 남쪽으로 나가기 — 집주인 반응은 말풍선이 맡는다(js/spaces/neighbor.js)
-    nd = neighborDoor(player.position);
-    prompt = nd ? '🚪 내 마을로' : null;
+  if (atNeighbor) {    // 🏡 이웃 마을: 마당(나가는 길·집 문) / 🏠 이웃 집 실내(마당으로·계단·정원 문·가구 이름표) — js/spaces/neighbor.js
+    const np = neighborPrompt(player.position);
+    nd = np.nd; prompt = np.prompt;
     $w.nearDoor = nd;
-    if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+    const key = prompt && !nd ? `i|${prompt}` : prompt;   // 이름표(안내뿐)와 누를 수 있는 프롬프트를 구분해 다시 그린다(거울 마을과 같은 문법)
+    if (key !== lastDoorPrompt) { $w.lastDoorPrompt = key; ui.setDoorPrompt?.(prompt, prompt && !nd ? { info: true } : undefined); }
+    const fcKey = np.choice ? np.choice.map(o => o.key).join(',') : null;   // 🪜 두 방향 계단 — 내 집과 같은 선택 버튼
+    if (fcKey !== lastFloorChoiceKey) { $w.lastFloorChoiceKey = fcKey; ui.setFloorChoice?.(np.choice ? np.choice.map(o => ({ label: o.label, onSelect: o.onSelect })) : null); }
     if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
     updateToolPageAuto();   // 🎒 맨 끝까지 안 가고 돌아가니 여기서 — ZONE_PAGE.neighbor 'none'(맨손)
     return;

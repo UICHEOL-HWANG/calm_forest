@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evOpen, evVisitStart, evReact, evVisitEnd, evNotice, evToggle, evFail } from '../js/neighbors/track.js';
+import { evOpen, evVisitStart, evReact, evVisitEnd, evNotice, evToggle, evFail, evIndoorEnter, evIndoorExit } from '../js/neighbors/track.js';
 import { RESERVED_TRAFFIC_KEYS } from '../js/ga-params.js';
 
 const ID = '0f8fad5b-d9cb-469f-a165-70867728950e';
@@ -22,4 +22,9 @@ test('GA4 예약어(source·medium·campaign…)를 쓰지 않는다', () => {
   const all = [evOpen({ list: [], rewardedToday: 0 }, 'sign'), evVisitStart({ publicId: ID, slot: 0, revisit: false, loadMs: 1 }),
     evReact(ID, 'wave', { reward: false, reason: 'ok' }), evVisitEnd(ID, 1, true), evNotice(1, 1), evToggle(true), evFail('react', 'x')];
   for (const [, p] of all) for (const k of Object.keys(p)) assert.ok(!(k in RESERVED_TRAFFIC_KEYS), k);
+});
+
+test('🏠 실내 입장·퇴장 이벤트', () => {
+  assert.deepEqual(evIndoorEnter('h1', 5, 12), ['neighbor_indoor_enter', { host: 'h1', house_stage: 5, decor_n: 12 }]);
+  assert.deepEqual(evIndoorExit('h1', 31.6, 2, 4), ['neighbor_indoor_exit', { host: 'h1', sec: 32, floors_seen: 2, tags_seen: 4 }]);
 });

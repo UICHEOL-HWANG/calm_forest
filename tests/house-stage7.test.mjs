@@ -88,7 +88,7 @@ test('실내 마감표에 7단계 모던·한옥이 있고 finishFor 가 스타�
   assert.ok(/'7m': \{[^\n]*deco: 'modern'/.test(SRC), "INT_FINISH['7m']");
   assert.ok(/'7h': \{[^\n]*deco: 'hanok'/.test(SRC), "INT_FINISH['7h']");
   assert.ok(SRC.includes("finishFor = (stage, style) => (stage >= 7"), 'finishFor 가 스타일을 받는다');
-  assert.ok(SRC.includes('finishFor(gameState.houseStage, gameState.house.style)'), 'buildRoom 이 스타일을 넘긴다');
+  assert.ok(SRC.includes('finishFor(ctx.stage, ctx.style)'), 'buildRoom 이 스타일을 넘긴다');
 });
 
 test('interior7 은 병합하고(드로우콜) 두 스타일 모두 실내 정원을 만든다', () => {

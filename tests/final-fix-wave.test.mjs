@@ -43,6 +43,11 @@ test('shopRows: 3칸(구분·아이템·가격) — 스킨은 🧥 스킨 · 원
   assert.equal((spirit.match(/<td>/g) || []).length, 3);
   assert.doesNotMatch(rows.join(''), /현금 전용|🪙/);
 });
+test('shopRows: 모든 현금 상품 칸에 이름이 있다 — 🪓 도구 세트가 "undefined" 로 뜨던 버그(Paddle 심사 페이지)', () => {
+  const rows = shopRows(ITEMS);
+  assert.doesNotMatch(rows.join(''), /undefined/);
+  assert.match(rows.find(r => r.includes('버섯 숲 세트')), /<td>🪓 도구<\/td>/);
+});
 test('shop.template: 표 머리 3칸 · 펫 줄 없음', () => {
   const tpl = read('pages/shop.template.html');
   assert.match(tpl, /<tr><th>구분<\/th><th>아이템<\/th><th>가격<\/th><\/tr>/);

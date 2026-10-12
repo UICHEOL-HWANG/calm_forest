@@ -1,0 +1,463 @@
+{
+ "dev": "pc",
+ "lang": "en",
+ "scen": {
+  "s5": {
+   "inject": true,
+   "arrived": true,
+   "door": {
+    "x": 0,
+    "z": 703
+   },
+   "atDoor": {
+    "atNeighbor": true,
+    "nearDoor": "nbenter",
+    "prompt": "🚪 Go inside",
+    "pos": [
+     0,
+     0,
+     704
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   },
+   "inside": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🚪 Go inside",
+    "pos": [
+     0,
+     0,
+     776
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "perfInside": {
+    "calls": 96,
+    "tex": 55,
+    "geoms": 789
+   },
+   "tag": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🛏️ Bed",
+    "pos": [
+     5.54,
+     0,
+     783
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "stair0": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloor",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.85,
+     0,
+     780.9
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "f1": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloor",
+    "prompt": "🪜 To the Ground Floor",
+    "pos": [
+     -0.7,
+     0,
+     781.09
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "exitDoor": {
+    "atNeighbor": true,
+    "nearDoor": "nbexitin",
+    "prompt": "🚪 Back to the yard",
+    "pos": [
+     0,
+     0,
+     774
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "backYard": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🚪 Back to the yard",
+    "pos": [
+     0,
+     0,
+     705.2
+    ],
+    "indoorVisible": false,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   },
+   "reenter": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🚪 Back to the yard",
+    "pos": [
+     0,
+     0,
+     705.2
+    ],
+    "indoorVisible": false,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   },
+   "home": {
+    "atNeighbor": false,
+    "nearDoor": null,
+    "prompt": "🚪 Back to the yard",
+    "pos": [
+     -4,
+     0,
+     28.6
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   },
+   "countsAfter": {
+    "lights": 22,
+    "windows": 11,
+    "farSolids": 0,
+    "hasIndoor": false
+   }
+  },
+  "s6": {
+   "inject": true,
+   "arrived": true,
+   "door": {
+    "x": 0,
+    "z": 703
+   },
+   "atDoor": {
+    "atNeighbor": true,
+    "nearDoor": "nbenter",
+    "prompt": "🚪 Go inside",
+    "pos": [
+     0,
+     0,
+     704
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   },
+   "inside": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🚪 Go inside",
+    "pos": [
+     0,
+     0,
+     776
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "perfInside": {
+    "calls": 79,
+    "tex": 64,
+    "geoms": 888
+   },
+   "tag": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🚪 Go inside",
+    "pos": [
+     4.62,
+     0,
+     784
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "stair0": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloor",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.85,
+     0,
+     780.9
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "f1": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloorchoice",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.7,
+     0,
+     781.09
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": [
+     "🪜 To the Rooftop",
+     "🪜 To the Ground Floor"
+    ]
+   },
+   "stair1": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloorchoice",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.55,
+     0,
+     780.95
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": [
+     "🪜 To the Rooftop",
+     "🪜 To the Ground Floor"
+    ]
+   },
+   "roof": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloor",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.4,
+     3.4,
+     781.14
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "home": {
+    "atNeighbor": false,
+    "nearDoor": null,
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -4,
+     0,
+     28.6
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "countsAfter": {
+    "lights": 22,
+    "windows": 11,
+    "farSolids": 0,
+    "hasIndoor": false
+   }
+  },
+  "s7h": {
+   "inject": true,
+   "arrived": true,
+   "door": {
+    "x": 0,
+    "z": 699.8
+   },
+   "atDoor": {
+    "atNeighbor": true,
+    "nearDoor": "nbenter",
+    "prompt": "🚪 Go inside",
+    "pos": [
+     0,
+     0,
+     700.8
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   },
+   "inside": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🚪 Go inside",
+    "pos": [
+     0,
+     0,
+     776
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "perfInside": {
+    "calls": 96,
+    "tex": 64,
+    "geoms": 848
+   },
+   "tag": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🛋️ Big Sofa",
+    "pos": [
+     3.9,
+     0,
+     782.87
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "stair0": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloor",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.85,
+     0,
+     780.9
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "f1": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloorchoice",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.7,
+     0,
+     781.09
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": [
+     "🪜 To the Rooftop",
+     "🪜 To the Ground Floor"
+    ]
+   },
+   "stair1": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloorchoice",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.55,
+     0,
+     780.95
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": [
+     "🪜 To the Rooftop",
+     "🪜 To the Ground Floor"
+    ]
+   },
+   "roof": {
+    "atNeighbor": true,
+    "nearDoor": "nbfloor",
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -0.4,
+     3.4,
+     781.14
+    ],
+    "indoorVisible": true,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "home": {
+    "atNeighbor": false,
+    "nearDoor": null,
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -4,
+     0,
+     28.6
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's house",
+    "buttons": []
+   },
+   "countsAfter": {
+    "lights": 22,
+    "windows": 11,
+    "farSolids": 0,
+    "hasIndoor": false
+   }
+  },
+  "s2": {
+   "inject": true,
+   "arrived": true,
+   "door": {
+    "x": 0,
+    "z": 703
+   },
+   "atDoor": {
+    "atNeighbor": true,
+    "nearDoor": null,
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     0,
+     0,
+     704
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   },
+   "home": {
+    "atNeighbor": false,
+    "nearDoor": null,
+    "prompt": "🪜 To the Second Floor",
+    "pos": [
+     -4,
+     0,
+     28.6
+    ],
+    "indoorVisible": null,
+    "title": "🏡 테스트이웃's village",
+    "buttons": []
+   }
+  }
+ },
+ "before": {
+  "counts": {
+   "lights": 22,
+   "windows": 11,
+   "farSolids": 0,
+   "hasIndoor": false
+  },
+  "perf": {
+   "calls": 679,
+   "tex": 54,
+   "geoms": 636
+  }
+ },
+ "after": {
+  "counts": {
+   "lights": 22,
+   "windows": 11,
+   "farSolids": 0,
+   "hasIndoor": false
+  },
+  "perf": {
+   "calls": 705,
+   "tex": 63,
+   "geoms": 777
+  }
+ },
+ "errors": [
+  "[게스트] 익명 로그인 실패 → 오프라인(콘솔 폴백)으로만 동작합니다.\n  DB에 저장하려면 Supabase 대시보드에서 Authentication > Sign In / Providers >\n  \"Anonymous sign-ins\" 를 켜주세요. (원인: Failed to fetch)"
+ ]
+}

@@ -14,6 +14,7 @@ import {
   spawnSparkle, syncFarmHints, todayStr, toolMesh, tryUnlockDrop, ui, updatePlotVisual, wiltPlot, workerCap,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { offerPush } from '../push-ui.js';
 import { recipeOf as craftRecipeOf, stationDef } from '../craft/recipes.js';
 import { isReady, stationOf, waitedDays } from '../craft/slots.js';
 import { FARM } from '../data/places.js';
@@ -132,6 +133,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
   if (!adv) maybeOfferOrchardQuest();                              // 🌾→🍎 기본 작물을 거두면 과수원 가는 길 의뢰(한 번)
   if (!viaSickle) {
     catchCeremony('harvestZoom');                                 // 🎉 첫 수확만 밀착, 이후 폴짝 + 열매 팝
+    offerPush();                                                  // 🔔 수확 직후 알림 안내(안드로이드·1회, 연출 뒤로 미룸)
     showCatchItem(cropMini(plot.cropType), plot.x, 0.6, plot.z);  // 🥕 열매를 머리 위로 번쩍! (두 번 부르면 첫 열매가 즉시 지워진다)
     // ⚠️ 🎨 색 해금은 확률 보상이다 — 두 칸에서 두 번 굴리면 낫 보유자의 기대치가 1.95배가 된다.
     //    "총량은 그대로고 손만 덜 간다" 는 이 업그레이드의 설계와 어긋나므로 액션당 한 번만 굴린다.
