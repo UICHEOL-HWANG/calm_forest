@@ -15,15 +15,17 @@ import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 import { FARM } from '../data/places.js';
 import { CROP_TYPES } from '../data/tools.js';
 import {
-  E1_BUBBLE_EMOJI, E1_CROP, E1_PLOTS, E1_SPAWN, E1_STORE_KEY, E1_TUTORIAL_DELAY_MS,
-  decideE1, isPending, parseStored, shouldSeed,
+  E1_BUBBLE_EMOJI, E1_INTRO_BUTTONS, E1_CROP, E1_PLOTS, E1_SPAWN, E1_STORE_KEY, E1_TUTORIAL_DELAY_MS,
+  decideE1, e1IntroCards, isPending, parseStored, shouldSeed,
 } from '../exp-e1.js';
-import { clientId } from '../i18n.js';
+import { clientId, t } from '../i18n.js';
 import { PLATFORM } from '../platform.js';
 import { createPlot, syncFarmCrops, syncFarmSoil } from './farm.js';
 import { enterFarm, startVisitors } from './visitors.js';
 import * as THREE from 'three';
 
+const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0
+  || new URLSearchParams(location.search).has('touchsim');   // index.html TOUCH 와 같은 판정(둘째 카드 문구)
 let bubble = null, ring = null;   // 3D 말풍선 + 퍼지는 고리(첫 수확 전에만 있다)
 let active = false;   // 이번 세션에 등록됐는가 — 세이브의 e1 만으로 처치를 켜지 않는다(앱에서 웹 처치 세이브를 열 때, 리뷰 M5)
 const BUBBLE = { w: 0.85, h: 0.85, y: 1.35 };   // 🔍 방문객 말풍선과 같은 크기·높이
@@ -67,7 +69,7 @@ export function enrollE1(load) {
 export function applyE1(d) {
   if (!d?.enrolled) return;
   active = true;
-  if (!gameState.e1 || gameState.e1.arm !== d.arm) gameState.e1 = { arm: d.arm, seeded: false, harvested: false };
+  if (!gameState.e1 || gameState.e1.arm !== d.arm) gameState.e1 = { arm: d.arm, seeded: false, harvested: false, intro: false };
   if (shouldSeed(d, gameState.e1)) { seedField(); gameState.e1 = { ...gameState.e1, seeded: true }; }
   document.body.classList.toggle('e1-pending', isPending(gameState.e1));
 }
@@ -96,8 +98,48 @@ export function e1FirstScreen() {
   player.position.set(FARM.x + E1_SPAWN[0], 0, FARM.z + E1_SPAWN[1]);
   player.rotation.y = Math.PI;   // 북쪽(밭)을 본다 — enterFarm 과 같은 방향
   snapCamera();
-  showBubble();
+  if (!gameState.e1.intro) showIntro();
+  else showBubble();
   return true;
+}
+
+// ── 시작 안내 카드 3장(사전등록 개정 1) — 아래 시트라 뒤의 다 자란 밭이 계속 보인다 ──
+let introStep = -1;
+function showIntro() {
+  if (introStep >= 0) return;
+  const m = document.getElementById('e1intro-modal');
+  if (!m) { finishIntro(); return; }   // 옛 index.html 캐시 — 카드 없이 바로 말풍선
+  introStep = 0;
+  document.getElementById('e1-next').onclick = nextIntro;
+  window.addEventListener('keydown', introKey);
+  renderIntro();
+  m.classList.add('show');
+}
+function introKey(e) {
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); nextIntro(); }
+}
+function renderIntro() {
+  const cards = e1IntroCards(TOUCH), c = cards[introStep];
+  document.getElementById('e1-ico').textContent = c.ico;
+  document.getElementById('e1-title').textContent = t(c.title);
+  document.getElementById('e1-sub').textContent = c.sub ? t(c.sub) : '';
+  document.getElementById('e1-dots').innerHTML = cards.map((_, i) => `<span class="${i === introStep ? 'on' : ''}"></span>`).join('');
+  document.getElementById('e1-next').textContent = t(introStep === cards.length - 1 ? E1_INTRO_BUTTONS.start : E1_INTRO_BUTTONS.next);
+  trackEvent('e1_intro', { step: introStep + 1 });   // [GA4] 카드별 도달 — 어느 장에서 떠나는지
+}
+function nextIntro() {
+  if (introStep < 0) return;
+  if (introStep < e1IntroCards(TOUCH).length - 1) { introStep++; renderIntro(); return; }
+  finishIntro();
+}
+function finishIntro() {
+  introStep = -1;
+  window.removeEventListener('keydown', introKey);
+  gameState.e1 = { ...gameState.e1, intro: true };
+  trackEvent('e1_intro', { step: 4 });   // [GA4] 시작하기 = 카드 완료
+  // ⚠️ Space 로 [시작하기] 를 누르면 같은 키가 게임에도 들어가 wantAction 이 선다 — 시트를 몇 프레임 더 두어
+  //    handleAction 이 모달 판정으로 그 액션을 삼키게 한 뒤 닫는다(안 그러면 닫히자마자 첫 수확이 저절로 된다)
+  setTimeout(() => { document.getElementById('e1intro-modal')?.classList.remove('show'); showBubble(); }, 150);
 }
 
 function showBubble() {

@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_PLOTS, E1_SPAWN, NEW_KINDS,
-  E1_BUBBLE_EMOJI, armFor, decideE1, parseStored, seedCoinValue, shouldSeed, withExpArm,
+  E1_BUBBLE_EMOJI, E1_INTRO_BUTTONS, armFor, decideE1, e1IntroCards, parseStored, sanitizeE1, seedCoinValue, shouldSeed, withExpArm,
 } from '../js/exp-e1.js';
 import { readFileSync } from 'node:fs';
 import { EN } from '../js/i18n-en.js';
@@ -174,4 +174,23 @@ test('리뷰 M4 — dev 세션은 강제(?e1=)가 아니면 등록하지 않고,
   const forcedExisting = decideE1({ clientId: 'c', platform: 'web', loadKind: 'loaded', saved: { inventory: {} }, forced: 'harvest_start', dev: true });
   assert.equal(forcedExisting.enrolled, true);
   assert.equal(shouldSeed(forcedExisting, undefined), false);
+});
+
+test('개정 1 — 처치 시작 안내 카드 3장(문구 A, 2026-10-12 확정) · 영어 사전', () => {
+  const touch = e1IntroCards(true), pc = e1IntroCards(false);
+  assert.equal(touch.length, 3);
+  assert.deepEqual(touch.map(c => [c.ico, c.title, c.sub]), [
+    ['🌾', '여기는 당신의 텃밭이에요', '당근이 벌써 다 자랐어요'],
+    ['🕹️', '왼쪽으로 걷고, 오른쪽 버튼으로 해요', ''],
+    ['🥕', '첫 수확을 해 볼까요?', '거둔 작물로 마을을 키워요'],
+  ]);
+  assert.equal(pc[1].title, 'WASD로 걷고, Space·클릭으로 해요');
+  assert.deepEqual(E1_INTRO_BUTTONS, { next: '다음', start: '시작하기 🌱' });
+  const strings = [...touch, ...pc].flatMap(c => [c.title, c.sub]).filter(Boolean).concat(Object.values(E1_INTRO_BUTTONS));
+  for (const k of strings) assert.ok(EN[k], `영어 사전에 '${k}'`);
+});
+
+test('세이브 왕복 — 안내 카드를 봤는지(intro)도 남는다', () => {
+  assert.deepEqual(sanitizeE1({ arm: 'harvest_start', seeded: true, harvested: false, intro: true }), { arm: 'harvest_start', seeded: true, harvested: false, intro: true });
+  assert.equal(sanitizeE1({ arm: 'control' }).intro, false);
 });

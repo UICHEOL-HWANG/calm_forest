@@ -101,3 +101,11 @@ test('첫 수확 뒤 환영 모달은 다른 모달(새 집 색·소식 등)이 
   assert.match(body, /otherModalOpen\(\)/);
   assert.match(E1START, /function otherModalOpen\(\)/);
 });
+
+test('개정 1 — 안내 시트(B)는 -modal id 라 뒤 게임 입력이 막히고, 끝나야 🌾 말풍선이 뜬다', () => {
+  assert.match(HTML, /<div id="e1intro-modal"/);
+  const first = fnBody(E1START, 'export function e1FirstScreen()');
+  assert.match(first, /if \(!gameState\.e1\.intro\) showIntro\(\);\s*else showBubble\(\);/);
+  assert.match(E1START, /trackEvent\('e1_intro', \{ step/);
+  assert.match(E1START, /intro: true/);
+});

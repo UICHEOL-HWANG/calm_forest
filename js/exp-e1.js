@@ -71,7 +71,7 @@ export function parseStored(raw) {
 // 세이브의 e1 필드 — 낯선 값은 버린다(세이브는 클라이언트 권위)
 export function sanitizeE1(v) {
   if (!v || typeof v !== 'object' || !isArm(v.arm)) return null;
-  return { arm: v.arm, seeded: !!v.seeded, harvested: !!v.harvested };
+  return { arm: v.arm, seeded: !!v.seeded, harvested: !!v.harvested, intro: !!v.intro };
 }
 
 // 처치 밭은 처치 무리의 신규에게, 한 번만
@@ -90,6 +90,17 @@ export function seedCoinValue(sellPrice) {
 }
 
 // 첫 안내 — 다 자란 밭 머리 위 월드 말풍선의 이모지 하나(월드 말풍선은 이모지만 — 🔍 방문객과 같은 문법)
+// 사전등록 개정 1(2026-10-12, 배포 전): 처치 첫 화면 앞에 안내 카드 3장(아래 시트, 시안 B · 문구 A).
+//   한국어 원문 = i18n 키(js/i18n-en.js). 둘째 장만 터치/PC 가 다르다.
+export const E1_INTRO_BUTTONS = { next: '다음', start: '시작하기 🌱' };
+export function e1IntroCards(touch) {
+  return [
+    { ico: '🌾', title: '여기는 당신의 텃밭이에요', sub: '당근이 벌써 다 자랐어요' },
+    { ico: '🕹️', title: touch ? '왼쪽으로 걷고, 오른쪽 버튼으로 해요' : 'WASD로 걷고, Space·클릭으로 해요', sub: '' },
+    { ico: '🥕', title: '첫 수확을 해 볼까요?', sub: '거둔 작물로 마을을 키워요' },
+  ];
+}
+
 export const E1_BUBBLE_EMOJI = '🌾';   // 2026-10-12 사용자 선택(👆·🌾·🥕 비교, emoji-compare.html)
 
 // GA4 페이로드에 exp_arm 을 덧붙인 새 객체. 획득 이벤트만, 25개 한도를 넘기면 붙이지 않는다(다른 값을 밀어내지 않게)

@@ -945,6 +945,20 @@
   /* 문 입장/퇴장 프롬프트 */
   /* 🧪 E1 처치 — 첫 수확 전엔 도구바 "눌러서 도구 바꾸기" 칩을 숨긴다 — 첫 안내는 밭 위 말풍선 하나(js/spaces/e1-start.js) */
   body.e1-pending .pg-tip { display: none; }
+  /* 🧪 E1 처치 시작 안내 — 아래 시트(시안 B). id 가 -modal 로 끝나 anyModalOpen 이 뒤 게임 입력을 막는다 */
+  #e1intro-modal { position: fixed; left: 0; right: 0; bottom: 0; z-index: 32; display: none; justify-content: center; padding: 0 12px calc(16px + env(safe-area-inset-bottom)); }
+  #e1intro-modal.show { display: flex; }
+  .e1-sheet { width: min(520px, 100%); background: #fff; border-radius: 22px; box-shadow: 0 -8px 40px rgba(30,50,40,0.3); padding: 18px 20px 16px; color: var(--ink);
+    display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: center; animation: floatUp .35s ease both; }
+  #e1-ico { font-size: 38px; grid-row: span 2; }
+  #e1-title { font-size: 17px; font-weight: 700; }
+  #e1-sub { opacity: .75; font-size: 14px; }
+  #e1-sub:empty { display: none; }
+  .e1-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  #e1-dots span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin: 0 3px; background: rgba(0,0,0,0.15); }
+  #e1-dots span.on { background: #6fd08c; }
+  #e1-next { border: none; border-radius: 14px; padding: 12px 28px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
+  #e1-next:active { transform: scale(0.96); }
   #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
   /* 🪞 거울 주민 대화 박스(B안 2026-10-10) — 화면 아래 얼굴·이름·대사. 어둡게 하지 않는다(걸으며 읽기). 떠 있는 동안 같은 자리의 문 프롬프트는 숨김 */
   #mirror-talk { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 7; display: none;
@@ -2534,6 +2548,12 @@
 
   <!-- 🪞 거울 주민 대화 박스(B안) — js/mirror/talk-box.js -->
   <div id="mirror-talk" role="dialog" aria-live="polite"><div id="mt-face"></div><div id="mt-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
+
+  <!-- 🧪 E1 처치 시작 안내(아래 시트) — 내용은 js/spaces/e1-start.js 가 채운다 -->
+  <div id="e1intro-modal" role="dialog" aria-modal="true" aria-labelledby="e1-title">
+    <div class="e1-sheet"><div id="e1-ico"></div><div id="e1-title"></div><div id="e1-sub"></div>
+      <div class="e1-foot"><div id="e1-dots"></div><button id="e1-next"></button></div></div>
+  </div>
 
   <!-- 신규 유저 튜토리얼 -->
   <div id="tutorial-modal">
