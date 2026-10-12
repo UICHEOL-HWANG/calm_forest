@@ -20,7 +20,7 @@ import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ig, me, quota, sleep } from './ig.mjs';
 import { hostReel, BASE_URL } from './host.mjs';
-import { threadsToken, publishThreadsVideo, toThreadsText, THREADS_TEXT_MAX } from './threads.mjs';
+import { threadsToken, publishThreadsVideo, toThreadsText, threadsLinkReply, THREADS_TEXT_MAX } from './threads.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const slug = process.argv[2];
@@ -85,8 +85,8 @@ async function postToThreads(videoUrl) {
   }
   try {
     console.log(`\n🧵 Threads 업로드 (인코딩 대기, 최대 5분)`);
-    // 게임 링크는 프로필이 아니라 첫 댓글로 단다 — 덱에 threadsReply 가 있으면 그 문구, 없으면 기본 문구
-    const link = await publishThreadsVideo({ videoUrl, text: threadsText, replyText: spec.threadsReply });
+    // 게임 링크는 프로필이 아니라 첫 댓글로 단다 — 덱에 threadsReply 가 있으면 그 문구, 없으면 UTM(utm_campaign=덱 이름) 붙은 기본 문구
+    const link = await publishThreadsVideo({ videoUrl, text: threadsText, campaign: slug, replyText: spec.threadsReply });
     console.log(`🧵 Threads 발행 완료\n   ${link}`);
     spec.threadsPublishedAt = new Date().toISOString().slice(0, 10);
     spec.threadsPermalink = link;
@@ -116,6 +116,7 @@ if (THREADS_NEW) {
   }
   if (!reachable) { console.error(`✗ ${url} — Range 응답(206)이 안 온다`); process.exit(1); }
   console.log(`  ✓ 도달 확인\n\n─── Threads 본문 (${threadsText.length}/${THREADS_TEXT_MAX}자) ───\n${threadsText}\n──────────────────`);
+  console.log(`─── Threads 첫 댓글 ───\n${spec.threadsReply || threadsLinkReply(slug)}\n──────────────────`);
   if (!DO_PUBLISH) { console.log(`\n✋ 리허설이라 아무것도 안 나갔다.\n   지금 발행 : node publish-reel.mjs ${slug} --threads-new --publish`); process.exit(0); }
   await postToThreads(url);
   process.exit(process.exitCode ?? 0);
@@ -164,6 +165,7 @@ if (!ok) {
 // ── 4. 리허설이면 여기서 멈춘다 ───────────────────────────────
 console.log(`\n─── 캡션 (${caption.length}자) ───\n${caption}\n──────────────────`);
 console.log(`\n─── Threads 본문 (${threadsText.length}/${THREADS_TEXT_MAX}자) ───\n${threadsText}\n──────────────────`);
+console.log(`─── Threads 첫 댓글 ───\n${spec.threadsReply || threadsLinkReply(slug)}\n──────────────────`);
 if (!DO_PUBLISH) {
   console.log(`\n✋ 리허설이라 아무것도 안 나갔다.\n` +
     `   지금 발행 : node publish-reel.mjs ${slug} --publish`);

@@ -23,8 +23,15 @@ export const THREADS_TEXT_MAX = 500;
 // Threads 는 게시물당 주제 태그가 하나라 인스타처럼 여러 개를 달지 않는다
 export const THREADS_TAG = '인디게임';
 
-/** 게임 링크는 프로필(X)·본문이 아니라 **첫 댓글**에 단다(사용자 결정 2026-10-07). 덱의 threadsReply 가 있으면 그걸 쓴다. */
-export const THREADS_LINK_REPLY = '🎮 지금 바로 플레이해 보세요 (무료 · 웹 / 토스 / Google Play)\nhttps://calmforest.cloud/';
+/** 게임 링크는 프로필(X)·본문이 아니라 **첫 댓글**에 단다(사용자 결정 2026-10-07). 덱의 threadsReply 가 있으면 그걸 쓴다.
+ *  링크엔 UTM 을 붙인다 — 맨 주소면 GA4 에서 Threads 유입이 (direct)/referral 로 뭉개져 게시물별 성과를 못 본다.
+ *  campaign = 덱 이름(reel-08 등) → GA4 '세션 캠페인' 에서 게시물 단위로 갈린다(js/analytics.js 가 utm_* 를 그대로 둔다). */
+export const threadsLinkUrl = (campaign) =>
+  'https://calmforest.cloud/?' + new URLSearchParams({
+    utm_source: 'threads', utm_medium: 'social', utm_campaign: campaign, utm_content: 'first_reply',
+  });
+export const threadsLinkReply = (campaign) =>
+  `🎮 지금 바로 플레이해 보세요 (무료 · 웹 / 토스 / Google Play)\n${threadsLinkUrl(campaign)}`;
 
 let cached = null;
 
@@ -129,8 +136,10 @@ export async function publishThreadsCarousel({ urls, text }) {
  * 영상 1편 → Threads 게시물. 게시물 URL 을 돌려준다.
  * ⚠️ 영상은 인코딩이 있어 이미지보다 오래 걸린다(최대 5분 기다린다).
  */
-export async function publishThreadsVideo({ videoUrl, text, replyText = THREADS_LINK_REPLY }) {
+export async function publishThreadsVideo({ videoUrl, text, campaign, replyText }) {
   if (text.length > THREADS_TEXT_MAX) throw new Error(`본문 ${text.length}자 — Threads 상한 ${THREADS_TEXT_MAX}자 초과`);
+  if (!replyText && !campaign) throw new Error('campaign(덱 이름) 이 없다 — 링크 댓글 UTM 을 만들 수 없다');
+  replyText = replyText || threadsLinkReply(campaign);
   const { id } = await threads('/me/threads', { media_type: 'VIDEO', video_url: videoUrl, text }, 'POST');
   const post = await finish(id, 100);
   // 댓글이 실패해도 던지지 않는다 — 게시물은 이미 나갔다. 던지면 호출부가 "발행 실패"로 오해해 재발행(중복)한다.
