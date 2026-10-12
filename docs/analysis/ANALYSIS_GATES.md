@@ -9,7 +9,7 @@
 
 | 게이트 | 상태 | 날짜 | 기록 |
 |---|---|---|---|
-| G0 분석 목적 | ✅ 확정 | 2026-10-12 | `dev/active/metrics-framework/analysis-candidates.md` §0 — 시작은 했지만 첫 결실까지 못 가는 이유를 찾아 첫 5분 수확 실험을 설계 |
+| G0 분석 목적 | ✅ 확정 | 2026-10-12 | `dev/active/metrics-framework/analysis-candidates.md` §0 — 시작은 했지만 첫 획득까지 못 가는 이유를 찾아 첫 5분 수확 실험을 설계 |
 | G0 가설표 | 🔄 후보 하나씩 합의 중 | 2026-10-12 | 순서 B3 → B2/B1 → C2 |
 
 ---
