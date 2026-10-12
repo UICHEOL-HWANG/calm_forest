@@ -26,9 +26,11 @@ test('로그인 상태가 바뀔 때마다 계정 동기화를 부른다', () =>
   assert.match(cb, /if \(s\.online\) syncInstall\(s\)/);
 });
 
-test('GA4 사용자 속성을 다시 set 하는 두 곳 모두 install_* 를 같이 싣는다', () => {
-  assert.match(analytics, /ab_variant: abVariant, \.\.\.e2UserProps\(e2Decision\(\)\), \.\.\.installProps\(\)/);
-  assert.match(analytics, /ab_variant: v, \.\.\.e2UserProps\(e2Decision\(\)\), \.\.\.installProps\(\)/);
+test('GA4 사용자 속성을 다시 set 하는 곳 전부 install_*·heard_from·exp_arm 을 같이 싣는다(allUserProps 한 곳)', () => {
+  assert.match(analytics, /function allUserProps[\s\S]{0,300}\.\.\.installProps\(\)[\s\S]{0,80}exp_arm: expArm/);
+  const sets = analytics.match(/gtag\('set', 'user_properties', [^)]*\)/g) || [];
+  assert.ok(sets.length >= 5, '부팅·setAbVariant·setInstallUserProps·setSurveyUserProps·setExpArm');
+  for (const s of sets) assert.match(s, /allUserProps\(/, s);
 });
 
 test('Supabase 는 계정·기기당 1행, 덮어쓰지 않는다', () => {

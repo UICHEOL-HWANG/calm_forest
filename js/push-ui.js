@@ -80,7 +80,7 @@ function showCard() {
   offerTimer = null;
   if (gameState.hintsSeen.pushAsk) return;
   if (ui.coachActive?.()) return;              // 튜토리얼 중엔 소진 안 함 — 졸업 직후(endCoach) 다시 부른다
-  if (mgView || duelActive || $('hint-modal')?.classList.contains('show')) {
+  if (mgView || duelActive || ui.anyModalOpen?.() || $('hint-modal')?.classList.contains('show')) {   // 🧪 E1 환영 모달 등 다른 창 위에 겹치지 않게
     if (++retries <= MAX_RETRY) offerTimer = setTimeout(showCard, RETRY_MS);
     return;
   }

@@ -20,9 +20,11 @@ const bootSrc = html.slice(bootStart);
 
 test('GA4 첫 user_properties 에 exp_entry 가 함께 실린다 — 로그인 판단(부팅 IIFE)보다 먼저 도는 모듈 평가 시점', () => {
   assert.match(analytics, /import \{[^}]*e2Decision[^}]*\} from '\.\/exp-e2-boot\.js'/);
-  assert.match(analytics, /gtag\('set', 'user_properties', \{[^}]*\.\.\.e2UserProps\(e2Decision\(\)\)/);
-  // 나중 덮어쓰기(setAbVariant)도 exp_entry 를 다시 실어 지우지 않는다
-  assert.match(analytics, /export function setAbVariant[\s\S]{0,300}\.\.\.e2UserProps\(e2Decision\(\)\)/);
+  // 모든 사용자 속성은 allUserProps() 한 곳에서 만든다(치환이라 통째로 실어야 서로 안 지운다) — exp_entry 포함
+  assert.match(analytics, /function allUserProps[\s\S]{0,300}\.\.\.e2UserProps\(e2Decision\(\)\)/);
+  assert.match(analytics, /gtag\('set', 'user_properties', allUserProps\(\)\)/);
+  // 나중 덮어쓰기(setAbVariant)도 allUserProps 로 exp_entry 를 다시 실어 지우지 않는다
+  assert.match(analytics, /export function setAbVariant[\s\S]{0,300}allUserProps\(\)/);
 });
 
 test('exp_entry 는 이벤트 파라미터로 보내지 않는다(25개 한도)', () => {

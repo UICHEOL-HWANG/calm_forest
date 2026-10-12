@@ -22,9 +22,16 @@ import { withExpArm } from './exp-e1.js';   // 🧪 E1 — 획득 이벤트에 e
 
 let firstChopFired = false;
 const sessionStart = Date.now();
+let expArm = null;     // 🧪 E1 무리 — 사용자 속성을 다시 set 할 때마다 같이 싣는다(위쪽에 둬야 부팅 IIFE 가 TDZ 에 안 걸린다)
 let abVariant = null;   // 마지막으로 set 한 ab_variant — 설치 채널 속성을 나중에 실을 때 같이 다시 싣는다
 
 // 📲 저장된 설치 채널(안드로이드 첫 실행 이후) — 사용자 속성을 다시 set 할 때마다 같이 실어 지워지지 않게
+// 사용자 속성 전체 — gtag user_properties 는 치환이라, 어느 setter 든 이걸 통째로 실어야 서로 지우지 않는다
+//   (platform·lang·ab_variant·🧪 exp_entry·📲 install_*·🧭 heard_from·🧪 exp_arm)
+function allUserProps(extra = {}) {
+  return { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()),
+    ...installProps(), ...(expArm ? { exp_arm: expArm } : {}), ...extra };
+}
 function installProps() {
   let props = {};
   try { props = installUserProps(cachedInstallAttribution(globalThis.localStorage)); } catch { /* 저장소 없음 */ }
@@ -69,7 +76,7 @@ function applyAliasCampaign() {
   //   한 번에 set 해야 뒤 호출이 앞 호출을 덮어쓰지 않는다(gtag user_properties 는 병합이 아니라 치환).
   //   🧪 exp_entry(E2 웹 로그인 화면 건너뛰기) — 등록된 웹 첫 방문 기기만. 이벤트 파라미터가 아니라 사용자 속성(25개 한도와 무관)
   abVariant = assignVariant();
-  gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant, ...e2UserProps(e2Decision()), ...installProps() });
+  gtag('set', 'user_properties', allUserProps());
   console.log('[GA4] 로드됨:', id);
 })();
 
@@ -87,7 +94,7 @@ export function setGaUser(userId) {
 export function setAbVariant(v) {
   abVariant = v;
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('set', 'user_properties', { ab_variant: v, ...e2UserProps(e2Decision()), ...installProps() });   // 🧪 exp_entry·📲 install_* 를 같이 실어 덮어써도 지워지지 않게
+    window.gtag('set', 'user_properties', allUserProps());   // 🧪 exp_entry·📲 install_*·🧭 heard_from·🧪 exp_arm 을 같이 실어 덮어써도 지워지지 않게
   }
 }
 
@@ -95,7 +102,7 @@ export function setAbVariant(v) {
 export function setInstallUserProps(props) {
   if (IS_DEV_SESSION || !props?.install_source) return;
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()), ...installProps(), ...props });   // 🧭 heard_from 도 같이
+    window.gtag('set', 'user_properties', allUserProps(props));
   } else {
     console.log('[GA4 폴백] install user_properties:', props);
   }
@@ -107,19 +114,18 @@ export function setSurveyUserProps() {
   const props = installProps();
   if (!props.heard_from) return;
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()), ...props });
+    window.gtag('set', 'user_properties', allUserProps());
   } else {
     console.log('[GA4 폴백] survey user_properties:', props);
   }
 }
 
 // [속성] 🧪 E1 첫 5분 수확 실험 — 등록된 기기면 무리를 기억해 획득 이벤트에 exp_arm 을 붙인다(js/spaces/e1-start.js)
-let expArm = null;
 export function setExpArm(arm) {
   if (IS_DEV_SESSION) return;   // 🧪 dev 세션 — 유저 속성도 남기지 않는다(trackEvent 와 같은 규칙)
   expArm = arm;
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('set', 'user_properties', { exp_arm: arm });
+    window.gtag('set', 'user_properties', allUserProps());   // 다른 속성을 지우지 않게 통째로
   }
 }
 
