@@ -2,7 +2,7 @@
 //  calm forest · 🎥 게임 플레이 녹화
 //  ------------------------------------------------------------
 //  node record.mjs --out clips/04_game.mp4 [--secs 5] [--port 8000]
-//                  [--q "weather=clear&time=0.46"] [--scenario night-duel|dream] [--char 곰] [--animal raccoon] [--require-win]
+//                  [--q "weather=clear&time=0.46"] [--scenario night-duel|dream|plaza-arch|plaza-stage] [--char 곰] [--animal raccoon] [--require-win]
 //
 //  왜 필요한가: 쇼츠 앞부분은 Veo 생성 영상이라 아무리 참조를 물려도
 //  "진짜 게임 화면"은 아니다. 마지막에 실제 렌더를 붙여야 광고가 거짓이 안 된다.
@@ -159,6 +159,20 @@ async function dreamTour(page, marks, t0) {
   return !(await st()).atDream;
 }
 
+/** 🌾 수확제 광장 — 단계는 ?plaza=N(검수용 고정, 기록 안 됨)으로 정하고 컷마다 따로 뜬다.
+ *  'plaza-arch' : 입구 아치를 북→남(카메라 쪽, 얼굴이 보이게)으로 지나 동쪽 광장으로 꺾는다
+ *  'plaza-stage': 광장 정면에 서서 SECS 동안 가만히(단계 비교 컷은 카메라가 같아야 이어 붙는다) */
+const PLAZA_SHOTS = {
+  'plaza-arch':  { at: [1.9, -1.2], walk: [['KeyS', 800], ['KeyD', 1600]] },   // 돌길 방향: 아치를 남쪽으로 지나 동쪽(광장)으로 꺾는다
+  'plaza-stage': { at: [23, 1.4], walk: [] },   // 걷지 않는다 — 단계 컷끼리 카메라가 한 치도 달라지면 안 이어진다
+};
+async function plazaShot(page, shot, ms) {
+  for (const [key, hold] of shot.walk) {
+    await page.keyboard.down(key); await page.waitForTimeout(hold); await page.keyboard.up(key);
+  }
+  await page.waitForTimeout(Math.max(0, ms - shot.walk.reduce((s, [, h]) => s + h, 0)));
+}
+
 const tmp = await mkdtemp(join(tmpdir(), 'cf-record-'));
 // ⚠️ 헤드리스는 실제 화면 합성을 억제한다. rAF 는 60 으로 돌아도(측정함) 캔버스에
 //    새 프레임이 안 올라와 captureStream 이 2.8fps 밖에 못 뜬다. 창을 띄워야
@@ -194,6 +208,30 @@ try {
       await route.fulfill({ response: res, body });
     });
   }
+  if (PLAZA_SHOTS[SCENARIO]) {
+    // 서버가 필요 없는 컷이다 — 운영 Supabase(익명 계정·세이브)·GA4 에 아무것도 남기지 않게 막는다
+    await ctx.route(/supabase\.co|googletagmanager|google-analytics/, r => r.abort());
+    // 나무 링(14그루)은 로드마다 Math.random 으로 흩어진다 → 단계 컷끼리 나무가 튀고, 운 나쁘면 곰을 가린다.
+    // 시드를 고정해 컷마다 같은 숲을 만든다(mulberry32)
+    await ctx.addInitScript((seed) => {
+      let a = seed >>> 0;
+      Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    }, Number(arg('--seed', '7')));
+    // 폰 세로 기본 카메라는 거리 ~21 이라 거리 안개(near 18)에 화면이 통째로 뿌옇다. 게임에 원래 있는
+    // 클로즈업 줌(액션 순간 0.58)을 녹화 내내 쓰도록 **녹화 때만** 모듈 소스를 바꾼다 — 게임 코드는 그대로
+    const zoom = Number(arg('--zoom', '0.6'));
+    if (!(Number.isFinite(zoom) && zoom > 0)) throw new Error(`--zoom 은 양수여야 한다: ${arg('--zoom')}`);
+    await ctx.route('**/js/game.js*', async (route) => {
+      const res = await route.fetch();
+      const src = await res.text();
+      const needle = 'clock.elapsedTime < momentUntil ? 0.58 : 1;';
+      // ⚠️ route 핸들러 안에서 throw 하면 스크립트가 멈추지 않고 enterGame 타임아웃으로 엉뚱하게 죽는다 → 여기서 끝낸다
+      if (!src.includes(needle)) { console.error('game.js 줌 식을 못 찾았다 — updateCamera 가 바뀌었나'); process.exit(1); }
+      await route.fulfill({ response: res, body: src.replace(needle, () => `clock.elapsedTime < momentUntil ? 0.58 : ${zoom};`) });
+    });
+  }
   await page.goto(`http://localhost:${PORT}/?lang=ko&${QUERY}`, { waitUntil: 'load' });
   // 기동이 느릴 때가 있다 — 스킵 버튼이 6초 안에 안 떠서 인트로 도시가 찍혔었다
   await enterGame(page, { skipMs: 20000, playMs: 45000, char: CHAR });
@@ -222,6 +260,12 @@ try {
     await page.waitForTimeout(1500);
     await page.evaluate(() => window.__dream.night());
     await page.waitForTimeout(800);
+  }
+  if (PLAZA_SHOTS[SCENARIO]) {
+    const [x, z] = PLAZA_SHOTS[SCENARIO].at;
+    await page.evaluate(([x, z]) => window.__tp(x, z), [x, z]);
+    await page.waitForTimeout(1500);                // 순간이동 직후 그림자·LOD 가 자리 잡게(줌 lerp 도 이 사이 수렴)
+    console.log('시작 위치', await page.evaluate(() => window.__pos()));
   }
   // HUD 숨김 — 쇼츠에 UI 가 나오면 안 된다. (캔버스만 녹화하므로 DOM 오버레이는 어차피 안 담긴다 —
   //  대결의 손 이모지는 3D 라 영상에 나온다)
@@ -256,6 +300,9 @@ try {
     console.log('마커(초)', JSON.stringify(marks), woke ? '· 깨어남' : '· ⚠️ 아직 꿈 안');
     // 컷 시각(dreamTimeline.ts)이 이 흐름을 전제한다 — 조각을 못 줍거나 못 깨면 조용히 성공하지 말 것
     if (marks.shards < 4 || !woke) throw new Error(`꿈 녹화 불완전: 조각 ${marks.shards}/4 · 깨어남 ${woke}`);
+  } else if (PLAZA_SHOTS[SCENARIO]) {
+    await plazaShot(page, PLAZA_SHOTS[SCENARIO], SECS * 1000);
+    console.log('끝 위치', await page.evaluate(() => window.__pos()));
   } else if (SCENARIO) {
     throw new Error(`알 수 없는 --scenario: ${SCENARIO}`);
   } else {

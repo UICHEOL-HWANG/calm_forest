@@ -1,7 +1,7 @@
 // =============================================================
 //  calm forest · 🎹 쇼츠 배경음악 (자체 제작, 저작권 free)
 //  ------------------------------------------------------------
-//  node music.mjs [--style piano|lofi|night|dream] [--secs 32] [--out out/music/calm.wav]
+//  node music.mjs [--style piano|lofi|night|dream|harvest] [--secs 32] [--out out/music/calm.wav]
 //
 //  왜 직접 만드나:
 //    클래식은 **곡**의 저작권이 풀렸어도 **연주 녹음**은 따로 보호된다.
@@ -29,9 +29,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const SECS = Number(arg('--secs', '32'));
-/** --style piano(기본, 느린 피아노) | lofi(로파이 하우스 105BPM, 모던한 플레이 영상용) | night(밤손님 릴스 전용, --secs 31) | dream(꿈의 숲 릴스 전용, --secs 26) */
+/** --style piano(기본, 느린 피아노) | lofi(로파이 하우스 105BPM, 모던한 플레이 영상용) | night(밤손님 릴스 전용, --secs 31) | dream(꿈의 숲 릴스 전용, --secs 26) | harvest(수확제 광장 릴스 전용, --secs 34) */
 const STYLE = arg('--style', 'piano');
-const DEFAULT_OUT = { piano: 'out/music/calm.wav', lofi: 'out/music/lofi.wav', night: 'out/music/night.wav', dream: 'out/music/dream.wav' };
+const DEFAULT_OUT = { piano: 'out/music/calm.wav', lofi: 'out/music/lofi.wav', night: 'out/music/night.wav', dream: 'out/music/dream.wav', harvest: 'out/music/harvest.wav' };
 if (!DEFAULT_OUT[STYLE]) throw new Error(`--style 은 ${Object.keys(DEFAULT_OUT).join('|')} 중 하나: ${STYLE}`);
 const OUT = arg('--out', DEFAULT_OUT[STYLE]);
 
@@ -626,6 +626,100 @@ kick(T(37), 0.7); sub(29, T(37), BEAT * 2, 0.36);
 for (const [o, m] of [[0, 77], [0.5, 81], [1, 84], [2, 81], [3, 79], [4, 77]]) bell(m, T(37 + o), 0.07);
 `;
 
+/** 🌾 수확제 광장 — 걷기 → 잎·"오!" → 시무룩 → 와르르 → 산더미 드롭 → 광장 그루브(단계마다 딩) → 진행률 → 엔드
+ *  (105BPM, 58박 ≈ 33.1초). tools/reel-motion/src/harvestTimeline.ts 의 컷 길이(박)와 1:1 — 컷이 바뀌면 여기도 바꾼다.
+ *   0~10 훅(하프 아르페지오, 3.85 잎 · 7.9 "오!") · 10~16 요만큼…(음악이 꺼지고 "뾰오옹") · 16~21 와르르(물건마다 뽕, 라이저)
+ *   21~24 산더미!(드롭) · 24~42 광장 그루브(28 지금 · 33·35 단계 딩 · 37 완성 크래시) · 42~51 진행률(차오르는 글리산도·CTA 딩)
+ *   51~58 엔드. 악기는 NIGHT 의 것을 그대로 쓴다. 실행: --style harvest --secs 34 */
+const HARVEST = KIT + `
+const harp = (m, at, vol) => pluck(m, at, BEAT * 1.4, vol || 0.06, 5200);
+const CH = {
+  F:  { r: 29, st: [53, 57, 60, 65], arp: [65, 69, 72, 77] },
+  C:  { r: 36, st: [52, 55, 60, 64], arp: [64, 67, 72, 76] },
+  Dm: { r: 38, st: [50, 53, 57, 62], arp: [62, 65, 69, 74] },
+  Bb: { r: 34, st: [50, 53, 58, 62], arp: [62, 65, 70, 74] },
+};
+const PROG = ['F', 'C', 'Dm', 'Bb'];
+
+// 필터: 훅에서 열리고, 시무룩에서 닫혔다가, 와르르에서 다시 열린다
+lp.frequency.setValueAtTime(1200, 0);
+lp.frequency.exponentialRampToValueAtTime(6000, T(9));
+lp.frequency.setValueAtTime(6000, T(10));
+lp.frequency.exponentialRampToValueAtTime(900, T(11));
+lp.frequency.setValueAtTime(900, T(16));
+lp.frequency.exponentialRampToValueAtTime(7000, T(21));
+
+// ① 훅 0~10 — 가을 산책: 하프 아르페지오 + 가벼운 셰이커
+for (let b = 0; b < 10; b += 2) {
+  const c = CH[PROG[(b / 2) % 4]];
+  pad(c.st, T(b), T(2), 0.015);
+  sub(c.r + 12, T(b), BEAT * 1.6, 0.11);                  // 산책이라 낮게 — 드롭(21박)과 대비가 나야 한다
+  c.arp.forEach((m, j) => harp(m, T(b + j * 0.5), 0.04));
+  for (let o = 0.5; o < 2; o += 1) shaker(T(b + o), 0.04);
+}
+for (const [o, m] of [[3.85, 84], [4.0, 88], [4.15, 91]]) bell(m, T(o), 0.06);   // 머리에 잎이 톡
+pluck(77, T(7.9), BEAT * 0.5, 0.09, 4000); bell(89, T(7.9), 0.08);              // "오!"
+
+// ② 요만큼… 10~16 — 볏단을 툭 놓고, 음악이 김빠지듯 꺼진다
+thump(T(10), 0.5);
+bell(77, T(10), 0.06);
+glide(T(11.5), 1.1);
+pad([50, 53, 57], T(10), T(6), 0.03);             // Dm — 시무룩
+for (const b of [12, 13.5, 15]) tick(T(b), 0.06);
+
+// ③ 와르르 16~21 — 물건이 떨어질 때마다 "뽕", 갈수록 촘촘하고 높게
+const DROPS = [16, 16.75, 17.5, 18, 18.5, 19, 19.25, 19.5, 19.75, 20, 20.25, 20.5, 20.625, 20.75, 20.875];
+const UP = [65, 67, 69, 72, 74, 77, 79, 81, 84, 86, 89, 91, 93, 96, 98];
+DROPS.forEach((b, i) => { pluck(UP[i], T(b), BEAT * 0.35, 0.07, 3600); kick(T(b), 0.35 + i * 0.02); });
+riser(T(18), T(3), 0.2);
+for (let b = 20; b < 21; b += 0.25) snare(T(b), 0.08 + (b - 20) * 0.12);
+
+// ④ 산더미! 21~24 — 드롭: 크래시 + F 스탭, 만세 벨
+crash(T(21), 0.3);
+for (const o of [0, 1.5, 2.5]) stab(CH.F.st, T(21 + o), BEAT * 0.5, 0.06);
+for (let b = 21; b < 24; b++) { kick(T(b), 0.8); hat(T(b + 0.5), 0.1); if (b % 2 === 0) clap(T(b)); }
+sub(29, T(21), BEAT * 1.4, 0.36); sub(36, T(22.5), BEAT * 1.4, 0.32);
+for (const [o, m] of [[0, 84], [0.5, 88], [1, 89], [2, 91], [2.5, 89]]) bell(m, T(21 + o), 0.08);
+
+// ⑤ 광장 24~42 — 하우스 그루브(마디마다 F–C–Dm–Bb) + 벨 훅, 단계가 바뀔 때마다 딩
+const HOOK = [[0, 81], [0.75, 79], [1.5, 77], [2.5, 72], [3, 74]];
+for (let b = 24; b < 42; b++) {
+  const bar = Math.floor((b - 24) / 4), c = CH[PROG[bar % 4]], i = (b - 24) % 4;
+  kick(T(b), 0.75); hat(T(b + 0.5), 0.1); shaker(T(b + 0.25), 0.04); shaker(T(b + 0.75), 0.04);
+  if (i === 1 || i === 3) clap(T(b));
+  sub(c.r + (i === 2 ? 12 : 0), T(b + 0.5), BEAT * 0.45, 0.3);
+  if (i === 0) { stab(c.st, T(b), BEAT * 0.5, 0.035); stab(c.st, T(b + 1.5), BEAT * 0.4, 0.03); }
+}
+for (const s of [28, 32]) for (const [o, m] of HOOK) bell(m, T(s + o), 0.06);
+crash(T(28), 0.16);                                                          // 지금은 1단계
+bell(84, T(33), 0.1); bell(96, T(33.5), 0.04);                               // 2단계
+bell(88, T(35), 0.1); bell(100, T(35.5), 0.04);                              // 3단계
+crash(T(37), 0.3);                                                           // 완성!
+for (const [o, m] of [[0, 84], [0.25, 88], [0.5, 91], [0.75, 96], [1.5, 93], [2, 96]]) bell(m, T(37 + o), 0.08);
+riser(T(40), T(2), 0.14);
+
+// ⑥ 진행률 42~51 — 막대가 차오르는 글리산도, CTA 가 뜰 때 딩. 그루브는 가볍게
+crash(T(42), 0.18);
+for (let i = 0; i < 10; i++) harp(65 + [0, 2, 4, 7, 9, 12, 14, 16, 19, 21][i], T(42.5 + i * 0.125), 0.05);
+bell(89, T(43.75), 0.1); bell(96, T(43.75), 0.05);
+for (let b = 42; b < 51; b++) {
+  const c = CH[PROG[Math.floor((b - 42) / 2) % 4]];
+  kick(T(b), 0.6); hat(T(b + 0.5), 0.08);
+  if ((b - 42) % 2 === 1) clap(T(b));
+  sub(c.r, T(b + 0.5), BEAT * 0.45, 0.26);
+  if ((b - 42) % 2 === 0) pad(c.st, T(b), T(2), 0.025);
+}
+for (const s of [46, 48]) for (const [o, m] of HOOK.slice(0, 3)) bell(m, T(s + o), 0.05);
+riser(T(49), T(2), 0.16);
+
+// ⑦ 엔드 51~58 — F 로 따뜻하게 해결
+crash(T(51), 0.25);
+stab([53, 60, 65, 69, 72], T(51), BEAT * 2, 0.06);
+pad([53, 60, 65, 69], T(51), T(7), 0.045);
+kick(T(51), 0.7); sub(29, T(51), BEAT * 2, 0.36);
+for (const [o, m] of [[0, 77], [0.5, 81], [1, 84], [2, 81], [3, 79], [4, 77]]) bell(m, T(51 + o), 0.07);
+`;
+
 const TAIL = `
 // 끝 3초 페이드아웃 — 영상 끝에서 뚝 끊기면 싸구려로 들린다
 master.gain.setValueAtTime(master.gain.value, Math.max(0, DUR - 3));
@@ -656,7 +750,7 @@ for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(nul
 return btoa(bin);
 `;
 
-const SCORE = HEAD + { piano: PIANO, lofi: LOFI, night: NIGHT, dream: DREAM }[STYLE] + TAIL;
+const SCORE = HEAD + { piano: PIANO, lofi: LOFI, night: NIGHT, dream: DREAM, harvest: HARVEST }[STYLE] + TAIL;
 
 const browser = await chromium.launch();
 const page = await browser.newPage();

@@ -78,7 +78,8 @@ export const GameClip: React.FC<{ src: string; startSec: number; dir: 1 | -1; ra
 };
 
 /** Keyword on a tilted colour slab + supporting line */
-export const Caption: React.FC<{ word: string; line: string; color: string; dir: 1 | -1; top?: string }> = ({ word, line, color, dir, top = "52%" }) => {
+// size: override the keyword's px when it's long (≈960 / chars keeps it on a 1080 frame)
+export const Caption: React.FC<{ word: string; line: string; color: string; dir: 1 | -1; top?: string; size?: number }> = ({ word, line, color, dir, top = "52%", size }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pop = spring({ frame: f - 3, fps, config: { damping: 9, stiffness: 240, mass: 0.7 } });
@@ -92,7 +93,7 @@ export const Caption: React.FC<{ word: string; line: string; color: string; dir:
           transform: `rotate(${-dir * 4}deg) scaleX(${slab})`, transformOrigin: dir > 0 ? "left" : "right",
           boxShadow: "0 10px 0 rgba(10,16,12,.35)",
         }} />
-        <div style={{ ...outlined(top === "52%" || parseFloat(top) > 30 ? 200 : 160), position: "relative", transform: `scale(${interpolate(pop, [0, 1], [0.2, 1])}) rotate(${-dir * 4}deg)` }}>
+        <div style={{ ...outlined(size ?? (top === "52%" || parseFloat(top) > 30 ? 200 : 160)), position: "relative", transform: `scale(${interpolate(pop, [0, 1], [0.2, 1])}) rotate(${-dir * 4}deg)` }}>
           {word}
         </div>
       </div>
@@ -149,15 +150,15 @@ export const BrandBug: React.FC = () => {
 };
 
 /** Title over the village: small line, then big line slams */
-export const TitleText: React.FC<{ small: string; big: string }> = ({ small, big }) => {
+export const TitleText: React.FC<{ small: string; big: string; top?: string; bigSize?: number }> = ({ small, big, top = "-6%", bigSize = 150 }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const a = spring({ frame: f - 2, fps, config: { damping: 14, stiffness: 200 } });
   const b = spring({ frame: f - 11, fps, config: { damping: 9, stiffness: 260, mass: 0.7 } });
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", top: "-6%" }}>
+    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", top }}>
       <div style={{ ...outlined(96), opacity: a, transform: `translateY(${interpolate(a, [0, 1], [-60, 0])}px)` }}>{small}</div>
-      <div style={{ ...outlined(150), marginTop: 26, color: COLORS.sun, transform: `scale(${interpolate(b, [0, 1], [2.4, 1])})`, opacity: interpolate(b, [0, 0.3], [0, 1], clamp) }}>
+      <div style={{ ...outlined(bigSize), marginTop: 26, color: COLORS.sun, transform: `scale(${interpolate(b, [0, 1], [2.4, 1])})`, opacity: interpolate(b, [0, 0.3], [0, 1], clamp) }}>
         {big}
       </div>
     </AbsoluteFill>
