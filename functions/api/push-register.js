@@ -30,7 +30,7 @@ export async function onRequestPost({ request, env }) {
   const row = {
     token,
     user_id: user.id,
-    platform: 'android',
+    platform: body?.platform === 'ios' ? 'ios' : 'android',   // 🍎 그 밖의 값은 android(DB CHECK 와 같음)
     enabled: body?.enabled !== false,
     lang: body?.lang === 'en' ? 'en' : 'ko',
     tz: TZ_RE.test(String(body?.tz || '')) ? String(body.tz) : null,

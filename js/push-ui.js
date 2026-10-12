@@ -1,5 +1,5 @@
 // =============================================================
-//  🔔 푸시 알림 — 게임 연결부(안드로이드만). 순수 흐름은 js/push-native.js
+//  🔔 푸시 알림 — 게임 연결부(안드로이드·🍎 iOS 앱). 순수 흐름은 js/push-native.js
 //  ------------------------------------------------------------
 //  ▶ 안내 카드(시안 B, 2026-10-12 확정): 수확한 적 있는 사람에게 수확 직후 1회.
 //    튜토리얼 중엔 소진하지 않고 졸업 뒤(endCoach)나 다음 수확 때 띄운다.
@@ -10,7 +10,7 @@
 // =============================================================
 import { gameState, mgView, requestSave, ui } from './game.js';
 import { duelActive } from './spaces/night-visit.js';
-import { IS_ANDROID } from './platform.js';
+import { IS_ANDROID, IS_IOS, PLATFORM } from './platform.js';
 import { capListen, capPlugin } from './cap-bridge.js';
 import { disablePush, enablePush, onPushOpen, refreshPush } from './push-native.js';
 import { getAccessToken } from './supabase-client.js';
@@ -36,7 +36,7 @@ async function post(body) {
     const r = await fetch(CONFIG.PUSH_REGISTER_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, platform: PLATFORM }),
     });
     return r.ok;
   } catch { return false; }
@@ -48,7 +48,7 @@ const ctx = () => ({
   tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })(),
   channelName: t('밭 소식'),
 });
-const available = () => IS_ANDROID && !!capPlugin('PushNotifications');
+const available = () => (IS_ANDROID || IS_IOS) && !!capPlugin('PushNotifications');   // 🍎 iOS 는 AppDelegate 가 APNs → FCM 토큰으로 바꿔 넘긴다
 
 function setPref(on, token) {
   store.set(PREF_KEY, on ? 'on' : 'off');

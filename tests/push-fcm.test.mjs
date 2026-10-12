@@ -75,3 +75,9 @@ test('sendFcm — v1 메시지 형태 + UNREGISTERED 는 죽은 토큰', async (
   assert.deepEqual(await sendFcm({ projectId: 'p', accessToken: 'a', token: 't', title: 'T', body: 'B' }, { fetch: boom }),
     { ok: false, status: 0, dead: false });
 });
+
+test('🍎 iOS 알림음 — apns payload 에 sound default', async () => {
+  let body;
+  await sendFcm({ projectId: 'p', accessToken: 'a', token: 't', title: 'T', body: 'B' }, { fetch: async (u, i) => { body = JSON.parse(i.body); return new Response('{}'); } });
+  assert.equal(body.message.apns.payload.aps.sound, 'default');
+});

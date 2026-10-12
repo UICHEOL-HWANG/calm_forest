@@ -82,6 +82,7 @@ export async function sendFcm({ projectId, accessToken, token, title, body, data
     notification: { title, body },
     data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
     android: { priority: 'high', notification: { icon: 'ic_stat_leaf', color: '#5f9e6e', channel_id: 'garden' } },   // channel_id = js/push-native.js PUSH_CHANNEL
+    apns: { payload: { aps: { sound: 'default' } } },   // 🍎 iOS — 소리 없이 조용히 쌓이지 않게
   };
   try {
     const res = await withTimeout(fetchFn, `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {

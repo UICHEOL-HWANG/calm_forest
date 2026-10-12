@@ -72,3 +72,11 @@ test('onPushOpen — 알림을 눌러 열면 data(kind·send_id)를 넘긴다', 
   f.listeners.pushNotificationActionPerformed({ actionId: 'tap', notification: { data: { kind: 'night', send_id: 'abc' } } });
   assert.deepEqual(got, { kind: 'night', send_id: 'abc' });
 });
+
+test('🍎 연결부 — 안드로이드·iOS 앱에서 켜지고 등록 때 플랫폼을 보낸다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const ui = readFileSync(new URL('../js/push-ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /const available = \(\) => \(IS_ANDROID \|\| IS_IOS\) && !!capPlugin\('PushNotifications'\)/);
+  assert.match(ui, /platform: PLATFORM/);
+  assert.match(readFileSync(new URL('../sql/migrations/migrate_push_ios.sql', import.meta.url), 'utf8'), /platform in \('android', ?'ios'\)/);
+});

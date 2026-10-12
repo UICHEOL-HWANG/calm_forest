@@ -65,3 +65,10 @@ test('기본값 — enabled true · lang ko · 이상한 tz 는 버림', async (
 test('DB 실패는 502', async () => {
   assert.equal((await call({ token: TOKEN }, { upsert: 500 })).status, 502);
 });
+
+test('🍎 platform — ios 만 그대로, 그 밖의 값은 android', async () => {
+  const ios = await call({ token: TOKEN, platform: 'ios' });
+  assert.equal(JSON.parse(ios.calls.find(c => c.url.includes('push_tokens')).init.body).platform, 'ios');
+  const odd = await call({ token: TOKEN, platform: 'web' });
+  assert.equal(JSON.parse(odd.calls.find(c => c.url.includes('push_tokens')).init.body).platform, 'android');
+});
