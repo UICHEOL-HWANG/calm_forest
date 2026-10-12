@@ -51,6 +51,7 @@ SELECT ev.user_pseudo_id,
   MIN(IF(ev.user_id IS NOT NULL, ev.ts, NULL)) AS entry_ts,
   ANY_VALUE(s.scr_ts) AS scr_ts,
   COUNTIF(ev.event_name = 'login_screen') AS n_scr,
+  MAX(IF(ev.ts >= s.scr_ts, ev.ts, NULL)) AS last_after_scr,       -- for W2 dwell (G2)
   COUNTIF(ev.ts > s.scr_ts) AS n_after_scr,                        -- events strictly after the screen
   COUNTIF(ev.ts >= s.scr_ts AND ev.eng IS NOT NULL) AS n_eng_after,   -- engagement_time_msec carriers from screen on
   COUNTIF(ev.event_name = 'pgs_connect') AS n_pgs,
