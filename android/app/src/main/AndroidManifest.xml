@@ -38,9 +38,15 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+        <!-- 🔔 FCM 이 앱이 꺼져 있을 때 직접 그리는 알림의 기본 아이콘·색 -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_leaf" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/push_accent" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="garden" />
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 🔔 푸시 알림 — Android 13+ 는 런타임 권한(js/push-ui.js 가 첫 수확 뒤 안내 카드로 요청) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

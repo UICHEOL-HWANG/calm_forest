@@ -1,0 +1,46 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<style>
+:root{--mint:#bfe8c9;--ink:#4a5a4f;--shadow:0 6px 18px rgba(90,120,100,.18)}
+body{margin:0;background:#e9efe9;font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--ink);display:flex;gap:28px;padding:24px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:10px}
+.lab{font-weight:800;font-size:18px}.sub{font-size:13px;opacity:.75;max-width:360px;text-align:center}
+.phone{width:375px;height:740px;border-radius:28px;overflow:hidden;position:relative;background:url(bg.jpg) center/cover;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.dim{position:absolute;inset:0;background:rgba(20,40,30,.55);display:grid;place-items:center}
+.card{width:min(440px,92%);background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(30,50,40,.4);padding:28px 22px 22px;text-align:center;box-sizing:border-box}
+.emo{font-size:40px}h2{margin:4px 0 12px;font-size:20px}
+p{font-size:14px;line-height:1.6;opacity:.85;margin:0 0 18px;white-space:pre-line;word-break:keep-all}
+.ok{border:none;border-radius:14px;padding:13px 26px;background:var(--mint);color:var(--ink);font-weight:700;font-size:15px;box-shadow:var(--shadow)}
+.alt{margin-left:8px;border:none;border-radius:14px;padding:13px 20px;background:#eef2ee;color:var(--ink);font-weight:700;font-size:15px}
+.noti{display:flex;gap:10px;align-items:flex-start;text-align:left;background:#f4f6f8;border-radius:16px;padding:10px 12px;margin:0 0 16px;box-shadow:inset 0 0 0 1px #e3e7ea}
+.noti .ic{width:28px;height:28px;border-radius:50%;background:#7bbf8a;display:grid;place-items:center;font-size:15px;flex:none}
+.noti b{font-size:13px;display:block}.noti span{font-size:12.5px;opacity:.8}.noti small{font-size:11px;opacity:.55;display:block;margin-bottom:2px}
+.sheetwrap{position:absolute;inset:0;background:rgba(20,40,30,.35)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fffaf2;border-radius:24px 24px 0 0;padding:14px 20px 26px;box-shadow:0 -10px 40px rgba(30,50,40,.3)}
+.grab{width:40px;height:5px;border-radius:3px;background:#ddd5c5;margin:0 auto 12px}
+.sheet h2{text-align:left;font-size:18px;margin:0 0 6px}.sheet p{text-align:left;margin:0 0 14px;font-size:13.5px}
+.rows{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.row{display:flex;gap:10px;align-items:center;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:var(--shadow);font-size:14px;font-weight:700}
+.row em{font-style:normal;font-size:20px}.row i{font-style:normal;font-weight:500;font-size:12px;opacity:.7;display:block}
+.btns{display:flex;gap:8px}.btns .ok{flex:1}.btns .alt{margin:0}
+</style></head><body>
+<div class="col"><div class="lab">A · 기존 안내 모달 그대로</div><div class="sub">새 UI 0 — showHintModal(ok/alt) 재사용. 구현 가장 가벼움</div>
+<div class="phone"><div class="dim"><div class="card"><div class="emo">🔔</div><h2>밭 소식, 알려 드릴까요?</h2>
+<p>밤손님이 올 것 같은 날,
+화덕·발효통이 다 된 날에만
+하루 한 번 살짝 알려 드려요.</p>
+<button class="ok">알려 주세요 🔔</button><button class="alt">괜찮아요</button></div></div></div></div>
+
+<div class="col"><div class="lab">B · 알림 미리보기 카드</div><div class="sub">실제 알림 모양을 보여 줘서 '뭐가 오는지' 바로 이해</div>
+<div class="phone"><div class="dim"><div class="card"><div class="emo">🔔</div><h2>밭 소식, 알려 드릴까요?</h2>
+<div class="noti"><div class="ic">🌳</div><div><small>calm forest · 오후 8:00</small><b>🦝 오늘 밤 손님이 올 것 같아요</b><span>자기 전에 밭을 한번 둘러봐 주세요.</span></div></div>
+<p>이렇게 하루 한 번만, 꼭 필요한 날에만 보내요.</p>
+<button class="ok">알려 주세요 🔔</button><button class="alt">괜찮아요</button></div></div></div></div>
+
+<div class="col"><div class="lab">C · 하단 시트 + 3종 목록</div><div class="sub">게임 화면을 덜 가리고, 어떤 알림인지 목록으로</div>
+<div class="phone"><div class="sheetwrap"><div class="sheet"><div class="grab"></div>
+<h2>🔔 밭 소식 받아 볼래요?</h2><p>하루 한 번, 꼭 필요한 날에만 보내요.</p>
+<div class="rows"><div class="row"><em>🦝</em><div>밤손님 예고<i>손님이 올 것 같은 저녁에</i></div></div>
+<div class="row"><em>🔥</em><div>가공 완료<i>화덕·발효통이 다 됐을 때</i></div></div>
+<div class="row"><em>🌱</em><div>밭 안부<i>며칠 못 들렀을 때</i></div></div></div>
+<div class="btns"><button class="ok">알려 주세요 🔔</button><button class="alt">나중에</button></div></div></div></div></div>
+</body></html>

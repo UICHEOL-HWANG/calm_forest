@@ -20,3 +20,13 @@ export function capPlugin(name, cap = globalThis.Capacitor) {
       : (options = {}) => cap.nativePromise(name, method, options),
   });
 }
+
+// 🔔 이벤트 리스너(푸시 registration·알림 탭 등) — 요청/응답이 아니라 nativePromise 로는 못 받는다.
+//    네이티브 브리지가 주는 Capacitor.addListener(플러그인, 이벤트, 콜백)를 쓴다. 못 걸면 undefined.
+export function capListen(name, event, cb, cap = globalThis.Capacitor) {
+  if (!cap) return undefined;
+  const hasHeader = !Array.isArray(cap.PluginHeaders) || cap.PluginHeaders.some(h => h.name === name);
+  if (typeof cap.addListener === 'function' && hasHeader) return cap.addListener(name, event, cb);   // 검증된 경로(브리지)
+  if (typeof cap.Plugins?.[name]?.addListener === 'function') return cap.Plugins[name].addListener(event, cb);
+  return undefined;
+}

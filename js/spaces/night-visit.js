@@ -15,6 +15,7 @@ import { DEX } from '../data/dex.js';
 import { initNoteQueue, noteArrived, showIfIdle, beforeDuel } from '../duel/note-queue.js';
 import { makeRaidScar } from '../duel/raid-art.js';
 import { truceUntil } from '../duel/truce.js';
+import { computeNightDefense } from '../duel/night-defense.js';
 import { ADV_CROPS } from '../farm-crops.js';
 import { t } from '../i18n.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
@@ -198,15 +199,6 @@ export function winDuel(animal, crops) {
     .replace('{0}', a.ico).replace('{1}', t(a.name)).replace('{2}', crops.length), 3600);
 }
 
-// 방어 판정 입력 — 심어둔 밭 9칸 안의 허수아비·울타리(4개 이상)만 인정
-export function computeNightDefense(cands) {
-  const near = (o, r) => cands.some(c => Math.hypot(o.x - c.p.x, o.z - c.p.z) < r);
-  return {
-    scarecrow: gameState.outdoor.some(o => o.id === 'scarecrow' && near(o, 9)),
-    fence: gameState.outdoor.filter(o => o.id === 'fence' && near(o, 9)).length >= 4,
-  };
-}
-
 // 접속 시 1회 — 밤이 지났으면 서버 판정을 받아 손실·흔적을 적용
 export async function resolveNightVisit() {
   const st = gameState.night;
@@ -223,7 +215,7 @@ export async function resolveNightVisit() {
     v = await nightFetcher({
       date: today, nights,
       plots: cands.map(c => ({ crop: c.p.cropType?.id || '' })),
-      defense: computeNightDefense(cands),
+      defense: computeNightDefense(cands.map(c => c.p), gameState.outdoor),   // 규칙은 js/duel/night-defense.js(푸시 cron 과 공유)
       truce: st.truce,                       // 🤝 대결에서 이긴 동물은 며칠 쉰다(상한은 서버가 잰다)
     });
   } catch (e) { console.warn('[밤손님] 판정 실패 — 다음 접속에 재시도', e?.message || e); }
