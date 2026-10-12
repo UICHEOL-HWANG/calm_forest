@@ -180,7 +180,15 @@
   .ext-sw:active { transform: scale(0.9); }
   .ext-sw.locked { display: flex; align-items: center; justify-content: center; font-size: 13px; opacity: .8; cursor: help; }
   #music-btn.off { opacity: .5; }
-  #village-public-btn.off { opacity: .5; }   /* 🏡 이웃 공개 꺼짐 — 🎵 배경음악 끔과 같은 표시 */
+  #village-public-btn.off { opacity: .5; }
+  #push-btn.off { opacity: .5; }   /* 🔔 밭 소식 알림 꺼짐 */
+  /* 🔔 알림 권한 안내 카드(시안 B) — 실제 알림 모양 미리보기 */
+  #hint-preview { display: flex; gap: 10px; align-items: flex-start; text-align: left; background: #f4f6f8; border-radius: 16px; padding: 10px 12px; margin: 0 0 16px; box-shadow: inset 0 0 0 1px #e3e7ea; }
+  #hint-preview[hidden] { display: none; }
+  #hint-preview .hp-ic { width: 28px; height: 28px; border-radius: 50%; background: #7bbf8a; display: grid; place-items: center; font-size: 15px; flex: none; }
+  #hint-preview small { font-size: 11px; opacity: .55; display: block; margin-bottom: 2px; }
+  #hint-preview b { font-size: 13px; display: block; }
+  #hint-preview span { font-size: 12.5px; opacity: .8; }   /* 🏡 이웃 공개 꺼짐 — 🎵 배경음악 끔과 같은 표시 */
   #photo-btn:active, #emote-btn:active, #menu-btn:active, #util-btns button:active { transform: scale(0.94); }
   /* 이모트 팝업 */
   #emote-pop { position: fixed; top: calc(62px + var(--top-inset)); left: 16px; display: none; gap: 6px; z-index: 12; }
@@ -2549,6 +2557,7 @@
     <div class="tut-card">
       <div class="tut-emoji" id="hint-emoji">🌿</div>
       <h2 id="hint-title"></h2>
+      <div id="hint-preview" hidden><div class="hp-ic">🌳</div><div><small>calm forest · 20:10</small><b id="hint-preview-title"></b><span id="hint-preview-body"></span></div></div>
       <p id="hint-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
       <button id="hint-ok">알겠어요 🌱</button>
       <button id="hint-alt" hidden></button>
@@ -2628,6 +2637,7 @@
       <h2 style="margin:0 0 12px;">⚙️ 설정</h2>
       <div id="settings-list">
         <button id="music-btn"><span class="uico">🎵</span><span class="ulbl">배경음악</span></button>
+        <button id="push-btn" style="display:none;"><span class="uico">🔔</span><span class="ulbl">밭 소식 알림</span></button>
         <button id="lang-btn"><span class="uico">🌐</span><span class="ulbl">언어</span></button>
         <button id="village-public-btn" style="display:none;"><span class="uico">🏡</span><span class="ulbl">이웃에게 내 마을 보여 주기</span></button>
         <button id="privacy-btn"><span class="uico">🔒</span><span class="ulbl">개인정보 처리방침</span></button>
@@ -2698,7 +2708,8 @@
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
-    import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';   // 📲 웹 → 앱 유도 배너(웹 전용)
+    import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
+    import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps } from './js/analytics.js';
     import { bootInstallReferrer, syncInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
@@ -3464,9 +3475,12 @@
         photoPulseT = setTimeout(() => b.classList.remove('pulse'), 2200);
       },
       // 시설 첫 접근 안내 카드 모달
-      showHintModal({ ico, title, body, ok, alt }) {
+      showHintModal({ ico, title, body, ok, alt, preview }) {
         $('hint-emoji').textContent = ico || '🌿';
         $('hint-title').textContent = title || '';
+        // 🔔 preview: 알림 미리보기 블록(푸시 안내 카드) — 다른 안내가 덮어쓸 땐 숨긴다
+        $('hint-preview').hidden = !preview;
+        if (preview) { $('hint-preview-title').textContent = preview.title || ''; $('hint-preview-body').textContent = preview.body || ''; }
         $('hint-body').textContent = body || '';
         // ok/alt: 선택형 안내(🌫️ 실패 후 연습 제안 등 — 주 버튼·보조 버튼). 닫기는 아래 hint-ok 리스너가 담당, 여기선 콜백만 갈아끼운다
         const okb = $('hint-ok'), altb = $('hint-alt');
@@ -4247,6 +4261,7 @@
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
       nudgeGuideOnce();   // 📖 졸업·중간 건너뛰기 직후 안내서 배너(1회)
       Input.orchardQuestAfterTutorial?.();   // 🌾→🍎 튜토리얼 중 첫 수확으로 미뤄 둔 과수원 가는 길 의뢰
+      offerPush();                           // 🔔 튜토리얼 중 수확했으면 졸업 뒤 알림 안내(안드로이드·1회)
     }
 
     // 좌측 상단 로그인 상태 표시(로그인 후)
@@ -4304,6 +4319,7 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
+      try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
       referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });
       // 📲 앱 유도 배너 — 웹·안드로이드/아이폰·스토어가 열린 OS 에서만(TUNING.appBanner.storeLive). 실패해도 게임 진행

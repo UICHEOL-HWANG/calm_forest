@@ -28,7 +28,7 @@ const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 
 // GoTrue 로 토큰을 검증한다 — photo.js 의 verifyUser 와 달리 익명(게스트)도 통과.
-async function verifyAnyUser(env, request) {
+export async function verifyAnyUser(env, request) {   // 🔔 push-register.js 도 쓴다
   const token = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) return null;
   try {

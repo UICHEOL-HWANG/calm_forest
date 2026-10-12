@@ -15,10 +15,12 @@
 
 import { blockedAnimals } from '../../js/duel/truce.js';
 
+import { judgeNight } from './_night-judge.js';
+
+// 판정 규칙(확률·방어·휴전·도난 개수)은 _night-judge.js 한 곳 — 🔔 푸시 cron 도 같은 함수로 "오늘 밤 오는 날"을 미리 안다
+export { pickAnimal } from './_night-judge.js';
+
 const MAX_PLOTS = 64;          // 비정상 입력 상한(연산 보호용)
-const BASE_CHANCE = 0.6;       // 방어 없을 때 습격 확률
-const SCARECROW_CUT = 0.25;    // 허수아비: 확률 -25%p, 도난 개수 -1
-const FENCE_CUT = 0.20;        // 울타리:   확률 -20%p, 도난 개수 -1
 
 // 동물별 수집품 — 조사 보상은 서버가 정해 내려보낸다.
 //   손실만 있으면 접속이 벌처럼 느껴지므로, 습격당한 날엔 반드시 수집품이 남는다.
@@ -26,30 +28,6 @@ const ANIMALS = {
   raccoon: { name: '너구리', loot: 'fur_tuft' },   // 털뭉치
   boar:    { name: '멧돼지', loot: 'acorn_drop' }, // 주운 도토리(물고 가다 흘림)
 };
-
-/**
- * 오늘 밤 올 동물을 고른다.
- * 🤝 휴전 중인 동물이 뽑히면 남은 쪽으로 넘기고, 둘 다 쉬면 아무도 안 온다.
- * (테스트: node --test tests/duel.test.mjs)
- */
-export function pickAnimal(roll, blocked = []) {
-  const first = roll < 0.5 ? 'raccoon' : 'boar';
-  const other = first === 'raccoon' ? 'boar' : 'raccoon';
-  if (!blocked.includes(first)) return first;
-  if (!blocked.includes(other)) return other;
-  return null;
-}
-
-// ── HMAC-SHA256(시크릿, uid:date) → 결정적 난수열(0~1) ──────────
-async function seededRolls(env, uid, date, n) {
-  const secret = env.NIGHT_SEED_SECRET;   // 🔒 공개 저장소에 박힌 기본값을 쓰면 판정을 미리 계산할 수 있다 — 없으면 호출부가 막는다
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${uid}:${date}`));
-  const bytes = new Uint8Array(sig);   // 32바이트면 판정에 충분
-  return Array.from(bytes.slice(0, n), b => b / 256);
-}
 
 export async function onRequestPost({ request, env }) {
   const headers = {
@@ -76,37 +54,18 @@ export async function onRequestPost({ request, env }) {
   if (!uid || nights < 1 || plots.length === 0) return none('no-night');
   if (!env.NIGHT_SEED_SECRET) return none('not-configured');   // 시크릿 없이 배포되면 밤손님만 쉰다(게임은 그대로)
 
-  const [rollVisit, rollAnimal, rollCount, ...rollPicks] = await seededRolls(env, uid, date, 8);
-
-  // 방어가 확률을 깎는다 — 둘 다 있으면 15%까지. "내일 뭘 해둘 이유"의 몸통.
-  let chance = BASE_CHANCE;
-  if (scarecrow) chance -= SCARECROW_CUT;
-  if (fence) chance -= FENCE_CUT;
-  if (rollVisit >= chance) {
-    // 방어 성공은 "아무 일 없음"과 구분해 내려준다 — 클라이언트가
-    // "허수아비가 밤새 밭을 지켰어요" 같은 피드백을 줄 수 있게.
-    return new Response(JSON.stringify({ visited: false, defended: scarecrow || fence }), { headers });
-  }
-
-  const animal = pickAnimal(rollAnimal, blocked);
-  if (!animal) {
+  // 🔒 공개 저장소에 박힌 기본값을 쓰면 판정을 미리 계산할 수 있다 — 시크릿은 env 에서만
+  const v = await judgeNight({ secret: env.NIGHT_SEED_SECRET, uid, date, plotCount: plots.length, scarecrow, fence, blocked });
+  if (v.truce) {
     // 두 동물 다 휴전 — 방어 성공과 구분해 내려준다(클라이언트가 "약속을 지켰어요" 라고 말할 수 있게)
     return new Response(JSON.stringify({ visited: false, reason: 'truce', truce: true }), { headers });
   }
-
-  // 도난 개수: 1~3 기본, 방어 하나당 -1 (최소 1) — 소중한 밭을 쓸어가지 않는 상한
-  let count = 1 + Math.floor(rollCount * 3);               // 1~3
-  count -= (scarecrow ? 1 : 0) + (fence ? 1 : 0);
-  count = Math.max(1, Math.min(count, plots.length));
-
-  // 어떤 밭이 털렸는지 — 결정적 난수로 인덱스 선택(중복 없이)
-  const idx = Array.from(plots.keys());
-  const stolenIdx = [];
-  for (let k = 0; k < count; k++) {
-    const r = rollPicks[k % rollPicks.length];
-    const pick = Math.floor(r * idx.length) % idx.length;
-    stolenIdx.push(idx.splice(pick, 1)[0]);
+  if (!v.visited) {
+    // 방어 성공은 "아무 일 없음"과 구분해 내려준다 — 클라이언트가
+    // "허수아비가 밤새 밭을 지켰어요" 같은 피드백을 줄 수 있게.
+    return new Response(JSON.stringify({ visited: false, defended: v.defended }), { headers });
   }
+  const { animal, stolenIdx } = v;
 
   return new Response(JSON.stringify({
     visited: true,
