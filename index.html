@@ -2689,7 +2689,7 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
+    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
@@ -2701,6 +2701,9 @@
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { trackLogin, trackEvent, setGaUser, onTrack } from './js/analytics.js';
+    import { e2Decision, e2HasInvite } from './js/exp-e2-boot.js';   // 🧪 E2 웹 로그인 화면 건너뛰기 — 배정(analytics 평가 때 이미 판정)
+    import { skipLoginNow, keepGuestSession } from './js/exp-e2.js';
+    import { armDeferredGuest, upgradeGuest } from './js/auth/deferred-guest.js';   // 🧪 E2 처치 — 익명 계정은 첫 입력 뒤에
     import { CONFIG, IS_DEV_SESSION } from './js/config.js';
     import { initControls } from './js/controls.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
@@ -4274,11 +4277,11 @@
     }
 
     let started = false;
-    async function enterPlay() {                     // 로그인 완료 → 실제 플레이
+    async function enterPlay(via) {                  // 로그인 완료 → 실제 플레이 (via: login 이벤트 수단을 직접 줄 때만 — 🧪 E2 'guest_deferred')
       if (started) return; started = true;
       $('login-screen').classList.remove('show');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
-      trackLogin(authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
+      trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
       // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
@@ -4321,6 +4324,19 @@
       setInterval(() => requestSave(), 30000);
       document.addEventListener('visibilitychange', () => { if (document.hidden) requestSave(); });
       window.addEventListener('beforeunload', () => { try { requestSave(); } catch (e) {} });
+    }
+
+    // 🧪 E2 처치(skip_login) — 로그인 화면 없이 오프라인 게스트 상태로 바로 입장하고,
+    //    사람의 첫 실제 입력(이동·탭) 뒤에야 익명 계정을 만든다(크롤러는 계정을 만들지 않는다).
+    //    로그인은 기존 저장 안내(login_nudge)·☰ 메뉴(나가기 → 로그인 화면)로만 닿는다. 새 문구 없음.
+    let deferredGuest = false;   // 계정이 생기기 전의 'local-…' 임시 id 를 GA4 user_id 로 보내지 않게(사람 단위 조인이 갈라진다)
+    async function startDeferredGuest() {
+      deferredGuest = true;
+      startLocalGuest();
+      //  입력 감지는 입장보다 먼저 건다 — enterPlay 가 던져도 계정은 만들어진다. enterGame 의 첫 loadGame 은
+      //  enterPlay 안에서 동기로 시작되므로(입력 이벤트보다 먼저) 오프라인 판정이 뒤바뀌지 않는다.
+      armDeferredGuest(window, () => upgradeGuest({ signInAsGuest, loadGame, track: trackEvent }));
+      await enterPlay('guest_deferred');
     }
 
     // 로그인 화면 버튼
@@ -6408,11 +6424,14 @@
       await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
       $('loading').style.display = 'none';
 
+      // 🧪 E2 — 배정은 로그인 화면 판단보다 먼저(js/analytics.js 평가 때 이미 판정·GA4 exp_entry). 여기선 결과만 쓴다.
+      const e2 = e2Decision();
+
       // ② 인증 — 세션 잡히면 즉시 플레이 진입(구글 리다이렉트 복귀 포함)
       let sessionExpiredSent = false;   // 🔌 만료는 세션당 한 번만 센다(emit 은 여러 번 온다)
       const res = await initAuth((s) => {
         showLoginStatus(s);
-        if (s.userId) setGaUser(s.userId);          // [④] GA4에 user_id 연결
+        if (s.userId && !(deferredGuest && !s.online)) setGaUser(s.userId);   // [④] GA4에 user_id 연결(🧪 E2 계정 생성 전 임시 id 제외)
         if (s.online && !started) enterPlay();
         // 🔌 세션이 죽었다 — 저장은 이미 잠겼다(supabase-client.js). 스스로 낫지 않으니
         //   재시도 19초를 기다리지 않고 바로 세운다. 안내는 멱등이지만 GA4 는 아니라 1회만 쏜다.
@@ -6420,7 +6439,7 @@
           if (!sessionExpiredSent) { sessionExpiredSent = true; trackEvent('session_expired', { provider: s.provider || 'unknown' }); }
           ui.setSaveStuck(true);
         }
-      });
+      }, { keepGuest: keepGuestSession(e2, { hasInvite: e2HasInvite() }) });   // 🧪 E2 처치 기기만 같은 기기의 게스트 세션을 이어 간다
       // 🚪 방금 '나가기'로 나왔으면 토스 자동 연결을 한 번 건너뛴다 — 안 그러면 곧장 다시 들어와 캐릭터 선택으로 돌아오는 루프(js/exit-flag.js)
       const justExited = consumeExit(sessionStorage);
       if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작(토스 재방문도 여기 — SDK 호출 없음)
@@ -6446,6 +6465,7 @@
         trackEvent('gc_connect', { mode: 'auto', result: r.ok ? 'ok' : 'fail', reason: r.ok ? undefined : r.reason });
         if (!r.ok) showLoginScreen(false, r.reason === 'endpoint_not_configured' ? 'gc_unconfigured' : 'gc_fail');
       }
+      else if (skipLoginNow({ decision: e2, offline: res.offline, justExited, hasInvite: e2HasInvite() })) startDeferredGuest();   // 🧪 E2 처치(웹 전용)
       else showLoginScreen(res.offline);             // 세션 없음 → 로그인 화면(씬 위에)
     })();
   </script>

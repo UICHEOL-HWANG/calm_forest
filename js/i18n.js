@@ -26,13 +26,16 @@ import { EN } from './i18n-en.js';
 
 // ── 분석용 영구 client_id — supabase-client.js 도 이걸 import ─
 //   ※ 인증이 아니라 순수 집계용 식별자. 권한 판단에 쓰면 안 됨.
+let cidCreated = false;   // 이번 로드에서 처음 만들었나(= 첫 방문 기기) — 🧪 E2 대상 판정(js/exp-e2-boot.js)
 export function clientId() {
   try {
     let id = localStorage.getItem('cf_client_id');
-    if (!id) { id = 'c-' + (crypto.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now().toString(36))); localStorage.setItem('cf_client_id', id); }
+    if (!id) { id = 'c-' + (crypto.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now().toString(36))); localStorage.setItem('cf_client_id', id); cidCreated = true; }
     return id;
   } catch (e) { return 'c-' + Math.random().toString(36).slice(2); } // localStorage 차단 시 세션 한정
 }
+//  누가 먼저 clientId() 를 불렀든(모듈 평가 순서와 무관) 답이 같다. 저장소가 막힌 기기는 false — 무리를 기억할 수 없다.
+export const clientIdIsNew = () => (clientId(), cidCreated);
 
 // ── A/B 변형 배정 — client_id 해시로 안정적 50:50(기기 단위) ──
 //   실험 off면 무조건 'control'. 켜지면 해시 하위비트로 A/B.

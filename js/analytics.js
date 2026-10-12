@@ -13,6 +13,8 @@ import { CONFIG, isGaConfigured, IS_DEV_SESSION } from './config.js';
 import { PLATFORM } from './platform.js';         // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
 import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
 import { renameReservedParams, overParamLimit } from './ga-params.js';  // source/medium 등 GA4 예약어 충돌 방지
+import { e2Decision } from './exp-e2-boot.js';   // 🧪 E2 배정 — 이 모듈 평가(로그인 판단보다 먼저)에서 처음 판정된다
+import { e2UserProps } from './exp-e2.js';
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -52,7 +54,8 @@ function applyAliasCampaign() {
   gtag('config', id);
   // 유저 단위 차원 — platform(앱인토스), 그리고 표시 언어·A/B 변형.
   //   한 번에 set 해야 뒤 호출이 앞 호출을 덮어쓰지 않는다(gtag user_properties 는 병합이 아니라 치환).
-  gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: assignVariant() });
+  //   🧪 exp_entry(E2 웹 로그인 화면 건너뛰기) — 등록된 웹 첫 방문 기기만. 이벤트 파라미터가 아니라 사용자 속성(25개 한도와 무관)
+  gtag('set', 'user_properties', { platform: PLATFORM, lang: LANG, ab_variant: assignVariant(), ...e2UserProps(e2Decision()) });
   console.log('[GA4] 로드됨:', id);
 })();
 
@@ -69,7 +72,7 @@ export function setGaUser(userId) {
 // [속성] A/B 변형이 로그인 후(명단 조회) 확정될 때 GA4 유저 속성 갱신
 export function setAbVariant(v) {
   if (isGaConfigured() && typeof window.gtag === 'function') {
-    window.gtag('set', 'user_properties', { ab_variant: v });
+    window.gtag('set', 'user_properties', { ab_variant: v, ...e2UserProps(e2Decision()) });   // 🧪 exp_entry 를 같이 실어 덮어써도 지워지지 않게
   }
 }
 
