@@ -90,7 +90,7 @@ export function seedCoinValue(sellPrice) {
 }
 
 // 첫 안내 — 다 자란 밭 머리 위 월드 말풍선의 이모지 하나(월드 말풍선은 이모지만 — 🔍 방문객과 같은 문법)
-export const E1_BUBBLE_EMOJI = '👆';
+export const E1_BUBBLE_EMOJI = '🌾';   // 2026-10-12 사용자 선택(👆·🌾·🥕 비교, emoji-compare.html)
 
 // GA4 페이로드에 exp_arm 을 덧붙인 새 객체. 획득 이벤트만, 25개 한도를 넘기면 붙이지 않는다(다른 값을 밀어내지 않게)
 export function withExpArm(name, payload, arm, limit = 25) {
