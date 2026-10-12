@@ -104,8 +104,10 @@ Supabase 쪽 별도 테이블(리더보드·star_runs·boat_runs·purchases·not
 - **anomaly_watch DAG 가동**: `infra/airflow/dags/anomaly_watch.py` + 테스트 6개 · VM `/opt/airflow/secrets/slack_kpi_bot`(600, 키체인에서 파이프) · 시험 실행 10/11 정상 · 코드 리뷰 반영(어제 데이터 없으면 실패·재시도, data_interval 기준 날짜, 공식 값=웹·토스 표기, 테스트 monkeypatch)
 - 범위 밖 발견: public main 에 유저 단위 CSV(`ml/reports/beta_h3_banner_eda_2026-09-16/*_rows.csv`, user_id·client_id 포함) → 별도 세션 task_3551a90b
 
+- 총 소득: T1 주 합계 탄력성 판정 불가(CI −8~+25) · **T2 판매 가중 평균 시세 1.13 지지 → 타이밍 보너스 +13%** · 기본가 변경 이력 0 → 바꾼다면 A/B·단계 인상으로 측정
+
 ### 다음
 1. 10/13 05:00 anomaly_watch 첫 실행 로그 확인 (`airflow tasks states-for-dag-run` 또는 웹 UI)
-2. 기본 판매가 → 총 소득 반응(기간 합계) — P1 후속
+2. (보류) 기본 판매가 실험 — 가격을 바꿀 계획이 생기면 A/B 사전등록
 3. 결정 대기: M5 Q6 · 코인 가드레일 · C6 결과를 E2 구현 세션에 전달할지
 4. E1·E2 배포 후 배정 속성 확인 → 매주 배정 비율·가드레일
