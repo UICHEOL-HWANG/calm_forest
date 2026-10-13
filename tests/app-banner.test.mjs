@@ -366,3 +366,13 @@ test('연결부 — 덮인 배너는 노출로 안 친다(elementFromPoint), 나
   assert.match(ui, /return shownOnTop\(\);/);
   assert.match(ui, /'boat-run', 'dream-cut'/);
 });
+
+test('라이브 설정 — 두 스토어 링크가 실제 앱을 가리킨다(2026-10-13 켬)', async () => {
+  const { TUNING } = await import('../js/tuning.js');
+  const cfg = { ...DEFAULT_APP_BANNER, ...TUNING.appBanner };
+  const touch = { jid: 'j1', ts: 1, utm: { source: 'meta', medium: 'paid_social', campaign: 'webapp_202610', content: 'hook_a' } };
+  assert.equal(osLive('android', cfg), true);
+  assert.equal(osLive('ios', cfg), true);
+  assert.match(storeUrl('android', cfg, touch), /^https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.cheorish\.lab\.calmforest&referrer=/);
+  assert.equal(storeUrl('ios', cfg, touch), 'https://apps.apple.com/app/id6821420691?pt=129595134&ct=web_banner_meta&mt=8');
+});

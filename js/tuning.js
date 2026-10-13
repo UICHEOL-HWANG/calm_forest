@@ -41,9 +41,9 @@ export const TUNING = {
   // 📲 웹 → 앱 유도 배너 — 기본값은 js/app-banner.js. 스토어 출시를 직접 확인한 OS 만 켠다(시트 3_변경로그에 기록).
   //   iOS 는 iosAppId(App Store Connect 숫자 ID)까지 있어야 켜진다.
   appBanner: {
-    storeLive: { android: false, ios: false },
-    iosAppId: '',
-    iosProviderToken: '',
+    storeLive: { android: true, ios: true },   // 2026-10-13 켬 — Play 프로덕션(10/12)·App Store 1.0.2(10/13) 공개 확인
+    iosAppId: '6821420691',                    // apps.apple.com/kr/app/id6821420691
+    iosProviderToken: '129595134',             // App Store Connect 캠페인 링크 pt
   },
 };
 
