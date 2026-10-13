@@ -36,7 +36,11 @@ export async function bootInstallReferrer({ plugin, storage, track, setUserProps
   if (!attr) return null;                                           // 일시 장애 — 저장 안 함 → 다음 실행에서 다시
   store(storage, attr);                                             // 이벤트보다 먼저 — 두 번 쏘지 않게
   setUserProps(installUserProps(attr));
-  track('install_attribution', { install_source: attr.source, install_medium: attr.medium, install_campaign: attr.campaign });
+  // 📲 배너 경유면 소재 팔·여정 ID 도 — 없을 땐 예전 세 값 그대로(GA4 파라미터 5개 이내)
+  const extra = {};
+  if (attr.content && attr.content !== '(none)') extra.install_content = attr.content;
+  if (attr.jid) extra.jid = attr.jid;
+  track('install_attribution', { install_source: attr.source, install_medium: attr.medium, install_campaign: attr.campaign, ...extra });
   console.log('[install-referrer] 귀속:', attr.source, attr.medium, attr.campaign);
   return attr;
 }
@@ -54,6 +58,7 @@ export async function syncInstallAttribution({ auth, storage, insert }) {
     const r = await insert({
       user_id: auth.userId, client_id: auth.clientId,
       source: attr.source, medium: attr.medium, campaign: attr.campaign, raw_referrer: attr.raw || '',
+      content: String(attr.content || '(none)').slice(0, 36), jid: String(attr.jid || '').slice(0, 32),
       click_ts: attr.clickTs || null, install_ts: attr.installTs || null, status: attr.status || 'ok',
     });
     if (!r?.ok) return;                                             // 실패 — 다음 상태 변경 때 다시

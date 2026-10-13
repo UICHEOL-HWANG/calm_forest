@@ -47,6 +47,18 @@ export function parseInstallReferrer(raw) {
 }
 
 /**
+ * 📲 웹 앱 유도 배너(js/app-banner.js playReferrer)가 붙이는 값 — 광고 소재 팔(utm_content)·웹 여정 ID(jid).
+ *   jid 로 웹의 app_banner_click 과 이 설치를 사람 단위로 잇는다. 채널(source)과 별개라 preexisting 이어도 남긴다.
+ */
+export function parseReferrerExtras(raw) {
+  const q = new URLSearchParams(decodeOnce(String(raw || '').trim()));
+  return {
+    content: clean(q.get('utm_content')) || NONE,
+    jid: String(q.get('jid') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 32),
+  };
+}
+
+/**
  * 네이티브 응답 → 저장할 귀속. null 이면 '아직 모른다'(일시 장애 — 다음 실행에서 다시 읽는다).
  *   status: ok | unsupported(FEATURE_NOT_SUPPORTED — Play 스토어 없는 기기, 확정) | unavailable | error
  */
@@ -57,9 +69,9 @@ export function attributionFromNative(res, now = Date.now()) {
     const parsed = parseInstallReferrer(raw);
     const noChannel = parsed.source === 'organic' || parsed.source === 'unknown';
     const preexisting = noChannel && firstInstallMs > 0 && now - firstInstallMs > PREEXISTING_AFTER_MS;
-    return { ...(preexisting ? { source: 'preexisting', medium: NONE, campaign: NONE } : parsed), raw, clickTs: Number(res.clickTs) || 0, installTs: Number(res.installTs) || 0, status: 'ok' };
+    return { ...(preexisting ? { source: 'preexisting', medium: NONE, campaign: NONE } : parsed), ...parseReferrerExtras(raw), raw, clickTs: Number(res.clickTs) || 0, installTs: Number(res.installTs) || 0, status: 'ok' };
   }
-  if (res?.status === 'unsupported') return { source: 'unknown', medium: NONE, campaign: NONE, raw: '', clickTs: 0, installTs: 0, status: 'unsupported' };
+  if (res?.status === 'unsupported') return { source: 'unknown', medium: NONE, campaign: NONE, content: NONE, jid: '', raw: '', clickTs: 0, installTs: 0, status: 'unsupported' };
   return null;
 }
 
