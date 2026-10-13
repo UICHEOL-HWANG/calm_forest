@@ -512,6 +512,8 @@ export function startLocalGuest() {
 
 // ── 로그아웃 ──
 export async function signOut() {
+  // 🛰️ 센서 로그에 마지막 전송·정리 기회(js/logger.js) — 토큰을 지우기 전에 알린다
+  try { if (logAuth.uid) window.dispatchEvent(new CustomEvent('cf:signout', { detail: { uid: logAuth.uid } })); } catch (e) { /* 무시 */ }
   if (supabase) { try { intentionalSignOut = true; await supabase.auth.signOut(); } catch (e) {} }
   state.online = false; state.userId = null; state.email = null; state.provider = null; setLogUser(null); logAuth = { uid: null, token: null, exp: 0 };
   markExit(globalThis.sessionStorage);   // 🚪 새로고침 직후 토스 자동 연결을 한 번 건너뛴다(js/exit-flag.js) — 안 하면 나가기가 다시 들어오는 루프

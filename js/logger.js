@@ -12,7 +12,7 @@
 
 import { CONFIG, IS_DEV_SESSION } from './config.js';
 import { postGameLogs, logRowContext, currentLogAuth } from './supabase-client.js';
-import { createOutbox, createShipper, flushDelay } from './log-shipper.js';
+import { createOutbox, createShipper, flushDelay, OUTBOX_KEY } from './log-shipper.js';
 import { pushSample } from './window-buffer.js';   // [🎯 이탈 예측] 트리거용 롤링 윈도
 
 const IMMEDIATE_ROWS = 200;    // 이만큼 쌓이면 주기를 기다리지 않고 보낸다(keepalive 64KB 안)
@@ -116,8 +116,18 @@ export function startLogging() {
   if (flushTimer || IS_DEV_SESSION) return;
   let storage = null;
   try { storage = window.localStorage; } catch (e) { /* 막힌 환경 */ }
-  outbox = createOutbox({ storage: storage || { getItem: () => null, setItem() {}, removeItem() {} } });
+  outbox = createOutbox({
+    storage: storage || { getItem: () => null, setItem() {}, removeItem() {} },
+    key: `${OUTBOX_KEY}:${logRowContext().session_id}`,   // 탭(세션)마다 따로
+  });
+  outbox.adoptOrphans();                    // 끝난 탭·지난 실행이 남긴 행을 데려온다
   shipper = createShipper({ outbox, post: postGameLogs, getAuth: authForShip });
+  // 로그아웃 직전(supabase-client 가 토큰을 지우기 전에 보냄) — 마지막으로 보내고 그 계정 흔적을 기기에서 지운다
+  window.addEventListener('cf:signout', async (e) => {
+    const uid = e.detail?.uid;
+    try { await shipper.flush({ keepalive: true }); } catch (err) { /* 남은 건 아래에서 지운다 */ }
+    outbox.forget(uid);
+  });
   scheduleNext();
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushOnExit(); });
   window.addEventListener('pagehide', flushOnExit);

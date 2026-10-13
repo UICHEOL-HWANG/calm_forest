@@ -17,14 +17,16 @@ export function flushDelay(i) {
   return [5000, 15000][i] ?? 30000;
 }
 
-export function createOutbox({ storage, now = () => Date.now(), max = 3000, persistEveryMs = 1500 }) {
+// key: 탭마다 따로(`cf_glog_q:<세션id>`) — 여러 탭이 한 키를 덮어써 서로의 미전송 행을 지우지 않게.
+//   끝난 탭·옛 키(`cf_glog_q`)에 남은 행은 adoptOrphans() 가 데려온다(살아 있는 탭 것이면 두 번 가도 DB 가 중복 무시).
+export function createOutbox({ storage, key = OUTBOX_KEY, now = () => Date.now(), max = 3000, persistEveryMs = 1500 }) {
   let rows = [];
   let tokens = {};               // uid → { t, exp }
   let lastPersist = -Infinity;
   let dirty = false;
 
   try {
-    const saved = JSON.parse(storage.getItem(OUTBOX_KEY) || 'null');
+    const saved = JSON.parse(storage.getItem(key) || 'null');
     if (saved && Array.isArray(saved.rows)) rows = saved.rows.slice(-max);
     if (saved && saved.tokens && typeof saved.tokens === 'object') tokens = saved.tokens;
   } catch (e) { /* 깨진 저장분 — 새로 시작 */ }
@@ -33,8 +35,8 @@ export function createOutbox({ storage, now = () => Date.now(), max = 3000, pers
     const live = Object.fromEntries(Object.entries(tokens).filter(([, v]) => v.exp > now()));
     tokens = live;
     try {
-      if (rows.length || Object.keys(tokens).length) storage.setItem(OUTBOX_KEY, JSON.stringify({ v: 1, rows, tokens }));
-      else storage.removeItem(OUTBOX_KEY);
+      if (rows.length || Object.keys(tokens).length) storage.setItem(key, JSON.stringify({ v: 1, rows, tokens }));
+      else storage.removeItem(key);
     } catch (e) { /* 저장 불가 — 메모리로만 */ }
     lastPersist = now();
     dirty = false;
@@ -63,6 +65,32 @@ export function createOutbox({ storage, now = () => Date.now(), max = 3000, pers
       persistNow();
     },
     size: () => rows.length,
+    // 로그아웃 — 공용 기기에 그 계정 행·토큰을 남기지 않는다
+    forget(uid) {
+      if (!uid) return;
+      rows = rows.filter(r => r.user_id !== uid);
+      const { [uid]: _gone, ...rest } = tokens;
+      tokens = rest;
+      persistNow();
+    },
+    adoptOrphans() {
+      let keys = [];
+      try {
+        for (let i = 0; i < (storage.length || 0); i += 1) {
+          const k = storage.key(i);
+          if (k && k !== key && (k === OUTBOX_KEY || k.startsWith(`${OUTBOX_KEY}:`))) keys.push(k);
+        }
+      } catch (e) { keys = []; }
+      for (const k of keys) {
+        try {
+          const saved = JSON.parse(storage.getItem(k) || 'null');
+          if (saved && Array.isArray(saved.rows)) rows = [...saved.rows, ...rows].slice(-max);
+          if (saved && saved.tokens && typeof saved.tokens === 'object') tokens = { ...saved.tokens, ...tokens };
+          storage.removeItem(k);
+        } catch (e) { /* 깨진 키 — 건너뛴다 */ }
+      }
+      if (keys.length) persistNow();
+    },
   };
 }
 

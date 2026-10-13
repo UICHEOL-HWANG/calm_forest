@@ -244,3 +244,54 @@ test('보낸 뒤에도 많이 남았으면 이어서 보낸다(밀린 행 빨리
   assert.equal(posts.length, 3);
   assert.equal(outbox.size(), 0);
 });
+
+// ── 여러 탭 · 로그아웃(2026-10-13) ──
+function keyedStorage(init = {}) {
+  const m = new Map(Object.entries(init));
+  return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k),
+    key: i => [...m.keys()][i] ?? null, get length() { return m.size; }, _m: m };
+}
+
+test('탭마다 자기 키에 저장한다 — 다른 탭의 미전송 행을 덮어쓰지 않는다', () => {
+  const storage = keyedStorage();
+  const a = createOutbox({ storage, key: `${OUTBOX_KEY}:tabA` });
+  const b = createOutbox({ storage, key: `${OUTBOX_KEY}:tabB` });
+  a.add(row({ client_row_id: 'a1' })); a.persistNow();
+  b.add(row({ client_row_id: 'b1' })); b.persistNow();
+  assert.ok(storage.getItem(`${OUTBOX_KEY}:tabA`).includes('a1'));
+  assert.ok(storage.getItem(`${OUTBOX_KEY}:tabB`).includes('b1'));
+});
+
+test('시작할 때 다른(끝난) 탭·옛 키에 남은 행을 데려와 보낸다', () => {
+  const storage = keyedStorage({
+    [OUTBOX_KEY]: JSON.stringify({ v: 1, rows: [row({ client_row_id: 'legacy' })], tokens: {} }),
+    [`${OUTBOX_KEY}:dead`]: JSON.stringify({ v: 1, rows: [row({ client_row_id: 'dead1' })], tokens: { [OLD]: { t: 'tok-old', exp: 1_000_000 + 3600_000 } } }),
+    unrelated: 'x',
+  });
+  const o = createOutbox({ storage, key: `${OUTBOX_KEY}:me`, now: () => 1_000_000 });
+  o.adoptOrphans();
+  assert.deepEqual(o.peek(10).map(r => r.client_row_id).sort(), ['dead1', 'legacy']);
+  assert.equal(o.tokenFor(OLD), 'tok-old');
+  assert.equal(storage.getItem(OUTBOX_KEY), null);
+  assert.equal(storage.getItem(`${OUTBOX_KEY}:dead`), null);
+  assert.equal(storage.getItem('unrelated'), 'x');
+});
+
+test('로그아웃하면 그 계정 행과 토큰을 기기에서 지운다(공용 기기)', () => {
+  const { outbox, storage } = rig();
+  outbox.setToken(ME, 'tok-me', 1_000_000 + 3600_000);
+  outbox.add(row({ user_id: ME }));
+  outbox.add(row({ user_id: OLD, client_row_id: 'keep' }));
+  outbox.forget(ME);
+  assert.deepEqual(outbox.peek(10).map(r => r.client_row_id), ['keep']);
+  assert.equal(outbox.tokenFor(ME), null);
+  assert.ok(!storage.getItem(OUTBOX_KEY).includes('tok-me'));
+});
+
+test('logger: 로그아웃 신호에 마지막으로 보내고 그 계정을 지운다 · 탭별 키', () => {
+  const s = src('logger.js');
+  assert.match(s, /cf:signout/);
+  assert.match(s, /forget\(/);
+  assert.match(s, /adoptOrphans\(\)/);
+  assert.match(src('supabase-client.js'), /new CustomEvent\('cf:signout'/);
+});
