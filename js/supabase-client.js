@@ -26,6 +26,7 @@ import { deleteOwnAccount } from './account/delete-account.js';   // 🗑️ 앱
 import { accountKind } from './auth/account-kind.js';
 import { resolveLoginVia, LOGIN_VIA_KEY } from './auth/login-via.js';   // 🔑 로그인 수단 ≠ 계정 종류(GA4 오염 방지)   // 🔵📱 토스·PGS 판정(합성 이메일 도메인 — user_metadata 는 유저가 바꿀 수 있다)
 import { devLog } from './devlog.js';
+import { setLogUser } from './client-errors-boot.js';   // 🧯 오류 로그에 uid 앞 8자를 싣는다
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -66,6 +67,7 @@ function applySession(session) {
   const isGc = kind === 'gc';
   state.online = true;
   state.userId = session.user.id;
+  setLogUser(state.userId);
   state.isGuest = isAnon(session);   // 게스트(익명) 여부 — 세그먼트 분석용
   //  🚪 정식 계정으로 바뀌면 "잃을 세이브가 없다"는 전제가 깨진다 — 빗장을 원래대로.
   //    (signInAsGuest 는 이 함수를 부른 뒤에 다시 true 로 세운다)
@@ -500,7 +502,7 @@ export function startLocalGuest() {
 // ── 로그아웃 ──
 export async function signOut() {
   if (supabase) { try { intentionalSignOut = true; await supabase.auth.signOut(); } catch (e) {} }
-  state.online = false; state.userId = null; state.email = null; state.provider = null;
+  state.online = false; state.userId = null; state.email = null; state.provider = null; setLogUser(null);
   markExit(globalThis.sessionStorage);   // 🚪 새로고침 직후 토스 자동 연결을 한 번 건너뛴다(js/exit-flag.js) — 안 하면 나가기가 다시 들어오는 루프
   location.reload();
 }

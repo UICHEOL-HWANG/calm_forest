@@ -89,6 +89,12 @@
     { "name": "NOTIFY", "destination_address": "cheorish.hw@gmail.com" }
   ],
 
+  // 🧯 /api/logs(무인증 오류 로그) IP 당 요청 상한 — 누가 두드려도 게임 API 와 공유하는 무료 요청 한도·DB 하루 상한을 못 태우게.
+  //    기기는 정상일 때 30초에 한 번 이하로 보낸다. 넘치면 429 → 기기는 지우지 않고 나중에 다시.
+  "ratelimits": [
+    { "name": "LOGS_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }
+  ],
+
   "kv_namespaces": [
     { "binding": "CARDNEWS", "id": "478a47e93de9400d8413c6a9104a8e44" }
   ],
