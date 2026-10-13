@@ -75,8 +75,9 @@ export function storeUrl(os, cfg, touch) {
   if (os === 'android') {
     return `https://play.google.com/store/apps/details?id=${encodeURIComponent(cfg.androidPackage)}&referrer=${playReferrer(touch)}`;
   }
-  // ct 는 합계 집계용(App Store Connect) — 개인 ID 를 넣지 않는다, 최대 40자
-  const ct = ('web_banner_' + (touch?.utm?.source || 'web')).replace(/[^\w-]/g, '_').slice(0, 40);
+  // ct 는 합계 집계용(App Store Connect) — 개인 ID 는 넣지 않고 유입·소재 팔(utm_content)까지만, 최대 40자
+  const arm = touch?.utm?.content ? '_' + touch.utm.content : '';
+  const ct = ('web_banner_' + (touch?.utm?.source || 'web') + arm).replace(/[^\w-]/g, '_').slice(0, 40);
   const pt = cfg.iosProviderToken ? `pt=${encodeURIComponent(cfg.iosProviderToken)}&` : '';
   return `https://apps.apple.com/app/id${encodeURIComponent(cfg.iosAppId)}?${pt}ct=${ct}&mt=8`;
 }

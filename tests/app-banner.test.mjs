@@ -374,5 +374,11 @@ test('라이브 설정 — 두 스토어 링크가 실제 앱을 가리킨다(20
   assert.equal(osLive('android', cfg), true);
   assert.equal(osLive('ios', cfg), true);
   assert.match(storeUrl('android', cfg, touch), /^https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.cheorish\.lab\.calmforest&referrer=/);
-  assert.equal(storeUrl('ios', cfg, touch), 'https://apps.apple.com/app/id6821420691?pt=129595134&ct=web_banner_meta&mt=8');
+  assert.equal(storeUrl('ios', cfg, touch), 'https://apps.apple.com/app/id6821420691?pt=129595134&ct=web_banner_meta_hook_a&mt=8', 'ct 에 소재 팔까지(개인 ID 없음)');
+});
+
+test('연결부 — 옛 TWA 설치본(android-app:// referrer) 안에서는 배너를 끈다', () => {
+  const ui = readFileSync(new URL('../js/app-banner-ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /startsWith\('android-app:\/\/'\)/);
+  assert.match(ui, /platform: inTwa \? 'twa' : platform/);
 });

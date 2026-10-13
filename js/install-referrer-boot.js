@@ -58,7 +58,7 @@ export async function syncInstallAttribution({ auth, storage, insert }) {
     const r = await insert({
       user_id: auth.userId, client_id: auth.clientId,
       source: attr.source, medium: attr.medium, campaign: attr.campaign, raw_referrer: attr.raw || '',
-      content: attr.content || '(none)', jid: attr.jid || '',
+      content: String(attr.content || '(none)').slice(0, 36), jid: String(attr.jid || '').slice(0, 32),
       click_ts: attr.clickTs || null, install_ts: attr.installTs || null, status: attr.status || 'ok',
     });
     if (!r?.ok) return;                                             // 실패 — 다음 상태 변경 때 다시
