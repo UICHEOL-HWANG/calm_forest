@@ -59,8 +59,18 @@ function isAnon(session) {
     || session?.user?.app_metadata?.provider === 'anonymous';
 }
 
+// 🛰️ 센서 로그 전송용 현재 계정 토큰(js/log-shipper.js) — 나갈 때 keepalive 전송은 동기적으로 토큰이 필요하다.
+//   supabase-js 는 keepalive 를 못 줘서 PostgREST 를 직접 부른다. 토큰은 supabase-js 도 localStorage 에 두는 값이다.
+let logAuth = { uid: null, token: null, exp: 0 };
+function noteLogAuth(session) {
+  if (!session?.access_token || !session.user?.id) return;
+  logAuth = { uid: session.user.id, token: session.access_token, exp: (session.expires_at || 0) * 1000 };
+}
+export function currentLogAuth() { return logAuth; }
+
 // 세션 객체 → state 반영 (🔵 토스·📱 플레이 게임즈 유저는 Worker 가 만든 합성 이메일 도메인으로 식별 — 영구 계정 취급)
 function applySession(session) {
+  noteLogAuth(session);
   const kind = accountKind(session.user);
   const isToss = kind === 'toss';
   const isPgs = kind === 'pgs';
@@ -169,6 +179,7 @@ export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
     //   ※ 익명(게스트) 세션은 여기서 자동 적용하지 않음 → 게스트는 휘발성.
     //     게스트 로그인은 signInAsGuest 가 직접 applySession 으로 처리.
     supabase.auth.onAuthStateChange((event, session) => {
+      noteLogAuth(session);   // 🛰️ TOKEN_REFRESHED 포함(게스트 세션도) — auth 를 다시 부르지 않는 순수 기록
       if (session && !isAnon(session)) { applySession(session); return; }
       // 🔌 놀던 중 세션이 죽었다 — 여기서 안 잡으면 state.online 이 true 로 남아
       //   저장이 끝까지 조용히 실패한다(saveGame 은 던지지 않는다). 판정은 save-guard.js.
@@ -502,7 +513,7 @@ export function startLocalGuest() {
 // ── 로그아웃 ──
 export async function signOut() {
   if (supabase) { try { intentionalSignOut = true; await supabase.auth.signOut(); } catch (e) {} }
-  state.online = false; state.userId = null; state.email = null; state.provider = null; setLogUser(null);
+  state.online = false; state.userId = null; state.email = null; state.provider = null; setLogUser(null); logAuth = { uid: null, token: null, exp: 0 };
   markExit(globalThis.sessionStorage);   // 🚪 새로고침 직후 토스 자동 연결을 한 번 건너뛴다(js/exit-flag.js) — 안 하면 나가기가 다시 들어오는 루프
   location.reload();
 }
@@ -620,18 +631,42 @@ export async function submitFeedback({ category, message, meta }) {
   }
 }
 
-export async function sendLogBatch(rows) {
-  if (!rows || rows.length === 0) return;
-  const enriched = rows.map(r => ({
-    user_id: state.userId, session_id: state.sessionId,
-    client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, // [분석] 기기/게스트/실험/플랫폼 세그먼트
-    ...r,
-  }));
-  if (!state.online || !supabase) { devLog(`[Supabase 폴백] 로그 배치 ${enriched.length}건 (오프라인)`); return; }
+// 센서 로그 행에 찍는 순간의 맥락을 붙인다 — 크래시 뒤 다음 실행에서 보내도 원래 세션·계정으로 남게
+export function logRowContext() {
+  return { user_id: state.online ? state.userId : null, session_id: state.sessionId, client_id: state.clientId,
+    is_guest: state.isGuest, variant: state.variant, platform: PLATFORM };   // [분석] 기기/게스트/실험/플랫폼 세그먼트
+}
+
+// 🛰️ game_logs 직접 POST — on_conflict=client_row_id + ignore-duplicates(재전송 중복은 DB 가 무시), keepalive(나갈 때)
+//   → true(받음) | false(다음에 다시: 429·5xx·네트워크·시간 초과) | 'drop'(400·403·409·422 — 영영 못 들어감)
+//     | 'unauth'(401 — 토큰 거절)
+//   keepalive 가 아니면 15초 시간 제한 — 멈춘 요청이 전송기의 '보내는 중' 상태를 붙잡지 않게
+const LOG_DROP_STATUS = new Set([400, 403, 409, 422]);
+export async function postGameLogs(rows, { token, keepalive = false } = {}) {
+  if (!rows?.length || !token) return false;
   try {
-    const { error } = await supabase.from(CONFIG.LOG_TABLE).insert(enriched);
-    if (error) throw error;
-  } catch (err) { console.warn('[Supabase 폴백] 로그 전송 실패:', err?.message || err); }
+    const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${CONFIG.LOG_TABLE}?on_conflict=client_row_id`, {
+      method: 'POST',
+      headers: {
+        apikey: CONFIG.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=ignore-duplicates,return=minimal',
+      },
+      body: JSON.stringify(rows),
+      keepalive,
+      signal: !keepalive && typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+    });
+    if (res.ok) return true;
+    if (res.status === 401) return 'unauth';
+    if (LOG_DROP_STATUS.has(res.status)) {
+      console.warn('[Supabase] 센서 로그 거절 — 버립니다:', res.status);
+      return 'drop';
+    }
+    return false;
+  } catch (err) {
+    return false;
+  }
 }
 
 // ── [계측] 경제 원장 배치 전송(econ_logs) — 코인 증감 {source,item,amount,balance} ──
