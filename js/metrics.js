@@ -5,7 +5,8 @@
 //    - 5초 배치로 Supabase econ_logs 전송 + GA4 econ_tx 이벤트
 //    - 잔액(balance)까지 남겨 시점별 경제 상태 복원 가능(ML 피처)
 //  ▶ [세션 요약] 모든 GA4 이벤트 발생 횟수를 onTrack 훅으로 집계,
-//    60초 주기 + 탭 숨김/종료 시 session_logs 1행 upsert
+//    시작 즉시 1회 + 60초 주기 + 탭 숨김/종료 시 session_logs 1행 upsert
+//    (시작 즉시: 들어오자마자 강제 종료한 유저도 세션 행이 남게 — 2026-10-13 전엔 60초 뒤가 첫 행이었다)
 //    (좌표 로그 풀스캔 없이 세션 단위 피처를 바로 쓰기 위함)
 //  ▶ 오프라인이면 supabase-client 가 콘솔 폴백 — 게임 진행 영향 없음
 // =============================================================
@@ -97,10 +98,20 @@ function flushSummary(final = false) {
 export function startMetrics(getSnapshot) {
   if (snapshotFn) return;                     // 중복 시작 방지
   snapshotFn = getSnapshot;
+  setTimeout(() => flushSummary(false), 0);                 // 시작 즉시 1회(게임 상태가 다 붙은 다음 틱)
   sumTimer = setInterval(() => flushSummary(false), 60000);  // 60초 주기 upsert
+  // 나갈 때 신호가 hidden·pagehide·beforeunload 로 겹쳐 온다 — 1초 안의 중복 upsert 는 건너뛴다
+  let lastExitFlush = 0;
+  const exitFlush = () => {
+    const t = Date.now();
+    if (t - lastExitFlush < 1000) return;
+    lastExitFlush = t;
+    flushSummary(true);
+  };
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushSummary(true);
+    if (document.visibilityState === 'hidden') exitFlush();
     else summarySent = false;                 // 복귀하면 다음 이탈 때 다시 요약 발사
   });
-  window.addEventListener('beforeunload', () => flushSummary(true));
+  window.addEventListener('beforeunload', exitFlush);
+  window.addEventListener('pagehide', exitFlush);   // 모바일은 beforeunload 가 거의 안 온다
 }
