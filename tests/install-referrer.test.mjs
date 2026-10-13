@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseInstallReferrer, attributionFromNative, installUserProps, parseStoredAttribution,
-  INSTALL_STORE_KEY,
+  parseReferrerExtras, INSTALL_STORE_KEY,
 } from '../js/install-referrer.js';
 import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from '../js/install-referrer-boot.js';
 
@@ -179,4 +179,60 @@ test('오프라인·귀속 없음·실패면 synced 에 남기지 않는다(다�
   await syncInstallAttribution({ auth: { online: true, userId: 'u', clientId: 'c' }, storage, insert });    // 실패
   assert.equal(n, 1);
   assert.equal(JSON.parse(storage.getItem(INSTALL_STORE_KEY)).synced, undefined);
+});
+
+// ── 📲 웹 앱 유도 배너 연결(2026-10-13) — utm_content(광고 소재 팔)·jid(웹 여정 ID) ──
+//   웹 배너 링크: referrer=utm_source=meta&utm_medium=web_banner&utm_campaign=…&utm_content=hook_a&jid=<12자>
+//   (js/app-banner.js playReferrer — 값마다 인코딩된 뒤 전체가 한 번 더 인코딩된다)
+const BANNER_REF = 'utm_source%3Dmeta%26utm_medium%3Dweb_banner%26utm_campaign%3Dwebapp_202610%26utm_content%3Dhook_a%26jid%3D3f9a0c1e2b7d';
+
+test('배너 referrer — utm_content·jid 를 읽는다(기존 세 값 파싱은 그대로)', () => {
+  assert.deepEqual(parseInstallReferrer(BANNER_REF), { source: 'meta', medium: 'web_banner', campaign: 'webapp_202610' });
+  assert.deepEqual(parseReferrerExtras(BANNER_REF), { content: 'hook_a', jid: '3f9a0c1e2b7d' });
+});
+
+test('extras — 없으면 content (none)·jid 빈 값, jid 는 영숫자 32자까지만', () => {
+  assert.deepEqual(parseReferrerExtras(''), { content: '(none)', jid: '' });
+  assert.deepEqual(parseReferrerExtras('utm_source=instagram'), { content: '(none)', jid: '' });
+  assert.equal(parseReferrerExtras('utm_source=x&jid=ab-c"d<' + 'e'.repeat(60)).jid.length <= 32, true);
+  assert.match(parseReferrerExtras('utm_source=x&jid=ab-c"d<e').jid, /^[a-z0-9]*$/);
+});
+
+test('귀속 결과에 content·jid 가 실린다 — preexisting 이어도 남긴다(여정 연결은 채널과 별개)', () => {
+  const a = attributionFromNative({ status: 'ok', referrer: BANNER_REF, clickTs: 1, installTs: 2, firstInstallMs: 0 });
+  assert.equal(a.source, 'meta'); assert.equal(a.medium, 'web_banner');
+  assert.equal(a.content, 'hook_a'); assert.equal(a.jid, '3f9a0c1e2b7d');
+  const old = attributionFromNative({ status: 'ok', referrer: '', firstInstallMs: 1, installTs: 1 }, 10 * 86400000);
+  assert.equal(old.source, 'preexisting'); assert.equal(old.content, '(none)'); assert.equal(old.jid, '');
+});
+
+test('GA4 install_attribution — content·jid 는 있을 때만 실어 파라미터 5개 이내', async () => {
+  const storage = memStorage(); const events = [];
+  await bootInstallReferrer({ plugin: { get: async () => ({ status: 'ok', referrer: BANNER_REF }) }, storage, track: (n, p) => events.push([n, p]), setUserProps: () => {} });
+  const p = events[0][1];
+  assert.deepEqual(p, { install_source: 'meta', install_medium: 'web_banner', install_campaign: 'webapp_202610', install_content: 'hook_a', jid: '3f9a0c1e2b7d' });
+  assert.ok(Object.keys(p).length <= 5);
+  const s2 = memStorage(); const ev2 = [];
+  await bootInstallReferrer({ plugin: { get: async () => ({ status: 'ok', referrer: 'utm_source%3Dinstagram' }) }, storage: s2, track: (n, q) => ev2.push(q), setUserProps: () => {} });
+  assert.deepEqual(ev2[0], { install_source: 'instagram', install_medium: '(none)', install_campaign: '(none)' }, '배너가 아닌 링크는 예전과 같다');
+});
+
+test('Supabase 행에 content·jid — 옛 앱이 저장한 귀속(필드 없음)은 기본값', async () => {
+  const rows = []; const insert = async (r) => { rows.push(r); return { ok: true }; };
+  const s1 = memStorage({ [INSTALL_STORE_KEY]: JSON.stringify({ source: 'meta', medium: 'web_banner', campaign: 'c', content: 'hook_b', jid: 'abc123' }) });
+  await syncInstallAttribution({ auth: { online: true, userId: 'u1', clientId: 'c1' }, storage: s1, insert });
+  assert.equal(rows[0].content, 'hook_b'); assert.equal(rows[0].jid, 'abc123');
+  const s2 = memStorage({ [INSTALL_STORE_KEY]: JSON.stringify({ source: 'kakao', medium: '(none)', campaign: '(none)' }) });
+  await syncInstallAttribution({ auth: { online: true, userId: 'u2', clientId: 'c2' }, storage: s2, insert });
+  assert.equal(rows[1].content, '(none)'); assert.equal(rows[1].jid, '');
+});
+
+test('왕복 — 웹 배너가 만든 Play 링크를 앱이 그대로 읽는다(Play 는 referrer= 값을 한 번 풀어 넘긴다)', async () => {
+  const { storeUrl, DEFAULT_APP_BANNER } = await import('../js/app-banner.js');
+  const cfg = { ...DEFAULT_APP_BANNER, storeLive: { android: true, ios: false } };
+  const touch = { jid: '3f9a0c1e2b7d', ts: 1, utm: { source: 'meta', medium: 'paid_social', campaign: 'webapp_202610', content: 'hook_b' } };
+  const url = storeUrl('android', cfg, touch);
+  const delivered = new URL(url).searchParams.get('referrer');   // Play 가 앱에 주는 원문
+  const a = attributionFromNative({ status: 'ok', referrer: delivered, firstInstallMs: 0 });
+  assert.deepEqual([a.source, a.medium, a.campaign, a.content, a.jid], ['meta', 'web_banner', 'webapp_202610', 'hook_b', '3f9a0c1e2b7d']);
 });

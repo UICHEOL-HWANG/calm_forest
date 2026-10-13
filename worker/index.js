@@ -26,6 +26,7 @@ import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { onRequestPost as pushRegister } from '../functions/api/push-register.js';
+import { onRequestPost as clientLogs } from '../functions/api/logs.js';   // 🧯 클라이언트 오류 로그
 import { onRequestPost as referral } from '../functions/api/referral.js';
 import { onRequest as auraOrder } from '../functions/api/aura-order.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
@@ -127,6 +128,11 @@ export default {
 
 // ── /api/* 라우팅 — 매칭되는 경로가 없으면 null(정적 자산으로 넘어감) ──
 async function routeApi(pathname, { request, env, ctx }) {
+  if (pathname === '/api/logs') {   // 🧯 클라이언트 오류 로그(dev/active/client-logs)
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await clientLogs({ request, env });
+  }
+
   if (pathname === '/api/cafe-guests') {
     if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
     // ctx 를 구조분해하면 this 바인딩이 끊겨 "Illegal invocation" 이 납니다 → bind 로 넘김

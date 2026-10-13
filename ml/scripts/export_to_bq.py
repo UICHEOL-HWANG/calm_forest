@@ -46,6 +46,7 @@ LOGS_SCHEMA = [
     bigquery.SchemaField("char_z", "FLOAT"),
     bigquery.SchemaField("cam_yaw", "FLOAT"),
     bigquery.SchemaField("cam_pitch", "FLOAT"),
+    bigquery.SchemaField("client_row_id", "STRING"),   # 기기가 만든 행 id(재전송 중복 제거용, 2026-10-13 추가)
     bigquery.SchemaField("created_at", "TIMESTAMP"),
 ]
 SAVES_SCHEMA = [

@@ -7,6 +7,7 @@
 // =============================================================
 
 import { isDevSession } from './first-loop.js';
+import { devLog } from './devlog.js';
 
 // 🔵 API 오리진 — 웹은 같은 오리진이라 빈 값, 앱인토스 번들은 토스가 서빙해
 //    상대경로가 전부 404 가 된다. scripts/build-ait.mjs 가 빌드 때 이 한 줄을
@@ -37,7 +38,7 @@ export const CONFIG = {
 
   // ── 센서/행동 데이터 로깅 설정 ───────────────────────────────
   //    마우스 좌표·캐릭터 위치·카메라 각도를 배치로 Supabase 전송
-  LOG_FLUSH_INTERVAL_MS: 1500,  // 배치 전송 주기(1~2초)
+  // LOG_FLUSH_INTERVAL_MS(1.5초) 는 없앴다 — 전송 주기는 js/log-shipper.js flushDelay(5s→15s→30s)
   LOG_SAMPLE_THROTTLE_MS: 200,  // 센서 샘플 수집 throttle 간격
   LOG_TABLE: 'game_logs',       // Supabase 로그 테이블 이름
 
@@ -136,4 +137,4 @@ export function isGaConfigured() {
 // 🧪 개발용 URL 파라미터(?house= ?coop= ?weather= ?spawn=)로 들어온 세션 —
 //    원장·세션 요약·센서 로그·GA4 를 모두 끈다(2026-08-31 자동 테스트가 원장 수입의 85%를 오염시킨 사고 재발 방지)
 export const IS_DEV_SESSION = isDevSession(typeof location !== 'undefined' ? location.search : '');
-if (IS_DEV_SESSION) console.log('[dev] 개발 파라미터 세션 — 원장/세션/센서/GA4 기록을 남기지 않습니다');
+if (IS_DEV_SESSION) devLog('[dev] 개발 파라미터 세션 — 원장/세션/센서/GA4 기록을 남기지 않습니다');

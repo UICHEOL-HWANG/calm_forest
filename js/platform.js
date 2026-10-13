@@ -25,6 +25,8 @@
 //      POST /api-partner/v1/apps-in-toss/users/anon-key/verify (헤더 x-anon-key)
 // =============================================================
 
+import { devLog } from './devlog.js';
+
 const _pq = new URLSearchParams(location.search);
 
 function detect() {
@@ -45,7 +47,7 @@ export const IS_ITCH = PLATFORM === 'itch';
 export const IS_ANDROID = PLATFORM === 'android';   // 구글 플레이 앱 — Play Games·Photo 플러그인은 여기만
 export const IS_IOS = PLATFORM === 'ios';           // App Store 앱 — Apple 로그인(apple-native.js)
 export const IS_NATIVE = IS_ANDROID || IS_IOS;      // 📱 스토어 앱 공통 — 구글 네이티브 로그인·외부 결제 숨김·이메일 로그인 없음
-console.log('[platform]', PLATFORM);
+devLog('[platform]', PLATFORM);
 
 // ── 앱인토스 웹뷰 SDK 지연 로더 — esm.sh CDN(ESM·CORS 허용, 무번들 검증 완료) ──
 //    버전 고정(@3.0.2): 심사본 재현성. 토스 웹뷰 밖에서도 import 는 되지만
