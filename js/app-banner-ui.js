@@ -58,10 +58,8 @@ export function mountAppBanner({ config, platform, t, track, onTrack, isGuest, c
     return !!top && el.contains(top);
   };
 
-  // 옛 TWA 빌드(Capacitor 전 Play 설치본)는 PLATFORM 이 'web' 으로 잡히지만 이미 설치된 앱이다
-  const inTwa = (document.referrer || '').startsWith('android-app://');
   const banner = createAppBanner({
-    config, platform: inTwa ? 'twa' : platform,
+    config, platform,
     ua: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints || 0,
     storage, now: () => Date.now(), today: localDay,
     isGuest, clientId, holdout: isHoldout, suppressed,
