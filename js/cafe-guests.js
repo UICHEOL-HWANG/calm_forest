@@ -14,6 +14,7 @@ import { CONFIG } from './config.js';
 import { LANG, aiBucket } from './i18n.js';
 import { setCafeGuestSource } from './game.js';
 import { sendCafeGuests } from './supabase-client.js';
+import { devLog } from './devlog.js';
 
 const TIMEOUT_MS = 15000;  // 이 안에 안 오면 포기하고 기본 손님으로(입장 흐름을 막지 않음)
 //  ⏱️ 6초였을 땐 그날 첫 입장이 100% 실패했다 — 엣지 캐시가 비면 서버가 Gemini 생성을
@@ -72,7 +73,7 @@ export function initCafeGuests() {
         + `서버 명단이 게임과 어긋났는지 보세요. 받은 id: ${raw.map(g => g?.id).join(', ')}`);
     }
     if (guests.length) {
-      console.log(`[cafe] 오늘의 손님 ${guests.length}명을 새로 받아왔어요`);
+      devLog(`[cafe] 오늘의 손님 ${guests.length}명을 새로 받아왔어요`);
       // 📊 그날의 생성 콘텐츠 아카이브 — (날짜, 날씨, 인원)당 1행이라 먼저 온 사람만 실제로 기록되고
       //    나머지는 unique 제약에 걸려 무시된다. await 하지 않는다: 저장이 늦거나 실패해도
       //    카페 입장이 밀리면 안 되기 때문(함수 안에서 예외를 전부 삼킨다).

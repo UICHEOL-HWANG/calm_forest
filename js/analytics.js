@@ -19,6 +19,7 @@ import { installUserProps } from './install-referrer.js';            // 📲 안
 import { cachedInstallAttribution } from './install-referrer-boot.js';
 import { readSurvey, surveyUserProps } from './install-survey.js';           // 🧭 첫 실행 설문 → heard_from
 import { withExpArm } from './exp-e1.js';   // 🧪 E1 — 획득 이벤트에 exp_arm
+import { devLog } from './devlog.js';
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -52,7 +53,7 @@ function applyAliasCampaign() {
   const alias = q.get('ref') || q.get('from');
   if (!alias) return;
   gtag('set', 'campaign', { source: String(alias).slice(0, 100), medium: 'referral' });
-  console.log('[GA4] 유입 별칭 → 캠페인 주입:', alias);
+  devLog('[GA4] 유입 별칭 → 캠페인 주입:', alias);
 }
 
 // ── GA4 자동 로딩 ────────────────────────────────────────────
@@ -64,7 +65,7 @@ function applyAliasCampaign() {
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
   gtag('js', new Date());
-  if (!isGaConfigured()) { console.log('[GA4] 미설정 — 콘솔 폴백 모드'); return; }
+  if (!isGaConfigured()) { devLog('[GA4] 미설정 — 콘솔 폴백 모드'); return; }
   const id = CONFIG.GA4_MEASUREMENT_ID;
   const s = document.createElement('script');
   s.async = true;
@@ -77,7 +78,7 @@ function applyAliasCampaign() {
   //   🧪 exp_entry(E2 웹 로그인 화면 건너뛰기) — 등록된 웹 첫 방문 기기만. 이벤트 파라미터가 아니라 사용자 속성(25개 한도와 무관)
   abVariant = assignVariant();
   gtag('set', 'user_properties', allUserProps());
-  console.log('[GA4] 로드됨:', id);
+  devLog('[GA4] 로드됨:', id);
 })();
 
 // [④ user_id 연결] 로그인한 Supabase user_id를 GA4에 심어 GA4↔Supabase 유저 조인 가능
@@ -86,7 +87,7 @@ export function setGaUser(userId) {
   if (isGaConfigured() && typeof window.gtag === 'function') {
     window.gtag('set', { user_id: String(userId) });
   } else {
-    console.log('[GA4 폴백] user_id set:', userId);
+    devLog('[GA4 폴백] user_id set:', userId);
   }
 }
 
@@ -104,7 +105,7 @@ export function setInstallUserProps(props) {
   if (isGaConfigured() && typeof window.gtag === 'function') {
     window.gtag('set', 'user_properties', allUserProps(props));
   } else {
-    console.log('[GA4 폴백] install user_properties:', props);
+    devLog('[GA4 폴백] install user_properties:', props);
   }
 }
 
@@ -116,7 +117,7 @@ export function setSurveyUserProps() {
   if (isGaConfigured() && typeof window.gtag === 'function') {
     window.gtag('set', 'user_properties', allUserProps());
   } else {
-    console.log('[GA4 폴백] survey user_properties:', props);
+    devLog('[GA4 폴백] survey user_properties:', props);
   }
 }
 
@@ -148,7 +149,7 @@ export function trackEvent(name, params = {}) {
     if (over) window.gtag('event', 'ga_param_overflow', { ev: name, n: over, platform: PLATFORM });
   } else {
     // 오프라인 폴백: 실제 전송 대신 콘솔 기록 (에러 없이 계속 진행)
-    console.log('[GA4 폴백] event:', name, gaPayload);
+    devLog('[GA4 폴백] event:', name, gaPayload);
   }
 }
 

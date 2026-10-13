@@ -25,6 +25,7 @@ import { markExit } from './exit-flag.js';   // 🚪 나가기 → 새로고침 
 import { deleteOwnAccount } from './account/delete-account.js';   // 🗑️ 앱 안 계정 삭제(iOS 5.1.1(v))
 import { accountKind } from './auth/account-kind.js';
 import { resolveLoginVia, LOGIN_VIA_KEY } from './auth/login-via.js';   // 🔑 로그인 수단 ≠ 계정 종류(GA4 오염 방지)   // 🔵📱 토스·PGS 판정(합성 이메일 도메인 — user_metadata 는 유저가 바꿀 수 있다)
+import { devLog } from './devlog.js';
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -148,7 +149,7 @@ export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
 
   // 키 미설정 → 오프라인. 로그인 화면에서 "게스트로 플레이"만 가능
   if (!isSupabaseConfigured()) {
-    console.log('[Supabase 폴백] 키 미설정 → 오프라인 모드 가능.');
+    devLog('[Supabase 폴백] 키 미설정 → 오프라인 모드 가능.');
     state.provider = 'offline';
     return { needLogin: true, offline: true };
   }
@@ -229,7 +230,7 @@ export async function verifyEmailCode(email, token) {
       return { ok: false, error: error || { message: 'no session' } };
     }
     applySession(data.session);
-    console.log('[이메일] 세션 연결 완료', state.userId);
+    devLog('[이메일] 세션 연결 완료', state.userId);
     return { ok: true };
   } catch (e) { console.warn('[이메일 코드 확인 실패]', e?.message || e); return { ok: false, error: e }; }
 }
@@ -247,7 +248,7 @@ async function signInWithGoogleNative() {
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: got.idToken, nonce: got.rawNonce });
   if (error || !data?.session) return fail(error?.message || 'no session');
   applySession(data.session);
-  console.log('[구글 네이티브] 세션 연결 완료', state.userId);
+  devLog('[구글 네이티브] 세션 연결 완료', state.userId);
 }
 
 // ── 🍎 Apple 네이티브 로그인 (iOS 앱 전용) ────────────────────────────
@@ -268,7 +269,7 @@ export async function signInWithApple() {
   if (error || !data?.session) return fail('session', error?.message || 'no session');
   try { localStorage.setItem(LOGIN_VIA_KEY, 'apple'); } catch (e) { /* 표시용 — 실패해도 로그인은 됐다 */ }
   applySession(data.session);
-  console.log('[Apple] 세션 연결 완료', state.userId);
+  devLog('[Apple] 세션 연결 완료', state.userId);
   return { ok: true };
 }
 
@@ -310,7 +311,7 @@ async function signInWithGooglePopup() {
   const { data: s, error: sErr } = await supabase.auth.setSession({ access_token: result.access_token, refresh_token: result.refresh_token });
   if (sErr) return fail(sErr.message);
   applySession(s.session);
-  console.log('[구글 팝업] 세션 연결 완료', state.userId);
+  devLog('[구글 팝업] 세션 연결 완료', state.userId);
 }
 
 // ── 🔵 바로 플레이하기 (앱인토스 웹뷰 전용) ─────────────────────
@@ -362,7 +363,7 @@ export async function signInWithToss({ silent = false } = {}) {
     const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (error) throw fail('session', error.message);
     applySession(s.session);
-    console.log('[토스] Supabase 세션 연결 완료', state.userId);
+    devLog('[토스] Supabase 세션 연결 완료', state.userId);
     return { ok: true };
   } catch (err) {
     const reason = err?.reason || 'unknown';
@@ -407,7 +408,7 @@ export async function signInWithPlayGames({ interactive = false } = {}) {
     const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (error) throw fail('session', error.message);
     applySession(s.session);
-    console.log('[플레이 게임즈] Supabase 세션 연결 완료', state.userId);
+    devLog('[플레이 게임즈] Supabase 세션 연결 완료', state.userId);
     return { ok: true };
   } catch (err) {
     const reason = err?.reason || 'unknown';
@@ -446,7 +447,7 @@ export async function signInWithGameCenter({ interactive = false } = {}) {
     const { data: s, error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (error) throw fail('session', error.message);
     applySession(s.session);
-    console.log('[게임 센터] Supabase 세션 연결 완료', state.userId);
+    devLog('[게임 센터] Supabase 세션 연결 완료', state.userId);
     return { ok: true };
   } catch (err) {
     const reason = err?.reason || 'unknown';
@@ -470,7 +471,7 @@ export async function signInAsGuest() {
       //  🚪 방금 만든 계정이다 — game_saves 에 행이 있을 수 없다(잃을 세이브 0).
       //    읽기가 실패해도 이 세션은 입장을 막지 않는다(save-guard.js 의 freshGuest).
       freshGuest = true;
-      console.log('[게스트] 익명 로그인 성공 → DB 저장 활성화', state.userId);
+      devLog('[게스트] 익명 로그인 성공 → DB 저장 활성화', state.userId);
       return { online: true };
     } catch (err) {
       // 조용히 넘기지 않고 원인을 명확히 노출(대부분 "Anonymous sign-ins 비활성화")
@@ -523,11 +524,11 @@ async function writeSave(row, { allowLocked = false } = {}) {
 
 export async function saveGame(gameState) {
   const row = { user_id: state.userId, state: gameState, updated_at: new Date().toISOString() };
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 저장(오프라인):', row); return { ok: true, offline: true }; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 저장(오프라인):', row); return { ok: true, offline: true }; }
   try {
     const r = await writeSave(row);
     if (!r.ok) return { ok: false, locked: true };
-    console.log('[Supabase] 저장 완료'); return { ok: true, offline: false };
+    devLog('[Supabase] 저장 완료'); return { ok: true, offline: false };
   } catch (err) { console.warn('[Supabase 폴백] 저장 실패:', err?.message || err); return { ok: false, offline: false, error: err }; }
 }
 
@@ -592,7 +593,7 @@ async function migrateGuestSave(tossSave) {
     return tossSave;
   }
   pendingGuest = null;                                               // 성공한 뒤에만 비운다
-  console.log('[토스] 게스트 진행도를 정식 계정으로 옮김', guest.userId, '→', state.userId);
+  devLog('[토스] 게스트 진행도를 정식 계정으로 옮김', guest.userId, '→', state.userId);
   return guest.state;
 }
 
@@ -605,11 +606,11 @@ export async function submitFeedback({ category, message, meta }) {
   const row = { user_id: state.userId, category, message,
                 meta: { platform: PLATFORM, ...(meta || {}) },
                 created_at: new Date().toISOString() };
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 피드백(오프라인):', row); return { ok: true, offline: true }; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 피드백(오프라인):', row); return { ok: true, offline: true }; }
   try {
     const { error } = await supabase.from('feedback').insert(row);
     if (error) throw error;
-    console.log('[Supabase] 피드백 전송 완료');
+    devLog('[Supabase] 피드백 전송 완료');
     return { ok: true, offline: false };
   } catch (err) {
     console.warn('[Supabase 폴백] 피드백 전송 실패:', err?.message || err);
@@ -624,7 +625,7 @@ export async function sendLogBatch(rows) {
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, // [분석] 기기/게스트/실험/플랫폼 세그먼트
     ...r,
   }));
-  if (!state.online || !supabase) { console.log(`[Supabase 폴백] 로그 배치 ${enriched.length}건 (오프라인)`); return; }
+  if (!state.online || !supabase) { devLog(`[Supabase 폴백] 로그 배치 ${enriched.length}건 (오프라인)`); return; }
   try {
     const { error } = await supabase.from(CONFIG.LOG_TABLE).insert(enriched);
     if (error) throw error;
@@ -644,7 +645,7 @@ export async function sendDuelBatch(rows) {
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
     ...r,
   }));
-  if (!state.online || !supabase) { console.log(`[Supabase 폴백] 승부 로그 ${enriched.length}건 (오프라인)`, enriched); return; }
+  if (!state.online || !supabase) { devLog(`[Supabase 폴백] 승부 로그 ${enriched.length}건 (오프라인)`, enriched); return; }
   try {
     const { error } = await supabase.from(CONFIG.DUEL_TABLE).insert(enriched);
     if (error) throw error;
@@ -658,7 +659,7 @@ export async function sendEconBatch(rows) {
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, // [분석] 세그먼트 동일 적용
     ...r,
   }));
-  if (!state.online || !supabase) { console.log(`[Supabase 폴백] 경제 원장 ${enriched.length}건 (오프라인)`, enriched); return; }
+  if (!state.online || !supabase) { devLog(`[Supabase 폴백] 경제 원장 ${enriched.length}건 (오프라인)`, enriched); return; }
   try {
     const { error } = await supabase.from(CONFIG.ECON_TABLE).insert(enriched);
     if (error) throw error;
@@ -706,7 +707,7 @@ export async function neighborRpc(fn, args = {}) {
 //    실패해도 게임엔 아무 영향이 없어야 하므로 전부 삼킵니다.
 export async function sendCafeGuests({ date, weather, count, phase, model, guests }) {
   if (!guests || !guests.length) return;
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 카페 손님 기록 생략 (오프라인)'); return; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 카페 손님 기록 생략 (오프라인)'); return; }
   try {
     const { error } = await supabase.from('cafe_guests').insert({
       // phase = 집 단계 버킷. unique 키에 들어가므로 버킷마다 한 벌씩 남는다.
@@ -821,7 +822,7 @@ export async function sendBoatRun(row) {
     run_date: kstDate(),   // YYYY-MM-DD · KST(UTC 면 새벽 기록이 어제로 샌다 — js/kst-date.js)
     ...row,
   };
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 🛶 런 기록(오프라인):', full); return; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 🛶 런 기록(오프라인):', full); return; }
   try {
     const { error } = await supabase.from(CONFIG.BOAT_TABLE).insert(full);
     if (error) throw error;
@@ -839,7 +840,7 @@ export async function sendStarRun(row) {
     run_date: kstDate(),   // YYYY-MM-DD · KST
     ...row,
   };
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 🔭 별 잇기 기록(오프라인):', full); return; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 🔭 별 잇기 기록(오프라인):', full); return; }
   try {
     const { error } = await supabase.from(CONFIG.STAR_TABLE).insert(full);
     if (error) throw error;
@@ -857,7 +858,7 @@ export async function sendSeaRecord(row) {
     run_date: kstDate(),   // YYYY-MM-DD · KST(보드가 KST 하루로 센다 — js/kst-date.js)
     ...row,   // { species, weight }
   };
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 🌊 대어 기록(오프라인):', full); return; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 🌊 대어 기록(오프라인):', full); return; }
   try {
     const { error } = await supabase.from(CONFIG.SEA_TABLE).insert(full);
     if (error) throw error;
@@ -902,7 +903,7 @@ export async function upsertSessionRow(row) {
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
     ...row, updated_at: new Date().toISOString(),
   };
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 세션 요약(오프라인):', full); return; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 세션 요약(오프라인):', full); return; }
   try {
     const { error } = await supabase.from(CONFIG.SESSION_TABLE).upsert(full);
     if (error) throw error;
@@ -918,7 +919,7 @@ export async function upsertRetentionGuidanceScore(row) {
     client_id: state.clientId, is_guest: state.isGuest, variant: state.variant, platform: PLATFORM,
     ...row, updated_at: new Date().toISOString(),
   };
-  if (!state.online || !supabase) { console.log('[Supabase 폴백] 리텐션 안내 점수(오프라인):', full); return; }
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 리텐션 안내 점수(오프라인):', full); return; }
   try {
     const { error } = await supabase
       .from(CONFIG.RETENTION_GUIDANCE_SCORE_TABLE)

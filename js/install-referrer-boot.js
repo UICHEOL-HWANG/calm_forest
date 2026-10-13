@@ -8,6 +8,7 @@
 // =============================================================
 
 import { INSTALL_STORE_KEY, attributionFromNative, installUserProps, parseStoredAttribution } from './install-referrer.js';
+import { devLog } from './devlog.js';
 
 const NATIVE_TIMEOUT_MS = 8000;   // Play 스토어 서비스 바인딩이 안 끝나는 기기 — 다음 실행에서 다시
 
@@ -41,7 +42,7 @@ export async function bootInstallReferrer({ plugin, storage, track, setUserProps
   if (attr.content && attr.content !== '(none)') extra.install_content = attr.content;
   if (attr.jid) extra.jid = attr.jid;
   track('install_attribution', { install_source: attr.source, install_medium: attr.medium, install_campaign: attr.campaign, ...extra });
-  console.log('[install-referrer] 귀속:', attr.source, attr.medium, attr.campaign);
+  devLog('[install-referrer] 귀속:', attr.source, attr.medium, attr.campaign);
   return attr;
 }
 
