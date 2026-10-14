@@ -41,7 +41,7 @@ export function mountAppBanner({ config, platform, t, track, onTrack, isGuest, c
   const el = document.createElement('div');
   el.id = 'app-banner';
   el.setAttribute('role', 'region');
-  el.innerHTML = `<img alt="" src="/assets/favicon/apple-touch-icon.png">
+  el.innerHTML = `<img alt="">
     <div class="ab-text"><div class="ab-title"></div><div class="ab-line"></div></div>
     <button type="button" class="ab-btn"></button>
     <button type="button" class="ab-x">✕</button>`;
@@ -64,6 +64,8 @@ export function mountAppBanner({ config, platform, t, track, onTrack, isGuest, c
     storage, now: () => Date.now(), today: localDay,
     isGuest, clientId, holdout: isHoldout, suppressed,
     render({ os, guest }) {
+      const img = $('img');
+      if (!img.getAttribute('src')) img.src = '/apple-touch-icon.png';
       $('.ab-title').textContent = t('이 마을, 앱에서도 만나요');
       $('.ab-line').textContent = t(guest ? '로그인하면 지금 마을 그대로 가져가요' : '지금 마을 그대로 이어져요');
       const btn = $('.ab-btn');

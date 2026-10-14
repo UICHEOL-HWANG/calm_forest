@@ -376,3 +376,12 @@ test('라이브 설정 — 두 스토어 링크가 실제 앱을 가리킨다(20
   assert.match(storeUrl('android', cfg, touch), /^https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.cheorish\.lab\.calmforest&referrer=/);
   assert.equal(storeUrl('ios', cfg, touch), 'https://apps.apple.com/app/id6821420691?pt=129595134&ct=web_banner_meta_hook_a&mt=8', 'ct 에 소재 팔까지(개인 ID 없음)');
 });
+
+test('연결부 — 배너 아이콘은 배포 경로(/apple-touch-icon.png)이고, 실제로 띄울 때만 불러온다', () => {
+  const ui = readFileSync(new URL('../js/app-banner-ui.js', import.meta.url), 'utf8');
+  const web = readFileSync(new URL('../scripts/build-web.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(ui, /\/assets\/favicon\//);
+  assert.doesNotMatch(ui, /<img[^>]*\ssrc=/);
+  assert.match(ui, /render\(\{ os, guest \}\) \{\s*const img = \$\('img'\);\s*if \(!img\.getAttribute\('src'\)\) img\.src = '\/apple-touch-icon\.png';/);
+  assert.match(web, /\['assets\/favicon\/apple-touch-icon\.png', 'apple-touch-icon\.png'\]/);
+});
