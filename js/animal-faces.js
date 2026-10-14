@@ -98,7 +98,7 @@ const HEADS = {
     const wm = new THREE.MeshStandardMaterial({ color: c.whisker, roughness: 0.6 });
     [-1, 1].forEach(s => [0.10, 0, -0.10].forEach((dy, i) => {   // 수염: 주둥이 옆 피벗에서 +X 로 뻗음(끝이 위아래로 벌어짐)
       const L = 0.80, pv = new THREE.Group();
-      pv.position.set(s * 0.30, -0.20 + dy * 1.2, 0.95); pv.rotation.set(0, -s * 0.55, -s * (i - 1) * 0.16); g.add(pv);
+      pv.position.set(s * 0.30, -0.28 + dy, 0.95); pv.rotation.set(0, -s * 0.55, -s * (i - 1) * 0.08); g.add(pv);
       noShadow(put(pv, new THREE.CylinderGeometry(0.014, 0.014, L, 5), wm, s * L / 2, 0, 0, 1, 1, 1, 0, 0, Math.PI / 2));
     }));
     patch(g, 0, 0.70, 0.66, 0.11, 0.30, c.stripe, 0, 0.99);                                  // 이마 줄무늬 3

@@ -15,17 +15,23 @@
 </head>
 <body>
 <h2>현재</h2><div class="grid" id="now"></div>
-<h2>A — 위아래 벌어짐만 뒤집기</h2><div class="grid" id="fixA"></div>
-<h2>B — A + 앞으로 꺾인 각도 0.55→0.30</h2><div class="grid" id="fixB"></div>
+<h2>C — 시작점 0.06 내리고 벌어짐 0.10</h2><div class="grid" id="fixC"></div>
+<h2>D — 시작점 0.08 내리고 벌어짐 0.08, 간격 좁게</h2><div class="grid" id="fixD"></div>
+<h2>E — 시작점 0.10 내리고 벌어짐 0.12</h2><div class="grid" id="fixE"></div>
 <script type="module">
 import * as THREE from 'three';
 import { buildAnimalHead } from '../../../js/animal-faces.js';
-const views = [['정면', [0, 0, 4]], ['옆(오른쪽)', [4, 0, 0.6]], ['위', [0, 4, 0.8]]];
+const views = [['정면', [0, 0, 4]], ['비스듬히', [2.4, 0.6, 3.2]], ['옆(오른쪽)', [4, 0, 0.6]]];
+const P = { C: [0.06, 0.10, 1.2], D: [0.08, 0.08, 1.0], E: [0.10, 0.12, 1.2] };
 function fixWhiskers(head, mode) {
+  const [down, fan, gap] = P[mode];
   head.traverse(o => {
     if (o.isGroup && o !== head && o.children.length === 1 && o.children[0].geometry?.type === 'CylinderGeometry') {
       const s = Math.sign(o.position.x);
-      o.rotation.set(0, mode === 'B' ? -s * 0.30 : o.rotation.y, -o.rotation.z);
+      const dy = (o.position.y + 0.20) / 1.2;
+      const i = Math.round(1 - dy / 0.10);
+      o.position.y = -0.20 - down + dy * gap;
+      o.rotation.set(0, o.rotation.y, -s * (i - 1) * fan);
     }
   });
 }
@@ -43,7 +49,7 @@ function cell(root, label, fix, cam) {
   const b = document.createElement('b'); b.textContent = label; box.appendChild(b);
   root.appendChild(box);
 }
-for (const [label, cam] of views) { cell(document.getElementById('now'), label, false, cam); cell(document.getElementById('fixA'), label, 'A', cam); cell(document.getElementById('fixB'), label, 'B', cam); }
+for (const [label, cam] of views) { cell(document.getElementById('now'), label, false, cam); for (const k of ['C','D','E']) cell(document.getElementById('fix'+k), label, k, cam); }
 window.__ready = true;
 </script>
 </body>
