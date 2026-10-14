@@ -1227,6 +1227,7 @@ export const EN = {
   '목각 인형': 'Wooden Doll',
   '보석 목걸이': 'Gem Necklace',
   '농부 삼촌': 'Farmer',
+  '삼촌이 쪽지를 쓰고 있어요…': 'The farmer is writing you a note…',
   '목수 아저씨': 'Carpenter',
   '방랑 상인': 'Wandering Merchant',
   '낚시꾼 할아버지': 'Old Fisherman',

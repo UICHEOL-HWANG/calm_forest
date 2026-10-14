@@ -16,6 +16,12 @@ export function noteArrived(state, note) {
   return note?.text ? { note, shown: false } : state;
 }
 
+export function noteArrivedOpen(state, note, { cardOpen }) {
+  if (!note?.text) return { state, show: null };
+  if (cardOpen) return { state: { note, shown: true }, show: note };
+  return { state: noteArrived(state, note), show: null };
+}
+
 // 한가할 때(대결 밖) 쥐고 있던 쪽지를 보여 준다 — 도착 한 박자 뒤와 대결이 끝난 뒤에 부른다
 export function showIfIdle(state, { duelActive }) {
   return duelActive ? { state, show: null } : pendingShow(state);

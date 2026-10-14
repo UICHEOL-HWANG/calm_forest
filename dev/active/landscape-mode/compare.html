@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가로 모드 시안 비교</title>
+<style>
+  :root { --bg: #f5f1e8; --card: #fffdf6; --ink: #2b3a30; --mute: #6f7a70; --line: rgba(43,58,48,.12); --accent: #2f7d54; --warn: #c9822b; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #18201b; --card: #222c25; --ink: #e8efe9; --mute: #9aa79d; --line: rgba(232,239,233,.12); --accent: #7fd39c; --warn: #f0b264; } }
+  :root[data-theme="dark"] { --bg: #18201b; --card: #222c25; --ink: #e8efe9; --mute: #9aa79d; --line: rgba(232,239,233,.12); --accent: #7fd39c; --warn: #f0b264; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; }
+  main { max-width: 1280px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 40px 0 6px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .lead { color: var(--mute); margin: 0 0 8px; }
+  .grid { display: grid; gap: 14px; }
+  .g4 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .g5 { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { padding: 10px 12px 12px; font-size: 13.5px; }
+  figcaption b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--line); color: var(--mute); margin-bottom: 4px; }
+  .tag.now { background: rgba(201,130,43,.18); color: var(--warn); }
+  ul.pros { margin: 6px 0 0; padding-left: 18px; color: var(--mute); }
+  .sub { font-size: 14px; font-weight: 700; margin: 18px 0 8px; color: var(--mute); }
+</style>
+</head>
+<body>
+<main>
+  <h1>가로 모드 · 튜토리얼 카드 시안</h1>
+  <p class="lead">실제 게임 화면에 시안을 적용해 찍은 캡처입니다(밤 시간대라 화면이 어둡습니다). 세로 390×844 · 가로 844×390.</p>
+
+  <h2>① 튜토리얼 안내 카드</h2>
+  <p class="lead">문제: 진행 점 17개(환공포증 우려) · 카드가 커서 폰에서 화면을 가림 · 가로에선 캐릭터 바로 위를 덮음.</p>
+
+  <div class="sub">가로 844×390</div>
+  <div class="grid g4">
+    <figure><img src="shots/coach-l-now.jpg" alt="현재 가로"><figcaption><span class="tag now">현재</span><b>점 17개 카드</b>가운데 큰 카드가 캐릭터 위를 덮음</figcaption></figure>
+    <figure><img src="shots/coach-l-A.jpg" alt="A 가로"><figcaption><span class="tag">A</span><b>한 줄 띠</b><ul class="pros"><li>가장 얇음(높이 ≈44px)</li><li>숫자 3/17 + 바닥 진행선</li><li>건너뛰기는 ✕ — 장 목표 줄은 빠짐</li></ul></figcaption></figure>
+    <figure><img src="shots/coach-l-B.jpg" alt="B 가로"><figcaption><span class="tag">B</span><b>진행바 카드</b><ul class="pros"><li>지금 구조 그대로, 점 → 막대 1개</li><li>장 목표 줄 유지</li><li>A보다 한 줄 큼</li></ul></figcaption></figure>
+    <figure><img src="shots/coach-l-C.jpg" alt="C 가로"><figcaption><span class="tag">C</span><b>접는 칩</b><ul class="pros"><li>평소엔 작은 칩(링 진행 + 짧은 문구)</li><li>탭하면 펼쳐서 전체 문장</li><li>짧은 문구 17개를 새로 써야 함</li></ul></figcaption></figure>
+  </div>
+
+  <div class="sub">세로 390×844</div>
+  <div class="grid g5">
+    <figure><img src="shots/coach-p-now.jpg" alt="현재 세로"><figcaption><span class="tag now">현재</span><b>점 17개</b>2줄로 줄바꿈</figcaption></figure>
+    <figure><img src="shots/coach-p-A.jpg" alt="A 세로"><figcaption><span class="tag">A</span><b>한 줄 띠</b></figcaption></figure>
+    <figure><img src="shots/coach-p-B.jpg" alt="B 세로"><figcaption><span class="tag">B</span><b>진행바 카드</b></figcaption></figure>
+    <figure><img src="shots/coach-p-C.jpg" alt="C 세로"><figcaption><span class="tag">C</span><b>접는 칩</b>(접힘)</figcaption></figure>
+    <figure><img src="shots/coach-p-Copen.jpg" alt="C 펼침 세로"><figcaption><span class="tag">C</span><b>접는 칩</b>(탭해서 펼침)</figcaption></figure>
+  </div>
+
+  <h2>② 큰 창 배치 (가로) — 도감으로 예시, 문의하기·가방·상점 등에 같은 규칙</h2>
+  <p class="lead">문제: PC 높이 기준이라 가로 폰에선 내용이 1줄 반만 보이고, 닫기 버튼·안내가 자리를 다 씀. 세 시안 모두 공통으로 ✕ 를 제목 줄로 올리고, 아래 닫기 버튼을 없애고, 안내 상자를 한 줄로 접었습니다.</p>
+  <div class="grid g4">
+    <figure><img src="shots/panel-now.jpg" alt="현재 도감"><figcaption><span class="tag now">현재</span><b>가운데 카드</b>칸이 1줄 반만 보임</figcaption></figure>
+    <figure><img src="shots/panel-P1.jpg" alt="P1"><figcaption><span class="tag">P1</span><b>오른쪽 사이드 시트</b><ul class="pros"><li>왼쪽 게임 화면이 보임</li><li>한 줄 4칸</li><li>폭이 절반이라 글이 긴 창은 줄바꿈 많음</li></ul></figcaption></figure>
+    <figure><img src="shots/panel-P2.jpg" alt="P2"><figcaption><span class="tag">P2</span><b>가운데 넓은 카드</b><ul class="pros"><li>한 줄 6칸 — 지금 모양과 가장 비슷</li><li>세로 꽉 채움</li></ul></figcaption></figure>
+    <figure><img src="shots/panel-P3.jpg" alt="P3"><figcaption><span class="tag">P3</span><b>전체 화면</b><ul class="pros"><li>가장 많이 보임(한 줄 7칸)</li><li>노치 좌우 여백 반영</li><li>게임 화면이 완전히 가려짐</li></ul></figcaption></figure>
+  </div>
+</main>
+</body>
+</html>
