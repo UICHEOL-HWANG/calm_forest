@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initNoteQueue, noteArrived, showIfIdle, beforeDuel } from '../js/duel/note-queue.js';
+import { initNoteQueue, noteArrived, noteArrivedOpen, showIfIdle, beforeDuel } from '../js/duel/note-queue.js';
 
 const NOTE = { author: '농부 삼촌', text: '어젯밤 멧돼지 녀석이…' };
 
@@ -62,4 +62,22 @@ test('상태를 변형하지 않는다', () => {
   showIfIdle(s1, { duelActive: false });
   beforeDuel(s1);
   assert.equal(s1.shown, false);
+});
+
+test('접속하자마자 띄운 편지 카드가 열려 있으면, 도착한 쪽지를 그 카드에 바로 채운다', () => {
+  const r = noteArrivedOpen(initNoteQueue(), NOTE, { cardOpen: true });
+  assert.equal(r.show, NOTE);
+  assert.equal(r.state.shown, true);
+});
+
+test('카드를 이미 닫았으면 쪽지를 쥐고 있다가 흔적 조사 때 보여 준다', () => {
+  const r = noteArrivedOpen(initNoteQueue(), NOTE, { cardOpen: false });
+  assert.equal(r.show, null);
+  assert.equal(r.state.shown, false);
+  assert.equal(beforeDuel(r.state).show, NOTE);
+});
+
+test('빈 쪽지는 카드에 채우지 않는다', () => {
+  const r = noteArrivedOpen(initNoteQueue(), { author: 'x', text: '' }, { cardOpen: true });
+  assert.equal(r.show, null);
 });

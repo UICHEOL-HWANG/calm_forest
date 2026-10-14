@@ -6,13 +6,13 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  camera, clearCrop, dexDiscover, doPlayerAction, duelFetcher, farmCropMeshes, farmSoilMesh, firstHint, floatTexts,
+  camera, clearCrop, cropMini, dexDiscover, doPlayerAction, duelFetcher, farmCropMeshes, farmSoilMesh, firstHint, floatTexts,
   gameState, giveReward, nightFetcher, nightNoteFetcher, player, plots, refreshInventoryUI, requestSave,
-  roundRect, scene, spawnDust, spawnSparkle, todayStr, ui, updatePlotVisual, worldGround, worldGroundPatches,
+  roundRect, scene, showCatchItem, spawnDust, spawnSparkle, todayStr, triggerMoment, ui, updatePlotVisual, worldGround, worldGroundPatches,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { DEX } from '../data/dex.js';
-import { initNoteQueue, noteArrived, showIfIdle, beforeDuel } from '../duel/note-queue.js';
+import { initNoteQueue, noteArrived, noteArrivedOpen, showIfIdle, beforeDuel } from '../duel/note-queue.js';
 import { makeRaidScar } from '../duel/raid-art.js';
 import { truceUntil } from '../duel/truce.js';
 import { computeNightDefense } from '../duel/night-defense.js';
@@ -29,6 +29,7 @@ export let duelActive = false;
 
 // 📜 주민 쪽지 — 대결을 덮지 않게 순서는 js/duel/note-queue.js 가 정한다(쪽지 → 대결, 대결 중 도착은 끝난 뒤로)
 let noteQ = initNoteQueue();
+let noteCardOpen = false;
 function showNote(n, onClose) {
   ui.showHintModal?.({ ico: '📜', title: n.author || '주민 쪽지', body: n.text, ok: onClose ? { onClick: onClose } : undefined });
 }
@@ -167,9 +168,9 @@ export async function maybeDuel(t) {
   const firstId = crops.find(c => c) || '';
   const cropIco = (firstId && ADV_CROPS.find(c => c.id === firstId)?.ico) || '🥕';
   duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player, keep: duelKeep(), crops: Object.values(farmCropMeshes || {}) } })
-    .then(won => { if (won) winDuel(t.animal, crops); requestSave(); })
-    .catch(e => console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e))
-    .finally(() => { duelActive = false; setTimeout(showNoteIfIdle, 800); });   // 대결 중 도착한 쪽지는 이제
+    .then(won => { if (won) winDuel(t.animal, crops); requestSave(); return won; })
+    .catch(e => { console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e); return false; })
+    .then(won => { duelActive = false; if (won) setTimeout(() => winCeremony(crops), 400); setTimeout(showNoteIfIdle, won ? 2200 : 800); });   // 대결 중 도착한 쪽지는 이제
 }
 
 // 🥊 일대일 무대에 남길 것 — 땅과 밭(흙·작물)만. 나머지(주민·건물·나무·이름표·밭 배지)는
@@ -181,6 +182,13 @@ export function duelKeep() {
 
 // 승리 — 작물 회수(tryHarvest 와 같은 지급 규칙) + 🤝 발길 끊기
 //   밭은 되살리지 않는다: 성장 단계까지 복원하면 도난이 없던 일이 되고 다시 심을 이유가 사라진다.
+function winCeremony(crops) {
+  const id = crops.find(c => c) || '';
+  triggerMoment(true);
+  Sound.harvest?.();
+  showCatchItem(cropMini(ADV_CROPS.find(c => c.id === id) || null), player.position.x, 0.6, player.position.z);
+}
+
 export function winDuel(animal, crops) {
   for (const id of crops) {
     // 🌾 고급 작물(밀·옥수수·포도)은 종류별 인벤 키, 나머지는 crop — tryHarvest 와 같은 규칙.
@@ -245,8 +253,19 @@ export async function resolveNightVisit() {
 
   const a = NIGHT_ANIMAL[v.animal] || NIGHT_ANIMAL.raccoon;
   trackEvent('night_visit', { animal: v.animal, stolen: stolen.length });   // [GA4] 밤손님 발생률
+  const lossText = `${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`;
+  const firstTime = !gameState.hintsSeen.night;
   setTimeout(() => {   // 출석 모달·날씨 토스트와 겹치지 않게 한 박자 늦게
-    ui.toast?.(`${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`, 3800);
+    ui.toast?.(lossText, 3800);
+    if (!firstTime && nightNoteFetcher && ui.showHintModal) {
+      const ready = beforeDuel(noteQ);
+      noteQ = ready.state;
+      if (ready.show) showNote(ready.show);
+      else {
+        noteCardOpen = true;
+        ui.showHintModal({ ico: '📜', title: t('농부 삼촌'), body: t('삼촌이 쪽지를 쓰고 있어요…'), ok: { onClick: () => { noteCardOpen = false; } } });
+      }
+    }
     firstHint('night', a.ico, '밤손님이 다녀갔어요',
       '밤사이 숲 친구가 밭에 다녀갔어요\n🐾 파헤쳐진 흙을 조사하면 수집품!\n🎃허수아비·🪵울타리를 두면 피해가 줄어요');
   }, 1200);
@@ -254,8 +273,8 @@ export async function resolveNightVisit() {
   if (nightNoteFetcher) {
     const firstCrop = cands[(v.stolenIdx || [])[0]]?.p?.cropType?.id || '';
     nightNoteFetcher({ date: today, animal: v.animal, crop: firstCrop })
-      .then(n => { noteQ = noteArrived(noteQ, n); setTimeout(showNoteIfIdle, 4600); })   // 대결 중이면 끝난 뒤로 미룬다
-      .catch(() => {});
+      .then(n => { const r = noteArrivedOpen(noteQ, n, { cardOpen: noteCardOpen }); noteQ = r.state; if (r.show) showNote(r.show); else if (noteCardOpen) ui.showHintModal?.({ ico: '📜', title: t('농부 삼촌'), body: lossText }); })
+      .catch(() => { if (noteCardOpen) ui.showHintModal?.({ ico: '📜', title: t('농부 삼촌'), body: lossText }); });
   }
   requestSave();
 }
