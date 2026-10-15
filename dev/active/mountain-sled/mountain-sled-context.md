@@ -1,6 +1,6 @@
 # mountain-sled context
 
-Last Updated: 2026-10-15
+Last Updated: 2026-10-15 (T1~T10·9b·10b 커밋, 10b 리뷰 전 일시정지)
 
 ## 위치
 - 워크트리 `.claude/worktrees/mountain-sled`, 브랜치 `feat/mountain-sled`(origin/main 기준, 미푸시)
@@ -31,3 +31,13 @@ Last Updated: 2026-10-15
 - GA4 이벤트 25개 한도(자동 키 ts·platform·exp_arm 포함)
 - DDL 은 풀러로 직접 실행
 - 4곳 동시 배포(firstDay·mountain 세이브 키)
+
+## 구현 중 바뀐 것(2026-10-15)
+- 코스·물리 재조정: 장애물 중앙선 ±0.6~1.0, 깃발 폭 ±2.2, 충돌 0.5배 1.5초 → 숙련 차 3.1초(T3)
+- sled_runs: 버전별 최단 기록 트리거·course_v/phys_v 체크·음수 금지·run_date 서버 지정(T6)
+- 시간 값 정수 반올림(T5) — 정수 컬럼에 소수가 들어가면 조용히 저장 실패
+- 해금 연출은 모달·코치마크가 닫힐 때까지 대기, 마을 벗어나면 즉시 종료(T9)
+- 배치 재설계(T9b): 광장 (0,74.6,r9)·출구 (0,83), 등산로는 동쪽 비탈로 돌아 정상(0,-4), 지형은 terrainHeight 높이 함수(1콜)
+- T10b: 썰매 모형·공간 안 구름 띠·카메라 SLED_CAM{up9,back10,lookAhead22,lookDrop0.5}·장애물 메시 병합 → 공간 59~60콜
+- 미리보기: 루트 .claude/launch.json 에 mountain-sled(8807) 등록, ?dbg=1 + window.__gs()/__tp() 로 검수
+- SDD 원장: .superpowers/sdd/2026-10-15-mountain-sled-stage1/progress.md
