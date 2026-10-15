@@ -1,6 +1,8 @@
 import { COURSE, centerX } from './course.js';
 import { ACORNS, CLIMB_PATH, PLAZA, nearestOnPath } from './climb.js';
-import { colorAt, SNOW } from './backdrop.js';
+import { colorAt, SNOW, cloudPuffMesh } from './backdrop.js';
+import { buildSledMesh } from './sled-art.js';
+import { colored, mergeColored } from './merge-colored.js';
 
 export const SUMMIT_Y = 30;
 const SLOPE_DROP = 30;
@@ -21,6 +23,15 @@ const GRID_STEP = 2;
 const GRID_X = 74;
 const GRID_Z0 = -78;
 const GRID_Z1 = 92;
+const CLOUD_Y = SUMMIT_Y * 0.4;
+const CLOUD_R0 = 10;
+const CLOUD_DIP = 1.5;
+const CLOUD_CLEAR = 3;
+const CLOUD_CLUSTERS = 36;
+const CLOUD_FLANK_ROWS = 8;
+const CLOUD_FLANK_Z0 = 24;
+const CLOUD_FLANK_STEP = 4.5;
+const ROCK = 0x6b625a;
 const OVERLAY = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 };
 
 export function slopePoint(z, x) {
@@ -139,6 +150,70 @@ function instanced(THREE, geo, color, items) {
   return mesh;
 }
 
+const SLOPE_LINE = Array.from({ length: 111 }, (_, i) => {
+  const z = (i * COURSE.length) / 110;
+  return slopePoint(z, centerX(z));
+});
+
+function slopeLineDist(x, z) {
+  return Math.min(...SLOPE_LINE.map(p => Math.hypot(x - p.x, z - p.z)));
+}
+
+function cloudClear(x, y, z, s) {
+  const pad = CLOUD_CLEAR + s * 1.3;
+  return slopeLineDist(x, z) >= SLOPE_HALF + pad
+    && nearestOnPath({ x, z }).dist >= PATH_BAND + pad
+    && y > terrainHeight(x, z) + s * 0.35;
+}
+
+function contourRadius(a) {
+  let r = CLOUD_R0;
+  while (r < BASE_R && terrainHeight(SUMMIT.x + Math.cos(a) * r, SUMMIT.z + Math.sin(a) * r) > CLOUD_Y - CLOUD_DIP) r += 0.5;
+  return r;
+}
+
+function clusterPuffs(rnd, cx, cz) {
+  const size = 1.8 + rnd() * 1.4;
+  return Array.from({ length: 4 }, () => {
+    const s = size * (0.55 + rnd() * 0.6);
+    return [cx + (rnd() - 0.5) * size * 2.4, CLOUD_Y + (rnd() - 0.3) * size * 0.6, cz + (rnd() - 0.5) * size * 1.6, s];
+  });
+}
+
+function ringCentres(rnd) {
+  return Array.from({ length: CLOUD_CLUSTERS }, (_, i) => {
+    const a = (i / CLOUD_CLUSTERS) * Math.PI * 2 + rnd() * 0.12;
+    const r = contourRadius(a) + 1.5 + rnd() * 4;
+    return [SUMMIT.x + Math.cos(a) * r, SUMMIT.z + Math.sin(a) * r];
+  });
+}
+
+function flankCentres(rnd) {
+  return Array.from({ length: CLOUD_FLANK_ROWS * 2 }, (_, i) => {
+    const z = CLOUD_FLANK_Z0 + Math.floor(i / 2) * CLOUD_FLANK_STEP + rnd() * 2;
+    const cz = ((z - SLOPE_Z0) / SLOPE_RUN) * COURSE.length;
+    return [centerX(cz) + (i % 2 ? 1 : -1) * (SLOPE_HALF + 6 + rnd() * 9), z];
+  });
+}
+
+export function cloudPuffs() {
+  let seed = 29;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  return [...ringCentres(rnd), ...flankCentres(rnd)]
+    .flatMap(([cx, cz]) => clusterPuffs(rnd, cx, cz))
+    .filter(([x, y, z, s]) => cloudClear(x, y, z, s));
+}
+
+function obstacleMesh(THREE) {
+  const geos = COURSE.obstacles.map(o => {
+    const p = slopePoint(o.z, o.x);
+    const snow = o.kind === 'snowball';
+    const g = colored(THREE, snow ? new THREE.IcosahedronGeometry(1, 0) : new THREE.DodecahedronGeometry(1, 0), snow ? SNOW : ROCK);
+    return g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y + (snow ? 0.6 : 0.5), p.z), new THREE.Quaternion(), new THREE.Vector3().setScalar(o.r * 0.8)));
+  });
+  return new THREE.Mesh(mergeColored(THREE, geos), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+}
+
 export function buildMountainSpace(THREE) {
   const group = new THREE.Group();
   const ground = groundMesh(THREE);
@@ -153,13 +228,12 @@ export function buildMountainSpace(THREE) {
   plaza.position.set(PLAZA.x, 0.02, PLAZA.z);
   const flags = instanced(THREE, new THREE.ConeGeometry(0.35, 1.6, 4), 0xe8743c,
     COURSE.flags.flatMap(f => [-1, 1].map(side => { const p = slopePoint(f.z, f.x + side * f.half); return [p.x, p.y + 0.8, p.z, 1]; })));
-  const snowballs = instanced(THREE, new THREE.IcosahedronGeometry(1, 0), 0xf6f8fb,
-    COURSE.obstacles.filter(o => o.kind === 'snowball').map(o => { const p = slopePoint(o.z, o.x); return [p.x, p.y + 0.6, p.z, o.r * 0.8]; }));
-  const rocks = instanced(THREE, new THREE.DodecahedronGeometry(1, 0), 0x6b625a,
-    COURSE.obstacles.filter(o => o.kind === 'rock').map(o => { const p = slopePoint(o.z, o.x); return [p.x, p.y + 0.5, p.z, o.r * 0.8]; }));
+  const obstacles = obstacleMesh(THREE);
+  const clouds = cloudPuffMesh(THREE, cloudPuffs());
+  const sled = buildSledMesh(THREE);
   const acorns = instanced(THREE, new THREE.IcosahedronGeometry(0.35, 0), 0x9a6a2f,
     ACORNS.map((a, i) => [a.x, acornY(i), a.z, 1]));
-  group.add(ground, plaza, strip(THREE, climbPts, 3, 0xcfc6b4), strip(THREE, slopePts, COURSE.width, 0xf6f8fb), flags, snowballs, rocks, acorns);
-  group.userData = { acorns, ground };
+  group.add(ground, plaza, strip(THREE, climbPts, 3, 0xcfc6b4), strip(THREE, slopePts, COURSE.width, 0xf6f8fb), flags, obstacles, acorns, clouds, sled);
+  group.userData = { acorns, ground, obstacles, clouds, sled };
   return group;
 }

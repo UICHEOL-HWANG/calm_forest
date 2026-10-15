@@ -10,6 +10,7 @@ import { buildMountainSpace, pathHeight, slopePoint, acornY } from '../mountain/
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
+import { SLED_SEAT, sledYaw, sledCamTargets, sledPose } from '../mountain/sled-view.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
 import { bindSledInput, steerFrom } from '../mountain/sled-input.js';
 import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, boostButton } from '../mountain/sled-hud.js';
@@ -155,22 +156,38 @@ function courseFor(diff) {
 }
 
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3();
+const LEAN_RATE = 8;
+
+const toWorld = (v, q) => v.set(MOUNTAIN.x + q.x, MOUNTAIN.y + q.y, MOUNTAIN.z + q.z);
 
 function sledCamera(cam, dt) {
-  const s = run.sled;
-  const p = slopePoint(s.z, s.x);
-  const ahead = slopePoint(Math.min(s.z + 18, COURSE.length), s.x);
+  const t = sledCamTargets(run.sled);
   const k = 1 - Math.pow(0.02, dt);
-  camPos.lerp(_a.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + 4.2, MOUNTAIN.z + p.z - 7), k);
-  camLook.lerp(_b.set(MOUNTAIN.x + ahead.x, MOUNTAIN.y + ahead.y - 2, MOUNTAIN.z + ahead.z), k);
+  camPos.lerp(toWorld(_a, t.pos), k);
+  camLook.lerp(toWorld(_b, t.look), k);
   cam.position.copy(camPos);
   cam.lookAt(camLook);
 }
 
-function rideSlope(steer) {
+function showSled(on) {
+  const sled = $w.mountainGroup?.userData.sled;
+  if (sled) sled.visible = on;
+}
+
+function placeSled(yaw) {
+  const sled = $w.mountainGroup?.userData.sled;
+  if (!sled) return;
+  const pose = sledPose(run.sled, yaw);
+  sled.position.set(pose.x, pose.y, pose.z);
+  sled.rotation.set(pose.pitch, pose.yaw, 0);
+}
+
+function rideSlope(steer, dt) {
   const p = slopePoint(run.sled.z, run.sled.x);
-  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y, MOUNTAIN.z + p.z);
-  player.rotation.y = steer * 0.3;
+  run.yaw += (sledYaw(steer) - run.yaw) * Math.min(1, dt * LEAN_RATE);
+  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + SLED_SEAT, MOUNTAIN.z + p.z);
+  player.rotation.y = run.yaw;
+  placeSled(run.yaw);
 }
 
 function boost() {
@@ -189,16 +206,19 @@ function startSled() {
   document.body.classList.add('sled-run');
   boostButton().onclick = boost;
   sledBegin(ctxOf());
-  const p = slopePoint(0, run.sled.x);
-  camPos.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + 4.2, MOUNTAIN.z + p.z - 7);
-  camLook.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y, MOUNTAIN.z + p.z + 10);
-  rideSlope(0);
+  const t = sledCamTargets(run.sled);
+  toWorld(camPos, t.pos);
+  toWorld(camLook, t.look);
+  run.yaw = sledYaw(0);
+  rideSlope(0, 0);
+  showSled(true);
   setCameraRig(sledCamera);
   showCountdown(3);
   showRunHud({ timeMs: 0, acorns: run.sled.acorns });
 }
 
 function closeRun() {
+  showSled(false);
   hideSledHud();
   document.body.classList.remove('sled-run');
   run = null;
@@ -210,6 +230,7 @@ function finishSled() {
   run.input.dispose();
   setCameraRig(null);
   run.phase = 'result';
+  showSled(false);
   player.position.set(MOUNTAIN.x + PLAZA.x, 0, MOUNTAIN.z + PLAZA.z);
   player.rotation.y = Math.PI;
   snapCamera();
@@ -249,13 +270,13 @@ export function updateMountain(dt) {
       showCountdown(run.count);
       if (run.count <= 0) run.phase = 'sled';
     }
-    rideSlope(0);
+    rideSlope(0, dt);
   } else if (run.phase === 'sled') {
     run.frames += 1;
     run.frameMs += dt * 1000;
     const steer = steerFrom(run.input.read());
     run.sled = stepSled(run.sled, Math.min(50, dt * 1000), steer, run.course);
-    rideSlope(steer);
+    rideSlope(steer, dt);
     if (run.sled.t >= GO_CLEAR_MS) clearCountdown();
     showRunHud({ timeMs: run.sled.t, acorns: run.sled.acorns });
     if (run.sled.finished) finishSled();

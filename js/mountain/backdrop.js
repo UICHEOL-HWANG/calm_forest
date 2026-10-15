@@ -57,6 +57,10 @@ function cloudBand(THREE, R, H, frontGap) {
       puffs.push([Math.cos(a) * ring + (rnd() - 0.5) * size * 2.4, y + (rnd() - 0.3) * size * 0.5, Math.sin(a) * ring + (rnd() - 0.5) * size * 1.2, s]);
     }
   }
+  return cloudPuffMesh(THREE, puffs);
+}
+
+export function cloudPuffMesh(THREE, puffs) {
   const mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1),
     new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true, emissive: 0xd4dce6, emissiveIntensity: 0.55, fog: false }), puffs.length);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();

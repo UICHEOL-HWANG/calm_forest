@@ -40,7 +40,7 @@ test('the mountain clamp is skipped while sledding', () => {
 test('the avatar rides the slope and faces downhill during countdown and sled', () => {
   const ride = between(src, 'function rideSlope', '\n}');
   assert.match(ride, /slopePoint\(run\.sled\.z, run\.sled\.x\)/);
-  assert.match(ride, /player\.position\.set\(MOUNTAIN\.x \+ p\.x, MOUNTAIN\.y \+ p\.y, MOUNTAIN\.z \+ p\.z\)/);
+  assert.match(ride, /player\.position\.set\(MOUNTAIN\.x \+ p\.x, MOUNTAIN\.y \+ p\.y \+ SLED_SEAT, MOUNTAIN\.z \+ p\.z\)/);
   assert.match(ride, /player\.rotation\.y = /);
   const upd = between(src, 'export function updateMountain', '\nfunction ');
   assert.ok((upd.match(/rideSlope\(/g) || []).length >= 2);
