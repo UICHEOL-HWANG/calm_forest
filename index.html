@@ -3143,6 +3143,7 @@
     let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
     let questLast = null;
     let questOpen = false;
+    const questBarLast = new Map();
     const questPhoneMQ = window.matchMedia('(max-width: 640px), (orientation: landscape) and (max-height: 500px)');
     $('quest-panel').addEventListener('click', () => {
       if (!$('quest-panel').classList.contains('collapsible')) return;
@@ -3316,6 +3317,9 @@
           //  width 는 **붙인 뒤 다음 프레임에** 준다 — 만들자마자 박으면 이전 값이 없어
           //  .q-fill 의 transition 이 걸리지 않고 진행바가 툭 튀어 오른다(차오르는 느낌이 사라진다)
           const pct = Math.round(100 * (q.pct != null ? q.pct : (q.target ? q.progress / q.target : 0))) + '%';
+          const barKey = q.id || q.title;
+          fill.style.width = questBarLast.get(barKey) || '0%';
+          questBarLast.set(barKey, pct);
           bar.appendChild(fill); el.appendChild(bar);
           requestAnimationFrame(() => { fill.style.width = pct; });
           const prog = document.createElement('div'); prog.className = 'q-prog';
