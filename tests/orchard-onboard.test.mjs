@@ -72,3 +72,59 @@ test('세이브 복원 — 모르는 값은 버리고, 이미 열린 과수원�
   assert.equal(restoreStage('bogus', 0), undefined);
   assert.equal(restoreStage(undefined, 0), undefined, '없는 세이브는 비운다 — 다른 계정 상태가 새지 않게');
 });
+
+import { wheatStatus, ONBOARD_HOW } from '../js/orchard-onboard.js';
+const W = { id: 'wheat', adv: true, waters: 2 };
+const plot = (o) => ({ cropType: W, state: 'growing', growth: 0.1, wetUntil: 0, fert: false, weed: false, ...o });
+
+test('밀 상태 — 다 자란 밀이 있으면 거두기가 먼저', () => {
+  const s = wheatStatus([plot({}), plot({ state: 'mature', growth: 0.9 })], 100, { upgraded: false });
+  assert.equal(s.kind, 'ready');
+});
+
+test('밀 상태 — 마른 밀은 물 줄 차례, 남은 물 횟수를 센다', () => {
+  const s = wheatStatus([plot({ growth: 0.2 })], 100, { upgraded: false });
+  assert.equal(s.kind, 'dry');
+  assert.equal(s.watersLeft, 3);
+});
+
+test('밀 상태 — 방금 물 준 밀은 기다리는 중', () => {
+  const s = wheatStatus([plot({ wetUntil: 105 })], 100, { upgraded: false });
+  assert.equal(s.kind, 'wet');
+});
+
+test('밀 상태 — 잡초·시듦·심은 밀 없음', () => {
+  assert.equal(wheatStatus([plot({ weed: true })], 100, { upgraded: false }).kind, 'weed');
+  assert.equal(wheatStatus([plot({ state: 'wilted' })], 100, { upgraded: false }).kind, 'wilted');
+  assert.equal(wheatStatus([{ cropType: { id: 'carrot' }, state: 'growing' }], 100, { upgraded: false }).kind, 'none');
+  assert.equal(wheatStatus([], 100, { upgraded: false }).kind, 'none');
+});
+
+test('안내 문구 — 어디서·무슨 도구로·무엇을, 상태마다 다르다', () => {
+  const g = (status) => onboardView('grow', status).how;
+  assert.equal(onboardView('plant').how, ONBOARD_HOW.plant);
+  assert.match(ONBOARD_HOW.plant, /텃밭.*씨앗\(3번\).*밀/);
+  assert.equal(g({ kind: 'dry', watersLeft: 3 }), ONBOARD_HOW.dry.replace('{0#}', '3'));
+  assert.match(ONBOARD_HOW.dry, /텃밭.*물조리개\(4번\)/);
+  assert.match(g({ kind: 'ready' }), /낫\(5번\)/);
+  assert.match(g({ kind: 'weed' }), /잡초/);
+  assert.match(g({ kind: 'wilted' }), /괭이\(2번\)/);
+  assert.equal(g({ kind: 'none' }), ONBOARD_HOW.plant);
+  assert.equal(g(undefined), ONBOARD_HOW.plant);
+  const keys = new Set(Object.values(ONBOARD_HOW));
+  assert.equal(keys.size, Object.keys(ONBOARD_HOW).length);
+});
+
+test('영어판 — 과수원 안내 문구가 전부 있다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
+  for (const k of Object.values(ONBOARD_HOW)) assert.ok(en.includes(`'${k}':`), k);
+});
+
+test('비 오는 날 — 흙이 안 마르고 저절로 자라므로 물 대신 기다리라고 한다', () => {
+  const s = wheatStatus([plot({ wetUntil: 101.5 })], 100, { upgraded: false, rain: true });
+  assert.equal(s.kind, 'rain');
+  assert.match(onboardView('grow', s).how, /비/);
+  assert.equal(wheatStatus([plot({ state: 'mature', growth: 0.9 })], 100, { upgraded: false, rain: true }).kind, 'ready');
+  assert.equal(wheatStatus([plot({ weed: true })], 100, { upgraded: false, rain: true }).kind, 'weed');
+});
