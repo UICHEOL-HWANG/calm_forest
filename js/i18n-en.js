@@ -2513,4 +2513,10 @@ export const EN = {
   '🏔️ 뒤 능선길로 올라 정상에서 썰매를 타요. 나갈 땐 남쪽 문': '🏔️ Climb the back ridge and sled down from the top. Exit through the south door',
   '🏔️ 썰매 타러 가는 길': '🏔️ The way to the sled run',
   '🚪 마을로 돌아가기': '🚪 Back to the village',
+  '🛷 출발!': '🛷 Go!',
+  '🌰 부스터': '🌰 Boost',
+  '🏁 완주!': '🏁 Finished!',
+  '🏆 새 최고 기록!': '🏆 New best!',
+  '오늘 보상 {0#}판 남음': '{0} rewarded runs left today',
+  '오늘 보상은 다 받았어요 · 기록 도전은 계속할 수 있어요': 'All rewards claimed today · You can keep chasing records',
 };

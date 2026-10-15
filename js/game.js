@@ -169,7 +169,7 @@ import {
 import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
-import { clampToMountain, maybeRevealMountain, mountainAction, mountainMinimapMarks, spawnMountainGate, updateMountain } from './spaces/mountain.js';
+import { clampToMountain, maybeRevealMountain, mountainAction, mountainMinimapMarks, sledActive, spawnMountainGate, updateMountain } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
@@ -5657,6 +5657,8 @@ function animate() {
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
+    } else if (sledActive()) {
+      wantAction = false;
     } else if (!mgView && !duelActive && !intro && !dreamCutActive() && !mirrorRideActive()) {
       handleAction();
       updateNPCInteract();
@@ -5830,7 +5832,7 @@ function updatePlayer(dt, t) {
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
   //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
-  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView;   // 🔍 전시물 관람 중엔 이동 차단(좌우는 회전에 쓴다)
+  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView || sledActive();   // 🔍 전시물 관람 중엔 이동 차단(좌우는 회전에 쓴다)
   let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.() || closeUp);
   // 모바일 조이스틱 아날로그 합산
   if (!closeUp) { mx += analog.x; mz += analog.z; }
