@@ -70,3 +70,8 @@ test('패널을 다시 그려도 게이지가 0에서 다시 차오르지 않는
   assert.match(html, /fill\.style\.width = questBarLast\.get\(barKey\) \|\| '0%';/);
   assert.match(html, /questBarLast\.set\(barKey, pct\);/);
 });
+
+test('접힌 한 줄 카드에도 수행 방법 한 줄을 보여 준다', () => {
+  assert.match(html, /if \(lead \|\| line\) \{/);
+  assert.match(html, /#quest-panel \.q-item\.line \.q-how \{[^}]*-webkit-line-clamp: 2;/);
+});

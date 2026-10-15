@@ -6,8 +6,8 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, IS_MOBILE, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
-  gameState, lerpAngle, makeNameTag, mode, nearNPC, npcDialogState, npcObjs, obstacles, onPlotArea, player,
+  $w, IS_MOBILE, RAIN_DAY, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
+  gameState, lerpAngle, makeNameTag, mode, nearNPC, npcDialogState, npcObjs, obstacles, onPlotArea, player, plots,
   questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, syncBadges, todayStr,
   ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
@@ -19,7 +19,7 @@ import { welcomeOffer } from '../first-loop.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
 import { quizOffer } from './ferry-quiz-run.js';   // 🦆 사공 퀴즈
-import { onboardView } from '../orchard-onboard.js';
+import { onboardView, wheatStatus } from '../orchard-onboard.js';
 import { Sound } from '../sound.js';
 import { inVillage2 } from '../spaces/doors.js';
 import * as THREE from 'three';
@@ -729,7 +729,16 @@ export function updateShopCue(t) {
 // 근접 시 가장 가까운 주민 선택 → 프롬프트 + 퀘스트 패널
 export let npcPromptFarm = false;
 
+let wheatSig = '';
+function orchardWheat() {
+  if (gameState.progress?.orchardQuest !== 'grow') return undefined;
+  return wheatStatus(plots, clock.elapsedTime, { upgraded: !!gameState.upgrades?.water, rain: RAIN_DAY });
+}
+
 export function updateNPCInteract() {
+  const ws = orchardWheat();
+  const sig = ws ? `${ws.kind}:${ws.watersLeft || ''}` : '';
+  if (sig !== wheatSig) { wheatSig = sig; refreshQuestPanel(); }
   let near = null, nd = 2.6;
   for (const o of npcObjs) {
     if (o.fly && o.fly.st !== 'perch') continue;    // 🦉 날고 있는 동안엔 말을 걸 수 없다
@@ -790,6 +799,6 @@ export function questPanelTop() {
 //    살아 있는 의뢰가 화면에서 사라진다(규칙·회귀 테스트는 js/quests.js activeQuestList).
 //    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
 export function refreshQuestPanel() {
-  const views = [...npcObjs.map(questView), onboardView(gameState.progress?.orchardQuest)].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
+  const views = [...npcObjs.map(questView), onboardView(gameState.progress?.orchardQuest, orchardWheat())].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
   ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: nearNPC?.def.id || null }));
 }
