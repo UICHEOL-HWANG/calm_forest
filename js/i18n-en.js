@@ -208,8 +208,13 @@ export const EN = {
   // 🌾→🍎 과수원 가는 길 의뢰(js/orchard-onboard.js)
   '🍎 과수원 가는 길': '🍎 The Way to the Orchard',
   '🌾 밀 씨앗 심기': '🌾 Plant wheat seeds', '🌾 밀 거두기': '🌾 Harvest the wheat',
-  '🌰 씨앗 도구로 빈 밭에 심어요': 'Plant with the 🌰 seed tool on an empty plot',
-  '물 주고 다 자라면 🌾 낫으로 거둬요': 'Water it, then harvest with the 🌾 sickle when grown',
+  '🗺️ 미니맵 🌾 텃밭으로 가서 → 🌰 씨앗(3번)을 들고 빈 밭에 밀을 심어요': '🗺️ Go to the 🌾 Farm on the minimap → hold 🌰 Seeds (3) and plant wheat on an empty plot',
+  '🌾 텃밭의 밀 앞에서 → 💧 물조리개(4번)로 물을 줘요 ({0#}번 더)': '🌾 At the wheat on your Farm → water it with the 💧 Watering Can (4) ({0} more)',
+  '🌱 밀이 물을 먹고 자라는 중 · 흙이 마르면 💧 다시 물 줘요': '🌱 The wheat is soaking it up · water 💧 again once the soil dries',
+  '🌧️ 비가 와서 밀이 저절로 자라요 · 다 자랄 때까지 기다려요': '🌧️ The rain is growing the wheat for you · wait until it’s grown',
+  '🌿 밀 밭에 잡초가 났어요 → 아무 도구로 액션해서 뽑아요': '🌿 Weeds in the wheat → press action with any tool to pull them',
+  '🌾 텃밭으로 가서 → 🔪 낫(5번)을 들고 다 자란 밀 앞에서 거둬요': '🌾 Go to your Farm → hold the 🔪 Sickle (5) and harvest the grown wheat',
+  '🥀 밀이 시들었어요 → ⛏️ 괭이(2번)로 갈고 다시 심어요': '🥀 The wheat wilted → till with the ⛏️ Hoe (2) and plant again',
   '동쪽 언덕에 과수원이 있어요 — 🌾 밀을 한 번 길러 거두면 열려요! 씨앗 3개 줄게요': "There's an orchard on the east hill — grow and harvest 🌾 wheat once to open it! Here are 3 seeds",
   '🌾 밀 씨앗이 없네요 — 3개 더 줄게요. 빈 밭에 심어요': 'Out of 🌾 wheat seeds? Here are 3 more — plant them on an empty plot',
   // 미니게임

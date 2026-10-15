@@ -9,6 +9,8 @@
 //  ▶ 테스트: tests/orchard-onboard.test.mjs
 // =============================================================
 
+import { MATURE, growthPerWater } from './farm-crops.js';
+
 export const ONBOARD_SEEDS = { seed_wheat: 3 };      // 밀 — 가장 싸고(6🪙) 지지대가 필요 없다
 const ADV_SEED_KEYS = ['seed_wheat', 'seed_corn', 'seed_grape'];
 export const ONBOARD_STAGES = ['plant', 'grow', 'done'];
@@ -34,11 +36,47 @@ export function needsRefill(progress = {}, inv = {}) {
 
 /** 📜 의뢰 패널 카드 — js/spaces/npc.js refreshQuestPanel 이 주민 의뢰와 나란히 그린다.
  *  progress 는 target 에 닿지 않는다 — 끝나면 카드가 사라지므로 "✅ 주민에게 가기" 상태로 보일 일이 없다. */
-export function onboardView(stage) {
+export function onboardView(stage, status) {
   const base = { id: 'orchard_onboard', name: '농부 삼촌', title: '🍎 과수원 가는 길', target: 2 };   // 심기 → 거두기 두 걸음
-  if (stage === 'plant') return { ...base, progress: 0, desc: '🌾 밀 씨앗 심기', how: '🌰 씨앗 도구로 빈 밭에 심어요' };
-  if (stage === 'grow')  return { ...base, progress: 1, desc: '🌾 밀 거두기', how: '물 주고 다 자라면 🌾 낫으로 거둬요' };
+  if (stage === 'plant') return { ...base, progress: 0, desc: '🌾 밀 씨앗 심기', how: ONBOARD_HOW.plant };
+  if (stage === 'grow')  return { ...base, progress: 1, desc: '🌾 밀 거두기', how: growHow(status) };
   return null;
+}
+
+export const ONBOARD_HOW = {
+  plant: '🗺️ 미니맵 🌾 텃밭으로 가서 → 🌰 씨앗(3번)을 들고 빈 밭에 밀을 심어요',
+  dry: '🌾 텃밭의 밀 앞에서 → 💧 물조리개(4번)로 물을 줘요 ({0#}번 더)',
+  wet: '🌱 밀이 물을 먹고 자라는 중 · 흙이 마르면 💧 다시 물 줘요',
+  rain: '🌧️ 비가 와서 밀이 저절로 자라요 · 다 자랄 때까지 기다려요',
+  weed: '🌿 밀 밭에 잡초가 났어요 → 아무 도구로 액션해서 뽑아요',
+  ready: '🌾 텃밭으로 가서 → 🔪 낫(5번)을 들고 다 자란 밀 앞에서 거둬요',
+  wilted: '🥀 밀이 시들었어요 → ⛏️ 괭이(2번)로 갈고 다시 심어요',
+};
+
+function growHow(status) {
+  const kind = status?.kind;
+  if (kind === 'dry') return ONBOARD_HOW.dry.replace('{0#}', String(status.watersLeft));
+  return ONBOARD_HOW[kind] && kind !== 'none' ? ONBOARD_HOW[kind] : ONBOARD_HOW.plant;
+}
+
+const WHEAT_ORDER = ['ready', 'weed', 'dry', 'rain', 'wet', 'wilted'];
+
+export function wheatStatus(plots, now, { upgraded, rain }) {
+  const kinds = (plots || []).filter(p => p?.cropType?.id === 'wheat').map(p => {
+    if (p.state === 'mature') return { kind: 'ready' };
+    if (p.state === 'wilted') return { kind: 'wilted' };
+    if (p.state !== 'growing') return null;
+    if (p.weed) return { kind: 'weed' };
+    if (rain) return { kind: 'rain' };
+    if (now < (p.wetUntil || 0)) return { kind: 'wet' };
+    const step = growthPerWater(p.cropType, upgraded, !!p.fert);
+    return { kind: 'dry', watersLeft: Math.max(1, Math.ceil((MATURE - (p.growth || 0)) / step)) };
+  }).filter(Boolean);
+  for (const k of WHEAT_ORDER) {
+    const hit = kinds.find(x => x.kind === k);
+    if (hit) return hit;
+  }
+  return { kind: 'none' };
 }
 
 /** 세이브 복원 — 모르는 값·없는 값은 undefined(다른 계정 상태가 새지 않게),
