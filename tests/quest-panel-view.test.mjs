@@ -64,3 +64,9 @@ test('가로 폰에서 펼치면 미니맵 자리까지 올라가 수행 방법�
 test('접힌 카드도 완료된 의뢰면 누구에게 가야 하는지 남긴다', () => {
   assert.match(html, /if \(!line \|\| q\.ready\) el\.appendChild\(prog\);/);
 });
+
+test('패널을 다시 그려도 게이지가 0에서 다시 차오르지 않는다 — 직전 값에서 시작', () => {
+  assert.match(html, /const questBarLast = new Map\(\);/);
+  assert.match(html, /fill\.style\.width = questBarLast\.get\(barKey\) \|\| '0%';/);
+  assert.match(html, /questBarLast\.set\(barKey, pct\);/);
+});
