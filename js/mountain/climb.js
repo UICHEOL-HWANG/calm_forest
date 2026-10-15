@@ -1,22 +1,22 @@
-export const CLIMB_PATH = [
-  { x: 6, z: 22 }, { x: 18, z: 12 }, { x: 26, z: -2 }, { x: 24, z: -18 },
-  { x: 12, z: -30 }, { x: -2, z: -34 }, { x: -12, z: -26 }, { x: -6, z: -14 }, { x: 0, z: -4 },
-];
+export const CLIMB_PATH = Object.freeze([
+  { x: 8.69, z: 72.27 }, { x: 17, z: 66 }, { x: 25, z: 51 }, { x: 24, z: 30 }, { x: 23, z: 8 },
+  { x: 19, z: -12 }, { x: 10, z: -21 }, { x: -6, z: -15 }, { x: 0, z: -4 },
+]);
 
 export const CLIMB_START = CLIMB_PATH[0];
 
-export const PLAZA = Object.freeze({ x: 4, z: 28, r: 9 });
+export const PLAZA = Object.freeze({ x: 0, z: 74.6, r: 9 });
 
 const BAND = 1.5;
 
-export const ACORNS = [
-  { x: 18, z: 12, offPath: false },
-  { x: 28.4, z: -1, offPath: true },
-  { x: 24, z: -18, offPath: false },
-  { x: 11, z: -32.6, offPath: true },
-  { x: -12, z: -26, offPath: false },
-  { x: -8.6, z: -12.6, offPath: true },
-];
+export const ACORNS = Object.freeze([
+  { x: 20.6, z: 59.3, offPath: false },
+  { x: 24.5, z: 40.4, offPath: false },
+  { x: 21.2, z: 20.6, offPath: true },
+  { x: 23.5, z: -1.8, offPath: true },
+  { x: 12.5, z: -18.5, offPath: false },
+  { x: 5.2, z: -21.3, offPath: true },
+]);
 
 function closestOnSeg(p, a, b) {
   const dx = b.x - a.x, dz = b.z - a.z;

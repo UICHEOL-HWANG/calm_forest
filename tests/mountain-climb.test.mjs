@@ -26,7 +26,7 @@ test('summit is the last path point and the start is not', () => {
 const moved = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
 test('clampLocal treats the plaza rim as a wall, not a teleport', () => {
-  const rim = [{ x: -5.05, z: 28 }, { x: 4, z: 37.05 }];
+  const rim = [{ x: -9.05, z: 74.6 }, { x: 0, z: 83.65 }];
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2;
     rim.push({ x: PLAZA.x + Math.cos(a) * (PLAZA.r + 0.1), z: PLAZA.z + Math.sin(a) * (PLAZA.r + 0.1) });
@@ -35,13 +35,13 @@ test('clampLocal treats the plaza rim as a wall, not a teleport', () => {
 });
 
 test('clampLocal leaves the plaza and the path band alone', () => {
-  const inPlaza = { x: 3, z: 30 };
+  const inPlaza = { x: 1, z: 76 };
   const r1 = clampLocal(inPlaza, PLAZA);
-  assert.deepEqual({ x: r1.x, z: r1.z, onPath: r1.onPath }, { x: 3, z: 30, onPath: false });
-  const onPath = { x: 24.5, z: -18 };
+  assert.deepEqual({ x: r1.x, z: r1.z, onPath: r1.onPath }, { x: 1, z: 76, onPath: false });
+  const onPath = { x: 24.5, z: 30 };
   const r2 = clampLocal(onPath, PLAZA);
   assert.equal(r2.x, 24.5);
-  assert.equal(r2.z, -18);
+  assert.equal(r2.z, 30);
   assert.equal(r2.onPath, true);
 });
 

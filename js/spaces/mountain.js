@@ -6,7 +6,7 @@ import { MOUNTAIN, MOUNTAIN_GATE } from '../data/places.js';
 import { isMountainOpen } from '../mountain/unlock.js';
 import { buildGateArt } from '../mountain/gate-art.js';
 import { createReveal } from '../mountain/reveal.js';
-import { buildMountainSpace, pathY, slopePoint, acornY } from '../mountain/terrain.js';
+import { buildMountainSpace, pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
@@ -16,7 +16,7 @@ import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, boo
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
 
-export const MOUNTAIN_EXIT_LOCAL = { x: 4, z: 36 };
+export const MOUNTAIN_EXIT_LOCAL = { x: 0, z: 83 };
 let reveal = null;
 let run = null;
 
@@ -88,7 +88,7 @@ export function clampToMountain(p) {
   const c = clampLocal({ x: p.x - MOUNTAIN.x, z: p.z - MOUNTAIN.z }, PLAZA);
   p.x = MOUNTAIN.x + c.x;
   p.z = MOUNTAIN.z + c.z;
-  p.y = c.onPath ? pathY(c.seg) + (pathY(c.seg + 1) - pathY(c.seg)) * c.k : 0;
+  p.y = c.onPath ? pathHeight(c.seg, c.k) : 0;
 }
 
 export function mountainAction(nearDoor) {

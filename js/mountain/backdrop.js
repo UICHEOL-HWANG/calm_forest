@@ -1,4 +1,5 @@
-const SNOW = 0xf6f8fb, SNOW_SHADE = 0xdfe6ef, ROCK = 0x4a4440, ROCK_LIGHT = 0x6b625a;
+export const SNOW = 0xf6f8fb;
+const SNOW_SHADE = 0xdfe6ef, ROCK = 0x4a4440, ROCK_LIGHT = 0x6b625a;
 const FOREST = 0x3f6b34, FOREST_DARK = 0x2f5329, MEADOW = 0xa7924f;
 
 function ridge(a) {
@@ -12,7 +13,7 @@ function heightAt(r, a, R, H) {
   return Math.max(0, H * Math.pow(1 - t, 1.55) + gully);
 }
 
-function colorAt(h, a, H) {
+export function colorAt(h, a, H) {
   const k = h / H;
   const gully = Math.max(0, Math.sin(a * 31 + 0.7)) * 0.14 + Math.max(0, Math.sin(a * 19 + 2.1)) * 0.08;
   const snowLine = 0.5 + ridge(a * 1.3 + 2) * 0.06 - gully;
