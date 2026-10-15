@@ -3,7 +3,7 @@ import { trackEvent } from '../analytics.js';
 import { sendSledRun } from '../supabase-client.js';
 import { ddaOutcome } from '../difficulty.js';
 import { finalTimeMs, PHYS, PHYS_V } from './sled.js';
-import { COURSE_V } from './course.js';
+import { COURSE, COURSE_V } from './course.js';
 
 export const DAILY_REWARD_RUNS = 3;
 export const SLED_COINS = { base: 15, perFlag: 2, newBest: 10 };
@@ -49,7 +49,7 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
     abandon_stage: stage,
     time_ms: timeMs,
     flags_passed: sled ? sled.flagsPassed : null,
-    penalty_ms: sled ? (12 - sled.flagsPassed) * PHYS.flagPenaltyMs : null,
+    penalty_ms: sled ? (COURSE.flags.length - sled.flagsPassed) * PHYS.flagPenaltyMs : null,
     rewarded: !!pay.rewarded,
     coins: pay.coins || 0,
     splits: sled ? sled.splits : null,
@@ -62,7 +62,7 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
     best_before_ms: bestBefore,
     acorns_available: ctx.acornsAvailable,
     acorns_collected: ctx.acornsCollected,
-    climb_ms: ctx.climbMs,
+    climb_ms: Number.isFinite(ctx.climbMs) ? Math.round(ctx.climbMs) : null,
     input: ctx.input,
     orientation: ctx.orientation,
     fps_avg: pay.fpsAvg ?? null,
@@ -78,7 +78,7 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
 export function sledSettle(sled, ctx, env = {}) {
   const today = todayStr();
   const st = sledState();
-  const timeMs = finalTimeMs(sled);
+  const timeMs = Math.round(finalTimeMs(sled));
   const done = rewardedToday(st, today);
   const rewarded = done < DAILY_REWARD_RUNS;
   const newBest = st.best === null || timeMs < st.best;

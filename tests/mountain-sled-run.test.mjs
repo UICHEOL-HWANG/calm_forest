@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { ddaOutcome } from '../js/difficulty.js';
 import { PHYS, PHYS_V, finalTimeMs } from '../js/mountain/sled.js';
-import { COURSE_V } from '../js/mountain/course.js';
+import { COURSE, COURSE_V } from '../js/mountain/course.js';
 
 function run(day = '2026-10-20', mountain = undefined) {
   const paid = [], saves = [], events = [], settled = [], rows = [], abandons = [];
@@ -18,7 +18,7 @@ function run(day = '2026-10-20', mountain = undefined) {
     sendSledRun: row => rows.push(row),
     trackDiffAbandon: (...a) => abandons.push(a),
     diffParams: r => ({ ease: r.ease, dda: r.dda, arm: r.arm, probe_v: 2 }),
-    ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE_V,
+    ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE, COURSE_V,
   };
   const c = vm.createContext({ ...ctx, todayStr: () => c.today });
   vm.runInContext(readFileSync(new URL('../js/mountain/sled-run.js', import.meta.url), 'utf8')
@@ -87,4 +87,23 @@ test('every GA4 payload stays within 25 params and carries no arrays', () => {
     assert.ok(!sent.some(Array.isArray), `${name} has an array`);
   }
   assert.deepEqual(events.map(e => e[0]), ['sled_start', 'sled_result']);
+});
+
+test('fractional times are rounded to integers everywhere', () => {
+  const { c, rows } = run();
+  const r = c.sledSettle(SLED(40000.67, 12), { ...CTX, climbMs: 41000.4 }, { fpsAvg: 58 });
+  assert.ok(Number.isInteger(r.timeMs));
+  assert.ok(Number.isInteger(c.gameState.mountain.sled.best));
+  assert.ok(Number.isInteger(rows[0].time_ms));
+  assert.ok(Number.isInteger(rows[0].best_before_ms ?? 0));
+  assert.ok(Number.isInteger(rows[0].climb_ms));
+});
+
+test('a faster fourth run updates best without paying', () => {
+  const { c, paid } = run();
+  [0, 1, 2].forEach(() => c.sledSettle(SLED(40000, 12), CTX, { fpsAvg: 58 }));
+  const r = c.sledSettle(SLED(38000, 12), CTX, { fpsAvg: 58 });
+  assert.equal(r.rewarded, false);
+  assert.equal(c.gameState.mountain.sled.best, 38000);
+  assert.equal(paid.filter(p => p[1] === 'sled_run').length, 3);
 });
