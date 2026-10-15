@@ -1,0 +1,69 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>바다터 낚시 모션 비교 — calm forest</title>
+<style>
+  :root{--bg:#f4f1ea;--ink:#2c3e4a;--sub:#6b7b86;--card:#fffdf6;--line:#e2dccf;--accent:#3a7aa8}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  header{padding:18px 22px 8px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+  h1{font-size:19px;margin:0}
+  .ctl{display:flex;gap:6px;flex-wrap:wrap}
+  .ctl button{font:inherit;font-size:13px;padding:5px 11px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .ctl button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .note{font-size:12px;color:var(--sub);padding:0 22px 12px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:0 22px 26px}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .col.base{opacity:.92;border-style:dashed}
+  .col h2{font-size:15px;margin:0}
+  .how{font-size:12px;line-height:1.5;margin:0;min-height:54px}
+  .lbl{font-size:11px;font-weight:700;color:var(--sub)}
+  .vp{position:relative;overflow:hidden;border-radius:10px;background:#79c4de}
+  .vp iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0}
+  .open{font-size:12px;color:var(--accent);text-decoration:none}
+  @media (max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<header>
+  <h1>🎣 낚시 모션 비교 <small style="font-weight:400;color:var(--sub)">(C · 링 타이밍 기준)</small></h1>
+  <div class="ctl" id="spSel"></div>
+  <div class="ctl"><button id="reload">↻ 같은 장면으로 다시</button></div>
+</header>
+<div class="note">네 칸은 같은 물고기 움직임(같은 시드)으로 자동 시연합니다. 위는 곰 옆 클로즈업, 아래는 실제 게임 시점입니다. 공통 수정: 로드가 <b>항상 물고기·찌 쪽 물을 향하고</b>(원본은 어깨 뒤로 눕혀 줄이 머리를 관통), 던지기는 <b>예비(몸 젖히며 웅크림) → 멈칫 → 채찍(로드 끝이 늦게 따라옴) → 릴리스(이때 찌 출발) → 뒷동작(앞으로 쏠렸다 출렁)</b>으로 바꿨습니다(원본 칸은 예전 던지기). 프레임별 비교는 <a href="sea-cast-frames.html">sea-cast-frames.html</a>. 화면을 탭하면 그 칸만 직접 플레이로 바뀝니다.</div>
+<div class="grid" id="grid"></div>
+<script>
+const POSES = [
+  { p: 0, name: '원본', how: '지금 시뮬 그대로. 로드가 어깨 뒤로 눕고 몸이 초당 1.4번 빠르게 들썩입니다.' },
+  { p: 1, name: '① 차분히 버티기', how: '로드를 물 쪽 40°로 들고 버팁니다. 내달릴 땐 천천히 뒤로 젖히고 로드 끝이 물로 끌려 내려가며, 링을 맞추면 로드가 살짝 들립니다.' },
+  { p: 2, name: '② 펌핑', how: '진짜 대어 낚시 동작. 내달릴 땐 로드를 높이 세워 크게 휘고, 링을 맞출 때마다 로드를 확 들어 올렸다가 내리며 감습니다.' },
+  { p: 3, name: '③ 옆으로 버티기', how: '몸을 비스듬히 틀고 로드를 낮게 듭니다. 물고기가 옆으로 달리면 로드를 반대쪽으로 쓸어 당깁니다.' },
+];
+const SPECIES = [['aji', '🐟 전갱이'], ['buri', '🐠 방어'], ['mola', '🐡 개복치'], ['tuna', '⚔️ 참치']];
+let sp = 'tuna';
+document.getElementById('grid').innerHTML = POSES.map(o => `
+  <section class="col${o.p ? '' : ' base'}" data-p="${o.p}">
+    <h2>${o.name}</h2><p class="how">${o.how}</p>
+    <div class="lbl">옆 클로즈업</div><div class="vp" data-w="640" data-h="420" data-cam="side"><iframe></iframe></div>
+    <div class="lbl">게임 시점 PC</div><div class="vp" data-w="960" data-h="540" data-cam=""><iframe></iframe></div>
+    <a class="open" target="_blank" href="sea-feel-sim.html?v=C&pose=${o.p}">↗ 전체 화면으로 직접 해보기</a>
+  </section>`).join('');
+document.getElementById('spSel').innerHTML = SPECIES.map(([id, n]) => `<button data-s="${id}">${n}</button>`).join('');
+function layout() {
+  document.querySelectorAll('.col').forEach(col => col.querySelectorAll('.vp').forEach(vp => {
+    const w = +vp.dataset.w, h = +vp.dataset.h, s = (col.clientWidth - 20) / w;
+    vp.style.width = w * s + 'px'; vp.style.height = h * s + 'px';
+    const f = vp.querySelector('iframe');
+    f.style.width = w + 'px'; f.style.height = h + 'px'; f.style.transform = `scale(${s})`;
+  }));
+}
+function load() {
+  const seed = Math.floor(Math.random() * 1e6) + 1;
+  document.querySelectorAll('#spSel button').forEach(b => b.classList.toggle('on', b.dataset.s === sp));
+  document.querySelectorAll('.col').forEach(col => col.querySelectorAll('.vp').forEach(vp => {
+    vp.querySelector('iframe').src = `sea-feel-sim.html?v=C&sp=${sp}&embed=1&auto=1&seed=${seed}&pose=${col.dataset.p}${vp.dataset.cam ? '&cam=' + vp.dataset.cam : ''}`;
+  }));
+}
+document.getElementById('spSel').onclick = e => { const b = e.target.closest('button'); if (b) { sp = b.dataset.s; load(); } };
+document.getElementById('reload').onclick = load;
+addEventListener('resize', layout);
+layout(); load();
+</script>

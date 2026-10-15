@@ -272,6 +272,27 @@
   #sea-sp { font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 4px rgba(20,60,90,0.5); }
   #sea-gauge { width: min(320px, 64vw); height: 12px; border-radius: 8px; background: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.7); overflow: hidden; }
   #sea-gauge i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #ffd25e, #ff9d4d); transition: width .12s; }
+  .sea-ring { position: fixed; display: none; border-radius: 50%; border: 5px solid #fff; box-sizing: border-box; transform: translate(-50%, -50%); pointer-events: none; z-index: 30; box-shadow: 0 0 6px rgba(20,60,90,0.35); }
+  .sea-ring.near { border-color: #b6ff9e; }
+  #sea-hint { position: fixed; font-size: 18px; font-weight: 800; text-shadow: 0 2px 6px rgba(20,50,70,0.55); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 30; }
+  #sea-hint.on { opacity: 1; }
+  #sea-hint { transform: translate(-50%, -100%); text-align: center; }
+  #sea-btn { position: fixed; left: 50%; bottom: calc(5% + env(safe-area-inset-bottom)); transform: translateX(-50%); width: 112px; height: 112px; border-radius: 50%; border: 5px solid rgba(255,255,255,0.88); background: rgba(60,130,180,0.85); color: #fff; font-size: 18px; font-weight: 800; line-height: 1.15; display: none; align-items: center; justify-content: center; text-align: center; box-shadow: 0 6px 18px rgba(20,60,90,0.35); z-index: 25; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+  body.sea-mode #sea-btn { display: flex; }
+  body.sea-mode #action-btn { display: none !important; }
+  body:has(#sea-hud.show) #door-prompt { opacity: 0 !important; }
+  body.sea-mode #door-prompt { bottom: calc(5% + env(safe-area-inset-bottom) + 158px); }
+  body.sea-mode.is-touch #door-prompt { bottom: calc(10px + env(safe-area-inset-bottom) + 158px); }
+  body.is-touch #sea-btn { left: auto; right: max(16px, calc(env(safe-area-inset-right) + 6px)); bottom: calc(10px + env(safe-area-inset-bottom)); transform: none; }
+  body.is-touch #sea-btn.press { transform: scale(0.93); }
+  #sea-btn.press { transform: translateX(-50%) scale(0.93); }
+  #sea-btn.go { background: rgba(90,180,80,0.92); border-color: #d6ffc4; animation: seaBtnPulse .35s infinite alternate; }
+  #sea-btn.hook { background: rgba(240,190,40,0.95); border-color: #fff6b0; animation: seaBtnPulse .12s infinite alternate; }
+  #sea-btn.stop { background: rgba(200,80,60,0.9); border-color: #ffd0c4; }
+  #sea-btn.door { background: rgba(150,120,255,0.88); }
+  #sea-btn.wait { background: rgba(60,130,180,0.6); }
+  @keyframes seaBtnPulse { from { box-shadow: 0 0 0 0 rgba(150,255,120,0.6); } to { box-shadow: 0 0 0 16px rgba(150,255,120,0); } }
+  #sea-vig { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
   #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
   #boat-view { position: fixed; right: 14px; top: calc(54px + var(--top-inset)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-view { display: block; }
@@ -2412,6 +2433,10 @@
     <div id="boat-boost"><i></i></div>
   </div>
   <button id="boat-quit">✕ 그만두기</button>
+  <div id="sea-vig"></div>
+  <div class="sea-ring"></div><div class="sea-ring"></div><div class="sea-ring"></div>
+  <div id="sea-hint"></div>
+  <div id="sea-btn">🎣 던지기</div>
   <div id="sea-hud">
     <div id="sea-banner"></div>
     <div id="sea-sp"></div>
@@ -3846,6 +3871,7 @@
       // 🌊 바다터 줄다리기 HUD (null 이면 숨김)
       setSeaHud(d) {
         const el = $('sea-hud');
+        $('sea-vig').style.boxShadow = d?.danger > 0 ? `inset 0 0 ${60 + d.danger * 90}px ${d.danger * 30}px rgba(220,40,20,${(0.25 + 0.35 * d.danger).toFixed(2)})` : '';
         if (!d) { el.classList.remove('show'); return; }
         el.classList.add('show');
         const b = $('sea-banner');
@@ -3854,6 +3880,35 @@
         $('sea-fill').style.width = (d.p * 100).toFixed(0) + '%';
         $('sea-sp').textContent = d.sp || '';
         $('sea-edge-m').textContent = d.edge;
+      },
+      seaAnchor() {
+        const r = $('sea-btn').getBoundingClientRect();
+        return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width };
+      },
+      setSeaBtn(label, cls) {
+        const b = $('sea-btn');
+        if (b.textContent !== label) b.textContent = label;
+        const c = cls || '';
+        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait'); if (c) b.classList.add(c); b.dataset.cls = c; }
+      },
+      setSeaRings(list) {
+        const { cx, cy, w } = this.seaAnchor();
+        document.querySelectorAll('.sea-ring').forEach((el, i) => {
+          const d = list[i];
+          if (!d) { el.style.display = 'none'; return; }
+          el.style.display = 'block'; el.style.left = cx + 'px'; el.style.top = cy + 'px';
+          el.style.width = el.style.height = (w * d.s) + 'px'; el.style.opacity = d.o;
+          el.classList.toggle('near', d.near);
+        });
+      },
+      seaHint(text, color) {
+        const el = $('sea-hint'), a = this.seaAnchor();
+        el.textContent = text; el.style.color = color || '#fff';
+        const hw = el.offsetWidth / 2 + 8;
+        el.style.left = Math.min(innerWidth - hw, Math.max(hw, a.cx)) + 'px';
+        el.style.top = (a.cy - a.w / 2 - 10) + 'px';
+        el.classList.add('on');
+        clearTimeout(this._seaHintT); this._seaHintT = setTimeout(() => el.classList.remove('on'), 1100);
       },
       // 🛶 런 결과 모달 — 여기서 바로 "한 번 더"가 되게(남은 횟수 표시)
       showBoatResult(d) {

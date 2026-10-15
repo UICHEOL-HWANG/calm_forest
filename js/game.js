@@ -522,8 +522,8 @@ let seaGroup = null, atSea = false;
 let seaFishes = [];                                   // 배회 물고기 { g, sp, ang, des, spd, tTurn } (seaGroup 로컬 좌표)
 let seaBuoy = null, seaLine = null, seaRodMesh = null, _seaPrevTool = null;
 // 진행 상태 머신 — idle(배회 관찰) → cast(비행·입질 대기) → fight(버둥/당기기) → catch/miss
-const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, sp: null,
-  pz: 0, fishDir: 1, landed: false, good: 0, bad: 0, t0: 0, fmesh: null, doneT: 0 };
+const seaMG = { st: 'idle', t: 0, ft: 0, phase: 'run', phaseLen: 0, nextLen: 0, progress: 0, sp: null,
+  pz: 0, fishDir: 1, released: false, good: 0, bad: 0, perfect: 0, t0: 0, fmesh: null, doneT: 0, rings: [], lift: 0 };
 
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
@@ -6311,7 +6311,7 @@ function updateCamera(dt) {
   const pk = Math.min(2.3, Math.max(1, 1.35 / camera.aspect));     // 1(가로) ~ 2.3(폰 세로)
   const phoneT = (pk - 1) / 1.3;                                   // 0(가로) ~ 1(폰 세로)
   const seaBase = seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
-                : seaMG.st === 'cast' ? 0.55 : 0.86;
+                : seaMG.st === 'cast' || seaMG.st === 'wait' || seaMG.st === 'hook' ? 0.55 : 0.86;
   const seaPhone = seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.90 : 1.0;   // 폰 세로 목표 줌
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
