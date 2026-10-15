@@ -24,12 +24,18 @@ test('가로 폰 HUD — 자원 패널 한 줄, 조이스틱·액션 버튼은 �
 
 test('아이폰 가로 — 노치 쪽 좌우 여백(safe-area-inset-left/right)을 비킨다', () => {
   const b = landBlock();
-  for (const id of ['topleft', 'minimap', 'joy-base']) {
+  for (const id of ['topleft', 'minimap', 'joy-base', 'quest-panel']) {
     assert.match(b, new RegExp(`#${id}[^{]*\\{[^}]*left: max\\(\\d+px, (calc\\()?env\\(safe-area-inset-left\\)`), `#${id} 왼쪽 여백`);
   }
   for (const id of ['topright', 'action-btn', 'feedback-tab', 'dex-tab']) {
     assert.match(b, new RegExp(`#${id}[^{]*\\{[^}]*right: max\\(\\d+px, (calc\\()?env\\(safe-area-inset-right\\)`), `#${id} 오른쪽 여백`);
   }
+});
+
+test('가로 폰 의뢰 패널 — 미니맵 바로 아래, 조이스틱 위까지만', () => {
+  const b = landBlock();
+  assert.match(b, /body\.is-touch #quest-panel, body\.is-touch\.story-on #quest-panel, body\.is-touch:has\(#hint-banner\.show\) #quest-panel \{[^}]*--qp-top: calc\(168px \+ var\(--top-inset\)\);/);
+  assert.match(b, /#quest-panel \{[^}]*max-height: calc\(100dvh - var\(--qp-top\) - 124px - env\(safe-area-inset-bottom\)\);/);
 });
 
 test('가로 폰 블록은 터치에만 — 높이가 낮은 PC 창에는 안 걸린다', () => {
