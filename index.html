@@ -833,8 +833,6 @@
   #quest-panel .q-item.line .q-title > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #quest-panel .q-count { margin-left: auto; padding-left: 6px; font-size: 12px; font-weight: 600; opacity: .65; white-space: nowrap; }
   #quest-panel .q-item.line .q-bar { height: 5px; margin-top: 5px; }
-  #quest-panel .q-item.line .q-how { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 5px 0 0; font-size: 11.5px; line-height: 1.4; }
-  #quest-panel .q-item.line .q-how:empty { display: none; }
 
   /* ── 💬 대화 모달 ──────────────────────────────────────────────
      말풍선 로그 + 선택지. 반복되는 회색 상자 나열을 피하려고 셋을 다르게 만든다:
@@ -1911,8 +1909,6 @@
     body.is-touch.quest-open #quest-panel, body.is-touch.quest-open:has(#hint-banner.show) #quest-panel { --qp-top: calc(76px + var(--top-inset)); max-width: 260px; }
     body.is-touch.quest-open:not(.coaching):not(.app-banner-on) #minimap { display: none; }
     body.is-touch.quest-open #quest-panel .q-how { display: block; }
-    body.is-touch #quest-panel .q-item.line .q-how { margin-top: 3px; }
-    body.is-touch #quest-panel #quest-toggle { margin-top: 4px; }
     body.is-touch #joy-base { left: max(20px, calc(env(safe-area-inset-left) + 8px)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 104px; height: 104px; }
     body.is-touch #action-btn { right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
@@ -3308,16 +3304,13 @@
           title.append(ico, tx);
           if (line) { const cnt = document.createElement('span'); cnt.className = 'q-count'; cnt.textContent = q.ready ? '✅' : `${q.progress}/${q.target}`; title.appendChild(cnt); }
           el.appendChild(title);
-          let how = null;
-          if (lead || line) {
-            if (lead) {
-              const desc = document.createElement('div'); desc.className = 'q-desc';
-              desc.textContent = (q.name ? `${q.name} · ` : '') + (q.desc || '');
-              el.appendChild(desc);
-            }
-            how = document.createElement('div'); how.className = 'q-how';
+          if (lead) {
+            const desc = document.createElement('div'); desc.className = 'q-desc';
+            desc.textContent = (q.name ? `${q.name} · ` : '') + (q.desc || '');
+            el.appendChild(desc);
+            const how = document.createElement('div'); how.className = 'q-how';
             how.textContent = q.ready ? '' : (q.how || '');   // 📜 수행 방법(완료 후엔 감춤)
-            if (lead) el.appendChild(how);
+            el.appendChild(how);
           }
           const bar = document.createElement('div'); bar.className = 'q-bar';
           const fill = document.createElement('div'); fill.className = 'q-fill';
@@ -3328,7 +3321,6 @@
           fill.style.width = questBarLast.get(barKey) || '0%';
           questBarLast.set(barKey, pct);
           bar.appendChild(fill); el.appendChild(bar);
-          if (line && how) el.appendChild(how);
           requestAnimationFrame(() => { fill.style.width = pct; });
           const prog = document.createElement('div'); prog.className = 'q-prog';
           prog.textContent = q.ready
