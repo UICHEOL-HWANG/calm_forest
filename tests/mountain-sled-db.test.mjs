@@ -29,3 +29,18 @@ test('client sends through SLED_TABLE and skips dev sessions', () => {
   assert.match(client, /export async function sendSledRun\(row\)\s*\{\s*if \(IS_DEV_SESSION\) return;/);
   assert.match(client, /from\(CONFIG\.SLED_TABLE\)\.insert/);
 });
+
+test('min-time trigger looks up the floor by version and rejects unknown versions', () => {
+  assert.doesNotMatch(sql, /course_v = 1 and/);
+  assert.match(sql, /case new\.course_v when 1 then 13750 else null end/);
+  assert.match(sql, /floor_ms is null or new\.time_ms is null or new\.time_ms < floor_ms/);
+});
+
+test('version checks, octet_length cap, nonneg check and server-set run_date', () => {
+  assert.match(sql, /sled_runs_course_v check \(course_v = 1\)/);
+  assert.match(sql, /sled_runs_phys_v check \(phys_v = 1\)/);
+  assert.match(sql, /octet_length\(splits::text\)/);
+  assert.doesNotMatch(sql, /pg_column_size/);
+  assert.match(sql, /sled_runs_nonneg/);
+  assert.match(sql, /new\.run_date := \(now\(\) at time zone 'Asia\/Seoul'\)::date/);
+});

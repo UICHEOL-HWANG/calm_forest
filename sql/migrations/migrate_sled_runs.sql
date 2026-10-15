@@ -40,7 +40,13 @@ create table if not exists public.sled_runs (
   constraint sled_runs_outcome check (outcome in ('finish', 'abandon')),
   constraint sled_runs_platform check (platform is null or platform in ('web', 'toss', 'itch', 'android', 'ios')),
   constraint sled_runs_json_size check (
-    coalesce(pg_column_size(splits), 0) + coalesce(pg_column_size(boosts_at), 0) + coalesce(pg_column_size(hits), 0) < 8192
+    coalesce(octet_length(splits::text), 0) + coalesce(octet_length(boosts_at::text), 0) + coalesce(octet_length(hits::text), 0) <= 8192
+  ),
+  constraint sled_runs_course_v check (course_v = 1),
+  constraint sled_runs_phys_v check (phys_v = 1),
+  constraint sled_runs_nonneg check (
+    (time_ms is null or time_ms >= 0) and (penalty_ms is null or penalty_ms >= 0) and (coins is null or coins >= 0)
+    and (climb_ms is null or climb_ms >= 0) and (steer_left_ms is null or steer_left_ms >= 0) and (steer_right_ms is null or steer_right_ms >= 0)
   )
 );
 
@@ -51,10 +57,14 @@ create index if not exists sled_runs_created_idx on public.sled_runs (created_at
 
 create or replace function public.sled_runs_min_time() returns trigger
 language plpgsql as $$
+declare
+  floor_ms integer;
 begin
-  if new.outcome = 'finish' and new.course_v = 1 and (new.time_ms is null or new.time_ms < 13750) then
+  floor_ms := case new.course_v when 1 then 13750 else null end;
+  if new.outcome = 'finish' and (floor_ms is null or new.time_ms is null or new.time_ms < floor_ms) then
     raise exception 'sled time below theoretical minimum';
   end if;
+  new.run_date := (now() at time zone 'Asia/Seoul')::date;
   return new;
 end $$;
 
