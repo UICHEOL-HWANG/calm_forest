@@ -259,6 +259,7 @@ import { restoreAura } from './aura/recipe.js';
 import { createAuraFx, lookOf } from './aura/render.js';
 import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐릭터·꾸미기 › 옷장·펫 탭
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
+import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
@@ -1000,6 +1001,7 @@ const gameState = {
   talk: { date: '', used: {} },
   quiz: { date: '', done: false, correct: 0 },   // 🦆 사공 퀴즈 — 오늘 풀었는지(시작하면 done). 날짜가 오늘이 아니면 다시 풀 수 있다
   aura: { slots: [], equipped: null },   // 🏮 빛 공방 오라 — 보관함 3칸(레시피 사본+다듬기) · 장착 id
+  firstDay: null,
   starDay: null,   // 🔭 별 잇기 — 마지막으로 보상 받은 날(같은 날 재도전은 연습)
   star: { cleared: {}, plays: {}, best: {} },   // 🌌 별자리별 첫 클리어 날짜·시도 횟수·최고 점수(해금은 cleared 로 계산)
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
@@ -2414,6 +2416,7 @@ export async function enterGame() {
     place: indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
     x: player.position.x, z: player.position.z,
   }));
+  gameState.firstDay = ensureFirstDay(gameState.firstDay, todayStr());
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
   if (WEATHER !== 'clear') {            // [날씨] 궂은 날 안내 + 세션 태깅
     if (!bonusModal) ui.toast?.(WEATHER_MSG[WEATHER], 2800);   // 출석 모달에 이미 합쳐 안내했으면 생략
@@ -2626,6 +2629,7 @@ function applySave(saved) {
     gameState.quiz = { date: saved.quiz.date, done: !!saved.quiz.done, correct: +saved.quiz.correct || 0 };
   }
   if (typeof saved.starDay === 'string') gameState.starDay = saved.starDay;   // 🔭 별 잇기 하루 1회
+  gameState.firstDay = resolveFirstDay(saved.firstDay);
   gameState.aura = restoreAura(saved.aura);   // 🏮 모르는 값·4칸째·사라진 장착 id 는 걸러진다
   refreshAura();
   gameState.star = restoreStar(saved.star, saved.starDay);   // 🌌 별자리 기록(옛 북두칠성 보상 기록은 클리어로 친다)
