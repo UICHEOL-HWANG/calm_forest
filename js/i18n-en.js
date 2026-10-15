@@ -2506,4 +2506,11 @@ export const EN = {
   '로그인하면 지금 마을 그대로 가져가요': 'Sign in to bring your village',
   '로그인하고 받기': 'Sign in',
   '배너 닫기': 'Close banner',
+  '🏔️ 설산': '🏔️ Snow Mountain',
+  '🏔️ 설산 오르기': '🏔️ Climb the mountain',
+  '🏔️ 내일 열려요': '🏔️ Opens tomorrow',
+  '🏔️ 설산이 열렸어요!': '🏔️ The snow mountain is open!',
+  '🏔️ 뒤 능선길로 올라 정상에서 썰매를 타요. 나갈 땐 남쪽 문': '🏔️ Climb the back ridge and sled down from the top. Exit through the south door',
+  '🏔️ 썰매 타러 가는 길': '🏔️ The way to the sled run',
+  '🚪 마을로 돌아가기': '🚪 Back to the village',
 };

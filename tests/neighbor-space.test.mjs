@@ -58,7 +58,7 @@ test('공간 가드: 문·야외 장식·마을 판정·그림자·도구 페이
   assert.match(read('js/spaces/neighbor.js'), /return \{ nd: 'neighborexit', prompt: '🚪 내 마을로' \};/);
   assert.match(DOORS, /inVillage2\(\) \{ return [^}]*!atNeighbor/);
   assert.match(read('js/spaces/outdoor-decor.js'), /outdoorZone\(\) \{ return [^}]*!atNeighbor/);
-  assert.match(read('js/shadow-scope.js'), /'atOrchard', 'atNeighbor'(?:, 'atDream')?(?:, 'atMirror')?\]/);
+  assert.match(read('js/shadow-scope.js'), /'atOrchard', 'atNeighbor'(?:, 'atDream')?(?:, 'atMirror')?(?:, 'atMountain')?\]/);
   assert.match(read('js/data/tools.js'), /neighbor: 'none'/);
 });
 

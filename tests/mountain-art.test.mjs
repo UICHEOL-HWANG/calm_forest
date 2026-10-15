@@ -50,3 +50,25 @@ test('reveal installs a rig, adds and removes the backdrop, then releases the ca
   assert.equal(rigs.at(-1), null);
   assert.equal(scene.children.length, 0);
 });
+
+test('reveal builds the backdrop on start and disposes its geometries and materials when it finishes', () => {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const r = createReveal({ THREE, scene, camera, setCameraRig: () => {}, from: new THREE.Vector3(0, 1.2, 0), at: new THREE.Vector3(0, 30, -150), durationMs: 3000 });
+  assert.equal(r.group(), null);
+  r.start();
+  const ms = meshes(r.group());
+  assert.ok(ms.length > 0);
+  const disposed = new Set();
+  for (const m of ms) {
+    m.geometry.addEventListener('dispose', () => disposed.add(m.geometry));
+    m.material.addEventListener('dispose', () => disposed.add(m.material));
+  }
+  let alive = true, t = 0;
+  while (alive && t < 5) { alive = r.update(0.1); t += 0.1; }
+  for (const m of ms) {
+    assert.ok(disposed.has(m.geometry), 'geometry disposed');
+    assert.ok(disposed.has(m.material), 'material disposed');
+  }
+  assert.equal(scene.children.length, 0);
+});

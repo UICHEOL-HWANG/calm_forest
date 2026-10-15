@@ -1,10 +1,18 @@
 import { buildBackdrop } from './backdrop.js';
 
+const disposeMaterial = m => (Array.isArray(m) ? m : [m]).forEach(x => x?.dispose());
+
+function disposeGroup(group) {
+  group.traverse(o => {
+    o.geometry?.dispose();
+    if (o.material) disposeMaterial(o.material);
+  });
+}
+
 const ease = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
 export function createReveal({ THREE, scene, camera, setCameraRig, from, at, durationMs }) {
-  const backdrop = buildBackdrop(THREE, { radius: 60, height: 34, frontGap: 0.38 });
-  backdrop.position.set(at.x, 0, at.z);
+  let backdrop = null;
   const startPos = new THREE.Vector3(), startLook = new THREE.Vector3(), look = new THREE.Vector3();
   const peak = new THREE.Vector3(at.x, at.y, at.z);
   let elapsed = 0, running = false;
@@ -16,7 +24,12 @@ export function createReveal({ THREE, scene, camera, setCameraRig, from, at, dur
     cam.lookAt(look);
   };
   return {
+    group() {
+      return backdrop;
+    },
     start() {
+      backdrop = buildBackdrop(THREE, { radius: 60, height: 34, frontGap: 0.38 });
+      backdrop.position.set(at.x, 0, at.z);
       startPos.copy(camera.position);
       startLook.copy(from);
       scene.add(backdrop);
@@ -30,6 +43,8 @@ export function createReveal({ THREE, scene, camera, setCameraRig, from, at, dur
       if (elapsed < durationMs / 1000) return true;
       running = false;
       scene.remove(backdrop);
+      disposeGroup(backdrop);
+      backdrop = null;
       setCameraRig(null);
       return false;
     },

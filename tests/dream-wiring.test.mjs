@@ -72,7 +72,7 @@ test('리뷰 반영 — 미니맵·펫·발자국·밤 재확인·충돌 뒤 재
   assert.match(HTML, /d\.place === 'dream' \? '🌙 꿈의 숲'/);
   assert.match(HTML, /'dream-arrive-modal': 'dream-arrive-ok'/);
   assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream( \|\| atMirror)?;/);
-  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMine \|\| atDream( \|\| atMirror)?;/);
+  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream( \|\| atMirror)?;/);
   assert.match(GAME, /resolveColliders\(player\.position\);[^\n]*\n\s+if \(atDream\) clampToDream\(player\.position\);/);
   assert.match(DREAM, /if \(!isNight\(\)\) \{ ui\.toast\?\.\('🌙 꿈꾸기는 밤에만 할 수 있어요'\); return; \}/);
 });
