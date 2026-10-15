@@ -7,11 +7,10 @@ import { isMountainOpen } from '../mountain/unlock.js';
 import { buildGateArt } from '../mountain/gate-art.js';
 import { createReveal } from '../mountain/reveal.js';
 import { buildMountainSpace, pathY } from '../mountain/terrain.js';
-import { CLIMB_PATH, nearestOnPath } from '../mountain/climb.js';
+import { CLIMB_PATH, PLAZA, clampLocal } from '../mountain/climb.js';
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
 
-const PLAZA = { x: 4, z: 28, r: 9 };
 export const MOUNTAIN_EXIT_LOCAL = { x: 4, z: 36 };
 let reveal = null;
 
@@ -64,21 +63,15 @@ export function exitMountain() {
   player.position.set(MOUNTAIN_GATE.x, 0, MOUNTAIN_GATE.z + 4);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible(); setBGMTheme('main');
+  Sound.blip();
   trackEvent('mountain_exit');
 }
 
 export function clampToMountain(p) {
-  const lx = p.x - MOUNTAIN.x, lz = p.z - MOUNTAIN.z;
-  if (Math.hypot(lx - PLAZA.x, lz - PLAZA.z) <= PLAZA.r) { p.y = 0; return; }
-  const n = nearestOnPath({ x: lx, z: lz });
-  const a = CLIMB_PATH[n.seg], b = CLIMB_PATH[n.seg + 1];
-  const segLen = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-  const k = Math.hypot(n.x - a.x, n.z - a.z) / segLen;
-  p.y = pathY(n.seg) + (pathY(n.seg + 1) - pathY(n.seg)) * k;
-  if (n.dist <= 1.5) return;
-  const s = 1.5 / n.dist;
-  p.x = MOUNTAIN.x + n.x + (lx - n.x) * s;
-  p.z = MOUNTAIN.z + n.z + (lz - n.z) * s;
+  const c = clampLocal({ x: p.x - MOUNTAIN.x, z: p.z - MOUNTAIN.z }, PLAZA);
+  p.x = MOUNTAIN.x + c.x;
+  p.z = MOUNTAIN.z + c.z;
+  p.y = c.onPath ? pathY(c.seg) + (pathY(c.seg + 1) - pathY(c.seg)) * c.k : 0;
 }
 
 export function mountainAction(nearDoor) {
@@ -93,8 +86,9 @@ export function mountainMinimapMarks(marks) {
 }
 
 export function maybeRevealMountain() {
-  if (reveal || mgView || duelActive || !inVillage2()) return;
-  if (!mountainOpen() || gameState.hintsSeen?.mountainReveal || $w.atMountain) return;
+  if (reveal || gameState.hintsSeen?.mountainReveal) return;
+  if (mgView || duelActive || ui.anyModalOpen?.() || ui.coachActive?.() || !inVillage2()) return;
+  if (!mountainOpen()) return;
   gameState.hintsSeen = { ...(gameState.hintsSeen || {}), mountainReveal: true };
   requestSave();
   reveal = createReveal({
@@ -109,5 +103,7 @@ export function maybeRevealMountain() {
 }
 
 export function updateMountain(dt) {
-  if (reveal && !reveal.update(dt)) reveal = null;
+  if (!reveal) return;
+  if (!inVillage2()) { reveal.finish(); reveal = null; return; }
+  if (!reveal.update(dt)) reveal = null;
 }

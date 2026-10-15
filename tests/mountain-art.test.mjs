@@ -72,3 +72,22 @@ test('reveal builds the backdrop on start and disposes its geometries and materi
   }
   assert.equal(scene.children.length, 0);
 });
+
+test('reveal finish() releases the rig, disposes the backdrop and is idempotent', () => {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const rigs = [];
+  const r = createReveal({ THREE, scene, camera, setCameraRig: fn => rigs.push(fn), from: new THREE.Vector3(0, 1.2, 0), at: new THREE.Vector3(0, 30, -150), durationMs: 3000 });
+  r.start();
+  const ms = meshes(r.group());
+  let disposed = 0;
+  for (const m of ms) m.geometry.addEventListener('dispose', () => { disposed++; });
+  r.finish();
+  r.finish();
+  assert.equal(rigs.at(-1), null);
+  assert.equal(rigs.filter(f => f === null).length, 1);
+  assert.equal(disposed, ms.length);
+  assert.equal(scene.children.length, 0);
+  assert.equal(r.group(), null);
+  assert.equal(r.update(0.1), false);
+});

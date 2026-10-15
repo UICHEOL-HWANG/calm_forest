@@ -23,6 +23,14 @@ export function createReveal({ THREE, scene, camera, setCameraRig, from, at, dur
     look.copy(startLook).lerp(peak, up);
     cam.lookAt(look);
   };
+  const finish = () => {
+    if (!running) return;
+    running = false;
+    scene.remove(backdrop);
+    disposeGroup(backdrop);
+    backdrop = null;
+    setCameraRig(null);
+  };
   return {
     group() {
       return backdrop;
@@ -37,15 +45,12 @@ export function createReveal({ THREE, scene, camera, setCameraRig, from, at, dur
       running = true;
       setCameraRig(rig);
     },
+    finish,
     update(dt) {
       if (!running) return false;
       elapsed += dt;
       if (elapsed < durationMs / 1000) return true;
-      running = false;
-      scene.remove(backdrop);
-      disposeGroup(backdrop);
-      backdrop = null;
-      setCameraRig(null);
+      finish();
       return false;
     },
   };
