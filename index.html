@@ -1896,6 +1896,8 @@
     body.is-touch #topleft { top: calc(10px + var(--top-inset)); left: max(12px, env(safe-area-inset-left)); }
     body.is-touch #topright { top: calc(10px + var(--top-inset)); right: max(12px, env(safe-area-inset-right)); flex-direction: row; align-items: center; gap: 8px; }
     body.is-touch #minimap { top: calc(76px + var(--top-inset)); left: max(12px, env(safe-area-inset-left)); width: 84px; height: 84px; }
+    body.is-touch #quest-panel, body.is-touch.story-on #quest-panel, body.is-touch:has(#hint-banner.show) #quest-panel { --qp-top: calc(168px + var(--top-inset)); left: max(12px, env(safe-area-inset-left)); max-width: 200px;
+      max-height: calc(100dvh - var(--qp-top) - 124px - env(safe-area-inset-bottom)); }
     body.is-touch #joy-base { left: max(20px, calc(env(safe-area-inset-left) + 8px)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 104px; height: 104px; }
     body.is-touch #action-btn { right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }

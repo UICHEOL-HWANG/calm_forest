@@ -37,7 +37,6 @@ import { runAiPregen } from '../functions/ai-pregen-cron.js';
 import { runPush, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
-import { runCardnewsCron } from '../functions/cardnews-cron.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -90,13 +89,6 @@ export default {
   //       여기를 안 고쳤을 때 npc-gen 이 **조용히 영원히 안 돈다**(실패 로그조차 없다).
   //       이 방향이면 같은 실수가 npc_gen_runs 에 매일 한 줄씩 남아 바로 눈에 띈다.
   async scheduled(event, env, ctx) {
-    // 🗂️ 카드뉴스 — 매일 02:00 UTC (wrangler.jsonc 의 "0 2 * * *")
-    if (event.cron === '0 2 * * *') {
-      ctx.waitUntil(runCardnewsCron(env).then(r => {
-        console.log(JSON.stringify({ message: 'cardnews cron', cron: event.cron, ...r }));
-      }));
-      return;
-    }
     // 🦉☕ 의뢰·카페 손님 사전 생성(분 0·20·40) + 🔔 푸시(분 10·30·50) — KST 20:00~22:50.
     //    cron 슬롯이 5/5 라 한 표현식을 분으로 가른다. 실행이 따로라 subrequest 50 예산도 따로다
     //    (ai-pregen 혼자 44 를 쓰므로 같은 실행에 얹으면 넘친다).
