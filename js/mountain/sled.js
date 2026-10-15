@@ -9,8 +9,8 @@ export const PHYS = Object.freeze({
   steerRate: 6.5,
   boostMult: 1.5,
   boostMs: 2000,
-  hitSlowMult: 0.55,
-  hitRecoverMs: 900,
+  hitSlowMult: 0.5,
+  hitRecoverMs: 1500,
   flagPenaltyMs: 1000,
 });
 

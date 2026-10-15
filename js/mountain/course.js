@@ -10,13 +10,13 @@ export function centerX(z) {
 
 const flags = Array.from({ length: 12 }, (_, i) => {
   const z = 25 + i * 25;
-  return { z, x: centerX(z), half: 3 };
+  return { z, x: centerX(z), half: 2.2 };
 });
 
 const OBSTACLE_SPEC = [
-  [38, 3.2, 'snowball'], [63, -3.4, 'rock'], [88, 2.8, 'snowball'], [113, -3.0, 'rock'],
-  [138, 3.6, 'snowball'], [163, -2.6, 'rock'], [188, 3.0, 'snowball'], [213, -3.4, 'rock'],
-  [238, 2.6, 'snowball'], [263, -3.2, 'rock'], [288, 3.4, 'snowball'],
+  [38, 0.8, 'snowball'], [63, -1.0, 'rock'], [88, 0.6, 'snowball'], [113, -0.9, 'rock'],
+  [138, 1.0, 'snowball'], [163, -0.7, 'rock'], [188, 0.9, 'snowball'], [213, -1.0, 'rock'],
+  [238, 0.7, 'snowball'], [263, -0.8, 'rock'], [288, 1.0, 'snowball'],
 ];
 
 const obstacles = OBSTACLE_SPEC.map(([z, off, kind]) => ({ z, x: centerX(z) + off, r: 1.1, kind }));
