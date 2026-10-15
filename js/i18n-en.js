@@ -267,6 +267,8 @@ export const EN = {
   // 📜 진행 중 의뢰 목록(패널 2번째 줄부터) · 🗺️ 지도 아래 의뢰 요약
   '✅ {0}에게 가세요': '✅ Go see {0}',
   '+ {0#}건 더': '+{0} more',
+  '펼치기': 'More',
+  '접기': 'Less',
   '❗ 새 의뢰': '❗ New request',
   '✅ 완료! 돌아가기': '✅ Done — head back',
   '언어: 한국어': 'Language: English',

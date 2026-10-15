@@ -825,6 +825,14 @@
   #quest-panel .q-item.sub .q-bar { height: 5px; margin-top: 5px; }   /* 제목 바로 밑에 붙으면 밑줄처럼 읽힌다 */
   #quest-panel .q-more { font-size: 11px; opacity: .6; margin-top: 6px; }
   #quest-panel .q-more:empty { display: none; }
+  #quest-panel.collapsible { cursor: pointer; }
+  #quest-panel #quest-foot { display: flex; align-items: baseline; gap: 8px; }
+  #quest-panel #quest-toggle { margin-left: auto; margin-top: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 11px; color: inherit; opacity: .5; pointer-events: none; }
+  #quest-panel:not(.collapsible) #quest-toggle { display: none; }
+  #quest-panel .q-item.line .q-title { font-size: 13px; }
+  #quest-panel .q-item.line .q-title > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #quest-panel .q-count { margin-left: auto; padding-left: 6px; font-size: 12px; font-weight: 600; opacity: .65; white-space: nowrap; }
+  #quest-panel .q-item.line .q-bar { height: 5px; margin-top: 5px; }
 
   /* ── 💬 대화 모달 ──────────────────────────────────────────────
      말풍선 로그 + 선택지. 반복되는 회색 상자 나열을 피하려고 셋을 다르게 만든다:
@@ -1898,6 +1906,9 @@
     body.is-touch #minimap { top: calc(76px + var(--top-inset)); left: max(12px, env(safe-area-inset-left)); width: 84px; height: 84px; }
     body.is-touch #quest-panel, body.is-touch.story-on #quest-panel, body.is-touch:has(#hint-banner.show) #quest-panel { --qp-top: calc(168px + var(--top-inset)); left: max(12px, env(safe-area-inset-left)); max-width: 200px;
       max-height: calc(100dvh - var(--qp-top) - 124px - env(safe-area-inset-bottom)); }
+    body.is-touch.quest-open #quest-panel, body.is-touch.quest-open:has(#hint-banner.show) #quest-panel { --qp-top: calc(76px + var(--top-inset)); max-width: 260px; }
+    body.is-touch.quest-open:not(.coaching):not(.app-banner-on) #minimap { display: none; }
+    body.is-touch.quest-open #quest-panel .q-how { display: block; }
     body.is-touch #joy-base { left: max(20px, calc(env(safe-area-inset-left) + 8px)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 104px; height: 104px; }
     body.is-touch #action-btn { right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
@@ -2005,7 +2016,7 @@
   <!-- 📜 진행 중 의뢰 목록 — 한 명만 그리면 다른 의뢰를 완료했을 때 살아 있는 의뢰가 사라진다(베타 r5) -->
   <div id="quest-panel" class="panel">
     <div id="quest-list"></div>
-    <div class="q-more" id="quest-more"></div>
+    <div id="quest-foot"><div class="q-more" id="quest-more"></div><button id="quest-toggle" type="button"></button></div>
   </div>
 
   <!-- 💬 주민과 잡담 — 의뢰와 무관한 순수 플레이버(보상 없음). 하루 주민당 2번. -->
@@ -2791,6 +2802,7 @@
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
+    import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
     import { bootInstallSurvey, syncInstallSurvey } from './js/install-survey-ui.js';   // 🧭 첫 실행 "어디서 알게 되셨어요?"(iOS 전원·안드로이드 링크 없이 온 사람)
@@ -3129,6 +3141,16 @@
     }
 
     let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
+    let questLast = null;
+    let questOpen = false;
+    const questPhoneMQ = window.matchMedia('(max-width: 640px), (orientation: landscape) and (max-height: 500px)');
+    $('quest-panel').addEventListener('click', () => {
+      if (!$('quest-panel').classList.contains('collapsible')) return;
+      questOpen = !questOpen;
+      trackEvent('quest_panel_toggle', { open: questOpen ? 1 : 0 });
+      ui.setQuest(questLast);
+    });
+    questPhoneMQ.addEventListener?.('change', () => ui.setQuest(questLast));
     const ui = {
       // 🛡️ 세이브를 아직 못 읽었다 — 읽을 때까지 화면을 덮어 게임이 시작되지 않게 한다.
       //   빈 마을로 들여보내면 30초 뒤 자동저장이 서버의 진짜 마을을 덮어쓴다(js/save-guard.js).
@@ -3258,23 +3280,29 @@
       //      화면에서 사라졌다(베타 r5 버그). 순서·절단 규칙은 js/quests.js activeQuestList.
       //   null·단일 객체로 부르던 옛 호출부도 그대로 받아 준다.
       setQuest(v) {
+        questLast = v;
         const p = $('quest-panel');
         const list = (!v ? [] : Array.isArray(v.items) ? v.items : Array.isArray(v) ? v : [v]).filter(q => q && q.title);
         const more = (v && !Array.isArray(v) && v.more) || 0;
-        if (!list.length) { p.classList.remove('show'); $('quest-list').textContent = ''; $('quest-more').textContent = ''; return; }
+        if (!list.length) { p.classList.remove('show', 'collapsible'); document.body.classList.remove('quest-open'); $('quest-list').textContent = ''; $('quest-more').textContent = ''; $('quest-toggle').textContent = ''; return; }
         p.classList.add('show');
         const box = $('quest-list'); box.textContent = '';
         //  세로가 아주 짧은 화면(폰 가로·분할 화면)에선 펼친 카드 한 장도 안 들어간다 → 전부 요약형으로.
         //  요약형은 주민 이름을 진행도 줄이 물고 있어서, 줄여도 "누구 의뢰인지" 는 남는다.
-        const compact = window.innerHeight < 560;     // questPanelTop() 의 기준과 같은 값
-        list.forEach((q, i) => {
-          const lead = i === 0 && !compact;           // 맨 위 한 건만 펼친다(근처 주민 → 완료 → 진행률 순)
+        const view = questPanelView(list, { phone: questPhoneMQ.matches, open: questOpen, short: window.innerHeight < 560, more });
+        p.classList.toggle('collapsible', !!view.toggle);
+        document.body.classList.toggle('quest-open', view.toggle === '접기');
+        view.items.forEach(({ q, mode }) => {
+          const lead = mode === 'lead';
+          const line = mode === 'line';
           const el = document.createElement('div');
-          el.className = 'q-item' + (lead ? '' : ' sub') + (q.ready ? ' ready' : '');
+          el.className = 'q-item' + (lead ? '' : line ? ' line' : ' sub') + (q.ready ? ' ready' : '');
           const title = document.createElement('div'); title.className = 'q-title';
           const ico = document.createElement('span'); ico.textContent = q.ready ? '✅' : '📜';
           const tx = document.createElement('span'); tx.textContent = q.title || '';
-          title.append(ico, tx); el.appendChild(title);
+          title.append(ico, tx);
+          if (line) { const cnt = document.createElement('span'); cnt.className = 'q-count'; cnt.textContent = q.ready ? '✅' : `${q.progress}/${q.target}`; title.appendChild(cnt); }
+          el.appendChild(title);
           if (lead) {
             const desc = document.createElement('div'); desc.className = 'q-desc';
             desc.textContent = (q.name ? `${q.name} · ` : '') + (q.desc || '');
@@ -3294,10 +3322,11 @@
           prog.textContent = q.ready
             ? (lead ? '✅ 완료! 주민에게 가세요' : `✅ ${q.name}에게 가세요`)
             : (lead ? `${q.progress} / ${q.target}` : `${q.name} · ${q.progress} / ${q.target}`);
-          el.appendChild(prog);
+          if (!line || q.ready) el.appendChild(prog);
           box.appendChild(el);
         });
-        $('quest-more').textContent = more ? `+ ${more}건 더` : '';
+        $('quest-more').textContent = view.more ? `+ ${view.more}건 더` : '';
+        $('quest-toggle').textContent = view.toggle || '';
       },
       // 낚시 프롬프트(던지는 중 / 물었어요!)
       setFishPrompt(text) {
