@@ -73,6 +73,7 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
     fps_avg: pay.fpsAvg ?? null,
     course_v: COURSE_V,
     phys_v: PHYS_V,
+    sled: ctx.sledSkin ?? 'basic',
     ease: dp.ease ?? null,
     arm: dp.arm ?? null,
     dda: dp.dda ?? null,

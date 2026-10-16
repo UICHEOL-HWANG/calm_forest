@@ -155,3 +155,13 @@ test('sled_start carries the sled colour', () => {
   c.sledBegin({ ...CTX, sledSkin: 'sky' });
   assert.equal(events[0][1].sled_skin, 'sky');
 });
+
+test('row records the sled id and the current physics version', () => {
+  const { c, rows } = run();
+  c.sledSettle(SLED(40000, 12), { ...CTX, sledSkin: 'acorn' }, { fpsAvg: 58 });
+  c.sledAbandon('climb', CTX, null);
+  assert.equal(rows[0].sled, 'acorn');
+  assert.equal(rows[0].phys_v, PHYS_V);
+  assert.equal(rows[0].phys_v, 2);
+  assert.equal(rows[1].sled, 'basic');
+});

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { SLED_IDS } from '../js/mountain/sled-lineup.js';
 
 const sql = readFileSync(new URL('../sql/migrations/migrate_sled_runs.sql', import.meta.url), 'utf8');
 const client = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
@@ -38,7 +39,7 @@ test('min-time trigger looks up the floor by version and rejects unknown version
 
 test('version checks, octet_length cap, nonneg check and server-set run_date', () => {
   assert.match(sql, /sled_runs_course_v check \(course_v = 1\)/);
-  assert.match(sql, /sled_runs_phys_v check \(phys_v = 1\)/);
+  assert.match(sql, /sled_runs_phys_v check \(phys_v in \(1, 2\)\)/);
   assert.match(sql, /octet_length\(splits::text\)/);
   assert.doesNotMatch(sql, /pg_column_size/);
   assert.match(sql, /sled_runs_nonneg/);
@@ -53,4 +54,19 @@ test('idle_ms is a non-negative integer column', () => {
   assert.match(sql, /add column if not exists idle_ms integer;/);
   assert.match(sql, /drop constraint if exists sled_runs_idle_nonneg;/);
   assert.match(sql, /idle_ms is null or idle_ms >= 0/);
+});
+
+test('lineup migration adds the sled column, covers every sled id and allows phys_v 1 and 2', () => {
+  const m = readFileSync(new URL('../sql/migrations/migrate_sled_lineup.sql', import.meta.url), 'utf8');
+  assert.match(m, /add column if not exists sled text;/);
+  const list = m.match(/sled_runs_sled check \(sled is null or sled in \(([^)]*)\)\)/);
+  assert.ok(list, 'sled check');
+  const ids = [...list[1].matchAll(/'([a-z]+)'/g)].map(x => x[1]);
+  assert.deepEqual(ids, [...SLED_IDS]);
+  assert.match(m, /drop constraint if exists sled_runs_phys_v;/);
+  assert.match(m, /sled_runs_phys_v check \(phys_v in \(1, 2\)\)/);
+  assert.match(m, /p_board = 'sled'/);
+  assert.match(m, /phys_v in \(1, 2\)/);
+  assert.doesNotMatch(m, /phys_v = 1/);
+  assert.doesNotMatch(m, /--/);
 });

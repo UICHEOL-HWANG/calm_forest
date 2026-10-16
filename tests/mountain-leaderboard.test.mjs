@@ -12,10 +12,16 @@ test('RPC keeps every existing board and adds sled over today finished runs', ()
   assert.match(sql, /outcome = 'finish'/);
   assert.match(sql, /run_date = kst_today/);
   assert.match(sql, /course_v = 1/);
-  assert.match(sql, /phys_v = 1/);
+  assert.match(sql, /phys_v in \(1, 2\)/);
   assert.match(sql, /_nb_nick\(gs\.state/);
   for (const b of ['boat', 'sea', 'rich', 'mine', 'cook', 'quest']) assert.match(sql, new RegExp(`'${b}'`), b);
   assert.doesNotMatch(sql, /--/);
+});
+
+test('lineup migration re-creates the leaderboard with the widened phys_v filter', () => {
+  const m = read('sql/migrations/migrate_sled_lineup.sql');
+  const base = read('sql/migrations/migrate_leaderboard_sled.sql');
+  assert.ok(m.includes(base.trim()));
 });
 
 test('proxy whitelists sled', () => {
