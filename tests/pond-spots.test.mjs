@@ -5,6 +5,7 @@ import { POND_R, POND_SPOTS, POND_HOUSE_CLEAR } from '../js/data/pond.js';
 
 const places = readFileSync(new URL('../js/data/places.js', import.meta.url), 'utf8');
 const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+const npcSrc = readFileSync(new URL('../js/data/npcs.js', import.meta.url), 'utf8');
 const vec = (src, name) => {
   const m = src.match(new RegExp(`const ${name} = new THREE\\.Vector3\\((-?[\\d.]+), 0, (-?[\\d.]+)\\)`));
   assert.ok(m, `${name} not found`);
@@ -36,4 +37,20 @@ test('마을 입구·시설 좌표와 2.5 이상 떨어진다', () => {
     .filter(g => g.name !== 'HOUSE_POS' && Math.abs(g.x) < 45 && Math.abs(g.z) < 45);
   assert.ok(gates.length > 5);
   for (const s of POND_SPOTS) for (const g of gates) assert.ok(d(abs(s), g) >= POND_R + 2.5, `${g.name} ${JSON.stringify(s)}`);
+});
+
+test('주민 자리와 R+2 이상 떨어진다', () => {
+  const npcs = npcSrc.split('\n').flatMap(line => {
+    const p = line.match(/pos: \[(-?[\d.]+), 0, (-?[\d.]+)\]/);
+    if (!p) return [];
+    const r = line.match(/roam: ([\d.]+)/);
+    return [{ x: Number(p[1]), z: Number(p[2]), roam: r ? Number(r[1]) : 0 }];
+  });
+  assert.ok(npcs.length >= 5, `NPC ${npcs.length}`);
+  for (const s of POND_SPOTS) {
+    const a = abs(s);
+    for (const n of npcs) {
+      assert.ok(d(a, n) >= POND_R + 2 + n.roam, `${JSON.stringify(s)} vs NPC ${JSON.stringify(n)} dist ${d(a, n).toFixed(2)}`);
+    }
+  }
 });
