@@ -45,6 +45,7 @@ import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
 import { themeOf } from '../cosmetics/tool-skin-rules.js';   // 🪓 💎 도구 세트 → 테마(구매 연출 진열)
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
+import { refreshCafeModal } from '../mountain/cafe-ui.js';
 import { Sound } from '../sound.js';
 import { state as authState, fetchPurchases } from '../supabase-client.js';
 import * as THREE from 'three';
@@ -939,7 +940,9 @@ export function drawPetTab(box) {
 //  cashBusy = "결제창이 열려 있는" 상태만. 결제 완료 후 원장 확인 전까지는 pendingCash 가 버튼을 잠근다.
 const CASH_FAIL_MSG = '결제를 지금은 열 수 없어요';   // Task 9 검수 문구
 let cashBusy = null;   // 결제창이 열린 항목 id — 그 버튼만 비활성
-function cashButton(cash, itemId, kind, mine) {
+export const cashPending = (id) => pendingCash.has(id) || cashBusy === id;
+const redrawCash = (kind) => (kind === 'sled' ? refreshCafeModal() : drawCosMenu());
+export function cashButton(cash, itemId, kind, mine) {
   const btn = document.createElement('button');
   btn.className = 'sh-cash';
   btn.textContent = mine ? '구매 완료' : cash.label;
@@ -948,15 +951,15 @@ function cashButton(cash, itemId, kind, mine) {
     ev.stopPropagation();
     if (btn.disabled) return;
     const it = kind === 'pet' ? null : findItem(itemId);
-    if (it?.sale && !saleOpen(it)) { drawCosMenu(); return; }   // 🎃 가게를 열어 둔 채 기간이 끝났으면 — 결제창 대신 행을 다시 그린다(숨김)
+    if (it?.sale && !saleOpen(it)) { redrawCash(kind); return; }   // 🎃 가게를 열어 둔 채 기간이 끝났으면 — 결제창 대신 행을 다시 그린다(숨김)
     trackEvent('cash_checkout_open', { item_id: itemId, kind, price_id: cash.priceId });
-    cashBusy = itemId; drawCosMenu();
+    cashBusy = itemId; redrawCash(kind);
     try {
       const opened = await openCheckout({ priceId: cash.priceId, itemId, kind, userId: authState.userId, email: authState.email });
-      if (!opened) { cashBusy = null; drawCosMenu(); }   // 이미 열려 있어 무시됨(재진입) — 토스트 없이 버튼만 되살린다
+      if (!opened) { cashBusy = null; redrawCash(kind); }   // 이미 열려 있어 무시됨(재진입) — 토스트 없이 버튼만 되살린다
     } catch (e) {
       console.warn('[paddle] 결제창 열기 실패:', e?.message || e);
-      cashBusy = null; drawCosMenu();
+      cashBusy = null; redrawCash(kind);
       ui.toast?.(CASH_FAIL_MSG, 2500);
     }
   };
@@ -967,17 +970,17 @@ setCheckoutHandlers({
   onStep: (c, p) => trackEvent('paddle_step', { item_id: c.itemId, kind: c.kind, ...p }),
   onClosed: (c) => {
     trackEvent('cash_checkout_close', { item_id: c.itemId, kind: c.kind, ...closeProps(c.funnel, Date.now()), ...(c.errorCode ? { error_code: c.errorCode } : {}) });
-    cashBusy = null; drawCosMenu();
+    cashBusy = null; redrawCash(c.kind);
   },
   onCompleted: async (c) => {
     trackEvent('cash_checkout_done', { item_id: c.itemId, kind: c.kind, price_id: c.priceId, dwell_ms: closeProps(c.funnel, Date.now()).dwell_ms });
     const t0 = Date.now();
     pendingCash.add(c.itemId);                          // 원장에서 보일 때까지 이중 구매 차단
-    cashBusy = null; drawCosMenu();
+    cashBusy = null; redrawCash(c.kind);
     const ok = await awaitGrant({ itemId: c.itemId, gameState, fetchPurchases, hooks: purchaseHooks() });
     if (ok) { pendingCash.delete(c.itemId); onGranted(c, t0); }
     else { ui.toast?.(LATER_MSG, 3000); pollSlowGrant(c, t0); }
-    drawCosMenu();
+    redrawCash(c.kind);
   },
 });
 
@@ -992,7 +995,7 @@ function onGranted(c, t0) {
     applyCosmetics(gameState.cosmetics);
     cosTryOn = null; cosPreview?.refresh(null);
     trackEvent('cosmetic_equip', { item_id: c.itemId, slot: findItem(c.itemId)?.slot, action: 'on', via: 'cash' });
-  } else { switchPet(c.itemId); petView = c.itemId; }
+  } else if (c.kind === 'pet') { switchPet(c.itemId); petView = c.itemId; }
   trackEvent('cash_grant_wait', { item_id: c.itemId, wait_ms: Date.now() - t0 });
   requestSave();
   // 연출은 장식 — 실패해도 저장·트래킹(위)을 막지 않도록 맨 끝에서, 예외는 삼킨다
@@ -1020,7 +1023,7 @@ function pollSlowGrant(c, t0, n = 0) {
     let ok = false;
     try { ok = await awaitGrant({ itemId: c.itemId, tries: 1, delayMs: 0, gameState, fetchPurchases, hooks: purchaseHooks() }); }
     catch (e) { console.warn('[paddle] 지급 재확인 실패:', e?.message || e); }
-    if (ok) { pendingCash.delete(c.itemId); onGranted(c, t0); drawCosMenu(); }
+    if (ok) { pendingCash.delete(c.itemId); onGranted(c, t0); redrawCash(c.kind); }
     else pollSlowGrant(c, t0, n + 1);
   }, SLOW_POLL_MS);
 }
@@ -1032,16 +1035,17 @@ const REWARD_TAG = '🤝 초대 보상';
 let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 항목당 한 번(닫으면 비운다)
 
 export function drawCosMenu() {
+  const rowsOf = slot => itemsOf(slot).filter(i => !i.shop);
   document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
   const rowCtx = (it) => ({ owned: gameState.cosmetics.owned.includes(it.id), platform: PLATFORM,
     online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token,
     storeOpen: cashAvailable(authState) });   // cashAvailable = 상점 열림 또는 개발 세션(+웹·로그인·토큰)
   //  🧥 토스·안드로이드·itch 에서 안 산 스킨만 있는 칸 = 빈 탭 → 탭 자체를 숨긴다(외부 결제 안내 금지)
-  if (cosTab !== 'pet' && !slotVisible(itemsOf(cosTab), rowCtx)) cosTab = 'head';
+  if (cosTab !== 'pet' && !slotVisible(rowsOf(cosTab), rowCtx)) cosTab = 'head';
   const tabs = document.getElementById('cos-tabs');
   tabs.innerHTML = '';
   for (const [id, label] of COS_TABS) {
-    if (id !== 'pet' && !slotVisible(itemsOf(id), rowCtx)) continue;
+    if (id !== 'pet' && !slotVisible(rowsOf(id), rowCtx)) continue;
     const b = document.createElement('button');
     b.className = 'sh-tab' + (cosTab === id ? ' active' : '');
     b.textContent = label;
@@ -1068,7 +1072,7 @@ export function drawCosMenu() {
   const hint = document.getElementById('cos-preview-hint');
   if (hint) hint.style.visibility = cosTab === 'trail' ? 'hidden' : '';
   if (cosTab === 'pet') { drawPetTab(box); return; }
-  for (const it of itemsOf(cosTab)) {
+  for (const it of rowsOf(cosTab)) {
     let mode = null;
     if (gatedRow(it)) {
       mode = premiumRowMode(it, rowCtx(it));

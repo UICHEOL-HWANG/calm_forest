@@ -79,7 +79,7 @@ test('🧹 방문 종료 때 실내도 치운다', () => {
 });
 
 test('🌧️ 이웃 집 안엔 비·계절 입자·빗소리 없음 · 출입 때 다시 판정', () => {
-  const G = 'mode === \'play\' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atDream && !atMirror && !neighborIndoorFrame()';
+  const G = 'mode === \'play\' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !neighborIndoorFrame()';
   for (const fn of ['updateSeasonDrift', 'updateRain']) {
     const i = GAME.indexOf(`function ${fn}(`); const b = GAME.slice(i, GAME.indexOf('\n}\n', i));
     assert.ok(b.includes(`const show = ${G};`), `${fn} 가드 없음`);

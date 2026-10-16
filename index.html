@@ -266,12 +266,37 @@
   /* 🌊 바다터 줄다리기 HUD — 배너 + 진행 게이지 + 부두 끝 경고 */
   #sea-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(54px + var(--top-inset)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
   #sea-hud.show { display: flex; }
+  body.is-touch #sea-hud { top: calc(128px + var(--top-inset)); }
   #sea-banner { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(20,60,90,0.5); }
   #sea-banner.pull { color: #b6ff9e; animation: seaPulse .35s infinite alternate; }
   @keyframes seaPulse { from { transform: scale(1); } to { transform: scale(1.12); } }
   #sea-sp { font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 4px rgba(20,60,90,0.5); }
   #sea-gauge { width: min(320px, 64vw); height: 12px; border-radius: 8px; background: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.7); overflow: hidden; }
   #sea-gauge i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #ffd25e, #ff9d4d); transition: width .12s; }
+  .sea-ring { position: fixed; display: none; border-radius: 50%; border: 5px solid #fff; box-sizing: border-box; transform: translate(-50%, -50%); pointer-events: none; z-index: 30; box-shadow: 0 0 6px rgba(20,60,90,0.35); }
+  .sea-ring.near { border-color: #b6ff9e; }
+  #sea-hint { position: fixed; font-size: 18px; font-weight: 800; text-shadow: 0 2px 6px rgba(20,50,70,0.55); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 30; }
+  #sea-hint.on { opacity: 1; }
+  #sea-hint { transform: translate(-50%, -100%); text-align: center; }
+  #sea-btn { position: fixed; left: 50%; bottom: calc(5% + env(safe-area-inset-bottom)); transform: translateX(-50%); width: 112px; height: 112px; border-radius: 50%; border: 5px solid rgba(255,255,255,0.88); background: rgba(60,130,180,0.85); color: #fff; font-size: 18px; font-weight: 800; line-height: 1.15; display: none; align-items: center; justify-content: center; text-align: center; box-shadow: 0 6px 18px rgba(20,60,90,0.35); z-index: 25; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+  body.sea-mode #sea-btn { display: flex; }
+  body.sea-mode #action-btn { display: none !important; }
+  body.sea-mode #hint { display: none !important; }
+  body:has(#sea-hud.show) #door-prompt { opacity: 0 !important; }
+  body.sea-mode #door-prompt { bottom: auto; top: calc(96px + var(--top-inset)); }
+  body.sea-mode.is-touch #door-prompt { top: auto; bottom: calc(222px + env(safe-area-inset-bottom)); }
+  body.is-touch #sea-btn { width: 120px; height: 120px; bottom: calc(90px + env(safe-area-inset-bottom)); left: calc(100% - 88px); transition: left .28s ease; }
+  body.is-touch.sea-busy #sea-btn { left: 50%; }
+  #joy-base { transition: opacity .2s; }
+  body.sea-busy #joy-base { opacity: 0; pointer-events: none; }
+  #sea-btn.press { transform: translateX(-50%) scale(0.93); }
+  #sea-btn.go { background: rgba(90,180,80,0.92); border-color: #d6ffc4; animation: seaBtnPulse .35s infinite alternate; }
+  #sea-btn.hook { background: rgba(240,190,40,0.95); border-color: #fff6b0; animation: seaBtnPulse .12s infinite alternate; }
+  #sea-btn.stop { background: rgba(200,80,60,0.9); border-color: #ffd0c4; }
+  #sea-btn.door { background: rgba(150,120,255,0.88); }
+  #sea-btn.wait { background: rgba(60,130,180,0.6); }
+  @keyframes seaBtnPulse { from { box-shadow: 0 0 0 0 rgba(150,255,120,0.6); } to { box-shadow: 0 0 0 16px rgba(150,255,120,0); } }
+  #sea-vig { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
   #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
   #boat-view { position: fixed; right: 14px; top: calc(54px + var(--top-inset)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-view { display: block; }
@@ -1210,7 +1235,7 @@
        프롬프트(568)·하트바(753)와 안 겹친다. 🪧 시설 배너는 상단 그대로 둔다. */
     #hint-banner.slot-bottom { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); left: 12px; right: auto; max-width: calc(100vw - 24px); }
     /* 🌊 바다터: 큰 글자 HUD 를 위 띠(인벤토리 바)에서 프롬프트 줄로 내리고, 같은 말을 하는 문 프롬프트는 숨긴다 */
-    body.is-touch #sea-hud { top: auto; bottom: calc(234px + env(safe-area-inset-bottom)); gap: 5px; }
+    body.is-touch #sea-hud { top: calc(172px + var(--top-inset)); bottom: auto; gap: 5px; }
     body.is-touch #sea-banner { font-size: 18px; }
     body.is-touch:has(#sea-hud.show) #door-prompt { opacity: 0 !important; }
     body.sea-mode #story-chip, body.sea-mode #hint-banner, body.sea-mode #dex-tab, body.sea-mode #feedback-tab { display: none !important; }
@@ -1911,6 +1936,10 @@
     body.is-touch.quest-open #quest-panel .q-how { display: block; }
     body.is-touch #joy-base { left: max(20px, calc(env(safe-area-inset-left) + 8px)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 104px; height: 104px; }
     body.is-touch #action-btn { right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); }
+    body.is-touch #sea-btn { width: 104px; height: 104px; bottom: calc(12px + env(safe-area-inset-bottom)); left: calc(100% - 52px - max(20px, calc(env(safe-area-inset-right) + 8px))); }
+    body.is-touch.sea-mode #door-prompt { bottom: calc(20px + env(safe-area-inset-bottom)); }
+    body.is-touch.sea-mode.sea-busy #door-prompt { bottom: calc(128px + env(safe-area-inset-bottom)); }
+    body.is-touch #sea-hud { top: calc(80px + var(--top-inset)); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
     body.is-touch #dex-tab { right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
     body.is-touch #coach { top: calc(72px + var(--top-inset)); left: 50%; right: auto; transform: translateX(-50%); width: min(400px, 48vw); padding: 8px 11px; gap: 5px; }
@@ -2412,6 +2441,10 @@
     <div id="boat-boost"><i></i></div>
   </div>
   <button id="boat-quit">✕ 그만두기</button>
+  <div id="sea-vig"></div>
+  <div class="sea-ring"></div><div class="sea-ring"></div><div class="sea-ring"></div>
+  <div id="sea-hint"></div>
+  <div id="sea-btn">🎣 던지기</div>
   <div id="sea-hud">
     <div id="sea-banner"></div>
     <div id="sea-sp"></div>
@@ -3842,10 +3875,11 @@
         bb.classList.toggle('ready', d.boost >= 1 && !d.boosting);
       },
       // 🌊 바다터 입장/퇴장 — 도구 팔레트를 걷어냄(액션 버튼 하나로 노는 공간)
-      setSeaMode(on) { document.body.classList.toggle('sea-mode', !!on); },
+      setSeaMode(on) { document.body.classList.toggle('sea-mode', !!on); if (!on) document.body.classList.remove('sea-busy'); },
       // 🌊 바다터 줄다리기 HUD (null 이면 숨김)
       setSeaHud(d) {
         const el = $('sea-hud');
+        $('sea-vig').style.boxShadow = d?.danger > 0 ? `inset 0 0 ${60 + d.danger * 90}px ${d.danger * 30}px rgba(220,40,20,${(0.25 + 0.35 * d.danger).toFixed(2)})` : '';
         if (!d) { el.classList.remove('show'); return; }
         el.classList.add('show');
         const b = $('sea-banner');
@@ -3854,6 +3888,36 @@
         $('sea-fill').style.width = (d.p * 100).toFixed(0) + '%';
         $('sea-sp').textContent = d.sp || '';
         $('sea-edge-m').textContent = d.edge;
+      },
+      seaAnchor() {
+        const r = $('sea-btn').getBoundingClientRect();
+        return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width };
+      },
+      setSeaBtn(label, cls, busy) {
+        document.body.classList.toggle('sea-busy', !!busy);
+        const b = $('sea-btn');
+        if (b.textContent !== label) b.textContent = label;
+        const c = cls || '';
+        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait'); if (c) b.classList.add(c); b.dataset.cls = c; }
+      },
+      setSeaRings(list) {
+        const { cx, cy, w } = this.seaAnchor();
+        document.querySelectorAll('.sea-ring').forEach((el, i) => {
+          const d = list[i];
+          if (!d) { el.style.display = 'none'; return; }
+          el.style.display = 'block'; el.style.left = cx + 'px'; el.style.top = cy + 'px';
+          el.style.width = el.style.height = (w * d.s) + 'px'; el.style.opacity = d.o;
+          el.classList.toggle('near', d.near);
+        });
+      },
+      seaHint(text, color) {
+        const el = $('sea-hint'), a = this.seaAnchor();
+        el.textContent = text; el.style.color = color || '#fff';
+        const hw = el.offsetWidth / 2 + 8;
+        el.style.left = Math.min(innerWidth - hw, Math.max(hw, a.cx)) + 'px';
+        el.style.top = (a.cy - a.w / 2 - 10) + 'px';
+        el.classList.add('on');
+        clearTimeout(this._seaHintT); this._seaHintT = setTimeout(() => el.classList.remove('on'), 1100);
       },
       // 🛶 런 결과 모달 — 여기서 바로 "한 번 더"가 되게(남은 횟수 표시)
       showBoatResult(d) {
@@ -3942,7 +4006,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -3958,7 +4022,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
@@ -5904,12 +5968,13 @@
 
     // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
     const LB_BOARDS = [
-      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요' },
-      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', fmt: s => (s / 10).toFixed(1) },
+      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요', daily: true },
+      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', daily: true, fmt: s => (s / 10).toFixed(1) },
       { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
       { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
       { id: 'cook',  label: '🍳 요리왕',      unit: '회',  desc: '이번 주 요리 횟수' },
       { id: 'quest', label: '📜 퀘스트',      unit: '건',  desc: '이번 주 완료한 의뢰' },
+      { id: 'sled',  label: '🛷 썰매',        unit: '초',  desc: '오늘 설산 썰매 최고 기록', daily: true, fmt: v => (-v / 1000).toFixed(2) },
     ];
     let lbBoard = 'boat';
     const lbCache = {};   // 모달 열려있는 동안 보드별 응답 캐시(탭 왕복 시 재요청 방지)
@@ -5924,7 +5989,7 @@
     async function renderLb(board) {
       lbBoard = board;
       const meta = LB_BOARDS.find(b => b.id === board);
-      $('lb-sub').textContent = meta.desc + (board === 'boat' || board === 'sea' ? '' : ' — 매주 월요일 새로 시작해요');
+      $('lb-sub').textContent = meta.desc + (meta.daily ? '' : ' — 매주 월요일 새로 시작해요');
       [...document.querySelectorAll('.lb-tab')].forEach(b => b.classList.toggle('active', b.dataset.id === board));
       const list = $('lb-list'), meBox = $('lb-me');
       list.innerHTML = '<div class="lb-empty">불러오는 중… 🌿</div>'; meBox.innerHTML = '';

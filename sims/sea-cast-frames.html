@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>던지기 프레임 비교 — calm forest</title>
+<style>
+  body{margin:0;background:#f4f1ea;color:#2c3e4a;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;padding:16px 18px}
+  h1{font-size:18px;margin:0 0 4px} p{font-size:12px;color:#6b7b86;margin:0 0 12px}
+  .row{display:grid;grid-template-columns:110px repeat(7,1fr);gap:6px;align-items:center;margin-bottom:8px}
+  .row b{font-size:13px}
+  .cell{display:flex;flex-direction:column;gap:3px;font-size:11px;color:#6b7b86;text-align:center}
+  .vp{position:relative;width:100%;aspect-ratio:4/3;overflow:hidden;border-radius:8px;background:#79c4de}
+  .vp iframe{position:absolute;left:0;top:0;width:480px;height:360px;border:0;transform-origin:0 0}
+</style>
+<h1>🎣 던지기 프레임 비교</h1>
+<p>같은 카메라(곰 오른쪽 앞 클로즈업)로 시간대별 정지 화면. 원본은 0.62초 한 동작, 새 던지기는 예비 → 멈칫 → 채찍 → 릴리스 → 뒷동작(약 1초).</p>
+<div id="rows"></div>
+<script>
+const ROWS = [
+  { pose: 0, name: '원본', frames: [[0, '시작'], [.1, ''], [.2, ''], [.3, ''], [.4, ''], [.5, ''], [.6, '끝']] },
+  { pose: 1, name: '새 던지기', frames: [[0, '대기'], [.3, '예비 — 젖히며 웅크림'], [.42, '멈칫'], [.5, '채찍 — 로드 끝이 늦게 따라옴'], [.53, '릴리스 — 찌 출발'], [.62, '뒷동작 — 앞으로 쏠림'], [.95, '출렁 후 정지']] },
+];
+document.getElementById('rows').innerHTML = ROWS.map(r => `<div class="row"><b>${r.name}</b>${r.frames.map(([t, l]) =>
+  `<div class="cell"><div class="vp"><iframe src="sea-feel-sim.html?v=C&embed=1&cam=side&pose=${r.pose}&freeze=${t}"></iframe></div>${t.toFixed(2)}s ${l}</div>`).join('')}</div>`).join('');
+function fit() { document.querySelectorAll('.vp').forEach(v => v.firstElementChild.style.transform = `scale(${v.clientWidth / 480})`); }
+addEventListener('resize', fit); fit();
+</script>

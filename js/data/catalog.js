@@ -75,6 +75,8 @@ export const DECOR = [
   { id: 'waterMirror', name: '물빛 거울',   ico: '🪞', cost: 10, pay: 'mirror', mirror: true, foot: [0.6, 0.3] },
   { id: 'shadowBear', name: '거울 곰 인형', ico: '🧸', cost: 14, pay: 'mirror', mirror: true, foot: [0.5, 0.45] },
   { id: 'mirrorLamp', name: '거울 등불',   ico: '🏮', cost: 22, pay: 'mirror', mirror: true, foot: [0.5, 0.5] },
+  { id: 'snowglobe', name: '설산 스노볼', ico: '🔮', cost: 150, pay: 'coins', hut: true, foot: [0.35, 0.35], sm: true, h: 0.45 },
+  { id: 'hutmodel', name: '미니 등불 산장 모형', ico: '🏠', cost: 300, pay: 'coins', hut: true, foot: [0.6, 0.6] },
 ];
 
 export const FISH_KINDS = [
@@ -215,6 +217,7 @@ export const OUTDOOR = [
   { id: 'pumpkins',         name: '호박 더미',      ico: '🎃', cost: { leaf: 60 }, desc: '수확제 좌판에서 산 호박 더미', hidden: true },
   { id: 'pumpkinlamp',      name: '호박 등불',      ico: '🏮', cost: { leaf: 9999 }, desc: '수확제 광장 🥈 보상 — 밤에 은은히', hidden: true },
   { id: 'harvestscarecrow', name: '수확제 허수아비', ico: '🧑‍🌾', cost: { leaf: 9999 }, desc: '수확제 광장 🥇 보상', hidden: true },
+  { id: 'summitflag', name: '정상 깃발', ico: '🚩', cost: { coins: 9999 }, desc: '산장 카페에서 산 정상 깃발', hidden: true },
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   // 🎃 할로윈 한정 코인 장식 — 직접 구매(작업대 목록, 기간 한정). hidden 과 다르다: hidden 은 영구 비판매, sale 은 기간 판매
   { id: 'ghostlamp',  name: '유령 정원등', ico: '👻', cost: { coins: 200 }, sale: 'halloween', desc: '밤이 되면 으스스하게 빛나는 유령 등' },
@@ -249,6 +252,8 @@ export const STATION_IDS = STATIONS.map(s => s.id);
 export const VAT_HOME_LOCAL = [-12.5, 5.0];
 
 export const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안 밭에 놓아요', yard: '🏗️ 시설 마당은 이미 꽉 찼어요. 울타리 안 밭에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
+
+export const MOUNTAIN_PLACE_MSG = '🏔️ 산자락엔 놓을 수 없어요';
 
 export function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 

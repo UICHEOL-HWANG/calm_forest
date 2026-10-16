@@ -17,8 +17,11 @@
 import { findItem, SLOTS } from '../cosmetics/catalog.js';
 import { petKindOf, emptyPet } from '../pet/rules.js';
 import { isRewardDecor } from '../data/reward-decor.js';
+import { CASH_SLED_IDS, SLED_IDS } from '../mountain/sled-lineup.js';
 
-const kindOf = (id) => (findItem(id) ? 'cosmetic' : petKindOf(id) ? 'pet' : isRewardDecor(id) ? 'decor' : null);
+const kindOf = (id) => (findItem(id) ? 'cosmetic' : petKindOf(id) ? 'pet' : isRewardDecor(id) ? 'decor' : CASH_SLED_IDS.includes(id) ? 'sled' : null);
+const BASIC_HUT = Object.freeze({ sleds: ['basic'], sled: 'basic' });
+const sledOrder = (ids) => [...new Set(ids)].sort((a, b) => SLED_IDS.indexOf(a) - SLED_IDS.indexOf(b));
 
 export function applyPurchases(gs, rows) {
   if (!Array.isArray(rows)) return { patch: null, granted: [], revoked: [] };
@@ -33,14 +36,18 @@ export function applyPurchases(gs, rows) {
   let pet = gs.pet;
   let outdoor = Array.isArray(gs.outdoor) ? [...gs.outdoor] : [];
   let outdoorStored = { ...(gs.outdoorStored || {}) };
+  const hut0 = gs.mountain?.hut || BASIC_HUT;
+  let hut = { ...hut0, sleds: [...(hut0.sleds || BASIC_HUT.sleds)] };
   const granted = [], revoked = [];
+  const missingSleds = live.filter(id => prev.includes(id) && kindOf(id) === 'sled' && !hut.sleds.includes(id));
 
-  for (const id of fresh) {
+  for (const id of [...fresh, ...missingSleds]) {
     const kind = kindOf(id);
     if (kind === 'cosmetic') { if (!cosmetics.owned.includes(id)) cosmetics.owned.push(id); }
     else if (kind === 'decor') {
       if (!outdoor.some(o => o?.id === id) && !(outdoorStored[id] > 0)) outdoorStored = { ...outdoorStored, [id]: 1 };
     }
+    else if (kind === 'sled') hut = { ...hut, sleds: sledOrder([...hut.sleds, id]) };
     else if (!pets[id]) pets[id] = emptyPet(id);          // 이미 있으면 works 를 지우지 않는다
     granted.push({ item_id: id, kind });
   }
@@ -54,6 +61,8 @@ export function applyPurchases(gs, rows) {
       outdoor = outdoor.filter(o => o?.id !== id);
       const { [id]: _drop, ...rest } = outdoorStored;
       outdoorStored = rest;
+    } else if (kind === 'sled') {
+      hut = { ...hut, sleds: hut.sleds.filter(x => x !== id), sled: hut.sled === id ? 'basic' : hut.sled };
     } else {
       delete pets[id];
       if (pet?.kind === id) pet = null;
@@ -62,5 +71,6 @@ export function applyPurchases(gs, rows) {
   }
   //  outdoor·outdoorStored 는 장식이 오갔을 때만 싣는다 — 실으면 Object.assign 이 배열을 통째로 바꿔 끼운다
   const decorTouched = [...granted, ...revoked].some(g => g.kind === 'decor');
-  return { patch: { cosmetics, pets, pet, ...(decorTouched ? { outdoor, outdoorStored } : {}), cashOwned: [...prev.filter(id => !gone.includes(id)), ...fresh] }, granted, revoked };
+  const sledTouched = [...granted, ...revoked].some(g => g.kind === 'sled');
+  return { patch: { cosmetics, pets, pet, ...(decorTouched ? { outdoor, outdoorStored } : {}), ...(sledTouched ? { mountain: { ...(gs.mountain || {}), hut } } : {}), cashOwned: [...prev.filter(id => !gone.includes(id)), ...fresh] }, granted, revoked };
 }
