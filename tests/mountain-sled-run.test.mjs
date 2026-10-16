@@ -139,3 +139,19 @@ test('idle time is null for an abandon on the climb', () => {
   c.sledAbandon('climb', CTX, null);
   assert.equal(rows[0].idle_ms, null);
 });
+
+test('a 12-flag finish marks the run history as perfect, fewer flags do not', () => {
+  const a = run();
+  a.c.sledSettle(SLED(40000, 11), CTX, { fpsAvg: 58 });
+  assert.equal(a.c.gameState.mountain.sled.perfect, false);
+  a.c.sledSettle(SLED(40000, 12), CTX, { fpsAvg: 58 });
+  assert.equal(a.c.gameState.mountain.sled.perfect, true);
+  a.c.sledSettle(SLED(40000, 3), CTX, { fpsAvg: 58 });
+  assert.equal(a.c.gameState.mountain.sled.perfect, true);
+});
+
+test('sled_start carries the sled colour', () => {
+  const { c, events } = run();
+  c.sledBegin({ ...CTX, sledSkin: 'sky' });
+  assert.equal(events[0][1].sled_skin, 'sky');
+});

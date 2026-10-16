@@ -9,10 +9,10 @@ import { COURSE, COURSE_V, minTimeMs } from '../js/mountain/course.js';
 import { gameSource } from './helpers/game-source.mjs';
 
 const plain = v => JSON.parse(JSON.stringify(v));
-const DEFAULT = { sled: { best: null, plays: 0, daily: { date: null, rewarded: 0 } } };
+const DEFAULT = { sled: { best: null, plays: 0, daily: { date: null, rewarded: 0 }, perfect: false }, hut: { sleds: ['basic'], sled: 'basic' } };
 
 test('valid mountain save is kept', () => {
-  const saved = { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 } } };
+  const saved = { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 }, perfect: true }, hut: { sleds: ['basic', 'sky'], sled: 'sky' } };
   assert.deepEqual(plain(restoreMountain(saved)), saved);
 });
 
@@ -21,7 +21,7 @@ test('restore returns a new object and drops unknown keys', () => {
   const out = restoreMountain(saved);
   assert.notEqual(out, saved);
   assert.notEqual(out.sled, saved.sled);
-  assert.deepEqual(plain(out), { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 } } });
+  assert.deepEqual(plain(out), { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 }, perfect: false }, hut: { sleds: ['basic'], sled: 'basic' } });
 });
 
 test('missing or non-object input gives defaults', () => {
@@ -91,7 +91,7 @@ test('reload keeps best, plays and the daily reward cap', () => {
   const after = harness({ firstDay: '2026-10-18' });
   after.gameState.mountain = restoreMountain(saved.mountain);
   assert.deepEqual(plain(after.sledState()), plain(before.sledState()));
-  assert.deepEqual(plain(after.sledState()), { best: 40000, plays: 3, daily: { date: '2026-10-20', rewarded: 3 } });
+  assert.deepEqual(plain(after.sledState()), { best: 40000, plays: 3, daily: { date: '2026-10-20', rewarded: 3 }, perfect: true });
   assert.equal(after.sledSettle(SLED(39000), CTX).rewarded, false);
 });
 
@@ -105,4 +105,13 @@ test('the restore cap matches the daily reward runs in sled-run.js', async () =>
   const { DAILY_REWARD_CAP } = await import('../js/mountain/save.js');
   const src = readFileSync(new URL('../js/mountain/sled-run.js', import.meta.url), 'utf8');
   assert.match(src, new RegExp(`export const DAILY_REWARD_RUNS = ${DAILY_REWARD_CAP};`));
+});
+
+test('hut state restores owned sled colours and keeps basic', async () => {
+  const { restoreMountain } = await import('../js/mountain/save.js');
+  assert.deepEqual(restoreMountain({}).hut, { sleds: ['basic'], sled: 'basic' });
+  assert.deepEqual(restoreMountain({ hut: { sleds: ['sky', 'bogus', 'sky'], sled: 'sky' } }).hut, { sleds: ['basic', 'sky'], sled: 'sky' });
+  assert.equal(restoreMountain({ hut: { sleds: ['sky'], sled: 'forest' } }).hut.sled, 'basic');
+  assert.equal(restoreMountain({ sled: { perfect: true } }).sled.perfect, true);
+  assert.equal(restoreMountain({ sled: { perfect: 'yes' } }).sled.perfect, false);
 });

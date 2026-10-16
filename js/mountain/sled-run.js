@@ -18,6 +18,7 @@ export function sledState() {
       date: typeof daily.date === 'string' ? daily.date : null,
       rewarded: Number.isFinite(daily.rewarded) ? daily.rewarded : 0,
     },
+    perfect: s.perfect === true,
   };
 }
 
@@ -37,6 +38,7 @@ export function sledBegin(ctx) {
   writeSled({ ...st, plays: attemptN });
   requestSave();
   trackEvent('sled_start', {
+    sled_skin: ctx.sledSkin ?? 'basic',
     run_id: ctx.runId, attempt_n: attemptN, course_v: COURSE_V, acorns: ctx.acornsCollected, idle_ms: intOrNull(ctx.idleMs),
     ...(ctx.diff ? diffParams(ctx.diff) : {}),
   });
@@ -95,7 +97,7 @@ export function sledSettle(sled, ctx, env = {}) {
     }
   }
   const doneAfter = rewarded ? done + 1 : done;
-  writeSled({ ...st, best: newBest ? timeMs : st.best, daily: { date: today, rewarded: doneAfter } });
+  writeSled({ ...st, best: newBest ? timeMs : st.best, daily: { date: today, rewarded: doneAfter }, perfect: st.perfect || sled.flagsPassed === COURSE.flags.length });
   requestSave();
   if (ctx.diff) settleDifficulty('sled', ddaOutcome('sled', { flagsPassed: sled.flagsPassed }));
   trackEvent('sled_result', {
