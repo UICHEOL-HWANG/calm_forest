@@ -99,3 +99,25 @@ test('wiring — coin buy tracks pay coin, hut cafe gets a cash hook, cash butto
 test('purchases kind check allows sled', () => {
   assert.match(src('sql/migrations/migrate_purchases_sled_kind.sql'), /check \(kind in \('cosmetic', 'pet', 'decor', 'sled'\)\)/);
 });
+
+test('coin buy is locked while a cash checkout or grant is pending for that sled', async () => {
+  globalThis.location ??= { search: '', hostname: 'localhost', href: 'http://localhost/', reload() {} };
+  globalThis.localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  const { coinLocked } = await import('../js/mountain/cafe-ui.js');
+  const buy = { kind: 'buy', label: '1,500🪙', disabled: false };
+  assert.equal(coinLocked(buy, 'wind', { isCashPending: (id) => id === 'wind' }), true);
+  assert.equal(coinLocked(buy, 'acorn', { isCashPending: (id) => id === 'wind' }), false);
+  assert.equal(coinLocked(buy, 'wind', {}), false);
+  assert.equal(coinLocked({ kind: 'ride', label: '타기', disabled: false }, 'wind', { isCashPending: () => true }), false);
+  assert.equal(coinLocked({ ...buy, disabled: true }, 'sky', {}), true);
+});
+
+test('wiring — pending predicate exported from cafe.js, passed to the hut cafe, and the coin path refuses too', () => {
+  const c = src('js/spaces/cafe.js');
+  assert.match(c, /export const cashPending = \(id\) => pendingCash\.has\(id\) \|\| cashBusy === id;/);
+  const m = src('js/spaces/mountain.js');
+  assert.match(m, /isCashPending: cashPending/);
+  assert.match(m, /function buyFromCafe\(id, tab\) \{\n  if \(cashPending\(id\)\) \{ refreshCafeModal\(\); return; \}/);
+  const ui = src('js/mountain/cafe-ui.js');
+  assert.match(ui, /btn\.disabled = coinLocked\(row, it\.id, hooks\);/);
+});

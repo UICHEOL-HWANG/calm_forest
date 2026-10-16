@@ -8,6 +8,8 @@ export const CAFE_COPY = Object.freeze({
   gift: '🧺 보관함에 넣어 뒀어요', poor: '코인이 모자라요', close: '닫기',
 });
 
+export const coinLocked = (row, id, h) => !!row.disabled || (row.kind === 'buy' && !!h?.isCashPending?.(id));
+
 const bump = (bag, id) => ({ ...(bag || {}), [id]: ((bag || {})[id] || 0) + 1 });
 
 export function applyCafeResult(gs, r) {
@@ -106,7 +108,7 @@ function render() {
     }
     const btn = document.createElement('button');
     btn.textContent = t(row.label);
-    btn.disabled = row.disabled;
+    btn.disabled = coinLocked(row, it.id, hooks);
     btn.onclick = () => (row.kind === 'ride' ? hooks.onPick(it.id) : hooks.onBuy(it.id, tab));
     const cash = it.tab === 'sled' && row.kind === 'buy' ? hooks.cashButton?.(it.id) : null;
     if (cash) {

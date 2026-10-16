@@ -26,7 +26,7 @@ import { COURSE } from '../mountain/course.js';
 import { physOf, sledCash } from '../mountain/sled-lineup.js';
 import { cashAvailable } from '../shop/paddle.js';
 import { state as authState } from '../supabase-client.js';
-import { cashButton } from './cafe.js';
+import { cashButton, cashPending } from './cafe.js';
 import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
@@ -228,6 +228,7 @@ function exitCafe() {
 function onDrink() { cold = drinkWarm(cold); }
 
 function buyFromCafe(id, tab) {
+  if (cashPending(id)) { refreshCafeModal(); return; }
   const r = buyCafe(cafeState(gameState), id);
   const out = applyCafeResult(gameState, r);
   if (r.ok) {
@@ -267,7 +268,7 @@ function sledCashButton(id) {
 
 function openCafeShop() {
   trackEvent('hut_cafe_open', {});
-  openCafeModal({ getState: () => cafeState(gameState), onBuy: buyFromCafe, onPick: pickFromCafe, cashButton: sledCashButton, onClose: () => {} });
+  openCafeModal({ getState: () => cafeState(gameState), onBuy: buyFromCafe, onPick: pickFromCafe, cashButton: sledCashButton, isCashPending: cashPending, onClose: () => {} });
 }
 
 export function hutDoorReady() {

@@ -940,6 +940,7 @@ export function drawPetTab(box) {
 //  cashBusy = "결제창이 열려 있는" 상태만. 결제 완료 후 원장 확인 전까지는 pendingCash 가 버튼을 잠근다.
 const CASH_FAIL_MSG = '결제를 지금은 열 수 없어요';   // Task 9 검수 문구
 let cashBusy = null;   // 결제창이 열린 항목 id — 그 버튼만 비활성
+export const cashPending = (id) => pendingCash.has(id) || cashBusy === id;
 const redrawCash = (kind) => (kind === 'sled' ? refreshCafeModal() : drawCosMenu());
 export function cashButton(cash, itemId, kind, mine) {
   const btn = document.createElement('button');
