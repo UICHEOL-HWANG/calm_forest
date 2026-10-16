@@ -36,7 +36,7 @@ test('game.js — 액션·세이브·시간 정지·조명·그림자·나무 �
   assert.match(GAME, /bait: 0, shard: 0, mirror: 0,/);
   assert.match(GAME, /if \(!dayPaused && !atDream && !atMirror\) timeOfDay =/);
   assert.match(GAME, /if \(atMirror\) \{\n\s+hemiLight\.intensity = /);
-  assert.match(read('js/shadow-scope.js'), /'atDream', 'atMirror'\]/);
+  assert.match(read('js/shadow-scope.js'), /'atDream', 'atMirror'(?:, 'atMountain')?\]/);
   assert.equal((GAME.match(/dist2D\(\{ x, z \}, MIRROR_STOP\) < 4/g) || []).length, 2, '정류장 주변 나무 제외 2곳');
 });
 
@@ -47,7 +47,7 @@ test('doors.js · 고정 목록 · index.html · BGM', () => {
   assert.match(DOORS, /inVillage2\(\) \{ return [^}]*!atMirror/);
   assert.match(read('js/spaces/outdoor-decor.js'), /outdoorZone\(\) \{ return [^}]*!atMirror/);
   assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream \|\| atMirror;/);
-  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMine \|\| atDream \|\| atMirror;/);
+  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream \|\| atMirror;/);
   assert.match(HTML, /d\.place === 'mirror' \? 'rgba\(80,98,154,0\.8\)'/);
   assert.match(HTML, /d\.place === 'mirror' \? '🪞 거울 마을'/);
   assert.match(HTML, /<div id="mirror-arrive-modal">/);

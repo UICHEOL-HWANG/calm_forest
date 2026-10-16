@@ -11,6 +11,7 @@ import { findItem } from '../cosmetics/catalog.js';
 import { petKindOf, stageOf } from '../pet/rules.js';
 import { normalizeHouseStyle } from '../house-stage7.js';
 import { normalizeFloor } from '../house-floors.js';
+import { POND_MAX_RIVER } from '../pond/rules.js';
 
 export const YARD_R = 14;
 export const DECOR_MAX = 40;
@@ -61,13 +62,20 @@ export function sanitizeShowcase(raw, ctx) {
 
   const room = Array.isArray(raw.room) && ctx.decorIds ? sanitizeRoom(raw.room, ctx.decorIds, stage) : null;
 
+  const rp = raw.pond && typeof raw.pond === 'object' ? raw.pond : {};
+  const riverIds = ctx.pondRiverIds || [];
+  const pondFish = [...new Set((Array.isArray(rp.fish) ? rp.fish : []).filter(id => typeof id === 'string' && riverIds.includes(id)))].slice(0, POND_MAX_RIVER);
+  const sw = rp.sea && typeof rp.sea === 'object' ? rp.sea : null;
+  const pondSea = sw && (ctx.seaIds || []).includes(sw.sp) && num(sw.w) != null && sw.w > 0 ? { sp: sw.sp, w: sw.w } : null;
+  const pond = { fish: pondFish, sea: pondSea, has: pondFish.length > 0 || !!pondSea };
+
   return {
     nickname: nick ? [...nick].slice(0, 16).join('') : NICK_FALLBACK,   // 코드 포인트 기준 — 이모지를 반으로 자르지 않게
     character, equipped, pet,
     houseStage: stage,
     houseStyle: { roof: swatch(hs.roof), wall: swatch(hs.wall), door: swatch(hs.door) },
     style: normalizeHouseStyle(typeof raw.style === 'string' ? raw.style : null, stage),
-    addons, outdoor, room,
+    addons, outdoor, room, pond,
   };
 }
 

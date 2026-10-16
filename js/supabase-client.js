@@ -886,6 +886,15 @@ export async function sendStarRun(row) {
   } catch (err) { console.warn('[Supabase 폴백] 별 잇기 기록 전송 실패:', err?.message || err); }
 }
 
+export async function sendSledRun(row) {
+  if (IS_DEV_SESSION) return;
+  const full = { user_id: state.userId, session_id: state.sessionId, client_id: state.clientId,
+    is_guest: state.isGuest, variant: state.variant, platform: PLATFORM, run_date: kstDate(), ...row };
+  if (!state.online || !supabase) { devLog('[Supabase 폴백] 썰매 기록(오프라인):', full); return; }
+  try { const { error } = await supabase.from(CONFIG.SLED_TABLE).insert(full); if (error) throw error; }
+  catch (err) { console.warn('[Supabase 폴백] 썰매 기록 전송 실패:', err?.message || err); }
+}
+
 // ── [계측] 🌊 바다터 대어 기록(sea_records) — 어획 1회 = 1행 ──
 //    참치 무게가 '오늘의 대어' 리더보드(sea 보드)의 원천. 다른 어종도 함께 남겨
 //    어종별 도전/성공률 분석에 쓴다. 실패해도 게임엔 영향 없게 전부 삼킨다.

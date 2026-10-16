@@ -167,6 +167,11 @@ export const DREAM = new THREE.Vector3(0, 0, -550);      // 🌙 꿈의 숲(떠 
 export const MIRROR = new THREE.Vector3(0, 0, -700);     // 🪞 거울 마을 — 꿈의 숲(-550)과 150 띄움 · 로컬 좌표는 js/mirror/layout.js
 export const MIRROR_R = 22;
 export const MIRROR_STOP = new THREE.Vector3(16, 0, 17); // 🚏 마을 정류장 — 호수(16,9 r6) 남쪽 잔디(시안 A 확정, 2026-10-08)
+export const MOUNTAIN = new THREE.Vector3(0, 0, -1000);
+export const MOUNTAIN_R = 60;
+export const MOUNTAIN_LANDMARK = new THREE.Vector3(-15, 0, -36);
+export const MOUNTAIN_LANDMARK_R = 11;
+export const MOUNTAIN_GATE = new THREE.Vector3(-15, 0, -29.5);
 
 export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸어 다니는 데크) 반경
 
@@ -220,7 +225,7 @@ export const SHOP_DOOR = new THREE.Vector3(SHOP_POS.x, 0, SHOP_POS.z + 2.0);
 //    처음부터 있는 장소(카페·채굴장 문법). 게이트 → 별도 인스턴스, 숲 안은 항상 어둑+짙은 안개.
 //    그림자 정령이 수호목의 빛을 갉아먹으러 다가오고, 플레이어는 등불을 켜(감속) ♪리듬 탭으로
 //    달랜다(성불). 웨이브 3회를 버티면 그날 하루 정화 — 매일 리셋되는 데일리 루프.
-export const MIST_GATE = new THREE.Vector3(-17, 0, -17);   // 마을 북서(집 뒤편 어두운 숲) — 집터(-8,-8)와 7→12.7 로 띄움(베타: 집 바로 옆이라 답답)
+export const MIST_GATE = new THREE.Vector3(-21, 0, -20);   // 마을 북서(집 뒤편 어두운 숲) — 집터(-8,-8)와 7→12.7 로 띄움(베타: 집 바로 옆이라 답답)
 
 export const MIST = new THREE.Vector3(0, 0, -250);         // 숲 인스턴스(다른 공간과 멀찍이)
 

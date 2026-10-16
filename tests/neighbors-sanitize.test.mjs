@@ -13,7 +13,7 @@ const raw = (o = {}) => ({
 
 test('정상 응답 → 그릴 뷰(앞마당 상대좌표·펫 단계)', () => {
   const v = sanitizeShowcase(raw(), CTX);
-  assert.deepEqual(Object.keys(v).sort(), ['addons', 'character', 'equipped', 'houseStage', 'houseStyle', 'nickname', 'outdoor', 'pet', 'room', 'style']);
+  assert.deepEqual(Object.keys(v).sort(), ['addons', 'character', 'equipped', 'houseStage', 'houseStyle', 'nickname', 'outdoor', 'pet', 'pond', 'room', 'style']);
   assert.equal(v.nickname, '느긋한 토끼 #1093');
   assert.equal(v.character, 'rabbit');
   assert.deepEqual(v.equipped, { head: 'beanie', neck: null, back: 'cape', trail: 'firefly', skin: null });

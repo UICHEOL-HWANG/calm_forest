@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
+  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearLightWorkshop, nearDoor, nearDoorFloor,
@@ -17,7 +17,7 @@ import {
 import { plazaSpot } from '../plaza/index.js';
 import { trackEvent } from '../analytics.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
-import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, LIGHT_WORKSHOP, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
+import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, LIGHT_WORKSHOP, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MOUNTAIN, MOUNTAIN_GATE, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
 import { TOOLS } from '../data/tools.js';
 import { storageTotal } from '../farm-building.js';
 import { farmStageInfo } from '../farm-stage.js';
@@ -41,6 +41,7 @@ import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
 import { TELESCOPE_SPOT } from '../spaces/observatory.js';
+import { MOUNTAIN_EXIT_LOCAL, mountainOpen, sledStartReady, hutDoorReady, inCafe, atCafeSpot } from '../spaces/mountain.js';
 import { state as authState } from '../supabase-client.js';
 import { lockLine, mapOpenDay } from '../tuning.js';
 import * as THREE from 'three';
@@ -270,6 +271,13 @@ export function updateDoorInteract() {
         if (it && gameState.dex[it.cat]?.[it.id]) { nd = 'museumview'; prompt = '🔍 자세히 보기'; }
       }
     }
+  } else if (atMountain) {
+    if (inCafe()) {
+      if (atCafeSpot('exit')) { nd = 'hutcafeexit'; prompt = '🚪 나가기'; }
+      else if (atCafeSpot('order')) { nd = 'hutcafeorder'; prompt = '☕ 주문하기'; }
+    } else if (dist2D({ x: MOUNTAIN.x + MOUNTAIN_EXIT_LOCAL.x, z: MOUNTAIN.z + MOUNTAIN_EXIT_LOCAL.z }, player.position) < 1.9) { nd = 'mountainexit'; prompt = '🚪 마을로 돌아가기'; }
+    else if (sledStartReady()) { nd = 'sledstart'; prompt = '🛷 썰매 타고 내려가기'; }
+    else if (hutDoorReady()) { nd = 'hutcafe'; prompt = '☕ 산장 카페 들어가기'; }
   } else if (atObservatory) {   // 🔭 천문대: 남쪽 문으로 나가기
     if (dist2D({ x: OBSERVATORY.x, z: OBSERVATORY.z + OBSERVATORY_R }, player.position) < 1.9) { nd = 'observatoryexit'; prompt = '🚪 나가기'; }
     else if (dist2D({ x: OBSERVATORY.x + TELESCOPE_SPOT.x, z: OBSERVATORY.z + TELESCOPE_SPOT.z }, player.position) < TELESCOPE_SPOT.r) { nd = 'telescope'; prompt = COPY.lookIn; }
@@ -309,6 +317,9 @@ export function updateDoorInteract() {
     firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
   } else if (mv) {     // 🚏 거울 마을 정류장(낮 운행 · 밤엔 막차 안내만, nd 없음)
     nd = mv.nd; prompt = mv.prompt;
+  } else if (dist2D(MOUNTAIN_GATE, player.position) < 2.4) {
+    nd = 'mountain'; prompt = mountainOpen() ? '🏔️ 설산 오르기' : '🏔️ 내일 열려요';
+    firstHintBanner('mountainGate', '🏔️', '🏔️ 설산', '🏔️ 썰매 타러 가는 길');
   } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
     nd = 'observatory'; prompt = '🌌 별 보러 가기';
     firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳');
@@ -447,7 +458,7 @@ export function updateZoneHint() {
   if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 
-export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atOrchard && !atNeighbor && !atDream && !atMirror; }
+export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atMountain && !atOrchard && !atNeighbor && !atDream && !atMirror; }
 
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 export function ensureNearRing() {

@@ -85,6 +85,7 @@ export function ddaOutcome(game, res = {}) {
     const max = res.maxScore || 14;   // maxScore 없는 옛 요약 = 북두칠성 14
     return Math.max(0, Math.min(max, res.score || 0)) / max;
   }
+  if (game === 'sled') return res.abandoned ? null : Math.max(0, Math.min(12, res.flagsPassed || 0)) / 12;
   return null;
 }
 

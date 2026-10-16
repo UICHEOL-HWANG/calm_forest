@@ -56,6 +56,6 @@ test('shadow-scope 와 주변 공간 가드가 atObservatory 를 포함한다', 
   assert.match(SHADOW, /'atObservatory'/);
   assert.match(SRC, /outdoorZone\(\) \{ return !indoor[\s\S]*!atObservatory/);
   assert.match(SRC, /coveWater[\s\S]*!atMuseum && !atObservatory/);
-  assert.match(SRC, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMine/);
+  assert.match(SRC, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine/);
   assert.match(SRC, /const outdoors = !\(indoor \|\| atCafe \|\| atMuseum \|\| atObservatory/);
 });

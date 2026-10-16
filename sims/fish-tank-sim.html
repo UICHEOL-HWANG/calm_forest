@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fish Tank Concepts</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 4px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px 20px 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .card h2 { margin: 0; padding: 10px 12px 2px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 12px 8px; color: var(--muted); font-size: 12px; line-height: 1.45; min-height: 3.2em; }
+  .views { position: relative; }
+  .views canvas { display: block; width: 100%; }
+  .views .inset { border-top: 2px solid var(--line); }
+  .tag.close { top: auto; }
+  .tag { position: absolute; left: 8px; top: 8px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; padding: 12px 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>낚은 물고기가 내 집에 산다 — 시안 3종</h1>
+  <p>위 = 게임 카메라 거리 그대로 · 아래 = 가까이 갔을 때 · 물고기 = 피라미·붉은 물고기·무지개 물고기·단풍 잉어</p>
+</header>
+<div class="grid" id="grid"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const Q = new URLSearchParams(location.search);
+const MOBILE = Q.get('layout') === 'mobile';
+const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
+
+const clayMat = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const glassMat = () => new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.25, roughness: 0.1, metalness: 0, depthWrite: false });
+const waterMat = (o = 0.5) => new THREE.MeshStandardMaterial({ color: 0x4aa6d0, transparent: true, opacity: o, roughness: 0.25, emissive: 0x184a63, emissiveIntensity: 0.45, depthWrite: false });
+
+const SPECIES = [
+  { id: 'common', col: 0x9fb4c8 },
+  { id: 'uncommon', col: 0xe06a5a },
+  { id: 'rare', col: 0x7ae0ff, glow: true },
+  { id: 'maple_carp', col: 0xe8743c },
+];
+
+function fishMesh(sp) {
+  const g = new THREE.Group();
+  const mat = sp.glow
+    ? new THREE.MeshStandardMaterial({ color: sp.col, emissive: 0x3ac0e0, emissiveIntensity: 0.4, roughness: 0.4 })
+    : clayMat(sp.col, false);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6).scale(1.6, 0.9, 0.7), mat);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 6).rotateZ(Math.PI / 2).translate(-0.52, 0, 0), mat);
+  const eyeM = clayMat(0x2a2624);
+  [0.14, -0.14].forEach(z => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eyeM); e.position.set(0.3, 0.07, z); g.add(e); });
+  g.add(body, tail);
+  return g;
+}
+
+function player() {
+  const g = new THREE.Group();
+  const fur = clayMat(0xb98a5e, false);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10).scale(1, 1.15, 0.9), fur); body.position.y = 0.5; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), fur); head.position.y = 1.15; g.add(head);
+  [-0.22, 0.22].forEach(x => { const ear = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), fur); ear.position.set(x, 1.45, 0); g.add(ear); });
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), clayMat(0xf0dcc0, false)); snout.position.set(0, 1.08, 0.3); g.add(snout);
+  return g;
+}
+
+function cottage() {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 2.8, 4.2), clayMat(0xf3e3c8)); wall.position.y = 1.4; g.add(wall);
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 3.4, 1.7, 4, 1), clayMat(0xc4574a));
+  roof.rotation.y = Math.PI / 4; roof.scale.set(1.05, 1, 0.86); roof.position.y = 3.65; g.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.1), clayMat(0x8a5a36)); door.position.set(-0.9, 0.8, 2.11); g.add(door);
+  return g;
+}
+
+function ground(size, col = 0x9cc96b) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), clayMat(col)); m.rotation.x = -Math.PI / 2; return m;
+}
+
+function lights(scene, indoor = false) {
+  scene.add(new THREE.HemisphereLight(0xfff6e6, 0x8a7a66, indoor ? 1.1 : 0.9));
+  const sun = new THREE.DirectionalLight(0xfff1d6, indoor ? 0.9 : 1.5); sun.position.set(6, 12, 8); scene.add(sun);
+}
+
+function addSwimmers(parent, list) {
+  list.forEach(f => parent.add(f.mesh));
+  return t => list.forEach(f => {
+    const a = t * f.speed + f.phase;
+    f.mesh.position.set(f.cx + Math.cos(a) * f.rx, f.y + Math.sin(a * 2) * 0.03, f.cz + Math.sin(a) * f.rz);
+    f.mesh.rotation.y = -a - Math.PI / 2 * Math.sign(f.speed);
+  });
+}
+
+function conceptA() {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x2b2118);
+  lights(scene, true);
+  scene.add(ground(14, 0xbfb0a0));
+  const wallM = clayMat(0xf1e4cf);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 0.3), wallM); back.position.set(0, 1.5, -7); scene.add(back);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 14), wallM); left.position.set(-7, 1.5, 0); scene.add(left);
+  const rug = new THREE.Mesh(new THREE.BoxGeometry(4, 0.04, 2.8), clayMat(0xd99a6c)); rug.position.set(0.5, 0.02, -1); scene.add(rug);
+  const sofa = new THREE.Group();
+  const sb = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.4, 0.9), clayMat(0x8ab4e8, false)); sb.position.y = 0.3; sofa.add(sb);
+  const sk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 0.25), clayMat(0x8ab4e8, false)); sk.position.set(0, 0.65, -0.35); sofa.add(sk);
+  sofa.position.set(0.5, 0, 1.4); sofa.rotation.y = Math.PI; scene.add(sofa);
+  const bed = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 2.2), clayMat(0xf5a3a3, false)); bed.position.set(-5.4, 0.25, -5.2); scene.add(bed);
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.1, 0.45), clayMat(0x9c6b40)); shelf.position.set(4.6, 1.05, -6.6); scene.add(shelf);
+
+  const tank = new THREE.Group(); tank.position.set(0.4, 0, -6.45);
+  const stand = new THREE.Mesh(new THREE.BoxGeometry(3, 0.7, 0.9), clayMat(0x8a5a36)); stand.position.y = 0.35; tank.add(stand);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.5, 0.8), glassMat()); glass.position.y = 1.45; tank.add(glass);
+  const water = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.25, 0.7), waterMat(0.45)); water.position.y = 1.35; tank.add(water);
+  const sand = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.1, 0.7), clayMat(0xe8d6a8)); sand.position.y = 0.76; tank.add(sand);
+  [[-1.1, 0x5fbf7a], [-0.85, 0x4fa86a], [1.05, 0x5fbf7a]].forEach(([x, c]) => { const w = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.7, 5), clayMat(c)); w.position.set(x, 1.15, -0.1); tank.add(w); });
+  const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), clayMat(0x9b9389)); rock.position.set(0.7, 0.9, 0.05); tank.add(rock);
+  const rim = new THREE.Mesh(new THREE.BoxGeometry(3, 0.08, 0.9), clayMat(0x6b4a2e)); rim.position.y = 2.22; tank.add(rim);
+  scene.add(tank);
+  const swim = addSwimmers(tank, SPECIES.map((sp, i) => {
+    const m = fishMesh(sp); m.scale.setScalar(0.5);
+    return { mesh: m, cx: 0, cz: 0, rx: 0.9 - i * 0.08, rz: 0.12, y: 1.05 + i * 0.22, speed: (i % 2 ? -1 : 1) * (0.5 + i * 0.07), phase: i * 1.7 };
+  }));
+  const p = player(); p.position.set(0.6, 0, -3.6); p.rotation.y = Math.PI; scene.add(p);
+  return {
+    scene, swim,
+    game: { pos: new THREE.Vector3(0.6, 17, 6.4), look: new THREE.Vector3(0.6, 0, -3.6), fov: 42 },
+    close: { pos: new THREE.Vector3(1.6, 2.4, -2.6), look: new THREE.Vector3(0.4, 1.35, -6.45), fov: 40 },
+  };
+}
+
+function conceptB() {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfe3f2);
+  lights(scene);
+  scene.add(ground(60));
+  const h = cottage(); h.position.set(-1.5, 0, -3); scene.add(h);
+  const path = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.03, 4), clayMat(0xd9c9a3)); path.position.set(-2.4, 0.015, 1.1); scene.add(path);
+  const pond = new THREE.Group(); pond.position.set(2.6, 0, 0.6);
+  const bed = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.06, 20), clayMat(0x3f7f96)); bed.position.y = -0.18; pond.add(bed);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.95, 1.95, 0.04, 24), waterMat(0.3)); water.position.y = 0.04; pond.add(water);
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * Math.PI * 2;
+    const s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.26 + (i % 3) * 0.05, 0), clayMat(i % 2 ? 0xb8b0a4 : 0xa39a8e));
+    s.position.set(Math.cos(a) * 2.1, 0.08, Math.sin(a) * 2.1); s.scale.y = 0.6; pond.add(s);
+  }
+  [[-0.8, -0.6], [0.9, 0.7], [0.2, -1.1]].forEach(([x, z]) => {
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.02, 10, 1, false, 0.4, Math.PI * 1.75), clayMat(0x5fbf7a)); pad.position.set(x, 0.07, z); pond.add(pad);
+  });
+  const flower = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), clayMat(0xf5a9c4, false)); flower.position.set(0.9, 0.12, 0.7); pond.add(flower);
+  const reed = clayMat(0x6aa84f);
+  [[-1.8, 0.7], [-1.6, 1.0], [1.5, -1.4]].forEach(([x, z]) => { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.9, 4), reed); r.position.set(x, 0.45, z); pond.add(r); });
+  scene.add(pond);
+  const swim = addSwimmers(pond, SPECIES.map((sp, i) => {
+    const m = fishMesh(sp); m.scale.setScalar(0.8);
+    return { mesh: m, cx: (i - 1.5) * 0.15, cz: (i % 2 ? 0.2 : -0.2), rx: 1.15 - i * 0.12, rz: 0.9 - i * 0.1, y: -0.05, speed: (i % 2 ? -1 : 1) * (0.35 + i * 0.05), phase: i * 1.5 };
+  }));
+  const p = player(); p.position.set(0.2, 0, 1.6); p.rotation.y = Math.PI / 2.4; scene.add(p);
+  return {
+    scene, swim,
+    game: { pos: new THREE.Vector3(0.2, 14, 17.6), look: new THREE.Vector3(0.2, 0, 1.6), fov: 42 },
+    close: { pos: new THREE.Vector3(3.6, 4.4, 4.8), look: new THREE.Vector3(2.6, 0, 0.4), fov: 40 },
+  };
+}
+
+function conceptC() {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfe3f2);
+  lights(scene);
+  scene.add(ground(60));
+  const h = cottage(); h.position.set(-0.5, 0, -3); scene.add(h);
+  const win = new THREE.Group(); win.position.set(0.9, 0, -0.85);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 0.08), clayMat(0x8a5a36)); frame.position.y = 1.55; win.add(frame);
+  const pane = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.0, 0.09), clayMat(0x6d8fa3)); pane.position.y = 1.55; win.add(pane);
+  const sill = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.1, 0.5), clayMat(0x9c6b40)); sill.position.set(0, 0.92, 0.22); win.add(sill);
+  const bowl = new THREE.Group(); bowl.position.set(0, 1.32, 0.26);
+  bowl.add(new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12, 0, Math.PI * 2, 0.35, Math.PI - 0.35), glassMat()));
+  bowl.add(new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.58), waterMat(0.5)));
+  const peb = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 10), clayMat(0xe8d6a8)); peb.position.y = -0.3; bowl.add(peb);
+  win.add(bowl);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.1, 0.2, 8), clayMat(0xc4574a)); pot.position.set(-0.6, 1.07, 0.25); win.add(pot);
+  const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), clayMat(0x5fbf7a)); leaf.position.set(-0.6, 1.27, 0.25); win.add(leaf);
+  scene.add(win);
+  const swim = addSwimmers(bowl, SPECIES.slice(0, 2).map((sp, i) => {
+    const m = fishMesh(sp); m.scale.setScalar(0.32);
+    return { mesh: m, cx: 0, cz: 0, rx: 0.14, rz: 0.1, y: -0.12 + i * 0.12, speed: (i ? -1 : 1) * 0.7, phase: i * 2 };
+  }));
+  const p = player(); p.position.set(0.4, 0, 1.4); p.rotation.y = Math.PI; scene.add(p);
+  return {
+    scene, swim,
+    game: { pos: new THREE.Vector3(0.4, 14, 17.4), look: new THREE.Vector3(0.4, 0, 1.4), fov: 42 },
+    close: { pos: new THREE.Vector3(1.4, 2.2, 2.4), look: new THREE.Vector3(0.9, 1.3, -0.6), fov: 40 },
+  };
+}
+
+const CONCEPTS = [
+  { title: 'A. 거실 큰 어항', how: '집 안 뒷벽에 붙은 큰 어항. 잡은 종이 한 마리씩 들어와 헤엄친다. 기존 어항 가구를 교체·강화', build: conceptA },
+  { title: 'B. 마당 연못', how: '집 앞 마당에 연못. 잡은 종이 자동으로 들어온다. 마을을 지날 때마다, 이웃이 구경 올 때도 보인다', build: conceptB },
+  { title: 'C. 창가 어항', how: '첫 물고기를 낚는 순간 창턱에 작은 어항이 생긴다. 밖에서 창 너머로 보이는 소품', build: conceptC },
+];
+
+const W = MOBILE ? 390 : 640, H = MOBILE ? 844 : 360;
+const grid = document.getElementById('grid');
+const rigs = [];
+for (const c of CONCEPTS) {
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<h2>${c.title}</h2><p class="how">${c.how}</p><div class="views"><span class="tag">게임 거리</span></div>`;
+  grid.appendChild(card);
+  const views = card.querySelector('.views');
+  const built = c.build();
+  const mk = (w, h, v, cls) => {
+    const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    r.setPixelRatio(2); r.setSize(w, h, false);
+    if (cls) r.domElement.className = cls;
+    views.insertBefore(r.domElement, views.firstChild);
+    const cam = new THREE.PerspectiveCamera(v.fov, w / h, 0.1, 200);
+    cam.position.copy(v.pos); cam.lookAt(v.look);
+    return { r, cam };
+  };
+  const main = mk(W, H, built.game);
+  const ins = mk(W, Math.round(W * 0.56), built.close, 'inset');
+  views.appendChild(ins.r.domElement);
+  const t2 = document.createElement('span'); t2.className = 'tag close'; t2.textContent = '가까이';
+  views.appendChild(t2);
+  requestAnimationFrame(() => { t2.style.top = (main.r.domElement.offsetHeight + 8) + 'px'; });
+  rigs.push({ built, views: [main, ins] });
+}
+
+const t0 = performance.now();
+function frame() {
+  const t = FIXED_T ?? (performance.now() - t0) / 1000;
+  for (const { built, views } of rigs) {
+    built.swim(t);
+    for (const v of views) v.r.render(built.scene, v.cam);
+  }
+  if (FIXED_T === null) requestAnimationFrame(frame);
+  else window.__ready = true;
+}
+frame();
+</script>
+</body>
+</html>
