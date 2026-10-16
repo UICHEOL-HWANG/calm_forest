@@ -70,4 +70,7 @@ test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목
   assert.ok(pond(SQL).includes(`array_position(${list(river)}, k.key)`));
   assert.ok(pond(SQL).includes(`k.key ${inList(sea)}`));
   assert.ok(pond(SQL).includes(`array_position(${list(sea)}, k.key)`));
+  const rev = 'revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;';
+  assert.ok(SQL.includes(rev) && POND_SQL.includes(rev));
+  assert.ok(pond(SQL).includes('set search_path = public'));
 });

@@ -127,7 +127,7 @@ returns jsonb language sql immutable set search_path = public as $$
 $$;
 
 create or replace function public._nb_pond(p_state jsonb)
-returns jsonb language sql immutable as $$
+returns jsonb language sql immutable set search_path = public as $$
   with fish as (
     select k.key as id, (k.value #>> '{}')::numeric as t
     from jsonb_each(case when jsonb_typeof(p_state #> '{dex,fish}') = 'object' then p_state #> '{dex,fish}' else '{}'::jsonb end) k
@@ -138,7 +138,8 @@ returns jsonb language sql immutable as $$
   ), sea as (
     select k.key as sp, (k.value #>> '{}')::numeric as w
     from jsonb_each(case when jsonb_typeof(p_state #> '{sea,best}') = 'object' then p_state #> '{sea,best}' else '{}'::jsonb end) k
-    where k.key in ('aji','buri','mola','tuna') and jsonb_typeof(k.value) = 'number' and (k.value #>> '{}')::numeric > 0
+    where k.key in ('aji','buri','mola','tuna')
+      and case when jsonb_typeof(k.value) = 'number' then (k.value #>> '{}')::numeric > 0 else false end
     order by 2 desc, array_position(array['aji','buri','mola','tuna'], k.key)
     limit 1
   )
@@ -376,6 +377,7 @@ revoke all on function public._nb_str(jsonb, int) from public, anon, authenticat
 revoke all on function public._nb_num(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_yard(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_room(jsonb) from public, anon, authenticated;
+revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_candidates(uuid, date, int) from public, anon, authenticated;
 revoke all on function public._nb_public_id(uuid) from public, anon, authenticated;
 revoke all on function public._nb_nick_blocked(text) from public, anon, authenticated;

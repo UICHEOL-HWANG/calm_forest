@@ -1,5 +1,5 @@
 create or replace function public._nb_pond(p_state jsonb)
-returns jsonb language sql immutable as $$
+returns jsonb language sql immutable set search_path = public as $$
   with fish as (
     select k.key as id, (k.value #>> '{}')::numeric as t
     from jsonb_each(case when jsonb_typeof(p_state #> '{dex,fish}') = 'object' then p_state #> '{dex,fish}' else '{}'::jsonb end) k
@@ -10,7 +10,8 @@ returns jsonb language sql immutable as $$
   ), sea as (
     select k.key as sp, (k.value #>> '{}')::numeric as w
     from jsonb_each(case when jsonb_typeof(p_state #> '{sea,best}') = 'object' then p_state #> '{sea,best}' else '{}'::jsonb end) k
-    where k.key in ('aji','buri','mola','tuna') and jsonb_typeof(k.value) = 'number' and (k.value #>> '{}')::numeric > 0
+    where k.key in ('aji','buri','mola','tuna')
+      and case when jsonb_typeof(k.value) = 'number' then (k.value #>> '{}')::numeric > 0 else false end
     order by 2 desc, array_position(array['aji','buri','mola','tuna'], k.key)
     limit 1
   )
@@ -18,6 +19,8 @@ returns jsonb language sql immutable as $$
     'fish', coalesce((select jsonb_agg(id order by t, array_position(array['sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common'], id)) from fish), '[]'::jsonb),
     'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea));
 $$;
+
+revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;
 
 create or replace function public.neighbor_showcase(p_public_id uuid)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
