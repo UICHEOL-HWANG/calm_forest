@@ -32,6 +32,7 @@ import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
 import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
+import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
 import { IS_ANDROID } from './platform.js';
@@ -69,6 +70,7 @@ import { FARM_BUILDINGS, CELL as FARM_CELL, snapCenter, buildingCells, rotatedFp
 import { takeStored, canPromptOutdoorMove, outdoorDistance, OUTDOOR_MOVE_REACH, OUTDOOR_TAP_REACH } from './outdoor-move.js';   // 🪵 야외 장식 보관·옮기기 규칙
 import { buyBlocked, catalogVisible, SALE_ENDED_MSG, saleTagOf } from './shop/sale-window.js';   // 🎃 기간 한정 항목 — 목록 필터·행 태그
 import { isNicknameBlocked } from './nickname-filter.js';   // 🛡️ 닉네임 금칙어(이웃 마을이 남에게 보여 준다 — UGC 자율 관리)
+import { checkNickname, NICK_FAIL_MSG } from './nickname-filter.js';
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
@@ -373,6 +375,7 @@ export const $w = {
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
 const IS_MOBILE = /Mobi|Android|iP(hone|od|ad)/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820) || touchSimOn(location.search);   // 📱 ?touchsim=1 = 모바일 취급(페르소나)
+const touchHud = () => document.body.classList.contains('is-touch');
 
 // ── 작물 종류(다양화) — 심을 때 랜덤 배정, 열매 색이 달라짐 ─────
 
@@ -1185,6 +1188,10 @@ function genNickname(animal) {
 function setNickname(name, source = 'change') {
   const nick = String(name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
   if (nick.length < 2) return { ok: false, msg: '닉네임은 2~16자로 지어주세요' };
+  if (source !== 'auto' && source !== 'keep') {
+    const r = checkNickname(nick);
+    if (!r.ok && r.fail !== 'blocked') return { ok: false, msg: NICK_FAIL_MSG[r.fail] };
+  }
   if (isNicknameBlocked(nick)) {
     trackEvent('nickname_set_blocked', { len: nick.length });   // [GA4] 막힌 횟수만 — 값 자체는 보내지 않음
     return { ok: false, msg: '쓸 수 없는 말이 들어 있어요' };
@@ -1245,10 +1252,12 @@ async function prefetchNotices() {
   const since = gameState.noticeSeenId || 0;
   const rows = await fetchNotices(since, { ascending: true });   // 오래된 순 — 20건 넘게 밀려도 읽음 id 가 건너뛰지 않게
   pendingNotices = unreadNotices(rows, since);
+  ui.setUnread?.(pendingNotices.length);
 }
 export function markNoticesSeen(list) {
   const id = maxId(list);
   pendingNotices = pendingNotices.filter(n => n.id > id);
+  ui.setUnread?.(pendingNotices.length);
   if (id <= (gameState.noticeSeenId || 0)) return;
   gameState.noticeSeenId = id;
   requestSave();
@@ -1530,7 +1539,39 @@ function restoreToolBeforeAuto() {
   if (t && t.grp === toolPage) selectToolAuto(t.id);
 }
 // 구역이 바뀐 그 순간에만 한 번 적용 → 같은 구역 안에서 직접 바꾼 선택은 그대로 지켜진다
+const _screenV = new THREE.Vector3();
+export function projectToScreen(pos, lift = 0) {
+  _screenV.set(pos.x, pos.y + lift, pos.z).project(camera);
+  if (_screenV.z > 1) return null;
+  const r = renderer.domElement.getBoundingClientRect();
+  return { x: r.left + (_screenV.x + 1) / 2 * r.width, y: r.top + (1 - _screenV.y) / 2 * r.height };
+}
+let spotTool = SPOT_IDLE;
+function nearestTreeDist() {
+  let d = Infinity;
+  for (const tree of trees) { if (tree.userData.fallen) continue; const e = dist2D(tree.position, player.position); if (e < d) d = e; }
+  return d;
+}
+function updateSpotToolAuto() {
+  const zone = toolZoneKey();
+  const eligible = (zone === null || zone === 'glade') && !boat.active && !placingDecor && !placingOutdoor;
+  const d = eligible
+    ? { lake: dist2D(LAKE, player.position) - LAKE_R, house: dist2D(HOUSE_POS, player.position), tree: nearestTreeDist() }
+    : { lake: Infinity, house: Infinity, tree: Infinity };
+  const r = spotToolStep(spotTool, { eligible, page: toolPage, tool: TOOLS[currentTool].id, want: spotWant(d), keep: spotTool.on && spotKeep(spotTool.tool, d) });
+  spotTool = r.state;
+  if (r.act === 'grab') {
+    setToolPage('out', true);
+    selectToolAuto(r.state.tool);
+    trackEvent('tool_auto', { to: r.state.tool, reason: SPOT_REASON[r.state.tool] });
+  } else if (r.act === 'restore') {
+    if (r.restore.page && r.restore.page !== toolPage) setToolPage(r.restore.page, true);
+    const back = TOOLS.find(t => t.id === r.restore.tool);
+    if (back && back.grp === toolPage) selectToolAuto(back.id);
+  }
+}
 function updateToolPageAuto() {
+  updateSpotToolAuto();
   const key = toolZoneKey();
   if (key === lastAutoZone) return;
   lastAutoZone = key;
@@ -1543,7 +1584,7 @@ function updateToolPageAuto() {
       // 바가 저절로 접히는 첫 순간 — 왜 접혔고 어떻게 되돌리는지 한 번만 알려 준다
       if (!gameState.hintsSeen.toolStow) {
         gameState.hintsSeen.toolStow = true;
-        ui.toast?.('🎒 도구를 등에 멨어요. 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요', 3200);
+        ui.toast?.(touchHud() ? '🎒 도구를 등에 멨어요. 여기선 맨손으로 해요 — 나가면 다시 꺼내 들어요' : '🎒 도구를 등에 멨어요. 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요', 3200);
       }
     }
     setToolPage(want, true);
@@ -1628,6 +1669,7 @@ export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
   doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space (도구질)
   doTalk() { if (!indoor && nearNPC) talkToNPC(); },    // 전용 "대화하기" 버튼(모바일) — 도구질과 분리
+  playerScreenPos() { return player && camera ? projectToScreen(player.position, 1.7) : null; },
   // 슬롯 탭 / 숫자키 1~8 — 페이지와 무관한 절대 선택. 다른 페이지 도구를 고르면 페이지가 따라오고, ✋맨손도 풀린다
   selectTool(i) {
     if (placingOutdoor) { stopOutdoorPlacing(true); ui.onDecorPlaced?.(); }   // 🪵 들었던 장식은 제자리로
@@ -1652,6 +1694,7 @@ export const Input = {
     ui.act?.('toolpage');   // 🎓 튜토리얼: "세트 바꿔 보기" 단계 통과
     return toolPage;
   },
+  setPage(id) { pageBeforeAuto = null; setToolPage(id); return toolPage; },
   // 🎓 튜토리얼이 "🪓도끼(1)" 처럼 특정 도구를 지시할 때, 그 도구가 있는 페이지를 펴 준다.
   //   고르지는 않는다 — 고르는 건 플레이어가 배워야 할 동작이라 칸만 보이게 한다.
   revealTool(id) {
@@ -6815,7 +6858,7 @@ function handleAction() {
   const fp = fertTarget();
   if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // ✋ 맨손 — 도구를 등에 메고 있으니 도구질은 안 된다(줍기·대화·문은 위에서 이미 처리됨)
-  if (toolPage === 'none') { ui.toast?.('✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
+  if (toolPage === 'none') { ui.toast?.(touchHud() ? '✋ 맨손이에요 — 오른쪽 아래 도구 버튼을 꾹 눌러 도구를 꺼내세요' : '✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
   // 🌾 농사 도구(괭이·씨앗·물조리개·낫)는 밭 상태에 맞는 도구로 바꿔 바로 실행 — 🪏삽은 명시적으로만
   if (FARM_AUTO_TOOLS.includes(TOOLS[currentTool].id)) return farmAutoAction();
   switch (TOOLS[currentTool].id) {
