@@ -171,7 +171,7 @@ export function buildMistSpace() {
     const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0 + (i % 2) * 0.4, 0), clayMat(0x4e4a66, false));
     crown.position.set(Math.cos(a) * r, 3.4 + (i % 3) * 0.5, Math.sin(a) * r); g.add(crown);
   }
-  // 🌳 수호목 — 중앙 북쪽. 빛 게이지에 따라 잎이 밝아지고 어두워진다
+  // 🌳 수호목(=세계수의 심장, 2026-10-16 세계관) — 중앙 북쪽. 빛 게이지에 따라 잎이 밝아지고 어두워진다
   const tg = new THREE.Group(); tg.position.set(0, 0, -3);
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 3.6, 7), woodMat(1, 2, 0x8a7a5f));
   trunk.position.y = 1.8; trunk.castShadow = true; tg.add(trunk);
@@ -236,7 +236,7 @@ export function enterMist() {
     ui.toast?.('🌤️ 오늘의 숲은 맑아요. 정령들이 고마워해요. 내일 다시 안개가 차요');
   } else {
     firstHint('mistWood', '🌫️', '안개 낀 숲',
-      '🌳수호목 앞에서 정화 시작\n🏮등불로 늦추고 ♪가 가장 작을 때 탭!\n세 무리를 모두 달래면 숲이 맑아져요');
+      '🌳세계수의 심장 앞에서 정화 시작\n🏮등불로 늦추고 ♪가 가장 작을 때 탭!\n세 무리를 모두 달래면 숲이 맑아져요');
   }
   Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
   trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
@@ -394,9 +394,9 @@ export function mistEnd(result) {
     //    "재시작 버튼이 안 뜬다"며 이탈했다(페르소나 p12 3명 중 2명, 2026-10-03). 연습 미경험이면 보조 버튼이 🎓 연습.
     setTimeout(() => {
       if (!atMist || mist.active) return;
-      if (ui.anyModalOpen?.()) { ui.toast?.('🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600); return; }
+      if (ui.anyModalOpen?.()) { ui.toast?.('🌫️ 세계수의 심장이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600); return; }
       if (!st.practiced) trackEvent('mist_practice_offer');   // [GA4]
-      ui.showHintModal?.({ ico: '🌫️', title: '수호목이 지쳤어요',
+      ui.showHintModal?.({ ico: '🌫️', title: '세계수의 심장이 지쳤어요',
         body: st.practiced ? '켜둔 등불은 그대로 남아요. 바로 다시 도전해 볼까요?'
                            : '켜둔 등불은 그대로 남아요. 바로 다시 도전하거나, 정령 1마리로 연습해 볼 수도 있어요.',
         ok: { label: '🌳 다시 도전', onClick: retryPurify },
@@ -453,7 +453,7 @@ export function updateMist(dt, t) {
       mist.treeLight = Math.max(0, mist.treeLight - drain * dt);
       if (!mist.warned && mist.treeLight < TREE_LIGHT_MAX * 0.3) {
         mist.warned = true;
-        ui.toast?.('🌳 수호목의 빛이 흐려져요! 정령들을 서둘러 달래주세요', 2600);
+        ui.toast?.('🌳 세계수의 심장이 흐려져요! 정령들을 서둘러 달래주세요', 2600);
       }
       if (mist.treeLight <= 0) { mistEnd('faded'); return; }
     }

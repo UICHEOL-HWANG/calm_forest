@@ -325,7 +325,7 @@ export function updateDoorInteract() {
     firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳');
   } else if (dist2D({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 1.2 }, player.position) < 2.2) {
     nd = 'neighbor'; prompt = '🏡 이웃 마을 가는 길';
-    firstHintBanner('neighborGate', '🏡', '이웃 마을 가는 길', '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요');
+    firstHintBanner('neighborGate', '🏡', '이웃 마을 가는 길', '세계수가 틔운 다른 씨앗들의 숲이에요 · 내일 또 바뀌어요');
   }
   $w.nearDoor = nd;
   if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');

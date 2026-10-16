@@ -1472,11 +1472,11 @@ export const EN = {
   '첫 요리': 'The First Dish',
   '요리하고 서빙하기': 'Cook and serve',
   '숲에서 거둔 재료로 요리를 해보자. 주방에서 만들어 카페 손님에게 내면 돼요.': 'Cook with what the forest gave you. Make it in the kitchen and serve it to a cafe guest.',
-  '첫 요리를 손님상에 냈어요. 카페에 소문이 돌기 시작해요.': 'Your first dish went out to a guest. Word is spreading around the cafe.',
-  '잎사귀의 주인': 'The Leaf\'s Keeper',
+  '첫 요리를 손님상에 냈어요. 따뜻한 밥 냄새가 숲 밖까지 퍼져요.': 'Your first dish went out to a guest. The smell of a warm meal drifts far beyond the forest.',
+  '세계수의 심장': 'Heart of the World Tree',
   '안개 걷어내기': 'Lift the fog',
-  '북서쪽 숲엔 걷히지 않는 안개가 있대요. 문득, 그날 바람에 실려 온 잎사귀가 떠올라요.': 'They say a fog never lifts from the northwest woods. Suddenly you remember the leaf that rode the wind to you that day.',
-  '안개가 걷히고 수호목이 말했어요. "그 잎사귀, 내가 보낸 거란다. 먼 길 오느라 고생했어."': 'The mist cleared and the Guardian Tree spoke: "That leaf — I sent it. You have come a long way."',
+  '북서쪽 숲엔 걷히지 않는 안개가 있대요. 그 안개 속에서 세계수의 심장이 희미하게 뛰고 있어요. 빛을 되돌려 주자.': 'They say a fog never lifts from the northwest woods. Inside it, the Heart of the World Tree beats faintly. Let\'s bring its light back.',
+  '안개가 걷히고 세계수의 심장이 말했어요. "고마워. 이웃들이 서로를 잊어 갈 때마다 나도 조금씩 시들었단다… 네가 와 줘서, 다시 숨이 트이는구나."': 'The mist cleared and the Heart of the World Tree spoke: "Thank you. Each time neighbors forgot one another, I withered a little more… Now that you\'re here, I can breathe again."',
   '공사 {0}/3': 'Building {0}/3',
   '의뢰 {0}/3': 'Quests {0}/3',
   '요리 {0}/1 · 서빙 {1}/1': 'Cooking {0}/1 · Serving {1}/1',
@@ -1488,26 +1488,26 @@ export const EN = {
   // 📖 5~8장(2026-10-07)
   '마을의 살림': 'Village Life',
   '밭 넓히고 과일나무 심기': 'Expand the field and plant a fruit tree',
-  '이제 이 숲이 내 집이에요. 밭을 넓히고, 오래 함께할 과일나무를 한 그루 심어보자. 측량소는 밭 울타리 옆에 있어요.':
-    'This forest is home now. Expand your field and plant a fruit tree to keep you company for years. The survey office is by the field fence.',
-  '밭이 넓어지고 어린 나무가 뿌리를 내렸어요. 계절이 바뀌어도 여기 있을 거예요.':
-    'The field grew and a young tree took root. It\'ll still be here when the seasons turn.',
+  '이제 이 숲이 내 집이에요. 밭을 넓히고 과일나무를 한 그루 심어, 세계수 뿌리가 닿는 곳을 넓혀보자. 측량소는 밭 울타리 옆에 있어요.':
+    'This forest is home now. Expand your field and plant a fruit tree to spread the reach of the World Tree\'s roots. The survey office is by the field fence.',
+  '밭이 넓어지고 어린 나무가 뿌리를 내렸어요. 세계수 뿌리도 한 뼘 더 뻗어 나갔어요.':
+    'The field grew and a young tree took root. The World Tree\'s roots reached a little further too.',
   '숲의 기억': 'Memories of the Forest',
   '박물관 특별 진열대 채우기': 'Fill the museum\'s special display',
   '박물관엔 날씨가 남긴 기억을 두는 특별 진열대가 있대요. 비나 눈, 안개 낀 날에 얻은 것을 가져가 보자.':
     'They say the museum has a special display for memories the weather leaves behind. Bring something you found on a rainy, snowy, or foggy day.',
-  '진열대에 첫 기억이 놓였어요. 그날의 날씨까지 함께 남았어요.':
-    'The first memory is on display — and the weather of that day stayed with it.',
+  '진열대에 첫 기억이 놓였어요. 숲이 기억을 되찾을수록 세계수 뿌리도 멀리 닿아요.':
+    'The first memory is on display. The more the forest remembers, the further the World Tree\'s roots reach.',
   '별을 잇는 밤': 'A Night of Stars',
   '천문대에서 별자리 잇기': 'Connect a constellation at the observatory',
-  '수호목이 말했어요. "밤하늘에도 잎사귀가 있단다." 천문대에 올라 별을 이어보자.':
-    'The Guardian Tree said, "There are leaves in the night sky too." Climb the observatory and connect the stars.',
-  '별을 이으니 잎사귀 모양이 떠올랐어요. 수호목이 웃었어요. "잎사귀를 받은 건 너 하나가 아니란다."':
-    'The stars formed the shape of a leaf. The Guardian Tree smiled. "You weren\'t the only one who got a leaf."',
+  '세계수가 말했어요. "밤하늘에도 내 잎이 있단다." 천문대에 올라 별을 이어보자.':
+    'The World Tree said, "Some of my leaves are in the night sky." Climb the observatory and connect the stars.',
+  '별을 이으니 잎사귀 모양이 떠올랐어요. 세계수가 웃었어요. "나는 씨앗을 하나만 틔운 게 아니란다."':
+    'The stars formed the shape of a leaf. The World Tree smiled. "You weren\'t the only seed I sprouted."',
   '이웃의 숲': 'Neighboring Forests',
   '이웃 마을에 놀러 가기': 'Visit a neighbor\'s village',
-  '같은 잎사귀를 받고 숲에 온 이웃들이 있대요. 그들의 마을에 놀러 가보자.':
-    'Others came to the forest with the same leaf. Go visit their villages.',
+  '세계수가 틔운 다른 씨앗들도 저마다 숲을 되살리고 있대요. 그들의 마을에 놀러 가보자.':
+    'The other seeds the World Tree sprouted are each bringing a forest back to life. Go visit their villages.',
   '밭 {0#}/2 · 나무 {1#}/1': 'Field {0}/2 · Trees {1}/1',
   '특별 진열 {0#}/1': 'Special display {0}/1',
   '별자리 {0#}/1': 'Constellations {0}/1',
@@ -1520,7 +1520,7 @@ export const EN = {
   '방문 {0#}/1': 'Visits {0}/1',
   // 🏡 이웃 마을 구경하기(2026-10-07) — 스펙 §8. 미검수 문구는 계획서 Global Constraints 참조
   '오늘의 이웃': "Today's Neighbors",
-  '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요': 'They came here with the same leaf as you · New neighbors tomorrow',
+  '세계수가 틔운 다른 씨앗들의 숲이에요 · 내일 또 바뀌어요': 'Forests of the other seeds the World Tree sprouted · New neighbors tomorrow',
   '놀러 가기': 'Visit',
   '또 보기': 'Visit again',
   '❤️ 다녀옴': '❤️ Visited',
@@ -1778,16 +1778,16 @@ export const EN = {
   '🌫️ 안개 낀 숲': '🌫️ Misty Forest',
   '안개 낀 숲': 'Misty Forest',
   '🌤️ 오늘의 숲은 맑아요. 정령들이 고마워해요. 내일 다시 안개가 차요': '🌤️ The forest is clear today. the spirits are grateful. The mist returns tomorrow',
-  '🌳수호목 앞에서 정화 시작\n🏮등불로 늦추고 ♪가 가장 작을 때 탭!\n세 무리를 모두 달래면 숲이 맑아져요': 'Start cleansing at the 🌳Guardian Tree\nSlow them with the 🏮lantern and tap when ♪ is quietest!\nCalm all three groups to clear the forest',
+  '🌳세계수의 심장 앞에서 정화 시작\n🏮등불로 늦추고 ♪가 가장 작을 때 탭!\n세 무리를 모두 달래면 숲이 맑아져요': 'Start cleansing at the 🌳Heart of the World Tree\nSlow them with the 🏮lantern and tap when ♪ is quietest!\nCalm all three groups to clear the forest',
   '오늘은 이미 숲이 맑아요. 내일 새 안개가 차면 다시 와요': 'The forest is already clear today. come back tomorrow when new mist rolls in',
   '🌫️ 정령 무리 {0}/{1} — {2}마리가 다가와요': '🌫️ Spirit group {0}/{1} — {2} approaching',
   '숲이 맑아졌어요!': 'The forest is clear!',
   '정령들이 하늘로 돌아가고 안개가 걷혔어요. 보너스 ✨{0} — 모은 정령빛은 상점 야외 장식 ‘✨정령 등불’에 쓸 수 있어요. 내일 다시 안개가 차면 정령들이 돌아와요.': 'The spirits returned to the sky and the mist has lifted. Bonus ✨{0} — spend your Spirit Glow on the ‘✨Spirit Lantern’ outdoor decoration at the Shop. The spirits will return with tomorrow\'s mist.',
-  '🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요': '🌫️ The Guardian Tree is worn out for today… your lit lanterns will stay, so catch your breath and try again',
-  '🌳 수호목의 빛이 흐려져요! 정령들을 서둘러 달래주세요': '🌳 The Guardian Tree\'s light is fading! Hurry and soothe the spirits',
+  '🌫️ 세계수의 심장이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요': '🌫️ The Heart of the World Tree is worn out for today… your lit lanterns will stay, so catch your breath and try again',
+  '🌳 세계수의 심장이 흐려져요! 정령들을 서둘러 달래주세요': '🌳 The Heart of the World Tree is fading! Hurry and soothe the spirits',
   '🌳 {0}% · 무리 {1}/{2} · 정령 {3}': '🌳 {0}% · Group {1}/{2} · Spirits {3}',
-  // 🎓 수호목 갈림길 + 연습 모드(2026-09-07)
-  '🌳 수호목 앞이에요': '🌳 At the Guardian Tree',
+  // 🎓 수호목(=세계수의 심장) 갈림길 + 연습 모드(2026-09-07)
+  '🌳 세계수의 심장 앞이에요': '🌳 At the Heart of the World Tree',
   '🌳 바로 시작': '🌳 Start now',
   '🎓 연습해 보기': '🎓 Try a practice run',
   '🌳 바로 시작하기': '🌳 Start now',
@@ -1800,7 +1800,7 @@ export const EN = {
   '다음에요': 'Maybe later',
   // 🌳 정화 실패 → 다시 도전(2026-10-03)
   '🌳 다시 도전': '🌳 Try again',
-  '수호목이 지쳤어요': 'The Guardian Tree is worn out',
+  '세계수의 심장이 지쳤어요': 'The Heart of the World Tree is worn out',
   '켜둔 등불은 그대로 남아요. 바로 다시 도전해 볼까요?': 'Your lit lanterns stay lit. Want to try again right away?',
   '켜둔 등불은 그대로 남아요. 바로 다시 도전하거나, 정령 1마리로 연습해 볼 수도 있어요.': 'Your lit lanterns stay lit. Try again right away, or practice with a single spirit.',
   '💨 놀랐어요!': '💨 Startled!',
@@ -1825,10 +1825,11 @@ export const EN = {
   '{0} 배치!': '{0} Placed!',
   '🏆 이번 주 랭킹': '🏆 Weekly Rankings',
   '매주 월요일 새로 시작 · 가까이서 확인!': 'Resets every Monday · Come closer to check!',
-  '매일이 시끄럽고, 매일이 똑같았다.': 'Every day was loud, and every day was the same.',
-  '그날, 바람이 잎사귀 하나를 데려왔다.': 'That day, the wind carried in a single leaf.',
-  '그런데 이 잎사귀… 누가 보낸 걸까?': 'But this leaf… who sent it?',
-  '…여기서 한번 살아볼까.': '…Maybe I could live here.',
+  '세계수 아래, 사람과 동물은 함께 살았다.': 'Beneath the World Tree, people and animals lived together.',
+  '그런데 세계수가 힘을 잃자, 마을도 기운을 잃었다.': 'But when the World Tree lost its strength, the village lost its spirit too.',
+  '…여기가 그 마을인가?': '…Is this the village?',
+  '저기요… 아무도 없어요?': 'Hello…? Is anyone here?',
+  '…누군가 이쪽을 보고 있다.': '…Someone is watching.',
 
   // ── game.js — 시세판·밤손님·퀘스트·프롬프트 (4800~) ──
   '📊 시세판': '📊 Price Board',
