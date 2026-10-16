@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { returnStart, crossesWater, segDist } from '../js/world/return-path.js';
 
-// 마을의 물 — js/game.js announceUnlock 이 넘기는 값과 같다(LAKE · DOCK_POND · 박물관 섬 개울)
-const WATERS = [{ x: 16, z: 9, r: 6 }, { x: 0, z: -21.5, r: 7 }, { x: -26.3, z: 4.8, r: 7.6 }];
+// 마을의 물 — js/game.js announceUnlock 이 넘기는 값과 같다(LAKE · DOCK_POND · 박물관 섬 개울 · SEA_COVE)
+const WATERS = [{ x: 16, z: 9, r: 6 }, { x: 0, z: -21.5, r: 7 }, { x: -26.3, z: 4.8, r: 7.6 }, { x: 24, z: -21.5, r: 12 }];   // 🌊 포구 후미까지(사공 오리가 바다에서 걸어 나오던 2차 사고)
 const EDGE = 14;
 
 test('선분까지 거리', () => {
@@ -35,4 +35,9 @@ test('섬 밖에 사는 모든 이웃이 물을 안 건너고 돌아온다', () 
 test('물이 없으면 예전처럼 바깥 방향', () => {
   const s = returnStart(10, 0, EDGE, []);
   assert.ok(Math.abs(s.x - 24) < 1e-9 && Math.abs(s.z) < 1e-9);
+});
+
+test('🦆 사공 오리 출발점은 포구 후미(바다) 안도 아니다', () => {
+  const s = returnStart(2.5, -13.5, EDGE, WATERS);
+  assert.ok(Math.hypot(s.x - 24, s.z + 21.5) > 12 + 0.8, `출발점 (${s.x.toFixed(1)}, ${s.z.toFixed(1)}) 가 후미 안`);
 });

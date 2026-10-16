@@ -1243,9 +1243,11 @@ function lockTo() {
 }
 
 /** 숨김·보이기를 지금 집합에 맞춘다(가볍다 — 매초 돈다). 🏛️ 박물관은 도감으로 다시 지어지므로 매번 본다 */
+const returnPending = new Set();   // 🚶 귀환 걷기 대기 중인 이웃 id — 걷기는 조망샷·모달이 다 닫힌 뒤에 시작한다
 function applyUnlocks() {
   for (const o of npcObjs) {
-    const hide = !isOpen(o.def.id) && !(o.def.id === 'merchant' && merchantVisit);   // 🧙 방문이 취소돼 좌판으로 돌아가는 중엔 걷게 둔다
+    const hide = (!isOpen(o.def.id) && !(o.def.id === 'merchant' && merchantVisit))   // 🧙 방문이 취소돼 좌판으로 돌아가는 중엔 걷게 둔다
+      || returnPending.has(o.def.id);   // 🚶 귀환 걷기를 기다리는 중(조망샷·귀환 모달이 끝날 때까지 안 보인다)
     if (hide !== !!o.hidden) setNpcHidden(o, hide);
   }
   for (const id in lockHolders) {
@@ -1317,10 +1319,19 @@ function announceUnlock(id) {
   if (!def) return;
   if (id === 'merchant') return;   // 🧙 상인은 기존 환영 방문(updateMerchantVisit)이 곧 귀환 연출이다
   const o = npcObjs.find(x => x.def.id === id);
-  // 🚶 물(호수·나루터 연못·박물관 개울)을 가로지르지 않는 방향에서 걸어 들어온다
-  startNpcReturn(o, [{ x: LAKE.x, z: LAKE.z, r: LAKE_R }, { x: DOCK_POND.x, z: DOCK_POND.z, r: DOCK_POND_R }, { x: ISLE.x, z: ISLE.z, r: ISLE_R + 0.6 }]);
-  if (id === 'curator' && o) {   // 🧑‍🦳 개울 건너 섬 안에 산다 — 가장자리에서 물을 걸어 건너지 않고 박물관 문에서 나온다
-    o.group.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4); o.group.rotation.y = Math.atan2(o.home.x - MUSEUM_GATE.x, o.home.z - MUSEUM_GATE.z - 3.4);
+  // 🚶 걷기는 조망샷과 귀환 모달이 다 끝난 뒤에 — 같이 돌면 화면이 가려 걸어오는 모습을 못 본다(2026-10-17 전체 진행 캡처에서 발견)
+  if (o) {
+    returnPending.add(id); setNpcHidden(o, true);
+    setTimeout(() => afterModals(() => {   // ⏱️ 모달이 먼저 뜨거나 줄 선 뒤에 기다리기 시작한다(바로 부르면 모달 전이라 즉시 걷는다)
+      returnPending.delete(id);
+      if (!isOpen(id)) return;
+      setNpcHidden(o, false);
+      // 물(호수·나루터 연못·박물관 개울·포구 후미)을 가로지르지 않는 방향에서 걸어 들어온다
+      startNpcReturn(o, [{ x: LAKE.x, z: LAKE.z, r: LAKE_R }, { x: DOCK_POND.x, z: DOCK_POND.z, r: DOCK_POND_R }, { x: ISLE.x, z: ISLE.z, r: ISLE_R + 0.6 }, { x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r }]);
+      if (id === 'curator') {   // 🧑‍🦳 개울 건너 섬 안에 산다 — 가장자리에서 물을 걸어 건너지 않고 박물관 문에서 나온다
+        o.group.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4); o.group.rotation.y = Math.atan2(o.home.x - MUSEUM_GATE.x, o.home.z - MUSEUM_GATE.z - 3.4);
+      }
+    }), 300);
   }
   showReturnModal(def);
   if (id === 'curator') setTimeout(() => afterModals(() => syncStory('bridge')), 600);   // 📖 1장 「세계수를 지키는 법」 완료 — 할아버지 이야기를 읽은 다음에
