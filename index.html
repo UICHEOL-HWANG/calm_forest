@@ -4160,20 +4160,9 @@
           ctx.fillText(p.ico, a, b);
         });
         ctx.globalAlpha = 1;
-        // 주민 — 이름표 배지와 같은 고유색 점. 하늘에 있는 🦉 는 흰 테로 구분한다.
-        //   📜 의뢰가 걸린 주민은 굵은 테로 티를 낸다(베타 r5 — 의뢰 있는 주민을 지도에서 찾고 싶다는 요청).
-        //   미니맵은 82~108px 이라 이모지 배지를 얹으면 뭉개진다 → 색·굵기만 쓴다.
-        //   노랑 = 받을 수 있음('!'), 초록 = 완료('✓'). 진행 중('…')은 평소 테두리 그대로.
+        // 주민 위치는 받아만 둔다(전체 지도가 그린다). 작은 미니맵엔 주민 점을 안 그린다 —
+        //   82~108px 안에서 의뢰 테두리 점들이 장소 아이콘을 덮어 지도가 동그라미만 남았다(2026-10-17 사용자 결정).
         lastNpcs = d.npcs || lastNpcs;
-        (lastNpcs || []).forEach(n => {
-          const [a, b] = px(n.x, n.z);
-          const qc = n.q === '!' ? '#f0a72c' : n.q === '✓' ? '#2fa564' : null;
-          if (qc) { ctx.beginPath(); ctx.arc(a, b, 4.6, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3.4; ctx.stroke(); }
-          ctx.beginPath(); ctx.arc(a, b, 2.8, 0, 7); ctx.fillStyle = n.c; ctx.fill();
-          ctx.lineWidth = qc ? 2.2 : 1.2;
-          ctx.strokeStyle = qc || (n.air ? 'rgba(255,255,255,0.95)' : 'rgba(60,80,65,0.55)');
-          ctx.stroke();
-        });
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
         pxx = Math.max(4, Math.min(S - 4, pxx)); pyy = Math.max(4, Math.min(S - 4, pyy));
