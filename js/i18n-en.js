@@ -348,6 +348,7 @@ export const EN = {
   '사진 찍기': 'Take a photo',
   '사진': 'Photo',
   '이모트/앉기': 'Emotes / Sit',
+  '카메라 되돌리기': 'Reset camera',   // 🎥 카메라 줌·기울기 되돌리기(#cam-reset-btn)
   '이모트': 'Emotes',
   '메뉴': 'Menu',
   '캐릭터·이름 바꾸기': 'Change character & name',

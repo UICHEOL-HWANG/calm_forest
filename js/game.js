@@ -37,6 +37,8 @@ import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
+import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, saveCam } from './camera-user.js';   // 🎥 플레이어 카메라(줌·기울기) — 순수 모델
+import { initCameraGestures } from './camera-gestures.js';   // 🎥 두 손가락 핀치·기울기 / 휠 / 우클릭 드래그
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
 import { BLUEPRINTS, blueprintOfTool, hiddenQuestFor, tier2Status, sanitizeToolFlags } from './tool-blueprints.js';   // 🔨 도구 2단계(도면·히든 의뢰·제작)
 import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } from './house-cost.js';   // 🏠 집 수치(건축·증축)는 전부 거기 한 곳
@@ -2577,6 +2579,7 @@ export async function enterGame() {
     window.__museumView = { open: openMuseumView, close: closeMuseumView, state: () => museumView && { ...museumView.frame, visible: museumView.group.visible, meshChildren: museumView.mesh.children.length, look: _camLook.toArray().map(v => +v.toFixed(2)), pos: museumView.group.position.toArray().map(v => +v.toFixed(2)), cam: camera.position.toArray().map(v => +v.toFixed(2)) }, items: () => museumFloorItems().map((it, i) => ({ i, ico: it.ico, name: it.name, cat: it.cat, id: it.id, has: !!gameState.dex[it.cat]?.[it.id] })) };
     window.__museumLight = MUSEUM_LIGHT;              // 🏛️ 전시실 조명 검수(값을 바꿔 보며 비교)
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
+    window.__camUser = { get: () => ({ ...camUser, pitch: effectivePitch(camUser), adjustable: userCamAdjustable() }), set: (s) => setCamUser(s), pos: () => camera.position.toArray().map(v => +v.toFixed(2)) };   // 🎥 플레이어 카메라 검수
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
     window.__decor = (id, x, z, rot = 0, f = null) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true, f);   // 가구 무료 배치(검수용) — f 는 층
     window.__decorY = () => decorMeshes.map(m => [m.userData.rec?.id, +m.position.y.toFixed(2), !!m.userData.collider, !!m.userData.onSurface]);   // 🪔 높이·충돌체 검수용
@@ -5650,6 +5653,7 @@ function initPostProcessing() {
 // =============================================================
 //  입력
 // =============================================================
+let camGest = null;   // 🎥 initCameraGestures 핸들(두 손가락 판정 — 탭 행동 무르기용)
 function initInput() {
   const MOVE_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
   window.addEventListener('keydown', (e) => {
@@ -5697,8 +5701,27 @@ function initInput() {
     if (intro || sleeping || mgView || museumView || ui.anyModalOpen?.()) return;
     if (indoor && tryPickDecor(e)) return;                      // 놓아 둔 가구 탭 → 들어 올려 옮기기
     if (outdoorZone() && tryPickOutdoor(e)) return;              // 🪵 놓아 둔 야외 장식 탭 → 들어 올려 옮기기(밭일에 가려져도 이 길은 열려 있다)
+    if (e.pointerType === 'mouse' && e.button === 2 && userCamAdjustable()) return;   // 🎥 우클릭 드래그 = 카메라 기울기(행동 아님)
+    // 🎥 터치 탭은 아주 잠깐(130ms) 미뤘다가 쏜다 — 그 사이 두 번째 손가락이 캔버스에 닿으면 핀치/기울기이므로 행동을 무른다.
+    //   조이스틱·버튼에서 시작한 손가락은 캔버스 targetTouches 에 안 잡혀, "걸으면서 화면 탭" 도 그대로 행동한다.
+    if (e.pointerType === 'touch' && userCamAdjustable()) {
+      const t0 = performance.now();
+      setTimeout(() => { if (!camGest?.multiSince(t0 - 120)) wantAction = true; }, 130);
+      return;
+    }
     wantAction = true;
   });
+  // 🎥 카메라 조작(두 손가락 핀치·기울기 / 휠 / Shift+휠 / 우클릭 드래그 / [ ] - =)
+  camGest = initCameraGestures({
+    canvas: renderer.domElement,
+    enabled: userCamAdjustable,
+    get: () => camUser,
+    set: setCamUser,
+    commit: commitCamUser,
+    keyOk: (e) => !isEditableTarget(e.target),
+  });
+  document.getElementById('cam-reset-btn')?.addEventListener('click', () => { resetCamUser(); Sound.blip(); });
+  syncCamResetBtn();
   // 마우스 호버 → 고스트가 커서를 따라간다(호버가 곧 미리보기). 터치는 탭으로 자리 잡기
   renderer.domElement.addEventListener('pointermove', (e) => {
     if (!indoor && placingOutdoor && e.pointerType === 'mouse') {   // 야외: 호버가 곧 미리보기
@@ -6259,6 +6282,42 @@ const camOffsetIndoor = new THREE.Vector3(0, 17, 10);   // 🏠 실내 전용 �
 //   낮춰(≈29°) 마을이 프레임 안에 들어오게 하면서도, camOffset(마을 시점)보다 더 위에서 내려다봐
 //   "지붕 위에서 마을을 내려다보는" 높이감은 유지한다.
 const camOffsetRoof = new THREE.Vector3(0, 10, 18);
+// 🎥 플레이어 카메라 — 마을·야외 공간의 기본 추적에서만 camOffset 대신 쓴다(js/camera-user.js).
+//   실내·루프탑·동굴·카페·박물관·천문대·바다·나룻배·이웃 실내, 그리고 연출 샷(액션샷·세리머니·조망·외관·cameraRig)은 손대지 않는다
+//   — 벽 있는 방은 눕히거나 멀리 빼면 벽 너머 허공이 보이고, 연출 샷은 구도가 정해져 있다.
+//   저장은 기기별 localStorage(클라우드 세이브 아님 — 폰/PC 화면비가 달라 각자 맞추는 값).
+const _lsCam = (() => { try { return window.localStorage; } catch (_) { return null; } })();
+let camUser = loadCam(_lsCam);
+const _userOff = new THREE.Vector3();
+const CAM_MIN_H = 3.2;   // 포커스(눈높이 아래 발밑) 위 최소 카메라 높이 — 낮은 피치 + 이벤트 줌(0.58)에서도 땅을 뚫지 않게
+function userCamOn() {
+  return !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atSea && !boat.active
+    && !neighborIndoorFrame() && !neighborIndoorElevated();
+}
+// 지금 손가락/휠로 만져도 되나 — 기본 추적 카메라가 화면을 잡고 있을 때만
+function userCamAdjustable() {
+  return mode === 'play' && userCamOn() && !cameraRig && !intro && !sleeping && !mgView && !museumView && !extView
+    && photoT < 0 && surveyT < 0 && momentT < 0 && !placingOutdoor && !ui.anyModalOpen?.();
+}
+const followOffset = () => userCamOn() ? camOffsetFor(camUser, _userOff) : camOffset;
+let _camBtnShown = null;
+function syncCamResetBtn() {
+  const show = mode === 'play' && userCamOn() && !isDefaultCam(camUser);
+  if (show === _camBtnShown) return;
+  _camBtnShown = show;
+  const b = document.getElementById('cam-reset-btn');
+  if (b) b.hidden = !show;
+}
+function setCamUser(s) { camUser = s; syncCamResetBtn(); }
+function commitCamUser(s, how) {
+  saveCam(_lsCam, s);
+  trackEvent('camera_adjust', { zoom: Math.round(s.zoom * 100) / 100, tilt: Math.round(effectivePitch(s)), how });   // [GA4] 제스처 끝날 때 1회
+}
+function resetCamUser() {
+  setCamUser(defaultCam());
+  saveCam(_lsCam, camUser);
+  trackEvent('camera_reset', {});
+}
 const _camTarget = new THREE.Vector3();
 const _camAux = new THREE.Vector3();   // 🔍 관람 시선 보정용
 const _camLook = new THREE.Vector3(0, 1.2, 0);
@@ -6467,7 +6526,7 @@ function updateCameraFade() {
 const _obsFocus = new THREE.Vector3(), camFocus = () => atObservatory ? observatoryCamFocus(player.position, _obsFocus) : player.position;   // 🔭 작은 원형 홀 — 방 중심 쪽으로 당겨 잡는다
 function snapCamera() {
   const f = camFocus();
-  _camTarget.copy(f).add(indoor && curFloorDef().elevated ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : camOffset);   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
+  _camTarget.copy(f).add(indoor && curFloorDef().elevated ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : followOffset());   // 🎥 마을·야외는 플레이어 줌·기울기   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
   _camLook.set(f.x, f.y + 1.2, f.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
@@ -6488,6 +6547,7 @@ function cameraFree() {
 }
 function updateCamera(dt) {
   if (cameraRig) { cameraRig(camera, dt); return; }
+  syncCamResetBtn();   // 🎥 공간이 바뀌면 되돌리기 버튼도 숨김/표시(바뀔 때만 DOM 을 건드린다)
   if (boat.active) return updateBoatCamera(dt);   // 🛶 런 중: 1인칭 뱃머리 시점
   if (museumView) {                               // 🔍 전시물 관람: 띄워 둔 것을 정면 가까이서
     const p = museumView.group.position, iw = museumView.inward;
@@ -6565,9 +6625,10 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy((indoor && curFloorDef().elevated) || neighborIndoorElevated() ? camOffsetRoof : (indoor || neighborIndoorFrame()) ? camOffsetIndoor : camOffset).multiplyScalar(zoom);   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
+  _camOff.copy((indoor && curFloorDef().elevated) || neighborIndoorElevated() ? camOffsetRoof : (indoor || neighborIndoorFrame()) ? camOffsetIndoor : followOffset()).multiplyScalar(zoom);   // 🎥 이벤트 줌(0.58)은 플레이어 줌 위에 곱해진다   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
   const f = camFocus();
   _camTarget.copy(f).add(_camOff);
+  if (userCamOn() && _camTarget.y < f.y + CAM_MIN_H) _camTarget.y = f.y + CAM_MIN_H;   // 🎥 낮은 피치에서 땅을 뚫지 않게
   const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
   camera.position.lerp(_camTarget, k);
   _camLook.lerp(_camTarget.set(f.x, f.y + 1.2, f.z - lookAhead), k);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
@@ -6689,8 +6750,12 @@ function updateDayNight(dt) {
   //    안개를 바짝 당겨 화덕 뒤를 지우고 무대처럼 만든다(카메라 거리 3.8 기준).
   // 무대 안개는 **카메라 거리에 맞춰** 민다 — 고정값(5.2/11)으로 두니 뒤로 뺀 🫙 가 뿌옇게 묻혔다(실측 2026-09-21)
   if (mgView?.type === 'station') { scene.fog.near = stationCamDist + 1.4; scene.fog.far = stationCamDist + 6.2; }
-  if (extView && !mgView && !indoor) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }
-  { const fp = treeShotFogPush(); if (fp > 0) { scene.fog.near += fp; scene.fog.far += fp; } }   // 🌳 조망샷이 물러난 만큼 안개도 민다(폰 세로 ≈50)   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
+  // 🎥 플레이어가 멀리 뺐으면 그만큼 안개도 민다 — 캐릭터 주변이 뿌옇게 묻히지 않게(가까이 당긴 건 그대로)
+  //    🌳 세계수 조망샷 중엔 조망샷이 미는 값만 쓴다(둘을 더하면 이중으로 밀린다)
+  const treeFog = treeShotFogPush();
+  if (treeFog > 0) { scene.fog.near += treeFog; scene.fog.far += treeFog; }   // 🌳 조망샷이 물러난 만큼 안개도 민다(폰 세로 ≈50)
+  else if (userCamOn() && camUser.zoom > 1 && !mgView) { const push = BASE_DIST * (camUser.zoom - 1); scene.fog.near += push; scene.fog.far += push; }
+  if (extView && !mgView && !indoor) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
   // 🏛️ 전시실: 시간대 무관 밝게 — 밤에 들어가도 전시물과 크림 벽이 읽혀야 한다(☕카페 홀과 같은 규칙).
   //    밤엔 야외 조명 그대로라 홀이 캄캄했다(제보 2026-09-21: "저녁때 들어가면 어두움").
   if (atMuseum) {
