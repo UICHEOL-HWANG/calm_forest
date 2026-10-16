@@ -54,3 +54,8 @@ test('주민 자리와 R+2 이상 떨어진다', () => {
     }
   }
 });
+
+test('안개의 숲 입구와 10 이상 떨어진다', () => {
+  const mist = vec(places, 'MIST_GATE');
+  for (const s of POND_SPOTS) assert.ok(d(abs(s), mist) >= 10, `${JSON.stringify(s)} dist ${d(abs(s), mist).toFixed(2)}`);
+});
