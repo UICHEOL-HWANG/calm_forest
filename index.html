@@ -5904,13 +5904,13 @@
 
     // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
     const LB_BOARDS = [
-      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요' },
-      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', fmt: s => (s / 10).toFixed(1) },
+      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요', daily: true },
+      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', daily: true, fmt: s => (s / 10).toFixed(1) },
       { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
       { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
       { id: 'cook',  label: '🍳 요리왕',      unit: '회',  desc: '이번 주 요리 횟수' },
       { id: 'quest', label: '📜 퀘스트',      unit: '건',  desc: '이번 주 완료한 의뢰' },
-      { id: 'sled',  label: '🛷 썰매',        unit: '초',  desc: '오늘 설산 썰매 최고 기록', fmt: v => (-v / 1000).toFixed(2) },
+      { id: 'sled',  label: '🛷 썰매',        unit: '초',  desc: '오늘 설산 썰매 최고 기록', daily: true, fmt: v => (-v / 1000).toFixed(2) },
     ];
     let lbBoard = 'boat';
     const lbCache = {};   // 모달 열려있는 동안 보드별 응답 캐시(탭 왕복 시 재요청 방지)
@@ -5925,7 +5925,7 @@
     async function renderLb(board) {
       lbBoard = board;
       const meta = LB_BOARDS.find(b => b.id === board);
-      $('lb-sub').textContent = meta.desc + (board === 'boat' || board === 'sea' ? '' : ' — 매주 월요일 새로 시작해요');
+      $('lb-sub').textContent = meta.desc + (meta.daily ? '' : ' — 매주 월요일 새로 시작해요');
       [...document.querySelectorAll('.lb-tab')].forEach(b => b.classList.toggle('active', b.dataset.id === board));
       const list = $('lb-list'), meBox = $('lb-me');
       list.innerHTML = '<div class="lb-empty">불러오는 중… 🌿</div>'; meBox.innerHTML = '';

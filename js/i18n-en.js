@@ -2523,4 +2523,5 @@ export const EN = {
   '🏔️ 산자락엔 놓을 수 없어요': "🏔️ Can't place on the mountainside",
   '🛷 썰매': '🛷 Sled',
   '오늘 설산 썰매 최고 기록': "Today's best sled time",
+  '초': 's',
 };

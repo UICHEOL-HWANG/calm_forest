@@ -29,3 +29,11 @@ test('client board formats the negated score back to seconds', () => {
   assert.ok(EN['🛷 썰매']);
   assert.ok(EN['오늘 설산 썰매 최고 기록']);
 });
+
+test('sled is a daily board in the subtitle logic', () => {
+  const html = read('index.html');
+  assert.match(html, /id:\s*'sled'[^\n]*daily: true/);
+  assert.match(html, /meta\.daily \? ''/);
+  assert.doesNotMatch(html, /board === 'boat' \|\| board === 'sea' \? ''/);
+  assert.equal(EN['초'], 's');
+});
