@@ -30,5 +30,7 @@ test('wearables build meshes and the snowflake trail is not empty', () => {
 test('the village cosmetics shop hides hut items', () => {
   const src = readFileSync(new URL('../js/spaces/cafe.js', import.meta.url), 'utf8');
   assert.match(src, /const rowsOf = slot => itemsOf\(slot\)\.filter\(i => !i\.shop\);/);
-  assert.doesNotMatch(src.slice(src.indexOf('export function drawCosMenu')), /itemsOf\((cosTab|id)\)/);
+  const draw = src.slice(src.indexOf('export function drawCosMenu'));
+  assert.doesNotMatch(draw, /itemsOf\(cosTab\)/);
+  assert.doesNotMatch(draw, /itemsOf\(id\)/);
 });

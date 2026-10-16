@@ -12,13 +12,14 @@ import { applyLook } from '../mountain/interior-look.js';
 import { MOUNTAIN_THEMES, THEME_CHECK_S, mountainLook } from '../mountain/theme.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns } from '../mountain/climb.js';
 import { buildCamp } from '../mountain/camp-art.js';
-import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, clampSummit } from '../mountain/camp-layout.js';
+import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, CAFE_EXIT_SPOT, clampSummit } from '../mountain/camp-layout.js';
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
 import { createCafe } from '../mountain/cafe-room.js';
 import { openCafeModal, refreshCafeModal, closeCafeModal, applyCafeResult, CAFE_COPY } from '../mountain/cafe-ui.js';
 import { cafeState, buyCafe, pickSled } from '../mountain/cafe-shop.js';
 import { cafeItem } from '../mountain/cafe-catalog.js';
+import { findItem } from '../cosmetics/catalog.js';
 import { logEcon } from '../metrics.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
@@ -214,13 +215,13 @@ function enterCafe() {
 
 function exitCafe() {
   closeCafeModal();
-  cafe.exit(player, { x: MOUNTAIN.x + DOOR_SPOT.x - 0.6, y: MOUNTAIN.y + CAMP.deck.y, z: MOUNTAIN.z + DOOR_SPOT.z + 0.6 });
+  cafe.exit(player, { x: MOUNTAIN.x + CAFE_EXIT_SPOT.x, y: MOUNTAIN.y + CAMP.deck.y, z: MOUNTAIN.z + CAFE_EXIT_SPOT.z });
   $w.nearDoor = null; ui.setDoorPrompt?.(null);
   snapCamera();
   Sound.blip();
 }
 
-let onDrink = () => { cold = drinkWarm(cold); };
+function onDrink() { cold = drinkWarm(cold); }
 
 function buyFromCafe(id, tab) {
   const r = buyCafe(cafeState(gameState), id);
@@ -230,7 +231,7 @@ function buyFromCafe(id, tab) {
     trackEvent('hut_cafe_buy', { item_id: id, tab, price_coins: cafeItem(id).coins, coins_after: gameState.inventory.coins });
     if (r.grant.type === 'cos') {
       applyCosmetics(gameState.cosmetics);
-      trackEvent('cosmetic_equip', { item_id: id, action: 'on', via: 'hut_cafe' });
+      trackEvent('cosmetic_equip', { item_id: id, slot: findItem(id)?.slot, action: 'on', via: 'hut_cafe' });
     }
     refreshInventoryUI();
     requestSave();
@@ -239,6 +240,7 @@ function buyFromCafe(id, tab) {
   if (out.drink) {
     closeCafeModal();
     cafe.sit(player, out.drink.cup);
+    $w.sitting = true;
     ui.photoNudge?.();
     onDrink();
     return;
@@ -524,7 +526,7 @@ function updateCold(dt, local) {
   }
   if (sledActive()) hideColdHud(); else showColdHud(cold.v);
   breathT -= dt;
-  if (!inCafe() && coldStage(cold.v) !== 'ok' && breathT <= 0) {
+  if (!inCafe() && !sledActive() && coldStage(cold.v) !== 'ok' && breathT <= 0) {
     breathT = 0.8;
     spawnSnowBurst(player.position.x, player.position.y + 1.3, player.position.z, 2);
   }

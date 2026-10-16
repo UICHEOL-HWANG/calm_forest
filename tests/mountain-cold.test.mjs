@@ -57,8 +57,13 @@ test('wiring: walking speed, hut event, drink, HUD and copy', () => {
   assert.match(game, /const speed = 6 \* \(buffOn\('speed'\) \? 1\.4 : 1\) \* mountainSpeedMult\(\);/);
   const m = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
   assert.match(m, /trackEvent\('mountain_hut', \{ run_id: run\.runId, climb_ms: run\.climbMs, acorns: run\.taken\.filter\(Boolean\)\.length, cold: Math\.round\(cold\.v\) \}\)/);
-  assert.match(m, /onDrink = \(\) => \{ cold = drinkWarm\(cold\); \}/);
+  assert.match(m, /function onDrink\(\) \{ cold = drinkWarm\(cold\); \}/);
   assert.match(m, /trackEvent\('mountain_cold', \{ stage: 'slow' \}\)/);
   assert.match(m, /showColdHud\(/);
   for (const ko of ['🥶 추워요. 모닥불이나 산장 카페에서 몸을 녹여요', '🥶 너무 추워서 걸음이 느려졌어요']) assert.ok(EN[ko], ko);
+});
+
+test('wiring: breath puffs are skipped while sledding', () => {
+  const m = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
+  assert.match(m, /!inCafe\(\) && !sledActive\(\) && coldStage\(cold\.v\) !== 'ok' && breathT <= 0/);
 });

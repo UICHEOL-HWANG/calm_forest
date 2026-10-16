@@ -67,3 +67,23 @@ test('the barista name tag fades in by player distance like village NPC tags', (
   assert.match(m, /import \{[^}]*\bfadeNameTag\b[^}]*\} from '\.\/npc\.js';/);
   assert.match(m, /createCafe\(\{[^}]*fadeNameTag[^}]*\}\)/);
 });
+
+test('disposeTree frees every mesh geometry and material under a group', async () => {
+  const { disposeTree } = await import('../js/mountain/dispose.js');
+  const g = new THREE.Group();
+  const meshes = [0, 1, 2].map(() => new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 4), new THREE.MeshBasicMaterial()));
+  g.add(meshes[0]);
+  meshes[0].add(meshes[1]);
+  g.add(meshes[2]);
+  const hits = [];
+  meshes.forEach(m => { m.geometry.addEventListener('dispose', () => hits.push('g')); m.material.addEventListener('dispose', () => hits.push('m')); });
+  disposeTree(g);
+  assert.equal(hits.filter(h => h === 'g').length, 3);
+  assert.equal(hits.filter(h => h === 'm').length, 3);
+});
+
+test('cafe clearSeated releases the mug and steam through disposeTree', () => {
+  const room = read('js/mountain/cafe-room.js');
+  assert.match(room, /const release = o => \{ group\.remove\(o\); disposeTree\(o\); \};/);
+  assert.match(room, /\[seated\.mug, \.\.\.seated\.steam\]\.forEach\(release\)/);
+});

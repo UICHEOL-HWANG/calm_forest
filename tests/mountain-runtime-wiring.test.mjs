@@ -90,3 +90,12 @@ test('while sledding the tool bar is hidden and the boost button takes its botto
   assert.match(boost, /translateX\(-50%\)/);
   assert.doesNotMatch(boost, /right:/);
 });
+
+test('hut cafe wiring: exit spot, seated drink, equip slot, no coin purchase of hut decor', () => {
+  const m = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
+  const indoor = readFileSync(new URL('../js/spaces/indoor.js', import.meta.url), 'utf8');
+  assert.match(m, /CAFE_EXIT_SPOT/);
+  assert.match(m, /cafe\.sit\(player, out\.drink\.cup\);\s*\$w\.sitting = true;/);
+  assert.match(m, /trackEvent\('cosmetic_equip', \{ item_id: id, slot: findItem\(id\)\?\.slot, action: 'on', via: 'hut_cafe' \}\)/);
+  assert.match(indoor, /def\.hut && !fromStore && !silent && !free/);
+});

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
-import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut, YARD, DOOR_SPOT, DOOR_R, inYard, clampSummit } from '../js/mountain/camp-layout.js';
+import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut, YARD, DOOR_SPOT, DOOR_R, inYard, clampSummit, CAFE_EXIT_SPOT } from '../js/mountain/camp-layout.js';
 import { CLIMB_PATH, CLIMB_START, PLAZA, clampLocal } from '../js/mountain/climb.js';
 import { buildCamp, CAMP_DRAWS } from '../js/mountain/camp-art.js';
 
@@ -102,4 +102,10 @@ test('a straight walk from the last path segment to the door stays in the yard',
     const t = i / 20;
     assert.ok(inYard({ x: a.x + (DOOR_SPOT.x - a.x) * t, z: a.z + (DOOR_SPOT.z - a.z) * t }), String(i));
   }
+});
+
+test('cafe exit spot is in the yard, free, and clear of the door prompt radius', () => {
+  assert.ok(inYard(CAFE_EXIT_SPOT));
+  assert.ok(free(CAFE_EXIT_SPOT));
+  assert.ok(Math.hypot(CAFE_EXIT_SPOT.x - DOOR_SPOT.x, CAFE_EXIT_SPOT.z - DOOR_SPOT.z) > DOOR_R + PLAYER_R);
 });

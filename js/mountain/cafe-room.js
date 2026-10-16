@@ -1,5 +1,6 @@
 import { buildCafeRoom } from './cafe-art.js';
 import { CAFE_OFFSET, ENTRY, EXIT_SPOT, ORDER_SPOT, SPOT_R, BARISTA, TABLES, clampCafe, nearestSeat } from './cafe-layout.js';
+import { disposeTree } from './dispose.js';
 import { applyLook } from './interior-look.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 
@@ -40,7 +41,8 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
   scene.add(group);
   let on = false;
   let seated = null;
-  const clearSeated = () => { if (!seated) return; [seated.mug, ...seated.steam].forEach(o => group.remove(o)); seated = null; };
+  const release = o => { group.remove(o); disposeTree(o); };
+  const clearSeated = () => { if (!seated) return; [seated.mug, ...seated.steam].forEach(release); seated = null; };
   const local = p => ({ x: p.x - origin.x, z: p.z - origin.z });
   const near = (p, s) => Math.hypot(p.x - s.x, p.z - s.z) < SPOT_R;
   return {

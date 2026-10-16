@@ -78,6 +78,11 @@ export const DOOR_SPOT = Object.freeze({
   z: CAMP.hut.z - Math.sin(CAMP.hut.ry) * (CAMP.hut.w / 2 + 1.0),
 });
 
+export const CAFE_EXIT_SPOT = Object.freeze({
+  x: DOOR_SPOT.x + Math.cos(CAMP.hut.ry) * 1.5,
+  z: DOOR_SPOT.z - Math.sin(CAMP.hut.ry) * 1.5,
+});
+
 export function inYard(p) {
   return Math.hypot(p.x - YARD.x, p.z - YARD.z) <= YARD.r;
 }
