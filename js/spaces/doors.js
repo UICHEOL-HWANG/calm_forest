@@ -41,7 +41,7 @@ import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
 import { TELESCOPE_SPOT } from '../spaces/observatory.js';
-import { MOUNTAIN_EXIT_LOCAL, mountainOpen, sledStartReady, hutDoorReady } from '../spaces/mountain.js';
+import { MOUNTAIN_EXIT_LOCAL, mountainOpen, sledStartReady, hutDoorReady, inCafe, atCafeSpot } from '../spaces/mountain.js';
 import { state as authState } from '../supabase-client.js';
 import { lockLine, mapOpenDay } from '../tuning.js';
 import * as THREE from 'three';
@@ -272,7 +272,10 @@ export function updateDoorInteract() {
       }
     }
   } else if (atMountain) {
-    if (dist2D({ x: MOUNTAIN.x + MOUNTAIN_EXIT_LOCAL.x, z: MOUNTAIN.z + MOUNTAIN_EXIT_LOCAL.z }, player.position) < 1.9) { nd = 'mountainexit'; prompt = '🚪 마을로 돌아가기'; }
+    if (inCafe()) {
+      if (atCafeSpot('exit')) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
+      else if (atCafeSpot('order')) { nd = 'cafeorder'; prompt = '☕ 주문하기'; }
+    } else if (dist2D({ x: MOUNTAIN.x + MOUNTAIN_EXIT_LOCAL.x, z: MOUNTAIN.z + MOUNTAIN_EXIT_LOCAL.z }, player.position) < 1.9) { nd = 'mountainexit'; prompt = '🚪 마을로 돌아가기'; }
     else if (sledStartReady()) { nd = 'sledstart'; prompt = '🛷 썰매 타고 내려가기'; }
     else if (hutDoorReady()) { nd = 'hutcafe'; prompt = '☕ 산장 카페 들어가기'; }
   } else if (atObservatory) {   // 🔭 천문대: 남쪽 문으로 나가기

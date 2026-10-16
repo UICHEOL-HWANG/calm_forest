@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment } from '../game.js';
+import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment, makeNameTag } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
@@ -15,6 +15,7 @@ import { buildCamp } from '../mountain/camp-art.js';
 import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, clampSummit } from '../mountain/camp-layout.js';
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
+import { createCafe } from '../mountain/cafe-room.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
 import { SLED_SEAT, SLED_LIFT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
@@ -109,6 +110,7 @@ export function mountainReturnPos() {
 
 export function exitMountain() {
   abandonRun();
+  if (cafe?.active()) cafe.exit(player, { x: player.position.x, y: 0, z: player.position.z });
   $w.atMountain = false;
   look = null;
   setFogExempt(player, false);
@@ -148,6 +150,7 @@ function refreshLook(ud) {
 export function mountainLookFrame(env, dt) {
   const g = $w.mountainGroup;
   if (!g) return;
+  if (cafe?.active()) return cafe.lookFrame(env);
   const ud = g.userData;
   lookT -= dt;
   if (!look || lookT <= 0) { lookT = THEME_CHECK_S; refreshLook(ud); }
@@ -161,11 +164,48 @@ export function mountainLookFrame(env, dt) {
 
 export function clampToMountain(p) {
   if (sledActive()) return;
+  if (cafe?.active()) return cafe.clamp(p);
   const c = clampSummit({ x: p.x - MOUNTAIN.x, z: p.z - MOUNTAIN.z }, q => clampLocal(q, PLAZA));
   const q = pushOutProps(c);
   p.x = MOUNTAIN.x + q.x;
   p.z = MOUNTAIN.z + q.z;
   p.y = c.yard ? CAMP.deck.y : c.onPath ? pathHeight(c.seg, c.k) : 0;
+}
+
+let cafe = null;
+
+function ensureCafe() {
+  if (!cafe) cafe = createCafe({ THREE, scene, mountain: MOUNTAIN, makeNameTag, getMountainGroup: () => $w.mountainGroup });
+  return cafe;
+}
+
+export function inCafe() {
+  return !!cafe?.active();
+}
+
+export function atCafeSpot(kind) {
+  if (!cafe?.active()) return false;
+  return kind === 'exit' ? cafe.atExit(player.position) : cafe.atOrder(player.position);
+}
+
+function enterCafe() {
+  if (sledActive()) return;
+  ensureCafe().enter(player);
+  $w.nearDoor = null; ui.setDoorPrompt?.(null);
+  snapCamera();
+  Sound.blip();
+  trackEvent('hut_cafe_enter', { from: 'door' });
+}
+
+function exitCafe() {
+  cafe.exit(player, { x: MOUNTAIN.x + DOOR_SPOT.x - 0.6, y: MOUNTAIN.y + CAMP.deck.y, z: MOUNTAIN.z + DOOR_SPOT.z + 0.6 });
+  $w.nearDoor = null; ui.setDoorPrompt?.(null);
+  snapCamera();
+  Sound.blip();
+}
+
+function openCafeShop() {
+  trackEvent('hut_cafe_open', {});
 }
 
 export function hutDoorReady() {
@@ -177,6 +217,9 @@ export function mountainAction(nearDoor) {
   if (nearDoor === 'mountain') return enterMountain();
   if (nearDoor === 'mountainexit') return exitMountain();
   if (nearDoor === 'sledstart' && run?.phase === 'hut') return startSled();
+  if (nearDoor === 'hutcafe') return enterCafe();
+  if (nearDoor === 'cafeexit') return exitCafe();
+  if (nearDoor === 'cafeorder') return openCafeShop();
 }
 
 export function mountainMinimapMarks(marks) {
@@ -412,6 +455,7 @@ export function updateMountain(dt) {
     else if (!reveal.update(dt)) reveal = null;
   }
   if (!$w.atMountain) return;
+  if (cafe?.active()) { cafe.update(dt, performance.now() / 1000, player.position); return; }
   const local = { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z };
   if (!run && Math.hypot(local.x - CLIMB_START.x, local.z - CLIMB_START.z) < 2) startClimb();
   if (!run) return;

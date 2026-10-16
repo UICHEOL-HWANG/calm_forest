@@ -2512,6 +2512,8 @@ export const EN = {
   '🏠 정상 산장에 도착했어요': '🏠 You reached the summit hut',
   '🛷 썰매 타고 내려가기': '🛷 Sled down',
   '☕ 산장 카페 들어가기': '☕ Go into the hut cafe',
+  '☕ 주문하기': '☕ Order',
+  '솜눈': 'Snowpuff',
   '🏔️ 내일 열려요': '🏔️ Opens tomorrow',
   '🏔️ 설산이 열렸어요!': '🏔️ The snow mountain is open!',
   '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요': '🏔️ Climb the back ridge and sled down from the top',
