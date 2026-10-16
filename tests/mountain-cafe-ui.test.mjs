@@ -56,3 +56,9 @@ test('the shop is a -modal so the game pauses behind it, and purchases hit the l
   assert.match(m, /logEcon\('hut_cafe', id, -cafeItem\(id\)\.coins, gameState\.inventory\.coins\)/);
   assert.match(m, /trackEvent\('hut_cafe_buy', \{ item_id: id, tab, price_coins: cafeItem\(id\)\.coins, coins_after: gameState\.inventory\.coins \}\)/);
 });
+
+test('while seated the clamp pins the player to the seat', () => {
+  const src = readFileSync(new URL('../js/mountain/cafe-room.js', import.meta.url), 'utf8');
+  assert.match(src, /if \(seated\) \{ p\.x = seated\.x; p\.z = seated\.z; p\.y = 0; return; \}/);
+  assert.match(src, /seated = \{ mug, steam, t: 4, x: origin\.x \+ seat\.x, z: origin\.z \+ seat\.z \}/);
+});

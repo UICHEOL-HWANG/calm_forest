@@ -64,7 +64,7 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
       player.position.set(back.x, back.y, back.z);
     },
     clamp(p) {
-      if (seated) return;
+      if (seated) { p.x = seated.x; p.z = seated.z; p.y = 0; return; }
       const q = clampCafe(local(p));
       p.x = origin.x + q.x; p.z = origin.z + q.z; p.y = 0;
     },
@@ -92,7 +92,7 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
         return s;
       });
       clearSeated();
-      seated = { mug, steam, t: 4 };
+      seated = { mug, steam, t: 4, x: origin.x + seat.x, z: origin.z + seat.z };
     },
     update(dt, time, p) {
       if (seated) {
