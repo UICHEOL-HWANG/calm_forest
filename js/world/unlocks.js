@@ -53,7 +53,8 @@ export const UNLOCKS = [
   { id: 'farmer',     kind: 'npc',   when: s => branch(s, 'farm', 'habitat') },
   { id: 'coop',       kind: 'place', when: s => branch(s, 'farm', 'habitat') },
   { id: 'orchard',    kind: 'place', when: s => branch(s, 'farm', 'habitat') },   // 기존 PROGRESS_GATE 는 그대로 겹쳐 적용
-  { id: 'rancher',    kind: 'npc',   when: s => !!s?.coop?.built },
+  // 🐔 의뢰 체인에 요리·서빙이 있다 → 부엌 가지(주방·카페)도 살아 있어야 막히지 않는다
+  { id: 'rancher',    kind: 'npc',   when: s => !!s?.coop?.built && branch(s, 'kitchen', 'habitat') },
   // ── ⑦ 부엌의 가지 ──
   { id: 'chef',       kind: 'npc',   when: s => branch(s, 'kitchen', 'habitat') },
   { id: 'kitchen',    kind: 'place', when: s => branch(s, 'kitchen', 'habitat') },

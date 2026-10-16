@@ -44,7 +44,9 @@ test('세계수 가지: 서식지 → 이웃, 물 꾸러미 → 사공·바다',
   for (const id of ['angler', 'river', 'farmer', 'coop', 'orchard']) assert.ok(o.has(id), id);
   assert.ok(!o.has('ferryman') && !o.has('sea'));
   assert.ok(!o.has('rancher'), '목장 아주머니는 닭장을 지어야');
-  const s2 = { ...s, coop: { built: true }, tree: { branches: { ...s.tree.branches, water: { habitat: true, bundles: true } } } };
+  const s1 = { ...s, coop: { built: true } };
+  assert.ok(!open(s1).has('rancher'), '닭장만으로는 부족 — 의뢰 체인의 요리·서빙이 막힌다');
+  const s2 = { ...s, coop: { built: true }, tree: { branches: { ...s.tree.branches, water: { habitat: true, bundles: true }, kitchen: { habitat: true } } } };
   for (const id of ['rancher', 'ferryman', 'sea']) assert.ok(open(s2).has(id), id);
 });
 
