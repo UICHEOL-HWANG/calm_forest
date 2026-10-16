@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   SEA_PAT, RING_LEAD, RING_PERFECT, RING_GOOD, rollPhaseLen, scheduleRings, judgeRing,
   CAST_REL, CAST_END, CAST_WIND, castPose, pumpPose, buoyFlight,
-  createRope, stepRope, collidePier,
+  createRope, stepRope, collidePier, rodBendAxis,
 } from '../js/sea-feel.js';
 
 const SPECIES = ['aji', 'buri', 'mola', 'tuna'];
@@ -66,15 +66,18 @@ test('던지기 — 예비에서 뒤로 젖히고 로드를 넘겼다가, 채찍
   assert.ok(Math.abs(a.elev - idle) < 1e-6 && a.lean === 0);
   assert.ok(wind.elev > Math.PI / 2, '예비 끝엔 로드가 머리 뒤로 넘어간다');
   assert.ok(wind.lean < 0 && wind.twist > 0 && wind.squash < 0);
+  assert.ok(wind.lean > -.15 && wind.twist < .25 && wind.squash > -.03, '뒤에서 보면 넘어지거나 도는 것처럼 보이지 않게 작게');
   const after = castPose(CAST_REL + .06, idle);
   assert.ok(after.lean > 0 && after.elev < 1, '릴리스 직후엔 앞으로 쏠리고 로드가 앞으로 뻗는다');
   assert.ok(Math.abs(end.elev - idle) < .02 && Math.abs(end.lean) < .02 && Math.abs(end.squash) < .02);
   assert.ok(CAST_REL > CAST_WIND && CAST_REL < CAST_END);
 });
 
-test('펌핑 — 내달릴 땐 로드를 높이 세우고 뒤로 젖히며, 쉬는 동안 링을 맞추면 확 들었다 내린다', () => {
-  const run = pumpPose('run', 0, 0), rest0 = pumpPose('rest', 0, 0), rest1 = pumpPose('rest', 1, 0);
-  assert.ok(run.elev > 1 && run.lean < -.2);
+test('펌핑 — 내달릴 땐 로드를 높이 세우고 물고기 반대쪽으로 몸을 기울이며, 쉬는 동안 링을 맞추면 확 들었다 내린다', () => {
+  const run = pumpPose('run', 0, 0, 1), rest0 = pumpPose('rest', 0, 0), rest1 = pumpPose('rest', 1, 0);
+  assert.ok(run.elev > 1 && run.lean < 0 && run.lean > -.2, '뒤에서 봐도 넘어지지 않을 만큼만 젖힌다');
+  assert.ok(run.roll < 0 && pumpPose('run', 0, 0, -1).roll > 0, '물고기가 달리는 반대쪽으로 기운다');
+  assert.equal(rest0.roll, 0);
   assert.ok(rest1.elev > rest0.elev + .5 && rest1.lean < rest0.lean);
 });
 
@@ -118,4 +121,15 @@ test('느슨한 로프는 가운데가 처진다 — 직선 막대가 아니다'
   const rope = createRope(18, a);
   for (let i = 0; i < 300; i++) stepRope(rope, a, b, 1.15, 1 / 60, null);
   assert.ok(rope[9].p.y < 2.2, `가운데 높이 ${rope[9].p.y}`);
+});
+
+test('낚싯대가 휘는 쪽은 언제나 물고기 쪽이다 — 로드 축과 수직이고 앞을 향한다', () => {
+  for (const elev of [.3, .6, 1.15, 1.5, 2.2]) for (const yaw of [Math.PI, Math.PI - .6, Math.PI + .6]) {
+    const fwd = { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) };
+    const dir = { x: fwd.x * Math.cos(elev), y: Math.sin(elev), z: fwd.z * Math.cos(elev) };
+    const z = rodBendAxis(dir, fwd);
+    assert.ok(Math.abs(z.x * dir.x + z.y * dir.y + z.z * dir.z) < 1e-9, '로드 축과 수직');
+    assert.ok(Math.abs(Math.hypot(z.x, z.y, z.z) - 1) < 1e-9, '단위 벡터');
+    assert.ok(elev > Math.PI / 2 ? z.y > 0 : z.x * fwd.x + z.z * fwd.z > 0, `elev ${elev} yaw ${yaw.toFixed(2)} 에서 뒤로 휜다`);
+  }
 });

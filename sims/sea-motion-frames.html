@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>던지기 동작 프레임 비교 — calm forest</title>
+<style>
+  body{margin:0;background:#f4f1ea;color:#2c3e4a;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;padding:16px 18px}
+  h1{font-size:18px;margin:0 0 4px} p{font-size:12px;color:#6b7b86;margin:0 0 12px}
+  .row{display:grid;grid-template-columns:130px repeat(3,1fr);gap:8px;align-items:center;margin-bottom:8px}
+  .row b{font-size:13px}
+  .cell{display:flex;flex-direction:column;gap:3px;font-size:11px;color:#6b7b86;text-align:center}
+  .vp{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:8px;background:#79c4de}
+  .vp iframe{position:absolute;left:0;top:0;width:640px;height:360px;border:0;transform-origin:0 0}
+</style>
+<h1>🎣 던지기 동작 — 게임과 같은 뒤쪽 시점 정지 화면</h1>
+<p>예비(로드를 머리 뒤로) · 채찍(앞으로 휘두름) · 뒷동작(릴리스 직후). 원본은 뒤에서 보면 몸이 뒤로 넘어지고 비틀려 보입니다.</p>
+<div id="rows"></div>
+<script>
+const ROWS = [[0, '원본 (지금 게임)'], [1, '① 절제'], [2, '② 팔·로드로 연기'], [3, '③ 좌우 무게 이동']];
+const T = [[.3, '예비'], [.5, '채찍'], [.62, '뒷동작']];
+document.getElementById('rows').innerHTML = ROWS.map(([mo, name]) => `<div class="row"><b>${name}</b>${T.map(([t, l]) =>
+  `<div class="cell"><div class="vp"><iframe src="sea-feel-sim.html?v=C&pose=2&mo=${mo}&embed=1&cam=back&freeze=${t}"></iframe></div>${l}</div>`).join('')}</div>`).join('');
+function fit() { document.querySelectorAll('.vp').forEach(v => v.firstElementChild.style.transform = `scale(${v.clientWidth / 640})`); }
+addEventListener('resize', fit); fit();
+</script>

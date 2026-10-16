@@ -167,7 +167,7 @@ import {
   houseSolidR, unregisterWindows, updateHouseSign, woodTexture,
 } from './spaces/house.js';   // 📦 집(건축) — 정해진 터, 단계별 건설
 import {
-  buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
+  buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
@@ -5815,7 +5815,7 @@ function updatePlayer(dt, t) {
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
   //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
-  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView;   // 🔍 전시물 관람 중엔 이동 차단(좌우는 회전에 쓴다)
+  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView || (atSea && seaMG.st !== 'idle');   // 🔍 전시물 관람 중엔 이동 차단(좌우는 회전에 쓴다)
   let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.() || closeUp);
   // 모바일 조이스틱 아날로그 합산
   if (!closeUp) { mx += analog.x; mz += analog.z; }
@@ -6299,6 +6299,8 @@ function updateCamera(dt) {
     camera.lookAt(_camLook);
     return;
   }
+  if (atSea) return seaCamera(camera, _camLook, dt);
+  if (camera.fov !== 42) { camera.fov = 42; camera.updateProjectionMatrix(); }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
   // 🌊 바다터: 평상시 0.86(트인 수평선 보정) → 던지면 0.55 → 줄다리기·포획 0.45 로
   //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다(가로 화면 기준).
@@ -6311,7 +6313,7 @@ function updateCamera(dt) {
   const pk = Math.min(2.3, Math.max(1, 1.35 / camera.aspect));     // 1(가로) ~ 2.3(폰 세로)
   const phoneT = (pk - 1) / 1.3;                                   // 0(가로) ~ 1(폰 세로)
   const seaBase = seaMG.st === 'fight' || seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.45
-                : seaMG.st === 'cast' || seaMG.st === 'wait' || seaMG.st === 'hook' ? 0.55 : 0.86;
+                : seaMG.st === 'cast' ? 0.55 : 0.86;
   const seaPhone = seaMG.st === 'catch' || seaMG.st === 'miss' ? 0.90 : 1.0;   // 폰 세로 목표 줌
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;

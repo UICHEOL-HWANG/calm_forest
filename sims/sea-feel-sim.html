@@ -56,7 +56,7 @@
   #tag{position:fixed;left:8px;bottom:8px;font-size:11px;font-weight:700;color:#fff;background:rgba(20,60,90,.55);padding:3px 8px;border-radius:8px;z-index:6;pointer-events:none}
   body.embed #cfg{display:none}
   body.cam #btn,body.cam .ring,body.cam #vig,body.cam #gaugeWrap,body.cam #edge,body.cam #card,body.cam #hint{visibility:hidden}
-  body.frz #banner,body.frz #tag{display:none}
+  body.frz #banner,body.frz #tag,body.frz #btn,body.frz .ring,body.frz #hint{display:none}
   body.cam #banner{font-size:18px;top:4%}
 </style>
 <div id="vig"></div>
@@ -96,6 +96,13 @@ if (Q.get('seed')) {
 }
 const VNAME = { A: 'A · 연타 + 예고', B: 'B · 꾹 누르기 텐션', C: 'C · 링 타이밍' };
 const POSE = Math.max(0, Math.min(3, Math.round(+(Q.get('pose') ?? 1)) || 0));
+const MOS = [
+  { name: '원본', lean: 1, twist: 1, squash: 1, wob: 1, roll: 0, arm: 1 },
+  { name: '① 절제', lean: .35, twist: .35, squash: 0, wob: 0, roll: 0, arm: 1 },
+  { name: '② 팔·로드로 연기', lean: .2, twist: .25, squash: 0, wob: 0, roll: 0, arm: 1.35 },
+  { name: '③ 좌우 무게 이동', lean: .45, twist: .4, squash: .3, wob: 0, roll: .1, arm: 1 },
+];
+const MO = MOS[Math.max(0, Math.min(3, +(Q.get('mo') || 0)))];
 const PSPEC = [
   { name: '원본', bias: .45 },
   { name: '① 차분히 버티기', bias: .45, idle: .55, rest: .72, run: .4, leanRest: -.08, leanRun: -.2, sway: 2.6,
@@ -393,7 +400,7 @@ const banner = $('banner'), btn = $('btn'), gaugeWrap = $('gaugeWrap'), gaugeFil
       edgeEl = $('edge'), edgeM = $('edgeM'), card = $('card'), vig = $('vig'),
       tensWrap = $('tensWrap'), tensFill = $('tensFill'), tensV = $('tensV'), popLayer = $('pops');
 const ringEls = [...document.querySelectorAll('.ring')];
-$('tag').textContent = VNAME[V] + ' · 모션 ' + PSPEC[POSE].name + (auto ? ' · 자동 시연 (탭하면 직접)' : '');
+$('tag').textContent = VNAME[V] + ' · 모션 ' + PSPEC[POSE].name + ' · ' + MO.name + (auto ? ' · 자동 시연 (탭하면 직접)' : '');
 $('vSel').innerHTML = ['A', 'B', 'C'].map(v =>
   `<button data-v="${v}" class="${v === V ? 'on' : ''}">${VNAME[v]}</button>`).join('');
 $('vSel').onclick = e => {
@@ -675,7 +682,7 @@ function updateFight(dt, time) {
     if (Math.abs(fish.position.x) > 4.5 + p.side * 1.5) fishDir *= -1;
     if (!jump) { fish.rotation.y = Math.PI + Math.sin(time * 5) * .55; fish.rotation.z = Math.sin(time * 12) * .28; }
     if (Math.random() < dt * 4) splash(fish.position.x, fish.position.z - 1.2, 2);
-    player.position.x += Math.sin(time * 7) * dt * .5;
+    player.position.x += Math.sin(time * 7) * dt * .5 * MO.wob;
   } else if (!jump) {
     fish.rotation.y += (Math.PI - fish.rotation.y) * Math.min(1, dt * 3);
     fish.rotation.z += (.35 - fish.rotation.z) * Math.min(1, dt * 3);
@@ -753,6 +760,12 @@ const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camLook = n
 const CAM = Q.get('cam');
 const _cs = new THREE.Vector3();
 function updateCamera(dt) {
+  if (CAM === 'back') {
+    const yaw = Math.PI, fx = Math.sin(yaw), fz = Math.cos(yaw);
+    camera.position.set(player.position.x - fx * 3.6, 2.3, player.position.z - fz * 3.6);
+    camera.lookAt(player.position.x + fx * 1.2, 1.1, player.position.z + fz * 1.2);
+    return;
+  }
   if (CAM === 'side' || CAM === 'front') {
     const yaw = player.rotation.y, fx = Math.sin(yaw), fz = Math.cos(yaw);
     const dd = camera.aspect < 1 ? 1.7 : 1;
@@ -827,10 +840,12 @@ function poseNew(time, tens, dt) {
     tgt = buoy.position; elev = S.idle - (state === 'hook' ? .15 : 0);
   } else if (state === 'catch') { elev = 1.0; armUp = .3; }
   else if (state === 'miss') { elev = .3; lean = .05; }
-  bear.g.rotation.x = lean; bear.g.rotation.y = twist;
-  bear.g.scale.set(.92 * (1 - squash * .5), .92 * (1 + squash), .92 * (1 - squash * .5));
-  R.rotation.set(S.R[0] - armUp, S.R[1], S.R[2]);
-  L.rotation.set(S.L[0] - armUp, S.L[1], S.L[2]);
+  const sq = squash * MO.squash, au = armUp * MO.arm;
+  bear.g.rotation.x = lean * MO.lean; bear.g.rotation.y = twist * MO.twist;
+  bear.g.rotation.z += ((state === 'fight' && phase === 'run' ? -fishDir * MO.roll : 0) - bear.g.rotation.z) * .08;
+  bear.g.scale.set(.92 * (1 - sq * .5), .92 * (1 + sq), .92 * (1 - sq * .5));
+  R.rotation.set(S.R[0] - au, S.R[1], S.R[2]);
+  L.rotation.set(S.L[0] - au, S.L[1], S.L[2]);
   const yaw = (tgt ? Math.atan2(tgt.x - player.position.x, tgt.z - player.position.z) : player.rotation.y) + yawOff;
   _rd.set(Math.sin(yaw) * Math.cos(elev), Math.sin(elev), Math.cos(yaw) * Math.cos(elev));
   _rq.setFromUnitVectors(_UP, _rd);

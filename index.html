@@ -266,6 +266,7 @@
   /* 🌊 바다터 줄다리기 HUD — 배너 + 진행 게이지 + 부두 끝 경고 */
   #sea-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(54px + var(--top-inset)); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
   #sea-hud.show { display: flex; }
+  body.is-touch #sea-hud { top: calc(128px + var(--top-inset)); }
   #sea-banner { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(20,60,90,0.5); }
   #sea-banner.pull { color: #b6ff9e; animation: seaPulse .35s infinite alternate; }
   @keyframes seaPulse { from { transform: scale(1); } to { transform: scale(1.12); } }
@@ -280,11 +281,14 @@
   #sea-btn { position: fixed; left: 50%; bottom: calc(5% + env(safe-area-inset-bottom)); transform: translateX(-50%); width: 112px; height: 112px; border-radius: 50%; border: 5px solid rgba(255,255,255,0.88); background: rgba(60,130,180,0.85); color: #fff; font-size: 18px; font-weight: 800; line-height: 1.15; display: none; align-items: center; justify-content: center; text-align: center; box-shadow: 0 6px 18px rgba(20,60,90,0.35); z-index: 25; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
   body.sea-mode #sea-btn { display: flex; }
   body.sea-mode #action-btn { display: none !important; }
+  body.sea-mode #hint { display: none !important; }
   body:has(#sea-hud.show) #door-prompt { opacity: 0 !important; }
-  body.sea-mode #door-prompt { bottom: calc(5% + env(safe-area-inset-bottom) + 158px); }
-  body.sea-mode.is-touch #door-prompt { bottom: calc(10px + env(safe-area-inset-bottom) + 158px); }
-  body.is-touch #sea-btn { left: auto; right: max(16px, calc(env(safe-area-inset-right) + 6px)); bottom: calc(10px + env(safe-area-inset-bottom)); transform: none; }
-  body.is-touch #sea-btn.press { transform: scale(0.93); }
+  body.sea-mode #door-prompt { bottom: auto; top: calc(96px + var(--top-inset)); }
+  body.sea-mode.is-touch #door-prompt { top: auto; bottom: calc(222px + env(safe-area-inset-bottom)); }
+  body.is-touch #sea-btn { width: 120px; height: 120px; bottom: calc(90px + env(safe-area-inset-bottom)); left: calc(100% - 88px); transition: left .28s ease; }
+  body.is-touch.sea-busy #sea-btn { left: 50%; }
+  #joy-base { transition: opacity .2s; }
+  body.sea-busy #joy-base { opacity: 0; pointer-events: none; }
   #sea-btn.press { transform: translateX(-50%) scale(0.93); }
   #sea-btn.go { background: rgba(90,180,80,0.92); border-color: #d6ffc4; animation: seaBtnPulse .35s infinite alternate; }
   #sea-btn.hook { background: rgba(240,190,40,0.95); border-color: #fff6b0; animation: seaBtnPulse .12s infinite alternate; }
@@ -1231,7 +1235,7 @@
        프롬프트(568)·하트바(753)와 안 겹친다. 🪧 시설 배너는 상단 그대로 둔다. */
     #hint-banner.slot-bottom { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); left: 12px; right: auto; max-width: calc(100vw - 24px); }
     /* 🌊 바다터: 큰 글자 HUD 를 위 띠(인벤토리 바)에서 프롬프트 줄로 내리고, 같은 말을 하는 문 프롬프트는 숨긴다 */
-    body.is-touch #sea-hud { top: auto; bottom: calc(234px + env(safe-area-inset-bottom)); gap: 5px; }
+    body.is-touch #sea-hud { top: calc(172px + var(--top-inset)); bottom: auto; gap: 5px; }
     body.is-touch #sea-banner { font-size: 18px; }
     body.is-touch:has(#sea-hud.show) #door-prompt { opacity: 0 !important; }
     body.sea-mode #story-chip, body.sea-mode #hint-banner, body.sea-mode #dex-tab, body.sea-mode #feedback-tab { display: none !important; }
@@ -1932,6 +1936,10 @@
     body.is-touch.quest-open #quest-panel .q-how { display: block; }
     body.is-touch #joy-base { left: max(20px, calc(env(safe-area-inset-left) + 8px)); bottom: calc(12px + env(safe-area-inset-bottom)); width: 104px; height: 104px; }
     body.is-touch #action-btn { right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); }
+    body.is-touch #sea-btn { width: 104px; height: 104px; bottom: calc(12px + env(safe-area-inset-bottom)); left: calc(100% - 52px - max(20px, calc(env(safe-area-inset-right) + 8px))); }
+    body.is-touch.sea-mode #door-prompt { bottom: calc(20px + env(safe-area-inset-bottom)); }
+    body.is-touch.sea-mode.sea-busy #door-prompt { bottom: calc(128px + env(safe-area-inset-bottom)); }
+    body.is-touch #sea-hud { top: calc(80px + var(--top-inset)); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
     body.is-touch #dex-tab { right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
     body.is-touch #coach { top: calc(72px + var(--top-inset)); left: 50%; right: auto; transform: translateX(-50%); width: min(400px, 48vw); padding: 8px 11px; gap: 5px; }
@@ -3867,7 +3875,7 @@
         bb.classList.toggle('ready', d.boost >= 1 && !d.boosting);
       },
       // 🌊 바다터 입장/퇴장 — 도구 팔레트를 걷어냄(액션 버튼 하나로 노는 공간)
-      setSeaMode(on) { document.body.classList.toggle('sea-mode', !!on); },
+      setSeaMode(on) { document.body.classList.toggle('sea-mode', !!on); if (!on) document.body.classList.remove('sea-busy'); },
       // 🌊 바다터 줄다리기 HUD (null 이면 숨김)
       setSeaHud(d) {
         const el = $('sea-hud');
@@ -3885,7 +3893,8 @@
         const r = $('sea-btn').getBoundingClientRect();
         return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width };
       },
-      setSeaBtn(label, cls) {
+      setSeaBtn(label, cls, busy) {
+        document.body.classList.toggle('sea-busy', !!busy);
         const b = $('sea-btn');
         if (b.textContent !== label) b.textContent = label;
         const c = cls || '';

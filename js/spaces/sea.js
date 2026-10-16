@@ -19,7 +19,7 @@ import { bestAfterCatch } from '../museum.js';
 import { pickSeaTarget } from '../sea-aim.js';
 import {
   SEA_PAT, RING_GAIN, RING_GOOD, RING_LEAD, RING_PERFECT, rollPhaseLen, scheduleRings, judgeRing,
-  CAST_REL, CAST_END, CAST_FLIGHT, castPose, pumpPose, PUMP_IDLE, buoyFlight, createRope, resetRope, stepRope,
+  CAST_REL, CAST_END, CAST_FLIGHT, castPose, pumpPose, PUMP_IDLE, buoyFlight, createRope, resetRope, stepRope, rodBendAxis,
 } from '../sea-feel.js';
 import { Sound } from '../sound.js';
 import { sendSeaRecord } from '../supabase-client.js';
@@ -298,7 +298,7 @@ export function enterSea() {
   snapCamera(); setSpaceVisible();
   Sound.blip();
   firstHint('sea', '🌊', '바다터',
-    '🎣던지고 찌가 쏙 잠기면 바로 탭(챔질)\n🟢링이 버튼에 겹칠 때 탭, 🔴❗가 뜨면 기다리기\n부두 끝까지 끌려가면 놓쳐요. ⚔️참치는 하루 1번');
+    '🎣던지고 찌가 쏙 잠기면 바로 탭!\n🟢링이 버튼에 겹칠 때 탭, 🔴❗가 뜨면 기다리기\n부두 끝까지 끌려가면 놓쳐요. ⚔️참치는 하루 1번');
   trackEvent('sea_enter', { night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
 
@@ -335,7 +335,7 @@ export function seaHoldRod(on) {
 export function seaReset() {
   Object.assign(seaMG, { st: 'idle', t: 0, ft: 0, phase: 'run', phaseLen: 0, nextLen: 0, tele: false, progress: 0, sp: null,
     fishDir: 1, released: false, good: 0, bad: 0, perfect: 0, combo: 0, doneT: 0, rings: [], lift: 0, jump: null, hookQ: '',
-    biteAt: 0, nibbles: [], dip: 0, milestone: 0, shiver: 0 });
+    biteAt: 0, nibbles: [], dip: 0, milestone: 0, shiver: 0, shake: 0, roll: 0 });
   if (seaMG.fmesh) { seaGroup?.remove(seaMG.fmesh); seaMG.fmesh = null; }
   if (seaBuoy) { seaBuoy.visible = false; seaBuoy.rotation.set(0, 0, 0); }
   if (seaLine) seaLine.visible = false;
@@ -349,7 +349,7 @@ export const _seaQ1 = new THREE.Quaternion(), _seaQ2 = new THREE.Quaternion(), _
 
 export const _seaV = new THREE.Vector3(), _seaUp = new THREE.Vector3(0, 1, 0);
 
-const _seaB = new THREE.Vector3();
+const _seaB = new THREE.Vector3(), _seaBX = new THREE.Vector3(), _seaBZ = new THREE.Vector3(), _seaBM = new THREE.Matrix4();
 const SEA_LINE_SLACK = new THREE.Color(0xf6f2e4), SEA_LINE_TIGHT = new THREE.Color(0xff3b2a);
 const _seaPier = { halfW: SEA_DECK_W / 2, z0: SEA_DECK_Z0 - 0.04, z1: SEA_DECK_Z1 - 0.7, top: 0.07, water: 0.06, posts: [] };
 for (let z = SEA_DECK_Z0 - 0.6; z > SEA_DECK_Z1; z -= 2.6) [-1, 1].forEach(sx => _seaPier.posts.push({ x: sx * (SEA_DECK_W / 2 - 0.1), z, r: 0.16, top: 0.75 }));
@@ -359,7 +359,7 @@ let _seaRingsShown = false;
 
 const seaPat = () => SEA_PAT[seaMG.sp?.id] || SEA_PAT.buri;
 const seaPop = (ico, x, z, scale = 1.1) => spawnFloatText(SEA.x + x, 1.4, SEA.z + z, ico, '#ffffff', scale);
-const seaBuzz = ms => { try { navigator.vibrate?.(ms); } catch (e) { return; } };
+const seaBuzz = ms => { if (!navigator.userActivation?.hasBeenActive) return; try { navigator.vibrate?.(ms); } catch (e) { return; } };
 
 export function seaAction() {
   if (seaMG.st === 'idle') return seaCast();
@@ -400,11 +400,11 @@ function seaHookset(perfect) {
   seaStartFight();
   const f = seaMG.fmesh.position;
   if (perfect) {
-    seaMG.progress = 0.12;
-    ui.seaHint?.('완벽 챔질!', '#b6ff9e'); seaPop('✨', f.x, f.z, 1.4);
+    seaMG.progress = 0.12; seaMG.shake = 0.8;
+    ui.seaHint?.('완벽해요!', '#b6ff9e'); seaPop('✨', f.x, f.z, 1.4);
     Sound.starPerfect?.(4); seaBuzz(45);
   } else {
-    seaMG.pz -= 0.6;
+    seaMG.pz -= 0.6; seaMG.shake = 0.4;
     ui.seaHint?.('늦었어요… 먼저 끌려가요', '#ffd0a0'); seaPop('💦', f.x, f.z);
   }
 }
@@ -430,9 +430,8 @@ function seaReel() {
     seaMG.rings = seaMG.rings.map((r, i) => i === hit.index ? { ...r, done: true } : r);
     seaMG.good++; seaMG.combo++; if (perfect) seaMG.perfect++;
     seaMG.progress = Math.min(1, seaMG.progress + sp.tap * RING_GAIN[hit.grade] * ease);
-    seaMG.pz += 0.38; seaMG.lift = 1;
+    seaMG.pz += 0.38; seaMG.lift = 1; seaMG.shake = Math.max(seaMG.shake, 0.12);
     if (seaRodMesh) seaRodMesh.userData.sea.crank.rotation.x -= 1.2;
-    ui.seaHint?.(perfect ? '완벽!' : '좋아', perfect ? '#b6ff9e' : '#ffffff');
     if (perfect) { seaPop('✨', f.x, f.z); Sound.starPerfect?.(Math.min(seaMG.combo, 7)); }
     else Sound.starGood?.(Math.min(seaMG.combo, 7));
     seaBuzz(10);
@@ -441,7 +440,7 @@ function seaReel() {
   }
   seaMG.combo = 0;
   if (seaMG.phase === 'run') {
-    seaMG.bad++; seaMG.pz -= 0.5 * sp.drag / ease;
+    seaMG.bad++; seaMG.pz -= 0.5 * sp.drag / ease; seaMG.shake = 0.45;
     ui.seaHint?.('줄이 풀려요!', '#ffb0a0'); seaPop('💢', f.x, f.z);
     Sound.starMiss?.(); seaBuzz(60);
   } else {
@@ -450,10 +449,10 @@ function seaReel() {
 }
 
 export function seaPrompt() {
-  if (seaMG.st === 'idle') return '🎣 던지기 — 물고기를 보고!';
+  if (seaMG.st === 'idle') return '🎣 던지기';
   if (seaMG.st === 'wait') return '…찌를 보세요';
-  if (seaMG.st === 'hook') return '지금!! 챔질';
-  if (seaMG.st === 'fight') return seaMG.phase === 'rest' ? '🟢 링에 맞춰 탭!' : '🔴 버텨요…!';
+  if (seaMG.st === 'hook') return '지금!! 낚아채요';
+  if (seaMG.st === 'fight') return seaMG.phase === 'rest' ? '🟢 당기세요!' : '🔴 버텨요…!';
   return null;
 }
 
@@ -604,7 +603,7 @@ function seaUpdateWait(dt, t) {
   seaFaceTarget(seaBuoy.position.x, seaBuoy.position.z, dt, 5);
   if (seaMG.t > seaMG.biteAt) {
     seaMG.st = 'hook'; seaMG.t = 0;
-    spawnSparkle(SEA.x + seaBuoy.position.x, 0.4, SEA.z + seaBuoy.position.z, 18); Sound.water(); seaBuzz(30);
+    spawnSparkle(SEA.x + seaBuoy.position.x, 0.4, SEA.z + seaBuoy.position.z, 18); Sound.water(); seaBuzz(30); seaMG.shake = 0.25;
     $w.lastDoorPrompt = null;
   }
 }
@@ -650,7 +649,7 @@ function seaUpdateJump(dt, t) {
   f.rotation.set(-1.2 * (k - 0.5), Math.PI, Math.sin(t * 14) * 0.3);
   if (j.k >= 1) {
     seaMG.jump = null; f.rotation.x = 0;
-    spawnSparkle(SEA.x + f.position.x, 0.3, SEA.z + f.position.z, 16); Sound.water(); seaBuzz(25);
+    spawnSparkle(SEA.x + f.position.x, 0.3, SEA.z + f.position.z, 16); Sound.water(); seaBuzz(25); seaMG.shake = Math.max(seaMG.shake, 0.35);
   }
 }
 
@@ -663,7 +662,6 @@ function seaUpdateFight(dt, t) {
   seaMG.rings = seaMG.rings.filter(r => !r.done && seaMG.ft <= r.hit + RING_GOOD);
   if (seaMG.phase === 'run') {
     seaMG.pz -= dt * 0.82 * sp.drag * (1 - seaMG.progress * 0.35);   // 부두 끝으로 끌려간다
-    player.position.x += Math.sin(t * 7) * dt * 0.5;
     f.position.x += seaMG.fishDir * dt * (2.2 + pat.side * 2.6);
     if (Math.abs(f.position.x) > 5 + pat.side * 1.5) seaMG.fishDir *= -1;
     if (!seaMG.jump) { f.rotation.y = Math.PI + Math.sin(t * 5) * 0.55; f.rotation.z = Math.sin(t * 12) * 0.28; }
@@ -709,9 +707,10 @@ function seaPose(dt, t, tens) {
   const st = seaMG.st;
   seaMG.lift = Math.max(0, seaMG.lift - dt * 1.8);
   const p = st === 'cast' && seaMG.t < CAST_END ? castPose(seaMG.t, PUMP_IDLE)
-          : st === 'fight' ? pumpPose(seaMG.phase, seaMG.lift, t)
+          : st === 'fight' ? pumpPose(seaMG.phase, seaMG.lift, t, seaMG.fishDir)
           : { elev: st === 'hook' ? PUMP_IDLE - 0.15 : st === 'catch' ? 1 : st === 'miss' ? 0.3 : PUMP_IDLE, lean: 0, armUp: st === 'catch' ? 0.3 : 0 };
-  playerAnchor.rotation.x = p.lean; playerAnchor.rotation.y = p.twist || 0;
+  seaMG.roll = (seaMG.roll || 0) + ((p.roll || 0) - (seaMG.roll || 0)) * Math.min(1, dt * 4);
+  playerAnchor.rotation.x = p.lean; playerAnchor.rotation.y = p.twist || 0; playerAnchor.rotation.z = seaMG.roll;
   const sq = p.squash || 0;
   playerAnchor.scale.set(1 - sq * 0.5, 1 + sq, 1 - sq * 0.5);
   playerArms.R.pivot.rotation.set(-0.6 - p.armUp, 0.1, 0.08);
@@ -722,7 +721,9 @@ function seaPose(dt, t, tens) {
             : st === 'cast' ? _seaCastTo : seaBuoy.visible ? seaBuoy.position : null;
   const yaw = tgt ? Math.atan2(SEA.x + tgt.x - player.position.x, SEA.z + tgt.z - player.position.z) : player.rotation.y;
   _seaV.set(Math.sin(yaw) * Math.cos(p.elev), Math.sin(p.elev), Math.cos(yaw) * Math.cos(p.elev));
-  _seaQ2.setFromUnitVectors(_seaUp, _seaV);
+  const bz = rodBendAxis(_seaV, { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) });
+  _seaBZ.set(bz.x, bz.y, bz.z); _seaBX.crossVectors(_seaV, _seaBZ);
+  _seaQ2.setFromRotationMatrix(_seaBM.makeBasis(_seaBX, _seaV, _seaBZ));
   handAnchor.updateWorldMatrix(true, false);
   handAnchor.getWorldQuaternion(_seaQ1);
   seaRodMesh.quaternion.copy(_seaQ1.invert()).multiply(_seaQ2);
@@ -752,17 +753,44 @@ function seaRingView() {
   });
 }
 
+const _seaCamPos = new THREE.Vector3(), _seaCamLook = new THREE.Vector3();
+
+export function seaCamera(camera, look, dt) {
+  const st = seaMG.st, tall = camera.aspect < 1, low = !tall && innerHeight < 500, fov = tall ? 66 : 42, k = tall ? 1.3 : low ? 1.55 : 1, lat = tall ? 0.4 : 1;
+  if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const px = player.position.x, pz = player.position.z;
+  let ax = px, oy = 6.2, oz = 7, ahead = 1.5, ay = 0.9;
+  if (st === 'fight' && seaMG.fmesh) {
+    const rest = seaMG.phase === 'rest';
+    oy = rest ? 4 : 4.6; oz = rest ? 4.6 : 5.2; ahead = 5;
+    ax = px + (SEA.x + seaMG.fmesh.position.x - px) * 0.3 * lat;
+  } else if (st === 'catch' || st === 'miss') {
+    oy = 3.2; oz = 3.8; ahead = 2; ay = 0.8;
+  } else if (st === 'cast' || st === 'wait' || st === 'hook') {
+    ax = px + (SEA.x + (st === 'cast' ? _seaCastTo.x : seaBuoy.position.x) - px) * 0.4 * lat; ahead = 5;
+  }
+  const f = 1 - Math.pow(0.005, dt);
+  camera.position.lerp(_seaCamPos.set(ax, oy * k, pz + oz * k), f);
+  if (seaMG.shake > 0) {
+    camera.position.x += (Math.random() - 0.5) * seaMG.shake * 0.3;
+    camera.position.y += (Math.random() - 0.5) * seaMG.shake * 0.2;
+    seaMG.shake = Math.max(0, seaMG.shake - dt * 1.8);
+  }
+  look.lerp(_seaCamLook.set(ax, ay, pz - ahead), f);
+  camera.lookAt(look);
+}
+
 function seaBtnState() {
   const st = seaMG.st;
   if (st === 'idle') return nearDoor === 'seaexit' ? ['🚪 나가기', 'door'] : ['🎣 던지기', ''];
-  if (st === 'wait') return ['챔질', 'wait'];
-  if (st === 'hook') return ['챔질!', 'hook'];
+  if (st === 'wait') return ['낚아채기', 'wait'];
+  if (st === 'hook') return ['낚아채기!', 'hook'];
   if (st === 'fight') return seaMG.phase === 'rest' ? ['탭!', 'go'] : ['탭', 'stop'];
   return ['🎣', 'wait'];
 }
 
 function seaUpdateHud(dt) {
-  ui.setSeaBtn?.(...seaBtnState());
+  ui.setSeaBtn?.(...seaBtnState(), seaMG.st !== 'idle');
   if (seaMG.st === 'fight') { ui.setSeaRings?.(seaRingView()); _seaRingsShown = true; }
   else if (_seaRingsShown) { ui.setSeaRings?.([]); _seaRingsShown = false; }
   _seaHudT += dt;
@@ -771,7 +799,7 @@ function seaUpdateHud(dt) {
   if (seaMG.st !== 'fight') { ui.setSeaHud?.(null); return; }
   const left = Math.max(0, player.position.z - (SEA.z + SEA_EDGE));
   ui.setSeaHud?.({
-    banner: seaMG.phase === 'rest' ? '링에 맞춰 탭!' : '버텨요…!',
+    banner: seaMG.phase === 'rest' ? '당기세요!' : '버텨요…!',
     cls: seaMG.phase === 'rest' ? 'pull' : '',
     p: seaMG.progress,
     sp: `${seaMG.sp.ico} ${seaMG.sp.name}`,
