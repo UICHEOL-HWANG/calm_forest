@@ -14,6 +14,8 @@
 import { sendEconBatch, sendDuelBatch, upsertSessionRow } from './supabase-client.js';
 import { trackEvent, onTrack } from './analytics.js';
 import { IS_DEV_SESSION } from './config.js';
+import { e3Decision } from './exp-e3-boot.js';
+import { e3SessionMark } from './exp-e3.js';
 
 // ── 경제 원장 ────────────────────────────────────────────────
 let econBuffer = [];               // 전송 대기 원장 행
@@ -55,6 +57,8 @@ function flushDuel() {
 // ── 세션 카운터 — GA4 이벤트 이름별 발생 횟수(자동 집계) ─────────
 //    새 이벤트를 추가해도 카운터에 자동 포함됨. econ_tx 는 원장이 원본이므로 제외.
 const counts = {};
+const e3Mark = e3SessionMark(e3Decision());
+if (e3Mark) counts[e3Mark] = 1;
 const startedAt = Date.now();
 onTrack((name, p) => {
   if (name === 'econ_tx' || name === 'session_summary') return;

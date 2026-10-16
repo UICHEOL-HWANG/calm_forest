@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { E3_ARMS, armForE3, decideE3, parseE3Stored, e3UserProps, spaceLinkOn } from '../js/exp-e3.js';
+import { E3_ARMS, armForE3, decideE3, parseE3Stored, e3UserProps, e3SessionMark, spaceLinkOn } from '../js/exp-e3.js';
 import { armForE2 } from '../js/exp-e2.js';
 
 const ids = Array.from({ length: 10000 }, (_, i) => `c-${i.toString(36)}-${(i * 7919).toString(16)}`);
@@ -52,4 +52,12 @@ test('저장 기록 파싱', () => {
   assert.equal(parseE3Stored('{"arm":"x"}'), null);
   assert.equal(parseE3Stored('nope'), null);
   assert.equal(parseE3Stored(null), null);
+});
+
+test('e3SessionMark — 등록된 무리만 counts 키로, 강제·재방문·null 은 null', () => {
+  assert.equal(e3SessionMark(decideE3({ ...NEW, clientId: ids.find(i => armForE3(i) === 'off') })), 'e3_off');
+  assert.equal(e3SessionMark(decideE3({ stored: { arm: 'on' } })), 'e3_on');
+  assert.equal(e3SessionMark(decideE3({ dev: true, forced: 'on' })), null);
+  assert.equal(e3SessionMark(decideE3({ newDevice: false })), null);
+  assert.equal(e3SessionMark(null), null);
 });

@@ -35,3 +35,8 @@ export function e3UserProps(decision) {
 export function spaceLinkOn(decision) {
   return !(decision?.enrolled && decision.arm === 'off');
 }
+
+export function e3SessionMark(decision) {
+  const arm = e3UserProps(decision).exp_space;
+  return arm ? `e3_${arm}` : null;
+}
