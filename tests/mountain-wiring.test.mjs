@@ -44,12 +44,11 @@ test('minimap label in index.html', () => {
   assert.match(read('index.html'), /'🏔️ 설산'/);
 });
 
-test('reveal waits for modals and coach marks, checks the saved flag first, and is cut short on leaving the village', () => {
+test('unlock toast waits for modals and coach marks and checks the saved flag first', () => {
   const m = read('js/spaces/mountain.js');
   const body = m.slice(m.indexOf('export function maybeRevealMountain'), m.indexOf('export function updateMountain'));
   assert.match(body, /ui\.anyModalOpen\?\.\(\) \|\| ui\.coachActive\?\.\(\)/);
   assert.ok(body.indexOf('hintsSeen?.mountainReveal') < body.indexOf('mountainOpen()'));
-  assert.match(m, /reveal\.finish\(\)/);
   const exit = m.slice(m.indexOf('export function exitMountain'), m.indexOf('export function clampToMountain'));
   assert.match(exit, /Sound\.blip\(\);[\s\S]*trackEvent\('mountain_exit'\)/);
 });

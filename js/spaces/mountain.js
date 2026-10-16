@@ -5,7 +5,6 @@ import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
 import { daysSinceUnlock, isMountainOpen } from '../mountain/unlock.js';
 import { buildLandmark, landmarkStop } from '../mountain/landmark.js';
-import { createReveal } from '../mountain/reveal.js';
 import { slopePoint, acornY, terrainHeight, SLOPE_M_PER_UNIT } from '../mountain/terrain.js';
 import { buildMountainSpace, paintInterior, followCamera, poseObstacles, obstacleScales } from '../mountain/interior-art.js';
 import { applyLook } from '../mountain/interior-look.js';
@@ -41,7 +40,6 @@ import { inVillage2 } from './doors.js';
 import { fadeNameTag } from './npc.js';
 
 export const MOUNTAIN_EXIT_LOCAL = { x: 0, z: 83 };
-let reveal = null;
 let run = null;
 let keeperBubble = null;
 const START_R = 1.6;
@@ -293,18 +291,11 @@ export function mountainMinimapMarks(marks) {
 }
 
 export function maybeRevealMountain() {
-  if (reveal || gameState.hintsSeen?.mountainReveal) return;
+  if (gameState.hintsSeen?.mountainReveal) return;
   if (mgView || duelActive || ui.anyModalOpen?.() || ui.coachActive?.() || !inVillage2()) return;
   if (!mountainOpen()) return;
   gameState.hintsSeen = { ...(gameState.hintsSeen || {}), mountainReveal: true };
   requestSave();
-  reveal = createReveal({
-    THREE, scene, camera, setCameraRig,
-    from: new THREE.Vector3(player.position.x, 1.2, player.position.z),
-    at: new THREE.Vector3(player.position.x, 30, player.position.z - 150),
-    durationMs: 3000,
-  });
-  reveal.start();
   ui.toast?.('🏔️ 설산이 열렸어요!', 2600);
   trackEvent('mountain_reveal');
 }
@@ -567,10 +558,6 @@ function updateCold(dt, local) {
 }
 
 export function updateMountain(dt) {
-  if (reveal) {
-    if (!inVillage2()) { reveal.finish(); reveal = null; }
-    else if (!reveal.update(dt)) reveal = null;
-  }
   if (!$w.atMountain) return;
   updateCold(dt, { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z });
   if (cafe?.active()) { cafe.update(dt, performance.now() / 1000, player.position); return; }
