@@ -169,7 +169,7 @@ import {
 import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
-import { clampToMountain, maybeRevealMountain, mountainAction, mountainMinimapMarks, sledActive, spawnMountainGate, updateMountain } from './spaces/mountain.js';
+import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainMinimapMarks, sledActive, spawnMountainGate, updateMountain } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
@@ -5933,6 +5933,7 @@ function updatePlayer(dt, t) {
   resolveColliders(player.position);   // 실내에서도 — 놓은 가구(solidBox)가 막아야 한다(전엔 실내를 통째로 건너뛰어 가구를 그냥 통과했다)
   if (atDream) clampToDream(player.position);   // 🌙 구름 침대 상자가 섬 가장자리 밖으로 밀어낼 수 있다 — 밀린 뒤 한 번 더 섬 안으로
   if (atMirror) clampToMirror(player.position);   // 🪞 집·연못 상자가 밀어낸 뒤 한 번 더
+  if (inVillage2()) clampToLandmark(player.position);
   // 테스트: ?dbg=1 — 현재 좌표·카메라·콜라이더 수를 <body data-dbg> 에 기록(충돌 디버깅용)
   if (_wq.has('dbg')) {
     document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;

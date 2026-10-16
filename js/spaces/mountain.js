@@ -1,11 +1,10 @@
 import * as THREE from 'three';
-import { $w, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, solidCircle, setCameraRig, requestSave, mgView, rollDifficulty } from '../game.js';
+import { $w, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
 import { isMountainOpen } from '../mountain/unlock.js';
-import { buildLandmark, landmarkSolids } from '../mountain/landmark.js';
-import { PLAYER_R } from '../data/character.js';
+import { buildLandmark, landmarkStop } from '../mountain/landmark.js';
 import { createReveal } from '../mountain/reveal.js';
 import { buildMountainSpace, pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
@@ -39,8 +38,12 @@ export function spawnMountainGate() {
   const art = buildLandmark(THREE);
   art.position.copy(MOUNTAIN_LANDMARK);
   scene.add(art);
-  for (const s of landmarkSolids(PLAYER_R)) solidCircle(MOUNTAIN_LANDMARK.x + s.x, MOUNTAIN_LANDMARK.z + s.z, s.r);
   obstacles.push({ x: MOUNTAIN_LANDMARK.x, z: MOUNTAIN_LANDMARK.z, r: MOUNTAIN_LANDMARK_R });
+}
+
+export function clampToLandmark(p) {
+  const s = landmarkStop(p.x - MOUNTAIN_LANDMARK.x, p.z - MOUNTAIN_LANDMARK.z);
+  p.x = MOUNTAIN_LANDMARK.x + s.x; p.z = MOUNTAIN_LANDMARK.z + s.z;
 }
 
 function ensureMountainSpace() {

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gameSource } from './helpers/game-source.mjs';
-import { landmarkSolids } from '../js/mountain/landmark.js';
+import { landmarkStop } from '../js/mountain/landmark.js';
 
 const src = gameSource();
 const vec = name => {
@@ -45,8 +45,7 @@ test('mountain gate is the south foot of the landmark and its prompt is reachabl
   const c = vec('MOUNTAIN_LANDMARK'), g = vec('MOUNTAIN_GATE');
   assert.equal(g.x, c.x);
   assert.ok(g.z - c.z >= 5.5 && g.z - c.z <= 7.5);
-  const playerR = +readFileSync(new URL('../js/data/character.js', import.meta.url), 'utf8').match(/export const PLAYER_R = ([\d.]+);/)[1];
-  const stop = Math.max(0, ...landmarkSolids(playerR).filter(s => Math.abs(s.x) < s.r + playerR).map(s => s.z + Math.sqrt((s.r + playerR) ** 2 - s.x ** 2)));
+  const stop = landmarkStop(0, 0.01).z;
   assert.ok(stop > 3);
   assert.ok(g.z - c.z - stop < 2.4);
   assert.ok(g.z - c.z - stop > 0.5);

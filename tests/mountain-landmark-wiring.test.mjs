@@ -2,11 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gameSource } from './helpers/game-source.mjs';
-import { landmarkSolids, landmarkFoot, onMountainside, LANDMARK } from '../js/mountain/landmark.js';
+import { landmarkStop, landmarkStopR, landmarkFoot, onMountainside, LANDMARK } from '../js/mountain/landmark.js';
 import { landmarkHeight } from '../js/mountain/backdrop.js';
 import { EN } from '../js/i18n-en.js';
 
-const PLAYER_R = 0.42;
 const MOUNTAIN_PLACE_MSG = readFileSync(new URL('../js/data/catalog.js', import.meta.url), 'utf8').match(/export const MOUNTAIN_PLACE_MSG = '([^']+)';/)?.[1];
 
 const src = gameSource();
@@ -15,39 +14,72 @@ const mtn = read('js/spaces/mountain.js');
 const spawn = mtn.slice(mtn.indexOf('export function spawnMountainGate'), mtn.indexOf('function ensureMountainSpace'));
 
 test('spawnMountainGate places the landmark mountain at its centre and no arch', () => {
-  assert.match(mtn, /import \{ buildLandmark, landmarkSolids \} from '\.\.\/mountain\/landmark\.js';/);
+  assert.match(mtn, /import \{ buildLandmark, landmarkStop \} from '\.\.\/mountain\/landmark\.js';/);
   assert.doesNotMatch(mtn, /gate-art|buildGateArt/);
   assert.match(spawn, /const art = buildLandmark\(THREE\);/);
   assert.match(spawn, /art\.position\.copy\(MOUNTAIN_LANDMARK\);/);
 });
 
-test('the mountain body is a ring of solid circles following the star-shaped foot', () => {
-  assert.match(mtn, /import \{ PLAYER_R \} from '\.\.\/data\/character\.js';/);
-  assert.match(spawn, /for \(const s of landmarkSolids\(PLAYER_R\)\) solidCircle\(MOUNTAIN_LANDMARK\.x \+ s\.x, MOUNTAIN_LANDMARK\.z \+ s\.z, s\.r\);/);
-  assert.doesNotMatch(mtn, /LANDMARK_SOLID_R/);
+test('the mountain body is a polar clamp hooked after resolveColliders in the village, not a collider ring', () => {
+  assert.doesNotMatch(mtn, /landmarkSolids|PLAYER_R/);
+  assert.doesNotMatch(spawn, /solidCircle/);
+  assert.match(mtn, /export function clampToLandmark\(p\) \{\s*const s = landmarkStop\(p\.x - MOUNTAIN_LANDMARK\.x, p\.z - MOUNTAIN_LANDMARK\.z\);\s*p\.x = MOUNTAIN_LANDMARK\.x \+ s\.x; p\.z = MOUNTAIN_LANDMARK\.z \+ s\.z;\s*\}/);
+  const hook = src.indexOf('  if (inVillage2()) clampToLandmark(player.position);');
+  assert.ok(hook > src.indexOf('  resolveColliders(player.position);'));
+  assert.match(src, /if \(atMirror\) clampToMirror\(player\.position\);[^\n]*\n  if \(inVillage2\(\)\) clampToLandmark\(player\.position\);/);
+  assert.match(src, /import \{ clampToLandmark, clampToMountain,/);
 });
 
-test('in 72 directions the player stops near the visible foot and never climbs the slope', () => {
-  const solids = landmarkSolids(PLAYER_R);
+test('landmarkStop pushes inside points radially out to the stop contour', () => {
   for (let i = 0; i < 72; i++) {
-    const a = (i / 72) * Math.PI * 2, ux = Math.cos(a), uz = Math.sin(a);
-    let t = 0;
-    for (const s of solids) {
-      const R = s.r + PLAYER_R, b = ux * s.x + uz * s.z, q = s.x * s.x + s.z * s.z - b * b;
-      if (q < R * R) t = Math.max(t, b + Math.sqrt(R * R - q));
+    const a = (i / 72) * Math.PI * 2, stop = landmarkStopR(a);
+    for (const k of [0.05, 0.4, 0.8, 0.99]) {
+      const p = { x: Math.cos(a) * stop * k, z: Math.sin(a) * stop * k };
+      const q = landmarkStop(p.x, p.z);
+      assert.notEqual(q, p);
+      assert.ok(Math.abs(Math.hypot(q.x, q.z) - stop) < 1e-9, `dir ${i} k ${k}`);
+      assert.ok(Math.abs(Math.atan2(q.z, q.x) - Math.atan2(p.z, p.x)) < 1e-9);
     }
-    const foot = landmarkFoot(a);
-    assert.ok(t >= 0.75 * foot && t <= foot + 0.5, `dir ${i}: stop ${t} foot ${foot}`);
-    assert.ok(landmarkHeight(t, a, LANDMARK.radius, LANDMARK.height, LANDMARK.spur) <= 0.3, `dir ${i} climbs`);
+  }
+  const c = landmarkStop(0, 0);
+  assert.ok(Math.abs(Math.hypot(c.x, c.z) - landmarkStopR(Math.atan2(c.z, c.x))) < 1e-9);
+});
+
+test('landmarkStop leaves outside points unchanged and returns a new object', () => {
+  const p = { x: 0, z: 12 };
+  const q = landmarkStop(p.x, p.z);
+  assert.deepEqual(q, { x: 0, z: 12 });
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2, r = landmarkStopR(a) + 0.01;
+    const s = landmarkStop(Math.cos(a) * r, Math.sin(a) * r);
+    assert.ok(Math.abs(s.x - Math.cos(a) * r) < 1e-12 && Math.abs(s.z - Math.sin(a) * r) < 1e-12);
   }
 });
 
-test('neighbouring body circles overlap so the player cannot slip between them', () => {
-  const s = landmarkSolids(PLAYER_R);
-  s.forEach((a, i) => {
-    const b = s[(i + 1) % s.length];
-    assert.ok(Math.hypot(a.x - b.x, a.z - b.z) < a.r + b.r + 2 * PLAYER_R, `gap after ${i}`);
-  });
+test('stop contour is continuous, sits at the visible foot and never up the slope', () => {
+  const N = 3600;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2, b = ((i + 1) / N) * Math.PI * 2;
+    assert.ok(Math.abs(landmarkStopR(a) - landmarkStopR(b)) < 0.05, `jump at ${i}`);
+    const foot = landmarkFoot(a), stop = landmarkStopR(a);
+    assert.ok(stop >= 0.75 * foot && stop <= foot + 0.5);
+    assert.ok(landmarkHeight(stop, a, LANDMARK.radius, LANDMARK.height, LANDMARK.spur) <= 0.3, `dir ${i} climbs`);
+  }
+});
+
+test('straight walks with real step sizes never tunnel inside the stop contour', () => {
+  for (const step of [0.1, 0.2, 0.42]) {
+    for (let deg = 0; deg < 360; deg += 2) {
+      const a = deg * Math.PI / 180, ux = Math.cos(a), uz = Math.sin(a);
+      for (let off = -12; off <= 12; off += 1) {
+        let x = -ux * 15 - uz * off, z = -uz * 15 + ux * off;
+        for (let n = 0; n * step < 30; n++) {
+          ({ x, z } = landmarkStop(x + ux * step, z + uz * step));
+          assert.ok(Math.hypot(x, z) >= landmarkStopR(Math.atan2(z, x)) - 0.01, `step ${step} deg ${deg} off ${off}`);
+        }
+      }
+    }
+  }
 });
 
 test('outdoor decor is refused on the mountainside with the approved copy', () => {
