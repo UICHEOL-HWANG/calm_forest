@@ -542,7 +542,7 @@ export function updatePet(dt, t) {
   if (!pet3d) return;
   // 👣 발자국과 같은 규칙 — 바닥이 없거나 카메라가 붙는 공간에선 끈다.
   //    다시 보일 땐 플레이어 발밑에서 시작한다(따라오느라 벽을 뚫지 않게).
-  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror;   // 🌙 꿈속 — 펫의 따라오기는 섬 모양을 모른다(허공으로 걸어 나간다)
+  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror;
   if (off) {
     if (pet3d.visible) { pet3d.visible = false; $w.petJob = null; }
     return;
