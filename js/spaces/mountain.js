@@ -27,6 +27,7 @@ import { isTouchDevice } from '../touch-sim.js';
 import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, boostButton } from '../mountain/sled-hud.js';
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
+import { fadeNameTag } from './npc.js';
 
 export const MOUNTAIN_EXIT_LOCAL = { x: 0, z: 83 };
 let reveal = null;
@@ -175,7 +176,7 @@ export function clampToMountain(p) {
 let cafe = null;
 
 function ensureCafe() {
-  if (!cafe) cafe = createCafe({ THREE, scene, mountain: MOUNTAIN, makeNameTag, getMountainGroup: () => $w.mountainGroup });
+  if (!cafe) cafe = createCafe({ THREE, scene, mountain: MOUNTAIN, makeNameTag, fadeNameTag, getMountainGroup: () => $w.mountainGroup });
   return cafe;
 }
 

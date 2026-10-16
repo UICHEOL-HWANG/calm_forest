@@ -57,3 +57,13 @@ test('inside the cafe the mountain is hidden and the warm look replaces the moun
   assert.match(room, /applyLook\(/);
   assert.match(read('js/spaces/mountain.js'), /if \(cafe\?\.active\(\)\) return cafe\.lookFrame\(env\);/);
 });
+
+test('the barista name tag fades in by player distance like village NPC tags', () => {
+  const room = read('js/mountain/cafe-room.js');
+  assert.match(room, /createCafe\(\{[^}]*fadeNameTag[^}]*\}\)/);
+  assert.match(room, /const d = Math\.hypot\(l\.x - BARISTA\.x, l\.z - BARISTA\.z\);/);
+  assert.match(room, /fadeNameTag\(tag, d\);/);
+  const m = read('js/spaces/mountain.js');
+  assert.match(m, /import \{[^}]*\bfadeNameTag\b[^}]*\} from '\.\/npc\.js';/);
+  assert.match(m, /createCafe\(\{[^}]*fadeNameTag[^}]*\}\)/);
+});

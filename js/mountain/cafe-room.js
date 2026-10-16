@@ -22,7 +22,7 @@ function emojiTexture(THREE, emoji) {
   return tex;
 }
 
-export function createCafe({ THREE, scene, mountain, makeNameTag, getMountainGroup }) {
+export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, getMountainGroup }) {
   const origin = { x: mountain.x + CAFE_OFFSET.x, z: mountain.z + CAFE_OFFSET.z };
   const sunAt = new THREE.Vector3(origin.x, 0, origin.z);
   const group = new THREE.Group();
@@ -71,7 +71,9 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, getMountainGro
     },
     update(dt, time, p) {
       const l = local(p);
-      animateBubble({ bubble, ring, base: BUBBLE, dist: Math.hypot(l.x - BARISTA.x, l.z - BARISTA.z), alertR: 3, time, dt });
+      const d = Math.hypot(l.x - BARISTA.x, l.z - BARISTA.z);
+      fadeNameTag(tag, d);
+      animateBubble({ bubble, ring, base: BUBBLE, dist: d, alertR: 3, time, dt });
     },
   };
 }
