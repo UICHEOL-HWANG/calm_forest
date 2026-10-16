@@ -169,7 +169,7 @@ import {
 import {
   buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
-import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainMinimapMarks, sledActive, spawnMountainGate, updateMountain } from './spaces/mountain.js';
+import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, sledActive, spawnMountainGate, updateMountain } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
@@ -1374,6 +1374,7 @@ let curAnimal = ANIMALS[0];   // 현재 캐릭터 정의 — 등 수납 위치 �
 let restArmX = 0.78;      // 손에 들었을 때의 좌우 위치(캐릭터 몸집마다 다름 — applyCharacter 가 갱신)
 let toolStow = 0;         // 🎒 도구 수납 진행 0(손 옆)~1(등 뒤). ✋맨손이면 1로 보간된다
 let sunLight, hemiLight, ambient;
+const HEMI_SKY = 0xffffff, HEMI_GROUND = 0xbfe8c9;
 let fireflies, stars;
 const trees = [];
 const swayables = [];
@@ -2739,7 +2740,7 @@ function initScene() {
 }
 
 function initLights() {
-  hemiLight = new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.9);
+  hemiLight = new THREE.HemisphereLight(HEMI_SKY, HEMI_GROUND, 0.9);
   scene.add(hemiLight);
   ambient = new THREE.AmbientLight(0xfff0dd, 0.25);
   scene.add(ambient);
@@ -6417,6 +6418,7 @@ function updateDayNight(dt) {
   const wDim = WEATHER === 'rain' ? 0.55 : WEATHER === 'fog' ? 0.6 : WEATHER === 'snow' ? 0.8 : 1;
   sunLight.intensity = (0.1 + daylight * 1.2) * wDim;   // 궂은 날 햇빛 약하게
   hemiLight.intensity = 0.2 + daylight * 0.75;
+  hemiLight.color.setHex(HEMI_SKY); hemiLight.groundColor.setHex(HEMI_GROUND);
   ambient.color.setHex(0xfff0dd).lerp(new THREE.Color(0x33406e), nightAmt); // 밤엔 푸른 앰비언트
   ambient.intensity = 0.2 + nightAmt * 0.12;
   const ang = timeOfDay * Math.PI * 2;
@@ -6556,6 +6558,7 @@ function updateDayNight(dt) {
 
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
   //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
+  if (atMountain) mountainLookFrame({ scene, hemiLight, ambient, sunLight, bloomPass }, dt);
   ui.setTime?.(isNight() ? 'night' : 'day', WEATHER === 'clear' ? null : WEATHER);
 
   // 🌓 그림자 화해 — 공간 전환은 setSpaceVisible() 이 처리하지만, exit 함수 몇 곳은 플래그를

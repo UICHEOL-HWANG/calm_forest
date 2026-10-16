@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from '../vendor/three/three.module.js';
 import { CLIMB_PATH, CLIMB_START, ACORNS, PLAZA, nearestOnPath } from '../js/mountain/climb.js';
-import { SUMMIT_Y, slopePoint, pathY, pathHeight, terrainHeight, acornY, buildMountainSpace } from '../js/mountain/terrain.js';
+import { SUMMIT_Y, slopePoint, pathY, pathHeight, terrainHeight, acornY } from '../js/mountain/terrain.js';
+import { buildMountainSpace, PLAIN } from '../js/mountain/interior-art.js';
 import { COURSE, centerX, COURSE_V } from '../js/mountain/course.js';
 import { PHYS_V } from '../js/mountain/sled.js';
 
@@ -175,10 +176,11 @@ test('the space ground is one heightfield mesh built from terrainHeight within t
   assert.ok(ground?.isMesh && meshes.includes(ground));
   const pos = ground.geometry.attributes.position;
   assert.ok(ground.geometry.attributes.color);
-  for (let i = 0; i < pos.count; i += 97) {
+  const field = pos.count - PLAIN.segments * 3;
+  for (let i = 0; i < field; i += 97) {
     assert.ok(Math.abs(pos.getY(i) - terrainHeight(pos.getX(i), pos.getZ(i))) < 1e-4, `vertex ${i}`);
   }
   let maxR = 0;
-  for (let i = 0; i < pos.count; i++) maxR = Math.max(maxR, Math.hypot(pos.getX(i) - summit.x, pos.getZ(i) - summit.z));
+  for (let i = 0; i < field; i++) maxR = Math.max(maxR, Math.hypot(pos.getX(i) - summit.x, pos.getZ(i) - summit.z));
   assert.ok(maxR >= 70);
 });

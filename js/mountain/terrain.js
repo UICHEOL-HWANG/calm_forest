@@ -1,8 +1,5 @@
 import { COURSE, centerX } from './course.js';
 import { ACORNS, CLIMB_PATH, PLAZA, nearestOnPath } from './climb.js';
-import { colorAt, SNOW, cloudPuffMesh } from './backdrop.js';
-import { buildSledMesh } from './sled-art.js';
-import { colored, mergeColored } from './merge-colored.js';
 
 export const SUMMIT_Y = 30;
 const SLOPE_DROP = 30;
@@ -19,10 +16,6 @@ const BASE_MARGIN = 0.4;
 const BASE_RISE = 0.7;
 const SLOPE_KEEP = 3;
 const SUMMIT = CLIMB_PATH.at(-1);
-const GRID_STEP = 2;
-const GRID_X = 74;
-const GRID_Z0 = -78;
-const GRID_Z1 = 92;
 const CLOUD_Y = SUMMIT_Y * 0.4;
 const CLOUD_R0 = 10;
 const CLOUD_DIP = 1.5;
@@ -31,8 +24,6 @@ const CLOUD_CLUSTERS = 36;
 const CLOUD_FLANK_ROWS = 8;
 const CLOUD_FLANK_Z0 = 24;
 const CLOUD_FLANK_STEP = 4.5;
-const ROCK = 0x6b625a;
-const OVERLAY = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 };
 
 export function slopePoint(z, x) {
   const k = z / COURSE.length;
@@ -100,56 +91,6 @@ export function terrainHeight(x, z) {
   return Math.max(0, ramp, Math.min(baseCone(x, z), envelope));
 }
 
-function strip(THREE, pts, width, color) {
-  const pos = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz) || 1;
-    const nx = (-dz / len) * width / 2, nz = (dx / len) * width / 2;
-    const q = [[a.x - nx, a.y, a.z - nz], [a.x + nx, a.y, a.z + nz], [b.x + nx, b.y, b.z + nz], [b.x - nx, b.y, b.z - nz]];
-    pos.push(...q[0], ...q[2], ...q[1], ...q[0], ...q[3], ...q[2]);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, flatShading: true, side: THREE.DoubleSide, ...OVERLAY }));
-}
-
-function groundTint(x, z, h) {
-  if (inSlopeCorridor(x, z, 1)) return SNOW;
-  return colorAt(h, Math.atan2(z - SUMMIT.z, x - SUMMIT.x), SUMMIT_Y * 1.2);
-}
-
-function groundMesh(THREE) {
-  const nx = Math.round((GRID_X * 2) / GRID_STEP), nz = Math.round((GRID_Z1 - GRID_Z0) / GRID_STEP);
-  const vert = (i, j) => {
-    const x = -GRID_X + i * GRID_STEP, z = GRID_Z0 + j * GRID_STEP;
-    return [x, terrainHeight(x, z), z];
-  };
-  const rows = Array.from({ length: nz + 1 }, (_, j) => Array.from({ length: nx + 1 }, (_, i) => vert(i, j)));
-  const pos = [], col = [], c = new THREE.Color();
-  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-    const p00 = rows[j][i], p10 = rows[j][i + 1], p01 = rows[j + 1][i], p11 = rows[j + 1][i + 1];
-    for (const tri of [[p00, p01, p11], [p00, p11, p10]]) {
-      const cx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3, cy = (tri[0][1] + tri[1][1] + tri[2][1]) / 3, cz = (tri[0][2] + tri[1][2] + tri[2][2]) / 3;
-      c.setHex(groundTint(cx, cz, cy));
-      for (const v of tri) { pos.push(v[0], v[1], v[2]); col.push(c.r, c.g, c.b); }
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.computeVertexNormals();
-  return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
-}
-
-function instanced(THREE, geo, color, items) {
-  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color, flatShading: true }), items.length);
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3();
-  items.forEach(([x, y, z, sc], i) => { m.compose(v.set(x, y, z), q, s.setScalar(sc)); mesh.setMatrixAt(i, m); });
-  return mesh;
-}
-
 const SLOPE_LINE = Array.from({ length: 111 }, (_, i) => {
   const z = (i * COURSE.length) / 110;
   return slopePoint(z, centerX(z));
@@ -202,38 +143,4 @@ export function cloudPuffs() {
   return [...ringCentres(rnd), ...flankCentres(rnd)]
     .flatMap(([cx, cz]) => clusterPuffs(rnd, cx, cz))
     .filter(([x, y, z, s]) => cloudClear(x, y, z, s));
-}
-
-function obstacleMesh(THREE) {
-  const geos = COURSE.obstacles.map(o => {
-    const p = slopePoint(o.z, o.x);
-    const snow = o.kind === 'snowball';
-    const g = colored(THREE, snow ? new THREE.IcosahedronGeometry(1, 0) : new THREE.DodecahedronGeometry(1, 0), snow ? SNOW : ROCK);
-    return g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y + (snow ? 0.6 : 0.5), p.z), new THREE.Quaternion(), new THREE.Vector3().setScalar(o.r * 0.8)));
-  });
-  return new THREE.Mesh(mergeColored(THREE, geos), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
-}
-
-export function buildMountainSpace(THREE) {
-  const group = new THREE.Group();
-  const ground = groundMesh(THREE);
-  const climbPts = CLIMB_PATH.map((p, i) => ({ x: p.x, y: pathY(i) + 0.05, z: p.z }));
-  const slopePts = Array.from({ length: 67 }, (_, i) => {
-    const z = i * (COURSE.length / 66);
-    const p = slopePoint(z, centerX(z));
-    return { ...p, y: p.y + 0.05 };
-  });
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(PLAZA.r, 24), new THREE.MeshLambertMaterial({ color: 0xe9eef3, ...OVERLAY }));
-  plaza.rotation.x = -Math.PI / 2;
-  plaza.position.set(PLAZA.x, 0.02, PLAZA.z);
-  const flags = instanced(THREE, new THREE.ConeGeometry(0.35, 1.6, 4), 0xe8743c,
-    COURSE.flags.flatMap(f => [-1, 1].map(side => { const p = slopePoint(f.z, f.x + side * f.half); return [p.x, p.y + 0.8, p.z, 1]; })));
-  const obstacles = obstacleMesh(THREE);
-  const clouds = cloudPuffMesh(THREE, cloudPuffs());
-  const sled = buildSledMesh(THREE);
-  const acorns = instanced(THREE, new THREE.IcosahedronGeometry(0.35, 0), 0x9a6a2f,
-    ACORNS.map((a, i) => [a.x, acornY(i), a.z, 1]));
-  group.add(ground, plaza, strip(THREE, climbPts, 3, 0xcfc6b4), strip(THREE, slopePts, COURSE.width, 0xf6f8fb), flags, obstacles, acorns, clouds, sled);
-  group.userData = { acorns, ground, obstacles, clouds, sled };
-  return group;
 }

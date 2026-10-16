@@ -1,12 +1,15 @@
 import * as THREE from 'three';
-import { $w, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty } from '../game.js';
+import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
 import { isMountainOpen } from '../mountain/unlock.js';
 import { buildLandmark, landmarkStop } from '../mountain/landmark.js';
 import { createReveal } from '../mountain/reveal.js';
-import { buildMountainSpace, pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
+import { pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
+import { buildMountainSpace, paintInterior, followCamera } from '../mountain/interior-art.js';
+import { applyLook } from '../mountain/interior-look.js';
+import { MOUNTAIN_THEMES, THEME_CHECK_S, mountainLook } from '../mountain/theme.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
@@ -20,6 +23,12 @@ import { inVillage2 } from './doors.js';
 export const MOUNTAIN_EXIT_LOCAL = { x: 0, z: 83 };
 let reveal = null;
 let run = null;
+let look = null;
+let lookT = 0;
+let fallT = 0;
+const skies = {};
+const _sunAt = new THREE.Vector3();
+const _camLocal = { x: 0, y: 0, z: 0 };
 
 const GO_CLEAR_MS = 800;
 
@@ -59,6 +68,7 @@ function ensureMountainSpace() {
 
 export function enterMountain() {
   if (!mountainOpen()) { ui.toast?.('🏔️ 내일 열려요', 2200); return; }
+  look = null;
   $w.atMountain = true;
   setFogExempt(player, true);
   ensureMountainSpace().visible = true;
@@ -77,6 +87,7 @@ export function enterMountain() {
 export function exitMountain() {
   abandonRun();
   $w.atMountain = false;
+  look = null;
   setFogExempt(player, false);
   if ($w.mountainGroup) $w.mountainGroup.visible = false;
   setCameraRig(null);
@@ -85,6 +96,43 @@ export function exitMountain() {
   snapCamera(); setSpaceVisible(); setBGMTheme('main');
   Sound.blip();
   trackEvent('mountain_exit');
+}
+
+function skyTexture(key) {
+  if (skies[key] || typeof document === 'undefined') return skies[key] || null;
+  const th = MOUNTAIN_THEMES[key];
+  const css = h => `#${h.toString(16).padStart(6, '0')}`;
+  const c = document.createElement('canvas');
+  c.width = 4; c.height = 256;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, css(th.skyTop)); grad.addColorStop(0.75, css(th.skyBot)); grad.addColorStop(1, css(th.skyBot));
+  g.fillStyle = grad; g.fillRect(0, 0, 4, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  skies[key] = tex;
+  return tex;
+}
+
+function refreshLook(ud) {
+  const next = mountainLook({ timeOfDay: gameState.timeOfDay, weather: WEATHER });
+  if (next.key !== look?.key) paintInterior(THREE, ud, MOUNTAIN_THEMES[next.key]);
+  ud.snowfall.visible = next.snowfall;
+  look = next;
+}
+
+export function mountainLookFrame(env, dt) {
+  const g = $w.mountainGroup;
+  if (!g) return;
+  const ud = g.userData;
+  lookT -= dt;
+  if (!look || lookT <= 0) { lookT = THEME_CHECK_S; refreshLook(ud); }
+  fallT += dt;
+  _camLocal.x = camera.position.x - g.position.x;
+  _camLocal.y = camera.position.y - g.position.y;
+  _camLocal.z = camera.position.z - g.position.z;
+  followCamera(ud, _camLocal, fallT);
+  applyLook({ ...env, target: _sunAt.copy(player.position) }, MOUNTAIN_THEMES[look.key], skyTexture(look.key));
 }
 
 export function clampToMountain(p) {

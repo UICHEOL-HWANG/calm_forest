@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from '../vendor/three/three.module.js';
 import { gameSource } from './helpers/game-source.mjs';
-import { SUMMIT_Y, slopePoint, terrainHeight, buildMountainSpace, cloudPuffs } from '../js/mountain/terrain.js';
+import { SUMMIT_Y, slopePoint, terrainHeight, cloudPuffs } from '../js/mountain/terrain.js';
+import { buildMountainSpace, INTERIOR_DRAW_BUDGET } from '../js/mountain/interior-art.js';
+import { MOUNTAIN_THEMES } from '../js/mountain/theme.js';
 import { COURSE, centerX } from '../js/mountain/course.js';
 import { CLIMB_PATH, nearestOnPath } from '../js/mountain/climb.js';
 import { SLED_CAM, SLED_SEAT, facingYaw, sledYaw, sledCamTargets, sledPitch } from '../js/mountain/sled-view.js';
@@ -12,8 +14,8 @@ import { buildSledMesh } from '../js/mountain/sled-art.js';
 const src = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
 const between = (s, a, b) => s.slice(s.indexOf(a), s.indexOf(b, s.indexOf(a) + a.length));
 const meshesOf = g => { const out = []; g.traverse(o => { if (o.isMesh) out.push(o); }); return out; };
+const drawablesOf = g => { const out = []; g.traverse(o => { if (o.isMesh || o.isPoints) out.push(o); }); return out; };
 const VFOV = 42;
-const SPACE_MESH_BUDGET = 9;
 const PATH_BAND = 1.5;
 const CLEAR = 3;
 
@@ -135,8 +137,8 @@ test('the sled is one hidden mesh in the space group', () => {
 });
 
 test('the space stays within its draw-call budget', () => {
-  const ms = meshesOf(buildMountainSpace(THREE));
-  assert.ok(ms.length <= SPACE_MESH_BUDGET, `${ms.length} meshes`);
+  const ds = drawablesOf(buildMountainSpace(THREE));
+  assert.ok(ds.length <= INTERIOR_DRAW_BUDGET, `${ds.length} drawables`);
 });
 
 test('snowballs and rocks share one merged mesh that keeps both colours', () => {
@@ -147,7 +149,7 @@ test('snowballs and rocks share one merged mesh that keeps both colours', () => 
   const hexes = new Set();
   const c = new THREE.Color();
   for (let i = 0; i < col.count; i += 3) hexes.add(c.setRGB(col.getX(i), col.getY(i), col.getZ(i)).getHex());
-  assert.deepEqual([...hexes].sort(), [0x6b625a, 0xf6f8fb].sort());
+  assert.deepEqual([...hexes].sort(), [MOUNTAIN_THEMES.day.rock, MOUNTAIN_THEMES.day.snow].sort());
 });
 
 test('the sled shows for countdown and sled and hides when the run closes', () => {
