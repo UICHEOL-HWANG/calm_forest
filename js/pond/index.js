@@ -4,7 +4,7 @@ import { trackEvent } from '../analytics.js';
 import { FISH_KINDS } from '../data/catalog.js';
 import { SEA_SPECIES, HOUSE_POS } from '../data/places.js';
 import { POND_R, POND_SPOTS, POND_VIEW_R, POND_VIEW_SEC } from '../data/pond.js';
-import { pondView, pondChanges, pickPondSpot, pondBlocks, pondToastDue } from './rules.js';
+import { pondView, pondChanges, pickPondSpot, pondBlocks, pondToastDue, shouldTrackCreated } from './rules.js';
 import { buildPond } from './build.js';
 import { POND_COPY } from './copy.js';
 import { e3Decision } from '../exp-e3-boot.js';
@@ -41,7 +41,9 @@ export function refreshPond(trigger) {
   last = view;
   for (const c of changes) {
     if (c.type === 'created') {
-      trackEvent('pond_created', { trigger: trigger === 'load' ? 'existing' : trigger, species: c.species });
+      if (shouldTrackCreated(trigger, !!gameState.hintsSeen.pond)) {
+        trackEvent('pond_created', { trigger: trigger === 'load' ? 'existing' : trigger, species: c.species });
+      }
       if (!gameState.hintsSeen.pond) { toastPending = true; toastWait = 0; }
     } else {
       trackEvent('pond_fish_added', { species: c.species, kind: c.type === 'sea' ? 'sea' : 'river', count: view.fish.length + (view.sea ? 1 : 0) });
@@ -65,9 +67,12 @@ export function updatePond(dt, inVillage) {
   pond.update(dt);
   const near = dist2D(player.position, pond.group.position) < POND_VIEW_R;
   nearSec = near ? nearSec + dt : 0;
-  if (nearSec >= POND_VIEW_SEC && viewedDay !== kstDay()) {
-    viewedDay = kstDay();
-    trackEvent('pond_view', { count: (last?.fish.length ?? 0) + (last?.sea ? 1 : 0) });
+  if (nearSec >= POND_VIEW_SEC) {
+    const day = kstDay();
+    if (viewedDay !== day) {
+      viewedDay = day;
+      trackEvent('pond_view', { count: (last?.fish.length ?? 0) + (last?.sea ? 1 : 0) });
+    }
   }
 }
 

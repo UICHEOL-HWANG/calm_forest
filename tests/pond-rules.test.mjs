@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { POND_MAX_RIVER, pondFish, pondSea, pondView, pondChanges, pickPondSpot, pondBlocks, POND_TOAST_DELAY, pondToastDue } from '../js/pond/rules.js';
+import { POND_MAX_RIVER, pondFish, pondSea, pondView, pondChanges, pickPondSpot, pondBlocks, POND_TOAST_DELAY, pondToastDue, shouldTrackCreated } from '../js/pond/rules.js';
 
 const RIVER = ['sakura_trout', 'puffer', 'maple_carp', 'ice_smelt', 'rare', 'uncommon', 'common'];
 const SEA = ['aji', 'buri', 'mola', 'tuna'];
@@ -82,4 +82,11 @@ test('생성 토스트는 마을에서 잠시 기다린 뒤 한 번만', () => {
   assert.equal(pondToastDue({ ...ok, seen: true }), false);
   assert.equal(pondToastDue({ ...ok, inVillage: false }), false);
   assert.equal(pondToastDue({ ...ok, waitedSec: 3.9 }), false);
+});
+
+test('shouldTrackCreated: 로드 시에는 아직 안 본 경우만', () => {
+  assert.equal(shouldTrackCreated('fishing', false), true);
+  assert.equal(shouldTrackCreated('sea', true), true);
+  assert.equal(shouldTrackCreated('load', false), true);
+  assert.equal(shouldTrackCreated('load', true), false);
 });

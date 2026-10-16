@@ -50,3 +50,8 @@ test('토스트 대기는 예약 시점부터 센다', () => {
   assert.ok(p.includes('toastWait = 0'));
   assert.match(p, /toastPending = true;\s*toastWait = 0/);
 });
+
+test('pond_created 는 로드마다 보내지 않는다', () => {
+  const p = src('js/pond/index.js');
+  assert.ok(p.includes('shouldTrackCreated(trigger, !!gameState.hintsSeen.pond)'));
+});

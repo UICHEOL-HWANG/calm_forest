@@ -53,3 +53,7 @@ export const POND_TOAST_DELAY = 4;
 export function pondToastDue({ pending, seen, inVillage, waitedSec }) {
   return !!pending && !seen && !!inVillage && waitedSec >= POND_TOAST_DELAY;
 }
+
+export function shouldTrackCreated(trigger, seen) {
+  return trigger !== 'load' || !seen;
+}
