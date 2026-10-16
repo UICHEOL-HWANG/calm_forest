@@ -3942,7 +3942,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -3958,7 +3958,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
@@ -5904,12 +5904,13 @@
 
     // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
     const LB_BOARDS = [
-      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요' },
-      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', fmt: s => (s / 10).toFixed(1) },
+      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요', daily: true },
+      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', daily: true, fmt: s => (s / 10).toFixed(1) },
       { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
       { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
       { id: 'cook',  label: '🍳 요리왕',      unit: '회',  desc: '이번 주 요리 횟수' },
       { id: 'quest', label: '📜 퀘스트',      unit: '건',  desc: '이번 주 완료한 의뢰' },
+      { id: 'sled',  label: '🛷 썰매',        unit: '초',  desc: '오늘 설산 썰매 최고 기록', daily: true, fmt: v => (-v / 1000).toFixed(2) },
     ];
     let lbBoard = 'boat';
     const lbCache = {};   // 모달 열려있는 동안 보드별 응답 캐시(탭 왕복 시 재요청 방지)
@@ -5924,7 +5925,7 @@
     async function renderLb(board) {
       lbBoard = board;
       const meta = LB_BOARDS.find(b => b.id === board);
-      $('lb-sub').textContent = meta.desc + (board === 'boat' || board === 'sea' ? '' : ' — 매주 월요일 새로 시작해요');
+      $('lb-sub').textContent = meta.desc + (meta.daily ? '' : ' — 매주 월요일 새로 시작해요');
       [...document.querySelectorAll('.lb-tab')].forEach(b => b.classList.toggle('active', b.dataset.id === board));
       const list = $('lb-list'), meBox = $('lb-me');
       list.innerHTML = '<div class="lb-empty">불러오는 중… 🌿</div>'; meBox.innerHTML = '';

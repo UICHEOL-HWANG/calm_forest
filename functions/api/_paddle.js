@@ -10,6 +10,7 @@
 // =============================================================
 import { ITEMS } from '../../js/cosmetics/catalog.js';
 import { PET_KINDS } from '../../js/pet/rules.js';
+import { CASH_SLED_IDS, sledCash } from '../../js/mountain/sled-lineup.js';
 
 export const TOLERANCE_SEC = 300;   // Paddle SDK 기본 5초는 시계 오차에 너무 빡빡하다
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,10 +54,11 @@ export async function verifySignature({ header, rawBody, secret, now = Date.now(
 }
 
 /** priceId → { itemId, kind } — cash 가 있는 항목만. 가격표 단일 출처(카탈로그) */
-export function priceIndex() {
+export function priceIndex(sledCashOf = sledCash) {
   const m = new Map();
   for (const it of ITEMS) if (it.price.cash) m.set(it.price.cash.priceId, { itemId: it.id, kind: 'cosmetic' });
   for (const k of PET_KINDS) if (k.cash) m.set(k.cash.priceId, { itemId: k.id, kind: 'pet' });
+  for (const id of CASH_SLED_IDS) { const c = sledCashOf(id); if (c) m.set(c.priceId, { itemId: id, kind: 'sled' }); }
   return m;
 }
 

@@ -15,6 +15,6 @@ test('오라 렌더는 매 프레임 갱신되고 실내·특수 공간에선 �
   assert.match(SRC, /updateAura\(dt\);/);
   const i = SRC.indexOf('function updateAura(');
   assert.ok(i > 0);
-  assert.match(SRC.slice(i, i + 600), /indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMine \|\| atDream/);
+  assert.match(SRC.slice(i, i + 600), /indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream/);
   assert.match(SRC, /function refreshAura\(\)/);
 });

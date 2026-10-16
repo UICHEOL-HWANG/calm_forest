@@ -3,13 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 6개 · 품목 38종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🤝 초대 보상 3)', () => {
+test('슬롯 6개 · 품목 41종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🤝 초대 보상 3)', () => {
   assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools']);
-  assert.equal(ITEMS.length, 38);
-  assert.equal(itemsOf('head').length, 8);
+  assert.equal(ITEMS.length, 41);
+  assert.equal(itemsOf('head').length, 9);
   assert.equal(itemsOf('neck').length, 3);
-  assert.equal(itemsOf('back').length, 6);
-  assert.equal(itemsOf('trail').length, 9);
+  assert.equal(itemsOf('back').length, 7);
+  assert.equal(itemsOf('trail').length, 10);
   assert.equal(itemsOf('skin').length, 6);
   assert.equal(itemsOf('tools').length, 6);
   assert.equal(ITEMS.filter(i => i.reward).length, 3);
@@ -60,8 +60,8 @@ test('가방류는 side 앵커, 망토만 back — 🦊여우 꼬리 회피(§3-
 
 test('발자국 — 프리미엄 2개가 맨 앞, 코인 자국은 등급이 오를수록 비싸다(§4-4)', () => {
   const t = itemsOf('trail');
-  assert.deepEqual(t.map(i => i.id), ['firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl', 'paw', 'drop', 'flower', 'star', 'sparkle']);
-  const coin = t.filter(i => !i.premium);
+  assert.deepEqual(t.map(i => i.id), ['firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl', 'paw', 'drop', 'flower', 'star', 'sparkle', 'snowflake']);
+  const coin = t.filter(i => !i.premium && !i.shop);
   assert.deepEqual(coin.map(i => i.tier), ['기본', '기본', '고급', '특별', '특별']);
   for (let i = 1; i < coin.length; i++) assert.ok(coin[i].price.coins > coin[i - 1].price.coins);
 });

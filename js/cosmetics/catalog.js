@@ -73,6 +73,9 @@ const RAW = [
   { id: 'flower',  slot: 'trail', ico: '🌸', name: '꽃',     coins: 1500, tier: '고급' },
   { id: 'star',    slot: 'trail', ico: '⭐', name: '별',     coins: 2200, tier: '특별' },
   { id: 'sparkle', slot: 'trail', ico: '✨', name: '반짝이', coins: 2600, tier: '특별' },
+  { id: 'earmuff',   slot: 'head',  ico: '🎧', name: '털 귀마개',         coins: 1000, earSafe: 'low', shop: 'hut' },
+  { id: 'sled_pack', slot: 'back',  ico: '🛷', name: '등에 멘 작은 썰매', coins: 1400, anchor: 'back', shop: 'hut' },
+  { id: 'snowflake', slot: 'trail', ico: '❄️', name: '눈송이 발자국',     coins: 1200, tier: '고급', shop: 'hut' },
 ];
 
 export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward
