@@ -6119,9 +6119,9 @@ const CATCH_ARC = 0.4;            // 포물선 비행 시간(초)
 //   🎨 드로우콜: 몸통·꼬리·눈을 정점색으로 한 덩어리(메시 1개). 예전엔 4개였다 —
 //      🏛️박물관 1층에 7종이 서면 28 → 7(+무지개 눈 1). 파닥임은 그룹을 돌리므로 합쳐도 같다.
 //   ⚠️ 공유 캐시(shared)에 넣지 않는다 — 박물관이 나갈 때 disposeTree 로 지오메트리를 버린다.
-function fishMesh(rarity) {
+function fishMesh(rarity, colOverride) {
   const g = new THREE.Group();
-  const col = FISH_KINDS.find(k => k.rarity === rarity)?.col   // 🍂 계절 한정 어종은 표에 색이 있다
+  const col = colOverride ?? FISH_KINDS.find(k => k.rarity === rarity)?.col
     ?? (rarity === 'rare' ? 0x7ae0ff : rarity === 'uncommon' ? 0xe06a5a : 0x9fb4c8);
   const body = new THREE.SphereGeometry(0.26, 8, 6).scale(1.6, 0.9, 0.7);
   const tail = new THREE.ConeGeometry(0.16, 0.3, 6).rotateZ(Math.PI / 2).translate(-0.52, 0, 0);
