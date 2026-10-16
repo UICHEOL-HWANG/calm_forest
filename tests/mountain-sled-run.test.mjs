@@ -114,3 +114,14 @@ test('a faster fourth run updates best without paying', () => {
   assert.equal(c.gameState.mountain.sled.best, 38000);
   assert.equal(paid.filter(p => p[1] === 'sled_run').length, 3);
 });
+
+test('abandon rows carry no penalty, finish rows count missed flags', () => {
+  const { c, rows } = run();
+  c.sledAbandon('sled', CTX, SLED(12000, 3));
+  c.sledAbandon('climb', CTX, null);
+  c.sledSettle(SLED(40000, 10), CTX, { fpsAvg: 58 });
+  assert.equal(rows[0].penalty_ms, null);
+  assert.equal(rows[0].flags_passed, 3);
+  assert.equal(rows[1].penalty_ms, null);
+  assert.equal(rows[2].penalty_ms, 2 * PHYS.flagPenaltyMs);
+});

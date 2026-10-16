@@ -49,7 +49,7 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
     abandon_stage: stage,
     time_ms: timeMs,
     flags_passed: sled ? sled.flagsPassed : null,
-    penalty_ms: sled ? (COURSE.flags.length - sled.flagsPassed) * PHYS.flagPenaltyMs : null,
+    penalty_ms: sled && outcome === 'finish' ? (COURSE.flags.length - sled.flagsPassed) * PHYS.flagPenaltyMs : null,
     rewarded: !!pay.rewarded,
     coins: pay.coins || 0,
     splits: sled ? sled.splits : null,
