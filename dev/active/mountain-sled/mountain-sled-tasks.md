@@ -62,12 +62,36 @@
 7. 산장 카페(4곳 동시 배포 필수): 옛 클라이언트는 세이브의 모르는 꾸미기·장식 id(earmuff, snowflake, sled_pack, snowglobe, hutmodel, summitflag)를 지워버린다 → 웹·토스·Play·iOS 동시에
 8. 배포 다음 날 BigQuery: hut_cafe_enter / hut_cafe_open / hut_cafe_buy, hut_sled_pick, mountain_cold(stage), mountain_hut.cold, sled_start.sled_skin 적재 확인 · ga_param_overflow 0건
 
-## 🛷 썰매 라인업 (2026-10-16 설계·계획 완료, 구현 전)
+## 🛷 썰매 라인업 (2026-10-16 구현 완료, 미병합·미배포)
 
 - 스펙: docs/superpowers/specs/2026-10-16-sled-lineup-design.md
 - 계획: docs/superpowers/plans/2026-10-16-sled-lineup.md (Task 1~7)
 - 결정: C안 장단점(도토리 7개 이상적 시간 동일) · F 투톤 아이스크림 · 능력 썰매 3종 코인 1,500 + 웹 ₩3,900 · 터보건 첫 완주 보상
 - 시안: dev/active/mountain-sled/proto/sled-lineup.html?style=f · shots-sled/compare-mix.html
 - [x] 터보건 문구 2개 확정 (2026-10-16)
-- [ ] Task 1~7 구현
-- [ ] 배포: SQL(sled 열·phys_v 2) → 5곳 동시 배포 → ⚠️ Paddle 시드 production(사용자 확인) → price-ids 커밋 → 웹 재배포
+- [x] Task 1~7 구현 (npm test 전체 통과, 브라우저 시각 확인은 컨트롤러 몫)
+- 만든 것
+  - 썰매 8종 데이터·이상적 시간 균형 테스트 (js/mountain/sled-lineup.js, 능력 썰매 wind·acorn·skiff)
+  - 썰매별 물리, PHYS_V 2 (js/mountain/sled.js)
+  - 곡선 썰매 모델 8종
+  - 산장 카페 썰매 라인업 탭, 첫 완주 보상 터보건
+  - 능력 썰매 3종 상점: 코인 1,500 + 웹 현금 ₩3,900 (entitlements kind 'sled', 현금 지급 대기 중 코인 구매 잠금)
+  - 기록 서버: sled_runs.sled 열 + phys_v 1·2 허용, 리더보드 phys_v in (1, 2)
+- [ ] 배포 순서
+  1. 운영 DB(컨트롤러가 풀러로 직접 실행): `sql/migrations/migrate_sled_lineup.sql`(sled 열·CHECK·phys_v 1,2·leaderboard 재생성, 멱등) → `sql/migrations/migrate_purchases_sled_kind.sql`
+  2. 웹·토스(bundle_upload memo)·itch·Android·iOS 5곳 동시 배포 — 옛 클라이언트는 세이브의 모르는 썰매 id 를 지워버린다
+  3. ⚠️ Paddle 시드 production — 사용자 명시 확인 후에만 실행
+  4. 시드가 채운 js/shop/price-ids.js 커밋 → 웹 재배포
+  5. 푸시 전 키 스캔, 푸시는 main + feat/capacitor-app
+- [ ] 2주 뒤 분석(2026-10-30 이후): 썰매별 평균 기록·충돌 수 비교. phys_v 2 이후 완주만, 기록은 썰매마다 이상적 시간이 달라 직접 순위 비교 금지(같은 썰매 안 분포와 충돌 수로 본다)
+
+```sql
+select sled,
+       count(*) as runs,
+       round(avg(time_ms) / 1000.0, 2) as avg_sec,
+       round(avg(jsonb_array_length(coalesce(hits, '[]'::jsonb))), 2) as avg_hits
+from public.sled_runs
+where phys_v = 2 and outcome = 'finish' and is_guest is not true
+group by sled
+order by runs desc;
+```

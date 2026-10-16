@@ -1,6 +1,6 @@
 # mountain-sled context
 
-Last Updated: 2026-10-16 (산장 카페·추위 지수 구현 완료, 🛷 썰매 라인업 스펙·계획 완료 — 구현 전, 미병합·미배포)
+Last Updated: 2026-10-16 (산장 카페·추위 지수 구현 완료, 🛷 썰매 라인업 Task 1~7 구현 완료 — 미병합·미배포)
 
 ## 위치
 - 워크트리 `.claude/worktrees/mountain-sled`, 브랜치 `feat/mountain-sled`(origin/main 기준, 미푸시)
@@ -53,3 +53,10 @@ Last Updated: 2026-10-16 (산장 카페·추위 지수 구현 완료, 🛷 썰�
 - climb_ms 에는 이제 추위로 인한 걷기 감속(×0.75)이 포함된다 — 배포 전후 비교 시 교란
 - idle_ms 에는 카페 안에서 보낸 시간이 포함된다
 - 산장 착용품(귀마개 등)은 cosmetic_buy 가 아니라 hut_cafe_buy 로 기록된다(METRICS_FRAMEWORK 는 다른 체크아웃 변경과 충돌해 수정하지 않음)
+
+## 썰매 라인업 (2026-10-16)
+- 데이터 js/mountain/sled-lineup.js(SLED_IDS 8종, CASH_SLED_IDS wind·acorn·skiff), 물리 PHYS_V 2
+- 기록: sled_runs.sled = ctx.sledSkin(라인업 id), phys_v 는 1·2 모두 허용(옛 기록 유지), 리더보드는 phys_v in (1, 2)
+- 서버 변경은 전부 sql/migrations/migrate_sled_lineup.sql 한 파일(멱등). 원본 migrate_sled_runs·migrate_leaderboard_sled 도 같은 값으로 맞춤
+- 리더보드는 썰매 구분 없이 한 보드 — 능력 썰매가 기록에 유리하면 공정성 문제, 2주 뒤 분석에서 확인
+- 배포 순서는 mountain-sled-tasks.md '🛷 썰매 라인업' 참고
