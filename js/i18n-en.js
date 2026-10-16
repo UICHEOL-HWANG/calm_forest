@@ -2521,4 +2521,6 @@ export const EN = {
   '오늘 보상 {0#}판 남음': '{0} rewarded runs left today',
   '오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요': 'All rewards claimed today. You can keep chasing records',
   '🏔️ 산자락엔 놓을 수 없어요': "🏔️ Can't place on the mountainside",
+  '🛷 썰매': '🛷 Sled',
+  '오늘 설산 썰매 최고 기록': "Today's best sled time",
 };
