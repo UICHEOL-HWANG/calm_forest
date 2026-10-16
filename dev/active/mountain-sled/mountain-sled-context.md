@@ -1,6 +1,6 @@
 # mountain-sled context
 
-Last Updated: 2026-10-15 (T1~T10·9b·10b 커밋, 10b 리뷰 전 일시정지)
+Last Updated: 2026-10-16 (1단계 구현·최종 리뷰 완료 f24f120f, 미병합·미배포)
 
 ## 위치
 - 워크트리 `.claude/worktrees/mountain-sled`, 브랜치 `feat/mountain-sled`(origin/main 기준, 미푸시)
@@ -41,3 +41,10 @@ Last Updated: 2026-10-15 (T1~T10·9b·10b 커밋, 10b 리뷰 전 일시정지)
 - T10b: 썰매 모형·공간 안 구름 띠·카메라 SLED_CAM{up9,back10,lookAhead22,lookDrop0.5}·장애물 메시 병합 → 공간 59~60콜
 - 미리보기: 루트 .claude/launch.json 에 mountain-sled(8807) 등록, ?dbg=1 + window.__gs()/__tp() 로 검수
 - SDD 원장: .superpowers/sdd/2026-10-15-mountain-sled-stage1/progress.md
+
+## 2026-10-16 추가 결정
+- 마을 입구: 아치(신사처럼 보임) 제거, 시안 A 설산 자체를 랜드마크로(반지름 7·높이 6.5·자락 1.2·구름 2.2배, 중심 (−15,−36), 입구 (−15,−29.5)), 산자락 밭 갈기·꾸미기 금지('🏔️ 산자락엔 놓을 수 없어요'), 극좌표 밀어내기 충돌
+- 내부: 레퍼런스 기반 재디자인(침엽수·빨강/파랑 기문·하늘 그라데이션·먼 능선·푸른 그림자), 테마 낮/노을(0.66~0.80)/눈/밤, 나갈 때 전역 화면값 복원
+- 문구 정리: 첫 안내 '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요', 보상 소진 '오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요'
+- 세이브: gameState.mountain 복원(js/mountain/save.js)
+- SDD 원장 사본: dev/active/mountain-sled/sdd-ledger.md

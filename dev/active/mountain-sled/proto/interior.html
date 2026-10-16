@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mountain Interior Proto</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#cfe6ff}canvas{display:block;width:100vw!important;height:100vh!important}#tag{position:fixed;left:10px;top:10px;padding:5px 9px;border-radius:8px;background:rgba(255,255,255,.85);font:13px system-ui;color:#223}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="tag"></div>
+<script type="module">
+import * as THREE from 'three';
+import { terrainHeight, slopePoint, inSlopeCorridor, SUMMIT_Y } from '/js/mountain/terrain.js';
+import { COURSE, centerX } from '/js/mountain/course.js';
+import { PLAZA, nearestOnPath } from '/js/mountain/climb.js';
+import { sledCamTargets } from '/js/mountain/sled-view.js';
+
+const q = new URLSearchParams(location.search);
+const opt = q.get('o') || 'a';
+const view = q.get('view') || 'sled';
+
+const THEMES = {
+  a: { name: 'A. 맑은 한낮', skyTop: '#5fa8e8', skyBot: '#dff0ff', fog: 0xdcecfb, fogNear: 70, fogFar: 260,
+       hemiSky: 0xd8ecff, hemiGround: 0x8f9cc8, hemi: 0.95, sun: 0xfff3df, sunI: 1.5, sunPos: [-60, 90, 70],
+       snow: 0xf7fafd, snowShade: 0xe6eef8, track: 0xffffff, rock: 0x6f7a8c, path: 0xe9dfcf,
+       pine: 0x2f5a3c, pineDark: 0x24472f, range: ['#9fb8d8', '#b9cde6', '#d3e2f2'], snowfall: false },
+  b: { name: 'B. 노을 설산', skyTop: '#f39a8c', skyBot: '#ffd7a8', fog: 0xf6c9b4, fogNear: 60, fogFar: 240,
+       hemiSky: 0xffd6c0, hemiGround: 0x8c76b8, hemi: 0.9, sun: 0xffb27a, sunI: 1.35, sunPos: [-90, 40, 40],
+       snow: 0xfff3ec, snowShade: 0xf0dfe8, track: 0xfffaf6, rock: 0x6c5f78, path: 0xf0d8c6,
+       pine: 0x3d4f52, pineDark: 0x2c3a40, range: ['#b07fa8', '#cf98ab', '#e8b8b2'], snowfall: false },
+  c: { name: 'C. 눈 오는 아침', skyTop: '#a9c2dc', skyBot: '#e9f1f8', fog: 0xe3ecf5, fogNear: 40, fogFar: 170,
+       hemiSky: 0xe8f1fb, hemiGround: 0xa6b2cf, hemi: 1.05, sun: 0xf6f8ff, sunI: 0.9, sunPos: [-40, 100, 60],
+       snow: 0xf9fbfe, snowShade: 0xe9eff7, track: 0xffffff, rock: 0x7d8796, path: 0xe4e0d8,
+       pine: 0x34594a, pineDark: 0x284638, range: ['#b5c4d6', '#c8d5e3', '#dbe4ee'], snowfall: true },
+};
+const T = THEMES[opt];
+document.getElementById('tag').textContent = `${T.name} · ${view === 'sled' ? '활강' : '광장'}`;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+
+const sky = document.createElement('canvas'); sky.width = 4; sky.height = 256;
+const sg = sky.getContext('2d'); const grad = sg.createLinearGradient(0, 0, 0, 256);
+grad.addColorStop(0, T.skyTop); grad.addColorStop(0.75, T.skyBot); grad.addColorStop(1, T.skyBot);
+sg.fillStyle = grad; sg.fillRect(0, 0, 4, 256);
+const skyTex = new THREE.CanvasTexture(sky); skyTex.colorSpace = THREE.SRGBColorSpace;
+scene.background = skyTex;
+scene.fog = new THREE.Fog(T.fog, T.fogNear, T.fogFar);
+
+scene.add(new THREE.HemisphereLight(T.hemiSky, T.hemiGround, T.hemi));
+const sun = new THREE.DirectionalLight(T.sun, T.sunI);
+sun.position.set(...T.sunPos); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 1, far: 300 });
+scene.add(sun); scene.add(sun.target);
+
+const C = (h) => new THREE.Color(h);
+const cSnow = C(T.snow), cShade = C(T.snowShade), cTrack = C(T.track), cRock = C(T.rock), cPath = C(T.path);
+
+function groundColor(x, z, h, slope) {
+  if (Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r) return cPath.clone().lerp(cSnow, 0.55);
+  if (nearestOnPath({ x, z }).dist < 1.6) return cPath.clone();
+  if (inSlopeCorridor(x, z, 0)) return cTrack.clone();
+  if (slope > 0.9 && h > 4) return cRock.clone().lerp(cShade, 0.25);
+  const n = Math.sin(x * 0.37 + z * 0.21) * Math.sin(x * 0.11 - z * 0.43);
+  return n > 0.25 ? cShade.clone() : cSnow.clone();
+}
+
+function buildGround() {
+  const STEP = 1.6, X0 = -80, X1 = 80, Z0 = -70, Z1 = 110;
+  const nx = Math.round((X1 - X0) / STEP), nz = Math.round((Z1 - Z0) / STEP);
+  const H = (i, j) => terrainHeight(X0 + i * STEP, Z0 + j * STEP);
+  const pos = [], col = [];
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const p = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a, b]) => [X0 + a * STEP, H(a, b), Z0 + b * STEP]);
+    for (const tri of [[p[0], p[2], p[1]], [p[0], p[3], p[2]]]) {
+      const cx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3, cz = (tri[0][2] + tri[1][2] + tri[2][2]) / 3;
+      const ch = (tri[0][1] + tri[1][1] + tri[2][1]) / 3;
+      const ys = tri.map(t => t[1]); const slope = (Math.max(...ys) - Math.min(...ys)) / STEP;
+      const c = groundColor(cx, cz, ch, slope);
+      for (const t of tri) { pos.push(...t); col.push(c.r, c.g, c.b); }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  m.receiveShadow = true;
+  return m;
+}
+scene.add(buildGround());
+const plain = new THREE.Mesh(new THREE.CircleGeometry(400, 48), new THREE.MeshLambertMaterial({ color: T.snowShade }));
+plain.rotation.x = -Math.PI / 2; plain.position.set(0, -0.6, 20); plain.receiveShadow = true; scene.add(plain);
+
+function mergeColored(parts) {
+  const geos = parts.map(([geo, color, x, y, z, sx = 1, sy = 1, sz = 1]) => {
+    const g = geo.clone().toNonIndexed(); g.scale(sx, sy, sz); g.translate(x, y, z);
+    const c = C(color); const n = g.attributes.position.count; const arr = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) arr.set([c.r, c.g, c.b], k * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(arr, 3)); return g;
+  });
+  const n = geos.reduce((a, g) => a + g.attributes.position.count, 0);
+  const P = new Float32Array(n * 3), K = new Float32Array(n * 3); let o = 0;
+  for (const g of geos) { P.set(g.attributes.position.array, o * 3); K.set(g.attributes.color.array, o * 3); o += g.attributes.position.count; }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(P, 3));
+  out.setAttribute('color', new THREE.BufferAttribute(K, 3));
+  out.computeVertexNormals();
+  return out;
+}
+
+function pineGeometry() {
+  return mergeColored([
+    [new THREE.CylinderGeometry(0.18, 0.24, 1.0, 6), 0x6b4a33, 0, 0.5, 0],
+    [new THREE.ConeGeometry(1.5, 2.2, 7), T.pineDark, 0, 1.9, 0],
+    [new THREE.ConeGeometry(1.55, 0.35, 7), T.snow, 0, 2.0, 0],
+    [new THREE.ConeGeometry(1.15, 1.9, 7), T.pine, 0, 3.0, 0],
+    [new THREE.ConeGeometry(1.2, 0.35, 7), T.snow, 0, 3.1, 0],
+    [new THREE.ConeGeometry(0.8, 1.6, 7), T.pine, 0, 4.0, 0],
+    [new THREE.ConeGeometry(0.55, 0.7, 7), T.snow, 0, 4.65, 0],
+  ]);
+}
+
+function placePines() {
+  let s = 7; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  const spots = [];
+  for (let k = 0; k < 2400 && spots.length < 320; k++) {
+    const x = -75 + r() * 150, z = -60 + r() * 165;
+    if (inSlopeCorridor(x, z, 2.5)) continue;
+    if (nearestOnPath({ x, z }).dist < 3) continue;
+    if (Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 2) continue;
+    const h = terrainHeight(x, z);
+    if (h > SUMMIT_Y * 0.8) continue;
+    if (!inSlopeCorridor(x, z, 9) && r() < 0.55) continue;
+    spots.push([x, h, z, 0.7 + r() * 0.9]);
+  }
+  const mesh = new THREE.InstancedMesh(pineGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), spots.length);
+  const m = new THREE.Matrix4(), qq = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  spots.forEach(([x, y, z, k], i) => { qq.setFromAxisAngle(up, (x * 13 + z * 7) % 6.28); m.compose(v.set(x, y - 0.2, z), qq, sc.setScalar(k)); mesh.setMatrixAt(i, m); });
+  mesh.castShadow = true;
+  return mesh;
+}
+scene.add(placePines());
+
+function ranges() {
+  const pos = [], col = [];
+  T.range.forEach((hex, layer) => {
+    const c = C(hex), R = 150 + layer * 40, base = 0, amp = 70 - layer * 14, N = 90;
+    const hh = a => base + amp * (0.45 + 0.55 * Math.abs(Math.sin(a * (5 + layer) + layer)) * (0.6 + 0.4 * Math.sin(a * 13 + layer * 2)));
+    for (let i = 0; i < N; i++) {
+      const a0 = (i / N) * Math.PI * 2, a1 = ((i + 1) / N) * Math.PI * 2;
+      const p0 = [Math.cos(a0) * R, base - 30, Math.sin(a0) * R + 10], p1 = [Math.cos(a1) * R, base - 30, Math.sin(a1) * R + 10];
+      const t0 = [Math.cos(a0) * R, hh(a0), Math.sin(a0) * R + 10], t1 = [Math.cos(a1) * R, hh(a1), Math.sin(a1) * R + 10];
+      for (const v of [p0, t1, t0, p0, p1, t1]) { pos.push(...v); col.push(c.r, c.g, c.b); }
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide }));
+}
+scene.add(ranges());
+
+function gates() {
+  const pole = new THREE.CylinderGeometry(0.07, 0.07, 1.9, 6);
+  const flag = new THREE.BoxGeometry(0.9, 0.55, 0.04);
+  const parts = [];
+  COURSE.flags.forEach((f, i) => {
+    const color = i % 2 ? 0x2f6fd6 : 0xe0443a;
+    for (const side of [-1, 1]) {
+      const p = slopePoint(f.z, f.x + side * f.half);
+      parts.push([pole, color, p.x, p.y + 0.95, p.z]);
+      parts.push([flag, color, p.x - side * 0.45, p.y + 1.6, p.z]);
+    }
+  });
+  const m = new THREE.Mesh(mergeColored(parts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  m.castShadow = true; return m;
+}
+scene.add(gates());
+
+function obstacles() {
+  const parts = [];
+  const rock = new THREE.DodecahedronGeometry(1, 0), ball = new THREE.IcosahedronGeometry(1, 1);
+  for (const o of COURSE.obstacles) {
+    const p = slopePoint(o.z, o.x);
+    if (o.kind === 'rock') {
+      parts.push([rock, T.rock, p.x, p.y + 0.4, p.z, o.r * 0.8, o.r * 0.8, o.r * 0.8]);
+      parts.push([rock, T.snow, p.x, p.y + 0.85, p.z, o.r * 0.62, o.r * 0.28, o.r * 0.62]);
+    } else {
+      parts.push([ball, T.snow, p.x, p.y + 0.55, p.z, o.r * 0.75, o.r * 0.75, o.r * 0.75]);
+    }
+  }
+  const m = new THREE.Mesh(mergeColored(parts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  m.castShadow = true; return m;
+}
+scene.add(obstacles());
+
+function rider(x, y, z) {
+  const g = new THREE.Group();
+  const add = (geo, color, px, py, pz) => { const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color })); m.position.set(px, py, pz); m.castShadow = true; g.add(m); return m; };
+  add(new THREE.BoxGeometry(0.9, 0.12, 1.6), 0xb5452f, 0, 0.12, 0);
+  add(new THREE.SphereGeometry(0.42, 12, 10), 0xd9813b, 0, 0.6, 0);
+  add(new THREE.SphereGeometry(0.33, 12, 10), 0xe0904a, 0, 1.05, 0.1);
+  const scarf = add(new THREE.TorusGeometry(0.3, 0.07, 6, 12), 0x2f6fd6, 0, 0.85, 0);
+  scarf.rotation.x = Math.PI / 2;
+  g.position.set(x, y, z); return g;
+}
+
+const camera = new THREE.PerspectiveCamera(innerWidth < innerHeight ? 62 : 50, innerWidth / innerHeight, 0.1, 400);
+if (view === 'sled') {
+  const s = { x: centerX(95) + 1.5, z: 95 };
+  const p = slopePoint(s.z, s.x);
+  scene.add(rider(p.x, p.y, p.z));
+  const t = sledCamTargets(s);
+  camera.position.set(t.pos.x, t.pos.y, t.pos.z);
+  camera.lookAt(t.look.x, t.look.y, t.look.z);
+  sun.target.position.set(p.x, p.y, p.z);
+} else {
+  scene.add(rider(PLAZA.x, 0, PLAZA.z));
+  camera.position.set(PLAZA.x, 14, PLAZA.z + 16);
+  camera.lookAt(PLAZA.x, 6, PLAZA.z - 30);
+  sun.target.position.set(PLAZA.x, 0, PLAZA.z - 20);
+}
+
+if (T.snowfall) {
+  const N = 1400, pos = new Float32Array(N * 3);
+  let s = 3; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  for (let i = 0; i < N; i++) pos.set([camera.position.x + (r() - 0.5) * 60, camera.position.y - 10 + r() * 30, camera.position.z + r() * 60], i * 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.18, transparent: true, opacity: 0.9 })));
+}
+
+renderer.render(scene, camera);
+document.body.dataset.calls = String(renderer.info.render.calls);
+document.getElementById('tag').textContent += ` · 드로우콜 ${renderer.info.render.calls}`;
+</script>
+</body>
+</html>
