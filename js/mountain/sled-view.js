@@ -1,12 +1,16 @@
 import { COURSE, centerX } from './course.js';
 import { slopePoint } from './terrain.js';
-import { SLED_DECK_TOP } from './sled-art.js';
+import { SLED_DECK_TOP, deckTopOf } from './sled-art.js';
 
 export const SLED_CAM = Object.freeze({ up: 9, back: 10, lookAhead: 22, lookDrop: 0.5 });
 export const SLED_SHAKE = Object.freeze({ ms: 350, amp: 0.3, freq: 47 });
 export const SLED_LEAN = 0.35;
 export const SLED_LIFT = 0.05;
 export const SLED_SEAT = SLED_LIFT + SLED_DECK_TOP;
+
+export function sledSeat(id) {
+  return SLED_LIFT + deckTopOf(id);
+}
 
 const TOP = slopePoint(0, 0), FOOT = slopePoint(COURSE.length, 0);
 const RUN = FOOT.z - TOP.z;

@@ -24,7 +24,7 @@ import { logEcon } from '../metrics.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
 import { physOf } from '../mountain/sled-lineup.js';
-import { SLED_SEAT, SLED_LIFT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
+import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
 import { showColdHud, hideColdHud } from '../mountain/cold-hud.js';
@@ -387,7 +387,7 @@ function placeSled(yaw) {
 function rideSlope(steer, dt) {
   const p = slopePoint(run.sled.z, run.sled.x);
   run.yaw += (sledYaw(steer) - run.yaw) * Math.min(1, dt * LEAN_RATE);
-  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + SLED_SEAT, MOUNTAIN.z + p.z);
+  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + run.seat, MOUNTAIN.z + p.z);
   player.rotation.y = run.yaw;
   placeSled(run.yaw);
 }
@@ -415,6 +415,7 @@ function startSled() {
   run.shake = 0;
   showObstacles(run.course);
   run.sled = createSled(run.taken.filter(Boolean).length, physOf(sledSkin()));
+  run.seat = sledSeat(sledSkin());
   run.phase = 'countdown';
   run.count = 3;
   run.countT = 0;
@@ -461,7 +462,7 @@ function rideRunout(dt) {
   run.runout = stepRunout(run.runout, dt);
   const { x, z } = run.runout, y = terrainHeight(x, z);
   const yaw = sledYaw(0) + stopTurn(run.runout) * STOP_SIDE;
-  player.position.set(MOUNTAIN.x + x, MOUNTAIN.y + y + SLED_SEAT, MOUNTAIN.z + z);
+  player.position.set(MOUNTAIN.x + x, MOUNTAIN.y + y + run.seat, MOUNTAIN.z + z);
   player.rotation.y = yaw;
   const sled = $w.mountainGroup?.userData.sled;
   if (sled) { sled.position.set(x, y + SLED_LIFT, z); sled.rotation.set(0, yaw, 0); }
