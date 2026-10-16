@@ -12,11 +12,11 @@
 // =============================================================
 export const PRICE_IDS = Object.freeze({
   // 🎩 머리
-  beanie: null, cap: null, mushroom: null, straw_hat: null, flower_crown: null, leaf_band: null, star_pin: null,
+  beanie: null, cap: null, mushroom: null, straw_hat: null, flower_crown: null, leaf_band: null, star_pin: null, earmuff: null,
   // 🧣 목
   scarf: null, bell: null, bowtie: null,
   // 🎒 등
-  pack: null, basket: null, cape: null,
+  pack: null, basket: null, cape: null, sled_pack: null,
   // 💎 프리미엄(현금 전용, 2026-10-01 스펙) — scripts/paddle-seed.mjs 가 채운다
   firefly: 'pri_01m3x4q3sjhg1c19b0vsz55b80', rainbow: 'pri_01m3x4q4a0v0pv06yreaqe3dh7', forest_spirit: 'pri_01m3x4q4szrecdh3rwc5sya6zt', plush_doll: 'pri_01m3x4q5abzr8m2xvzqb93rfrn',
   // 🪓 도구 테마 세트(2026-10-02 라이브 등록) — 키는 macOS 키체인 calmforest-paddle-live
@@ -25,7 +25,7 @@ export const PRICE_IDS = Object.freeze({
   pumpkin_glow: 'pri_01m4807j5j6khycksbzbmdnwkj', bat_swirl: 'pri_01m480837szjr9ww3dstdfxjc9', ghost_nightcap: 'pri_01m4809jq5tmmvq053cvzs02k5', ghost_cloud: 'pri_01m4809kqxdvecnhv3p1zhmvvw', witch_classic: 'pri_01m4808g6tec957hrz23713efg', witch_starry: 'pri_01m4809nv8rkt0143xtqpqhddn',
   tools_batnight: 'pri_01m4809qsv0w8brw987qtez6ms', tools_harvest: 'pri_01m480aknmys2r48mde2w5vqyh', bat_wing: 'pri_01m480aq6xna9gesjz68aeydf1', bat_cape: 'pri_01m480as9abr8k1xdbmet9y3n7',
   // 👣 발자국
-  paw: null, drop: null, flower: null, star: null, sparkle: null,
+  paw: null, drop: null, flower: null, star: null, sparkle: null, snowflake: null,
   // 🐾 펫
   leaf: null, spirit: null, bird: null, golem: null,
 });

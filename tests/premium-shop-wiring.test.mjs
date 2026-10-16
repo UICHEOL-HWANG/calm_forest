@@ -19,7 +19,7 @@ test('🧥 스킨 탭 — 가게(이펙트 뒤·펫 앞)와 옷장(이펙트 뒤
   const ward = readFileSync(new URL('../js/spaces/wardrobe.js', import.meta.url), 'utf8');
   assert.match(cafe, /\['trail', '✨ 이펙트'\], \['skin', '🧥 스킨'\], \['tools', '🪓 도구'\], \['pet', '🐾 펫'\]/);   // 🪓 도구 세트(2026-10-02)는 스킨 뒤
   assert.match(ward, /\['trail', '✨ 이펙트'\], \['aura', '🔮 오라'\], \['skin', '🧥 스킨'\], \['tools', '🪓 도구'\]\]/);
-  assert.match(cafe, /slotVisible\(itemsOf\(id\), rowCtx\)/);
+  assert.match(cafe, /slotVisible\(rowsOf\(id\), rowCtx\)/);
 });
 test('i18n — 스킨 문구 통문장 등재', () => {
   for (const k of ['🧥 스킨', '숲의 정령', '플러시 인형', '밤이면 몸속에서 반딧불이 떠다녀요', '꿰맨 자국과 단추 눈, 걸을 때마다 말랑말랑', 'PREMIUM · 전신 스킨', '바로 입어보기'])

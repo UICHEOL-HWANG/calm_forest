@@ -1032,16 +1032,17 @@ const REWARD_TAG = '🤝 초대 보상';
 let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 항목당 한 번(닫으면 비운다)
 
 export function drawCosMenu() {
+  const rowsOf = slot => itemsOf(slot).filter(i => !i.shop);
   document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
   const rowCtx = (it) => ({ owned: gameState.cosmetics.owned.includes(it.id), platform: PLATFORM,
     online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token,
     storeOpen: cashAvailable(authState) });   // cashAvailable = 상점 열림 또는 개발 세션(+웹·로그인·토큰)
   //  🧥 토스·안드로이드·itch 에서 안 산 스킨만 있는 칸 = 빈 탭 → 탭 자체를 숨긴다(외부 결제 안내 금지)
-  if (cosTab !== 'pet' && !slotVisible(itemsOf(cosTab), rowCtx)) cosTab = 'head';
+  if (cosTab !== 'pet' && !slotVisible(rowsOf(cosTab), rowCtx)) cosTab = 'head';
   const tabs = document.getElementById('cos-tabs');
   tabs.innerHTML = '';
   for (const [id, label] of COS_TABS) {
-    if (id !== 'pet' && !slotVisible(itemsOf(id), rowCtx)) continue;
+    if (id !== 'pet' && !slotVisible(rowsOf(id), rowCtx)) continue;
     const b = document.createElement('button');
     b.className = 'sh-tab' + (cosTab === id ? ' active' : '');
     b.textContent = label;
@@ -1068,7 +1069,7 @@ export function drawCosMenu() {
   const hint = document.getElementById('cos-preview-hint');
   if (hint) hint.style.visibility = cosTab === 'trail' ? 'hidden' : '';
   if (cosTab === 'pet') { drawPetTab(box); return; }
-  for (const it of itemsOf(cosTab)) {
+  for (const it of rowsOf(cosTab)) {
     let mode = null;
     if (gatedRow(it)) {
       mode = premiumRowMode(it, rowCtx(it));

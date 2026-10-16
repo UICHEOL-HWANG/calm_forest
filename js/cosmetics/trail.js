@@ -118,6 +118,13 @@ function makeMarks(THREE) {
       const ring = put(g, new THREE.Mesh(new THREE.TorusGeometry(s * 0.88, s * 0.07, 4, 18), film(P.dropLit, o * 0.7)), 0, 0.004, 0, false);
       ring.rotation.x = Math.PI / 2;
     },
+    snowflake: (g, s, o) => {
+      for (let i = 0; i < 3; i++) {
+        const arm = put(g, new THREE.Mesh(new THREE.BoxGeometry(s * 1.6, s * 0.05, s * 0.16), film(0xeaf4ff, o)), 0, 0.006, 0, false);
+        arm.rotation.y = (i * Math.PI) / 3;
+      }
+      put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.22, 8, 6), film(0xffffff, o)), 0, 0.01, 0, false).scale.y = 0.3;
+    },
     //  💎 반딧불 — 바닥엔 짙은 풀잎 하나(작게). 주인공은 위로 떠오르는 반딧불(trail-fx.js)이다.
     firefly: (g, s, o) => {
       const leaf = petalMesh(s * 1.0, 0.6, film(0x5f8f4a, o * 0.8));
