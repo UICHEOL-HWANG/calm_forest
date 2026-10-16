@@ -56,7 +56,7 @@ create index if not exists sled_runs_board_idx on public.sled_runs (run_date, ou
 create index if not exists sled_runs_created_idx on public.sled_runs (created_at);
 
 create or replace function public.sled_runs_min_time() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = public as $$
 declare
   floor_ms integer;
 begin

@@ -44,3 +44,7 @@ test('version checks, octet_length cap, nonneg check and server-set run_date', (
   assert.match(sql, /sled_runs_nonneg/);
   assert.match(sql, /new\.run_date := \(now\(\) at time zone 'Asia\/Seoul'\)::date/);
 });
+
+test('min-time trigger function pins search_path', () => {
+  assert.match(sql, /create or replace function public\.sled_runs_min_time\(\) returns trigger\nlanguage plpgsql set search_path = public as \$\$/);
+});
