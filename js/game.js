@@ -1317,7 +1317,8 @@ function announceUnlock(id) {
   if (!def) return;
   if (id === 'merchant') return;   // 🧙 상인은 기존 환영 방문(updateMerchantVisit)이 곧 귀환 연출이다
   const o = npcObjs.find(x => x.def.id === id);
-  startNpcReturn(o);
+  // 🚶 물(호수·나루터 연못·박물관 개울)을 가로지르지 않는 방향에서 걸어 들어온다
+  startNpcReturn(o, [{ x: LAKE.x, z: LAKE.z, r: LAKE_R }, { x: DOCK_POND.x, z: DOCK_POND.z, r: DOCK_POND_R }, { x: ISLE.x, z: ISLE.z, r: ISLE_R + 0.6 }]);
   if (id === 'curator' && o) {   // 🧑‍🦳 개울 건너 섬 안에 산다 — 가장자리에서 물을 걸어 건너지 않고 박물관 문에서 나온다
     o.group.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4); o.group.rotation.y = Math.atan2(o.home.x - MUSEUM_GATE.x, o.home.z - MUSEUM_GATE.z - 3.4);
   }

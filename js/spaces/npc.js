@@ -15,6 +15,7 @@ import { trackEvent } from '../analytics.js';
 import { NPC_R, PLAYER_R } from '../data/character.js';
 import { DAILY_COUNT, NPCS, QUEST_HOW } from '../data/npcs.js';
 import { SHOP } from '../data/places.js';
+import { returnStart } from '../world/return-path.js';   // 🚶 귀환 걷기 출발점(물 회피, 순수)
 import { welcomeOffer } from '../first-loop.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
@@ -824,12 +825,13 @@ const RETURN_SPEED = 2.2;
 const RETURN_MAX_SEC = 14;  // 막히거나 멀어도 이 안에 집에 선다
 
 /** 🚶 귀환 연출 — 마을 가장자리에 세워 두고 updateNPC 가 집까지 걸린다 */
-export function startNpcReturn(o) {
+export function startNpcReturn(o, waters = []) {
   if (!o || o.fly) return;
-  const hx = o.home.x, hz = o.home.z, len = Math.hypot(hx, hz);
-  const ux = len > 3 ? hx / len : 0, uz = len > 3 ? hz / len : 1;   // 중심 가까이 사는 이웃은 남쪽(카메라 쪽)에서 들어온다
-  o.group.position.set(hx + ux * RETURN_EDGE, 0, hz + uz * RETURN_EDGE);
-  o.group.rotation.y = Math.atan2(-ux, -uz);
+  const hx = o.home.x, hz = o.home.z;
+  // 바깥 방향에서 들어오되, 그 직선이 연못·호수·개울을 지나면 각도를 돌린다(🦆 사공 오리가 연못을 가로지르던 사고)
+  const s = returnStart(hx, hz, RETURN_EDGE, waters);
+  o.group.position.set(s.x, 0, s.z);
+  o.group.rotation.y = Math.atan2(hx - s.x, hz - s.z);
   o.returning = { t: 0 };
   o.target.copy(o.home);
 }
