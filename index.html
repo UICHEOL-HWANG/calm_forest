@@ -2884,6 +2884,7 @@
     import { initMobileHud } from './js/hud/mobile-hud.js';
     import { createMenuSheet } from './js/hud/menu-sheet.js';
     import { nicknameChecks } from './js/nickname-filter.js';
+    import { createNickStep } from './js/nickname-step.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
@@ -3230,6 +3231,8 @@
     questPhoneMQ.addEventListener?.('change', () => ui.setQuest(questLast));
     let hud = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn') });
+    const nickStep = createNickStep({ track: trackEvent });
+    addEventListener('pagehide', () => nickStep.leave($('nick-input')?.value || ''));
     const ui = {
       // 🛡️ 세이브를 아직 못 읽었다 — 읽을 때까지 화면을 덮어 게임이 시작되지 않게 한다.
       //   빈 마을로 들여보내면 30초 뒤 자동저장이 서버의 진짜 마을을 덮어쓴다(js/save-guard.js).
@@ -3510,8 +3513,9 @@
           const ready = (change && v === prevNick && v.length > 0) || Object.values(c).every(Boolean);
           $('char-confirm').disabled = !ready;
         };
-        nick.oninput = refreshNick;
+        nick.oninput = () => { refreshNick(); if (!change) nickStep.input(nick.value); };
         refreshNick();
+        if (!change) nickStep.view();
         // 🧥 캐릭터 | 옷장 | 펫 — 옷장·펫은 **지금 내 캐릭터**에 입혀 보여 준다(캐릭터 탭에서 고르기만 하고
         //    확정 안 한 동물에 입히면, 닫았을 때 월드와 모습이 달라 헷갈린다). 목록은 게임 쪽이 그린다.
         const setTab = (tab) => {
@@ -3576,6 +3580,7 @@
           const nr = Input.setNickname(keep ? prevNick : nick.value, keep ? 'keep' : change ? 'change' : 'new');   // 🏷️ 닉네임 저장(검증 포함)
           if (!nr.ok) { ui.toast(nr.msg); nick.focus(); return; }
           Input.setCharacter(selected, change);
+          if (!change) nickStep.done();
           closeCharModal();
           ui.toast(change ? `${a.emoji} ${nr.nick}(으)로 바꿨어요!` : `${a.emoji} ${nr.nick}(으)로 시작해요!`);
           // 🎬 첫 시작이면 프롤로그 컷신부터(끝나면 introShow(false)가 튜토리얼로 이어줌)

@@ -17,3 +17,11 @@ Last Updated: 2026-10-17 03:40 KST
 
 ## 시안
 - compare.png (A·B·C), prompt-compare.png (P1~P4 + 포코피아 실제 화면)
+
+## 📊 닉네임 단계 이탈 트래킹 (2026-10-17 추가)
+- 이벤트 `nickname_step` — 새 유저 첫 캐릭터 선택에서만(변경 모드 제외), 이름 값은 안 보냄
+  - `step=view` 창이 보임 / `step=type` 첫 글자 입력(`ms`) / `step=done` 시작(`ms`) / `step=leave` 시작 안 하고 페이지 이탈(`ms`, `reason`=len|chars|jamo|digits|blocked|none, `len`)
+- 키: step·reason·len 은 기존 키 재사용, `ms` 하나만 신규
+- 지표: 이탈률 = 1 − done/view(같은 유저), 막힌 조건 분포 = leave.reason
+- ⚠️ 배포 다음 날 BigQuery 에서 4단계가 다 들어오는지 재검증(dev 세션은 GA4 미전송이라 로컬 확인 불가)
+- 사용자 결정: 닉네임 필수 입력은 E1·E2·E3 진행 중에도 이번 배포에 포함
