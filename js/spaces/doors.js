@@ -38,6 +38,7 @@ import { bridgePrompt, nearBrokenBridge } from '../spaces/bridge.js';
 import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
 import { neighborPrompt } from '../spaces/neighbor.js';
+import { worldTreeNear, worldTreePrompt } from '../spaces/world-tree.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
@@ -321,6 +322,8 @@ export function updateDoorInteract() {
     firstHintBanner('bridge', '🌉', '무너진 다리', '개울 건너 박물관으로 가는 길이에요');
   } else if (mv) {     // 🚏 거울 마을 정류장(낮 운행 · 밤엔 막차 안내만, nd 없음)
     nd = mv.nd; prompt = mv.prompt;
+  } else if (worldTreeNear(player.position)) {   // 🌳 세계수 밑동 — 판 열기(박물관 전엔 안내만)
+    nd = 'worldtree'; prompt = worldTreePrompt();
   } else if (dist2D(MOUNTAIN_GATE, player.position) < 2.4) {
     nd = 'mountain'; prompt = mountainOpen() ? '🏔️ 설산 오르기' : '🏔️ 내일 열려요';
     firstHintBanner('mountainGate', '🏔️', '🏔️ 설산', '🏔️ 썰매 타러 가는 길');

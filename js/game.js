@@ -266,6 +266,8 @@ import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestCtx, unlockedSet } from './world/unlocks.js';   // 🔓 마을 해금(순수) — docs/superpowers/specs/2026-10-16-world-unlocks-design.md
 import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
+import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
+import { WORLD_TREE, buildWorldTree, openWorldTree, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
@@ -1061,6 +1063,7 @@ const gameState = {
   plaza: plazaDefault(),               // 🌾 수확제 광장 { lastStage, claimed, invited, converted, seen }
   neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 8장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
+  tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
 };
 
@@ -2815,6 +2818,7 @@ function applySave(saved) {
   gameState.firstDay = resolveFirstDay(saved.firstDay);
   gameState.mountain = restoreMountain(saved.mountain);
   gameState.unlocks = restoreUnlocks(saved.unlocks);   // 🔓 필드 없는 옛 세이브 = legacy(전부 열림) — resolveFirstDay 와 같은 원리
+  gameState.tree = restoreTree(saved.tree);   // 🌳 세계수 판(옛 세이브=빈 판) — 모르는 장식·재료는 버린다
   gameState.aura = restoreAura(saved.aura);   // 🏮 모르는 값·4칸째·사라진 장착 id 는 걸러진다
   refreshAura();
   gameState.star = restoreStar(saved.star, saved.starDay);   // 🌌 별자리 기록(옛 북두칠성 보상 기록은 클리어로 친다)
@@ -3082,6 +3086,7 @@ function buildWorld() {
       || dist2D({ x, z }, OBSERVATORY_GATE) < 6.2   // 🔭 천문대 — 돔과 계단이 나무에 가리지 않게
       || dist2D({ x, z }, { x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 5 }) < 3.8
       || dist2D({ x, z }, MOUNTAIN_LANDMARK) < MOUNTAIN_LANDMARK_R + 0.5
+      || dist2D({ x, z }, WORLD_TREE) < 6.5   // 🌳 세계수 밑동·뿌리
       || dist2D({ x, z }, LIGHT_WORKSHOP) < 4.3   // 🏮 빛 공방 오두막·손수레·연못 위엔 나무 금지
       || dist2D({ x, z }, MIRROR_STOP) < 4   // 🚏 거울 마을 정류장 — 지붕·정박 마차가 나무에 가리지 않게
       || dist2D({ x, z }, NEIGHBOR_GATE) < 3   // 🏡 이웃 마을 팻말이 나무에 가리지 않게
@@ -4695,6 +4700,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;                  // 🏪 꾸미기 가게 터 제외(반치수 2.56 + 여유)
     if (dist2D({ x, z }, OBSERVATORY_GATE) < 6.2) continue;          // 🔭 천문대 기단·계단 제외
     if (dist2D({ x, z }, MOUNTAIN_LANDMARK) < MOUNTAIN_LANDMARK_R + 0.5) continue;
+    if (dist2D({ x, z }, WORLD_TREE) < 5) continue;                   // 🌳 세계수 밑동·뿌리 위 제외
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침·디딤판 위 제외
     if (dist2D({ x, z }, MIRROR_STOP) < 4) continue;                 // 🚏 거울 마을 정류장
     if (dist2D({ x, z }, NEIGHBOR_GATE) < 1.5) continue;             // 🏡 이웃 마을 팻말 밑
@@ -4711,6 +4717,7 @@ function buildEnvironment() {
   buildBridge();       // 🌉 박물관 섬을 두른 개울 + 다리(해금 켜짐·새 세이브면 무너진 채 시작 — js/spaces/bridge.js)
   lockFrom('observatory'); spawnObservatoryGate(); lockTo(); // 🔭 천문대(마을 남동쪽) — 처음부터 있음
   spawnMountainGate();
+  buildWorldTree();   // 🌳 마을 북쪽 세계수(판 진척만큼 잎·꽃) — js/spaces/world-tree.js
   lockFrom('neighbor'); spawnNeighborGate(); lockTo();    // 🏡 이웃 마을 가는 길(마을 남쪽, 🍄숲·🌟계곡 사이) — 처음부터 있음
   buildCafeHall();   // ☕ 카페 홀(별도 공간)
   lockFrom('forest'); buildForest(); lockTo();     // 🍄 채집 숲(남서쪽) — 줍기
@@ -5721,6 +5728,7 @@ const VILLAGE_PLACES = [
   { ico: '🏞️', name: '호수',          x: LAKE.x,        z: LAKE.z,        pri: 2 },
   { ico: '🌾', name: '텃밭',          x: FARM_GATE.x,   z: FARM_GATE.z,   pri: 1 },
   { ico: '⛏️', name: '채굴 동굴',     x: MINE_GATE.x,   z: MINE_GATE.z,   pri: 1 },
+  { ico: '🌳', name: '세계수',        x: WORLD_TREE.x,  z: WORLD_TREE.z,  pri: 1 },
   { ico: '🐔', name: '닭장',          x: COOP.x,        z: COOP.z,        pri: 2, need: 'coop' },
   { ico: '☕', name: '카페',          x: CAFE_GATE.x,   z: CAFE_GATE.z,   pri: 1 },
   { ico: '🌟', name: '반딧불이 계곡', x: GLADE.x,       z: GLADE.z,       pri: 1 },
@@ -5941,6 +5949,7 @@ function animate() {
   updateFloatTexts(dt);
   updateNPC(dt, t);
   if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') syncUnlocks(); }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
+  updateWorldTree(dt, t);    // 🌳 세계수 잎이 판 진척을 따라 자란다
   updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
   updateOwlVisit(dt);        // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
@@ -6913,6 +6922,7 @@ function handleAction() {
   if (nearDoor === 'museumdown') return museumGoFloor(false);
   // 🏛️ 전시실에선 문·전시 말고는 아무 액션도 없다 — 안 막으면 여기서 밭이 갈린다(실제로 겪었다)
   if (atMuseum) return;
+  if (nearDoor === 'worldtree') return openWorldTree();   // 🌳 세계수 판
   if (atMountain || nearDoor === 'mountain') return mountainAction(nearDoor);
   if (atObservatory || nearDoor === 'observatory') return observatoryAction(nearDoor);   // 🔭 문·나가기·망원경 — 실내에선 그 밖의 액션 없음
   if (atNeighbor || nearDoor === 'neighbor') return neighborAction(nearDoor);   // 🏡 팻말·나가기 — 이웃 공간 안에선 그 밖의 액션 없음
