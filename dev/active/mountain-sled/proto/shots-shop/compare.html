@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>산장 상점 시안</title>
+<style>
+  :root { --bg: #f6f4ef; --ink: #2b2b30; --sub: #6c7380; --card: #ffffff; --line: #e6e1d8; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  main { max-width: 1500px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p.lead { margin: 0 0 20px; color: var(--sub); font-size: 14px; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .col { background: var(--card); border-radius: 14px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .col h2 { font-size: 18px; margin: 0 0 4px; }
+  .col p { font-size: 13px; color: var(--sub); margin: 0 0 10px; line-height: 1.55; }
+  .col ul { margin: 0 0 12px; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+  .label { font-size: 12px; color: var(--sub); margin: 10px 0 4px; }
+  img { width: 100%; border-radius: 8px; display: block; }
+  img.m { width: 55%; margin: 0 auto; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>🏠 정상 산장 상점: 실내 · 점원 시안</h1>
+  <p class="lead">산장 문으로 들어가는 작은 실내 공간입니다. 썰매 기록이 리더보드에 올라가므로 속도에 영향을 주는 물건(부스터 등)은 팔지 않고, 꾸미기 상품만 진열했습니다.</p>
+  <div class="grid">
+    <section class="col">
+      <h2>A 코코아 카운터</h2>
+      <p>점원: 썰매지기 할아버지(밖에 서 있던 주민이 안으로 들어옴). 난로와 장작, 김 나는 코코아 냄비, 벽에 걸린 썰매 3대와 털모자 줄.</p>
+      <ul><li>판매: 털모자 4색, 썰매 색, 코코아(손에 드는 연출)</li><li>분위기: 가장 아늑함, 서사와 바로 이어짐</li></ul>
+      <div class="label">PC</div><img src="pc-a.jpg" alt="">
+      <div class="label">모바일</div><img class="m" src="m-a.jpg" alt="">
+    </section>
+    <section class="col">
+      <h2>B 장비 가게</h2>
+      <p>점원: 산양(뿔 달린 새 주민). 뒷벽 3단 선반에 썰매 5색, 목도리, 털모자가 진열되고, 마네킹이 목도리와 모자를 입고 있습니다.</p>
+      <ul><li>판매: 썰매 스킨, 목도리, 털모자</li><li>분위기: 상점이라는 게 한눈에 보임</li></ul>
+      <div class="label">PC</div><img src="pc-b.jpg" alt="">
+      <div class="label">모바일</div><img class="m" src="m-b.jpg" alt="">
+    </section>
+    <section class="col">
+      <h2>C 다락 카페</h2>
+      <p>점원: 북극여우 바리스타(새 주민). A자 지붕 속, 큰 유리 박공 너머로 설산이 보이고, 뒤쪽 다락에 침낭, 둥근 탁자와 전구 줄.</p>
+      <ul><li>판매: 코코아·커피(연출), 기념품, 썰매 색</li><li>분위기: 밖에서 본 등불 산장과 같은 집, 밤에 가장 예쁨</li></ul>
+      <div class="label">PC</div><img src="pc-c.jpg" alt="">
+      <div class="label">모바일</div><img class="m" src="m-c.jpg" alt="">
+    </section>
+  </div>
+</main>
+</body>
+</html>
