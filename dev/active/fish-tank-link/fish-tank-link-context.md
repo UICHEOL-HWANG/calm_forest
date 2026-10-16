@@ -1,5 +1,5 @@
 # fish-tank-link — context
-Last Updated: 2026-10-16 (spec + prereg written)
+Last Updated: 2026-10-16 (implemented on feat/space-link-pond, not pushed)
 
 ## Key files
 - js/data/catalog.js:30,46 — DECOR 'aquarium'(2 fish), 'bigaquarium'(5 fish); FISH_KINDS (7 river species, col)
@@ -29,3 +29,11 @@ Last Updated: 2026-10-16 (spec + prereg written)
 - Branch: analytics/metrics-framework is behind main — implement in a fresh worktree from main
 - Plan deviation: js/pond/ folder (plaza pattern) instead of js/spaces/pond.js — pure rules must be Node-testable
 - Spec §4 'skip swim update off-screen' deferred — ≤8 fish, add only if Task 7 perf shows a problem
+
+## Implementation status (2026-10-16)
+- Branch feat/space-link-pond (worktree .claude/worktrees/space-link-pond), not pushed, not merged
+- Pond spot (user decision): house-relative (-4.5,6) = absolute (-12.5,-2), front-left yard; fallbacks (3,9), (6,9); tests enforce NPC, gate, lake/dock, house and Misty Forest (>=10) clearance
+- Toast deferred: shown after 4 s in village; hintsSeen.pond set only when shown; pond_created once (not on every load)
+- Draw calls +11 at max (8 fish); control arm builds nothing
+- SQL (neighbor pond) written + revoke + search_path, NOT applied to DB yet
+- Not verified: night bloom, neighbor view, real logged-in save
