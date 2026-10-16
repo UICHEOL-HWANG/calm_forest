@@ -1,4 +1,4 @@
-import { BARISTA } from './cafe-layout.js';
+import { BARISTA, TABLES, ROOF, KNEE } from './cafe-layout.js';
 
 const W = 11, D = 8.5;
 const WOOD = 0x8a5a36, WOOD_D = 0x5e3b22, PLANK = 0xa9764a, SNOW = 0xf7fafd, LAMP = 0xffd27a, IRON = 0x34363c, CREAM = 0xf3e6cf, RED = 0xd2463a, BLUE = 0x2f6fd6, GREEN = 0x3f7b4f, MUSTARD = 0xe2b23c;
@@ -91,8 +91,8 @@ function fox(S, x, z, ry) {
 function optionC(S) {
   const { add, jit, G } = S;
   floor(S, 0x9a6a44);
-  const rise = 5.2;
-  const cut = 2.2, th = Math.atan2(rise, W / 2), span = (W / 2) * (cut / rise), len = Math.hypot(span, cut);
+  const { rise, cut } = ROOF;
+  const th = Math.atan2(rise, W / 2), span = W / 2 - KNEE, len = Math.hypot(span, cut);
   [-1, 1].forEach(s => {
     for (let i = 0; i < 9; i++) add(G.box, jit(WOOD, 0.1), [s * (W / 2 - span / 2), cut / 2, -D / 2 + 0.5 + i * 0.95], [len, 0.16, 0.92], [0, 0, -s * th]);
     add(G.box, WOOD_D, [s * (W / 2 - span), cut, 0], [0.22, 0.22, D], [0, 0, -s * th]);
@@ -115,7 +115,7 @@ function optionC(S) {
   add(G.box, 0x3a3d44, [3.2, 0.96, -1.66], [0.4, 0.06, 0.1]);
   add(G.cyl, 0xc8ccd4, [3.2, 1.46, -1.9], [0.3, 0.2, 0.3]);
   mug(S, 1.4, 0.85, -1.6); mug(S, 1.8, 0.85, -1.65, RED); mug(S, 2.4, 0.85, -1.6, BLUE);
-  [[-1.6, -0.6], [0.4, 1.6], [3.4, 1.4]].forEach(([x, z]) => {
+  TABLES.forEach(({ x, z }) => {
     add(G.cyl, WOOD, [x, 0.75, z], [1.0, 0.07, 1.0]);
     add(G.cyl, WOOD_D, [x, 0.38, z], [0.1, 0.74, 0.1]);
     mug(S, x, 0.78, z, CREAM);

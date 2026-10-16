@@ -44,11 +44,11 @@ test('the room is two drawables', () => {
 test('prompts and actions are wired and translated', () => {
   const doors = read('js/spaces/doors.js');
   assert.match(doors, /if \(inCafe\(\)\) \{/);
-  assert.match(doors, /nd = 'cafeexit'; prompt = '🚪 나가기';/);
-  assert.match(doors, /nd = 'cafeorder'; prompt = '☕ 주문하기';/);
+  assert.match(doors, /nd = 'hutcafeexit'; prompt = '🚪 나가기';/);
+  assert.match(doors, /nd = 'hutcafeorder'; prompt = '☕ 주문하기';/);
   const m = read('js/spaces/mountain.js');
-  for (const nd of ['hutcafe', 'cafeexit', 'cafeorder']) assert.match(m, new RegExp(`nearDoor === '${nd}'`));
-  for (const ko of ['☕ 주문하기', '솜눈']) assert.ok(EN[ko], ko);
+  for (const nd of ['hutcafe', 'hutcafeexit', 'hutcafeorder']) assert.match(m, new RegExp(`nearDoor === '${nd}'`));
+  for (const ko of ['☕ 주문하기', '북극여우']) assert.ok(EN[ko], ko);
 });
 
 test('inside the cafe the mountain is hidden and the warm look replaces the mountain theme', () => {

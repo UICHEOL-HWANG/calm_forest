@@ -29,7 +29,7 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
   const group = new THREE.Group();
   group.position.set(origin.x, 0, origin.z);
   group.add(buildCafeRoom(THREE));
-  const tag = makeNameTag({ emoji: '🦊', name: '솜눈', color: 0xf4f6fa });
+  const tag = makeNameTag({ emoji: '🦊', name: '북극여우', color: 0xf4f6fa });
   tag.position.set(BARISTA.x, 2.2, BARISTA.z);
   group.add(tag);
   const bubble = onTop(new THREE.Sprite(new THREE.SpriteMaterial({ map: emojiTexture(THREE, '☕'), transparent: true, depthWrite: false, fog: false, toneMapped: false })));

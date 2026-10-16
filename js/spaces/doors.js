@@ -273,8 +273,8 @@ export function updateDoorInteract() {
     }
   } else if (atMountain) {
     if (inCafe()) {
-      if (atCafeSpot('exit')) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
-      else if (atCafeSpot('order')) { nd = 'cafeorder'; prompt = '☕ 주문하기'; }
+      if (atCafeSpot('exit')) { nd = 'hutcafeexit'; prompt = '🚪 나가기'; }
+      else if (atCafeSpot('order')) { nd = 'hutcafeorder'; prompt = '☕ 주문하기'; }
     } else if (dist2D({ x: MOUNTAIN.x + MOUNTAIN_EXIT_LOCAL.x, z: MOUNTAIN.z + MOUNTAIN_EXIT_LOCAL.z }, player.position) < 1.9) { nd = 'mountainexit'; prompt = '🚪 마을로 돌아가기'; }
     else if (sledStartReady()) { nd = 'sledstart'; prompt = '🛷 썰매 타고 내려가기'; }
     else if (hutDoorReady()) { nd = 'hutcafe'; prompt = '☕ 산장 카페 들어가기'; }

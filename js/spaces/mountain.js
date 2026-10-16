@@ -27,7 +27,7 @@ import { physOf, sledCash } from '../mountain/sled-lineup.js';
 import { cashAvailable } from '../shop/paddle.js';
 import { state as authState } from '../supabase-client.js';
 import { cashButton, cashPending } from './cafe.js';
-import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
+import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, runoutCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
 import { showColdHud, hideColdHud } from '../mountain/cold-hud.js';
@@ -35,7 +35,7 @@ import { setSledSkin } from '../mountain/sled-art.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
 import { bindSledInput, initialInput, worldSteer } from '../mountain/sled-input.js';
 import { isTouchDevice } from '../touch-sim.js';
-import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, boostButton } from '../mountain/sled-hud.js';
+import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, hideBoost, boostButton } from '../mountain/sled-hud.js';
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
 import { fadeNameTag } from './npc.js';
@@ -46,6 +46,7 @@ let run = null;
 let keeperBubble = null;
 const START_R = 1.6;
 const CHEER_S = 1.3;
+const CHEER_FRONT = 1.0;
 const SPRAY_S = 0.07;
 const STOP_SIDE = Math.PI / 2;
 let look = null;
@@ -281,8 +282,8 @@ export function mountainAction(nearDoor) {
   if (nearDoor === 'mountainexit') return exitMountain();
   if (nearDoor === 'sledstart' && run?.phase === 'hut') return startSled();
   if (nearDoor === 'hutcafe') return enterCafe();
-  if (nearDoor === 'cafeexit') return exitCafe();
-  if (nearDoor === 'cafeorder') return openCafeShop();
+  if (nearDoor === 'hutcafeexit') return exitCafe();
+  if (nearDoor === 'hutcafeorder') return openCafeShop();
 }
 
 export function mountainMinimapMarks(marks) {
@@ -361,6 +362,17 @@ function sledCamera(cam, dt) {
   run.shake = decayShake(run.shake, dt);
   const off = shakeOffset(run.shake, performance.now() / 1000);
   cam.position.copy(camPos).add(_shake.set(off.x, off.y, 0));
+  cam.lookAt(camLook);
+}
+
+function runoutCamera(cam, dt) {
+  const { x, z } = run.runout;
+  run.runoutT += dt;
+  const t = runoutCamTargets({ x, y: terrainHeight(x, z), z }, run.runoutT);
+  const k = 1 - Math.pow(0.02, dt);
+  camPos.lerp(toWorld(_a, t.pos), k);
+  camLook.lerp(toWorld(_b, t.look), k);
+  cam.position.copy(camPos);
   cam.lookAt(camLook);
 }
 
@@ -449,6 +461,8 @@ function closeRun() {
   showSled(false);
   showObstacles(COURSE);
   hideSledHud();
+  setCameraRig(null);
+  snapCamera();
   document.body.classList.remove('sled-run');
   run = null;
 }
@@ -463,12 +477,14 @@ function finishSled() {
     ui.toast?.(TOBOGGAN_TOAST, 2600);
   }
   run.input.dispose();
-  setCameraRig(null);
+  hideBoost();
   clearCountdown();
   const p = slopePoint(run.sled.z, run.sled.x);
   run.runout = createRunout({ x: p.x, z: p.z, v: run.sled.speed * SLOPE_M_PER_UNIT });
   run.sprayT = 0;
+  run.runoutT = 0;
   run.phase = 'runout';
+  setCameraRig(runoutCamera);
   Sound.complete();
   const f = CAMP.finish;
   [-1, 1].forEach(s => spawnConfetti(MOUNTAIN.x + f.x + s * f.half, MOUNTAIN.y + terrainHeight(f.x, f.z) + 3.4, MOUNTAIN.z + f.z));
@@ -487,13 +503,13 @@ function rideRunout(dt) {
     run.sprayT = SPRAY_S;
     spawnSnowBurst(MOUNTAIN.x + x - 0.6, MOUNTAIN.y + y + 0.2, MOUNTAIN.z + z + 0.3, 4);
   }
-  if (run.runout.done) celebrate(x, y, z, yaw);
+  if (run.runout.done) celebrate(x, y, z);
 }
 
-function celebrate(x, y, z, yaw) {
+function celebrate(x, y, z) {
   run.phase = 'cheer';
   run.cheerT = CHEER_S;
-  player.position.set(MOUNTAIN.x + x + Math.cos(yaw) * 0.9, MOUNTAIN.y + y, MOUNTAIN.z + z - Math.sin(yaw) * 0.9);
+  player.position.set(MOUNTAIN.x + x, MOUNTAIN.y + y, MOUNTAIN.z + z + CHEER_FRONT);
   player.rotation.y = 0;
   triggerMoment(true);
   if (run.result.newBest) {

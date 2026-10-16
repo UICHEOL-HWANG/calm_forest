@@ -21,7 +21,7 @@ function ensure() {
     #sled-hud .sled-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.4)}
     #sled-hud .sled-boost{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 18px);width:84px;height:84px;border-radius:50%;border:0;background:#9a6a2f;color:#fff;font-size:15px;pointer-events:auto}
     #sled-hud .sled-boost:disabled{opacity:.45}
-    #sled-hud .sled-result{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:240px;padding:18px 20px;border-radius:16px;background:#fffdf7;color:#2a2a28;text-align:center;pointer-events:auto;line-height:1.6}
+    #sled-hud .sled-result{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);min-width:240px;padding:18px 20px;border-radius:16px;background:#fffdf7;color:#2a2a28;text-align:center;pointer-events:auto;line-height:1.6}
     #sled-hud .sled-result[hidden]{display:none}
     #sled-hud .sled-result button{margin-top:10px;padding:8px 18px;border:0;border-radius:10px;background:#3f6b34;color:#fff;font-size:15px}`;
     document.head.appendChild(style);
@@ -82,6 +82,10 @@ export function showResult({ timeMs, best, newBest, coins, leftToday, flags }, o
   box.innerHTML = `${lines.map(l => `<div>${l}</div>`).join('')}<button type="button">${t('확인')}</button>`;
   box.querySelector('button').onclick = onClose;
   box.hidden = false;
+}
+
+export function hideBoost() {
+  ensure().querySelector('.sled-boost').style.display = 'none';
 }
 
 export function hideSledHud() {

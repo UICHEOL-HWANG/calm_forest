@@ -59,10 +59,12 @@ test('the regular action button is hidden while sledding and restored after the 
   assert.match(between(src, 'export function abandonRun', '\n}'), /closeRun\(\)/);
 });
 
-test('the camera rig is released at the finish and the game camera follows the runout without a snap', () => {
+test('the finish hands the camera to the runout rig, holds it through the cheer and snaps back on close', () => {
   const fin = between(src, 'function finishSled', '\n}');
-  assert.match(fin, /setCameraRig\(null\)/);
+  assert.match(fin, /setCameraRig\(runoutCamera\)/);
   assert.doesNotMatch(fin, /snapCamera\(\)/);
+  assert.doesNotMatch(between(src, 'function celebrate', '\n}'), /setCameraRig\(null\)/);
+  assert.match(between(src, 'function closeRun', '\n}'), /setCameraRig\(null\)/);
   assert.doesNotMatch(between(src, 'function showFinish', '\n}'), /snapCamera\(\)/);
 });
 

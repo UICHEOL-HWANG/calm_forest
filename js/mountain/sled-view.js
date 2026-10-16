@@ -37,6 +37,20 @@ export function sledCamTargets(s) {
   };
 }
 
+export const RUNOUT_CAM = Object.freeze({ orbitS: 1.2, endR: 7.4, endUp: 3.6, endAng: Math.PI - Math.atan2(2.5, 7), lookUp: 0.8 });
+
+export function runoutCamTargets(p, t) {
+  const u = Math.min(1, Math.max(0, t / RUNOUT_CAM.orbitS));
+  const k = u * u * (3 - 2 * u);
+  const ang = RUNOUT_CAM.endAng * k;
+  const r = SLED_CAM.back + (RUNOUT_CAM.endR - SLED_CAM.back) * k;
+  const up = SLED_CAM.up + (RUNOUT_CAM.endUp - SLED_CAM.up) * k;
+  return {
+    pos: { x: p.x + Math.sin(ang) * r, y: p.y + up, z: p.z - Math.cos(ang) * r },
+    look: { x: p.x, y: p.y + RUNOUT_CAM.lookUp, z: p.z },
+  };
+}
+
 export function sledPose(s, yaw) {
   const p = slopePoint(s.z, s.x);
   return { x: p.x, y: p.y + SLED_LIFT, z: p.z, pitch: sledPitch(), yaw };
