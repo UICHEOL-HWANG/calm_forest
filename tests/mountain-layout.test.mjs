@@ -7,6 +7,7 @@ import { SUMMIT_Y, slopePoint, pathY, pathHeight, terrainHeight, acornY } from '
 import { buildMountainSpace, PLAIN } from '../js/mountain/interior-art.js';
 import { COURSE, centerX, COURSE_V } from '../js/mountain/course.js';
 import { PHYS_V } from '../js/mountain/sled.js';
+import { CAMP, summitHeight } from '../js/mountain/camp-layout.js';
 
 const OLD_PATH_LENGTH = 117.285;
 const CORRIDOR = COURSE.width / 2 + 3;
@@ -163,7 +164,10 @@ test('the exit sits inside the plaza, south of its centre', () => {
 });
 
 test('the walk clamp lifts the player with the shared path height', () => {
-  assert.match(spaceSrc, /p\.y = c\.yard \? CAMP\.deck\.y : c\.onPath \? pathHeight\(c\.seg, c\.k\) : 0;/);
+  assert.match(spaceSrc, /p\.y = summitHeight\(c\);/);
+  assert.equal(summitHeight({ yard: true, onPath: false, seg: 0, k: 0 }), CAMP.deck.y);
+  assert.equal(summitHeight({ yard: false, onPath: true, seg: 2, k: 0.5 }), pathHeight(2, 0.5));
+  assert.equal(summitHeight({ yard: false, onPath: false, seg: 0, k: 0 }), 0);
   assert.equal(pathHeight(2, 0.5), (pathY(2) + pathY(3)) / 2);
 });
 

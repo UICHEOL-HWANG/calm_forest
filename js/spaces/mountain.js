@@ -6,13 +6,13 @@ import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from 
 import { daysSinceUnlock, isMountainOpen } from '../mountain/unlock.js';
 import { buildLandmark, landmarkStop } from '../mountain/landmark.js';
 import { createReveal } from '../mountain/reveal.js';
-import { pathHeight, slopePoint, acornY, terrainHeight, SLOPE_M_PER_UNIT } from '../mountain/terrain.js';
+import { slopePoint, acornY, terrainHeight, SLOPE_M_PER_UNIT } from '../mountain/terrain.js';
 import { buildMountainSpace, paintInterior, followCamera, poseObstacles, obstacleScales } from '../mountain/interior-art.js';
 import { applyLook } from '../mountain/interior-look.js';
 import { MOUNTAIN_THEMES, THEME_CHECK_S, mountainLook } from '../mountain/theme.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns } from '../mountain/climb.js';
 import { buildCamp } from '../mountain/camp-art.js';
-import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, CAFE_EXIT_SPOT, clampSummit } from '../mountain/camp-layout.js';
+import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, CAFE_EXIT_SPOT, clampSummit, summitHeight } from '../mountain/camp-layout.js';
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
 import { createCafe } from '../mountain/cafe-room.js';
@@ -181,11 +181,11 @@ export function mountainLookFrame(env, dt) {
 export function clampToMountain(p) {
   if (sledActive()) return;
   if (cafe?.active()) return cafe.clamp(p);
-  const c = clampSummit({ x: p.x - MOUNTAIN.x, z: p.z - MOUNTAIN.z }, q => clampLocal(q, PLAZA));
+  const c = clampSummit({ x: p.x - MOUNTAIN.x, z: p.z - MOUNTAIN.z }, q => clampLocal(q, PLAZA), p.y);
   const q = pushOutProps(c);
   p.x = MOUNTAIN.x + q.x;
   p.z = MOUNTAIN.z + q.z;
-  p.y = c.yard ? CAMP.deck.y : c.onPath ? pathHeight(c.seg, c.k) : 0;
+  p.y = summitHeight(c);
 }
 
 let cafe = null;

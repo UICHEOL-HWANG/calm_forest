@@ -1,4 +1,4 @@
-import { slopePoint } from './terrain.js';
+import { slopePoint, pathHeight } from './terrain.js';
 import { CLIMB_PATH, CLIMB_START } from './climb.js';
 import { COURSE, centerX } from './course.js';
 
@@ -87,11 +87,38 @@ export function inYard(p) {
   return Math.hypot(p.x - YARD.x, p.z - YARD.z) <= YARD.r;
 }
 
-export function clampSummit(p, clampLocalFn) {
-  if (inYard(p)) return { x: p.x, z: p.z, onPath: false, seg: 0, k: 0, yard: true };
-  const c = clampLocalFn(p);
-  const d = Math.hypot(p.x - YARD.x, p.z - YARD.z);
-  const e = { x: YARD.x + ((p.x - YARD.x) / d) * YARD.r, z: YARD.z + ((p.z - YARD.z) / d) * YARD.r };
+const HEIGHT_TOL = 0.5;
+const YARD_GAP = 1e-3;
+const SETTLE_PASSES = 4;
+
+function yardEdge(p, r) {
+  const d = Math.hypot(p.x - YARD.x, p.z - YARD.z) || 1;
+  return { x: YARD.x + ((p.x - YARD.x) / d) * r, z: YARD.z + ((p.z - YARD.z) / d) * r };
+}
+
+function onYard(p) {
+  return { x: p.x, z: p.z, onPath: false, seg: 0, k: 0, yard: true };
+}
+
+function offYard(p, clampLocalFn) {
+  let q = { ...clampLocalFn(yardEdge(p, YARD.r + YARD_GAP)), yard: false };
+  for (let i = 1; i < SETTLE_PASSES && inYard(q); i++) q = { ...clampLocalFn(yardEdge(q, YARD.r + YARD_GAP)), yard: false };
+  return q;
+}
+
+export function clampSummit(p, clampLocalFn, curY) {
+  const gap = c => (curY === undefined ? 0 : Math.abs(summitHeight(c) - curY));
+  if (inYard(p)) {
+    const y = onYard(p);
+    return gap(y) <= HEIGHT_TOL ? y : offYard(p, clampLocalFn);
+  }
+  const c = { ...clampLocalFn(p), yard: false };
+  const e = onYard(yardEdge(p, YARD.r));
   const toPath = Math.hypot(c.x - p.x, c.z - p.z), toYard = Math.hypot(e.x - p.x, e.z - p.z);
-  return toYard < toPath ? { ...e, onPath: false, seg: 0, k: 0, yard: true } : { ...c, yard: false };
+  const order = toYard < toPath ? [e, c] : [c, e];
+  return order.find(q => gap(q) <= HEIGHT_TOL) ?? (gap(e) < gap(c) ? e : c);
+}
+
+export function summitHeight(c) {
+  return c.yard ? CAMP.deck.y : c.onPath ? pathHeight(c.seg, c.k) : 0;
 }

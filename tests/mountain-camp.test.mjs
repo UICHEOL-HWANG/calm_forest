@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
-import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut, YARD, DOOR_SPOT, DOOR_R, inYard, clampSummit, CAFE_EXIT_SPOT } from '../js/mountain/camp-layout.js';
+import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut, YARD, DOOR_SPOT, DOOR_R, inYard, clampSummit, CAFE_EXIT_SPOT, summitHeight } from '../js/mountain/camp-layout.js';
 import { CLIMB_PATH, CLIMB_START, PLAZA, clampLocal } from '../js/mountain/climb.js';
 import { buildCamp, CAMP_DRAWS } from '../js/mountain/camp-art.js';
 
@@ -108,4 +108,72 @@ test('cafe exit spot is in the yard, free, and clear of the door prompt radius',
   assert.ok(inYard(CAFE_EXIT_SPOT));
   assert.ok(free(CAFE_EXIT_SPOT));
   assert.ok(Math.hypot(CAFE_EXIT_SPOT.x - DOOR_SPOT.x, CAFE_EXIT_SPOT.z - DOOR_SPOT.z) > DOOR_R + PLAYER_R);
+});
+
+const STEP = 0.05;
+const MAX_DY = 0.6;
+const local = x => clampLocal(x, PLAZA);
+
+function stepTo(pos, y, dir) {
+  const c = clampSummit({ x: pos.x + dir.x * STEP, z: pos.z + dir.z * STEP }, local, y);
+  return { pos: pushOutProps(c), y: summitHeight(c), c };
+}
+
+test('walking out of the yard in any direction never pops the height', () => {
+  const steps = Math.ceil((YARD.r + 2) / STEP);
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2;
+    const dir = { x: Math.cos(a), z: Math.sin(a) };
+    let s = { pos: { x: YARD.x, z: YARD.z }, y: CAMP.deck.y };
+    for (let n = 0; n < steps; n++) {
+      const next = stepTo(s.pos, s.y, dir);
+      assert.ok(Math.abs(next.y - s.y) <= MAX_DY, `${i * 5}deg step ${n}: ${s.y.toFixed(2)} -> ${next.y.toFixed(2)}`);
+      s = next;
+    }
+  }
+});
+
+function lowPathStarts() {
+  const out = [];
+  for (let seg = 0; seg < CLIMB_PATH.length - 1; seg++) {
+    const a = CLIMB_PATH[seg], b = CLIMB_PATH[seg + 1];
+    for (let k = 0; k <= 1; k += 0.02) {
+      const p = { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k };
+      const y = summitHeight({ yard: false, onPath: true, seg, k });
+      const d = Math.hypot(p.x - YARD.x, p.z - YARD.z);
+      if (y < CAMP.deck.y - MAX_DY && d > YARD.r && d < YARD.r + 2.5) out.push({ p, y });
+    }
+  }
+  return out;
+}
+
+test('walking up from a lower stretch of path never pops onto the yard', () => {
+  const starts = lowPathStarts();
+  assert.ok(starts.length >= 3, String(starts.length));
+  for (const { p, y } of starts) {
+    let s = { pos: p, y };
+    const d = Math.hypot(YARD.x - p.x, YARD.z - p.z);
+    const dir = { x: (YARD.x - p.x) / d, z: (YARD.z - p.z) / d };
+    for (let n = 0; n < Math.ceil(d / STEP) + 40; n++) {
+      const next = stepTo(s.pos, s.y, dir);
+      assert.ok(Math.abs(next.y - s.y) <= MAX_DY, `${p.x.toFixed(2)},${p.z.toFixed(2)} step ${n}: ${s.y.toFixed(2)} -> ${next.y.toFixed(2)}`);
+      s = next;
+    }
+    assert.ok(!(s.c.yard && s.y === CAMP.deck.y), `${p.x.toFixed(2)},${p.z.toFixed(2)} ended on the yard`);
+  }
+});
+
+test('from the summit a straight walk reaches the hut door on the yard', () => {
+  const summit = CLIMB_PATH.at(-1);
+  let s = { pos: { x: summit.x, z: summit.z }, y: CAMP.deck.y };
+  const d = Math.hypot(DOOR_SPOT.x - summit.x, DOOR_SPOT.z - summit.z);
+  const dir = { x: (DOOR_SPOT.x - summit.x) / d, z: (DOOR_SPOT.z - summit.z) / d };
+  for (let n = 0; n < Math.round(d / STEP); n++) {
+    const next = stepTo(s.pos, s.y, dir);
+    assert.ok(Math.abs(next.y - s.y) <= MAX_DY, String(n));
+    s = next;
+  }
+  assert.ok(Math.hypot(s.pos.x - DOOR_SPOT.x, s.pos.z - DOOR_SPOT.z) <= 0.3, `${s.pos.x.toFixed(2)},${s.pos.z.toFixed(2)}`);
+  assert.ok(s.c.yard);
+  assert.equal(s.y, CAMP.deck.y);
 });
