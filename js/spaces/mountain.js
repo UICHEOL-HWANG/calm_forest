@@ -19,6 +19,7 @@ import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
 import { SLED_SEAT, SLED_LIFT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
+import { setSledSkin } from '../mountain/sled-art.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
 import { bindSledInput, initialInput, worldSteer } from '../mountain/sled-input.js';
 import { isTouchDevice } from '../touch-sim.js';
@@ -215,9 +216,13 @@ function startClimb() {
   run = { phase: 'climb', runId: newRunId(), diff: null, taken: Array(ACORNS.length).fill(false), climbStart: performance.now(), frames: 0, frameMs: 0 };
 }
 
+function sledSkin() {
+  return gameState.mountain?.hut?.sled || 'basic';
+}
+
 function ctxOf() {
   return {
-    runId: run.runId, diff: run.diff,
+    runId: run.runId, diff: run.diff, sledSkin: sledSkin(),
     acornsAvailable: ACORNS.length, acornsCollected: run.taken.filter(Boolean).length,
     climbMs: run.climbMs ?? Math.round(performance.now() - run.climbStart),
     idleMs: run.idleMs ?? (run.phase === 'hut' ? Math.round(performance.now() - run.hutAt) : null),
@@ -319,6 +324,7 @@ function startSled() {
   camLook.copy(player.position);
   run.yaw = sledYaw(0);
   rideSlope(0, 0);
+  setSledSkin($w.mountainGroup.userData.sled, THREE, sledSkin());
   showSled(true);
   setCameraRig(sledCamera);
   showCountdown(3);
