@@ -163,7 +163,7 @@ test('the exit sits inside the plaza, south of its centre', () => {
 });
 
 test('the walk clamp lifts the player with the shared path height', () => {
-  assert.match(spaceSrc, /p\.y = c\.onPath \? pathHeight\(c\.seg, c\.k\) : 0;/);
+  assert.match(spaceSrc, /p\.y = c\.yard \? CAMP\.deck\.y : c\.onPath \? pathHeight\(c\.seg, c\.k\) : 0;/);
   assert.equal(pathHeight(2, 0.5), (pathY(2) + pathY(3)) / 2);
 });
 

@@ -3,7 +3,7 @@ import { CLIMB_PATH, CLIMB_START } from './climb.js';
 import { COURSE, centerX } from './course.js';
 
 export const PLAYER_R = 0.35;
-export const HUT_R = 3;
+export const HUT_R = 2.6;
 
 const summit = CLIMB_PATH.at(-1);
 const top = slopePoint(0, centerX(0));
@@ -28,12 +28,6 @@ export const CAMP = Object.freeze({
 
 export const START_SPOT = Object.freeze({ x: CAMP.deck.x, z: CAMP.deck.z + 0.3 });
 
-function porch() {
-  const { x, z, ry, w } = CAMP.hut;
-  const r = w / 2 + 1.3;
-  return { x: x + Math.cos(ry) * r, z: z - Math.sin(ry) * r };
-}
-
 export const CAMP_COLLIDERS = Object.freeze([
   { id: 'campfire', ...CAMP.fire, r: 1.25 },
   ...CAMP.benches.map((b, i) => ({ id: `bench${i}`, x: CAMP.fire.x + b.dx, z: CAMP.fire.z + b.dz, r: 0.8 })),
@@ -48,7 +42,6 @@ export const CAMP_COLLIDERS = Object.freeze([
   { id: 'finishR', x: CAMP.finish.x + FINISH_HALF, z: CAMP.finish.z, r: 0.3 },
   { id: 'keeper', ...CAMP.keeper, r: 0.45 },
   { id: 'hut', x: CAMP.hut.x, z: CAMP.hut.z, r: HUT_R },
-  { id: 'porch', ...porch(), r: 1.4 },
   { id: 'poleL', x: CAMP.deck.x - 2.4, z: CAMP.deck.z + 1.3, r: 0.2 },
   { id: 'poleR', x: CAMP.deck.x + 2.4, z: CAMP.deck.z + 1.3, r: 0.2 },
 ].map(c => Object.freeze(c)));
@@ -76,4 +69,24 @@ export function pushOutProps(p) {
 
 export function atHut(p) {
   return Math.hypot(p.x - summit.x, p.z - summit.z) <= 2.5;
+}
+
+export const YARD = Object.freeze({ x: 1.5, z: -6.9, r: 3.2 });
+export const DOOR_R = 1.0;
+export const DOOR_SPOT = Object.freeze({
+  x: CAMP.hut.x + Math.cos(CAMP.hut.ry) * (CAMP.hut.w / 2 + 1.0),
+  z: CAMP.hut.z - Math.sin(CAMP.hut.ry) * (CAMP.hut.w / 2 + 1.0),
+});
+
+export function inYard(p) {
+  return Math.hypot(p.x - YARD.x, p.z - YARD.z) <= YARD.r;
+}
+
+export function clampSummit(p, clampLocalFn) {
+  if (inYard(p)) return { x: p.x, z: p.z, onPath: false, seg: 0, k: 0, yard: true };
+  const c = clampLocalFn(p);
+  const d = Math.hypot(p.x - YARD.x, p.z - YARD.z);
+  const e = { x: YARD.x + ((p.x - YARD.x) / d) * YARD.r, z: YARD.z + ((p.z - YARD.z) / d) * YARD.r };
+  const toPath = Math.hypot(c.x - p.x, c.z - p.z), toYard = Math.hypot(e.x - p.x, e.z - p.z);
+  return toYard < toPath ? { ...e, onPath: false, seg: 0, k: 0, yard: true } : { ...c, yard: false };
 }

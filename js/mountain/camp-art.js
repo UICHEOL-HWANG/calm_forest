@@ -1,7 +1,7 @@
 import { terrainHeight } from './terrain.js';
 import { CLIMB_PATH } from './climb.js';
 import { buildSledMesh } from './sled-art.js';
-import { CAMP } from './camp-layout.js';
+import { CAMP, YARD } from './camp-layout.js';
 
 export const CAMP_DRAWS = 2;
 
@@ -343,6 +343,7 @@ export function buildCamp(three) {
   seed = 7;
   const S = makeSink(), H = frame(CAMP.hut.x, CAMP.hut.z, CAMP.hut.ry, CAMP.deck.y - 0.1);
   S.add(G.ball, SNOW, H.at(0, 0, -1.6), [11, 3.4, 10]);
+  S.add(G.ball, SNOW, [YARD.x, CAMP.deck.y - 0.35, YARD.z], [YARD.r * 2.3, 0.7, YARD.r * 2.3]);
   hutAframe(S, H, T);
   [0, 1, 2].forEach(i => sledLean(S, H, 2.7 + i * 0.01, 3.2 + i * 0.55, 0.62, i * 0.05));
   keeper(S, CAMP.keeper.x, CAMP.keeper.z, -Math.PI / 2 - 0.5);

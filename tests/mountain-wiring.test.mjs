@@ -97,3 +97,10 @@ test('finishing plays the finish beat, a hockey stop, a ceremony and only then t
   assert.match(m, /run\.phase = 'cheer'/);
   assert.match(between(m, 'function showFinish', '\n}'), /showResult\(/);
 });
+
+test('the hut door prompt and action are wired', () => {
+  const doors = read('js/spaces/doors.js');
+  assert.match(doors, /else if \(hutDoorReady\(\)\) \{ nd = 'hutcafe'; prompt = '☕ 산장 카페 들어가기'; \}/);
+  assert.ok(EN['☕ 산장 카페 들어가기']);
+  assert.match(read('js/spaces/mountain.js'), /clampSummit\(/);
+});

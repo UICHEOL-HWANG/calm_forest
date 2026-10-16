@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
-import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut } from '../js/mountain/camp-layout.js';
+import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut, YARD, DOOR_SPOT, DOOR_R, inYard, clampSummit } from '../js/mountain/camp-layout.js';
 import { CLIMB_PATH, CLIMB_START, PLAZA, clampLocal } from '../js/mountain/climb.js';
 import { buildCamp, CAMP_DRAWS } from '../js/mountain/camp-art.js';
 
@@ -10,7 +10,7 @@ const free = p => CAMP_COLLIDERS.every(c => Math.hypot(p.x - c.x, p.z - c.z) >= 
 
 test('every plaza and summit prop has a collider', () => {
   const ids = new Set(CAMP_COLLIDERS.map(c => c.id));
-  for (const id of ['campfire', 'bench0', 'bench1', 'bench2', 'lamp0', 'lamp1', 'lamp2', 'woodpile', 'stump', 'snowman', 'sign', 'sticks', 'cairn', 'finishL', 'finishR', 'keeper', 'hut', 'porch', 'poleL', 'poleR']) {
+  for (const id of ['campfire', 'bench0', 'bench1', 'bench2', 'lamp0', 'lamp1', 'lamp2', 'woodpile', 'stump', 'snowman', 'sign', 'sticks', 'cairn', 'finishL', 'finishR', 'keeper', 'hut', 'poleL', 'poleR']) {
     assert.ok(ids.has(id), id);
   }
 });
@@ -71,4 +71,27 @@ test('the camp is two drawables, solid and glowing, both merged', () => {
   assert.equal(CAMP_DRAWS, 2);
   assert.ok(ds[0].geometry.getAttribute('color'));
   assert.ok(ds[0].geometry.getAttribute('position').count > 3000);
+});
+
+test('the summit yard joins the path end and holds the keeper and the hut door', () => {
+  const end = CLIMB_PATH.at(-1);
+  assert.ok(Math.hypot(end.x - YARD.x, end.z - YARD.z) < YARD.r + 1.5);
+  assert.ok(inYard(CAMP.keeper));
+  assert.ok(inYard(DOOR_SPOT));
+  assert.ok(free(DOOR_SPOT));
+  assert.ok(Math.hypot(DOOR_SPOT.x - START_SPOT.x, DOOR_SPOT.z - START_SPOT.z) > 1.6 + DOOR_R);
+});
+
+test('the porch is walkable and the hut body still blocks', () => {
+  assert.ok(!CAMP_COLLIDERS.some(c => c.id === 'porch'));
+  assert.ok(CAMP_COLLIDERS.find(c => c.id === 'hut').r <= 2.6);
+});
+
+test('walking out of the yard never jumps more than a step', () => {
+  for (let i = 0; i < 36; i++) {
+    const a = (i / 36) * Math.PI * 2;
+    const p = { x: YARD.x + Math.cos(a) * (YARD.r + 0.1), z: YARD.z + Math.sin(a) * (YARD.r + 0.1) };
+    const q = clampSummit(p, x => clampLocal(x, PLAZA));
+    assert.ok(Math.hypot(q.x - p.x, q.z - p.z) < 0.3, a.toFixed(2));
+  }
 });
