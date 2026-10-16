@@ -125,3 +125,17 @@ test('abandon rows carry no penalty, finish rows count missed flags', () => {
   assert.equal(rows[1].penalty_ms, null);
   assert.equal(rows[2].penalty_ms, 2 * PHYS.flagPenaltyMs);
 });
+
+test('idle time at the hut is recorded as an integer and sent with sled_start', () => {
+  const { c, rows, events } = run();
+  c.sledBegin({ ...CTX, idleMs: 5400.7 });
+  c.sledSettle(SLED(40000, 12), { ...CTX, idleMs: 5400.7 }, { fpsAvg: 58 });
+  assert.equal(rows[0].idle_ms, 5401);
+  assert.equal(events[0][1].idle_ms, 5401);
+});
+
+test('idle time is null for an abandon on the climb', () => {
+  const { c, rows } = run();
+  c.sledAbandon('climb', CTX, null);
+  assert.equal(rows[0].idle_ms, null);
+});

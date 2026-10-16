@@ -21,6 +21,8 @@ export function sledState() {
   };
 }
 
+const intOrNull = v => (Number.isFinite(v) ? Math.round(v) : null);
+
 function writeSled(next) {
   gameState.mountain = { ...(gameState.mountain || {}), sled: next };
 }
@@ -35,7 +37,7 @@ export function sledBegin(ctx) {
   writeSled({ ...st, plays: attemptN });
   requestSave();
   trackEvent('sled_start', {
-    run_id: ctx.runId, attempt_n: attemptN, course_v: COURSE_V, acorns: ctx.acornsCollected,
+    run_id: ctx.runId, attempt_n: attemptN, course_v: COURSE_V, acorns: ctx.acornsCollected, idle_ms: intOrNull(ctx.idleMs),
     ...(ctx.diff ? diffParams(ctx.diff) : {}),
   });
   return { attemptN };
@@ -62,7 +64,8 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
     best_before_ms: bestBefore,
     acorns_available: ctx.acornsAvailable,
     acorns_collected: ctx.acornsCollected,
-    climb_ms: Number.isFinite(ctx.climbMs) ? Math.round(ctx.climbMs) : null,
+    climb_ms: intOrNull(ctx.climbMs),
+    idle_ms: intOrNull(ctx.idleMs),
     input: ctx.input,
     orientation: ctx.orientation,
     fps_avg: pay.fpsAvg ?? null,

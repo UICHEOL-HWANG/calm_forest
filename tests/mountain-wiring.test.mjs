@@ -65,3 +65,35 @@ test('saving inside the mountain records the spot just south of the gate', () =>
   assert.match(space, /const back = mountainReturnPos\(\);\n\s*player\.position\.set\(back\.x, 0, back\.z\);/);
   assert.match(src, /atDream \? dreamReturnPos\(\) : atMountain \? mountainReturnPos\(\) : \{ x: player\.position\.x, z: player\.position\.z \}/);
 });
+
+test('the summit no longer starts the sled by itself: hut arrival, then the start deck button', () => {
+  const m = read('js/spaces/mountain.js');
+  assert.doesNotMatch(m, /if \(atSummit\(local\)\) startSled\(\);/);
+  assert.match(m, /atHut\(local\)/);
+  assert.match(m, /'🏠 정상 산장에 도착했어요'/);
+  assert.match(m, /nearDoor === 'sledstart'/);
+  const doors = read('js/spaces/doors.js');
+  assert.match(doors, /nd = 'sledstart'; prompt = '🛷 썰매 타고 내려가기'/);
+  assert.ok(EN['🏠 정상 산장에 도착했어요']);
+  assert.ok(EN['🛷 썰매 타고 내려가기']);
+});
+
+test('finishing slides into the runout instead of teleporting to the plaza', () => {
+  const m = read('js/spaces/mountain.js');
+  assert.match(m, /phase = 'runout'/);
+  assert.doesNotMatch(m, /function finishSled\(\) \{[\s\S]*?player\.position\.set\(MOUNTAIN\.x \+ PLAZA\.x, 0, MOUNTAIN\.z \+ PLAZA\.z\);[\s\S]*?\n\}/);
+});
+
+test('finishing plays the finish beat, a hockey stop, a ceremony and only then the result', () => {
+  const m = read('js/spaces/mountain.js');
+  const between = (s, a, b) => s.slice(s.indexOf(a), s.indexOf(b, s.indexOf(a) + a.length));
+  const fin = between(m, 'function finishSled', '\n}');
+  assert.match(fin, /Sound\.complete\(\)/);
+  assert.match(fin, /spawnConfetti\(/);
+  assert.match(between(m, 'function rideRunout', '\n}'), /stopTurn\(run\.runout\)/);
+  assert.match(between(m, 'function rideRunout', '\n}'), /spawnSnowBurst\(/);
+  const cele = between(m, 'function celebrate', '\n}');
+  assert.match(cele, /triggerMoment\(true\)/);
+  assert.match(m, /run\.phase = 'cheer'/);
+  assert.match(between(m, 'function showFinish', '\n}'), /showResult\(/);
+});

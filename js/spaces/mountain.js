@@ -1,19 +1,23 @@
 import * as THREE from 'three';
-import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle } from '../game.js';
+import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
 import { daysSinceUnlock, isMountainOpen } from '../mountain/unlock.js';
 import { buildLandmark, landmarkStop } from '../mountain/landmark.js';
 import { createReveal } from '../mountain/reveal.js';
-import { pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
+import { pathHeight, slopePoint, acornY, terrainHeight, SLOPE_M_PER_UNIT } from '../mountain/terrain.js';
 import { buildMountainSpace, paintInterior, followCamera, poseObstacles, obstacleScales } from '../mountain/interior-art.js';
 import { applyLook } from '../mountain/interior-look.js';
 import { MOUNTAIN_THEMES, THEME_CHECK_S, mountainLook } from '../mountain/theme.js';
-import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
+import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns } from '../mountain/climb.js';
+import { buildCamp } from '../mountain/camp-art.js';
+import { CAMP, START_SPOT, atHut, pushOutProps } from '../mountain/camp-layout.js';
+import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
+import { createKeeperBubble } from '../mountain/keeper-bubble.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
-import { SLED_SEAT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
+import { SLED_SEAT, SLED_LIFT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
 import { bindSledInput, initialInput, worldSteer } from '../mountain/sled-input.js';
@@ -25,6 +29,11 @@ import { inVillage2 } from './doors.js';
 export const MOUNTAIN_EXIT_LOCAL = { x: 0, z: 83 };
 let reveal = null;
 let run = null;
+let keeperBubble = null;
+const START_R = 1.6;
+const CHEER_S = 1.3;
+const SPRAY_S = 0.07;
+const STOP_SIDE = Math.PI / 2;
 let look = null;
 let lookT = 0;
 let fallT = 0;
@@ -38,7 +47,12 @@ const newRunId = () => crypto.randomUUID?.()
   || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => { const r = Math.random() * 16 | 0; return (ch === 'x' ? r : (r & 3) | 8).toString(16); });
 
 export function sledActive() {
-  return !!run && (run.phase === 'countdown' || run.phase === 'sled');
+  return !!run && (run.phase === 'countdown' || run.phase === 'sled' || run.phase === 'runout' || run.phase === 'cheer');
+}
+
+export function sledStartReady() {
+  if (!$w.atMountain || run?.phase !== 'hut') return false;
+  return Math.hypot(player.position.x - MOUNTAIN.x - START_SPOT.x, player.position.z - MOUNTAIN.z - START_SPOT.z) < START_R;
 }
 
 export function mountainOpen() {
@@ -60,6 +74,8 @@ export function clampToLandmark(p) {
 function ensureMountainSpace() {
   if (!$w.mountainGroup) {
     const g = buildMountainSpace(THREE);
+    g.add(buildCamp(THREE));
+    keeperBubble = createKeeperBubble(THREE, g, { ...CAMP.keeper, y: CAMP.deck.y });
     g.position.copy(MOUNTAIN);
     g.visible = false;
     scene.add(g);
@@ -145,14 +161,16 @@ export function mountainLookFrame(env, dt) {
 export function clampToMountain(p) {
   if (sledActive()) return;
   const c = clampLocal({ x: p.x - MOUNTAIN.x, z: p.z - MOUNTAIN.z }, PLAZA);
-  p.x = MOUNTAIN.x + c.x;
-  p.z = MOUNTAIN.z + c.z;
+  const q = pushOutProps(c);
+  p.x = MOUNTAIN.x + q.x;
+  p.z = MOUNTAIN.z + q.z;
   p.y = c.onPath ? pathHeight(c.seg, c.k) : 0;
 }
 
 export function mountainAction(nearDoor) {
   if (nearDoor === 'mountain') return enterMountain();
   if (nearDoor === 'mountainexit') return exitMountain();
+  if (nearDoor === 'sledstart' && run?.phase === 'hut') return startSled();
 }
 
 export function mountainMinimapMarks(marks) {
@@ -202,6 +220,7 @@ function ctxOf() {
     runId: run.runId, diff: run.diff,
     acornsAvailable: ACORNS.length, acornsCollected: run.taken.filter(Boolean).length,
     climbMs: run.climbMs ?? Math.round(performance.now() - run.climbStart),
+    idleMs: run.idleMs ?? (run.phase === 'hut' ? Math.round(performance.now() - run.hutAt) : null),
     daysSinceUnlock: daysSinceUnlock(gameState.firstDay, todayStr()),
     input: run.input ? run.input.input() : initialInput(isTouchDevice()),
     orientation: innerWidth < innerHeight ? 'portrait' : 'landscape',
@@ -270,8 +289,20 @@ function boost() {
   if (run?.phase === 'sled') run.sled = tryBoost(run.sled);
 }
 
-function startSled() {
+function arriveHut() {
+  run.phase = 'hut';
   run.climbMs = Math.round(performance.now() - run.climbStart);
+  run.hutAt = performance.now();
+  keeperBubble?.arrive();
+  Sound.blip();
+  ui.toast?.('🏠 정상 산장에 도착했어요', 2200);
+  trackEvent('mountain_hut', { run_id: run.runId, climb_ms: run.climbMs, acorns: run.taken.filter(Boolean).length });
+}
+
+function startSled() {
+  run.idleMs = Math.round(performance.now() - run.hutAt);
+  keeperBubble?.hide();
+  $w.nearDoor = null; ui.setDoorPrompt?.(null);
   run.diff = rollDifficulty('sled');
   run.course = courseFor(run.diff);
   run.shake = 0;
@@ -284,9 +315,8 @@ function startSled() {
   document.body.classList.add('sled-run');
   boostButton().onclick = boost;
   sledBegin(ctxOf());
-  const t = sledCamTargets(run.sled);
-  toWorld(camPos, t.pos);
-  toWorld(camLook, t.look);
+  camPos.copy(camera.position);
+  camLook.copy(player.position);
   run.yaw = sledYaw(0);
   rideSlope(0, 0);
   showSled(true);
@@ -296,6 +326,7 @@ function startSled() {
 }
 
 function closeRun() {
+  keeperBubble?.hide();
   showSled(false);
   showObstacles(COURSE);
   hideSledHud();
@@ -305,20 +336,57 @@ function closeRun() {
 
 function finishSled() {
   const fpsAvg = run.frames ? Math.round(1000 / (run.frameMs / run.frames)) : null;
-  const res = sledSettle(run.sled, ctxOf(), { fpsAvg });
+  run.result = sledSettle(run.sled, ctxOf(), { fpsAvg });
   run.input.dispose();
   setCameraRig(null);
+  clearCountdown();
+  const p = slopePoint(run.sled.z, run.sled.x);
+  run.runout = createRunout({ x: p.x, z: p.z, v: run.sled.speed * SLOPE_M_PER_UNIT });
+  run.sprayT = 0;
+  run.phase = 'runout';
+  Sound.complete();
+  const f = CAMP.finish;
+  [-1, 1].forEach(s => spawnConfetti(MOUNTAIN.x + f.x + s * f.half, MOUNTAIN.y + terrainHeight(f.x, f.z) + 3.4, MOUNTAIN.z + f.z));
+}
+
+function rideRunout(dt) {
+  run.runout = stepRunout(run.runout, dt);
+  const { x, z } = run.runout, y = terrainHeight(x, z);
+  const yaw = sledYaw(0) + stopTurn(run.runout) * STOP_SIDE;
+  player.position.set(MOUNTAIN.x + x, MOUNTAIN.y + y + SLED_SEAT, MOUNTAIN.z + z);
+  player.rotation.y = yaw;
+  const sled = $w.mountainGroup?.userData.sled;
+  if (sled) { sled.position.set(x, y + SLED_LIFT, z); sled.rotation.set(0, yaw, 0); }
+  run.sprayT -= dt;
+  if (run.sprayT <= 0 && run.runout.v > 0.4) {
+    run.sprayT = SPRAY_S;
+    spawnSnowBurst(MOUNTAIN.x + x - 0.6, MOUNTAIN.y + y + 0.2, MOUNTAIN.z + z + 0.3, 4);
+  }
+  if (run.runout.done) celebrate(x, y, z, yaw);
+}
+
+function celebrate(x, y, z, yaw) {
+  run.phase = 'cheer';
+  run.cheerT = CHEER_S;
+  player.position.set(MOUNTAIN.x + x + Math.cos(yaw) * 0.9, MOUNTAIN.y + y, MOUNTAIN.z + z - Math.sin(yaw) * 0.9);
+  player.rotation.y = 0;
+  triggerMoment(true);
+  if (run.result.newBest) {
+    spawnConfetti(player.position.x, player.position.y + 1.6, player.position.z);
+    spawnFloatText(player.position.x, player.position.y + 2.4, player.position.z, '🏆', '#e0a62a', 1);
+  }
+}
+
+function showFinish() {
+  const res = run.result;
   run.phase = 'result';
-  showSled(false);
-  player.position.set(MOUNTAIN.x + PLAZA.x, 0, MOUNTAIN.z + PLAZA.z);
-  player.rotation.y = Math.PI;
-  snapCamera();
-  showResult({ ...res, best: sledState().best ?? res.timeMs, flags: run.sled.flagsPassed }, closeRun);
+  player.position.y = MOUNTAIN.y;
+  showResult({ ...res, best: sledState().best ?? res.timeMs, flags: run.sled.flagsPassed }, () => { showSled(false); closeRun(); });
 }
 
 export function abandonRun() {
   if (!run) return;
-  if (run.phase === 'climb') sledAbandon('climb', ctxOf(), null);
+  if (run.phase === 'climb' || run.phase === 'hut') sledAbandon(run.phase, ctxOf(), null);
   else if (run.phase === 'countdown' || run.phase === 'sled') {
     sledAbandon('sled', ctxOf(), run.sled);
     run.input?.dispose();
@@ -340,7 +408,14 @@ export function updateMountain(dt) {
     const next = collectAcorns(local, run.taken);
     next.forEach((v, i) => { if (v && !run.taken[i]) { setAcornVisible(i, false); Sound.harvest(); pickAcornFx(i); } });
     run.taken = next;
-    if (atSummit(local)) startSled();
+    if (atHut(local)) arriveHut();
+  } else if (run.phase === 'hut') {
+    keeperBubble?.update(dt, performance.now() / 1000, Math.hypot(local.x - CAMP.keeper.x, local.z - CAMP.keeper.z), CAMP.deck.y);
+  } else if (run.phase === 'runout') {
+    rideRunout(dt);
+  } else if (run.phase === 'cheer') {
+    run.cheerT -= dt;
+    if (run.cheerT <= 0) showFinish();
   } else if (run.phase === 'countdown') {
     run.countT += dt;
     if (run.countT >= 1) {

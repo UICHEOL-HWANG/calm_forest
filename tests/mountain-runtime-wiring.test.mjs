@@ -9,15 +9,15 @@ const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
 const hud = readFileSync(new URL('../js/mountain/sled-hud.js', import.meta.url), 'utf8');
 const between = (s, a, b) => s.slice(s.indexOf(a), s.indexOf(b, s.indexOf(a) + a.length));
 
-test('runtime starts a run at the summit with a rolled difficulty', () => {
-  assert.match(src, /rollDifficulty\('sled'\)/);
-  assert.match(src, /sledBegin\(/);
-  assert.match(src, /atSummit\(/);
+test('runtime reaches the hut on the summit, then rolls difficulty when the sled starts', () => {
+  assert.match(src, /if \(atHut\(local\)\) arriveHut\(\);/);
+  assert.match(between(src, 'function startSled', '\n}'), /rollDifficulty\('sled'\)/);
+  assert.match(between(src, 'function startSled', '\n}'), /sledBegin\(/);
 });
 
 test('runtime settles on finish and abandons on exit mid-run', () => {
   assert.match(src, /sledSettle\(/);
-  assert.match(src, /sledAbandon\('climb'/);
+  assert.match(src, /if \(run\.phase === 'climb' \|\| run\.phase === 'hut'\) sledAbandon\(run\.phase, ctxOf\(\), null\);/);
   assert.match(src, /sledAbandon\('sled'/);
   assert.match(src, /export function exitMountain\(\)\s*\{\s*abandonRun\(\);/);
 });
@@ -55,13 +55,15 @@ test('the regular action button is hidden while sledding and restored after the 
   assert.match(src, /document\.body\.classList\.add\('sled-run'\)/);
   const close = between(src, 'function closeRun', '\n}');
   assert.match(close, /document\.body\.classList\.remove\('sled-run'\)/);
-  assert.match(between(src, 'function finishSled', '\n}'), /closeRun/);
+  assert.match(between(src, 'function showFinish', '\n}'), /closeRun/);
   assert.match(between(src, 'export function abandonRun', '\n}'), /closeRun\(\)/);
 });
 
-test('the camera rig is released before snapping the camera after a run', () => {
+test('the camera rig is released at the finish and the game camera follows the runout without a snap', () => {
   const fin = between(src, 'function finishSled', '\n}');
-  assert.ok(fin.indexOf('setCameraRig(null)') >= 0 && fin.indexOf('setCameraRig(null)') < fin.indexOf('snapCamera()'));
+  assert.match(fin, /setCameraRig\(null\)/);
+  assert.doesNotMatch(fin, /snapCamera\(\)/);
+  assert.doesNotMatch(between(src, 'function showFinish', '\n}'), /snapCamera\(\)/);
 });
 
 test('run context stays integer and physics step is clamped', () => {
@@ -79,4 +81,12 @@ test('sled HUD strings have English', () => {
   assert.equal(EN['오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요'], 'All rewards claimed today. You can keep chasing records');
   for (const old of ['오늘 보상은 다 받았어요 · 기록 도전은 계속할 수 있어요', '🏔️ 뒤 능선길로 올라 정상에서 썰매를 타요. 나갈 땐 남쪽 문']) assert.equal(EN[old], undefined, old);
   assert.equal(EN['오늘 보상 {0#}판 남음'], '{0} rewarded runs left today');
+});
+
+test('while sledding the tool bar is hidden and the boost button takes its bottom-centre spot', () => {
+  assert.match(hud, /body\.sled-run #hotbar/);
+  const boost = hud.match(/#sled-hud \.sled-boost\{[^}]*\}/)[0];
+  assert.match(boost, /left:50%/);
+  assert.match(boost, /translateX\(-50%\)/);
+  assert.doesNotMatch(boost, /right:/);
 });

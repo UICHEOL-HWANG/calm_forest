@@ -15,11 +15,11 @@ function ensure() {
     <div class="sled-result" data-sled-ui hidden></div>`;
     const style = document.createElement('style');
     style.textContent = `
-    body.sled-run #mobile-controls, body.sled-run #talk-btn{display:none !important}
+    body.sled-run #mobile-controls, body.sled-run #talk-btn, body.sled-run #hotbar{display:none !important}
     #sled-hud{position:fixed;inset:0;pointer-events:none;z-index:40}
     #sled-hud .sled-top{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translateX(-50%);display:flex;gap:12px;padding:6px 14px;border-radius:999px;background:rgba(20,28,40,.55);color:#fff;font-size:16px}
     #sled-hud .sled-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.4)}
-    #sled-hud .sled-boost{position:absolute;right:calc(env(safe-area-inset-right) + 18px);bottom:calc(env(safe-area-inset-bottom) + 18px);width:84px;height:84px;border-radius:50%;border:0;background:#9a6a2f;color:#fff;font-size:15px;pointer-events:auto}
+    #sled-hud .sled-boost{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 18px);width:84px;height:84px;border-radius:50%;border:0;background:#9a6a2f;color:#fff;font-size:15px;pointer-events:auto}
     #sled-hud .sled-boost:disabled{opacity:.45}
     #sled-hud .sled-result{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:240px;padding:18px 20px;border-radius:16px;background:#fffdf7;color:#2a2a28;text-align:center;pointer-events:auto;line-height:1.6}
     #sled-hud .sled-result[hidden]{display:none}

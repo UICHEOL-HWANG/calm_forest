@@ -154,7 +154,7 @@ test('snowballs and rocks share one merged mesh that keeps both colours', () => 
 
 test('the sled shows for countdown and sled and hides when the run closes', () => {
   assert.match(between(src, 'function startSled', '\n}'), /showSled\(true\)/);
-  assert.match(between(src, 'function finishSled', '\n}'), /showSled\(false\)/);
+  assert.match(between(src, 'function showFinish', '\n}'), /showSled\(false\)/);
   assert.match(between(src, 'function closeRun', '\n}'), /showSled\(false\)/);
   assert.match(between(src, 'function rideSlope', '\n}'), /placeSled\(/);
 });

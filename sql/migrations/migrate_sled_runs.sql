@@ -50,6 +50,10 @@ create table if not exists public.sled_runs (
   )
 );
 
+alter table public.sled_runs add column if not exists idle_ms integer;
+alter table public.sled_runs drop constraint if exists sled_runs_idle_nonneg;
+alter table public.sled_runs add constraint sled_runs_idle_nonneg check (idle_ms is null or idle_ms >= 0);
+
 create index if not exists sled_runs_user_idx on public.sled_runs (user_id);
 create index if not exists sled_runs_date_idx on public.sled_runs (run_date);
 create index if not exists sled_runs_board_idx on public.sled_runs (run_date, outcome, time_ms);

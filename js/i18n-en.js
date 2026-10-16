@@ -2509,6 +2509,8 @@ export const EN = {
   '🏔️ 설산': '🏔️ Snow Mountain',
   '설산': 'Snow Mountain',
   '🏔️ 설산 오르기': '🏔️ Climb the mountain',
+  '🏠 정상 산장에 도착했어요': '🏠 You reached the summit hut',
+  '🛷 썰매 타고 내려가기': '🛷 Sled down',
   '🏔️ 내일 열려요': '🏔️ Opens tomorrow',
   '🏔️ 설산이 열렸어요!': '🏔️ The snow mountain is open!',
   '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요': '🏔️ Climb the back ridge and sled down from the top',

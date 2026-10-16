@@ -7,7 +7,7 @@ const client = readFileSync(new URL('../js/supabase-client.js', import.meta.url)
 const config = readFileSync(new URL('../js/config.js', import.meta.url), 'utf8');
 
 test('table has every column sled-run.js sends', () => {
-  for (const col of ['run_id', 'outcome', 'abandon_stage', 'time_ms', 'flags_passed', 'penalty_ms', 'rewarded', 'coins', 'splits', 'boosts_at', 'hits', 'steer_left_ms', 'steer_right_ms', 'attempt_n', 'days_since_unlock', 'best_before_ms', 'acorns_available', 'acorns_collected', 'climb_ms', 'input', 'orientation', 'fps_avg', 'course_v', 'phys_v', 'ease', 'arm', 'dda', 'probe_v', 'user_id', 'session_id', 'client_id', 'is_guest', 'variant', 'platform', 'run_date']) {
+  for (const col of ['run_id', 'outcome', 'abandon_stage', 'time_ms', 'flags_passed', 'penalty_ms', 'rewarded', 'coins', 'splits', 'boosts_at', 'hits', 'steer_left_ms', 'steer_right_ms', 'attempt_n', 'days_since_unlock', 'best_before_ms', 'acorns_available', 'acorns_collected', 'climb_ms', 'idle_ms', 'input', 'orientation', 'fps_avg', 'course_v', 'phys_v', 'ease', 'arm', 'dda', 'probe_v', 'user_id', 'session_id', 'client_id', 'is_guest', 'variant', 'platform', 'run_date']) {
     assert.match(sql, new RegExp(`\\b${col}\\b`), col);
   }
 });
@@ -47,4 +47,10 @@ test('version checks, octet_length cap, nonneg check and server-set run_date', (
 
 test('min-time trigger function pins search_path', () => {
   assert.match(sql, /create or replace function public\.sled_runs_min_time\(\) returns trigger\nlanguage plpgsql set search_path = public as \$\$/);
+});
+
+test('idle_ms is a non-negative integer column', () => {
+  assert.match(sql, /add column if not exists idle_ms integer;/);
+  assert.match(sql, /drop constraint if exists sled_runs_idle_nonneg;/);
+  assert.match(sql, /idle_ms is null or idle_ms >= 0/);
 });

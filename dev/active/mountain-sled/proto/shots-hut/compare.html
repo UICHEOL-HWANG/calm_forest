@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>정상 산장 시안</title>
+<style>
+  :root { --bg: #f6f4ef; --ink: #2b2b30; --sub: #6c7380; --card: #ffffff; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  main { max-width: 1500px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p.lead { margin: 0 0 20px; color: var(--sub); font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .col { background: var(--card); border-radius: 14px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .col h2 { font-size: 18px; margin: 0 0 4px; }
+  .col p { font-size: 13px; color: var(--sub); margin: 0 0 12px; line-height: 1.5; }
+  .label { font-size: 12px; color: var(--sub); margin: 10px 0 4px; }
+  img { width: 100%; border-radius: 8px; display: block; }
+  img.m { width: 60%; margin: 0 auto; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>🏔️ 썰매지기의 산장: 정상 산장 · 광장 시안</h1>
+  <p class="lead">세 안 모두 같은 서사(돌탑 길 → 정상 산장 → 출발대 → 결승 둔덕 → 반납대)이고, 산장 모양과 색이 다릅니다. 광장 소품은 공통이며 색만 테마를 따릅니다.</p>
+  <div class="grid">
+    <section class="col">
+      <h2>A 통나무 산장</h2>
+      <p>통나무를 엇갈려 쌓은 벽, 지붕널, 고드름, 굴뚝 연기, 앞 데크. 마을의 나무 톤과 가장 잘 이어집니다.</p>
+      <div class="label">정상 (PC)</div><img src="pc-summit-a.jpg" alt="">
+      <div class="label">광장 (PC)</div><img src="pc-plaza-a.jpg" alt="">
+      <div class="label">정상 (모바일)</div><img class="m" src="m-summit-a.jpg" alt="">
+    </section>
+    <section class="col">
+      <h2>B 알프스 산장</h2>
+      <p>아래층은 흰 벽과 돌 모서리, 위층은 나무 판자. 빨간 덧창과 꽃 상자가 달린 발코니. 레퍼런스(스위스 산 위 호텔)에 가장 가깝습니다.</p>
+      <div class="label">정상 (PC)</div><img src="pc-summit-b.jpg" alt="">
+      <div class="label">광장 (PC)</div><img src="pc-plaza-b.jpg" alt="">
+      <div class="label">정상 (모바일)</div><img class="m" src="m-summit-b.jpg" alt="">
+    </section>
+    <section class="col">
+      <h2>C 등불 산장</h2>
+      <p>가파른 A자 지붕, 불 켜진 큰 유리 박공, 데크 위 전구 줄. 저녁·밤 테마에서 가장 돋보입니다.</p>
+      <div class="label">정상 (PC)</div><img src="pc-summit-c.jpg" alt="">
+      <div class="label">광장 (PC)</div><img src="pc-plaza-c.jpg" alt="">
+      <div class="label">정상 (모바일)</div><img class="m" src="m-summit-c.jpg" alt="">
+    </section>
+  </div>
+</main>
+</body>
+</html>
