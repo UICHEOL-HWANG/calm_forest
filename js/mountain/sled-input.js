@@ -2,6 +2,10 @@ export function steerFrom({ left, right }) {
   return left === right ? 0 : left ? -1 : 1;
 }
 
+export function worldSteer(input) {
+  return 0 - steerFrom(input);
+}
+
 export function pointerSide(clientX, width) {
   return clientX < width / 2 ? 'left' : 'right';
 }

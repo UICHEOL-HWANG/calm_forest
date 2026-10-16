@@ -67,6 +67,13 @@ test('settle saves, settles difficulty with flag share and sends one full row', 
   assert.equal(row.course_v, 1);
 });
 
+test('steer ms report the screen side pressed: world -x (steerLeftMs) is screen-right, world +x (steerRightMs) is screen-left', () => {
+  const { c, rows } = run();
+  c.sledSettle(SLED(40000, 12), CTX, { fpsAvg: 58 });
+  assert.equal(rows[0].steer_right_ms, 4000);
+  assert.equal(rows[0].steer_left_ms, 3500);
+});
+
 test('abandon sends an abandon row, pays nothing and does not move DDA', () => {
   const { c, paid, settled, rows, abandons } = run();
   c.sledAbandon('climb', CTX, null);

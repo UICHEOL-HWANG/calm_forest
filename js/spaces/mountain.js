@@ -12,7 +12,7 @@ import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
 import { SLED_SEAT, sledYaw, sledCamTargets, sledPose } from '../mountain/sled-view.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
-import { bindSledInput, steerFrom } from '../mountain/sled-input.js';
+import { bindSledInput, worldSteer } from '../mountain/sled-input.js';
 import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, boostButton } from '../mountain/sled-hud.js';
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
@@ -274,7 +274,7 @@ export function updateMountain(dt) {
   } else if (run.phase === 'sled') {
     run.frames += 1;
     run.frameMs += dt * 1000;
-    const steer = steerFrom(run.input.read());
+    const steer = worldSteer(run.input.read());
     run.sled = stepSled(run.sled, Math.min(50, dt * 1000), steer, run.course);
     rideSlope(steer, dt);
     if (run.sled.t >= GO_CLEAR_MS) clearCountdown();
