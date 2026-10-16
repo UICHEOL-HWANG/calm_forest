@@ -44,6 +44,8 @@ export const EN = {
   '세계수 생명력': 'World Tree life',
   '🌳 세계수 · Space 로 살펴보기': '🌳 World Tree · Space to look',
   '🌳 시든 세계수 — 박물관 할아버지가 방법을 안대요': '🌳 Withered World Tree — the museum grandpa knows how to help',
+  '🌳 저 나무가 세계수예요. 다시 살려 볼까요?': '🌳 That\'s the World Tree. Shall we bring it back to life?',
+  '탭하면 넘어가요': 'Tap to skip',
   '물의 가지': 'Water Branch', '밭의 가지': 'Field Branch', '부엌의 가지': 'Kitchen Branch', '숲의 가지': 'Forest Branch',
   '밭칸': 'Crop Plot', '작은 연못': 'Little Pond', '등불': 'Lantern', '오두막': 'Hut', '큰 나무': 'Big Tree', '과일나무': 'Fruit Tree',
   '강의 꾸러미': 'River Bundle', '나루터 꾸러미': 'Ferry Dock Bundle', '첫 수확 꾸러미': 'First Harvest Bundle', '씨앗 꾸러미': 'Seed Bundle',

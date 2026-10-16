@@ -267,7 +267,7 @@ import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestC
 import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
-import { WORLD_TREE, buildWorldTree, openWorldTree, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
+import { WORLD_TREE, buildWorldTree, openWorldTree, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
@@ -1278,6 +1278,8 @@ let storyModalsWaiting = 0;   // 줄 서 있는 이야기 모달 수 — afterMo
 function queueStoryModal(opts, toastLine, tries = 0) {
   if (tries) storyModalsWaiting--;
   if (ui.coachActive?.()) { ui.toast?.(toastLine, 3200); return; }   // 튜토리얼 카드를 덮지 않는다 — 토스트로만
+  // 🌳 세계수 조망샷이 줄 서 있거나 도는 중이면 짧게 기다린다 — 판 닫힘 → 조망샷 → 귀환 모달 순서(시도 횟수는 안 쓴다)
+  if (treeShotBusy()) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, Math.max(1, tries)), 400); return; }
   if (mgView || duelActive || ui.anyModalOpen?.()) {
     if (tries < 20) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, tries + 1), 2500); }
     else ui.toast?.(toastLine, 3200);
@@ -1288,7 +1290,7 @@ function queueStoryModal(opts, toastLine, tries = 0) {
 }
 /** 모달이 다 닫힌 뒤 fn — 🧑‍🦳 귀환 모달을 읽은 다음에 📖 1장 완료 모달이 뜨게(줄 선 이야기 모달도 기다린다) */
 function afterModals(fn, tries = 0) {
-  if ((storyModalsWaiting > 0 || mgView || duelActive || ui.anyModalOpen?.()) && tries < 120) { setTimeout(() => afterModals(fn, tries + 1), 700); return; }
+  if ((storyModalsWaiting > 0 || mgView || duelActive || ui.anyModalOpen?.() || treeShotBusy()) && tries < 120) { setTimeout(() => afterModals(fn, tries + 1), 700); return; }
   fn();
 }
 function showReturnModal(def) {
@@ -6471,6 +6473,18 @@ function snapCamera() {
 }
 let cameraRig = null;
 function setCameraRig(fn) { cameraRig = fn || null; }
+/** 마을 기본 추적 시점(조망샷이 돌아올 자리) — updateCamera 의 기본 분기와 같은 오프셋 */
+function defaultCamPose(pos, look) {
+  const f = camFocus();
+  pos.x = f.x + camOffset.x; pos.y = f.y + camOffset.y; pos.z = f.z + camOffset.z;
+  look.x = f.x; look.y = f.y + 1.2; look.z = f.z;
+}
+/** 카메라가 마을 기본 추적 중인가 — 다른 연출(액션샷·조망샷·외관 뷰·컷신·미니게임)이 없을 때만 true */
+function cameraFree() {
+  return mode === 'play' && !intro && !sleeping && !mgView && !duelActive && !museumView && !boat.active && !cameraRig
+    && photoT < 0 && surveyT < 0 && momentT < 0 && !extView && clock.elapsedTime >= momentUntil
+    && !dreamCutActive() && !mirrorRideActive() && !sledActive();
+}
 function updateCamera(dt) {
   if (cameraRig) { cameraRig(camera, dt); return; }
   if (boat.active) return updateBoatCamera(dt);   // 🛶 런 중: 1인칭 뱃머리 시점
@@ -6674,7 +6688,8 @@ function updateDayNight(dt) {
   //    안개를 바짝 당겨 화덕 뒤를 지우고 무대처럼 만든다(카메라 거리 3.8 기준).
   // 무대 안개는 **카메라 거리에 맞춰** 민다 — 고정값(5.2/11)으로 두니 뒤로 뺀 🫙 가 뿌옇게 묻혔다(실측 2026-09-21)
   if (mgView?.type === 'station') { scene.fog.near = stationCamDist + 1.4; scene.fog.far = stationCamDist + 6.2; }
-  if (extView && !mgView && !indoor) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
+  if (extView && !mgView && !indoor) { scene.fog.near = Math.max(scene.fog.near, 30); scene.fog.far = Math.max(scene.fog.far, 90); }
+  { const fp = treeShotFogPush(); if (fp > 0) { scene.fog.near += fp; scene.fog.far += fp; } }   // 🌳 조망샷이 물러난 만큼 안개도 민다(폰 세로 ≈50)   // 🏠 외관 뷰도 원거리(≈26~34) — 색이 안개에 묻히지 않게
   // 🏛️ 전시실: 시간대 무관 밝게 — 밤에 들어가도 전시물과 크림 벽이 읽혀야 한다(☕카페 홀과 같은 규칙).
   //    밤엔 야외 조명 그대로라 홀이 캄캄했다(제보 2026-09-21: "저녁때 들어가면 어두움").
   if (atMuseum) {
@@ -7846,7 +7861,7 @@ export {
   rebuildInteriorFinish, rebuildOrchard, refreshCollectQuests, refreshCropStage, refreshHeldTool, refreshInventoryUI,
   refreshStations, removeSolid, renderer, respawnPet, rewardText, riverActive, riverCourse, riverGroup, riverPool,
   rollDifficulty, roundRect, scene, seaBuoy, seaFishes, seaGroup, seaLine, seaMG, seaRodMesh, seedHintTexture,
-  setCameraRig, setFogExempt, setHeldDecor, setHeldTool, setPlotHarvest, setPlotSeedHint, setPlotWarn, setSpaceVisible,
+  setCameraRig, cameraFree, defaultCamPose, setFogExempt, setHeldDecor, setHeldTool, setPlotHarvest, setPlotSeedHint, setPlotWarn, setSpaceVisible,
   settleDifficulty, settleOrchard, severeOf, shared, showCatchItem, sitting, situation, snapCamera, solidBox,
   solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnSplash, spawnTree,
   spawnWater, spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges, syncFarmHints, syncStory, syncUnlocks, isOpen, unlocksOn, todayStr, toolMesh,
