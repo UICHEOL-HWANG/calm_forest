@@ -10,7 +10,7 @@ export const GROUND = Object.freeze({ step: 1.6, x0: -80, x1: 80, z0: -70, z1: 1
 export const G = Object.freeze({ snow: 0, shade: 1, track: 2, rock: 3, path: 4, plaza: 5, plain: 6 });
 export const PINE_MAX = 320;
 export const RANGE = Object.freeze({ layers: 3, segments: 90, r0: 140, dr: 20, amp: 65, dAmp: 13, base: -28 });
-export const SNOWFALL = Object.freeze({ count: 1400, span: 60, height: 60, below: 10, wrap: 30, fall: 1.6, size: 0.18 });
+export const SNOWFALL = Object.freeze({ perBand: 600, bands: 3, count: 1800, span: 60, band: 30, below: 40, fall: 1.6, size: 0.18 });
 export const PLAIN = Object.freeze({ x: 0, z: 20, r: 270, y: -0.6, segments: 48 });
 export const GATE_COLORS = Object.freeze([0xe0443a, 0x2f6fd6]);
 export const INTERIOR_DRAW_BUDGET = 9;
@@ -193,10 +193,9 @@ function rangesMesh(THREE) {
 
 function snowfallPoints(THREE) {
   const r = lcg(3), pos = new Float32Array(SNOWFALL.count * 3);
-  for (let i = 0; i < SNOWFALL.count; i++) {
-    pos[i * 3] = (r() - 0.5) * SNOWFALL.span;
-    pos[i * 3 + 1] = r() * SNOWFALL.height;
-    pos[i * 3 + 2] = (r() - 0.5) * SNOWFALL.span;
+  for (let i = 0; i < SNOWFALL.perBand; i++) {
+    const x = (r() - 0.5) * SNOWFALL.span, y = r() * SNOWFALL.band, z = (r() - 0.5) * SNOWFALL.span;
+    for (let b = 0; b < SNOWFALL.bands; b++) pos.set([x, y + b * SNOWFALL.band, z], (b * SNOWFALL.perBand + i) * 3);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -225,7 +224,7 @@ export function paintInterior(THREE, ud, theme) {
 
 export function followCamera(ud, local, t) {
   ud.ranges.position.set(local.x, 0, local.z);
-  ud.snowfall.position.set(local.x, local.y - SNOWFALL.below - ((t * SNOWFALL.fall) % SNOWFALL.wrap), local.z);
+  ud.snowfall.position.set(local.x, local.y - SNOWFALL.below - ((t * SNOWFALL.fall) % SNOWFALL.band), local.z);
 }
 
 export function buildMountainSpace(THREE) {

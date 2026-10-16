@@ -10,7 +10,7 @@ const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
 const space = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
 const between = (s, a, b) => s.slice(s.indexOf(a), s.indexOf(b, s.indexOf(a) + a.length));
 const dayNight = between(game, 'function updateDayNight(dt)', '\n}\n');
-const HOOK = 'if (atMountain) mountainLookFrame({ scene, hemiLight, ambient, sunLight, bloomPass }, dt);';
+const HOOK = 'if (atMountain) mountainLookFrame({ scene, hemiLight, ambient, sunLight, bloomPass, gradePass, playerLight }, dt);';
 
 test('game.js hands the mountain look to one guarded hook at the end of the day-night update', () => {
   assert.equal(game.split('mountainLookFrame(').length - 1, 1);
@@ -26,7 +26,7 @@ function writesOf(env) {
   const spy = (obj, name) => new Proxy(obj, {
     get(t, k) {
       const v = t[k];
-      if (v && typeof v === 'object' && (v.isColor || v.isVector3 || v.isFog || v.isObject3D)) return spy(v, `${name}.${String(k)}`);
+      if (v && typeof v === 'object' && (v.isColor || v.isVector3 || v.isFog || v.isObject3D || name.startsWith('gradePass'))) return spy(v, `${name}.${String(k)}`);
       if (typeof v === 'function') return (...a) => { writes.add(`${name}.${String(k)}()`); return v.apply(t, a); };
       return v;
     },
@@ -40,7 +40,7 @@ test('every global the mountain look writes is rewritten by the village day-nigh
   scene.fog = new THREE.Fog(0xffffff, 18, 74);
   const { env, writes } = writesOf({
     scene, hemiLight: new THREE.HemisphereLight(), ambient: new THREE.AmbientLight(), sunLight: new THREE.DirectionalLight(),
-    bloomPass: { strength: 0.5 }, target: new THREE.Vector3(),
+    bloomPass: { strength: 0.5 }, gradePass: { uniforms: { uNight: { value: 0.7 } } }, playerLight: new THREE.PointLight(), target: new THREE.Vector3(),
   });
   applyLook(env, MOUNTAIN_THEMES.night, new THREE.Texture());
   const village = {
@@ -58,6 +58,8 @@ test('every global the mountain look writes is rewritten by the village day-nigh
     'scene.fog.far': 'scene.fog.near = 18; scene.fog.far = 74;',
     'scene.background': 'scene.background = sky; scene.fog.color = sky;',
     'bloomPass.strength': 'bloomPass.strength = (0.5 + nightAmt',
+    'gradePass.uniforms.uNight.value': 'gradePass.uniforms.uNight.value = mgView',
+    'playerLight.intensity': 'if (playerLight) playerLight.intensity = Math.max(0, nightAmt - 0.15) * 4.4;',
   };
   for (const w of writes) {
     if (w.endsWith('.getHex()') || w.endsWith('.clone()')) continue;
@@ -67,6 +69,7 @@ test('every global the mountain look writes is rewritten by the village day-nigh
     assert.ok(reset < dayNight.indexOf(HOOK), `${w} reset after the hook`);
   }
   assert.ok(writes.has('scene.background') && writes.has('hemiLight.groundColor.setHex()'));
+  assert.ok(writes.has('gradePass.uniforms.uNight.value') && writes.has('playerLight.intensity'));
 });
 
 test('village hemisphere colours are constants shared by init and the per-frame reset', () => {

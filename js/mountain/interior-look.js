@@ -1,6 +1,6 @@
 export const LOOK = Object.freeze({ ambient: 0, bloom: 0.12 });
 
-export function applyLook({ scene, hemiLight, ambient, sunLight, bloomPass, target }, theme, sky) {
+export function applyLook({ scene, hemiLight, ambient, sunLight, bloomPass, gradePass, playerLight, target }, theme, sky) {
   hemiLight.color.setHex(theme.hemiSky);
   hemiLight.groundColor.setHex(theme.hemiGround);
   hemiLight.intensity = theme.hemi;
@@ -15,4 +15,6 @@ export function applyLook({ scene, hemiLight, ambient, sunLight, bloomPass, targ
   scene.fog.far = theme.fogFar;
   scene.background = sky || scene.fog.color;
   if (bloomPass) bloomPass.strength = LOOK.bloom;
+  if (gradePass) gradePass.uniforms.uNight.value = theme.grade;
+  if (playerLight) playerLight.intensity = theme.torch;
 }

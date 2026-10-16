@@ -6558,7 +6558,7 @@ function updateDayNight(dt) {
 
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
   //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
-  if (atMountain) mountainLookFrame({ scene, hemiLight, ambient, sunLight, bloomPass }, dt);
+  if (atMountain) mountainLookFrame({ scene, hemiLight, ambient, sunLight, bloomPass, gradePass, playerLight }, dt);
   ui.setTime?.(isNight() ? 'night' : 'day', WEATHER === 'clear' ? null : WEATHER);
 
   // 🌓 그림자 화해 — 공간 전환은 setSpaceVisible() 이 처리하지만, exit 함수 몇 곳은 플래그를

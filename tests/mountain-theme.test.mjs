@@ -4,7 +4,7 @@ import { MOUNTAIN_THEMES, THEME_KEYS, DUSK, THEME_CHECK_S, mountainTheme, mounta
 import { isNightAt } from '../js/daynight.js';
 
 const PALETTE_KEYS = ['skyTop', 'skyBot', 'fog', 'fogNear', 'fogFar', 'hemiSky', 'hemiGround', 'hemi', 'sun', 'sunI', 'sunDir',
-  'snow', 'snowShade', 'track', 'rock', 'path', 'pine', 'pineDark', 'trunk', 'ranges', 'cloud', 'cloudGlow', 'snowfall'];
+  'snow', 'snowShade', 'track', 'rock', 'path', 'pine', 'pineDark', 'trunk', 'ranges', 'cloud', 'cloudGlow', 'snowfall', 'grade', 'torch'];
 
 test('theme keys are the four approved looks', () => {
   assert.deepEqual([...THEME_KEYS].sort(), ['day', 'dusk', 'night', 'snow']);
@@ -85,6 +85,15 @@ test('snow weather wins over day and dusk, night stays moonlit with falling snow
   assert.deepEqual(mountainLook({ timeOfDay: 0.5, weather: 'snow' }), { key: 'snow', snowfall: true });
   assert.deepEqual(mountainLook({ timeOfDay: 0.5, weather: 'clear' }), { key: 'day', snowfall: false });
   assert.deepEqual(mountainLook({ timeOfDay: 0.9, weather: 'clear' }), { key: 'night', snowfall: false });
+});
+
+test('only the night theme gets the night colour grade and the torch', () => {
+  for (const k of ['day', 'dusk', 'snow']) {
+    assert.equal(MOUNTAIN_THEMES[k].grade, 0, k);
+    assert.equal(MOUNTAIN_THEMES[k].torch, 0, k);
+  }
+  assert.ok(MOUNTAIN_THEMES.night.grade > 0.15 && MOUNTAIN_THEMES.night.grade <= 0.5);
+  assert.ok(MOUNTAIN_THEMES.night.torch > 0 && MOUNTAIN_THEMES.night.torch <= 2);
 });
 
 test('rain and fog follow the time of day', () => {

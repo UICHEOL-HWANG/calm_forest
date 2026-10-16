@@ -170,11 +170,45 @@ test('ranges and snowfall follow the camera; ranges stay level', () => {
   assert.deepEqual([ud.ranges.position.x, ud.ranges.position.y, ud.ranges.position.z], [12, 0, -40]);
   assert.equal(ud.snowfall.position.x, 12);
   assert.equal(ud.snowfall.position.z, -40);
-  for (const t of [0, 3, 7.7, 100]) {
+  for (const t of [0, 3, 7.7, 18.74, 100]) {
     followCamera(ud, { x: 0, y: 30, z: 0 }, t);
-    const lo = ud.snowfall.position.y, hi = lo + SNOWFALL.height;
-    assert.ok(lo <= 30 - 10 && hi >= 30 + 20, `t ${t}`);
+    const lo = ud.snowfall.position.y, hi = lo + SNOWFALL.band * SNOWFALL.bands;
+    assert.ok(lo <= 30 - SNOWFALL.below && hi >= 30 + 20, `t ${t}`);
   }
+});
+
+function flakesAt(t, cam) {
+  followCamera(ud, cam, t);
+  const pos = ud.snowfall.geometry.attributes.position, oy = ud.snowfall.position.y;
+  return Array.from({ length: pos.count }, (_, i) => [pos.getX(i), pos.getY(i) + oy, pos.getZ(i)]);
+}
+
+test('snowfall never jumps: each frame a flake falls one step or wraps by exactly one repeated band', () => {
+  const cam = { x: 0, y: 30, z: 0 }, dt = 1 / 60, step = SNOWFALL.fall * dt;
+  const wrapAt = SNOWFALL.band / SNOWFALL.fall;
+  let wraps = 0;
+  for (let t = wrapAt - 0.5; t < wrapAt * 2 + 0.5; t += dt) {
+    const a = flakesAt(t, cam), b = flakesAt(t + dt, cam);
+    for (let i = 0; i < a.length; i++) {
+      const d = b[i][1] - a[i][1];
+      const fell = Math.abs(d + step) < 1e-4, wrapped = Math.abs(d - (SNOWFALL.band - step)) < 1e-4;
+      assert.ok(fell || wrapped, `flake ${i} moved ${d} at t ${t}`);
+      if (wrapped) wraps++;
+    }
+  }
+  assert.ok(wraps > 0, 'a wrap happened in the window');
+});
+
+test('snowfall bands repeat, so the picture after a wrap equals the picture before it moved one step', () => {
+  const cam = { x: 3, y: 30, z: -8 }, dt = 1 / 60, step = SNOWFALL.fall * dt;
+  const t = SNOWFALL.band / SNOWFALL.fall - dt / 2;
+  const key = ([x, y, z]) => `${x.toFixed(3)},${y.toFixed(2)},${z.toFixed(3)}`;
+  const lo = cam.y - SNOWFALL.below + 0.1, hi = cam.y + 20;
+  const inView = f => f[1] > lo && f[1] < hi;
+  const before = new Set(flakesAt(t, cam).filter(inView).map(([x, y, z]) => key([x, y - step, z])));
+  const after = flakesAt(t + dt, cam).filter(f => f[1] > lo && f[1] < hi - step);
+  assert.ok(after.length > 100);
+  for (const f of after) assert.ok(before.has(key(f)), `flake popped at ${key(f)}`);
 });
 
 test('snowfall is one hidden Points cloud', () => {
@@ -199,7 +233,8 @@ function env() {
   const hemiLight = new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.9);
   const ambient = new THREE.AmbientLight(0xfff0dd, 0.25);
   const sunLight = new THREE.DirectionalLight(0xffe9c4, 1.1);
-  return { scene, hemiLight, ambient, sunLight, bloomPass: { strength: 0.5 }, target: new THREE.Vector3(5, 10, -1000) };
+  return { scene, hemiLight, ambient, sunLight, bloomPass: { strength: 0.5 }, gradePass: { uniforms: { uNight: { value: 0.7 } } },
+    playerLight: new THREE.PointLight(0xffb95e, 2.5), target: new THREE.Vector3(5, 10, -1000) };
 }
 
 test('applyLook sets fog, sky, hemisphere, sun and bloom from the theme', () => {
@@ -218,6 +253,8 @@ test('applyLook sets fog, sky, hemisphere, sun and bloom from the theme', () => 
     assert.ok(dir.distanceTo(new THREE.Vector3(...th.sunDir).normalize()) < 1e-6, key);
     assert.ok(e.sunLight.target.position.equals(e.target));
     assert.ok(e.bloomPass.strength < 0.5);
+    assert.equal(e.gradePass.uniforms.uNight.value, th.grade);
+    assert.equal(e.playerLight.intensity, th.torch);
   }
 });
 
