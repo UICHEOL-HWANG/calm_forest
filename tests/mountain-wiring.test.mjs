@@ -53,3 +53,8 @@ test('reveal waits for modals and coach marks, checks the saved flag first, and 
   const exit = m.slice(m.indexOf('export function exitMountain'), m.indexOf('export function clampToMountain'));
   assert.match(exit, /Sound\.blip\(\);[\s\S]*trackEvent\('mountain_exit'\)/);
 });
+
+test('map label 설산 has an English key', () => {
+  assert.match(src, /\{ ico: '🏔️', name: '설산',/);
+  assert.equal(EN['설산'], 'Snow Mountain');
+});

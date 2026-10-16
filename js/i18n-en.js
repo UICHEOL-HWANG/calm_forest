@@ -2507,6 +2507,7 @@ export const EN = {
   '로그인하고 받기': 'Sign in',
   '배너 닫기': 'Close banner',
   '🏔️ 설산': '🏔️ Snow Mountain',
+  '설산': 'Snow Mountain',
   '🏔️ 설산 오르기': '🏔️ Climb the mountain',
   '🏔️ 내일 열려요': '🏔️ Opens tomorrow',
   '🏔️ 설산이 열렸어요!': '🏔️ The snow mountain is open!',
