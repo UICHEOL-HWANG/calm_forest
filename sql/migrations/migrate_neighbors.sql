@@ -126,6 +126,28 @@ returns jsonb language sql immutable set search_path = public as $$
   ) y;
 $$;
 
+create or replace function public._nb_pond(p_state jsonb)
+returns jsonb language sql immutable set search_path = public as $$
+  with fish as (
+    select k.key as id, (k.value #>> '{}')::numeric as t
+    from jsonb_each(case when jsonb_typeof(p_state #> '{dex,fish}') = 'object' then p_state #> '{dex,fish}' else '{}'::jsonb end) k
+    where k.key in ('sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common')
+      and jsonb_typeof(k.value) = 'number'
+    order by 2, array_position(array['sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common'], k.key)
+    limit 7
+  ), sea as (
+    select k.key as sp, (k.value #>> '{}')::numeric as w
+    from jsonb_each(case when jsonb_typeof(p_state #> '{sea,best}') = 'object' then p_state #> '{sea,best}' else '{}'::jsonb end) k
+    where k.key in ('aji','buri','mola','tuna')
+      and case when jsonb_typeof(k.value) = 'number' then (k.value #>> '{}')::numeric > 0 else false end
+    order by 2 desc, array_position(array['aji','buri','mola','tuna'], k.key)
+    limit 1
+  )
+  select jsonb_build_object(
+    'fish', coalesce((select jsonb_agg(id order by t, array_position(array['sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common'], id)) from fish), '[]'::jsonb),
+    'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea));
+$$;
+
 -- 후보 = 공개(행 없으면 공개) + 관리자 숨김 아님 + 비익명 + 7일 안에 저장 + 집 1단계 이상 + 본인 제외. 하루 고정 정렬(리롤 불가)
 create or replace function public._nb_candidates(p_caller uuid, p_day date, p_limit int default 3)
 returns table (uid uuid, k text)
@@ -220,7 +242,8 @@ begin
                      where jsonb_typeof(e.v) = 'string' and length(e.v #>> '{}') <= 40 limit 40) q),
     'outdoor',    _nb_yard(s),
     'room',       _nb_room(s),
-    'coop',       jsonb_build_object('built', coalesce(s #> '{coop,built}' = 'true'::jsonb, false))
+    'coop',       jsonb_build_object('built', coalesce(s #> '{coop,built}' = 'true'::jsonb, false)),
+    'pond',       _nb_pond(s)
   );
 end $$;
 
@@ -354,6 +377,7 @@ revoke all on function public._nb_str(jsonb, int) from public, anon, authenticat
 revoke all on function public._nb_num(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_yard(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_room(jsonb) from public, anon, authenticated;
+revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_candidates(uuid, date, int) from public, anon, authenticated;
 revoke all on function public._nb_public_id(uuid) from public, anon, authenticated;
 revoke all on function public._nb_nick_blocked(text) from public, anon, authenticated;

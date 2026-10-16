@@ -19,6 +19,7 @@ import { bestAfterCatch } from '../museum.js';
 import { pickSeaTarget } from '../sea-aim.js';
 import { Sound } from '../sound.js';
 import { sendSeaRecord } from '../supabase-client.js';
+import { refreshPond } from '../pond/index.js';
 import * as THREE from 'three';
 
 export const SEA_CAST_DUR = 0.62;
@@ -409,6 +410,7 @@ export function seaCatch() {
   if (sp.daily) gameState.sea.tunaDay = todayStr();
   const _prevBest = gameState.sea.best?.[sp.id];
   gameState.sea.best = bestAfterCatch(gameState.sea.best, sp.id, w);   // 🌊 어종별 최고 무게
+  refreshPond('sea');
   const newBest = _prevBest != null && gameState.sea.best[sp.id] !== _prevBest;   // 첫 어획은 '기록 경신' 이 아니다
   Sound.harvest(); spawnConfetti(player.position.x, 2.2, player.position.z - 1.5);
   triggerMoment(true);                              // 🎉 캐치 세리머니(밀착 + 폴짝) — 호수 낚시·수확과 같은 연출(세리머니 카메라는 바다 줌 분기보다 먼저 적용됨)

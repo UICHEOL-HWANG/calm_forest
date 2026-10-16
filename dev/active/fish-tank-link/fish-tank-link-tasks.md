@@ -1,0 +1,15 @@
+# fish-tank-link — tasks
+- [x] Evidence analysis (space_vs_minigame)
+- [ ] Mockup sim sims/fish-tank-sim.html (A/B/C)
+- [ ] Capture PC + mobile, compare sheet
+- [x] User picks concept → B 마당 연못 (2026-10-16)
+- [x] Copy → 3번 '🌊 내 연못이 생겼어요 — 새 물고기를 잡을 때마다 식구가 늘어요' (2026-10-16)
+- [x] Spec pond-spec.md + E3 prereg ../metrics-framework/space-link-experiment-prereg.md (2026-10-16, uncommitted)
+- [x] User reviewed spec + prereg (2026-10-16)
+- [x] Implementation plan fish-tank-link-impl-plan.md (Task 0~8)
+- [x] Execute plan in worktree feat/space-link-pond (from origin/main) — SDD Task 0~8, final review fixes, 2,827 tests pass (2026-10-16)
+- [ ] Apply sql/migrations/migrate_neighbor_pond.sql to DB (needs user OK) + _nb_pond edge-case calls
+- [ ] Verify with a real logged-in save: night bloom, neighbor view (2 accounts)
+- [x] Implement + tracking
+- [ ] Deploy 4 platforms
+- [ ] Roadmap 2~6: cooking · carving · observatory · duel · mist/firefly links

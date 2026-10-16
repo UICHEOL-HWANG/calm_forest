@@ -43,6 +43,7 @@ scp infra/airflow/nginx/airflow.conf oracle-calmforest:/tmp/ && \
 |---|---|---|
 | `calm_smoke` | 09:00 | 세팅 검증(날짜 출력) |
 | `tableau_sheets` | 04:00 | BigQuery 집계 → 구글 시트 7탭(태블로 퍼블릭 공개 대시보드) |
+| `ads_funnel_daily` | 10:00·20:00 | 메타 광고 유입 깔때기 마트 → 광고 기록 시트 자동 열 |
 
 ### tableau_sheets 파이프라인
 
@@ -83,3 +84,26 @@ ssh oracle-calmforest 'cd /opt/airflow && sudo docker compose up -d --build'
 
 `--build` 를 빼먹으면 순정 이미지가 그대로 떠서 DAG 가 `ModuleNotFoundError: gspread` 로
 Import Errors 에 뜬다. 쿼리만 고쳤을 땐 `scp sql/...` 만 하면 된다(스케줄러가 다시 읽음).
+
+### ads_funnel_daily 파이프라인 (메타 광고 1단계)
+
+```
+GA4 export(다음 날 09~19시 도착) + calm_forest_raw.session_logs
+   --(이 DAG, 10:00·20:00)--> ads.funnel_user → ads.funnel_daily · ads.creative_daily
+   --> 기록 시트 2_일별깔때기 H:O·T:W + _auto_소재 · _auto_meta 탭
+```
+
+- 유입 = 기간 안 첫 `session_start` 의 `source` = Variable `ads_utm_source`(기본 `meta`). 이후 단계는 그 시각 뒤 이벤트만 센다.
+- 기간 = 시트 `1_사전등록!B13`(시작일) ~ +13일. 비어 있으면 최근 14일로 마트만 만들고 시트는 건너뛴다(미리보기).
+- 첫 플레이 = 웹 `login`·`deferred_guest`. 앱 연결 = user_id 또는 `install_attribution.jid`. 추정 매칭 없음.
+- 품질: GA4 2일 넘게 멈춤·하위 단계 > 상위 단계 → 슬랙 + 시트 갱신 중단 / utm_campaign 누락 20%↑·랜딩 5배 급증·개발 기기 → 슬랙 경고만.
+- 시트에서 DAG 가 쓰는 칸은 H:O·T:W 와 `_auto_*` 탭뿐. 메타·스토어 열·메모는 사람이 쓴다.
+- 메타 비용 열(C:G)은 2단계(Marketing API)에서 자동화 — 그 전엔 광고 관리자 CSV 수동.
+
+```bash
+ssh oracle-calmforest 'mkdir -p /opt/airflow/dags/sql'
+scp sql/analytics/ads_funnel.sql oracle-calmforest:/opt/airflow/dags/sql/
+scp infra/airflow/dags/ads_funnel_daily.py oracle-calmforest:/opt/airflow/dags/
+```
+
+Variables: `ads_sheet_id`(필수) · `ads_utm_source`(기본 meta) · `ads_slack_channel`(기본 #cf-data).

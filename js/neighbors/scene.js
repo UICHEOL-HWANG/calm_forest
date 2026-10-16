@@ -8,13 +8,17 @@
 //     (tests/neighbor-space 가 그 함수 이름이 이 파일에 없음을 잠근다)
 // =============================================================
 import * as THREE from 'three';
-import { buildCharacterMesh, disposeTree, dropKilnFlames, makeSignpost, outdoorMesh, removeSolid, scene, solidBox, solidCircle } from '../game.js';
+import { buildCharacterMesh, disposeTree, dropKilnFlames, makeSignpost, fishMesh, mergeGeos, outdoorMesh, paintGeo, removeSolid, scene, solidBox, solidCircle } from '../game.js';
 import { buildHouseModel, mountHouseAddons } from '../house/index.js';
 import { prepHouseMeshes, unregisterWindows } from '../spaces/house.js';
 import { spawnPet } from '../pet/render.js';
-import { DOOR_COLORS, NEIGHBOR, NEIGHBOR_R, ROOF_COLORS, WALL_COLORS } from '../data/places.js';
+import { DOOR_COLORS, NEIGHBOR, NEIGHBOR_R, ROOF_COLORS, SEA_SPECIES, WALL_COLORS } from '../data/places.js';
 import { stage7Boxes } from '../house-stage7.js';
 import { hostSpot, houseSolidR } from './rules.js';
+import { buildPond } from '../pond/build.js';
+import { pickPondSpot } from '../pond/rules.js';
+import { POND_SPOTS, POND_R } from '../data/pond.js';
+import { emojiSprite } from '../spaces/kitchen-stage.js';
 import { hostStand } from './indoor-rules.js';
 
 export const GROUND_R = NEIGHBOR_R + 18;   // 34 — 언덕 끝 허공이 안 보이게(과수원 ORCHARD_HALF+16 과 같은 교훈). shadow-scope: 700−34−18 = 648m
@@ -93,14 +97,15 @@ function fixedSet() {
 export function buildNeighborScene(view) {
   const group = new THREE.Group(); group.name = 'neighbor';
   const solids = [];
-  let host = null, pet = null, sign = null, t = 0;
+  let host = null, pet = null, sign = null, t = 0, pondUpdate = null, pondDispose = null;
   const built = {
     group,
     hostSpot: null,
     doorSpot: null,
     setVisible(on) { group.visible = on; for (const c of solids) c.off = !on; },   // 🏠 실내에 있는 동안 마당을 끈다
-    update(dt) { t += dt; host.position.y = Math.abs(Math.sin(t * 2.2)) * 0.04; },   // 반가워서 통통
+    update(dt) { t += dt; host.position.y = Math.abs(Math.sin(t * 2.2)) * 0.04; pondUpdate?.(dt); },   // 반가워서 통통
     dispose() {
+      pondDispose?.();
       for (const c of solids) removeSolid(c);
       if (sign) sign.userData.dead = true;                           // makeSignpost 의 rAF 등록이 철거 뒤에 돌지 않게
       unregisterWindows(group);                                      // 집 창문·정원등·화로 — 밤 점등 목록에서 뺀다
@@ -128,6 +133,18 @@ export function buildNeighborScene(view) {
       m.position.set(NEIGHBOR.x + o.dx, 0, NEIGHBOR.z + o.dz);
       m.rotation.y = o.rot * Math.PI / 2;
       group.add(m);
+    }
+
+    if (view.pond?.has) {
+      const ps = pickPondSpot(POND_SPOTS, view.outdoor, POND_R);
+      if (ps) {
+        const p = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite });
+        p.group.position.set(NEIGHBOR.x + ps.dx, 0, NEIGHBOR.z + ps.dz);
+        p.setContents(view.pond, (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8);
+        group.add(p.group);
+        pondUpdate = (dt) => p.update(dt);
+        pondDispose = () => p.dispose();
+      }
     }
 
     //  전역 등록(창문 점등·충돌체)은 장식까지 다 지은 뒤에 — 그래도 아래서 터지면 catch 가 dispose 로 되돌린다

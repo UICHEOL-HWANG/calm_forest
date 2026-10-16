@@ -47,7 +47,7 @@ test('이 파일의 함수 본문은 migrate_neighbors.sql(최종 상태)과 글
   assert.deepEqual(blocks.map(b => b.name).sort(), ['_nb_candidates', '_nb_nick', '_nb_nick_blocked', 'admin_village_find',
     'admin_village_moderate', 'my_visitors', 'neighbor_react', 'neighbor_showcase', 'neighbors_today']);
   // 🏠 neighbor_showcase 는 이후 migrate_neighbors_room.sql 이 'room' 키 한 줄을 더한다 — 그 줄만 빼고 같아야 한다
-  const stripRoom = (t) => t.replace(/\n\s+'room',\s+_nb_room\(s\),/, '');
+  const stripRoom = (t) => t.replace(/\n\s+'room',\s+_nb_room\(s\),/, '').replace(/,\n\s+'pond',\s+_nb_pond\(s\)/, '');
   for (const b of blocks) assert.equal(b.name === 'neighbor_showcase' ? stripRoom(fn(MAIN, b.name)) : fn(MAIN, b.name), b.text, b.name);
   for (const src of [MAIN, MOD]) {
     assert.match(src, /add column if not exists hidden_by_admin boolean not null default false,\n\s*add column if not exists nick_hidden boolean not null default false;/);

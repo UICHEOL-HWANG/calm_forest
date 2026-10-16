@@ -15,6 +15,8 @@ import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형
 import { renameReservedParams, overParamLimit } from './ga-params.js';  // source/medium 등 GA4 예약어 충돌 방지
 import { e2Decision } from './exp-e2-boot.js';   // 🧪 E2 배정 — 이 모듈 평가(로그인 판단보다 먼저)에서 처음 판정된다
 import { e2UserProps } from './exp-e2.js';
+import { e3Decision } from './exp-e3-boot.js';
+import { e3UserProps } from './exp-e3.js';
 import { installUserProps } from './install-referrer.js';            // 📲 안드로이드 설치 채널(Play Install Referrer)
 import { cachedInstallAttribution } from './install-referrer-boot.js';
 import { readSurvey, surveyUserProps } from './install-survey.js';           // 🧭 첫 실행 설문 → heard_from
@@ -31,7 +33,7 @@ let abVariant = null;   // 마지막으로 set 한 ab_variant — 설치 채널 
 //   (platform·lang·ab_variant·🧪 exp_entry·📲 install_*·🧭 heard_from·🧪 exp_arm)
 function allUserProps(extra = {}) {
   return { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()),
-    ...installProps(), ...(expArm ? { exp_arm: expArm } : {}), ...extra };
+    ...e3UserProps(e3Decision()), ...installProps(), ...(expArm ? { exp_arm: expArm } : {}), ...extra };
 }
 function installProps() {
   let props = {};

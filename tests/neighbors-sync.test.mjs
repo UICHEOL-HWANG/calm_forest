@@ -47,10 +47,30 @@ test('🏠 실내 상한 — SQL _nb_room 과 sanitize 가 같다 · 운영 파�
   const show = (s) => s.match(/create or replace function public\.neighbor_showcase[\s\S]*?\nend \$\$;/)[0];
   const ROOM_SQL = read('sql/migrations/migrate_neighbors_room.sql');
   assert.equal(room(ROOM_SQL), room(SQL));
-  assert.equal(show(ROOM_SQL), show(SQL));
+  assert.equal(show(ROOM_SQL), show(SQL).replace(",\n    'pond',       _nb_pond(s)", ''));
   assert.match(room(SQL), new RegExp(`abs\\(\\(e\\.o->>'x'\\)::numeric\\) <= ${ROOM_MAX_XY}`));
   assert.match(room(SQL), new RegExp(`abs\\(\\(e\\.o->>'z'\\)::numeric\\) <= ${ROOM_MAX_XY}`));
   assert.match(room(SQL), new RegExp(`limit ${ROOM_MAX}\\n`));
   assert.match(show(SQL), /'outdoor',\s+_nb_yard\(s\),\n\s+'room',\s+_nb_room\(s\),/);
   assert.match(ROOM_SQL, /⚠️ 적용 순서/);
+});
+
+test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목록이 게임과 같다', () => {
+  const pond = (s) => s.match(/create or replace function public\._nb_pond[\s\S]*?\n\$\$;/)[0];
+  const show = (s) => s.match(/create or replace function public\.neighbor_showcase[\s\S]*?\nend \$\$;/)[0];
+  const POND_SQL = read('sql/migrations/migrate_neighbor_pond.sql');
+  assert.equal(pond(POND_SQL), pond(SQL));
+  assert.equal(show(POND_SQL), show(SQL));
+  assert.match(show(SQL), /'coop',[^\n]*,\n\s+'pond',\s+_nb_pond\(s\)\n/);
+  const river = ['sakura_trout', 'puffer', 'maple_carp', 'ice_smelt', 'rare', 'uncommon', 'common'];
+  const sea = ['aji', 'buri', 'mola', 'tuna'];
+  const list = (ids) => `array[${ids.map(i => `'${i}'`).join(',')}]`;
+  const inList = (ids) => `in (${ids.map(i => `'${i}'`).join(',')})`;
+  assert.ok(pond(SQL).includes(`k.key ${inList(river)}`));
+  assert.ok(pond(SQL).includes(`array_position(${list(river)}, k.key)`));
+  assert.ok(pond(SQL).includes(`k.key ${inList(sea)}`));
+  assert.ok(pond(SQL).includes(`array_position(${list(sea)}, k.key)`));
+  const rev = 'revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;';
+  assert.ok(SQL.includes(rev) && POND_SQL.includes(rev));
+  assert.ok(pond(SQL).includes('set search_path = public'));
 });
