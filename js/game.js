@@ -263,6 +263,7 @@ import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestCtx, unlockedSet } from './world/unlocks.js';   // 🔓 마을 해금(순수) — docs/superpowers/specs/2026-10-16-world-unlocks-design.md
+import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
@@ -1058,6 +1059,7 @@ const gameState = {
   plaza: plazaDefault(),               // 🌾 수확제 광장 { lastStage, claimed, invited, converted, seen }
   neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 8장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
+  tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
 };
 
@@ -2782,6 +2784,7 @@ function applySave(saved) {
   gameState.firstDay = resolveFirstDay(saved.firstDay);
   gameState.mountain = restoreMountain(saved.mountain);
   gameState.unlocks = restoreUnlocks(saved.unlocks);   // 🔓 필드 없는 옛 세이브 = legacy(전부 열림) — resolveFirstDay 와 같은 원리
+  gameState.tree = restoreTree(saved.tree);   // 🌳 세계수 판(옛 세이브=빈 판) — 모르는 장식·재료는 버린다
   gameState.aura = restoreAura(saved.aura);   // 🏮 모르는 값·4칸째·사라진 장착 id 는 걸러진다
   refreshAura();
   gameState.star = restoreStar(saved.star, saved.starDay);   // 🌌 별자리 기록(옛 북두칠성 보상 기록은 클리어로 친다)
