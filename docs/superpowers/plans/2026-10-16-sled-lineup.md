@@ -15,7 +15,7 @@
 - 코드·CSS·테스트에 주석을 넣지 않는다.
 - 새 코드는 `js/mountain/*` 또는 `js/shop/*` 에 둔다. `js/game.js` 에는 필요하면 훅 한 줄만.
 - 불변 갱신(스프레드)만 쓴다. 기존 함수 시그니처는 기본값으로 호환을 지킨다.
-- 이상적 완주 시간(도토리 7개, 충돌 0): 모든 썰매가 basic 대비 ±0.1초.
+- 이상적 완주 시간(도토리 최대 = `ACORNS.length` 6개, 충돌 0): 모든 썰매가 basic 대비 ±0.1초.
 - 썰매 1대 = 병합 메시 1개, 정점 ≤ 6,000.
 - 썰매 물리 값은 스펙 §3 표 그대로. `PHYS_V = 2`.
 - 화면 문구는 스펙 §4 확정 문구만(터보건 2문구 포함, 2026-10-16 확정).
@@ -43,10 +43,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLED_LINEUP, SLED_IDS, physOf, sledOf, CASH_SLED_IDS } from '../js/mountain/sled-lineup.js';
 import { idealTimeMs } from '../js/mountain/sled-ideal.js';
+import { ACORNS } from '../js/mountain/climb.js';
 
-test('every sled has the same ideal time with all 7 acorns', () => {
-  const base = idealTimeMs(physOf('basic'), 7);
-  for (const id of SLED_IDS) assert.ok(Math.abs(idealTimeMs(physOf(id), 7) - base) <= 100, id);
+test('every sled has the same ideal time with the reachable acorn max', () => {
+  const base = idealTimeMs(physOf('basic'), ACORNS.length);
+  for (const id of SLED_IDS) assert.ok(Math.abs(idealTimeMs(physOf(id), ACORNS.length) - base) <= 100, id);
 });
 
 test('trade-offs show at low acorn counts', () => {
@@ -76,8 +77,8 @@ test('peak speed stays under the server floor speed', () => {
 - basic: model 'davos', 🛷 '나무 썰매', line '균형 잡힌 기본 썰매', stats [3,3,3,3], coins 0, phys {}.
 - sky/forest/starry: model 'davos', 이름은 기존 cafe-catalog 값(하늘 썰매·숲 썰매·별밤 썰매), line '균형 잡힌 기본 썰매', stats [3,3,3,3], coins 400/400/900, starry needs 'perfect', palette 는 기존 `SLED_SKINS` 색을 davos 팔레트 키로 옮긴 것(wood←wood, dark←woodDark, metal←runner, accent←runner, starry 는 `stars: true`).
 - toboggan: model 'toboggan', ⛄ '눈뭉치 터보건', line '부딪혀도 덜 느려져요. 커브는 둔해요', stats [3,2,5,3], coins 0, needs 'finish', phys { steerRate: 5.2, hitSlowMult: 0.65, hitRecoverMs: 1100 }.
-- wind: model 'bobsled', 💨 '바람 썰매', line '기본 속도가 빨라요. 도토리 힘은 약해요', stats [5,3,2,1], coins 1500, cashWon 3900, phys { baseSpeed: 9.1, boostMult: 1.34 }.
-- acorn: model 'acorn', 🌰 '도토리 로켓', line '도토리 부스터가 세요. 출발이 느려요', stats [2,3,3,5], coins 1500, cashWon 3900, phys { baseSpeed: 8.4, accel: 5.0, boostMult: 1.58 }.
+- wind: model 'bobsled', 💨 '바람 썰매', line '기본 속도가 빨라요. 도토리 힘은 약해요', stats [5,3,2,1], coins 1500, cashWon 3900, phys { baseSpeed: 9.1, boostMult: 1.31 }.
+- acorn: model 'acorn', 🌰 '도토리 로켓', line '도토리 부스터가 세요. 출발이 느려요', stats [2,3,3,5], coins 1500, cashWon 3900, phys { baseSpeed: 8.4, accel: 5.0, boostMult: 1.60 }.
 - skiff: model 'skiff', ⛸️ '얼음 스키프', line '커브가 날렵해요. 부딪히면 오래 느려요', stats [3,5,1,3], coins 1500, cashWon 3900, phys { steerRate: 8.2, hitRecoverMs: 1900 }.
 - palette(davos 외): 시안 `STYLES.f` 의 tank/turbo/rocket/skate 값 그대로. basic 팔레트는 `STYLES.f.basic`.
 - `physOf(id) = Object.freeze({ ...PHYS, ...sledOf(id).phys })`.
