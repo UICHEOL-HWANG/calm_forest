@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty } from '../game.js';
+import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
@@ -7,13 +7,14 @@ import { daysSinceUnlock, isMountainOpen } from '../mountain/unlock.js';
 import { buildLandmark, landmarkStop } from '../mountain/landmark.js';
 import { createReveal } from '../mountain/reveal.js';
 import { pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
-import { buildMountainSpace, paintInterior, followCamera } from '../mountain/interior-art.js';
+import { buildMountainSpace, paintInterior, followCamera, poseObstacles, obstacleScales } from '../mountain/interior-art.js';
 import { applyLook } from '../mountain/interior-look.js';
 import { MOUNTAIN_THEMES, THEME_CHECK_S, mountainLook } from '../mountain/theme.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
-import { SLED_SEAT, sledYaw, sledCamTargets, sledPose } from '../mountain/sled-view.js';
+import { SLED_SEAT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
+import { spawnSnowBurst } from '../mountain/sled-fx.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
 import { bindSledInput, initialInput, worldSteer } from '../mountain/sled-input.js';
 import { isTouchDevice } from '../touch-sim.js';
@@ -185,6 +186,12 @@ function setAcornVisible(i, on) {
   mesh.instanceMatrix.needsUpdate = true;
 }
 
+function pickAcornFx(i) {
+  const x = MOUNTAIN.x + ACORNS[i].x, y = MOUNTAIN.y + acornY(i), z = MOUNTAIN.z + ACORNS[i].z;
+  spawnSparkle(x, y, z, 9);
+  spawnFloatText(x, y + 1, z, '🌰', '#8a5a2b', 0.8);
+}
+
 function startClimb() {
   ACORNS.forEach((_, i) => setAcornVisible(i, true));
   run = { phase: 'climb', runId: newRunId(), diff: null, taken: Array(ACORNS.length).fill(false), climbStart: performance.now(), frames: 0, frameMs: 0 };
@@ -206,7 +213,7 @@ function courseFor(diff) {
   return { ...COURSE, obstacles: COURSE.obstacles.map(o => ({ ...o, r: o.r * k })) };
 }
 
-const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3();
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _shake = new THREE.Vector3();
 const LEAN_RATE = 8;
 
 const toWorld = (v, q) => v.set(MOUNTAIN.x + q.x, MOUNTAIN.y + q.y, MOUNTAIN.z + q.z);
@@ -216,8 +223,26 @@ function sledCamera(cam, dt) {
   const k = 1 - Math.pow(0.02, dt);
   camPos.lerp(toWorld(_a, t.pos), k);
   camLook.lerp(toWorld(_b, t.look), k);
-  cam.position.copy(camPos);
+  run.shake = decayShake(run.shake, dt);
+  const off = shakeOffset(run.shake, performance.now() / 1000);
+  cam.position.copy(camPos).add(_shake.set(off.x, off.y, 0));
   cam.lookAt(camLook);
+}
+
+function showObstacles(course, hidden = []) {
+  const geo = $w.mountainGroup?.userData.obstacles.geometry;
+  if (geo) poseObstacles(geo, obstacleScales(course, hidden));
+}
+
+function burstObstacle(i) {
+  const o = run.course.obstacles[i];
+  const p = slopePoint(o.z, o.x);
+  const x = MOUNTAIN.x + p.x, y = MOUNTAIN.y + p.y, z = MOUNTAIN.z + p.z;
+  showObstacles(run.course, run.sled.hitIds);
+  spawnSnowBurst(x, y + 0.5, z, 14);
+  Sound.build();
+  run.shake = 1;
+  spawnFloatText(x, y + 2, z, '💥', '#d9534f', 0.8);
 }
 
 function showSled(on) {
@@ -249,6 +274,8 @@ function startSled() {
   run.climbMs = Math.round(performance.now() - run.climbStart);
   run.diff = rollDifficulty('sled');
   run.course = courseFor(run.diff);
+  run.shake = 0;
+  showObstacles(run.course);
   run.sled = createSled(run.taken.filter(Boolean).length);
   run.phase = 'countdown';
   run.count = 3;
@@ -270,6 +297,7 @@ function startSled() {
 
 function closeRun() {
   showSled(false);
+  showObstacles(COURSE);
   hideSledHud();
   document.body.classList.remove('sled-run');
   run = null;
@@ -310,7 +338,7 @@ export function updateMountain(dt) {
   if (!run) return;
   if (run.phase === 'climb') {
     const next = collectAcorns(local, run.taken);
-    next.forEach((v, i) => { if (v && !run.taken[i]) { setAcornVisible(i, false); Sound.harvest(); } });
+    next.forEach((v, i) => { if (v && !run.taken[i]) { setAcornVisible(i, false); Sound.harvest(); pickAcornFx(i); } });
     run.taken = next;
     if (atSummit(local)) startSled();
   } else if (run.phase === 'countdown') {
@@ -326,7 +354,9 @@ export function updateMountain(dt) {
     run.frames += 1;
     run.frameMs += dt * 1000;
     const steer = worldSteer(run.input.read());
+    const hitsBefore = run.sled.hitIds.length;
     run.sled = stepSled(run.sled, Math.min(50, dt * 1000), steer, run.course);
+    run.sled.hitIds.slice(hitsBefore).forEach(burstObstacle);
     rideSlope(steer, dt);
     if (run.sled.t >= GO_CLEAR_MS) clearCountdown();
     showRunHud({ timeMs: run.sled.t, acorns: run.sled.acorns });

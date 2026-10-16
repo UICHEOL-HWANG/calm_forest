@@ -156,18 +156,47 @@ function gatesMesh(THREE) {
   return new THREE.Mesh(mergeColored(THREE, geos), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 }
 
+function obstacleParts(THREE, o) {
+  const p = slopePoint(o.z, o.x), r = o.r, b = r * OBSTACLE_BODY[o.kind];
+  if (o.kind === 'rock') {
+    return [
+      [new THREE.DodecahedronGeometry(1, 0), OBST.rock, [p.x, p.y + 0.4, p.z], [b, b, b]],
+      [new THREE.DodecahedronGeometry(1, 0), OBST.snow, [p.x, p.y + 0.85, p.z], [r * 0.62, r * 0.28, r * 0.62]],
+    ];
+  }
+  return [[new THREE.IcosahedronGeometry(1, 1), OBST.snow, [p.x, p.y + 0.55, p.z], [b, b, b]]];
+}
+
+const vertexCount = g => (g.index ? g.index.count : g.getAttribute('position').count);
+
 function obstaclesMesh(THREE) {
-  const parts = COURSE.obstacles.flatMap(o => {
-    const p = slopePoint(o.z, o.x), r = o.r, b = r * OBSTACLE_BODY[o.kind];
-    if (o.kind === 'rock') {
-      return [
-        [new THREE.DodecahedronGeometry(1, 0), OBST.rock, [p.x, p.y + 0.4, p.z], [b, b, b]],
-        [new THREE.DodecahedronGeometry(1, 0), OBST.snow, [p.x, p.y + 0.85, p.z], [r * 0.62, r * 0.28, r * 0.62]],
-      ];
+  const groups = COURSE.obstacles.map(o => obstacleParts(THREE, o));
+  const counts = groups.map(parts => parts.reduce((n, [g]) => n + vertexCount(g), 0));
+  const geo = partsGeometry(THREE, groups.flat());
+  const starts = counts.map((_, i) => counts.slice(0, i).reduce((a, b) => a + b, 0));
+  geo.userData.ranges = counts.map((n, i) => [starts[i], n]);
+  geo.userData.anchors = COURSE.obstacles.map(o => { const p = slopePoint(o.z, o.x); return [p.x, p.y, p.z]; });
+  geo.userData.base = Float32Array.from(geo.getAttribute('position').array);
+  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+}
+
+export function obstacleScales(course, hidden = []) {
+  return course.obstacles.map((o, i) => (hidden.includes(i) ? 0 : o.r / COURSE.obstacles[i].r));
+}
+
+export function poseObstacles(geo, scales) {
+  const { base, ranges, anchors } = geo.userData;
+  const attr = geo.getAttribute('position');
+  const arr = attr.array;
+  ranges.forEach(([start, count], i) => {
+    const k = scales[i];
+    for (let v = start * 3; v < (start + count) * 3; v++) {
+      const a = anchors[i][v % 3];
+      arr[v] = a + (base[v] - a) * k;
     }
-    return [[new THREE.IcosahedronGeometry(1, 1), OBST.snow, [p.x, p.y + 0.55, p.z], [b, b, b]]];
   });
-  return new THREE.Mesh(partsGeometry(THREE, parts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  attr.needsUpdate = true;
+  geo.computeBoundingSphere();
 }
 
 function rangeHeight(a, layer) {
