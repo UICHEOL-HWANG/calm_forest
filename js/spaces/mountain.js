@@ -333,7 +333,7 @@ function sledSkin() {
 
 function ctxOf() {
   return {
-    runId: run.runId, diff: run.diff, sledSkin: sledSkin(),
+    runId: run.runId, diff: run.diff, sledSkin: run.sledId ?? sledSkin(),
     acornsAvailable: ACORNS.length, acornsCollected: run.taken.filter(Boolean).length,
     climbMs: run.climbMs ?? Math.round(performance.now() - run.climbStart),
     idleMs: run.idleMs ?? (run.phase === 'hut' ? Math.round(performance.now() - run.hutAt) : null),
@@ -423,8 +423,9 @@ function startSled() {
   run.course = courseFor(run.diff);
   run.shake = 0;
   showObstacles(run.course);
-  run.sled = createSled(run.taken.filter(Boolean).length, physOf(sledSkin()));
-  run.seat = sledSeat(sledSkin());
+  run.sledId = sledSkin();
+  run.sled = createSled(run.taken.filter(Boolean).length, physOf(run.sledId));
+  run.seat = sledSeat(run.sledId);
   run.phase = 'countdown';
   run.count = 3;
   run.countT = 0;
@@ -436,7 +437,7 @@ function startSled() {
   camLook.copy(player.position);
   run.yaw = sledYaw(0);
   rideSlope(0, 0);
-  setSledSkin($w.mountainGroup.userData.sled, THREE, sledSkin());
+  setSledSkin($w.mountainGroup.userData.sled, THREE, run.sledId);
   showSled(true);
   setCameraRig(sledCamera);
   showCountdown(3);

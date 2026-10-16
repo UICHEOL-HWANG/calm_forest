@@ -91,8 +91,12 @@ test('setSledSkin swaps geometry in place', () => {
 test('the ride sled is painted from the saved colour when a run starts', () => {
   const src = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
   const start = src.slice(src.indexOf('function startSled'), src.indexOf('\n}', src.indexOf('function startSled')));
-  assert.match(start, /setSledSkin\(\$w\.mountainGroup\.userData\.sled, THREE, sledSkin\(\)\)/);
-  assert.match(start, /run\.seat = sledSeat\(sledSkin\(\)\)/);
+  assert.match(start, /run\.sledId = sledSkin\(\)/);
+  assert.ok(start.indexOf('run.sledId = ') < start.indexOf('createSled('));
+  assert.equal(start.match(/sledSkin\(\)/g).length, 1);
+  assert.match(start, /createSled\([^\n]*physOf\(run\.sledId\)\)/);
+  assert.match(start, /setSledSkin\(\$w\.mountainGroup\.userData\.sled, THREE, run\.sledId\)/);
+  assert.match(start, /run\.seat = sledSeat\(run\.sledId\)/);
   assert.ok(start.indexOf('run.seat') < start.indexOf('rideSlope('));
-  assert.match(src, /sledSkin: sledSkin\(\)/);
+  assert.match(src, /sledSkin: run\.sledId \?\? sledSkin\(\)/);
 });
