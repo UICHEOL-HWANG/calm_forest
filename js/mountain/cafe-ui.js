@@ -37,6 +37,8 @@ const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;d
 #hut-cafe-modal .hc-stats span{white-space:nowrap}
 #hut-cafe-modal .hc-lock{font-size:12px;font-weight:700;color:#8a6a1f;background:#fbf1d8;border-radius:8px;padding:4px 8px;margin-top:2px}
 #hut-cafe-modal .hc-row button{flex:none;border:0;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;white-space:nowrap}
+#hut-cafe-modal .hc-buys{display:flex;flex-direction:column;gap:6px;flex:none}
+#hut-cafe-modal .hc-row button.sh-cash{background:#2f6fd6;color:#fff}
 #hut-cafe-modal .hc-row button:disabled{background:#e6e1d8;color:#8a8f99}
 #hut-cafe-modal .hc-close{margin-top:10px;border:0;border-radius:12px;padding:10px;background:#efe6d8;font-weight:700}`;
 
@@ -106,7 +108,13 @@ function render() {
     btn.textContent = t(row.label);
     btn.disabled = row.disabled;
     btn.onclick = () => (row.kind === 'ride' ? hooks.onPick(it.id) : hooks.onBuy(it.id, tab));
-    el.append(info, btn);
+    const cash = it.tab === 'sled' && row.kind === 'buy' ? hooks.cashButton?.(it.id) : null;
+    if (cash) {
+      const buys = document.createElement('div');
+      buys.className = 'hc-buys';
+      buys.append(btn, cash);
+      el.append(info, buys);
+    } else el.append(info, btn);
     list.appendChild(el);
   }
 }

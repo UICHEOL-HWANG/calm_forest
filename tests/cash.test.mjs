@@ -29,12 +29,13 @@ test('cashFor — priceId 없으면 won 이 있어도 null', () => {
   assert.equal(cashFor('nope', null, 4000), null);
 });
 
-test('PRICE_IDS 는 꾸미기 35(코인 18 + 프리미엄 4 + 도구 세트 3 + 🎃 할로윈 10) + 펫 4 = 39칸, 값은 null 이거나 pri_ 로 시작', () => {
+test('PRICE_IDS 는 꾸미기 35(코인 18 + 프리미엄 4 + 도구 세트 3 + 🎃 할로윈 10) + 펫 4 + 🛷 능력 썰매 3 = 45칸, 값은 null 이거나 pri_ 로 시작', () => {
   const keys = Object.keys(PRICE_IDS);
-  assert.equal(keys.length, 42);
+  assert.equal(keys.length, 45);
   for (const it of ITEMS.filter(i => !i.reward)) assert.ok(keys.includes(it.id), it.id);   // 🤝 초대 보상은 비매품 — 가격 칸이 없다
   for (const it of ITEMS.filter(i => i.reward)) assert.ok(!keys.includes(it.id), `${it.id} 는 팔지 않는다`);
   for (const k of PET_KINDS) assert.ok(keys.includes(k.id), k.id);
+  for (const id of ['wind', 'acorn', 'skiff']) assert.ok(keys.includes(id), id);
   for (const [k, v] of Object.entries(PRICE_IDS)) assert.ok(v === null || /^pri_[a-z0-9]+$/.test(v), `${k}: ${v}`);
   const ids = Object.values(PRICE_IDS).filter(Boolean);
   assert.equal(new Set(ids).size, ids.length, 'priceId 는 항목마다 하나 — 공유하면 역조회가 안 된다');

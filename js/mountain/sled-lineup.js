@@ -1,4 +1,5 @@
 import { PHYS } from './sled.js';
+import { cashFor } from '../shop/cash.js';
 
 const entry = (o) => Object.freeze({ coins: 0, cashWon: 0, needs: null, phys: Object.freeze({}), ...o, stats: Object.freeze(o.stats), palette: Object.freeze(o.palette), ...(o.phys ? { phys: Object.freeze(o.phys) } : {}) });
 
@@ -47,6 +48,11 @@ export const STAT_NAMES = Object.freeze(['속도', '커브', '튼튼함', '도�
 
 export function sledOf(id) {
   return SLED_LINEUP[id] || SLED_LINEUP.basic;
+}
+
+export function sledCash(id) {
+  const s = CASH_SLED_IDS.includes(id) ? SLED_LINEUP[id] : null;
+  return s?.cashWon ? cashFor(id, null, s.cashWon) : null;
 }
 
 export function physOf(id) {

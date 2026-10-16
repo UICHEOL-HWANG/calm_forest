@@ -23,7 +23,10 @@ import { findItem } from '../cosmetics/catalog.js';
 import { logEcon } from '../metrics.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
-import { physOf } from '../mountain/sled-lineup.js';
+import { physOf, sledCash } from '../mountain/sled-lineup.js';
+import { cashAvailable } from '../shop/paddle.js';
+import { state as authState } from '../supabase-client.js';
+import { cashButton } from './cafe.js';
 import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
@@ -229,7 +232,7 @@ function buyFromCafe(id, tab) {
   const out = applyCafeResult(gameState, r);
   if (r.ok) {
     logEcon('hut_cafe', id, -cafeItem(id).coins, gameState.inventory.coins);
-    trackEvent('hut_cafe_buy', { item_id: id, tab, price_coins: cafeItem(id).coins, coins_after: gameState.inventory.coins });
+    trackEvent('hut_cafe_buy', { item_id: id, tab, pay: 'coin', price_coins: cafeItem(id).coins, coins_after: gameState.inventory.coins });
     if (r.grant.type === 'cos') {
       applyCosmetics(gameState.cosmetics);
       trackEvent('cosmetic_equip', { item_id: id, slot: findItem(id)?.slot, action: 'on', via: 'hut_cafe' });
@@ -257,9 +260,14 @@ function pickFromCafe(id) {
   refreshCafeModal();
 }
 
+function sledCashButton(id) {
+  const cash = sledCash(id);
+  return cash && cashAvailable(authState) ? cashButton(cash, id, 'sled', false) : null;
+}
+
 function openCafeShop() {
   trackEvent('hut_cafe_open', {});
-  openCafeModal({ getState: () => cafeState(gameState), onBuy: buyFromCafe, onPick: pickFromCafe, onClose: () => {} });
+  openCafeModal({ getState: () => cafeState(gameState), onBuy: buyFromCafe, onPick: pickFromCafe, cashButton: sledCashButton, onClose: () => {} });
 }
 
 export function hutDoorReady() {
