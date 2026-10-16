@@ -41,4 +41,5 @@ test('연결 모듈: 스위치·트래킹·1회 토스트', () => {
   assert.match(p, /spaceLinkOn\(e3Decision\(\)\)/);
   for (const ev of ['pond_created', 'pond_fish_added', 'pond_view']) assert.match(p, new RegExp(`trackEvent\\('${ev}'`));
   assert.match(p, /hintsSeen\.pond/);
+  assert.match(p, /pondToastDue\(/);
 });

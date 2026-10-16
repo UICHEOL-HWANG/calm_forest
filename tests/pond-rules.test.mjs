@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { POND_MAX_RIVER, pondFish, pondSea, pondView, pondChanges, pickPondSpot, pondBlocks } from '../js/pond/rules.js';
+import { POND_MAX_RIVER, pondFish, pondSea, pondView, pondChanges, pickPondSpot, pondBlocks, POND_TOAST_DELAY, pondToastDue } from '../js/pond/rules.js';
 
 const RIVER = ['sakura_trout', 'puffer', 'maple_carp', 'ice_smelt', 'rare', 'uncommon', 'common'];
 const SEA = ['aji', 'buri', 'mola', 'tuna'];
@@ -73,4 +73,13 @@ test('나무 배치 차단은 모든 후보 둘레', () => {
   assert.equal(pondBlocks(SPOTS, house, -1.6, -9.5, 2), true);
   assert.equal(pondBlocks(SPOTS, house, 10, 10, 2), false);
   assert.equal(pondBlocks(SPOTS, house, -3, -3.8 + 2.4, 2, 0.5), true);
+});
+
+test('생성 토스트는 마을에서 잠시 기다린 뒤 한 번만', () => {
+  const ok = { pending: true, seen: false, inVillage: true, waitedSec: POND_TOAST_DELAY };
+  assert.equal(pondToastDue(ok), true);
+  assert.equal(pondToastDue({ ...ok, pending: false }), false);
+  assert.equal(pondToastDue({ ...ok, seen: true }), false);
+  assert.equal(pondToastDue({ ...ok, inVillage: false }), false);
+  assert.equal(pondToastDue({ ...ok, waitedSec: 1.9 }), false);
 });
