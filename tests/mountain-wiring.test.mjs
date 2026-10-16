@@ -104,3 +104,7 @@ test('the hut door prompt and action are wired', () => {
   assert.ok(EN['☕ 산장 카페 들어가기']);
   assert.match(read('js/spaces/mountain.js'), /clampSummit\(/);
 });
+
+test('arrival fires when a climbing player enters the yard', () => {
+  assert.ok(read('js/spaces/mountain.js').includes('if (atHut(local) || inYard(local)) arriveHut();'));
+});

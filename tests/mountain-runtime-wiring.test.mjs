@@ -10,7 +10,7 @@ const hud = readFileSync(new URL('../js/mountain/sled-hud.js', import.meta.url),
 const between = (s, a, b) => s.slice(s.indexOf(a), s.indexOf(b, s.indexOf(a) + a.length));
 
 test('runtime reaches the hut on the summit, then rolls difficulty when the sled starts', () => {
-  assert.match(src, /if \(atHut\(local\)\) arriveHut\(\);/);
+  assert.match(src, /if \(atHut\(local\) || inYard\(local\)\) arriveHut\(\);/);
   assert.match(between(src, 'function startSled', '\n}'), /rollDifficulty\('sled'\)/);
   assert.match(between(src, 'function startSled', '\n}'), /sledBegin\(/);
 });

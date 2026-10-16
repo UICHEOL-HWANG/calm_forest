@@ -12,7 +12,7 @@ import { applyLook } from '../mountain/interior-look.js';
 import { MOUNTAIN_THEMES, THEME_CHECK_S, mountainLook } from '../mountain/theme.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns } from '../mountain/climb.js';
 import { buildCamp } from '../mountain/camp-art.js';
-import { CAMP, START_SPOT, atHut, pushOutProps, YARD, DOOR_SPOT, DOOR_R, clampSummit } from '../mountain/camp-layout.js';
+import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, clampSummit } from '../mountain/camp-layout.js';
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
@@ -419,7 +419,7 @@ export function updateMountain(dt) {
     const next = collectAcorns(local, run.taken);
     next.forEach((v, i) => { if (v && !run.taken[i]) { setAcornVisible(i, false); Sound.harvest(); pickAcornFx(i); } });
     run.taken = next;
-    if (atHut(local)) arriveHut();
+    if (atHut(local) || inYard(local)) arriveHut();
   } else if (run.phase === 'hut') {
     keeperBubble?.update(dt, performance.now() / 1000, Math.hypot(local.x - CAMP.keeper.x, local.z - CAMP.keeper.z), CAMP.deck.y);
   } else if (run.phase === 'runout') {

@@ -95,3 +95,11 @@ test('walking out of the yard never jumps more than a step', () => {
     assert.ok(Math.hypot(q.x - p.x, q.z - p.z) < 0.3, a.toFixed(2));
   }
 });
+
+test('a straight walk from the last path segment to the door stays in the yard', () => {
+  const a = { x: -1.68, z: -7.08 };
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    assert.ok(inYard({ x: a.x + (DOOR_SPOT.x - a.x) * t, z: a.z + (DOOR_SPOT.z - a.z) * t }), String(i));
+  }
+});
