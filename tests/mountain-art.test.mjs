@@ -43,10 +43,12 @@ test('landmark uses the approved wild mockup A shape', () => {
   assert.deepEqual({ ...LANDMARK }, { radius: 7, height: 6.5, spur: 1.2, groundColor: 0xd3e2b0, frontGap: 0.38, cloudScale: 2.2 });
 });
 
-test('landmark mountain keeps village fog while its clouds ignore fog like the backdrop', () => {
+test('landmark mountain and its clouds both take village fog, the reveal backdrop clouds do not', () => {
   const ms = meshes(buildLandmark(THREE));
   assert.notEqual(ms.find(m => !m.isInstancedMesh).material.fog, false);
-  assert.equal(ms.find(m => m.isInstancedMesh).material.fog, false);
+  assert.equal(ms.find(m => m.isInstancedMesh).material.fog, true);
+  const back = meshes(buildBackdrop(THREE, { radius: 60, height: 34, frontGap: 0.38 })).find(m => m.isInstancedMesh);
+  assert.equal(back.material.fog, false);
 });
 
 test('landmark clouds are the backdrop band for the same size with every puff 2.2x bigger', () => {

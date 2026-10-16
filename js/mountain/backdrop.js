@@ -87,7 +87,7 @@ export function landmarkMountain(THREE, { radius: R, height: H, spur: k, groundC
   return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 }
 
-export function cloudBand(THREE, R, H, frontGap, cloudScale = 1) {
+export function cloudBand(THREE, R, H, frontGap, cloudScale = 1, fog = false) {
   let seed = 11;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const y = H * 0.38, ring = R * (1 - Math.pow(0.38, 1 / 1.55)) + R * 0.03, puffs = [];
@@ -100,12 +100,12 @@ export function cloudBand(THREE, R, H, frontGap, cloudScale = 1) {
       puffs.push([Math.cos(a) * ring + (rnd() - 0.5) * size * 2.4, y + (rnd() - 0.3) * size * 0.5, Math.sin(a) * ring + (rnd() - 0.5) * size * 1.2, s]);
     }
   }
-  return cloudPuffMesh(THREE, puffs);
+  return cloudPuffMesh(THREE, puffs, fog);
 }
 
-export function cloudPuffMesh(THREE, puffs) {
+export function cloudPuffMesh(THREE, puffs, fog = false) {
   const mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1),
-    new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true, emissive: 0xd4dce6, emissiveIntensity: 0.55, fog: false }), puffs.length);
+    new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true, emissive: 0xd4dce6, emissiveIntensity: 0.55, fog }), puffs.length);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
   puffs.forEach(([x, py, z, s], i) => { m.compose(v.set(x, py, z), q, sc.set(s * 1.3, s * 0.7, s)); mesh.setMatrixAt(i, m); });
   return mesh;

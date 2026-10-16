@@ -7,7 +7,7 @@ const STOP_K = 0.9;
 export function buildLandmark(THREE) {
   const { radius, height, frontGap, cloudScale } = LANDMARK;
   const group = new THREE.Group();
-  group.add(landmarkMountain(THREE, LANDMARK), cloudBand(THREE, radius, height, frontGap, cloudScale));
+  group.add(landmarkMountain(THREE, LANDMARK), cloudBand(THREE, radius, height, frontGap, cloudScale, true));
   return group;
 }
 
