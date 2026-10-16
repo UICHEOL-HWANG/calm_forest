@@ -10,10 +10,14 @@ export function pointerSide(clientX, width) {
   return clientX < width / 2 ? 'left' : 'right';
 }
 
-export function bindSledInput(target, onBoost) {
+export function initialInput(touch) {
+  return touch ? 'touch' : 'keys';
+}
+
+export function bindSledInput(target, onBoost, { win = window, doc = document, initial = 'keys' } = {}) {
   const keys = { left: false, right: false };
   const pointers = new Map();
-  let used = 'keys';
+  let used = initial;
   const onKey = down => e => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = down;
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = down;
@@ -25,15 +29,20 @@ export function bindSledInput(target, onBoost) {
   const kd = onKey(true), ku = onKey(false);
   const pd = e => {
     if (e.target?.closest?.('[data-sled-boost], [data-sled-ui]')) return;
-    pointers.set(e.pointerId, pointerSide(e.clientX, window.innerWidth));
+    pointers.set(e.pointerId, pointerSide(e.clientX, win.innerWidth));
     used = 'touch';
   };
   const pu = e => pointers.delete(e.pointerId);
-  window.addEventListener('keydown', kd);
-  window.addEventListener('keyup', ku);
+  const release = () => {
+    keys.left = false;
+    keys.right = false;
+    pointers.clear();
+  };
+  const onVisibility = () => { if (doc.visibilityState === 'hidden') release(); };
+  const winListeners = [['keydown', kd], ['keyup', ku], ['pointerup', pu], ['pointercancel', pu], ['blur', release]];
+  winListeners.forEach(([type, fn]) => win.addEventListener(type, fn));
   target.addEventListener('pointerdown', pd);
-  window.addEventListener('pointerup', pu);
-  window.addEventListener('pointercancel', pu);
+  doc.addEventListener('visibilitychange', onVisibility);
   return {
     read() {
       const sides = [...pointers.values()];
@@ -41,11 +50,10 @@ export function bindSledInput(target, onBoost) {
     },
     input() { return used; },
     dispose() {
-      window.removeEventListener('keydown', kd);
-      window.removeEventListener('keyup', ku);
+      winListeners.forEach(([type, fn]) => win.removeEventListener(type, fn));
       target.removeEventListener('pointerdown', pd);
-      window.removeEventListener('pointerup', pu);
-      window.removeEventListener('pointercancel', pu);
+      doc.removeEventListener('visibilitychange', onVisibility);
+      release();
     },
   };
 }

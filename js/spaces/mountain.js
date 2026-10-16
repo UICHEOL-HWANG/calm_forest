@@ -15,7 +15,8 @@ import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
 import { SLED_SEAT, sledYaw, sledCamTargets, sledPose } from '../mountain/sled-view.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
-import { bindSledInput, worldSteer } from '../mountain/sled-input.js';
+import { bindSledInput, initialInput, worldSteer } from '../mountain/sled-input.js';
+import { isTouchDevice } from '../touch-sim.js';
 import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, boostButton } from '../mountain/sled-hud.js';
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
@@ -196,7 +197,7 @@ function ctxOf() {
     acornsAvailable: ACORNS.length, acornsCollected: run.taken.filter(Boolean).length,
     climbMs: run.climbMs ?? Math.round(performance.now() - run.climbStart),
     daysSinceUnlock: daysSinceUnlock(),
-    input: run.input ? run.input.input() : 'keys',
+    input: run.input ? run.input.input() : initialInput(isTouchDevice()),
     orientation: innerWidth < innerHeight ? 'portrait' : 'landscape',
   };
 }
@@ -253,7 +254,7 @@ function startSled() {
   run.phase = 'countdown';
   run.count = 3;
   run.countT = 0;
-  run.input = bindSledInput(document.body, boost);
+  run.input = bindSledInput(document.body, boost, { initial: initialInput(isTouchDevice()) });
   document.body.classList.add('sled-run');
   boostButton().onclick = boost;
   sledBegin(ctxOf());
