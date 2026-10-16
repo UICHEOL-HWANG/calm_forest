@@ -93,3 +93,18 @@ test('hut cafe door ids never collide with door ids the game handles before the 
   const mine = [...src('js/spaces/mountain.js').matchAll(/nearDoor === '([a-z]+)'/g)].map(m => m[1]);
   for (const id of mine) if (id !== 'mountain') assert.ok(!before.has(id), id);
 });
+
+test('the player stays put while the result card is up and the sled goes away on confirm', () => {
+  const s = src('js/spaces/mountain.js');
+  assert.match(body(s, 'sledActive'), /run\.phase === 'result'/);
+  const fin = body(s, 'showFinish');
+  assert.match(fin, /showSled\(false\); closeRun\(\);/);
+});
+
+test('the cold meter sits clear of the top status bar on portrait phones and keeps its wide-screen spot', () => {
+  const s = src('js/mountain/cold-hud.js');
+  const base = Number(s.match(/#cold-hud\{[^}]*top:calc\(env\(safe-area-inset-top\) \+ (\d+)px\)/)[1]);
+  assert.equal(base, 64);
+  const portrait = s.match(/@media \(orientation: ?portrait\)\{#cold-hud\{top:calc\(env\(safe-area-inset-top\) \+ (\d+)px\)\}\}/);
+  assert.ok(portrait && Number(portrait[1]) >= 78);
+});

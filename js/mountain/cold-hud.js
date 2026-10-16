@@ -5,7 +5,8 @@ const CSS = `#cold-hud{position:fixed;left:50%;top:calc(env(safe-area-inset-top)
 #cold-hud .ch-bar{width:84px;height:8px;border-radius:999px;background:#e3eaf3;overflow:hidden}
 #cold-hud .ch-fill{height:100%;width:0;border-radius:999px;background:#7fb2e8;transition:width .3s}
 #cold-hud.shiver .ch-fill{background:#4f86c6}
-#cold-hud.slow .ch-fill{background:#2f5fb0}`;
+#cold-hud.slow .ch-fill{background:#2f5fb0}
+@media (orientation: portrait){#cold-hud{top:calc(env(safe-area-inset-top) + 80px)}}`;
 
 let el = null;
 

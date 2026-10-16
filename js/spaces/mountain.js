@@ -66,7 +66,7 @@ const newRunId = () => crypto.randomUUID?.()
   || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => { const r = Math.random() * 16 | 0; return (ch === 'x' ? r : (r & 3) | 8).toString(16); });
 
 export function sledActive() {
-  return !!run && (run.phase === 'countdown' || run.phase === 'sled' || run.phase === 'runout' || run.phase === 'cheer');
+  return !!run && (run.phase === 'countdown' || run.phase === 'sled' || run.phase === 'runout' || run.phase === 'cheer' || run.phase === 'result');
 }
 
 export function sledStartReady() {
