@@ -11,8 +11,8 @@ import * as THREE from 'three';
 import { t } from '../i18n.js';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';
-import { DECOR, OUTDOOR } from '../data/catalog.js';
-import { HOUSE_POS, NEIGHBOR, NEIGHBOR_GATE, NEIGHBOR_INT, NEIGHBOR_R, ROOF_Y } from '../data/places.js';
+import { DECOR, FISH_KINDS, OUTDOOR } from '../data/catalog.js';
+import { HOUSE_POS, NEIGHBOR, NEIGHBOR_GATE, NEIGHBOR_INT, NEIGHBOR_R, ROOF_Y, SEA_SPECIES } from '../data/places.js';
 import { Sound } from '../sound.js';
 import { sanitizeShowcase } from '../neighbors/sanitize.js';
 import { BANNER_KEY, FAIL_TOAST, HOST_TALK_R, bannerDue, kstDay, REWARD_COINS, markSeen, noticeView, pickerRows, reactOutcome, recordVisit, visitorsSince } from '../neighbors/rules.js';
@@ -32,6 +32,7 @@ let pickerBusy = false;
 
 const faceOf = (id) => (ANIMALS.find(a => a.id === id) || ANIMALS[0]).emoji;
 const showcaseCtx = () => ({
+  pondRiverIds: FISH_KINDS.map(k => k.rarity), seaIds: SEA_SPECIES.map(s => s.id),
   outdoorIds: new Set(OUTDOOR.map(d => d.id)), decorIds: new Set(DECOR.map(d => d.id)), animalIds: new Set(ANIMALS.map(a => a.id)),
   fallbackAnimal: ANIMALS[0].id, yard: { x: HOUSE_POS.x, z: HOUSE_POS.z },
 });
