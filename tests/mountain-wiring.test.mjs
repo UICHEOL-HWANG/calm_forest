@@ -58,3 +58,10 @@ test('map label 설산 has an English key', () => {
   assert.match(src, /\{ ico: '🏔️', name: '설산',/);
   assert.equal(EN['설산'], 'Snow Mountain');
 });
+
+test('saving inside the mountain records the spot just south of the gate', () => {
+  const space = read('js/spaces/mountain.js');
+  assert.match(space, /export function mountainReturnPos\(\) \{\n\s*return \{ x: MOUNTAIN_GATE\.x, z: MOUNTAIN_GATE\.z \+ 4 \};\n\}/);
+  assert.match(space, /const back = mountainReturnPos\(\);\n\s*player\.position\.set\(back\.x, 0, back\.z\);/);
+  assert.match(src, /atDream \? dreamReturnPos\(\) : atMountain \? mountainReturnPos\(\) : \{ x: player\.position\.x, z: player\.position\.z \}/);
+});

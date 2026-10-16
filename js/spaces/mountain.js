@@ -85,6 +85,10 @@ export function enterMountain() {
   trackEvent('mountain_enter', { first: first ? 1 : 0 });
 }
 
+export function mountainReturnPos() {
+  return { x: MOUNTAIN_GATE.x, z: MOUNTAIN_GATE.z + 4 };
+}
+
 export function exitMountain() {
   abandonRun();
   $w.atMountain = false;
@@ -92,7 +96,8 @@ export function exitMountain() {
   setFogExempt(player, false);
   if ($w.mountainGroup) $w.mountainGroup.visible = false;
   setCameraRig(null);
-  player.position.set(MOUNTAIN_GATE.x, 0, MOUNTAIN_GATE.z + 4);
+  const back = mountainReturnPos();
+  player.position.set(back.x, 0, back.z);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible(); setBGMTheme('main');
   Sound.blip();
