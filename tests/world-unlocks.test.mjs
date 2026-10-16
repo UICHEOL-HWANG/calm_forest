@@ -96,3 +96,49 @@ test('새 세이브 시작 시 닫힌 NPC 목록 — 올빼미 빼고 전부', (
   assert.ok(!locked.includes('courier'));
   assert.equal(locked.length, UNLOCKS.filter(u => u.kind === 'npc').length - 1);
 });
+
+// ── 🦉 의뢰 풀 — 잠긴 시설·숨은 이웃을 쓰는 의뢰는 안 나온다(못 깨는 의뢰가 하루 체인을 막는다) ──
+import { unlockQuestCtx } from '../js/world/unlocks.js';
+import { questAvailable, pickGated, repeatNPCsFor, UNLOCK_GATES, REPEAT_POOL } from '../js/quests.js';
+import { DAILY_POOL, DAILY_COUNT } from '../js/data/npcs.js';
+
+const freshCtx = (o = {}) => ({ coopBuilt: false, houseStage: 0, locked: {}, ...unlockQuestCtx(fresh(o)) });
+
+test('새 세이브(시작 세트만 열림)에서도 일일 의뢰 풀이 DAILY_COUNT 종 이상 남는다', () => {
+  const ctx = freshCtx();
+  const ok = DAILY_POOL.filter(q => questAvailable(q.type, ctx)).map(q => q.type);
+  assert.ok(ok.length >= DAILY_COUNT, `남은 종류 ${ok.length} < ${DAILY_COUNT}: ${ok.join(',')}`);
+  for (const t of ['sell', 'serve', 'catch', 'forage', 'boat', 'seafish', 'mist', 'gift'])
+    assert.ok(!ok.includes(t), `${t} 는 시작엔 못 깬다`);
+  for (let seed = 1; seed < 400; seed += 7)
+    assert.equal(pickGated(DAILY_POOL, DAILY_COUNT, seed, ctx).length, DAILY_COUNT, `seed ${seed}`);
+});
+
+test('🧙 상인이 돌아오면 🛒 판매·🎁 선물 의뢰가 풀에 들어온다', () => {
+  const ctx = freshCtx({ hintsSeen: { merchantVisit: true } });
+  assert.ok(questAvailable('sell', ctx));
+  assert.ok(questAvailable('gift', ctx), '이웃 한 명(상인)이면 선물을 줄 수 있다');
+  assert.ok(!questAvailable('serve', ctx));
+});
+
+test('해금 꺼짐·legacy → 의뢰 게이트가 아무것도 더 거르지 않는다', () => {
+  for (const ctx of [unlockQuestCtx(fresh(), { enabled: false }), unlockQuestCtx(fresh({ unlocks: restoreUnlocks(undefined) }))]) {
+    assert.deepEqual(ctx.closed, {});
+    assert.deepEqual(ctx.hiddenNpcs, []);
+    for (const t of Object.keys(UNLOCK_GATES)) assert.ok(questAvailable(t, { ...ctx, coopBuilt: true, houseStage: 9, locked: {} }), t);
+  }
+});
+
+test('UNLOCK_GATES 가 가리키는 시설은 전부 해금 표에 있다', () => {
+  for (const [t, id] of Object.entries(UNLOCK_GATES)) assert.ok(UNLOCK_IDS.includes(id), `${t} → ${id}`);
+});
+
+test('반복 의뢰 후보에서 숨은 이웃을 뺀다 — 빈 목록이면 예전과 같다', () => {
+  const ids = Object.keys(REPEAT_POOL);
+  const { hiddenNpcs } = unlockQuestCtx(fresh({ hintsSeen: { merchantVisit: true }, houseStage: 1 }));
+  for (let seed = 1; seed < 200; seed += 3) {
+    assert.deepEqual(repeatNPCsFor(ids, seed, []), repeatNPCsFor(ids, seed));
+    for (const id of repeatNPCsFor(ids, seed, hiddenNpcs)) assert.ok(!hiddenNpcs.includes(id), id);
+  }
+  assert.deepEqual(new Set(repeatNPCsFor(ids, 5, hiddenNpcs)), new Set(['merchant', 'builder']));
+});

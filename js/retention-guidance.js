@@ -237,8 +237,12 @@ export function pickGuidanceBanner(decision, counters, gs = {}) {
       ['cafe', { kind: 'cafe', targetFamily: 'cafe', ico: '☕', title: '카페 일도 해볼까요', line: '손님 주문을 하나만 받아봐도 좋아요.' }],
       ['orchard', { kind: 'orchard', targetFamily: 'orchard', ico: '🌳', title: '과수원도 살펴볼까요', line: '나무를 심고 돌볼 수 있어요.' }],
     ];
+    // 🔓 마을 해금 — 아직 안 선 시설(gs.closed)은 다음 목표로 안내하지 않는다. 🎣 물가 배너는 호수 낚시가 늘 열려 있어도
+    //    본문이 바다터를 가리키므로 바다(sea)를 본다.
+    const PLACE_OF = { sea_boat: 'sea', mist: 'mist', museum: 'museum', cafe: 'cafe', orchard: 'orchard' };
+    const closed = new Set(gs.closed || []);
     for (const [family, banner] of candidates) {
-      if (!seen.has(family)) return banner;
+      if (!seen.has(family) && !closed.has(PLACE_OF[family])) return banner;
     }
     return { kind: 'next_content', targetFamily: 'any_action', ico: '🌿', title: '이어서 하나만 더 해볼까요', line: '가까운 장소에서 짧은 행동 하나만 이어가도 좋아요.' };
   }
@@ -469,5 +473,6 @@ export function buildRetentionGameStateSnapshot(src = {}) {
     plantedUnwatered: src.plantedUnwatered || 0,
     openQuests: src.openQuests || 0,
     buildableHouse: !!src.buildableHouse,
+    closed: Array.isArray(src.closed) ? src.closed : [],   // 🔓 잠긴 시설 id(js/world/unlocks.js) — 배너가 가리키지 않게
   };
 }

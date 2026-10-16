@@ -124,3 +124,22 @@ export function lockedNpcIds(state, opts) {
   const open = unlockedSet(state, opts);
   return UNLOCKS.filter(u => u.kind === 'npc' && !open.has(u.id)).map(u => u.id);
 }
+
+/**
+ * 🦉 의뢰 게이트용 요약 — js/quests.js 의 QUEST_GATES 가 본다(questCtx 에 펼쳐 넣는다).
+ *   closed     잠긴 시설 id → true (해금 꺼짐·legacy 면 빈 객체 = 아무것도 안 거른다)
+ *   neighbors  지금 마을에 있는 이웃 수(🦉 올빼미 제외) — 🎁 선물 의뢰는 받을 이웃이 있어야 깬다
+ *   hiddenNpcs 숨은 NPC id 배열 — 반복 의뢰 후보에서 뺀다
+ */
+export function unlockQuestCtx(state, opts) {
+  const open = unlockedSet(state, opts);
+  const closed = {};
+  let neighbors = 0;
+  const hiddenNpcs = [];
+  for (const u of UNLOCKS) {
+    if (u.kind === 'place') { if (!open.has(u.id)) closed[u.id] = true; continue; }
+    if (!open.has(u.id)) hiddenNpcs.push(u.id);
+    else if (u.id !== 'courier') neighbors++;
+  }
+  return { closed, neighbors, hiddenNpcs };
+}

@@ -12,7 +12,8 @@
 
 /**
  * 세이브 상태 요약 — 게이트가 보는 전부.
- * @typedef {{coopBuilt:boolean, houseStage:number, locked:{river:boolean,sea:boolean,mist:boolean}}} QuestCtx
+ * @typedef {{coopBuilt:boolean, houseStage:number, locked:{river:boolean,sea:boolean,mist:boolean},
+ *            closed?:Object<string,true>, neighbors?:number}} QuestCtx   closed·neighbors = 🔓 마을 해금(unlockQuestCtx)
  */
 
 // 목표 종류별 전제조건. 여기 없는 종류는 조건 없이 가능하다.
@@ -27,6 +28,20 @@ export const QUEST_GATES = {
   mist:    ctx => !ctx.locked?.mist,
 };
 
+// 🔓 마을 해금(js/world/unlocks.js) — 목표 종류 → 그 일을 하는 시설 id.
+//   새 세이브는 시설이 진행에 따라 돌아오므로, 아직 안 선 곳이 필요한 의뢰는 일일·반복·특별 풀에서 뺀다.
+//   ⚠️ QUEST_GATES 와 따로 둔다 — 저 표는 "서버(AI 의뢰)가 절대 내지 않는 목표" 표이기도 하다(tests/quests.test.mjs).
+//      해금은 세이브마다 달라 서버가 모르므로, AI 목록에 잠긴 목표가 끼면 upgradeDailyQuestsAI 가 통째로 버리고 로컬 풀을 쓴다.
+//   ctx.closed 가 없으면(해금 꺼짐·legacy·옛 호출부) 아무것도 거르지 않는다.
+export const UNLOCK_GATES = {
+  boat: 'river', seafish: 'sea', mist: 'mist',
+  sell: 'shop',       // 🛒 좌판은 🧙 상인이 돌아와야 선다
+  serve: 'cafe', cook: 'kitchen',
+  catch: 'glade',     // 🌟 반딧불이 계곡
+  forage: 'forest',   // 🍄 채집 숲
+  carve: 'bench',     // 🗿 작업대(시작부터 열림 — 표가 바뀌어도 안전하게)
+};
+
 // 하루 안에 물리적으로 가능한 최대 횟수. 넘기면 그날 못 깨는 의뢰가 된다.
 //   달걀=하루 1회 수집 · 안개 정화=하루 1회 · 나룻배=런 횟수 제한
 //   ⚠️ 조각은 일일 주문이 3건인데 포기·실패도 주문을 소진한다(완성만 진행으로 센다).
@@ -38,7 +53,11 @@ export const QUEST_LIMITS = {
 /** 지금 이 세이브에서 깰 수 있는 목표인가. 모르는 종류는 막지 않는다(폴백). */
 export function questAvailable(type, ctx = {}) {
   const gate = QUEST_GATES[type];
-  return gate ? !!gate(ctx) : true;
+  if (gate && !gate(ctx)) return false;
+  const place = UNLOCK_GATES[type];
+  if (place && ctx.closed?.[place]) return false;
+  if (type === 'gift' && ctx.neighbors === 0) return false;   // 🎁 받을 이웃(🦉 제외)이 아직 아무도 안 돌아왔다
+  return true;
 }
 
 // 선형 합동 생성기 — 기존 refreshDailyQuests 가 쓰던 것과 같은 상수.
@@ -160,9 +179,10 @@ export const REPEAT_POOL = {
 /**
  * 오늘 반복 의뢰가 열리는 주민 — 날짜 시드로 REPEAT_OPEN 명.
  * 반복 풀이 없는 주민(🦉 올빼미)은 애초에 후보에서 빠진다.
+ * hidden: 🔓 아직 마을에 안 돌아온 NPC id(js/world/unlocks.js) — 빈 배열이면 예전과 같은 결과.
  */
-export function repeatNPCsFor(npcIds, seed) {
-  const rest = npcIds.filter(id => REPEAT_POOL[id]);
+export function repeatNPCsFor(npcIds, seed, hidden = []) {
+  const rest = npcIds.filter(id => REPEAT_POOL[id] && !hidden.includes(id));   // 🔓 숨은 이웃(아직 안 돌아옴)은 후보에서 뺀다
   const out = [];
   let h = seed & 0x7fffffff;
   while (out.length < REPEAT_OPEN && rest.length) {
