@@ -1,7 +1,7 @@
 import { COURSE, centerX, obstacleRadius } from './course.js';
 import { SLOPE_M_PER_UNIT } from './terrain.js';
 
-export const PHYS_V = 1;
+export const PHYS_V = 2;
 
 export const PHYS = Object.freeze({
   baseSpeed: 8.6,
@@ -29,9 +29,10 @@ export function hitReach(o) {
   return { x: r + SLED_HALF.w, z: (r + SLED_HALF.l) / SLOPE_M_PER_UNIT };
 }
 
-export function createSled(acorns) {
+export function createSled(acorns, phys = PHYS) {
   return {
-    x: centerX(0), z: 0, speed: PHYS.baseSpeed * 0.5, t: 0, acorns,
+    phys,
+    x: centerX(0), z: 0, speed: phys.baseSpeed * 0.5, t: 0, acorns,
     boostLeftMs: 0, slowLeftMs: 0, flagIdx: 0, flagsPassed: 0,
     splits: [], hits: [], hitIds: [], boostsAt: [],
     steerLeftMs: 0, steerRightMs: 0, finished: false,
@@ -40,13 +41,13 @@ export function createSled(acorns) {
 
 export function tryBoost(s) {
   if (s.finished || s.acorns <= 0) return s;
-  return { ...s, acorns: s.acorns - 1, boostLeftMs: PHYS.boostMs, boostsAt: [...s.boostsAt, s.t] };
+  return { ...s, acorns: s.acorns - 1, boostLeftMs: s.phys.boostMs, boostsAt: [...s.boostsAt, s.t] };
 }
 
 function targetSpeed(s) {
-  const boost = s.boostLeftMs > 0 ? PHYS.boostMult : 1;
-  const slow = s.slowLeftMs > 0 ? PHYS.hitSlowMult : 1;
-  return Math.min(PHYS.maxSpeed * PHYS.boostMult, PHYS.baseSpeed * boost * slow);
+  const boost = s.boostLeftMs > 0 ? s.phys.boostMult : 1;
+  const slow = s.slowLeftMs > 0 ? s.phys.hitSlowMult : 1;
+  return Math.min(s.phys.maxSpeed * s.phys.boostMult, s.phys.baseSpeed * boost * slow);
 }
 
 function crossFlags(s, x, t, course) {
@@ -69,7 +70,7 @@ function collide(s, course) {
     ...s,
     hitIds: [...s.hitIds, idx],
     hits: [...s.hits, [s.t, course.obstacles[idx].kind]],
-    slowLeftMs: PHYS.hitRecoverMs,
+    slowLeftMs: s.phys.hitRecoverMs,
   };
 }
 
@@ -77,12 +78,12 @@ export function stepSled(s, dtMs, steer, course = COURSE) {
   if (s.finished) return s;
   const dt = dtMs / 1000;
   const goal = targetSpeed(s);
-  const rate = PHYS.accel * dt * (goal < s.speed ? 4 : 1);
+  const rate = s.phys.accel * dt * (goal < s.speed ? 4 : 1);
   const speed = s.speed + Math.sign(goal - s.speed) * Math.min(Math.abs(goal - s.speed), rate);
   const z = Math.min(course.length, s.z + speed * dt);
   const half = course.width / 2;
   const cx = centerX(z);
-  const x = Math.max(cx - half, Math.min(cx + half, s.x + steer * PHYS.steerRate * dt));
+  const x = Math.max(cx - half, Math.min(cx + half, s.x + steer * s.phys.steerRate * dt));
   const t = s.t + dtMs;
   const moved = {
     ...s, x, z, speed, t,

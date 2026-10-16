@@ -47,9 +47,9 @@ function pathHeightNear(p) {
   return { dist: n.dist, y: pathY(n.seg) + (pathY(n.seg + 1) - pathY(n.seg)) * k };
 }
 
-test('course data and physics versions stay at 1 and the slope mapping is unchanged', () => {
+test('course data and physics versions stay at 1 and 2 and the slope mapping is unchanged', () => {
   assert.equal(COURSE_V, 1);
-  assert.equal(PHYS_V, 1);
+  assert.equal(PHYS_V, 2);
   assert.deepEqual(slopePoint(0, centerX(0)), { x: 0, y: SUMMIT_Y, z: -4 });
   assert.deepEqual(slopePoint(COURSE.length, 0), { x: 0, y: 0, z: 66 });
 });

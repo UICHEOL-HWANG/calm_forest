@@ -23,6 +23,7 @@ import { findItem } from '../cosmetics/catalog.js';
 import { logEcon } from '../metrics.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
+import { physOf } from '../mountain/sled-lineup.js';
 import { SLED_SEAT, SLED_LIFT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
@@ -413,7 +414,7 @@ function startSled() {
   run.course = courseFor(run.diff);
   run.shake = 0;
   showObstacles(run.course);
-  run.sled = createSled(run.taken.filter(Boolean).length);
+  run.sled = createSled(run.taken.filter(Boolean).length, physOf(sledSkin()));
   run.phase = 'countdown';
   run.count = 3;
   run.countT = 0;

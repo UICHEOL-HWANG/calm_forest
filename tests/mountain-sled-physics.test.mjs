@@ -86,5 +86,18 @@ test('steer time is accumulated per side', () => {
 test('theoretical minimum time is below any reachable time', () => {
   const best = runToEnd(createSled(6), undefined, [10, 60, 110, 160, 210, 260]);
   assert.ok(minTimeMs() < best.t);
-  assert.equal(PHYS_V, 1);
+  assert.equal(PHYS_V, 2);
+});
+
+test('createSled carries its physics and stepSled uses it', () => {
+  const fast = { ...PHYS, baseSpeed: 9.1 };
+  let a = createSled(0), b = createSled(0, fast);
+  for (let i = 0; i < 300; i++) { a = stepSled(a, 16, 0); b = stepSled(b, 16, 0); }
+  assert.ok(b.z > a.z);
+  assert.equal(PHYS_V, 2);
+});
+
+test('hit recovery follows the sled physics', () => {
+  const s = createSled(0, { ...PHYS, hitRecoverMs: 1100 });
+  assert.equal(s.phys.hitRecoverMs, 1100);
 });
