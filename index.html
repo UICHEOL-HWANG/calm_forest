@@ -70,7 +70,7 @@
   #login-dot { width: 10px; height: 10px; border-radius: 50%; background: #f0a; transition: background .3s; }
   #login-dot.online { background: #6fd08c; } #login-dot.offline { background: #f2b45c; }
   /* 상단 바: 자주 쓰는 📷·🙂만 노출, 나머지는 ☰ 메뉴로 접기(초보자 혼란 방지) */
-  #photo-btn, #emote-btn, #menu-btn { border: none; border-radius: 12px; padding: 8px 10px; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--ink); font-weight: 600; font-size: 13px; box-shadow: var(--shadow); transition: transform .1s; }
+  #photo-btn, #emote-btn, #menu-btn, #cam-reset-btn { border: none; border-radius: 12px; padding: 8px 10px; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--ink); font-weight: 600; font-size: 13px; box-shadow: var(--shadow); transition: transform .1s; }
   #menu-btn { font-size: 15px; padding: 8px 12px; }
   #topleft.open #menu-btn { background: #ffe0a8; }
   /* ☰ 펼침 메뉴: 아이콘+글자 라벨 세로 리스트 */
@@ -189,7 +189,8 @@
   #hint-preview small { font-size: 11px; opacity: .55; display: block; margin-bottom: 2px; }
   #hint-preview b { font-size: 13px; display: block; }
   #hint-preview span { font-size: 12.5px; opacity: .8; }   /* 🏡 이웃 공개 꺼짐 — 🎵 배경음악 끔과 같은 표시 */
-  #photo-btn:active, #emote-btn:active, #menu-btn:active, #util-btns button:active { transform: scale(0.94); }
+  #cam-reset-btn[hidden] { display: none !important; }   /* 🎥 카메라를 만졌을 때만 보인다(기본 구도면 숨김) */
+  #photo-btn:active, #emote-btn:active, #menu-btn:active, #cam-reset-btn:active, #util-btns button:active { transform: scale(0.94); }
   /* 이모트 팝업 */
   #emote-pop { position: fixed; top: calc(62px + var(--top-inset)); left: 16px; display: none; gap: 6px; z-index: 12; }
   #emote-pop.show { display: flex; }
@@ -1878,7 +1879,7 @@
     #login-status, #login-dot { display: none; }
     .lbl { display: none; }                       /* '나가기' 글자 접기 → 아이콘만 */
     /* 노출 버튼(📷🙂☰)만 아이콘 정사각으로 압축 — ☰ 메뉴 항목은 라벨 리스트 그대로 */
-    #photo-btn, #emote-btn, #menu-btn {
+    #photo-btn, #emote-btn, #menu-btn, #cam-reset-btn {
       padding: 0; width: 36px; height: 36px; font-size: 17px;
       display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
     }
@@ -2038,7 +2039,7 @@
     body.is-touch #dex-tab { right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
     body.is-touch #coach { top: calc(72px + var(--top-inset)); left: 50%; right: auto; transform: translateX(-50%); width: min(400px, 48vw); padding: 8px 11px; gap: 5px; }
     body.is-touch #topleft #login-status, body.is-touch #topleft #login-dot, body.is-touch #topleft .lbl { display: none; }
-    body.is-touch #photo-btn, body.is-touch #emote-btn, body.is-touch #menu-btn { padding: 0; width: 36px; height: 36px; font-size: 17px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
+    body.is-touch #photo-btn, body.is-touch #emote-btn, body.is-touch #menu-btn, body.is-touch #cam-reset-btn { padding: 0; width: 36px; height: 36px; font-size: 17px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
     body.is-touch .pg-tip { right: auto; left: 50%; top: auto; bottom: calc(100% + 6px); transform: translateX(-50%); font-size: 10px; padding: 3px 8px; }
     body.is-touch .pg-tip::after { top: 100%; left: 50%; transform: translateX(-50%); border-left-color: transparent; border-top-color: rgba(255,255,255,0.92); }
     body.is-touch #npc-prompt { display: none; }
@@ -2058,6 +2059,8 @@
     <span id="login-status">연결 중…</span>
     <button id="photo-btn" title="사진 찍기">📷<span class="lbl"> 사진</span></button>
     <button id="emote-btn" title="이모트/앉기">🙂<span class="lbl"> 이모트</span></button>
+    <!-- 🎥 손가락/휠로 카메라를 바꿨을 때만 나타나 기본 구도로 되돌린다(js/camera-user.js) -->
+    <button id="cam-reset-btn" title="카메라 되돌리기" aria-label="카메라 되돌리기" hidden>🎥</button>
     <button id="menu-btn" title="메뉴">☰</button>
     <!-- ☰ 자주 쓰는 것 → 가끔 보는 것 → ⚙️ 설정(2026-09-29). 음악·언어·정책·나가기는 설정 창으로 옮겼다 —
          13줄이 같은 무게로 늘어서 폰에서 끝이 잘렸다. 옷 갈아입기는 🐾 캐릭터·꾸미기 안에 있다. -->
