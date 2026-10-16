@@ -2,7 +2,9 @@
 //  📖 메인 이야기 — 장 표(값만). 판정은 js/story/rules.js
 //  프롤로그 컷신에서 이어지는 장들. 새 시스템이 아니라 "이미 하게 될 일"에 서사와 순서를 얹는다.
 //  🌳 한 줄 목적(2026-10-16 세계관 개편): "시든 세계수를 되살려, 떠난 이웃들을 숲으로 돌아오게 한다."
-//     id·goal·보상은 그대로 — 문구만 바꿨다(기존 완료 기록 유지). 1·2장은 1장 재설계(할아버지 찾기) 대기라 그대로 둔다. docs/superpowers/specs/2026-10-16-world-tree-reworld-design.md §4-3
+//     id·goal·보상은 그대로 — 문구만 바꿨다(기존 완료 기록 유지). docs/superpowers/specs/2026-10-16-world-tree-reworld-design.md §4-3
+//  🌉 1·2장 「세계수를 지키는 법」(해금 4단계): 해금이 켜진 **새 세이브**만 STORY_REWORLD 문구·규칙을 쓴다(storyFor).
+//     해금 꺼짐·옛 세이브는 STORY 그대로 — 기존 유저의 이야기는 안 바뀐다. id·보상은 같아서 완료 기록이 섞여도 안전하다.
 //  강제 없음(코지 문법): HUD 칩이 "다음에 하면 좋은 것"을 알려주고, 조건이 차면 어디서든 완료된다.
 //  안내자는 🦉 의뢰 올빼미 — 완료 모달의 기록자 화자.
 //  ⚠️ import 없음 — Node 테스트가 three 없이 읽는다. soon:true = 기능 출시 전 잠긴 장(판정 false·칩 숨김)
@@ -58,3 +60,22 @@ export const STORY = [
     reward: { coins: 150 },
   },
 ];
+
+// 🌉 해금 켜짐 + 새 세이브의 1·2장 — 빈 마을에 온 바깥사람(플레이어)이 🦉 올빼미를 만나 세계수를 지키기로 한다.
+//   rule: 판정 규칙 키(js/story/rules.js STORY_RULES). 없으면 id 와 같다. 보상·id 는 STORY 와 같다.
+export const STORY_REWORLD = {
+  home: {
+    ico: '🌳', title: '세계수를 지키는 법', goal: '다리 너머 할아버지 만나기', rule: 'homeBridge',
+    start: '텅 빈 마을에 시든 세계수 한 그루. 혼자 남은 🦉 올빼미가 말해요. "저 나무, 우리가 지켜야 해." 먼저 빈터에 내 집을 짓고, 서쪽 박물관의 할아버지를 찾아가 보자.',
+    done: '무너진 다리를 고쳐 할아버지를 만났어요. "빈터를 꾸며 이웃을 부르고, 꾸러미를 바쳐 가지를 깨우게."',
+  },
+  friends: {
+    ico: '🌿', title: '첫 번째 가지',
+    start: '세계수 가지에 다시 잎이 돋으려면 숲에 이웃이 있어야 해요. 돌아온 이웃들의 ❕ 부탁을 들어주며 마을에 온기를 채워 보자.',
+    done: '이웃 셋의 부탁을 들어줬어요. 마을에 사람 사는 소리가 돌아오자, 세계수 가지 끝이 살짝 흔들렸어요.',
+  },
+};
+const REWORLD = STORY.map(c => (STORY_REWORLD[c.id] ? { ...c, ...STORY_REWORLD[c.id] } : c));
+
+/** 지금 세이브가 쓸 장 표 — reworld=true(해금 켜짐 + 새 세이브)면 1·2장만 바뀐 표. 둘 다 같은 순서·id·보상 */
+export function storyFor(reworld) { return reworld ? REWORLD : STORY; }

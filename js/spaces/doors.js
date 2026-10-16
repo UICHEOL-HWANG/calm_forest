@@ -34,6 +34,7 @@ import { forageTarget } from '../spaces/forest.js';
 import { houseExitPoint, nearHouseDoor } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
 import { updateMistInteract } from '../spaces/mist.js';
+import { bridgePrompt, nearBrokenBridge } from '../spaces/bridge.js';
 import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
 import { neighborPrompt } from '../spaces/neighbor.js';
@@ -315,6 +316,9 @@ export function updateDoorInteract() {
   } else if (isOpen('museum') && dist2D({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 }, player.position) < 2.4) {
     nd = 'museum'; prompt = '🏛️ 박물관에 들어가기';
     firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
+  } else if (!indoor && nearBrokenBridge(player.position)) {   // 🌉 무너진 다리(해금 켜짐 · 새 세이브) — 고치면 프롬프트가 사라진다
+    nd = 'bridge'; prompt = bridgePrompt();
+    firstHintBanner('bridge', '🌉', '무너진 다리', '개울 건너 박물관으로 가는 길이에요');
   } else if (mv) {     // 🚏 거울 마을 정류장(낮 운행 · 밤엔 막차 안내만, nd 없음)
     nd = mv.nd; prompt = mv.prompt;
   } else if (dist2D(MOUNTAIN_GATE, player.position) < 2.4) {

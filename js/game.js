@@ -133,7 +133,8 @@ import {
 import {
   DEX, DEX_TOTAL, BADGES, STORY, NICK_ADJS, DAILY_COINS,
 } from './data/dex.js';
-import { pendingChapters, buildStoryView, hoursSince } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
+import { pendingChapters, buildStoryView, hoursSince, storyReworld } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
+import { storyFor } from './story/chapters.js';   // 📖 해금 켜짐(새 세이브)이면 1·2장 문구·규칙이 바뀐다
 import {
   _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
   TOOL_QREST_HOLD, TOOL_GRIP, slashPhase, PLAYER_R, NPC_R,
@@ -263,6 +264,8 @@ import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestCtx, unlockedSet } from './world/unlocks.js';   // 🔓 마을 해금(순수) — docs/superpowers/specs/2026-10-16-world-unlocks-design.md
+import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
+import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
@@ -1142,11 +1145,13 @@ function syncBadges() {
 let storyBooted = false;   // 첫 syncStory(세이브 소급)는 조용히, 이후엔 축하 연출
 
 // 장 판정·뷰는 js/story/rules.js(순수) — 여기는 gameState 를 넘기는 얇은 층
-function storyView() { return buildStoryView(STORY, gameState); }
+//   🌉 해금 켜짐 + 새 세이브면 1장이 「세계수를 지키는 법」(집 → 다리 → 할아버지)으로 바뀐다. 꺼짐·옛 세이브는 예전 그대로(STORY)
+function curStory() { return storyFor(storyReworld(gameState, unlocksOn())); }
+function storyView() { return buildStoryView(curStory(), gameState); }
 
 // 진행 판정(멱등) — 접속 소급 + 각 마일스톤 훅에서 호출. trigger = 부른 곳(완료 계기 — 5장처럼 조건이 둘이면 마지막에 채운 쪽)
 function syncStory(trigger = '') {
-  const st = gameState.story;
+  const st = gameState.story, STORY = curStory();   // 📖 이 함수 안의 STORY = 지금 세이브의 장 표
   let retro = 0;
   for (const i of pendingChapters(STORY, gameState)) {        // soon 장에서 멈춘다(js/story/rules.js)
     const c = STORY[i];
@@ -1244,12 +1249,14 @@ function applyUnlocks() {
     for (const c of h.colliders) c.lock = !on;
   }
   if (museumGateGroup) { const on = isOpen('museum'); museumGateGroup.visible = on; for (const c of museumGateColliders) c.lock = !on; }
+  syncBridge();   // 🌉 무너짐/고침(다리 플래그·legacy 복원 반영)
 }
 
 // 🔁 귀환 대사 — 한 줄. 없는 이웃은 기본 문구
 const RETURN_LINES = {
   builder: '뚝딱뚝딱 망치 소리를 듣고 돌아왔대요. 집 짓는 건 맡겨 달래요!',
-  curator: '다리가 이어지자 박물관 문을 다시 열었어요. 모은 것들을 보여 주세요.',
+  // 🧑‍🦳 1장의 끝 — 다리를 건너 만난 할아버지가 세계수를 살리는 법을 알려 준다(서식지 꾸미기 + 꾸러미 바치기)
+  curator: '다리를 고쳐 줬구먼, 고맙네.\n세계수는 숲이 살아 있어야 힘을 되찾는다네. 빈터를 꾸며 이웃을 부르고, 꾸러미를 바쳐 가지를 깨우게.',
   angler: '호숫가에 다시 낚싯대를 드리웠어요.',
   farmer: '밭 냄새를 맡고 돌아왔대요. 과수원 가는 길도 알려 준대요.',
   rancher: '새 닭장을 보고 반가워서 달려왔어요.',
@@ -1263,16 +1270,35 @@ function unlockMinutes() {
   const ms = t0 > 1e12 ? t0 : Date.parse(authState.createdAt || '');
   return Number.isFinite(ms) ? Math.max(0, Math.round((Date.now() - ms) / 60000)) : -1;
 }
-function showReturnModal(def, tries = 0) {
-  const title = `${def.name}${josa(def.name, '이', '가')} 돌아왔어요!`;
-  if (ui.coachActive?.()) { ui.toast?.(`${def.emoji} ${title}`, 3200); return; }   // 튜토리얼 카드를 덮지 않는다 — 토스트로만
+/** 이야기 모달을 줄 세운다 — 미니게임·승부·다른 모달이 떠 있으면 기다렸다가(최대 ~50초) 띄우고, 튜토리얼 중이면 토스트로만 */
+let storyModalsWaiting = 0;   // 줄 서 있는 이야기 모달 수 — afterModals 가 이들이 다 뜨고 닫힐 때까지 기다린다
+function queueStoryModal(opts, toastLine, tries = 0) {
+  if (tries) storyModalsWaiting--;
+  if (ui.coachActive?.()) { ui.toast?.(toastLine, 3200); return; }   // 튜토리얼 카드를 덮지 않는다 — 토스트로만
   if (mgView || duelActive || ui.anyModalOpen?.()) {
-    if (tries < 20) setTimeout(() => showReturnModal(def, tries + 1), 2500);
-    else ui.toast?.(`${def.emoji} ${title}`, 3200);
+    if (tries < 20) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, tries + 1), 2500); }
+    else ui.toast?.(toastLine, 3200);
     return;
   }
   Sound.complete();
-  ui.showHintModal?.({ ico: def.emoji, title, body: RETURN_LINES[def.id] || '마을에 이웃이 한 명 더 늘었어요.' });
+  ui.showHintModal?.(opts);
+}
+/** 모달이 다 닫힌 뒤 fn — 🧑‍🦳 귀환 모달을 읽은 다음에 📖 1장 완료 모달이 뜨게(줄 선 이야기 모달도 기다린다) */
+function afterModals(fn, tries = 0) {
+  if ((storyModalsWaiting > 0 || mgView || duelActive || ui.anyModalOpen?.()) && tries < 120) { setTimeout(() => afterModals(fn, tries + 1), 700); return; }
+  fn();
+}
+function showReturnModal(def) {
+  const title = `${def.name}${josa(def.name, '이', '가')} 돌아왔어요!`;
+  queueStoryModal({ ico: def.emoji, title, body: RETURN_LINES[def.id] || '마을에 이웃이 한 명 더 늘었어요.' }, `${def.emoji} ${title}`);
+}
+// 🦉 집을 다 지으면 한 번 — 1장의 다음 걸음(다리)을 올빼미가 알려 준다. 부팅 소급(이미 집이 있는 새 세이브)도 한 번
+function maybeOwlBridgeHint(delay = 0) {
+  if (!unlocksOn() || !isOpen('bridgeRepair') || !bridgeBrokenNow() || gameState.hintsSeen.owlBridge) return;
+  gameState.hintsSeen.owlBridge = true; requestSave();
+  setTimeout(() => queueStoryModal({ ico: '🦉', title: '의뢰 올빼미',
+    body: `저 나무, 우리가 지켜야 해. 서쪽 박물관의 할아버지라면 방법을 알 거야. …그런데 가는 길의 다리가 무너졌어.\n\n🌉 서쪽 개울의 다리를 🪵${BRIDGE_COST.wood} 🪨${BRIDGE_COST.stone} 로 고쳐 보자.` },
+  '🦉 서쪽 개울의 무너진 다리를 고쳐 보자'), delay);
 }
 function announceUnlock(id) {
   const def = NPCS.find(n => n.id === id);
@@ -1280,11 +1306,16 @@ function announceUnlock(id) {
     unlockTracked.add(id);
     trackEvent('unlock', { id, kind: def ? 'npc' : 'place', minutes_since_start: unlockMinutes() });   // [GA4] 처음 10분 해금 간격(스펙 §7)
   }
+  if (id === 'bridgeRepair') maybeOwlBridgeHint(1200);   // 🏠 집 완성 → 🦉 다리 이야기(집 완성 축하가 먼저 지나가게)
   if (!def) return;
   if (id === 'merchant') return;   // 🧙 상인은 기존 환영 방문(updateMerchantVisit)이 곧 귀환 연출이다
   const o = npcObjs.find(x => x.def.id === id);
   startNpcReturn(o);
+  if (id === 'curator' && o) {   // 🧑‍🦳 개울 건너 섬 안에 산다 — 가장자리에서 물을 걸어 건너지 않고 박물관 문에서 나온다
+    o.group.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4); o.group.rotation.y = Math.atan2(o.home.x - MUSEUM_GATE.x, o.home.z - MUSEUM_GATE.z - 3.4);
+  }
   showReturnModal(def);
+  if (id === 'curator') setTimeout(() => afterModals(() => syncStory('bridge')), 600);   // 📖 1장 「세계수를 지키는 법」 완료 — 할아버지 이야기를 읽은 다음에
   if (id === 'farmer') maybeOfferOrchardQuest({ needHarvested: true });   // 🌾→🍎 농부가 없어 미뤄 둔 과수원 의뢰
 }
 
@@ -2327,6 +2358,7 @@ export async function enterGame() {
   refreshQuestPanel();                  // 📜 복원 직후에도 수락해 둔 의뢰가 그대로 보이게(빈 패널로 시작하지 않는다)
   npcObjs.forEach(updateNPCGlyph);     // 저장 복원 후 말풍선 상태 반영
   syncUnlocks(true); unlockBooted = true;   // 🔓 ?house= 같은 테스트 파라미터까지 반영한 뒤 조용히 한 번 — 이후 변화부터 귀환 연출
+  maybeOwlBridgeHint(6000);   // 🦉 집은 있는데 다리 이야기를 아직 못 들은 새 세이브(소급) — 출석 모달 뒤로
   ui.setPlaces?.(villagePlaces());     // 🗺️ 실내·서브공간에서 시작해도 지도가 열리게(미니맵 틱은 마을에서만 돈다)
   player.visible = true;
   player.position.set(gameState.playerPos.x || 0, 0, gameState.playerPos.z || 0);
@@ -2680,6 +2712,7 @@ function applySave(saved) {
   // 🌾→🍎 과수원 가는 길 의뢰(js/orchard-onboard.js) — 모르는 값은 버린다
   gameState.progress.orchardQuest = restoreStage(saved.progress?.orchardQuest, gameState.progress.advHarvest);
   gameState.progress.orchardRefill = saved.progress?.orchardRefill === true || undefined;
+  syncBridge();            // 🌉 복원된 unlocks(legacy·flags.bridge)로 다리를 다시 맞춘다 — 빌더는 로드 전에 돈다
   syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다
   // 🍎 복원된 나무를 그린다. buildWorld() 의 rebuildOrchard() 는 **로그인 전**이라 나무 목록이
   //    항상 비어 있었다 — 그 뒤 여기서 trees 를 채워 놓고 다시 그리지 않으면, 같은 날 새로고침한
@@ -3044,6 +3077,8 @@ function buildWorld() {
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
       || dist2D({ x, z }, { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 5 }) < 3.5   //    계단 앞 진입로도 틔운다
+      || dist2D({ x, z }, ISLE) < ISLE_R + 2.4 || dist2D({ x, z }, bridgeFoot()) < 3   // 🌉 박물관 섬·개울·다리 머리엔 나무 금지
+      || dist2D({ x, z }, { x: bridgeFoot().x + 1, z: bridgeFoot().z + 4 }) < 3.2   //    카메라(남쪽)에서 다리가 나무에 가리지 않게
       || dist2D({ x, z }, OBSERVATORY_GATE) < 6.2   // 🔭 천문대 — 돔과 계단이 나무에 가리지 않게
       || dist2D({ x, z }, { x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 5 }) < 3.8
       || dist2D({ x, z }, MOUNTAIN_LANDMARK) < MOUNTAIN_LANDMARK_R + 0.5
@@ -4656,6 +4691,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, COOP) < 2.8) continue;       // 🐔 닭장 터 제외
     if (dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 0.5) continue;   // 🛶 나루터 연못 위 제외
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
+    if (dist2D({ x, z }, ISLE) < ISLE_R + 1.4) continue;             // 🌉 박물관 섬·개울 위 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;                  // 🏪 꾸미기 가게 터 제외(반치수 2.56 + 여유)
     if (dist2D({ x, z }, OBSERVATORY_GATE) < 6.2) continue;          // 🔭 천문대 기단·계단 제외
     if (dist2D({ x, z }, MOUNTAIN_LANDMARK) < MOUNTAIN_LANDMARK_R + 0.5) continue;
@@ -4672,6 +4708,7 @@ function buildEnvironment() {
   lockFrom('cafe'); spawnCafeGate(); lockTo();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
   spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
+  buildBridge();       // 🌉 박물관 섬을 두른 개울 + 다리(해금 켜짐·새 세이브면 무너진 채 시작 — js/spaces/bridge.js)
   lockFrom('observatory'); spawnObservatoryGate(); lockTo(); // 🔭 천문대(마을 남동쪽) — 처음부터 있음
   spawnMountainGate();
   lockFrom('neighbor'); spawnNeighborGate(); lockTo();    // 🏡 이웃 마을 가는 길(마을 남쪽, 🍄숲·🌟계곡 사이) — 처음부터 있음
@@ -5689,6 +5726,7 @@ const VILLAGE_PLACES = [
   { ico: '🌟', name: '반딧불이 계곡', x: GLADE.x,       z: GLADE.z,       pri: 1 },
   { ico: '🍄', name: '채집 숲',       x: FOREST.x,      z: FOREST.z,      pri: 1 },
   { ico: '🏛️', name: '박물관',        x: MUSEUM_GATE.x, z: MUSEUM_GATE.z, pri: 1 },
+  { ico: '🌉', name: '무너진 다리',   ...bridgePoint(streamR(BRIDGE_ANG)), pri: 1, need: 'bridge' },   // 무너져 있을 때만
   { ico: '🔭', name: '천문대',        x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, pri: 1 },
   { ico: '🏔️', name: '설산', x: MOUNTAIN_GATE.x, z: MOUNTAIN_GATE.z, pri: 1 },
   { ico: '🏮', name: '빛 공방',       x: LIGHT_WORKSHOP.x, z: LIGHT_WORKSHOP.z, pri: 1 },
@@ -5716,7 +5754,7 @@ function villagePlaces() {
   const now = performance.now();
   if (_placesCache && now - _placesAt < 5000) return _placesCache;
   _placesAt = now;
-  _placesCache = VILLAGE_PLACES.filter(p => (p.need !== 'plaza' || plazaMapVisible()) && isOpen(PLACE_UNLOCK[p.name])).map(p => ({   // 🔓 아직 안 선 곳은 지도에서 아예 뺀다(비어 있는 마을)
+  _placesCache = VILLAGE_PLACES.filter(p => (p.need !== 'plaza' || plazaMapVisible()) && (p.need !== 'bridge' || bridgeBrokenNow()) && isOpen(PLACE_UNLOCK[p.name])).map(p => ({   // 🔓 아직 안 선 곳은 지도에서 아예 뺀다(비어 있는 마을)
     ico: p.ico, name: p.name, x: p.x, z: p.z, pri: p.pri,
     locked: p.need === 'coop' ? !gameState.coop.built : p.map ? mapLocked(p.map) : false,
   }));
@@ -6094,6 +6132,7 @@ function updatePlayer(dt, t) {
   if (atDream) clampToDream(player.position);   // 🌙 구름 침대 상자가 섬 가장자리 밖으로 밀어낼 수 있다 — 밀린 뒤 한 번 더 섬 안으로
   if (atMirror) clampToMirror(player.position);   // 🪞 집·연못 상자가 밀어낸 뒤 한 번 더
   if (inVillage2()) clampToLandmark(player.position);
+  if (inVillage2()) clampToStream(player.position);   // 🌉 개울은 다리 위로만(무너졌으면 못 건넌다)
   // 테스트: ?dbg=1 — 현재 좌표·카메라·콜라이더 수를 <body data-dbg> 에 기록(충돌 디버깅용)
   if (_wq.has('dbg')) {
     document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
@@ -6867,6 +6906,7 @@ function handleAction() {
   if (nearDoor === 'cafe') return enterCafe();
   if (nearDoor === 'cafeexit') return exitCafe();
   if (nearDoor === 'museum') return enterMuseum();
+  if (nearDoor === 'bridge') return bridgeInteract();   // 🌉 무너진 다리 → 수리(🪵🪨)
   if (nearDoor === 'museumexit') return exitMuseum();
   if (nearDoor === 'museumview') return openMuseumView(_museumNear);
   if (nearDoor === 'museumup') return museumGoFloor(true);
@@ -7799,7 +7839,7 @@ export {
   setCameraRig, setFogExempt, setHeldDecor, setHeldTool, setPlotHarvest, setPlotSeedHint, setPlotWarn, setSpaceVisible,
   settleDifficulty, settleOrchard, severeOf, shared, showCatchItem, sitting, situation, snapCamera, solidBox,
   solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnSplash, spawnTree,
-  spawnWater, spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges, syncFarmHints, syncStory, syncUnlocks, isOpen, todayStr, toolMesh,
+  spawnWater, spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges, syncFarmHints, syncStory, syncUnlocks, isOpen, unlocksOn, todayStr, toolMesh,
   toolPage, trackDiffAbandon, trackGateBlocked, trees, triggerFarmReveal, triggerMoment, tryUnlockDrop, ui,
   updateCarveScene, updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wakeToMorning, wantAction, warnTexture,
   weatherOf, weedTexture, wiltPlot, woodMat, workerCap, worldGround, worldGroundPatches,

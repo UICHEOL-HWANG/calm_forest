@@ -12,11 +12,14 @@ import {
   trees,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { bridgeFoot } from '../world/bridge.js';
 import { FORAGE_KINDS, FORAGE_RESPAWN, FOREST, FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FOREST_R } from '../data/places.js';
 import { PAL } from '../data/world.js';
 import { rollKind } from '../dex-gates.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
+
+const BRIDGE_FOOT = bridgeFoot();   // 🌉 박물관 섬 다리 머리(js/world/bridge.js)
 
 export function buildForest() {
   $w.forestGroup = new THREE.Group(); forestGroup.position.copy(FOREST);
@@ -40,7 +43,9 @@ export function buildForest() {
   // 숲을 감싸는 나무들 — 안쪽에도 듬성듬성 심어 "숲 속을 헤집는" 느낌
   for (let i = 0; i < 13; i++) {
     const a = (i / 13) * Math.PI * 2 + 0.4, r = FOREST_R + 1.2 + Math.random() * 1.4;
-    spawnTree(FOREST.x + Math.cos(a) * r, FOREST.z + Math.sin(a) * r);
+    const x = FOREST.x + Math.cos(a) * r, z = FOREST.z + Math.sin(a) * r;
+    if (Math.hypot(x - BRIDGE_FOOT.x, z - BRIDGE_FOOT.z) < 4.5) continue;   // 🌉 북쪽 한 그루가 카메라 쪽에서 다리 머리를 가린다
+    spawnTree(x, z);
   }
   for (let i = 0; i < 4; i++) {
     const a = Math.random() * Math.PI * 2, r = 3.5 + Math.random() * 4;
