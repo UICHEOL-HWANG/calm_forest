@@ -65,7 +65,7 @@ test('the camera rig is released before snapping the camera after a run', () => 
 });
 
 test('run context stays integer and physics step is clamped', () => {
-  assert.match(src, /Math\.round\(\(now - first\) \/ 86400000\)/);
+  assert.match(readFileSync(new URL('../js/mountain/unlock.js', import.meta.url), 'utf8'), /Math\.round\(\(now - first\) \/ 86400000\)/);
   assert.match(src, /acornsCollected: run\.taken\.filter\(Boolean\)\.length/);
   assert.match(src, /Math\.min\(50, dt \* 1000\)/);
 });

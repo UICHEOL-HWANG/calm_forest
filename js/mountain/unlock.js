@@ -13,3 +13,9 @@ export function ensureFirstDay(current, today) {
 export function isMountainOpen(firstDay, today) {
   return typeof firstDay === 'string' && DAY_RE.test(firstDay) && today > firstDay;
 }
+
+export function daysSinceUnlock(firstDay, today) {
+  if (firstDay === LEGACY_FIRST_DAY || typeof firstDay !== 'string' || !DAY_RE.test(firstDay)) return null;
+  const first = Date.parse(firstDay), now = Date.parse(today);
+  return Number.isFinite(first) && Number.isFinite(now) ? Math.max(0, Math.round((now - first) / 86400000) - 1) : null;
+}

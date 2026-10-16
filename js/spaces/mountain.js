@@ -3,7 +3,7 @@ import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, se
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
-import { isMountainOpen } from '../mountain/unlock.js';
+import { daysSinceUnlock, isMountainOpen } from '../mountain/unlock.js';
 import { buildLandmark, landmarkStop } from '../mountain/landmark.js';
 import { createReveal } from '../mountain/reveal.js';
 import { pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
@@ -177,12 +177,6 @@ export function maybeRevealMountain() {
   trackEvent('mountain_reveal');
 }
 
-function daysSinceUnlock() {
-  const first = Date.parse(gameState.firstDay);
-  const now = Date.parse(todayStr());
-  return Number.isFinite(first) && Number.isFinite(now) ? Math.max(0, Math.round((now - first) / 86400000) - 1) : null;
-}
-
 function setAcornVisible(i, on) {
   const mesh = $w.mountainGroup?.userData.acorns;
   if (!mesh) return;
@@ -201,7 +195,7 @@ function ctxOf() {
     runId: run.runId, diff: run.diff,
     acornsAvailable: ACORNS.length, acornsCollected: run.taken.filter(Boolean).length,
     climbMs: run.climbMs ?? Math.round(performance.now() - run.climbStart),
-    daysSinceUnlock: daysSinceUnlock(),
+    daysSinceUnlock: daysSinceUnlock(gameState.firstDay, todayStr()),
     input: run.input ? run.input.input() : initialInput(isTouchDevice()),
     orientation: innerWidth < innerHeight ? 'portrait' : 'landscape',
   };
