@@ -23,7 +23,8 @@ function ensure() {
     #sled-hud .sled-boost:disabled{opacity:.45}
     #sled-hud .sled-result{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);min-width:240px;padding:18px 20px;border-radius:16px;background:#fffdf7;color:#2a2a28;text-align:center;pointer-events:auto;line-height:1.6}
     #sled-hud .sled-result[hidden]{display:none}
-    #sled-hud .sled-result button{margin-top:10px;padding:8px 18px;border:0;border-radius:10px;background:#3f6b34;color:#fff;font-size:15px}`;
+    #sled-hud .sled-result button{margin-top:10px;padding:8px 18px;border:0;border-radius:10px;background:#3f6b34;color:#fff;font-size:15px}
+    @media (orientation: landscape) and (max-height: 500px){#sled-hud .sled-result{bottom:calc(env(safe-area-inset-bottom) + 10px);display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px;min-width:0;max-width:calc(100vw - 24px);box-sizing:border-box;padding:10px 16px;line-height:1.3;font-size:14px}#sled-hud .sled-result div{white-space:nowrap}#sled-hud .sled-result button{margin:0 0 0 4px;flex:none}}`;
     document.head.appendChild(style);
     document.body.appendChild(root);
   }

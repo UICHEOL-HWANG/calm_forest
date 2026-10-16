@@ -108,3 +108,16 @@ test('the cold meter sits clear of the top status bar on portrait phones and kee
   const portrait = s.match(/@media \(orientation: ?portrait\)\{#cold-hud\{top:calc\(env\(safe-area-inset-top\) \+ (\d+)px\)\}\}/);
   assert.ok(portrait && Number(portrait[1]) >= 78);
 });
+
+test('on short landscape screens the result card becomes a single bottom strip', () => {
+  const s = src('js/mountain/sled-hud.js');
+  const m = s.match(/@media \(orientation: ?landscape\) and \(max-height: ?(\d+)px\)\{([^]*?)\}\}/);
+  assert.ok(m, 'landscape rule');
+  assert.ok(Number(m[1]) >= 480);
+  assert.match(m[2], /\.sled-result\{[^}]*display:flex/);
+  assert.match(m[2], /\.sled-result\{[^}]*flex-wrap:wrap/);
+  assert.match(m[2], /\.sled-result\{[^}]*max-width:calc\(100vw - 24px\)/);
+  assert.match(m[2], /\.sled-result div\{white-space:nowrap\}/);
+  assert.match(m[2], /\.sled-result button\{[^}]*flex:none/);
+  assert.match(s, /\.sled-result\[hidden\]\{display:none\}/);
+});

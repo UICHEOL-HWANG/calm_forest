@@ -7,7 +7,7 @@ import { EN } from '../js/i18n-en.js';
 globalThis.location = { search: '?lang=en', hostname: 'localhost', href: 'http://localhost/', reload() {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 try { globalThis.navigator ??= { language: 'en-US', userAgent: 'node' }; } catch {}
-const { applyCafeResult, CAFE_COPY } = await import('../js/mountain/cafe-ui.js');
+const { applyCafeResult, CAFE_COPY, statSegments, STAT_COLORS } = await import('../js/mountain/cafe-ui.js');
 
 const st = { coins: 2000, cos: { owned: [], equipped: {} }, hut: { sleds: ['basic'], sled: 'basic' }, perfect: false };
 const gs = () => ({ inventory: { coins: 2000 }, cosmetics: { owned: [], equipped: {} }, mountain: { sled: {}, hut: { sleds: ['basic'], sled: 'basic' } }, house: { stored: {} }, outdoorStored: {} });
@@ -67,4 +67,17 @@ test('sled rows keep each stat on one line and show a lock as a note, not a wide
   const src = readFileSync(new URL('../js/mountain/cafe-ui.js', import.meta.url), 'utf8');
   assert.match(src, /\.hc-stats span\{white-space:nowrap\}/);
   assert.match(src, /row\.kind === 'locked'[\s\S]*?className = 'hc-lock'[\s\S]*?continue;/);
+});
+
+test('sled stats render as coloured five-cell bars, not dot text', () => {
+  assert.deepEqual(statSegments(3), [true, true, true, false, false]);
+  assert.deepEqual(statSegments(5), [true, true, true, true, true]);
+  assert.deepEqual(statSegments(0), [false, false, false, false, false]);
+  assert.equal(STAT_COLORS.length, 4);
+  assert.equal(new Set(STAT_COLORS).size, 4);
+  const ui = readFileSync(new URL('../js/mountain/cafe-ui.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(ui, /●|○/);
+  assert.match(ui, /\.hc-seg i\.on\{background:var\(--c\)\}/);
+  assert.match(ui, /seg\.setAttribute\('role', 'img'\)/);
+  assert.match(ui, /seg\.setAttribute\('aria-label', `\$\{t\(STAT_NAMES\[i\]\)\} \$\{n\}\/5`\)/);
 });

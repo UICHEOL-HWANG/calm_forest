@@ -3,6 +3,12 @@ import { rowOf } from './cafe-shop.js';
 import { t } from '../i18n.js';
 import { STAT_NAMES } from './sled-lineup.js';
 
+export const STAT_COLORS = Object.freeze(['#e8774a', '#3f8fd8', '#4fa86a', '#c8902f']);
+
+export function statSegments(n) {
+  return [0, 1, 2, 3, 4].map(k => k < n);
+}
+
 export const CAFE_COPY = Object.freeze({
   title: '☕ 산장 카페', drink: '☕ 몸이 따뜻해졌어요', sled: '🛷 다음 판부터 이 썰매를 타요',
   gift: '🧺 보관함에 넣어 뒀어요', poor: '코인이 모자라요', close: '닫기',
@@ -35,7 +41,12 @@ const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;d
 #hut-cafe-modal .hc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:10px 12px;font-size:14px}
 #hut-cafe-modal .hc-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
 #hut-cafe-modal .hc-line{font-size:11px;color:#6b6f78;line-height:1.3}
-#hut-cafe-modal .hc-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;color:#4a4e57;letter-spacing:.5px}
+#hut-cafe-modal .hc-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;color:#4a4e57}
+#hut-cafe-modal .hc-stat{display:flex;align-items:center;gap:6px}
+#hut-cafe-modal .hc-stat b{font-weight:700;min-width:40px}
+#hut-cafe-modal .hc-seg{display:flex;gap:2px}
+#hut-cafe-modal .hc-seg i{width:9px;height:6px;border-radius:2px;background:#ece6dc}
+#hut-cafe-modal .hc-seg i.on{background:var(--c)}
 #hut-cafe-modal .hc-stats span{white-space:nowrap}
 #hut-cafe-modal .hc-lock{font-size:12px;font-weight:700;color:#8a6a1f;background:#fbf1d8;border-radius:8px;padding:4px 8px;margin-top:2px}
 #hut-cafe-modal .hc-row button{flex:none;border:0;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;white-space:nowrap}
@@ -92,7 +103,16 @@ function render() {
       grid.className = 'hc-stats';
       it.stats.forEach((n, i) => {
         const s = document.createElement('span');
-        s.textContent = `${t(STAT_NAMES[i])} ${'●'.repeat(n)}${'○'.repeat(5 - n)}`;
+        s.className = 'hc-stat';
+        s.style.setProperty('--c', STAT_COLORS[i]);
+        const label = document.createElement('b');
+        label.textContent = t(STAT_NAMES[i]);
+        const seg = document.createElement('span');
+        seg.className = 'hc-seg';
+        seg.setAttribute('role', 'img');
+        seg.setAttribute('aria-label', `${t(STAT_NAMES[i])} ${n}/5`);
+        statSegments(n).forEach(on => { const c = document.createElement('i'); if (on) c.className = 'on'; seg.appendChild(c); });
+        s.append(label, seg);
         grid.appendChild(s);
       });
       info.append(line, grid);
