@@ -1,3 +1,5 @@
+import { colored, mergeColored } from './merge-colored.js';
+
 export const SOUVENIR_INDOOR_IDS = Object.freeze(['snowglobe', 'hutmodel']);
 
 const lambert = (THREE, c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
@@ -14,16 +16,40 @@ function snowglobe(THREE) {
   return g;
 }
 
+const HUT = { roof: 0x34465c, snow: 0xf7fafd, trim: 0x2f2119, deck: 0x5a4030, glow: 0xffd27a };
+
+function hutPart(THREE, size, at, tilt, hex) {
+  const geo = colored(THREE, new THREE.BoxGeometry(...size), hex);
+  return geo.applyMatrix4(new THREE.Matrix4().compose(
+    new THREE.Vector3(...at),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, tilt)),
+    new THREE.Vector3(1, 1, 1),
+  ));
+}
+
 function hutmodel(THREE) {
+  const base = 0.04, run = 0.17, rise = 0.34, depth = 0.3;
+  const len = Math.hypot(run, rise), th = Math.atan2(rise, run);
+  const parts = [hutPart(THREE, [0.5, base, 0.5], [0, base / 2, 0], 0, HUT.snow)];
+  [-1, 1].forEach(sd => {
+    const mid = [sd * run / 2, base + rise / 2, 0];
+    const out = [sd * Math.sin(th), Math.cos(th)];
+    const tilt = -sd * th;
+    parts.push(hutPart(THREE, [len, 0.03, depth], mid, tilt, HUT.roof));
+    parts.push(hutPart(THREE, [len * 0.92, 0.024, depth + 0.02], [mid[0] + out[0] * 0.027, mid[1] + out[1] * 0.027, 0], tilt, HUT.snow));
+    parts.push(hutPart(THREE, [len, 0.034, 0.02], [mid[0], mid[1], depth / 2 + 0.006], tilt, HUT.trim));
+  });
+  parts.push(hutPart(THREE, [0.06, 0.03, depth + 0.02], [0, base + rise + 0.01, 0], 0, HUT.snow));
+  parts.push(hutPart(THREE, [0.24, 0.02, 0.1], [0, base + 0.01, depth / 2 + 0.05], 0, HUT.deck));
+  const solid = new THREE.Mesh(mergeColored(THREE, parts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const tri = new THREE.Shape();
+  tri.moveTo(-0.11, base + 0.005);
+  tri.lineTo(0.11, base + 0.005);
+  tri.lineTo(0, base + 0.26);
+  const glow = new THREE.Mesh(new THREE.ShapeGeometry(tri), new THREE.MeshBasicMaterial({ color: HUT.glow }));
+  glow.position.z = depth / 2 + 0.004;
   const g = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), lambert(THREE, 0xf7fafd));
-  base.position.y = 0.03;
-  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.42, 3), lambert(THREE, 0x34465c));
-  roof.rotation.set(-Math.PI / 2, 0, -Math.PI / 2, 'YXZ');
-  roof.position.y = 0.2;
-  const glow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.02), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
-  glow.position.set(0, 0.13, 0.19);
-  g.add(base, roof, glow);
+  g.add(solid, glow);
   return g;
 }
 

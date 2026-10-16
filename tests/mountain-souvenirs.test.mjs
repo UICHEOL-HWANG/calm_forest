@@ -33,3 +33,21 @@ test('mesh dispatchers know the souvenirs', () => {
 test('souvenir names have English', () => {
   for (const ko of ['설산 스노볼', '미니 등불 산장 모형', '정상 깃발', '산장 카페에서 산 정상 깃발']) assert.ok(EN[ko], ko);
 });
+
+test('hut model is one coloured mesh plus a glow gable within its footprint', () => {
+  const g = buildSouvenir(THREE, 'hutmodel');
+  assert.equal(meshes(g), 2);
+  let solid = null;
+  g.traverse(o => { if (o.isMesh && o.geometry.getAttribute('color')) solid = o; });
+  assert.ok(solid);
+  const col = solid.geometry.getAttribute('color');
+  const has = hex => {
+    const c = new THREE.Color(hex);
+    for (let i = 0; i < col.count; i++) if (Math.abs(col.getX(i) - c.r) < 1e-3 && Math.abs(col.getY(i) - c.g) < 1e-3 && Math.abs(col.getZ(i) - c.b) < 1e-3) return true;
+    return false;
+  };
+  assert.ok(has(0x34465c) && has(0xf7fafd));
+  const size = new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3());
+  const box = new THREE.Box3().setFromObject(g);
+  assert.ok(size.x <= 0.55 && size.y <= 0.6 && size.z <= 0.55 && box.min.y >= -1e-6);
+});
