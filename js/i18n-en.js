@@ -1518,6 +1518,49 @@ export const EN = {
   '이웃의 마을에 다녀왔어요. 숲은 생각보다 넓고, 생각보다 따뜻해요.':
     "You visited a neighbor's village. The forest is bigger than you thought — and warmer, too.",
   '방문 {0#}/1': 'Visits {0}/1',
+  // 🌉 1·2장 「세계수를 지키는 법」 — 해금 켜짐 + 새 세이브(js/story/chapters.js STORY_REWORLD)
+  '세계수를 지키는 법': 'How to Save the World Tree',
+  '다리 너머 할아버지 만나기': 'Meet the old man across the bridge',
+  '텅 빈 마을에 시든 세계수 한 그루. 혼자 남은 🦉 올빼미가 말해요. "저 나무, 우리가 지켜야 해." 먼저 빈터에 내 집을 짓고, 서쪽 박물관의 할아버지를 찾아가 보자.':
+    'An empty village and a withered World Tree. The 🦉 Owl, the only one left, says: "We have to protect that tree." First build your house on the empty lot, then go find the old man at the museum in the west.',
+  '무너진 다리를 고쳐 할아버지를 만났어요. "빈터를 꾸며 이웃을 부르고, 꾸러미를 바쳐 가지를 깨우게."':
+    'You fixed the broken bridge and met the old man. "Decorate the empty lots to call the neighbors back, and offer bundles to wake the branches."',
+  '첫 번째 가지': 'The First Branch',
+  '세계수 가지에 다시 잎이 돋으려면 숲에 이웃이 있어야 해요. 돌아온 이웃들의 ❕ 부탁을 들어주며 마을에 온기를 채워 보자.':
+    'For the World Tree\'s branches to grow leaves again, the forest needs neighbors. Help the returning neighbors with their ❕ requests and fill the village with warmth.',
+  '이웃 셋의 부탁을 들어줬어요. 마을에 사람 사는 소리가 돌아오자, 세계수 가지 끝이 살짝 흔들렸어요.':
+    'You helped three neighbors. As the sounds of village life returned, the tip of a World Tree branch stirred.',
+  '공사 {0}/3 · 다리 {1}/1': 'Building {0}/3 · Bridge {1}/1',
+  // 🌉 무너진 다리(js/spaces/bridge.js · game.js 올빼미 안내)
+  '🌉 무너진 다리': '🌉 Broken Bridge',
+  '무너진 다리': 'Broken Bridge',
+  '🌉 다리 고치기 (🪵{0} 🪨{1})': '🌉 Fix the bridge (🪵{0} 🪨{1})',
+  '🌉 무너진 다리 · 먼저 내 집을 완성해요': '🌉 Broken Bridge · Finish your house first',
+  '개울 건너 박물관으로 가는 다리가 무너졌어요.\n먼저 내 집을 완성해요. 그다음에 고칠 수 있어요.':
+    'The bridge across the stream to the museum has collapsed.\nFinish your house first. Then you can fix it.',
+  '🌉 재료 부족 — {0}': '🌉 Not enough materials — {0}',
+  '🌉 재료 부족 —': '🌉 Not enough materials —',   // 체커용(실제 문구는 위 패턴으로 번역)
+  '🌟 반딧불이 계곡이 깨어나면 쓰는 도구예요': '🌟 A tool for when Firefly Valley wakes up',   // 🔓 계곡이 아직 안 열렸을 때(js/spaces/glade.js)
+  '🌉 다리를 고쳤어요! 개울 건너 박물관으로 갈 수 있어요': '🌉 Bridge fixed! You can cross the stream to the museum now',
+  '개울 건너 박물관으로 가는 길이에요': 'The way across the stream to the museum',
+  '저 나무, 우리가 지켜야 해. 서쪽 박물관의 할아버지라면 방법을 알 거야. …그런데 가는 길의 다리가 무너졌어.\n\n🌉 서쪽 개울의 다리를 🪵{0} 🪨{1} 로 고쳐 보자.':
+    'We have to protect that tree. The old man at the museum in the west will know how. …But the bridge on the way has collapsed.\n\n🌉 Let\'s fix the bridge over the western stream with 🪵{0} 🪨{1}.',
+  '🦉 서쪽 개울의 무너진 다리를 고쳐 보자': '🦉 Let\'s fix the broken bridge over the western stream',
+  // 🔁 이웃 귀환(game.js RETURN_LINES · showReturnModal)
+  '{0}가 돌아왔어요!': '{0} is back!',
+  '{0}이 돌아왔어요!': '{0} is back!',
+  '마을에 이웃이 한 명 더 늘었어요.': 'One more neighbor has moved back into the village.',
+  '뚝딱뚝딱 망치 소리를 듣고 돌아왔대요. 집 짓는 건 맡겨 달래요!': 'Heard the hammering and came right back. Leave the building to them!',
+  '다리를 고쳐 줬구먼, 고맙네.\n세계수는 숲이 살아 있어야 힘을 되찾는다네. 빈터를 꾸며 이웃을 부르고, 꾸러미를 바쳐 가지를 깨우게.':
+    'So you fixed the bridge. Thank you.\nThe World Tree regains its strength only when the forest is alive. Decorate the empty lots to call the neighbors back, and offer bundles to wake its branches.',
+  '호숫가에 다시 낚싯대를 드리웠어요.': 'A fishing rod hangs over the lakeside again.',
+  '밭 냄새를 맡고 돌아왔대요. 과수원 가는 길도 알려 준대요.': 'Smelled the fields and came back. They\'ll show you the way to the orchard, too.',
+  '새 닭장을 보고 반가워서 달려왔어요.': 'Saw the new chicken coop and came running.',
+  '부엌에 다시 불이 켜졌어요. 카페도 함께 열어요.': 'The kitchen fire is lit again. The café opens too.',
+  '숲길을 다시 걷기 시작했어요.': 'Back to walking the forest paths.',
+  '나루터에 배를 다시 띄웠어요. 바다로 가는 길도 열렸어요.': 'The boat is back on the water at the dock. The way to the sea is open too.',
+  '천문대 망원경을 닦으며 기다리고 있었대요.': 'Was waiting, polishing the observatory telescope.',
+  '과수원': 'Orchard',
   // 🏡 이웃 마을 구경하기(2026-10-07) — 스펙 §8. 미검수 문구는 계획서 Global Constraints 참조
   '오늘의 이웃': "Today's Neighbors",
   '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요': 'Others are keeping the World Tree safe in their forests too · New neighbors tomorrow',
