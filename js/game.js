@@ -117,7 +117,7 @@ import {
 import {
   INT, ROOF_Y, LAKE_R, BENCH, KITCHEN, SHOP, MARKET, RANK, SELL_ICO_G, FARM, FARM_GATE, MINE, MINE_HALF, MINE_GATE,
   PIER, onPier, COOP_STREAK, COOP, PARK_BENCHES, COOP_COST, COOP_FEED, GLADE, GLADE_R, BUG_KINDS, CAFE_GATE, MUSEUM_GATE,
-  OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_R, LIGHT_WORKSHOP, DREAM, MIRROR, MIRROR_STOP, MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
+  OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R, MOUNTAIN_R, LIGHT_WORKSHOP, DREAM, MIRROR, MIRROR_STOP, MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
   FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
   RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_LAMPS, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
   BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
@@ -2899,7 +2899,7 @@ function buildWorld() {
       || dist2D({ x, z }, { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 5 }) < 3.5   //    계단 앞 진입로도 틔운다
       || dist2D({ x, z }, OBSERVATORY_GATE) < 6.2   // 🔭 천문대 — 돔과 계단이 나무에 가리지 않게
       || dist2D({ x, z }, { x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 5 }) < 3.8
-      || dist2D({ x, z }, MOUNTAIN_GATE) < 5.5
+      || dist2D({ x, z }, MOUNTAIN_LANDMARK) < MOUNTAIN_LANDMARK_R + 0.5
       || dist2D({ x, z }, LIGHT_WORKSHOP) < 4.3   // 🏮 빛 공방 오두막·손수레·연못 위엔 나무 금지
       || dist2D({ x, z }, MIRROR_STOP) < 4   // 🚏 거울 마을 정류장 — 지붕·정박 마차가 나무에 가리지 않게
       || dist2D({ x, z }, NEIGHBOR_GATE) < 3   // 🏡 이웃 마을 팻말이 나무에 가리지 않게
@@ -4509,7 +4509,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, MIST_GATE) < 4.5) continue;                 // 🌫️ 안개 숲 입구 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;                  // 🏪 꾸미기 가게 터 제외(반치수 2.56 + 여유)
     if (dist2D({ x, z }, OBSERVATORY_GATE) < 6.2) continue;          // 🔭 천문대 기단·계단 제외
-    if (dist2D({ x, z }, MOUNTAIN_GATE) < 5.5) continue;
+    if (dist2D({ x, z }, MOUNTAIN_LANDMARK) < MOUNTAIN_LANDMARK_R + 0.5) continue;
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침·디딤판 위 제외
     if (dist2D({ x, z }, MIRROR_STOP) < 4) continue;                 // 🚏 거울 마을 정류장
     if (dist2D({ x, z }, NEIGHBOR_GATE) < 1.5) continue;             // 🏡 이웃 마을 팻말 밑

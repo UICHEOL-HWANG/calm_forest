@@ -44,7 +44,46 @@ export function mountainMesh(THREE, R, H) {
   return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false }));
 }
 
-function cloudBand(THREE, R, H, frontGap) {
+function edge(a, k) {
+  return 1 + k * (0.16 * Math.sin(a * 3 + 0.6) + 0.09 * Math.sin(a * 5 + 2.1) + 0.06 * Math.sin(a * 11 + 0.3));
+}
+
+function landmarkHeight(r, a, R, H, k) {
+  const t = r / (R * edge(a, k));
+  if (t >= 1) return 0;
+  if (t < 0.045) return H * Math.pow(1 - 0.045, 1.55) - H * 0.011;
+  const core = H * Math.pow(1 - t, 1.55);
+  const spur = k * Math.max(0, Math.sin(a * 4 + 0.9)) * H * 0.06 * Math.sin(Math.PI * Math.min(1, t * 1.15));
+  const gully = ridge(a) * H * 0.025 * Math.sin(Math.PI * Math.min(t * 1.4, 1));
+  const foot = t > 0.78 ? 1 - (t - 0.78) / 0.22 : 1;
+  return Math.max(0, (core + spur + gully) * Math.pow(foot, 0.6));
+}
+
+export function landmarkMountain(THREE, { radius: R, height: H, spur: k, groundColor }) {
+  const SEG = 120, RINGS = 34, pos = [], col = [], c = new THREE.Color(), ground = new THREE.Color(groundColor);
+  const outer = R * (1 + 0.32 * k) + 0.01;
+  const pt = (i, j) => {
+    const a = (j / SEG) * Math.PI * 2, r = outer * Math.pow(i / RINGS, 1.1);
+    return [Math.cos(a) * r, landmarkHeight(r, a, R, H, k), Math.sin(a) * r, a];
+  };
+  for (let i = 0; i < RINGS; i++) for (let j = 0; j < SEG; j++) {
+    const p00 = pt(i, j), p01 = pt(i, j + 1), p10 = pt(i + 1, j), p11 = pt(i + 1, j + 1);
+    for (const tri of [[p00, p11, p10], [p00, p01, p11]]) for (const [x, y, z, a] of tri) {
+      const t = Math.hypot(x, z) / (R * edge(a, k));
+      const f = Math.min(1, Math.max(0, (t - 0.86) / 0.14));
+      c.setHex(colorAt(Math.max(y, 0.001), a, H)).lerp(ground, f * f);
+      pos.push(x, Math.max(y, 0) - 0.02 * (1 - Math.min(1, t)), z);
+      col.push(c.r, c.g, c.b);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+}
+
+export function cloudBand(THREE, R, H, frontGap, cloudScale = 1) {
   let seed = 11;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const y = H * 0.38, ring = R * (1 - Math.pow(0.38, 1 / 1.55)) + R * 0.03, puffs = [];
@@ -53,7 +92,7 @@ function cloudBand(THREE, R, H, frontGap) {
     if (Math.abs(a - Math.PI / 2) < frontGap) continue;
     const size = R * (0.037 + rnd() * 0.02);
     for (let k = 0; k < 4; k++) {
-      const s = size * (0.55 + rnd() * 0.6);
+      const s = size * (0.55 + rnd() * 0.6) * cloudScale;
       puffs.push([Math.cos(a) * ring + (rnd() - 0.5) * size * 2.4, y + (rnd() - 0.3) * size * 0.5, Math.sin(a) * ring + (rnd() - 0.5) * size * 1.2, s]);
     }
   }
@@ -68,8 +107,8 @@ export function cloudPuffMesh(THREE, puffs) {
   return mesh;
 }
 
-export function buildBackdrop(THREE, { radius, height, frontGap }) {
+export function buildBackdrop(THREE, { radius, height, frontGap, cloudScale = 1 }) {
   const group = new THREE.Group();
-  group.add(mountainMesh(THREE, radius, height), cloudBand(THREE, radius, height, frontGap));
+  group.add(mountainMesh(THREE, radius, height), cloudBand(THREE, radius, height, frontGap, cloudScale));
   return group;
 }

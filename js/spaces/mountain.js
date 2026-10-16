@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { $w, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, solidCircle, setCameraRig, requestSave, mgView, rollDifficulty } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
-import { MOUNTAIN, MOUNTAIN_GATE } from '../data/places.js';
+import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
 import { isMountainOpen } from '../mountain/unlock.js';
-import { buildGateArt } from '../mountain/gate-art.js';
+import { buildLandmark } from '../mountain/landmark.js';
 import { createReveal } from '../mountain/reveal.js';
 import { buildMountainSpace, pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
@@ -22,6 +22,7 @@ let reveal = null;
 let run = null;
 
 const GO_CLEAR_MS = 800;
+const LANDMARK_SOLID_R = 7;
 
 const newRunId = () => crypto.randomUUID?.()
   || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => { const r = Math.random() * 16 | 0; return (ch === 'x' ? r : (r & 3) | 8).toString(16); });
@@ -35,12 +36,11 @@ export function mountainOpen() {
 }
 
 export function spawnMountainGate() {
-  const art = buildGateArt(THREE);
-  art.position.copy(MOUNTAIN_GATE);
+  const art = buildLandmark(THREE);
+  art.position.copy(MOUNTAIN_LANDMARK);
   scene.add(art);
-  solidCircle(MOUNTAIN_GATE.x - 1.6, MOUNTAIN_GATE.z, 0.4);
-  solidCircle(MOUNTAIN_GATE.x + 1.6, MOUNTAIN_GATE.z, 0.4);
-  obstacles.push({ x: MOUNTAIN_GATE.x, z: MOUNTAIN_GATE.z - 2.6, r: 2.0 });
+  solidCircle(MOUNTAIN_LANDMARK.x, MOUNTAIN_LANDMARK.z, LANDMARK_SOLID_R);
+  obstacles.push({ x: MOUNTAIN_LANDMARK.x, z: MOUNTAIN_LANDMARK.z, r: MOUNTAIN_LANDMARK_R });
 }
 
 function ensureMountainSpace() {

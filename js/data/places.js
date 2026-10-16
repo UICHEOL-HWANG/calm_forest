@@ -169,7 +169,9 @@ export const MIRROR_R = 22;
 export const MIRROR_STOP = new THREE.Vector3(16, 0, 17); // 🚏 마을 정류장 — 호수(16,9 r6) 남쪽 잔디(시안 A 확정, 2026-10-08)
 export const MOUNTAIN = new THREE.Vector3(0, 0, -1000);
 export const MOUNTAIN_R = 60;
-export const MOUNTAIN_GATE = new THREE.Vector3(-9, 0, -29);
+export const MOUNTAIN_LANDMARK = new THREE.Vector3(-15, 0, -36);
+export const MOUNTAIN_LANDMARK_R = 11;
+export const MOUNTAIN_GATE = new THREE.Vector3(-15, 0, -27);
 
 export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸어 다니는 데크) 반경
 

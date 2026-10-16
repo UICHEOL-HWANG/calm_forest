@@ -312,7 +312,7 @@ export function updateDoorInteract() {
     firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
   } else if (mv) {     // 🚏 거울 마을 정류장(낮 운행 · 밤엔 막차 안내만, nd 없음)
     nd = mv.nd; prompt = mv.prompt;
-  } else if (dist2D({ x: MOUNTAIN_GATE.x, z: MOUNTAIN_GATE.z + 2.2 }, player.position) < 2.4) {
+  } else if (dist2D(MOUNTAIN_GATE, player.position) < 2.4) {
     nd = 'mountain'; prompt = mountainOpen() ? '🏔️ 설산 오르기' : '🏔️ 내일 열려요';
     firstHintBanner('mountainGate', '🏔️', '🏔️ 설산', '🏔️ 썰매 타러 가는 길');
   } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
