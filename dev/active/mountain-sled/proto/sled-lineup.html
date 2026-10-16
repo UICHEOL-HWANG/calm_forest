@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>썰매 라인업</title>
+<style>
+html,body{margin:0;background:#eef2f6;font-family:-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif}
+canvas{position:fixed;inset:0;width:100vw!important;height:100vh!important;pointer-events:none;z-index:2}
+#tag{margin:12px 12px 8px;display:inline-block;padding:6px 12px;border-radius:10px;background:#fff;font-weight:700;font-size:15px;color:#223}
+#cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 10px 12px}
+.c{background:#fff;border-radius:12px;padding:0 8px 8px;font-size:11.5px;color:#2b2f3a;line-height:1.4;overflow:hidden}
+.v{height:170px;margin:0 -8px 6px;border-radius:12px 12px 0 0}
+.c b{display:block;font-size:12.5px;margin-bottom:2px}
+.c i{font-style:normal;color:#6c7380}
+.row{display:flex;justify-content:space-between;gap:4px}
+.bar{letter-spacing:-1px;color:#2f6fd6}
+@media (max-width:700px){#cards{grid-template-columns:repeat(2,1fr)}.v{height:140px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="tag"></div>
+<div id="cards"></div>
+<script type="module">
+import * as THREE from 'three';
+
+const q = new URLSearchParams(location.search);
+const STYLE = q.get('style') || 'a';
+
+const STYLES = {
+  a: {
+    name: 'A 공방 수제', bg: 0xdfe9f2, snow: 0xf4f7fb,
+    basic: { wood: 0xc58a4f, dark: 0x8a5530, metal: 0x3b3f46, accent: 0xc8463c },
+    tank: { body: 0xd49a5c, dark: 0x9c6a3b, pad: 0xb73b34, rope: 0xeadfc6 },
+    turbo: { body: 0x8a5a36, trim: 0xe9dcc0, dark: 0x2a2522, metal: 0x3b3f46, accent: 0xb73b34 },
+    rocket: { nut: 0xb8783c, cap: 0x7a4e2c, capDark: 0x5e3b20, metal: 0x3b3f46, accent: 0xd9a441, dark: 0x2a2522 },
+    skate: { wood: 0xd9b07a, metal: 0x9aa4ae, accent: 0xb73b34, trim: 0x2d3a4a },
+  },
+  b: {
+    name: 'B 레트로 스포츠', bg: 0xe7ecf3, snow: 0xf6f8fb,
+    basic: { wood: 0xc58a4f, dark: 0x8a5530, metal: 0xd8343a, accent: 0xffffff },
+    tank: { body: 0xe8383d, dark: 0xb52a2f, pad: 0x1f2d55, rope: 0xffd23f },
+    turbo: { body: 0x1f3a8a, trim: 0xffffff, dark: 0x111522, metal: 0xcfd6de, accent: 0xe8383d },
+    rocket: { nut: 0xffb020, cap: 0xe8383d, capDark: 0xb52a2f, metal: 0xcfd6de, accent: 0xffffff, dark: 0x111522 },
+    skate: { wood: 0x2bb3c0, metal: 0xcfd6de, accent: 0xffd23f, trim: 0x1f2d55 },
+  },
+  c: {
+    name: 'C 동화 파스텔', bg: 0xf1e9f2, snow: 0xfbf8fb,
+    basic: { wood: 0xe8c39a, dark: 0xc99a72, metal: 0xf3a7a0, accent: 0xffffff },
+    tank: { body: 0xa8dcc9, dark: 0x86c2ad, pad: 0xffe1a8, rope: 0xffffff },
+    turbo: { body: 0xb7cff5, trim: 0xffffff, dark: 0x5b6b8c, metal: 0xf3d38a, accent: 0xf6b0c0 },
+    rocket: { nut: 0xe9bf8e, cap: 0xb88a68, capDark: 0x9e7456, metal: 0xf3d38a, accent: 0xf6b0c0, dark: 0x5a4a44 },
+    skate: { wood: 0xd3c2f2, metal: 0xc9e6f2, accent: 0xf6b0c0, trim: 0xffffff },
+  },
+  d: {
+    name: 'D 파스텔 바탕 + 레트로 줄무늬', bg: 0xeef0f7, snow: 0xfbfbfd, stripes: 0xffffff, cute: true,
+    basic: { wood: 0xe8c39a, dark: 0xb98a62, metal: 0x2b3a67, accent: 0xff8a7a },
+    tank: { body: 0xa8dcc9, dark: 0x2b3a67, pad: 0xffd6a0, rope: 0xffffff },
+    turbo: { body: 0xb7cff5, trim: 0xffffff, dark: 0x2b3a67, metal: 0xd9dee6, accent: 0xff8a7a },
+    rocket: { nut: 0xf2c79a, cap: 0xff8a7a, capDark: 0xe0675a, metal: 0xd9dee6, accent: 0x2b3a67, dark: 0x2b3a67 },
+    skate: { wood: 0xd3c2f2, metal: 0xd9dee6, accent: 0xff8a7a, trim: 0x2b3a67 },
+  },
+  e: {
+    name: 'E 캔디 레트로', bg: 0xf3eee8, snow: 0xfcfaf7, stripes: 0xfff4e0, cute: false,
+    basic: { wood: 0xd9a066, dark: 0x9c6a3b, metal: 0xff7b6b, accent: 0xfff4e0 },
+    tank: { body: 0xff7b6b, dark: 0xd85a4c, pad: 0x2b3a67, rope: 0xffc857 },
+    turbo: { body: 0x4fc1b9, trim: 0xfff4e0, dark: 0x2b3a67, metal: 0xd9dee6, accent: 0xff7b6b },
+    rocket: { nut: 0xffc857, cap: 0xff7b6b, capDark: 0xd85a4c, metal: 0xd9dee6, accent: 0xfff4e0, dark: 0x2b3a67 },
+    skate: { wood: 0x8fb8ff, metal: 0xd9dee6, accent: 0xffc857, trim: 0x2b3a67 },
+  },
+  f: {
+    name: 'F 투톤 아이스크림', bg: 0xf1eef6, snow: 0xfcfbfd, stripes: 0xfff6ea, cute: true,
+    basic: { wood: 0xe2b98e, dark: 0xa8774c, metal: 0xe5484d, accent: 0xfff6ea },
+    tank: { body: 0xbfe8d8, dark: 0xe5484d, pad: 0xfff0c2, rope: 0xe5484d },
+    turbo: { body: 0xc9dcff, trim: 0xfff6ea, dark: 0x22306a, metal: 0x22306a, accent: 0xe5484d },
+    rocket: { nut: 0xffe0a3, cap: 0xe5484d, capDark: 0xb83338, metal: 0x22306a, accent: 0xfff6ea, dark: 0x22306a },
+    skate: { wood: 0xe3d4ff, metal: 0x22306a, accent: 0xe5484d, trim: 0x22306a },
+  },
+};
+const S = STYLES[STYLE];
+
+const SLEDS = [
+  { id: 'basic', name: '🛷 나무 썰매', price: '무료', line: '균형 잡힌 기본 썰매', st: [3, 3, 3, 3] },
+  { id: 'tank', name: '⛄ 눈뭉치 터보건', price: '무료 · 첫 완주 보상', line: '부딪혀도 덜 느려져요. 커브는 둔해요', st: [3, 2, 5, 3] },
+  { id: 'turbo', name: '💨 바람 썰매', price: '🪙 1,500', line: '기본 속도가 빨라요. 도토리 힘은 약해요', st: [5, 3, 2, 1] },
+  { id: 'rocket', name: '🌰 도토리 로켓', price: '🪙 1,500', line: '도토리 부스터가 세요. 출발이 느려요', st: [2, 3, 3, 5] },
+  { id: 'skate', name: '⛸️ 얼음 스키프', price: '🪙 1,500', line: '커브가 날렵해요. 부딪히면 오래 느려요', st: [3, 5, 1, 3] },
+];
+const STAT_NAMES = ['속도', '커브', '튼튼함', '도토리'];
+
+const W = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+
+function col(geo, hex) {
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  const c = new THREE.Color(hex);
+  const n = g.attributes.position.count;
+  const arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k);
+  return g;
+}
+function place(g, [x, y, z], [rx, ry, rz] = [0, 0, 0], s = [1, 1, 1]) {
+  return g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(...s)));
+}
+const box = (w, h, d, hex, at, rot) => place(col(new THREE.BoxGeometry(w, h, d), hex), at, rot);
+const cyl = (r1, r2, h, hex, at, rot, seg = 10) => place(col(new THREE.CylinderGeometry(r1, r2, h, seg), hex), at, rot);
+const sph = (r, hex, at, s) => place(col(new THREE.SphereGeometry(r, 12, 8), hex), at, [0, 0, 0], s);
+const tor = (r, t, arc, hex, at, rot) => place(col(new THREE.TorusGeometry(r, t, 6, 12, arc), hex), at, rot);
+const cone = (r, h, hex, at, rot, seg = 10) => place(col(new THREE.ConeGeometry(r, h, seg), hex), at, rot);
+
+function merge(parts) {
+  let n = 0;
+  for (const p of parts) n += p.attributes.position.count;
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), cl = new Float32Array(n * 3);
+  let o = 0;
+  for (const p of parts) {
+    pos.set(p.attributes.position.array, o * 3);
+    nor.set(p.attributes.normal.array, o * 3);
+    cl.set(p.attributes.color.array, o * 3);
+    o += p.attributes.position.count;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(cl, 3));
+  return g;
+}
+
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const tube = (pts, r, hex, closed = false, seg = 48) =>
+  col(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V3(...p)), closed, 'catmullrom', 0.5), seg, r, 6, closed), hex);
+const side = (x, zy) => zy.map(([z, y]) => [x, y, z]);
+function latheZ(profile, hex, at = [0, 0, 0], sx = 1, sy = 1, seg = 16) {
+  const g = col(new THREE.LatheGeometry(profile.map(([r, z]) => new THREE.Vector2(r, z)), seg), hex);
+  g.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+  g.applyMatrix4(new THREE.Matrix4().makeScale(sx, sy, 1));
+  g.applyMatrix4(new THREE.Matrix4().makeTranslation(...at));
+  g.computeVertexNormals();
+  return g;
+}
+function rbox(w, h, d, hex, at, rot = [0, 0, 0], r = 0.015) {
+  const s = new THREE.Shape();
+  const x = w / 2 - r, y = h / 2 - r;
+  s.moveTo(-x, -h / 2); s.lineTo(x, -h / 2); s.quadraticCurveTo(w / 2, -h / 2, w / 2, -y);
+  s.lineTo(w / 2, y); s.quadraticCurveTo(w / 2, h / 2, x, h / 2); s.lineTo(-x, h / 2);
+  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, y); s.lineTo(-w / 2, -y); s.quadraticCurveTo(-w / 2, -h / 2, -x, -h / 2);
+  const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(0.001, d - 2 * r), bevelEnabled: true, bevelThickness: r, bevelSize: r * 0.6, bevelSegments: 2, curveSegments: 3 });
+  g.translate(0, 0, -(d - 2 * r) / 2);
+  return place(col(g, hex), at, rot);
+}
+function bend(geo, z0, R) {
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i), z = p.getZ(i);
+    if (z <= z0) continue;
+    const t = (z - z0) / R, d = R - y;
+    p.setY(i, R - d * Math.cos(t));
+    p.setZ(i, z0 + d * Math.sin(t));
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+const slab = (w, h, d, hex, at, segs = 32) => place(col(new THREE.BoxGeometry(w, h, d, 1, 1, segs), hex), at);
+
+const BUILD = {
+  basic(p) {
+    const out = [];
+    for (const s of [-1, 1]) {
+      const x = s * 0.32;
+      out.push(tube(side(x, [[-0.66, 0.12], [-0.74, 0.05], [-0.6, 0.03], [0.3, 0.03], [0.6, 0.07], [0.78, 0.2], [0.76, 0.36], [0.6, 0.4], [0.46, 0.34]]), 0.04, p.dark));
+      out.push(rbox(0.05, 0.016, 1.0, p.metal, [x, 0.0, -0.12]));
+      out.push(tube(side(x, [[-0.46, 0.04], [-0.38, 0.18], [-0.42, 0.31]]), 0.03, p.dark, false, 12));
+      out.push(tube(side(x, [[0.28, 0.04], [0.22, 0.18], [0.26, 0.31]]), 0.03, p.dark, false, 12));
+      out.push(tube(side(x, [[-0.62, 0.31], [0, 0.31], [0.46, 0.34]]), 0.032, p.dark, false, 24));
+    }
+    for (const z of [-0.5, -0.24, 0.02, 0.28]) out.push(rbox(0.8, 0.045, 0.16, p.wood, [0, 0.355, z], [0, 0, 0], 0.018));
+    if (S.stripes) out.push(rbox(0.12, 0.01, 0.95, p.metal, [0, 0.382, -0.11], [0, 0, 0], 0.004));
+    out.push(tube([[-0.3, 0.38, 0.7], [0, 0.52, 0.92], [0.3, 0.38, 0.7]], 0.014, p.accent, false, 16));
+    return out;
+  },
+  tank(p) {
+    const out = [
+      bend(slab(0.92, 0.06, 1.9, p.body, [0, 0.04, -0.05], 48), 0.22, 0.26),
+      bend(slab(0.06, 0.13, 1.9, p.dark, [-0.45, 0.075, -0.05], 48), 0.22, 0.22),
+      bend(slab(0.06, 0.13, 1.9, p.dark, [0.45, 0.075, -0.05], 48), 0.22, 0.22),
+      rbox(0.74, 0.07, 0.8, p.pad, [0, 0.1, -0.38], [0, 0, 0], 0.03),
+    ];
+    if (!S.stripes && STYLE === 'a') for (const x of [-0.22, 0, 0.22]) out.push(bend(slab(0.012, 0.064, 1.9, p.dark, [x, 0.042, -0.05], 48), 0.22, 0.26));
+    if (STYLE === 'b' || S.stripes) out.push(bend(slab(0.18, 0.064, 1.9, S.stripes || 0xffffff, [0, 0.042, -0.05], 48), 0.22, 0.26));
+    for (const s of [-1, 1]) out.push(tube(side(s * 0.5, [[-0.86, 0.14], [-0.55, 0.11], [-0.25, 0.15], [0.02, 0.11], [0.2, 0.16]]), 0.018, p.rope, false, 24));
+    out.push(tube([[-0.5, 0.14, -0.86], [0, 0.11, -0.95], [0.5, 0.14, -0.86]], 0.018, p.rope, false, 16));
+    return out;
+  },
+  turbo(p) {
+    const prof = [[0, -0.8], [0.18, -0.79], [0.28, -0.66], [0.32, -0.3], [0.31, 0.15], [0.25, 0.48], [0.14, 0.72], [0.04, 0.84], [0, 0.86]];
+    const Y = 0.36, SY = 0.6;
+    const rAt = z => { for (let i = 1; i < prof.length; i++) if (z <= prof[i][1]) { const [r0, z0] = prof[i - 1], [r1, z1] = prof[i]; return r0 + (r1 - r0) * (z - z0) / (z1 - z0); } return 0; };
+    const out = [latheZ(prof, p.body, [0, Y, 0], 1, SY, 20)];
+    out.push(place(col(new THREE.SphereGeometry(1, 16, 8), p.dark), [0, Y + 0.16, -0.28], [0, 0, 0], [0.21, 0.05, 0.36]));
+    const rim = []; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; rim.push([Math.cos(a) * 0.23, Y + 0.175, -0.28 + Math.sin(a) * 0.38]); }
+    out.push(tube(rim, 0.022, p.trim, true, 32));
+    for (const x of [-0.07, 0.07]) {
+      const pts = []; for (let z = 0.12; z <= 0.8; z += 0.06) { const r = rAt(z); const top = Math.sqrt(Math.max(0, r * r - x * x)) * SY; pts.push([x, Y + top + 0.008, z]); }
+      out.push(tube(pts, 0.018, p.trim, false, 24));
+    }
+    for (const s of [-1, 1]) {
+      out.push(place(col(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 16), p.trim), [s * 0.315, Y, 0.05], [0, 0, Math.PI / 2]));
+      out.push(place(col(new THREE.CylinderGeometry(0.06, 0.06, 0.024, 16), p.accent), [s * 0.318, Y, 0.05], [0, 0, Math.PI / 2]));
+      out.push(tube(side(s * 0.22, [[-0.72, 0.03], [0.4, 0.03], [0.62, 0.08], [0.68, 0.16]]), 0.024, p.metal, false, 24));
+      for (const z of [-0.5, 0.3]) out.push(rbox(0.04, 0.18, 0.08, p.metal, [s * 0.22, 0.12, z]));
+    }
+    out.push(rbox(0.03, 0.16, 0.22, p.accent, [0, Y + 0.22, -0.66], [0.25, 0, 0]));
+    return out;
+  },
+  rocket(p) {
+    const Y = 0.42;
+    const out = [
+      latheZ([[0.34, -0.26], [0.4, -0.1], [0.41, 0.08], [0.38, 0.26], [0.29, 0.44], [0.16, 0.58], [0.05, 0.68], [0, 0.74]], p.nut, [0, Y, 0], 1, 0.95, 20),
+      latheZ([[0, -0.62], [0.16, -0.6], [0.32, -0.52], [0.43, -0.38], [0.46, -0.24], [0.44, -0.15], [0.38, -0.13]], p.cap, [0, Y, 0], 1, 0.95, 20),
+    ];
+    for (const [z, r] of [[-0.2, 0.455], [-0.3, 0.45], [-0.4, 0.42], [-0.49, 0.36], [-0.56, 0.26]]) out.push(place(col(new THREE.TorusGeometry(r, 0.026, 5, 22), p.capDark), [0, Y, z], [0, 0, 0], [1, 0.95, 1]));
+    out.push(place(col(new THREE.CylinderGeometry(0.055, 0.07, 0.2, 10), p.capDark), [0, Y, -0.7], [Math.PI / 2, 0, 0]));
+    out.push(place(col(new THREE.TorusGeometry(0.085, 0.025, 6, 14), p.accent), [0, Y, -0.8]));
+    out.push(place(col(new THREE.SphereGeometry(1, 14, 8), p.dark), [0, Y + 0.33, 0.0], [0, 0, 0], [0.18, 0.05, 0.24]));
+    const rim = []; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; rim.push([Math.cos(a) * 0.2, Y + 0.35, Math.sin(a) * 0.26]); }
+    out.push(tube(rim, 0.02, p.accent, true, 32));
+    for (const s of [-1, 1]) {
+      const x = s * 0.27;
+      out.push(tube(side(x, [[-0.62, 0.06], [-0.55, 0.025], [0.3, 0.025], [0.56, 0.08], [0.66, 0.2], [0.6, 0.3], [0.48, 0.3]]), 0.026, p.metal, false, 32));
+      for (const z of [-0.38, 0.22]) out.push(tube(side(x, [[z, 0.03], [z + 0.03, 0.12], [z, 0.2]]), 0.022, p.metal, false, 10));
+      out.push(rbox(0.025, 0.22, 0.26, p.accent, [s * 0.38, Y + 0.02, -0.5], [0, 0, s * -0.5], 0.01));
+    }
+    if (S.stripes) out.push(place(col(new THREE.TorusGeometry(0.405, 0.03, 5, 24), S.stripes), [0, Y, 0.0], [0, 0, 0], [1, 0.95, 1]));
+    if (STYLE === 'c' || S.cute) for (const s of [-1, 1]) out.push(place(col(new THREE.SphereGeometry(0.035, 8, 6), p.dark), [s * 0.13, Y + 0.12, 0.6]));
+    return out;
+  },
+  skate(p) {
+    const out = [];
+    for (const s of [-1, 1]) {
+      const x = s * 0.26;
+      out.push(tube(side(x, [[-0.86, 0.1], [-0.8, 0.03], [0.55, 0.025], [0.84, 0.07], [0.96, 0.2], [0.9, 0.33], [0.76, 0.32], [0.72, 0.21]]), 0.022, p.metal, false, 48));
+      for (const z of [-0.6, -0.1, 0.38]) out.push(tube(side(x, [[z - 0.04, 0.03], [z, 0.1], [z + 0.03, 0.165]]), 0.018, p.metal, false, 10));
+    }
+    for (const x of [-0.17, 0, 0.17]) out.push(rbox(0.15, 0.035, 1.34, p.wood, [0, 0, 0].map((v, i) => [x, 0.185, -0.12][i]), [0, 0, 0], 0.014));
+    for (const z of [-0.62, 0.42]) out.push(rbox(0.56, 0.03, 0.06, p.trim, [0, 0.155, z]));
+    out.push(rbox(0.2, 0.012, 0.36, p.accent, [0, 0.207, 0.12], [0, 0, 0], 0.005));
+    if (S.stripes) for (const x of [-0.17, 0.17]) out.push(rbox(0.035, 0.008, 1.2, S.stripes, [x, 0.206, -0.12], [0, 0, 0], 0.003));
+    out.push(rbox(0.8, 0.05, 0.09, p.trim, [0, 0.24, 0.6], [0, 0, 0], 0.02));
+    for (const s of [-1, 1]) out.push(place(col(new THREE.SphereGeometry(0.05, 10, 6), p.accent), [s * 0.42, 0.24, 0.6]));
+    return out;
+  },
+};
+
+document.getElementById('tag').textContent = S.name;
+const dots = n => '●'.repeat(n) + '○'.repeat(5 - n);
+document.getElementById('cards').innerHTML = SLEDS.map(sl => `<div class="c"><div class="v"></div><b>${sl.name}</b><i>${sl.price}</i><br>${sl.line}<br>${sl.st.map((v, k) => `<div class="row"><span>${STAT_NAMES[k]}</span><span class="bar">${dots(v)}</span></div>`).join('')}</div>`).join('');
+
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setScissorTest(true);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9fb3c8, 1.15));
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
+sun.position.set(3, 6, 4);
+scene.add(sun);
+const views = [...document.querySelectorAll('.v')];
+const bg = new THREE.Color(S.bg);
+const meshes = SLEDS.map((sl, i) => {
+  const m = new THREE.Mesh(merge(BUILD[sl.id](S[sl.id])), W);
+  m.position.set(i * 20, 0, 0);
+  m.rotation.y = 0.75;
+  scene.add(m);
+  const g = new THREE.Mesh(new THREE.CircleGeometry(1.6, 32), new THREE.MeshLambertMaterial({ color: S.snow }));
+  g.rotation.x = -Math.PI / 2;
+  g.position.set(i * 20, -0.001, 0);
+  scene.add(g);
+  return m;
+});
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+const still = q.has('still');
+function loop(t) {
+  renderer.setSize(innerWidth, innerHeight, false);
+  renderer.setScissorTest(false);
+  renderer.setClearColor(0x000000, 0);
+  renderer.clear();
+  renderer.setScissorTest(true);
+  views.forEach((el, i) => {
+    const r = el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) return;
+    const y = innerHeight - r.bottom;
+    renderer.setViewport(r.left, y, r.width, r.height);
+    renderer.setScissor(r.left, y, r.width, r.height);
+    renderer.setClearColor(bg, 1);
+    renderer.clear();
+    camera.aspect = r.width / r.height;
+    camera.fov = r.width / r.height < 1.3 ? 36 : 28;
+    camera.updateProjectionMatrix();
+    camera.position.set(i * 20 + 0.1, 1.75, 3.3);
+    camera.lookAt(i * 20, 0.28, 0);
+    if (!still) meshes[i].rotation.y = 0.75 + t / 2200;
+    renderer.render(scene, camera);
+  });
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

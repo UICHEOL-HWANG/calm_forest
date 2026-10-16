@@ -61,3 +61,13 @@
 6. 공지는 토스 출시 후
 7. 산장 카페(4곳 동시 배포 필수): 옛 클라이언트는 세이브의 모르는 꾸미기·장식 id(earmuff, snowflake, sled_pack, snowglobe, hutmodel, summitflag)를 지워버린다 → 웹·토스·Play·iOS 동시에
 8. 배포 다음 날 BigQuery: hut_cafe_enter / hut_cafe_open / hut_cafe_buy, hut_sled_pick, mountain_cold(stage), mountain_hut.cold, sled_start.sled_skin 적재 확인 · ga_param_overflow 0건
+
+## 🛷 썰매 라인업 (2026-10-16 설계·계획 완료, 구현 전)
+
+- 스펙: docs/superpowers/specs/2026-10-16-sled-lineup-design.md
+- 계획: docs/superpowers/plans/2026-10-16-sled-lineup.md (Task 1~7)
+- 결정: C안 장단점(도토리 7개 이상적 시간 동일) · F 투톤 아이스크림 · 능력 썰매 3종 코인 1,500 + 웹 ₩3,900 · 터보건 첫 완주 보상
+- 시안: dev/active/mountain-sled/proto/sled-lineup.html?style=f · shots-sled/compare-mix.html
+- [x] 터보건 문구 2개 확정 (2026-10-16)
+- [ ] Task 1~7 구현
+- [ ] 배포: SQL(sled 열·phys_v 2) → 5곳 동시 배포 → ⚠️ Paddle 시드 production(사용자 확인) → price-ids 커밋 → 웹 재배포

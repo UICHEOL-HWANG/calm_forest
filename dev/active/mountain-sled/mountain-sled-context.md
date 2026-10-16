@@ -1,6 +1,6 @@
 # mountain-sled context
 
-Last Updated: 2026-10-16 (1단계·산장 서사 f9fac2be 완료, 산장 카페·추위 지수 구현 완료(미병합·미배포))
+Last Updated: 2026-10-16 (산장 카페·추위 지수 구현 완료, 🛷 썰매 라인업 스펙·계획 완료 — 구현 전, 미병합·미배포)
 
 ## 위치
 - 워크트리 `.claude/worktrees/mountain-sled`, 브랜치 `feat/mountain-sled`(origin/main 기준, 미푸시)
