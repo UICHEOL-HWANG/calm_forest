@@ -2506,4 +2506,5 @@ export const EN = {
   '로그인하면 지금 마을 그대로 가져가요': 'Sign in to bring your village',
   '로그인하고 받기': 'Sign in',
   '배너 닫기': 'Close banner',
+  '🌊 내 연못이 생겼어요 — 새 물고기를 잡을 때마다 식구가 늘어요': '🌊 Your own pond is here! Every new fish you catch joins the family',
 };

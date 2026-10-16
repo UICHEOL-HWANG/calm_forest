@@ -19,6 +19,7 @@ import { CHOP_WOOD, TOOLS, TREE_RESPAWN_SEC } from '../data/tools.js';
 import { rollKind } from '../dex-gates.js';
 import { fallDirAway } from '../tree-fall.js';
 import { Sound } from '../sound.js';
+import { refreshPond } from '../pond/index.js';
 import * as THREE from 'three';
 
 const SEA_GATE_HINT_R = 8;   // 바다터 입구 안내 반경 — 호수 낚시 범위(LAKE_R+2.8)와는 12.8 떨어져 안 겹친다
@@ -79,6 +80,7 @@ export function catchFish() {
   questEvent('fish'); if (kind.rarity === 'rare') questEvent('fish_rare');
   dexDiscover('fish', kind.rarity);                                     // 📖 도감(어종 첫 발견)
   noteSpecialExhibit('fish', kind.rarity);                              // 🏛️ ✨비 오는 날이면 특별 전시
+  refreshPond('fishing');
   trackGateBlocked('fish', 'rare');       // [GA4] 📖 게이트가 닫혀 못 얻은 날
   ui.act?.('fish');                                                     // 튜토리얼: 낚시
   catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝

@@ -55,6 +55,7 @@ import { logEcon, startMetrics } from './metrics.js';            // [계측] 경
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
+import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
 import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
@@ -2653,6 +2654,7 @@ function applySave(saved) {
     syncFarmCrops(true);   // 🌱 복원된 작물을 인스턴스 버퍼에 반영
   }
   refreshPlaza();   // 🌾 initPlaza() 가 세이브 복원보다 먼저 돌아 기본값을 봤으므로 여기서 다시 맞춘다
+  refreshPond('load');
 }
 
 export function getGameState() {
@@ -2897,6 +2899,7 @@ function buildWorld() {
       || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
       || plazaScatterBlocks(x, z)
+      || pondScatterBlocks(x, z)
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
     }
     if (ok) spawnTree(x, z);   // 빈 자리를 못 찾으면 그 나무는 생략 — 시설을 가리며 억지로 심지 않는다
@@ -2927,6 +2930,7 @@ function buildWorld() {
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침도 같은 이유
     if (plazaScatterBlocks(x, z, 0.5)) continue;
+    if (pondScatterBlocks(x, z, 0.5)) continue;
     grassBuckets[i % 3].push({ x, y: 0.35, z, ph: Math.random() * Math.PI * 2 });
   }
   grassBuckets.forEach((items, k) => {
@@ -4502,6 +4506,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, MIRROR_STOP) < 4) continue;                 // 🚏 거울 마을 정류장
     if (dist2D({ x, z }, NEIGHBOR_GATE) < 1.5) continue;             // 🏡 이웃 마을 팻말 밑
     if (plazaScatterBlocks(x, z, 1)) continue;
+    if (pondScatterBlocks(x, z, 1)) continue;
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
   }
   buildCoopSite();   // 🐔 닭장 터 표지(남쪽 필드)
@@ -5729,6 +5734,7 @@ function animate() {
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
   updateOwlVisit(dt);        // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
   updatePlaza(dt, inVillage2());   // 🌾 광장 근처면 진행률 재조회
+  updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
