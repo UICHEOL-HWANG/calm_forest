@@ -118,3 +118,9 @@ test('1장(reworld): 집만 지어선 안 끝나고, 다리를 고치면 끝난�
   assert.equal(v.chapters[0].progress, '공사 3/3 · 다리 0/1');
   assert.equal(v.chapters[1].title, '첫 번째 가지');
 });
+
+test('7·8장: 주인공은 씨앗이 아니다 — "세계수를 지키는 건 너 하나가 아니란다"', () => {
+  assert.doesNotMatch(STORY[6].done + STORY[7].start, /씨앗/);
+  assert.match(STORY[6].done, /세계수를 지키는 건 너 하나가 아니란다/);
+  assert.match(STORY[7].start, /다른 숲에서도 누군가 세계수를 지키고 있대요/);
+});

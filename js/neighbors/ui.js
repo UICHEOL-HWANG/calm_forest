@@ -116,7 +116,7 @@ function closeModal(id) {
 export function openPickerModal(rows, rewardedToday, onGo, onMore) {
   pickerBusy = false;
   const { root, card } = modal('nb-pick-modal');
-  card.append(el('div', 'nb-ico', '🏡'), el('h2', null, '오늘의 이웃'), el('p', 'nb-sub', '세계수가 틔운 다른 씨앗들의 숲이에요 · 내일 또 바뀌어요'));
+  card.append(el('div', 'nb-ico', '🏡'), el('h2', null, '오늘의 이웃'), el('p', 'nb-sub', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요'));
   const list = el('div', 'nb-list');
   if (!rows.length) list.appendChild(el('div', 'nb-empty', '아직 놀러 갈 이웃이 없어요 · 내일 다시 와 보세요'));
   for (const r of rows) {

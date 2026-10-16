@@ -1502,12 +1502,12 @@ export const EN = {
   '천문대에서 별자리 잇기': 'Connect a constellation at the observatory',
   '세계수가 말했어요. "밤하늘에도 내 잎이 있단다." 천문대에 올라 별을 이어보자.':
     'The World Tree said, "Some of my leaves are in the night sky." Climb the observatory and connect the stars.',
-  '별을 이으니 잎사귀 모양이 떠올랐어요. 세계수가 웃었어요. "나는 씨앗을 하나만 틔운 게 아니란다."':
-    'The stars formed the shape of a leaf. The World Tree smiled. "You weren\'t the only seed I sprouted."',
+  '별을 이으니 잎사귀 모양이 떠올랐어요. 세계수가 웃었어요. "세계수를 지키는 건 너 하나가 아니란다."':
+    'The stars formed the shape of a leaf. The World Tree smiled. "You are not the only one keeping the World Tree safe."',
   '이웃의 숲': 'Neighboring Forests',
   '이웃 마을에 놀러 가기': 'Visit a neighbor\'s village',
-  '세계수가 틔운 다른 씨앗들도 저마다 숲을 되살리고 있대요. 그들의 마을에 놀러 가보자.':
-    'The other seeds the World Tree sprouted are each bringing a forest back to life. Go visit their villages.',
+  '다른 숲에서도 누군가 세계수를 지키고 있대요. 그들의 마을에 놀러 가보자.':
+    'They say someone in other forests is keeping the World Tree safe, too. Go visit their villages.',
   '밭 {0#}/2 · 나무 {1#}/1': 'Field {0}/2 · Trees {1}/1',
   '특별 진열 {0#}/1': 'Special display {0}/1',
   '별자리 {0#}/1': 'Constellations {0}/1',
@@ -1520,7 +1520,7 @@ export const EN = {
   '방문 {0#}/1': 'Visits {0}/1',
   // 🏡 이웃 마을 구경하기(2026-10-07) — 스펙 §8. 미검수 문구는 계획서 Global Constraints 참조
   '오늘의 이웃': "Today's Neighbors",
-  '세계수가 틔운 다른 씨앗들의 숲이에요 · 내일 또 바뀌어요': 'Forests of the other seeds the World Tree sprouted · New neighbors tomorrow',
+  '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요': 'Others are keeping the World Tree safe in their forests too · New neighbors tomorrow',
   '놀러 가기': 'Visit',
   '또 보기': 'Visit again',
   '❤️ 다녀옴': '❤️ Visited',

@@ -43,7 +43,7 @@ test('팻말 세우기 · 나무/꽃 산포 제외 · 지도 지명 · 문 프�
   assert.match(SRC, /if \(dist2D\(\{ x, z \}, NEIGHBOR_GATE\) < 1\.5\) continue;/);
   assert.match(SRC, /\{ ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE\.x, z: NEIGHBOR_GATE\.z, pri: 1 \}/);
   assert.match(DOORS, /nd = 'neighbor'; prompt = '🏡 이웃 마을 가는 길';/);
-  assert.match(DOORS, /firstHintBanner\('neighborGate', '🏡', '이웃 마을 가는 길', '세계수가 틔운 다른 씨앗들의 숲이에요 · 내일 또 바뀌어요'\)/);
+  assert.match(DOORS, /firstHintBanner\('neighborGate', '🏡', '이웃 마을 가는 길', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요'\)/);
   assert.match(SPACE, /gateArt = buildNeighborBalloon\(THREE, t\('이웃 마을'\)\)/);
   assert.match(SPACE, /solidCircle\(NEIGHBOR_GATE.x, NEIGHBOR_GATE.z, 0.65\)/);
 });
