@@ -24,6 +24,8 @@ import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
 import { SLED_SEAT, SLED_LIFT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst } from '../mountain/sled-fx.js';
+import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
+import { showColdHud, hideColdHud } from '../mountain/cold-hud.js';
 import { setSledSkin } from '../mountain/sled-art.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
 import { bindSledInput, initialInput, worldSteer } from '../mountain/sled-input.js';
@@ -42,6 +44,10 @@ const CHEER_S = 1.3;
 const SPRAY_S = 0.07;
 const STOP_SIDE = Math.PI / 2;
 let look = null;
+let cold = COLD_START;
+let breathT = 0;
+const COLD_HINT = '🥶 추워요. 모닥불이나 산장 카페에서 몸을 녹여요';
+const COLD_SLOW = '🥶 너무 추워서 걸음이 느려졌어요';
 let lookT = 0;
 let fallT = 0;
 const skies = {};
@@ -95,6 +101,7 @@ export function enterMountain() {
   if (!mountainOpen()) { ui.toast?.('🏔️ 내일 열려요', 2200); return; }
   look = null;
   $w.atMountain = true;
+  cold = COLD_START;
   setFogExempt(player, true);
   ensureMountainSpace().visible = true;
   player.position.set(MOUNTAIN.x + PLAZA.x, 0, MOUNTAIN.z + PLAZA.z);
@@ -119,6 +126,8 @@ export function exitMountain() {
   if (cafe?.active()) cafe.exit(player, { x: player.position.x, y: 0, z: player.position.z });
   $w.atMountain = false;
   look = null;
+  cold = COLD_START;
+  hideColdHud();
   setFogExempt(player, false);
   if ($w.mountainGroup) $w.mountainGroup.visible = false;
   setCameraRig(null);
@@ -211,7 +220,7 @@ function exitCafe() {
   Sound.blip();
 }
 
-let onDrink = () => {};
+let onDrink = () => { cold = drinkWarm(cold); };
 
 function buyFromCafe(id, tab) {
   const r = buyCafe(cafeState(gameState), id);
@@ -391,7 +400,7 @@ function arriveHut() {
   keeperBubble?.arrive();
   Sound.blip();
   ui.toast?.('🏠 정상 산장에 도착했어요', 2200);
-  trackEvent('mountain_hut', { run_id: run.runId, climb_ms: run.climbMs, acorns: run.taken.filter(Boolean).length });
+  trackEvent('mountain_hut', { run_id: run.runId, climb_ms: run.climbMs, acorns: run.taken.filter(Boolean).length, cold: Math.round(cold.v) });
 }
 
 function startSled() {
@@ -491,12 +500,43 @@ export function abandonRun() {
   closeRun();
 }
 
+export function mountainSpeedMult() {
+  return $w.atMountain ? coldSpeedMult(cold.v) : 1;
+}
+
+function updateCold(dt, local) {
+  const prev = cold;
+  cold = stepCold(cold, dt, {
+    key: look?.key || 'day',
+    nearFire: Math.hypot(local.x - CAMP.fire.x, local.z - CAMP.fire.z) < COLD.fireR,
+    inCafe: inCafe(),
+    frozen: sledActive(),
+  });
+  const n = noticeCold(prev, cold, !!gameState.hintsSeen?.mountainCold);
+  if (n.hint) {
+    gameState.hintsSeen = { ...(gameState.hintsSeen || {}), mountainCold: true };
+    requestSave();
+    ui.toast?.(COLD_HINT, 3200);
+  }
+  if (n.slow) {
+    ui.toast?.(COLD_SLOW, 2600);
+    if (!cold.slowLogged) { cold = { ...cold, slowLogged: true }; trackEvent('mountain_cold', { stage: 'slow' }); }
+  }
+  if (sledActive()) hideColdHud(); else showColdHud(cold.v);
+  breathT -= dt;
+  if (!inCafe() && coldStage(cold.v) !== 'ok' && breathT <= 0) {
+    breathT = 0.8;
+    spawnSnowBurst(player.position.x, player.position.y + 1.3, player.position.z, 2);
+  }
+}
+
 export function updateMountain(dt) {
   if (reveal) {
     if (!inVillage2()) { reveal.finish(); reveal = null; }
     else if (!reveal.update(dt)) reveal = null;
   }
   if (!$w.atMountain) return;
+  updateCold(dt, { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z });
   if (cafe?.active()) { cafe.update(dt, performance.now() / 1000, player.position); return; }
   const local = { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z };
   if (!run && Math.hypot(local.x - CLIMB_START.x, local.z - CLIMB_START.z) < 2) startClimb();

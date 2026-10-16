@@ -2552,4 +2552,6 @@ export const EN = {
   '털 귀마개': 'Fluffy earmuffs',
   '눈송이 발자국': 'Snowflake steps',
   '등에 멘 작은 썰매': 'Little sled on the back',
+  '🥶 추워요. 모닥불이나 산장 카페에서 몸을 녹여요': '🥶 It is cold. Warm up by the campfire or in the hut cafe',
+  '🥶 너무 추워서 걸음이 느려졌어요': '🥶 Too cold, you are walking slower',
 };
