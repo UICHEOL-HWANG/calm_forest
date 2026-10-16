@@ -267,7 +267,7 @@ import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestC
 import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
-import { WORLD_TREE, buildWorldTree, openWorldTree, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
+import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
@@ -2492,6 +2492,7 @@ export async function enterGame() {
       return plots.length;
     };
     // 🔓 마을 해금 검수 — ?unlocks=on 과 함께. 지금 열린 것·숨은 이웃·지도 지명
+    window.__treeShot = (kind = 'habitat', branch = 'water') => debugTreeShot(kind, branch);   // 🌳 조망샷 구도 검수(플래그 무시)
     window.__unlocks = () => ({ on: unlocksOn(), open: unlockOpen ? [...unlockOpen] : null, hidden: npcObjs.filter(o => o.hidden).map(o => o.def.id),
       returning: npcObjs.filter(o => o.returning).map(o => o.def.id), places: villagePlaces().map(p => p.name),
       lockedHolders: Object.keys(lockHolders).filter(id => !lockHolders[id].group.visible) });

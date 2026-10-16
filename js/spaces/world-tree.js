@@ -3,14 +3,14 @@
 //  ------------------------------------------------------------
 //  스펙: docs/superpowers/specs/2026-10-16-world-tree-board-design.md §5~§9
 //  ▶ 규칙(순수)은 js/world/tree-board.js, 판 화면(DOM)은 js/world/tree-board-ui.js. 여기는 게임 상태와 잇는 층.
-//  ▶ 조형은 인트로 시든 세계수(js/spaces/prologue.js buildWiltSet)의 굽은 밑동·뿌리·가지 문법을 따른다.
-//    마을용이라 조명 재질(라이트 추가 없음). 줄기·뿌리·가지는 지오메트리 하나 — 드로우콜 ≈ 줄기 1 + 우듬지 1 + 가지 잎 4 + 꽃 4.
+//  ▶ 조형(드로우콜 11·라이트 0)은 js/world/tree-art.js — 인트로 시든 세계수(prologue.js buildWiltSet)의 문법.
+//  ▶ 이정표 조망샷(카메라 리그)은 js/world/tree-shot.js, 줄 세우기·잎 자람 지연은 아래 🎬 조망샷.
 //  ▶ 해금 꺼짐(CONFIG.UNLOCKS 'off') · 레거시 세이브 → 나무는 늘 다 살아 있고, 판은 선택 콘텐츠(꾸러미 보상만).
 //  ⚠️ game.js 와 서로 import 한다(순환). 로딩 시점엔 game.js 값을 읽지 않는다 — 함수 안에서만.
 // =============================================================
 import {
-  Input, camera, cameraFree, clayMat, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, mergeGeos, obstacles, player, refreshInventoryUI, requestSave,
-  rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, swayables, syncUnlocks, ui, unlocksOn,
+  Input, camera, cameraFree, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, obstacles, player, refreshInventoryUI, requestSave,
+  rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, ui, unlocksOn,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { Sound } from '../sound.js';
@@ -22,114 +22,33 @@ import {
 import { closeTreeBoard, openTreeBoard, renderTreeBoard, treeBoardOpen } from '../world/tree-board-ui.js';
 import { createShotRig, shotFrame } from '../world/tree-shot.js';
 import { inVillage2 } from './doors.js';
+import { buildTreeArt } from '../world/tree-art.js';
+import { t as tr } from '../i18n.js';
 import * as THREE from 'three';
 
 /** 마을 북쪽 끝 — 🛶 나루터 연못(0,-21.5 r7) 바로 뒤. 🏔️ 설산 언덕(-15,-36 r11)·🌫️ 입구(-21,-20)·🌊 후미와 안 겹친다 */
 export const WORLD_TREE = new THREE.Vector3(4, 0, -35);
-const TRUNK_R = 2.4;            // 밑동 콜라이더
+const TRUNK_R = 2.4;            // 밑동 콜라이더(판뿌리 사이로는 걸어 다닌다)
 const PROMPT_R = TRUNK_R + 2.3; // 밑동 둘레에 서면 프롬프트
-const SCALE = 0.7;              // 인트로 나무 대비 — 마을 카메라(41° 내려다봄, 위쪽 끝이 수평 아래 20°)는 높은 우듬지를 못 담는다. 낮고 넓게
 
-// 가지 → 마을 나무에서 뻗는 방향(카메라가 -z 를 보므로 +z 가 화면 앞). 💧 물은 연못 쪽(앞 왼쪽)
-const LIMBS = {
-  water:   { dir: [-1, 0.42, 0.95], h: 5.4 },
-  farm:    { dir: [1, 0.45, 0.9],   h: 5.9 },
-  kitchen: { dir: [1.1, 0.55, -0.3], h: 6.6 },
-  forest:  { dir: [-1.1, 0.5, -0.3], h: 6.3 },
-};
-const BARK_LIVE = new THREE.Color(0x8d6a4c), BARK_DEAD = new THREE.Color(0x8e8b86);
-const LEAF = 0x7cc97f, BLOOM = 0xf6a5c0;
-
-let wt = null;   // { group, barkMat, crown, clusters: { id: { mesh, flowers, cur } }, crownCur }
+let wt = null;   // { art, cur: { id: { leaves, bloom } }, life, box }
 let tab = 'water';
 let freshTile = -1;   // 방금 놓은 칸만 톡 떨어지는 연출(다시 그릴 때마다 전부 튀지 않게)
 
-const _up = new THREE.Vector3(0, 1, 0);
-function limbGeo(a, b, r0, r1) {
-  const d = new THREE.Vector3().subVectors(b, a); const len = d.length();
-  const g = new THREE.CylinderGeometry(r1, r0, len, 6);
-  const q = new THREE.Quaternion().setFromUnitVectors(_up, d.clone().normalize());
-  g.applyMatrix4(new THREE.Matrix4().compose(a.clone().addScaledVector(d, 0.5), q, new THREE.Vector3(1, 1, 1)));
-  return g;
-}
-
-/** 마을에 세계수를 세운다(buildWorld 에서 1회) */
+/** 마을에 세계수를 세운다(buildWorld 에서 1회). 조형은 js/world/tree-art.js */
 export function buildWorldTree() {
   if (wt) return;
-  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);   // 고정 시드 — 매번 같은 나무
-  const g = new THREE.Group(); g.position.copy(WORLD_TREE); g.scale.setScalar(SCALE); g.name = 'worldTree';
-  const bark = [];
-  const V = (x, y, z) => new THREE.Vector3(x, y, z);
-  // 밑동 + 굽은 줄기 두 마디
-  const t1 = V(0.5, 4, 0.2), t2 = V(-0.2, 7.6, 0);
-  bark.push(new THREE.CylinderGeometry(2.5, 3.3, 1.2, 7).translate(0, 0.5, 0));
-  bark.push(limbGeo(V(0, -0.3, 0), t1, 2.5, 1.75), limbGeo(t1, t2, 1.75, 1.15));
-  // 뿌리
-  [12, 40, 100, 145, 200, 255, 315].forEach((deg) => {
-    const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), L = 4.2 + rnd() * 1.4;
-    bark.push(limbGeo(V(c * 2.0, 0.9, s * 2.0), V(c * L, 0.05, s * L), 0.75, 0.16));
-  });
-  // 가지 — 판 가지마다 굵은 가지 1 + 잔가지. 잎 덩이는 그 가지 끝을 원점으로 한 메시 하나(흔들림·자람이 끝에서 퍼진다)
-  const clusters = {};
-  const leafMat = clayMat(LEAF), bloomMat = clayMat(BLOOM);
-  for (const id of BRANCH_IDS) {
-    const { dir, h } = LIMBS[id];
-    const from = V(0, h, 0), d0 = V(...dir).normalize();
-    const end = from.clone().addScaledVector(d0, 5.6 + rnd() * 0.8);
-    bark.push(limbGeo(from, end, 0.75, 0.38));
-    const tips = [];
-    for (let i = 0; i < 3; i++) {
-      const d2 = d0.clone(); d2.x += (rnd() - 0.5) * 1.3; d2.z += (rnd() - 0.5) * 1.3; d2.y += 0.25 + rnd() * 0.4;
-      const tip = end.clone().addScaledVector(d2.normalize(), 2.6 + rnd() * 0.9);
-      bark.push(limbGeo(end, tip, 0.36, 0.12));
-      tips.push(tip);
-    }
-    // 잎 덩이(끝 기준 로컬) + 꽃
-    const leafGeos = [], flowerGeos = [];
-    const addBlob = (p, r) => {
-      leafGeos.push(new THREE.IcosahedronGeometry(r, 0).rotateX(rnd() * 3).rotateY(rnd() * 3).translate(p.x - end.x, p.y - end.y, p.z - end.z));
-      for (let k = 0; k < 3; k++) {
-        const n = V(rnd() - 0.5, rnd() * 0.9, rnd() - 0.5).normalize();
-        flowerGeos.push(new THREE.IcosahedronGeometry(0.24, 0).translate(p.x - end.x + n.x * r * 0.95, p.y - end.y + n.y * r * 0.95, p.z - end.z + n.z * r * 0.95));
-      }
-    };
-    addBlob(end, 1.9);
-    tips.forEach(tp => addBlob(tp, 1.3 + rnd() * 0.4));
-    const mesh = new THREE.Mesh(mergeGeos(leafGeos), leafMat);
-    mesh.position.copy(end); mesh.castShadow = true; mesh.scale.setScalar(0.001); mesh.visible = false;
-    mesh.userData.swayPhase = rnd() * Math.PI * 2;
-    const flowers = new THREE.Mesh(mergeGeos(flowerGeos), bloomMat);
-    flowers.visible = false; mesh.add(flowers);
-    g.add(mesh);
-    clusters[id] = { mesh, flowers, cur: 0 };
-  }
-  const barkMat = clayMat(BARK_DEAD.getHex());
-  const trunk = new THREE.Mesh(mergeGeos(bark), barkMat);
-  trunk.castShadow = true; trunk.receiveShadow = true;
-  g.add(trunk);
-  // 우듬지 — 생명력만큼
-  const crownGeos = [[0, 0, 0, 3.0], [1.6, -0.6, 0.8, 1.9], [-1.5, -0.4, -0.6, 2.0], [0.3, 1.4, -0.5, 1.6]]
-    .map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r, 0).rotateY(rnd() * 3).translate(x, y, z));
-  const crown = new THREE.Mesh(mergeGeos(crownGeos), leafMat);
-  crown.position.copy(t2).add(V(0, 1.6, 0)); crown.castShadow = true; crown.scale.setScalar(0.001); crown.visible = false;
-  crown.userData.swayPhase = 1.3;
-  g.add(crown);
-  scene.add(g);
-  swayables.push(crown, ...Object.values(clusters).map(c => c.mesh));
+  const art = buildTreeArt(THREE, { label: tr('세계수') });
+  art.group.position.copy(WORLD_TREE);
+  scene.add(art.group);
+  art.group.updateMatrixWorld(true);
+  const b = art.fullBox(), c = b.getCenter(new THREE.Vector3()), h = b.getSize(new THREE.Vector3()).multiplyScalar(0.5);
   solidCircle(WORLD_TREE.x, WORLD_TREE.z, TRUNK_R);
-  obstacles.push({ x: WORLD_TREE.x, z: WORLD_TREE.z, r: 5 });   // 나무 밑엔 밭 금지
-  wt = { group: g, barkMat, crown, crownCur: 0, clusters, life: -1, box: fullBox(g, [crown, ...Object.values(clusters).map(c => c.mesh)]) };
-}
-
-/** 다 자란 나무(잎·우듬지 크기 1)를 감싸는 상자 — 조망샷 구도용. 빌드 때 1회 */
-function fullBox(g, grow) {
-  const prev = grow.map(m => m.scale.x);
-  grow.forEach(m => m.scale.setScalar(1));
-  g.updateMatrixWorld(true);
-  const b = new THREE.Box3().setFromObject(g), c = b.getCenter(new THREE.Vector3()), h = b.getSize(new THREE.Vector3()).multiplyScalar(0.5);
-  grow.forEach((m, i) => m.scale.setScalar(prev[i]));
-  g.updateMatrixWorld(true);
-  return { cx: c.x, cy: c.y, cz: c.z, hx: h.x, hy: h.y, hz: h.z };
+  solidCircle(WORLD_TREE.x + art.plaque.x, WORLD_TREE.z + art.plaque.z, 0.3);   // 팻말 기둥
+  obstacles.push({ x: WORLD_TREE.x, z: WORLD_TREE.z, r: 6 });   // 나무 밑엔 밭 금지
+  const cur = {};
+  for (const id of BRANCH_IDS) cur[id] = { leaves: 0, bloom: 0 };
+  wt = { art, cur, life: 0, box: { cx: c.x, cy: c.y, cz: c.z, hx: h.x, hy: h.y, hz: h.z } };
 }
 
 /** 나무를 다 살려 보여 줄까 — 해금 꺼짐·레거시 세이브는 이웃이 이미 다 있다 */
@@ -152,23 +71,14 @@ export function updateWorldTree(dt, t) {
   updateTreeShot(t);
   if (!targets || t - targetAt > 0.5) { targets = computeTargets(); targetAt = t; }
   const k = Math.min(1, dt * (shot ? 2.4 : 1.6));   // 조망샷 머무는 동안(1.7초) 다 돋게 조금 빠르게
+  const kb = Math.min(1, dt * (shot ? 2.0 : 1.2));
   for (const id of BRANCH_IDS) {
-    const c = wt.clusters[id], goal = targets.branches[id];
-    c.cur += (goal.leaves - c.cur) * k;
-    const s = c.cur < 0.02 ? 0 : 0.25 + 0.75 * c.cur;
-    c.mesh.visible = s > 0;
-    if (s > 0) c.mesh.scale.setScalar(s);
-    c.flowers.visible = goal.bloom && c.cur > 0.9;
+    const c = wt.cur[id], goal = targets.branches[id];
+    c.leaves += (goal.leaves - c.leaves) * k;
+    c.bloom += ((goal.bloom && c.leaves > 0.85 ? 1 : 0) - c.bloom) * kb;
   }
-  const life = targets.life / 100;
-  wt.crownCur += (life - wt.crownCur) * k;
-  const cs = wt.crownCur < 0.03 ? 0 : 0.2 + 0.8 * wt.crownCur;
-  wt.crown.visible = cs > 0;
-  if (cs > 0) wt.crown.scale.setScalar(cs);
-  if (Math.abs(wt.life - wt.crownCur) > 0.004) {   // 줄기 색: 잿빛 → 따뜻한 갈색
-    wt.life = wt.crownCur;
-    wt.barkMat.color.copy(BARK_DEAD).lerp(BARK_LIVE, Math.min(1, wt.crownCur * 1.6));
-  }
+  wt.life += (targets.life / 100 - wt.life) * k;
+  wt.art.setState({ life: wt.life, branches: wt.cur }, t);
 }
 
 /** 밑동 근처인가(doors.js 프롬프트) */
@@ -345,6 +255,13 @@ function queueTreeShot(kind, branch, prev) {
   shotQueue.push({ kind, branch, key, at: performance.now() });
   if (prev && !shownTree) { shownTree = prev; targets = null; }
   return true;
+}
+
+/** 검수용(로컬 dev 훅 window.__treeShot) — 본 적 있어도 다시 줄 세운다 */
+export function debugTreeShot(kind, branch) {
+  if (kind === 'phase') return shot ? shot.rig.phase : shotQueue.length ? 'queued' : 'none';
+  shotQueue.push({ kind, branch, key: shotKey(kind, branch), at: performance.now() });
+  return shotQueue.length;
 }
 
 /** 조망샷이 줄 서 있거나 도는 중 — game.js 의 이야기 모달이 이 뒤로 선다. 오래(8초+) 못 돌고 있는 줄은 막지 않는다(교착 방지) */
