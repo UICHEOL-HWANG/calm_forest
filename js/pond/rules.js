@@ -48,7 +48,7 @@ export function pondBlocks(spots, house, x, z, r, pad = 0) {
   return spots.some(s => Math.hypot(house.x + s.dx - x, house.z + s.dz - z) < r + 0.6 + pad);
 }
 
-export const POND_TOAST_DELAY = 2;
+export const POND_TOAST_DELAY = 4;
 
 export function pondToastDue({ pending, seen, inVillage, waitedSec }) {
   return !!pending && !seen && !!inVillage && waitedSec >= POND_TOAST_DELAY;

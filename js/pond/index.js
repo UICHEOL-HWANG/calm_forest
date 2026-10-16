@@ -42,7 +42,7 @@ export function refreshPond(trigger) {
   for (const c of changes) {
     if (c.type === 'created') {
       trackEvent('pond_created', { trigger: trigger === 'load' ? 'existing' : trigger, species: c.species });
-      if (!gameState.hintsSeen.pond) toastPending = true;
+      if (!gameState.hintsSeen.pond) { toastPending = true; toastWait = 0; }
     } else {
       trackEvent('pond_fish_added', { species: c.species, kind: c.type === 'sea' ? 'sea' : 'river', count: view.fish.length + (view.sea ? 1 : 0) });
       if (trigger !== 'load') pond.pop(c.type === 'sea' ? '🌊' : '🐟');

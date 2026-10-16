@@ -81,5 +81,5 @@ test('생성 토스트는 마을에서 잠시 기다린 뒤 한 번만', () => {
   assert.equal(pondToastDue({ ...ok, pending: false }), false);
   assert.equal(pondToastDue({ ...ok, seen: true }), false);
   assert.equal(pondToastDue({ ...ok, inVillage: false }), false);
-  assert.equal(pondToastDue({ ...ok, waitedSec: 1.9 }), false);
+  assert.equal(pondToastDue({ ...ok, waitedSec: 3.9 }), false);
 });

@@ -43,3 +43,10 @@ test('연결 모듈: 스위치·트래킹·1회 토스트', () => {
   assert.match(p, /hintsSeen\.pond/);
   assert.match(p, /pondToastDue\(/);
 });
+
+test('토스트 대기는 예약 시점부터 센다', () => {
+  const p = src('js/pond/index.js');
+  assert.ok(p.includes('toastPending = true'));
+  assert.ok(p.includes('toastWait = 0'));
+  assert.match(p, /toastPending = true;\s*toastWait = 0/);
+});
