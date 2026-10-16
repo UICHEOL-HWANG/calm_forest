@@ -2,6 +2,7 @@ import { t } from '../i18n.js';
 import { COURSE } from './course.js';
 
 let root = null;
+let shown = {};
 
 function ensure() {
   if (!root) {
@@ -47,13 +48,23 @@ export function clearCountdown() {
   if (c && c.textContent) c.textContent = '';
 }
 
+export function hudPatch(prev, next) {
+  return Object.fromEntries(Object.entries(next).filter(([k, v]) => prev[k] !== v));
+}
+
+const HUD_WRITES = [
+  ['time', '.sled-time', 'textContent'],
+  ['acorns', '.sled-acorns', 'textContent'],
+  ['boost', '.sled-boost', 'textContent'],
+  ['off', '.sled-boost', 'disabled'],
+];
+
 export function showRunHud({ timeMs, acorns }) {
   const r = ensure();
-  r.querySelector('.sled-time').textContent = `⏱️ ${sec(timeMs)}`;
-  r.querySelector('.sled-acorns').textContent = `🌰 ${acorns}`;
-  const b = r.querySelector('.sled-boost');
-  b.textContent = `${t('🌰 부스터')} ${acorns}`;
-  b.disabled = acorns <= 0;
+  const next = { time: `⏱️ ${sec(timeMs)}`, acorns: `🌰 ${acorns}`, boost: `${t('🌰 부스터')} ${acorns}`, off: acorns <= 0 };
+  const patch = hudPatch(shown, next);
+  HUD_WRITES.forEach(([key, sel, prop]) => { if (key in patch) r.querySelector(sel)[prop] = patch[key]; });
+  shown = next;
 }
 
 export function showResult({ timeMs, best, newBest, coins, leftToday, flags }, onClose) {
