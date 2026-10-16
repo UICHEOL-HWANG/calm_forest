@@ -126,3 +126,30 @@ test('썰매가 오가지 않으면 patch 에 mountain 이 없다', () => {
   assert.ok(!('mountain' in applyPurchases(g, [row('straw_hat')]).patch));
   assert.ok(!('mountain' in applyPurchases(g, [row('wind')]).patch));
 });
+
+test('썰매 — cashOwned 에 있어도 산장에서 빠졌으면 다시 넣는다', () => {
+  const g = gs({ cashOwned: ['wind'], mountain: { sled: { best: 41 }, hut: { sleds: ['basic', 'skiff'], sled: 'basic' } } });
+  const r = applyPurchases(g, [row('wind')]);
+  assert.deepEqual(r.granted, [{ item_id: 'wind', kind: 'sled' }]);
+  assert.deepEqual(r.patch.mountain.hut, { sleds: ['basic', 'wind', 'skiff'], sled: 'basic' });
+  assert.deepEqual(r.patch.mountain.sled, { best: 41 });
+  assert.deepEqual(r.patch.cashOwned, ['wind']);
+  assert.deepEqual(g.mountain.hut.sleds, ['basic', 'skiff']);
+  const r2 = applyPurchases(gs({ cashOwned: ['acorn'] }), [row('acorn')]);
+  assert.deepEqual(r2.patch.mountain.hut, { sleds: ['basic', 'acorn'], sled: 'basic' });
+  assert.deepEqual(r2.patch.cashOwned, ['acorn']);
+});
+
+test('썰매 — cashOwned 에 있고 산장에도 있으면 다시 주지 않는다', () => {
+  const g = gs({ cashOwned: ['wind'], mountain: { hut: { sleds: ['basic', 'wind'], sled: 'basic' } } });
+  const r = applyPurchases(g, [row('wind')]);
+  assert.deepEqual(r.granted, []);
+  assert.ok(!('mountain' in r.patch));
+  assert.deepEqual(r.patch.cashOwned, ['wind']);
+});
+
+test('코스메틱·펫은 cashOwned 에 있으면 다시 주지 않는다', () => {
+  const r = applyPurchases(gs({ cashOwned: ['straw_hat'] }), [row('straw_hat')]);
+  assert.deepEqual(r.granted, []);
+  assert.deepEqual(r.patch.cosmetics.owned, ['scarf']);
+});

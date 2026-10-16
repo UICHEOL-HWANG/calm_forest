@@ -39,8 +39,9 @@ export function applyPurchases(gs, rows) {
   const hut0 = gs.mountain?.hut || BASIC_HUT;
   let hut = { ...hut0, sleds: [...(hut0.sleds || BASIC_HUT.sleds)] };
   const granted = [], revoked = [];
+  const missingSleds = live.filter(id => prev.includes(id) && kindOf(id) === 'sled' && !hut.sleds.includes(id));
 
-  for (const id of fresh) {
+  for (const id of [...fresh, ...missingSleds]) {
     const kind = kindOf(id);
     if (kind === 'cosmetic') { if (!cosmetics.owned.includes(id)) cosmetics.owned.push(id); }
     else if (kind === 'decor') {
