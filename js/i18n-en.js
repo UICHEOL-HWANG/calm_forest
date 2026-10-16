@@ -2527,4 +2527,8 @@ export const EN = {
   '🛷 썰매': '🛷 Sled',
   '오늘 설산 썰매 최고 기록': "Today's best sled time",
   '초': 's',
+  '설산 스노볼': 'Mountain snow globe',
+  '미니 등불 산장 모형': 'Mini lantern hut model',
+  '정상 깃발': 'Summit flag',
+  '산장 카페에서 산 정상 깃발': 'A summit flag from the hut cafe',
 };

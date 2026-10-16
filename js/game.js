@@ -263,6 +263,7 @@ import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from 
 import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
+import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
@@ -1668,6 +1669,7 @@ export const Input = {
       .filter(d => catalogVisible(d, { stored: kept[d.id] || 0 }))   // 🎃 기간 밖 한정품은 안 산 사람에겐 숨긴다(보관분은 계속 보인다)
       .filter(d => !d.dream || (gameState.dream?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🌙 꿈을 꿔 보기 전엔 ✨ 화폐가 뭔지 모른다 — 숨긴다
       .filter(d => !d.mirror || (gameState.mirror?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🪞 거울 마을을 다녀오기 전엔 🪞 화폐가 뭔지 모른다
+      .filter(d => !d.hut || (kept[d.id] || 0) > 0)
       .map(d => ({ ...d, locked: !decorUnlocked(d, st), tag: saleTagOf(d) }));
   },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
@@ -5093,6 +5095,7 @@ function pantryTake(recipeId) {
 // 야외 장식 메시(절차적)
 function outdoorMesh(id) {
   { const m = plazaDecorMesh(id); if (m) return m; }   // 🌾 광장 장식 4종(js/plaza/decor.js)
+  { const m = souvenirOutdoorMesh(THREE, id); if (m) return m; }
   const g = new THREE.Group();
   if (isFarmBuilding(id)) {   // 🏗️ 밭 시설 7종 — 배치·고스트 둘 다 이 함수를 쓴다(여기 없으면 투명하게 놓인다)
     farmBuildingMesh(id, g);
