@@ -62,3 +62,9 @@ test('while seated the clamp pins the player to the seat', () => {
   assert.match(src, /if \(seated\) \{ p\.x = seated\.x; p\.z = seated\.z; p\.y = 0; return; \}/);
   assert.match(src, /seated = \{ mug, steam, t: 4, x: origin\.x \+ seat\.x, z: origin\.z \+ seat\.z \}/);
 });
+
+test('sled rows keep each stat on one line and show a lock as a note, not a wide button', () => {
+  const src = readFileSync(new URL('../js/mountain/cafe-ui.js', import.meta.url), 'utf8');
+  assert.match(src, /\.hc-stats span\{white-space:nowrap\}/);
+  assert.match(src, /row\.kind === 'locked'[\s\S]*?className = 'hc-lock'[\s\S]*?continue;/);
+});

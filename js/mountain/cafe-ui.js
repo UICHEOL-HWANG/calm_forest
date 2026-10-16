@@ -34,7 +34,9 @@ const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;d
 #hut-cafe-modal .hc-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
 #hut-cafe-modal .hc-line{font-size:11px;color:#6b6f78;line-height:1.3}
 #hut-cafe-modal .hc-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;color:#4a4e57;letter-spacing:.5px}
-#hut-cafe-modal .hc-row button{flex:none;border:0;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;max-width:46%;text-align:center}
+#hut-cafe-modal .hc-stats span{white-space:nowrap}
+#hut-cafe-modal .hc-lock{font-size:12px;font-weight:700;color:#8a6a1f;background:#fbf1d8;border-radius:8px;padding:4px 8px;margin-top:2px}
+#hut-cafe-modal .hc-row button{flex:none;border:0;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;white-space:nowrap}
 #hut-cafe-modal .hc-row button:disabled{background:#e6e1d8;color:#8a8f99}
 #hut-cafe-modal .hc-close{margin-top:10px;border:0;border-radius:12px;padding:10px;background:#efe6d8;font-weight:700}`;
 
@@ -90,6 +92,15 @@ function render() {
         grid.appendChild(s);
       });
       info.append(line, grid);
+      if (row.kind === 'locked') {
+        const note = document.createElement('div');
+        note.className = 'hc-lock';
+        note.textContent = t(row.label);
+        info.appendChild(note);
+        el.appendChild(info);
+        list.appendChild(el);
+        continue;
+      }
     }
     const btn = document.createElement('button');
     btn.textContent = t(row.label);
