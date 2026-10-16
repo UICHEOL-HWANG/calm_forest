@@ -21,6 +21,12 @@ const OBSTACLE_SPEC = [
 
 const obstacles = OBSTACLE_SPEC.map(([z, off, kind]) => ({ z, x: centerX(z) + off, r: 1.1, kind }));
 
+export const OBSTACLE_BODY = Object.freeze({ rock: 0.8, snowball: 0.75 });
+
+export function obstacleRadius(o) {
+  return o.r * OBSTACLE_BODY[o.kind];
+}
+
 export const COURSE = Object.freeze({ length: LENGTH, width: 14, flags, obstacles });
 
 export function minTimeMs(course = COURSE, maxSpeed = 16 * 1.5) {

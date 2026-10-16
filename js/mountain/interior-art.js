@@ -1,4 +1,4 @@
-import { COURSE } from './course.js';
+import { COURSE, OBSTACLE_BODY } from './course.js';
 import { ACORNS, PLAZA, nearestOnPath } from './climb.js';
 import { SUMMIT_Y, slopePoint, terrainHeight, inSlopeCorridor, acornY, cloudPuffs } from './terrain.js';
 import { cloudPuffMesh } from './backdrop.js';
@@ -158,14 +158,14 @@ function gatesMesh(THREE) {
 
 function obstaclesMesh(THREE) {
   const parts = COURSE.obstacles.flatMap(o => {
-    const p = slopePoint(o.z, o.x), r = o.r;
+    const p = slopePoint(o.z, o.x), r = o.r, b = r * OBSTACLE_BODY[o.kind];
     if (o.kind === 'rock') {
       return [
-        [new THREE.DodecahedronGeometry(1, 0), OBST.rock, [p.x, p.y + 0.4, p.z], [r * 0.8, r * 0.8, r * 0.8]],
+        [new THREE.DodecahedronGeometry(1, 0), OBST.rock, [p.x, p.y + 0.4, p.z], [b, b, b]],
         [new THREE.DodecahedronGeometry(1, 0), OBST.snow, [p.x, p.y + 0.85, p.z], [r * 0.62, r * 0.28, r * 0.62]],
       ];
     }
-    return [[new THREE.IcosahedronGeometry(1, 1), OBST.snow, [p.x, p.y + 0.55, p.z], [r * 0.75, r * 0.75, r * 0.75]]];
+    return [[new THREE.IcosahedronGeometry(1, 1), OBST.snow, [p.x, p.y + 0.55, p.z], [b, b, b]]];
   });
   return new THREE.Mesh(partsGeometry(THREE, parts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 }

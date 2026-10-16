@@ -25,6 +25,8 @@ const CLOUD_FLANK_ROWS = 8;
 const CLOUD_FLANK_Z0 = 24;
 const CLOUD_FLANK_STEP = 4.5;
 
+export const SLOPE_M_PER_UNIT = SLOPE_RUN / COURSE.length;
+
 export function slopePoint(z, x) {
   const k = z / COURSE.length;
   return { x, y: SUMMIT_Y - SLOPE_DROP * k, z: SLOPE_Z0 + k * SLOPE_RUN };

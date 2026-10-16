@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { COURSE, COURSE_V, centerX, minTimeMs } from '../js/mountain/course.js';
 import { PHYS, PHYS_V, createSled, stepSled, tryBoost, finalTimeMs } from '../js/mountain/sled.js';
+import { perfectLine } from '../tools/sim/sled-sim.mjs';
 
 const runToEnd = (s, steerFn = st => Math.sign(centerX(st.z + 6) - st.x), boostAtZ = []) => {
   let cur = s;
@@ -31,8 +32,8 @@ test('stepSled returns a new object and never mutates input', () => {
   assert.equal(JSON.stringify(s), frozen);
 });
 
-test('a centred run without boost finishes in 35-45 s with all flags', () => {
-  const end = runToEnd(createSled(0));
+test('a clean run without boost finishes in 35-45 s with all flags', () => {
+  const end = perfectLine(COURSE, 0).sled;
   assert.equal(end.finished, true);
   assert.equal(end.flagsPassed, 12);
   assert.ok(end.t >= 35000 && end.t <= 45000, `t=${end.t}`);
@@ -40,8 +41,8 @@ test('a centred run without boost finishes in 35-45 s with all flags', () => {
 });
 
 test('boost consumes one acorn, records time and makes the run faster', () => {
-  const plain = runToEnd(createSled(3));
-  const boosted = runToEnd(createSled(3), undefined, [40, 120, 200]);
+  const plain = perfectLine(COURSE, 0).sled;
+  const boosted = perfectLine(COURSE, 3).sled;
   assert.equal(boosted.acorns, 0);
   assert.equal(boosted.boostsAt.length, 3);
   assert.ok(boosted.t < plain.t - 2000);

@@ -1,4 +1,5 @@
-import { COURSE, centerX } from './course.js';
+import { COURSE, centerX, obstacleRadius } from './course.js';
+import { SLOPE_M_PER_UNIT } from './terrain.js';
 
 export const PHYS_V = 1;
 
@@ -13,6 +14,20 @@ export const PHYS = Object.freeze({
   hitRecoverMs: 1500,
   flagPenaltyMs: 1000,
 });
+
+export const SLED_HALF = Object.freeze({ w: 0.43, l: 0.75 });
+
+export function overlapsObstacle(s, o) {
+  const dx = Math.max(0, Math.abs(s.x - o.x) - SLED_HALF.w);
+  const dz = Math.max(0, Math.abs(s.z - o.z) * SLOPE_M_PER_UNIT - SLED_HALF.l);
+  const r = obstacleRadius(o);
+  return dx * dx + dz * dz < r * r;
+}
+
+export function hitReach(o) {
+  const r = obstacleRadius(o);
+  return { x: r + SLED_HALF.w, z: (r + SLED_HALF.l) / SLOPE_M_PER_UNIT };
+}
 
 export function createSled(acorns) {
   return {
@@ -48,7 +63,7 @@ function crossFlags(s, x, t, course) {
 
 function collide(s, course) {
   const idx = course.obstacles.findIndex((o, i) =>
-    !s.hitIds.includes(i) && Math.abs(s.z - o.z) < o.r && Math.abs(s.x - o.x) < o.r);
+    !s.hitIds.includes(i) && overlapsObstacle(s, o));
   if (idx < 0) return s;
   return {
     ...s,
