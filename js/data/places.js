@@ -171,7 +171,7 @@ export const MOUNTAIN = new THREE.Vector3(0, 0, -1000);
 export const MOUNTAIN_R = 60;
 export const MOUNTAIN_LANDMARK = new THREE.Vector3(-15, 0, -36);
 export const MOUNTAIN_LANDMARK_R = 11;
-export const MOUNTAIN_GATE = new THREE.Vector3(-15, 0, -27);
+export const MOUNTAIN_GATE = new THREE.Vector3(-15, 0, -29.5);
 
 export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸어 다니는 데크) 반경
 

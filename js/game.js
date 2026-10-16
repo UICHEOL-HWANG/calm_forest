@@ -112,7 +112,7 @@ import {
 import {
   DECOR_SCALE, DECOR, FISH_KINDS, COOK_MG, COURSE_MULT, COURSE_WEIGHT, RECIPES, recipeDiff, CAFE_PAY, BUFF_META, stationLabel,
   SELL_PRICE, SHOP_BUY, UPGRADES, OUTDOOR, KILN_SPOTS, KILN_HOME, KILN_CLEAR_R, kilnAvoidPoints, KILN_SCALE, STATION_IDS,
-  VAT_HOME_LOCAL, FARM_PLACE_MSG, isFarmBuilding, OUTDOOR_REACH,
+  VAT_HOME_LOCAL, FARM_PLACE_MSG, MOUNTAIN_PLACE_MSG, isFarmBuilding, OUTDOOR_REACH,
 } from './data/catalog.js';
 import {
   INT, ROOF_Y, LAKE_R, BENCH, KITCHEN, SHOP, MARKET, RANK, SELL_ICO_G, FARM, FARM_GATE, MINE, MINE_HALF, MINE_GATE,
@@ -261,6 +261,7 @@ import { createAuraFx, lookOf } from './aura/render.js';
 import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐릭터·꾸미기 › 옷장·펫 탭
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
+import { onMountainside } from './mountain/landmark.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
@@ -5249,6 +5250,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       if (!v.ok) { ui.toast?.(FARM_PLACE_MSG[v.reason], 2400); return false; }   // 배치 모드는 유지 — 자리를 옮겨 다시
     }
   }
+  if (!silent && !def.farm && onMountainside(wx, wz, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R)) { ui.toast?.(MOUNTAIN_PLACE_MSG, 2400); return false; }
   // 📐측량소 마당 — 밭 시설이든 장식이든 새로 놓지 못하게 막는다(사용자 지시 2026-09-21).
   //   🔥🫙 가공 시설만 예외: 게임이 기본으로 놓아 주고, 플레이어는 마당 안에서 자리만 고친다.
   if (!silent && !def.farm && !STATION_IDS.includes(id) && atFarm) {

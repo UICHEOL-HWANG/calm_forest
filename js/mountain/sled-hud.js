@@ -65,7 +65,7 @@ export function showResult({ timeMs, best, newBest, coins, leftToday, flags }, o
     `⏱️ ${sec(timeMs)} · 🚩 ${flags}/${COURSE.flags.length}`,
     newBest ? t('🏆 새 최고 기록!') : `🏆 ${sec(best)}`,
     coins > 0 ? `🪙 +${coins}` : '',
-    leftToday > 0 ? t(`오늘 보상 ${leftToday}판 남음`) : t('오늘 보상은 다 받았어요 · 기록 도전은 계속할 수 있어요'),
+    leftToday > 0 ? t(`오늘 보상 ${leftToday}판 남음`) : t('오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요'),
   ].filter(Boolean);
   const box = r.querySelector('.sled-result');
   box.innerHTML = `${lines.map(l => `<div>${l}</div>`).join('')}<button type="button">${t('확인')}</button>`;

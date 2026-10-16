@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gameSource } from './helpers/game-source.mjs';
+import { landmarkSolids } from '../js/mountain/landmark.js';
 
 const src = gameSource();
 const vec = name => {
@@ -43,12 +44,12 @@ test('mountain landmark stands at the north-west edge, its footprint clear of no
 test('mountain gate is the south foot of the landmark and its prompt is reachable past the body collider', () => {
   const c = vec('MOUNTAIN_LANDMARK'), g = vec('MOUNTAIN_GATE');
   assert.equal(g.x, c.x);
-  assert.ok(g.z - c.z >= 8 && g.z - c.z <= 10.5);
-  const mtn = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
-  const solid = +mtn.match(/const LANDMARK_SOLID_R = ([\d.]+);/)[1];
+  assert.ok(g.z - c.z >= 5.5 && g.z - c.z <= 7.5);
   const playerR = +readFileSync(new URL('../js/data/character.js', import.meta.url), 'utf8').match(/export const PLAYER_R = ([\d.]+);/)[1];
-  assert.ok(g.z - c.z - solid - playerR < 2.4);
-  assert.ok(g.z - c.z - solid > 0.5);
+  const stop = Math.max(0, ...landmarkSolids(playerR).filter(s => Math.abs(s.x) < s.r + playerR).map(s => s.z + Math.sqrt((s.r + playerR) ** 2 - s.x ** 2)));
+  assert.ok(stop > 3);
+  assert.ok(g.z - c.z - stop < 2.4);
+  assert.ok(g.z - c.z - stop > 0.5);
 });
 
 test('game.js exposes a camera rig hook used at the top of updateCamera', () => {

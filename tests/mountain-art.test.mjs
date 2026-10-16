@@ -40,7 +40,7 @@ test('village landmark is the snow mountain itself: exactly 2 draw calls, no arc
 });
 
 test('landmark uses the approved wild mockup A shape', () => {
-  assert.deepEqual({ ...LANDMARK }, { radius: 7, height: 6.5, spur: 1.2, groundColor: 0xd3e2b0, frontGap: 0.38, cloudScale: 1.6 });
+  assert.deepEqual({ ...LANDMARK }, { radius: 7, height: 6.5, spur: 1.2, groundColor: 0xd3e2b0, frontGap: 0.38, cloudScale: 2.2 });
 });
 
 test('landmark mountain keeps village fog while its clouds ignore fog like the backdrop', () => {
@@ -49,7 +49,7 @@ test('landmark mountain keeps village fog while its clouds ignore fog like the b
   assert.equal(ms.find(m => m.isInstancedMesh).material.fog, false);
 });
 
-test('landmark clouds are the backdrop band for the same size with every puff 1.6x bigger', () => {
+test('landmark clouds are the backdrop band for the same size with every puff 2.2x bigger', () => {
   const big = meshes(buildLandmark(THREE)).find(m => m.isInstancedMesh);
   const base = meshes(buildBackdrop(THREE, { radius: 7, height: 6.5, frontGap: 0.38 })).find(m => m.isInstancedMesh);
   assert.equal(big.count, base.count);
@@ -59,7 +59,16 @@ test('landmark clouds are the backdrop band for the same size with every puff 1.
     big.getMatrixAt(i, ma); base.getMatrixAt(i, mb);
     ma.decompose(pa, q, sa); mb.decompose(pb, q, sb);
     assert.ok(pa.distanceTo(pb) < 1e-6, `puff ${i} moved`);
-    for (const k of ['x', 'y', 'z']) assert.ok(Math.abs(sa[k] / sb[k] - 1.6) < 1e-6, `puff ${i} ${k}`);
+    for (const k of ['x', 'y', 'z']) assert.ok(Math.abs(sa[k] / sb[k] - 2.2) < 1e-6, `puff ${i} ${k}`);
+  }
+});
+
+test('landmark cloud puffs stay above y 0.3', () => {
+  const clouds = meshes(buildLandmark(THREE)).find(m => m.isInstancedMesh);
+  const mtx = new THREE.Matrix4(), p = new THREE.Vector3(), s = new THREE.Vector3(), q = new THREE.Quaternion();
+  for (let i = 0; i < clouds.count; i++) {
+    clouds.getMatrixAt(i, mtx); mtx.decompose(p, q, s);
+    assert.ok(p.y - s.y > 0.3, `puff ${i}`);
   }
 });
 

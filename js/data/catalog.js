@@ -250,6 +250,8 @@ export const VAT_HOME_LOCAL = [-12.5, 5.0];
 
 export const FARM_PLACE_MSG = { notFarm: '🏗️ 밭 시설은 텃밭 안에서만 놓을 수 있어요', outside: '🏗️ 울타리 안 밭에 놓아요', yard: '🏗️ 시설 마당은 이미 꽉 찼어요. 울타리 안 밭에 놓아요', plot: '🏗️ 밭 위엔 놓을 수 없어요. 옆 칸으로 옮기거나 🪏삽으로 밭을 없애요', overlap: '🏗️ 다른 시설과 겹쳐요' };
 
+export const MOUNTAIN_PLACE_MSG = '🏔️ 산자락엔 놓을 수 없어요';
+
 export function isFarmBuilding(id) { return FARM_BUILDINGS.some(d => d.id === id); }
 
 export const OUTDOOR_REACH = 7;   // 조준 가능한 최대 거리 — 화면 끝을 눌러 멀리 놓지 못하게(근접 상호작용 원칙)

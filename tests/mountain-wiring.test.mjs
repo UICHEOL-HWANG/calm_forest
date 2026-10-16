@@ -35,7 +35,7 @@ test('doors know the gate and the inside exit, and inVillage2 excludes the mount
 });
 
 test('new visible strings have English', () => {
-  for (const ko of ['🏔️ 설산', '🏔️ 설산 오르기', '🏔️ 내일 열려요', '🏔️ 설산이 열렸어요!', '🏔️ 뒤 능선길로 올라 정상에서 썰매를 타요. 나갈 땐 남쪽 문', '🏔️ 썰매 타러 가는 길', '🚪 마을로 돌아가기']) {
+  for (const ko of ['🏔️ 설산', '🏔️ 설산 오르기', '🏔️ 내일 열려요', '🏔️ 설산이 열렸어요!', '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요', '🏔️ 썰매 타러 가는 길', '🚪 마을로 돌아가기']) {
     assert.ok(EN[ko], ko);
   }
 });

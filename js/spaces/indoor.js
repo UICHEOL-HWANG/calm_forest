@@ -16,7 +16,8 @@ import {
 import { trackEvent } from '../analytics.js';
 import { DECOR, DECOR_SCALE, FARM_PLACE_MSG, OUTDOOR, OUTDOOR_REACH } from '../data/catalog.js';
 import { PLAYER_R } from '../data/character.js';
-import { FARM, INT, ROOF_Y } from '../data/places.js';
+import { FARM, INT, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R, ROOF_Y } from '../data/places.js';
+import { onMountainside } from '../mountain/landmark.js';
 import { TOOLS } from '../data/tools.js';
 import { PAL } from '../data/world.js';
 import { CELL as FARM_CELL, FARM_BUILDINGS, canPlaceBuilding, rotatedFp, snapCenter } from '../farm-building.js';
@@ -816,11 +817,18 @@ export function updateHabitatMeter() {
 
 export function removeDecorGhost() {
   ui.setHabitatMeter?.(null); $w.lastNearMiss = {};   // 🦋 배치 모드가 끝나면 미터도 사라지고 근접 신호 기억도 비운다
-  ghostRing = null; ghostFarmDef = null;
+  ghostRing = null; ghostFarmDef = null; ghostOk = true;
   if (!decorGhost) return;
   scene.remove(decorGhost);
   decorGhost.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
   $w.decorGhost = null; $w.ghostOutdoor = false;
+}
+
+function tintGhost(ok) {
+  if (ok === ghostOk) return;
+  ghostOk = ok;
+  if (ghostRing) ghostRing.material.color.setHex(ok ? 0x7fce8b : 0xe8705a);
+  decorGhost.traverse(o => { if (o.isMesh && o !== ghostRing) o.material.opacity = ok ? 0.45 : 0.28; });
 }
 
 // 매 프레임: 핀 고정이 아니면 캐릭터 발 앞 1.3 을 따라다닌다(걸어가서 버튼으로 놓기)
@@ -837,13 +845,12 @@ export function updateDecorGhost() {
       decorGhost.position.set(sx, 0.02, sz);
       // 놓을 수 있는 자리인지 색으로 먼저 알려 준다 — 액션을 눌러 토스트로 거절당하기 전에(사용자 지적 2026-09-13)
       const v = canPlaceBuilding({ def: fdef, x: sx, z: sz, rot: decorRot, atFarm, center: FARM, half: farmHalf(), plots, buildings: farmBuildingRecs(pickedOutdoor?.rec || null), yard: surveyYard(farmHalf()) });
-      if (v.ok !== ghostOk) {
-        ghostOk = v.ok;
-        if (ghostRing) ghostRing.material.color.setHex(v.ok ? 0x7fce8b : 0xe8705a);
-        decorGhost.traverse(o => { if (o.isMesh && o !== ghostRing) o.material.opacity = v.ok ? 0.45 : 0.28; });
-      }
+      tintGhost(v.ok);
       ui.setZoneHint?.(v.ok ? `${fdef.ico} ${fdef.name} — 바닥을 눌러 자리를 고르고 액션으로 놓기 · ↻ 방향` : FARM_PLACE_MSG[v.reason]);
-    } else decorGhost.position.set(ax, 0.02, az);
+    } else {
+      decorGhost.position.set(ax, 0.02, az);
+      tintGhost(!onMountainside(ax, az, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R));
+    }
     decorGhost.rotation.y = decorRot * Math.PI / 2;
     updateHabitatMeter();   // 🦋 정보가 필요한 순간은 정확히 "지금 어디에 놓을까" 다
     return;

@@ -71,8 +71,12 @@ test('run context stays integer and physics step is clamped', () => {
 });
 
 test('sled HUD strings have English', () => {
-  for (const ko of ['🛷 출발!', '🌰 부스터', '🏁 완주!', '🏆 새 최고 기록!', '오늘 보상 {0#}판 남음', '오늘 보상은 다 받았어요 · 기록 도전은 계속할 수 있어요', '확인']) {
+  for (const ko of ['🛷 출발!', '🌰 부스터', '🏁 완주!', '🏆 새 최고 기록!', '오늘 보상 {0#}판 남음', '오늘 보상 1판 남음', '오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요', '확인']) {
     assert.ok(EN[ko], ko);
+    assert.doesNotMatch(EN[ko], /\u2014/);
   }
+  assert.equal(EN['오늘 보상 1판 남음'], '1 rewarded run left today');
+  assert.equal(EN['오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요'], 'All rewards claimed today. You can keep chasing records');
+  for (const old of ['오늘 보상은 다 받았어요 · 기록 도전은 계속할 수 있어요', '🏔️ 뒤 능선길로 올라 정상에서 썰매를 타요. 나갈 땐 남쪽 문']) assert.equal(EN[old], undefined, old);
   assert.equal(EN['오늘 보상 {0#}판 남음'], '{0} rewarded runs left today');
 });

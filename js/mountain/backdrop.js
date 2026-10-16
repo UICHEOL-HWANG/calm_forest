@@ -44,11 +44,15 @@ export function mountainMesh(THREE, R, H) {
   return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false }));
 }
 
+export function landmarkFootRadius(a, R, k) {
+  return R * edge(a, k);
+}
+
 function edge(a, k) {
   return 1 + k * (0.16 * Math.sin(a * 3 + 0.6) + 0.09 * Math.sin(a * 5 + 2.1) + 0.06 * Math.sin(a * 11 + 0.3));
 }
 
-function landmarkHeight(r, a, R, H, k) {
+export function landmarkHeight(r, a, R, H, k) {
   const t = r / (R * edge(a, k));
   if (t >= 1) return 0;
   if (t < 0.045) return H * Math.pow(1 - 0.045, 1.55) - H * 0.011;

@@ -2,6 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gameSource } from './helpers/game-source.mjs';
+import { landmarkSolids, landmarkFoot, onMountainside, LANDMARK } from '../js/mountain/landmark.js';
+import { landmarkHeight } from '../js/mountain/backdrop.js';
+import { EN } from '../js/i18n-en.js';
+
+const PLAYER_R = 0.42;
+const MOUNTAIN_PLACE_MSG = readFileSync(new URL('../js/data/catalog.js', import.meta.url), 'utf8').match(/export const MOUNTAIN_PLACE_MSG = '([^']+)';/)?.[1];
 
 const src = gameSource();
 const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -9,16 +15,61 @@ const mtn = read('js/spaces/mountain.js');
 const spawn = mtn.slice(mtn.indexOf('export function spawnMountainGate'), mtn.indexOf('function ensureMountainSpace'));
 
 test('spawnMountainGate places the landmark mountain at its centre and no arch', () => {
-  assert.match(mtn, /import \{ buildLandmark \} from '\.\.\/mountain\/landmark\.js';/);
+  assert.match(mtn, /import \{ buildLandmark, landmarkSolids \} from '\.\.\/mountain\/landmark\.js';/);
   assert.doesNotMatch(mtn, /gate-art|buildGateArt/);
   assert.match(spawn, /const art = buildLandmark\(THREE\);/);
   assert.match(spawn, /art\.position\.copy\(MOUNTAIN_LANDMARK\);/);
 });
 
-test('the mountain body is a solid circle so the player cannot walk into it', () => {
-  const r = +mtn.match(/const LANDMARK_SOLID_R = ([\d.]+);/)[1];
-  assert.ok(r >= 7 && r <= 8);
-  assert.match(spawn, /solidCircle\(MOUNTAIN_LANDMARK\.x, MOUNTAIN_LANDMARK\.z, LANDMARK_SOLID_R\);/);
+test('the mountain body is a ring of solid circles following the star-shaped foot', () => {
+  assert.match(mtn, /import \{ PLAYER_R \} from '\.\.\/data\/character\.js';/);
+  assert.match(spawn, /for \(const s of landmarkSolids\(PLAYER_R\)\) solidCircle\(MOUNTAIN_LANDMARK\.x \+ s\.x, MOUNTAIN_LANDMARK\.z \+ s\.z, s\.r\);/);
+  assert.doesNotMatch(mtn, /LANDMARK_SOLID_R/);
+});
+
+test('in 72 directions the player stops near the visible foot and never climbs the slope', () => {
+  const solids = landmarkSolids(PLAYER_R);
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2, ux = Math.cos(a), uz = Math.sin(a);
+    let t = 0;
+    for (const s of solids) {
+      const R = s.r + PLAYER_R, b = ux * s.x + uz * s.z, q = s.x * s.x + s.z * s.z - b * b;
+      if (q < R * R) t = Math.max(t, b + Math.sqrt(R * R - q));
+    }
+    const foot = landmarkFoot(a);
+    assert.ok(t >= 0.75 * foot && t <= foot + 0.5, `dir ${i}: stop ${t} foot ${foot}`);
+    assert.ok(landmarkHeight(t, a, LANDMARK.radius, LANDMARK.height, LANDMARK.spur) <= 0.3, `dir ${i} climbs`);
+  }
+});
+
+test('neighbouring body circles overlap so the player cannot slip between them', () => {
+  const s = landmarkSolids(PLAYER_R);
+  s.forEach((a, i) => {
+    const b = s[(i + 1) % s.length];
+    assert.ok(Math.hypot(a.x - b.x, a.z - b.z) < a.r + b.r + 2 * PLAYER_R, `gap after ${i}`);
+  });
+});
+
+test('outdoor decor is refused on the mountainside with the approved copy', () => {
+  assert.equal(MOUNTAIN_PLACE_MSG, '🏔️ 산자락엔 놓을 수 없어요');
+  assert.equal(EN[MOUNTAIN_PLACE_MSG], "🏔️ Can't place on the mountainside");
+  assert.doesNotMatch(MOUNTAIN_PLACE_MSG + EN[MOUNTAIN_PLACE_MSG], /\u2014/);
+  assert.match(src, /if \(!silent && !def\.farm && onMountainside\(wx, wz, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R\)\) \{ ui\.toast\?\.\(MOUNTAIN_PLACE_MSG, 2400\); return false; \}/);
+  const place = src.slice(src.indexOf('function placeOutdoor('), src.indexOf('const moved = !silent && !!pickedOutdoor;'));
+  assert.match(place, /onMountainside/);
+});
+
+test('the decor ghost turns red over the mountainside like other invalid spots', () => {
+  const indoor = read('js/spaces/indoor.js');
+  assert.match(indoor, /tintGhost\(!onMountainside\(ax, az, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R\)\)/);
+  assert.match(indoor, /function tintGhost\(ok\) \{[\s\S]*?0x7fce8b : 0xe8705a/);
+});
+
+test('onMountainside covers the footprint and nothing beyond it', () => {
+  const c = { x: -15, z: -36 };
+  assert.equal(onMountainside(-15, -26, c, 11), true);
+  assert.equal(onMountainside(-15 + 10.9, -36, c, 11), true);
+  assert.equal(onMountainside(-15, -24.9, c, 11), false);
 });
 
 test('the footprint is a no-till obstacle checked by the hoe through isBlocked', () => {

@@ -4,7 +4,8 @@ import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
 import { isMountainOpen } from '../mountain/unlock.js';
-import { buildLandmark } from '../mountain/landmark.js';
+import { buildLandmark, landmarkSolids } from '../mountain/landmark.js';
+import { PLAYER_R } from '../data/character.js';
 import { createReveal } from '../mountain/reveal.js';
 import { buildMountainSpace, pathHeight, slopePoint, acornY } from '../mountain/terrain.js';
 import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, atSummit } from '../mountain/climb.js';
@@ -22,7 +23,6 @@ let reveal = null;
 let run = null;
 
 const GO_CLEAR_MS = 800;
-const LANDMARK_SOLID_R = 7;
 
 const newRunId = () => crypto.randomUUID?.()
   || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => { const r = Math.random() * 16 | 0; return (ch === 'x' ? r : (r & 3) | 8).toString(16); });
@@ -39,7 +39,7 @@ export function spawnMountainGate() {
   const art = buildLandmark(THREE);
   art.position.copy(MOUNTAIN_LANDMARK);
   scene.add(art);
-  solidCircle(MOUNTAIN_LANDMARK.x, MOUNTAIN_LANDMARK.z, LANDMARK_SOLID_R);
+  for (const s of landmarkSolids(PLAYER_R)) solidCircle(MOUNTAIN_LANDMARK.x + s.x, MOUNTAIN_LANDMARK.z + s.z, s.r);
   obstacles.push({ x: MOUNTAIN_LANDMARK.x, z: MOUNTAIN_LANDMARK.z, r: MOUNTAIN_LANDMARK_R });
 }
 
@@ -63,7 +63,7 @@ export function enterMountain() {
   player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  firstHint('mountain', '🏔️', '🏔️ 설산', '🏔️ 뒤 능선길로 올라 정상에서 썰매를 타요. 나갈 땐 남쪽 문');
+  firstHint('mountain', '🏔️', '🏔️ 설산', '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요');
   setBGMTheme('main'); Sound.blip();
   const first = !gameState.hintsSeen?.mountainVisited;
   gameState.hintsSeen = { ...(gameState.hintsSeen || {}), mountainVisited: true };
