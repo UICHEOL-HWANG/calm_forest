@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>바다터 캐릭터 움직임 비교 — calm forest</title>
+<style>
+  :root{--bg:#f4f1ea;--ink:#2c3e4a;--sub:#6b7b86;--card:#fffdf6;--line:#e2dccf;--accent:#3a7aa8}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  header{padding:18px 22px 8px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+  h1{font-size:19px;margin:0}
+  .ctl{display:flex;gap:6px;flex-wrap:wrap}
+  .ctl button{font:inherit;font-size:13px;padding:5px 11px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .ctl button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .note{font-size:12px;color:var(--sub);padding:0 22px 12px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:0 22px 26px}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .col.base{border-style:dashed}
+  .col h2{font-size:15px;margin:0}
+  .how{font-size:12px;line-height:1.5;margin:0;min-height:58px}
+  .lbl{font-size:11px;font-weight:700;color:var(--sub)}
+  .vp{position:relative;overflow:hidden;border-radius:10px;background:#79c4de;margin:0 auto}
+  .vp iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0}
+  @media (max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<header>
+  <h1>🐻 낚시 중 캐릭터 움직임 비교 <small style="font-weight:400;color:var(--sub)">(② 펌핑 · 링 타이밍 · 게임과 같은 뒤쪽 시점)</small></h1>
+  <div class="ctl" id="spSel"></div>
+  <div class="ctl"><button id="reload">↻ 같은 장면으로 다시</button></div>
+</header>
+<div class="note">게임은 곰을 <b>뒤에서</b> 보기 때문에, 옆에서 보면 자연스럽던 몸 젖히기·비틀기·찌그러짐이 "뒤로 넘어지거나 빙글 도는" 것처럼 읽히고, 줄다리기 중 좌우 덜덜 떨림이 더해집니다. 네 칸은 같은 물고기 움직임(같은 시드)으로 자동 시연합니다. 탭하면 그 칸만 직접 플레이.</div>
+<div class="grid" id="grid"></div>
+<script>
+const MOS = [
+  { mo: 0, name: '원본 (지금 게임)', how: '던질 때 크게 뒤로 젖히고 비틀며 찌그러졌다 늘어남. 줄다리기 내내 뒤로 젖힌 채 좌우로 덜덜 떨림.' },
+  { mo: 1, name: '① 절제', how: '젖히기·비틀기를 1/3로 줄이고, 찌그러짐·좌우 떨림은 없앰. 동작은 같고 크기만 작게.' },
+  { mo: 2, name: '② 팔·로드로 연기', how: '몸은 거의 그대로 두고 팔과 낚싯대가 크게 움직임. 던질 땐 로드가 머리 위로 크게 원을 그리고, 감을 땐 팔로 확 끌어올림.' },
+  { mo: 3, name: '③ 좌우 무게 이동', how: '물고기가 달리는 반대쪽으로 몸을 기울여 버팀(좌우로 체중 이동). 떨림 대신 기울기로 힘겨루기를 보여줌.' },
+];
+const SPECIES = [['aji', '🐟 전갱이'], ['buri', '🐠 방어'], ['mola', '🐡 개복치'], ['tuna', '⚔️ 참치']];
+let sp = 'tuna';
+document.getElementById('grid').innerHTML = MOS.map(o => `
+  <section class="col${o.mo ? '' : ' base'}" data-mo="${o.mo}">
+    <h2>${o.name}</h2><p class="how">${o.how}</p>
+    <div class="lbl">PC 960×540</div><div class="vp" data-w="960" data-h="540"><iframe></iframe></div>
+    <div class="lbl">모바일 390×844</div><div class="vp" data-w="390" data-h="844"><iframe></iframe></div>
+  </section>`).join('');
+document.getElementById('spSel').innerHTML = SPECIES.map(([id, n]) => `<button data-s="${id}">${n}</button>`).join('');
+function layout() {
+  document.querySelectorAll('.col').forEach(col => col.querySelectorAll('.vp').forEach(vp => {
+    const w = +vp.dataset.w, h = +vp.dataset.h, s = Math.min((col.clientWidth - 20) / w, (h > w ? 380 : 9999) / h);
+    vp.style.width = w * s + 'px'; vp.style.height = h * s + 'px';
+    const f = vp.querySelector('iframe');
+    f.style.width = w + 'px'; f.style.height = h + 'px'; f.style.transform = `scale(${s})`;
+  }));
+}
+function load() {
+  const seed = Math.floor(Math.random() * 1e6) + 1;
+  document.querySelectorAll('#spSel button').forEach(b => b.classList.toggle('on', b.dataset.s === sp));
+  document.querySelectorAll('.col').forEach(col => col.querySelectorAll('iframe').forEach(f => {
+    f.src = `sea-feel-sim.html?v=C&pose=2&mo=${col.dataset.mo}&sp=${sp}&embed=1&auto=1&seed=${seed}`;
+  }));
+}
+document.getElementById('spSel').onclick = e => { const b = e.target.closest('button'); if (b) { sp = b.dataset.s; load(); } };
+document.getElementById('reload').onclick = load;
+addEventListener('resize', layout);
+layout(); load();
+</script>

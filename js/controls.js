@@ -13,6 +13,7 @@ import { isTouchDevice, touchSimOn } from './touch-sim.js';   // 📱 ?touchsim=
 export function initControls() {
   const isTouch = isTouchDevice();
   const mobileUI = document.getElementById('mobile-controls');
+  setupSeaButton();
   if (!isTouch) { mobileUI.style.display = 'none'; return; }
   mobileUI.style.display = 'block';
   document.body.classList.add('is-touch');
@@ -92,6 +93,15 @@ function setupJoystick() {
 }
 
 // ── 액션 버튼(선택 도구로 상호작용) ─────────────────────────────
+function setupSeaButton() {
+  const sea = document.getElementById('sea-btn');
+  if (!sea) return;
+  sea.addEventListener('touchstart', (e) => { Input.doAction(); sea.classList.add('press'); e.preventDefault(); }, { passive: false });
+  sea.addEventListener('touchend', () => sea.classList.remove('press'));
+  sea.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; Input.doAction(); sea.classList.add('press'); e.preventDefault(); e.stopPropagation(); });
+  sea.addEventListener('pointerup', () => sea.classList.remove('press'));
+}
+
 function setupActionButton() {
   const btn = document.getElementById('action-btn');
   btn.addEventListener('touchstart', (e) => { Input.doAction(); btn.classList.add('press'); e.preventDefault(); }, { passive: false });

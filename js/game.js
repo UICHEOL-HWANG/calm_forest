@@ -168,7 +168,7 @@ import {
   houseSolidR, unregisterWindows, updateHouseSign, woodTexture,
 } from './spaces/house.js';   // 📦 집(건축) — 정해진 터, 단계별 건설
 import {
-  buildSea, enterSea, exitSea, seaAction, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
+  buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
@@ -531,8 +531,8 @@ let seaGroup = null, atSea = false;
 let seaFishes = [];                                   // 배회 물고기 { g, sp, ang, des, spd, tTurn } (seaGroup 로컬 좌표)
 let seaBuoy = null, seaLine = null, seaRodMesh = null, _seaPrevTool = null;
 // 진행 상태 머신 — idle(배회 관찰) → cast(비행·입질 대기) → fight(버둥/당기기) → catch/miss
-const seaMG = { st: 'idle', t: 0, phase: 'struggle', phaseLen: 0, progress: 0, sp: null,
-  pz: 0, fishDir: 1, landed: false, good: 0, bad: 0, t0: 0, fmesh: null, doneT: 0 };
+const seaMG = { st: 'idle', t: 0, ft: 0, phase: 'run', phaseLen: 0, nextLen: 0, progress: 0, sp: null,
+  pz: 0, fishDir: 1, released: false, good: 0, bad: 0, perfect: 0, t0: 0, fmesh: null, doneT: 0, rings: [], lift: 0 };
 
 // 현재 있는 공간만 보이게 — 다른 인스턴스 공간은 숨김
 function setSpaceVisible() {
@@ -5846,7 +5846,7 @@ function updatePlayer(dt, t) {
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
   //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
-  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView || sledActive();
+  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView || sledActive() || (atSea && seaMG.st !== 'idle');
   let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.() || closeUp);
   // 모바일 조이스틱 아날로그 합산
   if (!closeUp) { mx += analog.x; mz += analog.z; }
@@ -6335,6 +6335,8 @@ function updateCamera(dt) {
     camera.lookAt(_camLook);
     return;
   }
+  if (atSea) return seaCamera(camera, _camLook, dt);
+  if (camera.fov !== 42) { camera.fov = 42; camera.updateProjectionMatrix(); }
   // 이벤트 순간엔 오프셋을 줄여 캐릭터로 줌인(감쇠 보간이라 부드럽게 당겨졌다 복귀)
   // 🌊 바다터: 평상시 0.86(트인 수평선 보정) → 던지면 0.55 → 줄다리기·포획 0.45 로
   //    단계별 줌인 — sea-sim 검수 때의 클로즈업 구도를 그대로 가져온다(가로 화면 기준).
