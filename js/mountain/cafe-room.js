@@ -1,5 +1,5 @@
 import { buildCafeRoom } from './cafe-art.js';
-import { CAFE_OFFSET, ENTRY, EXIT_SPOT, ORDER_SPOT, SPOT_R, BARISTA, clampCafe } from './cafe-layout.js';
+import { CAFE_OFFSET, ENTRY, EXIT_SPOT, ORDER_SPOT, SPOT_R, BARISTA, TABLES, clampCafe, nearestSeat } from './cafe-layout.js';
 import { applyLook } from './interior-look.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 
@@ -7,7 +7,7 @@ export const CAFE_LOOK = Object.freeze({
   hemiSky: 0xfff1dc, hemiGround: 0x5a4636, hemi: 1.0, sun: 0xffe2b8, sunI: 1.2, sunDir: [-6, 14, 9],
   fog: 0x2a2320, fogNear: 30, fogFar: 90, grade: 0, torch: 0.6,
 });
-const BUBBLE = Object.freeze({ w: 0.8, h: 0.8, y: 2.6 });
+const BUBBLE = Object.freeze({ w: 0.8, h: 0.8, y: 3.0 });
 
 function emojiTexture(THREE, emoji) {
   const cv = document.createElement('canvas');
@@ -39,6 +39,8 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
   group.visible = false;
   scene.add(group);
   let on = false;
+  let seated = null;
+  const clearSeated = () => { if (!seated) return; [seated.mug, ...seated.steam].forEach(o => group.remove(o)); seated = null; };
   const local = p => ({ x: p.x - origin.x, z: p.z - origin.z });
   const near = (p, s) => Math.hypot(p.x - s.x, p.z - s.z) < SPOT_R;
   return {
@@ -54,6 +56,7 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
       player.rotation.y = Math.PI;
     },
     exit(player, back) {
+      clearSeated();
       on = false;
       group.visible = false;
       const mg = getMountainGroup();
@@ -61,6 +64,7 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
       player.position.set(back.x, back.y, back.z);
     },
     clamp(p) {
+      if (seated) return;
       const q = clampCafe(local(p));
       p.x = origin.x + q.x; p.z = origin.z + q.z; p.y = 0;
     },
@@ -69,7 +73,33 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
     lookFrame(env) {
       applyLook({ ...env, target: sunAt }, CAFE_LOOK, null);
     },
+    sit(player, cup) {
+      const seat = nearestSeat(local(player.position));
+      player.position.set(origin.x + seat.x, 0, origin.z + seat.z);
+      player.rotation.y = seat.ry;
+      const tb = TABLES[seat.table];
+      const mug = new THREE.Group();
+      mug.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.2, 12), new THREE.MeshLambertMaterial({ color: 0xf3e6cf })));
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.02, 12), new THREE.MeshLambertMaterial({ color: cup }));
+      top.position.y = 0.1;
+      mug.add(top);
+      mug.position.set(tb.x + (seat.x - tb.x) * 0.35, 0.89, tb.z);
+      group.add(mug);
+      const steam = [0, 1, 2].map(i => {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(0.05 + i * 0.015, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }));
+        s.position.set(mug.position.x, 1.05 + i * 0.12, mug.position.z);
+        group.add(s);
+        return s;
+      });
+      clearSeated();
+      seated = { mug, steam, t: 4 };
+    },
     update(dt, time, p) {
+      if (seated) {
+        seated.t -= dt;
+        seated.steam.forEach((s, i) => { s.position.y += dt * 0.25; s.material.opacity = Math.max(0, 0.7 * (seated.t / 4) - i * 0.05); });
+        if (seated.t <= 0) clearSeated();
+      }
       const l = local(p);
       const d = Math.hypot(l.x - BARISTA.x, l.z - BARISTA.z);
       fadeNameTag(tag, d);

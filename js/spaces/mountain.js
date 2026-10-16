@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment, makeNameTag } from '../game.js';
+import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment, makeNameTag, applyCosmetics, refreshInventoryUI } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
@@ -16,6 +16,10 @@ import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R,
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
 import { createCafe } from '../mountain/cafe-room.js';
+import { openCafeModal, refreshCafeModal, closeCafeModal, applyCafeResult, CAFE_COPY } from '../mountain/cafe-ui.js';
+import { cafeState, buyCafe, pickSled } from '../mountain/cafe-shop.js';
+import { cafeItem } from '../mountain/cafe-catalog.js';
+import { logEcon } from '../metrics.js';
 import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
 import { COURSE } from '../mountain/course.js';
 import { SLED_SEAT, SLED_LIFT, sledYaw, sledCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
@@ -111,6 +115,7 @@ export function mountainReturnPos() {
 
 export function exitMountain() {
   abandonRun();
+  closeCafeModal();
   if (cafe?.active()) cafe.exit(player, { x: player.position.x, y: 0, z: player.position.z });
   $w.atMountain = false;
   look = null;
@@ -199,14 +204,50 @@ function enterCafe() {
 }
 
 function exitCafe() {
+  closeCafeModal();
   cafe.exit(player, { x: MOUNTAIN.x + DOOR_SPOT.x - 0.6, y: MOUNTAIN.y + CAMP.deck.y, z: MOUNTAIN.z + DOOR_SPOT.z + 0.6 });
   $w.nearDoor = null; ui.setDoorPrompt?.(null);
   snapCamera();
   Sound.blip();
 }
 
+let onDrink = () => {};
+
+function buyFromCafe(id, tab) {
+  const r = buyCafe(cafeState(gameState), id);
+  const out = applyCafeResult(gameState, r);
+  if (r.ok) {
+    logEcon('hut_cafe', id, -cafeItem(id).coins, gameState.inventory.coins);
+    trackEvent('hut_cafe_buy', { item_id: id, tab, price_coins: cafeItem(id).coins, coins_after: gameState.inventory.coins });
+    if (r.grant.type === 'cos') {
+      applyCosmetics(gameState.cosmetics);
+      trackEvent('cosmetic_equip', { item_id: id, action: 'on', via: 'hut_cafe' });
+    }
+    refreshInventoryUI();
+    requestSave();
+  }
+  if (out.toast) ui.toast?.(out.toast, 2200);
+  if (out.drink) {
+    closeCafeModal();
+    cafe.sit(player, out.drink.cup);
+    ui.photoNudge?.();
+    onDrink();
+    return;
+  }
+  refreshCafeModal();
+}
+
+function pickFromCafe(id) {
+  gameState.mountain = { ...(gameState.mountain || {}), hut: pickSled(cafeState(gameState), id).hut };
+  trackEvent('hut_sled_pick', { item_id: id });
+  requestSave();
+  ui.toast?.(CAFE_COPY.sled, 2200);
+  refreshCafeModal();
+}
+
 function openCafeShop() {
   trackEvent('hut_cafe_open', {});
+  openCafeModal({ getState: () => cafeState(gameState), onBuy: buyFromCafe, onPick: pickFromCafe, onClose: () => {} });
 }
 
 export function hutDoorReady() {
