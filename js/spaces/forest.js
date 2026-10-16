@@ -7,7 +7,7 @@
 // =============================================================
 import {
   $w, FORAGE_NODES, WEATHER, atFarm, atMine, atOrchard, clayMat, clock, dexDiscover, dist2D, doPlayerAction,
-  easeOutBack, forageNodes, forestGroup, giveReward, indoor, makeSignpost, noteSpecialExhibit, obstacles,
+  easeOutBack, forageNodes, forestGroup, giveReward, indoor, isOpen, makeSignpost, noteSpecialExhibit, obstacles,
   player, questEvent, scene, situation, solidCircle, spawnFloatText, spawnSparkle, spawnTree, trackGateBlocked,
   trees,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
@@ -138,6 +138,7 @@ export function updateForage(dt, t) {
 // 가장 가까운(주울 수 있는) 채집물 — 없으면 null
 export function forageTarget() {
   if (!forestGroup || indoor || atFarm || atMine || atOrchard) return null;
+  if (!isOpen('forest')) return null;   // 🔓 아직 안 돌아온 숲(js/world/unlocks.js) — 채집물은 숨은 그룹 안에 있다
   let best = null, bd = 1.9;
   for (const n of forageNodes) {
     if (!n || !n.ready) continue;

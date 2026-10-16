@@ -7,7 +7,7 @@
 // =============================================================
 import {
   $w, GLADE_MAX, WEATHER, atFarm, atMine, atOrchard, bugJarMesh, bugRespawnAt, catchCeremony, clayMat, clearPest,
-  clock, dexDiscover, dist2D, doPlayerAction, gameState, gladeBugs, gladeGroup, indoor, isNight, makeSignpost,
+  clock, dexDiscover, dist2D, doPlayerAction, gameState, gladeBugs, gladeGroup, indoor, isNight, isOpen, makeSignpost,
   nightLevel, obstacles, pestTarget, player, questEvent, refreshInventoryUI, scene, showCatchItem, situation,
   spawnFloatText, spawnSparkle, spawnTree, trackGateBlocked, tryUnlockDrop, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
@@ -102,7 +102,7 @@ export function updateFireflyBugs(dt, t) {
   if (!gladeGroup) return;
   const night = isNight();
   gladeGroup.visible = !indoor && !atFarm && !atMine && !atOrchard;
-  if (!night) {                                   // ☀️ 낮 → 전부 사라짐(밤에 다시 피어오름)
+  if (!night || !isOpen('glade')) {               // ☀️ 낮 → 전부 사라짐(밤에 다시 피어오름) · 🔓 계곡이 아직 안 돌아왔으면 피지 않는다
     while (gladeBugs.length) removeFirefly(gladeBugs[gladeBugs.length - 1]);
     return;
   }
@@ -146,6 +146,7 @@ export function updateFireflyBugs(dt, t) {
 // 🦋 포충망 휘두르기 — 밤 + 계곡 + 반딧불이 근처에서만. 반짝일 때 휘둘러야 잘 잡힘
 export function tryNet() {
   const pp = pestTarget(); if (pp) return clearPest(pp);   // 🐛 밭의 해충 쫓기 — 포충망의 두 번째 용도(스펙 §2-1)
+  if (!isOpen('glade')) { ui.toast?.('🌟 반딧불이 계곡이 깨어나면 쓰는 도구예요'); return; }   // 🔓 아직 없는 곳을 가리키지 않는다
   if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🌟 남쪽 반딧불이 계곡에서 쓰는 도구예요'); return; }
   if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요. 해가 지면 다시 오세요', 2600); return; }
   let target = null, nd = 2.2;

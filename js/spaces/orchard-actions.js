@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  Input, clearCrop, currentTool, dist2D, doPlayerAction, firstHintBanner, gameState, giveReward, isBlocked,
+  Input, clearCrop, currentTool, dist2D, doPlayerAction, firstHintBanner, gameState, giveReward, isBlocked, isOpen,
   orchardSlotsWorld, orchardStreamWorld, player, plots, questEvent, rebuildOrchard, refreshCropStage, refreshInventoryUI,
   requestSave, spawnDust, spawnFloatText, syncStory, toolPage, ui, updatePlotVisual,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
@@ -150,6 +150,7 @@ function onboardStep(step) {
 export function maybeOfferOrchardQuest({ needHarvested = false } = {}) {
   const p = gameState.progress;
   if (ui.coachActive?.()) return;
+  if (!isOpen('farmer')) return;   // 🔓 농부 삼촌이 아직 안 돌아왔다 — 귀환할 때(game.js announceUnlock) 다시 부른다
   if (needHarvested && !Object.keys(gameState.dex?.crop || {}).length) return;   // 📖 도감에 작물이 하나도 없다 = 아직 안 거뒀다
   if (shouldOffer(p)) {
     p.orchardQuest = 'plant';

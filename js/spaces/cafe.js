@@ -8,7 +8,7 @@
 import {
   $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, buildCharacterMesh, buildToolShowcase, cafeGuestCache, cafeGuestFetcher,
   cafeGuestObjs, cafeInGroup, camera, clayMat, colliders, cookTier, cosmeticShop, cropMini, dateHash, dexDiscover,
-  disposeTree, dist2D, doPlayerAction, firstHint, fishMesh, gameState, giveReward, houseWindows,
+  disposeTree, dist2D, doPlayerAction, firstHint, fishMesh, gameState, giveReward, houseWindows, isOpen,
   keys, kitchenFinish, kitchenStart, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
   mergeGeos, museumGroup, nearCafeBoard, nearCafeGuest, nearDoor, obstacles, pantryHas, pantryTake, pendingDish,
   player, purchaseHooks, refreshCollectQuests, refreshInventoryUI, removeSolid, renderer, requestSave,
@@ -605,7 +605,7 @@ export function refreshMuseumGate(announce = false) {
   // ⚠️ 알림·트래킹은 **원본 층수**로 본다 — min(3) 으로 보면 특별전이 열려도 조용히 지나간다
   if (opened > museumAnnounced) {
     const def = MUSEUM_FLOORS.find(d => d.id === opened);
-    if (announce && museumAnnounced > 0) {
+    if (announce && museumAnnounced > 0 && isOpen('museum')) {   // 🔓 아직 안 선 박물관을 "가서 보세요" 하지 않는다
       ui.toast?.(`🏛️ 박물관이 ${def?.name || opened + '층'}까지 늘었어요! 가서 보세요`, 3600);
       trackEvent('museum_expand', { floor: opened });   // [GA4] 증축 퍼널 — 수집률 대비 실제 도달
     }
