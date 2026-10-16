@@ -1,4 +1,5 @@
 import { COURSE, minTimeMs } from './course.js';
+import { SLED_IDS } from './sled-lineup.js';
 
 export const DAILY_REWARD_CAP = 3;
 
@@ -12,10 +13,10 @@ export const MOUNTAIN_DEFAULT = Object.freeze({
 
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 
-export const SLED_SKIN_IDS = Object.freeze(['basic', 'sky', 'forest', 'starry']);
+export const SLED_SKIN_IDS = SLED_IDS;
 
-function restoreHut(h) {
-  const list = isObj(h) && Array.isArray(h.sleds) ? h.sleds : [];
+function restoreHut(h, finished) {
+  const list = [...(isObj(h) && Array.isArray(h.sleds) ? h.sleds : []), ...(finished ? ['toboggan'] : [])];
   const sleds = ['basic', ...SLED_SKIN_IDS.filter(id => id !== 'basic' && list.includes(id))];
   const sled = isObj(h) && sleds.includes(h.sled) ? h.sled : 'basic';
   return { sleds, sled };
@@ -29,13 +30,14 @@ function restoreDaily(d) {
 
 export function restoreMountain(saved) {
   const s = isObj(saved) && isObj(saved.sled) ? saved.sled : {};
+  const best = Number.isInteger(s.best) && s.best >= BEST_FLOOR_MS ? s.best : null;
   return {
     sled: {
-      best: Number.isInteger(s.best) && s.best >= BEST_FLOOR_MS ? s.best : null,
+      best,
       plays: Number.isInteger(s.plays) && s.plays >= 0 ? s.plays : 0,
       daily: restoreDaily(s.daily),
       perfect: s.perfect === true,
     },
-    hut: restoreHut(isObj(saved) ? saved.hut : null),
+    hut: restoreHut(isObj(saved) ? saved.hut : null, Number.isInteger(s.best)),
   };
 }

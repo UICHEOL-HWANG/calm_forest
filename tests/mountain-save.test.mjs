@@ -12,7 +12,7 @@ const plain = v => JSON.parse(JSON.stringify(v));
 const DEFAULT = { sled: { best: null, plays: 0, daily: { date: null, rewarded: 0 }, perfect: false }, hut: { sleds: ['basic'], sled: 'basic' } };
 
 test('valid mountain save is kept', () => {
-  const saved = { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 }, perfect: true }, hut: { sleds: ['basic', 'sky'], sled: 'sky' } };
+  const saved = { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 }, perfect: true }, hut: { sleds: ['basic', 'sky', 'toboggan'], sled: 'sky' } };
   assert.deepEqual(plain(restoreMountain(saved)), saved);
 });
 
@@ -21,7 +21,7 @@ test('restore returns a new object and drops unknown keys', () => {
   const out = restoreMountain(saved);
   assert.notEqual(out, saved);
   assert.notEqual(out.sled, saved.sled);
-  assert.deepEqual(plain(out), { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 }, perfect: false }, hut: { sleds: ['basic'], sled: 'basic' } });
+  assert.deepEqual(plain(out), { sled: { best: 40000, plays: 7, daily: { date: '2026-10-20', rewarded: 2 }, perfect: false }, hut: { sleds: ['basic', 'toboggan'], sled: 'basic' } });
 });
 
 test('missing or non-object input gives defaults', () => {
@@ -114,4 +114,11 @@ test('hut state restores owned sled colours and keeps basic', async () => {
   assert.equal(restoreMountain({ hut: { sleds: ['sky'], sled: 'forest' } }).hut.sled, 'basic');
   assert.equal(restoreMountain({ sled: { perfect: true } }).sled.perfect, true);
   assert.equal(restoreMountain({ sled: { perfect: 'yes' } }).sled.perfect, false);
+});
+
+test('lineup sleds restore, unknown ids drop, and a finisher gets the toboggan', () => {
+  assert.deepEqual(plain(restoreMountain({ hut: { sleds: ['basic', 'wind', 'acorn', 'zzz'], sled: 'acorn' } }).hut), { sleds: ['basic', 'wind', 'acorn'], sled: 'acorn' });
+  assert.deepEqual(plain(restoreMountain({ hut: { sleds: ['basic', 'sky'], sled: 'sky' } }).hut), { sleds: ['basic', 'sky'], sled: 'sky' });
+  assert.ok(restoreMountain({ sled: { best: 40000, plays: 3 } }).hut.sleds.includes('toboggan'));
+  assert.ok(!restoreMountain({}).hut.sleds.includes('toboggan'));
 });

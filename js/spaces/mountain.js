@@ -17,7 +17,7 @@ import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
 import { createCafe } from '../mountain/cafe-room.js';
 import { openCafeModal, refreshCafeModal, closeCafeModal, applyCafeResult, CAFE_COPY } from '../mountain/cafe-ui.js';
-import { cafeState, buyCafe, pickSled } from '../mountain/cafe-shop.js';
+import { cafeState, buyCafe, pickSled, grantFinishSled, TOBOGGAN_TOAST } from '../mountain/cafe-shop.js';
 import { cafeItem } from '../mountain/cafe-catalog.js';
 import { findItem } from '../cosmetics/catalog.js';
 import { logEcon } from '../metrics.js';
@@ -446,6 +446,12 @@ function closeRun() {
 function finishSled() {
   const fpsAvg = run.frames ? Math.round(1000 / (run.frameMs / run.frames)) : null;
   run.result = sledSettle(run.sled, ctxOf(), { fpsAvg });
+  const hut = gameState.mountain?.hut || { sleds: ['basic'], sled: 'basic' };
+  const granted = grantFinishSled(hut);
+  if (granted !== hut) {
+    gameState.mountain = { ...(gameState.mountain || {}), hut: granted };
+    ui.toast?.(TOBOGGAN_TOAST, 2600);
+  }
   run.input.dispose();
   setCameraRig(null);
   clearCountdown();

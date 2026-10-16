@@ -2,6 +2,8 @@ import { cafeItem } from './cafe-catalog.js';
 import { findItem } from '../cosmetics/catalog.js';
 
 export const LOCK_TEXT = '🏁 깃발 12개 모두 지나 완주하면 열려요';
+export const TOBOGGAN_LOCK = '🏁 한 번 완주하면 받아요';
+export const TOBOGGAN_TOAST = '⛄ 눈뭉치 터보건을 받았어요';
 
 const price = n => `${n.toLocaleString()}🪙`;
 
@@ -18,6 +20,7 @@ export function rowOf(item, st) {
   if (item.tab === 'sled') {
     if (st.hut.sled === item.id) return { kind: 'riding', label: '타는 중', disabled: true };
     if (st.hut.sleds.includes(item.id)) return { kind: 'ride', label: '타기', disabled: false };
+    if (item.needs === 'finish') return { kind: 'locked', label: TOBOGGAN_LOCK, disabled: true };
     if (item.needs === 'perfect' && !st.perfect) return { kind: 'locked', label: LOCK_TEXT, disabled: true };
   }
   if (item.cos && st.cos.owned.includes(item.id)) return { kind: 'owned', label: '구매 완료', disabled: true };
@@ -54,4 +57,9 @@ export function buyCafe(st, id) {
 export function pickSled(st, id) {
   if (!st.hut.sleds.includes(id)) return st;
   return { ...st, hut: { ...st.hut, sled: id } };
+}
+
+export function grantFinishSled(hut) {
+  if (hut.sleds.includes('toboggan')) return hut;
+  return { ...hut, sleds: [...hut.sleds, 'toboggan'] };
 }

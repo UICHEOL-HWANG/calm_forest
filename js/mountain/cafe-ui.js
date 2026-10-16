@@ -1,6 +1,7 @@
 import { CAFE_TABS, itemsOfTab } from './cafe-catalog.js';
 import { rowOf } from './cafe-shop.js';
 import { t } from '../i18n.js';
+import { STAT_NAMES } from './sled-lineup.js';
 
 export const CAFE_COPY = Object.freeze({
   title: '☕ 산장 카페', drink: '☕ 몸이 따뜻해졌어요', sled: '🛷 다음 판부터 이 썰매를 타요',
@@ -30,7 +31,10 @@ const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;d
 #hut-cafe-modal .hc-tab.on{background:#2f6fd6;color:#fff}
 #hut-cafe-modal .hc-list{overflow:auto;display:flex;flex-direction:column;gap:8px}
 #hut-cafe-modal .hc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:10px 12px;font-size:14px}
-#hut-cafe-modal .hc-row button{border:0;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;white-space:nowrap}
+#hut-cafe-modal .hc-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+#hut-cafe-modal .hc-line{font-size:11px;color:#6b6f78;line-height:1.3}
+#hut-cafe-modal .hc-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;color:#4a4e57;letter-spacing:.5px}
+#hut-cafe-modal .hc-row button{flex:none;border:0;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;max-width:46%;text-align:center}
 #hut-cafe-modal .hc-row button:disabled{background:#e6e1d8;color:#8a8f99}
 #hut-cafe-modal .hc-close{margin-top:10px;border:0;border-radius:12px;padding:10px;background:#efe6d8;font-weight:700}`;
 
@@ -71,11 +75,27 @@ function render() {
     el.className = 'hc-row';
     const name = document.createElement('span');
     name.textContent = `${it.ico} ${t(it.name)}`;
+    const info = document.createElement('div');
+    info.className = 'hc-info';
+    info.appendChild(name);
+    if (it.tab === 'sled') {
+      const line = document.createElement('span');
+      line.className = 'hc-line';
+      line.textContent = t(it.line);
+      const grid = document.createElement('div');
+      grid.className = 'hc-stats';
+      it.stats.forEach((n, i) => {
+        const s = document.createElement('span');
+        s.textContent = `${t(STAT_NAMES[i])} ${'●'.repeat(n)}${'○'.repeat(5 - n)}`;
+        grid.appendChild(s);
+      });
+      info.append(line, grid);
+    }
     const btn = document.createElement('button');
     btn.textContent = t(row.label);
     btn.disabled = row.disabled;
     btn.onclick = () => (row.kind === 'ride' ? hooks.onPick(it.id) : hooks.onBuy(it.id, tab));
-    el.append(name, btn);
+    el.append(info, btn);
     list.appendChild(el);
   }
 }
