@@ -103,9 +103,9 @@ test('the player stays put while the result card is up and the sled goes away on
 
 test('the cold meter sits clear of the top status bar on portrait phones and keeps its wide-screen spot', () => {
   const s = src('js/mountain/cold-hud.js');
-  const base = Number(s.match(/#cold-hud\{[^}]*top:calc\(env\(safe-area-inset-top\) \+ (\d+)px\)/)[1]);
+  const base = Number(s.match(/#cold-hud\{[^}]*top:calc\(var\(--top-inset\) \+ (\d+)px\)/)[1]);
   assert.equal(base, 64);
-  const portrait = s.match(/@media \(orientation: ?portrait\)\{#cold-hud\{top:calc\(env\(safe-area-inset-top\) \+ (\d+)px\)\}\}/);
+  const portrait = s.match(/@media \(orientation: ?portrait\)\{#cold-hud\{top:calc\(var\(--top-inset\) \+ (\d+)px\)\}\}/);
   assert.ok(portrait && Number(portrait[1]) >= 78);
 });
 
@@ -116,8 +116,27 @@ test('on short landscape screens the result card becomes a single bottom strip',
   assert.ok(Number(m[1]) >= 480);
   assert.match(m[2], /\.sled-result\{[^}]*display:flex/);
   assert.match(m[2], /\.sled-result\{[^}]*flex-wrap:wrap/);
-  assert.match(m[2], /\.sled-result\{[^}]*max-width:calc\(100vw - 24px\)/);
+  assert.match(m[2], /\.sled-result\{[^}]*max-width:calc\(100vw - 24px - env\(safe-area-inset-left\) - env\(safe-area-inset-right\)\)/);
   assert.match(m[2], /\.sled-result div\{white-space:nowrap\}/);
   assert.match(m[2], /\.sled-result button\{[^}]*flex:none/);
   assert.match(s, /\.sled-result\[hidden\]\{display:none\}/);
+});
+
+test('mountain HUDs follow the shared top inset (Toss bar) and side safe areas (iPhone notch)', () => {
+  const cold = src('js/mountain/cold-hud.js');
+  const hud = src('js/mountain/sled-hud.js');
+  const cafe = src('js/mountain/cafe-ui.js');
+  assert.doesNotMatch(cold, /safe-area-inset-top/);
+  assert.match(cold, /top:calc\(var\(--top-inset\) \+ 64px\)/);
+  assert.match(cold, /top:calc\(var\(--top-inset\) \+ 80px\)/);
+  assert.match(hud, /\.sled-top\{[^}]*top:calc\(var\(--top-inset\) \+ 12px\)/);
+  assert.match(hud, /max-width:calc\(100vw - 24px - env\(safe-area-inset-left\) - env\(safe-area-inset-right\)\)/);
+  assert.match(cafe, /#hut-cafe-modal\{[^}]*padding:0 calc\(12px \+ env\(safe-area-inset-right\)\) calc\(14px \+ env\(safe-area-inset-bottom\)\) calc\(12px \+ env\(safe-area-inset-left\)\)/);
+});
+
+test('on portrait phones the sled timer drops below the top status bar instead of overlapping it', () => {
+  const s = src('js/mountain/sled-hud.js');
+  const m = s.match(/@media \(orientation: ?portrait\)\{#sled-hud \.sled-top\{top:calc\(var\(--top-inset\) \+ (\d+)px\)\}\}/);
+  assert.ok(m, 'portrait timer rule');
+  assert.ok(Number(m[1]) >= 76, m[1]);
 });

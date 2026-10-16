@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>설산 기기 점검</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+iframe{position:fixed;inset:0;width:100%;height:100%;border:0}
+#st{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9;background:rgba(0,0,0,.72);color:#fff;font:700 13px system-ui;padding:6px 10px;border-radius:8px;pointer-events:none;max-width:90vw;text-align:center}
+#st.hide{display:none}
+</style>
+</head>
+<body>
+<iframe id="g" src="/?dbg=1&weather=clear&time=day"></iframe>
+<div id="st">게임 로딩 중</div>
+<script>
+const st = document.getElementById('st');
+const say = (t, hide) => { st.textContent = t; st.classList.toggle('hide', !!hide); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const W = () => document.getElementById('g').contentWindow;
+const D = () => W().document;
+const until = async (fn, ms = 120000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (fn()) return true; } catch (e) {} await sleep(200); } return false; };
+const key = (k, code, type) => W().dispatchEvent(new (W().KeyboardEvent)(type, { key: k, code, bubbles: true }));
+const space = async () => { key(' ', 'Space', 'keydown'); await sleep(70); key(' ', 'Space', 'keyup'); };
+const walk = async (tx, tz) => { for (let i = 0; i < 90; i++) { const p = W().__pos(); const dx = tx - p[0], dz = tz - p[1]; if (Math.hypot(dx, dz) < 0.3) break; const k = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'd' : 'a') : (dz > 0 ? 's' : 'w'); key(k, 'Key' + k.toUpperCase(), 'keydown'); await sleep(90); key(k, 'Key' + k.toUpperCase(), 'keyup'); await sleep(50); } };
+const clickText = re => { const b = [...D().querySelectorAll('button')].find(x => re.test(x.textContent.trim()) && x.getBoundingClientRect().width > 0); if (b) b.click(); return !!b; };
+(async () => {
+  await until(() => clickText(/게스트로 둘러보기/), 60000);
+  await sleep(2500);
+  clickText(/이 친구로 시작하기/);
+  await sleep(3000);
+  clickText(/^건너뛰기/);
+  await sleep(2500);
+  clickText(/건너뛰고 바로 시작/);
+  await until(() => typeof W().__gs === 'function');
+  await sleep(1500);
+  const g = W().__gs(); g.firstDay = '2000-01-01'; g.inventory.coins = 5000;
+  g.mountain = { ...(g.mountain || {}), hut: { sleds: ['basic', 'toboggan', 'wind'], sled: 'wind' } };
+  W().__tp(-15, -28.5); await sleep(900); await space(); await sleep(4500);
+  clickText(/알겠어요/); await sleep(800);
+  const c = await W().eval("import('/js/mountain/climb.js')");
+  const L = await W().eval("import('/js/mountain/camp-layout.js')");
+  const C = await W().eval("import('/js/mountain/cafe-layout.js')");
+  W().__tp(c.CLIMB_START.x, -1000 + c.CLIMB_START.z); await sleep(900);
+  W().__tp(0, -1004.9); await sleep(1200);
+  await walk(L.DOOR_SPOT.x, -1000 + L.DOOR_SPOT.z); await space(); await sleep(1500);
+  W().__tp(300 + C.ORDER_SPOT.x, -1000 + C.ORDER_SPOT.z); await sleep(700); await space(); await sleep(1000);
+  const tabs = D().querySelectorAll('#hut-cafe-modal .hc-tab'); if (tabs[1]) tabs[1].click();
+  say('STEP cafe', true); await sleep(9000);
+  D().querySelector('#hut-cafe-modal .hc-close')?.click(); await sleep(500);
+  W().__tp(300 + C.EXIT_SPOT.x, -1000 + C.EXIT_SPOT.z); await sleep(700); await space(); await sleep(1500);
+  await walk(L.START_SPOT.x, -1000 + L.START_SPOT.z); await space();
+  say('STEP run', true);
+  await until(() => { const r = D().querySelector('#sled-hud .sled-result'); return r && !r.hidden; }, 150000);
+  say('STEP result', true);
+})().catch(e => say('오류: ' + e.message));
+</script>
+</body>
+</html>

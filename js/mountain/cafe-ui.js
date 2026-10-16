@@ -30,12 +30,12 @@ export function applyCafeResult(gs, r) {
   return { toast: CAFE_COPY.gift };
 }
 
-const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;display:none;justify-content:center;padding:0 12px calc(14px + env(safe-area-inset-bottom))}
+const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;display:none;justify-content:center;padding:0 calc(12px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
 #hut-cafe-modal.show{display:flex}
 #hut-cafe-modal .hc-sheet{width:min(520px,100%);max-height:62vh;display:flex;flex-direction:column;background:#fffaf2;border-radius:22px;box-shadow:0 -8px 40px rgba(30,25,20,.35);padding:16px 16px 12px;color:#2b2b30}
 #hut-cafe-modal .hc-head{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:17px;margin-bottom:10px}
 #hut-cafe-modal .hc-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-#hut-cafe-modal .hc-tab{border:0;border-radius:999px;padding:7px 12px;background:#efe6d8;font-weight:700;font-size:13px}
+#hut-cafe-modal .hc-tab{border:0;color:#2b2b30;font-family:inherit;border-radius:999px;padding:7px 12px;background:#efe6d8;font-weight:700;font-size:13px}
 #hut-cafe-modal .hc-tab.on{background:#2f6fd6;color:#fff}
 #hut-cafe-modal .hc-list{overflow:auto;display:flex;flex-direction:column;gap:8px}
 #hut-cafe-modal .hc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:10px 12px;font-size:14px}
@@ -49,11 +49,11 @@ const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;d
 #hut-cafe-modal .hc-seg i.on{background:var(--c)}
 #hut-cafe-modal .hc-stats span{white-space:nowrap}
 #hut-cafe-modal .hc-lock{font-size:12px;font-weight:700;color:#8a6a1f;background:#fbf1d8;border-radius:8px;padding:4px 8px;margin-top:2px}
-#hut-cafe-modal .hc-row button{flex:none;border:0;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;white-space:nowrap}
+#hut-cafe-modal .hc-row button{flex:none;border:0;color:#2b2b30;font-family:inherit;border-radius:12px;padding:8px 12px;background:#e2b23c;font-weight:800;white-space:nowrap}
 #hut-cafe-modal .hc-buys{display:flex;flex-direction:column;gap:6px;flex:none}
 #hut-cafe-modal .hc-row button.sh-cash{background:#2f6fd6;color:#fff}
 #hut-cafe-modal .hc-row button:disabled{background:#e6e1d8;color:#8a8f99}
-#hut-cafe-modal .hc-close{margin-top:10px;border:0;border-radius:12px;padding:10px;background:#efe6d8;font-weight:700}`;
+#hut-cafe-modal .hc-close{margin-top:10px;border:0;color:#2b2b30;font-family:inherit;border-radius:12px;padding:10px;background:#efe6d8;font-weight:700}`;
 
 let root = null, tab = 'drink', hooks = null;
 

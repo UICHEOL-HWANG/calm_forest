@@ -81,3 +81,10 @@ test('sled stats render as coloured five-cell bars, not dot text', () => {
   assert.match(ui, /seg\.setAttribute\('role', 'img'\)/);
   assert.match(ui, /seg\.setAttribute\('aria-label', `\$\{t\(STAT_NAMES\[i\]\)\} \$\{n\}\/5`\)/);
 });
+
+test('cafe buttons set their own text colour so iOS does not paint them system blue', () => {
+  const ui = readFileSync(new URL('../js/mountain/cafe-ui.js', import.meta.url), 'utf8');
+  for (const sel of ['\\.hc-tab', '\\.hc-row button', '\\.hc-close']) {
+    assert.match(ui, new RegExp(`#hut-cafe-modal ${sel}\\{[^}]*color:#2b2b30[^}]*font-family:inherit`), sel);
+  }
+});
