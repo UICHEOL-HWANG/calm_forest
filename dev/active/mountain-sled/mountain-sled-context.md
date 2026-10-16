@@ -1,6 +1,6 @@
 # mountain-sled context
 
-Last Updated: 2026-10-16 (1단계·산장 서사 f9fac2be 완료, 산장 카페·추위 지수 스펙·계획 확정·미착수, 미병합·미배포)
+Last Updated: 2026-10-16 (1단계·산장 서사 f9fac2be 완료, 산장 카페·추위 지수 구현 완료(미병합·미배포))
 
 ## 위치
 - 워크트리 `.claude/worktrees/mountain-sled`, 브랜치 `feat/mountain-sled`(origin/main 기준, 미푸시)
@@ -48,3 +48,8 @@ Last Updated: 2026-10-16 (1단계·산장 서사 f9fac2be 완료, 산장 카페�
 - 문구 정리: 첫 안내 '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요', 보상 소진 '오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요'
 - 세이브: gameState.mountain 복원(js/mountain/save.js)
 - SDD 원장 사본: dev/active/mountain-sled/sdd-ledger.md
+
+## 지표 해석 주의(산장 카페·추위 지수)
+- climb_ms 에는 이제 추위로 인한 걷기 감속(×0.75)이 포함된다 — 배포 전후 비교 시 교란
+- idle_ms 에는 카페 안에서 보낸 시간이 포함된다
+- 산장 착용품(귀마개 등)은 cosmetic_buy 가 아니라 hut_cafe_buy 로 기록된다(METRICS_FRAMEWORK 는 다른 체크아웃 변경과 충돌해 수정하지 않음)

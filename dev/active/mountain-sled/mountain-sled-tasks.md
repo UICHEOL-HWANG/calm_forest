@@ -45,11 +45,12 @@
 ## 썰매지기의 산장·결승 연출(2026-10-16, f9fac2be)
 - [x] C 등불 산장·광장 소품·충돌, 산장 도착 → 출발대 버튼 → 결승 정지, 결승 세리머니, 부스터 가운데
 
-## 산장 카페·추위 지수(2026-10-16 설계 확정, 미착수)
+## 산장 카페·추위 지수(2026-10-16 구현 완료, 미병합·미배포)
 - 스펙 docs/superpowers/specs/2026-10-16-hut-cafe-design.md · 계획 docs/superpowers/plans/2026-10-16-hut-cafe.md(Task 2→1→3→…→9)
 - 결정: 시안 C 다락 카페 · 북극여우 솜눈 · 상품 11종(+기본 썰매 줄) · 부제 없음 · 추위 지수(낮0.6/노을0.8/밤·눈1.2, 60 떨림, 80 걷기×0.75, 모닥불−5·카페−8 무료, 음료 즉시0+3분)
-- [ ] Task 8 시작 전 추위 안내 문구 2개 검수
-- [ ] Task 1~9
+- [x] Task 8 시작 전 추위 안내 문구 2개 검수 — 사용자 승인 완료
+- [x] Task 1~8 구현(커밋 e0d419d5..HEAD) · 최종 리뷰 수정 반영(fix: hut cafe final review fixes)
+- [x] Task 9 문서
 
 ## 배포 점검표
 1. 운영 DB: `to_regclass('public.sled_runs')` 가 null 인지 확인 → migrate_sled_runs.sql 적용 → migrate_leaderboard_sled.sql 적용 → boat/sea 보드 출력이 전과 같은지 확인, `leaderboard('sled')` 빈 top
@@ -58,3 +59,5 @@
 4. 푸시 전 키 스캔(git grep AIza|GOCSPX- 등), 푸시는 main + feat/capacitor-app
 5. 배포 다음 날 BigQuery: sled_start·sled_result·mountain_enter·mountain_reveal 적재, ga_param_overflow 0건, sled_runs 행 수 대조
 6. 공지는 토스 출시 후
+7. 산장 카페(4곳 동시 배포 필수): 옛 클라이언트는 세이브의 모르는 꾸미기·장식 id(earmuff, snowflake, sled_pack, snowglobe, hutmodel, summitflag)를 지워버린다 → 웹·토스·Play·iOS 동시에
+8. 배포 다음 날 BigQuery: hut_cafe_enter / hut_cafe_open / hut_cafe_buy, hut_sled_pick, mountain_cold(stage), mountain_hut.cold, sled_start.sled_skin 적재 확인 · ga_param_overflow 0건
