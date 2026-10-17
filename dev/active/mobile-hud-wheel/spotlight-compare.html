@@ -1,0 +1,99 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>스포트라이트 튜토리얼 시안</title><style>
+:root{--ink:#3d3426;--sub:#7a6d58;--leaf:#5f9a5a}
+body{margin:0;padding:28px 32px;background:#efe9dc;font-family:"Apple SD Gothic Neo",sans-serif;color:var(--ink);width:1760px}
+h1{font-size:27px;margin:0 0 6px}h2{font-size:21px;margin:30px 0 10px}p.l{color:var(--sub);margin:0 0 16px;font-size:15px;line-height:1.6}
+.row{display:flex;gap:20px;align-items:flex-start}.col{background:#fff;border-radius:18px;padding:14px}
+.t{font-weight:800;font-size:18px;margin:10px 0 4px}.t b{background:var(--leaf);color:#fff;border-radius:8px;padding:2px 9px;margin-right:6px}
+.d{font-size:13.5px;line-height:1.55;color:#5a4e3c;width:100%}
+.fr{position:relative;overflow:hidden;border-radius:16px;background-size:cover;flex:none}
+.mob{width:338px;height:731px;background-image:url(sp-mobile.jpg)}
+.pc{width:520px;height:325px;background-image:url(pc-b.jpg)}
+.hole{position:absolute;border-radius:50%;pointer-events:none}
+.ring{position:absolute;border-radius:50%;border:3px solid #ffd257;box-shadow:0 0 0 6px rgba(255,210,87,.35)}
+.card{position:absolute;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:13px;line-height:1.5}
+.card .st{font-size:11px;font-weight:800;color:var(--leaf)}.card h4{margin:2px 0 4px;font-size:15px}
+.bar{height:5px;border-radius:3px;background:#e6efe2;margin:8px 0}.bar i{display:block;height:100%;border-radius:3px;background:var(--leaf)}
+.btns{display:flex;justify-content:space-between}.btns span{font-size:12px;font-weight:800;border-radius:9px;padding:5px 12px;background:#eef2ee}.btns span.n{background:var(--leaf);color:#fff}
+.hand{position:absolute;font-size:38px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.bub{position:absolute;background:#ffe68a;color:#5b4300;font-weight:800;border-radius:12px;padding:8px 12px;font-size:14px;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.bub.tl::after{content:"";position:absolute;bottom:-8px;right:22px;border:8px solid transparent;border-top-color:#ffe68a;border-bottom:0}
+.dots{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px}.dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4)}.dots i.on{background:#fff}
+.skip{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.85);border-radius:10px;padding:4px 10px;font-size:12px;font-weight:800}
+.tail{position:absolute;background:#fff;border-radius:12px;padding:9px 12px;font-size:13px;font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,.25);line-height:1.45}
+.tail::after{content:"";position:absolute;bottom:-9px;right:30px;border:9px solid transparent;border-top-color:#fff;border-bottom:0}
+.menu{position:absolute;left:24px;right:24px;top:170px;background:#fff7ec;border-radius:18px;padding:12px}
+.menu .mh{font-weight:800;font-size:15px;margin-bottom:6px}.menu .mc{font-size:11px;font-weight:800;color:#3f7a3d;margin:8px 0 4px}
+.menu .g{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.menu .c{background:#fff;border:1px solid #e3d8c2;border-radius:11px;text-align:center;font-size:10px;padding:7px 0 5px}.menu .c span{display:block;font-size:19px}
+.hint{width:330px;background:#fff;border-radius:22px;padding:20px 18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.hint .e{font-size:40px}.hint h3{margin:6px 0 10px;font-size:19px}.hint .b{font-size:13.5px;color:#5a4e3c;line-height:1.7;text-align:center}
+.hint .ok{margin-top:14px;display:inline-block;background:#cbebd2;border-radius:14px;padding:10px 26px;font-weight:800}
+.steps{display:flex;gap:8px;justify-content:center;margin:8px 0}.steps .s{flex:1;background:#f4faf5;border-radius:14px;padding:10px 4px;font-size:12.5px;font-weight:700;line-height:1.4}.steps .s span{display:block;font-size:26px}
+.steps .ar{align-self:center;color:#9aa79e;font-weight:900}
+.note{font-size:12px;color:#8a7f6e;margin-top:6px}.chip{display:inline-block;background:#fff3cf;border-radius:10px;padding:3px 9px;font-size:12px;font-weight:700;margin-top:6px}
+</style></head><body>
+<h1>🔦 강제 스포트라이트 튜토리얼 — 시안 3개 + 첫 안내 카드 간소화</h1>
+<p class="l">공통: 첫 접속 때 단계별로 주변을 어둡게 가리고 한 곳만 밝혀서 "여기를 이렇게" 시킨다. 모바일·PC 순서·문구 분리. ☰ 메뉴를 처음 열 때도 같은 방식으로 이어서 안내.</p>
+
+<h2>① 모바일 — "도구 버튼을 꾹" 단계</h2>
+<div class="row">
+<div class="col"><div class="fr mob">
+  <div class="hole" style="left:150px;top:484px;width:60px;height:60px;box-shadow:0 0 0 2000px rgba(20,16,10,.62)"></div><div class="ring" style="left:147px;top:481px;width:60px;height:60px"></div>
+  <div class="card" style="left:16px;right:16px;top:300px"><div class="st">2 / 7 · 도구</div><h4>🧰 도구 버튼을 꾹 눌러 보세요</h4>9가지 도구가 펼쳐져요. 원하는 도구 쪽으로 밀고 떼면 들어요.<div class="bar"><i style="width:28%"></i></div><div class="btns"><span>이전</span><span class="n">다음</span></div></div>
+</div><div class="t"><b>A</b>단계 카드형 (예시 화면 방식)</div><div class="d">어둠 + 밝힌 버튼 + 흰 카드(단계·설명·진행바·이전/다음). 버튼을 직접 눌러도 넘어감. 읽을 거리가 가장 많고 친절.</div></div>
+
+<div class="col"><div class="fr mob">
+  <div class="hole" style="left:150px;top:484px;width:60px;height:60px;box-shadow:0 0 0 2000px rgba(20,16,10,.66)"></div><div class="ring" style="left:147px;top:481px;width:60px;height:60px"></div>
+  <div class="dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="hand" style="left:172px;top:508px">👆</div>
+  <div class="bub tl" style="left:60px;top:430px">꾹 — 누른 채로 밀어요</div>
+</div><div class="t"><b>B</b>손가락 시범형 (가장 강제)</div><div class="d">카드·버튼 없이 손가락 애니메이션 + 한 줄. 그 동작을 실제로 해야만 다음 단계. 위쪽 점으로 진행 표시. 글 안 읽는 유저에 강함.</div></div>
+
+<div class="col"><div class="fr mob">
+  <div class="hole" style="left:150px;top:484px;width:60px;height:60px;box-shadow:0 0 0 2000px rgba(20,16,10,.34)"></div><div class="ring" style="left:147px;top:481px;width:60px;height:60px"></div>
+  <div class="skip">건너뛰기 ›</div>
+  <div class="tail" style="left:16px;top:400px;width:220px">🧰 꾹 누르면 도구가 펼쳐져요<br><span style="font-weight:500;color:#7a6d58">밀어서 고르고 떼기</span></div>
+</div><div class="t"><b>C</b>가벼운 말풍선형</div><div class="d">어둠을 옅게, 대상 옆 꼬리 말풍선. 행동하면 넘어가고 언제든 건너뛰기. 게임 흐름은 덜 막지만 '강제'는 약함.</div></div>
+</div>
+
+<h2>② PC — "☰ 메뉴" 단계 (같은 세 가지 방식)</h2>
+<div class="row">
+<div class="col"><div class="fr pc">
+  <div class="hole" style="left:492px;top:3px;width:30px;height:30px;box-shadow:0 0 0 2000px rgba(20,16,10,.62)"></div><div class="ring" style="left:489px;top:0px;width:30px;height:30px"></div>
+  <div class="card" style="right:14px;top:50px;width:240px"><div class="st">5 / 8 · 메뉴</div><h4>☰ 메뉴를 열어 보세요</h4>사진·이모트·소식함·설정이 여기 모여 있어요.<div class="bar"><i style="width:62%"></i></div><div class="btns"><span>이전</span><span class="n">다음</span></div></div>
+</div><div class="t"><b>A</b>단계 카드형</div><div class="d">PC는 키 안내를 카드에 함께: "도구는 1~6, 행동은 Space".</div></div>
+<div class="col"><div class="fr pc">
+  <div class="hole" style="left:492px;top:3px;width:30px;height:30px;box-shadow:0 0 0 2000px rgba(20,16,10,.66)"></div><div class="ring" style="left:489px;top:0px;width:30px;height:30px"></div>
+  <div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+  <div class="hand" style="left:494px;top:24px">🖱️</div><div class="bub" style="right:60px;top:66px">클릭!</div>
+</div><div class="t"><b>B</b>손가락(마우스) 시범형</div><div class="d">클릭해야만 진행.</div></div>
+<div class="col"><div class="fr pc">
+  <div class="hole" style="left:492px;top:3px;width:30px;height:30px;box-shadow:0 0 0 2000px rgba(20,16,10,.34)"></div><div class="ring" style="left:489px;top:0px;width:30px;height:30px"></div>
+  <div class="skip" style="top:auto;bottom:12px">건너뛰기 (Esc) ›</div>
+  <div class="tail" style="right:18px;top:52px;width:200px">☰ 사진·소식함·설정은 여기</div>
+</div><div class="t"><b>C</b>가벼운 말풍선형</div><div class="d">Esc로 건너뛰기.</div></div>
+</div>
+
+<h2>③ ☰ 메뉴를 처음 열면 — 이어지는 안내 (A 방식 예시)</h2>
+<div class="row">
+<div class="col"><div class="fr mob" style="height:520px">
+  <div style="position:absolute;inset:0;background:rgba(30,24,14,.42)"></div>
+  <div class="menu"><div class="mh">메뉴 🍂 🌤️</div><div class="mc">🏡 마을</div><div class="g"><div class="c"><span>🐾</span>캐릭터</div><div class="c"><span>🗺️</span>지도</div><div class="c"><span>📷</span>사진</div><div class="c"><span>🙂</span>이모트</div></div><div class="mc">💌 소식·친구</div><div class="g"><div class="c" id="mx"><span>📮</span>소식함</div><div class="c"><span>🤝</span>초대</div><div class="c"><span>🏆</span>리더보드</div><div class="c"><span>💬</span>문의</div></div><div class="mc">📒 기록</div><div class="g"><div class="c"><span>📸</span>사진첩</div><div class="c"><span>📊</span>기록</div><div class="c"><span>📝</span>일지</div><div class="c"><span>📖</span>안내서</div></div></div>
+  <div class="hole" style="left:38px;top:302px;width:62px;height:56px;border-radius:12px;box-shadow:0 0 0 2000px rgba(20,16,10,.55)"></div>
+  <div class="card" style="left:16px;right:16px;top:376px"><div class="st">메뉴 1 / 3</div><h4>📮 소식함 — 공지와 답장이 와요</h4>빨간 점이 보이면 새 소식이 있어요.<div class="btns" style="margin-top:8px"><span>건너뛰기</span><span class="n">다음</span></div></div>
+</div><div class="d" style="width:338px;margin-top:8px">메뉴 안내 3단계: 📮 소식함 → 🐾 캐릭터·꾸미기 → 📖 초보자 안내서. "어디서 뭘 하는지"를 메뉴 안에서 이어서 보여 줌. 메뉴를 처음 열 때 한 번만.</div></div>
+
+<div class="col" style="flex:1"><div class="t" style="margin-top:0">전체 흐름 (첫 접속, 강제)</div><div class="d" style="font-size:14.5px;line-height:1.9">
+<b>모바일 7단계</b> ① 🕹️ 조이스틱으로 걷기 → ② 🧰 도구 버튼 꾹·밀어서 고르기 → ③ ⭕ 큰 버튼으로 쓰기(나무 베기) → ④ 💬 캐릭터 옆 동그라미 = 가까운 대상 → ⑤ 🎒 가방 → ⑥ 📖 도감 → ⑦ ☰ 메뉴 (열면 ③번 메뉴 안내로 이어짐)<br>
+<b>PC 8단계</b> ① WASD 걷기 → ② 1 세트 바꾸기 → ③ 2~6 도구 → ④ Space 행동 → ⑤ 🎒 → ⑥ 📖 → ⑦ ☰ → ⑧ 미니맵 클릭 = 전체 지도<br>
+<b>기존 17단계 코치(장작·판매·농사…)</b>는 그 뒤에 지금처럼 이어감 — 스포트라이트는 "버튼 위치와 조작"만 맡고, 할 일 순서는 코치가 맡는다.<br>
+<b>측정</b> tutorial_spot {step, ms, via} — 단계별 이탈·소요 시간. E1(첫 5분) 실험과 겹치므로 배포 시점 조율 필요.
+</div></div>
+</div>
+
+<h2>④ 첫 안내 카드(15종) 간소화 — 🪏 삽 예시</h2>
+<div class="row">
+<div class="col"><div class="hint"><div class="e">🪏</div><h3>삽 — 빈 밭을 풀밭으로 되돌려요</h3><div class="b">① 삽을 들고 빈 밭 앞에서 (액션)<br>② 6초 안에 한 번 더 (액션) → 밭이 사라져요<br>· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.<br>· 가끔 땅속에서 도감 수집품이 나와요 📖</div><div class="ok">알겠어요 🌱</div></div><div class="t" style="text-align:center">지금</div><div class="d" style="width:330px">문장 4줄 + 기호(①②·). 핵심(두 번 누르기)이 문장 속에 묻힘.</div></div>
+<div class="col"><div class="hint"><div class="e">🪏</div><h3>삽 · 빈 밭 없애기</h3><div class="steps"><div class="s"><span>🟫</span>빈 밭 앞에서</div><div class="ar">→</div><div class="s"><span>⭕⭕</span>큰 버튼 두 번</div></div><div class="note">작물 있는 밭은 안 돼요</div><div class="chip">📖 가끔 수집품이 나와요</div><br><div class="ok">알겠어요</div></div><div class="t" style="text-align:center">간소화 · 모바일</div><div class="d" style="width:330px">제목 짧게(무엇·한 줄), 조작은 아이콘 2칸, 주의 1줄(회색), 보너스는 칩. 버튼 이름은 화면 그대로(⭕ 큰 버튼).</div></div>
+<div class="col"><div class="hint"><div class="e">🪏</div><h3>삽 · 빈 밭 없애기</h3><div class="steps"><div class="s"><span>🟫</span>빈 밭 앞에서</div><div class="ar">→</div><div class="s"><span>⎵⎵</span>Space 두 번</div></div><div class="note">작물 있는 밭은 안 돼요</div><div class="chip">📖 가끔 수집품이 나와요</div><br><div class="ok">알겠어요</div></div><div class="t" style="text-align:center">간소화 · PC</div><div class="d" style="width:330px">같은 틀, 키 이름만 PC용. 15종 카드를 이 틀(제목·조작 칸 1~3개·주의 1줄·보너스 칩)로 옮김.</div></div>
+</div>
+</body></html>

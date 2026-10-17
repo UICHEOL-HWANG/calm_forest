@@ -44,7 +44,7 @@ test('the sledding avatar faces downhill (+z) and leans a little toward the stee
 
 test('rideSlope uses the convention helper, not a raw steer angle', () => {
   const ride = between(src, 'function rideSlope', '\n}');
-  assert.match(ride, /run\.yaw \+= \(sledYaw\(steer\) - run\.yaw\)/);
+  assert.match(ride, /run\.yaw \+= \(sledYaw\(lean\) - run\.yaw\)/);
   assert.match(ride, /player\.rotation\.y = run\.yaw;/);
   assert.doesNotMatch(ride, /steer \* 0\.3/);
   assert.match(readFileSync(new URL('../js/mountain/sled-view.js', import.meta.url), 'utf8'), /facingYaw\(/);

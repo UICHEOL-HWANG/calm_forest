@@ -291,7 +291,7 @@ export function createPlot(x, z, silent = false) {
   plots.push(plot);
   // 🌾 발밑에 밭이 생긴 주민은 바로 비켜선다 — 다음 배회 틱(최대 7초)까지 기다리지 않게 목적지를 즉시 다시 고르게 한다.
   //    (silent=true 는 세이브 복원 — 그땐 주민이 아직 없거나 제자리를 잡는 중이라 건드리지 않는다)
-  if (!silent) for (const o of npcObjs) if (onPlotArea(o.group.position.x, o.group.position.z)) o.wanderTimer = 0;
+  if (!silent) for (const o of npcObjs) if (!o.hidden && onPlotArea(o.group.position.x, o.group.position.z)) o.wanderTimer = 0;   // 🔓 숨은 이웃은 건너뛴다
   if (!silent) {
     plot.pop = 1;                                    // 🌾 흙·이랑(인스턴스 행렬)은 updateFarmPops 가 튀어오르게 한다
     spawnDust(x, z, 14);

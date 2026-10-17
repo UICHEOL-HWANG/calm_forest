@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  Input, clearCrop, currentTool, dist2D, doPlayerAction, firstHintBanner, gameState, giveReward, isBlocked,
+  Input, clearCrop, currentTool, dist2D, doPlayerAction, firstHintBanner, gameState, giveReward, isBlocked, isOpen,
   orchardSlotsWorld, orchardStreamWorld, player, plots, questEvent, rebuildOrchard, refreshCropStage, refreshInventoryUI,
   requestSave, spawnDust, spawnFloatText, syncStory, toolPage, ui, updatePlotVisual,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
@@ -14,7 +14,7 @@ import { trackEvent } from '../analytics.js';
 import { BASIC_CROPS, TOOLS } from '../data/tools.js';
 import { seedKeyOf } from '../farm-crops.js';
 import { logOrchardEvent } from '../orchard-log.js';
-import { ONBOARD_LINES, ONBOARD_SEEDS, afterAdvPlant, afterUnlock, needsRefill, shouldOffer } from '../orchard-onboard.js';
+import { ONBOARD_LINES, ONBOARD_SEEDS, OWL_NEXT_LINES, afterAdvPlant, afterUnlock, needsRefill, owlCanShow, owlNextLine, shouldOffer } from '../orchard-onboard.js';
 import { ORCHARD_AUTO_TOOLS, TREE_SLOTS, YIELD_PER_DAY, chopHit, freeSlots, fruitKeyOf, fruitOf, harvestable, nearStream, orchardToolFor, sapKeyOf } from '../orchard.js';
 import { Sound } from '../sound.js';
 import { createPlot, seedSelCrop, syncSeedToolIcon, trellisAdjacent } from '../spaces/farm.js';
@@ -150,6 +150,7 @@ function onboardStep(step) {
 export function maybeOfferOrchardQuest({ needHarvested = false } = {}) {
   const p = gameState.progress;
   if (ui.coachActive?.()) return;
+  if (!isOpen('farmer')) { owlNextStep(needHarvested); return; }   // 🔓 농부 삼촌이 아직 안 돌아왔다 — 🦉 가 다음 걸음을 알려 주고, 귀환할 때(game.js announceUnlock) 다시 부른다
   if (needHarvested && !Object.keys(gameState.dex?.crop || {}).length) return;   // 📖 도감에 작물이 하나도 없다 = 아직 안 거뒀다
   if (shouldOffer(p)) {
     p.orchardQuest = 'plant';
@@ -165,6 +166,18 @@ export function maybeOfferOrchardQuest({ needHarvested = false } = {}) {
     onboardStep('refill');
   } else return;
   refreshQuestPanel(); requestSave();
+}
+
+// 🔓 농부가 없을 때 첫 수확 → 🦉 올빼미 한마디(한 번). 해금 꺼짐·옛 세이브는 isOpen('farmer') 가 늘 true 라 여기 안 온다
+function owlNextStep(needHarvested) {
+  const hs = gameState.hintsSeen;
+  if (hs.owlAfterHarvest) return;
+  if (!owlCanShow({ tutorialSeen: gameState.tutorialSeen, modalOpen: ui.anyModalOpen?.() })) return;
+  if (needHarvested && !Object.keys(gameState.dex?.crop || {}).length) return;   // 튜토리얼 끝 호출인데 아직 안 거뒀다
+  hs.owlAfterHarvest = true;
+  ui.showHintBanner?.({ ico: '🦉', title: OWL_NEXT_LINES.title, line: owlNextLine(gameState.houseStage), near: () => true, attention: true });
+  trackEvent('orchard_quest', { step: 'owl_next' });   // [GA4] 같은 퍼널에 — 농부 대신 올빼미가 받은 사람 수
+  requestSave();
 }
 
 // 고급 씨앗을 심었을 때(plantSeed)

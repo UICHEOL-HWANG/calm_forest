@@ -298,8 +298,8 @@ export function enterSea() {
   ui.setSeaMode?.(true);       // 농사 도구 팔레트 숨김 — 여기선 액션 버튼 하나로 논다
   snapCamera(); setSpaceVisible();
   Sound.blip();
-  firstHint('sea', '🌊', '바다터',
-    '🎣던지고 찌가 쏙 잠기면 바로 탭!\n🟢링이 버튼에 겹칠 때 탭, 🔴❗가 뜨면 기다리기\n부두 끝까지 끌려가면 놓쳐요. ⚔️참치는 하루 1번');
+  firstHint('sea', '🌊', '바다터 · 큰 물고기',
+    { steps: [{ ico: '🎣', label: '던지기' }, { ico: '🟢', label: '링 겹칠 때 {A}' }, { ico: '🔴', label: '❗엔 기다리기' }], note: '부두 끝까지 끌려가면 놓쳐요', chip: '⚔️ 참치는 하루 1번' });
   trackEvent('sea_enter', { night: isNight(), weather: WEATHER });   // [GA4] 유입
 }
 

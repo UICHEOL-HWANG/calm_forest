@@ -8,14 +8,16 @@
 import {
   $w, IS_MOBILE, RAIN_DAY, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
   gameState, lerpAngle, makeNameTag, mode, nearNPC, npcDialogState, npcObjs, obstacles, onPlotArea, player, plots,
-  questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, syncBadges, todayStr,
+  questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr, unlocksOn,
   ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { NPC_R, PLAYER_R } from '../data/character.js';
 import { DAILY_COUNT, NPCS, QUEST_HOW } from '../data/npcs.js';
 import { SHOP } from '../data/places.js';
+import { returnStart } from '../world/return-path.js';   // 🚶 귀환 걷기 출발점(물 회피, 순수)
 import { welcomeOffer } from '../first-loop.js';
+import { storyReworld } from '../story/rules.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
 import { quizOffer } from './ferry-quiz-run.js';   // 🦆 사공 퀴즈
@@ -541,6 +543,7 @@ export function updateOwlVisit(dt) {
 
 export function updateNPC(dt, t) {
   for (const o of npcObjs) {
+    if (o.hidden) continue;   // 🔓 아직 마을에 안 돌아온 이웃(js/world/unlocks.js) — 움직임·말풍선·콜라이더 전부 쉰다
     const bodyY = 0.55 + Math.sin(t * 2 + o.phase) * 0.04;
     o.body.position.y = bodyY;
     if (o.bobParts) for (const m of o.bobParts) m.position.y = m.userData.y0 + (bodyY - 0.55);   // 가슴털·허리띠는 몸통과 같이 움직여야 안 깜빡인다
@@ -550,6 +553,8 @@ export function updateNPC(dt, t) {
       // 🦉 하늘에 있는 동안엔 updateOwlFly 가 이동·고도·날개를 담당
     } else if (merchantVisit && o.def.id === 'merchant') {
       // 방문 이벤트 중엔 updateMerchantVisit 가 이동·시선을 담당
+    } else if (o.returning) {
+      updateNpcReturn(o, dt);                                                      // 🔓 귀환 — 마을 가장자리에서 집으로 걸어 들어온다
     } else if (mode === 'play' && nearNPC === o) {
       const dx = player.position.x - o.group.position.x, dz = player.position.z - o.group.position.z;
       o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.2); // 플레이어 바라보기
@@ -569,7 +574,7 @@ export function npcBlocked(x, z, self = null) {
   //   배회하다 서로 몸이 겹쳐 한 덩어리로 보였다(보고: "캐릭터들끼리 겹친다").
   //   하늘에 있는 올빼미는 셈에서 뺀다.
   for (const o of npcObjs) {
-    if (o === self || (o.fly && o.fly.st !== 'perch')) continue;
+    if (o === self || o.hidden || (o.fly && o.fly.st !== 'perch')) continue;   // 🔓 숨은 이웃은 자리를 차지하지 않는다
     if (Math.hypot(x - o.group.position.x, z - o.group.position.z) < NPC_R * 2 + 0.15) return true;
   }
   return obstacles.some(ob => Math.hypot(x - ob.x, z - ob.z) < ob.r + 0.35);
@@ -608,7 +613,7 @@ export function wanderNPC(o, dt) {
   }
 }
 
-//    발동: 마을 안 + 목재5 또는 물고기1 + 모달 없음 + hintsSeen.merchantVisit 없음
+//    발동: 마을 안 + 목재5 또는 물고기1(🔓 해금 켜짐 새 세이브는 🥕 작물4 도) + 모달 없음 + hintsSeen.merchantVisit 없음
 //    walk(플레이어에게 걸어옴, 12초 상한) → talk(모달) → return(좌판 홈으로)
 export let merchantVisit = null;
 
@@ -638,10 +643,11 @@ export function updateMerchantVisit(dt) {
     if (gameState.hintsSeen.merchantVisit) return;
     if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
     if (ui.anyModalOpen?.()) return;
-    const offer = welcomeOffer(gameState.inventory);
+    const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()) });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
     merchantVisit = { state: 'walk', t: 0, offer };
+    syncUnlocks();   // 🔓 이 방문이 곧 상인의 귀환 — 숨어 있던 상인·좌판·시세판이 지금 선다(해금 꺼짐이면 아무 일 없음)
     return;
   }
   const v = merchantVisit; v.t += dt;
@@ -665,12 +671,18 @@ export function updateMerchantVisit(dt) {
   }
 }
 
+const WELCOME_LINES = {
+  wood: { body: '오, 그 🪵 목재 좋구먼! 처음 보는 얼굴이니 후하게 쳐주지.', label: '🪵 목재 5개 팔기 (+30🪙)' },
+  fish: { body: '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.', label: '🐟 물고기 팔기 (+25🪙)' },
+  crop: { body: '오, 그 🥕 당근 탐스럽구먼! 처음 보는 얼굴이니 후하게 쳐주지.', label: '🥕 작물 4개 팔기 (+25🪙)' },   // 🔓 해금 켜짐 새 세이브만
+};
+
 export function openMerchantOffer(offer) {
-  const wood = offer.item === 'wood';
+  const line = WELCOME_LINES[offer.item] || WELCOME_LINES.wood;
   ui.openMerchantModal?.({
     title: '방랑 상인',
-    body: wood ? '오, 그 🪵 목재 좋구먼! 처음 보는 얼굴이니 후하게 쳐주지.' : '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.',
-    primary: { label: wood ? '🪵 목재 5개 팔기 (+30🪙)' : '🐟 물고기 팔기 (+25🪙)', onClick: () => merchantWelcomeSell(offer) },
+    body: line.body,
+    primary: { label: line.label, onClick: () => merchantWelcomeSell(offer) },
     secondary: { label: '다음에', onClick: () => merchantDismiss() },
   });
 }
@@ -683,7 +695,7 @@ export function merchantWelcomeSell(offer) {
   spawnFloatText(player.position.x, 1.9, player.position.z, `+${offer.gain}🪙`, '#2fa564');
   questEvent('sell', offer.qty);                          // 상인 퀘스트 '장사의 신' 진행
   ui.act?.('sell');                                       // 튜토리얼 ④ 팔기
-  trackEvent('shop_sell', { item: offer.item, qty: offer.qty, gain: offer.gain, rate: 300, via: 'merchant' }); // [GA4] 기존 판매 이벤트 + via
+  trackEvent('shop_sell', { item: offer.item, qty: offer.qty, gain: offer.gain, rate: offer.item === 'crop' ? 125 : 300, via: 'merchant' }); // [GA4] 기존 판매 이벤트 + via
   trackEvent('merchant_visit', { item: offer.item, gain: offer.gain });                                        // [GA4] 방문 퍼널
   logEcon('shop_sell', offer.item + '|welcome', offer.gain, gameState.inventory.coins);                        // [원장] 출처는 shop_sell, 품목 접미사로 구분
   ui.openMerchantModal?.({
@@ -741,7 +753,7 @@ export function updateNPCInteract() {
   if (sig !== wheatSig) { wheatSig = sig; refreshQuestPanel(); }
   let near = null, nd = 2.6;
   for (const o of npcObjs) {
-    if (o.fly && o.fly.st !== 'perch') continue;    // 🦉 날고 있는 동안엔 말을 걸 수 없다
+    if (o.hidden || (o.fly && o.fly.st !== 'perch')) continue;    // 🦉 날고 있는 동안엔 말을 걸 수 없다 · 🔓 숨은 이웃도
     const d = dist2D(o.group.position, player.position); if (d < nd) { nd = d; near = o; }
   }
   // 밭일이 먼저인 동안 "Space 로 대화"라고 띄우면 거짓말이 된다 → 문구를 바꿔 빠져나갈 길을 알려준다.
@@ -799,6 +811,48 @@ export function questPanelTop() {
 //    살아 있는 의뢰가 화면에서 사라진다(규칙·회귀 테스트는 js/quests.js activeQuestList).
 //    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
 export function refreshQuestPanel() {
-  const views = [...npcObjs.map(questView), onboardView(gameState.progress?.orchardQuest, orchardWheat())].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
+  const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat())].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
   ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: nearNPC?.def.id || null }));
+}
+
+// ── 🔓 마을 해금 — 숨김·귀환(규칙은 js/world/unlocks.js, 판정·호출은 game.js syncUnlocks) ──────────
+//   숨은 이웃은 몸·말풍선·이름표(전부 group 자식)를 끄고 콜라이더도 끈다. 루프들은 o.hidden 을 보고 건너뛴다.
+export function setNpcHidden(o, hidden) {
+  o.hidden = hidden;
+  o.group.visible = !hidden;
+  o.collider.off = hidden;
+  if (hidden) {
+    o.returning = null;
+    if (nearNPC === o) { $w.nearNPC = null; ui.setInteractPrompt?.(null); }
+  }
+}
+
+const RETURN_EDGE = 14;     // 집에서 이만큼 바깥(마을 중심 반대쪽)에서 걸어 들어온다
+const RETURN_SPEED = 2.2;
+const RETURN_MAX_SEC = 14;  // 막히거나 멀어도 이 안에 집에 선다
+
+/** 🚶 귀환 연출 — 마을 가장자리에 세워 두고 updateNPC 가 집까지 걸린다 */
+export function startNpcReturn(o, waters = []) {
+  if (!o || o.fly) return;
+  const hx = o.home.x, hz = o.home.z;
+  // 바깥 방향에서 들어오되, 그 직선이 연못·호수·개울을 지나면 각도를 돌린다(🦆 사공 오리가 연못을 가로지르던 사고)
+  const s = returnStart(hx, hz, RETURN_EDGE, waters);
+  o.group.position.set(s.x, 0, s.z);
+  o.group.rotation.y = Math.atan2(hx - s.x, hz - s.z);
+  o.returning = { t: 0 };
+  o.target.copy(o.home);
+}
+
+function updateNpcReturn(o, dt) {
+  const r = o.returning; r.t += dt;
+  const dx = o.home.x - o.group.position.x, dz = o.home.z - o.group.position.z, d = Math.hypot(dx, dz);
+  // 🚶 대본 이동이라 장애물을 피하지 않는다(상인 방문과 같은 취급) — 나무 한 그루에 걸려 가장자리에 서 있으면 귀환이 안 보인다
+  if (d < 0.3 || r.t > RETURN_MAX_SEC) {
+    o.group.position.set(o.home.x, 0, o.home.z); o.returning = null; o.wanderTimer = 1.5;
+    spawnSparkle(o.home.x, 1.2, o.home.z, 14);
+    return;
+  }
+  const step = Math.min(d, RETURN_SPEED * dt);
+  o.group.position.x += (dx / d) * step; o.group.position.z += (dz / d) * step;
+  o.group.rotation.y = lerpAngle(o.group.rotation.y, Math.atan2(dx, dz), 0.2);
 }

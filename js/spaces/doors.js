@@ -8,7 +8,7 @@
 import {
   $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
-  houseFloor, indoor, isNight, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
+  houseFloor, indoor, isNight, isOpen, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearLightWorkshop, nearDoor, nearDoorFloor,
   nearForest, nearGlade, nearKitchen, nearMarket, nearNPC, nearOutdoorMesh, nearRank, nearShop, nearStation,
   petChoresNear, pickedOutdoor, placingDecor, placingOutdoor, player, plots, requestSave, scene, seaMG, setFogExempt,
@@ -34,9 +34,11 @@ import { forageTarget } from '../spaces/forest.js';
 import { houseExitPoint, nearHouseDoor } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
 import { updateMistInteract } from '../spaces/mist.js';
+import { bridgePrompt, nearBrokenBridge } from '../spaces/bridge.js';
 import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
 import { neighborPrompt } from '../spaces/neighbor.js';
+import { worldTreeNear, worldTreePrompt } from '../spaces/world-tree.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
@@ -287,58 +289,63 @@ export function updateDoorInteract() {
     nd = 'farm'; prompt = '🌾 내 텃밭';
   } else if (dist2D(MINE_GATE, player.position) < 2.0) {
     nd = 'mine'; prompt = '⛏️ 채굴 동굴';
-  } else if (dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {
+  } else if (isOpen('mist') && dist2D({ x: MIST_GATE.x + 1.4, z: MIST_GATE.z + 1.4 }, player.position) < 2.4) {   // 🔓 isOpen — 아직 안 선 시설은 프롬프트도 없다(js/world/unlocks.js)
     nd = 'mist';
     const locked = mapLocked('mist');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     prompt = locked ? lockLine('mist', mapOpenDay(authState.mapOrder, 'mist')) : '🌫️ 안개 낀 숲에 들어가기';
     if (!locked) firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
-  } else if (dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
+  } else if (isOpen('river') && dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     nd = 'river'; prompt = chestHintNow() ? '🛶 나루터 · 🧰 오늘의 보물상자가 떠내려와요' : '🛶 나루터 (나룻배 타러 가기)';   // 🧰 상자는 나룻배에만 — 입구에서 알린다
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
-  } else if (dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
+  } else if (isOpen('sea') && dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
     nd = 'sea';
     const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     prompt = locked ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';
     // [GA4] 입구 첫 도달(세이브당 1회) — sea_enter 와 짝지어 "왔는데 안 들어갔나"를 본다
     if (!locked && firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시'))
       trackEvent('sea_gate_hint', { night: isNight(), weather: WEATHER });
-  } else if (!indoor && dist2D(player.position, ORCHARD_GATE) < ORCHARD_PROMPT_R) {
+  } else if (!indoor && isOpen('orchard') && dist2D(player.position, ORCHARD_GATE) < ORCHARD_PROMPT_R) {
     nd = 'orchard';
     const locked = mapLocked('orchard');
     // 🔒 잠금 문구는 다른 게이트(🌫️·🌊)와 같이 BETA_COPY.lock 한 곳에서만 나온다.
     //    진행도 게이트라 {N}(날짜)이 없어 openDay 를 넘기지 않는다 — replace 가 그대로 통과한다.
     prompt = locked ? lockLine('orchard') : '🍎 과수원에 들어가기';
     if (!locked) firstHintBanner('orchardGate', '🍎', '과수원', '묘목을 심어 매일 열매를 따는 곳');
-  } else if (dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
+  } else if (isOpen('cafe') && dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
-  } else if (dist2D({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 }, player.position) < 2.4) {
+  } else if (isOpen('museum') && dist2D({ x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 }, player.position) < 2.4) {
     nd = 'museum'; prompt = '🏛️ 박물관에 들어가기';
     firstHintBanner('museumGate', '🏛️', '박물관', '📖도감에 등록한 것이 전시돼요. 빈 자리가 다음 목표예요');
+  } else if (!indoor && nearBrokenBridge(player.position)) {   // 🌉 무너진 다리(해금 켜짐 · 새 세이브) — 고치면 프롬프트가 사라진다
+    nd = 'bridge'; prompt = bridgePrompt();
+    firstHintBanner('bridge', '🌉', '무너진 다리', '개울 건너 박물관으로 가는 길이에요');
   } else if (mv) {     // 🚏 거울 마을 정류장(낮 운행 · 밤엔 막차 안내만, nd 없음)
     nd = mv.nd; prompt = mv.prompt;
+  } else if (worldTreeNear(player.position)) {   // 🌳 세계수 밑동 — 판 열기(박물관 전엔 안내만)
+    nd = 'worldtree'; prompt = worldTreePrompt();
   } else if (dist2D(MOUNTAIN_GATE, player.position) < 2.4) {
     nd = 'mountain'; prompt = mountainOpen() ? '🏔️ 설산 오르기' : '🏔️ 내일 열려요';
     firstHintBanner('mountainGate', '🏔️', '🏔️ 설산', '🏔️ 썰매 타러 가는 길');
-  } else if (dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
+  } else if (isOpen('observatory') && dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
     nd = 'observatory'; prompt = '🌌 별 보러 가기';
     firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳');
-  } else if (dist2D({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 1.2 }, player.position) < 2.2) {
+  } else if (isOpen('neighbor') && dist2D({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 1.2 }, player.position) < 2.2) {
     nd = 'neighbor'; prompt = '🏡 이웃 마을 가는 길';
-    firstHintBanner('neighborGate', '🏡', '이웃 마을 가는 길', '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요');
+    firstHintBanner('neighborGate', '🏡', '이웃 마을 가는 길', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요');
   }
   $w.nearDoor = nd;
   if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
   // 자유주방/작업대/상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
   const inVillage = !indoor && !atFarm && !atMine && !atRiver && !nd;
-  $w.nearKitchen = inVillage && dist2D(KITCHEN, player.position) < 2.2;               // 🍳 자유주방(요리 미니게임)
+  $w.nearKitchen = inVillage && isOpen('kitchen') && dist2D(KITCHEN, player.position) < 2.2;               // 🍳 자유주방(요리 미니게임)
   $w.nearBench = inVillage && !nearKitchen && dist2D(BENCH, player.position) < 2.0;
-  $w.nearShop = inVillage && !nearKitchen && !nearBench && dist2D(SHOP, player.position) < 2.0;
-  $w.nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
+  $w.nearShop = inVillage && !nearKitchen && !nearBench && isOpen('shop') && dist2D(SHOP, player.position) < 2.0;
+  $w.nearMarket = inVillage && !nearKitchen && !nearBench && !nearShop && isOpen('market') && dist2D(MARKET, player.position) < 2.0; // 📊 시세 전광판
   $w.nearRank = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && dist2D(RANK, player.position) < 1.8; // 🏆 랭킹 게시판(중앙 배치라 반경 타이트 — 스폰 1.9에서 안 뜸)
-  $w.nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
+  $w.nearCoop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && isOpen('coop') && dist2D(COOP, player.position) < 2.4; // 🐔 닭장
   $w.nearCosShop = inVillage && !nearKitchen && !nearBench && !nearShop && !nearMarket && !nearRank && !nearCoop && dist2D(SHOP_DOOR, player.position) < 2.8; // 🏪 꾸미기 가게(마을 서쪽)
-  $w.nearLightWorkshop = !indoor && !nearCosShop && dist2D(LIGHT_WORKSHOP, player.position) < 3.2;   // 🏮 빛 공방(계곡·천문대 사이) — 오두막(충돌 1.6)+반디 요정 앞에 서면 중심에서 ~3
+  $w.nearLightWorkshop = !indoor && !nearCosShop && isOpen('lightWorkshop') && dist2D(LIGHT_WORKSHOP, player.position) < 3.2;   // 🏮 빛 공방(계곡·천문대 사이) — 오두막(충돌 1.6)+반디 요정 앞에 서면 중심에서 ~3
   // 🌾 수확제 광장 — 기부함·좌판·명판(마을 동쪽 멀리라 다른 시설과 겹치지 않는다)
   const plazaHere = inVillage && !nearRank ? plazaSpot(player.position) : null;
   // 🔥 화덕(마을) · 🫙 발효통(텃밭 마당) — 고정 시설과 달리 플레이어가 놓는다.
@@ -442,14 +449,14 @@ export function updateZoneHint() {
     return;
   }
   const wasGlade = nearGlade;
-  $w.nearGlade = inVillage2() && dist2D(GLADE, player.position) < GLADE_R + 0.5;
+  $w.nearGlade = inVillage2() && isOpen('glade') && dist2D(GLADE, player.position) < GLADE_R + 0.5;
   if (nearGlade && !nearLightWorkshop) {   // 🏮 공방 문 앞에선 공방 프롬프트만 — 밤에 안내 두 줄이 겹쳤다
     hint = isNight() ? '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
     if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
     firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 포충망으로 반딧불이 잡는 곳');
   }
   const wasForest = nearForest;
-  $w.nearForest = inVillage2() && dist2D(FOREST, player.position) < FOREST_R + 0.5;
+  $w.nearForest = inVillage2() && isOpen('forest') && dist2D(FOREST, player.position) < FOREST_R + 0.5;
   if (nearForest && !hint) {
     hint = forageTarget() ? '🍄 채집물 발견! 액션(Space)으로 줍기 — 도구 필요 없어요' : '🍄 채집 숲 — 버섯·산딸기·도토리를 찾아보세요';
     if (!wasForest) trackEvent('zone_enter', { zone: 'forest', weather: WEATHER });   // [GA4] 채집 유입

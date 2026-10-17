@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>근접 안내 시안</title>
+<style>
+:root{
+  --cream:#fbf6ea; --ink:#3d3426; --sub:#7a6d58; --line:#e3d8c2;
+  --leaf:#5f9a5a; --leaf-d:#3f7a3d; --red:#e0533d; --shadow:0 3px 10px rgba(40,30,15,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#efe9dc;font-family:"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;color:var(--ink);padding:36px 40px;width:1780px}
+h1{font-size:30px;margin-bottom:6px}
+.lead{color:var(--sub);font-size:16px;margin-bottom:26px;line-height:1.6}
+.variant{background:#fff;border-radius:22px;padding:22px 24px 26px;margin-bottom:28px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.vhead{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.vtag{background:var(--leaf);color:#fff;font-weight:800;border-radius:10px;padding:4px 12px;font-size:20px}
+.vname{font-size:24px;font-weight:800}
+.vdesc{color:var(--sub);font-size:15px;margin-bottom:16px;line-height:1.5}
+.row{display:flex;gap:26px;align-items:flex-start}
+.cap{font-size:14px;color:var(--sub);margin-top:8px;text-align:center}
+.pros{display:flex;gap:30px;margin-top:14px;font-size:14px;line-height:1.6}
+.pros div{flex:1}
+.pros b{display:block;margin-bottom:2px}
+
+.phone{position:relative;overflow:hidden;border-radius:34px;border:8px solid #1d1d1f;background:#000 url(bg.jpg) center/cover;flex:none}
+.phone.p{width:390px;height:844px;background-position:46% center}
+.phone.l{width:844px;height:390px}
+
+.mm{position:absolute;left:14px;top:46px;width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#a9cf98,#6f9c66);border:3px solid var(--cream);box-shadow:var(--shadow)}
+.mm::after{content:"";position:absolute;left:39px;top:36px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:12px solid #fff}
+.l .mm{top:14px;left:18px;width:84px;height:84px}
+.l .mm::after{left:33px;top:30px}
+.quest{position:absolute;left:14px;top:150px;width:150px;background:rgba(251,246,234,.92);border-radius:12px;padding:7px 10px;font-size:11.5px;line-height:1.45;box-shadow:var(--shadow)}
+.quest b{font-size:12px}
+.l .quest{top:106px;left:18px;width:140px}
+
+.tr{position:absolute;right:12px;top:46px;display:flex;gap:8px}
+.l .tr{top:14px;right:18px}
+.tr .ib{width:46px;height:46px;border-radius:14px;background:var(--cream);box-shadow:var(--shadow);display:grid;place-items:center;font-size:23px;position:relative}
+.dot{position:absolute;top:-3px;right:-3px;width:13px;height:13px;border-radius:50%;background:var(--red);border:2px solid var(--cream)}
+.burger{display:flex;flex-direction:column;gap:4px}
+.burger i{display:block;width:20px;height:3px;border-radius:2px;background:var(--ink)}
+
+.joy{position:absolute;left:34px;bottom:70px;width:118px;height:118px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.55)}
+.joy::after{content:"";position:absolute;left:34px;top:34px;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.7)}
+.l .joy{left:40px;bottom:34px;width:110px;height:110px}
+.l .joy::after{left:30px;top:30px}
+
+.act{position:absolute;width:82px;height:82px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fffaf0,#efe3c8);border:4px solid var(--leaf);box-shadow:var(--shadow);display:grid;place-items:center;font-size:36px}
+.tool{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(251,246,234,.93);box-shadow:var(--shadow);display:grid;place-items:center;font-size:24px}
+.tool.on{border:3px solid var(--leaf);background:#fff;width:56px;height:56px}
+.tool.sm{width:40px;height:40px;font-size:18px}
+.talk{position:absolute;background:#d9f0d4;border:2px solid var(--leaf);color:var(--leaf-d);font-weight:800;font-size:15px;border-radius:24px;padding:8px 16px;box-shadow:var(--shadow);white-space:nowrap}
+.toast{position:absolute;left:50%;top:118px;transform:translateX(-50%);background:rgba(61,52,38,.85);color:#fff;border-radius:20px;padding:7px 16px;font-size:15px;font-weight:700;white-space:nowrap}
+.tip{position:absolute;background:#ffe68a;color:#5b4300;font-size:12px;font-weight:700;border-radius:8px;padding:3px 8px;box-shadow:0 2px 6px rgba(0,0,0,.2);white-space:nowrap}
+
+.dim{position:absolute;inset:0;background:rgba(30,24,14,.45)}
+.sheet{position:absolute;background:var(--cream);box-shadow:0 -4px 20px rgba(0,0,0,.25);overflow:hidden}
+.sh-title{font-weight:800;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.sh-x{width:30px;height:30px;border-radius:50%;background:#efe5cf;display:grid;place-items:center;font-size:15px}
+.cat{font-size:12px;font-weight:800;color:var(--leaf-d);margin:12px 0 6px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cell{background:#fff;border-radius:14px;padding:10px 2px 8px;text-align:center;font-size:11.5px;line-height:1.25;position:relative;border:1px solid var(--line)}
+.cell span{display:block;font-size:24px;margin-bottom:4px}
+.cell .dot{top:4px;right:10px}
+.list .li{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--line);font-size:15px;position:relative}
+.list .li span{font-size:21px;width:28px;text-align:center}
+.list .li .dot{position:static;margin-left:auto}
+.quick{display:flex;gap:8px;margin-top:10px}
+.quick .q{flex:1;background:var(--leaf);color:#fff;border-radius:14px;text-align:center;padding:9px 0 7px;font-size:11.5px;font-weight:700;position:relative}
+.quick .q span{display:block;font-size:22px;margin-bottom:2px}
+.grab{width:44px;height:5px;border-radius:3px;background:#d8ccb2;margin:0 auto 10px}
+.bub{position:absolute;width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:var(--shadow);display:grid;place-items:center;font-size:22px}
+.bub::after{content:"";position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);border:7px solid transparent;border-top-color:#fff;border-bottom:0}
+.act.ctx{border-color:#e9a23b;box-shadow:0 0 0 6px rgba(233,162,59,.35),var(--shadow)}
+.lbl{position:absolute;background:var(--ink);color:#fff;font-weight:800;font-size:14px;border-radius:20px;padding:8px 14px;white-space:nowrap;box-shadow:var(--shadow)}
+.lbl::after{content:"";position:absolute;right:-7px;top:50%;transform:translateY(-50%);border:7px solid transparent;border-left-color:var(--ink);border-right:0}
+.card{position:absolute;left:50%;transform:translateX(-50%);background:rgba(251,246,234,.96);border-radius:16px;padding:9px 14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);white-space:nowrap}
+.card .ci{font-size:26px}
+.card b{display:block;font-size:14px}
+.card small{font-size:12px;color:var(--sub)}
+.card .go{margin-left:6px;background:var(--leaf);color:#fff;font-weight:800;font-size:13px;border-radius:12px;padding:6px 12px}
+.ban{position:absolute;left:50%;transform:translateX(-50%);background:rgba(61,52,38,.88);color:#fff;border-radius:14px;padding:8px 16px;font-size:14px;font-weight:700;white-space:nowrap;display:flex;gap:8px;align-items:center}
+.ban em{font-style:normal;background:#e9a23b;color:#3d2a00;border-radius:8px;padding:2px 8px;font-size:12px}
+.pill{position:absolute;background:#fff;color:var(--ink);font-weight:800;font-size:14px;border-radius:16px;padding:5px 12px 5px 6px;display:flex;align-items:center;gap:6px;box-shadow:var(--shadow);white-space:nowrap}
+.pill i{font-style:normal;width:24px;height:24px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font-size:12px}
+.ctxcard{position:absolute;background:rgba(120,96,170,.82);color:#fff;border-radius:0 12px 12px 0;padding:6px 14px;font-size:12px;line-height:1.4}
+.ctxcard b{display:block;font-size:13px}
+.toolname{position:absolute;background:rgba(251,246,234,.95);border-radius:10px;padding:2px 10px;font-size:12px;font-weight:800}
+.ref{display:flex;gap:24px;align-items:flex-start}
+.ref img{width:728px;border-radius:14px}
+.ref ol{font-size:15px;line-height:1.8;padding-left:20px}
+</style></head><body>
+<h1>👋 가까이 갔을 때 안내 — 시안 4개 (A안 HUD 위에) + 포코피아 실제 화면</h1>
+<p class="lead">공통: 머리 위 말풍선은 지금처럼 이모지만(🔧·💬) · 액션 버튼은 가까이 간 대상의 아이콘으로 바뀌고 주황 테두리로 깜빡임 · 💬 대화하기 버튼은 따로 두지 않고 액션 버튼이 맡음<br>
+아래 3개는 "무슨 뜻인지" 글자로 알려 주는 자리만 다릅니다. 가로 = 주민 근처, 세로 = 작업대 근처.</p>
+
+<section class="variant">
+  <div class="vhead"><span class="vtag" style="background:#7860aa">REF</span><span class="vname">포코피아 실제 화면 (Game8 공략 스크린샷)</span></div>
+  <div class="ref"><img src="pokopia-ref.jpg" style="width:728px;object-fit:cover;object-position:center;height:410px"><ol>
+  <li><b>대상 바로 옆에 동사 알약</b> "Ⓐ Talk" — 말 걸 수 있는 대상 <u>하나</u>에만, 가까이 있을 때만 뜹니다. 버튼 기호 + 한 단어.</li>
+  <li><b>왼쪽 위 지역 카드</b> "Nearby Habitats · ○○'s home" — 지금 근처에 무엇이 있는지 이름으로 알려 줍니다.</li>
+  <li><b>오른쪽 아래 도구 휠</b> — 가운데 지금 기술 아이콘 + 아래 이름("Cut")과 버튼(ZR), 양옆 화살표로 넘김.</li>
+  <li>대상이 서로 대화 중이면 알약 문구가 "Talk" → "What's this about?" 으로 바뀝니다(공략 본문).</li>
+  </ol></div>
+</section>
+
+<section class="variant">
+  <div class="vhead"><span class="vtag" style="background:#7860aa">P4</span><span class="vname">포코피아식 — 대상 옆 동사 알약 + 지역 카드 + 휠 이름표</span></div>
+  <p class="vdesc">가장 가까운 대상 <b>하나</b> 옆에만 "🔘 이야기하기 / 열기" 알약을 띄웁니다(누르면 바로 실행). 처음 다가간 건물은 왼쪽 위에 이름 카드가 잠깐 나오고, 휠 가운데 아래엔 지금 도구 이름이 붙습니다.</p>
+  <div class="row">
+    <div><div class="phone l">
+      <div class="mm"></div>
+      <div class="ctxcard" style="left:0;top:108px"><b>근처</b>보라 할머니네 집</div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="bub" style="left:592px;top:72px">💬</div>
+      <div class="pill" style="left:640px;top:128px"><i>✋</i>이야기하기</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:36px;bottom:30px">💬</div>
+      <div class="tool on" style="right:150px;bottom:30px">🌰</div><div class="tool" style="right:140px;bottom:92px">💧</div><div class="tool" style="right:100px;bottom:142px">🌾</div><div class="tool" style="right:44px;bottom:162px">🪏</div>
+      <div class="toolname" style="right:154px;bottom:12px">씨앗</div>
+    </div><p class="cap">가로 · 주민 근처</p></div>
+    <div><div class="phone p">
+      <div class="mm"></div>
+      <div class="ctxcard" style="left:0;top:150px"><b>근처</b>자재 작업대</div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="bub" style="left:120px;top:300px">🔧</div>
+      <div class="pill" style="left:168px;top:352px"><i>✋</i>열기</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:30px;bottom:66px">🔧</div>
+      <div class="tool on" style="right:150px;bottom:82px">🌰</div><div class="tool" style="right:136px;bottom:142px">💧</div><div class="tool" style="right:96px;bottom:188px">🌾</div><div class="tool" style="right:40px;bottom:206px">🪏</div>
+      <div class="toolname" style="right:156px;bottom:62px">씨앗</div>
+    </div><p class="cap">세로 · 작업대 근처</p></div>
+  </div>
+  <div class="pros"><div><b>👍</b>포코피아와 같은 문법. 설명이 대상 바로 옆이라 "저걸 누르면 되는구나"가 가장 확실하고, 휠을 가리지 않습니다.</div><div><b>👎</b>"월드 말풍선은 이모지만" 규칙(10/12)의 예외가 됩니다 — 다만 그 규칙은 작물·방문객 머리 위 <u>멘트</u>를 막은 것이고, 이건 가까운 대상 1개에만 뜨는 동사 한 단어라 성격이 다릅니다.</div></div>
+</section>
+<section class="variant">
+  <div class="vhead"><span class="vtag">P1</span><span class="vname">액션 버튼 옆 말꼬리 라벨</span></div>
+  <p class="vdesc">액션 버튼 왼쪽에 "누르면 무엇을 하는지"를 짧게 붙입니다. 시선이 엄지 쪽에 머물러서 바로 누르게 됩니다.</p>
+  <div class="row">
+    <div><div class="phone l">
+      <div class="mm"></div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="bub" style="left:592px;top:72px">💬</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:36px;bottom:30px">💬</div>
+      <div class="lbl" style="right:136px;bottom:52px">보라 할머니와 이야기하기</div>
+      <div class="tool" style="right:140px;bottom:120px;opacity:.35">💧</div>
+      <div class="tool" style="right:90px;bottom:160px;opacity:.35">🌾</div>
+      <div class="tool" style="right:34px;bottom:176px;opacity:.35">🪏</div>
+    </div><p class="cap">가로 · 주민 근처(도구 휠은 흐리게)</p></div>
+    <div><div class="phone p">
+      <div class="mm"></div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="bub" style="left:120px;top:300px">🔧</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:30px;bottom:66px">🔧</div>
+      <div class="lbl" style="right:130px;bottom:88px">작업대 열기</div>
+      <div class="tool" style="right:136px;bottom:160px;opacity:.35">💧</div>
+      <div class="tool" style="right:96px;bottom:200px;opacity:.35">🌾</div>
+      <div class="tool" style="right:40px;bottom:216px;opacity:.35">🪏</div>
+    </div><p class="cap">세로 · 작업대 근처</p></div>
+  </div>
+  <div class="pros"><div><b>👍</b>가장 짧고 직관적. 버튼과 설명이 붙어 있어 "이걸 누르면 되는구나"가 바로 연결됩니다.</div><div><b>👎</b>라벨이 휠 도구 자리와 겹쳐 가까이 있는 동안엔 도구를 흐리게 처리해야 합니다.</div></div>
+</section>
+
+<section class="variant">
+  <div class="vhead"><span class="vtag">P2</span><span class="vname">하단 중앙 알림 카드</span></div>
+  <p class="vdesc">화면 아래 가운데에 대상 이름 + 할 수 있는 일 카드를 띄웁니다. 카드 자체도 누를 수 있습니다(버튼과 같은 동작).</p>
+  <div class="row">
+    <div><div class="phone l">
+      <div class="mm"></div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="bub" style="left:592px;top:72px">💬</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:36px;bottom:30px">💬</div>
+      <div class="tool" style="right:150px;bottom:30px">🌰</div><div class="tool" style="right:140px;bottom:92px">💧</div><div class="tool" style="right:100px;bottom:142px">🌾</div><div class="tool" style="right:44px;bottom:162px">🪏</div>
+      <div class="card" style="bottom:28px;left:390px"><span class="ci">🧶</span><span><b>보라 할머니</b><small>주민 · 의뢰가 있어요</small></span><span class="go">💬 이야기</span></div>
+    </div><p class="cap">가로 · 주민 근처</p></div>
+    <div><div class="phone p">
+      <div class="mm"></div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="bub" style="left:120px;top:300px">🔧</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:30px;bottom:66px">🔧</div>
+      <div class="tool" style="right:150px;bottom:82px">🌰</div><div class="tool" style="right:136px;bottom:142px">💧</div><div class="tool" style="right:96px;bottom:188px">🌾</div><div class="tool" style="right:40px;bottom:206px">🪏</div>
+      <div class="card" style="bottom:300px"><span class="ci">🔧</span><span><b>자재 작업대</b><small>울타리·화분을 만들어요</small></span><span class="go">열기</span></div>
+    </div><p class="cap">세로 · 작업대 근처</p></div>
+  </div>
+  <div class="pros"><div><b>👍</b>설명을 한 줄 더 줄 수 있어 처음 보는 건물·주민도 뭔지 압니다. 휠을 가리지 않습니다.</div><div><b>👎</b>세로 화면에선 카드가 화면 가운데로 올라가 캐릭터 시야를 조금 가립니다.</div></div>
+</section>
+
+<section class="variant">
+  <div class="vhead"><span class="vtag">P3</span><span class="vname">상단 안내 배너(처음 몇 번만)</span></div>
+  <p class="vdesc">위쪽 안내 자리에 한 줄 배너를 띄우고, 같은 대상은 3번 본 뒤부터는 배너 없이 액션 버튼 아이콘만 바뀝니다.</p>
+  <div class="row">
+    <div><div class="phone l">
+      <div class="mm"></div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="ban" style="top:22px">💬 보라 할머니 근처예요 <em>오른쪽 아래 버튼</em></div>
+      <div class="bub" style="left:592px;top:72px">💬</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:36px;bottom:30px">💬</div>
+      <div class="tool" style="right:150px;bottom:30px">🌰</div><div class="tool" style="right:140px;bottom:92px">💧</div><div class="tool" style="right:100px;bottom:142px">🌾</div><div class="tool" style="right:44px;bottom:162px">🪏</div>
+    </div><p class="cap">가로 · 주민 근처</p></div>
+    <div><div class="phone p">
+      <div class="mm"></div>
+      <div class="tr"><div class="ib">🎒</div><div class="ib">📖</div><div class="ib"><div class="burger"><i></i><i></i><i></i></div></div></div>
+      <div class="ban" style="top:162px">🔧 자재 작업대 <em>버튼을 눌러 열어요</em></div>
+      <div class="bub" style="left:120px;top:300px">🔧</div>
+      <div class="joy"></div>
+      <div class="act ctx" style="right:30px;bottom:66px">🔧</div>
+      <div class="tool" style="right:150px;bottom:82px">🌰</div><div class="tool" style="right:136px;bottom:142px">💧</div><div class="tool" style="right:96px;bottom:188px">🌾</div><div class="tool" style="right:40px;bottom:206px">🪏</div>
+    </div><p class="cap">세로 · 작업대 근처</p></div>
+  </div>
+  <div class="pros"><div><b>👍</b>익숙해지면 사라져서 화면이 가장 깨끗합니다. 기존 안내 자리(위쪽 슬롯)를 그대로 씁니다.</div><div><b>👎</b>버튼과 설명이 멀어서(위 ↔ 오른쪽 아래) 연결이 약하고, 의뢰 안내와 자리를 다툽니다.</div></div>
+</section>
+</body></html>

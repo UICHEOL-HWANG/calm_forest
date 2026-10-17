@@ -11,9 +11,9 @@ test('sale 키가 없는 상품은 늘 열려 있다', () => {
   assert.equal(saleOpen(null), true);
 });
 
-test('기간 전 — KST 10/23 23:59:59 는 닫힘, KST 10/24 00:00 에 열림', () => {
-  assert.equal(saleOpen(item, at('2026-10-23T14:59:59Z')), false);   // = KST 10/23 23:59:59
-  assert.equal(saleOpen(item, at('2026-10-23T15:00:00Z')), true);    // = KST 10/24 00:00:00
+test('기간 전 — KST 10/16 23:59:59 는 닫힘, KST 10/17 00:00 에 열림', () => {
+  assert.equal(saleOpen(item, at('2026-10-16T14:59:59Z')), false);   // = KST 10/16 23:59:59
+  assert.equal(saleOpen(item, at('2026-10-16T15:00:00Z')), true);    // = KST 10/17 00:00:00
 });
 
 test('마지막 날(11/2) 끝까지 열려 있고 11/3 00:00 KST 에 닫힌다', () => {

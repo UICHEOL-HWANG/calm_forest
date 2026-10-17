@@ -51,3 +51,21 @@ test('fertBlockedByWatering: 흙이 젖었거나 다른 도구·맨손이면 비
   assert.equal(fertBlockedByWatering('hoe', 'farm', false), false);
   assert.equal(fertBlockedByWatering('water', 'none', false), false);
 });
+
+// 🔓 마을 해금(새 세이브) — 첫 수확으로도 상인이 돌아온다 (E1 처치는 당근 4개부터 거둔다)
+test('welcomeOffer: reworld 면 작물 4개로도 제안(25코인)', () => {
+  assert.deepEqual(welcomeOffer({ crop: 4 }, { reworld: true }), { item: 'crop', qty: 4, gain: 25 });
+  assert.equal(welcomeOffer({ crop: 3 }, { reworld: true }), null);
+});
+test('welcomeOffer: reworld 아니면 작물은 무시(해금 꺼짐·옛 세이브 = 예전 그대로)', () => {
+  assert.equal(welcomeOffer({ crop: 9 }), null);
+  assert.equal(welcomeOffer({ crop: 9 }, { reworld: false }), null);
+});
+test('welcomeOffer: reworld 에서도 목재·물고기가 작물보다 먼저', () => {
+  assert.equal(welcomeOffer({ wood: 5, crop: 4 }, { reworld: true }).item, 'wood');
+  assert.equal(welcomeOffer({ fish: 1, crop: 4 }, { reworld: true }).item, 'fish');
+});
+test('welcomeOffer: 작물 환영가는 정가(5🪙×4)보다 조금만 높다 — E1 경제 가드레일', () => {
+  const o = welcomeOffer({ crop: 4 }, { reworld: true });
+  assert.ok(o.gain <= o.qty * 5 * 1.5);   // 5 = js/data/catalog.js SELL_PRICE.crop (three 를 끌어와서 직접 import 안 함)
+});
