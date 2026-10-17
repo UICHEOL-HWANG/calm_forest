@@ -84,6 +84,10 @@ export function defaultUnlocks() {
   return { v: UNLOCKS_V, legacy: false, flags: {} };
 }
 
+export function unlocksForSave(unlocks, on) {
+  return on || unlocks?.legacy ? unlocks : { ...unlocks, legacy: true };
+}
+
 /**
  * 세이브 복원. **필드가 없거나 깨졌으면 legacy**(= 이 기능 전의 세이브 → 전부 열림).
  * flags 는 true 인 키만 살린다(모르는 값·문자열 주입 방어).

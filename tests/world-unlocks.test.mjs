@@ -144,3 +144,20 @@ test('반복 의뢰 후보에서 숨은 이웃을 뺀다 — 빈 목록이면 �
   }
   assert.deepEqual(new Set(repeatNPCsFor(ids, 5, hiddenNpcs)), new Set(['merchant', 'builder']));
 });
+
+test('해금 꺼진 채 저장하면 legacy:true 로 남는다 — 나중에 켜도 다시 잠기지 않게', async () => {
+  const { unlocksForSave } = await import('../js/world/unlocks.js');
+  assert.equal(unlocksForSave(defaultUnlocks(), false).legacy, true);
+  assert.equal(unlocksForSave(defaultUnlocks(), true).legacy, false);
+  assert.equal(unlocksForSave({ ...defaultUnlocks(), legacy: true }, true).legacy, true);
+  const flagged = { ...defaultUnlocks(), flags: { bridge: true } };
+  assert.deepEqual(unlocksForSave(flagged, false).flags, { bridge: true });
+  assert.equal(flagged.legacy, false);
+  assert.equal(restoreUnlocks(unlocksForSave(defaultUnlocks(), false)).legacy, true);
+});
+
+test('getGameState 가 unlocksForSave 로 저장값을 만든다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const fn = src.slice(src.indexOf('export function getGameState'), src.indexOf('export function getGameState') + 2000);
+  assert.match(fn, /unlocks: unlocksForSave\(gameState\.unlocks, unlocksOn\(\)\)/);
+});
