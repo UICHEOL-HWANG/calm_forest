@@ -162,6 +162,6 @@ test('row records the sled id and the current physics version', () => {
   c.sledAbandon('climb', CTX, null);
   assert.equal(rows[0].sled, 'acorn');
   assert.equal(rows[0].phys_v, PHYS_V);
-  assert.equal(rows[0].phys_v, 2);
+  assert.equal(rows[0].phys_v, 3);
   assert.equal(rows[1].sled, 'basic');
 });

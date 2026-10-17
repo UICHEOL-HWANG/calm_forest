@@ -9,7 +9,7 @@ import { IS_DEV_SESSION } from './config.js';
 import { PLATFORM } from './platform.js';
 import { clientId, clientIdIsNew } from './i18n.js';
 import { INVITE_STORE_KEY, readInviteParam } from './referral/rules.js';
-import { decideE2, parseE2Stored, hasStoredSession, E2_STORE_KEY } from './exp-e2.js';
+import { concludeE2, decideE2, parseE2Stored, hasStoredSession, E2_STORE_KEY } from './exp-e2.js';
 
 const store = () => { try { return window.localStorage; } catch (e) { return null; } };
 const safe = (fn, fallback) => { try { return fn(); } catch (e) { return fallback; } };
@@ -23,7 +23,7 @@ let memo = null;
 export function e2Decision() {
   if (memo) return memo;
   const s = store();
-  memo = decideE2({
+  memo = concludeE2(decideE2({
     clientId: clientId(),
     platform: PLATFORM,
     newDevice: clientIdIsNew(),
@@ -32,7 +32,7 @@ export function e2Decision() {
     hasInvite: e2HasInvite(),
     dev: IS_DEV_SESSION,
     forced: IS_DEV_SESSION ? new URLSearchParams(location.search).get('e2') : null,   // QA: ?dbg&e2=skip_login
-  });
+  }));
   if (memo.reason === 'new') safe(() => s?.setItem(E2_STORE_KEY, JSON.stringify({ arm: memo.arm })), null);
   return memo;
 }

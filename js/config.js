@@ -118,6 +118,9 @@ export const CONFIG = {
   //             배정·언어 결정 로직은 js/i18n.js (detectLang/assignVariant).
   //    'beta' = 베타 번들 A/B — beta_testers 명단으로 배정(supabase-client). 일반 유저=control.
   //    실험을 켜기 전까지는 그냥 'control'만 쌓이고, 켜는 순간부터 배정됨.
+  // 🔓 마을 해금 구조(docs/superpowers/specs/2026-10-16-world-unlocks-design.md)
+  //    'off' = 전부 열림(지금 그대로) · 'on' = 새 세이브는 이웃·시설이 진행에 따라 돌아온다.
+  UNLOCKS: 'on',
   EXPERIMENT: 'off',    // 🏁 베타 A/B 종료(2026-09-02~09-15, 정리 2026-09-19) — docs/beta/BETA_AB_TEST_PLAN.md
 };
 

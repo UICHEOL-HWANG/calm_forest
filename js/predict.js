@@ -39,6 +39,12 @@ export function pickIntervention(gs) {
   return null;   // 다 해봤다 — 띄울 게 없다
 }
 
+export function showWhenClear(banner, { blocked, show, later, tries = 45 }) {
+  if (!blocked()) { show(banner); return; }
+  if (tries <= 1) return;
+  later(() => showWhenClear(banner, { blocked, show, later, tries: tries - 1 }));
+}
+
 /** 예측기. 의존성을 전부 주입받는다(테스트에서 네트워크·게임 없이 돌리기 위해). */
 export function createPredictor(deps) {
   const {

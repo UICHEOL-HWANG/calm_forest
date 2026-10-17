@@ -223,8 +223,8 @@ export function enterRiver() {
   player.position.set(RIVER.x, 0, RIVER.z + RIVER_DOCK_HALF - 1.6); player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  firstHint('riverDock', '🛶', '나루터',
-    '나룻배 앞에서 액션 → 강 내려가기 (하루 3번)\n⬅️➡️ 피하고 액션으로 스퍼트!\n⭐별조각으로 🧰창고에서 배 강화');
+  firstHint('riverDock', '🛶', '나루터 · 강 내려가기',
+    { steps: [{ ico: '🛶', label: '배 앞 {A}' }, { ico: '⬅️➡️', label: '피하기' }, { ico: '💨', label: '{A} 스퍼트' }], note: '하루 3번', chip: '⭐ 별조각으로 배 강화' });
   Sound.blip();
   trackEvent('boat_enter', { runs_left: boatRunsLeft(), night: isNight(), weather: WEATHER });   // [GA4] 유입
 }

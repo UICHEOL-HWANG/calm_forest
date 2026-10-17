@@ -149,3 +149,19 @@ test('모델 점수와 raw feature 스냅샷을 Supabase 적립 row 로 넘긴�
   assert.equal(rows[0].raw_features.early_tracked_events, 1);
   assert.equal(rows[0].raw_features.early_econ_tx_events, 1);
 });
+
+test('🔓 잠긴 시설(gs.closed)은 next_content 배너가 가리키지 않는다', () => {
+  const next = { eligible: true, segment: 'next_content' };
+  const b = pickGuidanceBanner(next, { seenFamilies: [] }, { closed: ['sea', 'mist', 'museum'] });
+  assert.equal(b.kind, 'cafe');
+  const all = pickGuidanceBanner(next, { seenFamilies: [] }, { closed: ['sea', 'mist', 'museum', 'cafe', 'orchard'] });
+  assert.equal(all.kind, 'next_content', '전부 잠겼으면 장소를 짚지 않는 일반 안내');
+  assert.equal(pickGuidanceBanner(next, { seenFamilies: [] }, {}).kind, 'sea_boat', 'closed 가 없으면 예전 그대로');
+});
+
+test('🔓 스냅샷은 closed 를 배열로만 넘긴다', async () => {
+  const { buildRetentionGameStateSnapshot } = await import('../js/retention-guidance.js');
+  assert.deepEqual(buildRetentionGameStateSnapshot({ closed: ['sea'] }).closed, ['sea']);
+  assert.deepEqual(buildRetentionGameStateSnapshot({ closed: 'sea' }).closed, []);
+  assert.deepEqual(buildRetentionGameStateSnapshot({}).closed, []);
+});

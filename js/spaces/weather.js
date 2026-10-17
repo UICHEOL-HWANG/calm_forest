@@ -94,7 +94,7 @@ export function resolveWeatherEvent() {
     setTimeout(() => {
       ui.toast?.(`${s.ico} ${s.hit} 작물 ${exposed.length}개가 시들었어요… ⛏️ 괭이로 갈면 다시 심을 수 있어요`, 3800);
       firstHint('severe', s.ico, `${s.name}가 지나갔어요`,
-        '예보가 뜬 날엔 미리 수확하거나 🛡️덮개를\n시든 밭은 ⛏️괭이로 갈면 다시 심어요');
+        { steps: [{ ico: '🛡️', label: '예보 날 덮개·미리 수확' }, { ico: '⛏️', label: '시든 밭은 괭이로' }] });
     }, 900);
     trackEvent('weather_event', { kind, protected: false, plots: exposed.length });  // [GA4]
   }

@@ -7,6 +7,9 @@ const trees = (s) => (s.orchard?.trees || []).length;
 
 export const STORY_RULES = {
   home:      { done: s => num(s.houseStage) >= 3,                 progress: s => `공사 ${frac(num(s.houseStage), 3)}` },
+  // 🌉 해금 켜짐(새 세이브)의 1장 — 집을 짓고, 무너진 다리를 고쳐 할아버지를 만난다(다리 수리는 집 완성이 먼저라 플래그 하나로 충분)
+  homeBridge: { done: s => !!s.unlocks?.flags?.bridge,
+               progress: s => `공사 ${frac(num(s.houseStage), 3)} · 다리 ${s.unlocks?.flags?.bridge ? 1 : 0}/1` },
   friends:   { done: s => num(s.story?.q) >= 3,                   progress: s => `의뢰 ${frac(num(s.story?.q), 3)}` },
   taste:     { done: s => num(s.kitchen?.cooked) >= 1 && num(s.cafe?.served) >= 1,
                progress: s => `요리 ${frac(num(s.kitchen?.cooked), 1)} · 서빙 ${frac(num(s.cafe?.served), 1)}` },
@@ -18,17 +21,25 @@ export const STORY_RULES = {
   neighbors: { done: s => num(s.neighbors?.visited) >= 1,         progress: s => `방문 ${frac(num(s.neighbors?.visited), 1)}` },   // 🏡 이웃 마을 첫 방문(js/spaces/neighbor.js exitNeighbor)
 };
 
+/**
+ * 🌉 1·2장을 「세계수를 지키는 법」 판으로 볼까 — 해금 켜짐 + 새 세이브(legacy 아님).
+ *   chapters.js storyFor(이 값) 으로 장 표를 고른다. 꺼짐·옛 세이브(unlocks 없음 포함)는 false = 예전 이야기 그대로.
+ */
+export function storyReworld(s, unlocksOn) {
+  return !!unlocksOn && !!s?.unlocks && !s.unlocks.legacy;
+}
+
 export const isSoon = (story, i) => !!story[i]?.soon;
 
 export function chapterDone(story, i, s) {
   const c = story[i];
   if (!c || c.soon) return false;
-  return !!STORY_RULES[c.id]?.done(s);
+  return !!STORY_RULES[c.rule || c.id]?.done(s);
 }
 
 export function chapterProgress(story, i, s) {
   const c = story[i];
-  return c ? (STORY_RULES[c.id]?.progress(s) || '') : '';
+  return c ? (STORY_RULES[c.rule || c.id]?.progress(s) || '') : '';
 }
 
 /** 지금 장(s.story.ch)부터 연속으로 조건이 찬 장 인덱스 — syncStory 가 차례로 완료 처리한다. */

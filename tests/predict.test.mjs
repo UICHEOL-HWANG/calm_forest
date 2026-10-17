@@ -192,3 +192,39 @@ test('배너를 안 띄운 세션은 cue 가 없다', async () => {
   await p.onTrigger('time15');
   assert.equal(scoreEvent(calls).cue, undefined);
 });
+
+test('showWhenClear: 막혀 있으면 기다렸다 띄우고, 너무 오래 막히면 버린다', async () => {
+  const { showWhenClear } = await import('../js/predict.js');
+  const timers = [];
+  const later = (fn) => timers.push(fn);
+  let blocked = true;
+  const shown = [];
+  showWhenClear({ title: 'a' }, { blocked: () => blocked, show: b => shown.push(b.title), later, tries: 3 });
+  assert.deepEqual(shown, []);
+  timers.shift()();
+  assert.deepEqual(shown, []);
+  blocked = false;
+  timers.shift()();
+  assert.deepEqual(shown, ['a']);
+  assert.equal(timers.length, 0);
+
+  const gone = [];
+  showWhenClear({ title: 'b' }, { blocked: () => true, show: b => gone.push(b), later, tries: 2 });
+  while (timers.length) timers.shift()();
+  assert.deepEqual(gone, []);
+
+  const now = [];
+  showWhenClear({ title: 'c' }, { blocked: () => false, show: b => now.push(b.title), later, tries: 2 });
+  assert.deepEqual(now, ['c']);
+});
+
+test('이탈 예측 배너도 인트로·튜토리얼·모달 판정을 거친다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const wire = src.slice(src.indexOf('churnPredictor = createPredictor('), src.indexOf('function churnTrigger('));
+  assert.match(wire, /showWhenClear\(/);
+  assert.match(wire, /retentionGuidanceSuppressed/);
+  const sup = src.slice(src.indexOf('function retentionGuidanceSuppressed'), src.indexOf('function retentionGuidanceSuppressed') + 1600);
+  assert.match(sup, /intro-open/);
+  assert.match(sup, /spot-on/);
+});

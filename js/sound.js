@@ -6,6 +6,8 @@
 //  init() 에서 첫 입력 시 AudioContext 를 resume 합니다.
 // =============================================================
 
+import { playIntroScore } from './sound-intro.js';
+
 let ctx = null;
 let master = null;
 let enabled = true;
@@ -138,6 +140,9 @@ export const Sound = {
   build()  { tone(90, 0.18, 'sine', 0.6, 55); noise(0.1, 300, 0.3); },          // 건축 "쿵"
   complete(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'triangle', 0.5), i * 120)); }, // 완성 팡파레
   blip()   { tone(720, 0.06, 'square', 0.18); },                                // 도구 전환
+  // 🎬 프롤로그 — 여는 종(잔향 섞인 C장조 아르페지오) · 시들 때 스치는 바람(로우패스 노이즈 쓸기)
+  introChime() { const c = enabled ? ensureCtx() : null; if (!c) return; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => chime(f, 1.6, 0.07, { at: c.currentTime + i * 0.18, wet: 0.45 })); },
+  introWind()  { sweep(3.2, 260, 900, 0.05, 0.7); },
   nudge()  { tone(880, 0.12, 'sine', 0.35); setTimeout(() => tone(1175, 0.22, 'sine', 0.3), 110); }, // 🎯 이탈 배너 "띠링" — 수확음보다 한 톤 낮고 짧게
   plant()  { tone(440, 0.1, 'sine', 0.3, 560); },                               // 씨앗 심기
   // 🔭 천문대 별 잇기 — 효과음 세트 1 '별 차임'(sims/observatory-sound-sim.html, 2026-10-05 사용자 선택)
@@ -155,6 +160,7 @@ export const Sound = {
     [2637, 2349, 2093, 1760, 1568, 1319].forEach((f, i) => chime(f, 0.35, 0.05, { at: t + i * 0.06, wet: 0.6 }));
     chime(523.25, 1.2, 0.07, { type: 'triangle', at: t + 0.4, wet: 0.5 });
   },
+  sledBoost()  { sweep(0.7, 500, 2600, 0.09); tone(130, 0.2, 'sine', 0.45, 52); },
   starPick()   { chime(1320, 0.05, 0.07, { type: 'triangle' }); },                     // 수첩 카드 "톡"
 };
 
@@ -232,6 +238,12 @@ const MIRROR_BAR = MIRROR_E * 8 * 1000;
 const MIRROR_CHORDS = [[0, 2, 4, 6], [3, 5, 7, 9], [0, 2, 4, 7], [4, 6, 7, 8]];   // MEL 인덱스(MEL 은 10음 — 모두 < MEL.length, 오름차순)
 const MIRROR_ROOTS = [65.41, 87.31, 65.41, 98];
 const MIRROR_ARP = [3, 2, 1, 0, 1, 2, 3, 2];
+const SNOW_BAR = 4800;
+const SNOW_SLED_BAR = 2400;
+const SNOW_STEPS = [0, 2, 4, 5, 7, 9, 11];
+const SNOW_CHORDS = [[5, 7, 9, 11], [3, 5, 7, 9], [0, 2, 4, 6], [4, 6, 8, 10]];
+const SNOW_FALL = [[11, 9], [9, 7, 5], [7, 6], [8, 6, 4]];
+const SNOW_ARP = [0, 1, 2, 3, 2, 3, 1, 2];
 
 // 빠른 어택·짧은 감쇠(뜯는 소리) — 활기찬 테마의 기본 음색
 function pluck(freq, dur, vol, type = 'triangle', at = null) {
@@ -380,8 +392,66 @@ function playMirrorBar(at) {
   padNote(MIRROR_ROOTS[bar], MIRROR_E * 8, 0.04, 'sine', at);
   if (Math.random() < 0.4) chime(MEL[(Math.random() * MEL.length) | 0] * 4, MIRROR_E * 0.8, 0.015, { at: at + (1 + Math.random() * 6) * MIRROR_E, wet: 0.8, out: musicGain });
 }
-function barFn() { return bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+const INTRO_BAR = 1000;
+function playIntroBar() {}
+function snowHz(d, oct) {
+  const s = SNOW_STEPS[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct - 4);
+  return 261.63 * Math.pow(2, s / 12);
+}
+
+function snowPiano(f, dur, vol, at, wet) {
+  chime(f, dur, vol, { at, wet, out: musicGain });
+  pluck(f * 2, dur * 0.4, vol * 0.25, 'triangle', at);
+}
+
+let snowNoise = null;
+function snowWind(at, dur, vol) {
+  const c = ensureCtx();
+  if (!snowNoise) {
+    snowNoise = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+    const d = snowNoise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const src = c.createBufferSource(); src.buffer = snowNoise; src.loop = true;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.6;
+  bp.frequency.setValueAtTime(380, at); bp.frequency.exponentialRampToValueAtTime(760, at + dur);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(vol, at + dur * 0.45);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  src.connect(bp).connect(g).connect(musicGain); src.start(at); src.stop(at + dur);
+}
+
+function snowPad(ch, sec, at) {
+  padNote(snowHz(ch[0], 2), sec * 1.05, 0.07, 'sine', at);
+  padNote(snowHz(ch[1], 3), sec, 0.03, 'triangle', at);
+  padNote(snowHz(ch[2], 3), sec, 0.026, 'triangle', at);
+}
+
+function playSnowBar(at) {
+  const bar = barCount++ % SNOW_CHORDS.length;
+  const ch = SNOW_CHORDS[bar], sec = SNOW_BAR / 1000;
+  snowPad(ch, sec, at);
+  if (bar % 2 === 0) snowWind(at, sec * 2, 0.035);
+  SNOW_FALL[bar].forEach((d, k) => snowPiano(snowHz(d, 5), 2.2, 0.06, at + 0.4 + k * 1.15 + Math.random() * 0.1, 0.35));
+  if (Math.random() < 0.6) chime(snowHz(ch[3], 7), 1.2, 0.012, { at: at + 1 + Math.random() * 3, wet: 0.7, out: musicGain });
+}
+
+function playSnowSledBar(at) {
+  const bar = barCount++ % SNOW_CHORDS.length;
+  const ch = SNOW_CHORDS[bar], sec = SNOW_SLED_BAR / 1000, e = sec / 8;
+  snowPad(ch, sec, at);
+  if (bar % 2 === 0) snowWind(at, sec * 2, 0.05);
+  SNOW_ARP.forEach((k, s) => {
+    snowPiano(snowHz(ch[k], 5), e * 2, 0.06, at + s * e, 0.2);
+    if (s % 4 === 0) kick(0.2, at + s * e);
+    tick(0.012, at + s * e + e / 2);
+  });
+  if (bar === 3) chime(snowHz(ch[3], 7), 0.8, 0.014, { at: at + sec - e, wet: 0.7, out: musicGain });
+}
+
+function barFn() { return bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'snow' ? playSnowBar : bgmTheme === 'snowsled' ? playSnowSledBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'snow' ? SNOW_BAR : bgmTheme === 'snowsled' ? SNOW_SLED_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을
@@ -416,6 +486,34 @@ export function startBGM() {
   if (musicOn) return;
   musicOn = true; scheduleBars();
 }
-export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } fadeIntroBus(0.4); }
+
+let introBus = null, introSrcs = [], introMainTimer = null;
+function fadeIntroBus(sec) {
+  if (!introBus || !ctx) return;
+  const bus = introBus, srcs = introSrcs;
+  introBus = null; introSrcs = [];
+  bus.gain.setTargetAtTime(0.0001, ctx.currentTime, Math.max(0.05, sec / 3));
+  setTimeout(() => {
+    for (const s of srcs) { try { s.stop(); } catch (e) { void e; } }
+    bus.disconnect();
+  }, (sec + 0.5) * 1000);
+}
+export function startIntroScore() {
+  clearTimeout(introMainTimer);
+  setBGMTheme('intro');
+  if (!enabled || !musicOn) return false;
+  const c = ensureCtx();
+  fadeIntroBus(0.2);
+  introBus = c.createGain(); introBus.gain.value = 0.5; introBus.connect(master);
+  introSrcs = playIntroScore(c, introBus, c.currentTime + 0.05);
+  return true;
+}
+export function stopIntroScore(fadeSec = 0.8) {
+  const playing = !!introBus;
+  fadeIntroBus(fadeSec);
+  clearTimeout(introMainTimer);
+  introMainTimer = setTimeout(() => setBGMTheme('main'), playing ? fadeSec * 1000 : 0);
+}
 export function toggleBGM() { if (musicOn) { stopBGM(); return false; } startBGM(); return true; }
 export function isBGMOn() { return musicOn; }

@@ -11,7 +11,7 @@ const HAS_KO = /[가-힣]/;
 const en = (s) => { const out = t(s); assert.ok(!HAS_KO.test(out), `번역 없음: ${JSON.stringify(s)} → ${out}`); return out; };
 
 test('검수 완료 문구(스펙 §8)', () => {
-  for (const s of ['오늘의 이웃', '같은 잎사귀를 받고 온 이웃들이에요 · 내일 또 바뀌어요', '놀러 가기', '또 보기', '❤️ 다녀옴',
+  for (const s of ['오늘의 이웃', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요', '놀러 가기', '또 보기', '❤️ 다녀옴',
     '🚪 내 마을로', '"와 줘서 고마워요! 어땠어요?"', '❤️ 마음을 남겼어요 · 🪙+5', '❤️ 마음을 남겼어요',
     '어제부터 지금까지', '고마워요 🌱']) en(s);
   assert.equal(en('🏡 Sparkly Bear #4821 의 마을'), "🏡 Sparkly Bear #4821's village");

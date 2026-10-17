@@ -4,7 +4,7 @@ import { catalogVisible, SALE_WINDOWS } from '../js/shop/sale-window.js';
 
 const item = { id: 'x', sale: 'halloween' };
 const KST = (y, m, d, h = 0, mi = 0, s = 0) => Date.UTC(y, m - 1, d, h, mi, s) - 9 * 3600 * 1000;
-const IN = KST(2026, 10, 25, 12), BEFORE = KST(2026, 10, 23, 23, 59, 59), AFTER = KST(2026, 11, 3, 0, 0, 0);
+const IN = KST(2026, 10, 25, 12), BEFORE = KST(2026, 10, 16, 23, 59, 59), AFTER = KST(2026, 11, 3, 0, 0, 0);
 
 test('sale 키가 없으면 늘 보인다', () => {
   assert.equal(catalogVisible({ id: 'sofa' }, { now: AFTER }), true);
