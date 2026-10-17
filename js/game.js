@@ -1634,7 +1634,7 @@ function tryUnlockDrop(chance) {
   spawnSparkle(player.position.x, 1.2, player.position.z, 20);
   if (!gameState.hintsSeen.colorUnlock) {          // 첫 획득 → 시스템 안내 모달(온보딩)
     firstHint('colorUnlock', '🎨', '새 집 색을 얻었어요!',
-      '낚시·수확·퀘스트·집 완성으로 집 색을 모아요\n집 앞 🎨 꾸미기에서 지붕·벽·문에 적용!');
+      '집 앞 🎨 꾸미기에서 바꿔 보세요.');
   } else {
     ui.toast?.(`🎨 새 ${PART_NAME[part]} 색을 얻었어요! 집 앞 🎨 버튼에서 적용해보세요`, 4200);
   }
@@ -7713,7 +7713,7 @@ export function npcDialogState() {
   const q = currentQuest(o.def, st);
   if (!q) return { npc: o.def, mode: 'done', line: o.def.doneLine || '덕분에 마을이 살아났어요. 정말 고마워요! 🌼' };
   const bp = q.hidden ? blueprintOfTool(q.tool) : null;   // 🔨 히든 의뢰 — 보상에 📜 도면을 붙여 보인다
-  const reward = rewardText(q.reward) + (bp ? ` + 📜 ${bp.name} 도면` : '');
+  const reward = rewardShort(q.reward) + (bp ? ` · 📜 ${bp.name} 도면` : '');
   const base = { npc: o.def, title: q.title, desc: q.desc, how: QUEST_HOW[q.type] || '', target: q.target, reward, qid: questId(o.def, st), qtype: q.type }; // qid: 퍼널 분석용 표준 퀘스트 ID · qtype: 종류(GA4 축)
   if (bp && !st.given && !st.hiddenOpened) {   // [GA4] 히든 의뢰가 처음 눈앞에 뜬 순간(친밀도 문턱 도달 대비 실제 발견)
     st.hiddenOpened = true;
@@ -7721,7 +7721,7 @@ export function npcDialogState() {
   }
   if (!st.given) return { ...base, mode: 'offer', line: q.line, progress: 0 };
   if (st.progress < q.target) return { ...base, mode: 'progress', line: '조금만 더 부탁해요!', progress: st.progress };
-  return { ...base, mode: 'claim', line: '다 해냈네요! 보상을 받아요 🎁', progress: st.progress };
+  return { ...base, mode: 'claim', line: '다 해냈네요! 🎁', progress: st.progress };
 }
 
 // 퀘스트 수락(모달 "수락하기" 버튼) → 갱신된 상태 반환
@@ -7831,7 +7831,11 @@ function refreshCollectQuests() {
   refreshQuestPanel();
 }
 
-function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
+function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }
+// 🎁 짧은 보상 표기 — 아이콘+숫자만("🌰3 · 🪙5"). 의뢰 카드·보상 토스트용(문구가 길다는 피드백, 2026-10-17)
+//    아이콘이 없는 자원은 원래 라벨로(번역 그대로)
+const RES_ICO = { wood: '🪵', seed: '🌰', crop: '🥕', fish: '🐟', coins: '🪙', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '✨', forage: '🍄', star: '⭐', glow: '✨', fert: '🌱', bait: '🪱', honey: '🍯' };
+function rewardShort(r) { return Object.entries(r).map(([k, v]) => RES_ICO[k] ? `${RES_ICO[k]}${v}` : `${t(RES_LABEL[k] || k)}+${v}`).join(' · '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
 // 🎚️ 이 판의 난이도를 뽑고 순회 카운터를 올린다. 돌려준 { ease, arm, dda } 를 그대로 결과 이벤트에 싣는다.
 //    id 는 clientId(기기 영구 식별자) — 게스트도 세션을 넘어 같은 팔 순서를 이어 간다.
@@ -7884,7 +7888,7 @@ function giveReward(r, source = 'reward', item = null) {
   for (const k in r) gameState.inventory[k] = (gameState.inventory[k] || 0) + r[k];
   if (r.coins) logEcon(source, item, r.coins, gameState.inventory.coins); // [원장] 코인 보상 유입(출처 명시)
   refreshInventoryUI();
-  if (player) spawnFloatText(player.position.x, 1.9, player.position.z, '+' + rewardText(r), '#2fa564'); // 보상 표시
+  if (player) spawnFloatText(player.position.x, 1.9, player.position.z, Object.entries(r).map(([k, v]) => RES_ICO[k] ? `${RES_ICO[k]}+${v}` : `+${t(RES_LABEL[k] || k)}+${v}`).join(' '), '#2fa564'); // 보상 표시 — 아이콘+숫자로 짧게(2026-10-17)
 }
 
 // =============================================================

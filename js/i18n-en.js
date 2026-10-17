@@ -1666,7 +1666,7 @@ export const EN = {
   '출석 {0}일차': 'Day {0} Check-In',
   '🎁 출석 보상 +{0}🪙': '🎁 Daily bonus +{0}🪙',
   '새 집 색을 얻었어요!': 'You got a new house color!',
-  '낚시·수확·퀘스트·집 완성으로 집 색을 모아요\n집 앞 🎨 꾸미기에서 지붕·벽·문에 적용!': 'Fishing, harvests, quests and finishing the house unlock house colors\nApply them to roof, walls and door via 🎨 Decorate by your house!',
+  '집 앞 🎨 꾸미기에서 바꿔 보세요.': 'Try it out with 🎨 Decorate in front of your house.',
   '🎨 새 {0} 색을 얻었어요! 집 앞 🎨 버튼에서 적용해보세요': '🎨 New {0} color unlocked! Apply it with the 🎨 button by your house',
   '강아지': 'Puppy',
   '토끼': 'Rabbit',
@@ -2055,7 +2055,8 @@ export const EN = {
     'farm work comes first — switch to ✋ bare hands (key 1) to talk',
   '덕분에 마을이 살아났어요. 정말 고마워요! 🌼': 'The Village feels alive again, thanks to you. Thank you so much! 🌼',
   '조금만 더 부탁해요!': 'Just a little more, please!',
-  '다 해냈네요! 보상을 받아요 🎁': 'You did it! Claim your reward 🎁',
+  '다 해냈네요! 🎁': 'You did it! 🎁',
+  ' · 📜 {0} 도면': ' · 📜 {0} blueprint',   // 의뢰 카드 짧은 보상 표기(rewardShort) 뒤에 붙는다
   '✅ {0}의 목표 달성!': '✅ {0}\'s goal complete!',
   '{0}+{1}': '{0}+{1}',
 

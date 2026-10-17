@@ -3508,7 +3508,7 @@
           $('npc-qhow').textContent = view.mode === 'claim' ? '' : (view.how || '');   // 📜 수행 방법(보상 대기 땐 감춤)
           $('npc-qfill').style.width = Math.round(100 * view.progress / view.target) + '%';
           $('npc-qprog').textContent = `${view.progress} / ${view.target}`;
-          $('npc-qreward').textContent = '보상 ' + view.reward;
+          $('npc-qreward').textContent = '🎁 ' + view.reward;
         }
         const actions = $('npc-actions'); actions.innerHTML = '';
         const addBtn = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b); };
@@ -3516,7 +3516,7 @@
           addBtn('수락하기', 'primary', () => { npcAccept(); ui.toast('📜 퀘스트를 수락했어요!'); closeNpc(); });
           addBtn('나중에', 'ghost', closeNpc);
         } else if (view.mode === 'claim') {
-          addBtn('보상 받기', 'primary', () => { npcClaim(); ui.toast('🎁 보상 획득! ' + (view.reward || '')); closeNpc(); });
+          addBtn('보상 받기', 'primary', () => { npcClaim(); ui.toast('🎁 ' + (view.reward || '')); closeNpc(); });
           addBtn('닫기', 'ghost', closeNpc);
         } else {
           addBtn('닫기', 'ghost', closeNpc);
