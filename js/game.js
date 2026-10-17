@@ -1584,7 +1584,7 @@ function updateToolPageAuto() {
       // 바가 저절로 접히는 첫 순간 — 왜 접혔고 어떻게 되돌리는지 한 번만 알려 준다
       if (!gameState.hintsSeen.toolStow) {
         gameState.hintsSeen.toolStow = true;
-        ui.toast?.(touchHud() ? '🎒 도구를 등에 멨어요. 여기선 맨손으로 해요 — 나가면 다시 꺼내 들어요' : '🎒 도구를 등에 멨어요. 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요', 3200);
+        ui.toast?.(touchHud() ? '🎒 도구를 등에 멨어요. 여기선 맨손으로 해요. 나가면 다시 꺼내 들어요' : '🎒 도구를 등에 멨어요. 하단 왼쪽 버튼(숫자 1)으로 다시 꺼낼 수 있어요', 3200);
       }
     }
     setToolPage(want, true);
@@ -6858,7 +6858,7 @@ function handleAction() {
   const fp = fertTarget();
   if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // ✋ 맨손 — 도구를 등에 메고 있으니 도구질은 안 된다(줍기·대화·문은 위에서 이미 처리됨)
-  if (toolPage === 'none') { ui.toast?.(touchHud() ? '✋ 맨손이에요 — 오른쪽 아래 도구 버튼을 꾹 눌러 도구를 꺼내세요' : '✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
+  if (toolPage === 'none') { ui.toast?.(touchHud() ? '✋ 맨손이에요. 오른쪽 아래 도구 버튼을 꾹 눌러 꺼내세요' : '✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
   // 🌾 농사 도구(괭이·씨앗·물조리개·낫)는 밭 상태에 맞는 도구로 바꿔 바로 실행 — 🪏삽은 명시적으로만
   if (FARM_AUTO_TOOLS.includes(TOOLS[currentTool].id)) return farmAutoAction();
   switch (TOOLS[currentTool].id) {

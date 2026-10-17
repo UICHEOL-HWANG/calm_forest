@@ -4,8 +4,8 @@ import { gameSource } from './helpers/game-source.mjs';
 import { EN } from '../js/i18n-en.js';
 
 const SRC = gameSource();
-const STOW_M = '🎒 도구를 등에 멨어요. 여기선 맨손으로 해요 — 나가면 다시 꺼내 들어요';
-const BARE_M = '✋ 맨손이에요 — 오른쪽 아래 도구 버튼을 꾹 눌러 도구를 꺼내세요';
+const STOW_M = '🎒 도구를 등에 멨어요. 여기선 맨손으로 해요. 나가면 다시 꺼내 들어요';
+const BARE_M = '✋ 맨손이에요. 오른쪽 아래 도구 버튼을 꾹 눌러 꺼내세요';
 
 test('모바일 안내엔 숫자키·하단 왼쪽 버튼 이야기가 없다', () => {
   for (const s of [STOW_M, BARE_M]) assert.doesNotMatch(s, /숫자|하단 왼쪽|1번/);
