@@ -1622,6 +1622,7 @@ export const EN = {
   '방문 {0#}/1': 'Visits {0}/1',
   // 🌉 1·2장 「세계수를 지키는 법」 — 해금 켜짐 + 새 세이브(js/story/chapters.js STORY_REWORLD)
   '세계수를 지키는 법': 'How to Save the World Tree',
+  '1장': 'Chapter 1',
   '할아버지 만나기': 'Meet the grandpa',
   '🦉 "저 나무, 우리가 지켜야 해." 집을 짓고 서쪽 할아버지를 찾아가자.': '🦉 "We have to protect that tree." Build a home, then find the grandpa in the west.',
   '다리를 고쳐 할아버지를 만났어요.': 'You fixed the bridge and met the grandpa.',

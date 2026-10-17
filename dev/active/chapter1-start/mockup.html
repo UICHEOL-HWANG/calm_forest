@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1장 시작 연출 시안</title>
+<style>
+  :root { --cream: #fff7ec; --mint: #bfe8c9; --ink: #4a5a4f; --panel: rgba(255,255,255,0.78); --shadow: 0 6px 18px rgba(90,120,100,0.18); --page: #f4f1ea; --sub: #7b857e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: 'Apple SD Gothic Neo', 'Segoe UI', system-ui, sans-serif; padding: 28px 24px 40px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--sub); font-size: 13.5px; margin: 0 0 22px; line-height: 1.55; }
+  section { margin-bottom: 30px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  h2 .tag { display: inline-block; font-size: 11px; font-weight: 800; background: var(--mint); color: #2f7d54; border-radius: 6px; padding: 2px 7px; margin-right: 6px; vertical-align: 2px; }
+  .desc { font-size: 12.5px; color: var(--sub); margin: 0 0 10px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .frame { position: relative; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 16px rgba(40,60,50,.18); background: #ccc; flex: 0 0 auto; }
+  .frame.pc { width: 640px; height: 400px; }
+  .frame.pc.sm { width: 480px; height: 300px; }
+  .sm .stage { transform: scale(.375); }
+  .frame.mb { width: 195px; height: 422px; border-radius: 18px; }
+  .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: scale(.5); background-size: 100% 100%; }
+  .pc .stage { width: 1280px; height: 800px; background-image: url(bg-pc.jpg); }
+  .mb .stage { width: 390px; height: 844px; background-image: url(bg-mobile.jpg); }
+  .steps { font-size: 12px; line-height: 1.6; color: var(--ink); background: #fff; border-radius: 12px; padding: 10px 14px; flex: 1 1 220px; max-width: 300px; box-shadow: var(--shadow); }
+  .steps b { color: #2f7d54; }
+  .steps ol { margin: 4px 0 0; padding-left: 18px; }
+  .lbl { font-size: 11px; color: var(--sub); margin: 4px 0 0 2px; }
+
+  .panel { position: absolute; background: var(--panel); backdrop-filter: blur(8px); border-radius: 18px; box-shadow: var(--shadow); padding: 12px 16px; color: var(--ink); }
+  .coach { top: 92px; left: 50%; transform: translateX(-50%); width: 440px; border: 2px solid var(--mint); display: flex; flex-direction: column; gap: 7px; }
+  .coach .goal { font-size: 11px; font-weight: 800; color: #2f7d54; }
+  .coach .txt { font-size: 15px; font-weight: 700; line-height: 1.35; }
+  .coach .bar { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; }
+  .coach .track { flex: 1; height: 6px; border-radius: 3px; background: #e2e6e1; overflow: hidden; }
+  .coach .fill { height: 100%; background: #7fd39a; }
+  .coach .skip { text-decoration: underline; opacity: .6; font-weight: 600; }
+  .strike { position: relative; align-self: flex-start; }
+  .strike::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; border-top: 2px solid #d9534f; }
+
+  .chip { top: 212px; left: 16px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; max-width: 220px; }
+  .mb .chip { top: 220px; left: 12px; max-width: 190px; padding: 7px 10px; }
+  .chip .ico { font-size: 20px; }
+  .chip .t { font-size: 11px; font-weight: 700; opacity: .65; }
+  .chip .g { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
+  .chip .p { font-size: 11px; font-weight: 700; color: #2fa564; }
+
+  .dim { position: absolute; inset: 0; background: rgba(20,40,30,.55); }
+  .card { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 400px; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,.4); padding: 26px 24px 20px; text-align: center; }
+  .mb .card { width: 340px; padding: 22px 18px 18px; }
+  .card .em { font-size: 44px; line-height: 1; }
+  .card .ch { font-size: 12px; font-weight: 800; color: #2f7d54; margin-top: 10px; letter-spacing: .02em; }
+  .card .ti { font-size: 21px; font-weight: 800; margin-top: 2px; }
+  .card .say { font-size: 14px; line-height: 1.55; margin-top: 12px; }
+  .card .goals { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; text-align: left; }
+  .card .gl { display: flex; justify-content: space-between; background: #f2f6f0; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 700; }
+  .card .gl span:last-child { color: #2fa564; font-variant-numeric: tabular-nums; }
+  .card .btn { margin-top: 16px; display: inline-block; background: var(--mint); border-radius: 12px; padding: 10px 28px; font-weight: 800; font-size: 14px; }
+
+  .lb { position: absolute; left: 0; right: 0; height: 64px; background: #0d0f0e; }
+  .lb.top { top: 0; } .lb.bot { bottom: 0; }
+  .mb .lb { height: 90px; }
+  .cine { position: absolute; inset: 0; background: linear-gradient(rgba(12,22,18,.25), rgba(12,22,18,.72) 70%); }
+  .tree { position: absolute; left: 50%; top: 80px; transform: translateX(-50%); width: 260px; height: 290px; }
+  .mb .tree { top: 110px; width: 200px; height: 220px; }
+  .title { position: absolute; left: 0; right: 0; top: 60%; text-align: center; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+  .mb .title { top: 56%; }
+  .title .n { font-size: 15px; font-weight: 800; letter-spacing: .3em; opacity: .85; }
+  .title .big { font-size: 38px; font-weight: 800; margin-top: 4px; }
+  .mb .title .big { font-size: 28px; }
+  .caption { position: absolute; left: 0; right: 0; bottom: 84px; text-align: center; color: #fff; font-size: 17px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+  .mb .caption { bottom: 108px; font-size: 14px; padding: 0 20px; }
+
+  .ribbon { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 10px 22px; border-radius: 999px; background: rgba(255,255,255,.92); box-shadow: 0 8px 24px rgba(40,70,55,.25); border: 2px solid var(--mint); white-space: nowrap; }
+  .mb .ribbon { top: 112px; padding: 8px 14px; gap: 8px; }
+  .ribbon .k { font-size: 11px; font-weight: 800; color: #2f7d54; }
+  .ribbon .v { font-size: 16px; font-weight: 800; }
+  .mb .ribbon .v { font-size: 14px; }
+  .toast { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(40,55,45,.86); color: #fff; border-radius: 14px; padding: 10px 16px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .mb .toast { bottom: 150px; font-size: 12.5px; white-space: normal; width: 300px; text-align: center; }
+  .glow { box-shadow: 0 0 0 3px #8fe0a8, 0 0 22px 6px rgba(127,211,154,.75), var(--shadow); }
+  .new { position: absolute; top: -9px; right: -8px; background: #ff8a5b; color: #fff; font-size: 10px; font-weight: 800; border-radius: 8px; padding: 2px 6px; }
+</style>
+</head>
+<body>
+  <h1>🌳 1장 시작 연출 시안</h1>
+  <p class="lead">튜토리얼 17단계가 끝나는 순간 메인 퀘스트 1장 「세계수를 지키는 법」이 시작된다는 걸 보여 주는 장면이에요. 배경은 지금 빌드(main 9124f289)의 실제 게임 화면입니다. 세 시안 모두 연출이 끝나면 왼쪽 1장 칩이 처음 나타나요.</p>
+
+  <section>
+    <h2><span class="tag">공통</span>튜토리얼 중 코치 카드: 머리 줄 빼기</h2>
+    <p class="desc">지금은 1/17부터 카드 맨 위에 "1장 · 할아버지 만나기"가 붙어 있어요. 튜토리얼 동안은 조작 설명만 보이게 이 줄을 뺍니다.</p>
+    <div class="row">
+      <div>
+        <div class="frame pc sm"><div class="stage">
+          <div class="panel coach">
+            <div class="goal strike">1장 · 🌳 할아버지 만나기</div>
+            <div class="txt">WASD·방향키로 걷고, Space로 행동해요</div>
+            <div class="bar"><div class="track"><div class="fill" style="width:6%"></div></div>1 / 17 <span class="skip">건너뛰기</span></div>
+          </div>
+        </div></div>
+        <div class="lbl">지금 (빨간 줄 = 빼는 부분)</div>
+      </div>
+      <div>
+        <div class="frame pc sm"><div class="stage">
+          <div class="panel coach">
+            <div class="txt">WASD·방향키로 걷고, Space로 행동해요</div>
+            <div class="bar"><div class="track"><div class="fill" style="width:6%"></div></div>1 / 17 <span class="skip">건너뛰기</span></div>
+          </div>
+        </div></div>
+        <div class="lbl">바뀐 뒤</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="tag">A</span>🦉 1장 시작 카드</h2>
+    <p class="desc">17단계를 마치면 화면을 살짝 어둡게 하고 카드 한 장을 띄웁니다. 기존 "n장 완료" 카드와 같은 모양이라 새로 익힐 게 없어요. 할 일 두 줄을 바로 보여 줘서 가장 분명합니다.</p>
+    <div class="row">
+      <div class="frame pc"><div class="stage">
+        <div class="dim"></div>
+        <div class="card">
+          <div class="em">🦉</div>
+          <div class="ch">1장 시작</div>
+          <div class="ti">🌳 세계수를 지키는 법</div>
+          <div class="say">"저 나무, 우리가 지켜야 해."<br>집을 짓고 서쪽 할아버지를 찾아가자.</div>
+          <div class="goals">
+            <div class="gl"><span>🏠 집 완성하기</span><span>1 / 3</span></div>
+            <div class="gl"><span>🌉 서쪽 다리 고치기</span><span>0 / 1</span></div>
+          </div>
+          <div class="btn">좋아요</div>
+        </div>
+      </div></div>
+      <div class="frame mb"><div class="stage">
+        <div class="dim"></div>
+        <div class="card">
+          <div class="em">🦉</div>
+          <div class="ch">1장 시작</div>
+          <div class="ti">🌳 세계수를 지키는 법</div>
+          <div class="say">"저 나무, 우리가 지켜야 해."<br>집을 짓고 서쪽 할아버지를 찾아가자.</div>
+          <div class="goals">
+            <div class="gl"><span>🏠 집 완성하기</span><span>1 / 3</span></div>
+            <div class="gl"><span>🌉 서쪽 다리 고치기</span><span>0 / 1</span></div>
+          </div>
+          <div class="btn">좋아요</div>
+        </div>
+      </div></div>
+      <div class="steps"><b>흐름</b><ol><li>17단계 완료 → 졸업 토스트 대신 이 카드</li><li>[좋아요] → 카드 닫힘, 왼쪽 1장 칩 등장</li><li>안내서·알림 안내는 카드 뒤로 줄 세움</li></ol><b>장점</b> 할 일이 가장 또렷함<br><b>단점</b> 튜토리얼 직후 창이 한 번 더 뜸</div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="tag">B</span>세계수 조망 + 장 제목</h2>
+    <p class="desc">위아래 검은 띠를 깔고 카메라가 북쪽 시든 세계수를 비추면서 장 제목이 떠오릅니다. 프롤로그와 이어지는 연출이에요. 실제로는 기존 세계수 조망 카메라를 다시 쓰고, 이 그림은 카메라 대신 지금 화면을 어둡게 깔아 흉내만 냈습니다.</p>
+    <div class="row">
+      <div class="frame pc"><div class="stage">
+        <div class="cine"></div>
+        <svg class="tree" viewBox="0 0 300 330" aria-hidden="true">
+          <path d="M140 330 L148 200 L110 150 M148 200 L190 140 M152 240 L215 185 M146 265 L92 215" stroke="#3e3226" stroke-width="20" stroke-linecap="round" fill="none" opacity=".92"/>
+          <circle cx="190" cy="130" r="9" fill="#e2bd57"/>
+        </svg>
+        <div class="lb top"></div><div class="lb bot"></div>
+        <div class="title"><div class="n">1 장</div><div class="big">세계수를 지키는 법</div></div>
+        <div class="caption">🦉 저 나무, 우리가 지켜야 해. 집을 짓고 서쪽 할아버지를 찾아가자.</div>
+      </div></div>
+      <div class="frame mb"><div class="stage">
+        <div class="cine"></div>
+        <svg class="tree" viewBox="0 0 300 330" aria-hidden="true">
+          <path d="M140 330 L148 200 L110 150 M148 200 L190 140 M152 240 L215 185 M146 265 L92 215" stroke="#3e3226" stroke-width="20" stroke-linecap="round" fill="none" opacity=".92"/>
+          <circle cx="190" cy="130" r="9" fill="#e2bd57"/>
+        </svg>
+        <div class="lb top"></div><div class="lb bot"></div>
+        <div class="title"><div class="n">1 장</div><div class="big">세계수를<br>지키는 법</div></div>
+        <div class="caption">🦉 저 나무, 우리가 지켜야 해.<br>집을 짓고 서쪽 할아버지를 찾아가자.</div>
+      </div></div>
+      <div class="steps"><b>흐름</b><ol><li>17단계 완료 → 띠 내려오고 카메라가 세계수로</li><li>제목·대사 약 4초, 탭하면 넘김</li><li>카메라 복귀 → 1장 칩이 반짝이며 등장</li></ol><b>장점</b> 이야기 몰입 · 프롤로그와 이어짐<br><b>단점</b> 할 일(집·다리)은 칩을 봐야 앎 · 구현이 가장 큼</div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="tag">C</span>위쪽 띠 + 칩 강조 (멈추지 않음)</h2>
+    <p class="desc">게임을 멈추지 않고 위쪽에 장 제목 띠를 3초 띄우고, 아래 안내 자리에 🦉 한 줄을 보여 줍니다. 왼쪽 1장 칩은 반짝이며 "새" 딱지를 달아요. 가장 가볍습니다.</p>
+    <div class="row">
+      <div class="frame pc"><div class="stage">
+        <div class="ribbon"><span class="k">📖 1장 시작</span><span class="v">🌳 세계수를 지키는 법</span></div>
+        <div class="panel chip glow"><span class="ico">🌳</span><div><div class="t">1장 · 세계수를 지키는 법</div><div class="g">할아버지 만나기</div><div class="p">공사 1/3 · 다리 0/1</div></div><span class="new">새</span></div>
+        <div class="toast">🦉 저 나무, 우리가 지켜야 해. 집을 짓고 서쪽 할아버지를 찾아가자.</div>
+      </div></div>
+      <div class="frame mb"><div class="stage">
+        <div class="ribbon"><span class="k">📖 1장 시작</span><span class="v">🌳 세계수를 지키는 법</span></div>
+        <div class="panel chip glow"><span class="ico">🌳</span><div><div class="t">1장 · 세계수를 지키는 법</div><div class="g">할아버지 만나기</div><div class="p">공사 1/3 · 다리 0/1</div></div><span class="new">새</span></div>
+        <div class="toast">🦉 저 나무, 우리가 지켜야 해. 집을 짓고 서쪽 할아버지를 찾아가자.</div>
+      </div></div>
+      <div class="steps"><b>흐름</b><ol><li>17단계 완료 → 띠 3초 + 🦉 한 줄</li><li>칩 반짝임은 처음 누를 때까지</li><li>칩을 누르면 이야기 창(1장 설명)</li></ol><b>장점</b> 흐름이 안 끊김 · 구현이 가장 작음<br><b>단점</b> 놓치기 쉬움 · "이제 시작"의 무게감이 약함</div>
+    </div>
+  </section>
+</body>
+</html>

@@ -272,7 +272,7 @@ import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeFoot, bridgePoint, streamR
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { defaultBloom, restoreBloom } from './world/tree-bloom.js';
-import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
+import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, queueChapterShot, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
@@ -1936,6 +1936,7 @@ export const Input = {
   },
   craftMgBase(itemId) { return mgBaseOf(itemId); },     // 🍎 과일 가공은 원조 품목의 조작을 빌린다(index.html 분기 키)
   orchardQuestAfterTutorial() { maybeOfferOrchardQuest({ needHarvested: true }); },   // 🌾→🍎 튜토리얼(수확이 8단계)이 끝나면 미뤄 둔 의뢰를 건다
+  queueChapterShot(after) { return queueChapterShot(after); },
   // 🔥 미니게임 판정 — 조작은 index.html 이 받고 판정은 순수 모듈이 한다
   craftScore(itemId, input) {
     if (itemId === 'flour') return millScore(input);
