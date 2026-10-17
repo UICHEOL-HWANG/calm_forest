@@ -63,3 +63,11 @@ test('대상이 사라지면 3초 뒤 넘기고, 자기 조건이 깨진 투어(
   assert.match(SPOT, /getComputedStyle\(el\)\.visibility !== 'hidden'/);
   assert.match(SPOT, /run\.stuck = false; run\.gone = 0; paint\(\); \} else hide\(\);/);
 });
+
+test('건너뛰기는 말풍선 안 링크 · 첫 실행은 핵심 조작 뒤부터, 다시 보기·바뀐 점은 처음부터', () => {
+  assert.match(SPOT, /<button type="button" class="sp-skip"><\/button>/);
+  assert.match(SPOT, /const canSkip = run\.skip === 'all' \|\| \(run\.skip === 'optional' && !s\.core\);/);
+  assert.match(SPOT, /trackEvent\?\.\('tutorial_skip', \{ at: s\.key, kind: run\.kind \}\)/);
+  assert.match(HTML, /skip: src === 'help' \? 'all' : 'optional'/);
+  assert.match(HTML, /spot\.run\(spotSteps\('new', TOUCH\), \{ kind: 'new', skip: 'all' \}\)/);
+});

@@ -1,9 +1,9 @@
 export const DONE_KINDS = ['act', 'open', 'menu', 'click', 'tap'];
 
 const TOUCH_FULL = [
-  { key: 't_move', target: '#joy-base', hand: 'drag', text: '🕹️ 끌어서 걸어 보세요', done: 'act:move' },
-  { key: 't_tool', target: '#tool-btn', hand: 'hold', text: '🧰 꾹 누른 채 밀어서 도구를 골라요', done: 'act:toolpage' },
-  { key: 't_use', target: '#action-btn', hand: 'tap', text: '⭕ 큰 버튼으로 도구를 써요', done: 'act:use' },
+  { key: 't_move', core: true, target: '#joy-base', hand: 'drag', text: '🕹️ 끌어서 걸어 보세요', done: 'act:move' },
+  { key: 't_tool', core: true, target: '#tool-btn', hand: 'hold', text: '🧰 꾹 누른 채 밀어서 도구를 골라요', done: 'act:toolpage' },
+  { key: 't_use', core: true, target: '#action-btn', hand: 'tap', text: '⭕ 큰 버튼으로 도구를 써요', done: 'act:use' },
   { key: 't_bag', target: '#bag-btn', hand: 'tap', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
   { key: 't_dex', target: '#hud-dex', hand: 'tap', text: '📖 도감에서 모은 것을 봐요', done: 'open:dex-modal' },
   { key: 't_menu', target: '#hud-menu', hand: 'tap', text: '☰ 사진·소식함·설정은 여기 있어요', done: 'menu' },
@@ -11,10 +11,10 @@ const TOUCH_FULL = [
 ];
 
 const PC_FULL = [
-  { key: 'pc_move', target: null, keys: ['↑', '←', '↓', '→'], hand: 'key', text: '⌨️ 방향키로 걸어 보세요', done: 'act:move' },
-  { key: 'pc_set', target: '#tool-page', keys: ['1'], hand: 'key', text: '🧰 1을 누르면 도구 세트가 바뀌어요', done: 'act:toolpage' },
-  { key: 'pc_pick', target: '#hotbar', keys: ['2', '3', '4', '5', '6'], hand: 'key', text: '🔢 2~6으로 도구를 골라요', done: 'act:toolpick' },
-  { key: 'pc_use', target: null, keys: ['Space'], hand: 'key', text: '⭕ Space로 도구를 써요', done: 'act:use' },
+  { key: 'pc_move', core: true, target: null, keys: ['↑', '←', '↓', '→'], hand: 'key', text: '⌨️ 방향키로 걸어 보세요', done: 'act:move' },
+  { key: 'pc_set', core: true, target: '#tool-page', keys: ['1'], hand: 'key', text: '🧰 1을 누르면 도구 세트가 바뀌어요', done: 'act:toolpage' },
+  { key: 'pc_pick', core: true, target: '#hotbar', keys: ['2', '3', '4', '5', '6'], hand: 'key', text: '🔢 2~6으로 도구를 골라요', done: 'act:toolpick' },
+  { key: 'pc_use', core: true, target: null, keys: ['Space'], hand: 'key', text: '⭕ Space로 도구를 써요', done: 'act:use' },
   { key: 'pc_bag', target: '#bag-btn', hand: 'click', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
   { key: 'pc_dex', target: '#hud-dex', hand: 'click', text: '📖 도감에서 모은 것을 봐요', done: 'open:dex-modal' },
   { key: 'pc_menu', target: '#hud-menu', hand: 'click', text: '☰ 사진·소식함·설정은 여기 있어요', done: 'menu' },

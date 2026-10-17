@@ -19,6 +19,9 @@ body.spot-on #coach { visibility: hidden; }
 @keyframes spdrag { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(22px, -18px); } 50% { transform: translate(0, -30px); } 75% { transform: translate(-22px, -18px); } }
 #spot-layer .sp-bub { position: absolute; max-width: min(300px, calc(100vw - 24px)); background: #ffe68a; color: #5b4300; font-weight: 800; font-size: 15px;
   line-height: 1.4; border-radius: 14px; padding: 10px 14px; box-shadow: 0 6px 18px rgba(0,0,0,.3); pointer-events: none; }
+#spot-layer .sp-skip { display: none; pointer-events: auto; margin-left: 8px; padding: 2px 0; border: none; background: none; color: #8a6a10; font: 700 12.5px/1.4 inherit;
+  text-decoration: underline; cursor: pointer; white-space: nowrap; }
+#spot-layer .sp-skip.show { display: inline-block; }
 #spot-layer .sp-keys { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 #spot-layer .sp-keys:empty { display: none; }
 #spot-layer .sp-keys kbd { min-width: 30px; padding: 5px 8px; border-radius: 8px; background: #fff; color: #3d3426; font: 800 14px/1 inherit; text-align: center;
@@ -42,7 +45,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
   }
   const layer = document.createElement('div'); layer.id = 'spot-layer';
   layer.innerHTML = '<div class="sp-bar"></div><div class="sp-bar"></div><div class="sp-bar"></div><div class="sp-bar"></div>'
-    + '<div class="sp-catch"></div><div class="sp-ring"></div><div class="sp-hand"></div><div class="sp-bub"><span class="sp-txt"></span><div class="sp-keys"></div></div>'
+    + '<div class="sp-catch"></div><div class="sp-ring"></div><div class="sp-hand"></div><div class="sp-bub"><span class="sp-txt"></span><button type="button" class="sp-skip"></button><div class="sp-keys"></div></div>'
     + '<div class="sp-dots"></div><button type="button" class="sp-next"></button>';
   document.body.appendChild(layer);
   const $ = (s) => layer.querySelector(s);
@@ -85,6 +88,8 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     hand.dataset.h = s.hand;
     hand.textContent = s.hand === 'click' ? '🖱️' : s.hand === 'key' ? '' : '👆';
     $('.sp-dots').innerHTML = run.steps.map((_, k) => `<i class="${k <= run.i ? 'on' : ''}"></i>`).join('');
+    const canSkip = run.skip === 'all' || (run.skip === 'optional' && !s.core);
+    const sk = $('.sp-skip'); sk.textContent = t('건너뛰기 ›'); sk.classList.toggle('show', canSkip);
     const nx = $('.sp-next'); nx.textContent = t('다음 ›'); nx.classList.remove('show');
     $('.sp-catch').style.display = s.done === 'tap' ? 'block' : 'none';
     if (!raf) raf = requestAnimationFrame(loop);
@@ -140,6 +145,13 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
   };
   barEls.forEach((b) => b.addEventListener('pointerdown', onTap));
   $('.sp-catch').addEventListener('pointerdown', onTap);
+  $('.sp-skip').addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!run) return;
+    const s = run.steps[run.i];
+    trackEvent?.('tutorial_skip', { at: s.key, kind: run.kind });
+    finish();
+  });
   $('.sp-next').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); advance('timeout'); });
   addEventListener('pointerdown', (e) => {
     if (!run || !layer.classList.contains('on')) return;
@@ -150,12 +162,12 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
   }, true);
 
   return {
-    run(steps, { kind, startAt = 0, onStep, blocked: blk } = {}) {
+    run(steps, { kind, startAt = 0, onStep, blocked: blk, skip = 'none' } = {}) {
       const list = steps.slice(startAt);
       if (!list.length) return Promise.resolve();
       return new Promise((resolve) => {
         if (run) stack.push(run);
-        run = { steps: list, i: 0, kind, onStep, blocked: blk, resolve, t: Date.now(), t0: Date.now(), stuck: false, gone: 0 };
+        run = { steps: list, i: 0, kind, onStep, blocked: blk, skip, resolve, t: Date.now(), t0: Date.now(), stuck: false, gone: 0 };
         paint();
       });
     },

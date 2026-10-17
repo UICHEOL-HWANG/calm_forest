@@ -41,3 +41,8 @@ test('모바일 단계엔 키보드 이야기가 없고, PC 첫 단계는 방향
 test('문구는 모두 영어 사전에 있다', () => {
   for (const [kind, touch] of all) for (const s of spotSteps(kind, touch)) assert.ok(EN[s.text], s.text);
 });
+
+test('첫 실행 핵심 조작(걷기·도구 고르기·쓰기)만 core', () => {
+  assert.deepEqual(spotSteps('full', true).filter((s) => s.core).map((s) => s.key), ['t_move', 't_tool', 't_use']);
+  assert.deepEqual(spotSteps('full', false).filter((s) => s.core).map((s) => s.key), ['pc_move', 'pc_set', 'pc_pick', 'pc_use']);
+});

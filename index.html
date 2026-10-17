@@ -4495,7 +4495,7 @@
       const left = steps.findIndex(s => !Input.hintSeen('spot_' + s.key));
       if (src === 'help' || left >= 0) {
         Input.armTutorialMove();
-        await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
+        await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, skip: src === 'help' ? 'all' : 'optional', onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
       }
       Input.markHintsSeen(['spotV2']);
       startCoach();
@@ -4504,7 +4504,7 @@
     function maybeHudTour() {
       if (Input.needsTutorial() || Input.hintSeen('spotV2')) return;
       if (Input.hintSeen('spot_started')) { startOnboarding('resume'); return; }
-      spot.run(spotSteps('new', TOUCH), { kind: 'new' }).then(() => { Input.markHintsSeen(['spotV2']); requestSave(); });
+      spot.run(spotSteps('new', TOUCH), { kind: 'new', skip: 'all' }).then(() => { Input.markHintsSeen(['spotV2']); requestSave(); });
     }
     function runMenuTour() {
       spot?.notify('menu');
