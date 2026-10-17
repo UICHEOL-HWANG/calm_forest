@@ -1170,9 +1170,10 @@ function syncStory(trigger = '') {
       Sound.complete(); spawnConfetti(player.position.x, 2.6, player.position.z);
       ui.showHintModal?.({
         ico: c.ico, title: `${st.ch}장 완료 — ${c.title}`,
-        body: `${c.done}\n\n🦉 의뢰 올빼미가 당신의 이야기를 기록했어요. 보상 🪙${c.reward.coins}${c.reward.seed ? ` · 🌰${c.reward.seed}` : ''}`
-          + (!next ? '' : next.soon ? '\n\n🏡 다음 이야기는 곧 열려요.'   // 잠긴 장은 목표 대신 예고만
-            : `\n\n다음 이야기 — ${next.ico} ${st.ch + 1}장 「${next.title}」: ${next.goal}`),
+        // 짧게 — 한 줄 이야기 + 보상 + 다음 장(목표는 HUD 칩이 보여 준다). 세 문단이 길다는 피드백(2026-10-17)
+        body: `${c.done}\n\n🎁 보상 🪙${c.reward.coins}${c.reward.seed ? ` · 🌰${c.reward.seed}` : ''}`
+          + (!next ? '' : next.soon ? '\n🏡 다음 이야기는 곧 열려요.'   // 잠긴 장은 목표 대신 예고만
+            : `\n➡️ 다음: ${next.ico} ${st.ch + 1}장 「${next.title}」`),
       });
     } else retro++;
   }
@@ -1261,16 +1262,16 @@ function applyUnlocks() {
 
 // 🔁 귀환 대사 — 한 줄. 없는 이웃은 기본 문구
 const RETURN_LINES = {
-  builder: '뚝딱뚝딱 망치 소리를 듣고 돌아왔대요. 집 짓는 건 맡겨 달래요!',
+  builder: '망치 소리를 듣고 돌아왔대요!',
   // 🧑‍🦳 1장의 끝 — 다리를 건너 만난 할아버지가 세계수를 살리는 법을 알려 준다(서식지 꾸미기 + 꾸러미 바치기)
-  curator: '다리를 고쳐 줬구먼, 고맙네.\n세계수는 숲이 살아 있어야 힘을 되찾는다네. 빈터를 꾸며 이웃을 부르고, 꾸러미를 바쳐 가지를 깨우게.',
+  curator: '"고맙네. 빈터를 꾸며 이웃을 부르고,\n꾸러미로 세계수 가지를 깨우게."',
   angler: '호숫가에 다시 낚싯대를 드리웠어요.',
-  farmer: '밭 냄새를 맡고 돌아왔대요. 과수원 가는 길도 알려 준대요.',
-  rancher: '새 닭장을 보고 반가워서 달려왔어요.',
-  chef: '부엌에 다시 불이 켜졌어요. 카페도 함께 열어요.',
+  farmer: '밭 냄새를 맡고 돌아왔대요.',
+  rancher: '새 닭장을 보고 달려왔어요.',
+  chef: '부엌에 불이 켜지고 카페가 열렸어요.',
   forager: '숲길을 다시 걷기 시작했어요.',
-  ferryman: '나루터에 배를 다시 띄웠어요. 바다로 가는 길도 열렸어요.',
-  stargazer: '천문대 망원경을 닦으며 기다리고 있었대요.',
+  ferryman: '배를 띄웠어요. 바다도 열렸어요.',
+  stargazer: '천문대에서 기다리고 있었대요.',
 };
 function unlockMinutes() {
   const t0 = Number(gameState.story?.started?.[STORY[0]?.id]);
@@ -1306,7 +1307,7 @@ function maybeOwlBridgeHint(delay = 0) {
   if (!unlocksOn() || !isOpen('bridgeRepair') || !bridgeBrokenNow() || gameState.hintsSeen.owlBridge) return;
   gameState.hintsSeen.owlBridge = true; requestSave();
   setTimeout(() => queueStoryModal({ ico: '🦉', title: '의뢰 올빼미',
-    body: `저 나무, 우리가 지켜야 해. 서쪽 박물관의 할아버지라면 방법을 알 거야. …그런데 가는 길의 다리가 무너졌어.\n\n🌉 서쪽 개울의 다리를 🪵${BRIDGE_COST.wood} 🪨${BRIDGE_COST.stone} 로 고쳐 보자.` },
+    body: `"저 나무, 우리가 지켜야 해. 서쪽 박물관 할아버지가 방법을 알 거야."\n\n🌉 다리 고치기: 🪵${BRIDGE_COST.wood} 🪨${BRIDGE_COST.stone}` },
   '🦉 서쪽 개울의 무너진 다리를 고쳐 보자'), delay);
 }
 function announceUnlock(id) {

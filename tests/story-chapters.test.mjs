@@ -17,7 +17,7 @@ test('STORY: 8장, id 고유, 순서, 잠긴 장 없음(🏡 이웃 마을 출�
   assert.deepEqual(STORY.map(c => !!c.soon), [false, false, false, false, false, false, false, false]);
   assert.deepEqual(STORY.slice(4).map(c => c.reward.coins), [100, 120, 120, 150]);
   for (const c of STORY) assert.ok(STORY_RULES[c.id], `규칙 없음: ${c.id}`);
-  assert.equal(STORY[7].done, '이웃의 마을에 다녀왔어요. 숲은 생각보다 넓고, 생각보다 따뜻해요.');
+  assert.equal(STORY[7].done, '이웃 마을에 다녀왔어요. 숲은 생각보다 넓어요.');   // 짧게(2026-10-17)
   assert.doesNotMatch(readFileSync(new URL('../js/story/chapters.js', import.meta.url), 'utf8'), /문구 검수 대기/);   // 8장 문구 승인됨(2026-10-07)
 });
 
@@ -94,7 +94,7 @@ test('storyFor(true): id·순서·보상은 같고 1·2장 문구만 바뀐다',
   assert.deepEqual(R.map(c => c.id), STORY.map(c => c.id));
   assert.deepEqual(R.map(c => c.reward), STORY.map(c => c.reward));
   assert.equal(R[0].title, '세계수를 지키는 법');
-  assert.equal(R[0].goal, '다리 너머 할아버지 만나기');
+  assert.equal(R[0].goal, '할아버지 만나기');   // 폰 HUD 칩에서 두 줄로 꺾이지 않게 짧게(2026-10-17)
   assert.equal(R[1].goal, STORY[1].goal);   // 2장 규칙(의뢰 3번)은 그대로 — 세계수 판이 생기면 바꾼다
   assert.notEqual(R[1].start, STORY[1].start);
   assert.deepEqual(R.slice(2), STORY.slice(2));
@@ -119,8 +119,8 @@ test('1장(reworld): 집만 지어선 안 끝나고, 다리를 고치면 끝난�
   assert.equal(v.chapters[1].title, '첫 번째 가지');
 });
 
-test('7·8장: 주인공은 씨앗이 아니다 — "세계수를 지키는 건 너 하나가 아니란다"', () => {
+test('7·8장: 주인공은 씨앗이 아니다 — "너 혼자가 아니란다"', () => {
   assert.doesNotMatch(STORY[6].done + STORY[7].start, /씨앗/);
-  assert.match(STORY[6].done, /세계수를 지키는 건 너 하나가 아니란다/);
-  assert.match(STORY[7].start, /다른 숲에서도 누군가 세계수를 지키고 있대요/);
+  assert.match(STORY[6].done, /너 혼자가 아니란다/);
+  assert.match(STORY[7].start, /다른 숲에도 세계수를 지키는 이웃이 있대요/);
 });
