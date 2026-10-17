@@ -56,3 +56,19 @@ test('다 자란 상자가 조망샷 구도 안에 든다(가로·폰 세로) �
     }
   }
 });
+
+test('마지막 잎: 잎자루가 💧 가지 끝가지 끝에 붙어 있고(흔들려도 그 자리), 반짝이는 잎과 함께 나타나고 진다', () => {
+  const art = buildTreeArt(THREE);
+  art.setState({ life: 0, branches: BR(0) }, 0);
+  const p0 = art.lastLeaf.position.clone();
+  art.setState({ life: 0, branches: BR(0) }, 2.7);
+  assert.ok(art.lastLeaf.position.distanceTo(p0) < 1e-9, '흔들림은 붙은 자리를 축으로 돈다');
+  assert.ok(!art.lastLeaf.quaternion.equals(new THREE.Quaternion()), '살랑거린다');
+  // 잎 메시 정점 중 하나는 원점(붙는 자리) 바로 곁에 있다
+  const mesh = art.lastLeaf.children[0], pa = mesh.geometry.attributes.position;
+  let near = Infinity; for (let i = 0; i < pa.count; i++) near = Math.min(near, Math.hypot(pa.getX(i), pa.getY(i), pa.getZ(i)));
+  assert.ok(near < 0.03, `잎자루 시작 ${near}`);
+  assert.equal(art.leafSparkles.visible, true);
+  art.setState({ life: 1, branches: BR(1, 1) }, 3);
+  assert.equal(art.leafSparkles.visible, false);
+});

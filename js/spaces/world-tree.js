@@ -3,7 +3,7 @@
 //  ------------------------------------------------------------
 //  스펙: docs/superpowers/specs/2026-10-16-world-tree-board-design.md §5~§9
 //  ▶ 규칙(순수)은 js/world/tree-board.js, 판 화면(DOM)은 js/world/tree-board-ui.js. 여기는 게임 상태와 잇는 층.
-//  ▶ 조형(드로우콜 11·라이트 0)은 js/world/tree-art.js — 인트로 시든 세계수(prologue.js buildWiltSet)의 문법.
+//  ▶ 조형(드로우콜 12·라이트 0)은 js/world/tree-art.js — 인트로 시든 세계수(prologue.js buildWiltSet)의 문법.
 //  ▶ 이정표 조망샷(카메라 리그)은 js/world/tree-shot.js, 줄 세우기·잎 자람 지연은 아래 🎬 조망샷.
 //  ▶ 해금 꺼짐(CONFIG.UNLOCKS 'off') · 레거시 세이브 → 나무는 늘 다 살아 있고, 판은 선택 콘텐츠(꾸러미 보상만).
 //  ⚠️ game.js 와 서로 import 한다(순환). 로딩 시점엔 game.js 값을 읽지 않는다 — 함수 안에서만.
