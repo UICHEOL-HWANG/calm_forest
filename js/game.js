@@ -80,7 +80,7 @@ import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil,
 import { logOrchardEvent } from './orchard-log.js';   // 🍎 과수원 이벤트 원장(Supabase, fire-and-forget) — GA4 유실·지연 대비
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
 import { isTouchDevice, touchSimOn } from './touch-sim.js';   // 📱 터치 판정 단일 출처 + ?touchsim=1
-import { createPredictor, buildGameStateSnapshot } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
+import { createPredictor, buildGameStateSnapshot, showWhenClear } from './predict.js';   // [🎯 이탈 예측] 트리거 → 점수 → 개입
 import { createRetentionGuidance, buildRetentionGameStateSnapshot } from './retention-guidance.js';   // [🌿 리텐션 안내] 룰+모델 rescue 자리
 import { getWindow } from './window-buffer.js';   // [🎯 이탈 예측] 롤링 윈도(logger.js 의 전송 버퍼와 별개)
 import { buildHouseModel, mountHouseAddons, makeHouseHelpers } from './house/index.js';   // 🏠 집 외관 모델(3 코티지·4 브릭 로프트·5 펜트하우스·6 루프탑 빌라) + 🧩 구성품 얹기 + 재질 도우미(루프탑 유리 난간)
@@ -2206,11 +2206,15 @@ function initChurnPredictor() {
         dex: gameState.dex,
       });
     },
-    showBanner: (b) => {
-      // 🎯 주목 신호 — 짧은 "띠링"(효과음 토글 존중) + 안드로이드 진동 30ms. 실패해도 배너는 뜬다.
-      if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
-      ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention });
-    },
+    showBanner: (banner) => showWhenClear(banner, {
+      blocked: () => !!intro || !!retentionGuidanceSuppressed(),
+      later: (fn) => setTimeout(fn, 2000),
+      show: (b) => {
+        // 🎯 주목 신호 — 짧은 "띠링"(효과음 토글 존중) + 안드로이드 진동 30ms. 실패해도 배너는 뜬다.
+        if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
+        ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention });
+      },
+    }),
     track: (n, p) => trackEvent(n, p),
   });
 
@@ -2235,6 +2239,7 @@ function retentionGuidanceSuppressed() {
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
     if (b.classList.contains('intro-open')) return 'intro';
+    if (b.classList.contains('spot-on')) return 'spotlight';
     if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show, #invite-modal.show')) return 'modal';
     // ⚠️ 아래는 **CSS 가 #hint-banner 를 display:none 으로 숨기는 상태**다(index.html 524·580·595·937·1005).
     //    JS 가 이걸 모르면 안 보이는 배너를 "띄웠다"고 치고 세션당 1회 예산을 날린 뒤,
