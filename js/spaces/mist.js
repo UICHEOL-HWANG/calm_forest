@@ -171,7 +171,7 @@ export function buildMistSpace() {
     const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0 + (i % 2) * 0.4, 0), clayMat(0x4e4a66, false));
     crown.position.set(Math.cos(a) * r, 3.4 + (i % 3) * 0.5, Math.sin(a) * r); g.add(crown);
   }
-  // 🌳 수호목 — 중앙 북쪽. 빛 게이지에 따라 잎이 밝아지고 어두워진다
+  // 🌳 수호목(=세계수의 심장, 2026-10-16 세계관) — 중앙 북쪽. 빛 게이지에 따라 잎이 밝아지고 어두워진다
   const tg = new THREE.Group(); tg.position.set(0, 0, -3);
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 3.6, 7), woodMat(1, 2, 0x8a7a5f));
   trunk.position.y = 1.8; trunk.castShadow = true; tg.add(trunk);
@@ -235,8 +235,8 @@ export function enterMist() {
   if (st.purified) {
     ui.toast?.('🌤️ 오늘의 숲은 맑아요. 정령들이 고마워해요. 내일 다시 안개가 차요');
   } else {
-    firstHint('mistWood', '🌫️', '안개 낀 숲',
-      '🌳수호목 앞에서 정화 시작\n🏮등불로 늦추고 ♪가 가장 작을 때 탭!\n세 무리를 모두 달래면 숲이 맑아져요');
+    firstHint('mistWood', '🌫️', '안개 숲 · 정화하기',
+      { steps: [{ ico: '🌳', label: '세계수 심장 앞 시작' }, { ico: '🏮', label: '등불로 늦추기' }, { ico: '♪', label: '작을 때 {A}' }], chip: '세 무리 달래면 맑아져요' });
   }
   Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
   trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
@@ -263,9 +263,9 @@ export function enterOrchard() {
   // 묘목이 없으면 "심어라" 가 아니라 "사 와라" 를 먼저 말한다 — 살 곳을 안 알려준 탓에
   //   고급 작물 채택률이 0% 였다. 같은 실수를 반복하지 않는다.
   const hasSap = FRUITS.some(f => (gameState.inventory[sapKeyOf(f.id)] || 0) > 0);
-  firstHint('orchardIntro', '🍎', '과수원', hasSap
-    ? '🌰씨앗 도구로 흙 자리에 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요'
-    : '🌰묘목은 마을 🛒상점에서 팔아요\n사 와서 씨앗 도구로 흙 자리에 심어요\n시냇가에 심으면 물을 안 줘도 돼요');
+  firstHint('orchardIntro', '🍎', '과수원 · 묘목 키우기',
+    { steps: [...(hasSap ? [] : [{ ico: '🛒', label: '상점에서 사기' }]), { ico: '🌰', label: '흙 자리에 심기' }, ...(hasSap ? [{ ico: '🍎', label: '매일 따기' }] : [])],
+      note: '시냇가는 물 안 줘도 돼요' });
   Sound.blip(); setBGMTheme?.('main');
   trackEvent('orchard_enter', { trees: (gameState.orchard?.trees || []).length });   // [GA4] 유입
 }
@@ -394,9 +394,9 @@ export function mistEnd(result) {
     //    "재시작 버튼이 안 뜬다"며 이탈했다(페르소나 p12 3명 중 2명, 2026-10-03). 연습 미경험이면 보조 버튼이 🎓 연습.
     setTimeout(() => {
       if (!atMist || mist.active) return;
-      if (ui.anyModalOpen?.()) { ui.toast?.('🌫️ 수호목이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600); return; }
+      if (ui.anyModalOpen?.()) { ui.toast?.('🌫️ 세계수의 심장이 오늘은 지쳤어요… 켜둔 등불은 남아있으니 한숨 돌리고 다시 도전해요', 3600); return; }
       if (!st.practiced) trackEvent('mist_practice_offer');   // [GA4]
-      ui.showHintModal?.({ ico: '🌫️', title: '수호목이 지쳤어요',
+      ui.showHintModal?.({ ico: '🌫️', title: '세계수의 심장이 지쳤어요',
         body: st.practiced ? '켜둔 등불은 그대로 남아요. 바로 다시 도전해 볼까요?'
                            : '켜둔 등불은 그대로 남아요. 바로 다시 도전하거나, 정령 1마리로 연습해 볼 수도 있어요.',
         ok: { label: '🌳 다시 도전', onClick: retryPurify },
@@ -453,7 +453,7 @@ export function updateMist(dt, t) {
       mist.treeLight = Math.max(0, mist.treeLight - drain * dt);
       if (!mist.warned && mist.treeLight < TREE_LIGHT_MAX * 0.3) {
         mist.warned = true;
-        ui.toast?.('🌳 수호목의 빛이 흐려져요! 정령들을 서둘러 달래주세요', 2600);
+        ui.toast?.('🌳 세계수의 심장이 흐려져요! 정령들을 서둘러 달래주세요', 2600);
       }
       if (mist.treeLight <= 0) { mistEnd('faded'); return; }
     }

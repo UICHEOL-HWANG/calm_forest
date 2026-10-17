@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prologue BGM sim</title>
+<style>
+  :root { --bg:#0d1410; --card:#16211a; --ink:#eef4ea; --dim:#9fb0a2; --gold:#f3d27a; --line:rgba(238,244,234,.14);
+          --font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); padding:20px 16px 40px }
+  main { max-width:760px; margin:0 auto }
+  h1 { font-size:22px; margin:0 0 4px } p.lead { color:var(--dim); margin:0 0 18px; font-size:14px; line-height:1.5 }
+  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px }
+  .row { display:flex; flex-wrap:wrap; gap:10px }
+  .opt { flex:1 1 220px; border:1px solid var(--line); border-radius:12px; padding:12px }
+  .opt b { display:block; margin-bottom:4px } .opt small { color:var(--dim); display:block; margin-bottom:10px; line-height:1.5 }
+  button { font:600 14px var(--font); color:var(--ink); background:rgba(255,255,255,.07); border:1px solid var(--line); border-radius:12px; padding:10px 14px; cursor:pointer }
+  button:hover { border-color:var(--gold) } button.on { background:rgba(243,210,122,.18); border-color:var(--gold) } button.stop { color:#ffb4b4 }
+  .screen { position:relative; height:190px; border-radius:14px; background:#050806; overflow:hidden; border:1px solid var(--line) }
+  .cap { position:absolute; left:0; right:0; bottom:22px; text-align:center; font-size:17px; font-weight:600; transition:opacity .4s; opacity:0; padding:0 12px }
+  .beat { position:absolute; left:14px; top:12px; color:var(--dim); font-size:12px }
+  .title { position:absolute; inset:0; display:grid; place-items:center; font-size:26px; font-weight:800; color:#fff; opacity:0; transition:opacity .6s }
+  .white { position:absolute; inset:0; background:#fff; opacity:0; transition:opacity .9s }
+  .bar { height:6px; background:rgba(255,255,255,.08); border-radius:4px; margin-top:10px; overflow:hidden }
+  .bar i { display:block; height:100%; width:0; background:var(--gold) }
+  .refs { color:var(--dim); font-size:12.5px; line-height:1.6; margin:0 }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎬 프롤로그 배경음 시안</h1>
+  <p class="lead">버튼을 누르면 프롤로그 26초를 자막과 같이 재생해요. 게임과 같은 합성 방식이라 외부 음원은 없어요. 같은 음량으로 맞췄어요.</p>
+
+  <section>
+    <div class="screen" id="screen">
+      <div class="beat" id="beat">대기</div>
+      <div class="cap" id="cap"></div>
+      <div class="white" id="white"></div>
+      <div class="title" id="title">calm forest</div>
+    </div>
+    <div class="bar"><i id="prog"></i></div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="opt"><b>A · 오르골 이야기</b><small>오르골 아르페지오로 시작해 같은 음형이 단조로 꺾이고, 한 음씩 끊겼다가 타이틀에서 다시 피어나요. 가장 가볍고 코지해요.</small>
+        <button data-v="A">▶ A 듣기</button></div>
+      <div class="opt"><b>B · 피아노와 현</b><small>지브리풍. 피아노 선율이 장조에서 관계단조로 넘어가고, 현이 길게 받쳐요. "저기요"에서 선율 조각이 메아리쳐요.</small>
+        <button data-v="B">▶ B 듣기</button></div>
+      <div class="opt"><b>C · 종과 숨소리</b><small>Ori 풍. 종소리와 사람 목소리 같은 바탕음이 신비롭게 깔려요. 세계수가 지켜보는 장면이 가장 무겁게 느껴져요.</small>
+        <button data-v="C">▶ C 듣기</button></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="stop" id="stop">■ 멈추기</button></div>
+  </section>
+
+  <section>
+    <p class="refs">레퍼런스: Ori and the Blind Forest "The Spirit Tree"(종·보컬·피아노·현), 히사이시 조(7·9·sus 화음, 관계 장단조 겹치기), 코지 게임 음악 가이드(60~100 BPM, 오르골·첼레스타).</p>
+  </section>
+</main>
+<script>
+const CAPS = [
+  { at: 0.6, until: 5.0, text: '세계수 아래, 사람과 동물은 함께 살았어요' },
+  { at: 5.6, until: 10.2, text: '그런데 세계수가 힘을 잃자, 마을도 기운을 잃었어요' },
+  { at: 11.0, until: 15.0, text: '…여기가 그 마을인가?' },
+  { at: 15.6, until: 19.0, text: '저기요… 아무도 없어요?' },
+  { at: 19.5, until: 22.0, text: '…누군가 이쪽을 보고 있어요' },
+];
+const BEATS = [[0, '① 옛 마을'], [5.6, '② 시드는 세계수'], [11, '③ 빈 마을'], [15.6, '④ 부르는 소리'], [19.5, '⑤ 누군가의 시선'], [22.2, '흰 빛'], [23.4, '타이틀']];
+const LEN = 25.8;
+const mf = (m) => 440 * Math.pow(2, (m - 69) / 12);
+const N = { C2:36, F2:41, G2:43, A2:45, C3:48, D3:50, E3:52, F3:53, G3:55, A3:57, B3:59, C4:60, D4:62, E4:64, F4:65, G4:67, Ab4:68, A4:69, B4:71,
+            C5:72, D5:74, E5:76, F5:77, G5:79, A5:81, B5:83, C6:84, D6:86, E6:88, G6:91, A6:93 };
+const f = (n) => mf(N[n]);
+
+let ctx, master, music, verb, cue = null, raf = 0;
+
+function ensure() {
+  if (ctx) return ctx;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.35; master.connect(ctx.destination);
+  verb = ctx.createConvolver();
+  const len = ctx.sampleRate * 3.2, ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+  verb.buffer = ir;
+  const vg = ctx.createGain(); vg.gain.value = 0.6; verb.connect(vg); vg.connect(master);
+  return ctx;
+}
+
+function out(wet) {
+  const g = ctx.createGain(); g.connect(music);
+  if (wet) { const s = ctx.createGain(); s.gain.value = wet; g.connect(s); s.connect(verb); }
+  return g;
+}
+
+function env(g, t, a, peak, d) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + a);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+}
+
+function chime(freq, t, dur, vol, wet = 0.45) {
+  const dst = out(wet);
+  for (const [mul, v] of [[1, 1], [3, 0.18], [5.4, 0.05]]) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = freq * mul;
+    env(g, t, 0.006, vol * v, dur / (mul > 1 ? 2.5 : 1));
+    o.connect(g); g.connect(dst); o.start(t); o.stop(t + dur + 0.1);
+  }
+}
+
+function piano(freq, t, dur, vol, wet = 0.35) {
+  const dst = out(wet);
+  for (const [type, mul, v] of [['triangle', 1, 1], ['sine', 2, 0.35], ['sine', 0.5, 0.25]]) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq * mul;
+    env(g, t, 0.01, vol * v, dur);
+    o.connect(g); g.connect(dst); o.start(t); o.stop(t + dur + 0.1);
+  }
+}
+
+function pad(freqs, t, dur, vol, { type = 'sawtooth', cut = 900, cutTo = null, att = 1.2, wet = 0.5, vowel = false } = {}) {
+  const dst = out(wet);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + att);
+  g.gain.setValueAtTime(vol, t + Math.max(att, dur - 1.2));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  if (vowel) {
+    for (const [fq, q, v] of [[730, 8, 1], [1090, 10, 0.6], [2440, 12, 0.25]]) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q;
+      const vg = ctx.createGain(); vg.gain.value = v * 3;
+      g.connect(bp); bp.connect(vg); vg.connect(dst);
+    }
+  } else {
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(cut, t); lp.Q.value = 0.7;
+    if (cutTo) lp.frequency.exponentialRampToValueAtTime(cutTo, t + dur);
+    g.connect(lp); lp.connect(dst);
+  }
+  for (const fr of freqs) for (const det of [-6, 6]) {
+    const o = ctx.createOscillator(); o.type = vowel ? 'sawtooth' : type; o.frequency.value = fr; o.detune.value = det;
+    if (vowel) {
+      const vib = ctx.createOscillator(), vd = ctx.createGain(); vib.frequency.value = 4.6; vd.gain.value = 5;
+      vib.connect(vd); vd.connect(o.detune); vib.start(t); vib.stop(t + dur + 0.1);
+    }
+    o.connect(g); o.start(t); o.stop(t + dur + 0.1);
+  }
+}
+
+function wind(t, dur, vol) {
+  const len = Math.floor(ctx.sampleRate * dur), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8;
+  bp.frequency.setValueAtTime(300, t); bp.frequency.linearRampToValueAtTime(800, t + dur * 0.5); bp.frequency.linearRampToValueAtTime(350, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp); bp.connect(g); g.connect(out(0.3)); src.start(t); src.stop(t + dur);
+}
+
+function arp(notes, t0, step, vol, fn = chime, dur = 1.4) {
+  notes.forEach((n, i) => n && fn(f(n), t0 + i * step, dur, vol));
+}
+
+const V = {
+  A(t) {
+    const e = 0.34;
+    pad([f('C3'), f('G3')], t, 5.8, 0.03, { type: 'triangle', cut: 1400 });
+    arp(['C5', 'E5', 'G5', 'B5', 'D6', 'B5', 'G5', 'E5'], t + 0.2, e, 0.07);
+    arp(['F4', 'A4', 'C5', 'E5', 'G5', 'E5', 'C5', 'A4'], t + 0.2 + 8 * e, e, 0.065);
+    pad([f('A2'), f('E3')], t + 5.6, 5.4, 0.03, { type: 'triangle', cut: 1200, cutTo: 400 });
+    arp(['A4', 'C5', 'E5', 'G5', 'E5', 'C5'], t + 5.7, 0.4, 0.06);
+    arp(['F4', 'Ab4', 'C5', null, 'Ab4'], t + 8.1, 0.5, 0.05);
+    wind(t + 9.6, 5, 0.03);
+    pad([f('A2')], t + 11, 4.4, 0.035, { type: 'sine' });
+    chime(f('E5'), t + 11.4, 2.6, 0.05); chime(f('A4'), t + 12.9, 2.6, 0.04); chime(f('C5'), t + 14.2, 2.2, 0.035);
+    pad([f('D3'), f('A3'), f('E4')], t + 15.6, 3.8, 0.025, { type: 'triangle', cut: 1000 });
+    chime(f('E5'), t + 15.9, 1.2, 0.07); chime(f('C5'), t + 16.3, 1.6, 0.06);
+    chime(f('E5'), t + 17.2, 1.2, 0.035, 0.7); chime(f('C5'), t + 17.6, 1.6, 0.03, 0.7);
+    chime(f('E5'), t + 18.4, 1.2, 0.016, 0.8); chime(f('C5'), t + 18.8, 1.6, 0.014, 0.8);
+    pad([f('F2'), f('C3')], t + 19.4, 4.2, 0.035, { type: 'triangle', cut: 600, cutTo: 2200, att: 2 });
+    for (let i = 0; i < 14; i++) chime(f(['D6', 'E6', 'A6'][i % 3]), t + 19.6 + i * 0.19, 0.6, 0.012 + i * 0.002, 0.7);
+    pad([f('F3'), f('A3'), f('C4'), f('E4'), f('B4')], t + 21.6, 2.4, 0.03, { cut: 900, cutTo: 3000, att: 1.4 });
+    pad([f('C3'), f('G3'), f('D4'), f('E4')], t + 23.4, 3, 0.03, { type: 'triangle', cut: 1600 });
+    arp(['C5', 'E5', 'G5', 'D6'], t + 23.5, 0.22, 0.08, chime, 2.6);
+  },
+  B(t) {
+    const q = 0.7;
+    pad([f('C3'), f('G3'), f('E4')], t, 5.6, 0.02, { cut: 700 });
+    [['E5', 0], ['G5', 1], ['A5', 2], ['G5', 3], ['E5', 4], ['D5', 5], ['C5', 6]].forEach(([n, i]) => piano(f(n), t + 0.3 + i * q, 1.4, 0.07));
+    piano(f('C3'), t + 0.3, 2.8, 0.05); piano(f('F2'), t + 3.1, 2.8, 0.05);
+    pad([f('A2'), f('E3'), f('C4')], t + 5.6, 5.4, 0.022, { cut: 800, cutTo: 350 });
+    [['E5', 0], ['G5', 1.1], ['A5', 2.2], ['G5', 3.4], ['E5', 4.4]].forEach(([n, d]) => piano(f(n), t + 5.8 + d * 0.85, 1.8, 0.06));
+    piano(f('A2'), t + 5.8, 3.5, 0.05); piano(f('F2'), t + 8.4, 3.5, 0.045);
+    wind(t + 10, 5, 0.025);
+    piano(f('A3'), t + 11.3, 3, 0.04); piano(f('E4'), t + 13.1, 3, 0.03);
+    pad([f('A2'), f('E3')], t + 11, 4.4, 0.016, { cut: 500 });
+    pad([f('D3'), f('F3'), f('C4')], t + 15.6, 3.8, 0.02, { cut: 700 });
+    piano(f('G5'), t + 15.9, 1.4, 0.06); piano(f('E5'), t + 16.4, 2, 0.05);
+    piano(f('G5'), t + 17.5, 1.4, 0.03); piano(f('E5'), t + 18, 2, 0.025);
+    pad([f('F2'), f('C3'), f('G3')], t + 19.4, 4.2, 0.03, { cut: 500, cutTo: 2600, att: 2.4 });
+    for (let i = 0; i < 16; i++) piano(f(['B5', 'A5'][i % 2]), t + 19.6 + i * 0.16, 0.3, 0.008 + i * 0.0015, 0.6);
+    pad([f('F3'), f('A3'), f('C4'), f('E4'), f('B4')], t + 21.4, 2.6, 0.026, { cut: 800, cutTo: 3200, att: 1.6 });
+    pad([f('C3'), f('G3'), f('E4'), f('D5')], t + 23.4, 3, 0.024, { cut: 1500 });
+    [['C4', 0], ['G4', 0.05], ['E5', 0.1], ['D5', 0.6], ['G5', 1.1]].forEach(([n, d]) => piano(f(n), t + 23.5 + d, 2.4, 0.06));
+  },
+  C(t) {
+    pad([f('C4')], t, 5.6, 0.05, { vowel: true, att: 1.4 });
+    pad([f('C2'), f('G2')], t, 5.6, 0.03, { type: 'sine' });
+    [['G5', 0.4], ['E5', 1.3], ['C5', 2.2], ['D5', 3.1], ['E5', 4.0]].forEach(([n, d]) => chime(f(n), t + d, 2.4, 0.06, 0.6));
+    pad([f('A3')], t + 5.6, 5.4, 0.045, { vowel: true, att: 1 });
+    pad([f('A2'), f('E3')], t + 5.6, 5.4, 0.025, { type: 'sine' });
+    [['E5', 0.4], ['C5', 1.5], ['A4', 2.6], ['G4', 3.8]].forEach(([n, d]) => chime(f(n), t + 5.6 + d, 2.6, 0.05, 0.65));
+    wind(t + 9.4, 5.6, 0.035);
+    pad([f('A2')], t + 11, 4.4, 0.03, { type: 'sine' });
+    chime(f('A5'), t + 12, 3, 0.03, 0.8);
+    pad([f('D4')], t + 15.6, 3.8, 0.035, { vowel: true, att: 0.8 });
+    chime(f('E5'), t + 15.9, 1.6, 0.06, 0.6); chime(f('C5'), t + 16.4, 2, 0.05, 0.6);
+    chime(f('E5'), t + 17.6, 1.6, 0.025, 0.85); chime(f('C5'), t + 18.1, 2, 0.02, 0.85);
+    pad([f('F2'), f('C3')], t + 19.4, 4.2, 0.035, { type: 'sine', att: 2 });
+    pad([f('A4'), f('E5')], t + 19.6, 3.8, 0.03, { vowel: true, att: 2.4 });
+    for (let i = 0; i < 6; i++) chime(f(['A5', 'E6', 'D6'][i % 3]), t + 20 + i * 0.45, 2, 0.02, 0.85);
+    pad([f('F3'), f('C4'), f('G4'), f('B4')], t + 21.6, 2.4, 0.03, { cut: 900, cutTo: 3200, att: 1.4 });
+    pad([f('C4'), f('G4'), f('E5')], t + 23.4, 3, 0.045, { vowel: true, att: 0.6 });
+    [['C5', 0], ['G5', 0.3], ['E6', 0.6]].forEach(([n, d]) => chime(f(n), t + 23.5 + d, 3, 0.07, 0.6));
+  },
+};
+
+function stop() {
+  cancelAnimationFrame(raf);
+  if (music) { const g = music; g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.15); setTimeout(() => g.disconnect(), 800); }
+  music = null; cue = null;
+  document.querySelectorAll('button[data-v]').forEach(b => b.classList.remove('on'));
+  ['cap', 'title', 'white'].forEach(id => { document.getElementById(id).style.opacity = 0; });
+  document.getElementById('beat').textContent = '대기';
+  document.getElementById('prog').style.width = '0';
+}
+
+function play(v) {
+  ensure(); ctx.resume(); stop();
+  music = ctx.createGain(); music.gain.value = 0.5; music.connect(master);
+  const t0 = ctx.currentTime + 0.08;
+  V[v](t0);
+  cue = { v, t0 };
+  document.querySelector(`button[data-v="${v}"]`).classList.add('on');
+  const tick = () => {
+    if (!cue) return;
+    const T = ctx.currentTime - cue.t0;
+    const c = CAPS.find(x => T >= x.at && T < x.until);
+    const cap = document.getElementById('cap');
+    if (c) { cap.textContent = c.text; cap.style.opacity = 1; } else cap.style.opacity = 0;
+    document.getElementById('beat').textContent = [...BEATS].reverse().find(b => T >= b[0])?.[1] || '';
+    document.getElementById('white').style.opacity = T >= 22.2 && T < 23.4 ? 1 : 0;
+    document.getElementById('title').style.opacity = T >= 23.7 && T < 25.2 ? 1 : 0;
+    document.getElementById('prog').style.width = `${Math.min(100, T / LEN * 100)}%`;
+    if (T > LEN + 1.5) { stop(); return; }
+    raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+document.querySelectorAll('button[data-v]').forEach(b => b.addEventListener('click', () => play(b.dataset.v)));
+document.getElementById('stop').addEventListener('click', stop);
+</script>
+</body>
+</html>

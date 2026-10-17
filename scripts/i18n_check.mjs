@@ -125,6 +125,9 @@ const targets = [
   ['js/cosmetics/wardrobe.js', s => jsStrings(stripJsComments(s))],
   // 🔥 화덕 — 레시피 이름이 UI 에 그대로 나간다(가공 창·슬롯 칩·미니게임 결과)
   ['js/craft/recipes.js', s => jsStrings(stripJsComments(s))],
+  // 🌳 세계수 판 — 가지·장식·꾸러미 이름(표)과 판 화면 문구
+  ['js/world/tree-board.js', s => jsStrings(stripJsComments(s))],
+  ['js/world/tree-board-ui.js', s => jsStrings(stripJsComments(s))],
   // 📦 game.js 에서 원문 그대로 옮겨 온 데이터 표(분리 1단계, 2026-09-24) — 주민·도감·상점 문구가 여기 있다
   ...readdirSync(join(ROOT, 'js/data')).filter(f => f.endsWith('.js')).sort()
     .map(f => [`js/data/${f}`, s => jsStrings(stripJsComments(s))]),

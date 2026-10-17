@@ -15,6 +15,7 @@
 export const E2_ARMS = ['control', 'skip_login'];
 export const E2_PLATFORMS = ['web'];
 export const E2_STORE_KEY = 'cf_e2';                  // localStorage — { arm }
+export const E2_ENDED = true;
 
 const isArm = (a) => E2_ARMS.includes(a);
 
@@ -69,7 +70,13 @@ export function keepGuestSession(decision, { hasInvite = false } = {}) {
   return !!(decision?.enrolled && decision.arm === 'skip_login' && !hasInvite);
 }
 
+export function concludeE2(decision) {
+  if (!E2_ENDED || !decision?.enrolled || decision.reason === 'forced') return decision;
+  return { ...decision, arm: 'skip_login', ended: true };
+}
+
 // GA4 사용자 속성 — 등록된 기기만
 export function e2UserProps(decision) {
+  if (decision?.ended) return {};
   return decision?.enrolled && isArm(decision.arm) ? { exp_entry: decision.arm } : {};
 }

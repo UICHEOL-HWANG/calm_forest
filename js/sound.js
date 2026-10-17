@@ -6,6 +6,8 @@
 //  init() 에서 첫 입력 시 AudioContext 를 resume 합니다.
 // =============================================================
 
+import { playIntroScore } from './sound-intro.js';
+
 let ctx = null;
 let master = null;
 let enabled = true;
@@ -138,6 +140,9 @@ export const Sound = {
   build()  { tone(90, 0.18, 'sine', 0.6, 55); noise(0.1, 300, 0.3); },          // 건축 "쿵"
   complete(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'triangle', 0.5), i * 120)); }, // 완성 팡파레
   blip()   { tone(720, 0.06, 'square', 0.18); },                                // 도구 전환
+  // 🎬 프롤로그 — 여는 종(잔향 섞인 C장조 아르페지오) · 시들 때 스치는 바람(로우패스 노이즈 쓸기)
+  introChime() { const c = enabled ? ensureCtx() : null; if (!c) return; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => chime(f, 1.6, 0.07, { at: c.currentTime + i * 0.18, wet: 0.45 })); },
+  introWind()  { sweep(3.2, 260, 900, 0.05, 0.7); },
   nudge()  { tone(880, 0.12, 'sine', 0.35); setTimeout(() => tone(1175, 0.22, 'sine', 0.3), 110); }, // 🎯 이탈 배너 "띠링" — 수확음보다 한 톤 낮고 짧게
   plant()  { tone(440, 0.1, 'sine', 0.3, 560); },                               // 씨앗 심기
   // 🔭 천문대 별 잇기 — 효과음 세트 1 '별 차임'(sims/observatory-sound-sim.html, 2026-10-05 사용자 선택)
@@ -380,8 +385,10 @@ function playMirrorBar(at) {
   padNote(MIRROR_ROOTS[bar], MIRROR_E * 8, 0.04, 'sine', at);
   if (Math.random() < 0.4) chime(MEL[(Math.random() * MEL.length) | 0] * 4, MIRROR_E * 0.8, 0.015, { at: at + (1 + Math.random() * 6) * MIRROR_E, wet: 0.8, out: musicGain });
 }
-function barFn() { return bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+const INTRO_BAR = 1000;
+function playIntroBar() {}
+function barFn() { return bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을
@@ -416,6 +423,34 @@ export function startBGM() {
   if (musicOn) return;
   musicOn = true; scheduleBars();
 }
-export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } fadeIntroBus(0.4); }
+
+let introBus = null, introSrcs = [], introMainTimer = null;
+function fadeIntroBus(sec) {
+  if (!introBus || !ctx) return;
+  const bus = introBus, srcs = introSrcs;
+  introBus = null; introSrcs = [];
+  bus.gain.setTargetAtTime(0.0001, ctx.currentTime, Math.max(0.05, sec / 3));
+  setTimeout(() => {
+    for (const s of srcs) { try { s.stop(); } catch (e) { void e; } }
+    bus.disconnect();
+  }, (sec + 0.5) * 1000);
+}
+export function startIntroScore() {
+  clearTimeout(introMainTimer);
+  setBGMTheme('intro');
+  if (!enabled || !musicOn) return false;
+  const c = ensureCtx();
+  fadeIntroBus(0.2);
+  introBus = c.createGain(); introBus.gain.value = 0.5; introBus.connect(master);
+  introSrcs = playIntroScore(c, introBus, c.currentTime + 0.05);
+  return true;
+}
+export function stopIntroScore(fadeSec = 0.8) {
+  const playing = !!introBus;
+  fadeIntroBus(fadeSec);
+  clearTimeout(introMainTimer);
+  introMainTimer = setTimeout(() => setBGMTheme('main'), playing ? fadeSec * 1000 : 0);
+}
 export function toggleBGM() { if (musicOn) { stopBGM(); return false; } startBGM(); return true; }
 export function isBGMOn() { return musicOn; }

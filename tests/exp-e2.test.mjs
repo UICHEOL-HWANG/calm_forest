@@ -116,3 +116,31 @@ test('GA4 사용자 속성 — 등록된 기기만 exp_entry', () => {
   assert.deepEqual(e2UserProps({ enrolled: true, arm: 'skip_login' }), { exp_entry: 'skip_login' });
   assert.deepEqual(e2UserProps({ enrolled: false, arm: null }), {});
 });
+
+test('E2 종료: 등록 대상은 전부 바로 시작, 실험 속성은 더 안 보낸다', async () => {
+  const { concludeE2, E2_ENDED } = await import('../js/exp-e2.js');
+  assert.equal(E2_ENDED, true);
+  const fresh = decideE2({ clientId: 'c-new', platform: 'web', newDevice: true });
+  const done = concludeE2(fresh);
+  assert.equal(done.enrolled, true);
+  assert.equal(done.arm, 'skip_login');
+  assert.equal(done.ended, true);
+  assert.deepEqual(e2UserProps(done), {});
+  const oldControl = concludeE2(decideE2({ clientId: 'c', platform: 'web', stored: { arm: 'control' } }));
+  assert.equal(oldControl.arm, 'skip_login');
+  assert.equal(skipLoginNow({ decision: oldControl, offline: false, justExited: false, hasInvite: false }), true);
+  assert.equal(keepGuestSession(oldControl), true);
+  for (const d of [
+    decideE2({ clientId: 'c', platform: 'toss', newDevice: true }),
+    decideE2({ clientId: 'c', platform: 'web', newDevice: true, hasInvite: true }),
+    decideE2({ clientId: 'c', platform: 'web', newDevice: false }),
+  ]) assert.deepEqual(concludeE2(d), d);
+  const forced = decideE2({ clientId: 'c', platform: 'web', dev: true, forced: 'control' });
+  assert.deepEqual(concludeE2(forced), forced);
+});
+
+test('부팅 판정은 종료 처리를 거치고, 저장도 종료 뒤 무리로 남긴다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const boot = readFileSync(new URL('../js/exp-e2-boot.js', import.meta.url), 'utf8');
+  assert.match(boot, /memo = concludeE2\(decideE2\(/);
+});

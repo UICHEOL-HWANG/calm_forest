@@ -80,7 +80,7 @@ export function enterObservatory() {
   player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  firstHint('observatory', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳이에요. 나갈 땐 남쪽 문');
+  firstHint('observatory', '🔭', '천문대 · 별자리 잇기', { steps: [{ ico: '🔭', label: '망원경 앞에서 {A}' }], note: '나갈 땐 남쪽 문' });
   setBGMTheme('stars');   // 🎵 천문대 오르골
   Sound.blip(); trackEvent('observatory_enter');
 }

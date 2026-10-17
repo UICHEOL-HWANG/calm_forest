@@ -119,7 +119,7 @@ export function enterFarm() {
   $w.atFarm = true; $w.playerInYard = false;
   player.position.set(FARM.x, 0, FARM.z + farmHalf() - 1.5); player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  if (!e1Pending()) firstHint('farmInside', '🌾', '내 텃밭', '⛏️괭이로 갈고 🌰씨앗 심고 💧물 주기\n심은 작물은 저장돼요. 나갈 땐 남쪽 문');   // 🧪 E1 처치는 '눌러서 수확하기' 하나만
+  if (!e1Pending()) firstHint('farmInside', '🌾', '내 텃밭 · 심고 키우기', { steps: [{ ico: '⛏️', label: '갈기' }, { ico: '🌰', label: '심기' }, { ico: '💧', label: '물' }], note: '나갈 땐 남쪽 문' });   // 🧪 E1 처치는 '눌러서 수확하기' 하나만
   if (!e1Pending()) startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다 · 🧪 E1 처치는 첫 수확 뒤(e1OnHarvest)
   Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
 }

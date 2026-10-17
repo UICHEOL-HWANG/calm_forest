@@ -7,7 +7,7 @@
 //  ▶ 트래킹은 js/mirror/track.js 의 T.* 만(스펙 §8 10종 — trackEvent 직접 호출 금지, tests/mirror-track.test.mjs 가 잠금)
 // =============================================================
 import {
-  $w, atMirror, camera, dist2D, firstHintBanner, gameState, handAnchor, isNight, makeNameTag, player, playerAnchor,
+  $w, atMirror, camera, dist2D, firstHintBanner, gameState, handAnchor, isNight, isOpen, makeNameTag, player, playerAnchor,
   refreshInventoryUI, requestSave, scene, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, spawnSparkle, todayStr, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
@@ -113,6 +113,7 @@ function parkSolid(box) {
 /** 낮엔 정류장에 마차가 서 있다(발견성) · 밤엔 막차가 끊긴다 — game.js 루프에서 매 프레임(가벼움) */
 export function syncVillageCarriage(inVillage) {
   if (ride) return;
+  if (!isOpen('mirror')) inVillage = false;   // 🔓 정류장이 아직 안 돌아왔다(js/world/unlocks.js) — 마차·정류장을 짓지도 세우지도 않는다
   if ($w.atMirror) {   // 거울 마을 안 — 마차가 정박 자리에 서 있다(타기 직전·내린 뒤에 튀지 않게)
     if (!carriage) return;
     carriage.visible = true;
@@ -139,6 +140,7 @@ export function setMirrorVisible(on) { if (world) world.group.visible = on; }
 // ── 마을 정류장 ──────────────────────────────────────────────
 /** doors.js 마을 분기에서 — 정류장 앞이면 { nd, prompt }, 아니면 null */
 export function mirrorVillagePrompt() {
+  if (!isOpen('mirror')) return null;   // 🔓 아직 없는 정류장 — 프롬프트도 노출 트래킹도 없다
   if (!nearVillageStop(player.position.x, player.position.z)) { stopShownKey = null; return null; }   // 정류장 둘레·마차 옆까지(지붕 뒤에서도)
   const night = isNight(), key = `${todayStr()}:${+night}`;
   if (stopShownKey !== key) { stopShownKey = key; T.stopShown({ prior_visits: mirrorState().visits, night }); }
