@@ -43,7 +43,7 @@ export const EN = {
   '🌳 세계수': '🌳 World Tree',
   '세계수 생명력': 'World Tree life',
   '🌳 세계수 · Space 로 살펴보기': '🌳 World Tree · Space to look',
-  '🌳 시든 세계수 — 할아버지를 찾아가요': '🌳 Withered World Tree — go find the grandpa',
+  '🌳 시든 세계수 · 할아버지를 찾아가요': '🌳 Withered World Tree · go find the grandpa',
   '🌳 저 나무가 세계수예요. 다시 살려 볼까요?': '🌳 That\'s the World Tree. Shall we bring it back to life?',
   '탭하면 넘어가요': 'Tap to skip',
   '물의 가지': 'Water Branch', '밭의 가지': 'Field Branch', '부엌의 가지': 'Kitchen Branch', '숲의 가지': 'Forest Branch',
@@ -1521,7 +1521,7 @@ export const EN = {
   '의뢰 {0}/3': 'Quests {0}/3',
   '요리 {0}/1 · 서빙 {1}/1': 'Cooking {0}/1 · Serving {1}/1',
   '정화 {0}/1': 'Purified {0}/1',
-  '{0#}장 완료 — {1}': 'Chapter {0} Complete — {1}',
+  '{0#}장 완료 · {1}': 'Chapter {0} Complete · {1}',
   '{0}\n\n🎁 보상 🪙{1}{2}': '{0}\n\n🎁 Reward 🪙{1}{2}',
   '\n➡️ 다음: {0} {1}장 「{2}」': '\nNext: {0} Chapter {1}, "{2}"',
   '📖 지난 이야기 {0}장까지의 기록이 정리됐어요 (+보상)': '📖 Your story so far is all written down — through Chapter {0} (+rewards)',
@@ -1546,7 +1546,7 @@ export const EN = {
   '별자리 {0#}/1': 'Constellations {0}/1',
   '곧 열려요': 'Coming soon',
   '숲에서 이어지는 이야기': 'Your story in the forest',
-  '📖 새 이야기가 이어져요 — {0#}장 「{1}」': '📖 Your story continues — Chapter {0}, "{1}"',
+  '📖 새 이야기: {0#}장 「{1}」': '📖 New chapter: Chapter {0}, "{1}"',
   '\n🏡 다음 이야기는 곧 열려요.': '\n🏡 The next chapter opens soon.',
   '방문 {0#}/1': 'Visits {0}/1',
   // 🌉 1·2장 「세계수를 지키는 법」 — 해금 켜짐 + 새 세이브(js/story/chapters.js STORY_REWORLD)
@@ -1565,7 +1565,7 @@ export const EN = {
   '🌉 무너진 다리 · 먼저 내 집을 완성해요': '🌉 Broken Bridge · Finish your house first',
   '개울 건너 박물관으로 가는 다리가 무너졌어요.\n먼저 내 집을 완성해요. 그다음에 고칠 수 있어요.':
     'The bridge across the stream to the museum has collapsed.\nFinish your house first. Then you can fix it.',
-  '🌉 재료 부족 — {0}': '🌉 Not enough materials — {0}',
+  '🌉 재료 부족: {0}': '🌉 Not enough materials: {0}',
   '🌉 재료 부족 —': '🌉 Not enough materials —',   // 체커용(실제 문구는 위 패턴으로 번역)
   '🌟 반딧불이 계곡이 깨어나면 쓰는 도구예요': '🌟 A tool for when Firefly Valley wakes up',   // 🔓 계곡이 아직 안 열렸을 때(js/spaces/glade.js)
   '🌉 다리를 고쳤어요! 개울 건너 박물관으로 갈 수 있어요': '🌉 Bridge fixed! You can cross the stream to the museum now',

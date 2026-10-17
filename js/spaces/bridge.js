@@ -188,7 +188,7 @@ export function bridgeInteract() {
   }
   const inv = gameState.inventory, lack = bridgeLack(inv);
   if (lack.length) {
-    ui.toast?.('🌉 재료 부족 — ' + lack.map(([k, v, h]) => `${RES_LABEL[k] || k} ${h}/${v}`).join(' · '), 3000);
+    ui.toast?.(`🌉 재료 부족: ${lack.map(([k, v, h]) => `${RES_LABEL[k] || k} ${h}/${v}`).join(' · ')}`, 3000);
     return;
   }
   for (const k in BRIDGE_COST) inv[k] -= BRIDGE_COST[k];

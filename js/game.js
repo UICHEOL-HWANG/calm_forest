@@ -1169,7 +1169,7 @@ function syncStory(trigger = '') {
       const next = STORY[st.ch];
       Sound.complete(); spawnConfetti(player.position.x, 2.6, player.position.z);
       ui.showHintModal?.({
-        ico: c.ico, title: `${st.ch}장 완료 — ${c.title}`,
+        ico: c.ico, title: `${st.ch}장 완료 · ${c.title}`,
         // 짧게 — 한 줄 이야기 + 보상 + 다음 장(목표는 HUD 칩이 보여 준다). 세 문단이 길다는 피드백(2026-10-17)
         body: `${c.done}\n\n🎁 보상 🪙${c.reward.coins}${c.reward.seed ? ` · 🌰${c.reward.seed}` : ''}`
           + (!next ? '' : next.soon ? '\n🏡 다음 이야기는 곧 열려요.'   // 잠긴 장은 목표 대신 예고만
@@ -1181,7 +1181,7 @@ function syncStory(trigger = '') {
   const cur = STORY[st.ch];
   if (cur && !cur.soon && !st.started[cur.id]) {
     // 4장까지 끝낸 기존 유저: 배포 뒤 첫 부팅에 새 장이 열렸음을 한 번 알린다(소급 토스트가 없을 때만) · 7 = 🏡 이웃 마을 출시로 8장이 열린 기존 완료자
-    if (!storyBooted && !retro && (st.ch === 4 || st.ch === 7)) ui.toast?.(`📖 새 이야기가 이어져요 — ${st.ch + 1}장 「${cur.title}」`, 3200);
+    if (!storyBooted && !retro && (st.ch === 4 || st.ch === 7)) ui.toast?.(`📖 새 이야기: ${st.ch + 1}장 「${cur.title}」`, 3200);
     st.started[cur.id] = Date.now();   // 시각 — 완료 때 hours_since_start 를 잰다(옛 세이브의 1 도 참이라 판정은 그대로)
     trackEvent('story_chapter_start', { chapter: cur.id, n: st.ch + 1, via: storyBooted ? 'live' : 'boot' });   // [GA4] boot = 접속 소급으로 열림(기존 완료자에게 새 장)
   }
