@@ -8,7 +8,7 @@
 import {
   $w, IS_MOBILE, RAIN_DAY, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
   gameState, lerpAngle, makeNameTag, mode, nearNPC, npcDialogState, npcObjs, obstacles, onPlotArea, player, plots,
-  questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr,
+  questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr, unlocksOn,
   ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
@@ -17,6 +17,7 @@ import { DAILY_COUNT, NPCS, QUEST_HOW } from '../data/npcs.js';
 import { SHOP } from '../data/places.js';
 import { returnStart } from '../world/return-path.js';   // 🚶 귀환 걷기 출발점(물 회피, 순수)
 import { welcomeOffer } from '../first-loop.js';
+import { storyReworld } from '../story/rules.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
 import { quizOffer } from './ferry-quiz-run.js';   // 🦆 사공 퀴즈
@@ -612,7 +613,7 @@ export function wanderNPC(o, dt) {
   }
 }
 
-//    발동: 마을 안 + 목재5 또는 물고기1 + 모달 없음 + hintsSeen.merchantVisit 없음
+//    발동: 마을 안 + 목재5 또는 물고기1(🔓 해금 켜짐 새 세이브는 🥕 작물4 도) + 모달 없음 + hintsSeen.merchantVisit 없음
 //    walk(플레이어에게 걸어옴, 12초 상한) → talk(모달) → return(좌판 홈으로)
 export let merchantVisit = null;
 
@@ -642,7 +643,7 @@ export function updateMerchantVisit(dt) {
     if (gameState.hintsSeen.merchantVisit) return;
     if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
     if (ui.anyModalOpen?.()) return;
-    const offer = welcomeOffer(gameState.inventory);
+    const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()) });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
     merchantVisit = { state: 'walk', t: 0, offer };
@@ -670,12 +671,18 @@ export function updateMerchantVisit(dt) {
   }
 }
 
+const WELCOME_LINES = {
+  wood: { body: '오, 그 🪵 목재 좋구먼! 처음 보는 얼굴이니 후하게 쳐주지.', label: '🪵 목재 5개 팔기 (+30🪙)' },
+  fish: { body: '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.', label: '🐟 물고기 팔기 (+25🪙)' },
+  crop: { body: '오, 그 🥕 당근 탐스럽구먼! 처음 보는 얼굴이니 후하게 쳐주지.', label: '🥕 작물 4개 팔기 (+25🪙)' },   // 🔓 해금 켜짐 새 세이브만
+};
+
 export function openMerchantOffer(offer) {
-  const wood = offer.item === 'wood';
+  const line = WELCOME_LINES[offer.item] || WELCOME_LINES.wood;
   ui.openMerchantModal?.({
     title: '방랑 상인',
-    body: wood ? '오, 그 🪵 목재 좋구먼! 처음 보는 얼굴이니 후하게 쳐주지.' : '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.',
-    primary: { label: wood ? '🪵 목재 5개 팔기 (+30🪙)' : '🐟 물고기 팔기 (+25🪙)', onClick: () => merchantWelcomeSell(offer) },
+    body: line.body,
+    primary: { label: line.label, onClick: () => merchantWelcomeSell(offer) },
     secondary: { label: '다음에', onClick: () => merchantDismiss() },
   });
 }
@@ -688,7 +695,7 @@ export function merchantWelcomeSell(offer) {
   spawnFloatText(player.position.x, 1.9, player.position.z, `+${offer.gain}🪙`, '#2fa564');
   questEvent('sell', offer.qty);                          // 상인 퀘스트 '장사의 신' 진행
   ui.act?.('sell');                                       // 튜토리얼 ④ 팔기
-  trackEvent('shop_sell', { item: offer.item, qty: offer.qty, gain: offer.gain, rate: 300, via: 'merchant' }); // [GA4] 기존 판매 이벤트 + via
+  trackEvent('shop_sell', { item: offer.item, qty: offer.qty, gain: offer.gain, rate: offer.item === 'crop' ? 125 : 300, via: 'merchant' }); // [GA4] 기존 판매 이벤트 + via
   trackEvent('merchant_visit', { item: offer.item, gain: offer.gain });                                        // [GA4] 방문 퍼널
   logEcon('shop_sell', offer.item + '|welcome', offer.gain, gameState.inventory.coins);                        // [원장] 출처는 shop_sell, 품목 접미사로 구분
   ui.openMerchantModal?.({

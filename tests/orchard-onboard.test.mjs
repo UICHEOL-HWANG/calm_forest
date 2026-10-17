@@ -128,3 +128,12 @@ test('비 오는 날 — 흙이 안 마르고 저절로 자라므로 물 대신 
   assert.equal(wheatStatus([plot({ state: 'mature', growth: 0.9 })], 100, { upgraded: false, rain: true }).kind, 'ready');
   assert.equal(wheatStatus([plot({ weed: true })], 100, { upgraded: false, rain: true }).kind, 'weed');
 });
+
+// 🔓 마을 해금 — 농부가 아직 안 돌아왔을 때 첫 수확 → 🦉 올빼미가 1장 다음 걸음을 알려 준다
+test('owlNextLine: 집이 덜 지어졌으면 집, 다 지었으면 다리', async () => {
+  const { owlNextLine, OWL_NEXT_LINES } = await import('../js/orchard-onboard.js');
+  assert.equal(owlNextLine(0), OWL_NEXT_LINES.house);
+  assert.equal(owlNextLine(2), OWL_NEXT_LINES.house);
+  assert.equal(owlNextLine(3), OWL_NEXT_LINES.bridge);
+  assert.equal(owlNextLine(undefined), OWL_NEXT_LINES.house);
+});

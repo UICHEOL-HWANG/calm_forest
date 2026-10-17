@@ -92,3 +92,16 @@ export const ONBOARD_LINES = {
   offer: '동쪽 언덕에 과수원이 있어요 — 🌾 밀을 한 번 길러 거두면 열려요! 씨앗 3개 줄게요',
   refill: '🌾 밀 씨앗이 없네요 — 3개 더 줄게요. 빈 밭에 심어요',
 };
+
+// 🔓 마을 해금(새 세이브) — 첫 수확 때 🧑‍🌾 농부 삼촌이 아직 안 돌아왔으면 과수원 의뢰 대신 🦉 올빼미가 다음 걸음을 알려 준다.
+//   (과수원 자체도 밭의 가지 뒤에 열린다 — js/world/unlocks.js) 다음 걸음 = 1장 「세계수를 지키는 법」: 집 → 다리.
+//   농부가 돌아오면 game.js announceUnlock 이 과수원 의뢰를 그대로 다시 건다.
+export const OWL_NEXT_LINES = {
+  title: '의뢰 올빼미',
+  house: '🦉 밭에 생기가 돌았네! 이제 빈터에 집을 지어 보자. 🪵 나무를 베면 목재가 나와',
+  bridge: '🦉 밭에 생기가 돌았네! 서쪽 다리를 고치면 할아버지를 만날 수 있어',
+};
+/** 올빼미가 할 말 — 집이 다 지어졌으면(houseStage ≥ 3) 다리, 아니면 집 */
+export function owlNextLine(houseStage = 0) {
+  return (houseStage || 0) >= 3 ? OWL_NEXT_LINES.bridge : OWL_NEXT_LINES.house;
+}

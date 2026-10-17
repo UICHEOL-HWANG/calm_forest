@@ -246,6 +246,8 @@ export const EN = {
   '빠르게 연타하면 감이 뭉개져요': 'Mashing too fast bruises the persimmons',
   // 🌾→🍎 과수원 가는 길 의뢰(js/orchard-onboard.js)
   '🍎 과수원 가는 길': '🍎 The Way to the Orchard',
+  '🦉 밭에 생기가 돌았네! 이제 빈터에 집을 지어 보자. 🪵 나무를 베면 목재가 나와': '🦉 The field is alive again! Now build a house on the empty lot. Chop 🪵 trees for wood',
+  '🦉 밭에 생기가 돌았네! 서쪽 다리를 고치면 할아버지를 만날 수 있어': '🦉 The field is alive again! Fix the bridge to the west and you can meet the old curator',
   '🌾 밀 씨앗 심기': '🌾 Plant wheat seeds', '🌾 밀 거두기': '🌾 Harvest the wheat',
   '🗺️ 미니맵 🌾 텃밭으로 가서 → 🌰 씨앗(3번)을 들고 빈 밭에 밀을 심어요': '🗺️ Go to the 🌾 Farm on the minimap → hold 🌰 Seeds (3) and plant wheat on an empty plot',
   '🌾 텃밭의 밀 앞에서 → 💧 물조리개(4번)로 물을 줘요 ({0#}번 더)': '🌾 At the wheat on your Farm → water it with the 💧 Watering Can (4) ({0} more)',
@@ -2097,6 +2099,8 @@ export const EN = {
   '오, 그 🐟 물고기 싱싱하구먼! 처음 보는 얼굴이니 후하게 쳐주지.': "Oh, fresh 🐟 fish! New face, eh? I'll pay you well.",
   '🪵 목재 5개 팔기 (+30🪙)': '🪵 Sell 5 wood (+30🪙)',
   '🐟 물고기 팔기 (+25🪙)': '🐟 Sell a fish (+25🪙)',
+  '오, 그 🥕 당근 탐스럽구먼! 처음 보는 얼굴이니 후하게 쳐주지.': "Oh, plump 🥕 carrots! New face, eh? I'll pay you well.",
+  '🥕 작물 4개 팔기 (+25🪙)': '🥕 Sell 4 crops (+25🪙)',
   '더 팔 거면 동쪽 좌판으로 오게. 새로 들어온 🌱비료랑 🪱미끼도 보고 가고.': 'Come to my stall in the east to sell more. Have a look at the new 🌱fertilizer and 🪱bait too.',
   '🛒 좌판 구경': '🛒 Browse the stall',
   '다음에': 'Later',

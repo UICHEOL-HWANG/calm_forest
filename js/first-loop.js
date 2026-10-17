@@ -10,8 +10,13 @@ export const WELCOME_OFFERS = [
   { item: 'wood', qty: 5, gain: 30 },
   { item: 'fish', qty: 1, gain: 25 },
 ];
-export function welcomeOffer(inv = {}) {
-  return WELCOME_OFFERS.find(o => (inv[o.item] || 0) >= o.qty) || null;
+// 🔓 마을 해금(새 세이브)에선 첫 수확으로도 상인이 돌아온다 — 상인이 와야 좌판이 서는데, E1 처치는 🥕 당근부터 거둔다.
+//   당근 4개 = E1 처치 밭 2×2 그대로. 정가 5🪙×4=20🪙 → 25🪙(물고기와 같은 값 — 3배를 주면 경제 가드레일을 넘는다)
+export const WELCOME_CROP = { item: 'crop', qty: 4, gain: 25 };
+/** reworld: 해금 켜짐 + 새 세이브(js/story/rules.js storyReworld). 아니면 예전 그대로 목재·물고기만 */
+export function welcomeOffer(inv = {}, { reworld = false } = {}) {
+  const list = reworld ? [...WELCOME_OFFERS, WELCOME_CROP] : WELCOME_OFFERS;
+  return list.find(o => (inv[o.item] || 0) >= o.qty) || null;
 }
 
 // 개발용 URL 파라미터가 하나라도 있으면 "dev 세션" — 원장·세션·센서·GA4 기록을 남기지 않는다
