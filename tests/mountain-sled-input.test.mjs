@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { steerFrom, pointerSide } from '../js/mountain/sled-input.js';
+import { steerFrom } from '../js/mountain/sled-input.js';
 
 const readSrc = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
@@ -10,12 +10,6 @@ test('both sides pressed cancel out', () => {
   assert.equal(steerFrom({ left: true, right: false }), -1);
   assert.equal(steerFrom({ left: false, right: true }), 1);
   assert.equal(steerFrom({ left: false, right: false }), 0);
-});
-
-test('screen halves map to sides', () => {
-  assert.equal(pointerSide(10, 400), 'left');
-  assert.equal(pointerSide(390, 400), 'right');
-  assert.equal(pointerSide(200, 400), 'right');
 });
 
 test('pointer steering ignores taps on the boost button and the result panel', () => {
@@ -46,10 +40,12 @@ test('blur clears held keys and pointers', async () => {
   const { win, doc, target, ev } = fakeEnv();
   const input = bindSledInput(target, () => {}, { win, doc });
   win.dispatchEvent(ev('keydown', { code: 'ArrowLeft' }));
-  target.dispatchEvent(ev('pointerdown', { pointerId: 1, clientX: 390 }));
-  assert.deepEqual(input.read(), { left: true, right: true });
+  target.dispatchEvent(ev('pointerdown', { pointerId: 1, clientX: 200, clientY: 300 }));
+  win.dispatchEvent(ev('pointermove', { pointerId: 1, clientX: 260, clientY: 300 }));
+  assert.deepEqual(input.read(), { left: true, right: false, axis: 1 });
   win.dispatchEvent(ev('blur'));
-  assert.deepEqual(input.read(), { left: false, right: false });
+  assert.deepEqual(input.read(), { left: false, right: false, axis: 0 });
+  assert.equal(input.stick(), null);
 });
 
 test('hiding the page clears held input, showing it does not', async () => {
@@ -58,10 +54,10 @@ test('hiding the page clears held input, showing it does not', async () => {
   const input = bindSledInput(target, () => {}, { win, doc });
   win.dispatchEvent(ev('keydown', { code: 'KeyD' }));
   doc.dispatchEvent(ev('visibilitychange'));
-  assert.deepEqual(input.read(), { left: false, right: true });
+  assert.deepEqual(input.read(), { left: false, right: true, axis: 0 });
   doc.visibilityState = 'hidden';
   doc.dispatchEvent(ev('visibilitychange'));
-  assert.deepEqual(input.read(), { left: false, right: false });
+  assert.deepEqual(input.read(), { left: false, right: false, axis: 0 });
 });
 
 test('dispose removes every listener it added', async () => {
@@ -73,7 +69,7 @@ test('dispose removes every listener it added', async () => {
   input.dispose();
   assert.equal(added.size, 0);
   win.dispatchEvent(ev('keydown', { code: 'ArrowLeft' }));
-  assert.deepEqual(input.read(), { left: false, right: false });
+  assert.deepEqual(input.read(), { left: false, right: false, axis: 0 });
 });
 
 test('input starts from the device and switches on use', async () => {

@@ -54,10 +54,10 @@ test('no input or both sides keeps the sled straight', () => {
   assert.equal(worldSteer({ left: true, right: true }), 0);
 });
 
-test('the runtime steers through worldSteer and feeds the same value to physics and the ride', () => {
+test('the runtime steers through worldSteer and leans the ride by sideways speed', () => {
   const upd = between(src, 'export function updateMountain', '\n}\n');
   assert.match(upd, /const steer = worldSteer\(run\.input\.read\(\)\);/);
   assert.match(upd, /stepSled\(run\.sled, .*, steer, run\.course\)/);
-  assert.match(upd, /rideSlope\(steer, dt\)/);
+  assert.match(upd, /rideSlope\(run\.sled\.vx \/ run\.sled\.phys\.steerRate, dt\)/);
   assert.doesNotMatch(src, /steerFrom\(/);
 });

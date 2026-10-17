@@ -17,3 +17,16 @@ export function spawnSnowBurst(x, y, z, count = 14) {
     particles.push(p);
   }
 }
+
+export function spawnBoostTrail(x, y, z, count = 1) {
+  for (let i = 0; i < count; i++) {
+    const p = makeParticle(_dropGeo, new THREE.Color(SNOW_BURST.color));
+    p.position.set(x + (Math.random() - 0.5) * 0.6, y + 0.15, z - 0.5);
+    p.scale.setScalar(1.4 + Math.random() * 1.4);
+    p.userData = {
+      vel: new THREE.Vector3((Math.random() - 0.5) * 2.6, 1.4 + Math.random() * 1.4, -3.4 - Math.random() * 3.4),
+      spin: rndSpin(3), life: SNOW_BURST.life, gravity: SNOW_BURST.gravity, flutter: false, grow: 0.8, maxO: SNOW_BURST.maxO,
+    };
+    particles.push(p);
+  }
+}
