@@ -17,6 +17,11 @@ export const ease = (t) => { const x = Math.min(1, Math.max(0, t)); return x * x
 export const SHOT_PITCH = 27;   // ° — 마을 41° 보다 눕혀 우듬지와 가지 넷이 다 들어온다
 export const SHOT_HOLD = 1.7;   // 초 — 카메라가 도착한 뒤 잎·꽃이 돋는 동안 머문다
 export const SHOT_FOV = 42;     // 마을 카메라 세로 시야(game.js updateCamera 가 맞춰 둔다)
+export const CHAPTER_SHOT_HOLD = 4.2;
+
+export function chapterShotDue(s, on) {
+  return !!on && (s?.story?.ch ?? 0) === 0 && !s?.hintsSeen?.treeShot_chapter1;
+}
 
 /**
  * 나무 상자를 화면에 다 담는 카메라 자리.

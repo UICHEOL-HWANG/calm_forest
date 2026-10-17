@@ -23,7 +23,8 @@ import {
   GUESTS, STAGES, bloomRows, bloomed, careNeed, careToday, decorLocked, growthOf, guestFor, lifeOf, observeGuest, offerStage,
 } from '../world/tree-bloom.js';
 import { closeTreeBoard, openTreeBoard, renderTreeBoard, treeBoardOpen } from '../world/tree-board-ui.js';
-import { createShotRig, shotFrame } from '../world/tree-shot.js';
+import { CHAPTER_SHOT_HOLD, chapterShotDue, createShotRig, shotFrame } from '../world/tree-shot.js';
+import { STORY_REWORLD } from '../story/chapters.js';
 import { inVillage2 } from './doors.js';
 import { buildTreeArt } from '../world/tree-art.js';
 import { t as tr } from '../i18n.js';
@@ -356,10 +357,11 @@ function handleEvents(events, prev) {
 //  이정표에서만 1회씩(hintsSeen.treeShot_<가지>_<종류> · treeShot_intro). 해금 꺼짐·레거시는 나무가 처음부터 다 살아 있어 안 띄운다.
 //  판·모달·튜토리얼·미니게임·실내·다른 카메라 연출 중엔 줄만 서 있다가, 마을에서 한가해지면 돈다.
 //  줄 서 있는 동안 나무는 이전 모습(shownTree)을 붙잡아 두고, 카메라가 도착한 순간 풀어 잎·꽃이 화면 안에서 돋는다.
-const SHOT_KINDS = { habitat: 1, bundles: 1, bloom: 1, intro: 1 };
+const SHOT_KINDS = { habitat: 1, bundles: 1, bloom: 1, intro: 1, chapter: 1 };
+const CHAPTER_WAIT_MS = 8000;
 let shownBloom = null;
 let shotQueue = [], shot = null, shownTree = null, idleSince = -1, overlay = null, onKey = null;
-const shotKey = (kind, branch) => kind === 'intro' ? 'treeShot_intro' : `treeShot_${branch}_${kind}`;
+const shotKey = (kind, branch) => kind === 'intro' ? 'treeShot_intro' : kind === 'chapter' ? 'treeShot_chapter1' : `treeShot_${branch}_${kind}`;
 function shotsOn() { return unlocksOn() && !gameState.unlocks?.legacy; }
 
 /** 줄 세우기 — 이번에 처음이면 true(호출부가 판을 닫는다) */
@@ -369,6 +371,12 @@ function queueTreeShot(kind, branch, prev, prevBloom = gameState.treeBloom) {
   if (gameState.hintsSeen?.[key] || shotQueue.some(q => q.key === key)) return false;
   shotQueue.push({ kind, branch, key, at: performance.now() });
   if (prev && !shownTree) { shownTree = prev; shownBloom = prevBloom; targets = null; }
+  return true;
+}
+
+export function queueChapterShot(after) {
+  if (!wt || !chapterShotDue(gameState, shotsOn()) || shotQueue.some(q => q.kind === 'chapter')) return false;
+  shotQueue.unshift({ kind: 'chapter', branch: 'none', key: shotKey('chapter'), at: performance.now(), after });
   return true;
 }
 
@@ -404,11 +412,16 @@ function updateTreeShot(t) {
     else shotQueue.push({ kind: 'intro', branch: 'none', key: 'treeShot_intro', at: performance.now() });
   }
   if (!shotQueue.length) { if (shownTree) { shownTree = null; shownBloom = null; targets = null; } return; }
-  if (!shotsOn()) { shotQueue = []; return; }
-  if (!shotReady()) { idleSince = -1; return; }
+  if (!shotsOn()) { shotQueue.forEach(q => q.after?.()); shotQueue = []; return; }
+  if (!shotReady()) {
+    idleSince = -1;
+    const q = shotQueue[0];
+    if (q.kind === 'chapter' && q.after && performance.now() - q.at > CHAPTER_WAIT_MS) { const after = q.after; q.after = null; after(); }
+    return;
+  }
   if (idleSince < 0) idleSince = t;
   // 판에서 막 닫혔으면 바로, 처음 한 번(intro)은 귀환·1장 완료 모달이 이어 뜰 틈을 두고 2초 한가할 때
-  if (t - idleSince < (shotQueue[0].kind === 'intro' ? 2 : 0.15)) return;
+  if (t - idleSince < ({ intro: 2, chapter: 0.6 }[shotQueue[0].kind] ?? 0.15)) return;
   startShot(shotQueue.shift());
 }
 
@@ -421,10 +434,11 @@ function startShot(q) {
   const to = shotFrame(wt.box, camera.aspect);
   const rig = createShotRig({
     from, to, home: defaultCamPose,
+    ...(q.kind === 'chapter' ? { hold: CHAPTER_SHOT_HOLD } : {}),
     onHold: () => {
       if (!shotQueue.some(x => x.kind !== 'intro')) { shownTree = null; shownBloom = null; targets = null; }   // 🍃 지금 돋는다
       if (q.kind === 'intro') ui.toast?.('🌳 저 나무가 세계수예요. 다시 살려 볼까요?', 3200);
-      else Sound.complete?.();
+      else if (q.kind !== 'chapter') Sound.complete?.();
     },
   });
   shot = { q, rig, skipped: false };
@@ -436,7 +450,7 @@ function startShot(q) {
     cam.lookAt(rig.cur.look.x, rig.cur.look.y, rig.cur.look.z);
     if (ph === 'done') endShot(false);
   });
-  showOverlay();
+  showOverlay(q.kind === 'chapter');
 }
 
 function skipShot() {
@@ -453,10 +467,40 @@ function endShot(abort) {
   hideOverlay();
   if (!shotQueue.length) { shownTree = null; shownBloom = null; targets = null; }
   trackEvent('tree_shot', { kind: q.kind, branch: q.branch, skipped: skipped || abort });
+  if (q.kind === 'chapter') ui.flashStoryChip?.();
+  q.after?.();
 }
 
 // 탭·클릭·아무 키 = 넘기기. 투명 막(-modal → anyModalOpen 이 걷기·액션·다른 강제 이벤트를 멈춘다)
-function showOverlay() {
+function chapterCine() {
+  const el = document.createElement('div');
+  el.id = 'treeshot-cine';
+  const bar = 'position:absolute;left:0;right:0;height:clamp(48px,9vh,90px);background:#0d0f0e;transition:transform .5s ease;';
+  const top = document.createElement('div'); top.style.cssText = bar + 'top:0;transform:translateY(-100%);';
+  const bot = document.createElement('div'); bot.style.cssText = bar + 'bottom:0;transform:translateY(100%);';
+  const shade = document.createElement('div');
+  shade.style.cssText = 'position:absolute;inset:0;background:linear-gradient(rgba(12,22,18,0.1),rgba(12,22,18,0.55) 75%);opacity:0;transition:opacity .6s ease;';
+  const title = document.createElement('div');
+  title.style.cssText = 'position:absolute;left:0;right:0;top:66%;text-align:center;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.6);padding:0 20px;'
+    + 'opacity:0;transform:translateY(8px);transition:opacity .7s ease .5s,transform .7s ease .5s;';
+  const n = document.createElement('div'); n.textContent = tr('1장');
+  n.style.cssText = 'font-size:14px;font-weight:800;letter-spacing:.3em;opacity:.85;';
+  const big = document.createElement('div'); big.textContent = tr(STORY_REWORLD.home.title);
+  big.style.cssText = 'font-size:clamp(26px,4.4vw,40px);font-weight:800;margin-top:4px;';
+  title.append(n, big);
+  const line = document.createElement('div'); line.textContent = tr(STORY_REWORLD.home.start);
+  line.style.cssText = 'position:absolute;left:0;right:0;bottom:calc(clamp(48px,9vh,90px) + 18px);text-align:center;color:#fff;font-size:clamp(14px,1.6vw,17px);'
+    + 'font-weight:600;line-height:1.5;padding:0 24px;text-shadow:0 1px 6px rgba(0,0,0,0.7);opacity:0;transition:opacity .7s ease 1.1s;';
+  el.append(shade, top, bot, title, line);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    top.style.transform = bot.style.transform = 'translateY(0)';
+    shade.style.opacity = title.style.opacity = line.style.opacity = '1';
+    title.style.transform = 'translateY(0)';
+  }));
+  return el;
+}
+
+function showOverlay(cine = false) {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'treeshot-modal';
@@ -464,19 +508,24 @@ function showOverlay() {
       + 'background:linear-gradient(to bottom,rgba(0,0,0,0.16),transparent 14%,transparent 86%,rgba(0,0,0,0.16));';
     const hint = document.createElement('div');
     hint.textContent = '탭하면 넘어가요';
+    hint.id = 'treeshot-hint';
     hint.style.cssText = 'position:absolute;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);'
       + 'padding:4px 12px;border-radius:999px;background:rgba(30,40,30,0.38);color:#fff;font-size:12px;opacity:0.85;pointer-events:none;white-space:nowrap;';
     overlay.appendChild(hint);
     overlay.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); skipShot(); });
     document.body.appendChild(overlay);
   }
+  overlay.querySelector('#treeshot-cine')?.remove();
+  if (cine) { overlay.prepend(chapterCine()); document.body.classList.add('cine-open'); }
+  overlay.querySelector('#treeshot-hint').style.bottom = cine ? 'calc(clamp(48px,9vh,90px) / 2 - 12px)' : 'calc(104px + env(safe-area-inset-bottom,0px))';
   overlay.style.display = 'block';
   overlay.classList.add('show');
   onKey = (e) => { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) skipShot(); };
   window.addEventListener('keydown', onKey, true);
 }
 function hideOverlay() {
-  if (overlay) { overlay.classList.remove('show'); overlay.style.display = 'none'; }
+  if (overlay) { overlay.classList.remove('show'); overlay.style.display = 'none'; overlay.querySelector('#treeshot-cine')?.remove(); }
+  document.body.classList.remove('cine-open');
   if (onKey) window.removeEventListener('keydown', onKey, true);
   onKey = null;
 }

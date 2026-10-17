@@ -1012,12 +1012,6 @@
   /* 인터랙티브 튜토리얼 코치(상단 중앙) */
   #coach { top: calc(92px + var(--top-inset)); left: 50%; transform: translateX(-50%); display: none; flex-direction: column; align-items: stretch; gap: 7px; width: min(440px, 90vw); box-sizing: border-box; text-align: left; border: 2px solid var(--mint); }
   #coach.show { display: flex; }
-  /* 🎯 코칭 내내 "지금 뭘 향해 가는지" — 튜토리얼 중엔 #story-chip 이 숨겨져(body.coaching) 목적이 사라졌었다.
-     카드 안의 줄이라 모바일 3단 레이아웃에 새 고정 좌표를 추가하지 않는다. */
-  /* 색은 --mint(#bfe8c9) 대신 진한 초록 — 10.5px 본문에 밝은 민트는 크림 카드 위에서 대비가 모자란다 */
-  #coach-goal { font-size: 11px; font-weight: 800; color: #2f7d54; letter-spacing: .01em;
-    align-self: stretch; }
-  #coach-goal:empty { display: none; }
   #coach-text { font-size: 13.5px; font-weight: 700; line-height: 1.35; }
   #coach-foot { display: flex; align-items: center; gap: 8px; }
   #coach-bar { flex: 1 1 auto; height: 6px; border-radius: 999px; background: rgba(0,0,0,0.08); overflow: hidden; }
@@ -1096,7 +1090,6 @@
     #fish-prompt { font-size: 18px; }
     #zone-prompt { font-size: 16px; }
     #coach-text { font-size: 16px; }
-    #coach-goal { font-size: 12.5px; }
     #coach-skip { font-size: 12.5px; }
     #mc-title { font-size: 15px; }
     #hint-banner .hb-title { font-size: 15.5px; }
@@ -1222,11 +1215,15 @@
   #story-chip { position: fixed; top: calc(212px + var(--top-inset)); left: 16px; display: none; align-items: center; gap: 8px;
     padding: 8px 12px; cursor: pointer; max-width: 210px; transition: transform .1s; }
   #story-chip.show { display: flex; }
+  #story-chip.fresh { animation: chipFresh 1.1s ease-in-out 3; }
+  @keyframes chipFresh { 0%, 100% { box-shadow: var(--shadow); } 50% { box-shadow: 0 0 0 3px #8fe0a8, 0 0 22px 6px rgba(127,211,154,0.75), var(--shadow); } }
+  body.cine-open :is(#topleft, #topright, #minimap, #hotbar, #mobile-controls, #talk-btn, #dex-tab, #feedback-tab, #quest-panel, #toast, #hint-banner, #door-prompt, #npc-prompt, #zone-prompt, #app-banner),
+  body.cine-open #story-chip { display: none !important; }
   #story-chip:active { transform: scale(0.96); }
   #sc-ico { font-size: 20px; flex: 0 0 auto; }
   #sc-title { font-size: 11px; font-weight: 700; opacity: .65; }
   #sc-goal { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
-  body:not(.playing) #story-chip, body.boat-run #story-chip, body.mg-open #story-chip, body.intro-open #story-chip, body.coaching #story-chip { display: none !important; }
+  body:not(.playing) #story-chip, body.boat-run #story-chip, body.mg-open #story-chip, body.intro-open #story-chip, body.coaching #story-chip, body.spot-on #story-chip { display: none !important; }
   #story-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #story-modal.show { display: grid; }
   .st-row { display: flex; gap: 10px; padding: 9px 10px; border-radius: 12px; margin-bottom: 6px; background: #f2f6f0; }
@@ -1256,7 +1253,6 @@
     #coach { top: max(calc(162px + var(--top-inset)), var(--rcol-bottom, 0px)); left: 12px; right: 12px; transform: none; width: auto; max-width: none;
              padding: 9px 11px; }
     #coach-text { font-size: 12.5px; }
-    #coach-goal { font-size: 10.5px; }
     body.coaching #toast { top: calc(162px + var(--top-inset) + var(--coach-h, 110px) + 16px); }   /* 코치 카드 실측 아래 */
     #hint-banner { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
     body:has(#hint-banner.show) #story-chip { display: none !important; }   /* 배너가 떠 있는 1.4~3초만 칩을 비켜준다 */
@@ -2110,9 +2106,6 @@
     body.is-touch #door-prompt, body.is-touch #fish-prompt, body.is-touch #zone-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
     body.is-touch #toast, body.is-touch.coaching #toast, body.is-touch.hintbanner #toast, body.is-touch.decor-guide #toast, body.is-touch.mist-guide #toast { top: max(calc(72px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; max-width: min(260px, 34vw); font-size: 13px; padding: 8px 12px; }
   }
-  @media (orientation: landscape) and (max-height: 340px) {
-    body.is-touch #coach-goal { display: none; }
-  }
 </style>
 </head>
 <body>
@@ -2236,7 +2229,6 @@
 
   <!-- 인터랙티브 튜토리얼 코치(단계별 진행) -->
   <div id="coach" class="panel">
-    <div id="coach-goal"></div>
     <div id="coach-text"></div>
     <div id="coach-foot"><div id="coach-bar"><i id="coach-fill"></i></div><span id="coach-count"></span><button id="coach-skip">건너뛰기</button></div>
   </div>
@@ -3833,7 +3825,11 @@
         $('sc-goal').textContent = cur.goal;
         chip.classList.add('show');
         if ($('story-modal').classList.contains('show')) renderStory();
-        if (tutIdx >= 0) renderCoachGoal();   // 코칭 중 장이 넘어가면 목표 줄도 따라간다
+      },
+      flashStoryChip() {
+        const chip = $('story-chip');
+        chip.classList.remove('fresh'); void chip.offsetWidth; chip.classList.add('fresh');
+        setTimeout(() => chip.classList.remove('fresh'), 3400);
       },
       // 씨앗 소진 안내 모달
       showSeedHelp() { $('seed-modal').classList.add('show'); },
@@ -4599,21 +4595,11 @@
     //   안내문은 "🪓도끼(1)" 처럼 번호로 말하는데, 모바일엔 숫자키가 없어 다른 페이지 도구는 손이 닿지 않는다.
     const TUT_TOOL = { chop: 'axe', till: 'hoe', seed: 'seed', water: 'water', harvest: 'sickle',
                        mine: 'hoe', fish: 'rod', build: 'hammer' };
-    // 🎯 코치 카드 안의 현재 장 목표 — 튜토리얼 중엔 #story-chip 이 숨겨지므로 여기가 목적의 유일한 창구.
-    //   스토리 칩과 같은 출처(lastStoryView)를 읽어 두 곳이 어긋나지 않는다.
-    function renderCoachGoal() {
-      const el = $('coach-goal'); if (!el) return;
-      const v = lastStoryView;
-      if (!v || v.allDone) { el.textContent = ''; return; }
-      const cur = v.chapters[v.ch];
-      el.textContent = cur ? `${cur.n}장 · ${cur.ico} ${cur.goal}` : '';
-    }
     function renderCoach() {
       const want = TUT_TOOL[TUT_STEPS[tutIdx].key];
       if (want) Input.revealTool?.(want);
       $('coach-text').textContent = t(TUT_STEPS[tutIdx].text).replace(/^[①-⑰]\s*/, '');
       hud?.setCoachStep(TUT_STEPS[tutIdx].key);
-      renderCoachGoal();
       if (decorGuideStep >= 0) renderDecorGuide();   // 🎨 단계 안내가 켜져 있으면 코치 문구를 단계별로
       $('coach-fill').style.width = Math.round((tutIdx + 1) / TUT_STEPS.length * 100) + '%';
       $('coach-count').textContent = `${tutIdx + 1} / ${TUT_STEPS.length}`;
@@ -4683,9 +4669,12 @@
         trackEvent('tutorial_complete');
       }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)
-      nudgeGuideOnce();   // 📖 졸업·중간 건너뛰기 직후 안내서 배너(1회)
-      Input.orchardQuestAfterTutorial?.();   // 🌾→🍎 튜토리얼 중 첫 수확으로 미뤄 둔 과수원 가는 길 의뢰
-      offerPush();                           // 🔔 튜토리얼 중 수확했으면 졸업 뒤 알림 안내(안드로이드·1회)
+      const after = () => {
+        nudgeGuideOnce();   // 📖 졸업·중간 건너뛰기 직후 안내서 배너(1회)
+        Input.orchardQuestAfterTutorial?.();   // 🌾→🍎 튜토리얼 중 첫 수확으로 미뤄 둔 과수원 가는 길 의뢰
+        offerPush();                           // 🔔 튜토리얼 중 수확했으면 졸업 뒤 알림 안내(안드로이드·1회)
+      };
+      if (!Input.queueChapterShot?.(after)) after();
     }
 
     // 좌측 상단 로그인 상태 표시(로그인 후)
