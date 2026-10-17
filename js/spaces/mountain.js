@@ -112,7 +112,7 @@ export function enterMountain() {
   player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  firstHint('mountain', '🏔️', '🏔️ 설산', '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요');
+  firstHint('mountain', '🏔️', '설산 · 썰매', { steps: [{ ico: '🥾', label: '뒤쪽 능선길로' }, { ico: '🛷', label: '정상에서 썰매' }] });
   setBGMTheme('main'); Sound.blip();
   const first = !gameState.hintsSeen?.mountainVisited;
   gameState.hintsSeen = { ...(gameState.hintsSeen || {}), mountainVisited: true };

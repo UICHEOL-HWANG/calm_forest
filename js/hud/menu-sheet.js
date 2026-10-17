@@ -34,7 +34,7 @@ const CATS = [
 const $ = (id) => document.getElementById(id);
 const labelOf = (el) => (el.querySelector('.ulbl, .lbl')?.textContent || el.querySelectorAll('span')[1]?.textContent || el.title || '').trim();
 
-export function createMenuSheet({ Input, t, trackEvent, dotTarget = null }) {
+export function createMenuSheet({ Input, t, trackEvent, dotTarget = null, onOpen = null }) {
   if (!$('menu-sheet-css')) {
     const style = document.createElement('style');
     style.id = 'menu-sheet-css'; style.textContent = CSS;
@@ -68,6 +68,7 @@ export function createMenuSheet({ Input, t, trackEvent, dotTarget = null }) {
       const g = document.createElement('div'); g.className = 'ms-grid';
       cells.forEach(([el, cico]) => {
         const c = document.createElement('button'); c.type = 'button'; c.className = 'ms-cell';
+        c.dataset.for = el.id;
         const i = document.createElement('span'); i.className = 'ms-ico'; i.textContent = cico;
         c.append(i, document.createTextNode(labelOf(el)));
         if (el.id === 'inbox-btn') { const d = document.createElement('span'); d.className = 'hud-dot'; c.appendChild(d); c.classList.toggle('has-dot', unread > 0); }
@@ -83,6 +84,7 @@ export function createMenuSheet({ Input, t, trackEvent, dotTarget = null }) {
     sheet.classList.add('show'); bg.classList.add('show');
     document.body.classList.add('menu-open');
     trackEvent?.('hud_menu_open', {});
+    onOpen?.();
   }
 
   function close() {

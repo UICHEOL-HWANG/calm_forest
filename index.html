@@ -1719,6 +1719,14 @@
     pointer-events: auto; cursor: pointer; transition: transform .1s; }   /* 칩을 누르면 설명 모달 */
   #buffs .buff:active { transform: scale(0.95); }
   #hint-modal { z-index: 45; }   /* 버프 설명 등 안내 모달은 미니게임 오버레이(40)·가방(41) 위에도 뜨게 */
+  #hint-steps { display: flex; align-items: stretch; justify-content: center; gap: 6px; margin: 4px 0 14px; }
+  #hint-steps:empty, #hint-note:empty, #hint-chip:empty { display: none; }
+  .hs-step { flex: 1; max-width: 132px; background: #f4faf5; border-radius: 14px; padding: 10px 6px; font-size: 13px; font-weight: 700; line-height: 1.35;
+    display: flex; flex-direction: column; align-items: center; gap: 5px; word-break: keep-all; }
+  .hs-ico { font-size: 26px; line-height: 1; }
+  .hs-ar { align-self: center; color: #9aa79e; font-weight: 900; }
+  #hint-note { font-size: 12.5px; color: #8a7f6e; margin: -4px 0 14px; }
+  #hint-chip { display: table; background: #fff3cf; color: #7a5a00; border-radius: 10px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; margin: -6px auto 14px; }
   #merchant-modal { z-index: 45; }
   #merchant-modal .tut-card { width: min(400px, 92vw); }
   .merchant-actions { display: flex; flex-direction: column; gap: 10px; }
@@ -2711,6 +2719,9 @@
       <h2 id="hint-title"></h2>
       <div id="hint-preview" hidden><div class="hp-ic">🌳</div><div><small>calm forest · 20:10</small><b id="hint-preview-title"></b><span id="hint-preview-body"></span></div></div>
       <p id="hint-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
+      <div id="hint-steps"></div>
+      <div id="hint-note"></div>
+      <div id="hint-chip"></div>
       <button id="hint-ok">알겠어요 🌱</button>
       <button id="hint-alt" hidden></button>
     </div>
@@ -2886,6 +2897,8 @@
     import { createMenuSheet } from './js/hud/menu-sheet.js';
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
+    import { createSpotlight } from './js/hud/spotlight.js';
+    import { spotSteps } from './js/onboarding/spot-steps.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
@@ -3231,7 +3244,8 @@
     });
     questPhoneMQ.addEventListener?.('change', () => ui.setQuest(questLast));
     let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
-    const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn') });
+    const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
+    const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
     const nickStep = createNickStep({ track: trackEvent });
     addEventListener('pagehide', () => nickStep.leave($('nick-input')?.value || ''));
     const ui = {
@@ -3273,7 +3287,7 @@
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
-      coachActive() { return tutIdx >= 0; },
+      coachActive() { return tutIdx >= 0 || !!spot?.active(); },
       setInventory(inv) {
         lastInv = inv;
         const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -3593,11 +3607,7 @@
       },
       // 신규 유저 튜토리얼 표시 · ❓도움말로도 같은 모달을 연다
       //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
-      showTutorial(src = 'welcome') {
-        const m = $('tutorial-modal');
-        m.dataset.src = src;
-        m.classList.add('show');
-      },
+      showTutorial(src = 'welcome') { startOnboarding(src); },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
       introShow(on) {
         document.body.classList.toggle('intro-open', !!on);
@@ -3691,7 +3701,21 @@
         // 🔔 preview: 알림 미리보기 블록(푸시 안내 카드) — 다른 안내가 덮어쓸 땐 숨긴다
         $('hint-preview').hidden = !preview;
         if (preview) { $('hint-preview-title').textContent = preview.title || ''; $('hint-preview-body').textContent = preview.body || ''; }
-        $('hint-body').textContent = body || '';
+        const card = body && typeof body === 'object' ? body : null;
+        const ak = TOUCH ? '⭕' : 'Space';
+        const fill = (v) => String(v || '').replace(/\{A\}/g, ak);
+        $('hint-body').textContent = card ? '' : (body || '');
+        $('hint-body').hidden = !!card;
+        const box = $('hint-steps'); box.innerHTML = '';
+        (card?.steps || []).forEach((st, k) => {
+          if (k) { const ar = document.createElement('span'); ar.className = 'hs-ar'; ar.textContent = '→'; box.appendChild(ar); }
+          const d = document.createElement('div'); d.className = 'hs-step';
+          const ic = document.createElement('span'); ic.className = 'hs-ico'; ic.textContent = st.ico;
+          const lb = document.createElement('span'); lb.textContent = st.label.replace(/\{A\}/g, ak);
+          d.append(ic, lb); box.appendChild(d);
+        });
+        $('hint-note').textContent = fill(card?.note);
+        $('hint-chip').textContent = fill(card?.chip);
         // ok/alt: 선택형 안내(🌫️ 실패 후 연습 제안 등 — 주 버튼·보조 버튼). 닫기는 아래 hint-ok 리스너가 담당, 여기선 콜백만 갈아끼운다
         const okb = $('hint-ok'), altb = $('hint-alt');
         okb.textContent = ok?.label || '알겠어요 🌱';
@@ -4122,6 +4146,7 @@
       },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
+        spot?.notify('act:' + type);
         if (tutIdx < 0) return;
         if (TUT_STEPS[tutIdx].key === type) {
           trackEvent('tutorial_step', { step: tutIdx + 1, key: TUT_STEPS[tutIdx].key }); // [①] 단계 완료
@@ -4460,6 +4485,38 @@
       if (!isBetaA(authState.variant)) return;
       TUT_STEPS.sort((a, b) => TUNING.TUT_ORDER_A.indexOf(a.key) - TUNING.TUT_ORDER_A.indexOf(b.key));
     }
+    function spotBlocked() {
+      const b = document.body.classList;
+      return !b.contains('playing') || b.contains('intro-open') || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card');
+    }
+    async function startOnboarding(src) {
+      const steps = spotSteps('full', TOUCH);
+      Input.markHintsSeen(['spot_started']); requestSave();
+      const left = steps.findIndex(s => !Input.hintSeen('spot_' + s.key));
+      if (src === 'help' || left >= 0) {
+        Input.armTutorialMove();
+        await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
+      }
+      Input.markHintsSeen(['spotV2']);
+      startCoach();
+      showStoryMapOnce(null);
+    }
+    function maybeHudTour() {
+      if (Input.needsTutorial() || Input.hintSeen('spotV2')) return;
+      if (Input.hintSeen('spot_started')) { startOnboarding('resume'); return; }
+      spot.run(spotSteps('new', TOUCH), { kind: 'new' }).then(() => { Input.markHintsSeen(['spotV2']); requestSave(); });
+    }
+    function runMenuTour() {
+      spot?.notify('menu');
+      if (!spot || Input.hintSeen('spotMenu') || spot.kind() === 'menu') return;
+      Input.markHintsSeen(['spotMenu']); requestSave();
+      setTimeout(() => spot.run(spotSteps('menu', TOUCH), { kind: 'menu', blocked: () => !$('menu-sheet')?.classList.contains('show') }), 60);
+    }
+    function runPillTour() {
+      if (!spot || !TOUCH || Input.needsTutorial() || Input.hintSeen('spot_pill') || spot.active()) return;
+      Input.markHintsSeen(['spot_pill']); requestSave();
+      spot.run(spotSteps('pill', true), { kind: 'pill' });
+    }
     function startCoach() {
       applyBetaTutorialOrder();   // 명단 조회가 늦게 끝났을 때를 대비해 여기서도 한 번 더
       Input.armTutorialMove(); tutIdx = 0; renderCoach(); $('coach').classList.add('show');
@@ -4518,7 +4575,7 @@
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
       if (!shell) shell = initHudShell({ Input, t, trackEvent, menu: menuSheet });
       if (TOUCH && !hud) {
-        hud = initMobileHud({ Input, t, act: (k) => ui.act(k), trackEvent });
+        hud = initMobileHud({ Input, t, act: (k) => ui.act(k), trackEvent, onPill: () => runPillTour() });
         if (lastToolArgs) hud.onTool(...lastToolArgs);
         hud.onNpc(lastNpcText);
         if (lastDoorArgs) hud.onDoor(...lastDoorArgs);
@@ -4547,6 +4604,7 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
+      maybeHudTour();
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
       referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });

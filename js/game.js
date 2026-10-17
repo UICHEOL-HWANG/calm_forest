@@ -1459,8 +1459,8 @@ function tryUnlockDrop(chance) {
   Sound.harvest();
   spawnSparkle(player.position.x, 1.2, player.position.z, 20);
   if (!gameState.hintsSeen.colorUnlock) {          // 첫 획득 → 시스템 안내 모달(온보딩)
-    firstHint('colorUnlock', '🎨', '새 집 색을 얻었어요!',
-      '낚시·수확·퀘스트·집 완성으로 집 색을 모아요\n집 앞 🎨 꾸미기에서 지붕·벽·문에 적용!');
+    firstHint('colorUnlock', '🎨', '새 집 색 · 집 꾸미기',
+      { steps: [{ ico: '🎣🌾📜', label: '모으기' }, { ico: '🏠', label: '집 앞 🎨 꾸미기' }], chip: '지붕·벽·문에 적용' });
   } else {
     ui.toast?.(`🎨 새 ${PART_NAME[part]} 색을 얻었어요! 집 앞 🎨 버튼에서 적용해보세요`, 4200);
   }
@@ -1665,9 +1665,11 @@ function craftClaim(station = 'kiln') {
 
 let craftDiffCur = null;   // 🎚️ 이번 가공 판의 난이도 — craftDiff 가 채우고 craftScore·craftSet 이 읽는다
 
+function requestAction() { wantAction = true; ui.act?.('use'); }
+
 export const Input = {
   setAnalog(x, z) { analog.x = x; analog.z = z; },      // 조이스틱 벡터
-  doAction() { wantAction = true; },                    // 액션 버튼/클릭/Space (도구질)
+  doAction() { requestAction(); },
   doTalk() { if (!indoor && nearNPC) talkToNPC(); },    // 전용 "대화하기" 버튼(모바일) — 도구질과 분리
   playerScreenPos() { return player && camera ? projectToScreen(player.position, 1.7) : null; },
   // 슬롯 탭 / 숫자키 1~8 — 페이지와 무관한 절대 선택. 다른 페이지 도구를 고르면 페이지가 따라오고, ✋맨손도 풀린다
@@ -4417,11 +4419,10 @@ function setHeldTool(id) {
   if (indoor || atCafe) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
   // 🪏 처음 삽을 들면 쓰는 법 1회 안내(모달) — 밭을 지우고 싶은 사람이 정확히 이 순간 답을 얻는다
   if (id === 'shovel' && gameState.character) {
-    const A = IS_MOBILE ? '(액션)' : '(Space)';   // index.html TUT_STEPS 와 같은 표기로 통일
-    firstHint('shovel', '🪏', '삽 — 빈 밭을 풀밭으로 되돌려요',
-      digIsOneShot(gameState)
-        ? `① 삽을 들고 빈 밭 앞에서 ${A} → 밭이 사라져요\n· 🪏넓은 삽이라 한 번에 메워져요. 되돌릴 수 없으니 조심!\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`
-        : `① 삽을 들고 빈 밭 앞에서 ${A}\n② ${DIG_WINDOW}초 안에 한 번 더 ${A} → 밭이 사라져요\n· 작물이 있는 밭은 안 돼요. 수확하거나 괭이로 정리한 뒤에요.\n· 가끔 땅속에서 도감 수집품이 나와요 📖`);
+    const one = digIsOneShot(gameState);
+    firstHint('shovel', '🪏', '삽 · 빈 밭 없애기',
+      { steps: [{ ico: '🟫', label: '빈 밭 앞' }, { ico: '👆', label: one ? '{A} 한 번' : '{A} 두 번' }],
+        note: one ? '되돌릴 수 없어요' : '작물 있는 밭은 안 돼요', chip: '📖 가끔 수집품' });
   }
 }
 // 꾸미기: 선택한 가구를 손에 작게 들기
@@ -5519,11 +5520,11 @@ function initInput() {
       if (mirrorRideActive() && (e.code === 'Space' || e.code === 'Escape' || e.code === 'Enter')) skipMirrorRide();   // 🪞 탑승 연출 건너뛰기
       if (MOVE_KEYS.includes(e.code)) e.preventDefault(); return;
     }
-    if (e.code === 'Space') wantAction = true;
+    if (e.code === 'Space') requestAction();
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
     if (e.code === 'Digit1') Input.cycleToolPage();
-    else if (/^Digit[2-6]$/.test(e.code)) Input.selectPageSlot(parseInt(e.code.slice(5)) - 2);
+    else if (/^Digit[2-6]$/.test(e.code)) { Input.selectPageSlot(parseInt(e.code.slice(5)) - 2); ui.act?.('toolpick'); }
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
   });
@@ -5553,7 +5554,7 @@ function initInput() {
     if (intro || sleeping || mgView || museumView || ui.anyModalOpen?.()) return;
     if (indoor && tryPickDecor(e)) return;                      // 놓아 둔 가구 탭 → 들어 올려 옮기기
     if (outdoorZone() && tryPickOutdoor(e)) return;              // 🪵 놓아 둔 야외 장식 탭 → 들어 올려 옮기기(밭일에 가려져도 이 길은 열려 있다)
-    wantAction = true;
+    requestAction();
   });
   // 마우스 호버 → 고스트가 커서를 따라간다(호버가 곧 미리보기). 터치는 탭으로 자리 잡기
   renderer.domElement.addEventListener('pointermove', (e) => {

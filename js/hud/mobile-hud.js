@@ -57,7 +57,7 @@ body.is-touch.near-pill-on #door-prompt { opacity: 0 !important; }
 
 const $ = (id) => document.getElementById(id);
 
-export function initMobileHud({ Input, t, act, trackEvent }) {
+export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
   const style = document.createElement('style');
   style.id = 'mobile-hud-css'; style.textContent = CSS;
   document.head.appendChild(style);
@@ -87,6 +87,7 @@ export function initMobileHud({ Input, t, act, trackEvent }) {
     pill.classList.toggle('show', !!kind);
     document.body.classList.toggle('near-pill-on', kind === 'door');
     if (kind && !raf) raf = requestAnimationFrame(tick);
+    if (kind) onPill?.();
   }
 
   return {

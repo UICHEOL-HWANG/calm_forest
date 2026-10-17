@@ -267,7 +267,7 @@ export async function resolveNightVisit() {
       }
     }
     firstHint('night', a.ico, '밤손님이 다녀갔어요',
-      '밤사이 숲 친구가 밭에 다녀갔어요\n🐾 파헤쳐진 흙을 조사하면 수집품!\n🎃허수아비·🪵울타리를 두면 피해가 줄어요');
+      { steps: [{ ico: '🐾', label: '파헤친 흙 조사' }, { ico: '🎁', label: '수집품' }], note: '🎃 허수아비·🪵 울타리로 피해 줄이기' });
   }, 1200);
   // 📜 주민 쪽지(Gemini·자정 캐시) — 도착하면 카드로. 실패하면 조용히 생략
   if (nightNoteFetcher) {
