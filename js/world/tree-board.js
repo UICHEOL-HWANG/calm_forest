@@ -21,6 +21,10 @@ export const TREE_DECOR = [
   { id: 'hut',     ico: '🛖', name: '오두막',   tags: { shelter: 3 },        cost: { wood: 6 } },
   { id: 'bigtree', ico: '🌳', name: '큰 나무',  tags: { shade: 2 },          cost: { wood: 2 } },
   { id: 'fruit',   ico: '🍎', name: '과일나무', tags: { food: 1, shade: 1 }, cost: { wood: 2 } },
+  { id: 'lotus',     ico: '🌸', name: '꽃 연못',   tags: { damp: 4, nectar: 1 },  cost: { stone: 4 },          bloom: 'water' },
+  { id: 'sunflower', ico: '🌻', name: '해바라기', tags: { food: 3, nectar: 1 },  cost: { wood: 2 },           bloom: 'farm' },
+  { id: 'hearth',    ico: '🔥', name: '화롯불',   tags: { light: 3, shelter: 1 }, cost: { wood: 3, coal: 1 }, bloom: 'kitchen' },
+  { id: 'oldtree',   ico: '🍄', name: '버섯 고목', tags: { shade: 3, shelter: 2 }, cost: { wood: 5 },          bloom: 'forest' },
 ];
 
 /**

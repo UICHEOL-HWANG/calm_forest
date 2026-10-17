@@ -155,5 +155,99 @@ export function renderTreeBoard(view) {
     bun.appendChild(box);
   }
   body.appendChild(bun);
+  if (c.bloom?.open) body.appendChild(bloomSection(c.bloom));
   body.scrollTop = keep;
+}
+
+function slotRow(slots) {
+  const wrap = el('div', 'tb-slots');
+  for (const s of slots) {
+    const w = el('div', 'tb-slotw');
+    const slot = el('div', s.have >= s.need ? 'tb-slot full' : 'tb-slot');
+    slot.append(el('span', 'tb-slot-ico', s.ico), el('span', 'tb-badge', s.have ? `${s.have}/${s.need}` : `${s.need}`));
+    if (s.have < s.need) slot.append(el('span', 'tb-bag', `🎒${s.bag}`));
+    w.append(slot, el('span', 'tb-slot-name', s.label));
+    wrap.appendChild(w);
+  }
+  return wrap;
+}
+
+function actButton(label, disabled, onClick) {
+  const b = el('button', 'tb-offer', label);
+  b.type = 'button';
+  b.disabled = disabled;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function bloomSection(v) {
+  const sec = el('section', 'tb-sec tb-bloomsec');
+  const h = el('h3', 'tb-h');
+  h.append(el('span', null, '🌸 꽃피우기'));
+  if (v.done) h.append(el('span', 'tb-stamp pink', '🌸 꽃이 피었어요'));
+  sec.appendChild(h);
+
+  const meters = el('div', 'tb-meters');
+  for (const [label, r] of [['🎁 꾸러미', v.rows.stage], ['💧 돌보기', v.rows.care], ['📖 손님', v.rows.guests]]) {
+    const ok = r.have >= r.need;
+    const row = el('div', ok ? 'tb-meter ok' : 'tb-meter');
+    const bar = el('div', 'tb-mbar'); const fill = el('i'); fill.style.width = `${Math.round(r.have / r.need * 100)}%`; bar.appendChild(fill);
+    row.append(el('span', 'tb-mlabel', label), bar, el('span', 'tb-mnum', `${r.have}/${r.need}`));
+    meters.appendChild(row);
+  }
+  sec.appendChild(meters);
+  if (v.done) return sec;
+
+  const care = el('div', 'tb-bundle');
+  const ch = el('div', 'tb-bhead'); ch.append(el('b', null, '💧 오늘 돌보기'));
+  care.appendChild(ch);
+  const crow = el('div', 'tb-brow');
+  if (v.care.complete) crow.append(el('span', 'tb-hint', '돌보기를 다 채웠어요'));
+  else if (v.care.doneToday) crow.append(el('span', 'tb-hint', '오늘은 돌봤어요. 내일 또 와요'));
+  else crow.append(slotRow(v.care.slots), actButton('돌보기', !v.care.can, () => actions?.care?.()));
+  care.appendChild(crow);
+  sec.appendChild(care);
+
+  const gb = el('div', 'tb-bundle');
+  const gh = el('div', 'tb-bhead'); gh.append(el('b', null, '📖 빈터 손님'));
+  gb.appendChild(gh);
+  const grow = el('div', 'tb-brow');
+  if (v.guest) {
+    const who = el('span', 'tb-guest');
+    who.append(el('span', 'tb-guest-ico', v.guest.ico), el('span', null, v.guest.name), el('span', 'tb-hint', v.guest.fresh ? '처음 보는 손님' : '또 왔어요'));
+    grow.append(who, actButton('살펴보기', false, () => actions?.observe?.(v.guest.id)));
+  } else {
+    const line = v.visited
+      ? (v.phase === 'night' ? '오늘 밤 손님은 다녀갔어요. 내일 또 와요' : '오늘 낮 손님은 다녀갔어요. 밤에 또 와요')
+      : '조건에 맞는 손님이 없어요. 빈터 장식을 바꿔 보세요';
+    grow.append(el('span', 'tb-hint', line));
+  }
+  gb.appendChild(grow);
+  const book = el('div', 'tb-guestbook');
+  for (const g of v.guests) {
+    const cell = el('span', g.seen ? 'tb-gcell seen' : 'tb-gcell');
+    cell.append(el('span', 'tb-gcell-ico', g.seen ? g.ico : '🔍'));
+    if (g.seen) cell.append(el('small', null, g.name));
+    else cell.append(el('small', null, g.hint), el('small', null, g.when));
+    book.appendChild(cell);
+  }
+  gb.appendChild(book);
+  sec.appendChild(gb);
+
+  if (v.stage) {
+    const st = el('div', 'tb-bundle');
+    const sh = el('div', 'tb-bhead');
+    const sn = el('b'); sn.append(el('span', null, '🌸 꽃 꾸러미'), el('span', null, ` ${v.stage.n}/${v.rows.stage.need}`)); sh.append(sn);
+    const rw = el('span', 'tb-reward'); rw.append(el('span', null, '보상'), el('span', null, v.stage.rewardText));
+    sh.append(rw);
+    st.appendChild(sh);
+    if (v.stage.locked) st.appendChild(el('p', 'tb-hint', '🔒 위 꾸러미를 먼저 다 바쳐요'));
+    else {
+      const srow = el('div', 'tb-brow');
+      srow.append(slotRow(v.stage.slots), actButton('바치기', !v.stage.canOffer, () => actions?.stage?.()));
+      st.appendChild(srow);
+    }
+    sec.appendChild(st);
+  }
+  return sec;
 }

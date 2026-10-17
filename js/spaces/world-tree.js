@@ -10,15 +10,18 @@
 // =============================================================
 import {
   Input, camera, cameraFree, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, obstacles, player, refreshInventoryUI, requestSave,
-  rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, ui, unlocksOn,
+  habitatCtx, rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, todayStr, ui, unlocksOn,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { Sound } from '../sound.js';
 import { TAG_LABEL } from '../habitat.js';
 import {
-  BRANCHES, BRANCH_IDS, TREE_DECOR, branchGrowth, branchOf, branchStatus, branchUsable, bundleDone, bundlesDone,
+  BRANCHES, BRANCH_IDS, TREE_DECOR, branchOf, branchStatus, branchUsable, bundleDone, bundlesDone,
   canAfford, decorOf, habitatDone, habitatRows, lifePercent, offerBundle, placeDecor, removeDecor,
 } from '../world/tree-board.js';
+import {
+  GUESTS, STAGES, bloomRows, bloomed, careNeed, careToday, decorLocked, growthOf, guestFor, lifeOf, observeGuest, offerStage,
+} from '../world/tree-bloom.js';
 import { closeTreeBoard, openTreeBoard, renderTreeBoard, treeBoardOpen } from '../world/tree-board-ui.js';
 import { createShotRig, shotFrame } from '../world/tree-shot.js';
 import { inVillage2 } from './doors.js';
@@ -60,8 +63,9 @@ export function worldTreeBoardOpen() { return isOpen('museum'); }
 let targetAt = 0, targets = null;
 function computeTargets() {
   const full = fullyAlive(), tree = shownTree || gameState.tree;   // 🎬 조망샷이 줄 서 있으면 이전 모습을 붙잡아 둔다
-  const out = { life: full ? 100 : lifePercent(tree), branches: {} };
-  for (const id of BRANCH_IDS) out.branches[id] = full ? { leaves: 1, bloom: true } : branchGrowth(tree, id);
+  const bloom = shownBloom || gameState.treeBloom;
+  const out = { life: full ? 100 : lifeOf(bloom, tree), branches: {} };
+  for (const id of BRANCH_IDS) out.branches[id] = full ? { leaves: 1, bloom: true } : growthOf(bloom, tree, id);
   return out;
 }
 
@@ -89,8 +93,8 @@ export function worldTreePrompt() {
 }
 
 // ── 판 ──────────────────────────────────────────────────────
-const ICO = { wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', fish: '🐟', crop: '🥕', seed: '🌰', fert: '🌱', coins: '🪙' };
-const LABEL = { wood: '목재', stone: '돌', coal: '석탄', gem: '보석', fish: '물고기', crop: '작물', seed: '씨앗' };
+const ICO = { wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', fish: '🐟', crop: '🥕', seed: '🌰', fert: '🌱', coins: '🪙', bait: '🪱', forage: '🍄', charcoal: '⚫', brick: '🧱' };
+const LABEL = { wood: '목재', stone: '돌', coal: '석탄', gem: '보석', fish: '물고기', crop: '작물', seed: '씨앗', forage: '채집물', charcoal: '숯', brick: '벽돌' };
 const costText = (c) => Object.entries(c).map(([k, n]) => `${ICO[k] || k}${n}`).join(' ');
 const tagsText = (tags) => Object.entries(tags).map(([k, n]) => `${(TAG_LABEL[k] || k).split(' ')[0]}+${n}`).join(' ');
 // 받침 있음(이) / 없음(가) — 문장을 통째로 갈라 써야 영어 번역에 조사가 안 남는다(js/spaces/cafe.js 의 josa 와 같은 원리)
@@ -104,8 +108,8 @@ function boardView() {
   const free = b.tiles.some(x => !x);
   return {
     fresh: freshTile,
-    life: lifePercent(tree),
-    branches: BRANCHES.map(x => ({ id: x.id, ico: x.ico, name: x.name, short: x.short, status: branchStatus(tree, x.id) })),
+    life: lifeOf(gameState.treeBloom, tree),
+    branches: BRANCHES.map(x => ({ id: x.id, ico: x.ico, name: x.name, short: x.short, status: tabStatus(tree, x.id) })),
     cur: {
       id: def.id, ico: def.ico, name: def.name, npcIco: def.npcIco, npcName: def.npcName,
       usable: branchUsable(tree, def.id),
@@ -117,7 +121,7 @@ function boardView() {
       habitatDone: habitatDone(tree, def.id), bundlesDone: bundlesDone(tree, def.id),
       tiles: b.tiles.map(id => { const d = decorOf(id); return d ? { ico: d.ico, name: d.name } : null; }),
       rows: habitatRows(tree, def.id).map(r => ({ ...r, label: TAG_LABEL[r.tag] || r.tag })),
-      decor: TREE_DECOR.map(d => ({ id: d.id, ico: d.ico, name: d.name, tagsText: tagsText(d.tags), costText: costText(d.cost), can: free && canAfford(inv, d.cost) })),
+      decor: TREE_DECOR.filter(d => !decorLocked(gameState.treeBloom, d.id)).map(d => ({ id: d.id, ico: d.ico, name: d.name, tagsText: tagsText(d.tags), costText: costText(d.cost), can: free && canAfford(inv, d.cost), bloom: !!d.bloom })),
       bundles: def.bundles.map(bd => {
         const given = b.given[bd.id] || {};
         const slots = Object.entries(bd.need).map(([k, need]) => ({ ico: ICO[k] || k, label: LABEL[k] || k, have: given[k] || 0, need, bag: inv[k] || 0 }));
@@ -126,7 +130,44 @@ function boardView() {
           slots, canOffer: habitatDone(tree, def.id) && slots.some(s => s.have < s.need && s.bag > 0),
         };
       }),
+      bloom: bloomView(def.id),
     },
+  };
+}
+
+function tabStatus(tree, id) {
+  if (bloomed(gameState.treeBloom, id)) return 'bloom';
+  const s = branchStatus(tree, id);
+  return s === 'bloom' ? 'habitat' : s;
+}
+
+const slotsOf = (need, given, inv) => Object.entries(need).map(([k, n]) => ({ ico: ICO[k] || k, label: LABEL[k] || k, have: given[k] || 0, need: n, bag: inv[k] || 0 }));
+const needText = (need) => Object.entries(need).map(([t, n]) => `${(TAG_LABEL[t] || t).split(' ')[0]}${n}`).join(' ');
+
+function bloomView(id) {
+  const tree = gameState.tree, bloom = gameState.treeBloom, inv = gameState.inventory;
+  const b = bloom.branches[id], today = todayStr(), ctx = habitatCtx();
+  const rows = bloomRows(bloom, tree, id);
+  const stage = STAGES[id][b.stage] || null;
+  const care = careNeed(id, today);
+  const { guest, phase } = guestFor(bloom, tree, id, today, ctx);
+  return {
+    open: habitatDone(tree, id),
+    done: b.bloomed,
+    rows,
+    stage: stage && {
+      n: b.stage + 1, rewardText: costText(stage.reward), slots: slotsOf(stage.need, b.given, inv),
+      locked: !bundlesDone(tree, id),
+      canOffer: bundlesDone(tree, id) && Object.entries(stage.need).some(([k, n]) => (b.given[k] || 0) < n && (inv[k] || 0) > 0),
+    },
+    care: {
+      complete: b.care.days >= rows.care.need, doneToday: b.care.last === today,
+      slots: slotsOf(care, {}, inv), can: canAfford(inv, care),
+    },
+    guest: guest ? { id: guest.id, ico: guest.ico, name: guest.name, fresh: !b.seen[guest.id] } : null,
+    phase,
+    visited: b.slots[phase] === today,
+    guests: GUESTS[id].map(g => ({ ico: g.ico, name: g.name, seen: !!b.seen[g.id], hint: needText(g.need), when: g.when === 'night' ? '🌙' : '☀️' })),
   };
 }
 
@@ -135,6 +176,9 @@ const ACTIONS = {
   place(decoId) { placeAction(decoId); },
   remove(tile) { removeAction(tile); },
   offer(bundleId) { offerAction(bundleId); },
+  care() { careAction(); },
+  stage() { stageAction(); },
+  observe(guestId) { observeAction(guestId); },
   onClose() {},
 };
 function rerender() { if (treeBoardOpen()) renderTreeBoard(boardView()); freshTile = -1; }
@@ -143,7 +187,7 @@ function rerender() { if (treeBoardOpen()) renderTreeBoard(boardView()); freshTi
 export function openWorldTree() {
   if (!worldTreeBoardOpen()) { ui.toast?.('🌳 시든 세계수 · 할아버지를 찾아가요', 2600); return; }
   // 처음 열 땐 아직 안 끝난 첫 가지로
-  const firstOpen = BRANCH_IDS.find(id => branchUsable(gameState.tree, id) && !(habitatDone(gameState.tree, id) && bundlesDone(gameState.tree, id)));
+  const firstOpen = BRANCH_IDS.find(id => branchUsable(gameState.tree, id) && !bloomed(gameState.treeBloom, id));
   if (!treeBoardOpen() && firstOpen) tab = firstOpen;
   Input.setAnalog?.(0, 0);
   openTreeBoard(boardView(), ACTIONS);
@@ -157,6 +201,12 @@ const REASON = {
   tile: '빈칸이 없어요',
   empty: '가방에 바칠 재료가 없어요',
   full: '이미 다 찼어요',
+  bundles: '꾸러미를 먼저 다 바쳐요',
+  habitat: '빈터를 먼저 완성해요',
+  done: '오늘은 벌써 돌봤어요',
+  complete: '이미 다 채웠어요',
+  gone: '손님이 벌써 떠났어요',
+  bloomLocked: '그 가지를 꽃피우면 열려요',
 };
 
 function spend(cost, sign) {
@@ -166,6 +216,7 @@ function spend(cost, sign) {
 }
 
 function placeAction(decoId) {
+  if (decorLocked(gameState.treeBloom, decoId)) { ui.toast?.(REASON.bloomLocked, 1800); return; }
   const tree = gameState.tree;
   const tile = tree.branches[tab]?.tiles.findIndex(x => !x);
   const r = placeDecor(tree, tab, tile, decoId, gameState.inventory), prev = tree;
@@ -204,6 +255,69 @@ function offerAction(bundleId) {
   rerender();
 }
 
+function careAction() {
+  const today = todayStr(), prev = gameState.treeBloom;
+  const r = careToday(prev, gameState.tree, tab, today, gameState.inventory);
+  if (!r.ok) { ui.toast?.(REASON[r.reason] || '지금은 돌볼 수 없어요', 1800); return; }
+  gameState.treeBloom = r.bloom;
+  spend(r.take, -1);
+  Sound.harvest?.();
+  sparkle();
+  trackEvent('tree_care', { branch: tab, days: r.bloom.branches[tab].care.days });
+  handleBloomEvents(r.events, prev);
+  requestSave();
+  rerender();
+}
+
+function stageAction() {
+  const prev = gameState.treeBloom;
+  const r = offerStage(prev, gameState.tree, tab, gameState.inventory);
+  if (!r.ok) { ui.toast?.(REASON[r.reason] || '지금은 바칠 수 없어요', 1800); return; }
+  gameState.treeBloom = r.bloom;
+  spend(r.take, -1);
+  Sound.harvest?.();
+  const complete = r.events.some(e => e.type === 'stage');
+  trackEvent('tree_stage_offer', { branch: tab, stage: r.bloom.branches[tab].stage, items: Object.values(r.take).reduce((a, b) => a + b, 0), complete: complete ? 1 : 0 });
+  handleBloomEvents(r.events, prev);
+  requestSave();
+  rerender();
+}
+
+function observeAction(guestId) {
+  const prev = gameState.treeBloom;
+  const r = observeGuest(prev, gameState.tree, tab, todayStr(), habitatCtx());
+  if (!r.ok || (guestId && r.guest.id !== guestId)) { ui.toast?.(REASON[r.reason] || '손님이 없어요', 1800); rerender(); return; }
+  gameState.treeBloom = r.bloom;
+  Sound.blip?.();
+  handleBloomEvents(r.events, prev);
+  requestSave();
+  rerender();
+}
+
+function handleBloomEvents(events, prev) {
+  for (const e of events) {
+    const def = branchOf(e.branch);
+    if (e.type === 'care') {
+      ui.toast?.(`💧 ${def.name} 돌보기 ${e.days}/7`, 1800);
+    } else if (e.type === 'stage') {
+      giveReward(e.reward, 'tree_stage', `${e.branch}_${e.stage}`);
+      ui.toast?.(`🎁 ${def.name} 꽃 꾸러미 ${e.stage}/3 완성! ${costText(e.reward)}`, 2600);
+    } else if (e.type === 'guest') {
+      const g = GUESTS[e.branch].find(x => x.id === e.guest);
+      trackEvent('tree_guest', { branch: e.branch, guest: e.guest, fresh: e.fresh ? 1 : 0, night: habitatCtx().night ? 1 : 0 });
+      ui.toast?.(e.fresh ? `📖 ${g.ico} ${g.name} 첫 기록!` : `${g.ico} ${g.name}`, 2200);
+    } else if (e.type === 'bloom') {
+      Sound.complete?.();
+      giveReward(e.reward, 'tree_bloom', e.branch);
+      trackEvent('tree_bloom', { branch: e.branch, life: lifeOf(gameState.treeBloom, gameState.tree) });
+      const deco = decorOf(e.decor);
+      setTimeout(() => ui.toast?.(`🌸 ${def.name}에 꽃이 피었어요! ${deco ? `${deco.ico} ${deco.name} 장식이 열렸어요` : ''}`, 3200), 600);
+      spawnConfetti?.(WORLD_TREE.x, 6, WORLD_TREE.z);
+      if (queueTreeShot('bloom', e.branch, gameState.tree, prev)) setTimeout(() => closeTreeBoard(), 2200);
+    }
+  }
+}
+
 /** 완성 이벤트 — 토스트·보상·GA4 · 서식지면 이웃 귀환(syncUnlocks) */
 function handleEvents(events, prev) {
   let closeLater = false;
@@ -229,9 +343,9 @@ function handleEvents(events, prev) {
     } else if (e.type === 'bundles') {
       Sound.complete?.();
       trackEvent('tree_branch_bundles', { branch: e.branch, life: lifePercent(gameState.tree) });
-      if (habitatDone(gameState.tree, e.branch)) setTimeout(() => ui.toast?.(`🌸 ${def.name}에 꽃이 피었어요!`, 2800), 1200);
+      setTimeout(() => ui.toast?.(`🍃 ${def.name}의 잎이 무성해졌어요!`, 2800), 1200);
       sparkle();
-      closeLater = queueTreeShot(habitatDone(gameState.tree, e.branch) ? 'bloom' : 'bundles', e.branch, prev) || closeLater;
+      closeLater = queueTreeShot('bundles', e.branch, prev) || closeLater;
       syncUnlocks(false);   // 🦆 나루터 꾸러미 → 사공·바다
     }
   }
@@ -243,17 +357,18 @@ function handleEvents(events, prev) {
 //  판·모달·튜토리얼·미니게임·실내·다른 카메라 연출 중엔 줄만 서 있다가, 마을에서 한가해지면 돈다.
 //  줄 서 있는 동안 나무는 이전 모습(shownTree)을 붙잡아 두고, 카메라가 도착한 순간 풀어 잎·꽃이 화면 안에서 돋는다.
 const SHOT_KINDS = { habitat: 1, bundles: 1, bloom: 1, intro: 1 };
+let shownBloom = null;
 let shotQueue = [], shot = null, shownTree = null, idleSince = -1, overlay = null, onKey = null;
 const shotKey = (kind, branch) => kind === 'intro' ? 'treeShot_intro' : `treeShot_${branch}_${kind}`;
 function shotsOn() { return unlocksOn() && !gameState.unlocks?.legacy; }
 
 /** 줄 세우기 — 이번에 처음이면 true(호출부가 판을 닫는다) */
-function queueTreeShot(kind, branch, prev) {
+function queueTreeShot(kind, branch, prev, prevBloom = gameState.treeBloom) {
   if (!SHOT_KINDS[kind] || !shotsOn() || !wt) return false;
   const key = shotKey(kind, branch);
   if (gameState.hintsSeen?.[key] || shotQueue.some(q => q.key === key)) return false;
   shotQueue.push({ kind, branch, key, at: performance.now() });
-  if (prev && !shownTree) { shownTree = prev; targets = null; }
+  if (prev && !shownTree) { shownTree = prev; shownBloom = prevBloom; targets = null; }
   return true;
 }
 
@@ -288,7 +403,7 @@ function updateTreeShot(t) {
     if (lifePercent(gameState.tree) > 0) { gameState.hintsSeen = { ...(gameState.hintsSeen || {}), treeShot_intro: true }; requestSave(); }
     else shotQueue.push({ kind: 'intro', branch: 'none', key: 'treeShot_intro', at: performance.now() });
   }
-  if (!shotQueue.length) { if (shownTree) { shownTree = null; targets = null; } return; }
+  if (!shotQueue.length) { if (shownTree) { shownTree = null; shownBloom = null; targets = null; } return; }
   if (!shotsOn()) { shotQueue = []; return; }
   if (!shotReady()) { idleSince = -1; return; }
   if (idleSince < 0) idleSince = t;
@@ -307,7 +422,7 @@ function startShot(q) {
   const rig = createShotRig({
     from, to, home: defaultCamPose,
     onHold: () => {
-      if (!shotQueue.some(x => x.kind !== 'intro')) { shownTree = null; targets = null; }   // 🍃 지금 돋는다
+      if (!shotQueue.some(x => x.kind !== 'intro')) { shownTree = null; shownBloom = null; targets = null; }   // 🍃 지금 돋는다
       if (q.kind === 'intro') ui.toast?.('🌳 저 나무가 세계수예요. 다시 살려 볼까요?', 3200);
       else Sound.complete?.();
     },
@@ -336,7 +451,7 @@ function endShot(abort) {
   shot = null;
   setCameraRig(null);
   hideOverlay();
-  if (!shotQueue.length) { shownTree = null; targets = null; }
+  if (!shotQueue.length) { shownTree = null; shownBloom = null; targets = null; }
   trackEvent('tree_shot', { kind: q.kind, branch: q.branch, skipped: skipped || abort });
 }
 
