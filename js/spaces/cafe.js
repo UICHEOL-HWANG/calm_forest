@@ -562,8 +562,8 @@ export function enterMuseum() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   const { have, total } = floorProgress(museumFloor, gameState.dex, DEX);
-  firstHint('museum', '🏛️', '박물관',
-    `도감에 등록한 것이 전시돼요 (1층 ${have}/${total})\n🎀 천이 덮인 자리는 아직 못 찾은 것\n진열장 앞에 서면 설명이 떠요. 나갈 땐 남쪽 문`);
+  firstHint('museum', '🏛️', `박물관 · 도감 전시 (1층 ${have}/${total})`,
+    { steps: [{ ico: '📖', label: '도감에 등록' }, { ico: '🏛️', label: '여기 전시' }], note: '🎀 천 덮인 자리 = 아직 못 찾은 것' });
   Sound.blip();
   trackEvent('museum_enter', { floor: museumFloor, have, total, floors: openFloors(gameState.dex, DEX) });   // [GA4] 방문 빈도·수집률·열린 층
 }
@@ -1431,8 +1431,8 @@ export function enterCafe() {
   player.position.set(CAFE.x, 0, CAFE.z + CAFE_HALF - 3.2); player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  firstHint('cafeHall', '☕', '카페',
-    '손님 머리 위 요리를 보고 재료 들고 다가가 액션\n📋 주문판에서 오늘 주문 확인\n나갈 땐 남쪽 문');
+  firstHint('cafeHall', '☕', '카페 · 손님 주문',
+    { steps: [{ ico: '👀', label: '머리 위 요리 보기' }, { ico: '🍳', label: '들고 다가가 {A}' }], note: '📋 주문판에서 오늘 주문' });
   Sound.blip(); trackEvent('enter_cafe');                // [GA4]
 }
 

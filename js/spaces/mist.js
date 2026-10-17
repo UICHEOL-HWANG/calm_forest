@@ -235,8 +235,8 @@ export function enterMist() {
   if (st.purified) {
     ui.toast?.('🌤️ 오늘의 숲은 맑아요. 정령들이 고마워해요. 내일 다시 안개가 차요');
   } else {
-    firstHint('mistWood', '🌫️', '안개 낀 숲',
-      '🌳세계수의 심장 앞에서 정화 시작\n🏮등불로 늦추고 ♪가 가장 작을 때 탭!\n세 무리를 모두 달래면 숲이 맑아져요');
+    firstHint('mistWood', '🌫️', '안개 숲 · 정화하기',
+      { steps: [{ ico: '🌳', label: '세계수 심장 앞 시작' }, { ico: '🏮', label: '등불로 늦추기' }, { ico: '♪', label: '작을 때 {A}' }], chip: '세 무리 달래면 맑아져요' });
   }
   Sound.blip(); setBGMTheme?.('cave');                 // 어둑한 숲 무드(동굴 테마 재사용)
   trackEvent('mist_enter', { purified: st.purified, weather: WEATHER });   // [GA4] 유입
@@ -263,9 +263,9 @@ export function enterOrchard() {
   // 묘목이 없으면 "심어라" 가 아니라 "사 와라" 를 먼저 말한다 — 살 곳을 안 알려준 탓에
   //   고급 작물 채택률이 0% 였다. 같은 실수를 반복하지 않는다.
   const hasSap = FRUITS.some(f => (gameState.inventory[sapKeyOf(f.id)] || 0) > 0);
-  firstHint('orchardIntro', '🍎', '과수원', hasSap
-    ? '🌰씨앗 도구로 흙 자리에 묘목을 심어요\n시냇가 나무는 물을 안 줘도 돼요\n다 자라면 매일 와서 따요'
-    : '🌰묘목은 마을 🛒상점에서 팔아요\n사 와서 씨앗 도구로 흙 자리에 심어요\n시냇가에 심으면 물을 안 줘도 돼요');
+  firstHint('orchardIntro', '🍎', '과수원 · 묘목 키우기',
+    { steps: [...(hasSap ? [] : [{ ico: '🛒', label: '상점에서 사기' }]), { ico: '🌰', label: '흙 자리에 심기' }, ...(hasSap ? [{ ico: '🍎', label: '매일 따기' }] : [])],
+      note: '시냇가는 물 안 줘도 돼요' });
   Sound.blip(); setBGMTheme?.('main');
   trackEvent('orchard_enter', { trees: (gameState.orchard?.trees || []).length });   // [GA4] 유입
 }

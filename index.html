@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>calm forest 🌿</title>
+<title>고요한 숲 🌿</title>
+<meta name="application-name" content="고요한 숲" />
+<meta name="apple-mobile-web-app-title" content="고요한 숲" />
 <meta name="theme-color" content="#bfe8c9" />
 <meta name="description" content="포근한 로우폴리 3D 브라우저 게임 — 걷고, 농사짓고, 낚시하고, 집을 짓고 꾸미는 힐링 마을. 설치 없이 브라우저에서 바로." />
 <!-- 구글 서치콘솔 소유확인 — 삭제하면 색인 데이터 접근이 끊깁니다 -->
@@ -11,14 +13,33 @@
 
 <!-- 링크 미리보기(Open Graph / Twitter) -->
 <meta property="og:type" content="website" />
-<meta property="og:title" content="calm forest 🌿" />
+<meta property="og:site_name" content="고요한 숲" />
+<meta property="og:locale" content="ko_KR" />
+<meta property="og:title" content="고요한 숲 🌿" />
 <meta property="og:description" content="포근한 로우폴리 3D 마을 — 걷기·농사·낚시·집짓기·꾸미기. 브라우저에서 바로 플레이." />
 <meta property="og:url" content="https://calmforest.cloud/" />
 <meta property="og:image" content="https://calmforest.cloud/preview.jpg?v=20261006" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="calm forest 🌿" />
+<meta name="twitter:title" content="고요한 숲 🌿" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "고요한 숲",
+  "alternateName": ["calm forest", "Calm Forest"],
+  "url": "https://calmforest.cloud/",
+  "image": "https://calmforest.cloud/preview.jpg?v=20261006",
+  "description": "포근한 로우폴리 3D 힐링 마을 게임 — 걷고, 농사짓고, 낚시하고, 집을 짓고 꾸며요. 설치 없이 브라우저에서 바로 플레이.",
+  "inLanguage": ["ko", "en"],
+  "genre": ["힐링", "농장 시뮬레이션", "생활 시뮬레이션"],
+  "gamePlatform": ["Web browser", "Android", "iOS"],
+  "applicationCategory": "Game",
+  "operatingSystem": "Web, Android, iOS",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
+}
+</script>
 <meta name="twitter:description" content="포근한 로우폴리 3D 마을 — 브라우저에서 바로 플레이." />
 <meta name="twitter:image" content="https://calmforest.cloud/preview.jpg?v=20261006" />
 <!-- 파비콘 — 실제 파일로 서빙해야 구글 검색결과에도 아이콘이 뜬다.
@@ -422,8 +443,15 @@
   #nick-row { display: flex; gap: 6px; width: 100%; margin-top: 10px; }
   #nick-input { flex: 1 1 auto; min-width: 0; border: 2px solid #dfe8df; border-radius: 12px; padding: 9px 12px; font-size: 14px; font-weight: 600; color: var(--ink); background: #fbfdfa; outline: none; }
   #nick-input:focus { border-color: var(--mint); }
-  #nick-roll { flex: 0 0 auto; border: none; border-radius: 12px; padding: 0 13px; font-size: 17px; cursor: pointer; background: #eef2ee; transition: transform .1s; }
-  #nick-roll:active { transform: rotate(20deg) scale(0.94); }
+  #nick-rules { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; text-align: left; }
+  #nick-rules li { color: #9aa79e; }
+  #nick-rules li::before { content: '○ '; }
+  #nick-rules.typed li { color: #c0533f; }
+  #nick-rules.typed li::before { content: '✕ '; }
+  #nick-rules li.ok, #nick-rules.typed li.ok { color: #2f8a4a; }
+  #nick-rules li.ok::before, #nick-rules.typed li.ok::before { content: '✓ '; }
+  #char-modal:not([data-tab="char"]) #nick-rules { display: none; }
+  #char-confirm:disabled { opacity: .45; cursor: not-allowed; }
   #nick-hint { font-size: 11px; opacity: .6; margin-top: 4px; }
   @media (max-width: 640px) {
     #char-modal .tut-card { padding: 18px 14px 16px; border-radius: 20px; }
@@ -481,6 +509,8 @@
   .tut-card h2 { margin: 4px 0 16px; font-size: 20px; }
   .tut-list { list-style: none; margin: 0 0 20px; padding: 0; text-align: left; }
   .tut-list li { font-size: 13.5px; line-height: 1.5; padding: 7px 0; border-bottom: 1px solid #f0f4f0; }
+  .tut-list .touch-only, body.is-touch .tut-list .pc-only { display: none; }
+  body.is-touch .tut-list .touch-only { display: list-item; }
   .tut-list li:last-child { border-bottom: none; }
   .tut-list .mo { opacity: .6; font-size: 12px; }
   #tut-start { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); transition: transform .1s; }
@@ -1810,6 +1840,14 @@
     pointer-events: auto; cursor: pointer; transition: transform .1s; }   /* 칩을 누르면 설명 모달 */
   #buffs .buff:active { transform: scale(0.95); }
   #hint-modal { z-index: 45; }   /* 버프 설명 등 안내 모달은 미니게임 오버레이(40)·가방(41) 위에도 뜨게 */
+  #hint-steps { display: flex; align-items: stretch; justify-content: center; gap: 6px; margin: 4px 0 14px; }
+  #hint-steps:empty, #hint-note:empty, #hint-chip:empty { display: none; }
+  .hs-step { flex: 1; max-width: 132px; background: #f4faf5; border-radius: 14px; padding: 10px 6px; font-size: 13px; font-weight: 700; line-height: 1.35;
+    display: flex; flex-direction: column; align-items: center; gap: 5px; word-break: keep-all; }
+  .hs-ico { font-size: 26px; line-height: 1; }
+  .hs-ar { align-self: center; color: #9aa79e; font-weight: 900; }
+  #hint-note { font-size: 12.5px; color: #8a7f6e; margin: -4px 0 14px; }
+  #hint-chip { display: table; background: #fff3cf; color: #7a5a00; border-radius: 10px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; margin: -6px auto 14px; }
   #merchant-modal { z-index: 45; }
   #merchant-modal .tut-card { width: min(400px, 92vw); }
   .merchant-actions { display: flex; flex-direction: column; gap: 10px; }
@@ -2788,7 +2826,9 @@
       <ul class="tut-list">
         <li><b>🕹️ 이동</b> WASD·방향키 <span class="mo">(모바일: 왼쪽 조이스틱)</span></li>
         <li><b>✋ 상호작용</b> Space·클릭 <span class="mo">(모바일: 오른쪽 버튼)</span></li>
-        <li><b>🎒 도구 세트</b> 1번으로 🌾농사 · 🏕️야외도구 · ✋맨손을 바꿔요. 2~6번으로 도구를 골라요</li>
+        <li class="pc-only"><b>🎒 도구 세트</b> 1번으로 🌾농사 · 🏕️야외도구 · ✋맨손을 바꿔요. 2~6번으로 도구를 골라요</li>
+        <li class="touch-only"><b>🧰 도구</b> 오른쪽 아래 도구 버튼을 꾹 누르면 펼쳐져요. 좌우로 밀면 옆 도구로</li>
+        <li class="touch-only"><b>✨ 알아서</b> 나무 옆에선 🪓도끼, 호숫가에선 🎣낚싯대, 집 터에선 🔨망치를 저절로 들어요</li>
         <li><b>💾 진행상황</b>은 자동 저장돼요</li>
       </ul>
       <button id="tut-start">튜토리얼 시작 🌱</button>
@@ -2817,6 +2857,9 @@
       <h2 id="hint-title"></h2>
       <div id="hint-preview" hidden><div class="hp-ic">🌳</div><div><small>calm forest · 20:10</small><b id="hint-preview-title"></b><span id="hint-preview-body"></span></div></div>
       <p id="hint-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
+      <div id="hint-steps"></div>
+      <div id="hint-note"></div>
+      <div id="hint-chip"></div>
       <button id="hint-ok">알겠어요 🌱</button>
       <button id="hint-alt" hidden></button>
     </div>
@@ -2868,9 +2911,14 @@
           <div id="char-preview-name">여우</div>
           <div id="char-preview-hint">🖐️ 드래그해서 돌려보기</div>
           <div id="nick-row">
-            <input id="nick-input" maxlength="16" placeholder="닉네임 (2~16자)" autocomplete="off" />
-            <button id="nick-roll" title="랜덤 이름 뽑기">🎲</button>
+            <input id="nick-input" maxlength="10" placeholder="이름을 직접 지어 주세요" autocomplete="off" />
           </div>
+          <ul id="nick-rules">
+            <li data-k="len">2~10자</li>
+            <li data-k="chars">한글·영문·숫자만 (띄어쓰기·기호 X)</li>
+            <li data-k="digits">숫자로만은 안 돼요</li>
+            <li data-k="clean">나쁜 말은 안 돼요</li>
+          </ul>
           <div id="nick-hint">리더보드에 표시될 이름이에요</div>
           <button id="char-confirm">이 친구로 시작하기</button>
           <button id="char-cancel">취소</button>
@@ -2982,6 +3030,13 @@
     import { armDeferredGuest, upgradeGuest } from './js/auth/deferred-guest.js';   // 🧪 E2 처치 — 익명 계정은 첫 입력 뒤에
     import { CONFIG, IS_DEV_SESSION } from './js/config.js';
     import { initControls } from './js/controls.js';
+    import { initMobileHud } from './js/hud/mobile-hud.js';
+    import { initHudShell } from './js/hud/hud-shell.js';
+    import { createMenuSheet } from './js/hud/menu-sheet.js';
+    import { nicknameChecks } from './js/nickname-filter.js';
+    import { createNickStep } from './js/nickname-step.js';
+    import { createSpotlight } from './js/hud/spotlight.js';
+    import { spotSteps } from './js/onboarding/spot-steps.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
@@ -3140,6 +3195,15 @@
     const WM_WATER = [[16, 9, 6], [0, -21.5, 7]];        // 🏞️ 마을 호수 · 🛶 나루터 물가
     const WM_GROVE = [[-13, 24, 9], [2, 25, 7]];         // 🍄 채집 숲 · 🌟 반딧불이 계곡(짙은 수풀)
 
+    function paintIsland(c, px, pr, w, h) {
+      const blob = (list, grow = 0) => { c.beginPath(); list.forEach(([x, z, r]) => { const [a, b] = px(x, z); c.moveTo(a + pr(r + grow), b); c.arc(a, b, pr(r + grow), 0, 7); }); c.fill(); };
+      c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#f0e0b8'; blob(WM_LAND, 2.2);
+      c.fillStyle = '#a8d88a'; blob(WM_LAND, 0);
+      c.fillStyle = '#7cc06e'; blob(WM_GROVE, 0);
+      c.fillStyle = '#7fc4e6'; blob(WM_WATER, 0);
+    }
+
     function drawWorldMap() {
       const cv = $('wm-canvas'); if (!cv) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -3151,13 +3215,7 @@
       const K = S / MAP_VIEW.w;                              // 월드 1 → 화면 px (x·z 공통 — 왜곡 없음)
       const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K];
       const pr = (r) => r * K;
-      const blob = (list, grow = 0) => { c.beginPath(); list.forEach(([x, z, r]) => { const [a, b] = px(x, z); c.moveTo(a + pr(r + grow), b); c.arc(a, b, pr(r + grow), 0, 7); }); c.fill(); };
-
-      c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, S, SH);                  // 바다
-      c.fillStyle = '#f0e0b8'; blob(WM_LAND, 2.2);                       // 모래 해변
-      c.fillStyle = '#a8d88a'; blob(WM_LAND, 0);                         // 섬(잔디)
-      c.fillStyle = '#7cc06e'; blob(WM_GROVE, 0);                        // 짙은 수풀
-      c.fillStyle = '#7fc4e6'; blob(WM_WATER, 0);                        // 호수·물가
+      paintIsland(c, px, pr, S, SH);
 
       // 지명 — 아이콘 + 한글 라벨. 라벨끼리·아이콘과 겹치면 아래·위·좌우로 밀어 자리를 찾는다
       //   (지명이 16곳이라 고정 오프셋으로는 어느 화면 크기에서든 겹치는 곳이 생긴다)
@@ -3323,6 +3381,11 @@
       ui.setQuest(questLast);
     });
     questPhoneMQ.addEventListener?.('change', () => ui.setQuest(questLast));
+    let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
+    const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
+    const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
+    const nickStep = createNickStep({ track: trackEvent });
+    addEventListener('pagehide', () => nickStep.leave($('nick-input')?.value || ''));
     const ui = {
       // 🛡️ 세이브를 아직 못 읽었다 — 읽을 때까지 화면을 덮어 게임이 시작되지 않게 한다.
       //   빈 마을로 들여보내면 30초 뒤 자동저장이 서버의 진짜 마을을 덮어쓴다(js/save-guard.js).
@@ -3362,7 +3425,7 @@
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
-      coachActive() { return tutIdx >= 0; },
+      coachActive() { return tutIdx >= 0 || !!spot?.active(); },
       setInventory(inv) {
         lastInv = inv;
         const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -3373,6 +3436,7 @@
         set('inv-coal', inv.coal || 0);
         set('inv-gem', inv.gem || 0);
         set('inv-coin', inv.coins || 0);
+        shell?.onInv(inv);
         if ($('bag-menu').classList.contains('show')) renderBag();     // 가방 열려 있으면 갱신
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
         if ($('cook-menu').classList.contains('show')) { cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
@@ -3404,6 +3468,8 @@
         }
         lastToolIco = bare ? '✋' : tools[idx].ico;
         refreshActionIcon();  // 도구 바뀌면 액션버튼 갱신(배치/대화/문 아니면 도구 표시)
+        lastToolArgs = [idx, tools, page];
+        hud?.onTool(idx, tools, page);
       },
       toast(msg, ms = 1600) {
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
@@ -3515,6 +3581,7 @@
       setInteractPrompt(text) {
         const el = $('npc-prompt');
         nearNpcNow = !!text; refreshActionIcon();   // 액션버튼을 💬로(모바일 대화 유도)
+        lastNpcText = text; hud?.onNpc(text);
         if (!text) { el.classList.remove('show'); document.body.classList.remove('near-npc'); return; }
         el.textContent = text; el.classList.add('show');
         document.body.classList.add('near-npc');
@@ -3588,12 +3655,20 @@
           ? '언제든 다시 바꿀 수 있어요. 진행 상황(집·밭·도감)은 그대로예요'
           : '함께 마을을 가꿀 동물 친구예요 (메뉴에서 언제든 바꿀 수 있어요)';
         $('char-confirm').textContent = change ? '이 친구로 바꾸기' : '이 친구로 시작하기';
-        // 🏷️ 닉네임 — 랜덤 제안으로 미리 채우고, 유저가 직접 고치면(dirty) 동물을 바꿔도 덮어쓰지 않음
         const nick = $('nick-input');
-        let nickDirty = change && !!Input.getNickname();       // 변경 모드에선 기존 이름 보존
-        nick.value = nickDirty ? Input.getNickname() : Input.genNickname(selected);
-        nick.oninput = () => { nickDirty = true; };
-        $('nick-roll').onclick = () => { nick.value = Input.genNickname(selected); nickDirty = false; };
+        const prevNick = change ? (Input.getNickname() || '') : '';
+        nick.value = prevNick;
+        const refreshNick = () => {
+          const v = nick.value.trim();
+          const c = nicknameChecks(v);
+          $('nick-rules').classList.toggle('typed', v.length > 0);
+          $('nick-rules').querySelectorAll('li').forEach(li => li.classList.toggle('ok', !!c[li.dataset.k]));
+          const ready = (change && v === prevNick && v.length > 0) || Object.values(c).every(Boolean);
+          $('char-confirm').disabled = !ready;
+        };
+        nick.oninput = () => { refreshNick(); if (!change) nickStep.input(nick.value); };
+        refreshNick();
+        if (!change) nickStep.view();
         // 🧥 캐릭터 | 옷장 | 펫 — 옷장·펫은 **지금 내 캐릭터**에 입혀 보여 준다(캐릭터 탭에서 고르기만 하고
         //    확정 안 한 동물에 입히면, 닫았을 때 월드와 모습이 달라 헷갈린다). 목록은 게임 쪽이 그린다.
         const setTab = (tab) => {
@@ -3616,9 +3691,7 @@
           if (ui._charPreview) ui._charPreview.setAnimal(a.id);
           $('char-preview-fallback').textContent = a.emoji;   // WebGL 실패 시 대체 이모지
           $('char-preview-name').textContent = `${a.emoji} ${t(a.name)}`;   // [i18n] 이모지+이름 조합 노드라 직접 번역
-          grid.querySelectorAll('.char-card').forEach(el => el.classList.toggle('sel', el.dataset.id === a.id));
-          if (!nickDirty) nick.value = Input.genNickname(a.id);   // 제안 상태면 동물에 맞춰 이름도 갱신
-        };
+          grid.querySelectorAll('.char-card').forEach(el => el.classList.toggle('sel', el.dataset.id === a.id));        };
         animals.forEach(a => {
           const c = document.createElement('div'); c.className = 'char-card'; c.dataset.id = a.id;
           c.innerHTML = `<div class="char-emoji">${a.emoji}</div><div class="char-name">${a.name}</div>`;
@@ -3656,9 +3729,11 @@
         const closeCharModal = () => { $('char-modal').classList.remove('show'); ui._charPreview?.stop(); };
         $('char-confirm').onclick = () => {
           const a = animals.find(x => x.id === selected) || animals[0];
-          const nr = Input.setNickname(nick.value, change ? 'change' : 'new');   // 🏷️ 닉네임 저장(검증 포함)
+          const keep = change && nick.value.trim() === prevNick && prevNick.length > 0;
+          const nr = Input.setNickname(keep ? prevNick : nick.value, keep ? 'keep' : change ? 'change' : 'new');   // 🏷️ 닉네임 저장(검증 포함)
           if (!nr.ok) { ui.toast(nr.msg); nick.focus(); return; }
           Input.setCharacter(selected, change);
+          if (!change) nickStep.done();
           closeCharModal();
           const startMsg = change ? `${a.emoji} ${nr.nick}(으)로 바꿨어요!` : `${a.emoji} ${nr.nick}(으)로 시작해요!`;
           // 🎬 첫 시작이면 프롤로그 컷신부터(끝나면 introShow(false)가 튜토리얼로 이어줌)
@@ -3672,11 +3747,7 @@
       },
       // 신규 유저 튜토리얼 표시 · ❓도움말로도 같은 모달을 연다
       //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
-      showTutorial(src = 'welcome') {
-        const m = $('tutorial-modal');
-        m.dataset.src = src;
-        m.classList.add('show');
-      },
+      showTutorial(src = 'welcome') { startOnboarding(src); },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
       introShow(on) {
         document.body.classList.toggle('intro-open', !!on);
@@ -3778,7 +3849,21 @@
         // 🔔 preview: 알림 미리보기 블록(푸시 안내 카드) — 다른 안내가 덮어쓸 땐 숨긴다
         $('hint-preview').hidden = !preview;
         if (preview) { $('hint-preview-title').textContent = preview.title || ''; $('hint-preview-body').textContent = preview.body || ''; }
-        $('hint-body').textContent = body || '';
+        const card = body && typeof body === 'object' ? body : null;
+        const ak = TOUCH ? '⭕' : 'Space';
+        const fill = (v) => String(v || '').replace(/\{A\}/g, ak);
+        $('hint-body').textContent = card ? '' : (body || '');
+        $('hint-body').hidden = !!card;
+        const box = $('hint-steps'); box.innerHTML = '';
+        (card?.steps || []).forEach((st, k) => {
+          if (k) { const ar = document.createElement('span'); ar.className = 'hs-ar'; ar.textContent = '→'; box.appendChild(ar); }
+          const d = document.createElement('div'); d.className = 'hs-step';
+          const ic = document.createElement('span'); ic.className = 'hs-ico'; ic.textContent = st.ico;
+          const lb = document.createElement('span'); lb.textContent = st.label.replace(/\{A\}/g, ak);
+          d.append(ic, lb); box.appendChild(d);
+        });
+        $('hint-note').textContent = fill(card?.note);
+        $('hint-chip').textContent = fill(card?.chip);
         // ok/alt: 선택형 안내(🌫️ 실패 후 연습 제안 등 — 주 버튼·보조 버튼). 닫기는 아래 hint-ok 리스너가 담당, 여기선 콜백만 갈아끼운다
         const okb = $('hint-ok'), altb = $('hint-alt');
         okb.textContent = ok?.label || '알겠어요 🌱';
@@ -3966,10 +4051,12 @@
           : t.includes('광장') ? '🌾' : t.includes('수확제 좌판') ? '🍂'
           : t.includes('깨어나') ? '🛏️' : t.includes('조각을 찾아') ? '✨' : '🚪';   // 🌙 꿈의 숲 — 안내 줄이 문(🚪)으로 보이지 않게
         refreshActionIcon();
+        lastDoorArgs = [text, !!opts?.info, doorIcon]; hud?.onDoor(...lastDoorArgs);
         if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
         layoutPrompts();
       },
+      setUnread(n) { shell?.setUnread(n); menuSheet.setUnread(n); },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
       onDecorPlaced() {
         stopPlacing();
@@ -4183,27 +4270,10 @@
         const K = S / MAP_VIEW.w;                       // 월드 1 → 미니맵 px
         const OY = (S - MAP_VIEW.h * K) / 2;            // 정사각 캔버스라 위아래 레터박스(가로가 더 길다)
         const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K + OY];
-        // 호수
-        const [lx, lz] = px(16, 9);
-        ctx.fillStyle = 'rgba(120,180,220,0.85)';
-        ctx.beginPath(); ctx.arc(lx, lz, 6 * K, 0, 7); ctx.fill();
-        // 🗺️ 지명 아이콘 — 색점은 "무슨 색이 뭐였지?"가 되어 못 읽혔다(베타). 이모지로 바꿔 바로 알아보게.
-        //    작은 캔버스(모바일 82px)엔 다 넣으면 겹치므로 pri 1(갈 수 있는 곳)만 그리고,
-        //    나머지 지명은 탭해서 여는 전체 지도(#worldmap)가 맡는다.
         lastPlaces = d.places || lastPlaces;
-        lastMapPos = { x: d.x, z: d.z };
-        const size = S >= 100 ? 11 : 9;
-        ctx.font = size + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        (lastPlaces || []).forEach(p => {
-          if (p.pri !== 1) return;
-          const [a, b] = px(p.x, p.z);
-          ctx.globalAlpha = p.locked ? 0.32 : 1;
-          ctx.fillText(p.ico, a, b);
-        });
-        ctx.globalAlpha = 1;
-        // 주민 위치는 받아만 둔다(전체 지도가 그린다). 작은 미니맵엔 주민 점을 안 그린다 —
-        //   82~108px 안에서 의뢰 테두리 점들이 장소 아이콘을 덮어 지도가 동그라미만 남았다(2026-10-17 사용자 결정).
         lastNpcs = d.npcs || lastNpcs;
+        lastMapPos = { x: d.x, z: d.z };
+        paintIsland(ctx, px, (r) => r * K, S, S);
         // 플레이어(+방향)
         let [pxx, pyy] = px(d.x, d.z);
         pxx = Math.max(4, Math.min(S - 4, pxx)); pyy = Math.max(4, Math.min(S - 4, pyy));
@@ -4224,6 +4294,7 @@
       },
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
+        spot?.notify('act:' + type);
         if (tutIdx < 0) return;
         if (TUT_STEPS[tutIdx].key === type) {
           trackEvent('tutorial_step', { step: tutIdx + 1, key: TUT_STEPS[tutIdx].key }); // [①] 단계 완료
@@ -4469,21 +4540,25 @@
           ? `① 🕹️${MOVE}으로 걷고 오른쪽 동그란 (액션) 버튼으로 행동해요`
           : `① ${MOVE}로 걷고, Space로 행동해요` },
       { key: 'toolpage', text: TOUCH
-          ? '② 🎒로 도구 세트 바꾸기 — 🌾농사·🏕️야외·✋맨손'
+          ? '② 오른쪽 아래 도구 버튼을 꾹 누른 채 밀어서 골라요'
           : '② 1 키로 도구 세트 바꾸기 — 도구는 2~6' },
-      { key: 'chop',    text: `③ 🪓도끼(2)로 나무를 베면 집 지을 🪵목재가 나와요 ${A}` },
+      { key: 'chop',    text: TOUCH
+          ? `③ 나무 옆에 서면 🪓도끼를 저절로 들어요. 베면 🪵목재가 나와요 ${A}`
+          : `③ 🪓도끼(2)로 나무를 베면 집 지을 🪵목재가 나와요 ${A}` },
       { key: 'sell',    text: `④ 🪵목재를 🛒상인·좌판에 팔아 🪙코인 ${A}` },
-      { key: 'till',    text: `⑤ ⛏️괭이(2)로 빈 땅 갈기 ${A}` },
-      { key: 'seed',    text: `⑥ 🌰씨앗(3)을 갈아둔 밭에 심기 ${A}` },
-      { key: 'water',   text: `⑦ 💧물조리개(4)로 물 주기 ${A}` },
-      { key: 'harvest', text: `⑧ 다 자란 작물을 낫(5)으로 수확 ${A}` },
+      { key: 'till',    text: TOUCH ? `⑤ ⛏️괭이로 빈 땅 갈기 ${A}` : `⑤ ⛏️괭이(2)로 빈 땅 갈기 ${A}` },
+      { key: 'seed',    text: TOUCH ? `⑥ 🌰씨앗을 갈아둔 밭에 심기 ${A}` : `⑥ 🌰씨앗(3)을 갈아둔 밭에 심기 ${A}` },
+      { key: 'water',   text: TOUCH ? `⑦ 💧물조리개로 물 주기 ${A}` : `⑦ 💧물조리개(4)로 물 주기 ${A}` },
+      { key: 'harvest', text: TOUCH ? `⑧ 다 자란 작물을 낫으로 수확 ${A}` : `⑧ 다 자란 작물을 낫(5)으로 수확 ${A}` },
       { key: 'market',  text: `⑨ 📊전광판에서 시세를 보고 비쌀 때 팔아요 ${A}` },
       { key: 'quest',   text: '⑩ ❕주민과 대화 → 목표 달성 → 다시 대화로 보상' },   // ${A} 금지: '→' 와 겹치면 i18n 글루 패턴에 먹힌다
-      { key: 'mine',    text: `⑪ 서쪽 ⛏️동굴에서 괭이(2)로 광석 캐기 ${A}` },
+      { key: 'mine',    text: TOUCH ? `⑪ 서쪽 ⛏️동굴에서 괭이로 광석 캐기 ${A}` : `⑪ 서쪽 ⛏️동굴에서 괭이(2)로 광석 캐기 ${A}` },
       { key: 'carve',   text: `⑫ 🔧작업대 🗿조각 탭에서 오늘의 주문 ${A}` },
       { key: 'dex',     text: '⑬ 📖도감에서 발견한 것·🏅배지 확인 — 다 채우면 🪙150' },
-      { key: 'fish',    text: `⑭ 🎣낚싯대(4)로 호숫가에 던지고, 물면 ${A}` },
-      { key: 'build',   text: '⑮ 🔨망치(3)로 집 터에 목재 넣어 1장 완성 🏠' },
+      { key: 'fish',    text: TOUCH
+          ? `⑭ 호숫가에 서면 🎣낚싯대를 저절로 들어요. 던지고, 물면 ${A}`
+          : `⑭ 🎣낚싯대(4)로 호숫가에 던지고, 물면 ${A}` },
+      { key: 'build',   text: TOUCH ? '⑮ 집 터에 서면 🔨망치를 저절로 들어요. 목재를 넣어 1장 완성 🏠' : '⑮ 🔨망치(3)로 집 터에 목재 넣어 1장 완성 🏠' },
       { key: 'enter',   text: TOUCH
           ? '⑯ 집 문 앞에서 🚪버튼으로 들어가기'
           : '⑯ 집 문 앞에서 Space로 들어가기' },
@@ -4536,6 +4611,7 @@
       const want = TUT_TOOL[TUT_STEPS[tutIdx].key];
       if (want) Input.revealTool?.(want);
       $('coach-text').textContent = t(TUT_STEPS[tutIdx].text).replace(/^[①-⑰]\s*/, '');
+      hud?.setCoachStep(TUT_STEPS[tutIdx].key);
       renderCoachGoal();
       if (decorGuideStep >= 0) renderDecorGuide();   // 🎨 단계 안내가 켜져 있으면 코치 문구를 단계별로
       $('coach-fill').style.width = Math.round((tutIdx + 1) / TUT_STEPS.length * 100) + '%';
@@ -4557,6 +4633,38 @@
       if (!isBetaA(authState.variant)) return;
       TUT_STEPS.sort((a, b) => TUNING.TUT_ORDER_A.indexOf(a.key) - TUNING.TUT_ORDER_A.indexOf(b.key));
     }
+    function spotBlocked() {
+      const b = document.body.classList;
+      return !b.contains('playing') || b.contains('intro-open') || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card');
+    }
+    async function startOnboarding(src) {
+      const steps = spotSteps('full', TOUCH);
+      Input.markHintsSeen(['spot_started']); requestSave();
+      const left = steps.findIndex(s => !Input.hintSeen('spot_' + s.key));
+      if (src === 'help' || left >= 0) {
+        Input.armTutorialMove();
+        await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, skip: src === 'help' ? 'all' : 'optional', onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
+      }
+      Input.markHintsSeen(['spotV2']);
+      startCoach();
+      showStoryMapOnce(null);
+    }
+    function maybeHudTour() {
+      if (Input.needsTutorial() || Input.hintSeen('spotV2')) return;
+      if (Input.hintSeen('spot_started')) { startOnboarding('resume'); return; }
+      spot.run(spotSteps('new', TOUCH), { kind: 'new', skip: 'all' }).then(() => { Input.markHintsSeen(['spotV2']); requestSave(); });
+    }
+    function runMenuTour() {
+      spot?.notify('menu');
+      if (!spot || Input.hintSeen('spotMenu') || spot.kind() === 'menu') return;
+      Input.markHintsSeen(['spotMenu']); requestSave();
+      setTimeout(() => spot.run(spotSteps('menu', TOUCH), { kind: 'menu', blocked: () => !$('menu-sheet')?.classList.contains('show') }), 60);
+    }
+    function runPillTour() {
+      if (!spot || !TOUCH || Input.needsTutorial() || Input.hintSeen('spot_pill') || spot.active()) return;
+      Input.markHintsSeen(['spot_pill']); requestSave();
+      spot.run(spotSteps('pill', true), { kind: 'pill' });
+    }
     function startCoach() {
       applyBetaTutorialOrder();   // 명단 조회가 늦게 끝났을 때를 대비해 여기서도 한 번 더
       Input.armTutorialMove(); tutIdx = 0; renderCoach(); $('coach').classList.add('show');
@@ -4566,6 +4674,7 @@
     function endCoach(done) {
       const at = tutIdx;
       tutIdx = -1; $('coach').classList.remove('show');
+      hud?.setCoachStep(null);
       document.body.classList.remove('coaching');   // 코치 종료 → 토스트 원위치
       if (done) {
         ui.toast('🎉 튜토리얼 졸업! 이제 마을을 자유롭게 가꿔보세요 🌿');
@@ -4612,6 +4721,15 @@
       $('login-screen').classList.remove('show');
       if (TOUCH) document.body.classList.add('is-touch');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
+      if (!shell) shell = initHudShell({ Input, t, trackEvent, menu: menuSheet });
+      if (TOUCH && !hud) {
+        hud = initMobileHud({ Input, t, act: (k) => ui.act(k), trackEvent, onPill: () => runPillTour() });
+        if (lastToolArgs) hud.onTool(...lastToolArgs);
+        hud.onNpc(lastNpcText);
+        if (lastDoorArgs) hud.onDoor(...lastDoorArgs);
+        if (tutIdx >= 0) hud.setCoachStep(TUT_STEPS[tutIdx].key);
+      }
+      shell.layoutLeft();
       trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
@@ -4634,6 +4752,7 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
+      maybeHudTour();
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
       referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });
@@ -4900,7 +5019,7 @@
     $('settings-close').addEventListener('click', () => $('settings-modal').classList.remove('show'));
     $('settings-modal').addEventListener('click', (e) => { if (e.target.id === 'settings-modal') $('settings-modal').classList.remove('show'); });
     // ☰ 메뉴 토글(모바일에서 유틸 버튼 펼치기/접기) + 버튼 누르면 자동으로 접힘
-    $('menu-btn').addEventListener('click', () => { $('emote-pop').classList.remove('show'); $('topleft').classList.toggle('open'); });   // 🙂 이모트 팝업과 같은 자리 — 서로 배타
+    $('menu-btn').addEventListener('click', () => { $('emote-pop').classList.remove('show'); menuSheet.open(); });   // 🙂 이모트 팝업과 같은 자리 — 서로 배타
     $('util-btns').addEventListener('click', (e) => { if (e.target.closest('button')) $('topleft').classList.remove('open'); });
     // 환영 모달 "건너뛰고 바로 시작" → 코치 없이 모달만 닫기
     $('tut-skip').addEventListener('click', () => {
@@ -5415,6 +5534,7 @@
     //      그때 getBoundingClientRect().bottom 은 0 이라 패널이 화면 맨 위(top:8px)로 튄다.
     //      실제로 그려지고 있는지(offsetParent)를 봐야 한다.
     function layoutQuestPanel() {
+      if (shell) { shell.layoutLeft(); return; }
       const chip = $('story-chip'), qp = $('quest-panel');
       if (!chip.classList.contains('show') || !chip.offsetParent) { qp.style.top = ''; return; }
       qp.style.top = Math.round(chip.getBoundingClientRect().bottom + 8) + 'px';
@@ -6611,6 +6731,13 @@
     }
     function renderBag() {
       const box = $('bag-content'); box.innerHTML = '';
+      if (shell) {
+        const keys = document.body.classList.contains('at-mine') ? ['coins', 'stone', 'coal', 'gem'] : ['coins', 'wood', 'seed', 'crop', 'stone'];
+        const ICO = { coins: '🪙', wood: '🪵', seed: '🌰', crop: '🥕', stone: '🪨', coal: '⚫', gem: '💎' };
+        const row = document.createElement('div'); row.className = 'bag-sum';
+        keys.forEach(k => { const c = document.createElement('span'); c.className = 'bag-chip' + (k === 'coins' ? ' coin' : ''); c.textContent = `${ICO[k]} ${lastInv[k] || 0}`; row.appendChild(c); });
+        box.appendChild(row);
+      }
       box.appendChild(pantrySection(Input.getPantry()));   // 🍱 찬장을 맨 위로 — 먹으러 여는 일이 가장 잦다
       BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
       const owned = Input.ownedGifts();
@@ -6725,7 +6852,7 @@
         const blob = await (await fetch(lastPhoto)).blob();
         const file = new File([blob], 'calmforest.png', { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'calm forest 🌿', text: t('내 마을 구경오세요 · https://calmforest.cloud') });
+          await navigator.share({ files: [file], title: '고요한 숲 🌿', text: t('내 마을 구경오세요 · https://calmforest.cloud') });
           trackEvent('photo_share');   // [GA4] 공유 훅
         } else {
           ui.toast('이 기기는 바로 공유가 안 되니 💾저장으로 받아 공유해요');

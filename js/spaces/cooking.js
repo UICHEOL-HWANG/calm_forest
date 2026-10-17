@@ -112,8 +112,8 @@ export function eatDish(r, d, fallback = false) {
   emitBuffs();
   const bm = BUFF_META[r.buff];
   // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
-  setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프 획득!`,
-    `${bm.desc}\n남은 시간은 오른쪽 위 칩에 · 칩을 누르면 다시 볼 수 있어요`), 800);
+  setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프!`,
+    { steps: [{ ico: '✨', label: bm.desc }], note: '남은 시간은 오른쪽 위 칩' }), 800);
   trackEvent('cook_eat', { recipe: r.id, quality: tier.id, dur, taste: r.free?.taste ?? null });   // [GA4] · 🍲 자유 요리 맛 ★
   return { ok: true, how: 'eat', fallback, ico: r.ico, name: r.name, buff: { ...bm, dur } };
 }

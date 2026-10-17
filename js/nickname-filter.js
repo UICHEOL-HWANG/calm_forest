@@ -65,3 +65,36 @@ export function normalizeNickname(nick) {
 export function isNicknameBlocked(nick) {
   return BLOCK_RE.test(normalizeNickname(nick));
 }
+
+export const NICK_MIN = 2;
+export const NICK_MAX = 10;
+export const NICK_FAIL_MSG = Object.freeze({
+  len: '닉네임은 2~10자로 지어주세요',
+  chars: '한글·영문·숫자로만 지어주세요',
+  jamo: '자음·모음만 따로 쓸 수 없어요',
+  digits: '숫자로만 지을 수 없어요',
+  blocked: '쓸 수 없는 말이 들어 있어요',
+});
+
+export function nicknameChecks(raw) {
+  const nick = String(raw ?? '').trim();
+  const n = [...nick].length;
+  return {
+    len: n >= NICK_MIN && n <= NICK_MAX,
+    chars: n > 0 && /^[가-힣a-zA-Z0-9]+$/.test(nick),
+    digits: n > 0 && !/^[0-9]+$/.test(nick),
+    clean: n > 0 && !isNicknameBlocked(nick),
+  };
+}
+
+export function checkNickname(raw) {
+  const nick = String(raw ?? '').trim();
+  const n = [...nick].length;
+  const fail = n < NICK_MIN || n > NICK_MAX ? 'len'
+    : /[ㄱ-ㅎㅏ-ㅣ]/.test(nick) ? 'jamo'
+    : !/^[가-힣a-zA-Z0-9]+$/.test(nick) ? 'chars'
+    : /^[0-9]+$/.test(nick) ? 'digits'
+    : isNicknameBlocked(nick) ? 'blocked'
+    : null;
+  return { ok: !fail, nick, fail };
+}

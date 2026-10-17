@@ -138,7 +138,7 @@ export function enterMine() {
   ui.setMine?.(true);   // ⛏️ 우상단 자원칩 → 🪨⚫💎 (마을 자원은 가방에서 그대로 볼 수 있다)
   player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('mineInside', '⛏️', '채굴 동굴', '⛏️괭이로 광맥 캐기 → 돌·석탄·💎보석\n작업대 재료·상점 판매에 써요. 나갈 땐 남쪽 문');
+  firstHint('mineInside', '⛏️', '채굴 동굴 · 광석 캐기', { steps: [{ ico: '⛏️', label: '괭이로 광맥' }, { ico: '🪨', label: '🪨⚫💎 얻기' }], note: '나갈 땐 남쪽 문', chip: '작업대 재료·판매' });
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
 }

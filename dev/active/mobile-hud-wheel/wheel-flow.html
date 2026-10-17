@@ -1,0 +1,121 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>휠 조작 흐름</title><style>
+:root{
+  --cream:#fbf6ea; --ink:#3d3426; --sub:#7a6d58; --line:#e3d8c2;
+  --leaf:#5f9a5a; --leaf-d:#3f7a3d; --red:#e0533d; --shadow:0 3px 10px rgba(40,30,15,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#efe9dc;font-family:"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;color:var(--ink);padding:36px 40px;width:1780px}
+h1{font-size:30px;margin-bottom:6px}
+.lead{color:var(--sub);font-size:16px;margin-bottom:26px;line-height:1.6}
+.variant{background:#fff;border-radius:22px;padding:22px 24px 26px;margin-bottom:28px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.vhead{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.vtag{background:var(--leaf);color:#fff;font-weight:800;border-radius:10px;padding:4px 12px;font-size:20px}
+.vname{font-size:24px;font-weight:800}
+.vdesc{color:var(--sub);font-size:15px;margin-bottom:16px;line-height:1.5}
+.row{display:flex;gap:26px;align-items:flex-start}
+.cap{font-size:14px;color:var(--sub);margin-top:8px;text-align:center}
+.pros{display:flex;gap:30px;margin-top:14px;font-size:14px;line-height:1.6}
+.pros div{flex:1}
+.pros b{display:block;margin-bottom:2px}
+
+.phone{position:relative;overflow:hidden;border-radius:34px;border:8px solid #1d1d1f;background:#000 url(bg.jpg) center/cover;flex:none}
+.phone.p{width:390px;height:844px;background-position:46% center}
+.phone.l{width:844px;height:390px}
+
+.mm{position:absolute;left:14px;top:46px;width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#a9cf98,#6f9c66);border:3px solid var(--cream);box-shadow:var(--shadow)}
+.mm::after{content:"";position:absolute;left:39px;top:36px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:12px solid #fff}
+.l .mm{top:14px;left:18px;width:84px;height:84px}
+.l .mm::after{left:33px;top:30px}
+.quest{position:absolute;left:14px;top:150px;width:150px;background:rgba(251,246,234,.92);border-radius:12px;padding:7px 10px;font-size:11.5px;line-height:1.45;box-shadow:var(--shadow)}
+.quest b{font-size:12px}
+.l .quest{top:106px;left:18px;width:140px}
+
+.tr{position:absolute;right:12px;top:46px;display:flex;gap:8px}
+.l .tr{top:14px;right:18px}
+.tr .ib{width:46px;height:46px;border-radius:14px;background:var(--cream);box-shadow:var(--shadow);display:grid;place-items:center;font-size:23px;position:relative}
+.dot{position:absolute;top:-3px;right:-3px;width:13px;height:13px;border-radius:50%;background:var(--red);border:2px solid var(--cream)}
+.burger{display:flex;flex-direction:column;gap:4px}
+.burger i{display:block;width:20px;height:3px;border-radius:2px;background:var(--ink)}
+
+.joy{position:absolute;left:34px;bottom:70px;width:118px;height:118px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.55)}
+.joy::after{content:"";position:absolute;left:34px;top:34px;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.7)}
+.l .joy{left:40px;bottom:34px;width:110px;height:110px}
+.l .joy::after{left:30px;top:30px}
+
+.act{position:absolute;width:82px;height:82px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fffaf0,#efe3c8);border:4px solid var(--leaf);box-shadow:var(--shadow);display:grid;place-items:center;font-size:36px}
+.tool{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(251,246,234,.93);box-shadow:var(--shadow);display:grid;place-items:center;font-size:24px}
+.tool.on{border:3px solid var(--leaf);background:#fff;width:56px;height:56px}
+.tool.sm{width:40px;height:40px;font-size:18px}
+.talk{position:absolute;background:#d9f0d4;border:2px solid var(--leaf);color:var(--leaf-d);font-weight:800;font-size:15px;border-radius:24px;padding:8px 16px;box-shadow:var(--shadow);white-space:nowrap}
+.toast{position:absolute;left:50%;top:118px;transform:translateX(-50%);background:rgba(61,52,38,.85);color:#fff;border-radius:20px;padding:7px 16px;font-size:15px;font-weight:700;white-space:nowrap}
+.tip{position:absolute;background:#ffe68a;color:#5b4300;font-size:12px;font-weight:700;border-radius:8px;padding:3px 8px;box-shadow:0 2px 6px rgba(0,0,0,.2);white-space:nowrap}
+
+.dim{position:absolute;inset:0;background:rgba(30,24,14,.45)}
+.sheet{position:absolute;background:var(--cream);box-shadow:0 -4px 20px rgba(0,0,0,.25);overflow:hidden}
+.sh-title{font-weight:800;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.sh-x{width:30px;height:30px;border-radius:50%;background:#efe5cf;display:grid;place-items:center;font-size:15px}
+.cat{font-size:12px;font-weight:800;color:var(--leaf-d);margin:12px 0 6px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cell{background:#fff;border-radius:14px;padding:10px 2px 8px;text-align:center;font-size:11.5px;line-height:1.25;position:relative;border:1px solid var(--line)}
+.cell span{display:block;font-size:24px;margin-bottom:4px}
+.cell .dot{top:4px;right:10px}
+.list .li{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--line);font-size:15px;position:relative}
+.list .li span{font-size:21px;width:28px;text-align:center}
+.list .li .dot{position:static;margin-left:auto}
+.quick{display:flex;gap:8px;margin-top:10px}
+.quick .q{flex:1;background:var(--leaf);color:#fff;border-radius:14px;text-align:center;padding:9px 0 7px;font-size:11.5px;font-weight:700;position:relative}
+.quick .q span{display:block;font-size:22px;margin-bottom:2px}
+.grab{width:44px;height:5px;border-radius:3px;background:#d8ccb2;margin:0 auto 10px}
+body{width:1900px}
+.step{display:flex;flex-direction:column;gap:8px}
+.st{font-size:17px;font-weight:800}
+.sd{font-size:13.5px;color:var(--sub);line-height:1.5;width:390px}
+.tap{position:absolute;width:62px;height:62px;border-radius:50%;border:4px solid #ff7a3d;background:rgba(255,122,61,.18);transform:translate(-50%,-50%)}
+.tap::after{content:"👆";position:absolute;left:30px;top:30px;font-size:30px}
+.tool.farm{background:rgba(232,246,214,.95)}
+.tool.out{background:rgba(214,236,250,.95)}
+.toolname{position:absolute;background:rgba(251,246,234,.95);border-radius:10px;padding:2px 10px;font-size:12px;font-weight:800}
+.fx{position:absolute;font-size:30px}
+.ar{font-size:40px;color:#c9b99a;align-self:center;margin-top:-40px}
+</style></head><body>
+<h1>🖐️ 도구는 어떻게 바꾸고 쓰나요 — 4컷</h1>
+<p class="lead">휠은 <b>항상 펼쳐져 있어요</b>(따로 여는 동작 없음). 탭 = 들기 · 큰 버튼 = 쓰기 · 맨 위 작은 칩 = 세트 바꾸기. 세트마다 바탕색이 달라요(🌾 연두 / 🏕️ 하늘).</p>
+<div class="row" style="gap:18px">
+<div class="step"><div class="phone p" style="height:620px;background-position:46% 70%">
+  <div class="joy" style="bottom:60px"></div>
+  <div class="act" style="right:30px;bottom:66px">🌰</div>
+  <div class="tool farm on" style="right:150px;bottom:82px">🌰</div><div class="tool farm" style="right:136px;bottom:142px">💧</div><div class="tool farm" style="right:96px;bottom:188px">🌾</div><div class="tool farm" style="right:40px;bottom:206px">🪏</div><div class="tool farm" style="right:150px;bottom:22px">⛏️</div>
+  <div class="tool sm" style="right:24px;bottom:270px">🏕️</div>
+  <div class="toolname" style="right:44px;bottom:40px">씨앗</div>
+</div><div class="st">① 평소</div><div class="sd">큰 버튼 둘레에 지금 세트(🌾 농사) 도구 5개가 늘 보여요. 초록 테두리 = 지금 든 도구, 큰 버튼 아래 이름표 = "씨앗".</div></div>
+<div class="ar">→</div>
+<div class="step"><div class="phone p" style="height:620px;background-position:46% 70%">
+  <div class="joy" style="bottom:60px"></div>
+  <div class="act" style="right:30px;bottom:66px">💧</div>
+  <div class="tool farm" style="right:150px;bottom:82px">🌰</div><div class="tool farm on" style="right:136px;bottom:142px">💧</div><div class="tool farm" style="right:96px;bottom:188px">🌾</div><div class="tool farm" style="right:40px;bottom:206px">🪏</div><div class="tool farm" style="right:150px;bottom:22px">⛏️</div>
+  <div class="tool sm" style="right:24px;bottom:270px">🏕️</div>
+  <div class="toolname" style="right:34px;bottom:40px">물조리개</div>
+  <div class="tap" style="right:164px;bottom:170px;left:auto;top:auto;transform:translate(50%,50%)"></div>
+</div><div class="st">② 💧 를 톡 → 들기</div><div class="sd">휠에서 도구를 탭하면 그 도구를 손에 들어요. 큰 버튼 아이콘·이름표가 💧 물조리개로 바뀌어요.</div></div>
+<div class="ar">→</div>
+<div class="step"><div class="phone p" style="height:620px;background-position:46% 70%">
+  <div class="joy" style="bottom:60px"></div>
+  <div class="act" style="right:30px;bottom:66px">💧</div>
+  <div class="tool farm" style="right:150px;bottom:82px">🌰</div><div class="tool farm on" style="right:136px;bottom:142px">💧</div><div class="tool farm" style="right:96px;bottom:188px">🌾</div><div class="tool farm" style="right:40px;bottom:206px">🪏</div><div class="tool farm" style="right:150px;bottom:22px">⛏️</div>
+  <div class="tool sm" style="right:24px;bottom:270px">🏕️</div>
+  <div class="toolname" style="right:34px;bottom:40px">물조리개</div>
+  <div class="tap" style="right:71px;bottom:107px;left:auto;top:auto;transform:translate(50%,50%)"></div>
+  <div class="fx" style="left:150px;top:300px">💦💦</div>
+</div><div class="st">③ 큰 버튼 → 쓰기</div><div class="sd">큰 버튼을 누르면 든 도구를 써요(물 주기). 밭 앞에선 지금처럼 괭이→씨앗→물→낫이 알아서 이어져요.</div></div>
+<div class="ar">→</div>
+<div class="step"><div class="phone p" style="height:620px;background-position:46% 70%">
+  <div class="joy" style="bottom:60px"></div>
+  <div class="act" style="right:30px;bottom:66px">🪓</div>
+  <div class="tool out on" style="right:150px;bottom:82px">🪓</div><div class="tool out" style="right:130px;bottom:150px">🔨</div><div class="tool out" style="right:84px;bottom:196px">🎣</div><div class="tool out" style="right:30px;bottom:212px">🦋</div>
+  <div class="tool sm" style="right:24px;bottom:270px">✋</div>
+  <div class="toolname" style="right:50px;bottom:40px">도끼</div>
+  <div class="tap" style="right:44px;bottom:290px;left:auto;top:auto;transform:translate(50%,50%)"></div>
+</div><div class="st">④ 맨 위 칩 → 세트 바꾸기</div><div class="sd">칩(🏕️)을 누르면 휠이 바깥 세트(도끼·망치·낚싯대·포충망, 하늘색)로 통째로 바뀌어요. 한 번 더 누르면 ✋맨손, 또 누르면 🌾농사.</div></div>
+</div>
+<p class="lead" style="margin-top:22px">✨ 대부분은 누를 필요도 없어요 — 밭·과수원·광산에 들어가면 🌾 세트, <b>나무 옆에 가면 🪓 도끼</b>, 집·숲 안에선 ✋ 맨손으로 저절로 바뀌고, 나무에서 멀어지면 원래 들던 도구로 돌아와요.</p>
+</body></html>
