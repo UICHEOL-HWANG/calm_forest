@@ -1,0 +1,341 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>부스터 연출 시안 · calm forest</title>
+<style>
+  :root{--bg:#eef3f7;--ink:#24343f;--sub:#61727e;--card:#fbfdff;--line:#d9e3ea;--accent:#9a6a2f}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  header{padding:16px 22px 6px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+  h1{font-size:19px;margin:0}
+  .ctl{display:flex;gap:6px;flex-wrap:wrap}
+  .ctl button{font:inherit;font-size:13px;padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .ctl button.on{background:#3a7aa8;color:#fff;border-color:#3a7aa8}
+  .ctl button.main{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+  .note{font-size:12.5px;color:var(--sub);line-height:1.6;margin:0;padding:0 22px 10px;max-width:1100px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:4px 22px 26px}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .col h2{font-size:16px;margin:0}
+  .how{font-size:12.5px;line-height:1.55;margin:0;color:#34444f}
+  .view{position:relative;width:100%;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#cfe3ef;touch-action:manipulation}
+  .view canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .pill{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:10px;padding:4px 12px;border-radius:999px;background:rgba(20,28,40,.55);color:#fff;font-size:13px;white-space:nowrap}
+  .boost{position:absolute;right:10px;bottom:10px;width:64px;height:64px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:12px;line-height:1.2;cursor:pointer;--p:0}
+  .boost.ring{background:conic-gradient(#ffd27a calc(var(--p) * 1turn), transparent 0) border-box,var(--accent);box-shadow:0 0 0 3px rgba(255,210,122,calc(var(--p) * .9))}
+  .boost.ring::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--accent)}
+  .boost span{position:relative;z-index:1}
+  @media (max-width:900px){.grid{grid-template-columns:1fr;padding:4px 16px 22px}header,.note{padding-left:16px;padding-right:16px}.view{aspect-ratio:3/4}}
+</style>
+<header>
+  <h1>🌰 부스터 연출 시안</h1>
+  <div class="ctl">
+    <button class="main" id="boostAll">🌰 세 칸 동시 부스터</button>
+    <button class="on" id="auto">🤖 자동 주행·자동 부스터 켜짐</button>
+    <button id="restart">↻ 다시 출발</button>
+  </div>
+</header>
+<p class="note">세 칸은 <b>같은 썰매 한 대</b>를 세 카메라로 보는 화면입니다. 물리·코스·카메라 위치·썰매 모델은 실제 게임 모듈 그대로이고, 부스터 세기(1.5배·2초)는 바꾸지 않았습니다. 다른 점은 부스터를 눌렀을 때의 <b>연출</b>뿐입니다. 자동 주행은 시뮬레이터의 완벽한 주행선을 그대로 따라가며 도토리 6개를 고르게 써요(약 6~7초 간격). 그리고 위 갈색 버튼이나 칸 안 버튼(PC는 Space)으로 직접 터뜨릴 수 있습니다. 소리(A)는 버튼을 한 번 누른 뒤부터 납니다. 칸 안 버튼은 썰매를 가리지 않게 오른쪽 아래에 두었습니다(게임은 가운데 아래). 지금 게임은 세 가지 모두 없는 상태입니다.</p>
+<div class="grid" id="grid"></div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import { COURSE, centerX, obstacleRadius } from '../js/mountain/course.js';
+import { createSled, stepSled, tryBoost, hitReach, PHYS } from '../js/mountain/sled.js';
+import { slopePoint } from '../js/mountain/terrain.js';
+import { sledCamTargets, sledPose, sledYaw } from '../js/mountain/sled-view.js';
+import { buildSledMesh } from '../js/mountain/sled-art.js';
+
+const VARS = [
+  { id: 'A', name: 'A · 소리 + 눈보라', how: '누르는 순간 "슝" 바람 소리와 쿵 하는 출발음, 썰매 뒤로 눈가루가 2초 동안 뿜어져요. 화면 구도는 그대로라 차분해요.' },
+  { id: 'B', name: 'B · 카메라 당김', how: '시야가 순간 넓어지고(42°→56°) 카메라가 뒤로 밀렸다가 끝나면 돌아와요. 시작할 때 짧게 덜컹. 소리·입자 없이 속도감 자체를 보여줘요.' },
+  { id: 'C', name: 'C · 속도선 + 버튼 게이지', how: '화면 가장자리로 흰 바람 줄이 쏟아지고, 부스터 버튼 테두리에 남은 2초가 링으로 줄어들어요. 언제 끝나는지 보여요.' },
+];
+const SNOW = { color: 0xf4f8fc, life: 0.7, gravity: -6 };
+const FOG = [18, 74];
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe3ef);
+scene.fog = new THREE.Fog(0xcfe3ef, FOG[0], FOG[1]);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab4c8, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+sun.position.set(12, 40, -24);
+scene.add(sun);
+
+function ribbon(width, color, lift) {
+  const rows = 240, cols = 10, pos = [], idx = [];
+  for (let r = 0; r <= rows; r++) {
+    const z = (r / rows) * COURSE.length;
+    for (let c = 0; c <= cols; c++) {
+      const x = centerX(z) - width / 2 + (c / cols) * width;
+      const p = slopePoint(z, x);
+      pos.push(p.x, p.y + lift, p.z);
+    }
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const a = r * (cols + 1) + c, b = a + cols + 1;
+    idx.push(a, b, a + 1, a + 1, b, b + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide }));
+}
+scene.add(ribbon(60, 0xe3edf4, -0.05));
+scene.add(ribbon(COURSE.width, 0xffffff, 0));
+
+COURSE.obstacles.forEach(o => {
+  const p = slopePoint(o.z, o.x), r = obstacleRadius(o);
+  const geo = o.kind === 'rock' ? new THREE.DodecahedronGeometry(r, 0) : new THREE.SphereGeometry(r, 14, 10);
+  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: o.kind === 'rock' ? 0x7d8790 : 0xf7fbfe, flatShading: true }));
+  m.position.set(p.x, p.y + r * 0.6, p.z);
+  scene.add(m);
+});
+COURSE.flags.forEach(f => [[-1, 0xe5484d], [1, 0x3a7aa8]].forEach(([sd, col]) => {
+  const p = slopePoint(f.z, f.x + sd * f.half);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+  pole.position.set(p.x, p.y + 0.8, p.z);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), new THREE.MeshLambertMaterial({ color: col, side: THREE.DoubleSide }));
+  flag.position.set(p.x - sd * 0.3, p.y + 1.4, p.z);
+  scene.add(pole, flag);
+}));
+
+const sledMesh = buildSledMesh(THREE, 'basic');
+const rider = new THREE.Group();
+const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.35, 4, 10), new THREE.MeshLambertMaterial({ color: 0xe5484d }));
+body.position.y = 0.55;
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 10), new THREE.MeshLambertMaterial({ color: 0xf0c48a }));
+head.position.y = 1.05;
+rider.add(body, head);
+scene.add(sledMesh, rider);
+
+const puffGeo = new THREE.IcosahedronGeometry(0.09, 0);
+const puffs = [];
+function spawnPuff(p, back, spread, up) {
+  const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color: SNOW.color, transparent: true, opacity: 0.85 }));
+  m.layers.set(1);
+  m.position.set(p.x + (Math.random() - 0.5) * 0.6, p.y + 0.15, p.z - 0.5);
+  m.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * spread, up + Math.random() * up, -back - Math.random() * back), life: SNOW.life, age: 0 };
+  m.scale.setScalar(1.4 + Math.random() * 1.4);
+  scene.add(m);
+  puffs.push(m);
+}
+function stepPuffs(dt) {
+  for (let i = puffs.length - 1; i >= 0; i--) {
+    const m = puffs[i], u = m.userData;
+    u.age += dt;
+    u.vel.y += SNOW.gravity * dt;
+    m.position.addScaledVector(u.vel, dt);
+    m.scale.multiplyScalar(1 + dt * 0.8);
+    m.material.opacity = 0.85 * Math.max(0, 1 - u.age / u.life);
+    if (u.age >= u.life) { scene.remove(m); m.material.dispose(); puffs.splice(i, 1); }
+  }
+}
+
+let actx = null;
+function audio() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function whoosh() {
+  if (!actx || actx.state !== 'running') return;
+  const c = actx, t = c.currentTime;
+  const buf = c.createBuffer(1, c.sampleRate * 0.9, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource(); src.buffer = buf;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+  bp.frequency.setValueAtTime(500, t); bp.frequency.exponentialRampToValueAtTime(2600, t + 0.45); bp.frequency.exponentialRampToValueAtTime(900, t + 0.85);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.32, t + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+  src.connect(bp).connect(g).connect(c.destination); src.start(t); src.stop(t + 0.9);
+  const o = c.createOscillator(), og = c.createGain();
+  o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(52, t + 0.18);
+  og.gain.setValueAtTime(0.35, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o.connect(og).connect(c.destination); o.start(t); o.stop(t + 0.25);
+}
+
+const panels = [];
+const grid = document.getElementById('grid');
+VARS.forEach(v => {
+  const col = document.createElement('div');
+  col.className = 'col';
+  col.innerHTML = `<h2>${v.name}</h2><p class="how">${v.how}</p><div class="view"><canvas class="gl"></canvas><canvas class="fx"></canvas><div class="pill"><span class="t"></span><span class="a"></span></div><button class="boost${v.id === 'C' ? ' ring' : ''}"><span>🌰 부스터<br><b class="n"></b></span></button></div>`;
+  grid.appendChild(col);
+  const view = col.querySelector('.view');
+  const renderer = new THREE.WebGLRenderer({ canvas: col.querySelector('.gl'), antialias: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  const camera = new THREE.PerspectiveCamera(42, 4 / 3, 0.1, 200);
+  if (v.id === 'A') camera.layers.enable(1);
+  const fx = col.querySelector('.fx');
+  const p = { v, view, renderer, camera, fx, fctx: fx.getContext('2d'), camPos: null, camLook: null, lines: [], btn: col.querySelector('.boost'), pill: col.querySelector('.pill') };
+  p.btn.addEventListener('click', e => { e.stopPropagation(); audio(); boostNow(); });
+  panels.push(p);
+});
+
+function resize() {
+  panels.forEach(p => {
+    const w = p.view.clientWidth, h = p.view.clientHeight;
+    p.renderer.setSize(w, h, false);
+    p.camera.aspect = w / h;
+    p.camera.updateProjectionMatrix();
+    const dpr = Math.min(2, devicePixelRatio);
+    p.fx.width = w * dpr; p.fx.height = h * dpr;
+    p.fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    p.w = w; p.h = h;
+  });
+}
+addEventListener('resize', resize);
+
+let sled, yaw, auto = true, autoIdx = 0, boostAt = -1e9, clock = 0, seenBoosts = 0;
+const keys = { left: false, right: false };
+function restart() {
+  sled = createSled(99);
+  yaw = sledYaw(0);
+  autoIdx = 0; boostAt = -1e9; seenBoosts = 0;
+  panels.forEach(p => { p.camPos = null; p.lines = []; });
+}
+restart();
+
+function boostNow() {
+  if (!sled.finished) sled = tryBoost(sled);
+}
+
+const SIDES = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+const AUTO_Z = Array.from({ length: 6 }, (_, i) => 20 + i * (280 / 6));
+function windowOf(c) {
+  if (c.flag) return [c.flag.x - c.flag.half + 0.4, c.flag.x + c.flag.half - 0.4];
+  const o = COURSE.obstacles[c.i], r = hitReach(o), half = COURSE.width / 2, cx = centerX(o.z);
+  return SIDES[c.i] > 0 ? [o.x + r.x + 0.45, cx + half - 0.3] : [cx - half + 0.3, o.x - r.x - 0.45];
+}
+function autopilot(s) {
+  const flags = COURSE.flags.slice(s.flagIdx).map(f => ({ z: f.z, flag: f }));
+  const obs = COURSE.obstacles
+    .map((o, i) => ({ z: o.z - hitReach(o).z, end: o.z + hitReach(o).z, i }))
+    .filter(c => !s.hitIds.includes(c.i) && c.end > s.z);
+  const chain = [...flags, ...obs].sort((a, b) => a.z - b.z).slice(0, 2);
+  const aim = chain.reduceRight((next, c) => {
+    const [lo, hi] = windowOf(c);
+    return Math.max(lo, Math.min(hi, next ?? (lo + hi) / 2));
+  }, null) ?? centerX(s.z + 3);
+  return Math.max(-1, Math.min(1, (aim - s.x) * 2.5));
+}
+const manual = () => (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+
+const ease = x => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
+function boostLevel() {
+  const since = (clock - boostAt) / 1000;
+  const dur = PHYS.boostMs / 1000;
+  if (since < 0 || since > dur + 0.6) return 0;
+  if (since < 0.15) return ease(since / 0.15);
+  if (since < dur) return 1;
+  return 1 - ease((since - dur) / 0.6);
+}
+
+function onBoostStart() {
+  boostAt = clock;
+  whoosh();
+  const pose = sledPose(sled, yaw);
+  for (let i = 0; i < 16; i++) spawnPuff(pose, 2, 3, 1.6);
+}
+
+function camFor(p, dt) {
+  const t = sledCamTargets(sled);
+  const pos = new THREE.Vector3(t.pos.x, t.pos.y, t.pos.z), look = new THREE.Vector3(t.look.x, t.look.y, t.look.z);
+  let fov = 42;
+  if (p.v.id === 'B') {
+    const k = boostLevel();
+    fov = 42 + 14 * k;
+    const back = pos.clone().sub(look).normalize();
+    pos.addScaledVector(back, 2.4 * k);
+    pos.y -= 0.8 * k;
+    const since = (clock - boostAt) / 1000;
+    if (since >= 0 && since < 0.25) {
+      const a = 0.18 * (1 - since / 0.25);
+      pos.x += Math.sin(clock * 0.09) * a; pos.y += Math.cos(clock * 0.11) * a;
+    }
+  }
+  if (!p.camPos) { p.camPos = pos.clone(); p.camLook = look.clone(); }
+  const k = 1 - Math.pow(0.02, dt);
+  p.camPos.lerp(pos, k); p.camLook.lerp(look, k);
+  p.camera.position.copy(p.camPos);
+  p.camera.lookAt(p.camLook);
+  if (Math.abs(p.camera.fov - fov) > 0.01) { p.camera.fov = fov; p.camera.updateProjectionMatrix(); }
+}
+
+function drawLines(p, dt) {
+  const g = p.fctx, w = p.w, h = p.h;
+  g.clearRect(0, 0, w, h);
+  if (p.v.id !== 'C') return;
+  const k = boostLevel();
+  const cx = w / 2, cy = h * 0.42, diag = Math.hypot(w, h) / 2;
+  if (k > 0.5) for (let i = 0; i < 3; i++) p.lines.push({ a: Math.random() * Math.PI * 2, r: diag * (0.35 + Math.random() * 0.3), len: 30 + Math.random() * 60, sp: diag * (2.2 + Math.random() * 1.5) });
+  g.lineCap = 'round';
+  p.lines = p.lines.filter(l => {
+    l.r += l.sp * dt;
+    if (l.r > diag * 1.3) return false;
+    const x0 = cx + Math.cos(l.a) * l.r, y0 = cy + Math.sin(l.a) * l.r;
+    const x1 = cx + Math.cos(l.a) * (l.r + l.len), y1 = cy + Math.sin(l.a) * (l.r + l.len);
+    g.strokeStyle = `rgba(255,255,255,${0.75 * Math.min(1, (l.r / diag - 0.3) * 2) * Math.max(0.3, k)})`;
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+    return true;
+  });
+}
+
+function update(dt) {
+  clock += dt * 1000;
+  if (sled.finished) { if (clock - sled.doneAt > 1500) restart(); }
+  else {
+    if (auto && autoIdx < AUTO_Z.length && sled.z >= AUTO_Z[autoIdx]) { autoIdx++; boostNow(); }
+    sled = stepSled(sled, dt * 1000, auto ? autopilot(sled) : manual());
+    if (sled.finished) sled = { ...sled, doneAt: clock };
+  }
+  if (sled.boostsAt.length > seenBoosts) { seenBoosts = sled.boostsAt.length; onBoostStart(); }
+  yaw += (sledYaw(sled.vx / PHYS.steerRate) - yaw) * Math.min(1, dt * 8);
+  const pose = sledPose(sled, yaw);
+  sledMesh.position.set(pose.x, pose.y, pose.z);
+  sledMesh.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+  rider.position.set(pose.x, pose.y + 0.2, pose.z);
+  rider.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+  if (sled.boostLeftMs > 0) for (let i = 0; i < 4; i++) spawnPuff(pose, 3.4, 2.6, 1.4);
+  stepPuffs(dt);
+  const left = Math.max(0, sled.boostLeftMs) / PHYS.boostMs;
+  panels.forEach(p => {
+    camFor(p, dt);
+    p.renderer.render(scene, p.camera);
+    drawLines(p, dt);
+    p.pill.querySelector('.t').textContent = `⏱️ ${(sled.t / 1000).toFixed(2)}`;
+    p.pill.querySelector('.a').textContent = `🌰 ${sled.acorns}`;
+    p.btn.querySelector('.n').textContent = sled.acorns;
+    if (p.v.id === 'C') p.btn.style.setProperty('--p', left.toFixed(3));
+  });
+}
+
+let last = performance.now();
+function frame(now) {
+  update(Math.max(0, Math.min(0.05, (now - last) / 1000)));
+  last = now;
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+
+document.getElementById('boostAll').onclick = () => { audio(); boostNow(); };
+document.getElementById('restart').onclick = () => { audio(); restart(); };
+document.getElementById('auto').onclick = e => {
+  auto = !auto;
+  e.target.classList.toggle('on', auto);
+  e.target.textContent = auto ? '🤖 자동 주행·자동 부스터 켜짐' : '🤖 자동 주행 꺼짐(←/→로 조종)';
+};
+const onKey = down => e => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = down;
+  else if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = down;
+  else if (e.code === 'Space' && down) { audio(); boostNow(); }
+  else return;
+  e.preventDefault();
+};
+addEventListener('keydown', onKey(true));
+addEventListener('keyup', onKey(false));
+window.__boost = { tick: ms => { for (let i = 0; i < ms / 16; i++) update(0.016); }, boost: boostNow, get sled() { return sled; }, level: boostLevel, panels };
+</script>

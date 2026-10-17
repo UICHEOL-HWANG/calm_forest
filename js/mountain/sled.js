@@ -1,7 +1,7 @@
 import { COURSE, centerX, obstacleRadius } from './course.js';
 import { SLOPE_M_PER_UNIT } from './terrain.js';
 
-export const PHYS_V = 2;
+export const PHYS_V = 3;
 
 export const PHYS = Object.freeze({
   baseSpeed: 8.6,
@@ -13,6 +13,9 @@ export const PHYS = Object.freeze({
   hitSlowMult: 0.5,
   hitRecoverMs: 1500,
   flagPenaltyMs: 1000,
+  steerGrip: 25,
+  steerGlide: 2.8,
+  edgeBounce: 0.3,
 });
 
 export const SLED_HALF = Object.freeze({ w: 0.43, l: 0.75 });
@@ -32,7 +35,7 @@ export function hitReach(o) {
 export function createSled(acorns, phys = PHYS) {
   return {
     phys,
-    x: centerX(0), z: 0, speed: phys.baseSpeed * 0.5, t: 0, acorns,
+    x: centerX(0), z: 0, vx: 0, speed: phys.baseSpeed * 0.5, t: 0, acorns,
     boostLeftMs: 0, slowLeftMs: 0, flagIdx: 0, flagsPassed: 0,
     splits: [], hits: [], hitIds: [], boostsAt: [],
     steerLeftMs: 0, steerRightMs: 0, finished: false,
@@ -74,6 +77,17 @@ function collide(s, course) {
   };
 }
 
+function slide(s, steer, dt, cx, half) {
+  const p = { ...PHYS, ...s.phys };
+  const target = steer * p.steerRate;
+  const rate = steer ? p.steerGrip : p.steerGlide;
+  const v = (s.vx || 0) + (target - (s.vx || 0)) * (1 - Math.exp(-rate * dt));
+  const x = s.x + v * dt;
+  if (x < cx - half) return { x: cx - half, vx: steer < 0 ? 0 : Math.abs(v) * p.edgeBounce };
+  if (x > cx + half) return { x: cx + half, vx: steer > 0 ? 0 : -Math.abs(v) * p.edgeBounce };
+  return { x, vx: v };
+}
+
 export function stepSled(s, dtMs, steer, course = COURSE) {
   if (s.finished) return s;
   const dt = dtMs / 1000;
@@ -83,14 +97,14 @@ export function stepSled(s, dtMs, steer, course = COURSE) {
   const z = Math.min(course.length, s.z + speed * dt);
   const half = course.width / 2;
   const cx = centerX(z);
-  const x = Math.max(cx - half, Math.min(cx + half, s.x + steer * s.phys.steerRate * dt));
+  const { x, vx } = slide(s, steer, dt, cx, half);
   const t = s.t + dtMs;
   const moved = {
-    ...s, x, z, speed, t,
+    ...s, x, vx, z, speed, t,
     boostLeftMs: Math.max(0, s.boostLeftMs - dtMs),
     slowLeftMs: Math.max(0, s.slowLeftMs - dtMs),
-    steerLeftMs: s.steerLeftMs + (steer < 0 ? dtMs : 0),
-    steerRightMs: s.steerRightMs + (steer > 0 ? dtMs : 0),
+    steerLeftMs: s.steerLeftMs + (steer < 0 ? -steer * dtMs : 0),
+    steerRightMs: s.steerRightMs + (steer > 0 ? steer * dtMs : 0),
   };
   const flagged = { ...moved, ...crossFlags(moved, x, t, course) };
   const hit = collide(flagged, course);

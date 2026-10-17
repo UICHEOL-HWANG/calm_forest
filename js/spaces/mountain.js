@@ -27,14 +27,14 @@ import { cashAvailable } from '../shop/paddle.js';
 import { state as authState } from '../supabase-client.js';
 import { cashButton, cashPending } from './cafe.js';
 import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, runoutCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
-import { spawnSnowBurst } from '../mountain/sled-fx.js';
+import { spawnSnowBurst, spawnBoostTrail } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
 import { showColdHud, hideColdHud } from '../mountain/cold-hud.js';
 import { setSledSkin } from '../mountain/sled-art.js';
 import { sledBegin, sledSettle, sledAbandon, sledState } from '../mountain/sled-run.js';
 import { bindSledInput, initialInput, worldSteer } from '../mountain/sled-input.js';
 import { isTouchDevice } from '../touch-sim.js';
-import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, hideBoost, boostButton } from '../mountain/sled-hud.js';
+import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, hideBoost, boostButton, showStick, showBoostFx } from '../mountain/sled-hud.js';
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
 import { fadeNameTag } from './npc.js';
@@ -113,7 +113,7 @@ export function enterMountain() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('mountain', '🏔️', '🏔️ 설산', '🏔️ 뒤쪽 능선길로 올라가 정상에서 썰매를 타요');
-  setBGMTheme('main'); Sound.blip();
+  setBGMTheme('snow'); Sound.blip();
   const first = !gameState.hintsSeen?.mountainVisited;
   gameState.hintsSeen = { ...(gameState.hintsSeen || {}), mountainVisited: true };
   requestSave();
@@ -396,16 +396,21 @@ function placeSled(yaw) {
   sled.rotation.set(pose.pitch, pose.yaw, 0);
 }
 
-function rideSlope(steer, dt) {
+function rideSlope(lean, dt) {
   const p = slopePoint(run.sled.z, run.sled.x);
-  run.yaw += (sledYaw(steer) - run.yaw) * Math.min(1, dt * LEAN_RATE);
+  run.yaw += (sledYaw(lean) - run.yaw) * Math.min(1, dt * LEAN_RATE);
   player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + run.seat, MOUNTAIN.z + p.z);
   player.rotation.y = run.yaw;
   placeSled(run.yaw);
 }
 
 function boost() {
-  if (run?.phase === 'sled') run.sled = tryBoost(run.sled);
+  if (run?.phase !== 'sled') return;
+  const acorns = run.sled.acorns;
+  run.sled = tryBoost(run.sled);
+  if (run.sled.acorns >= acorns) return;
+  Sound.sledBoost();
+  spawnSnowBurst(player.position.x, player.position.y + 0.3, player.position.z - 0.4, 16);
 }
 
 function arriveHut() {
@@ -434,6 +439,7 @@ function startSled() {
   run.countT = 0;
   run.input = bindSledInput(document.body, boost, { initial: initialInput(isTouchDevice()) });
   document.body.classList.add('sled-run');
+  setBGMTheme('snowsled');
   boostButton().onclick = boost;
   sledBegin(ctxOf());
   camPos.copy(camera.position);
@@ -468,6 +474,7 @@ function finishSled() {
     ui.toast?.(TOBOGGAN_TOAST, 2600);
   }
   run.input.dispose();
+  showStick(null);
   hideBoost();
   clearCountdown();
   const p = slopePoint(run.sled.z, run.sled.x);
@@ -513,7 +520,7 @@ function showFinish() {
   const res = run.result;
   run.phase = 'result';
   player.position.y = MOUNTAIN.y;
-  showResult({ ...res, best: sledState().best ?? res.timeMs, flags: run.sled.flagsPassed }, () => { showSled(false); closeRun(); });
+  showResult({ ...res, best: sledState().best ?? res.timeMs, flags: run.sled.flagsPassed }, () => { showSled(false); closeRun(); setBGMTheme('snow'); });
 }
 
 export function abandonRun() {
@@ -585,6 +592,7 @@ export function updateMountain(dt) {
       if (run.count <= 0) run.phase = 'sled';
     }
     rideSlope(0, dt);
+    showStick(run.input.stick());
   } else if (run.phase === 'sled') {
     run.frames += 1;
     run.frameMs += dt * 1000;
@@ -592,7 +600,10 @@ export function updateMountain(dt) {
     const hitsBefore = run.sled.hitIds.length;
     run.sled = stepSled(run.sled, Math.min(50, dt * 1000), steer, run.course);
     run.sled.hitIds.slice(hitsBefore).forEach(burstObstacle);
-    rideSlope(steer, dt);
+    rideSlope(run.sled.vx / run.sled.phys.steerRate, dt);
+    showStick(run.input.stick());
+    if (run.sled.boostLeftMs > 0) spawnBoostTrail(player.position.x, player.position.y, player.position.z, isTouchDevice() ? 1 : 2);
+    showBoostFx(run.sled, dt);
     if (run.sled.t >= GO_CLEAR_MS) clearCountdown();
     showRunHud({ timeMs: run.sled.t, acorns: run.sled.acorns });
     if (run.sled.finished) finishSled();
