@@ -2882,6 +2882,7 @@
     import { CONFIG, IS_DEV_SESSION } from './js/config.js';
     import { initControls } from './js/controls.js';
     import { initMobileHud } from './js/hud/mobile-hud.js';
+    import { initHudShell } from './js/hud/hud-shell.js';
     import { createMenuSheet } from './js/hud/menu-sheet.js';
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
@@ -3229,7 +3230,7 @@
       ui.setQuest(questLast);
     });
     questPhoneMQ.addEventListener?.('change', () => ui.setQuest(questLast));
-    let hud = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
+    let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn') });
     const nickStep = createNickStep({ track: trackEvent });
     addEventListener('pagehide', () => nickStep.leave($('nick-input')?.value || ''));
@@ -3283,7 +3284,7 @@
         set('inv-coal', inv.coal || 0);
         set('inv-gem', inv.gem || 0);
         set('inv-coin', inv.coins || 0);
-        hud?.onInv(inv);
+        shell?.onInv(inv);
         if ($('bag-menu').classList.contains('show')) renderBag();     // 가방 열려 있으면 갱신
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
         if ($('cook-menu').classList.contains('show')) { cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
@@ -3883,7 +3884,7 @@
         el.textContent = text; el.classList.add('show');
         layoutPrompts();
       },
-      setUnread(n) { hud?.setUnread(n); menuSheet.setUnread(n); },
+      setUnread(n) { shell?.setUnread(n); menuSheet.setUnread(n); },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
       onDecorPlaced() {
         stopPlacing();
@@ -4515,14 +4516,15 @@
       $('login-screen').classList.remove('show');
       if (TOUCH) document.body.classList.add('is-touch');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
+      if (!shell) shell = initHudShell({ Input, t, trackEvent, menu: menuSheet });
       if (TOUCH && !hud) {
-        hud = initMobileHud({ Input, t, act: (k) => ui.act(k), trackEvent, menu: menuSheet });
+        hud = initMobileHud({ Input, t, act: (k) => ui.act(k), trackEvent });
         if (lastToolArgs) hud.onTool(...lastToolArgs);
         hud.onNpc(lastNpcText);
         if (lastDoorArgs) hud.onDoor(...lastDoorArgs);
         if (tutIdx >= 0) hud.setCoachStep(TUT_STEPS[tutIdx].key);
-        hud.layoutLeft();
       }
+      shell.layoutLeft();
       trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
@@ -5323,7 +5325,7 @@
     //      그때 getBoundingClientRect().bottom 은 0 이라 패널이 화면 맨 위(top:8px)로 튄다.
     //      실제로 그려지고 있는지(offsetParent)를 봐야 한다.
     function layoutQuestPanel() {
-      if (hud) { hud.layoutLeft(); return; }
+      if (shell) { shell.layoutLeft(); return; }
       const chip = $('story-chip'), qp = $('quest-panel');
       if (!chip.classList.contains('show') || !chip.offsetParent) { qp.style.top = ''; return; }
       qp.style.top = Math.round(chip.getBoundingClientRect().bottom + 8) + 'px';
@@ -6520,7 +6522,7 @@
     }
     function renderBag() {
       const box = $('bag-content'); box.innerHTML = '';
-      if (hud) {
+      if (shell) {
         const keys = document.body.classList.contains('at-mine') ? ['coins', 'stone', 'coal', 'gem'] : ['coins', 'wood', 'seed', 'crop', 'stone'];
         const ICO = { coins: '🪙', wood: '🪵', seed: '🌰', crop: '🥕', stone: '🪨', coal: '⚫', gem: '💎' };
         const row = document.createElement('div'); row.className = 'bag-sum';

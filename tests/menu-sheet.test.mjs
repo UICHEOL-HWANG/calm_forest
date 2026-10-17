@@ -10,8 +10,8 @@ const HTML = read('index.html');
 test('카드 메뉴는 한 모듈·한 개 — 모바일 HUD 는 넘겨받은 카드를 연다', () => {
   assert.match(SHEET, /export function createMenuSheet\(/);
   assert.equal((HTML.match(/createMenuSheet\(\{/g) || []).length, 1, 'index.html 에서 한 번만 만든다(id 중복 방지)');
-  assert.match(HTML, /initMobileHud\(\{ Input, t, act: \(k\) => ui\.act\(k\), trackEvent, menu: menuSheet \}\)/);
-  assert.match(MOBILE, /menu\.open\(\);/);
+  assert.match(HTML, /initHudShell\(\{ Input, t, trackEvent, menu: menuSheet \}\)/);
+  assert.match(read('js/hud/hud-shell.js'), /menu\.open\(\);/);
   assert.doesNotMatch(MOBILE, /const CATS = \[/);
 });
 
@@ -26,5 +26,5 @@ test('PC ☰ 도 긴 목록 대신 같은 카드를 연다', () => {
 });
 
 test('안 읽은 소식 점은 PC ☰ 에도 붙는다', () => {
-  assert.match(HTML, /setUnread\(n\) \{ hud\?\.setUnread\(n\); menuSheet\.setUnread\(n\); \}/);
+  assert.match(HTML, /setUnread\(n\) \{ shell\?\.setUnread\(n\); menuSheet\.setUnread\(n\); \}/);
 });
