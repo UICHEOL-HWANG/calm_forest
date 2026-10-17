@@ -51,7 +51,8 @@ export function renderTreeBoard(view) {
   for (const b of view.branches) {
     const t = el('button', `tb-tab tb-${b.status}${b.id === view.cur.id ? ' active' : ''}`);
     t.type = 'button';
-    t.append(el('i', 'tb-dot'), el('span', null, b.ico), el('span', 'tb-tab-name', b.name));
+    t.append(el('i', 'tb-dot'), el('span', null, b.ico), el('span', 'tb-tab-name', b.short || b.name));   // 짧은 이름 — 폰에서 '부엌의 가 / 지' 로 꺾였다
+    t.title = b.name;
     t.addEventListener('click', () => actions?.tab?.(b.id));
     tabs.appendChild(t);
   }
@@ -123,6 +124,7 @@ export function renderTreeBoard(view) {
   h2.append(el('span', null, '🎁 꾸러미 바치기'));
   if (c.bundlesDone) h2.append(el('span', 'tb-stamp pink', '🌸 다 바쳤어요'));
   bun.appendChild(h2);
+  if (!c.habitatDone) bun.appendChild(el('p', 'tb-hint', '🔒 빈터를 먼저 꾸며 이웃이 돌아오면 꾸러미를 바칠 수 있어요'));
   for (const bd of c.bundles) {
     const box = el('div', bd.done ? 'tb-bundle done' : 'tb-bundle');
     const head = el('div', 'tb-bhead');

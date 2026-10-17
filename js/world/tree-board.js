@@ -30,25 +30,25 @@ export const TREE_DECOR = [
  *   ⚠️ 재료는 "그 가지가 열릴 때 이미 얻을 수 있는 것"만 — 스펙 §2 표. 🍄 채집물·🌟 반딧불이는 숲 가지 뒤라 못 쓴다.
  */
 export const BRANCHES = [
-  { id: 'water',   ico: '💧', name: '물의 가지',   npc: 'angler',  npcIco: '🎣', npcName: '낚시꾼 할아버지',
+  { id: 'water',   ico: '💧', name: '물의 가지',   short: '물',   npc: 'angler',  npcIco: '🎣', npcName: '낚시꾼 할아버지',
     habitat: { damp: 6, shade: 2 },
     bundles: [
       { id: 'river',     name: '강의 꾸러미',    need: { fish: 5, stone: 5 },  reward: { coins: 30 } },
       { id: 'ferry',     name: '나루터 꾸러미',  need: { wood: 20, stone: 10 }, reward: { coins: 40 } },
     ] },
-  { id: 'farm',    ico: '🌾', name: '밭의 가지',   npc: 'farmer',  npcIco: '🧑‍🌾', npcName: '농부 삼촌',
+  { id: 'farm',    ico: '🌾', name: '밭의 가지',   short: '밭',   npc: 'farmer',  npcIco: '🧑‍🌾', npcName: '농부 삼촌',
     habitat: { food: 6, damp: 2 },
     bundles: [
       { id: 'harvest',   name: '첫 수확 꾸러미', need: { crop: 15 },           reward: { seed: 10 } },
       { id: 'seeds',     name: '씨앗 꾸러미',    need: { seed: 10, wood: 10 }, reward: { fert: 3 } },
     ] },
-  { id: 'kitchen', ico: '🍳', name: '부엌의 가지', npc: 'chef',    npcIco: '🐼', npcName: '요리사 판다',
+  { id: 'kitchen', ico: '🍳', name: '부엌의 가지', short: '부엌', npc: 'chef',    npcIco: '🐼', npcName: '요리사 판다',
     habitat: { food: 3, light: 3, nectar: 2 },
     bundles: [
       { id: 'breakfast', name: '아침상 꾸러미',  need: { crop: 10, fish: 3 },  reward: { coins: 40 } },
       { id: 'hearth',    name: '화덕 꾸러미',    need: { coal: 5, stone: 10 }, reward: { coins: 50 } },
     ] },
-  { id: 'forest',  ico: '🌲', name: '숲의 가지',   npc: 'forager', npcIco: '🦡', npcName: '숲지기 오소리',
+  { id: 'forest',  ico: '🌲', name: '숲의 가지',   short: '숲',   npc: 'forager', npcIco: '🦡', npcName: '숲지기 오소리',
     habitat: { shade: 4, nectar: 2, shelter: 2 },
     bundles: [
       { id: 'woods',     name: '숲의 꾸러미',    need: { wood: 30, stone: 10 }, reward: { coins: 50 } },
@@ -244,12 +244,14 @@ export function removeDecor(tree, id, tile) {
  * 꾸러미에 가방에 있는 만큼 바치기.
  * @returns {{ok, reason?, tree, take?, events}} take = 가방에서 뺄 재료 { item: n }
  *   events: [{type:'bundle', branch, bundle, reward}] (그 꾸러미가 막 찼을 때) · [{type:'bundles', branch}] (가지 꾸러미 전부)
- *   reason: 'branch' | 'locked' | 'bundle' | 'full' | 'empty'
+ *   reason: 'branch' | 'locked' | 'habitat' | 'bundle' | 'full' | 'empty'
  */
 export function offerBundle(tree, id, bundleId, inv) {
   const def = BY_ID.get(id);
   if (!def) return fail(tree, 'branch');
   if (!branchUsable(tree, id)) return fail(tree, 'locked');
+  // 🏡 빈터(이웃 귀환)가 먼저 — 꾸러미부터 끝내면 사공 오리가 낚시꾼보다 먼저 돌아오는 등 이야기 순서가 뒤집힌다(2026-10-17 사용자 결정)
+  if (!habitatDone(tree, id)) return fail(tree, 'habitat');
   const bd = def.bundles.find(x => x.id === bundleId);
   if (!bd) return fail(tree, 'bundle');
   const cur = branchState(tree, id)?.given?.[bundleId] || {};

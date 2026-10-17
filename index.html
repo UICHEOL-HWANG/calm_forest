@@ -3632,9 +3632,11 @@
           if (!nr.ok) { ui.toast(nr.msg); nick.focus(); return; }
           Input.setCharacter(selected, change);
           closeCharModal();
-          ui.toast(change ? `${a.emoji} ${nr.nick}(으)로 바꿨어요!` : `${a.emoji} ${nr.nick}(으)로 시작해요!`);
+          const startMsg = change ? `${a.emoji} ${nr.nick}(으)로 바꿨어요!` : `${a.emoji} ${nr.nick}(으)로 시작해요!`;
           // 🎬 첫 시작이면 프롤로그 컷신부터(끝나면 introShow(false)가 튜토리얼로 이어줌)
-          if (!change && Input.introStart()) return;
+          //    시작 토스트는 인트로가 끝난 뒤에 — 첫 장면 위에 겹쳤다(2026-10-17 사용자 결정)
+          if (!change && Input.introStart()) { ui._afterIntroToast = startMsg; return; }
+          ui.toast(startMsg);
           if (!change && Input.e1FirstScreen()) return;   // 🧪 E1 처치 — 환영 모달 대신 밭 앞에서 시작(모달은 첫 수확 뒤)
           if (!change && Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
         };
@@ -3654,6 +3656,7 @@
           $('intro-caption').classList.remove('show');
           $('intro-title').classList.remove('show');
           $('intro-fade').style.opacity = 0;
+          if (ui._afterIntroToast) { const m = ui._afterIntroToast; ui._afterIntroToast = null; setTimeout(() => ui.toast(m), 400); }   // 🏷️ 미뤄 둔 시작 토스트
           if (Input.e1FirstScreen()) return;   // 🧪 E1 처치 — 프롤로그가 끝나면 밭 앞에서 시작
           if (Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
         }

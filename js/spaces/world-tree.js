@@ -82,7 +82,7 @@ export function updateWorldTree(dt, t) {
 }
 
 /** 밑동 근처인가(doors.js 프롬프트) */
-export function worldTreeNear(p) { return !!wt && dist2D(WORLD_TREE, p) < PROMPT_R; }
+export function worldTreeNear(p) { return !!wt && !shot && dist2D(WORLD_TREE, p) < PROMPT_R; }   // 🎬 조망샷 중엔 안내를 끈다('탭하면 넘어가요'와 겹쳤다)
 
 export function worldTreePrompt() {
   return worldTreeBoardOpen() ? '🌳 세계수 · Space 로 살펴보기' : '🌳 시든 세계수 — 박물관 할아버지가 방법을 안대요';
@@ -105,7 +105,7 @@ function boardView() {
   return {
     fresh: freshTile,
     life: lifePercent(tree),
-    branches: BRANCHES.map(x => ({ id: x.id, ico: x.ico, name: x.name, status: branchStatus(tree, x.id) })),
+    branches: BRANCHES.map(x => ({ id: x.id, ico: x.ico, name: x.name, short: x.short, status: branchStatus(tree, x.id) })),
     cur: {
       id: def.id, ico: def.ico, name: def.name, npcIco: def.npcIco, npcName: def.npcName,
       usable: branchUsable(tree, def.id),
@@ -123,7 +123,7 @@ function boardView() {
         const slots = Object.entries(bd.need).map(([k, need]) => ({ ico: ICO[k] || k, label: LABEL[k] || k, have: given[k] || 0, need, bag: inv[k] || 0 }));
         return {
           id: bd.id, name: bd.name, rewardText: costText(bd.reward), done: bundleDone(tree, def.id, bd.id),
-          slots, canOffer: slots.some(s => s.have < s.need && s.bag > 0),
+          slots, canOffer: habitatDone(tree, def.id) && slots.some(s => s.have < s.need && s.bag > 0),
         };
       }),
     },

@@ -74,9 +74,8 @@ test('가지 순서 게이트: 앞 가지 서식지가 완성돼야 다음 판�
   assert.equal(placeDecor(t, 'farm', 0, 'plot', RICH).reason, 'locked');
   assert.equal(offerBundle(t, 'farm', 'harvest', RICH).reason, 'locked');
   assert.equal(branchStatus(t, 'farm'), 'locked');
-  // 꾸러미만 채워서는 안 열린다 — 서식지가 열쇠
-  t = fillBundles(t, 'water').tree;
-  assert.equal(branchUsable(t, 'farm'), false);
+  // 꾸러미는 그 가지의 빈터(이웃 귀환)가 먼저 — 순서가 뒤집히지 않게(2026-10-17 사용자 결정)
+  assert.equal(offerBundle(t, 'water', 'river', RICH).reason, 'habitat');
   t = place(t, 'water', RECIPE.water).tree;
   assert.equal(branchUsable(t, 'farm'), true);
   assert.equal(branchUsable(t, 'kitchen'), false);
@@ -120,7 +119,7 @@ test('서식지 완성 이벤트는 한 번 · 장식을 빼도 플래그는 유
 });
 
 test('offerBundle: 가방에 있는 만큼만, 필요량을 넘지 않게', () => {
-  let t = defaultTree();
+  let t = place(defaultTree(), 'water', RECIPE.water).tree;   // 빈터 먼저
   let r = offerBundle(t, 'water', 'river', { fish: 3, stone: 0 });
   assert.ok(r.ok);
   assert.deepEqual(r.take, { fish: 3 });
@@ -140,17 +139,21 @@ test('offerBundle: 가방에 있는 만큼만, 필요량을 넘지 않게', () =
   assert.ok(bundlesDone(r.tree, 'water'));
   const o = unlockedSet({ unlocks: defaultUnlocks(), tree: r.tree });
   assert.ok(o.has('ferryman') && o.has('sea'), '나루터 꾸러미 → 🦆 사공·🌊 바다');
-  assert.ok(!o.has('angler'), '서식지는 아직');
+  assert.ok(o.has('angler'), '빈터를 먼저 끝냈으니 🎣 낚시꾼은 이미 돌아와 있다');
 });
 
 test('branchRatio · lifePercent · branchGrowth', () => {
   let t = defaultTree();
   t = placeDecor(t, 'water', 0, 'pond', RICH).tree;           // damp 3/6, shade 0/2 → 0.25
   assert.deepEqual(branchRatio(t, 'water'), { habitat: 0.25, bundles: 0 });
+  assert.deepEqual(branchGrowth(t, 'water'), { leaves: 0, bloom: false });
+  t = placeDecor(t, 'water', 1, 'pond', RICH).tree;
+  t = placeDecor(t, 'water', 2, 'bigtree', RICH).tree;        // 빈터 완성 → 꾸러미를 바칠 수 있다
+  assert.deepEqual(branchRatio(t, 'water'), { habitat: 1, bundles: 0 });
   t = offerBundle(t, 'water', 'river', { fish: 5 }).tree;     // 5/10 → 0.5 · ferry 0 → 평균 0.25
-  assert.deepEqual(branchRatio(t, 'water'), { habitat: 0.25, bundles: 0.25 });
-  assert.equal(lifePercent(t), Math.round(((0.25 + 0.25) / 2 / 4) * 100));
-  assert.deepEqual(branchGrowth(t, 'water'), { leaves: 0.15, bloom: false });
+  assert.deepEqual(branchRatio(t, 'water'), { habitat: 1, bundles: 0.25 });
+  assert.equal(lifePercent(t), Math.round(((1 + 0.25) / 2 / 4) * 100));
+  assert.deepEqual(branchGrowth(t, 'water'), { leaves: 0.55, bloom: false });
   // 전부 채우면 100
   let full = defaultTree();
   for (const id of BRANCH_IDS) { full = place(full, id, RECIPE[id]).tree; full = fillBundles(full, id).tree; }
