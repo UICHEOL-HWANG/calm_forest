@@ -1320,21 +1320,38 @@
   body.intro-open #hint, body.intro-open #story-chip { display: none !important; }
   body.mg-open #hint { display: none !important; }   /* 조작 안내 바는 요리 미니게임 중에도 숨김 */
   body.mg-open #coach { display: none !important; }  /* 튜토리얼 코치도 미니게임 무대 위엔 안 띄움(끝나면 복귀) */
-  #intro-bars .ib { position: absolute; left: 0; right: 0; height: max(7dvh, var(--top-inset)); background: #10120f; }
-  #intro-bars .top { top: 0; } #intro-bars .bot { bottom: 0; height: max(9dvh, env(safe-area-inset-bottom)); }
-  #intro-skip { position: absolute; right: max(14px, env(safe-area-inset-right)); top: calc(max(7dvh, var(--top-inset)) + 10px);
-    pointer-events: auto; border: none; border-radius: 12px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
-    background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.85); backdrop-filter: blur(4px); }
+  /* 레터박스 — 들어올 때 위·아래에서 미끄러져 들어오고, 마을 도착 컷에서 걷힌다 */
+  #intro-bars .ib { position: absolute; left: 0; right: 0; height: max(8dvh, var(--top-inset)); background: #0b0d0c; transition: transform 1.1s cubic-bezier(.65,0,.35,1); }
+  #intro-bars .top { top: 0; transform: translateY(-101%); } #intro-bars .bot { bottom: 0; height: max(10dvh, env(safe-area-inset-bottom)); transform: translateY(101%); }
+  #intro-bars.on .top, #intro-bars.on .bot { transform: none; }
+  /* 자막 아래 은은한 그늘 — 어떤 배경(하늘·풀·흰 페이드) 위에서도 읽히게 */
+  #intro-scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 34dvh; pointer-events: none;
+    background: linear-gradient(to top, rgba(8,10,12,0.42), rgba(8,10,12,0.18) 45%, transparent); opacity: 0; transition: opacity .8s; }
+  #intro-bars.on ~ #intro-scrim { opacity: 1; }
+  #intro-skip { position: absolute; right: max(14px, env(safe-area-inset-right)); top: calc(max(8dvh, var(--top-inset)) + 10px);
+    pointer-events: auto; border: 1px solid rgba(255,255,255,0.22); border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 12.5px; letter-spacing: 0.02em; cursor: pointer;
+    background: rgba(12,14,16,0.28); color: rgba(255,255,255,0.88); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: background .2s; }
   #intro-skip:active { transform: scale(0.95); }
-  #intro-caption { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(9dvh, env(safe-area-inset-bottom)) + 22px);
-    width: min(560px, 88vw); text-align: center; color: #fff; font-size: clamp(14px, 4vw, 17px); font-weight: 600; line-height: 1.6;
-    text-shadow: 0 1px 8px rgba(0,0,0,0.55); opacity: 0; transition: opacity .5s; white-space: pre-line; }
-  #intro-caption.show { opacity: 1; }
-  #intro-title { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity 1.1s; text-align: center; }
-  #intro-title.show { opacity: 1; }
-  #intro-title .it-logo { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: clamp(34px, 9vw, 56px); color: #fff; text-shadow: 0 2px 16px rgba(30,60,40,0.5); letter-spacing: 1px; }
-  #intro-title .it-sub { margin-top: 4px; font-size: clamp(12px, 3.2vw, 15px); letter-spacing: 4px; color: rgba(255,255,255,0.85); text-shadow: 0 1px 8px rgba(30,60,40,0.5); }
+  #intro-caption { position: absolute; left: 50%; bottom: calc(max(10dvh, env(safe-area-inset-bottom)) + clamp(18px, 4.2dvh, 34px));
+    width: min(620px, 88vw); text-align: center; color: #fffaf0;
+    font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: clamp(15px, 4.1vw, 19px); font-weight: 600; line-height: 1.55; letter-spacing: 0.035em; word-break: keep-all;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 2px 14px rgba(0,0,0,0.45), 0 0 28px rgba(0,0,0,0.25);
+    opacity: 0; transform: translate(-50%, 10px); filter: blur(2px);
+    transition: opacity .7s ease, transform .9s cubic-bezier(.2,.7,.2,1), filter .7s ease; white-space: pre-line; }
+  #intro-caption.show { opacity: 1; transform: translate(-50%, 0); filter: none; }
+  #intro-title { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; text-align: center; pointer-events: none; }
+  #intro-title .it-logo, #intro-title .it-rule, #intro-title .it-sub { opacity: 0; transition: opacity 1.2s ease, transform 1.6s cubic-bezier(.2,.7,.2,1), letter-spacing 2s cubic-bezier(.2,.7,.2,1), filter 1.2s ease; }
+  #intro-title .it-logo { font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif; font-weight: 800; font-size: clamp(36px, 9.5vw, 64px); color: #fff;
+    letter-spacing: 0.14em; transform: translateY(8px) scale(0.97); filter: blur(4px);
+    text-shadow: 0 2px 4px rgba(20,40,28,0.35), 0 6px 30px rgba(20,50,30,0.45); }
+  #intro-title .it-rule { width: 56px; height: 1.5px; margin: 10px auto 8px; background: rgba(255,255,255,0.75); transform: scaleX(0.2); box-shadow: 0 1px 6px rgba(20,50,30,0.4); }
+  #intro-title .it-sub { font-size: clamp(11px, 3vw, 14px); letter-spacing: 0.42em; text-transform: lowercase; color: rgba(255,255,255,0.9); text-shadow: 0 1px 8px rgba(20,50,30,0.55); transform: translateY(6px); }
+  #intro-title.show .it-logo { opacity: 1; transform: none; filter: none; letter-spacing: 0.04em; }
+  #intro-title.show .it-rule { opacity: 1; transform: none; transition-delay: .35s; }
+  #intro-title.show .it-sub { opacity: 1; transform: none; transition-delay: .55s; }
   #intro-fade { position: absolute; inset: 0; background: #fff; opacity: 0; transition: opacity 1.15s ease-in-out; }
+  #intro-dip { position: absolute; inset: 0; background: #07090a; opacity: 0; pointer-events: none; }
 
   /* 📋 패널(자유주방 메뉴판·상점·작업대·주문판…)이 열려 있으면 마을 조작 UI를 걷는다.
      패널이 화면을 덮는 동안엔 눌러도 아무 일이 없는데, 💬대화하기 버튼과 존 안내·프롬프트가
@@ -2269,10 +2286,12 @@
 
   <!-- 🎬 프롤로그 컷신 오버레이 — 3D 연출 위 자막/레터박스/페이드/타이틀/스킵(DOM) -->
   <div id="intro-layer">
+    <div id="intro-dip"></div>
     <div id="intro-bars"><div class="ib top"></div><div class="ib bot"></div></div>
+    <div id="intro-scrim"></div>
     <button id="intro-skip">건너뛰기 ›</button>
     <div id="intro-caption"></div>
-    <div id="intro-title"><div class="it-logo">calm forest</div><div class="it-sub">a cozy little forest</div></div>
+    <div id="intro-title"><div><div class="it-logo">calm forest</div><div class="it-rule"></div><div class="it-sub">a cozy little forest</div></div></div>
     <div id="intro-fade"></div>
   </div>
 
@@ -3653,21 +3672,28 @@
       introShow(on) {
         document.body.classList.toggle('intro-open', !!on);
         if (!on) {   // 종료(완주/스킵) → 자막·타이틀·페이드 초기화 후 튜토리얼로 이어감
-          $('intro-caption').classList.remove('show');
+          $('intro-caption').classList.remove('show'); clearTimeout(ui._capSwap); ui._capText = null;
           $('intro-title').classList.remove('show');
-          $('intro-fade').style.opacity = 0;
+          $('intro-bars').classList.remove('on');
+          $('intro-fade').style.opacity = 0; $('intro-dip').style.opacity = 0;
           if (ui._afterIntroToast) { const m = ui._afterIntroToast; ui._afterIntroToast = null; setTimeout(() => ui.toast(m), 400); }   // 🏷️ 미뤄 둔 시작 토스트
           if (Input.e1FirstScreen()) return;   // 🧪 E1 처치 — 프롤로그가 끝나면 밭 앞에서 시작
           if (Input.needsTutorial()) { Input.markTutorialSeen(); ui.showTutorial(); }
         }
       },
+      // 자막 — 바뀔 땐 먼저 내려 사라졌다가(0.45s) 새 줄이 아래에서 떠오른다
       introCaption(text) {
         const el = $('intro-caption');
+        if ((text || null) === (ui._capText ?? null)) return;
+        ui._capText = text || null;
+        clearTimeout(ui._capSwap);
         if (!text) { el.classList.remove('show'); return; }
-        if (el.textContent !== text) el.textContent = text;
-        el.classList.add('show');
+        const put = () => { el.textContent = text; void el.offsetWidth; el.classList.add('show'); };
+        if (el.classList.contains('show')) { el.classList.remove('show'); ui._capSwap = setTimeout(put, 450); } else put();
       },
       introFade(a) { $('intro-fade').style.opacity = a; },
+      introDip(a) { const el = $('intro-dip'); const v = String(Math.round(a * 1000) / 1000); if (el.style.opacity !== v) el.style.opacity = v; },   // 컷 사이 암전(프레임마다 값으로)
+      introBars(on) { const el = $('intro-bars'); if (on) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('on'))); else el.classList.remove('on'); },
       // 🛏️ 자는 동안의 암전. a=1 덮기 / a=0 걷기 — .on 은 덮인 동안 입력을 막는 용도
       //   ⚠️ a=0 일 때 .on 을 바로 빼면 화면이 아직 새까만 0.7초 동안 탭이 통과한다 —
       //   전환이 끝난 뒤에 푼다(game.js 의 sleeping 해제 타이밍과 맞춘다).

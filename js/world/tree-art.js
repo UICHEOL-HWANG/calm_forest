@@ -386,6 +386,7 @@ export function buildTreeArt(three, { label = '세계수' } = {}) {
   let lastLife = -1;
   return {
     group, clusters, plaque: PLAQUE,
+    crown: crown.mesh, lastLeaf: leaf, leafGlow: glow, motes,   // 🎬 인트로(js/spaces/prologue-set.js)가 색·번짐을 덧칠한다
     /** 다 자란 나무를 감싸는 상자(그룹 로컬 — 호출부가 위치를 더한다). 빛 알갱이·이끼 바닥 제외 */
     fullBox() {
       const box = new THREE.Box3();

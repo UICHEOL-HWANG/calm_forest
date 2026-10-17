@@ -1894,11 +1894,11 @@ export const EN = {
   '{0} 배치!': '{0} Placed!',
   '🏆 이번 주 랭킹': '🏆 Weekly Rankings',
   '매주 월요일 새로 시작 · 가까이서 확인!': 'Resets every Monday · Come closer to check!',
-  '세계수 아래, 사람과 동물은 함께 살았다.': 'Beneath the World Tree, people and animals lived together.',
-  '그런데 세계수가 힘을 잃자, 마을도 기운을 잃었다.': 'But when the World Tree lost its strength, the village lost its spirit too.',
+  '세계수 아래, 사람과 동물은 함께 살았어요': 'Beneath the World Tree, people and animals lived together',
+  '그런데 세계수가 힘을 잃자, 마을도 기운을 잃었어요': 'But when the World Tree lost its strength, the village lost its spirit too',
   '…여기가 그 마을인가?': '…Is this the village?',
   '저기요… 아무도 없어요?': 'Hello…? Is anyone here?',
-  '…누군가 이쪽을 보고 있다.': '…Someone is watching.',
+  '…누군가 이쪽을 보고 있어요': '…Someone is watching',
 
   // ── game.js — 시세판·밤손님·퀘스트·프롬프트 (4800~) ──
   '📊 시세판': '📊 Price Board',

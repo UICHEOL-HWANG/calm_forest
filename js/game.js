@@ -199,7 +199,7 @@ import {
   applyCarveCamera, carveAbandon, carveDebug, carveSceneEnd, carveStart, workshopView, wset,
 } from './spaces/carving.js';   // 📦 🗿 조각 공방 — 깎기 미니게임 (구역 머리말 — 분리 2단계)
 import {
-  intro, introEnd, introStart, updateIntro,
+  intro, introEnd, introLook, introStart, updateIntro,
 } from './spaces/prologue.js';   // 📦 🎬 프롤로그 컷신 (구역 머리말 — 분리 2단계)
 import {
   buyShop, marketData, sellItem, spawnMarketBoard, spawnShop,
@@ -2479,6 +2479,7 @@ export async function enterGame() {
     // 🎬 __introTest() — 프롤로그 강제 재생(이미 본 세이브에서도) / __introJump(s) — 타임라인 점프(검증용)
     window.__introTest = () => introStart(true);
     window.__introJump = (s) => { if (intro) intro.t = s; return !!intro; };
+    window.__introT = () => (intro ? intro.t : -1);   // 현재 컷신 시각(검증 촬영용)
     // 🏠 __buildTest(n) — 집 터로 순간이동해 재료를 채우고 n 단계까지 지어 본다(간판·토스트·원장 검수용).
     //   비용표(js/house-cost.js)를 만질 때마다 3단계 간판과 부족 토스트를 눈으로 확인하려고 둔다. 로컬 전용.
     window.__buildTest = (n = 1, fill = true) => {
@@ -6862,13 +6863,15 @@ function updateDayNight(dt) {
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
   //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
   if (atMountain) mountainLookFrame({ scene, hemiLight, ambient, sunLight, bloomPass, gradePass, playerLight }, dt);
+  if (intro) introLook({ scene, hemiLight, ambient, sunLight, bloomPass, gradePass, playerLight });   // 🎬 프롤로그 세트 조명(황금빛 → 잿빛 해질녘) — 마을 라이트를 잠시 빌린다
   ui.setTime?.(isNight() ? 'night' : 'day', WEATHER === 'clear' ? null : WEATHER);
 
   // 🌓 그림자 화해 — 공간 전환은 setSpaceVisible() 이 처리하지만, exit 함수 몇 곳은 플래그를
   //   내린 뒤 setSpaceVisible() 전에 다른 호출이 끼어 있다(exitHouse·exitMine·exitCafe).
   //   거기서 예외가 나면 마을인데 섀도맵이 얼어붙은 채 복구 경로가 없다. 여기서 매 프레임 맞춘다.
   //   setShadowActive 는 값이 같으면 즉시 반환하므로 평소 비용은 불리언 비교 하나다.
-  setShadowActive(shadowActiveFor(spaceFlags()));
+  //   🎬 프롤로그 세트(마을 밖 z+480)엔 그림자를 안 쓴다 — 마을 도착 컷 전까지 그림자 패스를 건너뛴다
+  setShadowActive(shadowActiveFor(spaceFlags()) && !(intro && !intro.flags.arrive));
 }
 
 const _swayDummy = new THREE.Object3D();   // 인스턴스 행렬 계산용(프레임마다 새로 만들지 않게 재사용)
@@ -7929,7 +7932,7 @@ export {
   farmActionFirst, farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob,
   firstHint, firstHintBanner, fishDiff, fishMesh, fishState, floatTexts, forageNodes, forecastLine, forestGroup,
   gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCells, habitatCtx,
-  habitatEnvAt, handAnchor, harvestTexture, heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup,
+  habitatEnvAt, handAnchor, tailPivot, harvestTexture, heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup,
   houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor, interiorFloors, interiorGroup,
   interiorLamp, isBlocked, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt, lastFloorChoiceKey,
   lastNearHouse, lastNearMiss, lastZoneHint, lerpAngle, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
