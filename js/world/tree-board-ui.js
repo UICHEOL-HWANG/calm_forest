@@ -65,7 +65,7 @@ export function renderTreeBoard(view) {
 
   const lead = el('div', 'tb-lead');
   if (!c.usable) {
-    lead.append(el('span', null, '🔒'), el('span', null, '앞 가지의 빈터를 먼저 꾸며 주세요'), el('b', null, c.prevName));
+    lead.append(el('span', null, '🔒'), el('span', null, '앞 가지 빈터를 먼저 완성해요'), el('b', null, c.prevName));
     body.appendChild(lead);
     return;
   }
@@ -102,7 +102,7 @@ export function renderTreeBoard(view) {
     meters.appendChild(row);
   }
   habRow.appendChild(meters);
-  hab.appendChild(el('p', 'tb-hint', '장식을 누르면 빈칸에 놓여요 · 놓인 칸을 누르면 빼고 재료를 돌려받아요'));
+  hab.appendChild(el('p', 'tb-hint', '눌러서 놓기 · 놓인 칸을 누르면 빼기'));
 
   const decos = el('div', 'tb-decos');
   for (const d of c.decor) {
@@ -124,7 +124,7 @@ export function renderTreeBoard(view) {
   h2.append(el('span', null, '🎁 꾸러미 바치기'));
   if (c.bundlesDone) h2.append(el('span', 'tb-stamp pink', '🌸 다 바쳤어요'));
   bun.appendChild(h2);
-  if (!c.habitatDone) bun.appendChild(el('p', 'tb-hint', '🔒 빈터를 먼저 꾸며 이웃이 돌아오면 꾸러미를 바칠 수 있어요'));
+  if (!c.habitatDone) bun.appendChild(el('p', 'tb-hint', '🔒 빈터를 먼저 완성해요'));
   for (const bd of c.bundles) {
     const box = el('div', bd.done ? 'tb-bundle done' : 'tb-bundle');
     const head = el('div', 'tb-bhead');

@@ -85,7 +85,7 @@ export function updateWorldTree(dt, t) {
 export function worldTreeNear(p) { return !!wt && !shot && dist2D(WORLD_TREE, p) < PROMPT_R; }   // 🎬 조망샷 중엔 안내를 끈다('탭하면 넘어가요'와 겹쳤다)
 
 export function worldTreePrompt() {
-  return worldTreeBoardOpen() ? '🌳 세계수 · Space 로 살펴보기' : '🌳 시든 세계수 — 박물관 할아버지가 방법을 안대요';
+  return worldTreeBoardOpen() ? '🌳 세계수 · Space 로 살펴보기' : '🌳 시든 세계수 — 할아버지를 찾아가요';
 }
 
 // ── 판 ──────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ function rerender() { if (treeBoardOpen()) renderTreeBoard(boardView()); freshTi
 
 /** 밑동에서 Space — 판 열기(박물관 전엔 안내만) */
 export function openWorldTree() {
-  if (!worldTreeBoardOpen()) { ui.toast?.('🌳 시든 세계수 — 박물관 할아버지가 방법을 안대요', 2600); return; }
+  if (!worldTreeBoardOpen()) { ui.toast?.('🌳 시든 세계수 — 할아버지를 찾아가요', 2600); return; }
   // 처음 열 땐 아직 안 끝난 첫 가지로
   const firstOpen = BRANCH_IDS.find(id => branchUsable(gameState.tree, id) && !(habitatDone(gameState.tree, id) && bundlesDone(gameState.tree, id)));
   if (!treeBoardOpen() && firstOpen) tab = firstOpen;
@@ -151,7 +151,7 @@ export function openWorldTree() {
 }
 
 const REASON = {
-  locked: '앞 가지의 빈터를 먼저 꾸며 주세요',
+  locked: '앞 가지 빈터를 먼저 완성해요',
   afford: '재료가 모자라요',
   taken: '빈칸이 없어요',
   tile: '빈칸이 없어요',
@@ -225,7 +225,7 @@ function handleEvents(events, prev) {
     } else if (e.type === 'bundle') {
       const bd = def.bundles.find(x => x.id === e.bundle);
       giveReward(e.reward, 'tree_bundle', e.bundle);
-      ui.toast?.(`🎁 ${bd.name} 완성! ${rewardText(e.reward)}`, 2600);
+      ui.toast?.(`🎁 ${bd.name} 완성! ${costText(e.reward)}`, 2600);   // 아이콘+숫자로 짧게
     } else if (e.type === 'bundles') {
       Sound.complete?.();
       trackEvent('tree_branch_bundles', { branch: e.branch, life: lifePercent(gameState.tree) });
