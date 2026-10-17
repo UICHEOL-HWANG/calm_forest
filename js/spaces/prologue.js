@@ -14,7 +14,7 @@ import {
   ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
-import { Sound } from '../sound.js';
+import { Sound, startIntroScore, stopIntroScore } from '../sound.js';
 import { LOOK_SPOT, TREE, WALK_FROM, WALK_TO, buildIntroSet, disposeIntroSet, updateIntroSet, witherAt } from './prologue-set.js';
 import * as THREE from 'three';
 
@@ -77,6 +77,7 @@ export function introStart(force = false) {
   updateIntroSet(wiltSet, 0, 0);
   ui.introShow?.(true);
   ui.introBars?.(true);
+  startIntroScore();
   trackEvent('intro_start');                                // [GA4] 온보딩 퍼널 첫 계단
   return true;
 }
@@ -95,6 +96,7 @@ export function introEnd(skipped) {
   restoreFov();
   dropWiltSet();                                            // 세트 지오메트리·재질·텍스처 해제(다시 볼 일 없음 — __introTest 는 새로 세운다)
   intro = null;
+  stopIntroScore(skipped ? 0.6 : 1.2);
   gameState.hintsSeen.intro = true;                         // 다시 안 봄(저장에 포함)
   snapCamera();
   ui.introDip?.(0);

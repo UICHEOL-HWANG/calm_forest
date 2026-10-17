@@ -6,6 +6,8 @@
 //  init() 에서 첫 입력 시 AudioContext 를 resume 합니다.
 // =============================================================
 
+import { playIntroScore } from './sound-intro.js';
+
 let ctx = null;
 let master = null;
 let enabled = true;
@@ -383,8 +385,10 @@ function playMirrorBar(at) {
   padNote(MIRROR_ROOTS[bar], MIRROR_E * 8, 0.04, 'sine', at);
   if (Math.random() < 0.4) chime(MEL[(Math.random() * MEL.length) | 0] * 4, MIRROR_E * 0.8, 0.015, { at: at + (1 + Math.random() * 6) * MIRROR_E, wet: 0.8, out: musicGain });
 }
-function barFn() { return bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+const INTRO_BAR = 1000;
+function playIntroBar() {}
+function barFn() { return bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을
@@ -419,6 +423,34 @@ export function startBGM() {
   if (musicOn) return;
   musicOn = true; scheduleBars();
 }
-export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+export function stopBGM() { musicOn = false; if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } fadeIntroBus(0.4); }
+
+let introBus = null, introSrcs = [], introMainTimer = null;
+function fadeIntroBus(sec) {
+  if (!introBus || !ctx) return;
+  const bus = introBus, srcs = introSrcs;
+  introBus = null; introSrcs = [];
+  bus.gain.setTargetAtTime(0.0001, ctx.currentTime, Math.max(0.05, sec / 3));
+  setTimeout(() => {
+    for (const s of srcs) { try { s.stop(); } catch (e) { void e; } }
+    bus.disconnect();
+  }, (sec + 0.5) * 1000);
+}
+export function startIntroScore() {
+  clearTimeout(introMainTimer);
+  setBGMTheme('intro');
+  if (!enabled || !musicOn) return false;
+  const c = ensureCtx();
+  fadeIntroBus(0.2);
+  introBus = c.createGain(); introBus.gain.value = 0.5; introBus.connect(master);
+  introSrcs = playIntroScore(c, introBus, c.currentTime + 0.05);
+  return true;
+}
+export function stopIntroScore(fadeSec = 0.8) {
+  const playing = !!introBus;
+  fadeIntroBus(fadeSec);
+  clearTimeout(introMainTimer);
+  introMainTimer = setTimeout(() => setBGMTheme('main'), playing ? fadeSec * 1000 : 0);
+}
 export function toggleBGM() { if (musicOn) { stopBGM(); return false; } startBGM(); return true; }
 export function isBGMOn() { return musicOn; }
